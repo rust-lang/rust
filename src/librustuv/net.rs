@@ -646,7 +646,6 @@ impl Drop for UdpWatcher {
 
 #[cfg(test)]
 mod test {
-    use std::cell::Cell;
     use std::comm::oneshot;
     use std::rt::test::*;
     use std::rt::rtio::{RtioTcpStream, RtioTcpListener, RtioTcpAcceptor,
@@ -1071,7 +1070,7 @@ mod test {
 
             let handle1 = sched1.make_handle();
             let handle2 = sched2.make_handle();
-            let tasksFriendHandle = Cell::new(sched2.make_handle());
+            let tasksFriendHandle = sched2.make_handle();
 
             let on_exit: proc(UnwindResult) = proc(exit_status) {
                 handle1.send(Shutdown);
@@ -1095,11 +1094,13 @@ mod test {
 
                 // block self on sched1
                 let scheduler: ~Scheduler = Local::take();
+                let mut tasksFriendHandle = Some(tasksFriendHandle);
                 scheduler.deschedule_running_task_and_then(|_, task| {
                     // unblock task
                     task.wake().map(|task| {
                         // send self to sched2
-                        tasksFriendHandle.take().send(TaskFromFriend(task));
+                        tasksFriendHandle.take_unwrap()
+                                         .send(TaskFromFriend(task));
                     });
                     // sched1 should now sleep since it has nothing else to do
                 })

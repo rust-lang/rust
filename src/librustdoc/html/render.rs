@@ -33,7 +33,6 @@
 //! These tasks are not parallelized (they haven't been a bottleneck yet), and
 //! both occur before the crate is rendered.
 
-use std::cell::Cell;
 use std::comm::{SharedPort, SharedChan};
 use std::comm;
 use std::fmt;
@@ -814,9 +813,9 @@ impl Context {
             // recurse into the items of the module as well.
             clean::ModuleItem(..) => {
                 let name = item.name.get_ref().to_owned();
-                let item = Cell::new(item);
+                let mut item = Some(item);
                 self.recurse(name, |this| {
-                    let item = item.take();
+                    let item = item.take_unwrap();
                     let dst = this.dst.join("index.html");
                     render(File::create(&dst).unwrap(), this, &item, false);
 
