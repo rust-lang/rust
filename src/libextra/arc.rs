@@ -597,7 +597,6 @@ mod tests {
 
     use arc::*;
 
-    use std::cell::Cell;
     use std::comm;
     use std::task;
 
@@ -628,7 +627,6 @@ mod tests {
         let arc = ~MutexArc::new(false);
         let arc2 = ~arc.clone();
         let (p,c) = comm::oneshot();
-        let c = Cell::new(c);
         do task::spawn {
             // wait until parent gets in
             p.recv();
@@ -638,8 +636,9 @@ mod tests {
             })
         }
 
+        let mut c = Some(c);
         arc.access_cond(|state, cond| {
-            c.take().send(());
+            c.take_unwrap().send(());
             assert!(!*state);
             while !*state {
                 cond.wait();
