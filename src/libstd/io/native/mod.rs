@@ -206,7 +206,9 @@ impl rtio::IoFactory for IoFactory {
     }
     fn tty_open(&mut self, fd: c_int, _readable: bool) -> IoResult<~RtioTTY> {
         if unsafe { libc::isatty(fd) } != 0 {
-            Ok(~file::FileDesc::new(fd, true) as ~RtioTTY)
+            // Don't ever close the stdio file descriptors, nothing good really
+            // comes of that.
+            Ok(~file::FileDesc::new(fd, fd > libc::STDERR_FILENO) as ~RtioTTY)
         } else {
             Err(IoError {
                 kind: io::MismatchedFileTypeForOperation,
