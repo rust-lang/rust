@@ -419,11 +419,6 @@ pub fn stop_after_phase_5(sess: Session) -> bool {
         debug!("not building executable, returning early from compile_input");
         return true;
     }
-
-    if sess.opts.jit {
-        debug!("running JIT, returning early from compile_input");
-        return true;
-    }
     return false;
 }
 
@@ -751,7 +746,6 @@ pub fn build_session_options(binary: @str,
         } else { No }
     };
     let gc = debugging_opts & session::gc != 0;
-    let jit = debugging_opts & session::jit != 0;
     let extra_debuginfo = debugging_opts & session::extra_debug_info != 0;
     let debuginfo = debugging_opts & session::debug_info != 0 ||
         extra_debuginfo;
@@ -802,7 +796,6 @@ pub fn build_session_options(binary: @str,
         extra_debuginfo: extra_debuginfo,
         lint_opts: lint_opts,
         save_temps: save_temps,
-        jit: jit,
         output_type: output_type,
         addl_lib_search_paths: @mut addl_lib_search_paths,
         ar: ar,

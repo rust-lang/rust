@@ -82,111 +82,8 @@ pub fn WriteOutputFile(
     }
 }
 
-pub mod jit {
-
-    use back::link::llvm_err;
-    use driver::session::Session;
-    use lib::llvm::llvm;
-    use lib::llvm::{ModuleRef, ContextRef, ExecutionEngineRef};
-
-    use std::c_str::ToCStr;
-    use std::cast;
-    use std::local_data;
-    use std::unstable::intrinsics;
-
-    struct LLVMJITData {
-        ee: ExecutionEngineRef,
-        llcx: ContextRef
-    }
-
-    pub trait Engine {}
-    impl Engine for LLVMJITData {}
-
-    impl Drop for LLVMJITData {
-        fn drop(&mut self) {
-            unsafe {
-                llvm::LLVMDisposeExecutionEngine(self.ee);
-                llvm::LLVMContextDispose(self.llcx);
-            }
-        }
-    }
-
-    pub fn exec(sess: Session,
-                c: ContextRef,
-                m: ModuleRef,
-                stacks: bool) {
-        unsafe {
-            let manager = llvm::LLVMRustPrepareJIT(intrinsics::morestack_addr());
-
-            // We need to tell JIT where to resolve all linked
-            // symbols from. The equivalent of -lstd, -lcore, etc.
-            // By default the JIT will resolve symbols from the extra and
-            // core linked into rustc. We don't want that,
-            // incase the user wants to use an older extra library.
-
-            // We custom-build a JIT execution engine via some rust wrappers
-            // first. This wrappers takes ownership of the module passed in.
-            let ee = llvm::LLVMRustBuildJIT(manager, m, stacks);
-            if ee.is_null() {
-                llvm::LLVMContextDispose(c);
-                llvm_err(sess, ~"Could not create the JIT");
-            }
-
-            // Next, we need to get a handle on the _rust_main function by
-            // looking up it's corresponding ValueRef and then requesting that
-            // the execution engine compiles the function.
-            let fun = "_rust_main".with_c_str(|entry| {
-                llvm::LLVMGetNamedFunction(m, entry)
-            });
-            if fun.is_null() {
-                llvm::LLVMDisposeExecutionEngine(ee);
-                llvm::LLVMContextDispose(c);
-                llvm_err(sess, ~"Could not find _rust_main in the JIT");
-            }
-
-            // Finally, once we have the pointer to the code, we can do some
-            // closure magic here to turn it straight into a callable rust
-            // closure
-            let code = llvm::LLVMGetPointerToGlobal(ee, fun);
-            assert!(!code.is_null());
-            let func: extern "Rust" fn() = cast::transmute(code);
-            func();
-
-            // Currently there is no method of re-using the executing engine
-            // from LLVM in another call to the JIT. While this kinda defeats
-            // the purpose of having a JIT in the first place, there isn't
-            // actually much code currently which would re-use data between
-            // different invocations of this. Additionally, the compilation
-            // model currently isn't designed to support this scenario.
-            //
-            // We can't destroy the engine/context immediately here, however,
-            // because of annihilation. The JIT code contains drop glue for any
-            // types defined in the crate we just ran, and if any of those boxes
-            // are going to be dropped during annihilation, the drop glue must
-            // be run. Hence, we need to transfer ownership of this jit engine
-            // to the caller of this function. To be convenient for now, we
-            // shove it into TLS and have someone else remove it later on.
-            let data = ~LLVMJITData { ee: ee, llcx: c };
-            set_engine(data as ~Engine);
-        }
-    }
-
-    // The stage1 compiler won't work, but that doesn't really matter. TLS
-    // changed only very recently to allow storage of owned values.
-    local_data_key!(engine_key: ~Engine)
-
-    fn set_engine(engine: ~Engine) {
-        local_data::set(engine_key, engine)
-    }
-
-    pub fn consume_engine() -> Option<~Engine> {
-        local_data::pop(engine_key)
-    }
-}
-
 pub mod write {
 
-    use back::link::jit;
     use back::link::{WriteOutputFile, output_type};
     use back::link::{output_type_assembly, output_type_bitcode};
     use back::link::{output_type_exe, output_type_llvm_assembly};
@@ -307,48 +204,38 @@ pub mod write {
                 })
             }
 
-            if sess.opts.jit {
-                // If we are using JIT, go ahead and create and execute the
-                // engine now. JIT execution takes ownership of the module and
-                // context, so don't dispose
-                jit::exec(sess, llcx, llmod, true);
-            } else {
-                // Create a codegen-specific pass manager to emit the actual
-                // assembly or object files. This may not end up getting used,
-                // but we make it anyway for good measure.
-                let cpm = llvm::LLVMCreatePassManager();
-                llvm::LLVMRustAddAnalysisPasses(tm, cpm, llmod);
-                llvm::LLVMRustAddLibraryInfo(cpm, llmod);
+            // Create a codegen-specific pass manager to emit the actual
+            // assembly or object files. This may not end up getting used,
+            // but we make it anyway for good measure.
+            let cpm = llvm::LLVMCreatePassManager();
+            llvm::LLVMRustAddAnalysisPasses(tm, cpm, llmod);
+            llvm::LLVMRustAddLibraryInfo(cpm, llmod);
 
-                match output_type {
-                    output_type_none => {}
-                    output_type_bitcode => {
-                        output.with_c_str(|buf| {
-                            llvm::LLVMWriteBitcodeToFile(llmod, buf);
-                        })
-                    }
-                    output_type_llvm_assembly => {
-                        output.with_c_str(|output| {
-                            llvm::LLVMRustPrintModule(cpm, llmod, output)
-                        })
-                    }
-                    output_type_assembly => {
-                        WriteOutputFile(sess, tm, cpm, llmod, output, lib::llvm::AssemblyFile);
-                    }
-                    output_type_exe | output_type_object => {
-                        WriteOutputFile(sess, tm, cpm, llmod, output, lib::llvm::ObjectFile);
-                    }
+            match output_type {
+                output_type_none => {}
+                output_type_bitcode => {
+                    output.with_c_str(|buf| {
+                        llvm::LLVMWriteBitcodeToFile(llmod, buf);
+                    })
                 }
-
-                llvm::LLVMDisposePassManager(cpm);
+                output_type_llvm_assembly => {
+                    output.with_c_str(|output| {
+                        llvm::LLVMRustPrintModule(cpm, llmod, output)
+                    })
+                }
+                output_type_assembly => {
+                    WriteOutputFile(sess, tm, cpm, llmod, output, lib::llvm::AssemblyFile);
+                }
+                output_type_exe | output_type_object => {
+                    WriteOutputFile(sess, tm, cpm, llmod, output, lib::llvm::ObjectFile);
+                }
             }
+
+            llvm::LLVMDisposePassManager(cpm);
 
             llvm::LLVMRustDisposeTargetMachine(tm);
-            // the jit takes ownership of these two items
-            if !sess.opts.jit {
-                llvm::LLVMDisposeModule(llmod);
-                llvm::LLVMContextDispose(llcx);
-            }
+            llvm::LLVMDisposeModule(llmod);
+            llvm::LLVMContextDispose(llcx);
             if sess.time_llvm_passes() { llvm::LLVMRustPrintPassTimings(); }
         }
     }
@@ -711,8 +598,8 @@ pub fn sanitize(s: &str) -> ~str {
             ',' => result.push_str("$C$"),
 
             // '.' doesn't occur in types and functions, so reuse it
-            // for ':'
-            ':' => result.push_char('.'),
+            // for ':' and '-'
+            '-' | ':' => result.push_char('.'),
 
             // These are legal symbols
             'a' .. 'z'

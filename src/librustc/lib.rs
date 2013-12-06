@@ -363,10 +363,6 @@ pub fn monitor(f: proc(@diagnostic::Emitter)) {
         let _finally = finally { ch: ch };
 
         f(demitter);
-
-        // Due reasons explain in #7732, if there was a jit execution context it
-        // must be consumed and passed along to our parent task.
-        back::link::jit::consume_engine()
     }) {
         result::Ok(_) => { /* fallthrough */ }
         result::Err(_) => {
