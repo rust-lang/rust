@@ -159,11 +159,9 @@ impl EventLoop for BasicLoop {
         ~BasicRemote::new(self.messages.clone(), id) as ~RemoteCallback
     }
 
-    fn io(&mut self) -> &'static mut IoFactory:'static {
-        unsafe {
-            let factory: &mut IoFactory = self.io;
-            cast::transmute(factory)
-        }
+    fn io<'a>(&'a mut self) -> Option<&'a mut IoFactory> {
+        let factory: &mut IoFactory = self.io;
+        Some(factory)
     }
 }
 

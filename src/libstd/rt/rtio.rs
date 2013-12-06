@@ -39,7 +39,7 @@ pub trait EventLoop {
     fn remote_callback(&mut self, ~Callback) -> ~RemoteCallback;
 
     /// The asynchronous I/O services. Not all event loops may provide one.
-    fn io(&mut self) -> &'static mut IoFactory:'static;
+    fn io<'a>(&'a mut self) -> Option<&'a mut IoFactory>;
 }
 
 pub trait RemoteCallback {
@@ -78,19 +78,19 @@ pub enum CloseBehavior {
     CloseAsynchronously,
 }
 
-pub struct LocalIo {
-    factory: &'static mut IoFactory:'static,
+pub struct LocalIo<'a> {
+    priv factory: &'a mut IoFactory,
 }
 
 #[unsafe_destructor]
-impl Drop for LocalIo {
+impl<'a> Drop for LocalIo<'a> {
     fn drop(&mut self) {
         // XXX(pcwalton): Do nothing here for now, but eventually we may want
         // something. For now this serves to make `LocalIo` noncopyable.
     }
 }
 
-impl LocalIo {
+impl<'a> LocalIo<'a> {
     /// Returns the local I/O: either the local scheduler's I/O services or
     /// the native I/O services.
     pub fn borrow() -> LocalIo {
@@ -102,8 +102,13 @@ impl LocalIo {
             let sched: Option<*mut Scheduler> = Local::try_unsafe_borrow();
             match sched {
                 Some(sched) => {
-                    return LocalIo {
-                        factory: (*sched).event_loop.io(),
+                    match (*sched).event_loop.io() {
+                        Some(factory) => {
+                            return LocalIo {
+                                factory: factory,
+                            }
+                        }
+                        None => {}
                     }
                 }
                 None => {}
@@ -120,7 +125,9 @@ impl LocalIo {
 
     /// Returns the underlying I/O factory as a trait reference.
     #[inline]
-    pub fn get(&mut self) -> &'static mut IoFactory {
+    pub fn get<'a>(&'a mut self) -> &'a mut IoFactory {
+        // XXX(pcwalton): I think this is actually sound? Could borrow check
+        // allow this safely?
         unsafe {
             cast::transmute_copy(&self.factory)
         }

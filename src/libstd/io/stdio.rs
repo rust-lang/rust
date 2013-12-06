@@ -31,7 +31,7 @@ use libc;
 use option::{Option, Some, None};
 use result::{Ok, Err};
 use io::buffered::LineBufferedWriter;
-use rt::rtio::{IoFactory, RtioTTY, RtioFileStream, DontClose};
+use rt::rtio::{DontClose, IoFactory, LocalIo, RtioFileStream, RtioTTY};
 use super::{Reader, Writer, io_error, IoError, OtherIoError,
             standard_error, EndOfFile};
 

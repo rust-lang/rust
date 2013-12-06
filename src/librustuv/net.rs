@@ -1073,6 +1073,8 @@ mod test {
             let tasksFriendHandle = sched2.make_handle();
 
             let on_exit: proc(UnwindResult) = proc(exit_status) {
+                let mut handle1 = handle1;
+                let mut handle2 = handle2;
                 handle1.send(Shutdown);
                 handle2.send(Shutdown);
                 assert!(exit_status.is_success());
@@ -1080,8 +1082,7 @@ mod test {
 
             unsafe fn local_io() -> &'static mut IoFactory {
                 let mut sched = Local::borrow(None::<Scheduler>);
-                let mut io = None;
-                sched.get().event_loop.io(|i| io = Some(i));
+                let io = sched.get().event_loop.io();
                 cast::transmute(io.unwrap())
             }
 
@@ -1121,9 +1122,13 @@ mod test {
                 // nothing
             };
 
+            let main_task = main_task;
+            let sched1 = sched1;
             let thread1 = do Thread::start {
                 sched1.bootstrap(main_task);
             };
+
+            let sched2 = sched2;
             let thread2 = do Thread::start {
                 sched2.bootstrap(null_task);
             };
