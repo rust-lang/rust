@@ -3255,7 +3255,8 @@ tutorials on individual topics.
 * [Error-handling and Conditions][conditions]
 * [Packaging up Rust code][rustpkg]
 
-There is further documentation on the [wiki], however those tend to be even more out of date as this document.
+There is further documentation on the [wiki], however those tend to be even
+more out of date than this document.
 
 [borrow]: tutorial-borrowed-ptr.html
 [tasks]: tutorial-tasks.html
