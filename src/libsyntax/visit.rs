@@ -130,6 +130,7 @@ pub fn walk_mod<E:Clone, V:Visitor<E>>(visitor: &mut V, module: &_mod, env: E) {
     for view_item in module.view_items.iter() {
         visitor.visit_view_item(view_item, env.clone())
     }
+
     for item in module.items.iter() {
         visitor.visit_item(*item, env.clone())
     }
