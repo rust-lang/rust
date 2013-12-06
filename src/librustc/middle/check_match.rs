@@ -927,7 +927,7 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
         // check legality of moving out of the enum
 
         // x @ Foo(..) is legal, but x @ Foo(y) isn't.
-        if sub.map_default(false, |p| pat_contains_bindings(def_map, p)) {
+        if sub.map_or(false, |p| pat_contains_bindings(def_map, p)) {
             tcx.sess.span_err(
                 p.span,
                 "cannot bind by-move with sub-bindings");

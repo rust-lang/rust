@@ -122,7 +122,7 @@ impl<T: Writer> Terminal<T> {
         let inf = ti.unwrap();
         let nc = if inf.strings.find_equiv(&("setaf")).is_some()
                  && inf.strings.find_equiv(&("setab")).is_some() {
-                     inf.numbers.find_equiv(&("colors")).map_default(0, |&n| n)
+                     inf.numbers.find_equiv(&("colors")).map_or(0, |&n| n)
                  } else { 0 };
 
         return Ok(Terminal {out: out, ti: inf, num_colors: nc});
@@ -215,7 +215,7 @@ impl<T: Writer> Terminal<T> {
                 cap = self.ti.strings.find_equiv(&("op"));
             }
         }
-        let s = cap.map_default(Err(~"can't find terminfo capability `sgr0`"), |op| {
+        let s = cap.map_or(Err(~"can't find terminfo capability `sgr0`"), |op| {
             expand(*op, [], &mut Variables::new())
         });
         if s.is_ok() {

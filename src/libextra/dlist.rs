@@ -191,7 +191,7 @@ impl<T> DList<T> {
     /// Remove the last Node and return it, or None if the list is empty
     #[inline]
     fn pop_back_node(&mut self) -> Option<~Node<T>> {
-        self.list_tail.resolve().map_default(None, |tail| {
+        self.list_tail.resolve().map_or(None, |tail| {
             self.length -= 1;
             self.list_tail = tail.prev;
             match tail.prev.resolve() {

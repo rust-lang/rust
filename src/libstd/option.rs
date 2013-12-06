@@ -164,7 +164,7 @@ impl<T> Option<T> {
 
     /// Applies a function to the contained value or returns a default.
     #[inline]
-    pub fn map_default<U>(self, def: U, f: |T| -> U) -> U {
+    pub fn map_or<U>(self, def: U, f: |T| -> U) -> U {
         match self { None => def, Some(t) => f(t) }
     }
 
@@ -179,7 +179,7 @@ impl<T> Option<T> {
 
     /// Apply a function to the contained value or set it to a default.
     /// Returns true if the contained value was mutated, or false if set to the default.
-    pub fn mutate_default(&mut self, def: T, f: |T| -> T) -> bool {
+    pub fn mutate_or_set(&mut self, def: T, f: |T| -> T) -> bool {
         if self.is_some() {
             *self = Some(f(self.take_unwrap()));
             true
@@ -695,12 +695,12 @@ mod tests {
         let mut x = Some(3i);
         assert!(x.mutate(|i| i+1));
         assert_eq!(x, Some(4i));
-        assert!(x.mutate_default(0, |i| i+1));
+        assert!(x.mutate_or_set(0, |i| i+1));
         assert_eq!(x, Some(5i));
         x = None;
         assert!(!x.mutate(|i| i+1));
         assert_eq!(x, None);
-        assert!(!x.mutate_default(0i, |i| i+1));
+        assert!(!x.mutate_or_set(0i, |i| i+1));
         assert_eq!(x, Some(0i));
     }
 

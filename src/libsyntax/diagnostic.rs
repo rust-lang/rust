@@ -314,12 +314,11 @@ fn highlight_lines(cm: &codemap::CodeMap,
 
 fn print_macro_backtrace(cm: &codemap::CodeMap, sp: Span) {
     for ei in sp.expn_info.iter() {
-        let ss = ei.callee.span.as_ref().map_default(~"", |span| cm.span_to_str(*span));
+        let ss = ei.callee.span.as_ref().map_or(~"", |span| cm.span_to_str(*span));
         let (pre, post) = match ei.callee.format {
             codemap::MacroAttribute => ("#[", "]"),
             codemap::MacroBang => ("", "!")
         };
-
         print_diagnostic(ss, note,
                          format!("in expansion of {}{}{}", pre, ei.callee.name, post));
         let ss = cm.span_to_str(ei.call_site);
