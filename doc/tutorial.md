@@ -149,7 +149,7 @@ and functions defined in it. If it has a `main` function, it can be
 compiled to an executable. Rust does not allow code that's not a
 declaration to appear at the top level of the file: all statements must
 live inside a function.  Rust programs can also be compiled as
-libraries, and included in other programs.
+libraries, and included in other programs, even ones not written in Rust.
 
 ## Editing Rust code
 
