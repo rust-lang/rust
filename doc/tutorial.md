@@ -803,7 +803,7 @@ let id_int: int = *my_gizmo_id;
 ~~~~
 
 Types like this can be useful to differentiate between data that have
-the same type but must be used in different ways.
+the same underlying type but must be used in different ways.
 
 ~~~~
 struct Inches(int);
