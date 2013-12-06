@@ -343,7 +343,8 @@ Characters, the `char` type, are four-byte Unicode codepoints,
 whose literals are written between single quotes, as in `'x'`.
 Just like C, Rust understands a number of character escapes, using the backslash
 character, such as `\n`, `\r`, and `\t`. String literals,
-written between double quotes, allow the same escape sequences.
+written between double quotes, allow the same escape sequences, and do no
+other processing, unlike languages such as PHP or shell.
 
 On the other hand, raw string literals do not process any escape sequences.
 They are written as `r##"blah"##`, with a matching number of zero or more `#`
