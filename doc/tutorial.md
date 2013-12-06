@@ -590,9 +590,8 @@ struct Point {
 }
 ~~~~
 
-Inherited mutability means that any field of a struct may be mutable, if the
-struct is in a mutable slot (or a field of a struct in a mutable slot, and
-so forth).
+Structs have "inherited mutability", which means that any field of a struct
+may be mutable, if the struct is in a mutable slot.
 
 With a value (say, `mypoint`) of such a type in a mutable location, you can do
 `mypoint.y += 1.0`. But in an immutable location, such an assignment to a
