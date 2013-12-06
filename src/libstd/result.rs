@@ -10,13 +10,11 @@
 
 //! A type representing either success or failure
 
-use any::Any;
 use clone::Clone;
 use cmp::Eq;
 use fmt;
 use iter::Iterator;
-use kinds::Send;
-use option::{None, Option, Some, OptionIterator};
+use option::{None, Option, Some};
 use option::{ToOption, IntoOption, AsOption};
 use str::OwnedStr;
 use to_str::ToStr;
@@ -24,14 +22,11 @@ use vec::OwnedVector;
 use vec;
 
 /// `Result` is a type that represents either success (`Ok`) or failure (`Err`).
-///
-/// In order to provide informative error messages, `E` is required to implement `ToStr`.
-/// It is further recommended for `E` to be a descriptive error type, eg a `enum` for
-/// all possible errors cases.
 #[deriving(Clone, DeepClone, Eq, Ord, TotalEq, TotalOrd, ToStr)]
 pub enum Result<T, E> {
-    /// Contains the successful result value
+    /// Contains the success value
     Ok(T),
+
     /// Contains the error value
     Err(E)
 }
@@ -40,7 +35,7 @@ pub enum Result<T, E> {
 // Type implementation
 /////////////////////////////////////////////////////////////////////////////
 
-impl<T, E: ToStr> Result<T, E> {
+impl<T, E> Result<T, E> {
     /////////////////////////////////////////////////////////////////////////
     // Querying the contained values
     /////////////////////////////////////////////////////////////////////////
@@ -58,6 +53,29 @@ impl<T, E: ToStr> Result<T, E> {
     #[inline]
     pub fn is_err(&self) -> bool {
         !self.is_ok()
+    }
+
+
+    /////////////////////////////////////////////////////////////////////////
+    // Adapter for each variant
+    /////////////////////////////////////////////////////////////////////////
+
+    /// Convert from `Result<T, E>` to `Option<T>`
+    #[inline]
+    pub fn ok(self) -> Option<T> {
+        match self {
+            Ok(x)  => Some(x),
+            Err(_) => None,
+        }
+    }
+
+    /// Convert from `Result<T, E>` to `Option<E>`
+    #[inline]
+    pub fn err(self) -> Option<E> {
+        match self {
+            Ok(_)  => None,
+            Err(x) => Some(x),
+        }
     }
 
     /////////////////////////////////////////////////////////////////////////
@@ -79,52 +97,6 @@ impl<T, E: ToStr> Result<T, E> {
         match *self {
             Ok(ref mut x) => Ok(x),
             Err(ref mut x) => Err(x),
-        }
-    }
-
-    /////////////////////////////////////////////////////////////////////////
-    // Getting to contained values
-    /////////////////////////////////////////////////////////////////////////
-
-    /// Unwraps a result, yielding the content of an `Ok`.
-    /// Fails if the value is a `Err` with a custom failure message provided by `msg`.
-    #[inline]
-    pub fn expect<M: Any + Send>(self, msg: M) -> T {
-        match self {
-            Ok(t) => t,
-            Err(_) => fail!(msg),
-        }
-    }
-
-    /// Unwraps a result, yielding the content of an `Err`.
-    /// Fails if the value is a `Ok` with a custom failure message provided by `msg`.
-    #[inline]
-    pub fn expect_err<M: Any + Send>(self, msg: M) -> E {
-        match self {
-            Err(e) => e,
-            Ok(_) => fail!(msg),
-        }
-    }
-
-    /// Unwraps a result, yielding the content of an `Ok`.
-    /// Fails if the value is a `Err` with an error message derived
-    /// from `E`'s `ToStr` implementation.
-    #[inline]
-    pub fn unwrap(self) -> T {
-        match self {
-            Ok(t) => t,
-            Err(e) => fail!("called `Result::unwrap()` on `Err` value '{}'",
-                             e.to_str()),
-        }
-    }
-
-    /// Unwraps a result, yielding the content of an `Err`.
-    /// Fails if the value is a `Ok`.
-    #[inline]
-    pub fn unwrap_err(self) -> E {
-        match self {
-            Ok(_) => fail!("called `Result::unwrap_err()` on an `Ok` value"),
-            Err(e) => e
         }
     }
 
@@ -161,34 +133,6 @@ impl<T, E: ToStr> Result<T, E> {
           Ok(t) => Ok(t),
           Err(e) => Err(op(e))
         }
-    }
-
-    /////////////////////////////////////////////////////////////////////////
-    // Iterator constructors
-    /////////////////////////////////////////////////////////////////////////
-
-    /// Returns an `Iterator` over one or zero references to the value of an `Ok`
-    ///
-    /// Example:
-    ///
-    ///     for buf in read_file(file) {
-    ///         print_buf(buf)
-    ///     }
-    #[inline]
-    pub fn iter<'r>(&'r self) -> OptionIterator<&'r T> {
-        match *self {
-            Ok(ref t) => Some(t),
-            Err(..) => None,
-        }.move_iter()
-    }
-
-    /// Returns an `Iterator` over one or zero references to the value of an `Err`
-    #[inline]
-    pub fn iter_err<'r>(&'r self) -> OptionIterator<&'r E> {
-        match *self {
-            Ok(..) => None,
-            Err(ref t) => Some(t),
-        }.move_iter()
     }
 
     ////////////////////////////////////////////////////////////////////////
@@ -239,17 +183,23 @@ impl<T, E: ToStr> Result<T, E> {
     // Common special cases
     /////////////////////////////////////////////////////////////////////////
 
-    /// Get a reference to the value out of a successful result
-    ///
-    /// # Failure
-    ///
-    /// If the result is an error
+    /// Unwraps a result, yielding the content of an `Ok`.
+    /// Fails if the value is an `Err`.
     #[inline]
-    pub fn get_ref<'a>(&'a self) -> &'a T {
-        match *self {
-            Ok(ref t) => t,
-            Err(ref e) => fail!("called `Result::get_ref()` on `Err` value '{}'",
-                                 e.to_str()),
+    pub fn unwrap(self) -> T {
+        match self {
+            Ok(t) => t,
+            Err(_) => fail!("called `Result::unwrap()` on an `Err` value")
+        }
+    }
+
+    /// Unwraps a result, yielding the content of an `Err`.
+    /// Fails if the value is an `Ok`.
+    #[inline]
+    pub fn unwrap_err(self) -> E {
+        match self {
+            Ok(_) => fail!("called `Result::unwrap_err()` on an `Ok` value"),
+            Err(e) => e
         }
     }
 }
@@ -459,31 +409,6 @@ mod tests {
     }
 
     #[test]
-    pub fn test_impl_iter() {
-        let mut valid = false;
-        let okval = Ok::<~str, ~str>(~"a");
-        okval.iter().next().map(|_| { valid = true; });
-        assert!(valid);
-
-        let errval = Err::<~str, ~str>(~"b");
-        errval.iter().next().map(|_| { valid = false; });
-        assert!(valid);
-    }
-
-    #[test]
-    pub fn test_impl_iter_err() {
-        let mut valid = true;
-        let okval = Ok::<~str, ~str>(~"a");
-        okval.iter_err().next().map(|_| { valid = false });
-        assert!(valid);
-
-        valid = false;
-        let errval = Err::<~str, ~str>(~"b");
-        errval.iter_err().next().map(|_| { valid = true });
-        assert!(valid);
-    }
-
-    #[test]
     pub fn test_impl_map() {
         assert_eq!(Ok::<~str, ~str>(~"a").map(|x| x + "b"), Ok(~"ab"));
         assert_eq!(Err::<~str, ~str>(~"a").map(|x| x + "b"), Err(~"a"));
@@ -493,12 +418,6 @@ mod tests {
     pub fn test_impl_map_err() {
         assert_eq!(Ok::<~str, ~str>(~"a").map_err(|x| x + "b"), Ok(~"a"));
         assert_eq!(Err::<~str, ~str>(~"a").map_err(|x| x + "b"), Err(~"ab"));
-    }
-
-    #[test]
-    pub fn test_get_ref_method() {
-        let foo: Result<int, ()> = Ok(100);
-        assert_eq!(*foo.get_ref(), 100);
     }
 
     #[test]

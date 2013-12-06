@@ -151,7 +151,6 @@ mod tests {
     use super::*;
     use super::AnyRefExt;
     use option::{Some, None};
-    use hash::Hash;
 
     #[deriving(Eq)]
     struct Test;
