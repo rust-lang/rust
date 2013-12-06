@@ -1,5 +1,4 @@
-/* Multi-producer/multi-consumer bounded queue
- * Copyright (c) 2010-2011 Dmitry Vyukov. All rights reserved.
+/* Copyright (c) 2010-2011 Dmitry Vyukov. All rights reserved.
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *
@@ -163,7 +162,6 @@ mod tests {
     use prelude::*;
     use option::*;
     use task;
-    use comm;
     use super::Queue;
 
     #[test]
@@ -174,10 +172,9 @@ mod tests {
         assert_eq!(None, q.pop());
 
         for _ in range(0, nthreads) {
-            let (port, chan)  = comm::stream();
-            chan.send(q.clone());
+            let q = q.clone();
             do task::spawn_sched(task::SingleThreaded) {
-                let mut q = port.recv();
+                let mut q = q;
                 for i in range(0, nmsgs) {
                     assert!(q.push(i));
                 }
@@ -186,12 +183,11 @@ mod tests {
 
         let mut completion_ports = ~[];
         for _ in range(0, nthreads) {
-            let (completion_port, completion_chan) = comm::stream();
+            let (completion_port, completion_chan) = Chan::new();
             completion_ports.push(completion_port);
-            let (port, chan)  = comm::stream();
-            chan.send(q.clone());
+            let q = q.clone();
             do task::spawn_sched(task::SingleThreaded) {
-                let mut q = port.recv();
+                let mut q = q;
                 let mut i = 0u;
                 loop {
                     match q.pop() {
@@ -206,7 +202,7 @@ mod tests {
             }
         }
 
-        for completion_port in completion_ports.iter() {
+        for completion_port in completion_ports.mut_iter() {
             assert_eq!(nmsgs, completion_port.recv());
         }
     }
