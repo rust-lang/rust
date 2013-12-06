@@ -141,7 +141,7 @@ fn lookup_vtables_for_param(vcx: &VtableContext,
 
         // Substitute the values of the type parameters that may
         // appear in the bound.
-        let trait_ref = substs.as_ref().map_default(trait_ref, |substs| {
+        let trait_ref = substs.as_ref().map_or(trait_ref, |substs| {
             debug!("about to subst: {}, {}",
                    trait_ref.repr(tcx), substs.repr(tcx));
             trait_ref.subst(tcx, *substs)
@@ -334,7 +334,7 @@ fn search_for_vtable(vcx: &VtableContext,
         let trait_impls = tcx.trait_impls.borrow();
         trait_impls.get()
                    .find(&trait_ref.def_id)
-                   .map_default(@RefCell::new(~[]), |x| *x)
+                   .map_or(@RefCell::new(~[]), |x| *x)
     };
     // impls is the list of all impls in scope for trait_ref.
     let impls = impls.borrow();
