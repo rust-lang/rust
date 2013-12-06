@@ -21,7 +21,7 @@ use option::{Option, Some, None};
 use result::{Ok, Err};
 use io::{io_error};
 use io::net::ip::{SocketAddr, IpAddr};
-use rt::rtio::{IoFactory, with_local_io};
+use rt::rtio::{IoFactory, LocalIo};
 use vec::ImmutableVector;
 
 /// Hints to the types of sockets that are desired when looking up hosts
@@ -95,17 +95,16 @@ pub fn get_host_addresses(host: &str) -> Option<~[IpAddr]> {
 ///
 /// XXX: this is not public because the `Hint` structure is not ready for public
 ///      consumption just yet.
-fn lookup(hostname: Option<&str>, servname: Option<&str>,
-          hint: Option<Hint>) -> Option<~[Info]> {
-    with_local_io(|io| {
-        match io.get_host_addresses(hostname, servname, hint) {
-            Ok(i) => Some(i),
-            Err(ioerr) => {
-                io_error::cond.raise(ioerr);
-                None
-            }
+fn lookup(hostname: Option<&str>, servname: Option<&str>, hint: Option<Hint>)
+          -> Option<~[Info]> {
+    let mut io = LocalIo::borrow();
+    match io.get().get_host_addresses(hostname, servname, hint) {
+        Ok(i) => Some(i),
+        Err(ioerr) => {
+            io_error::cond.raise(ioerr);
+            None
         }
-    })
+    }
 }
 
 #[cfg(test)]

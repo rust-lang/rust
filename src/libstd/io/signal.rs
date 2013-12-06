@@ -24,9 +24,8 @@ use comm::{Port, SharedChan, stream};
 use container::{Map, MutableMap};
 use hashmap;
 use io::io_error;
-use option::{Some, None};
 use result::{Err, Ok};
-use rt::rtio::{IoFactory, RtioSignal, with_local_io};
+use rt::rtio::{IoFactory, LocalIo, RtioSignal};
 
 #[repr(int)]
 #[deriving(Eq, IterBytes)]
@@ -123,18 +122,17 @@ impl Listener {
         if self.handles.contains_key(&signum) {
             return true; // self is already listening to signum, so succeed
         }
-        with_local_io(|io| {
-            match io.signal(signum, self.chan.clone()) {
-                Ok(w) => {
-                    self.handles.insert(signum, w);
-                    Some(())
-                },
-                Err(ioerr) => {
-                    io_error::cond.raise(ioerr);
-                    None
-                }
+        let mut io = LocalIo::borrow();
+        match io.get().signal(signum, self.chan.clone()) {
+            Ok(w) => {
+                self.handles.insert(signum, w);
+                true
+            },
+            Err(ioerr) => {
+                io_error::cond.raise(ioerr);
+                false
             }
-        }).is_some()
+        }
     }
 
     /// Unregisters a signal. If this listener currently had a handler

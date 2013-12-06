@@ -51,7 +51,7 @@ use iter::Iterator;
 use super::{Reader, Writer, Seek};
 use super::{SeekStyle, Read, Write, Open, IoError, Truncate,
             FileMode, FileAccess, FileStat, io_error, FilePermission};
-use rt::rtio::{RtioFileStream, IoFactory, with_local_io};
+use rt::rtio::{RtioFileStream, IoFactory, LocalIo};
 use io;
 use option::{Some, None, Option};
 use result::{Ok, Err, Result};
@@ -76,15 +76,14 @@ pub struct File {
 }
 
 fn io_raise<T>(f: |io: &mut IoFactory| -> Result<T, IoError>) -> Option<T> {
-    with_local_io(|io| {
-        match f(io) {
-            Ok(t) => Some(t),
-            Err(ioerr) => {
-                io_error::cond.raise(ioerr);
-                None
-            }
+    let mut io = LocalIo::borrow();
+    match f(io.get()) {
+        Ok(t) => Some(t),
+        Err(ioerr) => {
+            io_error::cond.raise(ioerr);
+            None
         }
-    })
+    }
 }
 
 impl File {
@@ -132,19 +131,18 @@ impl File {
     pub fn open_mode(path: &Path,
                      mode: FileMode,
                      access: FileAccess) -> Option<File> {
-        with_local_io(|io| {
-            match io.fs_open(&path.to_c_str(), mode, access) {
-                Ok(fd) => Some(File {
-                    path: path.clone(),
-                    fd: fd,
-                    last_nread: -1
-                }),
-                Err(ioerr) => {
-                    io_error::cond.raise(ioerr);
-                    None
-                }
+        let mut io = LocalIo::borrow();
+        match io.get().fs_open(&path.to_c_str(), mode, access) {
+            Ok(fd) => Some(File {
+                path: path.clone(),
+                fd: fd,
+                last_nread: -1
+            }),
+            Err(ioerr) => {
+                io_error::cond.raise(ioerr);
+                None
             }
-        })
+        }
     }
 
     /// Attempts to open a file in read-only mode. This function is equivalent to

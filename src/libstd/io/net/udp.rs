@@ -13,7 +13,7 @@ use result::{Ok, Err};
 use io::net::ip::SocketAddr;
 use io::{Reader, Writer};
 use io::{io_error, EndOfFile};
-use rt::rtio::{RtioSocket, RtioUdpSocket, IoFactory, with_local_io};
+use rt::rtio::{RtioSocket, RtioUdpSocket, IoFactory, LocalIo};
 
 pub struct UdpSocket {
     priv obj: ~RtioUdpSocket
@@ -21,15 +21,14 @@ pub struct UdpSocket {
 
 impl UdpSocket {
     pub fn bind(addr: SocketAddr) -> Option<UdpSocket> {
-        with_local_io(|io| {
-            match io.udp_bind(addr) {
-                Ok(s) => Some(UdpSocket { obj: s }),
-                Err(ioerr) => {
-                    io_error::cond.raise(ioerr);
-                    None
-                }
+        let mut io = LocalIo::borrow();
+        match io.get().udp_bind(addr) {
+            Ok(s) => Some(UdpSocket { obj: s }),
+            Err(ioerr) => {
+                io_error::cond.raise(ioerr);
+                None
             }
-        })
+        }
     }
 
     pub fn recvfrom(&mut self, buf: &mut [u8]) -> Option<(uint, SocketAddr)> {

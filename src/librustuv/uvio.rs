@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::c_str::CString;
+use std::cast;
 use std::comm::SharedChan;
 use std::libc::c_int;
 use std::libc;
@@ -161,8 +162,11 @@ impl EventLoop for UvEventLoop {
         ~AsyncWatcher::new(self.uvio.uv_loop(), f) as ~RemoteCallback
     }
 
-    fn io<'a>(&'a mut self, f: |&'a mut IoFactory|) {
-        f(&mut self.uvio as &mut IoFactory)
+    fn io(&mut self) -> &'static mut IoFactory:'static {
+        unsafe {
+            let factory = &mut self.uvio as &mut IoFactory;
+            cast::transmute(factory)
+        }
     }
 }
 
