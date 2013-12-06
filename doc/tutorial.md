@@ -546,7 +546,7 @@ literals and most `enum` variants.
 
 `while` denotes a loop that iterates as long as its given condition
 (which must have type `bool`) evaluates to `true`. Inside a loop, the
-keyword `break` aborts the loop, and `loop` aborts the current
+keyword `break` aborts the loop, and `continue` aborts the current
 iteration and continues with the next.
 
 ~~~~
