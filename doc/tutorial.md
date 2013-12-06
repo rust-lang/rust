@@ -820,7 +820,7 @@ declarations, such as `type`, functions can be declared both at the
 top level and inside other functions (or in modules, which we'll come
 back to [later](#crates-and-the-module-system)). The `fn` keyword introduces a
 function. A function has an argument list, which is a parenthesized
-list of `expr: type` pairs separated by commas. An arrow `->`
+list of `name: type` pairs separated by commas. An arrow `->`
 separates the argument list and the function's return type.
 
 ~~~~
