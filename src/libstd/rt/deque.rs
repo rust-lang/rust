@@ -163,10 +163,9 @@ impl<T: Send> BufferPool<T> {
 
     fn free(&mut self, buf: ~Buffer<T>) {
         unsafe {
-            use cell::Cell;
-            let buf = Cell::new(buf);
+            let mut buf = Some(buf);
             self.pool.with(|pool| {
-                let buf = buf.take();
+                let buf = buf.take_unwrap();
                 match pool.iter().position(|v| v.size() > buf.size()) {
                     Some(i) => pool.insert(i, buf),
                     None => pool.push(buf),
