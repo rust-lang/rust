@@ -1290,10 +1290,8 @@ impl<'a, T: TotalOrd> ImmutableTotalOrdVector<T> for &'a [T] {
 
 /// Extension methods for vectors containing `Clone` elements.
 pub trait ImmutableCopyableVector<T> {
-    /**
-     * Partitions the vector into those that satisfies the predicate, and
-     * those that do not.
-     */
+    /// Partitions the vector into those that satisfies the predicate, and
+    /// those that do not.
     fn partitioned(&self, f: |&T| -> bool) -> (~[T], ~[T]);
 
     /// Create an iterator that yields every possible permutation of the
@@ -1431,48 +1429,39 @@ pub trait OwnedVector<T> {
     /// all elements after position i one position to the left.
     fn remove(&mut self, i: uint) -> T;
 
-    /**
-     * Remove an element from anywhere in the vector and return it, replacing it
-     * with the last element. This does not preserve ordering, but is O(1).
-     *
-     * Fails if index >= length.
-     */
+    /// Remove an element from anywhere in the vector and return it, replacing it
+    /// with the last element. This does not preserve ordering, but is O(1).
+    ///
+    /// Fails if index >= length.
     fn swap_remove(&mut self, index: uint) -> T;
 
     /// Shorten a vector, dropping excess elements.
     fn truncate(&mut self, newlen: uint);
 
-    /**
-     * Like `filter()`, but in place.  Preserves order of `v`.  Linear time.
-     */
+    /// Like `filter()`, but in place.  Preserves order of `v`.  Linear time.
     fn retain(&mut self, f: |t: &T| -> bool);
-    /**
-     * Partitions the vector into those that satisfies the predicate, and
-     * those that do not.
-     */
+
+    /// Partitions the vector into those that satisfies the predicate, and
+    /// those that do not.
     fn partition(self, f: |&T| -> bool) -> (~[T], ~[T]);
 
-    /**
-     * Expands a vector in place, initializing the new elements to the result of
-     * a function.
-     *
-     * Function `init_op` is called `n` times with the values [0..`n`)
-     *
-     * # Arguments
-     *
-     * * n - The number of elements to add
-     * * init_op - A function to call to retrieve each appended element's
-     *             value
-     */
+    /// Expands a vector in place, initializing the new elements to the result of
+    /// a function.
+    ///
+    /// Function `init_op` is called `n` times with the values [0..`n`)
+    ///
+    /// # Arguments
+    ///
+    /// * n - The number of elements to add
+    /// * init_op - A function to call to retrieve each appended element's
+    ///             value
     fn grow_fn(&mut self, n: uint, op: |uint| -> T);
 
-    /**
-     * Sets the length of a vector
-     *
-     * This will explicitly set the size of the vector, without actually
-     * modifying its buffers, so it is up to the caller to ensure that
-     * the vector is actually the specified size.
-     */
+    /// Sets the length of a vector
+    ///
+    /// This will explicitly set the size of the vector, without actually
+    /// modifying its buffers, so it is up to the caller to ensure that
+    /// the vector is actually the specified size.
     unsafe fn set_len(&mut self, new_len: uint);
 }
 
