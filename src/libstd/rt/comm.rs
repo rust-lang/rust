@@ -565,7 +565,7 @@ impl<'self, T: Send> SelectPortInner<T> for &'self Port<T> {
 impl<'self, T: Send> SelectPort<T> for &'self Port<T> { }
 
 pub struct SharedChan<T> {
-    // Just like Chan, but a shared AtomicOption instead of Cell
+    // Just like Chan, but a shared AtomicOption
     priv next: UnsafeArc<AtomicOption<StreamChanOne<T>>>
 }
 
@@ -716,7 +716,6 @@ mod test {
     use super::*;
     use option::*;
     use rt::test::*;
-    use cell::Cell;
     use num::Times;
     use rt::util;
 
@@ -1113,7 +1112,7 @@ mod test {
 
     #[test]
     fn send_deferred() {
-        use unstable::sync::atomically;
+        use unstable::sync::atomic;
 
         // Tests no-rescheduling of send_deferred on all types of channels.
         do run_in_newsched_task {
@@ -1129,15 +1128,12 @@ mod test {
             let p_mp = mp.clone();
             do spawntask { p_mp.recv(); }
 
-            let cs = Cell::new((cone, cstream, cshared, mp));
             unsafe {
-                atomically(|| {
-                    let (cone, cstream, cshared, mp) = cs.take();
-                    cone.send_deferred(());
-                    cstream.send_deferred(());
-                    cshared.send_deferred(());
-                    mp.send_deferred(());
-                })
+                let _guard = atomic();
+                cone.send_deferred(());
+                cstream.send_deferred(());
+                cshared.send_deferred(());
+                mp.send_deferred(());
             }
         }
     }

@@ -14,7 +14,6 @@ use ptr;
 use option::{Option,Some,None};
 use task;
 use unstable::atomics::{AtomicOption,AtomicUint,Acquire,Release,Relaxed,SeqCst};
-use unstable::finally::Finally;
 use unstable::mutex::Mutex;
 use ops::Drop;
 use clone::Clone;
@@ -295,17 +294,44 @@ impl<T> Drop for UnsafeArc<T>{
 
 /****************************************************************************/
 
+pub struct AtomicGuard {
+    on: bool,
+}
+
+impl Drop for AtomicGuard {
+    fn drop(&mut self) {
+        use rt::task::{Task, GreenTask, SchedTask};
+        use rt::local::Local;
+
+        if self.on {
+            unsafe {
+                let task_opt: Option<*mut Task> = Local::try_unsafe_borrow();
+                match task_opt {
+                    Some(t) => {
+                        match (*t).task_type {
+                            GreenTask(_) => (*t).death.allow_deschedule(),
+                            SchedTask => {}
+                        }
+                    }
+                    None => {}
+                }
+            }
+        }
+    }
+}
+
 /**
- * Enables a runtime assertion that no operation in the argument closure shall
- * use scheduler operations (deschedule, recv, spawn, etc). This is for use with
- * pthread mutexes, which may block the entire scheduler thread, rather than
- * just one task, and is hence prone to deadlocks if mixed with descheduling.
+ * Enables a runtime assertion that no operation while the returned guard is
+ * live uses scheduler operations (deschedule, recv, spawn, etc). This is for
+ * use with pthread mutexes, which may block the entire scheduler thread,
+ * rather than just one task, and is hence prone to deadlocks if mixed with
+ * descheduling.
  *
  * NOTE: THIS DOES NOT PROVIDE LOCKING, or any sort of critical-section
  * synchronization whatsoever. It only makes sense to use for CPU-local issues.
  */
 // FIXME(#8140) should not be pub
-pub unsafe fn atomically<U>(f: || -> U) -> U {
+pub unsafe fn atomic() -> AtomicGuard {
     use rt::task::{Task, GreenTask, SchedTask};
     use rt::local::Local;
 
@@ -314,15 +340,19 @@ pub unsafe fn atomically<U>(f: || -> U) -> U {
         Some(t) => {
             match (*t).task_type {
                 GreenTask(_) => {
-                    (|| {
-                        (*t).death.inhibit_deschedule();
-                        f()
-                    }).finally(|| (*t).death.allow_deschedule())
+                    (*t).death.inhibit_deschedule();
+                    return AtomicGuard {
+                        on: true,
+                    };
                 }
-                SchedTask => f()
+                SchedTask => {}
             }
         }
-        None => f()
+        None => {}
+    }
+
+    AtomicGuard {
+        on: false,
     }
 }
 
@@ -481,7 +511,7 @@ mod tests {
     use comm;
     use option::*;
     use prelude::*;
-    use super::{Exclusive, UnsafeArc, atomically};
+    use super::{Exclusive, UnsafeArc, atomic};
     use task;
     use mem::size_of;
 
@@ -493,10 +523,10 @@ mod tests {
     }
 
     #[test]
-    fn test_atomically() {
+    fn test_atomic() {
         // NB. The whole runtime will abort on an 'atomic-sleep' violation,
         // so we can't really test for the converse behaviour.
-        unsafe { atomically(|| ()) } task::deschedule(); // oughtn't fail
+        unsafe { let _ = atomic(); } // oughtn't fail
     }
 
     #[test]
