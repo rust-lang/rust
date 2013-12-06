@@ -327,7 +327,6 @@ fn json_output(crate: clean::Crate, res: ~[plugins::PluginJson], dst: Path) {
     json.insert(~"crate", crate_json);
     json.insert(~"plugins", json::Object(plugins_json));
 
-    let mut file = File::create(&dst).unwrap();
-    let output = json::Object(json).to_str();
-    file.write(output.as_bytes());
+    let file = @mut File::create(&dst).unwrap();
+    json::Object(json).to_writer(file as @mut io::Writer);
 }
