@@ -9,7 +9,14 @@
 // except according to those terms.
 
 //! This module implements the `Any` trait, which enables dynamic typing
-//! of any type.
+//! of any type, through runtime reflection.
+//!
+//! `Any` itself can be used to get a `TypeId`, and has more features when used as a trait object.
+//! As `&Any` (a borrowed trait object), it has the `is` and `as_ref` methods, to test if the
+//! contained value is of a given type, and to get a reference to the inner value as a type. As
+//! `&mut Any`, there is also the `as_mut` method, for getting a mutable reference to the inner
+//! value. `~Any` adds the `move` method, which will unwrap a `~T` from the object.  See the
+//! extension traits (`*Ext`) for the full details.
 
 use cast::transmute;
 use option::{Option, Some, None};
