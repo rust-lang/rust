@@ -141,7 +141,7 @@ an error message like this:
 ~~~~ {.notrust}
 hello.rs:2:4: 2:16 error: unresolved name: print_with_unicorns
 hello.rs:2     print_with_unicorns("hello?");
-               ^~~~~~~~~~~~~~~~~~~~~~~
+               ^~~~~~~~~~~~~~~~~~~
 ~~~~
 
 In its simplest form, a Rust program is a `.rs` file with some types
