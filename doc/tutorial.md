@@ -57,9 +57,13 @@ they don't contain references to names that aren't actually defined.
 
 # Getting started
 
-The Rust compiler currently must be built from a [tarball], unless you
-are on Windows, in which case using the [installer][win-exe] is
-recommended.
+> **NOTE**: The tarball and installer links are for the most recent release,
+> not master.
+
+The Rust compiler currently must be built from a [tarball] or [git], unless
+you are on Windows, in which case using the [installer][win-exe] is
+recommended. There is a list of community-maintained nightly builds and
+packages [on the wiki][wiki-packages].
 
 Since the Rust compiler is written in Rust, it must be built by
 a precompiled "snapshot" version of itself (made in an earlier state
@@ -84,6 +88,7 @@ supported build environments that are most likely to work.
 
 [bug-3319]: https://github.com/mozilla/rust/issues/3319
 [wiki-start]: https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust
+[git]: https://github.com/mozilla/rust.git
 
 To build from source you will also need the following prerequisite
 packages:
@@ -162,6 +167,9 @@ is the easiest way to keep it up to date. There is also a package for
 Sublime Text 2, available both [standalone][sublime] and through
 [Sublime Package Control][sublime-pkg], and support for Kate
 under `src/etc/kate`.
+
+A community-maintained list of available Rust tooling is [on the
+wiki][wiki-packages].
 
 There is ctags support via `src/etc/ctags.rust`, but many other
 tools and editors are not yet supported. If you end up writing a Rust
@@ -3258,4 +3266,4 @@ There is further documentation on the [wiki], however those tend to be even more
 [rustpkg]: tutorial-rustpkg.html
 
 [wiki]: https://github.com/mozilla/rust/wiki/Docs
-
+[wiki-packages]: https://github.com/mozilla/rust/wiki/Doc-packages,-editors,-and-other-tools
