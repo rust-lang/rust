@@ -207,14 +207,15 @@ let hi = "hi";
 let mut count = 0;
 
 while count < 10 {
-    println!("count: {}", count);
+    println!("count is {}", count);
     count += 1;
 }
 ~~~~
 
-Although Rust can almost always infer the types of local variables, you
-can specify a variable's type by following it with a colon, then the type
-name. Static items, on the other hand, always require a type annotation.
+Although Rust can almost always infer the types of local variables, you can
+specify a variable's type by following it in the `let` with a colon, then the
+type name. Static items, on the other hand, always require a type annotation.
+
 
 ~~~~
 static MONSTER_FACTOR: f64 = 57.8;
