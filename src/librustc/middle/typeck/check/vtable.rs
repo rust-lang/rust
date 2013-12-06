@@ -94,7 +94,6 @@ fn lookup_vtables(vcx: &VtableContext,
            location_info,
            type_param_defs.repr(vcx.tcx()),
            substs.repr(vcx.tcx()));
-    let _i = indenter();
 
     // We do this backwards for reasons discussed above.
     assert_eq!(substs.tps.len(), type_param_defs.len());
