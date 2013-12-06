@@ -473,9 +473,8 @@ their own value. A single arm may match multiple different patterns by
 combining them with the pipe operator (`|`), so long as every pattern
 binds the same set of variables. Ranges of numeric literal patterns
 can be expressed with two dots, as in `M..N`. The underscore (`_`) is
-a wildcard pattern that matches any single value. The asterisk (`*`)
-is a different wildcard that can match one or more fields in an `enum`
-variant.
+a wildcard pattern that matches any single value. (`..`) is a different
+wildcard that can match one or more fields in an `enum` variant.
 
 The patterns in a match arm are followed by a fat arrow, `=>`, then an
 expression to evaluate. Each case is separated by commas. It's often
