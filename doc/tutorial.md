@@ -410,7 +410,9 @@ println!("what is this thing: {:?}", mystery_object);
 [pf]: http://en.cppreference.com/w/cpp/io/c/fprintf
 [fmt]: http://static.rust-lang.org/doc/master/std/fmt/index.html
 
-You can define your own syntax extensions with the macro system. For details, see the [macro tutorial][macros].
+You can define your own syntax extensions with the macro system. For details,
+see the [macro tutorial][macros]. Note that macro definition is currently
+considered an unstable feature.
 
 # Control structures
 
