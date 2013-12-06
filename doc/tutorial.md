@@ -361,23 +361,27 @@ Rust's set of operators contains very few surprises. Arithmetic is done with
 also a unary prefix operator that negates numbers. As in C, the bitwise operators
 `>>`, `<<`, `&`, `|`, and `^` are also supported.
 
-Note that, if applied to an integer value, `!` flips all the bits (like `~` in
-C).
+Note that, if applied to an integer value, `!` flips all the bits (bitwise
+NOT, like `~` in C).
 
 The comparison operators are the traditional `==`, `!=`, `<`, `>`,
 `<=`, and `>=`. Short-circuiting (lazy) boolean operators are written
 `&&` (and) and `||` (or).
 
-For type casting, Rust uses the binary `as` operator.  It takes an
-expression on the left side and a type on the right side and will,
-if a meaningful conversion exists, convert the result of the
-expression to the given type.
+For compile-time type casting, Rust uses the binary `as` operator.  It takes
+an expression on the left side and a type on the right side and will, if a
+meaningful conversion exists, convert the result of the expression to the
+given type. Generally, `as` is only used with the primitive numeric types or
+pointers, and is not overloadable.  [`transmute`][transmute] can be used for
+unsafe C-like casting of same-sized types.
 
 ~~~~
 let x: f64 = 4.0;
 let y: uint = x as uint;
 assert!(y == 4u);
 ~~~~
+
+[transmute]: http://static.rust-lang.org/doc/master/std/cast/fn.transmute.html
 
 ## Syntax extensions
 
