@@ -26,7 +26,6 @@ use option::{Option, Some, None};
 use rt::borrowck::BorrowRecord;
 use rt::borrowck;
 use rt::context::Context;
-use rt::context;
 use rt::env;
 use io::Writer;
 use rt::kill::Death;
