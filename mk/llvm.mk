@@ -37,7 +37,9 @@ endif
 # dependencies. In these cases, commit a change that touches
 # the stamp in the source dir.
 $$(LLVM_STAMP_$(1)): $(S)src/rustllvm/llvm-auto-clean-trigger
+	@$$(call E, make: cleaning llvm)
 	$(Q)$(MAKE) clean-llvm
+	@$$(call E, make: done cleaning llvm)
 	touch $$@
 
 endef

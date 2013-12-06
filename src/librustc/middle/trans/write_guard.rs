@@ -114,13 +114,6 @@ fn root(datum: &Datum,
     debug!("write_guard::root(root_key={:?}, root_info={:?}, datum={:?})",
            root_key, root_info, datum.to_str(bcx.ccx()));
 
-    if bcx.sess().trace() {
-        trans_trace(
-            bcx, None,
-            (format!("preserving until end of scope {}",
-                  root_info.scope)).to_managed());
-    }
-
     // First, root the datum. Note that we must zero this value,
     // because sometimes we root on one path but not another.
     // See e.g. #4904.

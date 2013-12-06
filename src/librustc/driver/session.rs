@@ -44,30 +44,28 @@ pub static time_llvm_passes:        uint = 1 <<  3;
 pub static trans_stats:             uint = 1 <<  4;
 pub static asm_comments:            uint = 1 <<  5;
 pub static no_verify:               uint = 1 <<  6;
-pub static trace:                   uint = 1 <<  7;
-pub static coherence:               uint = 1 <<  8;
-pub static borrowck_stats:          uint = 1 <<  9;
-pub static borrowck_note_pure:      uint = 1 << 10;
-pub static borrowck_note_loan:      uint = 1 << 11;
-pub static no_landing_pads:         uint = 1 << 12;
-pub static debug_llvm:              uint = 1 << 13;
-pub static count_type_sizes:        uint = 1 << 14;
-pub static meta_stats:              uint = 1 << 15;
-pub static no_opt:                  uint = 1 << 16;
-pub static gc:                      uint = 1 << 17;
-pub static jit:                     uint = 1 << 18;
-pub static debug_info:              uint = 1 << 19;
-pub static extra_debug_info:        uint = 1 << 20;
-pub static print_link_args:         uint = 1 << 21;
-pub static no_debug_borrows:        uint = 1 << 22;
-pub static lint_llvm:               uint = 1 << 23;
-pub static print_llvm_passes:       uint = 1 << 24;
-pub static no_vectorize_loops:      uint = 1 << 25;
-pub static no_vectorize_slp:        uint = 1 << 26;
-pub static no_prepopulate_passes:   uint = 1 << 27;
-pub static use_softfp:              uint = 1 << 28;
-pub static gen_crate_map:           uint = 1 << 29;
-pub static prefer_dynamic:          uint = 1 << 30;
+pub static coherence:               uint = 1 <<  7;
+pub static borrowck_stats:          uint = 1 <<  8;
+pub static borrowck_note_pure:      uint = 1 <<  9;
+pub static borrowck_note_loan:      uint = 1 << 10;
+pub static no_landing_pads:         uint = 1 << 11;
+pub static debug_llvm:              uint = 1 << 12;
+pub static count_type_sizes:        uint = 1 << 13;
+pub static meta_stats:              uint = 1 << 14;
+pub static no_opt:                  uint = 1 << 15;
+pub static gc:                      uint = 1 << 16;
+pub static debug_info:              uint = 1 << 17;
+pub static extra_debug_info:        uint = 1 << 18;
+pub static print_link_args:         uint = 1 << 19;
+pub static no_debug_borrows:        uint = 1 << 20;
+pub static lint_llvm:               uint = 1 << 21;
+pub static print_llvm_passes:       uint = 1 << 22;
+pub static no_vectorize_loops:      uint = 1 << 23;
+pub static no_vectorize_slp:        uint = 1 << 24;
+pub static no_prepopulate_passes:   uint = 1 << 25;
+pub static use_softfp:              uint = 1 << 26;
+pub static gen_crate_map:           uint = 1 << 27;
+pub static prefer_dynamic:          uint = 1 << 28;
 
 pub fn debugging_opts_map() -> ~[(&'static str, &'static str, uint)] {
     ~[("verbose", "in general, enable more debug printouts", verbose),
@@ -79,7 +77,6 @@ pub fn debugging_opts_map() -> ~[(&'static str, &'static str, uint)] {
      ("trans-stats", "gather trans statistics", trans_stats),
      ("asm-comments", "generate comments into the assembly (may change behavior)", asm_comments),
      ("no-verify", "skip LLVM verification", no_verify),
-     ("trace", "emit trace logs", trace),
      ("coherence", "perform coherence checking", coherence),
      ("borrowck-stats", "gather borrowck statistics",  borrowck_stats),
      ("borrowck-note-pure", "note where purity is req'd",
@@ -95,7 +92,6 @@ pub fn debugging_opts_map() -> ~[(&'static str, &'static str, uint)] {
      ("no-opt", "do not optimize, even if -O is passed", no_opt),
      ("print-link-args", "Print the arguments passed to the linker", print_link_args),
      ("gc", "Garbage collect shared data (experimental)", gc),
-     ("jit", "Execute using JIT (experimental)", jit),
      ("extra-debug-info", "Extra debugging info (experimental)",
       extra_debug_info),
      ("debug-info", "Produce debug info (experimental)", debug_info),
@@ -146,7 +142,6 @@ pub struct options {
     extra_debuginfo: bool,
     lint_opts: ~[(lint::lint, lint::level)],
     save_temps: bool,
-    jit: bool,
     output_type: back::link::output_type,
     addl_lib_search_paths: @mut HashSet<Path>, // This is mutable for rustpkg, which
                                                // updates search paths based on the
@@ -311,7 +306,6 @@ impl Session_ {
     pub fn asm_comments(&self) -> bool { self.debugging_opt(asm_comments) }
     pub fn no_verify(&self) -> bool { self.debugging_opt(no_verify) }
     pub fn lint_llvm(&self) -> bool { self.debugging_opt(lint_llvm) }
-    pub fn trace(&self) -> bool { self.debugging_opt(trace) }
     pub fn coherence(&self) -> bool { self.debugging_opt(coherence) }
     pub fn borrowck_stats(&self) -> bool { self.debugging_opt(borrowck_stats) }
     pub fn borrowck_note_pure(&self) -> bool {
@@ -370,7 +364,6 @@ pub fn basic_options() -> @options {
         extra_debuginfo: false,
         lint_opts: ~[],
         save_temps: false,
-        jit: false,
         output_type: link::output_type_exe,
         addl_lib_search_paths: @mut HashSet::new(),
         ar: None,
