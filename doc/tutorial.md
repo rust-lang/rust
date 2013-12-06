@@ -753,9 +753,9 @@ fn area(sh: Shape) -> f64 {
 
 ## Tuples
 
-Tuples in Rust behave exactly like structs, except that their fields
-do not have names. Thus, you cannot access their fields with dot notation.
-Tuples can have any arity except for 0 (though you may consider
+Tuples in Rust behave exactly like structs, except that their fields do not
+have names. Thus, you cannot access their fields with dot notation.  Tuples
+can have any arity (number of elements) except for 0 (though you may consider
 unit, `()`, as the empty tuple if you like).
 
 ~~~~
