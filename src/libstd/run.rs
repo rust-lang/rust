@@ -12,7 +12,7 @@
 
 #[allow(missing_doc)];
 
-use comm::{stream, SharedChan};
+use comm::SharedChan;
 use io::Reader;
 use io::process::ProcessExit;
 use io::process;
@@ -220,8 +220,7 @@ impl Process {
         // in parallel so we don't deadlock while blocking on one
         // or the other. FIXME (#2625): Surely there's a much more
         // clever way to do this.
-        let (p, ch) = stream();
-        let ch = SharedChan::new(ch);
+        let (p, ch) = SharedChan::new();
         let ch_clone = ch.clone();
 
         do spawn {

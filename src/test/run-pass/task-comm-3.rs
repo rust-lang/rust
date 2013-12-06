@@ -12,8 +12,6 @@
 
 extern mod extra;
 
-use std::comm::SharedChan;
-use std::comm;
 use std::task;
 
 pub fn main() { info!("===== WITHOUT THREADS ====="); test00(); }
@@ -35,8 +33,7 @@ fn test00() {
 
     info!("Creating tasks");
 
-    let (po, ch) = comm::stream();
-    let ch = comm::SharedChan::new(ch);
+    let (po, ch) = SharedChan::new();
 
     let mut i: int = 0;
 
@@ -47,8 +44,11 @@ fn test00() {
         let mut builder = task::task();
         results.push(builder.future_result());
         builder.spawn({
+            let ch = ch;
             let i = i;
-            proc() test00_start(&ch, i, number_of_messages)
+            proc() {
+                test00_start(&ch, i, number_of_messages)
+            }
         });
         i = i + 1;
     }

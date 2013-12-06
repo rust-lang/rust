@@ -14,8 +14,8 @@ struct Command<K, V> {
     val: V
 }
 
-fn cache_server<K:Send,V:Send>(c: Chan<Chan<Command<K, V>>>) {
-    let (_ctrl_port, ctrl_chan) = stream();
+fn cache_server<K:Send,V:Send>(mut c: Chan<Chan<Command<K, V>>>) {
+    let (_ctrl_port, ctrl_chan) = Chan::new();
     c.send(ctrl_chan);
 }
 pub fn main() { }

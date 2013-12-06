@@ -10,8 +10,6 @@
 
 // Test that a class with only sendable fields can be sent
 
-use std::comm;
-
 struct foo {
   i: int,
   j: char,
@@ -25,6 +23,6 @@ fn foo(i:int, j: char) -> foo {
 }
 
 pub fn main() {
-    let (_po, ch) = comm::stream();
+    let (_po, ch) = Chan::new();
     ch.send(foo(42, 'c'));
 }

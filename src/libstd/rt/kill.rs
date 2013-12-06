@@ -153,8 +153,9 @@ There are two known issues with the current scheme for exit code propagation.
 use cast;
 use option::{Option, Some, None};
 use prelude::*;
+use iter;
+use task::TaskResult;
 use rt::task::Task;
-use rt::task::UnwindResult;
 use unstable::atomics::{AtomicUint, SeqCst};
 use unstable::sync::UnsafeArc;
 
@@ -169,9 +170,19 @@ pub enum BlockedTask {
 pub struct Death {
     // Action to be done with the exit code. If set, also makes the task wait
     // until all its watched children exit before collecting the status.
-    on_exit:         Option<proc(UnwindResult)>,
+    on_exit:         Option<proc(TaskResult)>,
     // nesting level counter for unstable::atomically calls (0 == can deschedule).
     priv wont_sleep:      int,
+}
+
+pub struct BlockedTaskIterator {
+    priv inner: UnsafeArc<AtomicUint>,
+}
+
+impl Iterator<BlockedTask> for BlockedTaskIterator {
+    fn next(&mut self) -> Option<BlockedTask> {
+        Some(Shared(self.inner.clone()))
+    }
 }
 
 impl BlockedTask {
@@ -194,19 +205,17 @@ impl BlockedTask {
     }
 
     /// Converts one blocked task handle to a list of many handles to the same.
-    pub fn make_selectable(self, num_handles: uint) -> ~[BlockedTask] {
-        let handles = match self {
+    pub fn make_selectable(self, num_handles: uint)
+        -> iter::Take<BlockedTaskIterator>
+    {
+        let arc = match self {
             Owned(task) => {
-                let flag = unsafe {
-                    AtomicUint::new(cast::transmute(task))
-                };
-                UnsafeArc::newN(flag, num_handles)
+                let flag = unsafe { AtomicUint::new(cast::transmute(task)) };
+                UnsafeArc::new(flag)
             }
-            Shared(arc) => arc.cloneN(num_handles),
+            Shared(arc) => arc.clone(),
         };
-        // Even if the task was unkillable before, we use 'Killable' because
-        // multiple pipes will have handles. It does not really mean killable.
-        handles.move_iter().map(|x| Shared(x)).collect()
+        BlockedTaskIterator{ inner: arc }.take(num_handles)
     }
 
     // This assertion has two flavours because the wake involves an atomic op.
@@ -254,10 +263,10 @@ impl Death {
     }
 
     /// Collect failure exit codes from children and propagate them to a parent.
-    pub fn collect_failure(&mut self, result: UnwindResult) {
+    pub fn collect_failure(&mut self, result: TaskResult) {
         match self.on_exit.take() {
+            Some(f) => f(result),
             None => {}
-            Some(on_exit) => on_exit(result),
         }
     }
 

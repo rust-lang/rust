@@ -15,7 +15,7 @@ fn foo(blk: proc()) {
 }
 
 pub fn main() {
-    let (p,c) = comm::stream();
+    let (p,c) = Chan::new();
     do foo {
         c.send(());
     }

@@ -135,8 +135,10 @@ impl Drop for OSRng {
 
 #[cfg(test)]
 mod test {
+    use prelude::*;
     use super::*;
     use rand::Rng;
+    use task;
 
     #[test]
     fn test_os_rng() {
@@ -151,16 +153,10 @@ mod test {
 
     #[test]
     fn test_os_rng_tasks() {
-        use task;
-        use comm;
-        use comm::{GenericChan, GenericPort};
-        use option::{None, Some};
-        use iter::{Iterator, range};
-        use vec::{ImmutableVector, OwnedVector};
 
         let mut chans = ~[];
         for _ in range(0, 20) {
-            let (p, c) = comm::stream();
+            let (p, c) = Chan::new();
             chans.push(c);
             do task::spawn {
                 // wait until all the tasks are ready to go.

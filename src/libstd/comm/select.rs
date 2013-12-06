@@ -41,6 +41,8 @@
 //!     }
 //! )
 
+#[allow(dead_code)];
+
 use cast;
 use iter::Iterator;
 use kinds::Send;

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use cast;
-use comm;
+use comm::{Chan, Port};
 use ptr;
 use option::{Option,Some,None};
 use task;
@@ -56,7 +56,7 @@ struct ArcData<T> {
     // drops the last refcount on an arc. Unfortunately this can't be a proper
     // pipe protocol because the unwrapper has to access both stages at once.
     // FIXME(#7544): Maybe use AtomicPtr instead (to avoid xchg in take() later)?
-    unwrapper: AtomicOption<(comm::ChanOne<()>, comm::PortOne<bool>)>,
+    unwrapper: AtomicOption<(Chan<()>, Port<bool>)>,
     // FIXME(#3224) should be able to make this non-option to save memory
     data: Option<T>,
 }
@@ -70,7 +70,7 @@ unsafe fn new_inner<T: Send>(data: T, refcount: uint) -> *mut ArcData<T> {
 
 /// A helper object used by `UnsafeArc::unwrap`.
 struct ChannelAndDataGuard<T> {
-    channel: Option<comm::ChanOne<bool>>,
+    channel: Option<Chan<bool>>,
     data: Option<~ArcData<T>>,
 }
 
@@ -92,7 +92,7 @@ impl<T> Drop for ChannelAndDataGuard<T> {
 }
 
 impl<T> ChannelAndDataGuard<T> {
-    fn unwrap(mut self) -> (comm::ChanOne<bool>, ~ArcData<T>) {
+    fn unwrap(mut self) -> (Chan<bool>, ~ArcData<T>) {
         (self.channel.take_unwrap(), self.data.take_unwrap())
     }
 }
@@ -167,8 +167,8 @@ impl<T: Send> UnsafeArc<T> {
             // The ~ dtor needs to run if this code succeeds.
             let mut data: ~ArcData<T> = cast::transmute(this.data);
             // Set up the unwrap protocol.
-            let (p1,c1) = comm::oneshot(); // ()
-            let (p2,c2) = comm::oneshot(); // bool
+            let (p1,c1) = Chan::new(); // ()
+            let (p2,c2) = Chan::new(); // bool
             // Try to put our server end in the unwrapper slot.
             // This needs no barrier -- it's protected by the release barrier on
             // the xadd, and the acquire+release barrier in the destructor's xadd.
@@ -269,7 +269,7 @@ impl<T> Drop for UnsafeArc<T>{
                 // reference. In effect, being here means we're the only
                 // *awake* task with the data.
                 match data.unwrapper.take(Acquire) {
-                    Some(~(message,response)) => {
+                    Some(~(message, response)) => {
                         // Send 'ready' and wait for a response.
                         message.send(());
                         // Unkillable wait. Message guaranteed to come.
@@ -508,7 +508,6 @@ impl<T:Send> Exclusive<T> {
 
 #[cfg(test)]
 mod tests {
-    use comm;
     use option::*;
     use prelude::*;
     use super::{Exclusive, UnsafeArc, atomic};
@@ -541,10 +540,10 @@ mod tests {
 
             for _ in range(0u, num_tasks) {
                 let total = total.clone();
-                let (port, chan) = comm::stream();
+                let (port, chan) = Chan::new();
                 futures.push(port);
 
-                do task::spawn || {
+                do task::spawn {
                     for _ in range(0u, count) {
                         total.with(|count| **count += 1);
                     }
@@ -552,7 +551,7 @@ mod tests {
                 }
             };
 
-            for f in futures.iter() { f.recv() }
+            for f in futures.mut_iter() { f.recv() }
 
             total.with(|total| assert!(**total == num_tasks * count));
         }
@@ -625,7 +624,7 @@ mod tests {
         // When an unwrap and a try_unwrap race, the unwrapper should always win.
         let x = UnsafeArc::new(~~"hello");
         let x2 = x.clone();
-        let (p,c) = comm::stream();
+        let (p,c) = Chan::new();
         do task::spawn {
             c.send(());
             assert!(x2.unwrap() == ~~"hello");

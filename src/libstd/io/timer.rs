@@ -38,7 +38,7 @@ loop {
 
 */
 
-use comm::{Port, PortOne};
+use comm::Port;
 use option::{Option, Some, None};
 use result::{Ok, Err};
 use io::io_error;
@@ -86,7 +86,7 @@ impl Timer {
     /// Note that this invalidates any previous port which has been created by
     /// this timer, and that the returned port will be invalidated once the
     /// timer is destroyed (when it falls out of scope).
-    pub fn oneshot(&mut self, msecs: u64) -> PortOne<()> {
+    pub fn oneshot(&mut self, msecs: u64) -> Port<()> {
         self.obj.oneshot(msecs)
     }
 

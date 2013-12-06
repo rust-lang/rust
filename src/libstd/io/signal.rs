@@ -20,7 +20,7 @@ definitions for a number of signals.
 */
 
 use clone::Clone;
-use comm::{Port, SharedChan, stream};
+use comm::{Port, SharedChan};
 use container::{Map, MutableMap};
 use hashmap;
 use io::io_error;
@@ -93,9 +93,9 @@ impl Listener {
     /// Creates a new listener for signals. Once created, signals are bound via
     /// the `register` method (otherwise nothing will ever be received)
     pub fn new() -> Listener {
-        let (port, chan) = stream();
+        let (port, chan) = SharedChan::new();
         Listener {
-            chan: SharedChan::new(chan),
+            chan: chan,
             port: port,
             handles: hashmap::HashMap::new(),
         }
@@ -149,7 +149,6 @@ mod test {
     use libc;
     use io::timer;
     use super::{Listener, Interrupt};
-    use comm::{GenericPort, Peekable};
 
     // kill is only available on Unixes
     #[cfg(unix)]
@@ -198,9 +197,7 @@ mod test {
         s2.unregister(Interrupt);
         sigint();
         timer::sleep(10);
-        if s2.port.peek() {
-            fail!("Unexpected {:?}", s2.port.recv());
-        }
+        assert!(s2.port.try_recv().is_none());
     }
 
     #[cfg(windows)]
