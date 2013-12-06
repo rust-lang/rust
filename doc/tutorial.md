@@ -872,9 +872,9 @@ A *destructor* is a function responsible for cleaning up the resources used by
 an object when it is no longer accessible. Destructors can be defined to handle
 the release of resources like files, sockets and heap memory.
 
-Objects are never accessible after their destructor has been called, so there
-are no dynamic failures from accessing freed resources. When a task fails, the
-destructors of all objects in the task are called.
+Objects are never accessible after their destructor has been called, so no
+dynamic failures are possible from accessing freed resources. When a task
+fails, destructors of all objects in the task are called.
 
 The `~` sigil represents a unique handle for a memory allocation on the heap:
 
@@ -3254,6 +3254,7 @@ tutorials on individual topics.
 * [Containers and iterators][container]
 * [Error-handling and Conditions][conditions]
 * [Packaging up Rust code][rustpkg]
+* [Documenting Rust code][rustdoc]
 
 There is further documentation on the [wiki], however those tend to be even
 more out of date than this document.
@@ -3265,6 +3266,7 @@ more out of date than this document.
 [container]: tutorial-container.html
 [conditions]: tutorial-conditions.html
 [rustpkg]: tutorial-rustpkg.html
+[rustdoc]: tutorial-rustdoc.html
 
 [wiki]: https://github.com/mozilla/rust/wiki/Docs
 [wiki-packages]: https://github.com/mozilla/rust/wiki/Doc-packages,-editors,-and-other-tools
