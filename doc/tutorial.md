@@ -393,7 +393,7 @@ useful of which is [`format!`][fmt], a `sprintf`-like text formatter that you
 will often see in examples, and its related family of macros: `print!`,
 `println!`, and `write!`.
 
-`format!` draws syntax from python, but contains many of the same principles
+`format!` draws syntax from Python, but contains many of the same principles
 that [printf][pf] has. Unlike printf, `format!` will give you a compile-time
 error when the types of the directives don't match the types of the arguments.
 
