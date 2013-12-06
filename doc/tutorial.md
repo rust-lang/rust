@@ -335,7 +335,7 @@ let d = 1000i32; // d is an i32
 There are two floating-point types: `f32`, and `f64`.
 Floating-point numbers are written `0.0`, `1e6`, or `2.1e-4`.
 Like integers, floating-point literals are inferred to the correct type.
-Suffixes ``f32`, and `f64` can be used to create literals of a specific type.
+Suffixes `f32`, and `f64` can be used to create literals of a specific type.
 
 The keywords `true` and `false` produce literals of type `bool`.
 
