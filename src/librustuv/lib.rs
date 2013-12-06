@@ -395,13 +395,9 @@ fn local_loop() -> &'static mut Loop {
     unsafe {
         cast::transmute({
             let mut sched = Local::borrow(None::<Scheduler>);
-            let mut io = None;
-            sched.get().event_loop.io(|i| {
-                let (_vtable, uvio): (uint, &'static mut uvio::UvIoFactory) =
-                    cast::transmute(i);
-                io = Some(uvio);
-            });
-            io.unwrap()
+            let (_vtable, uvio): (uint, &'static mut uvio::UvIoFactory) =
+                cast::transmute(sched.get().event_loop.io().unwrap());
+            uvio
         }.uv_loop())
     }
 }

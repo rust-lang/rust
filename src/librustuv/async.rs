@@ -152,6 +152,7 @@ mod test_remote {
         let watcher = AsyncWatcher::new(local_loop(), cb as ~Callback);
 
         let thread = do Thread::start {
+            let mut watcher = watcher;
             watcher.fire();
         };
 
