@@ -19,7 +19,6 @@ use prelude::*;
 
 use borrow;
 use cast::transmute;
-use cell::Cell;
 use cleanup;
 use libc::{c_void, uintptr_t, c_char, size_t};
 use local_data;
@@ -427,7 +426,6 @@ impl Coroutine {
     }
 
     fn build_start_wrapper(start: proc()) -> proc() {
-        let start_cell = Cell::new(start);
         let wrapper: proc() = proc() {
             // First code after swap to this new context. Run our
             // cleanup job.
@@ -446,6 +444,7 @@ impl Coroutine {
                 // need to unsafe_borrow.
                 let task: *mut Task = Local::unsafe_borrow();
 
+                let mut start_cell = Some(start);
                 (*task).run(|| {
                     // N.B. Removing `start` from the start wrapper
                     // closure by emptying a cell is critical for
@@ -457,7 +456,7 @@ impl Coroutine {
                     // be in task context. By moving `start` out of
                     // the closure, all the user code goes our of
                     // scope while the task is still running.
-                    let start = start_cell.take();
+                    let start = start_cell.take_unwrap();
                     start();
                 });
             }
