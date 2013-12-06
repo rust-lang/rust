@@ -13,8 +13,8 @@ use result::{Ok, Err};
 use io::net::ip::SocketAddr;
 use io::{Reader, Writer, Listener, Acceptor};
 use io::{io_error, EndOfFile};
-use rt::rtio::{IoFactory, with_local_io,
-               RtioSocket, RtioTcpListener, RtioTcpAcceptor, RtioTcpStream};
+use rt::rtio::{IoFactory, LocalIo, RtioSocket, RtioTcpListener};
+use rt::rtio::{RtioTcpAcceptor, RtioTcpStream};
 
 pub struct TcpStream {
     priv obj: ~RtioTcpStream
@@ -26,15 +26,17 @@ impl TcpStream {
     }
 
     pub fn connect(addr: SocketAddr) -> Option<TcpStream> {
-        with_local_io(|io| {
-            match io.tcp_connect(addr) {
-                Ok(s) => Some(TcpStream::new(s)),
-                Err(ioerr) => {
-                    io_error::cond.raise(ioerr);
-                    None
-                }
+        let result = {
+            let mut io = LocalIo::borrow();
+            io.get().tcp_connect(addr)
+        };
+        match result {
+            Ok(s) => Some(TcpStream::new(s)),
+            Err(ioerr) => {
+                io_error::cond.raise(ioerr);
+                None
             }
-        })
+        }
     }
 
     pub fn peer_name(&mut self) -> Option<SocketAddr> {
@@ -92,15 +94,14 @@ pub struct TcpListener {
 
 impl TcpListener {
     pub fn bind(addr: SocketAddr) -> Option<TcpListener> {
-        with_local_io(|io| {
-            match io.tcp_bind(addr) {
-                Ok(l) => Some(TcpListener { obj: l }),
-                Err(ioerr) => {
-                    io_error::cond.raise(ioerr);
-                    None
-                }
+        let mut io = LocalIo::borrow();
+        match io.get().tcp_bind(addr) {
+            Ok(l) => Some(TcpListener { obj: l }),
+            Err(ioerr) => {
+                io_error::cond.raise(ioerr);
+                None
             }
-        })
+        }
     }
 
     pub fn socket_name(&mut self) -> Option<SocketAddr> {

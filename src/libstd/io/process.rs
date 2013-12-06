@@ -11,12 +11,11 @@
 //! Bindings for executing child processes
 
 use prelude::*;
-use cell::Cell;
 
 use libc;
 use io;
 use io::io_error;
-use rt::rtio::{RtioProcess, IoFactory, with_local_io};
+use rt::rtio::{RtioProcess, IoFactory, LocalIo};
 
 use fmt;
 
@@ -120,21 +119,19 @@ impl Process {
     /// Creates a new pipe initialized, but not bound to any particular
     /// source/destination
     pub fn new(config: ProcessConfig) -> Option<Process> {
-        let config = Cell::new(config);
-        with_local_io(|io| {
-            match io.spawn(config.take()) {
-                Ok((p, io)) => Some(Process{
-                    handle: p,
-                    io: io.move_iter().map(|p|
-                        p.map(|p| io::PipeStream::new(p))
-                    ).collect()
-                }),
-                Err(ioerr) => {
-                    io_error::cond.raise(ioerr);
-                    None
-                }
+        let mut io = LocalIo::borrow();
+        match io.get().spawn(config) {
+            Ok((p, io)) => Some(Process{
+                handle: p,
+                io: io.move_iter().map(|p|
+                    p.map(|p| io::PipeStream::new(p))
+                ).collect()
+            }),
+            Err(ioerr) => {
+                io_error::cond.raise(ioerr);
+                None
             }
-        })
+        }
     }
 
     /// Returns the process id of this child process

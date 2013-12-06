@@ -25,7 +25,7 @@ instances as clients.
 use prelude::*;
 
 use c_str::ToCStr;
-use rt::rtio::{IoFactory, RtioUnixListener, with_local_io};
+use rt::rtio::{IoFactory, LocalIo, RtioUnixListener};
 use rt::rtio::{RtioUnixAcceptor, RtioPipe};
 use io::pipe::PipeStream;
 use io::{io_error, Listener, Acceptor, Reader, Writer};
@@ -59,15 +59,14 @@ impl UnixStream {
     ///     stream.write([1, 2, 3]);
     ///
     pub fn connect<P: ToCStr>(path: &P) -> Option<UnixStream> {
-        with_local_io(|io| {
-            match io.unix_connect(&path.to_c_str()) {
-                Ok(s) => Some(UnixStream::new(s)),
-                Err(ioerr) => {
-                    io_error::cond.raise(ioerr);
-                    None
-                }
+        let mut io = LocalIo::borrow();
+        match io.get().unix_connect(&path.to_c_str()) {
+            Ok(s) => Some(UnixStream::new(s)),
+            Err(ioerr) => {
+                io_error::cond.raise(ioerr);
+                None
             }
-        })
+        }
     }
 }
 
@@ -108,15 +107,14 @@ impl UnixListener {
     ///     }
     ///
     pub fn bind<P: ToCStr>(path: &P) -> Option<UnixListener> {
-        with_local_io(|io| {
-            match io.unix_bind(&path.to_c_str()) {
-                Ok(s) => Some(UnixListener{ obj: s }),
-                Err(ioerr) => {
-                    io_error::cond.raise(ioerr);
-                    None
-                }
+        let mut io = LocalIo::borrow();
+        match io.get().unix_bind(&path.to_c_str()) {
+            Ok(s) => Some(UnixListener{ obj: s }),
+            Err(ioerr) => {
+                io_error::cond.raise(ioerr);
+                None
             }
-        })
+        }
     }
 }
 
