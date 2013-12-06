@@ -11,7 +11,7 @@
 use std::libc::c_int;
 use std::io::signal::Signum;
 use std::rt::sched::{SchedHandle, Scheduler};
-use std::comm::{SharedChan, SendDeferred};
+use std::comm::SharedChan;
 use std::rt::local::Local;
 use std::rt::rtio::RtioSignal;
 

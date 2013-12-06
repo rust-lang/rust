@@ -11,10 +11,8 @@
 // Tests the ability for the Self type in default methods to use
 // capabilities granted by builtin kinds as supertraits.
 
-use std::comm;
-
 trait Foo : Send {
-    fn foo(self, chan: comm::Chan<Self>) {
+    fn foo(self, chan: Chan<Self>) {
         chan.send(self);
     }
 }
@@ -22,7 +20,7 @@ trait Foo : Send {
 impl <T: Send> Foo for T { }
 
 pub fn main() {
-    let (p,c) = comm::stream();
+    let (p,c) = Chan::new();
     1193182.foo(c);
     assert!(p.recv() == 1193182);
 }

@@ -25,7 +25,7 @@ impl fmt::Default for Foo {
 }
 
 pub fn main() {
-    let (p,c) = stream();
+    let (p,c) = Chan::new();
     do spawn {
         let f = Foo(@mut 0);
         debug!("{}", f);

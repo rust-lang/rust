@@ -12,16 +12,17 @@
 
 extern mod extra;
 
-use std::comm;
 use std::task;
 
-fn start(c: &comm::Chan<comm::Chan<int>>) {
-    let (_p, ch) = comm::stream();
+fn start(c: &Chan<Chan<int>>) {
+    let (_p, ch) = Chan::new();
     c.send(ch);
 }
 
 pub fn main() {
-    let (p, ch) = comm::stream();
-    let _child = task::spawn(proc() start(&ch) );
+    let (mut p, ch) = Chan::new();
+    let _child = task::spawn(proc() {
+        start(&ch)
+    });
     let _c = p.recv();
 }

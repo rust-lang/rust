@@ -29,7 +29,6 @@ use time::precise_time_ns;
 use treemap::TreeMap;
 
 use std::clone::Clone;
-use std::comm::{stream, SharedChan, GenericPort, GenericChan};
 use std::io;
 use std::io::File;
 use std::io::Writer;
@@ -746,8 +745,7 @@ fn run_tests(opts: &TestOpts,
     remaining.reverse();
     let mut pending = 0;
 
-    let (p, ch) = stream();
-    let ch = SharedChan::new(ch);
+    let (p, ch) = SharedChan::new();
 
     while pending > 0 || !remaining.is_empty() {
         while pending < concurrency && !remaining.is_empty() {
@@ -872,7 +870,7 @@ pub fn run_test(force_ignore: bool,
     fn run_test_inner(desc: TestDesc,
                       monitor_ch: SharedChan<MonitorMsg>,
                       testfn: proc()) {
-        do task::spawn {
+        do spawn {
             let mut task = task::task();
             task.name(match desc.name {
                 DynTestName(ref name) => SendStrOwned(name.clone()),
@@ -1206,7 +1204,6 @@ mod tests {
                StaticTestName, DynTestName, DynTestFn};
     use test::{TestOpts, run_test};
 
-    use std::comm::{stream, SharedChan};
     use tempfile::TempDir;
 
     #[test]
@@ -1220,8 +1217,7 @@ mod tests {
             },
             testfn: DynTestFn(proc() f()),
         };
-        let (p, ch) = stream();
-        let ch = SharedChan::new(ch);
+        let (p, ch) = SharedChan::new();
         run_test(false, desc, ch);
         let (_, res) = p.recv();
         assert!(res != TrOk);
@@ -1238,8 +1234,7 @@ mod tests {
             },
             testfn: DynTestFn(proc() f()),
         };
-        let (p, ch) = stream();
-        let ch = SharedChan::new(ch);
+        let (p, ch) = SharedChan::new();
         run_test(false, desc, ch);
         let (_, res) = p.recv();
         assert_eq!(res, TrIgnored);
@@ -1256,8 +1251,7 @@ mod tests {
             },
             testfn: DynTestFn(proc() f()),
         };
-        let (p, ch) = stream();
-        let ch = SharedChan::new(ch);
+        let (p, ch) = SharedChan::new();
         run_test(false, desc, ch);
         let (_, res) = p.recv();
         assert_eq!(res, TrOk);
@@ -1274,8 +1268,7 @@ mod tests {
             },
             testfn: DynTestFn(proc() f()),
         };
-        let (p, ch) = stream();
-        let ch = SharedChan::new(ch);
+        let (p, ch) = SharedChan::new();
         run_test(false, desc, ch);
         let (_, res) = p.recv();
         assert_eq!(res, TrFailed);

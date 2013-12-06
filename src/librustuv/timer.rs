@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::comm::{oneshot, stream, PortOne, ChanOne, SendDeferred};
 use std::libc::c_int;
 use std::rt::BlockedTask;
 use std::rt::local::Local;
@@ -28,7 +27,7 @@ pub struct TimerWatcher {
 
 pub enum NextAction {
     WakeTask(BlockedTask),
-    SendOnce(ChanOne<()>),
+    SendOnce(Chan<()>),
     SendMany(Chan<()>),
 }
 
@@ -95,8 +94,8 @@ impl RtioTimer for TimerWatcher {
         self.stop();
     }
 
-    fn oneshot(&mut self, msecs: u64) -> PortOne<()> {
-        let (port, chan) = oneshot();
+    fn oneshot(&mut self, msecs: u64) -> Port<()> {
+        let (port, chan) = Chan::new();
 
         // similarly to the destructor, we must drop the previous action outside
         // of the homing missile
@@ -111,7 +110,7 @@ impl RtioTimer for TimerWatcher {
     }
 
     fn period(&mut self, msecs: u64) -> Port<()> {
-        let (port, chan) = stream();
+        let (port, chan) = Chan::new();
 
         // similarly to the destructor, we must drop the previous action outside
         // of the homing missile

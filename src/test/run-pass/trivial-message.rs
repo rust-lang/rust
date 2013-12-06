@@ -13,10 +13,8 @@
   message.
  */
 
-use std::comm;
-
 pub fn main() {
-    let (po, ch) = comm::stream();
+    let (po, ch) = Chan::new();
     ch.send(42);
     let r = po.recv();
     error!("{:?}", r);

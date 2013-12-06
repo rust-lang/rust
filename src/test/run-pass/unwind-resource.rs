@@ -12,7 +12,6 @@
 
 extern mod extra;
 
-use std::comm::{stream, SharedChan};
 use std::task;
 
 struct complainer {
@@ -40,8 +39,7 @@ fn f(c: SharedChan<bool>) {
 }
 
 pub fn main() {
-    let (p, c) = stream();
-    let c = SharedChan::new(c);
+    let (p, c) = SharedChan::new();
     task::spawn(proc() f(c.clone()));
     error!("hiiiiiiiii");
     assert!(p.recv());

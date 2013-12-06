@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub fn main() {
-    let (p, c) = stream();
+    let (p, c) = Chan::new();
     c.send(~100);
     let v = p.recv();
     assert_eq!(v, ~100);
