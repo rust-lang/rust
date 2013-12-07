@@ -161,8 +161,22 @@ pub struct LocWithOpt {
 // used to be structural records. Better names, anyone?
 pub struct FileMapAndLine {fm: @FileMap, line: uint}
 pub struct FileMapAndBytePos {fm: @FileMap, pos: BytePos}
+
 #[deriving(IterBytes)]
-pub struct NameAndSpan {name: @str, span: Option<Span>}
+pub enum MacroFormat {
+    // e.g. #[deriving(...)] <item>
+    MacroAttribute,
+    // e.g. `format!()`
+    MacroBang
+}
+
+#[deriving(IterBytes)]
+pub struct NameAndSpan {
+    name: @str,
+    // the format with which the macro was invoked.
+    format: MacroFormat,
+    span: Option<Span>
+}
 
 /// Extra information for tracking macro expansion of spans
 #[deriving(IterBytes)]
