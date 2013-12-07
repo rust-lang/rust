@@ -52,24 +52,24 @@ Also, the result should be the same regardless of whether the code is at the beg
     (loop
      for pad-at-beginning from 0 to 1
      do (loop for pad-at-end from 0 to 1
-           with padding-beginning = (if (= 0 pad-at-beginning) "" padding)
-           with padding-end = (if (= 0 pad-at-end) "" padding)
-           with padding-adjust = (* padding-len pad-at-beginning)
-           with padding-beginning = (if (= 0 pad-at-beginning) "" padding)
-           with padding-end = (if (= 0 pad-at-end) "" padding)
-           ;; If we're adding space to the beginning, and our start position
-           ;; is at the very beginning, we want to test within the added space.
-           ;; Otherwise adjust the start and end for the beginning padding.
-           with start-pos = (if (= 1 start-pos) 1 (+ padding-adjust start-pos))
-           with end-pos = (+ end-pos padding-adjust)
-           do (loop for pos from start-pos to end-pos
-                 do (rust-test-manip-code
-                     (concat padding-beginning unfilled padding-end)
-                     pos
-                     (lambda () 
-                       (let ((fill-column rust-test-fill-column))
-                         (fill-paragraph)))
-                     (concat padding-beginning expected padding-end)))))))
+              with padding-beginning = (if (= 0 pad-at-beginning) "" padding)
+              with padding-end = (if (= 0 pad-at-end) "" padding)
+              with padding-adjust = (* padding-len pad-at-beginning)
+              with padding-beginning = (if (= 0 pad-at-beginning) "" padding)
+              with padding-end = (if (= 0 pad-at-end) "" padding)
+              ;; If we're adding space to the beginning, and our start position
+              ;; is at the very beginning, we want to test within the added space.
+              ;; Otherwise adjust the start and end for the beginning padding.
+              with start-pos = (if (= 1 start-pos) 1 (+ padding-adjust start-pos))
+              with end-pos = (+ end-pos padding-adjust)
+              do (loop for pos from start-pos to end-pos
+                       do (rust-test-manip-code
+                           (concat padding-beginning unfilled padding-end)
+                           pos
+                           (lambda () 
+                             (let ((fill-column rust-test-fill-column))
+                               (fill-paragraph)))
+                           (concat padding-beginning expected padding-end)))))))
 
 (ert-deftest fill-paragraph-top-level-multi-line-style-doc-comment-second-line ()
   (test-fill-paragraph 
@@ -262,14 +262,14 @@ fn bar() { }" 14 67))
 /// "
    103
    "This is the second really really really really really really long paragraph"
-    "/// This is the first really
+   "/// This is the first really
 /// really really really really
 /// really really long paragraph
 ///
 /// This is the second really
 /// really really really really
 /// really long paragraph"
-    ))
+   ))
 
 (ert-deftest auto-fill-multi-line-prefixless ()
   (test-auto-fill
@@ -295,7 +295,7 @@ very very very long string
 
 (ert-deftest indent-struct-fields-aligned ()
   (test-indent
-"
+   "
 struct Foo { bar: int,
              baz: int }
 
@@ -305,7 +305,7 @@ struct Blah {x:int,
 
 (ert-deftest indent-doc-comments ()
   (test-indent
-"
+   "
 /**
  * This is a doc comment
  *
@@ -411,7 +411,7 @@ fn nexted_fns(a: fn(b:int,
     0
 }
 "
-))
+   ))
 
 (ert-deftest indent-multi-line-expr ()
   (test-indent
@@ -423,4 +423,206 @@ fn foo()
         b();
 }
 "
-))
+   ))
+
+(setq rust-test-motion-string
+      "
+fn fn1(arg: int) -> bool {
+    let x = 5;
+    let y = b();
+    true
+}
+
+fn fn2(arg: int) -> bool {
+    let x = 5;
+    let y = b();
+    true
+}
+
+pub fn fn3(arg: int) -> bool {
+    let x = 5;
+    let y = b();
+    true
+}
+
+struct Foo {
+    x: int
+}
+"
+      rust-test-region-string rust-test-motion-string
+      ;; Symbol -> (line column)
+      rust-test-positions-alist '((start-of-fn1 (2 0))
+                                  (start-of-fn1-middle-of-line (2 15))
+                                  (middle-of-fn1 (3 7))
+                                  (end-of-fn1 (6 0))
+                                  (between-fn1-fn2 (7 0))
+                                  (start-of-fn2 (8 0))
+                                  (middle-of-fn2 (10 4))
+                                  (before-start-of-fn1 (1 0))
+                                  (after-end-of-fn2 (13 0))
+                                  (beginning-of-fn3 (14 0))
+                                  (middle-of-fn3 (16 4))
+                                  (middle-of-struct (21 10))
+                                  (before-start-of-struct (19 0))
+                                  (after-end-of-struct (23 0))))
+
+(defun rust-get-buffer-pos (pos-symbol)
+  "Get buffer position from POS-SYMBOL.
+
+POS-SYMBOL is a symbol found in `rust-test-positions-alist'.
+Convert the line-column information from that list into a buffer position value."
+  (interactive "P")
+  (pcase-let ((`(,line ,column) (cadr (assoc pos-symbol rust-test-positions-alist))))
+    (save-excursion
+      (goto-line line)
+      (move-to-column column)
+      (point))))
+
+;;; TODO: Maybe add an ERT explainer function (something that shows the
+;;; surrounding code of the final point, not just the position).
+(defun rust-test-motion (source-code init-pos final-pos manip-func &optional &rest args)
+  "Test that MANIP-FUNC moves point from INIT-POS to FINAL-POS.
+
+If ARGS are provided, send them to MANIP-FUNC.
+
+INIT-POS, FINAL-POS are position symbols found in `rust-test-positions-alist'."
+  (with-temp-buffer
+    (rust-mode)
+    (insert source-code)
+    (goto-char (rust-get-buffer-pos init-pos))
+    (apply manip-func args)
+    (should (equal (point) (rust-get-buffer-pos final-pos)))))
+
+(defun rust-test-region (source-code init-pos reg-beg reg-end manip-func &optional &rest args)
+  "Test that MANIP-FUNC marks region from REG-BEG to REG-END.
+
+INIT-POS is the initial position of point.
+If ARGS are provided, send them to MANIP-FUNC.
+All positions are position symbols found in `rust-test-positions-alist'."
+  (with-temp-buffer
+    (rust-mode)
+    (insert source-code)
+    (goto-char (rust-get-buffer-pos init-pos))
+    (apply manip-func args)
+    (should (equal (list (region-beginning) (region-end))
+                   (list (rust-get-buffer-pos reg-beg)
+                         (rust-get-buffer-pos reg-end))))))
+
+(ert-deftest rust-beginning-of-defun-from-middle-of-fn ()
+  (rust-test-motion 
+   rust-test-motion-string
+   'middle-of-fn1
+   'start-of-fn1
+   #'beginning-of-defun))
+
+(ert-deftest rust-beginning-of-defun-from-end ()
+  (rust-test-motion 
+   rust-test-motion-string
+   'end-of-fn1
+   'start-of-fn1
+   #'beginning-of-defun))
+
+(ert-deftest rust-beginning-of-defun-before-open-brace ()
+  (rust-test-motion 
+   rust-test-motion-string
+   'start-of-fn1-middle-of-line
+   'start-of-fn1
+   #'beginning-of-defun))
+
+(ert-deftest rust-beginning-of-defun-between-fns ()
+  (rust-test-motion 
+   rust-test-motion-string
+   'between-fn1-fn2
+   'start-of-fn1
+   #'beginning-of-defun))
+
+(ert-deftest rust-beginning-of-defun-with-arg ()
+  (rust-test-motion 
+   rust-test-motion-string
+   'middle-of-fn2
+   'start-of-fn1
+   #'beginning-of-defun 2))
+
+(ert-deftest rust-beginning-of-defun-with-negative-arg ()
+  (rust-test-motion 
+   rust-test-motion-string
+   'middle-of-fn1
+   'beginning-of-fn3
+   #'beginning-of-defun -2))
+
+(ert-deftest rust-beginning-of-defun-pub-fn ()
+  (rust-test-motion 
+   rust-test-motion-string
+   'middle-of-fn3
+   'beginning-of-fn3
+   #'beginning-of-defun))
+
+(ert-deftest rust-end-of-defun-from-middle-of-fn ()
+  (rust-test-motion 
+   rust-test-motion-string
+   'middle-of-fn1
+   'between-fn1-fn2
+   #'end-of-defun))
+
+(ert-deftest rust-end-of-defun-from-beg ()
+  (rust-test-motion 
+   rust-test-motion-string
+   'start-of-fn1
+   'between-fn1-fn2
+   #'end-of-defun))
+
+(ert-deftest rust-end-of-defun-before-open-brace ()
+  (rust-test-motion 
+   rust-test-motion-string
+   'start-of-fn1-middle-of-line
+   'between-fn1-fn2
+   #'end-of-defun))
+
+(ert-deftest rust-end-of-defun-between-fns ()
+  (rust-test-motion 
+   rust-test-motion-string
+   'between-fn1-fn2
+   'after-end-of-fn2
+   #'end-of-defun))
+
+(ert-deftest rust-end-of-defun-with-arg ()
+  (rust-test-motion 
+   rust-test-motion-string
+   'middle-of-fn1
+   'after-end-of-fn2
+   #'end-of-defun 2))
+
+(ert-deftest rust-end-of-defun-with-negative-arg ()
+  (rust-test-motion 
+   rust-test-motion-string
+   'middle-of-fn3
+   'between-fn1-fn2
+   #'end-of-defun -2))
+
+(ert-deftest rust-mark-defun-from-middle-of-fn ()
+  (rust-test-region
+   rust-test-region-string
+   'middle-of-fn2
+   'between-fn1-fn2 'after-end-of-fn2
+   #'mark-defun))
+
+(ert-deftest rust-mark-defun-from-end ()
+  (rust-test-region 
+   rust-test-region-string
+   'end-of-fn1
+   'before-start-of-fn1 'between-fn1-fn2
+   #'mark-defun))
+
+(ert-deftest rust-mark-defun-start-of-defun ()
+  (rust-test-region 
+   rust-test-region-string
+   'start-of-fn2
+   'between-fn1-fn2 'after-end-of-fn2
+   #'mark-defun))
+
+(ert-deftest rust-mark-defun-from-middle-of-struct ()
+  (rust-test-region
+   rust-test-region-string
+   'middle-of-struct
+   'before-start-of-struct 'after-end-of-struct
+   #'mark-defun))
