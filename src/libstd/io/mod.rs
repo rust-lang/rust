@@ -264,7 +264,7 @@ Out of scope
 
 use cast;
 use condition::Guard;
-use container::Container;
+use container::{Container, MutableSeq};
 use int;
 use iter::Iterator;
 use option::{Option, Some, None};

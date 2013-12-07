@@ -103,7 +103,7 @@ There are a number of free functions that create or take vectors, for example:
 
 use cast;
 use clone::{Clone, DeepClone};
-use container::{Container, Mutable, NewContainer};
+use container::{Container, Mutable, NewContainer, Seq, MutableSeq};
 use cmp::{Eq, TotalOrd, Ordering, Less, Equal, Greater};
 use cmp;
 use default::Default;
@@ -786,6 +786,158 @@ impl<T> Container for ~[T] {
     }
 }
 
+impl<T> Seq<T> for ~[T] { }
+
+impl<T> MutableSeq<T> for ~[T] {
+    #[inline]
+    fn push(&mut self, t: T) {
+        unsafe {
+            if owns_managed::<T>() {
+                let repr: **Box<Vec<()>> = cast::transmute(&mut *self);
+                let fill = (**repr).data.fill;
+                if (**repr).data.alloc <= fill {
+                    self.reserve_additional(1);
+                }
+
+                push_fast(self, t);
+            } else {
+                let repr: **Vec<()> = cast::transmute(&mut *self);
+                let fill = (**repr).fill;
+                if (**repr).alloc <= fill {
+                    self.reserve_additional(1);
+                }
+
+                push_fast(self, t);
+            }
+        }
+
+        // This doesn't bother to make sure we have space.
+        #[inline] // really pretty please
+        unsafe fn push_fast<T>(this: &mut ~[T], t: T) {
+            if owns_managed::<T>() {
+                let repr: **mut Box<Vec<u8>> = cast::transmute(this);
+                let fill = (**repr).data.fill;
+                (**repr).data.fill += mem::nonzero_size_of::<T>();
+                let p = to_unsafe_ptr(&((**repr).data.data));
+                let p = ptr::offset(p, fill as int) as *mut T;
+                intrinsics::move_val_init(&mut(*p), t);
+            } else {
+                let repr: **mut Vec<u8> = cast::transmute(this);
+                let fill = (**repr).fill;
+                (**repr).fill += mem::nonzero_size_of::<T>();
+                let p = to_unsafe_ptr(&((**repr).data));
+                let p = ptr::offset(p, fill as int) as *mut T;
+                intrinsics::move_val_init(&mut(*p), t);
+            }
+        }
+    }
+
+    #[inline]
+    fn push_all<Iter: Iterator<T>>(&mut self, mut iter: Iter) {
+        let (len, _) = iter.size_hint();
+        self.reserve_additional(len);
+
+        for x in iter {
+            self.push(x);
+        }
+    }
+
+    fn pop_opt(&mut self) -> Option<T> {
+        match self.len() {
+            0  => None,
+            ln => {
+                let valptr = ptr::to_mut_unsafe_ptr(&mut self[ln - 1u]);
+                unsafe {
+                    self.set_len(ln - 1u);
+                    Some(ptr::read_ptr(&*valptr))
+                }
+            }
+        }
+    }
+
+    fn shift_opt(&mut self) -> Option<T> {
+        unsafe {
+            let ln = match self.len() {
+                0 => return None,
+                1 => return self.pop_opt(),
+                2 =>  {
+                    let last = self.pop();
+                    let first = self.pop_opt();
+                    self.push(last);
+                    return first;
+                }
+                x => x
+            };
+
+            let next_ln = self.len() - 1;
+
+            // Save the last element. We're going to overwrite its position
+            let work_elt = self.pop();
+            // We still should have room to work where what last element was
+            assert!(self.capacity() >= ln);
+            // Pretend like we have the original length so we can use
+            // the vector copy_memory to overwrite the hole we just made
+            self.set_len(ln);
+
+            // Memcopy the head element (the one we want) to the location we just
+            // popped. For the moment it unsafely exists at both the head and last
+            // positions
+            {
+                let first_slice = self.slice(0, 1);
+                let last_slice = self.slice(next_ln, ln);
+                raw::copy_memory(cast::transmute(last_slice), first_slice);
+            }
+
+            // Memcopy everything to the left one element
+            {
+                let init_slice = self.slice(0, next_ln);
+                let tail_slice = self.slice(1, ln);
+                raw::copy_memory(cast::transmute(init_slice),
+                                 tail_slice);
+            }
+
+            // Set the new length. Now the vector is back to normal
+            self.set_len(next_ln);
+
+            // Swap out the element we want from the end
+            let vp = self.as_mut_ptr();
+            let vp = ptr::mut_offset(vp, (next_ln - 1) as int);
+
+            Some(ptr::replace_ptr(vp, work_elt))
+        }
+    }
+
+
+    fn unshift(&mut self, x: T) {
+        let v = util::replace(self, ~[x]);
+        self.push_all_move(v);
+    }
+
+    fn insert(&mut self, i: uint, x:T) {
+        let len = self.len();
+        assert!(i <= len);
+
+        self.push(x);
+        let mut j = len;
+        while j > i {
+            self.swap(j, j - 1);
+            j -= 1;
+        }
+    }
+
+    fn remove(&mut self, i: uint) -> T {
+        let len = self.len();
+        assert!(i < len);
+
+        let mut j = i;
+        while j < len - 1 {
+            self.swap(j, j + 1);
+            j += 1;
+        }
+        self.pop()
+    }
+}
+
 /// Extension methods for vector slices with copyable elements
 pub trait CopyableVector<T> {
     /// Copy `self` into a new owned vector
@@ -1420,8 +1572,6 @@ pub trait OwnedVector<T> {
     /// Shrink the capacity of the vector to match the length
     fn shrink_to_fit(&mut self);
 
-    /// Append an element to a vector
-    fn push(&mut self, t: T);
     /// Takes ownership of the vector `rhs`, moving all elements into
     /// the current vector. This does not copy any elements, and it is
     /// illegal to use the `rhs` vector after calling this method
@@ -1435,35 +1585,6 @@ pub trait OwnedVector<T> {
     /// assert!(a == ~[~1, ~2, ~3, ~4]);
     /// ```
     fn push_all_move(&mut self, rhs: ~[T]);
-    /// Iterates over the slice `rhs`, copies each element, and then appends it to
-    /// the vector provided `v`. The `rhs` vector is traversed in-order.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// let mut a = ~[1];
-    /// a.push_all([2, 3, 4]);
-    /// assert!(a == ~[1, 2, 3, 4]);
-    /// ```
-    fn push_all<Iter: Iterator<T>>(&mut self, rhs: Iter);
-    /// Remove the last element from a vector and return it, failing if it is empty
-    fn pop(&mut self) -> T;
-    /// Remove the last element from a vector and return it, or `None` if it is empty
-    fn pop_opt(&mut self) -> Option<T>;
-    /// Removes the first element from a vector and return it
-    fn shift(&mut self) -> T;
-    /// Removes the first element from a vector and return it, or `None` if it is empty
-    fn shift_opt(&mut self) -> Option<T>;
-    /// Prepend an element to the vector
-    fn unshift(&mut self, x: T);
-
-    /// Insert an element at position i within v, shifting all
-    /// elements after position i one position to the right.
-    fn insert(&mut self, i: uint, x:T);
-
-    /// Remove and return the element at position i within v, shifting
-    /// all elements after position i one position to the left.
-    fn remove(&mut self, i: uint) -> T;
 
     /// Remove an element from anywhere in the vector and return it, replacing it
     /// with the last element. This does not preserve ordering, but is O(1).
@@ -1571,50 +1692,6 @@ impl<T> OwnedVector<T> for ~[T] {
     }
 
     #[inline]
-    fn push(&mut self, t: T) {
-        unsafe {
-            if owns_managed::<T>() {
-                let repr: **Box<Vec<()>> = cast::transmute(&mut *self);
-                let fill = (**repr).data.fill;
-                if (**repr).data.alloc <= fill {
-                    self.reserve_additional(1);
-                }
-
-                push_fast(self, t);
-            } else {
-                let repr: **Vec<()> = cast::transmute(&mut *self);
-                let fill = (**repr).fill;
-                if (**repr).alloc <= fill {
-                    self.reserve_additional(1);
-                }
-
-                push_fast(self, t);
-            }
-        }
-
-        // This doesn't bother to make sure we have space.
-        #[inline] // really pretty please
-        unsafe fn push_fast<T>(this: &mut ~[T], t: T) {
-            if owns_managed::<T>() {
-                let repr: **mut Box<Vec<u8>> = cast::transmute(this);
-                let fill = (**repr).data.fill;
-                (**repr).data.fill += mem::nonzero_size_of::<T>();
-                let p = to_unsafe_ptr(&((**repr).data.data));
-                let p = ptr::offset(p, fill as int) as *mut T;
-                intrinsics::move_val_init(&mut(*p), t);
-            } else {
-                let repr: **mut Vec<u8> = cast::transmute(this);
-                let fill = (**repr).fill;
-                (**repr).fill += mem::nonzero_size_of::<T>();
-                let p = to_unsafe_ptr(&((**repr).data));
-                let p = ptr::offset(p, fill as int) as *mut T;
-                intrinsics::move_val_init(&mut(*p), t);
-            }
-        }
-
-    }
-
-    #[inline]
     fn push_all_move(&mut self, mut rhs: ~[T]) {
         let self_len = self.len();
         let rhs_len = rhs.len();
@@ -1629,118 +1706,6 @@ impl<T> OwnedVector<T> for ~[T] {
         }
     }
 
-    #[inline]
-    fn push_all<Iter: Iterator<T>>(&mut self, mut iter: Iter) {
-        let (len, _) = iter.size_hint();
-        self.reserve_additional(len);
-
-        for elt in iter {
-            self.push(elt)
-        }
-    }
-
-    fn pop_opt(&mut self) -> Option<T> {
-        match self.len() {
-            0  => None,
-            ln => {
-                let valptr = ptr::to_mut_unsafe_ptr(&mut self[ln - 1u]);
-                unsafe {
-                    self.set_len(ln - 1u);
-                    Some(ptr::read_ptr(&*valptr))
-                }
-            }
-        }
-    }
-
-
-    #[inline]
-    fn pop(&mut self) -> T {
-        self.pop_opt().expect("pop: empty vector")
-    }
-
-    #[inline]
-    fn shift(&mut self) -> T {
-        self.shift_opt().expect("shift: empty vector")
-    }
-
-    fn shift_opt(&mut self) -> Option<T> {
-        unsafe {
-            let ln = match self.len() {
-                0 => return None,
-                1 => return self.pop_opt(),
-                2 =>  {
-                    let last = self.pop();
-                    let first = self.pop_opt();
-                    self.push(last);
-                    return first;
-                }
-                x => x
-            };
-
-            let next_ln = self.len() - 1;
-
-            // Save the last element. We're going to overwrite its position
-            let work_elt = self.pop();
-            // We still should have room to work where what last element was
-            assert!(self.capacity() >= ln);
-            // Pretend like we have the original length so we can use
-            // the vector copy_memory to overwrite the hole we just made
-            self.set_len(ln);
-
-            // Memcopy the head element (the one we want) to the location we just
-            // popped. For the moment it unsafely exists at both the head and last
-            // positions
-            {
-                let first_slice = self.slice(0, 1);
-                let last_slice = self.slice(next_ln, ln);
-                raw::copy_memory(cast::transmute(last_slice), first_slice);
-            }
-
-            // Memcopy everything to the left one element
-            {
-                let init_slice = self.slice(0, next_ln);
-                let tail_slice = self.slice(1, ln);
-                raw::copy_memory(cast::transmute(init_slice),
-                                 tail_slice);
-            }
-
-            // Set the new length. Now the vector is back to normal
-            self.set_len(next_ln);
-
-            // Swap out the element we want from the end
-            let vp = self.as_mut_ptr();
-            let vp = ptr::mut_offset(vp, (next_ln - 1) as int);
-
-            Some(ptr::replace_ptr(vp, work_elt))
-        }
-    }
-
-    fn unshift(&mut self, x: T) {
-        let v = util::replace(self, ~[x]);
-        self.push_all_move(v);
-    }
-    fn insert(&mut self, i: uint, x:T) {
-        let len = self.len();
-        assert!(i <= len);
-
-        self.push(x);
-        let mut j = len;
-        while j > i {
-            self.swap(j, j - 1);
-            j -= 1;
-        }
-    }
-    fn remove(&mut self, i: uint) -> T {
-        let len = self.len();
-        assert!(i < len);
-
-        let mut j = i;
-        while j < len - 1 {
-            self.swap(j, j + 1);
-            j += 1;
-        }
-        self.pop()
-    }
     fn swap_remove(&mut self, index: uint) -> T {
         let ln = self.len();
         if index >= ln {

@@ -47,6 +47,7 @@ particular bits of it, etc.
 
 use c_str::ToCStr;
 use clone::Clone;
+use container::MutableSeq;
 use iter::Iterator;
 use super::{Reader, Writer, Seek};
 use super::{SeekStyle, Read, Write, Open, IoError, Truncate,

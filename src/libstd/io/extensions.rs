@@ -13,6 +13,7 @@
 // XXX: Not sure how this should be structured
 // XXX: Iteration should probably be considered separately
 
+use container::MutableSeq;
 use iter::Iterator;
 use option::Option;
 use io::Reader;

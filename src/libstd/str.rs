@@ -95,7 +95,7 @@ use cast::transmute;
 use char;
 use char::Char;
 use clone::{Clone, DeepClone};
-use container::{Container, NewContainer, Mutable};
+use container::{Container, NewContainer, Mutable, MutableSeq};
 use iter::{Iterator, FromIterator, Extendable, range};
 use iter::{Filter, AdditiveIterator, Map};
 use iter::{Invert, DoubleEndedIterator, ExactSize};

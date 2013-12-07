@@ -64,7 +64,7 @@ debug!("path exists: {}", b);
 
 */
 
-use container::Container;
+use container::{Container, MutableSeq};
 use c_str::CString;
 use clone::Clone;
 use fmt;
@@ -76,7 +76,6 @@ use to_str::ToStr;
 use vec;
 use vec::{CopyableVector, OwnedVector, Vector};
 use vec::{ImmutableEqVector, ImmutableVector, ImmutableCopyableVector};
-use vec::OwnedCopyableVector;
 
 /// Typedef for POSIX file paths.
 /// See `posix::Path` for more info.

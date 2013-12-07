@@ -58,7 +58,7 @@ Several modules in `core` are clients of `rt`:
 #[allow(missing_doc)];
 
 use clone::Clone;
-use container::Container;
+use container::{Container, MutableSeq};
 use iter::Iterator;
 use option::{Option, None, Some};
 use ptr::RawPtr;

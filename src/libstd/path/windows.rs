@@ -14,6 +14,7 @@ use ascii::AsciiCast;
 use c_str::{CString, ToCStr};
 use cast;
 use cmp::Eq;
+use container::MutableSeq;
 use from_str::FromStr;
 use iter::{AdditiveIterator, DoubleEndedIterator, Extendable, Invert, Iterator, Map};
 use option::{Option, Some, None};

@@ -15,7 +15,7 @@
 use option::{Some, None};
 use option;
 use clone::Clone;
-use container::Container;
+use container::{Container, MutableSeq};
 use cmp::Eq;
 use iter::{Iterator, FilterMap};
 use result::Result;

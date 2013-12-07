@@ -10,7 +10,8 @@
 
 //! Container traits
 
-use option::Option;
+use iter::Iterator;
+use option::{Option, Some, None};
 
 /// A trait to represent the abstract idea of a container. The only concrete
 /// knowledge known is the number of elements contained within.
@@ -38,6 +39,67 @@ pub trait NewContainer {
 pub trait Mutable: Container {
     /// Clear the container, removing all values.
     fn clear(&mut self);
+}
+
+/// A trait to represent an order sequence of values, where values are looked
+/// up by their position.
+pub trait Seq<T>: Container {
+}
+
+/// A trait that provides basic operations to modify the contents of a
+/// sequence.
+pub trait MutableSeq<T>: Seq<T> + Mutable {
+    /// Append an element to a sequence
+    fn push(&mut self, value: T);
+
+    /// Moving all elements into the current sequence. This does not copy any
+    /// elements.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut a = ~[~1];
+    /// a.push_all((~[~2, ~3, ~4]).move_iter());
+    /// assert!(a == ~[~1, ~2, ~3, ~4]);
+    /// ```
+    #[inline]
+    fn push_all<Iter: Iterator<T>>(&mut self, mut iter: Iter) {
+        for x in &mut iter {
+            self.push(x);
+        }
+    }
+
+    /// Remove the last element from a sequence and return it, failing if it is
+    /// empty
+    #[inline]
+    fn pop(&mut self) -> T {
+        self.pop_opt().expect("pop: empty sequence")
+    }
+
+    /// Remove the last element from a sequence and return it, or `None` if it
+    /// is empty
+    fn pop_opt(&mut self) -> Option<T>;
+
+    /// Removes the first element from a sequence and return it
+    #[inline]
+    fn shift(&mut self) -> T {
+        self.shift_opt().expect("shift: empty sequence")
+    }
+
+    /// Removes the first element from a sequence and return it, or `None` if
+    /// it is empty
+    fn shift_opt(&mut self) -> Option<T>;
+
+    /// Prepend an element to the sequence
+    fn unshift(&mut self, x: T);
+
+    /// Insert an element at position i within v, shifting all
+    /// elements after position i one position to the right.
+    fn insert(&mut self, i: uint, x: T);
+
+    /// Remove and return the element at position i within v, shifting
+    /// all elements after position i one position to the left.
+    fn remove(&mut self, i: uint) -> T;
 }
 
 /// A map is a key-value store where values may be looked up by their keys. This

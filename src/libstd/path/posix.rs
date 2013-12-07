@@ -10,7 +10,7 @@
 
 //! POSIX file path handling
 
-use container::Container;
+use container::{Container, MutableSeq};
 use c_str::{CString, ToCStr};
 use clone::Clone;
 use cmp::Eq;
@@ -22,7 +22,7 @@ use str::Str;
 use to_bytes::IterBytes;
 use vec;
 use vec::{CopyableVector, RSplitIterator, SplitIterator, Vector, VectorVector};
-use vec::{OwnedVector, OwnedCopyableVector, ImmutableCopyableVector};
+use vec::{OwnedVector, ImmutableCopyableVector};
 use super::{BytesContainer, GenericPath, GenericPathUnsafe};
 
 /// Iterator that yields successive components of a Path as &[u8]

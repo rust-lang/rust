@@ -13,6 +13,7 @@
 #[allow(non_camel_case_types)];
 
 use c_str::CString;
+use container::MutableSeq;
 use io::IoError;
 use io;
 use libc::c_int;

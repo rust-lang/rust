@@ -12,13 +12,13 @@
 
 use clone::Clone;
 use cmp::Eq;
+use container::MutableSeq;
 use fmt;
 use iter::Iterator;
 use option::{None, Option, Some};
 use option::{ToOption, IntoOption, AsOption};
 use str::OwnedStr;
 use to_str::ToStr;
-use vec::OwnedVector;
 use vec;
 
 /// `Result` is a type that represents either success (`Ok`) or failure (`Err`).
