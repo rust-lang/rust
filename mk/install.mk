@@ -103,7 +103,6 @@ install-target-$(1)-host-$(2): LIB_SOURCE_DIR=$$(TL$(1)$(2))
 install-target-$(1)-host-$(2): LIB_DESTIN_DIR=$$(PTL$(1)$(2))
 install-target-$(1)-host-$(2): $$(CSREQ$$(ISTAGE)_T_$(1)_H_$(2))
 	$$(Q)$$(call MK_INSTALL_DIR,$$(PTL$(1)$(2)))
-	$$(Q)$$(call INSTALL_LIB,$$(CFG_RUSTLLVM_$(1)))
 	$$(Q)$$(call INSTALL_LIB,$$(STDLIB_GLOB_$(1)))
 	$$(Q)$$(call INSTALL_LIB,$$(STDLIB_RGLOB_$(1)))
 	$$(Q)$$(call INSTALL_LIB,$$(EXTRALIB_GLOB_$(1)))
@@ -154,7 +153,6 @@ install-host: $(CSREQ$(ISTAGE)_T_$(CFG_BUILD_)_H_$(CFG_BUILD_))
 	$(Q)$(call INSTALL_LIB,$(LIBSYNTAX_GLOB_$(CFG_BUILD)))
 	$(Q)$(call INSTALL_LIB,$(LIBRUSTPKG_GLOB_$(CFG_BUILD)))
 	$(Q)$(call INSTALL_LIB,$(LIBRUSTDOC_GLOB_$(CFG_BUILD)))
-	$(Q)$(call INSTALL,$(HL),$(PHL),$(CFG_RUSTLLVM_$(CFG_BUILD)))
 	$(Q)$(call INSTALL,$(S)/man,$(CFG_MANDIR)/man1,rustc.1)
 	$(Q)$(call INSTALL,$(S)/man,$(CFG_MANDIR)/man1,rustdoc.1)
 	$(Q)$(call INSTALL,$(S)/man,$(CFG_MANDIR)/man1,rustpkg.1)
@@ -169,7 +167,6 @@ uninstall:
 	$(Q)rm -f $(PHB)/rustc$(X_$(CFG_BUILD))
 	$(Q)rm -f $(PHB)/rustpkg$(X_$(CFG_BUILD))
 	$(Q)rm -f $(PHB)/rustdoc$(X_$(CFG_BUILD))
-	$(Q)rm -f $(PHL)/$(CFG_RUSTLLVM_$(CFG_BUILD))
 	$(Q)for i in \
           $(call HOST_LIB_FROM_HL_GLOB,$(STDLIB_GLOB_$(CFG_BUILD))) \
           $(call HOST_LIB_FROM_HL_GLOB,$(STDLIB_RGLOB_$(CFG_BUILD))) \

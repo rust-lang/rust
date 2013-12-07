@@ -1101,6 +1101,7 @@ fn no_rebuilding() {
 }
 
 #[test]
+#[ignore]
 fn no_recopying() {
     let p_id = PkgId::new("foo");
     let workspace = create_local_package(&p_id);

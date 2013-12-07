@@ -27,11 +27,7 @@ endif
 
 # Host libs will be extracted by the above rule
 
-$(HLIB0_H_$(CFG_BUILD))/$(CFG_RUNTIME_$(CFG_BUILD)): \
-		$(HBIN0_H_$(CFG_BUILD))/rustc$(X_$(CFG_BUILD)) \
-		| $(HLIB0_H_$(CFG_BUILD))/
-	$(Q)touch $@
-
+# NOTE: remove all these after the next snapshot
 $(HLIB0_H_$(CFG_BUILD))/$(CFG_STDLIB_$(CFG_BUILD)): \
 		$(HBIN0_H_$(CFG_BUILD))/rustc$(X_$(CFG_BUILD)) \
 		| $(HLIB0_H_$(CFG_BUILD))/
@@ -76,12 +72,7 @@ $$(HBIN0_H_$(1))/rustc$$(X_$(1)): \
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
-$$(HLIB0_H_$(1))/$(CFG_RUNTIME_$(1)): \
-		$$(TLIB$(2)_T_$(1)_H_$(3))/$(CFG_RUNTIME_$(1)) \
-		| $(HLIB0_H_$(1))/
-	@$$(call E, cp: $$@)
-	$$(Q)cp $$< $$@
-
+# NOTE: removing everything below after the next snapshot
 $$(HLIB0_H_$(1))/$(CFG_STDLIB_$(1)): \
 		$$(TLIB$(2)_T_$(1)_H_$(3))/$(CFG_STDLIB_$(1)) \
 		| $(HLIB0_H_$(1))/

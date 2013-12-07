@@ -25,34 +25,10 @@ download_dir_base = "dl"
 download_unpack_base = os.path.join(download_dir_base, "unpack")
 
 snapshot_files = {
-    "linux": ["bin/rustc",
-              "lib/libstd-*.so",
-              "lib/libextra-*.so",
-              "lib/librustc-*.so",
-              "lib/libsyntax-*.so",
-              "lib/librustuv-*.so",
-              "lib/librustllvm.so"],
-    "macos": ["bin/rustc",
-              "lib/libstd-*.dylib",
-              "lib/libextra-*.dylib",
-              "lib/librustc-*.dylib",
-              "lib/libsyntax-*.dylib",
-              "lib/librustuv-*.dylib",
-              "lib/librustllvm.dylib"],
-    "winnt": ["bin/rustc.exe",
-              "bin/std-*.dll",
-              "bin/extra-*.dll",
-              "bin/rustc-*.dll",
-              "bin/syntax-*.dll",
-              "bin/rustuv-*.dll",
-              "bin/rustllvm.dll"],
-    "freebsd": ["bin/rustc",
-                "lib/libstd-*.so",
-                "lib/libextra-*.so",
-                "lib/librustc-*.so",
-                "lib/libsyntax-*.so",
-                "lib/librustuv-*.so",
-                "lib/librustllvm.so"]
+    "linux": ["bin/rustc"],
+    "macos": ["bin/rustc"],
+    "winnt": ["bin/rustc.exe"],
+    "freebsd": ["bin/rustc"],
     }
 
 winnt_runtime_deps = ["libgcc_s_dw2-1.dll",
