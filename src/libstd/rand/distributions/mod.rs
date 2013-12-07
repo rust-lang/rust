@@ -28,7 +28,7 @@ use clone::Clone;
 
 pub use self::range::Range;
 pub use self::gamma::Gamma;
-pub use self::normal::Normal;
+pub use self::normal::{Normal, LogNormal};
 pub use self::exponential::Exp;
 
 pub mod range;
