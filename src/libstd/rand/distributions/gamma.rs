@@ -11,7 +11,8 @@
 //! The Gamma distribution.
 
 use rand::{Rng, Open01};
-use super::{IndependentSample, Sample, StandardNormal, Exp};
+use super::{IndependentSample, Sample, Exp};
+use super::normal::StandardNormal;
 use num;
 
 /// The Gamma distribution `Gamma(shape, scale)` distribution.
