@@ -15,8 +15,8 @@
 DOCS :=
 DOCS_L10N :=
 
-BASE_DOC_OPTS := --from=markdown --standalone --toc --number-sections --include-before-body=doc/version_info.html
-HTML_OPTS = $(BASE_DOC_OPTS) --to=html5  --section-divs --css=rust.css --include-in-header=doc/favicon.inc
+BASE_DOC_OPTS := --from=markdown --standalone --toc --number-sections
+HTML_OPTS = $(BASE_DOC_OPTS) --to=html5  --section-divs --css=rust.css  --include-before-body=doc/version_info.html --include-in-header=doc/favicon.inc
 TEX_OPTS = $(BASE_DOC_OPTS) --to=latex
 EPUB_OPTS = $(BASE_DOC_OPTS) --to=epub
 
