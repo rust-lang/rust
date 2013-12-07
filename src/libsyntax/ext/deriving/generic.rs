@@ -899,7 +899,9 @@ impl<'self> MethodDef<'self> {
         let summary = enum_def.variants.map(|v| {
             let ident = v.node.name;
             let summary = match v.node.kind {
-                ast::tuple_variant_kind(ref args) => Unnamed(args.map(|va| va.ty.span)),
+                ast::tuple_variant_kind(ref args) => {
+                    Unnamed(args.map(|va| trait_.set_expn_info(va.ty.span)))
+                }
                 ast::struct_variant_kind(struct_def) => {
                     trait_.summarise_struct(struct_def)
                 }
@@ -919,11 +921,27 @@ enum StructType {
 
 // general helper methods.
 impl<'a> TraitDef<'a> {
+    fn set_expn_info(&self, mut to_set: Span) -> Span {
+        let trait_name = match self.path.path.last_opt() {
+            None => self.cx.span_bug(self.span, "trait with empty path in generic `deriving`"),
+            Some(name) => *name
+        };
+        to_set.expn_info = Some(@codemap::ExpnInfo {
+            call_site: to_set,
+            callee: codemap::NameAndSpan {
+                name: format!("deriving({})", trait_name).to_managed(),
+                format: codemap::MacroAttribute,
+                span: Some(self.span)
+            }
+        });
+        to_set
+    }
+
     fn summarise_struct(&self, struct_def: &struct_def) -> StaticFields {
         let mut named_idents = ~[];
         let mut just_spans = ~[];
         for field in struct_def.fields.iter(){
-            let sp = field.span;
+            let sp = self.set_expn_info(field.span);
             match field.node.kind {
                 ast::named_field(ident, _) => named_idents.push((ident, sp)),
                 ast::unnamed_field => just_spans.push(sp),
@@ -973,7 +991,7 @@ impl<'a> TraitDef<'a> {
         let mut struct_type = Unknown;
 
         for (i, struct_field) in struct_def.fields.iter().enumerate() {
-            let sp = struct_field.span;
+            let sp = self.set_expn_info(struct_field.span);
             let opt_id = match struct_field.node.kind {
                 ast::named_field(ident, _) if (struct_type == Unknown ||
                                                struct_type == Record) => {
@@ -1031,7 +1049,7 @@ impl<'a> TraitDef<'a> {
                 let mut paths = ~[];
                 let mut ident_expr = ~[];
                 for (i, va) in variant_args.iter().enumerate() {
-                    let sp = va.ty.span;
+                    let sp = self.set_expn_info(va.ty.span);
                     let path = cx.path_ident(sp, cx.ident_of(format!("{}_{}", prefix, i)));
 
                     paths.push(path.clone());
