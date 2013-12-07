@@ -18,7 +18,7 @@ use std::vec;
 use syntax::ast_util::*;
 use syntax::attr::AttrMetaMethods;
 use syntax::attr;
-use syntax::codemap::{dummy_sp, Span, ExpnInfo, NameAndSpan};
+use syntax::codemap::{dummy_sp, Span, ExpnInfo, NameAndSpan, MacroAttribute};
 use syntax::codemap;
 use syntax::ext::base::ExtCtxt;
 use syntax::fold::ast_fold;
@@ -158,6 +158,7 @@ fn generate_test_harness(sess: session::Session, crate: ast::Crate)
         call_site: dummy_sp(),
         callee: NameAndSpan {
             name: @"test",
+            format: MacroAttribute,
             span: None
         }
     });
