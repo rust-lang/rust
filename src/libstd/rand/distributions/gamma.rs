@@ -225,6 +225,55 @@ impl IndependentSample<f64> for ChiSquared {
     }
 }
 
+/// The Fisher F distribution `F(m, n)`.
+///
+/// This distribution is equivalent to the ratio of two normalised
+/// chi-squared distributions, that is, `F(m,n) = (χ²(m)/m) /
+/// (χ²(n)/n)`.
+///
+/// # Example
+///
+/// ```rust
+/// use std::rand;
+/// use std::rand::distributions::{FisherF, IndependentSample};
+///
+/// fn main() {
+///     let f = FisherF::new(2.0, 32.0);
+///     let v = f.ind_sample(&mut rand::task_rng());
+///     println!("{} is from an F(2, 32) distribution", v)
+/// }
+/// ```
+pub struct FisherF {
+    priv numer: ChiSquared,
+    priv denom: ChiSquared,
+    // denom_dof / numer_dof so that this can just be a straight
+    // multiplication, rather than a division.
+    priv dof_ratio: f64,
+}
+
+impl FisherF {
+    /// Create a new `FisherF` distribution, with the given
+    /// parameter. Fails if either `m` or `n` are not positive.
+    pub fn new(m: f64, n: f64) -> FisherF {
+        assert!(m > 0.0, "FisherF::new called with `m < 0`");
+        assert!(n > 0.0, "FisherF::new called with `n < 0`");
+
+        FisherF {
+            numer: ChiSquared::new(m),
+            denom: ChiSquared::new(n),
+            dof_ratio: n / m
+        }
+    }
+}
+impl Sample<f64> for FisherF {
+    fn sample<R: Rng>(&mut self, rng: &mut R) -> f64 { self.ind_sample(rng) }
+}
+impl IndependentSample<f64> for FisherF {
+    fn ind_sample<R: Rng>(&self, rng: &mut R) -> f64 {
+        self.numer.ind_sample(rng) / self.denom.ind_sample(rng) * self.dof_ratio
+    }
+}
+
 #[cfg(test)]
 mod test {
     use rand::*;
@@ -263,6 +312,16 @@ mod test {
     #[should_fail]
     fn test_log_normal_invalid_dof() {
         ChiSquared::new(-1.0);
+    }
+
+    #[test]
+    fn test_f() {
+        let mut f = FisherF::new(2.0, 32.0);
+        let mut rng = task_rng();
+        for _ in range(0, 1000) {
+            f.sample(&mut rng);
+            f.ind_sample(&mut rng);
+        }
     }
 }
 
