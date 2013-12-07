@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The normal distribution.
+//! The normal and derived distributions.
 
 use rand::{Rng, Rand, Open01};
 use rand::distributions::{ziggurat, ziggurat_tables, Sample, IndependentSample};
@@ -108,6 +108,46 @@ impl IndependentSample<f64> for Normal {
     }
 }
 
+
+/// The log-normal distribution `ln N(mean, std_dev**2)`.
+///
+/// If `X` is log-normal distributed, then `ln(X)` is `N(mean,
+/// std_dev**2)` distributed.
+///
+/// # Example
+///
+/// ```rust
+/// use std::rand;
+/// use std::rand::distributions::{LogNormal, IndependentSample};
+///
+/// fn main() {
+///     // mean 2, standard deviation 3
+///     let log_normal = LogNormal::new(2.0, 3.0);
+///     let v = normal.ind_sample(&mut rand::task_rng());
+///     println!("{} is from an ln N(2, 9) distribution", v)
+/// }
+/// ```
+pub struct LogNormal {
+    priv norm: Normal
+}
+
+impl LogNormal {
+    /// Construct a new `LogNormal` distribution with the given mean
+    /// and standard deviation. Fails if `std_dev < 0`.
+    pub fn new(mean: f64, std_dev: f64) -> LogNormal {
+        assert!(std_dev >= 0.0, "LogNormal::new called with `std_dev` < 0");
+        LogNormal { norm: Normal::new(mean, std_dev) }
+    }
+}
+impl Sample<f64> for LogNormal {
+    fn sample<R: Rng>(&mut self, rng: &mut R) -> f64 { self.ind_sample(rng) }
+}
+impl IndependentSample<f64> for LogNormal {
+    fn ind_sample<R: Rng>(&self, rng: &mut R) -> f64 {
+        self.norm.ind_sample(rng).exp()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use rand::*;
@@ -128,6 +168,22 @@ mod tests {
     #[should_fail]
     fn test_normal_invalid_sd() {
         Normal::new(10.0, -1.0);
+    }
+
+
+    #[test]
+    fn test_log_normal() {
+        let mut lnorm = LogNormal::new(10.0, 10.0);
+        let mut rng = task_rng();
+        for _ in range(0, 1000) {
+            lnorm.sample(&mut rng);
+            lnorm.ind_sample(&mut rng);
+        }
+    }
+    #[test]
+    #[should_fail]
+    fn test_log_normal_invalid_sd() {
+        LogNormal::new(10.0, -1.0);
     }
 }
 
