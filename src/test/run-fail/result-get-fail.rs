@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:called `Result::unwrap()` on `Err` value 'kitty'
+// error-pattern:called `Result::unwrap()` on an `Err` value
 
 use std::result;
 

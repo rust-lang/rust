@@ -1823,7 +1823,7 @@ fn test_linker_build() {
     let workspace = workspace.path();
     let matches = getopts([], optgroups());
     let options = build_session_options(@"rustpkg",
-                                        matches.get_ref(),
+                                        matches.as_ref().unwrap(),
                                         @diagnostic::DefaultEmitter as
                                             @diagnostic::Emitter);
     let sess = build_session(options,
