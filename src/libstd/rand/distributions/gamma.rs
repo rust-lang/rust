@@ -274,6 +274,47 @@ impl IndependentSample<f64> for FisherF {
     }
 }
 
+/// The Student t distribution, `t(nu)`, where `nu` is the degrees of
+/// freedom.
+///
+/// # Example
+///
+/// ```rust
+/// use std::rand;
+/// use std::rand::distributions::{StudentT, IndependentSample};
+///
+/// fn main() {
+///     let t = StudentT::new(11.0);
+///     let v = t.ind_sample(&mut rand::task_rng());
+///     println!("{} is from a t(11) distribution", v)
+/// }
+/// ```
+pub struct StudentT {
+    priv chi: ChiSquared,
+    priv dof: f64
+}
+
+impl StudentT {
+    /// Create a new Student t distribution with `n` degrees of
+    /// freedom. Fails if `n <= 0`.
+    pub fn new(n: f64) -> StudentT {
+        assert!(n > 0.0, "StudentT::new called with `n <= 0`");
+        StudentT {
+            chi: ChiSquared::new(n),
+            dof: n
+        }
+    }
+}
+impl Sample<f64> for StudentT {
+    fn sample<R: Rng>(&mut self, rng: &mut R) -> f64 { self.ind_sample(rng) }
+}
+impl IndependentSample<f64> for StudentT {
+    fn ind_sample<R: Rng>(&self, rng: &mut R) -> f64 {
+        let norm = *rng.gen::<StandardNormal>();
+        norm * (self.dof / self.chi.ind_sample(rng)).sqrt()
+    }
+}
+
 #[cfg(test)]
 mod test {
     use rand::*;
@@ -321,6 +362,16 @@ mod test {
         for _ in range(0, 1000) {
             f.sample(&mut rng);
             f.ind_sample(&mut rng);
+        }
+    }
+
+    #[test]
+    fn test_t() {
+        let mut t = StudentT::new(11.0);
+        let mut rng = task_rng();
+        for _ in range(0, 1000) {
+            t.sample(&mut rng);
+            t.ind_sample(&mut rng);
         }
     }
 }
