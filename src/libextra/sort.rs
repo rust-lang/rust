@@ -58,8 +58,8 @@ pub fn merge_sort<T:Clone>(v: &[T], le: Le<T>) -> ~[T] {
                 b_ix += 1;
             }
         }
-        rs.push_all(a.slice(a_ix, a_len));
-        rs.push_all(b.slice(b_ix, b_len));
+        rs.push_all(a.slice(a_ix, a_len).clone_iter());
+        rs.push_all(b.slice(b_ix, b_len).clone_iter());
         rs
     }
 }

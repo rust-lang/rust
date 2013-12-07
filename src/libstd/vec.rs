@@ -316,9 +316,9 @@ impl<'a, T> Iterator<&'a [T]> for RSplitIterator<'a, T> {
 /// Iterates over the `rhs` vector, copying each element and appending it to the
 /// `lhs`. Afterwards, the `lhs` is then returned for use again.
 #[inline]
-pub fn append<T:Clone>(lhs: ~[T], rhs: &[T]) -> ~[T] {
+pub fn append<T: Clone>(lhs: ~[T], rhs: &[T]) -> ~[T] {
     let mut v = lhs;
-    v.push_all(rhs);
+    v.push_all(rhs.clone_iter());
     v
 }
 
@@ -359,7 +359,7 @@ impl<'a, T: Clone, V: Vector<T>> VectorVector<T> for &'a [V] {
         let size = self.iter().fold(0u, |acc, v| acc + v.as_slice().len());
         let mut result = with_capacity(size);
         for v in self.iter() {
-            result.push_all(v.as_slice())
+            result.push_all(v.as_slice().clone_iter());
         }
         result
     }
@@ -370,7 +370,7 @@ impl<'a, T: Clone, V: Vector<T>> VectorVector<T> for &'a [V] {
         let mut first = true;
         for v in self.iter() {
             if first { first = false } else { result.push(sep.clone()) }
-            result.push_all(v.as_slice())
+            result.push_all(v.as_slice().clone_iter());
         }
         result
     }
@@ -732,8 +732,8 @@ pub mod traits {
         #[inline]
         fn add(&self, rhs: &V) -> ~[T] {
             let mut res = with_capacity(self.len() + rhs.as_slice().len());
-            res.push_all(*self);
-            res.push_all(rhs.as_slice());
+            res.push_all(self.clone_iter());
+            res.push_all(rhs.as_slice().clone_iter());
             res
         }
     }
@@ -1289,7 +1289,7 @@ impl<'a, T: TotalOrd> ImmutableTotalOrdVector<T> for &'a [T] {
 }
 
 /// Extension methods for vectors containing `Clone` elements.
-pub trait ImmutableCopyableVector<T> {
+pub trait ImmutableCopyableVector<'a, T> {
     /// Partitions the vector into those that satisfies the predicate, and
     /// those that do not.
     fn partitioned(&self, f: |&T| -> bool) -> (~[T], ~[T]);
@@ -1297,9 +1297,12 @@ pub trait ImmutableCopyableVector<T> {
     /// Create an iterator that yields every possible permutation of the
     /// vector in succession.
     fn permutations(self) -> Permutations<T>;
+
+    /// Returns an iterator that clones the value.
+    fn clone_iter(self) -> CloneIterator<'a, T>;
 }
 
-impl<'a,T:Clone> ImmutableCopyableVector<T> for &'a [T] {
+impl<'a, T: Clone> ImmutableCopyableVector<'a, T> for &'a [T] {
     #[inline]
     fn partitioned(&self, f: |&T| -> bool) -> (~[T], ~[T]) {
         let mut lefts  = ~[];
@@ -1323,6 +1326,28 @@ impl<'a,T:Clone> ImmutableCopyableVector<T> for &'a [T] {
         }
     }
 
+    #[inline]
+    fn clone_iter(self) -> CloneIterator<'a, T> {
+        CloneIterator {
+            iter: self.iter(),
+        }
+    }
+}
+
+/// An iterator for iterating over a vector.
+pub struct CloneIterator<'a, T> {
+    priv iter: VecIterator<'a, T>,
+
+}
+
+impl<'a, T: Clone> Iterator<T> for CloneIterator<'a, T> {
+    #[inline]
+    fn next(&mut self) -> Option<T> {
+        match self.iter.next() {
+            Some(value) => Some(value.clone()),
+            None => None,
+        }
+    }
 }
 
 /// Extension methods for owned vectors.
@@ -1410,6 +1435,17 @@ pub trait OwnedVector<T> {
     /// assert!(a == ~[~1, ~2, ~3, ~4]);
     /// ```
     fn push_all_move(&mut self, rhs: ~[T]);
+    /// Iterates over the slice `rhs`, copies each element, and then appends it to
+    /// the vector provided `v`. The `rhs` vector is traversed in-order.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut a = ~[1];
+    /// a.push_all([2, 3, 4]);
+    /// assert!(a == ~[1, 2, 3, 4]);
+    /// ```
+    fn push_all<Iter: Iterator<T>>(&mut self, rhs: Iter);
     /// Remove the last element from a vector and return it, failing if it is empty
     fn pop(&mut self) -> T;
     /// Remove the last element from a vector and return it, or `None` if it is empty
@@ -1590,6 +1626,16 @@ impl<T> OwnedVector<T> for ~[T] {
             ptr::copy_memory(ptr::mut_offset(self_p, self_len as int), rhs_p, rhs_len);
             self.set_len(new_len);
             rhs.set_len(0);
+        }
+    }
+
+    #[inline]
+    fn push_all<Iter: Iterator<T>>(&mut self, mut iter: Iter) {
+        let (len, _) = iter.size_hint();
+        self.reserve_additional(len);
+
+        for elt in iter {
+            self.push(elt)
         }
     }
 
@@ -1778,18 +1824,6 @@ impl<T> Mutable for ~[T] {
 
 /// Extension methods for owned vectors containing `Clone` elements.
 pub trait OwnedCopyableVector<T:Clone> {
-    /// Iterates over the slice `rhs`, copies each element, and then appends it to
-    /// the vector provided `v`. The `rhs` vector is traversed in-order.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// let mut a = ~[1];
-    /// a.push_all([2, 3, 4]);
-    /// assert!(a == ~[1, 2, 3, 4]);
-    /// ```
-    fn push_all(&mut self, rhs: &[T]);
-
     /**
      * Expands a vector in place, initializing the new elements to a given value
      *
@@ -1812,15 +1846,6 @@ pub trait OwnedCopyableVector<T:Clone> {
 }
 
 impl<T:Clone> OwnedCopyableVector<T> for ~[T] {
-    #[inline]
-    fn push_all(&mut self, rhs: &[T]) {
-        let new_len = self.len() + rhs.len();
-        self.reserve(new_len);
-
-        for elt in rhs.iter() {
-            self.push((*elt).clone())
-        }
-    }
     fn grow(&mut self, n: uint, initval: &T) {
         let new_len = self.len() + n;
         self.reserve_at_least(new_len);
@@ -4225,6 +4250,33 @@ mod bench {
         let mut vec: ~[uint] = ~[0u];
         bh.iter(|| {
             vec.push(0);
+        })
+    }
+
+    #[bench]
+    fn push_all_clone_iter(bh: &mut BenchHarness) {
+        bh.iter(|| {
+            let mut vec: ~[uint] = ~[0u];
+            let v = vec::from_elem(100, 0);
+            vec.push_all(v.clone_iter());
+        })
+    }
+
+    #[bench]
+    fn push_all_move_iter(bh: &mut BenchHarness) {
+        bh.iter(|| {
+            let mut vec: ~[uint] = ~[0u];
+            let v = vec::from_elem(100, 0);
+            vec.push_all(v.move_iter());
+        })
+    }
+
+    #[bench]
+    fn push_all_move(bh: &mut BenchHarness) {
+        bh.iter(|| {
+            let mut vec: ~[uint] = ~[0u];
+            let v = vec::from_elem(100, 0);
+            vec.push_all_move(v);
         })
     }
 

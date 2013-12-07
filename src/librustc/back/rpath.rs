@@ -32,9 +32,9 @@ pub fn get_rpath_flags(sess: session::Session, out_filename: &Path) -> ~[~str] {
     let mut flags = ~[];
 
     if sess.targ_cfg.os == abi::OsFreebsd {
-        flags.push_all([~"-Wl,-rpath,/usr/local/lib/gcc46",
-                        ~"-Wl,-rpath,/usr/local/lib/gcc44",
-                        ~"-Wl,-z,origin"]);
+        flags.push(~"-Wl,-rpath,/usr/local/lib/gcc46");
+        flags.push(~"-Wl,-rpath,/usr/local/lib/gcc44");
+        flags.push(~"-Wl,-z,origin");
     }
 
     debug!("preparing the RPATH!");
@@ -49,7 +49,7 @@ pub fn get_rpath_flags(sess: session::Session, out_filename: &Path) -> ~[~str] {
 
     let rpaths = get_rpaths(os, sysroot, output, libs,
                             sess.opts.target_triple);
-    flags.push_all(rpaths_to_flags(rpaths));
+    flags.push_all(rpaths_to_flags(rpaths).move_iter());
     flags
 }
 
@@ -105,8 +105,8 @@ fn get_rpaths(os: abi::Os,
     log_rpaths("fallback", fallback_rpaths);
 
     let mut rpaths = rel_rpaths;
-    rpaths.push_all(abs_rpaths);
-    rpaths.push_all(fallback_rpaths);
+    rpaths.push_all(abs_rpaths.move_iter());
+    rpaths.push_all(fallback_rpaths.move_iter());
 
     // Remove duplicates
     let rpaths = minimize_rpaths(rpaths);

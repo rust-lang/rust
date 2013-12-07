@@ -117,7 +117,7 @@ impl<T:Clone> OptVec<T> {
         let mut v0 = ~[t];
         match *self {
             Empty => {}
-            Vec(ref v1) => { v0.push_all(*v1); }
+            Vec(ref v1) => { v0.push_all(v1.clone_iter()); }
         }
         return Vec(v0);
     }

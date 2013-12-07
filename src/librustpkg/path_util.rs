@@ -462,7 +462,7 @@ pub fn versionize(p: &Path, v: &Version) -> Path {
     let mut q = q.to_owned();
     q.push('-' as u8);
     let vs = v.to_str();
-    q.push_all(vs.as_bytes());
+    q.push_all(vs.into_bytes().move_iter());
     p.with_filename(q)
 }
 

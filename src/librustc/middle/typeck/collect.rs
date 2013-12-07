@@ -322,7 +322,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
         let mut new_type_param_defs = ~[];
         let substd_type_param_defs =
             trait_ty_generics.type_param_defs.subst(tcx, &substs);
-        new_type_param_defs.push_all(*substd_type_param_defs);
+        new_type_param_defs.push_all(substd_type_param_defs.clone_iter());
 
         // add in the "self" type parameter
         let self_trait_def = get_trait_def(ccx, local_def(trait_id));
@@ -338,7 +338,7 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
 
         // add in the type parameters from the method
         let substd_type_param_defs = m.generics.type_param_defs.subst(tcx, &substs);
-        new_type_param_defs.push_all(*substd_type_param_defs);
+        new_type_param_defs.push_all(substd_type_param_defs.clone_iter());
 
         debug!("static method {} type_param_defs={} ty={}, substs={}",
                m.def_id.repr(tcx),

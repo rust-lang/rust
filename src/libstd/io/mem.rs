@@ -71,7 +71,7 @@ impl Writer for MemWriter {
             vec::bytes::copy_memory(self.buf.mut_slice_from(self.pos), left);
         }
         if right.len() > 0 {
-            self.buf.push_all(right);
+            self.buf.push_all(right.clone_iter());
         }
 
         // Bump us forward

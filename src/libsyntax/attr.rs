@@ -229,7 +229,7 @@ pub fn find_linkage_metas(attrs: &[Attribute]) -> ~[@MetaItem] {
     let mut result = ~[];
     for attr in attrs.iter().filter(|at| "link" == at.name()) {
         match attr.meta().node {
-            MetaList(_, ref items) => result.push_all(*items),
+            MetaList(_, ref items) => result.push_all(items.clone_iter()),
             _ => ()
         }
     }

@@ -427,7 +427,7 @@ impl<'a> SourceCollector<'a> {
             // read everything
             loop {
                 match r.read(buf) {
-                    Some(n) => contents.push_all(buf.slice_to(n)),
+                    Some(n) => contents.push_all(buf.slice_to(n).clone_iter()),
                     None => break
                 }
             }

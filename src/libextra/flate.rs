@@ -98,6 +98,7 @@ pub fn inflate_bytes_zlib(bytes: &[u8]) -> ~[u8] {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use container::MutableSeq;
     use std::rand;
     use std::rand::Rng;
 
@@ -112,7 +113,7 @@ mod tests {
         20.times(|| {
             let mut input = ~[];
             2000.times(|| {
-                input.push_all(r.choose(words));
+                input.push_all(r.choose(words).move_iter());
             });
             debug!("de/inflate of {} bytes of random word-sequences",
                    input.len());

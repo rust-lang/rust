@@ -19,7 +19,6 @@ use super::rc::RC;
 use rt::sched::Scheduler;
 use rt::kill::BlockedTask;
 use rt::local::Local;
-use vec::OwnedVector;
 use container::Container;
 
 struct TubeState<T> {

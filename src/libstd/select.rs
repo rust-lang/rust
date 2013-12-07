@@ -134,6 +134,7 @@ pub fn select2<TA, A: SelectPort<TA>, TB, B: SelectPort<TB>>(mut a: A, mut b: B)
 #[cfg(test)]
 mod test {
     use super::*;
+    use container::MutableSeq;
     use clone::Clone;
     use num::Times;
     use option::*;

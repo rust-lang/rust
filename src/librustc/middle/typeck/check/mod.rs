@@ -957,8 +957,8 @@ pub fn compare_impl_method(tcx: ty::ctxt,
     }
 
     // Add in the normal arguments.
-    trait_fn_args.push_all(trait_m.fty.sig.inputs);
-    impl_fn_args.push_all(impl_m.fty.sig.inputs);
+    trait_fn_args.push_all(trait_m.fty.sig.inputs.clone_iter());
+    impl_fn_args.push_all(impl_m.fty.sig.inputs.clone_iter());
 
     // Create a bare fn type for trait/impl that includes self argument
     let trait_fty =

@@ -331,6 +331,7 @@ pub fn process_output(prog: &str, args: &[~str]) -> Option<ProcessOutput> {
 
 #[cfg(test)]
 mod tests {
+    use container::MutableSeq;
     use libc::c_int;
     use option::{Option, None, Some};
     use os;
@@ -433,7 +434,7 @@ mod tests {
         let mut buf = [0, ..1024];
         loop {
             match reader.read(buf) {
-                Some(n) => { res.push_all(buf.slice_to(n)); }
+                Some(n) => { res.push_all(buf.slice_to(n).clone_iter()); }
                 None => break
             }
         }

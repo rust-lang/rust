@@ -276,6 +276,7 @@ use to_str::ToStr;
 use uint;
 use unstable::finally::Finally;
 use vec::{OwnedVector, MutableVector, ImmutableVector, OwnedCopyableVector};
+use vec::ImmutableCopyableVector;
 use vec;
 
 // Reexports
@@ -1079,12 +1080,12 @@ pub trait Buffer: Reader {
                     let available = self.fill();
                     match available.iter().position(|&b| b == byte) {
                         Some(i) => {
-                            res.push_all(available.slice_to(i + 1));
+                            res.push_all(available.slice_to(i + 1).clone_iter());
                             used = i + 1;
                             break
                         }
                         None => {
-                            res.push_all(available);
+                            res.push_all(available.clone_iter());
                             used = available.len();
                         }
                     }
