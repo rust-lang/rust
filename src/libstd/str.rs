@@ -1398,12 +1398,28 @@ pub trait StrSlice<'self> {
     ///
     /// let v: ~[&str] = "abc1def2ghi".split(|c: char| c.is_digit()).collect();
     /// assert_eq!(v, ~["abc", "def", "ghi"]);
+    ///
+    /// let v: ~[&str] = "lionXXtigerXleopard".split('X').collect();
+    /// assert_eq!(v, ~["lion", "", "tiger", "leopard"]);
     /// ```
     fn split<Sep: CharEq>(&self, sep: Sep) -> CharSplitIterator<'self, Sep>;
 
     /// An iterator over substrings of `self`, separated by characters
     /// matched by `sep`, restricted to splitting at most `count`
     /// times.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let v: ~[&str] = "Mary had a little lambda".splitn(' ', 2).collect();
+    /// assert_eq!(v, ~["Mary", "had", "a little lambda"]);
+    ///
+    /// let v: ~[&str] = "abc1def2ghi".splitn(|c: char| c.is_digit(), 1).collect();
+    /// assert_eq!(v, ~["abc", "def2ghi"]);
+    ///
+    /// let v: ~[&str] = "lionXXtigerXleopard".splitn('X', 2).collect();
+    /// assert_eq!(v, ~["lion", "", "tigerXleopard"]);
+    /// ```
     fn splitn<Sep: CharEq>(&self, sep: Sep, count: uint) -> CharSplitNIterator<'self, Sep>;
 
     /// An iterator over substrings of `self`, separated by characters
@@ -1417,27 +1433,67 @@ pub trait StrSlice<'self> {
     /// ```rust
     /// let v: ~[&str] = "A.B.".split_terminator('.').collect();
     /// assert_eq!(v, ~["A", "B"]);
+    ///
+    /// let v: ~[&str] = "A..B..".split_terminator('.').collect();
+    /// assert_eq!(v, ~["A", "", "B", ""]);
     /// ```
     fn split_terminator<Sep: CharEq>(&self, sep: Sep) -> CharSplitIterator<'self, Sep>;
 
     /// An iterator over substrings of `self`, separated by characters
-    /// matched by `sep`, in reverse order
+    /// matched by `sep`, in reverse order.
     ///
     /// # Example
     ///
     /// ```rust
     /// let v: ~[&str] = "Mary had a little lamb".rsplit(' ').collect();
     /// assert_eq!(v, ~["lamb", "little", "a", "had", "Mary"]);
+    ///
+    /// let v: ~[&str] = "abc1def2ghi".rsplit(|c: char| c.is_digit()).collect();
+    /// assert_eq!(v, ~["ghi", "def", "abc"]);
+    ///
+    /// let v: ~[&str] = "lionXXtigerXleopard".rsplit('X').collect();
+    /// assert_eq!(v, ~["leopard", "tiger", "", "lion"]);
     /// ```
     fn rsplit<Sep: CharEq>(&self, sep: Sep) -> CharRSplitIterator<'self, Sep>;
 
     /// An iterator over substrings of `self`, separated by characters
     /// matched by `sep`, starting from the end of the string.
     /// Restricted to splitting at most `count` times.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let v: ~[&str] = "Mary had a little lamb".rsplitn(' ', 2).collect();
+    /// assert_eq!(v, ~["lamb", "little", "Mary had a"]);
+    ///
+    /// let v: ~[&str] = "abc1def2ghi".rsplitn(|c: char| c.is_digit(), 1).collect();
+    /// assert_eq!(v, ~["ghi", "abc1def"]);
+    ///
+    /// let v: ~[&str] = "lionXXtigerXleopard".rsplitn('X', 2).collect();
+    /// assert_eq!(v, ~["leopard", "tiger", "lionX"]);
+    /// ```
     fn rsplitn<Sep: CharEq>(&self, sep: Sep, count: uint) -> CharSplitNIterator<'self, Sep>;
 
-    /// An iterator over the start and end indices of each match of
-    /// `sep` within `self`.
+    /// An iterator over the start and end indices of the disjoint
+    /// matches of `sep` within `self`.
+    ///
+    /// That is, each returned value `(start, end)` satisfies
+    /// `self.slice(start, end) == sep`. For matches of `sep` within
+    /// `self` that overlap, only the indicies corresponding to the
+    /// first match are returned.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let v: ~[(uint, uint)] = "abcXXXabcYYYabc".match_indices("abc").collect();
+    /// assert_eq!(v, ~[(0,3), (6,9), (12,15)]);
+    ///
+    /// let v: ~[(uint, uint)] = "1abcabc2".split_str("abc").collect();
+    /// assert_eq!(v, ~[(1,4), (4,7)]);
+    ///
+    /// let v: ~[(uint, uint)] = "ababa".split_str("aba").collect();
+    /// assert_eq!(v, ~[(0, 3)]); // only the first `aba`
+    /// ```
     fn match_indices(&self, sep: &'self str) -> MatchesIndexIterator<'self>;
 
     /// An iterator over the substrings of `self` separated by `sep`.
@@ -1445,67 +1501,198 @@ pub trait StrSlice<'self> {
     /// # Example
     ///
     /// ```rust
-    /// let v: ~[&str] = "abcXXXabcYYYabc".split_str("abc").collect()
-    /// assert_eq!(v, ["", "XXX", "YYY", ""]);
+    /// let v: ~[&str] = "abcXXXabcYYYabc".split_str("abc").collect();
+    /// assert_eq!(v, ~["", "XXX", "YYY", ""]);
+    ///
+    /// let v: ~[&str] = "1abcabc2".split_str("abc").collect();
+    /// assert_eq!(v, ~["1", "", "2"]);
     /// ```
     fn split_str(&self, &'self str) -> StrSplitIterator<'self>;
 
     /// An iterator over the lines of a string (subsequences separated
-    /// by `\n`).
+    /// by `\n`). This does not include the empty string after a
+    /// trailing `\n`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let four_lines = "foo\nbar\n\nbaz\n";
+    /// let v: ~[&str] = four_lines.lines().collect();
+    /// assert_eq!(v, ~["foo", "bar", "", "baz"]);
+    /// ```
     fn lines(&self) -> CharSplitIterator<'self, char>;
 
     /// An iterator over the lines of a string, separated by either
-    /// `\n` or (`\r\n`).
+    /// `\n` or `\r\n`. As with `.lines()`, this does not include an
+    /// empty trailing line.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let four_lines = "foo\r\nbar\n\r\nbaz\n";
+    /// let v: ~[&str] = four_lines.lines_any().collect();
+    /// assert_eq!(v, ~["foo", "bar", "", "baz"]);
+    /// ```
     fn lines_any(&self) -> AnyLineIterator<'self>;
 
     /// An iterator over the words of a string (subsequences separated
-    /// by any sequence of whitespace).
+    /// by any sequence of whitespace). Sequences of whitespace are
+    /// collapsed, so empty "words" are not included.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let some_words = " Mary   had\ta little  \n\t lamb";
+    /// let v: ~[&str] = some_words.words().collect();
+    /// assert_eq!(v, ~["Mary", "had", "a", "little", "lamb"]);
+    /// ```
     fn words(&self) -> WordIterator<'self>;
 
-    /// An Iterator over the string in Unicode Normalization Form D (canonical decomposition)
+    /// An Iterator over the string in Unicode Normalization Form D
+    /// (canonical decomposition).
     fn nfd_chars(&self) -> NormalizationIterator<'self>;
 
-    /// An Iterator over the string in Unicode Normalization Form KD (compatibility decomposition)
+    /// An Iterator over the string in Unicode Normalization Form KD
+    /// (compatibility decomposition).
     fn nfkd_chars(&self) -> NormalizationIterator<'self>;
 
-    /// Returns true if the string contains only whitespace
+    /// Returns true if the string contains only whitespace.
     ///
-    /// Whitespace characters are determined by `char::is_whitespace`
+    /// Whitespace characters are determined by `char::is_whitespace`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// assert!(" \t\n".is_whitespace());
+    /// assert!("".is_whitespace());
+    ///
+    /// assert!( !"abc.is_whitespace());
+    /// ```
     fn is_whitespace(&self) -> bool;
 
-    /// Returns true if the string contains only alphanumerics
+    /// Returns true if the string contains only alphanumerics.
     ///
-    /// Alphanumeric characters are determined by `char::is_alphanumeric`
+    /// Alphanumeric characters are determined by `char::is_alphanumeric`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// assert!("Löwe老虎Léopard123".is_alphanumeric());
+    /// assert!("".is_alphanumeric());
+    ///
+    /// assert!( !" &*~".is_alphanumeric());
+    /// ```
     fn is_alphanumeric(&self) -> bool;
 
-    /// Returns the number of characters that a string holds
+    /// Returns the number of Unicode code points (`char`) that a
+    /// string holds.
+    ///
+    /// This does not perform any normalization, and is `O(n)`, since
+    /// UTF-8 is a variable width encoding of code points.
+    ///
+    /// *Warning*: The number of code points in a string does not directly
+    /// correspond to the number of visible characters or width of the
+    /// visible text due to composing characters, and double- and
+    /// zero-width ones.
+    ///
+    /// See also `.len()` for the byte length.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// // composed forms of `ö` and `é`
+    /// let c = "Löwe 老虎 Léopard"; // German, Simplified Chinese, French
+    /// // decomposed forms of `ö` and `é`
+    /// let d = "Lo\u0308we 老虎 Le\u0301opard";
+    ///
+    /// assert_eq!(c.char_len(), 15);
+    /// assert_eq!(d.char_len(), 17);
+    ///
+    /// assert_eq!(c.len(), 21);
+    /// assert_eq!(d.len(), 23);
+    ///
+    /// // the two strings *look* the same
+    /// println(c);
+    /// println(d);
+    /// ```
     fn char_len(&self) -> uint;
 
     /// Returns a slice of the given string from the byte range
-    /// [`begin`..`end`)
+    /// [`begin`..`end`).
     ///
-    /// Fails when `begin` and `end` do not point to valid characters or
-    /// beyond the last character of the string
+    /// This operation is `O(1)`.
+    ///
+    /// Fails when `begin` and `end` do not point to valid characters
+    /// or point beyond the last character of the string.
+    ///
+    /// See also `slice_to` and `slice_from` for slicing prefixes and
+    /// suffixes of strings, and `slice_chars` for slicing based on
+    /// code point counts.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let s = "Löwe 老虎 Léopard";
+    /// assert_eq!(s.slice(0, 1), "L");
+    ///
+    /// assert_eq!(s.slice(1, 9), "öwe 老"));
+    ///
+    /// // these will fail:
+    /// // byte 2 lies within `ö`:
+    /// // s.slice(2, 3);
+    ///
+    /// // byte 8 lies within `老`
+    /// // s.slice(1, 8);
+    ///
+    /// // byte 100 is outside the string
+    /// // s.slice(3, 100);
+    /// ```
     fn slice(&self, begin: uint, end: uint) -> &'self str;
 
     /// Returns a slice of the string from `begin` to its end.
     ///
+    /// Equivalent to `self.slice(begin, self.len())`.
+    ///
     /// Fails when `begin` does not point to a valid character, or is
     /// out of bounds.
+    ///
+    /// See also `slice`, `slice_to` and `slice_chars`.
     fn slice_from(&self, begin: uint) -> &'self str;
 
     /// Returns a slice of the string from the beginning to byte
     /// `end`.
     ///
+    /// Equivalent to `self.slice(0, end)`.
+    ///
     /// Fails when `end` does not point to a valid character, or is
     /// out of bounds.
+    ///
+    /// See also `slice`, `slice_from` and `slice_chars`.
     fn slice_to(&self, end: uint) -> &'self str;
 
-    /// Returns a slice of the string from the char range
+    /// Returns a slice of the string from the character range
     /// [`begin`..`end`).
+    ///
+    /// That is, start at the `begin`-th code point of the string and
+    /// continue to the `end`-th code point. This does not detect or
+    /// handle edge cases such as leaving a combining character as the
+    /// first code point of the string.
+    ///
+    /// Due to the design of UTF-8, this operation is `O(end -
+    /// begin)`. See `slice`, `slice_to` and `slice_from` for `O(1)`
+    /// variants that use byte indices rather than code point
+    /// indices.
     ///
     /// Fails if `begin` > `end` or the either `begin` or `end` are
     /// beyond the last character of the string.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let s = "Löwe 老虎 Léopard";
+    /// assert_eq!(s.slice_chars(0, 4), "Löwe");
+    /// assert_eq!(s.slice_chars(6, 8), "老虎");
+    /// ```
     fn slice_chars(&self, begin: uint, end: uint) -> &'self str;
 
     /// Returns true if `needle` is a prefix of the string.
@@ -1514,19 +1701,19 @@ pub trait StrSlice<'self> {
     /// Returns true if `needle` is a suffix of the string.
     fn ends_with(&self, needle: &str) -> bool;
 
-    /// Escape each char in `s` with char::escape_default.
+    /// Escape each char in `s` with `char::escape_default`.
     fn escape_default(&self) -> ~str;
 
-    /// Escape each char in `s` with char::escape_unicode.
+    /// Escape each char in `s` with `char::escape_unicode`.
     fn escape_unicode(&self) -> ~str;
 
-    /// Returns a string with leading and trailing whitespace removed
+    /// Returns a string with leading and trailing whitespace removed.
     fn trim(&self) -> &'self str;
 
-    /// Returns a string with leading whitespace removed
+    /// Returns a string with leading whitespace removed.
     fn trim_left(&self) -> &'self str;
 
-    /// Returns a string with trailing whitespace removed
+    /// Returns a string with trailing whitespace removed.
     fn trim_right(&self) -> &'self str;
 
     /// Returns a string with characters that match `to_trim` removed.
@@ -1574,32 +1761,67 @@ pub trait StrSlice<'self> {
     /// ```
     fn trim_right_chars<C: CharEq>(&self, to_trim: &C) -> &'self str;
 
-    /// Replace all occurrences of one string with another
+    /// Replace all occurrences of one string with another.
     ///
     /// # Arguments
     ///
-    /// * from - The string to replace
-    /// * to - The replacement string
+    /// * `from` - The string to replace
+    /// * `to` - The replacement string
     ///
     /// # Return value
     ///
-    /// The original string with all occurances of `from` replaced with `to`
+    /// The original string with all occurances of `from` replaced with `to`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let s = ~"Do you know the muffin man,
+    /// The muffin man, the muffin man, ...";
+    ///
+    /// assert_eq!(s.replace("muffin man", "little lamb"),
+    ///            ~"Do you know the little lamb,
+    /// The little lamb, the little lamb, ...");
+    ///
+    /// // not found, so no change.
+    /// assert_eq!(s.replace("cookie monster", "little lamb"), s);
+    /// ```
     fn replace(&self, from: &str, to: &str) -> ~str;
 
-    /// Copy a slice into a new owned str
+    /// Copy a slice into a new owned str.
     fn to_owned(&self) -> ~str;
 
-    /// Copy a slice into a new managed str
+    /// Copy a slice into a new managed str.
     fn to_managed(&self) -> @str;
 
     /// Converts to a vector of `u16` encoded as UTF-16.
     fn to_utf16(&self) -> ~[u16];
 
-    /// Copy a slice into a new `SendStr`
+    /// Copy a slice into a new `SendStr`.
     fn to_send_str(&self) -> SendStr;
 
-    /// Returns false if the index points into the middle of a multi-byte
-    /// character sequence.
+    /// Check that `index`-th byte lies at the start and/or end of a
+    /// UTF-8 code point sequence.
+    ///
+    /// The start and end of the string (when `index == self.len()`)
+    /// are considered to be boundaries.
+    ///
+    /// Fails if `index` is greater than `self.len()`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let s = "Löwe 老虎 Léopard";
+    /// assert!(s.is_char_boundary(0));
+    /// // start of `老`
+    /// assert!(s.is_char_boundary(6));
+    /// assert!(s.is_char_boundary(s.len()));
+    ///
+    /// // second byte of `ö`
+    /// assert!(!s.is_char_boundary(2));
+    ///
+    /// // third byte of `老`
+    /// assert!(!s.is_char_boundary(8));
+    /// ```
     fn is_char_boundary(&self, index: uint) -> bool;
 
     /// Pluck a character out of a string and return the index of the next
@@ -1610,9 +1832,13 @@ pub trait StrSlice<'self> {
     ///
     /// # Example
     ///
+    /// This example manually iterate through the characters of a
+    /// string; this should normally by done by `.chars()` or
+    /// `.char_indices`.
+    ///
     /// ```rust
     /// let s = "中华Việt Nam";
-    /// let i = 0u;
+    /// let mut i = 0u;
     /// while i < s.len() {
     ///     let CharRange {ch, next} = s.char_range_at(i);
     ///     println!("{}: {}", i, ch);
@@ -1620,7 +1846,7 @@ pub trait StrSlice<'self> {
     /// }
     /// ```
     ///
-    /// # Example output
+    /// ## Output
     ///
     /// ```
     /// 0: 中
@@ -1667,20 +1893,52 @@ pub trait StrSlice<'self> {
     /// Work with the byte buffer of a string as a byte slice.
     fn as_bytes(&self) -> &'self [u8];
 
-    /// Returns the byte index of the first character of `self` that matches `search`
+    /// Returns the byte index of the first character of `self` that
+    /// matches `search`.
     ///
     /// # Return value
     ///
     /// `Some` containing the byte index of the last matching character
     /// or `None` if there is no match
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let s = "Löwe 老虎 Léopard";
+    ///
+    /// assert_eq!(s.find('L'), Some(0));
+    /// assert_eq!(s.find('é'), Some(14));
+    ///
+    /// // the first space
+    /// assert_eq!(s.find(|c: char| c.is_whitespace()), Some(5));
+    ///
+    /// // neither are found
+    /// assert_eq!(s.find(&['1', '2']), None);
+    /// ```
     fn find<C: CharEq>(&self, search: C) -> Option<uint>;
 
-    /// Returns the byte index of the last character of `self` that matches `search`
+    /// Returns the byte index of the last character of `self` that
+    /// matches `search`.
     ///
     /// # Return value
     ///
     /// `Some` containing the byte index of the last matching character
-    /// or `None` if there is no match
+    /// or `None` if there is no match.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let s = "Löwe 老虎 Léopard";
+    ///
+    /// assert_eq!(s.rfind('L'), Some(13));
+    /// assert_eq!(s.rfind('é'), Some(14));
+    ///
+    /// // the second space
+    /// assert_eq!(s.rfind(|c: char| c.is_whitespace()), Some(12));
+    ///
+    /// // searches for an occurrence of either `1` or `2`, but neither are found
+    /// assert_eq!(s.rfind(&['1', '2']), None);
+    /// ```
     fn rfind<C: CharEq>(&self, search: C) -> Option<uint>;
 
     /// Returns the byte index of the first matching substring
@@ -1692,7 +1950,16 @@ pub trait StrSlice<'self> {
     /// # Return value
     ///
     /// `Some` containing the byte index of the first matching substring
-    /// or `None` if there is no match
+    /// or `None` if there is no match.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let s = "Löwe 老虎 Léopard";
+    ///
+    /// assert_eq!(s.find_str("老虎 L"), Some(6));
+    /// assert_eq!(s.find_str("muffin man"), None);
+    /// ```
     fn find_str(&self, &str) -> Option<uint>;
 
     /// Given a string, make a new string with repeated copies of it.
@@ -1705,7 +1972,20 @@ pub trait StrSlice<'self> {
     ///
     /// # Failure
     ///
-    /// If the string does not contain any characters
+    /// If the string does not contain any characters.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let s = "Löwe 老虎 Léopard";
+    /// let (c, s1) = s.shift_slice_char();
+    /// assert_eq!(c, 'L');
+    /// assert_eq!(s1, "öwe 老虎 Léopard");
+    ///
+    /// let (c, s2) = s1.shift_slice_char();
+    /// assert_eq!(c, 'ö');
+    /// assert_eq!(s2, "we 老虎 Léopard");
+    /// ```
     fn slice_shift_char(&self) -> (char, &'self str);
 
     /// Levenshtein Distance between two strings.
@@ -1719,8 +1999,7 @@ pub trait StrSlice<'self> {
     ///
     /// ```rust
     /// let string = "a\nb\nc";
-    /// let mut lines = ~[];
-    /// for line in string.lines() { lines.push(line) }
+    /// let lines: ~[&str] = string.lines().collect();
     ///
     /// assert!(string.subslice_offset(lines[0]) == 0); // &"a"
     /// assert!(string.subslice_offset(lines[1]) == 2); // &"b"
