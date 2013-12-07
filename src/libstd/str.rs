@@ -2320,8 +2320,10 @@ impl<'a> StrSlice<'a> for &'a str {
     }
 
     fn to_utf16(&self) -> ~[u16] {
-        let mut u = ~[];
-        for ch in self.chars() {
+        let mut iter = self.chars();
+        let (len, _) = iter.size_hint();
+        let mut u = vec::with_capacity(len);
+        for ch in iter {
             // Arithmetic with u32 literals is easier on the eyes than chars.
             let mut ch = ch as u32;
 
