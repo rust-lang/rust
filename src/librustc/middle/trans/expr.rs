@@ -1293,7 +1293,7 @@ fn trans_adt(bcx: @mut Block, repr: &adt::Repr, discr: ty::Disr,
     adt::trans_start_init(bcx, repr, addr, discr);
     for &(i, e) in fields.iter() {
         let dest = adt::trans_field_ptr(bcx, repr, addr, discr, i);
-        let e_ty = expr_ty(bcx, e);
+        let e_ty = expr_ty_adjusted(bcx, e);
         bcx = trans_into(bcx, e, SaveIn(dest));
         add_clean_temp_mem(bcx, dest, e_ty);
         temp_cleanups.push(dest);
