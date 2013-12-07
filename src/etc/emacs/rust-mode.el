@@ -84,7 +84,7 @@
               ;;    or one further indent from that if either current line
               ;;    begins with 'else', or previous line didn't end in
               ;;    semi, comma or brace (other than whitespace and line
-              ;;    comments) , and wasn't an attribute.  But if we have 
+              ;;    comments) , and wasn't an attribute.  But if we have
               ;;    something after the open brace and ending with a comma,
               ;;    treat it as fields and align them.  PHEW.
               ((> level 0)
@@ -213,15 +213,15 @@
 
 (defun rust-fill-prefix-for-comment-start (line-start)
   "Determine what to use for `fill-prefix' based on what is at the beginning of a line."
-  (let ((result 
+  (let ((result
          ;; Replace /* with same number of spaces
          (replace-regexp-in-string
-          "\\(?:/\\*+\\)[!*]" 
+          "\\(?:/\\*+\\)[!*]"
           (lambda (s)
             ;; We want the * to line up with the first * of the comment start
             (concat (make-string (- (length s) 2) ?\x20) "*"))
           line-start)))
-       ;; Make sure we've got at least one space at the end
+    ;; Make sure we've got at least one space at the end
     (if (not (= (aref result (- (length result) 1)) ?\x20))
         (setq result (concat result " ")))
     result))
@@ -247,14 +247,14 @@
     ;; inferring it from the comment start.
     (let ((next-bol (line-beginning-position 2)))
       (while (save-excursion
-              (end-of-line)
-              (syntax-ppss-flush-cache 1)
-              (and (nth 4 (syntax-ppss))
-                   (save-excursion 
-                     (beginning-of-line)
-                     (looking-at paragraph-start))
-                   (looking-at "[[:space:]]*$")
-                   (nth 4 (syntax-ppss next-bol))))
+               (end-of-line)
+               (syntax-ppss-flush-cache 1)
+               (and (nth 4 (syntax-ppss))
+                    (save-excursion
+                      (beginning-of-line)
+                      (looking-at paragraph-start))
+                    (looking-at "[[:space:]]*$")
+                    (nth 4 (syntax-ppss next-bol))))
         (goto-char next-bol)))
 
     (syntax-ppss-flush-cache 1)
@@ -269,10 +269,10 @@
 
 (defun rust-with-comment-fill-prefix (body)
   (let*
-      ((line-string (buffer-substring-no-properties 
+      ((line-string (buffer-substring-no-properties
                      (line-beginning-position) (line-end-position)))
        (line-comment-start
-        (when (nth 4 (syntax-ppss)) 
+        (when (nth 4 (syntax-ppss))
           (cond
            ;; If we're inside the comment and see a * prefix, use it
            ((string-match "^\\([[:space:]]*\\*+[[:space:]]*\\)"
@@ -281,9 +281,9 @@
            ;; If we're at the start of a comment, figure out what prefix
            ;; to use for the subsequent lines after it
            ((string-match (concat "[[:space:]]*" comment-start-skip) line-string)
-            (rust-fill-prefix-for-comment-start 
+            (rust-fill-prefix-for-comment-start
              (match-string 0 line-string))))))
-       (fill-prefix 
+       (fill-prefix
         (or line-comment-start
             fill-prefix)))
     (funcall body)))
@@ -294,7 +294,7 @@
 (defun rust-fill-paragraph (&rest args)
   "Special wrapping for `fill-paragraph' to handle multi-line comments with a * prefix on each line."
   (rust-in-comment-paragraph
-   (lambda () 
+   (lambda ()
      (rust-with-comment-fill-prefix
       (lambda ()
         (let
@@ -320,6 +320,20 @@
 (defun rust-comment-indent-new-line (&optional arg)
   (rust-with-comment-fill-prefix
    (lambda () (comment-indent-new-line arg))))
+
+;;; Imenu support
+(defvar rust-imenu-generic-expression
+  (append (loop for item in
+                '("enum" "struct" "type" "mod" "fn")
+                collect `(nil ,(rust-re-item-def item) 1))
+          `(("Impl" ,(rust-re-item-def "impl") 1)))
+  "Value for `imenu-generic-expression' in Rust mode.
+
+Create a flat index of the item definitions in a Rust file.
+
+Imenu will show all the enums, structs, etc. at the same level.
+Implementations will be shown under the `Impl` subheading.
+Use idomenu (imenu with ido-mode) for best mileage.")
 
 ;; For compatibility with Emacs < 24, derive conditionally
 (defalias 'rust-parent-mode
@@ -348,7 +362,7 @@
   (set (make-local-variable 'indent-tabs-mode) nil)
 
   ;; Allow paragraph fills for comments
-  (set (make-local-variable 'comment-start-skip) 
+  (set (make-local-variable 'comment-start-skip)
        "\\(?://[/!]*\\|/\\*[*!]?\\)[[:space:]]*")
   (set (make-local-variable 'paragraph-start)
        (concat "[[:space:]]*\\(?:" comment-start-skip "\\|\\*/?[[:space:]]*\\|\\)$"))
@@ -359,6 +373,7 @@
   (set (make-local-variable 'adaptive-fill-function) 'rust-find-fill-prefix)
   (set (make-local-variable 'comment-multi-line) t)
   (set (make-local-variable 'comment-line-break-function) 'rust-comment-indent-new-line)
+  (set (make-local-variable 'imenu-generic-expression) rust-imenu-generic-expression)
   )
 
 
