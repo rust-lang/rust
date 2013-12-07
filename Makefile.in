@@ -134,10 +134,13 @@ endif
 # static copies of libstd and libextra. We also generate dynamic versions of all
 # libraries, so in the interest of space, prefer dynamic linking throughout the
 # compilation process.
+#
+# Note though that these flags are omitted for stage2+. This means that the
+# snapshot will be generated with a statically linked rustc so we only have to
+# worry about the distribution of one file (with its native dynamic
+# dependencies)
 RUSTFLAGS_STAGE0 += -Z prefer-dynamic
 RUSTFLAGS_STAGE1 += -Z prefer-dynamic
-RUSTFLAGS_STAGE2 += -Z prefer-dynamic
-RUSTFLAGS_STAGE3 += -Z prefer-dynamic
 
 # platform-specific auto-configuration
 include $(CFG_SRC_DIR)mk/platform.mk
@@ -224,7 +227,7 @@ GENERATED :=
 define DEF_LIBS
 
 CFG_RUNTIME_$(1) :=$(call CFG_STATIC_LIB_NAME_$(1),rustrt)
-CFG_RUSTLLVM_$(1) :=$(call CFG_LIB_NAME_$(1),rustllvm)
+CFG_RUSTLLVM_$(1) :=$(call CFG_STATIC_LIB_NAME_$(1),rustllvm)
 CFG_STDLIB_$(1) :=$(call CFG_LIB_NAME_$(1),std)
 CFG_EXTRALIB_$(1) :=$(call CFG_LIB_NAME_$(1),extra)
 CFG_LIBRUSTC_$(1) :=$(call CFG_LIB_NAME_$(1),rustc)
@@ -251,6 +254,8 @@ LIBRUSTUV_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),rustuv)
 EXTRALIB_RGLOB_$(1) :=$(call CFG_RLIB_GLOB,extra)
 STDLIB_RGLOB_$(1) :=$(call CFG_RLIB_GLOB,std)
 LIBRUSTUV_RGLOB_$(1) :=$(call CFG_RLIB_GLOB,rustuv)
+LIBSYNTAX_RGLOB_$(1) :=$(call CFG_RLIB_GLOB,syntax)
+LIBRUSTC_RGLOB_$(1) :=$(call CFG_RLIB_GLOB,rustc)
 
 endef
 
@@ -428,8 +433,6 @@ TLIBRUSTUV_DEFAULT$(1)_T_$(2)_H_$(3) = \
 # Preqrequisites for using the stageN compiler
 HSREQ$(1)_H_$(3) = \
 	$$(HBIN$(1)_H_$(3))/rustc$$(X_$(3)) \
-	$$(HLIB$(1)_H_$(3))/$(CFG_RUNTIME_$(3)) \
-	$$(HLIB$(1)_H_$(3))/$(CFG_RUSTLLVM_$(3)) \
 	$$(HSTDLIB_DEFAULT$(1)_H_$(3)) \
 	$$(HEXTRALIB_DEFAULT$(1)_H_$(3)) \
 	$$(HLIBSYNTAX_DEFAULT$(1)_H_$(3)) \

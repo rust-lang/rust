@@ -32,13 +32,9 @@ RUSTLLVM_INCS_$(1) = $$(LLVM_EXTRA_INCDIRS_$(1)) \
 RUSTLLVM_OBJS_OBJS_$(1) := $$(RUSTLLVM_OBJS_CS_$(1):rustllvm/%.cpp=$(1)/rustllvm/%.o)
 ALL_OBJ_FILES += $$(RUSTLLVM_OBJS_OBJS_$(1))
 
-$(1)/rustllvm/$(CFG_RUSTLLVM_$(1)): $$(RUSTLLVM_OBJS_OBJS_$(1)) \
-                          $$(MKFILE_DEPS) $$(RUSTLLVM_DEF_$(1))
+$(1)/rustllvm/$(CFG_RUSTLLVM_$(1)): $$(RUSTLLVM_OBJS_OBJS_$(1))
 	@$$(call E, link: $$@)
-	$$(Q)$$(call CFG_LINK_CXX_$(1),$$@,$$(RUSTLLVM_OBJS_OBJS_$(1)) \
-	  $$(CFG_GCCISH_PRE_LIB_FLAGS_$(1)) $$(LLVM_LIBS_$(1)) \
-          $$(CFG_GCCISH_POST_LIB_FLAGS_$(1)) \
-          $$(LLVM_LDFLAGS_$(1)),$$(RUSTLLVM_DEF_$(1)),$$(CFG_RUSTLLVM_$(1)))
+	$$(Q)$$(AR_$(1)) rcs $$@ $$(RUSTLLVM_OBJS_OBJS_$(1))
 
 $(1)/rustllvm/%.o: rustllvm/%.cpp $$(MKFILE_DEPS) $$(LLVM_CONFIG_$(1))
 	@$$(call E, compile: $$@)
