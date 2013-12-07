@@ -20,6 +20,8 @@ pub fn expand_deriving_iter_bytes(cx: @ExtCtxt,
                                   mitem: @MetaItem,
                                   in_items: ~[@item]) -> ~[@item] {
     let trait_def = TraitDef {
+        cx: cx, span: span,
+
         path: Path::new(~["std", "to_bytes", "IterBytes"]),
         additional_bounds: ~[],
         generics: LifetimeBounds::empty(),
@@ -40,7 +42,7 @@ pub fn expand_deriving_iter_bytes(cx: @ExtCtxt,
         ]
     };
 
-    trait_def.expand(cx, span, mitem, in_items)
+    trait_def.expand(mitem, in_items)
 }
 
 fn iter_bytes_substructure(cx: @ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
