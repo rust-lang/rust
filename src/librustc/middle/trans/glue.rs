@@ -274,8 +274,7 @@ pub fn call_tydesc_glue_full(bcx: @mut Block,
     let ccx = bcx.ccx();
     // NB: Don't short-circuit even if this block is unreachable because
     // GC-based cleanup needs to the see that the roots are live.
-    let no_lpads =
-        ccx.sess.opts.debugging_opts & session::no_landing_pads != 0;
+    let no_lpads = ccx.sess.opts.debugging_opts & session::no_landing_pads != 0;
     if bcx.unreachable && !no_lpads { return; }
 
     let static_glue_fn = match static_ti {
