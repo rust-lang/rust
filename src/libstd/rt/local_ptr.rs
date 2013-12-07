@@ -48,6 +48,7 @@ pub unsafe fn borrow<T>(f: |&mut T|) {
 /// it wherever possible.
 #[cfg(not(windows), not(target_os = "android"))]
 pub mod compiled {
+    #[cfg(not(test))]
     use libc::c_void;
     use cast;
     use option::{Option, Some, None};

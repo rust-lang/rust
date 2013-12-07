@@ -64,7 +64,7 @@ fn test_rm_tempdir() {
         let f: proc() -> TempDir = proc() {
             TempDir::new("test_rm_tempdir").unwrap()
         };
-        let tmp = task::try(f).expect("test_rm_tmdir");
+        let tmp = task::try(f).ok().expect("test_rm_tmdir");
         path = tmp.path().clone();
         assert!(path.exists());
     }
