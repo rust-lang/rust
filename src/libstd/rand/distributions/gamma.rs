@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The Gamma distribution.
+//! The Gamma and derived distributions.
 
 use rand::{Rng, Open01};
 use super::{IndependentSample, Sample, Exp};
@@ -166,6 +166,103 @@ impl IndependentSample<f64> for GammaLargeShape {
                 return self.d * v * self.scale
             }
         }
+    }
+}
+
+/// The chi-squared distribution `χ²(k)`, where `k` is the degrees of
+/// freedom.
+///
+/// For `k > 0` integral, this distribution is the sum of the squares
+/// of `k` independent standard normal random variables. For other
+/// `k`, this uses the equivalent characterisation `χ²(k) = Gamma(k/2,
+/// 2)`.
+///
+/// # Example
+///
+/// ```rust
+/// use std::rand;
+/// use std::rand::distributions::{ChiSquared, IndependentSample};
+///
+/// fn main() {
+///     let chi = ChiSquared::new(11.0);
+///     let v = chi.ind_sample(&mut rand::task_rng());
+///     println!("{} is from a χ²(11) distribution", v)
+/// }
+/// ```
+pub enum ChiSquared {
+    // k == 1, Gamma(alpha, ..) is particularly slow for alpha < 1,
+    // e.g. when alpha = 1/2 as it would be for this case, so special-
+    // casing and using the definition of N(0,1)^2 is faster.
+    priv DoFExactlyOne,
+    priv DoFAnythingElse(Gamma)
+}
+
+impl ChiSquared {
+    /// Create a new chi-squared distribution with degrees-of-freedom
+    /// `k`. Fails if `k < 0`.
+    pub fn new(k: f64) -> ChiSquared {
+        if k == 1.0 {
+            DoFExactlyOne
+        } else {
+            assert!(k > 0.0, "ChiSquared::new called with `k` < 0");
+            DoFAnythingElse(Gamma::new(0.5 * k, 2.0))
+        }
+    }
+}
+impl Sample<f64> for ChiSquared {
+    fn sample<R: Rng>(&mut self, rng: &mut R) -> f64 { self.ind_sample(rng) }
+}
+impl IndependentSample<f64> for ChiSquared {
+    fn ind_sample<R: Rng>(&self, rng: &mut R) -> f64 {
+        match *self {
+            DoFExactlyOne => {
+                // k == 1 => N(0,1)^2
+                let norm = *rng.gen::<StandardNormal>();
+                norm * norm
+            }
+            DoFAnythingElse(ref g) => g.ind_sample(rng)
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use rand::*;
+    use super::*;
+    use iter::range;
+    use option::{Some, None};
+
+    #[test]
+    fn test_chi_squared_one() {
+        let mut chi = ChiSquared::new(1.0);
+        let mut rng = task_rng();
+        for _ in range(0, 1000) {
+            chi.sample(&mut rng);
+            chi.ind_sample(&mut rng);
+        }
+    }
+    #[test]
+    fn test_chi_squared_small() {
+        let mut chi = ChiSquared::new(0.5);
+        let mut rng = task_rng();
+        for _ in range(0, 1000) {
+            chi.sample(&mut rng);
+            chi.ind_sample(&mut rng);
+        }
+    }
+    #[test]
+    fn test_chi_squared_large() {
+        let mut chi = ChiSquared::new(30.0);
+        let mut rng = task_rng();
+        for _ in range(0, 1000) {
+            chi.sample(&mut rng);
+            chi.ind_sample(&mut rng);
+        }
+    }
+    #[test]
+    #[should_fail]
+    fn test_log_normal_invalid_dof() {
+        ChiSquared::new(-1.0);
     }
 }
 
