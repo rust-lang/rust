@@ -24,6 +24,8 @@ pub fn expand_deriving_decodable(cx: @ExtCtxt,
                                  mitem: @MetaItem,
                                  in_items: ~[@item]) -> ~[@item] {
     let trait_def = TraitDef {
+        cx: cx, span: span,
+
         path: Path::new_(~["extra", "serialize", "Decodable"], None,
                          ~[~Literal(Path::new_local("__D"))], true),
         additional_bounds: ~[],
@@ -46,7 +48,7 @@ pub fn expand_deriving_decodable(cx: @ExtCtxt,
         ]
     };
 
-    trait_def.expand(cx, span, mitem, in_items)
+    trait_def.expand(mitem, in_items)
 }
 
 fn decodable_substructure(cx: @ExtCtxt, span: Span,

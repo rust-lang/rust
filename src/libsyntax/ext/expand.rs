@@ -18,7 +18,7 @@ use ext::build::AstBuilder;
 use attr;
 use attr::AttrMetaMethods;
 use codemap;
-use codemap::{Span, Spanned, ExpnInfo, NameAndSpan};
+use codemap::{Span, Spanned, ExpnInfo, NameAndSpan, MacroBang, MacroAttribute};
 use ext::base::*;
 use fold::*;
 use opt_vec;
@@ -69,6 +69,7 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
                                 call_site: e.span,
                                 callee: NameAndSpan {
                                     name: extnamestr,
+                                    format: MacroBang,
                                     span: exp_span,
                                 },
                             });
@@ -257,6 +258,7 @@ pub fn expand_mod_items(extsbox: @mut SyntaxEnv,
                       call_site: attr.span,
                       callee: NameAndSpan {
                           name: mname,
+                          format: MacroAttribute,
                           span: None
                       }
                   });
@@ -352,6 +354,7 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
                 call_site: it.span,
                 callee: NameAndSpan {
                     name: extnamestr,
+                    format: MacroBang,
                     span: span
                 }
             });
@@ -370,6 +373,7 @@ pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
                 call_site: it.span,
                 callee: NameAndSpan {
                     name: extnamestr,
+                    format: MacroBang,
                     span: span
                 }
             });
@@ -459,6 +463,7 @@ pub fn expand_stmt(extsbox: @mut SyntaxEnv,
                 call_site: s.span,
                 callee: NameAndSpan {
                     name: extnamestr,
+                    format: MacroBang,
                     span: exp_span,
                 }
             });
