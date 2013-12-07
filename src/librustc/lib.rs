@@ -17,6 +17,7 @@
 #[comment = "The Rust compiler"];
 #[license = "MIT/ASL2"];
 #[crate_type = "dylib"];
+#[crate_type = "rlib"];
 
 #[feature(macro_rules, globs, struct_variant, managed_boxes)];
 
@@ -110,6 +111,7 @@ pub mod util {
 
 pub mod lib {
     pub mod llvm;
+    pub mod llvmdeps;
 }
 
 // A curious inner module that allows ::std::foo to be available in here for
