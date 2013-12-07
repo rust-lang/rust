@@ -27,7 +27,7 @@ use rand::{Rng, Rand};
 use clone::Clone;
 
 pub use self::range::Range;
-pub use self::gamma::{Gamma, ChiSquared, FisherF};
+pub use self::gamma::{Gamma, ChiSquared, FisherF, StudentT};
 pub use self::normal::{Normal, LogNormal};
 pub use self::exponential::Exp;
 
