@@ -35,6 +35,8 @@ pub fn expand_deriving_ord(cx: @ExtCtxt,
     );
 
     let trait_def = TraitDef {
+        cx: cx, span: span,
+
         path: Path::new(~["std", "cmp", "Ord"]),
         additional_bounds: ~[],
         generics: LifetimeBounds::empty(),
@@ -45,7 +47,7 @@ pub fn expand_deriving_ord(cx: @ExtCtxt,
             md!("ge", false, true)
         ]
     };
-    trait_def.expand(cx, span, mitem, in_items)
+    trait_def.expand(mitem, in_items)
 }
 
 /// Strict inequality.

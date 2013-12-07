@@ -20,6 +20,8 @@ pub fn expand_deriving_from_primitive(cx: @ExtCtxt,
                                       mitem: @MetaItem,
                                       in_items: ~[@item]) -> ~[@item] {
     let trait_def = TraitDef {
+        cx: cx, span: span,
+
         path: Path::new(~["std", "num", "FromPrimitive"]),
         additional_bounds: ~[],
         generics: LifetimeBounds::empty(),
@@ -59,7 +61,7 @@ pub fn expand_deriving_from_primitive(cx: @ExtCtxt,
         ]
     };
 
-    trait_def.expand(cx, span, mitem, in_items)
+    trait_def.expand(mitem, in_items)
 }
 
 fn cs_from(name: &str, cx: @ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
