@@ -77,6 +77,7 @@ pub mod middle {
     pub mod reachable;
     pub mod graph;
     pub mod cfg;
+    pub mod dead;
 }
 
 pub mod front {

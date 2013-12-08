@@ -331,7 +331,12 @@ impl Context {
         let unnamed = self.ecx.meta_word(self.fmtsp, @"address_insignificant");
         let unnamed = self.ecx.attribute(self.fmtsp, unnamed);
 
-        return ~[unnamed];
+        // Do not warn format string as dead code
+        let dead_code = self.ecx.meta_word(self.fmtsp, @"dead_code");
+        let allow_dead_code = self.ecx.meta_list(self.fmtsp,
+                                                 @"allow", ~[dead_code]);
+        let allow_dead_code = self.ecx.attribute(self.fmtsp, allow_dead_code);
+        return ~[unnamed, allow_dead_code];
     }
 
     /// Translate a `parse::Piece` to a static `rt::Piece`

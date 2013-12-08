@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #[allow(unused_unsafe)];
+#[allow(dead_code)];
 #[deny(unsafe_block)];
 #[feature(macro_rules)];
 

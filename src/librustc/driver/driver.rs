@@ -310,6 +310,10 @@ pub fn phase_3_run_analysis_passes(sess: Session,
         time(time_passes, "reachability checking", (), |_|
              reachable::find_reachable(ty_cx, method_map, &exported_items));
 
+    time(time_passes, "death checking", (), |_|
+         middle::dead::check_crate(ty_cx, method_map,
+                                   &exported_items, reachable_map, crate));
+
     time(time_passes, "lint checking", (), |_|
          lint::check_crate(ty_cx, &exported_items, crate));
 
@@ -510,19 +514,6 @@ pub fn pretty_print_input(sess: Session,
                           cfg: ast::CrateConfig,
                           input: &input,
                           ppm: PpMode) {
-    fn ann_typed_post(tcx: ty::ctxt, node: pprust::ann_node) {
-        match node {
-          pprust::node_expr(s, expr) => {
-            pp::space(s.s);
-            pp::word(s.s, "as");
-            pp::space(s.s);
-            pp::word(s.s, ppaux::ty_to_str(tcx, ty::expr_ty(tcx, expr)));
-            pprust::pclose(s);
-          }
-          _ => ()
-        }
-    }
-
     let crate = phase_1_parse_input(sess, cfg.clone(), input);
 
     let (crate, is_expanded) = match ppm {

@@ -10,6 +10,7 @@
 
 // Exercise the unused_unsafe attribute in some positive and negative cases
 
+#[allow(dead_code)];
 #[deny(unused_unsafe)];
 
 mod foo {

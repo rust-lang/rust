@@ -1,3 +1,5 @@
+#[allow(dead_code)];
+
 // Matching against NaN should result in a warning
 
 use std::f64::NAN;

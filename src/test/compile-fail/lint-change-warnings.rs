@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #[deny(warnings)];
+#[allow(dead_code)];
 
 fn main() {
     while true {} //~ ERROR: infinite

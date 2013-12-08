@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{P, Block, Crate, DeclLocal, Expr_, ExprMac, SyntaxContext};
+use ast::{P, Block, Crate, DeclLocal, ExprMac, SyntaxContext};
 use ast::{Local, Ident, mac_invoc_tt};
 use ast::{item_mac, Mrk, Stmt, StmtDecl, StmtMac, StmtExpr, StmtSemi};
 use ast::{token_tree};
@@ -21,7 +21,6 @@ use codemap;
 use codemap::{Span, Spanned, ExpnInfo, NameAndSpan, MacroBang, MacroAttribute};
 use ext::base::*;
 use fold::*;
-use opt_vec;
 use parse;
 use parse::{parse_item_from_source_str};
 use parse::token;
@@ -139,29 +138,6 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
             let src_loop_block = fld.fold_block(src_loop_block);
 
             let span = e.span;
-
-            fn mk_expr(_: @ExtCtxt, span: Span, node: Expr_)
-                           -> @ast::Expr {
-                @ast::Expr {
-                    id: ast::DUMMY_NODE_ID,
-                    node: node,
-                    span: span,
-                }
-            }
-
-            fn mk_simple_path(ident: ast::Ident, span: Span) -> ast::Path {
-                ast::Path {
-                    span: span,
-                    global: false,
-                    segments: ~[
-                        ast::PathSegment {
-                            identifier: ident,
-                            lifetimes: opt_vec::Empty,
-                            types: opt_vec::Empty,
-                        }
-                    ],
-                }
-            }
 
             // to:
             //
@@ -714,14 +690,6 @@ pub fn renames_to_fold(renames: @mut ~[(ast::Ident,ast::Name)]) -> @ast_fold {
     } as @ast_fold
 }
 
-// perform a bunch of renames
-fn apply_pending_renames(folder : @ast_fold, stmt : ast::Stmt) -> @ast::Stmt {
-    folder.fold_stmt(&stmt)
-            .expect_one("renaming of stmt did not produce one stmt")
-}
-
-
-
 pub fn new_span(cx: @ExtCtxt, sp: Span) -> Span {
     /* this discards information in the case of macro-defining macros */
     Span {
@@ -739,6 +707,7 @@ pub fn std_macros() -> @str {
 @r#"mod __std_macros {
     #[macro_escape];
     #[doc(hidden)];
+    #[allow(dead_code)];
 
     macro_rules! ignore (($($x:tt)*) => (()))
 
@@ -900,6 +869,7 @@ pub fn std_macros() -> @str {
             mod $c {
                 #[allow(unused_imports)];
                 #[allow(non_uppercase_statics)];
+                #[allow(dead_code)];
 
                 use super::*;
 
@@ -978,12 +948,6 @@ pub fn inject_std_macros(parse_sess: @mut parse::ParseSess,
     } as @ast_fold;
     injector.fold_crate(c)
 }
-
-struct NoOpFolder {
-    contents: (),
-}
-
-impl ast_fold for NoOpFolder {}
 
 pub struct MacroExpander {
     extsbox: @mut SyntaxEnv,
