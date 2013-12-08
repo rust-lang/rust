@@ -32,6 +32,7 @@
 use c_str::CString;
 use clone::Clone;
 use container::Container;
+#[cfg(target_os = "macos")]
 use iter::range;
 use libc;
 use libc::{c_char, c_void, c_int, size_t};
@@ -335,12 +336,6 @@ pub fn pipe() -> Pipe {
         assert!((fds.input != -1 as c_int && fds.input != 0 as c_int));
         assert!((fds.out != -1 as c_int && fds.input != 0 as c_int));
         return Pipe {input: fds.input, out: fds.out};
-    }
-}
-
-fn dup2(src: c_int, dst: c_int) -> c_int {
-    unsafe {
-        libc::dup2(src, dst)
     }
 }
 
@@ -708,6 +703,7 @@ pub fn set_exit_status(code: int) {
     rt::set_exit_status(code);
 }
 
+#[cfg(target_os = "macos")]
 unsafe fn load_argc_and_argv(argc: c_int, argv: **c_char) -> ~[~str] {
     let mut args = ~[];
     for i in range(0u, argc as uint) {
@@ -785,10 +781,6 @@ extern "system" {
 #[link_name="shell32"]
 extern "system" {
     fn CommandLineToArgvW(lpCmdLine: LPCWSTR, pNumArgs: *mut c_int) -> **u16;
-}
-
-struct OverriddenArgs {
-    val: ~[~str]
 }
 
 /// Returns the arguments which this program was started with (normally passed

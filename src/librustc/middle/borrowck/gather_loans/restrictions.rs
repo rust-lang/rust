@@ -50,10 +50,6 @@ struct RestrictionsContext<'self> {
 }
 
 impl<'self> RestrictionsContext<'self> {
-    fn tcx(&self) -> ty::ctxt {
-        self.bccx.tcx
-    }
-
     fn restrict(&self,
                 cmt: mc::cmt,
                 restrictions: RestrictionSet) -> RestrictionResult {
@@ -249,16 +245,6 @@ impl<'self> RestrictionsContext<'self> {
                 self.span,
                 BorrowViolation,
                 cause);
-        }
-    }
-
-    fn check_no_mutability_control(&self,
-                                   cmt: mc::cmt,
-                                   restrictions: RestrictionSet) {
-        if restrictions.intersects(RESTR_MUTATE | RESTR_FREEZE | RESTR_CLAIM) {
-            self.bccx.report(BckError {span: self.span,
-                                       cmt: cmt,
-                                       code: err_freeze_aliasable_const});
         }
     }
 }

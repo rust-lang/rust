@@ -57,13 +57,6 @@ fn item_might_be_inlined(item: @ast::item) -> bool {
     }
 }
 
-// Returns true if the given type method must be inlined because it may be
-// monomorphized or it was marked with `#[inline]`.
-fn ty_method_might_be_inlined(ty_method: &ast::TypeMethod) -> bool {
-    attributes_specify_inlining(ty_method.attrs) ||
-        generics_require_inlining(&ty_method.generics)
-}
-
 fn method_might_be_inlined(tcx: ty::ctxt, method: &ast::method,
                            impl_src: ast::DefId) -> bool {
     if attributes_specify_inlining(method.attrs) ||
@@ -80,15 +73,6 @@ fn method_might_be_inlined(tcx: ty::ctxt, method: &ast::method,
     } else {
         tcx.sess.span_bug(method.span, "found a foreign impl as a parent of a \
                                         local method")
-    }
-}
-
-// Returns true if the given trait method must be inlined because it may be
-// monomorphized or it was marked with `#[inline]`.
-fn trait_method_might_be_inlined(trait_method: &ast::trait_method) -> bool {
-    match *trait_method {
-        ast::required(ref ty_method) => ty_method_might_be_inlined(ty_method),
-        ast::provided(_) => true
     }
 }
 

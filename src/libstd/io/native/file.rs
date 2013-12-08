@@ -756,10 +756,6 @@ pub fn link(src: &CString, dst: &CString) -> IoResult<()> {
 #[cfg(windows)]
 fn mkstat(stat: &libc::stat, path: &CString) -> io::FileStat {
     let path = unsafe { CString::new(path.with_ref(|p| p), false) };
-
-    // FileStat times are in milliseconds
-    fn mktime(secs: u64, nsecs: u64) -> u64 { secs * 1000 + nsecs / 1000000 }
-
     let kind = match (stat.st_mode as c_int) & libc::S_IFMT {
         libc::S_IFREG => io::TypeFile,
         libc::S_IFDIR => io::TypeDirectory,

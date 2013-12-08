@@ -57,7 +57,6 @@ pub mod BigDigit {
     pub static bits: uint = 32;
 
     pub static base: uint = 1 << bits;
-    static hi_mask: uint = (-1 as uint) << bits;
     static lo_mask: uint = (-1 as uint) >> bits;
 
     #[inline]

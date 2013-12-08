@@ -370,14 +370,6 @@ impl Drop for TcpListener {
     }
 }
 
-extern fn listener_close_cb(handle: *uvll::uv_handle_t) {
-    let tcp: &mut TcpListener = unsafe { UvHandle::from_uv_handle(&handle) };
-    unsafe { uvll::free_handle(handle) }
-
-    let sched: ~Scheduler = Local::take();
-    sched.resume_blocked_task_immediately(tcp.closing_task.take_unwrap());
-}
-
 // TCP acceptors (bound servers)
 
 impl HomingIO for TcpAcceptor {

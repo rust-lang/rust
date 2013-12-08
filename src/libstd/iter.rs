@@ -1690,7 +1690,7 @@ impl<T> Fuse<T> {
     /// Resets the fuse such that the next call to .next() or .next_back() will
     /// call the underlying iterator again even if it prevously returned None.
     #[inline]
-    fn reset_fuse(&mut self) {
+    pub fn reset_fuse(&mut self) {
         self.done = false
     }
 }

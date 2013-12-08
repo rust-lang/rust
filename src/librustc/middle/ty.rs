@@ -1765,7 +1765,7 @@ def_type_content_sets!(
 
         // Things that are interior to the value (first nibble):
         InteriorUnsized                     = 0b0000__00000000__0001,
-        InteriorAll                         = 0b0000__00000000__1111,
+        // InteriorAll                         = 0b0000__00000000__1111,
 
         // Things that are owned by the value (second and third nibbles):
         OwnsOwned                           = 0b0000__00000001__0000,
@@ -1777,7 +1777,7 @@ def_type_content_sets!(
         // Things that are reachable by the value in any way (fourth nibble):
         ReachesNonsendAnnot                 = 0b0001__00000000__0000,
         ReachesBorrowed                     = 0b0010__00000000__0000,
-        ReachesManaged /* see [1] below */  = 0b0100__00000000__0000,
+        // ReachesManaged /* see [1] below */  = 0b0100__00000000__0000,
         ReachesMutable                      = 0b1000__00000000__0000,
         ReachesAll                          = 0b1111__00000000__0000,
 
@@ -3628,30 +3628,6 @@ pub fn ty_to_def_id(ty: t) -> Option<ast::DefId> {
     match get(ty).sty {
       ty_trait(id, _, _, _, _) | ty_struct(id, _) | ty_enum(id, _) => Some(id),
       _ => None
-    }
-}
-
-/// Returns the def ID of the constructor for the given tuple-like struct, or
-/// None if the struct is not tuple-like. Fails if the given def ID does not
-/// refer to a struct at all.
-fn struct_ctor_id(cx: ctxt, struct_did: ast::DefId) -> Option<ast::DefId> {
-    if struct_did.crate != ast::LOCAL_CRATE {
-        // XXX: Cross-crate functionality.
-        cx.sess.unimpl("constructor ID of cross-crate tuple structs");
-    }
-
-    match cx.items.find(&struct_did.node) {
-        Some(&ast_map::node_item(item, _)) => {
-            match item.node {
-                ast::item_struct(struct_def, _) => {
-                    struct_def.ctor_id.map(|ctor_id| {
-                        ast_util::local_def(ctor_id)
-                    })
-                }
-                _ => cx.sess.bug("called struct_ctor_id on non-struct")
-            }
-        }
-        _ => cx.sess.bug("called struct_ctor_id on non-struct")
     }
 }
 

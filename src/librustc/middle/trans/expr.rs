@@ -176,12 +176,6 @@ impl Dest {
     }
 }
 
-fn drop_and_cancel_clean(bcx: @mut Block, dat: Datum) -> @mut Block {
-    let bcx = dat.drop_val(bcx);
-    dat.cancel_clean(bcx);
-    return bcx;
-}
-
 pub fn trans_to_datum(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
     debug!("trans_to_datum(expr={})", bcx.expr_to_str(expr));
 
@@ -1790,10 +1784,6 @@ fn trans_assign_op(bcx: @mut Block,
                           bcx, expr, dst_datum.ty, op,
                           &dst_datum, &src_datum));
     return result_datum.copy_to_datum(bcx, DROP_EXISTING, dst_datum);
-}
-
-fn shorten(x: &str) -> @str {
-    (if x.char_len() > 60 {x.slice_chars(0, 60)} else {x}).to_managed()
 }
 
 pub fn trans_log_level(bcx: @mut Block) -> DatumBlock {

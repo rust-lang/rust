@@ -541,20 +541,6 @@ fn fold_struct_def<T:ast_fold>(struct_def: @ast::struct_def, fld: &T)
     }
 }
 
-fn noop_fold_view_item(vi: &view_item_, fld: @ast_fold) -> view_item_ {
-    match *vi {
-        view_item_extern_mod(ident, name, ref meta_items, node_id) => {
-            view_item_extern_mod(ident,
-                                 name,
-                                 fld.fold_meta_items(*meta_items),
-                                 fld.new_id(node_id))
-        }
-        view_item_use(ref view_paths) => {
-            view_item_use(fld.fold_view_paths(*view_paths))
-        }
-    }
-}
-
 fn fold_trait_ref<T:ast_fold>(p: &trait_ref, fld: &T) -> trait_ref {
     ast::trait_ref {
         path: fld.fold_path(&p.path),
@@ -586,14 +572,6 @@ fn fold_mt<T:ast_fold>(mt: &mt, folder: &T) -> mt {
     mt {
         ty: folder.fold_ty(mt.ty),
         mutbl: mt.mutbl,
-    }
-}
-
-fn fold_field<T:ast_fold>(f: TypeField, folder: &T) -> TypeField {
-    ast::TypeField {
-        ident: folder.fold_ident(f.ident),
-        mt: fold_mt(&f.mt, folder),
-        span: folder.new_span(f.span),
     }
 }
 
