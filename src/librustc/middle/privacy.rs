@@ -312,6 +312,7 @@ struct PrivacyVisitor<'self> {
     tcx: ty::ctxt,
     curitem: ast::NodeId,
     in_fn: bool,
+    in_foreign: bool,
     method_map: &'self method_map,
     parents: HashMap<ast::NodeId, ast::NodeId>,
     external_exports: resolve::ExternalExports,
@@ -625,7 +626,9 @@ impl<'self> Visitor<()> for PrivacyVisitor<'self> {
                 let t = ty::type_autoderef(self.tcx,
                                            ty::expr_ty(self.tcx, base));
                 match ty::get(t).sty {
-                    ty::ty_struct(id, _) => self.check_field(expr.span, id, ident),
+                    ty::ty_struct(id, _) => {
+                        self.check_field(expr.span, id, ident);
+                    }
                     _ => {}
                 }
             }
@@ -648,9 +651,6 @@ impl<'self> Visitor<()> for PrivacyVisitor<'self> {
                     }
                     _ => {}
                 }
-            }
-            ast::ExprPath(ref path) => {
-                self.check_path(expr.span, expr.id, path);
             }
             ast::ExprStruct(_, ref fields, _) => {
                 match ty::get(ty::expr_ty(self.tcx, expr)).sty {
@@ -697,25 +697,14 @@ impl<'self> Visitor<()> for PrivacyVisitor<'self> {
         visit::walk_expr(self, expr, ());
     }
 
-    fn visit_ty(&mut self, t: &ast::Ty, _: ()) {
-        match t.node {
-            ast::ty_path(ref path, _, id) => self.check_path(t.span, id, path),
-            _ => {}
-        }
-        visit::walk_ty(self, t, ());
-    }
-
     fn visit_view_item(&mut self, a: &ast::view_item, _: ()) {
         match a.node {
             ast::view_item_extern_mod(..) => {}
             ast::view_item_use(ref uses) => {
                 for vpath in uses.iter() {
                     match vpath.node {
-                        ast::view_path_simple(_, ref path, id) |
-                        ast::view_path_glob(ref path, id) => {
-                            debug!("privacy - glob/simple {}", id);
-                            self.check_path(vpath.span, id, path);
-                        }
+                        ast::view_path_simple(..) |
+                        ast::view_path_glob(..) => {}
                         ast::view_path_list(_, ref list, _) => {
                             for pid in list.iter() {
                                 debug!("privacy - list {}", pid.node.id);
@@ -737,9 +726,16 @@ impl<'self> Visitor<()> for PrivacyVisitor<'self> {
                 }
             }
         }
+        visit::walk_view_item(self, a, ());
     }
 
     fn visit_pat(&mut self, pattern: &ast::Pat, _: ()) {
+        // Foreign functions do not have their patterns mapped in the def_map,
+        // and there's nothing really relevant there anyway, so don't bother
+        // checking privacy. If you can name the type then you can pass it to an
+        // external C function anyway.
+        if self.in_foreign { return }
+
         match pattern.node {
             ast::PatStruct(_, ref fields, _) => {
                 match ty::get(ty::pat_ty(self.tcx, pattern)).sty {
@@ -772,6 +768,17 @@ impl<'self> Visitor<()> for PrivacyVisitor<'self> {
         }
 
         visit::walk_pat(self, pattern, ());
+    }
+
+    fn visit_foreign_item(&mut self, fi: @ast::foreign_item, _: ()) {
+        self.in_foreign = true;
+        visit::walk_foreign_item(self, fi, ());
+        self.in_foreign = false;
+    }
+
+    fn visit_path(&mut self, path: &ast::Path, id: ast::NodeId, _: ()) {
+        self.check_path(path.span, id, path);
+        visit::walk_path(self, path, ());
     }
 }
 
@@ -999,6 +1006,7 @@ pub fn check_crate(tcx: ty::ctxt,
     let mut visitor = PrivacyVisitor {
         curitem: ast::DUMMY_NODE_ID,
         in_fn: false,
+        in_foreign: false,
         tcx: tcx,
         parents: visitor.parents,
         method_map: method_map,

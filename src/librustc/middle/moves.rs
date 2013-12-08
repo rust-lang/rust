@@ -202,6 +202,8 @@ impl visit::Visitor<()> for VisitContext {
     fn visit_local(&mut self, l:@Local, _:()) {
         compute_modes_for_local(self, l);
     }
+    // FIXME(#10894) should continue recursing
+    fn visit_ty(&mut self, _t: &Ty, _: ()) {}
 }
 
 pub fn compute_moves(tcx: ty::ctxt,
