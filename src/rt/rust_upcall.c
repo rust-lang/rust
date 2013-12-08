@@ -78,15 +78,6 @@ upcall_rust_personality(int version,
     return args.retval;
 }
 
-// NOTE: remove after stage0
-// Landing pads need to call this to insert the
-// correct limit into TLS.
-// NB: This must run on the Rust stack because it
-// needs to acquire the value of the stack pointer
-void
-upcall_reset_stack_limit() {
-}
-
 //
 // Local Variables:
 // mode: C++
