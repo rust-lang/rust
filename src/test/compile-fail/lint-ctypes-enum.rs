@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #[deny(ctypes)];
+#[allow(dead_code)];
 
 enum Z { }
 enum U { A }

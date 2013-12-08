@@ -57,13 +57,6 @@ fn mywrite(w: @mut MemWriter, fmt: &fmt::Arguments) {
     fmt::write(&mut *w as &mut io::Writer, fmt);
 }
 
-fn cx_uses_abbrevs(cx: @ctxt) -> bool {
-    match cx.abbrevs {
-      ac_no_abbrevs => return false,
-      ac_use_abbrevs(_) => return true
-    }
-}
-
 pub fn enc_ty(w: @mut MemWriter, cx: @ctxt, t: ty::t) {
     match cx.abbrevs {
       ac_no_abbrevs => {

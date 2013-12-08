@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #[deny(unused_imports)];
+#[allow(dead_code)];
 
 // Regression test for issue #6633
 mod issue6633 {

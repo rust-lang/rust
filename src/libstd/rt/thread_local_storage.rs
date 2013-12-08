@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(dead_code)];
+
 use libc::c_void;
 #[cfg(unix)]
 use libc::c_int;

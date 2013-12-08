@@ -12,7 +12,7 @@
 use metadata::encoder;
 use middle::ty::{ReSkolemized, ReVar};
 use middle::ty::{BoundRegion, BrAnon, BrNamed};
-use middle::ty::{BrFresh, ctxt, field};
+use middle::ty::{BrFresh, ctxt};
 use middle::ty::{mt, t, param_ty};
 use middle::ty::{ReFree, ReScope, ReInfer, ReStatic, Region,
                  ReEmpty};
@@ -431,16 +431,6 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
                 s.push_str(ty_to_str(cx, sig.output));
             }
         }
-    }
-    fn method_to_str(cx: ctxt, m: ty::Method) -> ~str {
-        bare_fn_to_str(cx,
-                       m.fty.purity,
-                       m.fty.abis,
-                       Some(m.ident),
-                       &m.fty.sig) + ";"
-    }
-    fn field_to_str(cx: ctxt, f: field) -> ~str {
-        return format!("{}: {}", cx.sess.str_of(f.ident), mt_to_str(cx, &f.mt));
     }
 
     // if there is an id, print that instead of the structural type:

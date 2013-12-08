@@ -39,10 +39,7 @@ pub mod rustrt {
     }
 }
 
-static LZ_NONE : c_int = 0x0;   // Huffman-coding only.
-static LZ_FAST : c_int = 0x1;   // LZ with only one probe
 static LZ_NORM : c_int = 0x80;  // LZ with 128 probes, "normal"
-static LZ_BEST : c_int = 0xfff; // LZ with 4095 probes, "best"
 static TINFL_FLAG_PARSE_ZLIB_HEADER : c_int = 0x1; // parse zlib header and adler32 checksum
 static TDEFL_WRITE_ZLIB_HEADER : c_int = 0x01000; // write zlib header and adler32 checksum
 

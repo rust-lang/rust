@@ -117,12 +117,12 @@ use syntax::parse::token::special_idents;
 static DW_LANG_RUST: c_uint = 0x9000;
 
 static DW_TAG_auto_variable: c_uint = 0x100;
-static DW_TAG_arg_variable: c_uint = 0x101;
+// static DW_TAG_arg_variable: c_uint = 0x101;
 
 static DW_ATE_boolean: c_uint = 0x02;
 static DW_ATE_float: c_uint = 0x04;
 static DW_ATE_signed: c_uint = 0x05;
-static DW_ATE_signed_char: c_uint = 0x06;
+// static DW_ATE_signed_char: c_uint = 0x06;
 static DW_ATE_unsigned: c_uint = 0x07;
 static DW_ATE_unsigned_char: c_uint = 0x08;
 
@@ -1169,13 +1169,6 @@ enum RecursiveTypeDescription {
 
 impl RecursiveTypeDescription {
 
-    fn metadata(&self) -> DICompositeType {
-        match *self {
-            UnfinishedMetadata { metadata_stub, .. } => metadata_stub,
-            FinalMetadata(metadata) => metadata
-        }
-    }
-
     fn finalize(&self, cx: &mut CrateContext) -> DICompositeType {
         match *self {
             FinalMetadata(metadata) => metadata,
@@ -1982,24 +1975,6 @@ fn trait_metadata(cx: &mut CrateContext,
                                    definition_span);
 }
 
-fn unimplemented_type_metadata(cx: &mut CrateContext, t: ty::t) -> DIType {
-    debug!("unimplemented_type_metadata: {:?}", ty::get(t));
-
-    let name = ppaux::ty_to_str(cx.tcx, t);
-    let metadata = format!("NYI<{}>", name).with_c_str(|name| {
-        unsafe {
-            llvm::LLVMDIBuilderCreateBasicType(
-                DIB(cx),
-                name,
-                0_u64,
-                8_u64,
-                DW_ATE_unsigned as c_uint)
-            }
-        });
-
-    return metadata;
-}
-
 fn cache_id_for_type(t: ty::t) -> uint {
     ty::type_id(t)
 }
@@ -2178,11 +2153,6 @@ fn set_debug_location(cx: &mut CrateContext, debug_location: DebugLocation) {
 //=-------------------------------------------------------------------------------------------------
 //  Utility Functions
 //=-------------------------------------------------------------------------------------------------
-
-#[inline]
-fn roundup(x: uint, a: uint) -> uint {
-    ((x + (a - 1)) / a) * a
-}
 
 /// Return codemap::Loc corresponding to the beginning of the span
 fn span_start(cx: &CrateContext, span: Span) -> codemap::Loc {

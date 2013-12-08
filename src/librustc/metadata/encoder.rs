@@ -128,20 +128,6 @@ struct entry<T> {
     pos: u64
 }
 
-fn add_to_index(ebml_w: &mut writer::Encoder,
-                path: &[Ident],
-                index: &mut ~[entry<~str>],
-                name: Ident) {
-    let mut full_path = ~[];
-    full_path.push_all(path);
-    full_path.push(name);
-    index.push(
-        entry {
-            val: ast_util::path_name_i(full_path),
-            pos: ebml_w.writer.tell()
-        });
-}
-
 fn encode_trait_ref(ebml_w: &mut writer::Encoder,
                     ecx: &EncodeContext,
                     trait_ref: &ty::TraitRef,
@@ -1440,10 +1426,6 @@ fn encode_index<T:'static>(
     }
     ebml_w.end_tag();
     ebml_w.end_tag();
-}
-
-fn write_str(writer: @mut MemWriter, s: ~str) {
-    writer.write(s.as_bytes());
 }
 
 fn write_i64(writer: @mut MemWriter, &n: &i64) {

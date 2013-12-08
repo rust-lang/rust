@@ -192,10 +192,6 @@ pub fn opt_str2(maybestr: Option<~str>) -> ~str {
     match maybestr { None => ~"(none)", Some(s) => { s } }
 }
 
-pub fn str_opt(maybestr: ~str) -> Option<~str> {
-    if maybestr != ~"(none)" { Some(maybestr) } else { None }
-}
-
 pub fn str_mode(s: ~str) -> mode {
     match s {
       ~"compile-fail" => mode_compile_fail,

@@ -10,6 +10,8 @@
 
 // rustpkg utilities having to do with paths and directories
 
+#[allow(dead_code)];
+
 pub use package_id::PkgId;
 pub use target::{OutputType, Main, Lib, Test, Bench, Target, Build, Install};
 pub use version::{Version, NoVersion, split_version_general, try_parsing_version};

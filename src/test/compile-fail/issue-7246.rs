@@ -9,6 +9,8 @@
 // except according to those terms.
 
 #[deny(unreachable_code)];
+#[allow(dead_code)];
+
 use std::ptr;
 pub unsafe fn g() {
     return; 

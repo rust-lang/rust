@@ -20,19 +20,7 @@ condition! {
 }
 
 condition! {
-    pub bad_stat: (Path, ~str) -> FileStat;
-}
-
-condition! {
-    pub bad_kind: (~str) -> ();
-}
-
-condition! {
     pub nonexistent_package: (PkgId, ~str) -> Path;
-}
-
-condition! {
-    pub copy_failed: (Path, Path) -> ();
 }
 
 condition! {
@@ -41,10 +29,6 @@ condition! {
 
 condition! {
     pub bad_pkg_id: (Path, ~str) -> PkgId;
-}
-
-condition! {
-    pub no_rust_path: (~str) -> Path;
 }
 
 condition! {

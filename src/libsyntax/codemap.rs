@@ -448,13 +448,6 @@ impl CodeMap {
         };
     }
 
-    fn span_to_str_no_adj(&self, sp: Span) -> ~str {
-        let lo = self.lookup_char_pos(sp.lo);
-        let hi = self.lookup_char_pos(sp.hi);
-        return format!("{}:{}:{}: {}:{}", lo.file.name,
-                    lo.line, lo.col.to_uint(), hi.line, hi.col.to_uint())
-    }
-
     fn lookup_byte_offset(&self, bpos: BytePos)
         -> FileMapAndBytePos {
         let idx = self.lookup_filemap_idx(bpos);

@@ -305,15 +305,6 @@ pub struct Generics {
     type_params: ~[TyParam]
 }
 
-impl Generics {
-    fn new() -> Generics {
-        Generics {
-            lifetimes: ~[],
-            type_params: ~[]
-        }
-    }
-}
-
 impl Clean<Generics> for ast::Generics {
     fn clean(&self) -> Generics {
         Generics {
