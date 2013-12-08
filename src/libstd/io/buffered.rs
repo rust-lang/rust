@@ -454,6 +454,28 @@ mod test {
             ~[0, 1, 0, '\n' as u8, 1, '\n' as u8, 2, 3, '\n' as u8]);
     }
 
+    #[test]
+    fn test_read_line() {
+        let in_buf = MemReader::new(bytes!("a\nb\nc").to_owned());
+        let mut reader = BufferedReader::with_capacity(2, in_buf);
+        assert_eq!(reader.read_line(), Some(~"a\n"));
+        assert_eq!(reader.read_line(), Some(~"b\n"));
+        assert_eq!(reader.read_line(), Some(~"c"));
+        assert_eq!(reader.read_line(), None);
+    }
+
+    #[test]
+    fn test_lines() {
+        let in_buf = MemReader::new(bytes!("a\nb\nc").to_owned());
+        let mut reader = BufferedReader::with_capacity(2, in_buf);
+        let mut it = reader.lines();
+        assert_eq!(it.next(), Some(~"a\n"));
+        assert_eq!(it.next(), Some(~"b\n"));
+        assert_eq!(it.next(), Some(~"c"));
+        assert_eq!(it.next(), None);
+    }
+
+
     #[bench]
     fn bench_buffered_reader(bh: &mut Harness) {
         bh.iter(|| {
