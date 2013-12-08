@@ -431,6 +431,9 @@ TLIBRUSTUV_DEFAULT$(1)_T_$(2)_H_$(3) = \
   $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTUV_$(2))
 
 # Preqrequisites for using the stageN compiler
+ifeq ($(1),0)
+HSREQ$(1)_H_$(3) = $$(HBIN$(1)_H_$(3))/rustc$$(X_$(3))
+else
 HSREQ$(1)_H_$(3) = \
 	$$(HBIN$(1)_H_$(3))/rustc$$(X_$(3)) \
 	$$(HSTDLIB_DEFAULT$(1)_H_$(3)) \
@@ -439,6 +442,7 @@ HSREQ$(1)_H_$(3) = \
 	$$(HLIBRUSTC_DEFAULT$(1)_H_$(3)) \
 	$$(HLIBRUSTUV_DEFAULT$(1)_H_$(3)) \
 	$$(MKFILE_DEPS)
+endif
 
 # Prerequisites for using the stageN compiler to build target artifacts
 TSREQ$(1)_T_$(2)_H_$(3) = \
