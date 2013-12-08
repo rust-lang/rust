@@ -325,6 +325,8 @@ impl Visitor<()> for WbCtxt {
     fn visit_block(&mut self, b:ast::P<ast::Block>, _:()) { visit_block(b, self); }
     fn visit_pat(&mut self, p:&ast::Pat, _:()) { visit_pat(p, self); }
     fn visit_local(&mut self, l:@ast::Local, _:()) { visit_local(l, self); }
+    // FIXME(#10894) should continue recursing
+    fn visit_ty(&mut self, _t: &ast::Ty, _:()) {}
 }
 
 pub fn resolve_type_vars_in_expr(fcx: @mut FnCtxt, e: @ast::Expr) -> bool {

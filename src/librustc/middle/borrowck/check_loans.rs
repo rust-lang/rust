@@ -58,6 +58,9 @@ impl<'self> Visitor<()> for CheckLoanCtxt<'self> {
                 b:ast::P<ast::Block>, s:Span, n:ast::NodeId, _:()) {
         check_loans_in_fn(self, fk, fd, b, s, n);
     }
+
+    // FIXME(#10894) should continue recursing
+    fn visit_ty(&mut self, _t: &ast::Ty, _: ()) {}
 }
 
 pub fn check_loans(bccx: &BorrowckCtxt,
