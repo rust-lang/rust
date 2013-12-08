@@ -578,7 +578,7 @@ static ACC_USE: uint = 4u;
 
 type LiveNodeMap = @mut HashMap<NodeId, LiveNode>;
 
-struct Liveness {
+pub struct Liveness {
     tcx: ty::ctxt,
     ir: @mut IrMaps,
     s: Specials,
@@ -625,35 +625,8 @@ impl Liveness {
         }
     }
 
-    pub fn variable_from_path(&self, expr: &Expr) -> Option<Variable> {
-        match expr.node {
-          ExprPath(_) => {
-            let def = self.tcx.def_map.get_copy(&expr.id);
-            moves::moved_variable_node_id_from_def(def).map(|rdef| {
-                self.variable(rdef, expr.span)
-            })
-          }
-          _ => None
-        }
-    }
-
     pub fn variable(&self, node_id: NodeId, span: Span) -> Variable {
         self.ir.variable(node_id, span)
-    }
-
-    pub fn variable_from_def_map(&self, node_id: NodeId, span: Span)
-                                 -> Option<Variable> {
-        match self.tcx.def_map.find(&node_id) {
-          Some(&def) => {
-            moves::moved_variable_node_id_from_def(def).map(|rdef| {
-                self.variable(rdef, span)
-            })
-          }
-          None => {
-            self.tcx.sess.span_bug(
-                span, "Not present in def map")
-          }
-        }
     }
 
     pub fn pat_bindings(&self,
@@ -728,13 +701,6 @@ impl Liveness {
     pub fn assigned_on_exit(&self, ln: LiveNode, var: Variable)
                             -> Option<LiveNodeKind> {
         self.assigned_on_entry(self.successors[*ln], var)
-    }
-
-    pub fn indices(&self, ln: LiveNode, op: |uint|) {
-        let node_base_idx = self.idx(ln, Variable(0));
-        for var_idx in range(0u, self.ir.num_vars) {
-            op(node_base_idx + var_idx)
-        }
     }
 
     pub fn indices2(&self,

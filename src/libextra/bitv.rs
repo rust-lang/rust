@@ -382,11 +382,9 @@ impl Bitv {
     #[inline]
     pub fn negate(&mut self) {
         match self.rep {
-            Small(ref mut b) => b.negate(),
-            Big(ref mut s) => {
-                s.each_storage(|w| { *w = !*w; true });
-            }
-      }
+            Small(ref mut s) => s.negate(),
+            Big(ref mut b) => b.negate(),
+        }
     }
 
     /**

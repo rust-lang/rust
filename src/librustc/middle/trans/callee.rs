@@ -49,8 +49,6 @@ use middle::trans::type_::Type;
 use syntax::ast;
 use syntax::abi::AbiSet;
 use syntax::ast_map;
-use syntax::visit;
-use syntax::visit::Visitor;
 
 // Represents a (possibly monomorphized) top-level fn item or method
 // item.  Note that this is just the fn-ptr and is not a Rust closure
@@ -567,27 +565,6 @@ pub fn trans_lang_call_with_type_params(bcx: @mut Block,
             Callee { bcx: callee.bcx, data: Fn(FnData { llfn: new_llval }) }
         },
         ArgVals(args), Some(dest), DontAutorefArg).bcx;
-}
-
-
-struct CalleeTranslationVisitor {
-    flag: bool,
-}
-
-impl Visitor<()> for CalleeTranslationVisitor {
-
-    fn visit_item(&mut self, _:@ast::item, _:()) { }
-
-    fn visit_expr(&mut self, e:@ast::Expr, _:()) {
-
-            if !self.flag {
-                match e.node {
-                  ast::ExprRet(_) => self.flag = true,
-                  _ => visit::walk_expr(self, e, ()),
-                }
-            }
-    }
-
 }
 
 pub fn trans_call_inner(in_cx: @mut Block,

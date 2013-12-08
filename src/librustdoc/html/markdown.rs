@@ -38,9 +38,6 @@ static MKDEXT_TABLES: libc::c_uint = 1 << 1;
 static MKDEXT_FENCED_CODE: libc::c_uint = 1 << 2;
 static MKDEXT_AUTOLINK: libc::c_uint = 1 << 3;
 static MKDEXT_STRIKETHROUGH: libc::c_uint = 1 << 4;
-static MKDEXT_SPACE_HEADERS: libc::c_uint = 1 << 6;
-static MKDEXT_SUPERSCRIPT: libc::c_uint = 1 << 7;
-static MKDEXT_LAX_SPACING: libc::c_uint = 1 << 8;
 
 type sd_markdown = libc::c_void;  // this is opaque to us
 

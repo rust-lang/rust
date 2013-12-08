@@ -12,6 +12,7 @@
 
 #[allow(missing_doc)];
 #[allow(non_uppercase_statics)];
+#[allow(dead_code)];
 
 pub mod general_category {
 

@@ -201,15 +201,7 @@ pub fn syntax_expander_table() -> SyntaxEnv {
         } as @SyntaxExpanderTTTrait,
         None))
     }
-    // utility function to simplify creating IdentTT syntax extensions
-    // that ignore their contexts
-    fn builtin_item_tt_no_ctxt(f: SyntaxExpanderTTItemFunNoCtxt) -> @Transformer {
-        @SE(IdentTT(@SyntaxExpanderTTItem {
-            expander: SyntaxExpanderTTItemExpanderWithoutContext(f),
-            span: None,
-        } as @SyntaxExpanderTTItemTrait,
-        None))
-    }
+
     let mut syntax_expanders = HashMap::new();
     // NB identifier starts with space, and can't conflict with legal idents
     syntax_expanders.insert(intern(&" block"),

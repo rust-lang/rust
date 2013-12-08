@@ -18,6 +18,7 @@ use header::TestProps;
 use header::load_props;
 use procsrv;
 use util::logv;
+#[cfg(target_os = "win32")]
 use util;
 
 use std::io::File;
@@ -482,6 +483,7 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
         format!("{}:{}:", testfile.display(), ee.line)
     }).collect::<~[~str]>();
 
+    #[cfg(target_os = "win32")]
     fn to_lower( s : &str ) -> ~str {
         let i = s.chars();
         let c : ~[char] = i.map( |c| {
@@ -822,6 +824,7 @@ fn make_cmdline(libpath: &str, prog: &str, args: &[~str]) -> ~str {
 
 // Build the LD_LIBRARY_PATH variable as it would be seen on the command line
 // for diagnostic purposes
+#[cfg(target_os = "win32")]
 fn lib_path_cmd_prefix(path: &str) -> ~str {
     format!("{}=\"{}\"", util::lib_path_env_var(), util::make_new_path(path))
 }
