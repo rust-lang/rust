@@ -77,8 +77,7 @@ fn read_line() {
 
     for _ in range(0, 3) {
         let mut reader = BufferedReader::new(File::open(&path).unwrap());
-        while !reader.eof() {
-            reader.read_line();
+        for _line in reader.lines() {
         }
     }
 }
