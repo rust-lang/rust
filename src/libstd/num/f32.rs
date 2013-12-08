@@ -57,7 +57,7 @@ delegate!(
     fn log2(n: f32) -> f32 = intrinsics::log2f32,
     fn mul_add(a: f32, b: f32, c: f32) -> f32 = intrinsics::fmaf32,
     fn pow(n: f32, e: f32) -> f32 = intrinsics::powf32,
-    fn powi(n: f32, e: c_int) -> f32 = intrinsics::powif32,
+    // fn powi(n: f32, e: c_int) -> f32 = intrinsics::powif32,
     fn sin(n: f32) -> f32 = intrinsics::sinf32,
     fn sqrt(n: f32) -> f32 = intrinsics::sqrtf32,
 
@@ -79,25 +79,25 @@ delegate!(
     fn cbrt(n: c_float) -> c_float = c_float_utils::cbrt,
     fn copysign(x: c_float, y: c_float) -> c_float = c_float_utils::copysign,
     fn cosh(n: c_float) -> c_float = c_float_utils::cosh,
-    fn erf(n: c_float) -> c_float = c_float_utils::erf,
-    fn erfc(n: c_float) -> c_float = c_float_utils::erfc,
+    // fn erf(n: c_float) -> c_float = c_float_utils::erf,
+    // fn erfc(n: c_float) -> c_float = c_float_utils::erfc,
     fn exp_m1(n: c_float) -> c_float = c_float_utils::exp_m1,
     fn abs_sub(a: c_float, b: c_float) -> c_float = c_float_utils::abs_sub,
     fn next_after(x: c_float, y: c_float) -> c_float = c_float_utils::next_after,
     fn frexp(n: c_float, value: &mut c_int) -> c_float = c_float_utils::frexp,
     fn hypot(x: c_float, y: c_float) -> c_float = c_float_utils::hypot,
     fn ldexp(x: c_float, n: c_int) -> c_float = c_float_utils::ldexp,
-    fn lgamma(n: c_float, sign: &mut c_int) -> c_float = c_float_utils::lgamma,
-    fn log_radix(n: c_float) -> c_float = c_float_utils::log_radix,
+    // fn lgamma(n: c_float, sign: &mut c_int) -> c_float = c_float_utils::lgamma,
+    // fn log_radix(n: c_float) -> c_float = c_float_utils::log_radix,
     fn ln_1p(n: c_float) -> c_float = c_float_utils::ln_1p,
-    fn ilog_radix(n: c_float) -> c_int = c_float_utils::ilog_radix,
-    fn modf(n: c_float, iptr: &mut c_float) -> c_float = c_float_utils::modf,
+    // fn ilog_radix(n: c_float) -> c_int = c_float_utils::ilog_radix,
+    // fn modf(n: c_float, iptr: &mut c_float) -> c_float = c_float_utils::modf,
     fn round(n: c_float) -> c_float = c_float_utils::round,
-    fn ldexp_radix(n: c_float, i: c_int) -> c_float = c_float_utils::ldexp_radix,
+    // fn ldexp_radix(n: c_float, i: c_int) -> c_float = c_float_utils::ldexp_radix,
     fn sinh(n: c_float) -> c_float = c_float_utils::sinh,
     fn tan(n: c_float) -> c_float = c_float_utils::tan,
-    fn tanh(n: c_float) -> c_float = c_float_utils::tanh,
-    fn tgamma(n: c_float) -> c_float = c_float_utils::tgamma
+    fn tanh(n: c_float) -> c_float = c_float_utils::tanh
+    // fn tgamma(n: c_float) -> c_float = c_float_utils::tgamma
 )
 
 // These are not defined inside consts:: for consistency with

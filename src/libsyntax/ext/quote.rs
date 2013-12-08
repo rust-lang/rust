@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use ast;
-use codemap::{BytePos, Pos, Span};
+use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::base;
 use ext::build::AstBuilder;
@@ -355,12 +355,6 @@ fn mk_ident(cx: @ExtCtxt, sp: Span, ident: ast::Ident) -> @ast::Expr {
                         cx.expr_ident(sp, id_ext("ext_cx")),
                         id_ext("ident_of"),
                         ~[e_str])
-}
-
-fn mk_bytepos(cx: @ExtCtxt, sp: Span, bpos: BytePos) -> @ast::Expr {
-    let path = id_ext("BytePos");
-    let arg = cx.expr_uint(sp, bpos.to_uint());
-    cx.expr_call_ident(sp, path, ~[arg])
 }
 
 fn mk_binop(cx: @ExtCtxt, sp: Span, bop: token::binop) -> @ast::Expr {

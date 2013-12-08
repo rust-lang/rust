@@ -25,7 +25,9 @@ use unstable::intrinsics::TyDesc;
 use unstable::raw;
 
 // This has no meaning with out rtdebug also turned on.
+#[cfg(rtdebug)]
 static TRACK_ALLOCATIONS: int = 0;
+#[cfg(rtdebug)]
 static MAGIC: u32 = 0xbadc0ffe;
 
 pub type Box = raw::Box<()>;

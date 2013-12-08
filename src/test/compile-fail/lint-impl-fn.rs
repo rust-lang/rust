@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #[allow(while_true)];
+#[allow(dead_code)];
 
 struct A(int);
 

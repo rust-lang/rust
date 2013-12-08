@@ -886,6 +886,7 @@ mod test {
     }
 }
 
+#[cfg(test)]
 static RAND_BENCH_N: u64 = 100;
 
 #[cfg(test)]

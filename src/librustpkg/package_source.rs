@@ -321,11 +321,6 @@ impl PkgSrc {
         }
     }
 
-    /// True if the given path's stem is self's pkg ID's stem
-    fn stem_matches(&self, p: &Path) -> bool {
-        p.filestem().map_default(false, |p| { p == self.id.short_name.as_bytes() })
-    }
-
     pub fn push_crate(cs: &mut ~[Crate], prefix: uint, p: &Path) {
         let mut it = p.components().peekable();
         if prefix > 0 {

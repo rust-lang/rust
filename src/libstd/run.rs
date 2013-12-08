@@ -183,7 +183,10 @@ impl Process {
         self.inner.io[0].take();
     }
 
-    fn close_outputs(&mut self) {
+    /**
+     * Closes the handle to stdout and stderr.
+     */
+    pub fn close_outputs(&mut self) {
         self.inner.io[1].take();
         self.inner.io[2].take();
     }

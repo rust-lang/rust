@@ -64,6 +64,7 @@ while cur < len(lines):
 #[ allow(dead_assignment) ];\n
 #[ allow(unused_mut) ];\n
 #[ allow(attribute_usage) ];\n
+#[ allow(dead_code) ];\n
 #[ feature(macro_rules, globs, struct_variant, managed_boxes) ];\n
 """ + block
             if xfail:

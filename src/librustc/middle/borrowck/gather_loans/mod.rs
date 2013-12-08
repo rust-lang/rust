@@ -818,10 +818,6 @@ impl<'self> GatherLoanCtxt<'self> {
         }
     }
 
-    pub fn pat_is_variant_or_struct(&self, pat: @ast::Pat) -> bool {
-        pat_util::pat_is_variant_or_struct(self.bccx.tcx.def_map, pat)
-    }
-
     pub fn pat_is_binding(&self, pat: @ast::Pat) -> bool {
         pat_util::pat_is_binding(self.bccx.tcx.def_map, pat)
     }

@@ -364,16 +364,6 @@ fn split_char_first(s: &str, c: char) -> (~str, ~str) {
     }
 }
 
-fn userinfo_from_str(uinfo: &str) -> UserInfo {
-    let (user, p) = split_char_first(uinfo, ':');
-    let pass = if p.is_empty() {
-        None
-    } else {
-        Some(p)
-    };
-    return UserInfo::new(user, pass);
-}
-
 fn userinfo_to_str(userinfo: &UserInfo) -> ~str {
     match userinfo.pass {
         Some(ref pass) => format!("{}:{}@", userinfo.user, *pass),

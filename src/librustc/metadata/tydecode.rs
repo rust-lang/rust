@@ -23,7 +23,6 @@ use syntax::abi::AbiSet;
 use syntax::abi;
 use syntax::ast;
 use syntax::ast::*;
-use syntax::codemap::dummy_sp;
 use syntax::opt_vec;
 
 // Compact string representation for ty::t values. API ty_str &
@@ -128,34 +127,6 @@ pub fn parse_trait_ref_data(data: &[u8], crate_num: ast::CrateNum, pos: uint, tc
                             conv: conv_did) -> ty::TraitRef {
     let mut st = parse_state_from_data(data, crate_num, pos, tcx);
     parse_trait_ref(&mut st, conv)
-}
-
-fn parse_path(st: &mut PState) -> @ast::Path {
-    let mut idents: ~[ast::Ident] = ~[];
-    fn is_last(c: char) -> bool { return c == '(' || c == ':'; }
-    idents.push(parse_ident_(st, is_last));
-    loop {
-        match peek(st) {
-          ':' => { next(st); next(st); }
-          c => {
-            if c == '(' {
-                return @ast::Path {
-                    span: dummy_sp(),
-                    global: false,
-                    segments: idents.move_iter().map(|identifier| {
-                        ast::PathSegment {
-                            identifier: identifier,
-                            lifetimes: opt_vec::Empty,
-                            types: opt_vec::Empty,
-                        }
-                    }).collect()
-                };
-            } else {
-                idents.push(parse_ident_(st, is_last));
-            }
-          }
-        }
-    };
 }
 
 fn parse_sigil(st: &mut PState) -> ast::Sigil {

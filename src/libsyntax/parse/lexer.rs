@@ -273,21 +273,12 @@ pub fn nextch(rdr: @mut StringReader) -> char {
     } else { return unsafe { transmute(-1u32) }; } // FIXME: #8971: unsound
 }
 
-fn dec_digit_val(c: char) -> int { return (c as int) - ('0' as int); }
-
 fn hex_digit_val(c: char) -> int {
     if in_range(c, '0', '9') { return (c as int) - ('0' as int); }
     if in_range(c, 'a', 'f') { return (c as int) - ('a' as int) + 10; }
     if in_range(c, 'A', 'F') { return (c as int) - ('A' as int) + 10; }
     fail!();
 }
-
-fn oct_digit_val(c: char) -> int {
-    if in_range(c, '0', '7') { return (c as int) - ('0' as int); }
-    fail!();
-}
-
-fn bin_digit_value(c: char) -> int { if c == '0' { return 0; } return 1; }
 
 pub fn is_whitespace(c: char) -> bool {
     return c == ' ' || c == '\t' || c == '\r' || c == '\n';
@@ -303,10 +294,6 @@ fn is_hex_digit(c: char) -> bool {
     return in_range(c, '0', '9') || in_range(c, 'a', 'f') ||
             in_range(c, 'A', 'F');
 }
-
-fn is_oct_digit(c: char) -> bool { return in_range(c, '0', '7'); }
-
-fn is_bin_digit(c: char) -> bool { return c == '0' || c == '1'; }
 
 // EFFECT: eats whitespace and comments.
 // returns a Some(sugared-doc-attr) if one exists, None otherwise.

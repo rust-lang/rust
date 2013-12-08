@@ -411,20 +411,6 @@ pub fn check_trait_cast_bounds(cx: &Context, sp: Span, ty: ty::t,
     });
 }
 
-fn is_nullary_variant(cx: &Context, ex: @Expr) -> bool {
-    match ex.node {
-      ExprPath(_) => {
-        match cx.tcx.def_map.get_copy(&ex.id) {
-          DefVariant(edid, vdid, _) => {
-              ty::enum_variant_with_id(cx.tcx, edid, vdid).args.is_empty()
-          }
-          _ => false
-        }
-      }
-      _ => false
-    }
-}
-
 fn check_imm_free_var(cx: &Context, def: Def, sp: Span) {
     match def {
         DefLocal(_, BindByValue(MutMutable)) => {
@@ -584,9 +570,5 @@ pub fn check_cast_for_escaping_regions(
             ty::ReScope(..) => true,
             _ => false
         }
-    }
-
-    fn is_subregion_of(cx: &Context, r_sub: ty::Region, r_sup: ty::Region) -> bool {
-        cx.tcx.region_maps.is_subregion_of(r_sub, r_sup)
     }
 }

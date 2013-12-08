@@ -100,7 +100,7 @@ impl<T: Clone + Integer + Ord>
     }
 
     /// Return a `reduce`d copy of self.
-    fn reduced(&self) -> Ratio<T> {
+    pub fn reduced(&self) -> Ratio<T> {
         let mut ret = self.clone();
         ret.reduce();
         ret
