@@ -44,6 +44,7 @@ pub static EOF: c_int = -4095;
 pub static UNKNOWN: c_int = -4094;
 
 // uv-errno.h redefines error codes for windows, but not for unix...
+// https://github.com/joyent/libuv/blob/master/include/uv-errno.h
 
 #[cfg(windows)]
 pub mod errors {
@@ -52,6 +53,7 @@ pub mod errors {
     pub static EACCES: c_int = -4092;
     pub static ECONNREFUSED: c_int = -4078;
     pub static ECONNRESET: c_int = -4077;
+    pub static ENOENT: c_int = -4058;
     pub static ENOTCONN: c_int = -4053;
     pub static EPIPE: c_int = -4047;
     pub static ECONNABORTED: c_int = -4079;
@@ -66,6 +68,7 @@ pub mod errors {
     pub static EACCES: c_int = -libc::EACCES;
     pub static ECONNREFUSED: c_int = -libc::ECONNREFUSED;
     pub static ECONNRESET: c_int = -libc::ECONNRESET;
+    pub static ENOENT: c_int = -libc::ENOENT;
     pub static ENOTCONN: c_int = -libc::ENOTCONN;
     pub static EPIPE: c_int = -libc::EPIPE;
     pub static ECONNABORTED: c_int = -libc::ECONNABORTED;
