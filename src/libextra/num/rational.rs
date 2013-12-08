@@ -14,7 +14,7 @@
 use std::cmp;
 use std::from_str::FromStr;
 use std::num::{Zero,One,ToStrRadix,FromStrRadix,Round};
-use super::bigint::BigInt;
+use super::bigint::{BigInt, BigUint, Sign, Plus, Minus};
 
 /// Represents the ratio between 2 numbers.
 #[deriving(Clone)]
@@ -106,6 +106,70 @@ impl<T: Clone + Integer + Ord>
         ret
     }
 }
+
+impl Ratio<BigInt> {
+    // Ported from
+    // http://www.ginac.de/CLN/cln.git/?p=cln.git;a=blob;f=src/real/misc/cl_R_rationalize.cc;hb=HEAD
+    // http://sourceforge.net/p/sbcl/sbcl/ci/master/tree/src/code/float.lisp#l850
+    // (2013-11-17)
+    /// Converts a float into a rational number
+    fn rationalize<T: Float>(f: T) -> Option<BigRational> {
+        if !f.is_finite() {
+            return None;
+        }
+        let (mantissa, exponent, sign) = f.integer_decode();
+        if mantissa == 0 || exponent >= 0 {
+            let mut numer: BigUint = FromPrimitive::from_u64(mantissa).unwrap();
+            numer = numer << (exponent as uint);
+            let bigintSign: Sign = if sign == 1 { Plus } else { Minus };
+            return Some(Ratio::from_integer(BigInt::from_biguint(bigintSign, numer)));
+        }
+
+        let one: BigInt = One::one();
+        let mut a: BigRational = Ratio::new(
+            FromPrimitive::from_u64(2 * mantissa - 1).unwrap(),
+            one << ((1 - exponent) as uint));
+        let mut b: BigRational = Ratio::new(
+            FromPrimitive::from_u64(2 * mantissa + 1).unwrap(),
+            one << ((1 - exponent) as uint));
+
+        let mut p0: BigInt = Zero::zero();
+        let mut p1: BigInt = One::one();
+        let mut q0: BigInt = One::one();
+        let mut q1: BigInt = Zero::zero();
+        let mut c;
+
+        loop {
+            c = a.ceil();
+            if c >= b {
+                let k = c.to_integer() - One::one();
+
+                let p2 = k * p1 + p0;
+                p0 = p1;
+                p1 = p2;
+                let q2 = k * q1 + q0;
+                q0 = q1;
+                q1 = q2;
+
+                let tmp = (b - Ratio::from_integer(k.clone())).recip();
+                b = (a - Ratio::from_integer(k.clone())).recip();
+                a = tmp;
+            } else {
+                break;
+            }
+        };
+
+        let p_last: BigInt = c.to_integer() * p1 + p0;
+        let q_last: BigInt = c.to_integer() * q1 + q0;
+
+        if sign == 1 {
+            Some(Ratio::new(p_last, q_last))
+        } else {
+            Some(Ratio::new(-p_last, q_last))
+        }
+    }
+}
+
 
 /* Comparisons */
 
@@ -620,5 +684,44 @@ mod test {
         for &s in xs.iter() {
             test(s);
         }
+    }
+
+    #[test]
+    fn test_rationalize() {
+        fn test<T: Float>(given: T, expected: (&str, &str)) {
+            let ratio: BigRational = Ratio::rationalize(given).unwrap();
+            let (numer, denom) = expected;
+            assert_eq!(ratio, Ratio::new(
+                FromStr::from_str(numer).unwrap(),
+                FromStr::from_str(denom).unwrap()));
+        }
+
+        // f32
+        test(3.14159265359f32, ("93343", "29712"));
+        test(2f32.pow(&100.), ("1267650600228229401496703205376", "1"));
+        test(-2f32.pow(&100.), ("-1267650600228229401496703205376", "1"));
+        test(1.0 / 2f32.pow(&100.), ("1", "1267650524670370179181738721296"));
+        test(684729.48391f32, ("1369459", "2"));
+        test(-8573.5918555f32, ("-420106", "49"));
+
+        // f64
+        test(3.14159265359f64, ("226883371", "72219220"));
+        test(2f64.pow(&100.), ("1267650600228229401496703205376", "1"));
+        test(-2f64.pow(&100.), ("-1267650600228229401496703205376", "1"));
+        test(1.0 / 2f64.pow(&100.), ("1", "1267650600228229260759214850049"));
+        test(684729.48391f64, ("68472948391", "100000"));
+        test(-8573.5918555f64, ("-13743853556", "1603045"));
+    }
+
+    #[test]
+    fn test_rationalize_fail() {
+        use std::{f32, f64};
+
+        assert_eq!(Ratio::rationalize(f32::NAN), None);
+        assert_eq!(Ratio::rationalize(f32::INFINITY), None);
+        assert_eq!(Ratio::rationalize(f32::NEG_INFINITY), None);
+        assert_eq!(Ratio::rationalize(f64::NAN), None);
+        assert_eq!(Ratio::rationalize(f64::INFINITY), None);
+        assert_eq!(Ratio::rationalize(f64::NEG_INFINITY), None);
     }
 }
