@@ -135,13 +135,6 @@ pub enum item_or_view_item {
     iovi_view_item(view_item)
 }
 
-#[deriving(Eq)]
-enum view_item_parse_mode {
-    VIEW_ITEMS_AND_ITEMS_ALLOWED,
-    FOREIGN_ITEMS_ALLOWED,
-    IMPORTS_AND_ITEMS_ALLOWED
-}
-
 /* The expr situation is not as complex as I thought it would be.
 The important thing is to make sure that lookahead doesn't balk
 at INTERPOLATED tokens */
@@ -3455,18 +3448,6 @@ impl Parser {
         })
     }
 
-    fn parse_optional_purity(&self) -> ast::purity {
-        if self.eat_keyword(keywords::Unsafe) {
-            ast::unsafe_fn
-        } else {
-            ast::impure_fn
-        }
-    }
-
-    fn parse_optional_onceness(&self) -> ast::Onceness {
-        if self.eat_keyword(keywords::Once) { ast::Once } else { ast::Many }
-    }
-
     // matches optbounds = ( ( : ( boundseq )? )? )
     // where   boundseq  = ( bound + boundseq ) | bound
     // and     bound     = 'static | ty
@@ -3528,15 +3509,6 @@ impl Parser {
             ast::Generics { lifetimes: lifetimes, ty_params: ty_params }
         } else {
             ast_util::empty_generics()
-        }
-    }
-
-    // parse a generic use site
-    fn parse_generic_values(&self) -> (OptVec<ast::Lifetime>, ~[P<Ty>]) {
-        if !self.eat(&token::LT) {
-            (opt_vec::Empty, ~[])
-        } else {
-            self.parse_generic_values_after_lt()
         }
     }
 
@@ -4080,13 +4052,6 @@ impl Parser {
          None)
     }
 
-    fn token_is_pound_or_doc_comment(&self, tok: token::Token) -> bool {
-        match tok {
-            token::POUND | token::DOC_COMMENT(_) => true,
-            _ => false
-        }
-    }
-
     // parse a structure field declaration
     pub fn parse_single_struct_field(&self,
                                      vis: visibility,
@@ -4556,26 +4521,6 @@ impl Parser {
         (id, item_enum(enum_definition, generics), None)
     }
 
-    fn parse_fn_ty_sigil(&self) -> Option<Sigil> {
-        match *self.token {
-            token::AT => {
-                self.bump();
-                Some(ManagedSigil)
-            }
-            token::TILDE => {
-                self.bump();
-                Some(OwnedSigil)
-            }
-            token::BINOP(token::AND) => {
-                self.bump();
-                Some(BorrowedSigil)
-            }
-            _ => {
-                None
-            }
-        }
-    }
-
     fn fn_expr_lookahead(&self, tok: &token::Token) -> bool {
         match *tok {
           token::LPAREN | token::AT | token::TILDE | token::BINOP(_) => true,
@@ -4981,51 +4926,6 @@ impl Parser {
             vp.push(self.parse_view_path());
         }
         return vp;
-    }
-
-    fn is_view_item(&self) -> bool {
-        if !self.is_keyword(keywords::Pub) && !self.is_keyword(keywords::Priv) {
-            token::is_keyword(keywords::Use, self.token)
-                || (token::is_keyword(keywords::Extern, self.token) &&
-                    self.look_ahead(1,
-                                    |t| token::is_keyword(keywords::Mod, t)))
-        } else {
-            self.look_ahead(1, |t| token::is_keyword(keywords::Use, t))
-                || (self.look_ahead(1,
-                                    |t| token::is_keyword(keywords::Extern,
-                                                          t)) &&
-                    self.look_ahead(2,
-                                    |t| token::is_keyword(keywords::Mod, t)))
-        }
-    }
-
-    // parse a view item.
-    fn parse_view_item(
-        &self,
-        attrs: ~[Attribute],
-        vis: visibility
-    ) -> view_item {
-        let lo = self.span.lo;
-        let node = if self.eat_keyword(keywords::Use) {
-            self.parse_use()
-        } else if self.eat_keyword(keywords::Extern) {
-            self.expect_keyword(keywords::Mod);
-            let ident = self.parse_ident();
-            let path = if *self.token == token::EQ {
-                self.bump();
-                Some(self.parse_str())
-            }
-            else { None };
-            let metadata = self.parse_optional_meta();
-            view_item_extern_mod(ident, path, metadata, ast::DUMMY_NODE_ID)
-        } else {
-            self.bug("expected view item");
-        };
-        self.expect(&token::SEMI);
-        ast::view_item { node: node,
-                          attrs: attrs,
-                          vis: vis,
-                          span: mk_sp(lo, self.last_span.hi) }
     }
 
     // Parses a sequence of items. Stops when it finds program

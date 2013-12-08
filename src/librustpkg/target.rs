@@ -79,6 +79,7 @@ fn file_is(p: &Path, stem: &str) -> bool {
     }
 }
 
+#[allow(dead_code)]
 pub fn lib_name_of(p: &Path) -> Path {
     p.join("lib.rs")
 }

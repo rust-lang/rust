@@ -17,17 +17,6 @@ use std::str;
 //     http://www.matroska.org/technical/specs/rfc/index.html
 
 // Common data structures
-struct EbmlTag {
-    id: uint,
-    size: uint,
-}
-
-struct EbmlState {
-    ebml_tag: EbmlTag,
-    tag_pos: uint,
-    data_pos: uint,
-}
-
 #[deriving(Clone)]
 pub struct Doc {
     data: @~[u8],

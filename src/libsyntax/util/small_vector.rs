@@ -64,7 +64,7 @@ impl<T> SmallVector<T> {
         }
     }
 
-    fn get<'a>(&'a self, idx: uint) -> &'a T {
+    pub fn get<'a>(&'a self, idx: uint) -> &'a T {
         match *self {
             One(ref v) if idx == 0 => v,
             Many(ref vs) => &vs[idx],

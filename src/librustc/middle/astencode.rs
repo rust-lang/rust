@@ -390,10 +390,6 @@ fn renumber_ast(xcx: @ExtendedDecodeContext, ii: ast::inlined_item)
 // ______________________________________________________________________
 // Encoding and decoding of ast::def
 
-fn encode_def(ebml_w: &mut writer::Encoder, def: ast::Def) {
-    def.encode(ebml_w)
-}
-
 fn decode_def(xcx: @ExtendedDecodeContext, doc: ebml::Doc) -> ast::Def {
     let mut dsr = reader::Decoder(doc);
     let def: ast::Def = Decodable::decode(&mut dsr);

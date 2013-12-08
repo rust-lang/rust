@@ -15,6 +15,7 @@
 #[deny(unstable)];
 #[deny(deprecated)];
 #[deny(experimental)];
+#[allow(dead_code)];
 
 mod cross_crate {
     extern mod lint_stability;

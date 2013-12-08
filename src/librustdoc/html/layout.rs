@@ -122,10 +122,6 @@ pub fn render<T: fmt::Default, S: fmt::Default>(
     );
 }
 
-fn boolstr(b: bool) -> &'static str {
-    if b { "true" } else { "false" }
-}
-
 fn nonestr<'a>(s: &'a str) -> &'a str {
     if s == "" { "none" } else { s }
 }

@@ -10,6 +10,7 @@
 
 #[feature(managed_boxes)];
 #[forbid(heap_memory)];
+#[allow(dead_code)];
 
 struct Foo {
     x: @int //~ ERROR type uses managed

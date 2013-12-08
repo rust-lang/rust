@@ -84,44 +84,6 @@ enum MoveError {
 }
 
 impl<'self> CheckLoanCtxt<'self> {
-    fn check_by_move_capture(&self,
-                             closure_id: ast::NodeId,
-                             cap_var: &moves::CaptureVar,
-                             move_path: @LoanPath) {
-        let move_err = self.analyze_move_out_from(closure_id, move_path);
-        match move_err {
-            MoveOk => {}
-            MoveWhileBorrowed(loan_path, loan_span) => {
-                self.bccx.span_err(
-                    cap_var.span,
-                    format!("cannot move `{}` into closure \
-                          because it is borrowed",
-                         self.bccx.loan_path_to_str(move_path)));
-                self.bccx.span_note(
-                    loan_span,
-                    format!("borrow of `{}` occurs here",
-                         self.bccx.loan_path_to_str(loan_path)));
-            }
-        }
-    }
-
-    fn check_captured_variables(&self, closure_id: ast::NodeId, span: Span) {
-        let cap_vars = self.bccx.capture_map.get(&closure_id);
-        for cap_var in cap_vars.iter() {
-            let var_id = ast_util::def_id_of_def(cap_var.def).node;
-            let var_path = @LpVar(var_id);
-            self.check_if_path_is_moved(closure_id, span,
-                                        MovedInCapture, var_path);
-            match cap_var.mode {
-                moves::CapRef | moves::CapCopy => {}
-                moves::CapMove => {
-                    self.check_by_move_capture(closure_id, cap_var, var_path);
-                }
-            }
-        }
-        return;
-    }
-
     pub fn tcx(&self) -> ty::ctxt { self.bccx.tcx }
 
     pub fn each_issued_loan(&self, scope_id: ast::NodeId, op: |&Loan| -> bool)

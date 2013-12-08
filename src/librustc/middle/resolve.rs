@@ -52,12 +52,6 @@ type BindingMap = HashMap<Name,binding_info>;
 // Trait method resolution
 pub type TraitMap = HashMap<NodeId,@mut ~[DefId]>;
 
-// A summary of the generics on a trait.
-struct TraitGenerics {
-    has_lifetime: bool,
-    type_parameter_count: uint,
-}
-
 // This is the replacement export map. It maps a module to all of the exports
 // within.
 pub type ExportMap2 = @mut HashMap<NodeId, ~[Export2]>;
@@ -141,12 +135,6 @@ enum NameDefinition {
     ImportNameDefinition(Def, LastPrivate) //< The name identifies an import.
 }
 
-#[deriving(Eq)]
-enum Mutability {
-    Mutable,
-    Immutable
-}
-
 enum SelfBinding {
     NoSelfBinding,
     HasSelfBinding(NodeId, explicit_self)
@@ -192,9 +180,6 @@ enum ResolveResult<T> {
 }
 
 impl<T> ResolveResult<T> {
-    fn failed(&self) -> bool {
-        match *self { Failed => true, _ => false }
-    }
     fn indeterminate(&self) -> bool {
         match *self { Indeterminate => true, _ => false }
     }
@@ -5432,6 +5417,7 @@ impl Resolver {
         return self.idents_to_str(idents.move_rev_iter().collect::<~[ast::Ident]>());
     }
 
+    #[allow(dead_code)]   // useful for debugging
     fn dump_module(&mut self, module_: @mut Module) {
         debug!("Dump of module `{}`:", self.module_to_str(module_));
 

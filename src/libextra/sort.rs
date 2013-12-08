@@ -179,7 +179,6 @@ impl<'self, T:Clone + Ord + Eq> Sort for &'self mut [T] {
 
 static MIN_MERGE: uint = 64;
 static MIN_GALLOP: uint = 7;
-static INITIAL_TMP_STORAGE: uint = 128;
 
 #[allow(missing_doc)]
 pub fn tim_sort<T:Clone + Ord>(array: &mut [T]) {

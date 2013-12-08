@@ -54,10 +54,6 @@ pub fn pkg_parent_workspaces(cx: &Context, pkgid: &PkgId) -> ~[Path] {
     }
 }
 
-pub fn is_workspace(p: &Path) -> bool {
-    p.join("src").is_dir()
-}
-
 /// Construct a workspace and package-ID name based on the current directory.
 /// This gets used when rustpkg gets invoked without a package-ID argument.
 pub fn cwd_to_workspace() -> Option<(Path, PkgId)> {

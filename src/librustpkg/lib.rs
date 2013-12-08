@@ -63,10 +63,9 @@ mod crate;
 pub mod exit_codes;
 mod installed_packages;
 mod messages;
-mod package_id;
-mod package_source;
+pub mod package_id;
+pub mod package_source;
 mod path_util;
-mod search;
 mod sha1;
 mod source_control;
 mod target;
@@ -188,10 +187,6 @@ impl<'self> PkgScript<'self> {
                 .map(|w| w.to_owned()).collect();
             (cfgs, output.status)
         }
-    }
-
-    fn hash(&self) -> ~str {
-        self.id.hash()
     }
 }
 
@@ -923,13 +918,4 @@ pub fn main_args(args: &[~str]) -> int {
     // unhandled condition got raised.
     if result.is_err() { return COPY_FAILED_CODE; }
     return 0;
-}
-
-fn declare_package_script_dependency(prep: &mut workcache::Prep, pkg_src: &PkgSrc) {
-    match pkg_src.package_script_option() {
-        // FIXME (#9639): This needs to handle non-utf8 paths
-        Some(ref p) => prep.declare_input("file", p.as_str().unwrap(),
-                                      workcache_support::digest_file_with_date(p)),
-        None => ()
-    }
 }

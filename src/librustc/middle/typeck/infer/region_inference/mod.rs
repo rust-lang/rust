@@ -692,13 +692,6 @@ impl RegionVarBindings {
         }
     }
 
-    fn report_type_error(&mut self,
-                         origin: SubregionOrigin,
-                         terr: &ty::type_err) {
-        let terr_str = ty::type_err_to_str(self.tcx, terr);
-        self.tcx.sess.span_err(origin.span(), terr_str);
-    }
-
     fn intersect_scopes(&self,
                         region_a: ty::Region,
                         region_b: ty::Region,

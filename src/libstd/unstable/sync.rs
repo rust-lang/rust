@@ -35,6 +35,7 @@ pub enum UnsafeArcUnwrap<T> {
     UnsafeArcT(T)
 }
 
+#[cfg(test)]
 impl<T> UnsafeArcUnwrap<T> {
     fn expect_t(self, msg: &'static str) -> T {
         match self {

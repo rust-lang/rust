@@ -10,6 +10,7 @@
 
 // Issue #7526: lowercase static constants in patterns look like bindings
 
+#[allow(dead_code)];
 #[deny(non_uppercase_pattern_statics)];
 
 pub static a : int = 97;

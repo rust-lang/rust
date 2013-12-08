@@ -1049,11 +1049,6 @@ fn prefix_len(p: Option<PathPrefix>) -> uint {
     }
 }
 
-fn prefix_is_sep(p: Option<PathPrefix>, c: u8) -> bool {
-    c.is_ascii() && if !prefix_is_verbatim(p) { is_sep(c as char) }
-                    else { is_sep_verbatim(c as char) }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

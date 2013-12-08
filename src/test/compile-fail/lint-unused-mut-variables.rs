@@ -12,6 +12,7 @@
 
 #[allow(dead_assignment)];
 #[allow(unused_variable)];
+#[allow(dead_code)];
 #[deny(unused_mut)];
 
 fn main() {

@@ -141,10 +141,6 @@ impl Drop for PipeWatcher {
     }
 }
 
-extern fn pipe_close_cb(handle: *uvll::uv_handle_t) {
-    unsafe { uvll::free_handle(handle) }
-}
-
 // PipeListener implementation and traits
 
 impl PipeListener {

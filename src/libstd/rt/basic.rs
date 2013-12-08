@@ -37,17 +37,6 @@ struct BasicLoop {
 
 enum Message { RunRemote(uint), RemoveRemote(uint) }
 
-struct Time {
-    sec: u64,
-    nsec: u64,
-}
-
-impl Ord for Time {
-    fn lt(&self, other: &Time) -> bool {
-        self.sec < other.sec || self.nsec < other.nsec
-    }
-}
-
 impl BasicLoop {
     fn new() -> BasicLoop {
         BasicLoop {
@@ -237,15 +226,4 @@ impl Drop for BasicPausible {
             (*self.eloop).idle = None;
         }
     }
-}
-
-fn time() -> Time {
-    extern {
-        fn rust_get_time(sec: &mut i64, nsec: &mut i32);
-    }
-    let mut sec = 0;
-    let mut nsec = 0;
-    unsafe { rust_get_time(&mut sec, &mut nsec) }
-
-    Time { sec: sec as u64, nsec: nsec as u64 }
 }
