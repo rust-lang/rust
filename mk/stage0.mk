@@ -25,34 +25,6 @@ endif
 endif
 	$(Q)touch $@
 
-# Host libs will be extracted by the above rule
-
-# NOTE: remove all these after the next snapshot
-$(HLIB0_H_$(CFG_BUILD))/$(CFG_STDLIB_$(CFG_BUILD)): \
-		$(HBIN0_H_$(CFG_BUILD))/rustc$(X_$(CFG_BUILD)) \
-		| $(HLIB0_H_$(CFG_BUILD))/
-	$(Q)touch $@
-
-$(HLIB0_H_$(CFG_BUILD))/$(CFG_EXTRALIB_$(CFG_BUILD)): \
-		$(HBIN0_H_$(CFG_BUILD))/rustc$(X_$(CFG_BUILD)) \
-		| $(HLIB0_H_$(CFG_BUILD))/
-	$(Q)touch $@
-
-$(HLIB0_H_$(CFG_BUILD))/$(CFG_LIBRUSTUV_$(CFG_BUILD)): \
-		$(HBIN0_H_$(CFG_BUILD))/rustc$(X_$(CFG_BUILD)) \
-		| $(HLIB0_H_$(CFG_BUILD))/
-	$(Q)touch $@
-
-$(HLIB0_H_$(CFG_BUILD))/$(CFG_LIBRUSTC_$(CFG_BUILD)): \
-		$(HBIN0_H_$(CFG_BUILD))/rustc$(X_$(CFG_BUILD)) \
-		| $(HLIB0_H_$(CFG_BUILD))/
-	$(Q)touch $@
-
-$(HLIB0_H_$(CFG_BUILD))/$(CFG_RUSTLLVM_$(CFG_BUILD)): \
-		$(HBIN0_H_$(CFG_BUILD))/rustc$(X_$(CFG_BUILD)) \
-		| $(HLIB0_H_$(CFG_BUILD))/
-	$(Q)touch $@
-
 # For other targets, let the host build the target:
 
 define BOOTSTRAP_STAGE0
@@ -69,45 +41,6 @@ $(HLIB0_H_$(1))/:
 $$(HBIN0_H_$(1))/rustc$$(X_$(1)): \
 		$$(TBIN$(2)_T_$(1)_H_$(3))/rustc$$(X_$(1)) \
 		| $(HBIN0_H_$(1))/
-	@$$(call E, cp: $$@)
-	$$(Q)cp $$< $$@
-
-# NOTE: removing everything below after the next snapshot
-$$(HLIB0_H_$(1))/$(CFG_STDLIB_$(1)): \
-		$$(TLIB$(2)_T_$(1)_H_$(3))/$(CFG_STDLIB_$(1)) \
-		| $(HLIB0_H_$(1))/
-	@$$(call E, cp: $$@)
-	$$(call CHECK_FOR_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(STDLIB_GLOB_$(4)),$$(notdir $$@))
-	$$(Q)cp $$(TLIB$(2)_T_$(1)_H_$(3))/$(STDLIB_GLOB_$(1)) $$@
-	$$(call LIST_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(STDLIB_GLOB_$(4)),$$(notdir $$@))
-
-$$(HLIB0_H_$(1))/$(CFG_EXTRALIB_$(1)): \
-		$$(TLIB$(2)_T_$(1)_H_$(3))/$(CFG_EXTRALIB_$(1)) \
-		| $(HLIB0_H_$(1))/
-	@$$(call E, cp: $$@)
-	$$(call CHECK_FOR_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(EXTRALIB_GLOB_$(4)),$$(notdir $$@))
-	$$(Q)cp $$(TLIB$(2)_T_$(1)_H_$(3))/$(EXTRALIB_GLOB_$(1)) $$@
-	$$(call LIST_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(EXTRALIB_GLOB_$(4)),$$(notdir $$@))
-
-$$(HLIB0_H_$(1))/$(CFG_LIBRUSTUV_$(1)): \
-		$$(TLIB$(2)_T_$(1)_H_$(3))/$(CFG_LIBRUSTUV_$(1)) \
-		| $(HLIB0_H_$(1))/
-	@$$(call E, cp: $$@)
-	$$(call CHECK_FOR_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUSTUV_GLOB_$(4)),$$(notdir $$@))
-	$$(Q)cp $$(TLIB$(2)_T_$(1)_H_$(3))/$(LIBRUSTUV_GLOB_$(1)) $$@
-	$$(call LIST_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUSTUV_GLOB_$(4)),$$(notdir $$@))
-
-$$(HLIB0_H_$(1))/$(CFG_LIBRUSTC_$(1)): \
-		$$(TLIB$(2)_T_$(1)_H_$(3))/$(CFG_LIBRUSTC_$(1)) \
-		| $(HLIB0_H_$(1))/
-	@$$(call E, cp: $$@)
-	$$(call CHECK_FOR_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUSTC_GLOB_$(4)),$$(notdir $$@))
-	$$(Q)cp $$(TLIB$(2)_T_$(1)_H_$(3))/$(LIBRUSTC_GLOB_$(1)) $$@
-	$$(call LIST_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUSTC_GLOB_$(4)),$$(notdir $$@))
-
-$$(HLIB0_H_$(1))/$(CFG_RUSTLLVM_$(1)): \
-		$$(TLIB$(2)_T_$(1)_H_$(3))/$(CFG_RUSTLLVM_$(1)) \
-		| $(HLIB0_H_$(1))/
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
