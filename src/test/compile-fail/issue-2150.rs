@@ -10,6 +10,7 @@
 
 #[deny(unreachable_code)];
 #[allow(unused_variable)];
+#[allow(dead_code)];
 
 fn fail_len(v: ~[int]) -> uint {
     let mut i = 3;

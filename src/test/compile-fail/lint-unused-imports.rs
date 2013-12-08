@@ -10,6 +10,7 @@
 
 #[feature(globs)];
 #[deny(unused_imports)];
+#[allow(dead_code)];
 
 use cal = bar::c::cc;
 

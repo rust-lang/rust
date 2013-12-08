@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(dead_code)];
 #[deny(dead_assignment)];
 
 fn f1(x: &mut int) {

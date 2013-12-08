@@ -13,6 +13,7 @@
 #[feature(struct_variant)];
 #[feature(globs)];
 #[deny(missing_doc)];
+#[allow(dead_code)];
 
 //! Some garbage docs for the crate here
 #[doc="More garbage"];

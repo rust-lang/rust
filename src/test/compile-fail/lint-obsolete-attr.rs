@@ -12,6 +12,7 @@
 // injected intrinsics by the compiler.
 
 #[deny(attribute_usage)];
+#[allow(dead_code)];
 
 #[abi="stdcall"] extern {} //~ ERROR: obsolete attribute
 

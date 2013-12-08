@@ -88,6 +88,7 @@ pub enum lint {
     dead_assignment,
     unused_mut,
     unnecessary_allocation,
+    dead_code,
 
     missing_doc,
     unreachable_code,
@@ -279,6 +280,13 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
      LintSpec {
         lint: unnecessary_allocation,
         desc: "detects unnecessary allocations that can be eliminated",
+        default: warn
+    }),
+
+    ("dead_code",
+     LintSpec {
+        lint: dead_code,
+        desc: "detect piece of code that will never be used",
         default: warn
     }),
 
