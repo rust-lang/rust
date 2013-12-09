@@ -11,7 +11,7 @@
 // xfail-fast check-fast doesn't like extern mod
 // aux-build:issue-9968.rs
 
-extern mod lib(name = "issue-9968");
+extern mod lib = "issue-9968";
 
 use lib::{Trait, Struct};
 

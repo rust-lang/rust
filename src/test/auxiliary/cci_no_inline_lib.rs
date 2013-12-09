@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[pkgid="cci_no_inline_lib"];
+// NOTE: remove after the next snapshot
 #[link(name="cci_no_inline_lib", vers="0.0")];
 
 // same as cci_iter_lib, more-or-less, but not marked inline

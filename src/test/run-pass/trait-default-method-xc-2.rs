@@ -3,8 +3,8 @@
 // aux-build:trait_default_method_xc_aux_2.rs
 
 
-extern mod aux(name = "trait_default_method_xc_aux");
-extern mod aux2(name = "trait_default_method_xc_aux_2");
+extern mod aux = "trait_default_method_xc_aux";
+extern mod aux2 = "trait_default_method_xc_aux_2";
 use aux::A;
 use aux2::{a_struct, welp};
 
