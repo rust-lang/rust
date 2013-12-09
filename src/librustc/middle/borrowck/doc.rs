@@ -650,7 +650,7 @@ The rule for mutable borrowed pointers is as follows:
 
 Let's examine the two numbered clauses:
 
-Clause (1) specifies that tThe lifetime of the loan (`LT`) cannot
+Clause (1) specifies that the lifetime of the loan (`LT`) cannot
 exceed the lifetime of the `&mut` pointer (`LT'`). The reason for this
 is that the `&mut` pointer is guaranteed to be the only legal way to
 mutate its referent -- but only for the lifetime `LT'`.  After that

@@ -671,7 +671,7 @@ impl BorrowckCtxt {
                 // supposed to be going away.
                 format!("unsafe borrow of aliasable, const value")
             }
-            err_borrowed_pointer_too_short(_, _, r) => {
+            err_borrowed_pointer_too_short(..) => {
                 let descr = match opt_loan_path(err.cmt) {
                     Some(lp) => format!("`{}`", self.loan_path_to_str(lp)),
                     None => self.cmt_to_str(err.cmt),
