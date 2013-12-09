@@ -23,14 +23,18 @@ that do not need to record state.
 use iter::range;
 use option::{Some, None};
 use num;
-use rand::{Rng, Rand, Open01};
+use rand::{Rng, Rand};
 use clone::Clone;
 
 pub use self::range::Range;
-pub use self::gamma::Gamma;
+pub use self::gamma::{Gamma, ChiSquared, FisherF, StudentT};
+pub use self::normal::{Normal, LogNormal};
+pub use self::exponential::Exp;
 
 pub mod range;
 pub mod gamma;
+pub mod normal;
+pub mod exponential;
 
 /// Types that can be used to create a random instance of `Support`.
 pub trait Sample<Support> {
@@ -246,181 +250,10 @@ fn ziggurat<R:Rng>(
     }
 }
 
-/// A wrapper around an `f64` to generate N(0, 1) random numbers
-/// (a.k.a.  a standard normal, or Gaussian).
-///
-/// See `Normal` for the general normal distribution. That this has to
-/// be unwrapped before use as an `f64` (using either `*` or
-/// `cast::transmute` is safe).
-///
-/// Implemented via the ZIGNOR variant[1] of the Ziggurat method.
-///
-/// [1]: Jurgen A. Doornik (2005). [*An Improved Ziggurat Method to
-/// Generate Normal Random
-/// Samples*](http://www.doornik.com/research/ziggurat.pdf). Nuffield
-/// College, Oxford
-pub struct StandardNormal(f64);
-
-impl Rand for StandardNormal {
-    fn rand<R:Rng>(rng: &mut R) -> StandardNormal {
-        #[inline]
-        fn pdf(x: f64) -> f64 {
-            ((-x*x/2.0) as f64).exp()
-        }
-        #[inline]
-        fn zero_case<R:Rng>(rng: &mut R, u: f64) -> f64 {
-            // compute a random number in the tail by hand
-
-            // strange initial conditions, because the loop is not
-            // do-while, so the condition should be true on the first
-            // run, they get overwritten anyway (0 < 1, so these are
-            // good).
-            let mut x = 1.0f64;
-            let mut y = 0.0f64;
-
-            while -2.0 * y < x * x {
-                let x_ = *rng.gen::<Open01<f64>>();
-                let y_ = *rng.gen::<Open01<f64>>();
-
-                x = x_.ln() / ziggurat_tables::ZIG_NORM_R;
-                y = y_.ln();
-            }
-
-            if u < 0.0 { x - ziggurat_tables::ZIG_NORM_R } else { ziggurat_tables::ZIG_NORM_R - x }
-        }
-
-        StandardNormal(ziggurat(
-            rng,
-            true, // this is symmetric
-            &ziggurat_tables::ZIG_NORM_X,
-            &ziggurat_tables::ZIG_NORM_F,
-            pdf, zero_case))
-    }
-}
-
-/// The normal distribution `N(mean, std_dev**2)`.
-///
-/// This uses the ZIGNOR variant of the Ziggurat method, see
-/// `StandardNormal` for more details.
-///
-/// # Example
-///
-/// ```
-/// use std::rand;
-/// use std::rand::distributions::{Normal, IndependentSample};
-///
-/// fn main() {
-///     let normal = Normal::new(2.0, 3.0);
-///     let v = normal.ind_sample(rand::task_rng());
-///     println!("{} is from a N(2, 9) distribution", v)
-/// }
-/// ```
-pub struct Normal {
-    priv mean: f64,
-    priv std_dev: f64
-}
-
-impl Normal {
-    /// Construct a new `Normal` distribution with the given mean and
-    /// standard deviation. Fails if `std_dev < 0`.
-    pub fn new(mean: f64, std_dev: f64) -> Normal {
-        assert!(std_dev >= 0.0, "Normal::new called with `std_dev` < 0");
-        Normal {
-            mean: mean,
-            std_dev: std_dev
-        }
-    }
-}
-impl Sample<f64> for Normal {
-    fn sample<R: Rng>(&mut self, rng: &mut R) -> f64 { self.ind_sample(rng) }
-}
-impl IndependentSample<f64> for Normal {
-    fn ind_sample<R: Rng>(&self, rng: &mut R) -> f64 {
-        self.mean + self.std_dev * (*rng.gen::<StandardNormal>())
-    }
-}
-
-/// A wrapper around an `f64` to generate Exp(1) random numbers.
-///
-/// See `Exp` for the general exponential distribution.Note that this
- // has to be unwrapped before use as an `f64` (using either
-/// `*` or `cast::transmute` is safe).
-///
-/// Implemented via the ZIGNOR variant[1] of the Ziggurat method. The
-/// exact description in the paper was adjusted to use tables for the
-/// exponential distribution rather than normal.
-///
-/// [1]: Jurgen A. Doornik (2005). [*An Improved Ziggurat Method to
-/// Generate Normal Random
-/// Samples*](http://www.doornik.com/research/ziggurat.pdf). Nuffield
-/// College, Oxford
-pub struct Exp1(f64);
-
-// This could be done via `-rng.gen::<f64>().ln()` but that is slower.
-impl Rand for Exp1 {
-    #[inline]
-    fn rand<R:Rng>(rng: &mut R) -> Exp1 {
-        #[inline]
-        fn pdf(x: f64) -> f64 {
-            (-x).exp()
-        }
-        #[inline]
-        fn zero_case<R:Rng>(rng: &mut R, _u: f64) -> f64 {
-            ziggurat_tables::ZIG_EXP_R - rng.gen::<f64>().ln()
-        }
-
-        Exp1(ziggurat(rng, false,
-                      &ziggurat_tables::ZIG_EXP_X,
-                      &ziggurat_tables::ZIG_EXP_F,
-                      pdf, zero_case))
-    }
-}
-
-/// The exponential distribution `Exp(lambda)`.
-///
-/// This distribution has density function: `f(x) = lambda *
-/// exp(-lambda * x)` for `x > 0`.
-///
-/// # Example
-///
-/// ```
-/// use std::rand;
-/// use std::rand::distributions::{Exp, IndependentSample};
-///
-/// fn main() {
-///     let exp = Exp::new(2.0);
-///     let v = exp.ind_sample(rand::task_rng());
-///     println!("{} is from a Exp(2) distribution", v);
-/// }
-/// ```
-pub struct Exp {
-    /// `lambda` stored as `1/lambda`, since this is what we scale by.
-    priv lambda_inverse: f64
-}
-
-impl Exp {
-    /// Construct a new `Exp` with the given shape parameter
-    /// `lambda`. Fails if `lambda <= 0`.
-    pub fn new(lambda: f64) -> Exp {
-        assert!(lambda > 0.0, "Exp::new called with `lambda` <= 0");
-        Exp { lambda_inverse: 1.0 / lambda }
-    }
-}
-
-impl Sample<f64> for Exp {
-    fn sample<R: Rng>(&mut self, rng: &mut R) -> f64 { self.ind_sample(rng) }
-}
-impl IndependentSample<f64> for Exp {
-    fn ind_sample<R: Rng>(&self, rng: &mut R) -> f64 {
-        (*rng.gen::<Exp1>()) * self.lambda_inverse
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use rand::*;
     use super::*;
-    use iter::range;
     use option::{Some, None};
 
     struct ConstRand(uint);
@@ -449,42 +282,6 @@ mod tests {
         assert_eq!(*rand_sample.sample(&mut task_rng()), 0);
         assert_eq!(*rand_sample.ind_sample(&mut task_rng()), 0);
     }
-
-    #[test]
-    fn test_normal() {
-        let mut norm = Normal::new(10.0, 10.0);
-        let mut rng = task_rng();
-        for _ in range(0, 1000) {
-            norm.sample(&mut rng);
-            norm.ind_sample(&mut rng);
-        }
-    }
-    #[test]
-    #[should_fail]
-    fn test_normal_invalid_sd() {
-        Normal::new(10.0, -1.0);
-    }
-
-    #[test]
-    fn test_exp() {
-        let mut exp = Exp::new(10.0);
-        let mut rng = task_rng();
-        for _ in range(0, 1000) {
-            assert!(exp.sample(&mut rng) >= 0.0);
-            assert!(exp.ind_sample(&mut rng) >= 0.0);
-        }
-    }
-    #[test]
-    #[should_fail]
-    fn test_exp_invalid_lambda_zero() {
-        Exp::new(0.0);
-    }
-    #[test]
-    #[should_fail]
-    fn test_exp_invalid_lambda_neg() {
-        Exp::new(-10.0);
-    }
-
     #[test]
     fn test_weighted_choice() {
         // this makes assumptions about the internal implementation of
@@ -554,40 +351,5 @@ mod tests {
                               Weighted { weight: 1, item: 1 },
                               Weighted { weight: x, item: 2 },
                               Weighted { weight: 1, item: 3 }]);
-    }
-}
-
-#[cfg(test)]
-mod bench {
-    use extra::test::BenchHarness;
-    use rand::{XorShiftRng, RAND_BENCH_N};
-    use super::*;
-    use iter::range;
-    use option::{Some, None};
-    use mem::size_of;
-
-    #[bench]
-    fn rand_normal(bh: &mut BenchHarness) {
-        let mut rng = XorShiftRng::new();
-        let mut normal = Normal::new(-2.71828, 3.14159);
-
-        bh.iter(|| {
-            for _ in range(0, RAND_BENCH_N) {
-                normal.sample(&mut rng);
-            }
-        });
-        bh.bytes = size_of::<f64>() as u64 * RAND_BENCH_N;
-    }
-    #[bench]
-    fn rand_exp(bh: &mut BenchHarness) {
-        let mut rng = XorShiftRng::new();
-        let mut exp = Exp::new(2.71828 * 3.14159);
-
-        bh.iter(|| {
-            for _ in range(0, RAND_BENCH_N) {
-                exp.sample(&mut rng);
-            }
-        });
-        bh.bytes = size_of::<f64>() as u64 * RAND_BENCH_N;
     }
 }
