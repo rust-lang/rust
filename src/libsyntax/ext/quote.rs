@@ -119,28 +119,28 @@ pub mod rt {
     impl<'self> ToSource for &'self str {
         fn to_source(&self) -> @str {
             let lit = dummy_spanned(ast::lit_str(self.to_managed(), ast::CookedStr));
-            pprust::lit_to_str(@lit).to_managed()
+            pprust::lit_to_str(&lit).to_managed()
         }
     }
 
     impl ToSource for int {
         fn to_source(&self) -> @str {
             let lit = dummy_spanned(ast::lit_int(*self as i64, ast::ty_i));
-            pprust::lit_to_str(@lit).to_managed()
+            pprust::lit_to_str(&lit).to_managed()
         }
     }
 
     impl ToSource for i8 {
         fn to_source(&self) -> @str {
             let lit = dummy_spanned(ast::lit_int(*self as i64, ast::ty_i8));
-            pprust::lit_to_str(@lit).to_managed()
+            pprust::lit_to_str(&lit).to_managed()
         }
     }
 
     impl ToSource for i16 {
         fn to_source(&self) -> @str {
             let lit = dummy_spanned(ast::lit_int(*self as i64, ast::ty_i16));
-            pprust::lit_to_str(@lit).to_managed()
+            pprust::lit_to_str(&lit).to_managed()
         }
     }
 
@@ -148,49 +148,49 @@ pub mod rt {
     impl ToSource for i32 {
         fn to_source(&self) -> @str {
             let lit = dummy_spanned(ast::lit_int(*self as i64, ast::ty_i32));
-            pprust::lit_to_str(@lit).to_managed()
+            pprust::lit_to_str(&lit).to_managed()
         }
     }
 
     impl ToSource for i64 {
         fn to_source(&self) -> @str {
             let lit = dummy_spanned(ast::lit_int(*self as i64, ast::ty_i64));
-            pprust::lit_to_str(@lit).to_managed()
+            pprust::lit_to_str(&lit).to_managed()
         }
     }
 
     impl ToSource for uint {
         fn to_source(&self) -> @str {
             let lit = dummy_spanned(ast::lit_uint(*self as u64, ast::ty_u));
-            pprust::lit_to_str(@lit).to_managed()
+            pprust::lit_to_str(&lit).to_managed()
         }
     }
 
     impl ToSource for u8 {
         fn to_source(&self) -> @str {
             let lit = dummy_spanned(ast::lit_uint(*self as u64, ast::ty_u8));
-            pprust::lit_to_str(@lit).to_managed()
+            pprust::lit_to_str(&lit).to_managed()
         }
     }
 
     impl ToSource for u16 {
         fn to_source(&self) -> @str {
             let lit = dummy_spanned(ast::lit_uint(*self as u64, ast::ty_u16));
-            pprust::lit_to_str(@lit).to_managed()
+            pprust::lit_to_str(&lit).to_managed()
         }
     }
 
     impl ToSource for u32 {
         fn to_source(&self) -> @str {
             let lit = dummy_spanned(ast::lit_uint(*self as u64, ast::ty_u32));
-            pprust::lit_to_str(@lit).to_managed()
+            pprust::lit_to_str(&lit).to_managed()
         }
     }
 
     impl ToSource for u64 {
         fn to_source(&self) -> @str {
             let lit = dummy_spanned(ast::lit_uint(*self as u64, ast::ty_u64));
-            pprust::lit_to_str(@lit).to_managed()
+            pprust::lit_to_str(&lit).to_managed()
         }
     }
 
