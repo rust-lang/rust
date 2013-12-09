@@ -1902,7 +1902,7 @@ pub fn print_meta_item(s: @ps, item: &ast::MetaItem) {
       ast::MetaNameValue(name, value) => {
         word_space(s, name);
         word_space(s, "=");
-        print_literal(s, @value);
+        print_literal(s, &value);
       }
       ast::MetaList(name, ref items) => {
         word(s.s, name);

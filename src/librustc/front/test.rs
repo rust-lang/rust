@@ -330,7 +330,7 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::item {
      };
 
     debug!("Synthetic test module:\n{}\n",
-           pprust::item_to_str(@item.clone(), cx.sess.intr()));
+           pprust::item_to_str(&item, cx.sess.intr()));
 
     return @item;
 }
