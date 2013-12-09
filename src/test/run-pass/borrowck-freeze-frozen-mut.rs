@@ -18,7 +18,7 @@ fn get<'a, T>(ms: &'a MutSlice<'a, T>, index: uint) -> &'a T {
     &ms.data[index]
 }
 
-fn main() {
+pub fn main() {
     let mut data = [1, 2, 3];
     {
         let slice = MutSlice { data: data };
