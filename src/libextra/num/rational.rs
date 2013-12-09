@@ -121,8 +121,8 @@ impl Ratio<BigInt> {
         if mantissa == 0 || exponent >= 0 {
             let mut numer: BigUint = FromPrimitive::from_u64(mantissa).unwrap();
             numer = numer << (exponent as uint);
-            let bigintSign: Sign = if sign == 1 { Plus } else { Minus };
-            return Some(Ratio::from_integer(BigInt::from_biguint(bigintSign, numer)));
+            let bigint_sign: Sign = if sign == 1 { Plus } else { Minus };
+            return Some(Ratio::from_integer(BigInt::from_biguint(bigint_sign, numer)));
         }
 
         let one: BigInt = One::one();
@@ -152,7 +152,7 @@ impl Ratio<BigInt> {
                 q1 = q2;
 
                 let tmp = (b - Ratio::from_integer(k.clone())).recip();
-                b = (a - Ratio::from_integer(k.clone())).recip();
+                b = (a - Ratio::from_integer(k)).recip();
                 a = tmp;
             } else {
                 break;
@@ -161,12 +161,8 @@ impl Ratio<BigInt> {
 
         let p_last: BigInt = c.to_integer() * p1 + p0;
         let q_last: BigInt = c.to_integer() * q1 + q0;
-
-        if sign == 1 {
-            Some(Ratio::new(p_last, q_last))
-        } else {
-            Some(Ratio::new(-p_last, q_last))
-        }
+        let p = if sign == 1 { p_last } else { -p_last };
+        Some(Ratio::new(p, q_last))
     }
 }
 
