@@ -10,6 +10,7 @@
 
 // compile-flags:--test
 // xfail-fast
+// xfail-win32 #10872
 
 extern mod extra;
 

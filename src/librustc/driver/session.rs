@@ -66,6 +66,7 @@ pub static no_prepopulate_passes:   uint = 1 << 25;
 pub static use_softfp:              uint = 1 << 26;
 pub static gen_crate_map:           uint = 1 << 27;
 pub static prefer_dynamic:          uint = 1 << 28;
+pub static no_integrated_as:        uint = 1 << 29;
 
 pub fn debugging_opts_map() -> ~[(&'static str, &'static str, uint)] {
     ~[("verbose", "in general, enable more debug printouts", verbose),
@@ -117,6 +118,8 @@ pub fn debugging_opts_map() -> ~[(&'static str, &'static str, uint)] {
      ("soft-float", "Generate software floating point library calls", use_softfp),
      ("gen-crate-map", "Force generation of a toplevel crate map", gen_crate_map),
      ("prefer-dynamic", "Prefer dynamic linking to static linking", prefer_dynamic),
+     ("no-integrated-as",
+      "Use external assembler rather than LLVM's integrated one", no_integrated_as),
     ]
 }
 
@@ -334,6 +337,9 @@ impl Session_ {
     }
     pub fn prefer_dynamic(&self) -> bool {
         self.debugging_opt(prefer_dynamic)
+    }
+    pub fn no_integrated_as(&self) -> bool {
+        self.debugging_opt(no_integrated_as)
     }
 
     // pointless function, now...
