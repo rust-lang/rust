@@ -1028,27 +1028,47 @@ fn check_unused_mut_pat(cx: &Context, p: &ast::Pat) {
     }
 }
 
+enum Allocation {
+    VectorAllocation,
+    BoxAllocation
+}
+
 fn check_unnecessary_allocation(cx: &Context, e: &ast::Expr) {
-    // Warn if string and vector literals with sigils are immediately borrowed.
-    // Those can have the sigil removed.
-    match e.node {
+    // Warn if string and vector literals with sigils, or boxing expressions,
+    // are immediately borrowed.
+    let allocation = match e.node {
         ast::ExprVstore(e2, ast::ExprVstoreUniq) |
         ast::ExprVstore(e2, ast::ExprVstoreBox) => {
             match e2.node {
                 ast::ExprLit(@codemap::Spanned{node: ast::lit_str(..), ..}) |
-                ast::ExprVec(..) => {}
+                ast::ExprVec(..) => VectorAllocation,
                 _ => return
             }
         }
+        ast::ExprUnary(_, ast::UnUniq, _) |
+        ast::ExprUnary(_, ast::UnBox(..), _) => BoxAllocation,
 
         _ => return
-    }
+    };
+
+    let report = |msg| {
+        cx.span_lint(unnecessary_allocation, e.span, msg);
+    };
 
     match cx.tcx.adjustments.find_copy(&e.id) {
-        Some(@ty::AutoDerefRef(ty::AutoDerefRef {
-            autoref: Some(ty::AutoBorrowVec(..)), .. })) => {
-            cx.span_lint(unnecessary_allocation, e.span,
-                         "unnecessary allocation, the sigil can be removed");
+        Some(@ty::AutoDerefRef(ty::AutoDerefRef { autoref, .. })) => {
+            match (allocation, autoref) {
+                (VectorAllocation, Some(ty::AutoBorrowVec(..))) => {
+                    report("unnecessary allocation, the sigil can be removed");
+                }
+                (BoxAllocation, Some(ty::AutoPtr(_, ast::MutImmutable))) => {
+                    report("unnecessary allocation, use & instead");
+                }
+                (BoxAllocation, Some(ty::AutoPtr(_, ast::MutMutable))) => {
+                    report("unnecessary allocation, use &mut instead");
+                }
+                _ => ()
+            }
         }
 
         _ => ()

@@ -428,7 +428,7 @@ pub fn build_link_meta(sess: Session,
         }
 
         fn len_and_str_lit(l: ast::lit) -> ~str {
-            len_and_str(pprust::lit_to_str(@l))
+            len_and_str(pprust::lit_to_str(&l))
         }
 
         let cmh_items = attr::sort_meta_items(cmh_items);
