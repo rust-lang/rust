@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The Gamma distribution.
+//! The Gamma and derived distributions.
 
 use rand::{Rng, Open01};
-use super::{IndependentSample, Sample, StandardNormal, Exp};
+use super::{IndependentSample, Sample, Exp};
+use super::normal::StandardNormal;
 use num;
 
 /// The Gamma distribution `Gamma(shape, scale)` distribution.
@@ -164,6 +165,213 @@ impl IndependentSample<f64> for GammaLargeShape {
                 num::ln(u) < 0.5 * x_sqr + self.d * (1.0 - v + num::ln(v)) {
                 return self.d * v * self.scale
             }
+        }
+    }
+}
+
+/// The chi-squared distribution `χ²(k)`, where `k` is the degrees of
+/// freedom.
+///
+/// For `k > 0` integral, this distribution is the sum of the squares
+/// of `k` independent standard normal random variables. For other
+/// `k`, this uses the equivalent characterisation `χ²(k) = Gamma(k/2,
+/// 2)`.
+///
+/// # Example
+///
+/// ```rust
+/// use std::rand;
+/// use std::rand::distributions::{ChiSquared, IndependentSample};
+///
+/// fn main() {
+///     let chi = ChiSquared::new(11.0);
+///     let v = chi.ind_sample(&mut rand::task_rng());
+///     println!("{} is from a χ²(11) distribution", v)
+/// }
+/// ```
+pub enum ChiSquared {
+    // k == 1, Gamma(alpha, ..) is particularly slow for alpha < 1,
+    // e.g. when alpha = 1/2 as it would be for this case, so special-
+    // casing and using the definition of N(0,1)^2 is faster.
+    priv DoFExactlyOne,
+    priv DoFAnythingElse(Gamma)
+}
+
+impl ChiSquared {
+    /// Create a new chi-squared distribution with degrees-of-freedom
+    /// `k`. Fails if `k < 0`.
+    pub fn new(k: f64) -> ChiSquared {
+        if k == 1.0 {
+            DoFExactlyOne
+        } else {
+            assert!(k > 0.0, "ChiSquared::new called with `k` < 0");
+            DoFAnythingElse(Gamma::new(0.5 * k, 2.0))
+        }
+    }
+}
+impl Sample<f64> for ChiSquared {
+    fn sample<R: Rng>(&mut self, rng: &mut R) -> f64 { self.ind_sample(rng) }
+}
+impl IndependentSample<f64> for ChiSquared {
+    fn ind_sample<R: Rng>(&self, rng: &mut R) -> f64 {
+        match *self {
+            DoFExactlyOne => {
+                // k == 1 => N(0,1)^2
+                let norm = *rng.gen::<StandardNormal>();
+                norm * norm
+            }
+            DoFAnythingElse(ref g) => g.ind_sample(rng)
+        }
+    }
+}
+
+/// The Fisher F distribution `F(m, n)`.
+///
+/// This distribution is equivalent to the ratio of two normalised
+/// chi-squared distributions, that is, `F(m,n) = (χ²(m)/m) /
+/// (χ²(n)/n)`.
+///
+/// # Example
+///
+/// ```rust
+/// use std::rand;
+/// use std::rand::distributions::{FisherF, IndependentSample};
+///
+/// fn main() {
+///     let f = FisherF::new(2.0, 32.0);
+///     let v = f.ind_sample(&mut rand::task_rng());
+///     println!("{} is from an F(2, 32) distribution", v)
+/// }
+/// ```
+pub struct FisherF {
+    priv numer: ChiSquared,
+    priv denom: ChiSquared,
+    // denom_dof / numer_dof so that this can just be a straight
+    // multiplication, rather than a division.
+    priv dof_ratio: f64,
+}
+
+impl FisherF {
+    /// Create a new `FisherF` distribution, with the given
+    /// parameter. Fails if either `m` or `n` are not positive.
+    pub fn new(m: f64, n: f64) -> FisherF {
+        assert!(m > 0.0, "FisherF::new called with `m < 0`");
+        assert!(n > 0.0, "FisherF::new called with `n < 0`");
+
+        FisherF {
+            numer: ChiSquared::new(m),
+            denom: ChiSquared::new(n),
+            dof_ratio: n / m
+        }
+    }
+}
+impl Sample<f64> for FisherF {
+    fn sample<R: Rng>(&mut self, rng: &mut R) -> f64 { self.ind_sample(rng) }
+}
+impl IndependentSample<f64> for FisherF {
+    fn ind_sample<R: Rng>(&self, rng: &mut R) -> f64 {
+        self.numer.ind_sample(rng) / self.denom.ind_sample(rng) * self.dof_ratio
+    }
+}
+
+/// The Student t distribution, `t(nu)`, where `nu` is the degrees of
+/// freedom.
+///
+/// # Example
+///
+/// ```rust
+/// use std::rand;
+/// use std::rand::distributions::{StudentT, IndependentSample};
+///
+/// fn main() {
+///     let t = StudentT::new(11.0);
+///     let v = t.ind_sample(&mut rand::task_rng());
+///     println!("{} is from a t(11) distribution", v)
+/// }
+/// ```
+pub struct StudentT {
+    priv chi: ChiSquared,
+    priv dof: f64
+}
+
+impl StudentT {
+    /// Create a new Student t distribution with `n` degrees of
+    /// freedom. Fails if `n <= 0`.
+    pub fn new(n: f64) -> StudentT {
+        assert!(n > 0.0, "StudentT::new called with `n <= 0`");
+        StudentT {
+            chi: ChiSquared::new(n),
+            dof: n
+        }
+    }
+}
+impl Sample<f64> for StudentT {
+    fn sample<R: Rng>(&mut self, rng: &mut R) -> f64 { self.ind_sample(rng) }
+}
+impl IndependentSample<f64> for StudentT {
+    fn ind_sample<R: Rng>(&self, rng: &mut R) -> f64 {
+        let norm = *rng.gen::<StandardNormal>();
+        norm * (self.dof / self.chi.ind_sample(rng)).sqrt()
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use rand::*;
+    use super::*;
+    use iter::range;
+    use option::{Some, None};
+
+    #[test]
+    fn test_chi_squared_one() {
+        let mut chi = ChiSquared::new(1.0);
+        let mut rng = task_rng();
+        for _ in range(0, 1000) {
+            chi.sample(&mut rng);
+            chi.ind_sample(&mut rng);
+        }
+    }
+    #[test]
+    fn test_chi_squared_small() {
+        let mut chi = ChiSquared::new(0.5);
+        let mut rng = task_rng();
+        for _ in range(0, 1000) {
+            chi.sample(&mut rng);
+            chi.ind_sample(&mut rng);
+        }
+    }
+    #[test]
+    fn test_chi_squared_large() {
+        let mut chi = ChiSquared::new(30.0);
+        let mut rng = task_rng();
+        for _ in range(0, 1000) {
+            chi.sample(&mut rng);
+            chi.ind_sample(&mut rng);
+        }
+    }
+    #[test]
+    #[should_fail]
+    fn test_log_normal_invalid_dof() {
+        ChiSquared::new(-1.0);
+    }
+
+    #[test]
+    fn test_f() {
+        let mut f = FisherF::new(2.0, 32.0);
+        let mut rng = task_rng();
+        for _ in range(0, 1000) {
+            f.sample(&mut rng);
+            f.ind_sample(&mut rng);
+        }
+    }
+
+    #[test]
+    fn test_t() {
+        let mut t = StudentT::new(11.0);
+        let mut rng = task_rng();
+        for _ in range(0, 1000) {
+            t.sample(&mut rng);
+            t.ind_sample(&mut rng);
         }
     }
 }
