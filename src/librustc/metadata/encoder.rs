@@ -1140,6 +1140,8 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_ty_type_param_defs(ebml_w, ecx,
                                   trait_def.generics.type_param_defs,
                                   tag_items_data_item_ty_param_bounds);
+        encode_region_param_defs(ebml_w, ecx,
+                                 trait_def.generics.region_param_defs);
         encode_trait_ref(ebml_w, ecx, trait_def.trait_ref, tag_item_trait_ref);
         encode_name(ecx, ebml_w, item.ident);
         encode_attributes(ebml_w, item.attrs);
