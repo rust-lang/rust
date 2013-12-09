@@ -43,6 +43,8 @@
 //!
 //!     use std::prelude::*;
 
+#[pkgid="std#0.9-pre"];
+// NOTE: remove after the next snapshot
 #[link(name = "std",
        package_id = "std",
        vers = "0.9-pre",
@@ -69,13 +71,13 @@
 // When testing libstd, bring in libuv as the I/O backend so tests can print
 // things and all of the std::io tests have an I/O interface to run on top
 // of
-#[cfg(test)] extern mod rustuv(vers = "0.9-pre");
+#[cfg(test)] extern mod rustuv = "rustuv#0.9-pre";
 
 // Make extra accessible for benchmarking
-#[cfg(test)] extern mod extra(vers = "0.9-pre");
+#[cfg(test)] extern mod extra = "extra#0.9-pre";
 
 // Make std testable by not duplicating lang items. See #2912
-#[cfg(test)] extern mod realstd(name = "std");
+#[cfg(test)] extern mod realstd = "std#0.9-pre";
 #[cfg(test)] pub use kinds = realstd::kinds;
 #[cfg(test)] pub use ops = realstd::ops;
 #[cfg(test)] pub use cmp = realstd::cmp;

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[pkgid="static_methods_crate#0.1"];
+// NOTE: remove after the next snapshot
 #[link(name = "static_methods_crate",
        vers = "0.1")];
 

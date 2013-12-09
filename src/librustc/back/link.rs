@@ -24,11 +24,10 @@ use middle::trans::common::gensym_name;
 use middle::ty;
 use util::common::time;
 use util::ppaux;
+use util::sha2::{Digest, Sha256};
 
 use std::c_str::ToCStr;
 use std::char;
-use std::hash::Streaming;
-use std::hash;
 use std::os::consts::{macos, freebsd, linux, android, win32};
 use std::ptr;
 use std::run;
@@ -39,8 +38,8 @@ use syntax::abi;
 use syntax::ast;
 use syntax::ast_map::{path, path_mod, path_name, path_pretty_name};
 use syntax::attr;
-use syntax::attr::{AttrMetaMethods};
-use syntax::print::pprust;
+use syntax::attr::AttrMetaMethods;
+use syntax::pkgid::PkgId;
 
 #[deriving(Clone, Eq)]
 pub enum output_type {
@@ -50,10 +49,6 @@ pub enum output_type {
     output_type_llvm_assembly,
     output_type_object,
     output_type_exe,
-}
-
-fn write_string<W:Writer>(writer: &mut W, string: &str) {
-    writer.write(string.as_bytes());
 }
 
 pub fn llvm_err(sess: Session, msg: ~str) -> ! {
@@ -413,7 +408,7 @@ pub mod write {
  *  - Symbols with the same name but different types need to get different
  *    linkage-names. We do this by hashing a string-encoding of the type into
  *    a fixed-size (currently 16-byte hex) cryptographic hash function (CHF:
- *    we use SHA1) to "prevent collisions". This is not airtight but 16 hex
+ *    we use SHA256) to "prevent collisions". This is not airtight but 16 hex
  *    digits on uniform probability means you're going to need 2**32 same-name
  *    symbols in the same process before you're even hitting birthday-paradox
  *    collision probability.
@@ -421,209 +416,82 @@ pub mod write {
  *  - Symbols in different crates but with same names "within" the crate need
  *    to get different linkage-names.
  *
+ *  - The hash shown in the filename needs to be predictable and stable for
+ *    build tooling integration. It also needs to be using a hash function
+ *    which is easy to use from Python, make, etc.
+ *
  * So here is what we do:
  *
- *  - Separate the meta tags into two sets: exported and local. Only work with
- *    the exported ones when considering linkage.
+ *  - Consider the package id; every crate has one (specified with pkgid
+ *    attribute).  If a package id isn't provided explicitly, we infer a
+ *    versionless one from the output name. The version will end up being 0.0
+ *    in this case. CNAME and CVERS are taken from this package id. For
+ *    example, github.com/mozilla/CNAME#CVERS.
  *
- *  - Consider two exported tags as special (and mandatory): name and vers.
- *    Every crate gets them; if it doesn't name them explicitly we infer them
- *    as basename(crate) and "0.1", respectively. Call these CNAME, CVERS.
+ *  - Define CMH as SHA256(pkgid).
  *
- *  - Define CMETA as all the non-name, non-vers exported meta tags in the
- *    crate (in sorted order).
+ *  - Define CMH8 as the first 8 characters of CMH.
  *
- *  - Define CMH as hash(CMETA + hashes of dependent crates).
+ *  - Compile our crate to lib CNAME-CMH8-CVERS.so
  *
- *  - Compile our crate to lib CNAME-CMH-CVERS.so
- *
- *  - Define STH(sym) as hash(CNAME, CMH, type_str(sym))
+ *  - Define STH(sym) as SHA256(CMH, type_str(sym))
  *
  *  - Suffix a mangled sym with ::STH@CVERS, so that it is unique in the
  *    name, non-name metadata, and type sense, and versioned in the way
  *    system linkers understand.
- *
  */
 
 pub fn build_link_meta(sess: Session,
                        c: &ast::Crate,
                        output: &Path,
-                       symbol_hasher: &mut hash::State)
+                       symbol_hasher: &mut Sha256)
                        -> LinkMeta {
-    struct ProvidedMetas {
-        name: Option<@str>,
-        vers: Option<@str>,
-        pkg_id: Option<@str>,
-        cmh_items: ~[@ast::MetaItem]
-    }
-
-    fn provided_link_metas(sess: Session, c: &ast::Crate) ->
-       ProvidedMetas {
-        let mut name = None;
-        let mut vers = None;
-        let mut pkg_id = None;
-        let mut cmh_items = ~[];
-        let linkage_metas = attr::find_linkage_metas(c.attrs);
-        attr::require_unique_names(sess.diagnostic(), linkage_metas);
-        for meta in linkage_metas.iter() {
-            match meta.name_str_pair() {
-                Some((n, value)) if "name" == n => name = Some(value),
-                Some((n, value)) if "vers" == n => vers = Some(value),
-                Some((n, value)) if "package_id" == n => pkg_id = Some(value),
-                _ => cmh_items.push(*meta)
-            }
-        }
-
-        ProvidedMetas {
-            name: name,
-            vers: vers,
-            pkg_id: pkg_id,
-            cmh_items: cmh_items
-        }
-    }
-
     // This calculates CMH as defined above
-    fn crate_meta_extras_hash(symbol_hasher: &mut hash::State,
-                              cmh_items: ~[@ast::MetaItem],
-                              dep_hashes: ~[@str],
-                              pkg_id: Option<@str>) -> @str {
-        fn len_and_str(s: &str) -> ~str {
-            format!("{}_{}", s.len(), s)
-        }
-
-        fn len_and_str_lit(l: ast::lit) -> ~str {
-            len_and_str(pprust::lit_to_str(&l))
-        }
-
-        let cmh_items = attr::sort_meta_items(cmh_items);
-
-        fn hash(symbol_hasher: &mut hash::State, m: &@ast::MetaItem) {
-            match m.node {
-              ast::MetaNameValue(key, value) => {
-                write_string(symbol_hasher, len_and_str(key));
-                write_string(symbol_hasher, len_and_str_lit(value));
-              }
-              ast::MetaWord(name) => {
-                write_string(symbol_hasher, len_and_str(name));
-              }
-              ast::MetaList(name, ref mis) => {
-                write_string(symbol_hasher, len_and_str(name));
-                for m_ in mis.iter() {
-                    hash(symbol_hasher, m_);
-                }
-              }
-            }
-        }
-
+    fn crate_hash(symbol_hasher: &mut Sha256, pkgid: &PkgId) -> @str {
         symbol_hasher.reset();
-        for m in cmh_items.iter() {
-            hash(symbol_hasher, m);
-        }
-
-        for dh in dep_hashes.iter() {
-            write_string(symbol_hasher, len_and_str(*dh));
-        }
-
-        for p in pkg_id.iter() {
-            write_string(symbol_hasher, len_and_str(*p));
-        }
-
-        return truncated_hash_result(symbol_hasher).to_managed();
+        symbol_hasher.input_str(pkgid.to_str());
+        truncated_hash_result(symbol_hasher).to_managed()
     }
 
-    fn warn_missing(sess: Session, name: &str, default: &str) {
-        if !*sess.building_library { return; }
-        sess.warn(format!("missing crate link meta `{}`, using `{}` as default",
-                       name, default));
-    }
-
-    fn crate_meta_name(sess: Session, output: &Path, opt_name: Option<@str>)
-        -> @str {
-        match opt_name {
-            Some(v) if !v.is_empty() => v,
-            _ => {
-                // to_managed could go away if there was a version of
-                // filestem that returned an @str
-                // FIXME (#9639): Non-utf8 filenames will give a misleading error
-                let name = session::expect(sess,
-                                           output.filestem_str(),
-                                           || format!("output file name `{}` doesn't\
-                                                    appear to have a stem",
-                                                   output.display())).to_managed();
-                if name.is_empty() {
-                    sess.fatal("missing crate link meta `name`, and the \
-                                inferred name is blank");
-                }
-                warn_missing(sess, "name", name);
-                name
-            }
+    let pkgid = match attr::find_pkgid(c.attrs) {
+        None => {
+            let stem = session::expect(
+                sess,
+                output.filestem_str(),
+                || format!("output file name '{}' doesn't appear to have a stem",
+                           output.display()));
+            from_str(stem).unwrap()
         }
-    }
+        Some(s) => s,
+    };
 
-    fn crate_meta_vers(sess: Session, opt_vers: Option<@str>) -> @str {
-        match opt_vers {
-            Some(v) if !v.is_empty() => v,
-            _ => {
-                let vers = @"0.0";
-                warn_missing(sess, "vers", vers);
-                vers
-            }
-        }
-    }
-
-    fn crate_meta_pkgid(sess: Session, name: @str, opt_pkg_id: Option<@str>)
-        -> @str {
-        match opt_pkg_id {
-            Some(v) if !v.is_empty() => v,
-            _ => {
-                let pkg_id = name.clone();
-                warn_missing(sess, "package_id", pkg_id);
-                pkg_id
-            }
-        }
-    }
-
-    let ProvidedMetas {
-        name: opt_name,
-        vers: opt_vers,
-        pkg_id: opt_pkg_id,
-        cmh_items: cmh_items
-    } = provided_link_metas(sess, c);
-    let name = crate_meta_name(sess, output, opt_name);
-    let vers = crate_meta_vers(sess, opt_vers);
-    let pkg_id = crate_meta_pkgid(sess, name, opt_pkg_id);
-    let dep_hashes = cstore::get_dep_hashes(sess.cstore);
-    let extras_hash =
-        crate_meta_extras_hash(symbol_hasher, cmh_items,
-                               dep_hashes, Some(pkg_id));
+    let hash = crate_hash(symbol_hasher, &pkgid);
 
     LinkMeta {
-        name: name,
-        vers: vers,
-        package_id: Some(pkg_id),
-        extras_hash: extras_hash
+        pkgid: pkgid,
+        crate_hash: hash,
     }
 }
 
-pub fn truncated_hash_result(symbol_hasher: &mut hash::State) -> ~str {
+pub fn truncated_hash_result(symbol_hasher: &mut Sha256) -> ~str {
     symbol_hasher.result_str()
 }
 
 
 // This calculates STH for a symbol, as defined above
 pub fn symbol_hash(tcx: ty::ctxt,
-                   symbol_hasher: &mut hash::State,
+                   symbol_hasher: &mut Sha256,
                    t: ty::t,
-                   link_meta: LinkMeta) -> @str {
+                   link_meta: &LinkMeta) -> @str {
     // NB: do *not* use abbrevs here as we want the symbol names
     // to be independent of one another in the crate.
 
     symbol_hasher.reset();
-    write_string(symbol_hasher, link_meta.name);
-    write_string(symbol_hasher, "-");
-    write_string(symbol_hasher, link_meta.extras_hash);
-    write_string(symbol_hasher, "-");
-    write_string(symbol_hasher, encoder::encoded_ty(tcx, t));
+    symbol_hasher.input_str(link_meta.pkgid.name);
+    symbol_hasher.input_str("-");
+    symbol_hasher.input_str(link_meta.crate_hash);
+    symbol_hasher.input_str("-");
+    symbol_hasher.input_str(encoder::encoded_ty(tcx, t));
     let mut hash = truncated_hash_result(symbol_hasher);
     // Prefix with 'h' so that it never blends into adjacent digits
     hash.unshift_char('h');
@@ -635,7 +503,7 @@ pub fn get_symbol_hash(ccx: &mut CrateContext, t: ty::t) -> @str {
     match ccx.type_hashcodes.find(&t) {
       Some(&h) => h,
       None => {
-        let hash = symbol_hash(ccx.tcx, &mut ccx.symbol_hasher, t, ccx.link_meta);
+        let hash = symbol_hash(ccx.tcx, &mut ccx.symbol_hasher, t, &ccx.link_meta);
         ccx.type_hashcodes.insert(t, hash);
         hash
       }
@@ -774,7 +642,7 @@ pub fn mangle_exported_name(ccx: &mut CrateContext,
     let hash = get_symbol_hash(ccx, t);
     return exported_name(ccx.sess, path,
                          hash,
-                         ccx.link_meta.vers);
+                         ccx.link_meta.pkgid.version_or_default());
 }
 
 pub fn mangle_internal_name_by_type_only(ccx: &mut CrateContext,
@@ -813,8 +681,11 @@ pub fn mangle_internal_name_by_path(ccx: &mut CrateContext, path: path) -> ~str 
     mangle(ccx.sess, path, None, None)
 }
 
-pub fn output_lib_filename(lm: LinkMeta) -> ~str {
-    format!("{}-{}-{}", lm.name, lm.extras_hash, lm.vers)
+pub fn output_lib_filename(lm: &LinkMeta) -> ~str {
+    format!("{}-{}-{}",
+            lm.pkgid.name,
+            lm.crate_hash.slice_chars(0, 8),
+            lm.pkgid.version_or_default())
 }
 
 pub fn get_cc_prog(sess: Session) -> ~str {
@@ -848,7 +719,8 @@ pub fn get_cc_prog(sess: Session) -> ~str {
 pub fn link_binary(sess: Session,
                    trans: &CrateTranslation,
                    obj_filename: &Path,
-                   out_filename: &Path) {
+                   out_filename: &Path,
+                   lm: &LinkMeta) {
     // If we're generating a test executable, then ignore all other output
     // styles at all other locations
     let outputs = if sess.opts.test {
@@ -858,7 +730,7 @@ pub fn link_binary(sess: Session,
     };
 
     for output in outputs.move_iter() {
-        link_binary_output(sess, trans, output, obj_filename, out_filename);
+        link_binary_output(sess, trans, output, obj_filename, out_filename, lm);
     }
 
     // Remove the temporary object file and metadata if we aren't saving temps
@@ -881,8 +753,9 @@ fn link_binary_output(sess: Session,
                       trans: &CrateTranslation,
                       output: session::OutputStyle,
                       obj_filename: &Path,
-                      out_filename: &Path) {
-    let libname = output_lib_filename(trans.link);
+                      out_filename: &Path,
+                      lm: &LinkMeta) {
+    let libname = output_lib_filename(lm);
     let out_filename = match output {
         session::OutputRlib => {
             out_filename.with_filename(format!("lib{}.rlib", libname))

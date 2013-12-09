@@ -10,6 +10,8 @@
 
 // xfail-fast
 
+#[pkgid="b#0.1"];
+// NOTE: remove after the next snapshot
 #[link(name = "b", vers = "0.1")];
 #[crate_type = "lib"];
 

@@ -2728,7 +2728,7 @@ fn namespace_for_item(cx: &mut CrateContext,
 
         if def_id.crate == ast::LOCAL_CRATE {
             // prepend crate name if not already present
-            let crate_namespace_ident = token::str_to_ident(cx.link_meta.name);
+            let crate_namespace_ident = token::str_to_ident(cx.link_meta.pkgid.name);
             item_path.insert(0, ast_map::path_mod(crate_namespace_ident));
         }
 

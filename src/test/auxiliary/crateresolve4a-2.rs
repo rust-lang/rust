@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[pkgid="crateresolve4a#0.2"];
+// NOTE: remove after the next snapshot
 #[link(name = "crateresolve4a", vers= "0.2")];
 #[crate_type = "lib"];
 

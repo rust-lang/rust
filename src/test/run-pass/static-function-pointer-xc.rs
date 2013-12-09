@@ -10,7 +10,7 @@
 
 // xfail-fast
 // aux-build:static-function-pointer-aux.rs
-extern mod aux(name = "static-function-pointer-aux");
+extern mod aux = "static-function-pointer-aux";
 
 fn f(x: int) -> int { x }
 

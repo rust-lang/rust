@@ -8,13 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[link(name = "anonexternmod", vers = "0.1")];
-
-#[crate_type = "lib"];
+#[pkgid="anonexternmod#0.1"];
 
 use std::libc;
 
-#[link(name = "rustrt")]
+#[link(name="rustrt")]
 extern {
     pub fn rust_get_test_int() -> libc::intptr_t;
 }

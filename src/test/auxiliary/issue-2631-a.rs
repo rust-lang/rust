@@ -9,6 +9,8 @@
 // except according to those terms.
 
 #[feature(managed_boxes)];
+#[pkgid="req"];
+// NOTE: remove after the next snapshot
 #[link(name = "req")];
 #[crate_type = "lib"];
 

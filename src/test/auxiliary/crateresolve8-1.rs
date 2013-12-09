@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // default link meta for 'package_id' will be equal to filestem
+#[pkgid="crateresolve8#0.1"];
+// NOTE: remove after the next snapshot
 #[link(name = "crateresolve8",
        vers = "0.1")];
 

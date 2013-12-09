@@ -1,7 +1,7 @@
 // aux-build:static_fn_trait_xc_aux.rs
 // xfail-fast
 
-extern mod mycore(name ="static_fn_trait_xc_aux");
+extern mod mycore = "static_fn_trait_xc_aux";
 
 use mycore::num;
 

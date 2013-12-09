@@ -26,8 +26,9 @@ use middle::ty;
 
 use middle::trans::type_::Type;
 
+use util::sha2::Sha256;
+
 use std::c_str::ToCStr;
-use std::hash;
 use std::hashmap::{HashMap, HashSet};
 use std::local_data;
 use std::vec;
@@ -98,7 +99,7 @@ pub struct CrateContext {
      lltypes: HashMap<ty::t, Type>,
      llsizingtypes: HashMap<ty::t, Type>,
      adt_reprs: HashMap<ty::t, @adt::Repr>,
-     symbol_hasher: hash::State,
+     symbol_hasher: Sha256,
      type_hashcodes: HashMap<ty::t, @str>,
      type_short_names: HashMap<ty::t, ~str>,
      all_llvm_symbols: HashSet<@str>,
@@ -126,7 +127,7 @@ impl CrateContext {
                tcx: ty::ctxt,
                emap2: resolve::ExportMap2,
                maps: astencode::Maps,
-               symbol_hasher: hash::State,
+               symbol_hasher: Sha256,
                link_meta: LinkMeta,
                reachable: @mut HashSet<ast::NodeId>)
                -> CrateContext {
@@ -168,8 +169,7 @@ impl CrateContext {
             tn.associate_type("tydesc", &tydesc_type);
             tn.associate_type("str_slice", &str_slice_ty);
 
-            let (crate_map_name, crate_map) = decl_crate_map(sess, link_meta,
-                                                             llmod);
+            let (crate_map_name, crate_map) = decl_crate_map(sess, link_meta.clone(), llmod);
             let dbg_cx = if sess.opts.debuginfo {
                 Some(debuginfo::CrateDebugContext::new(llmod, name.to_owned()))
             } else {

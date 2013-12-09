@@ -20,6 +20,8 @@ Rust extras are part of the standard Rust distribution.
 
 */
 
+#[pkgid="extra#0.9-pre"];
+// NOTE: remove after the next snapshot
 #[link(name = "extra",
        package_id = "extra",
        vers = "0.9-pre",

@@ -9,6 +9,8 @@
 // except according to those terms.
 
 #[feature(managed_boxes)];
+#[pkgid="crate_method_reexport_grrrrrrr2"];
+// NOTE: remove after the next snapshot
 #[link(name = "crate_method_reexport_grrrrrrr2")];
 
 pub use name_pool::add;

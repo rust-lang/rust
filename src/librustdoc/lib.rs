@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[pkgid="rustdoc#0.9-pre"];
+// NOTE: remove after the next snapshot
 #[link(name = "rustdoc",
        package_id = "rustdoc",
        vers = "0.9-pre",
