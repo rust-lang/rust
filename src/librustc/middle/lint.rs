@@ -1074,7 +1074,13 @@ fn check_missing_doc_attrs(cx: &Context,
         _ => ()
     }
 
-    if !attrs.iter().any(|a| a.node.is_sugared_doc) {
+    let has_doc = attrs.iter().any(|a| {
+        match a.node.value.node {
+            ast::MetaNameValue(ref name, _) if "doc" == *name => true,
+            _ => false
+        }
+    });
+    if !has_doc {
         cx.span_lint(missing_doc, sp,
                      format!("missing documentation for {}", desc));
     }
