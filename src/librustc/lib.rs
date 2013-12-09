@@ -93,6 +93,7 @@ pub mod front {
 pub mod back {
     pub mod archive;
     pub mod link;
+    pub mod manifest;
     pub mod abi;
     pub mod upcall;
     pub mod arm;

@@ -11,6 +11,7 @@
 
 use back::archive::{Archive, METADATA_FILENAME};
 use back::rpath;
+use back::manifest;
 use driver::driver::CrateTranslation;
 use driver::session::Session;
 use driver::session;
@@ -800,6 +801,12 @@ fn link_binary_output(sess: Session,
         }
         session::OutputExecutable => {
             link_natively(sess, false, obj_filename, &out_filename);
+            // Windows linker will add an ".exe" extension if there was none
+            let out_filename = match out_filename.extension() {
+                Some(_) => out_filename.clone(),
+                None => out_filename.with_extension(win32::EXE_EXTENSION)
+            };
+            manifest::postprocess_executable(sess, &out_filename);
         }
         session::OutputDylib => {
             link_natively(sess, true, obj_filename, &out_filename);
