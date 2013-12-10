@@ -196,9 +196,49 @@ pub fn max<T:Ord>(v1: T, v2: T) -> T {
     if v1 > v2 { v1 } else { v2 }
 }
 
+/**
+ * A newtype struct that imposes the reverse of the natural order of a type.
+ *
+ * The underlying type `T` has to implement `Ord` or `TotalOrd` (or both).
+ * `T` may also implement `Eq` or `TotalEq`, in which case `RevOrd(lhs)` and
+ * `RevOrd(rhs)` are equal if and only if `lhs` and `rhs` are equal (depending
+ * on the implementation of `Eq` or `TotalEq`).
+ */
+#[deriving(Eq, TotalEq)]
+pub struct RevOrd<T>(T);
+
+impl<T: TotalOrd> TotalOrd for RevOrd<T> {
+    #[inline]
+    fn cmp(&self, other: &RevOrd<T>) -> Ordering {
+        let inner_self:  &T = &**self;
+        let inner_other: &T = &**other;
+
+        match inner_self.cmp(inner_other) {
+            Less    => Greater,
+            Equal   => Equal,
+            Greater => Less,
+        }
+    }
+}
+
+impl<T: Ord> Ord for RevOrd<T> {
+    #[inline]
+    fn lt(&self, other: &RevOrd<T>) -> bool { **self >= **other }
+
+    #[inline]
+    fn gt(&self, other: &RevOrd<T>) -> bool { **self <= **other }
+
+    #[inline]
+    fn le(&self, other: &RevOrd<T>) -> bool { **self > **other }
+
+    #[inline]
+    fn ge(&self, other: &RevOrd<T>) -> bool { **self < **other }
+}
+
 #[cfg(test)]
 mod test {
-    use super::lexical_ordering;
+    use super::{lexical_ordering, RevOrd};
+    use std::f32::{NAN, INFINITY};
 
     #[test]
     fn test_int_totalord() {
@@ -241,5 +281,21 @@ mod test {
             t(Equal, o, o);
             t(Greater, o, Greater);
          }
+    }
+
+    #[test]
+    fn test_revord() {
+        assert!(RevOrd(Greater) < RevOrd(Less));
+
+        assert!(RevOrd(9000) > RevOrd(9001));
+
+        // Floating point tests
+        assert!(RevOrd(INFINITY) < RevOrd(0f32));
+
+        assert_eq!(RevOrd(0f32) >= RevOrd(NAN), false);
+        assert_eq!(RevOrd(0f32) <= RevOrd(NAN), false);
+        assert_eq!(RevOrd(0f32) >  RevOrd(NAN), false);
+        assert_eq!(RevOrd(0f32) <  RevOrd(NAN), false);
+        assert_eq!(RevOrd(0f32) == RevOrd(NAN), false);
     }
 }
