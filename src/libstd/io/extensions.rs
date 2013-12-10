@@ -13,9 +13,11 @@
 // XXX: Not sure how this should be structured
 // XXX: Iteration should probably be considered separately
 
+use cmp::min;
+use io::{EndOfFile, Decorator, Reader, io_error, standard_error};
 use iter::Iterator;
-use option::Option;
-use io::{Reader, Decorator};
+use option::{None, Option, Some};
+use vec::bytes;
 
 /// An iterator that reads a single byte on each iteration,
 /// until `.read_byte()` returns `None`.
@@ -52,6 +54,73 @@ impl<'self, R: Reader> Iterator<u8> for ByteIterator<R> {
     fn next(&mut self) -> Option<u8> {
         self.reader.read_byte()
     }
+}
+
+
+/// Allows reading from an iterator of byte vectors.
+///
+/// # Example
+///
+/// ```
+/// let chunks = ~[~[1u8, 2u8], ~[3u8], ~[4u8, 5u8]].move_iter().filter(|vals| vals.len() > 1);
+/// let mut reader = BytesIterReader::new(chunks);
+///
+/// let mut buf = ~[0u8, ..3];
+/// match reader.read(buf) {
+///     Some(nread) => println!("Read {} bytes", nread),
+///     None => println!("At the end of the stream!")
+/// }
+/// ```
+pub struct BytesIterReader<I> {
+    priv buf: Option<~[u8]>,  // A buffer of bytes received but not consumed.
+    priv pos: uint,           // How many of the buffered bytes have already be consumed.
+    priv iter: I,             // The iter to pull data from.
+    priv finished: bool,      // Whether the wrapped iterator has been exhausted.
+}
+
+impl<I: Iterator<~[u8]>> BytesIterReader<I> {
+    pub fn new(iter: I) -> BytesIterReader<I> {
+        BytesIterReader {
+            buf: None,
+            pos: 0,
+            iter: iter,
+            finished: false,
+        }
+    }
+}
+
+impl<I: Iterator<~[u8]>> Reader for BytesIterReader<I> {
+
+    fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
+        let mut num_read = 0;
+        loop {
+            match self.buf {
+                Some(ref prev) => {
+                    let dst = buf.mut_slice_from(num_read);
+                    let src = prev.slice_from(self.pos);
+                    let count = min(dst.len(), src.len());
+                    bytes::copy_memory(dst, src, count);
+                    num_read += count;
+                    self.pos += count;
+                },
+                None => (),
+            };
+            if num_read == buf.len() || self.finished {
+                break;
+            }
+            self.pos = 0;
+            self.buf = self.iter.next();
+            self.finished = self.buf.is_none();
+        }
+        if self.finished && num_read == 0 {
+            io_error::cond.raise(standard_error(EndOfFile));
+            None
+        } else {
+            Some(num_read)
+        }
+    }
+
+    fn eof(&mut self) -> bool { self.finished }
 }
 
 pub fn u64_to_le_bytes<T>(n: u64, size: uint, f: |v: &[u8]| -> T) -> T {
@@ -138,7 +207,7 @@ pub fn u64_from_be_bytes(data: &[u8],
 mod test {
     use option::{None, Option, Some};
     use io::mem::{MemReader, MemWriter};
-    use io::{Reader, io_error, placeholder_error};
+    use io::{EndOfFile, Reader, io_error, placeholder_error, standard_error};
     use vec::ImmutableVector;
 
     struct InitialZeroByteReader {
@@ -484,6 +553,61 @@ mod test {
         let mut reader = MemReader::new(writer.inner());
         assert!(reader.read_be_f32() == 8.1250);
         assert!(reader.read_le_f32() == 8.1250);
+    }
+
+    #[test]
+    fn test_bytes_iter_reader() {
+        let input = (~[
+            ~[1u8, 2u8],
+            ~[],
+            ~[42],  // Should be skipped.
+            ~[3u8, 4u8],
+            ~[5u8, 6u8],
+            ~[7u8, 8u8],
+        ]).move_iter().filter(|x| x.len() != 1);
+
+        let mut reader = super::BytesIterReader::new(input);
+        let mut buf = ~[0u8, ..3];
+
+        assert_eq!(false, reader.eof());
+
+        assert_eq!(Some(0), reader.read(~[]));
+        assert_eq!(false, reader.eof());
+
+        assert_eq!(Some(3), reader.read(buf));
+        assert_eq!(false, reader.eof());
+        assert_eq!(~[1,2,3], buf);
+
+        assert_eq!(Some(3), reader.read(buf));
+        assert_eq!(false, reader.eof());
+        assert_eq!(~[4,5,6], buf);
+
+        assert_eq!(Some(2), reader.read(buf));
+        assert_eq!(~[7,8,6], buf);
+        assert_eq!(true, reader.eof());
+
+        let mut err = None;
+        let result = io_error::cond.trap(|standard_error(k, _, _)| {
+            err = Some(k)
+        }).inside(|| {
+            reader.read(buf)
+        });
+        assert_eq!(Some(EndOfFile), err);
+        assert_eq!(None, result);
+        assert_eq!(true, reader.eof());
+        assert_eq!(~[7,8,6], buf);
+
+        // Ensure it continues to fail in the same way.
+        err = None;
+        let result = io_error::cond.trap(|standard_error(k, _, _)| {
+            err = Some(k)
+        }).inside(|| {
+            reader.read(buf)
+        });
+        assert_eq!(Some(EndOfFile), err);
+        assert_eq!(None, result);
+        assert_eq!(true, reader.eof());
+        assert_eq!(~[7,8,6], buf);
     }
 
 }

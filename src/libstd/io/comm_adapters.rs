@@ -10,12 +10,10 @@
 
 use prelude::*;
 
-use comm::{GenericPort, GenericChan, GenericSmartChan};
-use cmp;
+use comm::{GenericPort, GenericChan, GenericSmartChan, RecvIterator};
 use io;
-use option::{None, Option, Some};
 use super::{Reader, Writer};
-use vec::{bytes, CopyableVector, MutableVector, ImmutableVector};
+use vec::CopyableVector;
 
 /// Allows reading from a port.
 ///
@@ -30,55 +28,23 @@ use vec::{bytes, CopyableVector, MutableVector, ImmutableVector};
 ///     None => println!("At the end of the stream!")
 /// }
 /// ```
-pub struct PortReader<P> {
-    priv buf: Option<~[u8]>,  // A buffer of bytes received but not consumed.
-    priv pos: uint,           // How many of the buffered bytes have already be consumed.
-    priv port: P,             // The port to pull data from.
-    priv closed: bool,        // Whether the pipe this port connects to has been closed.
+pub struct PortReader<'a, P> {
+    priv reader: io::extensions::BytesIterReader<RecvIterator<'a, P>>,
 }
 
-impl<P: GenericPort<~[u8]>> PortReader<P> {
-    pub fn new(port: P) -> PortReader<P> {
+impl<'a, P: GenericPort<~[u8]>> PortReader<'a, P> {
+    pub fn new(port: &'a P) -> PortReader<'a, P> {
         PortReader {
-            buf: None,
-            pos: 0,
-            port: port,
-            closed: false,
+            reader: io::extensions::BytesIterReader::new(port.recv_iter()),
         }
     }
 }
 
-impl<P: GenericPort<~[u8]>> Reader for PortReader<P> {
-    fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
-        let mut num_read = 0;
-        loop {
-            match self.buf {
-                Some(ref prev) => {
-                    let dst = buf.mut_slice_from(num_read);
-                    let src = prev.slice_from(self.pos);
-                    let count = cmp::min(dst.len(), src.len());
-                    bytes::copy_memory(dst, src, count);
-                    num_read += count;
-                    self.pos += count;
-                },
-                None => (),
-            };
-            if num_read == buf.len() || self.closed {
-                break;
-            }
-            self.pos = 0;
-            self.buf = self.port.try_recv();
-            self.closed = self.buf.is_none();
-        }
-        if self.closed && num_read == 0 {
-            io::io_error::cond.raise(io::standard_error(io::EndOfFile));
-            None
-        } else {
-            Some(num_read)
-        }
-    }
+impl<'self, P: GenericPort<~[u8]>> Reader for PortReader<'self, P> {
 
-    fn eof(&mut self) -> bool { self.closed }
+    fn read(&mut self, buf: &mut [u8]) -> Option<uint> { self.reader.read(buf) }
+
+    fn eof(&mut self) -> bool { self.reader.eof() }
 }
 
 /// Allows writing to a chan.
@@ -153,7 +119,7 @@ mod test {
           chan.send(~[7u8, 8u8]);
         }
 
-        let mut reader = PortReader::new(port);
+        let mut reader = PortReader::new(&port);
         let mut buf = ~[0u8, ..3];
 
         assert_eq!(false, reader.eof());
