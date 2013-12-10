@@ -162,6 +162,9 @@ mod foo {
         bar::foo();
         bar::bar();
     }
+
+    impl ::bar::B for f32 { fn foo() -> f32 { 1.0 } }
+    //~^ ERROR: trait `B` is private
 }
 
 pub mod mytest {
