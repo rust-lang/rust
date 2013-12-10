@@ -57,9 +57,13 @@ they don't contain references to names that aren't actually defined.
 
 # Getting started
 
-The Rust compiler currently must be built from a [tarball], unless you
-are on Windows, in which case using the [installer][win-exe] is
-recommended.
+> **NOTE**: The tarball and installer links are for the most recent release,
+> not master.
+
+The Rust compiler currently must be built from a [tarball] or [git], unless
+you are on Windows, in which case using the [installer][win-exe] is
+recommended. There is a list of community-maintained nightly builds and
+packages [on the wiki][wiki-packages].
 
 Since the Rust compiler is written in Rust, it must be built by
 a precompiled "snapshot" version of itself (made in an earlier state
@@ -84,6 +88,7 @@ supported build environments that are most likely to work.
 
 [bug-3319]: https://github.com/mozilla/rust/issues/3319
 [wiki-start]: https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust
+[git]: https://github.com/mozilla/rust.git
 
 To build from source you will also need the following prerequisite
 packages:
@@ -141,7 +146,7 @@ an error message like this:
 ~~~~ {.notrust}
 hello.rs:2:4: 2:16 error: unresolved name: print_with_unicorns
 hello.rs:2     print_with_unicorns("hello?");
-               ^~~~~~~~~~~~~~~~~~~~~~~
+               ^~~~~~~~~~~~~~~~~~~
 ~~~~
 
 In its simplest form, a Rust program is a `.rs` file with some types
@@ -149,7 +154,7 @@ and functions defined in it. If it has a `main` function, it can be
 compiled to an executable. Rust does not allow code that's not a
 declaration to appear at the top level of the file: all statements must
 live inside a function.  Rust programs can also be compiled as
-libraries, and included in other programs.
+libraries, and included in other programs, even ones not written in Rust.
 
 ## Editing Rust code
 
@@ -162,6 +167,9 @@ is the easiest way to keep it up to date. There is also a package for
 Sublime Text 2, available both [standalone][sublime] and through
 [Sublime Package Control][sublime-pkg], and support for Kate
 under `src/etc/kate`.
+
+A community-maintained list of available Rust tooling is [on the
+wiki][wiki-packages].
 
 There is ctags support via `src/etc/ctags.rust`, but many other
 tools and editors are not yet supported. If you end up writing a Rust
@@ -207,14 +215,15 @@ let hi = "hi";
 let mut count = 0;
 
 while count < 10 {
-    println!("count: {}", count);
+    println!("count is {}", count);
     count += 1;
 }
 ~~~~
 
-Although Rust can almost always infer the types of local variables, you
-can specify a variable's type by following it with a colon, then the type
-name. Static items, on the other hand, always require a type annotation.
+Although Rust can almost always infer the types of local variables, you can
+specify a variable's type by following it in the `let` with a colon, then the
+type name. Static items, on the other hand, always require a type annotation.
+
 
 ~~~~
 static MONSTER_FACTOR: f64 = 57.8;
@@ -326,7 +335,7 @@ let d = 1000i32; // d is an i32
 There are two floating-point types: `f32`, and `f64`.
 Floating-point numbers are written `0.0`, `1e6`, or `2.1e-4`.
 Like integers, floating-point literals are inferred to the correct type.
-Suffixes ``f32`, and `f64` can be used to create literals of a specific type.
+Suffixes `f32`, and `f64` can be used to create literals of a specific type.
 
 The keywords `true` and `false` produce literals of type `bool`.
 
@@ -334,7 +343,8 @@ Characters, the `char` type, are four-byte Unicode codepoints,
 whose literals are written between single quotes, as in `'x'`.
 Just like C, Rust understands a number of character escapes, using the backslash
 character, such as `\n`, `\r`, and `\t`. String literals,
-written between double quotes, allow the same escape sequences.
+written between double quotes, allow the same escape sequences, and do no
+other processing, unlike languages such as PHP or shell.
 
 On the other hand, raw string literals do not process any escape sequences.
 They are written as `r##"blah"##`, with a matching number of zero or more `#`
@@ -351,23 +361,27 @@ Rust's set of operators contains very few surprises. Arithmetic is done with
 also a unary prefix operator that negates numbers. As in C, the bitwise operators
 `>>`, `<<`, `&`, `|`, and `^` are also supported.
 
-Note that, if applied to an integer value, `!` flips all the bits (like `~` in
-C).
+Note that, if applied to an integer value, `!` flips all the bits (bitwise
+NOT, like `~` in C).
 
 The comparison operators are the traditional `==`, `!=`, `<`, `>`,
 `<=`, and `>=`. Short-circuiting (lazy) boolean operators are written
 `&&` (and) and `||` (or).
 
-For type casting, Rust uses the binary `as` operator.  It takes an
-expression on the left side and a type on the right side and will,
-if a meaningful conversion exists, convert the result of the
-expression to the given type.
+For compile-time type casting, Rust uses the binary `as` operator.  It takes
+an expression on the left side and a type on the right side and will, if a
+meaningful conversion exists, convert the result of the expression to the
+given type. Generally, `as` is only used with the primitive numeric types or
+pointers, and is not overloadable.  [`transmute`][transmute] can be used for
+unsafe C-like casting of same-sized types.
 
 ~~~~
 let x: f64 = 4.0;
 let y: uint = x as uint;
 assert!(y == 4u);
 ~~~~
+
+[transmute]: http://static.rust-lang.org/doc/master/std/cast/fn.transmute.html
 
 ## Syntax extensions
 
@@ -379,7 +393,7 @@ useful of which is [`format!`][fmt], a `sprintf`-like text formatter that you
 will often see in examples, and its related family of macros: `print!`,
 `println!`, and `write!`.
 
-`format!` draws syntax from python, but contains many of the same principles
+`format!` draws syntax from Python, but contains many of the same principles
 that [printf][pf] has. Unlike printf, `format!` will give you a compile-time
 error when the types of the directives don't match the types of the arguments.
 
@@ -396,7 +410,9 @@ println!("what is this thing: {:?}", mystery_object);
 [pf]: http://en.cppreference.com/w/cpp/io/c/fprintf
 [fmt]: http://static.rust-lang.org/doc/master/std/fmt/index.html
 
-You can define your own syntax extensions with the macro system. For details, see the [macro tutorial][macros].
+You can define your own syntax extensions with the macro system. For details,
+see the [macro tutorial][macros]. Note that macro definition is currently
+considered an unstable feature.
 
 # Control structures
 
@@ -457,9 +473,8 @@ their own value. A single arm may match multiple different patterns by
 combining them with the pipe operator (`|`), so long as every pattern
 binds the same set of variables. Ranges of numeric literal patterns
 can be expressed with two dots, as in `M..N`. The underscore (`_`) is
-a wildcard pattern that matches any single value. The asterisk (`*`)
-is a different wildcard that can match one or more fields in an `enum`
-variant.
+a wildcard pattern that matches any single value. (`..`) is a different
+wildcard that can match one or more fields in an `enum` variant.
 
 The patterns in a match arm are followed by a fat arrow, `=>`, then an
 expression to evaluate. Each case is separated by commas. It's often
@@ -531,7 +546,7 @@ literals and most `enum` variants.
 
 `while` denotes a loop that iterates as long as its given condition
 (which must have type `bool`) evaluates to `true`. Inside a loop, the
-keyword `break` aborts the loop, and `loop` aborts the current
+keyword `break` aborts the loop, and `continue` aborts the current
 iteration and continues with the next.
 
 ~~~~
@@ -575,9 +590,8 @@ struct Point {
 }
 ~~~~
 
-Inherited mutability means that any field of a struct may be mutable, if the
-struct is in a mutable slot (or a field of a struct in a mutable slot, and
-so forth).
+Structs have "inherited mutability", which means that any field of a struct
+may be mutable, if the struct is in a mutable slot.
 
 With a value (say, `mypoint`) of such a type in a mutable location, you can do
 `mypoint.y += 1.0`. But in an immutable location, such an assignment to a
@@ -739,9 +753,9 @@ fn area(sh: Shape) -> f64 {
 
 ## Tuples
 
-Tuples in Rust behave exactly like structs, except that their fields
-do not have names. Thus, you cannot access their fields with dot notation.
-Tuples can have any arity except for 0 (though you may consider
+Tuples in Rust behave exactly like structs, except that their fields do not
+have names. Thus, you cannot access their fields with dot notation.  Tuples
+can have any arity (number of elements) except for 0 (though you may consider
 unit, `()`, as the empty tuple if you like).
 
 ~~~~
@@ -789,7 +803,7 @@ let id_int: int = *my_gizmo_id;
 ~~~~
 
 Types like this can be useful to differentiate between data that have
-the same type but must be used in different ways.
+the same underlying type but must be used in different ways.
 
 ~~~~
 struct Inches(int);
@@ -806,7 +820,7 @@ declarations, such as `type`, functions can be declared both at the
 top level and inside other functions (or in modules, which we'll come
 back to [later](#crates-and-the-module-system)). The `fn` keyword introduces a
 function. A function has an argument list, which is a parenthesized
-list of `expr: type` pairs separated by commas. An arrow `->`
+list of `name: type` pairs separated by commas. An arrow `->`
 separates the argument list and the function's return type.
 
 ~~~~
@@ -863,9 +877,9 @@ A *destructor* is a function responsible for cleaning up the resources used by
 an object when it is no longer accessible. Destructors can be defined to handle
 the release of resources like files, sockets and heap memory.
 
-Objects are never accessible after their destructor has been called, so there
-are no dynamic failures from accessing freed resources. When a task fails, the
-destructors of all objects in the task are called.
+Objects are never accessible after their destructor has been called, so no
+dynamic failures are possible from accessing freed resources. When a task
+fails, destructors of all objects in the task are called.
 
 The `~` sigil represents a unique handle for a memory allocation on the heap:
 
@@ -908,11 +922,15 @@ let mut b = Foo { x: 5, y: ~10 };
 b.x = 10;
 ~~~~
 
-If an object doesn't contain garbage-collected boxes, it consists of a single
-ownership tree and is given the `Owned` trait which allows it to be sent
+If an object doesn't contain any non-Send types, it consists of a single
+ownership tree and is itself given the `Send` trait which allows it to be sent
 between tasks. Custom destructors can only be implemented directly on types
-that are `Owned`, but garbage-collected boxes can still *contain* types with
-custom destructors.
+that are `Send`, but non-`Send` types can still *contain* types with custom
+destructors. Example of types which are not `Send` are [`Gc<T>`][gc] and
+[`Rc<T>`][rc], the shared-ownership types.
+
+[gc]: http://static.rust-lang.org/doc/master/std/gc/struct.Gc.html
+[rc]: http://static.rust-lang.org/doc/master/std/rc/struct.Rc.html
 
 # Implementing a linked list
 
@@ -1217,8 +1235,9 @@ xs = prepend::<int>(xs, 15);
 xs = prepend::<int>(xs, 20);
 ~~~
 
-In the type grammar, the language uses `Type<T, U, V>` to describe a list of
-type parameters, but expressions use `identifier::<T, U, V>`.
+In declarations, the language uses `Type<T, U, V>` to describe a list of type
+parameters, but expressions use `identifier::<T, U, V>`, to disambiguate the
+`<` operator.
 
 ## Defining list equality with generics
 
@@ -1295,7 +1314,7 @@ provide.
 
 In uncommon cases, the indirection can provide a performance gain or memory
 reduction by making values smaller. However, unboxed values should almost
-always be preferred.
+always be preferred when they are usable.
 
 Note that returning large unboxed values via boxes is unnecessary. A large
 value is returned via a hidden output parameter, and the decision on where to
@@ -1306,7 +1325,7 @@ fn foo() -> (u64, u64, u64, u64, u64, u64) {
     (5, 5, 5, 5, 5, 5)
 }
 
-let x = ~foo(); // allocates, and writes the integers directly to it
+let x = ~foo(); // allocates a ~ box, and writes the integers directly to it
 ~~~~
 
 Beyond the properties granted by the size, an owned box behaves as a regular
@@ -1385,7 +1404,7 @@ compute_distance(managed_box, owned_box);
 Here the `&` operator is used to take the address of the variable
 `on_the_stack`; this is because `on_the_stack` has the type `Point`
 (that is, a struct value) and we have to take its address to get a
-value. We also call this _borrowing_ the local variable
+reference. We also call this _borrowing_ the local variable
 `on_the_stack`, because we are creating an alias: that is, another
 route to the same data.
 
@@ -1412,7 +1431,8 @@ For a more in-depth explanation of borrowed pointers, read the
 ## Freezing
 
 Lending an immutable pointer to an object freezes it and prevents mutation.
-`Owned` objects have freezing enforced statically at compile-time.
+`Freeze` objects have freezing enforced statically at compile-time. Examples
+of non-`Freeze` types are `@mut` and [`RefCell<T>`][refcell].
 
 ~~~~
 let mut x = 5;
@@ -1436,6 +1456,8 @@ let y = x;
 }
 // the box is now unfrozen again
 ~~~~
+
+[refcell]: http://static.rust-lang.org/doc/master/std/cell/struct.RefCell.html
 
 # Dereferencing pointers
 
@@ -3174,59 +3196,15 @@ Both auto-insertions can be disabled with an attribute if necessary:
 #[no_implicit_prelude];
 ~~~
 
-## The standard library in detail
+See the [API documentation][stddoc] for details.
 
-The Rust standard library provides runtime features required by the language,
-including the task scheduler and memory allocators, as well as library
-support for Rust built-in types, platform abstractions, and other commonly
-used features.
-
-[`std`] includes modules corresponding to each of the integer types, each of
-the floating point types, the [`bool`] type, [tuples], [characters], [strings],
-[vectors], [managed boxes], [owned boxes],
-and unsafe and borrowed [pointers].  Additionally, `std` provides
-some pervasive types ([`option`] and [`result`]),
-[task] creation and [communication] primitives,
-platform abstractions ([`os`] and [`path`]), basic
-I/O abstractions ([`io`]), [containers] like [`hashmap`],
-common traits ([`kinds`], [`ops`], [`cmp`], [`num`],
-[`to_str`], [`clone`]), and complete bindings to the C standard library ([`libc`]).
-
-The full documentation for `std` can be found here: [standard library].
-
-[standard library]: std/index.html
-[`std`]: std/index.html
-[`bool`]: std/bool/index.html
-[tuples]: std/tuple/index.html
-[characters]: std/char/index.html
-[strings]: std/str/index.html
-[vectors]: std/vec/index.html
-[managed boxes]: std/managed/index.html
-[owned boxes]: std/owned/index.html
-[pointers]: std/ptr/index.html
-[`option`]: std/option/index.html
-[`result`]: std/result/index.html
-[task]: std/task/index.html
-[communication]: std/comm/index.html
-[`os`]: std/os/index.html
-[`path`]: std/path/index.html
-[`io`]: std/io/index.html
-[containers]: std/container/index.html
-[`hashmap`]: std/hashmap/index.html
-[`kinds`]: std/kinds/index.html
-[`ops`]: std/ops/index.html
-[`cmp`]: std/cmp/index.html
-[`num`]: std/num/index.html
-[`to_str`]: std/to_str/index.html
-[`clone`]: std/clone/index.html
-[`libc`]: std/libc/index.html
+[stddoc]: std/index.html
 
 ## The extra library
 
-Rust also ships with the [extra library], an accumulation of
-useful things, that are however not important enough
-to deserve a place in the standard library.
-You can use them by linking to `extra` with an `extern mod extra;`.
+Rust also ships with the [extra library], an accumulation of useful things,
+that are however not important enough to deserve a place in the standard
+library.  You can use them by linking to `extra` with an `extern mod extra;`.
 
 [extra library]: extra/index.html
 
@@ -3245,8 +3223,10 @@ tutorials on individual topics.
 * [Containers and iterators][container]
 * [Error-handling and Conditions][conditions]
 * [Packaging up Rust code][rustpkg]
+* [Documenting Rust code][rustdoc]
 
-There is further documentation on the [wiki], however those tend to be even more out of date as this document.
+There is further documentation on the [wiki], however those tend to be even
+more out of date than this document.
 
 [borrow]: tutorial-borrowed-ptr.html
 [tasks]: tutorial-tasks.html
@@ -3255,6 +3235,7 @@ There is further documentation on the [wiki], however those tend to be even more
 [container]: tutorial-container.html
 [conditions]: tutorial-conditions.html
 [rustpkg]: tutorial-rustpkg.html
+[rustdoc]: tutorial-rustdoc.html
 
 [wiki]: https://github.com/mozilla/rust/wiki/Docs
-
+[wiki-packages]: https://github.com/mozilla/rust/wiki/Doc-packages,-editors,-and-other-tools
