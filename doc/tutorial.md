@@ -3196,59 +3196,15 @@ Both auto-insertions can be disabled with an attribute if necessary:
 #[no_implicit_prelude];
 ~~~
 
-## The standard library in detail
+See the [API documentation][stddoc] for details.
 
-The Rust standard library provides runtime features required by the language,
-including the task scheduler and memory allocators, as well as library
-support for Rust built-in types, platform abstractions, and other commonly
-used features.
-
-[`std`] includes modules corresponding to each of the integer types, each of
-the floating point types, the [`bool`] type, [tuples], [characters], [strings],
-[vectors], [managed boxes], [owned boxes],
-and unsafe and borrowed [pointers].  Additionally, `std` provides
-some pervasive types ([`option`] and [`result`]),
-[task] creation and [communication] primitives,
-platform abstractions ([`os`] and [`path`]), basic
-I/O abstractions ([`io`]), [containers] like [`hashmap`],
-common traits ([`kinds`], [`ops`], [`cmp`], [`num`],
-[`to_str`], [`clone`]), and complete bindings to the C standard library ([`libc`]).
-
-The full documentation for `std` can be found here: [standard library].
-
-[standard library]: std/index.html
-[`std`]: std/index.html
-[`bool`]: std/bool/index.html
-[tuples]: std/tuple/index.html
-[characters]: std/char/index.html
-[strings]: std/str/index.html
-[vectors]: std/vec/index.html
-[managed boxes]: std/managed/index.html
-[owned boxes]: std/owned/index.html
-[pointers]: std/ptr/index.html
-[`option`]: std/option/index.html
-[`result`]: std/result/index.html
-[task]: std/task/index.html
-[communication]: std/comm/index.html
-[`os`]: std/os/index.html
-[`path`]: std/path/index.html
-[`io`]: std/io/index.html
-[containers]: std/container/index.html
-[`hashmap`]: std/hashmap/index.html
-[`kinds`]: std/kinds/index.html
-[`ops`]: std/ops/index.html
-[`cmp`]: std/cmp/index.html
-[`num`]: std/num/index.html
-[`to_str`]: std/to_str/index.html
-[`clone`]: std/clone/index.html
-[`libc`]: std/libc/index.html
+[stddoc]: std/index.html
 
 ## The extra library
 
-Rust also ships with the [extra library], an accumulation of
-useful things, that are however not important enough
-to deserve a place in the standard library.
-You can use them by linking to `extra` with an `extern mod extra;`.
+Rust also ships with the [extra library], an accumulation of useful things,
+that are however not important enough to deserve a place in the standard
+library.  You can use them by linking to `extra` with an `extern mod extra;`.
 
 [extra library]: extra/index.html
 
