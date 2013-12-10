@@ -628,8 +628,8 @@ impl Clean<Type> for ast::Ty {
             ty_vec(ref m) => Vector(~m.ty.clean()),
             ty_fixed_length_vec(ref m, ref e) => FixedVector(~m.ty.clean(),
                                                              e.span.to_src()),
-            ty_tup(ref tys) => Tuple(tys.iter().map(|x| x.clean()).collect()),
-            ty_path(ref p, ref tpbs, id) =>
+            ty_tup(false, ref tys) => Tuple(tys.iter().map(|x| x.clean()).collect()),
+            ty_path(false, ref p, ref tpbs, id) =>
                 resolve_type(p.clean(), tpbs.clean(), id),
             ty_closure(ref c) => Closure(~c.clean()),
             ty_bare_fn(ref barefn) => BareFunction(~barefn.clean()),

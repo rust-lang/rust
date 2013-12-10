@@ -351,7 +351,12 @@ impl Reflector {
           // Miscellaneous extra types
           ty::ty_infer(_) => self.leaf("infer"),
           ty::ty_err => self.leaf("err"),
-          ty::ty_param(ref p) => {
+          ty::ty_param(expand, ref p) => {
+              if expand {
+                  tcx.sess.bug(format!(
+                      "found unexpanded ty_param `{}` in reflect::visit_ty",
+                      ty_to_str(tcx, t)));
+              }
               let extra = ~[self.c_uint(p.idx)];
               self.visit("param", extra)
           }

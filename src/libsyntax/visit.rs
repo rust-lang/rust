@@ -303,7 +303,8 @@ pub fn walk_ty<E:Clone, V:Visitor<E>>(visitor: &mut V, typ: &Ty, env: E) {
             visitor.visit_opt_lifetime_ref(typ.span, lifetime, env.clone());
             visitor.visit_ty(mutable_type.ty, env)
         }
-        ty_tup(ref tuple_element_types) => {
+        ty_tup(_expand, ref tuple_element_types) => {
+            // FIXME(eddyb) #10769 what to do with expand?
             for &tuple_element_type in tuple_element_types.iter() {
                 visitor.visit_ty(tuple_element_type, env.clone())
             }
@@ -331,7 +332,8 @@ pub fn walk_ty<E:Clone, V:Visitor<E>>(visitor: &mut V, typ: &Ty, env: E) {
             walk_lifetime_decls(visitor, &function_declaration.lifetimes,
                                 env.clone());
         }
-        ty_path(ref path, ref bounds, _) => {
+        ty_path(_expand, ref path, ref bounds, _) => {
+            // FIXME(eddyb) #10769 what to do with expand?
             walk_path(visitor, path, env.clone());
             for bounds in bounds.iter() {
                 walk_ty_param_bounds(visitor, bounds, env.clone())

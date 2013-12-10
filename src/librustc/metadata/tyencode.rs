@@ -304,7 +304,10 @@ fn enc_sty(w: @mut MemWriter, cx: @ctxt, st: &ty::sty) {
         ty::ty_infer(_) => {
             cx.diag.handler().bug("Cannot encode inference variable types");
         }
-        ty::ty_param(param_ty {idx: id, def_id: did}) => {
+        ty::ty_param(expand, param_ty {idx: id, def_id: did}) => {
+            if expand {
+                cx.tcx.sess.bug("found unexpanded ty_param in tyencode::enc_sty");
+            }
             mywrite!(w, "p{}|{}", (cx.ds)(did), id);
         }
         ty::ty_self(did) => {

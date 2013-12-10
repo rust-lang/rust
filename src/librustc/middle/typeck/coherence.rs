@@ -542,7 +542,7 @@ impl CoherenceChecker {
     pub fn ast_type_is_defined_in_local_crate(&self, original_type: &ast::Ty)
                                               -> bool {
         match original_type.node {
-            ty_path(_, _, path_id) => {
+            ty_path(_, _, _, path_id) => {
                 match self.crate_context.tcx.def_map.get_copy(&path_id) {
                     DefTy(def_id) | DefStruct(def_id) => {
                         if def_id.crate != LOCAL_CRATE {

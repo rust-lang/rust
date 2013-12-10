@@ -292,7 +292,7 @@ impl AstBuilder for @ExtCtxt {
     fn ty_path(&self, path: ast::Path, bounds: Option<OptVec<ast::TyParamBound>>)
               -> P<ast::Ty> {
         self.ty(path.span,
-                ast::ty_path(path, bounds, ast::DUMMY_NODE_ID))
+                ast::ty_path(false, path, bounds, ast::DUMMY_NODE_ID))
     }
 
     // Might need to take bounds as an argument in the future, if you ever want

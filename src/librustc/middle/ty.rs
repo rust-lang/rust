@@ -644,7 +644,7 @@ pub enum sty {
     ty_struct(DefId, substs),
     ty_tup(~[t]),
 
-    ty_param(param_ty), // type parameter
+    ty_param(bool /* expand */, param_ty), // type parameter
     ty_self(DefId), /* special, implicit `self` type parameter;
                       * def_id is the id of the trait */
 
@@ -1088,7 +1088,7 @@ pub fn mk_t(cx: ctxt, st: sty) -> t {
       // so we're doing it this way.
       &ty_bot => flags |= has_ty_bot as uint,
       &ty_err => flags |= has_ty_err as uint,
-      &ty_param(_) => flags |= has_params as uint,
+      &ty_param(..) => flags |= has_params as uint,
       &ty_infer(_) => flags |= needs_infer as uint,
       &ty_self(_) => flags |= has_self as uint,
       &ty_enum(_, ref substs) | &ty_struct(_, ref substs) |
@@ -1342,7 +1342,7 @@ pub fn mk_infer(cx: ctxt, it: InferTy) -> t { mk_t(cx, ty_infer(it)) }
 pub fn mk_self(cx: ctxt, did: ast::DefId) -> t { mk_t(cx, ty_self(did)) }
 
 pub fn mk_param(cx: ctxt, n: uint, k: DefId) -> t {
-    mk_t(cx, ty_param(param_ty { idx: n, def_id: k }))
+    mk_t(cx, ty_param(false, param_ty { idx: n, def_id: k }))
 }
 
 pub fn mk_type(cx: ctxt) -> t { mk_t(cx, ty_type) }
@@ -1364,7 +1364,7 @@ pub fn maybe_walk_ty(ty: t, f: |t| -> bool) {
     match get(ty).sty {
       ty_nil | ty_bot | ty_bool | ty_char | ty_int(_) | ty_uint(_) | ty_float(_) |
       ty_estr(_) | ty_type | ty_opaque_box | ty_self(_) |
-      ty_opaque_closure_ptr(_) | ty_infer(_) | ty_param(_) | ty_err => {
+      ty_opaque_closure_ptr(_) | ty_infer(_) | ty_param(..) | ty_err => {
       }
       ty_box(ref tm) | ty_evec(ref tm, _) | ty_unboxed_vec(ref tm) |
       ty_ptr(ref tm) | ty_rptr(_, ref tm) | ty_uniq(ref tm) => {
@@ -1428,7 +1428,7 @@ pub fn subst_tps(tcx: ctxt, tps: &[t], self_ty_opt: Option<t>, typ: t) -> t {
             }
 
             match ty::get(t).sty {
-                ty_param(p) => {
+                ty_param(_, p) => {
                     self.tps[p.idx]
                 }
 
@@ -2068,7 +2068,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 apply_attributes(cx, did, res)
             }
 
-            ty_param(p) => {
+            ty_param(_, p) => {
                 // We only ever ask for the kind of types that are defined in
                 // the current crate; therefore, the only type parameters that
                 // could be in scope are those defined in the current crate.
@@ -2281,7 +2281,7 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
             ty_closure(_) |
             ty_infer(_) |
             ty_err |
-            ty_param(_) |
+            ty_param(..) |
             ty_self(_) |
             ty_type |
             ty_opaque_box |
@@ -2486,7 +2486,7 @@ pub fn type_is_pod(cx: ctxt, ty: t) -> bool {
       ty_evec(ref mt, vstore_fixed(_)) | ty_unboxed_vec(ref mt) => {
         result = type_is_pod(cx, mt.ty);
       }
-      ty_param(_) => result = false,
+      ty_param(..) => result = false,
       ty_opaque_closure_ptr(_) => result = true,
       ty_struct(did, ref substs) => {
         let fields = lookup_struct_fields(cx, did);
@@ -2520,7 +2520,7 @@ pub fn type_is_enum(ty: t) -> bool {
 pub fn type_is_sized(cx: ctxt, ty: ty::t) -> bool {
     match get(ty).sty {
         // FIXME(#6308) add trait, vec, str, etc here.
-        ty_param(p) => {
+        ty_param(_, p) => {
             let param_def = cx.ty_param_defs.get(&p.def_id.node);
             if param_def.bounds.builtin_bounds.contains_elem(BoundSized) {
                 return true;
@@ -2549,7 +2549,7 @@ pub fn type_is_c_like_enum(cx: ctxt, ty: t) -> bool {
 
 pub fn type_param(ty: t) -> Option<uint> {
     match get(ty).sty {
-      ty_param(p) => return Some(p.idx),
+      ty_param(_, p) => return Some(p.idx),
       _ => {/* fall through */ }
     }
     return None;
@@ -3219,7 +3219,7 @@ pub fn param_tys_in_type(ty: t) -> ~[param_ty] {
     let mut rslt = ~[];
     walk_ty(ty, |ty| {
         match get(ty).sty {
-          ty_param(p) => {
+          ty_param(_, p) => {
             rslt.push(p);
           }
           _ => ()
@@ -3282,7 +3282,7 @@ pub fn ty_sort_str(cx: ctxt, t: t) -> ~str {
       ty_infer(TyVar(_)) => ~"inferred type",
       ty_infer(IntVar(_)) => ~"integral variable",
       ty_infer(FloatVar(_)) => ~"floating-point variable",
-      ty_param(_) => ~"type parameter",
+      ty_param(..) => ~"type parameter",
       ty_self(_) => ~"self",
       ty_err => ~"type error"
     }
@@ -4668,8 +4668,13 @@ pub fn hash_crate_independent(tcx: ctxt, t: t, local_hash: @str) -> u64 {
                 hash.input([19]);
                 iter(&mut hash, &inner.len());
             }
-            ty_param(p) => {
+            ty_param(expand, p) => {
                 hash.input([20]);
+                if expand {
+                    tcx.sess.bug(format!(
+                        "found unexpanded ty_param `{}` in ty::hash_crate_independent",
+                        ty_to_str(tcx, t)));
+                }
                 iter(&mut hash, &p.idx);
                 did(&mut hash, p.def_id);
             }

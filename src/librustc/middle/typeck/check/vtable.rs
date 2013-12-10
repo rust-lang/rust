@@ -247,7 +247,7 @@ fn lookup_vtable(vcx: &VtableContext,
     // If the type is self or a param, we look at the trait/supertrait
     // bounds to see if they include the trait we are looking for.
     let vtable_opt = match ty::get(ty).sty {
-        ty::ty_param(param_ty {idx: n, ..}) => {
+        ty::ty_param(_, param_ty {idx: n, ..}) => {
             let type_param_bounds: &[@ty::TraitRef] =
                 vcx.param_env.type_param_bounds[n].trait_bounds;
             lookup_vtable_from_bounds(vcx,

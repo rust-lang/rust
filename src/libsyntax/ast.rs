@@ -882,8 +882,8 @@ pub enum ty_ {
     ty_rptr(Option<Lifetime>, mt),
     ty_closure(@TyClosure),
     ty_bare_fn(@TyBareFn),
-    ty_tup(~[P<Ty>]),
-    ty_path(Path, Option<OptVec<TyParamBound>>, NodeId), // for #7264; see above
+    ty_tup(bool /* expand */, ~[P<Ty>]),
+    ty_path(bool /* expand */, Path, Option<OptVec<TyParamBound>>, NodeId), // for #7264; see above
     ty_typeof(@Expr),
     // ty_infer means the type should be inferred instead of it having been
     // specified. This should only appear at the "top level" of a type and not

@@ -416,7 +416,10 @@ pub fn print_type(s: @ps, ty: &ast::Ty) {
           print_opt_lifetime(s, lifetime);
           print_mt(s, mt);
       }
-      ast::ty_tup(ref elts) => {
+      ast::ty_tup(expand, ref elts) => {
+        if expand {
+            word(s.s, "..");
+        }
         popen(s);
         commasep(s, inconsistent, *elts, print_type_ref);
         if elts.len() == 1 {
@@ -442,7 +445,12 @@ pub fn print_type(s: @ps, ty: &ast::Ty) {
                       f.purity, f.onceness, f.decl, None, &f.bounds,
                       Some(&generics), None);
       }
-      ast::ty_path(ref path, ref bounds, _) => print_bounded_path(s, path, bounds),
+      ast::ty_path(expand, ref path, ref bounds, _) => {
+        if expand {
+            word(s.s, "..");
+        }
+        print_bounded_path(s, path, bounds);
+      }
       ast::ty_fixed_length_vec(ref mt, v) => {
         word(s.s, "[");
         match mt.mutbl {

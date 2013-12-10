@@ -219,7 +219,7 @@ impl<'self> Visitor<()> for EmbargoVisitor<'self> {
             // * Private trait impls for private types can be completely ignored
             ast::item_impl(_, _, ref ty, ref methods) => {
                 let public_ty = match ty.node {
-                    ast::ty_path(_, _, id) => {
+                    ast::ty_path(_, _, _, id) => {
                         match self.tcx.def_map.get_copy(&id) {
                             ast::DefPrimTy(..) => true,
                             def => {
@@ -699,7 +699,7 @@ impl<'self> Visitor<()> for PrivacyVisitor<'self> {
 
     fn visit_ty(&mut self, t: &ast::Ty, _: ()) {
         match t.node {
-            ast::ty_path(ref path, _, id) => self.check_path(t.span, id, path),
+            ast::ty_path(_, ref path, _, id) => self.check_path(t.span, id, path),
             _ => {}
         }
         visit::walk_ty(self, t, ());
