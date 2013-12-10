@@ -63,9 +63,10 @@ impl<'self, R: Reader> Iterator<u8> for ByteIterator<R> {
 ///
 /// ```
 /// let chunks = ~[~[1u8, 2u8], ~[3u8], ~[4u8, 5u8]].move_iter().filter(|vals| vals.len() > 1);
+/// let mut reader = BytesIterReader::new(chunks);
 ///
 /// let mut buf = ~[0u8, ..3];
-/// match reader.read(chunks) {
+/// match reader.read(buf) {
 ///     Some(nread) => println!("Read {} bytes", nread),
 ///     None => println!("At the end of the stream!")
 /// }
