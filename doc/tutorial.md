@@ -1431,7 +1431,8 @@ For a more in-depth explanation of borrowed pointers, read the
 ## Freezing
 
 Lending an immutable pointer to an object freezes it and prevents mutation.
-`Owned` objects have freezing enforced statically at compile-time.
+`Freeze` objects have freezing enforced statically at compile-time. Examples
+of non-`Freeze` types are `@mut` and [`RefCell<T>`][refcell].
 
 ~~~~
 let mut x = 5;
@@ -1455,6 +1456,8 @@ let y = x;
 }
 // the box is now unfrozen again
 ~~~~
+
+[refcell]: http://static.rust-lang.org/doc/master/std/cell/struct.RefCell.html
 
 # Dereferencing pointers
 
