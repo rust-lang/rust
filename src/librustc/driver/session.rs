@@ -17,6 +17,7 @@ use metadata::filesearch;
 use metadata;
 use middle::lint;
 
+use syntax::attr::AttrMetaMethods;
 use syntax::ast::NodeId;
 use syntax::ast::{int_ty, uint_ty};
 use syntax::codemap::Span;
@@ -67,6 +68,7 @@ pub static use_softfp:              uint = 1 << 26;
 pub static gen_crate_map:           uint = 1 << 27;
 pub static prefer_dynamic:          uint = 1 << 28;
 pub static no_integrated_as:        uint = 1 << 29;
+pub static lto:                     uint = 1 << 30;
 
 pub fn debugging_opts_map() -> ~[(&'static str, &'static str, uint)] {
     ~[("verbose", "in general, enable more debug printouts", verbose),
@@ -120,6 +122,7 @@ pub fn debugging_opts_map() -> ~[(&'static str, &'static str, uint)] {
      ("prefer-dynamic", "Prefer dynamic linking to static linking", prefer_dynamic),
      ("no-integrated-as",
       "Use external assembler rather than LLVM's integrated one", no_integrated_as),
+     ("lto", "Perform LLVM link-time optimizations", lto),
     ]
 }
 
@@ -208,6 +211,7 @@ pub struct Session_ {
     working_dir: Path,
     lints: @mut HashMap<ast::NodeId, ~[(lint::lint, codemap::Span, ~str)]>,
     node_id: @mut ast::NodeId,
+    outputs: @mut ~[OutputStyle],
 }
 
 pub type Session = @Session_;
@@ -341,6 +345,9 @@ impl Session_ {
     pub fn no_integrated_as(&self) -> bool {
         self.debugging_opt(no_integrated_as)
     }
+    pub fn lto(&self) -> bool {
+        self.debugging_opt(lto)
+    }
 
     // pointless function, now...
     pub fn str_of(&self, id: ast::Ident) -> @str {
@@ -406,6 +413,29 @@ pub fn building_library(options: &options, crate: &ast::Crate) -> bool {
         Some(s) => "lib" == s || "rlib" == s || "dylib" == s || "staticlib" == s,
         _ => false
     }
+}
+
+pub fn collect_outputs(options: &options, crate: &ast::Crate) -> ~[OutputStyle] {
+    let mut base = options.outputs.clone();
+    let mut iter = crate.attrs.iter().filter_map(|a| {
+        if "crate_type" == a.name() {
+            match a.value_str() {
+                Some(n) if "rlib" == n => Some(OutputRlib),
+                Some(n) if "dylib" == n => Some(OutputDylib),
+                Some(n) if "lib" == n => Some(OutputDylib),
+                Some(n) if "staticlib" == n => Some(OutputStaticlib),
+                Some(n) if "bin" == n => Some(OutputExecutable),
+                _ => None
+            }
+        } else {
+            None
+        }
+    });
+    base.extend(&mut iter);
+    if base.len() == 0 {
+        base.push(OutputExecutable);
+    }
+    return base;
 }
 
 pub fn sess_os_to_meta_os(os: abi::Os) -> metadata::loader::Os {

@@ -42,6 +42,7 @@ pub struct CrateContext {
      sess: session::Session,
      llmod: ModuleRef,
      llcx: ContextRef,
+     metadata_llmod: ModuleRef,
      td: TargetData,
      tn: TypeNames,
      externs: ExternMap,
@@ -110,6 +111,7 @@ pub struct CrateContext {
      opaque_vec_type: Type,
      builder: BuilderRef_res,
      crate_map: ValueRef,
+     crate_map_name: ~str,
      // Set when at least one function uses GC. Needed so that
      // decl_gc_metadata knows whether to link to the module metadata, which
      // is not emitted by LLVM's GC pass when no functions use GC.
@@ -134,11 +136,18 @@ impl CrateContext {
             let llmod = name.with_c_str(|buf| {
                 llvm::LLVMModuleCreateWithNameInContext(buf, llcx)
             });
+            let metadata_llmod = format!("{}_metadata", name).with_c_str(|buf| {
+                llvm::LLVMModuleCreateWithNameInContext(buf, llcx)
+            });
             let data_layout: &str = sess.targ_cfg.target_strs.data_layout;
             let targ_triple: &str = sess.targ_cfg.target_strs.target_triple;
-            data_layout.with_c_str(|buf| llvm::LLVMSetDataLayout(llmod, buf));
+            data_layout.with_c_str(|buf| {
+                llvm::LLVMSetDataLayout(llmod, buf);
+                llvm::LLVMSetDataLayout(metadata_llmod, buf);
+            });
             targ_triple.with_c_str(|buf| {
-                llvm::LLVMRustSetNormalizedTarget(llmod, buf)
+                llvm::LLVMRustSetNormalizedTarget(llmod, buf);
+                llvm::LLVMRustSetNormalizedTarget(metadata_llmod, buf);
             });
             let targ_cfg = sess.targ_cfg;
 
@@ -159,7 +168,8 @@ impl CrateContext {
             tn.associate_type("tydesc", &tydesc_type);
             tn.associate_type("str_slice", &str_slice_ty);
 
-            let crate_map = decl_crate_map(sess, link_meta, llmod);
+            let (crate_map_name, crate_map) = decl_crate_map(sess, link_meta,
+                                                             llmod);
             let dbg_cx = if sess.opts.debuginfo {
                 Some(debuginfo::CrateDebugContext::new(llmod, name.to_owned()))
             } else {
@@ -174,6 +184,7 @@ impl CrateContext {
                   sess: sess,
                   llmod: llmod,
                   llcx: llcx,
+                  metadata_llmod: metadata_llmod,
                   td: td,
                   tn: tn,
                   externs: HashMap::new(),
@@ -229,6 +240,7 @@ impl CrateContext {
                   opaque_vec_type: opaque_vec_type,
                   builder: BuilderRef_res(llvm::LLVMCreateBuilderInContext(llcx)),
                   crate_map: crate_map,
+                  crate_map_name: crate_map_name,
                   uses_gc: false,
                   dbg_cx: dbg_cx,
                   do_not_commit_warning_issued: false
