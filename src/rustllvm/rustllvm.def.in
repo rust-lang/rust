@@ -629,3 +629,6 @@ LLVMTypeToString
 LLVMAddColdAttribute
 LLVMCreateMemoryBufferWithMemoryRange
 LLVMCreateMemoryBufferWithMemoryRangeCopy
+LLVMPassManagerBuilderPopulateLTOPassManager
+LLVMRustLinkInExternalBitcode
+LLVMRustRunRestrictionPass

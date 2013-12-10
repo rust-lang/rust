@@ -2929,7 +2929,7 @@ pub fn symname(sess: session::Session, name: &str,
 }
 
 pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
-                      llmod: ModuleRef) -> ValueRef {
+                      llmod: ModuleRef) -> (~str, ValueRef) {
     let targ_cfg = sess.targ_cfg;
     let int_type = Type::int(targ_cfg.arch);
     let mut n_subcrates = 1;
@@ -2963,7 +2963,7 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
         lib::llvm::SetLinkage(map, lib::llvm::ExternalLinkage);
     }
 
-    return map;
+    return (sym_name, map);
 }
 
 pub fn fill_crate_map(ccx: @mut CrateContext, map: ValueRef) {
@@ -3044,19 +3044,26 @@ pub fn crate_ctxt_to_encode_parms<'r>(cx: &'r CrateContext, ie: encoder::encode_
         }
 }
 
-pub fn write_metadata(cx: &CrateContext, crate: &ast::Crate) {
-    if !*cx.sess.building_library { return; }
+pub fn write_metadata(cx: &CrateContext, crate: &ast::Crate) -> ~[u8] {
+    use extra::flate;
+
+    if !*cx.sess.building_library { return ~[]; }
 
     let encode_inlined_item: encoder::encode_inlined_item =
         |ecx, ebml_w, path, ii|
         astencode::encode_inlined_item(ecx, ebml_w, path, ii, cx.maps);
 
     let encode_parms = crate_ctxt_to_encode_parms(cx, encode_inlined_item);
-    let llmeta = C_bytes(encoder::encode_metadata(encode_parms, crate));
+    let metadata = encoder::encode_metadata(encode_parms, crate);
+    let compressed = encoder::metadata_encoding_version +
+                        flate::deflate_bytes(metadata);
+    let llmeta = C_bytes(compressed);
     let llconst = C_struct([llmeta], false);
-    let mut llglobal = "rust_metadata".with_c_str(|buf| {
+    let name = format!("rust_metadata_{}_{}_{}", cx.link_meta.name,
+                       cx.link_meta.vers, cx.link_meta.extras_hash);
+    let llglobal = name.with_c_str(|buf| {
         unsafe {
-            llvm::LLVMAddGlobal(cx.llmod, val_ty(llconst).to_ref(), buf)
+            llvm::LLVMAddGlobal(cx.metadata_llmod, val_ty(llconst).to_ref(), buf)
         }
     });
     unsafe {
@@ -3064,16 +3071,8 @@ pub fn write_metadata(cx: &CrateContext, crate: &ast::Crate) {
         cx.sess.targ_cfg.target_strs.meta_sect_name.with_c_str(|buf| {
             llvm::LLVMSetSection(llglobal, buf)
         });
-        lib::llvm::SetLinkage(llglobal, lib::llvm::InternalLinkage);
-
-        let t_ptr_i8 = Type::i8p();
-        llglobal = llvm::LLVMConstBitCast(llglobal, t_ptr_i8.to_ref());
-        let llvm_used = "llvm.used".with_c_str(|buf| {
-            llvm::LLVMAddGlobal(cx.llmod, Type::array(&t_ptr_i8, 1).to_ref(), buf)
-        });
-        lib::llvm::SetLinkage(llvm_used, lib::llvm::AppendingLinkage);
-        llvm::LLVMSetInitializer(llvm_used, C_array(t_ptr_i8, [llglobal]));
     }
+    return metadata;
 }
 
 pub fn trans_crate(sess: session::Session,
@@ -3140,7 +3139,7 @@ pub fn trans_crate(sess: session::Session,
     }
 
     // Translate the metadata.
-    write_metadata(ccx, &crate);
+    let metadata = write_metadata(ccx, &crate);
     if ccx.sess.trans_stats() {
         println("--- trans stats ---");
         println!("n_static_tydescs: {}", ccx.stats.n_static_tydescs);
@@ -3174,18 +3173,27 @@ pub fn trans_crate(sess: session::Session,
     let llcx = ccx.llcx;
     let link_meta = ccx.link_meta;
     let llmod = ccx.llmod;
-    let crate_types = crate.attrs.iter().filter_map(|a| {
-        if "crate_type" == a.name() {
-            a.value_str()
-        } else {
-            None
-        }
-    }).map(|a| a.to_owned()).collect();
+    let mut reachable = ccx.reachable.iter().filter_map(|id| {
+        ccx.item_symbols.find(id).map(|s| s.to_owned())
+    }).to_owned_vec();
+
+    // Make sure that some other crucial symbols are not eliminated from the
+    // module. This includes the main function (main/amain elsewhere), the crate
+    // map (used for debug log settings and I/O), and finally the curious
+    // rust_stack_exhausted symbol. This symbol is required for use by the
+    // libmorestack library that we link in, so we must ensure that this symbol
+    // is not internalized (if defined in the crate).
+    reachable.push(ccx.crate_map_name.to_owned());
+    reachable.push(~"main");
+    reachable.push(~"amain");
+    reachable.push(~"rust_stack_exhausted");
 
     return CrateTranslation {
         context: llcx,
         module: llmod,
         link: link_meta,
-        crate_types: crate_types,
+        metadata_module: ccx.metadata_llmod,
+        metadata: metadata,
+        reachable: reachable,
     };
 }

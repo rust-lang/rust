@@ -9,8 +9,9 @@
 // except according to those terms.
 
 
-use back::archive::Archive;
+use back::archive::{Archive, METADATA_FILENAME};
 use back::rpath;
+use driver::driver::CrateTranslation;
 use driver::session::Session;
 use driver::session;
 use lib::llvm::llvm;
@@ -21,6 +22,7 @@ use metadata::{encoder, cstore, filesearch, csearch};
 use middle::trans::context::CrateContext;
 use middle::trans::common::gensym_name;
 use middle::ty;
+use util::common::time;
 use util::ppaux;
 
 use std::c_str::ToCStr;
@@ -32,6 +34,7 @@ use std::ptr;
 use std::run;
 use std::str;
 use std::io::fs;
+use extra::tempfile::TempDir;
 use syntax::abi;
 use syntax::ast;
 use syntax::ast_map::{path, path_mod, path_name, path_pretty_name};
@@ -84,15 +87,18 @@ pub fn WriteOutputFile(
 
 pub mod write {
 
+    use back::lto;
     use back::link::{WriteOutputFile, output_type};
     use back::link::{output_type_assembly, output_type_bitcode};
     use back::link::{output_type_exe, output_type_llvm_assembly};
     use back::link::{output_type_object};
+    use driver::driver::CrateTranslation;
     use driver::session::Session;
     use driver::session;
     use lib::llvm::llvm;
-    use lib::llvm::{ModuleRef, ContextRef};
+    use lib::llvm::{ModuleRef, TargetMachineRef, PassManagerRef};
     use lib;
+    use util::common::time;
 
     use std::c_str::ToCStr;
     use std::libc::{c_uint, c_int};
@@ -101,10 +107,11 @@ pub mod write {
     use std::str;
 
     pub fn run_passes(sess: Session,
-                      llcx: ContextRef,
-                      llmod: ModuleRef,
+                      trans: &CrateTranslation,
                       output_type: output_type,
                       output: &Path) {
+        let llmod = trans.module;
+        let llcx = trans.context;
         unsafe {
             llvm::LLVMInitializePasses();
 
@@ -191,49 +198,106 @@ pub mod write {
             }
 
             // Finally, run the actual optimization passes
-            llvm::LLVMRustRunFunctionPassManager(fpm, llmod);
-            llvm::LLVMRunPassManager(mpm, llmod);
+            time(sess.time_passes(), "llvm function passes", (), |()|
+                 llvm::LLVMRustRunFunctionPassManager(fpm, llmod));
+            time(sess.time_passes(), "llvm module passes", (), |()|
+                 llvm::LLVMRunPassManager(mpm, llmod));
 
             // Deallocate managers that we're now done with
             llvm::LLVMDisposePassManager(fpm);
             llvm::LLVMDisposePassManager(mpm);
 
-            if sess.opts.save_temps {
+            // Emit the bytecode if we're either saving our temporaries or
+            // emitting an rlib. Whenever an rlib is create, the bytecode is
+            // inserted into the archive in order to allow LTO against it.
+            if sess.opts.save_temps ||
+               sess.outputs.iter().any(|&o| o == session::OutputRlib) {
                 output.with_extension("bc").with_c_str(|buf| {
                     llvm::LLVMWriteBitcodeToFile(llmod, buf);
                 })
             }
 
-            // Create a codegen-specific pass manager to emit the actual
-            // assembly or object files. This may not end up getting used,
-            // but we make it anyway for good measure.
-            let cpm = llvm::LLVMCreatePassManager();
-            llvm::LLVMRustAddAnalysisPasses(tm, cpm, llmod);
-            llvm::LLVMRustAddLibraryInfo(cpm, llmod);
+            if sess.lto() {
+                time(sess.time_passes(), "all lto passes", (), |()|
+                     lto::run(sess, llmod, tm, trans.reachable));
 
-            match output_type {
-                output_type_none => {}
-                output_type_bitcode => {
-                    output.with_c_str(|buf| {
+                if sess.opts.save_temps {
+                    output.with_extension("lto.bc").with_c_str(|buf| {
                         llvm::LLVMWriteBitcodeToFile(llmod, buf);
                     })
                 }
-                output_type_llvm_assembly => {
-                    output.with_c_str(|output| {
-                        llvm::LLVMRustPrintModule(cpm, llmod, output)
-                    })
-                }
-                output_type_assembly => {
-                    WriteOutputFile(sess, tm, cpm, llmod, output, lib::llvm::AssemblyFile);
-                }
-                output_type_exe | output_type_object => {
-                    WriteOutputFile(sess, tm, cpm, llmod, output, lib::llvm::ObjectFile);
+            }
+
+            // A codegen-specific pass manager is used to generate object
+            // files for an LLVM module.
+            //
+            // Apparently each of these pass managers is a one-shot kind of
+            // thing, so we create a new one for each type of output. The
+            // pass manager passed to the closure should be ensured to not
+            // escape the closure itself, and the manager should only be
+            // used once.
+            fn with_codegen(tm: TargetMachineRef, llmod: ModuleRef,
+                            f: |PassManagerRef|) {
+                unsafe {
+                    let cpm = llvm::LLVMCreatePassManager();
+                    llvm::LLVMRustAddAnalysisPasses(tm, cpm, llmod);
+                    llvm::LLVMRustAddLibraryInfo(cpm, llmod);
+                    f(cpm);
+                    llvm::LLVMDisposePassManager(cpm);
                 }
             }
 
-            llvm::LLVMDisposePassManager(cpm);
+            time(sess.time_passes(), "codegen passes", (), |()| {
+                match output_type {
+                    output_type_none => {}
+                    output_type_bitcode => {
+                        output.with_c_str(|buf| {
+                            llvm::LLVMWriteBitcodeToFile(llmod, buf);
+                        })
+                    }
+                    output_type_llvm_assembly => {
+                        output.with_c_str(|output| {
+                            with_codegen(tm, llmod, |cpm| {
+                                llvm::LLVMRustPrintModule(cpm, llmod, output);
+                            })
+                        })
+                    }
+                    output_type_assembly => {
+                        with_codegen(tm, llmod, |cpm| {
+                            WriteOutputFile(sess, tm, cpm, llmod, output,
+                                            lib::llvm::AssemblyFile);
+                        });
+
+                        // If we're not using the LLVM assembler, this function
+                        // could be invoked specially with output_type_assembly,
+                        // so in this case we still want the metadata object
+                        // file.
+                        if sess.opts.output_type != output_type_assembly {
+                            with_codegen(tm, trans.metadata_module, |cpm| {
+                                let out = output.with_extension("metadata.o");
+                                WriteOutputFile(sess, tm, cpm,
+                                                trans.metadata_module, &out,
+                                                lib::llvm::ObjectFile);
+                            })
+                        }
+                    }
+                    output_type_exe | output_type_object => {
+                        with_codegen(tm, llmod, |cpm| {
+                            WriteOutputFile(sess, tm, cpm, llmod, output,
+                                            lib::llvm::ObjectFile);
+                        });
+                        with_codegen(tm, trans.metadata_module, |cpm| {
+                            let out = output.with_extension("metadata.o");
+                            WriteOutputFile(sess, tm, cpm,
+                                            trans.metadata_module, &out,
+                                            lib::llvm::ObjectFile);
+                        })
+                    }
+                }
+            });
 
             llvm::LLVMRustDisposeTargetMachine(tm);
+            llvm::LLVMDisposeModule(trans.metadata_module);
             llvm::LLVMDisposeModule(llmod);
             llvm::LLVMContextDispose(llcx);
             if sess.time_llvm_passes() { llvm::LLVMRustPrintPassTimings(); }
@@ -782,43 +846,25 @@ pub fn get_cc_prog(sess: Session) -> ~str {
 /// Perform the linkage portion of the compilation phase. This will generate all
 /// of the requested outputs for this compilation session.
 pub fn link_binary(sess: Session,
-                   crate_types: &[~str],
+                   trans: &CrateTranslation,
                    obj_filename: &Path,
-                   out_filename: &Path,
-                   lm: LinkMeta) {
+                   out_filename: &Path) {
+    // If we're generating a test executable, then ignore all other output
+    // styles at all other locations
     let outputs = if sess.opts.test {
-        // If we're generating a test executable, then ignore all other output
-        // styles at all other locations
         ~[session::OutputExecutable]
     } else {
-        // Always generate whatever was specified on the command line, but also
-        // look at what was in the crate file itself for generating output
-        // formats.
-        let mut outputs = sess.opts.outputs.clone();
-        for ty in crate_types.iter() {
-            if "bin" == *ty {
-                outputs.push(session::OutputExecutable);
-            } else if "dylib" == *ty || "lib" == *ty {
-                outputs.push(session::OutputDylib);
-            } else if "rlib" == *ty {
-                outputs.push(session::OutputRlib);
-            } else if "staticlib" == *ty {
-                outputs.push(session::OutputStaticlib);
-            }
-        }
-        if outputs.len() == 0 {
-            outputs.push(session::OutputExecutable);
-        }
-        outputs
+        (*sess.outputs).clone()
     };
 
     for output in outputs.move_iter() {
-        link_binary_output(sess, output, obj_filename, out_filename, lm);
+        link_binary_output(sess, trans, output, obj_filename, out_filename);
     }
 
-    // Remove the temporary object file if we aren't saving temps
+    // Remove the temporary object file and metadata if we aren't saving temps
     if !sess.opts.save_temps {
         fs::unlink(obj_filename);
+        fs::unlink(&obj_filename.with_extension("metadata.o"));
     }
 }
 
@@ -832,11 +878,11 @@ fn is_writeable(p: &Path) -> bool {
 }
 
 fn link_binary_output(sess: Session,
+                      trans: &CrateTranslation,
                       output: session::OutputStyle,
                       obj_filename: &Path,
-                      out_filename: &Path,
-                      lm: LinkMeta) {
-    let libname = output_lib_filename(lm);
+                      out_filename: &Path) {
+    let libname = output_lib_filename(trans.link);
     let out_filename = match output {
         session::OutputRlib => {
             out_filename.with_filename(format!("lib{}.rlib", libname))
@@ -874,7 +920,7 @@ fn link_binary_output(sess: Session,
 
     match output {
         session::OutputRlib => {
-            link_rlib(sess, obj_filename, &out_filename);
+            link_rlib(sess, Some(trans), obj_filename, &out_filename);
         }
         session::OutputStaticlib => {
             link_staticlib(sess, obj_filename, &out_filename);
@@ -894,9 +940,12 @@ fn link_binary_output(sess: Session,
 // rlib primarily contains the object file of the crate, but it also contains
 // all of the object files from native libraries. This is done by unzipping
 // native libraries and inserting all of the contents into this archive.
-fn link_rlib(sess: Session, obj_filename: &Path,
+fn link_rlib(sess: Session,
+             trans: Option<&CrateTranslation>, // None == no metadata/bytecode
+             obj_filename: &Path,
              out_filename: &Path) -> Archive {
     let mut a = Archive::create(sess, out_filename, obj_filename);
+
     for &(ref l, kind) in cstore::get_used_libraries(sess.cstore).iter() {
         match kind {
             cstore::NativeStatic => {
@@ -904,6 +953,48 @@ fn link_rlib(sess: Session, obj_filename: &Path,
             }
             cstore::NativeFramework | cstore::NativeUnknown => {}
         }
+    }
+
+    // Note that it is important that we add all of our non-object "magical
+    // files" *after* all of the object files in the archive. The reason for
+    // this is as follows:
+    //
+    // * When performing LTO, this archive will be modified to remove
+    //   obj_filename from above. The reason for this is described below.
+    //
+    // * When the system linker looks at an archive, it will attempt to
+    //   determine the architecture of the archive in order to see whether its
+    //   linkable.
+    //
+    //   The algorithm for this detections is: iterate over the files in the
+    //   archive. Skip magical SYMDEF names. Interpret the first file as an
+    //   object file. Read architecture from the object file.
+    //
+    // * As one can probably see, if "metadata" and "foo.bc" were placed
+    //   before all of the objects, then the architecture of this archive would
+    //   not be correctly inferred once 'foo.o' is removed.
+    //
+    // Basically, all this means is that this code should not move above the
+    // code above.
+    match trans {
+        Some(trans) => {
+            // Instead of putting the metadata in an object file section, rlibs
+            // contain the metadata in a separate file.
+            let metadata = obj_filename.with_filename(METADATA_FILENAME);
+            fs::File::create(&metadata).write(trans.metadata);
+            a.add_file(&metadata);
+            fs::unlink(&metadata);
+
+            // For LTO purposes, the bytecode of this library is also inserted
+            // into the archive.
+            let bc = obj_filename.with_extension("bc");
+            a.add_file(&bc);
+            if !sess.opts.save_temps {
+                fs::unlink(&bc);
+            }
+        }
+
+        None => {}
     }
     return a;
 }
@@ -916,20 +1007,24 @@ fn link_rlib(sess: Session, obj_filename: &Path,
 //
 // Additionally, there's no way for us to link dynamic libraries, so we warn
 // about all dynamic library dependencies that they're not linked in.
+//
+// There's no need to include metadata in a static archive, so ensure to not
+// link in the metadata object file (and also don't prepare the archive with a
+// metadata file).
 fn link_staticlib(sess: Session, obj_filename: &Path, out_filename: &Path) {
-    let mut a = link_rlib(sess, obj_filename, out_filename);
+    let mut a = link_rlib(sess, None, obj_filename, out_filename);
     a.add_native_library("morestack");
 
     let crates = cstore::get_used_crates(sess.cstore, cstore::RequireStatic);
     for &(cnum, ref path) in crates.iter() {
+        let name = cstore::get_crate_data(sess.cstore, cnum).name;
         let p = match *path {
             Some(ref p) => p.clone(), None => {
-                sess.err(format!("could not find rlib for: `{}`",
-                                 cstore::get_crate_data(sess.cstore, cnum).name));
+                sess.err(format!("could not find rlib for: `{}`", name));
                 continue
             }
         };
-        a.add_rlib(&p);
+        a.add_rlib(&p, name, sess.lto());
         let native_libs = csearch::get_native_libraries(sess.cstore, cnum);
         for &(kind, ref lib) in native_libs.iter() {
             let name = match kind {
@@ -948,10 +1043,12 @@ fn link_staticlib(sess: Session, obj_filename: &Path, out_filename: &Path) {
 // links to all upstream files as well.
 fn link_natively(sess: Session, dylib: bool, obj_filename: &Path,
                  out_filename: &Path) {
+    let tmpdir = TempDir::new("rustc").expect("needs a temp dir");
     // The invocations of cc share some flags across platforms
     let cc_prog = get_cc_prog(sess);
     let mut cc_args = sess.targ_cfg.target_strs.cc_args.clone();
-    cc_args.push_all_move(link_args(sess, dylib, obj_filename, out_filename));
+    cc_args.push_all_move(link_args(sess, dylib, tmpdir.path(),
+                                    obj_filename, out_filename));
     if (sess.opts.debugging_opts & session::print_link_args) != 0 {
         println!("{} link args: '{}'", cc_prog, cc_args.connect("' '"));
     }
@@ -961,7 +1058,8 @@ fn link_natively(sess: Session, dylib: bool, obj_filename: &Path,
 
     // Invoke the system linker
     debug!("{} {}", cc_prog, cc_args.connect(" "));
-    let prog = run::process_output(cc_prog, cc_args);
+    let prog = time(sess.time_passes(), "running linker", (), |()|
+                    run::process_output(cc_prog, cc_args));
 
     if !prog.status.success() {
         sess.err(format!("linking with `{}` failed: {}", cc_prog, prog.status));
@@ -982,6 +1080,7 @@ fn link_natively(sess: Session, dylib: bool, obj_filename: &Path,
 
 fn link_args(sess: Session,
              dylib: bool,
+             tmpdir: &Path,
              obj_filename: &Path,
              out_filename: &Path) -> ~[~str] {
 
@@ -997,6 +1096,14 @@ fn link_args(sess: Session,
     args.push_all([
         ~"-o", out_filename.as_str().unwrap().to_owned(),
         obj_filename.as_str().unwrap().to_owned()]);
+
+    // When linking a dynamic library, we put the metadata into a section of the
+    // executable. This metadata is in a separate object file from the main
+    // object file, so we link that in here.
+    if dylib {
+        let metadata = obj_filename.with_extension("metadata.o");
+        args.push(metadata.as_str().unwrap().to_owned());
+    }
 
     if sess.targ_cfg.os == abi::OsLinux {
         // GNU-style linkers will use this to omit linking to libraries which
@@ -1015,7 +1122,7 @@ fn link_args(sess: Session,
     }
 
     add_local_native_libraries(&mut args, sess);
-    add_upstream_rust_crates(&mut args, sess, dylib);
+    add_upstream_rust_crates(&mut args, sess, dylib, tmpdir);
     add_upstream_native_libraries(&mut args, sess);
 
     // # Telling the linker what we're doing
@@ -1098,7 +1205,7 @@ fn add_local_native_libraries(args: &mut ~[~str], sess: Session) {
 // dependencies will be linked when producing the final output (instead of
 // the intermediate rlib version)
 fn add_upstream_rust_crates(args: &mut ~[~str], sess: Session,
-                            dylib: bool) {
+                            dylib: bool, tmpdir: &Path) {
     // Converts a library file-stem into a cc -l argument
     fn unlib(config: @session::config, stem: &str) -> ~str {
         if stem.starts_with("lib") &&
@@ -1123,13 +1230,48 @@ fn add_upstream_rust_crates(args: &mut ~[~str], sess: Session,
         // dynamic libraries.
         let crates = cstore::get_used_crates(cstore, cstore::RequireStatic);
         if crates.iter().all(|&(_, ref p)| p.is_some()) {
-            for (_, path) in crates.move_iter() {
-                let path = path.unwrap();
-                args.push(path.as_str().unwrap().to_owned());
+            for (cnum, path) in crates.move_iter() {
+                let cratepath = path.unwrap();
+
+                // When performing LTO on an executable output, all of the
+                // bytecode from the upstream libraries has already been
+                // included in our object file output. We need to modify all of
+                // the upstream archives to remove their corresponding object
+                // file to make sure we don't pull the same code in twice.
+                //
+                // We must continue to link to the upstream archives to be sure
+                // to pull in native static dependencies. As the final caveat,
+                // on linux it is apparently illegal to link to a blank archive,
+                // so if an archive no longer has any object files in it after
+                // we remove `lib.o`, then don't link against it at all.
+                //
+                // If we're not doing LTO, then our job is simply to just link
+                // against the archive.
+                if sess.lto() {
+                    let name = cstore::get_crate_data(sess.cstore, cnum).name;
+                    time(sess.time_passes(), format!("altering {}.rlib", name),
+                         (), |()| {
+                        let dst = tmpdir.join(cratepath.filename().unwrap());
+                        fs::copy(&cratepath, &dst);
+                        let dst_str = dst.as_str().unwrap().to_owned();
+                        let mut archive = Archive::open(sess, dst);
+                        archive.remove_file(format!("{}.o", name));
+                        let files = archive.files();
+                        if files.iter().any(|s| s.ends_with(".o")) {
+                            args.push(dst_str);
+                        }
+                    });
+                } else {
+                    args.push(cratepath.as_str().unwrap().to_owned());
+                }
             }
             return;
         }
     }
+
+    // If we're performing LTO, then it should have been previously required
+    // that all upstream rust depenencies were available in an rlib format.
+    assert!(!sess.lto());
 
     // This is a fallback of three different  cases of linking:
     //

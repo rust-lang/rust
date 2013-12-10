@@ -211,3 +211,11 @@ extern "C" void
 LLVMRustAddAlwaysInlinePass(LLVMPassManagerBuilderRef PMB, bool AddLifetimes) {
     unwrap(PMB)->Inliner = createAlwaysInlinerPass(AddLifetimes);
 }
+
+extern "C" void
+LLVMRustRunRestrictionPass(LLVMModuleRef M, char **symbols, size_t len) {
+    PassManager passes;
+    ArrayRef<const char*> ref(symbols, len);
+    passes.add(llvm::createInternalizePass(ref));
+    passes.run(*unwrap(M));
+}

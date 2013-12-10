@@ -1403,6 +1403,11 @@ pub mod llvm {
         pub fn LLVMPassManagerBuilderPopulateFunctionPassManager(
             PMB: PassManagerBuilderRef,
             PM: PassManagerRef);
+        pub fn LLVMPassManagerBuilderPopulateLTOPassManager(
+            PMB: PassManagerBuilderRef,
+            PM: PassManagerRef,
+            Internalize: Bool,
+            RunInliner: Bool);
 
         /** Destroys a memory buffer. */
         pub fn LLVMDisposeMemoryBuffer(MemBuf: MemoryBufferRef);
@@ -1736,6 +1741,12 @@ pub mod llvm {
         pub fn LLVMRustSetNormalizedTarget(M: ModuleRef, triple: *c_char);
         pub fn LLVMRustAddAlwaysInlinePass(P: PassManagerBuilderRef,
                                            AddLifetimes: bool);
+        pub fn LLVMRustLinkInExternalBitcode(M: ModuleRef,
+                                             bc: *c_char,
+                                             len: size_t) -> bool;
+        pub fn LLVMRustRunRestrictionPass(M: ModuleRef,
+                                          syms: **c_char,
+                                          len: size_t);
     }
 }
 
