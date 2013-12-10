@@ -324,7 +324,7 @@
 ;;; Imenu support
 (defvar rust-imenu-generic-expression
   (append (loop for item in
-                '("enum" "struct" "type" "mod" "fn")
+                '("enum" "struct" "type" "mod" "fn" "trait")
                 collect `(nil ,(rust-re-item-def item) 1))
           `(("Impl" ,(rust-re-item-def "impl") 1)))
   "Value for `imenu-generic-expression' in Rust mode.
@@ -334,6 +334,46 @@ Create a flat index of the item definitions in a Rust file.
 Imenu will show all the enums, structs, etc. at the same level.
 Implementations will be shown under the `Impl` subheading.
 Use idomenu (imenu with ido-mode) for best mileage.")
+
+;;; Defun Motions
+
+;;; Start of a Rust item
+(setq rust-top-item-beg-re
+      (concat "^\\s-*\\(?:priv\\|pub\\)?\\s-*"
+              (regexp-opt
+               '("enum" "struct" "type" "mod" "use" "fn" "static" "impl"
+                 "extern" "impl" "static" "trait"
+                 ))))
+
+(defun rust-beginning-of-defun (&optional arg)
+  "Move backward to the beginning of the current defun.
+
+With ARG, move backward multiple defuns.  Negative ARG means
+move forward.
+
+This is written mainly to be used as `beginning-of-defun-function' for Rust.
+Don't move to the beginning of the line. `beginning-of-defun',
+which calls this, does that afterwards."
+  (interactive "p")
+  (re-search-backward (concat "^\\(" rust-top-item-beg-re "\\)\\b")
+                      nil 'move (or arg 1)))
+
+(defun rust-end-of-defun ()
+  "Move forward to the next end of defun.
+
+With argument, do it that many times.
+Negative argument -N means move back to Nth preceding end of defun.
+
+Assume that this is called after beginning-of-defun. So point is
+at the beginning of the defun body. 
+
+This is written mainly to be used as `end-of-defun-function' for Rust."
+  (interactive "p")
+  ;; Find the opening brace
+  (re-search-forward "[{]" nil t)
+  (goto-char (match-beginning 0))
+  ;; Go to the closing brace
+  (forward-sexp))
 
 ;; For compatibility with Emacs < 24, derive conditionally
 (defalias 'rust-parent-mode
@@ -374,6 +414,8 @@ Use idomenu (imenu with ido-mode) for best mileage.")
   (set (make-local-variable 'comment-multi-line) t)
   (set (make-local-variable 'comment-line-break-function) 'rust-comment-indent-new-line)
   (set (make-local-variable 'imenu-generic-expression) rust-imenu-generic-expression)
+  (set (make-local-variable 'beginning-of-defun-function) 'rust-beginning-of-defun)
+  (set (make-local-variable 'end-of-defun-function) 'rust-end-of-defun)
   )
 
 
