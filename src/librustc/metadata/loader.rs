@@ -10,7 +10,7 @@
 
 //! Finds crate binaries and loads their metadata
 
-use back::archive::Archive;
+use back::archive::{Archive, METADATA_FILENAME};
 use driver::session::Session;
 use lib::llvm::{False, llvm, ObjectFile, mk_section_iter};
 use metadata::decoder;
@@ -27,7 +27,6 @@ use syntax::attr::AttrMetaMethods;
 use std::c_str::ToCStr;
 use std::cast;
 use std::io;
-use std::libc;
 use std::num;
 use std::option;
 use std::os::consts::{macos, freebsd, linux, android, win32};
@@ -102,8 +101,7 @@ impl Context {
                     if candidate && existing {
                         FileMatches
                     } else if candidate {
-                        match get_metadata_section(self.sess, self.os, path,
-                                                   crate_name) {
+                        match get_metadata_section(self.sess, self.os, path) {
                             Some(cvec) =>
                                 if crate_matches(cvec, self.metas, self.hash) {
                                     debug!("found {} with matching metadata",
@@ -271,22 +269,15 @@ pub fn metadata_matches(extern_metas: &[@ast::MetaItem],
     local_metas.iter().all(|needed| attr::contains(extern_metas, *needed))
 }
 
-fn get_metadata_section(sess: Session, os: Os, filename: &Path,
-                        crate_name: &str) -> Option<@~[u8]> {
+fn get_metadata_section(sess: Session, os: Os, filename: &Path) -> Option<@~[u8]> {
+    if filename.filename_str().unwrap().ends_with(".rlib") {
+        let archive = Archive::open(sess, filename.clone());
+        return Some(@archive.read(METADATA_FILENAME));
+    }
     unsafe {
-        let mb = if filename.filename_str().unwrap().ends_with(".rlib") {
-            let archive = Archive::open(sess, filename.clone());
-            let contents = archive.read(crate_name + ".o");
-            let ptr = vec::raw::to_ptr(contents);
-            crate_name.with_c_str(|name| {
-                llvm::LLVMCreateMemoryBufferWithMemoryRangeCopy(
-                    ptr as *i8, contents.len() as libc::size_t, name)
-            })
-        } else {
-            filename.with_c_str(|buf| {
-                llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
-            })
-        };
+        let mb = filename.with_c_str(|buf| {
+            llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf)
+        });
         if mb as int == 0 { return None }
         let of = match ObjectFile::new(mb) {
             Some(of) => of,
@@ -356,12 +347,7 @@ pub fn list_file_metadata(sess: Session,
                           os: Os,
                           path: &Path,
                           out: @mut io::Writer) {
-    // guess the crate name from the pathname
-    let crate_name = path.filename_str().unwrap();
-    let crate_name = if crate_name.starts_with("lib") {
-        crate_name.slice_from(3) } else { crate_name };
-    let crate_name = crate_name.split('-').next().unwrap();
-    match get_metadata_section(sess, os, path, crate_name) {
+    match get_metadata_section(sess, os, path) {
       option::Some(bytes) => decoder::list_crate_metadata(intr, bytes, out),
       option::None => {
         write!(out, "could not find metadata in {}.\n", path.display())
