@@ -19,9 +19,8 @@ syn keyword   rustOperator    as
 syn match     rustAssert      "\<assert\(\w\)*!" contained
 syn match     rustFail        "\<fail\(\w\)*!" contained
 syn keyword   rustKeyword     break continue do extern
-syn keyword   rustKeyword     in if impl let log
-syn keyword   rustKeyword     for impl let log
-syn keyword   rustKeyword     loop mod once priv pub
+syn keyword   rustKeyword     for in if impl let
+syn keyword   rustKeyword     loop once priv pub
 syn keyword   rustKeyword     return
 syn keyword   rustKeyword     unsafe while
 syn keyword   rustKeyword     use nextgroup=rustModPath skipwhite
@@ -29,13 +28,14 @@ syn keyword   rustKeyword     use nextgroup=rustModPath skipwhite
 syn keyword   rustKeyword     mod trait struct enum type nextgroup=rustIdentifier skipwhite
 syn keyword   rustKeyword     fn nextgroup=rustFuncName skipwhite
 syn keyword   rustKeyword     proc
-syn keyword   rustStorage     const mut ref static
+syn keyword   rustStorage     mut ref static
+syn keyword   rustObsoleteStorage const
 
 syn match     rustIdentifier  contains=rustIdentifierPrime "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
 syn match     rustFuncName    "\%([^[:cntrl:][:space:][:punct:][:digit:]]\|_\)\%([^[:cntrl:][:punct:][:space:]]\|_\)*" display contained
 
 " Reserved (but not yet used) keywords {{{2
-syn keyword   rustKeyword     alignof be offsetof pure sizeof typeof yield
+syn keyword   rustReservedKeyword alignof be offsetof pure sizeof typeof yield
 
 " Built-in types {{{2
 syn keyword   rustType        int uint float char bool u8 u16 u32 u64 f32
@@ -228,6 +228,7 @@ hi def link rustSelf          Constant
 hi def link rustFloat         Float
 hi def link rustOperator      Operator
 hi def link rustKeyword       Keyword
+hi def link rustReservedKeyword Error
 hi def link rustConditional   Conditional
 hi def link rustIdentifier    Identifier
 hi def link rustCapsIdent     rustIdentifier
@@ -248,6 +249,7 @@ hi def link rustTodo          Todo
 hi def link rustAttribute     PreProc
 hi def link rustDeriving      PreProc
 hi def link rustStorage       StorageClass
+hi def link rustObsoleteStorage Error
 hi def link rustLifetime      Special
 
 " Other Suggestions:
