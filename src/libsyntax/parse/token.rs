@@ -316,72 +316,188 @@ pub fn is_bar(t: &Token) -> bool {
     match *t { BINOP(OR) | OROR => true, _ => false }
 }
 
-pub mod special_idents {
-    use ast::Ident;
+// In this macro, there is the requirement that the name (the number) must be monotonically
+// increasing by one in the special identifiers, starting at 0; the same holds for the keywords,
+// except starting from the next number instead of zero, and with the additional exception that
+// special identifiers are *also* allowed (they are deduplicated in the important place, the
+// interner), an exception which is demonstrated by "static" and "self".
+macro_rules! declare_special_idents_and_keywords {(
+    // So now, in these rules, why is each definition parenthesised?
+    // Answer: otherwise we get a spurious local ambiguity bug on the "}"
+    pub mod special_idents {
+        $( ($si_name:expr, $si_static:ident, $si_str:expr); )*
+    }
 
-    pub static underscore : Ident = Ident { name: 0, ctxt: 0}; // apparently unused?
-    pub static anon : Ident = Ident { name: 1, ctxt: 0};
-    pub static invalid : Ident = Ident { name: 2, ctxt: 0}; // ''
-    pub static unary : Ident = Ident { name: 3, ctxt: 0}; // apparently unused?
-    pub static not_fn : Ident = Ident { name: 4, ctxt: 0}; // apparently unused?
-    pub static idx_fn : Ident = Ident { name: 5, ctxt: 0}; // apparently unused?
-    pub static unary_minus_fn : Ident = Ident { name: 6, ctxt: 0}; // apparently unused?
-    pub static clownshoes_extensions : Ident = Ident { name: 7, ctxt: 0};
+    pub mod keywords {
+        $( ($k_name:expr, $k_variant:ident, $k_str:expr); )*
+    }
+) => {
+    pub mod special_idents {
+        use ast::Ident;
+        $( pub static $si_static: Ident = Ident { name: $si_name, ctxt: 0 }; )*
+    }
 
-    pub static self_ : Ident = Ident { name: super::SELF_KEYWORD_NAME, ctxt: 0}; // 'self'
+    /**
+     * All the valid words that have meaning in the Rust language.
+     *
+     * Rust keywords are either 'strict' or 'reserved'.  Strict keywords may not
+     * appear as identifiers at all. Reserved keywords are not used anywhere in
+     * the language and may not appear as identifiers.
+     */
+    pub mod keywords {
+        use ast::Ident;
 
-    /* for matcher NTs */
-    // none of these appear to be used, but perhaps references to
-    // these are artificially fabricated by the macro system....
-    pub static item : Ident = Ident { name: 9, ctxt: 0};
-    pub static block : Ident = Ident { name: 10, ctxt: 0};
-    pub static stmt : Ident = Ident { name: 11, ctxt: 0};
-    pub static pat : Ident = Ident { name: 12, ctxt: 0};
-    pub static expr : Ident = Ident { name: 13, ctxt: 0};
-    pub static ty : Ident = Ident { name: 14, ctxt: 0};
-    pub static ident : Ident = Ident { name: 15, ctxt: 0};
-    pub static path : Ident = Ident { name: 16, ctxt: 0};
-    pub static tt : Ident = Ident { name: 17, ctxt: 0};
-    pub static matchers : Ident = Ident { name: 18, ctxt: 0};
+        pub enum Keyword {
+            $( $k_variant, )*
+        }
 
-    pub static str : Ident = Ident { name: 19, ctxt: 0}; // for the type // apparently unused?
+        impl Keyword {
+            pub fn to_ident(&self) -> Ident {
+                match *self {
+                    $( $k_variant => Ident { name: $k_name, ctxt: 0 }, )*
+                }
+            }
+        }
+    }
 
-    /* outside of libsyntax */
-    pub static arg : Ident = Ident { name: 20, ctxt: 0};
-    pub static descrim : Ident = Ident { name: 21, ctxt: 0};
-    pub static clownshoe_abi : Ident = Ident { name: 22, ctxt: 0};
-    pub static clownshoe_stack_shim : Ident = Ident { name: 23, ctxt: 0};
-    pub static main : Ident = Ident { name: 24, ctxt: 0};
-    pub static opaque : Ident = Ident { name: 25, ctxt: 0};
-    pub static blk : Ident = Ident { name: 26, ctxt: 0};
-    pub static statik : Ident = Ident { name: super::STATIC_KEYWORD_NAME, ctxt: 0};
-    pub static clownshoes_foreign_mod: Ident = Ident { name: 28, ctxt: 0};
-    pub static unnamed_field: Ident = Ident { name: 29, ctxt: 0};
-    pub static c_abi: Ident = Ident { name: 30, ctxt: 0}; // apparently unused?
-    pub static type_self: Ident = Ident { name: 31, ctxt: 0};    // `Self`
+    fn mk_fresh_ident_interner() -> @ident_interner {
+        // The indices here must correspond to the numbers in
+        // special_idents, in Keyword to_ident(), and in static
+        // constants below.
+        let init_vec = ~[
+            $( $si_str, )*
+            $( $k_str, )*
+        ];
+
+        @interner::StrInterner::prefill(init_vec)
+    }
+}}
+
+// If modifying the numbers below, remember to modify these as appropriate
+static SELF_KEYWORD_NAME: Name = 8;
+static STATIC_KEYWORD_NAME: Name = 27;
+static STRICT_KEYWORD_START: Name = 32;
+static STRICT_KEYWORD_FINAL: Name = 65;
+static RESERVED_KEYWORD_START: Name = 66;
+static RESERVED_KEYWORD_FINAL: Name = 72;
+
+declare_special_idents_and_keywords! {
+    pub mod special_idents {
+        // These ones are statics
+        (0,                          underscore,             "_");      // apparently unused?
+        (1,                          anon,                   "anon");
+        (2,                          invalid,                "");       // ''
+        (3,                          unary,                  "unary");  // apparently unused?
+        (4,                          not_fn,                 "!");      // apparently unused?
+        (5,                          idx_fn,                 "[]");     // apparently unused?
+        (6,                          unary_minus_fn,         "unary-"); // apparently unused?
+        (7,                          clownshoes_extensions,  "__extensions__");
+
+        (super::SELF_KEYWORD_NAME,   self_,                  "self"); // 'self'
+
+        /* for matcher NTs */
+        // none of these appear to be used, but perhaps references to
+        // these are artificially fabricated by the macro system....
+        (9,                          item,                   "item");
+        (10,                         block,                  "block");
+        (11,                         stmt,                   "stmt");
+        (12,                         pat,                    "pat");
+        (13,                         expr,                   "expr");
+        (14,                         ty,                     "ty");
+        (15,                         ident,                  "ident");
+        (16,                         path,                   "path");
+        (17,                         tt,                     "tt");
+        (18,                         matchers,               "matchers");
+
+        // for the type // apparently unused?
+        (19,                         str,                    "str");
+
+        /* outside of libsyntax */
+        (20,                         arg,                    "arg");
+        (21,                         descrim,                "descrim");
+        (22,                         clownshoe_abi,          "__rust_abi");
+        (23,                         clownshoe_stack_shim,   "__rust_stack_shim");
+        (24,                         main,                   "main");
+        (25,                         opaque,                 "<opaque>");
+        (26,                         blk,                    "blk");
+        (super::STATIC_KEYWORD_NAME, statik,                 "static");
+        (28,                         clownshoes_foreign_mod, "__foreign_mod__");
+        (29,                         unnamed_field,          "<unnamed_field>");
+        (30,                         c_abi,                  "C"); // apparently unused?
+        (31,                         type_self,              "Self"); // `Self`
+
+        // here are the ones that actually occur in the source. Maybe the rest
+        // should be removed?
+        /*
+        special_idents::anon
+        special_idents::arg
+        special_idents::blk
+        special_idents::clownshoe_abi
+        special_idents::clownshoe_stack_shim
+        special_idents::clownshoes_extensions
+        special_idents::clownshoes_foreign_mod
+        special_idents::descrim
+        special_idents::invalid
+        special_idents::main
+        special_idents::matchers
+        special_idents::opaque
+        special_idents::self_
+        special_idents::statik
+        special_idents::tt
+        special_idents::type_self
+        special_idents::unnamed_field
+        */
+    }
+
+    pub mod keywords {
+        // These ones are variants of the Keyword enum
+        (32,                         As,         "as");
+        (33,                         Break,      "break");
+        (34,                         Const,      "const");
+        (35,                         Do,         "do");
+        (36,                         Else,       "else");
+        (37,                         Enum,       "enum");
+        (38,                         Extern,     "extern");
+        (39,                         False,      "false");
+        (40,                         Fn,         "fn");
+        (41,                         For,        "for");
+        (42,                         If,         "if");
+        (43,                         Impl,       "impl");
+        (44,                         In,         "in");
+        (45,                         Let,        "let");
+        (46,                         __LogLevel, "__log_level");
+        (47,                         Loop,       "loop");
+        (48,                         Match,      "match");
+        (49,                         Mod,        "mod");
+        (50,                         Mut,        "mut");
+        (51,                         Once,       "once");
+        (52,                         Priv,       "priv");
+        (53,                         Pub,        "pub");
+        (54,                         Ref,        "ref");
+        (55,                         Return,     "return");
+        // Static and Self are also special idents (prefill de-dupes)
+        (super::STATIC_KEYWORD_NAME, Static,     "static");
+        (super::SELF_KEYWORD_NAME,   Self,       "self");
+        (56,                         Struct,     "struct");
+        (57,                         Super,      "super");
+        (58,                         True,       "true");
+        (59,                         Trait,      "trait");
+        (60,                         Type,       "type");
+        (61,                         Unsafe,     "unsafe");
+        (62,                         Use,        "use");
+        (63,                         While,      "while");
+        (64,                         Continue,   "continue");
+        (65,                         Proc,       "proc");
+
+        (66,                         Alignof,    "alignof");
+        (67,                         Be,         "be");
+        (68,                         Offsetof,   "offsetof");
+        (69,                         Pure,       "pure");
+        (70,                         Sizeof,     "sizeof");
+        (71,                         Typeof,     "typeof");
+        (72,                         Yield,      "yield");
+    }
 }
-
-// here are the ones that actually occur in the source. Maybe the rest
-// should be removed?
-/*
-special_idents::anon
-special_idents::arg
-special_idents::blk
-special_idents::clownshoe_abi
-special_idents::clownshoe_stack_shim
-special_idents::clownshoes_extensions
-special_idents::clownshoes_foreign_mod
-special_idents::descrim
-special_idents::invalid
-special_idents::main
-special_idents::matchers
-special_idents::opaque
-special_idents::self_
-special_idents::statik
-special_idents::tt
-special_idents::type_self
-special_idents::unnamed_field
-*/
 
 /**
  * Maps a token to a record specifying the corresponding binary
@@ -413,101 +529,6 @@ pub fn token_to_binop(tok: &Token) -> Option<ast::BinOp> {
 
 // looks like we can get rid of this completely...
 pub type ident_interner = StrInterner;
-
-// return a fresh interner, preloaded with special identifiers.
-fn mk_fresh_ident_interner() -> @ident_interner {
-    // The indices here must correspond to the numbers in
-    // special_idents, in Keyword to_ident(), and in static
-    // constants below.
-    let init_vec = ~[
-        "_",                  // 0
-        "anon",               // 1
-        "",                   // 2
-        "unary",              // 3
-        "!",                  // 4
-        "[]",                 // 5
-        "unary-",             // 6
-        "__extensions__",     // 7
-        "self",               // 8
-        "item",               // 9
-        "block",              // 10
-        "stmt",               // 11
-        "pat",                // 12
-        "expr",               // 13
-        "ty",                 // 14
-        "ident",              // 15
-        "path",               // 16
-        "tt",                 // 17
-        "matchers",           // 18
-        "str",                // 19
-        "arg",                // 20
-        "descrim",            // 21
-        "__rust_abi",         // 22
-        "__rust_stack_shim",  // 23
-        "main",               // 24
-        "<opaque>",           // 25
-        "blk",                // 26
-        "static",             // 27
-        "__foreign_mod__",    // 28
-        "<unnamed_field>",    // 29
-        "C",                  // 30
-        "Self",               // 31
-
-        "as",                 // 32
-        "break",              // 33
-        "const",              // 34
-        "do",                 // 35
-        "else",               // 36
-        "enum",               // 37
-        "extern",             // 38
-        "false",              // 39
-        "fn",                 // 40
-        "for",                // 41
-        "if",                 // 42
-        "impl",               // 43
-        "let",                // 44
-        "__log_level",        // 45
-        "loop",               // 46
-        "match",              // 47
-        "mod",                // 48
-        "mut",                // 49
-        "once",               // 50
-        "priv",               // 51
-        "pub",                // 52
-        "ref",                // 53
-        "return",             // 54
-        "static",             // 27 -- also a special ident (prefill de-dupes)
-        "self",               //  8 -- also a special ident (prefill de-dupes)
-        "struct",             // 55
-        "super",              // 56
-        "true",               // 57
-        "trait",              // 58
-        "type",               // 59
-        "unsafe",             // 60
-        "use",                // 61
-        "while",              // 62
-        "in",                 // 63
-        "continue",           // 64
-        "proc",               // 65
-
-        "be",                 // 66
-        "pure",               // 67
-        "yield",              // 68
-        "typeof",             // 69
-        "alignof",            // 70
-        "offsetof",           // 71
-        "sizeof",             // 72
-    ];
-
-    @interner::StrInterner::prefill(init_vec)
-}
-
-static SELF_KEYWORD_NAME: Name = 8;
-static STATIC_KEYWORD_NAME: Name = 27;
-static STRICT_KEYWORD_START: Name = 32;
-static STRICT_KEYWORD_FINAL: Name = 65;
-static RESERVED_KEYWORD_START: Name = 66;
-static RESERVED_KEYWORD_FINAL: Name = 72;
 
 // if an interner exists in TLS, return it. Otherwise, prepare a
 // fresh one.
@@ -601,116 +622,7 @@ pub fn fresh_mark() -> Mrk {
     gensym("mark")
 }
 
-/**
- * All the valid words that have meaning in the Rust language.
- *
- * Rust keywords are either 'strict' or 'reserved'.  Strict keywords may not
- * appear as identifiers at all. Reserved keywords are not used anywhere in
- * the language and may not appear as identifiers.
- */
-pub mod keywords {
-    use ast::Ident;
-
-    pub enum Keyword {
-        // Strict keywords
-        As,
-        Break,
-        Const,
-        Do,
-        Else,
-        Enum,
-        Extern,
-        False,
-        Fn,
-        For,
-        If,
-        Impl,
-        In,
-        Let,
-        __LogLevel,
-        Loop,
-        Match,
-        Mod,
-        Mut,
-        Once,
-        Priv,
-        Pub,
-        Ref,
-        Return,
-        Static,
-        Self,
-        Struct,
-        Super,
-        True,
-        Trait,
-        Type,
-        Unsafe,
-        Use,
-        While,
-        Continue,
-        Proc,
-
-        // Reserved keywords
-        Alignof,
-        Be,
-        Offsetof,
-        Pure,
-        Sizeof,
-        Typeof,
-        Yield,
-    }
-
-    impl Keyword {
-        pub fn to_ident(&self) -> Ident {
-            match *self {
-                As => Ident { name: 32, ctxt: 0 },
-                Break => Ident { name: 33, ctxt: 0 },
-                Const => Ident { name: 34, ctxt: 0 },
-                Do => Ident { name: 35, ctxt: 0 },
-                Else => Ident { name: 36, ctxt: 0 },
-                Enum => Ident { name: 37, ctxt: 0 },
-                Extern => Ident { name: 38, ctxt: 0 },
-                False => Ident { name: 39, ctxt: 0 },
-                Fn => Ident { name: 40, ctxt: 0 },
-                For => Ident { name: 41, ctxt: 0 },
-                If => Ident { name: 42, ctxt: 0 },
-                Impl => Ident { name: 43, ctxt: 0 },
-                In => Ident { name: 63, ctxt: 0 },
-                Let => Ident { name: 44, ctxt: 0 },
-                __LogLevel => Ident { name: 45, ctxt: 0 },
-                Loop => Ident { name: 46, ctxt: 0 },
-                Match => Ident { name: 47, ctxt: 0 },
-                Mod => Ident { name: 48, ctxt: 0 },
-                Mut => Ident { name: 49, ctxt: 0 },
-                Once => Ident { name: 50, ctxt: 0 },
-                Priv => Ident { name: 51, ctxt: 0 },
-                Pub => Ident { name: 52, ctxt: 0 },
-                Ref => Ident { name: 53, ctxt: 0 },
-                Return => Ident { name: 54, ctxt: 0 },
-                Static => Ident { name: super::STATIC_KEYWORD_NAME, ctxt: 0 },
-                Self => Ident { name: super::SELF_KEYWORD_NAME, ctxt: 0 },
-                Struct => Ident { name: 55, ctxt: 0 },
-                Super => Ident { name: 56, ctxt: 0 },
-                True => Ident { name: 57, ctxt: 0 },
-                Trait => Ident { name: 58, ctxt: 0 },
-                Type => Ident { name: 59, ctxt: 0 },
-                Unsafe => Ident { name: 60, ctxt: 0 },
-                Use => Ident { name: 61, ctxt: 0 },
-                While => Ident { name: 62, ctxt: 0 },
-                Continue => Ident { name: 64, ctxt: 0 },
-                Proc => Ident { name: 65, ctxt: 0 },
-
-                Alignof => Ident { name: 70, ctxt: 0 },
-                Be => Ident { name: 66, ctxt: 0 },
-                Offsetof => Ident { name: 71, ctxt: 0 },
-                Pure => Ident { name: 67, ctxt: 0 },
-                Sizeof => Ident { name: 72, ctxt: 0 },
-                Typeof => Ident { name: 69, ctxt: 0 },
-                Yield => Ident { name: 68, ctxt: 0 },
-            }
-        }
-    }
-}
+// See the macro above about the types of keywords
 
 pub fn is_keyword(kw: keywords::Keyword, tok: &Token) -> bool {
     match *tok {
