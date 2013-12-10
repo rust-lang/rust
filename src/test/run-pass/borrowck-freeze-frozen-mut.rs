@@ -30,7 +30,7 @@ pub fn main() {
         assert_eq!(*index1, 2);
         assert_eq!(*index2, 3);
     }
-    assert_eq!(data[0], 1);
+    assert_eq!(data[0], 5);
     assert_eq!(data[1], 2);
     assert_eq!(data[2], 3);
 }

@@ -215,6 +215,24 @@ of this rule: there are comments in the borrowck source referencing
 these names, so that you can cross reference to find the actual code
 that corresponds to the formal rule.
 
+### Invariants
+
+I want to collect, at a high-level, the invariants the borrow checker
+maintains. I will give them names and refer to them throughout the
+text. Together these invariants are crucial for the overall soundness
+of the system.
+
+**Mutability requires uniqueness.** To mutate a path
+
+**Unique mutability.** There is only one *usable* mutable path to any
+given memory at any given time. This implies that when claiming memory
+with an expression like `p = &mut x`, the compiler must guarantee that
+the borrowed value `x` can no longer be mutated so long as `p` is
+live. (This is done via restrictions, read on.)
+
+**.**
+
+
 ### The `gather_loans` pass
 
 We start with the `gather_loans` pass, which walks the AST looking for

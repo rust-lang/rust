@@ -21,5 +21,5 @@ fn foo<'a>(mut t0: &'a mut int,
     let r: &int = &*t0; // ...after all, could do same thing directly.
 }
 
-fn main() {
+pub fn main() {
 }
