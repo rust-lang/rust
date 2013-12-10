@@ -764,14 +764,15 @@ fn next_token_inner(rdr: @mut StringReader) -> token::Token {
                 let ident = str_to_ident(lifetime_name);
                 let tok = &token::IDENT(ident, false);
 
-                if token::is_any_keyword(tok)
-                    && !token::is_keyword(token::keywords::Static, tok)
-                    && !token::is_keyword(token::keywords::Self, tok) {
+                if token::is_keyword(token::keywords::Self, tok) {
                     fatal_span(rdr, start, rdr.last_pos,
-                        ~"invalid lifetime name");
+                               ~"invalid lifetime name: 'self is no longer a special lifetime");
+                } else if token::is_any_keyword(tok) &&
+                    !token::is_keyword(token::keywords::Static, tok) {
+                    fatal_span(rdr, start, rdr.last_pos, ~"invalid lifetime name");
+                } else {
+                    token::LIFETIME(ident)
                 }
-
-                token::LIFETIME(ident)
             })
         }
 

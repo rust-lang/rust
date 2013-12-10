@@ -222,12 +222,12 @@ pub fn super_fold_trait_store<T:TypeFolder>(this: &mut T,
 ///////////////////////////////////////////////////////////////////////////
 // Some sample folders
 
-pub struct BottomUpFolder<'self> {
+pub struct BottomUpFolder<'a> {
     tcx: ty::ctxt,
-    fldop: 'self |ty::t| -> ty::t,
+    fldop: 'a |ty::t| -> ty::t,
 }
 
-impl<'self> TypeFolder for BottomUpFolder<'self> {
+impl<'a> TypeFolder for BottomUpFolder<'a> {
     fn tcx(&self) -> ty::ctxt { self.tcx }
 
     fn fold_ty(&mut self, ty: ty::t) -> ty::t {
@@ -239,17 +239,17 @@ impl<'self> TypeFolder for BottomUpFolder<'self> {
 ///////////////////////////////////////////////////////////////////////////
 // Region folder
 
-pub struct RegionFolder<'self> {
+pub struct RegionFolder<'a> {
     tcx: ty::ctxt,
-    fld_t: 'self |ty::t| -> ty::t,
-    fld_r: 'self |ty::Region| -> ty::Region,
+    fld_t: 'a |ty::t| -> ty::t,
+    fld_r: 'a |ty::Region| -> ty::Region,
 }
 
-impl<'self> RegionFolder<'self> {
+impl<'a> RegionFolder<'a> {
     pub fn general(tcx: ty::ctxt,
-                   fld_r: 'self |ty::Region| -> ty::Region,
-                   fld_t: 'self |ty::t| -> ty::t)
-                   -> RegionFolder<'self> {
+                   fld_r: 'a |ty::Region| -> ty::Region,
+                   fld_t: 'a |ty::t| -> ty::t)
+                   -> RegionFolder<'a> {
         RegionFolder {
             tcx: tcx,
             fld_t: fld_t,
@@ -257,8 +257,8 @@ impl<'self> RegionFolder<'self> {
         }
     }
 
-    pub fn regions(tcx: ty::ctxt, fld_r: 'self |ty::Region| -> ty::Region)
-                   -> RegionFolder<'self> {
+    pub fn regions(tcx: ty::ctxt, fld_r: 'a |ty::Region| -> ty::Region)
+                   -> RegionFolder<'a> {
         fn noop(t: ty::t) -> ty::t { t }
 
         RegionFolder {
@@ -269,7 +269,7 @@ impl<'self> RegionFolder<'self> {
     }
 }
 
-impl<'self> TypeFolder for RegionFolder<'self> {
+impl<'a> TypeFolder for RegionFolder<'a> {
     fn tcx(&self) -> ty::ctxt { self.tcx }
 
     fn fold_ty(&mut self, ty: ty::t) -> ty::t {

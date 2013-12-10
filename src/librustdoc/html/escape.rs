@@ -17,10 +17,10 @@ use std::fmt;
 
 /// Wrapper struct which will emit the HTML-escaped version of the contained
 /// string when passed to a format string.
-pub struct Escape<'self>(&'self str);
+pub struct Escape<'a>(&'a str);
 
-impl<'self> fmt::Default for Escape<'self> {
-    fn fmt(s: &Escape<'self>, fmt: &mut fmt::Formatter) {
+impl<'a> fmt::Default for Escape<'a> {
+    fn fmt(s: &Escape<'a>, fmt: &mut fmt::Formatter) {
         // Because the internet is always right, turns out there's not that many
         // characters to escape: http://stackoverflow.com/questions/7381974
         let pile_o_bits = s.as_slice();

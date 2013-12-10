@@ -97,11 +97,11 @@ enum VariantState {
     AlreadyFound
 }
 
-pub struct ReprVisitor<'self> {
+pub struct ReprVisitor<'a> {
     priv ptr: *c_void,
     priv ptr_stk: ~[*c_void],
     priv var_stk: ~[VariantState],
-    priv writer: &'self mut io::Writer
+    priv writer: &'a mut io::Writer
 }
 
 pub fn ReprVisitor<'a>(ptr: *c_void,
@@ -114,7 +114,7 @@ pub fn ReprVisitor<'a>(ptr: *c_void,
     }
 }
 
-impl<'self> MovePtr for ReprVisitor<'self> {
+impl<'a> MovePtr for ReprVisitor<'a> {
     #[inline]
     fn move_ptr(&mut self, adjustment: |*c_void| -> *c_void) {
         self.ptr = adjustment(self.ptr);
@@ -127,7 +127,7 @@ impl<'self> MovePtr for ReprVisitor<'self> {
     }
 }
 
-impl<'self> ReprVisitor<'self> {
+impl<'a> ReprVisitor<'a> {
     // Various helpers for the TyVisitor impl
 
     #[inline]
@@ -242,7 +242,7 @@ impl<'self> ReprVisitor<'self> {
     }
 }
 
-impl<'self> TyVisitor for ReprVisitor<'self> {
+impl<'a> TyVisitor for ReprVisitor<'a> {
     fn visit_bot(&mut self) -> bool {
         self.writer.write("!".as_bytes());
         true

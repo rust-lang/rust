@@ -12,14 +12,14 @@
 // except according to those terms.
 
 // A dummy trait/impl that work close over any type.  The trait will
-// be parameterized by a region due to the &'self int constraint.
+// be parameterized by a region due to the &'a int constraint.
 
 trait foo {
-    fn foo(&self, i: &'self int) -> int;
+    fn foo(&self, i: &'a int) -> int;
 }
 
 impl<T:Clone> foo for T {
-    fn foo(&self, i: &'self int) -> int {*i}
+    fn foo(&self, i: &'a int) -> int {*i}
 }
 
 fn to_foo<T:Clone>(t: T) {

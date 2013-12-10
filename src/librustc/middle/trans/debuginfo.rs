@@ -214,12 +214,12 @@ struct FunctionDebugContextData {
     source_locations_enabled: bool,
 }
 
-enum VariableAccess<'self> {
+enum VariableAccess<'a> {
     // The llptr given is an alloca containing the variable's value
     DirectVariable { alloca: ValueRef },
     // The llptr given is an alloca containing the start of some pointer chain leading to the
     // variable's content.
-    IndirectVariable { alloca: ValueRef, address_operations: &'self [ValueRef] }
+    IndirectVariable { alloca: ValueRef, address_operations: &'a [ValueRef] }
 }
 
 enum VariableKind {

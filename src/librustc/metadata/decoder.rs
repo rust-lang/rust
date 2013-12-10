@@ -73,7 +73,7 @@ fn lookup_hash(d: ebml::Doc, eq_fn: |&[u8]| -> bool, hash: u64) ->
     ret
 }
 
-pub type GetCrateDataCb<'self> = 'self |ast::CrateNum| -> Cmd;
+pub type GetCrateDataCb<'a> = 'a |ast::CrateNum| -> Cmd;
 
 pub fn maybe_find_item(item_id: ast::NodeId, items: ebml::Doc) -> Option<ebml::Doc> {
     fn eq_item(bytes: &[u8], item_id: ast::NodeId) -> bool {
@@ -694,7 +694,7 @@ pub fn get_item_path(cdata: Cmd, id: ast::NodeId) -> ast_map::path {
     item_path(lookup_item(id, cdata.data))
 }
 
-pub type decode_inlined_item<'self> = 'self |cdata: @cstore::crate_metadata,
+pub type decode_inlined_item<'a> = 'a |cdata: @cstore::crate_metadata,
                                              tcx: ty::ctxt,
                                              path: ast_map::path,
                                              par_doc: ebml::Doc|

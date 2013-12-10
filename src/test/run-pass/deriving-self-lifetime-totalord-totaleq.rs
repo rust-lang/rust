@@ -11,8 +11,8 @@
 use std::cmp::{Less,Equal,Greater};
 
 #[deriving(TotalEq,TotalOrd)]
-struct A<'self> {
-    x: &'self int
+struct A<'a> {
+    x: &'a int
 }
 pub fn main() {
     let (a, b) = (A { x: &1 }, A { x: &2 });

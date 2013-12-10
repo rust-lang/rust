@@ -12,8 +12,8 @@
 use syntax::fold::ast_fold;
 use syntax::{ast, fold, attr};
 
-struct Context<'self> {
-    in_cfg: 'self |attrs: &[ast::Attribute]| -> bool,
+struct Context<'a> {
+    in_cfg: 'a |attrs: &[ast::Attribute]| -> bool,
 }
 
 // Support conditional compilation by transforming the AST, stripping out
@@ -23,7 +23,7 @@ pub fn strip_unconfigured_items(crate: ast::Crate) -> ast::Crate {
     strip_items(crate, |attrs| in_cfg(config, attrs))
 }
 
-impl<'self> fold::ast_fold for Context<'self> {
+impl<'a> fold::ast_fold for Context<'a> {
     fn fold_mod(&self, module: &ast::_mod) -> ast::_mod {
         fold_mod(self, module)
     }

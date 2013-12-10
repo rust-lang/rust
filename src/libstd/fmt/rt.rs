@@ -21,17 +21,17 @@ use either::Either;
 use fmt::parse;
 use option::Option;
 
-pub enum Piece<'self> {
-    String(&'self str),
+pub enum Piece<'a> {
+    String(&'a str),
     // FIXME(#8259): this shouldn't require the unit-value here
     CurrentArgument(()),
-    Argument(Argument<'self>),
+    Argument(Argument<'a>),
 }
 
-pub struct Argument<'self> {
+pub struct Argument<'a> {
     position: Position,
     format: FormatSpec,
-    method: Option<&'self Method<'self>>
+    method: Option<&'a Method<'a>>
 }
 
 pub struct FormatSpec {
@@ -50,17 +50,17 @@ pub enum Position {
     ArgumentNext, ArgumentIs(uint)
 }
 
-pub enum Method<'self> {
-    Plural(Option<uint>, &'self [PluralArm<'self>], &'self [Piece<'self>]),
-    Select(&'self [SelectArm<'self>], &'self [Piece<'self>]),
+pub enum Method<'a> {
+    Plural(Option<uint>, &'a [PluralArm<'a>], &'a [Piece<'a>]),
+    Select(&'a [SelectArm<'a>], &'a [Piece<'a>]),
 }
 
-pub struct PluralArm<'self> {
+pub struct PluralArm<'a> {
     selector: Either<parse::PluralKeyword, uint>,
-    result: &'self [Piece<'self>],
+    result: &'a [Piece<'a>],
 }
 
-pub struct SelectArm<'self> {
-    selector: &'self str,
-    result: &'self [Piece<'self>],
+pub struct SelectArm<'a> {
+    selector: &'a str,
+    result: &'a [Piece<'a>],
 }

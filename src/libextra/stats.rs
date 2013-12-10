@@ -145,7 +145,7 @@ impl Summary {
     }
 }
 
-impl<'self> Stats for &'self [f64] {
+impl<'a> Stats for &'a [f64] {
 
     fn sum(self) -> f64 {
         self.iter().fold(0.0, |p,q| p + *q)

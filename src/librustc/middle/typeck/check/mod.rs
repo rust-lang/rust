@@ -918,7 +918,7 @@ pub fn compare_impl_method(tcx: ty::ctxt,
     // Create a substitution that maps the type parameters on the impl
     // to themselves and which replace any references to bound regions
     // in the self type with free regions.  So, for example, if the
-    // impl type is "&'self str", then this would replace the self
+    // impl type is "&'a str", then this would replace the self
     // type with a free region `self`.
     let dummy_impl_tps: ~[ty::t] =
         impl_generics.type_param_defs.iter().enumerate().

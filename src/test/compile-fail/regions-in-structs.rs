@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct yes1<'self> {
-  x: &'self uint,
+struct yes1<'a> {
+  x: &'a uint,
 }
 
 struct yes2<'a> {
@@ -18,7 +18,7 @@ struct yes2<'a> {
 
 struct StructDecl {
     a: &'a int, //~ ERROR use of undeclared lifetime name `'a`
-    b: &'self int, //~ ERROR use of undeclared lifetime name `'self`
+    b: &'a int, //~ ERROR use of undeclared lifetime name `'a`
 }
 
 

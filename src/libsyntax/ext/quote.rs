@@ -80,7 +80,7 @@ pub mod rt {
         }
     }
 
-    impl<'self> ToSource for &'self [@ast::item] {
+    impl<'a> ToSource for &'a [@ast::item] {
         fn to_source(&self) -> @str {
             self.map(|i| i.to_source()).connect("\n\n").to_managed()
         }
@@ -92,7 +92,7 @@ pub mod rt {
         }
     }
 
-    impl<'self> ToSource for &'self [ast::Ty] {
+    impl<'a> ToSource for &'a [ast::Ty] {
         fn to_source(&self) -> @str {
             self.map(|i| i.to_source()).connect(", ").to_managed()
         }
@@ -116,7 +116,7 @@ pub mod rt {
         }
     }
 
-    impl<'self> ToSource for &'self str {
+    impl<'a> ToSource for &'a str {
         fn to_source(&self) -> @str {
             let lit = dummy_spanned(ast::lit_str(self.to_managed(), ast::CookedStr));
             pprust::lit_to_str(&lit).to_managed()
@@ -208,7 +208,7 @@ pub mod rt {
 
     macro_rules! impl_to_tokens_self(
         ($t:ty) => (
-            impl<'self> ToTokens for $t {
+            impl<'a> ToTokens for $t {
                 fn to_tokens(&self, cx: @ExtCtxt) -> ~[token_tree] {
                     cx.parse_tts(self.to_source())
                 }
@@ -218,13 +218,13 @@ pub mod rt {
 
     impl_to_tokens!(ast::Ident)
     impl_to_tokens!(@ast::item)
-    impl_to_tokens_self!(&'self [@ast::item])
+    impl_to_tokens_self!(&'a [@ast::item])
     impl_to_tokens!(ast::Ty)
-    impl_to_tokens_self!(&'self [ast::Ty])
+    impl_to_tokens_self!(&'a [ast::Ty])
     impl_to_tokens!(Generics)
     impl_to_tokens!(@ast::Expr)
     impl_to_tokens!(ast::Block)
-    impl_to_tokens_self!(&'self str)
+    impl_to_tokens_self!(&'a str)
     impl_to_tokens!(int)
     impl_to_tokens!(i8)
     impl_to_tokens!(i16)

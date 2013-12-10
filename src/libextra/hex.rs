@@ -21,7 +21,7 @@ pub trait ToHex {
 
 static CHARS: &'static[u8] = bytes!("0123456789abcdef");
 
-impl<'self> ToHex for &'self [u8] {
+impl<'a> ToHex for &'a [u8] {
     /**
      * Turn a vector of `u8` bytes into a hexadecimal string.
      *
@@ -57,7 +57,7 @@ pub trait FromHex {
     fn from_hex(&self) -> Result<~[u8], ~str>;
 }
 
-impl<'self> FromHex for &'self str {
+impl<'a> FromHex for &'a str {
     /**
      * Convert any hexadecimal encoded string (literal, `@`, `&`, or `~`)
      * to the byte values it encodes.

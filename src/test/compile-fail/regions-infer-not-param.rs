@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct direct<'self> {
-    f: &'self int
+struct direct<'a> {
+    f: &'a int
 }
 
 struct indirect1 {
@@ -17,9 +17,9 @@ struct indirect1 {
     g: 'static |direct|
 }
 
-struct indirect2<'self> {
-    // But here it is set to 'self
-    g: 'static |direct<'self>|
+struct indirect2<'a> {
+    // But here it is set to 'a
+    g: 'static |direct<'a>|
 }
 
 fn take_direct(p: direct) -> direct { p } //~ ERROR mismatched types

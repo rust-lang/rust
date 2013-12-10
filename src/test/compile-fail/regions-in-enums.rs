@@ -15,8 +15,8 @@ enum yes0<'lt> {
     X3(&'lt uint)
 }
 
-enum yes1<'self> {
-    X4(&'self uint)
+enum yes1<'a> {
+    X4(&'a uint)
 }
 
 enum no0 {
@@ -24,7 +24,7 @@ enum no0 {
 }
 
 enum no1 {
-    X6(&'self uint) //~ ERROR use of undeclared lifetime name `'self`
+    X6(&'a uint) //~ ERROR use of undeclared lifetime name `'a`
 }
 
 fn main() {}

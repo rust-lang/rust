@@ -443,14 +443,14 @@ fn remove<T>(count: &mut uint, child: &mut Child<T>, key: uint,
 }
 
 /// Forward iterator over a map
-pub struct TrieMapIterator<'self, T> {
-    priv stack: ~[vec::VecIterator<'self, Child<T>>],
+pub struct TrieMapIterator<'a, T> {
+    priv stack: ~[vec::VecIterator<'a, Child<T>>],
     priv remaining_min: uint,
     priv remaining_max: uint
 }
 
-impl<'self, T> Iterator<(uint, &'self T)> for TrieMapIterator<'self, T> {
-    fn next(&mut self) -> Option<(uint, &'self T)> {
+impl<'a, T> Iterator<(uint, &'a T)> for TrieMapIterator<'a, T> {
+    fn next(&mut self) -> Option<(uint, &'a T)> {
         while !self.stack.is_empty() {
             match self.stack[self.stack.len() - 1].next() {
                 None => {
@@ -483,11 +483,11 @@ impl<'self, T> Iterator<(uint, &'self T)> for TrieMapIterator<'self, T> {
 }
 
 /// Forward iterator over a set
-pub struct TrieSetIterator<'self> {
-    priv iter: TrieMapIterator<'self, ()>
+pub struct TrieSetIterator<'a> {
+    priv iter: TrieMapIterator<'a, ()>
 }
 
-impl<'self> Iterator<uint> for TrieSetIterator<'self> {
+impl<'a> Iterator<uint> for TrieSetIterator<'a> {
     fn next(&mut self) -> Option<uint> {
         self.iter.next().map(|(key, _)| key)
     }

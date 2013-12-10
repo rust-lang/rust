@@ -145,15 +145,15 @@ pub trait AsciiCast<T> {
     fn is_ascii(&self) -> bool;
 }
 
-impl<'self> AsciiCast<&'self[Ascii]> for &'self [u8] {
+impl<'a> AsciiCast<&'a[Ascii]> for &'a [u8] {
     #[inline]
-    fn to_ascii(&self) -> &'self[Ascii] {
+    fn to_ascii(&self) -> &'a[Ascii] {
         assert!(self.is_ascii());
         unsafe {self.to_ascii_nocheck()}
     }
 
     #[inline]
-    unsafe fn to_ascii_nocheck(&self) -> &'self[Ascii] {
+    unsafe fn to_ascii_nocheck(&self) -> &'a[Ascii] {
         cast::transmute(*self)
     }
 
@@ -166,15 +166,15 @@ impl<'self> AsciiCast<&'self[Ascii]> for &'self [u8] {
     }
 }
 
-impl<'self> AsciiCast<&'self [Ascii]> for &'self str {
+impl<'a> AsciiCast<&'a [Ascii]> for &'a str {
     #[inline]
-    fn to_ascii(&self) -> &'self [Ascii] {
+    fn to_ascii(&self) -> &'a [Ascii] {
         assert!(self.is_ascii());
         unsafe { self.to_ascii_nocheck() }
     }
 
     #[inline]
-    unsafe fn to_ascii_nocheck(&self) -> &'self [Ascii] {
+    unsafe fn to_ascii_nocheck(&self) -> &'a [Ascii] {
         cast::transmute(*self)
     }
 
@@ -272,7 +272,7 @@ pub trait AsciiStr {
     fn eq_ignore_case(self, other: &[Ascii]) -> bool;
 }
 
-impl<'self> AsciiStr for &'self [Ascii] {
+impl<'a> AsciiStr for &'a [Ascii] {
     #[inline]
     fn as_str_ascii<'a>(&'a self) -> &'a str {
         unsafe { cast::transmute(*self) }
@@ -351,7 +351,7 @@ pub trait StrAsciiExt {
     fn eq_ignore_ascii_case(&self, other: &str) -> bool;
 }
 
-impl<'self> StrAsciiExt for &'self str {
+impl<'a> StrAsciiExt for &'a str {
     #[inline]
     fn to_ascii_upper(&self) -> ~str {
         unsafe { str_copy_map_bytes(*self, ASCII_UPPER_MAP) }

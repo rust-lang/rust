@@ -14,7 +14,7 @@ use std::iter::{Filter, Map};
 
 pub struct BasicBlock(BasicBlockRef);
 
-pub type PredIterator<'self> = Map<'self, Value, BasicBlock, Filter<'self, Value, UserIterator>>;
+pub type PredIterator<'a> = Map<'a, Value, BasicBlock, Filter<'a, Value, UserIterator>>;
 
 /**
  * Wrapper for LLVM BasicBlockRef

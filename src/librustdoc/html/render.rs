@@ -166,8 +166,8 @@ pub struct Cache {
 }
 
 /// Helper struct to render all source code to HTML pages
-struct SourceCollector<'self> {
-    cx: &'self mut Context,
+struct SourceCollector<'a> {
+    cx: &'a mut Context,
 
     /// Processed source-file paths
     seen: HashSet<~str>,
@@ -177,13 +177,13 @@ struct SourceCollector<'self> {
 
 /// Wrapper struct to render the source code of a file. This will do things like
 /// adding line numbers to the left-hand side.
-struct Source<'self>(&'self str);
+struct Source<'a>(&'a str);
 
 // Helper structs for rendering items/sidebars and carrying along contextual
 // information
 
-struct Item<'self> { cx: &'self Context, item: &'self clean::Item, }
-struct Sidebar<'self> { cx: &'self Context, item: &'self clean::Item, }
+struct Item<'a> { cx: &'a Context, item: &'a clean::Item, }
+struct Sidebar<'a> { cx: &'a Context, item: &'a clean::Item, }
 
 /// Struct representing one entry in the JS search index. These are all emitted
 /// by hand to a large JS file at the end of cache-creation.
@@ -380,7 +380,7 @@ fn extern_location(e: &clean::ExternalCrate, dst: &Path) -> ExternalLocation {
     return Unknown;
 }
 
-impl<'self> DocFolder for SourceCollector<'self> {
+impl<'a> DocFolder for SourceCollector<'a> {
     fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
         // If we're including source files, and we haven't seen this file yet,
         // then we need to render it out to the filesystem
@@ -406,7 +406,7 @@ impl<'self> DocFolder for SourceCollector<'self> {
     }
 }
 
-impl<'self> SourceCollector<'self> {
+impl<'a> SourceCollector<'a> {
     /// Renders the given filename into its corresponding HTML source file.
     fn emit_source(&mut self, filename: &str) -> bool {
         let p = Path::new(filename);
@@ -632,7 +632,7 @@ impl DocFolder for Cache {
     }
 }
 
-impl<'self> Cache {
+impl<'a> Cache {
     fn generics(&mut self, generics: &clean::Generics) {
         for typ in generics.type_params.iter() {
             self.typarams.insert(typ.id, typ.name.clone());
@@ -862,7 +862,7 @@ fn shortty(item: &clean::Item) -> &'static str {
     }
 }
 
-impl<'self> Item<'self> {
+impl<'a> Item<'a> {
     fn ismodule(&self) -> bool {
         match self.item.inner {
             clean::ModuleItem(..) => true, _ => false
@@ -870,8 +870,8 @@ impl<'self> Item<'self> {
     }
 }
 
-impl<'self> fmt::Default for Item<'self> {
-    fn fmt(it: &Item<'self>, fmt: &mut fmt::Formatter) {
+impl<'a> fmt::Default for Item<'a> {
+    fn fmt(it: &Item<'a>, fmt: &mut fmt::Formatter) {
         match attr::find_stability(it.item.attrs.iter()) {
             Some(stability) => {
                 write!(fmt.buf,
@@ -1057,9 +1057,9 @@ fn item_module(w: &mut Writer, cx: &Context,
 
         match myitem.inner {
             clean::StaticItem(ref s) | clean::ForeignStaticItem(ref s) => {
-                struct Initializer<'self>(&'self str);
-                impl<'self> fmt::Default for Initializer<'self> {
-                    fn fmt(s: &Initializer<'self>, f: &mut fmt::Formatter) {
+                struct Initializer<'a>(&'a str);
+                impl<'a> fmt::Default for Initializer<'a> {
+                    fn fmt(s: &Initializer<'a>, f: &mut fmt::Formatter) {
                         if s.len() == 0 { return; }
                         write!(f.buf, "<code> = </code>");
                         let tag = if s.contains("\n") { "pre" } else { "code" };
@@ -1563,8 +1563,8 @@ fn item_typedef(w: &mut Writer, it: &clean::Item, t: &clean::Typedef) {
     document(w, it);
 }
 
-impl<'self> fmt::Default for Sidebar<'self> {
-    fn fmt(s: &Sidebar<'self>, fmt: &mut fmt::Formatter) {
+impl<'a> fmt::Default for Sidebar<'a> {
+    fn fmt(s: &Sidebar<'a>, fmt: &mut fmt::Formatter) {
         let cx = s.cx;
         let it = s.item;
         write!(fmt.buf, "<p class='location'>");
@@ -1628,8 +1628,8 @@ fn build_sidebar(m: &clean::Module) -> HashMap<~str, ~[~str]> {
     return map;
 }
 
-impl<'self> fmt::Default for Source<'self> {
-    fn fmt(s: &Source<'self>, fmt: &mut fmt::Formatter) {
+impl<'a> fmt::Default for Source<'a> {
+    fn fmt(s: &Source<'a>, fmt: &mut fmt::Formatter) {
         let lines = s.lines().len();
         let mut cols = 0;
         let mut tmp = lines;

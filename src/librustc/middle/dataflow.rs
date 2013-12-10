@@ -77,12 +77,12 @@ pub trait DataFlowOperator {
     fn walk_closures(&self) -> bool;
 }
 
-struct PropagationContext<'self, O> {
-    dfcx: &'self mut DataFlowContext<O>,
+struct PropagationContext<'a, O> {
+    dfcx: &'a mut DataFlowContext<O>,
     changed: bool
 }
 
-struct LoopScope<'self> {
+struct LoopScope<'a> {
     loop_id: ast::NodeId,
     break_bits: ~[uint]
 }
@@ -363,7 +363,7 @@ impl<O:DataFlowOperator+Clone+'static> DataFlowContext<O> {
     }
 }
 
-impl<'self, O:DataFlowOperator> PropagationContext<'self, O> {
+impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
     fn tcx(&self) -> ty::ctxt {
         self.dfcx.tcx
     }

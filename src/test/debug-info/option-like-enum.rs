@@ -45,26 +45,26 @@
 // in the null-case is not defined. So we just read the discriminator field in
 // this case (by casting the value to a memory-equivalent struct).
 
-enum MoreFields<'self> {
-    Full(u32, &'self int, i16),
+enum MoreFields<'a> {
+    Full(u32, &'a int, i16),
     Empty
 }
 
-struct MoreFieldsRepr<'self> {
+struct MoreFieldsRepr<'a> {
     a: u32,
-    discr: &'self int,
+    discr: &'a int,
     b: i16
 }
 
-enum NamedFields<'self> {
-    Droid { id: i32, range: i64, internals: &'self int },
+enum NamedFields<'a> {
+    Droid { id: i32, range: i64, internals: &'a int },
     Void
 }
 
-struct NamedFieldsRepr<'self> {
+struct NamedFieldsRepr<'a> {
     id: i32,
     range: i64,
-    internals: &'self int
+    internals: &'a int
 }
 
 fn main() {

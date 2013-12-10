@@ -13,25 +13,25 @@
 // Check that we correctly infer that b and c must be region
 // parameterized because they reference a which requires a region.
 
-type a<'self> = &'self int;
-type b<'self> = @a<'self>;
+type a<'a> = &'a int;
+type b<'a> = @a<'a>;
 
-struct c<'self> {
-    f: @b<'self>
+struct c<'a> {
+    f: @b<'a>
 }
 
-trait set_f<'self> {
-    fn set_f_ok(&self, b: @b<'self>);
+trait set_f<'a> {
+    fn set_f_ok(&self, b: @b<'a>);
     fn set_f_bad(&self, b: @b);
 }
 
-impl<'self> set_f<'self> for c<'self> {
-    fn set_f_ok(&self, b: @b<'self>) {
+impl<'a> set_f<'a> for c<'a> {
+    fn set_f_ok(&self, b: @b<'a>) {
         self.f = b;
     }
 
     fn set_f_bad(&self, b: @b) {
-        self.f = b; //~ ERROR mismatched types: expected `@@&'self int` but found `@@&int`
+        self.f = b; //~ ERROR mismatched types: expected `@@&'a int` but found `@@&int`
         //~^ ERROR cannot infer an appropriate lifetime
     }
 }

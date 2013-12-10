@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Pair<'self> { a: int, b: &'self int }
+struct Pair<'a> { a: int, b: &'a int }
 
 static x: &'static int = &10;
 

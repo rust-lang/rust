@@ -234,7 +234,7 @@ pub trait ToCStr {
     }
 }
 
-impl<'self> ToCStr for &'self str {
+impl<'a> ToCStr for &'a str {
     #[inline]
     fn to_c_str(&self) -> CString {
         self.as_bytes().to_c_str()
@@ -259,7 +259,7 @@ impl<'self> ToCStr for &'self str {
 // The length of the stack allocated buffer for `vec.with_c_str()`
 static BUF_LEN: uint = 128;
 
-impl<'self> ToCStr for &'self [u8] {
+impl<'a> ToCStr for &'a [u8] {
     fn to_c_str(&self) -> CString {
         let mut cs = unsafe { self.to_c_str_unchecked() };
         cs.with_mut_ref(|buf| check_for_null(*self, buf));
@@ -328,12 +328,12 @@ fn check_for_null(v: &[u8], buf: *mut libc::c_char) {
 /// External iterator for a CString's bytes.
 ///
 /// Use with the `std::iter` module.
-pub struct CStringIterator<'self> {
+pub struct CStringIterator<'a> {
     priv ptr: *libc::c_char,
-    priv lifetime: &'self libc::c_char, // FIXME: #5922
+    priv lifetime: &'a libc::c_char, // FIXME: #5922
 }
 
-impl<'self> Iterator<libc::c_char> for CStringIterator<'self> {
+impl<'a> Iterator<libc::c_char> for CStringIterator<'a> {
     fn next(&mut self) -> Option<libc::c_char> {
         let ch = unsafe { *self.ptr };
         if ch == 0 {

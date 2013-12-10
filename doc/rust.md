@@ -1239,9 +1239,9 @@ static BIT2: uint = 1 << 1;
 static BITS: [uint, ..2] = [BIT1, BIT2];
 static STRING: &'static str = "bitstring";
 
-struct BitsNStrings<'self> {
+struct BitsNStrings<'a> {
     mybits: [uint, ..2],
-    mystring: &'self str
+    mystring: &'a str
 }
 
 static bits_n_strings: BitsNStrings<'static> = BitsNStrings {
@@ -2281,7 +2281,7 @@ The following are examples of structure expressions:
 ~~~~
 # struct Point { x: f64, y: f64 }
 # struct TuplePoint(f64, f64);
-# mod game { pub struct User<'self> { name: &'self str, age: uint, score: uint } }
+# mod game { pub struct User<'a> { name: &'a str, age: uint, score: uint } }
 # struct Cookie; fn some_fn<T>(t: T) {}
 Point {x: 10.0, y: 20.0};
 TuplePoint(10.0, 20.0);
@@ -3055,7 +3055,7 @@ order specified by the tuple type.
 An example of a tuple type and its use:
 
 ~~~~
-type Pair<'self> = (int,&'self str);
+type Pair<'a> = (int,&'a str);
 let p: Pair<'static> = (10,"hello");
 let (a, b) = p;
 assert!(b != "world");
@@ -3220,7 +3220,7 @@ fn add(x: int, y: int) -> int {
 
 let mut x = add(5,7);
 
-type Binop<'self> = 'self |int,int| -> int;
+type Binop<'a> = 'a |int,int| -> int;
 let bo: Binop = add;
 x = bo(5,7);
 ~~~~
