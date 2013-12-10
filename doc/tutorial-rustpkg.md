@@ -198,7 +198,7 @@ Now you can install and use it! Go anywhere else in your filesystem:
 
 ~~~ {.notrust}
 $ cd ~/src/foo
-$ rustpkg install github/YOUR_USERNAME/hello
+$ rustpkg install github.com/YOUR_USERNAME/hello
 WARNING: The Rust package manager is experimental and may be unstable
 note: Installed package github.com/YOUR_USERNAME/hello-0.1 to /home/yourusername/src/hello/.rust
 ~~~
