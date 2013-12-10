@@ -1235,8 +1235,9 @@ xs = prepend::<int>(xs, 15);
 xs = prepend::<int>(xs, 20);
 ~~~
 
-In the type grammar, the language uses `Type<T, U, V>` to describe a list of
-type parameters, but expressions use `identifier::<T, U, V>`.
+In declarations, the language uses `Type<T, U, V>` to describe a list of type
+parameters, but expressions use `identifier::<T, U, V>`, to disambiguate the
+`<` operator.
 
 ## Defining list equality with generics
 
@@ -1313,7 +1314,7 @@ provide.
 
 In uncommon cases, the indirection can provide a performance gain or memory
 reduction by making values smaller. However, unboxed values should almost
-always be preferred.
+always be preferred when they are usable.
 
 Note that returning large unboxed values via boxes is unnecessary. A large
 value is returned via a hidden output parameter, and the decision on where to
@@ -1324,7 +1325,7 @@ fn foo() -> (u64, u64, u64, u64, u64, u64) {
     (5, 5, 5, 5, 5, 5)
 }
 
-let x = ~foo(); // allocates, and writes the integers directly to it
+let x = ~foo(); // allocates a ~ box, and writes the integers directly to it
 ~~~~
 
 Beyond the properties granted by the size, an owned box behaves as a regular
@@ -1403,7 +1404,7 @@ compute_distance(managed_box, owned_box);
 Here the `&` operator is used to take the address of the variable
 `on_the_stack`; this is because `on_the_stack` has the type `Point`
 (that is, a struct value) and we have to take its address to get a
-value. We also call this _borrowing_ the local variable
+reference. We also call this _borrowing_ the local variable
 `on_the_stack`, because we are creating an alias: that is, another
 route to the same data.
 
