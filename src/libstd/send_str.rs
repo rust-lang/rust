@@ -107,7 +107,7 @@ impl TotalOrd for SendStr {
     }
 }
 
-impl<'self, S: Str> Equiv<S> for SendStr {
+impl<'a, S: Str> Equiv<S> for SendStr {
     #[inline]
     fn equiv(&self, other: &S) -> bool {
         self.as_slice().equals(&other.as_slice())

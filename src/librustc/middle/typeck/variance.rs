@@ -218,7 +218,7 @@ pub fn infer_variance(tcx: ty::ctxt,
  *
  * Terms are structured as a straightforward tree. Rather than rely on
  * GC, we allocate terms out of a bounded arena (the lifetime of this
- * arena is the lifetime 'self that is threaded around).
+ * arena is the lifetime 'a that is threaded around).
  *
  * We assign a unique index to each type/region parameter whose variance
  * is to be inferred. We refer to such variables as "inferreds". An
@@ -226,17 +226,17 @@ pub fn infer_variance(tcx: ty::ctxt,
  * a variable.
  */
 
-type VarianceTermPtr<'self> = &'self VarianceTerm<'self>;
+type VarianceTermPtr<'a> = &'a VarianceTerm<'a>;
 
 struct InferredIndex(uint);
 
-enum VarianceTerm<'self> {
+enum VarianceTerm<'a> {
     ConstantTerm(ty::Variance),
-    TransformTerm(VarianceTermPtr<'self>, VarianceTermPtr<'self>),
+    TransformTerm(VarianceTermPtr<'a>, VarianceTermPtr<'a>),
     InferredTerm(InferredIndex),
 }
 
-impl<'self> ToStr for VarianceTerm<'self> {
+impl<'a> ToStr for VarianceTerm<'a> {
     fn to_str(&self) -> ~str {
         match *self {
             ConstantTerm(c1) => format!("{}", c1.to_str()),
@@ -251,9 +251,9 @@ impl<'self> ToStr for VarianceTerm<'self> {
  * The first pass over the crate simply builds up the set of inferreds.
  */
 
-struct TermsContext<'self> {
+struct TermsContext<'a> {
     tcx: ty::ctxt,
-    arena: &'self Arena,
+    arena: &'a Arena,
 
     empty_variances: @ty::ItemVariances,
 
@@ -262,17 +262,17 @@ struct TermsContext<'self> {
     inferred_map: HashMap<ast::NodeId, InferredIndex>,
 
     // Maps from an InferredIndex to the info for that variable.
-    inferred_infos: ~[InferredInfo<'self>],
+    inferred_infos: ~[InferredInfo<'a>],
 }
 
 enum ParamKind { TypeParam, RegionParam, SelfParam }
 
-struct InferredInfo<'self> {
+struct InferredInfo<'a> {
     item_id: ast::NodeId,
     kind: ParamKind,
     index: uint,
     param_id: ast::NodeId,
-    term: VarianceTermPtr<'self>,
+    term: VarianceTermPtr<'a>,
 }
 
 fn determine_parameters_to_be_inferred<'a>(tcx: ty::ctxt,
@@ -297,7 +297,7 @@ fn determine_parameters_to_be_inferred<'a>(tcx: ty::ctxt,
     terms_cx
 }
 
-impl<'self> TermsContext<'self> {
+impl<'a> TermsContext<'a> {
     fn add_inferred(&mut self,
                     item_id: ast::NodeId,
                     kind: ParamKind,
@@ -326,7 +326,7 @@ impl<'self> TermsContext<'self> {
     }
 }
 
-impl<'self> Visitor<()> for TermsContext<'self> {
+impl<'a> Visitor<()> for TermsContext<'a> {
     fn visit_item(&mut self,
                   item: @ast::item,
                   (): ()) {
@@ -392,23 +392,23 @@ impl<'self> Visitor<()> for TermsContext<'self> {
  * We walk the set of items and, for each member, generate new constraints.
  */
 
-struct ConstraintContext<'self> {
-    terms_cx: TermsContext<'self>,
+struct ConstraintContext<'a> {
+    terms_cx: TermsContext<'a>,
 
     // These are pointers to common `ConstantTerm` instances
-    covariant: VarianceTermPtr<'self>,
-    contravariant: VarianceTermPtr<'self>,
-    invariant: VarianceTermPtr<'self>,
-    bivariant: VarianceTermPtr<'self>,
+    covariant: VarianceTermPtr<'a>,
+    contravariant: VarianceTermPtr<'a>,
+    invariant: VarianceTermPtr<'a>,
+    bivariant: VarianceTermPtr<'a>,
 
-    constraints: ~[Constraint<'self>],
+    constraints: ~[Constraint<'a>],
 }
 
 /// Declares that the variable `decl_id` appears in a location with
 /// variance `variance`.
-struct Constraint<'self> {
+struct Constraint<'a> {
     inferred: InferredIndex,
-    variance: &'self VarianceTerm<'self>,
+    variance: &'a VarianceTerm<'a>,
 }
 
 fn add_constraints_from_crate<'a>(terms_cx: TermsContext<'a>,
@@ -430,7 +430,7 @@ fn add_constraints_from_crate<'a>(terms_cx: TermsContext<'a>,
     constraint_cx
 }
 
-impl<'self> Visitor<()> for ConstraintContext<'self> {
+impl<'a> Visitor<()> for ConstraintContext<'a> {
     fn visit_item(&mut self,
                   item: @ast::item,
                   (): ()) {
@@ -506,7 +506,7 @@ impl<'self> Visitor<()> for ConstraintContext<'self> {
     }
 }
 
-impl<'self> ConstraintContext<'self> {
+impl<'a> ConstraintContext<'a> {
     fn tcx(&self) -> ty::ctxt {
         self.terms_cx.tcx
     }
@@ -529,7 +529,7 @@ impl<'self> ConstraintContext<'self> {
                          item_def_id: ast::DefId,
                          kind: ParamKind,
                          index: uint)
-                         -> VarianceTermPtr<'self> {
+                         -> VarianceTermPtr<'a> {
         /*!
          * Returns a variance term representing the declared variance of
          * the type/region parameter with the given id.
@@ -557,7 +557,7 @@ impl<'self> ConstraintContext<'self> {
 
     fn add_constraint(&mut self,
                       index: InferredIndex,
-                      variance: VarianceTermPtr<'self>) {
+                      variance: VarianceTermPtr<'a>) {
         debug!("add_constraint(index={}, variance={})",
                 *index, variance.to_str());
         self.constraints.push(Constraint { inferred: index,
@@ -565,18 +565,18 @@ impl<'self> ConstraintContext<'self> {
     }
 
     fn contravariant(&mut self,
-                     variance: VarianceTermPtr<'self>)
-                     -> VarianceTermPtr<'self> {
+                     variance: VarianceTermPtr<'a>)
+                     -> VarianceTermPtr<'a> {
         self.xform(variance, self.contravariant)
     }
 
     fn invariant(&mut self,
-                 variance: VarianceTermPtr<'self>)
-                 -> VarianceTermPtr<'self> {
+                 variance: VarianceTermPtr<'a>)
+                 -> VarianceTermPtr<'a> {
         self.xform(variance, self.invariant)
     }
 
-    fn constant_term(&self, v: ty::Variance) -> VarianceTermPtr<'self> {
+    fn constant_term(&self, v: ty::Variance) -> VarianceTermPtr<'a> {
         match v {
             ty::Covariant => self.covariant,
             ty::Invariant => self.invariant,
@@ -586,9 +586,9 @@ impl<'self> ConstraintContext<'self> {
     }
 
     fn xform(&mut self,
-             v1: VarianceTermPtr<'self>,
-             v2: VarianceTermPtr<'self>)
-             -> VarianceTermPtr<'self> {
+             v1: VarianceTermPtr<'a>,
+             v2: VarianceTermPtr<'a>)
+             -> VarianceTermPtr<'a> {
         match (*v1, *v2) {
             (_, ConstantTerm(ty::Covariant)) => {
                 // Applying a "covariant" transform is always a no-op
@@ -609,7 +609,7 @@ impl<'self> ConstraintContext<'self> {
     /// in a context with ambient variance `variance`
     fn add_constraints_from_ty(&mut self,
                                ty: ty::t,
-                               variance: VarianceTermPtr<'self>) {
+                               variance: VarianceTermPtr<'a>) {
         debug!("add_constraints_from_ty(ty={})", ty.repr(self.tcx()));
 
         match ty::get(ty).sty {
@@ -704,7 +704,7 @@ impl<'self> ConstraintContext<'self> {
     /// appearing in a context with ambient variance `variance`
     fn add_constraints_from_vstore(&mut self,
                                    vstore: ty::vstore,
-                                   variance: VarianceTermPtr<'self>) {
+                                   variance: VarianceTermPtr<'a>) {
         match vstore {
             ty::vstore_slice(r) => {
                 let contra = self.contravariant(variance);
@@ -722,7 +722,7 @@ impl<'self> ConstraintContext<'self> {
                                    def_id: ast::DefId,
                                    generics: &ty::Generics,
                                    substs: &ty::substs,
-                                   variance: VarianceTermPtr<'self>) {
+                                   variance: VarianceTermPtr<'a>) {
         debug!("add_constraints_from_substs(def_id={:?})", def_id);
 
         for (i, p) in generics.type_param_defs.iter().enumerate() {
@@ -749,7 +749,7 @@ impl<'self> ConstraintContext<'self> {
     /// `sig` appearing in a context with ambient variance `variance`
     fn add_constraints_from_sig(&mut self,
                                 sig: &ty::FnSig,
-                                variance: VarianceTermPtr<'self>) {
+                                variance: VarianceTermPtr<'a>) {
         let contra = self.contravariant(variance);
         for &input in sig.inputs.iter() {
             self.add_constraints_from_ty(input, contra);
@@ -761,7 +761,7 @@ impl<'self> ConstraintContext<'self> {
     /// context with ambient variance `variance`
     fn add_constraints_from_region(&mut self,
                                    region: ty::Region,
-                                   variance: VarianceTermPtr<'self>) {
+                                   variance: VarianceTermPtr<'a>) {
         match region {
             ty::ReEarlyBound(param_id, _, _) => {
                 let index = self.inferred_index(param_id);
@@ -790,7 +790,7 @@ impl<'self> ConstraintContext<'self> {
     /// appearing in a context with ambient variance `variance`
     fn add_constraints_from_mt(&mut self,
                                mt: &ty::mt,
-                               variance: VarianceTermPtr<'self>) {
+                               variance: VarianceTermPtr<'a>) {
         match mt.mutbl {
             ast::MutMutable => {
                 let invar = self.invariant(variance);
@@ -813,9 +813,9 @@ impl<'self> ConstraintContext<'self> {
  * inferred is then written into the `variance_map` in the tcx.
  */
 
-struct SolveContext<'self> {
-    terms_cx: TermsContext<'self>,
-    constraints: ~[Constraint<'self>],
+struct SolveContext<'a> {
+    terms_cx: TermsContext<'a>,
+    constraints: ~[Constraint<'a>],
 
     // Maps from an InferredIndex to the inferred value for that variable.
     solutions: ~[ty::Variance]
@@ -833,7 +833,7 @@ fn solve_constraints(constraints_cx: ConstraintContext) {
     solutions_cx.write();
 }
 
-impl<'self> SolveContext<'self> {
+impl<'a> SolveContext<'a> {
     fn solve(&mut self) {
         // Propagate constraints until a fixed point is reached.  Note
         // that the maximum number of iterations is 2C where C is the
@@ -925,7 +925,7 @@ impl<'self> SolveContext<'self> {
         }
     }
 
-    fn evaluate(&self, term: VarianceTermPtr<'self>) -> ty::Variance {
+    fn evaluate(&self, term: VarianceTermPtr<'a>) -> ty::Variance {
         match *term {
             ConstantTerm(v) => {
                 v

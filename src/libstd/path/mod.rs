@@ -523,18 +523,18 @@ pub trait GenericPathUnsafe {
 }
 
 /// Helper struct for printing paths with format!()
-pub struct Display<'self, P> {
-    priv path: &'self P,
+pub struct Display<'a, P> {
+    priv path: &'a P,
     priv filename: bool
 }
 
-impl<'self, P: GenericPath> fmt::Default for Display<'self, P> {
+impl<'a, P: GenericPath> fmt::Default for Display<'a, P> {
     fn fmt(d: &Display<P>, f: &mut fmt::Formatter) {
         d.with_str(|s| f.pad(s))
     }
 }
 
-impl<'self, P: GenericPath> ToStr for Display<'self, P> {
+impl<'a, P: GenericPath> ToStr for Display<'a, P> {
     /// Returns the path as a string
     ///
     /// If the path is not UTF-8, invalid sequences with be replaced with the
@@ -551,7 +551,7 @@ impl<'self, P: GenericPath> ToStr for Display<'self, P> {
     }
 }
 
-impl<'self, P: GenericPath> Display<'self, P> {
+impl<'a, P: GenericPath> Display<'a, P> {
     /// Provides the path as a string to a closure
     ///
     /// If the path is not UTF-8, invalid sequences will be replaced with the
@@ -570,7 +570,7 @@ impl<'self, P: GenericPath> Display<'self, P> {
     }
 }
 
-impl<'self> BytesContainer for &'self str {
+impl<'a> BytesContainer for &'a str {
     #[inline]
     fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
         self.as_bytes()
@@ -584,7 +584,7 @@ impl<'self> BytesContainer for &'self str {
         Some(*self)
     }
     #[inline]
-    fn is_str(_: Option<&'self str>) -> bool { true }
+    fn is_str(_: Option<&'a str>) -> bool { true }
 }
 
 impl BytesContainer for ~str {
@@ -625,7 +625,7 @@ impl BytesContainer for @str {
     fn is_str(_: Option<@str>) -> bool { true }
 }
 
-impl<'self> BytesContainer for &'self [u8] {
+impl<'a> BytesContainer for &'a [u8] {
     #[inline]
     fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
         *self

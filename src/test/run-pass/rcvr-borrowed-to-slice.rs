@@ -13,7 +13,7 @@ trait sum {
 }
 
 // Note: impl on a slice
-impl<'self> sum for &'self [int] {
+impl<'a> sum for &'a [int] {
     fn sum_(self) -> int {
         self.iter().fold(0, |a, &b| a + b)
     }

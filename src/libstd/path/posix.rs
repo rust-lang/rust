@@ -25,16 +25,16 @@ use vec::{CopyableVector, RSplitIterator, SplitIterator, Vector, VectorVector};
 use super::{BytesContainer, GenericPath, GenericPathUnsafe};
 
 /// Iterator that yields successive components of a Path as &[u8]
-pub type ComponentIter<'self> = SplitIterator<'self, u8>;
+pub type ComponentIter<'a> = SplitIterator<'a, u8>;
 /// Iterator that yields components of a Path in reverse as &[u8]
-pub type RevComponentIter<'self> = RSplitIterator<'self, u8>;
+pub type RevComponentIter<'a> = RSplitIterator<'a, u8>;
 
 /// Iterator that yields successive components of a Path as Option<&str>
-pub type StrComponentIter<'self> = Map<'self, &'self [u8], Option<&'self str>,
-                                       ComponentIter<'self>>;
+pub type StrComponentIter<'a> = Map<'a, &'a [u8], Option<&'a str>,
+                                       ComponentIter<'a>>;
 /// Iterator that yields components of a Path in reverse as Option<&str>
-pub type RevStrComponentIter<'self> = Map<'self, &'self [u8], Option<&'self str>,
-                                          RevComponentIter<'self>>;
+pub type RevStrComponentIter<'a> = Map<'a, &'a [u8], Option<&'a str>,
+                                          RevComponentIter<'a>>;
 
 /// Represents a POSIX file path
 #[deriving(Clone, DeepClone)]
@@ -103,7 +103,7 @@ impl BytesContainer for Path {
     }
 }
 
-impl<'self> BytesContainer for &'self Path {
+impl<'a> BytesContainer for &'a Path {
     #[inline]
     fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
         self.as_vec()

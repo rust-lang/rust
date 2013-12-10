@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct font<'self> {
-    fontbuf: &'self ~[u8],
+struct font<'a> {
+    fontbuf: &'a ~[u8],
 }
 
-impl<'self> font<'self> {
-    pub fn buf(&self) -> &'self ~[u8] {
+impl<'a> font<'a> {
+    pub fn buf(&self) -> &'a ~[u8] {
         self.fontbuf
     }
 }

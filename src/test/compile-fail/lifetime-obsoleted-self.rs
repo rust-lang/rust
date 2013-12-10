@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo() -> int {
-    return 0xca7f000d;
-}
+fn baz(a: &'self int) { } //~ ERROR invalid lifetime name: 'self is no longer a special lifetime
 
-struct Bar<'a> { f: 'a || -> int }
-
-static b : Bar<'static> = Bar { f: foo };
-
-pub fn main() {
-    assert_eq!((b.f)(), 0xca7f000d);
-}
+fn main() { }

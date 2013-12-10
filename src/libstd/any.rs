@@ -65,16 +65,16 @@ impl<T: 'static> Any for T {
 ///////////////////////////////////////////////////////////////////////////////
 
 /// Extension methods for a referenced `Any` trait object
-pub trait AnyRefExt<'self> {
+pub trait AnyRefExt<'a> {
     /// Returns true if the boxed type is the same as `T`
     fn is<T: 'static>(self) -> bool;
 
     /// Returns some reference to the boxed value if it is of type `T`, or
     /// `None` if it isn't.
-    fn as_ref<T: 'static>(self) -> Option<&'self T>;
+    fn as_ref<T: 'static>(self) -> Option<&'a T>;
 }
 
-impl<'self> AnyRefExt<'self> for &'self Any {
+impl<'a> AnyRefExt<'a> for &'a Any {
     #[inline]
     fn is<T: 'static>(self) -> bool {
         // Get TypeId of the type this function is instantiated with
@@ -88,7 +88,7 @@ impl<'self> AnyRefExt<'self> for &'self Any {
     }
 
     #[inline]
-    fn as_ref<T: 'static>(self) -> Option<&'self T> {
+    fn as_ref<T: 'static>(self) -> Option<&'a T> {
         if self.is::<T>() {
             Some(unsafe { transmute(self.as_void_ptr()) })
         } else {
@@ -98,15 +98,15 @@ impl<'self> AnyRefExt<'self> for &'self Any {
 }
 
 /// Extension methods for a mutable referenced `Any` trait object
-pub trait AnyMutRefExt<'self> {
+pub trait AnyMutRefExt<'a> {
     /// Returns some mutable reference to the boxed value if it is of type `T`, or
     /// `None` if it isn't.
-    fn as_mut<T: 'static>(self) -> Option<&'self mut T>;
+    fn as_mut<T: 'static>(self) -> Option<&'a mut T>;
 }
 
-impl<'self> AnyMutRefExt<'self> for &'self mut Any {
+impl<'a> AnyMutRefExt<'a> for &'a mut Any {
     #[inline]
-    fn as_mut<T: 'static>(self) -> Option<&'self mut T> {
+    fn as_mut<T: 'static>(self) -> Option<&'a mut T> {
         if self.is::<T>() {
             Some(unsafe { transmute(self.as_mut_void_ptr()) })
         } else {
@@ -149,7 +149,7 @@ impl ToStr for ~Any {
     fn to_str(&self) -> ~str { ~"~Any" }
 }
 
-impl<'self> ToStr for &'self Any {
+impl<'a> ToStr for &'a Any {
     fn to_str(&self) -> ~str { ~"&Any" }
 }
 

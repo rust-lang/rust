@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct boxed_int<'self> {
-    f: &'self int,
+struct boxed_int<'a> {
+    f: &'a int,
 }
 
 fn max<'r>(bi: &'r boxed_int, f: &'r int) -> int {

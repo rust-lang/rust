@@ -15,11 +15,11 @@ trait MyIter {
     fn test_imm(&self);
 }
 
-impl<'self> MyIter for &'self [int] {
+impl<'a> MyIter for &'a [int] {
     fn test_imm(&self) { assert_eq!(self[0], 1) }
 }
 
-impl<'self> MyIter for &'self str {
+impl<'a> MyIter for &'a str {
     fn test_imm(&self) { assert_eq!(*self, "test") }
 }
 

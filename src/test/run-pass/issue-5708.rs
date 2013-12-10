@@ -27,11 +27,11 @@ impl Inner for int {
     fn print(&self) { print(format!("Inner: {}\n", *self)); }
 }
 
-struct Outer<'self> {
-    inner: &'self Inner
+struct Outer<'a> {
+    inner: &'a Inner
 }
 
-impl<'self> Outer<'self> {
+impl<'a> Outer<'a> {
     fn new<'r>(inner: &'r Inner) -> Outer<'r> {
         Outer {
             inner: inner
@@ -49,12 +49,12 @@ pub fn main() {
 // minimal
 trait MyTrait<T> { }
 
-pub struct MyContainer<'self, T> {
-    foos: ~[&'self MyTrait<T>],
+pub struct MyContainer<'a, T> {
+    foos: ~[&'a MyTrait<T>],
 }
 
-impl<'self, T> MyContainer<'self, T> {
-    pub fn add (&mut self, foo: &'self MyTrait<T>) {
+impl<'a, T> MyContainer<'a, T> {
+    pub fn add (&mut self, foo: &'a MyTrait<T>) {
         self.foos.push(foo);
     }
 }

@@ -185,9 +185,9 @@ impl<T> ResolveResult<T> {
     }
 }
 
-enum TypeParameters<'self> {
+enum TypeParameters<'a> {
     NoTypeParameters,                   //< No type parameters.
-    HasTypeParameters(&'self Generics,  //< Type parameters.
+    HasTypeParameters(&'a Generics,  //< Type parameters.
                       NodeId,          //< ID of the enclosing item
 
                       // The index to start numbering the type parameters at.
@@ -881,11 +881,11 @@ struct Resolver {
     used_imports: HashSet<NodeId>,
 }
 
-struct BuildReducedGraphVisitor<'self> {
-    resolver: &'self mut Resolver,
+struct BuildReducedGraphVisitor<'a> {
+    resolver: &'a mut Resolver,
 }
 
-impl<'self> Visitor<ReducedGraphParent> for BuildReducedGraphVisitor<'self> {
+impl<'a> Visitor<ReducedGraphParent> for BuildReducedGraphVisitor<'a> {
 
     fn visit_item(&mut self, item:@item, context:ReducedGraphParent) {
         let p = self.resolver.build_reduced_graph_for_item(item, context);
@@ -913,9 +913,9 @@ impl<'self> Visitor<ReducedGraphParent> for BuildReducedGraphVisitor<'self> {
 
 }
 
-struct UnusedImportCheckVisitor<'self> { resolver: &'self Resolver }
+struct UnusedImportCheckVisitor<'a> { resolver: &'a Resolver }
 
-impl<'self> Visitor<()> for UnusedImportCheckVisitor<'self> {
+impl<'a> Visitor<()> for UnusedImportCheckVisitor<'a> {
     fn visit_view_item(&mut self, vi:&view_item, _:()) {
         self.resolver.check_for_item_unused_imports(vi);
         visit::walk_view_item(self, vi, ());

@@ -45,12 +45,12 @@ impl Subst for ty::t {
     }
 }
 
-struct SubstFolder<'self> {
+struct SubstFolder<'a> {
     tcx: ty::ctxt,
-    substs: &'self ty::substs
+    substs: &'a ty::substs
 }
 
-impl<'self> TypeFolder for SubstFolder<'self> {
+impl<'a> TypeFolder for SubstFolder<'a> {
     fn tcx(&self) -> ty::ctxt { self.tcx }
 
     fn fold_region(&mut self, r: ty::Region) -> ty::Region {

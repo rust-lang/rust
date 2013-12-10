@@ -108,7 +108,7 @@ pub fn select<A: Select>(ports: &mut [A]) -> uint {
 
 /* FIXME(#5121, #7914) This all should be legal, but rust is not clever enough yet.
 
-impl <'self> Select for &'self mut Select {
+impl <'a> Select for &'a mut Select {
     fn optimistic_check(&mut self) -> bool { self.optimistic_check() }
     fn block_on(&mut self, sched: &mut Scheduler, task: BlockedTask) -> bool {
         self.block_on(sched, task)

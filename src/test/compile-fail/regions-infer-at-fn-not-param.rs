@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct parameterized1<'self> {
-    g: 'self ||
+struct parameterized1<'a> {
+    g: 'a ||
 }
 
 struct not_parameterized1 {

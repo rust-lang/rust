@@ -103,11 +103,11 @@ struct LanguageItemCollector {
     item_refs: HashMap<&'static str, uint>,
 }
 
-struct LanguageItemVisitor<'self> {
-    this: &'self mut LanguageItemCollector,
+struct LanguageItemVisitor<'a> {
+    this: &'a mut LanguageItemCollector,
 }
 
-impl<'self> Visitor<()> for LanguageItemVisitor<'self> {
+impl<'a> Visitor<()> for LanguageItemVisitor<'a> {
     fn visit_item(&mut self, item: @ast::item, _: ()) {
         match extract(item.attrs) {
             Some(value) => {

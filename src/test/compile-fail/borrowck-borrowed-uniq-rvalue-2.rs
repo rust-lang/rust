@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct defer<'self> {
-    x: &'self [&'self str],
+struct defer<'a> {
+    x: &'a [&'a str],
 }
 
 #[unsafe_destructor]
-impl<'self> Drop for defer<'self> {
+impl<'a> Drop for defer<'a> {
     fn drop(&mut self) {
         unsafe {
             error!("{:?}", self.x);

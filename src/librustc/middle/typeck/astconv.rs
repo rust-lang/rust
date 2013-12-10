@@ -40,7 +40,7 @@
  * as it does not already appear in scope.
  *
  * Case (b) says that if you have a type:
- *   type foo<'self> = ...;
+ *   type foo<'a> = ...;
  *   type bar = fn(&foo, &a.foo)
  * The fully expanded version of type bar is:
  *   type bar = fn(&'foo &, &a.foo<'a>)

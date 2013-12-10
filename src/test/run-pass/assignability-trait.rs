@@ -16,7 +16,7 @@ trait iterable<A> {
     fn iterate(&self, blk: |x: &A| -> bool) -> bool;
 }
 
-impl<'self,A> iterable<A> for &'self [A] {
+impl<'a,A> iterable<A> for &'a [A] {
     fn iterate(&self, f: |x: &A| -> bool) -> bool {
         self.iter().advance(f)
     }

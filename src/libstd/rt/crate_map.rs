@@ -21,15 +21,15 @@ use rt::rtio::EventLoop;
 #[link_args = "-Wl,-U,__rust_crate_map_toplevel"]
 extern {}
 
-pub struct ModEntry<'self> {
-    name: &'self str,
+pub struct ModEntry<'a> {
+    name: &'a str,
     log_level: *mut u32
 }
 
-pub struct CrateMap<'self> {
+pub struct CrateMap<'a> {
     version: i32,
-    entries: &'self [ModEntry<'self>],
-    children: &'self [&'self CrateMap<'self>],
+    entries: &'a [ModEntry<'a>],
+    children: &'a [&'a CrateMap<'a>],
     event_loop_factory: Option<extern "C" fn() -> ~EventLoop>,
 }
 

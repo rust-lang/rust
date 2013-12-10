@@ -48,15 +48,15 @@ struct Node<T> {
 
 /// Double-ended DList iterator
 #[deriving(Clone)]
-pub struct DListIterator<'self, T> {
-    priv head: &'self Link<T>,
+pub struct DListIterator<'a, T> {
+    priv head: &'a Link<T>,
     priv tail: Rawlink<Node<T>>,
     priv nelem: uint,
 }
 
 /// Double-ended mutable DList iterator
-pub struct MutDListIterator<'self, T> {
-    priv list: &'self mut DList<T>,
+pub struct MutDListIterator<'a, T> {
+    priv list: &'a mut DList<T>,
     priv head: Rawlink<Node<T>>,
     priv tail: Rawlink<Node<T>>,
     priv nelem: uint,
@@ -439,9 +439,9 @@ impl<T> Drop for DList<T> {
 }
 
 
-impl<'self, A> Iterator<&'self A> for DListIterator<'self, A> {
+impl<'a, A> Iterator<&'a A> for DListIterator<'a, A> {
     #[inline]
-    fn next(&mut self) -> Option<&'self A> {
+    fn next(&mut self) -> Option<&'a A> {
         if self.nelem == 0 {
             return None;
         }
@@ -458,9 +458,9 @@ impl<'self, A> Iterator<&'self A> for DListIterator<'self, A> {
     }
 }
 
-impl<'self, A> DoubleEndedIterator<&'self A> for DListIterator<'self, A> {
+impl<'a, A> DoubleEndedIterator<&'a A> for DListIterator<'a, A> {
     #[inline]
-    fn next_back(&mut self) -> Option<&'self A> {
+    fn next_back(&mut self) -> Option<&'a A> {
         if self.nelem == 0 {
             return None;
         }
@@ -473,11 +473,11 @@ impl<'self, A> DoubleEndedIterator<&'self A> for DListIterator<'self, A> {
     }
 }
 
-impl<'self, A> ExactSize<&'self A> for DListIterator<'self, A> {}
+impl<'a, A> ExactSize<&'a A> for DListIterator<'a, A> {}
 
-impl<'self, A> Iterator<&'self mut A> for MutDListIterator<'self, A> {
+impl<'a, A> Iterator<&'a mut A> for MutDListIterator<'a, A> {
     #[inline]
-    fn next(&mut self) -> Option<&'self mut A> {
+    fn next(&mut self) -> Option<&'a mut A> {
         if self.nelem == 0 {
             return None;
         }
@@ -497,9 +497,9 @@ impl<'self, A> Iterator<&'self mut A> for MutDListIterator<'self, A> {
     }
 }
 
-impl<'self, A> DoubleEndedIterator<&'self mut A> for MutDListIterator<'self, A> {
+impl<'a, A> DoubleEndedIterator<&'a mut A> for MutDListIterator<'a, A> {
     #[inline]
-    fn next_back(&mut self) -> Option<&'self mut A> {
+    fn next_back(&mut self) -> Option<&'a mut A> {
         if self.nelem == 0 {
             return None;
         }
@@ -511,7 +511,7 @@ impl<'self, A> DoubleEndedIterator<&'self mut A> for MutDListIterator<'self, A> 
     }
 }
 
-impl<'self, A> ExactSize<&'self mut A> for MutDListIterator<'self, A> {}
+impl<'a, A> ExactSize<&'a mut A> for MutDListIterator<'a, A> {}
 
 /// Allow mutating the DList while iterating
 pub trait ListInsertion<A> {
@@ -525,7 +525,7 @@ pub trait ListInsertion<A> {
 }
 
 // private methods for MutDListIterator
-impl<'self, A> MutDListIterator<'self, A> {
+impl<'a, A> MutDListIterator<'a, A> {
     fn insert_next_node(&mut self, mut ins_node: ~Node<A>) {
         // Insert before `self.head` so that it is between the
         // previously yielded element and self.head.
@@ -547,7 +547,7 @@ impl<'self, A> MutDListIterator<'self, A> {
     }
 }
 
-impl<'self, A> ListInsertion<A> for MutDListIterator<'self, A> {
+impl<'a, A> ListInsertion<A> for MutDListIterator<'a, A> {
     #[inline]
     fn insert_next(&mut self, elt: A) {
         self.insert_next_node(~Node::new(elt))

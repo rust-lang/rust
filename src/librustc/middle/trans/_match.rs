@@ -394,9 +394,9 @@ struct BindingInfo {
 type BindingsMap = HashMap<Ident, BindingInfo>;
 
 #[deriving(Clone)]
-struct ArmData<'self> {
+struct ArmData<'a> {
     bodycx: @mut Block,
-    arm: &'self ast::Arm,
+    arm: &'a ast::Arm,
     bindings_map: @BindingsMap
 }
 
@@ -407,13 +407,13 @@ struct ArmData<'self> {
  * these pointers are stored in llmatch variables just before executing `data` arm.
  */
 #[deriving(Clone)]
-struct Match<'self> {
+struct Match<'a> {
     pats: ~[@ast::Pat],
-    data: ArmData<'self>,
+    data: ArmData<'a>,
     bound_ptrs: ~[(Ident, ValueRef)]
 }
 
-impl<'self> Repr for Match<'self> {
+impl<'a> Repr for Match<'a> {
     fn repr(&self, tcx: ty::ctxt) -> ~str {
         if tcx.sess.verbose() {
             // for many programs, this just take too long to serialize
@@ -477,7 +477,7 @@ fn assert_is_binding_or_wild(bcx: @mut Block, p: @ast::Pat) {
     }
 }
 
-type enter_pat<'self> = 'self |@ast::Pat| -> Option<~[@ast::Pat]>;
+type enter_pat<'a> = 'a |@ast::Pat| -> Option<~[@ast::Pat]>;
 
 fn enter_match<'r>(bcx: @mut Block,
                        dm: DefMap,

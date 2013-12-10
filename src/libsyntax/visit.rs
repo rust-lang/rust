@@ -28,12 +28,12 @@ use opt_vec::OptVec;
 // execute before AST node B, then A is visited first.  The borrow checker in
 // particular relies on this property.
 
-pub enum fn_kind<'self> {
+pub enum fn_kind<'a> {
     // fn foo() or extern "Abi" fn foo()
-    fk_item_fn(Ident, &'self Generics, purity, AbiSet),
+    fk_item_fn(Ident, &'a Generics, purity, AbiSet),
 
     // fn foo(&self)
-    fk_method(Ident, &'self Generics, &'self method),
+    fk_method(Ident, &'a Generics, &'a method),
 
     // @fn(x, y) { ... }
     fk_anon(ast::Sigil),

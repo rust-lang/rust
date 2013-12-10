@@ -469,14 +469,14 @@ impl Rng for StdRng {
     }
 }
 
-impl<'self> SeedableRng<&'self [uint]> for StdRng {
-    fn reseed(&mut self, seed: &'self [uint]) {
+impl<'a> SeedableRng<&'a [uint]> for StdRng {
+    fn reseed(&mut self, seed: &'a [uint]) {
         // the internal RNG can just be seeded from the above
         // randomness.
         self.rng.reseed(unsafe {cast::transmute(seed)})
     }
 
-    fn from_seed(seed: &'self [uint]) -> StdRng {
+    fn from_seed(seed: &'a [uint]) -> StdRng {
         StdRng { rng: SeedableRng::from_seed(unsafe {cast::transmute(seed)}) }
     }
 }

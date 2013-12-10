@@ -153,7 +153,7 @@ pub mod traits {
     use ops::Add;
     use vec::Vector;
 
-    impl<'self,T:Clone, V: Vector<T>> Add<V,@[T]> for @[T] {
+    impl<'a,T:Clone, V: Vector<T>> Add<V,@[T]> for @[T] {
         #[inline]
         fn add(&self, rhs: &V) -> @[T] {
             append(*self, rhs.as_slice())

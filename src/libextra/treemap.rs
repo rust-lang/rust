@@ -228,9 +228,9 @@ impl<K: TotalOrd, V> TreeMap<K, V> {
 }
 
 /// Lazy forward iterator over a map
-pub struct TreeMapIterator<'self, K, V> {
-    priv stack: ~[&'self TreeNode<K, V>],
-    priv node: Option<&'self TreeNode<K, V>>,
+pub struct TreeMapIterator<'a, K, V> {
+    priv stack: ~[&'a TreeNode<K, V>],
+    priv node: Option<&'a TreeNode<K, V>>,
     priv remaining_min: uint,
     priv remaining_max: uint
 }
@@ -245,9 +245,9 @@ fn deref<'a, K, V>(node: &'a Option<~TreeNode<K, V>>) -> Option<&'a TreeNode<K, 
     }
 }
 
-impl<'self, K, V> TreeMapIterator<'self, K, V> {
+impl<'a, K, V> TreeMapIterator<'a, K, V> {
     #[inline(always)]
-    fn next_(&mut self, forward: bool) -> Option<(&'self K, &'self V)> {
+    fn next_(&mut self, forward: bool) -> Option<(&'a K, &'a V)> {
         while !self.stack.is_empty() || self.node.is_some() {
             match self.node {
               Some(x) => {
@@ -269,11 +269,11 @@ impl<'self, K, V> TreeMapIterator<'self, K, V> {
     }
 }
 
-impl<'self, K, V> Iterator<(&'self K, &'self V)> for TreeMapIterator<'self, K, V> {
+impl<'a, K, V> Iterator<(&'a K, &'a V)> for TreeMapIterator<'a, K, V> {
     /// Advance the iterator to the next node (in order) and return a
     /// tuple with a reference to the key and value. If there are no
     /// more nodes, return `None`.
-    fn next(&mut self) -> Option<(&'self K, &'self V)> {
+    fn next(&mut self) -> Option<(&'a K, &'a V)> {
         self.next_(true)
     }
 
@@ -284,15 +284,15 @@ impl<'self, K, V> Iterator<(&'self K, &'self V)> for TreeMapIterator<'self, K, V
 }
 
 /// Lazy backward iterator over a map
-pub struct TreeMapRevIterator<'self, K, V> {
-    priv iter: TreeMapIterator<'self, K, V>,
+pub struct TreeMapRevIterator<'a, K, V> {
+    priv iter: TreeMapIterator<'a, K, V>,
 }
 
-impl<'self, K, V> Iterator<(&'self K, &'self V)> for TreeMapRevIterator<'self, K, V> {
+impl<'a, K, V> Iterator<(&'a K, &'a V)> for TreeMapRevIterator<'a, K, V> {
     /// Advance the iterator to the next node (in order) and return a
     /// tuple with a reference to the key and value. If there are no
     /// more nodes, return `None`.
-    fn next(&mut self) -> Option<(&'self K, &'self V)> {
+    fn next(&mut self) -> Option<(&'a K, &'a V)> {
         self.iter.next_(false)
     }
 
@@ -390,18 +390,18 @@ impl<K, V> Iterator<(K, V)> for TreeMapMoveIterator<K,V> {
 
 }
 
-impl<'self, T> Iterator<&'self T> for TreeSetIterator<'self, T> {
+impl<'a, T> Iterator<&'a T> for TreeSetIterator<'a, T> {
     /// Advance the iterator to the next node (in order). If there are no more nodes, return `None`.
     #[inline]
-    fn next(&mut self) -> Option<&'self T> {
+    fn next(&mut self) -> Option<&'a T> {
         self.iter.next().map(|(value, _)| value)
     }
 }
 
-impl<'self, T> Iterator<&'self T> for TreeSetRevIterator<'self, T> {
+impl<'a, T> Iterator<&'a T> for TreeSetRevIterator<'a, T> {
     /// Advance the iterator to the next node (in order). If there are no more nodes, return `None`.
     #[inline]
-    fn next(&mut self) -> Option<&'self T> {
+    fn next(&mut self) -> Option<&'a T> {
         self.iter.next().map(|(value, _)| value)
     }
 }
@@ -561,37 +561,37 @@ impl<T: TotalOrd> TreeSet<T> {
 }
 
 /// Lazy forward iterator over a set
-pub struct TreeSetIterator<'self, T> {
-    priv iter: TreeMapIterator<'self, T, ()>
+pub struct TreeSetIterator<'a, T> {
+    priv iter: TreeMapIterator<'a, T, ()>
 }
 
 /// Lazy backward iterator over a set
-pub struct TreeSetRevIterator<'self, T> {
-    priv iter: TreeMapRevIterator<'self, T, ()>
+pub struct TreeSetRevIterator<'a, T> {
+    priv iter: TreeMapRevIterator<'a, T, ()>
 }
 
 /// Lazy iterator producing elements in the set difference (in-order)
-pub struct Difference<'self, T> {
-    priv a: Peekable<&'self T, TreeSetIterator<'self, T>>,
-    priv b: Peekable<&'self T, TreeSetIterator<'self, T>>,
+pub struct Difference<'a, T> {
+    priv a: Peekable<&'a T, TreeSetIterator<'a, T>>,
+    priv b: Peekable<&'a T, TreeSetIterator<'a, T>>,
 }
 
 /// Lazy iterator producing elements in the set symmetric difference (in-order)
-pub struct SymDifference<'self, T> {
-    priv a: Peekable<&'self T, TreeSetIterator<'self, T>>,
-    priv b: Peekable<&'self T, TreeSetIterator<'self, T>>,
+pub struct SymDifference<'a, T> {
+    priv a: Peekable<&'a T, TreeSetIterator<'a, T>>,
+    priv b: Peekable<&'a T, TreeSetIterator<'a, T>>,
 }
 
 /// Lazy iterator producing elements in the set intersection (in-order)
-pub struct Intersection<'self, T> {
-    priv a: Peekable<&'self T, TreeSetIterator<'self, T>>,
-    priv b: Peekable<&'self T, TreeSetIterator<'self, T>>,
+pub struct Intersection<'a, T> {
+    priv a: Peekable<&'a T, TreeSetIterator<'a, T>>,
+    priv b: Peekable<&'a T, TreeSetIterator<'a, T>>,
 }
 
 /// Lazy iterator producing elements in the set intersection (in-order)
-pub struct Union<'self, T> {
-    priv a: Peekable<&'self T, TreeSetIterator<'self, T>>,
-    priv b: Peekable<&'self T, TreeSetIterator<'self, T>>,
+pub struct Union<'a, T> {
+    priv a: Peekable<&'a T, TreeSetIterator<'a, T>>,
+    priv b: Peekable<&'a T, TreeSetIterator<'a, T>>,
 }
 
 /// Compare `x` and `y`, but return `short` if x is None and `long` if y is None
@@ -604,8 +604,8 @@ fn cmp_opt<T: TotalOrd>(x: Option<&T>, y: Option<&T>,
     }
 }
 
-impl<'self, T: TotalOrd> Iterator<&'self T> for Difference<'self, T> {
-    fn next(&mut self) -> Option<&'self T> {
+impl<'a, T: TotalOrd> Iterator<&'a T> for Difference<'a, T> {
+    fn next(&mut self) -> Option<&'a T> {
         loop {
             match cmp_opt(self.a.peek(), self.b.peek(), Less, Less) {
                 Less    => return self.a.next(),
@@ -616,8 +616,8 @@ impl<'self, T: TotalOrd> Iterator<&'self T> for Difference<'self, T> {
     }
 }
 
-impl<'self, T: TotalOrd> Iterator<&'self T> for SymDifference<'self, T> {
-    fn next(&mut self) -> Option<&'self T> {
+impl<'a, T: TotalOrd> Iterator<&'a T> for SymDifference<'a, T> {
+    fn next(&mut self) -> Option<&'a T> {
         loop {
             match cmp_opt(self.a.peek(), self.b.peek(), Greater, Less) {
                 Less    => return self.a.next(),
@@ -628,8 +628,8 @@ impl<'self, T: TotalOrd> Iterator<&'self T> for SymDifference<'self, T> {
     }
 }
 
-impl<'self, T: TotalOrd> Iterator<&'self T> for Intersection<'self, T> {
-    fn next(&mut self) -> Option<&'self T> {
+impl<'a, T: TotalOrd> Iterator<&'a T> for Intersection<'a, T> {
+    fn next(&mut self) -> Option<&'a T> {
         loop {
             let o_cmp = match (self.a.peek(), self.b.peek()) {
                 (None    , _       ) => None,
@@ -646,8 +646,8 @@ impl<'self, T: TotalOrd> Iterator<&'self T> for Intersection<'self, T> {
     }
 }
 
-impl<'self, T: TotalOrd> Iterator<&'self T> for Union<'self, T> {
-    fn next(&mut self) -> Option<&'self T> {
+impl<'a, T: TotalOrd> Iterator<&'a T> for Union<'a, T> {
+    fn next(&mut self) -> Option<&'a T> {
         loop {
             match cmp_opt(self.a.peek(), self.b.peek(), Greater, Less) {
                 Less    => return self.a.next(),

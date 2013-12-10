@@ -239,7 +239,7 @@ impl Clean<Attribute> for ast::Attribute {
 }
 
 // This is a rough approximation that gets us what we want.
-impl<'self> attr::AttrMetaMethods for &'self Attribute {
+impl<'a> attr::AttrMetaMethods for &'a Attribute {
     fn name(&self) -> @str {
         match **self {
             Word(ref n) | List(ref n, _) | NameValue(ref n, _) =>

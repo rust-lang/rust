@@ -33,7 +33,7 @@ pub struct VisSpace(Option<ast::visibility>);
 /// space after it.
 pub struct PuritySpace(ast::purity);
 /// Wrapper struct for properly emitting a method declaration.
-pub struct Method<'self>(&'self clean::SelfTy, &'self clean::FnDecl);
+pub struct Method<'a>(&'a clean::SelfTy, &'a clean::FnDecl);
 
 impl fmt::Default for clean::Generics {
     fn fmt(g: &clean::Generics, f: &mut fmt::Formatter) {
@@ -393,8 +393,8 @@ impl fmt::Default for ~[clean::Argument] {
     }
 }
 
-impl<'self> fmt::Default for Method<'self> {
-    fn fmt(m: &Method<'self>, f: &mut fmt::Formatter) {
+impl<'a> fmt::Default for Method<'a> {
+    fn fmt(m: &Method<'a>, f: &mut fmt::Formatter) {
         let Method(selfty, d) = *m;
         let mut args = ~"";
         match *selfty {

@@ -56,7 +56,7 @@ pub trait ToBase64 {
     fn to_base64(&self, config: Config) -> ~str;
 }
 
-impl<'self> ToBase64 for &'self [u8] {
+impl<'a> ToBase64 for &'a [u8] {
     /**
      * Turn a vector of `u8` bytes into a base64 string.
      *
@@ -157,7 +157,7 @@ pub trait FromBase64 {
     fn from_base64(&self) -> Result<~[u8], ~str>;
 }
 
-impl<'self> FromBase64 for &'self str {
+impl<'a> FromBase64 for &'a str {
     /**
      * Convert any base64 encoded string (literal, `@`, `&`, or `~`)
      * to the byte values it encodes.

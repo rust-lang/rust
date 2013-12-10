@@ -30,7 +30,7 @@ use syntax::opt_vec;
 use syntax::visit;
 use syntax::visit::Visitor;
 
-type Context<'self> = (&'self method_map, &'self resolve::ExportMap2);
+type Context<'a> = (&'a method_map, &'a resolve::ExportMap2);
 
 /// A set of AST nodes exported by the crate.
 pub type ExportedItems = HashSet<ast::NodeId>;
@@ -143,9 +143,9 @@ impl Visitor<()> for ParentVisitor {
 /// The embargo visitor, used to determine the exports of the ast
 ////////////////////////////////////////////////////////////////////////////////
 
-struct EmbargoVisitor<'self> {
+struct EmbargoVisitor<'a> {
     tcx: ty::ctxt,
-    exp_map2: &'self resolve::ExportMap2,
+    exp_map2: &'a resolve::ExportMap2,
 
     // This flag is an indicator of whether the previous item in the
     // hierarchical chain was exported or not. This is the indicator of whether
@@ -167,7 +167,7 @@ struct EmbargoVisitor<'self> {
     reexports: HashSet<ast::NodeId>,
 }
 
-impl<'self> Visitor<()> for EmbargoVisitor<'self> {
+impl<'a> Visitor<()> for EmbargoVisitor<'a> {
     fn visit_item(&mut self, item: @ast::item, _: ()) {
         let orig_all_pub = self.prev_exported;
         match item.node {
@@ -308,12 +308,12 @@ impl<'self> Visitor<()> for EmbargoVisitor<'self> {
 /// The privacy visitor, where privacy checks take place (violations reported)
 ////////////////////////////////////////////////////////////////////////////////
 
-struct PrivacyVisitor<'self> {
+struct PrivacyVisitor<'a> {
     tcx: ty::ctxt,
     curitem: ast::NodeId,
     in_fn: bool,
     in_foreign: bool,
-    method_map: &'self method_map,
+    method_map: &'a method_map,
     parents: HashMap<ast::NodeId, ast::NodeId>,
     external_exports: resolve::ExternalExports,
     last_private_map: resolve::LastPrivateMap,
@@ -325,7 +325,7 @@ enum PrivacyResult {
     DisallowedBy(ast::NodeId),
 }
 
-impl<'self> PrivacyVisitor<'self> {
+impl<'a> PrivacyVisitor<'a> {
     // used when debugging
     fn nodestr(&self, id: ast::NodeId) -> ~str {
         ast_map::node_id_to_str(self.tcx.items, id, token::get_ident_interner())
@@ -601,7 +601,7 @@ impl<'self> PrivacyVisitor<'self> {
     }
 }
 
-impl<'self> Visitor<()> for PrivacyVisitor<'self> {
+impl<'a> Visitor<()> for PrivacyVisitor<'a> {
     fn visit_item(&mut self, item: @ast::item, _: ()) {
         // Do not check privacy inside items with the resolve_unexported
         // attribute. This is used for the test runner.

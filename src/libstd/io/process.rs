@@ -33,20 +33,20 @@ pub struct Process {
 
 /// This configuration describes how a new process should be spawned. This is
 /// translated to libuv's own configuration
-pub struct ProcessConfig<'self> {
+pub struct ProcessConfig<'a> {
     /// Path to the program to run
-    program: &'self str,
+    program: &'a str,
 
     /// Arguments to pass to the program (doesn't include the program itself)
-    args: &'self [~str],
+    args: &'a [~str],
 
     /// Optional environment to specify for the program. If this is None, then
     /// it will inherit the current process's environment.
-    env: Option<&'self [(~str, ~str)]>,
+    env: Option<&'a [(~str, ~str)]>,
 
     /// Optional working directory for the new process. If this is None, then
     /// the current directory of the running process is inherited.
-    cwd: Option<&'self str>,
+    cwd: Option<&'a str>,
 
     /// Any number of streams/file descriptors/pipes may be attached to this
     /// process. This list enumerates the file descriptors and such for the
@@ -58,7 +58,7 @@ pub struct ProcessConfig<'self> {
     ///     0 - stdin
     ///     1 - stdout
     ///     2 - stderr
-    io: &'self [StdioContainer]
+    io: &'a [StdioContainer]
 }
 
 /// Describes what to do with a standard io stream for a child process.

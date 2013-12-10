@@ -493,7 +493,7 @@ pub fn get_exprs_from_tts(cx: @ExtCtxt,
 // use a top-level managed pointer by some difficulties
 // with pushing and popping functionally, and the ownership
 // issues.  As a result, the values returned by the table
-// also need to be managed; the &'self ... type that Maps
+// also need to be managed; the &'a ... type that Maps
 // return won't work for things that need to get outside
 // of that managed pointer.  The easiest way to do this
 // is just to insist that the values in the tables are

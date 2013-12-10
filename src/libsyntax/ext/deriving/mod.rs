@@ -46,13 +46,13 @@ pub mod totalord;
 
 pub mod generic;
 
-pub type ExpandDerivingStructDefFn<'self> = 'self |@ExtCtxt,
+pub type ExpandDerivingStructDefFn<'a> = 'a |@ExtCtxt,
                                                    Span,
                                                    x: &struct_def,
                                                    Ident,
                                                    y: &Generics|
                                                    -> @item;
-pub type ExpandDerivingEnumDefFn<'self> = 'self |@ExtCtxt,
+pub type ExpandDerivingEnumDefFn<'a> = 'a |@ExtCtxt,
                                                  Span,
                                                  x: &enum_def,
                                                  Ident,

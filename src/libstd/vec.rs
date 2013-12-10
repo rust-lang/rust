@@ -219,16 +219,16 @@ pub fn build<A>(size: Option<uint>, builder: |push: |v: A||) -> ~[A] {
 
 /// An iterator over the slices of a vector separated by elements that
 /// match a predicate function.
-pub struct SplitIterator<'self, T> {
-    priv v: &'self [T],
+pub struct SplitIterator<'a, T> {
+    priv v: &'a [T],
     priv n: uint,
-    priv pred: 'self |t: &T| -> bool,
+    priv pred: 'a |t: &T| -> bool,
     priv finished: bool
 }
 
-impl<'self, T> Iterator<&'self [T]> for SplitIterator<'self, T> {
+impl<'a, T> Iterator<&'a [T]> for SplitIterator<'a, T> {
     #[inline]
-    fn next(&mut self) -> Option<&'self [T]> {
+    fn next(&mut self) -> Option<&'a [T]> {
         if self.finished { return None; }
 
         if self.n == 0 {
@@ -268,16 +268,16 @@ impl<'self, T> Iterator<&'self [T]> for SplitIterator<'self, T> {
 
 /// An iterator over the slices of a vector separated by elements that
 /// match a predicate function, from back to front.
-pub struct RSplitIterator<'self, T> {
-    priv v: &'self [T],
+pub struct RSplitIterator<'a, T> {
+    priv v: &'a [T],
     priv n: uint,
-    priv pred: 'self |t: &T| -> bool,
+    priv pred: 'a |t: &T| -> bool,
     priv finished: bool
 }
 
-impl<'self, T> Iterator<&'self [T]> for RSplitIterator<'self, T> {
+impl<'a, T> Iterator<&'a [T]> for RSplitIterator<'a, T> {
     #[inline]
-    fn next(&mut self) -> Option<&'self [T]> {
+    fn next(&mut self) -> Option<&'a [T]> {
         if self.finished { return None; }
 
         if self.n == 0 {
@@ -355,7 +355,7 @@ pub trait VectorVector<T> {
     fn connect_vec(&self, sep: &T) -> ~[T];
 }
 
-impl<'self, T: Clone, V: Vector<T>> VectorVector<T> for &'self [V] {
+impl<'a, T: Clone, V: Vector<T>> VectorVector<T> for &'a [V] {
     fn concat_vec(&self) -> ~[T] {
         let size = self.iter().fold(0u, |acc, v| acc + v.as_slice().len());
         let mut result = with_capacity(size);
@@ -503,14 +503,14 @@ impl<T: Clone> Iterator<~[T]> for Permutations<T> {
 /// An iterator over the (overlapping) slices of length `size` within
 /// a vector.
 #[deriving(Clone)]
-pub struct WindowIter<'self, T> {
-    priv v: &'self [T],
+pub struct WindowIter<'a, T> {
+    priv v: &'a [T],
     priv size: uint
 }
 
-impl<'self, T> Iterator<&'self [T]> for WindowIter<'self, T> {
+impl<'a, T> Iterator<&'a [T]> for WindowIter<'a, T> {
     #[inline]
-    fn next(&mut self) -> Option<&'self [T]> {
+    fn next(&mut self) -> Option<&'a [T]> {
         if self.size > self.v.len() {
             None
         } else {
@@ -537,14 +537,14 @@ impl<'self, T> Iterator<&'self [T]> for WindowIter<'self, T> {
 /// When the vector len is not evenly divided by the chunk size,
 /// the last slice of the iteration will be the remainder.
 #[deriving(Clone)]
-pub struct ChunkIter<'self, T> {
-    priv v: &'self [T],
+pub struct ChunkIter<'a, T> {
+    priv v: &'a [T],
     priv size: uint
 }
 
-impl<'self, T> Iterator<&'self [T]> for ChunkIter<'self, T> {
+impl<'a, T> Iterator<&'a [T]> for ChunkIter<'a, T> {
     #[inline]
-    fn next(&mut self) -> Option<&'self [T]> {
+    fn next(&mut self) -> Option<&'a [T]> {
         if self.v.len() == 0 {
             None
         } else {
@@ -568,9 +568,9 @@ impl<'self, T> Iterator<&'self [T]> for ChunkIter<'self, T> {
     }
 }
 
-impl<'self, T> DoubleEndedIterator<&'self [T]> for ChunkIter<'self, T> {
+impl<'a, T> DoubleEndedIterator<&'a [T]> for ChunkIter<'a, T> {
     #[inline]
-    fn next_back(&mut self) -> Option<&'self [T]> {
+    fn next_back(&mut self) -> Option<&'a [T]> {
         if self.v.len() == 0 {
             None
         } else {
@@ -584,14 +584,14 @@ impl<'self, T> DoubleEndedIterator<&'self [T]> for ChunkIter<'self, T> {
     }
 }
 
-impl<'self, T> RandomAccessIterator<&'self [T]> for ChunkIter<'self, T> {
+impl<'a, T> RandomAccessIterator<&'a [T]> for ChunkIter<'a, T> {
     #[inline]
     fn indexable(&self) -> uint {
         self.v.len()/self.size + if self.v.len() % self.size != 0 { 1 } else { 0 }
     }
 
     #[inline]
-    fn idx(&self, index: uint) -> Option<&'self [T]> {
+    fn idx(&self, index: uint) -> Option<&'a [T]> {
         if index < self.indexable() {
             let lo = index * self.size;
             let mut hi = lo + self.size;
@@ -616,12 +616,12 @@ pub mod traits {
     use iter::order;
     use ops::Add;
 
-    impl<'self,T:Eq> Eq for &'self [T] {
-        fn eq(&self, other: & &'self [T]) -> bool {
+    impl<'a,T:Eq> Eq for &'a [T] {
+        fn eq(&self, other: & &'a [T]) -> bool {
             self.len() == other.len() &&
                 order::eq(self.iter(), other.iter())
         }
-        fn ne(&self, other: & &'self [T]) -> bool {
+        fn ne(&self, other: & &'a [T]) -> bool {
             self.len() != other.len() ||
                 order::ne(self.iter(), other.iter())
         }
@@ -641,8 +641,8 @@ pub mod traits {
         fn ne(&self, other: &@[T]) -> bool { !self.eq(other) }
     }
 
-    impl<'self,T:TotalEq> TotalEq for &'self [T] {
-        fn equals(&self, other: & &'self [T]) -> bool {
+    impl<'a,T:TotalEq> TotalEq for &'a [T] {
+        fn equals(&self, other: & &'a [T]) -> bool {
             self.len() == other.len() &&
                 order::equals(self.iter(), other.iter())
         }
@@ -658,23 +658,23 @@ pub mod traits {
         fn equals(&self, other: &@[T]) -> bool { self.as_slice().equals(&other.as_slice()) }
     }
 
-    impl<'self,T:Eq, V: Vector<T>> Equiv<V> for &'self [T] {
+    impl<'a,T:Eq, V: Vector<T>> Equiv<V> for &'a [T] {
         #[inline]
         fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
     }
 
-    impl<'self,T:Eq, V: Vector<T>> Equiv<V> for ~[T] {
+    impl<'a,T:Eq, V: Vector<T>> Equiv<V> for ~[T] {
         #[inline]
         fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
     }
 
-    impl<'self,T:Eq, V: Vector<T>> Equiv<V> for @[T] {
+    impl<'a,T:Eq, V: Vector<T>> Equiv<V> for @[T] {
         #[inline]
         fn equiv(&self, other: &V) -> bool { self.as_slice() == other.as_slice() }
     }
 
-    impl<'self,T:TotalOrd> TotalOrd for &'self [T] {
-        fn cmp(&self, other: & &'self [T]) -> Ordering {
+    impl<'a,T:TotalOrd> TotalOrd for &'a [T] {
+        fn cmp(&self, other: & &'a [T]) -> Ordering {
             order::cmp(self.iter(), other.iter())
         }
     }
@@ -689,20 +689,20 @@ pub mod traits {
         fn cmp(&self, other: &@[T]) -> Ordering { self.as_slice().cmp(&other.as_slice()) }
     }
 
-    impl<'self, T: Eq + Ord> Ord for &'self [T] {
-        fn lt(&self, other: & &'self [T]) -> bool {
+    impl<'a, T: Eq + Ord> Ord for &'a [T] {
+        fn lt(&self, other: & &'a [T]) -> bool {
             order::lt(self.iter(), other.iter())
         }
         #[inline]
-        fn le(&self, other: & &'self [T]) -> bool {
+        fn le(&self, other: & &'a [T]) -> bool {
             order::le(self.iter(), other.iter())
         }
         #[inline]
-        fn ge(&self, other: & &'self [T]) -> bool {
+        fn ge(&self, other: & &'a [T]) -> bool {
             order::ge(self.iter(), other.iter())
         }
         #[inline]
-        fn gt(&self, other: & &'self [T]) -> bool {
+        fn gt(&self, other: & &'a [T]) -> bool {
             order::gt(self.iter(), other.iter())
         }
     }
@@ -729,7 +729,7 @@ pub mod traits {
         fn gt(&self, other: &@[T]) -> bool { self.as_slice() > other.as_slice() }
     }
 
-    impl<'self,T:Clone, V: Vector<T>> Add<V, ~[T]> for &'self [T] {
+    impl<'a,T:Clone, V: Vector<T>> Add<V, ~[T]> for &'a [T] {
         #[inline]
         fn add(&self, rhs: &V) -> ~[T] {
             let mut res = with_capacity(self.len() + rhs.as_slice().len());
@@ -756,7 +756,7 @@ pub trait Vector<T> {
     fn as_slice<'a>(&'a self) -> &'a [T];
 }
 
-impl<'self,T> Vector<T> for &'self [T] {
+impl<'a,T> Vector<T> for &'a [T] {
     #[inline(always)]
     fn as_slice<'a>(&'a self) -> &'a [T] { *self }
 }
@@ -771,7 +771,7 @@ impl<T> Vector<T> for @[T] {
     fn as_slice<'a>(&'a self) -> &'a [T] { let v: &'a [T] = *self; v }
 }
 
-impl<'self, T> Container for &'self [T] {
+impl<'a, T> Container for &'a [T] {
     /// Returns the length of a vector
     #[inline]
     fn len(&self) -> uint {
@@ -797,7 +797,7 @@ pub trait CopyableVector<T> {
 }
 
 /// Extension methods for vector slices
-impl<'self, T: Clone> CopyableVector<T> for &'self [T] {
+impl<'a, T: Clone> CopyableVector<T> for &'a [T] {
     /// Returns a copy of `v`.
     #[inline]
     fn to_owned(&self) -> ~[T] {
@@ -831,52 +831,52 @@ impl<T: Clone> CopyableVector<T> for @[T] {
 }
 
 /// Extension methods for vectors
-pub trait ImmutableVector<'self, T> {
+pub trait ImmutableVector<'a, T> {
     /**
      * Returns a slice of self between `start` and `end`.
      *
      * Fails when `start` or `end` point outside the bounds of self,
      * or when `start` > `end`.
      */
-    fn slice(&self, start: uint, end: uint) -> &'self [T];
+    fn slice(&self, start: uint, end: uint) -> &'a [T];
 
     /**
      * Returns a slice of self from `start` to the end of the vec.
      *
      * Fails when `start` points outside the bounds of self.
      */
-    fn slice_from(&self, start: uint) -> &'self [T];
+    fn slice_from(&self, start: uint) -> &'a [T];
 
     /**
      * Returns a slice of self from the start of the vec to `end`.
      *
      * Fails when `end` points outside the bounds of self.
      */
-    fn slice_to(&self, end: uint) -> &'self [T];
+    fn slice_to(&self, end: uint) -> &'a [T];
     /// Returns an iterator over the vector
-    fn iter(self) -> VecIterator<'self, T>;
+    fn iter(self) -> VecIterator<'a, T>;
     /// Returns a reversed iterator over a vector
-    fn rev_iter(self) -> RevIterator<'self, T>;
+    fn rev_iter(self) -> RevIterator<'a, T>;
     /// Returns an iterator over the subslices of the vector which are
     /// separated by elements that match `pred`.  The matched element
     /// is not contained in the subslices.
-    fn split(self, pred: 'self |&T| -> bool) -> SplitIterator<'self, T>;
+    fn split(self, pred: 'a |&T| -> bool) -> SplitIterator<'a, T>;
     /// Returns an iterator over the subslices of the vector which are
     /// separated by elements that match `pred`, limited to splitting
     /// at most `n` times.  The matched element is not contained in
     /// the subslices.
-    fn splitn(self, n: uint, pred: 'self |&T| -> bool) -> SplitIterator<'self, T>;
+    fn splitn(self, n: uint, pred: 'a |&T| -> bool) -> SplitIterator<'a, T>;
     /// Returns an iterator over the subslices of the vector which are
     /// separated by elements that match `pred`. This starts at the
     /// end of the vector and works backwards.  The matched element is
     /// not contained in the subslices.
-    fn rsplit(self, pred: 'self |&T| -> bool) -> RSplitIterator<'self, T>;
+    fn rsplit(self, pred: 'a |&T| -> bool) -> RSplitIterator<'a, T>;
     /// Returns an iterator over the subslices of the vector which are
     /// separated by elements that match `pred` limited to splitting
     /// at most `n` times. This starts at the end of the vector and
     /// works backwards.  The matched element is not contained in the
     /// subslices.
-    fn rsplitn(self,  n: uint, pred: 'self |&T| -> bool) -> RSplitIterator<'self, T>;
+    fn rsplitn(self,  n: uint, pred: 'a |&T| -> bool) -> RSplitIterator<'a, T>;
 
     /**
      * Returns an iterator over all contiguous windows of length
@@ -900,7 +900,7 @@ pub trait ImmutableVector<'self, T> {
      * ```
      *
      */
-    fn windows(self, size: uint) -> WindowIter<'self, T>;
+    fn windows(self, size: uint) -> WindowIter<'a, T>;
     /**
      *
      * Returns an iterator over `size` elements of the vector at a
@@ -925,27 +925,27 @@ pub trait ImmutableVector<'self, T> {
      * ```
      *
      */
-    fn chunks(self, size: uint) -> ChunkIter<'self, T>;
+    fn chunks(self, size: uint) -> ChunkIter<'a, T>;
 
     /// Returns the element of a vector at the given index, or `None` if the
     /// index is out of bounds
-    fn get_opt(&self, index: uint) -> Option<&'self T>;
+    fn get_opt(&self, index: uint) -> Option<&'a T>;
     /// Returns the first element of a vector, failing if the vector is empty.
-    fn head(&self) -> &'self T;
+    fn head(&self) -> &'a T;
     /// Returns the first element of a vector, or `None` if it is empty
-    fn head_opt(&self) -> Option<&'self T>;
+    fn head_opt(&self) -> Option<&'a T>;
     /// Returns all but the first element of a vector
-    fn tail(&self) -> &'self [T];
+    fn tail(&self) -> &'a [T];
     /// Returns all but the first `n' elements of a vector
-    fn tailn(&self, n: uint) -> &'self [T];
+    fn tailn(&self, n: uint) -> &'a [T];
     /// Returns all but the last element of a vector
-    fn init(&self) -> &'self [T];
+    fn init(&self) -> &'a [T];
     /// Returns all but the last `n' elemnts of a vector
-    fn initn(&self, n: uint) -> &'self [T];
+    fn initn(&self, n: uint) -> &'a [T];
     /// Returns the last element of a vector, failing if the vector is empty.
-    fn last(&self) -> &'self T;
+    fn last(&self) -> &'a T;
     /// Returns the last element of a vector, or `None` if it is empty.
-    fn last_opt(&self) -> Option<&'self T>;
+    fn last_opt(&self) -> Option<&'a T>;
     /**
      * Apply a function to each element of a vector and return a concatenation
      * of each result vector
@@ -995,7 +995,7 @@ pub trait ImmutableVector<'self, T> {
      *
      * Fails if slice is empty.
      */
-    fn shift_ref(&mut self) -> &'self T;
+    fn shift_ref(&mut self) -> &'a T;
 
     /**
      * Returns a mutable reference to the last element in this slice
@@ -1012,12 +1012,12 @@ pub trait ImmutableVector<'self, T> {
      *
      * Fails if slice is empty.
      */
-    fn pop_ref(&mut self) -> &'self T;
+    fn pop_ref(&mut self) -> &'a T;
 }
 
-impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
+impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
     #[inline]
-    fn slice(&self, start: uint, end: uint) -> &'self [T] {
+    fn slice(&self, start: uint, end: uint) -> &'a [T] {
         assert!(start <= end);
         assert!(end <= self.len());
         self.as_imm_buf(|p, _len| {
@@ -1031,17 +1031,17 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     }
 
     #[inline]
-    fn slice_from(&self, start: uint) -> &'self [T] {
+    fn slice_from(&self, start: uint) -> &'a [T] {
         self.slice(start, self.len())
     }
 
     #[inline]
-    fn slice_to(&self, end: uint) -> &'self [T] {
+    fn slice_to(&self, end: uint) -> &'a [T] {
         self.slice(0, end)
     }
 
     #[inline]
-    fn iter(self) -> VecIterator<'self, T> {
+    fn iter(self) -> VecIterator<'a, T> {
         unsafe {
             let p = vec::raw::to_ptr(self);
             if mem::size_of::<T>() == 0 {
@@ -1057,17 +1057,17 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     }
 
     #[inline]
-    fn rev_iter(self) -> RevIterator<'self, T> {
+    fn rev_iter(self) -> RevIterator<'a, T> {
         self.iter().invert()
     }
 
     #[inline]
-    fn split(self, pred: 'self |&T| -> bool) -> SplitIterator<'self, T> {
+    fn split(self, pred: 'a |&T| -> bool) -> SplitIterator<'a, T> {
         self.splitn(uint::max_value, pred)
     }
 
     #[inline]
-    fn splitn(self, n: uint, pred: 'self |&T| -> bool) -> SplitIterator<'self, T> {
+    fn splitn(self, n: uint, pred: 'a |&T| -> bool) -> SplitIterator<'a, T> {
         SplitIterator {
             v: self,
             n: n,
@@ -1077,12 +1077,12 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     }
 
     #[inline]
-    fn rsplit(self, pred: 'self |&T| -> bool) -> RSplitIterator<'self, T> {
+    fn rsplit(self, pred: 'a |&T| -> bool) -> RSplitIterator<'a, T> {
         self.rsplitn(uint::max_value, pred)
     }
 
     #[inline]
-    fn rsplitn(self, n: uint, pred: 'self |&T| -> bool) -> RSplitIterator<'self, T> {
+    fn rsplitn(self, n: uint, pred: 'a |&T| -> bool) -> RSplitIterator<'a, T> {
         RSplitIterator {
             v: self,
             n: n,
@@ -1092,57 +1092,57 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
     }
 
     #[inline]
-    fn windows(self, size: uint) -> WindowIter<'self, T> {
+    fn windows(self, size: uint) -> WindowIter<'a, T> {
         assert!(size != 0);
         WindowIter { v: self, size: size }
     }
 
     #[inline]
-    fn chunks(self, size: uint) -> ChunkIter<'self, T> {
+    fn chunks(self, size: uint) -> ChunkIter<'a, T> {
         assert!(size != 0);
         ChunkIter { v: self, size: size }
     }
 
     #[inline]
-    fn get_opt(&self, index: uint) -> Option<&'self T> {
+    fn get_opt(&self, index: uint) -> Option<&'a T> {
         if index < self.len() { Some(&self[index]) } else { None }
     }
 
     #[inline]
-    fn head(&self) -> &'self T {
+    fn head(&self) -> &'a T {
         if self.len() == 0 { fail!("head: empty vector") }
         &self[0]
     }
 
     #[inline]
-    fn head_opt(&self) -> Option<&'self T> {
+    fn head_opt(&self) -> Option<&'a T> {
         if self.len() == 0 { None } else { Some(&self[0]) }
     }
 
     #[inline]
-    fn tail(&self) -> &'self [T] { self.slice(1, self.len()) }
+    fn tail(&self) -> &'a [T] { self.slice(1, self.len()) }
 
     #[inline]
-    fn tailn(&self, n: uint) -> &'self [T] { self.slice(n, self.len()) }
+    fn tailn(&self, n: uint) -> &'a [T] { self.slice(n, self.len()) }
 
     #[inline]
-    fn init(&self) -> &'self [T] {
+    fn init(&self) -> &'a [T] {
         self.slice(0, self.len() - 1)
     }
 
     #[inline]
-    fn initn(&self, n: uint) -> &'self [T] {
+    fn initn(&self, n: uint) -> &'a [T] {
         self.slice(0, self.len() - n)
     }
 
     #[inline]
-    fn last(&self) -> &'self T {
+    fn last(&self) -> &'a T {
         if self.len() == 0 { fail!("last: empty vector") }
         &self[self.len() - 1]
     }
 
     #[inline]
-    fn last_opt(&self) -> Option<&'self T> {
+    fn last_opt(&self) -> Option<&'a T> {
             if self.len() == 0 { None } else { Some(&self[self.len() - 1]) }
     }
 
@@ -1185,14 +1185,14 @@ impl<'self,T> ImmutableVector<'self, T> for &'self [T] {
         f(s.data, s.len)
     }
 
-    fn shift_ref(&mut self) -> &'self T {
+    fn shift_ref(&mut self) -> &'a T {
         unsafe {
             let s: &mut Slice<T> = cast::transmute(self);
             &*raw::shift_ptr(s)
         }
     }
 
-    fn pop_ref(&mut self) -> &'self T {
+    fn pop_ref(&mut self) -> &'a T {
         unsafe {
             let s: &mut Slice<T> = cast::transmute(self);
             &*raw::pop_ptr(s)
@@ -1218,7 +1218,7 @@ pub trait ImmutableEqVector<T:Eq> {
     fn ends_with(&self, needle: &[T]) -> bool;
 }
 
-impl<'self,T:Eq> ImmutableEqVector<T> for &'self [T] {
+impl<'a,T:Eq> ImmutableEqVector<T> for &'a [T] {
     #[inline]
     fn position_elem(&self, x: &T) -> Option<uint> {
         self.iter().position(|y| *x == *y)
@@ -1257,7 +1257,7 @@ pub trait ImmutableTotalOrdVector<T: TotalOrd> {
     fn bsearch_elem(&self, x: &T) -> Option<uint>;
 }
 
-impl<'self, T: TotalOrd> ImmutableTotalOrdVector<T> for &'self [T] {
+impl<'a, T: TotalOrd> ImmutableTotalOrdVector<T> for &'a [T] {
     fn bsearch_elem(&self, x: &T) -> Option<uint> {
         self.bsearch(|p| p.cmp(x))
     }
@@ -1278,7 +1278,7 @@ pub trait ImmutableCopyableVector<T> {
     fn permutations(self) -> Permutations<T>;
 }
 
-impl<'self,T:Clone> ImmutableCopyableVector<T> for &'self [T] {
+impl<'a,T:Clone> ImmutableCopyableVector<T> for &'a [T] {
     #[inline]
     fn partitioned(&self, f: |&T| -> bool) -> (~[T], ~[T]) {
         let mut lefts  = ~[];
@@ -1913,34 +1913,34 @@ impl<T:Eq> OwnedEqVector<T> for ~[T] {
 
 /// Extension methods for vectors such that their elements are
 /// mutable.
-pub trait MutableVector<'self, T> {
+pub trait MutableVector<'a, T> {
     /// Return a slice that points into another slice.
-    fn mut_slice(self, start: uint, end: uint) -> &'self mut [T];
+    fn mut_slice(self, start: uint, end: uint) -> &'a mut [T];
 
     /**
      * Returns a slice of self from `start` to the end of the vec.
      *
      * Fails when `start` points outside the bounds of self.
      */
-    fn mut_slice_from(self, start: uint) -> &'self mut [T];
+    fn mut_slice_from(self, start: uint) -> &'a mut [T];
 
     /**
      * Returns a slice of self from the start of the vec to `end`.
      *
      * Fails when `end` points outside the bounds of self.
      */
-    fn mut_slice_to(self, end: uint) -> &'self mut [T];
+    fn mut_slice_to(self, end: uint) -> &'a mut [T];
 
     /// Returns an iterator that allows modifying each value
-    fn mut_iter(self) -> VecMutIterator<'self, T>;
+    fn mut_iter(self) -> VecMutIterator<'a, T>;
 
     /// Returns a reversed iterator that allows modifying each value
-    fn mut_rev_iter(self) -> MutRevIterator<'self, T>;
+    fn mut_rev_iter(self) -> MutRevIterator<'a, T>;
 
     /// Returns an iterator over the mutable subslices of the vector
     /// which are separated by elements that match `pred`.  The
     /// matched element is not contained in the subslices.
-    fn mut_split(self, pred: 'self |&T| -> bool) -> MutSplitIterator<'self, T>;
+    fn mut_split(self, pred: 'a |&T| -> bool) -> MutSplitIterator<'a, T>;
 
     /**
      * Returns an iterator over `size` elements of the vector at a time.
@@ -1952,7 +1952,7 @@ pub trait MutableVector<'self, T> {
      *
      * Fails if `size` is 0.
      */
-    fn mut_chunks(self, chunk_size: uint) -> MutChunkIter<'self, T>;
+    fn mut_chunks(self, chunk_size: uint) -> MutChunkIter<'a, T>;
 
     /**
      * Returns a mutable reference to the first element in this slice
@@ -1969,7 +1969,7 @@ pub trait MutableVector<'self, T> {
      *
      * Fails if slice is empty.
      */
-    fn mut_shift_ref(&mut self) -> &'self mut T;
+    fn mut_shift_ref(&mut self) -> &'a mut T;
 
     /**
      * Returns a mutable reference to the last element in this slice
@@ -1986,7 +1986,7 @@ pub trait MutableVector<'self, T> {
      *
      * Fails if slice is empty.
      */
-    fn mut_pop_ref(&mut self) -> &'self mut T;
+    fn mut_pop_ref(&mut self) -> &'a mut T;
 
     /**
      * Swaps two elements in a vector
@@ -2004,8 +2004,8 @@ pub trait MutableVector<'self, T> {
      * itself) and the second will contain all indices from
      * `mid..len` (excluding the index `len` itself).
      */
-    fn mut_split_at(self, mid: uint) -> (&'self mut [T],
-                                      &'self mut [T]);
+    fn mut_split_at(self, mid: uint) -> (&'a mut [T],
+                                      &'a mut [T]);
 
     /// Reverse the order of elements in a vector, in place
     fn reverse(self);
@@ -2034,9 +2034,9 @@ pub trait MutableVector<'self, T> {
     fn as_mut_buf<U>(self, f: |*mut T, uint| -> U) -> U;
 }
 
-impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
+impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
     #[inline]
-    fn mut_slice(self, start: uint, end: uint) -> &'self mut [T] {
+    fn mut_slice(self, start: uint, end: uint) -> &'a mut [T] {
         assert!(start <= end);
         assert!(end <= self.len());
         self.as_mut_buf(|p, _len| {
@@ -2050,27 +2050,27 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
     }
 
     #[inline]
-    fn mut_slice_from(self, start: uint) -> &'self mut [T] {
+    fn mut_slice_from(self, start: uint) -> &'a mut [T] {
         let len = self.len();
         self.mut_slice(start, len)
     }
 
     #[inline]
-    fn mut_slice_to(self, end: uint) -> &'self mut [T] {
+    fn mut_slice_to(self, end: uint) -> &'a mut [T] {
         self.mut_slice(0, end)
     }
 
     #[inline]
-    fn mut_split_at(self, mid: uint) -> (&'self mut [T], &'self mut [T]) {
+    fn mut_split_at(self, mid: uint) -> (&'a mut [T], &'a mut [T]) {
         unsafe {
             let len = self.len();
-            let self2: &'self mut [T] = cast::transmute_copy(&self);
+            let self2: &'a mut [T] = cast::transmute_copy(&self);
             (self.mut_slice(0, mid), self2.mut_slice(mid, len))
         }
     }
 
     #[inline]
-    fn mut_iter(self) -> VecMutIterator<'self, T> {
+    fn mut_iter(self) -> VecMutIterator<'a, T> {
         unsafe {
             let p = vec::raw::to_mut_ptr(self);
             if mem::size_of::<T>() == 0 {
@@ -2086,30 +2086,30 @@ impl<'self,T> MutableVector<'self, T> for &'self mut [T] {
     }
 
     #[inline]
-    fn mut_rev_iter(self) -> MutRevIterator<'self, T> {
+    fn mut_rev_iter(self) -> MutRevIterator<'a, T> {
         self.mut_iter().invert()
     }
 
     #[inline]
-    fn mut_split(self, pred: 'self |&T| -> bool) -> MutSplitIterator<'self, T> {
+    fn mut_split(self, pred: 'a |&T| -> bool) -> MutSplitIterator<'a, T> {
         MutSplitIterator { v: self, pred: pred, finished: false }
     }
 
     #[inline]
-    fn mut_chunks(self, chunk_size: uint) -> MutChunkIter<'self, T> {
+    fn mut_chunks(self, chunk_size: uint) -> MutChunkIter<'a, T> {
         assert!(chunk_size > 0);
         let len = self.len();
         MutChunkIter { v: self, chunk_size: chunk_size, remaining: len }
     }
 
-    fn mut_shift_ref(&mut self) -> &'self mut T {
+    fn mut_shift_ref(&mut self) -> &'a mut T {
         unsafe {
             let s: &mut Slice<T> = cast::transmute(self);
             cast::transmute_mut(&*raw::shift_ptr(s))
         }
     }
 
-    fn mut_pop_ref(&mut self) -> &'self mut T {
+    fn mut_pop_ref(&mut self) -> &'a mut T {
         unsafe {
             let s: &mut Slice<T> = cast::transmute(self);
             cast::transmute_mut(&*raw::pop_ptr(s))
@@ -2167,7 +2167,7 @@ pub trait MutableCloneableVector<T> {
     fn copy_from(self, &[T]) -> uint;
 }
 
-impl<'self, T:Clone> MutableCloneableVector<T> for &'self mut [T] {
+impl<'a, T:Clone> MutableCloneableVector<T> for &'a mut [T] {
     #[inline]
     fn copy_from(self, src: &[T]) -> uint {
         for (a, b) in self.mut_iter().zip(src.iter()) {
@@ -2368,7 +2368,7 @@ pub mod bytes {
         fn set_memory(self, value: u8);
     }
 
-    impl<'self> MutableByteVector for &'self mut [u8] {
+    impl<'a> MutableByteVector for &'a mut [u8] {
         #[inline]
         fn set_memory(self, value: u8) {
             self.as_mut_buf(|p, len| {
@@ -2483,8 +2483,8 @@ impl<A: DeepClone> DeepClone for ~[A] {
 }
 
 // This works because every lifetime is a sub-lifetime of 'static
-impl<'self, A> Default for &'self [A] {
-    fn default() -> &'self [A] { &'self [] }
+impl<'a, A> Default for &'a [A] {
+    fn default() -> &'a [A] { &'a [] }
 }
 
 impl<A> Default for ~[A] {
@@ -2498,13 +2498,13 @@ impl<A> Default for @[A] {
 macro_rules! iterator {
     (struct $name:ident -> $ptr:ty, $elem:ty) => {
         /// An iterator for iterating over a vector.
-        pub struct $name<'self, T> {
+        pub struct $name<'a, T> {
             priv ptr: $ptr,
             priv end: $ptr,
             priv lifetime: Option<$elem> // FIXME: #5922
         }
 
-        impl<'self, T> Iterator<$elem> for $name<'self, T> {
+        impl<'a, T> Iterator<$elem> for $name<'a, T> {
             #[inline]
             fn next(&mut self) -> Option<$elem> {
                 // could be implemented with slices, but this avoids bounds checks
@@ -2535,7 +2535,7 @@ macro_rules! iterator {
             }
         }
 
-        impl<'self, T> DoubleEndedIterator<$elem> for $name<'self, T> {
+        impl<'a, T> DoubleEndedIterator<$elem> for $name<'a, T> {
             #[inline]
             fn next_back(&mut self) -> Option<$elem> {
                 // could be implemented with slices, but this avoids bounds checks
@@ -2557,7 +2557,7 @@ macro_rules! iterator {
     }
 }
 
-impl<'self, T> RandomAccessIterator<&'self T> for VecIterator<'self, T> {
+impl<'a, T> RandomAccessIterator<&'a T> for VecIterator<'a, T> {
     #[inline]
     fn indexable(&self) -> uint {
         let (exact, _) = self.size_hint();
@@ -2565,7 +2565,7 @@ impl<'self, T> RandomAccessIterator<&'self T> for VecIterator<'self, T> {
     }
 
     #[inline]
-    fn idx(&self, index: uint) -> Option<&'self T> {
+    fn idx(&self, index: uint) -> Option<&'a T> {
         unsafe {
             if index < self.indexable() {
                 cast::transmute(self.ptr.offset(index as int))
@@ -2576,30 +2576,30 @@ impl<'self, T> RandomAccessIterator<&'self T> for VecIterator<'self, T> {
     }
 }
 
-iterator!{struct VecIterator -> *T, &'self T}
-pub type RevIterator<'self, T> = Invert<VecIterator<'self, T>>;
+iterator!{struct VecIterator -> *T, &'a T}
+pub type RevIterator<'a, T> = Invert<VecIterator<'a, T>>;
 
-impl<'self, T> ExactSize<&'self T> for VecIterator<'self, T> {}
-impl<'self, T> ExactSize<&'self mut T> for VecMutIterator<'self, T> {}
+impl<'a, T> ExactSize<&'a T> for VecIterator<'a, T> {}
+impl<'a, T> ExactSize<&'a mut T> for VecMutIterator<'a, T> {}
 
-impl<'self, T> Clone for VecIterator<'self, T> {
-    fn clone(&self) -> VecIterator<'self, T> { *self }
+impl<'a, T> Clone for VecIterator<'a, T> {
+    fn clone(&self) -> VecIterator<'a, T> { *self }
 }
 
-iterator!{struct VecMutIterator -> *mut T, &'self mut T}
-pub type MutRevIterator<'self, T> = Invert<VecMutIterator<'self, T>>;
+iterator!{struct VecMutIterator -> *mut T, &'a mut T}
+pub type MutRevIterator<'a, T> = Invert<VecMutIterator<'a, T>>;
 
 /// An iterator over the subslices of the vector which are separated
 /// by elements that match `pred`.
-pub struct MutSplitIterator<'self, T> {
-    priv v: &'self mut [T],
-    priv pred: 'self |t: &T| -> bool,
+pub struct MutSplitIterator<'a, T> {
+    priv v: &'a mut [T],
+    priv pred: 'a |t: &T| -> bool,
     priv finished: bool
 }
 
-impl<'self, T> Iterator<&'self mut [T]> for MutSplitIterator<'self, T> {
+impl<'a, T> Iterator<&'a mut [T]> for MutSplitIterator<'a, T> {
     #[inline]
-    fn next(&mut self) -> Option<&'self mut [T]> {
+    fn next(&mut self) -> Option<&'a mut [T]> {
         if self.finished { return None; }
 
         match self.v.iter().position(|x| (self.pred)(x)) {
@@ -2632,9 +2632,9 @@ impl<'self, T> Iterator<&'self mut [T]> for MutSplitIterator<'self, T> {
     }
 }
 
-impl<'self, T> DoubleEndedIterator<&'self mut [T]> for MutSplitIterator<'self, T> {
+impl<'a, T> DoubleEndedIterator<&'a mut [T]> for MutSplitIterator<'a, T> {
     #[inline]
-    fn next_back(&mut self) -> Option<&'self mut [T]> {
+    fn next_back(&mut self) -> Option<&'a mut [T]> {
         if self.finished { return None; }
 
         match self.v.iter().rposition(|x| (self.pred)(x)) {
@@ -2659,15 +2659,15 @@ impl<'self, T> DoubleEndedIterator<&'self mut [T]> for MutSplitIterator<'self, T
 /// An iterator over a vector in (non-overlapping) mutable chunks (`size`  elements at a time). When
 /// the vector len is not evenly divided by the chunk size, the last slice of the iteration will be
 /// the remainder.
-pub struct MutChunkIter<'self, T> {
-    priv v: &'self mut [T],
+pub struct MutChunkIter<'a, T> {
+    priv v: &'a mut [T],
     priv chunk_size: uint,
     priv remaining: uint
 }
 
-impl<'self, T> Iterator<&'self mut [T]> for MutChunkIter<'self, T> {
+impl<'a, T> Iterator<&'a mut [T]> for MutChunkIter<'a, T> {
     #[inline]
-    fn next(&mut self) -> Option<&'self mut [T]> {
+    fn next(&mut self) -> Option<&'a mut [T]> {
         if self.remaining == 0 {
             None
         } else {
@@ -2692,9 +2692,9 @@ impl<'self, T> Iterator<&'self mut [T]> for MutChunkIter<'self, T> {
     }
 }
 
-impl<'self, T> DoubleEndedIterator<&'self mut [T]> for MutChunkIter<'self, T> {
+impl<'a, T> DoubleEndedIterator<&'a mut [T]> for MutChunkIter<'a, T> {
     #[inline]
-    fn next_back(&mut self) -> Option<&'self mut [T]> {
+    fn next_back(&mut self) -> Option<&'a mut [T]> {
         if self.remaining == 0 {
             None
         } else {

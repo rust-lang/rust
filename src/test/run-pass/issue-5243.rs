@@ -12,8 +12,8 @@
 // enough for trans to consider this as non-monomorphic,
 // which led to various assertions and failures in turn.
 
-struct S<'self> {
-    v: &'self int
+struct S<'a> {
+    v: &'a int
 }
 
 fn f<'lt>(_s: &'lt S<'lt>) {}

@@ -292,7 +292,7 @@ impl<D:Decoder> Decodable<D> for i64 {
     }
 }
 
-impl<'self, S:Encoder> Encodable<S> for &'self str {
+impl<'a, S:Encoder> Encodable<S> for &'a str {
     fn encode(&self, s: &mut S) {
         s.emit_str(*self)
     }
@@ -382,7 +382,7 @@ impl<D:Decoder> Decodable<D> for () {
     }
 }
 
-impl<'self, S:Encoder,T:Encodable<S>> Encodable<S> for &'self T {
+impl<'a, S:Encoder,T:Encodable<S>> Encodable<S> for &'a T {
     fn encode(&self, s: &mut S) {
         (**self).encode(s)
     }
@@ -438,7 +438,7 @@ impl<D:Decoder,T:Decodable<D> + 'static> Decodable<D> for @mut T {
     }
 }
 
-impl<'self, S:Encoder,T:Encodable<S>> Encodable<S> for &'self [T] {
+impl<'a, S:Encoder,T:Encodable<S>> Encodable<S> for &'a [T] {
     fn encode(&self, s: &mut S) {
         s.emit_seq(self.len(), |s| {
             for (i, e) in self.iter().enumerate() {

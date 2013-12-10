@@ -102,13 +102,13 @@ pub enum PathParsingMode {
     /// A path with no type parameters; e.g. `foo::bar::Baz`
     NoTypesAllowed,
     /// A path with a lifetime and type parameters, with no double colons
-    /// before the type parameters; e.g. `foo::bar<'self>::Baz<T>`
+    /// before the type parameters; e.g. `foo::bar<'a>::Baz<T>`
     LifetimeAndTypesWithoutColons,
     /// A path with a lifetime and type parameters with double colons before
-    /// the type parameters; e.g. `foo::bar::<'self>::Baz::<T>`
+    /// the type parameters; e.g. `foo::bar::<'a>::Baz::<T>`
     LifetimeAndTypesWithColons,
     /// A path with a lifetime and type parameters with bounds before the last
-    /// set of type parameters only; e.g. `foo::bar<'self>::Baz:X+Y<T>` This
+    /// set of type parameters only; e.g. `foo::bar<'a>::Baz:X+Y<T>` This
     /// form does not use extra double colons.
     LifetimeAndTypesAndBounds,
 }
