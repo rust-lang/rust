@@ -1364,6 +1364,9 @@ impl<'self> Visitor<()> for Context<'self> {
             visit::walk_variant(cx, v, g, ());
         })
     }
+
+    // FIXME(#10894) should continue recursing
+    fn visit_ty(&mut self, _t: &ast::Ty, _: ()) {}
 }
 
 impl<'self> IdVisitingOperation for Context<'self> {
