@@ -2868,11 +2868,20 @@ tail value of `@Nil`. The second pattern matches _any_ list constructed with `Co
 ignoring the values of its arguments. The difference between `_` and `*` is that the pattern `C(_)` is only type-correct if
 `C` has exactly one argument, while the pattern `C(..)` is type-correct for any enum variant `C`, regardless of how many arguments `C` has.
 
-To execute an `match` expression, first the head expression is evaluated, then
-its value is sequentially compared to the patterns in the arms until a match
+A `match` behaves differently depending on whether or not the head expression
+is an [lvalue or an rvalue](#lvalues-rvalues-and-temporaries).
+If the head expression is an rvalue, it is
+first evaluated into a temporary location, and the resulting value
+is sequentially compared to the patterns in the arms until a match
 is found. The first arm with a matching pattern is chosen as the branch target
 of the `match`, any variables bound by the pattern are assigned to local
 variables in the arm's block, and control enters the block.
+
+When the head expression is an lvalue, the match does not allocate a
+temporary location (however, a by-value binding may copy or move from
+the lvalue).  When possible, it is preferable to match on lvalues, as the
+lifetime of these matches inherits the lifetime of the lvalue, rather
+than being restricted to the inside of the match.
 
 An example of an `match` expression:
 
@@ -2906,6 +2915,15 @@ default to binding to a copy or move of the matched value
 This can be changed to bind to a borrowed pointer by
 using the ```ref``` keyword,
 or to a mutable borrowed pointer using ```ref mut```.
+
+Patterns can also dereference pointers by using the ``&``,
+``~`` or ``@`` symbols, as appropriate.  For example, these two matches
+on ``x: &int`` are equivalent:
+
+~~~~
+match *x { 0 => "zero", _ => "some" }
+match x { &0 => "zero", _ => "some" }
+~~~~
 
 A pattern that's just an identifier,
 like `Nil` in the previous answer,
