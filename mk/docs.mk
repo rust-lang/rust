@@ -74,6 +74,13 @@ doc/rustpkg.html: rustpkg.md doc/version_info.html doc/rust.css \
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
 
+DOCS += doc/rustdoc.html
+doc/rustdoc.html: rustdoc.md doc/version_info.html doc/rust.css \
+				doc/favicon.inc
+	@$(call E, pandoc: $@)
+	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
+	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
+
 DOCS += doc/tutorial.html
 doc/tutorial.html: tutorial.md doc/version_info.html doc/rust.css \
 				doc/favicon.inc
