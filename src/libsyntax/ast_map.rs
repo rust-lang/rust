@@ -86,7 +86,7 @@ pub fn impl_pretty_name(trait_ref: &Option<trait_ref>,
                         ty: &Ty, default: Ident) -> path_elt {
     let itr = get_ident_interner();
     let ty_ident = match ty.node {
-        ty_path(ref path, _, _) => path.segments.last().identifier,
+        ty_path(_, ref path, _, _) => path.segments.last().identifier,
         _ => default
     };
     let hash = (trait_ref, ty).hash();

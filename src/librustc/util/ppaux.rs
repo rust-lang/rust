@@ -471,7 +471,7 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       }
       ty_infer(infer_ty) => infer_ty.to_str(),
       ty_err => ~"[type error]",
-      ty_param(param_ty {idx: id, def_id: did}) => {
+      ty_param(expand, param_ty {idx: id, def_id: did}) => {
           let param_def = cx.ty_param_defs.find(&did.node);
           let ident = match param_def {
               Some(def) => {
@@ -482,7 +482,8 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
                   format!("BUG[{:?}]", id)
               }
           };
-          if !cx.sess.verbose() { ident } else { format!("{}:{:?}", ident, did) }
+          let s = if !cx.sess.verbose() { ident } else { format!("{}:{:?}", ident, did) };
+          if expand { ".." + s } else { s }
       }
       ty_self(..) => ~"Self",
       ty_enum(did, ref substs) | ty_struct(did, ref substs) => {

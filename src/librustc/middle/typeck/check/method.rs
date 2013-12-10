@@ -321,7 +321,7 @@ impl<'self> LookupContext<'self> {
         let mut self_ty = self_ty;
         loop {
             match get(self_ty).sty {
-                ty_param(p) => {
+                ty_param(_, p) => {
                     self.push_inherent_candidates_from_param(self_ty, p);
                 }
                 ty_self(..) => {

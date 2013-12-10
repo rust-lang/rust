@@ -11,7 +11,7 @@
 // Generalized type folding mechanism.
 
 use middle::ty;
-use util::ppaux::Repr;
+use util::ppaux::{Repr, ty_to_str};
 
 pub trait TypeFolder {
     fn tcx(&self) -> ty::ctxt;
@@ -87,7 +87,24 @@ pub fn fold_opt_ty<T:TypeFolder>(this: &mut T,
 pub fn fold_ty_vec<T:TypeFolder>(this: &mut T,
                                  tys: &[ty::t])
                                  -> ~[ty::t] {
-    tys.map(|t| this.fold_ty(*t))
+    tys.flat_map(|&t| {
+        let folded = this.fold_ty(t);
+
+        match ty::get(t).sty {
+            ty::ty_param(true, _) => {
+                match ty::get(folded).sty {
+                    ty::ty_nil => ~[], // FIXME #10784 DRY.
+                    ty::ty_tup(ref fields) => fields.clone(),
+                    _ => {
+                        this.tcx().sess.err(format!("cannot expand non-tuple type `{}`",
+                                                    ty_to_str(this.tcx(), t)));
+                        ~[]
+                    }
+                }
+            }
+            _ => ~[folded]
+        }
+    })
 }
 
 pub fn super_fold_ty<T:TypeFolder>(this: &mut T,

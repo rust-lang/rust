@@ -1172,13 +1172,15 @@ impl Parser {
         }
     }
 
-    // parse a type.
-    // Useless second parameter for compatibility with quasiquote macros.
-    // Bleh!
-    pub fn parse_ty(&self, _: bool) -> P<Ty> {
+    // parse a type, optionally expanding within a list of types
+    pub fn parse_ty_maybe_expand(&self, can_expand: bool) -> P<Ty> {
         maybe_whole!(no_clone self, nt_ty);
 
         let lo = self.span.lo;
+
+        let expand = can_expand && self.eat(&token::DOTDOT);
+
+        let lo_inner = self.span.lo;
 
         let t = if *self.token == token::LPAREN {
             self.bump();
@@ -1189,26 +1191,30 @@ impl Parser {
                 // (t) is a parenthesized ty
                 // (t,) is the type of a tuple with only one field,
                 // of type t
-                let mut ts = ~[self.parse_ty(false)];
+                let mut ts = ~[self.parse_ty_maybe_expand(true)];
                 let mut one_tuple = false;
                 while *self.token == token::COMMA {
                     self.bump();
                     if *self.token != token::RPAREN {
-                        ts.push(self.parse_ty(false));
+                        ts.push(self.parse_ty_maybe_expand(true));
                     }
                     else {
                         one_tuple = true;
                     }
                 }
+                self.expect(&token::RPAREN);
 
                 if ts.len() == 1 && !one_tuple {
-                    self.expect(&token::RPAREN);
-                    return ts[0]
+                    match ts[0].node {
+                        ty_tup(true, _) | ty_path(true, _, _, _) => {
+                            ty_tup(false, ts) /* (..T) */
+                        }
+                        _ => { ts[0].node.clone() }
+                    }
+                } else {
+                    ty_tup(false, ts)
                 }
 
-                let t = ty_tup(ts);
-                self.expect(&token::RPAREN);
-                t
             }
         } else if *self.token == token::AT {
             // MANAGED POINTER
@@ -1273,13 +1279,34 @@ impl Parser {
                 path,
                 bounds
             } = self.parse_path(LifetimeAndTypesAndBounds);
-            ty_path(path, bounds, ast::DUMMY_NODE_ID)
+            ty_path(false, path, bounds, ast::DUMMY_NODE_ID)
         } else {
             self.fatal(format!("expected type, found token {:?}", *self.token));
         };
 
         let sp = mk_sp(lo, self.last_span.hi);
+
+        let t = if expand {
+            let sp_inner = mk_sp(lo_inner, self.last_span.hi);
+            match t {
+                ty_nil => ty_tup(true, ~[]), // FIXME #10784 DRY.
+                ty_tup(false, fields) => ty_tup(true, fields),
+                ty_path(false, path, bounds, id) => ty_path(true, path, bounds, id),
+                _ => {
+                    self.span_err(sp_inner, "expected tuple or path after `..`");
+                    t
+                }
+            }
+        } else { t };
+
         P(Ty {id: ast::DUMMY_NODE_ID, node: t, span: sp})
+    }
+
+    // parse a type.
+    // Useless second parameter for compatibility with quasiquote macros.
+    // Bleh!
+    pub fn parse_ty(&self, _: bool) -> P<Ty> {
+        self.parse_ty_maybe_expand(false)
     }
 
     // parse the type following a @ or a ~
@@ -1364,7 +1391,7 @@ impl Parser {
                                    special_idents::invalid)
         };
 
-        let t = self.parse_ty(false);
+        let t = self.parse_ty_maybe_expand(!require_name);
 
         ast::arg {
             ty: t,
@@ -3516,7 +3543,7 @@ impl Parser {
         let lifetimes = self.parse_lifetimes();
         let result = self.parse_seq_to_gt(
             Some(token::COMMA),
-            |p| p.parse_ty(false));
+            |p| p.parse_ty_maybe_expand(true));
         (lifetimes, opt_vec::take_vec(result))
     }
 
@@ -3931,7 +3958,7 @@ impl Parser {
         let opt_trait = if could_be_trait && self.eat_keyword(keywords::For) {
             // New-style trait. Reinterpret the type as a trait.
             let opt_trait_ref = match ty.node {
-                ty_path(ref path, None, node_id) => {
+                ty_path(false, ref path, None, node_id) => {
                     Some(trait_ref {
                         path: /* bad */ (*path).clone(),
                         ref_id: node_id
@@ -4022,7 +4049,7 @@ impl Parser {
                 let struct_field_ = ast::struct_field_ {
                     kind: unnamed_field,
                     id: ast::DUMMY_NODE_ID,
-                    ty: p.parse_ty(false),
+                    ty: p.parse_ty_maybe_expand(true),
                     attrs: attrs,
                 };
                 spanned(lo, p.span.hi, struct_field_)
@@ -4473,7 +4500,7 @@ impl Parser {
                     &token::LPAREN,
                     &token::RPAREN,
                     seq_sep_trailing_disallowed(token::COMMA),
-                    |p| p.parse_ty(false)
+                    |p| p.parse_ty_maybe_expand(true)
                 );
                 for ty in arg_tys.move_iter() {
                     args.push(ast::variant_arg {

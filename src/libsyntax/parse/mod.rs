@@ -658,7 +658,7 @@ mod test {
                             node: ast::item_fn(ast::P(ast::fn_decl{
                                 inputs: ~[ast::arg{
                                     ty: ast::P(ast::Ty{id: ast::DUMMY_NODE_ID,
-                                                       node: ast::ty_path(ast::Path{
+                                                       node: ast::ty_path(false, ast::Path{
                                         span:sp(10,13),
                                         global:false,
                                         segments: ~[

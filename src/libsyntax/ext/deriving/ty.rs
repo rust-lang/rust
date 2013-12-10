@@ -155,7 +155,7 @@ impl<'self> Ty<'self> {
                 let ty = if fields.is_empty() {
                     ast::ty_nil
                 } else {
-                    ast::ty_tup(fields.map(|f| f.to_ty(cx, span, self_ty, self_generics)))
+                    ast::ty_tup(false, fields.map(|f| f.to_ty(cx, span, self_ty, self_generics)))
                 };
 
                 cx.ty(span, ty)

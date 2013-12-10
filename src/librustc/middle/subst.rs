@@ -63,7 +63,7 @@ impl<'self> TypeFolder for SubstFolder<'self> {
         }
 
         match ty::get(t).sty {
-            ty::ty_param(p) => {
+            ty::ty_param(_, p) => {
                 self.substs.tps[p.idx]
             }
             ty::ty_self(_) => {

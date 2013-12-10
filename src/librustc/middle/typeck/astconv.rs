@@ -57,6 +57,7 @@ use middle::ty;
 use middle::typeck::rscope;
 use middle::typeck::rscope::{RegionScope};
 use middle::typeck::lookup_def_tcx;
+use util::ppaux::ty_to_str;
 
 use std::vec;
 use syntax::abi::AbiSet;
@@ -196,20 +197,17 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
     };
 
     // Convert the type parameters supplied by the user.
-    let supplied_type_parameter_count =
-        path.segments.iter().flat_map(|s| s.types.iter()).len();
-    if decl_generics.type_param_defs.len() != supplied_type_parameter_count {
+    let tps = path.segments
+                  .iter()
+                  .flat_map(|s| s.types.iter().map(|&t| t))
+                  .to_owned_vec()
+                  .flat_map(|&a_t| ast_ty_to_ty_list(this, rscope, a_t, true));
+    if decl_generics.type_param_defs.len() != tps.len() {
         this.tcx().sess.span_fatal(
             path.span,
             format!("wrong number of type arguments: expected {} but found {}",
-                 decl_generics.type_param_defs.len(),
-                 supplied_type_parameter_count));
+                 decl_generics.type_param_defs.len(), tps.len()));
     }
-    let tps = path.segments
-                  .iter()
-                  .flat_map(|s| s.types.iter())
-                  .map(|&a_t| ast_ty_to_ty(this, rscope, a_t))
-                  .collect();
 
     substs {
         regions: ty::NonerasedRegions(regions),
@@ -311,7 +309,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                 debug!("&[]: vst={:?}", vst);
                 return ty::mk_evec(tcx, mt, vst);
             }
-            ast::ty_path(ref path, ref bounds, id) => {
+            ast::ty_path(_, ref path, ref bounds, id) => {
                 // Note that the "bounds must be empty if path is not a trait"
                 // restriction is enforced in the below case for ty_path, which
                 // will run after this as long as the path isn't a trait.
@@ -412,8 +410,8 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
         mk_pointer(this, rscope, mt, ty::vstore_slice(r),
                    |tmt| ty::mk_rptr(tcx, r, tmt))
       }
-      ast::ty_tup(ref fields) => {
-        let flds = fields.map(|&t| ast_ty_to_ty(this, rscope, t));
+      ast::ty_tup(_, ref fields) => {
+        let flds = fields.flat_map(|&t| ast_ty_to_ty_list(this, rscope, t, true));
         ty::mk_tup(tcx, flds)
       }
       ast::ty_bare_fn(ref bf) => {
@@ -449,7 +447,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                                       ast_ty.span);
           ty::mk_closure(tcx, fn_decl)
       }
-      ast::ty_path(ref path, ref bounds, id) => {
+      ast::ty_path(_, ref path, ref bounds, id) => {
         let a_def = match tcx.def_map.find(&id) {
           None => tcx.sess.span_fatal(
               ast_ty.span, format!("unbound path {}",
@@ -573,6 +571,32 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
     return typ;
 }
 
+pub fn ast_ty_to_ty_list<'a, AC:AstConv, RS:RegionScope>(
+    this: &AC, rscope: &RS, ast_ty: &ast::Ty, allow_ty_param_expansion: bool) -> ~[ty::t] {
+    match ast_ty.node {
+        ast::ty_tup(true, ref fields) => {
+            fields.flat_map(|&t| ast_ty_to_ty_list(this, rscope, t, allow_ty_param_expansion))
+        }
+        ast::ty_path(true, _, _, _) => {
+            let t = ast_ty_to_ty(this, rscope, ast_ty);
+            match ty::get(t).sty {
+                ty::ty_nil => ~[], // FIXME #10784 DRY.
+                ty::ty_tup(ref fields) => fields.clone(),
+                ty::ty_param(false, param_ty) if allow_ty_param_expansion => {
+                    ~[ty::mk_t(this.tcx(), ty::ty_param(true, param_ty))]
+                }
+                _ => {
+                    this.tcx().sess.span_err(
+                        ast_ty.span,
+                        format!("cannot expand non-tuple type `{}`", ty_to_str(this.tcx(), t)));
+                    ~[]
+                }
+            }
+        }
+        _ => ~[ast_ty_to_ty(this, rscope, ast_ty)]
+    }
+}
+
 pub fn ty_of_arg<AC:AstConv,
                  RS:RegionScope>(
                  this: &AC,
@@ -584,6 +608,19 @@ pub fn ty_of_arg<AC:AstConv,
         ast::ty_infer if expected_ty.is_some() => expected_ty.unwrap(),
         ast::ty_infer => this.ty_infer(a.ty.span),
         _ => ast_ty_to_ty(this, rscope, a.ty),
+    }
+}
+
+fn arg_to_ty_list<AC:AstConv,
+                  RS:RegionScope>(
+                  this: &AC,
+                  rscope: &RS,
+                  a: &ast::arg,
+                  expected_ty: Option<ty::t>)
+                  -> ~[ty::t] {
+    match a.ty.node {
+        ast::ty_infer => ~[ty_of_arg(this, rscope, a, expected_ty)],
+        _ => ast_ty_to_ty_list(this, rscope, a.ty, false)
     }
 }
 
@@ -639,7 +676,7 @@ fn ty_of_method_or_bare_fn<AC:AstConv>(
         transform_self_ty(this, &rb, self_info)
     });
 
-    let input_tys = decl.inputs.map(|a| ty_of_arg(this, &rb, a, None));
+    let input_tys = decl.inputs.flat_map(|a| arg_to_ty_list(this, &rb, a, None));
 
     let output_ty = match decl.output.node {
         ast::ty_infer => this.ty_infer(decl.output.span),
@@ -730,14 +767,14 @@ pub fn ty_of_closure<AC:AstConv,RS:RegionScope>(
     // that function type
     let rb = rscope::BindingRscope::new(id);
 
-    let input_tys = decl.inputs.iter().enumerate().map(|(i, a)| {
+    let input_tys = decl.inputs.iter().enumerate().to_owned_vec().flat_map(|&(i, a)| {
         let expected_arg_ty = expected_sig.as_ref().and_then(|e| {
             // no guarantee that the correct number of expected args
             // were supplied
             if i < e.inputs.len() {Some(e.inputs[i])} else {None}
         });
-        ty_of_arg(this, &rb, a, expected_arg_ty)
-    }).collect();
+        arg_to_ty_list(this, &rb, a, expected_arg_ty)
+    });
 
     let expected_ret_ty = expected_sig.map(|e| e.output);
     let output_ty = match decl.output.node {

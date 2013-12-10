@@ -37,7 +37,7 @@ use middle::ty::{ty_param_bounds_and_ty};
 use middle::ty;
 use middle::subst::Subst;
 use middle::typeck::astconv::{AstConv, ty_of_arg};
-use middle::typeck::astconv::{ast_ty_to_ty};
+use middle::typeck::astconv::{ast_ty_to_ty, ast_ty_to_ty_list};
 use middle::typeck::astconv;
 use middle::typeck::rscope::*;
 use middle::typeck::{CrateCtxt, lookup_def_tcx, no_params, write_ty_to_tcx};
@@ -146,7 +146,7 @@ pub fn get_enum_variant_types(ccx: &CrateCtxt,
         let result_ty = match variant.node.kind {
             ast::tuple_variant_kind(ref args) if args.len() > 0 => {
                 let rs = ExplicitRscope;
-                let input_tys = args.map(|va| ccx.to_ty(&rs, va.ty));
+                let input_tys = args.flat_map(|va| ast_ty_to_ty_list(ccx, &rs, va.ty, false));
                 ty::mk_ctor_fn(tcx, scope, input_tys, enum_ty)
             }
 
@@ -650,10 +650,10 @@ pub fn convert_struct(ccx: &CrateCtxt,
                 tcx.tcache.insert(local_def(ctor_id), tpt);
             } else if struct_def.fields[0].node.kind == ast::unnamed_field {
                 // Tuple-like.
-                let inputs =
-                    struct_def.fields.map(
-                        |field| ccx.tcx.tcache.get(
-                            &local_def(field.node.id)).ty);
+                let inputs = struct_def.fields.flat_map(|field| {
+                    let rs = ExplicitRscope;
+                    ast_ty_to_ty_list(ccx, &rs, field.node.ty, false)
+                });
                 let ctor_fn_ty = ty::mk_ctor_fn(tcx, ctor_id, inputs, selfty);
                 write_ty_to_tcx(tcx, ctor_id, ctor_fn_ty);
                 tcx.tcache.insert(local_def(ctor_id), ty_param_bounds_and_ty {

@@ -137,7 +137,7 @@ fn check_impl_of_trait(cx: &mut Context, it: @item, trait_ref: &trait_ref, self_
     // If this is a destructor, check kinds.
     if cx.tcx.lang_items.drop_trait() == Some(trait_def_id) {
         match self_type.node {
-            ty_path(_, ref bounds, path_node_id) => {
+            ty_path(_, _, ref bounds, path_node_id) => {
                 assert!(bounds.is_none());
                 let struct_def = cx.tcx.def_map.get_copy(&path_node_id);
                 let struct_did = ast_util::def_id_of_def(struct_def);
@@ -325,7 +325,7 @@ pub fn check_expr(cx: &mut Context, e: @Expr) {
 
 fn check_ty(cx: &mut Context, aty: &Ty) {
     match aty.node {
-      ty_path(_, _, id) => {
+      ty_path(_, _, _, id) => {
           let r = cx.tcx.node_type_substs.find(&id);
           for ts in r.iter() {
               let did = ast_util::def_id_of_def(cx.tcx.def_map.get_copy(&id));
@@ -554,7 +554,7 @@ pub fn check_cast_for_escaping_regions(
 
         |ty| {
             match ty::get(ty).sty {
-                ty::ty_param(source_param) => {
+                ty::ty_param(_, source_param) => {
                     if target_params.iter().any(|x| x == &source_param) {
                         /* case (2) */
                     } else {

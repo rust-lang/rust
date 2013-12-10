@@ -659,7 +659,7 @@ impl<'self> ConstraintContext<'self> {
                                                  substs, variance);
             }
 
-            ty::ty_param(ty::param_ty { def_id: ref def_id, .. }) => {
+            ty::ty_param(_, ty::param_ty { def_id: ref def_id, .. }) => {
                 assert_eq!(def_id.crate, ast::LOCAL_CRATE);
                 match self.terms_cx.inferred_map.find(&def_id.node) {
                     Some(&index) => {

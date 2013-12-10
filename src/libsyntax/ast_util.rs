@@ -506,7 +506,7 @@ impl<'self, O: IdVisitingOperation> Visitor<()> for IdVisitor<'self, O> {
     fn visit_ty(&mut self, typ: &Ty, env: ()) {
         self.operation.visit_id(typ.id);
         match typ.node {
-            ty_path(_, _, id) => self.operation.visit_id(id),
+            ty_path(_, _, _, id) => self.operation.visit_id(id),
             _ => {}
         }
         visit::walk_ty(self, typ, env)

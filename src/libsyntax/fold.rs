@@ -266,9 +266,9 @@ pub trait ast_fold {
                     decl: fold_fn_decl(f.decl, self)
                 })
             }
-            ty_tup(ref tys) => ty_tup(tys.map(|&ty| self.fold_ty(ty))),
-            ty_path(ref path, ref bounds, id) => {
-                ty_path(self.fold_path(path),
+            ty_tup(expand, ref tys) => ty_tup(expand, tys.map(|&ty| self.fold_ty(ty))),
+            ty_path(expand, ref path, ref bounds, id) => {
+                ty_path(expand, self.fold_path(path),
                         fold_opt_bounds(bounds, self),
                         self.new_id(id))
             }
