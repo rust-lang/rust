@@ -922,11 +922,15 @@ let mut b = Foo { x: 5, y: ~10 };
 b.x = 10;
 ~~~~
 
-If an object doesn't contain garbage-collected boxes, it consists of a single
-ownership tree and is given the `Owned` trait which allows it to be sent
+If an object doesn't contain any non-Send types, it consists of a single
+ownership tree and is itself given the `Send` trait which allows it to be sent
 between tasks. Custom destructors can only be implemented directly on types
-that are `Owned`, but garbage-collected boxes can still *contain* types with
-custom destructors.
+that are `Send`, but non-`Send` types can still *contain* types with custom
+destructors. Example of types which are not `Send` are [`Gc<T>`][gc] and
+[`Rc<T>`][rc], the shared-ownership types.
+
+[gc]: http://static.rust-lang.org/doc/master/std/gc/struct.Gc.html
+[rc]: http://static.rust-lang.org/doc/master/std/rc/struct.Rc.html
 
 # Implementing a linked list
 
