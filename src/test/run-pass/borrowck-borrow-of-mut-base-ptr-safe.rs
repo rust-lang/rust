@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,24 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that attempt to reborrow an `&mut` pointer in an aliasable
-// location yields an error.
+// Test that freezing an `&mut` pointer while referent is
+// frozen is legal.
 //
 // Example from src/middle/borrowck/doc.rs
 
-use std::util::swap;
-
-fn foo(t0: & &mut int) {
-    let t1 = t0;
-    let p: &int = &**t0;
-    **t1 = 22; //~ ERROR cannot assign
+fn foo<'a>(mut t0: &'a mut int,
+           mut t1: &'a mut int) {
+    let p: &int = &*t0; // Freezes `*t0`
+    let mut t2 = &t0;
+    let q: &int = &**t2; // Freezes `*t0`, but that's ok...
+    let r: &int = &*t0; // ...after all, could do same thing directly.
 }
 
-fn foo3(t0: &mut &mut int) {
-    let t1 = &mut *t0;
-    let p: &int = &**t0; //~ ERROR cannot borrow
-    **t1 = 22;
-}
-
-fn main() {
+pub fn main() {
 }
