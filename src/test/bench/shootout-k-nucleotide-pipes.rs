@@ -188,14 +188,7 @@ fn main() {
    // reading the sequence of interest
    let mut proc_mode = false;
 
-   loop {
-       let line = {
-           let _guard = io::ignore_io_error();
-           match rdr.read_line() {
-               Some(ln) => ln,
-               None => break,
-           }
-       };
+   for line in rdr.lines() {
        let line = line.trim().to_owned();
 
        if line.len() == 0u { continue; }

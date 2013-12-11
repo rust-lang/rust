@@ -25,41 +25,63 @@ Some examples of obvious things you might want to do
 
 * Read lines from stdin
 
-    for stdin().each_line |line| {
-        println(line)
+    ```rust
+    let mut stdin = BufferedReader::new(stdin());
+    for line in stdin.lines() {
+        print(line);
     }
+    ```
 
-* Read a complete file to a string, (converting newlines?)
+* Read a complete file
 
-    let contents = File::open("message.txt").read_to_str(); // read_to_str??
+    ```rust
+    let contents = File::open(&Path::new("message.txt")).read_to_end();
+    ```
 
 * Write a line to a file
 
-    let file = File::open("message.txt", Create, Write);
-    file.write_line("hello, file!");
+    ```rust
+    let mut file = File::create(&Path::new("message.txt"));
+    file.write(bytes!("hello, file!\n"));
+    ```
 
 * Iterate over the lines of a file
 
-    File::open("message.txt").each_line(|line| {
-        println(line)
-    })
+    ```rust
+    let path = Path::new("message.txt");
+    let mut file = BufferedReader::new(File::open(&path));
+    for line in file.lines() {
+        print(line);
+    }
+    ```
 
 * Pull the lines of a file into a vector of strings
 
-    let lines = File::open("message.txt").lines().to_vec();
+    ```rust
+    let path = Path::new("message.txt");
+    let mut file = BufferedReader::new(File::open(&path));
+    let lines: ~[~str] = file.lines().collect();
+    ```
 
 * Make an simple HTTP request
+  XXX This needs more improvement: TcpStream constructor taking &str,
+  `write_str` and `write_line` methods.
 
-    let socket = TcpStream::open("localhost:8080");
-    socket.write_line("GET / HTTP/1.0");
-    socket.write_line("");
+    ```rust
+    let addr = from_str::<SocketAddr>("127.0.0.1:8080").unwrap();
+    let mut socket = TcpStream::connect(addr).unwrap();
+    socket.write(bytes!("GET / HTTP/1.0\n\n"));
     let response = socket.read_to_end();
+    ```
 
 * Connect based on URL? Requires thinking about where the URL type lives
   and how to make protocol handlers extensible, e.g. the "tcp" protocol
   yields a `TcpStream`.
+  XXX this is not implemented now.
 
-    connect("tcp://localhost:8080");
+    ```rust
+    // connect("tcp://localhost:8080");
+    ```
 
 # Terms
 
@@ -535,7 +557,8 @@ pub trait Reader {
     ///
     /// # Failure
     ///
-    /// Raises the same conditions as the `read` method.
+    /// Raises the same conditions as the `read` method except for
+    /// `EndOfFile` which is swallowed.
     fn read_to_end(&mut self) -> ~[u8] {
         let mut buf = vec::with_capacity(DEFAULT_BUF_SIZE);
         let mut keep_reading = true;
@@ -561,7 +584,7 @@ pub trait Reader {
     /// Raises the same conditions as the `read` method, for
     /// each call to its `.next()` method.
     /// Ends the iteration if the condition is handled.
-    fn bytes(self) -> extensions::ByteIterator<Self> {
+    fn bytes<'r>(&'r mut self) -> extensions::ByteIterator<'r, Self> {
         extensions::ByteIterator::new(self)
     }
 
@@ -958,6 +981,30 @@ pub trait Stream: Reader + Writer { }
 
 impl<T: Reader + Writer> Stream for T {}
 
+/// An iterator that reads a line on each iteration,
+/// until `.read_line()` returns `None`.
+///
+/// # Notes about the Iteration Protocol
+///
+/// The `LineIterator` may yield `None` and thus terminate
+/// an iteration, but continue to yield elements if iteration
+/// is attempted again.
+///
+/// # Failure
+///
+/// Raises the same conditions as the `read` method except for `EndOfFile`
+/// which is swallowed.
+/// Iteration yields `None` if the condition is handled.
+struct LineIterator<'r, T> {
+    priv buffer: &'r mut T,
+}
+
+impl<'r, T: Buffer> Iterator<~str> for LineIterator<'r, T> {
+    fn next(&mut self) -> Option<~str> {
+        self.buffer.read_line()
+    }
+}
+
 /// A Buffer is a type of reader which has some form of internal buffering to
 /// allow certain kinds of reading operations to be more optimized than others.
 /// This type extends the `Reader` trait with a few methods that are not
@@ -987,11 +1034,24 @@ pub trait Buffer: Reader {
     ///
     /// # Failure
     ///
-    /// This function will raise on the `io_error` condition if a read error is
-    /// encountered. The task will also fail if sequence of bytes leading up to
+    /// This function will raise on the `io_error` condition (except for
+    /// `EndOfFile` which is swallowed) if a read error is encountered.
+    /// The task will also fail if sequence of bytes leading up to
     /// the newline character are not valid utf-8.
     fn read_line(&mut self) -> Option<~str> {
         self.read_until('\n' as u8).map(str::from_utf8_owned)
+    }
+
+    /// Create an iterator that reads a line on each iteration until EOF.
+    ///
+    /// # Failure
+    ///
+    /// Iterator raises the same conditions as the `read` method
+    /// except for `EndOfFile`.
+    fn lines<'r>(&'r mut self) -> LineIterator<'r, Self> {
+        LineIterator {
+            buffer: self,
+        }
     }
 
     /// Reads a sequence of bytes leading up to a specified delimeter. Once the
@@ -1001,32 +1061,40 @@ pub trait Buffer: Reader {
     /// # Failure
     ///
     /// This function will raise on the `io_error` condition if a read error is
-    /// encountered.
+    /// encountered, except that `EndOfFile` is swallowed.
     fn read_until(&mut self, byte: u8) -> Option<~[u8]> {
         let mut res = ~[];
-        let mut used;
-        loop {
-            {
-                let available = self.fill();
-                match available.iter().position(|&b| b == byte) {
-                    Some(i) => {
-                        res.push_all(available.slice_to(i + 1));
-                        used = i + 1;
-                        break
-                    }
-                    None => {
-                        res.push_all(available);
-                        used = available.len();
+
+        io_error::cond.trap(|e| {
+            if e.kind != EndOfFile {
+                io_error::cond.raise(e);
+            }
+        }).inside(|| {
+            let mut used;
+            loop {
+                {
+                    let available = self.fill();
+                    match available.iter().position(|&b| b == byte) {
+                        Some(i) => {
+                            res.push_all(available.slice_to(i + 1));
+                            used = i + 1;
+                            break
+                        }
+                        None => {
+                            res.push_all(available);
+                            used = available.len();
+                        }
                     }
                 }
-            }
-            if used == 0 {
-                break
+                if used == 0 {
+                    break
+                }
+                self.consume(used);
             }
             self.consume(used);
-        }
-        self.consume(used);
+        });
         return if res.len() == 0 {None} else {Some(res)};
+
     }
 
     /// Reads the next utf8-encoded character from the underlying stream.

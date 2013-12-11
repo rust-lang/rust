@@ -107,11 +107,7 @@ fn iter_header(testfile: &Path, it: |&str| -> bool) -> bool {
     use std::io::File;
 
     let mut rdr = BufferedReader::new(File::open(testfile).unwrap());
-    loop {
-        let ln = match rdr.read_line() {
-            Some(ln) => ln, None => break
-        };
-
+    for ln in rdr.lines() {
         // Assume that any directives will be found before the first
         // module or function. This doesn't seem to be an optimization
         // with a warm page cache. Maybe with a cold one.
