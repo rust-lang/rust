@@ -790,7 +790,15 @@ particular, if the referent is frozen, there is no harm in it:
 
 In this case, creating the alias `t2` of `t0` is safe because the only
 thing `t2` can be used for is to further freeze `*t0`, which is
-already frozen.
+already frozen. In particular, we cannot assign to `*t0` through the
+new alias `t2`, as demonstrated in this test case:
+
+       // src/test/run-pass/borrowck-borrow-mut-base-ptr-in-aliasable-loc.rs
+       fn foo(t0: & &mut int) {
+           let t1 = t0;
+           let p: &int = &**t0;
+           **t1 = 22; //~ ERROR cannot assign
+       }
 
 This distinction is reflected in the rules. When doing an `&mut`
 borrow -- as in the first example -- the set `ACTIONS` will be
@@ -804,6 +812,8 @@ example -- the set `ACTIONS` will be `CLAIM|MUTATE`, because freezing
 the referent implies that it cannot be claimed or mutated but permits
 others to freeze. Hence when these restrictions are propagated back to
 the base path, it will still be considered freezable.
+
+
 
 **FIXME #10520: Restrictions against mutating the base pointer.** When
 an `&mut` pointer is frozen or claimed, we currently pass along the

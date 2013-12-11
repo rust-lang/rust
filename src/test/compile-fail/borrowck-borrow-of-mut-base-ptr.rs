@@ -19,7 +19,7 @@ fn foo<'a>(mut t0: &'a mut int,
            mut t1: &'a mut int) {
     let p: &mut int = &mut *t0; // Claims `*t0`
     let mut t2 = &t0;           //~ ERROR cannot borrow `t0`
-    let q: &int = &*t2;         // Freezes `*t0` but not through `*p`
+    let q: &int = &**t2;        // Freezes `*t0` but not through `*p`
     *p += 1;                    // violates type of `*q`
 }
 
