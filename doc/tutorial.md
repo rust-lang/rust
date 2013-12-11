@@ -476,7 +476,7 @@ can be expressed with two dots, as in `M..N`. The underscore (`_`) is
 a wildcard pattern that matches any single value. (`..`) is a different
 wildcard that can match one or more fields in an `enum` variant.
 
-The patterns in a match arm are followed by a fat arrow, `=>`, then an
+The patterns in a `match` arm are followed by a fat arrow, `=>`, then an
 expression to evaluate. Each case is separated by commas. It's often
 convenient to use a block expression for each case, in which case the
 commas are optional.
@@ -541,6 +541,29 @@ let (a, b) = get_tuple_of_two_ints();
 Let bindings only work with _irrefutable_ patterns: that is, patterns
 that can never fail to match. This excludes `let` from matching
 literals and most `enum` variants.
+
+The pattern of a `match` arm can also be bound to a variable for use in the
+`match` arm's expression.
+
+~~~~
+match (1, 2) {
+    c@(a, b) => println!("{:?} {:?} {:?}", a, b, c)
+}
+~~~~
+
+This will print `1 2 (1, 2)`. `c` is bound to the pattern `(a, b)`, and as
+`a` and `b` are respectively bound to `1` and `2`, `c` comes out to `(1, 2)`.
+The bound variable `c` is only usable in the expression following the arrow `=>`.
+
+Pattern binding can also be used in conjuntion with guard clauses.
+
+~~~~
+match (1, 2) {
+    c@(a, b) if a > 0 => println!("First arm {:?}", c),
+    c@(_, b) if b < 2 => println!("Second arm {:?}", c),
+    _ => {}
+}
+~~~~
 
 ## Loops
 
