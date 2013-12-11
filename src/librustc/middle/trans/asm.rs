@@ -126,6 +126,7 @@ pub fn trans_inline_asm(bcx: @mut Block, ia: &ast::inline_asm) -> @mut Block {
 // Basically what clang does
 
 #[cfg(target_arch = "arm")]
+#[cfg(target_arch = "thumb")]
 #[cfg(target_arch = "mips")]
 fn getClobbers() -> ~str {
     ~""

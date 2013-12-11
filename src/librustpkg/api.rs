@@ -30,6 +30,8 @@ use extra::treemap::TreeMap;
 // A little sad -- duplicated from rustc::back::*
 #[cfg(target_arch = "arm")]
 fn cc_args() -> ~[~str] { ~[~"-marm"] }
+#[cfg(target_arch = "thumb")]
+fn cc_args() -> ~[~str] { ~[~"-mthumb"] }
 #[cfg(target_arch = "mips")]
 fn cc_args() -> ~[~str] { ~[] }
 #[cfg(target_arch = "x86")]

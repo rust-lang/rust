@@ -40,6 +40,7 @@ pub enum Architecture {
     X86,
     X86_64,
     Arm,
+    Thumb,
     Mips
 }
 

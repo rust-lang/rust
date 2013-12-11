@@ -55,7 +55,7 @@ use middle::trans::machine;
 use middle::trans::type_of;
 use middle::ty;
 use middle::ty::Disr;
-use syntax::abi::{X86, X86_64, Arm, Mips};
+use syntax::abi::{X86, X86_64, Arm, Thumb, Mips};
 use syntax::ast;
 use syntax::attr;
 use syntax::attr::IntType;
@@ -318,7 +318,7 @@ fn range_to_inttype(cx: &mut CrateContext, hint: Hint, bounds: &IntBounds) -> In
                 // WARNING: the ARM EABI has two variants; the one corresponding to `at_least_32`
                 // appears to be used on Linux and NetBSD, but some systems may use the variant
                 // corresponding to `choose_shortest`.  However, we don't run on those yet...?
-                Arm => at_least_32,
+                Arm | Thumb => at_least_32,
                 Mips => at_least_32,
             }
         }
