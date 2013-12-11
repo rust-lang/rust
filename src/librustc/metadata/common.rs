@@ -7,7 +7,9 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+
 use std::cast;
+use syntax::pkgid::PkgId;
 
 // EBML enum definitions and utils shared by the encoder and decoder
 
@@ -202,10 +204,8 @@ pub static tag_native_libraries_lib: uint = 0x104;
 pub static tag_native_libraries_name: uint = 0x105;
 pub static tag_native_libraries_kind: uint = 0x106;
 
+#[deriving(Clone)]
 pub struct LinkMeta {
-    name: @str,
-    vers: @str,
-    // Optional package ID
-    package_id: Option<@str>, // non-None if this was a URL-like package ID
-    extras_hash: @str
+    pkgid: PkgId,
+    crate_hash: @str,
 }

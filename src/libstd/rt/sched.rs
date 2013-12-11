@@ -917,8 +917,6 @@ fn new_sched_rng() -> XorShiftRng {
 
 #[cfg(test)]
 mod test {
-    extern mod extra;
-
     use prelude::*;
     use rt::test::*;
     use unstable::run_in_bare_thread;

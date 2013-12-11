@@ -10,6 +10,6 @@
 
 // error-pattern:can't find crate for `extra`
 
-extern mod extra(complex(meta(item)));
+extern mod extra = "fake-crate";
 
 fn main() { }

@@ -64,11 +64,10 @@ use middle::trans::value::Value;
 use middle::ty;
 use util::common::indenter;
 use util::ppaux::{Repr, ty_to_str};
-
+use util::sha2::Sha256;
 use middle::trans::type_::Type;
 
 use std::c_str::ToCStr;
-use std::hash;
 use std::hashmap::HashMap;
 use std::libc::c_uint;
 use std::vec;
@@ -2939,8 +2938,8 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
     let sym_name = if is_top {
         ~"_rust_crate_map_toplevel"
     } else {
-        symname(sess, "_rust_crate_map_" + mapmeta.name, mapmeta.extras_hash,
-                mapmeta.vers)
+        symname(sess, "_rust_crate_map_" + mapmeta.pkgid.name, mapmeta.crate_hash,
+                mapmeta.pkgid.version_or_default())
     };
 
     let slicetype = Type::struct_([int_type, int_type], false);
@@ -3059,8 +3058,8 @@ pub fn write_metadata(cx: &CrateContext, crate: &ast::Crate) -> ~[u8] {
                         flate::deflate_bytes(metadata);
     let llmeta = C_bytes(compressed);
     let llconst = C_struct([llmeta], false);
-    let name = format!("rust_metadata_{}_{}_{}", cx.link_meta.name,
-                       cx.link_meta.vers, cx.link_meta.extras_hash);
+    let name = format!("rust_metadata_{}_{}_{}", cx.link_meta.pkgid.name,
+                       cx.link_meta.pkgid.version_or_default(), cx.link_meta.crate_hash);
     let llglobal = name.with_c_str(|buf| {
         unsafe {
             llvm::LLVMAddGlobal(cx.metadata_llmod, val_ty(llconst).to_ref(), buf)
@@ -3084,7 +3083,7 @@ pub fn trans_crate(sess: session::Session,
         sess.bug("couldn't enable multi-threaded LLVM");
     }
 
-    let mut symbol_hasher = hash::default_state();
+    let mut symbol_hasher = Sha256::new();
     let link_meta = link::build_link_meta(sess, &crate, output,
                                           &mut symbol_hasher);
 
@@ -3096,7 +3095,7 @@ pub fn trans_crate(sess: session::Session,
     // crashes if the module identifer is same as other symbols
     // such as a function name in the module.
     // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
-    let llmod_id = link_meta.name.to_owned() + ".rc";
+    let llmod_id = link_meta.pkgid.name.clone() + ".rc";
 
     let ccx = @mut CrateContext::new(sess,
                                      llmod_id,
@@ -3171,7 +3170,7 @@ pub fn trans_crate(sess: session::Session,
     }
 
     let llcx = ccx.llcx;
-    let link_meta = ccx.link_meta;
+    let link_meta = ccx.link_meta.clone();
     let llmod = ccx.llmod;
     let mut reachable = ccx.reachable.iter().filter_map(|id| {
         ccx.item_symbols.find(id).map(|s| s.to_owned())

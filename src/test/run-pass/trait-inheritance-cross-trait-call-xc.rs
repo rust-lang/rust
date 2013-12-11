@@ -11,7 +11,7 @@
 // xfail-fast
 // aux-build:trait_inheritance_cross_trait_call_xc_aux.rs
 
-extern mod aux(name = "trait_inheritance_cross_trait_call_xc_aux");
+extern mod aux = "trait_inheritance_cross_trait_call_xc_aux";
 
 use aux::Foo;
 

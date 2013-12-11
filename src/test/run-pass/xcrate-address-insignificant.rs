@@ -11,7 +11,7 @@
 // xfail-fast check-fast doesn't like aux-build
 // aux-build:xcrate_address_insignificant.rs
 
-extern mod foo(name = "xcrate_address_insignificant");
+extern mod foo = "xcrate_address_insignificant";
 
 fn main() {
     assert_eq!(foo::foo::<f64>(), foo::bar());

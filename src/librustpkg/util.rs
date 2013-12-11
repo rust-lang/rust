@@ -290,23 +290,17 @@ pub fn compile_input(context: &BuildContext,
                                       addl_lib_search_paths.insert(p);
                                   });
 
-    // Inject the link attributes so we get the right package name and version
-    if attr::find_linkage_metas(crate.attrs).is_empty() {
-        let name_to_use = match what {
-            Test  => format!("{}test", pkg_id.short_name).to_managed(),
-            Bench => format!("{}bench", pkg_id.short_name).to_managed(),
-            _     => pkg_id.short_name.to_managed()
-        };
-        debug!("Injecting link name: {}", name_to_use);
+    // Inject the pkgid attribute so we get the right package name and version
+    if !attr::contains_name(crate.attrs, "pkgid") {
         // FIXME (#9639): This needs to handle non-utf8 paths
-        let link_options =
-            ~[attr::mk_name_value_item_str(@"name", name_to_use),
-              attr::mk_name_value_item_str(@"vers", pkg_id.version.to_str().to_managed())] +
-            ~[attr::mk_name_value_item_str(@"package_id",
-                                           pkg_id.path.as_str().unwrap().to_managed())];
+        let pkgid_attr =
+            attr::mk_name_value_item_str(@"pkgid",
+                                         format!("{}\\#{}",
+                                                 pkg_id.path.as_str().unwrap(),
+                                                 pkg_id.version.to_str()).to_managed());
 
-        debug!("link options: {:?}", link_options);
-        crate.attrs = ~[attr::mk_attr(attr::mk_list_item(@"link", link_options))];
+        debug!("pkgid attr: {:?}", pkgid_attr);
+        crate.attrs = ~[attr::mk_attr(pkgid_attr)];
     }
 
     debug!("calling compile_crate_from_input, workspace = {},
@@ -316,7 +310,8 @@ pub fn compile_input(context: &BuildContext,
                                           context.compile_upto(),
                                           &out_dir,
                                           sess,
-                                          crate);
+                                          crate,
+                                          what);
     // Discover the output
     let discovered_output = if what == Lib  {
         built_library_in_workspace(pkg_id, workspace) // Huh???
@@ -351,15 +346,29 @@ pub fn compile_crate_from_input(input: &Path,
                                 sess: session::Session,
 // Returns None if one of the flags that suppresses compilation output was
 // given
-                                crate: ast::Crate) -> Option<Path> {
+                                crate: ast::Crate,
+                                what: OutputType) -> Option<Path> {
     debug!("Calling build_output_filenames with {}, building library? {:?}",
            out_dir.display(), sess.building_library);
 
     // bad copy
     debug!("out_dir = {}", out_dir.display());
-    let outputs = driver::build_output_filenames(&driver::file_input(input.clone()),
-                                                 &Some(out_dir.clone()), &None,
-                                                 crate.attrs, sess);
+    let mut outputs = driver::build_output_filenames(&driver::file_input(input.clone()),
+                                                     &Some(out_dir.clone()), &None,
+                                                     crate.attrs, sess);
+    match what {
+        Lib | Main => {}
+        Test => {
+            let mut ofile = outputs.out_filename.filename_str().unwrap().to_owned();
+            ofile.push_str("test");
+            outputs.out_filename.set_filename(ofile);
+        }
+        Bench => {
+            let mut ofile = outputs.out_filename.filename_str().unwrap().to_owned();
+            ofile.push_str("bench");
+            outputs.out_filename.set_filename(ofile);
+        }
+    };
 
     debug!("Outputs are out_filename: {} and obj_filename: {} and output type = {:?}",
            outputs.out_filename.display(),

@@ -13,7 +13,7 @@
 // xfail-android: FIXME(#10379)
 // xfail-win32: std::unstable::dynamic_lib does not work on win32 well
 
-extern mod foo(name = "linkage-visibility");
+extern mod foo = "linkage-visibility";
 
 fn main() {
     foo::test();

@@ -18,6 +18,7 @@ use codemap::{Span, Spanned, spanned, dummy_spanned};
 use codemap::BytePos;
 use diagnostic::span_handler;
 use parse::comments::{doc_comment_style, strip_doc_comment_decoration};
+use pkgid::PkgId;
 
 use std::hashmap::HashSet;
 
@@ -233,6 +234,13 @@ pub fn find_linkage_metas(attrs: &[Attribute]) -> ~[@MetaItem] {
         }
     }
     result
+}
+
+pub fn find_pkgid(attrs: &[Attribute]) -> Option<PkgId> {
+    match first_attr_value_str_by_name(attrs, "pkgid") {
+        None => None,
+        Some(id) => from_str::<PkgId>(id),
+    }
 }
 
 #[deriving(Eq)]

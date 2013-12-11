@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[link(package_id = "boot", name = "boot", vers = "0.1")];
-#[crate_type = "lib"];
+#[pkgid="boot#0.1"];
+#[crate_type="lib"];
 
 extern mod rustuv; // pull in uvio
 

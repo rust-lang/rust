@@ -13,6 +13,8 @@
  *  macros.
  */
 
+#[pkgid="syntax#0.9-pre"];
+// NOTE: remove after the next snapshot
 #[link(name = "syntax",
        package_id = "syntax",
        vers = "0.9-pre",
@@ -51,6 +53,7 @@ pub mod fold;
 
 
 pub mod parse;
+pub mod pkgid;
 
 pub mod print {
     pub mod pp;

@@ -20,8 +20,8 @@ use metadata::filesearch;
 use syntax::codemap::Span;
 use syntax::diagnostic::span_handler;
 use syntax::parse::token::ident_interner;
-use syntax::print::pprust;
-use syntax::{ast, attr};
+use syntax::pkgid::PkgId;
+use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 
 use std::c_str::ToCStr;
@@ -47,7 +47,8 @@ pub struct Context {
     sess: Session,
     span: Span,
     ident: @str,
-    metas: ~[@ast::MetaItem],
+    name: @str,
+    version: @str,
     hash: @str,
     os: Os,
     intr: @ident_interner
@@ -72,9 +73,8 @@ impl Context {
     }
 
     fn find_library_crate(&self) -> Option<Library> {
-        attr::require_unique_names(self.sess.diagnostic(), self.metas);
         let filesearch = self.sess.filesearch;
-        let crate_name = crate_name_from_metas(self.metas);
+        let crate_name = self.name;
         let (dyprefix, dysuffix) = self.dylibname();
 
         // want: crate_name.dir_part() + prefix + crate_name.file_part + "-"
@@ -103,9 +103,8 @@ impl Context {
                     } else if candidate {
                         match get_metadata_section(self.sess, self.os, path) {
                             Some(cvec) =>
-                                if crate_matches(cvec, self.metas, self.hash) {
-                                    debug!("found {} with matching metadata",
-                                           path.display());
+                                if crate_matches(cvec, self.name, self.version, self.hash) {
+                                    debug!("found {} with matching pkgid", path.display());
                                     let (rlib, dylib) = if file.ends_with(".rlib") {
                                         (Some(path.clone()), None)
                                     } else {
@@ -118,7 +117,7 @@ impl Context {
                                     });
                                     FileMatches
                                 } else {
-                                    debug!("skipping {}, metadata doesn't match",
+                                    debug!("skipping {}, pkgid doesn't match",
                                            path.display());
                                     FileDoesntMatch
                                 },
@@ -156,7 +155,12 @@ impl Context {
                         None => {}
                     }
                     let attrs = decoder::get_crate_attributes(lib.metadata);
-                    note_linkage_attrs(self.intr, self.sess.diagnostic(), attrs);
+                    match attr::find_pkgid(attrs) {
+                        None => {}
+                        Some(pkgid) => {
+                            note_pkgid_attr(self.sess.diagnostic(), &pkgid);
+                        }
+                    }
                 }
                 self.sess.abort_if_errors();
                 None
@@ -217,56 +221,27 @@ impl Context {
     }
 }
 
-pub fn crate_name_from_metas(metas: &[@ast::MetaItem]) -> @str {
-    for m in metas.iter() {
-        match m.name_str_pair() {
-            Some((name, s)) if "name" == name => { return s; }
-            _ => {}
-        }
-    }
-    fail!("expected to find the crate name")
-}
-
-pub fn package_id_from_metas(metas: &[@ast::MetaItem]) -> Option<@str> {
-    for m in metas.iter() {
-        match m.name_str_pair() {
-            Some((name, s)) if "package_id" == name => { return Some(s); }
-            _ => {}
-        }
-    }
-    None
-}
-
-pub fn note_linkage_attrs(intr: @ident_interner,
-                          diag: @mut span_handler,
-                          attrs: ~[ast::Attribute]) {
-    let r = attr::find_linkage_metas(attrs);
-    for mi in r.iter() {
-        diag.handler().note(format!("meta: {}", pprust::meta_item_to_str(*mi,intr)));
-    }
+pub fn note_pkgid_attr(diag: @mut span_handler,
+                       pkgid: &PkgId) {
+    diag.handler().note(format!("pkgid: {}", pkgid.to_str()));
 }
 
 fn crate_matches(crate_data: @~[u8],
-                 metas: &[@ast::MetaItem],
+                 name: @str,
+                 version: @str,
                  hash: @str) -> bool {
     let attrs = decoder::get_crate_attributes(crate_data);
-    let linkage_metas = attr::find_linkage_metas(attrs);
-    if !hash.is_empty() {
-        let chash = decoder::get_crate_hash(crate_data);
-        if chash != hash { return false; }
+    match attr::find_pkgid(attrs) {
+        None => false,
+        Some(pkgid) => {
+            if !hash.is_empty() {
+                let chash = decoder::get_crate_hash(crate_data);
+                if chash != hash { return false; }
+            }
+            name == pkgid.name.to_managed() &&
+                (version.is_empty() || version == pkgid.version_or_default().to_managed())
+        }
     }
-    metadata_matches(linkage_metas, metas)
-}
-
-pub fn metadata_matches(extern_metas: &[@ast::MetaItem],
-                        local_metas: &[@ast::MetaItem]) -> bool {
-
-// extern_metas: metas we read from the crate
-// local_metas: metas we're looking for
-    debug!("matching {} metadata requirements against {} items",
-           local_metas.len(), extern_metas.len());
-
-    local_metas.iter().all(|needed| attr::contains(extern_metas, *needed))
 }
 
 fn get_metadata_section(sess: Session, os: Os, filename: &Path) -> Option<@~[u8]> {

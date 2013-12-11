@@ -10,6 +10,8 @@
 
 // rustpkg - a package manager and build system for Rust
 
+#[pkgid="rustpkg#0.9-pre"];
+// NOTE: remove after the next snapshot
 #[link(name = "rustpkg",
        package_id = "rustpkg",
        vers = "0.9-pre",
@@ -36,6 +38,7 @@ use extra::workcache;
 use rustc::driver::{driver, session};
 use rustc::metadata::filesearch;
 use rustc::metadata::filesearch::rust_path;
+use rustc::util::sha2;
 use extra::{getopts};
 use syntax::{ast, diagnostic};
 use messages::{error, warn, note};
@@ -52,7 +55,7 @@ use context::{Context, BuildContext,
 use package_id::PkgId;
 use package_source::PkgSrc;
 use target::{WhatToBuild, Everything, is_lib, is_main, is_test, is_bench};
-use target::{Tests, MaybeCustom, Inferred, JustOne};
+use target::{Main, Tests, MaybeCustom, Inferred, JustOne};
 use workcache_support::digest_only_date;
 use exit_codes::{COPY_FAILED_CODE, BAD_FLAG_CODE};
 
@@ -66,7 +69,6 @@ mod messages;
 pub mod package_id;
 pub mod package_source;
 mod path_util;
-mod sha1;
 mod source_control;
 mod target;
 #[cfg(not(windows), test)] // FIXME test failure on windows: #10471
@@ -151,7 +153,8 @@ impl<'self> PkgScript<'self> {
                                        Nothing,
                                        &self.build_dir,
                                        sess,
-                                       crate);
+                                       crate,
+                                       Main);
         // Discover the output
         // FIXME (#9639): This needs to handle non-utf8 paths
         // Discover the output

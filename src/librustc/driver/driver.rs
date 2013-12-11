@@ -389,7 +389,8 @@ pub fn phase_6_link_output(sess: Session,
          link::link_binary(sess,
                            trans,
                            &outputs.obj_filename,
-                           &outputs.out_filename));
+                           &outputs.out_filename,
+                           &trans.link));
 }
 
 pub fn stop_after_phase_3(sess: Session) -> bool {
@@ -977,17 +978,13 @@ pub fn build_output_filenames(input: &input,
               str_input(_) => @"rust_out"
           };
 
-          // If a linkage name meta is present, we use it as the link name
-          let linkage_metas = attr::find_linkage_metas(attrs);
-          if !linkage_metas.is_empty() {
-              // But if a linkage meta is present, that overrides
-              let maybe_name = linkage_metas.iter().find(|m| "name" == m.name());
-              match maybe_name.and_then(|m| m.value_str()) {
-                  Some(s) => stem = s,
-                  _ => ()
+          // If a pkgid is present, we use it as the link name
+          let pkgid = attr::find_pkgid(attrs);
+          match pkgid {
+              None => {}
+              Some(pkgid) => {
+                  stem = pkgid.name.to_managed()
               }
-              // If the name is missing, we just default to the filename
-              // version
           }
 
           if *sess.building_library {

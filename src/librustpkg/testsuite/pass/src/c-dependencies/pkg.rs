@@ -42,7 +42,7 @@ pub fn main() {
 
     let mut context = api::default_context(sysroot, path_for_db);
     let my_workspace = api::my_workspace(&context.context, "cdep");
-    let foo_c_name = my_workspace.join_many(["src", "cdep-0.1", "foo.c"]);
+    let foo_c_name = my_workspace.join_many(["src", "cdep-0.0", "foo.c"]);
 
     let out_lib_path = context.workcache_context.with_prep("foo.c", |prep| {
         let sub_cx = context.context.clone();
