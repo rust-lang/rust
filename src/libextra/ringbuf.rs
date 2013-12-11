@@ -229,16 +229,16 @@ impl<T> RingBuf<T> {
 }
 
 /// RingBuf iterator
-pub struct RingBufIterator<'self, T> {
+pub struct RingBufIterator<'a, T> {
     priv lo: uint,
     priv index: uint,
     priv rindex: uint,
-    priv elts: &'self [Option<T>],
+    priv elts: &'a [Option<T>],
 }
 
-impl<'self, T> Iterator<&'self T> for RingBufIterator<'self, T> {
+impl<'a, T> Iterator<&'a T> for RingBufIterator<'a, T> {
     #[inline]
-    fn next(&mut self) -> Option<&'self T> {
+    fn next(&mut self) -> Option<&'a T> {
         if self.index == self.rindex {
             return None;
         }
@@ -254,9 +254,9 @@ impl<'self, T> Iterator<&'self T> for RingBufIterator<'self, T> {
     }
 }
 
-impl<'self, T> DoubleEndedIterator<&'self T> for RingBufIterator<'self, T> {
+impl<'a, T> DoubleEndedIterator<&'a T> for RingBufIterator<'a, T> {
     #[inline]
-    fn next_back(&mut self) -> Option<&'self T> {
+    fn next_back(&mut self) -> Option<&'a T> {
         if self.index == self.rindex {
             return None;
         }
@@ -266,14 +266,14 @@ impl<'self, T> DoubleEndedIterator<&'self T> for RingBufIterator<'self, T> {
     }
 }
 
-impl<'self, T> ExactSize<&'self T> for RingBufIterator<'self, T> {}
+impl<'a, T> ExactSize<&'a T> for RingBufIterator<'a, T> {}
 
-impl<'self, T> RandomAccessIterator<&'self T> for RingBufIterator<'self, T> {
+impl<'a, T> RandomAccessIterator<&'a T> for RingBufIterator<'a, T> {
     #[inline]
     fn indexable(&self) -> uint { self.rindex - self.index }
 
     #[inline]
-    fn idx(&self, j: uint) -> Option<&'self T> {
+    fn idx(&self, j: uint) -> Option<&'a T> {
         if j >= self.indexable() {
             None
         } else {
@@ -284,15 +284,15 @@ impl<'self, T> RandomAccessIterator<&'self T> for RingBufIterator<'self, T> {
 }
 
 /// RingBuf mutable iterator
-pub struct RingBufMutIterator<'self, T> {
-    priv remaining1: &'self mut [Option<T>],
-    priv remaining2: &'self mut [Option<T>],
+pub struct RingBufMutIterator<'a, T> {
+    priv remaining1: &'a mut [Option<T>],
+    priv remaining2: &'a mut [Option<T>],
     priv nelts: uint,
 }
 
-impl<'self, T> Iterator<&'self mut T> for RingBufMutIterator<'self, T> {
+impl<'a, T> Iterator<&'a mut T> for RingBufMutIterator<'a, T> {
     #[inline]
-    fn next(&mut self) -> Option<&'self mut T> {
+    fn next(&mut self) -> Option<&'a mut T> {
         if self.nelts == 0 {
             return None;
         }
@@ -312,9 +312,9 @@ impl<'self, T> Iterator<&'self mut T> for RingBufMutIterator<'self, T> {
     }
 }
 
-impl<'self, T> DoubleEndedIterator<&'self mut T> for RingBufMutIterator<'self, T> {
+impl<'a, T> DoubleEndedIterator<&'a mut T> for RingBufMutIterator<'a, T> {
     #[inline]
-    fn next_back(&mut self) -> Option<&'self mut T> {
+    fn next_back(&mut self) -> Option<&'a mut T> {
         if self.nelts == 0 {
             return None;
         }
@@ -329,7 +329,7 @@ impl<'self, T> DoubleEndedIterator<&'self mut T> for RingBufMutIterator<'self, T
     }
 }
 
-impl<'self, T> ExactSize<&'self mut T> for RingBufMutIterator<'self, T> {}
+impl<'a, T> ExactSize<&'a mut T> for RingBufMutIterator<'a, T> {}
 
 /// Grow is only called on full elts, so nelts is also len(elts), unlike
 /// elsewhere.

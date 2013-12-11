@@ -22,7 +22,7 @@ use rc::Rc;
 use str::{Str, StrSlice};
 use vec::{Vector, ImmutableVector};
 
-pub type Cb<'self> = 'self |buf: &[u8]| -> bool;
+pub type Cb<'a> = 'a |buf: &[u8]| -> bool;
 
 ///
 /// A trait to implement in order to make a type hashable;
@@ -219,7 +219,7 @@ impl IterBytes for f64 {
     }
 }
 
-impl<'self,A:IterBytes> IterBytes for &'self [A] {
+impl<'a,A:IterBytes> IterBytes for &'a [A] {
     #[inline]
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
         self.len().iter_bytes(lsb0, |b| f(b)) &&
@@ -273,7 +273,7 @@ impl<A:IterBytes> IterBytes for @[A] {
     }
 }
 
-impl<'self> IterBytes for &'self str {
+impl<'a> IterBytes for &'a str {
     #[inline]
     fn iter_bytes(&self, _lsb0: bool, f: Cb) -> bool {
         // Terminate the string with a byte that does not appear in UTF-8
@@ -305,7 +305,7 @@ impl<A:IterBytes> IterBytes for Option<A> {
     }
 }
 
-impl<'self,A:IterBytes> IterBytes for &'self A {
+impl<'a,A:IterBytes> IterBytes for &'a A {
     #[inline]
     fn iter_bytes(&self, lsb0: bool, f: Cb) -> bool {
         (**self).iter_bytes(lsb0, f)

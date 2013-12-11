@@ -239,9 +239,9 @@ pub struct Context {
     priv freshness: Arc<FreshnessMap>
 }
 
-pub struct Prep<'self> {
-    priv ctxt: &'self Context,
-    priv fn_name: &'self str,
+pub struct Prep<'a> {
+    priv ctxt: &'a Context,
+    priv fn_name: &'a str,
     priv declared_inputs: WorkMap,
 }
 
@@ -250,12 +250,12 @@ pub struct Exec {
     priv discovered_outputs: WorkMap
 }
 
-enum Work<'self, T> {
+enum Work<'a, T> {
     WorkValue(T),
-    WorkFromTask(&'self Prep<'self>, PortOne<(Exec, T)>),
+    WorkFromTask(&'a Prep<'a>, PortOne<(Exec, T)>),
 }
 
-fn json_encode<'self, T:Encodable<json::Encoder<'self>>>(t: &T) -> ~str {
+fn json_encode<'a, T:Encodable<json::Encoder<'a>>>(t: &T) -> ~str {
     let mut writer = MemWriter::new();
     let mut encoder = json::Encoder::new(&mut writer as &mut io::Writer);
     t.encode(&mut encoder);
@@ -336,8 +336,8 @@ impl Exec {
     }
 }
 
-impl<'self> Prep<'self> {
-    fn new(ctxt: &'self Context, fn_name: &'self str) -> Prep<'self> {
+impl<'a> Prep<'a> {
+    fn new(ctxt: &'a Context, fn_name: &'a str) -> Prep<'a> {
         Prep {
             ctxt: ctxt,
             fn_name: fn_name,
@@ -356,7 +356,7 @@ impl<'self> Prep<'self> {
     }
 }
 
-impl<'self> Prep<'self> {
+impl<'a> Prep<'a> {
     pub fn declare_input(&mut self, kind: &str, name: &str, val: &str) {
         debug!("Declaring input {} {} {}", kind, name, val);
         self.declared_inputs.insert_work_key(WorkKey::new(kind, name),
@@ -395,17 +395,17 @@ impl<'self> Prep<'self> {
         return true;
     }
 
-    pub fn exec<'self, T:Send +
-        Encodable<json::Encoder<'self>> +
+    pub fn exec<'a, T:Send +
+        Encodable<json::Encoder<'a>> +
         Decodable<json::Decoder>>(
-            &'self self, blk: proc(&mut Exec) -> T) -> T {
+            &'a self, blk: proc(&mut Exec) -> T) -> T {
         self.exec_work(blk).unwrap()
     }
 
-    fn exec_work<'self, T:Send +
-        Encodable<json::Encoder<'self>> +
+    fn exec_work<'a, T:Send +
+        Encodable<json::Encoder<'a>> +
         Decodable<json::Decoder>>( // FIXME(#5121)
-            &'self self, blk: proc(&mut Exec) -> T) -> Work<'self, T> {
+            &'a self, blk: proc(&mut Exec) -> T) -> Work<'a, T> {
         let mut bo = Some(blk);
 
         debug!("exec_work: looking up {} and {:?}", self.fn_name,
@@ -445,16 +445,16 @@ impl<'self> Prep<'self> {
     }
 }
 
-impl<'self, T:Send +
-       Encodable<json::Encoder<'self>> +
+impl<'a, T:Send +
+       Encodable<json::Encoder<'a>> +
        Decodable<json::Decoder>>
-    Work<'self, T> { // FIXME(#5121)
+    Work<'a, T> { // FIXME(#5121)
 
-    pub fn from_value(elt: T) -> Work<'self, T> {
+    pub fn from_value(elt: T) -> Work<'a, T> {
         WorkValue(elt)
     }
-    pub fn from_task(prep: &'self Prep<'self>, port: PortOne<(Exec, T)>)
-        -> Work<'self, T> {
+    pub fn from_task(prep: &'a Prep<'a>, port: PortOne<(Exec, T)>)
+        -> Work<'a, T> {
         WorkFromTask(prep, port)
     }
 

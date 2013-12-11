@@ -24,31 +24,31 @@ condition! { pub parse_error: ~str -> (); }
 /// A piece is a portion of the format string which represents the next part to
 /// emit. These are emitted as a stream by the `Parser` class.
 #[deriving(Eq)]
-pub enum Piece<'self> {
+pub enum Piece<'a> {
     /// A literal string which should directly be emitted
-    String(&'self str),
+    String(&'a str),
     /// A back-reference to whatever the current argument is. This is used
     /// inside of a method call to refer back to the original argument.
     CurrentArgument,
     /// This describes that formatting should process the next argument (as
     /// specified inside) for emission.
-    Argument(Argument<'self>),
+    Argument(Argument<'a>),
 }
 
 /// Representation of an argument specification.
 #[deriving(Eq)]
-pub struct Argument<'self> {
+pub struct Argument<'a> {
     /// Where to find this argument
-    position: Position<'self>,
+    position: Position<'a>,
     /// How to format the argument
-    format: FormatSpec<'self>,
+    format: FormatSpec<'a>,
     /// If not `None`, what method to invoke on the argument
-    method: Option<~Method<'self>>
+    method: Option<~Method<'a>>
 }
 
 /// Specification for the formatting of an argument in the format string.
 #[deriving(Eq)]
-pub struct FormatSpec<'self> {
+pub struct FormatSpec<'a> {
     /// Optionally specified character to fill alignment with
     fill: Option<char>,
     /// Optionally specified alignment
@@ -56,20 +56,20 @@ pub struct FormatSpec<'self> {
     /// Packed version of various flags provided
     flags: uint,
     /// The integer precision to use
-    precision: Count<'self>,
+    precision: Count<'a>,
     /// The string width requested for the resulting format
-    width: Count<'self>,
+    width: Count<'a>,
     /// The descriptor string representing the name of the format desired for
     /// this argument, this can be empty or any number of characters, although
     /// it is required to be one word.
-    ty: &'self str
+    ty: &'a str
 }
 
 /// Enum describing where an argument for a format can be located.
 #[deriving(Eq)]
 #[allow(missing_doc)]
-pub enum Position<'self> {
-    ArgumentNext, ArgumentIs(uint), ArgumentNamed(&'self str)
+pub enum Position<'a> {
+    ArgumentNext, ArgumentIs(uint), ArgumentNamed(&'a str)
 }
 
 /// Enum of alignments which are supported.
@@ -92,9 +92,9 @@ pub enum Flag {
 /// can reference either an argument or a literal integer.
 #[deriving(Eq)]
 #[allow(missing_doc)]
-pub enum Count<'self> {
+pub enum Count<'a> {
     CountIs(uint),
-    CountIsName(&'self str),
+    CountIsName(&'a str),
     CountIsParam(uint),
     CountIsNextParam,
     CountImplied,
@@ -103,7 +103,7 @@ pub enum Count<'self> {
 /// Enum describing all of the possible methods which the formatting language
 /// currently supports.
 #[deriving(Eq)]
-pub enum Method<'self> {
+pub enum Method<'a> {
     /// A plural method selects on an integer over a list of either integer or
     /// keyword-defined clauses. The meaning of the keywords is defined by the
     /// current locale.
@@ -113,23 +113,23 @@ pub enum Method<'self> {
     ///
     /// The final element of this enum is the default "other" case which is
     /// always required to be specified.
-    Plural(Option<uint>, ~[PluralArm<'self>], ~[Piece<'self>]),
+    Plural(Option<uint>, ~[PluralArm<'a>], ~[Piece<'a>]),
 
     /// A select method selects over a string. Each arm is a different string
     /// which can be selected for.
     ///
     /// As with `Plural`, a default "other" case is required as well.
-    Select(~[SelectArm<'self>], ~[Piece<'self>]),
+    Select(~[SelectArm<'a>], ~[Piece<'a>]),
 }
 
 /// Structure representing one "arm" of the `plural` function.
 #[deriving(Eq)]
-pub struct PluralArm<'self> {
+pub struct PluralArm<'a> {
     /// A selector can either be specified by a keyword or with an integer
     /// literal.
     selector: Either<PluralKeyword, uint>,
     /// Array of pieces which are the format of this arm
-    result: ~[Piece<'self>],
+    result: ~[Piece<'a>],
 }
 
 /// Enum of the 5 CLDR plural keywords. There is one more, "other", but that is
@@ -144,11 +144,11 @@ pub enum PluralKeyword {
 
 /// Structure representing one "arm" of the `select` function.
 #[deriving(Eq)]
-pub struct SelectArm<'self> {
+pub struct SelectArm<'a> {
     /// String selector which guards this arm
-    selector: &'self str,
+    selector: &'a str,
     /// Array of pieces which are the format of this arm
-    result: ~[Piece<'self>],
+    result: ~[Piece<'a>],
 }
 
 /// The parser structure for interpreting the input format string. This is
@@ -157,14 +157,14 @@ pub struct SelectArm<'self> {
 ///
 /// This is a recursive-descent parser for the sake of simplicity, and if
 /// necessary there's probably lots of room for improvement performance-wise.
-pub struct Parser<'self> {
-    priv input: &'self str,
-    priv cur: str::CharOffsetIterator<'self>,
+pub struct Parser<'a> {
+    priv input: &'a str,
+    priv cur: str::CharOffsetIterator<'a>,
     priv depth: uint,
 }
 
-impl<'self> Iterator<Piece<'self>> for Parser<'self> {
-    fn next(&mut self) -> Option<Piece<'self>> {
+impl<'a> Iterator<Piece<'a>> for Parser<'a> {
+    fn next(&mut self) -> Option<Piece<'a>> {
         match self.cur.clone().next() {
             Some((_, '#')) => { self.cur.next(); Some(CurrentArgument) }
             Some((_, '{')) => {
@@ -191,7 +191,7 @@ impl<'self> Iterator<Piece<'self>> for Parser<'self> {
     }
 }
 
-impl<'self> Parser<'self> {
+impl<'a> Parser<'a> {
     /// Creates a new parser for the given format string
     pub fn new<'a>(s: &'a str) -> Parser<'a> {
         Parser {
@@ -276,7 +276,7 @@ impl<'self> Parser<'self> {
 
     /// Parses all of a string which is to be considered a "raw literal" in a
     /// format string. This is everything outside of the braces.
-    fn string(&mut self, start: uint) -> &'self str {
+    fn string(&mut self, start: uint) -> &'a str {
         loop {
             // we may not consume the character, so clone the iterator
             match self.cur.clone().next() {
@@ -295,7 +295,7 @@ impl<'self> Parser<'self> {
 
     /// Parses an Argument structure, or what's contained within braces inside
     /// the format string
-    fn argument(&mut self) -> Argument<'self> {
+    fn argument(&mut self) -> Argument<'a> {
         Argument {
             position: self.position(),
             format: self.format(),
@@ -305,7 +305,7 @@ impl<'self> Parser<'self> {
 
     /// Parses a positional argument for a format. This could either be an
     /// integer index of an argument, a named argument, or a blank string.
-    fn position(&mut self) -> Position<'self> {
+    fn position(&mut self) -> Position<'a> {
         match self.integer() {
             Some(i) => { ArgumentIs(i) }
             None => {
@@ -321,7 +321,7 @@ impl<'self> Parser<'self> {
 
     /// Parses a format specifier at the current position, returning all of the
     /// relevant information in the FormatSpec struct.
-    fn format(&mut self) -> FormatSpec<'self> {
+    fn format(&mut self) -> FormatSpec<'a> {
         let mut spec = FormatSpec {
             fill: None,
             align: AlignUnknown,
@@ -396,7 +396,7 @@ impl<'self> Parser<'self> {
 
     /// Parses a method to be applied to the previously specified argument and
     /// its format. The two current supported methods are 'plural' and 'select'
-    fn method(&mut self) -> Option<~Method<'self>> {
+    fn method(&mut self) -> Option<~Method<'a>> {
         if !self.wsconsume(',') {
             return None;
         }
@@ -422,7 +422,7 @@ impl<'self> Parser<'self> {
     }
 
     /// Parses a 'select' statement (after the initial 'select' word)
-    fn select(&mut self) -> ~Method<'self> {
+    fn select(&mut self) -> ~Method<'a> {
         let mut other = None;
         let mut arms = ~[];
         // Consume arms one at a time
@@ -464,7 +464,7 @@ impl<'self> Parser<'self> {
     }
 
     /// Parses a 'plural' statement (after the initial 'plural' word)
-    fn plural(&mut self) -> ~Method<'self> {
+    fn plural(&mut self) -> ~Method<'a> {
         let mut offset = None;
         let mut other = None;
         let mut arms = ~[];
@@ -564,7 +564,7 @@ impl<'self> Parser<'self> {
     /// Parses a Count parameter at the current position. This does not check
     /// for 'CountIsNextParam' because that is only used in precision, not
     /// width.
-    fn count(&mut self) -> Count<'self> {
+    fn count(&mut self) -> Count<'a> {
         match self.integer() {
             Some(i) => {
                 if self.consume('$') {
@@ -591,7 +591,7 @@ impl<'self> Parser<'self> {
     /// Parses a word starting at the current position. A word is considered to
     /// be an alphabetic character followed by any number of alphanumeric
     /// characters.
-    fn word(&mut self) -> &'self str {
+    fn word(&mut self) -> &'a str {
         let start = match self.cur.clone().next() {
             Some((pos, c)) if char::is_XID_start(c) => {
                 self.cur.next();

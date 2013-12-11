@@ -51,21 +51,21 @@ use writer = extra::ebml::writer;
 // used by astencode:
 type abbrev_map = @mut HashMap<ty::t, tyencode::ty_abbrev>;
 
-pub type encode_inlined_item<'self> = 'self |ecx: &EncodeContext,
+pub type encode_inlined_item<'a> = 'a |ecx: &EncodeContext,
                                              ebml_w: &mut writer::Encoder,
                                              path: &[ast_map::path_elt],
                                              ii: ast::inlined_item|;
 
-pub struct EncodeParams<'self> {
+pub struct EncodeParams<'a> {
     diag: @mut span_handler,
     tcx: ty::ctxt,
     reexports2: middle::resolve::ExportMap2,
-    item_symbols: &'self HashMap<ast::NodeId, ~str>,
-    discrim_symbols: &'self HashMap<ast::NodeId, @str>,
-    non_inlineable_statics: &'self HashSet<ast::NodeId>,
-    link_meta: &'self LinkMeta,
+    item_symbols: &'a HashMap<ast::NodeId, ~str>,
+    discrim_symbols: &'a HashMap<ast::NodeId, @str>,
+    non_inlineable_statics: &'a HashSet<ast::NodeId>,
+    link_meta: &'a LinkMeta,
     cstore: @mut cstore::CStore,
-    encode_inlined_item: encode_inlined_item<'self>,
+    encode_inlined_item: encode_inlined_item<'a>,
     reachable: @mut HashSet<ast::NodeId>,
 }
 
@@ -85,17 +85,17 @@ struct Stats {
     n_inlines: uint
 }
 
-pub struct EncodeContext<'self> {
+pub struct EncodeContext<'a> {
     diag: @mut span_handler,
     tcx: ty::ctxt,
     stats: @mut Stats,
     reexports2: middle::resolve::ExportMap2,
-    item_symbols: &'self HashMap<ast::NodeId, ~str>,
-    discrim_symbols: &'self HashMap<ast::NodeId, @str>,
-    non_inlineable_statics: &'self HashSet<ast::NodeId>,
-    link_meta: &'self LinkMeta,
-    cstore: &'self cstore::CStore,
-    encode_inlined_item: encode_inlined_item<'self>,
+    item_symbols: &'a HashMap<ast::NodeId, ~str>,
+    discrim_symbols: &'a HashMap<ast::NodeId, @str>,
+    non_inlineable_statics: &'a HashSet<ast::NodeId>,
+    link_meta: &'a LinkMeta,
+    cstore: &'a cstore::CStore,
+    encode_inlined_item: encode_inlined_item<'a>,
     type_abbrevs: abbrev_map,
     reachable: @mut HashSet<ast::NodeId>,
 }
@@ -1605,12 +1605,12 @@ fn encode_native_libraries(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
     ebml_w.end_tag();
 }
 
-struct ImplVisitor<'self> {
-    ecx: &'self EncodeContext<'self>,
-    ebml_w: &'self mut writer::Encoder,
+struct ImplVisitor<'a> {
+    ecx: &'a EncodeContext<'a>,
+    ebml_w: &'a mut writer::Encoder,
 }
 
-impl<'self> Visitor<()> for ImplVisitor<'self> {
+impl<'a> Visitor<()> for ImplVisitor<'a> {
     fn visit_item(&mut self, item: @item, _: ()) {
         match item.node {
             item_impl(_, Some(ref trait_ref), _, _) => {

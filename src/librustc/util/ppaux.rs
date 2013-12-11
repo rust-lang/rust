@@ -567,7 +567,7 @@ fn repr_vec<T:Repr>(tcx: ctxt, v: &[T]) -> ~str {
     vec_map_to_str(v, |t| t.repr(tcx))
 }
 
-impl<'self, T:Repr> Repr for &'self [T] {
+impl<'a, T:Repr> Repr for &'a [T] {
     fn repr(&self, tcx: ctxt) -> ~str {
         repr_vec(tcx, *self)
     }

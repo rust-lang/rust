@@ -11,9 +11,9 @@
 mod argparse {
     extern mod extra;
 
-    pub struct Flag<'self> {
-        name: &'self str,
-        desc: &'self str,
+    pub struct Flag<'a> {
+        name: &'a str,
+        desc: &'a str,
         max_count: uint,
         value: uint
     }
@@ -22,8 +22,8 @@ mod argparse {
         Flag { name: name, desc: desc, max_count: 1, value: 0 }
     }
 
-    impl<'self> Flag<'self> {
-        pub fn set_desc(self, s: &str) -> Flag<'self> {
+    impl<'a> Flag<'a> {
+        pub fn set_desc(self, s: &str) -> Flag<'a> {
             Flag { //~ ERROR cannot infer an appropriate lifetime
                 name: self.name,
                 desc: s,

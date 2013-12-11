@@ -14,13 +14,13 @@ use std::mem;
 
 struct arena(());
 
-struct Bcx<'self> {
-    fcx: &'self Fcx<'self>
+struct Bcx<'a> {
+    fcx: &'a Fcx<'a>
 }
 
-struct Fcx<'self> {
-    arena: &'self arena,
-    ccx: &'self Ccx
+struct Fcx<'a> {
+    arena: &'a arena,
+    ccx: &'a Ccx
 }
 
 struct Ccx {

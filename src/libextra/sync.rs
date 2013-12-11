@@ -155,28 +155,28 @@ impl Sem<~[WaitQueue]> {
 // FIXME(#3598): Want to use an Option down below, but we need a custom enum
 // that's not polymorphic to get around the fact that lifetimes are invariant
 // inside of type parameters.
-enum ReacquireOrderLock<'self> {
+enum ReacquireOrderLock<'a> {
     Nothing, // c.c
-    Just(&'self Semaphore),
+    Just(&'a Semaphore),
 }
 
 /// A mechanism for atomic-unlock-and-deschedule blocking and signalling.
-pub struct Condvar<'self> {
+pub struct Condvar<'a> {
     // The 'Sem' object associated with this condvar. This is the one that's
     // atomically-unlocked-and-descheduled upon and reacquired during wakeup.
-    priv sem: &'self Sem<~[WaitQueue]>,
+    priv sem: &'a Sem<~[WaitQueue]>,
     // This is (can be) an extra semaphore which is held around the reacquire
     // operation on the first one. This is only used in cvars associated with
     // rwlocks, and is needed to ensure that, when a downgrader is trying to
     // hand off the access lock (which would be the first field, here), a 2nd
     // writer waking up from a cvar wait can't race with a reader to steal it,
     // See the comment in write_cond for more detail.
-    priv order: ReacquireOrderLock<'self>,
+    priv order: ReacquireOrderLock<'a>,
     // Make sure condvars are non-copyable.
     priv token: util::NonCopyable,
 }
 
-impl<'self> Condvar<'self> {
+impl<'a> Condvar<'a> {
     /**
      * Atomically drop the associated lock, and block until a signal is sent.
      *
@@ -644,12 +644,12 @@ impl RWLock {
 
 /// The "write permission" token used for rwlock.write_downgrade().
 
-pub struct RWLockWriteMode<'self> { priv lock: &'self RWLock, priv token: NonCopyable }
+pub struct RWLockWriteMode<'a> { priv lock: &'a RWLock, priv token: NonCopyable }
 /// The "read permission" token used for rwlock.write_downgrade().
-pub struct RWLockReadMode<'self> { priv lock: &'self RWLock,
+pub struct RWLockReadMode<'a> { priv lock: &'a RWLock,
                                    priv token: NonCopyable }
 
-impl<'self> RWLockWriteMode<'self> {
+impl<'a> RWLockWriteMode<'a> {
     /// Access the pre-downgrade rwlock in write mode.
     pub fn write<U>(&self, blk: || -> U) -> U { blk() }
     /// Access the pre-downgrade rwlock in write mode with a condvar.
@@ -662,7 +662,7 @@ impl<'self> RWLockWriteMode<'self> {
     }
 }
 
-impl<'self> RWLockReadMode<'self> {
+impl<'a> RWLockReadMode<'a> {
     /// Access the post-downgrade rwlock in read mode.
     pub fn read<U>(&self, blk: || -> U) -> U { blk() }
 }

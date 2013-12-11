@@ -10,8 +10,8 @@
 
 #[feature(managed_boxes)];
 
-struct invariant<'self> {
-    f: 'static || -> @mut &'self int
+struct invariant<'a> {
+    f: 'static || -> @mut &'a int
 }
 
 fn to_same_lifetime<'r>(bi: invariant<'r>) {

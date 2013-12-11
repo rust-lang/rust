@@ -36,10 +36,10 @@ struct LifetimeContext {
     named_region_map: @mut NamedRegionMap,
 }
 
-enum ScopeChain<'self> {
-    ItemScope(&'self OptVec<ast::Lifetime>),
-    FnScope(ast::NodeId, &'self OptVec<ast::Lifetime>, &'self ScopeChain<'self>),
-    BlockScope(ast::NodeId, &'self ScopeChain<'self>),
+enum ScopeChain<'a> {
+    ItemScope(&'a OptVec<ast::Lifetime>),
+    FnScope(ast::NodeId, &'a OptVec<ast::Lifetime>, &'a ScopeChain<'a>),
+    BlockScope(ast::NodeId, &'a ScopeChain<'a>),
     RootScope
 }
 
@@ -55,10 +55,10 @@ pub fn crate(sess: session::Session,
     ctxt.named_region_map
 }
 
-impl<'self> Visitor<&'self ScopeChain<'self>> for LifetimeContext {
+impl<'a> Visitor<&'a ScopeChain<'a>> for LifetimeContext {
     fn visit_item(&mut self,
                   item: @ast::item,
-                  _: &'self ScopeChain<'self>) {
+                  _: &'a ScopeChain<'a>) {
         let scope = match item.node {
             ast::item_fn(..) | // fn lifetimes get added in visit_fn below
             ast::item_mod(..) |
@@ -87,7 +87,7 @@ impl<'self> Visitor<&'self ScopeChain<'self>> for LifetimeContext {
                 b: ast::P<ast::Block>,
                 s: Span,
                 n: ast::NodeId,
-                scope: &'self ScopeChain<'self>) {
+                scope: &'a ScopeChain<'a>) {
         match *fk {
             visit::fk_item_fn(_, generics, _, _) |
             visit::fk_method(_, generics, _) => {
@@ -105,7 +105,7 @@ impl<'self> Visitor<&'self ScopeChain<'self>> for LifetimeContext {
 
     fn visit_ty(&mut self,
                 ty: &ast::Ty,
-                scope: &'self ScopeChain<'self>) {
+                scope: &'a ScopeChain<'a>) {
         match ty.node {
             ast::ty_closure(@ast::TyClosure { lifetimes: ref lifetimes, .. }) |
             ast::ty_bare_fn(@ast::TyBareFn { lifetimes: ref lifetimes, .. }) => {
@@ -123,7 +123,7 @@ impl<'self> Visitor<&'self ScopeChain<'self>> for LifetimeContext {
 
     fn visit_ty_method(&mut self,
                        m: &ast::TypeMethod,
-                       scope: &'self ScopeChain<'self>) {
+                       scope: &'a ScopeChain<'a>) {
         let scope1 = FnScope(m.id, &m.generics.lifetimes, scope);
         self.check_lifetime_names(&m.generics.lifetimes);
         debug!("pushing fn scope id={} due to ty_method", m.id);
@@ -133,7 +133,7 @@ impl<'self> Visitor<&'self ScopeChain<'self>> for LifetimeContext {
 
     fn visit_block(&mut self,
                    b: ast::P<ast::Block>,
-                   scope: &'self ScopeChain<'self>) {
+                   scope: &'a ScopeChain<'a>) {
         let scope1 = BlockScope(b.id, scope);
         debug!("pushing block scope {}", b.id);
         visit::walk_block(self, b, &scope1);
@@ -142,7 +142,7 @@ impl<'self> Visitor<&'self ScopeChain<'self>> for LifetimeContext {
 
     fn visit_lifetime_ref(&mut self,
                           lifetime_ref: &ast::Lifetime,
-                          scope: &'self ScopeChain<'self>) {
+                          scope: &'a ScopeChain<'a>) {
         if lifetime_ref.ident == special_idents::statik {
             self.insert_lifetime(lifetime_ref, ast::DefStaticRegion);
             return;

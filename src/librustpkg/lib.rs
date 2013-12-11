@@ -83,9 +83,9 @@ pub mod usage;
 /// A PkgScript represents user-supplied custom logic for
 /// special build hooks. This only exists for packages with
 /// an explicit package script.
-struct PkgScript<'self> {
+struct PkgScript<'a> {
     /// Uniquely identifies this package
-    id: &'self PkgId,
+    id: &'a PkgId,
     /// File path for the package script
     input: Path,
     /// The session to use *only* for compiling the custom
@@ -99,7 +99,7 @@ struct PkgScript<'self> {
     build_dir: Path
 }
 
-impl<'self> PkgScript<'self> {
+impl<'a> PkgScript<'a> {
     /// Given the path name for a package script
     /// and a package ID, parse the package script into
     /// a PkgScript that we can then execute

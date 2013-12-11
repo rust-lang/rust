@@ -33,7 +33,7 @@ pub struct Process {
 }
 
 /// Options that can be given when starting a Process.
-pub struct ProcessOptions<'self> {
+pub struct ProcessOptions<'a> {
     /**
      * If this is None then the new process will have the same initial
      * environment as the parent process.
@@ -50,7 +50,7 @@ pub struct ProcessOptions<'self> {
      * If this is Some(path) then the new process will use the given path
      * for its initial working directory.
      */
-    dir: Option<&'self Path>,
+    dir: Option<&'a Path>,
 
     /**
      * If this is None then a new pipe will be created for the new process's
@@ -83,7 +83,7 @@ pub struct ProcessOptions<'self> {
     err_fd: Option<c_int>,
 }
 
-impl <'self> ProcessOptions<'self> {
+impl <'a> ProcessOptions<'a> {
     /// Return a ProcessOptions that has None in every field.
     pub fn new<'a>() -> ProcessOptions<'a> {
         ProcessOptions {

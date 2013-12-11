@@ -18,10 +18,10 @@ pub struct Layout {
     crate: ~str,
 }
 
-pub struct Page<'self> {
-    title: &'self str,
-    ty: &'self str,
-    root_path: &'self str,
+pub struct Page<'a> {
+    title: &'a str,
+    ty: &'a str,
+    root_path: &'a str,
 }
 
 pub fn render<T: fmt::Default, S: fmt::Default>(

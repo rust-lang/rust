@@ -64,22 +64,22 @@ impl<T> Clone for @mut T {
     fn clone(&self) -> @mut T { *self }
 }
 
-impl<'self, T> Clone for &'self T {
+impl<'a, T> Clone for &'a T {
     /// Return a shallow copy of the borrowed pointer.
     #[inline]
-    fn clone(&self) -> &'self T { *self }
+    fn clone(&self) -> &'a T { *self }
 }
 
-impl<'self, T> Clone for &'self [T] {
+impl<'a, T> Clone for &'a [T] {
     /// Return a shallow copy of the slice.
     #[inline]
-    fn clone(&self) -> &'self [T] { *self }
+    fn clone(&self) -> &'a [T] { *self }
 }
 
-impl<'self> Clone for &'self str {
+impl<'a> Clone for &'a str {
     /// Return a shallow copy of the slice.
     #[inline]
-    fn clone(&self) -> &'self str { *self }
+    fn clone(&self) -> &'a str { *self }
 }
 
 macro_rules! clone_impl(

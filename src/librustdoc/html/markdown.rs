@@ -30,7 +30,7 @@ use std::vec;
 /// A unit struct which has the `fmt::Default` trait implemented. When
 /// formatted, this struct will emit the HTML corresponding to the rendered
 /// version of the contained markdown string.
-pub struct Markdown<'self>(&'self str);
+pub struct Markdown<'a>(&'a str);
 
 static OUTPUT_UNIT: libc::size_t = 64;
 static MKDEXT_NO_INTRA_EMPHASIS: libc::c_uint = 1 << 0;
@@ -119,8 +119,8 @@ fn render(w: &mut io::Writer, s: &str) {
     }
 }
 
-impl<'self> fmt::Default for Markdown<'self> {
-    fn fmt(md: &Markdown<'self>, fmt: &mut fmt::Formatter) {
+impl<'a> fmt::Default for Markdown<'a> {
+    fn fmt(md: &Markdown<'a>, fmt: &mut fmt::Formatter) {
         // This is actually common enough to special-case
         if md.len() == 0 { return; }
         render(fmt.buf, md.as_slice());

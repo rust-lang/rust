@@ -27,21 +27,21 @@ use super::{contains_nul, BytesContainer, GenericPath, GenericPathUnsafe};
 ///
 /// Each component is yielded as Option<&str> for compatibility with PosixPath, but
 /// every component in WindowsPath is guaranteed to be Some.
-pub type StrComponentIter<'self> = Map<'self, &'self str, Option<&'self str>,
-                                       CharSplitIterator<'self, char>>;
+pub type StrComponentIter<'a> = Map<'a, &'a str, Option<&'a str>,
+                                       CharSplitIterator<'a, char>>;
 /// Iterator that yields components of a Path in reverse as &str
 ///
 /// Each component is yielded as Option<&str> for compatibility with PosixPath, but
 /// every component in WindowsPath is guaranteed to be Some.
-pub type RevStrComponentIter<'self> = Invert<Map<'self, &'self str, Option<&'self str>,
-                                                 CharSplitIterator<'self, char>>>;
+pub type RevStrComponentIter<'a> = Invert<Map<'a, &'a str, Option<&'a str>,
+                                                 CharSplitIterator<'a, char>>>;
 
 /// Iterator that yields successive components of a Path as &[u8]
-pub type ComponentIter<'self> = Map<'self, Option<&'self str>, &'self [u8],
-                                    StrComponentIter<'self>>;
+pub type ComponentIter<'a> = Map<'a, Option<&'a str>, &'a [u8],
+                                    StrComponentIter<'a>>;
 /// Iterator that yields components of a Path in reverse as &[u8]
-pub type RevComponentIter<'self> = Map<'self, Option<&'self str>, &'self [u8],
-                                       RevStrComponentIter<'self>>;
+pub type RevComponentIter<'a> = Map<'a, Option<&'a str>, &'a [u8],
+                                       RevStrComponentIter<'a>>;
 
 /// Represents a Windows path
 // Notes for Windows path impl:
@@ -138,7 +138,7 @@ impl BytesContainer for Path {
     fn is_str(_: Option<Path>) -> bool { true }
 }
 
-impl<'self> BytesContainer for &'self Path {
+impl<'a> BytesContainer for &'a Path {
     #[inline]
     fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
         self.as_vec()
@@ -152,7 +152,7 @@ impl<'self> BytesContainer for &'self Path {
         self.as_str()
     }
     #[inline]
-    fn is_str(_: Option<&'self Path>) -> bool { true }
+    fn is_str(_: Option<&'a Path>) -> bool { true }
 }
 
 impl GenericPathUnsafe for Path {

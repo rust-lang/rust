@@ -406,7 +406,7 @@ Now let's consider two more function types.  Here, we assume that the
 `self` lifetime is defined somewhere outside and hence is not a
 lifetime parameter bound by the function type (it "appears free"):
 
-    fn<a>(&'a int) <: |&'self int|? (Yes, a => self)
+    fn<a>(&'a int) <: |&'a int|? (Yes, a => self)
 
 This subtyping relation does in fact hold.  To see why, you have to
 consider what subtyping means.  One way to look at `T1 <: T2` is to
@@ -423,7 +423,7 @@ to the same thing: a function that accepts pointers with any lifetime
 
 So, what if we reverse the order of the two function types, like this:
 
-    fn(&'self int) <: <a>|&'a int|? (No)
+    fn(&'a int) <: <a>|&'a int|? (No)
 
 Does the subtyping relationship still hold?  The answer of course is
 no.  In this case, the function accepts *only the lifetime `&self`*,
@@ -491,12 +491,12 @@ So far we have encountered no error, so the subtype check succeeds.
 
 Now let's look first at the third example, which was:
 
-    3. fn(&'self T)    <: <b>|&'b T|?        No!
+    3. fn(&'a T)    <: <b>|&'b T|?        No!
 
 After steps 1 and 2 of the algorithm we will have replaced the types
 like so:
 
-    3. fn(&'self T) <: |&'x T|?
+    3. fn(&'a T) <: |&'x T|?
 
 This looks pretty much the same as before, except that on the LHS
 `&self` was not bound, and hence was left as-is and not replaced with

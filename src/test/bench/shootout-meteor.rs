@@ -17,11 +17,11 @@
 fn iterate<'a, T>(x: T, f: 'a |&T| -> T) -> Iterate<'a, T> {
     Iterate {f: f, next: x}
 }
-struct Iterate<'self, T> {
-    priv f: 'self |&T| -> T,
+struct Iterate<'a, T> {
+    priv f: 'a |&T| -> T,
     priv next: T
 }
-impl<'self, T> Iterator<T> for Iterate<'self, T> {
+impl<'a, T> Iterator<T> for Iterate<'a, T> {
     fn next(&mut self) -> Option<T> {
         let mut res = (self.f)(&self.next);
         std::util::swap(&mut res, &mut self.next);
@@ -30,20 +30,20 @@ impl<'self, T> Iterator<T> for Iterate<'self, T> {
 }
 
 // a linked list using borrowed next.
-enum List<'self, T> {
+enum List<'a, T> {
     Nil,
-    Cons(T, &'self List<'self, T>)
+    Cons(T, &'a List<'a, T>)
 }
-struct ListIterator<'self, T> {
-    priv cur: &'self List<'self, T>
+struct ListIterator<'a, T> {
+    priv cur: &'a List<'a, T>
 }
-impl<'self, T> List<'self, T> {
-    fn iter(&'self self) -> ListIterator<'self, T> {
+impl<'a, T> List<'a, T> {
+    fn iter(&'a self) -> ListIterator<'a, T> {
         ListIterator{cur: self}
     }
 }
-impl<'self, T> Iterator<&'self T> for ListIterator<'self, T> {
-    fn next(&mut self) -> Option<&'self T> {
+impl<'a, T> Iterator<&'a T> for ListIterator<'a, T> {
+    fn next(&mut self) -> Option<&'a T> {
         match *self.cur {
             Nil => None,
             Cons(ref elt, next) => {

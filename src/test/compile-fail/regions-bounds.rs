@@ -12,8 +12,8 @@
 // nominal types (but not on other types) and that they are type
 // checked.
 
-struct an_enum<'self>(&'self int);
-struct a_class<'self> { x:&'self int }
+struct an_enum<'a>(&'a int);
+struct a_class<'a> { x:&'a int }
 
 fn a_fn1<'a,'b>(e: an_enum<'a>) -> an_enum<'b> {
     return e; //~ ERROR mismatched types: expected `an_enum<'b>` but found `an_enum<'a>`

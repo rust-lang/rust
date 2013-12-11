@@ -62,7 +62,7 @@ impl DynamicLibrary {
 
     /// Access the value at the symbol of the dynamic library
     pub unsafe fn symbol<T>(&self, symbol: &str) -> Result<T, ~str> {
-        // This function should have a lifetime constraint of 'self on
+        // This function should have a lifetime constraint of 'a on
         // T but that feature is still unimplemented
 
         let maybe_symbol_value = dl::check_for_errors_in(|| {

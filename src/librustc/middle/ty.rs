@@ -1408,13 +1408,13 @@ pub fn subst_tps(tcx: ctxt, tps: &[t], self_ty_opt: Option<t>, typ: t) -> t {
     let mut subst = TpsSubst { tcx: tcx, self_ty_opt: self_ty_opt, tps: tps };
     return subst.fold_ty(typ);
 
-    struct TpsSubst<'self> {
+    struct TpsSubst<'a> {
         tcx: ctxt,
         self_ty_opt: Option<t>,
-        tps: &'self [t],
+        tps: &'a [t],
     }
 
-    impl<'self> TypeFolder for TpsSubst<'self> {
+    impl<'a> TypeFolder for TpsSubst<'a> {
         fn tcx(&self) -> ty::ctxt { self.tcx }
 
         fn fold_ty(&mut self, t: ty::t) -> ty::t {

@@ -14,8 +14,8 @@
 
 // part of issue-6919.rs
 
-struct C<'self> {
-    k: 'self ||,
+struct C<'a> {
+    k: 'a ||,
 }
 
 fn no_op() { }

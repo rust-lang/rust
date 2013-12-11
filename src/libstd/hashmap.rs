@@ -521,13 +521,13 @@ impl<K:Hash + Eq + Clone,V:Clone> Clone for HashMap<K,V> {
 
 /// HashMap iterator
 #[deriving(Clone)]
-pub struct HashMapIterator<'self, K, V> {
-    priv iter: vec::VecIterator<'self, Option<Bucket<K, V>>>,
+pub struct HashMapIterator<'a, K, V> {
+    priv iter: vec::VecIterator<'a, Option<Bucket<K, V>>>,
 }
 
 /// HashMap mutable values iterator
-pub struct HashMapMutIterator<'self, K, V> {
-    priv iter: vec::VecMutIterator<'self, Option<Bucket<K, V>>>,
+pub struct HashMapMutIterator<'a, K, V> {
+    priv iter: vec::VecMutIterator<'a, Option<Bucket<K, V>>>,
 }
 
 /// HashMap move iterator
@@ -537,8 +537,8 @@ pub struct HashMapMoveIterator<K, V> {
 
 /// HashSet iterator
 #[deriving(Clone)]
-pub struct HashSetIterator<'self, K> {
-    priv iter: vec::VecIterator<'self, Option<Bucket<K, ()>>>,
+pub struct HashSetIterator<'a, K> {
+    priv iter: vec::VecIterator<'a, Option<Bucket<K, ()>>>,
 }
 
 /// HashSet move iterator
@@ -546,9 +546,9 @@ pub struct HashSetMoveIterator<K> {
     priv iter: vec::MoveRevIterator<Option<Bucket<K, ()>>>,
 }
 
-impl<'self, K, V> Iterator<(&'self K, &'self V)> for HashMapIterator<'self, K, V> {
+impl<'a, K, V> Iterator<(&'a K, &'a V)> for HashMapIterator<'a, K, V> {
     #[inline]
-    fn next(&mut self) -> Option<(&'self K, &'self V)> {
+    fn next(&mut self) -> Option<(&'a K, &'a V)> {
         for elt in self.iter {
             match elt {
                 &Some(ref bucket) => return Some((&bucket.key, &bucket.value)),
@@ -559,9 +559,9 @@ impl<'self, K, V> Iterator<(&'self K, &'self V)> for HashMapIterator<'self, K, V
     }
 }
 
-impl<'self, K, V> Iterator<(&'self K, &'self mut V)> for HashMapMutIterator<'self, K, V> {
+impl<'a, K, V> Iterator<(&'a K, &'a mut V)> for HashMapMutIterator<'a, K, V> {
     #[inline]
-    fn next(&mut self) -> Option<(&'self K, &'self mut V)> {
+    fn next(&mut self) -> Option<(&'a K, &'a mut V)> {
         for elt in self.iter {
             match elt {
                 &Some(ref mut bucket) => return Some((&bucket.key, &mut bucket.value)),
@@ -585,9 +585,9 @@ impl<K, V> Iterator<(K, V)> for HashMapMoveIterator<K, V> {
     }
 }
 
-impl<'self, K> Iterator<&'self K> for HashSetIterator<'self, K> {
+impl<'a, K> Iterator<&'a K> for HashSetIterator<'a, K> {
     #[inline]
-    fn next(&mut self) -> Option<&'self K> {
+    fn next(&mut self) -> Option<&'a K> {
         for elt in self.iter {
             match elt {
                 &Some(ref bucket) => return Some(&bucket.key),
@@ -798,9 +798,9 @@ impl<K: Eq + Hash> Default for HashSet<K> {
 // `Repeat` is used to feed the filter closure an explicit capture
 // of a reference to the other set
 /// Set operations iterator
-pub type SetAlgebraIter<'self, T> =
-    FilterMap<'static,(&'self HashSet<T>, &'self T), &'self T,
-              Zip<Repeat<&'self HashSet<T>>,HashSetIterator<'self,T>>>;
+pub type SetAlgebraIter<'a, T> =
+    FilterMap<'static,(&'a HashSet<T>, &'a T), &'a T,
+              Zip<Repeat<&'a HashSet<T>>,HashSetIterator<'a,T>>>;
 
 
 #[cfg(test)]

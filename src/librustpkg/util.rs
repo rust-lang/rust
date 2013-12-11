@@ -427,18 +427,18 @@ pub fn compile_crate(ctxt: &BuildContext,
     compile_input(ctxt, exec, pkg_id, crate, workspace, deps, flags, cfgs, opt, what)
 }
 
-struct ViewItemVisitor<'self> {
-    context: &'self BuildContext,
-    parent: &'self PkgId,
-    parent_crate: &'self Path,
+struct ViewItemVisitor<'a> {
+    context: &'a BuildContext,
+    parent: &'a PkgId,
+    parent_crate: &'a Path,
     sess: session::Session,
-    exec: &'self mut workcache::Exec,
-    c: &'self ast::Crate,
-    save: 'self |Path|,
-    deps: &'self mut DepMap
+    exec: &'a mut workcache::Exec,
+    c: &'a ast::Crate,
+    save: 'a |Path|,
+    deps: &'a mut DepMap
 }
 
-impl<'self> Visitor<()> for ViewItemVisitor<'self> {
+impl<'a> Visitor<()> for ViewItemVisitor<'a> {
     fn visit_view_item(&mut self, vi: &ast::view_item, env: ()) {
         use conditions::nonexistent_package::cond;
 

@@ -188,8 +188,8 @@ impl Rng for IsaacRng {
     }
 }
 
-impl<'self> SeedableRng<&'self [u32]> for IsaacRng {
-    fn reseed(&mut self, seed: &'self [u32]) {
+impl<'a> SeedableRng<&'a [u32]> for IsaacRng {
+    fn reseed(&mut self, seed: &'a [u32]) {
         // make the seed into [seed[0], seed[1], ..., seed[seed.len()
         // - 1], 0, 0, ...], to fill rng.rsl.
         let seed_iter = seed.iter().map(|&x| x).chain(Repeat::new(0u32));
@@ -210,7 +210,7 @@ impl<'self> SeedableRng<&'self [u32]> for IsaacRng {
     /// 256 and any more will be silently ignored. A generator
     /// constructed with a given seed will generate the same sequence
     /// of values as all other generators constructed with that seed.
-    fn from_seed(seed: &'self [u32]) -> IsaacRng {
+    fn from_seed(seed: &'a [u32]) -> IsaacRng {
         let mut rng = EMPTY;
         rng.reseed(seed);
         rng
@@ -399,8 +399,8 @@ impl Rng for Isaac64Rng {
     }
 }
 
-impl<'self> SeedableRng<&'self [u64]> for Isaac64Rng {
-    fn reseed(&mut self, seed: &'self [u64]) {
+impl<'a> SeedableRng<&'a [u64]> for Isaac64Rng {
+    fn reseed(&mut self, seed: &'a [u64]) {
         // make the seed into [seed[0], seed[1], ..., seed[seed.len()
         // - 1], 0, 0, ...], to fill rng.rsl.
         let seed_iter = seed.iter().map(|&x| x).chain(Repeat::new(0u64));
@@ -421,7 +421,7 @@ impl<'self> SeedableRng<&'self [u64]> for Isaac64Rng {
     /// 256 and any more will be silently ignored. A generator
     /// constructed with a given seed will generate the same sequence
     /// of values as all other generators constructed with that seed.
-    fn from_seed(seed: &'self [u64]) -> Isaac64Rng {
+    fn from_seed(seed: &'a [u64]) -> Isaac64Rng {
         let mut rng = EMPTY_64;
         rng.reseed(seed);
         rng

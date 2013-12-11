@@ -15,7 +15,7 @@ use ptr;
 use unstable::intrinsics::TyDesc;
 use unstable::raw;
 
-type DropGlue<'self> = 'self |**TyDesc, *c_void|;
+type DropGlue<'a> = 'a |**TyDesc, *c_void|;
 
 /*
  * Box annihilation

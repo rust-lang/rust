@@ -390,13 +390,13 @@ pub trait IdVisitingOperation {
     fn visit_id(&self, node_id: NodeId);
 }
 
-pub struct IdVisitor<'self, O> {
-    operation: &'self O,
+pub struct IdVisitor<'a, O> {
+    operation: &'a O,
     pass_through_items: bool,
     visited_outermost: bool,
 }
 
-impl<'self, O: IdVisitingOperation> IdVisitor<'self, O> {
+impl<'a, O: IdVisitingOperation> IdVisitor<'a, O> {
     fn visit_generics_helper(&self, generics: &Generics) {
         for type_parameter in generics.ty_params.iter() {
             self.operation.visit_id(type_parameter.id)
@@ -407,7 +407,7 @@ impl<'self, O: IdVisitingOperation> IdVisitor<'self, O> {
     }
 }
 
-impl<'self, O: IdVisitingOperation> Visitor<()> for IdVisitor<'self, O> {
+impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
     fn visit_mod(&mut self,
                  module: &_mod,
                  _: Span,
@@ -657,11 +657,11 @@ pub trait EachViewItem {
     fn each_view_item(&self, f: |&ast::view_item| -> bool) -> bool;
 }
 
-struct EachViewItemData<'self> {
-    callback: 'self |&ast::view_item| -> bool,
+struct EachViewItemData<'a> {
+    callback: 'a |&ast::view_item| -> bool,
 }
 
-impl<'self> Visitor<()> for EachViewItemData<'self> {
+impl<'a> Visitor<()> for EachViewItemData<'a> {
     fn visit_view_item(&mut self, view_item: &ast::view_item, _: ()) {
         let _ = (self.callback)(view_item);
     }

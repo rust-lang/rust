@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct S<'self, T> {
-    o: &'self Option<T>
+struct S<'a, T> {
+    o: &'a Option<T>
 }
 
 fn main() {

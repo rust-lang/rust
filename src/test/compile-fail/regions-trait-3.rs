@@ -11,8 +11,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait get_ctxt<'self> {
-    fn get_ctxt(self) -> &'self uint;
+trait get_ctxt<'a> {
+    fn get_ctxt(self) -> &'a uint;
 }
 
 fn make_gc1(gc: @get_ctxt<'a>) -> @get_ctxt<'b>  {
@@ -20,11 +20,11 @@ fn make_gc1(gc: @get_ctxt<'a>) -> @get_ctxt<'b>  {
 }
 
 struct Foo {
-    r: &'self uint
+    r: &'a uint
 }
 
-impl get_ctxt for Foo<'self> {
-    fn get_ctxt(&self) -> &'self uint { self.r }
+impl get_ctxt for Foo<'a> {
+    fn get_ctxt(&self) -> &'a uint { self.r }
 }
 
 fn make_gc2<'a,'b>(foo: Foo<'a>) -> @get_ctxt<'b>  {

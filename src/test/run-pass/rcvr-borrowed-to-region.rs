@@ -15,7 +15,7 @@ trait get {
 // Note: impl on a slice; we're checking that the pointers below
 // correctly get borrowed to `&`. (similar to impling for `int`, with
 // `&self` instead of `self`.)
-impl<'self> get for &'self int {
+impl<'a> get for &'a int {
     fn get(self) -> int {
         return *self;
     }

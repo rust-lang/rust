@@ -85,17 +85,17 @@ pub fn relate_nested_regions(tcx: ty::ctxt,
     }
     rr.fold_ty(ty);
 
-    struct RegionRelator<'self> {
+    struct RegionRelator<'a> {
         tcx: ty::ctxt,
         stack: ~[ty::Region],
-        relate_op: 'self |ty::Region, ty::Region|,
+        relate_op: 'a |ty::Region, ty::Region|,
     }
 
     // FIXME(#10151) -- Define more precisely when a region is
     // considered "nested". Consider taking variance into account as
     // well.
 
-    impl<'self> TypeFolder for RegionRelator<'self> {
+    impl<'a> TypeFolder for RegionRelator<'a> {
         fn tcx(&self) -> ty::ctxt {
             self.tcx
         }
@@ -124,7 +124,7 @@ pub fn relate_nested_regions(tcx: ty::ctxt,
         }
     }
 
-    impl<'self> RegionRelator<'self> {
+    impl<'a> RegionRelator<'a> {
         fn relate(&mut self, r_sub: ty::Region) {
             for &r in self.stack.iter() {
                 if !r.is_bound() && !r_sub.is_bound() {

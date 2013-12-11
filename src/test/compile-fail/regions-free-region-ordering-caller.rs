@@ -12,7 +12,7 @@
 // than the thing it points at and ensure that they result in
 // errors. See also regions-free-region-ordering-callee.rs
 
-struct Paramd<'self> { x: &'self uint }
+struct Paramd<'a> { x: &'a uint }
 
 fn call2<'a, 'b>(a: &'a uint, b: &'b uint) {
     let z: Option<&'b &'a uint> = None;

@@ -765,7 +765,7 @@ trait get_ty_str_ctxt {
     fn ty_str_ctxt(&self) -> @tyencode::ctxt;
 }
 
-impl<'self> get_ty_str_ctxt for e::EncodeContext<'self> {
+impl<'a> get_ty_str_ctxt for e::EncodeContext<'a> {
     fn ty_str_ctxt(&self) -> @tyencode::ctxt {
         @tyencode::ctxt {
             diag: self.tcx.sess.diagnostic(),

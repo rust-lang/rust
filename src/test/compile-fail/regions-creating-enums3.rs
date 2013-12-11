@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum ast<'self> {
+enum ast<'a> {
     num(uint),
-    add(&'self ast<'self>, &'self ast<'self>)
+    add(&'a ast<'a>, &'a ast<'a>)
 }
 
 fn mk_add_bad1<'a,'b>(x: &'a ast<'a>, y: &'b ast<'b>) -> ast<'a> {

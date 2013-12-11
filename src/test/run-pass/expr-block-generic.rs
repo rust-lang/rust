@@ -12,7 +12,7 @@
 // xfail-fast
 
 // Tests for standalone blocks as expressions with dynamic type sizes
-type compare<'self, T> = 'self |T, T| -> bool;
+type compare<'a, T> = 'a |T, T| -> bool;
 
 fn test_generic<T:Clone>(expected: T, eq: compare<T>) {
     let actual: T = { expected.clone() };

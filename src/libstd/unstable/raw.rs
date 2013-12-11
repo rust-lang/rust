@@ -53,8 +53,8 @@ pub trait Repr<T> {
     fn repr(&self) -> T { unsafe { cast::transmute_copy(self) } }
 }
 
-impl<'self, T> Repr<Slice<T>> for &'self [T] {}
-impl<'self> Repr<Slice<u8>> for &'self str {}
+impl<'a, T> Repr<Slice<T>> for &'a [T] {}
+impl<'a> Repr<Slice<u8>> for &'a str {}
 impl<T> Repr<*Box<T>> for @T {}
 impl<T> Repr<*Box<Vec<T>>> for @[T] {}
 impl Repr<*String> for ~str {}
