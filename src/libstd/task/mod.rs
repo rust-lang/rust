@@ -55,7 +55,6 @@
 
 use prelude::*;
 
-use cell::Cell;
 use comm::{stream, Chan, GenericChan, GenericPort, Port, Peekable};
 use result::{Result, Ok, Err};
 use rt::in_green_task_context;
@@ -284,10 +283,8 @@ impl TaskBuilder {
                 f
             }
         };
-        let prev_gen_body = Cell::new(prev_gen_body);
         let next_gen_body = {
             let f: proc(proc()) -> proc() = proc(body) {
-                let prev_gen_body = prev_gen_body.take();
                 wrapper(prev_gen_body(body))
             };
             f
@@ -432,12 +429,11 @@ pub fn with_task_name<U>(blk: |Option<&str>| -> U) -> U {
     use rt::task::Task;
 
     if in_green_task_context() {
-        Local::borrow(|task: &mut Task| {
-            match task.name {
-                Some(ref name) => blk(Some(name.as_slice())),
-                None => blk(None)
-            }
-        })
+        let mut task = Local::borrow(None::<Task>);
+        match task.get().name {
+            Some(ref name) => blk(Some(name.as_slice())),
+            None => blk(None)
+        }
     } else {
         fail!("no task name exists in non-green task context")
     }
@@ -459,7 +455,8 @@ pub fn failing() -> bool {
 
     use rt::task::Task;
 
-    Local::borrow(|local: &mut Task| local.unwinder.unwinding)
+    let mut local = Local::borrow(None::<Task>);
+    local.get().unwinder.unwinding
 }
 
 // The following 8 tests test the following 2^3 combinations:
@@ -548,11 +545,9 @@ struct Wrapper {
 fn test_add_wrapper() {
     let (po, ch) = stream::<()>();
     let mut b0 = task();
-    let ch = Cell::new(ch);
     do b0.add_wrapper |body| {
-        let ch = Cell::new(ch.take());
+        let ch = ch;
         let result: proc() = proc() {
-            let ch = ch.take();
             body();
             ch.send(());
         };
@@ -606,9 +601,9 @@ fn test_try_fail() {
 
 #[cfg(test)]
 fn get_sched_id() -> int {
-    Local::borrow(|sched: &mut ::rt::sched::Scheduler| {
-        sched.sched_id() as int
-    })
+    use rt::sched::Scheduler;
+    let mut sched = Local::borrow(None::<Scheduler>);
+    sched.get().sched_id() as int
 }
 
 #[test]
@@ -642,12 +637,10 @@ fn test_spawn_sched_childs_on_default_sched() {
     // Assuming tests run on the default scheduler
     let default_id = get_sched_id();
 
-    let ch = Cell::new(ch);
     do spawn_sched(SingleThreaded) {
         let parent_sched_id = get_sched_id();
-        let ch = Cell::new(ch.take());
+        let ch = ch;
         do spawn {
-            let ch = ch.take();
             let child_sched_id = get_sched_id();
             assert!(parent_sched_id != child_sched_id);
             assert_eq!(child_sched_id, default_id);
@@ -671,10 +664,10 @@ fn test_spawn_sched_blocking() {
             let (fin_po, fin_ch) = stream();
 
             let mut lock = Mutex::new();
-            let lock2 = Cell::new(lock.clone());
+            let lock2 = lock.clone();
 
             do spawn_sched(SingleThreaded) {
-                let mut lock = lock2.take();
+                let mut lock = lock2;
                 lock.lock();
 
                 start_ch.send(());

@@ -31,7 +31,7 @@ use libc;
 use option::{Option, Some, None};
 use result::{Ok, Err};
 use io::buffered::LineBufferedWriter;
-use rt::rtio::{IoFactory, RtioTTY, RtioFileStream, with_local_io, DontClose};
+use rt::rtio::{DontClose, IoFactory, LocalIo, RtioFileStream, RtioTTY};
 use super::{Reader, Writer, io_error, IoError, OtherIoError,
             standard_error, EndOfFile};
 
@@ -69,12 +69,19 @@ enum StdSource {
 }
 
 fn src<T>(fd: libc::c_int, readable: bool, f: |StdSource| -> T) -> T {
-    with_local_io(|io| {
-        match io.tty_open(fd, readable) {
-            Ok(tty) => Some(f(TTY(tty))),
-            Err(_) => Some(f(File(io.fs_from_raw_fd(fd, DontClose)))),
+    let mut io = LocalIo::borrow();
+    match io.get().tty_open(fd, readable) {
+        Ok(tty) => f(TTY(tty)),
+        Err(_) => {
+            // It's not really that desirable if these handles are closed
+            // synchronously, and because they're squirreled away in a task
+            // structure the destructors will be run when the task is
+            // attempted to get destroyed. This means that if we run a
+            // synchronous destructor we'll attempt to do some scheduling
+            // operations which will just result in sadness.
+            f(File(io.get().fs_from_raw_fd(fd, DontClose)))
         }
-    }).unwrap()
+    }
 }
 
 /// Creates a new non-blocking handle to the stdin of the current process.

@@ -10,18 +10,16 @@
 
 #[allow(missing_doc)];
 
-use cell::Cell;
 use comm;
 use container::Container;
 use iter::{Iterator, DoubleEndedIterator};
+use kinds::Send;
+use ops::Drop;
 use option::*;
-// use either::{Either, Left, Right};
-// use rt::kill::BlockedTask;
 use rt::local::Local;
 use rt::rtio::EventLoop;
 use rt::sched::Scheduler;
 use rt::shouldnt_be_public::{SelectInner, SelectPortInner};
-use unstable::finally::Finally;
 use vec::{OwnedVector, MutableVector};
 
 /// Trait for message-passing primitives that can be select()ed on.
@@ -31,6 +29,18 @@ pub trait Select : SelectInner { }
 // (This is separate from the above trait to enable heterogeneous lists of ports
 // that implement Select on different types to use select().)
 pub trait SelectPort<T> : SelectPortInner<T> { }
+
+/// A helper type that throws away a value on a port.
+struct PortGuard<T> {
+    port: Option<comm::PortOne<T>>,
+}
+
+#[unsafe_destructor]
+impl<T:Send> Drop for PortGuard<T> {
+    fn drop(&mut self) {
+        let _ = self.port.take_unwrap().recv();
+    }
+}
 
 /// Receive a message from any one of many ports at once. Returns the index of the
 /// port whose data is ready. (If multiple are ready, returns the lowest index.)
@@ -56,11 +66,13 @@ pub fn select<A: Select>(ports: &mut [A]) -> uint {
     // after letting the task get woken up. The and_then closure needs to delay
     // the task from resuming until all ports have become blocked_on.
     let (p,c) = comm::oneshot();
-    let p = Cell::new(p);
-    let c = Cell::new(c);
 
-    (|| {
-        let c = Cell::new(c.take());
+    {
+        let _guard = PortGuard {
+            port: Some(p),
+        };
+
+        let mut c = Some(c);
         let sched: ~Scheduler = Local::take();
         sched.deschedule_running_task_and_then(|sched, task| {
             let task_handles = task.make_selectable(ports.len());
@@ -74,15 +86,12 @@ pub fn select<A: Select>(ports: &mut [A]) -> uint {
                 }
             }
 
-            let c = Cell::new(c.take());
-            do sched.event_loop.callback { c.take().send_deferred(()) }
+            let c = c.take_unwrap();
+            do sched.event_loop.callback {
+                c.send_deferred(())
+            }
         })
-    }).finally(|| {
-        // Unkillable is necessary not because getting killed is dangerous here,
-        // but to force the recv not to use the same kill-flag that we used for
-        // selecting. Otherwise a user-sender could spuriously wakeup us here.
-        p.take().recv();
-    });
+    }
 
     // Task resumes. Now unblock ourselves from all the ports we blocked on.
     // If the success index wasn't reset, 'take' will just take all of them.
@@ -133,7 +142,6 @@ mod test {
     use vec::*;
     use comm::GenericChan;
     use task;
-    use cell::Cell;
     use iter::{Iterator, range};
 
     #[test] #[should_fail]
@@ -246,9 +254,7 @@ mod test {
             let (p3,c3) = oneshot();
             let (p4,c4) = oneshot();
 
-            let x = Cell::new((c2, p3, c4));
             do task::spawn {
-                let (c2, p3, c4) = x.take();
                 p3.recv();   // handshake parent
                 c4.send(()); // normal receive
                 task::deschedule();
@@ -284,10 +290,9 @@ mod test {
                             let (p,c) = oneshot();
                             ports.push(p);
                             if send_on_chans.contains(&i) {
-                                let c = Cell::new(c);
                                 do spawntask_random {
                                     task::deschedule();
-                                    c.take().send(());
+                                    c.send(());
                                 }
                             }
                         }

@@ -164,16 +164,20 @@ pub struct ForbidSwitch {
 
 impl ForbidSwitch {
     fn new(s: &'static str) -> ForbidSwitch {
+        let mut sched = Local::borrow(None::<Scheduler>);
         ForbidSwitch {
-            msg: s, sched: Local::borrow(|s: &mut Scheduler| s.sched_id())
+            msg: s,
+            sched: sched.get().sched_id(),
         }
     }
 }
 
 impl Drop for ForbidSwitch {
     fn drop(&mut self) {
-        assert!(self.sched == Local::borrow(|s: &mut Scheduler| s.sched_id()),
-                "didnt want a scheduler switch: {}", self.msg);
+        let mut sched = Local::borrow(None::<Scheduler>);
+        assert!(self.sched == sched.get().sched_id(),
+                "didnt want a scheduler switch: {}",
+                self.msg);
     }
 }
 
@@ -391,15 +395,12 @@ pub fn slice_to_uv_buf(v: &[u8]) -> Buf {
 #[cfg(test)]
 fn local_loop() -> &'static mut Loop {
     unsafe {
-        cast::transmute(Local::borrow(|sched: &mut Scheduler| {
-            let mut io = None;
-            sched.event_loop.io(|i| {
-                let (_vtable, uvio): (uint, &'static mut uvio::UvIoFactory) =
-                    cast::transmute(i);
-                io = Some(uvio);
-            });
-            io.unwrap()
-        }).uv_loop())
+        cast::transmute({
+            let mut sched = Local::borrow(None::<Scheduler>);
+            let (_vtable, uvio): (uint, &'static mut uvio::UvIoFactory) =
+                cast::transmute(sched.get().event_loop.io().unwrap());
+            uvio
+        }.uv_loop())
     }
 }
 

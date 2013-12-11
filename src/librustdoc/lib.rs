@@ -26,7 +26,6 @@ extern mod syntax;
 extern mod rustc;
 extern mod extra;
 
-use std::cell::Cell;
 use std::local_data;
 use std::io;
 use std::io::File;
@@ -196,13 +195,13 @@ fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
     let mut plugins = matches.opt_strs("plugins");
 
     // First, parse the crate and extract all relevant information.
-    let libs = Cell::new(matches.opt_strs("L").map(|s| Path::new(s.as_slice())));
-    let cfgs = Cell::new(matches.opt_strs("cfg"));
-    let cr = Cell::new(Path::new(cratefile));
+    let libs = matches.opt_strs("L").map(|s| Path::new(s.as_slice()));
+    let cfgs = matches.opt_strs("cfg");
+    let cr = Path::new(cratefile);
     info!("starting to run rustc");
     let (crate, analysis) = do std::task::try {
-        let cr = cr.take();
-        core::run_core(libs.take().move_iter().collect(), cfgs.take(), &cr)
+        let cr = cr;
+        core::run_core(libs.move_iter().collect(), cfgs, &cr)
     }.unwrap();
     info!("finished with rustc");
     local_data::set(analysiskey, analysis);
