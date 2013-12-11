@@ -14,6 +14,71 @@ use prelude::*;
 use cast;
 use util::NonCopyable;
 
+#[cfg(stage0)]
+use unstable::intrinsics;
+
+/// A mutable memory location that admits only `Pod` data.
+#[no_freeze]
+#[deriving(Clone)]
+pub struct Cell<T> {
+    priv value: T,
+}
+
+// NB: For `stage0`, we omit the `Pod` bound. This is unsound but will help
+// us get started on removing `@mut` from `rustc`.
+
+#[cfg(stage0)]
+impl<T> Cell<T> {
+    /// Creates a new `Cell` containing the given value.
+    pub fn new(value: T) -> Cell<T> {
+        Cell {
+            value: value,
+        }
+    }
+
+    /// Returns a copy of the contained value.
+    #[inline]
+    pub fn get(&self) -> T {
+        unsafe {
+            let mut result = intrinsics::uninit();
+            intrinsics::copy_nonoverlapping_memory(&mut result, &self.value, 1);
+            result
+        }
+    }
+
+    /// Sets the contained value.
+    #[inline]
+    pub fn set(&self, value: T) {
+        unsafe {
+            intrinsics::copy_nonoverlapping_memory(cast::transmute_mut(&self.value), &value, 1)
+        }
+    }
+}
+
+#[cfg(not(stage0))]
+impl<T: ::kinds::Pod> Cell<T> {
+    /// Creates a new `Cell` containing the given value.
+    pub fn new(value: T) -> Cell<T> {
+        Cell {
+            value: value,
+        }
+    }
+
+    /// Returns a copy of the contained value.
+    #[inline]
+    pub fn get(&self) -> T {
+        self.value
+    }
+
+    /// Sets the contained value.
+    #[inline]
+    pub fn set(&self, value: T) {
+        unsafe {
+            *cast::transmute_mut(&self.value) = value
+        }
+    }
+}
+
 /// A mutable memory location with dynamically checked borrow rules
 #[no_freeze]
 pub struct RefCell<T> {
@@ -132,6 +197,30 @@ impl<T> RefCell<T> {
         let mut ptr = self.borrow_mut();
         blk(ptr.get())
     }
+
+    /// Sets the value, replacing what was there.
+    ///
+    /// # Failure
+    ///
+    /// Fails if the value is currently borrowed.
+    #[inline]
+    pub fn set(&self, value: T) {
+        let mut reference = self.borrow_mut();
+        *reference.get() = value
+    }
+}
+
+impl<T:Clone> RefCell<T> {
+    /// Returns a copy of the contained value.
+    ///
+    /// # Failure
+    ///
+    /// Fails if the value is currently mutably borrowed.
+    #[inline]
+    pub fn get(&self) -> T {
+        let reference = self.borrow();
+        (*reference.get()).clone()
+    }
 }
 
 impl<T: Clone> Clone for RefCell<T> {
@@ -201,6 +290,17 @@ impl<'b, T> RefMut<'b, T> {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn smoketest_cell() {
+        let x = Cell::new(10);
+        assert_eq!(x.get(), 10);
+        x.set(20);
+        assert_eq!(x.get(), 20);
+
+        let y = Cell::new((30, 40));
+        assert_eq!(y.get(), (30, 40));
+    }
 
     #[test]
     fn double_imm_borrow() {
