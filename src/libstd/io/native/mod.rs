@@ -223,3 +223,6 @@ impl rtio::IoFactory for IoFactory {
         Err(unimpl())
     }
 }
+
+pub static mut NATIVE_IO_FACTORY: IoFactory = IoFactory;
+

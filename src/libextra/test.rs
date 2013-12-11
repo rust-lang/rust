@@ -872,7 +872,6 @@ pub fn run_test(force_ignore: bool,
     fn run_test_inner(desc: TestDesc,
                       monitor_ch: SharedChan<MonitorMsg>,
                       testfn: proc()) {
-        let testfn_cell = ::std::cell::Cell::new(testfn);
         do task::spawn {
             let mut task = task::task();
             task.name(match desc.name {
@@ -880,7 +879,7 @@ pub fn run_test(force_ignore: bool,
                 StaticTestName(name) => SendStrStatic(name),
             });
             let result_future = task.future_result();
-            task.spawn(testfn_cell.take());
+            task.spawn(testfn);
 
             let task_result = result_future.recv();
             let test_result = calc_result(&desc, task_result.is_ok());

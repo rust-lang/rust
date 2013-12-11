@@ -676,7 +676,6 @@ mod tests {
     use sync::*;
 
     use std::cast;
-    use std::cell::Cell;
     use std::comm;
     use std::result;
     use std::task;
@@ -762,9 +761,9 @@ mod tests {
             let s = Semaphore::new(1);
             let s2 = s.clone();
             let (p, c) = comm::stream();
-            let child_data = Cell::new((s2, c));
+            let mut child_data = Some((s2, c));
             s.access(|| {
-                let (s2, c) = child_data.take();
+                let (s2, c) = child_data.take_unwrap();
                 do task::spawn {
                     c.send(());
                     s2.access(|| { });
@@ -947,13 +946,13 @@ mod tests {
             let mut sibling_convos = ~[];
             2.times(|| {
                 let (p, c) = comm::stream();
-                let c = Cell::new(c);
                 sibling_convos.push(p);
                 let mi = m2.clone();
                 // spawn sibling task
                 do task::spawn { // linked
+                    let mut c = Some(c);
                     mi.lock_cond(|cond| {
-                        let c = c.take();
+                        let c = c.take_unwrap();
                         c.send(()); // tell sibling to go ahead
                         (|| {
                             cond.wait(); // block forever

@@ -9,11 +9,11 @@
 // except according to those terms.
 
 use std::rc::Rc;
-use std::cell::Cell;
+use std::cell::RefCell;
 
 fn bar<T: Freeze>(_: T) {}
 
 fn main() {
-    let x = Rc::from_send(Cell::new(5));
-    bar(x); //~ ERROR instantiating a type parameter with an incompatible type `std::rc::Rc<std::cell::Cell<int>>`, which does not fulfill `Freeze`
+    let x = Rc::from_send(RefCell::new(5));
+    bar(x); //~ ERROR instantiating a type parameter with an incompatible type `std::rc::Rc<std::cell::RefCell<int>>`, which does not fulfill `Freeze`
 }

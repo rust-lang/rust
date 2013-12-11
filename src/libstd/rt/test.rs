@@ -10,7 +10,6 @@
 
 use io::net::ip::{SocketAddr, Ipv4Addr, Ipv6Addr};
 
-use cell::Cell;
 use clone::Clone;
 use container::Container;
 use iter::{Iterator, range};
@@ -65,16 +64,14 @@ pub fn new_test_sched() -> Scheduler {
 }
 
 pub fn run_in_uv_task(f: proc()) {
-    let f = Cell::new(f);
     do run_in_bare_thread {
-        run_in_uv_task_core(f.take());
+        run_in_uv_task_core(f);
     }
 }
 
 pub fn run_in_newsched_task(f: proc()) {
-    let f = Cell::new(f);
     do run_in_bare_thread {
-        run_in_newsched_task_core(f.take());
+        run_in_newsched_task_core(f);
     }
 }
 
@@ -206,8 +203,6 @@ pub fn run_in_mt_newsched_task(f: proc()) {
     // see comment in other function (raising fd limits)
     prepare_for_lots_of_tests();
 
-    let f = Cell::new(f);
-
     do run_in_bare_thread {
         let nthreads = match os::getenv("RUST_RT_TEST_THREADS") {
             Some(nstr) => FromStr::from_str(nstr).unwrap(),
@@ -254,18 +249,18 @@ pub fn run_in_mt_newsched_task(f: proc()) {
 
             rtassert!(exit_status.is_success());
         };
-        let mut main_task = ~Task::new_root(&mut scheds[0].stack_pool, None, f.take());
+        let mut main_task = ~Task::new_root(&mut scheds[0].stack_pool,
+                                            None,
+                                            f);
         main_task.death.on_exit = Some(on_exit);
 
         let mut threads = ~[];
-        let main_task = Cell::new(main_task);
 
         let main_thread = {
             let sched = scheds.pop();
-            let sched_cell = Cell::new(sched);
+            let main_task = main_task;
             do Thread::start {
-                let sched = sched_cell.take();
-                sched.bootstrap(main_task.take());
+                sched.bootstrap(main_task);
             }
         };
         threads.push(main_thread);
@@ -275,11 +270,9 @@ pub fn run_in_mt_newsched_task(f: proc()) {
             let bootstrap_task = ~do Task::new_root(&mut sched.stack_pool, None) || {
                 rtdebug!("bootstrapping non-primary scheduler");
             };
-            let bootstrap_task_cell = Cell::new(bootstrap_task);
-            let sched_cell = Cell::new(sched);
+            let sched = sched;
             let thread = do Thread::start {
-                let sched = sched_cell.take();
-                sched.bootstrap(bootstrap_task_cell.take());
+                sched.bootstrap(bootstrap_task);
             };
 
             threads.push(thread);
@@ -335,11 +328,8 @@ pub fn spawntask_try(f: proc()) -> Result<(),()> {
 
 /// Spawn a new task in a new scheduler and return a thread handle.
 pub fn spawntask_thread(f: proc()) -> Thread<()> {
-
-    let f = Cell::new(f);
-
     let thread = do Thread::start {
-        run_in_newsched_task_core(f.take());
+        run_in_newsched_task_core(f);
     };
 
     return thread;

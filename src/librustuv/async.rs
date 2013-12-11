@@ -125,7 +125,6 @@ impl Drop for AsyncWatcher {
 
 #[cfg(test)]
 mod test_remote {
-    use std::cell::Cell;
     use std::rt::rtio::Callback;
     use std::rt::thread::Thread;
     use std::rt::tube::Tube;
@@ -150,10 +149,11 @@ mod test_remote {
 
         let mut tube = Tube::new();
         let cb = ~MyCallback(Some(tube.clone()));
-        let watcher = Cell::new(AsyncWatcher::new(local_loop(), cb as ~Callback));
+        let watcher = AsyncWatcher::new(local_loop(), cb as ~Callback);
 
         let thread = do Thread::start {
-            watcher.take().fire();
+            let mut watcher = watcher;
+            watcher.fire();
         };
 
         assert_eq!(tube.recv(), 1);

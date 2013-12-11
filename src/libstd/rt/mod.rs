@@ -57,7 +57,6 @@ Several modules in `core` are clients of `rt`:
 // XXX: this should not be here.
 #[allow(missing_doc)];
 
-use cell::Cell;
 use clone::Clone;
 use container::Container;
 use iter::Iterator;
@@ -274,7 +273,7 @@ fn run_(main: proc(), use_main_sched: bool) -> int {
 
     let nscheds = util::default_sched_threads();
 
-    let main = Cell::new(main);
+    let mut main = Some(main);
 
     // The shared list of sleeping schedulers.
     let sleepers = SleeperList::new();
@@ -376,24 +375,24 @@ fn run_(main: proc(), use_main_sched: bool) -> int {
     };
 
     let mut threads = ~[];
-
-    let on_exit = Cell::new(on_exit);
+    let mut on_exit = Some(on_exit);
 
     if !use_main_sched {
 
         // In the case where we do not use a main_thread scheduler we
         // run the main task in one of our threads.
 
-        let mut main_task = ~Task::new_root(&mut scheds[0].stack_pool, None, main.take());
+        let mut main_task = ~Task::new_root(&mut scheds[0].stack_pool,
+                                            None,
+                                            ::util::replace(&mut main,
+                                                            None).unwrap());
         main_task.name = Some(SendStrStatic("<main>"));
-        main_task.death.on_exit = Some(on_exit.take());
-        let main_task_cell = Cell::new(main_task);
+        main_task.death.on_exit = ::util::replace(&mut on_exit, None);
 
         let sched = scheds.pop();
-        let sched_cell = Cell::new(sched);
+        let main_task = main_task;
         let thread = do Thread::start {
-            let sched = sched_cell.take();
-            sched.bootstrap(main_task_cell.take());
+            sched.bootstrap(main_task);
         };
         threads.push(thread);
     }
@@ -401,9 +400,8 @@ fn run_(main: proc(), use_main_sched: bool) -> int {
     // Run each remaining scheduler in a thread.
     for sched in scheds.move_rev_iter() {
         rtdebug!("creating regular schedulers");
-        let sched_cell = Cell::new(sched);
         let thread = do Thread::start {
-            let mut sched = sched_cell.take();
+            let mut sched = sched;
             let bootstrap_task = ~do Task::new_root(&mut sched.stack_pool, None) || {
                 rtdebug!("boostraping a non-primary scheduler");
             };
@@ -415,16 +413,19 @@ fn run_(main: proc(), use_main_sched: bool) -> int {
     // If we do have a main thread scheduler, run it now.
 
     if use_main_sched {
-
         rtdebug!("about to create the main scheduler task");
 
         let mut main_sched = main_sched.unwrap();
 
         let home = Sched(main_sched.make_handle());
-        let mut main_task = ~Task::new_root_homed(&mut main_sched.stack_pool, None,
-                                                  home, main.take());
+        let mut main_task = ~Task::new_root_homed(&mut main_sched.stack_pool,
+                                                  None,
+                                                  home,
+                                                  ::util::replace(&mut main,
+                                                                  None).
+                                                                  unwrap());
         main_task.name = Some(SendStrStatic("<main>"));
-        main_task.death.on_exit = Some(on_exit.take());
+        main_task.death.on_exit = ::util::replace(&mut on_exit, None);
         rtdebug!("bootstrapping main_task");
 
         main_sched.bootstrap(main_task);

@@ -162,7 +162,7 @@ impl<T, U> Condition<T, U> {
 ///
 /// Normally this object is not dealt with directly, but rather it's directly
 /// used after being returned from `trap`
-struct Trap<'self, T, U> {
+pub struct Trap<'self, T, U> {
     priv cond: &'self Condition<T, U>,
     priv handler: @Handler<T, U>
 }
@@ -187,10 +187,24 @@ impl<'self, T, U> Trap<'self, T, U> {
         local_data::set(self.cond.key, self.handler);
         inner()
     }
+
+    /// Returns a guard that will automatically reset the condition upon
+    /// exit of the scope. This is useful if you want to use conditions with
+    /// an RAII pattern.
+    pub fn guard(&self) -> Guard<'self,T,U> {
+        let guard = Guard {
+            cond: self.cond
+        };
+        debug!("Guard: pushing handler to TLS");
+        local_data::set(self.cond.key, self.handler);
+        guard
+    }
 }
 
-#[doc(hidden)]
-struct Guard<'self, T, U> {
+/// A guard that will automatically reset the condition handler upon exit of
+/// the scope. This is useful if you want to use conditions with an RAII
+/// pattern.
+pub struct Guard<'self, T, U> {
     priv cond: &'self Condition<T, U>
 }
 

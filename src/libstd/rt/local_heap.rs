@@ -304,7 +304,8 @@ pub unsafe fn local_free(ptr: *libc::c_char) {
 }
 
 pub fn live_allocs() -> *mut Box {
-    Local::borrow(|task: &mut Task| task.heap.live_allocs)
+    let mut task = Local::borrow(None::<Task>);
+    task.get().heap.live_allocs
 }
 
 #[cfg(test)]

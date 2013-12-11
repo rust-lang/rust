@@ -169,6 +169,7 @@ pub mod raw {
     use at_vec::capacity;
     use cast;
     use cast::{transmute, transmute_copy};
+    use option::None;
     use ptr;
     use mem;
     use uint;
@@ -259,9 +260,8 @@ pub mod raw {
             use rt::local::Local;
             use rt::task::Task;
 
-            Local::borrow(|task: &mut Task| {
-                task.heap.realloc(ptr as *mut Box<()>, size) as *()
-            })
+            let mut task = Local::borrow(None::<Task>);
+            task.get().heap.realloc(ptr as *mut Box<()>, size) as *()
         }
     }
 

@@ -15,7 +15,6 @@ use json::ToJson;
 use serialize::{Encoder, Encodable, Decoder, Decodable};
 use arc::{Arc,RWArc};
 use treemap::TreeMap;
-use std::cell::Cell;
 use std::comm::{PortOne, oneshot};
 use std::{str, task};
 use std::io;
@@ -430,7 +429,6 @@ impl<'self> Prep<'self> {
                 debug!("Cache miss!");
                 let (port, chan) = oneshot();
                 let blk = bo.take_unwrap();
-                let chan = Cell::new(chan);
 
                 // XXX: What happens if the task fails?
                 do task::spawn {
@@ -438,7 +436,6 @@ impl<'self> Prep<'self> {
                         discovered_inputs: WorkMap::new(),
                         discovered_outputs: WorkMap::new(),
                     };
-                    let chan = chan.take();
                     let v = blk(&mut exe);
                     chan.send((exe, v));
                 }

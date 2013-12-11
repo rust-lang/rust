@@ -88,7 +88,6 @@ impl<T> Clone for Tube<T> {
 
 #[cfg(test)]
 mod test {
-    use cell::Cell;
     use rt::test::*;
     use rt::rtio::EventLoop;
     use rt::sched::Scheduler;
@@ -100,11 +99,10 @@ mod test {
     fn simple_test() {
         do run_in_newsched_task {
             let mut tube: Tube<int> = Tube::new();
-            let tube_clone = tube.clone();
-            let tube_clone_cell = Cell::new(tube_clone);
+            let mut tube_clone = Some(tube.clone());
             let sched: ~Scheduler = Local::take();
             sched.deschedule_running_task_and_then(|sched, task| {
-                let mut tube_clone = tube_clone_cell.take();
+                let mut tube_clone = tube_clone.take_unwrap();
                 tube_clone.send(1);
                 sched.enqueue_blocked_task(task);
             });
@@ -117,13 +115,12 @@ mod test {
     fn blocking_test() {
         do run_in_newsched_task {
             let mut tube: Tube<int> = Tube::new();
-            let tube_clone = tube.clone();
-            let tube_clone = Cell::new(tube_clone);
+            let mut tube_clone = Some(tube.clone());
             let sched: ~Scheduler = Local::take();
             sched.deschedule_running_task_and_then(|sched, task| {
-                let tube_clone = Cell::new(tube_clone.take());
+                let tube_clone = tube_clone.take_unwrap();
                 do sched.event_loop.callback {
-                    let mut tube_clone = tube_clone.take();
+                    let mut tube_clone = tube_clone;
                     // The task should be blocked on this now and
                     // sending will wake it up.
                     tube_clone.send(1);
@@ -141,26 +138,24 @@ mod test {
 
         do run_in_newsched_task {
             let mut tube: Tube<int> = Tube::new();
-            let tube_clone = tube.clone();
-            let tube_clone = Cell::new(tube_clone);
+            let mut tube_clone = Some(tube.clone());
             let sched: ~Scheduler = Local::take();
             sched.deschedule_running_task_and_then(|sched, task| {
-                callback_send(tube_clone.take(), 0);
+                callback_send(tube_clone.take_unwrap(), 0);
 
                 fn callback_send(tube: Tube<int>, i: int) {
-                    if i == 100 { return; }
+                    if i == 100 {
+                        return
+                    }
 
-                    let tube = Cell::new(Cell::new(tube));
-                    Local::borrow(|sched: &mut Scheduler| {
-                        let tube = tube.take();
-                        do sched.event_loop.callback {
-                            let mut tube = tube.take();
-                            // The task should be blocked on this now and
-                            // sending will wake it up.
-                            tube.send(i);
-                            callback_send(tube, i + 1);
-                        }
-                    })
+                    let mut sched = Local::borrow(None::<Scheduler>);
+                    do sched.get().event_loop.callback {
+                        let mut tube = tube;
+                        // The task should be blocked on this now and
+                        // sending will wake it up.
+                        tube.send(i);
+                        callback_send(tube, i + 1);
+                    }
                 }
 
                 sched.enqueue_blocked_task(task);

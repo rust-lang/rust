@@ -25,7 +25,7 @@ instances as clients.
 use prelude::*;
 
 use c_str::ToCStr;
-use rt::rtio::{IoFactory, RtioUnixListener, with_local_io};
+use rt::rtio::{IoFactory, LocalIo, RtioUnixListener};
 use rt::rtio::{RtioUnixAcceptor, RtioPipe};
 use io::pipe::PipeStream;
 use io::{io_error, Listener, Acceptor, Reader, Writer};
@@ -59,15 +59,14 @@ impl UnixStream {
     ///     stream.write([1, 2, 3]);
     ///
     pub fn connect<P: ToCStr>(path: &P) -> Option<UnixStream> {
-        with_local_io(|io| {
-            match io.unix_connect(&path.to_c_str()) {
-                Ok(s) => Some(UnixStream::new(s)),
-                Err(ioerr) => {
-                    io_error::cond.raise(ioerr);
-                    None
-                }
+        let mut io = LocalIo::borrow();
+        match io.get().unix_connect(&path.to_c_str()) {
+            Ok(s) => Some(UnixStream::new(s)),
+            Err(ioerr) => {
+                io_error::cond.raise(ioerr);
+                None
             }
-        })
+        }
     }
 }
 
@@ -108,15 +107,14 @@ impl UnixListener {
     ///     }
     ///
     pub fn bind<P: ToCStr>(path: &P) -> Option<UnixListener> {
-        with_local_io(|io| {
-            match io.unix_bind(&path.to_c_str()) {
-                Ok(s) => Some(UnixListener{ obj: s }),
-                Err(ioerr) => {
-                    io_error::cond.raise(ioerr);
-                    None
-                }
+        let mut io = LocalIo::borrow();
+        match io.get().unix_bind(&path.to_c_str()) {
+            Ok(s) => Some(UnixListener{ obj: s }),
+            Err(ioerr) => {
+                io_error::cond.raise(ioerr);
+                None
             }
-        })
+        }
     }
 }
 
@@ -152,32 +150,26 @@ impl Acceptor<UnixStream> for UnixAcceptor {
 mod tests {
     use prelude::*;
     use super::*;
-    use cell::Cell;
     use rt::test::*;
     use io::*;
     use rt::comm::oneshot;
 
     fn smalltest(server: proc(UnixStream), client: proc(UnixStream)) {
-        let server = Cell::new(server);
-        let client = Cell::new(client);
         do run_in_mt_newsched_task {
-            let server = Cell::new(server.take());
-            let client = Cell::new(client.take());
             let path1 = next_test_unix();
             let path2 = path1.clone();
             let (port, chan) = oneshot();
-            let port = Cell::new(port);
-            let chan = Cell::new(chan);
+            let (client, server) = (client, server);
 
             do spawntask {
                 let mut acceptor = UnixListener::bind(&path1).listen();
-                chan.take().send(());
-                server.take()(acceptor.accept().unwrap());
+                chan.send(());
+                server(acceptor.accept().unwrap());
             }
 
             do spawntask {
-                port.take().recv();
-                client.take()(UnixStream::connect(&path2).unwrap());
+                port.recv();
+                client(UnixStream::connect(&path2).unwrap());
             }
         }
     }
@@ -260,12 +252,10 @@ mod tests {
             let path1 = next_test_unix();
             let path2 = path1.clone();
             let (port, chan) = oneshot();
-            let port = Cell::new(port);
-            let chan = Cell::new(chan);
 
             do spawntask {
                 let mut acceptor = UnixListener::bind(&path1).listen();
-                chan.take().send(());
+                chan.send(());
                 times.times(|| {
                     let mut client = acceptor.accept();
                     let mut buf = [0];
@@ -275,7 +265,7 @@ mod tests {
             }
 
             do spawntask {
-                port.take().recv();
+                port.recv();
                 times.times(|| {
                     let mut stream = UnixStream::connect(&path2);
                     stream.write([100]);
