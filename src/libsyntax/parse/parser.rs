@@ -4828,6 +4828,21 @@ impl Parser {
     fn parse_view_path(&self) -> @view_path {
         let lo = self.span.lo;
 
+        if *self.token == token::LBRACE {
+            // use {foo,bar}
+            let idents = self.parse_unspanned_seq(
+                &token::LBRACE, &token::RBRACE,
+                seq_sep_trailing_allowed(token::COMMA),
+                |p| p.parse_path_list_ident());
+            let path = ast::Path {
+                span: mk_sp(lo, self.span.hi),
+                global: false,
+                segments: ~[]
+            };
+            return @spanned(lo, self.span.hi,
+                            view_path_list(path, idents, ast::DUMMY_NODE_ID));
+        }
+
         let first_ident = self.parse_ident();
         let mut path = ~[first_ident];
         debug!("parsed view_path: {}", self.id_to_str(first_ident));
