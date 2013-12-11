@@ -140,7 +140,7 @@ pub mod dl {
     use path;
     use ptr;
     use str;
-    use unstable::sync::atomically;
+    use unstable::sync::atomic;
     use result::*;
 
     pub unsafe fn open_external(filename: &path::Path) -> *libc::c_void {
@@ -158,25 +158,24 @@ pub mod dl {
         static mut lock: Mutex = MUTEX_INIT;
         unsafe {
             // dlerror isn't thread safe, so we need to lock around this entire
-            // sequence. `atomically` asserts that we don't do anything that
+            // sequence. `atomic` asserts that we don't do anything that
             // would cause this task to be descheduled, which could deadlock
             // the scheduler if it happens while the lock is held.
             // FIXME #9105 use a Rust mutex instead of C++ mutexes.
-            atomically(|| {
-                lock.lock();
-                let _old_error = dlerror();
+            let _guard = atomic();
+            lock.lock();
+            let _old_error = dlerror();
 
-                let result = f();
+            let result = f();
 
-                let last_error = dlerror();
-                let ret = if ptr::null() == last_error {
-                    Ok(result)
-                } else {
-                    Err(str::raw::from_c_str(last_error))
-                };
-                lock.unlock();
-                ret
-            })
+            let last_error = dlerror();
+            let ret = if ptr::null() == last_error {
+                Ok(result)
+            } else {
+                Err(str::raw::from_c_str(last_error))
+            };
+            lock.unlock();
+            ret
         }
     }
 
@@ -209,7 +208,7 @@ pub mod dl {
     use libc;
     use path;
     use ptr;
-    use unstable::sync::atomically;
+    use unstable::sync::atomic;
     use result::*;
 
     pub unsafe fn open_external(filename: &path::Path) -> *libc::c_void {
@@ -226,18 +225,17 @@ pub mod dl {
 
     pub fn check_for_errors_in<T>(f: || -> T) -> Result<T, ~str> {
         unsafe {
-            atomically(|| {
-                SetLastError(0);
+            let _guard = atomic();
+            SetLastError(0);
 
-                let result = f();
+            let result = f();
 
-                let error = os::errno();
-                if 0 == error {
-                    Ok(result)
-                } else {
-                    Err(format!("Error code {}", error))
-                }
-            })
+            let error = os::errno();
+            if 0 == error {
+                Ok(result)
+            } else {
+                Err(format!("Error code {}", error))
+            }
         }
     }
 

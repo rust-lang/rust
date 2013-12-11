@@ -25,7 +25,7 @@ use unstable::sync::UnsafeArc;
 use util;
 use util::Void;
 use comm::{GenericChan, GenericSmartChan, GenericPort, Peekable, SendDeferred};
-use cell::{Cell, RefCell};
+use cell::RefCell;
 use clone::Clone;
 use tuple::ImmutableTuple;
 
@@ -169,10 +169,8 @@ impl<T: Send> ChanOne<T> {
                             Scheduler::run_task(woken_task);
                         });
                     } else {
-                        let recvr = Cell::new(recvr);
-                        Local::borrow(|sched: &mut Scheduler| {
-                            sched.enqueue_blocked_task(recvr.take());
-                        })
+                        let mut sched = Local::borrow(None::<Scheduler>);
+                        sched.get().enqueue_blocked_task(recvr);
                     }
                 }
             }
@@ -230,9 +228,8 @@ impl<T: Send> SelectInner for PortOne<T> {
         // The optimistic check is never necessary for correctness. For testing
         // purposes, making it randomly return false simulates a racing sender.
         use rand::{Rand};
-        let actually_check = Local::borrow(|sched: &mut Scheduler| {
-            Rand::rand(&mut sched.rng)
-        });
+        let mut sched = Local::borrow(None::<Scheduler>);
+        let actually_check = Rand::rand(&mut sched.get().rng);
         if actually_check {
             unsafe { (*self.packet()).state.load(Acquire) == STATE_ONE }
         } else {
@@ -568,7 +565,7 @@ impl<'self, T: Send> SelectPortInner<T> for &'self Port<T> {
 impl<'self, T: Send> SelectPort<T> for &'self Port<T> { }
 
 pub struct SharedChan<T> {
-    // Just like Chan, but a shared AtomicOption instead of Cell
+    // Just like Chan, but a shared AtomicOption
     priv next: UnsafeArc<AtomicOption<StreamChanOne<T>>>
 }
 
@@ -719,7 +716,6 @@ mod test {
     use super::*;
     use option::*;
     use rt::test::*;
-    use cell::Cell;
     use num::Times;
     use rt::util;
 
@@ -843,9 +839,8 @@ mod test {
     fn oneshot_multi_task_recv_then_send() {
         do run_in_newsched_task {
             let (port, chan) = oneshot::<~int>();
-            let port_cell = Cell::new(port);
             do spawntask {
-                assert!(port_cell.take().recv() == ~10);
+                assert!(port.recv() == ~10);
             }
 
             chan.send(~10);
@@ -856,13 +851,11 @@ mod test {
     fn oneshot_multi_task_recv_then_close() {
         do run_in_newsched_task {
             let (port, chan) = oneshot::<~int>();
-            let port_cell = Cell::new(port);
-            let chan_cell = Cell::new(chan);
             do spawntask_later {
-                let _cell = chan_cell.take();
+                let _ = chan;
             }
             let res = do spawntask_try {
-                assert!(port_cell.take().recv() == ~10);
+                assert!(port.recv() == ~10);
             };
             assert!(res.is_err());
         }
@@ -874,9 +867,8 @@ mod test {
         stress_factor().times(|| {
             do run_in_newsched_task {
                 let (port, chan) = oneshot::<int>();
-                let port_cell = Cell::new(port);
                 let thread = do spawntask_thread {
-                    let _p = port_cell.take();
+                    let _ = port;
                 };
                 let _chan = chan;
                 thread.join();
@@ -890,14 +882,11 @@ mod test {
         stress_factor().times(|| {
             do run_in_newsched_task {
                 let (port, chan) = oneshot::<int>();
-                let chan_cell = Cell::new(chan);
-                let port_cell = Cell::new(port);
                 let thread1 = do spawntask_thread {
-                    let _p = port_cell.take();
+                    let _ = port;
                 };
                 let thread2 = do spawntask_thread {
-                    let c = chan_cell.take();
-                    c.send(1);
+                    chan.send(1);
                 };
                 thread1.join();
                 thread2.join();
@@ -911,19 +900,17 @@ mod test {
         stress_factor().times(|| {
             do run_in_newsched_task {
                 let (port, chan) = oneshot::<int>();
-                let chan_cell = Cell::new(chan);
-                let port_cell = Cell::new(port);
                 let thread1 = do spawntask_thread {
-                    let port_cell = Cell::new(port_cell.take());
+                    let port = port;
                     let res = do spawntask_try {
-                        port_cell.take().recv();
+                        port.recv();
                     };
                     assert!(res.is_err());
                 };
                 let thread2 = do spawntask_thread {
-                    let chan_cell = Cell::new(chan_cell.take());
+                    let chan = chan;
                     do spawntask {
-                        chan_cell.take();
+                        let _ = chan;
                     }
                 };
                 thread1.join();
@@ -938,13 +925,11 @@ mod test {
         stress_factor().times(|| {
             do run_in_newsched_task {
                 let (port, chan) = oneshot::<~int>();
-                let chan_cell = Cell::new(chan);
-                let port_cell = Cell::new(port);
                 let thread1 = do spawntask_thread {
-                    chan_cell.take().send(~10);
+                    chan.send(~10);
                 };
                 let thread2 = do spawntask_thread {
-                    assert!(port_cell.take().recv() == ~10);
+                    assert!(port.recv() == ~10);
                 };
                 thread1.join();
                 thread2.join();
@@ -965,9 +950,7 @@ mod test {
                 fn send(chan: Chan<~int>, i: int) {
                     if i == 10 { return }
 
-                    let chan_cell = Cell::new(chan);
                     do spawntask_random {
-                        let chan = chan_cell.take();
                         chan.send(~i);
                         send(chan, i + 1);
                     }
@@ -976,9 +959,7 @@ mod test {
                 fn recv(port: Port<~int>, i: int) {
                     if i == 10 { return }
 
-                    let port_cell = Cell::new(port);
                     do spawntask_random {
-                        let port = port_cell.take();
                         assert!(port.recv() == ~i);
                         recv(port, i + 1);
                     };
@@ -1131,7 +1112,7 @@ mod test {
 
     #[test]
     fn send_deferred() {
-        use unstable::sync::atomically;
+        use unstable::sync::atomic;
 
         // Tests no-rescheduling of send_deferred on all types of channels.
         do run_in_newsched_task {
@@ -1141,24 +1122,18 @@ mod test {
             let cshared = SharedChan::new(cshared);
             let mp = megapipe();
 
-            let pone = Cell::new(pone);
-            do spawntask { pone.take().recv(); }
-            let pstream = Cell::new(pstream);
-            do spawntask { pstream.take().recv(); }
-            let pshared = Cell::new(pshared);
-            do spawntask { pshared.take().recv(); }
-            let p_mp = Cell::new(mp.clone());
-            do spawntask { p_mp.take().recv(); }
+            do spawntask { pone.recv(); }
+            do spawntask { pstream.recv(); }
+            do spawntask { pshared.recv(); }
+            let p_mp = mp.clone();
+            do spawntask { p_mp.recv(); }
 
-            let cs = Cell::new((cone, cstream, cshared, mp));
             unsafe {
-                atomically(|| {
-                    let (cone, cstream, cshared, mp) = cs.take();
-                    cone.send_deferred(());
-                    cstream.send_deferred(());
-                    cshared.send_deferred(());
-                    mp.send_deferred(());
-                })
+                let _guard = atomic();
+                cone.send_deferred(());
+                cstream.send_deferred(());
+                cshared.send_deferred(());
+                mp.send_deferred(());
             }
         }
     }

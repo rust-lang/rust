@@ -45,9 +45,10 @@ pub trait HomingIO {
 
         let _f = ForbidUnwind::new("going home");
 
-        let current_sched_id = Local::borrow(|sched: &mut Scheduler| {
-            sched.sched_id()
-        });
+        let current_sched_id = {
+            let mut sched = Local::borrow(None::<Scheduler>);
+            sched.get().sched_id()
+        };
 
         // Only need to invoke a context switch if we're not on the right
         // scheduler.
@@ -59,9 +60,10 @@ pub trait HomingIO {
                 });
             })
         }
-        let current_sched_id = Local::borrow(|sched: &mut Scheduler| {
-            sched.sched_id()
-        });
+        let current_sched_id = {
+            let mut sched = Local::borrow(None::<Scheduler>);
+            sched.get().sched_id()
+        };
         assert!(current_sched_id == self.home().sched_id);
 
         self.home().sched_id
@@ -96,7 +98,8 @@ struct HomingMissile {
 
 impl HomingMissile {
     pub fn check(&self, msg: &'static str) {
-        let local_id = Local::borrow(|sched: &mut Scheduler| sched.sched_id());
+        let mut sched = Local::borrow(None::<Scheduler>);
+        let local_id = sched.get().sched_id();
         assert!(local_id == self.io_home, "{}", msg);
     }
 }
@@ -158,8 +161,9 @@ impl EventLoop for UvEventLoop {
         ~AsyncWatcher::new(self.uvio.uv_loop(), f) as ~RemoteCallback
     }
 
-    fn io<'a>(&'a mut self, f: |&'a mut IoFactory|) {
-        f(&mut self.uvio as &mut IoFactory)
+    fn io<'a>(&'a mut self) -> Option<&'a mut IoFactory> {
+        let factory = &mut self.uvio as &mut IoFactory;
+        Some(factory)
     }
 }
 

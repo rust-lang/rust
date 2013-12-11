@@ -1477,7 +1477,9 @@ mod tests {
             assert!(*chunk.data == 0xbe);
             close(fd);
         }
-        io::ignore_io_error(|| fs::unlink(&path));
+
+        let _guard = io::ignore_io_error();
+        fs::unlink(&path);
     }
 
     // More recursive_mkdir tests are in extra::tempfile

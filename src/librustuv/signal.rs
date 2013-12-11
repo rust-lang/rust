@@ -76,7 +76,6 @@ impl Drop for SignalWatcher {
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::cell::Cell;
     use super::super::local_loop;
     use std::io::signal;
     use std::comm::{SharedChan, stream};
@@ -89,9 +88,8 @@ mod test {
         let _signal = SignalWatcher::new(local_loop(), signal::Interrupt,
                                          chan);
 
-        let port = Cell::new(port);
         do spawn {
-            port.take().try_recv();
+            port.try_recv();
         }
 
         // when we drop the SignalWatcher we're going to destroy the channel,

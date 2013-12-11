@@ -8,12 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::num;
-use std::cell::Cell;
-use std::uint;
 use std::hashmap::HashSet;
 use std::local_data;
-
+use std::num;
+use std::uint;
 use syntax::ast;
 
 use clean;
@@ -56,11 +54,10 @@ pub fn strip_hidden(crate: clean::Crate) -> plugins::PluginResult {
 pub fn strip_private(crate: clean::Crate) -> plugins::PluginResult {
     // This stripper collects all *retained* nodes.
     let mut retained = HashSet::new();
-    let crate = Cell::new(crate);
     let exported_items = local_data::get(super::analysiskey, |analysis| {
         analysis.unwrap().exported_items.clone()
     });
-    let mut crate = crate.take();
+    let mut crate = crate;
 
     // strip all private items
     {

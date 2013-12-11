@@ -25,7 +25,6 @@
 
 #[allow(missing_doc)];
 
-use std::cell::Cell;
 use std::comm::{PortOne, oneshot};
 use std::util::replace;
 
@@ -113,9 +112,8 @@ impl<A:Send> Future<A> {
          * waiting for the result to be received on the port.
          */
 
-        let port = Cell::new(port);
         do Future::from_fn {
-            port.take().recv()
+            port.recv()
         }
     }
 
@@ -141,7 +139,6 @@ impl<A:Send> Future<A> {
 mod test {
     use future::Future;
 
-    use std::cell::Cell;
     use std::comm::oneshot;
     use std::task;
 
@@ -199,9 +196,9 @@ mod test {
     #[test]
     fn test_sendable_future() {
         let expected = "schlorf";
-        let f = Cell::new(do Future::spawn { expected });
+        let f = do Future::spawn { expected };
         do task::spawn {
-            let mut f = f.take();
+            let mut f = f;
             let actual = f.get();
             assert_eq!(actual, expected);
         }

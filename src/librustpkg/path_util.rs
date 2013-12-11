@@ -217,7 +217,10 @@ pub fn system_library(sysroot: &Path, lib_name: &str) -> Option<Path> {
 
 fn library_in(short_name: &str, version: &Version, dir_to_search: &Path) -> Option<Path> {
     debug!("Listing directory {}", dir_to_search.display());
-    let dir_contents = io::ignore_io_error(|| fs::readdir(dir_to_search));
+    let dir_contents = {
+        let _guard = io::ignore_io_error();
+        fs::readdir(dir_to_search)
+    };
     debug!("dir has {:?} entries", dir_contents.len());
 
     let lib_prefix = format!("{}{}", os::consts::DLL_PREFIX, short_name);

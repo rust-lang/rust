@@ -19,7 +19,10 @@ use std::io::fs;
 pub fn list_installed_packages(f: |&PkgId| -> bool) -> bool  {
     let workspaces = rust_path();
     for p in workspaces.iter() {
-        let binfiles = io::ignore_io_error(|| fs::readdir(&p.join("bin")));
+        let binfiles = {
+            let _guard = io::ignore_io_error();
+            fs::readdir(&p.join("bin"))
+        };
         for exec in binfiles.iter() {
             // FIXME (#9639): This needs to handle non-utf8 paths
             match exec.filestem_str() {
@@ -31,7 +34,10 @@ pub fn list_installed_packages(f: |&PkgId| -> bool) -> bool  {
                 }
             }
         }
-        let libfiles = io::ignore_io_error(|| fs::readdir(&p.join("lib")));
+        let libfiles = {
+            let _guard = io::ignore_io_error();
+            fs::readdir(&p.join("lib"))
+        };
         for lib in libfiles.iter() {
             debug!("Full name: {}", lib.display());
             match has_library(lib) {
@@ -55,7 +61,10 @@ pub fn list_installed_packages(f: |&PkgId| -> bool) -> bool  {
 }
 
 pub fn has_library(p: &Path) -> Option<~str> {
-    let files = io::ignore_io_error(|| fs::readdir(p));
+    let files = {
+        let _guard = io::ignore_io_error();
+        fs::readdir(p)
+    };
     for path in files.iter() {
         if path.extension_str() == Some(os::consts::DLL_EXTENSION) {
             let stuff : &str = path.filestem_str().expect("has_library: weird path");

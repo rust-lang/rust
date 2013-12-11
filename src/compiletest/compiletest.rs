@@ -325,19 +325,17 @@ pub fn make_test_name(config: &config, testfile: &Path) -> test::TestName {
 }
 
 pub fn make_test_closure(config: &config, testfile: &Path) -> test::TestFn {
-    use std::cell::Cell;
-    let config = Cell::new((*config).clone());
+    let config = (*config).clone();
     // FIXME (#9639): This needs to handle non-utf8 paths
-    let testfile = Cell::new(testfile.as_str().unwrap().to_owned());
-    test::DynTestFn(proc() { runtest::run(config.take(), testfile.take()) })
+    let testfile = testfile.as_str().unwrap().to_owned();
+    test::DynTestFn(proc() { runtest::run(config, testfile) })
 }
 
 pub fn make_metrics_test_closure(config: &config, testfile: &Path) -> test::TestFn {
-    use std::cell::Cell;
-    let config = Cell::new((*config).clone());
+    let config = (*config).clone();
     // FIXME (#9639): This needs to handle non-utf8 paths
-    let testfile = Cell::new(testfile.as_str().unwrap().to_owned());
+    let testfile = testfile.as_str().unwrap().to_owned();
     test::DynMetricFn(proc(mm) {
-        runtest::run_metrics(config.take(), testfile.take(), mm)
+        runtest::run_metrics(config, testfile, mm)
     })
 }

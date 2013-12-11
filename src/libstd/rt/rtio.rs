@@ -9,15 +9,19 @@
 // except according to those terms.
 
 use c_str::CString;
+use cast;
 use comm::{SharedChan, PortOne, Port};
 use libc::c_int;
 use libc;
+use ops::Drop;
 use option::*;
 use path::Path;
 use result::*;
 
 use ai = io::net::addrinfo;
 use io::IoError;
+use io::native::NATIVE_IO_FACTORY;
+use io::native;
 use io::net::ip::{IpAddr, SocketAddr};
 use io::process::{ProcessConfig, ProcessExit};
 use io::signal::Signum;
@@ -34,9 +38,8 @@ pub trait EventLoop {
     fn pausible_idle_callback(&mut self, ~Callback) -> ~PausibleIdleCallback;
     fn remote_callback(&mut self, ~Callback) -> ~RemoteCallback;
 
-    /// The asynchronous I/O services. Not all event loops may provide one
-    // FIXME(#9382) this is an awful interface
-    fn io<'a>(&'a mut self, f: |&'a mut IoFactory|);
+    /// The asynchronous I/O services. Not all event loops may provide one.
+    fn io<'a>(&'a mut self) -> Option<&'a mut IoFactory>;
 }
 
 pub trait RemoteCallback {
@@ -75,31 +78,60 @@ pub enum CloseBehavior {
     CloseAsynchronously,
 }
 
-pub fn with_local_io<T>(f: |&mut IoFactory| -> Option<T>) -> Option<T> {
-    use rt::sched::Scheduler;
-    use rt::local::Local;
-    use io::native;
+pub struct LocalIo<'a> {
+    priv factory: &'a mut IoFactory,
+}
 
-    unsafe {
-        // First, attempt to use the local scheduler's I/O services
-        let sched: Option<*mut Scheduler> = Local::try_unsafe_borrow();
-        match sched {
-            Some(sched) => {
-                let mut io = None;
-                (*sched).event_loop.io(|i| io = Some(i));
-                match io {
-                    Some(io) => return f(io),
-                    None => {}
+#[unsafe_destructor]
+impl<'a> Drop for LocalIo<'a> {
+    fn drop(&mut self) {
+        // XXX(pcwalton): Do nothing here for now, but eventually we may want
+        // something. For now this serves to make `LocalIo` noncopyable.
+    }
+}
+
+impl<'a> LocalIo<'a> {
+    /// Returns the local I/O: either the local scheduler's I/O services or
+    /// the native I/O services.
+    pub fn borrow() -> LocalIo {
+        use rt::sched::Scheduler;
+        use rt::local::Local;
+
+        unsafe {
+            // First, attempt to use the local scheduler's I/O services
+            let sched: Option<*mut Scheduler> = Local::try_unsafe_borrow();
+            match sched {
+                Some(sched) => {
+                    match (*sched).event_loop.io() {
+                        Some(factory) => {
+                            return LocalIo {
+                                factory: factory,
+                            }
+                        }
+                        None => {}
+                    }
                 }
+                None => {}
             }
-            None => {}
+            // If we don't have a scheduler or the scheduler doesn't have I/O
+            // services, then fall back to the native I/O services.
+            let native_io: &'static mut native::IoFactory =
+                &mut NATIVE_IO_FACTORY;
+            LocalIo {
+                factory: native_io as &mut IoFactory:'static
+            }
         }
     }
 
-    // If we don't have a scheduler or the scheduler doesn't have I/O services,
-    // then fall back to the native I/O services.
-    let mut io = native::IoFactory;
-    f(&mut io as &mut IoFactory)
+    /// Returns the underlying I/O factory as a trait reference.
+    #[inline]
+    pub fn get<'a>(&'a mut self) -> &'a mut IoFactory {
+        // XXX(pcwalton): I think this is actually sound? Could borrow check
+        // allow this safely?
+        unsafe {
+            cast::transmute_copy(&self.factory)
+        }
+    }
 }
 
 pub trait IoFactory {
