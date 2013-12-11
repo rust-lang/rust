@@ -19,9 +19,8 @@ overhead of atomic reference counting.
 use ptr::RawPtr;
 use unstable::intrinsics::transmute;
 use ops::Drop;
-use kinds::{Freeze, Send};
+use kinds::NonManaged;
 use clone::{Clone, DeepClone};
-use cell::RefCell;
 use cmp::{Eq, TotalEq, Ord, TotalOrd, Ordering};
 
 struct RcBox<T> {
@@ -36,46 +35,17 @@ pub struct Rc<T> {
     priv ptr: *mut RcBox<T>
 }
 
-impl<T: Freeze> Rc<T> {
-    /// Construct a new reference-counted box from a `Freeze` value
+impl<T: NonManaged> Rc<T> {
+    /// Construct a new reference-counted box
     #[inline]
     pub fn new(value: T) -> Rc<T> {
         unsafe {
-            Rc::new_unchecked(value)
-        }
-    }
-}
-
-impl<T: Send> Rc<T> {
-    /// Construct a new reference-counted box from a `Send` value
-    #[inline]
-    pub fn from_send(value: T) -> Rc<T> {
-        unsafe {
-            Rc::new_unchecked(value)
-        }
-    }
-}
-
-impl<T: Freeze> Rc<RefCell<T>> {
-    /// Construct a new reference-counted box from a `RefCell`-wrapped `Freeze` value
-    #[inline]
-    pub fn from_mut(value: RefCell<T>) -> Rc<RefCell<T>> {
-        unsafe {
-            Rc::new_unchecked(value)
+            Rc { ptr: transmute(~RcBox { value: value, count: 1 }) }
         }
     }
 }
 
 impl<T> Rc<T> {
-    /// Unsafety construct a new reference-counted box from any value.
-    ///
-    /// It is possible to create cycles, which will leak, and may interact
-    /// poorly with managed pointers.
-    #[inline]
-    pub unsafe fn new_unchecked(value: T) -> Rc<T> {
-        Rc{ptr: transmute(~RcBox{value: value, count: 1})}
-    }
-
     /// Borrow the value contained in the reference-counted box
     #[inline]
     pub fn borrow<'r>(&'r self) -> &'r T {
@@ -147,10 +117,10 @@ impl<T> Clone for Rc<T> {
     }
 }
 
-impl<T: DeepClone> DeepClone for Rc<T> {
+impl<T: NonManaged + DeepClone> DeepClone for Rc<T> {
     #[inline]
     fn deep_clone(&self) -> Rc<T> {
-        unsafe { Rc::new_unchecked(self.borrow().deep_clone()) }
+        Rc::new(self.borrow().deep_clone())
     }
 }
 
@@ -176,7 +146,7 @@ mod test_rc {
 
     #[test]
     fn test_clone() {
-        let x = Rc::from_send(RefCell::new(5));
+        let x = Rc::new(RefCell::new(5));
         let y = x.clone();
         x.borrow().with_mut(|inner| {
             *inner = 20;
@@ -186,7 +156,7 @@ mod test_rc {
 
     #[test]
     fn test_deep_clone() {
-        let x = Rc::from_send(RefCell::new(5));
+        let x = Rc::new(RefCell::new(5));
         let y = x.deep_clone();
         x.borrow().with_mut(|inner| {
             *inner = 20;
@@ -210,13 +180,7 @@ mod test_rc {
 
     #[test]
     fn test_destructor() {
-        let x = Rc::from_send(~5);
+        let x = Rc::new(~5);
         assert_eq!(**x.borrow(), 5);
-    }
-
-    #[test]
-    fn test_from_mut() {
-        let a = 10;
-        let _x = Rc::from_mut(RefCell::new(&a));
     }
 }
