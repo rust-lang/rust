@@ -148,12 +148,12 @@ impl Decorator<~[u8]> for MemReader {
 ///
 /// If a write will not fit in the buffer, it raises the `io_error`
 /// condition and does not write any data.
-pub struct BufWriter<'self> {
-    priv buf: &'self mut [u8],
+pub struct BufWriter<'a> {
+    priv buf: &'a mut [u8],
     priv pos: uint
 }
 
-impl<'self> BufWriter<'self> {
+impl<'a> BufWriter<'a> {
     pub fn new<'a>(buf: &'a mut [u8]) -> BufWriter<'a> {
         BufWriter {
             buf: buf,
@@ -162,7 +162,7 @@ impl<'self> BufWriter<'self> {
     }
 }
 
-impl<'self> Writer for BufWriter<'self> {
+impl<'a> Writer for BufWriter<'a> {
     fn write(&mut self, buf: &[u8]) {
         // raises a condition if the entire write does not fit in the buffer
         let max_size = self.buf.len();
@@ -182,7 +182,7 @@ impl<'self> Writer for BufWriter<'self> {
 }
 
 // FIXME(#10432)
-impl<'self> Seek for BufWriter<'self> {
+impl<'a> Seek for BufWriter<'a> {
     fn tell(&self) -> u64 { self.pos as u64 }
 
     fn seek(&mut self, pos: i64, style: SeekStyle) {
@@ -199,12 +199,12 @@ impl<'self> Seek for BufWriter<'self> {
 
 
 /// Reads from a fixed-size byte slice
-pub struct BufReader<'self> {
-    priv buf: &'self [u8],
+pub struct BufReader<'a> {
+    priv buf: &'a [u8],
     priv pos: uint
 }
 
-impl<'self> BufReader<'self> {
+impl<'a> BufReader<'a> {
     pub fn new<'a>(buf: &'a [u8]) -> BufReader<'a> {
         BufReader {
             buf: buf,
@@ -213,7 +213,7 @@ impl<'self> BufReader<'self> {
     }
 }
 
-impl<'self> Reader for BufReader<'self> {
+impl<'a> Reader for BufReader<'a> {
     fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
         { if self.eof() { return None; } }
 
@@ -233,13 +233,13 @@ impl<'self> Reader for BufReader<'self> {
     fn eof(&mut self) -> bool { self.pos == self.buf.len() }
 }
 
-impl<'self> Seek for BufReader<'self> {
+impl<'a> Seek for BufReader<'a> {
     fn tell(&self) -> u64 { self.pos as u64 }
 
     fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail!() }
 }
 
-impl<'self> Buffer for BufReader<'self> {
+impl<'a> Buffer for BufReader<'a> {
     fn fill<'a>(&'a mut self) -> &'a [u8] { self.buf.slice_from(self.pos) }
     fn consume(&mut self, amt: uint) { self.pos += amt; }
 }

@@ -1,5 +1,5 @@
-struct Foo<'self> {
-    x: &'self int
+struct Foo<'a> {
+    x: &'a int
 }
 
 pub fn main() {

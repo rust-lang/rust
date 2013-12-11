@@ -10,8 +10,8 @@
 
 // xfail-test
 
-struct TrieMapIterator<'self> {
-    priv node: &'self uint
+struct TrieMapIterator<'a> {
+    priv node: &'a uint
 }
 
 fn main() {

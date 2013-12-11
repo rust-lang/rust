@@ -12,11 +12,11 @@
 // bound must be noncopyable. For details see
 // http://smallcultfollowing.com/babysteps/blog/2013/04/30/the-case-of-the-recurring-closure/
 
-struct R<'self> {
+struct R<'a> {
     // This struct is needed to create the
     // otherwise infinite type of a fn that
     // accepts itself as argument:
-    c: 'self |&R, bool|
+    c: 'a |&R, bool|
 }
 
 fn innocent_looking_victim() {

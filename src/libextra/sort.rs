@@ -15,7 +15,7 @@ use std::cmp::{Eq, Ord};
 use std::util::swap;
 use std::vec;
 
-type Le<'self, T> = 'self |v1: &T, v2: &T| -> bool;
+type Le<'a, T> = 'a |v1: &T, v2: &T| -> bool;
 
 /**
  * Merge sort. Returns a new vector containing the sorted list.
@@ -173,7 +173,7 @@ pub trait Sort {
     fn qsort(self);
 }
 
-impl<'self, T:Clone + Ord + Eq> Sort for &'self mut [T] {
+impl<'a, T:Clone + Ord + Eq> Sort for &'a mut [T] {
     fn qsort(self) { quick_sort3(self); }
 }
 

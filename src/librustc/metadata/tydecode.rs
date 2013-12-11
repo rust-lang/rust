@@ -52,11 +52,11 @@ pub enum DefIdSource {
     // Identifies a region parameter (`fn foo<'X>() { ... }`).
     RegionParameter,
 }
-type conv_did<'self> =
-    'self |source: DefIdSource, ast::DefId| -> ast::DefId;
+type conv_did<'a> =
+    'a |source: DefIdSource, ast::DefId| -> ast::DefId;
 
-pub struct PState<'self> {
-    data: &'self [u8],
+pub struct PState<'a> {
+    data: &'a [u8],
     crate: ast::CrateNum,
     pos: uint,
     tcx: ty::ctxt

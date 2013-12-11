@@ -62,14 +62,14 @@ impl ToStr for SocketAddr {
     }
 }
 
-struct Parser<'self> {
+struct Parser<'a> {
     // parsing as ASCII, so can use byte array
-    s: &'self [u8],
+    s: &'a [u8],
     pos: uint,
 }
 
-impl<'self> Parser<'self> {
-    fn new(s: &'self str) -> Parser<'self> {
+impl<'a> Parser<'a> {
+    fn new(s: &'a str) -> Parser<'a> {
         Parser {
             s: s.as_bytes(),
             pos: 0,

@@ -9,8 +9,8 @@
 // except according to those terms.
 
 #[deriving(Eq,Ord)]
-struct A<'self> {
-    x: &'self int
+struct A<'a> {
+    x: &'a int
 }
 
 pub fn main() {

@@ -15,13 +15,13 @@
 // from a vector to a slice. The drop glue was being invoked on
 // the temporary slice with a wrong type, triggering an LLVM assert.
 
-struct Thing1<'self> {
-    baz: &'self [~int],
+struct Thing1<'a> {
+    baz: &'a [~int],
     bar: ~u64,
 }
 
-struct Thing2<'self> {
-    baz: &'self [~int],
+struct Thing2<'a> {
+    baz: &'a [~int],
     bar: u64,
 }
 

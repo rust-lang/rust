@@ -84,11 +84,11 @@ fn spaces(n: uint) -> ~str {
 }
 
 /// A structure for implementing serialization to JSON.
-pub struct Encoder<'self> {
-    priv wr: &'self mut io::Writer,
+pub struct Encoder<'a> {
+    priv wr: &'a mut io::Writer,
 }
 
-impl<'self> Encoder<'self> {
+impl<'a> Encoder<'a> {
     /// Creates a new JSON encoder whose output will be written to the writer
     /// specified.
     pub fn new<'a>(wr: &'a mut io::Writer) -> Encoder<'a> {
@@ -96,7 +96,7 @@ impl<'self> Encoder<'self> {
     }
 }
 
-impl<'self> serialize::Encoder for Encoder<'self> {
+impl<'a> serialize::Encoder for Encoder<'a> {
     fn emit_nil(&mut self) { write!(self.wr, "null") }
 
     fn emit_uint(&mut self, v: uint) { self.emit_f64(v as f64); }
@@ -129,13 +129,13 @@ impl<'self> serialize::Encoder for Encoder<'self> {
         write!(self.wr, "{}", escape_str(v))
     }
 
-    fn emit_enum(&mut self, _name: &str, f: |&mut Encoder<'self>|) { f(self) }
+    fn emit_enum(&mut self, _name: &str, f: |&mut Encoder<'a>|) { f(self) }
 
     fn emit_enum_variant(&mut self,
                          name: &str,
                          _id: uint,
                          cnt: uint,
-                         f: |&mut Encoder<'self>|) {
+                         f: |&mut Encoder<'a>|) {
         // enums are encoded as strings or objects
         // Bunny => "Bunny"
         // Kangaroo(34,"William") => {"variant": "Kangaroo", "fields": [34,"William"]}
@@ -150,7 +150,7 @@ impl<'self> serialize::Encoder for Encoder<'self> {
         }
     }
 
-    fn emit_enum_variant_arg(&mut self, idx: uint, f: |&mut Encoder<'self>|) {
+    fn emit_enum_variant_arg(&mut self, idx: uint, f: |&mut Encoder<'a>|) {
         if idx != 0 {
             write!(self.wr, ",");
         }
@@ -161,18 +161,18 @@ impl<'self> serialize::Encoder for Encoder<'self> {
                                 name: &str,
                                 id: uint,
                                 cnt: uint,
-                                f: |&mut Encoder<'self>|) {
+                                f: |&mut Encoder<'a>|) {
         self.emit_enum_variant(name, id, cnt, f)
     }
 
     fn emit_enum_struct_variant_field(&mut self,
                                       _: &str,
                                       idx: uint,
-                                      f: |&mut Encoder<'self>|) {
+                                      f: |&mut Encoder<'a>|) {
         self.emit_enum_variant_arg(idx, f)
     }
 
-    fn emit_struct(&mut self, _: &str, _: uint, f: |&mut Encoder<'self>|) {
+    fn emit_struct(&mut self, _: &str, _: uint, f: |&mut Encoder<'a>|) {
         write!(self.wr, r"\{");
         f(self);
         write!(self.wr, r"\}");
@@ -181,58 +181,58 @@ impl<'self> serialize::Encoder for Encoder<'self> {
     fn emit_struct_field(&mut self,
                          name: &str,
                          idx: uint,
-                         f: |&mut Encoder<'self>|) {
+                         f: |&mut Encoder<'a>|) {
         if idx != 0 { write!(self.wr, ",") }
         write!(self.wr, "{}:", escape_str(name));
         f(self);
     }
 
-    fn emit_tuple(&mut self, len: uint, f: |&mut Encoder<'self>|) {
+    fn emit_tuple(&mut self, len: uint, f: |&mut Encoder<'a>|) {
         self.emit_seq(len, f)
     }
-    fn emit_tuple_arg(&mut self, idx: uint, f: |&mut Encoder<'self>|) {
+    fn emit_tuple_arg(&mut self, idx: uint, f: |&mut Encoder<'a>|) {
         self.emit_seq_elt(idx, f)
     }
 
     fn emit_tuple_struct(&mut self,
                          _name: &str,
                          len: uint,
-                         f: |&mut Encoder<'self>|) {
+                         f: |&mut Encoder<'a>|) {
         self.emit_seq(len, f)
     }
-    fn emit_tuple_struct_arg(&mut self, idx: uint, f: |&mut Encoder<'self>|) {
+    fn emit_tuple_struct_arg(&mut self, idx: uint, f: |&mut Encoder<'a>|) {
         self.emit_seq_elt(idx, f)
     }
 
-    fn emit_option(&mut self, f: |&mut Encoder<'self>|) { f(self); }
+    fn emit_option(&mut self, f: |&mut Encoder<'a>|) { f(self); }
     fn emit_option_none(&mut self) { self.emit_nil(); }
-    fn emit_option_some(&mut self, f: |&mut Encoder<'self>|) { f(self); }
+    fn emit_option_some(&mut self, f: |&mut Encoder<'a>|) { f(self); }
 
-    fn emit_seq(&mut self, _len: uint, f: |&mut Encoder<'self>|) {
+    fn emit_seq(&mut self, _len: uint, f: |&mut Encoder<'a>|) {
         write!(self.wr, "[");
         f(self);
         write!(self.wr, "]");
     }
 
-    fn emit_seq_elt(&mut self, idx: uint, f: |&mut Encoder<'self>|) {
+    fn emit_seq_elt(&mut self, idx: uint, f: |&mut Encoder<'a>|) {
         if idx != 0 {
             write!(self.wr, ",");
         }
         f(self)
     }
 
-    fn emit_map(&mut self, _len: uint, f: |&mut Encoder<'self>|) {
+    fn emit_map(&mut self, _len: uint, f: |&mut Encoder<'a>|) {
         write!(self.wr, r"\{");
         f(self);
         write!(self.wr, r"\}");
     }
 
-    fn emit_map_elt_key(&mut self, idx: uint, f: |&mut Encoder<'self>|) {
+    fn emit_map_elt_key(&mut self, idx: uint, f: |&mut Encoder<'a>|) {
         if idx != 0 { write!(self.wr, ",") }
         f(self)
     }
 
-    fn emit_map_elt_val(&mut self, _idx: uint, f: |&mut Encoder<'self>|) {
+    fn emit_map_elt_val(&mut self, _idx: uint, f: |&mut Encoder<'a>|) {
         write!(self.wr, ":");
         f(self)
     }
@@ -240,12 +240,12 @@ impl<'self> serialize::Encoder for Encoder<'self> {
 
 /// Another encoder for JSON, but prints out human-readable JSON instead of
 /// compact data
-pub struct PrettyEncoder<'self> {
-    priv wr: &'self mut io::Writer,
+pub struct PrettyEncoder<'a> {
+    priv wr: &'a mut io::Writer,
     priv indent: uint,
 }
 
-impl<'self> PrettyEncoder<'self> {
+impl<'a> PrettyEncoder<'a> {
     /// Creates a new encoder whose output will be written to the specified writer
     pub fn new<'a>(wr: &'a mut io::Writer) -> PrettyEncoder<'a> {
         PrettyEncoder {
@@ -255,7 +255,7 @@ impl<'self> PrettyEncoder<'self> {
     }
 }
 
-impl<'self> serialize::Encoder for PrettyEncoder<'self> {
+impl<'a> serialize::Encoder for PrettyEncoder<'a> {
     fn emit_nil(&mut self) { write!(self.wr, "null") }
 
     fn emit_uint(&mut self, v: uint) { self.emit_f64(v as f64); }
@@ -286,7 +286,7 @@ impl<'self> serialize::Encoder for PrettyEncoder<'self> {
     fn emit_char(&mut self, v: char) { self.emit_str(str::from_char(v)) }
     fn emit_str(&mut self, v: &str) { write!(self.wr, "{}", escape_str(v)); }
 
-    fn emit_enum(&mut self, _name: &str, f: |&mut PrettyEncoder<'self>|) {
+    fn emit_enum(&mut self, _name: &str, f: |&mut PrettyEncoder<'a>|) {
         f(self)
     }
 
@@ -294,7 +294,7 @@ impl<'self> serialize::Encoder for PrettyEncoder<'self> {
                          name: &str,
                          _: uint,
                          cnt: uint,
-                         f: |&mut PrettyEncoder<'self>|) {
+                         f: |&mut PrettyEncoder<'a>|) {
         if cnt == 0 {
             write!(self.wr, "{}", escape_str(name));
         } else {
@@ -308,7 +308,7 @@ impl<'self> serialize::Encoder for PrettyEncoder<'self> {
 
     fn emit_enum_variant_arg(&mut self,
                              idx: uint,
-                             f: |&mut PrettyEncoder<'self>|) {
+                             f: |&mut PrettyEncoder<'a>|) {
         if idx != 0 {
             write!(self.wr, ",\n");
         }
@@ -320,14 +320,14 @@ impl<'self> serialize::Encoder for PrettyEncoder<'self> {
                                 name: &str,
                                 id: uint,
                                 cnt: uint,
-                                f: |&mut PrettyEncoder<'self>|) {
+                                f: |&mut PrettyEncoder<'a>|) {
         self.emit_enum_variant(name, id, cnt, f)
     }
 
     fn emit_enum_struct_variant_field(&mut self,
                                       _: &str,
                                       idx: uint,
-                                      f: |&mut PrettyEncoder<'self>|) {
+                                      f: |&mut PrettyEncoder<'a>|) {
         self.emit_enum_variant_arg(idx, f)
     }
 
@@ -335,7 +335,7 @@ impl<'self> serialize::Encoder for PrettyEncoder<'self> {
     fn emit_struct(&mut self,
                    _: &str,
                    len: uint,
-                   f: |&mut PrettyEncoder<'self>|) {
+                   f: |&mut PrettyEncoder<'a>|) {
         if len == 0 {
             write!(self.wr, "\\{\\}");
         } else {
@@ -350,7 +350,7 @@ impl<'self> serialize::Encoder for PrettyEncoder<'self> {
     fn emit_struct_field(&mut self,
                          name: &str,
                          idx: uint,
-                         f: |&mut PrettyEncoder<'self>|) {
+                         f: |&mut PrettyEncoder<'a>|) {
         if idx == 0 {
             write!(self.wr, "\n");
         } else {
@@ -360,30 +360,30 @@ impl<'self> serialize::Encoder for PrettyEncoder<'self> {
         f(self);
     }
 
-    fn emit_tuple(&mut self, len: uint, f: |&mut PrettyEncoder<'self>|) {
+    fn emit_tuple(&mut self, len: uint, f: |&mut PrettyEncoder<'a>|) {
         self.emit_seq(len, f)
     }
-    fn emit_tuple_arg(&mut self, idx: uint, f: |&mut PrettyEncoder<'self>|) {
+    fn emit_tuple_arg(&mut self, idx: uint, f: |&mut PrettyEncoder<'a>|) {
         self.emit_seq_elt(idx, f)
     }
 
     fn emit_tuple_struct(&mut self,
                          _: &str,
                          len: uint,
-                         f: |&mut PrettyEncoder<'self>|) {
+                         f: |&mut PrettyEncoder<'a>|) {
         self.emit_seq(len, f)
     }
     fn emit_tuple_struct_arg(&mut self,
                              idx: uint,
-                             f: |&mut PrettyEncoder<'self>|) {
+                             f: |&mut PrettyEncoder<'a>|) {
         self.emit_seq_elt(idx, f)
     }
 
-    fn emit_option(&mut self, f: |&mut PrettyEncoder<'self>|) { f(self); }
+    fn emit_option(&mut self, f: |&mut PrettyEncoder<'a>|) { f(self); }
     fn emit_option_none(&mut self) { self.emit_nil(); }
-    fn emit_option_some(&mut self, f: |&mut PrettyEncoder<'self>|) { f(self); }
+    fn emit_option_some(&mut self, f: |&mut PrettyEncoder<'a>|) { f(self); }
 
-    fn emit_seq(&mut self, len: uint, f: |&mut PrettyEncoder<'self>|) {
+    fn emit_seq(&mut self, len: uint, f: |&mut PrettyEncoder<'a>|) {
         if len == 0 {
             write!(self.wr, "[]");
         } else {
@@ -395,7 +395,7 @@ impl<'self> serialize::Encoder for PrettyEncoder<'self> {
         }
     }
 
-    fn emit_seq_elt(&mut self, idx: uint, f: |&mut PrettyEncoder<'self>|) {
+    fn emit_seq_elt(&mut self, idx: uint, f: |&mut PrettyEncoder<'a>|) {
         if idx == 0 {
             write!(self.wr, "\n");
         } else {
@@ -405,7 +405,7 @@ impl<'self> serialize::Encoder for PrettyEncoder<'self> {
         f(self)
     }
 
-    fn emit_map(&mut self, len: uint, f: |&mut PrettyEncoder<'self>|) {
+    fn emit_map(&mut self, len: uint, f: |&mut PrettyEncoder<'a>|) {
         if len == 0 {
             write!(self.wr, "\\{\\}");
         } else {
@@ -417,7 +417,7 @@ impl<'self> serialize::Encoder for PrettyEncoder<'self> {
         }
     }
 
-    fn emit_map_elt_key(&mut self, idx: uint, f: |&mut PrettyEncoder<'self>|) {
+    fn emit_map_elt_key(&mut self, idx: uint, f: |&mut PrettyEncoder<'a>|) {
         if idx == 0 {
             write!(self.wr, "\n");
         } else {
@@ -427,7 +427,7 @@ impl<'self> serialize::Encoder for PrettyEncoder<'self> {
         f(self);
     }
 
-    fn emit_map_elt_val(&mut self, _idx: uint, f: |&mut PrettyEncoder<'self>|) {
+    fn emit_map_elt_val(&mut self, _idx: uint, f: |&mut PrettyEncoder<'a>|) {
         write!(self.wr, ": ");
         f(self);
     }

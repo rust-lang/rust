@@ -22,22 +22,22 @@ use opt_vec;
 use opt_vec::OptVec;
 
 /// The types of pointers
-pub enum PtrTy<'self> {
+pub enum PtrTy<'a> {
     Send, // ~
     Managed(ast::Mutability), // @[mut]
-    Borrowed(Option<&'self str>, ast::Mutability), // &['lifetime] [mut]
+    Borrowed(Option<&'a str>, ast::Mutability), // &['lifetime] [mut]
 }
 
 /// A path, e.g. `::std::option::Option::<int>` (global). Has support
 /// for type parameters and a lifetime.
-pub struct Path<'self> {
-    path: ~[&'self str],
-    lifetime: Option<&'self str>,
-    params: ~[~Ty<'self>],
+pub struct Path<'a> {
+    path: ~[&'a str],
+    lifetime: Option<&'a str>,
+    params: ~[~Ty<'a>],
     global: bool
 }
 
-impl<'self> Path<'self> {
+impl<'a> Path<'a> {
     pub fn new<'r>(path: ~[&'r str]) -> Path<'r> {
         Path::new_(path, None, ~[], true)
     }
@@ -80,15 +80,15 @@ impl<'self> Path<'self> {
 }
 
 /// A type. Supports pointers (except for *), Self, and literals
-pub enum Ty<'self> {
+pub enum Ty<'a> {
     Self,
     // &/~/@ Ty
-    Ptr(~Ty<'self>, PtrTy<'self>),
+    Ptr(~Ty<'a>, PtrTy<'a>),
     // mod::mod::Type<[lifetime], [Params...]>, including a plain type
     // parameter, and things like `int`
-    Literal(Path<'self>),
+    Literal(Path<'a>),
     // includes nil
-    Tuple(~[Ty<'self>])
+    Tuple(~[Ty<'a>])
 }
 
 pub fn borrowed_ptrty<'r>() -> PtrTy<'r> {
@@ -124,7 +124,7 @@ fn mk_lifetimes(cx: @ExtCtxt, span: Span, lt: &Option<&str>) -> OptVec<ast::Life
     }
 }
 
-impl<'self> Ty<'self> {
+impl<'a> Ty<'a> {
     pub fn to_ty(&self,
                  cx: @ExtCtxt,
                  span: Span,
@@ -207,12 +207,12 @@ fn mk_generics(lifetimes: ~[ast::Lifetime],  ty_params: ~[ast::TyParam]) -> Gene
 }
 
 /// Lifetimes and bounds on type parameters
-pub struct LifetimeBounds<'self> {
-    lifetimes: ~[&'self str],
-    bounds: ~[(&'self str, ~[Path<'self>])]
+pub struct LifetimeBounds<'a> {
+    lifetimes: ~[&'a str],
+    bounds: ~[(&'a str, ~[Path<'a>])]
 }
 
-impl<'self> LifetimeBounds<'self> {
+impl<'a> LifetimeBounds<'a> {
     pub fn empty() -> LifetimeBounds<'static> {
         LifetimeBounds {
             lifetimes: ~[], bounds: ~[]

@@ -12,8 +12,8 @@ trait A {}
 struct B;
 impl A for B {}
 
-struct C<'self> {
-    foo: &'self mut A,
+struct C<'a> {
+    foo: &'a mut A,
 }
 
 fn foo(a: &mut A) {

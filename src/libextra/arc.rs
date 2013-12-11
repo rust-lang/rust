@@ -49,13 +49,13 @@ use std::task;
 use std::borrow;
 
 /// As sync::condvar, a mechanism for unlock-and-descheduling and signaling.
-pub struct Condvar<'self> {
+pub struct Condvar<'a> {
     priv is_mutex: bool,
-    priv failed: &'self mut bool,
-    priv cond: &'self sync::Condvar<'self>
+    priv failed: &'a mut bool,
+    priv cond: &'a sync::Condvar<'a>
 }
 
-impl<'self> Condvar<'self> {
+impl<'a> Condvar<'a> {
     /// Atomically exit the associated Arc and block until a signal is sent.
     #[inline]
     pub fn wait(&self) { self.wait_on(0) }
@@ -523,19 +523,19 @@ fn borrow_rwlock<T:Freeze + Send>(state: *mut RWArcInner<T>) -> *RWLock {
 }
 
 /// The "write permission" token used for RWArc.write_downgrade().
-pub struct RWWriteMode<'self, T> {
-    priv data: &'self mut T,
-    priv token: sync::RWLockWriteMode<'self>,
+pub struct RWWriteMode<'a, T> {
+    priv data: &'a mut T,
+    priv token: sync::RWLockWriteMode<'a>,
     priv poison: PoisonOnFail,
 }
 
 /// The "read permission" token used for RWArc.write_downgrade().
-pub struct RWReadMode<'self, T> {
-    priv data: &'self T,
-    priv token: sync::RWLockReadMode<'self>,
+pub struct RWReadMode<'a, T> {
+    priv data: &'a T,
+    priv token: sync::RWLockReadMode<'a>,
 }
 
-impl<'self, T:Freeze + Send> RWWriteMode<'self, T> {
+impl<'a, T:Freeze + Send> RWWriteMode<'a, T> {
     /// Access the pre-downgrade RWArc in write mode.
     pub fn write<U>(&mut self, blk: |x: &mut T| -> U) -> U {
         match *self {
@@ -574,7 +574,7 @@ impl<'self, T:Freeze + Send> RWWriteMode<'self, T> {
     }
 }
 
-impl<'self, T:Freeze + Send> RWReadMode<'self, T> {
+impl<'a, T:Freeze + Send> RWReadMode<'a, T> {
     /// Access the post-downgrade rwlock in read mode.
     pub fn read<U>(&self, blk: |x: &T| -> U) -> U {
         match *self {

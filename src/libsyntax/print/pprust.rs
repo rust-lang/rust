@@ -34,11 +34,11 @@ use std::io::Decorator;
 use std::io::mem::MemWriter;
 
 // The @ps is stored here to prevent recursive type.
-pub enum ann_node<'self> {
-    node_block(@ps, &'self ast::Block),
-    node_item(@ps, &'self ast::item),
-    node_expr(@ps, &'self ast::Expr),
-    node_pat(@ps, &'self ast::Pat),
+pub enum ann_node<'a> {
+    node_block(@ps, &'a ast::Block),
+    node_item(@ps, &'a ast::item),
+    node_expr(@ps, &'a ast::Expr),
+    node_pat(@ps, &'a ast::Pat),
 }
 
 pub trait pp_ann {

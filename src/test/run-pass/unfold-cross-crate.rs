@@ -10,7 +10,7 @@
 
 use std::iter::Unfold;
 
-// Unfold had a bug with 'self that mean it didn't work
+// Unfold had a bug with 'a that mean it didn't work
 // cross-crate
 
 pub fn main() {

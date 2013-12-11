@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct r<'self> {
-    field: 'self ||
+struct r<'a> {
+    field: 'a ||
 }
 
 pub fn main() {

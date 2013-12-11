@@ -305,8 +305,8 @@ mod tests {
     use prelude::*;
 
     // Hash just the bytes of the slice, without length prefix
-    struct Bytes<'self>(&'self [u8]);
-    impl<'self> IterBytes for Bytes<'self> {
+    struct Bytes<'a>(&'a [u8]);
+    impl<'a> IterBytes for Bytes<'a> {
         fn iter_bytes(&self, _lsb0: bool, f: |&[u8]| -> bool) -> bool {
             f(**self)
         }

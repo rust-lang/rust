@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct CMap<'self> {
-    buf: &'self [u8],
+struct CMap<'a> {
+    buf: &'a [u8],
 }
 
 fn CMap<'r>(buf: &'r [u8]) -> CMap<'r> {

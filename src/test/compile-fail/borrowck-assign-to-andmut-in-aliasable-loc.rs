@@ -11,8 +11,8 @@
 // Test that assignments to an `&mut` pointer which is found in a
 // borrowed (but otherwise non-aliasable) location is illegal.
 
-struct S<'self> {
-    pointer: &'self mut int
+struct S<'a> {
+    pointer: &'a mut int
 }
 
 fn a(s: &S) {

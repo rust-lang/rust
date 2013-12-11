@@ -32,15 +32,15 @@ use syntax::visit;
 use util::ppaux::Repr;
 
 #[deriving(Clone)]
-struct CheckLoanCtxt<'self> {
-    bccx: &'self BorrowckCtxt,
-    dfcx_loans: &'self LoanDataFlow,
+struct CheckLoanCtxt<'a> {
+    bccx: &'a BorrowckCtxt,
+    dfcx_loans: &'a LoanDataFlow,
     move_data: @move_data::FlowedMoveData,
-    all_loans: &'self [Loan],
+    all_loans: &'a [Loan],
     reported: @mut HashSet<ast::NodeId>,
 }
 
-impl<'self> Visitor<()> for CheckLoanCtxt<'self> {
+impl<'a> Visitor<()> for CheckLoanCtxt<'a> {
 
     fn visit_expr(&mut self, ex:@ast::Expr, _:()) {
         check_loans_in_expr(self, ex);
@@ -86,7 +86,7 @@ enum MoveError {
     MoveWhileBorrowed(/*loan*/@LoanPath, /*loan*/Span)
 }
 
-impl<'self> CheckLoanCtxt<'self> {
+impl<'a> CheckLoanCtxt<'a> {
     pub fn tcx(&self) -> ty::ctxt { self.bccx.tcx }
 
     pub fn each_issued_loan(&self, scope_id: ast::NodeId, op: |&Loan| -> bool)

@@ -76,12 +76,12 @@ pub fn strip_private(crate: clean::Crate) -> plugins::PluginResult {
     (crate, None)
 }
 
-struct Stripper<'self> {
-    retained: &'self mut HashSet<ast::NodeId>,
-    exported_items: &'self HashSet<ast::NodeId>,
+struct Stripper<'a> {
+    retained: &'a mut HashSet<ast::NodeId>,
+    exported_items: &'a HashSet<ast::NodeId>,
 }
 
-impl<'self> fold::DocFolder for Stripper<'self> {
+impl<'a> fold::DocFolder for Stripper<'a> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         match i.inner {
             // These items can all get re-exported
@@ -150,8 +150,8 @@ impl<'self> fold::DocFolder for Stripper<'self> {
 }
 
 // This stripper discards all private impls of traits
-struct ImplStripper<'self>(&'self HashSet<ast::NodeId>);
-impl<'self> fold::DocFolder for ImplStripper<'self> {
+struct ImplStripper<'a>(&'a HashSet<ast::NodeId>);
+impl<'a> fold::DocFolder for ImplStripper<'a> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         match i.inner {
             clean::ImplItem(ref imp) => {

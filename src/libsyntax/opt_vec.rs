@@ -144,13 +144,13 @@ impl<T> Default for OptVec<T> {
     fn default() -> OptVec<T> { Empty }
 }
 
-pub struct OptVecIterator<'self, T> {
-    priv iter: Option<VecIterator<'self, T>>
+pub struct OptVecIterator<'a, T> {
+    priv iter: Option<VecIterator<'a, T>>
 }
 
-impl<'self, T> Iterator<&'self T> for OptVecIterator<'self, T> {
+impl<'a, T> Iterator<&'a T> for OptVecIterator<'a, T> {
     #[inline]
-    fn next(&mut self) -> Option<&'self T> {
+    fn next(&mut self) -> Option<&'a T> {
         match self.iter {
             Some(ref mut x) => x.next(),
             None => None

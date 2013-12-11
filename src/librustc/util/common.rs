@@ -69,12 +69,12 @@ pub fn field_exprs(fields: ~[ast::Field]) -> ~[@ast::Expr] {
     fields.map(|f| f.expr)
 }
 
-struct LoopQueryVisitor<'self> {
-    p: 'self |&ast::Expr_| -> bool,
+struct LoopQueryVisitor<'a> {
+    p: 'a |&ast::Expr_| -> bool,
     flag: bool,
 }
 
-impl<'self> Visitor<()> for LoopQueryVisitor<'self> {
+impl<'a> Visitor<()> for LoopQueryVisitor<'a> {
     fn visit_expr(&mut self, e: @ast::Expr, _: ()) {
         self.flag |= (self.p)(&e.node);
         match e.node {
@@ -97,12 +97,12 @@ pub fn loop_query(b: ast::P<ast::Block>, p: |&ast::Expr_| -> bool) -> bool {
     return v.flag;
 }
 
-struct BlockQueryVisitor<'self> {
-    p: 'self |@ast::Expr| -> bool,
+struct BlockQueryVisitor<'a> {
+    p: 'a |@ast::Expr| -> bool,
     flag: bool,
 }
 
-impl<'self> Visitor<()> for BlockQueryVisitor<'self> {
+impl<'a> Visitor<()> for BlockQueryVisitor<'a> {
     fn visit_expr(&mut self, e: @ast::Expr, _:()) {
         self.flag |= (self.p)(e);
         visit::walk_expr(self, e, ())

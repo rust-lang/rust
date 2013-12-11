@@ -352,7 +352,7 @@ pub fn get_lint_dict() -> LintDict {
     return map;
 }
 
-struct Context<'self> {
+struct Context<'a> {
     // All known lint modes (string versions)
     dict: @LintDict,
     // Current levels of each lint warning
@@ -360,7 +360,7 @@ struct Context<'self> {
     // context we're checking in (used to access fields like sess)
     tcx: ty::ctxt,
     // Items exported by the crate; used by the missing_doc lint.
-    exported_items: &'self privacy::ExportedItems,
+    exported_items: &'a privacy::ExportedItems,
     // The id of the current `ast::struct_def` being walked.
     cur_struct_def_id: ast::NodeId,
     // Whether some ancestor of the current node was marked
@@ -376,7 +376,7 @@ struct Context<'self> {
     negated_expr_id: ast::NodeId
 }
 
-impl<'self> Context<'self> {
+impl<'a> Context<'a> {
     fn get_level(&self, lint: lint) -> level {
         match self.cur.find(&(lint as uint)) {
           Some(&(lvl, _)) => lvl,
@@ -1234,7 +1234,7 @@ fn check_stability(cx: &Context, e: &ast::Expr) {
     cx.span_lint(lint, e.span, msg);
 }
 
-impl<'self> Visitor<()> for Context<'self> {
+impl<'a> Visitor<()> for Context<'a> {
     fn visit_item(&mut self, it: @ast::item, _: ()) {
         self.with_lint_attrs(it.attrs, |cx| {
             check_item_ctypes(cx, it);
@@ -1369,7 +1369,7 @@ impl<'self> Visitor<()> for Context<'self> {
     fn visit_ty(&mut self, _t: &ast::Ty, _: ()) {}
 }
 
-impl<'self> IdVisitingOperation for Context<'self> {
+impl<'a> IdVisitingOperation for Context<'a> {
     fn visit_id(&self, id: ast::NodeId) {
         match self.tcx.sess.lints.pop(&id) {
             None => {}

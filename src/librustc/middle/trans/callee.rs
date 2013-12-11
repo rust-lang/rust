@@ -750,9 +750,9 @@ pub fn trans_call_inner(in_cx: @mut Block,
     })
 }
 
-pub enum CallArgs<'self> {
-    ArgExprs(&'self [@ast::Expr]),
-    ArgVals(&'self [ValueRef])
+pub enum CallArgs<'a> {
+    ArgExprs(&'a [@ast::Expr]),
+    ArgVals(&'a [ValueRef])
 }
 
 pub fn trans_args(cx: @mut Block,

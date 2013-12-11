@@ -130,16 +130,16 @@ pub fn push_ctxt(s: &'static str) -> _InsnCtxt {
     _InsnCtxt { _x: () }
 }
 
-struct StatRecorder<'self> {
+struct StatRecorder<'a> {
     ccx: @mut CrateContext,
-    name: &'self str,
+    name: &'a str,
     start: u64,
     istart: uint,
 }
 
-impl<'self> StatRecorder<'self> {
+impl<'a> StatRecorder<'a> {
     pub fn new(ccx: @mut CrateContext,
-               name: &'self str) -> StatRecorder<'self> {
+               name: &'a str) -> StatRecorder<'a> {
         let start = if ccx.sess.trans_stats() {
             time::precise_time_ns()
         } else {
@@ -156,7 +156,7 @@ impl<'self> StatRecorder<'self> {
 }
 
 #[unsafe_destructor]
-impl<'self> Drop for StatRecorder<'self> {
+impl<'a> Drop for StatRecorder<'a> {
     fn drop(&mut self) {
         if self.ccx.sess.trans_stats() {
             let end = time::precise_time_ns();
@@ -668,7 +668,7 @@ pub fn compare_scalar_values(cx: @mut Block,
     }
 }
 
-pub type val_and_ty_fn<'self> = 'self |@mut Block, ValueRef, ty::t|
+pub type val_and_ty_fn<'a> = 'a |@mut Block, ValueRef, ty::t|
                                        -> @mut Block;
 
 pub fn load_inbounds(cx: @mut Block, p: ValueRef, idxs: &[uint]) -> ValueRef {
