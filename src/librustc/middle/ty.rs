@@ -737,6 +737,7 @@ pub enum BuiltinBound {
     BoundSend,
     BoundFreeze,
     BoundSized,
+    BoundPod,
 }
 
 pub fn EmptyBuiltinBounds() -> BuiltinBounds {
@@ -1805,6 +1806,9 @@ def_type_content_sets!(
         // Things that prevent values from being considered sized
         Nonsized                            = 0b0000__00000000__0001,
 
+        // Things that make values considered not POD (same as `Moves`)
+        Nonpod                              = 0b0000__00001111__0000,
+
         // Bits to set when a managed value is encountered
         //
         // [1] Do not set the bits TC::OwnsManaged or
@@ -1828,6 +1832,7 @@ impl TypeContents {
             BoundFreeze => self.is_freezable(cx),
             BoundSend => self.is_sendable(cx),
             BoundSized => self.is_sized(cx),
+            BoundPod => self.is_pod(cx),
         }
     }
 
@@ -1859,6 +1864,10 @@ impl TypeContents {
         !self.intersects(TC::Nonsized)
     }
 
+    pub fn is_pod(&self, _: ctxt) -> bool {
+        !self.intersects(TC::Nonpod)
+    }
+
     pub fn moves_by_default(&self, _: ctxt) -> bool {
         self.intersects(TC::Moves)
     }
@@ -1876,13 +1885,30 @@ impl TypeContents {
             *self & (TC::OwnsAll | TC::ReachesAll))
     }
 
-    pub fn other_pointer(&self, bits: TypeContents) -> TypeContents {
+    pub fn reference(&self, bits: TypeContents) -> TypeContents {
         /*!
          * Includes only those bits that still apply
-         * when indirected through a non-owning pointer (`&`, `@`)
+         * when indirected through a reference (`&`)
          */
         bits | (
             *self & TC::ReachesAll)
+    }
+
+    pub fn managed_pointer(&self) -> TypeContents {
+        /*!
+         * Includes only those bits that still apply
+         * when indirected through a managed pointer (`@`)
+         */
+        TC::Managed | (
+            *self & TC::ReachesAll)
+    }
+
+    pub fn unsafe_pointer(&self) -> TypeContents {
+        /*!
+         * Includes only those bits that still apply
+         * when indirected through an unsafe pointer (`*`)
+         */
+        *self & TC::ReachesAll
     }
 
     pub fn union<T>(v: &[T], f: |&T| -> TypeContents) -> TypeContents {
@@ -1994,7 +2020,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             }
 
             ty_box(mt) => {
-                tc_mt(cx, mt, cache).other_pointer(TC::Managed)
+                tc_mt(cx, mt, cache).managed_pointer()
             }
 
             ty_trait(_, _, store, mutbl, bounds) => {
@@ -2002,11 +2028,11 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             }
 
             ty_ptr(ref mt) => {
-                tc_ty(cx, mt.ty, cache).other_pointer(TC::None)
+                tc_ty(cx, mt.ty, cache).unsafe_pointer()
             }
 
             ty_rptr(r, ref mt) => {
-                tc_ty(cx, mt.ty, cache).other_pointer(
+                tc_ty(cx, mt.ty, cache).reference(
                     borrowed_contents(r, mt.mutbl))
             }
 
@@ -2019,11 +2045,11 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             }
 
             ty_evec(mt, vstore_box) => {
-                tc_mt(cx, mt, cache).other_pointer(TC::Managed)
+                tc_mt(cx, mt, cache).managed_pointer()
             }
 
             ty_evec(ref mt, vstore_slice(r)) => {
-                tc_ty(cx, mt.ty, cache).other_pointer(
+                tc_ty(cx, mt.ty, cache).reference(
                     borrowed_contents(r, mt.mutbl))
             }
 
@@ -2193,10 +2219,10 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 contents.owned_pointer()
             }
             BoxTraitStore => {
-                contents.other_pointer(TC::Managed)
+                contents.managed_pointer()
             }
             RegionTraitStore(r) => {
-                contents.other_pointer(borrowed_contents(r, mutbl))
+                contents.reference(borrowed_contents(r, mutbl))
             }
         }
     }
@@ -2213,6 +2239,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 BoundSend => TC::Nonsendable,
                 BoundFreeze => TC::Nonfreezable,
                 BoundSized => TC::Nonsized,
+                BoundPod => TC::Nonpod,
             };
         });
         return tc;
