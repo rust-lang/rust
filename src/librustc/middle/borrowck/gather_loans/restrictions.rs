@@ -114,10 +114,26 @@ impl<'self> RestrictionsContext<'self> {
             }
 
             mc::cat_copied_upvar(..) | // FIXME(#2152) allow mutation of upvars
-            mc::cat_static_item(..) |
-            mc::cat_deref(_, _, mc::region_ptr(MutImmutable, _)) |
-            mc::cat_deref(_, _, mc::gc_ptr(MutImmutable)) => {
+            mc::cat_static_item(..) => {
+                Safe
+            }
+
+            mc::cat_deref(cmt_base, _, mc::region_ptr(MutImmutable, lt)) => {
                 // R-Deref-Imm-Borrowed
+                if !self.bccx.is_subregion_of(self.loan_region, lt) {
+                    self.bccx.report(
+                        BckError {
+                            span: self.span,
+                            cmt: cmt_base,
+                            code: err_borrowed_pointer_too_short(
+                                self.loan_region, lt, restrictions)});
+                    return Safe;
+                }
+                Safe
+            }
+
+            mc::cat_deref(_, _, mc::gc_ptr(MutImmutable)) => {
+                // R-Deref-Imm-Managed
                 Safe
             }
 
@@ -170,30 +186,19 @@ impl<'self> RestrictionsContext<'self> {
             }
 
             mc::cat_deref(cmt_base, _, pk @ mc::region_ptr(MutMutable, lt)) => {
-                // Because an `&mut` pointer does not inherit its
-                // mutability, we can only prevent mutation or prevent
-                // freezing if it is not aliased. Therefore, in such
-                // cases we restrict aliasing on `cmt_base`.
-                if restrictions != RESTR_EMPTY {
-                    if !self.bccx.is_subregion_of(self.loan_region, lt) {
-                        self.bccx.report(
-                            BckError {
-                                span: self.span,
-                                cmt: cmt_base,
-                                code: err_mut_pointer_too_short(
-                                    self.loan_region, lt, restrictions)});
-                        return Safe;
-                    }
-
-                    // R-Deref-Mut-Borrowed-1
-                    let result = self.restrict(
-                        cmt_base,
-                        RESTR_ALIAS | RESTR_MUTATE | RESTR_CLAIM);
-                    self.extend(result, cmt.mutbl, LpDeref(pk), restrictions)
-                } else {
-                    // R-Deref-Mut-Borrowed-2
-                    Safe
+                // R-Deref-Mut-Borrowed
+                if !self.bccx.is_subregion_of(self.loan_region, lt) {
+                    self.bccx.report(
+                        BckError {
+                            span: self.span,
+                            cmt: cmt_base,
+                            code: err_borrowed_pointer_too_short(
+                                self.loan_region, lt, restrictions)});
+                    return Safe;
                 }
+
+                let result = self.restrict(cmt_base, restrictions);
+                self.extend(result, cmt.mutbl, LpDeref(pk), restrictions)
             }
 
             mc::cat_deref(_, _, mc::unsafe_ptr(..)) => {

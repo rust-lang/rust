@@ -39,7 +39,7 @@ occur. It also tracks initialization sites. For each borrow and move,
 it checks various basic safety conditions at this time (for example,
 that the lifetime of the borrow doesn't exceed the lifetime of the
 value being borrowed, or that there is no move out of an `&T`
-pointee).
+referent).
 
 It then uses the dataflow module to propagate which of those borrows
 may be in scope at each point in the procedure. A loan is considered
@@ -110,7 +110,7 @@ follows:
 
     LOAN = (LV, LT, MQ, RESTRICTION*)
     RESTRICTION = (LV, ACTION*)
-    ACTION = MUTATE | CLAIM | FREEZE | ALIAS
+    ACTION = MUTATE | CLAIM | FREEZE
 
 Here the `LOAN` tuple defines the lvalue `LV` being borrowed; the
 lifetime `LT` of that borrow; the mutability `MQ` of the borrow; and a
@@ -125,7 +125,6 @@ of actions that may be restricted for the path `LV`:
 - `MUTATE` means that `LV` cannot be assigned to;
 - `CLAIM` means that the `LV` cannot be borrowed mutably;
 - `FREEZE` means that the `LV` cannot be borrowed immutably;
-- `ALIAS` means that `LV` cannot be aliased in any way (not even `&const`).
 
 Finally, it is never possible to move from an lvalue that appears in a
 restriction. This implies that the "empty restriction" `(LV, [])`,
@@ -215,6 +214,24 @@ predicate to be satisfied. The right-justified comment states the name
 of this rule: there are comments in the borrowck source referencing
 these names, so that you can cross reference to find the actual code
 that corresponds to the formal rule.
+
+### Invariants
+
+I want to collect, at a high-level, the invariants the borrow checker
+maintains. I will give them names and refer to them throughout the
+text. Together these invariants are crucial for the overall soundness
+of the system.
+
+**Mutability requires uniqueness.** To mutate a path
+
+**Unique mutability.** There is only one *usable* mutable path to any
+given memory at any given time. This implies that when claiming memory
+with an expression like `p = &mut x`, the compiler must guarantee that
+the borrowed value `x` can no longer be mutated so long as `p` is
+live. (This is done via restrictions, read on.)
+
+**.**
+
 
 ### The `gather_loans` pass
 
@@ -325,19 +342,19 @@ The scope of a field is the scope of the struct:
 
       SCOPE(LV.f) = SCOPE(LV)
 
-The scope of a unique pointee is the scope of the pointer, since
+The scope of a unique referent is the scope of the pointer, since
 (barring mutation or moves) the pointer will not be freed until
 the pointer itself `LV` goes out of scope:
 
       SCOPE(*LV) = SCOPE(LV) if LV has type ~T
 
-The scope of a managed pointee is also the scope of the pointer.  This
+The scope of a managed referent is also the scope of the pointer.  This
 is a conservative approximation, since there may be other aliases fo
 that same managed box that would cause it to live longer:
 
       SCOPE(*LV) = SCOPE(LV) if LV has type @T or @mut T
 
-The scope of a borrowed pointee is the scope associated with the
+The scope of a borrowed referent is the scope associated with the
 pointer.  This is a conservative approximation, since the data that
 the pointer points at may actually live longer:
 
@@ -394,7 +411,7 @@ moves occur. Conditions (2) and (3) then serve to guarantee that the
 value is not mutated or moved. Note that lvalues are either
 (ultimately) owned by a local variable, in which case we can check
 whether that local variable is ever moved in its scope, or they are
-owned by the pointee of an (immutable, due to condition 2) managed or
+owned by the referent of an (immutable, due to condition 2) managed or
 borrowed pointer, in which case moves are not permitted because the
 location is aliasable.
 
@@ -493,13 +510,13 @@ frozen or aliased, we cannot allow the owner to be frozen or aliased,
 since doing so indirectly freezes/aliases the field. This is the
 origin of inherited mutability.
 
-### Restrictions for loans of owned pointees
+### Restrictions for loans of owned referents
 
-Because the mutability of owned pointees is inherited, restricting an
-owned pointee is similar to restricting a field, in that it implies
+Because the mutability of owned referents is inherited, restricting an
+owned referent is similar to restricting a field, in that it implies
 restrictions on the pointer. However, owned pointers have an important
-twist: if the owner `LV` is mutated, that causes the owned pointee
-`*LV` to be freed! So whenever an owned pointee `*LV` is borrowed, we
+twist: if the owner `LV` is mutated, that causes the owned referent
+`*LV` to be freed! So whenever an owned referent `*LV` is borrowed, we
 must prevent the owned pointer `LV` from being mutated, which means
 that we always add `MUTATE` and `CLAIM` to the restriction set imposed
 on `LV`:
@@ -508,9 +525,9 @@ on `LV`:
       TYPE(LV) = ~Ty
       RESTRICTIONS(LV, LT, ACTIONS|MUTATE|CLAIM) = RS
 
-### Restrictions for loans of immutable managed/borrowed pointees
+### Restrictions for loans of immutable managed/borrowed referents
 
-Immutable managed/borrowed pointees are freely aliasable, meaning that
+Immutable managed/borrowed referents are freely aliasable, meaning that
 the compiler does not prevent you from copying the pointer.  This
 implies that issuing restrictions is useless. We might prevent the
 user from acting on `*LV` itself, but there could be another path
@@ -519,8 +536,13 @@ restricting that path. Therefore, the rule for `&Ty` and `@Ty`
 pointers always returns an empty set of restrictions, and it only
 permits restricting `MUTATE` and `CLAIM` actions:
 
+    RESTRICTIONS(*LV, LT, ACTIONS) = []                    // R-Deref-Imm-Managed
+      TYPE(LV) = @Ty
+      ACTIONS subset of [MUTATE, CLAIM]
+
     RESTRICTIONS(*LV, LT, ACTIONS) = []                    // R-Deref-Imm-Borrowed
-      TYPE(LV) = &Ty or @Ty
+      TYPE(LV) = &LT' Ty
+      LT <= LT'                                            // (1)
       ACTIONS subset of [MUTATE, CLAIM]
 
 The reason that we can restrict `MUTATE` and `CLAIM` actions even
@@ -528,16 +550,95 @@ without a restrictions list is that it is never legal to mutate nor to
 borrow mutably the contents of a `&Ty` or `@Ty` pointer. In other
 words, those restrictions are already inherent in the type.
 
-Typically, this limitation is not an issue, because restrictions other
-than `MUTATE` or `CLAIM` typically arise due to `&mut` borrow, and as
-we said, that is already illegal for `*LV`. However, there is one case
-where we can be asked to enforce an `ALIAS` restriction on `*LV`,
-which is when you have a type like `&&mut T`. In such cases we will
-report an error because we cannot enforce a lack of aliases on a `&Ty`
-or `@Ty` type. That case is described in more detail in the section on
-mutable borrowed pointers.
+Clause (1) in the rule for `&Ty` deserves mention. Here I
+specify that the lifetime of the loan must be less than the lifetime
+of the `&Ty` pointer. In simple cases, this clause is redundant, since
+the `LIFETIME()` function will already enforce the required rule:
 
-### Restrictions for loans of const aliasable pointees
+    fn foo(point: &'a Point) -> &'static f32 {
+        &point.x // Error
+    }
+
+The above example fails to compile both because of clause (1) above
+but also by the basic `LIFETIME()` check. However, in more advanced
+examples involving multiple nested pointers, clause (1) is needed:
+
+    fn foo(point: &'a &'b mut Point) -> &'b f32 {
+        &point.x // Error
+    }
+
+The `LIFETIME` rule here would accept `'b` because, in fact, the
+*memory is* guaranteed to remain valid (i.e., not be freed) for the
+lifetime `'b`, since the `&mut` pointer is valid for `'b`. However, we
+are returning an immutable reference, so we need the memory to be both
+valid and immutable. Even though `point.x` is referenced by an `&mut`
+pointer, it can still be considered immutable so long as that `&mut`
+pointer is found in an aliased location. That means the memory is
+guaranteed to be *immutable* for the lifetime of the `&` pointer,
+which is only `'a`, not `'b`. Hence this example yields an error.
+
+As a final twist, consider the case of two nested *immutable*
+pointers, rather than a mutable pointer within an immutable one:
+
+    fn foo(point: &'a &'b Point) -> &'b f32 {
+        &point.x // OK
+    }
+
+This function is legal. The reason for this is that the inner pointer
+(`*point : &'b Point`) is enough to guarantee the memory is immutable
+and valid for the lifetime `'b`.  This is reflected in
+`RESTRICTIONS()` by the fact that we do not recurse (i.e., we impose
+no restrictions on `LV`, which in this particular case is the pointer
+`point : &'a &'b Point`).
+
+#### Why both `LIFETIME()` and `RESTRICTIONS()`?
+
+Given the previous text, it might seem that `LIFETIME` and
+`RESTRICTIONS` should be folded together into one check, but there is
+a reason that they are separated. They answer separate concerns.
+The rules pertaining to `LIFETIME` exist to ensure that we don't
+create a borrowed pointer that outlives the memory it points at. So
+`LIFETIME` prevents a function like this:
+
+    fn get_1<'a>() -> &'a int {
+        let x = 1;
+        &x
+    }
+
+Here we would be returning a pointer into the stack. Clearly bad.
+
+However, the `RESTRICTIONS` rules are more concerned with how memory
+is used. The example above doesn't generate an error according to
+`RESTRICTIONS` because, for local variables, we don't require that the
+loan lifetime be a subset of the local variable lifetime. The idea
+here is that we *can* guarantee that `x` is not (e.g.) mutated for the
+lifetime `'a`, even though `'a` exceeds the function body and thus
+involves unknown code in the caller -- after all, `x` ceases to exist
+after we return and hence the remaining code in `'a` cannot possibly
+mutate it. This distinction is important for type checking functions
+like this one:
+
+    fn inc_and_get<'a>(p: &'a mut Point) -> &'a int {
+        p.x += 1;
+        &p.x
+    }
+
+In this case, we take in a `&mut` and return a frozen borrowed pointer
+with the same lifetime. So long as the lifetime of the returned value
+doesn't exceed the lifetime of the `&mut` we receive as input, this is
+fine, though it may seem surprising at first (it surprised me when I
+first worked it through). After all, we're guaranteeing that `*p`
+won't be mutated for the lifetime `'a`, even though we can't "see" the
+entirety of the code during that lifetime, since some of it occurs in
+our caller. But we *do* know that nobody can mutate `*p` except
+through `p`. So if we don't mutate `*p` and we don't return `p`, then
+we know that the right to mutate `*p` has been lost to our caller --
+in terms of capability, the caller passed in the ability to mutate
+`*p`, and we never gave it back. (Note that we can't return `p` while
+`*p` is borrowed since that would be a move of `p`, as `&mut` pointers
+are affine.)
+
+### Restrictions for loans of const aliasable referents
 
 Freeze pointers are read-only. There may be `&mut` or `&` aliases, and
 we can not prevent *anything* but moves in that case. So the
@@ -549,92 +650,97 @@ result.
     RESTRICTIONS(*LV, LT, []) = []                         // R-Deref-Freeze-Borrowed
       TYPE(LV) = &const Ty or @const Ty
 
-### Restrictions for loans of mutable borrowed pointees
+### Restrictions for loans of mutable borrowed referents
 
-Borrowing mutable borrowed pointees is a bit subtle because we permit
-users to freeze or claim `&mut` pointees. To see what I mean, consider this
-(perfectly safe) code example:
+Mutable borrowed pointers are guaranteed to be the only way to mutate
+their referent. This permits us to take greater license with them; for
+example, the referent can be frozen simply be ensuring that we do not
+use the original pointer to perform mutate. Similarly, we can allow
+the referent to be claimed, so long as the original pointer is unused
+while the new claimant is live.
 
-    fn foo(t0: &mut T, op: fn(&T)) {
-        let t1: &T = &*t0; // (1)
-        op(t1);
-    }
+The rule for mutable borrowed pointers is as follows:
 
-In the borrow marked `(1)`, the data at `*t0` is *frozen* as part of a
-re-borrow. Therefore, for the lifetime of `t1`, `*t0` must not be
-mutated. This is the same basic idea as when we freeze a mutable local
-variable, but unlike in that case `t0` is a *pointer* to the data, and
-thus we must enforce some subtle restrictions in order to guarantee
-soundness.
-
-Intuitively, we must ensure that `*t0` is the only *mutable* path to
-reach the memory that was frozen. The reason that we are so concerned
-with *mutable* paths is that those are the paths through which the
-user could mutate the data that was frozen and hence invalidate the
-`t1` pointer. Note that const aliases to `*t0` are acceptable (and in
-fact we can't prevent them without unacceptable performance cost, more
-on that later) because
-
-There are two rules governing `&mut` pointers, but we'll begin with
-the first. This rule governs cases where we are attempting to prevent
-an `&mut` pointee from being mutated, claimed, or frozen, as occurs
-whenever the `&mut` pointee `*LV` is reborrowed as mutable or
-immutable:
-
-    RESTRICTIONS(*LV, LT, ACTIONS) = RS, (*LV, ACTIONS)    // R-Deref-Mut-Borrowed-1
+    RESTRICTIONS(*LV, LT, ACTIONS) = RS, (*LV, ACTIONS)    // R-Deref-Mut-Borrowed
       TYPE(LV) = &LT' mut Ty
       LT <= LT'                                            // (1)
-      RESTRICTIONS(LV, LT, MUTATE|CLAIM|ALIAS) = RS        // (2)
+      RESTRICTIONS(LV, LT, ACTIONS) = RS                   // (2)
 
-There are two interesting parts to this rule:
+Let's examine the two numbered clauses:
 
-1. The lifetime of the loan (`LT`) cannot exceed the lifetime of the
-   `&mut` pointer (`LT'`). The reason for this is that the `&mut`
-   pointer is guaranteed to be the only legal way to mutate its
-   pointee -- but only for the lifetime `LT'`.  After that lifetime,
-   the loan on the pointee expires and hence the data may be modified
-   by its owner again. This implies that we are only able to guarantee that
-   the pointee will not be modified or aliased for a maximum of `LT'`.
+Clause (1) specifies that the lifetime of the loan (`LT`) cannot
+exceed the lifetime of the `&mut` pointer (`LT'`). The reason for this
+is that the `&mut` pointer is guaranteed to be the only legal way to
+mutate its referent -- but only for the lifetime `LT'`.  After that
+lifetime, the loan on the referent expires and hence the data may be
+modified by its owner again. This implies that we are only able to
+guarantee that the referent will not be modified or aliased for a
+maximum of `LT'`.
 
-   Here is a concrete example of a bug this rule prevents:
+Here is a concrete example of a bug this rule prevents:
 
-       // Test region-reborrow-from-shorter-mut-ref.rs:
-       fn copy_pointer<'a,'b,T>(x: &'a mut &'b mut T) -> &'b mut T {
-           &mut **p // ERROR due to clause (1)
-       }
-       fn main() {
-           let mut x = 1;
-           let mut y = &mut x; // <-'b-----------------------------+
-           //      +-'a--------------------+                       |
-           //      v                       v                       |
-           let z = copy_borrowed_ptr(&mut y); // y is lent         |
-           *y += 1; // Here y==z, so both should not be usable...  |
-           *z += 1; // ...and yet they would be, but for clause 1. |
-       } <---------------------------------------------------------+
+     // Test region-reborrow-from-shorter-mut-ref.rs:
+     fn copy_pointer<'a,'b,T>(x: &'a mut &'b mut T) -> &'b mut T {
+         &mut **p // ERROR due to clause (1)
+     }
+     fn main() {
+         let mut x = 1;
+         let mut y = &mut x; // <-'b-----------------------------+
+         //      +-'a--------------------+                       |
+         //      v                       v                       |
+         let z = copy_borrowed_ptr(&mut y); // y is lent         |
+         *y += 1; // Here y==z, so both should not be usable...  |
+         *z += 1; // ...and yet they would be, but for clause 1. |
+     } <---------------------------------------------------------+
 
-2. The final line recursively requires that the `&mut` *pointer* `LV`
-   be restricted from being mutated, claimed, or aliased (not just the
-   pointee). The goal of these restrictions is to ensure that, not
-   considering the pointer that will result from this borrow, `LV`
-   remains the *sole pointer with mutable access* to `*LV`.
+Clause (2) propagates the restrictions on the referent to the pointer
+itself. This is the same as with an owned pointer, though the
+reasoning is mildly different. The basic goal in all cases is to
+prevent the user from establishing another route to the same data. To
+see what I mean, let's examine various cases of what can go wrong and
+show how it is prevented.
 
-   Restrictions against claims are necessary because if the pointer in
-   `LV` were to be somehow copied or moved to a different location,
-   then the restriction issued for `*LV` would not apply to the new
-   location. Note that because `&mut` values are non-copyable, a
-   simple attempt to move the base pointer will fail due to the
-   (implicit) restriction against moves:
+**Example danger 1: Moving the base pointer.** One of the simplest
+ways to violate the rules is to move the base pointer to a new name
+and access it via that new name, thus bypassing the restrictions on
+the old name. Here is an example:
 
        // src/test/compile-fail/borrowck-move-mut-base-ptr.rs
        fn foo(t0: &mut int) {
            let p: &int = &*t0; // Freezes `*t0`
            let t1 = t0;        //~ ERROR cannot move out of `t0`
-           *t1 = 22;
+           *t1 = 22;           // OK, not a write through `*t0`
        }
 
-   However, the additional restrictions against claims mean that even
-   a clever attempt to use a swap to circumvent the type system will
-   encounter an error:
+Remember that `&mut` pointers are linear, and hence `let t1 = t0` is a
+move of `t0` -- or would be, if it were legal. Instead, we get an
+error, because clause (2) imposes restrictions on `LV` (`t0`, here),
+and any restrictions on a path make it impossible to move from that
+path.
+
+**Example danger 2: Claiming the base pointer.** Another possible
+danger is to mutably borrow the base path. This can lead to two bad
+scenarios. The most obvious is that the mutable borrow itself becomes
+another path to access the same data, as shown here:
+
+       // src/test/compile-fail/borrowck-mut-borrow-of-mut-base-ptr.rs
+       fn foo<'a>(mut t0: &'a mut int,
+                  mut t1: &'a mut int) {
+           let p: &int = &*t0;     // Freezes `*t0`
+           let mut t2 = &mut t0;   //~ ERROR cannot borrow `t0`
+           **t2 += 1;              // Mutates `*t0`
+       }
+
+In this example, `**t2` is the same memory as `*t0`. Because `t2` is
+an `&mut` pointer, `**t2` is a unique path and hence it would be
+possible to mutate `**t2` even though that memory was supposed to be
+frozen by the creation of `p`. However, an error is reported -- the
+reason is that the freeze `&*t0` will restrict claims and mutation
+against `*t0` which, by clause 2, in turn prevents claims and mutation
+of `t0`. Hence the claim `&mut t0` is illegal.
+
+Another danger with an `&mut` pointer is that we could swap the `t0`
+value away to create a new path:
 
        // src/test/compile-fail/borrowck-swap-mut-base-ptr.rs
        fn foo<'a>(mut t0: &'a mut int,
@@ -644,90 +750,94 @@ There are two interesting parts to this rule:
            *t1 = 22;
        }
 
-   The restriction against *aliasing* (and, in turn, freezing) is
-   necessary because, if an alias were of `LV` were to be produced,
-   then `LV` would no longer be the sole path to access the `&mut`
-   pointee. Since we are only issuing restrictions against `*LV`,
-   these other aliases would be unrestricted, and the result would be
-   unsound. For example:
+This is illegal for the same reason as above. Note that if we added
+back a swap operator -- as we used to have -- we would want to be very
+careful to ensure this example is still illegal.
 
-    // src/test/compile-fail/borrowck-alias-mut-base-ptr.rs
-    fn foo(t0: &mut int) {
-        let p: &int = &*t0; // Freezes `*t0`
-        let q: &const &mut int = &const t0; //~ ERROR cannot borrow `t0`
-        **q = 22;
-    }
+**Example danger 3: Freeze the base pointer.** In the case where the
+referent is claimed, even freezing the base pointer can be dangerous,
+as shown in the following example:
 
-The current rules could use some correction:
-
-1. Issue #10520. Now that the swap operator has been removed, I do not
-   believe the restriction against mutating `LV` is needed, and in
-   fact it prevents some useful patterns. For example, the following
-   function will fail to compile:
-
-       fn mut_shift_ref<'a,T>(x: &mut &'a mut [T]) -> &'a mut T {
-           // `mut_split_at` will restrict mutation against *x:
-           let (head, tail) = (*x).mut_split_at(1);
-
-           // Hence mutating `*x` yields an error here:
-           *x = tail;
-           &mut head[0]
+       // src/test/compile-fail/borrowck-borrow-of-mut-base-ptr.rs
+       fn foo<'a>(mut t0: &'a mut int,
+                  mut t1: &'a mut int) {
+           let p: &mut int = &mut *t0; // Claims `*t0`
+           let mut t2 = &t0;           //~ ERROR cannot borrow `t0`
+           let q: &int = &*t2;         // Freezes `*t0` but not through `*p`
+           *p += 1;                    // violates type of `*q`
        }
 
-   Note that this function -- which adjusts the slice `*x` in place so
-   that it no longer contains the head element and then returns a
-   pointer to that element separately -- is perfectly valid. It is
-   currently implemented using unsafe code. I believe that now that
-   the swap operator is removed from the language, we could liberalize
-   the rules and make this function be accepted normally. The idea
-   would be to have the assignment to `*x` kill the loans of `*x` and
-   its subpaths -- after all, those subpaths are no longer accessible
-   through `*x`, since it has been overwritten with a new value. Thus
-   those subpaths are only accessible through prior existing borrows
-   of `*x`, if any. The danger of the *swap* operator was that it
-   allowed `*x` to be mutated without making the subpaths of `*x`
-   inaccessible: worse, they became accessible through a new path (I
-   suppose that we could support swap, too, if needed, by moving the
-   loans over to the new path).
+Here the problem is that `*t0` is claimed by `p`, and hence `p` wants
+to be the controlling pointer through which mutation or freezes occur.
+But `t2` would -- if it were legal -- have the type `& &mut int`, and
+hence would be a mutable pointer in an aliasable location, which is
+considered frozen (since no one can write to `**t2` as it is not a
+unique path). Therefore, we could reasonably create a frozen `&int`
+pointer pointing at `*t0` that coexists with the mutable pointer `p`,
+which is clearly unsound.
 
-   Note: the `swap()` function doesn't pose the same danger as the
-   swap operator because it requires taking `&mut` refs to invoke it.
+However, it is not always unsafe to freeze the base pointer. In
+particular, if the referent is frozen, there is no harm in it:
 
-2. Issue #9629. The current rules correctly prohibit `&mut` pointees
-   from being assigned unless they are in a unique location. However,
-   we *also* prohibit `&mut` pointees from being frozen. This prevents
-   compositional patterns, like this one:
-
-       struct BorrowedMap<'a> {
-           map: &'a mut HashMap
+       // src/test/run-pass/borrowck-borrow-of-mut-base-ptr-safe.rs
+       fn foo<'a>(mut t0: &'a mut int,
+                  mut t1: &'a mut int) {
+           let p: &int = &*t0; // Freezes `*t0`
+           let mut t2 = &t0;
+           let q: &int = &*t2; // Freezes `*t0`, but that's ok...
+           let r: &int = &*t0; // ...after all, could do same thing directly.
        }
 
-   If we have a pointer `x:&BorrowedMap`, we can't freeze `x.map`,
-   and hence can't call `find` etc on it. But that's silly, since
-   fact that the `&mut` exists in frozen data implies that it
-   will not be mutable by anyone. For example, this program nets an
-   error:
+In this case, creating the alias `t2` of `t0` is safe because the only
+thing `t2` can be used for is to further freeze `*t0`, which is
+already frozen. In particular, we cannot assign to `*t0` through the
+new alias `t2`, as demonstrated in this test case:
 
-       fn main() {
-           let a = &mut 2;
-           let b = &a;
-           *a += 1; // ERROR: cannot assign to `*a` because it is borrowed
+       // src/test/run-pass/borrowck-borrow-mut-base-ptr-in-aliasable-loc.rs
+       fn foo(t0: & &mut int) {
+           let t1 = t0;
+           let p: &int = &**t0;
+           **t1 = 22; //~ ERROR cannot assign
        }
 
-   (Naturally `&mut` reborrows from an `&&mut` pointee should be illegal.)
+This distinction is reflected in the rules. When doing an `&mut`
+borrow -- as in the first example -- the set `ACTIONS` will be
+`CLAIM|MUTATE|FREEZE`, because claiming the referent implies that it
+cannot be claimed, mutated, or frozen by anyone else. These
+restrictions are propagated back to the base path and hence the base
+path is considered unfreezable.
 
-The second rule for `&mut` handles the case where we are not adding
-any restrictions (beyond the default of "no move"):
+In contrast, when the referent is merely frozen -- as in the second
+example -- the set `ACTIONS` will be `CLAIM|MUTATE`, because freezing
+the referent implies that it cannot be claimed or mutated but permits
+others to freeze. Hence when these restrictions are propagated back to
+the base path, it will still be considered freezable.
 
-    RESTRICTIONS(*LV, LT, []) = []                    // R-Deref-Mut-Borrowed-2
-      TYPE(LV) = &mut Ty
 
-Moving from an `&mut` pointee is never legal, so no special
-restrictions are needed. This rule is used for `&const` borrows.
 
-### Restrictions for loans of mutable managed pointees
+**FIXME #10520: Restrictions against mutating the base pointer.** When
+an `&mut` pointer is frozen or claimed, we currently pass along the
+restriction against MUTATE to the base pointer. I do not believe this
+restriction is needed. It dates from the days when we had a way to
+mutate that preserved the value being mutated (i.e., swap). Nowadays
+the only form of mutation is assignment, which destroys the pointer
+being mutated -- therefore, a mutation cannot create a new path to the
+same data. Rather, it removes an existing path. This implies that not
+only can we permit mutation, we can have mutation kill restrictions in
+the dataflow sense.
 
-With `@mut` pointees, we don't make any static guarantees.  But as a
+**WARNING:** We do not currently have `const` borrows in the
+language. If they are added back in, we must ensure that they are
+consistent with all of these examples. The crucial question will be
+what sorts of actions are permitted with a `&const &mut` pointer. I
+would suggest that an `&mut` referent found in an `&const` location be
+prohibited from both freezes and claims. This would avoid the need to
+prevent `const` borrows of the base pointer when the referent is
+borrowed.
+
+### Restrictions for loans of mutable managed referents
+
+With `@mut` referents, we don't make any static guarantees.  But as a
 convenience, we still register a restriction against `*LV`, because
 that way if we *can* find a simple static error, we will:
 
@@ -891,11 +1001,6 @@ computed for that program point.
 While writing up these docs, I encountered some rules I believe to be
 stricter than necessary:
 
-- I think the restriction against mutating `&mut` pointers found in an
-  aliasable location is unnecessary. They cannot be reborrowed, to be sure,
-  so it should be safe to mutate them. Lifting this might cause some common
-  cases (`&mut int`) to work just fine, but might lead to further confusion
-  in other cases, so maybe it's best to leave it as is.
 - I think restricting the `&mut` LV against moves and `ALIAS` is sufficient,
   `MUTATE` and `CLAIM` are overkill. `MUTATE` was necessary when swap was
   a built-in operator, but as it is not, it is implied by `CLAIM`,
