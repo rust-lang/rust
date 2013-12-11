@@ -42,14 +42,14 @@ pub fn compute_restrictions(bccx: &BorrowckCtxt,
 ///////////////////////////////////////////////////////////////////////////
 // Private
 
-struct RestrictionsContext<'self> {
-    bccx: &'self BorrowckCtxt,
+struct RestrictionsContext<'a> {
+    bccx: &'a BorrowckCtxt,
     span: Span,
     cmt_original: mc::cmt,
     loan_region: ty::Region,
 }
 
-impl<'self> RestrictionsContext<'self> {
+impl<'a> RestrictionsContext<'a> {
     fn restrict(&self,
                 cmt: mc::cmt,
                 restrictions: RestrictionSet) -> RestrictionResult {

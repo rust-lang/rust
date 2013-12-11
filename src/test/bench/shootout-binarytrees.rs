@@ -14,9 +14,9 @@ use std::iter::range_step;
 use extra::arena::Arena;
 use extra::future::Future;
 
-enum Tree<'self> {
+enum Tree<'a> {
     Nil,
-    Node(&'self Tree<'self>, &'self Tree<'self>, int)
+    Node(&'a Tree<'a>, &'a Tree<'a>, int)
 }
 
 fn item_check(t: &Tree) -> int {

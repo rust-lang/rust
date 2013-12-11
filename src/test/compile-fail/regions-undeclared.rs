@@ -12,11 +12,11 @@ static c_x: &'blk int = &22; //~ ERROR use of undeclared lifetime name `'blk`
 
 enum EnumDecl {
     Foo(&'a int), //~ ERROR use of undeclared lifetime name `'a`
-    Bar(&'self int), //~ ERROR use of undeclared lifetime name `'self`
+    Bar(&'a int), //~ ERROR use of undeclared lifetime name `'a`
 }
 
 fn fnDecl(x: &'a int, //~ ERROR use of undeclared lifetime name `'a`
-          y: &'self int) //~ ERROR use of undeclared lifetime name `'self`
+          y: &'a int) //~ ERROR use of undeclared lifetime name `'a`
 {}
 
 fn main() {

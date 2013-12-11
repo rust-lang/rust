@@ -578,13 +578,13 @@ fn iterate_bits(base: uint, bits: uint, f: |uint| -> bool) -> bool {
 }
 
 /// An iterator for `Bitv`.
-pub struct BitvIterator<'self> {
-    priv bitv: &'self Bitv,
+pub struct BitvIterator<'a> {
+    priv bitv: &'a Bitv,
     priv next_idx: uint,
     priv end_idx: uint,
 }
 
-impl<'self> Iterator<bool> for BitvIterator<'self> {
+impl<'a> Iterator<bool> for BitvIterator<'a> {
     #[inline]
     fn next(&mut self) -> Option<bool> {
         if self.next_idx != self.end_idx {
@@ -602,7 +602,7 @@ impl<'self> Iterator<bool> for BitvIterator<'self> {
     }
 }
 
-impl<'self> DoubleEndedIterator<bool> for BitvIterator<'self> {
+impl<'a> DoubleEndedIterator<bool> for BitvIterator<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<bool> {
         if self.next_idx != self.end_idx {
@@ -614,9 +614,9 @@ impl<'self> DoubleEndedIterator<bool> for BitvIterator<'self> {
     }
 }
 
-impl<'self> ExactSize<bool> for BitvIterator<'self> {}
+impl<'a> ExactSize<bool> for BitvIterator<'a> {}
 
-impl<'self> RandomAccessIterator<bool> for BitvIterator<'self> {
+impl<'a> RandomAccessIterator<bool> for BitvIterator<'a> {
     #[inline]
     fn indexable(&self) -> uint {
         self.end_idx - self.next_idx
@@ -903,12 +903,12 @@ impl BitvSet {
     }
 }
 
-pub struct BitvSetIterator<'self> {
-    priv set: &'self BitvSet,
+pub struct BitvSetIterator<'a> {
+    priv set: &'a BitvSet,
     priv next_idx: uint
 }
 
-impl<'self> Iterator<uint> for BitvSetIterator<'self> {
+impl<'a> Iterator<uint> for BitvSetIterator<'a> {
     #[inline]
     fn next(&mut self) -> Option<uint> {
         while self.next_idx < self.set.capacity() {

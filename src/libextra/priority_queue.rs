@@ -177,13 +177,13 @@ impl<T:Ord> PriorityQueue<T> {
 }
 
 /// PriorityQueue iterator
-pub struct PriorityQueueIterator <'self, T> {
-    priv iter: vec::VecIterator<'self, T>,
+pub struct PriorityQueueIterator <'a, T> {
+    priv iter: vec::VecIterator<'a, T>,
 }
 
-impl<'self, T> Iterator<&'self T> for PriorityQueueIterator<'self, T> {
+impl<'a, T> Iterator<&'a T> for PriorityQueueIterator<'a, T> {
     #[inline]
-    fn next(&mut self) -> Option<(&'self T)> { self.iter.next() }
+    fn next(&mut self) -> Option<(&'a T)> { self.iter.next() }
 
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }

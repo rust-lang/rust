@@ -184,7 +184,7 @@ impl<V:Clone> SmallIntMap<V> {
 
 macro_rules! iterator {
     (impl $name:ident -> $elem:ty, $getter:ident) => {
-        impl<'self, T> Iterator<$elem> for $name<'self, T> {
+        impl<'a, T> Iterator<$elem> for $name<'a, T> {
             #[inline]
             fn next(&mut self) -> Option<$elem> {
                 while self.front < self.back {
@@ -213,7 +213,7 @@ macro_rules! iterator {
 
 macro_rules! double_ended_iterator {
     (impl $name:ident -> $elem:ty, $getter:ident) => {
-        impl<'self, T> DoubleEndedIterator<$elem> for $name<'self, T> {
+        impl<'a, T> DoubleEndedIterator<$elem> for $name<'a, T> {
             #[inline]
             fn next_back(&mut self) -> Option<$elem> {
                 while self.front < self.back {
@@ -234,25 +234,25 @@ macro_rules! double_ended_iterator {
     }
 }
 
-pub struct SmallIntMapIterator<'self, T> {
+pub struct SmallIntMapIterator<'a, T> {
     priv front: uint,
     priv back: uint,
-    priv iter: VecIterator<'self, Option<T>>
+    priv iter: VecIterator<'a, Option<T>>
 }
 
-iterator!(impl SmallIntMapIterator -> (uint, &'self T), get_ref)
-double_ended_iterator!(impl SmallIntMapIterator -> (uint, &'self T), get_ref)
-pub type SmallIntMapRevIterator<'self, T> = Invert<SmallIntMapIterator<'self, T>>;
+iterator!(impl SmallIntMapIterator -> (uint, &'a T), get_ref)
+double_ended_iterator!(impl SmallIntMapIterator -> (uint, &'a T), get_ref)
+pub type SmallIntMapRevIterator<'a, T> = Invert<SmallIntMapIterator<'a, T>>;
 
-pub struct SmallIntMapMutIterator<'self, T> {
+pub struct SmallIntMapMutIterator<'a, T> {
     priv front: uint,
     priv back: uint,
-    priv iter: VecMutIterator<'self, Option<T>>
+    priv iter: VecMutIterator<'a, Option<T>>
 }
 
-iterator!(impl SmallIntMapMutIterator -> (uint, &'self mut T), get_mut_ref)
-double_ended_iterator!(impl SmallIntMapMutIterator -> (uint, &'self mut T), get_mut_ref)
-pub type SmallIntMapMutRevIterator<'self, T> = Invert<SmallIntMapMutIterator<'self, T>>;
+iterator!(impl SmallIntMapMutIterator -> (uint, &'a mut T), get_mut_ref)
+double_ended_iterator!(impl SmallIntMapMutIterator -> (uint, &'a mut T), get_mut_ref)
+pub type SmallIntMapMutRevIterator<'a, T> = Invert<SmallIntMapMutIterator<'a, T>>;
 
 #[cfg(test)]
 mod test_map {

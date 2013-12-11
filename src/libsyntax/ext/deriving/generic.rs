@@ -188,41 +188,41 @@ use std::vec;
 pub use self::ty::*;
 mod ty;
 
-pub struct TraitDef<'self> {
+pub struct TraitDef<'a> {
     /// The extension context
     cx: @ExtCtxt,
     /// The span for the current #[deriving(Foo)] header.
     span: Span,
 
     /// Path of the trait, including any type parameters
-    path: Path<'self>,
+    path: Path<'a>,
     /// Additional bounds required of any type parameters of the type,
     /// other than the current trait
-    additional_bounds: ~[Ty<'self>],
+    additional_bounds: ~[Ty<'a>],
 
     /// Any extra lifetimes and/or bounds, e.g. `D: extra::serialize::Decoder`
-    generics: LifetimeBounds<'self>,
+    generics: LifetimeBounds<'a>,
 
-    methods: ~[MethodDef<'self>]
+    methods: ~[MethodDef<'a>]
 }
 
 
-pub struct MethodDef<'self> {
+pub struct MethodDef<'a> {
     /// name of the method
-    name: &'self str,
+    name: &'a str,
     /// List of generics, e.g. `R: std::rand::Rng`
-    generics: LifetimeBounds<'self>,
+    generics: LifetimeBounds<'a>,
 
     /// Whether there is a self argument (outer Option) i.e. whether
     /// this is a static function, and whether it is a pointer (inner
     /// Option)
-    explicit_self: Option<Option<PtrTy<'self>>>,
+    explicit_self: Option<Option<PtrTy<'a>>>,
 
     /// Arguments other than the self argument
-    args: ~[Ty<'self>],
+    args: ~[Ty<'a>],
 
     /// Return type
-    ret_ty: Ty<'self>,
+    ret_ty: Ty<'a>,
 
     /// Whether to mark this as #[inline]
     inline: bool,
@@ -231,20 +231,20 @@ pub struct MethodDef<'self> {
     /// actual enum variants, i.e. can use _ => .. match.
     const_nonmatching: bool,
 
-    combine_substructure: CombineSubstructureFunc<'self>
+    combine_substructure: CombineSubstructureFunc<'a>
 }
 
 /// All the data about the data structure/method being derived upon.
-pub struct Substructure<'self> {
+pub struct Substructure<'a> {
     /// ident of self
     type_ident: Ident,
     /// ident of the method
     method_ident: Ident,
     /// dereferenced access to any Self or Ptr(Self, _) arguments
-    self_args: &'self [@Expr],
+    self_args: &'a [@Expr],
     /// verbatim access to any other arguments
-    nonself_args: &'self [@Expr],
-    fields: &'self SubstructureFields<'self>
+    nonself_args: &'a [@Expr],
+    fields: &'a SubstructureFields<'a>
 }
 
 /// Summary of the relevant parts of a struct/enum field.
@@ -271,26 +271,26 @@ pub enum StaticFields {
 
 /// A summary of the possible sets of fields. See above for details
 /// and examples
-pub enum SubstructureFields<'self> {
+pub enum SubstructureFields<'a> {
     Struct(~[FieldInfo]),
     /**
     Matching variants of the enum: variant index, ast::variant,
     fields: the field name is only non-`None` in the case of a struct
     variant.
     */
-    EnumMatching(uint, &'self ast::variant, ~[FieldInfo]),
+    EnumMatching(uint, &'a ast::variant, ~[FieldInfo]),
 
     /**
     non-matching variants of the enum, [(variant index, ast::variant,
     [field span, field ident, fields])] (i.e. all fields for self are in the
     first tuple, for other1 are in the second tuple, etc.)
     */
-    EnumNonMatching(&'self [(uint, P<ast::variant>, ~[(Span, Option<Ident>, @Expr)])]),
+    EnumNonMatching(&'a [(uint, P<ast::variant>, ~[(Span, Option<Ident>, @Expr)])]),
 
     /// A static method where Self is a struct.
-    StaticStruct(&'self ast::struct_def, StaticFields),
+    StaticStruct(&'a ast::struct_def, StaticFields),
     /// A static method where Self is an enum.
-    StaticEnum(&'self ast::enum_def, ~[(Ident, StaticFields)])
+    StaticEnum(&'a ast::enum_def, ~[(Ident, StaticFields)])
 }
 
 
@@ -299,23 +299,23 @@ pub enum SubstructureFields<'self> {
 Combine the values of all the fields together. The last argument is
 all the fields of all the structures, see above for details.
 */
-pub type CombineSubstructureFunc<'self> =
-    'self |@ExtCtxt, Span, &Substructure| -> @Expr;
+pub type CombineSubstructureFunc<'a> =
+    'a |@ExtCtxt, Span, &Substructure| -> @Expr;
 
 /**
 Deal with non-matching enum variants, the arguments are a list
 representing each variant: (variant index, ast::variant instance,
 [variant fields]), and a list of the nonself args of the type
 */
-pub type EnumNonMatchFunc<'self> =
-    'self |@ExtCtxt,
+pub type EnumNonMatchFunc<'a> =
+    'a |@ExtCtxt,
            Span,
            &[(uint, P<ast::variant>, ~[(Span, Option<Ident>, @Expr)])],
            &[@Expr]|
            -> @Expr;
 
 
-impl<'self> TraitDef<'self> {
+impl<'a> TraitDef<'a> {
     pub fn expand(&self,
                   _mitem: @ast::MetaItem,
                   in_items: ~[@ast::item]) -> ~[@ast::item] {
@@ -467,7 +467,7 @@ impl<'self> TraitDef<'self> {
     }
 }
 
-impl<'self> MethodDef<'self> {
+impl<'a> MethodDef<'a> {
     fn call_substructure_method(&self,
                                 trait_: &TraitDef,
                                 type_ident: Ident,

@@ -510,7 +510,7 @@ impl<T: Send> Peekable<T> for Port<T> {
 // of them, but a &Port<T> should also be selectable so you can select2 on it
 // alongside a PortOne<U> without passing the port by value in recv_ready.
 
-impl<'self, T: Send> SelectInner for &'self Port<T> {
+impl<'a, T: Send> SelectInner for &'a Port<T> {
     #[inline]
     fn optimistic_check(&mut self) -> bool {
         self.next.with_mut(|pone| { pone.get_mut_ref().optimistic_check() })
@@ -528,7 +528,7 @@ impl<'self, T: Send> SelectInner for &'self Port<T> {
     }
 }
 
-impl<'self, T: Send> Select for &'self Port<T> { }
+impl<'a, T: Send> Select for &'a Port<T> { }
 
 impl<T: Send> SelectInner for Port<T> {
     #[inline]
@@ -549,7 +549,7 @@ impl<T: Send> SelectInner for Port<T> {
 
 impl<T: Send> Select for Port<T> { }
 
-impl<'self, T: Send> SelectPortInner<T> for &'self Port<T> {
+impl<'a, T: Send> SelectPortInner<T> for &'a Port<T> {
     fn recv_ready(self) -> Option<T> {
         let mut b = self.next.borrow_mut();
         match b.get().take_unwrap().recv_ready() {
@@ -562,7 +562,7 @@ impl<'self, T: Send> SelectPortInner<T> for &'self Port<T> {
     }
 }
 
-impl<'self, T: Send> SelectPort<T> for &'self Port<T> { }
+impl<'a, T: Send> SelectPort<T> for &'a Port<T> { }
 
 pub struct SharedChan<T> {
     // Just like Chan, but a shared AtomicOption

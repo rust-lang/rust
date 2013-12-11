@@ -16,7 +16,7 @@ pub trait LlvmRepr {
     fn llrepr(&self, ccx: &CrateContext) -> ~str;
 }
 
-impl<'self, T:LlvmRepr> LlvmRepr for &'self [T] {
+impl<'a, T:LlvmRepr> LlvmRepr for &'a [T] {
     fn llrepr(&self, ccx: &CrateContext) -> ~str {
         let reprs = self.map(|t| t.llrepr(ccx));
         format!("[{}]", reprs.connect(","))

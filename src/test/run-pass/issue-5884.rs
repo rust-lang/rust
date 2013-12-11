@@ -14,9 +14,9 @@ pub struct Foo {
     a: int,
 }
 
-struct Bar<'self> {
+struct Bar<'a> {
     a: ~Option<int>,
-    b: &'self Foo,
+    b: &'a Foo,
 }
 
 fn check(a: @Foo) {

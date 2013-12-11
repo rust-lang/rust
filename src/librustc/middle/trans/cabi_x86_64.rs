@@ -67,7 +67,7 @@ trait ClassList {
     fn is_ret_bysret(&self) -> bool;
 }
 
-impl<'self> ClassList for &'self [RegClass] {
+impl<'a> ClassList for &'a [RegClass] {
     fn is_pass_byval(&self) -> bool {
         if self.len() == 0 { return false; }
 

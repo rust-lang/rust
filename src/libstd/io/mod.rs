@@ -811,7 +811,7 @@ impl Reader for ~Reader {
     fn eof(&mut self) -> bool { self.eof() }
 }
 
-impl<'self> Reader for &'self mut Reader {
+impl<'a> Reader for &'a mut Reader {
     fn read(&mut self, buf: &mut [u8]) -> Option<uint> { self.read(buf) }
     fn eof(&mut self) -> bool { self.eof() }
 }
@@ -972,7 +972,7 @@ impl Writer for ~Writer {
     fn flush(&mut self) { self.flush() }
 }
 
-impl<'self> Writer for &'self mut Writer {
+impl<'a> Writer for &'a mut Writer {
     fn write(&mut self, buf: &[u8]) { self.write(buf) }
     fn flush(&mut self) { self.flush() }
 }
@@ -1184,11 +1184,11 @@ pub trait Acceptor<T> {
 /// The Some contains another Option representing whether the connection attempt was succesful.
 /// A successful connection will be wrapped in Some.
 /// A failed connection is represented as a None and raises a condition.
-struct IncomingIterator<'self, A> {
-    priv inc: &'self mut A,
+struct IncomingIterator<'a, A> {
+    priv inc: &'a mut A,
 }
 
-impl<'self, T, A: Acceptor<T>> Iterator<Option<T>> for IncomingIterator<'self, A> {
+impl<'a, T, A: Acceptor<T>> Iterator<Option<T>> for IncomingIterator<'a, A> {
     fn next(&mut self) -> Option<Option<T>> {
         Some(self.inc.accept())
     }

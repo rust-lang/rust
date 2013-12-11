@@ -69,12 +69,12 @@ pub struct LocationInfo {
 
 /// A vtable context includes an inference context, a crate context, and a
 /// callback function to call in case of type error.
-pub struct VtableContext<'self> {
+pub struct VtableContext<'a> {
     infcx: @mut infer::InferCtxt,
-    param_env: &'self ty::ParameterEnvironment,
+    param_env: &'a ty::ParameterEnvironment,
 }
 
-impl<'self> VtableContext<'self> {
+impl<'a> VtableContext<'a> {
     pub fn tcx(&self) -> ty::ctxt { self.infcx.tcx }
 }
 

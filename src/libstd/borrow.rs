@@ -27,48 +27,48 @@ pub fn ref_eq<'a, 'b, T>(thing: &'a T, other: &'b T) -> bool {
 
 // Equality for region pointers
 #[cfg(not(test))]
-impl<'self, T: Eq> Eq for &'self T {
+impl<'a, T: Eq> Eq for &'a T {
     #[inline]
-    fn eq(&self, other: & &'self T) -> bool {
+    fn eq(&self, other: & &'a T) -> bool {
         *(*self) == *(*other)
     }
     #[inline]
-    fn ne(&self, other: & &'self T) -> bool {
+    fn ne(&self, other: & &'a T) -> bool {
         *(*self) != *(*other)
     }
 }
 
 // Comparison for region pointers
 #[cfg(not(test))]
-impl<'self, T: Ord> Ord for &'self T {
+impl<'a, T: Ord> Ord for &'a T {
     #[inline]
-    fn lt(&self, other: & &'self T) -> bool {
+    fn lt(&self, other: & &'a T) -> bool {
         *(*self) < *(*other)
     }
     #[inline]
-    fn le(&self, other: & &'self T) -> bool {
+    fn le(&self, other: & &'a T) -> bool {
         *(*self) <= *(*other)
     }
     #[inline]
-    fn ge(&self, other: & &'self T) -> bool {
+    fn ge(&self, other: & &'a T) -> bool {
         *(*self) >= *(*other)
     }
     #[inline]
-    fn gt(&self, other: & &'self T) -> bool {
+    fn gt(&self, other: & &'a T) -> bool {
         *(*self) > *(*other)
     }
 }
 
 #[cfg(not(test))]
-impl<'self, T: TotalOrd> TotalOrd for &'self T {
+impl<'a, T: TotalOrd> TotalOrd for &'a T {
     #[inline]
-    fn cmp(&self, other: & &'self T) -> Ordering { (**self).cmp(*other) }
+    fn cmp(&self, other: & &'a T) -> Ordering { (**self).cmp(*other) }
 }
 
 #[cfg(not(test))]
-impl<'self, T: TotalEq> TotalEq for &'self T {
+impl<'a, T: TotalEq> TotalEq for &'a T {
     #[inline]
-    fn equals(&self, other: & &'self T) -> bool { (**self).equals(*other) }
+    fn equals(&self, other: & &'a T) -> bool { (**self).equals(*other) }
 }
 
 #[cfg(test)]

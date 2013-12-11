@@ -23,7 +23,7 @@ pub enum FileMatch { FileMatches, FileDoesntMatch }
 
 /// Functions with type `pick` take a parent directory as well as
 /// a file found in that directory.
-pub type pick<'self> = 'self |path: &Path| -> FileMatch;
+pub type pick<'a> = 'a |path: &Path| -> FileMatch;
 
 pub fn pick_file(file: Path, path: &Path) -> Option<Path> {
     if path.filename() == Some(file.as_vec()) {

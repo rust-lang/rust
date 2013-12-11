@@ -16,13 +16,13 @@
 struct ctxt { v: uint }
 
 trait get_ctxt {
-    fn get_ctxt(&self) -> &'self ctxt;
+    fn get_ctxt(&self) -> &'a ctxt;
 }
 
-struct has_ctxt<'self> { c: &'self ctxt }
+struct has_ctxt<'a> { c: &'a ctxt }
 
-impl<'self> get_ctxt for has_ctxt<'self> {
-    fn get_ctxt(&self) -> &'self ctxt { self.c }
+impl<'a> get_ctxt for has_ctxt<'a> {
+    fn get_ctxt(&self) -> &'a ctxt { self.c }
 }
 
 fn make_gc() -> @get_ctxt  {

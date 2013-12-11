@@ -162,12 +162,12 @@ impl<T, U> Condition<T, U> {
 ///
 /// Normally this object is not dealt with directly, but rather it's directly
 /// used after being returned from `trap`
-pub struct Trap<'self, T, U> {
-    priv cond: &'self Condition<T, U>,
+pub struct Trap<'a, T, U> {
+    priv cond: &'a Condition<T, U>,
     priv handler: @Handler<T, U>
 }
 
-impl<'self, T, U> Trap<'self, T, U> {
+impl<'a, T, U> Trap<'a, T, U> {
     /// Execute a block of code with this trap handler's exception handler
     /// registered.
     ///
@@ -181,7 +181,7 @@ impl<'self, T, U> Trap<'self, T, U> {
     /// });
     /// assert_eq!(result, 7);
     /// ```
-    pub fn inside<V>(&self, inner: 'self || -> V) -> V {
+    pub fn inside<V>(&self, inner: 'a || -> V) -> V {
         let _g = Guard { cond: self.cond };
         debug!("Trap: pushing handler to TLS");
         local_data::set(self.cond.key, self.handler);
@@ -191,7 +191,7 @@ impl<'self, T, U> Trap<'self, T, U> {
     /// Returns a guard that will automatically reset the condition upon
     /// exit of the scope. This is useful if you want to use conditions with
     /// an RAII pattern.
-    pub fn guard(&self) -> Guard<'self,T,U> {
+    pub fn guard(&self) -> Guard<'a,T,U> {
         let guard = Guard {
             cond: self.cond
         };
@@ -204,12 +204,12 @@ impl<'self, T, U> Trap<'self, T, U> {
 /// A guard that will automatically reset the condition handler upon exit of
 /// the scope. This is useful if you want to use conditions with an RAII
 /// pattern.
-pub struct Guard<'self, T, U> {
-    priv cond: &'self Condition<T, U>
+pub struct Guard<'a, T, U> {
+    priv cond: &'a Condition<T, U>
 }
 
 #[unsafe_destructor]
-impl<'self, T, U> Drop for Guard<'self, T, U> {
+impl<'a, T, U> Drop for Guard<'a, T, U> {
     fn drop(&mut self) {
         debug!("Guard: popping handler from TLS");
         let curr = local_data::pop(self.cond.key);

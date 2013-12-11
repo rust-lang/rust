@@ -691,7 +691,7 @@ pub trait MutableDoubleEndedIterator {
     fn reverse_(&mut self);
 }
 
-impl<'self, A, T: DoubleEndedIterator<&'self mut A>> MutableDoubleEndedIterator for T {
+impl<'a, A, T: DoubleEndedIterator<&'a mut A>> MutableDoubleEndedIterator for T {
     // FIXME: #5898: should be called `reverse`
     /// Use an iterator to reverse a container in-place
     fn reverse_(&mut self) {
@@ -754,9 +754,9 @@ pub trait ExactSize<A> : DoubleEndedIterator<A> {
 // All adaptors that preserve the size of the wrapped iterator are fine
 // Adaptors that may overflow in `size_hint` are not, i.e. `Chain`.
 impl<A, T: ExactSize<A>> ExactSize<(uint, A)> for Enumerate<T> {}
-impl<'self, A, T: ExactSize<A>> ExactSize<A> for Inspect<'self, A, T> {}
+impl<'a, A, T: ExactSize<A>> ExactSize<A> for Inspect<'a, A, T> {}
 impl<A, T: ExactSize<A>> ExactSize<A> for Invert<T> {}
-impl<'self, A, B, T: ExactSize<A>> ExactSize<B> for Map<'self, A, B, T> {}
+impl<'a, A, B, T: ExactSize<A>> ExactSize<B> for Map<'a, A, B, T> {}
 impl<A, B, T: ExactSize<A>, U: ExactSize<B>> ExactSize<(A, B)> for Zip<T, U> {}
 
 /// An double-ended iterator with the direction inverted
@@ -788,17 +788,17 @@ impl<A, T: DoubleEndedIterator<A> + RandomAccessIterator<A>> RandomAccessIterato
 }
 
 /// A mutable reference to an iterator
-pub struct ByRef<'self, T> {
-    priv iter: &'self mut T
+pub struct ByRef<'a, T> {
+    priv iter: &'a mut T
 }
 
-impl<'self, A, T: Iterator<A>> Iterator<A> for ByRef<'self, T> {
+impl<'a, A, T: Iterator<A>> Iterator<A> for ByRef<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<A> { self.iter.next() }
     // FIXME: #9629 we cannot implement &self methods like size_hint on ByRef
 }
 
-impl<'self, A, T: DoubleEndedIterator<A>> DoubleEndedIterator<A> for ByRef<'self, T> {
+impl<'a, A, T: DoubleEndedIterator<A>> DoubleEndedIterator<A> for ByRef<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<A> { self.iter.next_back() }
 }
@@ -1121,12 +1121,12 @@ RandomAccessIterator<(A, B)> for Zip<T, U> {
 }
 
 /// An iterator which maps the values of `iter` with `f`
-pub struct Map<'self, A, B, T> {
+pub struct Map<'a, A, B, T> {
     priv iter: T,
-    priv f: 'self |A| -> B
+    priv f: 'a |A| -> B
 }
 
-impl<'self, A, B, T> Map<'self, A, B, T> {
+impl<'a, A, B, T> Map<'a, A, B, T> {
     #[inline]
     fn do_map(&self, elt: Option<A>) -> Option<B> {
         match elt {
@@ -1136,7 +1136,7 @@ impl<'self, A, B, T> Map<'self, A, B, T> {
     }
 }
 
-impl<'self, A, B, T: Iterator<A>> Iterator<B> for Map<'self, A, B, T> {
+impl<'a, A, B, T: Iterator<A>> Iterator<B> for Map<'a, A, B, T> {
     #[inline]
     fn next(&mut self) -> Option<B> {
         let next = self.iter.next();
@@ -1149,7 +1149,7 @@ impl<'self, A, B, T: Iterator<A>> Iterator<B> for Map<'self, A, B, T> {
     }
 }
 
-impl<'self, A, B, T: DoubleEndedIterator<A>> DoubleEndedIterator<B> for Map<'self, A, B, T> {
+impl<'a, A, B, T: DoubleEndedIterator<A>> DoubleEndedIterator<B> for Map<'a, A, B, T> {
     #[inline]
     fn next_back(&mut self) -> Option<B> {
         let next = self.iter.next_back();
@@ -1157,7 +1157,7 @@ impl<'self, A, B, T: DoubleEndedIterator<A>> DoubleEndedIterator<B> for Map<'sel
     }
 }
 
-impl<'self, A, B, T: RandomAccessIterator<A>> RandomAccessIterator<B> for Map<'self, A, B, T> {
+impl<'a, A, B, T: RandomAccessIterator<A>> RandomAccessIterator<B> for Map<'a, A, B, T> {
     #[inline]
     fn indexable(&self) -> uint {
         self.iter.indexable()
@@ -1170,12 +1170,12 @@ impl<'self, A, B, T: RandomAccessIterator<A>> RandomAccessIterator<B> for Map<'s
 }
 
 /// An iterator which filters the elements of `iter` with `predicate`
-pub struct Filter<'self, A, T> {
+pub struct Filter<'a, A, T> {
     priv iter: T,
-    priv predicate: 'self |&A| -> bool
+    priv predicate: 'a |&A| -> bool
 }
 
-impl<'self, A, T: Iterator<A>> Iterator<A> for Filter<'self, A, T> {
+impl<'a, A, T: Iterator<A>> Iterator<A> for Filter<'a, A, T> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         for x in self.iter {
@@ -1195,7 +1195,7 @@ impl<'self, A, T: Iterator<A>> Iterator<A> for Filter<'self, A, T> {
     }
 }
 
-impl<'self, A, T: DoubleEndedIterator<A>> DoubleEndedIterator<A> for Filter<'self, A, T> {
+impl<'a, A, T: DoubleEndedIterator<A>> DoubleEndedIterator<A> for Filter<'a, A, T> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
         loop {
@@ -1214,12 +1214,12 @@ impl<'self, A, T: DoubleEndedIterator<A>> DoubleEndedIterator<A> for Filter<'sel
 }
 
 /// An iterator which uses `f` to both filter and map elements from `iter`
-pub struct FilterMap<'self, A, B, T> {
+pub struct FilterMap<'a, A, B, T> {
     priv iter: T,
-    priv f: 'self |A| -> Option<B>
+    priv f: 'a |A| -> Option<B>
 }
 
-impl<'self, A, B, T: Iterator<A>> Iterator<B> for FilterMap<'self, A, B, T> {
+impl<'a, A, B, T: Iterator<A>> Iterator<B> for FilterMap<'a, A, B, T> {
     #[inline]
     fn next(&mut self) -> Option<B> {
         for x in self.iter {
@@ -1238,8 +1238,8 @@ impl<'self, A, B, T: Iterator<A>> Iterator<B> for FilterMap<'self, A, B, T> {
     }
 }
 
-impl<'self, A, B, T: DoubleEndedIterator<A>> DoubleEndedIterator<B>
-for FilterMap<'self, A, B, T> {
+impl<'a, A, B, T: DoubleEndedIterator<A>> DoubleEndedIterator<B>
+for FilterMap<'a, A, B, T> {
     #[inline]
     fn next_back(&mut self) -> Option<B> {
         loop {
@@ -1340,11 +1340,11 @@ impl<A, T: Iterator<A>> Iterator<A> for Peekable<A, T> {
     }
 }
 
-impl<'self, A, T: Iterator<A>> Peekable<A, T> {
+impl<'a, A, T: Iterator<A>> Peekable<A, T> {
     /// Return a reference to the next element of the iterator with out advancing it,
     /// or None if the iterator is exhausted.
     #[inline]
-    pub fn peek(&'self mut self) -> Option<&'self A> {
+    pub fn peek(&'a mut self) -> Option<&'a A> {
         if self.peeked.is_none() {
             self.peeked = self.iter.next();
         }
@@ -1356,13 +1356,13 @@ impl<'self, A, T: Iterator<A>> Peekable<A, T> {
 }
 
 /// An iterator which rejects elements while `predicate` is true
-pub struct SkipWhile<'self, A, T> {
+pub struct SkipWhile<'a, A, T> {
     priv iter: T,
     priv flag: bool,
-    priv predicate: 'self |&A| -> bool
+    priv predicate: 'a |&A| -> bool
 }
 
-impl<'self, A, T: Iterator<A>> Iterator<A> for SkipWhile<'self, A, T> {
+impl<'a, A, T: Iterator<A>> Iterator<A> for SkipWhile<'a, A, T> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         let mut next = self.iter.next();
@@ -1394,13 +1394,13 @@ impl<'self, A, T: Iterator<A>> Iterator<A> for SkipWhile<'self, A, T> {
 }
 
 /// An iterator which only accepts elements while `predicate` is true
-pub struct TakeWhile<'self, A, T> {
+pub struct TakeWhile<'a, A, T> {
     priv iter: T,
     priv flag: bool,
-    priv predicate: 'self |&A| -> bool
+    priv predicate: 'a |&A| -> bool
 }
 
-impl<'self, A, T: Iterator<A>> Iterator<A> for TakeWhile<'self, A, T> {
+impl<'a, A, T: Iterator<A>> Iterator<A> for TakeWhile<'a, A, T> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         if self.flag {
@@ -1542,15 +1542,15 @@ impl<A, T: RandomAccessIterator<A>> RandomAccessIterator<A> for Take<T> {
 
 
 /// An iterator to maintain state while iterating another iterator
-pub struct Scan<'self, A, B, T, St> {
+pub struct Scan<'a, A, B, T, St> {
     priv iter: T,
-    priv f: 'self |&mut St, A| -> Option<B>,
+    priv f: 'a |&mut St, A| -> Option<B>,
 
     /// The current internal state to be passed to the closure next.
     state: St
 }
 
-impl<'self, A, B, T: Iterator<A>, St> Iterator<B> for Scan<'self, A, B, T, St> {
+impl<'a, A, B, T: Iterator<A>, St> Iterator<B> for Scan<'a, A, B, T, St> {
     #[inline]
     fn next(&mut self) -> Option<B> {
         self.iter.next().and_then(|a| (self.f)(&mut self.state, a))
@@ -1566,14 +1566,14 @@ impl<'self, A, B, T: Iterator<A>, St> Iterator<B> for Scan<'self, A, B, T, St> {
 /// An iterator that maps each element to an iterator,
 /// and yields the elements of the produced iterators
 ///
-pub struct FlatMap<'self, A, T, U> {
+pub struct FlatMap<'a, A, T, U> {
     priv iter: T,
-    priv f: 'self |A| -> U,
+    priv f: 'a |A| -> U,
     priv frontiter: Option<U>,
     priv backiter: Option<U>,
 }
 
-impl<'self, A, T: Iterator<A>, B, U: Iterator<B>> Iterator<B> for FlatMap<'self, A, T, U> {
+impl<'a, A, T: Iterator<A>, B, U: Iterator<B>> Iterator<B> for FlatMap<'a, A, T, U> {
     #[inline]
     fn next(&mut self) -> Option<B> {
         loop {
@@ -1601,10 +1601,10 @@ impl<'self, A, T: Iterator<A>, B, U: Iterator<B>> Iterator<B> for FlatMap<'self,
     }
 }
 
-impl<'self,
+impl<'a,
      A, T: DoubleEndedIterator<A>,
      B, U: DoubleEndedIterator<B>> DoubleEndedIterator<B>
-     for FlatMap<'self, A, T, U> {
+     for FlatMap<'a, A, T, U> {
     #[inline]
     fn next_back(&mut self) -> Option<B> {
         loop {
@@ -1697,12 +1697,12 @@ impl<T> Fuse<T> {
 
 /// An iterator that calls a function with a reference to each
 /// element before yielding it.
-pub struct Inspect<'self, A, T> {
+pub struct Inspect<'a, A, T> {
     priv iter: T,
-    priv f: 'self |&A|
+    priv f: 'a |&A|
 }
 
-impl<'self, A, T> Inspect<'self, A, T> {
+impl<'a, A, T> Inspect<'a, A, T> {
     #[inline]
     fn do_inspect(&self, elt: Option<A>) -> Option<A> {
         match elt {
@@ -1714,7 +1714,7 @@ impl<'self, A, T> Inspect<'self, A, T> {
     }
 }
 
-impl<'self, A, T: Iterator<A>> Iterator<A> for Inspect<'self, A, T> {
+impl<'a, A, T: Iterator<A>> Iterator<A> for Inspect<'a, A, T> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         let next = self.iter.next();
@@ -1727,8 +1727,8 @@ impl<'self, A, T: Iterator<A>> Iterator<A> for Inspect<'self, A, T> {
     }
 }
 
-impl<'self, A, T: DoubleEndedIterator<A>> DoubleEndedIterator<A>
-for Inspect<'self, A, T> {
+impl<'a, A, T: DoubleEndedIterator<A>> DoubleEndedIterator<A>
+for Inspect<'a, A, T> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
         let next = self.iter.next_back();
@@ -1736,8 +1736,8 @@ for Inspect<'self, A, T> {
     }
 }
 
-impl<'self, A, T: RandomAccessIterator<A>> RandomAccessIterator<A>
-for Inspect<'self, A, T> {
+impl<'a, A, T: RandomAccessIterator<A>> RandomAccessIterator<A>
+for Inspect<'a, A, T> {
     #[inline]
     fn indexable(&self) -> uint {
         self.iter.indexable()
@@ -1750,13 +1750,13 @@ for Inspect<'self, A, T> {
 }
 
 /// An iterator which just modifies the contained state throughout iteration.
-pub struct Unfold<'self, A, St> {
-    priv f: 'self |&mut St| -> Option<A>,
+pub struct Unfold<'a, A, St> {
+    priv f: 'a |&mut St| -> Option<A>,
     /// Internal state that will be yielded on the next iteration
     state: St
 }
 
-impl<'self, A, St> Unfold<'self, A, St> {
+impl<'a, A, St> Unfold<'a, A, St> {
     /// Creates a new iterator with the specified closure as the "iterator
     /// function" and an initial state to eventually pass to the iterator
     #[inline]
@@ -1769,7 +1769,7 @@ impl<'self, A, St> Unfold<'self, A, St> {
     }
 }
 
-impl<'self, A, St> Iterator<A> for Unfold<'self, A, St> {
+impl<'a, A, St> Iterator<A> for Unfold<'a, A, St> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         (self.f)(&mut self.state)

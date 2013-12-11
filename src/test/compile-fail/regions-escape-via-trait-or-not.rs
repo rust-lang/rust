@@ -12,7 +12,7 @@ trait deref {
     fn get(self) -> int;
 }
 
-impl<'self> deref for &'self int {
+impl<'a> deref for &'a int {
     fn get(self) -> int {
         *self
     }
