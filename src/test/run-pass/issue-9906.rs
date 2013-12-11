@@ -11,7 +11,7 @@
 // xfail-fast check-fast doesn't like extern mod
 // aux-build:issue-9906.rs
 
-extern mod testmod(name = "issue-9906");
+extern mod testmod = "issue-9906";
 
 fn main() {
     testmod::foo();

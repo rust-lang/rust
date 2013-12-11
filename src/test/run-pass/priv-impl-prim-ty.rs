@@ -11,7 +11,7 @@
 // xfail-fast
 // aux-build:priv-impl-prim-ty.rs
 
-extern mod bar(name = "priv-impl-prim-ty");
+extern mod bar = "priv-impl-prim-ty";
 
 fn main() {
     bar::frob(1i);

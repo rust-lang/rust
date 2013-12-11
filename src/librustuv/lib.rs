@@ -34,6 +34,8 @@ via `close` and `delete` methods.
 
 */
 
+#[pkgid="rustuv#0.9-pre"];
+// NOTE: remove after the next snapshot
 #[link(name = "rustuv",
        package_id = "rustuv",
        vers = "0.9-pre",

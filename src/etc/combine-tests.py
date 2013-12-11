@@ -42,6 +42,7 @@ stage2_tests.sort()
 c = open("tmp/run_pass_stage2.rc", "w")
 i = 0
 c.write("// AUTO-GENERATED FILE: DO NOT EDIT\n")
+c.write("#[pkgid=\"run_pass_stage2#0.1\"];\n")
 c.write("#[link(name=\"run_pass_stage2\", vers=\"0.1\")];\n")
 c.write("#[feature(globs, macro_rules, struct_variant, managed_boxes)];\n")
 c.write("#[allow(attribute_usage)];\n")

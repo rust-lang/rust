@@ -7,6 +7,8 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+#[pkgid="lint_stability#0.1"];
+// NOTE: remove after the next snapshot
 #[link(name = "lint_stability",
        vers = "0.1")];
 #[crate_type = "lib"];

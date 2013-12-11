@@ -1171,11 +1171,9 @@ pub fn get_crate_hash(data: @~[u8]) -> @str {
 
 pub fn get_crate_vers(data: @~[u8]) -> @str {
     let attrs = decoder::get_crate_attributes(data);
-    let linkage_attrs = attr::find_linkage_metas(attrs);
-
-    match attr::last_meta_item_value_str_by_name(linkage_attrs, "vers") {
-        Some(ver) => ver,
-        None => @"0.0"
+    match attr::find_pkgid(attrs) {
+        None => @"0.0",
+        Some(pkgid) => pkgid.version_or_default().to_managed(),
     }
 }
 

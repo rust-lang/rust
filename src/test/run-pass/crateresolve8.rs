@@ -11,7 +11,9 @@
 // xfail-fast
 // aux-build:crateresolve8-1.rs
 
-extern mod crateresolve8(vers = "0.1", package_id="crateresolve8");
+#[pkgid="crateresolve8#0.1"];
+
+extern mod crateresolve8(vers = "0.1", package_id="crateresolve8#0.1");
 //extern mod crateresolve8(vers = "0.1");
 
 pub fn main() {

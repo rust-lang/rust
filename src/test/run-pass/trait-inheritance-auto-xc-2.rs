@@ -11,7 +11,7 @@
 // xfail-fast
 // aux-build:trait_inheritance_auto_xc_2_aux.rs
 
-extern mod aux(name = "trait_inheritance_auto_xc_2_aux");
+extern mod aux = "trait_inheritance_auto_xc_2_aux";
 
 // aux defines impls of Foo, Bar and Baz for A
 use aux::{Foo, Bar, Baz, A};
