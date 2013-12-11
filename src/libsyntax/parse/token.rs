@@ -316,6 +316,17 @@ pub fn is_bar(t: &Token) -> bool {
     match *t { BINOP(OR) | OROR => true, _ => false }
 }
 
+// Get the first "argument"
+macro_rules! first {
+    ( $first:expr, $( $remainder:expr, )* ) => ( $first )
+}
+
+// Get the last "argument" (has to be done recursively to avoid phoney local ambiguity error)
+macro_rules! last {
+    ( $first:expr, $( $remainder:expr, )+ ) => ( last!( $( $remainder, )+ ) );
+    ( $first:expr, ) => ( $first )
+}
+
 // In this macro, there is the requirement that the name (the number) must be monotonically
 // increasing by one in the special identifiers, starting at 0; the same holds for the keywords,
 // except starting from the next number instead of zero, and with the additional exception that
@@ -329,9 +340,17 @@ macro_rules! declare_special_idents_and_keywords {(
     }
 
     pub mod keywords {
-        $( ($k_name:expr, $k_variant:ident, $k_str:expr); )*
+        'strict:
+        $( ($sk_name:expr, $sk_variant:ident, $sk_str:expr); )*
+        'reserved:
+        $( ($rk_name:expr, $rk_variant:ident, $rk_str:expr); )*
     }
 ) => {
+    static STRICT_KEYWORD_START: Name = first!($( $sk_name, )*);
+    static STRICT_KEYWORD_FINAL: Name = last!($( $sk_name, )*);
+    static RESERVED_KEYWORD_START: Name = first!($( $rk_name, )*);
+    static RESERVED_KEYWORD_FINAL: Name = last!($( $rk_name, )*);
+
     pub mod special_idents {
         use ast::Ident;
         $( pub static $si_static: Ident = Ident { name: $si_name, ctxt: 0 }; )*
@@ -348,13 +367,15 @@ macro_rules! declare_special_idents_and_keywords {(
         use ast::Ident;
 
         pub enum Keyword {
-            $( $k_variant, )*
+            $( $sk_variant, )*
+            $( $rk_variant, )*
         }
 
         impl Keyword {
             pub fn to_ident(&self) -> Ident {
                 match *self {
-                    $( $k_variant => Ident { name: $k_name, ctxt: 0 }, )*
+                    $( $sk_variant => Ident { name: $sk_name, ctxt: 0 }, )*
+                    $( $rk_variant => Ident { name: $rk_name, ctxt: 0 }, )*
                 }
             }
         }
@@ -366,20 +387,17 @@ macro_rules! declare_special_idents_and_keywords {(
         // constants below.
         let init_vec = ~[
             $( $si_str, )*
-            $( $k_str, )*
+            $( $sk_str, )*
+            $( $rk_str, )*
         ];
 
         @interner::StrInterner::prefill(init_vec)
     }
 }}
 
-// If modifying the numbers below, remember to modify these as appropriate
+// If the special idents get renumbered, remember to modify these two as appropriate
 static SELF_KEYWORD_NAME: Name = 3;
 static STATIC_KEYWORD_NAME: Name = 10;
-static STRICT_KEYWORD_START: Name = 14;
-static STRICT_KEYWORD_FINAL: Name = 47;
-static RESERVED_KEYWORD_START: Name = 48;
-static RESERVED_KEYWORD_FINAL: Name = 54;
 
 declare_special_idents_and_keywords! {
     pub mod special_idents {
@@ -409,7 +427,7 @@ declare_special_idents_and_keywords! {
     pub mod keywords {
         // These ones are variants of the Keyword enum
 
-        // Strict keywords
+        'strict:
         (14,                         As,         "as");
         (15,                         Break,      "break");
         (16,                         Const,      "const");
@@ -448,7 +466,7 @@ declare_special_idents_and_keywords! {
         (46,                         Continue,   "continue");
         (47,                         Proc,       "proc");
 
-        // Reserved keywords
+        'reserved:
         (48,                         Alignof,    "alignof");
         (49,                         Be,         "be");
         (50,                         Offsetof,   "offsetof");
