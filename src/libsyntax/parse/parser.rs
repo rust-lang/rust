@@ -2807,18 +2807,33 @@ impl Parser {
             }
 
             let lo1 = self.last_span.lo;
+            let bind_type = if self.eat_keyword(keywords::Mut) {
+                BindByValue(MutMutable)
+            } else if self.eat_keyword(keywords::Ref) {
+                BindByRef(self.parse_mutability())
+            } else {
+                BindByValue(MutImmutable)
+            };
+
             let fieldname = self.parse_ident();
             let hi1 = self.last_span.lo;
             let fieldpath = ast_util::ident_to_path(mk_sp(lo1, hi1),
                                                     fieldname);
             let subpat;
             if *self.token == token::COLON {
+                match bind_type {
+                    BindByRef(..) | BindByValue(MutMutable) =>
+                        self.fatal(format!("unexpected `{}`",
+                                   self.this_token_to_str())),
+                    _ => {}
+                }
+
                 self.bump();
                 subpat = self.parse_pat();
             } else {
                 subpat = @ast::Pat {
                     id: ast::DUMMY_NODE_ID,
-                    node: PatIdent(BindByValue(MutImmutable), fieldpath, None),
+                    node: PatIdent(bind_type, fieldpath, None),
                     span: *self.last_span
                 };
             }
