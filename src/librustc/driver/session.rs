@@ -446,6 +446,7 @@ pub fn sess_os_to_meta_os(os: abi::Os) -> metadata::loader::Os {
         abi::OsLinux => loader::OsLinux,
         abi::OsAndroid => loader::OsAndroid,
         abi::OsMacos => loader::OsMacos,
-        abi::OsFreebsd => loader::OsFreebsd
+        abi::OsFreebsd => loader::OsFreebsd,
+        abi::OsNone => loader::OsNone
     }
 }

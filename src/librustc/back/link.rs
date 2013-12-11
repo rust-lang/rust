@@ -28,7 +28,7 @@ use util::sha2::{Digest, Sha256};
 
 use std::c_str::ToCStr;
 use std::char;
-use std::os::consts::{macos, freebsd, linux, android, win32};
+use std::os::consts::{macos, freebsd, linux, android, win32, none};
 use std::ptr;
 use std::run;
 use std::str;
@@ -767,6 +767,7 @@ fn link_binary_output(sess: Session,
                 abi::OsLinux => (linux::DLL_PREFIX, linux::DLL_SUFFIX),
                 abi::OsAndroid => (android::DLL_PREFIX, android::DLL_SUFFIX),
                 abi::OsFreebsd => (freebsd::DLL_PREFIX, freebsd::DLL_SUFFIX),
+                abi::OsNone => (none::DLL_PREFIX, none::DLL_SUFFIX),
             };
             out_filename.with_filename(format!("{}{}{}", prefix, libname, suffix))
         }

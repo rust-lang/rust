@@ -73,7 +73,8 @@ pub fn default_configuration(sess: Session) ->
         abi::OsMacos =>   @"macos",
         abi::OsLinux =>   @"linux",
         abi::OsAndroid => @"android",
-        abi::OsFreebsd => @"freebsd"
+        abi::OsFreebsd => @"freebsd",
+        abi::OsNone =>    @"none"
     };
 
     // ARM is bi-endian, however using NDK seems to default
@@ -554,7 +555,8 @@ static os_names : &'static [(&'static str, abi::Os)] = &'static [
     ("darwin",  abi::OsMacos),
     ("android", abi::OsAndroid),
     ("linux",   abi::OsLinux),
-    ("freebsd", abi::OsFreebsd)];
+    ("freebsd", abi::OsFreebsd),
+    ("none",    abi::OsNone)];
 
 pub fn get_arch(triple: &str) -> Option<abi::Architecture> {
     for &(arch, abi) in architecture_abis.iter() {
