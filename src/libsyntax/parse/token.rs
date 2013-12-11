@@ -374,128 +374,88 @@ macro_rules! declare_special_idents_and_keywords {(
 }}
 
 // If modifying the numbers below, remember to modify these as appropriate
-static SELF_KEYWORD_NAME: Name = 8;
-static STATIC_KEYWORD_NAME: Name = 27;
-static STRICT_KEYWORD_START: Name = 32;
-static STRICT_KEYWORD_FINAL: Name = 65;
-static RESERVED_KEYWORD_START: Name = 66;
-static RESERVED_KEYWORD_FINAL: Name = 72;
+static SELF_KEYWORD_NAME: Name = 3;
+static STATIC_KEYWORD_NAME: Name = 10;
+static STRICT_KEYWORD_START: Name = 14;
+static STRICT_KEYWORD_FINAL: Name = 47;
+static RESERVED_KEYWORD_START: Name = 48;
+static RESERVED_KEYWORD_FINAL: Name = 54;
 
 declare_special_idents_and_keywords! {
     pub mod special_idents {
         // These ones are statics
-        (0,                          underscore,             "_");      // apparently unused?
-        (1,                          anon,                   "anon");
-        (2,                          invalid,                "");       // ''
-        (3,                          unary,                  "unary");  // apparently unused?
-        (4,                          not_fn,                 "!");      // apparently unused?
-        (5,                          idx_fn,                 "[]");     // apparently unused?
-        (6,                          unary_minus_fn,         "unary-"); // apparently unused?
-        (7,                          clownshoes_extensions,  "__extensions__");
+
+        (0,                          anon,                   "anon");
+        (1,                          invalid,                "");       // ''
+        (2,                          clownshoes_extensions,  "__extensions__");
 
         (super::SELF_KEYWORD_NAME,   self_,                  "self"); // 'self'
 
-        /* for matcher NTs */
-        // none of these appear to be used, but perhaps references to
-        // these are artificially fabricated by the macro system....
-        (9,                          item,                   "item");
-        (10,                         block,                  "block");
-        (11,                         stmt,                   "stmt");
-        (12,                         pat,                    "pat");
-        (13,                         expr,                   "expr");
-        (14,                         ty,                     "ty");
-        (15,                         ident,                  "ident");
-        (16,                         path,                   "path");
-        (17,                         tt,                     "tt");
-        (18,                         matchers,               "matchers");
+        // for matcher NTs
+        (4,                          tt,                     "tt");
+        (5,                          matchers,               "matchers");
 
-        // for the type // apparently unused?
-        (19,                         str,                    "str");
-
-        /* outside of libsyntax */
-        (20,                         arg,                    "arg");
-        (21,                         descrim,                "descrim");
-        (22,                         clownshoe_abi,          "__rust_abi");
-        (23,                         clownshoe_stack_shim,   "__rust_stack_shim");
-        (24,                         main,                   "main");
-        (25,                         opaque,                 "<opaque>");
-        (26,                         blk,                    "blk");
+        // outside of libsyntax
+        (6,                          arg,                    "arg");
+        (7,                          clownshoe_abi,          "__rust_abi");
+        (8,                          main,                   "main");
+        (9,                          opaque,                 "<opaque>");
         (super::STATIC_KEYWORD_NAME, statik,                 "static");
-        (28,                         clownshoes_foreign_mod, "__foreign_mod__");
-        (29,                         unnamed_field,          "<unnamed_field>");
-        (30,                         c_abi,                  "C"); // apparently unused?
-        (31,                         type_self,              "Self"); // `Self`
-
-        // here are the ones that actually occur in the source. Maybe the rest
-        // should be removed?
-        /*
-        special_idents::anon
-        special_idents::arg
-        special_idents::blk
-        special_idents::clownshoe_abi
-        special_idents::clownshoe_stack_shim
-        special_idents::clownshoes_extensions
-        special_idents::clownshoes_foreign_mod
-        special_idents::descrim
-        special_idents::invalid
-        special_idents::main
-        special_idents::matchers
-        special_idents::opaque
-        special_idents::self_
-        special_idents::statik
-        special_idents::tt
-        special_idents::type_self
-        special_idents::unnamed_field
-        */
+        (11,                         clownshoes_foreign_mod, "__foreign_mod__");
+        (12,                         unnamed_field,          "<unnamed_field>");
+        (13,                         type_self,              "Self"); // `Self`
     }
 
     pub mod keywords {
         // These ones are variants of the Keyword enum
-        (32,                         As,         "as");
-        (33,                         Break,      "break");
-        (34,                         Const,      "const");
-        (35,                         Do,         "do");
-        (36,                         Else,       "else");
-        (37,                         Enum,       "enum");
-        (38,                         Extern,     "extern");
-        (39,                         False,      "false");
-        (40,                         Fn,         "fn");
-        (41,                         For,        "for");
-        (42,                         If,         "if");
-        (43,                         Impl,       "impl");
-        (44,                         In,         "in");
-        (45,                         Let,        "let");
-        (46,                         __LogLevel, "__log_level");
-        (47,                         Loop,       "loop");
-        (48,                         Match,      "match");
-        (49,                         Mod,        "mod");
-        (50,                         Mut,        "mut");
-        (51,                         Once,       "once");
-        (52,                         Priv,       "priv");
-        (53,                         Pub,        "pub");
-        (54,                         Ref,        "ref");
-        (55,                         Return,     "return");
+
+        // Strict keywords
+        (14,                         As,         "as");
+        (15,                         Break,      "break");
+        (16,                         Const,      "const");
+        (17,                         Do,         "do");
+        (18,                         Else,       "else");
+        (19,                         Enum,       "enum");
+        (20,                         Extern,     "extern");
+        (21,                         False,      "false");
+        (22,                         Fn,         "fn");
+        (23,                         For,        "for");
+        (24,                         If,         "if");
+        (25,                         Impl,       "impl");
+        (26,                         In,         "in");
+        (27,                         Let,        "let");
+        (28,                         __LogLevel, "__log_level");
+        (29,                         Loop,       "loop");
+        (30,                         Match,      "match");
+        (31,                         Mod,        "mod");
+        (32,                         Mut,        "mut");
+        (33,                         Once,       "once");
+        (34,                         Priv,       "priv");
+        (35,                         Pub,        "pub");
+        (36,                         Ref,        "ref");
+        (37,                         Return,     "return");
         // Static and Self are also special idents (prefill de-dupes)
         (super::STATIC_KEYWORD_NAME, Static,     "static");
         (super::SELF_KEYWORD_NAME,   Self,       "self");
-        (56,                         Struct,     "struct");
-        (57,                         Super,      "super");
-        (58,                         True,       "true");
-        (59,                         Trait,      "trait");
-        (60,                         Type,       "type");
-        (61,                         Unsafe,     "unsafe");
-        (62,                         Use,        "use");
-        (63,                         While,      "while");
-        (64,                         Continue,   "continue");
-        (65,                         Proc,       "proc");
+        (38,                         Struct,     "struct");
+        (39,                         Super,      "super");
+        (40,                         True,       "true");
+        (41,                         Trait,      "trait");
+        (42,                         Type,       "type");
+        (43,                         Unsafe,     "unsafe");
+        (44,                         Use,        "use");
+        (45,                         While,      "while");
+        (46,                         Continue,   "continue");
+        (47,                         Proc,       "proc");
 
-        (66,                         Alignof,    "alignof");
-        (67,                         Be,         "be");
-        (68,                         Offsetof,   "offsetof");
-        (69,                         Pure,       "pure");
-        (70,                         Sizeof,     "sizeof");
-        (71,                         Typeof,     "typeof");
-        (72,                         Yield,      "yield");
+        // Reserved keywords
+        (48,                         Alignof,    "alignof");
+        (49,                         Be,         "be");
+        (50,                         Offsetof,   "offsetof");
+        (51,                         Pure,       "pure");
+        (52,                         Sizeof,     "sizeof");
+        (53,                         Typeof,     "typeof");
+        (54,                         Yield,      "yield");
     }
 }
 
