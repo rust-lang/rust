@@ -1935,8 +1935,12 @@ pub fn print_view_path(s: @ps, vp: &ast::view_path) {
       }
 
       ast::view_path_list(ref path, ref idents, _) => {
-        print_path(s, path, false);
-        word(s.s, "::{");
+        if path.segments.is_empty() {
+            word(s.s, "{");
+        } else {
+            print_path(s, path, false);
+            word(s.s, "::{");
+        }
         commasep(s, inconsistent, (*idents), |s, w| {
             print_ident(s, w.node.name);
         });
