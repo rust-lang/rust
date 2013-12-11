@@ -15,7 +15,7 @@
 
 use iter::Iterator;
 use option::Option;
-use io::{Reader, Decorator};
+use io::Reader;
 
 /// An iterator that reads a single byte on each iteration,
 /// until `.read_byte()` returns `None`.
@@ -31,23 +31,17 @@ use io::{Reader, Decorator};
 /// Raises the same conditions as the `read` method, for
 /// each call to its `.next()` method.
 /// Yields `None` if the condition is handled.
-pub struct ByteIterator<T> {
-    priv reader: T,
+pub struct ByteIterator<'r, T> {
+    priv reader: &'r mut T,
 }
 
-impl<R: Reader> ByteIterator<R> {
-    pub fn new(r: R) -> ByteIterator<R> {
+impl<'r, R: Reader> ByteIterator<'r, R> {
+    pub fn new(r: &'r mut R) -> ByteIterator<'r, R> {
         ByteIterator { reader: r }
     }
 }
 
-impl<R> Decorator<R> for ByteIterator<R> {
-    fn inner(self) -> R { self.reader }
-    fn inner_ref<'a>(&'a self) -> &'a R { &self.reader }
-    fn inner_mut_ref<'a>(&'a mut self) -> &'a mut R { &mut self.reader }
-}
-
-impl<'self, R: Reader> Iterator<u8> for ByteIterator<R> {
+impl<'r, R: Reader> Iterator<u8> for ByteIterator<'r, R> {
     #[inline]
     fn next(&mut self) -> Option<u8> {
         self.reader.read_byte()
@@ -285,7 +279,7 @@ mod test {
 
     #[test]
     fn bytes_0_bytes() {
-        let reader = InitialZeroByteReader {
+        let mut reader = InitialZeroByteReader {
             count: 0,
         };
         let byte = reader.bytes().next();
@@ -294,14 +288,14 @@ mod test {
 
     #[test]
     fn bytes_eof() {
-        let reader = EofReader;
+        let mut reader = EofReader;
         let byte = reader.bytes().next();
         assert!(byte == None);
     }
 
     #[test]
     fn bytes_error() {
-        let reader = ErroringReader;
+        let mut reader = ErroringReader;
         let mut it = reader.bytes();
         io_error::cond.trap(|_| ()).inside(|| {
             let byte = it.next();

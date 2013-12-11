@@ -18,7 +18,6 @@ use std::io;
 use std::io::stdio::StdReader;
 use std::io::buffered::BufferedReader;
 use std::os;
-use std::uint;
 use std::unstable::intrinsics::cttz16;
 use std::vec;
 
@@ -72,10 +71,7 @@ impl Sudoku {
         assert!(reader.read_line().unwrap() == ~"9,9"); /* assert first line is exactly "9,9" */
 
         let mut g = vec::from_fn(10u, { |_i| ~[0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8] });
-        loop {
-            let line = match reader.read_line() {
-                Some(ln) => ln, None => break
-            };
+        for line in reader.lines() {
             let comps: ~[&str] = line.trim().split(',').collect();
 
             if comps.len() == 3u {
