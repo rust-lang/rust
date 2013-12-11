@@ -17,7 +17,6 @@ use metadata::loader;
 
 use std::hashmap::HashMap;
 use syntax::ast;
-use std::vec;
 use syntax::abi;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
@@ -25,6 +24,7 @@ use syntax::codemap::{Span, dummy_sp};
 use syntax::diagnostic::span_handler;
 use syntax::parse::token;
 use syntax::parse::token::ident_interner;
+use syntax::pkgid::PkgId;
 use syntax::visit;
 
 // Traverses an AST, reading all the information about use'd crates and extern
@@ -64,7 +64,7 @@ struct cache_entry {
     cnum: ast::CrateNum,
     span: Span,
     hash: @str,
-    metas: @~[@ast::MetaItem]
+    pkgid: PkgId,
 }
 
 fn dump_crates(crate_cache: &[cache_entry]) {
@@ -80,12 +80,10 @@ fn warn_if_multiple_versions(e: @mut Env,
                              diag: @mut span_handler,
                              crate_cache: &[cache_entry]) {
     if crate_cache.len() != 0u {
-        let name = loader::crate_name_from_metas(
-            *crate_cache[crate_cache.len() - 1].metas
-        );
+        let name = crate_cache[crate_cache.len() - 1].pkgid.name.clone();
 
         let (matches, non_matches) = crate_cache.partitioned(|entry|
-            name == loader::crate_name_from_metas(*entry.metas));
+            name == entry.pkgid.name);
 
         assert!(!matches.is_empty());
 
@@ -94,11 +92,7 @@ fn warn_if_multiple_versions(e: @mut Env,
                 format!("using multiple versions of crate `{}`", name));
             for match_ in matches.iter() {
                 diag.span_note(match_.span, "used here");
-                let attrs = ~[
-                    attr::mk_attr(attr::mk_list_item(@"link",
-                                                     (*match_.metas).clone()))
-                ];
-                loader::note_linkage_attrs(e.intr, diag, attrs);
+                loader::note_pkgid_attr(diag, &match_.pkgid);
             }
         }
 
@@ -129,28 +123,30 @@ fn visit_crate(e: &Env, c: &ast::Crate) {
 
 fn visit_view_item(e: @mut Env, i: &ast::view_item) {
     match i.node {
-      ast::view_item_extern_mod(ident, path_opt, ref meta_items, id) => {
+      ast::view_item_extern_mod(ident, path_opt, _, id) => {
           let ident = token::ident_to_str(&ident);
-          let meta_items = match path_opt {
-              None => meta_items.clone(),
-              Some((p, _path_str_style)) => {
-                  let p_path = Path::new(p);
-                  match p_path.filestem_str() {
-                      None|Some("") =>
-                          e.sess.span_bug(i.span, "Bad package path in `extern mod` item"),
-                      Some(s) =>
-                          vec::append(
-                              ~[attr::mk_name_value_item_str(@"package_id", p),
-                               attr::mk_name_value_item_str(@"name", s.to_managed())],
-                              *meta_items)
+          debug!("resolving extern mod stmt. ident: {:?} path_opt: {:?}",
+                 ident, path_opt);
+          let (name, version) = match path_opt {
+              Some((path_str, _)) => {
+                  let pkgid: Option<PkgId> = from_str(path_str);
+                  match pkgid {
+                      None => (@"", @""),
+                      Some(pkgid) => {
+                          let version = match pkgid.version {
+                              None => @"",
+                              Some(ref ver) => ver.to_managed(),
+                          };
+                          (pkgid.name.to_managed(), version)
+                      }
                   }
-            }
+              }
+              None => (ident, @""),
           };
-          debug!("resolving extern mod stmt. ident: {:?}, meta: {:?}",
-                 ident, meta_items);
           let cnum = resolve_crate(e,
                                    ident,
-                                   meta_items,
+                                   name,
+                                   version,
                                    @"",
                                    i.span);
           cstore::add_extern_mod_stmt_cnum(e.sess.cstore, id, cnum);
@@ -233,46 +229,36 @@ fn visit_item(e: &Env, i: @ast::item) {
     }
 }
 
-fn metas_with(ident: @str, key: @str, mut metas: ~[@ast::MetaItem])
-    -> ~[@ast::MetaItem] {
-    // Check if key isn't there yet.
-    if !attr::contains_name(metas, key) {
-        metas.push(attr::mk_name_value_item_str(key, ident));
-    }
-    metas
-}
-
-fn metas_with_ident(ident: @str, metas: ~[@ast::MetaItem])
-    -> ~[@ast::MetaItem] {
-    metas_with(ident, @"name", metas)
-}
-
-fn existing_match(e: &Env, metas: &[@ast::MetaItem], hash: &str)
-               -> Option<ast::CrateNum> {
+fn existing_match(e: &Env, name: @str, version: @str, hash: &str) -> Option<ast::CrateNum> {
     for c in e.crate_cache.iter() {
-        if loader::metadata_matches(*c.metas, metas)
-            && (hash.is_empty() || c.hash.as_slice() == hash) {
+        let pkgid_version = match c.pkgid.version {
+            None => @"0.0",
+            Some(ref ver) => ver.to_managed(),
+        };
+        if (name.is_empty() || c.pkgid.name.to_managed() == name) &&
+            (version.is_empty() || pkgid_version == version) &&
+            (hash.is_empty() || c.hash.as_slice() == hash) {
             return Some(c.cnum);
         }
     }
-    return None;
+    None
 }
 
 fn resolve_crate(e: @mut Env,
                  ident: @str,
-                 metas: ~[@ast::MetaItem],
+                 name: @str,
+                 version: @str,
                  hash: @str,
                  span: Span)
               -> ast::CrateNum {
-    let metas = metas_with_ident(ident, metas);
-
-    match existing_match(e, metas, hash) {
+    match existing_match(e, name, version, hash) {
       None => {
         let load_ctxt = loader::Context {
             sess: e.sess,
             span: span,
             ident: ident,
-            metas: metas,
+            name: name,
+            version: version,
             hash: hash,
             os: e.os,
             intr: e.intr
@@ -282,7 +268,7 @@ fn resolve_crate(e: @mut Env,
         } = load_ctxt.load_library_crate();
 
         let attrs = decoder::get_crate_attributes(metadata);
-        let linkage_metas = attr::find_linkage_metas(attrs);
+        let pkgid = attr::find_pkgid(attrs).unwrap();
         let hash = decoder::get_crate_hash(metadata);
 
         // Claim this crate number and cache it
@@ -291,21 +277,15 @@ fn resolve_crate(e: @mut Env,
             cnum: cnum,
             span: span,
             hash: hash,
-            metas: @linkage_metas
+            pkgid: pkgid,
         });
         e.next_crate_num += 1;
 
         // Now resolve the crates referenced by this crate
         let cnum_map = resolve_crate_deps(e, metadata);
 
-        let cname =
-            match attr::last_meta_item_value_str_by_name(load_ctxt.metas,
-                                                         "name") {
-                Some(v) => v,
-                None => ident
-            };
         let cmeta = @cstore::crate_metadata {
-            name: cname,
+            name: name,
             data: metadata,
             cnum_map: cnum_map,
             cnum: cnum
@@ -336,12 +316,9 @@ fn resolve_crate_deps(e: @mut Env, cdata: @~[u8]) -> cstore::cnum_map {
     for dep in r.iter() {
         let extrn_cnum = dep.cnum;
         let cname_str = token::ident_to_str(&dep.name);
-        let cmetas = metas_with(dep.vers, @"vers", ~[]);
         debug!("resolving dep crate {} ver: {} hash: {}",
                cname_str, dep.vers, dep.hash);
-        match existing_match(e,
-                             metas_with_ident(cname_str, cmetas.clone()),
-                             dep.hash) {
+        match existing_match(e, cname_str, dep.vers, dep.hash) {
           Some(local_cnum) => {
             debug!("already have it");
             // We've already seen this crate
@@ -353,8 +330,8 @@ fn resolve_crate_deps(e: @mut Env, cdata: @~[u8]) -> cstore::cnum_map {
             // FIXME (#2404): Need better error reporting than just a bogus
             // span.
             let fake_span = dummy_sp();
-            let local_cnum = resolve_crate(e, cname_str, cmetas, dep.hash,
-                                           fake_span);
+            let local_cnum = resolve_crate(e, cname_str, cname_str, dep.vers,
+                                           dep.hash, fake_span);
             cnum_map.insert(extrn_cnum, local_cnum);
           }
         }

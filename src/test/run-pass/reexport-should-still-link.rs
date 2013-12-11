@@ -11,7 +11,7 @@
 // aux-build:reexport-should-still-link.rs
 // xfail-fast check-fast doesn't like extern mod
 
-extern mod foo(name = "reexport-should-still-link");
+extern mod foo = "reexport-should-still-link";
 
 fn main() {
     foo::bar();

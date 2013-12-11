@@ -11,9 +11,11 @@
 // aux-build:iss.rs
 // xfail-fast
 
-extern mod iss ( name = "iss6919_3" );
+#[pkgid="issue-6919"];
+
+extern mod issue6919_3;
 
 pub fn main() {
-    iss::D.k;
+    issue6919_3::D.k;
 }
 

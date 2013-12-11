@@ -24,7 +24,7 @@ pub enum Version {
     SemanticVersion(semver::Version),
     Tagged(~str), // String that can't be parsed as a version.
                   // Requirements get interpreted exactly
-    NoVersion // user didn't specify a version -- prints as 0.1
+    NoVersion // user didn't specify a version -- prints as 0.0
 }
 
 // Equality on versions is non-symmetric: if self is NoVersion, it's equal to
@@ -81,7 +81,7 @@ impl ToStr for Version {
         match *self {
             ExactRevision(ref n) | Tagged(ref n) => format!("{}", n.to_str()),
             SemanticVersion(ref v) => format!("{}", v.to_str()),
-            NoVersion => ~"0.1"
+            NoVersion => ~"0.0"
         }
     }
 }

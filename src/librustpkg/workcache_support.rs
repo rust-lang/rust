@@ -11,7 +11,7 @@
 use std::io;
 use std::io::File;
 use extra::workcache;
-use sha1::{Digest, Sha1};
+use sha2::{Digest, Sha256};
 
 /// Hashes the file contents along with the last-modified time
 pub fn digest_file_with_date(path: &Path) -> ~str {
@@ -19,7 +19,7 @@ pub fn digest_file_with_date(path: &Path) -> ~str {
 
     match io::result(|| File::open(path).read_to_end()) {
         Ok(bytes) => {
-            let mut sha = Sha1::new();
+            let mut sha = Sha256::new();
             sha.input(bytes);
             let st = path.stat();
             sha.input_str(st.modified.to_str());
@@ -34,7 +34,7 @@ pub fn digest_file_with_date(path: &Path) -> ~str {
 
 /// Hashes only the last-modified time
 pub fn digest_only_date(path: &Path) -> ~str {
-    let mut sha = Sha1::new();
+    let mut sha = Sha256::new();
     let st = path.stat();
     sha.input_str(st.modified.to_str());
     sha.result_str()

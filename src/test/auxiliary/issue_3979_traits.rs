@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[pkgid="issue_3979_traits#0.1"];
+// NOTE: remove after the next snapshot
 #[link(name = "issue_3979_traits",
        vers = "0.1")];
 

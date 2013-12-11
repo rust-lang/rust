@@ -1,3 +1,4 @@
+#[pkgid="trait_default_method_xc_aux"];
 
 pub struct Something { x: int }
 

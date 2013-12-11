@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[pkgid="rustc#0.9-pre"];
+// NOTE: remove after the next snapshot
 #[link(name = "rustc",
        package_id = "rustc",
        vers = "0.9-pre",
@@ -109,6 +111,7 @@ pub mod driver;
 pub mod util {
     pub mod common;
     pub mod ppaux;
+    pub mod sha2;
 }
 
 pub mod lib {
