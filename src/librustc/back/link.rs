@@ -310,13 +310,19 @@ pub mod write {
             assembly.as_str().unwrap().to_owned()];
 
         debug!("{} '{}'", cc, args.connect("' '"));
-        let prog = run::process_output(cc, args);
-
-        if !prog.status.success() {
-            sess.err(format!("linking with `{}` failed: {}", cc, prog.status));
-            sess.note(format!("{} arguments: '{}'", cc, args.connect("' '")));
-            sess.note(str::from_utf8_owned(prog.error + prog.output));
-            sess.abort_if_errors();
+        match run::process_output(cc, args) {
+            Some(prog) => {
+                if !prog.status.success() {
+                    sess.err(format!("linking with `{}` failed: {}", cc, prog.status));
+                    sess.note(format!("{} arguments: '{}'", cc, args.connect("' '")));
+                    sess.note(str::from_utf8_owned(prog.error + prog.output));
+                    sess.abort_if_errors();
+                }
+            },
+            None => {
+                sess.err(format!("could not exec `{}`", cc));
+                sess.abort_if_errors();
+            }
         }
     }
 
@@ -949,14 +955,22 @@ fn link_natively(sess: Session, dylib: bool, obj_filename: &Path,
 
     // Invoke the system linker
     debug!("{} {}", cc_prog, cc_args.connect(" "));
-    let prog = time(sess.time_passes(), "running linker", (), |()|
-                    run::process_output(cc_prog, cc_args));
+    let opt_prog = time(sess.time_passes(), "running linker", (), |()|
+                        run::process_output(cc_prog, cc_args));
 
-    if !prog.status.success() {
-        sess.err(format!("linking with `{}` failed: {}", cc_prog, prog.status));
-        sess.note(format!("{} arguments: '{}'", cc_prog, cc_args.connect("' '")));
-        sess.note(str::from_utf8_owned(prog.error + prog.output));
-        sess.abort_if_errors();
+    match opt_prog {
+        Some(prog) => {
+            if !prog.status.success() {
+                sess.err(format!("linking with `{}` failed: {}", cc_prog, prog.status));
+                sess.note(format!("{} arguments: '{}'", cc_prog, cc_args.connect("' '")));
+                sess.note(str::from_utf8_owned(prog.error + prog.output));
+                sess.abort_if_errors();
+            }
+        },
+        None => {
+            sess.err(format!("could not exec `{}`", cc_prog));
+            sess.abort_if_errors();
+        }
     }
 
 
