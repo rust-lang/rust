@@ -147,7 +147,14 @@ pub mod write {
               session::Default => lib::llvm::CodeGenLevelDefault,
               session::Aggressive => lib::llvm::CodeGenLevelAggressive,
             };
-            let use_softfp = sess.opts.debugging_opts & session::use_softfp != 0;
+            let fp_abi =
+                if (sess.opts.debugging_opts & session::use_hardfp != 0) {
+                    lib::llvm::FloatABIHard
+                } else if (sess.opts.debugging_opts & session::use_softfp != 0) {
+                    lib::llvm::FloatABISoft
+                } else {
+                    lib::llvm::FloatABIDefault
+                };
 
             //For embedded targets PIC doesn't make sense.
             //The code layout is static, defined by the linker.
@@ -167,7 +174,7 @@ pub mod write {
                             reloc_mode,
                             OptLevel,
                             enable_segmented_stacks,
-                            use_softfp
+                            fp_abi
                         )
                     })
                 })

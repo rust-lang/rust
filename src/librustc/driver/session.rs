@@ -69,6 +69,7 @@ pub static gen_crate_map:           uint = 1 << 27;
 pub static prefer_dynamic:          uint = 1 << 28;
 pub static no_integrated_as:        uint = 1 << 29;
 pub static lto:                     uint = 1 << 30;
+pub static use_hardfp:              uint = 1 << 31;
 
 pub fn debugging_opts_map() -> ~[(&'static str, &'static str, uint)] {
     ~[("verbose", "in general, enable more debug printouts", verbose),
@@ -118,6 +119,7 @@ pub fn debugging_opts_map() -> ~[(&'static str, &'static str, uint)] {
       "Don't run LLVM's SLP vectorization passes",
       no_vectorize_slp),
      ("soft-float", "Generate software floating point library calls", use_softfp),
+     ("hard-float", "Use FP hardware", use_hardfp),
      ("gen-crate-map", "Force generation of a toplevel crate map", gen_crate_map),
      ("prefer-dynamic", "Prefer dynamic linking to static linking", prefer_dynamic),
      ("no-integrated-as",

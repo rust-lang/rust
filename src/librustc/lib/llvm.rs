@@ -224,6 +224,13 @@ pub enum CodeGenModel {
     CodeModelLarge = 5,
 }
 
+#[repr(C)]
+pub enum FloatABI {
+    FloatABIDefault = 0,
+    FloatABISoft = 1,
+    FloatABIHard = 2,
+}
+
 // Opaque pointer types
 pub enum Module_opaque {}
 pub type ModuleRef = *Module_opaque;
@@ -301,7 +308,7 @@ pub mod llvm {
     use super::{ObjectFileRef, Opcode, PassManagerRef, PassManagerBuilderRef};
     use super::{SectionIteratorRef, TargetDataRef, TypeKind, TypeRef, UseRef};
     use super::{ValueRef, TargetMachineRef, FileType};
-    use super::{CodeGenModel, RelocMode, CodeGenOptLevel};
+    use super::{CodeGenModel, RelocMode, CodeGenOptLevel, FloatABI};
     use super::debuginfo::*;
     use std::libc::{c_char, c_int, c_longlong, c_ushort, c_uint, c_ulonglong,
                     size_t};
@@ -1719,7 +1726,7 @@ pub mod llvm {
                                            Reloc: RelocMode,
                                            Level: CodeGenOptLevel,
                                            EnableSegstk: bool,
-                                           UseSoftFP: bool) -> TargetMachineRef;
+                                           FA: FloatABI) -> TargetMachineRef;
         pub fn LLVMRustDisposeTargetMachine(T: TargetMachineRef);
         pub fn LLVMRustAddAnalysisPasses(T: TargetMachineRef,
                                          PM: PassManagerRef,
