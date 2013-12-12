@@ -29,19 +29,19 @@ fn fun1() {
     // in the past, borrow checker behaved differently when
     // init and decl of `v` were distinct
     let v;
-    let mut box = Box {x: 0};
-    box.set(22);
-    v = *box.get();
-    box.set(v+1);
-    assert_eq!(23, *box.get());
+    let mut a_box = Box {x: 0};
+    a_box.set(22);
+    v = *a_box.get();
+    a_box.set(v+1);
+    assert_eq!(23, *a_box.get());
 }
 
 fn fun2() {
-    let mut box = Box {x: 0};
-    box.set(22);
-    let v = *box.get();
-    box.set(v+1);
-    assert_eq!(23, *box.get());
+    let mut a_box = Box {x: 0};
+    a_box.set(22);
+    let v = *a_box.get();
+    a_box.set(v+1);
+    assert_eq!(23, *a_box.get());
 }
 
 pub fn main() {

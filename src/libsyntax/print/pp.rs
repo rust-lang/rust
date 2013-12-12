@@ -555,16 +555,18 @@ impl Printer {
 }
 
 // Convenience functions to talk to the printer.
-pub fn box(p: @mut Printer, indent: uint, b: breaks) {
+//
+// "raw box"
+pub fn rbox(p: @mut Printer, indent: uint, b: breaks) {
     p.pretty_print(BEGIN(begin_t {
         offset: indent as int,
         breaks: b
     }));
 }
 
-pub fn ibox(p: @mut Printer, indent: uint) { box(p, indent, inconsistent); }
+pub fn ibox(p: @mut Printer, indent: uint) { rbox(p, indent, inconsistent); }
 
-pub fn cbox(p: @mut Printer, indent: uint) { box(p, indent, consistent); }
+pub fn cbox(p: @mut Printer, indent: uint) { rbox(p, indent, consistent); }
 
 pub fn break_offset(p: @mut Printer, n: uint, off: int) {
     p.pretty_print(BREAK(break_t {

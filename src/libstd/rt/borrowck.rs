@@ -28,7 +28,7 @@ static ALL_BITS: uint = FROZEN_BIT | MUT_BIT;
 
 #[deriving(Eq)]
 pub struct BorrowRecord {
-    priv box: *mut raw::Box<()>,
+    priv alloc: *mut raw::Box<()>,
     file: *c_char,
     priv line: size_t
 }
@@ -55,8 +55,9 @@ pub fn clear_task_borrow_list() {
 }
 
 #[cold]
-unsafe fn fail_borrowed(box: *mut raw::Box<()>, file: *c_char, line: size_t) -> ! {
-    debug_borrow("fail_borrowed: ", box, 0, 0, file, line);
+unsafe fn fail_borrowed(alloc: *mut raw::Box<()>, file: *c_char, line: size_t)
+                        -> ! {
+    debug_borrow("fail_borrowed: ", alloc, 0, 0, file, line);
 
     match try_take_task_borrow_list() {
         None => { // not recording borrows
@@ -67,7 +68,7 @@ unsafe fn fail_borrowed(box: *mut raw::Box<()>, file: *c_char, line: size_t) -> 
             let mut msg = ~"borrowed";
             let mut sep = " at ";
             for entry in borrow_list.rev_iter() {
-                if entry.box == box {
+                if entry.alloc == alloc {
                     msg.push_str(sep);
                     let filename = str::raw::from_c_str(entry.file);
                     msg.push_str(filename);
@@ -153,7 +154,11 @@ pub unsafe fn record_borrow(a: *u8, old_ref_count: uint,
         debug_borrow("record_borrow:", a, old_ref_count, 0, file, line);
         swap_task_borrow_list(|borrow_list| {
             let mut borrow_list = borrow_list;
-            borrow_list.push(BorrowRecord {box: a, file: file, line: line});
+            borrow_list.push(BorrowRecord {
+                alloc: a,
+                file: file,
+                line: line,
+            });
             borrow_list
         })
     }
@@ -172,7 +177,7 @@ pub unsafe fn unrecord_borrow(a: *u8,
             let mut borrow_list = borrow_list;
             assert!(!borrow_list.is_empty());
             let br = borrow_list.pop();
-            if br.box != a || br.file != file || br.line != line {
+            if br.alloc != a || br.file != file || br.line != line {
                 let err = format!("wrong borrow found, br={:?}", br);
                 err.with_c_str(|msg_p| {
                     task::begin_unwind_raw(msg_p, file, line)

@@ -98,7 +98,7 @@ pub fn alloc_raw(bcx: @mut Block, unit_ty: ty::t,
         Store(bcx, alloc, GEPi(bcx, val, [0u, abi::vec_elt_alloc]));
         return rslt(bcx, val);
     } else {
-        let base::MallocResult {bcx, box: bx, body} =
+        let base::MallocResult {bcx, smart_ptr: bx, body} =
             base::malloc_general_dyn(bcx, vecbodyty, heap, vecsize);
         Store(bcx, fill, GEPi(bcx, body, [0u, abi::vec_elt_fill]));
         Store(bcx, alloc, GEPi(bcx, body, [0u, abi::vec_elt_alloc]));
