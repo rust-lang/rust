@@ -10,6 +10,10 @@
 
 // Test which of the builtin types are considered POD.
 
+#[feature(managed_boxes)];
+
+use std::rc::Rc;
+
 fn assert_pod<T:Pod>() { }
 trait Dummy { }
 
@@ -71,8 +75,12 @@ fn test<'a,T,U:Pod>(_: &'a int) {
 
     // structs containing non-POD are not ok
     assert_pod::<MyNonpodStruct>(); //~ ERROR does not fulfill `Pod`
+
+    // managed or ref counted types are not ok
+    assert_pod::<@int>();   //~ ERROR does not fulfill `Pod`
+    assert_pod::<Rc<int>>();   //~ ERROR does not fulfill `Pod`
 }
 
-fn main() {
+pub fn main() {
 }
 
