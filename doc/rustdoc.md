@@ -13,7 +13,7 @@ comments":
 ~~~
 // the "link" crate attribute is currently required for rustdoc, but normally
 // isn't needed.
-#[link(name="universe")];
+#[pkgid = "universe"];
 #[crate_type="lib"];
 
 //! Tools for dealing with universes (this is a doc comment, and is shown on
