@@ -795,7 +795,8 @@ pub struct ByRef<'a, T> {
 impl<'a, A, T: Iterator<A>> Iterator<A> for ByRef<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<A> { self.iter.next() }
-    // FIXME: #9629 we cannot implement &self methods like size_hint on ByRef
+    #[inline]
+    fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 
 impl<'a, A, T: DoubleEndedIterator<A>> DoubleEndedIterator<A> for ByRef<'a, T> {
