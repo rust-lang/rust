@@ -55,7 +55,7 @@ pub fn find_entry_point(session: Session, crate: &Crate, ast_map: ast_map::map) 
     }
 
     // If the user wants no main function at all, then stop here.
-    if attr::contains_name(crate.attrs, "no_main") {
+    if attr::contains_attr(crate.attrs, attr::AttrNoMain) {
         *session.entry_type = Some(session::EntryNone);
         return
     }
@@ -98,7 +98,7 @@ fn find_item(item: @item, ctxt: &mut EntryContext) {
                 }
             }
 
-            if attr::contains_name(item.attrs, "main") {
+            if attr::contains_attr(item.attrs, attr::AttrMain) {
                 if ctxt.attr_main_fn.is_none() {
                     ctxt.attr_main_fn = Some((item.id, item.span));
                 } else {
@@ -108,7 +108,7 @@ fn find_item(item: @item, ctxt: &mut EntryContext) {
                 }
             }
 
-            if attr::contains_name(item.attrs, "start") {
+            if attr::contains_attr(item.attrs, attr::AttrStart) {
                 if ctxt.start_fn.is_none() {
                     ctxt.start_fn = Some((item.id, item.span));
                 } else {

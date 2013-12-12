@@ -33,15 +33,15 @@ pub fn maybe_inject_libstd_ref(sess: Session, crate: ast::Crate)
 }
 
 fn use_std(crate: &ast::Crate) -> bool {
-    !attr::contains_name(crate.attrs, "no_std")
+    !attr::contains_attr(crate.attrs, attr::AttrNoStd)
 }
 
 fn use_uv(crate: &ast::Crate) -> bool {
-    !attr::contains_name(crate.attrs, "no_uv")
+    !attr::contains_attr(crate.attrs, attr::AttrNoUv)
 }
 
 fn no_prelude(attrs: &[ast::Attribute]) -> bool {
-    attr::contains_name(attrs, "no_implicit_prelude")
+    attr::contains_attr(attrs, attr::AttrNoImplicitPrelude)
 }
 
 fn spanned<T>(x: T) -> codemap::Spanned<T> {

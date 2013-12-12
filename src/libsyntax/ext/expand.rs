@@ -292,7 +292,7 @@ pub fn expand_item(extsbox: @mut SyntaxEnv,
 
 // does this attribute list contain "macro_escape" ?
 pub fn contains_macro_escape(attrs: &[ast::Attribute]) -> bool {
-    attr::contains_name(attrs, "macro_escape")
+    attr::contains_attr(attrs, attr::AttrMacroEscape)
 }
 
 // Support for item-position macro invocations, exactly the same

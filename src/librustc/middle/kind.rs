@@ -152,7 +152,7 @@ fn check_impl_of_trait(cx: &mut Context, it: @item, trait_ref: &trait_ref, self_
 }
 
 fn check_item(cx: &mut Context, item: @item) {
-    if !attr::contains_name(item.attrs, "unsafe_destructor") {
+    if !attr::contains_attr(item.attrs, attr::AttrUnsafeDestructor) {
         match item.node {
             item_impl(_, Some(ref trait_ref), self_type, _) => {
                 check_impl_of_trait(cx, item, trait_ref, self_type);

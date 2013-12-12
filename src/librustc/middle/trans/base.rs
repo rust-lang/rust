@@ -481,11 +481,11 @@ pub fn set_llvm_fn_attrs(attrs: &[ast::Attribute], llfn: ValueRef) {
     }
 
     // Add the no-split-stack attribute if requested
-    if contains_name(attrs, "no_split_stack") {
+    if contains_attr(attrs, AttrNoSplitStack) {
         set_no_split_stack(llfn);
     }
 
-    if contains_name(attrs, "cold") {
+    if contains_attr(attrs, AttrCold) {
         unsafe { llvm::LLVMAddColdAttribute(llfn) }
     }
 }
@@ -2199,7 +2199,7 @@ pub fn trans_item(ccx: @mut CrateContext, item: &ast::item) {
           consts::trans_const(ccx, m, item.id);
           // Do static_assert checking. It can't really be done much earlier
           // because we need to get the value of the bool out of LLVM
-          if attr::contains_name(item.attrs, "static_assert") {
+          if attr::contains_attr(item.attrs, attr::AttrStaticAssert) {
               if m == ast::MutMutable {
                   ccx.sess.span_fatal(expr.span,
                                       "cannot have static_assert on a mutable \
@@ -2416,12 +2416,12 @@ pub fn item_path(ccx: &CrateContext, id: &ast::NodeId) -> path {
 }
 
 fn exported_name(ccx: &mut CrateContext, path: path, ty: ty::t, attrs: &[ast::Attribute]) -> ~str {
-    match attr::first_attr_value_str_by_name(attrs, "export_name") {
+    match attr::first_attr_value(attrs, attr::AttrExportName) {
         // Use provided name
         Some(name) => name.to_owned(),
 
         // Don't mangle
-        _ if attr::contains_name(attrs, "no_mangle")
+        _ if attr::contains_attr(attrs, attr::AttrNoMangle)
             => path_elt_to_str(*path.last(), token::get_ident_interner()),
 
         // Usual name mangling
@@ -2479,8 +2479,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
 
                                 // Apply the `unnamed_addr` attribute if
                                 // requested
-                                if attr::contains_name(i.attrs,
-                                                       "address_insignificant"){
+                                if attr::contains_attr(i.attrs, attr::AttrAddressInsignificant){
                                     if ccx.reachable.contains(&id) {
                                         ccx.sess.span_bug(i.span,
                                             "insignificant static is \
@@ -2507,7 +2506,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                                     inlineable = true;
                                 }
 
-                                if attr::contains_name(i.attrs, "thread_local") {
+                                if attr::contains_attr(i.attrs, attr::AttrThreadLocal) {
                                     lib::llvm::set_thread_local(g, true);
                                 }
 
@@ -2536,7 +2535,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                         _ => fail!("get_item_val: weird result in table")
                     };
 
-                    match (attr::first_attr_value_str_by_name(i.attrs, "link_section")) {
+                    match (attr::first_attr_value(i.attrs, attr::AttrLinkSection)) {
                         Some(sect) => unsafe {
                             sect.with_c_str(|buf| {
                                 llvm::LLVMSetSection(v, buf);
@@ -2582,7 +2581,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                             // with weak linkage, but if we're building a
                             // library then we've already declared the crate map
                             // so use that instead.
-                            if attr::contains_name(ni.attrs, "crate_map") {
+                            if attr::contains_attr(ni.attrs, attr::AttrCrateMap) {
                                 if *ccx.sess.building_library {
                                     let s = "_rust_crate_map_toplevel";
                                     let g = unsafe {

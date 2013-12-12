@@ -22,6 +22,172 @@ use pkgid::PkgId;
 
 use std::hashmap::HashSet;
 
+#[deriving(Eq)]
+pub enum DefinedAttr {
+    // crate-level
+    AttrCrateType,
+    AttrFeature,
+    AttrNoUv,
+    AttrNoMain,
+    AttrNoStd,
+    AttrPkgid,
+    AttrDesc,
+    AttrComment,
+    AttrLicense,
+    AttrCopyright,
+
+    // item-level
+    AttrAddressInsignificant,
+    AttrThreadLocal, // for statics
+    AttrAllow, // lint options
+    AttrDeny,
+    AttrForbid,
+    AttrWarn,
+    AttrDeprecated, //item stability
+    AttrExperimental,
+    AttrUnstable,
+    AttrStable,
+    AttrLocked,
+    AttrFrozen,
+    AttrCrateMap,
+    AttrCfg,
+    AttrDoc,
+    AttrExportName,
+    AttrLinkSection,
+    AttrNoFreeze,
+    AttrNoMangle,
+    AttrNoSend,
+    AttrStaticAssert,
+    AttrUnsafeNoDropFlag,
+    AttrPacked,
+    AttrSimd,
+    AttrRepr,
+    AttrDeriving,
+    AttrUnsafeDestructor,
+    AttrLink,
+
+    //mod-level
+    AttrPath,
+    AttrLinkName,
+    AttrLinkArgs,
+    AttrNolink,
+    AttrMacroEscape,
+    AttrNoImplicitPrelude,
+
+    // fn-level
+    AttrTest,
+    AttrBench,
+    AttrShouldFail,
+    AttrIgnore,
+    AttrInline,
+    AttrLang,
+    AttrMain,
+    AttrStart,
+    AttrNoSplitStack,
+    AttrCold,
+
+    // internal attribute: bypass privacy inside items
+    AttrResolveUnexported,
+
+    // obsolete
+    AttrAbi,
+    AttrAutoEncode,
+    AttrAutoDecode,
+    AttrRustStack,
+    AttrFastFfi,
+    AttrFixedStackSegment,
+}
+
+impl FromStr for DefinedAttr {
+    fn from_str(s: &str) -> Option<DefinedAttr> {
+        let v = match s {
+            "crate_type" => AttrCrateType,
+            "feature" => AttrFeature,
+            "no_uv" => AttrNoUv,
+            "no_main" => AttrNoMain,
+            "no_std" => AttrNoStd,
+            "pkgid" => AttrPkgid,
+            "desc" => AttrDesc,
+            "comment" => AttrComment,
+            "license" => AttrLicense,
+            "copyright" => AttrCopyright,
+            "address_insignificant" => AttrAddressInsignificant,
+            "thread_local" => AttrThreadLocal,
+            "allow" => AttrAllow,
+            "deny" => AttrDeny,
+            "forbid" => AttrForbid,
+            "warn" => AttrWarn,
+            "deprecated" => AttrDeprecated,
+            "experimental" => AttrExperimental,
+            "unstable" => AttrUnstable,
+            "stable" => AttrStable,
+            "locked" => AttrLocked,
+            "frozen" => AttrFrozen,
+            "crate_map" => AttrCrateMap,
+            "cfg" => AttrCfg,
+            "doc" => AttrDoc,
+            "export_name" => AttrExportName,
+            "link_section" => AttrLinkSection,
+            "no_freeze" => AttrNoFreeze,
+            "no_mangle" => AttrNoMangle,
+            "no_send" => AttrNoSend,
+            "static_assert" => AttrStaticAssert,
+            "unsafe_no_drop_flag" => AttrUnsafeNoDropFlag,
+            "packed" => AttrPacked,
+            "simd" => AttrSimd,
+            "repr" => AttrRepr,
+            "deriving" => AttrDeriving,
+            "unsafe_destructor" => AttrUnsafeDestructor,
+            "link" => AttrLink,
+            "path" => AttrPath,
+            "link_name" => AttrLinkName,
+            "link_args" => AttrLinkArgs,
+            "nolink" => AttrNolink,
+            "macro_escape" => AttrMacroEscape,
+            "no_implicit_prelude" => AttrNoImplicitPrelude,
+            "test" => AttrTest,
+            "bench" => AttrBench,
+            "should_fail" => AttrShouldFail,
+            "ignore" => AttrIgnore,
+            "inline" => AttrInline,
+            "lang" => AttrLang,
+            "main" => AttrMain,
+            "start" => AttrStart,
+            "no_split_stack" => AttrNoSplitStack,
+            "cold" => AttrCold,
+            "!resolve_unexported" => AttrResolveUnexported,
+
+            "abi" => AttrAbi,
+            "auto_encode" => AttrAutoEncode,
+            "auto_decode" => AttrAutoDecode,
+            "fast_ffi" => AttrFastFfi,
+            "rust_stack" => AttrRustStack,
+            "fixed_stack_segment" => AttrFixedStackSegment,
+
+            _ => return None,
+        };
+        Some(v)
+    }
+}
+
+impl DefinedAttr {
+    pub fn is_crate_attr(&self) -> bool {
+        match *self {
+            AttrCrateType | AttrFeature | AttrNoUv | AttrNoMain | AttrNoStd |
+            AttrPkgid | AttrDesc | AttrComment | AttrLicense | AttrCopyright => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_obsolete(&self) -> bool {
+        match *self {
+            AttrAbi | AttrAutoEncode | AttrAutoDecode | AttrRustStack |
+            AttrFastFfi | AttrFixedStackSegment => true,
+            _ => false,
+        }
+    }
+}
+
 pub trait AttrMetaMethods {
     // This could be changed to `fn check_name(&self, name: @str) ->
     // bool` which would facilitate a side table recording which
@@ -44,6 +210,14 @@ pub trait AttrMetaMethods {
      * a tuple containing the name and string value, otherwise `None`
      */
     fn name_str_pair(&self) -> Option<(@str, @str)>;
+
+    fn to_defined_attr(&self) -> Option<DefinedAttr> {
+        FromStr::from_str(self.name())
+    }
+
+    fn is_defined_attr(&self, attr: DefinedAttr) -> bool {
+        self.to_defined_attr() == Some(attr)
+    }
 }
 
 impl AttrMetaMethods for Attribute {
@@ -184,10 +358,12 @@ pub fn contains_name<AM: AttrMetaMethods>(metas: &[AM], name: &str) -> bool {
     })
 }
 
-pub fn first_attr_value_str_by_name(attrs: &[Attribute], name: &str)
-                                 -> Option<@str> {
-    attrs.iter()
-        .find(|at| name == at.name())
+pub fn contains_attr<AM: AttrMetaMethods>(attrs: &[AM], attr: DefinedAttr) -> bool {
+    attrs.iter().any(|item| item.is_defined_attr(attr))
+}
+
+pub fn first_attr_value(attrs: &[Attribute], attr: DefinedAttr) -> Option<@str> {
+    attrs.iter().find(|at| at.is_defined_attr(attr))
         .and_then(|at| at.value_str())
 }
 
@@ -227,7 +403,7 @@ pub fn sort_meta_items(items: &[@MetaItem]) -> ~[@MetaItem] {
  */
 pub fn find_linkage_metas(attrs: &[Attribute]) -> ~[@MetaItem] {
     let mut result = ~[];
-    for attr in attrs.iter().filter(|at| "link" == at.name()) {
+    for attr in attrs.iter().filter(|at| at.is_defined_attr(AttrLink)) {
         match attr.meta().node {
             MetaList(_, ref items) => result.push_all(*items),
             _ => ()
@@ -237,7 +413,7 @@ pub fn find_linkage_metas(attrs: &[Attribute]) -> ~[@MetaItem] {
 }
 
 pub fn find_pkgid(attrs: &[Attribute]) -> Option<PkgId> {
-    match first_attr_value_str_by_name(attrs, "pkgid") {
+    match first_attr_value(attrs, AttrPkgid) {
         None => None,
         Some(id) => from_str::<PkgId>(id),
     }
@@ -286,7 +462,7 @@ pub fn test_cfg<AM: AttrMetaMethods, It: Iterator<AM>>
     // this doesn't work.
     let some_cfg_matches = metas.any(|mi| {
         debug!("testing name: {}", mi.name());
-        if "cfg" == mi.name() { // it is a #[cfg()] attribute
+        if mi.is_defined_attr(AttrCfg) { // it is a #[cfg()] attribute
             debug!("is cfg");
             no_cfgs = false;
              // only #[cfg(...)] ones are understood.

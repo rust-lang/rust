@@ -52,7 +52,7 @@ pub fn modify_for_testing(sess: session::Session,
     // We generate the test harness when building in the 'test'
     // configuration, either with the '--test' or '--cfg test'
     // command line options.
-    let should_test = attr::contains_name(crate.config, "test");
+    let should_test = attr::contains_attr(crate.config, attr::AttrTest);
 
     if should_test {
         generate_test_harness(sess, crate)
@@ -120,7 +120,7 @@ impl fold::ast_fold for TestHarnessGenerator {
             if !*cx.sess.building_library {
                 @ast::item {
                     attrs: item.attrs.iter().filter_map(|attr| {
-                        if "main" != attr.name() {
+                        if !attr.is_defined_attr(attr::AttrMain) {
                             Some(*attr)
                         } else {
                             None
@@ -175,13 +175,13 @@ fn strip_test_functions(crate: ast::Crate) -> ast::Crate {
     // When not compiling with --test we should not compile the
     // #[test] functions
     config::strip_items(crate, |attrs| {
-        !attr::contains_name(attrs, "test") &&
-        !attr::contains_name(attrs, "bench")
+        !attr::contains_attr(attrs, attr::AttrTest) &&
+        !attr::contains_attr(attrs, attr::AttrBench)
     })
 }
 
 fn is_test_fn(cx: @mut TestCtxt, i: @ast::item) -> bool {
-    let has_test_attr = attr::contains_name(i.attrs, "test");
+    let has_test_attr = attr::contains_attr(i.attrs, attr::AttrTest);
 
     fn has_test_signature(i: @ast::item) -> bool {
         match &i.node {
@@ -210,7 +210,7 @@ fn is_test_fn(cx: @mut TestCtxt, i: @ast::item) -> bool {
 }
 
 fn is_bench_fn(i: @ast::item) -> bool {
-    let has_bench_attr = attr::contains_name(i.attrs, "bench");
+    let has_bench_attr = attr::contains_attr(i.attrs, attr::AttrBench);
 
     fn has_test_signature(i: @ast::item) -> bool {
         match i.node {
@@ -244,7 +244,7 @@ fn is_ignored(cx: @mut TestCtxt, i: @ast::item) -> bool {
 }
 
 fn should_fail(i: @ast::item) -> bool {
-    attr::contains_name(i.attrs, "should_fail")
+    attr::contains_attr(i.attrs, attr::AttrShouldFail)
 }
 
 fn add_test_module(cx: &TestCtxt, m: &ast::_mod) -> ast::_mod {

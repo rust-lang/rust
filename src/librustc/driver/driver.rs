@@ -1062,7 +1062,7 @@ mod test {
                                  @diagnostic::DefaultEmitter as
                                     @diagnostic::Emitter);
         let cfg = build_configuration(sess);
-        assert!((attr::contains_name(cfg, "test")));
+        assert!((attr::contains_attr(cfg, attr::AttrTest)));
     }
 
     // When the user supplies --test and --cfg test, don't implicitly add

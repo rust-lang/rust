@@ -409,7 +409,7 @@ pub fn building_library(options: &options, crate: &ast::Crate) -> bool {
         }
     }
     if options.test { return false }
-    match syntax::attr::first_attr_value_str_by_name(crate.attrs, "crate_type") {
+    match syntax::attr::first_attr_value(crate.attrs, syntax::attr::AttrCrateType) {
         Some(s) => "lib" == s || "rlib" == s || "dylib" == s || "staticlib" == s,
         _ => false
     }
