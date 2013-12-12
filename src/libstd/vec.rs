@@ -2528,13 +2528,13 @@ impl<'a, T> Iterator<&'a mut [T]> for MutSplitIterator<'a, T> {
 
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) {
-        if self.finished { return (0, Some(0)) }
-
-        // if the predicate doesn't match anything, we yield one slice
-        // if it matches every element, we yield len+1 empty slices.
-        // FIXME #9629
-        //(1, Some(self.v.len() + 1))
-        (1, None)
+        if self.finished {
+            (0, Some(0))
+        } else {
+            // if the predicate doesn't match anything, we yield one slice
+            // if it matches every element, we yield len+1 empty slices.
+            (1, Some(self.v.len() + 1))
+        }
     }
 }
 
@@ -2547,10 +2547,7 @@ impl<'a, T> DoubleEndedIterator<&'a mut [T]> for MutSplitIterator<'a, T> {
             None => {
                 self.finished = true;
                 let tmp = util::replace(&mut self.v, &mut []);
-                let len = tmp.len();
-                let (head, tail) = tmp.mut_split_at(len);
-                self.v = tail;
-                Some(head)
+                Some(tmp)
             }
             Some(idx) => {
                 let tmp = util::replace(&mut self.v, &mut []);
