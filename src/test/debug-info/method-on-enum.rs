@@ -94,6 +94,7 @@
 // check:$21 = -16
 // debugger:continue
 
+#[feature(managed_boxes)];
 #[feature(struct_variant)];
 
 enum Enum {

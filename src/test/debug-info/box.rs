@@ -22,6 +22,7 @@
 // debugger:print d->val
 // check:$4 = false
 
+#[feature(managed_boxes)];
 #[allow(unused_variable)];
 
 fn main() {

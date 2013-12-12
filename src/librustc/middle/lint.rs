@@ -770,9 +770,21 @@ fn check_heap_type(cx: &Context, span: Span, ty: ty::t) {
         let mut n_uniq = 0;
         ty::fold_ty(cx.tcx, ty, |t| {
             match ty::get(t).sty {
-              ty::ty_box(_) => n_box += 1,
-              ty::ty_uniq(_) => n_uniq += 1,
-              _ => ()
+                ty::ty_box(_) | ty::ty_estr(ty::vstore_box) |
+                ty::ty_evec(_, ty::vstore_box) |
+                ty::ty_trait(_, _, ty::BoxTraitStore, _, _) => {
+                    n_box += 1;
+                }
+                ty::ty_uniq(_) | ty::ty_estr(ty::vstore_uniq) |
+                ty::ty_evec(_, ty::vstore_uniq) |
+                ty::ty_trait(_, _, ty::UniqTraitStore, _, _) => {
+                    n_uniq += 1;
+                }
+                ty::ty_closure(ref c) if c.sigil == ast::OwnedSigil => {
+                    n_uniq += 1;
+                }
+
+                _ => ()
             };
             t
         });
