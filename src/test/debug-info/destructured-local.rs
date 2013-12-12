@@ -123,6 +123,7 @@
 // debugger:print *nn
 // check:$43 = 56
 
+#[feature(managed_boxes)];
 #[allow(unused_variable)];
 
 struct Struct {
