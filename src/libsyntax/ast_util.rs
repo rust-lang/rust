@@ -542,7 +542,7 @@ impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
                 self.operation.visit_id(method.self_id);
                 self.visit_generics_helper(generics)
             }
-            visit::fk_anon(_) | visit::fk_fn_block => {}
+            visit::fk_fn_block => {}
         }
 
         for argument in function_declaration.inputs.iter() {
