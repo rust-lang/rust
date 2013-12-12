@@ -599,9 +599,9 @@ mod tests {
 
         let (threads, hits) = vec::unzip(range(0, NTHREADS).map(|_| {
             let s = s.clone();
-            let box = ~AtomicUint::new(0);
+            let unique_box = ~AtomicUint::new(0);
             let thread_box = unsafe {
-                *cast::transmute::<&~AtomicUint, **mut AtomicUint>(&box)
+                *cast::transmute::<&~AtomicUint,**mut AtomicUint>(&unique_box)
             };
             (do Thread::start {
                 unsafe {
@@ -617,7 +617,7 @@ mod tests {
                         }
                     }
                 }
-            }, box)
+            }, unique_box)
         }));
 
         let mut rng = rand::task_rng();

@@ -303,7 +303,7 @@ pub fn opaque_box_body(bcx: @mut Block,
     let _icx = push_ctxt("opaque_box_body");
     let ccx = bcx.ccx();
     let ty = type_of(ccx, body_t);
-    let ty = Type::box(ccx, &ty);
+    let ty = Type::smart_ptr(ccx, &ty);
     let boxptr = PointerCast(bcx, boxptr, ty.ptr_to());
     GEPi(bcx, boxptr, [0u, abi::box_field_body])
 }
@@ -385,12 +385,12 @@ pub fn malloc_raw(bcx: @mut Block, t: ty::t, heap: heap) -> Result {
 
 pub struct MallocResult {
     bcx: @mut Block,
-    box: ValueRef,
+    smart_ptr: ValueRef,
     body: ValueRef
 }
 
-// malloc_general_dyn: usefully wraps malloc_raw_dyn; allocates a box,
-// and pulls out the body
+// malloc_general_dyn: usefully wraps malloc_raw_dyn; allocates a smart
+// pointer, and pulls out the body
 pub fn malloc_general_dyn(bcx: @mut Block, t: ty::t, heap: heap, size: ValueRef)
     -> MallocResult {
     assert!(heap != heap_exchange);
@@ -398,7 +398,11 @@ pub fn malloc_general_dyn(bcx: @mut Block, t: ty::t, heap: heap, size: ValueRef)
     let Result {bcx: bcx, val: llbox} = malloc_raw_dyn(bcx, t, heap, size);
     let body = GEPi(bcx, llbox, [0u, abi::box_field_body]);
 
-    MallocResult { bcx: bcx, box: llbox, body: body }
+    MallocResult {
+        bcx: bcx,
+        smart_ptr: llbox,
+        body: body,
+    }
 }
 
 pub fn malloc_general(bcx: @mut Block, t: ty::t, heap: heap) -> MallocResult {

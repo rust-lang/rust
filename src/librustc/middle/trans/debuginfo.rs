@@ -1683,7 +1683,7 @@ fn boxed_type_metadata(cx: &mut CrateContext,
         None                    => ~"BoxedType"
     };
 
-    let box_llvm_type = Type::box(cx, &content_llvm_type);
+    let box_llvm_type = Type::smart_ptr(cx, &content_llvm_type);
     let member_llvm_types = box_llvm_type.field_types();
     assert!(box_layout_is_correct(cx, member_llvm_types, content_llvm_type));
 
