@@ -401,7 +401,7 @@ fn visit_fn(v: &mut LivenessVisitor,
                 sty_static => {}
             }
         }
-        visit::fk_item_fn(..) | visit::fk_anon(..) | visit::fk_fn_block(..) => {}
+        visit::fk_item_fn(..) | visit::fk_fn_block(..) => {}
     }
 
     // gather up the various local variables, significant expressions,

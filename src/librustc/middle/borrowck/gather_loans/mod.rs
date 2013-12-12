@@ -140,7 +140,7 @@ fn gather_loans_in_fn(this: &mut GatherLoanCtxt,
         }
 
         // Visit closures as part of the containing item.
-        &visit::fk_anon(..) | &visit::fk_fn_block(..) => {
+        &visit::fk_fn_block(..) => {
             this.push_repeating_id(body.id);
             visit::walk_fn(this, fk, decl, body, sp, id, ());
             this.pop_repeating_id(body.id);
