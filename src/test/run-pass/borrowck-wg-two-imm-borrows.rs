@@ -1,5 +1,7 @@
 // Test that we can borrow the same @mut box twice, so long as both are imm.
 
+#[feature(managed_boxes)];
+
 fn add(x:&int, y:&int)
 {
     *x + *y;

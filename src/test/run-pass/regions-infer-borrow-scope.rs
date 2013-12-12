@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(managed_boxes)];
+
 struct Point {x: int, y: int}
 
 fn x_coord<'r>(p: &'r Point) -> &'r int {

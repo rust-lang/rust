@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(managed_boxes)];
+
 // Issue #945
 // error-pattern:non-exhaustive match failure
 fn test_box() {

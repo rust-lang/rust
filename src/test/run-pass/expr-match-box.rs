@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
+#[feature(managed_boxes)];
 
 // Tests for match as expressions resulting in boxed types
 fn test_box() {

@@ -10,6 +10,8 @@
 
 // xfail-fast
 
+#[feature(managed_boxes)];
+
 fn p_foo<T>(_pinned: T) { }
 fn s_foo<T>(_shared: T) { }
 fn u_foo<T:Send>(_unique: T) { }

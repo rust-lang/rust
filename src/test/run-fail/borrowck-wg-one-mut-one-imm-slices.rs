@@ -2,6 +2,8 @@
 
 // Test that write guards trigger when arguments are coerced to slices.
 
+#[feature(managed_boxes)];
+
 fn add(x:&mut [int], y:&[int])
 {
     x[0] = x[0] + y[0];
