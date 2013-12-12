@@ -10,7 +10,6 @@
 
 #[allow(dead_code)];
 
-use libc::c_void;
 #[cfg(unix)]
 use libc::c_int;
 #[cfg(unix)]
@@ -27,12 +26,12 @@ pub unsafe fn create(key: &mut Key) {
 }
 
 #[cfg(unix)]
-pub unsafe fn set(key: Key, value: *mut c_void) {
+pub unsafe fn set(key: Key, value: *mut u8) {
     assert_eq!(0, pthread_setspecific(key, value));
 }
 
 #[cfg(unix)]
-pub unsafe fn get(key: Key) -> *mut c_void {
+pub unsafe fn get(key: Key) -> *mut u8 {
     pthread_getspecific(key)
 }
 
@@ -55,8 +54,8 @@ type pthread_key_t = ::libc::c_uint;
 extern {
     fn pthread_key_create(key: *mut pthread_key_t, dtor: *u8) -> c_int;
     fn pthread_key_delete(key: pthread_key_t) -> c_int;
-    fn pthread_getspecific(key: pthread_key_t) -> *mut c_void;
-    fn pthread_setspecific(key: pthread_key_t, value: *mut c_void) -> c_int;
+    fn pthread_getspecific(key: pthread_key_t) -> *mut u8;
+    fn pthread_setspecific(key: pthread_key_t, value: *mut u8) -> c_int;
 }
 
 #[cfg(windows)]
@@ -70,13 +69,13 @@ pub unsafe fn create(key: &mut Key) {
 }
 
 #[cfg(windows)]
-pub unsafe fn set(key: Key, value: *mut c_void) {
-    assert!(0 != TlsSetValue(key, value))
+pub unsafe fn set(key: Key, value: *mut u8) {
+    assert!(0 != TlsSetValue(key, value as *mut ::libc::c_void))
 }
 
 #[cfg(windows)]
-pub unsafe fn get(key: Key) -> *mut c_void {
-    TlsGetValue(key)
+pub unsafe fn get(key: Key) -> *mut u8 {
+    TlsGetValue(key) as *mut u8
 }
 
 #[cfg(windows)]
