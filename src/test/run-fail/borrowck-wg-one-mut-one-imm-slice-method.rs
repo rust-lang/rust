@@ -3,6 +3,8 @@
 // Test that write guards trigger when there is a coercion to
 // a slice on the receiver of a method.
 
+#[feature(managed_boxes)];
+
 trait MyMutSlice {
     fn my_mut_slice(self) -> Self;
 }

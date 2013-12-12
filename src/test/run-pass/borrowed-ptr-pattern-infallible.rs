@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(managed_boxes)];
+
 pub fn main() {
     let (&x, &y, &z) = (&3, &'a', &@"No pets!");
     assert_eq!(x, 3);

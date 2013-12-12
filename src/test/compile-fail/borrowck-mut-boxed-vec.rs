@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(managed_boxes)];
+
 fn main() {
     let v = @mut [ 1, 2, 3 ];
     for _x in v.iter() {

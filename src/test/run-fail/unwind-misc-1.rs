@@ -11,6 +11,8 @@
 // exec-env:RUST_NEWRT=1
 // error-pattern:fail
 
+#[feature(managed_boxes)];
+
 fn main() {
     let _count = @mut 0u;
     let mut map = std::hashmap::HashMap::new();

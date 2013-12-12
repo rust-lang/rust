@@ -77,6 +77,14 @@ impl Context {
         }
     }
 
+    fn gate_box(&self, span: Span) {
+        self.gate_feature("managed_boxes", span,
+                          "The managed box syntax is being replaced by the \
+                           `std::gc::Gc` and `std::rc::Rc` types. Equivalent \
+                           functionality to managed trait objects will be \
+                           implemented but is currently missing.");
+    }
+
     fn has_feature(&self, feature: &str) -> bool {
         self.features.iter().any(|n| n.as_slice() == feature)
     }
@@ -172,16 +180,23 @@ impl Visitor<()> for Context {
                                    experimental and likely to be removed");
 
             },
-            ast::ty_box(_) => {
-                self.gate_feature("managed_boxes", t.span,
-                                  "The managed box syntax is being replaced by the `std::gc::Gc` \
-                                  and `std::rc::Rc` types. Equivalent functionality to managed \
-                                  trait objects will be implemented but is currently missing.");
-            }
+            ast::ty_box(_) => { self.gate_box(t.span); }
             _ => {}
         }
 
         visit::walk_ty(self, t, ());
+    }
+
+    fn visit_expr(&mut self, e: @ast::Expr, _: ()) {
+        match e.node {
+            ast::ExprUnary(_, ast::UnBox(..), _) |
+            ast::ExprVstore(_, ast::ExprVstoreBox) |
+            ast::ExprVstore(_, ast::ExprVstoreMutBox) => {
+                self.gate_box(e.span);
+            }
+            _ => {}
+        }
+        visit::walk_expr(self, e, ());
     }
 }
 
