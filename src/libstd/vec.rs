@@ -2127,8 +2127,7 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
     #[inline]
     fn mut_chunks(self, chunk_size: uint) -> MutChunkIter<'a, T> {
         assert!(chunk_size > 0);
-        let len = self.len();
-        MutChunkIter { v: self, chunk_size: chunk_size, remaining: len }
+        MutChunkIter { v: self, chunk_size: chunk_size }
     }
 
     fn mut_shift_ref(&mut self) -> &'a mut T {
@@ -2568,31 +2567,29 @@ impl<'a, T> DoubleEndedIterator<&'a mut [T]> for MutSplitIterator<'a, T> {
 /// the remainder.
 pub struct MutChunkIter<'a, T> {
     priv v: &'a mut [T],
-    priv chunk_size: uint,
-    priv remaining: uint
+    priv chunk_size: uint
 }
 
 impl<'a, T> Iterator<&'a mut [T]> for MutChunkIter<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<&'a mut [T]> {
-        if self.remaining == 0 {
+        if self.v.len() == 0 {
             None
         } else {
-            let sz = cmp::min(self.remaining, self.chunk_size);
+            let sz = cmp::min(self.v.len(), self.chunk_size);
             let tmp = util::replace(&mut self.v, &mut []);
             let (head, tail) = tmp.mut_split_at(sz);
             self.v = tail;
-            self.remaining -= sz;
             Some(head)
         }
     }
 
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) {
-        if self.remaining == 0 {
+        if self.v.len() == 0 {
             (0, Some(0))
         } else {
-            let (n, rem) = self.remaining.div_rem(&self.chunk_size);
+            let (n, rem) = self.v.len().div_rem(&self.chunk_size);
             let n = if rem > 0 { n + 1 } else { n };
             (n, Some(n))
         }
@@ -2602,15 +2599,15 @@ impl<'a, T> Iterator<&'a mut [T]> for MutChunkIter<'a, T> {
 impl<'a, T> DoubleEndedIterator<&'a mut [T]> for MutChunkIter<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a mut [T]> {
-        if self.remaining == 0 {
+        if self.v.len() == 0 {
             None
         } else {
-            let remainder = self.remaining % self.chunk_size;
+            let remainder = self.v.len() % self.chunk_size;
             let sz = if remainder != 0 { remainder } else { self.chunk_size };
             let tmp = util::replace(&mut self.v, &mut []);
-            let (head, tail) = tmp.mut_split_at(self.remaining - sz);
+            let tmp_len = tmp.len();
+            let (head, tail) = tmp.mut_split_at(tmp_len - sz);
             self.v = head;
-            self.remaining -= sz;
             Some(tail)
         }
     }
