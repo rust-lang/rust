@@ -2326,6 +2326,22 @@ impl Parser {
               _ => self.mk_unary(UnUniq, e)
             };
           }
+          token::IDENT(_, _) if self.is_keyword(keywords::Box) => {
+            self.bump();
+
+            let subexpression = self.parse_prefix_expr();
+            hi = subexpression.span.hi;
+            // HACK: turn `box [...]` into a boxed-evec
+            ex = match subexpression.node {
+                ExprVec(..) |
+                ExprLit(@codemap::Spanned {
+                    node: lit_str(..),
+                    span: _
+                }) |
+                ExprRepeat(..) => ExprVstore(subexpression, ExprVstoreUniq),
+                _ => self.mk_unary(UnUniq, subexpression)
+            };
+          }
           _ => return self.parse_dot_or_call_expr()
         }
         return self.mk_expr(lo, hi, ex);
