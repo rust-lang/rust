@@ -48,7 +48,6 @@
 #[allow(non_camel_case_types)];
 
 use int;
-use libc::c_void;
 use sync::atomics;
 
 pub struct Mutex {
@@ -133,38 +132,37 @@ impl Mutex {
         if cond != 0 { imp::free_cond(cond) }
     }
 
-    unsafe fn getlock(&mut self) -> *c_void {
+    unsafe fn getlock(&mut self) -> uint{
         match self.lock.load(atomics::Relaxed) {
             0 => {}
-            n => return n as *c_void
+            n => return n
         }
         let lock = imp::init_lock();
         match self.lock.compare_and_swap(0, lock, atomics::SeqCst) {
-            0 => return lock as *c_void,
+            0 => return lock,
             _ => {}
         }
         imp::free_lock(lock);
-        return self.lock.load(atomics::Relaxed) as *c_void;
+        self.lock.load(atomics::Relaxed)
     }
 
-    unsafe fn getcond(&mut self) -> *c_void {
+    unsafe fn getcond(&mut self) -> uint {
         match self.cond.load(atomics::Relaxed) {
             0 => {}
-            n => return n as *c_void
+            n => return n
         }
         let cond = imp::init_cond();
         match self.cond.compare_and_swap(0, cond, atomics::SeqCst) {
-            0 => return cond as *c_void,
+            0 => return cond,
             _ => {}
         }
         imp::free_cond(cond);
-        return self.cond.load(atomics::Relaxed) as *c_void;
+        self.cond.load(atomics::Relaxed)
     }
 }
 
 #[cfg(unix)]
 mod imp {
-    use libc::c_void;
     use libc;
     use ptr;
     use rt::global_heap::malloc_raw;
@@ -175,49 +173,49 @@ mod imp {
     type pthread_condattr_t = libc::c_void;
 
     pub unsafe fn init_lock() -> uint {
-        let block = malloc_raw(rust_pthread_mutex_t_size() as uint) as *c_void;
+        let block = malloc_raw(rust_pthread_mutex_t_size() as uint) as *pthread_mutex_t;
         let n = pthread_mutex_init(block, ptr::null());
         assert_eq!(n, 0);
         return block as uint;
     }
 
     pub unsafe fn init_cond() -> uint {
-        let block = malloc_raw(rust_pthread_cond_t_size() as uint) as *c_void;
+        let block = malloc_raw(rust_pthread_cond_t_size() as uint) as *pthread_cond_t;
         let n = pthread_cond_init(block, ptr::null());
         assert_eq!(n, 0);
         return block as uint;
     }
 
     pub unsafe fn free_lock(h: uint) {
-        let block = h as *c_void;
+        let block = h as *libc::c_void;
         assert_eq!(pthread_mutex_destroy(block), 0);
         libc::free(block);
     }
 
     pub unsafe fn free_cond(h: uint) {
-        let block = h as *c_void;
+        let block = h as *pthread_cond_t;
         assert_eq!(pthread_cond_destroy(block), 0);
         libc::free(block);
     }
 
-    pub unsafe fn lock(l: *pthread_mutex_t) {
-        assert_eq!(pthread_mutex_lock(l), 0);
+    pub unsafe fn lock(l: uint) {
+        assert_eq!(pthread_mutex_lock(l as *pthread_mutex_t), 0);
     }
 
-    pub unsafe fn trylock(l: *c_void) -> bool {
-        pthread_mutex_trylock(l) == 0
+    pub unsafe fn trylock(l: uint) -> bool {
+        pthread_mutex_trylock(l as *pthread_mutex_t) == 0
     }
 
-    pub unsafe fn unlock(l: *pthread_mutex_t) {
-        assert_eq!(pthread_mutex_unlock(l), 0);
+    pub unsafe fn unlock(l: uint) {
+        assert_eq!(pthread_mutex_unlock(l as *pthread_mutex_t), 0);
     }
 
-    pub unsafe fn wait(cond: *pthread_cond_t, m: *pthread_mutex_t) {
-        assert_eq!(pthread_cond_wait(cond, m), 0);
+    pub unsafe fn wait(cond: uint, m: uint) {
+        assert_eq!(pthread_cond_wait(cond as *pthread_cond_t, m as *pthread_mutex_t), 0);
     }
 
-    pub unsafe fn signal(cond: *pthread_cond_t) {
-        assert_eq!(pthread_cond_signal(cond), 0);
+    pub unsafe fn signal(cond: uint) {
+        assert_eq!(pthread_cond_signal(cond as *pthread_cond_t), 0);
     }
 
     extern {
@@ -273,25 +271,25 @@ mod imp {
         libc::CloseHandle(block);
     }
 
-    pub unsafe fn lock(l: *c_void) {
+    pub unsafe fn lock(l: uint) {
         EnterCriticalSection(l as LPCRITICAL_SECTION)
     }
 
-    pub unsafe fn trylock(l: *c_void) -> bool {
+    pub unsafe fn trylock(l: uint) -> bool {
         TryEnterCriticalSection(l as LPCRITICAL_SECTION) != 0
     }
 
-    pub unsafe fn unlock(l: *c_void) {
+    pub unsafe fn unlock(l: uint) {
         LeaveCriticalSection(l as LPCRITICAL_SECTION)
     }
 
-    pub unsafe fn wait(cond: *c_void, m: *c_void) {
+    pub unsafe fn wait(cond: uint, m: uint) {
         unlock(m);
         WaitForSingleObject(cond as HANDLE, libc::INFINITE);
         lock(m);
     }
 
-    pub unsafe fn signal(cond: *c_void) {
+    pub unsafe fn signal(cond: uint) {
         assert!(SetEvent(cond as HANDLE) != 0);
     }
 

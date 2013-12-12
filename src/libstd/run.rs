@@ -331,7 +331,6 @@ pub fn process_output(prog: &str, args: &[~str]) -> Option<ProcessOutput> {
 #[cfg(test)]
 mod tests {
     use prelude::*;
-    use libc::c_int;
     use os;
     use run;
     use str;
@@ -339,6 +338,7 @@ mod tests {
     use unstable::running_on_valgrind;
     use io::pipe::PipeStream;
     use io::{io_error, FileNotFound};
+    use libc::c_int;
 
     #[test]
     #[cfg(not(target_os="android"))] // FIXME(#10380)
@@ -410,9 +410,9 @@ mod tests {
             err_fd: Some(pipe_err.out)
         }).expect("failed to exec `cat`");
 
-        os::close(pipe_in.input);
-        os::close(pipe_out.out);
-        os::close(pipe_err.out);
+        os::close(pipe_in.input as int);
+        os::close(pipe_out.out as int);
+        os::close(pipe_err.out as int);
 
         do spawn {
             writeclose(pipe_in.out, "test");

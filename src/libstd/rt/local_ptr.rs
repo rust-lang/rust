@@ -81,14 +81,13 @@ pub mod compiled {
     use cast;
     use option::{Option, Some, None};
     use ptr::RawPtr;
-    #[cfg(not(test))] use libc::c_void;
 
     #[cfg(test)]
     pub use realstd::rt::shouldnt_be_public::RT_TLS_PTR;
 
     #[cfg(not(test))]
     #[thread_local]
-    pub static mut RT_TLS_PTR: *mut c_void = 0 as *mut c_void;
+    pub static mut RT_TLS_PTR: *mut u8 = 0 as *mut u8;
 
     pub fn init() {}
 
@@ -230,7 +229,6 @@ pub mod compiled {
 /// thread-local value.
 pub mod native {
     use cast;
-    use libc::c_void;
     use option::{Option, Some, None};
     use ptr;
     use ptr::RawPtr;
@@ -259,7 +257,7 @@ pub mod native {
     #[inline]
     pub unsafe fn put<T>(sched: ~T) {
         let key = tls_key();
-        let void_ptr: *mut c_void = cast::transmute(sched);
+        let void_ptr: *mut u8 = cast::transmute(sched);
         tls::set(key, void_ptr);
     }
 
@@ -271,7 +269,7 @@ pub mod native {
     #[inline]
     pub unsafe fn take<T>() -> ~T {
         let key = tls_key();
-        let void_ptr: *mut c_void = tls::get(key);
+        let void_ptr: *mut u8 = tls::get(key);
         if void_ptr.is_null() {
             rtabort!("thread-local pointer is null. bogus!");
         }
@@ -289,7 +287,7 @@ pub mod native {
     pub unsafe fn try_take<T>() -> Option<~T> {
         match maybe_tls_key() {
             Some(key) => {
-                let void_ptr: *mut c_void = tls::get(key);
+                let void_ptr: *mut u8 = tls::get(key);
                 if void_ptr.is_null() {
                     None
                 } else {
@@ -311,7 +309,7 @@ pub mod native {
     #[inline]
     pub unsafe fn unsafe_take<T>() -> ~T {
         let key = tls_key();
-        let void_ptr: *mut c_void = tls::get(key);
+        let void_ptr: *mut u8 = tls::get(key);
         if void_ptr.is_null() {
             rtabort!("thread-local pointer is null. bogus!");
         }

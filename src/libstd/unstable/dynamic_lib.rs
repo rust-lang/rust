@@ -18,12 +18,11 @@ A simple wrapper over the platform's dynamic library facilities
 use c_str::ToCStr;
 use cast;
 use path;
-use libc;
 use ops::*;
 use option::*;
 use result::*;
 
-pub struct DynamicLibrary { priv handle: *libc::c_void }
+pub struct DynamicLibrary { priv handle: *u8}
 
 impl Drop for DynamicLibrary {
     fn drop(&mut self) {
@@ -142,14 +141,14 @@ pub mod dl {
     use str;
     use result::*;
 
-    pub unsafe fn open_external(filename: &path::Path) -> *libc::c_void {
+    pub unsafe fn open_external(filename: &path::Path) -> *u8 {
         filename.with_c_str(|raw_name| {
-            dlopen(raw_name, Lazy as libc::c_int)
+            dlopen(raw_name, Lazy as libc::c_int) as *u8
         })
     }
 
-    pub unsafe fn open_internal() -> *libc::c_void {
-        dlopen(ptr::null(), Lazy as libc::c_int)
+    pub unsafe fn open_internal() -> *u8 {
+        dlopen(ptr::null(), Lazy as libc::c_int) as *u8
     }
 
     pub fn check_for_errors_in<T>(f: || -> T) -> Result<T, ~str> {
@@ -174,11 +173,11 @@ pub mod dl {
         }
     }
 
-    pub unsafe fn symbol(handle: *libc::c_void, symbol: *libc::c_char) -> *libc::c_void {
-        dlsym(handle, symbol)
+    pub unsafe fn symbol(handle: *u8, symbol: *libc::c_char) -> *u8 {
+        dlsym(handle as *libc::c_void, symbol) as *u8
     }
-    pub unsafe fn close(handle: *libc::c_void) {
-        dlclose(handle); ()
+    pub unsafe fn close(handle: *u8) {
+        dlclose(handle as *libc::c_void); ()
     }
 
     pub enum RTLD {
@@ -206,16 +205,16 @@ pub mod dl {
     use ptr;
     use result::{Ok, Err, Result};
 
-    pub unsafe fn open_external(filename: &path::Path) -> *libc::c_void {
+    pub unsafe fn open_external(filename: &path::Path) -> *u8 {
         os::win32::as_utf16_p(filename.as_str().unwrap(), |raw_name| {
-            LoadLibraryW(raw_name)
+            LoadLibraryW(raw_name as *libc::c_void) as *u8
         })
     }
 
-    pub unsafe fn open_internal() -> *libc::c_void {
+    pub unsafe fn open_internal() -> *u8 {
         let handle = ptr::null();
         GetModuleHandleExW(0 as libc::DWORD, ptr::null(), &handle as **libc::c_void);
-        handle
+        handle as *u8
     }
 
     pub fn check_for_errors_in<T>(f: || -> T) -> Result<T, ~str> {
@@ -233,17 +232,17 @@ pub mod dl {
         }
     }
 
-    pub unsafe fn symbol(handle: *libc::c_void, symbol: *libc::c_char) -> *libc::c_void {
-        GetProcAddress(handle, symbol)
+    pub unsafe fn symbol(handle: *u8, symbol: *libc::c_char) -> *u8 {
+        GetProcAddress(handle as *libc::c_void, symbol) as *u8
     }
-    pub unsafe fn close(handle: *libc::c_void) {
-        FreeLibrary(handle); ()
+    pub unsafe fn close(handle: *u8) {
+        FreeLibrary(handle as *libc::c_void); ()
     }
 
     #[link_name = "kernel32"]
     extern "system" {
-        fn SetLastError(error: u32);
-        fn LoadLibraryW(name: *u16) -> *libc::c_void;
+        fn SetLastError(error: libc::size_t);
+        fn LoadLibraryW(name: *libc::c_void) -> *libc::c_void;
         fn GetModuleHandleExW(dwFlags: libc::DWORD, name: *u16,
                               handle: **libc::c_void) -> *libc::c_void;
         fn GetProcAddress(handle: *libc::c_void, name: *libc::c_char) -> *libc::c_void;

@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -11,25 +11,24 @@
 //! Runtime calls emitted by the compiler.
 
 use c_str::ToCStr;
-use libc::{c_char, size_t, uintptr_t};
 
 #[cold]
 #[lang="fail_"]
-pub fn fail_(expr: *c_char, file: *c_char, line: size_t) -> ! {
+pub fn fail_(expr: *u8, file: *u8, line: uint) -> ! {
     ::rt::begin_unwind_raw(expr, file, line);
 }
 
 #[cold]
 #[lang="fail_bounds_check"]
-pub fn fail_bounds_check(file: *c_char, line: size_t, index: size_t, len: size_t) -> ! {
+pub fn fail_bounds_check(file: *u8, line: uint, index: uint, len: uint) -> ! {
     let msg = format!("index out of bounds: the len is {} but the index is {}",
                       len as uint, index as uint);
-    msg.with_c_str(|buf| fail_(buf, file, line))
+    msg.with_c_str(|buf| fail_(buf as *u8, file, line))
 }
 
 #[lang="malloc"]
 #[inline]
-pub unsafe fn local_malloc(td: *c_char, size: uintptr_t) -> *c_char {
+pub unsafe fn local_malloc(td: *u8, size: uint) -> *u8 {
     ::rt::local_heap::local_malloc(td, size)
 }
 
@@ -38,6 +37,6 @@ pub unsafe fn local_malloc(td: *c_char, size: uintptr_t) -> *c_char {
 // problem occurs, call exit instead.
 #[lang="free"]
 #[inline]
-pub unsafe fn local_free(ptr: *c_char) {
+pub unsafe fn local_free(ptr: *u8) {
     ::rt::local_heap::local_free(ptr);
 }

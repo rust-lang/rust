@@ -12,8 +12,6 @@
 
 use cast;
 use iter::Iterator;
-use libc::{c_void, uintptr_t};
-use libc;
 use mem;
 use ops::Drop;
 use option::{Option, None, Some};
@@ -223,7 +221,7 @@ impl MemoryRegion {
 
         let total_size = size + AllocHeader::size();
         let alloc: *AllocHeader = unsafe {
-            global_heap::realloc_raw(orig_alloc as *mut libc::c_void,
+            global_heap::realloc_raw(orig_alloc as *mut u8,
                                      total_size) as *AllocHeader
         };
 
@@ -243,7 +241,7 @@ impl MemoryRegion {
             self.release(cast::transmute(alloc));
             rtassert!(self.live_allocations > 0);
             self.live_allocations -= 1;
-            global_heap::exchange_free(alloc as *libc::c_char)
+            global_heap::exchange_free(alloc as *u8)
         }
     }
 
@@ -294,12 +292,12 @@ impl Drop for MemoryRegion {
 }
 
 #[inline]
-pub unsafe fn local_malloc(td: *libc::c_char, size: libc::uintptr_t) -> *libc::c_char {
+pub unsafe fn local_malloc(td: *u8, size: uint) -> *u8 {
     // XXX: Unsafe borrow for speed. Lame.
     let task: Option<*mut Task> = Local::try_unsafe_borrow();
     match task {
         Some(task) => {
-            (*task).heap.alloc(td as *TyDesc, size as uint) as *libc::c_char
+            (*task).heap.alloc(td as *TyDesc, size) as *u8
         }
         None => rtabort!("local malloc outside of task")
     }
@@ -307,7 +305,7 @@ pub unsafe fn local_malloc(td: *libc::c_char, size: libc::uintptr_t) -> *libc::c
 
 // A little compatibility function
 #[inline]
-pub unsafe fn local_free(ptr: *libc::c_char) {
+pub unsafe fn local_free(ptr: *u8) {
     // XXX: Unsafe borrow for speed. Lame.
     let task_ptr: Option<*mut Task> = Local::try_unsafe_borrow();
     match task_ptr {

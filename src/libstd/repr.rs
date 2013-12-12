@@ -21,7 +21,6 @@ use char;
 use container::Container;
 use io;
 use iter::Iterator;
-use libc::c_void;
 use option::{Some, None};
 use ptr;
 use reflect;
@@ -98,13 +97,13 @@ enum VariantState {
 }
 
 pub struct ReprVisitor<'a> {
-    priv ptr: *c_void,
-    priv ptr_stk: ~[*c_void],
+    priv ptr: *u8,
+    priv ptr_stk: ~[*u8],
     priv var_stk: ~[VariantState],
     priv writer: &'a mut io::Writer
 }
 
-pub fn ReprVisitor<'a>(ptr: *c_void,
+pub fn ReprVisitor<'a>(ptr: *u8,
                        writer: &'a mut io::Writer) -> ReprVisitor<'a> {
     ReprVisitor {
         ptr: ptr,
@@ -116,7 +115,7 @@ pub fn ReprVisitor<'a>(ptr: *c_void,
 
 impl<'a> MovePtr for ReprVisitor<'a> {
     #[inline]
-    fn move_ptr(&mut self, adjustment: |*c_void| -> *c_void) {
+    fn move_ptr(&mut self, adjustment: |*u8| -> *u8) {
         self.ptr = adjustment(self.ptr);
     }
     fn push_ptr(&mut self) {
@@ -133,7 +132,7 @@ impl<'a> ReprVisitor<'a> {
     #[inline]
     pub fn get<T>(&mut self, f: |&mut ReprVisitor, &T|) -> bool {
         unsafe {
-            f(self, transmute::<*c_void,&T>(self.ptr));
+            f(self, transmute::<*u8,&T>(self.ptr));
         }
         true
     }
@@ -144,7 +143,7 @@ impl<'a> ReprVisitor<'a> {
     }
 
     #[inline]
-    pub fn visit_ptr_inner(&mut self, ptr: *c_void, inner: *TyDesc) -> bool {
+    pub fn visit_ptr_inner(&mut self, ptr: *u8, inner: *TyDesc) -> bool {
         unsafe {
             // This should call the constructor up above, but due to limiting
             // issues we have to recreate it here.
@@ -200,7 +199,7 @@ impl<'a> ReprVisitor<'a> {
             } else {
                 self.writer.write(", ".as_bytes());
             }
-            self.visit_ptr_inner(p as *c_void, inner);
+            self.visit_ptr_inner(p as *u8, inner);
             p = align(unsafe { ptr::offset(p, sz as int) as uint }, al) as *u8;
             left -= dec;
         }
@@ -298,20 +297,20 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
         self.writer.write(['@' as u8]);
         self.write_mut_qualifier(mtbl);
         self.get::<&raw::Box<()>>(|this, b| {
-            let p = ptr::to_unsafe_ptr(&b.data) as *c_void;
+            let p = ptr::to_unsafe_ptr(&b.data) as *u8;
             this.visit_ptr_inner(p, inner);
         })
     }
 
     fn visit_uniq(&mut self, _mtbl: uint, inner: *TyDesc) -> bool {
         self.writer.write(['~' as u8]);
-        self.get::<*c_void>(|this, b| {
+        self.get::<*u8>(|this, b| {
             this.visit_ptr_inner(*b, inner);
         })
     }
 
     fn visit_ptr(&mut self, mtbl: uint, _inner: *TyDesc) -> bool {
-        self.get::<*c_void>(|this, p| {
+        self.get::<*u8>(|this, p| {
             write!(this.writer, "({} as *", *p);
             this.write_mut_qualifier(mtbl);
             this.writer.write("())".as_bytes());
@@ -321,7 +320,7 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
     fn visit_rptr(&mut self, mtbl: uint, inner: *TyDesc) -> bool {
         self.writer.write(['&' as u8]);
         self.write_mut_qualifier(mtbl);
-        self.get::<*c_void>(|this, p| {
+        self.get::<*u8>(|this, p| {
             this.visit_ptr_inner(*p, inner);
         })
     }
@@ -584,7 +583,7 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
     fn visit_opaque_box(&mut self) -> bool {
         self.writer.write(['@' as u8]);
         self.get::<&raw::Box<()>>(|this, b| {
-            let p = ptr::to_unsafe_ptr(&b.data) as *c_void;
+            let p = ptr::to_unsafe_ptr(&b.data) as *u8;
             this.visit_ptr_inner(p, b.type_desc);
         })
     }
@@ -594,7 +593,7 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
 
 pub fn write_repr<T>(writer: &mut io::Writer, object: &T) {
     unsafe {
-        let ptr = ptr::to_unsafe_ptr(object) as *c_void;
+        let ptr = ptr::to_unsafe_ptr(object) as *u8;
         let tydesc = get_tydesc::<T>();
         let u = ReprVisitor(ptr, writer);
         let mut v = reflect::MovePtrAdaptor(u);
