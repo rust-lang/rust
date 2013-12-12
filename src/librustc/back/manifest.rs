@@ -19,7 +19,7 @@ use driver::session::Session;
 use std::path::Path;
 
 #[cfg(not(windows))]
-pub fn postprocess_executable(sess: Session, filename: &Path) {}
+pub fn postprocess_executable(_sess: Session, _filename: &Path) {}
 
 #[cfg(windows)]
 pub fn postprocess_executable(sess: Session, filename: &Path) {
@@ -76,7 +76,7 @@ mod windows {
         unsafe{ transmute(id) }
     }
 
-    pub fn embed_manifest(filename: &Path, 
+    pub fn embed_manifest(filename: &Path,
                           manifest: &str) -> Result<(),~str> {
         unsafe {
             let hUpdate = as_utf16_p(filename.as_str().unwrap(), |path| {
