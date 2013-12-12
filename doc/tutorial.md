@@ -543,27 +543,43 @@ that can never fail to match. This excludes `let` from matching
 literals and most `enum` variants.
 
 The pattern of a `match` arm can also be bound to a variable for use in the
-`match` arm's expression.
+`match` arm's expression. In Haskell, this is known as an [as-pattern].
+
 
 ~~~~
 match (1, 2) {
-    c@(a, b) => println!("{:?} {:?} {:?}", a, b, c)
+    c @ (a, b) => println!("{} {} {:?}", a, b, c)
 }
 ~~~~
 
 This will print `1 2 (1, 2)`. `c` is bound to the pattern `(a, b)`, and as
 `a` and `b` are respectively bound to `1` and `2`, `c` comes out to `(1, 2)`.
-The bound variable `c` is only usable in the expression following the arrow `=>`.
+The bound variable `c` is only usable in the corresponding arm.
 
 Pattern binding can also be used in conjuntion with guard clauses.
 
 ~~~~
 match (1, 2) {
-    c@(a, b) if a > 0 => println!("First arm {:?}", c),
-    c@(_, b) if b < 2 => println!("Second arm {:?}", c),
+    c @ (a, b) if a > 0 => println!("First arm {:?}", c),
+    c @ (_, b) if b < 2 => println!("Second arm {:?}", c),
     _ => {}
 }
 ~~~~
+
+Here is an example of a subpattern as-pattern:
+
+> ***Note:*** The following code makes use of Option\<T\> which is explained
+> in section 17 and the [Error-handling and Conditions][conditions] tutorial.
+
+~~~
+let x: Option<(u8, i16)> = Some((10u8, 5i16));
+match x {
+    Some(tuple @ (a, b)) => { println!("{:?}", tuple) },
+    None => { println!("Nothing to see here.") }
+}
+~~~
+
+This will print `(10u8, 5i16)`.
 
 ## Loops
 
@@ -3262,3 +3278,4 @@ more out of date than this document.
 
 [wiki]: https://github.com/mozilla/rust/wiki/Docs
 [wiki-packages]: https://github.com/mozilla/rust/wiki/Doc-packages,-editors,-and-other-tools
+[as-pattern]: https://en.wikibooks.org/wiki/Haskell/Pattern_matching#As-patterns
