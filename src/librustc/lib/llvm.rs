@@ -1747,6 +1747,7 @@ pub mod llvm {
         pub fn LLVMRustRunRestrictionPass(M: ModuleRef,
                                           syms: **c_char,
                                           len: size_t);
+        pub fn LLVMRustMarkAllFunctionsNounwind(M: ModuleRef);
     }
 }
 
