@@ -164,9 +164,6 @@ requests are implemented by descheduling the running task and
 performing an asynchronous request; the task is only resumed once the
 asynchronous request completes.
 
-For blocking (but possibly more efficient) implementations, look
-in the `io::native` module.
-
 # Error Handling
 
 I/O is an area where nearly every operation can result in unexpected
@@ -348,8 +345,6 @@ pub mod timer;
 
 /// Buffered I/O wrappers
 pub mod buffered;
-
-pub mod native;
 
 /// Signal handling
 pub mod signal;

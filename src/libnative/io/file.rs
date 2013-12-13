@@ -10,28 +10,21 @@
 
 //! Blocking posix-based file I/O
 
-#[allow(non_camel_case_types)];
+use std::c_str::CString;
+use std::io::IoError;
+use std::io;
+use std::libc::c_int;
+use std::libc;
+use std::os;
+use std::rt::rtio;
+use std::unstable::intrinsics;
+use std::vec;
 
-use c_str::CString;
-use io::IoError;
-use io;
-use libc::c_int;
-use libc;
-use ops::Drop;
-use option::{Some, None, Option};
-use os;
-use path::{Path, GenericPath};
-use ptr::RawPtr;
-use result::{Result, Ok, Err};
-use rt::rtio;
 use super::IoResult;
-use unstable::intrinsics;
-use vec::ImmutableVector;
-use vec;
 
-#[cfg(windows)] use os::win32::{as_utf16_p, fill_utf16_buf_and_decode};
-#[cfg(windows)] use ptr;
-#[cfg(windows)] use str;
+#[cfg(windows)] use std::os::win32::{as_utf16_p, fill_utf16_buf_and_decode};
+#[cfg(windows)] use std::ptr;
+#[cfg(windows)] use std::str;
 
 fn keep_going(data: &[u8], f: |*u8, uint| -> i64) -> i64 {
     #[cfg(windows)] static eintr: int = 0; // doesn't matter
@@ -490,8 +483,8 @@ pub fn readdir(p: &CString) -> IoResult<~[Path]> {
     unsafe {
         #[cfg(not(windows))]
         unsafe fn get_list(p: &CString) -> IoResult<~[Path]> {
-            use libc::{dirent_t};
-            use libc::{opendir, readdir, closedir};
+            use std::libc::{dirent_t};
+            use std::libc::{opendir, readdir, closedir};
             extern {
                 fn rust_list_dir_val(ptr: *dirent_t) -> *libc::c_char;
             }
@@ -517,14 +510,14 @@ pub fn readdir(p: &CString) -> IoResult<~[Path]> {
 
         #[cfg(windows)]
         unsafe fn get_list(p: &CString) -> IoResult<~[Path]> {
-            use libc::consts::os::extra::INVALID_HANDLE_VALUE;
-            use libc::{wcslen, free};
-            use libc::funcs::extra::kernel32::{
+            use std::libc::consts::os::extra::INVALID_HANDLE_VALUE;
+            use std::libc::{wcslen, free};
+            use std::libc::funcs::extra::kernel32::{
                 FindFirstFileW,
                 FindNextFileW,
                 FindClose,
             };
-            use libc::types::os::arch::extra::HANDLE;
+            use std::libc::types::os::arch::extra::HANDLE;
             use os::win32::{
                 as_utf16_p
             };
@@ -906,12 +899,12 @@ pub fn utime(p: &CString, atime: u64, mtime: u64) -> IoResult<()> {
 
 #[cfg(test)]
 mod tests {
-    use io::native::file::{CFile, FileDesc};
-    use io;
-    use libc;
-    use os;
-    use result::Ok;
-    use rt::rtio::RtioFileStream;
+    use std::io::native::file::{CFile, FileDesc};
+    use std::io::fs;
+    use std::io;
+    use std::libc;
+    use std::os;
+    use std::rt::rtio::RtioFileStream;
 
     #[ignore(cfg(target_os = "freebsd"))] // hmm, maybe pipes have a tiny buffer
     #[test]

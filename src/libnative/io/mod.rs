@@ -21,24 +21,21 @@
 //! play. The only dependencies of these modules are the normal system libraries
 //! that you would find on the respective platform.
 
-use c_str::CString;
-use comm::SharedChan;
-use libc::c_int;
-use libc;
-use option::{Option, None, Some};
-use os;
-use path::Path;
-use result::{Result, Ok, Err};
-use rt::rtio;
-use rt::rtio::{RtioTcpStream, RtioTcpListener, RtioUdpSocket, RtioUnixListener,
-               RtioPipe, RtioFileStream, RtioProcess, RtioSignal, RtioTTY,
-               CloseBehavior, RtioTimer};
-use io;
-use io::IoError;
-use io::net::ip::SocketAddr;
-use io::process::ProcessConfig;
-use io::signal::Signum;
-use ai = io::net::addrinfo;
+use std::c_str::CString;
+use std::comm::SharedChan;
+use std::libc::c_int;
+use std::libc;
+use std::os;
+use std::rt::rtio;
+use std::rt::rtio::{RtioTcpStream, RtioTcpListener, RtioUdpSocket,
+                    RtioUnixListener, RtioPipe, RtioFileStream, RtioProcess,
+                    RtioSignal, RtioTTY, CloseBehavior, RtioTimer};
+use std::io;
+use std::io::IoError;
+use std::io::net::ip::SocketAddr;
+use std::io::process::ProcessConfig;
+use std::io::signal::Signum;
+use ai = std::io::net::addrinfo;
 
 // Local re-exports
 pub use self::file::FileDesc;
@@ -114,6 +111,9 @@ fn mkerr_winbool(ret: libc::c_int) -> IoResult<()> {
 pub struct IoFactory;
 
 impl rtio::IoFactory for IoFactory {
+    // all native io factories are the same
+    fn id(&self) -> uint { 0 }
+
     // networking
     fn tcp_connect(&mut self, _addr: SocketAddr) -> IoResult<~RtioTcpStream> {
         Err(unimpl())
@@ -223,6 +223,3 @@ impl rtio::IoFactory for IoFactory {
         Err(unimpl())
     }
 }
-
-pub static mut NATIVE_IO_FACTORY: IoFactory = IoFactory;
-
