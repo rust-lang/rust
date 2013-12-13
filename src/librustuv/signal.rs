@@ -10,34 +10,33 @@
 
 use std::libc::c_int;
 use std::io::signal::Signum;
-use std::rt::sched::{SchedHandle, Scheduler};
 use std::comm::SharedChan;
-use std::rt::local::Local;
 use std::rt::rtio::RtioSignal;
 
-use super::{Loop, UvError, UvHandle};
+use homing::{HomingIO, HomeHandle};
+use super::{UvError, UvHandle};
 use uvll;
-use uvio::HomingIO;
+use uvio::UvIoFactory;
 
 pub struct SignalWatcher {
     handle: *uvll::uv_signal_t,
-    home: SchedHandle,
+    home: HomeHandle,
 
     channel: SharedChan<Signum>,
     signal: Signum,
 }
 
 impl SignalWatcher {
-    pub fn new(loop_: &mut Loop, signum: Signum,
+    pub fn new(io: &mut UvIoFactory, signum: Signum,
                channel: SharedChan<Signum>) -> Result<~SignalWatcher, UvError> {
         let s = ~SignalWatcher {
             handle: UvHandle::alloc(None::<SignalWatcher>, uvll::UV_SIGNAL),
-            home: get_handle_to_current_scheduler!(),
+            home: io.make_handle(),
             channel: channel,
             signal: signum,
         };
         assert_eq!(unsafe {
-            uvll::uv_signal_init(loop_.handle, s.handle)
+            uvll::uv_signal_init(io.uv_loop(), s.handle)
         }, 0);
 
         match unsafe {
@@ -57,7 +56,7 @@ extern fn signal_cb(handle: *uvll::uv_signal_t, signum: c_int) {
 }
 
 impl HomingIO for SignalWatcher {
-    fn home<'r>(&'r mut self) -> &'r mut SchedHandle { &mut self.home }
+    fn home<'r>(&'r mut self) -> &'r mut HomeHandle { &mut self.home }
 }
 
 impl UvHandle<uvll::uv_signal_t> for SignalWatcher {
@@ -75,7 +74,6 @@ impl Drop for SignalWatcher {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use super::super::local_loop;
     use std::io::signal;
 

@@ -9,24 +9,22 @@
 // except according to those terms.
 
 use std::cast;
-use std::libc;
-use std::libc::{size_t, ssize_t, c_int, c_void, c_uint, c_char};
-use std::ptr;
-use std::rt::BlockedTask;
 use std::io::IoError;
 use std::io::net::ip::{Ipv4Addr, Ipv6Addr, SocketAddr, IpAddr};
-use std::rt::local::Local;
+use std::libc::{size_t, ssize_t, c_int, c_void, c_uint, c_char};
+use std::libc;
+use std::ptr;
 use std::rt::rtio;
-use std::rt::sched::{Scheduler, SchedHandle};
-use std::rt::tube::Tube;
+use std::rt::task::BlockedTask;
 use std::str;
 use std::vec;
 
+use homing::{HomingIO, HomeHandle};
 use stream::StreamWatcher;
 use super::{Loop, Request, UvError, Buf, status_to_io_result,
             uv_error_to_io_error, UvHandle, slice_to_uv_buf,
-            wait_until_woken_after};
-use uvio::HomingIO;
+            wait_until_woken_after, wakeup};
+use uvio::UvIoFactory;
 use uvll;
 use uvll::sockaddr;
 
@@ -145,42 +143,47 @@ fn socket_name(sk: SocketNameKind, handle: *c_void) -> Result<SocketAddr, IoErro
 pub struct TcpWatcher {
     handle: *uvll::uv_tcp_t,
     stream: StreamWatcher,
-    home: SchedHandle,
+    home: HomeHandle,
 }
 
 pub struct TcpListener {
-    home: SchedHandle,
+    home: HomeHandle,
     handle: *uvll::uv_pipe_t,
     priv closing_task: Option<BlockedTask>,
-    priv outgoing: Tube<Result<~rtio::RtioTcpStream, IoError>>,
+    priv outgoing: Chan<Result<~rtio::RtioTcpStream, IoError>>,
+    priv incoming: Port<Result<~rtio::RtioTcpStream, IoError>>,
 }
 
 pub struct TcpAcceptor {
     listener: ~TcpListener,
-    priv incoming: Tube<Result<~rtio::RtioTcpStream, IoError>>,
 }
 
 // TCP watchers (clients/streams)
 
 impl TcpWatcher {
-    pub fn new(loop_: &Loop) -> TcpWatcher {
+    pub fn new(io: &mut UvIoFactory) -> TcpWatcher {
+        let handle = io.make_handle();
+        TcpWatcher::new_home(&io.loop_, handle)
+    }
+
+    fn new_home(loop_: &Loop, home: HomeHandle) -> TcpWatcher {
         let handle = unsafe { uvll::malloc_handle(uvll::UV_TCP) };
         assert_eq!(unsafe {
             uvll::uv_tcp_init(loop_.handle, handle)
         }, 0);
         TcpWatcher {
-            home: get_handle_to_current_scheduler!(),
+            home: home,
             handle: handle,
             stream: StreamWatcher::new(handle),
         }
     }
 
-    pub fn connect(loop_: &mut Loop, address: SocketAddr)
+    pub fn connect(io: &mut UvIoFactory, address: SocketAddr)
         -> Result<TcpWatcher, UvError>
     {
         struct Ctx { status: c_int, task: Option<BlockedTask> }
 
-        let tcp = TcpWatcher::new(loop_);
+        let tcp = TcpWatcher::new(io);
         let ret = socket_addr_as_sockaddr(address, |addr| {
             let mut req = Request::new(uvll::UV_CONNECT);
             let result = unsafe {
@@ -213,14 +216,13 @@ impl TcpWatcher {
             assert!(status != uvll::ECANCELED);
             let cx: &mut Ctx = unsafe { req.get_data() };
             cx.status = status;
-            let scheduler: ~Scheduler = Local::take();
-            scheduler.resume_blocked_task_immediately(cx.task.take_unwrap());
+            wakeup(&mut cx.task);
         }
     }
 }
 
 impl HomingIO for TcpWatcher {
-    fn home<'r>(&'r mut self) -> &'r mut SchedHandle { &mut self.home }
+    fn home<'r>(&'r mut self) -> &'r mut HomeHandle { &mut self.home }
 }
 
 impl rtio::RtioSocket for TcpWatcher {
@@ -290,17 +292,19 @@ impl Drop for TcpWatcher {
 // TCP listeners (unbound servers)
 
 impl TcpListener {
-    pub fn bind(loop_: &mut Loop, address: SocketAddr)
+    pub fn bind(io: &mut UvIoFactory, address: SocketAddr)
                 -> Result<~TcpListener, UvError> {
         let handle = unsafe { uvll::malloc_handle(uvll::UV_TCP) };
         assert_eq!(unsafe {
-            uvll::uv_tcp_init(loop_.handle, handle)
+            uvll::uv_tcp_init(io.uv_loop(), handle)
         }, 0);
+        let (port, chan) = Chan::new();
         let l = ~TcpListener {
-            home: get_handle_to_current_scheduler!(),
+            home: io.make_handle(),
             handle: handle,
             closing_task: None,
-            outgoing: Tube::new(),
+            outgoing: chan,
+            incoming: port,
         };
         let res = socket_addr_as_sockaddr(address, |addr| unsafe {
             uvll::uv_tcp_bind(l.handle, addr)
@@ -313,7 +317,7 @@ impl TcpListener {
 }
 
 impl HomingIO for TcpListener {
-    fn home<'r>(&'r mut self) -> &'r mut SchedHandle { &mut self.home }
+    fn home<'r>(&'r mut self) -> &'r mut HomeHandle { &mut self.home }
 }
 
 impl UvHandle<uvll::uv_tcp_t> for TcpListener {
@@ -330,11 +334,7 @@ impl rtio::RtioSocket for TcpListener {
 impl rtio::RtioTcpListener for TcpListener {
     fn listen(mut ~self) -> Result<~rtio::RtioTcpAcceptor, IoError> {
         // create the acceptor object from ourselves
-        let incoming = self.outgoing.clone();
-        let mut acceptor = ~TcpAcceptor {
-            listener: self,
-            incoming: incoming,
-        };
+        let mut acceptor = ~TcpAcceptor { listener: self };
 
         let _m = acceptor.fire_homing_missile();
         // XXX: the 128 backlog should be configurable
@@ -347,19 +347,18 @@ impl rtio::RtioTcpListener for TcpListener {
 
 extern fn listen_cb(server: *uvll::uv_stream_t, status: c_int) {
     assert!(status != uvll::ECANCELED);
+    let tcp: &mut TcpListener = unsafe { UvHandle::from_uv_handle(&server) };
     let msg = match status {
         0 => {
             let loop_ = Loop::wrap(unsafe {
                 uvll::get_loop_for_uv_handle(server)
             });
-            let client = TcpWatcher::new(&loop_);
+            let client = TcpWatcher::new_home(&loop_, tcp.home().clone());
             assert_eq!(unsafe { uvll::uv_accept(server, client.handle) }, 0);
             Ok(~client as ~rtio::RtioTcpStream)
         }
         n => Err(uv_error_to_io_error(UvError(n)))
     };
-
-    let tcp: &mut TcpListener = unsafe { UvHandle::from_uv_handle(&server) };
     tcp.outgoing.send(msg);
 }
 
@@ -373,7 +372,7 @@ impl Drop for TcpListener {
 // TCP acceptors (bound servers)
 
 impl HomingIO for TcpAcceptor {
-    fn home<'r>(&'r mut self) -> &'r mut SchedHandle { self.listener.home() }
+    fn home<'r>(&'r mut self) -> &'r mut HomeHandle { self.listener.home() }
 }
 
 impl rtio::RtioSocket for TcpAcceptor {
@@ -385,8 +384,7 @@ impl rtio::RtioSocket for TcpAcceptor {
 
 impl rtio::RtioTcpAcceptor for TcpAcceptor {
     fn accept(&mut self) -> Result<~rtio::RtioTcpStream, IoError> {
-        let _m = self.fire_homing_missile();
-        self.incoming.recv()
+        self.listener.incoming.recv()
     }
 
     fn accept_simultaneously(&mut self) -> Result<(), IoError> {
@@ -410,18 +408,18 @@ impl rtio::RtioTcpAcceptor for TcpAcceptor {
 
 pub struct UdpWatcher {
     handle: *uvll::uv_udp_t,
-    home: SchedHandle,
+    home: HomeHandle,
 }
 
 impl UdpWatcher {
-    pub fn bind(loop_: &Loop, address: SocketAddr)
+    pub fn bind(io: &mut UvIoFactory, address: SocketAddr)
                 -> Result<UdpWatcher, UvError> {
         let udp = UdpWatcher {
             handle: unsafe { uvll::malloc_handle(uvll::UV_UDP) },
-            home: get_handle_to_current_scheduler!(),
+            home: io.make_handle(),
         };
         assert_eq!(unsafe {
-            uvll::uv_udp_init(loop_.handle, udp.handle)
+            uvll::uv_udp_init(io.uv_loop(), udp.handle)
         }, 0);
         let result = socket_addr_as_sockaddr(address, |addr| unsafe {
             uvll::uv_udp_bind(udp.handle, addr, 0u32)
@@ -438,7 +436,7 @@ impl UvHandle<uvll::uv_udp_t> for UdpWatcher {
 }
 
 impl HomingIO for UdpWatcher {
-    fn home<'r>(&'r mut self) -> &'r mut SchedHandle { &mut self.home }
+    fn home<'r>(&'r mut self) -> &'r mut HomeHandle { &mut self.home }
 }
 
 impl rtio::RtioSocket for UdpWatcher {
@@ -519,9 +517,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
                 Some(sockaddr_to_socket_addr(addr))
             };
             cx.result = Some((nread, addr));
-
-            let sched: ~Scheduler = Local::take();
-            sched.resume_blocked_task_immediately(cx.task.take_unwrap());
+            wakeup(&mut cx.task);
         }
     }
 
@@ -556,9 +552,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
             assert!(status != uvll::ECANCELED);
             let cx: &mut Ctx = unsafe { req.get_data() };
             cx.result = status;
-
-            let sched: ~Scheduler = Local::take();
-            sched.resume_blocked_task_immediately(cx.task.take_unwrap());
+            wakeup(&mut cx.task);
         }
     }
 
@@ -646,12 +640,10 @@ impl Drop for UdpWatcher {
 
 #[cfg(test)]
 mod test {
-    use std::rt::test::*;
     use std::rt::rtio::{RtioTcpStream, RtioTcpListener, RtioTcpAcceptor,
                         RtioUdpSocket};
     use std::task;
 
-    use super::*;
     use super::super::local_loop;
 
     #[test]
@@ -824,7 +816,6 @@ mod test {
 
     #[test]
     fn test_read_read_read() {
-        use std::rt::rtio::*;
         let addr = next_test_ip4();
         static MAX: uint = 5000;
         let (port, chan) = Chan::new();

@@ -14,15 +14,15 @@ use std::cast::transmute;
 use std::cast;
 use std::libc::{c_int, c_char, c_void, size_t};
 use std::libc;
-use std::rt::BlockedTask;
+use std::rt::task::BlockedTask;
 use std::io::{FileStat, IoError};
 use std::io;
-use std::rt::local::Local;
 use std::rt::rtio;
-use std::rt::sched::{Scheduler, SchedHandle};
+use std::vec;
 
-use super::{Loop, UvError, uv_error_to_io_error, wait_until_woken_after};
-use uvio::HomingIO;
+use homing::{HomingIO, HomeHandle};
+use super::{Loop, UvError, uv_error_to_io_error, wait_until_woken_after, wakeup};
+use uvio::UvIoFactory;
 use uvll;
 
 pub struct FsRequest {
@@ -34,19 +34,19 @@ pub struct FileWatcher {
     priv loop_: Loop,
     priv fd: c_int,
     priv close: rtio::CloseBehavior,
-    priv home: SchedHandle,
+    priv home: HomeHandle,
 }
 
 impl FsRequest {
-    pub fn open(loop_: &Loop, path: &CString, flags: int, mode: int)
+    pub fn open(io: &mut UvIoFactory, path: &CString, flags: int, mode: int)
         -> Result<FileWatcher, UvError>
     {
         execute(|req, cb| unsafe {
-            uvll::uv_fs_open(loop_.handle,
+            uvll::uv_fs_open(io.uv_loop(),
                              req, path.with_ref(|p| p), flags as c_int,
                              mode as c_int, cb)
         }).map(|req|
-            FileWatcher::new(*loop_, req.get_result() as c_int,
+            FileWatcher::new(io, req.get_result() as c_int,
                              rtio::CloseSynchronously)
         )
     }
@@ -320,8 +320,7 @@ fn execute(f: |*uvll::uv_fs_t, uvll::uv_fs_cb| -> c_int)
         let slot: &mut Option<BlockedTask> = unsafe {
             cast::transmute(uvll::get_data_for_req(req))
         };
-        let sched: ~Scheduler = Local::take();
-        sched.resume_blocked_task_immediately(slot.take_unwrap());
+        wakeup(slot);
     }
 }
 
@@ -331,16 +330,17 @@ fn execute_nop(f: |*uvll::uv_fs_t, uvll::uv_fs_cb| -> c_int)
 }
 
 impl HomingIO for FileWatcher {
-    fn home<'r>(&'r mut self) -> &'r mut SchedHandle { &mut self.home }
+    fn home<'r>(&'r mut self) -> &'r mut HomeHandle { &mut self.home }
 }
 
 impl FileWatcher {
-    pub fn new(loop_: Loop, fd: c_int, close: rtio::CloseBehavior) -> FileWatcher {
+    pub fn new(io: &mut UvIoFactory, fd: c_int,
+               close: rtio::CloseBehavior) -> FileWatcher {
         FileWatcher {
-            loop_: loop_,
+            loop_: Loop::wrap(io.uv_loop()),
             fd: fd,
             close: close,
-            home: get_handle_to_current_scheduler!()
+            home: io.make_handle(),
         }
     }
 
@@ -448,7 +448,6 @@ mod test {
     use std::io;
     use std::str;
     use std::vec;
-    use super::*;
     use l = super::super::local_loop;
 
     #[test]
