@@ -39,9 +39,7 @@ loop {
 */
 
 use comm::Port;
-use option::{Option, Some, None};
-use result::{Ok, Err};
-use io::io_error;
+use option::Option;
 use rt::rtio::{IoFactory, LocalIo, RtioTimer};
 
 pub struct Timer {
@@ -60,15 +58,7 @@ impl Timer {
     /// for a number of milliseconds, or to possibly create channels which will
     /// get notified after an amount of time has passed.
     pub fn new() -> Option<Timer> {
-        let mut io = LocalIo::borrow();
-        match io.get().timer_init() {
-            Ok(t) => Some(Timer { obj: t }),
-            Err(ioerr) => {
-                debug!("Timer::init: failed to init: {:?}", ioerr);
-                io_error::cond.raise(ioerr);
-                None
-            }
-        }
+        LocalIo::maybe_raise(|io| io.timer_init().map(|t| Timer { obj: t }))
     }
 
     /// Blocks the current task for `msecs` milliseconds.

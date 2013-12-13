@@ -21,14 +21,9 @@ pub struct UdpSocket {
 
 impl UdpSocket {
     pub fn bind(addr: SocketAddr) -> Option<UdpSocket> {
-        let mut io = LocalIo::borrow();
-        match io.get().udp_bind(addr) {
-            Ok(s) => Some(UdpSocket { obj: s }),
-            Err(ioerr) => {
-                io_error::cond.raise(ioerr);
-                None
-            }
-        }
+        LocalIo::maybe_raise(|io| {
+            io.udp_bind(addr).map(|s| UdpSocket { obj: s })
+        })
     }
 
     pub fn recvfrom(&mut self, buf: &mut [u8]) -> Option<(uint, SocketAddr)> {

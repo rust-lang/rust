@@ -26,17 +26,9 @@ impl TcpStream {
     }
 
     pub fn connect(addr: SocketAddr) -> Option<TcpStream> {
-        let result = {
-            let mut io = LocalIo::borrow();
-            io.get().tcp_connect(addr)
-        };
-        match result {
-            Ok(s) => Some(TcpStream::new(s)),
-            Err(ioerr) => {
-                io_error::cond.raise(ioerr);
-                None
-            }
-        }
+        LocalIo::maybe_raise(|io| {
+            io.tcp_connect(addr).map(TcpStream::new)
+        })
     }
 
     pub fn peer_name(&mut self) -> Option<SocketAddr> {
@@ -94,14 +86,9 @@ pub struct TcpListener {
 
 impl TcpListener {
     pub fn bind(addr: SocketAddr) -> Option<TcpListener> {
-        let mut io = LocalIo::borrow();
-        match io.get().tcp_bind(addr) {
-            Ok(l) => Some(TcpListener { obj: l }),
-            Err(ioerr) => {
-                io_error::cond.raise(ioerr);
-                None
-            }
-        }
+        LocalIo::maybe_raise(|io| {
+            io.tcp_bind(addr).map(|l| TcpListener { obj: l })
+        })
     }
 
     pub fn socket_name(&mut self) -> Option<SocketAddr> {

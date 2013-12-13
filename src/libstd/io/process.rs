@@ -119,19 +119,17 @@ impl Process {
     /// Creates a new pipe initialized, but not bound to any particular
     /// source/destination
     pub fn new(config: ProcessConfig) -> Option<Process> {
-        let mut io = LocalIo::borrow();
-        match io.get().spawn(config) {
-            Ok((p, io)) => Some(Process{
-                handle: p,
-                io: io.move_iter().map(|p|
-                    p.map(|p| io::PipeStream::new(p))
-                ).collect()
-            }),
-            Err(ioerr) => {
-                io_error::cond.raise(ioerr);
-                None
-            }
-        }
+        let mut config = Some(config);
+        LocalIo::maybe_raise(|io| {
+            io.spawn(config.take_unwrap()).map(|(p, io)| {
+                Process {
+                    handle: p,
+                    io: io.move_iter().map(|p| {
+                        p.map(|p| io::PipeStream::new(p))
+                    }).collect()
+                }
+            })
+        })
     }
 
     /// Returns the process id of this child process
