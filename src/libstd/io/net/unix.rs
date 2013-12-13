@@ -59,14 +59,9 @@ impl UnixStream {
     ///     stream.write([1, 2, 3]);
     ///
     pub fn connect<P: ToCStr>(path: &P) -> Option<UnixStream> {
-        let mut io = LocalIo::borrow();
-        match io.get().unix_connect(&path.to_c_str()) {
-            Ok(s) => Some(UnixStream::new(s)),
-            Err(ioerr) => {
-                io_error::cond.raise(ioerr);
-                None
-            }
-        }
+        LocalIo::maybe_raise(|io| {
+            io.unix_connect(&path.to_c_str()).map(UnixStream::new)
+        })
     }
 }
 
@@ -107,14 +102,9 @@ impl UnixListener {
     ///     }
     ///
     pub fn bind<P: ToCStr>(path: &P) -> Option<UnixListener> {
-        let mut io = LocalIo::borrow();
-        match io.get().unix_bind(&path.to_c_str()) {
-            Ok(s) => Some(UnixListener{ obj: s }),
-            Err(ioerr) => {
-                io_error::cond.raise(ioerr);
-                None
-            }
-        }
+        LocalIo::maybe_raise(|io| {
+            io.unix_bind(&path.to_c_str()).map(|s| UnixListener { obj: s })
+        })
     }
 }
 
