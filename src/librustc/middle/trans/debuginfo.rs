@@ -2128,7 +2128,8 @@ fn set_debug_location(cx: &mut CrateContext, debug_location: DebugLocation) {
     let metadata_node;
 
     match debug_location {
-        KnownLocation { scope, line, col } => {
+        KnownLocation { scope, line, .. } => {
+            let col = 0; // Always set the column to zero like Clang and GCC
             debug!("setting debug location to {} {}", line, col);
             let elements = [C_i32(line as i32), C_i32(col as i32), scope, ptr::null()];
             unsafe {
