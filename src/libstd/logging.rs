@@ -118,26 +118,16 @@ pub static ERROR: u32 = 1;
 /// It is not recommended to call this function directly, rather it should be
 /// invoked through the logging family of macros.
 pub fn log(_level: u32, args: &fmt::Arguments) {
-    unsafe {
-        let optional_task: Option<*mut Task> = Local::try_unsafe_borrow();
-        match optional_task {
-            Some(local) => {
-                // Lazily initialize the local task's logger
-                match (*local).logger {
-                    // Use the available logger if we have one
-                    Some(ref mut logger) => { logger.log(args); }
-                    None => {
-                        let mut logger = StdErrLogger::new();
-                        logger.log(args);
-                        (*local).logger = Some(logger);
-                    }
-                }
-            }
-            // If there's no local task, then always log to stderr
-            None => {
-                let mut logger = StdErrLogger::new();
-                logger.log(args);
-            }
-        }
+    let mut logger = {
+        let mut task = Local::borrow(None::<Task>);
+        task.get().logger.take()
+    };
+
+    if logger.is_none() {
+        logger = Some(StdErrLogger::new());
     }
+    logger.get_mut_ref().log(args);
+
+    let mut task = Local::borrow(None::<Task>);
+    task.get().logger = logger;
 }
