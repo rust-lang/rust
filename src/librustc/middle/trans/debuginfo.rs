@@ -651,7 +651,8 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
         (function_name.clone(), file_metadata)
     };
 
-    let scope_line = get_scope_line(cx, top_level_block, loc.line);
+    // Clang sets this parameter to the opening brace of the function's block, so let's do this too.
+    let scope_line = span_start(cx, top_level_block.span).line;
 
     let fn_metadata = function_name.with_c_str(|function_name| {
                           linkage_name.with_c_str(|linkage_name| {
@@ -839,21 +840,6 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
         name_to_append_suffix_to.push_char('>');
 
         return create_DIArray(DIB(cx), template_params);
-    }
-
-    fn get_scope_line(cx: &CrateContext,
-                      top_level_block: &ast::Block,
-                      default: uint)
-                   -> uint {
-        match *top_level_block {
-            ast::Block { stmts: ref statements, .. } if statements.len() > 0 => {
-                span_start(cx, statements[0].span).line
-            }
-            ast::Block { expr: Some(@ref expr), .. } => {
-                span_start(cx, expr.span).line
-            }
-            _ => default
-        }
     }
 }
 
