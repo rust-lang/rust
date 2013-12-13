@@ -714,7 +714,7 @@ mod test {
         }
     }
 
-    fn tmpdir() -> TempDir {
+    pub fn tmpdir() -> TempDir {
         use os;
         use rand;
         let ret = os::tmpdir().join(format!("rust-{}", rand::random::<u32>()));
@@ -722,32 +722,7 @@ mod test {
         TempDir(ret)
     }
 
-    macro_rules! test (
-        { fn $name:ident() $b:block } => (
-            mod $name {
-                use prelude::*;
-                use io::{SeekSet, SeekCur, SeekEnd, io_error, Read, Open,
-                         ReadWrite};
-                use io;
-                use str;
-                use io::fs::{File, rmdir, mkdir, readdir, rmdir_recursive,
-                             mkdir_recursive, copy, unlink, stat, symlink, link,
-                             readlink, chmod, lstat, change_file_times};
-                use io::fs::test::tmpdir;
-                use util;
-
-                fn f() $b
-
-                #[test] fn uv() { f() }
-                #[test] fn native() {
-                    use rt::test::run_in_newsched_task;
-                    run_in_newsched_task(f);
-                }
-            }
-        )
-    )
-
-    test!(fn file_test_io_smoke_test() {
+    iotest!(fn file_test_io_smoke_test() {
         let message = "it's alright. have a good time";
         let tmpdir = tmpdir();
         let filename = &tmpdir.join("file_rt_io_file_test.txt");
@@ -767,7 +742,7 @@ mod test {
         unlink(filename);
     })
 
-    test!(fn invalid_path_raises() {
+    iotest!(fn invalid_path_raises() {
         let tmpdir = tmpdir();
         let filename = &tmpdir.join("file_that_does_not_exist.txt");
         let mut called = false;
@@ -780,7 +755,7 @@ mod test {
         assert!(called);
     })
 
-    test!(fn file_test_iounlinking_invalid_path_should_raise_condition() {
+    iotest!(fn file_test_iounlinking_invalid_path_should_raise_condition() {
         let tmpdir = tmpdir();
         let filename = &tmpdir.join("file_another_file_that_does_not_exist.txt");
         let mut called = false;
@@ -790,7 +765,7 @@ mod test {
         assert!(called);
     })
 
-    test!(fn file_test_io_non_positional_read() {
+    iotest!(fn file_test_io_non_positional_read() {
         let message: &str = "ten-four";
         let mut read_mem = [0, .. 8];
         let tmpdir = tmpdir();
@@ -815,7 +790,7 @@ mod test {
         assert_eq!(read_str, message);
     })
 
-    test!(fn file_test_io_seek_and_tell_smoke_test() {
+    iotest!(fn file_test_io_seek_and_tell_smoke_test() {
         let message = "ten-four";
         let mut read_mem = [0, .. 4];
         let set_cursor = 4 as u64;
@@ -841,7 +816,7 @@ mod test {
         assert_eq!(tell_pos_post_read, message.len() as u64);
     })
 
-    test!(fn file_test_io_seek_and_write() {
+    iotest!(fn file_test_io_seek_and_write() {
         let initial_msg =   "food-is-yummy";
         let overwrite_msg =    "-the-bar!!";
         let final_msg =     "foo-the-bar!!";
@@ -864,7 +839,7 @@ mod test {
         assert!(read_str == final_msg.to_owned());
     })
 
-    test!(fn file_test_io_seek_shakedown() {
+    iotest!(fn file_test_io_seek_shakedown() {
         use std::str;          // 01234567890123
         let initial_msg =   "qwer-asdf-zxcv";
         let chunk_one: &str = "qwer";
@@ -895,7 +870,7 @@ mod test {
         unlink(filename);
     })
 
-    test!(fn file_test_stat_is_correct_on_is_file() {
+    iotest!(fn file_test_stat_is_correct_on_is_file() {
         let tmpdir = tmpdir();
         let filename = &tmpdir.join("file_stat_correct_on_is_file.txt");
         {
@@ -908,7 +883,7 @@ mod test {
         unlink(filename);
     })
 
-    test!(fn file_test_stat_is_correct_on_is_dir() {
+    iotest!(fn file_test_stat_is_correct_on_is_dir() {
         let tmpdir = tmpdir();
         let filename = &tmpdir.join("file_stat_correct_on_is_dir");
         mkdir(filename, io::UserRWX);
@@ -917,7 +892,7 @@ mod test {
         rmdir(filename);
     })
 
-    test!(fn file_test_fileinfo_false_when_checking_is_file_on_a_directory() {
+    iotest!(fn file_test_fileinfo_false_when_checking_is_file_on_a_directory() {
         let tmpdir = tmpdir();
         let dir = &tmpdir.join("fileinfo_false_on_dir");
         mkdir(dir, io::UserRWX);
@@ -925,7 +900,7 @@ mod test {
         rmdir(dir);
     })
 
-    test!(fn file_test_fileinfo_check_exists_before_and_after_file_creation() {
+    iotest!(fn file_test_fileinfo_check_exists_before_and_after_file_creation() {
         let tmpdir = tmpdir();
         let file = &tmpdir.join("fileinfo_check_exists_b_and_a.txt");
         File::create(file).write(bytes!("foo"));
@@ -934,7 +909,7 @@ mod test {
         assert!(!file.exists());
     })
 
-    test!(fn file_test_directoryinfo_check_exists_before_and_after_mkdir() {
+    iotest!(fn file_test_directoryinfo_check_exists_before_and_after_mkdir() {
         let tmpdir = tmpdir();
         let dir = &tmpdir.join("before_and_after_dir");
         assert!(!dir.exists());
@@ -945,7 +920,7 @@ mod test {
         assert!(!dir.exists());
     })
 
-    test!(fn file_test_directoryinfo_readdir() {
+    iotest!(fn file_test_directoryinfo_readdir() {
         use std::str;
         let tmpdir = tmpdir();
         let dir = &tmpdir.join("di_readdir");
@@ -976,11 +951,11 @@ mod test {
         rmdir(dir);
     })
 
-    test!(fn recursive_mkdir_slash() {
+    iotest!(fn recursive_mkdir_slash() {
         mkdir_recursive(&Path::new("/"), io::UserRWX);
     })
 
-    test!(fn unicode_path_is_dir() {
+    iotest!(fn unicode_path_is_dir() {
         assert!(Path::new(".").is_dir());
         assert!(!Path::new("test/stdtest/fs.rs").is_dir());
 
@@ -998,7 +973,7 @@ mod test {
         assert!(filepath.exists());
     })
 
-    test!(fn unicode_path_exists() {
+    iotest!(fn unicode_path_exists() {
         assert!(Path::new(".").exists());
         assert!(!Path::new("test/nonexistent-bogus-path").exists());
 
@@ -1010,7 +985,7 @@ mod test {
         assert!(!Path::new("test/unicode-bogus-path-각丁ー再见").exists());
     })
 
-    test!(fn copy_file_does_not_exist() {
+    iotest!(fn copy_file_does_not_exist() {
         let from = Path::new("test/nonexistent-bogus-path");
         let to = Path::new("test/other-bogus-path");
         match io::result(|| copy(&from, &to)) {
@@ -1022,7 +997,7 @@ mod test {
         }
     })
 
-    test!(fn copy_file_ok() {
+    iotest!(fn copy_file_ok() {
         let tmpdir = tmpdir();
         let input = tmpdir.join("in.txt");
         let out = tmpdir.join("out.txt");
@@ -1035,7 +1010,7 @@ mod test {
         assert_eq!(input.stat().perm, out.stat().perm);
     })
 
-    test!(fn copy_file_dst_dir() {
+    iotest!(fn copy_file_dst_dir() {
         let tmpdir = tmpdir();
         let out = tmpdir.join("out");
 
@@ -1045,7 +1020,7 @@ mod test {
         }
     })
 
-    test!(fn copy_file_dst_exists() {
+    iotest!(fn copy_file_dst_exists() {
         let tmpdir = tmpdir();
         let input = tmpdir.join("in");
         let output = tmpdir.join("out");
@@ -1058,7 +1033,7 @@ mod test {
                    (bytes!("foo")).to_owned());
     })
 
-    test!(fn copy_file_src_dir() {
+    iotest!(fn copy_file_src_dir() {
         let tmpdir = tmpdir();
         let out = tmpdir.join("out");
 
@@ -1068,7 +1043,7 @@ mod test {
         assert!(!out.exists());
     })
 
-    test!(fn copy_file_preserves_perm_bits() {
+    iotest!(fn copy_file_preserves_perm_bits() {
         let tmpdir = tmpdir();
         let input = tmpdir.join("in.txt");
         let out = tmpdir.join("out.txt");
@@ -1083,7 +1058,7 @@ mod test {
     })
 
     #[cfg(not(windows))] // FIXME(#10264) operation not permitted?
-    test!(fn symlinks_work() {
+    iotest!(fn symlinks_work() {
         let tmpdir = tmpdir();
         let input = tmpdir.join("in.txt");
         let out = tmpdir.join("out.txt");
@@ -1098,14 +1073,14 @@ mod test {
     })
 
     #[cfg(not(windows))] // apparently windows doesn't like symlinks
-    test!(fn symlink_noexist() {
+    iotest!(fn symlink_noexist() {
         let tmpdir = tmpdir();
         // symlinks can point to things that don't exist
         symlink(&tmpdir.join("foo"), &tmpdir.join("bar"));
         assert!(readlink(&tmpdir.join("bar")).unwrap() == tmpdir.join("foo"));
     })
 
-    test!(fn readlink_not_symlink() {
+    iotest!(fn readlink_not_symlink() {
         let tmpdir = tmpdir();
         match io::result(|| readlink(&*tmpdir)) {
             Ok(..) => fail!("wanted a failure"),
@@ -1113,7 +1088,7 @@ mod test {
         }
     })
 
-    test!(fn links_work() {
+    iotest!(fn links_work() {
         let tmpdir = tmpdir();
         let input = tmpdir.join("in.txt");
         let out = tmpdir.join("out.txt");
@@ -1139,7 +1114,7 @@ mod test {
         }
     })
 
-    test!(fn chmod_works() {
+    iotest!(fn chmod_works() {
         let tmpdir = tmpdir();
         let file = tmpdir.join("in.txt");
 
@@ -1156,7 +1131,7 @@ mod test {
         chmod(&file, io::UserFile);
     })
 
-    test!(fn sync_doesnt_kill_anything() {
+    iotest!(fn sync_doesnt_kill_anything() {
         let tmpdir = tmpdir();
         let path = tmpdir.join("in.txt");
 
@@ -1169,7 +1144,7 @@ mod test {
         drop(file);
     })
 
-    test!(fn truncate_works() {
+    iotest!(fn truncate_works() {
         let tmpdir = tmpdir();
         let path = tmpdir.join("in.txt");
 
@@ -1200,7 +1175,7 @@ mod test {
         drop(file);
     })
 
-    test!(fn open_flavors() {
+    iotest!(fn open_flavors() {
         let tmpdir = tmpdir();
 
         match io::result(|| File::open_mode(&tmpdir.join("a"), io::Open,

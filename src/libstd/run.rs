@@ -426,13 +426,13 @@ mod tests {
     }
 
     fn writeclose(fd: c_int, s: &str) {
-        let mut writer = PipeStream::open(fd as int);
+        let mut writer = PipeStream::open(fd);
         writer.write(s.as_bytes());
     }
 
     fn readclose(fd: c_int) -> ~str {
         let mut res = ~[];
-        let mut reader = PipeStream::open(fd as int);
+        let mut reader = PipeStream::open(fd);
         let mut buf = [0, ..1024];
         loop {
             match reader.read(buf) {

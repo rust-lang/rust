@@ -24,7 +24,7 @@ define CP_HOST_STAGE_N
 # Note: $(3) and $(4) are both the same!
 
 $$(HBIN$(2)_H_$(4))/rustc$$(X_$(4)): \
-	$$(TBIN$(1)_T_$(4)_H_$(3))/rustc$$(X_$(4))
+	$$(TBIN$(1)_T_$(4)_H_$(3))/rustc$$(X_$(4)) \
 	$$(HLIBRUSTC_DEFAULT$(2)_H_$(4)) \
 	| $$(HBIN$(2)_H_$(4))/
 	@$$(call E, cp: $$@)

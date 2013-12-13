@@ -49,7 +49,6 @@ impl Local<local_ptr::Borrowed<Task>> for Task {
 mod test {
     use option::None;
     use unstable::run_in_bare_thread;
-    use rt::test::*;
     use super::*;
     use rt::task::Task;
     use rt::local_ptr;
@@ -58,8 +57,7 @@ mod test {
     fn thread_local_task_smoke_test() {
         do run_in_bare_thread {
             local_ptr::init();
-            let mut sched = ~new_test_uv_sched();
-            let task = ~Task::new_root(&mut sched.stack_pool, None, proc(){});
+            let task = ~Task::new();
             Local::put(task);
             let task: ~Task = Local::take();
             cleanup_task(task);
@@ -70,12 +68,11 @@ mod test {
     fn thread_local_task_two_instances() {
         do run_in_bare_thread {
             local_ptr::init();
-            let mut sched = ~new_test_uv_sched();
-            let task = ~Task::new_root(&mut sched.stack_pool, None, proc(){});
+            let task = ~Task::new();
             Local::put(task);
             let task: ~Task = Local::take();
             cleanup_task(task);
-            let task = ~Task::new_root(&mut sched.stack_pool, None, proc(){});
+            let task = ~Task::new();
             Local::put(task);
             let task: ~Task = Local::take();
             cleanup_task(task);
@@ -87,8 +84,7 @@ mod test {
     fn borrow_smoke_test() {
         do run_in_bare_thread {
             local_ptr::init();
-            let mut sched = ~new_test_uv_sched();
-            let task = ~Task::new_root(&mut sched.stack_pool, None, proc(){});
+            let task = ~Task::new();
             Local::put(task);
 
             unsafe {
@@ -103,8 +99,7 @@ mod test {
     fn borrow_with_return() {
         do run_in_bare_thread {
             local_ptr::init();
-            let mut sched = ~new_test_uv_sched();
-            let task = ~Task::new_root(&mut sched.stack_pool, None, proc(){});
+            let task = ~Task::new();
             Local::put(task);
 
             {
@@ -114,6 +109,10 @@ mod test {
             let task: ~Task = Local::take();
             cleanup_task(task);
         }
+    }
+
+    fn cleanup_task(mut t: ~Task) {
+        t.destroyed = true;
     }
 
 }

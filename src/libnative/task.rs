@@ -22,7 +22,7 @@ use std::rt::task::{Task, BlockedTask};
 use std::rt::thread::Thread;
 use std::rt;
 use std::sync::atomics::{AtomicUint, SeqCst, INIT_ATOMIC_UINT};
-use std::task::TaskOpts;
+use std::task::{TaskOpts, default_task_opts};
 use std::unstable::mutex::{Mutex, MUTEX_INIT};
 use std::unstable::stack;
 
@@ -73,9 +73,14 @@ pub fn new() -> ~Task {
     return task;
 }
 
+/// Spawns a function with the default configuration
+pub fn spawn(f: proc()) {
+    spawn_opts(default_task_opts(), f)
+}
+
 /// Spawns a new task given the configuration options and a procedure to run
 /// inside the task.
-pub fn spawn(opts: TaskOpts, f: proc()) {
+pub fn spawn_opts(opts: TaskOpts, f: proc()) {
     // must happen before the spawn, no need to synchronize with a lock.
     unsafe { THREAD_CNT.fetch_add(1, SeqCst); }
 
@@ -238,7 +243,7 @@ impl rt::Runtime for Ops {
         cur_task.put_runtime(self as ~rt::Runtime);
         Local::put(cur_task);
 
-        task::spawn(opts, f);
+        task::spawn_opts(opts, f);
     }
 
     fn local_io<'a>(&'a mut self) -> Option<rtio::LocalIo<'a>> {

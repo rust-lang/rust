@@ -268,7 +268,7 @@ impl<T: Send, P: Send> Drop for State<T, P> {
 mod test {
     use prelude::*;
     use super::queue;
-    use task;
+    use native;
 
     #[test]
     fn smoke() {
@@ -314,7 +314,8 @@ mod test {
 
         fn stress_bound(bound: uint) {
             let (c, mut p) = queue(bound, ());
-            do task::spawn_sched(task::SingleThreaded) {
+            let (port, chan) = Chan::new();
+            do native::task::spawn {
                 let mut c = c;
                 for _ in range(0, 100000) {
                     loop {
@@ -325,10 +326,12 @@ mod test {
                         }
                     }
                 }
+                chan.send(());
             }
             for _ in range(0, 100000) {
                 p.push(1);
             }
+            port.recv();
         }
     }
 }

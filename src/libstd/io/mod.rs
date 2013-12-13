@@ -313,6 +313,10 @@ pub use self::net::udp::UdpStream;
 pub use self::pipe::PipeStream;
 pub use self::process::Process;
 
+/// Testing helpers
+#[cfg(test)]
+mod test;
+
 /// Synchronous, non-blocking filesystem operations.
 pub mod fs;
 

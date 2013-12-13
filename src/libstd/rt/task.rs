@@ -176,8 +176,12 @@ impl Task {
         // Cleanup the dynamic borrowck debugging info
         borrowck::clear_task_borrow_list();
 
+        // TODO: dox
+        unsafe {
+            let me: *mut Task = Local::unsafe_borrow();
+            (*me).death.collect_failure((*me).unwinder.result());
+        }
         let mut me: ~Task = Local::take();
-        me.death.collect_failure(me.unwinder.result());
         me.destroyed = true;
         return me;
     }
@@ -375,92 +379,76 @@ impl Drop for Death {
 #[cfg(test)]
 mod test {
     use super::*;
-    use rt::test::*;
     use prelude::*;
+    use task;
 
     #[test]
     fn local_heap() {
-        do run_in_newsched_task() {
-            let a = @5;
-            let b = a;
-            assert!(*a == 5);
-            assert!(*b == 5);
-        }
+        let a = @5;
+        let b = a;
+        assert!(*a == 5);
+        assert!(*b == 5);
     }
 
     #[test]
     fn tls() {
         use local_data;
-        do run_in_newsched_task() {
-            local_data_key!(key: @~str)
-            local_data::set(key, @~"data");
-            assert!(*local_data::get(key, |k| k.map(|k| *k)).unwrap() == ~"data");
-            local_data_key!(key2: @~str)
-            local_data::set(key2, @~"data");
-            assert!(*local_data::get(key2, |k| k.map(|k| *k)).unwrap() == ~"data");
-        }
+        local_data_key!(key: @~str)
+        local_data::set(key, @~"data");
+        assert!(*local_data::get(key, |k| k.map(|k| *k)).unwrap() == ~"data");
+        local_data_key!(key2: @~str)
+        local_data::set(key2, @~"data");
+        assert!(*local_data::get(key2, |k| k.map(|k| *k)).unwrap() == ~"data");
     }
 
     #[test]
     fn unwind() {
-        do run_in_newsched_task() {
-            let result = spawntask_try(proc()());
-            rtdebug!("trying first assert");
-            assert!(result.is_ok());
-            let result = spawntask_try(proc() fail!());
-            rtdebug!("trying second assert");
-            assert!(result.is_err());
-        }
+        let result = task::try(proc()());
+        rtdebug!("trying first assert");
+        assert!(result.is_ok());
+        let result = task::try::<()>(proc() fail!());
+        rtdebug!("trying second assert");
+        assert!(result.is_err());
     }
 
     #[test]
     fn rng() {
-        do run_in_uv_task() {
-            use rand::{rng, Rng};
-            let mut r = rng();
-            let _ = r.next_u32();
-        }
+        use rand::{rng, Rng};
+        let mut r = rng();
+        let _ = r.next_u32();
     }
 
     #[test]
     fn logging() {
-        do run_in_uv_task() {
-            info!("here i am. logging in a newsched task");
-        }
+        info!("here i am. logging in a newsched task");
     }
 
     #[test]
     fn comm_stream() {
-        do run_in_newsched_task() {
-            let (port, chan) = Chan::new();
-            chan.send(10);
-            assert!(port.recv() == 10);
-        }
+        let (port, chan) = Chan::new();
+        chan.send(10);
+        assert!(port.recv() == 10);
     }
 
     #[test]
     fn comm_shared_chan() {
-        do run_in_newsched_task() {
-            let (port, chan) = SharedChan::new();
-            chan.send(10);
-            assert!(port.recv() == 10);
-        }
+        let (port, chan) = SharedChan::new();
+        chan.send(10);
+        assert!(port.recv() == 10);
     }
 
     #[test]
     fn heap_cycles() {
         use option::{Option, Some, None};
 
-        do run_in_newsched_task {
-            struct List {
-                next: Option<@mut List>,
-            }
-
-            let a = @mut List { next: None };
-            let b = @mut List { next: Some(a) };
-
-            a.next = Some(b);
+        struct List {
+            next: Option<@mut List>,
         }
+
+        let a = @mut List { next: None };
+        let b = @mut List { next: Some(a) };
+
+        a.next = Some(b);
     }
 
     #[test]
@@ -471,8 +459,8 @@ mod test {
 
     #[test]
     fn block_and_wake() {
-        do with_test_task |task| {
-            BlockedTask::block(task).wake().unwrap()
-        }
+        let task = ~Task::new();
+        let mut task = BlockedTask::block(task).wake().unwrap();
+        task.destroyed = true;
     }
 }

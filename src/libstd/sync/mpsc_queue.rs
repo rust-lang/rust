@@ -203,8 +203,8 @@ impl<T: Send, P: Send> Consumer<T, P> {
 mod tests {
     use prelude::*;
 
-    use task;
     use super::{queue, Data, Empty, Inconsistent};
+    use native;
 
     #[test]
     fn test_full() {
@@ -222,14 +222,17 @@ mod tests {
             Empty => {}
             Inconsistent | Data(..) => fail!()
         }
+        let (port, chan) = SharedChan::new();
 
         for _ in range(0, nthreads) {
             let q = p.clone();
-            do task::spawn_sched(task::SingleThreaded) {
+            let chan = chan.clone();
+            do native::task::spawn {
                 let mut q = q;
                 for i in range(0, nmsgs) {
                     q.push(i);
                 }
+                chan.send(());
             }
         }
 
@@ -239,6 +242,9 @@ mod tests {
                 Empty | Inconsistent => {},
                 Data(_) => { i += 1 }
             }
+        }
+        for _ in range(0, nthreads) {
+            port.recv();
         }
     }
 }

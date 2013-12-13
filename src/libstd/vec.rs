@@ -2874,7 +2874,6 @@ impl<A> Extendable<A> for ~[A] {
 
 #[cfg(test)]
 mod tests {
-    use option::{None, Some};
     use mem;
     use vec::*;
     use cmp::*;

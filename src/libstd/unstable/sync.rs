@@ -161,9 +161,8 @@ impl<T:Send> Exclusive<T> {
 mod tests {
     use option::*;
     use prelude::*;
-    use super::{Exclusive, UnsafeArc, atomic};
+    use super::Exclusive;
     use task;
-    use mem::size_of;
 
     #[test]
     fn exclusive_new_arc() {

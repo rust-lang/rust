@@ -131,7 +131,6 @@ impl<T> Drop for UnsafeArc<T>{
 mod tests {
     use prelude::*;
     use super::UnsafeArc;
-    use task;
     use mem::size_of;
 
     #[test]

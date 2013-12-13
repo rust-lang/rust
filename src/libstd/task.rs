@@ -64,6 +64,7 @@ use send_str::{SendStr, IntoSendStr};
 use str::Str;
 use util;
 
+#[cfg(test)] use any::{AnyOwnExt, AnyRefExt};
 #[cfg(test)] use comm::SharedChan;
 #[cfg(test)] use ptr;
 #[cfg(test)] use result;
@@ -385,59 +386,43 @@ pub fn failing() -> bool {
 
 #[test]
 fn test_unnamed_task() {
-    use rt::test::run_in_uv_task;
-
-    do run_in_uv_task {
-        do spawn {
-            with_task_name(|name| {
-                assert!(name.is_none());
-            })
-        }
+    do spawn {
+        with_task_name(|name| {
+            assert!(name.is_none());
+        })
     }
 }
 
 #[test]
 fn test_owned_named_task() {
-    use rt::test::run_in_uv_task;
-
-    do run_in_uv_task {
-        let mut t = task();
-        t.name(~"ada lovelace");
-        do t.spawn {
-            with_task_name(|name| {
-                assert!(name.unwrap() == "ada lovelace");
-            })
-        }
+    let mut t = task();
+    t.name(~"ada lovelace");
+    do t.spawn {
+        with_task_name(|name| {
+            assert!(name.unwrap() == "ada lovelace");
+        })
     }
 }
 
 #[test]
 fn test_static_named_task() {
-    use rt::test::run_in_uv_task;
-
-    do run_in_uv_task {
-        let mut t = task();
-        t.name("ada lovelace");
-        do t.spawn {
-            with_task_name(|name| {
-                assert!(name.unwrap() == "ada lovelace");
-            })
-        }
+    let mut t = task();
+    t.name("ada lovelace");
+    do t.spawn {
+        with_task_name(|name| {
+            assert!(name.unwrap() == "ada lovelace");
+        })
     }
 }
 
 #[test]
 fn test_send_named_task() {
-    use rt::test::run_in_uv_task;
-
-    do run_in_uv_task {
-        let mut t = task();
-        t.name("ada lovelace".into_send_str());
-        do t.spawn {
-            with_task_name(|name| {
-                assert!(name.unwrap() == "ada lovelace");
-            })
-        }
+    let mut t = task();
+    t.name("ada lovelace".into_send_str());
+    do t.spawn {
+        with_task_name(|name| {
+            assert!(name.unwrap() == "ada lovelace");
+        })
     }
 }
 
@@ -508,28 +493,19 @@ fn test_try_fail() {
     }
 }
 
-#[cfg(test)]
-fn get_sched_id() -> int {
-    use rt::sched::Scheduler;
-    let mut sched = Local::borrow(None::<Scheduler>);
-    sched.get().sched_id() as int
-}
-
 #[test]
 fn test_spawn_sched() {
+    use clone::Clone;
+
     let (po, ch) = SharedChan::new();
 
     fn f(i: int, ch: SharedChan<()>) {
-        let parent_sched_id = get_sched_id();
-
-        do spawn_sched(SingleThreaded) {
-            let child_sched_id = get_sched_id();
-            assert!(parent_sched_id != child_sched_id);
-
+        let ch = ch.clone();
+        do spawn {
             if (i == 0) {
                 ch.send(());
             } else {
-                f(i - 1, ch.clone());
+                f(i - 1, ch);
             }
         };
 
@@ -542,16 +518,9 @@ fn test_spawn_sched() {
 fn test_spawn_sched_childs_on_default_sched() {
     let (po, ch) = Chan::new();
 
-    // Assuming tests run on the default scheduler
-    let default_id = get_sched_id();
-
-    do spawn_sched(SingleThreaded) {
+    do spawn {
         let ch = ch;
-        let parent_sched_id = get_sched_id();
         do spawn {
-            let child_sched_id = get_sched_id();
-            assert!(parent_sched_id != child_sched_id);
-            assert_eq!(child_sched_id, default_id);
             ch.send(());
         };
     };
@@ -562,6 +531,7 @@ fn test_spawn_sched_childs_on_default_sched() {
 #[test]
 fn test_spawn_sched_blocking() {
     use unstable::mutex::Mutex;
+    use num::Times;
 
     unsafe {
 
@@ -574,7 +544,7 @@ fn test_spawn_sched_blocking() {
             let mut lock = Mutex::new();
             let lock2 = lock.clone();
 
-            do spawn_sched(SingleThreaded) {
+            do spawn {
                 let mut lock = lock2;
                 lock.lock();
 
@@ -681,11 +651,7 @@ fn test_child_doesnt_ref_parent() {
 
 #[test]
 fn test_simple_newsched_spawn() {
-    use rt::test::run_in_uv_task;
-
-    do run_in_uv_task {
-        spawn(proc()())
-    }
+    spawn(proc()())
 }
 
 #[test]

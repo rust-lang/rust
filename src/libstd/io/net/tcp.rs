@@ -176,7 +176,7 @@ mod test {
     #[test]
     fn smoke_test_ip4() {
         let addr = next_test_ip4();
-        let (port, chan) = oneshot();
+        let (port, chan) = Chan::new();
 
         do spawn {
             port.recv();
@@ -195,7 +195,7 @@ mod test {
     #[test]
     fn smoke_test_ip6() {
         let addr = next_test_ip6();
-        let (port, chan) = oneshot();
+        let (port, chan) = Chan::new();
 
         do spawn {
             port.recv();
@@ -214,7 +214,7 @@ mod test {
     #[test]
     fn read_eof_ip4() {
         let addr = next_test_ip4();
-        let (port, chan) = oneshot();
+        let (port, chan) = Chan::new();
 
         do spawn {
             port.recv();
@@ -233,7 +233,7 @@ mod test {
     #[test]
     fn read_eof_ip6() {
         let addr = next_test_ip6();
-        let (port, chan) = oneshot();
+        let (port, chan) = Chan::new();
 
         do spawn {
             port.recv();
@@ -252,10 +252,10 @@ mod test {
     #[test]
     fn read_eof_twice_ip4() {
         let addr = next_test_ip4();
-        let (port, chan) = oneshot();
+        let (port, chan) = Chan::new();
 
         do spawn {
-            port.take().recv();
+            port.recv();
             let _stream = TcpStream::connect(addr);
             // Close
         }
@@ -281,7 +281,7 @@ mod test {
     #[test]
     fn read_eof_twice_ip6() {
         let addr = next_test_ip6();
-        let (port, chan) = oneshot();
+        let (port, chan) = Chan::new();
 
         do spawn {
             port.recv();
@@ -310,7 +310,7 @@ mod test {
     #[test]
     fn write_close_ip4() {
         let addr = next_test_ip4();
-        let (port, chan) = oneshot();
+        let (port, chan) = Chan::new();
 
         do spawn {
             port.recv();
@@ -342,7 +342,7 @@ mod test {
     #[test]
     fn write_close_ip6() {
         let addr = next_test_ip6();
-        let (port, chan) = oneshot();
+        let (port, chan) = Chan::new();
 
         do spawn {
             port.recv();
@@ -375,7 +375,7 @@ mod test {
     fn multiple_connect_serial_ip4() {
         let addr = next_test_ip4();
         let max = 10;
-        let (port, chan) = oneshot();
+        let (port, chan) = Chan::new();
 
         do spawn {
             port.recv();
@@ -398,7 +398,7 @@ mod test {
     fn multiple_connect_serial_ip6() {
         let addr = next_test_ip6();
         let max = 10;
-        let (port, chan) = oneshot();
+        let (port, chan) = Chan::new();
 
         do spawn {
             port.recv();
@@ -421,16 +421,15 @@ mod test {
     fn multiple_connect_interleaved_greedy_schedule_ip4() {
         let addr = next_test_ip4();
         static MAX: int = 10;
-        let (port, chan) = oneshot();
+        let (port, chan) = Chan::new();
 
         do spawn {
             let mut acceptor = TcpListener::bind(addr).listen();
             chan.send(());
             for (i, stream) in acceptor.incoming().enumerate().take(MAX as uint) {
-                let stream = Cell::new(stream);
                 // Start another task to handle the connection
                 do spawn {
-                    let mut stream = stream.take();
+                    let mut stream = stream;
                     let mut buf = [0];
                     stream.read(buf);
                     assert!(buf[0] == i as u8);
@@ -460,15 +459,15 @@ mod test {
     fn multiple_connect_interleaved_greedy_schedule_ip6() {
         let addr = next_test_ip6();
         static MAX: int = 10;
-        let (port, chan) = oneshot();
+        let (port, chan) = Chan::<()>::new();
 
         do spawn {
             let mut acceptor = TcpListener::bind(addr).listen();
+            chan.send(());
             for (i, stream) in acceptor.incoming().enumerate().take(MAX as uint) {
-                let stream = Cell::new(stream);
                 // Start another task to handle the connection
                 do spawn {
-                    let mut stream = stream.take();
+                    let mut stream = stream;
                     let mut buf = [0];
                     stream.read(buf);
                     assert!(buf[0] == i as u8);
@@ -498,16 +497,15 @@ mod test {
     fn multiple_connect_interleaved_lazy_schedule_ip4() {
         let addr = next_test_ip4();
         static MAX: int = 10;
-        let (port, chan) = oneshot();
+        let (port, chan) = Chan::new();
 
         do spawn {
             let mut acceptor = TcpListener::bind(addr).listen();
             chan.send(());
             for stream in acceptor.incoming().take(MAX as uint) {
-                let stream = Cell::new(stream);
                 // Start another task to handle the connection
                 do spawn {
-                    let mut stream = stream.take();
+                    let mut stream = stream;
                     let mut buf = [0];
                     stream.read(buf);
                     assert!(buf[0] == 99);
@@ -536,16 +534,15 @@ mod test {
     fn multiple_connect_interleaved_lazy_schedule_ip6() {
         let addr = next_test_ip6();
         static MAX: int = 10;
-        let (port, chan) = oneshot();
+        let (port, chan) = Chan::new();
 
         do spawn {
             let mut acceptor = TcpListener::bind(addr).listen();
             chan.send(());
             for stream in acceptor.incoming().take(MAX as uint) {
-                let stream = Cell::new(stream);
                 // Start another task to handle the connection
                 do spawn {
-                    let mut stream = stream.take();
+                    let mut stream = stream;
                     let mut buf = [0];
                     stream.read(buf);
                     assert!(buf[0] == 99);
@@ -573,23 +570,18 @@ mod test {
 
     #[cfg(test)]
     fn socket_name(addr: SocketAddr) {
-        do run_in_mt_newsched_task {
-            do spawntask {
-                let mut listener = TcpListener::bind(addr).unwrap();
+        let mut listener = TcpListener::bind(addr).unwrap();
 
-                // Make sure socket_name gives
-                // us the socket we binded to.
-                let so_name = listener.socket_name();
-                assert!(so_name.is_some());
-                assert_eq!(addr, so_name.unwrap());
-
-            }
-        }
+        // Make sure socket_name gives
+        // us the socket we binded to.
+        let so_name = listener.socket_name();
+        assert!(so_name.is_some());
+        assert_eq!(addr, so_name.unwrap());
     }
 
     #[cfg(test)]
     fn peer_name(addr: SocketAddr) {
-        let (port, chan) = oneshot();
+        let (port, chan) = Chan::new();
 
         do spawn {
             let mut acceptor = TcpListener::bind(addr).listen();
