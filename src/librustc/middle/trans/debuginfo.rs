@@ -687,6 +687,9 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
     let arg_pats = fn_decl.inputs.map(|arg_ref| arg_ref.pat);
     populate_scope_map(cx, arg_pats, top_level_block, fn_metadata, &mut fn_debug_context.scope_map);
 
+    // Clear the debug location so we don't assign them in the function prelude
+    set_debug_location(cx, UnknownLocation);
+
     return FunctionDebugContext(fn_debug_context);
 
     fn get_function_signature(cx: &mut CrateContext,
