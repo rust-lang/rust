@@ -1110,6 +1110,15 @@ impl BenchHarness {
         } else {
             n = 1_000_000 / self.ns_per_iter().max(&1);
         }
+        // if the first run took more than 1ms we don't want to just
+        // be left doing 0 iterations on every loop. The unfortunate
+        // side effect of not being able to do as many runs is
+        // automatically handled by the statistical analysis below
+        // (i.e. larger error bars).
+        if n == 0 { n = 1; }
+
+        debug!("Initial run took {} ns, iter count that takes 1ms estimated as {}",
+               self.ns_per_iter(), n);
 
         let mut total_run = 0;
         let samples : &mut [f64] = [0.0_f64, ..50];
@@ -1141,7 +1150,7 @@ impl BenchHarness {
             let now = precise_time_ns();
             let loop_run = now - loop_start;
 
-            // If we've run for 100ms an seem to have converged to a
+            // If we've run for 100ms and seem to have converged to a
             // stable median.
             if loop_run > 100_000_000 &&
                 summ.median_abs_dev_pct < 1.0 &&
