@@ -24,38 +24,64 @@
 #[crate_type = "rlib"];
 #[crate_type = "dylib"];
 
-// NB this crate explicitly does *not* allow glob imports, please seriously
-//    consider whether they're needed before adding that feature here.
+#[cfg(stage0, test)] extern mod green;
 
-use std::cast;
+// NB this crate explicitly does *not* allow glob imports, please seriously
+//    consider whether they're needed before adding that feature here (the
+//    answer is that you don't need them)
+
 use std::os;
 use std::rt;
-use std::task::try;
 
 pub mod io;
 pub mod task;
 
-// XXX: this should not exist here
-#[cfg(stage0)]
-#[lang = "start"]
-pub fn start(main: *u8, argc: int, argv: **u8) -> int {
-    rt::init(argc, argv);
 
-    // Bootstrap ourselves by installing a local Task and then immediately
-    // spawning a thread to run 'main'. Always spawn a new thread for main so
-    // the stack size of 'main' is known (and the bounds can be set
-    // appropriately).
-    //
-    // Once the main task has completed, then we wait for everyone else to exit.
-    task::run(task::new(), proc() {
+// XXX: this should not exist here
+#[cfg(stage0, notready)]
+#[lang = "start"]
+pub fn lang_start(main: *u8, argc: int, argv: **u8) -> int {
+    use std::cast;
+    use std::task::try;
+
+    do start(argc, argv) {
+        // Instead of invoking main directly on this thread, invoke it on
+        // another spawned thread that we are guaranteed to know the size of the
+        // stack of. Currently, we do not have a method of figuring out the size
+        // of the main thread's stack, so for stack overflow detection to work
+        // we must spawn the task in a subtask which we know the stack size of.
         let main: extern "Rust" fn() = unsafe { cast::transmute(main) };
         match do try { main() } {
             Ok(()) => { os::set_exit_status(0); }
             Err(..) => { os::set_exit_status(rt::DEFAULT_ERROR_CODE); }
         }
-    });
+    }
+}
+
+/// Executes the given procedure after initializing the runtime with the given
+/// argc/argv.
+///
+/// This procedure is guaranteed to run on the thread calling this function, but
+/// the stack bounds for this rust task will *not* be set. Care must be taken
+/// for this function to not overflow its stack.
+///
+/// This function will only return once *all* native threads in the system have
+/// exited.
+pub fn start(argc: int, argv: **u8, main: proc()) -> int {
+    rt::init(argc, argv);
+    let exit_code = run(main);
+    unsafe { rt::cleanup(); }
+    return exit_code;
+}
+
+/// Executes a procedure on the current thread in a Rust task context.
+///
+/// This function has all of the same details as `start` except for a different
+/// number of arguments.
+pub fn run(main: proc()) -> int {
+    // Create a task, run the procedure in it, and then wait for everything.
+    task::run(task::new(), main);
     task::wait_for_completion();
 
-    unsafe { rt::cleanup(); }
     os::get_exit_status()
 }
