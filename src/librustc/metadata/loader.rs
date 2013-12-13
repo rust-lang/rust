@@ -29,7 +29,7 @@ use std::cast;
 use std::io;
 use std::num;
 use std::option;
-use std::os::consts::{macos, freebsd, linux, android, win32};
+use std::os::consts::{macos, freebsd, linux, android, win32, none};
 use std::ptr;
 use std::str;
 use std::vec;
@@ -40,7 +40,8 @@ pub enum Os {
     OsWin32,
     OsLinux,
     OsAndroid,
-    OsFreebsd
+    OsFreebsd,
+    OsNone
 }
 
 pub struct Context {
@@ -217,6 +218,7 @@ impl Context {
             OsLinux => (linux::DLL_PREFIX, linux::DLL_SUFFIX),
             OsAndroid => (android::DLL_PREFIX, android::DLL_SUFFIX),
             OsFreebsd => (freebsd::DLL_PREFIX, freebsd::DLL_SUFFIX),
+            OsNone => (none::DLL_PREFIX, none::DLL_SUFFIX),
         }
     }
 }
@@ -302,7 +304,8 @@ pub fn meta_section_name(os: Os) -> &'static str {
         OsWin32 => ".note.rustc",
         OsLinux => ".note.rustc",
         OsAndroid => ".note.rustc",
-        OsFreebsd => ".note.rustc"
+        OsFreebsd => ".note.rustc",
+        OsNone => ".note.rustc"
     }
 }
 
@@ -312,7 +315,8 @@ pub fn read_meta_section_name(os: Os) -> &'static str {
         OsWin32 => ".note.rustc",
         OsLinux => ".note.rustc",
         OsAndroid => ".note.rustc",
-        OsFreebsd => ".note.rustc"
+        OsFreebsd => ".note.rustc",
+        OsNone => ".note.rustc"
     }
 }
 

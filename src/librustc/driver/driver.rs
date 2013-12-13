@@ -10,7 +10,7 @@
 
 
 use back::link;
-use back::{arm, x86, x86_64, mips};
+use back::{arm, thumb, x86, x86_64, mips};
 use driver::session::{Aggressive, OutputExecutable};
 use driver::session::{Session, Session_, No, Less, Default};
 use driver::session;
@@ -73,7 +73,8 @@ pub fn default_configuration(sess: Session) ->
         abi::OsMacos =>   @"macos",
         abi::OsLinux =>   @"linux",
         abi::OsAndroid => @"android",
-        abi::OsFreebsd => @"freebsd"
+        abi::OsFreebsd => @"freebsd",
+        abi::OsNone =>    @"none"
     };
 
     // ARM is bi-endian, however using NDK seems to default
@@ -82,6 +83,7 @@ pub fn default_configuration(sess: Session) ->
         abi::X86 =>    (@"little", @"x86",    @"32"),
         abi::X86_64 => (@"little", @"x86_64", @"64"),
         abi::Arm =>    (@"little", @"arm",    @"32"),
+        abi::Thumb =>  (@"little", @"thumb",  @"32"),
         abi::Mips =>   (@"big",    @"mips",   @"32")
     };
 
@@ -575,7 +577,8 @@ static os_names : &'static [(&'static str, abi::Os)] = &'static [
     ("darwin",  abi::OsMacos),
     ("android", abi::OsAndroid),
     ("linux",   abi::OsLinux),
-    ("freebsd", abi::OsFreebsd)];
+    ("freebsd", abi::OsFreebsd),
+    ("none",    abi::OsNone)];
 
 pub fn get_arch(triple: &str) -> Option<abi::Architecture> {
     for &(arch, abi) in architecture_abis.iter() {
@@ -593,6 +596,7 @@ static architecture_abis : &'static [(&'static str, abi::Architecture)] = &'stat
     ("x86_64", abi::X86_64),
 
     ("arm",    abi::Arm),
+    ("thumb",  abi::Thumb),
     ("xscale", abi::Arm),
 
     ("mips",   abi::Mips)];
@@ -613,6 +617,7 @@ pub fn build_target_config(sopts: @session::options,
       abi::X86 => (ast::ty_i32, ast::ty_u32),
       abi::X86_64 => (ast::ty_i64, ast::ty_u64),
       abi::Arm => (ast::ty_i32, ast::ty_u32),
+      abi::Thumb => (ast::ty_i32, ast::ty_u32),
       abi::Mips => (ast::ty_i32, ast::ty_u32)
     };
     let target_triple = sopts.target_triple.clone();
@@ -620,6 +625,7 @@ pub fn build_target_config(sopts: @session::options,
       abi::X86 => x86::get_target_strs(target_triple, os),
       abi::X86_64 => x86_64::get_target_strs(target_triple, os),
       abi::Arm => arm::get_target_strs(target_triple, os),
+      abi::Thumb => thumb::get_target_strs(target_triple, os),
       abi::Mips => mips::get_target_strs(target_triple, os)
     };
     let target_cfg = @session::config {

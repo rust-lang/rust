@@ -19,7 +19,7 @@ use middle::trans::context::CrateContext;
 use middle::trans::base;
 
 use syntax::ast;
-use syntax::abi::{Architecture, X86, X86_64, Arm, Mips};
+use syntax::abi::{Architecture, X86, X86_64, Arm, Thumb, Mips};
 
 use std::c_str::ToCStr;
 use std::vec;
@@ -106,7 +106,7 @@ impl Type {
 
     pub fn int(arch: Architecture) -> Type {
         match arch {
-            X86 | Arm | Mips => Type::i32(),
+            X86 | Arm | Thumb | Mips => Type::i32(),
             X86_64 => Type::i64()
         }
     }

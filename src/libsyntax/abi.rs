@@ -11,7 +11,7 @@
 use std::to_bytes;
 
 #[deriving(Eq)]
-pub enum Os { OsWin32, OsMacos, OsLinux, OsAndroid, OsFreebsd, }
+pub enum Os { OsWin32, OsMacos, OsLinux, OsAndroid, OsFreebsd, OsNone, }
 
 #[deriving(Eq)]
 pub enum Abi {
@@ -40,6 +40,7 @@ pub enum Architecture {
     X86,
     X86_64,
     Arm,
+    Thumb,
     Mips
 }
 

@@ -97,6 +97,7 @@ pub mod back {
     pub mod abi;
     pub mod upcall;
     pub mod arm;
+    pub mod thumb;
     pub mod mips;
     pub mod x86;
     pub mod x86_64;

@@ -129,7 +129,7 @@ pub fn get_rpath_relative_to_output(os: abi::Os,
 
     // Mac doesn't appear to support $ORIGIN
     let prefix = match os {
-        abi::OsAndroid | abi::OsLinux | abi::OsFreebsd
+        abi::OsAndroid | abi::OsLinux | abi::OsFreebsd | abi::OsNone
                           => "$ORIGIN",
         abi::OsMacos => "@loader_path",
         abi::OsWin32 => unreachable!()

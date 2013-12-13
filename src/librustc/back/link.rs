@@ -29,7 +29,7 @@ use util::sha2::{Digest, Sha256};
 
 use std::c_str::ToCStr;
 use std::char;
-use std::os::consts::{macos, freebsd, linux, android, win32};
+use std::os::consts::{macos, freebsd, linux, android, win32, none};
 use std::ptr;
 use std::run;
 use std::str;
@@ -101,6 +101,7 @@ pub mod write {
     use std::path::Path;
     use std::run;
     use std::str;
+    use syntax::abi;
 
     pub fn run_passes(sess: Session,
                       trans: &CrateTranslation,
@@ -147,7 +148,23 @@ pub mod write {
               session::Default => lib::llvm::CodeGenLevelDefault,
               session::Aggressive => lib::llvm::CodeGenLevelAggressive,
             };
-            let use_softfp = sess.opts.debugging_opts & session::use_softfp != 0;
+            let fp_abi =
+                if (sess.opts.debugging_opts & session::use_hardfp != 0) {
+                    lib::llvm::FloatABIHard
+                } else if (sess.opts.debugging_opts & session::use_softfp != 0) {
+                    lib::llvm::FloatABISoft
+                } else {
+                    lib::llvm::FloatABIDefault
+                };
+
+            //For embedded targets PIC doesn't make sense.
+            //The code layout is static, defined by the linker.
+            let reloc_mode = match sess.targ_cfg.os {
+                abi::OsNone => lib::llvm::RelocDynamicNoPic,
+                _ => lib::llvm::RelocPIC
+            };
+            //Segmented stacks not supported on bare-metal.
+            let enable_segmented_stacks = (sess.targ_cfg.os != abi::OsNone);
 
             let tm = sess.targ_cfg.target_strs.target_triple.with_c_str(|T| {
                 sess.opts.target_cpu.with_c_str(|CPU| {
@@ -155,10 +172,10 @@ pub mod write {
                         llvm::LLVMRustCreateTargetMachine(
                             T, CPU, Features,
                             lib::llvm::CodeModelDefault,
-                            lib::llvm::RelocPIC,
+                            reloc_mode,
                             OptLevel,
-                            true,
-                            use_softfp
+                            enable_segmented_stacks,
+                            fp_abi
                         )
                     })
                 })
@@ -337,8 +354,14 @@ pub mod write {
             llvm_c_strs.push(s);
         };
         add("rustc"); // fake program name
-        add("-arm-enable-ehabi");
-        add("-arm-enable-ehabi-descriptors");
+
+        //Embedded targets don't support the std library and therefore
+        //the task system where unwinding is used.
+        if(sess.targ_cfg.os != abi::OsNone) {
+            add("-arm-enable-ehabi");
+            add("-arm-enable-ehabi-descriptors");
+        }
+
         if vectorize_loop { add("-vectorize-loops"); }
         if vectorize_slp  { add("-vectorize-slp");   }
         if sess.time_llvm_passes() { add("-time-passes"); }
@@ -772,6 +795,7 @@ fn link_binary_output(sess: Session,
                 abi::OsLinux => (linux::DLL_PREFIX, linux::DLL_SUFFIX),
                 abi::OsAndroid => (android::DLL_PREFIX, android::DLL_SUFFIX),
                 abi::OsFreebsd => (freebsd::DLL_PREFIX, freebsd::DLL_SUFFIX),
+                abi::OsNone => (none::DLL_PREFIX, none::DLL_SUFFIX),
             };
             out_filename.with_filename(format!("{}{}{}", prefix, libname, suffix))
         }
@@ -1037,8 +1061,11 @@ fn link_args(sess: Session,
                        ~"-L/usr/local/lib/gcc44"]);
     }
 
-    // Stack growth requires statically linking a __morestack function
-    args.push(~"-lmorestack");
+    //Segmented stacks not supported on bare-metal.
+    if sess.targ_cfg.os != abi::OsNone {
+        // Stack growth requires statically linking a __morestack function
+        args.push(~"-lmorestack");
+    }
 
     // FIXME (#2397): At some point we want to rpath our guesses as to
     // where extern libraries might live, based on the

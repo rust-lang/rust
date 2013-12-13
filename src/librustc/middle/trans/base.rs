@@ -84,7 +84,7 @@ use syntax::parse::token::{special_idents};
 use syntax::print::pprust::stmt_to_str;
 use syntax::{ast, ast_util, codemap, ast_map};
 use syntax::attr::AttrMetaMethods;
-use syntax::abi::{X86, X86_64, Arm, Mips, Rust, RustIntrinsic, OsWin32, OsAndroid};
+use syntax::abi::{X86, X86_64, Arm, Thumb, Mips, Rust, RustIntrinsic, OsWin32, OsAndroid};
 use syntax::visit;
 use syntax::visit::Visitor;
 
@@ -1471,7 +1471,7 @@ pub fn call_memcpy(cx: @mut Block, dst: ValueRef, src: ValueRef, n_bytes: ValueR
     let _icx = push_ctxt("call_memcpy");
     let ccx = cx.ccx();
     let key = match ccx.sess.targ_cfg.arch {
-        X86 | Arm | Mips => "llvm.memcpy.p0i8.p0i8.i32",
+        X86 | Arm | Thumb | Mips => "llvm.memcpy.p0i8.p0i8.i32",
         X86_64 => "llvm.memcpy.p0i8.p0i8.i64"
     };
     let memcpy = ccx.intrinsics.get_copy(&key);
@@ -1515,7 +1515,7 @@ pub fn memzero(b: &Builder, llptr: ValueRef, ty: Type) {
     let ccx = b.ccx;
 
     let intrinsic_key = match ccx.sess.targ_cfg.arch {
-        X86 | Arm | Mips => "llvm.memset.p0i8.i32",
+        X86 | Arm | Thumb | Mips => "llvm.memset.p0i8.i32",
         X86_64 => "llvm.memset.p0i8.i64"
     };
 

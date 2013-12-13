@@ -1162,6 +1162,9 @@ pub mod consts {
     #[cfg(target_os = "win32")]
     pub use os::consts::win32::*;
 
+    #[cfg(target_os = "none")]
+    pub use os::consts::none::*;
+
     #[cfg(target_arch = "x86")]
     pub use os::consts::x86::*;
 
@@ -1225,6 +1228,15 @@ pub mod consts {
         pub static DLL_EXTENSION: &'static str = "dll";
         pub static EXE_SUFFIX: &'static str = ".exe";
         pub static EXE_EXTENSION: &'static str = "exe";
+    }
+
+    pub mod none {
+        pub static SYSNAME: &'static str = "none";
+        pub static DLL_PREFIX: &'static str = "lib";
+        pub static DLL_SUFFIX: &'static str = ".so";
+        pub static DLL_EXTENSION: &'static str = "so";
+        pub static EXE_SUFFIX: &'static str = "";
+        pub static EXE_EXTENSION: &'static str = "";
     }
 
 
