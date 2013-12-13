@@ -141,11 +141,12 @@ mod tests {
     use prelude::*;
     use super::*;
     use io::*;
+    use io::test::*;
 
     fn smalltest(server: proc(UnixStream), client: proc(UnixStream)) {
         let path1 = next_test_unix();
         let path2 = path1.clone();
-        let (port, chan) = oneshot();
+        let (port, chan) = Chan::new();
 
         do spawn {
             port.recv();
@@ -229,7 +230,7 @@ mod tests {
         let times = 10;
         let path1 = next_test_unix();
         let path2 = path1.clone();
-        let (port, chan) = oneshot();
+        let (port, chan) = Chan::new();
 
         do spawn {
             port.recv();

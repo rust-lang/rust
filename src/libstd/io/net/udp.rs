@@ -101,6 +101,7 @@ mod test {
     use super::*;
     use io::net::ip::{Ipv4Addr, SocketAddr};
     use io::*;
+    use io::test::*;
     use prelude::*;
 
     #[test]  #[ignore]
@@ -121,7 +122,7 @@ mod test {
     fn socket_smoke_test_ip4() {
         let server_ip = next_test_ip4();
         let client_ip = next_test_ip4();
-        let (port, chan) = oneshot();
+        let (port, chan) = Chan::new();
 
         do spawn {
             match UdpSocket::bind(client_ip) {
@@ -154,7 +155,7 @@ mod test {
     fn socket_smoke_test_ip6() {
         let server_ip = next_test_ip6();
         let client_ip = next_test_ip6();
-        let (port, chan) = oneshot();
+        let (port, chan) = Chan::<()>::new();
 
         do spawn {
             match UdpSocket::bind(client_ip) {
@@ -168,7 +169,7 @@ mod test {
 
         match UdpSocket::bind(server_ip) {
             Some(ref mut server) => {
-                chan.take().send(());
+                chan.send(());
                 let mut buf = [0];
                 match server.recvfrom(buf) {
                     Some((nread, src)) => {
@@ -187,7 +188,7 @@ mod test {
     fn stream_smoke_test_ip4() {
         let server_ip = next_test_ip4();
         let client_ip = next_test_ip4();
-        let (port, chan) = oneshot();
+        let (port, chan) = Chan::new();
 
         do spawn {
             match UdpSocket::bind(client_ip) {
@@ -223,7 +224,7 @@ mod test {
     fn stream_smoke_test_ip6() {
         let server_ip = next_test_ip6();
         let client_ip = next_test_ip6();
-        let (port, chan) = oneshot();
+        let (port, chan) = Chan::new();
 
         do spawn {
             match UdpSocket::bind(client_ip) {

@@ -163,8 +163,8 @@ impl<T: Send> Clone for Queue<T> {
 mod tests {
     use prelude::*;
     use option::*;
-    use task;
     use super::Queue;
+    use native;
 
     #[test]
     fn test() {
@@ -172,14 +172,17 @@ mod tests {
         let nmsgs = 1000u;
         let mut q = Queue::with_capacity(nthreads*nmsgs);
         assert_eq!(None, q.pop());
+        let (port, chan) = SharedChan::new();
 
         for _ in range(0, nthreads) {
             let q = q.clone();
-            do task::spawn_sched(task::SingleThreaded) {
+            let chan = chan.clone();
+            do native::task::spawn {
                 let mut q = q;
                 for i in range(0, nmsgs) {
                     assert!(q.push(i));
                 }
+                chan.send(());
             }
         }
 
@@ -188,7 +191,7 @@ mod tests {
             let (completion_port, completion_chan) = Chan::new();
             completion_ports.push(completion_port);
             let q = q.clone();
-            do task::spawn_sched(task::SingleThreaded) {
+            do native::task::spawn {
                 let mut q = q;
                 let mut i = 0u;
                 loop {
@@ -206,6 +209,9 @@ mod tests {
 
         for completion_port in completion_ports.mut_iter() {
             assert_eq!(nmsgs, completion_port.recv());
+        }
+        for _ in range(0, nthreads) {
+            port.recv();
         }
     }
 }

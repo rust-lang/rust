@@ -8,9 +8,48 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[macro_escape];
+
+use os;
+use prelude::*;
+use rand;
+use rand::Rng;
+use std::io::net::ip::*;
+use sync::atomics::{AtomicUint, INIT_ATOMIC_UINT, Relaxed};
+
+macro_rules! iotest (
+    { fn $name:ident() $b:block } => (
+        mod $name {
+            #[allow(unused_imports)];
+
+            use super::super::*;
+            use super::*;
+            use io;
+            use prelude::*;
+            use io::*;
+            use io::fs::*;
+            use io::net::tcp::*;
+            use io::net::ip::*;
+            use io::net::udp::*;
+            use io::net::unix::*;
+            use str;
+            use util;
+
+            fn f() $b
+
+            #[test] fn green() { f() }
+            #[test] fn native() {
+                use native;
+                let (p, c) = Chan::new();
+                do native::task::spawn { c.send(f()) }
+                p.recv();
+            }
+        }
+    )
+)
+
 /// Get a port number, starting at 9600, for use in tests
 pub fn next_test_port() -> u16 {
-    use unstable::atomics::{AtomicUint, INIT_ATOMIC_UINT, Relaxed};
     static mut next_offset: AtomicUint = INIT_ATOMIC_UINT;
     unsafe {
         base_port() + next_offset.fetch_add(1, Relaxed) as u16
@@ -44,9 +83,6 @@ all want to use ports. This function figures out which workspace
 it is running in and assigns a port range based on it.
 */
 fn base_port() -> u16 {
-    use os;
-    use str::StrSlice;
-    use vec::ImmutableVector;
 
     let base = 9600u16;
     let range = 1000u16;

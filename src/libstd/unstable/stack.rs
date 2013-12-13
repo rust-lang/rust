@@ -24,11 +24,6 @@
 //! detection is not guaranteed to continue in the future. Usage of this module
 //! is discouraged unless absolutely necessary.
 
-use rt::task::Task;
-use option::None;
-use rt::local::Local;
-use unstable::intrinsics;
-
 static RED_ZONE: uint = 20 * 1024;
 
 /// This function is invoked from rust's current __morestack function. Segmented
@@ -41,6 +36,10 @@ static RED_ZONE: uint = 20 * 1024;
                   //   irrelevant for documentation purposes.
 #[cfg(not(test))] // in testing, use the original libstd's version
 pub extern "C" fn rust_stack_exhausted() {
+    use rt::task::Task;
+    use option::None;
+    use rt::local::Local;
+    use unstable::intrinsics;
 
     unsafe {
         // We're calling this function because the stack just ran out. We need

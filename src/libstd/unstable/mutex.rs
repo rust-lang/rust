@@ -333,12 +333,12 @@ mod test {
     fn somke_cond() {
         static mut lock: Mutex = MUTEX_INIT;
         unsafe {
+            lock.lock();
             let t = do Thread::start {
                 lock.lock();
                 lock.signal();
                 lock.unlock();
             };
-            lock.lock();
             lock.wait();
             lock.unlock();
             t.join();

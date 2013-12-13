@@ -432,6 +432,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(dead_code)]
     fn test_tls_overwrite_multiple_types() {
         static str_key: Key<~str> = &Key;
         static box_key: Key<@()> = &Key;

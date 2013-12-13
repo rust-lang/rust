@@ -119,7 +119,7 @@ impl<'a> AnyMutRefExt<'a> for &'a mut Any {
 /// Extension methods for a owning `Any` trait object
 pub trait AnyOwnExt {
     /// Returns the boxed value if it is of type `T`, or
-    /// `None` if it isn't.
+    /// `Err(Self)` if it isn't.
     fn move<T: 'static>(self) -> Result<~T, Self>;
 }
 
@@ -156,9 +156,8 @@ impl<'a> ToStr for &'a Any {
 
 #[cfg(test)]
 mod tests {
+    use prelude::*;
     use super::*;
-    use super::AnyRefExt;
-    use option::{Some, None};
 
     #[deriving(Eq)]
     struct Test;
@@ -385,8 +384,14 @@ mod tests {
         let a = ~8u as ~Any;
         let b = ~Test as ~Any;
 
-        assert_eq!(a.move(), Ok(~8u));
-        assert_eq!(b.move(), Ok(~Test));
+        match a.move::<uint>() {
+            Ok(a) => { assert_eq!(a, ~8u); }
+            Err(..) => fail!()
+        }
+        match b.move::<Test>() {
+            Ok(a) => { assert_eq!(a, ~Test); }
+            Err(..) => fail!()
+        }
 
         let a = ~8u as ~Any;
         let b = ~Test as ~Any;

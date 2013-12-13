@@ -251,18 +251,21 @@ macro_rules! test (
         mod $name {
             #[allow(unused_imports)];
 
-            use util;
-            use super::super::*;
+            use native;
             use prelude::*;
+            use super::*;
+            use super::super::*;
+            use task;
+            use util;
 
             fn f() $b
 
             $($a)* #[test] fn uv() { f() }
-            $($a)* #[test]
-            #[ignore(cfg(windows))] // FIXME(#11003)
-            fn native() {
-                use unstable::run_in_bare_thread;
-                run_in_bare_thread(f);
+            $($a)* #[test] fn native() {
+                use native;
+                let (p, c) = Chan::new();
+                do native::task::spawn { c.send(f()) }
+                p.recv();
             }
         }
     )
@@ -889,10 +892,16 @@ impl<T: Send> Drop for Port<T> {
 mod test {
     use prelude::*;
 
-    use task;
-    use rt::thread::Thread;
+    use native;
+    use os;
     use super::*;
-    use rt::test::*;
+
+    pub fn stress_factor() -> uint {
+        match os::getenv("RUST_TEST_STRESS") {
+            Some(val) => from_str::<uint>(val).unwrap(),
+            None => 1,
+        }
+    }
 
     test!(fn smoke() {
         let (p, c) = Chan::new();
@@ -919,99 +928,88 @@ mod test {
         assert_eq!(p.recv(), 1);
     })
 
-    #[test]
-    fn smoke_threads() {
+    test!(fn smoke_threads() {
         let (p, c) = Chan::new();
-        do task::spawn_sched(task::SingleThreaded) {
+        do spawn {
             c.send(1);
         }
         assert_eq!(p.recv(), 1);
-    }
+    })
 
-    #[test] #[should_fail]
-    fn smoke_port_gone() {
+    test!(fn smoke_port_gone() {
         let (p, c) = Chan::new();
         drop(p);
         c.send(1);
-    }
+    } #[should_fail])
 
-    #[test] #[should_fail]
-    fn smoke_shared_port_gone() {
+    test!(fn smoke_shared_port_gone() {
         let (p, c) = SharedChan::new();
         drop(p);
         c.send(1);
-    }
+    } #[should_fail])
 
-    #[test] #[should_fail]
-    fn smoke_shared_port_gone2() {
+    test!(fn smoke_shared_port_gone2() {
         let (p, c) = SharedChan::new();
         drop(p);
         let c2 = c.clone();
         drop(c);
         c2.send(1);
-    }
+    } #[should_fail])
 
-    #[test] #[should_fail]
-    fn port_gone_concurrent() {
+    test!(fn port_gone_concurrent() {
         let (p, c) = Chan::new();
-        do task::spawn_sched(task::SingleThreaded) {
+        do spawn {
             p.recv();
         }
         loop { c.send(1) }
-    }
+    } #[should_fail])
 
-    #[test] #[should_fail]
-    fn port_gone_concurrent_shared() {
+    test!(fn port_gone_concurrent_shared() {
         let (p, c) = SharedChan::new();
         let c1 = c.clone();
-        do task::spawn_sched(task::SingleThreaded) {
+        do spawn {
             p.recv();
         }
         loop {
             c.send(1);
             c1.send(1);
         }
-    }
+    } #[should_fail])
 
-    #[test] #[should_fail]
-    fn smoke_chan_gone() {
+    test!(fn smoke_chan_gone() {
         let (p, c) = Chan::<int>::new();
         drop(c);
         p.recv();
-    }
+    } #[should_fail])
 
-    #[test] #[should_fail]
-    fn smoke_chan_gone_shared() {
+    test!(fn smoke_chan_gone_shared() {
         let (p, c) = SharedChan::<()>::new();
         let c2 = c.clone();
         drop(c);
         drop(c2);
         p.recv();
-    }
+    } #[should_fail])
 
-    #[test] #[should_fail]
-    fn chan_gone_concurrent() {
+    test!(fn chan_gone_concurrent() {
         let (p, c) = Chan::new();
-        do task::spawn_sched(task::SingleThreaded) {
+        do spawn {
             c.send(1);
             c.send(1);
         }
         loop { p.recv(); }
-    }
+    } #[should_fail])
 
-    #[test]
-    fn stress() {
+    test!(fn stress() {
         let (p, c) = Chan::new();
-        do task::spawn_sched(task::SingleThreaded) {
+        do spawn {
             for _ in range(0, 10000) { c.send(1); }
         }
         for _ in range(0, 10000) {
             assert_eq!(p.recv(), 1);
         }
-    }
+    })
 
-    #[test]
-    fn stress_shared() {
+    test!(fn stress_shared() {
         static AMT: uint = 10000;
         static NTHREADS: uint = 8;
         let (p, c) = SharedChan::<int>::new();
@@ -1027,47 +1025,53 @@ mod test {
 
         for _ in range(0, NTHREADS) {
             let c = c.clone();
-            do task::spawn_sched(task::SingleThreaded) {
+            do spawn {
                 for _ in range(0, AMT) { c.send(1); }
             }
         }
         p1.recv();
-
-    }
+    })
 
     #[test]
     #[ignore(cfg(windows))] // FIXME(#11003)
     fn send_from_outside_runtime() {
         let (p, c) = Chan::<int>::new();
         let (p1, c1) = Chan::new();
+        let (port, chan) = SharedChan::new();
+        let chan2 = chan.clone();
         do spawn {
             c1.send(());
             for _ in range(0, 40) {
                 assert_eq!(p.recv(), 1);
             }
+            chan2.send(());
         }
         p1.recv();
-        let t = do Thread::start {
+        do native::task::spawn {
             for _ in range(0, 40) {
                 c.send(1);
             }
-        };
-        t.join();
+            chan.send(());
+        }
+        port.recv();
+        port.recv();
     }
 
     #[test]
     #[ignore(cfg(windows))] // FIXME(#11003)
     fn recv_from_outside_runtime() {
         let (p, c) = Chan::<int>::new();
-        let t = do Thread::start {
+        let (dp, dc) = Chan::new();
+        do native::task::spawn {
             for _ in range(0, 40) {
                 assert_eq!(p.recv(), 1);
             }
+            dc.send(());
         };
         for _ in range(0, 40) {
             c.send(1);
         }
-        t.join();
+        dp.recv();
     }
 
     #[test]
@@ -1075,173 +1079,132 @@ mod test {
     fn no_runtime() {
         let (p1, c1) = Chan::<int>::new();
         let (p2, c2) = Chan::<int>::new();
-        let t1 = do Thread::start {
+        let (port, chan) = SharedChan::new();
+        let chan2 = chan.clone();
+        do native::task::spawn {
             assert_eq!(p1.recv(), 1);
             c2.send(2);
-        };
-        let t2 = do Thread::start {
+            chan2.send(());
+        }
+        do native::task::spawn {
             c1.send(1);
             assert_eq!(p2.recv(), 2);
-        };
-        t1.join();
-        t2.join();
-    }
-
-    #[test]
-    fn oneshot_single_thread_close_port_first() {
-        // Simple test of closing without sending
-        do run_in_newsched_task {
-            let (port, _chan) = Chan::<int>::new();
-            { let _p = port; }
+            chan.send(());
         }
+        port.recv();
+        port.recv();
     }
 
-    #[test]
-    fn oneshot_single_thread_close_chan_first() {
+    test!(fn oneshot_single_thread_close_port_first() {
         // Simple test of closing without sending
-        do run_in_newsched_task {
-            let (_port, chan) = Chan::<int>::new();
-            { let _c = chan; }
-        }
-    }
+        let (port, _chan) = Chan::<int>::new();
+        { let _p = port; }
+    })
 
-    #[test] #[should_fail]
-    fn oneshot_single_thread_send_port_close() {
+    test!(fn oneshot_single_thread_close_chan_first() {
+        // Simple test of closing without sending
+        let (_port, chan) = Chan::<int>::new();
+        { let _c = chan; }
+    })
+
+    test!(fn oneshot_single_thread_send_port_close() {
         // Testing that the sender cleans up the payload if receiver is closed
         let (port, chan) = Chan::<~int>::new();
         { let _p = port; }
         chan.send(~0);
-    }
+    } #[should_fail])
 
-    #[test]
-    fn oneshot_single_thread_recv_chan_close() {
+    test!(fn oneshot_single_thread_recv_chan_close() {
         // Receiving on a closed chan will fail
-        do run_in_newsched_task {
-            let res = do spawntask_try {
-                let (port, chan) = Chan::<~int>::new();
-                { let _c = chan; }
-                port.recv();
-            };
-            // What is our res?
-            assert!(res.is_err());
-        }
-    }
-
-    #[test]
-    fn oneshot_single_thread_send_then_recv() {
-        do run_in_newsched_task {
+        let res = do task::try {
             let (port, chan) = Chan::<~int>::new();
-            chan.send(~10);
+            { let _c = chan; }
+            port.recv();
+        };
+        // What is our res?
+        assert!(res.is_err());
+    })
+
+    test!(fn oneshot_single_thread_send_then_recv() {
+        let (port, chan) = Chan::<~int>::new();
+        chan.send(~10);
+        assert!(port.recv() == ~10);
+    })
+
+    test!(fn oneshot_single_thread_try_send_open() {
+        let (port, chan) = Chan::<int>::new();
+        assert!(chan.try_send(10));
+        assert!(port.recv() == 10);
+    })
+
+    test!(fn oneshot_single_thread_try_send_closed() {
+        let (port, chan) = Chan::<int>::new();
+        { let _p = port; }
+        assert!(!chan.try_send(10));
+    })
+
+    test!(fn oneshot_single_thread_try_recv_open() {
+        let (port, chan) = Chan::<int>::new();
+        chan.send(10);
+        assert!(port.try_recv() == Some(10));
+    })
+
+    test!(fn oneshot_single_thread_try_recv_closed() {
+        let (port, chan) = Chan::<int>::new();
+        { let _c = chan; }
+        assert!(port.recv_opt() == None);
+    })
+
+    test!(fn oneshot_single_thread_peek_data() {
+        let (port, chan) = Chan::<int>::new();
+        assert!(port.try_recv().is_none());
+        chan.send(10);
+        assert!(port.try_recv().is_some());
+    })
+
+    test!(fn oneshot_single_thread_peek_close() {
+        let (port, chan) = Chan::<int>::new();
+        { let _c = chan; }
+        assert!(port.try_recv().is_none());
+        assert!(port.try_recv().is_none());
+    })
+
+    test!(fn oneshot_single_thread_peek_open() {
+        let (port, _) = Chan::<int>::new();
+        assert!(port.try_recv().is_none());
+    })
+
+    test!(fn oneshot_multi_task_recv_then_send() {
+        let (port, chan) = Chan::<~int>::new();
+        do spawn {
             assert!(port.recv() == ~10);
         }
-    }
 
-    #[test]
-    fn oneshot_single_thread_try_send_open() {
-        do run_in_newsched_task {
-            let (port, chan) = Chan::<int>::new();
-            assert!(chan.try_send(10));
-            assert!(port.recv() == 10);
+        chan.send(~10);
+    })
+
+    test!(fn oneshot_multi_task_recv_then_close() {
+        let (port, chan) = Chan::<~int>::new();
+        do spawn {
+            let _chan = chan;
         }
-    }
+        let res = do task::try {
+            assert!(port.recv() == ~10);
+        };
+        assert!(res.is_err());
+    })
 
-    #[test]
-    fn oneshot_single_thread_try_send_closed() {
-        do run_in_newsched_task {
-            let (port, chan) = Chan::<int>::new();
-            { let _p = port; }
-            assert!(!chan.try_send(10));
-        }
-    }
-
-    #[test]
-    fn oneshot_single_thread_try_recv_open() {
-        do run_in_newsched_task {
-            let (port, chan) = Chan::<int>::new();
-            chan.send(10);
-            assert!(port.try_recv() == Some(10));
-        }
-    }
-
-    #[test]
-    fn oneshot_single_thread_try_recv_closed() {
-        do run_in_newsched_task {
-            let (port, chan) = Chan::<int>::new();
-            { let _c = chan; }
-            assert!(port.recv_opt() == None);
-        }
-    }
-
-    #[test]
-    fn oneshot_single_thread_peek_data() {
-        do run_in_newsched_task {
-            let (port, chan) = Chan::<int>::new();
-            assert!(port.try_recv().is_none());
-            chan.send(10);
-            assert!(port.try_recv().is_some());
-        }
-    }
-
-    #[test]
-    fn oneshot_single_thread_peek_close() {
-        do run_in_newsched_task {
-            let (port, chan) = Chan::<int>::new();
-            { let _c = chan; }
-            assert!(port.try_recv().is_none());
-            assert!(port.try_recv().is_none());
-        }
-    }
-
-    #[test]
-    fn oneshot_single_thread_peek_open() {
-        do run_in_newsched_task {
-            let (port, _) = Chan::<int>::new();
-            assert!(port.try_recv().is_none());
-        }
-    }
-
-    #[test]
-    fn oneshot_multi_task_recv_then_send() {
-        do run_in_newsched_task {
-            let (port, chan) = Chan::<~int>::new();
-            do spawntask {
-                assert!(port.recv() == ~10);
-            }
-
-            chan.send(~10);
-        }
-    }
-
-    #[test]
-    fn oneshot_multi_task_recv_then_close() {
-        do run_in_newsched_task {
-            let (port, chan) = Chan::<~int>::new();
-            do spawntask_later {
-                let _chan = chan;
-            }
-            let res = do spawntask_try {
-                assert!(port.recv() == ~10);
-            };
-            assert!(res.is_err());
-        }
-    }
-
-    #[test]
-    fn oneshot_multi_thread_close_stress() {
+    test!(fn oneshot_multi_thread_close_stress() {
         stress_factor().times(|| {
-            do run_in_newsched_task {
-                let (port, chan) = Chan::<int>::new();
-                let thread = do spawntask_thread {
-                    let _p = port;
-                };
-                let _chan = chan;
-                thread.join();
+            let (port, chan) = Chan::<int>::new();
+            do spawn {
+                let _p = port;
             }
+            let _chan = chan;
         })
-    }
+    })
 
-    #[test]
-    fn oneshot_multi_thread_send_close_stress() {
+    test!(fn oneshot_multi_thread_send_close_stress() {
         stress_factor().times(|| {
             let (port, chan) = Chan::<int>::new();
             do spawn {
@@ -1251,10 +1214,9 @@ mod test {
                 chan.send(1);
             };
         })
-    }
+    })
 
-    #[test]
-    fn oneshot_multi_thread_recv_close_stress() {
+    test!(fn oneshot_multi_thread_recv_close_stress() {
         stress_factor().times(|| {
             let (port, chan) = Chan::<int>::new();
             do spawn {
@@ -1271,10 +1233,9 @@ mod test {
                 }
             };
         })
-    }
+    })
 
-    #[test]
-    fn oneshot_multi_thread_send_recv_stress() {
+    test!(fn oneshot_multi_thread_send_recv_stress() {
         stress_factor().times(|| {
             let (port, chan) = Chan::<~int>::new();
             do spawn {
@@ -1284,10 +1245,9 @@ mod test {
                 assert!(port.recv() == ~10);
             }
         })
-    }
+    })
 
-    #[test]
-    fn stream_send_recv_stress() {
+    test!(fn stream_send_recv_stress() {
         stress_factor().times(|| {
             let (port, chan) = Chan::<~int>::new();
 
@@ -1297,7 +1257,7 @@ mod test {
             fn send(chan: Chan<~int>, i: int) {
                 if i == 10 { return }
 
-                do spawntask_random {
+                do spawn {
                     chan.send(~i);
                     send(chan, i + 1);
                 }
@@ -1306,44 +1266,37 @@ mod test {
             fn recv(port: Port<~int>, i: int) {
                 if i == 10 { return }
 
-                do spawntask_random {
+                do spawn {
                     assert!(port.recv() == ~i);
                     recv(port, i + 1);
                 };
             }
         })
-    }
+    })
 
-    #[test]
-    fn recv_a_lot() {
+    test!(fn recv_a_lot() {
         // Regression test that we don't run out of stack in scheduler context
-        do run_in_newsched_task {
-            let (port, chan) = Chan::new();
-            10000.times(|| { chan.send(()) });
-            10000.times(|| { port.recv() });
-        }
-    }
+        let (port, chan) = Chan::new();
+        10000.times(|| { chan.send(()) });
+        10000.times(|| { port.recv() });
+    })
 
-    #[test]
-    fn shared_chan_stress() {
-        do run_in_mt_newsched_task {
-            let (port, chan) = SharedChan::new();
-            let total = stress_factor() + 100;
-            total.times(|| {
-                let chan_clone = chan.clone();
-                do spawntask_random {
-                    chan_clone.send(());
-                }
-            });
+    test!(fn shared_chan_stress() {
+        let (port, chan) = SharedChan::new();
+        let total = stress_factor() + 100;
+        total.times(|| {
+            let chan_clone = chan.clone();
+            do spawn {
+                chan_clone.send(());
+            }
+        });
 
-            total.times(|| {
-                port.recv();
-            });
-        }
-    }
+        total.times(|| {
+            port.recv();
+        });
+    })
 
-    #[test]
-    fn test_nested_recv_iter() {
+    test!(fn test_nested_recv_iter() {
         let (port, chan) = Chan::<int>::new();
         let (total_port, total_chan) = Chan::<int>::new();
 
@@ -1360,10 +1313,9 @@ mod test {
         chan.send(2);
         drop(chan);
         assert_eq!(total_port.recv(), 6);
-    }
+    })
 
-    #[test]
-    fn test_recv_iter_break() {
+    test!(fn test_recv_iter_break() {
         let (port, chan) = Chan::<int>::new();
         let (count_port, count_chan) = Chan::<int>::new();
 
@@ -1385,5 +1337,5 @@ mod test {
         chan.try_send(2);
         drop(chan);
         assert_eq!(count_port.recv(), 4);
-    }
+    })
 }
