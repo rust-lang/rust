@@ -97,7 +97,6 @@ impl Drop for IdleWatcher {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use std::rt::tube::Tube;
     use std::rt::rtio::{Callback, PausableIdleCallback};
     use super::super::local_loop;

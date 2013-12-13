@@ -8,32 +8,31 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::io::IoError;
+use std::io::process;
 use std::libc::c_int;
 use std::libc;
 use std::ptr;
-use std::rt::BlockedTask;
-use std::io::IoError;
-use std::io::process::*;
-use std::rt::local::Local;
 use std::rt::rtio::RtioProcess;
-use std::rt::sched::{Scheduler, SchedHandle};
+use std::rt::task::BlockedTask;
 use std::vec;
 
-use super::{Loop, UvHandle, UvError, uv_error_to_io_error,
-            wait_until_woken_after};
-use uvio::HomingIO;
-use uvll;
+use homing::{HomingIO, HomeHandle};
 use pipe::PipeWatcher;
+use super::{UvHandle, UvError, uv_error_to_io_error,
+            wait_until_woken_after, wakeup};
+use uvio::UvIoFactory;
+use uvll;
 
 pub struct Process {
     handle: *uvll::uv_process_t,
-    home: SchedHandle,
+    home: HomeHandle,
 
     /// Task to wake up (may be null) for when the process exits
     to_wake: Option<BlockedTask>,
 
     /// Collected from the exit_cb
-    exit_status: Option<ProcessExit>,
+    exit_status: Option<process::ProcessExit>,
 }
 
 impl Process {
@@ -41,7 +40,7 @@ impl Process {
     ///
     /// Returns either the corresponding process object or an error which
     /// occurred.
-    pub fn spawn(loop_: &Loop, config: ProcessConfig)
+    pub fn spawn(io_loop: &mut UvIoFactory, config: process::ProcessConfig)
                 -> Result<(~Process, ~[Option<PipeWatcher>]), UvError>
     {
         let cwd = config.cwd.map(|s| s.to_c_str());
@@ -52,7 +51,7 @@ impl Process {
             stdio.set_len(io.len());
             for (slot, other) in stdio.iter().zip(io.iter()) {
                 let io = set_stdio(slot as *uvll::uv_stdio_container_t, other,
-                                   loop_);
+                                   io_loop);
                 ret_io.push(io);
             }
         }
@@ -78,12 +77,12 @@ impl Process {
                 let handle = UvHandle::alloc(None::<Process>, uvll::UV_PROCESS);
                 let process = ~Process {
                     handle: handle,
-                    home: get_handle_to_current_scheduler!(),
+                    home: io_loop.make_handle(),
                     to_wake: None,
                     exit_status: None,
                 };
                 match unsafe {
-                    uvll::uv_spawn(loop_.handle, handle, &options)
+                    uvll::uv_spawn(io_loop.uv_loop(), handle, &options)
                 } {
                     0 => Ok(process.install()),
                     err => Err(UvError(err)),
@@ -105,33 +104,28 @@ extern fn on_exit(handle: *uvll::uv_process_t,
 
     assert!(p.exit_status.is_none());
     p.exit_status = Some(match term_signal {
-        0 => ExitStatus(exit_status as int),
-        n => ExitSignal(n as int),
+        0 => process::ExitStatus(exit_status as int),
+        n => process::ExitSignal(n as int),
     });
 
-    match p.to_wake.take() {
-        Some(task) => {
-            let scheduler: ~Scheduler = Local::take();
-            scheduler.resume_blocked_task_immediately(task);
-        }
-        None => {}
-    }
+    if p.to_wake.is_none() { return }
+    wakeup(&mut p.to_wake);
 }
 
 unsafe fn set_stdio(dst: *uvll::uv_stdio_container_t,
-                    io: &StdioContainer,
-                    loop_: &Loop) -> Option<PipeWatcher> {
+                    io: &process::StdioContainer,
+                    io_loop: &mut UvIoFactory) -> Option<PipeWatcher> {
     match *io {
-        Ignored => {
+        process::Ignored => {
             uvll::set_stdio_container_flags(dst, uvll::STDIO_IGNORE);
             None
         }
-        InheritFd(fd) => {
+        process::InheritFd(fd) => {
             uvll::set_stdio_container_flags(dst, uvll::STDIO_INHERIT_FD);
             uvll::set_stdio_container_fd(dst, fd);
             None
         }
-        CreatePipe(readable, writable) => {
+        process::CreatePipe(readable, writable) => {
             let mut flags = uvll::STDIO_CREATE_PIPE as libc::c_int;
             if readable {
                 flags |= uvll::STDIO_READABLE_PIPE as libc::c_int;
@@ -139,7 +133,7 @@ unsafe fn set_stdio(dst: *uvll::uv_stdio_container_t,
             if writable {
                 flags |= uvll::STDIO_WRITABLE_PIPE as libc::c_int;
             }
-            let pipe = PipeWatcher::new(loop_, false);
+            let pipe = PipeWatcher::new(io_loop, false);
             uvll::set_stdio_container_flags(dst, flags);
             uvll::set_stdio_container_stream(dst, pipe.handle());
             Some(pipe)
@@ -186,7 +180,7 @@ fn with_env<T>(env: Option<&[(~str, ~str)]>, f: |**libc::c_char| -> T) -> T {
 }
 
 impl HomingIO for Process {
-    fn home<'r>(&'r mut self) -> &'r mut SchedHandle { &mut self.home }
+    fn home<'r>(&'r mut self) -> &'r mut HomeHandle { &mut self.home }
 }
 
 impl UvHandle<uvll::uv_process_t> for Process {
@@ -208,7 +202,7 @@ impl RtioProcess for Process {
         }
     }
 
-    fn wait(&mut self) -> ProcessExit {
+    fn wait(&mut self) -> process::ProcessExit {
         // Make sure (on the home scheduler) that we have an exit status listed
         let _m = self.fire_homing_missile();
         match self.exit_status {

@@ -129,7 +129,6 @@ mod test_remote {
     use std::rt::thread::Thread;
     use std::rt::tube::Tube;
 
-    use super::*;
     use super::super::local_loop;
 
     // Make sure that we can fire watchers in remote threads and that they

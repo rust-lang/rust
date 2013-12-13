@@ -1,0 +1,144 @@
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
+//! Homing I/O implementation
+//!
+//! In libuv, whenever a handle is created on an I/O loop it is illegal to use
+//! that handle outside of that I/O loop. We use libuv I/O with our green
+//! scheduler, and each green scheduler corresponds to a different I/O loop on a
+//! different OS thread. Green tasks are also free to roam among schedulers,
+//! which implies that it is possible to create an I/O handle on one event loop
+//! and then attempt to use it on another.
+//!
+//! In order to solve this problem, this module implements the notion of a
+//! "homing operation" which will transplant a task from its currently running
+//! scheduler back onto the original I/O loop. This is accomplished entirely at
+//! the librustuv layer with very little cooperation from the scheduler (which
+//! we don't even know exists technically).
+//!
+//! These homing operations are completed by first realizing that we're on the
+//! wrong I/O loop, then descheduling ourselves, sending ourselves to the
+//! correct I/O loop, and then waking up the I/O loop in order to process its
+//! local queue of tasks which need to run.
+//!
+//! This enqueueing is done with a concurrent queue from libstd, and the
+//! signalling is achieved with an async handle.
+
+use std::rt::local::Local;
+use std::rt::rtio::LocalIo;
+use std::rt::task::{Task, BlockedTask};
+
+use ForbidUnwind;
+use queue::{Queue, QueuePool};
+
+/// A handle to a remote libuv event loop. This handle will keep the event loop
+/// alive while active in order to ensure that a homing operation can always be
+/// completed.
+///
+/// Handles are clone-able in order to derive new handles from existing handles
+/// (very useful for when accepting a socket from a server).
+pub struct HomeHandle {
+    priv queue: Queue,
+    priv id: uint,
+}
+
+impl HomeHandle {
+    pub fn new(id: uint, pool: &mut QueuePool) -> HomeHandle {
+        HomeHandle { queue: pool.queue(), id: id }
+    }
+
+    fn send(&mut self, task: BlockedTask) {
+        self.queue.push(task);
+    }
+}
+
+impl Clone for HomeHandle {
+    fn clone(&self) -> HomeHandle {
+        HomeHandle {
+            queue: self.queue.clone(),
+            id: self.id,
+        }
+    }
+}
+
+pub trait HomingIO {
+    fn home<'r>(&'r mut self) -> &'r mut HomeHandle;
+
+    /// This function will move tasks to run on their home I/O scheduler. Note
+    /// that this function does *not* pin the task to the I/O scheduler, but
+    /// rather it simply moves it to running on the I/O scheduler.
+    fn go_to_IO_home(&mut self) -> uint {
+        let _f = ForbidUnwind::new("going home");
+
+        let mut cur_task: ~Task = Local::take();
+        let cur_loop_id = {
+            let mut io = cur_task.local_io().expect("libuv must have I/O");
+            io.get().id()
+        };
+
+        // Try at all costs to avoid the homing operation because it is quite
+        // expensive. Hence, we only deschedule/send if we're not on the correct
+        // event loop. If we're already on the home event loop, then we're good
+        // to go (remember we have no preemption, so we're guaranteed to stay on
+        // this event loop as long as we avoid the scheduler).
+        if cur_loop_id != self.home().id {
+            cur_task.deschedule(1, |task| {
+                self.home().send(task);
+                Ok(())
+            });
+
+            // Once we wake up, assert that we're in the right location
+            let cur_loop_id = {
+                let mut io = LocalIo::borrow().expect("libuv must have I/O");
+                io.get().id()
+            };
+            assert_eq!(cur_loop_id, self.home().id);
+
+            cur_loop_id
+        } else {
+            Local::put(cur_task);
+            cur_loop_id
+        }
+    }
+
+    /// Fires a single homing missile, returning another missile targeted back
+    /// at the original home of this task. In other words, this function will
+    /// move the local task to its I/O scheduler and then return an RAII wrapper
+    /// which will return the task home.
+    fn fire_homing_missile(&mut self) -> HomingMissile {
+        HomingMissile { io_home: self.go_to_IO_home() }
+    }
+}
+
+/// After a homing operation has been completed, this will return the current
+/// task back to its appropriate home (if applicable). The field is used to
+/// assert that we are where we think we are.
+struct HomingMissile {
+    priv io_home: uint,
+}
+
+impl HomingMissile {
+    /// Check at runtime that the task has *not* transplanted itself to a
+    /// different I/O loop while executing.
+    pub fn check(&self, msg: &'static str) {
+        let mut io = LocalIo::borrow().expect("libuv must have I/O");
+        assert!(io.get().id() == self.io_home, "{}", msg);
+    }
+}
+
+impl Drop for HomingMissile {
+    fn drop(&mut self) {
+        let _f = ForbidUnwind::new("leaving home");
+
+        // It would truly be a sad day if we had moved off the home I/O
+        // scheduler while we were doing I/O.
+        self.check("task moved away from the home scheduler");
+    }
+}
