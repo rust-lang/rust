@@ -52,7 +52,7 @@ impl SignalWatcher {
 extern fn signal_cb(handle: *uvll::uv_signal_t, signum: c_int) {
     let s: &mut SignalWatcher = unsafe { UvHandle::from_uv_handle(&handle) };
     assert_eq!(signum as int, s.signal as int);
-    s.channel.send_deferred(s.signal);
+    s.channel.try_send_deferred(s.signal);
 }
 
 impl HomingIO for SignalWatcher {
@@ -76,6 +76,7 @@ impl Drop for SignalWatcher {
 mod test {
     use super::super::local_loop;
     use std::io::signal;
+    use super::SignalWatcher;
 
     #[test]
     fn closing_channel_during_drop_doesnt_kill_everything() {

@@ -43,6 +43,8 @@ via `close` and `delete` methods.
 
 #[feature(macro_rules)];
 
+#[cfg(test)] extern mod green;
+
 use std::cast;
 use std::io;
 use std::io::IoError;
@@ -392,15 +394,17 @@ pub fn slice_to_uv_buf(v: &[u8]) -> Buf {
     uvll::uv_buf_t { base: data, len: v.len() as uvll::uv_buf_len_t }
 }
 
+// This function is full of lies!
 #[cfg(test)]
-fn local_loop() -> &'static mut Loop {
+fn local_loop() -> &'static mut uvio::UvIoFactory {
     unsafe {
         cast::transmute({
-            let mut sched = Local::borrow(None::<Scheduler>);
+            let mut task = Local::borrow(None::<Task>);
+            let mut io = task.get().local_io().unwrap();
             let (_vtable, uvio): (uint, &'static mut uvio::UvIoFactory) =
-                cast::transmute(sched.get().event_loop.io().unwrap());
+                cast::transmute(io.get());
             uvio
-        }.uv_loop())
+        })
     }
 }
 

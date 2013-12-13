@@ -142,3 +142,124 @@ impl Drop for HomingMissile {
         self.check("task moved away from the home scheduler");
     }
 }
+
+#[cfg(test)]
+mod test {
+    // On one thread, create a udp socket. Then send that socket to another
+    // thread and destroy the socket on the remote thread. This should make sure
+    // that homing kicks in for the socket to go back home to the original
+    // thread, close itself, and then come back to the last thread.
+    //#[test]
+    //fn test_homing_closes_correctly() {
+    //    let (port, chan) = Chan::new();
+
+    //    do task::spawn_sched(task::SingleThreaded) {
+    //        let listener = UdpWatcher::bind(local_loop(), next_test_ip4()).unwrap();
+    //        chan.send(listener);
+    //    }
+
+    //    do task::spawn_sched(task::SingleThreaded) {
+    //        port.recv();
+    //    }
+    //}
+
+    // This is a bit of a crufty old test, but it has its uses.
+    //#[test]
+    //fn test_simple_homed_udp_io_bind_then_move_task_then_home_and_close() {
+    //    use std::cast;
+    //    use std::rt::local::Local;
+    //    use std::rt::rtio::{EventLoop, IoFactory};
+    //    use std::rt::sched::Scheduler;
+    //    use std::rt::sched::{Shutdown, TaskFromFriend};
+    //    use std::rt::sleeper_list::SleeperList;
+    //    use std::rt::task::Task;
+    //    use std::rt::task::UnwindResult;
+    //    use std::rt::thread::Thread;
+    //    use std::rt::deque::BufferPool;
+    //    use std::unstable::run_in_bare_thread;
+    //    use uvio::UvEventLoop;
+
+    //    do run_in_bare_thread {
+    //        let sleepers = SleeperList::new();
+    //        let mut pool = BufferPool::new();
+    //        let (worker1, stealer1) = pool.deque();
+    //        let (worker2, stealer2) = pool.deque();
+    //        let queues = ~[stealer1, stealer2];
+
+    //        let loop1 = ~UvEventLoop::new() as ~EventLoop;
+    //        let mut sched1 = ~Scheduler::new(loop1, worker1, queues.clone(),
+    //                                         sleepers.clone());
+    //        let loop2 = ~UvEventLoop::new() as ~EventLoop;
+    //        let mut sched2 = ~Scheduler::new(loop2, worker2, queues.clone(),
+    //                                         sleepers.clone());
+
+    //        let handle1 = sched1.make_handle();
+    //        let handle2 = sched2.make_handle();
+    //        let tasksFriendHandle = sched2.make_handle();
+
+    //        let on_exit: proc(UnwindResult) = proc(exit_status) {
+    //            let mut handle1 = handle1;
+    //            let mut handle2 = handle2;
+    //            handle1.send(Shutdown);
+    //            handle2.send(Shutdown);
+    //            assert!(exit_status.is_success());
+    //        };
+
+    //        unsafe fn local_io() -> &'static mut IoFactory {
+    //            let mut sched = Local::borrow(None::<Scheduler>);
+    //            let io = sched.get().event_loop.io();
+    //            cast::transmute(io.unwrap())
+    //        }
+
+    //        let test_function: proc() = proc() {
+    //            let io = unsafe { local_io() };
+    //            let addr = next_test_ip4();
+    //            let maybe_socket = io.udp_bind(addr);
+    //            // this socket is bound to this event loop
+    //            assert!(maybe_socket.is_ok());
+
+    //            // block self on sched1
+    //            let scheduler: ~Scheduler = Local::take();
+    //            let mut tasksFriendHandle = Some(tasksFriendHandle);
+    //            scheduler.deschedule_running_task_and_then(|_, task| {
+    //                // unblock task
+    //                task.wake().map(|task| {
+    //                    // send self to sched2
+    //                    tasksFriendHandle.take_unwrap()
+    //                                     .send(TaskFromFriend(task));
+    //                });
+    //                // sched1 should now sleep since it has nothing else to do
+    //            })
+    //            // sched2 will wake up and get the task as we do nothing else,
+    //            // the function ends and the socket goes out of scope sched2
+    //            // will start to run the destructor the destructor will first
+    //            // block the task, set it's home as sched1, then enqueue it
+    //            // sched2 will dequeue the task, see that it has a home, and
+    //            // send it to sched1 sched1 will wake up, exec the close
+    //            // function on the correct loop, and then we're done
+    //        };
+
+    //        let mut main_task = ~Task::new_root(&mut sched1.stack_pool, None,
+    //                                            test_function);
+    //        main_task.death.on_exit = Some(on_exit);
+
+    //        let null_task = ~do Task::new_root(&mut sched2.stack_pool, None) {
+    //            // nothing
+    //        };
+
+    //        let main_task = main_task;
+    //        let sched1 = sched1;
+    //        let thread1 = do Thread::start {
+    //            sched1.bootstrap(main_task);
+    //        };
+
+    //        let sched2 = sched2;
+    //        let thread2 = do Thread::start {
+    //            sched2.bootstrap(null_task);
+    //        };
+
+    //        thread1.join();
+    //        thread2.join();
+    //    }
+    //}
+}
