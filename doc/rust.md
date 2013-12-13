@@ -486,14 +486,12 @@ include:
 * `fmt!` : format data into a string
 * `env!` : look up an environment variable's value at compile time
 * `stringify!` : pretty-print the Rust expression given as an argument
-* `proto!` : define a protocol for inter-task communication
 * `include!` : include the Rust expression in the given file
 * `include_str!` : include the contents of the given file as a string
 * `include_bin!` : include the contents of the given file as a binary blob
 * `error!`, `warn!`, `info!`, `debug!` : provide diagnostic information.
 
-All of the above extensions, with the exception of `proto!`, are expressions
-with values. `proto!` is an item, defining a new name.
+All of the above extensions are expressions with values.
 
 ## Macros
 
