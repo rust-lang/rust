@@ -159,6 +159,7 @@ pub mod trie;
 pub mod task;
 pub mod comm;
 pub mod local_data;
+pub mod sync;
 
 
 /* Runtime and platform support */

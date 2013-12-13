@@ -48,7 +48,7 @@
 #[allow(non_camel_case_types)];
 
 use libc::c_void;
-use unstable::atomics;
+use sync::atomics;
 
 pub struct Mutex {
     // pointers for the lock/cond handles, atomically updated

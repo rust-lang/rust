@@ -26,12 +26,20 @@
  */
 
 // http://www.1024cores.net/home/lock-free-algorithms/queues/unbounded-spsc-queue
+
+//! A single-producer single-consumer concurrent queue
+//!
+//! This module contains the implementation of an SPSC queue which can be used
+//! concurrently between two tasks. This data structure is safe to use and
+//! enforces the semantics that there is one pusher and one popper.
+
 use cast;
 use kinds::Send;
 use ops::Drop;
 use option::{Some, None, Option};
-use unstable::atomics::{AtomicPtr, Relaxed, AtomicUint, Acquire, Release};
-use unstable::sync::UnsafeArc;
+use ptr::RawPtr;
+use sync::arc::UnsafeArc;
+use sync::atomics::{AtomicPtr, Relaxed, AtomicUint, Acquire, Release};
 
 // Node within the linked list queue of messages to send
 struct Node<T> {
@@ -64,14 +72,34 @@ struct State<T, P> {
     packet: P,
 }
 
+/// Producer half of this queue. This handle is used to push data to the
+/// consumer.
 pub struct Producer<T, P> {
     priv state: UnsafeArc<State<T, P>>,
 }
 
+/// Consumer half of this queue. This handle is used to receive data from the
+/// producer.
 pub struct Consumer<T, P> {
     priv state: UnsafeArc<State<T, P>>,
 }
 
+/// Creates a new queue. The producer returned is connected to the consumer to
+/// push all data to the consumer.
+///
+/// # Arguments
+///
+///   * `bound` - This queue implementation is implemented with a linked list,
+///               and this means that a push is always a malloc. In order to
+///               amortize this cost, an internal cache of nodes is maintained
+///               to prevent a malloc from always being necessary. This bound is
+///               the limit on the size of the cache (if desired). If the value
+///               is 0, then the cache has no bound. Otherwise, the cache will
+///               never grow larger than `bound` (although the queue itself
+///               could be much larger.
+///
+///   * `p` - This is the user-defined packet of data which will also be shared
+///           between the producer and consumer.
 pub fn queue<T: Send, P: Send>(bound: uint,
                                p: P) -> (Consumer<T, P>, Producer<T, P>)
 {
@@ -105,21 +133,31 @@ impl<T: Send> Node<T> {
 }
 
 impl<T: Send, P: Send> Producer<T, P> {
+    /// Pushes data onto the queue
     pub fn push(&mut self, t: T) {
         unsafe { (*self.state.get()).push(t) }
     }
+    /// Tests whether the queue is empty. Note that if this function returns
+    /// `false`, the return value is significant, but if the return value is
+    /// `true` then almost no meaning can be attached to the return value.
     pub fn is_empty(&self) -> bool {
         unsafe { (*self.state.get()).is_empty() }
     }
+    /// Acquires an unsafe pointer to the underlying user-defined packet. Note
+    /// that care must be taken to ensure that the queue outlives the usage of
+    /// the packet (because it is an unsafe pointer).
     pub unsafe fn packet(&self) -> *mut P {
         &mut (*self.state.get()).packet as *mut P
     }
 }
 
 impl<T: Send, P: Send> Consumer<T, P> {
+    /// Pops some data from this queue, returning `None` when the queue is
+    /// empty.
     pub fn pop(&mut self) -> Option<T> {
         unsafe { (*self.state.get()).pop() }
     }
+    /// Same function as the producer's `packet` method.
     pub unsafe fn packet(&self) -> *mut P {
         &mut (*self.state.get()).packet as *mut P
     }

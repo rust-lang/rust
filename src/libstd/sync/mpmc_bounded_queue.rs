@@ -25,15 +25,17 @@
  * policies, either expressed or implied, of Dmitry Vyukov.
  */
 
+#[allow(missing_doc, dead_code)];
+
 // http://www.1024cores.net/home/lock-free-algorithms/queues/bounded-mpmc-queue
 
-use unstable::sync::UnsafeArc;
-use unstable::atomics::{AtomicUint,Relaxed,Release,Acquire};
-use option::*;
-use vec;
 use clone::Clone;
 use kinds::Send;
 use num::{Exponential,Algebraic,Round};
+use option::{Option, Some, None};
+use sync::arc::UnsafeArc;
+use sync::atomics::{AtomicUint,Relaxed,Release,Acquire};
+use vec;
 
 struct Node<T> {
     sequence: AtomicUint,

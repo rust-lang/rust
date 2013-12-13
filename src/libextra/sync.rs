@@ -19,8 +19,9 @@
 
 
 use std::borrow;
-use std::unstable::sync::{Exclusive, UnsafeArc};
-use std::unstable::atomics;
+use std::unstable::sync::Exclusive;
+use std::sync::arc::UnsafeArc;
+use std::sync::atomics;
 use std::unstable::finally::Finally;
 use std::util;
 use std::util::NonCopyable;
