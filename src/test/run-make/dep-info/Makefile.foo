@@ -1,0 +1,11 @@
+ifeq ($(shell uname),Darwin)
+LIBEXT=dylib
+else
+LIBEXT=so
+endif
+
+$(TMPDIR)/libfoo-b517899a-0.1.$(LIBEXT):
+	$(RUSTC) --dep-info --lib lib.rs
+	touch $(TMPDIR)/done
+
+-include $(TMPDIR)/lib.d

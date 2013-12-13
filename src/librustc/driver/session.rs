@@ -170,6 +170,8 @@ pub struct options {
     no_trans: bool,
     debugging_opts: uint,
     android_cross_path: Option<~str>,
+    // Whether to write .d dependency files
+    write_dependency_info: bool,
 }
 
 pub struct crate_metadata {
@@ -393,6 +395,7 @@ pub fn basic_options() -> @options {
         no_trans: false,
         debugging_opts: 0u,
         android_cross_path: None,
+        write_dependency_info: false,
     }
 }
 

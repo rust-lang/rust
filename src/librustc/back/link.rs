@@ -721,7 +721,7 @@ pub fn link_binary(sess: Session,
                    trans: &CrateTranslation,
                    obj_filename: &Path,
                    out_filename: &Path,
-                   lm: &LinkMeta) {
+                   lm: &LinkMeta) -> ~[Path] {
     // If we're generating a test executable, then ignore all other output
     // styles at all other locations
     let outputs = if sess.opts.test {
@@ -730,8 +730,10 @@ pub fn link_binary(sess: Session,
         (*sess.outputs).clone()
     };
 
+    let mut out_filenames = ~[];
     for output in outputs.move_iter() {
-        link_binary_output(sess, trans, output, obj_filename, out_filename, lm);
+        let out_file = link_binary_output(sess, trans, output, obj_filename, out_filename, lm);
+        out_filenames.push(out_file);
     }
 
     // Remove the temporary object file and metadata if we aren't saving temps
@@ -739,6 +741,8 @@ pub fn link_binary(sess: Session,
         fs::unlink(obj_filename);
         fs::unlink(&obj_filename.with_extension("metadata.o"));
     }
+
+    out_filenames
 }
 
 fn is_writeable(p: &Path) -> bool {
@@ -755,7 +759,7 @@ fn link_binary_output(sess: Session,
                       output: session::OutputStyle,
                       obj_filename: &Path,
                       out_filename: &Path,
-                      lm: &LinkMeta) {
+                      lm: &LinkMeta) -> Path {
     let libname = output_lib_filename(lm);
     let out_filename = match output {
         session::OutputRlib => {
@@ -812,6 +816,8 @@ fn link_binary_output(sess: Session,
             link_natively(sess, true, obj_filename, &out_filename);
         }
     }
+
+    out_filename
 }
 
 // Create an 'rlib'
