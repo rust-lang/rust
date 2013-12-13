@@ -2235,7 +2235,7 @@ fn populate_scope_map(cx: &mut CrateContext,
         })
     }
 
-    // Clang creates separate scope functions bodies, so let's do this too
+    // Clang creates a separate scope for function bodies, so let's do this too
     with_new_scope(cx,
                    fn_entry_block.span,
                    &mut scope_stack,
