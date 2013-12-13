@@ -335,6 +335,9 @@ pub mod native;
 /// Signal handling
 pub mod signal;
 
+/// Utility implementations of Reader and Writer
+pub mod util;
+
 /// The default buffer size for various I/O operations
 static DEFAULT_BUF_SIZE: uint = 1024 * 64;
 
