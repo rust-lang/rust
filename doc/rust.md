@@ -319,7 +319,6 @@ r##"foo #"# bar"##;                // foo #"# bar
 #### Number literals
 
 ~~~~ {.ebnf .gram}
-
 num_lit : nonzero_dec [ dec_digit | '_' ] * num_suffix ?
         | '0' [       [ dec_digit | '_' ] * num_suffix ?
               | 'b'   [ '1' | '0' | '_' ] + int_suffix ?
