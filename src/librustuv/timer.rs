@@ -179,6 +179,7 @@ impl Drop for TimerWatcher {
 mod test {
     use std::rt::rtio::RtioTimer;
     use super::super::local_loop;
+    use super::TimerWatcher;
 
     #[test]
     fn oneshot() {

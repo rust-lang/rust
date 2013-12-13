@@ -448,7 +448,11 @@ mod test {
     use std::io;
     use std::str;
     use std::vec;
-    use l = super::super::local_loop;
+    use super::FsRequest;
+    use super::super::Loop;
+    use super::super::local_loop;
+
+    fn l() -> &mut Loop { &mut local_loop().loop_ }
 
     #[test]
     fn file_test_full_simple_sync() {
@@ -459,7 +463,7 @@ mod test {
 
         {
             // open/create
-            let result = FsRequest::open(l(), &path_str.to_c_str(),
+            let result = FsRequest::open(local_loop(), &path_str.to_c_str(),
                                          create_flags as int, mode as int);
             assert!(result.is_ok());
             let result = result.unwrap();
@@ -472,7 +476,7 @@ mod test {
 
         {
             // re-open
-            let result = FsRequest::open(l(), &path_str.to_c_str(),
+            let result = FsRequest::open(local_loop(), &path_str.to_c_str(),
                                          read_flags as int, 0);
             assert!(result.is_ok());
             let result = result.unwrap();
@@ -499,7 +503,7 @@ mod test {
         let create_flags = (O_RDWR | O_CREAT) as int;
         let mode = (S_IWUSR | S_IRUSR) as int;
 
-        let result = FsRequest::open(l(), path, create_flags, mode);
+        let result = FsRequest::open(local_loop(), path, create_flags, mode);
         assert!(result.is_ok());
         let file = result.unwrap();
 

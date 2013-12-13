@@ -235,8 +235,9 @@ impl HomingIO for PipeAcceptor {
 #[cfg(test)]
 mod tests {
     use std::rt::rtio::{RtioUnixListener, RtioUnixAcceptor, RtioPipe};
-    use std::rt::test::next_test_unix;
+    use std::io::test::next_test_unix;
 
+    use super::{PipeWatcher, PipeListener};
     use super::super::local_loop;
 
     #[test]
