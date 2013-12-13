@@ -260,3 +260,100 @@ impl Drop for Ops {
         unsafe { self.lock.destroy() }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::rt::Runtime;
+    use std::rt::local::Local;
+    use std::rt::task::Task;
+    use std::task;
+    use super::{spawn, spawn_opts, Ops};
+
+    #[test]
+    fn smoke() {
+        let (p, c) = Chan::new();
+        do spawn {
+            c.send(());
+        }
+        p.recv();
+    }
+
+    #[test]
+    fn smoke_fail() {
+        let (p, c) = Chan::<()>::new();
+        do spawn {
+            let _c = c;
+            fail!()
+        }
+        assert_eq!(p.recv_opt(), None);
+    }
+
+    #[test]
+    fn smoke_opts() {
+        let mut opts = task::default_task_opts();
+        opts.name = Some(SendStrStatic("test"));
+        opts.stack_size = Some(20 * 4096);
+        let (p, c) = Chan::new();
+        opts.notify_chan = Some(c);
+        spawn_opts(opts, proc() {});
+        assert!(p.recv().is_ok());
+    }
+
+    #[test]
+    fn smoke_opts_fail() {
+        let mut opts = task::default_task_opts();
+        let (p, c) = Chan::new();
+        opts.notify_chan = Some(c);
+        spawn_opts(opts, proc() { fail!() });
+        assert!(p.recv().is_err());
+    }
+
+    #[test]
+    fn yield_test() {
+        let (p, c) = Chan::new();
+        do spawn {
+            10.times(task::deschedule);
+            c.send(());
+        }
+        p.recv();
+    }
+
+    #[test]
+    fn spawn_children() {
+        let (p, c) = Chan::new();
+        do spawn {
+            let (p, c2) = Chan::new();
+            do spawn {
+                let (p, c3) = Chan::new();
+                do spawn {
+                    c3.send(());
+                }
+                p.recv();
+                c2.send(());
+            }
+            p.recv();
+            c.send(());
+        }
+        p.recv();
+    }
+
+    #[test]
+    fn spawn_inherits() {
+        let (p, c) = Chan::new();
+        do spawn {
+            let c = c;
+            do spawn {
+                let mut task: ~Task = Local::take();
+                match task.maybe_take_runtime::<Ops>() {
+                    Some(ops) => {
+                        task.put_runtime(ops as ~Runtime);
+                    }
+                    None => fail!(),
+                }
+                Local::put(task);
+                c.send(());
+            }
+        }
+        p.recv();
+    }
+}

@@ -899,8 +899,7 @@ pub fn utime(p: &CString, atime: u64, mtime: u64) -> IoResult<()> {
 
 #[cfg(test)]
 mod tests {
-    use std::io::native::file::{CFile, FileDesc};
-    use std::io::fs;
+    use super::{CFile, FileDesc};
     use std::io;
     use std::libc;
     use std::os;
