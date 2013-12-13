@@ -868,16 +868,21 @@ fn link_rlib(sess: Session,
             // contain the metadata in a separate file.
             let metadata = obj_filename.with_filename(METADATA_FILENAME);
             fs::File::create(&metadata).write(trans.metadata);
-            a.add_file(&metadata);
+            a.add_file(&metadata, false);
             fs::unlink(&metadata);
 
             // For LTO purposes, the bytecode of this library is also inserted
             // into the archive.
             let bc = obj_filename.with_extension("bc");
-            a.add_file(&bc);
+            a.add_file(&bc, false);
             if !sess.opts.save_temps {
                 fs::unlink(&bc);
             }
+
+            // Now that we've added files, some platforms need us to now update
+            // the symbol table in the archive (because some platforms die when
+            // adding files to the archive without symbols).
+            a.update_symbols();
         }
 
         None => {}
