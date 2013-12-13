@@ -13,99 +13,87 @@
 /* Global page semantics
    ========================================================================== */
 body {
-	background-color: #fff;
-	margin: 0 auto;
-	padding: 0 15px;
-	margin-bottom: 4em;
-	font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-	font-size: 14px;
-	color: #333;
-	line-height: 1.428571429;
+    margin: 0 auto;
+    padding: 0 15px;
+    margin-bottom: 4em;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    color: #333;
+    line-height: 1.428571429;
 }
 @media (min-width: 768px) {
-	body {
-		max-width: 750px;
-	}
-}
-@media (min-width: 992px) {
-	body {
-		max-width: 970px;
-	}
-}
-@media (min-width: 1200px) {
-	body {
-		max-width: 1170px;
-	}
+    body {
+        max-width: 750px;
+    }
 }
 
 h1, h2, h3, h4, h5, h6 {
-	color: black;
-	font-weight: 500;
-	line-height: 1.1;
+    color: black;
+    font-weight: 500;
+    line-height: 1.1;
 }
 h1, h2, h3 {
-	margin-top: 20px;
-	margin-bottom: 10px;
+    margin-top: 20px;
+    margin-bottom: 10px;
 }
 h4, h5, h6 {
-	margin-top: 12px;
-	margin-bottom: 10px;
+    margin-top: 12px;
+    margin-bottom: 10px;
+    padding: .2em .8em;
+    text-decoration: underline;
 }
 
 h1 {
-	font-size: 36px;
-	padding: .1em .4em;
-	margin: 0.67em 0;
-	background-color: #E9E9E9;
-	border-radius: .2em;
+    font-size: 36px;
+    padding: .1em .4em;
+    margin: 0.67em 0;
+    border-bottom: 2px solid #ddd;
 }
 h1.title {
-	line-height: 1.5em;
+    line-height: 1.5em;
 }
 h2 {
-	font-size: 30px;
-	padding: .2em .5em;
-	background-color: #E9E9E9;
-	border-radius: .3em;
+    font-size: 30px;
+    padding: .2em .5em;
+    border-bottom: 1px solid #ddd;
 }
 h3 {
-	font-size: 24px;
-	padding: .2em .5em;
-	background-color: #DDE8FC;
-	border-radius: .4em;
+    font-size: 24px;
+    padding: .2em .7em;
+    border-bottom: 1px solid #DDE8FC;
 }
 h4 {
-	font-size: 18px;
+    font-size: 18px;
 }
 h5 {
-	font-size: 16px;
+    font-size: 16px;
 }
 h6 {
-	font-size: 14px;
+    font-size: 14px;
 }
 
 p {
-	margin: 0 0 10px;
+    margin: 0 0 10px;
 }
 
 /* Links layout
    ========================================================================== */
 a {
-	text-decoration: none;
-	color: #428BCA;
-	background: transparent;
+    text-decoration: none;
+    color: #428BCA;
+    background: transparent;
 }
 a:hover, a:focus {
-	color: #2A6496;
-	text-decoration: underline;
+    color: #2A6496;
+    text-decoration: underline;
 }
 a:focus {
-	outline: thin dotted #333;
-	outline: 5px auto -webkit-focus-ring-color;
-	outline-offset: -2px;
+    outline: thin dotted #333;
+    outline: 5px auto -webkit-focus-ring-color;
+    outline-offset: -2px;
 }
 a:hover, a:active {
-	outline: 0;
+    outline: 0;
 }
 
 h1 a:link, h1 a:visited, h2 a:link, h2 a:visited,
@@ -115,193 +103,168 @@ h5 a:link, h5 a:visited {color: black;}
 /* Code
    ========================================================================== */
 pre, code {
-	font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
-	border-radius: 4px;
+    font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+    border-radius: 4px;
 }
 pre {
-	background-color: #F5F5F5;
-	border: 1px solid #CCC;
-	border-radius: 0.5em;
-	white-space: pre-wrap;
-	padding: 9.5px;
-	margin: 10px 0;
-	font-size: 13px;
-	word-break: break-all;
-	word-wrap: break-word;
+    background-color: #F5F5F5;
+    border: 1px solid #CCC;
+    border-radius: 0.5em;
+    white-space: pre-wrap;
+    padding: 9.5px;
+    margin: 10px 0;
+    font-size: 13px;
+    word-break: break-all;
+    word-wrap: break-word;
 }
 code {
-	padding: 2px 4px;
-	font-size: 90%;
-	color: #C7254E;
-	background-color: #F9F2F4;
-	white-space: nowrap;
+    padding: 2px 4px;
+    font-size: 90%;
+    color: #C7254E;
+    background-color: #F9F2F4;
+    white-space: nowrap;
 }
 pre code {
-	padding: 0;
-	font-size: inherit;
-	color: inherit;
-	white-space: pre-wrap;
-	background-color: transparent;
-	border-radius: 0;
+    padding: 0;
+    font-size: inherit;
+    color: inherit;
+    white-space: pre-wrap;
+    background-color: transparent;
+    border-radius: 0;
 }
 
 /* Code highlighting */
-.cm-s-default span.cm-keyword {color: #708;}
+.cm-s-default span.cm-keyword {color: #803C8D;}
 .cm-s-default span.cm-atom {color: #219;}
-.cm-s-default span.cm-number {color: #164;}
-.cm-s-default span.cm-def {color: #00f;}
+.cm-s-default span.cm-number {color: #2AA198;}
+.cm-s-default span.cm-def {color: #256EB8;}
 .cm-s-default span.cm-variable {color: black;}
-.cm-s-default span.cm-variable-2 {color: #05a;}
+.cm-s-default span.cm-variable-2 {color: #817E61;}
 .cm-s-default span.cm-variable-3 {color: #085;}
 .cm-s-default span.cm-property {color: black;}
 .cm-s-default span.cm-operator {color: black;}
-.cm-s-default span.cm-comment {color: #a50;}
-.cm-s-default span.cm-string {color: #a11;}
-.cm-s-default span.cm-string-2 {color: #f50;}
+.cm-s-default span.cm-comment {color: #A82323;}
+.cm-s-default span.cm-string {color: #866544;}
+.cm-s-default span.cm-string-2 {color: #F50;}
 .cm-s-default span.cm-meta {color: #555;}
-/*.cm-s-default span.cm-error {color: #f00;}*/
+/*.cm-s-default span.cm-error {color: #F00;}*/
 .cm-s-default span.cm-qualifier {color: #555;}
-.cm-s-default span.cm-builtin {color: #30a;}
-.cm-s-default span.cm-bracket {color: #cc7;}
+.cm-s-default span.cm-builtin {color: #30A;}
+.cm-s-default span.cm-bracket {color: #CC7;}
 .cm-s-default span.cm-tag {color: #170;}
-.cm-s-default span.cm-attribute {color: #00c;}
+.cm-s-default span.cm-attribute {color: #00C;}
 
 /* The rest
    ========================================================================== */
 #versioninfo {
-	text-align: center;
-	margin: 0.5em;
-	font-size: 1.1em;
+    text-align: center;
+    margin: 0.5em;
+    font-size: 1.1em;
 }
 @media (min-width: 768px) {
-	#versioninfo {
-		position: fixed;
-		bottom: 0px;
-		right: 0px;
-	}
-	.white-sticker {
-		background-color: #fff;
-		margin: 2px;
-		padding: 0 2px;
-		border-radius: .3em;
-	}
+    #versioninfo {
+        position: fixed;
+        bottom: 0px;
+        right: 0px;
+    }
+    .white-sticker {
+        background-color: #fff;
+        margin: 2px;
+        padding: 0 2px;
+        border-radius: .3em;
+    }
 }
 #versioninfo a.hash {
-	color: gray;
-	font-size: 70%;
+    color: gray;
+    font-size: 70%;
 }
 
 blockquote {
-	color: black;
-	border-left: 5px solid #eee;
-	margin: 0 0 20px;
-	padding: 10px 20px;
+    color: black;
+    border-left: 5px solid #eee;
+    margin: 0 0 20px;
+    padding: 10px 20px;
 }
 blockquote p {
-	font-size: 17px;
-	font-weight: 300;
-	line-height: 1.25;
+    font-size: 17px;
+    font-weight: 300;
+    line-height: 1.25;
 }
 blockquote p:last-child {
-	margin-bottom: 0;
-}
-
-/* Make the table under the tutorial's 'Types' section look nicer */
-table {
-	border-top: 1px solid silver;
-	border-bottom: 1px solid silver;
-	padding: 0.8em;
-	font-size: smaller;
-}
-/* Also for the benefit of the type table */
-td {
-	padding-right: 1em;
+    margin-bottom: 0;
 }
 
 ul,
 ol {
-	margin-top: 0;
-	margin-bottom: 10px;
+    margin-top: 0;
+    margin-bottom: 10px;
 }
 ul ul,
 ol ul,
 ul ol,
 ol ol {
-	margin-bottom: 0;
+    margin-bottom: 0;
 }
 dl {
-	margin-bottom: 20px;
+    margin-bottom: 20px;
 }
 dd {
-	margin-left: 0;
+    margin-left: 0;
 }
 
 #TOC ul {
-	list-style-type: none;
-	padding-left: 0px;
-}
-/* Only display one level of hierarchy in the TOC */
-#TOC ul ul {
-	display: none;
-}
-
-/* Adjust list alignment so rustdoc indexes don't align with blockquotes */
-div.index ul {
-	padding-left: 1em;
-}
-
-div.section.level3 {
-	margin-left: 1em;
+    list-style-type: none;
+    padding-left: 0px;
 }
 
 sub,
 sup {
-	font-size: 75%;
-	line-height: 0;
-	position: relative;
+    font-size: 75%;
+    line-height: 0;
+    position: relative;
 }
 
 hr {
-	margin-top: 20px;
-	margin-bottom: 20px;
-	border: 0;
-	border-top: 1px solid #eeeeee;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    border: 0;
+    border-top: 1px solid #eeeeee;
 }
 
 @media print {
-	* {
-		text-shadow: none !important;
-		color: #000 !important;
-		background: transparent !important;
-		box-shadow: none !important;
-	}
-	a, a:visited {
-		text-decoration: underline;
-	}
-	a[href]:after {
-		content: " (" attr(href) ")";
-	}
-	a[href^="javascript:"]:after, a[href^="#"]:after {
-		content: "";
-	}
-	pre, blockquote {
-		border: 1px solid #999;
-		page-break-inside: avoid;
-	}
-	@page {
-		margin: 2cm .5cm;
-	}
-	p, h2, h3 {
-		orphans: 3;
-		widows: 3;
-	}
-	h2, h3 {
-		page-break-after: avoid;
-	}
-	table {
-		border-collapse: collapse !important;
-	}
-	table td, table th {
-		background-color: #fff !important;
-	}
+    * {
+        text-shadow: none !important;
+        color: #000 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+    }
+    a, a:visited {
+        text-decoration: underline;
+    }
+    a[href]:after {
+        content: " (" attr(href) ")";
+    }
+    a[href^="javascript:"]:after, a[href^="#"]:after {
+        content: "";
+    }
+    pre, blockquote {
+        border: 1px solid #999;
+        page-break-inside: avoid;
+    }
+    @page {
+        margin: 2cm .5cm;
+    }
+    p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+    }
+    h2, h3 {
+        page-break-after: avoid;
+    }
+    table {
+        border-collapse: collapse !important;
+    }
+    table td, table th {
+        background-color: #fff !important;
+    }
 }

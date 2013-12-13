@@ -233,10 +233,14 @@ a {
 .content a.fn, .block a.current.fn { color: #8c6067; }
 .content .fnname { color: #8c6067; }
 
+.search-container {
+    padding-right: 10px;
+    overflow: hidden;
+}
 .search-input {
     border: 2px solid #e9e9e9;
     border-radius: 2px;
-    width: calc(100% - 66px);
+    width: 100%;
 }
 .do-search {
     float: right;
