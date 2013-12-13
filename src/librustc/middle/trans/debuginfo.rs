@@ -653,6 +653,7 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
 
     // Clang sets this parameter to the opening brace of the function's block, so let's do this too.
     let scope_line = span_start(cx, top_level_block.span).line;
+    let is_local_to_unit = !cx.reachable.contains(&fn_ast_id);
 
     let fn_metadata = function_name.with_c_str(|function_name| {
                           linkage_name.with_c_str(|linkage_name| {
@@ -665,7 +666,7 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
                     file_metadata,
                     loc.line as c_uint,
                     function_type_metadata,
-                    false,
+                    is_local_to_unit,
                     true,
                     scope_line as c_uint,
                     FlagPrototyped as c_uint,
