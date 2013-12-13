@@ -3235,7 +3235,7 @@ more out of date than this document.
 [container]: tutorial-container.html
 [conditions]: tutorial-conditions.html
 [rustpkg]: tutorial-rustpkg.html
-[rustdoc]: tutorial-rustdoc.html
+[rustdoc]: rustdoc.html
 
 [wiki]: https://github.com/mozilla/rust/wiki/Docs
 [wiki-packages]: https://github.com/mozilla/rust/wiki/Doc-packages,-editors,-and-other-tools
