@@ -233,14 +233,17 @@ use iter::Iterator;
 use kinds::Send;
 use ops::Drop;
 use option::{Option, Some, None};
+use result::{Ok, Err};
+use rt::local::Local;
+use rt::task::{Task, BlockedTask};
 use rt::thread::Thread;
-use unstable::atomics::{AtomicInt, AtomicBool, SeqCst, Relaxed};
+use sync::atomics::{AtomicInt, AtomicBool, SeqCst, Relaxed};
+use task;
 use vec::{ImmutableVector, OwnedVector};
 
-use spsc = rt::spsc_queue;
-use mpsc = rt::mpsc_queue;
+use spsc = sync::spsc_queue;
+use mpsc = sync::mpsc_queue;
 
-use self::imp::{TaskHandle, TaskData, BlockingContext};
 pub use self::select::Select;
 
 macro_rules! test (
@@ -265,7 +268,6 @@ macro_rules! test (
     )
 )
 
-mod imp;
 mod select;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -326,9 +328,7 @@ pub struct SharedChan<T> {
 struct Packet {
     cnt: AtomicInt, // How many items are on this channel
     steals: int,    // How many times has a port received without blocking?
-    to_wake: Option<TaskHandle>, // Task to wake up
-
-    data: TaskData,
+    to_wake: Option<BlockedTask>, // Task to wake up
 
     // This lock is used to wake up native threads blocked in select. The
     // `lock` field is not used because the thread blocking in select must
@@ -358,7 +358,6 @@ impl Packet {
             cnt: AtomicInt::new(0),
             steals: 0,
             to_wake: None,
-            data: TaskData::new(),
             channels: AtomicInt::new(1),
 
             selecting: AtomicBool::new(false),
@@ -418,7 +417,10 @@ impl Packet {
     // This function must have had at least an acquire fence before it to be
     // properly called.
     fn wakeup(&mut self, can_resched: bool) {
-        self.to_wake.take_unwrap().wake(can_resched);
+        match self.to_wake.take_unwrap().wake() {
+            Some(task) => task.reawaken(can_resched),
+            None => {}
+        }
         self.selecting.store(false, Relaxed);
     }
 
@@ -607,7 +609,7 @@ impl<T: Send> Chan<T> {
                 n => {
                     assert!(n >= 0);
                     if can_resched && n > 0 && n % RESCHED_FREQ == 0 {
-                        imp::maybe_yield();
+                        task::deschedule();
                     }
                     true
                 }
@@ -700,7 +702,7 @@ impl<T: Send> SharedChan<T> {
                 -1 => { (*packet).wakeup(can_resched); }
                 n => {
                     if can_resched && n > 0 && n % RESCHED_FREQ == 0 {
-                        imp::maybe_yield();
+                        task::deschedule();
                     }
                 }
             }
@@ -840,8 +842,15 @@ impl<T: Send> Port<T> {
         unsafe {
             this = cast::transmute_mut(self);
             packet = this.queue.packet();
-            BlockingContext::one(&mut (*packet).data, |ctx, data| {
-                ctx.block(data, &mut (*packet).to_wake, || (*packet).decrement())
+            let task: ~Task = Local::take();
+            task.deschedule(1, |task| {
+                assert!((*packet).to_wake.is_none());
+                (*packet).to_wake = Some(task);
+                if (*packet).decrement() {
+                    Ok(())
+                } else {
+                    Err((*packet).to_wake.take_unwrap())
+                }
             });
         }
 
