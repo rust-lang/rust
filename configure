@@ -469,8 +469,8 @@ then
     PV_MINOR=${PV_MAJOR_MINOR#* }
     if [ "$PV_MAJOR" -lt "$MIN_PV_MAJOR" ] || [ "$PV_MINOR" -lt "$MIN_PV_MINOR" ]
     then
-		step_msg "pandoc $PV_MAJOR.$PV_MINOR is too old. Need at least $MIN_PV_MAJOR.$MIN_PV_MINOR. Disabling"
-		BAD_PANDOC=1
+        step_msg "pandoc $PV_MAJOR.$PV_MINOR is too old. Need at least $MIN_PV_MAJOR.$MIN_PV_MINOR. Disabling"
+        BAD_PANDOC=1
     fi
 fi
 
@@ -544,7 +544,6 @@ then
     putvar CFG_ENABLE_CLANG
 fi
 
-
 if [ -z "$CFG_ENABLE_CLANG" -a -z "$CFG_GCC" ]
 then
     err "either clang or gcc is required"
@@ -558,12 +557,12 @@ then
     LLVM_VERSION=$($LLVM_CONFIG --version)
 
     case $LLVM_VERSION in
-	(3.3|3.3svn|3.2|3.2svn)
-	    msg "found ok version of LLVM: $LLVM_VERSION"
-	    ;;
-	(*)
-	    err "bad LLVM version: $LLVM_VERSION, need >=3.0svn"
-	    ;;
+        (3.3|3.3svn|3.2|3.2svn)
+            msg "found ok version of LLVM: $LLVM_VERSION"
+            ;;
+        (*)
+            err "bad LLVM version: $LLVM_VERSION, need >=3.0svn"
+            ;;
     esac
 fi
 
@@ -571,7 +570,7 @@ if [ ! -z "$CFG_ENABLE_CLANG" ]
 then
     if [ -z "$CFG_CLANG" ]
     then
-	err "clang requested but not found"
+        err "clang requested but not found"
     fi
     CFG_CLANG_VERSION=$("$CFG_CLANG" \
                       --version \
