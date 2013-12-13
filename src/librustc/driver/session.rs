@@ -347,6 +347,9 @@ impl Session_ {
     pub fn lto(&self) -> bool {
         self.debugging_opt(lto)
     }
+    pub fn no_landing_pads(&self) -> bool {
+        self.debugging_opt(no_landing_pads)
+    }
 
     // pointless function, now...
     pub fn str_of(&self, id: ast::Ident) -> @str {

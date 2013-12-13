@@ -68,6 +68,12 @@ pub fn run(sess: session::Session, llmod: ModuleRef,
                                          arr.len() as libc::size_t);
     }
 
+    if sess.no_landing_pads() {
+        unsafe {
+            llvm::LLVMRustMarkAllFunctionsNounwind(llmod);
+        }
+    }
+
     // Now we have one massive module inside of llmod. Time to run the
     // LTO-specific optimization passes that LLVM provides.
     //
