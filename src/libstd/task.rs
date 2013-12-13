@@ -53,21 +53,20 @@
 
 #[allow(missing_doc)];
 
-use prelude::*;
-
+use any::Any;
 use comm::{Chan, Port};
+use kinds::Send;
+use option::{None, Some, Option};
 use result::{Result, Ok, Err};
-use rt::in_green_task_context;
 use rt::local::Local;
+use rt::task::Task;
 use send_str::{SendStr, IntoSendStr};
+use str::Str;
 use util;
 
-#[cfg(test)] use any::Any;
 #[cfg(test)] use comm::SharedChan;
 #[cfg(test)] use ptr;
 #[cfg(test)] use result;
-
-pub mod spawn;
 
 /// Indicates the manner in which a task exited.
 ///
@@ -79,27 +78,6 @@ pub mod spawn;
 /// If you wish for this result's delivery to block until all linked and/or
 /// children tasks complete, recommend using a result future.
 pub type TaskResult = Result<(), ~Any>;
-
-/// Scheduler modes
-#[deriving(Eq)]
-pub enum SchedMode {
-    /// Run task on the default scheduler
-    DefaultScheduler,
-    /// All tasks run in the same OS thread
-    SingleThreaded,
-}
-
-/**
- * Scheduler configuration options
- *
- * # Fields
- *
- * * sched_mode - The operating mode of the scheduler
- *
- */
-pub struct SchedOpts {
-    priv mode: SchedMode,
-}
 
 /**
  * Task configuration options
@@ -121,10 +99,9 @@ pub struct SchedOpts {
  *           scheduler other tasks will be impeded or even blocked indefinitely.
  */
 pub struct TaskOpts {
-    priv watched: bool,
-    priv notify_chan: Option<Chan<TaskResult>>,
+    watched: bool,
+    notify_chan: Option<Chan<TaskResult>>,
     name: Option<SendStr>,
-    sched: SchedOpts,
     stack_size: Option<uint>
 }
 
@@ -169,7 +146,6 @@ impl TaskBuilder {
                 watched: self.opts.watched,
                 notify_chan: notify_chan,
                 name: name,
-                sched: self.opts.sched,
                 stack_size: self.opts.stack_size
             },
             gen_body: gen_body,
@@ -229,11 +205,6 @@ impl TaskBuilder {
         self.opts.name = Some(name.into_send_str());
     }
 
-    /// Configure a custom scheduler mode for the task.
-    pub fn sched_mode(&mut self, mode: SchedMode) {
-        self.opts.sched.mode = mode;
-    }
-
     /**
      * Add a wrapper to the body of the spawned task.
      *
@@ -285,7 +256,6 @@ impl TaskBuilder {
             watched: x.opts.watched,
             notify_chan: notify_chan,
             name: name,
-            sched: x.opts.sched,
             stack_size: x.opts.stack_size
         };
         let f = match gen_body {
@@ -296,7 +266,9 @@ impl TaskBuilder {
                 f
             }
         };
-        spawn::spawn_raw(opts, f);
+
+        let t: ~Task = Local::take();
+        t.spawn_sibling(opts, f);
     }
 
     /**
@@ -343,9 +315,6 @@ pub fn default_task_opts() -> TaskOpts {
         watched: true,
         notify_chan: None,
         name: None,
-        sched: SchedOpts {
-            mode: DefaultScheduler,
-        },
         stack_size: None
     }
 }
@@ -360,24 +329,6 @@ pub fn default_task_opts() -> TaskOpts {
 /// This function is equivalent to `task().spawn(f)`.
 pub fn spawn(f: proc()) {
     let task = task();
-    task.spawn(f)
-}
-
-pub fn spawn_sched(mode: SchedMode, f: proc()) {
-    /*!
-     * Creates a new task on a new or existing scheduler.
-     *
-     * When there are no more tasks to execute the
-     * scheduler terminates.
-     *
-     * # Failure
-     *
-     * In manual threads mode the number of threads requested must be
-     * greater than zero.
-     */
-
-    let mut task = task();
-    task.sched_mode(mode);
     task.spawn(f)
 }
 
@@ -400,14 +351,10 @@ pub fn try<T:Send>(f: proc() -> T) -> Result<T, ~Any> {
 pub fn with_task_name<U>(blk: |Option<&str>| -> U) -> U {
     use rt::task::Task;
 
-    if in_green_task_context() {
-        let mut task = Local::borrow(None::<Task>);
-        match task.get().name {
-            Some(ref name) => blk(Some(name.as_slice())),
-            None => blk(None)
-        }
-    } else {
-        fail!("no task name exists in non-green task context")
+    let mut task = Local::borrow(None::<Task>);
+    match task.get().name {
+        Some(ref name) => blk(Some(name.as_slice())),
+        None => blk(None)
     }
 }
 
@@ -415,11 +362,10 @@ pub fn deschedule() {
     //! Yield control to the task scheduler
 
     use rt::local::Local;
-    use rt::sched::Scheduler;
 
     // FIXME(#7544): Optimize this, since we know we won't block.
-    let sched: ~Scheduler = Local::take();
-    sched.yield_now();
+    let task: ~Task = Local::take();
+    task.yield_now();
 }
 
 pub fn failing() -> bool {
@@ -428,7 +374,7 @@ pub fn failing() -> bool {
     use rt::task::Task;
 
     let mut local = Local::borrow(None::<Task>);
-    local.get().unwinder.unwinding
+    local.get().unwinder.unwinding()
 }
 
 // The following 8 tests test the following 2^3 combinations:

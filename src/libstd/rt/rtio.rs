@@ -14,14 +14,15 @@ use comm::{SharedChan, Port};
 use libc::c_int;
 use libc;
 use ops::Drop;
-use option::*;
+use option::{Option, Some, None};
 use path::Path;
-use result::*;
+use result::{Result, Ok, Err};
+use rt::task::Task;
+use rt::local::Local;
 
 use ai = io::net::addrinfo;
+use io;
 use io::IoError;
-use io::native::NATIVE_IO_FACTORY;
-use io::native;
 use io::net::ip::{IpAddr, SocketAddr};
 use io::process::{ProcessConfig, ProcessExit};
 use io::signal::Signum;
@@ -149,6 +150,8 @@ impl<'a> LocalIo<'a> {
 }
 
 pub trait IoFactory {
+    fn id(&self) -> uint;
+
     // networking
     fn tcp_connect(&mut self, addr: SocketAddr) -> Result<~RtioTcpStream, IoError>;
     fn tcp_bind(&mut self, addr: SocketAddr) -> Result<~RtioTcpListener, IoError>;

@@ -8,27 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use option::{Option, Some, None};
-use cast::{transmute, transmute_mut_region, transmute_mut_unsafe};
-use clone::Clone;
-use unstable::raw;
-use super::sleeper_list::SleeperList;
-use super::stack::{StackPool};
-use super::rtio::EventLoop;
-use super::context::Context;
-use super::task::{Task, AnySched, Sched};
-use rt::kill::BlockedTask;
-use rt::deque;
-use rt::local_ptr;
-use rt::local::Local;
-use rt::rtio::{RemoteCallback, PausableIdleCallback, Callback};
-use borrow::{to_uint};
-use rand::{XorShiftRng, Rng, Rand};
-use iter::range;
-use unstable::mutex::Mutex;
-use vec::{OwnedVector};
+use std::cast;
+use std::rand::{XorShiftRng, Rng, Rand};
+use std::rt::local::Local;
+use std::rt::rtio::{RemoteCallback, PausibleIdleCallback, Callback, EventLoop};
+use std::rt::task::BlockedTask;
+use std::rt::task::Task;
+use std::sync::deque;
+use std::unstable::mutex::Mutex;
+use std::unstable::raw;
+use mpsc = std::sync::mpsc_queue;
 
-use mpsc = super::mpsc_queue;
+use context::Context;
+use coroutine::Coroutine;
+use sleeper_list::SleeperList;
+use stack::StackPool;
+use task::{TypeSched, GreenTask, HomeSched, AnySched};
 
 /// A scheduler is responsible for coordinating the execution of Tasks
 /// on a single thread. The scheduler runs inside a slightly modified
@@ -39,11 +34,15 @@ use mpsc = super::mpsc_queue;
 /// XXX: This creates too many callbacks to run_sched_once, resulting
 /// in too much allocation and too many events.
 pub struct Scheduler {
+    /// ID number of the pool that this scheduler is a member of. When
+    /// reawakening green tasks, this is used to ensure that tasks aren't
+    /// reawoken on the wrong pool of schedulers.
+    pool_id: uint,
     /// There are N work queues, one per scheduler.
-    work_queue: deque::Worker<~Task>,
+    work_queue: deque::Worker<~GreenTask>,
     /// Work queues for the other schedulers. These are created by
     /// cloning the core work queues.
-    work_queues: ~[deque::Stealer<~Task>],
+    work_queues: ~[deque::Stealer<~GreenTask>],
     /// The queue of incoming messages from other schedulers.
     /// These are enqueued by SchedHandles after which a remote callback
     /// is triggered to handle the message.
@@ -66,15 +65,15 @@ pub struct Scheduler {
     stack_pool: StackPool,
     /// The scheduler runs on a special task. When it is not running
     /// it is stored here instead of the work queue.
-    sched_task: Option<~Task>,
+    sched_task: Option<~GreenTask>,
     /// An action performed after a context switch on behalf of the
     /// code running before the context switch
     cleanup_job: Option<CleanupJob>,
-    /// Should this scheduler run any task, or only pinned tasks?
-    run_anything: bool,
     /// If the scheduler shouldn't run some tasks, a friend to send
     /// them to.
     friend_handle: Option<SchedHandle>,
+    /// Should this scheduler run any task, or only pinned tasks?
+    run_anything: bool,
     /// A fast XorShift rng for scheduler use
     rng: XorShiftRng,
     /// A togglable idle callback
@@ -117,21 +116,22 @@ impl Scheduler {
 
     // * Initialization Functions
 
-    pub fn new(event_loop: ~EventLoop,
-               work_queue: deque::Worker<~Task>,
-               work_queues: ~[deque::Stealer<~Task>],
+    pub fn new(pool_id: uint,
+               event_loop: ~EventLoop,
+               work_queue: deque::Worker<~GreenTask>,
+               work_queues: ~[deque::Stealer<~GreenTask>],
                sleeper_list: SleeperList)
         -> Scheduler {
 
-        Scheduler::new_special(event_loop, work_queue,
-                               work_queues,
+        Scheduler::new_special(pool_id, event_loop, work_queue, work_queues,
                                sleeper_list, true, None)
 
     }
 
-    pub fn new_special(event_loop: ~EventLoop,
-                       work_queue: deque::Worker<~Task>,
-                       work_queues: ~[deque::Stealer<~Task>],
+    pub fn new_special(pool_id: uint,
+                       event_loop: ~EventLoop,
+                       work_queue: deque::Worker<~GreenTask>,
+                       work_queues: ~[deque::Stealer<~GreenTask>],
                        sleeper_list: SleeperList,
                        run_anything: bool,
                        friend: Option<SchedHandle>)
@@ -139,6 +139,7 @@ impl Scheduler {
 
         let (consumer, producer) = mpsc::queue(());
         let mut sched = Scheduler {
+            pool_id: pool_id,
             sleeper_list: sleeper_list,
             message_queue: consumer,
             message_producer: producer,
@@ -170,66 +171,59 @@ impl Scheduler {
 
     // Take a main task to run, and a scheduler to run it in. Create a
     // scheduler task and bootstrap into it.
-    pub fn bootstrap(mut ~self, task: ~Task) {
+    pub fn bootstrap(mut ~self, task: ~GreenTask) {
 
         // Build an Idle callback.
         let cb = ~SchedRunner as ~Callback;
         self.idle_callback = Some(self.event_loop.pausable_idle_callback(cb));
 
-        // Initialize the TLS key.
-        local_ptr::init();
-
         // Create a task for the scheduler with an empty context.
-        let sched_task = ~Task::new_sched_task();
-
-        // Now that we have an empty task struct for the scheduler
-        // task, put it in TLS.
-        Local::put(sched_task);
+        let mut sched_task = GreenTask::new_typed(Some(Coroutine::empty()),
+                                                  TypeSched);
+        sched_task.put_task(~Task::new());
 
         // Before starting our first task, make sure the idle callback
         // is active. As we do not start in the sleep state this is
         // important.
         self.idle_callback.get_mut_ref().resume();
 
-        // Now, as far as all the scheduler state is concerned, we are
-        // inside the "scheduler" context. So we can act like the
-        // scheduler and resume the provided task.
-        self.resume_task_immediately(task);
+        // Now, as far as all the scheduler state is concerned, we are inside
+        // the "scheduler" context. So we can act like the scheduler and resume
+        // the provided task. Let it think that the currently running task is
+        // actually the sched_task so it knows where to squirrel it away.
+        let mut sched_task = self.resume_task_immediately(sched_task, task);
 
         // Now we are back in the scheduler context, having
         // successfully run the input task. Start by running the
         // scheduler. Grab it out of TLS - performing the scheduler
         // action will have given it away.
-        let sched: ~Scheduler = Local::take();
-
+        let sched = sched_task.sched.take_unwrap();
         rtdebug!("starting scheduler {}", sched.sched_id());
-        sched.run();
+        let mut sched_task = sched.run(sched_task);
 
         // Close the idle callback.
-        let mut sched: ~Scheduler = Local::take();
+        let mut sched = sched_task.sched.take_unwrap();
         sched.idle_callback.take();
         // Make one go through the loop to run the close callback.
-        sched.run();
+        let mut stask = sched.run(sched_task);
 
         // Now that we are done with the scheduler, clean up the
         // scheduler task. Do so by removing it from TLS and manually
         // cleaning up the memory it uses. As we didn't actually call
         // task.run() on the scheduler task we never get through all
         // the cleanup code it runs.
-        let mut stask: ~Task = Local::take();
-
         rtdebug!("stopping scheduler {}", stask.sched.get_ref().sched_id());
 
         // Should not have any messages
         let message = stask.sched.get_mut_ref().message_queue.pop();
         rtassert!(match message { mpsc::Empty => true, _ => false });
 
-        stask.destroyed = true;
+        stask.task.get_mut_ref().destroyed = true;
     }
 
     // This does not return a scheduler, as the scheduler is placed
     // inside the task.
-    pub fn run(mut ~self) {
+    pub fn run(mut ~self, stask: ~GreenTask) -> ~GreenTask {
 
         // This is unsafe because we need to place the scheduler, with
         // the event_loop inside, inside our task. But we still need a
@@ -237,16 +231,24 @@ impl Scheduler {
         // command.
         unsafe {
             let event_loop: *mut ~EventLoop = &mut self.event_loop;
-
-            {
-                // Our scheduler must be in the task before the event loop
-                // is started.
-                let mut stask = Local::borrow(None::<Task>);
-                stask.get().sched = Some(self);
-            }
-
+            // Our scheduler must be in the task before the event loop
+            // is started.
+            stask.put_with_sched(self);
             (*event_loop).run();
         }
+
+        //  This is a serious code smell, but this function could be done away
+        //  with if necessary. The ownership of `stask` was transferred into
+        //  local storage just before the event loop ran, so it is possible to
+        //  transmute `stask` as a uint across the running of the event loop to
+        //  re-acquire ownership here.
+        //
+        // This would involve removing the Task from TLS, removing the runtime,
+        // forgetting the runtime, and then putting the task into `stask`. For
+        // now, because we have `GreenTask::convert`, I chose to take this
+        // method for cleanliness. This function is *not* a fundamental reason
+        // why this function should exist.
+        GreenTask::convert(Local::take())
     }
 
     // * Execution Functions - Core Loop Logic
@@ -257,38 +259,37 @@ impl Scheduler {
     // you reach the end and sleep. In the case that a scheduler
     // action is performed the loop is evented such that this function
     // is called again.
-    fn run_sched_once() {
-
-        // When we reach the scheduler context via the event loop we
-        // already have a scheduler stored in our local task, so we
-        // start off by taking it. This is the only path through the
-        // scheduler where we get the scheduler this way.
-        let mut sched: ~Scheduler = Local::take();
+    fn run_sched_once(mut ~self, stask: ~GreenTask) {
+        // Make sure that we're not lying in that the `stask` argument is indeed
+        // the scheduler task for this scheduler.
+        assert!(self.sched_task.is_none());
 
         // Assume that we need to continue idling unless we reach the
         // end of this function without performing an action.
-        sched.idle_callback.get_mut_ref().resume();
+        self.idle_callback.get_mut_ref().resume();
 
         // First we check for scheduler messages, these are higher
         // priority than regular tasks.
-        let sched = match sched.interpret_message_queue(DontTryTooHard) {
-            Some(sched) => sched,
-            None => return
-        };
+        let (sched, stask) =
+            match self.interpret_message_queue(stask, DontTryTooHard) {
+                Some(pair) => pair,
+                None => return
+            };
 
         // This helper will use a randomized work-stealing algorithm
         // to find work.
-        let sched = match sched.do_work() {
-            Some(sched) => sched,
+        let (sched, stask) = match sched.do_work(stask) {
+            Some(pair) => pair,
             None => return
         };
 
         // Now, before sleeping we need to find out if there really
         // were any messages. Give it your best!
-        let mut sched = match sched.interpret_message_queue(GiveItYourBest) {
-            Some(sched) => sched,
-            None => return
-        };
+        let (mut sched, stask) =
+            match sched.interpret_message_queue(stask, GiveItYourBest) {
+                Some(pair) => pair,
+                None => return
+            };
 
         // If we got here then there was no work to do.
         // Generate a SchedHandle and push it to the sleeper list so
@@ -309,14 +310,17 @@ impl Scheduler {
 
         // Finished a cycle without using the Scheduler. Place it back
         // in TLS.
-        Local::put(sched);
+        stask.put_with_sched(sched);
     }
 
     // This function returns None if the scheduler is "used", or it
     // returns the still-available scheduler. At this point all
     // message-handling will count as a turn of work, and as a result
     // return None.
-    fn interpret_message_queue(mut ~self, effort: EffortLevel) -> Option<~Scheduler> {
+    fn interpret_message_queue(mut ~self, stask: ~GreenTask,
+                               effort: EffortLevel)
+        -> Option<(~Scheduler, ~GreenTask)>
+    {
 
         let msg = if effort == DontTryTooHard {
             self.message_queue.casual_pop()
@@ -345,24 +349,25 @@ impl Scheduler {
         match msg {
             Some(PinnedTask(task)) => {
                 let mut task = task;
-                task.give_home(Sched(self.make_handle()));
-                self.resume_task_immediately(task);
+                task.give_home(HomeSched(self.make_handle()));
+                self.resume_task_immediately(stask, task).put();
                 return None;
             }
             Some(TaskFromFriend(task)) => {
                 rtdebug!("got a task from a friend. lovely!");
-                self.process_task(task, Scheduler::resume_task_immediately_cl);
+                self.process_task(stask, task,
+                                  Scheduler::resume_task_immediately_cl);
                 return None;
             }
             Some(RunOnce(task)) => {
                 // bypass the process_task logic to force running this task once
                 // on this home scheduler. This is often used for I/O (homing).
-                Scheduler::resume_task_immediately_cl(self, task);
+                self.resume_task_immediately(stask, task).put();
                 return None;
             }
             Some(Wake) => {
                 self.sleepy = false;
-                Local::put(self);
+                stask.put_with_sched(self);
                 return None;
             }
             Some(Shutdown) => {
@@ -385,26 +390,27 @@ impl Scheduler {
                 // event loop references we will shut down.
                 self.no_sleep = true;
                 self.sleepy = false;
-                Local::put(self);
+                stask.put_with_sched(self);
                 return None;
             }
             None => {
-                return Some(self);
+                return Some((self, stask));
             }
         }
     }
 
-    fn do_work(mut ~self) -> Option<~Scheduler> {
+    fn do_work(mut ~self, stask: ~GreenTask) -> Option<(~Scheduler, ~GreenTask)> {
         rtdebug!("scheduler calling do work");
         match self.find_work() {
             Some(task) => {
-                rtdebug!("found some work! processing the task");
-                self.process_task(task, Scheduler::resume_task_immediately_cl);
+                rtdebug!("found some work! running the task");
+                self.process_task(stask, task,
+                                  Scheduler::resume_task_immediately_cl);
                 return None;
             }
             None => {
                 rtdebug!("no work was found, returning the scheduler struct");
-                return Some(self);
+                return Some((self, stask));
             }
         }
     }
@@ -418,7 +424,7 @@ impl Scheduler {
     // First step in the process is to find a task. This function does
     // that by first checking the local queue, and if there is no work
     // there, trying to steal from the remote work queues.
-    fn find_work(&mut self) -> Option<~Task> {
+    fn find_work(&mut self) -> Option<~GreenTask> {
         rtdebug!("scheduler looking for work");
         if !self.steal_for_yield {
             match self.work_queue.pop() {
@@ -456,7 +462,7 @@ impl Scheduler {
     // Try stealing from all queues the scheduler knows about. This
     // naive implementation can steal from our own queue or from other
     // special schedulers.
-    fn try_steals(&mut self) -> Option<~Task> {
+    fn try_steals(&mut self) -> Option<~GreenTask> {
         let work_queues = &mut self.work_queues;
         let len = work_queues.len();
         let start_index = self.rng.gen_range(0, len);
@@ -476,53 +482,48 @@ impl Scheduler {
     // * Task Routing Functions - Make sure tasks send up in the right
     // place.
 
-    fn process_task(mut ~self, mut task: ~Task, schedule_fn: SchedulingFn) {
+    fn process_task(mut ~self, cur: ~GreenTask,
+                    mut next: ~GreenTask, schedule_fn: SchedulingFn) {
         rtdebug!("processing a task");
 
-        let home = task.take_unwrap_home();
-        match home {
-            Sched(home_handle) => {
+        match next.take_unwrap_home() {
+            HomeSched(home_handle) => {
                 if home_handle.sched_id != self.sched_id() {
                     rtdebug!("sending task home");
-                    task.give_home(Sched(home_handle));
-                    Scheduler::send_task_home(task);
-                    Local::put(self);
+                    next.give_home(HomeSched(home_handle));
+                    Scheduler::send_task_home(next);
+                    cur.put_with_sched(self);
                 } else {
                     rtdebug!("running task here");
-                    task.give_home(Sched(home_handle));
-                    schedule_fn(self, task);
+                    next.give_home(HomeSched(home_handle));
+                    schedule_fn(self, cur, next);
                 }
             }
             AnySched if self.run_anything => {
                 rtdebug!("running anysched task here");
-                task.give_home(AnySched);
-                schedule_fn(self, task);
+                next.give_home(AnySched);
+                schedule_fn(self, cur, next);
             }
             AnySched => {
                 rtdebug!("sending task to friend");
-                task.give_home(AnySched);
-                self.send_to_friend(task);
-                Local::put(self);
+                next.give_home(AnySched);
+                self.send_to_friend(next);
+                cur.put_with_sched(self);
             }
         }
     }
 
-    fn send_task_home(task: ~Task) {
+    fn send_task_home(task: ~GreenTask) {
         let mut task = task;
-        let mut home = task.take_unwrap_home();
-        match home {
-            Sched(ref mut home_handle) => {
-                home_handle.send(PinnedTask(task));
-            }
-            AnySched => {
-                        rtabort!("error: cannot send anysched task home");
-            }
+        match task.take_unwrap_home() {
+            HomeSched(mut home_handle) => home_handle.send(PinnedTask(task)),
+            AnySched => rtabort!("error: cannot send anysched task home"),
         }
     }
 
     /// Take a non-homed task we aren't allowed to run here and send
     /// it to the designated friend scheduler to execute.
-    fn send_to_friend(&mut self, task: ~Task) {
+    fn send_to_friend(&mut self, task: ~GreenTask) {
         rtdebug!("sending a task to friend");
         match self.friend_handle {
             Some(ref mut handle) => {
@@ -539,9 +540,10 @@ impl Scheduler {
     /// Pushes the task onto the work stealing queue and tells the
     /// event loop to run it later. Always use this instead of pushing
     /// to the work queue directly.
-    pub fn enqueue_task(&mut self, task: ~Task) {
+    pub fn enqueue_task(&mut self, task: ~GreenTask) {
 
         // We push the task onto our local queue clone.
+        assert!(!task.is_sched());
         self.work_queue.push(task);
         self.idle_callback.get_mut_ref().resume();
 
@@ -557,47 +559,31 @@ impl Scheduler {
         };
     }
 
-    /// As enqueue_task, but with the possibility for the blocked task to
-    /// already have been killed.
-    pub fn enqueue_blocked_task(&mut self, blocked_task: BlockedTask) {
-        blocked_task.wake().map(|task| self.enqueue_task(task));
-    }
-
     // * Core Context Switching Functions
 
     // The primary function for changing contexts. In the current
     // design the scheduler is just a slightly modified GreenTask, so
-    // all context swaps are from Task to Task. The only difference
+    // all context swaps are from GreenTask to GreenTask. The only difference
     // between the various cases is where the inputs come from, and
     // what is done with the resulting task. That is specified by the
     // cleanup function f, which takes the scheduler and the
     // old task as inputs.
 
     pub fn change_task_context(mut ~self,
-                               next_task: ~Task,
-                               f: |&mut Scheduler, ~Task|) {
-        // The current task is grabbed from TLS, not taken as an input.
-        // Doing an unsafe_take to avoid writing back a null pointer -
-        // We're going to call `put` later to do that.
-        let current_task: ~Task = unsafe { Local::unsafe_take() };
+                               current_task: ~GreenTask,
+                               mut next_task: ~GreenTask,
+                               f: |&mut Scheduler, ~GreenTask|) -> ~GreenTask {
+        let f_opaque = ClosureConverter::from_fn(f);
 
-        // Check that the task is not in an atomically() section (e.g.,
-        // holding a pthread mutex, which could deadlock the scheduler).
-        current_task.death.assert_may_sleep();
-
-        // These transmutes do something fishy with a closure.
-        let f_fake_region = unsafe {
-            transmute::<|&mut Scheduler, ~Task|,
-                        |&mut Scheduler, ~Task|>(f)
+        let current_task_dupe = unsafe {
+            *cast::transmute::<&~GreenTask, &uint>(&current_task)
         };
-        let f_opaque = ClosureConverter::from_fn(f_fake_region);
 
         // The current task is placed inside an enum with the cleanup
         // function. This enum is then placed inside the scheduler.
         self.cleanup_job = Some(CleanupJob::new(current_task, f_opaque));
 
         // The scheduler is then placed inside the next task.
-        let mut next_task = next_task;
         next_task.sched = Some(self);
 
         // However we still need an internal mutable pointer to the
@@ -607,12 +593,12 @@ impl Scheduler {
         unsafe {
 
             let sched: &mut Scheduler =
-                transmute_mut_region(*next_task.sched.get_mut_ref());
+                cast::transmute_mut_region(*next_task.sched.get_mut_ref());
 
-            let current_task: &mut Task = match sched.cleanup_job {
+            let current_task: &mut GreenTask = match sched.cleanup_job {
                 Some(CleanupJob { task: ref task, .. }) => {
-                    let task_ptr: *~Task = task;
-                    transmute_mut_region(*transmute_mut_unsafe(task_ptr))
+                    let task_ptr: *~GreenTask = task;
+                    cast::transmute_mut_region(*cast::transmute_mut_unsafe(task_ptr))
                 }
                 None => {
                     rtabort!("no cleanup job");
@@ -626,7 +612,7 @@ impl Scheduler {
             // works because due to transmute the borrow checker
             // believes that we have no internal pointers to
             // next_task.
-            Local::put(next_task);
+            cast::forget(next_task);
 
             // The raw context swap operation. The next action taken
             // will be running the cleanup job from the context of the
@@ -637,16 +623,19 @@ impl Scheduler {
         // When the context swaps back to this task we immediately
         // run the cleanup job, as expected by the previously called
         // swap_contexts function.
-        unsafe {
-            let task: *mut Task = Local::unsafe_borrow();
-            (*task).sched.get_mut_ref().run_cleanup_job();
+        let mut current_task: ~GreenTask = unsafe {
+            cast::transmute(current_task_dupe)
+        };
+        current_task.sched.get_mut_ref().run_cleanup_job();
 
-            // See the comments in switch_running_tasks_and_then for why a lock
-            // is acquired here. This is the resumption points and the "bounce"
-            // that it is referring to.
-            (*task).nasty_deschedule_lock.lock();
-            (*task).nasty_deschedule_lock.unlock();
+        // See the comments in switch_running_tasks_and_then for why a lock
+        // is acquired here. This is the resumption points and the "bounce"
+        // that it is referring to.
+        unsafe {
+            current_task.nasty_deschedule_lock.lock();
+            current_task.nasty_deschedule_lock.unlock();
         }
+        return current_task;
     }
 
     // Returns a mutable reference to both contexts involved in this
@@ -654,37 +643,33 @@ impl Scheduler {
     // references to keep even when we don't own the tasks. It looks
     // kinda safe because we are doing transmutes before passing in
     // the arguments.
-    pub fn get_contexts<'a>(current_task: &mut Task, next_task: &mut Task) ->
+    pub fn get_contexts<'a>(current_task: &mut GreenTask, next_task: &mut GreenTask) ->
         (&'a mut Context, &'a mut Context) {
         let current_task_context =
             &mut current_task.coroutine.get_mut_ref().saved_context;
         let next_task_context =
                 &mut next_task.coroutine.get_mut_ref().saved_context;
         unsafe {
-            (transmute_mut_region(current_task_context),
-             transmute_mut_region(next_task_context))
+            (cast::transmute_mut_region(current_task_context),
+             cast::transmute_mut_region(next_task_context))
         }
     }
 
     // * Context Swapping Helpers - Here be ugliness!
 
-    pub fn resume_task_immediately(~self, task: ~Task) {
-        self.change_task_context(task, |sched, stask| {
+    pub fn resume_task_immediately(~self, cur: ~GreenTask,
+                                   next: ~GreenTask) -> ~GreenTask {
+        assert!(cur.is_sched());
+        self.change_task_context(cur, next, |sched, stask| {
+            assert!(sched.sched_task.is_none());
             sched.sched_task = Some(stask);
         })
     }
 
     fn resume_task_immediately_cl(sched: ~Scheduler,
-                                  task: ~Task) {
-        sched.resume_task_immediately(task)
-    }
-
-
-    pub fn resume_blocked_task_immediately(~self, blocked_task: BlockedTask) {
-        match blocked_task.wake() {
-            Some(task) => { self.resume_task_immediately(task); }
-            None => Local::put(self)
-        };
+                                  cur: ~GreenTask,
+                                  next: ~GreenTask) {
+        sched.resume_task_immediately(cur, next).put()
     }
 
     /// Block a running task, context switch to the scheduler, then pass the
@@ -709,15 +694,18 @@ impl Scheduler {
     /// guaranteed that this function will not return before the given closure
     /// has returned.
     pub fn deschedule_running_task_and_then(mut ~self,
+                                            cur: ~GreenTask,
                                             f: |&mut Scheduler, BlockedTask|) {
         // Trickier - we need to get the scheduler task out of self
         // and use it as the destination.
         let stask = self.sched_task.take_unwrap();
         // Otherwise this is the same as below.
-        self.switch_running_tasks_and_then(stask, f);
+        self.switch_running_tasks_and_then(cur, stask, f)
     }
 
-    pub fn switch_running_tasks_and_then(~self, next_task: ~Task,
+    pub fn switch_running_tasks_and_then(~self,
+                                         cur: ~GreenTask,
+                                         next: ~GreenTask,
                                          f: |&mut Scheduler, BlockedTask|) {
         // And here comes one of the sad moments in which a lock is used in a
         // core portion of the rust runtime. As always, this is highly
@@ -733,80 +721,96 @@ impl Scheduler {
         // task-local lock around this block. The resumption of the task in
         // context switching will bounce on the lock, thereby waiting for this
         // block to finish, eliminating the race mentioned above.
+        // fail!("should never return!");
         //
         // To actually maintain a handle to the lock, we use an unsafe pointer
         // to it, but we're guaranteed that the task won't exit until we've
         // unlocked the lock so there's no worry of this memory going away.
-        self.change_task_context(next_task, |sched, mut task| {
+        let cur = self.change_task_context(cur, next, |sched, mut task| {
             let lock: *mut Mutex = &mut task.nasty_deschedule_lock;
             unsafe { (*lock).lock() }
-            f(sched, BlockedTask::block(task));
+            f(sched, BlockedTask::block(task.swap()));
             unsafe { (*lock).unlock() }
-        })
+        });
+        cur.put();
     }
 
-    fn switch_task(sched: ~Scheduler, task: ~Task) {
-        sched.switch_running_tasks_and_then(task, |sched, last_task| {
-            sched.enqueue_blocked_task(last_task);
-        });
+    fn switch_task(sched: ~Scheduler, cur: ~GreenTask, next: ~GreenTask) {
+        sched.change_task_context(cur, next, |sched, last_task| {
+            if last_task.is_sched() {
+                assert!(sched.sched_task.is_none());
+                sched.sched_task = Some(last_task);
+            } else {
+                sched.enqueue_task(last_task);
+            }
+        }).put()
     }
 
     // * Task Context Helpers
 
     /// Called by a running task to end execution, after which it will
     /// be recycled by the scheduler for reuse in a new task.
-    pub fn terminate_current_task(mut ~self) {
+    pub fn terminate_current_task(mut ~self, cur: ~GreenTask) {
         // Similar to deschedule running task and then, but cannot go through
         // the task-blocking path. The task is already dying.
         let stask = self.sched_task.take_unwrap();
-        self.change_task_context(stask, |sched, mut dead_task| {
+        let _cur = self.change_task_context(cur, stask, |sched, mut dead_task| {
             let coroutine = dead_task.coroutine.take_unwrap();
             coroutine.recycle(&mut sched.stack_pool);
-        })
+        });
+        fail!("should never return!");
     }
 
-    pub fn run_task(task: ~Task) {
-        let sched: ~Scheduler = Local::take();
-        sched.process_task(task, Scheduler::switch_task);
+    pub fn run_task(~self, cur: ~GreenTask, next: ~GreenTask) {
+        self.process_task(cur, next, Scheduler::switch_task);
     }
 
-    pub fn run_task_later(next_task: ~Task) {
-        let mut sched = Local::borrow(None::<Scheduler>);
-        sched.get().enqueue_task(next_task);
+    pub fn run_task_later(mut cur: ~GreenTask, next: ~GreenTask) {
+        let mut sched = cur.sched.take_unwrap();
+        sched.enqueue_task(next);
+        cur.put_with_sched(sched);
     }
 
     /// Yield control to the scheduler, executing another task. This is guaranteed
     /// to introduce some amount of randomness to the scheduler. Currently the
     /// randomness is a result of performing a round of work stealing (which
     /// may end up stealing from the current scheduler).
-    pub fn yield_now(mut ~self) {
-        self.yield_check_count = reset_yield_check(&mut self.rng);
-        // Tell the scheduler to start stealing on the next iteration
-        self.steal_for_yield = true;
-        self.deschedule_running_task_and_then(|sched, task| {
-            sched.enqueue_blocked_task(task);
-        })
+    pub fn yield_now(mut ~self, cur: ~GreenTask) {
+        if cur.is_sched() {
+            assert!(self.sched_task.is_none());
+            self.run_sched_once(cur);
+        } else {
+            self.yield_check_count = reset_yield_check(&mut self.rng);
+            // Tell the scheduler to start stealing on the next iteration
+            self.steal_for_yield = true;
+            let stask = self.sched_task.take_unwrap();
+            let cur = self.change_task_context(cur, stask, |sched, task| {
+                sched.enqueue_task(task);
+            });
+            cur.put()
+        }
     }
 
-    pub fn maybe_yield(mut ~self) {
-        // The number of times to do the yield check before yielding, chosen arbitrarily.
+    pub fn maybe_yield(mut ~self, cur: ~GreenTask) {
+        // The number of times to do the yield check before yielding, chosen
+        // arbitrarily.
         rtassert!(self.yield_check_count > 0);
         self.yield_check_count -= 1;
         if self.yield_check_count == 0 {
-            self.yield_now();
+            self.yield_now(cur);
         } else {
-            Local::put(self);
+            cur.put_with_sched(self);
         }
     }
 
 
     // * Utility Functions
 
-    pub fn sched_id(&self) -> uint { to_uint(self) }
+    pub fn sched_id(&self) -> uint { unsafe { cast::transmute(self) } }
 
     pub fn run_cleanup_job(&mut self) {
         let cleanup_job = self.cleanup_job.take_unwrap();
-        cleanup_job.run(self);
+        cleanup_job.run(self)
     }
 
     pub fn make_handle(&mut self) -> SchedHandle {
@@ -816,20 +820,20 @@ impl Scheduler {
             remote: remote,
             queue: self.message_producer.clone(),
             sched_id: self.sched_id()
-        };
+        }
     }
 }
 
 // Supporting types
 
-type SchedulingFn = extern "Rust" fn (~Scheduler, ~Task);
+type SchedulingFn = extern "Rust" fn (~Scheduler, ~GreenTask, ~GreenTask);
 
 pub enum SchedMessage {
     Wake,
     Shutdown,
-    PinnedTask(~Task),
-    TaskFromFriend(~Task),
-    RunOnce(~Task),
+    PinnedTask(~GreenTask),
+    TaskFromFriend(~GreenTask),
+    RunOnce(~GreenTask),
 }
 
 pub struct SchedHandle {
@@ -849,17 +853,28 @@ struct SchedRunner;
 
 impl Callback for SchedRunner {
     fn call(&mut self) {
-        Scheduler::run_sched_once();
+        // In theory, this function needs to invoke the `run_sched_once`
+        // function on the scheduler. Sadly, we have no context here, except for
+        // knowledge of the local `Task`. In order to avoid a call to
+        // `GreenTask::convert`, we just call `yield_now` and the scheduler will
+        // detect when a sched task performs a yield vs a green task performing
+        // a yield (and act accordingly).
+        //
+        // This function could be converted to `GreenTask::convert` if
+        // absolutely necessary, but for cleanliness it is much better to not
+        // use the conversion function.
+        let task: ~Task = Local::take();
+        task.yield_now();
     }
 }
 
 struct CleanupJob {
-    task: ~Task,
+    task: ~GreenTask,
     f: UnsafeTaskReceiver
 }
 
 impl CleanupJob {
-    pub fn new(task: ~Task, f: UnsafeTaskReceiver) -> CleanupJob {
+    pub fn new(task: ~GreenTask, f: UnsafeTaskReceiver) -> CleanupJob {
         CleanupJob {
             task: task,
             f: f
@@ -876,14 +891,16 @@ impl CleanupJob {
 // complaining
 type UnsafeTaskReceiver = raw::Closure;
 trait ClosureConverter {
-    fn from_fn(|&mut Scheduler, ~Task|) -> Self;
-    fn to_fn(self) -> |&mut Scheduler, ~Task|;
+    fn from_fn(|&mut Scheduler, ~GreenTask|) -> Self;
+    fn to_fn(self) -> |&mut Scheduler, ~GreenTask|;
 }
 impl ClosureConverter for UnsafeTaskReceiver {
-    fn from_fn(f: |&mut Scheduler, ~Task|) -> UnsafeTaskReceiver {
-        unsafe { transmute(f) }
+    fn from_fn(f: |&mut Scheduler, ~GreenTask|) -> UnsafeTaskReceiver {
+        unsafe { cast::transmute(f) }
     }
-    fn to_fn(self) -> |&mut Scheduler, ~Task| { unsafe { transmute(self) } }
+    fn to_fn(self) -> |&mut Scheduler, ~GreenTask| {
+        unsafe { cast::transmute(self) }
+    }
 }
 
 // On unix, we read randomness straight from /dev/urandom, but the
@@ -897,12 +914,9 @@ fn new_sched_rng() -> XorShiftRng {
 }
 #[cfg(unix)]
 fn new_sched_rng() -> XorShiftRng {
-    use libc;
-    use mem;
-    use c_str::ToCStr;
-    use vec::MutableVector;
-    use iter::Iterator;
-    use rand::SeedableRng;
+    use std::libc;
+    use std::mem;
+    use std::rand::SeedableRng;
 
     let fd = "/dev/urandom".with_c_str(|name| {
         unsafe { libc::open(name, libc::O_RDONLY, 0) }
@@ -933,14 +947,11 @@ fn new_sched_rng() -> XorShiftRng {
 
 #[cfg(test)]
 mod test {
-    use prelude::*;
-
     use borrow::to_uint;
     use rt::deque::BufferPool;
     use rt::basic;
     use rt::sched::{Scheduler};
-    use rt::task::{Task, Sched};
-    use rt::test::*;
+    use rt::task::{GreenTask, Sched};
     use rt::thread::Thread;
     use rt::util;
     use task::TaskResult;
@@ -1023,10 +1034,10 @@ mod test {
             let mut sched = ~new_test_uv_sched();
             let sched_handle = sched.make_handle();
 
-            let mut task = ~do Task::new_root_homed(&mut sched.stack_pool, None,
+            let mut task = ~do GreenTask::new_root_homed(&mut sched.stack_pool, None,
                                                 Sched(sched_handle)) {
                 unsafe { *task_ran_ptr = true };
-                assert!(Task::on_appropriate_sched());
+                assert!(GreenTask::on_appropriate_sched());
             };
 
             let on_exit: proc(TaskResult) = proc(exit_status) {
@@ -1064,8 +1075,6 @@ mod test {
 
             let normal_handle = normal_sched.make_handle();
 
-            let friend_handle = normal_sched.make_handle();
-
             // Our special scheduler
             let mut special_sched = ~Scheduler::new_special(
                 basic::event_loop(),
@@ -1086,30 +1095,30 @@ mod test {
             //   3) task not homed, sched requeues
             //   4) task not home, send home
 
-            let task1 = ~do Task::new_root_homed(&mut special_sched.stack_pool, None,
+            let task1 = ~do GreenTask::new_root_homed(&mut special_sched.stack_pool, None,
                                                  Sched(t1_handle)) || {
-                rtassert!(Task::on_appropriate_sched());
+                rtassert!(GreenTask::on_appropriate_sched());
             };
             rtdebug!("task1 id: **{}**", borrow::to_uint(task1));
 
-            let task2 = ~do Task::new_root(&mut normal_sched.stack_pool, None) {
-                rtassert!(Task::on_appropriate_sched());
+            let task2 = ~do GreenTask::new_root(&mut normal_sched.stack_pool, None) {
+                rtassert!(GreenTask::on_appropriate_sched());
             };
 
-            let task3 = ~do Task::new_root(&mut normal_sched.stack_pool, None) {
-                rtassert!(Task::on_appropriate_sched());
+            let task3 = ~do GreenTask::new_root(&mut normal_sched.stack_pool, None) {
+                rtassert!(GreenTask::on_appropriate_sched());
             };
 
-            let task4 = ~do Task::new_root_homed(&mut special_sched.stack_pool, None,
+            let task4 = ~do GreenTask::new_root_homed(&mut special_sched.stack_pool, None,
                                                  Sched(t4_handle)) {
-                rtassert!(Task::on_appropriate_sched());
+                rtassert!(GreenTask::on_appropriate_sched());
             };
             rtdebug!("task4 id: **{}**", borrow::to_uint(task4));
 
             // Signal from the special task that we are done.
             let (port, chan) = Chan::<()>::new();
 
-            let normal_task = ~do Task::new_root(&mut normal_sched.stack_pool, None) {
+            let normal_task = ~do GreenTask::new_root(&mut normal_sched.stack_pool, None) {
                 rtdebug!("*about to submit task2*");
                 Scheduler::run_task(task2);
                 rtdebug!("*about to submit task4*");
@@ -1124,7 +1133,7 @@ mod test {
 
             rtdebug!("normal task: {}", borrow::to_uint(normal_task));
 
-            let special_task = ~do Task::new_root(&mut special_sched.stack_pool, None) {
+            let special_task = ~do GreenTask::new_root(&mut special_sched.stack_pool, None) {
                 rtdebug!("*about to submit task1*");
                 Scheduler::run_task(task1);
                 rtdebug!("*about to submit task3*");
@@ -1226,14 +1235,14 @@ mod test {
                 let thread = do Thread::start {
                     let mut sched = sched;
                     let bootstrap_task =
-                        ~Task::new_root(&mut sched.stack_pool,
+                        ~GreenTask::new_root(&mut sched.stack_pool,
                                         None,
                                         proc()());
                     sched.bootstrap(bootstrap_task);
                 };
 
                 let mut stack_pool = StackPool::new();
-                let task = ~Task::new_root(&mut stack_pool, None, proc()());
+                let task = ~GreenTask::new_root(&mut stack_pool, None, proc()());
                 handle.send(TaskFromFriend(task));
 
                 handle.send(Shutdown);

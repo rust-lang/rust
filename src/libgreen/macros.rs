@@ -8,68 +8,53 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use container::Container;
-use fmt;
-use from_str::FromStr;
-use libc;
-use option::{Some, None, Option};
-use os;
-use str::StrSlice;
-use unstable::running_on_valgrind;
+// XXX: this file probably shouldn't exist
+
+#[macro_escape];
+
+use std::fmt;
+use std::libc;
 
 // Indicates whether we should perform expensive sanity checks, including rtassert!
 // XXX: Once the runtime matures remove the `true` below to turn off rtassert, etc.
 pub static ENFORCE_SANITY: bool = true || !cfg!(rtopt) || cfg!(rtdebug) || cfg!(rtassert);
 
-/// Get the number of cores available
-pub fn num_cpus() -> uint {
-    unsafe {
-        return rust_get_num_cpus();
-    }
+macro_rules! rterrln (
+    ($($arg:tt)*) => ( {
+        format_args!(::macros::dumb_println, $($arg)*)
+    } )
+)
 
-    extern {
-        fn rust_get_num_cpus() -> libc::uintptr_t;
-    }
-}
+// Some basic logging. Enabled by passing `--cfg rtdebug` to the libstd build.
+macro_rules! rtdebug (
+    ($($arg:tt)*) => ( {
+        if cfg!(rtdebug) {
+            rterrln!($($arg)*)
+        }
+    })
+)
 
-/// Valgrind has a fixed-sized array (size around 2000) of segment descriptors
-/// wired into it; this is a hard limit and requires rebuilding valgrind if you
-/// want to go beyond it. Normally this is not a problem, but in some tests, we
-/// produce a lot of threads casually.  Making lots of threads alone might not
-/// be a problem _either_, except on OSX, the segments produced for new threads
-/// _take a while_ to get reclaimed by the OS. Combined with the fact that libuv
-/// schedulers fork off a separate thread for polling fsevents on OSX, we get a
-/// perfect storm of creating "too many mappings" for valgrind to handle when
-/// running certain stress tests in the runtime.
-pub fn limit_thread_creation_due_to_osx_and_valgrind() -> bool {
-    (cfg!(target_os="macos")) && running_on_valgrind()
-}
-
-/// Get's the number of scheduler threads requested by the environment
-/// either `RUST_THREADS` or `num_cpus`.
-pub fn default_sched_threads() -> uint {
-    match os::getenv("RUST_THREADS") {
-        Some(nstr) => {
-            let opt_n: Option<uint> = FromStr::from_str(nstr);
-            match opt_n {
-                Some(n) if n > 0 => n,
-                _ => rtabort!("`RUST_THREADS` is `{}`, should be a positive integer", nstr)
+macro_rules! rtassert (
+    ( $arg:expr ) => ( {
+        if ::macros::ENFORCE_SANITY {
+            if !$arg {
+                rtabort!(" assertion failed: {}", stringify!($arg));
             }
         }
-        None => {
-            if limit_thread_creation_due_to_osx_and_valgrind() {
-                1
-            } else {
-                num_cpus()
-            }
-        }
-    }
-}
+    } )
+)
+
+
+macro_rules! rtabort (
+    ($($arg:tt)*) => ( {
+        ::macros::abort(format!($($arg)*));
+    } )
+)
 
 pub fn dumb_println(args: &fmt::Arguments) {
-    use io;
-    use libc;
-    use vec;
+    use std::io;
+    use std::libc;
+    use std::vec;
 
     struct Stderr;
     impl io::Writer for Stderr {

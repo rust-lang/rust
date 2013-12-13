@@ -69,6 +69,12 @@ impl Thread<()> {
     /// called, when the `Thread` falls out of scope its destructor will block
     /// waiting for the OS thread.
     pub fn start<T: Send>(main: proc() -> T) -> Thread<T> {
+        Thread::start_stack(DEFAULT_STACK_SIZE, main)
+    }
+
+    /// Performs the same functionality as `start`, but specifies an explicit
+    /// stack size for the new thread.
+    pub fn start_stack<T: Send>(stack: uint, main: proc() -> T) -> Thread<T> {
 
         // We need the address of the packet to fill in to be stable so when
         // `main` fills it in it's still valid, so allocate an extra ~ box to do

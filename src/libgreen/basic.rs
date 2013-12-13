@@ -11,15 +11,15 @@
 //! This is a basic event loop implementation not meant for any "real purposes"
 //! other than testing the scheduler and proving that it's possible to have a
 //! pluggable event loop.
+//!
+//! This implementation is also used as the fallback implementation of an event
+//! loop if no other one is provided (and M:N scheduling is desired).
 
-use prelude::*;
-
-use cast;
-use rt::rtio::{EventLoop, IoFactory, RemoteCallback, PausableIdleCallback,
-               Callback};
-use unstable::sync::Exclusive;
-use io::native;
-use util;
+use std::cast;
+use std::rt::rtio::{EventLoop, IoFactory, RemoteCallback, PausibleIdleCallback,
+                    Callback};
+use std::unstable::sync::Exclusive;
+use std::util;
 
 /// This is the only exported function from this module.
 pub fn event_loop() -> ~EventLoop {
@@ -32,7 +32,6 @@ struct BasicLoop {
     remotes: ~[(uint, ~Callback)],
     next_remote: uint,
     messages: Exclusive<~[Message]>,
-    io: ~IoFactory,
 }
 
 enum Message { RunRemote(uint), RemoveRemote(uint) }
@@ -45,7 +44,6 @@ impl BasicLoop {
             next_remote: 0,
             remotes: ~[],
             messages: Exclusive::new(~[]),
-            io: ~native::IoFactory as ~IoFactory,
         }
     }
 
@@ -159,10 +157,7 @@ impl EventLoop for BasicLoop {
         ~BasicRemote::new(self.messages.clone(), id) as ~RemoteCallback
     }
 
-    fn io<'a>(&'a mut self) -> Option<&'a mut IoFactory> {
-        let factory: &mut IoFactory = self.io;
-        Some(factory)
-    }
+    fn io<'a>(&'a mut self) -> Option<&'a mut IoFactory> { None }
 }
 
 struct BasicRemote {

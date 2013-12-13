@@ -57,27 +57,17 @@ Several modules in `core` are clients of `rt`:
 // XXX: this should not be here.
 #[allow(missing_doc)];
 
+use any::Any;
 use clone::Clone;
 use container::Container;
 use iter::Iterator;
-use option::{Option, None, Some};
+use option::Option;
 use ptr::RawPtr;
-use rt::local::Local;
-use rt::sched::{Scheduler, Shutdown};
-use rt::sleeper_list::SleeperList;
-use task::TaskResult;
-use rt::task::{Task, SchedTask, GreenTask, Sched};
-use send_str::SendStrStatic;
-use unstable::atomics::{AtomicInt, AtomicBool, SeqCst};
-use unstable::sync::UnsafeArc;
+use result::Result;
+use task::TaskOpts;
 use vec::{OwnedVector, MutableVector, ImmutableVector};
-use vec;
 
-use self::thread::Thread;
-
-// the os module needs to reach into this helper, so allow general access
-// through this reexport.
-pub use self::util::set_exit_status;
+use self::task::{Task, BlockedTask};
 
 // this is somewhat useful when a program wants to spawn a "reasonable" number
 // of workers based on the constraints of the system that it's running on.
@@ -85,8 +75,8 @@ pub use self::util::set_exit_status;
 // method...
 pub use self::util::default_sched_threads;
 
-// Re-export of the functionality in the kill module
-pub use self::kill::BlockedTask;
+// Export unwinding facilities used by the failure macros
+pub use self::unwind::{begin_unwind, begin_unwind_raw};
 
 // XXX: these probably shouldn't be public...
 #[doc(hidden)]
@@ -99,20 +89,11 @@ pub mod shouldnt_be_public {
 // Internal macros used by the runtime.
 mod macros;
 
-/// Basic implementation of an EventLoop, provides no I/O interfaces
-mod basic;
-
 /// The global (exchange) heap.
 pub mod global_heap;
 
 /// Implementations of language-critical runtime features like @.
 pub mod task;
-
-/// Facilities related to task failure, killing, and death.
-mod kill;
-
-/// The coroutine task scheduler, built on the `io` event loop.
-pub mod sched;
 
 /// The EventLoop and internal synchronous I/O interface.
 pub mod rtio;
@@ -120,27 +101,6 @@ pub mod rtio;
 /// The Local trait for types that are accessible via thread-local
 /// or task-local storage.
 pub mod local;
-
-/// A mostly lock-free multi-producer, single consumer queue.
-pub mod mpsc_queue;
-
-/// A lock-free single-producer, single consumer queue.
-pub mod spsc_queue;
-
-/// A lock-free multi-producer, multi-consumer bounded queue.
-mod mpmc_bounded_queue;
-
-/// A parallel work-stealing deque
-pub mod deque;
-
-/// A parallel data structure for tracking sleeping schedulers.
-pub mod sleeper_list;
-
-/// Stack segments and caching.
-pub mod stack;
-
-/// CPU context swapping.
-mod context;
 
 /// Bindings to system threading libraries.
 pub mod thread;
@@ -156,16 +116,6 @@ pub mod logging;
 
 /// Crate map
 pub mod crate_map;
-
-/// Tools for testing the runtime
-pub mod test;
-
-/// Reference counting
-pub mod rc;
-
-/// A simple single-threaded channel type for passing buffered data between
-/// scheduler and task context
-pub mod tube;
 
 /// The runtime needs to be able to put a pointer into thread-local storage.
 mod local_ptr;
