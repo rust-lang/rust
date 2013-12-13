@@ -4217,6 +4217,7 @@ mod bench {
     use vec;
     use vec::VectorVector;
     use option::*;
+    use ptr;
 
     #[bench]
     fn iterator(bh: &mut BenchHarness) {
@@ -4338,5 +4339,59 @@ mod bench {
         bh.iter(|| {
                 vec.contains(&99u);
         })
+    }
+
+    #[bench]
+    fn zero_1kb_from_elem(bh: &mut BenchHarness) {
+        bh.iter(|| {
+            let _v: ~[u8] = vec::from_elem(1024, 0u8);
+        });
+    }
+
+    #[bench]
+    fn zero_1kb_set_memory(bh: &mut BenchHarness) {
+        bh.iter(|| {
+            let mut v: ~[u8] = vec::with_capacity(1024);
+            unsafe {
+                let vp = vec::raw::to_mut_ptr(v);
+                ptr::set_memory(vp, 0, 1024);
+                vec::raw::set_len(&mut v, 1024);
+            }
+        });
+    }
+
+    #[bench]
+    fn zero_1kb_fixed_repeat(bh: &mut BenchHarness) {
+        bh.iter(|| {
+            let _v: ~[u8] = ~[0u8, ..1024];
+        });
+    }
+
+    #[bench]
+    fn zero_1kb_loop_set(bh: &mut BenchHarness) {
+        // Slower because the { len, cap, [0 x T] }* repr allows a pointer to the length
+        // field to be aliased (in theory) and prevents LLVM from optimizing loads away.
+        bh.iter(|| {
+            let mut v: ~[u8] = vec::with_capacity(1024);
+            unsafe {
+                vec::raw::set_len(&mut v, 1024);
+            }
+            for i in range(0, 1024) {
+                v[i] = 0;
+            }
+        });
+    }
+
+    #[bench]
+    fn zero_1kb_mut_iter(bh: &mut BenchHarness) {
+        bh.iter(|| {
+            let mut v: ~[u8] = vec::with_capacity(1024);
+            unsafe {
+                vec::raw::set_len(&mut v, 1024);
+            }
+            for x in v.mut_iter() {
+                *x = 0;
+            }
+        });
     }
 }
