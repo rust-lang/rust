@@ -41,9 +41,9 @@ static DEFAULT_STACK_SIZE: libc::size_t = 1024 * 1024;
 // and invoke it.
 #[no_split_stack]
 extern fn thread_start(main: *libc::c_void) -> imp::rust_thread_return {
-    use rt::context;
+    use unstable::stack;
     unsafe {
-        context::record_stack_bounds(0, uint::max_value);
+        stack::record_stack_bounds(0, uint::max_value);
         let f: ~proc() = cast::transmute(main);
         (*f)();
         cast::transmute(0 as imp::rust_thread_return)
