@@ -62,6 +62,7 @@ struct Finallyalizer<'a> {
 
 #[unsafe_destructor]
 impl<'a> Drop for Finallyalizer<'a> {
+    #[inline]
     fn drop(&mut self) {
         (self.dtor)();
     }
