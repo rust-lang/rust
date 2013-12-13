@@ -2248,7 +2248,14 @@ fn populate_scope_map(cx: &mut CrateContext,
         })
     }
 
-    walk_block(cx, fn_entry_block, &mut scope_stack, scope_map);
+    // Clang creates separate scope functions bodies, so let's do this too
+    with_new_scope(cx,
+                   fn_entry_block.span,
+                   &mut scope_stack,
+                   scope_map,
+                   |cx, scope_stack, scope_map| {
+        walk_block(cx, fn_entry_block, scope_stack, scope_map);
+    });
 
     // local helper functions for walking the AST.
     fn with_new_scope(cx: &mut CrateContext,
