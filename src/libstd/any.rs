@@ -20,10 +20,11 @@
 
 use cast::transmute;
 use option::{Option, Some, None};
+use result::{Result, Ok, Err};
 use to_str::ToStr;
+use unstable::intrinsics::TypeId;
 use unstable::intrinsics;
 use util::Void;
-use unstable::intrinsics::TypeId;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Any trait
@@ -119,12 +120,12 @@ impl<'a> AnyMutRefExt<'a> for &'a mut Any {
 pub trait AnyOwnExt {
     /// Returns the boxed value if it is of type `T`, or
     /// `None` if it isn't.
-    fn move<T: 'static>(self) -> Option<~T>;
+    fn move<T: 'static>(self) -> Result<~T, Self>;
 }
 
 impl AnyOwnExt for ~Any {
     #[inline]
-    fn move<T: 'static>(self) -> Option<~T> {
+    fn move<T: 'static>(self) -> Result<~T, ~Any> {
         if self.is::<T>() {
             unsafe {
                 // Extract the pointer to the boxed value, temporary alias with self
@@ -133,10 +134,10 @@ impl AnyOwnExt for ~Any {
                 // Prevent destructor on self being run
                 intrinsics::forget(self);
 
-                Some(ptr)
+                Ok(ptr)
             }
         } else {
-            None
+            Err(self)
         }
     }
 }
@@ -384,13 +385,13 @@ mod tests {
         let a = ~8u as ~Any;
         let b = ~Test as ~Any;
 
-        assert_eq!(a.move(), Some(~8u));
-        assert_eq!(b.move(), Some(~Test));
+        assert_eq!(a.move(), Ok(~8u));
+        assert_eq!(b.move(), Ok(~Test));
 
         let a = ~8u as ~Any;
         let b = ~Test as ~Any;
 
-        assert_eq!(a.move(), None::<~Test>);
-        assert_eq!(b.move(), None::<~uint>);
+        assert!(a.move::<~Test>().is_err());
+        assert!(b.move::<~uint>().is_err());
     }
 }
