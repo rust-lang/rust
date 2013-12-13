@@ -68,11 +68,22 @@ pub fn default_sched_threads() -> uint {
 }
 
 pub fn dumb_println(args: &fmt::Arguments) {
-    use io::native::file::FileDesc;
     use io;
     use libc;
-    let mut out = FileDesc::new(libc::STDERR_FILENO, false);
-    fmt::writeln(&mut out as &mut io::Writer, args);
+    use vec;
+
+    struct Stderr;
+    impl io::Writer for Stderr {
+        fn write(&mut self, data: &[u8]) {
+            unsafe {
+                libc::write(libc::STDERR_FILENO,
+                            vec::raw::to_ptr(data) as *libc::c_void,
+                            data.len() as libc::size_t);
+            }
+        }
+    }
+    let mut w = Stderr;
+    fmt::writeln(&mut w as &mut io::Writer, args);
 }
 
 pub fn abort(msg: &str) -> ! {
