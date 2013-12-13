@@ -103,8 +103,9 @@ impl Archive {
     }
 
     /// Adds an arbitrary file to this archive
-    pub fn add_file(&mut self, file: &Path) {
-        run_ar(self.sess, "r", None, [&self.dst, file]);
+    pub fn add_file(&mut self, file: &Path, has_symbols: bool) {
+        let cmd = if has_symbols {"r"} else {"rS"};
+        run_ar(self.sess, cmd, None, [&self.dst, file]);
     }
 
     /// Removes a file from this archive
@@ -112,6 +113,12 @@ impl Archive {
         run_ar(self.sess, "d", None, [&self.dst, &Path::new(file)]);
     }
 
+    /// Update all symbols in the archive (runs 'ar s' over it)
+    pub fn update_symbols(&mut self) {
+        run_ar(self.sess, "s", None, [&self.dst]);
+    }
+
+    /// List all files in an archive
     pub fn files(&self) -> ~[~str] {
         let output = run_ar(self.sess, "t", None, [&self.dst]);
         str::from_utf8(output.output).lines().map(|s| s.to_owned()).collect()
