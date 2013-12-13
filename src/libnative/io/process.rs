@@ -8,18 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use io;
-use libc::{pid_t, c_void, c_int};
-use libc;
-use os;
-use prelude::*;
-use ptr;
-use rt::rtio;
-use super::file;
-#[cfg(windows)]
-use cast;
+use std::cast;
+use std::io;
+use std::libc::{pid_t, c_void, c_int};
+use std::libc;
+use std::os;
+use std::ptr;
+use std::rt::rtio;
+use p = std::io::process;
 
-use p = io::process;
+use super::file;
 
 /**
  * A value representing a child process.
@@ -179,22 +177,22 @@ fn spawn_process_os(prog: &str, args: &[~str],
                     env: Option<~[(~str, ~str)]>,
                     dir: Option<&Path>,
                     in_fd: c_int, out_fd: c_int, err_fd: c_int) -> SpawnProcessResult {
-    use libc::types::os::arch::extra::{DWORD, HANDLE, STARTUPINFO};
-    use libc::consts::os::extra::{
+    use std::libc::types::os::arch::extra::{DWORD, HANDLE, STARTUPINFO};
+    use std::libc::consts::os::extra::{
         TRUE, FALSE,
         STARTF_USESTDHANDLES,
         INVALID_HANDLE_VALUE,
         DUPLICATE_SAME_ACCESS
     };
-    use libc::funcs::extra::kernel32::{
+    use std::libc::funcs::extra::kernel32::{
         GetCurrentProcess,
         DuplicateHandle,
         CloseHandle,
         CreateProcessA
     };
-    use libc::funcs::extra::msvcrt::get_osfhandle;
+    use std::libc::funcs::extra::msvcrt::get_osfhandle;
 
-    use mem;
+    use std::mem;
 
     unsafe {
 
@@ -256,10 +254,10 @@ fn spawn_process_os(prog: &str, args: &[~str],
             fail!("failure in CreateProcess: {}", *msg);
         }
 
-        // We close the thread handle because we don't care about keeping the
+        // We close the thread handle because std::we don't care about keeping the
         // thread id valid, and we aren't keeping the thread handle around to be
         // able to close it later. We don't close the process handle however
-        // because we want the process id to stay valid at least until the
+        // because std::we want the process id to stay valid at least until the
         // calling code closes the process handle.
         CloseHandle(pi.hThread);
 
@@ -362,8 +360,8 @@ fn spawn_process_os(prog: &str, args: &[~str],
                     env: Option<~[(~str, ~str)]>,
                     dir: Option<&Path>,
                     in_fd: c_int, out_fd: c_int, err_fd: c_int) -> SpawnProcessResult {
-    use libc::funcs::posix88::unistd::{fork, dup2, close, chdir, execvp};
-    use libc::funcs::bsd44::getdtablesize;
+    use std::libc::funcs::posix88::unistd::{fork, dup2, close, chdir, execvp};
+    use std::libc::funcs::bsd44::getdtablesize;
 
     mod rustrt {
         extern {
@@ -433,7 +431,7 @@ fn spawn_process_os(prog: &str, args: &[~str],
 
 #[cfg(unix)]
 fn with_argv<T>(prog: &str, args: &[~str], cb: |**libc::c_char| -> T) -> T {
-    use vec;
+    use std::vec;
 
     // We can't directly convert `str`s into `*char`s, as someone needs to hold
     // a reference to the intermediary byte buffers. So first build an array to
@@ -459,7 +457,7 @@ fn with_argv<T>(prog: &str, args: &[~str], cb: |**libc::c_char| -> T) -> T {
 
 #[cfg(unix)]
 fn with_envp<T>(env: Option<~[(~str, ~str)]>, cb: |*c_void| -> T) -> T {
-    use vec;
+    use std::vec;
 
     // On posixy systems we can pass a char** for envp, which is a
     // null-terminated array of "k=v\n" strings. Like `with_argv`, we have to
@@ -540,8 +538,8 @@ fn waitpid(pid: pid_t) -> int {
 
     #[cfg(windows)]
     fn waitpid_os(pid: pid_t) -> int {
-        use libc::types::os::arch::extra::DWORD;
-        use libc::consts::os::extra::{
+        use std::libc::types::os::arch::extra::DWORD;
+        use std::libc::consts::os::extra::{
             SYNCHRONIZE,
             PROCESS_QUERY_INFORMATION,
             FALSE,
@@ -549,7 +547,7 @@ fn waitpid(pid: pid_t) -> int {
             INFINITE,
             WAIT_FAILED
         };
-        use libc::funcs::extra::kernel32::{
+        use std::libc::funcs::extra::kernel32::{
             OpenProcess,
             GetExitCodeProcess,
             CloseHandle,
@@ -585,7 +583,7 @@ fn waitpid(pid: pid_t) -> int {
 
     #[cfg(unix)]
     fn waitpid_os(pid: pid_t) -> int {
-        use libc::funcs::posix01::wait::*;
+        use std::libc::funcs::posix01::wait;
 
         #[cfg(target_os = "linux")]
         #[cfg(target_os = "android")]
@@ -612,7 +610,7 @@ fn waitpid(pid: pid_t) -> int {
         }
 
         let mut status = 0 as c_int;
-        if unsafe { waitpid(pid, &mut status, 0) } == -1 {
+        if unsafe { wait::waitpid(pid, &mut status, 0) } == -1 {
             fail!("failure in waitpid: {}", os::last_os_error());
         }
 
