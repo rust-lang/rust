@@ -28,8 +28,6 @@
 
 #[allow(missing_doc)];
 
-#[cfg(unix)]
-use c_str::CString;
 use clone::Clone;
 use container::Container;
 #[cfg(target_os = "macos")]
@@ -43,6 +41,7 @@ use ptr;
 use str;
 use to_str;
 use unstable::finally::Finally;
+use sync::atomics::{AtomicInt, INIT_ATOMIC_INT, SeqCst};
 
 pub use os::consts::*;
 
@@ -58,6 +57,8 @@ static BUF_BYTES : uint = 2048u;
 
 #[cfg(unix)]
 pub fn getcwd() -> Path {
+    use c_str::CString;
+
     let mut buf = [0 as libc::c_char, ..BUF_BYTES];
     unsafe {
         if libc::getcwd(buf.as_mut_ptr(), buf.len() as size_t).is_null() {
@@ -675,17 +676,26 @@ pub fn last_os_error() -> ~str {
     strerror()
 }
 
+static mut EXIT_STATUS: AtomicInt = INIT_ATOMIC_INT;
+
 /**
  * Sets the process exit code
  *
  * Sets the exit code returned by the process if all supervised tasks
  * terminate successfully (without failing). If the current root task fails
  * and is supervised by the scheduler then any user-specified exit status is
- * ignored and the process exits with the default failure status
+ * ignored and the process exits with the default failure status.
+ *
+ * Note that this is not synchronized against modifications of other threads.
  */
 pub fn set_exit_status(code: int) {
-    use rt;
-    rt::set_exit_status(code);
+    unsafe { EXIT_STATUS.store(code, SeqCst) }
+}
+
+/// Fetches the process's current exit code. This defaults to 0 and can change
+/// by calling `set_exit_status`.
+pub fn get_exit_status() -> int {
+    unsafe { EXIT_STATUS.load(SeqCst) }
 }
 
 #[cfg(target_os = "macos")]
