@@ -109,7 +109,9 @@ pub mod compiled {
     /// Does not validate the pointer type.
     #[inline]
     pub unsafe fn take<T>() -> ~T {
-        let ptr: ~T = cast::transmute(RT_TLS_PTR);
+        let ptr = RT_TLS_PTR;
+        assert!(!ptr.is_null());
+        let ptr: ~T = cast::transmute(ptr);
         // can't use `as`, due to type not matching with `cfg(test)`
         RT_TLS_PTR = cast::transmute(0);
         ptr
