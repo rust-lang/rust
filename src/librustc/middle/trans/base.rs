@@ -1551,6 +1551,7 @@ pub fn alloca_maybe_zeroed(cx: @mut Block, ty: Type, name: &str, zero: bool) -> 
             return llvm::LLVMGetUndef(ty.ptr_to().to_ref());
         }
     }
+    debuginfo::clear_source_location(cx.fcx);
     let p = Alloca(cx, ty, name);
     if zero {
         let b = cx.fcx.ccx.builder();
@@ -1567,6 +1568,7 @@ pub fn arrayalloca(cx: @mut Block, ty: Type, v: ValueRef) -> ValueRef {
             return llvm::LLVMGetUndef(ty.to_ref());
         }
     }
+    debuginfo::clear_source_location(cx.fcx);
     return ArrayAlloca(cx, ty, v);
 }
 
@@ -1810,6 +1812,7 @@ pub fn finish_fn(fcx: @mut FunctionContext, last_bcx: @mut Block) {
         None => last_bcx
     };
     build_return_block(fcx, ret_cx);
+    debuginfo::clear_source_location(fcx);
     fcx.cleanup();
 }
 
