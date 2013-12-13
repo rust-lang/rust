@@ -132,7 +132,17 @@ fn with_task_stdout(f: |&mut Writer|) {
             }
 
             None => {
-                let mut io = stdout();
+                struct Stdout;
+                impl Writer for Stdout {
+                    fn write(&mut self, data: &[u8]) {
+                        unsafe {
+                            libc::write(libc::STDOUT_FILENO,
+                                        vec::raw::to_ptr(data) as *libc::c_void,
+                                        data.len() as libc::size_t);
+                        }
+                    }
+                }
+                let mut io = Stdout;
                 f(&mut io as &mut Writer);
             }
         }
