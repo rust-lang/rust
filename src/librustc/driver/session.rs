@@ -45,30 +45,29 @@ pub static time_llvm_passes:        uint = 1 <<  3;
 pub static trans_stats:             uint = 1 <<  4;
 pub static asm_comments:            uint = 1 <<  5;
 pub static no_verify:               uint = 1 <<  6;
-pub static coherence:               uint = 1 <<  7;
-pub static borrowck_stats:          uint = 1 <<  8;
-pub static borrowck_note_pure:      uint = 1 <<  9;
-pub static borrowck_note_loan:      uint = 1 << 10;
-pub static no_landing_pads:         uint = 1 << 11;
-pub static debug_llvm:              uint = 1 << 12;
-pub static count_type_sizes:        uint = 1 << 13;
-pub static meta_stats:              uint = 1 << 14;
-pub static no_opt:                  uint = 1 << 15;
-pub static gc:                      uint = 1 << 16;
-pub static debug_info:              uint = 1 << 17;
-pub static extra_debug_info:        uint = 1 << 18;
-pub static print_link_args:         uint = 1 << 19;
-pub static no_debug_borrows:        uint = 1 << 20;
-pub static lint_llvm:               uint = 1 << 21;
-pub static print_llvm_passes:       uint = 1 << 22;
-pub static no_vectorize_loops:      uint = 1 << 23;
-pub static no_vectorize_slp:        uint = 1 << 24;
-pub static no_prepopulate_passes:   uint = 1 << 25;
-pub static use_softfp:              uint = 1 << 26;
-pub static gen_crate_map:           uint = 1 << 27;
-pub static prefer_dynamic:          uint = 1 << 28;
-pub static no_integrated_as:        uint = 1 << 29;
-pub static lto:                     uint = 1 << 30;
+pub static borrowck_stats:          uint = 1 <<  7;
+pub static borrowck_note_pure:      uint = 1 <<  8;
+pub static borrowck_note_loan:      uint = 1 <<  9;
+pub static no_landing_pads:         uint = 1 << 10;
+pub static debug_llvm:              uint = 1 << 11;
+pub static count_type_sizes:        uint = 1 << 12;
+pub static meta_stats:              uint = 1 << 13;
+pub static no_opt:                  uint = 1 << 14;
+pub static gc:                      uint = 1 << 15;
+pub static debug_info:              uint = 1 << 16;
+pub static extra_debug_info:        uint = 1 << 17;
+pub static print_link_args:         uint = 1 << 18;
+pub static no_debug_borrows:        uint = 1 << 19;
+pub static lint_llvm:               uint = 1 << 20;
+pub static print_llvm_passes:       uint = 1 << 21;
+pub static no_vectorize_loops:      uint = 1 << 22;
+pub static no_vectorize_slp:        uint = 1 << 23;
+pub static no_prepopulate_passes:   uint = 1 << 24;
+pub static use_softfp:              uint = 1 << 25;
+pub static gen_crate_map:           uint = 1 << 26;
+pub static prefer_dynamic:          uint = 1 << 27;
+pub static no_integrated_as:        uint = 1 << 28;
+pub static lto:                     uint = 1 << 29;
 
 pub fn debugging_opts_map() -> ~[(&'static str, &'static str, uint)] {
     ~[("verbose", "in general, enable more debug printouts", verbose),
@@ -80,7 +79,6 @@ pub fn debugging_opts_map() -> ~[(&'static str, &'static str, uint)] {
      ("trans-stats", "gather trans statistics", trans_stats),
      ("asm-comments", "generate comments into the assembly (may change behavior)", asm_comments),
      ("no-verify", "skip LLVM verification", no_verify),
-     ("coherence", "perform coherence checking", coherence),
      ("borrowck-stats", "gather borrowck statistics",  borrowck_stats),
      ("borrowck-note-pure", "note where purity is req'd",
       borrowck_note_pure),
@@ -315,7 +313,6 @@ impl Session_ {
     pub fn asm_comments(&self) -> bool { self.debugging_opt(asm_comments) }
     pub fn no_verify(&self) -> bool { self.debugging_opt(no_verify) }
     pub fn lint_llvm(&self) -> bool { self.debugging_opt(lint_llvm) }
-    pub fn coherence(&self) -> bool { self.debugging_opt(coherence) }
     pub fn borrowck_stats(&self) -> bool { self.debugging_opt(borrowck_stats) }
     pub fn borrowck_note_pure(&self) -> bool {
         self.debugging_opt(borrowck_note_pure)
