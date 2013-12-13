@@ -108,77 +108,60 @@ impl Timer {
 mod test {
     use prelude::*;
     use super::*;
-    use rt::test::*;
 
     #[test]
     fn test_io_timer_sleep_simple() {
-        do run_in_mt_newsched_task {
-            let mut timer = Timer::new().unwrap();
-            timer.sleep(1);
-        }
+        let mut timer = Timer::new().unwrap();
+        timer.sleep(1);
     }
 
     #[test]
     fn test_io_timer_sleep_oneshot() {
-        do run_in_mt_newsched_task {
-            let mut timer = Timer::new().unwrap();
-            timer.oneshot(1).recv();
-        }
+        let mut timer = Timer::new().unwrap();
+        timer.oneshot(1).recv();
     }
 
     #[test]
     fn test_io_timer_sleep_oneshot_forget() {
-        do run_in_mt_newsched_task {
-            let mut timer = Timer::new().unwrap();
-            timer.oneshot(100000000000);
-        }
+        let mut timer = Timer::new().unwrap();
+        timer.oneshot(100000000000);
     }
 
     #[test]
     fn oneshot_twice() {
-        do run_in_mt_newsched_task {
-            let mut timer = Timer::new().unwrap();
-            let port1 = timer.oneshot(10000);
-            let port = timer.oneshot(1);
-            port.recv();
-            assert_eq!(port1.try_recv(), None);
-        }
+        let mut timer = Timer::new().unwrap();
+        let port1 = timer.oneshot(10000);
+        let port = timer.oneshot(1);
+        port.recv();
+        assert_eq!(port1.try_recv(), None);
     }
 
     #[test]
     fn test_io_timer_oneshot_then_sleep() {
-        do run_in_mt_newsched_task {
-            let mut timer = Timer::new().unwrap();
-            let port = timer.oneshot(100000000000);
-            timer.sleep(1); // this should invalidate the port
+        let mut timer = Timer::new().unwrap();
+        let port = timer.oneshot(100000000000);
+        timer.sleep(1); // this should invalidate the port
 
-            assert_eq!(port.try_recv(), None);
-        }
+        assert_eq!(port.try_recv(), None);
     }
 
     #[test]
     fn test_io_timer_sleep_periodic() {
-        do run_in_mt_newsched_task {
-            let mut timer = Timer::new().unwrap();
-            let port = timer.periodic(1);
-            port.recv();
-            port.recv();
-            port.recv();
-        }
+        let mut timer = Timer::new().unwrap();
+        let port = timer.periodic(1);
+        port.recv();
+        port.recv();
+        port.recv();
     }
 
     #[test]
     fn test_io_timer_sleep_periodic_forget() {
-        do run_in_mt_newsched_task {
-            let mut timer = Timer::new().unwrap();
-            timer.periodic(100000000000);
-        }
+        let mut timer = Timer::new().unwrap();
+        timer.periodic(100000000000);
     }
 
     #[test]
     fn test_io_timer_sleep_standalone() {
-        do run_in_mt_newsched_task {
-            sleep(1)
-        }
+        sleep(1)
     }
 }
