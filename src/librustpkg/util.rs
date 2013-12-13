@@ -300,7 +300,7 @@ pub fn compile_input(context: &BuildContext,
                                                  pkg_id.version.to_str()).to_managed());
 
         debug!("pkgid attr: {:?}", pkgid_attr);
-        crate.attrs = ~[attr::mk_attr(pkgid_attr)];
+        crate.attrs.push(attr::mk_attr(pkgid_attr));
     }
 
     debug!("calling compile_crate_from_input, workspace = {},

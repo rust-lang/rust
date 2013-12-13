@@ -83,7 +83,7 @@ impl Clean<Crate> for visit_ast::RustdocVisitor {
 
         Crate {
             name: match find_pkgid(self.attrs) {
-                Some(n) => n,
+                Some(n) => n.name,
                 None => fail!("rustdoc requires a `pkgid` crate attribute"),
             },
             module: Some(self.module.clean()),
