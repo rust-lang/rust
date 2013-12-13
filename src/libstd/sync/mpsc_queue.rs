@@ -26,6 +26,14 @@
  */
 
 //! A mostly lock-free multi-producer, single consumer queue.
+//!
+//! This module contains an implementation of a concurrent MPSC queue. This
+//! queue can be used to share data between tasks, and is also used as the
+//! building block of channels in rust.
+//!
+//! Note that the current implementation of this queue has a caveat of the `pop`
+//! method, and see the method for more information about it. Due to this
+//! caveat, this queue may not be appropriate for all use-cases.
 
 // http://www.1024cores.net/home/lock-free-algorithms
 //                         /queues/non-intrusive-mpsc-node-based-queue
@@ -35,9 +43,11 @@ use clone::Clone;
 use kinds::Send;
 use ops::Drop;
 use option::{Option, None, Some};
-use unstable::atomics::{AtomicPtr, Release, Acquire, AcqRel, Relaxed};
-use unstable::sync::UnsafeArc;
+use ptr::RawPtr;
+use sync::arc::UnsafeArc;
+use sync::atomics::{AtomicPtr, Release, Acquire, AcqRel, Relaxed};
 
+/// A result of the `pop` function.
 pub enum PopResult<T> {
     /// Some data has been popped
     Data(T),
@@ -61,10 +71,14 @@ struct State<T, P> {
     packet: P,
 }
 
+/// The consumer half of this concurrent queue. This half is used to receive
+/// data from the producers.
 pub struct Consumer<T, P> {
     priv state: UnsafeArc<State<T, P>>,
 }
 
+/// The production half of the concurrent queue. This handle may be cloned in
+/// order to make handles for new producers.
 pub struct Producer<T, P> {
     priv state: UnsafeArc<State<T, P>>,
 }
@@ -75,6 +89,11 @@ impl<T: Send, P: Send> Clone for Producer<T, P> {
     }
 }
 
+/// Creates a new MPSC queue. The given argument `p` is a user-defined "packet"
+/// of information which will be shared by the consumer and the producer which
+/// can be re-acquired via the `packet` function. This is helpful when extra
+/// state is shared between the producer and consumer, but note that there is no
+/// synchronization performed of this data.
 pub fn queue<T: Send, P: Send>(p: P) -> (Consumer<T, P>, Producer<T, P>) {
     unsafe {
         let (a, b) = UnsafeArc::new2(State::new(p));
@@ -92,7 +111,7 @@ impl<T> Node<T> {
 }
 
 impl<T: Send, P: Send> State<T, P> {
-    pub unsafe fn new(p: P) -> State<T, P> {
+    unsafe fn new(p: P) -> State<T, P> {
         let stub = Node::new(None);
         State {
             head: AtomicPtr::new(stub),
@@ -122,10 +141,6 @@ impl<T: Send, P: Send> State<T, P> {
 
         if self.head.load(Acquire) == tail {Empty} else {Inconsistent}
     }
-
-    unsafe fn is_empty(&mut self) -> bool {
-        return (*self.tail).next.load(Acquire).is_null();
-    }
 }
 
 #[unsafe_destructor]
@@ -143,27 +158,42 @@ impl<T: Send, P: Send> Drop for State<T, P> {
 }
 
 impl<T: Send, P: Send> Producer<T, P> {
+    /// Pushes a new value onto this queue.
     pub fn push(&mut self, value: T) {
         unsafe { (*self.state.get()).push(value) }
     }
-    pub fn is_empty(&self) -> bool {
-        unsafe{ (*self.state.get()).is_empty() }
-    }
+    /// Gets an unsafe pointer to the user-defined packet shared by the
+    /// producers and the consumer. Note that care must be taken to ensure that
+    /// the lifetime of the queue outlives the usage of the returned pointer.
     pub unsafe fn packet(&self) -> *mut P {
         &mut (*self.state.get()).packet as *mut P
     }
 }
 
 impl<T: Send, P: Send> Consumer<T, P> {
+    /// Pops some data from this queue.
+    ///
+    /// Note that the current implementation means that this function cannot
+    /// return `Option<T>`. It is possible for this queue to be in an
+    /// inconsistent state where many pushes have suceeded and completely
+    /// finished, but pops cannot return `Some(t)`. This inconsistent state
+    /// happens when a pusher is pre-empted at an inopportune moment.
+    ///
+    /// This inconsistent state means that this queue does indeed have data, but
+    /// it does not currently have access to it at this time.
     pub fn pop(&mut self) -> PopResult<T> {
         unsafe { (*self.state.get()).pop() }
     }
+    /// Attempts to pop data from this queue, but doesn't attempt too hard. This
+    /// will canonicalize inconsistent states to a `None` value.
     pub fn casual_pop(&mut self) -> Option<T> {
         match self.pop() {
             Data(t) => Some(t),
             Empty | Inconsistent => None,
         }
     }
+    /// Gets an unsafe pointer to the underlying user-defined packet. See
+    /// `Producer.packet` for more information.
     pub unsafe fn packet(&self) -> *mut P {
         &mut (*self.state.get()).packet as *mut P
     }

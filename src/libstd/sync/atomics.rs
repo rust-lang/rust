@@ -11,12 +11,15 @@
 /*!
  * Atomic types
  *
- * Basic atomic types supporting atomic operations. Each method takes an `Ordering` which
- * represents the strength of the memory barrier for that operation. These orderings are the same
- * as C++11 atomic orderings [http://gcc.gnu.org/wiki/Atomic/GCCMM/AtomicSync]
+ * Basic atomic types supporting atomic operations. Each method takes an
+ * `Ordering` which represents the strength of the memory barrier for that
+ * operation. These orderings are the same as C++11 atomic orderings
+ * [http://gcc.gnu.org/wiki/Atomic/GCCMM/AtomicSync]
  *
  * All atomic types are a single word in size.
  */
+
+#[allow(missing_doc)];
 
 use unstable::intrinsics;
 use cast;

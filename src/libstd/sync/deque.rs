@@ -50,15 +50,18 @@
 
 use cast;
 use clone::Clone;
-use iter::range;
+use iter::{range, Iterator};
 use kinds::Send;
 use libc;
 use mem;
 use ops::Drop;
 use option::{Option, Some, None};
 use ptr;
-use unstable::atomics::{AtomicInt, AtomicPtr, SeqCst};
-use unstable::sync::{UnsafeArc, Exclusive};
+use ptr::RawPtr;
+use sync::arc::UnsafeArc;
+use sync::atomics::{AtomicInt, AtomicPtr, SeqCst};
+use unstable::sync::Exclusive;
+use vec::{OwnedVector, ImmutableVector};
 
 // Once the queue is less than 1/K full, then it will be downsized. Note that
 // the deque requires that this number be less than 2.
@@ -399,8 +402,8 @@ mod tests {
     use rt::thread::Thread;
     use rand;
     use rand::Rng;
-    use unstable::atomics::{AtomicBool, INIT_ATOMIC_BOOL, SeqCst,
-                            AtomicUint, INIT_ATOMIC_UINT};
+    use sync::atomics::{AtomicBool, INIT_ATOMIC_BOOL, SeqCst,
+                        AtomicUint, INIT_ATOMIC_UINT};
     use vec;
 
     #[test]
