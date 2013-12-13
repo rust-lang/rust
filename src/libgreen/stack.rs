@@ -8,11 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use container::Container;
-use ptr::RawPtr;
-use vec;
-use ops::Drop;
-use libc::{c_uint, uintptr_t};
+use std::vec;
+use std::libc::{c_uint, uintptr_t};
 
 pub struct StackSegment {
     priv buf: ~[u8],

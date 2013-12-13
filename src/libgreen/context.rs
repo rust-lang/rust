@@ -8,14 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use option::*;
-use super::stack::StackSegment;
-use libc::c_void;
-use uint;
-use cast::{transmute, transmute_mut_unsafe,
-           transmute_region, transmute_mut_region};
+use std::libc::c_void;
+use std::uint;
+use std::cast::{transmute, transmute_mut_unsafe,
+                transmute_region, transmute_mut_region};
+use std::unstable::stack;
 
-pub static RED_ZONE: uint = 20 * 1024;
+use stack::StackSegment;
 
 // FIXME #7761: Registers is boxed so that it is 16-byte aligned, for storing
 // SSE regs.  It would be marginally better not to do this. In C++ we
@@ -25,7 +24,7 @@ pub static RED_ZONE: uint = 20 * 1024;
 // then misalign the regs again.
 pub struct Context {
     /// The context entry point, saved here for later destruction
-    priv start: Option<~proc()>,
+    priv start: ~Option<proc()>,
     /// Hold the registers while the task or scheduler is suspended
     priv regs: ~Registers,
     /// Lower bound and upper bound for the stack
@@ -35,7 +34,7 @@ pub struct Context {
 impl Context {
     pub fn empty() -> Context {
         Context {
-            start: None,
+            start: ~None,
             regs: new_regs(),
             stack_bounds: None,
         }
@@ -43,32 +42,29 @@ impl Context {
 
     /// Create a new context that will resume execution by running proc()
     pub fn new(start: proc(), stack: &mut StackSegment) -> Context {
-        // FIXME #7767: Putting main into a ~ so it's a thin pointer and can
-        // be passed to the spawn function.  Another unfortunate
-        // allocation
-        let start = ~start;
-
         // The C-ABI function that is the task entry point
-        extern fn task_start_wrapper(f: &proc()) {
-            // XXX(pcwalton): This may be sketchy.
-            unsafe {
-                let f: &|| = transmute(f);
-                (*f)()
-            }
+        extern fn task_start_wrapper(f: &mut Option<proc()>) {
+            f.take_unwrap()()
         }
 
-        let fp: *c_void = task_start_wrapper as *c_void;
-        let argp: *c_void = unsafe { transmute::<&proc(), *c_void>(&*start) };
         let sp: *uint = stack.end();
         let sp: *mut uint = unsafe { transmute_mut_unsafe(sp) };
         // Save and then immediately load the current context,
         // which we will then modify to call the given function when restored
         let mut regs = new_regs();
         unsafe {
-            rust_swap_registers(transmute_mut_region(&mut *regs), transmute_region(&*regs));
+            rust_swap_registers(transmute_mut_region(&mut *regs),
+                                transmute_region(&*regs));
         };
 
-        initialize_call_frame(&mut *regs, fp, argp, sp);
+        // FIXME #7767: Putting main into a ~ so it's a thin pointer and can
+        // be passed to the spawn function.  Another unfortunate
+        // allocation
+        let box = ~Some(start);
+        initialize_call_frame(&mut *regs,
+                              task_start_wrapper as *c_void,
+                              unsafe { transmute(&*box) },
+                              sp);
 
         // Scheduler tasks don't have a stack in the "we allocated it" sense,
         // but rather they run on pthreads stacks. We have complete control over
@@ -82,7 +78,7 @@ impl Context {
             Some((stack_base as uint, sp as uint))
         };
         return Context {
-            start: Some(start),
+            start: box,
             regs: regs,
             stack_bounds: bounds,
         }
@@ -113,17 +109,18 @@ impl Context {
             // invalid for the current task. Lucky for us `rust_swap_registers`
             // is a C function so we don't have to worry about that!
             match in_context.stack_bounds {
-                Some((lo, hi)) => record_stack_bounds(lo, hi),
+                Some((lo, hi)) => stack::record_stack_bounds(lo, hi),
                 // If we're going back to one of the original contexts or
                 // something that's possibly not a "normal task", then reset
                 // the stack limit to 0 to make morestack never fail
-                None => record_stack_bounds(0, uint::max_value),
+                None => stack::record_stack_bounds(0, uint::max_value),
             }
             rust_swap_registers(out_regs, in_regs)
         }
     }
 }
 
+#[link(name = "rustrt", kind = "static")]
 extern {
     fn rust_swap_registers(out_regs: *mut Registers, in_regs: *Registers);
 }
@@ -282,182 +279,6 @@ fn align_down(sp: *mut uint) -> *mut uint {
 // ptr::mut_offset is positive ints only
 #[inline]
 pub fn mut_offset<T>(ptr: *mut T, count: int) -> *mut T {
-    use mem::size_of;
+    use std::mem::size_of;
     (ptr as int + count * (size_of::<T>() as int)) as *mut T
-}
-
-#[inline(always)]
-pub unsafe fn record_stack_bounds(stack_lo: uint, stack_hi: uint) {
-    // When the old runtime had segmented stacks, it used a calculation that was
-    // "limit + RED_ZONE + FUDGE". The red zone was for things like dynamic
-    // symbol resolution, llvm function calls, etc. In theory this red zone
-    // value is 0, but it matters far less when we have gigantic stacks because
-    // we don't need to be so exact about our stack budget. The "fudge factor"
-    // was because LLVM doesn't emit a stack check for functions < 256 bytes in
-    // size. Again though, we have giant stacks, so we round all these
-    // calculations up to the nice round number of 20k.
-    record_sp_limit(stack_lo + RED_ZONE);
-
-    return target_record_stack_bounds(stack_lo, stack_hi);
-
-    #[cfg(not(windows))] #[cfg(not(target_arch = "x86_64"))] #[inline(always)]
-    unsafe fn target_record_stack_bounds(_stack_lo: uint, _stack_hi: uint) {}
-    #[cfg(windows, target_arch = "x86_64")] #[inline(always)]
-    unsafe fn target_record_stack_bounds(stack_lo: uint, stack_hi: uint) {
-        // Windows compiles C functions which may check the stack bounds. This
-        // means that if we want to perform valid FFI on windows, then we need
-        // to ensure that the stack bounds are what they truly are for this
-        // task. More info can be found at:
-        //   https://github.com/mozilla/rust/issues/3445#issuecomment-26114839
-        //
-        // stack range is at TIB: %gs:0x08 (top) and %gs:0x10 (bottom)
-        asm!("mov $0, %gs:0x08" :: "r"(stack_hi) :: "volatile");
-        asm!("mov $0, %gs:0x10" :: "r"(stack_lo) :: "volatile");
-    }
-}
-
-/// Records the current limit of the stack as specified by `end`.
-///
-/// This is stored in an OS-dependent location, likely inside of the thread
-/// local storage. The location that the limit is stored is a pre-ordained
-/// location because it's where LLVM has emitted code to check.
-///
-/// Note that this cannot be called under normal circumstances. This function is
-/// changing the stack limit, so upon returning any further function calls will
-/// possibly be triggering the morestack logic if you're not careful.
-///
-/// Also note that this and all of the inside functions are all flagged as
-/// "inline(always)" because they're messing around with the stack limits.  This
-/// would be unfortunate for the functions themselves to trigger a morestack
-/// invocation (if they were an actual function call).
-#[inline(always)]
-pub unsafe fn record_sp_limit(limit: uint) {
-    return target_record_sp_limit(limit);
-
-    // x86-64
-    #[cfg(target_arch = "x86_64", target_os = "macos")] #[inline(always)]
-    unsafe fn target_record_sp_limit(limit: uint) {
-        asm!("movq $$0x60+90*8, %rsi
-              movq $0, %gs:(%rsi)" :: "r"(limit) : "rsi" : "volatile")
-    }
-    #[cfg(target_arch = "x86_64", target_os = "linux")] #[inline(always)]
-    unsafe fn target_record_sp_limit(limit: uint) {
-        asm!("movq $0, %fs:112" :: "r"(limit) :: "volatile")
-    }
-    #[cfg(target_arch = "x86_64", target_os = "win32")] #[inline(always)]
-    unsafe fn target_record_sp_limit(limit: uint) {
-        // see: http://en.wikipedia.org/wiki/Win32_Thread_Information_Block
-        // store this inside of the "arbitrary data slot", but double the size
-        // because this is 64 bit instead of 32 bit
-        asm!("movq $0, %gs:0x28" :: "r"(limit) :: "volatile")
-    }
-    #[cfg(target_arch = "x86_64", target_os = "freebsd")] #[inline(always)]
-    unsafe fn target_record_sp_limit(limit: uint) {
-        asm!("movq $0, %fs:24" :: "r"(limit) :: "volatile")
-    }
-
-    // x86
-    #[cfg(target_arch = "x86", target_os = "macos")] #[inline(always)]
-    unsafe fn target_record_sp_limit(limit: uint) {
-        asm!("movl $$0x48+90*4, %eax
-              movl $0, %gs:(%eax)" :: "r"(limit) : "eax" : "volatile")
-    }
-    #[cfg(target_arch = "x86", target_os = "linux")]
-    #[cfg(target_arch = "x86", target_os = "freebsd")] #[inline(always)]
-    unsafe fn target_record_sp_limit(limit: uint) {
-        asm!("movl $0, %gs:48" :: "r"(limit) :: "volatile")
-    }
-    #[cfg(target_arch = "x86", target_os = "win32")] #[inline(always)]
-    unsafe fn target_record_sp_limit(limit: uint) {
-        // see: http://en.wikipedia.org/wiki/Win32_Thread_Information_Block
-        // store this inside of the "arbitrary data slot"
-        asm!("movl $0, %fs:0x14" :: "r"(limit) :: "volatile")
-    }
-
-    // mips, arm - Some brave soul can port these to inline asm, but it's over
-    //             my head personally
-    #[cfg(target_arch = "mips")]
-    #[cfg(target_arch = "arm")] #[inline(always)]
-    unsafe fn target_record_sp_limit(limit: uint) {
-        return record_sp_limit(limit as *c_void);
-        extern {
-            fn record_sp_limit(limit: *c_void);
-        }
-    }
-}
-
-/// The counterpart of the function above, this function will fetch the current
-/// stack limit stored in TLS.
-///
-/// Note that all of these functions are meant to be exact counterparts of their
-/// brethren above, except that the operands are reversed.
-///
-/// As with the setter, this function does not have a __morestack header and can
-/// therefore be called in a "we're out of stack" situation.
-#[inline(always)]
-// currently only called by `rust_stack_exhausted`, which doesn't
-// exist in a test build.
-#[cfg(not(test))]
-pub unsafe fn get_sp_limit() -> uint {
-    return target_get_sp_limit();
-
-    // x86-64
-    #[cfg(target_arch = "x86_64", target_os = "macos")] #[inline(always)]
-    unsafe fn target_get_sp_limit() -> uint {
-        let limit;
-        asm!("movq $$0x60+90*8, %rsi
-              movq %gs:(%rsi), $0" : "=r"(limit) :: "rsi" : "volatile");
-        return limit;
-    }
-    #[cfg(target_arch = "x86_64", target_os = "linux")] #[inline(always)]
-    unsafe fn target_get_sp_limit() -> uint {
-        let limit;
-        asm!("movq %fs:112, $0" : "=r"(limit) ::: "volatile");
-        return limit;
-    }
-    #[cfg(target_arch = "x86_64", target_os = "win32")] #[inline(always)]
-    unsafe fn target_get_sp_limit() -> uint {
-        let limit;
-        asm!("movq %gs:0x28, $0" : "=r"(limit) ::: "volatile");
-        return limit;
-    }
-    #[cfg(target_arch = "x86_64", target_os = "freebsd")] #[inline(always)]
-    unsafe fn target_get_sp_limit() -> uint {
-        let limit;
-        asm!("movq %fs:24, $0" : "=r"(limit) ::: "volatile");
-        return limit;
-    }
-
-    // x86
-    #[cfg(target_arch = "x86", target_os = "macos")] #[inline(always)]
-    unsafe fn target_get_sp_limit() -> uint {
-        let limit;
-        asm!("movl $$0x48+90*4, %eax
-              movl %gs:(%eax), $0" : "=r"(limit) :: "eax" : "volatile");
-        return limit;
-    }
-    #[cfg(target_arch = "x86", target_os = "linux")]
-    #[cfg(target_arch = "x86", target_os = "freebsd")] #[inline(always)]
-    unsafe fn target_get_sp_limit() -> uint {
-        let limit;
-        asm!("movl %gs:48, $0" : "=r"(limit) ::: "volatile");
-        return limit;
-    }
-    #[cfg(target_arch = "x86", target_os = "win32")] #[inline(always)]
-    unsafe fn target_get_sp_limit() -> uint {
-        let limit;
-        asm!("movl %fs:0x14, $0" : "=r"(limit) ::: "volatile");
-        return limit;
-    }
-
-    // mips, arm - Some brave soul can port these to inline asm, but it's over
-    //             my head personally
-    #[cfg(target_arch = "mips")]
-    #[cfg(target_arch = "arm")] #[inline(always)]
-    unsafe fn target_get_sp_limit() -> uint {
-        return get_sp_limit() as uint;
-        extern {
-            fn get_sp_limit() -> *c_void;
-        }
-    }
 }

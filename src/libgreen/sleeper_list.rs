@@ -11,10 +11,9 @@
 //! Maintains a shared list of sleeping schedulers. Schedulers
 //! use this to wake each other up.
 
-use rt::sched::SchedHandle;
-use rt::mpmc_bounded_queue::Queue;
-use option::*;
-use clone::Clone;
+use std::sync::mpmc_bounded_queue::Queue;
+
+use sched::SchedHandle;
 
 pub struct SleeperList {
     priv q: Queue<SchedHandle>,
