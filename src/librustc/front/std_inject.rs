@@ -71,6 +71,15 @@ impl fold::ast_fold for StandardLibraryInjector {
 
         if use_uv(&crate) && !*self.sess.building_library {
             vis.push(ast::view_item {
+                node: ast::view_item_extern_mod(self.sess.ident_of("green"),
+                                                None,
+                                                ~[vers_item],
+                                                ast::DUMMY_NODE_ID),
+                attrs: ~[],
+                vis: ast::private,
+                span: dummy_sp()
+            });
+            vis.push(ast::view_item {
                 node: ast::view_item_extern_mod(self.sess.ident_of("rustuv"),
                                                 None,
                                                 ~[vers_item],
