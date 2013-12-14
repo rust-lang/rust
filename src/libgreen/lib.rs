@@ -39,13 +39,15 @@ use std::rt::task::Task;
 use std::rt::rtio;
 use std::sync::deque;
 use std::sync::atomics::{SeqCst, AtomicUint, INIT_ATOMIC_UINT};
-use std::task::TaskResult;
+use std::task::TaskOpts;
 use std::vec;
 use std::util;
+use stdtask = std::rt::task;
 
-use sched::{Shutdown, Scheduler, SchedHandle};
+use sched::{Shutdown, Scheduler, SchedHandle, TaskFromFriend, NewNeighbor};
 use sleeper_list::SleeperList;
-use task::{GreenTask, HomeSched};
+use stack::StackPool;
+use task::GreenTask;
 
 mod macros;
 
@@ -103,37 +105,17 @@ pub fn start(argc: int, argv: **u8, main: proc()) -> int {
 /// This function will not return until all schedulers in the associated pool
 /// have returned.
 pub fn run(main: proc()) -> int {
-    let config = Config {
-        shutdown_after_main_exits: true,
-        ..Config::new()
-    };
-    Pool::spawn(config, main).wait();
+    let mut pool = Pool::new(Config::new());
+    pool.spawn(TaskOpts::new(), main);
+    unsafe { stdtask::wait_for_completion(); }
+    pool.shutdown();
     os::get_exit_status()
 }
 
 /// Configuration of how an M:N pool of schedulers is spawned.
 pub struct Config {
-    /// If this flag is set, then when schedulers are spawned via the `start`
-    /// and `run` functions the thread invoking `start` and `run` will have a
-    /// scheduler spawned on it. This scheduler will be "special" in that the
-    /// main task will be pinned to the scheduler and it will not participate in
-    /// work stealing.
-    ///
-    /// If the `spawn` function is used to create a pool of schedulers, then
-    /// this option has no effect.
-    use_main_thread: bool,
-
     /// The number of schedulers (OS threads) to spawn into this M:N pool.
     threads: uint,
-
-    /// When the main function exits, this flag will dictate whether a shutdown
-    /// is requested of all schedulers. If this flag is `true`, this means that
-    /// schedulers will shut down as soon as possible after the main task exits
-    /// (but some may stay alive longer for things like I/O or other tasks).
-    ///
-    /// If this flag is `false`, then no action is taken when the `main` task
-    /// exits. The scheduler pool is then shut down via the `wait()` function.
-    shutdown_after_main_exits: bool,
 }
 
 impl Config {
@@ -141,9 +123,7 @@ impl Config {
     /// variables of this process.
     pub fn new() -> Config {
         Config {
-            use_main_thread: false,
             threads: rt::default_sched_threads(),
-            shutdown_after_main_exits: false,
         }
     }
 }
@@ -151,8 +131,14 @@ impl Config {
 /// A structure representing a handle to a pool of schedulers. This handle is
 /// used to keep the pool alive and also reap the status from the pool.
 pub struct Pool {
+    priv id: uint,
     priv threads: ~[Thread<()>],
-    priv handles: Option<~[SchedHandle]>,
+    priv handles: ~[SchedHandle],
+    priv stealers: ~[deque::Stealer<~task::GreenTask>],
+    priv next_friend: uint,
+    priv stack_pool: StackPool,
+    priv deque_pool: deque::BufferPool<~task::GreenTask>,
+    priv sleepers: SleeperList,
 }
 
 impl Pool {
@@ -160,177 +146,125 @@ impl Pool {
     ///
     /// This will configure the pool according to the `config` parameter, and
     /// initially run `main` inside the pool of schedulers.
-    pub fn spawn(config: Config, main: proc()) -> Pool {
+    pub fn new(config: Config) -> Pool {
         static mut POOL_ID: AtomicUint = INIT_ATOMIC_UINT;
 
-        let Config {
-            threads: nscheds,
-            use_main_thread: use_main_sched,
-            shutdown_after_main_exits
-        } = config;
+        let Config { threads: nscheds } = config;
+        assert!(nscheds > 0);
 
-        let mut main = Some(main);
-        let pool_id = unsafe { POOL_ID.fetch_add(1, SeqCst) };
-
-        // The shared list of sleeping schedulers.
-        let sleepers = SleeperList::new();
+        // The pool of schedulers that will be returned from this function
+        let mut pool = Pool {
+            threads: ~[],
+            handles: ~[],
+            stealers: ~[],
+            id: unsafe { POOL_ID.fetch_add(1, SeqCst) },
+            sleepers: SleeperList::new(),
+            stack_pool: StackPool::new(),
+            deque_pool: deque::BufferPool::new(),
+            next_friend: 0,
+        };
 
         // Create a work queue for each scheduler, ntimes. Create an extra
         // for the main thread if that flag is set. We won't steal from it.
-        let mut pool = deque::BufferPool::new();
-        let arr = vec::from_fn(nscheds, |_| pool.deque());
+        let arr = vec::from_fn(nscheds, |_| pool.deque_pool.deque());
         let (workers, stealers) = vec::unzip(arr.move_iter());
+        pool.stealers = stealers;
 
-        // The schedulers.
-        let mut scheds = ~[];
-        // Handles to the schedulers. When the main task ends these will be
-        // sent the Shutdown message to terminate the schedulers.
-        let mut handles = ~[];
-
+        // Now that we've got all our work queues, create one scheduler per
+        // queue, spawn the scheduler into a thread, and be sure to keep a
+        // handle to the scheduler and the thread to keep them alive.
         for worker in workers.move_iter() {
             rtdebug!("inserting a regular scheduler");
 
-            // Every scheduler is driven by an I/O event loop.
-            let loop_ = new_event_loop();
-            let mut sched = ~Scheduler::new(pool_id,
-                                            loop_,
+            let mut sched = ~Scheduler::new(pool.id,
+                                            new_event_loop(),
                                             worker,
-                                            stealers.clone(),
-                                            sleepers.clone());
-            let handle = sched.make_handle();
-
-            scheds.push(sched);
-            handles.push(handle);
-        }
-
-        // If we need a main-thread task then create a main thread scheduler
-        // that will reject any task that isn't pinned to it
-        let main_sched = if use_main_sched {
-
-            // Create a friend handle.
-            let mut friend_sched = scheds.pop();
-            let friend_handle = friend_sched.make_handle();
-            scheds.push(friend_sched);
-
-            // This scheduler needs a queue that isn't part of the stealee
-            // set.
-            let (worker, _) = pool.deque();
-
-            let main_loop = new_event_loop();
-            let mut main_sched = ~Scheduler::new_special(pool_id,
-                                                         main_loop,
-                                                         worker,
-                                                         stealers.clone(),
-                                                         sleepers.clone(),
-                                                         false,
-                                                         Some(friend_handle));
-            let mut main_handle = main_sched.make_handle();
-            // Allow the scheduler to exit when the main task exits.
-            // Note: sending the shutdown message also prevents the scheduler
-            // from pushing itself to the sleeper list, which is used for
-            // waking up schedulers for work stealing; since this is a
-            // non-work-stealing scheduler it should not be adding itself
-            // to the list.
-            main_handle.send(Shutdown);
-            Some(main_sched)
-        } else {
-            None
-        };
-
-        // The pool of schedulers that will be returned from this function
-        let mut pool = Pool { threads: ~[], handles: None };
-
-        // When the main task exits, after all the tasks in the main
-        // task tree, shut down the schedulers and set the exit code.
-        let mut on_exit = if shutdown_after_main_exits {
-            let handles = handles;
-            Some(proc(exit_success: TaskResult) {
-                let mut handles = handles;
-                for handle in handles.mut_iter() {
-                    handle.send(Shutdown);
-                }
-                if exit_success.is_err() {
-                    os::set_exit_status(rt::DEFAULT_ERROR_CODE);
-                }
-            })
-        } else {
-            pool.handles = Some(handles);
-            None
-        };
-
-        if !use_main_sched {
-
-            // In the case where we do not use a main_thread scheduler we
-            // run the main task in one of our threads.
-
-            let mut main = GreenTask::new(&mut scheds[0].stack_pool, None,
-                                          main.take_unwrap());
-            let mut main_task = ~Task::new();
-            main_task.name = Some(SendStrStatic("<main>"));
-            main_task.death.on_exit = on_exit.take();
-            main.put_task(main_task);
-
-            let sched = scheds.pop();
-            let main = main;
-            let thread = do Thread::start {
-                sched.bootstrap(main);
-            };
-            pool.threads.push(thread);
-        }
-
-        // Run each remaining scheduler in a thread.
-        for sched in scheds.move_rev_iter() {
-            rtdebug!("creating regular schedulers");
-            let thread = do Thread::start {
+                                            pool.stealers.clone(),
+                                            pool.sleepers.clone());
+            pool.handles.push(sched.make_handle());
+            let sched = sched;
+            pool.threads.push(do Thread::start {
                 let mut sched = sched;
                 let mut task = do GreenTask::new(&mut sched.stack_pool, None) {
                     rtdebug!("boostraping a non-primary scheduler");
                 };
                 task.put_task(~Task::new());
                 sched.bootstrap(task);
-            };
-            pool.threads.push(thread);
-        }
-
-        // If we do have a main thread scheduler, run it now.
-
-        if use_main_sched {
-            rtdebug!("about to create the main scheduler task");
-
-            let mut main_sched = main_sched.unwrap();
-
-            let home = HomeSched(main_sched.make_handle());
-            let mut main = GreenTask::new_homed(&mut main_sched.stack_pool, None,
-                                                home, main.take_unwrap());
-            let mut main_task = ~Task::new();
-            main_task.name = Some(SendStrStatic("<main>"));
-            main_task.death.on_exit = on_exit.take();
-            main.put_task(main_task);
-            rtdebug!("bootstrapping main_task");
-
-            main_sched.bootstrap(main);
+            });
         }
 
         return pool;
     }
 
-    /// Waits for the pool of schedulers to exit. If the pool was spawned to
-    /// shutdown after the main task exits, this will simply wait for all the
-    /// scheudlers to exit. If the pool was not spawned like that, this function
-    /// will trigger shutdown of all the active schedulers. The schedulers will
-    /// exit once all tasks in this pool of schedulers has exited.
-    pub fn wait(&mut self) {
-        match self.handles.take() {
-            Some(mut handles) => {
-                for handle in handles.mut_iter() {
-                    handle.send(Shutdown);
-                }
-            }
-            None => {}
-        }
+    pub fn shutdown(mut self) {
+        self.stealers = ~[];
 
+        for mut handle in util::replace(&mut self.handles, ~[]).move_iter() {
+            handle.send(Shutdown);
+        }
         for thread in util::replace(&mut self.threads, ~[]).move_iter() {
             thread.join();
+        }
+    }
+
+    pub fn spawn(&mut self, opts: TaskOpts, f: proc()) {
+        let task = GreenTask::configure(&mut self.stack_pool, opts, f);
+
+        // Figure out someone to send this task to
+        let idx = self.next_friend;
+        self.next_friend += 1;
+        if self.next_friend >= self.handles.len() {
+            self.next_friend = 0;
+        }
+
+        // Jettison the task away!
+        self.handles[idx].send(TaskFromFriend(task));
+    }
+
+    /// Spawns a new scheduler into this M:N pool. A handle is returned to the
+    /// scheduler for use. The scheduler will not exit as long as this handle is
+    /// active.
+    ///
+    /// The scheduler spawned will participate in work stealing with all of the
+    /// other schedulers currently in the scheduler pool.
+    pub fn spawn_sched(&mut self) -> SchedHandle {
+        let (worker, stealer) = self.deque_pool.deque();
+        self.stealers.push(stealer.clone());
+
+        // Tell all existing schedulers about this new scheduler so they can all
+        // steal work from it
+        for handle in self.handles.mut_iter() {
+            handle.send(NewNeighbor(stealer.clone()));
+        }
+
+        // Create the new scheduler, using the same sleeper list as all the
+        // other schedulers as well as having a stealer handle to all other
+        // schedulers.
+        let mut sched = ~Scheduler::new(self.id,
+                                        new_event_loop(),
+                                        worker,
+                                        self.stealers.clone(),
+                                        self.sleepers.clone());
+        let ret = sched.make_handle();
+        self.handles.push(sched.make_handle());
+        let sched = sched;
+        self.threads.push(do Thread::start {
+            let mut sched = sched;
+            let mut task = do GreenTask::new(&mut sched.stack_pool, None) {
+                rtdebug!("boostraping a non-primary scheduler");
+            };
+            task.put_task(~Task::new());
+            sched.bootstrap(task);
+        });
+
+        return ret;
+    }
+}
+
+impl Drop for Pool {
+    fn drop(&mut self) {
+        if self.threads.len() > 0 {
+            fail!("dropping a M:N scheduler pool that wasn't shut down");
         }
     }
 }

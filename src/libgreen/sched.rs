@@ -393,6 +393,10 @@ impl Scheduler {
                 stask.put_with_sched(self);
                 return None;
             }
+            Some(NewNeighbor(neighbor)) => {
+                self.work_queues.push(neighbor);
+                return Some((self, stask));
+            }
             None => {
                 return Some((self, stask));
             }
@@ -831,6 +835,7 @@ type SchedulingFn = extern "Rust" fn (~Scheduler, ~GreenTask, ~GreenTask);
 pub enum SchedMessage {
     Wake,
     Shutdown,
+    NewNeighbor(deque::Stealer<~GreenTask>),
     PinnedTask(~GreenTask),
     TaskFromFriend(~GreenTask),
     RunOnce(~GreenTask),

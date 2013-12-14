@@ -131,7 +131,7 @@ pub struct TaskBuilder {
  */
 pub fn task() -> TaskBuilder {
     TaskBuilder {
-        opts: default_task_opts(),
+        opts: TaskOpts::new(),
         gen_body: None,
         can_not_copy: None,
     }
@@ -301,22 +301,23 @@ impl TaskBuilder {
     }
 }
 
-
 /* Task construction */
 
-pub fn default_task_opts() -> TaskOpts {
-    /*!
-     * The default task options
-     *
-     * By default all tasks are supervised by their parent, are spawned
-     * into the same scheduler, and do not post lifecycle notifications.
-     */
+impl TaskOpts {
+    pub fn new() -> TaskOpts {
+        /*!
+         * The default task options
+         *
+         * By default all tasks are supervised by their parent, are spawned
+         * into the same scheduler, and do not post lifecycle notifications.
+         */
 
-    TaskOpts {
-        watched: true,
-        notify_chan: None,
-        name: None,
-        stack_size: None
+        TaskOpts {
+            watched: true,
+            notify_chan: None,
+            name: None,
+            stack_size: None
+        }
     }
 }
 

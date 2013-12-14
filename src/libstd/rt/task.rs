@@ -33,11 +33,15 @@ use rt::rtio::LocalIo;
 use rt::unwind::Unwinder;
 use send_str::SendStr;
 use sync::arc::UnsafeArc;
-use sync::atomics::{AtomicUint, SeqCst};
+use sync::atomics::{AtomicUint, SeqCst, INIT_ATOMIC_UINT};
 use task::{TaskResult, TaskOpts};
 use unstable::finally::Finally;
+use unstable::mutex::{Mutex, MUTEX_INIT};
 
 #[cfg(stage0)] pub use rt::unwind::begin_unwind;
+
+static mut TASK_COUNT: AtomicUint = INIT_ATOMIC_UINT;
+static mut TASK_LOCK: Mutex = MUTEX_INIT;
 
 // The Task struct represents all state associated with a rust
 // task. There are at this point two primary "subtypes" of task,
@@ -117,6 +121,7 @@ impl Task {
             *cast::transmute::<&~Task, &*mut Task>(&self)
         };
         Local::put(self);
+        unsafe { TASK_COUNT.fetch_add(1, SeqCst); }
 
         // The only try/catch block in the world. Attempt to run the task's
         // client-specified code and catch any failures.
@@ -180,6 +185,11 @@ impl Task {
         unsafe {
             let me: *mut Task = Local::unsafe_borrow();
             (*me).death.collect_failure((*me).unwinder.result());
+            if TASK_COUNT.fetch_sub(1, SeqCst) == 1 {
+                TASK_LOCK.lock();
+                TASK_LOCK.signal();
+                TASK_LOCK.unlock();
+            }
         }
         let mut me: ~Task = Local::take();
         me.destroyed = true;
@@ -374,6 +384,14 @@ impl Drop for Death {
     fn drop(&mut self) {
         // make this type noncopyable
     }
+}
+
+pub unsafe fn wait_for_completion() {
+    TASK_LOCK.lock();
+    while TASK_COUNT.load(SeqCst) > 0 {
+        TASK_LOCK.wait();
+    }
+    TASK_LOCK.unlock();
 }
 
 #[cfg(test)]
