@@ -41,11 +41,15 @@ stage2_tests.sort()
 
 c = open("tmp/run_pass_stage2.rc", "w")
 i = 0
-c.write("// AUTO-GENERATED FILE: DO NOT EDIT\n")
-c.write("#[pkgid=\"run_pass_stage2#0.1\"];\n")
-c.write("#[link(name=\"run_pass_stage2\", vers=\"0.1\")];\n")
-c.write("#[feature(globs, macro_rules, struct_variant, managed_boxes)];\n")
-c.write("#[allow(attribute_usage)];\n")
+c.write(
+"""
+// AUTO-GENERATED FILE: DO NOT EDIT
+#[pkgid=\"run_pass_stage2#0.1\"];
+#[link(name=\"run_pass_stage2\", vers=\"0.1\")];
+#[feature(globs, macro_rules, struct_variant, managed_boxes)];
+#[allow(warnings)];
+"""
+)
 for t in stage2_tests:
     p = os.path.join(run_pass, t)
     p = p.replace("\\", "\\\\")
@@ -56,15 +60,19 @@ c.close()
 
 
 d = open("tmp/run_pass_stage2_driver.rs", "w")
-d.write("// AUTO-GENERATED FILE: DO NOT EDIT\n")
-d.write("#[feature(globs, managed_boxes)];\n")
-d.write("extern mod extra;\n")
-d.write("extern mod run_pass_stage2;\n")
-d.write("use run_pass_stage2::*;\n")
-d.write("use std::io;\n")
-d.write("use std::io::Writer;\n")
-d.write("fn main() {\n")
-d.write("    let mut out = io::stdout();\n")
+d.write(
+"""
+// AUTO-GENERATED FILE: DO NOT EDIT
+#[feature(globs, managed_boxes)];
+extern mod extra;
+extern mod run_pass_stage2;
+use run_pass_stage2::*;
+use std::io;
+use std::io::Writer;
+fn main() {
+    let mut out = io::stdout();
+"""
+)
 i = 0
 for t in stage2_tests:
     p = os.path.join("test", "run-pass", t)
