@@ -3070,22 +3070,21 @@ Therefore, if you plan to compile your crate as a library, you should annotate i
 // lib.rs
 
 # #[crate_type = "lib"];
-// Crate linkage metadata
-#[link(name = "farm", vers = "2.5")];
+// Package ID
+#[pkgid = "farm#2.5"];
 
 // ...
 # fn farm() {}
 ~~~~
 
-You can also in turn require in a `extern mod` statement that certain link metadata items match some criteria.
-For that, Rust currently parses a comma-separated list of name/value pairs that appear after
-it, and ensures that they match the attributes provided in the `link` attribute of a crate file.
-This enables you to, e.g., pick a crate based on its version number, or link a library under a
-different name. For example, these two `mod` statements would both accept and select the crate define above:
+You can also specify package ID information in a `extern mod` statement.  For
+example, these `extern mod` statements would both accept and select the
+crate define above:
 
 ~~~~ {.xfail-test}
-extern mod farm(vers = "2.5");
-extern mod my_farm(name = "farm", vers = "2.5");
+extern mod farm;
+extern mod farm = "farm#2.5";
+extern mod my_farm = "farm";
 ~~~~
 
 Other crate settings and metadata include things like enabling/disabling certain errors or warnings,
@@ -3096,6 +3095,7 @@ or setting the crate type (library or executable) explicitly:
 // ...
 
 // This crate is a library ("bin" is the default)
+#[pkgid = "farm#2.5"];
 #[crate_type = "lib"];
 
 // Turn on a warning
@@ -3103,14 +3103,10 @@ or setting the crate type (library or executable) explicitly:
 # fn farm() {}
 ~~~~
 
-If you're compiling your crate with `rustpkg`,
-link annotations will not be necessary, because they get
-inferred by `rustpkg` based on the Package id and naming conventions.
-
-
-> ***Note:*** The rules regarding link metadata, both as attributes and on `extern mod`,
-              as well as their interaction with `rustpkg`
-              are currently not clearly defined and will likely change in the future.
+> ***Note:*** The rules regarding package IDs, both as attributes and as used
+              in `extern mod`, as well as their interaction with `rustpkg` are
+              currently not clearly defined and will likely change in the
+              future.
 
 ## A minimal example
 
@@ -3120,7 +3116,7 @@ We define two crates, and use one of them as a library in the other.
 
 ~~~~
 // world.rs
-#[link(name = "world", vers = "0.42")];
+#[pkgid = "world#0.42"];
 # extern mod extra;
 pub fn explore() -> &'static str { "world" }
 # fn main() {}
@@ -3144,7 +3140,7 @@ Now compile and run like this (adjust to your platform if necessary):
 Notice that the library produced contains the version in the file name
 as well as an inscrutable string of alphanumerics. As explained in the previous paragraph,
 these are both part of Rust's library versioning scheme. The alphanumerics are
-a hash representing the crates link metadata.
+a hash representing the crates package ID.
 
 ## The standard library and the prelude
 
