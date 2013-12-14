@@ -223,3 +223,61 @@ impl Drop for BasicPausable {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use std::task::TaskOpts;
+
+    use basic;
+    use PoolConfig;
+    use SchedPool;
+
+    fn pool() -> SchedPool {
+        SchedPool::new(PoolConfig {
+            threads: 1,
+            event_loop_factory: Some(basic::event_loop),
+        })
+    }
+
+    fn run(f: proc()) {
+        let mut pool = pool();
+        pool.spawn(TaskOpts::new(), f);
+        pool.shutdown();
+    }
+
+    #[test]
+    fn smoke() {
+        do run {}
+    }
+
+    #[test]
+    fn some_channels() {
+        do run {
+            let (p, c) = Chan::new();
+            do spawn {
+                c.send(());
+            }
+            p.recv();
+        }
+    }
+
+    #[test]
+    fn multi_thread() {
+        let mut pool = SchedPool::new(PoolConfig {
+            threads: 2,
+            event_loop_factory: Some(basic::event_loop),
+        });
+
+        for _ in range(0, 20) {
+            do pool.spawn(TaskOpts::new()) {
+                let (p, c) = Chan::new();
+                do spawn {
+                    c.send(());
+                }
+                p.recv();
+            }
+        }
+
+        pool.shutdown();
+    }
+}

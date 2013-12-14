@@ -207,9 +207,9 @@ mod test {
         let port = timer.period(1);
         port.recv();
         port.recv();
-        let port = timer.period(1);
-        port.recv();
-        port.recv();
+        let port2 = timer.period(1);
+        port2.recv();
+        port2.recv();
     }
 
     #[test]
