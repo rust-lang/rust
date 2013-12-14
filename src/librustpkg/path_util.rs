@@ -16,6 +16,7 @@ pub use package_id::PkgId;
 pub use target::{OutputType, Main, Lib, Test, Bench, Target, Build, Install};
 pub use version::{Version, NoVersion, split_version_general, try_parsing_version};
 pub use rustc::metadata::filesearch::rust_path;
+use rustc::metadata::filesearch::libdir;
 use rustc::driver::driver::host_triple;
 
 use std::libc;
@@ -113,7 +114,7 @@ pub fn target_build_dir(workspace: &Path) -> Path {
 /// Return the target-specific lib subdirectory, pushed onto `base`;
 /// doesn't check that it exists or create it
 fn target_lib_dir(workspace: &Path) -> Path {
-    let mut dir = workspace.join("lib");
+    let mut dir = workspace.join(libdir());
     dir.push(host_triple());
     dir
 }
@@ -184,7 +185,7 @@ pub fn installed_library_in_workspace(pkg_path: &Path, workspace: &Path) -> Opti
                                                  short_name,
                                                  Install,
                                                  workspace,
-                                                 "lib",
+                                                 libdir(),
                                                  &NoVersion)
     }
 }
@@ -212,7 +213,7 @@ pub fn library_in_workspace(path: &Path, short_name: &str, where: Target,
 
 // rustc doesn't use target-specific subdirectories
 pub fn system_library(sysroot: &Path, lib_name: &str) -> Option<Path> {
-    library_in(lib_name, &NoVersion, &sysroot.join("lib"))
+    library_in(lib_name, &NoVersion, &sysroot.join(libdir()))
 }
 
 fn library_in(short_name: &str, version: &Version, dir_to_search: &Path) -> Option<Path> {
