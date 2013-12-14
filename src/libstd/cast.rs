@@ -123,7 +123,7 @@ mod tests {
     fn test_bump_managed_refcount() {
         unsafe {
             let managed = @~"box box box";      // refcount 1
-            bump_managed_refcount(managed);     // refcount 2
+            bump_box_refcount(managed);     // refcount 2
             let ptr: *int = transmute(managed); // refcount 2
             let _box1: @~str = ::cast::transmute_copy(&ptr);
             let _box2: @~str = ::cast::transmute_copy(&ptr);
