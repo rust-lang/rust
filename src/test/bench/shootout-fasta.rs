@@ -8,148 +8,116 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(managed_boxes)];
-
 /* -*- mode: rust; indent-tabs-mode: nil -*-
  * Implementation of 'fasta' benchmark from
  * Computer Language Benchmarks Game
  * http://shootout.alioth.debian.org/
  */
-extern mod extra;
 
-use std::int;
 use std::io;
+use std::io::buffered::BufferedWriter;
 use std::io::File;
+use std::num::min;
 use std::os;
-use std::rand::Rng;
-use std::rand;
-use std::str;
 
-static LINE_LENGTH: uint = 60u;
+static LINE_LENGTH: uint = 60;
+static IM: u32 = 139968;
 
 struct MyRandom {
     last: u32
 }
-
-fn myrandom_next(r: @mut MyRandom, mx: u32) -> u32 {
-    r.last = (r.last * 3877u32 + 29573u32) % 139968u32;
-    mx * r.last / 139968u32
-}
-
-#[deriving(Clone)]
-struct AminoAcids {
-    ch: char,
-    prob: u32
-}
-
-fn make_cumulative(aa: ~[AminoAcids]) -> ~[AminoAcids] {
-    let mut cp: u32 = 0u32;
-    let mut ans: ~[AminoAcids] = ~[];
-    for a in aa.iter() {
-        cp += a.prob;
-        ans.push(AminoAcids {ch: a.ch, prob: cp});
+impl MyRandom {
+    fn new() -> MyRandom { MyRandom { last: 42 } }
+    fn normalize(p: f32) -> u32 {(p * IM as f32).floor() as u32}
+    fn gen(&mut self) -> u32 {
+        self.last = (self.last * 3877 + 29573) % IM;
+        self.last
     }
-    ans
 }
 
-fn select_random(r: u32, genelist: ~[AminoAcids]) -> char {
-    if r < genelist[0].prob { return genelist[0].ch; }
-    fn bisect(v: ~[AminoAcids], lo: uint, hi: uint, target: u32) -> char {
-        if hi > lo + 1u {
-            let mid: uint = lo + (hi - lo) / 2u;
-            if target < v[mid].prob {
-                return bisect(v, lo, mid, target);
-            } else {
-                return bisect(v, mid, hi, target);
-            }
-        } else {
-            return v[hi].ch;
+struct AAGen<'a> {
+    rng: &'a mut MyRandom,
+    data: ~[(u32, u8)]
+}
+impl<'a> AAGen<'a> {
+    fn new<'b>(rng: &'b mut MyRandom, aa: &[(char, f32)]) -> AAGen<'b> {
+        let mut cum = 0.;
+        let data = aa.iter()
+            .map(|&(ch, p)| { cum += p; (MyRandom::normalize(cum), ch as u8) })
+            .collect();
+        AAGen { rng: rng, data: data }
+    }
+}
+impl<'a> Iterator<u8> for AAGen<'a> {
+    fn next(&mut self) -> Option<u8> {
+        let r = self.rng.gen();
+        self.data.iter()
+            .skip_while(|pc| pc.n0() < r)
+            .map(|&(_, c)| c)
+            .next()
+    }
+}
+
+fn make_fasta<W: Writer, I: Iterator<u8>>(
+    wr: &mut W, header: &str, mut it: I, mut n: uint)
+{
+    wr.write(header.as_bytes());
+    let mut line = [0u8, .. LINE_LENGTH + 1];
+    while n > 0 {
+        let nb = min(LINE_LENGTH, n);
+        for i in range(0, nb) {
+            line[i] = it.next().unwrap();
         }
+        n -= nb;
+        line[nb] = '\n' as u8;
+        wr.write(line.slice_to(nb + 1));
     }
-    bisect(genelist.clone(), 0, genelist.len() - 1, r)
 }
 
-fn make_random_fasta(wr: @mut io::Writer,
-                     id: ~str,
-                     desc: ~str,
-                     genelist: ~[AminoAcids],
-                     n: int) {
-    writeln!(wr, ">{} {}", id, desc);
-    let mut rng = rand::rng();
-    let rng = @mut MyRandom {
-        last: rng.gen()
+fn run<W: Writer>(writer: &mut W) {
+    let args = os::args();
+    let n = if os::getenv("RUST_BENCH").is_some() {
+        25000000
+    } else if args.len() <= 1u {
+        1000
+    } else {
+        from_str(args[1]).unwrap()
     };
-    let mut op: ~str = ~"";
-    for _ in range(0u, n as uint) {
-        op.push_char(select_random(myrandom_next(rng, 100u32),
-                                   genelist.clone()));
-        if op.len() >= LINE_LENGTH {
-            writeln!(wr, "{}", op);
-            op = ~"";
-        }
-    }
-    if op.len() > 0u { writeln!(wr, "{}", op); }
-}
 
-fn make_repeat_fasta(wr: @mut io::Writer, id: ~str, desc: ~str, s: ~str, n: int) {
-    writeln!(wr, ">{} {}", id, desc);
-    let mut op = str::with_capacity( LINE_LENGTH );
-    let sl = s.len();
-    for i in range(0u, n as uint) {
-        if (op.len() >= LINE_LENGTH) {
-            writeln!(wr, "{}", op);
-            op = str::with_capacity( LINE_LENGTH );
-        }
-        op.push_char( s[i % sl] as char );
-    }
-    if op.len() > 0 {
-        writeln!(wr, "{}", op);
-    }
-}
+    let rng = &mut MyRandom::new();
+    let alu =
+        "GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGG\
+        GAGGCCGAGGCGGGCGGATCACCTGAGGTCAGGAGTTCGAGA\
+        CCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAAT\
+        ACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCA\
+        GCTACTCGGGAGGCTGAGGCAGGAGAATCGCTTGAACCCGGG\
+        AGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCC\
+        AGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAA";
+    let iub = &[('a', 0.27), ('c', 0.12), ('g', 0.12),
+                ('t', 0.27), ('B', 0.02), ('D', 0.02),
+                ('H', 0.02), ('K', 0.02), ('M', 0.02),
+                ('N', 0.02), ('R', 0.02), ('S', 0.02),
+                ('V', 0.02), ('W', 0.02), ('Y', 0.02)];
+    let homosapiens = &[('a', 0.3029549426680),
+                        ('c', 0.1979883004921),
+                        ('g', 0.1975473066391),
+                        ('t', 0.3015094502008)];
 
-fn acid(ch: char, prob: u32) -> AminoAcids {
-    AminoAcids {ch: ch, prob: prob}
+    make_fasta(writer, ">ONE Homo sapiens alu\n",
+               alu.as_bytes().iter().cycle().map(|c| *c), n * 2);
+    make_fasta(writer, ">TWO IUB ambiguity codes\n",
+               AAGen::new(rng, iub), n * 3);
+    make_fasta(writer, ">THREE Homo sapiens frequency\n",
+               AAGen::new(rng, homosapiens), n * 5);
+
+    writer.flush();
 }
 
 fn main() {
-    let args = os::args();
-    let args = if os::getenv("RUST_BENCH").is_some() {
-        // alioth tests k-nucleotide with this data at 25,000,000
-        ~[~"", ~"5000000"]
-    } else if args.len() <= 1u {
-        ~[~"", ~"1000"]
+    if os::getenv("RUST_BENCH").is_some() {
+        let mut file = BufferedWriter::new(File::create(&Path::new("./shootout-fasta.data")));
+        run(&mut file);
     } else {
-        args
-    };
-
-    let writer = if os::getenv("RUST_BENCH").is_some() {
-        let file = File::create(&Path::new("./shootout-fasta.data"));
-        @mut file as @mut io::Writer
-    } else {
-        @mut io::stdout() as @mut io::Writer
-    };
-
-    let n = from_str::<int>(args[1]).unwrap();
-
-    let iub: ~[AminoAcids] =
-        make_cumulative(~[acid('a', 27u32), acid('c', 12u32), acid('g', 12u32),
-                         acid('t', 27u32), acid('B', 2u32), acid('D', 2u32),
-                         acid('H', 2u32), acid('K', 2u32), acid('M', 2u32),
-                         acid('N', 2u32), acid('R', 2u32), acid('S', 2u32),
-                         acid('V', 2u32), acid('W', 2u32), acid('Y', 2u32)]);
-    let homosapiens: ~[AminoAcids] =
-        make_cumulative(~[acid('a', 30u32), acid('c', 20u32), acid('g', 20u32),
-                         acid('t', 30u32)]);
-    let alu: ~str =
-        ~"GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGG\
-          GAGGCCGAGGCGGGCGGATCACCTGAGGTCAGGAGTTCGAGA\
-          CCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAAT\
-          ACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCA\
-          GCTACTCGGGAGGCTGAGGCAGGAGAATCGCTTGAACCCGGG\
-          AGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCC\
-          AGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAA";
-    make_repeat_fasta(writer, ~"ONE", ~"Homo sapiens alu", alu, n * 2);
-    make_random_fasta(writer, ~"TWO", ~"IUB ambiguity codes", iub, n * 3);
-    make_random_fasta(writer, ~"THREE",
-                      ~"Homo sapiens frequency", homosapiens, n * 5);
+        run(&mut BufferedWriter::new(io::stdout()));
+    }
 }
