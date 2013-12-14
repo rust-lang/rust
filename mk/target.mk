@@ -161,16 +161,13 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTC_$(3)):		\
 	$$(call LIST_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUSTC_GLOB_$(2)),$$(notdir $$@))
 	$$(call LIST_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUSTC_RGLOB_$(2)),$$(notdir $$@))
 
-# NOTE: after the next snapshot remove these '-L' flags
 $$(TBIN$(1)_T_$(2)_H_$(3))/rustc$$(X_$(3)):			\
 		$$(DRIVER_CRATE)				\
-		$$(TSREQ$(1)_T_$(2)_H_$(3)) \
+		$$(SREQ$(1)_T_$(2)_H_$(3)) \
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTC_$(3)) \
 		| $$(TBIN$(1)_T_$(2)_H_$(3))/
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(2)_H_$(3)) --cfg rustc -o $$@ $$< \
-		-L $$(UV_SUPPORT_DIR_$(2)) \
-		-L $$(dir $$(LIBUV_LIB_$(2)))
+	$$(STAGE$(1)_T_$(2)_H_$(3)) --cfg rustc -o $$@ $$<
 ifdef CFG_ENABLE_PAX_FLAGS
 	@$$(call E, apply PaX flags: $$@)
 	@"$(CFG_PAXCTL)" -cm "$$@"

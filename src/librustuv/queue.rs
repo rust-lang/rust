@@ -18,6 +18,8 @@
 //! event loop alive we use uv_ref and uv_unref in order to control when the
 //! async handle is active or not.
 
+#[allow(dead_code)];
+
 use std::cast;
 use std::libc::{c_void, c_int};
 use std::rt::task::BlockedTask;

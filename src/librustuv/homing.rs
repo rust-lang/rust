@@ -31,6 +31,8 @@
 //! This enqueueing is done with a concurrent queue from libstd, and the
 //! signalling is achieved with an async handle.
 
+#[allow(dead_code)];
+
 use std::rt::local::Local;
 use std::rt::rtio::LocalIo;
 use std::rt::task::{Task, BlockedTask};

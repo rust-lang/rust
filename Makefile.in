@@ -280,9 +280,15 @@ define CHECK_FOR_OLD_GLOB_MATCHES_EXCEPT
 endef
 
 # Same interface as above, but deletes rather than just listing the files.
+ifdef VERBOSE
 define REMOVE_ALL_OLD_GLOB_MATCHES_EXCEPT
   $(Q)MATCHES="$(filter-out %$(3),$(wildcard $(1)/$(2)))"; if [ -n "$$MATCHES" ] ; then echo "warning: removing previous" \'$(2)\' "libraries:" $$MATCHES; rm $$MATCHES ; fi
 endef
+else
+define REMOVE_ALL_OLD_GLOB_MATCHES_EXCEPT
+  $(Q)MATCHES="$(filter-out %$(3),$(wildcard $(1)/$(2)))"; if [ -n "$$MATCHES" ] ; then rm $$MATCHES ; fi
+endef
+endif
 
 # We use a different strategy for LIST_ALL_OLD_GLOB_MATCHES_EXCEPT
 # than in the macros above because it needs the result of running the

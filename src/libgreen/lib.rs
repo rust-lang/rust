@@ -17,6 +17,7 @@
 //! This can be optionally linked in to rust programs in order to provide M:N
 //! functionality inside of 1:1 programs.
 
+#[pkgid = "green#0.9-pre"];
 #[link(name = "green",
        package_id = "green",
        vers = "0.9-pre",
@@ -30,17 +31,16 @@
 // NB this does *not* include globs, please keep it that way.
 #[feature(macro_rules)];
 
-use std::cast;
 use std::os;
-use std::rt::thread::Thread;
-use std::rt;
 use std::rt::crate_map;
 use std::rt::rtio;
-use std::sync::deque;
+use std::rt::thread::Thread;
+use std::rt;
 use std::sync::atomics::{SeqCst, AtomicUint, INIT_ATOMIC_UINT};
+use std::sync::deque;
 use std::task::TaskOpts;
-use std::vec;
 use std::util;
+use std::vec;
 use stdtask = std::rt::task;
 
 use sched::{Shutdown, Scheduler, SchedHandle, TaskFromFriend, NewNeighbor};
@@ -58,9 +58,9 @@ pub mod sleeper_list;
 pub mod stack;
 pub mod task;
 
-#[cfg(stage0)]
 #[lang = "start"]
 pub fn lang_start(main: *u8, argc: int, argv: **u8) -> int {
+    use std::cast;
     do start(argc, argv) {
         let main: extern "Rust" fn() = unsafe { cast::transmute(main) };
         main();
@@ -103,7 +103,15 @@ pub fn start(argc: int, argv: **u8, main: proc()) -> int {
 /// have returned.
 pub fn run(main: proc()) -> int {
     let mut pool = SchedPool::new(PoolConfig::new());
-    pool.spawn(TaskOpts::new(), main);
+    let (port, chan) = Chan::new();
+    let mut opts = TaskOpts::new();
+    opts.notify_chan = Some(chan);
+    pool.spawn(opts, main);
+    do pool.spawn(TaskOpts::new()) {
+        if port.recv().is_err() {
+            os::set_exit_status(rt::DEFAULT_ERROR_CODE);
+        }
+    }
     unsafe { stdtask::wait_for_completion(); }
     pool.shutdown();
     os::get_exit_status()
