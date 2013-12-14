@@ -58,8 +58,6 @@ pub mod sleeper_list;
 pub mod stack;
 pub mod task;
 
-#[cfg(test)] mod tests;
-
 #[cfg(stage0)]
 #[lang = "start"]
 pub fn lang_start(main: *u8, argc: int, argv: **u8) -> int {

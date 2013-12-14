@@ -227,6 +227,7 @@ mod tests {
     use std::rt::local::Local;
     use std::rt::task::Task;
     use std::task;
+    use std::task::TaskOpts;
     use super::{spawn, spawn_opts, Ops};
 
     #[test]

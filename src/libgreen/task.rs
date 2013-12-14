@@ -346,7 +346,7 @@ impl Runtime for GreenTask {
         }
     }
 
-    fn reawaken(mut ~self, to_wake: ~Task, can_resched: bool) {
+    fn reawaken(mut ~self, to_wake: ~Task) {
         self.put_task(to_wake);
         assert!(self.sched.is_none());
 
@@ -371,21 +371,16 @@ impl Runtime for GreenTask {
         let mut running_task: ~Task = Local::take();
         match running_task.maybe_take_runtime::<GreenTask>() {
             Some(mut running_green_task) => {
-                let mut sched = running_green_task.sched.take_unwrap();
+                running_green_task.put_task(running_task);
+                let sched = running_green_task.sched.take_unwrap();
+
                 if sched.pool_id == self.pool_id {
-                    running_green_task.put_task(running_task);
-                    if can_resched {
-                        sched.run_task(running_green_task, self);
-                    } else {
-                        sched.enqueue_task(self);
-                        running_green_task.put_with_sched(sched);
-                    }
+                    sched.run_task(running_green_task, self);
                 } else {
                     self.reawaken_remotely();
 
                     // put that thing back where it came from!
-                    running_task.put_runtime(running_green_task as ~Runtime);
-                    Local::put(running_task);
+                    running_green_task.put_with_sched(sched);
                 }
             }
             None => {
@@ -427,94 +422,110 @@ impl Drop for GreenTask {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
+    use std::rt::Runtime;
+    use std::rt::local::Local;
+    use std::rt::task::Task;
+    use std::task;
+    use std::task::TaskOpts;
 
-    #[test]
-    fn local_heap() {
-        do run_in_newsched_task() {
-            let a = @5;
-            let b = a;
-            assert!(*a == 5);
-            assert!(*b == 5);
-        }
+    use super::super::{PoolConfig, SchedPool};
+    use super::GreenTask;
+
+    fn spawn_opts(opts: TaskOpts, f: proc()) {
+        let mut pool = SchedPool::new(PoolConfig {
+            threads: 1,
+            event_loop_factory: None,
+        });
+        pool.spawn(opts, f);
+        pool.shutdown();
     }
 
     #[test]
-    fn tls() {
-        use std::local_data;
-        do run_in_newsched_task() {
-            local_data_key!(key: @~str)
-            local_data::set(key, @~"data");
-            assert!(*local_data::get(key, |k| k.map(|k| *k)).unwrap() == ~"data");
-            local_data_key!(key2: @~str)
-            local_data::set(key2, @~"data");
-            assert!(*local_data::get(key2, |k| k.map(|k| *k)).unwrap() == ~"data");
+    fn smoke() {
+        let (p, c) = Chan::new();
+        do spawn_opts(TaskOpts::new()) {
+            c.send(());
         }
+        p.recv();
     }
 
     #[test]
-    fn unwind() {
-        do run_in_newsched_task() {
-            let result = spawntask_try(proc()());
-            rtdebug!("trying first assert");
-            assert!(result.is_ok());
-            let result = spawntask_try(proc() fail!());
-            rtdebug!("trying second assert");
-            assert!(result.is_err());
+    fn smoke_fail() {
+        let (p, c) = Chan::<()>::new();
+        do spawn_opts(TaskOpts::new()) {
+            let _c = c;
+            fail!()
         }
+        assert_eq!(p.recv_opt(), None);
     }
 
     #[test]
-    fn rng() {
-        do run_in_uv_task() {
-            use std::rand::{rng, Rng};
-            let mut r = rng();
-            let _ = r.next_u32();
-        }
+    fn smoke_opts() {
+        let mut opts = TaskOpts::new();
+        opts.name = Some(SendStrStatic("test"));
+        opts.stack_size = Some(20 * 4096);
+        let (p, c) = Chan::new();
+        opts.notify_chan = Some(c);
+        spawn_opts(opts, proc() {});
+        assert!(p.recv().is_ok());
     }
 
     #[test]
-    fn logging() {
-        do run_in_uv_task() {
-            info!("here i am. logging in a newsched task");
-        }
+    fn smoke_opts_fail() {
+        let mut opts = TaskOpts::new();
+        let (p, c) = Chan::new();
+        opts.notify_chan = Some(c);
+        spawn_opts(opts, proc() { fail!() });
+        assert!(p.recv().is_err());
     }
 
     #[test]
-    fn comm_stream() {
-        do run_in_newsched_task() {
-            let (port, chan) = Chan::new();
-            chan.send(10);
-            assert!(port.recv() == 10);
+    fn yield_test() {
+        let (p, c) = Chan::new();
+        do spawn_opts(TaskOpts::new()) {
+            10.times(task::deschedule);
+            c.send(());
         }
+        p.recv();
     }
 
     #[test]
-    fn comm_shared_chan() {
-        do run_in_newsched_task() {
-            let (port, chan) = SharedChan::new();
-            chan.send(10);
-            assert!(port.recv() == 10);
+    fn spawn_children() {
+        let (p, c) = Chan::new();
+        do spawn_opts(TaskOpts::new()) {
+            let (p, c2) = Chan::new();
+            do spawn {
+                let (p, c3) = Chan::new();
+                do spawn {
+                    c3.send(());
+                }
+                p.recv();
+                c2.send(());
+            }
+            p.recv();
+            c.send(());
         }
+        p.recv();
     }
 
-    //#[test]
-    //fn heap_cycles() {
-    //    use std::option::{Option, Some, None};
-
-    //    do run_in_newsched_task {
-    //        struct List {
-    //            next: Option<@mut List>,
-    //        }
-
-    //        let a = @mut List { next: None };
-    //        let b = @mut List { next: Some(a) };
-
-    //        a.next = Some(b);
-    //    }
-    //}
-
     #[test]
-    #[should_fail]
-    fn test_begin_unwind() { begin_unwind("cause", file!(), line!()) }
+    fn spawn_inherits() {
+        let (p, c) = Chan::new();
+        do spawn_opts(TaskOpts::new()) {
+            let c = c;
+            do spawn {
+                let mut task: ~Task = Local::take();
+                match task.maybe_take_runtime::<GreenTask>() {
+                    Some(ops) => {
+                        task.put_runtime(ops as ~Runtime);
+                    }
+                    None => fail!(),
+                }
+                Local::put(task);
+                c.send(());
+            }
+        }
+        p.recv();
+    }
 }
