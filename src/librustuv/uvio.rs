@@ -96,7 +96,7 @@ impl rtio::EventLoop for UvEventLoop {
 
 #[cfg(not(test))]
 #[lang = "event_loop_factory"]
-pub extern "C" fn new_loop() -> ~rtio::EventLoop {
+pub fn new_loop() -> ~rtio::EventLoop {
     ~UvEventLoop::new() as ~rtio::EventLoop
 }
 

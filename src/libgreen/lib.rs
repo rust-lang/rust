@@ -115,6 +115,9 @@ pub fn run(main: proc()) -> int {
 pub struct PoolConfig {
     /// The number of schedulers (OS threads) to spawn into this M:N pool.
     threads: uint,
+    /// A factory function used to create new event loops. If this is not
+    /// specified then the default event loop factory is used.
+    event_loop_factory: Option<fn() -> ~rtio::EventLoop>,
 }
 
 impl PoolConfig {
@@ -123,6 +126,7 @@ impl PoolConfig {
     pub fn new() -> PoolConfig {
         PoolConfig {
             threads: rt::default_sched_threads(),
+            event_loop_factory: None,
         }
     }
 }
@@ -138,6 +142,7 @@ pub struct SchedPool {
     priv stack_pool: StackPool,
     priv deque_pool: deque::BufferPool<~task::GreenTask>,
     priv sleepers: SleeperList,
+    priv factory: fn() -> ~rtio::EventLoop,
 }
 
 impl SchedPool {
@@ -148,7 +153,11 @@ impl SchedPool {
     pub fn new(config: PoolConfig) -> SchedPool {
         static mut POOL_ID: AtomicUint = INIT_ATOMIC_UINT;
 
-        let PoolConfig { threads: nscheds } = config;
+        let PoolConfig {
+            threads: nscheds,
+            event_loop_factory: factory
+        } = config;
+        let factory = factory.unwrap_or(default_event_loop_factory());
         assert!(nscheds > 0);
 
         // The pool of schedulers that will be returned from this function
@@ -161,6 +170,7 @@ impl SchedPool {
             stack_pool: StackPool::new(),
             deque_pool: deque::BufferPool::new(),
             next_friend: 0,
+            factory: factory,
         };
 
         // Create a work queue for each scheduler, ntimes. Create an extra
@@ -176,7 +186,7 @@ impl SchedPool {
             rtdebug!("inserting a regular scheduler");
 
             let mut sched = ~Scheduler::new(pool.id,
-                                            new_event_loop(),
+                                            (pool.factory)(),
                                             worker,
                                             pool.stealers.clone(),
                                             pool.sleepers.clone());
@@ -232,7 +242,7 @@ impl SchedPool {
         // other schedulers as well as having a stealer handle to all other
         // schedulers.
         let mut sched = ~Scheduler::new(self.id,
-                                        new_event_loop(),
+                                        (self.factory)(),
                                         worker,
                                         self.stealers.clone(),
                                         self.sleepers.clone());
@@ -270,13 +280,13 @@ impl Drop for SchedPool {
     }
 }
 
-fn new_event_loop() -> ~rtio::EventLoop {
+fn default_event_loop_factory() -> fn() -> ~rtio::EventLoop {
     match crate_map::get_crate_map() {
         None => {}
         Some(map) => {
             match map.event_loop_factory {
                 None => {}
-                Some(factory) => return factory()
+                Some(factory) => return factory
             }
         }
     }
@@ -284,5 +294,5 @@ fn new_event_loop() -> ~rtio::EventLoop {
     // If the crate map didn't specify a factory to create an event loop, then
     // instead just use a basic event loop missing all I/O services to at least
     // get the scheduler running.
-    return basic::event_loop();
+    return basic::event_loop;
 }
