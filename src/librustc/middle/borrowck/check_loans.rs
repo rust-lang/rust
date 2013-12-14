@@ -699,7 +699,6 @@ fn check_loans_in_fn<'a>(this: &mut CheckLoanCtxt<'a>,
             return;
         }
 
-        visit::fk_anon(..) |
         visit::fk_fn_block(..) => {
             check_captured_variables(this, id, sp);
         }

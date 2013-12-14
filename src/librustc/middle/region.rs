@@ -456,7 +456,6 @@ fn resolve_fn(visitor: &mut RegionResolutionVisitor,
         visit::fk_method(..) => {
             Context {parent: None, var_parent: None, ..cx}
         }
-        visit::fk_anon(..) |
         visit::fk_fn_block(..) => {
             cx
         }
