@@ -1373,6 +1373,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore(cfg(android))] // FIXME #10958
     fn run_tests() {
         // The tests race on tzset. So instead of having many independent
         // tests, we will just call the functions now.
