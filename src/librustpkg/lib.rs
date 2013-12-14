@@ -166,29 +166,47 @@ impl<'a> PkgScript<'a> {
     /// Run the contents of this package script, where <what>
     /// is the command to pass to it (e.g., "build", "clean", "install")
     /// Returns a pair of an exit code and list of configs (obtained by
-    /// calling the package script's configs() function if it exists
-    fn run_custom(exe: &Path, sysroot: &Path) -> (~[~str], process::ProcessExit) {
+    /// calling the package script's configs() function if it exists, or
+    /// None if `exe` could not be started.
+    fn run_custom(exe: &Path, sysroot: &Path) -> Option<(~[~str], process::ProcessExit)> {
         debug!("Running program: {} {} {}", exe.as_str().unwrap().to_owned(),
                sysroot.display(), "install");
         // FIXME #7401 should support commands besides `install`
         // FIXME (#9639): This needs to handle non-utf8 paths
-        let status = run::process_status(exe.as_str().unwrap(),
-                                         [sysroot.as_str().unwrap().to_owned(), ~"install"]);
-        if !status.success() {
-            debug!("run_custom: first pkg command failed with {:?}", status);
-            (~[], status)
-        }
-        else {
-            debug!("Running program (configs): {} {} {}",
-                   exe.display(), sysroot.display(), "configs");
-            // FIXME (#9639): This needs to handle non-utf8 paths
-            let output = run::process_output(exe.as_str().unwrap(),
-                                             [sysroot.as_str().unwrap().to_owned(), ~"configs"]);
-            debug!("run_custom: second pkg command did {:?}", output.status);
-            // Run the configs() function to get the configs
-            let cfgs = str::from_utf8(output.output).words()
-                .map(|w| w.to_owned()).collect();
-            (cfgs, output.status)
+        let opt_status = run::process_status(exe.as_str().unwrap(),
+                                             [sysroot.as_str().unwrap().to_owned(), ~"install"]);
+        match opt_status {
+            Some(status) => {
+                if !status.success() {
+                    debug!("run_custom: first pkg command failed with {:?}", status);
+                    Some((~[], status))
+                }
+                else {
+                    debug!("Running program (configs): {} {} {}",
+                           exe.display(), sysroot.display(), "configs");
+                    // FIXME (#9639): This needs to handle non-utf8 paths
+                    let opt_output = run::process_output(exe.as_str().unwrap(),
+                                                         [sysroot.as_str().unwrap().to_owned(),
+                                                          ~"configs"]);
+                    match opt_output {
+                        Some(output) => {
+                            debug!("run_custom: second pkg command did {:?}", output.status);
+                            // Run the configs() function to get the configs
+                            let cfgs = str::from_utf8(output.output).words()
+                                .map(|w| w.to_owned()).collect();
+                            Some((cfgs, output.status))
+                        },
+                        None => {
+                            debug!("run_custom: second pkg command failed to start");
+                            Some((~[], status))
+                        }
+                    }
+                }
+            },
+            None => {
+                debug!("run_custom: first pkg command failed to start");
+                None
+            }
         }
     }
 }
@@ -481,14 +499,20 @@ impl CtxMethods for BuildContext {
                     })
                 });
                 // We always *run* the package script
-                let (cfgs, hook_result) = PkgScript::run_custom(&Path::new(pkg_exe), &sysroot);
-                debug!("Command return code = {:?}", hook_result);
-                if !hook_result.success() {
-                    fail!("Error running custom build command")
+                match PkgScript::run_custom(&Path::new(pkg_exe), &sysroot) {
+                    Some((cfgs, hook_result)) => {
+                        debug!("Command return code = {:?}", hook_result);
+                        if !hook_result.success() {
+                            fail!("Error running custom build command")
+                        }
+                        custom = true;
+                        // otherwise, the package script succeeded
+                        cfgs
+                    },
+                    None => {
+                        fail!("Error starting custom build command")
+                    }
                 }
-                custom = true;
-                // otherwise, the package script succeeded
-                cfgs
             }
             (Some(_), Inferred) => {
                 debug!("There is a package script, but we're ignoring it");
@@ -693,9 +717,14 @@ impl CtxMethods for BuildContext {
             Some(test_exec) => {
                 debug!("test: test_exec = {}", test_exec.display());
                 // FIXME (#9639): This needs to handle non-utf8 paths
-                let status = run::process_status(test_exec.as_str().unwrap(), [~"--test"]);
-                if !status.success() {
-                    fail!("Some tests failed");
+                let opt_status = run::process_status(test_exec.as_str().unwrap(), [~"--test"]);
+                match opt_status {
+                    Some(status) => {
+                        if !status.success() {
+                            fail!("Some tests failed");
+                        }
+                    },
+                    None => fail!("Could not exec `{}`", test_exec.display())
                 }
             }
             None => {

@@ -289,20 +289,23 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
                 dump_output_file(config, testfile, script_str, "debugger.script");
 
 
-                procsrv::run("", config.adb_path.clone(),
+                procsrv::run("", config.adb_path,
                     [~"push", exe_file.as_str().unwrap().to_owned(), config.adb_test_dir.clone()],
-                    ~[(~"",~"")], Some(~""));
+                    ~[(~"",~"")], Some(~""))
+                    .expect(format!("failed to exec `{}`", config.adb_path));
 
                 procsrv::run("", config.adb_path,
                     [~"forward", ~"tcp:5039", ~"tcp:5039"],
-                    ~[(~"",~"")], Some(~""));
+                    ~[(~"",~"")], Some(~""))
+                    .expect(format!("failed to exec `{}`", config.adb_path));
 
                 let adb_arg = format!("export LD_LIBRARY_PATH={}; gdbserver :5039 {}/{}",
                          config.adb_test_dir.clone(), config.adb_test_dir.clone(),
                          str::from_utf8(exe_file.filename().unwrap()));
 
-                let mut process = procsrv::run_background("", config.adb_path.clone(),
-                        [~"shell",adb_arg.clone()],~[(~"",~"")], Some(~""));
+                let mut process = procsrv::run_background("", config.adb_path,
+                        [~"shell",adb_arg.clone()],~[(~"",~"")], Some(~""))
+                        .expect(format!("failed to exec `{}`", config.adb_path));
                 loop {
                     //waiting 1 second for gdbserver start
                     timer::sleep(1000);
@@ -334,10 +337,12 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
                 let debugger_opts = ~[~"-quiet", ~"-batch", ~"-nx",
                     "-command=" + debugger_script.as_str().unwrap().to_owned()];
 
+                let gdb_path = tool_path.append("/bin/arm-linux-androideabi-gdb");
                 let procsrv::Result{ out, err, status }=
                     procsrv::run("",
-                            tool_path.append("/bin/arm-linux-androideabi-gdb"),
-                            debugger_opts, ~[(~"",~"")], None);
+                            gdb_path,
+                            debugger_opts, ~[(~"",~"")], None)
+                    .expect(format!("failed to exec `{}`", gdb_path));
                 let cmdline = {
                     let cmdline = make_cmdline("", "arm-linux-androideabi-gdb", debugger_opts);
                     logv(config, format!("executing {}", cmdline));
@@ -800,7 +805,8 @@ fn program_output(config: &config, testfile: &Path, lib_path: &str, prog: ~str,
             cmdline
         };
     let procsrv::Result{ out, err, status } =
-            procsrv::run(lib_path, prog, args, env, input);
+            procsrv::run(lib_path, prog, args, env, input)
+            .expect(format!("failed to exec `{}`", prog));
     dump_output(config, testfile, out, err);
     return ProcRes {status: status,
          stdout: out,
@@ -908,7 +914,8 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
     // copy to target
     let copy_result = procsrv::run("", config.adb_path,
         [~"push", args.prog.clone(), config.adb_test_dir.clone()],
-        ~[(~"",~"")], Some(~""));
+        ~[(~"",~"")], Some(~""))
+        .expect(format!("failed to exec `{}`", config.adb_path));
 
     if config.verbose {
         println!("push ({}) {} {} {}",
@@ -932,7 +939,8 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
     for tv in args.args.iter() {
         runargs.push(tv.to_owned());
     }
-    procsrv::run("", config.adb_path, runargs, ~[(~"",~"")], Some(~""));
+    procsrv::run("", config.adb_path, runargs, ~[(~"",~"")], Some(~""))
+        .expect(format!("failed to exec `{}`", config.adb_path));
 
     // get exitcode of result
     runargs = ~[];
@@ -942,7 +950,8 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
 
     let procsrv::Result{ out: exitcode_out, err: _, status: _ } =
         procsrv::run("", config.adb_path, runargs, ~[(~"",~"")],
-                     Some(~""));
+                     Some(~""))
+        .expect(format!("failed to exec `{}`", config.adb_path));
 
     let mut exitcode : int = 0;
     for c in exitcode_out.chars() {
@@ -960,7 +969,8 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
     runargs.push(format!("{}/{}.stdout", config.adb_test_dir, prog_short));
 
     let procsrv::Result{ out: stdout_out, err: _, status: _ } =
-        procsrv::run("", config.adb_path, runargs, ~[(~"",~"")], Some(~""));
+        procsrv::run("", config.adb_path, runargs, ~[(~"",~"")], Some(~""))
+        .expect(format!("failed to exec `{}`", config.adb_path));
 
     // get stderr of result
     runargs = ~[];
@@ -969,7 +979,8 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
     runargs.push(format!("{}/{}.stderr", config.adb_test_dir, prog_short));
 
     let procsrv::Result{ out: stderr_out, err: _, status: _ } =
-        procsrv::run("", config.adb_path, runargs, ~[(~"",~"")], Some(~""));
+        procsrv::run("", config.adb_path, runargs, ~[(~"",~"")], Some(~""))
+        .expect(format!("failed to exec `{}`", config.adb_path));
 
     dump_output(config, testfile, stdout_out, stderr_out);
 
@@ -1004,7 +1015,8 @@ fn _arm_push_aux_shared_library(config: &config, testfile: &Path) {
             // FIXME (#9639): This needs to handle non-utf8 paths
             let copy_result = procsrv::run("", config.adb_path,
                 [~"push", file.as_str().unwrap().to_owned(), config.adb_test_dir.clone()],
-                ~[(~"",~"")], Some(~""));
+                ~[(~"",~"")], Some(~""))
+                .expect(format!("failed to exec `{}`", config.adb_path));
 
             if config.verbose {
                 println!("push ({}) {} {} {}",
