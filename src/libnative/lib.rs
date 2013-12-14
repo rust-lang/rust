@@ -32,6 +32,7 @@
 
 use std::os;
 use std::rt;
+use stdtask = std::rt::task;
 
 pub mod io;
 pub mod task;
@@ -81,7 +82,9 @@ pub fn start(argc: int, argv: **u8, main: proc()) -> int {
 pub fn run(main: proc()) -> int {
     // Create a task, run the procedure in it, and then wait for everything.
     task::run(task::new(), main);
-    task::wait_for_completion();
+
+    // Block this OS task waiting for everything to finish.
+    unsafe { stdtask::wait_for_completion() }
 
     os::get_exit_status()
 }

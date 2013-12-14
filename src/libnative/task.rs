@@ -21,48 +21,12 @@ use std::rt::rtio;
 use std::rt::task::{Task, BlockedTask};
 use std::rt::thread::Thread;
 use std::rt;
-use std::sync::atomics::{AtomicUint, SeqCst, INIT_ATOMIC_UINT};
-use std::task::{TaskOpts, default_task_opts};
-use std::unstable::mutex::{Mutex, MUTEX_INIT};
+use std::task::TaskOpts;
+use std::unstable::mutex::Mutex;
 use std::unstable::stack;
 
 use io;
 use task;
-
-static mut THREAD_CNT: AtomicUint = INIT_ATOMIC_UINT;
-static mut LOCK: Mutex = MUTEX_INIT;
-
-/// Waits for all spawned threads to finish completion. This should only be used
-/// by the main task in order to wait for all other tasks to terminate.
-///
-/// This mirrors the same semantics as the green scheduling model.
-pub fn wait_for_completion() {
-    static mut someone_waited: bool = false;
-
-    unsafe {
-        LOCK.lock();
-        assert!(!someone_waited);
-        someone_waited = true;
-        while THREAD_CNT.load(SeqCst) > 0 {
-            LOCK.wait();
-        }
-        LOCK.unlock();
-        LOCK.destroy();
-    }
-
-}
-
-// Signal that a thread has finished execution, possibly waking up a blocker
-// waiting for all threads to have finished.
-fn signal_done() {
-    unsafe {
-        LOCK.lock();
-        if THREAD_CNT.fetch_sub(1, SeqCst) == 1 {
-            LOCK.signal();
-        }
-        LOCK.unlock();
-    }
-}
 
 /// Creates a new Task which is ready to execute as a 1:1 task.
 pub fn new() -> ~Task {
@@ -75,15 +39,12 @@ pub fn new() -> ~Task {
 
 /// Spawns a function with the default configuration
 pub fn spawn(f: proc()) {
-    spawn_opts(default_task_opts(), f)
+    spawn_opts(TaskOpts::new(), f)
 }
 
 /// Spawns a new task given the configuration options and a procedure to run
 /// inside the task.
 pub fn spawn_opts(opts: TaskOpts, f: proc()) {
-    // must happen before the spawn, no need to synchronize with a lock.
-    unsafe { THREAD_CNT.fetch_add(1, SeqCst); }
-
     let TaskOpts {
         watched: _watched,
         notify_chan, name, stack_size
@@ -117,7 +78,6 @@ pub fn spawn_opts(opts: TaskOpts, f: proc()) {
         }
 
         run(task, f);
-        signal_done();
     })
 }
 
@@ -290,7 +250,7 @@ mod tests {
 
     #[test]
     fn smoke_opts() {
-        let mut opts = task::default_task_opts();
+        let mut opts = TaskOpts::new();
         opts.name = Some(SendStrStatic("test"));
         opts.stack_size = Some(20 * 4096);
         let (p, c) = Chan::new();
@@ -301,7 +261,7 @@ mod tests {
 
     #[test]
     fn smoke_opts_fail() {
-        let mut opts = task::default_task_opts();
+        let mut opts = TaskOpts::new();
         let (p, c) = Chan::new();
         opts.notify_chan = Some(c);
         spawn_opts(opts, proc() { fail!() });

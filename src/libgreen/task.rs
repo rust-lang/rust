@@ -55,12 +55,15 @@ pub enum Home {
 }
 
 impl GreenTask {
+    /// Creates a new green task which is not homed to any particular scheduler
+    /// and will not have any contained Task structure.
     pub fn new(stack_pool: &mut StackPool,
                stack_size: Option<uint>,
                start: proc()) -> ~GreenTask {
         GreenTask::new_homed(stack_pool, stack_size, AnySched, start)
     }
 
+    /// Creates a new task (like `new`), but specifies the home for new task.
     pub fn new_homed(stack_pool: &mut StackPool,
                      stack_size: Option<uint>,
                      home: Home,
@@ -71,6 +74,8 @@ impl GreenTask {
         return ops;
     }
 
+    /// Creates a new green task with the specified coroutine and type, this is
+    /// useful when creating scheduler tasks.
     pub fn new_typed(coroutine: Option<Coroutine>,
                      task_type: TaskType) -> ~GreenTask {
         ~GreenTask {
@@ -82,6 +87,31 @@ impl GreenTask {
             nasty_deschedule_lock: unsafe { Mutex::new() },
             task: None,
         }
+    }
+
+    /// Creates a new green task with the given configuration options for the
+    /// contained Task object. The given stack pool is also used to allocate a
+    /// new stack for this task.
+    pub fn configure(pool: &mut StackPool,
+                     opts: TaskOpts,
+                     f: proc()) -> ~GreenTask {
+        let TaskOpts {
+            watched: _watched,
+            notify_chan, name, stack_size
+        } = opts;
+
+        let mut green = GreenTask::new(pool, stack_size, f);
+        let mut task = ~Task::new();
+        task.name = name;
+        match notify_chan {
+            Some(chan) => {
+                let on_exit = proc(task_result) { chan.send(task_result) };
+                task.death.on_exit = Some(on_exit);
+            }
+            None => {}
+        }
+        green.put_task(task);
+        return green;
     }
 
     /// Just like the `maybe_take_runtime` function, this function should *not*
@@ -367,11 +397,6 @@ impl Runtime for GreenTask {
     fn spawn_sibling(mut ~self, cur_task: ~Task, opts: TaskOpts, f: proc()) {
         self.put_task(cur_task);
 
-        let TaskOpts {
-            watched: _watched,
-            notify_chan, name, stack_size
-        } = opts;
-
         // Spawns a task into the current scheduler. We allocate the new task's
         // stack from the scheduler's stack pool, and then configure it
         // accordingly to `opts`. Afterwards we bootstrap it immediately by
@@ -379,18 +404,7 @@ impl Runtime for GreenTask {
         //
         // Upon returning, our task is back in TLS and we're good to return.
         let mut sched = self.sched.take_unwrap();
-        let mut sibling = GreenTask::new(&mut sched.stack_pool, stack_size, f);
-        let mut sibling_task = ~Task::new();
-        sibling_task.name = name;
-        match notify_chan {
-            Some(chan) => {
-                let on_exit = proc(task_result) { chan.send(task_result) };
-                sibling_task.death.on_exit = Some(on_exit);
-            }
-            None => {}
-        }
-
-        sibling.task = Some(sibling_task);
+        let sibling = GreenTask::configure(&mut sched.stack_pool, opts, f);
         sched.run_task(self, sibling)
     }
 
