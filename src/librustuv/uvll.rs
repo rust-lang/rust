@@ -29,11 +29,14 @@
 
 #[allow(non_camel_case_types)]; // C types
 
-use std::libc::{size_t, c_int, c_uint, c_void, c_char, uintptr_t, c_double};
+use std::libc::{size_t, c_int, c_uint, c_void, c_char, c_double};
 use std::libc::ssize_t;
 use std::libc::{malloc, free};
 use std::libc;
 use std::vec;
+
+#[cfg(test)]
+use std::libc::uintptr_t;
 
 pub use self::errors::*;
 
@@ -541,7 +544,9 @@ extern {
     pub fn rust_is_ipv4_sockaddr(addr: *sockaddr) -> c_int;
     pub fn rust_is_ipv6_sockaddr(addr: *sockaddr) -> c_int;
 
+    #[cfg(test)]
     fn rust_uv_handle_type_max() -> uintptr_t;
+    #[cfg(test)]
     fn rust_uv_req_type_max() -> uintptr_t;
     fn rust_uv_get_udp_handle_from_send_req(req: *uv_udp_send_t) -> *uv_udp_t;
 

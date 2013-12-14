@@ -10,6 +10,7 @@
 
 #[allow(missing_doc)];
 #[allow(non_uppercase_statics)];
+#[allow(dead_code)];
 
 // function names are almost identical to C's libmath, a few have been
 // renamed, grep for "rename:"
