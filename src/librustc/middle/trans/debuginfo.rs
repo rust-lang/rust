@@ -690,6 +690,13 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
 
     // Clang sets this parameter to the opening brace of the function's block, so let's do this too.
     let scope_line = span_start(cx, top_level_block.span).line;
+
+    // The is_local_to_unit flag indicates whether a function is local to the current compilation
+    // unit (i.e. if it is *static* in the C-sense). The *reachable* set should provide a good
+    // approximation of this, as it contains everything that might leak out of the current crate
+    // (by being externally visible or by being inlined into something externally visible). It might
+    // better to use the `exported_items` set from `driver::CrateAnalysis` in the future, but (atm)
+    // this set is not available in the translation pass.
     let is_local_to_unit = !cx.reachable.contains(&fn_ast_id);
 
     let fn_metadata = function_name.with_c_str(|function_name| {
