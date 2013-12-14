@@ -40,15 +40,25 @@ fn run_ar(sess: Session, args: &str, cwd: Option<&Path>,
         Some(p) => { debug!("inside {}", p.display()); }
         None => {}
     }
-    let o = Process::new(ar, args.as_slice(), opts).finish_with_output();
-    if !o.status.success() {
-        sess.err(format!("{} {} failed with: {}", ar, args.connect(" "),
-                         o.status));
-        sess.note(format!("stdout ---\n{}", str::from_utf8(o.output)));
-        sess.note(format!("stderr ---\n{}", str::from_utf8(o.error)));
-        sess.abort_if_errors();
+    let mut opt_prog = Process::new(ar, args.as_slice(), opts);
+    match opt_prog {
+        Some(ref mut prog) => {
+            let o = prog.finish_with_output();
+            if !o.status.success() {
+                sess.err(format!("{} {} failed with: {}", ar, args.connect(" "),
+                                 o.status));
+                sess.note(format!("stdout ---\n{}", str::from_utf8(o.output)));
+                sess.note(format!("stderr ---\n{}", str::from_utf8(o.error)));
+                sess.abort_if_errors();
+            }
+            o
+        },
+        None => {
+            sess.err(format!("could not exec `{}`", ar));
+            sess.abort_if_errors();
+            fail!("rustc::back::archive::run_ar() should not reach this point");
+        }
     }
-    o
 }
 
 impl Archive {

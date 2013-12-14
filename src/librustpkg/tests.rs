@@ -148,7 +148,7 @@ fn run_git(args: &[~str], env: Option<~[(~str, ~str)]>, cwd: &Path, err_msg: &st
         in_fd: None,
         out_fd: None,
         err_fd: None
-    });
+    }).expect("failed to exec `git`");
     let rslt = prog.finish_with_output();
     if !rslt.status.success() {
         fail!("{} [git returned {:?}, output = {}, error = {}]", err_msg,
@@ -285,7 +285,7 @@ fn command_line_test_with_env(args: &[~str], cwd: &Path, env: Option<~[(~str, ~s
         in_fd: None,
         out_fd: None,
         err_fd: None
-    });
+    }).expect(format!("failed to exec `{}`", cmd));
     let output = prog.finish_with_output();
     debug!("Output from command {} with args {:?} was {} \\{{}\\}[{:?}]",
            cmd, args, str::from_utf8(output.output),
@@ -503,7 +503,8 @@ fn touch_source_file(workspace: &Path, pkgid: &PkgId) {
             // n.b. Bumps time up by 2 seconds to get around granularity issues
             if !run::process_output("touch", [~"--date",
                                              ~"+2 seconds",
-                                             p.as_str().unwrap().to_owned()]).status.success() {
+                                             p.as_str().unwrap().to_owned()])
+                .expect("failed to exec `touch`").status.success() {
                 let _ = cond.raise((pkg_src_dir.clone(), ~"Bad path"));
             }
         }
@@ -521,7 +522,8 @@ fn touch_source_file(workspace: &Path, pkgid: &PkgId) {
             // FIXME (#9639): This needs to handle non-utf8 paths
             // n.b. Bumps time up by 2 seconds to get around granularity issues
             if !run::process_output("touch", [~"-A02",
-                                             p.as_str().unwrap().to_owned()]).status.success() {
+                                             p.as_str().unwrap().to_owned()])
+                .expect("failed to exec `touch`").status.success() {
                 let _ = cond.raise((pkg_src_dir.clone(), ~"Bad path"));
             }
         }
@@ -1276,7 +1278,7 @@ fn test_extern_mod() {
         in_fd: None,
         out_fd: None,
         err_fd: None
-    });
+    }).expect(format!("failed to exec `{}`", rustc.as_str().unwrap()));
     let outp = prog.finish_with_output();
     if !outp.status.success() {
         fail!("output was {}, error was {}",
@@ -1331,7 +1333,7 @@ fn test_extern_mod_simpler() {
         in_fd: None,
         out_fd: None,
         err_fd: None
-    });
+    }).expect(format!("failed to exec `{}`", rustc.as_str().unwrap()));
     let outp = prog.finish_with_output();
     if !outp.status.success() {
         fail!("output was {}, error was {}",

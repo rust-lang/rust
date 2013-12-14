@@ -142,14 +142,14 @@ pub fn install_pkg(cx: &BuildContext,
 /// Builds an arbitrary library whose short name is `output`,
 /// by invoking `tool` with arguments `args` plus "-o %s", where %s
 /// is the platform-specific library name for `output`.
-/// Returns that platform-specific name.
+/// Returns that platform-specific name, or None if `tool` could not be started.
 pub fn build_library_in_workspace(exec: &mut workcache::Exec,
                                   context: &mut Context,
                                   package_name: &str,
                                   tool: &str,
                                   flags: &[~str],
                                   paths: &[~str],
-                                  output: &str) -> ~str {
+                                  output: &str) -> Option<~str> {
     use command_failed = conditions::command_failed::cond;
 
     let workspace = my_workspace(context, package_name);
@@ -169,16 +169,20 @@ pub fn build_library_in_workspace(exec: &mut workcache::Exec,
 
     let all_args = flags + absolute_paths + cc_args +
          ~[~"-o", out_name.as_str().unwrap().to_owned()];
-    let exit_process = run::process_status(tool, all_args);
-    if exit_process.success() {
-        let out_name_str = out_name.as_str().unwrap().to_owned();
-        exec.discover_output("binary",
-                             out_name_str,
-                             digest_only_date(&out_name));
-        context.add_library_path(out_name.dir_path());
-        out_name_str
-    } else {
-        command_failed.raise((tool.to_owned(), all_args, exit_process))
+    match run::process_status(tool, all_args) {
+        Some(exit_process) => {
+            if exit_process.success() {
+                let out_name_str = out_name.as_str().unwrap().to_owned();
+                exec.discover_output("binary",
+                                     out_name_str,
+                                     digest_only_date(&out_name));
+                context.add_library_path(out_name.dir_path());
+                Some(out_name_str)
+            } else {
+                Some(command_failed.raise((tool.to_owned(), all_args, exit_process)))
+            }
+        },
+        None => None
     }
 }
 

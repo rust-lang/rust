@@ -104,8 +104,9 @@ pub fn try_getting_local_version(local_path: &Path) -> Option<Version> {
             continue;
         }
         // FIXME (#9639): This needs to handle non-utf8 paths
-        let outp = run::process_output("git",
+        let opt_outp = run::process_output("git",
                                    ["--git-dir=" + git_dir.as_str().unwrap(), ~"tag", ~"-l"]);
+        let outp = opt_outp.expect("Failed to exec `git`");
 
         debug!("git --git-dir={} tag -l ~~~> {:?}", git_dir.display(), outp.status);
 
@@ -140,9 +141,10 @@ pub fn try_getting_version(remote_path: &Path) -> Option<Version> {
                remote_path.display(),
                tmp_dir.display());
         // FIXME (#9639): This needs to handle non-utf8 paths
-        let outp  = run::process_output("git", [~"clone", format!("https://{}",
-                                                                  remote_path.as_str().unwrap()),
-                                                tmp_dir.as_str().unwrap().to_owned()]);
+        let opt_outp = run::process_output("git", [~"clone", format!("https://{}",
+                                                                     remote_path.as_str().unwrap()),
+                                                   tmp_dir.as_str().unwrap().to_owned()]);
+        let outp = opt_outp.expect("Failed to exec `git`");
         if outp.status.success() {
             debug!("Cloned it... ( {}, {} )",
                    str::from_utf8(outp.output),
@@ -152,9 +154,10 @@ pub fn try_getting_version(remote_path: &Path) -> Option<Version> {
             debug!("(getting version, now getting tags) executing \\{git --git-dir={} tag -l\\}",
                    git_dir.display());
             // FIXME (#9639): This needs to handle non-utf8 paths
-            let outp = run::process_output("git",
-                                           ["--git-dir=" + git_dir.as_str().unwrap(),
-                                            ~"tag", ~"-l"]);
+            let opt_outp = run::process_output("git",
+                                               ["--git-dir=" + git_dir.as_str().unwrap(),
+                                                ~"tag", ~"-l"]);
+            let outp = opt_outp.expect("Failed to exec `git`");
             let output_text = str::from_utf8(outp.output);
             debug!("Full output: ( {} ) [{:?}]", output_text, outp.status);
             for l in output_text.lines() {

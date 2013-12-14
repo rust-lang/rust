@@ -33,15 +33,16 @@ pub fn safe_git_clone(source: &Path, v: &Version, target: &Path) -> CloneResult 
         if !target.exists() {
             debug!("Running: git clone {} {}", source.display(), target.display());
             // FIXME (#9639): This needs to handle non-utf8 paths
-            let outp = run::process_output("git", [~"clone",
-                                                   source.as_str().unwrap().to_owned(),
-                                                   target.as_str().unwrap().to_owned()]);
+            let opt_outp = run::process_output("git", [~"clone",
+                                                       source.as_str().unwrap().to_owned(),
+                                                       target.as_str().unwrap().to_owned()]);
+            let outp = opt_outp.expect("Failed to exec `git`");
             if !outp.status.success() {
                 println(str::from_utf8_owned(outp.output.clone()));
                 println(str::from_utf8_owned(outp.error));
                 return DirToUse(target.clone());
             }
-                else {
+            else {
                 match v {
                     &ExactRevision(ref s) => {
                         let git_dir = target.join(".git");
@@ -51,7 +52,7 @@ pub fn safe_git_clone(source: &Path, v: &Version, target: &Path) -> CloneResult 
                         let outp = run::process_output("git",
                             [format!("--work-tree={}", target.as_str().unwrap().to_owned()),
                              format!("--git-dir={}", git_dir.as_str().unwrap().to_owned()),
-                             ~"checkout", format!("{}", *s)]);
+                             ~"checkout", format!("{}", *s)]).expect("Failed to exec `git`");
                         if !outp.status.success() {
                             println(str::from_utf8_owned(outp.output.clone()));
                             println(str::from_utf8_owned(outp.error));
@@ -72,7 +73,8 @@ pub fn safe_git_clone(source: &Path, v: &Version, target: &Path) -> CloneResult 
             let args = [format!("--work-tree={}", target.as_str().unwrap().to_owned()),
                         format!("--git-dir={}", git_dir.as_str().unwrap().to_owned()),
                         ~"pull", ~"--no-edit", source.as_str().unwrap().to_owned()];
-            let outp = run::process_output("git", args);
+            let opt_outp = run::process_output("git", args);
+            let outp = opt_outp.expect("Failed to exec `git`");
             assert!(outp.status.success());
         }
         CheckedOutSources
@@ -108,8 +110,9 @@ pub fn git_clone_url(source: &str, target: &Path, v: &Version) {
     use conditions::git_checkout_failed::cond;
 
     // FIXME (#9639): This needs to handle non-utf8 paths
-    let outp = run::process_output("git", [~"clone", source.to_owned(),
-                                           target.as_str().unwrap().to_owned()]);
+    let opt_outp = run::process_output("git", [~"clone", source.to_owned(),
+                                               target.as_str().unwrap().to_owned()]);
+    let outp = opt_outp.expect("Failed to exec `git`");
     if !outp.status.success() {
          debug!("{}", str::from_utf8_owned(outp.output.clone()));
          debug!("{}", str::from_utf8_owned(outp.error));
@@ -118,8 +121,9 @@ pub fn git_clone_url(source: &str, target: &Path, v: &Version) {
     else {
         match v {
             &ExactRevision(ref s) | &Tagged(ref s) => {
-                    let outp = process_output_in_cwd("git", [~"checkout", s.to_owned()],
+                    let opt_outp = process_output_in_cwd("git", [~"checkout", s.to_owned()],
                                                          target);
+                    let outp = opt_outp.expect("Failed to exec `git`");
                     if !outp.status.success() {
                         debug!("{}", str::from_utf8_owned(outp.output.clone()));
                         debug!("{}", str::from_utf8_owned(outp.error));
@@ -131,10 +135,13 @@ pub fn git_clone_url(source: &str, target: &Path, v: &Version) {
     }
 }
 
-fn process_output_in_cwd(prog: &str, args: &[~str], cwd: &Path) -> ProcessOutput {
-    let mut prog = Process::new(prog, args, ProcessOptions{ dir: Some(cwd)
-                                ,..ProcessOptions::new()});
-    prog.finish_with_output()
+fn process_output_in_cwd(prog: &str, args: &[~str], cwd: &Path) -> Option<ProcessOutput> {
+    let mut opt_prog = Process::new(prog, args, ProcessOptions{ dir: Some(cwd)
+                                    ,..ProcessOptions::new()});
+    match opt_prog {
+        Some(ref mut prog) => Some(prog.finish_with_output()),
+        None => None
+    }
 }
 
 pub fn is_git_dir(p: &Path) -> bool {
