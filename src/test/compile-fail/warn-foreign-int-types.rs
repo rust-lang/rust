@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #[forbid(ctypes)];
+#[allow(dead_code)];
 
 mod xx {
     extern {

@@ -40,11 +40,27 @@ fn bar2() {
 pub fn pub_fn() {
     let foo2_struct = Foo2;
     foo2_struct.foo2();
+
+    blah::baz();
 }
 
-// not warned because it's used in the parameter of `free` below
-enum c_void {}
+mod blah {
+    use std::libc::size_t;
+    // not warned because it's used in the parameter of `free` and return of
+    // `malloc` below, which are also used.
+    enum c_void {}
 
+    extern {
+        fn free(p: *c_void);
+        fn malloc(size: size_t) -> *c_void;
+    }
+
+    pub fn baz() {
+        unsafe { free(malloc(4)); }
+    }
+}
+
+enum c_void {} //~ ERROR: code is never used
 extern {
-    fn free(p: *c_void);
+    fn free(p: *c_void); //~ ERROR: code is never used
 }
