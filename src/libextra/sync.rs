@@ -79,7 +79,7 @@ impl WaitQueue {
 
     fn wait_end(&self) -> WaitEnd {
         let (wait_end, signal_end) = Chan::new();
-        self.tail.send_deferred(signal_end);
+        assert!(self.tail.try_send_deferred(signal_end));
         wait_end
     }
 }

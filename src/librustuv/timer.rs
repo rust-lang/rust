@@ -140,9 +140,9 @@ extern fn timer_cb(handle: *uvll::uv_timer_t, status: c_int) {
         WakeTask(task) => {
             task.wake().map(|t| t.reawaken(true));
         }
-        SendOnce(chan) => { chan.try_send_deferred(()); }
+        SendOnce(chan) => { chan.try_send(()); }
         SendMany(chan, id) => {
-            chan.try_send_deferred(());
+            chan.try_send(());
 
             // Note that the above operation could have performed some form of
             // scheduling. This means that the timer may have decided to insert

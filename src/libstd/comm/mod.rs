@@ -496,7 +496,7 @@ impl Packet {
         match self.channels.fetch_sub(1, SeqCst) {
             1 => {
                 match self.cnt.swap(DISCONNECTED, SeqCst) {
-                    -1 => { self.wakeup(false); }
+                    -1 => { self.wakeup(true); }
                     DISCONNECTED => {}
                     n => { assert!(n >= 0); }
                 }
@@ -537,9 +537,6 @@ impl<T: Send> Chan<T> {
     /// port.
     ///
     /// Rust channels are infinitely buffered so this method will never block.
-    /// This method may trigger a rescheduling, however, in order to wake up a
-    /// blocked receiver (if one is present). If no scheduling is desired, then
-    /// the `send_deferred` guarantees that there will be no reschedulings.
     ///
     /// # Failure
     ///
@@ -561,15 +558,6 @@ impl<T: Send> Chan<T> {
         }
     }
 
-    /// This function is equivalent in the semantics of `send`, but it
-    /// guarantees that a rescheduling will never occur when this method is
-    /// called.
-    pub fn send_deferred(&self, t: T) {
-        if !self.try_send_deferred(t) {
-            fail!("sending on a closed channel");
-        }
-    }
-
     /// Attempts to send a value on this channel, returning whether it was
     /// successfully sent.
     ///
@@ -585,9 +573,8 @@ impl<T: Send> Chan<T> {
     /// be tolerated, then this method should be used instead.
     pub fn try_send(&self, t: T) -> bool { self.try(t, true) }
 
-    /// This function is equivalent in the semantics of `try_send`, but it
-    /// guarantees that a rescheduling will never occur when this method is
-    /// called.
+    /// This function will not stick around for very long. The purpose of this
+    /// function is to guarantee that no rescheduling is performed.
     pub fn try_send_deferred(&self, t: T) -> bool { self.try(t, false) }
 
     fn try(&self, t: T, can_resched: bool) -> bool {
@@ -649,25 +636,9 @@ impl<T: Send> SharedChan<T> {
         }
     }
 
-    /// This function is equivalent in the semantics of `send`, but it
-    /// guarantees that a rescheduling will never occur when this method is
-    /// called.
-    pub fn send_deferred(&self, t: T) {
-        if !self.try_send_deferred(t) {
-            fail!("sending on a closed channel");
-        }
-    }
-
     /// Equivalent method to `try_send` on the `Chan` type (using the same
     /// semantics)
-    pub fn try_send(&self, t: T) -> bool { self.try(t, true) }
-
-    /// This function is equivalent in the semantics of `try_send`, but it
-    /// guarantees that a rescheduling will never occur when this method is
-    /// called.
-    pub fn try_send_deferred(&self, t: T) -> bool { self.try(t, false) }
-
-    fn try(&self, t: T, can_resched: bool) -> bool {
+    pub fn try_send(&self, t: T) -> bool {
         unsafe {
             // Note that the multiple sender case is a little tricker
             // semantically than the single sender case. The logic for
@@ -704,7 +675,7 @@ impl<T: Send> SharedChan<T> {
 
             match (*packet).increment() {
                 DISCONNECTED => {} // oh well, we tried
-                -1 => { (*packet).wakeup(can_resched); }
+                -1 => { (*packet).wakeup(true); }
                 n => {
                     if n > 0 && n % RESCHED_FREQ == 0 {
                         let task: ~Task = Local::take();
