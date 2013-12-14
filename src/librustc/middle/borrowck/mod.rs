@@ -127,7 +127,6 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
                sp: Span,
                id: ast::NodeId) {
     match fk {
-        &visit::fk_anon(..) |
         &visit::fk_fn_block(..) => {
             // Closures are checked as part of their containing fn item.
         }

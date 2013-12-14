@@ -97,7 +97,7 @@ impl<'a> Visitor<&'a ScopeChain<'a>> for LifetimeContext {
                 visit::walk_fn(self, fk, fd, b, s, n, &scope1);
                 debug!("popping fn scope id={} due to item/method", n);
             }
-            visit::fk_anon(..) | visit::fk_fn_block(..) => {
+            visit::fk_fn_block(..) => {
                 visit::walk_fn(self, fk, fd, b, s, n, scope);
             }
         }
