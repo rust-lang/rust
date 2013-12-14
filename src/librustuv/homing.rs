@@ -161,7 +161,10 @@ mod test {
     #[test]
     fn test_homing_closes_correctly() {
         let (port, chan) = Chan::new();
-        let mut pool = SchedPool::new(PoolConfig { threads: 1 });
+        let mut pool = SchedPool::new(PoolConfig {
+            threads: 1,
+            event_loop_factory: None,
+        });
 
         do pool.spawn(TaskOpts::new()) {
             let listener = UdpWatcher::bind(local_loop(), next_test_ip4());
@@ -179,7 +182,10 @@ mod test {
     #[test]
     fn test_homing_read() {
         let (port, chan) = Chan::new();
-        let mut pool = SchedPool::new(PoolConfig { threads: 1 });
+        let mut pool = SchedPool::new(PoolConfig {
+            threads: 1,
+            event_loop_factory: None,
+        });
 
         do pool.spawn(TaskOpts::new()) {
             let addr1 = next_test_ip4();

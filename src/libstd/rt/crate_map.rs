@@ -30,7 +30,7 @@ pub struct CrateMap<'a> {
     version: i32,
     entries: &'a [ModEntry<'a>],
     children: &'a [&'a CrateMap<'a>],
-    event_loop_factory: Option<extern "C" fn() -> ~EventLoop>,
+    event_loop_factory: Option<fn() -> ~EventLoop>,
 }
 
 #[cfg(not(windows))]
