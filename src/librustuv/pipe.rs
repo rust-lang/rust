@@ -210,7 +210,7 @@ extern fn listen_cb(server: *uvll::uv_stream_t, status: libc::c_int) {
         }
         n => Err(uv_error_to_io_error(UvError(n)))
     };
-    pipe.outgoing.send_deferred(msg);
+    pipe.outgoing.send(msg);
 }
 
 impl Drop for PipeListener {
