@@ -85,7 +85,7 @@ impl GreenTask {
             sched: None,
             handle: None,
             nasty_deschedule_lock: unsafe { Mutex::new() },
-            task: None,
+            task: Some(~Task::new()),
         }
     }
 
@@ -101,16 +101,17 @@ impl GreenTask {
         } = opts;
 
         let mut green = GreenTask::new(pool, stack_size, f);
-        let mut task = ~Task::new();
-        task.name = name;
-        match notify_chan {
-            Some(chan) => {
-                let on_exit = proc(task_result) { chan.send(task_result) };
-                task.death.on_exit = Some(on_exit);
+        {
+            let task = green.task.get_mut_ref();
+            task.name = name;
+            match notify_chan {
+                Some(chan) => {
+                    let on_exit = proc(task_result) { chan.send(task_result) };
+                    task.death.on_exit = Some(on_exit);
+                }
+                None => {}
             }
-            None => {}
         }
-        green.put_task(task);
         return green;
     }
 

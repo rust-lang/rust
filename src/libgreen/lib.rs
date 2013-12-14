@@ -35,7 +35,6 @@ use std::os;
 use std::rt::thread::Thread;
 use std::rt;
 use std::rt::crate_map;
-use std::rt::task::Task;
 use std::rt::rtio;
 use std::sync::deque;
 use std::sync::atomics::{SeqCst, AtomicUint, INIT_ATOMIC_UINT};
@@ -105,7 +104,7 @@ pub fn start(argc: int, argv: **u8, main: proc()) -> int {
 /// This function will not return until all schedulers in the associated pool
 /// have returned.
 pub fn run(main: proc()) -> int {
-    let mut pool = Pool::new(Config::new());
+    let mut pool = SchedPool::new(PoolConfig::new());
     pool.spawn(TaskOpts::new(), main);
     unsafe { stdtask::wait_for_completion(); }
     pool.shutdown();
@@ -113,16 +112,16 @@ pub fn run(main: proc()) -> int {
 }
 
 /// Configuration of how an M:N pool of schedulers is spawned.
-pub struct Config {
+pub struct PoolConfig {
     /// The number of schedulers (OS threads) to spawn into this M:N pool.
     threads: uint,
 }
 
-impl Config {
+impl PoolConfig {
     /// Returns the default configuration, as determined the the environment
     /// variables of this process.
-    pub fn new() -> Config {
-        Config {
+    pub fn new() -> PoolConfig {
+        PoolConfig {
             threads: rt::default_sched_threads(),
         }
     }
@@ -130,7 +129,7 @@ impl Config {
 
 /// A structure representing a handle to a pool of schedulers. This handle is
 /// used to keep the pool alive and also reap the status from the pool.
-pub struct Pool {
+pub struct SchedPool {
     priv id: uint,
     priv threads: ~[Thread<()>],
     priv handles: ~[SchedHandle],
@@ -141,19 +140,19 @@ pub struct Pool {
     priv sleepers: SleeperList,
 }
 
-impl Pool {
+impl SchedPool {
     /// Execute the main function in a pool of M:N schedulers.
     ///
     /// This will configure the pool according to the `config` parameter, and
     /// initially run `main` inside the pool of schedulers.
-    pub fn new(config: Config) -> Pool {
+    pub fn new(config: PoolConfig) -> SchedPool {
         static mut POOL_ID: AtomicUint = INIT_ATOMIC_UINT;
 
-        let Config { threads: nscheds } = config;
+        let PoolConfig { threads: nscheds } = config;
         assert!(nscheds > 0);
 
         // The pool of schedulers that will be returned from this function
-        let mut pool = Pool {
+        let mut pool = SchedPool {
             threads: ~[],
             handles: ~[],
             stealers: ~[],
@@ -185,10 +184,9 @@ impl Pool {
             let sched = sched;
             pool.threads.push(do Thread::start {
                 let mut sched = sched;
-                let mut task = do GreenTask::new(&mut sched.stack_pool, None) {
+                let task = do GreenTask::new(&mut sched.stack_pool, None) {
                     rtdebug!("boostraping a non-primary scheduler");
                 };
-                task.put_task(~Task::new());
                 sched.bootstrap(task);
             });
         }
@@ -196,19 +194,12 @@ impl Pool {
         return pool;
     }
 
-    pub fn shutdown(mut self) {
-        self.stealers = ~[];
-
-        for mut handle in util::replace(&mut self.handles, ~[]).move_iter() {
-            handle.send(Shutdown);
-        }
-        for thread in util::replace(&mut self.threads, ~[]).move_iter() {
-            thread.join();
-        }
+    pub fn task(&mut self, opts: TaskOpts, f: proc()) -> ~GreenTask {
+        GreenTask::configure(&mut self.stack_pool, opts, f)
     }
 
     pub fn spawn(&mut self, opts: TaskOpts, f: proc()) {
-        let task = GreenTask::configure(&mut self.stack_pool, opts, f);
+        let task = self.task(opts, f);
 
         // Figure out someone to send this task to
         let idx = self.next_friend;
@@ -250,18 +241,28 @@ impl Pool {
         let sched = sched;
         self.threads.push(do Thread::start {
             let mut sched = sched;
-            let mut task = do GreenTask::new(&mut sched.stack_pool, None) {
+            let task = do GreenTask::new(&mut sched.stack_pool, None) {
                 rtdebug!("boostraping a non-primary scheduler");
             };
-            task.put_task(~Task::new());
             sched.bootstrap(task);
         });
 
         return ret;
     }
+
+    pub fn shutdown(mut self) {
+        self.stealers = ~[];
+
+        for mut handle in util::replace(&mut self.handles, ~[]).move_iter() {
+            handle.send(Shutdown);
+        }
+        for thread in util::replace(&mut self.threads, ~[]).move_iter() {
+            thread.join();
+        }
+    }
 }
 
-impl Drop for Pool {
+impl Drop for SchedPool {
     fn drop(&mut self) {
         if self.threads.len() > 0 {
             fail!("dropping a M:N scheduler pool that wasn't shut down");
