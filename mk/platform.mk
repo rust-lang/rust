@@ -287,7 +287,7 @@ CFG_LIB_GLOB_arm-linux-androideabi=lib$(1)-*.so
 CFG_LIB_DSYM_GLOB_arm-linux-androideabi=lib$(1)-*.dylib.dSYM
 CFG_GCCISH_CFLAGS_arm-linux-androideabi := -Wall -g -fPIC -D__arm__ -DANDROID -D__ANDROID__
 CFG_GCCISH_CXXFLAGS_arm-linux-androideabi := -fno-rtti
-CFG_GCCISH_LINK_FLAGS_arm-linux-androideabi := -shared -fPIC -ldl -g -lm -lsupc++ -lgnustl_shared
+CFG_GCCISH_LINK_FLAGS_arm-linux-androideabi := -shared -fPIC -ldl -g -lm -lsupc++
 CFG_GCCISH_DEF_FLAG_arm-linux-androideabi := -Wl,--export-dynamic,--dynamic-list=
 CFG_GCCISH_PRE_LIB_FLAGS_arm-linux-androideabi := -Wl,-whole-archive
 CFG_GCCISH_POST_LIB_FLAGS_arm-linux-androideabi := -Wl,-no-whole-archive

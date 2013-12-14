@@ -33,7 +33,6 @@ extern {}
 #[link(name = "dl")]
 #[link(name = "log")]
 #[link(name = "supc++")]
-#[link(name = "gnustl_shared")]
 #[link(name = "m")]
 extern {}
 
