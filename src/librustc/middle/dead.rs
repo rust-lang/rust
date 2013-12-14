@@ -37,6 +37,7 @@ fn should_explore(tcx: ty::ctxt, def_id: ast::DefId) -> bool {
     match tcx.items.find(&def_id.node) {
         Some(&ast_map::node_item(..))
         | Some(&ast_map::node_method(..))
+        | Some(&ast_map::node_foreign_item(..))
         | Some(&ast_map::node_trait_method(..)) => true,
         _ => false
     }
@@ -61,11 +62,10 @@ impl MarkSymbolVisitor {
         }
     }
 
-    fn lookup_and_handle_definition(&mut self, id: &ast::NodeId,
-                                    span: codemap::Span) {
+    fn lookup_and_handle_definition(&mut self, id: &ast::NodeId) {
         let def = match self.tcx.def_map.find(id) {
             Some(&def) => def,
-            None => self.tcx.sess.span_bug(span, "def ID not in def map?!"),
+            None => return
         };
         let def_id = match def {
             ast::DefVariant(enum_id, _, _) => Some(enum_id),
@@ -107,8 +107,7 @@ impl MarkSymbolVisitor {
                 match item.node {
                     ast::item_fn(..)
                     | ast::item_ty(..)
-                    | ast::item_static(..)
-                    | ast::item_foreign_mod(_) => {
+                    | ast::item_static(..) => {
                         visit::walk_item(self, item, ());
                     }
                     _ => ()
@@ -120,6 +119,9 @@ impl MarkSymbolVisitor {
             ast_map::node_method(method, _, _) => {
                 visit::walk_block(self, method.body, ());
             }
+            ast_map::node_foreign_item(foreign_item, _, _, _) => {
+                visit::walk_foreign_item(self, foreign_item, ());
+            }
             _ => ()
         }
     }
@@ -129,9 +131,6 @@ impl Visitor<()> for MarkSymbolVisitor {
 
     fn visit_expr(&mut self, expr: @ast::Expr, _: ()) {
         match expr.node {
-            ast::ExprPath(_) | ast::ExprStruct(..) => {
-                self.lookup_and_handle_definition(&expr.id, expr.span);
-            }
             ast::ExprMethodCall(..) => {
                 match self.method_map.find(&expr.id) {
                     Some(&typeck::method_map_entry {
@@ -160,10 +159,14 @@ impl Visitor<()> for MarkSymbolVisitor {
     fn visit_ty(&mut self, typ: &ast::Ty, _: ()) {
         match typ.node {
             ast::ty_path(_, _, ref id) => {
-                self.lookup_and_handle_definition(id, typ.span);
+                self.lookup_and_handle_definition(id);
             }
             _ => visit::walk_ty(self, typ, ()),
         }
+    }
+
+    fn visit_path(&mut self, _: &ast::Path, id: ast::NodeId, _: ()) {
+        self.lookup_and_handle_definition(&id);
     }
 
     fn visit_item(&mut self, _item: @ast::item, _: ()) {
@@ -299,17 +302,29 @@ impl DeadVisitor {
         }
         false
     }
+
+    fn warn_dead_code(&mut self, id: ast::NodeId,
+                      span: codemap::Span, ident: &ast::Ident) {
+        self.tcx.sess.add_lint(dead_code, id, span,
+                               format!("code is never used: `{}`",
+                                       token::ident_to_str(ident)));
+    }
 }
 
 impl Visitor<()> for DeadVisitor {
     fn visit_item(&mut self, item: @ast::item, _: ()) {
         let ctor_id = get_struct_ctor_id(item);
         if !self.symbol_is_live(item.id, ctor_id) && should_warn(item) {
-            self.tcx.sess.add_lint(dead_code, item.id, item.span,
-                                   format!("code is never used: `{}`",
-                                           token::ident_to_str(&item.ident)));
+            self.warn_dead_code(item.id, item.span, &item.ident);
         }
         visit::walk_item(self, item, ());
+    }
+
+    fn visit_foreign_item(&mut self, fi: @ast::foreign_item, _: ()) {
+        if !self.symbol_is_live(fi.id, None) {
+            self.warn_dead_code(fi.id, fi.span, &fi.ident);
+        }
+        visit::walk_foreign_item(self, fi, ());
     }
 
     fn visit_fn(&mut self, fk: &visit::fn_kind,
@@ -320,10 +335,7 @@ impl Visitor<()> for DeadVisitor {
             visit::fk_method(..) => {
                 let ident = visit::name_of_fn(fk);
                 if !self.symbol_is_live(id, None) {
-                    self.tcx.sess
-                            .add_lint(dead_code, id, span,
-                                      format!("code is never used: `{}`",
-                                              token::ident_to_str(&ident)));
+                    self.warn_dead_code(id, span, &ident);
                 }
             }
             _ => ()
