@@ -178,9 +178,8 @@ impl Scheduler {
         self.idle_callback = Some(self.event_loop.pausable_idle_callback(cb));
 
         // Create a task for the scheduler with an empty context.
-        let mut sched_task = GreenTask::new_typed(Some(Coroutine::empty()),
-                                                  TypeSched);
-        sched_task.put_task(~Task::new());
+        let sched_task = GreenTask::new_typed(Some(Coroutine::empty()),
+                                              TypeSched);
 
         // Before starting our first task, make sure the idle callback
         // is active. As we do not start in the sleep state this is
