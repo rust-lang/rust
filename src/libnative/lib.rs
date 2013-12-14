@@ -14,6 +14,7 @@
 //! runtime. In addition, all I/O provided by this crate is the thread blocking
 //! version of I/O.
 
+#[pkgid = "native#0.9-pre"];
 #[link(name = "native",
        package_id = "native",
        vers = "0.9-pre",
@@ -24,6 +25,7 @@
 #[crate_type = "rlib"];
 #[crate_type = "dylib"];
 
+// Allow check-stage0-native for now
 #[cfg(stage0, test)] extern mod green;
 
 // NB this crate explicitly does *not* allow glob imports, please seriously

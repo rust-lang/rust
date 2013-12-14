@@ -38,8 +38,13 @@ use task::{TaskResult, TaskOpts};
 use unstable::finally::Finally;
 use unstable::mutex::{Mutex, MUTEX_INIT};
 
-#[cfg(stage0)] pub use rt::unwind::begin_unwind;
+#[cfg(stage0)]
+pub use rt::unwind::begin_unwind;
 
+// These two statics are used as bookeeping to keep track of the rust runtime's
+// count of threads. In 1:1 contexts, this is used to know when to return from
+// the main function, and in M:N contexts this is used to know when to shut down
+// the pool of schedulers.
 static mut TASK_COUNT: AtomicUint = INIT_ATOMIC_UINT;
 static mut TASK_LOCK: Mutex = MUTEX_INIT;
 
@@ -181,10 +186,15 @@ impl Task {
         // Cleanup the dynamic borrowck debugging info
         borrowck::clear_task_borrow_list();
 
-        // TODO: dox
+        // Here we must unsafely borrow the task in order to not remove it from
+        // TLS. When collecting failure, we may attempt to send on a channel (or
+        // just run aribitrary code), so we must be sure to still have a local
+        // task in TLS.
         unsafe {
             let me: *mut Task = Local::unsafe_borrow();
             (*me).death.collect_failure((*me).unwinder.result());
+
+            // see comments on these statics for why they're used
             if TASK_COUNT.fetch_sub(1, SeqCst) == 1 {
                 TASK_LOCK.lock();
                 TASK_LOCK.signal();
@@ -386,6 +396,10 @@ impl Drop for Death {
     }
 }
 
+/// The main function of all rust executables will by default use this function.
+/// This function will *block* the OS thread (hence the `unsafe`) waiting for
+/// all known tasks to complete. Once this function has returned, it is
+/// guaranteed that no more user-defined code is still running.
 pub unsafe fn wait_for_completion() {
     TASK_LOCK.lock();
     while TASK_COUNT.load(SeqCst) > 0 {
