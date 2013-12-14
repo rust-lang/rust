@@ -105,23 +105,18 @@ pub trait Stats {
 #[deriving(Clone, Eq)]
 #[allow(missing_doc)]
 pub struct Summary {
-    priv sum: f64,
-    // public
+    sum: f64,
     min: f64,
-    // public
     max: f64,
-    priv mean: f64,
-    // public
+    mean: f64,
     median: f64,
-    priv var: f64,
-    priv std_dev: f64,
-    priv std_dev_pct: f64,
-    // public
+    var: f64,
+    std_dev: f64,
+    std_dev_pct: f64,
     median_abs_dev: f64,
-    // public
     median_abs_dev_pct: f64,
-    priv quartiles: (f64,f64,f64),
-    priv iqr: f64,
+    quartiles: (f64,f64,f64),
+    iqr: f64,
 }
 
 impl Summary {
