@@ -1270,8 +1270,6 @@ pub trait ImmutableCopyableVector<T> {
      * those that do not.
      */
     fn partitioned(&self, f: |&T| -> bool) -> (~[T], ~[T]);
-    /// Returns the element at the given index, without doing bounds checking.
-    unsafe fn unsafe_get(&self, elem: uint) -> T;
 
     /// Create an iterator that yields every possible permutation of the
     /// vector in succession.
@@ -1293,11 +1291,6 @@ impl<'a,T:Clone> ImmutableCopyableVector<T> for &'a [T] {
         }
 
         (lefts, rights)
-    }
-
-    #[inline]
-    unsafe fn unsafe_get(&self, index: uint) -> T {
-        (*self.unsafe_ref(index)).clone()
     }
 
     fn permutations(self) -> Permutations<T> {
@@ -2192,7 +2185,6 @@ pub unsafe fn from_buf<T>(ptr: *T, elts: uint) -> ~[T] {
 /// Unsafe operations
 pub mod raw {
     use cast;
-    use clone::Clone;
     use option::Some;
     use ptr;
     use mem;
@@ -2267,14 +2259,6 @@ pub mod raw {
             data: p as *T,
             len: len
         }))
-    }
-
-    /**
-     * Unchecked vector indexing.
-     */
-    #[inline]
-    pub unsafe fn get<T:Clone>(v: &[T], i: uint) -> T {
-        v.as_imm_buf(|p, _len| (*ptr::offset(p, i as int)).clone())
     }
 
     /**
