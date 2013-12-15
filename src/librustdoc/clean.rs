@@ -73,9 +73,7 @@ pub struct Crate {
 
 impl Clean<Crate> for visit_ast::RustdocVisitor {
     fn clean(&self) -> Crate {
-        use syntax::attr::{find_linkage_metas, last_meta_item_value_str_by_name};
-        let maybe_meta = last_meta_item_value_str_by_name(
-                                find_linkage_metas(self.attrs), "name");
+        use syntax::attr::find_pkgid;
         let cx = local_data::get(super::ctxtkey, |x| *x.unwrap());
 
         let mut externs = HashMap::new();
@@ -84,10 +82,9 @@ impl Clean<Crate> for visit_ast::RustdocVisitor {
         });
 
         Crate {
-            name: match maybe_meta {
-                Some(x) => x.to_owned(),
-                None => fail!("rustdoc requires a \\#[link(name=\"foo\")] \
-                                crate attribute"),
+            name: match find_pkgid(self.attrs) {
+                Some(n) => n.name,
+                None => fail!("rustdoc requires a `pkgid` crate attribute"),
             },
             module: Some(self.module.clean()),
             externs: externs,
