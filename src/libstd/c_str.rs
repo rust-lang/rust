@@ -293,7 +293,7 @@ impl<'a> ToCStr for &'a [u8] {
 unsafe fn with_c_str<T>(v: &[u8], checked: bool, f: |*libc::c_char| -> T) -> T {
     if v.len() < BUF_LEN {
         let mut buf: [u8, .. BUF_LEN] = intrinsics::uninit();
-        vec::bytes::copy_memory(buf, v, v.len());
+        vec::bytes::copy_memory(buf, v);
         buf[v.len()] = 0;
 
         buf.as_mut_buf(|buf, _| {
