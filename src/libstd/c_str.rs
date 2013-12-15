@@ -385,7 +385,7 @@ mod tests {
     fn test_str_multistring_parsing() {
         unsafe {
             let input = bytes!("zero", "\x00", "one", "\x00", "\x00");
-            let ptr = vec::raw::to_ptr(input);
+            let ptr = input.as_ptr();
             let expected = ["zero", "one"];
             let mut it = expected.iter();
             let result = from_c_multistring(ptr as *libc::c_char, None, |c| {

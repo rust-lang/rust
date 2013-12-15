@@ -1139,7 +1139,7 @@ pub mod raw {
     fn test_from_buf_len() {
         unsafe {
             let a = ~[65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
-            let b = vec::raw::to_ptr(a);
+            let b = a.as_ptr();
             let c = from_buf_len(b, 3u);
             assert_eq!(c, ~"AAA");
         }
@@ -3360,7 +3360,7 @@ mod tests {
     fn test_raw_from_c_str() {
         unsafe {
             let a = ~[65, 65, 65, 65, 65, 65, 65, 0];
-            let b = vec::raw::to_ptr(a);
+            let b = a.as_ptr();
             let c = raw::from_c_str(b);
             assert_eq!(c, ~"AAAAAAA");
         }

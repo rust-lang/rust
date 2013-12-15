@@ -123,7 +123,6 @@ use unstable::finally::Finally;
 use unstable::intrinsics;
 use unstable::intrinsics::{get_tydesc, owns_managed};
 use unstable::raw::{Box, Repr, Slice, Vec};
-use vec;
 use util;
 
 /**
@@ -135,7 +134,7 @@ use util;
 pub fn from_fn<T>(n_elts: uint, op: |uint| -> T) -> ~[T] {
     unsafe {
         let mut v = with_capacity(n_elts);
-        let p = raw::to_mut_ptr(v);
+        let p = v.as_mut_ptr();
         let mut i: uint = 0u;
         (|| {
             while i < n_elts {
@@ -162,7 +161,7 @@ pub fn from_elem<T:Clone>(n_elts: uint, t: T) -> ~[T] {
     // vec::with_capacity/ptr::set_memory for primitive types.
     unsafe {
         let mut v = with_capacity(n_elts);
-        let p = raw::to_mut_ptr(v);
+        let p = v.as_mut_ptr();
         let mut i = 0u;
         (|| {
             while i < n_elts {
@@ -956,6 +955,17 @@ pub trait ImmutableVector<'a, T> {
     unsafe fn unsafe_ref(&self, index: uint) -> *T;
 
     /**
+     * Returns an unsafe pointer to the vector's buffer
+     *
+     * The caller must ensure that the vector outlives the pointer this
+     * function returns, or else it will end up pointing to garbage.
+     *
+     * Modifying the vector may cause its buffer to be reallocated, which
+     * would also make any pointers to it invalid.
+     */
+    fn as_ptr(&self) -> *T;
+
+    /**
      * Binary search a sorted vector with a comparator function.
      *
      * The comparator should implement an order consistent with the sort
@@ -1043,7 +1053,7 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
     #[inline]
     fn iter(self) -> VecIterator<'a, T> {
         unsafe {
-            let p = vec::raw::to_ptr(self);
+            let p = self.as_ptr();
             if mem::size_of::<T>() == 0 {
                 VecIterator{ptr: p,
                             end: (p as uint + self.len()) as *T,
@@ -1155,6 +1165,12 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
     unsafe fn unsafe_ref(&self, index: uint) -> *T {
         self.repr().data.offset(index as int)
     }
+
+    #[inline]
+    fn as_ptr(&self) -> *T {
+        self.repr().data
+    }
+
 
     fn bsearch(&self, f: |&T| -> Ordering) -> Option<uint> {
         let mut base : uint = 0;
@@ -1571,8 +1587,8 @@ impl<T> OwnedVector<T> for ~[T] {
         let new_len = self_len + rhs_len;
         self.reserve_additional(rhs.len());
         unsafe { // Note: infallible.
-            let self_p = vec::raw::to_mut_ptr(*self);
-            let rhs_p = vec::raw::to_ptr(rhs);
+            let self_p = self.as_mut_ptr();
+            let rhs_p = rhs.as_ptr();
             ptr::copy_memory(ptr::mut_offset(self_p, self_len as int), rhs_p, rhs_len);
             self.set_len(new_len);
             rhs.set_len(0);
@@ -1648,7 +1664,7 @@ impl<T> OwnedVector<T> for ~[T] {
             self.set_len(next_ln);
 
             // Swap out the element we want from the end
-            let vp = raw::to_mut_ptr(*self);
+            let vp = self.as_mut_ptr();
             let vp = ptr::mut_offset(vp, (next_ln - 1) as int);
 
             Some(ptr::replace_ptr(vp, work_elt))
@@ -1900,7 +1916,7 @@ impl<T:Eq> OwnedEqVector<T> for ~[T] {
             if ln < 1 { return; }
 
             // Avoid bounds checks by using unsafe pointers.
-            let p = vec::raw::to_mut_ptr(*self);
+            let p = self.as_mut_ptr();
             let mut r = 1;
             let mut w = 1;
 
@@ -2038,6 +2054,17 @@ pub trait MutableVector<'a, T> {
 
     /// Returns an unsafe mutable pointer to the element in index
     unsafe fn unsafe_mut_ref(self, index: uint) -> *mut T;
+
+    /// Return an unsafe mutable pointer to the vector's buffer.
+    ///
+    /// The caller must ensure that the vector outlives the pointer this
+    /// function returns, or else it will end up pointing to garbage.
+    ///
+    /// Modifying the vector may cause its buffer to be reallocated, which
+    /// would also make any pointers to it invalid.
+    #[inline]
+    fn as_mut_ptr(self) -> *mut T;
+
     /// Unsafely sets the element in index to the value
     unsafe fn unsafe_set(self, index: uint, val: T);
 
@@ -2083,7 +2110,7 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
     #[inline]
     fn mut_iter(self) -> VecMutIterator<'a, T> {
         unsafe {
-            let p = vec::raw::to_mut_ptr(self);
+            let p = self.as_mut_ptr();
             if mem::size_of::<T>() == 0 {
                 VecMutIterator{ptr: p,
                                end: (p as uint + self.len()) as *mut T,
@@ -2160,6 +2187,11 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
     }
 
     #[inline]
+    fn as_mut_ptr(self) -> *mut T {
+        self.repr().data as *mut T
+    }
+
+    #[inline]
     unsafe fn unsafe_set(self, index: uint, val: T) {
         *self.unsafe_mut_ref(index) = val;
     }
@@ -2206,30 +2238,9 @@ pub mod raw {
     use cast;
     use option::Some;
     use ptr;
-    use mem;
     use unstable::intrinsics;
     use vec::{with_capacity, ImmutableVector, MutableVector};
     use unstable::raw::Slice;
-
-    /**
-     * Returns an unsafe pointer to the vector's buffer
-     *
-     * The caller must ensure that the vector outlives the pointer this
-     * function returns, or else it will end up pointing to garbage.
-     *
-     * Modifying the vector may cause its buffer to be reallocated, which
-     * would also make any pointers to it invalid.
-     */
-    #[inline]
-    pub fn to_ptr<T>(v: &[T]) -> *T {
-        v.repr().data
-    }
-
-    /** see `to_ptr()` */
-    #[inline]
-    pub fn to_mut_ptr<T>(v: &mut [T]) -> *mut T {
-        v.repr().data as *mut T
-    }
 
     /**
      * Form a slice from a pointer and length (as a number of units,
@@ -2755,7 +2766,7 @@ mod tests {
         unsafe {
             // Test on-stack copy-from-buf.
             let a = ~[1, 2, 3];
-            let mut ptr = raw::to_ptr(a);
+            let mut ptr = a.as_ptr();
             let b = from_buf(ptr, 3u);
             assert_eq!(b.len(), 3u);
             assert_eq!(b[0], 1);
@@ -2764,7 +2775,7 @@ mod tests {
 
             // Test on-heap copy-from-buf.
             let c = ~[1, 2, 3, 4, 5];
-            ptr = raw::to_ptr(c);
+            ptr = c.as_ptr();
             let d = from_buf(ptr, 5u);
             assert_eq!(d.len(), 5u);
             assert_eq!(d[0], 1);
@@ -4291,7 +4302,7 @@ mod bench {
         bh.iter(|| {
             let mut v: ~[u8] = vec::with_capacity(1024);
             unsafe {
-                let vp = vec::raw::to_mut_ptr(v);
+                let vp = v.as_mut_ptr();
                 ptr::set_memory(vp, 0, 1024);
                 v.set_len(1024);
             }
