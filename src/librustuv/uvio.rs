@@ -57,7 +57,7 @@ impl UvEventLoop {
         UvEventLoop {
             uvio: UvIoFactory {
                 loop_: loop_,
-                handle_pool: handle_pool,
+                handle_pool: Some(handle_pool),
             }
         }
     }
@@ -65,6 +65,10 @@ impl UvEventLoop {
 
 impl Drop for UvEventLoop {
     fn drop(&mut self) {
+        // Must first destroy the pool of handles before we destroy the loop
+        // because otherwise the contained async handle will be destroyed after
+        // the loop is free'd (use-after-free)
+        self.uvio.handle_pool.take();
         self.uvio.loop_.close();
     }
 }
@@ -117,14 +121,14 @@ fn test_callback_run_once() {
 
 pub struct UvIoFactory {
     loop_: Loop,
-    priv handle_pool: ~QueuePool,
+    priv handle_pool: Option<~QueuePool>,
 }
 
 impl UvIoFactory {
     pub fn uv_loop<'a>(&mut self) -> *uvll::uv_loop_t { self.loop_.handle }
 
     pub fn make_handle(&mut self) -> HomeHandle {
-        HomeHandle::new(self.id(), &mut *self.handle_pool)
+        HomeHandle::new(self.id(), &mut **self.handle_pool.get_mut_ref())
     }
 }
 
