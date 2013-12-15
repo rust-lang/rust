@@ -157,19 +157,19 @@ impl<T: Eq> Eq for RefCell<T> {
 }
 
 /// Wraps a borrowed reference to a value in a `RefCell` box.
-pub struct Ref<'box, T> {
-    priv parent: &'box RefCell<T>
+pub struct Ref<'b, T> {
+    priv parent: &'b RefCell<T>
 }
 
 #[unsafe_destructor]
-impl<'box, T> Drop for Ref<'box, T> {
+impl<'b, T> Drop for Ref<'b, T> {
     fn drop(&mut self) {
         assert!(self.parent.borrow != WRITING && self.parent.borrow != UNUSED);
         unsafe { self.parent.as_mut().borrow -= 1; }
     }
 }
 
-impl<'box, T> Ref<'box, T> {
+impl<'b, T> Ref<'b, T> {
     /// Retrieve an immutable reference to the stored value.
     #[inline]
     pub fn get<'a>(&'a self) -> &'a T {
@@ -178,19 +178,19 @@ impl<'box, T> Ref<'box, T> {
 }
 
 /// Wraps a mutable borrowed reference to a value in a `RefCell` box.
-pub struct RefMut<'box, T> {
-    priv parent: &'box mut RefCell<T>
+pub struct RefMut<'b, T> {
+    priv parent: &'b mut RefCell<T>
 }
 
 #[unsafe_destructor]
-impl<'box, T> Drop for RefMut<'box, T> {
+impl<'b, T> Drop for RefMut<'b, T> {
     fn drop(&mut self) {
         assert!(self.parent.borrow == WRITING);
         self.parent.borrow = UNUSED;
     }
 }
 
-impl<'box, T> RefMut<'box, T> {
+impl<'b, T> RefMut<'b, T> {
     /// Retrieve a mutable reference to the stored value.
     #[inline]
     pub fn get<'a>(&'a mut self) -> &'a mut T {

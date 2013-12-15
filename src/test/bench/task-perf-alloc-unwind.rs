@@ -46,7 +46,7 @@ type nillist = List<()>;
 // Filled with things that have to be unwound
 
 struct State {
-    box: @nillist,
+    managed: @nillist,
     unique: ~nillist,
     tuple: (@nillist, ~nillist),
     vec: ~[@nillist],
@@ -78,7 +78,7 @@ fn recurse_or_fail(depth: int, st: Option<State>) {
         let st = match st {
           None => {
             State {
-                box: @Nil,
+                managed: @Nil,
                 unique: ~Nil,
                 tuple: (@Nil, ~Nil),
                 vec: ~[@Nil],
@@ -87,7 +87,7 @@ fn recurse_or_fail(depth: int, st: Option<State>) {
           }
           Some(st) => {
             State {
-                box: @Cons((), st.box),
+                managed: @Cons((), st.managed),
                 unique: ~Cons((), @*st.unique),
                 tuple: (@Cons((), st.tuple.first()),
                         ~Cons((), @*st.tuple.second())),

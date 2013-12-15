@@ -78,10 +78,10 @@ pub unsafe fn closure_exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
     let total_size = get_box_size(size, (*td).align);
     let p = malloc_raw(total_size as uint);
 
-    let box = p as *mut raw::Box<()>;
-    (*box).type_desc = td;
+    let alloc = p as *mut raw::Box<()>;
+    (*alloc).type_desc = td;
 
-    box as *c_char
+    alloc as *c_char
 }
 
 // NB: Calls to free CANNOT be allowed to fail, as throwing an exception from

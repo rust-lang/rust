@@ -258,7 +258,7 @@ impl Type {
         Type::struct_(Type::box_header_fields(ctx), false)
     }
 
-    pub fn box(ctx: &CrateContext, ty: &Type) -> Type {
+    pub fn smart_ptr(ctx: &CrateContext, ty: &Type) -> Type {
         Type::struct_(Type::box_header_fields(ctx) + &[*ty], false)
     }
 
@@ -267,11 +267,11 @@ impl Type {
     }
 
     pub fn opaque_box(ctx: &CrateContext) -> Type {
-        Type::box(ctx, &Type::opaque())
+        Type::smart_ptr(ctx, &Type::opaque())
     }
 
     pub fn unique(ctx: &CrateContext, ty: &Type) -> Type {
-        Type::box(ctx, ty)
+        Type::smart_ptr(ctx, ty)
     }
 
     pub fn opaque_cbox_ptr(cx: &CrateContext) -> Type {

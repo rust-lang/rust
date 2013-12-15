@@ -16,8 +16,8 @@ enum taggy {
 }
 
 fn f() {
-    let box = @mut nil;
-    *box = cons(box);
+    let a_box = @mut nil;
+    *a_box = cons(a_box);
 }
 
 pub fn main() {
