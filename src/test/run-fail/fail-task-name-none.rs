@@ -13,8 +13,8 @@
 use std::task;
 
 fn main() {
-    do task::try {
+    task::try(proc() {
         fail!("test");
         1
-    }.unwrap()
+    }).unwrap()
 }

@@ -155,28 +155,28 @@ mod tests {
     use rt::comm::oneshot;
 
     fn smalltest(server: proc(UnixStream), client: proc(UnixStream)) {
-        do run_in_mt_newsched_task {
+        run_in_mt_newsched_task(proc() {
             let path1 = next_test_unix();
             let path2 = path1.clone();
             let (port, chan) = oneshot();
             let (client, server) = (client, server);
 
-            do spawntask {
+            spawntask(proc() {
                 let mut acceptor = UnixListener::bind(&path1).listen();
                 chan.send(());
                 server(acceptor.accept().unwrap());
-            }
+            });
 
-            do spawntask {
+            spawntask(proc() {
                 port.recv();
                 client(UnixStream::connect(&path2).unwrap());
-            }
-        }
+            });
+        });
     }
 
     #[test]
     fn bind_error() {
-        do run_in_mt_newsched_task {
+        run_in_mt_newsched_task(proc() {
             let mut called = false;
             io_error::cond.trap(|e| {
                 assert!(e.kind == PermissionDenied);
@@ -186,12 +186,12 @@ mod tests {
                 assert!(listener.is_none());
             });
             assert!(called);
-        }
+        });
     }
 
     #[test]
     fn connect_error() {
-        do run_in_mt_newsched_task {
+        run_in_mt_newsched_task(proc() {
             let mut called = false;
             io_error::cond.trap(|e| {
                 assert_eq!(e.kind, OtherIoError);
@@ -201,7 +201,7 @@ mod tests {
                 assert!(stream.is_none());
             });
             assert!(called);
-        }
+        });
     }
 
     #[test]
@@ -247,13 +247,13 @@ mod tests {
 
     #[test]
     fn accept_lots() {
-        do run_in_mt_newsched_task {
+        run_in_mt_newsched_task(proc() {
             let times = 10;
             let path1 = next_test_unix();
             let path2 = path1.clone();
             let (port, chan) = oneshot();
 
-            do spawntask {
+            spawntask(proc() {
                 let mut acceptor = UnixListener::bind(&path1).listen();
                 chan.send(());
                 times.times(|| {
@@ -262,24 +262,24 @@ mod tests {
                     client.read(buf);
                     assert_eq!(buf[0], 100);
                 })
-            }
+            });
 
-            do spawntask {
+            spawntask(proc() {
                 port.recv();
                 times.times(|| {
                     let mut stream = UnixStream::connect(&path2);
                     stream.write([100]);
                 })
-            }
-        }
+            });
+        });
     }
 
     #[test]
     fn path_exists() {
-        do run_in_mt_newsched_task {
+        run_in_mt_newsched_task(proc() {
             let path = next_test_unix();
             let _acceptor = UnixListener::bind(&path).listen();
             assert!(path.exists());
-        }
+        });
     }
 }

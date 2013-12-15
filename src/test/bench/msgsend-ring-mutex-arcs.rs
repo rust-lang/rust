@@ -91,9 +91,9 @@ fn main() {
         //error!("spawning %?", i);
         let (new_chan, num_port) = init();
         let num_chan_2 = num_chan.clone();
-        let new_future = do Future::spawn() {
+        let new_future = Future::spawn(proc() {
             thread_ring(i, msg_per_task, num_chan_2, num_port)
-        };
+        });
         futures.push(new_future);
         num_chan = new_chan;
     };

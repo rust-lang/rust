@@ -28,23 +28,23 @@ fn ping_pong_bench(n: uint, m: uint) {
         // Create a stream B->A
         let (pb,cb) = stream::<()>();
 
-        do spawntask_later() || {
+        spawntask_later(proc() {
             let chan = ca;
             let port = pb;
             n.times(|| {
                 chan.send(());
                 port.recv();
             })
-        }
+        });
 
-        do spawntask_later() || {
+        spawntask_later(proc() {
             let chan = cb;
             let port = pa;
             n.times(|| {
                 port.recv();
                 chan.send(());
             })
-        }
+        });
     }
 
     m.times(|| {

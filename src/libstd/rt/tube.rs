@@ -97,7 +97,7 @@ mod test {
 
     #[test]
     fn simple_test() {
-        do run_in_newsched_task {
+        run_in_newsched_task(proc() {
             let mut tube: Tube<int> = Tube::new();
             let mut tube_clone = Some(tube.clone());
             let sched: ~Scheduler = Local::take();
@@ -108,35 +108,35 @@ mod test {
             });
 
             assert!(tube.recv() == 1);
-        }
+        });
     }
 
     #[test]
     fn blocking_test() {
-        do run_in_newsched_task {
+        run_in_newsched_task(proc() {
             let mut tube: Tube<int> = Tube::new();
             let mut tube_clone = Some(tube.clone());
             let sched: ~Scheduler = Local::take();
             sched.deschedule_running_task_and_then(|sched, task| {
                 let tube_clone = tube_clone.take_unwrap();
-                do sched.event_loop.callback {
+                sched.event_loop.callback(proc() {
                     let mut tube_clone = tube_clone;
                     // The task should be blocked on this now and
                     // sending will wake it up.
                     tube_clone.send(1);
-                }
+                });
                 sched.enqueue_blocked_task(task);
             });
 
             assert!(tube.recv() == 1);
-        }
+        });
     }
 
     #[test]
     fn many_blocking_test() {
         static MAX: int = 100;
 
-        do run_in_newsched_task {
+        run_in_newsched_task(proc() {
             let mut tube: Tube<int> = Tube::new();
             let mut tube_clone = Some(tube.clone());
             let sched: ~Scheduler = Local::take();
@@ -149,13 +149,13 @@ mod test {
                     }
 
                     let mut sched = Local::borrow(None::<Scheduler>);
-                    do sched.get().event_loop.callback {
+                    sched.get().event_loop.callback(proc() {
                         let mut tube = tube;
                         // The task should be blocked on this now and
                         // sending will wake it up.
                         tube.send(i);
                         callback_send(tube, i + 1);
-                    }
+                    });
                 }
 
                 sched.enqueue_blocked_task(task);
@@ -165,6 +165,6 @@ mod test {
                 let j = tube.recv();
                 assert!(j == i);
             }
-        }
+        });
     }
 }

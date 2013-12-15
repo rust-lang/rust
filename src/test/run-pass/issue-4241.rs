@@ -45,7 +45,7 @@ priv fn parse_data(len: uint, io: @io::Reader) -> Result {
 
 priv fn parse_list(len: uint, io: @io::Reader) -> Result {
   let mut list: ~[Result] = ~[];
-    do len.times {
+    len.times(|| {
     let v =
         match io.read_char() {
         '$' => parse_bulk(io),
@@ -53,7 +53,7 @@ priv fn parse_list(len: uint, io: @io::Reader) -> Result {
          _ => fail!()
     };
     list.push(v);
-    }
+    });
   return List(list);
 }
 
@@ -119,11 +119,11 @@ fn query(cmd: ~[~str], sb: TcpSocketBuf) -> Result {
 
 fn query2(cmd: ~[~str]) -> Result {
   let _cmd = cmd_to_str(cmd);
-    do io::with_str_reader(~"$3\r\nXXX\r\n") |sb| {
+    io::with_str_reader(~"$3\r\nXXX\r\n", |sb| {
     let res = parse_response(@sb as @io::Reader);
     println!("{:?}", res);
     res
-    }
+    });
 }
 
 

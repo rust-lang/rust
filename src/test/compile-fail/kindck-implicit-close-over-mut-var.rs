@@ -15,9 +15,9 @@ fn user(_i: int) {}
 fn foo() {
     // Here, i is *moved* into the closure: Not actually OK
     let mut i = 0;
-    do task::spawn {
+    task::spawn(proc() {
         user(i); //~ ERROR mutable variables cannot be implicitly captured
-    }
+    });
 }
 
 fn bar() {
@@ -25,9 +25,9 @@ fn bar() {
     // is mutable: bad
     let mut i = 0;
     while i < 10 {
-        do task::spawn {
+        task::spawn(proc() {
             user(i); //~ ERROR mutable variables cannot be implicitly captured
-        }
+        });
         i += 1;
     }
 }
@@ -38,9 +38,9 @@ fn car() {
     while i < 10 {
         {
             let i = i;
-            do task::spawn {
+            task::spawn(proc() {
                 user(i);
-            }
+            });
         }
         i += 1;
     }

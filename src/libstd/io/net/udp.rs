@@ -112,7 +112,7 @@ mod test {
 
     #[test]  #[ignore]
     fn bind_error() {
-        do run_in_mt_newsched_task {
+        run_in_mt_newsched_task(proc() {
             let mut called = false;
             io_error::cond.trap(|e| {
                 assert!(e.kind == PermissionDenied);
@@ -123,17 +123,17 @@ mod test {
                 assert!(socket.is_none());
             });
             assert!(called);
-        }
+        });
     }
 
     #[test]
     fn socket_smoke_test_ip4() {
-        do run_in_mt_newsched_task {
+        run_in_mt_newsched_task(proc() {
             let server_ip = next_test_ip4();
             let client_ip = next_test_ip4();
             let (port, chan) = oneshot();
 
-            do spawntask {
+            spawntask(proc() {
                 match UdpSocket::bind(server_ip) {
                     Some(ref mut server) => {
                         chan.send(());
@@ -149,9 +149,9 @@ mod test {
                     }
                     None => fail!()
                 }
-            }
+            });
 
-            do spawntask {
+            spawntask(proc() {
                 match UdpSocket::bind(client_ip) {
                     Some(ref mut client) => {
                         port.recv();
@@ -159,18 +159,18 @@ mod test {
                     }
                     None => fail!()
                 }
-            }
-        }
+            });
+        });
     }
 
     #[test]
     fn socket_smoke_test_ip6() {
-        do run_in_mt_newsched_task {
+        run_in_mt_newsched_task(proc() {
             let server_ip = next_test_ip6();
             let client_ip = next_test_ip6();
             let (port, chan) = oneshot();
 
-            do spawntask {
+            spawntask(proc() {
                 match UdpSocket::bind(server_ip) {
                     Some(ref mut server) => {
                         chan.send(());
@@ -186,9 +186,9 @@ mod test {
                     }
                     None => fail!()
                 }
-            }
+            });
 
-            do spawntask {
+            spawntask(proc() {
                 match UdpSocket::bind(client_ip) {
                     Some(ref mut client) => {
                         port.recv();
@@ -196,18 +196,18 @@ mod test {
                     }
                     None => fail!()
                 }
-            }
-        }
+            });
+        });
     }
 
     #[test]
     fn stream_smoke_test_ip4() {
-        do run_in_mt_newsched_task {
+        run_in_mt_newsched_task(proc() {
             let server_ip = next_test_ip4();
             let client_ip = next_test_ip4();
             let (port, chan) = oneshot();
 
-            do spawntask {
+            spawntask(proc() {
                 match UdpSocket::bind(server_ip) {
                     Some(server) => {
                         let server = ~server;
@@ -224,9 +224,9 @@ mod test {
                     }
                     None => fail!()
                 }
-            }
+            });
 
-            do spawntask {
+            spawntask(proc() {
                 match UdpSocket::bind(client_ip) {
                     Some(client) => {
                         let client = ~client;
@@ -236,18 +236,18 @@ mod test {
                     }
                     None => fail!()
                 }
-            }
-        }
+            });
+        });
     }
 
     #[test]
     fn stream_smoke_test_ip6() {
-        do run_in_mt_newsched_task {
+        run_in_mt_newsched_task(proc() {
             let server_ip = next_test_ip6();
             let client_ip = next_test_ip6();
             let (port, chan) = oneshot();
 
-            do spawntask {
+            spawntask(proc() {
                 match UdpSocket::bind(server_ip) {
                     Some(server) => {
                         let server = ~server;
@@ -264,9 +264,9 @@ mod test {
                     }
                     None => fail!()
                 }
-            }
+            });
 
-            do spawntask {
+            spawntask(proc() {
                 match UdpSocket::bind(client_ip) {
                     Some(client) => {
                         let client = ~client;
@@ -276,14 +276,14 @@ mod test {
                     }
                     None => fail!()
                 }
-            }
-        }
+            });
+        });
     }
 
     #[cfg(test)]
     fn socket_name(addr: SocketAddr) {
-        do run_in_mt_newsched_task {
-            do spawntask {
+        run_in_mt_newsched_task(proc() {
+            spawntask(proc() {
                 let server = UdpSocket::bind(addr);
 
                 assert!(server.is_some());
@@ -295,8 +295,8 @@ mod test {
                 assert!(so_name.is_some());
                 assert_eq!(addr, so_name.unwrap());
 
-            }
-        }
+            });
+        });
     }
 
     #[test]

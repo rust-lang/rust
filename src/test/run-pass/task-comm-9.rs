@@ -30,9 +30,9 @@ fn test00() {
 
     let mut builder = task::task();
     let result = builder.future_result();
-    do builder.spawn {
+    builder.spawn(proc() {
         test00_start(&ch, number_of_messages);
-    }
+    });
 
     let mut i: int = 0;
     while i < number_of_messages {

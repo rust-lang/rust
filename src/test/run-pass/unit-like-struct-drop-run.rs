@@ -21,9 +21,9 @@ impl Drop for Foo {
 }
 
 pub fn main() {
-    let x = do task::try {
+    let x = task::try(proc() {
         let _b = Foo;
-    };
+    });
 
     let s = x.unwrap_err().move::<&'static str>().unwrap();
     assert_eq!(s.as_slice(), "This failure should happen.");

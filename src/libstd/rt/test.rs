@@ -64,15 +64,15 @@ pub fn new_test_sched() -> Scheduler {
 }
 
 pub fn run_in_uv_task(f: proc()) {
-    do run_in_bare_thread {
+    run_in_bare_thread(proc() {
         run_in_uv_task_core(f);
-    }
+    });
 }
 
 pub fn run_in_newsched_task(f: proc()) {
-    do run_in_bare_thread {
+    run_in_bare_thread(proc() {
         run_in_newsched_task_core(f);
-    }
+    });
 }
 
 pub fn run_in_uv_task_core(f: proc()) {
@@ -203,7 +203,7 @@ pub fn run_in_mt_newsched_task(f: proc()) {
     // see comment in other function (raising fd limits)
     prepare_for_lots_of_tests();
 
-    do run_in_bare_thread {
+    run_in_bare_thread(proc() {
         let nthreads = match os::getenv("RUST_RT_TEST_THREADS") {
             Some(nstr) => FromStr::from_str(nstr).unwrap(),
             None => {
@@ -259,21 +259,21 @@ pub fn run_in_mt_newsched_task(f: proc()) {
         let main_thread = {
             let sched = scheds.pop();
             let main_task = main_task;
-            do Thread::start {
+            Thread::start(proc() {
                 sched.bootstrap(main_task);
-            }
+            })
         };
         threads.push(main_thread);
 
         while !scheds.is_empty() {
             let mut sched = scheds.pop();
-            let bootstrap_task = ~do Task::new_root(&mut sched.stack_pool, None) || {
+            let bootstrap_task = ~Task::new_root(&mut sched.stack_pool, None, proc() {
                 rtdebug!("bootstrapping non-primary scheduler");
-            };
+            });
             let sched = sched;
-            let thread = do Thread::start {
+            let thread = Thread::start(proc() {
                 sched.bootstrap(bootstrap_task);
-            };
+            });
 
             threads.push(thread);
         }
@@ -282,7 +282,7 @@ pub fn run_in_mt_newsched_task(f: proc()) {
         for thread in threads.move_iter() {
             thread.join();
         }
-    }
+    });
 
 }
 
@@ -328,22 +328,22 @@ pub fn spawntask_try(f: proc()) -> Result<(),()> {
 
 /// Spawn a new task in a new scheduler and return a thread handle.
 pub fn spawntask_thread(f: proc()) -> Thread<()> {
-    let thread = do Thread::start {
+    let thread = Thread::start(proc() {
         run_in_newsched_task_core(f);
-    };
+    });
 
     return thread;
 }
 
 /// Get a ~Task for testing purposes other than actually scheduling it.
 pub fn with_test_task(blk: proc(~Task) -> ~Task) {
-    do run_in_bare_thread {
+    run_in_bare_thread(proc() {
         let mut sched = ~new_test_sched();
         let task = blk(~Task::new_root(&mut sched.stack_pool,
                                        None,
                                        proc() {}));
         cleanup_task(task);
-    }
+    });
 }
 
 /// Use to cleanup tasks created for testing but not "run".

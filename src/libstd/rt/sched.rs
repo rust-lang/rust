@@ -931,10 +931,10 @@ mod test {
     fn trivial_run_in_newsched_task_test() {
         let mut task_ran = false;
         let task_ran_ptr: *mut bool = &mut task_ran;
-        do run_in_newsched_task || {
+        run_in_newsched_task(proc() {
             unsafe { *task_ran_ptr = true };
             rtdebug!("executed from the new scheduler")
-        }
+        });
         assert!(task_ran);
     }
 
@@ -943,13 +943,13 @@ mod test {
         let total = 10;
         let mut task_run_count = 0;
         let task_run_count_ptr: *mut uint = &mut task_run_count;
-        do run_in_newsched_task || {
+        run_in_newsched_task(proc() {
             for _ in range(0u, total) {
-                do spawntask || {
+                spawntask(proc() {
                     unsafe { *task_run_count_ptr = *task_run_count_ptr + 1};
-                }
+                });
             }
-        }
+        });
         assert!(task_run_count == total);
     }
 
@@ -957,17 +957,17 @@ mod test {
     fn multiple_task_nested_test() {
         let mut task_run_count = 0;
         let task_run_count_ptr: *mut uint = &mut task_run_count;
-        do run_in_newsched_task || {
-            do spawntask || {
+        run_in_newsched_task(proc() {
+            spawntask(proc() {
                 unsafe { *task_run_count_ptr = *task_run_count_ptr + 1 };
-                do spawntask || {
+                spawntask(proc() {
                     unsafe { *task_run_count_ptr = *task_run_count_ptr + 1 };
-                    do spawntask || {
+                    spawntask(proc() {
                         unsafe { *task_run_count_ptr = *task_run_count_ptr + 1 };
-                    }
-                }
-            }
-        }
+                    });
+                });
+            });
+        });
         assert!(task_run_count == 3);
     }
 
@@ -975,21 +975,21 @@ mod test {
     // pointer to the scheduler struct.
     #[test]
     fn simple_sched_id_test() {
-        do run_in_bare_thread {
+        run_in_bare_thread(proc() {
             let sched = ~new_test_uv_sched();
             assert!(to_uint(sched) == sched.sched_id());
-        }
+        });
     }
 
     // Compare two scheduler ids that are different, this should never
     // fail but may catch a mistake someday.
     #[test]
     fn compare_sched_id_test() {
-        do run_in_bare_thread {
+        run_in_bare_thread(proc() {
             let sched_one = ~new_test_uv_sched();
             let sched_two = ~new_test_uv_sched();
             assert!(sched_one.sched_id() != sched_two.sched_id());
-        }
+        });
     }
 
 
@@ -997,18 +997,18 @@ mod test {
     // home scheduler notices that it is home.
     #[test]
     fn test_home_sched() {
-        do run_in_bare_thread {
+        run_in_bare_thread(proc() {
             let mut task_ran = false;
             let task_ran_ptr: *mut bool = &mut task_ran;
 
             let mut sched = ~new_test_uv_sched();
             let sched_handle = sched.make_handle();
 
-            let mut task = ~do Task::new_root_homed(&mut sched.stack_pool, None,
-                                                Sched(sched_handle)) {
+            let mut task = ~Task::new_root_homed(&mut sched.stack_pool, None,
+                                                 Sched(sched_handle), proc() {
                 unsafe { *task_ran_ptr = true };
                 assert!(Task::on_appropriate_sched());
-            };
+            });
 
             let on_exit: proc(UnwindResult) = proc(exit_status) {
                 rtassert!(exit_status.is_success())
@@ -1016,7 +1016,7 @@ mod test {
             task.death.on_exit = Some(on_exit);
 
             sched.bootstrap(task);
-        }
+        });
     }
 
     // An advanced test that checks all four possible states that a
@@ -1029,7 +1029,7 @@ mod test {
         use borrow;
         use rt::comm::*;
 
-        do run_in_bare_thread {
+        run_in_bare_thread(proc() {
 
             let sleepers = SleeperList::new();
             let mut pool = BufferPool::new();
@@ -1068,30 +1068,30 @@ mod test {
             //   3) task not homed, sched requeues
             //   4) task not home, send home
 
-            let task1 = ~do Task::new_root_homed(&mut special_sched.stack_pool, None,
-                                                 Sched(t1_handle)) || {
+            let task1 = ~Task::new_root_homed(&mut special_sched.stack_pool, None,
+                                              Sched(t1_handle), proc() {
                 rtassert!(Task::on_appropriate_sched());
-            };
+            });
             rtdebug!("task1 id: **{}**", borrow::to_uint(task1));
 
-            let task2 = ~do Task::new_root(&mut normal_sched.stack_pool, None) {
+            let task2 = ~Task::new_root(&mut normal_sched.stack_pool, None, proc() {
                 rtassert!(Task::on_appropriate_sched());
-            };
+            });
 
-            let task3 = ~do Task::new_root(&mut normal_sched.stack_pool, None) {
+            let task3 = ~Task::new_root(&mut normal_sched.stack_pool, None, proc() {
                 rtassert!(Task::on_appropriate_sched());
-            };
+            });
 
-            let task4 = ~do Task::new_root_homed(&mut special_sched.stack_pool, None,
-                                                 Sched(t4_handle)) {
+            let task4 = ~Task::new_root_homed(&mut special_sched.stack_pool, None,
+                                              Sched(t4_handle), proc() {
                 rtassert!(Task::on_appropriate_sched());
-            };
+            });
             rtdebug!("task4 id: **{}**", borrow::to_uint(task4));
 
             // Signal from the special task that we are done.
             let (port, chan) = oneshot::<()>();
 
-            let normal_task = ~do Task::new_root(&mut normal_sched.stack_pool, None) {
+            let normal_task = ~Task::new_root(&mut normal_sched.stack_pool, None, proc() {
                 rtdebug!("*about to submit task2*");
                 Scheduler::run_task(task2);
                 rtdebug!("*about to submit task4*");
@@ -1102,36 +1102,36 @@ mod test {
                 nh.send(Shutdown);
                 let mut sh = special_handle;
                 sh.send(Shutdown);
-            };
+            });
 
             rtdebug!("normal task: {}", borrow::to_uint(normal_task));
 
-            let special_task = ~do Task::new_root(&mut special_sched.stack_pool, None) {
+            let special_task = ~Task::new_root(&mut special_sched.stack_pool, None, proc() {
                 rtdebug!("*about to submit task1*");
                 Scheduler::run_task(task1);
                 rtdebug!("*about to submit task3*");
                 Scheduler::run_task(task3);
                 rtdebug!("*done with special_task*");
                 chan.send(());
-            };
+            });
 
             rtdebug!("special task: {}", borrow::to_uint(special_task));
 
             let normal_sched = normal_sched;
-            let normal_thread = do Thread::start {
+            let normal_thread = Thread::start(proc() {
                 normal_sched.bootstrap(normal_task);
                 rtdebug!("finished with normal_thread");
-            };
+            });
 
             let special_sched = special_sched;
-            let special_thread = do Thread::start {
+            let special_thread = Thread::start(proc() {
                 special_sched.bootstrap(special_task);
                 rtdebug!("finished with special_sched");
-            };
+            });
 
             normal_thread.join();
             special_thread.join();
-        }
+        });
     }
 
     #[test]
@@ -1151,37 +1151,37 @@ mod test {
         // in the work queue, but we are performing I/O, that once we do put
         // something in the work queue again the scheduler picks it up and doesn't
         // exit before emptying the work queue
-        do run_in_uv_task {
-            do spawntask {
+        run_in_uv_task(proc() {
+            spawntask(proc() {
                 timer::sleep(10);
-            }
-        }
+            });
+        });
     }
 
     #[test]
     fn handle() {
         use rt::comm::*;
 
-        do run_in_bare_thread {
+        run_in_bare_thread(proc() {
             let (port, chan) = oneshot::<()>();
 
-            let thread_one = do Thread::start {
+            let thread_one = Thread::start(proc() {
                 let chan = chan;
-                do run_in_newsched_task_core {
+                run_in_newsched_task_core(proc() {
                     chan.send(());
-                }
-            };
+                });
+            });
 
-            let thread_two = do Thread::start {
+            let thread_two = Thread::start(proc() {
                 let port = port;
-                do run_in_newsched_task_core {
+                run_in_newsched_task_core(proc() {
                     port.recv();
-                }
-            };
+                });
+            });
 
             thread_two.join();
             thread_one.join();
-        }
+        });
     }
 
     // A regression test that the final message is always handled.
@@ -1192,7 +1192,7 @@ mod test {
         use rt::stack::StackPool;
         use rt::sched::{Shutdown, TaskFromFriend};
 
-        do run_in_bare_thread {
+        run_in_bare_thread(proc() {
             stress_factor().times(|| {
                 let sleepers = SleeperList::new();
                 let mut pool = BufferPool::new();
@@ -1207,14 +1207,14 @@ mod test {
                 let mut handle = sched.make_handle();
 
                 let sched = sched;
-                let thread = do Thread::start {
+                let thread = Thread::start(proc() {
                     let mut sched = sched;
                     let bootstrap_task =
                         ~Task::new_root(&mut sched.stack_pool,
                                         None,
                                         proc()());
                     sched.bootstrap(bootstrap_task);
-                };
+                });
 
                 let mut stack_pool = StackPool::new();
                 let task = ~Task::new_root(&mut stack_pool, None, proc()());
@@ -1225,7 +1225,7 @@ mod test {
 
                 thread.join();
             })
-        }
+        });
     }
 
     #[test]
@@ -1235,20 +1235,20 @@ mod test {
         use vec::OwnedVector;
         use container::Container;
 
-        do run_in_mt_newsched_task {
+        run_in_mt_newsched_task(proc() {
             let mut ports = ~[];
             10.times(|| {
                 let (port, chan) = oneshot();
-                do spawntask_later {
+                spawntask_later(proc() {
                     chan.send(());
-                }
+                });
                 ports.push(port);
             });
 
             while !ports.is_empty() {
                 ports.pop().recv();
             }
-        }
+        });
     }
 
      #[test]
@@ -1256,7 +1256,7 @@ mod test {
         use rt::comm::*;
         use comm::{GenericPort, GenericChan};
 
-        do run_in_mt_newsched_task {
+        run_in_mt_newsched_task(proc() {
             let (end_port, end_chan) = oneshot();
 
             let n_tasks = 10;
@@ -1270,20 +1270,20 @@ mod test {
                 let (next_p, ch) = stream();
                 let imm_i = i;
                 let imm_p = p;
-                do spawntask_random {
+                spawntask_random(proc() {
                     roundtrip(imm_i, n_tasks, &imm_p, &ch);
-                };
+                });
                 p = next_p;
                 i += 1;
             }
             let imm_p = p;
             let imm_ch = ch1;
-            do spawntask_random {
+            spawntask_random(proc() {
                 roundtrip(1, n_tasks, &imm_p, &imm_ch);
-            }
+            });
 
             end_port.recv();
-        }
+        });
 
         fn roundtrip(id: int, n_tasks: int,
                      p: &Port<(int, ChanOne<()>)>, ch: &Chan<(int, ChanOne<()>)>) {
@@ -1312,7 +1312,7 @@ mod test {
 
         // Regression test that the `start` task entrypoint can
         // contain dtors that use task resources
-        do run_in_newsched_task {
+        run_in_newsched_task(proc() {
             struct S { field: () }
 
             impl Drop for S {
@@ -1323,10 +1323,10 @@ mod test {
 
             let s = S { field: () };
 
-            do spawntask {
+            spawntask(proc() {
                 let _ss = &s;
-            }
-        }
+            });
+        });
     }
 
     // FIXME: #9407: xfail-test
@@ -1334,17 +1334,17 @@ mod test {
         use rt::comm::oneshot;
 
         stress_factor().times(|| {
-            do run_in_mt_newsched_task {
+            run_in_mt_newsched_task(proc() {
                 let (port, chan) = oneshot();
 
                 // This task should not be able to starve the sender;
                 // The sender should get stolen to another thread.
-                do spawntask {
+                spawntask(proc() {
                     while !port.peek() { }
-                }
+                });
 
                 chan.send(());
-            }
+            });
         })
     }
 
@@ -1353,20 +1353,20 @@ mod test {
         use rt::comm::oneshot;
 
         stress_factor().times(|| {
-            do run_in_newsched_task {
+            run_in_newsched_task(proc() {
                 let (port, chan) = oneshot();
                 let (_port2, chan2) = stream();
 
                 // This task should not be able to starve the other task.
                 // The sends should eventually yield.
-                do spawntask {
+                spawntask(proc() {
                     while !port.peek() {
                         chan2.send(());
                     }
-                }
+                });
 
                 chan.send(());
-            }
+            });
         })
     }
 
@@ -1377,10 +1377,10 @@ mod test {
         use task::{spawn, spawn_sched, SingleThreaded, deschedule};
         use num::Times;
 
-        do spawn_sched(SingleThreaded) {
+        spawn_sched(SingleThreaded, proc() {
             5.times(|| { deschedule(); })
-        }
-        do spawn { }
-        do spawn { }
+        });
+        spawn(proc() { });
+        spawn(proc() { });
     }
 }

@@ -12,15 +12,14 @@ enum Msg
 }
 
 fn foo(name: ~str, samples_chan: Chan<Msg>) {
-    do task::spawn
-    {
+    task::spawn(proc() {
         let callback: SamplesFn = proc(buffer) {
             for i in range(0u, buffer.len()) {
                 error!("{}: {}", i, buffer[i])
             }
         };
         samples_chan.send(GetSamples(name.clone(), callback));
-    };
+    });
 }
 
 pub fn main() {}

@@ -87,9 +87,9 @@ pub fn select<A: Select>(ports: &mut [A]) -> uint {
             }
 
             let c = c.take_unwrap();
-            do sched.event_loop.callback {
+            sched.event_loop.callback(proc() {
                 c.send_deferred(())
-            }
+            });
         })
     }
 
@@ -191,7 +191,7 @@ mod test {
 
     #[test]
     fn select_one() {
-        do run_in_uv_task { select_helper(1, [0]) }
+        run_in_uv_task(proc() { select_helper(1, [0]) });
     }
 
     #[test]
@@ -199,14 +199,14 @@ mod test {
         // NB. I would like to have a test that tests the first one that is
         // ready is the one that's returned, but that can't be reliably tested
         // with the randomized behaviour of optimistic_check.
-        do run_in_uv_task { select_helper(2, [1]) }
-        do run_in_uv_task { select_helper(2, [0]) }
-        do run_in_uv_task { select_helper(2, [1,0]) }
+        run_in_uv_task(proc() { select_helper(2, [1]) });
+        run_in_uv_task(proc() { select_helper(2, [0]) });
+        run_in_uv_task(proc() { select_helper(2, [1,0]) });
     }
 
     #[test]
     fn select_a_lot() {
-        do run_in_uv_task { select_helper(12, [7,8,9]) }
+        run_in_uv_task(proc() { select_helper(12, [7,8,9]) });
     }
 
     #[test]
@@ -216,7 +216,7 @@ mod test {
 
         // Sends 10 buffered packets, and uses select to retrieve them all.
         // Puts the port in a different spot in the vector each time.
-        do run_in_uv_task {
+        run_in_uv_task(proc() {
             let (ports, _) = unzip(range(0u, 10).map(|_| stream::<int>()));
             let (port, chan) = stream();
             10.times(|| { chan.send(31337); });
@@ -232,21 +232,21 @@ mod test {
                 // NB. Not recv(), because optimistic_check randomly fails.
                 assert!(port.get_ref().recv_ready().unwrap() == 31337);
             }
-        }
+        });
     }
 
     #[test]
     fn select_simple() {
-        do run_in_uv_task {
+        run_in_uv_task(proc() {
             select_helper(2, [1])
-        }
+        });
     }
 
     /* blocking select tests */
 
     #[test]
     fn select_blocking() {
-        do run_in_uv_task {
+        run_in_uv_task(proc() {
             let (p1,_c) = oneshot();
             let (p2,c2) = oneshot();
             let mut ports = [p1,p2];
@@ -254,18 +254,18 @@ mod test {
             let (p3,c3) = oneshot();
             let (p4,c4) = oneshot();
 
-            do task::spawn {
+            task::spawn(proc() {
                 p3.recv();   // handshake parent
                 c4.send(()); // normal receive
                 task::deschedule();
                 c2.send(()); // select receive
-            }
+            });
 
             // Try to block before child sends on c2.
             c3.send(());
             p4.recv();
             assert!(select(ports) == 1);
-        }
+        });
     }
 
     #[test]
@@ -280,27 +280,27 @@ mod test {
         fn select_racing_senders_helper(send_on_chans: ~[uint]) {
             use rt::test::spawntask_random;
 
-            do run_in_uv_task {
+            run_in_uv_task(proc() {
                 // A bit of stress, since ordinarily this is just smoke and mirrors.
                 4.times(|| {
                     let send_on_chans = send_on_chans.clone();
-                    do task::spawn {
+                    task::spawn(proc() {
                         let mut ports = ~[];
                         for i in range(0u, NUM_CHANS) {
                             let (p,c) = oneshot();
                             ports.push(p);
                             if send_on_chans.contains(&i) {
-                                do spawntask_random {
+                                spawntask_random(proc() {
                                     task::deschedule();
                                     c.send(());
-                                }
+                                });
                             }
                         }
                         // nondeterministic result, but should succeed
                         select(ports);
-                    }
+                    });
                 })
-            }
+            });
         }
     }
 }

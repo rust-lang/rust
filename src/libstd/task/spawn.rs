@@ -133,23 +133,23 @@ pub fn spawn_raw(mut opts: TaskOpts, f: proc()) {
             // Create a task that will later be used to join with the new scheduler
             // thread when it is ready to terminate
             let (thread_port, thread_chan) = oneshot();
-            let join_task = do Task::build_child(None) {
+            let join_task = Task::build_child(None, proc() {
                 debug!("running join task");
                 let thread: Thread<()> = thread_port.recv();
                 thread.join();
-            };
+            });
 
             // Put the scheduler into another thread
             let orig_sched_handle = (*sched).make_handle();
 
             let new_sched = new_sched;
-            let thread = do Thread::start {
+            let thread = Thread::start(proc() {
                 let mut new_sched = new_sched;
                 let mut orig_sched_handle = orig_sched_handle;
 
-                let bootstrap_task = ~do Task::new_root(&mut new_sched.stack_pool, None) || {
+                let bootstrap_task = ~Task::new_root(&mut new_sched.stack_pool, None, proc() {
                     debug!("boostrapping a 1:1 scheduler");
-                };
+                });
                 new_sched.bootstrap(bootstrap_task);
 
                 // Now tell the original scheduler to join with this thread
@@ -160,7 +160,7 @@ pub fn spawn_raw(mut opts: TaskOpts, f: proc()) {
                 // because this code isn't running in a task and message passing doesn't
                 // work outside of tasks. Hence we're sending a scheduler message
                 // to execute a new task directly to a scheduler.
-            };
+            });
 
             // Give the thread handle to the join task
             thread_chan.send(thread);
@@ -188,9 +188,9 @@ pub fn spawn_raw(mut opts: TaskOpts, f: proc()) {
 #[test]
 fn test_spawn_raw_simple() {
     let (po, ch) = stream();
-    do spawn_raw(default_task_opts()) {
+    spawn_raw(default_task_opts(), proc() {
         ch.send(());
-    }
+    });
     po.recv();
 }
 
@@ -201,9 +201,9 @@ fn test_spawn_raw_unsupervise() {
         notify_chan: None,
         .. default_task_opts()
     };
-    do spawn_raw(opts) {
+    spawn_raw(opts, proc() {
         fail!();
-    }
+    });
 }
 
 #[test]
@@ -214,8 +214,8 @@ fn test_spawn_raw_notify_success() {
         notify_chan: Some(notify_ch),
         .. default_task_opts()
     };
-    do spawn_raw(opts) {
-    }
+    spawn_raw(opts, proc() {
+    });
     assert!(notify_po.recv().is_success());
 }
 
@@ -229,8 +229,8 @@ fn test_spawn_raw_notify_failure() {
         notify_chan: Some(notify_ch),
         .. default_task_opts()
     };
-    do spawn_raw(opts) {
+    spawn_raw(opts, proc() {
         fail!();
-    }
+    });
     assert!(notify_po.recv().is_failure());
 }

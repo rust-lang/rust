@@ -355,14 +355,14 @@ mod tests {
     fn test_tls_multitask() {
         static my_key: Key<@~str> = &Key;
         set(my_key, @~"parent data");
-        do task::spawn {
+        task::spawn(proc() {
             // TLS shouldn't carry over.
             assert!(get(my_key, |k| k.map(|k| *k)).is_none());
             set(my_key, @~"child data");
             assert!(*(get(my_key, |k| k.map(|k| *k)).unwrap()) ==
                     ~"child data");
             // should be cleaned up for us
-        }
+        });
         // Must work multiple times
         assert!(*(get(my_key, |k| k.map(|k| *k)).unwrap()) == ~"parent data");
         assert!(*(get(my_key, |k| k.map(|k| *k)).unwrap()) == ~"parent data");
@@ -414,9 +414,9 @@ mod tests {
         // subsequent upcall (esp. for logging, think vsnprintf) would run on
         // a stack smaller than 1 MB.
         static my_key: Key<@~str> = &Key;
-        do task::spawn {
+        task::spawn(proc() {
             set(my_key, @~"hax");
-        }
+        });
     }
 
     #[test]
@@ -424,11 +424,11 @@ mod tests {
         static str_key: Key<@~str> = &Key;
         static box_key: Key<@@()> = &Key;
         static int_key: Key<@int> = &Key;
-        do task::spawn {
+        task::spawn(proc() {
             set(str_key, @~"string data");
             set(box_key, @@());
             set(int_key, @42);
-        }
+        });
     }
 
     #[test]
@@ -436,14 +436,14 @@ mod tests {
         static str_key: Key<@~str> = &Key;
         static box_key: Key<@@()> = &Key;
         static int_key: Key<@int> = &Key;
-        do task::spawn {
+        task::spawn(proc() {
             set(str_key, @~"string data");
             set(int_key, @42);
             // This could cause a segfault if overwriting-destruction is done
             // with the crazy polymorphic transmute rather than the provided
             // finaliser.
             set(int_key, @31337);
-        }
+        });
     }
 
     #[test]
@@ -454,13 +454,13 @@ mod tests {
         static int_key: Key<@int> = &Key;
         set(str_key, @~"parent data");
         set(box_key, @@());
-        do task::spawn {
+        task::spawn(proc() {
             // spawn_linked
             set(str_key, @~"string data");
             set(box_key, @@());
             set(int_key, @42);
             fail!();
-        }
+        });
         // Not quite nondeterministic.
         set(int_key, @31337);
         fail!();

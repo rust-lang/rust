@@ -66,14 +66,14 @@ pub enum Signum {
 /// let mut listener = Listener::new();
 /// listener.register(signal::Interrupt);
 ///
-/// do spawn {
+/// spawn(proc() {
 ///     loop {
 ///         match listener.port.recv() {
 ///             Interrupt => println("Got Interrupt'ed"),
 ///             _ => (),
 ///         }
 ///     }
-/// }
+/// })
 ///
 /// ```
 pub struct Listener {

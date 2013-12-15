@@ -42,28 +42,28 @@ pub fn run_in_bare_thread(f: proc()) {
     let (port, chan) = comm::stream();
     // FIXME #4525: Unfortunate that this creates an extra scheduler but it's
     // necessary since rust_raw_thread_join is blocking
-    do task::spawn_sched(task::SingleThreaded) {
+    task::spawn_sched(task::SingleThreaded, proc() {
         Thread::start(f).join();
         chan.send(());
-    }
+    });
     port.recv();
 }
 
 #[test]
 fn test_run_in_bare_thread() {
     let i = 100;
-    do run_in_bare_thread {
+    run_in_bare_thread(proc() {
         assert_eq!(i, 100);
-    }
+    });
 }
 
 #[test]
 fn test_run_in_bare_thread_exchange() {
     // Does the exchange heap work without the runtime?
     let i = ~100;
-    do run_in_bare_thread {
+    run_in_bare_thread(proc() {
         assert!(i == ~100);
-    }
+    });
 }
 
 /// Dynamically inquire about whether we're running under V.

@@ -695,94 +695,94 @@ mod test {
 
     #[test]
     fn local_heap() {
-        do run_in_newsched_task() {
+        run_in_newsched_task(proc() {
             let a = @5;
             let b = a;
             assert!(*a == 5);
             assert!(*b == 5);
-        }
+        });
     }
 
     #[test]
     fn tls() {
         use local_data;
-        do run_in_newsched_task() {
+        run_in_newsched_task(proc() {
             local_data_key!(key: @~str)
             local_data::set(key, @~"data");
             assert!(*local_data::get(key, |k| k.map(|k| *k)).unwrap() == ~"data");
             local_data_key!(key2: @~str)
             local_data::set(key2, @~"data");
             assert!(*local_data::get(key2, |k| k.map(|k| *k)).unwrap() == ~"data");
-        }
+        });
     }
 
     #[test]
     fn unwind() {
-        do run_in_newsched_task() {
+        run_in_newsched_task(proc() {
             let result = spawntask_try(proc()());
             rtdebug!("trying first assert");
             assert!(result.is_ok());
             let result = spawntask_try(proc() fail!());
             rtdebug!("trying second assert");
             assert!(result.is_err());
-        }
+        });
     }
 
     #[test]
     fn rng() {
-        do run_in_uv_task() {
+        run_in_uv_task(proc() {
             use rand::{rng, Rng};
             let mut r = rng();
             let _ = r.next_u32();
-        }
+        });
     }
 
     #[test]
     fn logging() {
-        do run_in_uv_task() {
+        run_in_uv_task(proc() {
             info!("here i am. logging in a newsched task");
-        }
+        });
     }
 
     #[test]
     fn comm_oneshot() {
         use comm::*;
 
-        do run_in_newsched_task {
+        run_in_newsched_task(proc() {
             let (port, chan) = oneshot();
             chan.send(10);
             assert!(port.recv() == 10);
-        }
+        });
     }
 
     #[test]
     fn comm_stream() {
         use comm::*;
 
-        do run_in_newsched_task() {
+        run_in_newsched_task(proc() {
             let (port, chan) = stream();
             chan.send(10);
             assert!(port.recv() == 10);
-        }
+        });
     }
 
     #[test]
     fn comm_shared_chan() {
         use comm::*;
 
-        do run_in_newsched_task() {
+        run_in_newsched_task(proc() {
             let (port, chan) = stream();
             let chan = SharedChan::new(chan);
             chan.send(10);
             assert!(port.recv() == 10);
-        }
+        });
     }
 
     #[test]
     fn heap_cycles() {
         use option::{Option, Some, None};
 
-        do run_in_newsched_task {
+        run_in_newsched_task(proc() {
             struct List {
                 next: Option<@mut List>,
             }
@@ -791,7 +791,7 @@ mod test {
             let b = @mut List { next: Some(a) };
 
             a.next = Some(b);
-        }
+        });
     }
 
     #[test]

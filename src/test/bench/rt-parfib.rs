@@ -25,9 +25,9 @@ fn parfib(n: uint) -> uint {
     }
 
     let (port,chan) = oneshot::<uint>();
-    do spawntask_later {
+    spawntask_later(proc() {
         chan.send(parfib(n-1));
-    };
+    });
     let m2 = parfib(n-2);
     return (port.recv() + m2);
 }

@@ -276,7 +276,7 @@ mod tests {
         let path2 = path.clone();
         let (port, chan) = oneshot();
 
-        do spawn {
+        spawn(proc() {
             let p = PipeListener::bind(local_loop(), &path2.to_c_str()).unwrap();
             let mut p = p.listen().unwrap();
             chan.send(());
@@ -285,7 +285,7 @@ mod tests {
             assert!(client.read(buf).unwrap() == 1);
             assert_eq!(buf[0], 1);
             assert!(client.write([2]).is_ok());
-        }
+        });
         port.recv();
         let mut c = PipeWatcher::connect(local_loop(), &path.to_c_str()).unwrap();
         assert!(c.write([1]).is_ok());
@@ -300,12 +300,12 @@ mod tests {
         let path2 = path.clone();
         let (port, chan) = oneshot();
 
-        do spawn {
+        spawn(proc() {
             let p = PipeListener::bind(local_loop(), &path2.to_c_str()).unwrap();
             let mut p = p.listen().unwrap();
             chan.send(());
             p.accept();
-        }
+        });
         port.recv();
         let _c = PipeWatcher::connect(local_loop(), &path.to_c_str()).unwrap();
         fail!()

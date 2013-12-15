@@ -26,11 +26,11 @@ impl fmt::Default for Foo {
 
 pub fn main() {
     let (p,c) = stream();
-    do spawn {
+    spawn(proc() {
         let f = Foo(@mut 0);
         debug!("{}", f);
         assert!(**f == 1);
         c.send(());
-    }
+    });
     p.recv();
 }

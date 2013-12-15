@@ -151,10 +151,10 @@ mod test_remote {
         let cb = ~MyCallback(Some(tube.clone()));
         let watcher = AsyncWatcher::new(local_loop(), cb as ~Callback);
 
-        let thread = do Thread::start {
+        let thread = Thread::start(proc() {
             let mut watcher = watcher;
             watcher.fire();
-        };
+        });
 
         assert_eq!(tube.recv(), 1);
         thread.join();

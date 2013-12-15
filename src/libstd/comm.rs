@@ -53,12 +53,12 @@ pub trait GenericPort<T> {
     /// # Example
     ///
     /// ~~~rust
-    /// do spawn {
+    /// spawn(proc() {
     ///     for x in port.recv_iter() {
     ///         if pred(x) { break; }
     ///         println!("{}", x);
     ///     }
-    /// }
+    /// })
     /// ~~~
     fn recv_iter<'a>(&'a self) -> RecvIterator<'a, Self> {
         RecvIterator { port: self }
@@ -265,7 +265,7 @@ mod tests {
         let (port, chan) = stream::<int>();
         let (total_port, total_chan) = oneshot::<int>();
 
-        do spawn {
+        spawn(proc() {
             let mut acc = 0;
             for x in port.recv_iter() {
                 acc += x;
@@ -277,7 +277,7 @@ mod tests {
                     }
                 }
             }
-        }
+        });
 
         chan.send(3);
         chan.send(1);
@@ -290,7 +290,7 @@ mod tests {
         let (port, chan) = stream::<int>();
         let (count_port, count_chan) = oneshot::<int>();
 
-        do spawn {
+        spawn(proc() {
             let mut count = 0;
             for x in port.recv_iter() {
                 if count >= 3 {
@@ -300,7 +300,7 @@ mod tests {
                     count += x;
                 }
             }
-        }
+        });
 
         chan.send(2);
         chan.send(2);

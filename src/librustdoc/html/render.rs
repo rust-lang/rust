@@ -723,9 +723,9 @@ impl Context {
             let mut task = task::task();
             task.name(format!("worker{}", i));
             let cache = cache.clone();
-            do task.spawn {
+            task.spawn(proc() {
                 worker(cache, &port, &chan, &prog_chan);
-            }
+            });
 
             fn worker(cache: RWArc<Cache>,
                       port: &SharedPort<Work>,

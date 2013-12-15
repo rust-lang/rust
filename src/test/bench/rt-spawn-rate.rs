@@ -27,7 +27,7 @@ fn main() {
     };
 
     n.times(|| {
-        do spawn || {};
+        spawn(proc() {});
     })
 
 }

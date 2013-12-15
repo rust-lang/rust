@@ -32,10 +32,10 @@ fn test_ebml<A:
     Encodable<EBWriter::Encoder> +
     Decodable<EBReader::Decoder>
 >(a1: &A) {
-    let bytes = do io::with_bytes_writer |wr| {
+    let bytes = io::with_bytes_writer(|wr| {
         let mut ebml_w = EBWriter::Encoder(wr);
         a1.encode(&mut ebml_w)
-    };
+    });
     let d = EBReader::Doc(@bytes);
     let mut decoder = EBReader::Decoder(d);
     let a2: A = Decodable::decode(&mut decoder);

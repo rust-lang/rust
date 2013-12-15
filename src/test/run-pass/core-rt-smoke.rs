@@ -14,7 +14,7 @@
 
 #[start]
 fn start(argc: int, argv: **u8) -> int {
-    do std::rt::start(argc, argv) {
+    std::rt::start(argc, argv, proc() {
         info!("creating my own runtime is joy");
-    }
+    })
 }

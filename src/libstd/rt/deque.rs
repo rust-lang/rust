@@ -422,7 +422,7 @@ mod tests {
         static AMT: int = 100000;
         let mut pool = BufferPool::<int>::new();
         let (mut w, s) = pool.deque();
-        let t = do Thread::start {
+        let t = Thread::start(proc() {
             let mut s = s;
             let mut left = AMT;
             while left > 0 {
@@ -434,7 +434,7 @@ mod tests {
                     Abort | Empty => {}
                 }
             }
-        };
+        });
 
         for _ in range(0, AMT) {
             w.push(1);
@@ -448,7 +448,7 @@ mod tests {
         static AMT: int = 100000;
         let mut pool = BufferPool::<(int, int)>::new();
         let (mut w, s) = pool.deque();
-        let t = do Thread::start {
+        let t = Thread::start(proc() {
             let mut s = s;
             let mut left = AMT;
             while left > 0 {
@@ -458,7 +458,7 @@ mod tests {
                     Abort | Empty => {}
                 }
             }
-        };
+        });
 
         for _ in range(0, AMT) {
             w.push((1, 10));
@@ -477,7 +477,7 @@ mod tests {
 
         let threads = range(0, nthreads).map(|_| {
             let s = s.clone();
-            do Thread::start {
+            Thread::start(proc() {
                 unsafe {
                     let mut s = s;
                     while (*unsafe_remaining).load(SeqCst) > 0 {
@@ -490,7 +490,7 @@ mod tests {
                         }
                     }
                 }
-            }
+            })
         }).to_owned_vec();
 
         while remaining.load(SeqCst) > 0 {
@@ -519,9 +519,9 @@ mod tests {
         let mut pool = BufferPool::<~int>::new();
         let threads = range(0, AMT).map(|_| {
             let (w, s) = pool.deque();
-            do Thread::start {
+            Thread::start(proc() {
                 stampede(w, s, 4, 10000);
-            }
+            })
         }).to_owned_vec();
 
         for thread in threads.move_iter() {
@@ -540,7 +540,7 @@ mod tests {
 
         let threads = range(0, NTHREADS).map(|_| {
             let s = s.clone();
-            do Thread::start {
+            Thread::start(proc() {
                 unsafe {
                     let mut s = s;
                     loop {
@@ -552,7 +552,7 @@ mod tests {
                         }
                     }
                 }
-            }
+            })
         }).to_owned_vec();
 
         let mut rng = rand::task_rng();
@@ -603,7 +603,7 @@ mod tests {
             let thread_box = unsafe {
                 *cast::transmute::<&~AtomicUint, **mut AtomicUint>(&box)
             };
-            (do Thread::start {
+            (Thread::start(proc() {
                 unsafe {
                     let mut s = s;
                     loop {
@@ -617,7 +617,7 @@ mod tests {
                         }
                     }
                 }
-            }, box)
+            }), box)
         }));
 
         let mut rng = rand::task_rng();
