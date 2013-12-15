@@ -860,7 +860,7 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
 
 fn create_DIArray(builder: DIBuilderRef, arr: &[DIDescriptor]) -> DIArray {
     return unsafe {
-        llvm::LLVMDIBuilderGetOrCreateArray(builder, vec::raw::to_ptr(arr), arr.len() as u32)
+        llvm::LLVMDIBuilderGetOrCreateArray(builder, arr.as_ptr(), arr.len() as u32)
     };
 }
 
@@ -949,7 +949,7 @@ fn declare_local(bcx: @mut Block,
                         file_metadata,
                         loc.line as c_uint,
                         type_metadata,
-                        vec::raw::to_ptr(address_operations),
+                        address_operations.as_ptr(),
                         address_operations.len() as c_uint,
                         argument_index)
                 }
@@ -2133,7 +2133,7 @@ fn set_debug_location(cx: &mut CrateContext, debug_location: DebugLocation) {
             let elements = [C_i32(line as i32), C_i32(col as i32), scope, ptr::null()];
             unsafe {
                 metadata_node = llvm::LLVMMDNodeInContext(debug_context(cx).llcontext,
-                                                          vec::raw::to_ptr(elements),
+                                                          elements.as_ptr(),
                                                           elements.len() as c_uint);
             }
         }

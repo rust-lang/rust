@@ -523,7 +523,7 @@ pub trait Reader {
             let mut total_read = 0;
 
             buf.reserve_additional(len);
-            vec::raw::set_len(buf, start_len + len);
+            buf.set_len(start_len + len);
 
             (|| {
                 while total_read < len {
@@ -539,7 +539,7 @@ pub trait Reader {
                         }
                     }
                 }
-            }).finally(|| vec::raw::set_len(buf, start_len + total_read))
+            }).finally(|| buf.set_len(start_len + total_read))
         }
     }
 

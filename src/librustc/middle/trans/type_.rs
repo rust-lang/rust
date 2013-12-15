@@ -150,13 +150,13 @@ impl Type {
 
     pub fn func(args: &[Type], ret: &Type) -> Type {
         let vec : &[TypeRef] = unsafe { cast::transmute(args) };
-        ty!(llvm::LLVMFunctionType(ret.to_ref(), vec::raw::to_ptr(vec),
+        ty!(llvm::LLVMFunctionType(ret.to_ref(), vec.as_ptr(),
                                    args.len() as c_uint, False))
     }
 
     pub fn variadic_func(args: &[Type], ret: &Type) -> Type {
         let vec : &[TypeRef] = unsafe { cast::transmute(args) };
-        ty!(llvm::LLVMFunctionType(ret.to_ref(), vec::raw::to_ptr(vec),
+        ty!(llvm::LLVMFunctionType(ret.to_ref(), vec.as_ptr(),
                                    args.len() as c_uint, True))
     }
 
@@ -170,7 +170,7 @@ impl Type {
 
     pub fn struct_(els: &[Type], packed: bool) -> Type {
         let els : &[TypeRef] = unsafe { cast::transmute(els) };
-        ty!(llvm::LLVMStructTypeInContext(base::task_llcx(), vec::raw::to_ptr(els),
+        ty!(llvm::LLVMStructTypeInContext(base::task_llcx(), els.as_ptr(),
                                           els.len() as c_uint, packed as Bool))
     }
 
@@ -297,7 +297,7 @@ impl Type {
     pub fn set_struct_body(&mut self, els: &[Type], packed: bool) {
         unsafe {
             let vec : &[TypeRef] = cast::transmute(els);
-            llvm::LLVMStructSetBody(self.to_ref(), vec::raw::to_ptr(vec),
+            llvm::LLVMStructSetBody(self.to_ref(), vec.as_ptr(),
                                     els.len() as c_uint, packed as Bool)
         }
     }
@@ -311,7 +311,7 @@ impl Type {
             let num_fields = llvm::LLVMCountStructElementTypes(self.to_ref()) as uint;
             let mut elems = vec::from_elem(num_fields, 0 as TypeRef);
 
-            llvm::LLVMGetStructElementTypes(self.to_ref(), vec::raw::to_mut_ptr(elems));
+            llvm::LLVMGetStructElementTypes(self.to_ref(), elems.as_mut_ptr());
 
             Type::from_ref(elems[idx])
         }
@@ -355,7 +355,7 @@ impl Type {
         unsafe {
             let n_args = llvm::LLVMCountParamTypes(self.to_ref()) as uint;
             let args = vec::from_elem(n_args, 0 as TypeRef);
-            llvm::LLVMGetParamTypes(self.to_ref(), vec::raw::to_ptr(args));
+            llvm::LLVMGetParamTypes(self.to_ref(), args.as_ptr());
             cast::transmute(args)
         }
     }

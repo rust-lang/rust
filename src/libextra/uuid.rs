@@ -175,7 +175,7 @@ impl Uuid {
     pub fn new_v4() -> Uuid {
         let ub = rand::task_rng().gen_vec(16);
         let mut uuid = Uuid{ bytes: [0, .. 16] };
-        vec::bytes::copy_memory(uuid.bytes, ub, 16);
+        vec::bytes::copy_memory(uuid.bytes, ub);
         uuid.set_variant(VariantRFC4122);
         uuid.set_version(Version4Random);
         uuid
@@ -202,7 +202,7 @@ impl Uuid {
         fields.data1 = to_be32(d1 as i32) as u32;
         fields.data2 = to_be16(d2 as i16) as u16;
         fields.data3 = to_be16(d3 as i16) as u16;
-        vec::bytes::copy_memory(fields.data4, d4, 8);
+        vec::bytes::copy_memory(fields.data4, d4);
 
         unsafe {
             transmute(fields)
@@ -220,7 +220,7 @@ impl Uuid {
 
         let mut uuid = Uuid{ bytes: [0, .. 16] };
         unsafe {
-            vec::raw::copy_memory(uuid.bytes, b, 16);
+            vec::raw::copy_memory(uuid.bytes, b);
         }
         Some(uuid)
     }
@@ -442,11 +442,7 @@ impl Zero for Uuid {
 
 impl Clone for Uuid {
     /// Returns a copy of the UUID
-    fn clone(&self) -> Uuid {
-        let mut clone = Uuid{ bytes: [0, .. 16] };
-        vec::bytes::copy_memory(clone.bytes, self.bytes, 16);
-        clone
-    }
+    fn clone(&self) -> Uuid { *self }
 }
 
 impl FromStr for Uuid {
@@ -509,7 +505,7 @@ impl rand::Rand for Uuid {
     fn rand<R: rand::Rng>(rng: &mut R) -> Uuid {
         let ub = rng.gen_vec(16);
         let mut uuid = Uuid{ bytes: [0, .. 16] };
-        vec::bytes::copy_memory(uuid.bytes, ub, 16);
+        vec::bytes::copy_memory(uuid.bytes, ub);
         uuid.set_variant(VariantRFC4122);
         uuid.set_version(Version4Random);
         uuid

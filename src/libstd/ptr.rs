@@ -449,7 +449,7 @@ pub mod ptr_tests {
     use cast;
     use libc;
     use str;
-    use vec;
+    use vec::{ImmutableVector, MutableVector};
 
     #[test]
     fn test() {
@@ -474,15 +474,15 @@ pub mod ptr_tests {
             let v0 = ~[32000u16, 32001u16, 32002u16];
             let mut v1 = ~[0u16, 0u16, 0u16];
 
-            copy_memory(mut_offset(vec::raw::to_mut_ptr(v1), 1),
-                        offset(vec::raw::to_ptr(v0), 1), 1);
+            copy_memory(mut_offset(v1.as_mut_ptr(), 1),
+                        offset(v0.as_ptr(), 1), 1);
             assert!((v1[0] == 0u16 && v1[1] == 32001u16 && v1[2] == 0u16));
-            copy_memory(vec::raw::to_mut_ptr(v1),
-                        offset(vec::raw::to_ptr(v0), 2), 1);
+            copy_memory(v1.as_mut_ptr(),
+                        offset(v0.as_ptr(), 2), 1);
             assert!((v1[0] == 32002u16 && v1[1] == 32001u16 &&
                      v1[2] == 0u16));
-            copy_memory(mut_offset(vec::raw::to_mut_ptr(v1), 2),
-                        vec::raw::to_ptr(v0), 1u);
+            copy_memory(mut_offset(v1.as_mut_ptr(), 2),
+                        v0.as_ptr(), 1u);
             assert!((v1[0] == 32002u16 && v1[1] == 32001u16 &&
                      v1[2] == 32000u16));
         }
@@ -558,7 +558,7 @@ pub mod ptr_tests {
 
         unsafe {
             let xs = ~[5, ..16];
-            let mut ptr = to_ptr(xs);
+            let mut ptr = xs.as_ptr();
             let end = ptr.offset(16);
 
             while ptr < end {
@@ -567,7 +567,7 @@ pub mod ptr_tests {
             }
 
             let mut xs_mut = xs.clone();
-            let mut m_ptr = to_mut_ptr(xs_mut);
+            let mut m_ptr = xs_mut.as_mut_ptr();
             let m_end = m_ptr.offset(16);
 
             while m_ptr < m_end {
@@ -581,12 +581,10 @@ pub mod ptr_tests {
 
     #[test]
     fn test_ptr_subtraction() {
-        use vec::raw::*;
-
         unsafe {
             let xs = ~[0,1,2,3,4,5,6,7,8,9];
             let mut idx = 9i8;
-            let ptr = to_ptr(xs);
+            let ptr = xs.as_ptr();
 
             while idx >= 0i8 {
                 assert_eq!(*(ptr.offset(idx as int)), idx as int);
@@ -594,7 +592,7 @@ pub mod ptr_tests {
             }
 
             let mut xs_mut = xs.clone();
-            let m_start = to_mut_ptr(xs_mut);
+            let m_start = xs_mut.as_mut_ptr();
             let mut m_ptr = m_start.offset(9);
 
             while m_ptr >= m_start {
@@ -700,7 +698,7 @@ pub mod ptr_tests {
     #[test]
     fn test_set_memory() {
         let mut xs = [0u8, ..20];
-        let ptr = vec::raw::to_mut_ptr(xs);
+        let ptr = xs.as_mut_ptr();
         unsafe { set_memory(ptr, 5u8, xs.len()); }
         assert_eq!(xs, [5u8, ..20]);
     }

@@ -16,7 +16,6 @@ use metadata::cstore;
 use util::common::time;
 
 use std::libc;
-use std::vec;
 
 pub fn run(sess: session::Session, llmod: ModuleRef,
            tm: TargetMachineRef, reachable: &[~str]) {
@@ -48,7 +47,7 @@ pub fn run(sess: session::Session, llmod: ModuleRef,
         debug!("reading {}", name);
         let bc = time(sess.time_passes(), format!("read {}.bc", name), (), |_|
                       archive.read(format!("{}.bc", name)));
-        let ptr = vec::raw::to_ptr(bc);
+        let ptr = bc.as_ptr();
         debug!("linking {}", name);
         time(sess.time_passes(), format!("ll link {}", name), (), |()| unsafe {
             if !llvm::LLVMRustLinkInExternalBitcode(llmod,
@@ -62,7 +61,7 @@ pub fn run(sess: session::Session, llmod: ModuleRef,
     // Internalize everything but the reachable symbols of the current module
     let cstrs = reachable.map(|s| s.to_c_str());
     let arr = cstrs.map(|c| c.with_ref(|p| p));
-    let ptr = vec::raw::to_ptr(arr);
+    let ptr = arr.as_ptr();
     unsafe {
         llvm::LLVMRustRunRestrictionPass(llmod, ptr as **libc::c_char,
                                          arr.len() as libc::size_t);

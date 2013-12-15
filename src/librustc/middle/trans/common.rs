@@ -946,7 +946,7 @@ pub fn C_zero_byte_arr(size: uint) -> ValueRef {
         let mut elts: ~[ValueRef] = ~[];
         while i < size { elts.push(C_u8(0u)); i += 1u; }
         return llvm::LLVMConstArray(Type::i8().to_ref(),
-                                    vec::raw::to_ptr(elts), elts.len() as c_uint);
+                                    elts.as_ptr(), elts.len() as c_uint);
     }
 }
 
@@ -968,13 +968,13 @@ pub fn C_named_struct(T: Type, elts: &[ValueRef]) -> ValueRef {
 
 pub fn C_array(ty: Type, elts: &[ValueRef]) -> ValueRef {
     unsafe {
-        return llvm::LLVMConstArray(ty.to_ref(), vec::raw::to_ptr(elts), elts.len() as c_uint);
+        return llvm::LLVMConstArray(ty.to_ref(), elts.as_ptr(), elts.len() as c_uint);
     }
 }
 
 pub fn C_bytes(bytes: &[u8]) -> ValueRef {
     unsafe {
-        let ptr = cast::transmute(vec::raw::to_ptr(bytes));
+        let ptr = cast::transmute(bytes.as_ptr());
         return llvm::LLVMConstStringInContext(base::task_llcx(), ptr, bytes.len() as c_uint, True);
     }
 }

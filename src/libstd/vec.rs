@@ -123,7 +123,6 @@ use unstable::finally::Finally;
 use unstable::intrinsics;
 use unstable::intrinsics::{get_tydesc, owns_managed};
 use unstable::raw::{Box, Repr, Slice, Vec};
-use vec;
 use util;
 
 /**
@@ -135,7 +134,7 @@ use util;
 pub fn from_fn<T>(n_elts: uint, op: |uint| -> T) -> ~[T] {
     unsafe {
         let mut v = with_capacity(n_elts);
-        let p = raw::to_mut_ptr(v);
+        let p = v.as_mut_ptr();
         let mut i: uint = 0u;
         (|| {
             while i < n_elts {
@@ -143,7 +142,7 @@ pub fn from_fn<T>(n_elts: uint, op: |uint| -> T) -> ~[T] {
                 i += 1u;
             }
         }).finally(|| {
-            raw::set_len(&mut v, i);
+            v.set_len(i);
         });
         v
     }
@@ -162,7 +161,7 @@ pub fn from_elem<T:Clone>(n_elts: uint, t: T) -> ~[T] {
     // vec::with_capacity/ptr::set_memory for primitive types.
     unsafe {
         let mut v = with_capacity(n_elts);
-        let p = raw::to_mut_ptr(v);
+        let p = v.as_mut_ptr();
         let mut i = 0u;
         (|| {
             while i < n_elts {
@@ -170,7 +169,7 @@ pub fn from_elem<T:Clone>(n_elts: uint, t: T) -> ~[T] {
                 i += 1u;
             }
         }).finally(|| {
-            raw::set_len(&mut v, i);
+            v.set_len(i);
         });
         v
     }
@@ -956,6 +955,17 @@ pub trait ImmutableVector<'a, T> {
     unsafe fn unsafe_ref(&self, index: uint) -> *T;
 
     /**
+     * Returns an unsafe pointer to the vector's buffer
+     *
+     * The caller must ensure that the vector outlives the pointer this
+     * function returns, or else it will end up pointing to garbage.
+     *
+     * Modifying the vector may cause its buffer to be reallocated, which
+     * would also make any pointers to it invalid.
+     */
+    fn as_ptr(&self) -> *T;
+
+    /**
      * Binary search a sorted vector with a comparator function.
      *
      * The comparator function should implement an order consistent
@@ -1044,7 +1054,7 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
     #[inline]
     fn iter(self) -> VecIterator<'a, T> {
         unsafe {
-            let p = vec::raw::to_ptr(self);
+            let p = self.as_ptr();
             if mem::size_of::<T>() == 0 {
                 VecIterator{ptr: p,
                             end: (p as uint + self.len()) as *T,
@@ -1156,6 +1166,12 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
     unsafe fn unsafe_ref(&self, index: uint) -> *T {
         self.repr().data.offset(index as int)
     }
+
+    #[inline]
+    fn as_ptr(&self) -> *T {
+        self.repr().data
+    }
+
 
     fn bsearch(&self, f: |&T| -> Ordering) -> Option<uint> {
         let mut base : uint = 0;
@@ -1271,8 +1287,6 @@ pub trait ImmutableCopyableVector<T> {
      * those that do not.
      */
     fn partitioned(&self, f: |&T| -> bool) -> (~[T], ~[T]);
-    /// Returns the element at the given index, without doing bounds checking.
-    unsafe fn unsafe_get(&self, elem: uint) -> T;
 
     /// Create an iterator that yields every possible permutation of the
     /// vector in succession.
@@ -1294,11 +1308,6 @@ impl<'a,T:Clone> ImmutableCopyableVector<T> for &'a [T] {
         }
 
         (lefts, rights)
-    }
-
-    #[inline]
-    unsafe fn unsafe_get(&self, index: uint) -> T {
-        (*self.unsafe_ref(index)).clone()
     }
 
     fn permutations(self) -> Permutations<T> {
@@ -1448,6 +1457,15 @@ pub trait OwnedVector<T> {
      *             value
      */
     fn grow_fn(&mut self, n: uint, op: |uint| -> T);
+
+    /**
+     * Sets the length of a vector
+     *
+     * This will explicitly set the size of the vector, without actually
+     * modifying its buffers, so it is up to the caller to ensure that
+     * the vector is actually the specified size.
+     */
+    unsafe fn set_len(&mut self, new_len: uint);
 }
 
 impl<T> OwnedVector<T> for ~[T] {
@@ -1570,11 +1588,11 @@ impl<T> OwnedVector<T> for ~[T] {
         let new_len = self_len + rhs_len;
         self.reserve_additional(rhs.len());
         unsafe { // Note: infallible.
-            let self_p = vec::raw::to_mut_ptr(*self);
-            let rhs_p = vec::raw::to_ptr(rhs);
+            let self_p = self.as_mut_ptr();
+            let rhs_p = rhs.as_ptr();
             ptr::copy_memory(ptr::mut_offset(self_p, self_len as int), rhs_p, rhs_len);
-            raw::set_len(self, new_len);
-            raw::set_len(&mut rhs, 0);
+            self.set_len(new_len);
+            rhs.set_len(0);
         }
     }
 
@@ -1584,7 +1602,7 @@ impl<T> OwnedVector<T> for ~[T] {
             ln => {
                 let valptr = ptr::to_mut_unsafe_ptr(&mut self[ln - 1u]);
                 unsafe {
-                    raw::set_len(self, ln - 1u);
+                    self.set_len(ln - 1u);
                     Some(ptr::read_ptr(&*valptr))
                 }
             }
@@ -1624,7 +1642,7 @@ impl<T> OwnedVector<T> for ~[T] {
             assert!(self.capacity() >= ln);
             // Pretend like we have the original length so we can use
             // the vector copy_memory to overwrite the hole we just made
-            raw::set_len(self, ln);
+            self.set_len(ln);
 
             // Memcopy the head element (the one we want) to the location we just
             // popped. For the moment it unsafely exists at both the head and last
@@ -1632,7 +1650,7 @@ impl<T> OwnedVector<T> for ~[T] {
             {
                 let first_slice = self.slice(0, 1);
                 let last_slice = self.slice(next_ln, ln);
-                raw::copy_memory(cast::transmute(last_slice), first_slice, 1);
+                raw::copy_memory(cast::transmute(last_slice), first_slice);
             }
 
             // Memcopy everything to the left one element
@@ -1640,15 +1658,14 @@ impl<T> OwnedVector<T> for ~[T] {
                 let init_slice = self.slice(0, next_ln);
                 let tail_slice = self.slice(1, ln);
                 raw::copy_memory(cast::transmute(init_slice),
-                                 tail_slice,
-                                 next_ln);
+                                 tail_slice);
             }
 
             // Set the new length. Now the vector is back to normal
-            raw::set_len(self, next_ln);
+            self.set_len(next_ln);
 
             // Swap out the element we want from the end
-            let vp = raw::to_mut_ptr(*self);
+            let vp = self.as_mut_ptr();
             let vp = ptr::mut_offset(vp, (next_ln - 1) as int);
 
             Some(ptr::replace_ptr(vp, work_elt))
@@ -1701,7 +1718,7 @@ impl<T> OwnedVector<T> for ~[T] {
                 }
             }
         });
-        unsafe { raw::set_len(self, newlen); }
+        unsafe { self.set_len(newlen); }
     }
 
     fn retain(&mut self, f: |t: &T| -> bool) {
@@ -1743,6 +1760,16 @@ impl<T> OwnedVector<T> for ~[T] {
         while i < n {
             self.push(op(i));
             i += 1u;
+        }
+    }
+    #[inline]
+    unsafe fn set_len(&mut self, new_len: uint) {
+        if owns_managed::<T>() {
+            let repr: **mut Box<Vec<()>> = cast::transmute(self);
+            (**repr).data.fill = new_len * mem::nonzero_size_of::<T>();
+        } else {
+            let repr: **mut Vec<()> = cast::transmute(self);
+            (**repr).fill = new_len * mem::nonzero_size_of::<T>();
         }
     }
 }
@@ -1890,7 +1917,7 @@ impl<T:Eq> OwnedEqVector<T> for ~[T] {
             if ln < 1 { return; }
 
             // Avoid bounds checks by using unsafe pointers.
-            let p = vec::raw::to_mut_ptr(*self);
+            let p = self.as_mut_ptr();
             let mut r = 1;
             let mut w = 1;
 
@@ -2028,6 +2055,17 @@ pub trait MutableVector<'a, T> {
 
     /// Returns an unsafe mutable pointer to the element in index
     unsafe fn unsafe_mut_ref(self, index: uint) -> *mut T;
+
+    /// Return an unsafe mutable pointer to the vector's buffer.
+    ///
+    /// The caller must ensure that the vector outlives the pointer this
+    /// function returns, or else it will end up pointing to garbage.
+    ///
+    /// Modifying the vector may cause its buffer to be reallocated, which
+    /// would also make any pointers to it invalid.
+    #[inline]
+    fn as_mut_ptr(self) -> *mut T;
+
     /// Unsafely sets the element in index to the value
     unsafe fn unsafe_set(self, index: uint, val: T);
 
@@ -2073,7 +2111,7 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
     #[inline]
     fn mut_iter(self) -> VecMutIterator<'a, T> {
         unsafe {
-            let p = vec::raw::to_mut_ptr(self);
+            let p = self.as_mut_ptr();
             if mem::size_of::<T>() == 0 {
                 VecMutIterator{ptr: p,
                                end: (p as uint + self.len()) as *mut T,
@@ -2150,6 +2188,11 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
     }
 
     #[inline]
+    fn as_mut_ptr(self) -> *mut T {
+        self.repr().data as *mut T
+    }
+
+    #[inline]
     unsafe fn unsafe_set(self, index: uint, val: T) {
         *self.unsafe_mut_ref(index) = val;
     }
@@ -2194,52 +2237,11 @@ pub unsafe fn from_buf<T>(ptr: *T, elts: uint) -> ~[T] {
 /// Unsafe operations
 pub mod raw {
     use cast;
-    use clone::Clone;
     use option::Some;
     use ptr;
-    use mem;
     use unstable::intrinsics;
     use vec::{with_capacity, ImmutableVector, MutableVector};
-    use unstable::raw::{Box, Vec, Slice};
-    use unstable::intrinsics::owns_managed;
-
-    /**
-     * Sets the length of a vector
-     *
-     * This will explicitly set the size of the vector, without actually
-     * modifying its buffers, so it is up to the caller to ensure that
-     * the vector is actually the specified size.
-     */
-    #[inline]
-    pub unsafe fn set_len<T>(v: &mut ~[T], new_len: uint) {
-        if owns_managed::<T>() {
-            let repr: **mut Box<Vec<()>> = cast::transmute(v);
-            (**repr).data.fill = new_len * mem::nonzero_size_of::<T>();
-        } else {
-            let repr: **mut Vec<()> = cast::transmute(v);
-            (**repr).fill = new_len * mem::nonzero_size_of::<T>();
-        }
-    }
-
-    /**
-     * Returns an unsafe pointer to the vector's buffer
-     *
-     * The caller must ensure that the vector outlives the pointer this
-     * function returns, or else it will end up pointing to garbage.
-     *
-     * Modifying the vector may cause its buffer to be reallocated, which
-     * would also make any pointers to it invalid.
-     */
-    #[inline]
-    pub fn to_ptr<T>(v: &[T]) -> *T {
-        v.repr().data
-    }
-
-    /** see `to_ptr()` */
-    #[inline]
-    pub fn to_mut_ptr<T>(v: &mut [T]) -> *mut T {
-        v.repr().data as *mut T
-    }
+    use unstable::raw::Slice;
 
     /**
      * Form a slice from a pointer and length (as a number of units,
@@ -2272,14 +2274,6 @@ pub mod raw {
     }
 
     /**
-     * Unchecked vector indexing.
-     */
-    #[inline]
-    pub unsafe fn get<T:Clone>(v: &[T], i: uint) -> T {
-        v.as_imm_buf(|p, _len| (*ptr::offset(p, i as int)).clone())
-    }
-
-    /**
      * Unchecked vector index assignment.  Does not drop the
      * old value and hence is only suitable when the vector
      * is newly allocated.
@@ -2305,7 +2299,7 @@ pub mod raw {
     #[inline]
     pub unsafe fn from_buf_raw<T>(ptr: *T, elts: uint) -> ~[T] {
         let mut dst = with_capacity(elts);
-        set_len(&mut dst, elts);
+        dst.set_len(elts);
         dst.as_mut_buf(|p_dst, _len_dst| ptr::copy_memory(p_dst, ptr, elts));
         dst
     }
@@ -2313,18 +2307,14 @@ pub mod raw {
     /**
       * Copies data from one vector to another.
       *
-      * Copies `count` bytes from `src` to `dst`. The source and destination
-      * may overlap.
+      * Copies `src` to `dst`. The source and destination may overlap.
       */
     #[inline]
-    pub unsafe fn copy_memory<T>(dst: &mut [T], src: &[T],
-                                 count: uint) {
-        assert!(dst.len() >= count);
-        assert!(src.len() >= count);
-
-        dst.as_mut_buf(|p_dst, _len_dst| {
-            src.as_imm_buf(|p_src, _len_src| {
-                ptr::copy_memory(p_dst, p_src, count)
+    pub unsafe fn copy_memory<T>(dst: &mut [T], src: &[T]) {
+        dst.as_mut_buf(|p_dst, len_dst| {
+            src.as_imm_buf(|p_src, len_src| {
+                assert!(len_dst >= len_src)
+                ptr::copy_memory(p_dst, p_src, len_src)
             })
         })
     }
@@ -2355,15 +2345,12 @@ pub mod raw {
     }
 }
 
-/// Operations on `[u8]`
+/// Operations on `[u8]`.
 pub mod bytes {
-    use libc;
-    use num;
     use vec::raw;
-    use vec;
     use ptr;
 
-    /// A trait for operations on mutable operations on `[u8]`
+    /// A trait for operations on mutable `[u8]`s.
     pub trait MutableByteVector {
         /// Sets all bytes of the receiver to the given value.
         fn set_memory(self, value: u8);
@@ -2378,59 +2365,21 @@ pub mod bytes {
         }
     }
 
-    /// Bytewise string comparison
-    pub fn memcmp(a: &~[u8], b: &~[u8]) -> int {
-        let a_len = a.len();
-        let b_len = b.len();
-        let n = num::min(a_len, b_len) as libc::size_t;
-        let r = unsafe {
-            libc::memcmp(raw::to_ptr(*a) as *libc::c_void,
-                         raw::to_ptr(*b) as *libc::c_void, n) as int
-        };
-
-        if r != 0 { r } else {
-            if a_len == b_len {
-                0
-            } else if a_len < b_len {
-                -1
-            } else {
-                1
-            }
-        }
-    }
-
-    /// Bytewise less than or equal
-    pub fn lt(a: &~[u8], b: &~[u8]) -> bool { memcmp(a, b) < 0 }
-
-    /// Bytewise less than or equal
-    pub fn le(a: &~[u8], b: &~[u8]) -> bool { memcmp(a, b) <= 0 }
-
-    /// Bytewise equality
-    pub fn eq(a: &~[u8], b: &~[u8]) -> bool { memcmp(a, b) == 0 }
-
-    /// Bytewise inequality
-    pub fn ne(a: &~[u8], b: &~[u8]) -> bool { memcmp(a, b) != 0 }
-
-    /// Bytewise greater than or equal
-    pub fn ge(a: &~[u8], b: &~[u8]) -> bool { memcmp(a, b) >= 0 }
-
-    /// Bytewise greater than
-    pub fn gt(a: &~[u8], b: &~[u8]) -> bool { memcmp(a, b) > 0 }
-
     /**
       * Copies data from one vector to another.
       *
-      * Copies `count` bytes from `src` to `dst`. The source and destination
-      * may overlap.
+      * Copies `src` to `dst`. The source and destination may
+      * overlap. Fails if the length of `dst` is less than the length
+      * of `src`.
       */
     #[inline]
-    pub fn copy_memory(dst: &mut [u8], src: &[u8], count: uint) {
+    pub fn copy_memory(dst: &mut [u8], src: &[u8]) {
         // Bound checks are done at vec::raw::copy_memory.
-        unsafe { vec::raw::copy_memory(dst, src, count) }
+        unsafe { raw::copy_memory(dst, src) }
     }
 
     /**
-     * Allocate space in `dst` and append the data in `src`.
+     * Allocate space in `dst` and append the data to `src`.
      */
     #[inline]
     pub fn push_bytes(dst: &mut ~[u8], src: &[u8]) {
@@ -2442,7 +2391,7 @@ pub mod bytes {
                     ptr::copy_memory(p_dst.offset(len_dst as int), p_src, len_src)
                 })
             });
-            vec::raw::set_len(dst, old_len + src.len());
+            dst.set_len(old_len + src.len());
         }
     }
 }
@@ -2818,7 +2767,7 @@ mod tests {
         unsafe {
             // Test on-stack copy-from-buf.
             let a = ~[1, 2, 3];
-            let mut ptr = raw::to_ptr(a);
+            let mut ptr = a.as_ptr();
             let b = from_buf(ptr, 3u);
             assert_eq!(b.len(), 3u);
             assert_eq!(b[0], 1);
@@ -2827,7 +2776,7 @@ mod tests {
 
             // Test on-heap copy-from-buf.
             let c = ~[1, 2, 3, 4, 5];
-            ptr = raw::to_ptr(c);
+            ptr = c.as_ptr();
             let d = from_buf(ptr, 5u);
             assert_eq!(d.len(), 5u);
             assert_eq!(d[0], 1);
@@ -3652,7 +3601,7 @@ mod tests {
         unsafe {
             let mut a = [1, 2, 3, 4];
             let b = [1, 2, 3, 4, 5];
-            raw::copy_memory(a, b, 5);
+            raw::copy_memory(a, b);
         }
     }
 
@@ -4354,9 +4303,9 @@ mod bench {
         bh.iter(|| {
             let mut v: ~[u8] = vec::with_capacity(1024);
             unsafe {
-                let vp = vec::raw::to_mut_ptr(v);
+                let vp = v.as_mut_ptr();
                 ptr::set_memory(vp, 0, 1024);
-                vec::raw::set_len(&mut v, 1024);
+                v.set_len(1024);
             }
         });
     }
@@ -4375,7 +4324,7 @@ mod bench {
         bh.iter(|| {
             let mut v: ~[u8] = vec::with_capacity(1024);
             unsafe {
-                vec::raw::set_len(&mut v, 1024);
+                v.set_len(1024);
             }
             for i in range(0, 1024) {
                 v[i] = 0;
@@ -4388,7 +4337,7 @@ mod bench {
         bh.iter(|| {
             let mut v: ~[u8] = vec::with_capacity(1024);
             unsafe {
-                vec::raw::set_len(&mut v, 1024);
+                v.set_len(1024);
             }
             for x in v.mut_iter() {
                 *x = 0;
