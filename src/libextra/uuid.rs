@@ -17,7 +17,7 @@ identifiers to entities without requiring a central allocating authority.
 
 They are particularly useful in distributed systems, though can be used in
 disparate areas, such as databases and network protocols.  Typically a UUID is
-displayed in a readable string form as a sequence of hexadecimals digits,
+displayed in a readable string form as a sequence of hexadecimal digits,
 separated into groups by hyphens.
 
 The uniqueness property is not strictly guaranteed, however for all practical
@@ -89,11 +89,11 @@ pub enum UuidVersion {
 /// The reserved variants of UUIDs
 #[deriving(Eq)]
 pub enum UuidVariant {
-    /// Reserved by the NCS for backward compatability
+    /// Reserved by the NCS for backward compatibility
     VariantNCS,
     /// As described in the RFC4122 Specification (default)
     VariantRFC4122,
-    /// Resreved by Microsoft for backward compatability
+    /// Reserved by Microsoft for backward compatibility
     VariantMicrosoft,
     /// Reserved for future expansion
     VariantFuture,
@@ -313,7 +313,7 @@ impl Uuid {
         str::from_utf8_owned(s)
     }
 
-    /// Returns a string of hexadecimal digits, separated into groups with a hypen
+    /// Returns a string of hexadecimal digits, separated into groups with a hyphen.
     ///
     /// Example: `550e8400-e29b-41d4-a716-446655440000`
     pub fn to_hyphenated_str(&self) -> ~str {

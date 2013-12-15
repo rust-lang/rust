@@ -30,7 +30,7 @@
 //! file name following `-o`, and accepts both `-h` and `--help` as optional flags.
 //!
 //! ~~~{.rust}
-//! exter mod extra;
+//! extern mod extra;
 //! use extra::getopts::*;
 //! use std::os;
 //!
@@ -114,7 +114,7 @@ pub enum Occur {
 pub struct Opt {
     /// Name of the option
     name: Name,
-    /// Wheter it has an argument
+    /// Whether it has an argument
     hasarg: HasArg,
     /// How often it can occur
     occur: Occur,
@@ -154,7 +154,7 @@ pub enum Fail_ {
     UnexpectedArgument(~str),
 }
 
-/// The type of failure that occured.
+/// The type of failure that occurred.
 #[deriving(Eq)]
 #[allow(missing_doc)]
 pub enum FailType {
