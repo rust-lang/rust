@@ -13,7 +13,7 @@ use std::libc::{c_int, c_void};
 
 use uvll;
 use super::{Loop, UvHandle};
-use std::rt::rtio::{Callback, PausibleIdleCallback};
+use std::rt::rtio::{Callback, PausableIdleCallback};
 
 pub struct IdleWatcher {
     handle: *uvll::uv_idle_t,
@@ -63,7 +63,7 @@ impl IdleWatcher {
     }
 }
 
-impl PausibleIdleCallback for IdleWatcher {
+impl PausableIdleCallback for IdleWatcher {
     fn pause(&mut self) {
         if self.idle_flag == true {
             assert_eq!(unsafe {uvll::uv_idle_stop(self.handle) }, 0);
@@ -99,7 +99,7 @@ impl Drop for IdleWatcher {
 mod test {
     use super::*;
     use std::rt::tube::Tube;
-    use std::rt::rtio::{Callback, PausibleIdleCallback};
+    use std::rt::rtio::{Callback, PausableIdleCallback};
     use super::super::local_loop;
 
     struct MyCallback(Tube<int>, int);
