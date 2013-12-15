@@ -107,7 +107,7 @@ pub fn compress(src: &[u8]) -> ~[u8] {
         let pdst = vec::raw::to_mut_ptr(dst);
 
         snappy_compress(psrc, srclen, pdst, &mut dstlen);
-        vec::raw::set_len(&mut dst, dstlen as uint);
+        dst.set_len(dstlen as uint);
         dst
     }
 }
@@ -129,7 +129,7 @@ pub fn uncompress(src: &[u8]) -> Option<~[u8]> {
         let pdst = vec::raw::to_mut_ptr(dst);
 
         if snappy_uncompress(psrc, srclen, pdst, &mut dstlen) == 0 {
-            vec::raw::set_len(&mut dst, dstlen as uint);
+            dst.set_len(dstlen as uint);
             Some(dst)
         } else {
             None // SNAPPY_INVALID_INPUT

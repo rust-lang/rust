@@ -143,7 +143,7 @@ pub fn from_fn<T>(n_elts: uint, op: |uint| -> T) -> ~[T] {
                 i += 1u;
             }
         }).finally(|| {
-            raw::set_len(&mut v, i);
+            v.set_len(i);
         });
         v
     }
@@ -170,7 +170,7 @@ pub fn from_elem<T:Clone>(n_elts: uint, t: T) -> ~[T] {
                 i += 1u;
             }
         }).finally(|| {
-            raw::set_len(&mut v, i);
+            v.set_len(i);
         });
         v
     }
@@ -1440,6 +1440,15 @@ pub trait OwnedVector<T> {
      *             value
      */
     fn grow_fn(&mut self, n: uint, op: |uint| -> T);
+
+    /**
+     * Sets the length of a vector
+     *
+     * This will explicitly set the size of the vector, without actually
+     * modifying its buffers, so it is up to the caller to ensure that
+     * the vector is actually the specified size.
+     */
+    unsafe fn set_len(&mut self, new_len: uint);
 }
 
 impl<T> OwnedVector<T> for ~[T] {
@@ -1565,8 +1574,8 @@ impl<T> OwnedVector<T> for ~[T] {
             let self_p = vec::raw::to_mut_ptr(*self);
             let rhs_p = vec::raw::to_ptr(rhs);
             ptr::copy_memory(ptr::mut_offset(self_p, self_len as int), rhs_p, rhs_len);
-            raw::set_len(self, new_len);
-            raw::set_len(&mut rhs, 0);
+            self.set_len(new_len);
+            rhs.set_len(0);
         }
     }
 
@@ -1576,7 +1585,7 @@ impl<T> OwnedVector<T> for ~[T] {
             ln => {
                 let valptr = ptr::to_mut_unsafe_ptr(&mut self[ln - 1u]);
                 unsafe {
-                    raw::set_len(self, ln - 1u);
+                    self.set_len(ln - 1u);
                     Some(ptr::read_ptr(&*valptr))
                 }
             }
@@ -1616,7 +1625,7 @@ impl<T> OwnedVector<T> for ~[T] {
             assert!(self.capacity() >= ln);
             // Pretend like we have the original length so we can use
             // the vector copy_memory to overwrite the hole we just made
-            raw::set_len(self, ln);
+            self.set_len(ln);
 
             // Memcopy the head element (the one we want) to the location we just
             // popped. For the moment it unsafely exists at both the head and last
@@ -1636,7 +1645,7 @@ impl<T> OwnedVector<T> for ~[T] {
             }
 
             // Set the new length. Now the vector is back to normal
-            raw::set_len(self, next_ln);
+            self.set_len(next_ln);
 
             // Swap out the element we want from the end
             let vp = raw::to_mut_ptr(*self);
@@ -1692,7 +1701,7 @@ impl<T> OwnedVector<T> for ~[T] {
                 }
             }
         });
-        unsafe { raw::set_len(self, newlen); }
+        unsafe { self.set_len(newlen); }
     }
 
     fn retain(&mut self, f: |t: &T| -> bool) {
@@ -1734,6 +1743,16 @@ impl<T> OwnedVector<T> for ~[T] {
         while i < n {
             self.push(op(i));
             i += 1u;
+        }
+    }
+    #[inline]
+    unsafe fn set_len(&mut self, new_len: uint) {
+        if owns_managed::<T>() {
+            let repr: **mut Box<Vec<()>> = cast::transmute(self);
+            (**repr).data.fill = new_len * mem::nonzero_size_of::<T>();
+        } else {
+            let repr: **mut Vec<()> = cast::transmute(self);
+            (**repr).fill = new_len * mem::nonzero_size_of::<T>();
         }
     }
 }
@@ -2190,26 +2209,7 @@ pub mod raw {
     use mem;
     use unstable::intrinsics;
     use vec::{with_capacity, ImmutableVector, MutableVector};
-    use unstable::raw::{Box, Vec, Slice};
-    use unstable::intrinsics::owns_managed;
-
-    /**
-     * Sets the length of a vector
-     *
-     * This will explicitly set the size of the vector, without actually
-     * modifying its buffers, so it is up to the caller to ensure that
-     * the vector is actually the specified size.
-     */
-    #[inline]
-    pub unsafe fn set_len<T>(v: &mut ~[T], new_len: uint) {
-        if owns_managed::<T>() {
-            let repr: **mut Box<Vec<()>> = cast::transmute(v);
-            (**repr).data.fill = new_len * mem::nonzero_size_of::<T>();
-        } else {
-            let repr: **mut Vec<()> = cast::transmute(v);
-            (**repr).fill = new_len * mem::nonzero_size_of::<T>();
-        }
-    }
+    use unstable::raw::Slice;
 
     /**
      * Returns an unsafe pointer to the vector's buffer
@@ -2287,7 +2287,7 @@ pub mod raw {
     #[inline]
     pub unsafe fn from_buf_raw<T>(ptr: *T, elts: uint) -> ~[T] {
         let mut dst = with_capacity(elts);
-        set_len(&mut dst, elts);
+        dst.set_len(elts);
         dst.as_mut_buf(|p_dst, _len_dst| ptr::copy_memory(p_dst, ptr, elts));
         dst
     }
@@ -2379,7 +2379,7 @@ pub mod bytes {
                     ptr::copy_memory(p_dst.offset(len_dst as int), p_src, len_src)
                 })
             });
-            raw::set_len(dst, old_len + src.len());
+            dst.set_len(old_len + src.len());
         }
     }
 }
@@ -4293,7 +4293,7 @@ mod bench {
             unsafe {
                 let vp = vec::raw::to_mut_ptr(v);
                 ptr::set_memory(vp, 0, 1024);
-                vec::raw::set_len(&mut v, 1024);
+                v.set_len(1024);
             }
         });
     }
@@ -4312,7 +4312,7 @@ mod bench {
         bh.iter(|| {
             let mut v: ~[u8] = vec::with_capacity(1024);
             unsafe {
-                vec::raw::set_len(&mut v, 1024);
+                v.set_len(1024);
             }
             for i in range(0, 1024) {
                 v[i] = 0;
@@ -4325,7 +4325,7 @@ mod bench {
         bh.iter(|| {
             let mut v: ~[u8] = vec::with_capacity(1024);
             unsafe {
-                vec::raw::set_len(&mut v, 1024);
+                v.set_len(1024);
             }
             for x in v.mut_iter() {
                 *x = 0;

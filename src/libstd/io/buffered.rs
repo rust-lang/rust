@@ -79,7 +79,7 @@ impl<R: Reader> BufferedReader<R> {
         // to be very cheap (large mallocs are not nearly as expensive as large
         // callocs).
         let mut buf = vec::with_capacity(cap);
-        unsafe { vec::raw::set_len(&mut buf, cap); }
+        unsafe { buf.set_len(cap); }
         BufferedReader {
             inner: inner,
             buf: buf,
@@ -154,7 +154,7 @@ impl<W: Writer> BufferedWriter<W> {
     pub fn with_capacity(cap: uint, inner: W) -> BufferedWriter<W> {
         // See comments in BufferedReader for why this uses unsafe code.
         let mut buf = vec::with_capacity(cap);
-        unsafe { vec::raw::set_len(&mut buf, cap); }
+        unsafe { buf.set_len(cap); }
         BufferedWriter {
             inner: inner,
             buf: buf,

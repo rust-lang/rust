@@ -369,7 +369,7 @@ pub fn self_exe_path() -> Option<Path> {
             });
             if err != 0 { return None; }
             if sz == 0 { return None; }
-            vec::raw::set_len(&mut v, sz as uint - 1); // chop off trailing NUL
+            v.set_len(sz as uint - 1); // chop off trailing NUL
             Some(v)
         }
     }
@@ -398,7 +398,7 @@ pub fn self_exe_path() -> Option<Path> {
                 _NSGetExecutablePath(buf as *mut i8, &mut sz)
             });
             if err != 0 { return None; }
-            vec::raw::set_len(&mut v, sz as uint - 1); // chop off trailing NUL
+            v.set_len(sz as uint - 1); // chop off trailing NUL
             Some(v)
         }
     }
