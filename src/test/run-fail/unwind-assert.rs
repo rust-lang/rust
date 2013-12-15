@@ -10,6 +10,8 @@
 
 // error-pattern:fail
 
+#[feature(managed_boxes)];
+
 fn main() {
     let _a = @0;
     assert!(false);

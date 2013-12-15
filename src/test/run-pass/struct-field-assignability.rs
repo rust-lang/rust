@@ -1,3 +1,5 @@
+#[feature(managed_boxes)];
+
 struct Foo<'a> {
     x: &'a int
 }

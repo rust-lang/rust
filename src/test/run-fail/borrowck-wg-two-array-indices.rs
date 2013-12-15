@@ -3,6 +3,8 @@
 // Test that arguments trigger when there are *two mutable* borrows
 // of indices.
 
+#[feature(managed_boxes)];
+
 fn add(x:&mut int, y:&mut int)
 {
     *x = *x + *y;

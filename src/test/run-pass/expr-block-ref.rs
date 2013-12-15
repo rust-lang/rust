@@ -8,5 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(managed_boxes)];
+
 // Regression test for issue #388
 pub fn main() { let _x = { { @10 } }; }

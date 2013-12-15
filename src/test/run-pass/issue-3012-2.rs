@@ -10,6 +10,9 @@
 
 // xfail-fast
 // aux-build:issue-3012-1.rs
+
+#[feature(managed_boxes)];
+
 extern mod socketlib;
 
 use socketlib::socket;

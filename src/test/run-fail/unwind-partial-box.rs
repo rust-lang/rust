@@ -10,6 +10,8 @@
 
 // error-pattern:fail
 
+#[feature(managed_boxes)];
+
 fn f() -> ~[int] { fail!(); }
 
 // Voodoo. In unwind-alt we had to do this to trigger the bug. Might
