@@ -292,6 +292,21 @@ impl Task {
     pub fn local_io<'a>(&'a mut self) -> Option<LocalIo<'a>> {
         self.imp.get_mut_ref().local_io()
     }
+
+    /// The main function of all rust executables will by default use this
+    /// function. This function will *block* the OS thread (hence the `unsafe`)
+    /// waiting for all known tasks to complete. Once this function has
+    /// returned, it is guaranteed that no more user-defined code is still
+    /// running.
+    pub unsafe fn wait_for_other_tasks(&mut self) {
+        TASK_COUNT.fetch_sub(1, SeqCst); // don't count ourselves
+        TASK_LOCK.lock();
+        while TASK_COUNT.load(SeqCst) > 0 {
+            TASK_LOCK.wait();
+        }
+        TASK_LOCK.unlock();
+        TASK_COUNT.fetch_add(1, SeqCst); // add ourselves back in
+    }
 }
 
 impl Drop for Task {
@@ -394,18 +409,6 @@ impl Drop for Death {
     fn drop(&mut self) {
         // make this type noncopyable
     }
-}
-
-/// The main function of all rust executables will by default use this function.
-/// This function will *block* the OS thread (hence the `unsafe`) waiting for
-/// all known tasks to complete. Once this function has returned, it is
-/// guaranteed that no more user-defined code is still running.
-pub unsafe fn wait_for_completion() {
-    TASK_LOCK.lock();
-    while TASK_COUNT.load(SeqCst) > 0 {
-        TASK_LOCK.wait();
-    }
-    TASK_LOCK.unlock();
 }
 
 #[cfg(test)]
