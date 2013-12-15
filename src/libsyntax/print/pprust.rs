@@ -242,9 +242,10 @@ pub fn cbox(s: @ps, u: uint) {
     pp::cbox(s.s, u);
 }
 
-pub fn box(s: @ps, u: uint, b: pp::breaks) {
+// "raw box"
+pub fn rbox(s: @ps, u: uint, b: pp::breaks) {
     s.boxes.push(b);
-    pp::box(s.s, u, b);
+    pp::rbox(s.s, u, b);
 }
 
 pub fn nbsp(s: @ps) { word(s.s, " "); }
@@ -332,7 +333,7 @@ pub fn synth_comment(s: @ps, text: ~str) {
 }
 
 pub fn commasep<T>(s: @ps, b: breaks, elts: &[T], op: |@ps, &T|) {
-    box(s, 0u, b);
+    rbox(s, 0u, b);
     let mut first = true;
     for elt in elts.iter() {
         if first { first = false; } else { word_space(s, ","); }
@@ -348,7 +349,7 @@ pub fn commasep_cmnt<T>(
                      elts: &[T],
                      op: |@ps, &T|,
                      get_span: |&T| -> codemap::Span) {
-    box(s, 0u, b);
+    rbox(s, 0u, b);
     let len = elts.len();
     let mut i = 0u;
     for elt in elts.iter() {
@@ -1771,7 +1772,7 @@ pub fn print_fn_args(s: @ps, decl: &ast::fn_decl,
                  opt_explicit_self: Option<ast::explicit_self_>) {
     // It is unfortunate to duplicate the commasep logic, but we want the
     // self type and the args all in the same box.
-    box(s, 0u, inconsistent);
+    rbox(s, 0u, inconsistent);
     let mut first = true;
     for explicit_self in opt_explicit_self.iter() {
         first = !print_explicit_self(s, *explicit_self);
@@ -2071,7 +2072,7 @@ pub fn print_ty_fn(s: @ps,
 
     // It is unfortunate to duplicate the commasep logic, but we want the
     // self type and the args all in the same box.
-    box(s, 0u, inconsistent);
+    rbox(s, 0u, inconsistent);
     let mut first = true;
     for explicit_self in opt_explicit_self.iter() {
         first = !print_explicit_self(s, *explicit_self);

@@ -2280,10 +2280,10 @@ pub mod raw {
      */
     #[inline]
     pub unsafe fn init_elem<T>(v: &mut [T], i: uint, val: T) {
-        let mut box = Some(val);
+        let mut alloc = Some(val);
         v.as_mut_buf(|p, _len| {
             intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i as int)),
-                                      box.take_unwrap());
+                                      alloc.take_unwrap());
         })
     }
 

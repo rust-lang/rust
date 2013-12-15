@@ -30,7 +30,7 @@ fn Box() -> Box {
 }
 
 struct LayoutData {
-    box: Option<@Box>
+    a_box: Option<@Box>
 }
 
 pub fn main() { }

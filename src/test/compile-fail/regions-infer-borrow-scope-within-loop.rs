@@ -12,10 +12,10 @@
 
 fn borrow<'r, T>(x: &'r T) -> &'r T {x}
 
-fn foo(cond: || -> bool, box: || -> @int) {
+fn foo(cond: || -> bool, make_box: || -> @int) {
     let mut y: &int;
     loop {
-        let x = box();
+        let x = make_box();
 
         // Here we complain because the resulting region
         // of this borrow is the fn body as a whole.

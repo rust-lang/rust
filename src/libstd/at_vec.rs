@@ -25,8 +25,8 @@ use vec::{ImmutableVector, OwnedVector};
 #[inline]
 pub fn capacity<T>(v: @[T]) -> uint {
     unsafe {
-        let box = v.repr();
-        (*box).data.alloc / mem::size_of::<T>()
+        let managed_box = v.repr();
+        (*managed_box).data.alloc / mem::size_of::<T>()
     }
 }
 

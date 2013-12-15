@@ -1396,8 +1396,11 @@ fn trans_unary_datum(bcx: @mut Block,
             revoke_clean(bcx, val);
             return immediate_rvalue_bcx(bcx, val, box_ty);
         } else {
-            let base::MallocResult { bcx, box: bx, body } =
-                base::malloc_general(bcx, contents_ty, heap);
+            let base::MallocResult {
+                bcx,
+                smart_ptr: bx,
+                body
+            } = base::malloc_general(bcx, contents_ty, heap);
             add_clean_free(bcx, bx, heap);
             let bcx = trans_into(bcx, contents, SaveIn(body));
             revoke_clean(bcx, bx);
