@@ -2349,12 +2349,12 @@ pub mod raw {
     }
 }
 
-/// Operations on `[u8]`
+/// Operations on `[u8]`.
 pub mod bytes {
     use vec::raw;
     use ptr;
 
-    /// A trait for operations on mutable operations on `[u8]`
+    /// A trait for operations on mutable `[u8]`s.
     pub trait MutableByteVector {
         /// Sets all bytes of the receiver to the given value.
         fn set_memory(self, value: u8);
@@ -2372,7 +2372,9 @@ pub mod bytes {
     /**
       * Copies data from one vector to another.
       *
-      * Copies `src` to `dst`. The source and destination may overlap.
+      * Copies `src` to `dst`. The source and destination may
+      * overlap. Fails if the length of `dst` is less than the length
+      * of `src`.
       */
     #[inline]
     pub fn copy_memory(dst: &mut [u8], src: &[u8]) {
@@ -2381,7 +2383,7 @@ pub mod bytes {
     }
 
     /**
-     * Allocate space in `dst` and append the data in `src`.
+     * Allocate space in `dst` and append the data to `src`.
      */
     #[inline]
     pub fn push_bytes(dst: &mut ~[u8], src: &[u8]) {
