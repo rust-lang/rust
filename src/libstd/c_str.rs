@@ -293,7 +293,7 @@ impl<'a> ToCStr for &'a [u8] {
 unsafe fn with_c_str<T>(v: &[u8], checked: bool, f: |*libc::c_char| -> T) -> T {
     if v.len() < BUF_LEN {
         let mut buf: [u8, .. BUF_LEN] = intrinsics::uninit();
-        vec::bytes::copy_memory(buf, v, v.len());
+        vec::bytes::copy_memory(buf, v);
         buf[v.len()] = 0;
 
         buf.as_mut_buf(|buf, _| {
@@ -385,7 +385,7 @@ mod tests {
     fn test_str_multistring_parsing() {
         unsafe {
             let input = bytes!("zero", "\x00", "one", "\x00", "\x00");
-            let ptr = vec::raw::to_ptr(input);
+            let ptr = input.as_ptr();
             let expected = ["zero", "one"];
             let mut it = expected.iter();
             let result = from_c_multistring(ptr as *libc::c_char, None, |c| {

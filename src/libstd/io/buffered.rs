@@ -79,7 +79,7 @@ impl<R: Reader> BufferedReader<R> {
         // to be very cheap (large mallocs are not nearly as expensive as large
         // callocs).
         let mut buf = vec::with_capacity(cap);
-        unsafe { vec::raw::set_len(&mut buf, cap); }
+        unsafe { buf.set_len(cap); }
         BufferedReader {
             inner: inner,
             buf: buf,
@@ -122,7 +122,7 @@ impl<R: Reader> Reader for BufferedReader<R> {
                 return None;
             }
             let nread = num::min(available.len(), buf.len());
-            vec::bytes::copy_memory(buf, available, nread);
+            vec::bytes::copy_memory(buf, available.slice_to(nread));
             nread
         };
         self.pos += nread;
@@ -154,7 +154,7 @@ impl<W: Writer> BufferedWriter<W> {
     pub fn with_capacity(cap: uint, inner: W) -> BufferedWriter<W> {
         // See comments in BufferedReader for why this uses unsafe code.
         let mut buf = vec::with_capacity(cap);
-        unsafe { vec::raw::set_len(&mut buf, cap); }
+        unsafe { buf.set_len(cap); }
         BufferedWriter {
             inner: inner,
             buf: buf,
@@ -185,7 +185,7 @@ impl<W: Writer> Writer for BufferedWriter<W> {
             self.inner.write(buf);
         } else {
             let dst = self.buf.mut_slice_from(self.pos);
-            vec::bytes::copy_memory(dst, buf, buf.len());
+            vec::bytes::copy_memory(dst, buf);
             self.pos += buf.len();
         }
     }

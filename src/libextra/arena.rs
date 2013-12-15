@@ -44,7 +44,6 @@ use std::num;
 use std::ptr;
 use std::mem;
 use std::uint;
-use std::vec;
 use std::unstable::intrinsics;
 use std::unstable::intrinsics::{TyDesc, get_tydesc};
 
@@ -115,7 +114,7 @@ fn round_up_to(base: uint, align: uint) -> uint {
 // in it.
 unsafe fn destroy_chunk(chunk: &Chunk) {
     let mut idx = 0;
-    let buf = vec::raw::to_ptr(chunk.data);
+    let buf = chunk.data.as_ptr();
     let fill = chunk.fill;
 
     while idx < fill {
@@ -179,7 +178,7 @@ impl Arena {
             //debug!("idx = {}, size = {}, align = {}, fill = {}",
             //       start, n_bytes, align, head.fill);
 
-            ptr::offset(vec::raw::to_ptr(this.pod_head.data), start as int)
+            ptr::offset(this.pod_head.data.as_ptr(), start as int)
         }
     }
 
@@ -235,7 +234,7 @@ impl Arena {
             //debug!("idx = {}, size = {}, align = {}, fill = {}",
             //       start, n_bytes, align, head.fill);
 
-            let buf = vec::raw::to_ptr(self.head.data);
+            let buf = self.head.data.as_ptr();
             return (ptr::offset(buf, tydesc_start as int), ptr::offset(buf, start as int));
         }
     }

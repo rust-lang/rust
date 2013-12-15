@@ -358,18 +358,18 @@ pub fn self_exe_path() -> Option<Path> {
                         KERN_PROC as c_int,
                         KERN_PROC_PATHNAME as c_int, -1 as c_int];
             let mut sz: size_t = 0;
-            let err = sysctl(vec::raw::to_ptr(mib), mib.len() as ::libc::c_uint,
+            let err = sysctl(mib.as_ptr(), mib.len() as ::libc::c_uint,
                              ptr::mut_null(), &mut sz, ptr::null(), 0u as size_t);
             if err != 0 { return None; }
             if sz == 0 { return None; }
             let mut v: ~[u8] = vec::with_capacity(sz as uint);
             let err = v.as_mut_buf(|buf,_| {
-                sysctl(vec::raw::to_ptr(mib), mib.len() as ::libc::c_uint,
+                sysctl(mib.as_ptr(), mib.len() as ::libc::c_uint,
                        buf as *mut c_void, &mut sz, ptr::null(), 0u as size_t)
             });
             if err != 0 { return None; }
             if sz == 0 { return None; }
-            vec::raw::set_len(&mut v, sz as uint - 1); // chop off trailing NUL
+            v.set_len(sz as uint - 1); // chop off trailing NUL
             Some(v)
         }
     }
@@ -398,7 +398,7 @@ pub fn self_exe_path() -> Option<Path> {
                 _NSGetExecutablePath(buf as *mut i8, &mut sz)
             });
             if err != 0 { return None; }
-            vec::raw::set_len(&mut v, sz as uint - 1); // chop off trailing NUL
+            v.set_len(sz as uint - 1); // chop off trailing NUL
             Some(v)
         }
     }

@@ -58,8 +58,7 @@ impl Writer for MemWriter {
 
         // Do the necessary writes
         if left.len() > 0 {
-            vec::bytes::copy_memory(self.buf.mut_slice_from(self.pos),
-                                    left, left.len());
+            vec::bytes::copy_memory(self.buf.mut_slice_from(self.pos), left);
         }
         if right.len() > 0 {
             self.buf.push_all(right);
@@ -116,7 +115,7 @@ impl Reader for MemReader {
             let input = self.buf.slice(self.pos, self.pos + write_len);
             let output = buf.mut_slice(0, write_len);
             assert_eq!(input.len(), output.len());
-            vec::bytes::copy_memory(output, input, write_len);
+            vec::bytes::copy_memory(output, input);
         }
         self.pos += write_len;
         assert!(self.pos <= self.buf.len());
@@ -175,8 +174,7 @@ impl<'a> Writer for BufWriter<'a> {
             return;
         }
 
-        vec::bytes::copy_memory(self.buf.mut_slice_from(self.pos),
-                                buf, buf.len());
+        vec::bytes::copy_memory(self.buf.mut_slice_from(self.pos), buf);
         self.pos += buf.len();
     }
 }
@@ -222,7 +220,7 @@ impl<'a> Reader for BufReader<'a> {
             let input = self.buf.slice(self.pos, self.pos + write_len);
             let output = buf.mut_slice(0, write_len);
             assert_eq!(input.len(), output.len());
-            vec::bytes::copy_memory(output, input, write_len);
+            vec::bytes::copy_memory(output, input);
         }
         self.pos += write_len;
         assert!(self.pos <= self.buf.len());

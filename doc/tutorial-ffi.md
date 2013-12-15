@@ -79,7 +79,7 @@ the allocated memory. The length is less than or equal to the capacity.
 ~~~~ {.xfail-test}
 pub fn validate_compressed_buffer(src: &[u8]) -> bool {
     unsafe {
-        snappy_validate_compressed_buffer(vec::raw::to_ptr(src), src.len() as size_t) == 0
+        snappy_validate_compressed_buffer(src.as_ptr(), src.len() as size_t) == 0
     }
 }
 ~~~~
@@ -100,14 +100,14 @@ the true length after compression for setting the length.
 pub fn compress(src: &[u8]) -> ~[u8] {
     unsafe {
         let srclen = src.len() as size_t;
-        let psrc = vec::raw::to_ptr(src);
+        let psrc = src.as_ptr();
 
         let mut dstlen = snappy_max_compressed_length(srclen);
         let mut dst = vec::with_capacity(dstlen as uint);
-        let pdst = vec::raw::to_mut_ptr(dst);
+        let pdst = dst.as_mut_ptr();
 
         snappy_compress(psrc, srclen, pdst, &mut dstlen);
-        vec::raw::set_len(&mut dst, dstlen as uint);
+        dst.set_len(dstlen as uint);
         dst
     }
 }
@@ -120,16 +120,16 @@ format and `snappy_uncompressed_length` will retrieve the exact buffer size requ
 pub fn uncompress(src: &[u8]) -> Option<~[u8]> {
     unsafe {
         let srclen = src.len() as size_t;
-        let psrc = vec::raw::to_ptr(src);
+        let psrc = src.as_ptr();
 
         let mut dstlen: size_t = 0;
         snappy_uncompressed_length(psrc, srclen, &mut dstlen);
 
         let mut dst = vec::with_capacity(dstlen as uint);
-        let pdst = vec::raw::to_mut_ptr(dst);
+        let pdst = dst.as_mut_ptr();
 
         if snappy_uncompress(psrc, srclen, pdst, &mut dstlen) == 0 {
-            vec::raw::set_len(&mut dst, dstlen as uint);
+            dst.set_len(dstlen as uint);
             Some(dst)
         } else {
             None // SNAPPY_INVALID_INPUT

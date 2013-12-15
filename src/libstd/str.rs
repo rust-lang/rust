@@ -992,7 +992,7 @@ pub mod raw {
     use cast;
     use libc;
     use ptr;
-    use str::is_utf8;
+    use str::{is_utf8, OwnedStr};
     use vec;
     use vec::MutableVector;
     use unstable::raw::Slice;
@@ -1001,7 +1001,7 @@ pub mod raw {
     pub unsafe fn from_buf_len(buf: *u8, len: uint) -> ~str {
         let mut v: ~[u8] = vec::with_capacity(len);
         v.as_mut_buf(|vbuf, _len| ptr::copy_memory(vbuf, buf as *u8, len));
-        vec::raw::set_len(&mut v, len);
+        v.set_len(len);
 
         assert!(is_utf8(v));
         ::cast::transmute(v)
@@ -1108,7 +1108,7 @@ pub mod raw {
         let len = s.len();
         assert!((len > 0u));
         let b = s[len - 1u];
-        set_len(s, len - 1u);
+        s.set_len(len - 1);
         return b;
     }
 
@@ -1132,23 +1132,13 @@ pub mod raw {
     /// Sets the length of a string
     ///
     /// This will explicitly set the size of the string, without actually
-    /// modifying its buffers, so it is up to the caller to ensure that
-    /// the string is actually the specified size.
-    #[inline]
-    pub unsafe fn set_len(s: &mut ~str, new_len: uint) {
-        vec::raw::set_len(as_owned_vec(s), new_len)
-    }
-
-    /// Sets the length of a string
-    ///
-    /// This will explicitly set the size of the string, without actually
     /// modifing its buffers, so it is up to the caller to ensure that
     /// the string is actually the specified size.
     #[test]
     fn test_from_buf_len() {
         unsafe {
             let a = ~[65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 65u8, 0u8];
-            let b = vec::raw::to_ptr(a);
+            let b = a.as_ptr();
             let c = from_buf_len(b, 3u);
             assert_eq!(c, ~"AAA");
         }
@@ -1338,7 +1328,7 @@ impl Mutable for ~str {
     #[inline]
     fn clear(&mut self) {
         unsafe {
-            raw::set_len(self, 0)
+            self.set_len(0)
         }
     }
 }
@@ -2293,7 +2283,7 @@ impl<'a> StrSlice<'a> for &'a str {
                 let mut v = vec::with_capacity(len);
 
                 v.as_mut_buf(|dst, _| ptr::copy_memory(dst, src, len));
-                vec::raw::set_len(&mut v, len);
+                v.set_len(len);
                 ::cast::transmute(v)
             }
         })
@@ -2598,6 +2588,13 @@ pub trait OwnedStr {
     /// The caller must make sure any mutations to this buffer keep the string
     /// valid UTF-8!
     fn as_mut_buf<T>(&mut self, f: |*mut u8, uint| -> T) -> T;
+
+    /// Sets the length of a string
+    ///
+    /// This will explicitly set the size of the string, without actually
+    /// modifying its buffers, so it is up to the caller to ensure that
+    /// the string is actually the specified size.
+    unsafe fn set_len(&mut self, new_len: uint);
 }
 
 impl OwnedStr for ~str {
@@ -2629,7 +2626,7 @@ impl OwnedStr for ~str {
                     c.encode_utf8(slc)
                 })
             });
-            raw::set_len(self, cur_len + used);
+            self.set_len(cur_len + used);
         }
     }
 
@@ -2638,7 +2635,7 @@ impl OwnedStr for ~str {
         let end = self.len();
         assert!(end > 0u);
         let CharRange {ch, next} = self.char_range_at_reverse(end);
-        unsafe { raw::set_len(self, next); }
+        unsafe { self.set_len(next); }
         return ch;
     }
 
@@ -2689,7 +2686,7 @@ impl OwnedStr for ~str {
     fn truncate(&mut self, len: uint) {
         assert!(len <= self.len());
         assert!(self.is_char_boundary(len));
-        unsafe { raw::set_len(self, len); }
+        unsafe { self.set_len(len); }
     }
 
     #[inline]
@@ -2702,6 +2699,11 @@ impl OwnedStr for ~str {
         unsafe {
             raw::as_owned_vec(self).as_mut_buf(f)
         }
+    }
+
+    #[inline]
+    unsafe fn set_len(&mut self, new_len: uint) {
+        raw::as_owned_vec(self).set_len(new_len)
     }
 }
 
@@ -3358,7 +3360,7 @@ mod tests {
     fn test_raw_from_c_str() {
         unsafe {
             let a = ~[65, 65, 65, 65, 65, 65, 65, 0];
-            let b = vec::raw::to_ptr(a);
+            let b = a.as_ptr();
             let c = raw::from_c_str(b);
             assert_eq!(c, ~"AAAAAAA");
         }
