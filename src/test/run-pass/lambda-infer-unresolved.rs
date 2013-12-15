@@ -11,6 +11,7 @@
 // This should typecheck even though the type of e is not fully
 // resolved when we finish typechecking the ||.
 
+#[feature(managed_boxes)];
 
 struct Refs { refs: ~[int], n: int }
 

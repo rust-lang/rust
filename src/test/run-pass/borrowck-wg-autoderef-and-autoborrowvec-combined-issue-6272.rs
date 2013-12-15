@@ -26,6 +26,7 @@
 //
 // run-fail/borrowck-wg-autoderef-and-autoborrowvec-combined-fail-issue-6272.rs
 
+#[feature(managed_boxes)];
 
 pub fn main() {
     let a = @mut 3i;

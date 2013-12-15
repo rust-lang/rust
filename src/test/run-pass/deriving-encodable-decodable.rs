@@ -13,7 +13,7 @@
 
 // xfail-fast
 
-#[feature(struct_variant)];
+#[feature(struct_variant, managed_boxes)];
 
 extern mod extra;
 

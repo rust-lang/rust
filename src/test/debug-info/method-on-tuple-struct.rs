@@ -94,6 +94,8 @@
 // check:$21 = -16
 // debugger:continue
 
+#[feature(managed_boxes)];
+
 struct TupleStruct(int, f64);
 
 impl TupleStruct {

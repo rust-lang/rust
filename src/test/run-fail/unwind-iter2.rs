@@ -10,6 +10,8 @@
 
 // error-pattern:fail
 
+#[feature(managed_boxes)];
+
 fn x(it: |int|) {
     let _a = @0;
     it(1);
