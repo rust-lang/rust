@@ -62,7 +62,7 @@ pub fn sockaddr_to_socket_addr(addr: *sockaddr) -> SocketAddr {
             // apparently there's an off-by-one in libuv?
             let ip_size = ip_size + 1;
             let buf = vec::from_elem(ip_size + 1 /*null terminated*/, 0u8);
-            let buf_ptr = vec::raw::to_ptr(buf);
+            let buf_ptr = buf.as_ptr();
             let ret = if uvll::rust_is_ipv4_sockaddr(addr) == 1 {
                 uvll::uv_ip4_name(addr, buf_ptr as *c_char, ip_size as size_t)
             } else {

@@ -20,7 +20,6 @@ use middle::trans::type_::Type;
 use std::cast;
 use std::hashmap::HashMap;
 use std::libc::{c_uint, c_ulonglong, c_char};
-use std::vec;
 use syntax::codemap::Span;
 use std::ptr::is_not_null;
 
@@ -118,7 +117,7 @@ impl Builder {
     pub fn aggregate_ret(&self, ret_vals: &[ValueRef]) {
         unsafe {
             llvm::LLVMBuildAggregateRet(self.llbuilder,
-                                        vec::raw::to_ptr(ret_vals),
+                                        ret_vals.as_ptr(),
                                         ret_vals.len() as c_uint);
         }
     }
@@ -161,7 +160,7 @@ impl Builder {
         unsafe {
             let v = llvm::LLVMBuildInvoke(self.llbuilder,
                                           llfn,
-                                          vec::raw::to_ptr(args),
+                                          args.as_ptr(),
                                           args.len() as c_uint,
                                           then,
                                           catch,
@@ -500,7 +499,7 @@ impl Builder {
     pub fn gep(&self, ptr: ValueRef, indices: &[ValueRef]) -> ValueRef {
         self.count_insn("gep");
         unsafe {
-            llvm::LLVMBuildGEP(self.llbuilder, ptr, vec::raw::to_ptr(indices),
+            llvm::LLVMBuildGEP(self.llbuilder, ptr, indices.as_ptr(),
                                indices.len() as c_uint, noname())
         }
     }
@@ -528,7 +527,7 @@ impl Builder {
         self.count_insn("inboundsgep");
         unsafe {
             llvm::LLVMBuildInBoundsGEP(
-                self.llbuilder, ptr, vec::raw::to_ptr(indices), indices.len() as c_uint, noname())
+                self.llbuilder, ptr, indices.as_ptr(), indices.len() as c_uint, noname())
         }
     }
 
@@ -716,8 +715,8 @@ impl Builder {
         let phi = self.empty_phi(ty);
         self.count_insn("addincoming");
         unsafe {
-            llvm::LLVMAddIncoming(phi, vec::raw::to_ptr(vals),
-                                  vec::raw::to_ptr(bbs),
+            llvm::LLVMAddIncoming(phi, vals.as_ptr(),
+                                  bbs.as_ptr(),
                                   vals.len() as c_uint);
             phi
         }
@@ -775,7 +774,7 @@ impl Builder {
                 attributes: &[(uint, lib::llvm::Attribute)]) -> ValueRef {
         self.count_insn("call");
         unsafe {
-            let v = llvm::LLVMBuildCall(self.llbuilder, llfn, vec::raw::to_ptr(args),
+            let v = llvm::LLVMBuildCall(self.llbuilder, llfn, args.as_ptr(),
                                         args.len() as c_uint, noname());
             for &(idx, attr) in attributes.iter() {
                 llvm::LLVMAddInstrAttribute(v, idx as c_uint, attr as c_uint);
@@ -885,7 +884,7 @@ impl Builder {
             let args: &[ValueRef] = [];
             self.count_insn("trap");
             llvm::LLVMBuildCall(
-                self.llbuilder, T, vec::raw::to_ptr(args), args.len() as c_uint, noname());
+                self.llbuilder, T, args.as_ptr(), args.len() as c_uint, noname());
         }
     }
 

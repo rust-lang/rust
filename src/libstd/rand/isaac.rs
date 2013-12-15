@@ -49,7 +49,7 @@ impl IsaacRng {
         let mut rng = EMPTY;
 
         unsafe {
-            let ptr = raw::to_mut_ptr(rng.rsl);
+            let ptr = rng.rsl.as_mut_ptr();
 
             raw::mut_buf_as_slice(ptr as *mut u8, mem::size_of_val(&rng.rsl), |slice| {
                 OSRng::new().fill_bytes(slice);
@@ -254,7 +254,7 @@ impl Isaac64Rng {
         let mut rng = EMPTY_64;
 
         unsafe {
-            let ptr = raw::to_mut_ptr(rng.rsl);
+            let ptr = rng.rsl.as_mut_ptr();
 
             raw::mut_buf_as_slice(ptr as *mut u8, mem::size_of_val(&rng.rsl), |slice| {
                 OSRng::new().fill_bytes(slice);
@@ -341,7 +341,7 @@ impl Isaac64Rng {
         static MP_VEC: [(uint, uint), .. 2] = [(0,MIDPOINT), (MIDPOINT, 0)];
         macro_rules! ind (
             ($x:expr) => {
-                self.mem.unsafe_get(($x as uint >> 3) & (RAND_SIZE_64 - 1))
+                *self.mem.unsafe_ref(($x as uint >> 3) & (RAND_SIZE_64 - 1))
             }
         );
         macro_rules! rngstep(
@@ -355,8 +355,8 @@ impl Isaac64Rng {
                 let mix = if $j == 0 {!mix} else {mix};
 
                 unsafe {
-                    let x = self.mem.unsafe_get(base + mr_offset);
-                    a = mix + self.mem.unsafe_get(base + m2_offset);
+                    let x = *self.mem.unsafe_ref(base + mr_offset);
+                    a = mix + *self.mem.unsafe_ref(base + m2_offset);
                     let y = ind!(x) + a + b;
                     self.mem.unsafe_set(base + mr_offset, y);
 
@@ -395,7 +395,7 @@ impl Rng for Isaac64Rng {
             self.isaac64();
         }
         self.cnt -= 1;
-        unsafe { self.rsl.unsafe_get(self.cnt) }
+        unsafe { *self.rsl.unsafe_ref(self.cnt) }
     }
 }
 

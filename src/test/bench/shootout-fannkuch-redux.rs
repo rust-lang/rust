@@ -37,7 +37,7 @@ fn fannkuch_redux(n: i32) -> i32 {
             let mut flips_count: i32 = 0;
             let mut k: i32;
             loop {
-                k = perm.unsafe_get(0);
+                k = *perm.unsafe_ref(0);
                 if k == 0 {
                     break;
                 }
@@ -45,8 +45,8 @@ fn fannkuch_redux(n: i32) -> i32 {
                 let k2 = (k+1) >> 1;
                 for i in range(0i32, k2) {
                     let (perm_i, perm_k_i) = {
-                        (perm.unsafe_get(i as uint),
-                            perm.unsafe_get((k-i) as uint))
+                        (*perm.unsafe_ref(i as uint),
+                            *perm.unsafe_ref((k-i) as uint))
                     };
                     perm.unsafe_set(i as uint, perm_k_i);
                     perm.unsafe_set((k-i) as uint, perm_i);
@@ -72,15 +72,15 @@ fn fannkuch_redux(n: i32) -> i32 {
                 let mut i: i32 = 0;
                 while i < r {
                     let j = i + 1;
-                    let perm1_j = { perm1.unsafe_get(j as uint) };
+                    let perm1_j = { *perm1.unsafe_ref(j as uint) };
                     perm1.unsafe_set(i as uint, perm1_j);
                     i = j;
                 }
                 perm1.unsafe_set(r as uint, perm0);
 
-                let count_r = { count.unsafe_get(r as uint) };
+                let count_r = { *count.unsafe_ref(r as uint) };
                 count.unsafe_set(r as uint, count_r - 1);
-                if count.unsafe_get(r as uint) > 0 {
+                if *count.unsafe_ref(r as uint) > 0 {
                     break;
                 }
                 r += 1;

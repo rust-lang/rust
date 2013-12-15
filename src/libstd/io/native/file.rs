@@ -133,7 +133,7 @@ impl rtio::RtioFileStream for FileDesc {
         self.inner_write(buf)
     }
     fn pread(&mut self, buf: &mut [u8], offset: u64) -> Result<int, IoError> {
-        return os_pread(self.fd, vec::raw::to_ptr(buf), buf.len(), offset);
+        return os_pread(self.fd, buf.as_ptr(), buf.len(), offset);
 
         #[cfg(windows)]
         fn os_pread(fd: c_int, buf: *u8, amt: uint, offset: u64) -> IoResult<int> {
@@ -165,7 +165,7 @@ impl rtio::RtioFileStream for FileDesc {
         }
     }
     fn pwrite(&mut self, buf: &[u8], offset: u64) -> Result<(), IoError> {
-        return os_pwrite(self.fd, vec::raw::to_ptr(buf), buf.len(), offset);
+        return os_pwrite(self.fd, buf.as_ptr(), buf.len(), offset);
 
         #[cfg(windows)]
         fn os_pwrite(fd: c_int, buf: *u8, amt: uint, offset: u64) -> IoResult<()> {
@@ -700,13 +700,13 @@ pub fn readlink(p: &CString) -> IoResult<Path> {
         }
         let mut buf = vec::with_capacity::<u8>(len as uint);
         match unsafe {
-            libc::readlink(p, vec::raw::to_ptr(buf) as *mut libc::c_char,
+            libc::readlink(p, buf.as_ptr() as *mut libc::c_char,
                            len as libc::size_t)
         } {
             -1 => Err(super::last_error()),
             n => {
                 assert!(n > 0);
-                unsafe { vec::raw::set_len(&mut buf, n as uint); }
+                unsafe { buf.set_len(n as uint); }
                 Ok(Path::new(buf))
             }
         }

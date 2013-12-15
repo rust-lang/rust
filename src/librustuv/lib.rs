@@ -60,7 +60,6 @@ use std::str::raw::from_c_str;
 use std::str;
 use std::task;
 use std::unstable::finally::Finally;
-use std::vec;
 
 use std::io::IoError;
 
@@ -388,7 +387,7 @@ pub fn empty_buf() -> Buf {
 
 /// Borrow a slice to a Buf
 pub fn slice_to_uv_buf(v: &[u8]) -> Buf {
-    let data = vec::raw::to_ptr(v);
+    let data = v.as_ptr();
     uvll::uv_buf_t { base: data, len: v.len() as uvll::uv_buf_len_t }
 }
 
