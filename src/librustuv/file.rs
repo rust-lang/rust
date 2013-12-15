@@ -20,7 +20,6 @@ use std::io;
 use std::rt::local::Local;
 use std::rt::rtio;
 use std::rt::sched::{Scheduler, SchedHandle};
-use std::vec;
 
 use super::{Loop, UvError, uv_error_to_io_error, wait_until_woken_after};
 use uvio::HomingIO;
@@ -78,7 +77,7 @@ impl FsRequest {
     {
         execute_nop(|req, cb| unsafe {
             uvll::uv_fs_write(loop_.handle, req,
-                              fd, vec::raw::to_ptr(buf) as *c_void,
+                              fd, buf.as_ptr() as *c_void,
                               buf.len() as size_t, offset, cb)
         })
     }
@@ -88,7 +87,7 @@ impl FsRequest {
     {
         execute(|req, cb| unsafe {
             uvll::uv_fs_read(loop_.handle, req,
-                             fd, vec::raw::to_ptr(buf) as *c_void,
+                             fd, buf.as_ptr() as *c_void,
                              buf.len() as size_t, offset, cb)
         }).map(|req| {
             req.get_result() as int

@@ -31,7 +31,6 @@ use util::sha2::Sha256;
 use std::c_str::ToCStr;
 use std::hashmap::{HashMap, HashSet};
 use std::local_data;
-use std::vec;
 use std::libc::c_uint;
 use syntax::ast;
 
@@ -261,7 +260,7 @@ impl CrateContext {
             indices.iter().map(|i| C_i32(*i as i32)).collect();
         unsafe {
             llvm::LLVMConstInBoundsGEP(pointer,
-                                       vec::raw::to_ptr(v),
+                                       v.as_ptr(),
                                        indices.len() as c_uint)
         }
     }

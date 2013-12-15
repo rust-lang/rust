@@ -33,7 +33,6 @@ use std::libc::{size_t, c_int, c_uint, c_void, c_char, c_double};
 use std::libc::ssize_t;
 use std::libc::{malloc, free};
 use std::libc;
-use std::vec;
 
 #[cfg(test)]
 use std::libc::uintptr_t;
@@ -419,7 +418,7 @@ pub unsafe fn uv_write(req: *uv_write_t,
                     cb: uv_write_cb) -> c_int;
     }
 
-    let buf_ptr = vec::raw::to_ptr(buf_in);
+    let buf_ptr = buf_in.as_ptr();
     let buf_cnt = buf_in.len() as i32;
     return uv_write(req, stream, buf_ptr, buf_cnt, cb);
 }
@@ -435,7 +434,7 @@ pub unsafe fn uv_udp_send(req: *uv_udp_send_t,
                        cb: uv_udp_send_cb) -> c_int;
     }
 
-    let buf_ptr = vec::raw::to_ptr(buf_in);
+    let buf_ptr = buf_in.as_ptr();
     let buf_cnt = buf_in.len() as i32;
     return uv_udp_send(req, handle, buf_ptr, buf_cnt, addr, cb);
 }

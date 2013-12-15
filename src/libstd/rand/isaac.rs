@@ -49,7 +49,7 @@ impl IsaacRng {
         let mut rng = EMPTY;
 
         unsafe {
-            let ptr = raw::to_mut_ptr(rng.rsl);
+            let ptr = rng.rsl.as_mut_ptr();
 
             raw::mut_buf_as_slice(ptr as *mut u8, mem::size_of_val(&rng.rsl), |slice| {
                 OSRng::new().fill_bytes(slice);
@@ -254,7 +254,7 @@ impl Isaac64Rng {
         let mut rng = EMPTY_64;
 
         unsafe {
-            let ptr = raw::to_mut_ptr(rng.rsl);
+            let ptr = rng.rsl.as_mut_ptr();
 
             raw::mut_buf_as_slice(ptr as *mut u8, mem::size_of_val(&rng.rsl), |slice| {
                 OSRng::new().fill_bytes(slice);
