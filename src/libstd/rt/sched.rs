@@ -75,7 +75,7 @@ pub struct Scheduler {
     friend_handle: Option<SchedHandle>,
     /// A fast XorShift rng for scheduler use
     rng: XorShiftRng,
-    /// A toggleable idle callback
+    /// A togglable idle callback
     idle_callback: Option<~PausibleIdleCallback>,
     /// A countdown that starts at a random value and is decremented
     /// every time a yield check is performed. When it hits 0 a task
