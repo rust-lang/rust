@@ -963,10 +963,9 @@ pub fn utf8_char_width(b: u8) -> uint {
     return UTF8_CHAR_WIDTH[b] as uint;
 }
 
-/// Struct that contains a `char` and
-/// the index of the first byte of the next `char` in a string.
-/// This is being used as a datastructure for iterating over
-/// the utf8 bytes of a string.
+/// Struct that contains a `char` and the index of the first byte of
+/// the next `char` in a string.  This can be used as a data structure
+/// for iterating over the UTF-8 bytes of a string.
 pub struct CharRange {
     /// Current `char`
     ch: char,
@@ -1570,7 +1569,8 @@ pub trait StrSlice<'a> {
     /// ```
     fn is_whitespace(&self) -> bool;
 
-    /// Returns true if the string contains only alphanumerics.
+    /// Returns true if the string contains only alphanumeric code
+    /// points.
     ///
     /// Alphanumeric characters are determined by `char::is_alphanumeric`.
     ///
@@ -2518,7 +2518,7 @@ impl<'a> StrSlice<'a> for &'a str {
 
 /// Methods for owned strings
 pub trait OwnedStr {
-    /// Appends a string slice to the back of a string, without overallocating
+    /// Appends a string slice to the back of a string, without overallocating.
     fn push_str_no_overallocate(&mut self, rhs: &str);
 
     /// Appends a string slice to the back of a string

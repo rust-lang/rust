@@ -22,7 +22,7 @@ use rt::kill::BlockedTask;
 use rt::deque;
 use rt::local_ptr;
 use rt::local::Local;
-use rt::rtio::{RemoteCallback, PausibleIdleCallback, Callback};
+use rt::rtio::{RemoteCallback, PausableIdleCallback, Callback};
 use borrow::{to_uint};
 use rand::{XorShiftRng, Rng, Rand};
 use iter::range;
@@ -75,8 +75,8 @@ pub struct Scheduler {
     friend_handle: Option<SchedHandle>,
     /// A fast XorShift rng for scheduler use
     rng: XorShiftRng,
-    /// A toggleable idle callback
-    idle_callback: Option<~PausibleIdleCallback>,
+    /// A togglable idle callback
+    idle_callback: Option<~PausableIdleCallback>,
     /// A countdown that starts at a random value and is decremented
     /// every time a yield check is performed. When it hits 0 a task
     /// will yield.
@@ -86,7 +86,7 @@ pub struct Scheduler {
     steal_for_yield: bool,
 
     // n.b. currently destructors of an object are run in top-to-bottom in order
-    //      of field declaration. Due to its nature, the pausible idle callback
+    //      of field declaration. Due to its nature, the pausable idle callback
     //      must have some sort of handle to the event loop, so it needs to get
     //      destroyed before the event loop itself. For this reason, we destroy
     //      the event loop last to ensure that any unsafe references to it are
@@ -170,7 +170,7 @@ impl Scheduler {
 
         // Build an Idle callback.
         let cb = ~SchedRunner as ~Callback;
-        self.idle_callback = Some(self.event_loop.pausible_idle_callback(cb));
+        self.idle_callback = Some(self.event_loop.pausable_idle_callback(cb));
 
         // Initialize the TLS key.
         local_ptr::init();

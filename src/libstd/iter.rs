@@ -15,7 +15,7 @@ Composable external iterators
 # The `Iterator` trait
 
 This module defines Rust's core iteration trait. The `Iterator` trait has one
-un-implemented method, `next`. All other methods are derived through default
+unimplemented method, `next`. All other methods are derived through default
 methods to perform operations such as `zip`, `chain`, `enumerate`, and `fold`.
 
 The goal of this module is to unify iteration across all containers in Rust.
@@ -1688,7 +1688,7 @@ impl<A, T: RandomAccessIterator<A>> RandomAccessIterator<A> for Fuse<T> {
 
 impl<T> Fuse<T> {
     /// Resets the fuse such that the next call to .next() or .next_back() will
-    /// call the underlying iterator again even if it prevously returned None.
+    /// call the underlying iterator again even if it previously returned None.
     #[inline]
     pub fn reset_fuse(&mut self) {
         self.done = false

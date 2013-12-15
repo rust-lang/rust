@@ -209,7 +209,7 @@ pub trait Fractional: Num
 pub trait Algebraic {
     /// Raise a number to a power.
     fn pow(&self, n: &Self) -> Self;
-    /// Take the squre root of a number.
+    /// Take the square root of a number.
     fn sqrt(&self) -> Self;
     /// Take the reciprocal (inverse) square root of a number, `1/sqrt(x)`.
     fn rsqrt(&self) -> Self;
@@ -229,7 +229,7 @@ pub trait Algebraic {
 /// assert_eq!(sixteen, 16.0);
 /// ```
 #[inline(always)] pub fn pow<T: Algebraic>(value: T, n: T) -> T { value.pow(&n) }
-/// Take the squre root of a number.
+/// Take the square root of a number.
 #[inline(always)] pub fn sqrt<T: Algebraic>(value: T) -> T { value.sqrt() }
 /// Take the reciprocal (inverse) square root of a number, `1/sqrt(x)`.
 #[inline(always)] pub fn rsqrt<T: Algebraic>(value: T) -> T { value.rsqrt() }

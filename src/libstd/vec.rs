@@ -402,7 +402,7 @@ pub fn unzip<T, U, V: Iterator<(T, U)>>(mut iter: V) -> (~[T], ~[U]) {
 ///
 /// The Steinhaus–Johnson–Trotter algorithm is used.
 ///
-/// Generates even and odd permutations alternatingly.
+/// Generates even and odd permutations alternately.
 ///
 /// The last generated swap is always (0, 1), and it returns the
 /// sequence to its initial order.
@@ -480,7 +480,7 @@ impl Iterator<(uint, uint)> for ElementSwaps {
 /// then each successive element is the vector with one
 /// swap applied.
 ///
-/// Generates even and odd permutations alternatingly.
+/// Generates even and odd permutations alternately.
 pub struct Permutations<T> {
     priv swaps: ElementSwaps,
     priv v: ~[T],
@@ -940,7 +940,7 @@ pub trait ImmutableVector<'a, T> {
     fn tailn(&self, n: uint) -> &'a [T];
     /// Returns all but the last element of a vector
     fn init(&self) -> &'a [T];
-    /// Returns all but the last `n' elemnts of a vector
+    /// Returns all but the last `n' elements of a vector
     fn initn(&self, n: uint) -> &'a [T];
     /// Returns the last element of a vector, failing if the vector is empty.
     fn last(&self) -> &'a T;
@@ -958,9 +958,10 @@ pub trait ImmutableVector<'a, T> {
     /**
      * Binary search a sorted vector with a comparator function.
      *
-     * The comparator should implement an order consistent with the sort
-     * order of the underlying vector, returning an order code that indicates
-     * whether its argument is `Less`, `Equal` or `Greater` the desired target.
+     * The comparator function should implement an order consistent
+     * with the sort order of the underlying vector, returning an
+     * order code that indicates whether its argument is `Less`,
+     * `Equal` or `Greater` the desired target.
      *
      * Returns the index where the comparator returned `Equal`, or `None` if
      * not found.
@@ -1436,14 +1437,14 @@ pub trait OwnedVector<T> {
 
     /**
      * Expands a vector in place, initializing the new elements to the result of
-     * a function
+     * a function.
      *
      * Function `init_op` is called `n` times with the values [0..`n`)
      *
      * # Arguments
      *
      * * n - The number of elements to add
-     * * init_op - A function to call to retreive each appended element's
+     * * init_op - A function to call to retrieve each appended element's
      *             value
      */
     fn grow_fn(&mut self, n: uint, op: |uint| -> T);

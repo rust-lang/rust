@@ -835,7 +835,7 @@ pub trait Writer {
     /// Flush this output stream, ensuring that all intermediately buffered
     /// contents reach their destination.
     ///
-    /// This is by default a no-op and implementors of the `Writer` trait should
+    /// This is by default a no-op and implementers of the `Writer` trait should
     /// decide whether their stream needs to be buffered or not.
     fn flush(&mut self) {}
 
@@ -1057,7 +1057,7 @@ pub trait Buffer: Reader {
         }
     }
 
-    /// Reads a sequence of bytes leading up to a specified delimeter. Once the
+    /// Reads a sequence of bytes leading up to a specified delimiter. Once the
     /// specified byte is encountered, reading ceases and the bytes up to and
     /// including the delimiter are returned.
     ///
@@ -1156,7 +1156,7 @@ pub trait Seek {
 /// A listener is a value that can consume itself to start listening for connections.
 /// Doing so produces some sort of Acceptor.
 pub trait Listener<T, A: Acceptor<T>> {
-    /// Spin up the listener and start queueing incoming connections
+    /// Spin up the listener and start queuing incoming connections
     ///
     /// # Failure
     ///
