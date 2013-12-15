@@ -2351,10 +2351,7 @@ pub mod raw {
 
 /// Operations on `[u8]`
 pub mod bytes {
-    use libc;
-    use num;
     use vec::raw;
-    use vec;
     use ptr;
 
     /// A trait for operations on mutable operations on `[u8]`
@@ -2372,45 +2369,6 @@ pub mod bytes {
         }
     }
 
-    /// Bytewise string comparison
-    pub fn memcmp(a: &~[u8], b: &~[u8]) -> int {
-        let a_len = a.len();
-        let b_len = b.len();
-        let n = num::min(a_len, b_len) as libc::size_t;
-        let r = unsafe {
-            libc::memcmp(raw::to_ptr(*a) as *libc::c_void,
-                         raw::to_ptr(*b) as *libc::c_void, n) as int
-        };
-
-        if r != 0 { r } else {
-            if a_len == b_len {
-                0
-            } else if a_len < b_len {
-                -1
-            } else {
-                1
-            }
-        }
-    }
-
-    /// Bytewise less than or equal
-    pub fn lt(a: &~[u8], b: &~[u8]) -> bool { memcmp(a, b) < 0 }
-
-    /// Bytewise less than or equal
-    pub fn le(a: &~[u8], b: &~[u8]) -> bool { memcmp(a, b) <= 0 }
-
-    /// Bytewise equality
-    pub fn eq(a: &~[u8], b: &~[u8]) -> bool { memcmp(a, b) == 0 }
-
-    /// Bytewise inequality
-    pub fn ne(a: &~[u8], b: &~[u8]) -> bool { memcmp(a, b) != 0 }
-
-    /// Bytewise greater than or equal
-    pub fn ge(a: &~[u8], b: &~[u8]) -> bool { memcmp(a, b) >= 0 }
-
-    /// Bytewise greater than
-    pub fn gt(a: &~[u8], b: &~[u8]) -> bool { memcmp(a, b) > 0 }
-
     /**
       * Copies data from one vector to another.
       *
@@ -2419,7 +2377,7 @@ pub mod bytes {
     #[inline]
     pub fn copy_memory(dst: &mut [u8], src: &[u8]) {
         // Bound checks are done at vec::raw::copy_memory.
-        unsafe { vec::raw::copy_memory(dst, src) }
+        unsafe { raw::copy_memory(dst, src) }
     }
 
     /**
@@ -2435,7 +2393,7 @@ pub mod bytes {
                     ptr::copy_memory(p_dst.offset(len_dst as int), p_src, len_src)
                 })
             });
-            vec::raw::set_len(dst, old_len + src.len());
+            raw::set_len(dst, old_len + src.len());
         }
     }
 }
