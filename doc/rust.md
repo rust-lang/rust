@@ -3329,6 +3329,12 @@ The kinds are:
     This kind includes scalars, owning pointers, owned closures, and
     structural types containing only other owned types.
     All `Send` types are `'static`.
+`Pod`
+  : Types of this kind consist of "Plain Old Data"
+    which can be copied by simply moving bits.
+    All values of this kind can be implicitly copied.
+    This kind includes scalars and immutable references,
+    as well as structural types containing other `Pod` types.
 `'static`
   : Types of this kind do not contain any borrowed pointers;
     this can be a useful guarantee for code
