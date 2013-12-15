@@ -10,6 +10,7 @@
 
 // error-pattern:fail
 
+#[feature(managed_boxes)];
 #[allow(unreachable_code)];
 #[allow(unused_variable)];
 

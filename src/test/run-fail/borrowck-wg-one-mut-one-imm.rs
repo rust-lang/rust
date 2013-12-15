@@ -3,6 +3,8 @@
 // Test that write guards trigger when we are indexing into
 // an @mut vector.
 
+#[feature(managed_boxes)];
+
 fn add(x:&mut int, y:&int)
 {
     *x = *x + *y;

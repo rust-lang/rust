@@ -1,3 +1,5 @@
+#[feature(managed_boxes)];
+
 fn f(x: &int) {
     println(x.to_str());
 }

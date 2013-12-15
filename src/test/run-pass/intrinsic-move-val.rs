@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[feature(managed_boxes)];
+
 mod rusti {
     extern "rust-intrinsic" {
         pub fn move_val_init<T>(dst: &mut T, src: T);

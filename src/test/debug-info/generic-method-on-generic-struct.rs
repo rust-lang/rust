@@ -94,6 +94,8 @@
 // check:$21 = {-16, 16.5}
 // debugger:continue
 
+#[feature(managed_boxes)];
+
 struct Struct<T> {
     x: T
 }

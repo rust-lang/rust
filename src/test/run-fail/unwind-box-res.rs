@@ -10,6 +10,8 @@
 
 // error-pattern:fail
 
+#[feature(managed_boxes)];
+
 use std::cast;
 
 fn failfn() {

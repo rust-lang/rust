@@ -12,6 +12,8 @@
 // previously ambiguous (e.g. 'if true { } *val;' gets parsed as a
 // binop)
 
+#[feature(managed_boxes)];
+
 fn test1() { let val = @0; { } *val; }
 
 fn test2() -> int { let val = @0; { } *val }

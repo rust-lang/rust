@@ -8,6 +8,8 @@
 //
 // for a detailed explanation of what is going on here.
 
+#[feature(managed_boxes)];
+
 fn main() {
     let a = @mut [3i];
     let b = @mut [a];

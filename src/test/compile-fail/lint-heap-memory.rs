@@ -19,6 +19,20 @@ struct Foo {
 struct Bar { x: ~int } //~ ERROR type uses owned
 
 fn main() {
-    let _x : Bar = Bar {x : ~10};
+    let _x : Bar = Bar {x : ~10}; //~ ERROR type uses owned
+
+    @2; //~ ERROR type uses managed
+    @[1]; //~ ERROR type uses managed
+    //~^ ERROR type uses managed
+    fn f(_: @Clone) {} //~ ERROR type uses managed
+    @""; //~ ERROR type uses managed
+    //~^ ERROR type uses managed
+
+    ~2; //~ ERROR type uses owned
+    ~[1]; //~ ERROR type uses owned
     //~^ ERROR type uses owned
+    fn g(_: ~Clone) {} //~ ERROR type uses owned
+    ~""; //~ ERROR type uses owned
+    //~^ ERROR type uses owned
+    proc() {}; //~ ERROR type uses owned
 }

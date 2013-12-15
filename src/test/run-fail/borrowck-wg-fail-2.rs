@@ -3,6 +3,8 @@
 // Test that write guards trigger when there is a write to a field
 // of a frozen structure.
 
+#[feature(managed_boxes)];
+
 struct S {
     x: int
 }

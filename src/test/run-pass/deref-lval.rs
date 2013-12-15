@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
+#[feature(managed_boxes)];
 
 pub fn main() { let x = @mut 5; *x = 1000; info!("{:?}", *x); }

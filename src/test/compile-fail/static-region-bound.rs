@@ -1,3 +1,5 @@
+#[feature(managed_boxes)];
+
 fn f<T:'static>(_: T) {}
 
 fn main() {
