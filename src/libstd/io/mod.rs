@@ -476,9 +476,9 @@ pub trait Reader {
     ///
     /// # Example
     ///
-    ///     let reader = File::open(&Path::new("foo.txt"))
-    ///     while !reader.eof() {
-    ///         println(reader.read_line());
+    ///     let mut reader = BufferedReader::new(File::open(&Path::new("foo.txt")));
+    ///     for line in reader.lines() {
+    ///         println(line);
     ///     }
     ///
     /// # Failure
