@@ -249,7 +249,7 @@ pub fn unlink(path: &Path) {
 /// directory, etc. This function will traverse symlinks to query
 /// information about the destination file.
 ///
-/// Returns a fully-filled out stat structure on succes, and on failure it
+/// Returns a fully-filled out stat structure on success, and on failure it
 /// will return a dummy stat structure (it is expected that the condition
 /// raised is handled as well).
 ///
@@ -342,7 +342,7 @@ pub fn rename(from: &Path, to: &Path) {
 ///
 /// # Errors
 ///
-/// Will raise an `io_error` condition is the following situtations, but is
+/// Will raise an `io_error` condition is the following situations, but is
 /// not limited to just these cases:
 ///
 /// * The `from` path is not a file
@@ -391,7 +391,7 @@ pub fn copy(from: &Path, to: &Path) {
 ///
 /// # Errors
 ///
-/// If this funciton encounters an I/O error, it will raise on the `io_error`
+/// If this function encounters an I/O error, it will raise on the `io_error`
 /// condition. Some possible error situations are not having the permission to
 /// change the attributes of a file or the file not existing.
 pub fn chmod(path: &Path, mode: io::FilePermission) {
@@ -402,7 +402,7 @@ pub fn chmod(path: &Path, mode: io::FilePermission) {
 ///
 /// # Errors
 ///
-/// This funtion will raise on the `io_error` condition on failure.
+/// This function will raise on the `io_error` condition on failure.
 pub fn chown(path: &Path, uid: int, gid: int) {
     io_raise(|io| io.fs_chown(&path.to_c_str(), uid, gid));
 }
@@ -448,7 +448,7 @@ pub fn readlink(path: &Path) -> Option<Path> {
 ///
 ///     let p = Path::new("/some/dir");
 ///     fs::mkdir(&p, S_IRWXU as int);
-///     // If we got here, our directory exists! Horray!
+///     // If we got here, our directory exists! Hooray!
 ///
 /// # Errors
 ///
@@ -665,7 +665,7 @@ impl path::Path {
         io::result(|| self.stat()).is_ok()
     }
 
-    /// Whether the underlying implemention (be it a file path, or something
+    /// Whether the underlying implementation (be it a file path, or something
     /// else) points at a "regular file" on the FS. Will return false for paths
     /// to non-existent locations or directories or other non-regular files
     /// (named pipes, etc).
@@ -680,7 +680,7 @@ impl path::Path {
         }
     }
 
-    /// Whether the underlying implemention (be it a file path,
+    /// Whether the underlying implementation (be it a file path,
     /// or something else) is pointing at a directory in the underlying FS.
     /// Will return false for paths to non-existent locations or if the item is
     /// not a directory (eg files, named pipes, links, etc)

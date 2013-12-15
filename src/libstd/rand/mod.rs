@@ -119,7 +119,7 @@ pub trait Rng {
     /// Fill `dest` with random data.
     ///
     /// This has a default implementation in terms of `next_u64` and
-    /// `next_u32`, but should be overriden by implementations that
+    /// `next_u32`, but should be overridden by implementations that
     /// offer a more efficient solution than just calling those
     /// methods repeatedly.
     ///

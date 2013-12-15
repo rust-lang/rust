@@ -81,7 +81,7 @@ impl<T> RefCell<T> {
 
     /// Mutably borrows the wrapped value.
     ///
-    /// The borrow lasts untile the returned `RefMut` exits scope. The value
+    /// The borrow lasts until the returned `RefMut` exits scope. The value
     /// cannot be borrowed while this borrow is active.
     ///
     /// Returns `None` if the value is currently borrowed.
@@ -98,7 +98,7 @@ impl<T> RefCell<T> {
 
     /// Mutably borrows the wrapped value.
     ///
-    /// The borrow lasts untile the returned `RefMut` exits scope. The value
+    /// The borrow lasts until the returned `RefMut` exits scope. The value
     /// cannot be borrowed while this borrow is active.
     ///
     /// # Failure

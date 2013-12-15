@@ -45,7 +45,7 @@ pub trait Sample<Support> {
 
 /// `Sample`s that do not require keeping track of state.
 ///
-/// Since no state is recored, each sample is (statistically)
+/// Since no state is recorded, each sample is (statistically)
 /// independent of all others, assuming the `Rng` used has this
 /// property.
 // XXX maybe having this separate is overkill (the only reason is to
@@ -84,7 +84,7 @@ pub struct Weighted<T> {
 /// is to be chosen: higher weight is more likely.
 ///
 /// The `Clone` restriction is a limitation of the `Sample` and
-/// `IndepedentSample` traits. Note that `&T` is (cheaply) `Clone` for
+/// `IndependentSample` traits. Note that `&T` is (cheaply) `Clone` for
 /// all `T`, as is `uint`, so one can store references or indices into
 /// another vector.
 ///
@@ -92,7 +92,7 @@ pub struct Weighted<T> {
 ///
 /// ```rust
 /// use std::rand;
-/// use std::rand::distributions::{Weighted, WeightedChoice, IndepedentSample};
+/// use std::rand::distributions::{Weighted, WeightedChoice, IndependentSample};
 ///
 /// fn main() {
 ///     let wc = WeightedChoice::new(~[Weighted { weight: 2, item: 'a' },

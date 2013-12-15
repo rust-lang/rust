@@ -81,7 +81,7 @@ pub struct Handler<T, U> {
 /// the condition (useful for debugging).
 ///
 /// This struct should never be created directly, but rather only through the
-/// `condition!` macro provided to all libraries using libstd.
+/// `condition!` macro provided to all libraries using `std`.
 pub struct Condition<T, U> {
     /// Name of the condition handler
     name: &'static str,

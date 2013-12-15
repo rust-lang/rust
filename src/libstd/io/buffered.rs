@@ -202,8 +202,8 @@ impl<W: Writer> Decorator<W> for BufferedWriter<W> {
     fn inner_mut_ref<'a>(&'a mut self) -> &'a mut W { &mut self.inner }
 }
 
-/// Wraps a Writer and buffers output to it, flushing whenever a newline (0xa,
-/// '\n') is detected.
+/// Wraps a Writer and buffers output to it, flushing whenever a newline (`0x0a`,
+/// `'\n'`) is detected.
 ///
 /// Note that this structure does NOT flush the output when dropped.
 pub struct LineBufferedWriter<W> {
