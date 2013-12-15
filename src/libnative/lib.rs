@@ -33,15 +33,16 @@
 //    answer is that you don't need them)
 
 use std::os;
+use std::rt::local::Local;
+use std::rt::task::Task;
 use std::rt;
-use stdtask = std::rt::task;
 
 pub mod io;
 pub mod task;
 
 
 // XXX: this should not exist here
-#[cfg(stage0, notready)]
+#[cfg(stage0)]
 #[lang = "start"]
 pub fn lang_start(main: *u8, argc: int, argv: **u8) -> int {
     use std::cast;
@@ -72,9 +73,13 @@ pub fn lang_start(main: *u8, argc: int, argv: **u8) -> int {
 /// exited.
 pub fn start(argc: int, argv: **u8, main: proc()) -> int {
     rt::init(argc, argv);
-    let exit_code = run(main);
+    let mut exit_code = None;
+    let mut main = Some(main);
+    task::new().run(|| {
+        exit_code = Some(run(main.take_unwrap()));
+    });
     unsafe { rt::cleanup(); }
-    return exit_code;
+    return exit_code.unwrap();
 }
 
 /// Executes a procedure on the current thread in a Rust task context.
@@ -82,11 +87,11 @@ pub fn start(argc: int, argv: **u8, main: proc()) -> int {
 /// This function has all of the same details as `start` except for a different
 /// number of arguments.
 pub fn run(main: proc()) -> int {
-    // Create a task, run the procedure in it, and then wait for everything.
-    task::run(task::new(), main);
-
-    // Block this OS task waiting for everything to finish.
-    unsafe { stdtask::wait_for_completion() }
-
+    // Run the main procedure and then wait for everything to finish
+    main();
+    unsafe {
+        let mut task = Local::borrow(None::<Task>);
+        task.get().wait_for_other_tasks();
+    }
     os::get_exit_status()
 }

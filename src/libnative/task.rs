@@ -77,15 +77,9 @@ pub fn spawn_opts(opts: TaskOpts, f: proc()) {
             stack::record_stack_bounds(my_stack - stack + 1024, my_stack);
         }
 
-        run(task, f);
+        let mut f = Some(f);
+        task.run(|| { f.take_unwrap()() });
     })
-}
-
-/// Runs a task once, consuming the task. The given procedure is run inside of
-/// the task.
-pub fn run(t: ~Task, f: proc()) {
-    let mut f = Some(f);
-    t.run(|| { f.take_unwrap()(); });
 }
 
 // This structure is the glue between channels and the 1:1 scheduling mode. This

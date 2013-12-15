@@ -33,7 +33,9 @@
 
 use std::os;
 use std::rt::crate_map;
+use std::rt::local::Local;
 use std::rt::rtio;
+use std::rt::task::Task;
 use std::rt::thread::Thread;
 use std::rt;
 use std::sync::atomics::{SeqCst, AtomicUint, INIT_ATOMIC_UINT};
@@ -41,7 +43,6 @@ use std::sync::deque;
 use std::task::TaskOpts;
 use std::util;
 use std::vec;
-use stdtask = std::rt::task;
 
 use sched::{Shutdown, Scheduler, SchedHandle, TaskFromFriend, NewNeighbor};
 use sleeper_list::SleeperList;
@@ -49,6 +50,7 @@ use stack::StackPool;
 use task::GreenTask;
 
 mod macros;
+mod simple;
 
 pub mod basic;
 pub mod context;
@@ -61,16 +63,20 @@ pub mod task;
 #[lang = "start"]
 pub fn lang_start(main: *u8, argc: int, argv: **u8) -> int {
     use std::cast;
-    do start(argc, argv) {
-        let main: extern "Rust" fn() = unsafe { cast::transmute(main) };
-        main();
-    }
+    let mut ret = None;
+    simple::task().run(|| {
+        ret = Some(do start(argc, argv) {
+            let main: extern "Rust" fn() = unsafe { cast::transmute(main) };
+            main();
+        })
+    });
+    ret.unwrap()
 }
 
 /// Set up a default runtime configuration, given compiler-supplied arguments.
 ///
-/// This function will block the current thread of execution until the entire
-/// pool of M:N schedulers have exited.
+/// This function will block until the entire pool of M:N schedulers have
+/// exited. This function also requires a local task to be available.
 ///
 /// # Arguments
 ///
@@ -95,24 +101,37 @@ pub fn start(argc: int, argv: **u8, main: proc()) -> int {
 
 /// Execute the main function in a pool of M:N schedulers.
 ///
-/// Configures the runtime according to the environment, by default
-/// using a task scheduler with the same number of threads as cores.
-/// Returns a process exit code.
+/// Configures the runtime according to the environment, by default using a task
+/// scheduler with the same number of threads as cores.  Returns a process exit
+/// code.
 ///
 /// This function will not return until all schedulers in the associated pool
 /// have returned.
 pub fn run(main: proc()) -> int {
+    // Create a scheduler pool and spawn the main task into this pool. We will
+    // get notified over a channel when the main task exits.
     let mut pool = SchedPool::new(PoolConfig::new());
     let (port, chan) = Chan::new();
     let mut opts = TaskOpts::new();
     opts.notify_chan = Some(chan);
     pool.spawn(opts, main);
-    do pool.spawn(TaskOpts::new()) {
-        if port.recv().is_err() {
-            os::set_exit_status(rt::DEFAULT_ERROR_CODE);
-        }
+
+    // Wait for the main task to return, and set the process error code
+    // appropriately.
+    if port.recv().is_err() {
+        os::set_exit_status(rt::DEFAULT_ERROR_CODE);
     }
-    unsafe { stdtask::wait_for_completion(); }
+
+    // Once the main task has exited and we've set our exit code, wait for all
+    // spawned sub-tasks to finish running. This is done to allow all schedulers
+    // to remain active while there are still tasks possibly running.
+    unsafe {
+        let mut task = Local::borrow(None::<Task>);
+        task.get().wait_for_other_tasks();
+    }
+
+    // Now that we're sure all tasks are dead, shut down the pool of schedulers,
+    // waiting for them all to return.
     pool.shutdown();
     os::get_exit_status()
 }
