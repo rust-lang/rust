@@ -34,7 +34,7 @@ pub enum Signum {
     Break = 21i,
     /// Equivalent to SIGHUP, delivered when the user closes the terminal
     /// window. On delivery of HangUp, the program is given approximately
-    /// 10 seconds to perfom any cleanup. After that, Windows will
+    /// 10 seconds to perform any cleanup. After that, Windows will
     /// unconditionally terminate it.
     HangUp = 1i,
     /// Equivalent to SIGINT, delivered when the user presses Ctrl-c.

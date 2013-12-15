@@ -33,7 +33,7 @@ pub trait Clone {
     /// Perform copy-assignment from `source`.
     ///
     /// `a.clone_from(&b)` is equivalent to `a = b.clone()` in functionality,
-    /// but can be overriden to reuse the resources of `a` to avoid unnecessary
+    /// but can be overridden to reuse the resources of `a` to avoid unnecessary
     /// allocations.
     #[inline(always)]
     fn clone_from(&mut self, source: &Self) {
@@ -141,7 +141,7 @@ pub trait DeepClone: Clone {
     /// Perform deep copy-assignment from `source`.
     ///
     /// `a.deep_clone_from(&b)` is equivalent to `a = b.deep_clone()` in
-    /// functionality, but can be overriden to reuse the resources of `a` to
+    /// functionality, but can be overridden to reuse the resources of `a` to
     /// avoid unnecessary allocations.
     #[inline(always)]
     fn deep_clone_from(&mut self, source: &Self) {

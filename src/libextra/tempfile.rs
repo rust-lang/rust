@@ -18,7 +18,7 @@ use std::io;
 use std::io::fs;
 
 /// A wrapper for a path to temporary directory implementing automatic
-/// scope-pased deletion.
+/// scope-based deletion.
 pub struct TempDir {
     priv path: Option<Path>
 }
