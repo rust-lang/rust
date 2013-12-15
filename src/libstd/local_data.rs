@@ -18,7 +18,7 @@ the TLS slot.  Useful for dynamic variables, singletons, and interfacing with
 foreign code with bad callback interfaces.
 
 To declare a new key for storing local data of a particular type, use the
-`local_data_key!` macro. This macro will expand to a `static` item apppriately
+`local_data_key!` macro. This macro will expand to a `static` item appropriately
 named and annotated. This name is then passed to the functions in this module to
 modify/read the slot specified by the key.
 

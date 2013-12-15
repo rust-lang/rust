@@ -276,7 +276,7 @@ impl<T:Freeze + Send> MutexArc<T> {
      * might contain nested MutexArcs inside.
      *
      * The purpose of this is to offer a safe implementation of MutexArc to be
-     * used instead of RWArc in cases where no readers are needed and sightly
+     * used instead of RWArc in cases where no readers are needed and slightly
      * better performance is required.
      *
      * Both methods have the same failure behaviour as unsafe_access and

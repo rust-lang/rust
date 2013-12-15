@@ -606,9 +606,9 @@ pub fn writeln(output: &mut io::Writer, args: &Arguments) {
 /// See the documentation for `format` for why this function is unsafe and care
 /// should be taken if calling it manually.
 ///
-/// Thankfully the rust compiler provides the macro `fmtf!` which will perform
-/// all of this validation at compile-time and provides a safe interface for
-/// invoking this function.
+/// Thankfully the rust compiler provides macros like `write!` and
+/// `format_args!` which perform all of this validation at compile-time
+/// and provide a safe interface for invoking this function.
 ///
 /// # Arguments
 ///

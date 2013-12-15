@@ -256,7 +256,7 @@ fn decompose_hangul(s: char, f: |char|) {
     }
 }
 
-/// Returns the canonical decompostion of a character
+/// Returns the canonical decomposition of a character.
 pub fn decompose_canonical(c: char, f: |char|) {
     if (c as uint) < S_BASE || (c as uint) >= (S_BASE + S_COUNT) {
         decompose::canonical(c, f);
@@ -265,7 +265,7 @@ pub fn decompose_canonical(c: char, f: |char|) {
     }
 }
 
-/// Returns the compatibility decompostion of a character
+/// Returns the compatibility decomposition of a character.
 pub fn decompose_compatible(c: char, f: |char|) {
     if (c as uint) < S_BASE || (c as uint) >= (S_BASE + S_COUNT) {
         decompose::compatibility(c, f);

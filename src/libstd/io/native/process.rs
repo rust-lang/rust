@@ -50,7 +50,7 @@ impl Process {
     /// * prog - the program to run
     /// * args - the arguments to pass to the program, not including the program
     ///          itself
-    /// * env - an optional envrionment to specify for the child process. If
+    /// * env - an optional environment to specify for the child process. If
     ///         this value is `None`, then the child will inherit the parent's
     ///         environment
     /// * cwd - an optionally specified current working directory of the child,

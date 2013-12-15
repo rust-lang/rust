@@ -15,7 +15,7 @@
 use prelude::*;
 
 use cast;
-use rt::rtio::{EventLoop, IoFactory, RemoteCallback, PausibleIdleCallback,
+use rt::rtio::{EventLoop, IoFactory, RemoteCallback, PausableIdleCallback,
                Callback};
 use unstable::sync::Exclusive;
 use io::native;
@@ -28,7 +28,7 @@ pub fn event_loop() -> ~EventLoop {
 
 struct BasicLoop {
     work: ~[proc()],                  // pending work
-    idle: Option<*mut BasicPausible>, // only one is allowed
+    idle: Option<*mut BasicPausable>, // only one is allowed
     remotes: ~[(uint, ~Callback)],
     next_remote: uint,
     messages: Exclusive<~[Message]>,
@@ -142,14 +142,14 @@ impl EventLoop for BasicLoop {
     }
 
     // XXX: Seems like a really weird requirement to have an event loop provide.
-    fn pausible_idle_callback(&mut self, cb: ~Callback) -> ~PausibleIdleCallback {
-        let callback = ~BasicPausible::new(self, cb);
+    fn pausable_idle_callback(&mut self, cb: ~Callback) -> ~PausableIdleCallback {
+        let callback = ~BasicPausable::new(self, cb);
         rtassert!(self.idle.is_none());
         unsafe {
-            let cb_ptr: &*mut BasicPausible = cast::transmute(&callback);
+            let cb_ptr: &*mut BasicPausable = cast::transmute(&callback);
             self.idle = Some(*cb_ptr);
         }
-        return callback as ~PausibleIdleCallback;
+        return callback as ~PausableIdleCallback;
     }
 
     fn remote_callback(&mut self, f: ~Callback) -> ~RemoteCallback {
@@ -196,15 +196,15 @@ impl Drop for BasicRemote {
     }
 }
 
-struct BasicPausible {
+struct BasicPausable {
     eloop: *mut BasicLoop,
     work: ~Callback,
     active: bool,
 }
 
-impl BasicPausible {
-    fn new(eloop: &mut BasicLoop, cb: ~Callback) -> BasicPausible {
-        BasicPausible {
+impl BasicPausable {
+    fn new(eloop: &mut BasicLoop, cb: ~Callback) -> BasicPausable {
+        BasicPausable {
             active: false,
             work: cb,
             eloop: eloop,
@@ -212,7 +212,7 @@ impl BasicPausible {
     }
 }
 
-impl PausibleIdleCallback for BasicPausible {
+impl PausableIdleCallback for BasicPausable {
     fn pause(&mut self) {
         self.active = false;
     }
@@ -221,7 +221,7 @@ impl PausibleIdleCallback for BasicPausible {
     }
 }
 
-impl Drop for BasicPausible {
+impl Drop for BasicPausable {
     fn drop(&mut self) {
         unsafe {
             (*self.eloop).idle = None;

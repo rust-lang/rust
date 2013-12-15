@@ -37,7 +37,7 @@
 //!         lock.unlock();
 //!     }
 //!
-//!     // Use a normally initialied mutex
+//!     // Use a normally initialized mutex
 //!     let mut lock = Mutex::new();
 //!     unsafe {
 //!         lock.lock();
