@@ -465,15 +465,17 @@ declare_special_idents_and_keywords! {
         (45,                         While,      "while");
         (46,                         Continue,   "continue");
         (47,                         Proc,       "proc");
+        (48,                         Box,        "box");
 
         'reserved:
-        (48,                         Alignof,    "alignof");
-        (49,                         Be,         "be");
-        (50,                         Offsetof,   "offsetof");
-        (51,                         Pure,       "pure");
-        (52,                         Sizeof,     "sizeof");
-        (53,                         Typeof,     "typeof");
-        (54,                         Yield,      "yield");
+        (49,                         Alignof,    "alignof");
+        (50,                         Be,         "be");
+        (51,                         Offsetof,   "offsetof");
+        (52,                         Pure,       "pure");
+        (53,                         Sizeof,     "sizeof");
+        (54,                         Typeof,     "typeof");
+        (55,                         Unsized,    "unsized");
+        (56,                         Yield,      "yield");
     }
 }
 

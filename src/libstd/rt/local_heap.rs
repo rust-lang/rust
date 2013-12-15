@@ -59,10 +59,10 @@ impl LocalHeap {
 
     pub fn alloc(&mut self, td: *TyDesc, size: uint) -> *mut Box {
         let total_size = global_heap::get_box_size(size, unsafe { (*td).align });
-        let box = self.memory_region.malloc(total_size);
+        let alloc = self.memory_region.malloc(total_size);
         {
             // Make sure that we can't use `mybox` outside of this scope
-            let mybox: &mut Box = unsafe { cast::transmute(box) };
+            let mybox: &mut Box = unsafe { cast::transmute(alloc) };
             // Clear out this box, and move it to the front of the live
             // allocations list
             mybox.type_desc = td;
@@ -70,11 +70,11 @@ impl LocalHeap {
             mybox.prev = ptr::mut_null();
             mybox.next = self.live_allocs;
             if !self.live_allocs.is_null() {
-                unsafe { (*self.live_allocs).prev = box; }
+                unsafe { (*self.live_allocs).prev = alloc; }
             }
-            self.live_allocs = box;
+            self.live_allocs = alloc;
         }
-        return box;
+        return alloc;
     }
 
     pub fn realloc(&mut self, ptr: *mut Box, size: uint) -> *mut Box {
@@ -97,10 +97,10 @@ impl LocalHeap {
         return new_box;
     }
 
-    pub fn free(&mut self, box: *mut Box) {
+    pub fn free(&mut self, alloc: *mut Box) {
         {
             // Make sure that we can't use `mybox` outside of this scope
-            let mybox: &mut Box = unsafe { cast::transmute(box) };
+            let mybox: &mut Box = unsafe { cast::transmute(alloc) };
             assert!(!mybox.type_desc.is_null());
 
             // Unlink it from the linked list
@@ -110,7 +110,7 @@ impl LocalHeap {
             if !mybox.next.is_null() {
                 unsafe { (*mybox.next).prev = mybox.prev; }
             }
-            if self.live_allocs == box {
+            if self.live_allocs == alloc {
                 self.live_allocs = mybox.next;
             }
 
@@ -126,7 +126,7 @@ impl LocalHeap {
             mybox.type_desc = ptr::null();
         }
 
-        self.memory_region.free(box);
+        self.memory_region.free(alloc);
     }
 }
 
@@ -175,7 +175,7 @@ impl AllocHeader {
     #[cfg(not(rtdebug))]
     fn update_size(&mut self, _size: u32) {}
 
-    fn box(&mut self) -> *mut Box {
+    fn as_box(&mut self) -> *mut Box {
         let myaddr: uint = unsafe { cast::transmute(self) };
         (myaddr + AllocHeader::size()) as *mut Box
     }
@@ -187,8 +187,8 @@ impl AllocHeader {
         return (header_size + ptr_size - 1) / ptr_size * ptr_size;
     }
 
-    fn from(box: *mut Box) -> *mut AllocHeader {
-        (box as uint - AllocHeader::size()) as *mut AllocHeader
+    fn from(a_box: *mut Box) -> *mut AllocHeader {
+        (a_box as uint - AllocHeader::size()) as *mut AllocHeader
     }
 }
 
@@ -204,12 +204,12 @@ impl MemoryRegion {
         self.claim(alloc);
         self.live_allocations += 1;
 
-        return alloc.box();
+        return alloc.as_box();
     }
 
-    fn realloc(&mut self, box: *mut Box, size: uint) -> *mut Box {
-        rtassert!(!box.is_null());
-        let orig_alloc = AllocHeader::from(box);
+    fn realloc(&mut self, alloc: *mut Box, size: uint) -> *mut Box {
+        rtassert!(!alloc.is_null());
+        let orig_alloc = AllocHeader::from(alloc);
         unsafe { (*orig_alloc).assert_sane(); }
 
         let total_size = size + AllocHeader::size();
@@ -222,12 +222,12 @@ impl MemoryRegion {
         alloc.assert_sane();
         alloc.update_size(size as u32);
         self.update(alloc, orig_alloc as *AllocHeader);
-        return alloc.box();
+        return alloc.as_box();
     }
 
-    fn free(&mut self, box: *mut Box) {
-        rtassert!(!box.is_null());
-        let alloc = AllocHeader::from(box);
+    fn free(&mut self, alloc: *mut Box) {
+        rtassert!(!alloc.is_null());
+        let alloc = AllocHeader::from(alloc);
         unsafe {
             (*alloc).assert_sane();
             self.release(cast::transmute(alloc));

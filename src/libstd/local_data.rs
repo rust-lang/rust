@@ -157,13 +157,13 @@ pub fn pop<T: 'static>(key: Key<T>) -> Option<T> {
 
                 // Move `data` into transmute to get out the memory that it
                 // owns, we must free it manually later.
-                let (_vtable, box): (uint, ~T) = unsafe {
+                let (_vtable, alloc): (uint, ~T) = unsafe {
                     cast::transmute(data)
                 };
 
-                // Now that we own `box`, we can just move out of it as we would
-                // with any other data.
-                return Some(*box);
+                // Now that we own `alloc`, we can just move out of it as we
+                // would with any other data.
+                return Some(*alloc);
             }
             _ => {}
         }
@@ -254,8 +254,8 @@ fn get_with<T:'static,
                     // compiler coercions to achieve a '&' pointer.
                     unsafe {
                         match *cast::transmute::<&TLSValue, &(uint, ~T)>(data){
-                            (_vtable, ref box) => {
-                                let value: &T = *box;
+                            (_vtable, ref alloc) => {
+                                let value: &T = *alloc;
                                 ret = f(Some(value));
                             }
                         }

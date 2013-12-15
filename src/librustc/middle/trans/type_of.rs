@@ -221,16 +221,18 @@ pub fn type_of(cx: &mut CrateContext, t: ty::t) -> Type {
         adt::incomplete_type_of(cx, repr, name)
       }
       ty::ty_estr(ty::vstore_box) => {
-        Type::box(cx, &Type::vec(cx.sess.targ_cfg.arch, &Type::i8())).ptr_to()
+        Type::smart_ptr(cx,
+                        &Type::vec(cx.sess.targ_cfg.arch,
+                                   &Type::i8())).ptr_to()
       }
       ty::ty_evec(ref mt, ty::vstore_box) => {
           let e_ty = type_of(cx, mt.ty);
           let v_ty = Type::vec(cx.sess.targ_cfg.arch, &e_ty);
-          Type::box(cx, &v_ty).ptr_to()
+          Type::smart_ptr(cx, &v_ty).ptr_to()
       }
       ty::ty_box(ref mt) => {
           let ty = type_of(cx, mt.ty);
-          Type::box(cx, &ty).ptr_to()
+          Type::smart_ptr(cx, &ty).ptr_to()
       }
       ty::ty_opaque_box => Type::opaque_box(cx).ptr_to(),
       ty::ty_uniq(ref mt) => {
