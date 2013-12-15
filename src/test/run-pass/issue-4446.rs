@@ -11,9 +11,9 @@
 pub fn main() {
     let (port, chan) = stream();
 
-    do spawn {
+    spawn(proc() {
         println(port.recv());
-    }
+    });
 
     chan.send("hello, world");
 }

@@ -45,9 +45,9 @@
  * # Example
  *
  * ```
- * do spawn {
+ * spawn(proc() {
  *     log(error, "Hello, World!");
- * }
+ * })
  * ```
  */
 
@@ -345,9 +345,9 @@ impl TaskBuilder {
 
         let result = self.future_result();
 
-        do self.spawn {
+        self.spawn(proc() {
             ch.send(f());
-        }
+        });
 
         match result.recv() {
             Ok(())     => Ok(po.recv()),
@@ -472,67 +472,67 @@ fn block_forever() { let (po, _ch) = stream::<()>(); po.recv(); }
 fn test_unnamed_task() {
     use rt::test::run_in_uv_task;
 
-    do run_in_uv_task {
-        do spawn {
+    run_in_uv_task(proc() {
+        spawn(proc() {
             with_task_name(|name| {
                 assert!(name.is_none());
             })
-        }
-    }
+        });
+    });
 }
 
 #[test]
 fn test_owned_named_task() {
     use rt::test::run_in_uv_task;
 
-    do run_in_uv_task {
+    run_in_uv_task(proc() {
         let mut t = task();
         t.name(~"ada lovelace");
-        do t.spawn {
+        t.spawn(proc() {
             with_task_name(|name| {
                 assert!(name.unwrap() == "ada lovelace");
             })
-        }
-    }
+        });
+    });
 }
 
 #[test]
 fn test_static_named_task() {
     use rt::test::run_in_uv_task;
 
-    do run_in_uv_task {
+    run_in_uv_task(proc() {
         let mut t = task();
         t.name("ada lovelace");
-        do t.spawn {
+        t.spawn(proc() {
             with_task_name(|name| {
                 assert!(name.unwrap() == "ada lovelace");
             })
-        }
-    }
+        });
+    });
 }
 
 #[test]
 fn test_send_named_task() {
     use rt::test::run_in_uv_task;
 
-    do run_in_uv_task {
+    run_in_uv_task(proc() {
         let mut t = task();
         t.name("ada lovelace".into_send_str());
-        do t.spawn {
+        t.spawn(proc() {
             with_task_name(|name| {
                 assert!(name.unwrap() == "ada lovelace");
             })
-        }
-    }
+        });
+    });
 }
 
 #[test]
 fn test_run_basic() {
     let (po, ch) = stream::<()>();
     let builder = task();
-    do builder.spawn {
+    builder.spawn(proc() {
         ch.send(());
-    }
+    });
     po.recv();
 }
 
@@ -545,15 +545,15 @@ struct Wrapper {
 fn test_add_wrapper() {
     let (po, ch) = stream::<()>();
     let mut b0 = task();
-    do b0.add_wrapper |body| {
+    b0.add_wrapper(proc(body) {
         let ch = ch;
         let result: proc() = proc() {
             body();
             ch.send(());
         };
         result
-    };
-    do b0.spawn { }
+    });
+    b0.spawn(proc() { });
     po.recv();
 }
 
@@ -561,14 +561,14 @@ fn test_add_wrapper() {
 fn test_future_result() {
     let mut builder = task();
     let result = builder.future_result();
-    do builder.spawn {}
+    builder.spawn(proc() {});
     assert!(result.recv().is_ok());
 
     let mut builder = task();
     let result = builder.future_result();
-    do builder.spawn {
+    builder.spawn(proc() {
         fail!();
-    }
+    });
     assert!(result.recv().is_err());
 }
 
@@ -581,9 +581,9 @@ fn test_back_to_the_future_result() {
 
 #[test]
 fn test_try_success() {
-    match do try {
+    match try(proc() {
         ~"Success!"
-    } {
+    }) {
         result::Ok(~"Success!") => (),
         _ => fail!()
     }
@@ -591,9 +591,9 @@ fn test_try_success() {
 
 #[test]
 fn test_try_fail() {
-    match do try {
+    match try(proc() {
         fail!()
-    } {
+    }) {
         result::Err(_) => (),
         result::Ok(()) => fail!()
     }
@@ -614,7 +614,7 @@ fn test_spawn_sched() {
     fn f(i: int, ch: SharedChan<()>) {
         let parent_sched_id = get_sched_id();
 
-        do spawn_sched(SingleThreaded) {
+        spawn_sched(SingleThreaded, proc() {
             let child_sched_id = get_sched_id();
             assert!(parent_sched_id != child_sched_id);
 
@@ -623,7 +623,7 @@ fn test_spawn_sched() {
             } else {
                 f(i - 1, ch.clone());
             }
-        };
+        });
 
     }
     f(10, ch);
@@ -637,16 +637,16 @@ fn test_spawn_sched_childs_on_default_sched() {
     // Assuming tests run on the default scheduler
     let default_id = get_sched_id();
 
-    do spawn_sched(SingleThreaded) {
+    spawn_sched(SingleThreaded, proc() {
         let parent_sched_id = get_sched_id();
         let ch = ch;
-        do spawn {
+        spawn(proc() {
             let child_sched_id = get_sched_id();
             assert!(parent_sched_id != child_sched_id);
             assert_eq!(child_sched_id, default_id);
             ch.send(());
-        };
-    };
+        });
+    });
 
     po.recv();
 }
@@ -666,7 +666,7 @@ fn test_spawn_sched_blocking() {
             let mut lock = Mutex::new();
             let lock2 = lock.clone();
 
-            do spawn_sched(SingleThreaded) {
+            spawn_sched(SingleThreaded, proc() {
                 let mut lock = lock2;
                 lock.lock();
 
@@ -677,7 +677,7 @@ fn test_spawn_sched_blocking() {
                 lock.unlock();
 
                 fin_ch.send(());
-            };
+            });
 
             // Wait until the other task has its lock
             start_po.recv();
@@ -692,11 +692,11 @@ fn test_spawn_sched_blocking() {
 
             let (setup_po, setup_ch) = stream();
             let (parent_po, parent_ch) = stream();
-            do spawn {
+            spawn(proc() {
                 let (child_po, child_ch) = stream();
                 setup_ch.send(child_ch);
                 pingpong(&child_po, &parent_ch);
-            };
+            });
 
             let child_ch = setup_po.recv();
             child_ch.send(20);
@@ -717,10 +717,10 @@ fn avoid_copying_the_body(spawnfn: |v: proc()|) {
     let x = ~1;
     let x_in_parent = ptr::to_unsafe_ptr(&*x) as uint;
 
-    do spawnfn || {
+    spawnfn(proc() {
         let x_in_child = ptr::to_unsafe_ptr(&*x) as uint;
         ch.send(x_in_child);
-    }
+    });
 
     let x_in_child = p.recv();
     assert_eq!(x_in_parent, x_in_child);
@@ -735,18 +735,18 @@ fn test_avoid_copying_the_body_spawn() {
 fn test_avoid_copying_the_body_task_spawn() {
     avoid_copying_the_body(|f| {
         let builder = task();
-        do builder.spawn || {
+        builder.spawn(proc() {
             f();
-        }
+        });
     })
 }
 
 #[test]
 fn test_avoid_copying_the_body_try() {
     avoid_copying_the_body(|f| {
-        do try || {
+        try(proc() {
             f()
-        };
+        });
     })
 }
 
@@ -775,16 +775,16 @@ fn test_child_doesnt_ref_parent() {
 fn test_simple_newsched_spawn() {
     use rt::test::run_in_uv_task;
 
-    do run_in_uv_task {
+    run_in_uv_task(proc() {
         spawn(proc()())
-    }
+    });
 }
 
 #[test]
 fn test_try_fail_message_static_str() {
-    match do try {
+    match try(proc() {
         fail!("static string");
-    } {
+    }) {
         Err(e) => {
             type T = &'static str;
             assert!(e.is::<T>());
@@ -796,9 +796,9 @@ fn test_try_fail_message_static_str() {
 
 #[test]
 fn test_try_fail_message_owned_str() {
-    match do try {
+    match try(proc() {
         fail!(~"owned string");
-    } {
+    }) {
         Err(e) => {
             type T = ~str;
             assert!(e.is::<T>());
@@ -810,9 +810,9 @@ fn test_try_fail_message_owned_str() {
 
 #[test]
 fn test_try_fail_message_any() {
-    match do try {
+    match try(proc() {
         fail!(~413u16 as ~Any);
-    } {
+    }) {
         Err(e) => {
             type T = ~Any;
             assert!(e.is::<T>());
@@ -828,9 +828,9 @@ fn test_try_fail_message_any() {
 fn test_try_fail_message_unit_struct() {
     struct Juju;
 
-    match do try {
+    match try(proc() {
         fail!(Juju)
-    } {
+    }) {
         Err(ref e) if e.is::<Juju>() => {}
         Err(_) | Ok(()) => fail!()
     }

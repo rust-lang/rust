@@ -173,11 +173,11 @@ an error the task will fail.
 If you wanted to handle the error though you might write
 
     let mut error = None;
-    do io_error::cond(|e: IoError| {
+    io_error::cond(|e: IoError| {
         error = Some(e);
-    }).in {
+    }).in(|| {
         File::new("diary.txt").write_line("met a girl");
-    }
+    });
 
     if error.is_some() {
         println("failed to write my diary");

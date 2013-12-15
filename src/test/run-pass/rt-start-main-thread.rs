@@ -12,10 +12,10 @@
 
 #[start]
 fn start(argc: int, argv: **u8) -> int {
-    do std::rt::start_on_main_thread(argc, argv) {
+    std::rt::start_on_main_thread(argc, argv, proc() {
         info!("running on main thread");
-        do spawn {
+        spawn(proc() {
             info!("running on another thread");
-        }
-    }
+        });
+    })
 }

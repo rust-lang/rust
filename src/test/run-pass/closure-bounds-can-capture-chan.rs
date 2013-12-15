@@ -16,8 +16,8 @@ fn foo(blk: proc()) {
 
 pub fn main() {
     let (p,c) = comm::stream();
-    do foo {
+    foo(proc() {
         c.send(());
-    }
+    });
     p.recv();
 }

@@ -932,7 +932,7 @@ pub fn main_args(args: &[~str]) -> int {
     let rm_args = remaining_args.clone();
     let sub_cmd = cmd.clone();
     // Wrap the rest in task::try in case of a condition failure in a task
-    let result = do task::try {
+    let result = task::try(proc() {
         BuildContext {
             context: Context {
                 cfgs: cfgs.clone(),
@@ -943,7 +943,7 @@ pub fn main_args(args: &[~str]) -> int {
             workcache_context: api::default_context(sroot.clone(),
                                                     default_workspace()).workcache_context
         }.run(sub_cmd, rm_args.clone())
-    };
+    });
     // FIXME #9262: This is using the same error code for all errors,
     // and at least one test case succeeds if rustpkg returns COPY_FAILED_CODE,
     // when actually, it might set the exit code for that even if a different

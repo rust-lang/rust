@@ -722,157 +722,157 @@ mod test {
     #[test]
     fn oneshot_single_thread_close_port_first() {
         // Simple test of closing without sending
-        do run_in_newsched_task {
+        run_in_newsched_task(proc() {
             let (port, _chan) = oneshot::<int>();
             { let _p = port; }
-        }
+        });
     }
 
     #[test]
     fn oneshot_single_thread_close_chan_first() {
         // Simple test of closing without sending
-        do run_in_newsched_task {
+        run_in_newsched_task(proc() {
             let (_port, chan) = oneshot::<int>();
             { let _c = chan; }
-        }
+        });
     }
 
     #[test]
     fn oneshot_single_thread_send_port_close() {
         // Testing that the sender cleans up the payload if receiver is closed
-        do run_in_newsched_task {
+        run_in_newsched_task(proc() {
             let (port, chan) = oneshot::<~int>();
             { let _p = port; }
             chan.send(~0);
-        }
+        });
     }
 
     #[test]
     fn oneshot_single_thread_recv_chan_close() {
         // Receiving on a closed chan will fail
-        do run_in_newsched_task {
-            let res = do spawntask_try {
+        run_in_newsched_task(proc() {
+            let res = spawntask_try(proc() {
                 let (port, chan) = oneshot::<~int>();
                 { let _c = chan; }
                 port.recv();
-            };
+            });
             // What is our res?
             rtdebug!("res is: {:?}", res.is_err());
             assert!(res.is_err());
-        }
+        });
     }
 
     #[test]
     fn oneshot_single_thread_send_then_recv() {
-        do run_in_newsched_task {
+        run_in_newsched_task(proc() {
             let (port, chan) = oneshot::<~int>();
             chan.send(~10);
             assert!(port.recv() == ~10);
-        }
+        });
     }
 
     #[test]
     fn oneshot_single_thread_try_send_open() {
-        do run_in_newsched_task {
+        run_in_newsched_task(proc() {
             let (port, chan) = oneshot::<int>();
             assert!(chan.try_send(10));
             assert!(port.recv() == 10);
-        }
+        });
     }
 
     #[test]
     fn oneshot_single_thread_try_send_closed() {
-        do run_in_newsched_task {
+        run_in_newsched_task(proc() {
             let (port, chan) = oneshot::<int>();
             { let _p = port; }
             assert!(!chan.try_send(10));
-        }
+        });
     }
 
     #[test]
     fn oneshot_single_thread_try_recv_open() {
-        do run_in_newsched_task {
+        run_in_newsched_task(proc() {
             let (port, chan) = oneshot::<int>();
             chan.send(10);
             assert!(port.try_recv() == Some(10));
-        }
+        });
     }
 
     #[test]
     fn oneshot_single_thread_try_recv_closed() {
-        do run_in_newsched_task {
+        run_in_newsched_task(proc() {
             let (port, chan) = oneshot::<int>();
             { let _c = chan; }
             assert!(port.try_recv() == None);
-        }
+        });
     }
 
     #[test]
     fn oneshot_single_thread_peek_data() {
-        do run_in_newsched_task {
+        run_in_newsched_task(proc() {
             let (port, chan) = oneshot::<int>();
             assert!(!port.peek());
             chan.send(10);
             assert!(port.peek());
-        }
+        });
     }
 
     #[test]
     fn oneshot_single_thread_peek_close() {
-        do run_in_newsched_task {
+        run_in_newsched_task(proc() {
             let (port, chan) = oneshot::<int>();
             { let _c = chan; }
             assert!(!port.peek());
             assert!(!port.peek());
-        }
+        });
     }
 
     #[test]
     fn oneshot_single_thread_peek_open() {
-        do run_in_newsched_task {
+        run_in_newsched_task(proc() {
             let (port, _) = oneshot::<int>();
             assert!(!port.peek());
-        }
+        });
     }
 
     #[test]
     fn oneshot_multi_task_recv_then_send() {
-        do run_in_newsched_task {
+        run_in_newsched_task(proc() {
             let (port, chan) = oneshot::<~int>();
-            do spawntask {
+            spawntask(proc() {
                 assert!(port.recv() == ~10);
-            }
+            });
 
             chan.send(~10);
-        }
+        });
     }
 
     #[test]
     fn oneshot_multi_task_recv_then_close() {
-        do run_in_newsched_task {
+        run_in_newsched_task(proc() {
             let (port, chan) = oneshot::<~int>();
-            do spawntask_later {
+            spawntask_later(proc() {
                 let _ = chan;
-            }
-            let res = do spawntask_try {
+            });
+            let res = spawntask_try(proc() {
                 assert!(port.recv() == ~10);
-            };
+            });
             assert!(res.is_err());
-        }
+        });
     }
 
     #[test]
     fn oneshot_multi_thread_close_stress() {
         if util::limit_thread_creation_due_to_osx_and_valgrind() { return; }
         stress_factor().times(|| {
-            do run_in_newsched_task {
+            run_in_newsched_task(proc() {
                 let (port, chan) = oneshot::<int>();
-                let thread = do spawntask_thread {
+                let thread = spawntask_thread(proc() {
                     let _ = port;
-                };
+                });
                 let _chan = chan;
                 thread.join();
-            }
+            });
         })
     }
 
@@ -880,17 +880,17 @@ mod test {
     fn oneshot_multi_thread_send_close_stress() {
         if util::limit_thread_creation_due_to_osx_and_valgrind() { return; }
         stress_factor().times(|| {
-            do run_in_newsched_task {
+            run_in_newsched_task(proc() {
                 let (port, chan) = oneshot::<int>();
-                let thread1 = do spawntask_thread {
+                let thread1 = spawntask_thread(proc() {
                     let _ = port;
-                };
-                let thread2 = do spawntask_thread {
+                });
+                let thread2 = spawntask_thread(proc() {
                     chan.send(1);
-                };
+                });
                 thread1.join();
                 thread2.join();
-            }
+            });
         })
     }
 
@@ -898,24 +898,24 @@ mod test {
     fn oneshot_multi_thread_recv_close_stress() {
         if util::limit_thread_creation_due_to_osx_and_valgrind() { return; }
         stress_factor().times(|| {
-            do run_in_newsched_task {
+            run_in_newsched_task(proc() {
                 let (port, chan) = oneshot::<int>();
-                let thread1 = do spawntask_thread {
+                let thread1 = spawntask_thread(proc() {
                     let port = port;
-                    let res = do spawntask_try {
+                    let res = spawntask_try(proc() {
                         port.recv();
-                    };
+                    });
                     assert!(res.is_err());
-                };
-                let thread2 = do spawntask_thread {
+                });
+                let thread2 = spawntask_thread(proc() {
                     let chan = chan;
-                    do spawntask {
+                    spawntask(proc() {
                         let _ = chan;
-                    }
-                };
+                    });
+                });
                 thread1.join();
                 thread2.join();
-            }
+            });
         })
     }
 
@@ -923,17 +923,17 @@ mod test {
     fn oneshot_multi_thread_send_recv_stress() {
         if util::limit_thread_creation_due_to_osx_and_valgrind() { return; }
         stress_factor().times(|| {
-            do run_in_newsched_task {
+            run_in_newsched_task(proc() {
                 let (port, chan) = oneshot::<~int>();
-                let thread1 = do spawntask_thread {
+                let thread1 = spawntask_thread(proc() {
                     chan.send(~10);
-                };
-                let thread2 = do spawntask_thread {
+                });
+                let thread2 = spawntask_thread(proc() {
                     assert!(port.recv() == ~10);
-                };
+                });
                 thread1.join();
                 thread2.join();
-            }
+            });
         })
     }
 
@@ -941,7 +941,7 @@ mod test {
     fn stream_send_recv_stress() {
         if util::limit_thread_creation_due_to_osx_and_valgrind() { return; }
         stress_factor().times(|| {
-            do run_in_mt_newsched_task {
+            run_in_mt_newsched_task(proc() {
                 let (port, chan) = stream::<~int>();
 
                 send(chan, 0);
@@ -950,58 +950,58 @@ mod test {
                 fn send(chan: Chan<~int>, i: int) {
                     if i == 10 { return }
 
-                    do spawntask_random {
+                    spawntask_random(proc() {
                         chan.send(~i);
                         send(chan, i + 1);
-                    }
+                    });
                 }
 
                 fn recv(port: Port<~int>, i: int) {
                     if i == 10 { return }
 
-                    do spawntask_random {
+                    spawntask_random(proc() {
                         assert!(port.recv() == ~i);
                         recv(port, i + 1);
-                    };
+                    });
                 }
-            }
+            });
         })
     }
 
     #[test]
     fn recv_a_lot() {
         // Regression test that we don't run out of stack in scheduler context
-        do run_in_newsched_task {
+        run_in_newsched_task(proc() {
             let (port, chan) = stream();
             10000.times(|| { chan.send(()) });
             10000.times(|| { port.recv() });
-        }
+        });
     }
 
     #[test]
     fn shared_chan_stress() {
         if util::limit_thread_creation_due_to_osx_and_valgrind() { return; }
-        do run_in_mt_newsched_task {
+        run_in_mt_newsched_task(proc() {
             let (port, chan) = stream();
             let chan = SharedChan::new(chan);
             let total = stress_factor() + 100;
             total.times(|| {
                 let chan_clone = chan.clone();
-                do spawntask_random {
+                spawntask_random(proc() {
                     chan_clone.send(());
-                }
+                });
             });
 
             total.times(|| {
                 port.recv();
             });
-        }
+        });
     }
 
     #[test]
     fn shared_port_stress() {
         if util::limit_thread_creation_due_to_osx_and_valgrind() { return; }
-        do run_in_mt_newsched_task {
+        run_in_mt_newsched_task(proc() {
             let (end_port, end_chan) = stream();
             let (port, chan) = stream();
             let end_chan = SharedChan::new(end_chan);
@@ -1010,10 +1010,10 @@ mod test {
             total.times(|| {
                 let end_chan_clone = end_chan.clone();
                 let port_clone = port.clone();
-                do spawntask_random {
+                spawntask_random(proc() {
                     port_clone.recv();
                     end_chan_clone.send(());
-                }
+                });
             });
 
             total.times(|| {
@@ -1023,22 +1023,22 @@ mod test {
             total.times(|| {
                 end_port.recv();
             });
-        }
+        });
     }
 
     #[test]
     fn shared_port_close_simple() {
-        do run_in_mt_newsched_task {
+        run_in_mt_newsched_task(proc() {
             let (port, chan) = stream::<()>();
             let port = SharedPort::new(port);
             { let _chan = chan; }
             assert!(port.try_recv().is_none());
-        }
+        });
     }
 
     #[test]
     fn shared_port_close() {
-        do run_in_mt_newsched_task {
+        run_in_mt_newsched_task(proc() {
             let (end_port, end_chan) = stream::<bool>();
             let (port, chan) = stream::<()>();
             let end_chan = SharedChan::new(end_chan);
@@ -1046,25 +1046,25 @@ mod test {
             let chan = SharedChan::new(chan);
             let send_total = 10;
             let recv_total = 20;
-            do spawntask_random {
+            spawntask_random(proc() {
                 send_total.times(|| {
                     let chan_clone = chan.clone();
-                    do spawntask_random {
+                    spawntask_random(proc() {
                         chan_clone.send(());
-                    }
+                    });
                 });
-            }
+            });
             let end_chan_clone = end_chan.clone();
-            do spawntask_random {
+            spawntask_random(proc() {
                 recv_total.times(|| {
                     let port_clone = port.clone();
                     let end_chan_clone = end_chan_clone.clone();
-                    do spawntask_random {
+                    spawntask_random(proc() {
                         let recvd = port_clone.try_recv().is_some();
                         end_chan_clone.send(recvd);
-                    }
+                    });
                 });
-            }
+            });
 
             let mut recvd = 0;
             recv_total.times(|| {
@@ -1072,7 +1072,7 @@ mod test {
             });
 
             assert!(recvd == send_total);
-        }
+        });
     }
 
     #[test]
@@ -1082,7 +1082,7 @@ mod test {
 
         if util::limit_thread_creation_due_to_osx_and_valgrind() { return; }
 
-        do run_in_mt_newsched_task {
+        run_in_mt_newsched_task(proc() {
             let (end_port, end_chan) = stream::<()>();
             let end_chan = SharedChan::new(end_chan);
             let pipe = megapipe();
@@ -1092,14 +1092,14 @@ mod test {
                 let msgs = rng.gen_range(0u, 10);
                 let pipe_clone = pipe.clone();
                 let end_chan_clone = end_chan.clone();
-                do spawntask_random {
+                spawntask_random(proc() {
                     msgs.times(|| {
                         pipe_clone.send(());
                     });
                     msgs.times(|| {
                         pipe_clone.recv();
                     });
-                }
+                });
 
                 end_chan_clone.send(());
             });
@@ -1107,7 +1107,7 @@ mod test {
             total.times(|| {
                 end_port.recv();
             });
-        }
+        });
     }
 
     #[test]
@@ -1115,18 +1115,18 @@ mod test {
         use unstable::sync::atomic;
 
         // Tests no-rescheduling of send_deferred on all types of channels.
-        do run_in_newsched_task {
+        run_in_newsched_task(proc() {
             let (pone, cone) = oneshot();
             let (pstream, cstream) = stream();
             let (pshared, cshared) = stream();
             let cshared = SharedChan::new(cshared);
             let mp = megapipe();
 
-            do spawntask { pone.recv(); }
-            do spawntask { pstream.recv(); }
-            do spawntask { pshared.recv(); }
+            spawntask(proc() { pone.recv(); });
+            spawntask(proc() { pstream.recv(); });
+            spawntask(proc() { pshared.recv(); });
             let p_mp = mp.clone();
-            do spawntask { p_mp.recv(); }
+            spawntask(proc() { p_mp.recv(); });
 
             unsafe {
                 let _guard = atomic();
@@ -1135,7 +1135,7 @@ mod test {
                 cshared.send_deferred(());
                 mp.send_deferred(());
             }
-        }
+        });
     }
 
 }

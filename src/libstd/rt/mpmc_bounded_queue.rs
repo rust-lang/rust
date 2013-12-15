@@ -176,12 +176,12 @@ mod tests {
         for _ in range(0, nthreads) {
             let (port, chan)  = comm::stream();
             chan.send(q.clone());
-            do task::spawn_sched(task::SingleThreaded) {
+            task::spawn_sched(task::SingleThreaded, proc() {
                 let mut q = port.recv();
                 for i in range(0, nmsgs) {
                     assert!(q.push(i));
                 }
-            }
+            });
         }
 
         let mut completion_ports = ~[];
@@ -190,7 +190,7 @@ mod tests {
             completion_ports.push(completion_port);
             let (port, chan)  = comm::stream();
             chan.send(q.clone());
-            do task::spawn_sched(task::SingleThreaded) {
+            task::spawn_sched(task::SingleThreaded, proc() {
                 let mut q = port.recv();
                 let mut i = 0u;
                 loop {
@@ -203,7 +203,7 @@ mod tests {
                     }
                 }
                 completion_chan.send(i);
-            }
+            });
         }
 
         for completion_port in completion_ports.iter() {

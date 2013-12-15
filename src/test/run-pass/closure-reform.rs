@@ -38,9 +38,9 @@ pub fn main() {
     // Procs
 
     let greeting = ~"Hi ";
-    do call_it |s| {
+    call_it(proc(s) {
         greeting + s
-    }
+    });
 
     let greeting = ~"Hello ";
     call_it(proc(s) {

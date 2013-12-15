@@ -87,9 +87,9 @@ pub fn start(main: *u8, argc: int, argv: **c_char) -> int {
     use rt;
 
     unsafe {
-        return do rt::start(argc, argv as **u8) {
+        rt::start(argc, argv as **u8, proc() {
             let main: extern "Rust" fn() = transmute(main);
             main();
-        };
+        })
     }
 }

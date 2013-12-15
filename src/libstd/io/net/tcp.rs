@@ -155,7 +155,7 @@ mod test {
 
     #[test] #[ignore]
     fn bind_error() {
-        do run_in_mt_newsched_task {
+        run_in_mt_newsched_task(proc() {
             let mut called = false;
             io_error::cond.trap(|e| {
                 assert!(e.kind == PermissionDenied);
@@ -166,12 +166,12 @@ mod test {
                 assert!(listener.is_none());
             });
             assert!(called);
-        }
+        });
     }
 
     #[test]
     fn connect_error() {
-        do run_in_mt_newsched_task {
+        run_in_mt_newsched_task(proc() {
             let mut called = false;
             io_error::cond.trap(|e| {
                 let expected_error = if cfg!(unix) {
@@ -188,108 +188,108 @@ mod test {
                 assert!(stream.is_none());
             });
             assert!(called);
-        }
+        });
     }
 
     #[test]
     fn smoke_test_ip4() {
-        do run_in_mt_newsched_task {
+        run_in_mt_newsched_task(proc() {
             let addr = next_test_ip4();
             let (port, chan) = oneshot();
 
-            do spawntask {
+            spawntask(proc() {
                 let mut acceptor = TcpListener::bind(addr).listen();
                 chan.send(());
                 let mut stream = acceptor.accept();
                 let mut buf = [0];
                 stream.read(buf);
                 assert!(buf[0] == 99);
-            }
+            });
 
-            do spawntask {
+            spawntask(proc() {
                 port.recv();
                 let mut stream = TcpStream::connect(addr);
                 stream.write([99]);
-            }
-        }
+            });
+        });
     }
 
     #[test]
     fn smoke_test_ip6() {
-        do run_in_mt_newsched_task {
+        run_in_mt_newsched_task(proc() {
             let addr = next_test_ip6();
             let (port, chan) = oneshot();
 
-            do spawntask {
+            spawntask(proc() {
                 let mut acceptor = TcpListener::bind(addr).listen();
                 chan.send(());
                 let mut stream = acceptor.accept();
                 let mut buf = [0];
                 stream.read(buf);
                 assert!(buf[0] == 99);
-            }
+            });
 
-            do spawntask {
+            spawntask(proc() {
                 port.recv();
                 let mut stream = TcpStream::connect(addr);
                 stream.write([99]);
-            }
-        }
+            });
+        });
     }
 
     #[test]
     fn read_eof_ip4() {
-        do run_in_mt_newsched_task {
+        run_in_mt_newsched_task(proc() {
             let addr = next_test_ip4();
             let (port, chan) = oneshot();
 
-            do spawntask {
+            spawntask(proc() {
                 let mut acceptor = TcpListener::bind(addr).listen();
                 chan.send(());
                 let mut stream = acceptor.accept();
                 let mut buf = [0];
                 let nread = stream.read(buf);
                 assert!(nread.is_none());
-            }
+            });
 
-            do spawntask {
+            spawntask(proc() {
                 port.recv();
                 let _stream = TcpStream::connect(addr);
                 // Close
-            }
-        }
+            });
+        });
     }
 
     #[test]
     fn read_eof_ip6() {
-        do run_in_mt_newsched_task {
+        run_in_mt_newsched_task(proc() {
             let addr = next_test_ip6();
             let (port, chan) = oneshot();
 
-            do spawntask {
+            spawntask(proc() {
                 let mut acceptor = TcpListener::bind(addr).listen();
                 chan.send(());
                 let mut stream = acceptor.accept();
                 let mut buf = [0];
                 let nread = stream.read(buf);
                 assert!(nread.is_none());
-            }
+            });
 
-            do spawntask {
+            spawntask(proc() {
                 port.recv();
                 let _stream = TcpStream::connect(addr);
                 // Close
-            }
-        }
+            });
+        });
     }
 
     #[test]
     fn read_eof_twice_ip4() {
-        do run_in_mt_newsched_task {
+        run_in_mt_newsched_task(proc() {
             let addr = next_test_ip4();
             let (port, chan) = oneshot();
 
-            do spawntask {
+            spawntask(proc() {
                 let mut acceptor = TcpListener::bind(addr).listen();
                 chan.send(());
                 let mut stream = acceptor.accept();
@@ -306,23 +306,23 @@ mod test {
                     let nread = stream.read(buf);
                     assert!(nread.is_none());
                 })
-            }
+            });
 
-            do spawntask {
+            spawntask(proc() {
                 port.recv();
                 let _stream = TcpStream::connect(addr);
                 // Close
-            }
-        }
+            });
+        });
     }
 
     #[test]
     fn read_eof_twice_ip6() {
-        do run_in_mt_newsched_task {
+        run_in_mt_newsched_task(proc() {
             let addr = next_test_ip6();
             let (port, chan) = oneshot();
 
-            do spawntask {
+            spawntask(proc() {
                 let mut acceptor = TcpListener::bind(addr).listen();
                 chan.send(());
                 let mut stream = acceptor.accept();
@@ -339,23 +339,23 @@ mod test {
                     let nread = stream.read(buf);
                     assert!(nread.is_none());
                 })
-            }
+            });
 
-            do spawntask {
+            spawntask(proc() {
                 port.recv();
                 let _stream = TcpStream::connect(addr);
                 // Close
-            }
-        }
+            });
+        });
     }
 
     #[test]
     fn write_close_ip4() {
-        do run_in_mt_newsched_task {
+        run_in_mt_newsched_task(proc() {
             let addr = next_test_ip4();
             let (port, chan) = oneshot();
 
-            do spawntask {
+            spawntask(proc() {
                 let mut acceptor = TcpListener::bind(addr).listen();
                 chan.send(());
                 let mut stream = acceptor.accept();
@@ -375,23 +375,23 @@ mod test {
                     });
                     if stop { break }
                 }
-            }
+            });
 
-            do spawntask {
+            spawntask(proc() {
                 port.recv();
                 let _stream = TcpStream::connect(addr);
                 // Close
-            }
-        }
+            });
+        });
     }
 
     #[test]
     fn write_close_ip6() {
-        do run_in_mt_newsched_task {
+        run_in_mt_newsched_task(proc() {
             let addr = next_test_ip6();
             let (port, chan) = oneshot();
 
-            do spawntask {
+            spawntask(proc() {
                 let mut acceptor = TcpListener::bind(addr).listen();
                 chan.send(());
                 let mut stream = acceptor.accept();
@@ -411,24 +411,24 @@ mod test {
                     });
                     if stop { break }
                 }
-            }
+            });
 
-            do spawntask {
+            spawntask(proc() {
                 port.recv();
                 let _stream = TcpStream::connect(addr);
                 // Close
-            }
-        }
+            });
+        });
     }
 
     #[test]
     fn multiple_connect_serial_ip4() {
-        do run_in_mt_newsched_task {
+        run_in_mt_newsched_task(proc() {
             let addr = next_test_ip4();
             let max = 10;
             let (port, chan) = oneshot();
 
-            do spawntask {
+            spawntask(proc() {
                 let mut acceptor = TcpListener::bind(addr).listen();
                 chan.send(());
                 for ref mut stream in acceptor.incoming().take(max) {
@@ -436,26 +436,26 @@ mod test {
                     stream.read(buf);
                     assert_eq!(buf[0], 99);
                 }
-            }
+            });
 
-            do spawntask {
+            spawntask(proc() {
                 port.recv();
                 max.times(|| {
                     let mut stream = TcpStream::connect(addr);
                     stream.write([99]);
                 });
-            }
-        }
+            });
+        });
     }
 
     #[test]
     fn multiple_connect_serial_ip6() {
-        do run_in_mt_newsched_task {
+        run_in_mt_newsched_task(proc() {
             let addr = next_test_ip6();
             let max = 10;
             let (port, chan) = oneshot();
 
-            do spawntask {
+            spawntask(proc() {
                 let mut acceptor = TcpListener::bind(addr).listen();
                 chan.send(());
                 for ref mut stream in acceptor.incoming().take(max) {
@@ -463,39 +463,39 @@ mod test {
                     stream.read(buf);
                     assert_eq!(buf[0], 99);
                 }
-            }
+            });
 
-            do spawntask {
+            spawntask(proc() {
                 port.recv();
                 max.times(|| {
                     let mut stream = TcpStream::connect(addr);
                     stream.write([99]);
                 });
-            }
-        }
+            });
+        });
     }
 
     #[test]
     fn multiple_connect_interleaved_greedy_schedule_ip4() {
-        do run_in_mt_newsched_task {
+        run_in_mt_newsched_task(proc() {
             let addr = next_test_ip4();
             static MAX: int = 10;
             let (port, chan) = oneshot();
 
-            do spawntask {
+            spawntask(proc() {
                 let mut acceptor = TcpListener::bind(addr).listen();
                 chan.send(());
                 for (i, stream) in acceptor.incoming().enumerate().take(MAX as uint) {
                     // Start another task to handle the connection
-                    do spawntask {
+                    spawntask(proc() {
                         let mut stream = stream;
                         let mut buf = [0];
                         stream.read(buf);
                         assert!(buf[0] == i as u8);
                         debug!("read");
-                    }
+                    });
                 }
-            }
+            });
 
             port.recv();
             connect(0, addr);
@@ -503,39 +503,39 @@ mod test {
             fn connect(i: int, addr: SocketAddr) {
                 if i == MAX { return }
 
-                do spawntask {
+                spawntask(proc() {
                     debug!("connecting");
                     let mut stream = TcpStream::connect(addr);
                     // Connect again before writing
                     connect(i + 1, addr);
                     debug!("writing");
                     stream.write([i as u8]);
-                }
+                });
             }
-        }
+        });
     }
 
     #[test]
     fn multiple_connect_interleaved_greedy_schedule_ip6() {
-        do run_in_mt_newsched_task {
+        run_in_mt_newsched_task(proc() {
             let addr = next_test_ip6();
             static MAX: int = 10;
             let (port, chan) = oneshot();
 
-            do spawntask {
+            spawntask(proc() {
                 let mut acceptor = TcpListener::bind(addr).listen();
                 chan.send(());
                 for (i, stream) in acceptor.incoming().enumerate().take(MAX as uint) {
                     // Start another task to handle the connection
-                    do spawntask {
+                    spawntask(proc() {
                         let mut stream = stream;
                         let mut buf = [0];
                         stream.read(buf);
                         assert!(buf[0] == i as u8);
                         debug!("read");
-                    }
+                    });
                 }
-            }
+            });
 
             port.recv();
             connect(0, addr);
@@ -543,39 +543,39 @@ mod test {
             fn connect(i: int, addr: SocketAddr) {
                 if i == MAX { return }
 
-                do spawntask {
+                spawntask(proc() {
                     debug!("connecting");
                     let mut stream = TcpStream::connect(addr);
                     // Connect again before writing
                     connect(i + 1, addr);
                     debug!("writing");
                     stream.write([i as u8]);
-                }
+                });
             }
-        }
+        });
     }
 
     #[test]
     fn multiple_connect_interleaved_lazy_schedule_ip4() {
-        do run_in_mt_newsched_task {
+        run_in_mt_newsched_task(proc() {
             let addr = next_test_ip4();
             static MAX: int = 10;
             let (port, chan) = oneshot();
 
-            do spawntask {
+            spawntask(proc() {
                 let mut acceptor = TcpListener::bind(addr).listen();
                 chan.send(());
                 for stream in acceptor.incoming().take(MAX as uint) {
                     // Start another task to handle the connection
-                    do spawntask_later {
+                    spawntask_later(proc() {
                         let mut stream = stream;
                         let mut buf = [0];
                         stream.read(buf);
                         assert!(buf[0] == 99);
                         debug!("read");
-                    }
+                    });
                 }
-            }
+            });
 
             port.recv();
             connect(0, addr);
@@ -583,38 +583,38 @@ mod test {
             fn connect(i: int, addr: SocketAddr) {
                 if i == MAX { return }
 
-                do spawntask_later {
+                spawntask_later(proc() {
                     debug!("connecting");
                     let mut stream = TcpStream::connect(addr);
                     // Connect again before writing
                     connect(i + 1, addr);
                     debug!("writing");
                     stream.write([99]);
-                }
+                });
             }
-        }
+        });
     }
     #[test]
     fn multiple_connect_interleaved_lazy_schedule_ip6() {
-        do run_in_mt_newsched_task {
+        run_in_mt_newsched_task(proc() {
             let addr = next_test_ip6();
             static MAX: int = 10;
             let (port, chan) = oneshot();
 
-            do spawntask {
+            spawntask(proc() {
                 let mut acceptor = TcpListener::bind(addr).listen();
                 chan.send(());
                 for stream in acceptor.incoming().take(MAX as uint) {
                     // Start another task to handle the connection
-                    do spawntask_later {
+                    spawntask_later(proc() {
                         let mut stream = stream;
                         let mut buf = [0];
                         stream.read(buf);
                         assert!(buf[0] == 99);
                         debug!("read");
-                    }
+                    });
                 }
-            }
+            });
 
             port.recv();
             connect(0, addr);
@@ -622,22 +622,22 @@ mod test {
             fn connect(i: int, addr: SocketAddr) {
                 if i == MAX { return }
 
-                do spawntask_later {
+                spawntask_later(proc() {
                     debug!("connecting");
                     let mut stream = TcpStream::connect(addr);
                     // Connect again before writing
                     connect(i + 1, addr);
                     debug!("writing");
                     stream.write([99]);
-                }
+                });
             }
-        }
+        });
     }
 
     #[cfg(test)]
     fn socket_name(addr: SocketAddr) {
-        do run_in_mt_newsched_task {
-            do spawntask {
+        run_in_mt_newsched_task(proc() {
+            spawntask(proc() {
                 let mut listener = TcpListener::bind(addr).unwrap();
 
                 // Make sure socket_name gives
@@ -646,23 +646,23 @@ mod test {
                 assert!(so_name.is_some());
                 assert_eq!(addr, so_name.unwrap());
 
-            }
-        }
+            });
+        });
     }
 
     #[cfg(test)]
     fn peer_name(addr: SocketAddr) {
-        do run_in_mt_newsched_task {
+        run_in_mt_newsched_task(proc() {
             let (port, chan) = oneshot();
 
-            do spawntask {
+            spawntask(proc() {
                 let mut acceptor = TcpListener::bind(addr).listen();
                 chan.send(());
 
                 acceptor.accept();
-            }
+            });
 
-            do spawntask {
+            spawntask(proc() {
                 port.recv();
                 let stream = TcpStream::connect(addr);
 
@@ -675,8 +675,8 @@ mod test {
                 let peer_name = stream.peer_name();
                 assert!(peer_name.is_some());
                 assert_eq!(addr, peer_name.unwrap());
-            }
-        }
+            });
+        });
     }
 
     #[test]

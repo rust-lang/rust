@@ -317,10 +317,10 @@ mod tests {
 
     #[test]
     fn smoke_native() {
-        do run_in_newsched_task {
+        run_in_newsched_task(proc() {
             stdin();
             stdout();
             stderr();
-        }
+        });
     }
 }

@@ -176,9 +176,9 @@ fn main() {
 
         let (from_parent, to_child) = comm::stream();
 
-        do spawn {
+        spawn(proc() {
             make_sequence_processor(sz, &from_parent, &to_parent_);
-        }
+        });
 
         to_child
     }).collect::<~[Chan<~[u8]>]>();

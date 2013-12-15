@@ -391,22 +391,22 @@ fn run_(main: proc(), use_main_sched: bool) -> int {
 
         let sched = scheds.pop();
         let main_task = main_task;
-        let thread = do Thread::start {
+        let thread = Thread::start(proc() {
             sched.bootstrap(main_task);
-        };
+        });
         threads.push(thread);
     }
 
     // Run each remaining scheduler in a thread.
     for sched in scheds.move_rev_iter() {
         rtdebug!("creating regular schedulers");
-        let thread = do Thread::start {
+        let thread = Thread::start(proc() {
             let mut sched = sched;
             let bootstrap_task = ~do Task::new_root(&mut sched.stack_pool, None) || {
                 rtdebug!("boostraping a non-primary scheduler");
             };
             sched.bootstrap(bootstrap_task);
-        };
+        });
         threads.push(thread);
     }
 

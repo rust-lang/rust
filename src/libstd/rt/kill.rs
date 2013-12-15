@@ -74,9 +74,9 @@ otherwise, it will report failure. This is most useful for writing test cases:
  ```
 #[test]
 fn test_something_in_another_task {
-    do spawn {
+    spawn(proc() {
         assert!(collatz_conjecture_is_false());
-    }
+    });
 }
  ```
 
@@ -302,8 +302,8 @@ mod test {
 
     #[test]
     fn block_and_wake() {
-        do with_test_task |task| {
+        with_test_task(proc(task) {
             BlockedTask::block(task).wake().unwrap()
-        }
+        });
     }
 }

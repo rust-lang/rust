@@ -544,12 +544,12 @@ mod tests {
                 let (port, chan) = comm::stream();
                 futures.push(port);
 
-                do task::spawn || {
+                task::spawn(proc() {
                     for _ in range(0u, count) {
                         total.with(|count| **count += 1);
                     }
                     chan.send(());
-                }
+                });
             };
 
             for f in futures.iter() { f.recv() }
@@ -565,9 +565,9 @@ mod tests {
             // accesses will also fail.
             let x = Exclusive::new(1);
             let x2 = x.clone();
-            do task::try || {
+            task::try(proc() {
                 x2.with(|one| assert_eq!(*one, 2))
-            };
+            });;
             x.with(|one| assert_eq!(*one, 1));
         }
     }
@@ -626,11 +626,11 @@ mod tests {
         let x = UnsafeArc::new(~~"hello");
         let x2 = x.clone();
         let (p,c) = comm::stream();
-        do task::spawn {
+        task::spawn(proc() {
             c.send(());
             assert!(x2.unwrap() == ~~"hello");
             c.send(());
-        }
+        });
         p.recv();
         task::deschedule(); // Try to make the unwrapper get blocked first.
         let left_x = x.try_unwrap();
@@ -650,10 +650,10 @@ mod tests {
     fn exclusive_new_unwrap_contended() {
         let x = Exclusive::new(~~"hello");
         let x2 = x.clone();
-        do task::spawn {
+        task::spawn(proc() {
             unsafe { x2.with(|_hello| ()); }
             task::deschedule();
-        }
+        });
         assert!(x.unwrap() == ~~"hello");
 
         // Now try the same thing, but with the child task blocking.
@@ -661,9 +661,9 @@ mod tests {
         let x2 = x.clone();
         let mut builder = task::task();
         let res = builder.future_result();
-        do builder.spawn {
+        builder.spawn(proc() {
             assert!(x2.unwrap() == ~~"hello");
-        }
+        });
         // Have to get rid of our reference before blocking.
         drop(x);
         res.recv();
@@ -675,9 +675,9 @@ mod tests {
         let x2 = x.clone();
         let mut builder = task::task();
         let res = builder.future_result();
-        do builder.spawn {
+        builder.spawn(proc() {
             assert!(x2.unwrap() == ~~"hello");
-        }
+        });
         assert!(x.unwrap() == ~~"hello");
         assert!(res.recv().is_ok());
     }

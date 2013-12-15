@@ -14,13 +14,13 @@ use std::rt;
 
 #[start]
 fn start(argc: int, argv: **u8) -> int {
-    do rt::start(argc, argv) {
+    rt::start(argc, argv, proc() {
         println("First invocation");
-    };
+    });
 
-    do rt::start(argc, argv) {
+    rt::start(argc, argv, proc() {
         println("Second invocation");
-    };
+    });
 
     0
 }

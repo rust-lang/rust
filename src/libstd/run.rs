@@ -224,22 +224,22 @@ impl Process {
         let ch = SharedChan::new(ch);
         let ch_clone = ch.clone();
 
-        do spawn {
+        spawn(proc() {
             let _guard = io::ignore_io_error();
             let mut error = error;
             match error {
                 Some(ref mut e) => ch.send((2, e.read_to_end())),
                 None => ch.send((2, ~[]))
             }
-        }
-        do spawn {
+        });
+        spawn(proc() {
             let _guard = io::ignore_io_error();
             let mut output = output;
             match output {
                 Some(ref mut e) => ch_clone.send((1, e.read_to_end())),
                 None => ch_clone.send((1, ~[]))
             }
-        }
+        });
 
         let status = self.finish();
 
@@ -412,9 +412,9 @@ mod tests {
         os::close(pipe_out.out);
         os::close(pipe_err.out);
 
-        do spawn {
+        spawn(proc() {
             writeclose(pipe_in.out, "test");
-        }
+        });
         let actual = readclose(pipe_out.input);
         readclose(pipe_err.input);
         process.finish();

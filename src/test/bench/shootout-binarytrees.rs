@@ -63,7 +63,7 @@ fn main() {
     let mut messages = range_step(min_depth, max_depth + 1, 2).map(|depth| {
             use std::int::pow;
             let iterations = pow(2, (max_depth - depth + min_depth) as uint);
-            do Future::spawn {
+            Future::spawn(proc() {
                 let mut chk = 0;
                 for i in range(1, iterations + 1) {
                     let arena = Arena::new();
@@ -73,7 +73,7 @@ fn main() {
                 }
                 format!("{}\t trees of depth {}\t check: {}",
                         iterations * 2, depth, chk)
-            }
+            })
         }).to_owned_vec();
 
     for message in messages.mut_iter() {

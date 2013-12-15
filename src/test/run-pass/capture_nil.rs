@@ -28,9 +28,9 @@ use std::task;
 
 fn foo(x: ()) -> Port<()> {
     let (p, c) = stream::<()>();
-    do task::spawn() {
+    task::spawn(proc() {
         c.send(x);
-    }
+    });
     p
 }
 

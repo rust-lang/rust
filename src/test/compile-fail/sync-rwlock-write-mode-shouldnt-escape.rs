@@ -18,5 +18,5 @@ fn main() {
         y = Some(write_mode);
     });
     // Adding this line causes a method unification failure instead
-    // do (&option::unwrap(y)).write { }
+    // (&option::unwrap(y)).write(proc() { })
 }
