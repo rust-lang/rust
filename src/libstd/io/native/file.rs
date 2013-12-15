@@ -706,7 +706,7 @@ pub fn readlink(p: &CString) -> IoResult<Path> {
             -1 => Err(super::last_error()),
             n => {
                 assert!(n > 0);
-                unsafe { vec::raw::set_len(&mut buf, n as uint); }
+                unsafe { buf.set_len(n as uint); }
                 Ok(Path::new(buf))
             }
         }

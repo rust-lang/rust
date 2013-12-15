@@ -24,7 +24,7 @@ impl StackSegment {
         unsafe {
             // Crate a block of uninitialized values
             let mut stack = vec::with_capacity(size);
-            vec::raw::set_len(&mut stack, size);
+            stack.set_len(size);
 
             let mut stk = StackSegment {
                 buf: stack,
