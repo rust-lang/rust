@@ -125,7 +125,6 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBSYNTAX_$(3)): \
 		$$(TSREQ$(1)_T_$(2)_H_$(3))			\
 		$$(TSTDLIB_DEFAULT$(1)_T_$(2)_H_$(3))      \
 		$$(TEXTRALIB_DEFAULT$(1)_T_$(2)_H_$(3)) \
-		$$(TLIBRUSTUV_DEFAULT$(1)_T_$(2)_H_$(3)) \
 		| $$(TLIB$(1)_T_$(2)_H_$(3))/
 	@$$(call E, compile_and_link: $$@)
 	$$(call REMOVE_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBSYNTAX_GLOB_$(2)),$$(notdir $$@))
