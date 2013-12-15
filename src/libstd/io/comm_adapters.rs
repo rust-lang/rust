@@ -57,7 +57,7 @@ impl<P: GenericPort<~[u8]>> Reader for PortReader<P> {
                     let dst = buf.mut_slice_from(num_read);
                     let src = prev.slice_from(self.pos);
                     let count = cmp::min(dst.len(), src.len());
-                    bytes::copy_memory(dst, src, count);
+                    bytes::copy_memory(dst, src.slice_to(count));
                     num_read += count;
                     self.pos += count;
                 },

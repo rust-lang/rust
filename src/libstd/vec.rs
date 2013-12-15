@@ -1631,7 +1631,7 @@ impl<T> OwnedVector<T> for ~[T] {
             {
                 let first_slice = self.slice(0, 1);
                 let last_slice = self.slice(next_ln, ln);
-                raw::copy_memory(cast::transmute(last_slice), first_slice, 1);
+                raw::copy_memory(cast::transmute(last_slice), first_slice);
             }
 
             // Memcopy everything to the left one element
@@ -1639,8 +1639,7 @@ impl<T> OwnedVector<T> for ~[T] {
                 let init_slice = self.slice(0, next_ln);
                 let tail_slice = self.slice(1, ln);
                 raw::copy_memory(cast::transmute(init_slice),
-                                 tail_slice,
-                                 next_ln);
+                                 tail_slice);
             }
 
             // Set the new length. Now the vector is back to normal
@@ -2312,18 +2311,14 @@ pub mod raw {
     /**
       * Copies data from one vector to another.
       *
-      * Copies `count` bytes from `src` to `dst`. The source and destination
-      * may overlap.
+      * Copies `src` to `dst`. The source and destination may overlap.
       */
     #[inline]
-    pub unsafe fn copy_memory<T>(dst: &mut [T], src: &[T],
-                                 count: uint) {
-        assert!(dst.len() >= count);
-        assert!(src.len() >= count);
-
-        dst.as_mut_buf(|p_dst, _len_dst| {
-            src.as_imm_buf(|p_src, _len_src| {
-                ptr::copy_memory(p_dst, p_src, count)
+    pub unsafe fn copy_memory<T>(dst: &mut [T], src: &[T]) {
+        dst.as_mut_buf(|p_dst, len_dst| {
+            src.as_imm_buf(|p_src, len_src| {
+                assert!(len_dst >= len_src)
+                ptr::copy_memory(p_dst, p_src, len_src)
             })
         })
     }
@@ -2419,13 +2414,12 @@ pub mod bytes {
     /**
       * Copies data from one vector to another.
       *
-      * Copies `count` bytes from `src` to `dst`. The source and destination
-      * may overlap.
+      * Copies `src` to `dst`. The source and destination may overlap.
       */
     #[inline]
-    pub fn copy_memory(dst: &mut [u8], src: &[u8], count: uint) {
+    pub fn copy_memory(dst: &mut [u8], src: &[u8]) {
         // Bound checks are done at vec::raw::copy_memory.
-        unsafe { vec::raw::copy_memory(dst, src, count) }
+        unsafe { vec::raw::copy_memory(dst, src) }
     }
 
     /**
@@ -3651,7 +3645,7 @@ mod tests {
         unsafe {
             let mut a = [1, 2, 3, 4];
             let b = [1, 2, 3, 4, 5];
-            raw::copy_memory(a, b, 5);
+            raw::copy_memory(a, b);
         }
     }
 
