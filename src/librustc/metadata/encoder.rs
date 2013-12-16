@@ -812,6 +812,10 @@ fn encode_info_for_method(ecx: &EncodeContext,
     encode_bounds_and_type(ebml_w, ecx, &tpt);
 
     encode_path(ecx, ebml_w, impl_path, ast_map::path_name(m.ident));
+    match ast_method_opt {
+        Some(ast_method) => encode_attributes(ebml_w, ast_method.attrs),
+        None => ()
+    }
 
     for ast_method in ast_method_opt.iter() {
         let num_params = tpt.generics.type_param_defs.len();
@@ -1205,11 +1209,13 @@ fn encode_info_for_item(ecx: &EncodeContext,
             }
 
             match ms[i] {
-                required(_) => {
+                required(ref tm) => {
+                    encode_attributes(ebml_w, tm.attrs);
                     encode_method_sort(ebml_w, 'r');
                 }
 
                 provided(m) => {
+                    encode_attributes(ebml_w, m.attrs);
                     // If this is a static method, we've already encoded
                     // this.
                     if method_ty.explicit_self != sty_static {
