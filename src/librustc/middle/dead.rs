@@ -107,6 +107,8 @@ impl MarkSymbolVisitor {
                 match item.node {
                     ast::item_fn(..)
                     | ast::item_ty(..)
+                    | ast::item_enum(..)
+                    | ast::item_struct(..)
                     | ast::item_static(..) => {
                         visit::walk_item(self, item, ());
                     }
