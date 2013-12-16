@@ -132,11 +132,13 @@ impl<T: Send> Drop for Thread<T> {
 
 #[cfg(windows)]
 mod imp {
+    use super::DEFAULT_STACK_SIZE;
+
+    use cast;
+    use libc;
     use libc::types::os::arch::extra::{LPSECURITY_ATTRIBUTES, SIZE_T, BOOL,
                                        LPVOID, DWORD, LPDWORD, HANDLE};
-    use libc;
-    use cast;
-    use super::DEFAULT_STACK_SIZE;
+    use ptr;
 
     pub type rust_thread = HANDLE;
     pub type rust_thread_return = DWORD;
@@ -210,9 +212,10 @@ mod imp {
     }
 
     #[cfg(target_os = "macos")]
+    #[cfg(target_os = "android")]
     pub unsafe fn yield_now() { assert_eq!(sched_yield(), 0); }
 
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(not(target_os = "macos"), not(target_os = "android"))]
     pub unsafe fn yield_now() { assert_eq!(pthread_yield(), 0); }
 
     extern {
@@ -230,8 +233,9 @@ mod imp {
         fn pthread_detach(thread: libc::pthread_t) -> libc::c_int;
 
         #[cfg(target_os = "macos")]
+        #[cfg(target_os = "android")]
         fn sched_yield() -> libc::c_int;
-        #[cfg(not(target_os = "macos"))]
+        #[cfg(not(target_os = "macos"), not(target_os = "android"))]
         fn pthread_yield() -> libc::c_int;
     }
 }

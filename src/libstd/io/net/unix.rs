@@ -163,11 +163,11 @@ mod tests {
             do spawntask {
                 let mut acceptor = UnixListener::bind(&path1).listen();
                 chan.send(());
-                server.take()(acceptor.accept().unwrap());
+                server(acceptor.accept().unwrap());
             }
 
             port.recv();
-            client.take()(UnixStream::connect(&path2).unwrap());
+            client(UnixStream::connect(&path2).unwrap());
         }
     }
 

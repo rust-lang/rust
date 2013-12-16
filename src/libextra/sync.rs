@@ -950,7 +950,6 @@ mod tests {
                 let mi = m2.clone();
                 // spawn sibling task
                 do task::spawn { // linked
-                    let mut c = Some(c);
                     mi.lock_cond(|cond| {
                         c.send(()); // tell sibling to go ahead
                         (|| {
@@ -994,6 +993,7 @@ mod tests {
         })
     }
     #[test]
+    #[ignore(reason = "linked failure?")]
     fn test_mutex_different_conds() {
         let result = do task::try {
             let m = Mutex::new_with_condvars(2);
