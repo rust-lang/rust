@@ -2350,13 +2350,10 @@ pub mod bytes {
         }
     }
 
-    /**
-      * Copies data from one vector to another.
-      *
-      * Copies `src` to `dst`. The source and destination may
-      * overlap. Fails if the length of `dst` is less than the length
-      * of `src`.
-      */
+    /// Copies data from one vector to another.
+    ///
+    /// Copies `src` to `dst`. Fails if the length of `dst` is less
+    /// than the length of `src`.
     #[inline]
     pub fn copy_memory(dst: &mut [u8], src: &[u8]) {
         // Bound checks are done at .copy_memory.
