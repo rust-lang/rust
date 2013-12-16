@@ -1621,54 +1621,38 @@ impl<T> OwnedVector<T> for ~[T] {
     }
 
     fn shift_opt(&mut self) -> Option<T> {
-        unsafe {
-            let ln = match self.len() {
-                0 => return None,
-                1 => return self.pop_opt(),
-                2 =>  {
-                    let last = self.pop();
-                    let first = self.pop_opt();
-                    self.push(last);
-                    return first;
+        match self.len() {
+            0 => None,
+            1 => self.pop_opt(),
+            2 => {
+                let last = self.pop();
+                let first = self.pop_opt();
+                self.push(last);
+                first
+            }
+            len => {
+                unsafe {
+                    let next_len = len - 1;
+
+                    let ptr = self.as_ptr();
+
+                    // copy out the head element, for the moment it exists
+                    // unsafely on the stack and as the first element of the
+                    // vector.
+                    let head = ptr::read_ptr(ptr);
+
+                    // Memcpy everything to the left one element (leaving the
+                    // last element unsafely in two consecutive memory
+                    // locations)
+                    ptr::copy_memory(self.as_mut_ptr(), ptr.offset(1), next_len);
+
+                    // set the new length, which means the second instance of
+                    // the last element is forgotten.
+                    self.set_len(next_len);
+
+                    Some(head)
                 }
-                x => x
-            };
-
-            let next_ln = self.len() - 1;
-
-            // Save the last element. We're going to overwrite its position
-            let work_elt = self.pop();
-            // We still should have room to work where what last element was
-            assert!(self.capacity() >= ln);
-            // Pretend like we have the original length so we can use
-            // the vector copy_memory to overwrite the hole we just made
-            self.set_len(ln);
-
-            // Memcopy the head element (the one we want) to the location we just
-            // popped. For the moment it unsafely exists at both the head and last
-            // positions
-            {
-                let first_slice = self.slice(0, 1);
-                let last_slice = self.slice(next_ln, ln);
-                raw::copy_memory(cast::transmute(last_slice), first_slice);
             }
-
-            // Memcopy everything to the left one element
-            {
-                let init_slice = self.slice(0, next_ln);
-                let tail_slice = self.slice(1, ln);
-                raw::copy_memory(cast::transmute(init_slice),
-                                 tail_slice);
-            }
-
-            // Set the new length. Now the vector is back to normal
-            self.set_len(next_ln);
-
-            // Swap out the element we want from the end
-            let vp = self.as_mut_ptr();
-            let vp = ptr::mut_offset(vp, (next_ln - 1) as int);
-
-            Some(ptr::replace_ptr(vp, work_elt))
         }
     }
 
