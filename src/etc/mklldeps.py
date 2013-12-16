@@ -53,6 +53,5 @@ for llconfig in sys.argv[2:]:
         lib = lib[2:] # chop of the leading '-l'
         print "#[link(name = \"" + lib + "\", kind = \"static\")]"
     if os == 'win32':
-        print "#[link(name = \"pthread\")]"
         print "#[link(name = \"imagehlp\")]"
     print "extern {}"
