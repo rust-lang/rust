@@ -220,6 +220,7 @@ use util::common::indenter;
 use util::ppaux::{Repr, vec_map_to_str};
 
 use std::hashmap::HashMap;
+use std::ptr;
 use std::vec;
 use syntax::ast;
 use syntax::ast::Ident;
@@ -2046,7 +2047,10 @@ pub fn store_arg(mut bcx: @mut Block,
     // Debug information (the llvm.dbg.declare intrinsic to be precise) always expects to get an
     // alloca, which only is the case on the general path, so lets disable the optimized path when
     // debug info is enabled.
-    let fast_path = !bcx.ccx().sess.opts.extra_debuginfo && simple_identifier(pat).is_some();
+    let arg_is_alloca = unsafe { llvm::LLVMIsAAllocaInst(llval) != ptr::null() };
+
+    let fast_path = (arg_is_alloca || !bcx.ccx().sess.opts.extra_debuginfo)
+                    && simple_identifier(pat).is_some();
 
     if fast_path {
         // Optimized path for `x: T` case. This just adopts

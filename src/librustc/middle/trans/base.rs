@@ -875,8 +875,11 @@ pub fn trans_external_path(ccx: &mut CrateContext, did: ast::DefId, t: ty::t) ->
     }
 }
 
-pub fn invoke(bcx: @mut Block, llfn: ValueRef, llargs: ~[ValueRef],
-              attributes: &[(uint, lib::llvm::Attribute)])
+pub fn invoke(bcx: @mut Block,
+              llfn: ValueRef,
+              llargs: ~[ValueRef],
+              attributes: &[(uint, lib::llvm::Attribute)],
+              call_info: Option<NodeInfo>)
            -> (ValueRef, @mut Block) {
     let _icx = push_ctxt("invoke_");
     if bcx.unreachable {
@@ -899,11 +902,18 @@ pub fn invoke(bcx: @mut Block, llfn: ValueRef, llargs: ~[ValueRef],
             }
         }
         let normal_bcx = sub_block(bcx, "normal return");
+        let landing_pad = get_landing_pad(bcx);
+
+        match call_info {
+            Some(info) => debuginfo::set_source_location(bcx.fcx, info.id, info.span),
+            None => debuginfo::clear_source_location(bcx.fcx)
+        };
+
         let llresult = Invoke(bcx,
                               llfn,
                               llargs,
                               normal_bcx.llbb,
-                              get_landing_pad(bcx),
+                              landing_pad,
                               attributes);
         return (llresult, normal_bcx);
     } else {
@@ -913,6 +923,12 @@ pub fn invoke(bcx: @mut Block, llfn: ValueRef, llargs: ~[ValueRef],
                 debug!("arg: {}", llarg);
             }
         }
+
+        match call_info {
+            Some(info) => debuginfo::set_source_location(bcx.fcx, info.id, info.span),
+            None => debuginfo::clear_source_location(bcx.fcx)
+        };
+
         let llresult = Call(bcx, llfn, llargs, attributes);
         return (llresult, bcx);
     }
@@ -1551,6 +1567,7 @@ pub fn alloca_maybe_zeroed(cx: @mut Block, ty: Type, name: &str, zero: bool) -> 
             return llvm::LLVMGetUndef(ty.ptr_to().to_ref());
         }
     }
+    debuginfo::clear_source_location(cx.fcx);
     let p = Alloca(cx, ty, name);
     if zero {
         let b = cx.fcx.ccx.builder();
@@ -1567,6 +1584,7 @@ pub fn arrayalloca(cx: @mut Block, ty: Type, v: ValueRef) -> ValueRef {
             return llvm::LLVMGetUndef(ty.to_ref());
         }
     }
+    debuginfo::clear_source_location(cx.fcx);
     return ArrayAlloca(cx, ty, v);
 }
 
@@ -1810,6 +1828,7 @@ pub fn finish_fn(fcx: @mut FunctionContext, last_bcx: @mut Block) {
         None => last_bcx
     };
     build_return_block(fcx, ret_cx);
+    debuginfo::clear_source_location(fcx);
     fcx.cleanup();
 }
 

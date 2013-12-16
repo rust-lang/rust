@@ -85,6 +85,43 @@ continuation, storing all state needed to continue traversal at the type members
 been registered with the cache. (This implementation approach might be a tad over-engineered and
 may change in the future)
 
+
+## Source Locations and Line Information
+In addition to data type descriptions the debugging information must also allow to map machine code
+locations back to source code locations in order to be useful. This functionality is also handled in
+this module. The following functions allow to control source mappings:
+
++ set_source_location()
++ clear_source_location()
++ start_emitting_source_locations()
+
+`set_source_location()` allows to set the current source location. All IR instructions created after
+a call to this function will be linked to the given source location, until another location is
+specified with `set_source_location()` or the source location is cleared with
+`clear_source_location()`. In the later case, subsequent IR instruction will not be linked to any
+source location. As you can see, this is a stateful API (mimicking the one in LLVM), so be careful
+with source locations set by previous calls. It's probably best to not rely on any specific state
+being present at a given point in code.
+
+One topic that deserves some extra attention is *function prologues*. At the beginning of a
+function's machine code there are typically a few instructions for loading argument values into
+allocas and checking if there's enough stack space for the function to execute. This *prologue* is
+not visible in the source code and LLVM puts a special PROLOGUE END marker into the line table at
+the first non-prologue instruction of the function. In order to find out where the prologue ends,
+LLVM looks for the first instruction in the function body that is linked to a source location. So,
+when generating prologue instructions we have to make sure that we don't emit source location
+information until the 'real' function body begins. For this reason, source location emission is
+disabled by default for any new function being translated and is only activated after a call to the
+third function from the list above, `start_emitting_source_locations()`. This function should be
+called right before regularly starting to translate the top-level block of the given function.
+
+There is one exception to the above rule: `llvm.dbg.declare` instruction must be linked to the
+source location of the variable being declared. For function parameters these `llvm.dbg.declare`
+instructions typically occur in the middle of the prologue, however, they are ignored by LLVM's
+prologue detection. The `create_argument_metadata()` and related functions take care of linking the
+`llvm.dbg.declare` instructions to the correct source locations even while source location emission
+is still disabled, so there is no need to do anything special with source location handling here.
+
 */
 
 
@@ -651,7 +688,16 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
         (function_name.clone(), file_metadata)
     };
 
-    let scope_line = get_scope_line(cx, top_level_block, loc.line);
+    // Clang sets this parameter to the opening brace of the function's block, so let's do this too.
+    let scope_line = span_start(cx, top_level_block.span).line;
+
+    // The is_local_to_unit flag indicates whether a function is local to the current compilation
+    // unit (i.e. if it is *static* in the C-sense). The *reachable* set should provide a good
+    // approximation of this, as it contains everything that might leak out of the current crate
+    // (by being externally visible or by being inlined into something externally visible). It might
+    // better to use the `exported_items` set from `driver::CrateAnalysis` in the future, but (atm)
+    // this set is not available in the translation pass.
+    let is_local_to_unit = !cx.reachable.contains(&fn_ast_id);
 
     let fn_metadata = function_name.with_c_str(|function_name| {
                           linkage_name.with_c_str(|linkage_name| {
@@ -664,7 +710,7 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
                     file_metadata,
                     loc.line as c_uint,
                     function_type_metadata,
-                    false,
+                    is_local_to_unit,
                     true,
                     scope_line as c_uint,
                     FlagPrototyped as c_uint,
@@ -686,6 +732,9 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
 
     let arg_pats = fn_decl.inputs.map(|arg_ref| arg_ref.pat);
     populate_scope_map(cx, arg_pats, top_level_block, fn_metadata, &mut fn_debug_context.scope_map);
+
+    // Clear the debug location so we don't assign them in the function prelude
+    set_debug_location(cx, UnknownLocation);
 
     return FunctionDebugContext(fn_debug_context);
 
@@ -836,21 +885,6 @@ pub fn create_function_debug_context(cx: &mut CrateContext,
         name_to_append_suffix_to.push_char('>');
 
         return create_DIArray(DIB(cx), template_params);
-    }
-
-    fn get_scope_line(cx: &CrateContext,
-                      top_level_block: &ast::Block,
-                      default: uint)
-                   -> uint {
-        match *top_level_block {
-            ast::Block { stmts: ref statements, .. } if statements.len() > 0 => {
-                span_start(cx, statements[0].span).line
-            }
-            ast::Block { expr: Some(@ref expr), .. } => {
-                span_start(cx, expr.span).line
-            }
-            _ => default
-        }
     }
 }
 
@@ -2128,7 +2162,8 @@ fn set_debug_location(cx: &mut CrateContext, debug_location: DebugLocation) {
     let metadata_node;
 
     match debug_location {
-        KnownLocation { scope, line, col } => {
+        KnownLocation { scope, line, .. } => {
+            let col = 0; // Always set the column to zero like Clang and GCC
             debug!("setting debug location to {} {}", line, col);
             let elements = [C_i32(line as i32), C_i32(col as i32), scope, ptr::null()];
             unsafe {
@@ -2244,7 +2279,14 @@ fn populate_scope_map(cx: &mut CrateContext,
         })
     }
 
-    walk_block(cx, fn_entry_block, &mut scope_stack, scope_map);
+    // Clang creates a separate scope for function bodies, so let's do this too
+    with_new_scope(cx,
+                   fn_entry_block.span,
+                   &mut scope_stack,
+                   scope_map,
+                   |cx, scope_stack, scope_map| {
+        walk_block(cx, fn_entry_block, scope_stack, scope_map);
+    });
 
     // local helper functions for walking the AST.
     fn with_new_scope(cx: &mut CrateContext,

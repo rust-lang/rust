@@ -697,7 +697,7 @@ pub fn trans_call_inner(in_cx: @mut Block,
             }
 
             // Invoke the actual rust fn and update bcx/llresult.
-            let (llret, b) = base::invoke(bcx, llfn, llargs, attrs);
+            let (llret, b) = base::invoke(bcx, llfn, llargs, attrs, call_info);
             bcx = b;
             llresult = llret;
 
