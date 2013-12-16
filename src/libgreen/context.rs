@@ -24,7 +24,7 @@ use stack::StackSegment;
 // then misalign the regs again.
 pub struct Context {
     /// The context entry point, saved here for later destruction
-    priv start: ~Option<proc()>,
+    priv start: Option<~proc()>,
     /// Hold the registers while the task or scheduler is suspended
     priv regs: ~Registers,
     /// Lower bound and upper bound for the stack
@@ -34,7 +34,7 @@ pub struct Context {
 impl Context {
     pub fn empty() -> Context {
         Context {
-            start: ~None,
+            start: None,
             regs: new_regs(),
             stack_bounds: None,
         }
@@ -43,8 +43,26 @@ impl Context {
     /// Create a new context that will resume execution by running proc()
     pub fn new(start: proc(), stack: &mut StackSegment) -> Context {
         // The C-ABI function that is the task entry point
-        extern fn task_start_wrapper(f: &mut Option<proc()>) {
-            f.take_unwrap()()
+        //
+        // Note that this function is a little sketchy. We're taking a
+        // procedure, transmuting it to a stack-closure, and then calling to
+        // closure. This leverages the fact that the representation of these two
+        // types is the same.
+        //
+        // The reason that we're doing this is that this procedure is expected
+        // to never return. The codegen which frees the environment of the
+        // procedure occurs *after* the procedure has completed, and this means
+        // that we'll never actually free the procedure.
+        //
+        // To solve this, we use this transmute (to not trigger the procedure
+        // deallocation here), and then store a copy of the procedure in the
+        // `Context` structure returned. When the `Context` is deallocated, then
+        // the entire procedure box will be deallocated as well.
+        extern fn task_start_wrapper(f: &proc()) {
+            unsafe {
+                let f: &|| = transmute(f);
+                (*f)()
+            }
         }
 
         let sp: *uint = stack.end();
@@ -60,10 +78,10 @@ impl Context {
         // FIXME #7767: Putting main into a ~ so it's a thin pointer and can
         // be passed to the spawn function.  Another unfortunate
         // allocation
-        let box = ~Some(start);
+        let start = ~start;
         initialize_call_frame(&mut *regs,
                               task_start_wrapper as *c_void,
-                              unsafe { transmute(&*box) },
+                              unsafe { transmute(&*start) },
                               sp);
 
         // Scheduler tasks don't have a stack in the "we allocated it" sense,
@@ -78,7 +96,7 @@ impl Context {
             Some((stack_base as uint, sp as uint))
         };
         return Context {
-            start: box,
+            start: Some(start),
             regs: regs,
             stack_bounds: bounds,
         }
