@@ -34,14 +34,7 @@ via `close` and `delete` methods.
 
 */
 
-#[pkgid="rustuv#0.9-pre"];
-// NOTE: remove after the next snapshot
-#[link(name = "rustuv",
-       package_id = "rustuv",
-       vers = "0.9-pre",
-       uuid = "f3719011-0459-9b86-b11c-29265c0d0864",
-       url = "https://github.com/mozilla/rust/tree/master/src/librustuv")];
-
+#[pkgid = "rustuv#0.9-pre"];
 #[license = "MIT/ASL2"];
 #[crate_type = "rlib"];
 #[crate_type = "dylib"];
