@@ -2060,7 +2060,7 @@ pub trait MutableVector<'a, T> {
      */
     unsafe fn init_elem(self, i: uint, val: T);
 
-    /// Copies data from `src` to `self`
+    /// Copies data from `src` to `self`.
     ///
     /// `self` and `src` must not overlap. Fails if `self` is
     /// shorter than `src`.
@@ -2208,7 +2208,7 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
         self.as_mut_buf(|p_dst, len_dst| {
             src.as_imm_buf(|p_src, len_src| {
                 assert!(len_dst >= len_src)
-                ptr::copy_memory(p_dst, p_src, len_src)
+                ptr::copy_nonoverlapping_memory(p_dst, p_src, len_src)
             })
         })
     }
@@ -2350,10 +2350,10 @@ pub mod bytes {
         }
     }
 
-    /// Copies data from one vector to another.
+    /// Copies data from `src` to `dst`
     ///
-    /// Copies `src` to `dst`. Fails if the length of `dst` is less
-    /// than the length of `src`.
+    /// `src` and `dst` must not overlap. Fails if the length of `dst`
+    /// is less than the length of `src`.
     #[inline]
     pub fn copy_memory(dst: &mut [u8], src: &[u8]) {
         // Bound checks are done at .copy_memory.
