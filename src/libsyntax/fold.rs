@@ -241,8 +241,8 @@ pub trait ast_fold {
         let node = match t.node {
             ty_nil | ty_bot | ty_infer => t.node.clone(),
             ty_box(ref mt) => ty_box(fold_mt(mt, self)),
-            ty_uniq(ref mt) => ty_uniq(fold_mt(mt, self)),
-            ty_vec(ref mt) => ty_vec(fold_mt(mt, self)),
+            ty_uniq(ty) => ty_uniq(self.fold_ty(ty)),
+            ty_vec(ty) => ty_vec(self.fold_ty(ty)),
             ty_ptr(ref mt) => ty_ptr(fold_mt(mt, self)),
             ty_rptr(ref region, ref mt) => {
                 ty_rptr(fold_opt_lifetime(region, self), fold_mt(mt, self))
@@ -272,8 +272,8 @@ pub trait ast_fold {
                         fold_opt_bounds(bounds, self),
                         self.new_id(id))
             }
-            ty_fixed_length_vec(ref mt, e) => {
-                ty_fixed_length_vec(fold_mt(mt, self), self.fold_expr(e))
+            ty_fixed_length_vec(ty, e) => {
+                ty_fixed_length_vec(self.fold_ty(ty), self.fold_expr(e))
             }
             ty_typeof(expr) => ty_typeof(self.fold_expr(expr)),
         };
