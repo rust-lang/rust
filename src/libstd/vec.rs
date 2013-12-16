@@ -2196,11 +2196,7 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
 
     #[inline]
     unsafe fn init_elem(self, i: uint, val: T) {
-        let mut alloc = Some(val);
-        self.as_mut_buf(|p, _len| {
-            intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i as int)),
-                                      alloc.take_unwrap());
-        })
+        intrinsics::move_val_init(&mut (*self.as_mut_ptr().offset(i as int)), val);
     }
 
     #[inline]
