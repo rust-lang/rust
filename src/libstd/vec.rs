@@ -2060,6 +2060,12 @@ pub trait MutableVector<'a, T> {
      */
     unsafe fn init_elem(self, i: uint, val: T);
 
+    /// Copies data from `src` to `self`
+    ///
+    /// `self` and `src` must not overlap. Fails if `self` is
+    /// shorter than `src`.
+    unsafe fn copy_memory(self, src: &[T]);
+
     /// Similar to `as_imm_buf` but passing a `*mut T`
     fn as_mut_buf<U>(self, f: |*mut T, uint| -> U) -> U;
 }
@@ -2198,6 +2204,16 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
     }
 
     #[inline]
+    unsafe fn copy_memory(self, src: &[T]) {
+        self.as_mut_buf(|p_dst, len_dst| {
+            src.as_imm_buf(|p_src, len_src| {
+                assert!(len_dst >= len_src)
+                ptr::copy_memory(p_dst, p_src, len_src)
+            })
+        })
+    }
+
+    #[inline]
     fn as_mut_buf<U>(self, f: |*mut T, uint| -> U) -> U {
         let Slice{ data, len } = self.repr();
         f(data as *mut T, len)
@@ -2238,7 +2254,7 @@ pub unsafe fn from_buf<T>(ptr: *T, elts: uint) -> ~[T] {
 pub mod raw {
     use cast;
     use ptr;
-    use vec::{with_capacity, ImmutableVector, MutableVector};
+    use vec::{with_capacity, MutableVector};
     use unstable::raw::Slice;
 
     /**
@@ -2289,21 +2305,6 @@ pub mod raw {
     }
 
     /**
-      * Copies data from one vector to another.
-      *
-      * Copies `src` to `dst`. The source and destination may overlap.
-      */
-    #[inline]
-    pub unsafe fn copy_memory<T>(dst: &mut [T], src: &[T]) {
-        dst.as_mut_buf(|p_dst, len_dst| {
-            src.as_imm_buf(|p_src, len_src| {
-                assert!(len_dst >= len_src)
-                ptr::copy_memory(p_dst, p_src, len_src)
-            })
-        })
-    }
-
-    /**
      * Returns a pointer to first element in slice and adjusts
      * slice so it no longer contains that element. Fails if
      * slice is empty. O(1).
@@ -2331,7 +2332,7 @@ pub mod raw {
 
 /// Operations on `[u8]`.
 pub mod bytes {
-    use vec::raw;
+    use vec::MutableVector;
     use ptr;
 
     /// A trait for operations on mutable `[u8]`s.
@@ -2358,8 +2359,8 @@ pub mod bytes {
       */
     #[inline]
     pub fn copy_memory(dst: &mut [u8], src: &[u8]) {
-        // Bound checks are done at vec::raw::copy_memory.
-        unsafe { raw::copy_memory(dst, src) }
+        // Bound checks are done at .copy_memory.
+        unsafe { dst.copy_memory(src) }
     }
 
     /**
@@ -3585,7 +3586,7 @@ mod tests {
         unsafe {
             let mut a = [1, 2, 3, 4];
             let b = [1, 2, 3, 4, 5];
-            raw::copy_memory(a, b);
+            a.copy_memory(b);
         }
     }
 
