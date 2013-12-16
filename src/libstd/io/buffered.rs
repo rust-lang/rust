@@ -118,14 +118,14 @@ impl<R: Reader> Reader for BufferedReader<R> {
     fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
         let nread = {
             let available = self.fill();
-            if available.len() == 0 {
-                return None;
-            }
             let nread = num::min(available.len(), buf.len());
             vec::bytes::copy_memory(buf, available.slice_to(nread));
             nread
         };
         self.pos += nread;
+        if nread == 0 && self.inner.eof() && buf.len() != 0 {
+                return None;
+        }
         Some(nread)
     }
 
