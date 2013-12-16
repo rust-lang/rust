@@ -635,9 +635,8 @@ mod tests {
             })
         }
 
-        let mut c = Some(c);
         arc.access_cond(|state, cond| {
-            c.take_unwrawp().send(());
+            c.send(());
             assert!(!*state);
             while !*state {
                 cond.wait();

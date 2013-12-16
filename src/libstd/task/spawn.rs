@@ -171,7 +171,7 @@ pub fn spawn_raw(mut opts: TaskOpts, f: proc()) {
     if opts.notify_chan.is_some() {
         let notify_chan = opts.notify_chan.take_unwrap();
         let on_exit: proc(TaskResult) = proc(task_result) {
-            notify_chan.send(task_result)
+            notify_chan.try_send(task_result);
         };
         task.death.on_exit = Some(on_exit);
     }

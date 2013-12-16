@@ -20,7 +20,6 @@
 
 extern mod extra;
 
-use std::comm::{Port, Chan, SharedChan};
 use std::comm;
 use std::os;
 use std::task;
@@ -38,7 +37,7 @@ fn server(requests: &Port<request>, responses: &Chan<uint>) {
     let mut count = 0u;
     let mut done = false;
     while !done {
-        match requests.try_recv() {
+        match requests.recv_opt() {
           Some(get_count) => { responses.send(count.clone()); }
           Some(bytes(b)) => {
             //error!("server: received {:?} bytes", b);
@@ -53,10 +52,8 @@ fn server(requests: &Port<request>, responses: &Chan<uint>) {
 }
 
 fn run(args: &[~str]) {
-    let (from_child, to_parent) = comm::stream();
-    let (from_parent, to_child) = comm::stream();
-
-    let to_child = SharedChan::new(to_child);
+    let (from_child, to_parent) = Chan::new();
+    let (from_parent, to_child) = SharedChan::new();
 
     let size = from_str::<uint>(args[1]).unwrap();
     let workers = from_str::<uint>(args[2]).unwrap();

@@ -78,13 +78,11 @@ mod test {
     use super::*;
     use super::super::local_loop;
     use std::io::signal;
-    use std::comm::{SharedChan, stream};
 
     #[test]
     fn closing_channel_during_drop_doesnt_kill_everything() {
         // see issue #10375, relates to timers as well.
-        let (port, chan) = stream();
-        let chan = SharedChan::new(chan);
+        let (port, chan) = SharedChan::new();
         let _signal = SignalWatcher::new(local_loop(), signal::Interrupt,
                                          chan);
 

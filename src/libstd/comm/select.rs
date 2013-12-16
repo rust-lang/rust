@@ -83,10 +83,10 @@ pub struct Select {
 /// A handle to a port which is currently a member of a `Select` set of ports.
 /// This handle is used to keep the port in the set as well as interact with the
 /// underlying port.
-pub struct Handle<'self, T> {
+pub struct Handle<'port, T> {
     id: uint,
-    priv selector: &'self Select,
-    priv port: &'self mut Port<T>,
+    priv selector: &'port Select,
+    priv port: &'port mut Port<T>,
 }
 
 struct PacketIterator { priv cur: *mut Packet }
@@ -234,6 +234,7 @@ impl Select {
                 assert!(!(*packet).selecting.load(Relaxed));
             }
 
+            assert!(ready_id != uint::max_value);
             return ready_id;
         }
     }
@@ -261,7 +262,7 @@ impl Select {
     fn iter(&self) -> PacketIterator { PacketIterator { cur: self.head } }
 }
 
-impl<'self, T: Send> Handle<'self, T> {
+impl<'port, T: Send> Handle<'port, T> {
     /// Receive a value on the underlying port. Has the same semantics as
     /// `Port.recv`
     pub fn recv(&mut self) -> T { self.port.recv() }
@@ -283,7 +284,7 @@ impl Drop for Select {
 }
 
 #[unsafe_destructor]
-impl<'self, T: Send> Drop for Handle<'self, T> {
+impl<'port, T: Send> Drop for Handle<'port, T> {
     fn drop(&mut self) {
         unsafe { self.selector.remove(self.port.queue.packet()) }
     }
@@ -437,6 +438,7 @@ mod test {
     }
 
     #[test]
+    #[ignore(cfg(windows))] // FIXME(#11003)
     fn stress_native() {
         use std::rt::thread::Thread;
         use std::unstable::run_in_bare_thread;
@@ -470,6 +472,7 @@ mod test {
     }
 
     #[test]
+    #[ignore(cfg(windows))] // FIXME(#11003)
     fn native_both_ready() {
         use std::rt::thread::Thread;
         use std::unstable::run_in_bare_thread;

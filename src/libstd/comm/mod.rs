@@ -255,7 +255,9 @@ macro_rules! test (
             fn f() $b
 
             $($a)* #[test] fn uv() { f() }
-            $($a)* #[test] fn native() {
+            $($a)* #[test]
+            #[ignore(cfg(windows))] // FIXME(#11003)
+            fn native() {
                 use unstable::run_in_bare_thread;
                 run_in_bare_thread(f);
             }
@@ -1021,6 +1023,7 @@ mod test {
     }
 
     #[test]
+    #[ignore(cfg(windows))] // FIXME(#11003)
     fn send_from_outside_runtime() {
         let (p, c) = Chan::<int>::new();
         let (p1, c1) = Chan::new();
@@ -1040,6 +1043,7 @@ mod test {
     }
 
     #[test]
+    #[ignore(cfg(windows))] // FIXME(#11003)
     fn recv_from_outside_runtime() {
         let (p, c) = Chan::<int>::new();
         let t = do Thread::start {
@@ -1054,6 +1058,7 @@ mod test {
     }
 
     #[test]
+    #[ignore(cfg(windows))] // FIXME(#11003)
     fn no_runtime() {
         let (p1, c1) = Chan::<int>::new();
         let (p2, c2) = Chan::<int>::new();

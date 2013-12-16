@@ -13,14 +13,14 @@
 use std::os;
 
 fn start(n_tasks: int, token: int) {
-    let (p, ch1) = stream();
+    let (p, ch1) = Chan::new();
     let mut p = p;
     let ch1 = ch1;
     ch1.send(token);
     //  XXX could not get this to work with a range closure
     let mut i = 2;
     while i <= n_tasks {
-        let (next_p, ch) = stream();
+        let (next_p, ch) = Chan::new();
         let imm_i = i;
         let imm_p = p;
         do spawn {
