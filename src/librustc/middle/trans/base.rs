@@ -37,6 +37,7 @@ use metadata::{csearch, cstore, encoder};
 use middle::astencode;
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
 use middle::lang_items::{MallocFnLangItem, ClosureExchangeMallocFnLangItem};
+use middle::lang_items::{EhPersonalityLangItem};
 use middle::trans::_match;
 use middle::trans::adt;
 use middle::trans::base;
@@ -1027,10 +1028,10 @@ pub fn get_landing_pad(bcx: @mut Block) -> BasicBlockRef {
     // this represents but it's determined by the personality function and
     // this is what the EH proposal example uses.
     let llretty = Type::struct_([Type::i8p(), Type::i32()], false);
-    // The exception handling personality function. This is the C++
-    // personality function __gxx_personality_v0, wrapped in our naming
-    // convention.
-    let personality = bcx.ccx().upcalls.rust_personality;
+    // The exception handling personality function.
+    let personality = callee::trans_fn_ref(bcx,
+                                           langcall(bcx, None, "", EhPersonalityLangItem),
+                                           0).llfn;
     // The only landing pad clause will be 'cleanup'
     let llretval = LandingPad(pad_bcx, llretty, personality, 1u);
     // The landing pad block is a cleanup
@@ -3195,6 +3196,8 @@ pub fn trans_crate(sess: session::Session,
     reachable.push(ccx.crate_map_name.to_owned());
     reachable.push(~"main");
     reachable.push(~"rust_stack_exhausted");
+    reachable.push(~"rust_eh_personality"); // referenced from .eh_frame section on some platforms
+    reachable.push(~"rust_eh_personality_catch"); // referenced from rt/rust_try.ll
 
     return CrateTranslation {
         context: llcx,

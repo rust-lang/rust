@@ -92,7 +92,6 @@ pub mod back {
     pub mod link;
     pub mod manifest;
     pub mod abi;
-    pub mod upcall;
     pub mod arm;
     pub mod mips;
     pub mod x86;

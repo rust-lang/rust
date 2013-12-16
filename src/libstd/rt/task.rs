@@ -18,10 +18,9 @@ use super::local_heap::LocalHeap;
 use prelude::*;
 
 use borrow;
-use cast::transmute;
 use cleanup;
 use io::Writer;
-use libc::{c_void, uintptr_t, c_char, size_t};
+use libc::{c_char, size_t};
 use local_data;
 use option::{Option, Some, None};
 use rt::borrowck::BorrowRecord;
@@ -33,8 +32,8 @@ use rt::local::Local;
 use rt::logging::StdErrLogger;
 use rt::sched::{Scheduler, SchedHandle};
 use rt::stack::{StackSegment, StackPool};
+use rt::unwind::Unwinder;
 use send_str::SendStr;
-use task::TaskResult;
 use unstable::finally::Finally;
 use unstable::mutex::Mutex;
 
@@ -90,21 +89,6 @@ pub enum SchedHome {
 
 pub struct GarbageCollector;
 pub struct LocalStorage(Option<local_data::Map>);
-
-pub struct Unwinder {
-    unwinding: bool,
-    cause: Option<~Any>
-}
-
-impl Unwinder {
-    fn result(&mut self) -> TaskResult {
-        if self.unwinding {
-            Err(self.cause.take().unwrap())
-        } else {
-            Ok(())
-        }
-    }
-}
 
 impl Task {
 
@@ -450,54 +434,6 @@ impl Coroutine {
         }
     }
 
-}
-
-
-// Just a sanity check to make sure we are catching a Rust-thrown exception
-static UNWIND_TOKEN: uintptr_t = 839147;
-
-impl Unwinder {
-    pub fn try(&mut self, f: ||) {
-        use unstable::raw::Closure;
-
-        unsafe {
-            let closure: Closure = transmute(f);
-            let code = transmute(closure.code);
-            let env = transmute(closure.env);
-
-            let token = rust_try(try_fn, code, env);
-            assert!(token == 0 || token == UNWIND_TOKEN);
-        }
-
-        extern fn try_fn(code: *c_void, env: *c_void) {
-            unsafe {
-                let closure: Closure = Closure {
-                    code: transmute(code),
-                    env: transmute(env),
-                };
-                let closure: || = transmute(closure);
-                closure();
-            }
-        }
-
-        extern {
-            fn rust_try(f: extern "C" fn(*c_void, *c_void),
-                        code: *c_void,
-                        data: *c_void) -> uintptr_t;
-        }
-    }
-
-    pub fn begin_unwind(&mut self, cause: ~Any) -> ! {
-        self.unwinding = true;
-        self.cause = Some(cause);
-        unsafe {
-            rust_begin_unwind(UNWIND_TOKEN);
-            return transmute(());
-        }
-        extern {
-            fn rust_begin_unwind(token: uintptr_t);
-        }
-    }
 }
 
 /// This function is invoked from rust's current __morestack function. Segmented
