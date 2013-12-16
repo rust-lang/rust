@@ -290,6 +290,10 @@ pub fn walk_variant<E:Clone, V:Visitor<E>>(visitor:&mut V,
                                      env.clone())
         }
     }
+    match variant.node.disr_expr {
+        Some(expr) => visitor.visit_expr(expr, env),
+        None => ()
+    }
 }
 
 pub fn skip_ty<E, V:Visitor<E>>(_: &mut V, _: &Ty, _: E) {
