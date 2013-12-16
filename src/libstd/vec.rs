@@ -102,20 +102,21 @@ There are a number of free functions that create or take vectors, for example:
 #[warn(non_camel_case_types)];
 
 use cast;
+use ops::Drop;
 use clone::{Clone, DeepClone};
 use container::{Container, Mutable};
 use cmp::{Eq, TotalOrd, Ordering, Less, Equal, Greater};
 use cmp;
 use default::Default;
 use iter::*;
-use libc::c_void;
+use libc::{c_char, c_void};
 use num::{Integer, CheckedAdd, Saturating};
 use option::{None, Option, Some};
 use ptr::to_unsafe_ptr;
 use ptr;
 use ptr::RawPtr;
-use rt::global_heap::malloc_raw;
-use rt::global_heap::realloc_raw;
+use rt::global_heap::{malloc_raw, realloc_raw, exchange_free};
+use rt::local_heap::local_free;
 use mem;
 use mem::size_of;
 use uint;
@@ -1325,9 +1326,6 @@ pub trait OwnedVector<T> {
     /// value out of the vector (from start to end). The vector cannot
     /// be used after calling this.
     ///
-    /// Note that this performs O(n) swaps, and so `move_rev_iter`
-    /// (which just calls `pop` repeatedly) is more efficient.
-    ///
     /// # Examples
     ///
     /// ```rust
@@ -1339,8 +1337,7 @@ pub trait OwnedVector<T> {
     /// ```
     fn move_iter(self) -> MoveIterator<T>;
     /// Creates a consuming iterator that moves out of the vector in
-    /// reverse order. Also see `move_iter`, however note that this
-    /// is more efficient.
+    /// reverse order.
     fn move_rev_iter(self) -> MoveRevIterator<T>;
 
     /**
@@ -1469,11 +1466,18 @@ pub trait OwnedVector<T> {
 }
 
 impl<T> OwnedVector<T> for ~[T] {
+    #[inline]
     fn move_iter(self) -> MoveIterator<T> {
-        MoveIterator { v: self, idx: 0 }
+        unsafe {
+            let iter = cast::transmute(self.iter());
+            let ptr = cast::transmute(self);
+            MoveIterator { allocation: ptr, iter: iter }
+        }
     }
+
+    #[inline]
     fn move_rev_iter(self) -> MoveRevIterator<T> {
-        MoveRevIterator { v: self }
+        self.move_iter().invert()
     }
 
     fn reserve(&mut self, n: uint) {
@@ -2660,57 +2664,53 @@ impl<'a, T> DoubleEndedIterator<&'a mut [T]> for MutChunkIter<'a, T> {
 }
 
 /// An iterator that moves out of a vector.
-#[deriving(Clone)]
 pub struct MoveIterator<T> {
-    priv v: ~[T],
-    priv idx: uint,
+    priv allocation: *mut u8, // the block of memory allocated for the vector
+    priv iter: VecIterator<'static, T>
 }
 
 impl<T> Iterator<T> for MoveIterator<T> {
     #[inline]
     fn next(&mut self) -> Option<T> {
-        // this is peculiar, but is required for safety with respect
-        // to dtors. It traverses the first half of the vec, and
-        // removes them by swapping them with the last element (and
-        // popping), which results in the second half in reverse
-        // order, and so these can just be pop'd off. That is,
-        //
-        // [1,2,3,4,5] => 1, [5,2,3,4] => 2, [5,4,3] => 3, [5,4] => 4,
-        // [5] -> 5, []
-        let l = self.v.len();
-        if self.idx < l {
-            self.v.swap(self.idx, l - 1);
-            self.idx += 1;
+        unsafe {
+            self.iter.next().map(|x| ptr::read_ptr(x))
         }
-
-        self.v.pop_opt()
     }
 
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) {
-        let l = self.v.len();
-        (l, Some(l))
+        self.iter.size_hint()
+    }
+}
+
+impl<T> DoubleEndedIterator<T> for MoveIterator<T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<T> {
+        unsafe {
+            self.iter.next_back().map(|x| ptr::read_ptr(x))
+        }
+    }
+}
+
+#[unsafe_destructor]
+impl<T> Drop for MoveIterator<T> {
+    fn drop(&mut self) {
+        unsafe {
+            // destroy the remaining elements
+            for x in self.iter {
+                ptr::read_ptr(x);
+            }
+            if owns_managed::<T>() {
+                local_free(self.allocation as *u8 as *c_char)
+            } else {
+                exchange_free(self.allocation as *u8 as *c_char)
+            }
+        }
     }
 }
 
 /// An iterator that moves out of a vector in reverse order.
-#[deriving(Clone)]
-pub struct MoveRevIterator<T> {
-    priv v: ~[T]
-}
-
-impl<T> Iterator<T> for MoveRevIterator<T> {
-    #[inline]
-    fn next(&mut self) -> Option<T> {
-        self.v.pop_opt()
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
-        let l = self.v.len();
-        (l, Some(l))
-    }
-}
+pub type MoveRevIterator<T> = Invert<MoveIterator<T>>;
 
 impl<A> FromIterator<A> for ~[A] {
     fn from_iterator<T: Iterator<A>>(iterator: &mut T) -> ~[A] {
