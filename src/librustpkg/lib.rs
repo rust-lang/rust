@@ -10,14 +10,7 @@
 
 // rustpkg - a package manager and build system for Rust
 
-#[pkgid="rustpkg#0.9-pre"];
-// NOTE: remove after the next snapshot
-#[link(name = "rustpkg",
-       package_id = "rustpkg",
-       vers = "0.9-pre",
-       uuid = "25de5e6e-279e-4a20-845c-4cabae92daaf",
-       url = "https://github.com/mozilla/rust/tree/master/src/librustpkg")];
-
+#[pkgid = "rustpkg#0.9-pre"];
 #[license = "MIT/ASL2"];
 #[crate_type = "dylib"];
 

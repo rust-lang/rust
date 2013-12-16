@@ -8,14 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[pkgid="rustdoc#0.9-pre"];
-// NOTE: remove after the next snapshot
-#[link(name = "rustdoc",
-       package_id = "rustdoc",
-       vers = "0.9-pre",
-       uuid = "8c6e4598-1596-4aa5-a24c-b811914bbbc6",
-       url = "https://github.com/mozilla/rust/tree/master/src/librustdoc")];
-
+#[pkgid = "rustdoc#0.9-pre"];
 #[desc = "rustdoc, the Rust documentation extractor"];
 #[license = "MIT/ASL2"];
 #[crate_type = "dylib"];

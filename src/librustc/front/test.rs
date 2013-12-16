@@ -375,9 +375,8 @@ fn mk_tests(cx: &TestCtxt) -> @ast::item {
 }
 
 fn is_extra(crate: &ast::Crate) -> bool {
-    let items = attr::find_linkage_metas(crate.attrs);
-    match attr::last_meta_item_value_str_by_name(items, "name") {
-        Some(s) if "extra" == s => true,
+    match attr::find_pkgid(crate.attrs) {
+        Some(ref s) if "extra" == s.name => true,
         _ => false
     }
 }

@@ -43,19 +43,11 @@
 //!
 //!     use std::prelude::*;
 
-#[pkgid="std#0.9-pre"];
-// NOTE: remove after the next snapshot
-#[link(name = "std",
-       package_id = "std",
-       vers = "0.9-pre",
-       uuid = "c70c24a7-5551-4f73-8e37-380b11d80be8",
-       url = "https://github.com/mozilla/rust/tree/master/src/libstd")];
-
+#[pkgid = "std#0.9-pre"];
 #[comment = "The Rust standard library"];
 #[license = "MIT/ASL2"];
 #[crate_type = "rlib"];
 #[crate_type = "dylib"];
-
 #[doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk.png",
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://static.rust-lang.org/doc/master")];

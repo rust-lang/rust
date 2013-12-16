@@ -20,22 +20,14 @@ Rust extras are part of the standard Rust distribution.
 
 */
 
-#[pkgid="extra#0.9-pre"];
-// NOTE: remove after the next snapshot
-#[link(name = "extra",
-       package_id = "extra",
-       vers = "0.9-pre",
-       uuid = "122bed0b-c19b-4b82-b0b7-7ae8aead7297",
-       url = "https://github.com/mozilla/rust/tree/master/src/libextra")];
-
-#[doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk.png",
-      html_favicon_url = "http://www.rust-lang.org/favicon.ico",
-      html_root_url = "http://static.rust-lang.org/doc/master")];
-
+#[pkgid = "extra#0.9-pre"];
 #[comment = "Rust extras"];
 #[license = "MIT/ASL2"];
 #[crate_type = "rlib"];
 #[crate_type = "dylib"];
+#[doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk.png",
+      html_favicon_url = "http://www.rust-lang.org/favicon.ico",
+      html_root_url = "http://static.rust-lang.org/doc/master")];
 
 #[feature(macro_rules, globs, managed_boxes)];
 
