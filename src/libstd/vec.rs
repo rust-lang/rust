@@ -2053,6 +2053,13 @@ pub trait MutableVector<'a, T> {
     /// Unsafely sets the element in index to the value
     unsafe fn unsafe_set(self, index: uint, val: T);
 
+    /**
+     * Unchecked vector index assignment.  Does not drop the
+     * old value and hence is only suitable when the vector
+     * is newly allocated.
+     */
+    unsafe fn init_elem(self, i: uint, val: T);
+
     /// Similar to `as_imm_buf` but passing a `*mut T`
     fn as_mut_buf<U>(self, f: |*mut T, uint| -> U) -> U;
 }
@@ -2182,6 +2189,15 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
     }
 
     #[inline]
+    unsafe fn init_elem(self, i: uint, val: T) {
+        let mut alloc = Some(val);
+        self.as_mut_buf(|p, _len| {
+            intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i as int)),
+                                      alloc.take_unwrap());
+        })
+    }
+
+    #[inline]
     fn as_mut_buf<U>(self, f: |*mut T, uint| -> U) -> U {
         let Slice{ data, len } = self.repr();
         f(data as *mut T, len)
@@ -2221,9 +2237,7 @@ pub unsafe fn from_buf<T>(ptr: *T, elts: uint) -> ~[T] {
 /// Unsafe operations
 pub mod raw {
     use cast;
-    use option::Some;
     use ptr;
-    use unstable::intrinsics;
     use vec::{with_capacity, ImmutableVector, MutableVector};
     use unstable::raw::Slice;
 
@@ -2255,20 +2269,6 @@ pub mod raw {
             data: p as *T,
             len: len
         }))
-    }
-
-    /**
-     * Unchecked vector index assignment.  Does not drop the
-     * old value and hence is only suitable when the vector
-     * is newly allocated.
-     */
-    #[inline]
-    pub unsafe fn init_elem<T>(v: &mut [T], i: uint, val: T) {
-        let mut alloc = Some(val);
-        v.as_mut_buf(|p, _len| {
-            intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i as int)),
-                                      alloc.take_unwrap());
-        })
     }
 
     /**
