@@ -1,6 +1,6 @@
 // xfail-fast
 
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,7 +10,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test #6122
+#[feature(managed_boxes)];
 
 extern mod extra;
 
@@ -18,6 +18,7 @@ extern mod extra;
 // the common code.
 
 use std::hashmap::{HashMap, HashSet};
+use std::io::Decorator;
 
 use EBReader = extra::ebml::reader;
 use EBWriter = extra::ebml::writer;
@@ -32,17 +33,14 @@ fn test_ebml<A:
     Encodable<EBWriter::Encoder> +
     Decodable<EBReader::Decoder>
 >(a1: &A) {
-    let bytes = do io::with_bytes_writer |wr| {
-        let mut ebml_w = EBWriter::Encoder(wr);
-        a1.encode(&mut ebml_w)
-    };
+    let mut wr = @mut std::io::mem::MemWriter::new();
+    let mut ebml_w = EBWriter::Encoder(wr);
+    a1.encode(&mut ebml_w);
+    let bytes = wr.inner_ref().to_owned();
+
     let d = EBReader::Doc(@bytes);
     let mut decoder = EBReader::Decoder(d);
     let a2: A = Decodable::decode(&mut decoder);
-    if !(*a1 == a2) {
-        ::std::sys::FailWithCause::fail_with(~"explicit failure" + "foo",
-                                             "auto-encode.rs", 43u);
-    }
     assert!(*a1 == a2);
 }
 
@@ -139,47 +137,41 @@ pub fn main() {
     let a = &Plus(@Minus(@Val(3u), @Val(10u)), @Plus(@Val(22u), @Val(5u)));
     test_ebml(a);
 
-//    let a = &Spanned {lo: 0u, hi: 5u, node: 22u};
-//    test_ebml(a);
+    let a = &Spanned {lo: 0u, hi: 5u, node: 22u};
+    test_ebml(a);
 
-//    let a = &Point {x: 3u, y: 5u};
-//    test_ebml(a);
-//
-//    let a = &@[1u, 2u, 3u];
-//    test_ebml(a);
-//
-//    let a = &Top(22u);
-//    test_ebml(a);
-//
-//    let a = &Bottom(222u);
-//    test_ebml(a);
-//
-//    let a = &A;
-//    test_ebml(a);
-//
-//    let a = &B;
-//    test_ebml(a);
+    let a = &Point {x: 3u, y: 5u};
+    test_ebml(a);
 
-    println("Hi1");
+    let a = &@[1u, 2u, 3u];
+    test_ebml(a);
+
+    let a = &Top(22u);
+    test_ebml(a);
+
+    let a = &Bottom(222u);
+    test_ebml(a);
+
+    let a = &A;
+    test_ebml(a);
+
+    let a = &B;
+    test_ebml(a);
+
     let a = &time::now();
     test_ebml(a);
 
-    println("Hi2");
-//    test_ebml(&1.0f32);
-//    test_ebml(&1.0f64);
-    test_ebml(&1.0f);
-//    println("Hi3");
-//    test_ebml(&'a');
+    test_ebml(&1.0f32);
+    test_ebml(&1.0f64);
+    test_ebml(&'a');
 
-    println("Hi4");
     let mut a = HashMap::new();
     test_ebml(&a);
     a.insert(1, 2);
-    println("Hi4");
     test_ebml(&a);
 
-//    let mut a = HashSet::new();
-//    test_ebml(&a);
-//    a.insert(1);
-//    test_ebml(&a);
+    let mut a = HashSet::new();
+    test_ebml(&a);
+    a.insert(1);
+    test_ebml(&a);
 }
