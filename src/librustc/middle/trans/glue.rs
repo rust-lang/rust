@@ -429,7 +429,7 @@ pub fn trans_struct_drop(bcx: @mut Block, t: ty::t, v0: ValueRef, dtor_did: ast:
             add_clean(bcx, llfld_a, fld.mt.ty);
         }
 
-        let (_, bcx) = invoke(bcx, dtor_addr, args, []);
+        let (_, bcx) = invoke(bcx, dtor_addr, args, [], None);
         bcx
     })
 }
