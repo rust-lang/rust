@@ -157,8 +157,7 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
                                   vec::from_fn(new_capacity, |_| None));
 
         self.size = 0;
-        // move_rev_iter is more efficient
-        for bucket in old_buckets.move_rev_iter() {
+        for bucket in old_buckets.move_iter() {
             self.insert_opt_bucket(bucket);
         }
     }
@@ -477,8 +476,7 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
     /// pair out of the map in arbitrary order. The map cannot be used after
     /// calling this.
     pub fn move_iter(self) -> HashMapMoveIterator<K, V> {
-        // `move_rev_iter` is more efficient than `move_iter` for vectors
-        HashMapMoveIterator {iter: self.buckets.move_rev_iter()}
+        HashMapMoveIterator {iter: self.buckets.move_iter()}
     }
 }
 
@@ -532,7 +530,7 @@ pub struct HashMapMutIterator<'a, K, V> {
 
 /// HashMap move iterator
 pub struct HashMapMoveIterator<K, V> {
-    priv iter: vec::MoveRevIterator<Option<Bucket<K, V>>>,
+    priv iter: vec::MoveIterator<Option<Bucket<K, V>>>,
 }
 
 /// HashSet iterator
@@ -543,7 +541,7 @@ pub struct HashSetIterator<'a, K> {
 
 /// HashSet move iterator
 pub struct HashSetMoveIterator<K> {
-    priv iter: vec::MoveRevIterator<Option<Bucket<K, ()>>>,
+    priv iter: vec::MoveIterator<Option<Bucket<K, ()>>>,
 }
 
 impl<'a, K, V> Iterator<(&'a K, &'a V)> for HashMapIterator<'a, K, V> {
@@ -729,8 +727,7 @@ impl<T:Hash + Eq> HashSet<T> {
     /// of the set in arbitrary order. The set cannot be used after calling
     /// this.
     pub fn move_iter(self) -> HashSetMoveIterator<T> {
-        // `move_rev_iter` is more efficient than `move_iter` for vectors
-        HashSetMoveIterator {iter: self.map.buckets.move_rev_iter()}
+        HashSetMoveIterator {iter: self.map.buckets.move_iter()}
     }
 
     /// Visit the values representing the difference
