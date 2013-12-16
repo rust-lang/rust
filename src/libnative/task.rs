@@ -33,6 +33,7 @@ pub fn new() -> ~Task {
     let mut task = ~Task::new();
     task.put_runtime(~Ops {
         lock: unsafe { Mutex::new() },
+        awoken: false,
     } as ~rt::Runtime);
     return task;
 }
@@ -85,7 +86,8 @@ pub fn spawn_opts(opts: TaskOpts, f: proc()) {
 // This structure is the glue between channels and the 1:1 scheduling mode. This
 // structure is allocated once per task.
 struct Ops {
-    lock: Mutex, // native synchronization
+    lock: Mutex,  // native synchronization
+    awoken: bool, // used to prevent spurious wakeups
 }
 
 impl rt::Runtime for Ops {
@@ -139,9 +141,16 @@ impl rt::Runtime for Ops {
     // reasoning for this is the same logic as above in that the task silently
     // transfers ownership via the `uint`, not through normal compiler
     // semantics.
+    //
+    // On a mildly unrelated note, it should also be pointed out that OS
+    // condition variables are susceptible to spurious wakeups, which we need to
+    // be ready for. In order to accomodate for this fact, we have an extra
+    // `awoken` field which indicates whether we were actually woken up via some
+    // invocation of `reawaken`. This flag is only ever accessed inside the
+    // lock, so there's no need to make it atomic.
     fn deschedule(mut ~self, times: uint, mut cur_task: ~Task,
                   f: |BlockedTask| -> Result<(), BlockedTask>) {
-        let my_lock: *mut Mutex = &mut self.lock as *mut Mutex;
+        let me = &mut *self as *mut Ops;
         cur_task.put_runtime(self as ~rt::Runtime);
 
         unsafe {
@@ -149,15 +158,21 @@ impl rt::Runtime for Ops {
             let task = BlockedTask::block(cur_task);
 
             if times == 1 {
-                (*my_lock).lock();
+                (*me).lock.lock();
+                (*me).awoken = false;
                 match f(task) {
-                    Ok(()) => (*my_lock).wait(),
+                    Ok(()) => {
+                        while !(*me).awoken {
+                            (*me).lock.wait();
+                        }
+                    }
                     Err(task) => { cast::forget(task.wake()); }
                 }
-                (*my_lock).unlock();
+                (*me).lock.unlock();
             } else {
                 let mut iter = task.make_selectable(times);
-                (*my_lock).lock();
+                (*me).lock.lock();
+                (*me).awoken = false;
                 let success = iter.all(|task| {
                     match f(task) {
                         Ok(()) => true,
@@ -167,10 +182,10 @@ impl rt::Runtime for Ops {
                         }
                     }
                 });
-                if success {
-                    (*my_lock).wait();
+                while success && !(*me).awoken {
+                    (*me).lock.wait();
                 }
-                (*my_lock).unlock();
+                (*me).lock.unlock();
             }
             // re-acquire ownership of the task
             cur_task = cast::transmute::<uint, ~Task>(cur_task_dupe);
@@ -184,12 +199,13 @@ impl rt::Runtime for Ops {
     // why it's valid to do so.
     fn reawaken(mut ~self, mut to_wake: ~Task, _can_resched: bool) {
         unsafe {
-            let lock: *mut Mutex = &mut self.lock as *mut Mutex;
+            let me = &mut *self as *mut Ops;
             to_wake.put_runtime(self as ~rt::Runtime);
             cast::forget(to_wake);
-            (*lock).lock();
-            (*lock).signal();
-            (*lock).unlock();
+            (*me).lock.lock();
+            (*me).awoken = true;
+            (*me).lock.signal();
+            (*me).lock.unlock();
         }
     }
 

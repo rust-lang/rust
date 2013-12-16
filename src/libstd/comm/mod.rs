@@ -875,7 +875,7 @@ impl<T: Send> Port<T> {
         let data = self.try_recv_inc(false);
         if data.is_none() &&
            unsafe { (*packet).cnt.load(SeqCst) } != DISCONNECTED {
-            fail!("bug: woke up too soon");
+            fail!("bug: woke up too soon {}", unsafe { (*packet).cnt.load(SeqCst) });
         }
         return data;
     }

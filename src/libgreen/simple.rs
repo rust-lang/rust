@@ -13,14 +13,15 @@
 
 use std::cast;
 use std::rt::Runtime;
-use std::task::TaskOpts;
-use std::rt::rtio;
 use std::rt::local::Local;
+use std::rt::rtio;
 use std::rt::task::{Task, BlockedTask};
+use std::task::TaskOpts;
 use std::unstable::sync::LittleLock;
 
 struct SimpleTask {
     lock: LittleLock,
+    awoken: bool,
 }
 
 impl Runtime for SimpleTask {
@@ -30,30 +31,37 @@ impl Runtime for SimpleTask {
                   f: |BlockedTask| -> Result<(), BlockedTask>) {
         assert!(times == 1);
 
-        let my_lock: *mut LittleLock = &mut self.lock;
+        let me = &mut *self as *mut SimpleTask;
+        let cur_dupe = &*cur_task as *Task;
         cur_task.put_runtime(self as ~Runtime);
+        let task = BlockedTask::block(cur_task);
 
+        // See libnative/task.rs for what's going on here with the `awoken`
+        // field and the while loop around wait()
         unsafe {
-            let cur_task_dupe = *cast::transmute::<&~Task, &uint>(&cur_task);
-            let task = BlockedTask::block(cur_task);
-
-            let mut guard = (*my_lock).lock();
+            let mut guard = (*me).lock.lock();
+            (*me).awoken = false;
             match f(task) {
-                Ok(()) => guard.wait(),
+                Ok(()) => {
+                    while !(*me).awoken {
+                        guard.wait();
+                    }
+                }
                 Err(task) => { cast::forget(task.wake()); }
             }
             drop(guard);
-            cur_task = cast::transmute::<uint, ~Task>(cur_task_dupe);
+            cur_task = cast::transmute(cur_dupe);
         }
         Local::put(cur_task);
     }
     fn reawaken(mut ~self, mut to_wake: ~Task) {
-        let lock: *mut LittleLock = &mut self.lock;
+        let me = &mut *self as *mut SimpleTask;
         to_wake.put_runtime(self as ~Runtime);
         unsafe {
             cast::forget(to_wake);
-            let _l = (*lock).lock();
-            (*lock).signal();
+            let _l = (*me).lock.lock();
+            (*me).awoken = true;
+            (*me).lock.signal();
         }
     }
 
@@ -72,6 +80,9 @@ impl Runtime for SimpleTask {
 
 pub fn task() -> ~Task {
     let mut task = ~Task::new();
-    task.put_runtime(~SimpleTask { lock: LittleLock::new() } as ~Runtime);
+    task.put_runtime(~SimpleTask {
+        lock: LittleLock::new(),
+        awoken: false,
+    } as ~Runtime);
     return task;
 }
