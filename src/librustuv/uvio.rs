@@ -67,9 +67,13 @@ impl Drop for UvEventLoop {
     fn drop(&mut self) {
         // Must first destroy the pool of handles before we destroy the loop
         // because otherwise the contained async handle will be destroyed after
-        // the loop is free'd (use-after-free)
+        // the loop is free'd (use-after-free). We also must free the uv handle
+        // after the loop has been closed because during the closing of the loop
+        // the handle is required to be used apparently.
+        let handle = self.uvio.handle_pool.get_ref().handle();
         self.uvio.handle_pool.take();
         self.uvio.loop_.close();
+        unsafe { uvll::free_handle(handle) }
     }
 }
 
