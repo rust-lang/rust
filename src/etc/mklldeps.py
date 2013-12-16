@@ -59,6 +59,13 @@ for llconfig in sys.argv[3:]:
     for lib in out.strip().split(' '):
         lib = lib[2:] # chop of the leading '-l'
         f.write("#[link(name = \"" + lib + "\", kind = \"static\")]\n")
+
+    # LLVM depends on C++ runtime, so we link it in (statically).
+    # Because our linker driver is gcc, not g++, it won't understand the -static-libstdc++ option,
+    # so we need to pass "-Bstatic -lstdc++ -Bdynamic" directly to ld.
+    f.write("#[link_args = \"-Xlinker -Bstatic -Xlinker -lstdc++ -Xlinker -Bdynamic\"]\n")
+
     if os == 'win32':
         f.write("#[link(name = \"imagehlp\")]\n")
+
     f.write("extern {}\n")
