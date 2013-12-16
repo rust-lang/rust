@@ -138,6 +138,10 @@ impl QueuePool {
         }
         Queue { queue: self.producer.clone() }
     }
+
+    pub fn handle(&self) -> *uvll::uv_async_t {
+        unsafe { (*self.producer.packet()).handle }
+    }
 }
 
 impl Queue {
@@ -180,7 +184,9 @@ impl Drop for State {
     fn drop(&mut self) {
         unsafe {
             uvll::uv_close(self.handle, cast::transmute(0));
-            uvll::free_handle(self.handle);
+            // Note that this does *not* free the handle, that is the
+            // responsibility of the caller because the uv loop must be closed
+            // before we deallocate this uv handle.
         }
     }
 }
