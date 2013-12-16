@@ -14,8 +14,10 @@
 //! Starting implementation of a btree for rust.
 //! Structure inspired by github user davidhalperin's gist.
 
+
+#[allow(attribute_usage)];
+#[feature(globs)];
 #[allow(dead_code)];
-use std::util::replace;
 
 ///A B-tree contains a root node (which contains a vector of elements),
 ///a length (the height of the tree), and lower and upper bounds on the
@@ -33,7 +35,7 @@ pub struct BTree<K, V> {
 //especially during insertions and deletions.
 //Using the swap or replace methods is one option for replacing dependence on Clone, or
 //changing the way in which the BTree is stored could also potentially work.
-impl<K: Clone + TotalOrd, V: Clone> BTree<K, V> {
+impl<K: TotalOrd, V> BTree<K, V> {
 
     ///Returns new BTree with root node (leaf) and user-supplied lower bound
     pub fn new(k: K, v: V, lb: uint) -> BTree<K, V> {
@@ -58,27 +60,43 @@ impl<K: Clone + TotalOrd, V: Clone> BTree<K, V> {
         }
     }
 
-    ///Implements the Clone trait for the BTree.
-    ///Uses a helper function/constructor to produce a new BTree.
-    pub fn clone(&self) -> BTree<K, V> {
-        return BTree::new_with_node_len(self.root.clone(), self.len, self.lower_bound);
-    }
 
+    ///Checks to see if the key already exists in the tree, and if it is not,
+    ///the key-value pair is added to the tree by calling add on the root node.
+    pub fn add(self, k: K, v: V) -> BTree<K, V> {
+        //replace(&self.root,self.root.add(k, v));
+        return BTree::new(k, v, 2);
+    }
+}
+
+impl<K: TotalOrd, V: Clone> BTree<K, V> {
     ///Returns the value of a given key, which may not exist in the tree.
     ///Calls the root node's get method.
     pub fn get(self, k: K) -> Option<V> {
         return self.root.get(k);
     }
+}
 
-    ///Checks to see if the key already exists in the tree, and if it is not,
-    ///the key-value pair is added to the tree by calling add on the root node.
-    pub fn add(self, k: K, v: V) -> bool {
-        let is_get = &self.clone().get(k.clone());
-        if is_get.is_some(){ return false; }
-        else {
-            replace(&mut self.root.clone(),self.root.add(k.clone(), v));
-            return true;
-        }
+impl<K: Clone + TotalOrd, V: Clone> Clone for BTree<K, V>{
+    ///Implements the Clone trait for the BTree.
+    ///Uses a helper function/constructor to produce a new BTree.
+    fn clone(&self) -> BTree<K, V> {
+        BTree::new_with_node_len(self.root.clone(), self.len, self.lower_bound)
+    }
+}
+
+impl<K: TotalOrd, V: TotalEq> TotalOrd for BTree<K, V> {
+    ///Returns an ordering based on the root nodes of each BTree.
+    fn cmp(&self, other: &BTree<K, V>) -> Ordering {
+        self.root.cmp(&other.root)
+    }
+}
+
+impl<K: TotalOrd, V: TotalEq> TotalEq for BTree<K, V> {
+    
+    ///Testing equality on BTrees by comparing the root.
+    fn equals(&self, other: &BTree<K, V>) -> bool {
+        self.root.cmp(&other.root) == Equal
     }
 }
 
@@ -96,6 +114,7 @@ impl<K: ToStr + TotalOrd, V: ToStr> ToStr for BTree<K, V> {
 //Branches contain BranchElts, which contain a left child (another node) and a key-value
 //pair.  Branches also contain the rightmost child of the elements in the array.
 //Leaves contain LeafElts, which do not have children.
+//#[deriving(Eq, TotalEq)]
 enum Node<K, V> {
     LeafNode(Leaf<K, V>),
     BranchNode(Branch<K, V>)
@@ -103,7 +122,7 @@ enum Node<K, V> {
 
 
 //Node functions/methods
-impl<K: Clone + TotalOrd, V: Clone> Node<K, V> {
+impl<K: TotalOrd, V> Node<K, V> {
 
     ///Differentiates between leaf and branch nodes.
     fn is_leaf(&self) -> bool{
@@ -118,19 +137,10 @@ impl<K: Clone + TotalOrd, V: Clone> Node<K, V> {
         LeafNode(Leaf::new(vec))
     }
 
+
     ///Creates a new branch node given a vector of an elements and a pointer to a rightmost child.
     fn new_branch(vec: ~[BranchElt<K, V>], right: ~Node<K, V>) -> Node<K, V> {
         BranchNode(Branch::new(vec, right))
-    }
-
-
-    ///Returns the corresponding value to the provided key.
-    ///get() is called in different ways on a branch or a leaf.
-    fn get(&self, k: K) -> Option<V> {
-        match *self {
-            LeafNode(ref leaf) => return leaf.get(k),
-            BranchNode(ref branch) => return branch.get(k)
-        }
     }
 
     ///A placeholder for add
@@ -140,7 +150,18 @@ impl<K: Clone + TotalOrd, V: Clone> Node<K, V> {
     }
 }
 
-//Again, this might not be necessary in the future.
+impl<K: TotalOrd, V: Clone> Node<K, V>{
+
+    ///Returns the corresponding value to the provided key.
+    ///get() is called in different ways on a branch or a leaf.
+    fn get(&self, k: K) -> Option<V> {
+        match *self {
+            LeafNode(ref leaf) => return leaf.get(k),
+            BranchNode(ref branch) => return branch.get(k)
+        }
+    }
+}
+
 impl<K: Clone + TotalOrd, V: Clone> Clone for Node<K, V> {
 
     ///Returns a new node based on whether or not it is a branch or a leaf.
@@ -157,49 +178,61 @@ impl<K: Clone + TotalOrd, V: Clone> Clone for Node<K, V> {
     }
 }
 
-//The following impl is unfinished.  Old iterations of code are left in for
-//future reference when implementing this trait (commented-out).
-impl<K: Clone + TotalOrd, V: Clone> TotalOrd for Node<K, V> {
+impl<K: TotalOrd, V: TotalEq> TotalOrd for Node<K, V> {
 
     ///Placeholder for an implementation of TotalOrd for Nodes.
     #[allow(unused_variable)]
     fn cmp(&self, other: &Node<K, V>) -> Ordering {
-        //Requires a match statement--defer these procs to branch and leaf.
-        /* if self.elts[0].less_than(other.elts[0]) { return Less}
-        if self.elts[0].greater_than(other.elts[0]) {return Greater}
-            else {return Equal}
-         */
-        return Equal;
+        match *self{
+            LeafNode(ref leaf) => {
+                match *other{
+                    LeafNode(ref leaf2) => {
+                        return leaf.cmp(leaf2);
+                    }
+                    BranchNode(ref branch) => {
+                        return Less;
+                    }
+                }
+            }
+
+            BranchNode(ref branch) => {
+                match *other{
+                    BranchNode(ref branch2) => {
+                        return branch.cmp(branch2);
+                    }
+                    LeafNode(ref leaf) => {
+                        return Greater;
+                    }
+                }
+            }
+        }
     }
+
 }
 
-//The following impl is unfinished.  Old iterations of code are left in for
-//future reference when implementing this trait (commented-out).
-impl<K: Clone + TotalOrd, V: Clone> TotalEq for Node<K, V> {
-
-    ///Placeholder for an implementation of TotalEq for Nodes.
+impl<K: TotalOrd, V: TotalEq> TotalEq for Node<K, V>{
+    ///Returns whether two nodes are equal
     #[allow(unused_variable)]
-    fn equals(&self, other: &Node<K, V>) -> bool {
-        /* put in a match and defer this stuff to branch and leaf
+    fn equals(&self, other: &Node<K, V>) -> bool{
+        match *self{
+            BranchNode(ref branch) => {
+                match *other{
+                    BranchNode(ref branch2) => branch.cmp(branch2) == Equal,
+                    LeafNode(ref leaf) => false
+                }
+            }
 
-        let mut shorter = 0;
-        if self.elts.len() <= other.elts.len(){
-        shorter = self.elts.len();
+            LeafNode(ref leaf) => {
+                match *other{
+                    LeafNode(ref leaf2) => leaf.cmp(leaf2) == Equal,
+                    BranchNode(ref branch) => false
+                }
+            }
+
+        }
+
     }
-            else{
-        shorter = other.elts.len();
-    }
-        let mut i = 0;
-        while i < shorter{
-        if !self.elts[i].has_key(other.elts[i].key){
-        return false;
-    }
-        i +=1;
-    }
-        return true;
-         */
-        return true;
-    }
+
 }
 
 
@@ -209,7 +242,7 @@ impl<K: ToStr + TotalOrd, V: ToStr> ToStr for Node<K, V> {
     fn to_str(&self) -> ~str {
         match *self {
             LeafNode(ref leaf) => leaf.to_str(),
-            BranchNode(..) => ~""
+            BranchNode(ref branch) => branch.to_str()
         }
     }
 }
@@ -217,18 +250,20 @@ impl<K: ToStr + TotalOrd, V: ToStr> ToStr for Node<K, V> {
 
 //A leaf is a vector with elements that contain no children.  A leaf also
 //does not contain a rightmost child.
+//#[deriving(Eq, TotalEq)]
 struct Leaf<K, V> {
     elts: ~[LeafElt<K, V>]
 }
 
 //Vector of values with children, plus a rightmost child (greater than all)
+//#[deriving(Eq, TotalEq)]
 struct Branch<K, V> {
     elts: ~[BranchElt<K,V>],
     rightmost_child: ~Node<K, V>
 }
 
 
-impl<K: Clone + TotalOrd, V: Clone> Leaf<K, V> {
+impl<K: TotalOrd, V> Leaf<K, V> {
 
     ///Creates a new Leaf from a vector of LeafElts.
     fn new(vec: ~[LeafElt<K, V>]) -> Leaf<K, V> {
@@ -237,6 +272,17 @@ impl<K: Clone + TotalOrd, V: Clone> Leaf<K, V> {
         }
     }
 
+
+
+    ///Placeholder for add method in progress.
+    ///Currently returns a new Leaf containing a single LeafElt.
+    fn add(&self, k: K, v: V) -> Node<K, V> {
+        return Node::new_leaf(~[LeafElt::new(k, v)]);
+    }
+
+}
+
+impl<K: TotalOrd, V: Clone> Leaf<K, V> {
     ///Returns the corresponding value to the supplied key.
     fn get(&self, k: K) -> Option<V> {
         for s in self.elts.iter() {
@@ -248,13 +294,21 @@ impl<K: Clone + TotalOrd, V: Clone> Leaf<K, V> {
         }
         return None;
     }
+}
 
-    ///Placeholder for add method in progress.
-    ///Currently returns a new Leaf containing a single LeafElt.
-    fn add(&self, k: K, v: V) -> Node<K, V> {
-        return Node::new_leaf(~[LeafElt::new(k, v)]);
+impl<K: TotalOrd, V: TotalEq> TotalOrd for Leaf<K, V>{
+    ///Returns an ordering based on the first element of each Leaf.
+    fn cmp(&self, other: &Leaf<K, V>) -> Ordering{
+        self.elts[0].cmp(&other.elts[0])
     }
+}
 
+impl<K: Clone + TotalOrd, V: Clone> Clone for Leaf<K, V>{
+
+    ///Returns a new Leaf with the same elts.
+    fn clone(&self) -> Leaf<K, V>{
+        Leaf::new(self.elts.clone())
+    }
 }
 
 impl<K: ToStr + TotalOrd, V: ToStr> ToStr for Leaf<K, V> {
@@ -267,11 +321,22 @@ impl<K: ToStr + TotalOrd, V: ToStr> ToStr for Leaf<K, V> {
         }
         ret
     }
+}
 
+impl<K: TotalOrd, V: TotalEq> TotalEq for Leaf<K, V> {
+    
+    ///Implementation of equals function for leaves, uses LeafElts' traits.
+    ///Placeholder implementation.
+    fn equals(&self, other: &Leaf<K, V>) -> bool {
+        if self.elts[0].equals(&other.elts[0]) { 
+            return true; 
+        }
+        return false;
+    }
 }
 
 
-impl<K: Clone + TotalOrd, V: Clone> Branch<K, V> {
+impl<K: TotalOrd, V> Branch<K, V> {
 
     ///Creates a new Branch from a vector of BranchElts and a rightmost child (a node).
     fn new(vec: ~[BranchElt<K, V>], right: ~Node<K, V>) -> Branch<K, V> {
@@ -281,6 +346,14 @@ impl<K: Clone + TotalOrd, V: Clone> Branch<K, V> {
         }
     }
 
+
+    ///Placeholder for add method in progress
+    fn add(&self, k: K, v: V) -> Node<K, V> {
+        return Node::new_leaf(~[LeafElt::new(k, v)]);
+    }
+}
+
+impl<K: TotalOrd, V: Clone> Branch<K, V> {
     ///Returns the corresponding value to the supplied key.
     ///If the key is not there, find the child that might hold it.
     fn get(&self, k: K) -> Option<V> {
@@ -294,28 +367,64 @@ impl<K: Clone + TotalOrd, V: Clone> Branch<K, V> {
         }
         return self.rightmost_child.get(k);
     }
+}
 
-
-    ///Placeholder for add method in progress
-    fn add(&self, k: K, v: V) -> Node<K, V> {
-        return Node::new_leaf(~[LeafElt::new(k, v)]);
+impl<K: TotalOrd, V: TotalEq> TotalOrd for Branch<K, V>{
+    ///Compares the first elements of two branches to determine an ordering
+    fn cmp(&self, other: &Branch<K, V>) -> Ordering{
+        self.elts[0].cmp(&other.elts[0])
     }
 }
 
+impl<K: Clone + TotalOrd, V: Clone> Clone for Branch<K, V>{
+
+    ///Returns a new branch using the clone methods of the Branch's internal variables.
+    fn clone(&self) -> Branch<K, V>{
+        Branch::new(self.elts.clone(), self.rightmost_child.clone())
+    }
+}
+
+impl<K: TotalOrd, V: TotalEq> TotalEq for Branch<K, V>{
+    
+    ///Equals function for Branches--compares first elt (Placeholder)
+    fn equals(&self, other: &Branch<K, V>) -> bool {
+        if self.elts[0].equals(&other.elts[0]){
+            return true;
+        }
+        return false;
+    }
+}
+
+impl<K: ToStr + TotalOrd, V: ToStr> ToStr for Branch<K, V> {
+
+    ///Returns a string representation of a Branch.
+    fn to_str(&self) -> ~str {
+        let mut ret = ~"";
+        for s in self.elts.iter() {
+            ret = ret + " // " + s.to_str();
+        }
+        ret = ret + " // " + self.rightmost_child.to_str();
+        ret
+    }
+
+}
+
 //A LeafElt containts no left child, but a key-value pair.
+//#[deriving(Eq)]
 struct LeafElt<K, V> {
     key: K,
     value: V
 }
 
 //A BranchElt has a left child in addition to a key-value pair.
+//#[deriving(Eq, TotalEq)]
 struct BranchElt<K, V> {
     left: Node<K, V>,
     key: K,
     value: V
 }
 
-impl<K: Clone + TotalOrd, V> LeafElt<K, V> {
+impl<K: TotalOrd, V> LeafElt<K, V> {
 
     ///Creates a new LeafElt from a supplied key-value pair.
     fn new(k: K, v: V) -> LeafElt<K, V> {
@@ -356,13 +465,33 @@ impl<K: Clone + TotalOrd, V> LeafElt<K, V> {
     }
 }
 
-//This may be eliminated in the future to perserve efficiency by adjusting the way
-//the BTree as a whole is stored in memory.
+
+impl<K: TotalOrd, V: TotalEq> TotalOrd for LeafElt<K, V> {
+
+    ///Returns an ordering based on the keys of the LeafElts.
+    ///Can be used as an alternative to less_than, etc. methods.
+    fn cmp(&self, other: &LeafElt<K, V>) -> Ordering{
+        self.key.cmp(&other.key)
+    }
+}
+
 impl<K: Clone + TotalOrd, V: Clone> Clone for LeafElt<K, V> {
 
     ///Returns a new LeafElt by cloning the key and value.
     fn clone(&self) -> LeafElt<K, V> {
         return LeafElt::new(self.key.clone(), self.value.clone());
+    }
+}
+
+impl<K: TotalOrd, V: TotalEq> TotalEq for LeafElt<K, V>{
+    ///TotalEq for LeafElts
+    fn equals(&self, other: &LeafElt<K, V>) -> bool {
+        if self.key.equals(&other.key) {
+            if self.value.equals(&other.value) {
+                return true;
+            }
+        }
+        return false;
     }
 }
 
@@ -376,7 +505,7 @@ impl<K: ToStr + TotalOrd, V: ToStr> ToStr for LeafElt<K, V> {
 
 }
 
-impl<K: Clone + TotalOrd, V: Clone> BranchElt<K, V> {
+impl<K: TotalOrd, V> BranchElt<K, V> {
 
     ///Creates a new BranchElt from a supplied key, value, and left child.
     fn new(k: K, v: V, n: Node<K, V>) -> BranchElt<K, V> {
@@ -387,10 +516,22 @@ impl<K: Clone + TotalOrd, V: Clone> BranchElt<K, V> {
         }
     }
 
+
     ///Placeholder for add method in progress.
     ///Overall implementation will determine the actual return value of this method.
     fn add(&self, k: K, v: V) -> LeafElt<K, V> {
         return LeafElt::new(k, v);
+    }
+}
+
+impl<K: ToStr + TotalOrd, V: ToStr> ToStr for BranchElt<K, V> {
+
+    ///Returns string containing key, value, and child (which should recur to a leaf)
+    ///Consider changing in future to be more readable.
+    fn to_str(&self) -> ~str{
+        return "Key: "+self.key.to_str()+", value: "+self.value.to_str()+"
+            , child: "+self.left.to_str()+";";
+
     }
 }
 
@@ -404,20 +545,55 @@ impl<K: Clone + TotalOrd, V: Clone> Clone for BranchElt<K, V> {
     }
 }
 
+
+impl<K: TotalOrd, V: TotalEq> TotalEq for BranchElt<K, V>{
+
+    ///TotalEq for BranchElts
+    fn equals(&self, other: &BranchElt<K, V>) -> bool {
+        if self.key.equals(&other.key) {
+            if self.value.equals(&other.value) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+impl<K: TotalOrd, V: TotalEq> TotalOrd for BranchElt<K, V> {
+
+    ///Fulfills TotalOrd for BranchElts
+    fn cmp(&self, other: &BranchElt<K, V>) -> Ordering {
+        self.key.cmp(&other.key)
+    }
+}
+
+
 #[cfg(test)]
 mod test_btree{
+<<<<<<< HEAD
+<<<<<<< HEAD
 
     use super::{BTree, LeafElt};
+<<<<<<< HEAD
+=======
+    
+=======
 
-    ///Tests the functionality of the add methods (which are unfinished).
-    #[test]
+>>>>>>> Wrote some tests for the compare/clone/to_str methods.
+    use super::*;
+>>>>>>> Committing standard compare/to_str/clone features, but no tests yet.
+=======
+>>>>>>> Don't allow impls to force public types
+
+    //Tests the functionality of the add methods (which are unfinished).
+    /*#[test]
     fn add_test(){
         let b = BTree::new(1, ~"abc", 2);
         let is_add = b.add(2, ~"xyz");
         assert!(is_add);
-    }
+    }*/
 
-    ///Tests the functionality of the get method.
+    //Tests the functionality of the get method.
     #[test]
     fn get_test(){
         let b = BTree::new(1, ~"abc", 2);
@@ -425,7 +601,7 @@ mod test_btree{
         assert_eq!(val, Some(~"abc"));
     }
 
-    ///Tests the LeafElt's less_than() method.
+    //Tests the LeafElt's less_than() method.
     #[test]
     fn leaf_lt(){
         let l1 = LeafElt::new(1, ~"abc");
@@ -434,7 +610,7 @@ mod test_btree{
     }
 
 
-    ///Tests the LeafElt's greater_than() method.
+    //Tests the LeafElt's greater_than() method.
     #[test]
     fn leaf_gt(){
         let l1 = LeafElt::new(1, ~"abc");
@@ -442,11 +618,53 @@ mod test_btree{
         assert!(l2.greater_than(l1));
     }
 
-    ///Tests the LeafElt's has_key() method.
+    //Tests the LeafElt's has_key() method.
     #[test]
     fn leaf_hk(){
         let l1 = LeafElt::new(1, ~"abc");
         assert!(l1.has_key(1));
     }
+
+    //New tests from week of 12/16/13
+
+    //Tests the BTree's clone() method.
+    #[test]
+    fn btree_clone_test(){
+        let b = BTree::new(1, ~"abc", 2);
+        let b2 = b.clone();
+        assert!(b.root.equals(&b2.root))
+    }
+
+    //Tests the BTree's cmp() method when one node is "less than" another.
+    #[test]
+    fn btree_cmp_test_less(){
+        let b = BTree::new(1, ~"abc", 2);
+        let b2 = BTree::new(2, ~"bcd", 2);
+        assert!(&b.cmp(&b2) == &Less)
+    }
+
+    //Tests the BTree's cmp() method when two nodes are equal.
+    #[test]
+    fn btree_cmp_test_eq(){
+        let b = BTree::new(1, ~"abc", 2);
+        let b2 = BTree::new(1, ~"bcd", 2);
+        assert!(&b.cmp(&b2) == &Equal)
+    }
+
+    //Tests the BTree's cmp() method when one node is "greater than" another.
+    #[test]
+    fn btree_cmp_test_greater(){
+        let b = BTree::new(1, ~"abc", 2);
+        let b2 = BTree::new(2, ~"bcd", 2);
+        assert!(&b2.cmp(&b) == &Greater)
+    }
+
+    //Tests the BTree's to_str() method.
+    #[test]
+    fn btree_tostr_test(){
+        let b = BTree::new(1, ~"abc", 2);
+        assert_eq!(b.to_str(), ~" // Key: 1, value: abc; ")
+    }
+
 }
 
