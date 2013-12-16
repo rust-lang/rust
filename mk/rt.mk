@@ -72,15 +72,15 @@ RUNTIME_CXXFLAGS_$(1)_$(2) = -D_RUST_STAGE1
 endif
 endif
 
-RUNTIME_CXXS_$(1)_$(2) := \
-	      rt/rust_cxx_glue.cpp
-
 RUNTIME_CS_$(1)_$(2) := \
               rt/rust_builtin.c \
               rt/rust_upcall.c \
               rt/miniz.c \
               rt/rust_android_dummy.c \
               rt/rust_test_helpers.c
+
+RUNTIME_LL_$(1)_$(2) := \
+			rt/rust_try.ll
 
 # stage0 remove this after the next snapshot
 %.cpp:
@@ -94,18 +94,15 @@ RT_BUILD_DIR_$(1)_$(2) := $$(RT_OUTPUT_DIR_$(1))/stage$(2)
 RUNTIME_DEF_$(1)_$(2) := $$(RT_OUTPUT_DIR_$(1))/rustrt$$(CFG_DEF_SUFFIX_$(1))
 RUNTIME_INCS_$(1)_$(2) := -I $$(S)src/rt -I $$(S)src/rt/isaac -I $$(S)src/rt/uthash \
                      -I $$(S)src/rt/arch/$$(HOST_$(1))
-RUNTIME_OBJS_$(1)_$(2) := $$(RUNTIME_CXXS_$(1)_$(2):rt/%.cpp=$$(RT_BUILD_DIR_$(1)_$(2))/%.o) \
+RUNTIME_OBJS_$(1)_$(2) := \
                      $$(RUNTIME_CS_$(1)_$(2):rt/%.c=$$(RT_BUILD_DIR_$(1)_$(2))/%.o) \
-                     $$(RUNTIME_S_$(1)_$(2):rt/%.S=$$(RT_BUILD_DIR_$(1)_$(2))/%.o)
+                     $$(RUNTIME_S_$(1)_$(2):rt/%.S=$$(RT_BUILD_DIR_$(1)_$(2))/%.o) \
+                     $$(RUNTIME_LL_$(1)_$(2):rt/%.ll=$$(RT_BUILD_DIR_$(1)_$(2))/%.o)
+
 ALL_OBJ_FILES += $$(RUNTIME_OBJS_$(1)_$(2))
 
 MORESTACK_OBJS_$(1)_$(2) := $$(RT_BUILD_DIR_$(1)_$(2))/arch/$$(HOST_$(1))/morestack.o
 ALL_OBJ_FILES += $$(MORESTACK_OBJS_$(1)_$(2))
-
-$$(RT_BUILD_DIR_$(1)_$(2))/rust_cxx_glue.o: rt/rust_cxx_glue.cpp $$(MKFILE_DEPS)
-	@$$(call E, compile: $$@)
-	$$(Q)$$(call CFG_COMPILE_CXX_$(1), $$@, $$(RUNTIME_INCS_$(1)_$(2)) \
-                 $$(SNAP_DEFINES) $$(RUNTIME_CXXFLAGS_$(1)_$(2))) $$<
 
 $$(RT_BUILD_DIR_$(1)_$(2))/%.o: rt/%.c $$(MKFILE_DEPS)
 	@$$(call E, compile: $$@)
@@ -116,6 +113,11 @@ $$(RT_BUILD_DIR_$(1)_$(2))/%.o: rt/%.S  $$(MKFILE_DEPS) \
                      $$(LLVM_CONFIG_$$(CFG_BUILD))
 	@$$(call E, compile: $$@)
 	$$(Q)$$(call CFG_ASSEMBLE_$(1),$$@,$$<)
+
+$$(RT_BUILD_DIR_$(1)_$(2))/%.o: rt/%.ll  $$(MKFILE_DEPS) \
+                     $$(LLVM_CONFIG_$$(CFG_BUILD))
+	@$$(call E, compile: $$@)
+	$$(Q)$(LLC_$(CFG_BUILD)) -filetype=obj -mtriple=$(1) -relocation-model=pic -o $$@ $$<
 
 $$(RT_BUILD_DIR_$(1)_$(2))/arch/$$(HOST_$(1))/libmorestack.a: $$(MORESTACK_OBJS_$(1)_$(2))
 	@$$(call E, link: $$@)
