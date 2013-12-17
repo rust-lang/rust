@@ -875,9 +875,9 @@ pub enum ty_ {
     ty_nil,
     ty_bot, /* bottom type */
     ty_box(mt),
-    ty_uniq(mt),
-    ty_vec(mt),
-    ty_fixed_length_vec(mt, @Expr),
+    ty_uniq(P<Ty>),
+    ty_vec(P<Ty>),
+    ty_fixed_length_vec(P<Ty>, @Expr),
     ty_ptr(mt),
     ty_rptr(Option<Lifetime>, mt),
     ty_closure(@TyClosure),
