@@ -728,17 +728,10 @@ pub fn link_binary(sess: Session,
                    obj_filename: &Path,
                    out_filename: &Path,
                    lm: &LinkMeta) -> ~[Path] {
-    // If we're generating a test executable, then ignore all other output
-    // styles at all other locations
-    let outputs = if sess.opts.test {
-        ~[session::OutputExecutable]
-    } else {
-        (*sess.outputs).clone()
-    };
-
     let mut out_filenames = ~[];
-    for output in outputs.move_iter() {
-        let out_file = link_binary_output(sess, trans, output, obj_filename, out_filename, lm);
+    for &output in sess.outputs.iter() {
+        let out_file = link_binary_output(sess, trans, output, obj_filename,
+                                          out_filename, lm);
         out_filenames.push(out_file);
     }
 
