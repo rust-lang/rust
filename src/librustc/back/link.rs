@@ -354,9 +354,7 @@ pub mod write {
             add(*arg);
         }
 
-        llvm_args.as_imm_buf(|p, len| {
-            llvm::LLVMRustSetLLVMOptions(len as c_int, p);
-        })
+        llvm::LLVMRustSetLLVMOptions(llvm_args.len() as c_int, llvm_args.as_ptr());
     }
 
     unsafe fn populate_llvm_passes(fpm: lib::llvm::PassManagerRef,

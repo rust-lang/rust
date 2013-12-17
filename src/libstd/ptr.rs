@@ -511,10 +511,9 @@ pub mod ptr_tests {
             "there".with_c_str(|p1| {
                 "thing".with_c_str(|p2| {
                     let v = ~[p0, p1, p2, null()];
-                    v.as_imm_buf(|vp, len| {
-                        assert_eq!(unsafe { buf_len(vp) }, 3u);
-                        assert_eq!(len, 4u);
-                    })
+                    unsafe {
+                        assert_eq!(buf_len(v.as_ptr()), 3u);
+                    }
                 })
             })
         })
@@ -623,23 +622,21 @@ pub mod ptr_tests {
                 one, two, three
             ];
 
-            arr.as_imm_buf(|arr_ptr, arr_len| {
-                let mut ctr = 0;
-                let mut iteration_count = 0;
-                array_each_with_len(arr_ptr, arr_len, |e| {
-                     let actual = str::raw::from_c_str(e);
-                     let expected = expected_arr[ctr].with_ref(|buf| {
-                         str::raw::from_c_str(buf)
-                     });
-                     debug!(
-                         "test_ptr_array_each_with_len e: {}, a: {}",
-                         expected, actual);
-                     assert_eq!(actual, expected);
-                     ctr += 1;
-                     iteration_count += 1;
+            let mut ctr = 0;
+            let mut iteration_count = 0;
+            array_each_with_len(arr.as_ptr(), arr.len(), |e| {
+                    let actual = str::raw::from_c_str(e);
+                    let expected = expected_arr[ctr].with_ref(|buf| {
+                            str::raw::from_c_str(buf)
+                        });
+                    debug!(
+                        "test_ptr_array_each_with_len e: {}, a: {}",
+                        expected, actual);
+                    assert_eq!(actual, expected);
+                    ctr += 1;
+                    iteration_count += 1;
                 });
-                assert_eq!(iteration_count, 3u);
-            })
+            assert_eq!(iteration_count, 3u);
         }
     }
 
@@ -660,23 +657,22 @@ pub mod ptr_tests {
                 one, two, three
             ];
 
-            arr.as_imm_buf(|arr_ptr, _| {
-                let mut ctr = 0;
-                let mut iteration_count = 0;
-                array_each(arr_ptr, |e| {
-                     let actual = str::raw::from_c_str(e);
-                     let expected = expected_arr[ctr].with_ref(|buf| {
-                         str::raw::from_c_str(buf)
-                     });
-                     debug!(
-                         "test_ptr_array_each e: {}, a: {}",
-                         expected, actual);
-                     assert_eq!(actual, expected);
-                     ctr += 1;
-                     iteration_count += 1;
+            let arr_ptr = arr.as_ptr();
+            let mut ctr = 0;
+            let mut iteration_count = 0;
+            array_each(arr_ptr, |e| {
+                    let actual = str::raw::from_c_str(e);
+                    let expected = expected_arr[ctr].with_ref(|buf| {
+                        str::raw::from_c_str(buf)
+                    });
+                    debug!(
+                        "test_ptr_array_each e: {}, a: {}",
+                        expected, actual);
+                    assert_eq!(actual, expected);
+                    ctr += 1;
+                    iteration_count += 1;
                 });
-                assert_eq!(iteration_count, 3);
-            })
+            assert_eq!(iteration_count, 3);
         }
     }
 

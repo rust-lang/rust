@@ -464,11 +464,11 @@ impl Builder {
             let min = llvm::LLVMConstInt(t, lo, signed);
             let max = llvm::LLVMConstInt(t, hi, signed);
 
-            [min, max].as_imm_buf(|ptr, len| {
-                llvm::LLVMSetMetadata(value, lib::llvm::MD_range as c_uint,
-                                      llvm::LLVMMDNodeInContext(self.ccx.llcx,
-                                                                ptr, len as c_uint));
-            })
+            let v = [min, max];
+
+            llvm::LLVMSetMetadata(value, lib::llvm::MD_range as c_uint,
+                                  llvm::LLVMMDNodeInContext(self.ccx.llcx,
+                                                            v.as_ptr(), v.len() as c_uint));
         }
 
         value

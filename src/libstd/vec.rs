@@ -775,7 +775,7 @@ impl<'a, T> Container for &'a [T] {
     /// Returns the length of a vector
     #[inline]
     fn len(&self) -> uint {
-        self.as_imm_buf(|_p, len| len)
+        self.repr().len
     }
 }
 
@@ -783,7 +783,7 @@ impl<T> Container for ~[T] {
     /// Returns the length of a vector
     #[inline]
     fn len(&self) -> uint {
-        self.as_imm_buf(|_p, len| len)
+        self.repr().len
     }
 }
 
@@ -985,14 +985,6 @@ pub trait ImmutableVector<'a, T> {
     fn map<U>(&self, |t: &T| -> U) -> ~[U];
 
     /**
-     * Work with the buffer of a vector.
-     *
-     * Allows for unsafe manipulation of vector contents, which is useful for
-     * foreign interop.
-     */
-    fn as_imm_buf<U>(&self, f: |*T, uint| -> U) -> U;
-
-    /**
      * Returns a mutable reference to the first element in this slice
      * and adjusts the slice in place so that it no longer contains
      * that element. O(1).
@@ -1032,14 +1024,12 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
     fn slice(&self, start: uint, end: uint) -> &'a [T] {
         assert!(start <= end);
         assert!(end <= self.len());
-        self.as_imm_buf(|p, _len| {
-            unsafe {
-                cast::transmute(Slice {
-                    data: ptr::offset(p, start as int),
+        unsafe {
+            cast::transmute(Slice {
+                    data: self.as_ptr().offset(start as int),
                     len: (end - start)
                 })
-            }
-        })
+        }
     }
 
     #[inline]
@@ -1195,12 +1185,6 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
 
     fn map<U>(&self, f: |t: &T| -> U) -> ~[U] {
         self.iter().map(f).collect()
-    }
-
-    #[inline]
-    fn as_imm_buf<U>(&self, f: |*T, uint| -> U) -> U {
-        let s = self.repr();
-        f(s.data, s.len)
     }
 
     fn shift_ref(&mut self) -> &'a T {
@@ -2206,10 +2190,9 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
     #[inline]
     unsafe fn copy_memory(self, src: &[T]) {
         self.as_mut_buf(|p_dst, len_dst| {
-            src.as_imm_buf(|p_src, len_src| {
-                assert!(len_dst >= len_src)
-                ptr::copy_nonoverlapping_memory(p_dst, p_src, len_src)
-            })
+            let len_src = src.len();
+            assert!(len_dst >= len_src);
+            ptr::copy_nonoverlapping_memory(p_dst, src.as_ptr(), len_src)
         })
     }
 
@@ -2369,9 +2352,7 @@ pub mod bytes {
         dst.reserve_additional(src.len());
         unsafe {
             dst.as_mut_buf(|p_dst, len_dst| {
-                src.as_imm_buf(|p_src, len_src| {
-                    ptr::copy_memory(p_dst.offset(len_dst as int), p_src, len_src)
-                })
+                ptr::copy_memory(p_dst.offset(len_dst as int), src.as_ptr(), src.len())
             });
             dst.set_len(old_len + src.len());
         }
@@ -3551,15 +3532,6 @@ mod tests {
             }
             i += 1;
         }
-    }
-
-    #[test]
-    #[should_fail]
-    fn test_as_imm_buf_fail() {
-        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
-        v.as_imm_buf(|_buf, _i| {
-            fail!()
-        })
     }
 
     #[test]
