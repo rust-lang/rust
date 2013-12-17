@@ -26,32 +26,32 @@ mod cross_crate {
         let foo = MethodTester;
 
         deprecated(); //~ ERROR use of deprecated item
-        foo.method_deprecated(); // ~ ERROR use of deprecated item
-        foo.trait_deprecated(); // ~ ERROR use of deprecated item
+        foo.method_deprecated(); //~ ERROR use of deprecated item
+        foo.trait_deprecated(); //~ ERROR use of deprecated item
 
         deprecated_text(); //~ ERROR use of deprecated item: text
-        foo.method_deprecated_text(); // ~ ERROR use of deprecated item: text
-        foo.trait_deprecated_text(); // ~ ERROR use of deprecated item: text
+        foo.method_deprecated_text(); //~ ERROR use of deprecated item: text
+        foo.trait_deprecated_text(); //~ ERROR use of deprecated item: text
 
         experimental(); //~ ERROR use of experimental item
-        foo.method_experimental(); // ~ ERROR use of experimental item
-        foo.trait_experimental(); // ~ ERROR use of experimental item
+        foo.method_experimental(); //~ ERROR use of experimental item
+        foo.trait_experimental(); //~ ERROR use of experimental item
 
         experimental_text(); //~ ERROR use of experimental item: text
-        foo.method_experimental_text(); // ~ ERROR use of experimental item: text
-        foo.trait_experimental_text(); // ~ ERROR use of experimental item: text
+        foo.method_experimental_text(); //~ ERROR use of experimental item: text
+        foo.trait_experimental_text(); //~ ERROR use of experimental item: text
 
         unstable(); //~ ERROR use of unstable item
-        foo.method_unstable(); // ~ ERROR use of unstable item
-        foo.trait_unstable(); // ~ ERROR use of unstable item
+        foo.method_unstable(); //~ ERROR use of unstable item
+        foo.trait_unstable(); //~ ERROR use of unstable item
 
         unstable_text(); //~ ERROR use of unstable item: text
-        foo.method_unstable_text(); // ~ ERROR use of unstable item: text
-        foo.trait_unstable_text(); // ~ ERROR use of unstable item: text
+        foo.method_unstable_text(); //~ ERROR use of unstable item: text
+        foo.trait_unstable_text(); //~ ERROR use of unstable item: text
 
         unmarked(); //~ ERROR use of unmarked item
-        foo.method_unmarked(); // ~ ERROR use of unmarked item
-        foo.trait_unmarked(); // ~ ERROR use of unmarked item
+        foo.method_unmarked(); //~ ERROR use of unmarked item
+        foo.trait_unmarked(); //~ ERROR use of unmarked item
 
         stable();
         foo.method_stable();
@@ -101,6 +101,28 @@ mod cross_crate {
         let _ = StableVariant;
         let _ = FrozenVariant;
         let _ = LockedVariant;
+    }
+
+    fn test_method_param<F: Trait>(foo: F) {
+        foo.trait_deprecated(); //~ ERROR use of deprecated item
+        foo.trait_deprecated_text(); //~ ERROR use of deprecated item: text
+        foo.trait_experimental(); //~ ERROR use of experimental item
+        foo.trait_experimental_text(); //~ ERROR use of experimental item: text
+        foo.trait_unstable(); //~ ERROR use of unstable item
+        foo.trait_unstable_text(); //~ ERROR use of unstable item: text
+        foo.trait_unmarked(); //~ ERROR use of unmarked item
+        foo.trait_stable();
+    }
+
+    fn test_method_object(foo: &Trait) {
+        foo.trait_deprecated(); //~ ERROR use of deprecated item
+        foo.trait_deprecated_text(); //~ ERROR use of deprecated item: text
+        foo.trait_experimental(); //~ ERROR use of experimental item
+        foo.trait_experimental_text(); //~ ERROR use of experimental item: text
+        foo.trait_unstable(); //~ ERROR use of unstable item
+        foo.trait_unstable_text(); //~ ERROR use of unstable item: text
+        foo.trait_unmarked(); //~ ERROR use of unmarked item
+        foo.trait_stable();
     }
 }
 
@@ -259,32 +281,32 @@ mod this_crate {
         let foo = MethodTester;
 
         deprecated(); //~ ERROR use of deprecated item
-        foo.method_deprecated(); // ~ ERROR use of deprecated item
-        foo.trait_deprecated(); // ~ ERROR use of deprecated item
+        foo.method_deprecated(); //~ ERROR use of deprecated item
+        foo.trait_deprecated(); //~ ERROR use of deprecated item
 
         deprecated_text(); //~ ERROR use of deprecated item: text
-        foo.method_deprecated_text(); // ~ ERROR use of deprecated item: text
-        foo.trait_deprecated_text(); // ~ ERROR use of deprecated item: text
+        foo.method_deprecated_text(); //~ ERROR use of deprecated item: text
+        foo.trait_deprecated_text(); //~ ERROR use of deprecated item: text
 
         experimental(); //~ ERROR use of experimental item
-        foo.method_experimental(); // ~ ERROR use of experimental item
-        foo.trait_experimental(); // ~ ERROR use of experimental item
+        foo.method_experimental(); //~ ERROR use of experimental item
+        foo.trait_experimental(); //~ ERROR use of experimental item
 
         experimental_text(); //~ ERROR use of experimental item: text
-        foo.method_experimental_text(); // ~ ERROR use of experimental item: text
-        foo.trait_experimental_text(); // ~ ERROR use of experimental item: text
+        foo.method_experimental_text(); //~ ERROR use of experimental item: text
+        foo.trait_experimental_text(); //~ ERROR use of experimental item: text
 
         unstable(); //~ ERROR use of unstable item
-        foo.method_unstable(); // ~ ERROR use of unstable item
-        foo.trait_unstable(); // ~ ERROR use of unstable item
+        foo.method_unstable(); //~ ERROR use of unstable item
+        foo.trait_unstable(); //~ ERROR use of unstable item
 
         unstable_text(); //~ ERROR use of unstable item: text
-        foo.method_unstable_text(); // ~ ERROR use of unstable item: text
-        foo.trait_unstable_text(); // ~ ERROR use of unstable item: text
+        foo.method_unstable_text(); //~ ERROR use of unstable item: text
+        foo.trait_unstable_text(); //~ ERROR use of unstable item: text
 
         unmarked(); //~ ERROR use of unmarked item
-        foo.method_unmarked(); // ~ ERROR use of unmarked item
-        foo.trait_unmarked(); // ~ ERROR use of unmarked item
+        foo.method_unmarked(); //~ ERROR use of unmarked item
+        foo.trait_unmarked(); //~ ERROR use of unmarked item
 
         stable();
         foo.method_stable();
@@ -334,6 +356,28 @@ mod this_crate {
         let _ = StableVariant;
         let _ = FrozenVariant;
         let _ = LockedVariant;
+    }
+
+    fn test_method_param<F: Trait>(foo: F) {
+        foo.trait_deprecated(); //~ ERROR use of deprecated item
+        foo.trait_deprecated_text(); //~ ERROR use of deprecated item: text
+        foo.trait_experimental(); //~ ERROR use of experimental item
+        foo.trait_experimental_text(); //~ ERROR use of experimental item: text
+        foo.trait_unstable(); //~ ERROR use of unstable item
+        foo.trait_unstable_text(); //~ ERROR use of unstable item: text
+        foo.trait_unmarked(); //~ ERROR use of unmarked item
+        foo.trait_stable();
+    }
+
+    fn test_method_object(foo: &Trait) {
+        foo.trait_deprecated(); //~ ERROR use of deprecated item
+        foo.trait_deprecated_text(); //~ ERROR use of deprecated item: text
+        foo.trait_experimental(); //~ ERROR use of experimental item
+        foo.trait_experimental_text(); //~ ERROR use of experimental item: text
+        foo.trait_unstable(); //~ ERROR use of unstable item
+        foo.trait_unstable_text(); //~ ERROR use of unstable item: text
+        foo.trait_unmarked(); //~ ERROR use of unmarked item
+        foo.trait_stable();
     }
 }
 

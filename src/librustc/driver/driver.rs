@@ -312,7 +312,7 @@ pub fn phase_3_run_analysis_passes(sess: Session,
                                    &exported_items, reachable_map, crate));
 
     time(time_passes, "lint checking", (), |_|
-         lint::check_crate(ty_cx, &exported_items, crate));
+         lint::check_crate(ty_cx, method_map, &exported_items, crate));
 
     CrateAnalysis {
         exp_map2: exp_map2,
