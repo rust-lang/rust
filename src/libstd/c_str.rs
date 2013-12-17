@@ -573,15 +573,14 @@ mod bench {
 
     #[inline]
     fn check(s: &str, c_str: *libc::c_char) {
-        s.as_imm_buf(|s_buf, s_len| {
-            for i in range(0, s_len) {
-                unsafe {
-                    assert_eq!(
-                        *ptr::offset(s_buf, i as int) as libc::c_char,
-                        *ptr::offset(c_str, i as int));
-                }
+        let s_buf = s.as_ptr();
+        for i in range(0, s.len()) {
+            unsafe {
+                assert_eq!(
+                    *ptr::offset(s_buf, i as int) as libc::c_char,
+                    *ptr::offset(c_str, i as int));
             }
-        })
+        }
     }
 
     static s_short: &'static str = "Mary";

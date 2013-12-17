@@ -72,13 +72,11 @@ pub fn getcwd() -> Path {
     use libc::DWORD;
     use libc::GetCurrentDirectoryW;
     let mut buf = [0 as u16, ..BUF_BYTES];
-    buf.as_mut_buf(|buf, len| {
-        unsafe {
-            if libc::GetCurrentDirectoryW(len as DWORD, buf) == 0 as DWORD {
-                fail!();
-            }
+    unsafe {
+        if libc::GetCurrentDirectoryW(buf.len() as DWORD, buf.as_mut_ptr()) == 0 as DWORD {
+            fail!();
         }
-    });
+    }
     Path::new(str::from_utf16(buf))
 }
 
