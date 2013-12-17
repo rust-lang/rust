@@ -60,12 +60,12 @@ use ast::{unnamed_field, UnsafeBlock, unsafe_fn, view_item};
 use ast::{view_item_, view_item_extern_mod, view_item_use};
 use ast::{view_path, view_path_glob, view_path_list, view_path_simple};
 use ast::visibility;
+use attr;
 use ast;
 use ast_util::{as_prec, operator_prec};
 use ast_util;
 use codemap::{Span, BytePos, Spanned, spanned, mk_sp};
 use codemap;
-use parse::attr::parser_attr;
 use parse::classify;
 use parse::common::{SeqSep, seq_sep_none};
 use parse::common::{seq_sep_trailing_disallowed, seq_sep_trailing_allowed};
@@ -4209,11 +4209,7 @@ impl Parser {
 
     fn push_mod_path(&self, id: Ident, attrs: &[Attribute]) {
         let default_path = token::interner_get(id.name);
-        let file_path = match ::attr::first_attr_value_str_by_name(attrs,
-                                                                   "path") {
-            Some(d) => d,
-            None => default_path
-        };
+        let file_path = attr::first_attr_value(attrs, attr::AttrPath).unwrap_or(default_path);
         self.mod_path_stack.push(file_path)
     }
 
@@ -4232,8 +4228,7 @@ impl Parser {
         let mod_path_stack = &*self.mod_path_stack;
         let mod_path = Path::new(".").join_many(*mod_path_stack);
         let dir_path = prefix.join(&mod_path);
-        let file_path = match ::attr::first_attr_value_str_by_name(
-                outer_attrs, "path") {
+        let file_path = match attr::first_attr_value(outer_attrs, attr::AttrPath) {
             Some(d) => dir_path.join(d),
             None => {
                 let mod_name = token::interner_get(id.name).to_owned();

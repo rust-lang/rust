@@ -31,7 +31,7 @@ use syntax::visit;
 // Returns true if the given set of attributes contains the `#[inline]`
 // attribute.
 fn attributes_specify_inlining(attrs: &[ast::Attribute]) -> bool {
-    attr::contains_name(attrs, "inline")
+    attr::contains_attr(attrs, attr::AttrInline)
 }
 
 // Returns true if the given set of generics implies that the item it's
@@ -316,8 +316,7 @@ impl ReachableContext {
                     // Statics with insignificant addresses are not reachable
                     // because they're inlined specially into all other crates.
                     ast::item_static(..) => {
-                        if attr::contains_name(item.attrs,
-                                               "address_insignificant") {
+                        if attr::contains_attr(item.attrs, attr::AttrAddressInsignificant) {
                             self.reachable_symbols.remove(&search_item);
                         }
                     }

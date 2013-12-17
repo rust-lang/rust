@@ -605,7 +605,7 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
     fn visit_item(&mut self, item: @ast::item, _: ()) {
         // Do not check privacy inside items with the resolve_unexported
         // attribute. This is used for the test runner.
-        if attr::contains_name(item.attrs, "!resolve_unexported") {
+        if attr::contains_attr(item.attrs, attr::AttrResolveUnexported) {
             return;
         }
 

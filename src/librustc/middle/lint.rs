@@ -492,9 +492,11 @@ impl<'a> Context<'a> {
 
         let old_is_doc_hidden = self.is_doc_hidden;
         self.is_doc_hidden = self.is_doc_hidden ||
-            attrs.iter().any(|attr| ("doc" == attr.name() && match attr.meta_item_list()
-                                     { None => false,
-                                       Some(l) => attr::contains_name(l, "hidden") }));
+            attrs.iter().any(|attr| (attr.is_defined_attr(attr::AttrDoc) &&
+                                     match attr.meta_item_list() {
+                                         None => false,
+                                         Some(l) => attr::contains_name(l, "hidden")
+                                     }));
 
         f(self);
 
@@ -831,80 +833,38 @@ fn check_heap_item(cx: &Context, it: &ast::item) {
     }
 }
 
-static crate_attrs: &'static [&'static str] = &[
-    "crate_type", "feature", "no_uv", "no_main", "no_std", "pkgid",
-    "desc", "comment", "license", "copyright", // not used in rustc now
-];
-
-
-static obsolete_attrs: &'static [(&'static str, &'static str)] = &[
-    ("abi", "Use `extern \"abi\" fn` instead"),
-    ("auto_encode", "Use `#[deriving(Encodable)]` instead"),
-    ("auto_decode", "Use `#[deriving(Decodable)]` instead"),
-    ("fast_ffi", "Remove it"),
-    ("fixed_stack_segment", "Remove it"),
-    ("rust_stack", "Remove it"),
-];
-
-static other_attrs: &'static [&'static str] = &[
-    // item-level
-    "address_insignificant", // can be crate-level too
-    "thread_local", // for statics
-    "allow", "deny", "forbid", "warn", // lint options
-    "deprecated", "experimental", "unstable", "stable", "locked", "frozen", //item stability
-    "crate_map", "cfg", "doc", "export_name", "link_section", "no_freeze",
-    "no_mangle", "no_send", "static_assert", "unsafe_no_drop_flag",
-    "packed", "simd", "repr", "deriving", "unsafe_destructor", "link",
-
-    //mod-level
-    "path", "link_name", "link_args", "nolink", "macro_escape", "no_implicit_prelude",
-
-    // fn-level
-    "test", "bench", "should_fail", "ignore", "inline", "lang", "main", "start",
-    "no_split_stack", "cold",
-
-    // internal attribute: bypass privacy inside items
-    "!resolve_unexported",
-];
-
-fn check_crate_attrs_usage(cx: &Context, attrs: &[ast::Attribute]) {
-
-    for attr in attrs.iter() {
-        let name = attr.node.value.name();
-        let mut iter = crate_attrs.iter().chain(other_attrs.iter());
-        if !iter.any(|other_attr| { name.equiv(other_attr) }) {
-            cx.span_lint(attribute_usage, attr.span, "unknown crate attribute");
-        }
-    }
-}
-
-fn check_attrs_usage(cx: &Context, attrs: &[ast::Attribute]) {
+fn check_attrs_usage(cx: &Context, attrs: &[ast::Attribute], is_crate: bool) {
     // check if element has crate-level, obsolete, or any unknown attributes.
 
     for attr in attrs.iter() {
-        let name = attr.node.value.name();
-        for crate_attr in crate_attrs.iter() {
-            if name.equiv(crate_attr) {
-                let msg = match attr.node.style {
-                    ast::AttrOuter => "crate-level attribute should be an inner attribute: \
-                                       add semicolon at end",
-                    ast::AttrInner => "crate-level attribute should be in the root module",
-                };
-                cx.span_lint(attribute_usage, attr.span, msg);
-                return;
+        match attr.to_defined_attr() {
+            Some(def_attr) => {
+                if !is_crate && def_attr.is_crate_attr() {
+                    let msg = match attr.node.style {
+                        ast::AttrOuter => "crate-level attribute should be an inner attribute: \
+                                           add semicolon at end",
+                        ast::AttrInner => "crate-level attribute should be in the root module",
+                    };
+                    cx.span_lint(attribute_usage, attr.span, msg);
+                    continue;
+                }
+                if def_attr.is_obsolete() {
+                    let msg = match def_attr {
+                        attr::AttrAbi => "Use `extern \"abi\" fn` instead",
+                        attr::AttrAutoEncode => "Use `#[deriving(Encodable)]` instead",
+                        attr::AttrAutoDecode => "Use `#[deriving(Decodable)]` instead",
+                        attr::AttrFastFfi | attr::AttrFixedStackSegment |
+                        attr::AttrRustStack => "Remove it",
+                        _ => fail!(),
+                    };
+                    cx.span_lint(attribute_usage, attr.span,
+                                 format!("obsolete attribute: {:s}", msg));
+                    continue;
+                }
             }
-        }
-
-        for &(obs_attr, obs_alter) in obsolete_attrs.iter() {
-            if name.equiv(&obs_attr) {
-                cx.span_lint(attribute_usage, attr.span,
-                             format!("obsolete attribute: {:s}", obs_alter));
-                return;
+            None => {
+                cx.span_lint(attribute_usage, attr.span, "unknown attribute");
             }
-        }
-
-        if !other_attrs.iter().any(|other_attr| { name.equiv(other_attr) }) {
-            cx.span_lint(attribute_usage, attr.span, "unknown attribute");
         }
     }
 }
@@ -1110,13 +1070,7 @@ fn check_missing_doc_attrs(cx: &Context,
         _ => ()
     }
 
-    let has_doc = attrs.iter().any(|a| {
-        match a.node.value.node {
-            ast::MetaNameValue(ref name, _) if "doc" == *name => true,
-            _ => false
-        }
-    });
-    if !has_doc {
+    if !attr::contains_attr(attrs, attr::AttrDoc) {
         cx.span_lint(missing_doc, sp,
                      format!("missing documentation for {}", desc));
     }
@@ -1282,7 +1236,7 @@ impl<'a> Visitor<()> for Context<'a> {
             check_item_non_uppercase_statics(cx, it);
             check_heap_item(cx, it);
             check_missing_doc_item(cx, it);
-            check_attrs_usage(cx, it.attrs);
+            check_attrs_usage(cx, it.attrs, false);
 
             cx.visit_ids(|v| v.visit_item(it, ()));
 
@@ -1292,14 +1246,14 @@ impl<'a> Visitor<()> for Context<'a> {
 
     fn visit_foreign_item(&mut self, it: @ast::foreign_item, _: ()) {
         self.with_lint_attrs(it.attrs, |cx| {
-            check_attrs_usage(cx, it.attrs);
+            check_attrs_usage(cx, it.attrs, false);
             visit::walk_foreign_item(cx, it, ());
         })
     }
 
     fn visit_view_item(&mut self, i: &ast::view_item, _: ()) {
         self.with_lint_attrs(i.attrs, |cx| {
-            check_attrs_usage(cx, i.attrs);
+            check_attrs_usage(cx, i.attrs, false);
             visit::walk_view_item(cx, i, ());
         })
     }
@@ -1353,7 +1307,7 @@ impl<'a> Visitor<()> for Context<'a> {
             visit::fk_method(_, _, m) => {
                 self.with_lint_attrs(m.attrs, |cx| {
                     check_missing_doc_method(cx, m);
-                    check_attrs_usage(cx, m.attrs);
+                    check_attrs_usage(cx, m.attrs, false);
 
                     cx.visit_ids(|v| {
                         v.visit_fn(fk, decl, body, span, id, ());
@@ -1369,7 +1323,7 @@ impl<'a> Visitor<()> for Context<'a> {
     fn visit_ty_method(&mut self, t: &ast::TypeMethod, _: ()) {
         self.with_lint_attrs(t.attrs, |cx| {
             check_missing_doc_ty_method(cx, t);
-            check_attrs_usage(cx, t.attrs);
+            check_attrs_usage(cx, t.attrs, false);
 
             visit::walk_ty_method(cx, t, ());
         })
@@ -1390,7 +1344,7 @@ impl<'a> Visitor<()> for Context<'a> {
     fn visit_struct_field(&mut self, s: &ast::struct_field, _: ()) {
         self.with_lint_attrs(s.node.attrs, |cx| {
             check_missing_doc_struct_field(cx, s);
-            check_attrs_usage(cx, s.node.attrs);
+            check_attrs_usage(cx, s.node.attrs, false);
 
             visit::walk_struct_field(cx, s, ());
         })
@@ -1399,7 +1353,7 @@ impl<'a> Visitor<()> for Context<'a> {
     fn visit_variant(&mut self, v: &ast::variant, g: &ast::Generics, _: ()) {
         self.with_lint_attrs(v.node.attrs, |cx| {
             check_missing_doc_variant(cx, v);
-            check_attrs_usage(cx, v.node.attrs);
+            check_attrs_usage(cx, v.node.attrs, false);
 
             visit::walk_variant(cx, v, g, ());
         })
@@ -1453,7 +1407,7 @@ pub fn check_crate(tcx: ty::ctxt,
             visit::walk_crate(v, crate, ());
         });
 
-        check_crate_attrs_usage(cx, crate.attrs);
+        check_attrs_usage(cx, crate.attrs, true);
         // since the root module isn't visited as an item (because it isn't an item), warn for it
         // here.
         check_missing_doc_attrs(cx, None, crate.attrs, crate.span, "crate");

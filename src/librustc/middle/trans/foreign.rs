@@ -733,10 +733,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: @mut CrateContext,
 // the massive simplifications that have occurred.
 
 pub fn link_name(ccx: &CrateContext, i: @ast::foreign_item) -> @str {
-     match attr::first_attr_value_str_by_name(i.attrs, "link_name") {
-        None => ccx.sess.str_of(i.ident),
-        Some(ln) => ln,
-    }
+     attr::first_attr_value(i.attrs, attr::AttrLinkName).unwrap_or(ccx.sess.str_of(i.ident))
 }
 
 fn foreign_signature(ccx: &mut CrateContext, fn_sig: &ty::FnSig, arg_tys: &[ty::t])
