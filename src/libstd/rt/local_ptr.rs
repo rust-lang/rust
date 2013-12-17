@@ -77,10 +77,9 @@ pub unsafe fn borrow<T>() -> Borrowed<T> {
 /// it wherever possible.
 #[cfg(not(windows), not(target_os = "android"))]
 pub mod compiled {
-    #[cfg(not(test))]
-    use libc::c_void;
     use cast;
     use option::{Option, Some, None};
+    #[cfg(not(test))] use libc::c_void;
 
     #[cfg(test)]
     pub use realstd::rt::shouldnt_be_public::RT_TLS_PTR;

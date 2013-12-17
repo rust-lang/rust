@@ -152,14 +152,13 @@ mod tests {
     use super::*;
     use rt::test::*;
     use io::*;
-    use rt::comm::oneshot;
 
     fn smalltest(server: proc(UnixStream), client: proc(UnixStream)) {
         do run_in_mt_newsched_task {
             let path1 = next_test_unix();
             let path2 = path1.clone();
-            let (port, chan) = oneshot();
             let (client, server) = (client, server);
+            let (port, chan) = Chan::new();
 
             do spawntask {
                 let mut acceptor = UnixListener::bind(&path1).listen();
@@ -167,10 +166,8 @@ mod tests {
                 server(acceptor.accept().unwrap());
             }
 
-            do spawntask {
-                port.recv();
-                client(UnixStream::connect(&path2).unwrap());
-            }
+            port.recv();
+            client(UnixStream::connect(&path2).unwrap());
         }
     }
 
@@ -251,7 +248,7 @@ mod tests {
             let times = 10;
             let path1 = next_test_unix();
             let path2 = path1.clone();
-            let (port, chan) = oneshot();
+            let (port, chan) = Chan::new();
 
             do spawntask {
                 let mut acceptor = UnixListener::bind(&path1).listen();
@@ -264,13 +261,11 @@ mod tests {
                 })
             }
 
-            do spawntask {
-                port.recv();
-                times.times(|| {
-                    let mut stream = UnixStream::connect(&path2);
-                    stream.write([100]);
-                })
-            }
+            port.recv();
+            times.times(|| {
+                let mut stream = UnixStream::connect(&path2);
+                stream.write([100]);
+            })
         }
     }
 

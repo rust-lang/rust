@@ -12,7 +12,7 @@ use std::ptr;
 use std::task;
 
 pub fn main() {
-    let (p, ch) = stream::<uint>();
+    let (p, ch) = Chan::<uint>::new();
 
     let x = ~1;
     let x_in_parent = ptr::to_unsafe_ptr(&(*x)) as uint;

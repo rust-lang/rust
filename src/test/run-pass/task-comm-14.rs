@@ -10,19 +10,17 @@
 
 // xfail-fast
 
-use std::comm;
 use std::task;
 
 pub fn main() {
-    let (po, ch) = comm::stream();
-    let ch = comm::SharedChan::new(ch);
+    let (po, ch) = SharedChan::new();
 
     // Spawn 10 tasks each sending us back one int.
     let mut i = 10;
     while (i > 0) {
         info!("{}", i);
         let ch = ch.clone();
-        task::spawn({let i = i; proc() child(i, &ch)});
+        task::spawn({let i = i; proc() { child(i, &ch) }});
         i = i - 1;
     }
 
@@ -39,7 +37,7 @@ pub fn main() {
     info!("main thread exiting");
 }
 
-fn child(x: int, ch: &comm::SharedChan<int>) {
+fn child(x: int, ch: &SharedChan<int>) {
     info!("{}", x);
     ch.send(x);
 }

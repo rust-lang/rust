@@ -24,9 +24,9 @@ fn ping_pong_bench(n: uint, m: uint) {
     // Create pairs of tasks that pingpong back and forth.
     fn run_pair(n: uint) {
         // Create a stream A->B
-        let (pa,ca) = stream::<()>();
+        let (pa,ca) = Chan::<()>::new();
         // Create a stream B->A
-        let (pb,cb) = stream::<()>();
+        let (pb,cb) = Chan::<()>::new();
 
         do spawntask_later() || {
             let chan = ca;

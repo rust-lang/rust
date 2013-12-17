@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::comm::{SharedChan, stream};
 use std::task;
 
 fn child(c: &SharedChan<~uint>, i: uint) {
@@ -16,13 +15,14 @@ fn child(c: &SharedChan<~uint>, i: uint) {
 }
 
 pub fn main() {
-    let (p, ch) = stream();
-    let ch = SharedChan::new(ch);
+    let (p, ch) = SharedChan::new();
     let n = 100u;
     let mut expected = 0u;
     for i in range(0u, n) {
         let ch = ch.clone();
-        task::spawn(proc() child(&ch, i) );
+        task::spawn(proc() {
+            child(&ch, i)
+        });
         expected += i;
     }
 

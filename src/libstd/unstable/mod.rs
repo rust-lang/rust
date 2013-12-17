@@ -10,10 +10,7 @@
 
 #[doc(hidden)];
 
-use comm::{GenericChan, GenericPort};
-use comm;
 use prelude::*;
-use task;
 use libc::uintptr_t;
 
 pub mod dynamic_lib;
@@ -38,15 +35,7 @@ a normal large stack.
 */
 pub fn run_in_bare_thread(f: proc()) {
     use rt::thread::Thread;
-
-    let (port, chan) = comm::stream();
-    // FIXME #4525: Unfortunate that this creates an extra scheduler but it's
-    // necessary since rust_raw_thread_join is blocking
-    do task::spawn_sched(task::SingleThreaded) {
-        Thread::start(f).join();
-        chan.send(());
-    }
-    port.recv();
+    Thread::start(f).join()
 }
 
 #[test]

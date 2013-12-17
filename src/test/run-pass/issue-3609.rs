@@ -14,6 +14,7 @@ enum Msg
 fn foo(name: ~str, samples_chan: Chan<Msg>) {
     do task::spawn
     {
+        let mut samples_chan = samples_chan;
         let callback: SamplesFn = proc(buffer) {
             for i in range(0u, buffer.len()) {
                 error!("{}: {}", i, buffer[i])

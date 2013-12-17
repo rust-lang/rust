@@ -20,21 +20,22 @@ use prelude::*;
 use borrow;
 use cast::transmute;
 use cleanup;
+use io::Writer;
 use libc::{c_void, uintptr_t, c_char, size_t};
 use local_data;
 use option::{Option, Some, None};
 use rt::borrowck::BorrowRecord;
 use rt::borrowck;
-use rt::context::Context;
 use rt::context;
+use rt::context::Context;
 use rt::env;
-use io::Writer;
 use rt::kill::Death;
 use rt::local::Local;
 use rt::logging::StdErrLogger;
 use rt::sched::{Scheduler, SchedHandle};
 use rt::stack::{StackSegment, StackPool};
 use send_str::SendStr;
+use task::TaskResult;
 use unstable::finally::Finally;
 use unstable::mutex::Mutex;
 
@@ -91,46 +92,17 @@ pub enum SchedHome {
 pub struct GarbageCollector;
 pub struct LocalStorage(Option<local_data::Map>);
 
-/// Represents the reason for the current unwinding process
-pub enum UnwindResult {
-    /// The task is ending successfully
-    Success,
-
-    /// The Task is failing with reason `~Any`
-    Failure(~Any),
-}
-
-impl UnwindResult {
-    /// Returns `true` if this `UnwindResult` is a failure
-    #[inline]
-    pub fn is_failure(&self) -> bool {
-        match *self {
-            Success => false,
-            Failure(_) => true
-        }
-    }
-
-    /// Returns `true` if this `UnwindResult` is a success
-    #[inline]
-    pub fn is_success(&self) -> bool {
-        match *self {
-            Success => true,
-            Failure(_) => false
-        }
-    }
-}
-
 pub struct Unwinder {
     unwinding: bool,
     cause: Option<~Any>
 }
 
 impl Unwinder {
-    fn to_unwind_result(&mut self) -> UnwindResult {
+    fn result(&mut self) -> TaskResult {
         if self.unwinding {
-            Failure(self.cause.take().unwrap())
+            Err(self.cause.take().unwrap())
         } else {
-            Success
+            Ok(())
         }
     }
 }
@@ -327,7 +299,7 @@ impl Task {
         // Cleanup the dynamic borrowck debugging info
         borrowck::clear_task_borrow_list();
 
-        self.death.collect_failure(self.unwinder.to_unwind_result());
+        self.death.collect_failure(self.unwinder.result());
         self.destroyed = true;
     }
 
@@ -692,6 +664,7 @@ pub fn begin_unwind<M: Any + Send>(msg: M, file: &'static str, line: uint) -> ! 
 mod test {
     use super::*;
     use rt::test::*;
+    use prelude::*;
 
     #[test]
     fn local_heap() {
@@ -745,22 +718,9 @@ mod test {
     }
 
     #[test]
-    fn comm_oneshot() {
-        use comm::*;
-
-        do run_in_newsched_task {
-            let (port, chan) = oneshot();
-            chan.send(10);
-            assert!(port.recv() == 10);
-        }
-    }
-
-    #[test]
     fn comm_stream() {
-        use comm::*;
-
         do run_in_newsched_task() {
-            let (port, chan) = stream();
+            let (port, chan) = Chan::new();
             chan.send(10);
             assert!(port.recv() == 10);
         }
@@ -768,11 +728,8 @@ mod test {
 
     #[test]
     fn comm_shared_chan() {
-        use comm::*;
-
         do run_in_newsched_task() {
-            let (port, chan) = stream();
-            let chan = SharedChan::new(chan);
+            let (port, chan) = SharedChan::new();
             chan.send(10);
             assert!(port.recv() == 10);
         }

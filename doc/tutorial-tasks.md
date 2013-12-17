@@ -121,7 +121,7 @@ receiving messages. Pipes are low-level communication building-blocks and so
 come in a variety of forms, each one appropriate for a different use case. In
 what follows, we cover the most commonly used varieties.
 
-The simplest way to create a pipe is to use the `comm::stream`
+The simplest way to create a pipe is to use `Chan::new`
 function to create a `(Port, Chan)` pair. In Rust parlance, a *channel*
 is a sending endpoint of a pipe, and a *port* is the receiving
 endpoint. Consider the following example of calculating two results
@@ -129,9 +129,8 @@ concurrently:
 
 ~~~~
 # use std::task::spawn;
-# use std::comm::{stream, Port, Chan};
 
-let (port, chan): (Port<int>, Chan<int>) = stream();
+let (port, chan): (Port<int>, Chan<int>) = Chan::new();
 
 do spawn || {
     let result = some_expensive_computation();
@@ -150,8 +149,7 @@ stream for sending and receiving integers (the left-hand side of the `let`,
 a tuple into its component parts).
 
 ~~~~
-# use std::comm::{stream, Chan, Port};
-let (port, chan): (Port<int>, Chan<int>) = stream();
+let (port, chan): (Port<int>, Chan<int>) = Chan::new();
 ~~~~
 
 The child task will use the channel to send data to the parent task,
@@ -160,9 +158,8 @@ spawns the child task.
 
 ~~~~
 # use std::task::spawn;
-# use std::comm::stream;
 # fn some_expensive_computation() -> int { 42 }
-# let (port, chan) = stream();
+# let (port, chan) = Chan::new();
 do spawn || {
     let result = some_expensive_computation();
     chan.send(result);
@@ -180,25 +177,23 @@ computation, then waits for the child's result to arrive on the
 port:
 
 ~~~~
-# use std::comm::{stream};
 # fn some_other_expensive_computation() {}
-# let (port, chan) = stream::<int>();
+# let (port, chan) = Chan::<int>::new();
 # chan.send(0);
 some_other_expensive_computation();
 let result = port.recv();
 ~~~~
 
-The `Port` and `Chan` pair created by `stream` enables efficient communication
-between a single sender and a single receiver, but multiple senders cannot use
-a single `Chan`, and multiple receivers cannot use a single `Port`.  What if our
-example needed to compute multiple results across a number of tasks? The
-following program is ill-typed:
+The `Port` and `Chan` pair created by `Chan::new` enables efficient
+communication between a single sender and a single receiver, but multiple
+senders cannot use a single `Chan`, and multiple receivers cannot use a single
+`Port`.  What if our example needed to compute multiple results across a number
+of tasks? The following program is ill-typed:
 
 ~~~ {.xfail-test}
 # use std::task::{spawn};
-# use std::comm::{stream, Port, Chan};
 # fn some_expensive_computation() -> int { 42 }
-let (port, chan) = stream();
+let (port, chan) = Chan::new();
 
 do spawn {
     chan.send(some_expensive_computation());
@@ -216,10 +211,8 @@ Instead we can use a `SharedChan`, a type that allows a single
 
 ~~~
 # use std::task::spawn;
-# use std::comm::{stream, SharedChan};
 
-let (port, chan) = stream();
-let chan = SharedChan::new(chan);
+let (port, chan) = SharedChan::new();
 
 for init_val in range(0u, 3) {
     // Create a new channel handle to distribute to the child task
@@ -238,23 +231,22 @@ Here we transfer ownership of the channel into a new `SharedChan` value.  Like
 as an *affine* or *linear* type). Unlike with `Chan`, though, the programmer
 may duplicate a `SharedChan`, with the `clone()` method.  A cloned
 `SharedChan` produces a new handle to the same channel, allowing multiple
-tasks to send data to a single port.  Between `spawn`, `stream` and
+tasks to send data to a single port.  Between `spawn`, `Chan` and
 `SharedChan`, we have enough tools to implement many useful concurrency
 patterns.
 
 Note that the above `SharedChan` example is somewhat contrived since
-you could also simply use three `stream` pairs, but it serves to
+you could also simply use three `Chan` pairs, but it serves to
 illustrate the point. For reference, written with multiple streams, it
 might look like the example below.
 
 ~~~
 # use std::task::spawn;
-# use std::comm::stream;
 # use std::vec;
 
 // Create a vector of ports, one for each child task
 let ports = vec::from_fn(3, |init_val| {
-    let (port, chan) = stream();
+    let (port, chan) = Chan::new();
     do spawn {
         chan.send(some_expensive_computation(init_val));
     }
@@ -341,7 +333,7 @@ fn main() {
     let numbers_arc = Arc::new(numbers);
 
     for num in range(1u, 10) {
-        let (port, chan)  = stream();
+        let (port, chan)  = Chan::new();
         chan.send(numbers_arc.clone());
 
         do spawn {
@@ -370,7 +362,7 @@ and a clone of it is sent to each task
 # use std::rand;
 # let numbers=vec::from_fn(1000000, |_| rand::random::<f64>());
 # let numbers_arc = Arc::new(numbers);
-# let (port, chan)  = stream();
+# let (port, chan)  = Chan::new();
 chan.send(numbers_arc.clone());
 ~~~
 copying only the wrapper and not its contents.
@@ -382,7 +374,7 @@ Each task recovers the underlying data by
 # use std::rand;
 # let numbers=vec::from_fn(1000000, |_| rand::random::<f64>());
 # let numbers_arc=Arc::new(numbers);
-# let (port, chan)  = stream();
+# let (port, chan)  = Chan::new();
 # chan.send(numbers_arc.clone());
 # let local_arc : Arc<~[f64]> = port.recv();
 let task_numbers = local_arc.get();
@@ -499,7 +491,7 @@ Here is the code for the parent task:
 # }
 # fn main() {
 
-let (from_child, to_child) = DuplexStream();
+let (from_child, to_child) = DuplexStream::new();
 
 do spawn {
     stringifier(&to_child);

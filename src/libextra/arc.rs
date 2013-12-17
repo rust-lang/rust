@@ -597,7 +597,6 @@ mod tests {
 
     use arc::*;
 
-    use std::comm;
     use std::task;
 
     #[test]
@@ -605,7 +604,7 @@ mod tests {
         let v = ~[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
         let arc_v = Arc::new(v);
 
-        let (p, c) = comm::stream();
+        let (p, c) = Chan::new();
 
         do task::spawn {
             let arc_v: Arc<~[int]> = p.recv();
@@ -626,7 +625,7 @@ mod tests {
     fn test_mutex_arc_condvar() {
         let arc = ~MutexArc::new(false);
         let arc2 = ~arc.clone();
-        let (p,c) = comm::oneshot();
+        let (p,c) = Chan::new();
         do task::spawn {
             // wait until parent gets in
             p.recv();
@@ -636,9 +635,8 @@ mod tests {
             })
         }
 
-        let mut c = Some(c);
         arc.access_cond(|state, cond| {
-            c.take_unwrap().send(());
+            c.send(());
             assert!(!*state);
             while !*state {
                 cond.wait();
@@ -650,7 +648,7 @@ mod tests {
     fn test_arc_condvar_poison() {
         let arc = ~MutexArc::new(1);
         let arc2 = ~arc.clone();
-        let (p, c) = comm::stream();
+        let (p, c) = Chan::new();
 
         do spawn {
             let _ = p.recv();
@@ -687,7 +685,7 @@ mod tests {
     pub fn test_mutex_arc_unwrap_poison() {
         let arc = MutexArc::new(1);
         let arc2 = ~(&arc).clone();
-        let (p, c) = comm::stream();
+        let (p, c) = Chan::new();
         do task::spawn {
             arc2.access(|one| {
                 c.send(());
@@ -804,7 +802,7 @@ mod tests {
     fn test_rw_arc() {
         let arc = RWArc::new(0);
         let arc2 = arc.clone();
-        let (p, c) = comm::stream();
+        let (p, c) = Chan::new();
 
         do task::spawn {
             arc2.write(|num| {
@@ -832,7 +830,7 @@ mod tests {
         });
 
         // Wait for children to pass their asserts
-        for r in children.iter() {
+        for r in children.mut_iter() {
             r.recv();
         }
 
@@ -855,7 +853,7 @@ mod tests {
         // Reader tasks
         let mut reader_convos = ~[];
         10.times(|| {
-            let ((rp1, rc1), (rp2, rc2)) = (comm::stream(), comm::stream());
+            let ((rp1, rc1), (rp2, rc2)) = (Chan::new(), Chan::new());
             reader_convos.push((rc1, rp2));
             let arcn = arc.clone();
             do task::spawn {
@@ -869,7 +867,7 @@ mod tests {
 
         // Writer task
         let arc2 = arc.clone();
-        let ((wp1, wc1), (wp2, wc2)) = (comm::stream(), comm::stream());
+        let ((wp1, wc1), (wp2, wc2)) = (Chan::new(), Chan::new());
         do task::spawn || {
             wp1.recv();
             arc2.write_cond(|state, cond| {
@@ -897,14 +895,14 @@ mod tests {
                 assert_eq!(*state, 42);
                 *state = 31337;
                 // send to other readers
-                for &(ref rc, _) in reader_convos.iter() {
+                for &(ref mut rc, _) in reader_convos.mut_iter() {
                     rc.send(())
                 }
             });
             let read_mode = arc.downgrade(write_mode);
             read_mode.read(|state| {
                 // complete handshake with other readers
-                for &(_, ref rp) in reader_convos.iter() {
+                for &(_, ref mut rp) in reader_convos.mut_iter() {
                     rp.recv()
                 }
                 wc1.send(()); // tell writer to try again
@@ -926,7 +924,7 @@ mod tests {
         //     "blk(&Condvar { order: opt_lock, ..*cond })"
         // with just "blk(cond)".
         let x = RWArc::new(true);
-        let (wp, wc) = comm::stream();
+        let (wp, wc) = Chan::new();
 
         // writer task
         let xw = x.clone();
@@ -951,7 +949,7 @@ mod tests {
             });
             // make a reader task to trigger the "reader cloud lock" handoff
             let xr = x.clone();
-            let (rp, rc) = comm::stream();
+            let (rp, rc) = Chan::new();
             do task::spawn {
                 rc.send(());
                 xr.read(|_state| { })

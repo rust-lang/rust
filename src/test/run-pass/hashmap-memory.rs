@@ -21,7 +21,6 @@
 pub fn map(filename: ~str, emit: map_reduce::putter) { emit(filename, ~"1"); }
 
 mod map_reduce {
-    use std::comm::{stream, SharedChan};
     use std::hashmap::HashMap;
     use std::str;
     use std::task;
@@ -43,12 +42,13 @@ mod map_reduce {
     fn map_task(ctrl: SharedChan<ctrl_proto>, input: ~str) {
         let intermediates = @mut HashMap::new();
 
-        fn emit(im: &mut HashMap<~str, int>, ctrl: SharedChan<ctrl_proto>, key: ~str,
+        fn emit(im: &mut HashMap<~str, int>,
+                ctrl: SharedChan<ctrl_proto>, key: ~str,
                 _val: ~str) {
             if im.contains_key(&key) {
                 return;
             }
-            let (pp, cc) = stream();
+            let (pp, cc) = Chan::new();
             error!("sending find_reducer");
             ctrl.send(find_reducer(key.as_bytes().to_owned(), cc));
             error!("receiving");
@@ -63,8 +63,7 @@ mod map_reduce {
     }
 
     pub fn map_reduce(inputs: ~[~str]) {
-        let (ctrl_port, ctrl_chan) = stream();
-        let ctrl_chan = SharedChan::new(ctrl_chan);
+        let (ctrl_port, ctrl_chan) = SharedChan::new();
 
         // This task becomes the master control task. It spawns others
         // to do the rest.
@@ -81,10 +80,11 @@ mod map_reduce {
             match ctrl_port.recv() {
               mapper_done => { num_mappers -= 1; }
               find_reducer(k, cc) => {
-                let c = match reducers.find(&str::from_utf8_owned(k)) {
-                  Some(&_c) => _c,
-                  None => 0
-                };
+                let mut c;
+                match reducers.find(&str::from_utf8(k).to_owned()) {
+                  Some(&_c) => { c = _c; }
+                  None => { c = 0; }
+                }
                 cc.send(c);
               }
             }
