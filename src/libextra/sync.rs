@@ -329,7 +329,7 @@ impl Sem<~[WaitQueue]> {
  ****************************************************************************/
 
 /// A counting, blocking, bounded-waiting semaphore.
-struct Semaphore { priv sem: Sem<()> }
+pub struct Semaphore { priv sem: Sem<()> }
 
 
 impl Clone for Semaphore {
