@@ -66,7 +66,7 @@ syn keyword   rustEnumVariant Ok Err
 
 " Types and traits {{{3
 syn keyword rustTrait Any AnyOwnExt AnyRefExt AnyMutRefExt
-syn keyword rustTrait Ascii AsciiCast OwnedAsciiCast AsciiStr ToBytesConsume
+syn keyword rustTrait Ascii AsciiCast OwnedAsciiCast AsciiStr IntoBytes
 syn keyword rustTrait Bool
 syn keyword rustTrait ToCStr
 syn keyword rustTrait Char
@@ -94,7 +94,7 @@ syn keyword rustTrait Buffer Writer Reader Seek
 syn keyword rustTrait SendStr SendStrOwned SendStrStatic IntoSendStr
 syn keyword rustTrait Str StrVector StrSlice OwnedStr
 syn keyword rustTrait IterBytes
-syn keyword rustTrait ToStr ToStrConsume
+syn keyword rustTrait ToStr IntoStr
 syn keyword rustTrait CopyableTuple ImmutableTuple
 syn keyword rustTrait Tuple1 Tuple2 Tuple3 Tuple4
 syn keyword rustTrait Tuple5 Tuple6 Tuple7 Tuple8

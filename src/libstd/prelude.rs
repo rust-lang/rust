@@ -48,7 +48,7 @@ pub use io::stdio::{print, println};
 // Reexported types and traits
 
 pub use any::{Any, AnyOwnExt, AnyRefExt, AnyMutRefExt};
-pub use ascii::{Ascii, AsciiCast, OwnedAsciiCast, AsciiStr, ToBytesConsume};
+pub use ascii::{Ascii, AsciiCast, OwnedAsciiCast, AsciiStr, IntoBytes};
 pub use bool::Bool;
 pub use c_str::ToCStr;
 pub use char::Char;
@@ -74,7 +74,7 @@ pub use io::{Buffer, Writer, Reader, Seek};
 pub use send_str::{SendStr, SendStrOwned, SendStrStatic, IntoSendStr};
 pub use str::{Str, StrVector, StrSlice, OwnedStr};
 pub use to_bytes::IterBytes;
-pub use to_str::{ToStr, ToStrConsume};
+pub use to_str::{ToStr, IntoStr};
 pub use tuple::{CopyableTuple, ImmutableTuple};
 pub use tuple::{ImmutableTuple1, ImmutableTuple2, ImmutableTuple3, ImmutableTuple4};
 pub use tuple::{ImmutableTuple5, ImmutableTuple6, ImmutableTuple7, ImmutableTuple8};
