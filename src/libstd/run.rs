@@ -359,8 +359,7 @@ mod tests {
         let mut trapped_io_error = false;
         let opt_outp = io_error::cond.trap(|e| {
             trapped_io_error = true;
-            // FIXME(#11023)
-            assert_eq!(e.kind, if cfg!(windows) { OtherIoError } else { FileNotFound });
+            assert_eq!(e.kind, FileNotFound);
         }).inside(|| -> Option<run::ProcessOutput> {
             run::process_output("no-binary-by-this-name-should-exist", [])
         });
