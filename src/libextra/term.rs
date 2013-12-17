@@ -15,13 +15,11 @@
 
 use std::io::{Decorator, Writer};
 
-#[cfg(not(target_os = "win32"))] use std::os;
-#[cfg(not(target_os = "win32"))] use terminfo::*;
-#[cfg(not(target_os = "win32"))] use terminfo::searcher::open;
-#[cfg(not(target_os = "win32"))] use terminfo::parser::compiled::parse;
-#[cfg(not(target_os = "win32"))] use terminfo::parm::{expand, Number, Variables};
-
-// FIXME (#2807): Windows support.
+use std::os;
+use terminfo::*;
+use terminfo::searcher::open;
+use terminfo::parser::compiled::parse;
+use terminfo::parm::{expand, Number, Variables};
 
 pub mod color {
     pub type Color = u16;
@@ -74,7 +72,6 @@ pub mod attr {
     }
 }
 
-#[cfg(not(target_os = "win32"))]
 fn cap_for_attr(attr: attr::Attr) -> &'static str {
     match attr {
         attr::Bold               => "bold",
@@ -93,29 +90,24 @@ fn cap_for_attr(attr: attr::Attr) -> &'static str {
     }
 }
 
-#[cfg(not(target_os = "win32"))]
 pub struct Terminal<T> {
     priv num_colors: u16,
     priv out: T,
-    priv ti: ~TermInfo
+    priv ti: Option<~TermInfo>
 }
 
-#[cfg(target_os = "win32")]
-pub struct Terminal<T> {
-    priv num_colors: u16,
-    priv out: T,
-}
-
-#[cfg(not(target_os = "win32"))]
 impl<T: Writer> Terminal<T> {
     pub fn new(out: T) -> Result<Terminal<T>, ~str> {
-        let term = os::getenv("TERM");
-        if term.is_none() {
-            return Err(~"TERM environment variable undefined");
-        }
+        let term = match os::getenv("TERM") {
+            None => return Err(~"TERM environment variable undefined"),
+            Some(t) => t
+        };
 
-        let entry = open(term.unwrap());
+        let entry = open(term);
         if entry.is_err() {
+            if term == ~"cygwin" { // msys terminal
+                return Ok(Terminal {out: out, ti: None, num_colors: 16});
+            }
             return Err(entry.unwrap_err());
         }
 
@@ -130,8 +122,42 @@ impl<T: Writer> Terminal<T> {
                      inf.numbers.find_equiv(&("colors")).map_default(0, |&n| n)
                  } else { 0 };
 
-        return Ok(Terminal {out: out, ti: inf, num_colors: nc});
+        return Ok(Terminal {out: out, ti: Some(inf), num_colors: nc});
     }
+
+    /// Helper function, see fg and bg.
+    fn set_color(&mut self, color: color::Color, bg: bool) -> bool {
+        let color = self.dim_if_necessary(color);
+        if self.num_colors > color {
+            match self.ti {
+                None => {
+                    let number = if bg { color + 10 } else { color };
+                    let ansi = if number < 8 {
+                        format!("\x1b[{}m", 30 + number)
+                    } else {
+                        format!("\x1b[{};1m", 22 + number)
+                    };
+                    self.out.write(ansi.as_bytes());
+                    return true
+                },
+                Some(ref ti) => {
+                    let s = expand(*ti.strings.find_equiv(&(if bg {
+                        "setab"
+                    } else {
+                        "setaf"
+                    })).unwrap(), [Number(color as int)], &mut Variables::new());
+                    if s.is_ok() {
+                        self.out.write(s.unwrap());
+                        return true
+                    } else {
+                        warn!("{}", s.unwrap_err());
+                    }
+                }
+            }
+        }
+        false
+    }
+
     /// Sets the foreground color to the given color.
     ///
     /// If the color is a bright color, but the terminal only supports 8 colors,
@@ -139,19 +165,9 @@ impl<T: Writer> Terminal<T> {
     ///
     /// Returns true if the color was set, false otherwise.
     pub fn fg(&mut self, color: color::Color) -> bool {
-        let color = self.dim_if_necessary(color);
-        if self.num_colors > color {
-            let s = expand(*self.ti.strings.find_equiv(&("setaf")).unwrap(),
-                           [Number(color as int)], &mut Variables::new());
-            if s.is_ok() {
-                self.out.write(s.unwrap());
-                return true
-            } else {
-                warn!("{}", s.unwrap_err());
-            }
-        }
-        false
+        self.set_color(color, false)
     }
+
     /// Sets the background color to the given color.
     ///
     /// If the color is a bright color, but the terminal only supports 8 colors,
@@ -159,18 +175,7 @@ impl<T: Writer> Terminal<T> {
     ///
     /// Returns true if the color was set, false otherwise.
     pub fn bg(&mut self, color: color::Color) -> bool {
-        let color = self.dim_if_necessary(color);
-        if self.num_colors > color {
-            let s = expand(*self.ti.strings.find_equiv(&("setab")).unwrap(),
-                           [Number(color as int)], &mut Variables::new());
-            if s.is_ok() {
-                self.out.write(s.unwrap());
-                return true
-            } else {
-                warn!("{}", s.unwrap_err());
-            }
-        }
-        false
+        self.set_color(color, true)
     }
 
     /// Sets the given terminal attribute, if supported.
@@ -180,18 +185,23 @@ impl<T: Writer> Terminal<T> {
             attr::ForegroundColor(c) => self.fg(c),
             attr::BackgroundColor(c) => self.bg(c),
             _ => {
-                let cap = cap_for_attr(attr);
-                let parm = self.ti.strings.find_equiv(&cap);
-                if parm.is_some() {
-                    let s = expand(*parm.unwrap(), [], &mut Variables::new());
-                    if s.is_ok() {
-                        self.out.write(s.unwrap());
-                        return true
-                    } else {
-                        warn!("{}", s.unwrap_err());
+                match self.ti {
+                    None => return false,
+                    Some(ref ti) => {
+                        let cap = cap_for_attr(attr);
+                        let parm = ti.strings.find_equiv(&cap);
+                        if parm.is_some() {
+                            let s = expand(*parm.unwrap(), [], &mut Variables::new());
+                            if s.is_ok() {
+                                self.out.write(s.unwrap());
+                                return true
+                            } else {
+                                warn!("{}", s.unwrap_err());
+                            }
+                        }
+                        false
                     }
                 }
-                false
             }
         }
     }
@@ -204,33 +214,43 @@ impl<T: Writer> Terminal<T> {
             }
             _ => {
                 let cap = cap_for_attr(attr);
-                self.ti.strings.find_equiv(&cap).is_some()
+                match self.ti {
+                    None => return false,
+                    Some(ref ti) => ti.strings.find_equiv(&cap).is_some()
+                }
             }
         }
     }
 
     /// Resets all terminal attributes and color to the default.
     pub fn reset(&mut self) {
-        let mut cap = self.ti.strings.find_equiv(&("sgr0"));
-        if cap.is_none() {
-            // are there any terminals that have color/attrs and not sgr0?
-            // Try falling back to sgr, then op
-            cap = self.ti.strings.find_equiv(&("sgr"));
-            if cap.is_none() {
-                cap = self.ti.strings.find_equiv(&("op"));
+        match self.ti {
+            None => if self.num_colors > 0 {
+                self.out.write([27u8, 91u8, 51u8, 57u8, 59u8, 52u8, 57u8, 109u8])
+            },
+            Some(ref ti) => {
+                let mut cap = ti.strings.find_equiv(&("sgr0"));
+                if cap.is_none() {
+                    // are there any terminals that have color/attrs and not sgr0?
+                    // Try falling back to sgr, then op
+                    cap = ti.strings.find_equiv(&("sgr"));
+                    if cap.is_none() {
+                        cap = ti.strings.find_equiv(&("op"));
+                    }
+                }
+                let s = cap.map_default(Err(~"can't find terminfo capability `sgr0`"), |op| {
+                    expand(*op, [], &mut Variables::new())
+                });
+                if s.is_ok() {
+                    self.out.write(s.unwrap());
+                } else if self.num_colors > 0 {
+                    warn!("{}", s.unwrap_err());
+                } else {
+                    // if we support attributes but not color, it would be nice to still warn!()
+                    // but it's not worth testing all known attributes just for this.
+                    debug!("{}", s.unwrap_err());
+                }
             }
-        }
-        let s = cap.map_default(Err(~"can't find terminfo capability `sgr0`"), |op| {
-            expand(*op, [], &mut Variables::new())
-        });
-        if s.is_ok() {
-            self.out.write(s.unwrap());
-        } else if self.num_colors > 0 {
-            warn!("{}", s.unwrap_err());
-        } else {
-            // if we support attributes but not color, it would be nice to still warn!()
-            // but it's not worth testing all known attributes just for this.
-            debug!("{}", s.unwrap_err());
         }
     }
 
@@ -238,32 +258,6 @@ impl<T: Writer> Terminal<T> {
         if color >= self.num_colors && color >= 8 && color < 16 {
             color-8
         } else { color }
-    }
-}
-
-#[cfg(target_os = "win32")]
-impl<T: Writer> Terminal<T> {
-    pub fn new(out: T) -> Result<Terminal<T>, ~str> {
-        return Ok(Terminal {out: out, num_colors: 0});
-    }
-
-    pub fn fg(&mut self, _color: color::Color) -> bool {
-        false
-    }
-
-    pub fn bg(&mut self, _color: color::Color) -> bool {
-        false
-    }
-
-    pub fn attr(&mut self, _attr: attr::Attr) -> bool {
-        false
-    }
-
-    pub fn supports_attr(&self, _attr: attr::Attr) -> bool {
-        false
-    }
-
-    pub fn reset(&self) {
     }
 }
 
