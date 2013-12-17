@@ -894,9 +894,9 @@ pub fn C_cstr(cx: &mut CrateContext, s: @str) -> ValueRef {
             None => ()
         }
 
-        let sc = s.as_imm_buf(|buf, buflen| {
-            llvm::LLVMConstStringInContext(cx.llcx, buf as *c_char, buflen as c_uint, False)
-        });
+        let sc = llvm::LLVMConstStringInContext(cx.llcx,
+                                                s.as_ptr() as *c_char, s.len() as c_uint,
+                                                False);
 
         let gsym = token::gensym("str");
         let g = format!("str{}", gsym).with_c_str(|buf| {
