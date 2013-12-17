@@ -8,18 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*!
-
-Higher level communication abstractions.
-
-*/
+//! Higher level communication abstractions.
 
 #[allow(missing_doc)];
-
 
 use std::comm::{GenericChan, GenericSmartChan, GenericPort};
 use std::comm::{Chan, Port, Peekable};
 use std::comm;
+
+pub mod server;
 
 /// An extension of `pipes::stream` that allows both sending and receiving.
 pub struct DuplexStream<T, U> {
