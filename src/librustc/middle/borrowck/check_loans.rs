@@ -238,7 +238,7 @@ impl<'a> CheckLoanCtxt<'a> {
                              self.bccx.loan_path_to_str(new_loan.loan_path)));
                     self.bccx.span_note(
                         old_loan.span,
-                        format!("second borrow of `{}` as mutable occurs here",
+                        format!("previous borrow of `{}` as mutable occurs here",
                              self.bccx.loan_path_to_str(new_loan.loan_path)));
                     return false;
                 }
@@ -253,7 +253,7 @@ impl<'a> CheckLoanCtxt<'a> {
                              self.bccx.mut_to_str(old_loan.mutbl)));
                     self.bccx.span_note(
                         old_loan.span,
-                        format!("second borrow of `{}` occurs here",
+                        format!("previous borrow of `{}` occurs here",
                              self.bccx.loan_path_to_str(new_loan.loan_path)));
                     return false;
                 }
