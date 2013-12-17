@@ -405,13 +405,13 @@ pub fn expect<T:Clone>(sess: Session, opt: Option<T>, msg: || -> ~str) -> T {
 }
 
 pub fn building_library(options: &options, crate: &ast::Crate) -> bool {
+    if options.test { return false }
     for output in options.outputs.iter() {
         match *output {
             OutputExecutable => {}
             OutputStaticlib | OutputDylib | OutputRlib => return true
         }
     }
-    if options.test { return false }
     match syntax::attr::first_attr_value_str_by_name(crate.attrs, "crate_type") {
         Some(s) => "lib" == s || "rlib" == s || "dylib" == s || "staticlib" == s,
         _ => false
@@ -419,6 +419,11 @@ pub fn building_library(options: &options, crate: &ast::Crate) -> bool {
 }
 
 pub fn collect_outputs(options: &options, crate: &ast::Crate) -> ~[OutputStyle] {
+    // If we're generating a test executable, then ignore all other output
+    // styles at all other locations
+    if options.test {
+        return ~[OutputExecutable];
+    }
     let mut base = options.outputs.clone();
     let mut iter = crate.attrs.iter().filter_map(|a| {
         if "crate_type" == a.name() {
