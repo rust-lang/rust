@@ -10,7 +10,7 @@
 
 //! Operations on ASCII strings and characters.
 
-use to_str::{ToStr,ToStrConsume};
+use to_str::{ToStr,IntoStr};
 use str;
 use str::StrSlice;
 use str::OwnedStr;
@@ -294,7 +294,7 @@ impl<'a> AsciiStr for &'a [Ascii] {
     }
 }
 
-impl ToStrConsume for ~[Ascii] {
+impl IntoStr for ~[Ascii] {
     #[inline]
     fn into_str(self) -> ~str {
         unsafe { cast::transmute(self) }
@@ -309,12 +309,12 @@ impl IterBytes for Ascii {
 }
 
 /// Trait to convert to a owned byte array by consuming self
-pub trait ToBytesConsume {
+pub trait IntoBytes {
     /// Converts to a owned byte array by consuming self
     fn into_bytes(self) -> ~[u8];
 }
 
-impl ToBytesConsume for ~[Ascii] {
+impl IntoBytes for ~[Ascii] {
     fn into_bytes(self) -> ~[u8] {
         unsafe { cast::transmute(self) }
     }
