@@ -26,72 +26,72 @@
 
 // STACK BY VAL
 // debugger:finish
-// d ebugger:print self -- ignored for now because of issue #8512
-// c heck:$X = {100, -100.5}
+// debugger:print self
+// check:$4 = {100, -100.5}
 // debugger:print arg1
-// check:$4 = -3
+// check:$5 = -3
 // debugger:print arg2
-// check:$5 = -4
+// check:$6 = -4
 // debugger:continue
 
 // OWNED BY REF
 // debugger:finish
 // debugger:print *self
-// check:$6 = {200, -200.5}
+// check:$7 = {200, -200.5}
 // debugger:print arg1
-// check:$7 = -5
+// check:$8 = -5
 // debugger:print arg2
-// check:$8 = -6
+// check:$9 = -6
 // debugger:continue
 
 // OWNED BY VAL
 // debugger:finish
-// d ebugger:print self -- ignored for now because of issue #8512
-// c heck:$X = {200, -200.5}
+// debugger:print self
+// check:$10 = {200, -200.5}
 // debugger:print arg1
-// check:$9 = -7
+// check:$11 = -7
 // debugger:print arg2
-// check:$10 = -8
+// check:$12 = -8
 // debugger:continue
 
 // OWNED MOVED
 // debugger:finish
 // debugger:print *self
-// check:$11 = {200, -200.5}
+// check:$13 = {200, -200.5}
 // debugger:print arg1
-// check:$12 = -9
+// check:$14 = -9
 // debugger:print arg2
-// check:$13 = -10
+// check:$15 = -10
 // debugger:continue
 
 // MANAGED BY REF
 // debugger:finish
 // debugger:print *self
-// check:$14 = {300, -300.5}
+// check:$16 = {300, -300.5}
 // debugger:print arg1
-// check:$15 = -11
+// check:$17 = -11
 // debugger:print arg2
-// check:$16 = -12
+// check:$18 = -12
 // debugger:continue
 
 // MANAGED BY VAL
 // debugger:finish
-// d ebugger:print self -- ignored for now because of issue #8512
-// c heck:$X = {300, -300.5}
+// debugger:print self
+// check:$19 = {300, -300.5}
 // debugger:print arg1
-// check:$17 = -13
+// check:$20 = -13
 // debugger:print arg2
-// check:$18 = -14
+// check:$21 = -14
 // debugger:continue
 
 // MANAGED SELF
 // debugger:finish
 // debugger:print self->val
-// check:$19 = {300, -300.5}
+// check:$22 = {300, -300.5}
 // debugger:print arg1
-// check:$20 = -15
+// check:$23 = -15
 // debugger:print arg2
-// check:$21 = -16
+// check:$24 = -16
 // debugger:continue
 
 #[feature(managed_boxes)];
