@@ -23,7 +23,7 @@
 use driver::session::Session;
 use metadata::csearch::each_lang_item;
 use metadata::cstore::iter_crate_data;
-use middle::ty::{BuiltinBound, BoundFreeze, BoundSend, BoundSized};
+use middle::ty::{BuiltinBound, BoundFreeze, BoundPod, BoundSend, BoundSized};
 use syntax::ast;
 use syntax::ast_util::local_def;
 use syntax::attr::AttrMetaMethods;
@@ -83,6 +83,8 @@ impl LanguageItems {
             Some(BoundSend)
         } else if Some(id) == self.sized_trait() {
             Some(BoundSized)
+        } else if Some(id) == self.pod_trait() {
+            Some(BoundPod)
         } else {
             None
         }
@@ -206,56 +208,58 @@ pub fn collect_language_items(crate: &ast::Crate,
 }
 
 lets_do_this! {
-    There are 41 lang items.
+    There are 42 lang items.
 
 //  ID, Variant name,                    Name,                      Method name;
     0,  FreezeTraitLangItem,             "freeze",                  freeze_trait;
     1,  SendTraitLangItem,               "send",                    send_trait;
     2,  SizedTraitLangItem,              "sized",                   sized_trait;
+    3,  PodTraitLangItem,                "pod",                     pod_trait;
 
-    3,  DropTraitLangItem,               "drop",                    drop_trait;
+    4,  DropTraitLangItem,               "drop",                    drop_trait;
 
-    4,  AddTraitLangItem,                "add",                     add_trait;
-    5,  SubTraitLangItem,                "sub",                     sub_trait;
-    6,  MulTraitLangItem,                "mul",                     mul_trait;
-    7,  DivTraitLangItem,                "div",                     div_trait;
-    8,  RemTraitLangItem,                "rem",                     rem_trait;
-    9,  NegTraitLangItem,                "neg",                     neg_trait;
-    10, NotTraitLangItem,                "not",                     not_trait;
-    11, BitXorTraitLangItem,             "bitxor",                  bitxor_trait;
-    12, BitAndTraitLangItem,             "bitand",                  bitand_trait;
-    13, BitOrTraitLangItem,              "bitor",                   bitor_trait;
-    14, ShlTraitLangItem,                "shl",                     shl_trait;
-    15, ShrTraitLangItem,                "shr",                     shr_trait;
-    16, IndexTraitLangItem,              "index",                   index_trait;
+    5,  AddTraitLangItem,                "add",                     add_trait;
+    6,  SubTraitLangItem,                "sub",                     sub_trait;
+    7,  MulTraitLangItem,                "mul",                     mul_trait;
+    8,  DivTraitLangItem,                "div",                     div_trait;
+    9,  RemTraitLangItem,                "rem",                     rem_trait;
+    10, NegTraitLangItem,                "neg",                     neg_trait;
+    11, NotTraitLangItem,                "not",                     not_trait;
+    12, BitXorTraitLangItem,             "bitxor",                  bitxor_trait;
+    13, BitAndTraitLangItem,             "bitand",                  bitand_trait;
+    14, BitOrTraitLangItem,              "bitor",                   bitor_trait;
+    15, ShlTraitLangItem,                "shl",                     shl_trait;
+    16, ShrTraitLangItem,                "shr",                     shr_trait;
+    17, IndexTraitLangItem,              "index",                   index_trait;
 
-    17, EqTraitLangItem,                 "eq",                      eq_trait;
-    18, OrdTraitLangItem,                "ord",                     ord_trait;
+    18, EqTraitLangItem,                 "eq",                      eq_trait;
+    19, OrdTraitLangItem,                "ord",                     ord_trait;
 
-    19, StrEqFnLangItem,                 "str_eq",                  str_eq_fn;
-    20, UniqStrEqFnLangItem,             "uniq_str_eq",             uniq_str_eq_fn;
-    21, FailFnLangItem,                  "fail_",                   fail_fn;
-    22, FailBoundsCheckFnLangItem,       "fail_bounds_check",       fail_bounds_check_fn;
-    23, ExchangeMallocFnLangItem,        "exchange_malloc",         exchange_malloc_fn;
-    24, ClosureExchangeMallocFnLangItem, "closure_exchange_malloc", closure_exchange_malloc_fn;
-    25, ExchangeFreeFnLangItem,          "exchange_free",           exchange_free_fn;
-    26, MallocFnLangItem,                "malloc",                  malloc_fn;
-    27, FreeFnLangItem,                  "free",                    free_fn;
-    28, BorrowAsImmFnLangItem,           "borrow_as_imm",           borrow_as_imm_fn;
-    29, BorrowAsMutFnLangItem,           "borrow_as_mut",           borrow_as_mut_fn;
-    30, ReturnToMutFnLangItem,           "return_to_mut",           return_to_mut_fn;
-    31, CheckNotBorrowedFnLangItem,      "check_not_borrowed",      check_not_borrowed_fn;
-    32, StrDupUniqFnLangItem,            "strdup_uniq",             strdup_uniq_fn;
-    33, RecordBorrowFnLangItem,          "record_borrow",           record_borrow_fn;
-    34, UnrecordBorrowFnLangItem,        "unrecord_borrow",         unrecord_borrow_fn;
+    20, StrEqFnLangItem,                 "str_eq",                  str_eq_fn;
+    21, UniqStrEqFnLangItem,             "uniq_str_eq",             uniq_str_eq_fn;
+    22, FailFnLangItem,                  "fail_",                   fail_fn;
+    23, FailBoundsCheckFnLangItem,       "fail_bounds_check",       fail_bounds_check_fn;
+    24, ExchangeMallocFnLangItem,        "exchange_malloc",         exchange_malloc_fn;
+    25, ClosureExchangeMallocFnLangItem, "closure_exchange_malloc", closure_exchange_malloc_fn;
+    26, ExchangeFreeFnLangItem,          "exchange_free",           exchange_free_fn;
+    27, MallocFnLangItem,                "malloc",                  malloc_fn;
+    28, FreeFnLangItem,                  "free",                    free_fn;
+    29, BorrowAsImmFnLangItem,           "borrow_as_imm",           borrow_as_imm_fn;
+    30, BorrowAsMutFnLangItem,           "borrow_as_mut",           borrow_as_mut_fn;
+    31, ReturnToMutFnLangItem,           "return_to_mut",           return_to_mut_fn;
+    32, CheckNotBorrowedFnLangItem,      "check_not_borrowed",      check_not_borrowed_fn;
+    33, StrDupUniqFnLangItem,            "strdup_uniq",             strdup_uniq_fn;
+    34, RecordBorrowFnLangItem,          "record_borrow",           record_borrow_fn;
+    35, UnrecordBorrowFnLangItem,        "unrecord_borrow",         unrecord_borrow_fn;
 
-    35, StartFnLangItem,                 "start",                   start_fn;
+    36, StartFnLangItem,                 "start",                   start_fn;
 
-    36, TyDescStructLangItem,            "ty_desc",                 ty_desc;
-    37, TyVisitorTraitLangItem,          "ty_visitor",              ty_visitor;
-    38, OpaqueStructLangItem,            "opaque",                  opaque;
+    37, TyDescStructLangItem,            "ty_desc",                 ty_desc;
+    38, TyVisitorTraitLangItem,          "ty_visitor",              ty_visitor;
+    39, OpaqueStructLangItem,            "opaque",                  opaque;
 
-    39, EventLoopFactoryLangItem,        "event_loop_factory",      event_loop_factory;
+    40, EventLoopFactoryLangItem,        "event_loop_factory",      event_loop_factory;
 
-    40, TypeIdLangItem,                  "type_id",                 type_id;
+    41, TypeIdLangItem,                  "type_id",                 type_id;
 }
+

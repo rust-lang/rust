@@ -37,6 +37,9 @@ pub use ops::{Shl, Shr, Index};
 pub use option::{Option, Some, None};
 pub use result::{Result, Ok, Err};
 
+#[cfg(not(stage0))]
+pub use kinds::Pod;
+
 // Reexported functions
 pub use from_str::from_str;
 pub use iter::range;
