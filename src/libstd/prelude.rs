@@ -87,7 +87,7 @@ pub use vec::{OwnedVector, OwnedCopyableVector,OwnedEqVector, MutableVector};
 pub use vec::{Vector, VectorVector, CopyableVector, ImmutableVector};
 
 // Reexported runtime types
-pub use comm::{stream, Port, Chan, GenericChan, GenericSmartChan, GenericPort, Peekable};
+pub use comm::{Port, Chan, SharedChan};
 pub use task::spawn;
 
 /// Disposes of a value.

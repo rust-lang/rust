@@ -12,7 +12,6 @@
 
 extern mod extra;
 
-use std::comm::{stream, SharedChan};
 use std::option;
 use std::os;
 use std::task;
@@ -138,10 +137,8 @@ fn creature(
 fn rendezvous(nn: uint, set: ~[color]) {
 
     // these ports will allow us to hear from the creatures
-    let (from_creatures, to_rendezvous) = stream::<CreatureInfo>();
-    let to_rendezvous = SharedChan::new(to_rendezvous);
-    let (from_creatures_log, to_rendezvous_log) = stream::<~str>();
-    let to_rendezvous_log = SharedChan::new(to_rendezvous_log);
+    let (from_creatures, to_rendezvous) = SharedChan::<CreatureInfo>::new();
+    let (from_creatures_log, to_rendezvous_log) = SharedChan::<~str>::new();
 
     // these channels will be passed to the creatures so they can talk to us
 
@@ -154,7 +151,7 @@ fn rendezvous(nn: uint, set: ~[color]) {
             let col = *col;
             let to_rendezvous = to_rendezvous.clone();
             let to_rendezvous_log = to_rendezvous_log.clone();
-            let (from_rendezvous, to_creature) = stream();
+            let (from_rendezvous, to_creature) = Chan::new();
             do task::spawn {
                 creature(ii,
                          col,

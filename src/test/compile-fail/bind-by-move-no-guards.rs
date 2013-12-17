@@ -8,10 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::comm;
-
 fn main() {
-    let (p,c) = comm::stream();
+    let (p,c) = Chan::new();
     let x = Some(p);
     c.send(false);
     match x {

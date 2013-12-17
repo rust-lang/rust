@@ -107,8 +107,7 @@ mod test {
     use rt::test::*;
     use io::net::ip::{Ipv4Addr, SocketAddr};
     use io::*;
-    use option::{Some, None};
-    use rt::comm::oneshot;
+    use prelude::*;
 
     #[test]  #[ignore]
     fn bind_error() {
@@ -131,7 +130,7 @@ mod test {
         do run_in_mt_newsched_task {
             let server_ip = next_test_ip4();
             let client_ip = next_test_ip4();
-            let (port, chan) = oneshot();
+            let (port, chan) = Chan::new();
 
             do spawntask {
                 match UdpSocket::bind(server_ip) {
@@ -151,14 +150,12 @@ mod test {
                 }
             }
 
-            do spawntask {
-                match UdpSocket::bind(client_ip) {
-                    Some(ref mut client) => {
-                        port.recv();
-                        client.sendto([99], server_ip)
-                    }
-                    None => fail!()
+            match UdpSocket::bind(client_ip) {
+                Some(ref mut client) => {
+                    port.recv();
+                    client.sendto([99], server_ip)
                 }
+                None => fail!()
             }
         }
     }
@@ -168,7 +165,7 @@ mod test {
         do run_in_mt_newsched_task {
             let server_ip = next_test_ip6();
             let client_ip = next_test_ip6();
-            let (port, chan) = oneshot();
+            let (port, chan) = Chan::new();
 
             do spawntask {
                 match UdpSocket::bind(server_ip) {
@@ -188,14 +185,12 @@ mod test {
                 }
             }
 
-            do spawntask {
-                match UdpSocket::bind(client_ip) {
-                    Some(ref mut client) => {
-                        port.recv();
-                        client.sendto([99], server_ip)
-                    }
-                    None => fail!()
+            match UdpSocket::bind(client_ip) {
+                Some(ref mut client) => {
+                    port.recv();
+                    client.sendto([99], server_ip)
                 }
+                None => fail!()
             }
         }
     }
@@ -205,7 +200,7 @@ mod test {
         do run_in_mt_newsched_task {
             let server_ip = next_test_ip4();
             let client_ip = next_test_ip4();
-            let (port, chan) = oneshot();
+            let (port, chan) = Chan::new();
 
             do spawntask {
                 match UdpSocket::bind(server_ip) {
@@ -226,16 +221,14 @@ mod test {
                 }
             }
 
-            do spawntask {
-                match UdpSocket::bind(client_ip) {
-                    Some(client) => {
-                        let client = ~client;
-                        let mut stream = client.connect(server_ip);
-                        port.recv();
-                        stream.write([99]);
-                    }
-                    None => fail!()
+            match UdpSocket::bind(client_ip) {
+                Some(client) => {
+                    let client = ~client;
+                    let mut stream = client.connect(server_ip);
+                    port.recv();
+                    stream.write([99]);
                 }
+                None => fail!()
             }
         }
     }
@@ -245,7 +238,7 @@ mod test {
         do run_in_mt_newsched_task {
             let server_ip = next_test_ip6();
             let client_ip = next_test_ip6();
-            let (port, chan) = oneshot();
+            let (port, chan) = Chan::new();
 
             do spawntask {
                 match UdpSocket::bind(server_ip) {
@@ -266,16 +259,14 @@ mod test {
                 }
             }
 
-            do spawntask {
-                match UdpSocket::bind(client_ip) {
-                    Some(client) => {
-                        let client = ~client;
-                        let mut stream = client.connect(server_ip);
-                        port.recv();
-                        stream.write([99]);
-                    }
-                    None => fail!()
+            match UdpSocket::bind(client_ip) {
+                Some(client) => {
+                    let client = ~client;
+                    let mut stream = client.connect(server_ip);
+                    port.recv();
+                    stream.write([99]);
                 }
+                None => fail!()
             }
         }
     }

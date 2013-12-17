@@ -65,7 +65,7 @@ use ptr::RawPtr;
 use rt::local::Local;
 use rt::sched::{Scheduler, Shutdown};
 use rt::sleeper_list::SleeperList;
-use rt::task::UnwindResult;
+use task::TaskResult;
 use rt::task::{Task, SchedTask, GreenTask, Sched};
 use send_str::SendStrStatic;
 use unstable::atomics::{AtomicInt, AtomicBool, SeqCst};
@@ -91,8 +91,6 @@ pub use self::kill::BlockedTask;
 // XXX: these probably shouldn't be public...
 #[doc(hidden)]
 pub mod shouldnt_be_public {
-    pub use super::select::SelectInner;
-    pub use super::select::{SelectInner, SelectPortInner};
     pub use super::local_ptr::native::maybe_tls_key;
     #[cfg(not(windows), not(target_os = "android"))]
     pub use super::local_ptr::compiled::RT_TLS_PTR;
@@ -123,11 +121,11 @@ pub mod rtio;
 /// or task-local storage.
 pub mod local;
 
-/// A parallel queue.
-pub mod message_queue;
-
 /// A mostly lock-free multi-producer, single consumer queue.
-mod mpsc_queue;
+pub mod mpsc_queue;
+
+/// A lock-free single-producer, single consumer queue.
+pub mod spsc_queue;
 
 /// A lock-free multi-producer, multi-consumer bounded queue.
 mod mpmc_bounded_queue;
@@ -168,11 +166,6 @@ pub mod rc;
 /// A simple single-threaded channel type for passing buffered data between
 /// scheduler and task context
 pub mod tube;
-
-/// Simple reimplementation of std::comm
-pub mod comm;
-
-mod select;
 
 /// The runtime needs to be able to put a pointer into thread-local storage.
 mod local_ptr;
@@ -349,7 +342,7 @@ fn run_(main: proc(), use_main_sched: bool) -> int {
     // When the main task exits, after all the tasks in the main
     // task tree, shut down the schedulers and set the exit code.
     let handles = handles;
-    let on_exit: proc(UnwindResult) = proc(exit_success) {
+    let on_exit: proc(TaskResult) = proc(exit_success) {
         unsafe {
             assert!(!(*exited_already.get()).swap(true, SeqCst),
                     "the runtime already exited");
@@ -361,7 +354,7 @@ fn run_(main: proc(), use_main_sched: bool) -> int {
         }
 
         unsafe {
-            let exit_code = if exit_success.is_success() {
+            let exit_code = if exit_success.is_ok() {
                 use rt::util;
 
                 // If we're exiting successfully, then return the global

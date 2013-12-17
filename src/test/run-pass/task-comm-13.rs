@@ -12,17 +12,16 @@
 
 extern mod extra;
 
-use std::comm;
 use std::task;
 
-fn start(c: &comm::Chan<int>, start: int, number_of_messages: int) {
+fn start(c: &Chan<int>, start: int, number_of_messages: int) {
     let mut i: int = 0;
     while i < number_of_messages { c.send(start + i); i += 1; }
 }
 
 pub fn main() {
     info!("Check that we don't deadlock.");
-    let (_p, ch) = comm::stream();
-    task::try(proc() start(&ch, 0, 10) );
+    let (_p, ch) = Chan::new();
+    task::try(proc() { start(&ch, 0, 10) });
     info!("Joined task");
 }

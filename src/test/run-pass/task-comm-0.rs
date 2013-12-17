@@ -12,8 +12,6 @@
 
 extern mod extra;
 
-use std::comm::Chan;
-use std::comm;
 use std::task;
 
 pub fn main() { test05(); }
@@ -28,8 +26,8 @@ fn test05_start(ch : &Chan<int>) {
 }
 
 fn test05() {
-    let (po, ch) = comm::stream();
-    task::spawn(proc() test05_start(&ch) );
+    let (po, ch) = Chan::new();
+    task::spawn(proc() { test05_start(&ch) });
     let mut value: int = po.recv();
     error!("{}", value);
     value = po.recv();

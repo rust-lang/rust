@@ -38,7 +38,7 @@ fn test_tempdir() {
 }
 
 fn test_rm_tempdir() {
-    let (rd, wr) = stream();
+    let (rd, wr) = Chan::new();
     let f: proc() = proc() {
         let tmp = TempDir::new("test_rm_tempdir").unwrap();
         wr.send(tmp.path().clone());

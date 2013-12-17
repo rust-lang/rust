@@ -11,7 +11,7 @@
 use std::task;
 
 pub fn foo<T:Send + Clone>(x: T) -> Port<T> {
-    let (p, c) = stream();
+    let (p, c) = Chan::new();
     do task::spawn() {
         c.send(x.clone());
     }

@@ -8,14 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::comm;
 use std::cmp;
 
 // Tests of ports and channels on various types
 fn test_rec() {
     struct R {val0: int, val1: u8, val2: char}
 
-    let (po, ch) = comm::stream();
+    let (po, ch) = Chan::new();
     let r0: R = R {val0: 0, val1: 1u8, val2: '2'};
     ch.send(r0);
     let mut r1: R;
@@ -26,7 +25,7 @@ fn test_rec() {
 }
 
 fn test_vec() {
-    let (po, ch) = comm::stream();
+    let (po, ch) = Chan::new();
     let v0: ~[int] = ~[0, 1, 2];
     ch.send(v0);
     let v1 = po.recv();
@@ -36,7 +35,7 @@ fn test_vec() {
 }
 
 fn test_str() {
-    let (po, ch) = comm::stream();
+    let (po, ch) = Chan::new();
     let s0 = ~"test";
     ch.send(s0);
     let s1 = po.recv();
@@ -80,7 +79,7 @@ impl cmp::Eq for t {
 }
 
 fn test_tag() {
-    let (po, ch) = comm::stream();
+    let (po, ch) = Chan::new();
     ch.send(tag1);
     ch.send(tag2(10));
     ch.send(tag3(10, 11u8, 'A'));
@@ -94,10 +93,10 @@ fn test_tag() {
 }
 
 fn test_chan() {
-    let (po, ch) = comm::stream();
-    let (po0, ch0) = comm::stream();
+    let (po, ch) = Chan::new();
+    let (po0, ch0) = Chan::new();
     ch.send(ch0);
-    let ch1 = po.recv();
+    let mut ch1 = po.recv();
     // Does the transmitted channel still work?
 
     ch1.send(10);

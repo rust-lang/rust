@@ -11,10 +11,8 @@
 // Tests (negatively) the ability for the Self type in default methods
 // to use capabilities granted by builtin kinds as supertraits.
 
-use std::comm;
-
 trait Foo : Freeze {
-    fn foo(self, chan: comm::Chan<Self>) {
+    fn foo(self, mut chan: Chan<Self>) {
         chan.send(self); //~ ERROR does not fulfill `Send`
     }
 }
@@ -22,7 +20,7 @@ trait Foo : Freeze {
 impl <T: Freeze> Foo for T { }
 
 fn main() {
-    let (p,c) = comm::stream();
+    let (p,c) = Chan::new();
     1193182.foo(c);
     assert!(p.recv() == 1193182);
 }

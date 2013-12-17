@@ -8,11 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::comm;
 use std::task;
 
 pub fn main() {
-    let (port, chan) = comm::stream::<&'static str>();
+    let (port, chan) = Chan::<&'static str>::new();
 
     do task::spawn {
         assert_eq!(port.recv(), "hello, world");

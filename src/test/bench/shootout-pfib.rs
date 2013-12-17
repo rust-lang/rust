@@ -21,7 +21,6 @@
 extern mod extra;
 
 use extra::{time, getopts};
-use std::comm::{stream, SharedChan};
 use std::os;
 use std::result::{Ok, Err};
 use std::task;
@@ -34,8 +33,7 @@ fn fib(n: int) -> int {
         } else if n <= 2 {
             c.send(1);
         } else {
-            let (pp, cc) = stream();
-            let cc = SharedChan::new(cc);
+            let (pp, cc) = SharedChan::new();
             let ch = cc.clone();
             task::spawn(proc() pfib(&ch, n - 1));
             let ch = cc.clone();
@@ -44,8 +42,7 @@ fn fib(n: int) -> int {
         }
     }
 
-    let (p, ch) = stream();
-    let ch = SharedChan::new(ch);
+    let (p, ch) = SharedChan::new();
     let _t = task::spawn(proc() pfib(&ch, n) );
     p.recv()
 }

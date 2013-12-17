@@ -174,71 +174,70 @@ fn path(w: &mut io::Writer, path: &clean::Path, print_all: bool,
         let loc = loc.unwrap();
 
         local_data::get(cache_key, |cache| {
-            cache.unwrap().read(|cache| {
-                let abs_root = root(cache, loc.as_slice());
-                let rel_root = match path.segments[0].name.as_slice() {
-                    "self" => Some(~"./"),
-                    _ => None,
-                };
+            let cache = cache.unwrap().get();
+            let abs_root = root(cache, loc.as_slice());
+            let rel_root = match path.segments[0].name.as_slice() {
+                "self" => Some(~"./"),
+                _ => None,
+            };
 
-                if print_all {
-                    let amt = path.segments.len() - 1;
-                    match rel_root {
-                        Some(root) => {
-                            let mut root = root;
-                            for seg in path.segments.slice_to(amt).iter() {
-                                if "super" == seg.name || "self" == seg.name {
-                                    write!(w, "{}::", seg.name);
-                                } else {
-                                    root.push_str(seg.name);
-                                    root.push_str("/");
-                                    write!(w, "<a class='mod'
-                                                  href='{}index.html'>{}</a>::",
-                                           root,
-                                           seg.name);
-                                }
-                            }
-                        }
-                        None => {
-                            for seg in path.segments.slice_to(amt).iter() {
+            if print_all {
+                let amt = path.segments.len() - 1;
+                match rel_root {
+                    Some(root) => {
+                        let mut root = root;
+                        for seg in path.segments.slice_to(amt).iter() {
+                            if "super" == seg.name || "self" == seg.name {
                                 write!(w, "{}::", seg.name);
+                            } else {
+                                root.push_str(seg.name);
+                                root.push_str("/");
+                                write!(w, "<a class='mod'
+                                              href='{}index.html'>{}</a>::",
+                                       root,
+                                       seg.name);
                             }
+                        }
+                    }
+                    None => {
+                        for seg in path.segments.slice_to(amt).iter() {
+                            write!(w, "{}::", seg.name);
                         }
                     }
                 }
+            }
 
-                match info(cache) {
-                    // This is a documented path, link to it!
-                    Some((ref fqp, shortty)) if abs_root.is_some() => {
-                        let mut url = abs_root.unwrap();
-                        let to_link = fqp.slice_to(fqp.len() - 1);
-                        for component in to_link.iter() {
-                            url.push_str(*component);
-                            url.push_str("/");
+            match info(cache) {
+                // This is a documented path, link to it!
+                Some((ref fqp, shortty)) if abs_root.is_some() => {
+                    let mut url = abs_root.unwrap();
+                    let to_link = fqp.slice_to(fqp.len() - 1);
+                    for component in to_link.iter() {
+                        url.push_str(*component);
+                        url.push_str("/");
+                    }
+                    match shortty {
+                        "mod" => {
+                            url.push_str(*fqp.last());
+                            url.push_str("/index.html");
                         }
-                        match shortty {
-                            "mod" => {
-                                url.push_str(*fqp.last());
-                                url.push_str("/index.html");
-                            }
-                            _ => {
-                                url.push_str(shortty);
-                                url.push_str(".");
-                                url.push_str(*fqp.last());
-                                url.push_str(".html");
-                            }
+                        _ => {
+                            url.push_str(shortty);
+                            url.push_str(".");
+                            url.push_str(*fqp.last());
+                            url.push_str(".html");
                         }
-
-                        write!(w, "<a class='{}' href='{}' title='{}'>{}</a>",
-                               shortty, url, fqp.connect("::"), last.name);
                     }
 
-                    _ => {
-                        write!(w, "{}", last.name);
-                    }
+                    write!(w, "<a class='{}' href='{}' title='{}'>{}</a>",
+                           shortty, url, fqp.connect("::"), last.name);
                 }
-                write!(w, "{}", generics);
-            })
+
+                _ => {
+                    write!(w, "{}", last.name);
+                }
+            }
+            write!(w, "{}", generics);
         })
     })
 }
@@ -263,9 +262,8 @@ impl fmt::Default for clean::Type {
         match *g {
             clean::TyParamBinder(id) | clean::Generic(id) => {
                 local_data::get(cache_key, |cache| {
-                    cache.unwrap().read(|m| {
-                        f.buf.write(m.typarams.get(&id).as_bytes());
-                    })
+                    let m = cache.unwrap().get();
+                    f.buf.write(m.typarams.get(&id).as_bytes());
                 })
             }
             clean::ResolvedPath{id, typarams: ref tp, path: ref path} => {

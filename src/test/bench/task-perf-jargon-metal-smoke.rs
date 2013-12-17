@@ -48,9 +48,9 @@ fn main() {
         args.clone()
     };
 
-    let (p,c) = comm::stream();
+    let (p,c) = Chan::new();
     child_generation(from_str::<uint>(args[1]).unwrap(), c);
-    if p.try_recv().is_none() {
+    if p.recv_opt().is_none() {
         fail!("it happened when we slumbered");
     }
 }
