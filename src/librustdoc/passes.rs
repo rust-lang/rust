@@ -271,7 +271,7 @@ pub fn unindent(s: &str) -> ~str {
     match lines {
         [head, .. tail] => {
             let mut unindented = ~[ head.trim() ];
-            unindented.push_all(tail.map(|&line| {
+            unindented.push_all(tail.iter().map(|&line| {
                 if line.is_whitespace() {
                     line
                 } else {

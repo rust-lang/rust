@@ -939,7 +939,7 @@ pub fn strftime(format: &str, tm: &Tm) -> ~str {
             '%' => {
                 rdr.read(b);
                 let s = parse_type(b[0] as char, tm);
-                buf.push_all(s.as_bytes());
+                buf.push_all(s.into_bytes().move_iter());
             }
             ch => buf.push(ch as u8)
         }

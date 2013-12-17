@@ -81,7 +81,7 @@ impl fold::ast_fold for StandardLibraryInjector {
             });
         }
 
-        vis.push_all(crate.module.view_items);
+        vis.push_all(crate.module.view_items.clone_iter());
         let mut new_module = ast::_mod {
             view_items: vis,
             ..crate.module.clone()

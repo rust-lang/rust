@@ -10,7 +10,7 @@
 
 //! POSIX file path handling
 
-use container::Container;
+use container::{Container, MutableSeq};
 use c_str::{CString, ToCStr};
 use clone::Clone;
 use cmp::Eq;
@@ -22,6 +22,7 @@ use str::Str;
 use to_bytes::IterBytes;
 use vec;
 use vec::{CopyableVector, RSplitIterator, SplitIterator, Vector, VectorVector};
+use vec::{OwnedVector, ImmutableCopyableVector};
 use super::{BytesContainer, GenericPath, GenericPathUnsafe};
 
 /// Iterator that yields successive components of a Path as &[u8]
@@ -123,9 +124,9 @@ impl GenericPathUnsafe for Path {
         match self.sepidx {
             None if bytes!("..") == self.repr => {
                 let mut v = vec::with_capacity(3 + filename.len());
-                v.push_all(dot_dot_static);
+                v.push_all(dot_dot_static.clone_iter());
                 v.push(sep_byte);
-                v.push_all(filename);
+                v.push_all(filename.clone_iter());
                 self.repr = Path::normalize(v);
             }
             None => {
@@ -133,15 +134,15 @@ impl GenericPathUnsafe for Path {
             }
             Some(idx) if self.repr.slice_from(idx+1) == bytes!("..") => {
                 let mut v = vec::with_capacity(self.repr.len() + 1 + filename.len());
-                v.push_all(self.repr);
+                v.push_all(self.repr.clone_iter());
                 v.push(sep_byte);
-                v.push_all(filename);
+                v.push_all(filename.clone_iter());
                 self.repr = Path::normalize(v);
             }
             Some(idx) => {
                 let mut v = vec::with_capacity(idx + 1 + filename.len());
-                v.push_all(self.repr.slice_to(idx+1));
-                v.push_all(filename);
+                v.push_all(self.repr.slice_to(idx+1).clone_iter());
+                v.push_all(filename.clone_iter());
                 self.repr = Path::normalize(v);
             }
         }
@@ -155,9 +156,9 @@ impl GenericPathUnsafe for Path {
                 self.repr = Path::normalize(path);
             }  else {
                 let mut v = vec::with_capacity(self.repr.len() + path.len() + 1);
-                v.push_all(self.repr);
+                v.push_all(self.repr.clone_iter());
                 v.push(sep_byte);
-                v.push_all(path);
+                v.push_all(path.clone_iter());
                 self.repr = Path::normalize(v);
             }
             self.sepidx = self.repr.rposition_elem(&sep_byte);
@@ -345,12 +346,12 @@ impl Path {
                         if !is_abs {
                             match it.next() {
                                 None => (),
-                                Some(comp) => v.push_all(comp)
+                                Some(comp) => v.push_all(comp.clone_iter())
                             }
                         }
                         for comp in it {
                             v.push(sep_byte);
-                            v.push_all(comp);
+                            v.push_all(comp.clone_iter());
                         }
                         Some(v)
                     }

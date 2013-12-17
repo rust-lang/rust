@@ -998,9 +998,9 @@ fn link_args(sess: Session,
     let mut args = ~[stage];
 
     // FIXME (#9639): This needs to handle non-utf8 paths
-    args.push_all([
-        ~"-o", out_filename.as_str().unwrap().to_owned(),
-        obj_filename.as_str().unwrap().to_owned()]);
+    args.push(~"-o");
+    args.push(out_filename.as_str().unwrap().to_owned());
+    args.push(obj_filename.as_str().unwrap().to_owned());
 
     // When linking a dynamic library, we put the metadata into a section of the
     // executable. This metadata is in a separate object file from the main
@@ -1046,9 +1046,9 @@ fn link_args(sess: Session,
     }
 
     if sess.targ_cfg.os == abi::OsFreebsd {
-        args.push_all([~"-L/usr/local/lib",
-                       ~"-L/usr/local/lib/gcc46",
-                       ~"-L/usr/local/lib/gcc44"]);
+        args.push(~"-L/usr/local/lib");
+        args.push(~"-L/usr/local/lib/gcc46");
+        args.push(~"-L/usr/local/lib/gcc44");
     }
 
     // Stack growth requires statically linking a __morestack function
@@ -1057,11 +1057,11 @@ fn link_args(sess: Session,
     // FIXME (#2397): At some point we want to rpath our guesses as to
     // where extern libraries might live, based on the
     // addl_lib_search_paths
-    args.push_all(rpath::get_rpath_flags(sess, out_filename));
+    args.push_all(rpath::get_rpath_flags(sess, out_filename).move_iter());
 
     // Finally add all the linker arguments provided on the command line along
     // with any #[link_args] attributes found inside the crate
-    args.push_all(sess.opts.linker_args);
+    args.push_all(sess.opts.linker_args.clone_iter());
     for arg in cstore::get_used_link_args(sess.cstore).iter() {
         args.push(arg.clone());
     }

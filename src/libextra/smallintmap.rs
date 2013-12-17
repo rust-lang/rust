@@ -37,6 +37,13 @@ impl<V> Container for SmallIntMap<V> {
     }
 }
 
+impl<V> NewContainer for SmallIntMap<V> {
+    /// Create an empty SmallIntMap with capacity `capacity`
+    fn with_capacity(capacity: uint) -> SmallIntMap<V> {
+        SmallIntMap::with_capacity(capacity)
+    }
+}
+
 impl<V> Mutable for SmallIntMap<V> {
     /// Clear the map, removing all key-value pairs.
     fn clear(&mut self) { self.v.clear() }
@@ -112,6 +119,11 @@ impl<V> MutableMap<uint, V> for SmallIntMap<V> {
 impl<V> SmallIntMap<V> {
     /// Create an empty SmallIntMap
     pub fn new() -> SmallIntMap<V> { SmallIntMap{v: ~[]} }
+
+    /// Create an empty SmallIntMap with capacity `capacity`
+    pub fn with_capacity(capacity: uint) -> SmallIntMap<V> {
+        SmallIntMap{v: vec::with_capacity(capacity)}
+    }
 
     pub fn get<'a>(&'a self, key: &uint) -> &'a V {
         self.find(key).expect("key not present")

@@ -30,6 +30,15 @@ pub fn capacity<T>(v: @[T]) -> uint {
     }
 }
 
+/// Creates an immutable managed vector with a capacity of `capacity`
+pub fn with_capacity<T>(capacity: uint) -> @[T] {
+    let mut av = @[];
+    unsafe {
+        raw::reserve(&mut av, capacity);
+    }
+    av
+}
+
 /**
  * Builds a vector by calling a provided function with an argument
  * function that pushes an element to the back of a vector.
@@ -44,8 +53,7 @@ pub fn capacity<T>(v: @[T]) -> uint {
  */
 #[inline]
 pub fn build<A>(size: Option<uint>, builder: |push: |v: A||) -> @[A] {
-    let mut vec = @[];
-    unsafe { raw::reserve(&mut vec, size.unwrap_or(4)); }
+    let mut vec = with_capacity(size.unwrap_or(4));
     builder(|x| unsafe { raw::push(&mut vec, x) });
     vec
 }
@@ -110,14 +118,13 @@ pub fn from_elem<T:Clone>(n_elts: uint, t: T) -> @[T] {
  * elements from an owned vector.
  */
 pub fn to_managed_move<T>(v: ~[T]) -> @[T] {
-    let mut av = @[];
-    unsafe {
-        raw::reserve(&mut av, v.len());
-        for x in v.move_iter() {
+    let mut av = with_capacity(v.len());
+    for x in v.move_iter() {
+        unsafe {
             raw::push(&mut av, x);
         }
-        av
     }
+    av
 }
 
 /**

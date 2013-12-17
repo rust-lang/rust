@@ -12,7 +12,6 @@
 //! single consumer.
 
 use kinds::Send;
-use vec::OwnedVector;
 use option::Option;
 use clone::Clone;
 use rt::mpsc_queue::Queue;

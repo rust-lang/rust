@@ -64,7 +64,7 @@ debug!("path exists: {}", b);
 
 */
 
-use container::Container;
+use container::{Container, MutableSeq};
 use c_str::CString;
 use clone::Clone;
 use fmt;
@@ -74,8 +74,8 @@ use str;
 use str::{OwnedStr, Str, StrSlice};
 use to_str::ToStr;
 use vec;
-use vec::{CopyableVector, OwnedCopyableVector, OwnedVector, Vector};
-use vec::{ImmutableEqVector, ImmutableVector};
+use vec::{CopyableVector, OwnedVector, Vector};
+use vec::{ImmutableEqVector, ImmutableVector, ImmutableCopyableVector};
 
 /// Typedef for POSIX file paths.
 /// See `posix::Path` for more info.
@@ -307,15 +307,15 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
                                     let extension = self::null_byte::cond.raise(ext);
                                     assert!(!contains_nul(extension));
                                     v = vec::with_capacity(name.len() + extension.len() + 1);
-                                    v.push_all(name);
+                                    v.push_all(name.clone_iter());
                                     v.push(dot);
-                                    v.push_all(extension);
+                                    v.push_all(extension.clone_iter());
                                 } else {
                                     let extension = extension.container_as_bytes();
                                     v = vec::with_capacity(name.len() + extension.len() + 1);
-                                    v.push_all(name);
+                                    v.push_all(name.clone_iter());
                                     v.push(dot);
-                                    v.push_all(extension);
+                                    v.push_all(extension.clone_iter());
                                 }
                                 Some(v)
                             }
@@ -330,13 +330,13 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
                                     let extension = self::null_byte::cond.raise(ext);
                                     assert!(!contains_nul(extension));
                                     v = vec::with_capacity(idx + extension.len() + 1);
-                                    v.push_all(name.slice_to(idx+1));
-                                    v.push_all(extension);
+                                    v.push_all(name.slice_to(idx+1).clone_iter());
+                                    v.push_all(extension.clone_iter());
                                 } else {
                                     let extension = extension.container_as_bytes();
                                     v = vec::with_capacity(idx + extension.len() + 1);
-                                    v.push_all(name.slice_to(idx+1));
-                                    v.push_all(extension);
+                                    v.push_all(name.slice_to(idx+1).clone_iter());
+                                    v.push_all(extension.clone_iter());
                                 }
                                 Some(v)
                             }

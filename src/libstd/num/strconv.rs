@@ -11,7 +11,7 @@
 #[allow(missing_doc)];
 
 use clone::Clone;
-use container::Container;
+use container::{Container, MutableSeq};
 use std::cmp::{Ord, Eq};
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use option::{None, Option, Some};
@@ -19,7 +19,6 @@ use char;
 use str::{StrSlice};
 use str;
 use vec::{CopyableVector, ImmutableVector, MutableVector};
-use vec::OwnedVector;
 use num::{NumCast, Zero, One, cast, pow_with_uint, Integer};
 use num::{Round, Float, FPNaN, FPInfinite};
 

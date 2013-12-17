@@ -80,6 +80,10 @@ impl<K: TotalOrd, V> Container for TreeMap<K, V> {
     fn is_empty(&self) -> bool { self.root.is_none() }
 }
 
+impl<K: TotalOrd, V> NewContainer for TreeMap<K, V> {
+    fn with_capacity(_capacity: uint) -> TreeMap<K, V> { TreeMap::new() }
+}
+
 impl<K: TotalOrd, V> Mutable for TreeMap<K, V> {
     /// Clear the map, removing all key-value pairs.
     fn clear(&mut self) {
@@ -439,6 +443,10 @@ impl<T: TotalOrd> Container for TreeSet<T> {
     /// Return true if the set contains no elements
     #[inline]
     fn is_empty(&self) -> bool { self.map.is_empty() }
+}
+
+impl<T: TotalOrd> NewContainer for TreeSet<T> {
+    fn with_capacity(_capacity: uint) -> TreeSet<T> { TreeSet::new() }
 }
 
 impl<T: TotalOrd> Mutable for TreeSet<T> {

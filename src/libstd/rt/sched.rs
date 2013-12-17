@@ -27,8 +27,6 @@ use borrow::{to_uint};
 use rand::{XorShiftRng, Rng, Rand};
 use iter::range;
 use unstable::mutex::Mutex;
-use vec::{OwnedVector};
-
 
 /// A scheduler is responsible for coordinating the execution of Tasks
 /// on a single thread. The scheduler runs inside a slightly modified

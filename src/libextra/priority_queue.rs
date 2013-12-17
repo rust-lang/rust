@@ -28,6 +28,14 @@ impl<T:Ord> Container for PriorityQueue<T> {
     fn len(&self) -> uint { self.data.len() }
 }
 
+impl<T:Ord> NewContainer for PriorityQueue<T> {
+    /// Create an empty Priority Queue with capacity `capacity`
+    #[inline]
+    fn with_capacity(capacity: uint) -> PriorityQueue<T> {
+        PriorityQueue::with_capacity(capacity)
+    }
+}
+
 impl<T:Ord> Mutable for PriorityQueue<T> {
     /// Drop all items from the queue
     fn clear(&mut self) { self.data.truncate(0) }
@@ -112,7 +120,12 @@ impl<T:Ord> PriorityQueue<T> {
     }
 
     /// Create an empty PriorityQueue
-    pub fn new() -> PriorityQueue<T> { PriorityQueue{data: ~[],} }
+    pub fn new() -> PriorityQueue<T> { PriorityQueue{data: ~[]} }
+
+    /// Create an empty PriorityQueue
+    pub fn with_capacity(capacity: uint) -> PriorityQueue<T> {
+        PriorityQueue{data: vec::with_capacity(capacity)}
+    }
 
     /// Create a PriorityQueue from a vector (heapify)
     pub fn from_vec(xs: ~[T]) -> PriorityQueue<T> {

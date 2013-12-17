@@ -793,7 +793,7 @@ pub fn trans_args(cx: @mut Block,
         }
       }
       ArgVals(vs) => {
-        llargs.push_all(vs);
+        llargs.push_all(vs.clone_iter());
       }
     }
 

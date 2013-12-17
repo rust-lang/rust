@@ -60,7 +60,7 @@ pub fn type_of_rust_fn(cx: &mut CrateContext,
     atys.push(Type::opaque_box(cx).ptr_to());
 
     // ... then explicit args.
-    atys.push_all(type_of_explicit_args(cx, inputs));
+    atys.push_all(type_of_explicit_args(cx, inputs).move_iter());
 
     // Use the output as the actual return value if it's immediate.
     if !use_out_pointer && !ty::type_is_voidish(cx.tcx, output) {

@@ -73,7 +73,10 @@ syn keyword rustTrait Char
 syn keyword rustTrait Clone DeepClone
 syn keyword rustTrait Eq ApproxEq Ord TotalEq TotalOrd Ordering Equiv
 syn keyword rustEnumVariant Less Equal Greater
-syn keyword rustTrait Container Mutable Map MutableMap Set MutableSet
+syn keyword rustTrait Container NewContainer Mutable
+syn keyword rustTrait Seq MutableSeq
+syn keyword rustTrait Map MutableMap
+syn keyword rustTrait Set MutableSet
 syn keyword rustTrait Default
 syn keyword rustTrait Hash
 syn keyword rustTrait FromStr

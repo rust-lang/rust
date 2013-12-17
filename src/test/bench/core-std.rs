@@ -122,11 +122,11 @@ fn vec_push_all() {
     for i in range(0u, 1500) {
         let mut rv = vec::from_elem(r.gen_range(0u, i + 1), i);
         if r.gen() {
-            v.push_all(rv);
+            v.push_all(rv.clone_iter());
         }
         else {
             util::swap(&mut v, &mut rv);
-            v.push_all(rv);
+            v.push_all(rv.clone_iter());
         }
     }
 }
@@ -145,7 +145,7 @@ fn is_utf8_multibyte() {
     let s = "b¢€𤭢";
     let mut v : ~[u8]= ~[];
     for _ in range(0u, 5000) {
-        v.push_all(s.as_bytes());
+        v.push_all(s.as_bytes().clone_iter());
         if !str::is_utf8(v) {
             fail!("is_utf8 failed");
         }

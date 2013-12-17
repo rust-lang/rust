@@ -248,7 +248,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                         let flags = Flags::new();
                         let res = format(stack.pop(), FormatOp::from_char(cur), flags);
                         if res.is_err() { return res }
-                        output.push_all(res.unwrap())
+                        output.push_all(res.unwrap().move_iter())
                     } else { return Err(~"stack is empty") },
                     ':'|'#'|' '|'.'|'0'..'9' => {
                         let mut flags = Flags::new();
@@ -343,7 +343,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                     (_,'d')|(_,'o')|(_,'x')|(_,'X')|(_,'s') => if stack.len() > 0 {
                         let res = format(stack.pop(), FormatOp::from_char(cur), *flags);
                         if res.is_err() { return res }
-                        output.push_all(res.unwrap());
+                        output.push_all(res.unwrap().move_iter());
                         old_state = state; // will cause state to go to Nothing
                     } else { return Err(~"stack is empty") },
                     (FormatStateFlags,'#') => {

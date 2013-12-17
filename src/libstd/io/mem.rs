@@ -38,6 +38,16 @@ impl MemWriter {
     }
 }
 
+impl NewContainer for MemWriter {
+    fn new() -> MemWriter {
+        MemWriter::new()
+    }
+
+    fn with_capacity(n: uint) -> MemWriter {
+        MemWriter::with_capacity(n)
+    }
+}
+
 impl Writer for MemWriter {
     fn write(&mut self, buf: &[u8]) {
         // Make sure the internal buffer is as least as big as where we
@@ -61,7 +71,7 @@ impl Writer for MemWriter {
             vec::bytes::copy_memory(self.buf.mut_slice_from(self.pos), left);
         }
         if right.len() > 0 {
-            self.buf.push_all(right);
+            self.buf.push_all(right.clone_iter());
         }
 
         // Bump us forward

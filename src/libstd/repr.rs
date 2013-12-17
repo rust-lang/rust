@@ -18,7 +18,7 @@ More runtime type reflection
 
 use cast::transmute;
 use char;
-use container::Container;
+use container::{Container, MutableSeq};
 use io;
 use iter::Iterator;
 use libc::c_void;
@@ -28,7 +28,6 @@ use reflect;
 use reflect::{MovePtr, align};
 use str::StrSlice;
 use to_str::ToStr;
-use vec::OwnedVector;
 use unstable::intrinsics::{Disr, Opaque, TyDesc, TyVisitor, get_tydesc, visit_tydesc};
 use unstable::raw;
 

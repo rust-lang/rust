@@ -3382,7 +3382,7 @@ impl Parser {
         while (*self.token != token::RBRACE) {
             // parsing items even when they're not allowed lets us give
             // better error messages and recover more gracefully.
-            attributes_box.push_all(self.parse_outer_attributes());
+            attributes_box.push_all(self.parse_outer_attributes().move_iter());
             match *self.token {
                 token::SEMI => {
                     if !attributes_box.is_empty() {
