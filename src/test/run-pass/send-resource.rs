@@ -25,10 +25,10 @@ fn test(f: int) -> test {
 }
 
 pub fn main() {
-    let (p, c) = stream();
+    let (p, c) = Chan::new();
 
     do task::spawn() {
-        let (pp, cc) = stream();
+        let (pp, cc) = Chan::new();
         c.send(cc);
 
         let _r = pp.recv();

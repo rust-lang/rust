@@ -15,8 +15,7 @@ use json::ToJson;
 use serialize::{Encoder, Encodable, Decoder, Decodable};
 use arc::{Arc,RWArc};
 use treemap::TreeMap;
-use std::comm::{PortOne, oneshot};
-use std::{str, task};
+use std::str;
 use std::io;
 use std::io::{File, Decorator};
 use std::io::mem::MemWriter;
@@ -252,7 +251,7 @@ pub struct Exec {
 
 enum Work<'a, T> {
     WorkValue(T),
-    WorkFromTask(&'a Prep<'a>, PortOne<(Exec, T)>),
+    WorkFromTask(&'a Prep<'a>, Port<(Exec, T)>),
 }
 
 fn json_encode<'a, T:Encodable<json::Encoder<'a>>>(t: &T) -> ~str {
@@ -427,11 +426,11 @@ impl<'a> Prep<'a> {
 
             _ => {
                 debug!("Cache miss!");
-                let (port, chan) = oneshot();
+                let (port, chan) = Chan::new();
                 let blk = bo.take_unwrap();
 
                 // XXX: What happens if the task fails?
-                do task::spawn {
+                do spawn {
                     let mut exe = Exec {
                         discovered_inputs: WorkMap::new(),
                         discovered_outputs: WorkMap::new(),
@@ -453,7 +452,7 @@ impl<'a, T:Send +
     pub fn from_value(elt: T) -> Work<'a, T> {
         WorkValue(elt)
     }
-    pub fn from_task(prep: &'a Prep<'a>, port: PortOne<(Exec, T)>)
+    pub fn from_task(prep: &'a Prep<'a>, port: Port<(Exec, T)>)
         -> Work<'a, T> {
         WorkFromTask(prep, port)
     }

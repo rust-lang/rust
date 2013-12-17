@@ -12,7 +12,7 @@ use std::task;
 
 pub fn main() {
     let mut builder = task::task();
-    let result = builder.future_result();
+    let mut result = builder.future_result();
     builder.spawn(child);
     error!("1");
     task::deschedule();

@@ -156,7 +156,6 @@ pub mod trie;
 
 pub mod task;
 pub mod comm;
-pub mod select;
 pub mod local_data;
 
 
@@ -203,15 +202,16 @@ pub mod rt;
 mod std {
     pub use clone;
     pub use cmp;
+    pub use comm;
     pub use condition;
     pub use fmt;
+    pub use io;
     pub use kinds;
     pub use local_data;
     pub use logging;
     pub use logging;
     pub use option;
     pub use os;
-    pub use io;
     pub use rt;
     pub use str;
     pub use to_bytes;

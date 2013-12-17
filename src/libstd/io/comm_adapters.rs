@@ -10,7 +10,7 @@
 
 use prelude::*;
 
-use comm::{GenericPort, GenericChan, GenericSmartChan};
+use comm::{Port, Chan};
 use cmp;
 use io;
 use option::{None, Option, Some};
@@ -30,15 +30,15 @@ use vec::{bytes, CopyableVector, MutableVector, ImmutableVector};
 ///     None => println!("At the end of the stream!")
 /// }
 /// ```
-pub struct PortReader<P> {
+pub struct PortReader {
     priv buf: Option<~[u8]>,  // A buffer of bytes received but not consumed.
     priv pos: uint,           // How many of the buffered bytes have already be consumed.
-    priv port: P,             // The port to pull data from.
+    priv port: Port<~[u8]>,   // The port to pull data from.
     priv closed: bool,        // Whether the pipe this port connects to has been closed.
 }
 
-impl<P: GenericPort<~[u8]>> PortReader<P> {
-    pub fn new(port: P) -> PortReader<P> {
+impl PortReader {
+    pub fn new(port: Port<~[u8]>) -> PortReader<P> {
         PortReader {
             buf: None,
             pos: 0,
@@ -48,7 +48,7 @@ impl<P: GenericPort<~[u8]>> PortReader<P> {
     }
 }
 
-impl<P: GenericPort<~[u8]>> Reader for PortReader<P> {
+impl Reader for PortReader {
     fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
         let mut num_read = 0;
         loop {
@@ -67,7 +67,7 @@ impl<P: GenericPort<~[u8]>> Reader for PortReader<P> {
                 break;
             }
             self.pos = 0;
-            self.buf = self.port.try_recv();
+            self.buf = self.port.recv_opt();
             self.closed = self.buf.is_none();
         }
         if self.closed && num_read == 0 {
@@ -89,17 +89,17 @@ impl<P: GenericPort<~[u8]>> Reader for PortReader<P> {
 /// let writer = ChanWriter::new(chan);
 /// writer.write("hello, world".as_bytes());
 /// ```
-pub struct ChanWriter<C> {
-    chan: C,
+pub struct ChanWriter {
+    chan: Chan<~[u8]>,
 }
 
-impl<C: GenericSmartChan<~[u8]>> ChanWriter<C> {
+impl ChanWriter {
     pub fn new(chan: C) -> ChanWriter<C> {
         ChanWriter { chan: chan }
     }
 }
 
-impl<C: GenericSmartChan<~[u8]>> Writer for ChanWriter<C> {
+impl Writer for ChanWriter {
     fn write(&mut self, buf: &[u8]) {
         if !self.chan.try_send(buf.to_owned()) {
             io::io_error::cond.raise(io::IoError {
@@ -109,28 +109,6 @@ impl<C: GenericSmartChan<~[u8]>> Writer for ChanWriter<C> {
             });
         }
     }
-}
-
-pub struct ReaderPort<R>;
-
-impl<R: Reader> ReaderPort<R> {
-    pub fn new(_reader: R) -> ReaderPort<R> { fail!() }
-}
-
-impl<R: Reader> GenericPort<~[u8]> for ReaderPort<R> {
-    fn recv(&self) -> ~[u8] { fail!() }
-
-    fn try_recv(&self) -> Option<~[u8]> { fail!() }
-}
-
-pub struct WriterChan<W>;
-
-impl<W: Writer> WriterChan<W> {
-    pub fn new(_writer: W) -> WriterChan<W> { fail!() }
-}
-
-impl<W: Writer> GenericChan<~[u8]> for WriterChan<W> {
-    fn send(&self, _x: ~[u8]) { fail!() }
 }
 
 
@@ -144,7 +122,7 @@ mod test {
 
     #[test]
     fn test_port_reader() {
-        let (port, chan) = comm::stream();
+        let (port, chan) = Chan::new();
         do task::spawn {
           chan.send(~[1u8, 2u8]);
           chan.send(~[]);
@@ -199,7 +177,7 @@ mod test {
 
     #[test]
     fn test_chan_writer() {
-        let (port, chan) = comm::stream();
+        let (port, chan) = Chan::new();
         let mut writer = ChanWriter::new(chan);
         writer.write_be_u32(42);
 

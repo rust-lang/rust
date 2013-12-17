@@ -646,7 +646,6 @@ impl Drop for UdpWatcher {
 
 #[cfg(test)]
 mod test {
-    use std::comm::oneshot;
     use std::rt::test::*;
     use std::rt::rtio::{RtioTcpStream, RtioTcpListener, RtioTcpAcceptor,
                         RtioUdpSocket};
@@ -689,7 +688,7 @@ mod test {
 
     #[test]
     fn listen_ip4() {
-        let (port, chan) = oneshot();
+        let (port, chan) = Chan::new();
         let addr = next_test_ip4();
 
         do spawn {
@@ -725,7 +724,7 @@ mod test {
 
     #[test]
     fn listen_ip6() {
-        let (port, chan) = oneshot();
+        let (port, chan) = Chan::new();
         let addr = next_test_ip6();
 
         do spawn {
@@ -761,7 +760,7 @@ mod test {
 
     #[test]
     fn udp_recv_ip4() {
-        let (port, chan) = oneshot();
+        let (port, chan) = Chan::new();
         let client = next_test_ip4();
         let server = next_test_ip4();
 
@@ -793,7 +792,7 @@ mod test {
 
     #[test]
     fn udp_recv_ip6() {
-        let (port, chan) = oneshot();
+        let (port, chan) = Chan::new();
         let client = next_test_ip6();
         let server = next_test_ip6();
 
@@ -828,7 +827,7 @@ mod test {
         use std::rt::rtio::*;
         let addr = next_test_ip4();
         static MAX: uint = 5000;
-        let (port, chan) = oneshot();
+        let (port, chan) = Chan::new();
 
         do spawn {
             let listener = TcpListener::bind(local_loop(), addr).unwrap();
@@ -865,7 +864,7 @@ mod test {
     fn test_udp_twice() {
         let server_addr = next_test_ip4();
         let client_addr = next_test_ip4();
-        let (port, chan) = oneshot();
+        let (port, chan) = Chan::new();
 
         do spawn {
             let mut client = UdpWatcher::bind(local_loop(), client_addr).unwrap();
@@ -896,8 +895,8 @@ mod test {
         let client_in_addr = next_test_ip4();
         static MAX: uint = 500_000;
 
-        let (p1, c1) = oneshot();
-        let (p2, c2) = oneshot();
+        let (p1, c1) = Chan::new();
+        let (p2, c2) = Chan::new();
 
         do spawn {
             let l = local_loop();
@@ -953,12 +952,12 @@ mod test {
     #[test]
     fn test_read_and_block() {
         let addr = next_test_ip4();
-        let (port, chan) = oneshot();
+        let (port, chan) = Chan::new();
 
         do spawn {
             let listener = TcpListener::bind(local_loop(), addr).unwrap();
             let mut acceptor = listener.listen().unwrap();
-            let (port2, chan2) = stream();
+            let (port2, chan2) = Chan::new();
             chan.send(port2);
             let mut stream = acceptor.accept().unwrap();
             let mut buf = [0, .. 2048];
@@ -1026,7 +1025,7 @@ mod test {
     // thread, close itself, and then come back to the last thread.
     #[test]
     fn test_homing_closes_correctly() {
-        let (port, chan) = oneshot();
+        let (port, chan) = Chan::new();
 
         do task::spawn_sched(task::SingleThreaded) {
             let listener = UdpWatcher::bind(local_loop(), next_test_ip4()).unwrap();
@@ -1048,9 +1047,9 @@ mod test {
         use std::rt::sched::{Shutdown, TaskFromFriend};
         use std::rt::sleeper_list::SleeperList;
         use std::rt::task::Task;
-        use std::rt::task::UnwindResult;
         use std::rt::thread::Thread;
         use std::rt::deque::BufferPool;
+        use std::task::TaskResult;
         use std::unstable::run_in_bare_thread;
         use uvio::UvEventLoop;
 
@@ -1072,12 +1071,12 @@ mod test {
             let handle2 = sched2.make_handle();
             let tasksFriendHandle = sched2.make_handle();
 
-            let on_exit: proc(UnwindResult) = proc(exit_status) {
+            let on_exit: proc(TaskResult) = proc(exit_status) {
                 let mut handle1 = handle1;
                 let mut handle2 = handle2;
                 handle1.send(Shutdown);
                 handle2.send(Shutdown);
-                assert!(exit_status.is_success());
+                assert!(exit_status.is_ok());
             };
 
             unsafe fn local_io() -> &'static mut IoFactory {
@@ -1148,7 +1147,7 @@ mod test {
 
     #[should_fail] #[test]
     fn tcp_stream_fail_cleanup() {
-        let (port, chan) = oneshot();
+        let (port, chan) = Chan::new();
         let addr = next_test_ip4();
 
         do spawn {
@@ -1172,7 +1171,7 @@ mod test {
     #[should_fail] #[test]
     fn udp_fail_other_task() {
         let addr = next_test_ip4();
-        let (port, chan) = oneshot();
+        let (port, chan) = Chan::new();
 
         // force the handle to be created on a different scheduler, failure in
         // the original task will force a homing operation back to this
@@ -1190,7 +1189,7 @@ mod test {
     #[test]
     #[ignore(reason = "linked failure")]
     fn linked_failure1() {
-        let (port, chan) = oneshot();
+        let (port, chan) = Chan::new();
         let addr = next_test_ip4();
 
         do spawn {
@@ -1208,7 +1207,7 @@ mod test {
     #[test]
     #[ignore(reason = "linked failure")]
     fn linked_failure2() {
-        let (port, chan) = oneshot();
+        let (port, chan) = Chan::new();
         let addr = next_test_ip4();
 
         do spawn {
@@ -1229,7 +1228,7 @@ mod test {
     #[test]
     #[ignore(reason = "linked failure")]
     fn linked_failure3() {
-        let (port, chan) = stream();
+        let (port, chan) = Chan::new();
         let addr = next_test_ip4();
 
         do spawn {

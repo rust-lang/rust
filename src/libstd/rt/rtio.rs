@@ -10,7 +10,7 @@
 
 use c_str::CString;
 use cast;
-use comm::{SharedChan, PortOne, Port};
+use comm::{SharedChan, Port};
 use libc::c_int;
 use libc;
 use ops::Drop;
@@ -222,7 +222,7 @@ pub trait RtioUdpSocket : RtioSocket {
 
 pub trait RtioTimer {
     fn sleep(&mut self, msecs: u64);
-    fn oneshot(&mut self, msecs: u64) -> PortOne<()>;
+    fn oneshot(&mut self, msecs: u64) -> Port<()>;
     fn period(&mut self, msecs: u64) -> Port<()>;
 }
 

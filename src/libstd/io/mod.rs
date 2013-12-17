@@ -318,9 +318,6 @@ mod option;
 /// Basic stream compression. XXX: Belongs with other flate code
 pub mod flate;
 
-/// Interop between byte streams and pipes. Not sure where it belongs
-pub mod comm_adapters;
-
 /// Extension traits
 pub mod extensions;
 

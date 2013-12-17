@@ -27,6 +27,7 @@ use driver::driver::{compile_input};
 use driver::session;
 use middle::lint;
 
+use std::cast;
 use std::comm;
 use std::io;
 use std::io::Reader;
@@ -303,7 +304,8 @@ impl diagnostic::Emitter for RustcEmitter {
             msg: &str,
             lvl: diagnostic::level) {
         if lvl == diagnostic::fatal {
-            self.ch_capture.send(fatal)
+            let this = unsafe { cast::transmute_mut(self) };
+            this.ch_capture.send(fatal)
         }
 
         diagnostic::DefaultEmitter.emit(cmsp, msg, lvl)
@@ -333,8 +335,7 @@ pub fn monitor(f: proc(@diagnostic::Emitter)) {
     #[cfg(not(rtopt))]
     static STACK_SIZE: uint = 20000000; // 20MB
 
-    let (p, ch) = stream();
-    let ch = SharedChan::new(ch);
+    let (p, ch) = SharedChan::new();
     let ch_capture = ch.clone();
     let mut task_builder = task::task();
     task_builder.name("rustc");

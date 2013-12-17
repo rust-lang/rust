@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub fn main() {
-    let (port, chan) = stream();
+    let (port, chan) = Chan::new();
 
     do spawn {
         println(port.recv());

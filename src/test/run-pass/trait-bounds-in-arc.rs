@@ -18,7 +18,6 @@
 extern mod extra;
 
 use extra::arc;
-use std::comm;
 use std::task;
 
 trait Pet {
@@ -70,13 +69,13 @@ fn main() {
                          ~dogge1 as ~Pet:Freeze+Send,
                          ~fishe  as ~Pet:Freeze+Send,
                          ~dogge2 as ~Pet:Freeze+Send]);
-    let (p1,c1) = comm::stream();
+    let (p1,c1) = Chan::new();
     let arc1 = arc.clone();
     do task::spawn { check_legs(arc1); c1.send(()); }
-    let (p2,c2) = comm::stream();
+    let (p2,c2) = Chan::new();
     let arc2 = arc.clone();
     do task::spawn { check_names(arc2); c2.send(()); }
-    let (p3,c3) = comm::stream();
+    let (p3,c3) = Chan::new();
     let arc3 = arc.clone();
     do task::spawn { check_pedigree(arc3); c3.send(()); }
     p1.recv();

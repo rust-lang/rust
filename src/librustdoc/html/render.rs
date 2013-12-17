@@ -33,8 +33,6 @@
 //! These tasks are not parallelized (they haven't been a bottleneck yet), and
 //! both occur before the crate is rendered.
 
-use std::comm::{SharedPort, SharedChan};
-use std::comm;
 use std::fmt;
 use std::hashmap::{HashMap, HashSet};
 use std::local_data;
@@ -42,12 +40,10 @@ use std::io::buffered::BufferedWriter;
 use std::io;
 use std::io::fs;
 use std::io::File;
-use std::os;
 use std::str;
-use std::task;
 use std::vec;
 
-use extra::arc::RWArc;
+use extra::arc::Arc;
 use extra::json::ToJson;
 use extra::sort;
 
@@ -121,7 +117,7 @@ enum Implementor {
 ///
 /// This structure purposefully does not implement `Clone` because it's intended
 /// to be a fairly large and expensive structure to clone. Instead this adheres
-/// to both `Send` and `Freeze` so it may be stored in a `RWArc` instance and
+/// to both `Send` and `Freeze` so it may be stored in a `Arc` instance and
 /// shared among the various rendering tasks.
 pub struct Cache {
     /// Mapping of typaram ids to the name of the type parameter. This is used
@@ -197,7 +193,7 @@ struct IndexItem {
 
 // TLS keys used to carry information around during rendering.
 
-local_data_key!(pub cache_key: RWArc<Cache>)
+local_data_key!(pub cache_key: Arc<Cache>)
 local_data_key!(pub current_location_key: ~[~str])
 
 /// Generates the documentation for `crate` into the directory `dst`
@@ -640,22 +636,6 @@ impl<'a> Cache {
     }
 }
 
-enum Progress {
-    JobNew,
-    JobDone,
-}
-
-/// A helper object to unconditionally send a value on a chanel.
-struct ChannelGuard {
-    channel: SharedChan<Progress>,
-}
-
-impl Drop for ChannelGuard {
-    fn drop(&mut self) {
-        self.channel.send(JobDone)
-    }
-}
-
 impl Context {
     /// Recurse in the directory structure and change the "root path" to make
     /// sure it always points to the top (relatively)
@@ -680,97 +660,26 @@ impl Context {
         return ret;
     }
 
-    /// Main method for rendering a crate. This parallelizes the task of
-    /// rendering a crate, and requires ownership of the crate in order to break
-    /// it up into its separate components.
-    fn crate(self, mut crate: clean::Crate, cache: Cache) {
-        enum Work {
-            Die,
-            Process(Context, clean::Item),
-        }
-        let workers = match os::getenv("RUSTDOC_WORKERS") {
-            Some(s) => {
-                match from_str::<uint>(s) {
-                    Some(n) => n, None => fail!("{} not a number", s)
-                }
-            }
-            None => 10,
-        };
-
+    /// Main method for rendering a crate.
+    ///
+    /// This currently isn't parallelized, but it'd be pretty easy to add
+    /// parallelization to this function.
+    fn crate(mut self, mut crate: clean::Crate, cache: Cache) {
         let mut item = match crate.module.take() {
             Some(i) => i,
             None => return
         };
         item.name = Some(crate.name);
 
-        let (port, chan) = comm::stream::<Work>();
-        let port = SharedPort::new(port);
-        let chan = SharedChan::new(chan);
-        let (prog_port, prog_chan) = comm::stream();
-        let prog_chan = SharedChan::new(prog_chan);
-        let cache = RWArc::new(cache);
+        // using a rwarc makes this parallelizable in the future
+        local_data::set(cache_key, Arc::new(cache));
 
-        // Each worker thread receives work from a shared port and publishes
-        // new work onto the corresponding shared port. All of the workers are
-        // using the same channel/port. Through this, the crate is recursed on
-        // in a hierarchical fashion, and parallelization is only achieved if
-        // one node in the hierarchy has more than one child (very common).
-        for i in range(0, workers) {
-            let port = port.clone();
-            let chan = chan.clone();
-            let prog_chan = prog_chan.clone();
-
-            let mut task = task::task();
-            task.name(format!("worker{}", i));
-            let cache = cache.clone();
-            do task.spawn {
-                worker(cache, &port, &chan, &prog_chan);
-            }
-
-            fn worker(cache: RWArc<Cache>,
-                      port: &SharedPort<Work>,
-                      chan: &SharedChan<Work>,
-                      prog_chan: &SharedChan<Progress>) {
-                local_data::set(cache_key, cache);
-
-                loop {
-                    match port.recv() {
-                        Process(cx, item) => {
-                            let mut cx = cx;
-
-                            // If we fail, everything else should still get
-                            // completed.
-                            let _guard = ChannelGuard {
-                                channel: prog_chan.clone(),
-                            };
-                            cx.item(item, |cx, item| {
-                                prog_chan.send(JobNew);
-                                chan.send(Process(cx.clone(), item));
-                            })
-                        }
-                        Die => break,
-                    }
-                }
-            }
-        }
-
-        // Send off the initial job
-        chan.send(Process(self, item));
-        let mut jobs = 1;
-
-        // Keep track of the number of jobs active in the system and kill
-        // everything once there are no more jobs remaining.
-        loop {
-            match prog_port.recv() {
-                JobNew => jobs += 1,
-                JobDone => jobs -= 1,
-            }
-
-            if jobs == 0 { break }
-        }
-
-        for _ in range(0, workers) {
-            chan.send(Die);
+        let mut work = ~[item];
+        while work.len() > 0 {
+            let item = work.pop();
+            self.item(item, |_cx, item| {
+                work.push(item);
+            })
         }
     }
 
@@ -1210,29 +1119,28 @@ fn item_trait(w: &mut Writer, it: &clean::Item, t: &clean::Trait) {
     }
 
     local_data::get(cache_key, |cache| {
-        cache.unwrap().read(|cache| {
-            match cache.implementors.find(&it.id) {
-                Some(implementors) => {
-                    write!(w, "
-                        <h2 id='implementors'>Implementors</h2>
-                        <ul class='item-list'>
-                    ");
-                    for i in implementors.iter() {
-                        match *i {
-                            PathType(ref ty) => {
-                                write!(w, "<li><code>{}</code></li>", *ty);
-                            }
-                            OtherType(ref generics, ref trait_, ref for_) => {
-                                write!(w, "<li><code>impl{} {} for {}</code></li>",
-                                       *generics, *trait_, *for_);
-                            }
+        let cache = cache.unwrap().get();
+        match cache.implementors.find(&it.id) {
+            Some(implementors) => {
+                write!(w, "
+                    <h2 id='implementors'>Implementors</h2>
+                    <ul class='item-list'>
+                ");
+                for i in implementors.iter() {
+                    match *i {
+                        PathType(ref ty) => {
+                            write!(w, "<li><code>{}</code></li>", *ty);
+                        }
+                        OtherType(ref generics, ref trait_, ref for_) => {
+                            write!(w, "<li><code>impl{} {} for {}</code></li>",
+                                   *generics, *trait_, *for_);
                         }
                     }
-                    write!(w, "</ul>");
                 }
-                None => {}
+                write!(w, "</ul>");
             }
-        })
+            None => {}
+        }
     })
 }
 
@@ -1422,36 +1330,34 @@ fn render_struct(w: &mut Writer, it: &clean::Item,
 
 fn render_methods(w: &mut Writer, it: &clean::Item) {
     local_data::get(cache_key, |cache| {
-        let cache = cache.unwrap();
-        cache.read(|c| {
-            match c.impls.find(&it.id) {
-                Some(v) => {
-                    let mut non_trait = v.iter().filter(|p| {
-                        p.n0_ref().trait_.is_none()
-                    });
-                    let non_trait = non_trait.to_owned_vec();
-                    let mut traits = v.iter().filter(|p| {
-                        p.n0_ref().trait_.is_some()
-                    });
-                    let traits = traits.to_owned_vec();
+        let c = cache.unwrap().get();
+        match c.impls.find(&it.id) {
+            Some(v) => {
+                let mut non_trait = v.iter().filter(|p| {
+                    p.n0_ref().trait_.is_none()
+                });
+                let non_trait = non_trait.to_owned_vec();
+                let mut traits = v.iter().filter(|p| {
+                    p.n0_ref().trait_.is_some()
+                });
+                let traits = traits.to_owned_vec();
 
-                    if non_trait.len() > 0 {
-                        write!(w, "<h2 id='methods'>Methods</h2>");
-                        for &(ref i, ref dox) in non_trait.move_iter() {
-                            render_impl(w, i, dox);
-                        }
-                    }
-                    if traits.len() > 0 {
-                        write!(w, "<h2 id='implementations'>Trait \
-                                   Implementations</h2>");
-                        for &(ref i, ref dox) in traits.move_iter() {
-                            render_impl(w, i, dox);
-                        }
+                if non_trait.len() > 0 {
+                    write!(w, "<h2 id='methods'>Methods</h2>");
+                    for &(ref i, ref dox) in non_trait.move_iter() {
+                        render_impl(w, i, dox);
                     }
                 }
-                None => {}
+                if traits.len() > 0 {
+                    write!(w, "<h2 id='implementations'>Trait \
+                               Implementations</h2>");
+                    for &(ref i, ref dox) in traits.move_iter() {
+                        render_impl(w, i, dox);
+                    }
+                }
             }
-        })
+            None => {}
+        }
     })
 }
 
@@ -1502,27 +1408,26 @@ fn render_impl(w: &mut Writer, i: &clean::Impl, dox: &Option<~str>) {
             Some(id) => id,
         };
         local_data::get(cache_key, |cache| {
-            cache.unwrap().read(|cache| {
-                match cache.traits.find(&trait_id) {
-                    Some(t) => {
-                        let name = meth.name.clone();
-                        match t.methods.iter().find(|t| t.item().name == name) {
-                            Some(method) => {
-                                match method.item().doc_value() {
-                                    Some(s) => {
-                                        write!(w,
-                                               "<div class='docblock'>{}</div>",
-                                               Markdown(s));
-                                    }
-                                    None => {}
+            let cache = cache.unwrap().get();
+            match cache.traits.find(&trait_id) {
+                Some(t) => {
+                    let name = meth.name.clone();
+                    match t.methods.iter().find(|t| t.item().name == name) {
+                        Some(method) => {
+                            match method.item().doc_value() {
+                                Some(s) => {
+                                    write!(w,
+                                           "<div class='docblock'>{}</div>",
+                                           Markdown(s));
                                 }
+                                None => {}
                             }
-                            None => {}
                         }
+                        None => {}
                     }
-                    None => {}
                 }
-            })
+                None => {}
+            }
         })
     }
 
@@ -1532,22 +1437,21 @@ fn render_impl(w: &mut Writer, i: &clean::Impl, dox: &Option<~str>) {
         None => {}
         Some(id) => {
             local_data::get(cache_key, |cache| {
-                cache.unwrap().read(|cache| {
-                    match cache.traits.find(&id) {
-                        Some(t) => {
-                            for method in t.methods.iter() {
-                                let n = method.item().name.clone();
-                                match i.methods.iter().find(|m| m.name == n) {
-                                    Some(..) => continue,
-                                    None => {}
-                                }
-
-                                docmeth(w, method.item());
+                let cache = cache.unwrap().get();
+                match cache.traits.find(&id) {
+                    Some(t) => {
+                        for method in t.methods.iter() {
+                            let n = method.item().name.clone();
+                            match i.methods.iter().find(|m| m.name == n) {
+                                Some(..) => continue,
+                                None => {}
                             }
+
+                            docmeth(w, method.item());
                         }
-                        None => {}
                     }
-                })
+                    None => {}
+                }
             })
         }
     }

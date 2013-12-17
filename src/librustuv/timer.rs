@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::comm::{oneshot, stream, PortOne, ChanOne, SendDeferred};
 use std::libc::c_int;
 use std::rt::BlockedTask;
 use std::rt::local::Local;
@@ -24,12 +23,13 @@ pub struct TimerWatcher {
     handle: *uvll::uv_timer_t,
     home: SchedHandle,
     action: Option<NextAction>,
+    id: uint, // see comments in timer_cb
 }
 
 pub enum NextAction {
     WakeTask(BlockedTask),
-    SendOnce(ChanOne<()>),
-    SendMany(Chan<()>),
+    SendOnce(Chan<()>),
+    SendMany(Chan<()>, uint),
 }
 
 impl TimerWatcher {
@@ -42,6 +42,7 @@ impl TimerWatcher {
             handle: handle,
             action: None,
             home: get_handle_to_current_scheduler!(),
+            id: 0,
         };
         return me.install();
     }
@@ -73,6 +74,7 @@ impl RtioTimer for TimerWatcher {
         // we must temporarily un-home ourselves, then destroy the action, and
         // then re-home again.
         let missile = self.fire_homing_missile();
+        self.id += 1;
         self.stop();
         let _missile = match util::replace(&mut self.action, None) {
             None => missile, // no need to do a homing dance
@@ -95,13 +97,14 @@ impl RtioTimer for TimerWatcher {
         self.stop();
     }
 
-    fn oneshot(&mut self, msecs: u64) -> PortOne<()> {
-        let (port, chan) = oneshot();
+    fn oneshot(&mut self, msecs: u64) -> Port<()> {
+        let (port, chan) = Chan::new();
 
         // similarly to the destructor, we must drop the previous action outside
         // of the homing missile
         let _prev_action = {
             let _m = self.fire_homing_missile();
+            self.id += 1;
             self.stop();
             self.start(msecs, 0);
             util::replace(&mut self.action, Some(SendOnce(chan)))
@@ -111,15 +114,16 @@ impl RtioTimer for TimerWatcher {
     }
 
     fn period(&mut self, msecs: u64) -> Port<()> {
-        let (port, chan) = stream();
+        let (port, chan) = Chan::new();
 
         // similarly to the destructor, we must drop the previous action outside
         // of the homing missile
         let _prev_action = {
             let _m = self.fire_homing_missile();
+            self.id += 1;
             self.stop();
             self.start(msecs, msecs);
-            util::replace(&mut self.action, Some(SendMany(chan)))
+            util::replace(&mut self.action, Some(SendMany(chan, self.id)))
         };
 
         return port;
@@ -136,10 +140,21 @@ extern fn timer_cb(handle: *uvll::uv_timer_t, status: c_int) {
             let sched: ~Scheduler = Local::take();
             sched.resume_blocked_task_immediately(task);
         }
-        SendOnce(chan) => chan.send_deferred(()),
-        SendMany(chan) => {
-            chan.send_deferred(());
-            timer.action = Some(SendMany(chan));
+        SendOnce(chan) => { chan.try_send_deferred(()); }
+        SendMany(chan, id) => {
+            chan.try_send_deferred(());
+
+            // Note that the above operation could have performed some form of
+            // scheduling. This means that the timer may have decided to insert
+            // some other action to happen. This 'id' keeps track of the updates
+            // to the timer, so we only reset the action back to sending on this
+            // channel if the id has remained the same. This is essentially a
+            // bug in that we have mutably aliasable memory, but that's libuv
+            // for you. We're guaranteed to all be running on the same thread,
+            // so there's no need for any synchronization here.
+            if timer.id == id {
+                timer.action = Some(SendMany(chan, id));
+            }
         }
     }
 }
@@ -181,8 +196,8 @@ mod test {
         let oport = timer.oneshot(1);
         let pport = timer.period(1);
         timer.sleep(1);
-        assert_eq!(oport.try_recv(), None);
-        assert_eq!(pport.try_recv(), None);
+        assert_eq!(oport.recv_opt(), None);
+        assert_eq!(pport.recv_opt(), None);
         timer.oneshot(1).recv();
     }
 
@@ -231,7 +246,7 @@ mod test {
         let timer_port = timer.period(1000);
 
         do spawn {
-            timer_port.try_recv();
+            timer_port.recv_opt();
         }
 
         // when we drop the TimerWatcher we're going to destroy the channel,
@@ -245,7 +260,7 @@ mod test {
         let timer_port = timer.period(1000);
 
         do spawn {
-            timer_port.try_recv();
+            timer_port.recv_opt();
         }
 
         timer.oneshot(1);
@@ -257,7 +272,7 @@ mod test {
         let timer_port = timer.period(1000);
 
         do spawn {
-            timer_port.try_recv();
+            timer_port.recv_opt();
         }
 
         timer.sleep(1);
@@ -269,7 +284,7 @@ mod test {
             let mut timer = TimerWatcher::new(local_loop());
             timer.oneshot(1000)
         };
-        assert_eq!(port.try_recv(), None);
+        assert_eq!(port.recv_opt(), None);
     }
 
     #[test]
@@ -278,7 +293,7 @@ mod test {
             let mut timer = TimerWatcher::new(local_loop());
             timer.period(1000)
         };
-        assert_eq!(port.try_recv(), None);
+        assert_eq!(port.recv_opt(), None);
     }
 
     #[test]

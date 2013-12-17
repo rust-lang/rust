@@ -7,8 +7,10 @@ fn producer(c: &Chan<~[u8]>) {
 }
 
 pub fn main() {
-    let (p, ch) = stream::<~[u8]>();
-    let _prod = task::spawn(proc() producer(&ch) );
+    let (p, ch) = Chan::<~[u8]>::new();
+    let _prod = task::spawn(proc() {
+        producer(&ch)
+    });
 
     let _data: ~[u8] = p.recv();
 }

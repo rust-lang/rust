@@ -19,7 +19,7 @@ fn start(_task_number: int) { info!("Started / Finished task."); }
 fn test00() {
     let i: int = 0;
     let mut builder = task::task();
-    let result = builder.future_result();
+    let mut result = builder.future_result();
     do builder.spawn {
         start(i)
     }

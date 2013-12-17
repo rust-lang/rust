@@ -17,7 +17,6 @@ extern mod extra;
 
 use extra::sort;
 use std::cmp::Ord;
-use std::comm::{stream, Port, Chan};
 use std::comm;
 use std::hashmap::HashMap;
 use std::option;
@@ -165,7 +164,7 @@ fn main() {
 
     // initialize each sequence sorter
     let sizes = ~[1u,2,3,4,6,12,18];
-    let mut streams = vec::from_fn(sizes.len(), |_| Some(stream::<~str>()));
+    let mut streams = vec::from_fn(sizes.len(), |_| Some(Chan::<~str>::new()));
     let mut from_child = ~[];
     let to_child   = sizes.iter().zip(streams.mut_iter()).map(|(sz, stream_ref)| {
         let sz = *sz;
@@ -174,7 +173,7 @@ fn main() {
 
         from_child.push(from_child_);
 
-        let (from_parent, to_child) = comm::stream();
+        let (from_parent, to_child) = Chan::new();
 
         do spawn {
             make_sequence_processor(sz, &from_parent, &to_parent_);

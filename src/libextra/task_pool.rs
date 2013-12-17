@@ -14,8 +14,6 @@
 /// parallelism.
 
 
-use std::comm::{Chan, GenericChan, GenericPort};
-use std::comm;
 use std::task::SchedMode;
 use std::task;
 use std::vec;
@@ -35,7 +33,7 @@ pub struct TaskPool<T> {
 #[unsafe_destructor]
 impl<T> Drop for TaskPool<T> {
     fn drop(&mut self) {
-        for channel in self.channels.iter() {
+        for channel in self.channels.mut_iter() {
             channel.send(Quit);
         }
     }
@@ -54,7 +52,7 @@ impl<T> TaskPool<T> {
         assert!(n_tasks >= 1);
 
         let channels = vec::from_fn(n_tasks, |i| {
-            let (port, chan) = comm::stream::<Msg<T>>();
+            let (port, chan) = Chan::<Msg<T>>::new();
             let init_fn = init_fn_factory();
 
             let task_body: proc() = proc() {

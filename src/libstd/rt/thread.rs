@@ -21,42 +21,32 @@ use kinds::Send;
 use libc;
 use ops::Drop;
 use option::{Option, Some, None};
-use ptr;
 use uint;
 
-#[cfg(windows)]
-use libc::types::os::arch::extra::{LPSECURITY_ATTRIBUTES, SIZE_T,
-                                   LPVOID, DWORD, LPDWORD, HANDLE};
-
-#[cfg(windows)] type rust_thread = HANDLE;
-#[cfg(unix)] type rust_thread = libc::pthread_t;
-#[cfg(windows)] type rust_thread_return = DWORD;
-#[cfg(unix)] type rust_thread_return = *libc::c_void;
-
-type StartFn = extern "C" fn(*libc::c_void) -> rust_thread_return;
+type StartFn = extern "C" fn(*libc::c_void) -> imp::rust_thread_return;
 
 /// This struct represents a native thread's state. This is used to join on an
 /// existing thread created in the join-able state.
 pub struct Thread<T> {
-    priv native: rust_thread,
+    priv native: imp::rust_thread,
     priv joined: bool,
     priv packet: ~Option<T>,
 }
 
-static DEFAULT_STACK_SIZE: libc::size_t = 1024*1024;
+static DEFAULT_STACK_SIZE: libc::size_t = 1024 * 1024;
 
 // This is the starting point of rust os threads. The first thing we do
 // is make sure that we don't trigger __morestack (also why this has a
 // no_split_stack annotation), and then we extract the main function
 // and invoke it.
 #[no_split_stack]
-extern fn thread_start(main: *libc::c_void) -> rust_thread_return {
+extern fn thread_start(main: *libc::c_void) -> imp::rust_thread_return {
     use rt::context;
     unsafe {
         context::record_stack_bounds(0, uint::max_value);
         let f: ~proc() = cast::transmute(main);
         (*f)();
-        cast::transmute(0 as rust_thread_return)
+        cast::transmute(0 as imp::rust_thread_return)
     }
 }
 
@@ -88,7 +78,7 @@ impl Thread<()> {
             *cast::transmute::<&~Option<T>, **mut Option<T>>(&packet)
         };
         let main: proc() = proc() unsafe { *packet2 = Some(main()); };
-        let native = unsafe { native_thread_create(~main) };
+        let native = unsafe { imp::create(~main) };
 
         Thread {
             native: native,
@@ -105,9 +95,15 @@ impl Thread<()> {
     /// there are detached thread still running around.
     pub fn spawn(main: proc()) {
         unsafe {
-            let handle = native_thread_create(~main);
-            native_thread_detach(handle);
+            let handle = imp::create(~main);
+            imp::detach(handle);
         }
+    }
+
+    /// Relinquishes the CPU slot that this OS-thread is currently using,
+    /// allowing another thread to run for awhile.
+    pub fn yield_now() {
+        unsafe { imp::yield_now(); }
     }
 }
 
@@ -116,7 +112,7 @@ impl<T: Send> Thread<T> {
     /// calculation.
     pub fn join(mut self) -> T {
         assert!(!self.joined);
-        unsafe { native_thread_join(self.native) };
+        unsafe { imp::join(self.native) };
         self.joined = true;
         assert!(self.packet.is_some());
         self.packet.take_unwrap()
@@ -129,80 +125,119 @@ impl<T: Send> Drop for Thread<T> {
         // This is required for correctness. If this is not done then the thread
         // would fill in a return box which no longer exists.
         if !self.joined {
-            unsafe { native_thread_join(self.native) };
+            unsafe { imp::join(self.native) };
         }
     }
 }
 
 #[cfg(windows)]
-unsafe fn native_thread_create(p: ~proc()) -> rust_thread {
-    let arg: *mut libc::c_void = cast::transmute(p);
-    CreateThread(ptr::mut_null(), DEFAULT_STACK_SIZE, thread_start,
-                 arg, 0, ptr::mut_null())
-}
+mod imp {
+    use super::DEFAULT_STACK_SIZE;
 
-#[cfg(windows)]
-unsafe fn native_thread_join(native: rust_thread) {
-    use libc::consts::os::extra::INFINITE;
-    WaitForSingleObject(native, INFINITE);
-}
+    use cast;
+    use libc;
+    use libc::types::os::arch::extra::{LPSECURITY_ATTRIBUTES, SIZE_T, BOOL,
+                                       LPVOID, DWORD, LPDWORD, HANDLE};
+    use ptr;
 
-#[cfg(windows)]
-unsafe fn native_thread_detach(native: rust_thread) {
-    assert!(libc::CloseHandle(native) != 0);
+    pub type rust_thread = HANDLE;
+    pub type rust_thread_return = DWORD;
+
+    pub unsafe fn create(p: ~proc()) -> rust_thread {
+        let arg: *mut libc::c_void = cast::transmute(p);
+        CreateThread(ptr::mut_null(), DEFAULT_STACK_SIZE, super::thread_start,
+                     arg, 0, ptr::mut_null())
+    }
+
+    pub unsafe fn join(native: rust_thread) {
+        use libc::consts::os::extra::INFINITE;
+        WaitForSingleObject(native, INFINITE);
+    }
+
+    pub unsafe fn detach(native: rust_thread) {
+        assert!(libc::CloseHandle(native) != 0);
+    }
+
+    pub unsafe fn yield_now() {
+        // This function will return 0 if there are no other threads to execute,
+        // but this also means that the yield was useless so this isn't really a
+        // case that needs to be worried about.
+        SwitchToThread();
+    }
+
+    extern "system" {
+        fn CreateThread(lpThreadAttributes: LPSECURITY_ATTRIBUTES,
+                        dwStackSize: SIZE_T,
+                        lpStartAddress: super::StartFn,
+                        lpParameter: LPVOID,
+                        dwCreationFlags: DWORD,
+                        lpThreadId: LPDWORD) -> HANDLE;
+        fn WaitForSingleObject(hHandle: HANDLE, dwMilliseconds: DWORD) -> DWORD;
+        fn SwitchToThread() -> BOOL;
+    }
 }
 
 #[cfg(unix)]
-unsafe fn native_thread_create(p: ~proc()) -> rust_thread {
-    use unstable::intrinsics;
+mod imp {
+    use cast;
     use libc::consts::os::posix01::PTHREAD_CREATE_JOINABLE;
+    use libc;
+    use ptr;
+    use super::DEFAULT_STACK_SIZE;
+    use unstable::intrinsics;
 
-    let mut native: libc::pthread_t = intrinsics::uninit();
-    let mut attr: libc::pthread_attr_t = intrinsics::uninit();
-    assert_eq!(pthread_attr_init(&mut attr), 0);
-    assert_eq!(pthread_attr_setstacksize(&mut attr, DEFAULT_STACK_SIZE), 0);
-    assert_eq!(pthread_attr_setdetachstate(&mut attr, PTHREAD_CREATE_JOINABLE), 0);
+    pub type rust_thread = libc::pthread_t;
+    pub type rust_thread_return = *libc::c_void;
 
-    let arg: *libc::c_void = cast::transmute(p);
-    assert_eq!(pthread_create(&mut native, &attr, thread_start, arg), 0);
-    native
-}
+    pub unsafe fn create(p: ~proc()) -> rust_thread {
+        let mut native: libc::pthread_t = intrinsics::uninit();
+        let mut attr: libc::pthread_attr_t = intrinsics::uninit();
+        assert_eq!(pthread_attr_init(&mut attr), 0);
+        assert_eq!(pthread_attr_setstacksize(&mut attr, DEFAULT_STACK_SIZE), 0);
+        assert_eq!(pthread_attr_setdetachstate(&mut attr,
+                                               PTHREAD_CREATE_JOINABLE), 0);
 
-#[cfg(unix)]
-unsafe fn native_thread_join(native: rust_thread) {
-    assert_eq!(pthread_join(native, ptr::null()), 0);
-}
+        let arg: *libc::c_void = cast::transmute(p);
+        assert_eq!(pthread_create(&mut native, &attr,
+                                  super::thread_start, arg), 0);
+        native
+    }
 
-#[cfg(unix)]
-fn native_thread_detach(native: rust_thread) {
-    unsafe { assert_eq!(pthread_detach(native), 0) }
-}
+    pub unsafe fn join(native: rust_thread) {
+        assert_eq!(pthread_join(native, ptr::null()), 0);
+    }
 
-#[cfg(windows)]
-extern "system" {
-    fn CreateThread(lpThreadAttributes: LPSECURITY_ATTRIBUTES,
-                    dwStackSize: SIZE_T,
-                    lpStartAddress: StartFn,
-                    lpParameter: LPVOID,
-                    dwCreationFlags: DWORD,
-                    lpThreadId: LPDWORD) -> HANDLE;
-    fn WaitForSingleObject(hHandle: HANDLE, dwMilliseconds: DWORD) -> DWORD;
-}
+    pub unsafe fn detach(native: rust_thread) {
+        assert_eq!(pthread_detach(native), 0);
+    }
 
-#[cfg(unix)]
-extern {
-    fn pthread_create(native: *mut libc::pthread_t,
-                      attr: *libc::pthread_attr_t,
-                      f: StartFn,
-                      value: *libc::c_void) -> libc::c_int;
-    fn pthread_join(native: libc::pthread_t,
-                    value: **libc::c_void) -> libc::c_int;
-    fn pthread_attr_init(attr: *mut libc::pthread_attr_t) -> libc::c_int;
-    fn pthread_attr_setstacksize(attr: *mut libc::pthread_attr_t,
-                                 stack_size: libc::size_t) -> libc::c_int;
-    fn pthread_attr_setdetachstate(attr: *mut libc::pthread_attr_t,
-                                   state: libc::c_int) -> libc::c_int;
-    fn pthread_detach(thread: libc::pthread_t) -> libc::c_int;
+    #[cfg(target_os = "macos")]
+    #[cfg(target_os = "android")]
+    pub unsafe fn yield_now() { assert_eq!(sched_yield(), 0); }
+
+    #[cfg(not(target_os = "macos"), not(target_os = "android"))]
+    pub unsafe fn yield_now() { assert_eq!(pthread_yield(), 0); }
+
+    extern {
+        fn pthread_create(native: *mut libc::pthread_t,
+                          attr: *libc::pthread_attr_t,
+                          f: super::StartFn,
+                          value: *libc::c_void) -> libc::c_int;
+        fn pthread_join(native: libc::pthread_t,
+                        value: **libc::c_void) -> libc::c_int;
+        fn pthread_attr_init(attr: *mut libc::pthread_attr_t) -> libc::c_int;
+        fn pthread_attr_setstacksize(attr: *mut libc::pthread_attr_t,
+                                     stack_size: libc::size_t) -> libc::c_int;
+        fn pthread_attr_setdetachstate(attr: *mut libc::pthread_attr_t,
+                                       state: libc::c_int) -> libc::c_int;
+        fn pthread_detach(thread: libc::pthread_t) -> libc::c_int;
+
+        #[cfg(target_os = "macos")]
+        #[cfg(target_os = "android")]
+        fn sched_yield() -> libc::c_int;
+        #[cfg(not(target_os = "macos"), not(target_os = "android"))]
+        fn pthread_yield() -> libc::c_int;
+    }
 }
 
 #[cfg(test)]
