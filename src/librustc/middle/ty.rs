@@ -4540,29 +4540,67 @@ pub fn populate_implementations_for_trait_if_necessary(
     tcx.populated_external_traits.insert(trait_id);
 }
 
-/// If the given def ID describes a trait method, returns the ID of the trait
-/// that the method belongs to. Otherwise, returns `None`.
-pub fn trait_of_method(tcx: ctxt, def_id: ast::DefId)
-                       -> Option<ast::DefId> {
-    match tcx.methods.find(&def_id) {
-        Some(method_descriptor) => {
-            match method_descriptor.container {
-                TraitContainer(id) => return Some(id),
-                _ => {}
+/// Given the def_id of an impl, return the def_id of the trait it implements.
+/// If it implements no trait, return `None`.
+pub fn trait_id_of_impl(tcx: ctxt,
+                        def_id: ast::DefId) -> Option<ast::DefId> {
+    let node = match tcx.items.find(&def_id.node) {
+        Some(node) => node,
+        None => return None
+    };
+    match node {
+        &ast_map::node_item(item, _) => {
+            match item.node {
+                ast::item_impl(_, Some(ref trait_ref), _, _) => {
+                    Some(node_id_to_trait_ref(tcx, trait_ref.ref_id).def_id)
+                }
+                _ => None
             }
         }
-        None => {}
+        _ => None
     }
+}
 
-    // If the method was in the local crate, then if we got here we know the
-    // answer is negative.
-    if def_id.crate == LOCAL_CRATE {
-        return None
+/// If the given def ID describes a method belonging to a trait (either a
+/// default method or an implementation of a trait method), return the ID of
+/// the trait that the method belongs to. Otherwise, return `None`.
+pub fn trait_of_method(tcx: ctxt, def_id: ast::DefId)
+                       -> Option<ast::DefId> {
+    if def_id.crate != LOCAL_CRATE {
+        return csearch::get_trait_of_method(tcx.cstore, def_id, tcx);
     }
+    match tcx.methods.find(&def_id) {
+        Some(method) => {
+            match method.container {
+                TraitContainer(def_id) => Some(def_id),
+                ImplContainer(def_id) => trait_id_of_impl(tcx, def_id),
+            }
+        }
+        None => None
+    }
+}
 
-    let result = csearch::get_trait_of_method(tcx.cstore, def_id, tcx);
-
-    result
+/// If the given def ID describes a method belonging to a trait, (either a
+/// default method or an implementation of a trait method), return the ID of
+/// the method inside trait definition (this means that if the given def ID
+/// is already that of the original trait method, then the return value is
+/// the same).
+/// Otherwise, return `None`.
+pub fn trait_method_of_method(tcx: ctxt,
+                              def_id: ast::DefId) -> Option<ast::DefId> {
+    let name = match tcx.methods.find(&def_id) {
+        Some(method) => method.ident.name,
+        None => return None
+    };
+    match trait_of_method(tcx, def_id) {
+        Some(trait_did) => {
+            let trait_methods = ty::trait_methods(tcx, trait_did);
+            trait_methods.iter()
+                .position(|m| m.ident.name == name)
+                .map(|idx| ty::trait_method(tcx, trait_did, idx).def_id)
+        }
+        None => None
+    }
 }
 
 /// Creates a hash of the type `t` which will be the same no matter what crate
