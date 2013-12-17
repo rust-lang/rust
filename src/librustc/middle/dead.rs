@@ -158,17 +158,9 @@ impl Visitor<()> for MarkSymbolVisitor {
         visit::walk_expr(self, expr, ())
     }
 
-    fn visit_ty(&mut self, typ: &ast::Ty, _: ()) {
-        match typ.node {
-            ast::ty_path(_, _, ref id) => {
-                self.lookup_and_handle_definition(id);
-            }
-            _ => visit::walk_ty(self, typ, ()),
-        }
-    }
-
-    fn visit_path(&mut self, _: &ast::Path, id: ast::NodeId, _: ()) {
+    fn visit_path(&mut self, path: &ast::Path, id: ast::NodeId, _: ()) {
         self.lookup_and_handle_definition(&id);
+        visit::walk_path(self, path, ());
     }
 
     fn visit_item(&mut self, _item: @ast::item, _: ()) {

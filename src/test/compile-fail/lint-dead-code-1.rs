@@ -44,6 +44,7 @@ impl SemiUsedStruct {
 }
 struct StructUsedAsField;
 struct StructUsedInEnum;
+struct StructUsedInGeneric;
 pub struct PubStruct2 {
     struct_used_as_field: *StructUsedAsField
 }
@@ -53,6 +54,8 @@ pub enum pub_enum2 { a(~StructUsedInEnum) }
 pub enum pub_enum3 { Foo = STATIC_USED_IN_ENUM_DISCRIMINANT }
 enum priv_enum { foo2, bar2 } //~ ERROR: code is never used
 enum used_enum { foo3, bar3 }
+
+fn f<T>() {}
 
 pub fn pub_fn() {
     used_fn();
@@ -67,6 +70,7 @@ pub fn pub_fn() {
         USED_STATIC => (),
         _ => ()
     }
+    f::<StructUsedInGeneric>();
 }
 fn priv_fn() { //~ ERROR: code is never used
     let unused_struct = PrivStruct;
