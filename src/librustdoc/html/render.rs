@@ -648,8 +648,12 @@ impl Context {
         self.root_path.push_str("../");
         self.current.push(s);
 
+        info!("Recursing into {}", self.dst.display());
+
         mkdir(&self.dst);
         let ret = f(self);
+
+        info!("Recursed; leaving {}", self.dst.display());
 
         // Go back to where we were at
         self.dst = prev;
@@ -674,13 +678,7 @@ impl Context {
         // using a rwarc makes this parallelizable in the future
         local_data::set(cache_key, Arc::new(cache));
 
-        let mut work = ~[item];
-        while work.len() > 0 {
-            let item = work.pop();
-            self.item(item, |_cx, item| {
-                work.push(item);
-            })
-        }
+        self.item(item);
     }
 
     /// Non-parellelized version of rendering an item. This will take the input
@@ -688,9 +686,10 @@ impl Context {
     /// all sub-items which need to be rendered.
     ///
     /// The rendering driver uses this closure to queue up more work.
-    fn item(&mut self, item: clean::Item, f: |&mut Context, clean::Item|) {
+    fn item(&mut self, item: clean::Item) {
         fn render(w: io::File, cx: &mut Context, it: &clean::Item,
                   pushname: bool) {
+            info!("Rendering an item to {}", w.path().display());
             // A little unfortunate that this is done like this, but it sure
             // does make formatting *a lot* nicer.
             local_data::set(current_location_key, cx.current.clone());
@@ -734,7 +733,7 @@ impl Context {
                     };
                     this.sidebar = build_sidebar(&m);
                     for item in m.items.move_iter() {
-                        f(this, item);
+                        this.item(item);
                     }
                 })
             }
