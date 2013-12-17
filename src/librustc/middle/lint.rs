@@ -37,6 +37,7 @@ use driver::session;
 use middle::privacy;
 use middle::trans::adt; // for `adt::is_ffi_safe`
 use middle::ty;
+use middle::typeck;
 use middle::pat_util;
 use metadata::csearch;
 use util::ppaux::{ty_to_str};
@@ -359,6 +360,9 @@ struct Context<'a> {
     cur: SmallIntMap<(level, LintSource)>,
     // context we're checking in (used to access fields like sess)
     tcx: ty::ctxt,
+    // maps from an expression id that corresponds to a method call to the
+    // details of the method to be invoked
+    method_map: typeck::method_map,
     // Items exported by the crate; used by the missing_doc lint.
     exported_items: &'a privacy::ExportedItems,
     // The id of the current `ast::struct_def` being walked.
@@ -1176,19 +1180,42 @@ fn check_missing_doc_variant(cx: &Context, v: &ast::variant) {
 /// Checks for use of items with #[deprecated], #[experimental] and
 /// #[unstable] (or none of them) attributes.
 fn check_stability(cx: &Context, e: &ast::Expr) {
-    let def = match e.node {
-        ast::ExprMethodCall(..) |
-        ast::ExprPath(..) |
-        ast::ExprStruct(..) => {
+    let id = match e.node {
+        ast::ExprPath(..) | ast::ExprStruct(..) => {
             match cx.tcx.def_map.find(&e.id) {
-                Some(&def) => def,
+                Some(&def) => ast_util::def_id_of_def(def),
+                None => return
+            }
+        }
+        ast::ExprMethodCall(..) => {
+            match cx.method_map.find(&e.id) {
+                Some(&typeck::method_map_entry { origin, .. }) => {
+                    match origin {
+                        typeck::method_static(def_id) => {
+                            // If this implements a trait method, get def_id
+                            // of the method inside trait definition.
+                            // Otherwise, use the current def_id (which refers
+                            // to the method inside impl).
+                            ty::trait_method_of_method(
+                                cx.tcx, def_id).unwrap_or(def_id)
+                        }
+                        typeck::method_param(typeck::method_param {
+                            trait_id: trait_id,
+                            method_num: index,
+                            ..
+                        })
+                        | typeck::method_object(typeck::method_object {
+                            trait_id: trait_id,
+                            method_num: index,
+                            ..
+                        }) => ty::trait_method(cx.tcx, trait_id, index).def_id
+                    }
+                }
                 None => return
             }
         }
         _ => return
     };
-
-    let id = ast_util::def_id_of_def(def);
 
     let stability = if ast_util::is_local(id) {
         // this crate
@@ -1208,7 +1235,8 @@ fn check_stability(cx: &Context, e: &ast::Expr) {
                     None => return
                 }
             }
-            _ => cx.tcx.sess.bug(format!("handle_def: {:?} not found", id))
+            _ => cx.tcx.sess.span_bug(e.span,
+                                      format!("handle_def: {:?} not found", id))
         }
     } else {
         // cross-crate
@@ -1395,12 +1423,14 @@ impl<'a> IdVisitingOperation for Context<'a> {
 }
 
 pub fn check_crate(tcx: ty::ctxt,
+                   method_map: typeck::method_map,
                    exported_items: &privacy::ExportedItems,
                    crate: &ast::Crate) {
     let mut cx = Context {
         dict: @get_lint_dict(),
         cur: SmallIntMap::new(),
         tcx: tcx,
+        method_map: method_map,
         exported_items: exported_items,
         cur_struct_def_id: -1,
         is_doc_hidden: false,
