@@ -219,9 +219,7 @@ impl Uuid {
         }
 
         let mut uuid = Uuid{ bytes: [0, .. 16] };
-        unsafe {
-            vec::raw::copy_memory(uuid.bytes, b);
-        }
+        vec::bytes::copy_memory(uuid.bytes, b);
         Some(uuid)
     }
 
