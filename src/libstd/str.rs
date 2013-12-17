@@ -1000,7 +1000,7 @@ pub mod raw {
     /// Create a Rust string from a *u8 buffer of the given length
     pub unsafe fn from_buf_len(buf: *u8, len: uint) -> ~str {
         let mut v: ~[u8] = vec::with_capacity(len);
-        v.as_mut_buf(|vbuf, _len| ptr::copy_memory(vbuf, buf as *u8, len));
+        ptr::copy_memory(v.as_mut_ptr(), buf as *u8, len);
         v.set_len(len);
 
         assert!(is_utf8(v));
@@ -2282,7 +2282,7 @@ impl<'a> StrSlice<'a> for &'a str {
             unsafe {
                 let mut v = vec::with_capacity(len);
 
-                v.as_mut_buf(|dst, _| ptr::copy_memory(dst, src, len));
+                ptr::copy_memory(v.as_mut_ptr(), src, len);
                 v.set_len(len);
                 ::cast::transmute(v)
             }
@@ -2697,7 +2697,8 @@ impl OwnedStr for ~str {
     #[inline]
     fn as_mut_buf<T>(&mut self, f: |*mut u8, uint| -> T) -> T {
         unsafe {
-            raw::as_owned_vec(self).as_mut_buf(f)
+            let v = raw::as_owned_vec(self);
+            f(v.as_mut_ptr(), v.len())
         }
     }
 
