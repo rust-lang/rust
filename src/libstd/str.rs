@@ -2555,14 +2555,6 @@ pub trait OwnedStr {
     /// The buffer does not have a null terminator.
     fn into_bytes(self) -> ~[u8];
 
-    /// Work with the mutable byte buffer and length of a slice.
-    ///
-    /// The buffer does not have a null terminator.
-    ///
-    /// The caller must make sure any mutations to this buffer keep the string
-    /// valid UTF-8!
-    fn as_mut_buf<T>(&mut self, f: |*mut u8, uint| -> T) -> T;
-
     /// Sets the length of a string
     ///
     /// This will explicitly set the size of the string, without actually
@@ -2591,16 +2583,15 @@ impl OwnedStr for ~str {
         let cur_len = self.len();
         // may use up to 4 bytes.
         unsafe {
-            raw::as_owned_vec(self).reserve_additional(4);
+            let v = raw::as_owned_vec(self);
+            v.reserve_additional(4);
 
             // Attempt to not use an intermediate buffer by just pushing bytes
             // directly onto this string.
-            let used = self.as_mut_buf(|buf, _| {
-                vec::raw::mut_buf_as_slice(buf.offset(cur_len as int), 4, |slc| {
-                    c.encode_utf8(slc)
-                })
-            });
-            self.set_len(cur_len + used);
+            let write_ptr = v.as_mut_ptr().offset(cur_len as int);
+            let used = vec::raw::mut_buf_as_slice(write_ptr, 4, |slc| c.encode_utf8(slc));
+
+            v.set_len(cur_len + used);
         }
     }
 
@@ -2666,14 +2657,6 @@ impl OwnedStr for ~str {
     #[inline]
     fn into_bytes(self) -> ~[u8] {
         unsafe { cast::transmute(self) }
-    }
-
-    #[inline]
-    fn as_mut_buf<T>(&mut self, f: |*mut u8, uint| -> T) -> T {
-        unsafe {
-            let v = raw::as_owned_vec(self);
-            f(v.as_mut_ptr(), v.len())
-        }
     }
 
     #[inline]
