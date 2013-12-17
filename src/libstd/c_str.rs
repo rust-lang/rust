@@ -295,13 +295,12 @@ unsafe fn with_c_str<T>(v: &[u8], checked: bool, f: |*libc::c_char| -> T) -> T {
         vec::bytes::copy_memory(buf, v);
         buf[v.len()] = 0;
 
-        buf.as_mut_buf(|buf, _| {
-            if checked {
-                check_for_null(v, buf as *mut libc::c_char);
-            }
+        let buf = buf.as_mut_ptr();
+        if checked {
+            check_for_null(v, buf as *mut libc::c_char);
+        }
 
-            f(buf as *libc::c_char)
-        })
+        f(buf as *libc::c_char)
     } else if checked {
         v.to_c_str().with_ref(f)
     } else {

@@ -1681,15 +1681,16 @@ impl<T> OwnedVector<T> for ~[T] {
         self.pop()
     }
     fn truncate(&mut self, newlen: uint) {
-        self.as_mut_buf(|p, oldlen| {
-            assert!(newlen <= oldlen);
-            unsafe {
-                // This loop is optimized out for non-drop types.
-                for i in range(newlen, oldlen) {
-                    ptr::read_and_zero_ptr(ptr::mut_offset(p, i as int));
-                }
+        let oldlen = self.len();
+        assert!(newlen <= oldlen);
+
+        unsafe {
+            let p = self.as_mut_ptr();
+            // This loop is optimized out for non-drop types.
+            for i in range(newlen, oldlen) {
+                ptr::read_and_zero_ptr(p.offset(i as int));
             }
-        });
+        }
         unsafe { self.set_len(newlen); }
     }
 
@@ -2053,9 +2054,6 @@ pub trait MutableVector<'a, T> {
     /// `self` and `src` must not overlap. Fails if `self` is
     /// shorter than `src`.
     unsafe fn copy_memory(self, src: &[T]);
-
-    /// Similar to `as_imm_buf` but passing a `*mut T`
-    fn as_mut_buf<U>(self, f: |*mut T, uint| -> U) -> U;
 }
 
 impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
@@ -2063,14 +2061,12 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
     fn mut_slice(self, start: uint, end: uint) -> &'a mut [T] {
         assert!(start <= end);
         assert!(end <= self.len());
-        self.as_mut_buf(|p, _len| {
-            unsafe {
-                cast::transmute(Slice {
-                    data: ptr::mut_offset(p, start as int) as *T,
+        unsafe {
+            cast::transmute(Slice {
+                    data: self.as_mut_ptr().offset(start as int) as *T,
                     len: (end - start)
                 })
-            }
-        })
+        }
     }
 
     #[inline]
@@ -2189,17 +2185,9 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
 
     #[inline]
     unsafe fn copy_memory(self, src: &[T]) {
-        self.as_mut_buf(|p_dst, len_dst| {
-            let len_src = src.len();
-            assert!(len_dst >= len_src);
-            ptr::copy_nonoverlapping_memory(p_dst, src.as_ptr(), len_src)
-        })
-    }
-
-    #[inline]
-    fn as_mut_buf<U>(self, f: |*mut T, uint| -> U) -> U {
-        let Slice{ data, len } = self.repr();
-        f(data as *mut T, len)
+        let len_src = src.len();
+        assert!(self.len() >= len_src);
+        ptr::copy_nonoverlapping_memory(self.as_mut_ptr(), src.as_ptr(), len_src)
     }
 }
 
@@ -2283,7 +2271,7 @@ pub mod raw {
     pub unsafe fn from_buf_raw<T>(ptr: *T, elts: uint) -> ~[T] {
         let mut dst = with_capacity(elts);
         dst.set_len(elts);
-        dst.as_mut_buf(|p_dst, _len_dst| ptr::copy_memory(p_dst, ptr, elts));
+        ptr::copy_memory(dst.as_mut_ptr(), ptr, elts);
         dst
     }
 
@@ -2315,6 +2303,7 @@ pub mod raw {
 
 /// Operations on `[u8]`.
 pub mod bytes {
+    use container::Container;
     use vec::MutableVector;
     use ptr;
 
@@ -2327,9 +2316,7 @@ pub mod bytes {
     impl<'a> MutableByteVector for &'a mut [u8] {
         #[inline]
         fn set_memory(self, value: u8) {
-            self.as_mut_buf(|p, len| {
-                unsafe { ptr::set_memory(p, value, len) };
-            })
+            unsafe { ptr::set_memory(self.as_mut_ptr(), value, self.len()) };
         }
     }
 
@@ -2351,9 +2338,7 @@ pub mod bytes {
         let old_len = dst.len();
         dst.reserve_additional(src.len());
         unsafe {
-            dst.as_mut_buf(|p_dst, len_dst| {
-                ptr::copy_memory(p_dst.offset(len_dst as int), src.as_ptr(), src.len())
-            });
+            ptr::copy_memory(dst.as_mut_ptr().offset(old_len as int), src.as_ptr(), src.len());
             dst.set_len(old_len + src.len());
         }
     }
@@ -3532,15 +3517,6 @@ mod tests {
             }
             i += 1;
         }
-    }
-
-    #[test]
-    #[should_fail]
-    fn test_as_mut_buf_fail() {
-        let mut v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
-        v.as_mut_buf(|_buf, _i| {
-            fail!()
-        })
     }
 
     #[test]
