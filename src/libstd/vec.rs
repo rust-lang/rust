@@ -2673,11 +2673,9 @@ impl<T> DoubleEndedIterator<T> for MoveIterator<T> {
 #[unsafe_destructor]
 impl<T> Drop for MoveIterator<T> {
     fn drop(&mut self) {
+        // destroy the remaining elements
+        for _x in *self {}
         unsafe {
-            // destroy the remaining elements
-            for x in self.iter {
-                ptr::read_ptr(x);
-            }
             if owns_managed::<T>() {
                 local_free(self.allocation as *u8 as *c_char)
             } else {
