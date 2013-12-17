@@ -191,7 +191,7 @@ mod tests {
         do run_in_mt_newsched_task {
             let mut called = false;
             io_error::cond.trap(|e| {
-                assert_eq!(e.kind, OtherIoError);
+                assert_eq!(e.kind, FileNotFound);
                 called = true;
             }).inside(|| {
                 let stream = UnixStream::connect(&("path/to/nowhere"));

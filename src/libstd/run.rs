@@ -339,7 +339,7 @@ mod tests {
     use task::spawn;
     use unstable::running_on_valgrind;
     use io::native::file;
-    use io::{Writer, Reader, io_error};
+    use io::{FileNotFound, OtherIoError, Reader, Writer, io_error};
 
     #[test]
     #[cfg(not(target_os="android"))] // FIXME(#10380)
@@ -353,9 +353,14 @@ mod tests {
 
     #[test]
     fn test_process_output_fail_to_start() {
+        // If the executable does not exist, then the io_error condition should be raised with
+        // IoErrorKind FileNotFound.
+
         let mut trapped_io_error = false;
-        let opt_outp = io_error::cond.trap(|_| {
+        let opt_outp = io_error::cond.trap(|e| {
             trapped_io_error = true;
+            // FIXME(#11023)
+            assert_eq!(e.kind, if cfg!(windows) { OtherIoError } else { FileNotFound });
         }).inside(|| -> Option<run::ProcessOutput> {
             run::process_output("no-binary-by-this-name-should-exist", [])
         });

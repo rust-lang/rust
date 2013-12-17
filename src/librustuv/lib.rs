@@ -337,6 +337,7 @@ pub fn uv_error_to_io_error(uverr: UvError) -> IoError {
             EACCES => PermissionDenied,
             ECONNREFUSED => ConnectionRefused,
             ECONNRESET => ConnectionReset,
+            ENOENT => FileNotFound,
             ENOTCONN => NotConnected,
             EPIPE => BrokenPipe,
             ECONNABORTED => ConnectionAborted,
