@@ -129,6 +129,17 @@ impl<R: Reader> Reader for BufferedReader<R> {
         Some(nread)
     }
 
+    fn read_byte(&mut self) -> Option<u8> {
+        if self.pos == self.cap {
+            if self.fill().len() == 0 {
+                return None;
+            }
+        }
+        let c = self.buf[self.pos];
+        self.pos += 1;
+        Some(c)
+    }
+
     fn eof(&mut self) -> bool {
         self.pos == self.cap && self.inner.eof()
     }
