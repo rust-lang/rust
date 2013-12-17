@@ -267,17 +267,16 @@ impl<'a> ToCStr for &'a [u8] {
     }
 
     unsafe fn to_c_str_unchecked(&self) -> CString {
-        self.as_imm_buf(|self_buf, self_len| {
-            let buf = libc::malloc(self_len as libc::size_t + 1) as *mut u8;
-            if buf.is_null() {
-                fail!("failed to allocate memory!");
-            }
+        let self_len = self.len();
+        let buf = libc::malloc(self_len as libc::size_t + 1) as *mut u8;
+        if buf.is_null() {
+            fail!("failed to allocate memory!");
+        }
 
-            ptr::copy_memory(buf, self_buf, self_len);
-            *ptr::mut_offset(buf, self_len as int) = 0;
+        ptr::copy_memory(buf, self.as_ptr(), self_len);
+        *ptr::mut_offset(buf, self_len as int) = 0;
 
-            CString::new(buf as *libc::c_char, true)
-        })
+        CString::new(buf as *libc::c_char, true)
     }
 
     fn with_c_str<T>(&self, f: |*libc::c_char| -> T) -> T {

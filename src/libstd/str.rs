@@ -2502,7 +2502,7 @@ impl<'a> StrSlice<'a> for &'a str {
     #[inline]
     fn as_imm_buf<T>(&self, f: |*u8, uint| -> T) -> T {
         let v: &[u8] = unsafe { cast::transmute(*self) };
-        v.as_imm_buf(f)
+        f(v.as_ptr(), v.len())
     }
 }
 

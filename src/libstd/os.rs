@@ -130,7 +130,7 @@ pub mod win32 {
         let mut t = s.to_utf16();
         // Null terminate before passing on.
         t.push(0u16);
-        t.as_imm_buf(|buf, _len| f(buf))
+        f(t.as_ptr())
     }
 }
 
