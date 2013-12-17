@@ -302,8 +302,10 @@ pub fn skip_ty<E, V:Visitor<E>>(_: &mut V, _: &Ty, _: E) {
 
 pub fn walk_ty<E:Clone, V:Visitor<E>>(visitor: &mut V, typ: &Ty, env: E) {
     match typ.node {
-        ty_box(ref mutable_type) | ty_uniq(ref mutable_type) |
-        ty_vec(ref mutable_type) | ty_ptr(ref mutable_type) => {
+        ty_uniq(ty) | ty_vec(ty) => {
+            visitor.visit_ty(ty, env)
+        }
+        ty_box(ref mutable_type) | ty_ptr(ref mutable_type) => {
             visitor.visit_ty(mutable_type.ty, env)
         }
         ty_rptr(ref lifetime, ref mutable_type) => {
@@ -344,8 +346,8 @@ pub fn walk_ty<E:Clone, V:Visitor<E>>(visitor: &mut V, typ: &Ty, env: E) {
                 walk_ty_param_bounds(visitor, bounds, env.clone())
             }
         }
-        ty_fixed_length_vec(ref mutable_type, expression) => {
-            visitor.visit_ty(mutable_type.ty, env.clone());
+        ty_fixed_length_vec(ty, expression) => {
+            visitor.visit_ty(ty, env.clone());
             visitor.visit_expr(expression, env)
         }
         ty_typeof(expression) => {

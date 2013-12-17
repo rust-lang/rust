@@ -282,6 +282,12 @@ pub static NO_TPS: uint = 2;
 pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
     this: &AC, rscope: &RS, ast_ty: &ast::Ty) -> ty::t {
 
+    fn ast_ty_to_mt<AC:AstConv, RS:RegionScope>(
+        this: &AC, rscope: &RS, ty: &ast::Ty) -> ty::mt {
+
+        ty::mt {ty: ast_ty_to_ty(this, rscope, ty), mutbl: ast::MutImmutable}
+    }
+
     fn ast_mt_to_mt<AC:AstConv, RS:RegionScope>(
         this: &AC, rscope: &RS, mt: &ast::mt) -> ty::mt {
 
@@ -303,8 +309,8 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
         debug!("mk_pointer(vst={:?})", vst);
 
         match a_seq_ty.ty.node {
-            ast::ty_vec(ref mt) => {
-                let mut mt = ast_mt_to_mt(this, rscope, mt);
+            ast::ty_vec(ty) => {
+                let mut mt = ast_ty_to_mt(this, rscope, ty);
                 if a_seq_ty.mutbl == ast::MutMutable {
                     mt = ty::mt { ty: mt.ty, mutbl: a_seq_ty.mutbl };
                 }
@@ -394,14 +400,15 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
         mk_pointer(this, rscope, mt, ty::vstore_box,
                    |tmt| ty::mk_box(tcx, tmt))
       }
-      ast::ty_uniq(ref mt) => {
-        mk_pointer(this, rscope, mt, ty::vstore_uniq,
+      ast::ty_uniq(ty) => {
+        let mt = ast::mt { ty: ty, mutbl: ast::MutImmutable };
+        mk_pointer(this, rscope, &mt, ty::vstore_uniq,
                    |tmt| ty::mk_uniq(tcx, tmt))
       }
-      ast::ty_vec(ref mt) => {
+      ast::ty_vec(ty) => {
         tcx.sess.span_err(ast_ty.span, "bare `[]` is not a type");
         // return /something/ so they can at least get more errors
-        ty::mk_evec(tcx, ast_mt_to_mt(this, rscope, mt), ty::vstore_uniq)
+        ty::mk_evec(tcx, ast_ty_to_mt(this, rscope, ty), ty::vstore_uniq)
       }
       ast::ty_ptr(ref mt) => {
         ty::mk_ptr(tcx, ast_mt_to_mt(this, rscope, mt))
@@ -532,15 +539,15 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
           }
         }
       }
-      ast::ty_fixed_length_vec(ref a_mt, e) => {
+      ast::ty_fixed_length_vec(ty, e) => {
         match const_eval::eval_const_expr_partial(&tcx, e) {
           Ok(ref r) => {
             match *r {
               const_eval::const_int(i) =>
-                ty::mk_evec(tcx, ast_mt_to_mt(this, rscope, a_mt),
+                ty::mk_evec(tcx, ast_ty_to_mt(this, rscope, ty),
                             ty::vstore_fixed(i as uint)),
               const_eval::const_uint(i) =>
-                ty::mk_evec(tcx, ast_mt_to_mt(this, rscope, a_mt),
+                ty::mk_evec(tcx, ast_ty_to_mt(this, rscope, ty),
                             ty::vstore_fixed(i as uint)),
               _ => {
                 tcx.sess.span_fatal(

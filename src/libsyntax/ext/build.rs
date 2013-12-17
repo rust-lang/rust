@@ -312,7 +312,7 @@ impl AstBuilder for @ExtCtxt {
                 ast::ty_rptr(lifetime, self.ty_mt(ty, mutbl)))
     }
     fn ty_uniq(&self, span: Span, ty: P<ast::Ty>) -> P<ast::Ty> {
-        self.ty(span, ast::ty_uniq(self.ty_mt(ty, ast::MutImmutable)))
+        self.ty(span, ast::ty_uniq(ty))
     }
     fn ty_box(&self, span: Span,
                  ty: P<ast::Ty>, mutbl: ast::Mutability) -> P<ast::Ty> {

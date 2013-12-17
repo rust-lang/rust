@@ -401,14 +401,10 @@ pub fn print_type(s: @ps, ty: &ast::Ty) {
       ast::ty_nil => word(s.s, "()"),
       ast::ty_bot => word(s.s, "!"),
       ast::ty_box(ref mt) => { word(s.s, "@"); print_mt(s, mt); }
-      ast::ty_uniq(ref mt) => { word(s.s, "~"); print_mt(s, mt); }
-      ast::ty_vec(ref mt) => {
+      ast::ty_uniq(ty) => { word(s.s, "~"); print_type(s, ty); }
+      ast::ty_vec(ty) => {
         word(s.s, "[");
-        match mt.mutbl {
-          ast::MutMutable => word_space(s, "mut"),
-          ast::MutImmutable => ()
-        }
-        print_type(s, mt.ty);
+        print_type(s, ty);
         word(s.s, "]");
       }
       ast::ty_ptr(ref mt) => { word(s.s, "*"); print_mt(s, mt); }
@@ -444,13 +440,9 @@ pub fn print_type(s: @ps, ty: &ast::Ty) {
                       Some(&generics), None);
       }
       ast::ty_path(ref path, ref bounds, _) => print_bounded_path(s, path, bounds),
-      ast::ty_fixed_length_vec(ref mt, v) => {
+      ast::ty_fixed_length_vec(ty, v) => {
         word(s.s, "[");
-        match mt.mutbl {
-            ast::MutMutable => word_space(s, "mut"),
-            ast::MutImmutable => ()
-        }
-        print_type(s, mt.ty);
+        print_type(s, ty);
         word(s.s, ", ..");
         print_expr(s, v);
         word(s.s, "]");
