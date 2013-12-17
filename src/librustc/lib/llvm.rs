@@ -257,6 +257,8 @@ pub enum Pass_opaque {}
 pub type PassRef = *Pass_opaque;
 pub enum TargetMachine_opaque {}
 pub type TargetMachineRef = *TargetMachine_opaque;
+pub enum Archive_opaque {}
+pub type ArchiveRef = *Archive_opaque;
 
 pub mod debuginfo {
     use super::{ValueRef};
@@ -300,7 +302,7 @@ pub mod llvm {
     use super::{Bool, BuilderRef, ContextRef, MemoryBufferRef, ModuleRef};
     use super::{ObjectFileRef, Opcode, PassManagerRef, PassManagerBuilderRef};
     use super::{SectionIteratorRef, TargetDataRef, TypeKind, TypeRef, UseRef};
-    use super::{ValueRef, TargetMachineRef, FileType};
+    use super::{ValueRef, TargetMachineRef, FileType, ArchiveRef};
     use super::{CodeGenModel, RelocMode, CodeGenOptLevel};
     use super::debuginfo::*;
     use std::libc::{c_char, c_int, c_longlong, c_ushort, c_uint, c_ulonglong,
@@ -1748,6 +1750,11 @@ pub mod llvm {
                                           syms: **c_char,
                                           len: size_t);
         pub fn LLVMRustMarkAllFunctionsNounwind(M: ModuleRef);
+
+        pub fn LLVMRustOpenArchive(path: *c_char) -> ArchiveRef;
+        pub fn LLVMRustArchiveReadSection(AR: ArchiveRef, name: *c_char,
+                                          out_len: *mut size_t) -> *c_char;
+        pub fn LLVMRustDestroyArchive(AR: ArchiveRef);
     }
 }
 

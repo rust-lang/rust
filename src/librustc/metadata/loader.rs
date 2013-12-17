@@ -10,10 +10,10 @@
 
 //! Finds crate binaries and loads their metadata
 
-use back::archive::{Archive, METADATA_FILENAME};
+use back::archive::{ArchiveRO, METADATA_FILENAME};
 use driver::session::Session;
 use lib::llvm::{False, llvm, ObjectFile, mk_section_iter};
-use metadata::cstore::{MetadataBlob, MetadataVec};
+use metadata::cstore::{MetadataBlob, MetadataVec, MetadataArchive};
 use metadata::decoder;
 use metadata::encoder;
 use metadata::filesearch::{FileMatches, FileDoesntMatch};
@@ -61,6 +61,12 @@ pub struct Library {
     metadata: MetadataBlob,
 }
 
+pub struct ArchiveMetadata {
+    priv archive: ArchiveRO,
+    // See comments in ArchiveMetadata::new for why this is static
+    priv data: &'static [u8],
+}
+
 impl Context {
     pub fn load_library_crate(&self) -> Library {
         match self.find_library_crate() {
@@ -102,7 +108,7 @@ impl Context {
                     if candidate && existing {
                         FileMatches
                     } else if candidate {
-                        match get_metadata_section(self.sess, self.os, path) {
+                        match get_metadata_section(self.os, path) {
                             Some(cvec) =>
                                 if crate_matches(cvec.as_slice(), self.name,
                                                  self.version, self.hash) {
@@ -248,11 +254,60 @@ fn crate_matches(crate_data: &[u8],
     }
 }
 
-fn get_metadata_section(sess: Session, os: Os,
-                        filename: &Path) -> Option<MetadataBlob> {
+impl ArchiveMetadata {
+    fn new(ar: ArchiveRO) -> Option<ArchiveMetadata> {
+        let data: &'static [u8] = {
+            let data = match ar.read(METADATA_FILENAME) {
+                Some(data) => data,
+                None => {
+                    debug!("didn't find '{}' in the archive", METADATA_FILENAME);
+                    return None;
+                }
+            };
+            // This data is actually a pointer inside of the archive itself, but
+            // we essentially want to cache it because the lookup inside the
+            // archive is a fairly expensive operation (and it's queried for
+            // *very* frequently). For this reason, we transmute it to the
+            // static lifetime to put into the struct. Note that the buffer is
+            // never actually handed out with a static lifetime, but rather the
+            // buffer is loaned with the lifetime of this containing object.
+            // Hence, we're guaranteed that the buffer will never be used after
+            // this object is dead, so this is a safe operation to transmute and
+            // store the data as a static buffer.
+            unsafe { cast::transmute(data) }
+        };
+        Some(ArchiveMetadata {
+            archive: ar,
+            data: data,
+        })
+    }
+
+    pub fn as_slice<'a>(&'a self) -> &'a [u8] { self.data }
+}
+
+// Just a small wrapper to time how long reading metadata takes.
+fn get_metadata_section(os: Os, filename: &Path) -> Option<MetadataBlob> {
+    use extra::time;
+    let start = time::precise_time_ns();
+    let ret = get_metadata_section_imp(os, filename);
+    info!("reading {} => {}ms", filename.filename_display(),
+           (time::precise_time_ns() - start) / 1000000);
+    return ret;
+}
+
+fn get_metadata_section_imp(os: Os, filename: &Path) -> Option<MetadataBlob> {
     if filename.filename_str().unwrap().ends_with(".rlib") {
-        let archive = Archive::open(sess, filename.clone());
-        return Some(MetadataVec(archive.read(METADATA_FILENAME)));
+        // Use ArchiveRO for speed here, it's backed by LLVM and uses mmap
+        // internally to read the file. We also avoid even using a memcpy by
+        // just keeping the archive along while the metadata is in use.
+        let archive = match ArchiveRO::open(filename) {
+            Some(ar) => ar,
+            None => {
+                debug!("llvm didn't like `{}`", filename.display());
+                return None;
+            }
+        };
+        return ArchiveMetadata::new(archive).map(|ar| MetadataArchive(ar));
     }
     unsafe {
         let mb = filename.with_c_str(|buf| {
@@ -322,13 +377,13 @@ pub fn read_meta_section_name(os: Os) -> &'static str {
 }
 
 // A diagnostic function for dumping crate metadata to an output stream
-pub fn list_file_metadata(sess: Session,
-                          intr: @ident_interner,
+pub fn list_file_metadata(intr: @ident_interner,
                           os: Os,
                           path: &Path,
                           out: @mut io::Writer) {
-    match get_metadata_section(sess, os, path) {
-      option::Some(bytes) => decoder::list_crate_metadata(intr, bytes.as_slice(),
+    match get_metadata_section(os, path) {
+      option::Some(bytes) => decoder::list_crate_metadata(intr,
+                                                          bytes.as_slice(),
                                                           out),
       option::None => {
         write!(out, "could not find metadata in {}.\n", path.display())
