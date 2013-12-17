@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[pkgid="boot#0.1"];
+#[crate_id="boot#0.1"];
 #[crate_type="lib"];
 
 extern mod rustuv; // pull in uvio

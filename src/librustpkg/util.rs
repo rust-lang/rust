@@ -291,10 +291,10 @@ pub fn compile_input(context: &BuildContext,
                                   });
 
     // Inject the pkgid attribute so we get the right package name and version
-    if !attr::contains_name(crate.attrs, "pkgid") {
+    if !attr::contains_name(crate.attrs, "crate_id") {
         // FIXME (#9639): This needs to handle non-utf8 paths
         let pkgid_attr =
-            attr::mk_name_value_item_str(@"pkgid",
+            attr::mk_name_value_item_str(@"crate_id",
                                          format!("{}\\#{}",
                                                  pkg_id.path.as_str().unwrap(),
                                                  pkg_id.version.to_str()).to_managed());

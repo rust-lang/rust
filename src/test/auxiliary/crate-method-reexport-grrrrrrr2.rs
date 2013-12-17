@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #[feature(managed_boxes)];
-#[pkgid="crate_method_reexport_grrrrrrr2"];
+#[crate_id="crate_method_reexport_grrrrrrr2"];
 // NOTE: remove after the next snapshot
 #[link(name = "crate_method_reexport_grrrrrrr2")];
 

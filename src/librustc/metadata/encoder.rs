@@ -1499,13 +1499,13 @@ fn synthesize_crate_attrs(ecx: &EncodeContext,
 
         attr::mk_attr(
             attr::mk_name_value_item_str(
-                @"pkgid",
+                @"crate_id",
                 ecx.link_meta.pkgid.to_str().to_managed()))
     }
 
     let mut attrs = ~[];
     for attr in crate.attrs.iter() {
-        if "pkgid" != attr.name()  {
+        if "crate_id" != attr.name()  {
             attrs.push(*attr);
         }
     }
