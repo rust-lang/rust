@@ -1213,11 +1213,11 @@ impl Parser {
         } else if *self.token == token::AT {
             // MANAGED POINTER
             self.bump();
-            self.parse_box_or_uniq_pointee(ManagedSigil, ty_box)
+            self.parse_box_or_uniq_pointee(ManagedSigil)
         } else if *self.token == token::TILDE {
             // OWNED POINTER
             self.bump();
-            self.parse_box_or_uniq_pointee(OwnedSigil, ty_uniq)
+            self.parse_box_or_uniq_pointee(OwnedSigil)
         } else if *self.token == token::BINOP(token::STAR) {
             // STAR POINTER (bare pointer?)
             self.bump();
@@ -1225,13 +1225,13 @@ impl Parser {
         } else if *self.token == token::LBRACKET {
             // VECTOR
             self.expect(&token::LBRACKET);
-            let mt = mt { ty: self.parse_ty(false), mutbl: MutImmutable };
+            let t = self.parse_ty(false);
 
             // Parse the `, ..e` in `[ int, ..e ]`
             // where `e` is a const expression
             let t = match self.maybe_parse_fixed_vstore() {
-                None => ty_vec(mt),
-                Some(suffix) => ty_fixed_length_vec(mt, suffix)
+                None => ty_vec(t),
+                Some(suffix) => ty_fixed_length_vec(t, suffix)
             };
             self.expect(&token::RBRACKET);
             t
@@ -1284,8 +1284,7 @@ impl Parser {
 
     // parse the type following a @ or a ~
     pub fn parse_box_or_uniq_pointee(&self,
-                                     sigil: ast::Sigil,
-                                     ctor: |v: mt| -> ty_)
+                                     sigil: ast::Sigil)
                                      -> ty_ {
         // ~'foo fn() or ~fn() are parsed directly as obsolete fn types:
         match *self.token {
@@ -1309,9 +1308,9 @@ impl Parser {
         // rather than boxed ptrs.  But the special casing of str/vec is not
         // reflected in the AST type.
         if sigil == OwnedSigil {
-            ctor(mt { ty: self.parse_ty(false), mutbl: MutImmutable })
+            ty_uniq(self.parse_ty(false))
         } else {
-            ctor(self.parse_mt())
+            ty_box(self.parse_mt())
         }
     }
 

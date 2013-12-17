@@ -593,7 +593,7 @@ impl Context {
                 ~[]
             ), None);
         let ty = ast::ty_fixed_length_vec(
-            self.ecx.ty_mt(piece_ty, ast::MutImmutable),
+            piece_ty,
             self.ecx.expr_uint(self.fmtsp, self.pieces.len())
         );
         let ty = self.ecx.ty(self.fmtsp, ty);
