@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[pkgid="a#0.1"];
+#[crate_id="a#0.1"];
 // NOTE: remove after the next snapshot
 #[link(name = "a", vers = "0.1")];
 #[crate_type = "lib"];

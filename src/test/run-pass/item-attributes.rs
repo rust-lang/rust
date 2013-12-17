@@ -16,7 +16,7 @@
 #[attr3];
 #[attr4(attr5)];
 
-#[pkgid="extra#0.1"];
+#[crate_id="extra#0.1"];
 // NOTE: remove after the next snapshot
 // Special linkage attributes for the crate
 #[link(name = "extra",

@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// NOTE: remove after snapshot
 #[pkgid = "rustc#0.9-pre"];
+#[crate_id = "rustc#0.9-pre"];
 #[comment = "The Rust compiler"];
 #[license = "MIT/ASL2"];
 #[crate_type = "dylib"];

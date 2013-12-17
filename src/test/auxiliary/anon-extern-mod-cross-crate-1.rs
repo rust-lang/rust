@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[pkgid="anonexternmod#0.1"];
+#[crate_id="anonexternmod#0.1"];
 
 use std::libc;
 
