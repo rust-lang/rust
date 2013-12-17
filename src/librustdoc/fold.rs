@@ -24,8 +24,7 @@ pub trait DocFolder {
         let inner = inner;
         let c = |x| self.fold_item(x);
         let inner = match inner {
-            StructItem(i) => {
-                let mut i = i;
+            StructItem(mut i) => {
                 let mut foo = ~[]; swap(&mut foo, &mut i.fields);
                 let num_fields = foo.len();
                 i.fields.extend(&mut foo.move_iter().filter_map(|x| self.fold_item(x)));
@@ -35,15 +34,14 @@ pub trait DocFolder {
             ModuleItem(i) => {
                 ModuleItem(self.fold_mod(i))
             },
-            EnumItem(i) => {
-                let mut i = i;
+            EnumItem(mut i) => {
                 let mut foo = ~[]; swap(&mut foo, &mut i.variants);
                 let num_variants = foo.len();
                 i.variants.extend(&mut foo.move_iter().filter_map(|x| self.fold_item(x)));
                 i.variants_stripped |= num_variants != i.variants.len();
                 EnumItem(i)
             },
-            TraitItem(i) => {
+            TraitItem(mut i) => {
                 fn vtrm<T: DocFolder>(this: &mut T, trm: TraitMethod) -> Option<TraitMethod> {
                     match trm {
                         Required(it) => {
@@ -60,13 +58,11 @@ pub trait DocFolder {
                         },
                     }
                 }
-                let mut i = i;
                 let mut foo = ~[]; swap(&mut foo, &mut i.methods);
                 i.methods.extend(&mut foo.move_iter().filter_map(|x| vtrm(self, x)));
                 TraitItem(i)
             },
-            ImplItem(i) => {
-                let mut i = i;
+            ImplItem(mut i) => {
                 let mut foo = ~[]; swap(&mut foo, &mut i.methods);
                 i.methods.extend(&mut foo.move_iter().filter_map(|x| self.fold_item(x)));
                 ImplItem(i)
@@ -74,8 +70,7 @@ pub trait DocFolder {
             VariantItem(i) => {
                 let i2 = i.clone(); // this clone is small
                 match i.kind {
-                    StructVariant(j) => {
-                        let mut j = j;
+                    StructVariant(mut j) => {
                         let mut foo = ~[]; swap(&mut foo, &mut j.fields);
                         let num_fields = foo.len();
                         j.fields.extend(&mut foo.move_iter().filter_map(c));
