@@ -16,6 +16,7 @@
 use std::io::{Decorator, Writer};
 
 use std::os;
+use std::libc;
 use terminfo::*;
 use terminfo::searcher::open;
 use terminfo::parser::compiled::parse;
@@ -99,13 +100,18 @@ pub struct Terminal<T> {
 impl<T: Writer> Terminal<T> {
     pub fn new(out: T) -> Result<Terminal<T>, ~str> {
         let term = match os::getenv("TERM") {
-            None    => return Err(~"TERM environment variable undefined"),
+            None => unsafe {
+                if libc::isatty(libc::STDOUT_FILENO) > 0 {
+                    return Ok(Terminal {out: out, ti: None, num_colors: 16});
+                }
+                return Err(~"TERM environment variable undefined")
+            },
             Some(t) => t
         };
 
         let entry = open(term);
         if entry.is_err() {
-            if term == ~"cygwin" {
+            if term == ~"cygwin" || term.starts_with("xterm") {
                 return Ok(Terminal {out: out, ti: None, num_colors: 16});
             }
             return Err(entry.unwrap_err());
@@ -126,22 +132,26 @@ impl<T: Writer> Terminal<T> {
     }
 
     /// Helper function, see fg and bg.
-    fn set_color(&mut self, color: color::Color, cap: &str) -> bool {
+    fn set_color(&mut self, color: color::Color, bg: bool) -> bool {
         let color = self.dim_if_necessary(color);
         if self.num_colors > color {
             match self.ti {
                 None => {
-                    let ansi = if color < 8 {
-                        format!("\x1b[{}m", 30 + color)
+                    let number = if bg { color + 10 } else { color };
+                    let ansi = if number < 8 {
+                        format!("\x1b[{}m", 30 + number)
                     } else {
-                        format!("\x1b[{};1m", 22 + color)
+                        format!("\x1b[{};1m", 22 + number)
                     };
                     self.out.write(ansi.as_bytes());
                     return true
                 },
                 Some(ref ti) => {
-                    let s = expand(*ti.strings.find_equiv(&(cap)).unwrap(),
-                                   [Number(color as int)], &mut Variables::new());
+                    let s = expand(*ti.strings.find_equiv(&(if bg {
+                        "setab"
+                    } else {
+                        "setaf"
+                    })).unwrap(), [Number(color as int)], &mut Variables::new());
                     if s.is_ok() {
                         self.out.write(s.unwrap());
                         return true
@@ -161,7 +171,7 @@ impl<T: Writer> Terminal<T> {
     ///
     /// Returns true if the color was set, false otherwise.
     pub fn fg(&mut self, color: color::Color) -> bool {
-        self.set_color(color, "setaf")
+        self.set_color(color, false)
     }
 
     /// Sets the background color to the given color.
@@ -171,7 +181,7 @@ impl<T: Writer> Terminal<T> {
     ///
     /// Returns true if the color was set, false otherwise.
     pub fn bg(&mut self, color: color::Color) -> bool {
-        self.set_color(color, "setab")
+        self.set_color(color, true)
     }
 
     /// Sets the given terminal attribute, if supported.
