@@ -15,7 +15,6 @@ use cmp::Eq;
 use fmt;
 use iter::Iterator;
 use option::{None, Option, Some};
-use option::{ToOption, IntoOption, AsOption};
 use str::OwnedStr;
 use to_str::ToStr;
 use vec::OwnedVector;
@@ -205,80 +204,8 @@ impl<T, E> Result<T, E> {
 }
 
 /////////////////////////////////////////////////////////////////////////////
-// Constructor extension trait
-/////////////////////////////////////////////////////////////////////////////
-
-/// A generic trait for converting a value to a `Result`
-pub trait ToResult<T, E> {
-    /// Convert to the `result` type
-    fn to_result(&self) -> Result<T, E>;
-}
-
-/// A generic trait for converting a value to a `Result`
-pub trait IntoResult<T, E> {
-    /// Convert to the `result` type
-    fn into_result(self) -> Result<T, E>;
-}
-
-/// A generic trait for converting a value to a `Result`
-pub trait AsResult<T, E> {
-    /// Convert to the `result` type
-    fn as_result<'a>(&'a self) -> Result<&'a T, &'a E>;
-}
-
-impl<T: Clone, E: Clone> ToResult<T, E> for Result<T, E> {
-    #[inline]
-    fn to_result(&self) -> Result<T, E> { self.clone() }
-}
-
-impl<T, E> IntoResult<T, E> for Result<T, E> {
-    #[inline]
-    fn into_result(self) -> Result<T, E> { self }
-}
-
-impl<T, E> AsResult<T, E> for Result<T, E> {
-    #[inline]
-    fn as_result<'a>(&'a self) -> Result<&'a T, &'a E> {
-        match *self {
-            Ok(ref t) => Ok(t),
-            Err(ref e) => Err(e),
-        }
-    }
-}
-
-/////////////////////////////////////////////////////////////////////////////
 // Trait implementations
 /////////////////////////////////////////////////////////////////////////////
-
-impl<T: Clone, E> ToOption<T> for Result<T, E> {
-    #[inline]
-    fn to_option(&self) -> Option<T> {
-        match *self {
-            Ok(ref t) => Some(t.clone()),
-            Err(_) => None,
-        }
-    }
-}
-
-impl<T, E> IntoOption<T> for Result<T, E> {
-    #[inline]
-    fn into_option(self) -> Option<T> {
-        match self {
-            Ok(t) => Some(t),
-            Err(_) => None,
-        }
-    }
-}
-
-impl<T, E> AsOption<T> for Result<T, E> {
-    #[inline]
-    fn as_option<'a>(&'a self) -> Option<&'a T> {
-        match *self {
-            Ok(ref t) => Some(t),
-            Err(_) => None,
-        }
-    }
-}
 
 impl<T: fmt::Default, E: fmt::Default> fmt::Default for Result<T, E> {
     #[inline]
@@ -364,8 +291,6 @@ mod tests {
     use super::*;
 
     use iter::range;
-    use option::{IntoOption, ToOption, AsOption};
-    use option::{Some, None};
     use vec::ImmutableVector;
     use to_str::ToStr;
 
@@ -458,63 +383,6 @@ mod tests {
         assert_eq!(fold_(functions.iter()
                         .map(|f| (*f)())),
                    Err(1));
-    }
-
-    #[test]
-    pub fn test_to_option() {
-        let ok: Result<int, int> = Ok(100);
-        let err: Result<int, int> = Err(404);
-
-        assert_eq!(ok.to_option(), Some(100));
-        assert_eq!(err.to_option(), None);
-    }
-
-    #[test]
-    pub fn test_into_option() {
-        let ok: Result<int, int> = Ok(100);
-        let err: Result<int, int> = Err(404);
-
-        assert_eq!(ok.into_option(), Some(100));
-        assert_eq!(err.into_option(), None);
-    }
-
-    #[test]
-    pub fn test_as_option() {
-        let ok: Result<int, int> = Ok(100);
-        let err: Result<int, int> = Err(404);
-
-        assert_eq!(ok.as_option().unwrap(), &100);
-        assert_eq!(err.as_option(), None);
-    }
-
-    #[test]
-    pub fn test_to_result() {
-        let ok: Result<int, int> = Ok(100);
-        let err: Result<int, int> = Err(404);
-
-        assert_eq!(ok.to_result(), Ok(100));
-        assert_eq!(err.to_result(), Err(404));
-    }
-
-    #[test]
-    pub fn test_into_result() {
-        let ok: Result<int, int> = Ok(100);
-        let err: Result<int, int> = Err(404);
-
-        assert_eq!(ok.into_result(), Ok(100));
-        assert_eq!(err.into_result(), Err(404));
-    }
-
-    #[test]
-    pub fn test_as_result() {
-        let ok: Result<int, int> = Ok(100);
-        let err: Result<int, int> = Err(404);
-
-        let x = 100;
-        assert_eq!(ok.as_result(), Ok(&x));
-
-        let x = 404;
-        assert_eq!(err.as_result(), Err(&x));
     }
 
     #[test]

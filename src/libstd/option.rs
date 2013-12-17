@@ -45,8 +45,6 @@ use default::Default;
 use fmt;
 use iter::{Iterator, DoubleEndedIterator, ExactSize};
 use kinds::Send;
-use result::{IntoResult, ToResult, AsResult};
-use result::{Result, Ok, Err};
 use str::OwnedStr;
 use to_str::ToStr;
 use util;
@@ -360,81 +358,8 @@ impl<T: Default> Option<T> {
 }
 
 /////////////////////////////////////////////////////////////////////////////
-// Constructor extension trait
-/////////////////////////////////////////////////////////////////////////////
-
-/// A generic trait for converting a value to a `Option`
-pub trait ToOption<T> {
-    /// Convert to the `option` type
-    fn to_option(&self) -> Option<T>;
-}
-
-/// A generic trait for converting a value to a `Option`
-pub trait IntoOption<T> {
-    /// Convert to the `option` type
-    fn into_option(self) -> Option<T>;
-}
-
-/// A generic trait for converting a value to a `Option`
-pub trait AsOption<T> {
-    /// Convert to the `option` type
-    fn as_option<'a>(&'a self) -> Option<&'a T>;
-}
-
-impl<T: Clone> ToOption<T> for Option<T> {
-    #[inline]
-    fn to_option(&self) -> Option<T> { self.clone() }
-}
-
-impl<T> IntoOption<T> for Option<T> {
-    #[inline]
-    fn into_option(self) -> Option<T> { self }
-}
-
-impl<T> AsOption<T> for Option<T> {
-    #[inline]
-    fn as_option<'a>(&'a self) -> Option<&'a T> {
-        match *self {
-            Some(ref x) => Some(x),
-            None => None,
-        }
-    }
-}
-
-/////////////////////////////////////////////////////////////////////////////
 // Trait implementations
 /////////////////////////////////////////////////////////////////////////////
-
-impl<T: Clone> ToResult<T, ()> for Option<T> {
-    #[inline]
-    fn to_result(&self) -> Result<T, ()> {
-        match *self {
-            Some(ref x) => Ok(x.clone()),
-            None => Err(()),
-        }
-    }
-}
-
-impl<T> IntoResult<T, ()> for Option<T> {
-    #[inline]
-    fn into_result(self) -> Result<T, ()> {
-        match self {
-            Some(x) => Ok(x),
-            None => Err(()),
-        }
-    }
-}
-
-impl<T> AsResult<T, ()> for Option<T> {
-    #[inline]
-    fn as_result<'a>(&'a self) -> Result<&'a T, &'a ()> {
-        static UNIT: () = ();
-        match *self {
-            Some(ref t) => Ok(t),
-            None => Err(&UNIT),
-        }
-    }
-}
 
 impl<T: fmt::Default> fmt::Default for Option<T> {
     #[inline]
@@ -493,8 +418,6 @@ impl<A> ExactSize<A> for OptionIterator<A> {}
 mod tests {
     use super::*;
 
-    use result::{IntoResult, ToResult};
-    use result::{Ok, Err};
     use str::StrSlice;
     use util;
 
@@ -731,50 +654,5 @@ mod tests {
         assert_eq!(x, None);
         assert!(!x.mutate_default(0i, |i| i+1));
         assert_eq!(x, Some(0i));
-    }
-
-    #[test]
-    pub fn test_to_option() {
-        let some: Option<int> = Some(100);
-        let none: Option<int> = None;
-
-        assert_eq!(some.to_option(), Some(100));
-        assert_eq!(none.to_option(), None);
-    }
-
-    #[test]
-    pub fn test_into_option() {
-        let some: Option<int> = Some(100);
-        let none: Option<int> = None;
-
-        assert_eq!(some.into_option(), Some(100));
-        assert_eq!(none.into_option(), None);
-    }
-
-    #[test]
-    pub fn test_as_option() {
-        let some: Option<int> = Some(100);
-        let none: Option<int> = None;
-
-        assert_eq!(some.as_option().unwrap(), &100);
-        assert_eq!(none.as_option(), None);
-    }
-
-    #[test]
-    pub fn test_to_result() {
-        let some: Option<int> = Some(100);
-        let none: Option<int> = None;
-
-        assert_eq!(some.to_result(), Ok(100));
-        assert_eq!(none.to_result(), Err(()));
-    }
-
-    #[test]
-    pub fn test_into_result() {
-        let some: Option<int> = Some(100);
-        let none: Option<int> = None;
-
-        assert_eq!(some.into_result(), Ok(100));
-        assert_eq!(none.into_result(), Err(()));
     }
 }
