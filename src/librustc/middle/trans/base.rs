@@ -130,7 +130,7 @@ pub fn push_ctxt(s: &'static str) -> _InsnCtxt {
     _InsnCtxt { _x: () }
 }
 
-struct StatRecorder<'a> {
+pub struct StatRecorder<'a> {
     ccx: @mut CrateContext,
     name: &'a str,
     start: u64,

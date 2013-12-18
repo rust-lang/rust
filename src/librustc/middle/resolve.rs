@@ -1258,11 +1258,16 @@ impl Resolver {
                                 let parent_link =
                                     self.get_parent_link(new_parent, ident);
                                 let def_id = local_def(item.id);
+                                let ns = TypeNS;
+                                let is_public =
+                                    !name_bindings.defined_in_namespace(ns) ||
+                                     name_bindings.defined_in_public_namespace(ns);
+
                                 name_bindings.define_module(parent_link,
                                                             Some(def_id),
                                                             ImplModuleKind,
                                                             false,
-                                                            true,
+                                                            is_public,
                                                             sp);
 
                                 ModuleReducedGraphParent(
