@@ -13,8 +13,8 @@ use back::abi;
 use lib;
 use lib::llvm::{llvm, ValueRef};
 use middle::lang_items::StrDupUniqFnLangItem;
-use middle::trans::base;
 use middle::trans::base::*;
+use middle::trans::base;
 use middle::trans::build::*;
 use middle::trans::callee;
 use middle::trans::common::*;
@@ -23,14 +23,12 @@ use middle::trans::expr::{Dest, Ignore, SaveIn};
 use middle::trans::expr;
 use middle::trans::glue;
 use middle::trans::machine::{llsize_of, nonzero_llsize_of, llsize_of_alloc};
+use middle::trans::type_::Type;
 use middle::trans::type_of;
 use middle::ty;
 use util::common::indenter;
 use util::ppaux::ty_to_str;
 
-use middle::trans::type_::Type;
-
-use std::option::None;
 use syntax::ast;
 use syntax::codemap;
 
@@ -689,3 +687,4 @@ pub fn iter_vec_unboxed<'r,
     let dataptr = get_dataptr(bcx, body_ptr);
     return iter_vec_raw(bcx, dataptr, vec_ty, fill, f);
 }
+

@@ -556,7 +556,7 @@ fn visit_expr(v: &mut LivenessVisitor, expr: &Expr, this: @IrMaps) {
       ExprAgain(_) | ExprLit(_) | ExprRet(..) | ExprBlock(..) |
       ExprAssign(..) | ExprAssignOp(..) | ExprMac(..) |
       ExprStruct(..) | ExprRepeat(..) | ExprParen(..) |
-      ExprInlineAsm(..) => {
+      ExprInlineAsm(..) | ExprBox(..) => {
           visit::walk_expr(v, expr, this);
       }
     }
@@ -1252,7 +1252,8 @@ impl Liveness {
           }
 
           ExprIndex(_, l, r) |
-          ExprBinary(_, _, l, r) => {
+          ExprBinary(_, _, l, r) |
+          ExprBox(l, r) => {
             self.propagate_through_exprs([l, r], succ)
           }
 
@@ -1546,7 +1547,7 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
       ExprAgain(..) | ExprLit(_) | ExprBlock(..) |
       ExprMac(..) | ExprAddrOf(..) | ExprStruct(..) | ExprRepeat(..) |
       ExprParen(..) | ExprFnBlock(..) | ExprProc(..) | ExprPath(..) |
-      ExprSelf(..) => {
+      ExprSelf(..) | ExprBox(..) => {
         visit::walk_expr(this, expr, ());
       }
       ExprForLoop(..) => fail!("non-desugared expr_for_loop")

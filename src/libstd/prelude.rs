@@ -86,6 +86,10 @@ pub use vec::{Vector, VectorVector, CopyableVector, ImmutableVector};
 pub use comm::{Port, Chan, SharedChan};
 pub use task::spawn;
 
+// Reexported statics
+#[cfg(not(test))]
+pub use gc::GC;
+
 /// Disposes of a value.
 #[inline]
 pub fn drop<T>(_x: T) { }
