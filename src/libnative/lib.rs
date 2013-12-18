@@ -15,12 +15,7 @@
 //! version of I/O.
 
 #[pkgid = "native#0.9-pre"];
-#[link(name = "native",
-       package_id = "native",
-       vers = "0.9-pre",
-       uuid = "535344a7-890f-5a23-e1f3-e0d118805141",
-       url = "https://github.com/mozilla/rust/tree/master/src/native")];
-
+#[crate_id = "native#0.9-pre"];
 #[license = "MIT/ASL2"];
 #[crate_type = "rlib"];
 #[crate_type = "dylib"];
@@ -46,7 +41,7 @@ pub mod task;
 #[lang = "start"]
 pub fn lang_start(main: *u8, argc: int, argv: **u8) -> int {
     use std::cast;
-    use std::task::try;
+    use std::task;
 
     do start(argc, argv) {
         // Instead of invoking main directly on this thread, invoke it on
@@ -55,7 +50,9 @@ pub fn lang_start(main: *u8, argc: int, argv: **u8) -> int {
         // of the main thread's stack, so for stack overflow detection to work
         // we must spawn the task in a subtask which we know the stack size of.
         let main: extern "Rust" fn() = unsafe { cast::transmute(main) };
-        match do try { main() } {
+        let mut task = task::task();
+        task.name("<main>");
+        match do task.try { main() } {
             Ok(()) => { os::set_exit_status(0); }
             Err(..) => { os::set_exit_status(rt::DEFAULT_ERROR_CODE); }
         }

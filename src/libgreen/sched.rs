@@ -11,7 +11,7 @@
 use std::cast;
 use std::rand::{XorShiftRng, Rng, Rand};
 use std::rt::local::Local;
-use std::rt::rtio::{RemoteCallback, PausibleIdleCallback, Callback, EventLoop};
+use std::rt::rtio::{RemoteCallback, PausableIdleCallback, Callback, EventLoop};
 use std::rt::task::BlockedTask;
 use std::rt::task::Task;
 use std::sync::deque;
@@ -779,6 +779,9 @@ impl Scheduler {
     /// randomness is a result of performing a round of work stealing (which
     /// may end up stealing from the current scheduler).
     pub fn yield_now(mut ~self, cur: ~GreenTask) {
+        // Async handles trigger the scheduler by calling yield_now on the local
+        // task, which eventually gets us to here. See comments in SchedRunner
+        // for more info on this.
         if cur.is_sched() {
             assert!(self.sched_task.is_none());
             self.run_sched_once(cur);
@@ -1345,7 +1348,7 @@ mod test {
 
             impl Drop for S {
                 fn drop(&mut self) {
-                    let _foo = @0;
+                    let _foo = ~0;
                 }
             }
 

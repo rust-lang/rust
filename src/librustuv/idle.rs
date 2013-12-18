@@ -100,7 +100,7 @@ mod test {
     use std::cast;
     use std::cell::RefCell;
     use std::rc::Rc;
-    use std::rt::rtio::{Callback, PausibleIdleCallback};
+    use std::rt::rtio::{Callback, PausableIdleCallback};
     use std::rt::task::{BlockedTask, Task};
     use std::rt::local::Local;
     use super::IdleWatcher;

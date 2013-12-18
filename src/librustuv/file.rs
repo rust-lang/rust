@@ -18,7 +18,6 @@ use std::rt::task::BlockedTask;
 use std::io::{FileStat, IoError};
 use std::io;
 use std::rt::rtio;
-use std::vec;
 
 use homing::{HomingIO, HomeHandle};
 use super::{Loop, UvError, uv_error_to_io_error, wait_until_woken_after, wakeup};

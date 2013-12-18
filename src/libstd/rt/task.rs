@@ -15,9 +15,10 @@
 
 use any::AnyOwnExt;
 use borrow;
+use cast;
 use cleanup;
 use io::Writer;
-use libc::{c_char, size_t};
+use iter::{Iterator, Take};
 use local_data;
 use ops::Drop;
 use option::{Option, Some, None};
@@ -488,7 +489,10 @@ mod test {
 
     #[test]
     #[should_fail]
-    fn test_begin_unwind() { begin_unwind("cause", file!(), line!()) }
+    fn test_begin_unwind() {
+        use rt::unwind::begin_unwind;
+        begin_unwind("cause", file!(), line!())
+    }
 
     // Task blocking tests
 

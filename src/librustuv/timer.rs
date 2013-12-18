@@ -169,7 +169,7 @@ impl Drop for TimerWatcher {
         let _action = {
             let _m = self.fire_homing_missile();
             self.stop();
-            self.close_async_();
+            self.close();
             self.action.take()
         };
     }

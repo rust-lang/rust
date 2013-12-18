@@ -17,8 +17,6 @@
 use std::task;
 use std::vec;
 
-#[cfg(test)] use std::task::SingleThreaded;
-
 enum Msg<T> {
     Execute(proc(&T)),
     Quit

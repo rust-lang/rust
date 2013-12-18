@@ -176,6 +176,7 @@ pub fn init(argc: int, argv: **u8) {
         args::init(argc, argv);
         env::init();
         logging::init();
+        local_ptr::init();
     }
 }
 

@@ -13,6 +13,7 @@
 #[allow(non_camel_case_types)];
 #[deny(warnings)];
 
+#[cfg(stage0)] extern mod green;
 extern mod extra;
 
 use std::os;

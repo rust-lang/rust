@@ -34,7 +34,6 @@ use libc;
 use option::{Option, Some, None};
 use result::{Ok, Err};
 use rt::rtio::{DontClose, IoFactory, LocalIo, RtioFileStream, RtioTTY};
-use vec;
 
 // And so begins the tale of acquiring a uv handle to a stdio stream on all
 // platforms in all situations. Our story begins by splitting the world into two
@@ -137,7 +136,7 @@ fn with_task_stdout(f: |&mut Writer|) {
                     fn write(&mut self, data: &[u8]) {
                         unsafe {
                             libc::write(libc::STDOUT_FILENO,
-                                        vec::raw::to_ptr(data) as *libc::c_void,
+                                        data.as_ptr() as *libc::c_void,
                                         data.len() as libc::size_t);
                         }
                     }
