@@ -910,9 +910,11 @@ do
         # Try to have LLVM pull in as few dependencies as possible (#9397)
         LLVM_OPTS="$LLVM_OPTS --disable-zlib --disable-libffi"
 
-        # pthreads works badly on mingw-w64 systems: #8996
+        # Use win32 native thread/lock apis instead of pthread wrapper.
+        # (llvm's configure tries to find pthread first, so we have to disable it explicitly.)
+        # Also note that pthreads works badly on mingw-w64 systems: #8996
         case "$CFG_BUILD" in
-            (*w64-mingw32)
+            (*-mingw32)
             LLVM_OPTS="$LLVM_OPTS --disable-pthreads"
             ;;
         esac

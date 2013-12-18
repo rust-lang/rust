@@ -4,9 +4,11 @@ import os
 import sys
 import subprocess
 
-components = sys.argv[1].split(' ')
+f = open(sys.argv[1], 'wb')
 
-print """// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+components = sys.argv[2].split(' ')
+
+f.write("""// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -18,10 +20,10 @@ print """// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 
 // WARNING: THIS IS A GENERATED FILE, DO NOT MODIFY
 //          take a look at src/etc/mklldeps.py if you're interested
-"""
+""")
 
-for llconfig in sys.argv[2:]:
-    print
+for llconfig in sys.argv[3:]:
+    f.write("\n")
 
     proc = subprocess.Popen([llconfig, '--host-target'], stdout = subprocess.PIPE)
     out, err = proc.communicate()
@@ -42,7 +44,7 @@ for llconfig in sys.argv[2:]:
         "target_os = \"" + os + "\"",
     ]
 
-    print "#[cfg(" + ', '.join(cfg) + ")]"
+    f.write("#[cfg(" + ', '.join(cfg) + ")]\n")
 
     args = [llconfig, '--libs']
     args.extend(components)
@@ -51,8 +53,7 @@ for llconfig in sys.argv[2:]:
 
     for lib in out.strip().split(' '):
         lib = lib[2:] # chop of the leading '-l'
-        print "#[link(name = \"" + lib + "\", kind = \"static\")]"
+        f.write("#[link(name = \"" + lib + "\", kind = \"static\")]\n")
     if os == 'win32':
-        print "#[link(name = \"pthread\")]"
-        print "#[link(name = \"imagehlp\")]"
-    print "extern {}"
+        f.write("#[link(name = \"imagehlp\")]\n")
+    f.write("extern {}\n")
