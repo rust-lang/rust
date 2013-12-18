@@ -35,6 +35,7 @@ use middle::trans::type_::Type;
 use std::c_str::ToCStr;
 use std::cast::transmute;
 use std::cast;
+use std::cell::{Cell, RefCell};
 use std::hashmap::HashMap;
 use std::libc::{c_uint, c_longlong, c_ulonglong, c_char};
 use std::vec;
@@ -213,7 +214,7 @@ pub struct FunctionContext {
     // always be Some.
     llretptr: Option<ValueRef>,
 
-    entry_bcx: Option<@mut Block>,
+    entry_bcx: Option<@Block>,
 
     // These elements: "hoisted basic blocks" containing
     // administrative activities that have to happen in only one place in
@@ -331,7 +332,7 @@ pub enum cleantype {
 
 /// A cleanup function: a built-in destructor.
 pub trait CleanupFunction {
-    fn clean(&self, block: @mut Block) -> @mut Block;
+    fn clean(&self, block: @Block) -> @Block;
 }
 
 /// A cleanup function that calls the "drop glue" (destructor function) on
@@ -342,7 +343,7 @@ pub struct TypeDroppingCleanupFunction {
 }
 
 impl CleanupFunction for TypeDroppingCleanupFunction {
-    fn clean(&self, block: @mut Block) -> @mut Block {
+    fn clean(&self, block: @Block) -> @Block {
         glue::drop_ty(block, self.val, self.t)
     }
 }
@@ -355,7 +356,7 @@ pub struct ImmediateTypeDroppingCleanupFunction {
 }
 
 impl CleanupFunction for ImmediateTypeDroppingCleanupFunction {
-    fn clean(&self, block: @mut Block) -> @mut Block {
+    fn clean(&self, block: @Block) -> @Block {
         glue::drop_ty_immediate(block, self.val, self.t)
     }
 }
@@ -371,7 +372,7 @@ pub struct WriteGuardReleasingCleanupFunction {
 }
 
 impl CleanupFunction for WriteGuardReleasingCleanupFunction {
-    fn clean(&self, bcx: @mut Block) -> @mut Block {
+    fn clean(&self, bcx: @Block) -> @Block {
         write_guard::return_to_mut(bcx,
                                    self.root_key,
                                    self.frozen_val_ref,
@@ -387,7 +388,7 @@ pub struct GCHeapFreeingCleanupFunction {
 }
 
 impl CleanupFunction for GCHeapFreeingCleanupFunction {
-    fn clean(&self, bcx: @mut Block) -> @mut Block {
+    fn clean(&self, bcx: @Block) -> @Block {
         glue::trans_free(bcx, self.ptr)
     }
 }
@@ -398,7 +399,7 @@ pub struct ExchangeHeapFreeingCleanupFunction {
 }
 
 impl CleanupFunction for ExchangeHeapFreeingCleanupFunction {
-    fn clean(&self, bcx: @mut Block) -> @mut Block {
+    fn clean(&self, bcx: @Block) -> @Block {
         glue::trans_exchange_free(bcx, self.ptr)
     }
 }
@@ -445,7 +446,7 @@ pub fn cleanup_type(cx: ty::ctxt, ty: ty::t) -> cleantype {
     }
 }
 
-pub fn add_clean(bcx: @mut Block, val: ValueRef, t: ty::t) {
+pub fn add_clean(bcx: @Block, val: ValueRef, t: ty::t) {
     if !ty::type_needs_drop(bcx.tcx(), t) {
         return
     }
@@ -463,7 +464,7 @@ pub fn add_clean(bcx: @mut Block, val: ValueRef, t: ty::t) {
     })
 }
 
-pub fn add_clean_temp_immediate(cx: @mut Block, val: ValueRef, ty: ty::t) {
+pub fn add_clean_temp_immediate(cx: @Block, val: ValueRef, ty: ty::t) {
     if !ty::type_needs_drop(cx.tcx(), ty) { return; }
     debug!("add_clean_temp_immediate({}, {}, {})",
            cx.to_str(), cx.val_to_str(val),
@@ -480,18 +481,18 @@ pub fn add_clean_temp_immediate(cx: @mut Block, val: ValueRef, ty: ty::t) {
     })
 }
 
-pub fn add_clean_temp_mem(bcx: @mut Block, val: ValueRef, t: ty::t) {
+pub fn add_clean_temp_mem(bcx: @Block, val: ValueRef, t: ty::t) {
     add_clean_temp_mem_in_scope_(bcx, None, val, t);
 }
 
-pub fn add_clean_temp_mem_in_scope(bcx: @mut Block,
+pub fn add_clean_temp_mem_in_scope(bcx: @Block,
                                    scope_id: ast::NodeId,
                                    val: ValueRef,
                                    t: ty::t) {
     add_clean_temp_mem_in_scope_(bcx, Some(scope_id), val, t);
 }
 
-pub fn add_clean_temp_mem_in_scope_(bcx: @mut Block, scope_id: Option<ast::NodeId>,
+pub fn add_clean_temp_mem_in_scope_(bcx: @Block, scope_id: Option<ast::NodeId>,
                                     val: ValueRef, t: ty::t) {
     if !ty::type_needs_drop(bcx.tcx(), t) { return; }
     debug!("add_clean_temp_mem({}, {}, {})",
@@ -508,7 +509,7 @@ pub fn add_clean_temp_mem_in_scope_(bcx: @mut Block, scope_id: Option<ast::NodeI
         grow_scope_clean(scope_info);
     })
 }
-pub fn add_clean_return_to_mut(bcx: @mut Block,
+pub fn add_clean_return_to_mut(bcx: @Block,
                                scope_id: ast::NodeId,
                                root_key: root_map_key,
                                frozen_val_ref: ValueRef,
@@ -541,7 +542,7 @@ pub fn add_clean_return_to_mut(bcx: @mut Block,
         grow_scope_clean(scope_info);
     })
 }
-pub fn add_clean_free(cx: @mut Block, ptr: ValueRef, heap: heap) {
+pub fn add_clean_free(cx: @Block, ptr: ValueRef, heap: heap) {
     let free_fn = match heap {
         heap_managed | heap_managed_unique => {
             @GCHeapFreeingCleanupFunction {
@@ -566,7 +567,7 @@ pub fn add_clean_free(cx: @mut Block, ptr: ValueRef, heap: heap) {
 // to a system where we can also cancel the cleanup on local variables, but
 // this will be more involved. For now, we simply zero out the local, and the
 // drop glue checks whether it is zero.
-pub fn revoke_clean(cx: @mut Block, val: ValueRef) {
+pub fn revoke_clean(cx: @Block, val: ValueRef) {
     in_scope_cx(cx, None, |scope_info| {
         let cleanup_pos = scope_info.cleanups.iter().position(
             |cu| match *cu {
@@ -583,8 +584,8 @@ pub fn revoke_clean(cx: @mut Block, val: ValueRef) {
     })
 }
 
-pub fn block_cleanups(bcx: &mut Block) -> ~[cleanup] {
-    match bcx.scope {
+pub fn block_cleanups(bcx: &Block) -> ~[cleanup] {
+    match bcx.scope.get() {
        None  => ~[],
        Some(inf) => inf.cleanups.clone(),
     }
@@ -592,7 +593,7 @@ pub fn block_cleanups(bcx: &mut Block) -> ~[cleanup] {
 
 pub struct ScopeInfo {
     parent: Option<@mut ScopeInfo>,
-    loop_break: Option<@mut Block>,
+    loop_break: Option<@Block>,
     loop_label: Option<Name>,
     // A list of functions that must be run at when leaving this
     // block, cleaning up any variables that were introduced in the
@@ -657,11 +658,11 @@ pub struct Block {
     // instructions into that block by way of this block context.
     // The block pointing to this one in the function's digraph.
     llbb: BasicBlockRef,
-    terminated: bool,
-    unreachable: bool,
-    parent: Option<@mut Block>,
+    terminated: Cell<bool>,
+    unreachable: Cell<bool>,
+    parent: Option<@Block>,
     // The current scope within this basic block
-    scope: Option<@mut ScopeInfo>,
+    scope: RefCell<Option<@mut ScopeInfo>>,
     // Is this block part of a landing pad?
     is_lpad: bool,
     // info about the AST node this block originated from, if any
@@ -674,17 +675,17 @@ pub struct Block {
 impl Block {
 
     pub fn new(llbb: BasicBlockRef,
-               parent: Option<@mut Block>,
+               parent: Option<@Block>,
                is_lpad: bool,
                node_info: Option<NodeInfo>,
                fcx: @mut FunctionContext)
             -> Block {
         Block {
             llbb: llbb,
-            terminated: false,
-            unreachable: false,
+            terminated: Cell::new(false),
+            unreachable: Cell::new(false),
             parent: parent,
-            scope: None,
+            scope: RefCell::new(None),
             is_lpad: is_lpad,
             node_info: node_info,
             fcx: fcx
@@ -748,16 +749,16 @@ impl Block {
 }
 
 pub struct Result {
-    bcx: @mut Block,
+    bcx: @Block,
     val: ValueRef
 }
 
-pub fn rslt(bcx: @mut Block, val: ValueRef) -> Result {
+pub fn rslt(bcx: @Block, val: ValueRef) -> Result {
     Result {bcx: bcx, val: val}
 }
 
 impl Result {
-    pub fn unpack(&self, bcx: &mut @mut Block) -> ValueRef {
+    pub fn unpack(&self, bcx: &mut @Block) -> ValueRef {
         *bcx = self.bcx;
         return self.val;
     }
@@ -769,11 +770,11 @@ pub fn val_ty(v: ValueRef) -> Type {
     }
 }
 
-pub fn in_scope_cx(cx: @mut Block,
+pub fn in_scope_cx(cx: @Block,
                    scope_id: Option<ast::NodeId>,
                    f: |si: &mut ScopeInfo|) {
     let mut cur = cx;
-    let mut cur_scope = cur.scope;
+    let mut cur_scope = cur.scope.get();
     loop {
         cur_scope = match cur_scope {
             Some(inf) => match scope_id {
@@ -795,13 +796,13 @@ pub fn in_scope_cx(cx: @mut Block,
             },
             None => {
                 cur = block_parent(cur);
-                cur.scope
+                cur.scope.get()
             }
         }
     }
 }
 
-pub fn block_parent(cx: @mut Block) -> @mut Block {
+pub fn block_parent(cx: @Block) -> @Block {
     match cx.parent {
       Some(b) => b,
       None    => cx.sess().bug(format!("block_parent called on root block {:?}",
@@ -1070,17 +1071,17 @@ pub struct mono_id_ {
 
 pub type mono_id = @mono_id_;
 
-pub fn umax(cx: @mut Block, a: ValueRef, b: ValueRef) -> ValueRef {
+pub fn umax(cx: @Block, a: ValueRef, b: ValueRef) -> ValueRef {
     let cond = build::ICmp(cx, lib::llvm::IntULT, a, b);
     return build::Select(cx, cond, b, a);
 }
 
-pub fn umin(cx: @mut Block, a: ValueRef, b: ValueRef) -> ValueRef {
+pub fn umin(cx: @Block, a: ValueRef, b: ValueRef) -> ValueRef {
     let cond = build::ICmp(cx, lib::llvm::IntULT, a, b);
     return build::Select(cx, cond, a, b);
 }
 
-pub fn align_to(cx: @mut Block, off: ValueRef, align: ValueRef) -> ValueRef {
+pub fn align_to(cx: @Block, off: ValueRef, align: ValueRef) -> ValueRef {
     let mask = build::Sub(cx, align, C_int(cx.ccx(), 1));
     let bumped = build::Add(cx, off, mask);
     return build::And(cx, bumped, build::Not(cx, mask));
@@ -1105,7 +1106,7 @@ pub fn path_str(sess: session::Session, p: &[path_elt]) -> ~str {
     r
 }
 
-pub fn monomorphize_type(bcx: &mut Block, t: ty::t) -> ty::t {
+pub fn monomorphize_type(bcx: &Block, t: ty::t) -> ty::t {
     match bcx.fcx.param_substs {
         Some(substs) => {
             ty::subst_tps(bcx.tcx(), substs.tys, substs.self_ty, t)
@@ -1118,23 +1119,23 @@ pub fn monomorphize_type(bcx: &mut Block, t: ty::t) -> ty::t {
     }
 }
 
-pub fn node_id_type(bcx: &mut Block, id: ast::NodeId) -> ty::t {
+pub fn node_id_type(bcx: &Block, id: ast::NodeId) -> ty::t {
     let tcx = bcx.tcx();
     let t = ty::node_id_to_type(tcx, id);
     monomorphize_type(bcx, t)
 }
 
-pub fn expr_ty(bcx: &mut Block, ex: &ast::Expr) -> ty::t {
+pub fn expr_ty(bcx: &Block, ex: &ast::Expr) -> ty::t {
     node_id_type(bcx, ex.id)
 }
 
-pub fn expr_ty_adjusted(bcx: &mut Block, ex: &ast::Expr) -> ty::t {
+pub fn expr_ty_adjusted(bcx: &Block, ex: &ast::Expr) -> ty::t {
     let tcx = bcx.tcx();
     let t = ty::expr_ty_adjusted(tcx, ex);
     monomorphize_type(bcx, t)
 }
 
-pub fn node_id_type_params(bcx: &mut Block, id: ast::NodeId) -> ~[ty::t] {
+pub fn node_id_type_params(bcx: &Block, id: ast::NodeId) -> ~[ty::t] {
     let tcx = bcx.tcx();
     let params = ty::node_id_to_type_params(tcx, id);
 
@@ -1154,7 +1155,7 @@ pub fn node_id_type_params(bcx: &mut Block, id: ast::NodeId) -> ~[ty::t] {
     }
 }
 
-pub fn node_vtables(bcx: @mut Block, id: ast::NodeId)
+pub fn node_vtables(bcx: @Block, id: ast::NodeId)
                  -> Option<typeck::vtable_res> {
     let raw_vtables = bcx.ccx().maps.vtable_map.find(&id);
     raw_vtables.map(|vts| resolve_vtables_in_fn_ctxt(bcx.fcx, *vts))
@@ -1254,7 +1255,7 @@ pub fn dummy_substs(tps: ~[ty::t]) -> ty::substs {
     }
 }
 
-pub fn filename_and_line_num_from_span(bcx: @mut Block,
+pub fn filename_and_line_num_from_span(bcx: @Block,
                                        span: Span) -> (ValueRef, ValueRef) {
     let loc = bcx.sess().parse_sess.cm.lookup_char_pos(span.lo);
     let filename_cstr = C_cstr(bcx.ccx(), loc.file.name);
@@ -1264,11 +1265,11 @@ pub fn filename_and_line_num_from_span(bcx: @mut Block,
 }
 
 // Casts a Rust bool value to an i1.
-pub fn bool_to_i1(bcx: @mut Block, llval: ValueRef) -> ValueRef {
+pub fn bool_to_i1(bcx: @Block, llval: ValueRef) -> ValueRef {
     build::ICmp(bcx, lib::llvm::IntNE, llval, C_bool(false))
 }
 
-pub fn langcall(bcx: @mut Block, span: Option<Span>, msg: &str,
+pub fn langcall(bcx: @Block, span: Option<Span>, msg: &str,
                 li: LangItem) -> ast::DefId {
     match bcx.tcx().lang_items.require(li) {
         Ok(id) => id,

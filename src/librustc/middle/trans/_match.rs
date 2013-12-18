@@ -310,7 +310,7 @@ pub enum opt_result {
     lower_bound(Result),
     range_result(Result, Result),
 }
-fn trans_opt(bcx: @mut Block, o: &Opt) -> opt_result {
+fn trans_opt(bcx: @Block, o: &Opt) -> opt_result {
     let _icx = push_ctxt("match::trans_opt");
     let ccx = bcx.ccx();
     let bcx = bcx;
@@ -345,7 +345,7 @@ fn trans_opt(bcx: @mut Block, o: &Opt) -> opt_result {
     }
 }
 
-fn variant_opt(bcx: @mut Block, pat_id: ast::NodeId)
+fn variant_opt(bcx: @Block, pat_id: ast::NodeId)
     -> Opt {
     let ccx = bcx.ccx();
     match ccx.tcx.def_map.get_copy(&pat_id) {
@@ -396,7 +396,7 @@ type BindingsMap = HashMap<Ident, BindingInfo>;
 
 #[deriving(Clone)]
 struct ArmData<'a> {
-    bodycx: @mut Block,
+    bodycx: @Block,
     arm: &'a ast::Arm,
     bindings_map: @BindingsMap
 }
@@ -435,7 +435,7 @@ fn has_nested_bindings(m: &[Match], col: uint) -> bool {
     return false;
 }
 
-fn expand_nested_bindings<'r>(bcx: @mut Block,
+fn expand_nested_bindings<'r>(bcx: @Block,
                                   m: &[Match<'r>],
                                   col: uint,
                                   val: ValueRef)
@@ -469,7 +469,7 @@ fn expand_nested_bindings<'r>(bcx: @mut Block,
     })
 }
 
-fn assert_is_binding_or_wild(bcx: @mut Block, p: @ast::Pat) {
+fn assert_is_binding_or_wild(bcx: @Block, p: @ast::Pat) {
     if !pat_is_binding_or_wild(bcx.tcx().def_map, p) {
         bcx.sess().span_bug(
             p.span,
@@ -480,7 +480,7 @@ fn assert_is_binding_or_wild(bcx: @mut Block, p: @ast::Pat) {
 
 type enter_pat<'a> = 'a |@ast::Pat| -> Option<~[@ast::Pat]>;
 
-fn enter_match<'r>(bcx: @mut Block,
+fn enter_match<'r>(bcx: @Block,
                        dm: DefMap,
                        m: &[Match<'r>],
                        col: uint,
@@ -529,7 +529,7 @@ fn enter_match<'r>(bcx: @mut Block,
     return result;
 }
 
-fn enter_default<'r>(bcx: @mut Block,
+fn enter_default<'r>(bcx: @Block,
                      dm: DefMap,
                      m: &[Match<'r>],
                      col: uint,
@@ -599,7 +599,7 @@ fn enter_default<'r>(bcx: @mut Block,
 // <nmatsakis> so all patterns must either be records (resp. tuples) or
 //             wildcards
 
-fn enter_opt<'r>(bcx: @mut Block,
+fn enter_opt<'r>(bcx: @Block,
                      m: &[Match<'r>],
                      opt: &Opt,
                      col: uint,
@@ -735,7 +735,7 @@ fn enter_opt<'r>(bcx: @mut Block,
     })
 }
 
-fn enter_rec_or_struct<'r>(bcx: @mut Block,
+fn enter_rec_or_struct<'r>(bcx: @Block,
                                dm: DefMap,
                                m: &[Match<'r>],
                                col: uint,
@@ -770,7 +770,7 @@ fn enter_rec_or_struct<'r>(bcx: @mut Block,
     })
 }
 
-fn enter_tup<'r>(bcx: @mut Block,
+fn enter_tup<'r>(bcx: @Block,
                      dm: DefMap,
                      m: &[Match<'r>],
                      col: uint,
@@ -796,7 +796,7 @@ fn enter_tup<'r>(bcx: @mut Block,
     })
 }
 
-fn enter_tuple_struct<'r>(bcx: @mut Block,
+fn enter_tuple_struct<'r>(bcx: @Block,
                               dm: DefMap,
                               m: &[Match<'r>],
                               col: uint,
@@ -822,7 +822,7 @@ fn enter_tuple_struct<'r>(bcx: @mut Block,
     })
 }
 
-fn enter_box<'r>(bcx: @mut Block,
+fn enter_box<'r>(bcx: @Block,
                      dm: DefMap,
                      m: &[Match<'r>],
                      col: uint,
@@ -849,7 +849,7 @@ fn enter_box<'r>(bcx: @mut Block,
     })
 }
 
-fn enter_uniq<'r>(bcx: @mut Block,
+fn enter_uniq<'r>(bcx: @Block,
                       dm: DefMap,
                       m: &[Match<'r>],
                       col: uint,
@@ -876,7 +876,7 @@ fn enter_uniq<'r>(bcx: @mut Block,
     })
 }
 
-fn enter_region<'r>(bcx: @mut Block,
+fn enter_region<'r>(bcx: @Block,
                         dm: DefMap,
                         m: &[Match<'r>],
                         col: uint,
@@ -906,7 +906,7 @@ fn enter_region<'r>(bcx: @mut Block,
 // Returns the options in one column of matches. An option is something that
 // needs to be conditionally matched at runtime; for example, the discriminant
 // on a set of enum variants or a literal.
-fn get_options(bcx: @mut Block, m: &[Match], col: uint) -> ~[Opt] {
+fn get_options(bcx: @Block, m: &[Match], col: uint) -> ~[Opt] {
     let ccx = bcx.ccx();
     fn add_to_set(tcx: ty::ctxt, set: &mut ~[Opt], val: Opt) {
         if set.iter().any(|l| opt_eq(tcx, l, &val)) {return;}
@@ -990,10 +990,10 @@ fn get_options(bcx: @mut Block, m: &[Match], col: uint) -> ~[Opt] {
 
 struct ExtractedBlock {
     vals: ~[ValueRef],
-    bcx: @mut Block
+    bcx: @Block
 }
 
-fn extract_variant_args(bcx: @mut Block,
+fn extract_variant_args(bcx: @Block,
                             repr: &adt::Repr,
                             disr_val: ty::Disr,
                             val: ValueRef)
@@ -1006,7 +1006,7 @@ fn extract_variant_args(bcx: @mut Block,
     ExtractedBlock { vals: args, bcx: bcx }
 }
 
-fn match_datum(bcx: @mut Block, val: ValueRef, pat_id: ast::NodeId) -> Datum {
+fn match_datum(bcx: @Block, val: ValueRef, pat_id: ast::NodeId) -> Datum {
     //! Helper for converting from the ValueRef that we pass around in
     //! the match code, which is always by ref, into a Datum. Eventually
     //! we should just pass around a Datum and be done with it.
@@ -1016,7 +1016,7 @@ fn match_datum(bcx: @mut Block, val: ValueRef, pat_id: ast::NodeId) -> Datum {
 }
 
 
-fn extract_vec_elems(bcx: @mut Block,
+fn extract_vec_elems(bcx: @Block,
                          pat_span: Span,
                          pat_id: ast::NodeId,
                          elem_count: uint,
@@ -1069,7 +1069,7 @@ fn extract_vec_elems(bcx: @mut Block,
 /// Function returns None if there is no struct pattern.
 /// Function doesn't collect fields from struct-like enum variants.
 /// Function can return empty list if there is only wildcard struct pattern.
-fn collect_record_or_struct_fields(bcx: @mut Block,
+fn collect_record_or_struct_fields(bcx: @Block,
                                        m: &[Match],
                                        col: uint)
                                     -> Option<~[ast::Ident]> {
@@ -1105,7 +1105,7 @@ fn collect_record_or_struct_fields(bcx: @mut Block,
     }
 }
 
-fn pats_require_rooting(bcx: @mut Block,
+fn pats_require_rooting(bcx: @Block,
                             m: &[Match],
                             col: uint)
                          -> bool {
@@ -1116,11 +1116,11 @@ fn pats_require_rooting(bcx: @mut Block,
     })
 }
 
-fn root_pats_as_necessary(mut bcx: @mut Block,
+fn root_pats_as_necessary(mut bcx: @Block,
                               m: &[Match],
                               col: uint,
                               val: ValueRef)
-                           -> @mut Block {
+                           -> @Block {
     for br in m.iter() {
         let pat_id = br.pats[col].id;
         if pat_id != 0 {
@@ -1163,7 +1163,7 @@ fn any_tup_pat(m: &[Match], col: uint) -> bool {
     any_pat!(m, ast::PatTup(_))
 }
 
-fn any_tuple_struct_pat(bcx: @mut Block, m: &[Match], col: uint) -> bool {
+fn any_tuple_struct_pat(bcx: @Block, m: &[Match], col: uint) -> bool {
     m.iter().any(|br| {
         let pat = br.pats[col];
         match pat.node {
@@ -1184,7 +1184,7 @@ trait CustomFailureHandler {
 }
 
 struct DynamicFailureHandler {
-    bcx: @mut Block,
+    bcx: @Block,
     sp: Span,
     msg: @str,
     finished: @mut Option<BasicBlockRef>,
@@ -1271,7 +1271,7 @@ pub enum branch_kind { no_branch, single, switch, compare, compare_vec_len, }
 // Compiles a comparison between two things.
 //
 // NB: This must produce an i1, not a Rust bool (i8).
-fn compare_values(cx: @mut Block,
+fn compare_values(cx: @Block,
                       lhs: ValueRef,
                       rhs: ValueRef,
                       rhs_t: ty::t)
@@ -1314,10 +1314,10 @@ fn compare_values(cx: @mut Block,
     }
 }
 
-fn store_non_ref_bindings(bcx: @mut Block,
+fn store_non_ref_bindings(bcx: @Block,
                           bindings_map: &BindingsMap,
                           mut opt_temp_cleanups: Option<&mut ~[ValueRef]>)
-                          -> @mut Block
+                          -> @Block
 {
     /*!
      *
@@ -1348,9 +1348,9 @@ fn store_non_ref_bindings(bcx: @mut Block,
     return bcx;
 }
 
-fn insert_lllocals(bcx: @mut Block,
+fn insert_lllocals(bcx: @Block,
                    bindings_map: &BindingsMap,
-                   add_cleans: bool) -> @mut Block {
+                   add_cleans: bool) -> @Block {
     /*!
      * For each binding in `data.bindings_map`, adds an appropriate entry into
      * the `fcx.lllocals` map.  If add_cleans is true, then adds cleanups for
@@ -1391,13 +1391,13 @@ fn insert_lllocals(bcx: @mut Block,
     return bcx;
 }
 
-fn compile_guard(bcx: @mut Block,
+fn compile_guard(bcx: @Block,
                      guard_expr: &ast::Expr,
                      data: &ArmData,
                      m: &[Match],
                      vals: &[ValueRef],
                      chk: FailureHandler)
-                  -> @mut Block {
+                  -> @Block {
     debug!("compile_guard(bcx={}, guard_expr={}, m={}, vals={})",
            bcx.to_str(),
            bcx.expr_to_str(guard_expr),
@@ -1432,7 +1432,7 @@ fn compile_guard(bcx: @mut Block,
         bcx
     });
 
-    fn drop_bindings(bcx: @mut Block, data: &ArmData) -> @mut Block {
+    fn drop_bindings(bcx: @Block, data: &ArmData) -> @Block {
         let mut bcx = bcx;
         for (_, &binding_info) in data.bindings_map.iter() {
             match binding_info.trmode {
@@ -1447,7 +1447,7 @@ fn compile_guard(bcx: @mut Block,
     }
 }
 
-fn compile_submatch(bcx: @mut Block,
+fn compile_submatch(bcx: @Block,
                     m: &[Match],
                     vals: &[ValueRef],
                     chk: FailureHandler) {
@@ -1499,7 +1499,7 @@ fn compile_submatch(bcx: @mut Block,
     }
 }
 
-fn compile_submatch_continue(mut bcx: @mut Block,
+fn compile_submatch_continue(mut bcx: @Block,
                              m: &[Match],
                              vals: &[ValueRef],
                              chk: FailureHandler,
@@ -1816,18 +1816,18 @@ fn compile_submatch_continue(mut bcx: @mut Block,
     }
 }
 
-pub fn trans_match(bcx: @mut Block,
+pub fn trans_match(bcx: @Block,
                    match_expr: &ast::Expr,
                    discr_expr: &ast::Expr,
                    arms: &[ast::Arm],
-                   dest: Dest) -> @mut Block {
+                   dest: Dest) -> @Block {
     let _icx = push_ctxt("match::trans_match");
     with_scope(bcx, match_expr.info(), "match", |bcx| {
         trans_match_inner(bcx, discr_expr, arms, dest)
     })
 }
 
-fn create_bindings_map(bcx: @mut Block, pat: @ast::Pat) -> BindingsMap {
+fn create_bindings_map(bcx: @Block, pat: @ast::Pat) -> BindingsMap {
     // Create the bindings map, which is a mapping from each binding name
     // to an alloca() that will be the value for that local variable.
     // Note that we use the names because each binding will have many ids
@@ -1867,10 +1867,10 @@ fn create_bindings_map(bcx: @mut Block, pat: @ast::Pat) -> BindingsMap {
     return bindings_map;
 }
 
-fn trans_match_inner(scope_cx: @mut Block,
+fn trans_match_inner(scope_cx: @Block,
                          discr_expr: &ast::Expr,
                          arms: &[ast::Arm],
-                         dest: Dest) -> @mut Block {
+                         dest: Dest) -> @Block {
     let _icx = push_ctxt("match::trans_match_inner");
     let mut bcx = scope_cx;
     let tcx = bcx.tcx();
@@ -1878,7 +1878,7 @@ fn trans_match_inner(scope_cx: @mut Block,
     let discr_datum = unpack_datum!(bcx, {
         expr::trans_to_datum(bcx, discr_expr)
     });
-    if bcx.unreachable {
+    if bcx.unreachable.get() {
         return bcx;
     }
 
@@ -1952,10 +1952,10 @@ enum IrrefutablePatternBindingMode {
     BindArgument
 }
 
-pub fn store_local(bcx: @mut Block,
+pub fn store_local(bcx: @Block,
                    pat: @ast::Pat,
                    opt_init_expr: Option<@ast::Expr>)
-                   -> @mut Block {
+                   -> @Block {
     /*!
      * Generates code for a local variable declaration like
      * `let <pat>;` or `let <pat> = <opt_init_expr>`.
@@ -2006,7 +2006,7 @@ pub fn store_local(bcx: @mut Block,
         }
     };
 
-    fn create_dummy_locals(mut bcx: @mut Block, pat: @ast::Pat) -> @mut Block {
+    fn create_dummy_locals(mut bcx: @Block, pat: @ast::Pat) -> @Block {
         // create dummy memory for the variables if we have no
         // value to store into them immediately
         let tcx = bcx.tcx();
@@ -2019,10 +2019,10 @@ pub fn store_local(bcx: @mut Block,
     }
 }
 
-pub fn store_arg(mut bcx: @mut Block,
+pub fn store_arg(mut bcx: @Block,
                  pat: @ast::Pat,
                  llval: ValueRef)
-                 -> @mut Block {
+                 -> @Block {
     /*!
      * Generates code for argument patterns like `fn foo(<pat>: T)`.
      * Creates entries in the `llargs` map for each of the bindings
@@ -2066,12 +2066,12 @@ pub fn store_arg(mut bcx: @mut Block,
     return bcx;
 }
 
-fn mk_binding_alloca(mut bcx: @mut Block,
+fn mk_binding_alloca(mut bcx: @Block,
                      p_id: ast::NodeId,
                      path: &ast::Path,
                      binding_mode: IrrefutablePatternBindingMode,
-                     populate: |@mut Block, ty::t, ValueRef| -> @mut Block)
-                     -> @mut Block {
+                     populate: |@Block, ty::t, ValueRef| -> @Block)
+                     -> @Block {
     let var_ty = node_id_type(bcx, p_id);
     let ident = ast_util::path_to_ident(path);
     let llval = alloc_ty(bcx, var_ty, bcx.ident(ident));
@@ -2085,11 +2085,11 @@ fn mk_binding_alloca(mut bcx: @mut Block,
     return bcx;
 }
 
-fn bind_irrefutable_pat(bcx: @mut Block,
+fn bind_irrefutable_pat(bcx: @Block,
                         pat: @ast::Pat,
                         val: ValueRef,
                         binding_mode: IrrefutablePatternBindingMode)
-                        -> @mut Block {
+                        -> @Block {
     /*!
      * A simple version of the pattern matching code that only handles
      * irrefutable patterns. This is used in let/argument patterns,

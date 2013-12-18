@@ -38,7 +38,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
                        ref_id: Option<ast::NodeId>) {
     debug!("trans_intrinsic(item.ident={})", ccx.sess.str_of(item.ident));
 
-    fn simple_llvm_intrinsic(bcx: @mut Block, name: &'static str, num_args: uint) {
+    fn simple_llvm_intrinsic(bcx: @Block, name: &'static str, num_args: uint) {
         assert!(num_args <= 4);
         let mut args = [0 as ValueRef, ..4];
         let first_real_arg = bcx.fcx.arg_pos(0u);
@@ -50,7 +50,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         Ret(bcx, llcall);
     }
 
-    fn with_overflow_instrinsic(bcx: @mut Block, name: &'static str, t: ty::t) {
+    fn with_overflow_instrinsic(bcx: @Block, name: &'static str, t: ty::t) {
         let first_real_arg = bcx.fcx.arg_pos(0u);
         let a = get_param(bcx.fcx.llfn, first_real_arg);
         let b = get_param(bcx.fcx.llfn, first_real_arg + 1);
@@ -73,7 +73,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         }
     }
 
-    fn copy_intrinsic(bcx: @mut Block, allow_overlap: bool, tp_ty: ty::t) {
+    fn copy_intrinsic(bcx: @Block, allow_overlap: bool, tp_ty: ty::t) {
         let ccx = bcx.ccx();
         let lltp_ty = type_of::type_of(ccx, tp_ty);
         let align = C_i32(machine::llalign_of_min(ccx, lltp_ty) as i32);
@@ -104,7 +104,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         RetVoid(bcx);
     }
 
-    fn memset_intrinsic(bcx: @mut Block, tp_ty: ty::t) {
+    fn memset_intrinsic(bcx: @Block, tp_ty: ty::t) {
         let ccx = bcx.ccx();
         let lltp_ty = type_of::type_of(ccx, tp_ty);
         let align = C_i32(machine::llalign_of_min(ccx, lltp_ty) as i32);
@@ -126,7 +126,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         RetVoid(bcx);
     }
 
-    fn count_zeros_intrinsic(bcx: @mut Block, name: &'static str) {
+    fn count_zeros_intrinsic(bcx: @Block, name: &'static str) {
         let x = get_param(bcx.fcx.llfn, bcx.fcx.arg_pos(0u));
         let y = C_i1(false);
         let llfn = bcx.ccx().intrinsics.get_copy(&name);

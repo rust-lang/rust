@@ -284,7 +284,7 @@ pub fn finalize(cx: @mut CrateContext) {
 /// Creates debug information for the given local variable.
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_local_var_metadata(bcx: @mut Block,
+pub fn create_local_var_metadata(bcx: @Block,
                                  local: &ast::Local) {
     if fn_should_be_ignored(bcx.fcx) {
         return;
@@ -320,7 +320,7 @@ pub fn create_local_var_metadata(bcx: @mut Block,
 /// Creates debug information for a variable captured in a closure.
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_captured_var_metadata(bcx: @mut Block,
+pub fn create_captured_var_metadata(bcx: @Block,
                                     node_id: ast::NodeId,
                                     env_data_type: ty::t,
                                     env_pointer: ValueRef,
@@ -387,7 +387,7 @@ pub fn create_captured_var_metadata(bcx: @mut Block,
 /// Creates debug information for a local variable introduced in the head of a match-statement arm.
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_match_binding_metadata(bcx: @mut Block,
+pub fn create_match_binding_metadata(bcx: @Block,
                                      variable_ident: ast::Ident,
                                      node_id: ast::NodeId,
                                      variable_type: ty::t,
@@ -417,7 +417,7 @@ pub fn create_match_binding_metadata(bcx: @mut Block,
 /// Creates debug information for the self argument of a method.
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_self_argument_metadata(bcx: @mut Block,
+pub fn create_self_argument_metadata(bcx: @Block,
                                      type_of_self: ty::t,
                                      llptr: ValueRef) {
     if fn_should_be_ignored(bcx.fcx) {
@@ -492,7 +492,7 @@ pub fn create_self_argument_metadata(bcx: @mut Block,
 /// Creates debug information for the given function argument.
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_argument_metadata(bcx: @mut Block,
+pub fn create_argument_metadata(bcx: @Block,
                                 arg: &ast::arg) {
     if fn_should_be_ignored(bcx.fcx) {
         return;
@@ -951,7 +951,7 @@ fn compile_unit_metadata(cx: @mut CrateContext) {
     });
 }
 
-fn declare_local(bcx: @mut Block,
+fn declare_local(bcx: @Block,
                  variable_ident: ast::Ident,
                  variable_type: ty::t,
                  scope_metadata: DIScope,
