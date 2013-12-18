@@ -340,7 +340,9 @@ impl<'a> PrivacyVisitor<'a> {
                 return Allowable;
             }
             debug!("privacy - is {:?} a public method", did);
-            return match self.tcx.methods.find(&did) {
+
+            let methods = self.tcx.methods.borrow();
+            return match methods.get().find(&did) {
                 Some(meth) => {
                     debug!("privacy - well at least it's a method: {:?}", meth);
                     match meth.container {

@@ -1141,7 +1141,14 @@ fn check_missing_doc_method(cx: &Context, m: &ast::method) {
         crate: ast::LOCAL_CRATE,
         node: m.id
     };
-    match cx.tcx.methods.find(&did) {
+
+    let method_opt;
+    {
+        let methods = cx.tcx.methods.borrow();
+        method_opt = methods.get().find(&did).map(|method| *method);
+    }
+
+    match method_opt {
         None => cx.tcx.sess.span_bug(m.span, "missing method descriptor?!"),
         Some(md) => {
             match md.container {
