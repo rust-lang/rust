@@ -591,6 +591,11 @@ impl VisitContext {
                 self.use_expr(base, comp_mode);
             }
 
+            ExprBox(place, base) => {
+                self.use_expr(place, comp_mode);
+                self.use_expr(base, comp_mode);
+            }
+
             ExprMac(..) => {
                 self.tcx.sess.span_bug(
                     expr.span,

@@ -78,9 +78,11 @@ type parameter).
 
 
 use middle::const_eval;
+use middle::lang_items::{ExchangeHeapLangItem, GcLangItem};
+use middle::lang_items::{ManagedHeapLangItem};
+use middle::lint::unreachable_code;
 use middle::pat_util::pat_id_map;
 use middle::pat_util;
-use middle::lint::unreachable_code;
 use middle::subst::Subst;
 use middle::ty::{FnSig, VariantInfo};
 use middle::ty::{ty_param_bounds_and_ty, ty_param_substs_and_ty};
@@ -2677,6 +2679,73 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
         };
         fcx.write_ty(ev.id, typ);
         fcx.write_ty(id, typ);
+      }
+
+      ast::ExprBox(place, subexpr) => {
+          check_expr(fcx, place);
+          check_expr(fcx, subexpr);
+
+          let mut checked = false;
+          match place.node {
+              ast::ExprPath(ref path) => {
+                  // XXX(pcwalton): For now we hardcode the two permissible
+                  // places: the exchange heap and the managed heap.
+                  let definition = lookup_def(fcx, path.span, place.id);
+                  let def_id = ast_util::def_id_of_def(definition);
+                  match tcx.lang_items.items[ExchangeHeapLangItem as uint] {
+                      Some(item_def_id) if def_id == item_def_id => {
+                          fcx.write_ty(id, ty::mk_uniq(tcx, ty::mt {
+                              ty: fcx.expr_ty(subexpr),
+                              mutbl: ast::MutImmutable,
+                          }));
+                          checked = true
+                      }
+                      Some(_) | None => {}
+                  }
+                  if !checked {
+                      match tcx.lang_items
+                               .items[ManagedHeapLangItem as uint] {
+                          Some(item_def_id) if def_id == item_def_id => {
+                              // Assign the magic `Gc<T>` struct.
+                              let gc_struct_id =
+                                  match tcx.lang_items
+                                           .require(GcLangItem) {
+                                      Ok(id) => id,
+                                      Err(msg) => {
+                                          tcx.sess.span_err(expr.span, msg);
+                                          ast::DefId {
+                                              crate: ast::CRATE_NODE_ID,
+                                              node: ast::DUMMY_NODE_ID,
+                                          }
+                                      }
+                                  };
+                              let regions =
+                                  ty::NonerasedRegions(opt_vec::Empty);
+                              let sty = ty::mk_struct(tcx,
+                                                      gc_struct_id,
+                                                      substs {
+                                                        self_ty: None,
+                                                        tps: ~[
+                                                            fcx.expr_ty(
+                                                                subexpr)
+                                                        ],
+                                                        regions: regions,
+                                                      });
+                              fcx.write_ty(id, sty);
+                              checked = true
+                          }
+                          Some(_) | None => {}
+                      }
+                  }
+              }
+              _ => {}
+          }
+
+          if !checked {
+              tcx.sess.span_err(expr.span,
+                                "only the managed heap and exchange heap are \
+                                 currently supported")
+          }
       }
 
       ast::ExprLit(lit) => {

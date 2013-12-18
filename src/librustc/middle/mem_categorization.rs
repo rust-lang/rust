@@ -438,7 +438,7 @@ impl mem_categorization_ctxt {
           ast::ExprBlock(..) | ast::ExprLoop(..) | ast::ExprMatch(..) |
           ast::ExprLit(..) | ast::ExprBreak(..) | ast::ExprMac(..) |
           ast::ExprAgain(..) | ast::ExprStruct(..) | ast::ExprRepeat(..) |
-          ast::ExprInlineAsm(..) => {
+          ast::ExprInlineAsm(..) | ast::ExprBox(..) => {
             return self.cat_rvalue_node(expr, expr_ty);
           }
 

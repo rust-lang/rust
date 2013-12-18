@@ -12,8 +12,8 @@ use driver::session;
 use metadata::csearch;
 use metadata;
 use middle::const_eval;
+use middle::lang_items::{ExchangeHeapLangItem, OpaqueStructLangItem};
 use middle::lang_items::{TyDescStructLangItem, TyVisitorTraitLangItem};
-use middle::lang_items::OpaqueStructLangItem;
 use middle::freevars;
 use middle::resolve;
 use middle::resolve_lifetime;
@@ -3239,6 +3239,20 @@ pub fn expr_kind(tcx: ctxt,
         ast::ExprVstore(_, ast::ExprVstoreBox) |
         ast::ExprVstore(_, ast::ExprVstoreUniq) => {
             RvalueDatumExpr
+        }
+
+        ast::ExprBox(place, _) => {
+            // Special case `~T` for now:
+            let def_map = tcx.def_map.borrow();
+            let definition = match def_map.get().find(&place.id) {
+                Some(&def) => def,
+                None => fail!("no def for place"),
+            };
+            let def_id = ast_util::def_id_of_def(definition);
+            match tcx.lang_items.items[ExchangeHeapLangItem as uint] {
+                Some(item_def_id) if def_id == item_def_id => RvalueDatumExpr,
+                Some(_) | None => RvalueDpsExpr,
+            }
         }
 
         ast::ExprParen(e) => expr_kind(tcx, method_map, e),

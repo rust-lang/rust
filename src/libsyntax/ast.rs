@@ -547,6 +547,8 @@ pub enum CallSugar {
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum Expr_ {
     ExprVstore(@Expr, ExprVstore),
+    // First expr is the place; second expr is the value.
+    ExprBox(@Expr, @Expr),
     ExprVec(~[@Expr], Mutability),
     ExprCall(@Expr, ~[@Expr], CallSugar),
     ExprMethodCall(NodeId, @Expr, Ident, ~[P<Ty>], ~[@Expr], CallSugar),
