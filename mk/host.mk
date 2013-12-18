@@ -25,14 +25,14 @@ define CP_HOST_STAGE_N
 
 $$(HBIN$(2)_H_$(4))/rustc$$(X_$(4)): \
 	$$(TBIN$(1)_T_$(4)_H_$(3))/rustc$$(X_$(4)) \
-	$$(HLIBRUSTC_DEFAULT$(2)_H_$(4)) \
+	$$(HLIB$(2)_H_$(4))/$(CFG_LIBRUSTC_$(4)) \
 	| $$(HBIN$(2)_H_$(4))/
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
 
 $$(HLIB$(2)_H_$(4))/$(CFG_LIBRUSTC_$(4)): \
 	$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTC_$(4)) \
-	$$(HLIBSYNTAX_DEFAULT$(2)_H_$(4)) \
+	$$(HLIB$(2)_H_$(4))/$(CFG_LIBSYNTAX_$(4)) \
 	| $$(HLIB$(2)_H_$(4))/
 
 	@$$(call E, cp: $$@)
