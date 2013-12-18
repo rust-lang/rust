@@ -957,7 +957,7 @@ mod test {
     use std::rt::local::Local;
 
     use basic;
-    use sched::TaskFromFriend;
+    use sched::{TaskFromFriend, PinnedTask};
     use task::{GreenTask, HomeSched};
     use PoolConfig;
     use SchedPool;
@@ -1405,5 +1405,76 @@ mod test {
         do run {
             5.times(deschedule);
         }
+    }
+
+    #[test]
+    fn test_spawn_sched_blocking() {
+        use std::unstable::mutex::Mutex;
+
+        // Testing that a task in one scheduler can block in foreign code
+        // without affecting other schedulers
+        for _ in range(0, 20) {
+            let mut pool = pool();
+            let (start_po, start_ch) = Chan::new();
+            let (fin_po, fin_ch) = Chan::new();
+
+            let lock = unsafe { Mutex::new() };
+            let lock2 = unsafe { lock.clone() };
+
+            let mut handle = pool.spawn_sched();
+            handle.send(PinnedTask(pool.task(TaskOpts::new(), proc() {
+                let mut lock = lock2;
+                unsafe {
+                    lock.lock();
+
+                    start_ch.send(());
+                    lock.wait();   // block the scheduler thread
+                    lock.signal(); // let them know we have the lock
+                    lock.unlock();
+                }
+
+                fin_ch.send(());
+            })));
+            drop(handle);
+
+            let mut handle = pool.spawn_sched();
+            handle.send(TaskFromFriend(pool.task(TaskOpts::new(), proc() {
+                // Wait until the other task has its lock
+                start_po.recv();
+
+                fn pingpong(po: &Port<int>, ch: &Chan<int>) {
+                    let mut val = 20;
+                    while val > 0 {
+                        val = po.recv();
+                        ch.try_send(val - 1);
+                    }
+                }
+
+                let (setup_po, setup_ch) = Chan::new();
+                let (parent_po, parent_ch) = Chan::new();
+                do spawn {
+                    let (child_po, child_ch) = Chan::new();
+                    setup_ch.send(child_ch);
+                    pingpong(&child_po, &parent_ch);
+                };
+
+                let child_ch = setup_po.recv();
+                child_ch.send(20);
+                pingpong(&parent_po, &child_ch);
+                unsafe {
+                    let mut lock = lock;
+                    lock.lock();
+                    lock.signal();   // wakeup waiting scheduler
+                    lock.wait();     // wait for them to grab the lock
+                    lock.unlock();
+                    lock.destroy();  // now we're guaranteed they have no locks
+                }
+            })));
+            drop(handle);
+
+            fin_po.recv();
+            pool.shutdown();
+        }
+
     }
 }

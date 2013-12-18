@@ -529,66 +529,6 @@ fn test_spawn_sched_childs_on_default_sched() {
     po.recv();
 }
 
-#[test]
-fn test_spawn_sched_blocking() {
-    use unstable::mutex::Mutex;
-    use num::Times;
-
-    unsafe {
-
-        // Testing that a task in one scheduler can block in foreign code
-        // without affecting other schedulers
-        20u.times(|| {
-            let (start_po, start_ch) = Chan::new();
-            let (fin_po, fin_ch) = Chan::new();
-
-            let mut lock = Mutex::new();
-            let lock2 = lock.clone();
-
-            do spawn {
-                let mut lock = lock2;
-                lock.lock();
-
-                start_ch.send(());
-
-                // Block the scheduler thread
-                lock.wait();
-                lock.unlock();
-
-                fin_ch.send(());
-            };
-
-            // Wait until the other task has its lock
-            start_po.recv();
-
-            fn pingpong(po: &Port<int>, ch: &Chan<int>) {
-                let mut val = 20;
-                while val > 0 {
-                    val = po.recv();
-                    ch.try_send(val - 1);
-                }
-            }
-
-            let (setup_po, setup_ch) = Chan::new();
-            let (parent_po, parent_ch) = Chan::new();
-            do spawn {
-                let (child_po, child_ch) = Chan::new();
-                setup_ch.send(child_ch);
-                pingpong(&child_po, &parent_ch);
-            };
-
-            let child_ch = setup_po.recv();
-            child_ch.send(20);
-            pingpong(&parent_po, &child_ch);
-            lock.lock();
-            lock.signal();
-            lock.unlock();
-            fin_po.recv();
-            lock.destroy();
-        })
-    }
-}
-
 #[cfg(test)]
 fn avoid_copying_the_body(spawnfn: |v: proc()|) {
     let (p, ch) = Chan::<uint>::new();
