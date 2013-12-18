@@ -264,7 +264,8 @@ pub fn check_expr(cx: &mut Context, e: @Expr) {
         None => e.id,
     };
     {
-        let r = cx.tcx.node_type_substs.find(&type_parameter_id);
+        let node_type_substs = cx.tcx.node_type_substs.borrow();
+        let r = node_type_substs.get().find(&type_parameter_id);
         for ts in r.iter() {
             let type_param_defs = match e.node {
               ExprPath(_) => {
@@ -326,7 +327,8 @@ pub fn check_expr(cx: &mut Context, e: @Expr) {
 fn check_ty(cx: &mut Context, aty: &Ty) {
     match aty.node {
       ty_path(_, _, id) => {
-          let r = cx.tcx.node_type_substs.find(&id);
+          let node_type_substs = cx.tcx.node_type_substs.borrow();
+          let r = node_type_substs.get().find(&id);
           for ts in r.iter() {
               let did = ast_util::def_id_of_def(cx.tcx.def_map.get_copy(&id));
               let type_param_defs =

@@ -163,7 +163,7 @@ pub struct Inherited {
 
     // Temporary tables:
     node_types: @mut HashMap<ast::NodeId, ty::t>,
-    node_type_substs: @mut HashMap<ast::NodeId, ty::substs>,
+    node_type_substs: RefCell<HashMap<ast::NodeId, ty::substs>>,
     adjustments: @mut HashMap<ast::NodeId, @ty::AutoAdjustment>,
     method_map: method_map,
     vtable_map: vtable_map,
@@ -263,7 +263,7 @@ impl Inherited {
             locals: @mut HashMap::new(),
             param_env: param_env,
             node_types: @mut HashMap::new(),
-            node_type_substs: @mut HashMap::new(),
+            node_type_substs: RefCell::new(HashMap::new()),
             adjustments: @mut HashMap::new(),
             method_map: @mut HashMap::new(),
             vtable_map: @mut HashMap::new(),
@@ -1106,7 +1106,9 @@ impl FnCtxt {
                    node_id,
                    ty::substs_to_str(self.tcx(), &substs),
                    self.tag());
-            self.inh.node_type_substs.insert(node_id, substs);
+
+            let mut node_type_substs = self.inh.node_type_substs.borrow_mut();
+            node_type_substs.get().insert(node_id, substs);
         }
     }
 
@@ -1181,7 +1183,8 @@ impl FnCtxt {
     }
 
     pub fn node_ty_substs(&self, id: ast::NodeId) -> ty::substs {
-        match self.inh.node_type_substs.find(&id) {
+        let mut node_type_substs = self.inh.node_type_substs.borrow_mut();
+        match node_type_substs.get().find(&id) {
             Some(ts) => (*ts).clone(),
             None => {
                 self.tcx().sess.bug(
@@ -1197,7 +1200,8 @@ impl FnCtxt {
                               id: ast::NodeId,
                               f: |&ty::substs| -> bool)
                               -> bool {
-        match self.inh.node_type_substs.find(&id) {
+        let node_type_substs = self.inh.node_type_substs.borrow();
+        match node_type_substs.get().find(&id) {
             Some(s) => f(s),
             None => true
         }
