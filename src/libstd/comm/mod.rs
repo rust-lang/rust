@@ -303,6 +303,12 @@ pub struct PortIterator<'a, T> {
     priv port: &'a Port<T>
 }
 
+/// A non-blocking iterator over the current messages received on a port. The
+/// iterator will continue to yield messages until the queue has been exhausted.
+pub struct TryPortIterator<'a, T> {
+    priv port: &'a Port<T>
+}
+
 /// The sending-half of Rust's channel type. This half can only be owned by one
 /// task
 pub struct Chan<T> {
@@ -854,10 +860,20 @@ impl<T: Send> Port<T> {
     pub fn iter<'a>(&'a self) -> PortIterator<'a, T> {
         PortIterator { port: self }
     }
+
+    /// Returns a non-blocking iterator which will continue to yield messages
+    /// until the queue has been exhausted.
+    pub fn try_iter<'a>(&'a self) -> TryPortIterator<'a, T> {
+        TryPortIterator { port: self }
+    }
 }
 
 impl<'a, T: Send> Iterator<T> for PortIterator<'a, T> {
     fn next(&mut self) -> Option<T> { self.port.recv_opt() }
+}
+
+impl<'a, T: Send> Iterator<T> for TryPortIterator<'a, T> {
+    fn next(&mut self) -> Option<T> { self.port.try_recv() }
 }
 
 #[unsafe_destructor]
@@ -1330,7 +1346,7 @@ mod test {
     }
 
     #[test]
-    fn test_nested_recv_iter() {
+    fn test_nested_port_iter() {
         let (port, chan) = Chan::<int>::new();
         let (total_port, total_chan) = Chan::<int>::new();
 
@@ -1350,7 +1366,7 @@ mod test {
     }
 
     #[test]
-    fn test_recv_iter_break() {
+    fn test_port_iter_break() {
         let (port, chan) = Chan::<int>::new();
         let (count_port, count_chan) = Chan::<int>::new();
 
@@ -1372,5 +1388,26 @@ mod test {
         chan.try_send(2);
         drop(chan);
         assert_eq!(count_port.recv(), 4);
+    }
+
+    #[test]
+    fn test_try_port_iter() {
+        let (port, chan) = Chan::<int>::new();
+        let mut it = port.try_iter();
+
+        chan.send(1);
+        chan.send(2);
+        chan.send(3);
+
+        assert_eq!(it.next(), Some(1));
+        assert_eq!(it.next(), Some(2));
+        assert_eq!(it.next(), Some(3));
+        assert_eq!(it.next(), None);
+        assert_eq!(it.next(), None);
+
+        chan.send(1);
+        assert_eq!(it.next(), Some(1));
+        assert_eq!(it.next(), None);
+        assert_eq!(it.next(), None);
     }
 }
