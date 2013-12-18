@@ -1202,7 +1202,7 @@ fn item_enum(w: &mut Writer, it: &clean::Item, e: &clean::Enum) {
            VisSpace(it.visibility),
            it.name.get_ref().as_slice(),
            e.generics);
-    if e.variants.len() == 0 {
+    if e.variants.len() == 0 && !e.variants_stripped {
         write!(w, " \\{\\}");
     } else {
         write!(w, " \\{\n");
