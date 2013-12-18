@@ -47,12 +47,6 @@ impl Visitor<Context> for CheckLoopVisitor {
             }
             ast::ExprBreak(_) => self.require_loop("break", cx, e.span),
             ast::ExprAgain(_) => self.require_loop("continue", cx, e.span),
-            ast::ExprRet(oe) => {
-                if cx == Closure {
-                    self.tcx.sess.span_err(e.span, "`return` in a closure");
-                }
-                visit::walk_expr_opt(self, oe, cx);
-            }
             _ => visit::walk_expr(self, e, cx)
         }
     }
