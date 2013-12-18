@@ -284,7 +284,7 @@ struct ctxt_ {
     // of this node.  This only applies to nodes that refer to entities
     // parameterized by type parameters, such as generic fns, types, or
     // other items.
-    node_type_substs: @mut HashMap<NodeId, ~[t]>,
+    node_type_substs: RefCell<HashMap<NodeId, ~[t]>>,
 
     // Maps from a method to the method "descriptor"
     methods: @mut HashMap<DefId, @Method>,
@@ -985,7 +985,7 @@ pub fn mk_ctxt(s: session::Session,
         def_map: dm,
         region_maps: region_maps,
         node_types: @mut HashMap::new(),
-        node_type_substs: @mut HashMap::new(),
+        node_type_substs: RefCell::new(HashMap::new()),
         trait_refs: @mut HashMap::new(),
         trait_defs: @mut HashMap::new(),
         items: amap,
@@ -2676,14 +2676,16 @@ pub fn node_id_to_type(cx: ctxt, id: ast::NodeId) -> t {
 
 // XXX(pcwalton): Makes a copy, bleh. Probably better to not do that.
 pub fn node_id_to_type_params(cx: ctxt, id: ast::NodeId) -> ~[t] {
-    match cx.node_type_substs.find(&id) {
+    let node_type_substs = cx.node_type_substs.borrow();
+    match node_type_substs.get().find(&id) {
       None => return ~[],
       Some(ts) => return (*ts).clone(),
     }
 }
 
 fn node_id_has_type_params(cx: ctxt, id: ast::NodeId) -> bool {
-    cx.node_type_substs.contains_key(&id)
+    let node_type_substs = cx.node_type_substs.borrow();
+    node_type_substs.get().contains_key(&id)
 }
 
 pub fn fn_is_variadic(fty: t) -> bool {
