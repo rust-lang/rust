@@ -295,7 +295,7 @@ struct ctxt_ {
     // A cache for the trait_methods() routine
     trait_methods_cache: RefCell<HashMap<DefId, @~[@Method]>>,
 
-    impl_trait_cache: @mut HashMap<ast::DefId, Option<@ty::TraitRef>>,
+    impl_trait_cache: RefCell<HashMap<ast::DefId, Option<@ty::TraitRef>>>,
 
     trait_refs: @mut HashMap<NodeId, @TraitRef>,
     trait_defs: @mut HashMap<DefId, @TraitDef>,
@@ -1001,7 +1001,7 @@ pub fn mk_ctxt(s: session::Session,
         methods: RefCell::new(HashMap::new()),
         trait_method_def_ids: RefCell::new(HashMap::new()),
         trait_methods_cache: RefCell::new(HashMap::new()),
-        impl_trait_cache: @mut HashMap::new(),
+        impl_trait_cache: RefCell::new(HashMap::new()),
         ty_param_defs: @mut HashMap::new(),
         adjustments: @mut HashMap::new(),
         normalized_cache: new_ty_hash(),
@@ -3621,10 +3621,14 @@ pub fn trait_method_def_ids(cx: ctxt, id: ast::DefId) -> @~[DefId] {
 }
 
 pub fn impl_trait_ref(cx: ctxt, id: ast::DefId) -> Option<@TraitRef> {
-    match cx.impl_trait_cache.find(&id) {
-        Some(&ret) => { return ret; }
-        None => {}
+    {
+        let mut impl_trait_cache = cx.impl_trait_cache.borrow_mut();
+        match impl_trait_cache.get().find(&id) {
+            Some(&ret) => { return ret; }
+            None => {}
+        }
     }
+
     let ret = if id.crate == ast::LOCAL_CRATE {
         debug!("(impl_trait_ref) searching for trait impl {:?}", id);
         match cx.items.find(&id.node) {
@@ -3642,7 +3646,9 @@ pub fn impl_trait_ref(cx: ctxt, id: ast::DefId) -> Option<@TraitRef> {
     } else {
         csearch::get_impl_trait(cx, id)
     };
-    cx.impl_trait_cache.insert(id, ret);
+
+    let mut impl_trait_cache = cx.impl_trait_cache.borrow_mut();
+    impl_trait_cache.get().insert(id, ret);
     return ret;
 }
 
