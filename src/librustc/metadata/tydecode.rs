@@ -590,14 +590,17 @@ fn parse_bounds(st: &mut PState, conv: conv_did) -> ty::ParamBounds {
             'Z' => {
                 param_bounds.builtin_bounds.add(ty::BoundSized);
             }
+            'P' => {
+                param_bounds.builtin_bounds.add(ty::BoundPod);
+            }
             'I' => {
                 param_bounds.trait_bounds.push(@parse_trait_ref(st, |x,y| conv(x,y)));
             }
             '.' => {
                 return param_bounds;
             }
-            _ => {
-                fail!("parse_bounds: bad bounds")
+            c => {
+                fail!("parse_bounds: bad bounds ('{}')", c)
             }
         }
     }
