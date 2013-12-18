@@ -390,7 +390,7 @@ pub fn mk_output_path(what: OutputType, where: Target,
                                Bench => "bench",
                                _     => ""
                            },
-                           os::EXE_SUFFIX))
+                           os::consts::EXE_SUFFIX))
     };
     if !output_path.is_absolute() {
         output_path = os::getcwd().join(&output_path);

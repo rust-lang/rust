@@ -43,8 +43,6 @@ use to_str;
 use unstable::finally::Finally;
 use sync::atomics::{AtomicInt, INIT_ATOMIC_INT, SeqCst};
 
-pub use os::consts::*;
-
 /// Delegates to the libc close() function, returning the same return value.
 pub fn close(fd: c_int) -> c_int {
     unsafe {
@@ -334,7 +332,7 @@ pub fn pipe() -> Pipe {
 
 /// Returns the proper dll filename for the given basename of a file.
 pub fn dll_filename(base: &str) -> ~str {
-    format!("{}{}{}", DLL_PREFIX, base, DLL_SUFFIX)
+    format!("{}{}{}", consts::DLL_PREFIX, base, consts::DLL_SUFFIX)
 }
 
 /// Optionally returns the filesystem path to the current executable which is
