@@ -111,9 +111,6 @@ fn mkerr_winbool(ret: libc::c_int) -> IoResult<()> {
 pub struct IoFactory;
 
 impl rtio::IoFactory for IoFactory {
-    // all native io factories are the same
-    fn id(&self) -> uint { 0 }
-
     // networking
     fn tcp_connect(&mut self, _addr: SocketAddr) -> IoResult<~RtioTcpStream> {
         Err(unimpl())

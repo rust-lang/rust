@@ -132,13 +132,14 @@ impl UvIoFactory {
     pub fn uv_loop<'a>(&mut self) -> *uvll::uv_loop_t { self.loop_.handle }
 
     pub fn make_handle(&mut self) -> HomeHandle {
-        HomeHandle::new(self.id(), &mut **self.handle_pool.get_mut_ref())
+        // It's understood by the homing code that the "local id" is just the
+        // pointer of the local I/O factory cast to a uint.
+        let id: uint = unsafe { cast::transmute_copy(&self) };
+        HomeHandle::new(id, &mut **self.handle_pool.get_mut_ref())
     }
 }
 
 impl IoFactory for UvIoFactory {
-    fn id(&self) -> uint { unsafe { cast::transmute(self) } }
-
     // Connect to an address and return a new stream
     // NB: This blocks the task waiting on the connection.
     // It would probably be better to return a future

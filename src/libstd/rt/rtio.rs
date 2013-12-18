@@ -150,8 +150,6 @@ impl<'a> LocalIo<'a> {
 }
 
 pub trait IoFactory {
-    fn id(&self) -> uint;
-
     // networking
     fn tcp_connect(&mut self, addr: SocketAddr) -> Result<~RtioTcpStream, IoError>;
     fn tcp_bind(&mut self, addr: SocketAddr) -> Result<~RtioTcpListener, IoError>;

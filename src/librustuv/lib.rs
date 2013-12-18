@@ -53,7 +53,6 @@ use std::ptr::null;
 use std::ptr;
 use std::rt::local::Local;
 use std::rt::task::{BlockedTask, Task};
-use std::rt::rtio::LocalIo;
 use std::str::raw::from_c_str;
 use std::str;
 use std::task;
@@ -161,18 +160,16 @@ pub struct ForbidSwitch {
 
 impl ForbidSwitch {
     fn new(s: &'static str) -> ForbidSwitch {
-        let mut io = LocalIo::borrow().expect("libuv must have local I/O");
         ForbidSwitch {
             msg: s,
-            io: io.get().id(),
+            io: homing::local_id(),
         }
     }
 }
 
 impl Drop for ForbidSwitch {
     fn drop(&mut self) {
-        let mut io = LocalIo::borrow().expect("libuv must have local I/O");
-        assert!(self.io == io.get().id(),
+        assert!(self.io == homing::local_id(),
                 "didnt want a scheduler switch: {}",
                 self.msg);
     }
