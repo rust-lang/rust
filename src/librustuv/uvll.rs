@@ -38,7 +38,7 @@ use std::libc;
 use std::libc::uintptr_t;
 
 pub use self::errors::{EACCES, ECONNREFUSED, ECONNRESET, EPIPE, ECONNABORTED,
-                       ECANCELED, EBADF, ENOTCONN};
+                       ECANCELED, EBADF, ENOTCONN, ENOENT};
 
 pub static OK: c_int = 0;
 pub static EOF: c_int = -4095;

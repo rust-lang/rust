@@ -33,6 +33,7 @@
 
 #[allow(dead_code)];
 
+use std::cast;
 use std::rt::local::Local;
 use std::rt::rtio::LocalIo;
 use std::rt::task::{Task, BlockedTask};
@@ -70,6 +71,17 @@ impl Clone for HomeHandle {
     }
 }
 
+pub fn local_id() -> uint {
+    let mut io = match LocalIo::borrow() {
+        Some(io) => io, None => return 0,
+    };
+    let io = io.get();
+    unsafe {
+        let (_vtable, ptr): (uint, uint) = cast::transmute(io);
+        return ptr;
+    }
+}
+
 pub trait HomingIO {
     fn home<'r>(&'r mut self) -> &'r mut HomeHandle;
 
@@ -79,35 +91,26 @@ pub trait HomingIO {
     fn go_to_IO_home(&mut self) -> uint {
         let _f = ForbidUnwind::new("going home");
 
-        let mut cur_task: ~Task = Local::take();
-        let cur_loop_id = {
-            let mut io = cur_task.local_io().expect("libuv must have I/O");
-            io.get().id()
-        };
+        let cur_loop_id = local_id();
+        let destination = self.home().id;
 
         // Try at all costs to avoid the homing operation because it is quite
         // expensive. Hence, we only deschedule/send if we're not on the correct
         // event loop. If we're already on the home event loop, then we're good
         // to go (remember we have no preemption, so we're guaranteed to stay on
         // this event loop as long as we avoid the scheduler).
-        if cur_loop_id != self.home().id {
+        if cur_loop_id != destination {
+            let cur_task: ~Task = Local::take();
             cur_task.deschedule(1, |task| {
                 self.home().send(task);
                 Ok(())
             });
 
             // Once we wake up, assert that we're in the right location
-            let cur_loop_id = {
-                let mut io = LocalIo::borrow().expect("libuv must have I/O");
-                io.get().id()
-            };
-            assert_eq!(cur_loop_id, self.home().id);
-
-            cur_loop_id
-        } else {
-            Local::put(cur_task);
-            cur_loop_id
+            assert_eq!(local_id(), destination);
         }
+
+        return destination;
     }
 
     /// Fires a single homing missile, returning another missile targeted back
@@ -130,8 +133,7 @@ impl HomingMissile {
     /// Check at runtime that the task has *not* transplanted itself to a
     /// different I/O loop while executing.
     pub fn check(&self, msg: &'static str) {
-        let mut io = LocalIo::borrow().expect("libuv must have I/O");
-        assert!(io.get().id() == self.io_home, "{}", msg);
+        assert!(local_id() == self.io_home, "{}", msg);
     }
 }
 
