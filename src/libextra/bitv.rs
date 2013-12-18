@@ -932,7 +932,8 @@ impl<'a> Iterator<uint> for BitvSetIterator<'a> {
 mod tests {
     use extra::test::BenchHarness;
 
-    use bitv::*;
+    use bitv::{Bitv, SmallBitv, BigBitv, BitvSet, from_bools, from_fn,
+               from_bytes};
     use bitv;
 
     use std::uint;

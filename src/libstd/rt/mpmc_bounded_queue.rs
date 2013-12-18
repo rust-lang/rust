@@ -51,7 +51,7 @@ struct State<T> {
     pad3: [u8, ..64],
 }
 
-struct Queue<T> {
+pub struct Queue<T> {
     priv state: UnsafeArc<State<T>>,
 }
 

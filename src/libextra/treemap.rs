@@ -884,7 +884,7 @@ impl<T: TotalOrd> Extendable<T> for TreeSet<T> {
 #[cfg(test)]
 mod test_treemap {
 
-    use super::*;
+    use super::{TreeMap, TreeNode};
 
     use std::rand::Rng;
     use std::rand;

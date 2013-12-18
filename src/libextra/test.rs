@@ -670,7 +670,6 @@ fn should_sort_failures_before_printing_them() {
     use std::io::Decorator;
     use std::io::mem::MemWriter;
     use std::str;
-    fn dummy() {}
 
     let test_a = TestDesc {
         name: StaticTestName("a"),
@@ -1296,8 +1295,6 @@ mod tests {
 
     #[test]
     pub fn filter_for_ignored_option() {
-        fn dummy() {}
-
         // When we run ignored tests the test filter should filter out all the
         // unignored tests and flip the ignore flag on the rest to false
 
@@ -1441,6 +1438,7 @@ mod tests {
         assert_eq!(diff2.len(), 7);
     }
 
+    #[test]
     pub fn ratchet_test() {
 
         let dpth = TempDir::new("test-ratchet").expect("missing test for ratchet");

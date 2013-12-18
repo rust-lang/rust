@@ -407,7 +407,7 @@ impl<K: Clone + TotalOrd, V: Clone> Clone for BranchElt<K, V> {
 #[cfg(test)]
 mod test_btree{
 
-    use super::*;
+    use super::{BTree, LeafElt};
 
     ///Tests the functionality of the add methods (which are unfinished).
     #[test]
