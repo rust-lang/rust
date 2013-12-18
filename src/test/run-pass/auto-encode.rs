@@ -10,6 +10,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-test FIXME(#5121)
+
 #[feature(managed_boxes)];
 
 extern mod extra;
@@ -28,18 +30,18 @@ use std::io;
 use extra::serialize::{Decodable, Encodable};
 use extra::time;
 
-fn test_ebml<A:
+fn test_ebml<'a, A:
     Eq +
     Encodable<EBWriter::Encoder> +
-    Decodable<EBReader::Decoder>
+    Decodable<EBReader::Decoder<'a>>
 >(a1: &A) {
     let mut wr = @mut std::io::mem::MemWriter::new();
     let mut ebml_w = EBWriter::Encoder(wr);
     a1.encode(&mut ebml_w);
-    let bytes = wr.inner_ref().to_owned();
+    let bytes = wr.inner_ref().as_slice();
 
-    let d = EBReader::Doc(@bytes);
-    let mut decoder = EBReader::Decoder(d);
+    let d: extra::ebml::Doc<'a> = EBReader::Doc(bytes);
+    let mut decoder: EBReader::Decoder<'a> = EBReader::Decoder(d);
     let a2: A = Decodable::decode(&mut decoder);
     assert!(*a1 == a2);
 }

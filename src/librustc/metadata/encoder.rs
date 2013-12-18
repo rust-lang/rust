@@ -1526,8 +1526,8 @@ fn encode_crate_deps(ecx: &EncodeContext,
         cstore::iter_crate_data(cstore, |key, val| {
             let dep = decoder::CrateDep {cnum: key,
                        name: ecx.tcx.sess.ident_of(val.name),
-                       vers: decoder::get_crate_vers(val.data),
-                       hash: decoder::get_crate_hash(val.data)};
+                       vers: decoder::get_crate_vers(val.data()),
+                       hash: decoder::get_crate_hash(val.data())};
             deps.push(dep);
         });
 
