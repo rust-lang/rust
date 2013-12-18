@@ -47,14 +47,14 @@ use syntax::visit;
 use syntax::visit::Visitor;
 
 pub struct Rcx {
-    fcx: @mut FnCtxt,
+    fcx: @FnCtxt,
     errors_reported: uint,
 
     // id of innermost fn or loop
     repeating_scope: ast::NodeId,
 }
 
-fn encl_region_of_def(fcx: @mut FnCtxt, def: ast::Def) -> ty::Region {
+fn encl_region_of_def(fcx: @FnCtxt, def: ast::Def) -> ty::Region {
     let tcx = fcx.tcx();
     match def {
         DefLocal(node_id, _) | DefArg(node_id, _) |
@@ -141,7 +141,7 @@ impl Rcx {
     }
 }
 
-pub fn regionck_expr(fcx: @mut FnCtxt, e: @ast::Expr) {
+pub fn regionck_expr(fcx: @FnCtxt, e: @ast::Expr) {
     let mut rcx = Rcx { fcx: fcx, errors_reported: 0,
                          repeating_scope: e.id };
     let rcx = &mut rcx;
@@ -152,7 +152,7 @@ pub fn regionck_expr(fcx: @mut FnCtxt, e: @ast::Expr) {
     fcx.infcx().resolve_regions();
 }
 
-pub fn regionck_fn(fcx: @mut FnCtxt, blk: ast::P<ast::Block>) {
+pub fn regionck_fn(fcx: @FnCtxt, blk: ast::P<ast::Block>) {
     let mut rcx = Rcx { fcx: fcx, errors_reported: 0,
                          repeating_scope: blk.id };
     let rcx = &mut rcx;

@@ -25,7 +25,7 @@ use syntax::parse::token;
 use syntax::codemap::Span;
 use syntax::print::pprust;
 
-pub fn check_match(fcx: @mut FnCtxt,
+pub fn check_match(fcx: @FnCtxt,
                    expr: @ast::Expr,
                    discrim: @ast::Expr,
                    arms: &[ast::Arm]) {
@@ -102,7 +102,7 @@ pub fn check_match(fcx: @mut FnCtxt,
 }
 
 pub struct pat_ctxt {
-    fcx: @mut FnCtxt,
+    fcx: @FnCtxt,
     map: PatIdMap,
 }
 
