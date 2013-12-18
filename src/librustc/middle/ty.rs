@@ -30,6 +30,7 @@ use util::ppaux::{Repr, UserString};
 use util::common::{indenter};
 
 use std::cast;
+use std::cell::RefCell;
 use std::cmp;
 use std::hashmap::{HashMap, HashSet};
 use std::ops;
@@ -264,7 +265,7 @@ pub type ctxt = @ctxt_;
 /// later on.
 struct ctxt_ {
     diag: @mut syntax::diagnostic::span_handler,
-    interner: @mut HashMap<intern_key, ~t_box_>,
+    interner: RefCell<HashMap<intern_key, ~t_box_>>,
     next_id: @mut uint,
     cstore: @mut metadata::cstore::CStore,
     sess: session::Session,
@@ -977,7 +978,7 @@ pub fn mk_ctxt(s: session::Session,
         named_region_map: named_region_map,
         item_variance_map: @mut HashMap::new(),
         diag: s.diagnostic(),
-        interner: @mut HashMap::new(),
+        interner: RefCell::new(HashMap::new()),
         next_id: @mut primitives::LAST_PRIMITIVE_ID,
         cstore: s.cstore,
         sess: s,
@@ -1042,9 +1043,13 @@ pub fn mk_t(cx: ctxt, st: sty) -> t {
     };
 
     let key = intern_key { sty: to_unsafe_ptr(&st) };
-    match cx.interner.find(&key) {
-      Some(t) => unsafe { return cast::transmute(&t.sty); },
-      _ => ()
+
+    {
+        let mut interner = cx.interner.borrow_mut();
+        match interner.get().find(&key) {
+          Some(t) => unsafe { return cast::transmute(&t.sty); },
+          _ => ()
+        }
     }
 
     let mut flags = 0u;
@@ -1138,7 +1143,8 @@ pub fn mk_t(cx: ctxt, st: sty) -> t {
         sty: sty_ptr,
     };
 
-    cx.interner.insert(key, t);
+    let mut interner = cx.interner.borrow_mut();
+    interner.get().insert(key, t);
 
     *cx.next_id += 1;
 
