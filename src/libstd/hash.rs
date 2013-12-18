@@ -303,6 +303,7 @@ impl Streaming for SipState {
 mod tests {
     use super::*;
     use prelude::*;
+    use super::SipState;
 
     // Hash just the bytes of the slice, without length prefix
     struct Bytes<'a>(&'a [u8]);
