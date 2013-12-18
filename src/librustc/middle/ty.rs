@@ -287,7 +287,7 @@ struct ctxt_ {
     node_type_substs: RefCell<HashMap<NodeId, ~[t]>>,
 
     // Maps from a method to the method "descriptor"
-    methods: @mut HashMap<DefId, @Method>,
+    methods: RefCell<HashMap<DefId, @Method>>,
 
     // Maps from a trait def-id to a list of the def-ids of its methods
     trait_method_def_ids: @mut HashMap<DefId, @~[DefId]>,
@@ -998,7 +998,7 @@ pub fn mk_ctxt(s: session::Session,
         tc_cache: @mut HashMap::new(),
         ast_ty_to_ty_cache: @mut HashMap::new(),
         enum_var_cache: @mut HashMap::new(),
-        methods: @mut HashMap::new(),
+        methods: RefCell::new(HashMap::new()),
         trait_method_def_ids: @mut HashMap::new(),
         trait_methods_cache: @mut HashMap::new(),
         impl_trait_cache: @mut HashMap::new(),
@@ -3603,9 +3603,10 @@ pub fn trait_methods(cx: ctxt, trait_did: ast::DefId) -> @~[@Method] {
 }
 
 pub fn method(cx: ctxt, id: ast::DefId) -> @Method {
-    lookup_locally_or_in_crate_store(
-        "methods", id, cx.methods,
-        || @csearch::get_method(cx, id))
+    let mut methods = cx.methods.borrow_mut();
+    lookup_locally_or_in_crate_store("methods", id, methods.get(), || {
+        @csearch::get_method(cx, id)
+    })
 }
 
 pub fn trait_method_def_ids(cx: ctxt, id: ast::DefId) -> @~[DefId] {
@@ -4577,7 +4578,12 @@ pub fn trait_of_method(tcx: ctxt, def_id: ast::DefId)
     if def_id.crate != LOCAL_CRATE {
         return csearch::get_trait_of_method(tcx.cstore, def_id, tcx);
     }
-    match tcx.methods.find(&def_id) {
+    let method;
+    {
+        let methods = tcx.methods.borrow();
+        method = methods.get().find(&def_id).map(|method| *method);
+    }
+    match method {
         Some(method) => {
             match method.container {
                 TraitContainer(def_id) => Some(def_id),
@@ -4596,10 +4602,15 @@ pub fn trait_of_method(tcx: ctxt, def_id: ast::DefId)
 /// Otherwise, return `None`.
 pub fn trait_method_of_method(tcx: ctxt,
                               def_id: ast::DefId) -> Option<ast::DefId> {
-    let name = match tcx.methods.find(&def_id) {
-        Some(method) => method.ident.name,
-        None => return None
-    };
+    let method;
+    {
+        let methods = tcx.methods.borrow();
+        match methods.get().find(&def_id) {
+            Some(m) => method = *m,
+            None => return None,
+        }
+    }
+    let name = method.ident.name;
     match trait_of_method(tcx, def_id) {
         Some(trait_did) => {
             let trait_methods = ty::trait_methods(tcx, trait_did);

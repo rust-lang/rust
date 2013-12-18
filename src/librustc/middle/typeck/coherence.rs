@@ -366,7 +366,9 @@ impl CoherenceChecker {
             debug!("new_polytype={}", new_polytype.repr(tcx));
 
             tcx.tcache.insert(new_did, new_polytype);
-            tcx.methods.insert(new_did, new_method_ty);
+
+            let mut methods = tcx.methods.borrow_mut();
+            methods.get().insert(new_did, new_method_ty);
 
             // Pair the new synthesized ID up with the
             // ID of the method.

@@ -213,7 +213,8 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
                                           &trait_ty_generics);
                 }
 
-                tcx.methods.insert(ty_method.def_id, ty_method);
+                let mut methods = tcx.methods.borrow_mut();
+                methods.get().insert(ty_method.def_id, ty_method);
             }
 
             // Add an entry mapping
@@ -476,7 +477,9 @@ fn convert_methods(ccx: &CrateCtxt,
                 ty: fty
             });
         write_ty_to_tcx(tcx, m.id, fty);
-        tcx.methods.insert(mty.def_id, mty);
+
+        let mut methods = tcx.methods.borrow_mut();
+        methods.get().insert(mty.def_id, mty);
     }
 
     fn ty_of_method(ccx: &CrateCtxt,
