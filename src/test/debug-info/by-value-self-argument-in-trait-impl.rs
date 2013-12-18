@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-win32: FIXME (#10474)
 // xfail-android: FIXME(#10381)
 
 #[feature(managed_boxes)];
