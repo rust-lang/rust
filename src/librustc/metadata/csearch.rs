@@ -31,13 +31,13 @@ pub struct StaticMethodInfo {
 }
 
 pub fn get_symbol(cstore: @mut cstore::CStore, def: ast::DefId) -> ~str {
-    let cdata = cstore::get_crate_data(cstore, def.crate).data;
+    let cdata = cstore::get_crate_data(cstore, def.crate).data();
     return decoder::get_symbol(cdata, def.node);
 }
 
 pub fn get_type_param_count(cstore: @mut cstore::CStore, def: ast::DefId)
                          -> uint {
-    let cdata = cstore::get_crate_data(cstore, def.crate).data;
+    let cdata = cstore::get_crate_data(cstore, def.crate).data();
     return decoder::get_type_param_count(cdata, def.node);
 }
 
@@ -210,7 +210,7 @@ pub fn get_field_type(tcx: ty::ctxt, class_id: ast::DefId,
                       def: ast::DefId) -> ty::ty_param_bounds_and_ty {
     let cstore = tcx.cstore;
     let cdata = cstore::get_crate_data(cstore, class_id.crate);
-    let all_items = reader::get_doc(reader::Doc(cdata.data), tag_items);
+    let all_items = reader::get_doc(reader::Doc(cdata.data()), tag_items);
     debug!("Looking up {:?}", class_id);
     let class_doc = expect(tcx.diag,
                            decoder::maybe_find_item(class_id.node, all_items),

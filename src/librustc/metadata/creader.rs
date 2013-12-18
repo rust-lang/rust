@@ -267,9 +267,9 @@ fn resolve_crate(e: @mut Env,
             dylib, rlib, metadata
         } = load_ctxt.load_library_crate();
 
-        let attrs = decoder::get_crate_attributes(metadata);
+        let attrs = decoder::get_crate_attributes(metadata.as_slice());
         let pkgid = attr::find_pkgid(attrs).unwrap();
-        let hash = decoder::get_crate_hash(metadata);
+        let hash = decoder::get_crate_hash(metadata.as_slice());
 
         // Claim this crate number and cache it
         let cnum = e.next_crate_num;
@@ -282,7 +282,7 @@ fn resolve_crate(e: @mut Env,
         e.next_crate_num += 1;
 
         // Now resolve the crates referenced by this crate
-        let cnum_map = resolve_crate_deps(e, metadata);
+        let cnum_map = resolve_crate_deps(e, metadata.as_slice());
 
         let cmeta = @cstore::crate_metadata {
             name: name,
@@ -307,7 +307,7 @@ fn resolve_crate(e: @mut Env,
 }
 
 // Go through the crate metadata and load any crates that it references
-fn resolve_crate_deps(e: @mut Env, cdata: @~[u8]) -> cstore::cnum_map {
+fn resolve_crate_deps(e: @mut Env, cdata: &[u8]) -> cstore::cnum_map {
     debug!("resolving deps of external crate");
     // The map from crate numbers in the crate we're resolving to local crate
     // numbers
