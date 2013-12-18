@@ -226,7 +226,9 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
             });
 
             let trait_def_id = local_def(trait_id);
-            tcx.trait_method_def_ids.insert(trait_def_id, method_def_ids);
+            let mut trait_method_def_ids = tcx.trait_method_def_ids
+                                              .borrow_mut();
+            trait_method_def_ids.get().insert(trait_def_id, method_def_ids);
         }
         _ => { /* Ignore things that aren't traits */ }
     }

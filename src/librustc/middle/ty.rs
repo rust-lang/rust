@@ -290,7 +290,7 @@ struct ctxt_ {
     methods: RefCell<HashMap<DefId, @Method>>,
 
     // Maps from a trait def-id to a list of the def-ids of its methods
-    trait_method_def_ids: @mut HashMap<DefId, @~[DefId]>,
+    trait_method_def_ids: RefCell<HashMap<DefId, @~[DefId]>>,
 
     // A cache for the trait_methods() routine
     trait_methods_cache: @mut HashMap<DefId, @~[@Method]>,
@@ -999,7 +999,7 @@ pub fn mk_ctxt(s: session::Session,
         ast_ty_to_ty_cache: @mut HashMap::new(),
         enum_var_cache: @mut HashMap::new(),
         methods: RefCell::new(HashMap::new()),
-        trait_method_def_ids: @mut HashMap::new(),
+        trait_method_def_ids: RefCell::new(HashMap::new()),
         trait_methods_cache: @mut HashMap::new(),
         impl_trait_cache: @mut HashMap::new(),
         ty_param_defs: @mut HashMap::new(),
@@ -3610,9 +3610,13 @@ pub fn method(cx: ctxt, id: ast::DefId) -> @Method {
 }
 
 pub fn trait_method_def_ids(cx: ctxt, id: ast::DefId) -> @~[DefId] {
-    lookup_locally_or_in_crate_store(
-        "trait_method_def_ids", id, cx.trait_method_def_ids,
-        || @csearch::get_trait_method_def_ids(cx.cstore, id))
+    let mut trait_method_def_ids = cx.trait_method_def_ids.borrow_mut();
+    lookup_locally_or_in_crate_store("trait_method_def_ids",
+                                     id,
+                                     trait_method_def_ids.get(),
+                                     || {
+        @csearch::get_trait_method_def_ids(cx.cstore, id)
+    })
 }
 
 pub fn impl_trait_ref(cx: ctxt, id: ast::DefId) -> Option<@TraitRef> {
