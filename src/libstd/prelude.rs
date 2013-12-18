@@ -28,17 +28,13 @@ Rust's prelude has three main parts:
 
 // Reexported core operators
 pub use either::{Either, Left, Right};
-pub use kinds::Sized;
-pub use kinds::{Freeze, Send};
+pub use kinds::{Freeze, Pod, Send, Sized};
 pub use ops::{Add, Sub, Mul, Div, Rem, Neg, Not};
 pub use ops::{BitAnd, BitOr, BitXor};
 pub use ops::{Drop};
 pub use ops::{Shl, Shr, Index};
 pub use option::{Option, Some, None};
 pub use result::{Result, Ok, Err};
-
-#[cfg(not(stage0))]
-pub use kinds::Pod;
 
 // Reexported functions
 pub use from_str::from_str;

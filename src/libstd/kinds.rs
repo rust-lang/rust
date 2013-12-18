@@ -41,7 +41,6 @@ pub trait Sized {
 /// Types that can be copied by simply copying bits (i.e. `memcpy`).
 ///
 /// The name "POD" stands for "Plain Old Data" and is borrowed from C++.
-#[cfg(not(stage0))]
 #[lang="pod"]
 pub trait Pod {
     // Empty.
