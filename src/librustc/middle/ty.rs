@@ -293,7 +293,7 @@ struct ctxt_ {
     trait_method_def_ids: RefCell<HashMap<DefId, @~[DefId]>>,
 
     // A cache for the trait_methods() routine
-    trait_methods_cache: @mut HashMap<DefId, @~[@Method]>,
+    trait_methods_cache: RefCell<HashMap<DefId, @~[@Method]>>,
 
     impl_trait_cache: @mut HashMap<ast::DefId, Option<@ty::TraitRef>>,
 
@@ -1000,7 +1000,7 @@ pub fn mk_ctxt(s: session::Session,
         enum_var_cache: @mut HashMap::new(),
         methods: RefCell::new(HashMap::new()),
         trait_method_def_ids: RefCell::new(HashMap::new()),
-        trait_methods_cache: @mut HashMap::new(),
+        trait_methods_cache: RefCell::new(HashMap::new()),
         impl_trait_cache: @mut HashMap::new(),
         ty_param_defs: @mut HashMap::new(),
         adjustments: @mut HashMap::new(),
@@ -3591,12 +3591,13 @@ pub fn trait_method(cx: ctxt, trait_did: ast::DefId, idx: uint) -> @Method {
 
 
 pub fn trait_methods(cx: ctxt, trait_did: ast::DefId) -> @~[@Method] {
-    match cx.trait_methods_cache.find(&trait_did) {
+    let mut trait_methods_cache = cx.trait_methods_cache.borrow_mut();
+    match trait_methods_cache.get().find(&trait_did) {
         Some(&methods) => methods,
         None => {
             let def_ids = ty::trait_method_def_ids(cx, trait_did);
             let methods = @def_ids.map(|d| ty::method(cx, *d));
-            cx.trait_methods_cache.insert(trait_did, methods);
+            trait_methods_cache.get().insert(trait_did, methods);
             methods
         }
     }

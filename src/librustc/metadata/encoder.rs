@@ -463,7 +463,8 @@ fn encode_reexported_static_trait_methods(ecx: &EncodeContext,
                                           ebml_w: &mut writer::Encoder,
                                           exp: &middle::resolve::Export2)
                                           -> bool {
-    match ecx.tcx.trait_methods_cache.find(&exp.def_id) {
+    let trait_methods_cache = ecx.tcx.trait_methods_cache.borrow();
+    match trait_methods_cache.get().find(&exp.def_id) {
         Some(methods) => {
             for &m in methods.iter() {
                 if m.explicit_self == ast::sty_static {
