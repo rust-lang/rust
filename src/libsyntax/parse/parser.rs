@@ -4968,6 +4968,7 @@ impl Parser {
         let mut vp = ~[self.parse_view_path()];
         while *self.token == token::COMMA {
             self.bump();
+            self.obsolete(*self.last_span, ObsoleteMultipleImport);
             vp.push(self.parse_view_path());
         }
         return vp;
