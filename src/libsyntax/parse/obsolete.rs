@@ -44,6 +44,7 @@ pub enum ObsoleteSyntax {
     ObsoleteVecDotDotWildcard,
     ObsoleteBoxedClosure,
     ObsoleteClosureType,
+    ObsoleteMultipleImport,
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -139,6 +140,10 @@ impl ParserObsoleteMethods for Parser {
                 "closure type",
                 "closures are now written `|A| -> B` rather than `&fn(A) -> \
                  B`."
+            ),
+            ObsoleteMultipleImport => (
+                "multiple imports",
+                "only one import is allowed per `use` statement"
             ),
         };
 

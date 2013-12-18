@@ -84,7 +84,7 @@ use syntax::parse::token::{special_idents};
 use syntax::print::pprust::stmt_to_str;
 use syntax::{ast, ast_util, codemap, ast_map};
 use syntax::attr::AttrMetaMethods;
-use syntax::abi::{X86, X86_64, Arm, Mips, Rust, RustIntrinsic, OsWin32, OsAndroid};
+use syntax::abi::{X86, X86_64, Arm, Mips, Rust, RustIntrinsic, OsWin32};
 use syntax::visit;
 use syntax::visit::Visitor;
 
@@ -2289,11 +2289,7 @@ fn finish_register_fn(ccx: @mut CrateContext, sp: Span, sym: ~str, node_id: ast:
         lib::llvm::SetLinkage(llfn, lib::llvm::InternalLinkage);
     }
 
-    // FIXME #4404 android JNI hacks
-    let is_entry = is_entry_fn(&ccx.sess, node_id) && (!*ccx.sess.building_library ||
-                      (*ccx.sess.building_library &&
-                       ccx.sess.targ_cfg.os == OsAndroid));
-    if is_entry {
+    if is_entry_fn(&ccx.sess, node_id) && !*ccx.sess.building_library {
         create_entry_wrapper(ccx, sp, llfn);
     }
 }
@@ -2361,13 +2357,7 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
         let llfty = Type::func([ccx.int_type, Type::i8().ptr_to().ptr_to()],
                                &ccx.int_type);
 
-        // FIXME #4404 android JNI hacks
-        let main_name = if *ccx.sess.building_library {
-            "amain"
-        } else {
-            "main"
-        };
-        let llfn = decl_cdecl_fn(ccx.llmod, main_name, llfty);
+        let llfn = decl_cdecl_fn(ccx.llmod, "main", llfty);
         let llbb = "top".with_c_str(|buf| {
             unsafe {
                 llvm::LLVMAppendBasicBlockInContext(ccx.llcx, llfn, buf)
@@ -3199,14 +3189,13 @@ pub fn trans_crate(sess: session::Session,
     }).to_owned_vec();
 
     // Make sure that some other crucial symbols are not eliminated from the
-    // module. This includes the main function (main/amain elsewhere), the crate
-    // map (used for debug log settings and I/O), and finally the curious
-    // rust_stack_exhausted symbol. This symbol is required for use by the
-    // libmorestack library that we link in, so we must ensure that this symbol
-    // is not internalized (if defined in the crate).
+    // module. This includes the main function, the crate map (used for debug
+    // log settings and I/O), and finally the curious rust_stack_exhausted
+    // symbol. This symbol is required for use by the libmorestack library that
+    // we link in, so we must ensure that this symbol is not internalized (if
+    // defined in the crate).
     reachable.push(ccx.crate_map_name.to_owned());
     reachable.push(~"main");
-    reachable.push(~"amain");
     reachable.push(~"rust_stack_exhausted");
 
     return CrateTranslation {
