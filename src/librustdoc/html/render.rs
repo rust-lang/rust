@@ -678,7 +678,13 @@ impl Context {
         // using a rwarc makes this parallelizable in the future
         local_data::set(cache_key, Arc::new(cache));
 
-        self.item(item);
+        let mut work = ~[(self, item)];
+        while work.len() > 0 {
+            let (mut cx, item) = work.pop();
+            cx.item(item, |cx, item| {
+                work.push((cx.clone(), item));
+            })
+        }
     }
 
     /// Non-parellelized version of rendering an item. This will take the input
@@ -686,7 +692,7 @@ impl Context {
     /// all sub-items which need to be rendered.
     ///
     /// The rendering driver uses this closure to queue up more work.
-    fn item(&mut self, item: clean::Item) {
+    fn item(&mut self, item: clean::Item, f: |&mut Context, clean::Item|) {
         fn render(w: io::File, cx: &mut Context, it: &clean::Item,
                   pushname: bool) {
             info!("Rendering an item to {}", w.path().display());
@@ -733,7 +739,7 @@ impl Context {
                     };
                     this.sidebar = build_sidebar(&m);
                     for item in m.items.move_iter() {
-                        this.item(item);
+                        f(this,item);
                     }
                 })
             }
