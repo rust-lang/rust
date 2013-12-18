@@ -118,7 +118,7 @@ pub enum AutoderefReceiverFlag {
 }
 
 pub fn lookup(
-        fcx: @mut FnCtxt,
+        fcx: @FnCtxt,
 
         // In a call `a.b::<X, Y, ...>(...)`:
         expr: @ast::Expr,                   // The expression `a.b(...)`.
@@ -168,7 +168,7 @@ pub fn lookup(
 }
 
 pub struct LookupContext<'a> {
-    fcx: @mut FnCtxt,
+    fcx: @FnCtxt,
     expr: @ast::Expr,
     self_expr: @ast::Expr,
     callee_id: NodeId,
@@ -1245,7 +1245,7 @@ impl<'a> LookupContext<'a> {
             }
         }
 
-        fn rcvr_matches_ty(fcx: @mut FnCtxt,
+        fn rcvr_matches_ty(fcx: @FnCtxt,
                            rcvr_ty: ty::t,
                            candidate: &Candidate) -> bool {
             match candidate.rcvr_match_condition {
