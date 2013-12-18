@@ -129,11 +129,13 @@ use driver::session;
 use lib::llvm::llvm;
 use lib::llvm::{ModuleRef, ContextRef, ValueRef};
 use lib::llvm::debuginfo::*;
+use middle::trans::adt;
+use middle::trans::base;
+use middle::trans::build;
 use middle::trans::common::*;
 use middle::trans::machine;
 use middle::trans::type_of;
 use middle::trans::type_::Type;
-use middle::trans::adt;
 use middle::trans;
 use middle::ty;
 use middle::pat_util;
@@ -453,12 +455,29 @@ pub fn create_self_argument_metadata(bcx: @mut Block,
 
     let address_operations = &[unsafe { llvm::LLVMDIBuilderCreateOpDeref(Type::i64().to_ref()) }];
 
+    // The self argument comes in one of two forms:
+    // (1) For `&self`, `~self`, and `@self` it is an alloca containing a pointer to the data. That
+    //     is the `{&~@}self` pointer is contained by value in the alloca, and `type_of_self` will
+    //     be `{&~@}Self`
+    // (2) For by-value `self`, `llptr` will not be an alloca, but a pointer to the self-value. That
+    //     is by-value `self` is always implicitly passed by reference (sic!). So we have a couple
+    //     of problems here:
+    //     (a) There is no alloca to give to `llvm.dbg.declare` and
+    //     (b) `type_of_self` is `Self`, but `llptr` is of type `*Self`
+    //     In order to solve this problem, the else branch below creates a helper alloca which
+    //     contains a copy of `llptr`. We then describe the `self` parameter by pointing
+    //     `llvm.dbg.declare` to this helper alloca and tell it that the pointer there needs to be
+    //     dereferenced once to get to the actual data (similar to non-immediate by-value args).
     let variable_access = if unsafe { llvm::LLVMIsAAllocaInst(llptr) } != ptr::null() {
         DirectVariable { alloca: llptr }
     } else {
-        // This is not stable and may break with future LLVM versions. llptr should really always
-        // be an alloca. Anything else is not supported and just works by chance.
-        IndirectVariable { alloca: llptr, address_operations: address_operations }
+        // Create a helper alloca that allows us to track the self-argument properly. The alloca
+        // contains a pointer to the self-value.
+        let ptr_type = ty::mk_mut_ptr(bcx.tcx(), type_of_self);
+        let helper_alloca = base::alloc_ty(bcx, ptr_type, "__self");
+        build::Store(bcx, llptr, helper_alloca);
+
+        IndirectVariable { alloca: helper_alloca, address_operations: address_operations }
     };
 
     declare_local(bcx,
