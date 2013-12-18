@@ -68,7 +68,7 @@ impl RtioSignal for SignalWatcher {}
 impl Drop for SignalWatcher {
     fn drop(&mut self) {
         let _m = self.fire_homing_missile();
-        self.close_async_();
+        self.close();
     }
 }
 

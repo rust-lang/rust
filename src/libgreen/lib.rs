@@ -18,12 +18,7 @@
 //! functionality inside of 1:1 programs.
 
 #[pkgid = "green#0.9-pre"];
-#[link(name = "green",
-       package_id = "green",
-       vers = "0.9-pre",
-       uuid = "20c38f8c-bfea-83ed-a068-9dc05277be26",
-       url = "https://github.com/mozilla/rust/tree/master/src/libgreen")];
-
+#[crate_id = "green#0.9-pre"];
 #[license = "MIT/ASL2"];
 #[crate_type = "rlib"];
 #[crate_type = "dylib"];
@@ -61,16 +56,13 @@ pub mod stack;
 pub mod task;
 
 #[lang = "start"]
+#[cfg(not(test))]
 pub fn lang_start(main: *u8, argc: int, argv: **u8) -> int {
     use std::cast;
-    let mut ret = None;
-    simple::task().run(|| {
-        ret = Some(do start(argc, argv) {
-            let main: extern "Rust" fn() = unsafe { cast::transmute(main) };
-            main();
-        })
-    });
-    ret.unwrap()
+    do start(argc, argv) {
+        let main: extern "Rust" fn() = unsafe { cast::transmute(main) };
+        main();
+    }
 }
 
 /// Set up a default runtime configuration, given compiler-supplied arguments.
@@ -93,10 +85,14 @@ pub fn lang_start(main: *u8, argc: int, argv: **u8) -> int {
 /// error.
 pub fn start(argc: int, argv: **u8, main: proc()) -> int {
     rt::init(argc, argv);
-    let exit_code = run(main);
+    let mut main = Some(main);
+    let mut ret = None;
+    simple::task().run(|| {
+        ret = Some(run(main.take_unwrap()));
+    });
     // unsafe is ok b/c we're sure that the runtime is gone
     unsafe { rt::cleanup() }
-    exit_code
+    ret.unwrap()
 }
 
 /// Execute the main function in a pool of M:N schedulers.
@@ -114,6 +110,7 @@ pub fn run(main: proc()) -> int {
     let (port, chan) = Chan::new();
     let mut opts = TaskOpts::new();
     opts.notify_chan = Some(chan);
+    opts.name = Some(SendStrStatic("<main>"));
     pool.spawn(opts, main);
 
     // Wait for the main task to return, and set the process error code

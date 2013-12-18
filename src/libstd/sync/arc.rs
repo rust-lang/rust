@@ -32,7 +32,7 @@ use vec;
 /// An atomically reference counted pointer.
 ///
 /// Enforces no shared-memory safety.
-//#[unsafe_no_drop_flag] FIXME: #9758
+#[unsafe_no_drop_flag]
 pub struct UnsafeArc<T> {
     priv data: *mut ArcData<T>,
 }

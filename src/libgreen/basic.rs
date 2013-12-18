@@ -16,7 +16,7 @@
 //! loop if no other one is provided (and M:N scheduling is desired).
 
 use std::cast;
-use std::rt::rtio::{EventLoop, IoFactory, RemoteCallback, PausibleIdleCallback,
+use std::rt::rtio::{EventLoop, IoFactory, RemoteCallback, PausableIdleCallback,
                     Callback};
 use std::unstable::sync::Exclusive;
 use std::util;

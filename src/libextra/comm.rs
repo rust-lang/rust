@@ -96,7 +96,6 @@ pub fn rendezvous<T: Send>() -> (SyncPort<T>, SyncChan<T>) {
 #[cfg(test)]
 mod test {
     use comm::{DuplexStream, rendezvous};
-    use std::rt::test::run_in_uv_task;
 
 
     #[test]
@@ -124,13 +123,11 @@ mod test {
     #[test]
     fn recv_a_lot() {
         // Rendezvous streams should be able to handle any number of messages being sent
-        do run_in_uv_task {
-            let (port, chan) = rendezvous();
-            do spawn {
-                1000000.times(|| { chan.send(()) })
-            }
-            1000000.times(|| { port.recv() })
+        let (port, chan) = rendezvous();
+        do spawn {
+            1000000.times(|| { chan.send(()) })
         }
+        1000000.times(|| { port.recv() })
     }
 
     #[test]

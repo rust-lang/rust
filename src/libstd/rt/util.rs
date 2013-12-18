@@ -69,14 +69,13 @@ pub fn default_sched_threads() -> uint {
 pub fn dumb_println(args: &fmt::Arguments) {
     use io;
     use libc;
-    use vec;
 
     struct Stderr;
     impl io::Writer for Stderr {
         fn write(&mut self, data: &[u8]) {
             unsafe {
                 libc::write(libc::STDERR_FILENO,
-                            vec::raw::to_ptr(data) as *libc::c_void,
+                            data.as_ptr() as *libc::c_void,
                             data.len() as libc::size_t);
             }
         }

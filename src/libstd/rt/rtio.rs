@@ -95,14 +95,16 @@ impl<'a> LocalIo<'a> {
     /// Returns the local I/O: either the local scheduler's I/O services or
     /// the native I/O services.
     pub fn borrow() -> Option<LocalIo> {
-        // XXX: This is currently very unsafely implemented. We don't actually
-        //      *take* the local I/O so there's a very real possibility that we
-        //      can have two borrows at once. Currently there is not a clear way
-        //      to actually borrow the local I/O factory safely because even if
-        //      ownership were transferred down to the functions that the I/O
-        //      factory implements it's just too much of a pain to know when to
-        //      relinquish ownership back into the local task (but that would be
-        //      the safe way of implementing this function).
+        // FIXME(#11053): bad
+        //
+        // This is currently very unsafely implemented. We don't actually
+        // *take* the local I/O so there's a very real possibility that we
+        // can have two borrows at once. Currently there is not a clear way
+        // to actually borrow the local I/O factory safely because even if
+        // ownership were transferred down to the functions that the I/O
+        // factory implements it's just too much of a pain to know when to
+        // relinquish ownership back into the local task (but that would be
+        // the safe way of implementing this function).
         //
         // In order to get around this, we just transmute a copy out of the task
         // in order to have what is likely a static lifetime (bad).

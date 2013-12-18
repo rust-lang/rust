@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cast;
 use std::io;
 use std::libc::{pid_t, c_void, c_int};
 use std::libc;
@@ -16,6 +15,8 @@ use std::os;
 use std::ptr;
 use std::rt::rtio;
 use p = std::io::process;
+
+#[cfg(windows)] use std::cast;
 
 use super::file;
 

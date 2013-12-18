@@ -42,7 +42,7 @@ impl<T> Drop for Borrowed<T> {
             }
             let val: ~T = cast::transmute(self.val);
             put::<T>(val);
-            assert!(exists());
+            rtassert!(exists());
         }
     }
 }
@@ -110,7 +110,7 @@ pub mod compiled {
     #[inline]
     pub unsafe fn take<T>() -> ~T {
         let ptr = RT_TLS_PTR;
-        assert!(!ptr.is_null());
+        rtassert!(!ptr.is_null());
         let ptr: ~T = cast::transmute(ptr);
         // can't use `as`, due to type not matching with `cfg(test)`
         RT_TLS_PTR = cast::transmute(0);
@@ -180,7 +180,7 @@ pub mod native {
     }
 
     pub unsafe fn cleanup() {
-        assert!(INITIALIZED);
+        rtassert!(INITIALIZED);
         tls::destroy(RT_TLS_KEY);
         LOCK.destroy();
         INITIALIZED = false;

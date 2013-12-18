@@ -144,15 +144,11 @@ impl<T: Send> Drop for Thread<T> {
 
 #[cfg(windows)]
 mod imp {
-    use super::DEFAULT_STACK_SIZE;
-
     use cast;
     use libc;
     use libc::types::os::arch::extra::{LPSECURITY_ATTRIBUTES, SIZE_T, BOOL,
                                        LPVOID, DWORD, LPDWORD, HANDLE};
     use ptr;
-    use libc;
-    use cast;
 
     pub type rust_thread = HANDLE;
     pub type rust_thread_return = DWORD;

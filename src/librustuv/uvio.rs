@@ -86,10 +86,10 @@ impl rtio::EventLoop for UvEventLoop {
         IdleWatcher::onetime(&mut self.uvio.loop_, f);
     }
 
-    fn pausible_idle_callback(&mut self, cb: ~rtio::Callback)
-        -> ~rtio::PausibleIdleCallback
+    fn pausable_idle_callback(&mut self, cb: ~rtio::Callback)
+        -> ~rtio::PausableIdleCallback
     {
-        IdleWatcher::new(&mut self.uvio.loop_, cb) as ~rtio::PausibleIdleCallback
+        IdleWatcher::new(&mut self.uvio.loop_, cb) as ~rtio::PausableIdleCallback
     }
 
     fn remote_callback(&mut self, f: ~rtio::Callback) -> ~rtio::RemoteCallback {

@@ -175,7 +175,8 @@ mod tests {
     fn connect_error() {
         let mut called = false;
         io_error::cond.trap(|e| {
-            assert_eq!(e.kind, OtherIoError);
+            assert_eq!(e.kind,
+                       if cfg!(windows) {OtherIoError} else {FileNotFound});
             called = true;
         }).inside(|| {
             let stream = UnixStream::connect(&("path/to/nowhere"));
