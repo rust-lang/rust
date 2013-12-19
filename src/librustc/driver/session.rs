@@ -421,14 +421,15 @@ pub fn building_library(options: &options, crate: &ast::Crate) -> bool {
     }
 }
 
-pub fn collect_outputs(options: &options, crate: &ast::Crate) -> ~[OutputStyle] {
+pub fn collect_outputs(options: &options,
+                       attrs: &[ast::Attribute]) -> ~[OutputStyle] {
     // If we're generating a test executable, then ignore all other output
     // styles at all other locations
     if options.test {
         return ~[OutputExecutable];
     }
     let mut base = options.outputs.clone();
-    let mut iter = crate.attrs.iter().filter_map(|a| {
+    let mut iter = attrs.iter().filter_map(|a| {
         if "crate_type" == a.name() {
             match a.value_str() {
                 Some(n) if "rlib" == n => Some(OutputRlib),
