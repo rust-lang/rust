@@ -890,9 +890,12 @@ pub fn C_u8(i: uint) -> ValueRef {
 // our boxed-and-length-annotated strings.
 pub fn C_cstr(cx: &mut CrateContext, s: @str) -> ValueRef {
     unsafe {
-        match cx.const_cstr_cache.find_equiv(&s) {
-            Some(&llval) => return llval,
-            None => ()
+        {
+            let const_cstr_cache = cx.const_cstr_cache.borrow();
+            match const_cstr_cache.get().find_equiv(&s) {
+                Some(&llval) => return llval,
+                None => ()
+            }
         }
 
         let sc = llvm::LLVMConstStringInContext(cx.llcx,
@@ -907,9 +910,9 @@ pub fn C_cstr(cx: &mut CrateContext, s: @str) -> ValueRef {
         llvm::LLVMSetGlobalConstant(g, True);
         lib::llvm::SetLinkage(g, lib::llvm::InternalLinkage);
 
-        cx.const_cstr_cache.insert(s, g);
-
-        return g;
+        let mut const_cstr_cache = cx.const_cstr_cache.borrow_mut();
+        const_cstr_cache.get().insert(s, g);
+        g
     }
 }
 

@@ -71,7 +71,7 @@ pub struct CrateContext {
      // Cache generated vtables
      vtables: RefCell<HashMap<(ty::t, mono_id), ValueRef>>,
      // Cache of constant strings,
-     const_cstr_cache: HashMap<@str, ValueRef>,
+     const_cstr_cache: RefCell<HashMap<@str, ValueRef>>,
 
      // Reverse-direction for const ptrs cast from globals.
      // Key is an int, cast from a ValueRef holding a *T,
@@ -197,7 +197,7 @@ impl CrateContext {
                   monomorphized: RefCell::new(HashMap::new()),
                   monomorphizing: RefCell::new(HashMap::new()),
                   vtables: RefCell::new(HashMap::new()),
-                  const_cstr_cache: HashMap::new(),
+                  const_cstr_cache: RefCell::new(HashMap::new()),
                   const_globals: HashMap::new(),
                   const_values: HashMap::new(),
                   extern_const_values: HashMap::new(),
