@@ -79,7 +79,8 @@ pub fn const_lit(cx: &mut CrateContext, e: &ast::Expr, lit: ast::lit)
 pub fn const_ptrcast(cx: &mut CrateContext, a: ValueRef, t: Type) -> ValueRef {
     unsafe {
         let b = llvm::LLVMConstPointerCast(a, t.ptr_to().to_ref());
-        assert!(cx.const_globals.insert(b as int, a));
+        let mut const_globals = cx.const_globals.borrow_mut();
+        assert!(const_globals.get().insert(b as int, a));
         b
     }
 }
@@ -111,7 +112,8 @@ fn const_addr_of(cx: &mut CrateContext, cv: ValueRef) -> ValueRef {
 }
 
 fn const_deref_ptr(cx: &mut CrateContext, v: ValueRef) -> ValueRef {
-    let v = match cx.const_globals.find(&(v as int)) {
+    let const_globals = cx.const_globals.borrow();
+    let v = match const_globals.get().find(&(v as int)) {
         Some(&v) => v,
         None => v
     };
