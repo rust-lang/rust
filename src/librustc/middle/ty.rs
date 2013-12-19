@@ -309,7 +309,7 @@ struct ctxt_ {
     rcache: creader_cache,
     short_names_cache: RefCell<HashMap<t, @str>>,
     needs_unwind_cleanup_cache: RefCell<HashMap<t, bool>>,
-    tc_cache: @mut HashMap<uint, TypeContents>,
+    tc_cache: RefCell<HashMap<uint, TypeContents>>,
     ast_ty_to_ty_cache: @mut HashMap<NodeId, ast_ty_to_ty_cache_entry>,
     enum_var_cache: @mut HashMap<DefId, @~[@VariantInfo]>,
     ty_param_defs: @mut HashMap<ast::NodeId, TypeParameterDef>,
@@ -995,7 +995,7 @@ pub fn mk_ctxt(s: session::Session,
         rcache: mk_rcache(),
         short_names_cache: RefCell::new(HashMap::new()),
         needs_unwind_cleanup_cache: RefCell::new(HashMap::new()),
-        tc_cache: @mut HashMap::new(),
+        tc_cache: RefCell::new(HashMap::new()),
         ast_ty_to_ty_cache: @mut HashMap::new(),
         enum_var_cache: @mut HashMap::new(),
         methods: RefCell::new(HashMap::new()),
@@ -1970,14 +1970,20 @@ pub fn type_is_freezable(cx: ctxt, t: ty::t) -> bool {
 
 pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
     let ty_id = type_id(ty);
-    match cx.tc_cache.find(&ty_id) {
-        Some(tc) => { return *tc; }
-        None => {}
+
+    {
+        let tc_cache = cx.tc_cache.borrow();
+        match tc_cache.get().find(&ty_id) {
+            Some(tc) => { return *tc; }
+            None => {}
+        }
     }
 
     let mut cache = HashMap::new();
     let result = tc_ty(cx, ty, &mut cache);
-    cx.tc_cache.insert(ty_id, result);
+
+    let mut tc_cache = cx.tc_cache.borrow_mut();
+    tc_cache.get().insert(ty_id, result);
     return result;
 
     fn tc_ty(cx: ctxt,
@@ -2010,9 +2016,12 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             Some(tc) => { return *tc; }
             None => {}
         }
-        match cx.tc_cache.find(&ty_id) {    // Must check both caches!
-            Some(tc) => { return *tc; }
-            None => {}
+        {
+            let tc_cache = cx.tc_cache.borrow();
+            match tc_cache.get().find(&ty_id) {    // Must check both caches!
+                Some(tc) => { return *tc; }
+                None => {}
+            }
         }
         cache.insert(ty_id, TC::None);
 
