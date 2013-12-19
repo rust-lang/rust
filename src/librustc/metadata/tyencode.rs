@@ -60,17 +60,27 @@ fn mywrite(w: @mut MemWriter, fmt: &fmt::Arguments) {
 pub fn enc_ty(w: @mut MemWriter, cx: @ctxt, t: ty::t) {
     match cx.abbrevs {
       ac_no_abbrevs => {
-        let result_str = match cx.tcx.short_names_cache.find(&t) {
-            Some(&s) => s,
+          let result_str_opt;
+          {
+              let short_names_cache = cx.tcx.short_names_cache.borrow();
+              result_str_opt = short_names_cache.get()
+                                                .find(&t)
+                                                .map(|result| *result);
+          }
+          let result_str = match result_str_opt {
+            Some(s) => s,
             None => {
                 let wr = @mut MemWriter::new();
                 enc_sty(wr, cx, &ty::get(t).sty);
                 let s = str::from_utf8(*wr.inner_ref()).to_managed();
-                cx.tcx.short_names_cache.insert(t, s);
+                let mut short_names_cache = cx.tcx
+                                              .short_names_cache
+                                              .borrow_mut();
+                short_names_cache.get().insert(t, s);
                 s
-          }
-        };
-        w.write(result_str.as_bytes());
+            }
+          };
+          w.write(result_str.as_bytes());
       }
       ac_use_abbrevs(abbrevs) => {
           match abbrevs.find(&t) {
