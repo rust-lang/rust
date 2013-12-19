@@ -173,11 +173,12 @@ pub fn sizing_type_of(cx: &mut CrateContext, t: ty::t) -> Type {
 // NB: If you update this, be sure to update `sizing_type_of()` as well.
 pub fn type_of(cx: &mut CrateContext, t: ty::t) -> Type {
     // Check the cache.
-    match cx.lltypes.find(&t) {
-        Some(&llty) => {
-            return llty;
+    {
+        let lltypes = cx.lltypes.borrow();
+        match lltypes.get().find(&t) {
+            Some(&llty) => return llty,
+            None => ()
         }
-        None => ()
     }
 
     debug!("type_of {} {:?}", t.repr(cx.tcx), t);
@@ -197,7 +198,8 @@ pub fn type_of(cx: &mut CrateContext, t: ty::t) -> Type {
                 t_norm.repr(cx.tcx),
                 t_norm,
                 cx.tn.type_to_str(llty));
-        cx.lltypes.insert(t, llty);
+        let mut lltypes = cx.lltypes.borrow_mut();
+        lltypes.get().insert(t, llty);
         return llty;
     }
 
@@ -316,7 +318,10 @@ pub fn type_of(cx: &mut CrateContext, t: ty::t) -> Type {
             t.repr(cx.tcx),
             t,
             cx.tn.type_to_str(llty));
-    cx.lltypes.insert(t, llty);
+    {
+        let mut lltypes = cx.lltypes.borrow_mut();
+        lltypes.get().insert(t, llty);
+    }
 
     // If this was an enum or struct, fill in the type now.
     match ty::get(t).sty {
