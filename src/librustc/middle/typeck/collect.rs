@@ -740,10 +740,14 @@ fn get_trait_def(ccx: &CrateCtxt, trait_id: ast::DefId) -> @ty::TraitDef {
 pub fn trait_def_of_item(ccx: &CrateCtxt, it: &ast::item) -> @ty::TraitDef {
     let def_id = local_def(it.id);
     let tcx = ccx.tcx;
-    match tcx.trait_defs.find(&def_id) {
-      Some(&def) => return def,
-      _ => {}
+    {
+        let trait_defs = tcx.trait_defs.borrow();
+        match trait_defs.get().find(&def_id) {
+          Some(&def) => return def,
+          _ => {}
+        }
     }
+
     match it.node {
         ast::item_trait(ref generics, ref supertraits, _) => {
             let self_ty = ty::mk_self(tcx, def_id);
@@ -755,7 +759,8 @@ pub fn trait_def_of_item(ccx: &CrateCtxt, it: &ast::item) -> @ty::TraitDef {
             let trait_def = @ty::TraitDef {generics: ty_generics,
                                            bounds: bounds,
                                            trait_ref: trait_ref};
-            tcx.trait_defs.insert(def_id, trait_def);
+            let mut trait_defs = tcx.trait_defs.borrow_mut();
+            trait_defs.get().insert(def_id, trait_def);
             return trait_def;
         }
         ref s => {
