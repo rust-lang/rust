@@ -2496,12 +2496,17 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                             // using the current crate's name/version
                             // information in the hash of the symbol
                             debug!("making {}", sym);
-                            let sym = match ccx.external_srcs.find(&i.id) {
-                                Some(&did) => {
-                                    debug!("but found in other crate...");
-                                    csearch::get_symbol(ccx.sess.cstore, did)
+                            let sym = {
+                                let external_srcs = ccx.external_srcs
+                                                       .borrow();
+                                match external_srcs.get().find(&i.id) {
+                                    Some(&did) => {
+                                        debug!("but found in other crate...");
+                                        csearch::get_symbol(ccx.sess.cstore,
+                                                            did)
+                                    }
+                                    None => sym
                                 }
-                                None => sym
                             };
 
                             // We need the translated value here, because for enums the
