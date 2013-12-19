@@ -176,8 +176,9 @@ pub fn get_const_val(cx: @mut CrateContext,
     }
 
     let const_values = cx.const_values.borrow();
+    let non_inlineable_statics = cx.non_inlineable_statics.borrow();
     (const_values.get().get_copy(&def_id.node),
-     !cx.non_inlineable_statics.contains(&def_id.node))
+     !non_inlineable_statics.get().contains(&def_id.node))
 }
 
 pub fn const_expr(cx: @mut CrateContext, e: &ast::Expr) -> (ValueRef, bool) {

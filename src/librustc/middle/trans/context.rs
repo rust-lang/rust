@@ -64,7 +64,7 @@ pub struct CrateContext {
      // A set of static items which cannot be inlined into other crates. This
      // will pevent in ii_item() structures from being encoded into the metadata
      // that is generated
-     non_inlineable_statics: HashSet<ast::NodeId>,
+     non_inlineable_statics: RefCell<HashSet<ast::NodeId>>,
      // Cache instances of monomorphized functions
      monomorphized: RefCell<HashMap<mono_id, ValueRef>>,
      monomorphizing: RefCell<HashMap<ast::DefId, uint>>,
@@ -192,7 +192,7 @@ impl CrateContext {
                   finished_tydescs: false,
                   external: HashMap::new(),
                   external_srcs: HashMap::new(),
-                  non_inlineable_statics: HashSet::new(),
+                  non_inlineable_statics: RefCell::new(HashSet::new()),
                   monomorphized: RefCell::new(HashMap::new()),
                   monomorphizing: RefCell::new(HashMap::new()),
                   vtables: RefCell::new(HashMap::new()),
