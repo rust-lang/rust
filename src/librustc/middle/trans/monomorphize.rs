@@ -76,13 +76,16 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
            psubsts.repr(ccx.tcx),
            hash_id);
 
-    match ccx.monomorphized.find(&hash_id) {
-      Some(&val) => {
-        debug!("leaving monomorphic fn {}",
-               ty::item_path_str(ccx.tcx, fn_id));
-        return (val, must_cast);
-      }
-      None => ()
+    {
+        let monomorphized = ccx.monomorphized.borrow();
+        match monomorphized.get().find(&hash_id) {
+          Some(&val) => {
+            debug!("leaving monomorphic fn {}",
+                   ty::item_path_str(ccx.tcx, fn_id));
+            return (val, must_cast);
+          }
+          None => ()
+        }
     }
 
     let tpt = ty::lookup_item_type(ccx.tcx, fn_id);
@@ -201,7 +204,8 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
 
     let mk_lldecl = || {
         let lldecl = decl_internal_rust_fn(ccx, f.sig.inputs, f.sig.output, s);
-        ccx.monomorphized.insert(hash_id, lldecl);
+        let mut monomorphized = ccx.monomorphized.borrow_mut();
+        monomorphized.get().insert(hash_id, lldecl);
         lldecl
     };
 

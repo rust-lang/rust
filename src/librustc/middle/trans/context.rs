@@ -27,6 +27,7 @@ use middle::trans::type_::Type;
 
 use util::sha2::Sha256;
 
+use std::cell::RefCell;
 use std::c_str::ToCStr;
 use std::hashmap::{HashMap, HashSet};
 use std::local_data;
@@ -68,7 +69,7 @@ pub struct CrateContext {
      // that is generated
      non_inlineable_statics: HashSet<ast::NodeId>,
      // Cache instances of monomorphized functions
-     monomorphized: HashMap<mono_id, ValueRef>,
+     monomorphized: RefCell<HashMap<mono_id, ValueRef>>,
      monomorphizing: HashMap<ast::DefId, uint>,
      // Cache generated vtables
      vtables: HashMap<(ty::t, mono_id), ValueRef>,
@@ -199,7 +200,7 @@ impl CrateContext {
                   external: HashMap::new(),
                   external_srcs: HashMap::new(),
                   non_inlineable_statics: HashSet::new(),
-                  monomorphized: HashMap::new(),
+                  monomorphized: RefCell::new(HashMap::new()),
                   monomorphizing: HashMap::new(),
                   vtables: HashMap::new(),
                   const_cstr_cache: HashMap::new(),
