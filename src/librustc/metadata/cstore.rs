@@ -17,7 +17,6 @@ use metadata::cstore;
 use metadata::decoder;
 
 use std::hashmap::HashMap;
-use extra;
 use syntax::ast;
 use syntax::parse::token::ident_interner;
 
@@ -192,14 +191,12 @@ pub fn get_dep_hashes(cstore: &CStore) -> ~[@str] {
         });
     }
 
-    let sorted = extra::sort::merge_sort(result, |a, b| {
-        (a.name, a.vers, a.hash) <= (b.name, b.vers, b.hash)
-    });
+    result.sort(|a, b| (a.name, a.vers, a.hash) <= (b.name, b.vers, b.hash));
 
     debug!("sorted:");
-    for x in sorted.iter() {
+    for x in result.iter() {
         debug!("  hash[{}]: {}", x.name, x.hash);
     }
 
-    sorted.map(|ch| ch.hash)
+    result.map(|ch| ch.hash)
 }

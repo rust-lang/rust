@@ -15,7 +15,6 @@
 
 extern mod extra;
 
-use extra::sort;
 use std::cmp::Ord;
 use std::comm;
 use std::hashmap::HashMap;
@@ -54,8 +53,10 @@ fn sort_and_fmt(mm: &HashMap<~[u8], uint>, total: uint) -> ~str {
    }
 
    // sort by key, then by value
-   fn sortKV<TT:Clone + Ord, UU:Clone + Ord>(orig: ~[(TT,UU)]) -> ~[(TT,UU)] {
-      return sort::merge_sort(sort::merge_sort(orig, le_by_key), le_by_val);
+   fn sortKV<TT:Clone + Ord, UU:Clone + Ord>(mut orig: ~[(TT,UU)]) -> ~[(TT,UU)] {
+        orig.sort(le_by_key);
+        orig.sort(le_by_val);
+        origin
    }
 
    let mut pairs = ~[];

@@ -21,7 +21,6 @@ use getopts::groups;
 use json::ToJson;
 use json;
 use serialize::Decodable;
-use sort;
 use stats::Stats;
 use stats;
 use term;
@@ -488,7 +487,7 @@ impl<T: Writer> ConsoleTestState<T> {
         for f in self.failures.iter() {
             failures.push(f.name.to_str());
         }
-        sort::tim_sort(failures);
+        failures.sort(|a,b| a <= b);
         for name in failures.iter() {
             self.write_plain(format!("    {}\n", name.to_str()));
         }
@@ -840,9 +839,9 @@ pub fn filter_tests(
 
     // Sort the tests alphabetically
     fn lteq(t1: &TestDescAndFn, t2: &TestDescAndFn) -> bool {
-        t1.desc.name.to_str() < t2.desc.name.to_str()
+        t1.desc.name.to_str() <= t2.desc.name.to_str()
     }
-    sort::quick_sort(filtered, lteq);
+    filtered.sort(lteq);
 
     // Shard the remaining tests, if sharding requested.
     match opts.test_shard {

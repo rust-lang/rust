@@ -10,7 +10,6 @@
 
 #[allow(missing_doc)];
 
-use sort;
 use std::cmp;
 use std::hashmap;
 use std::io;
@@ -240,13 +239,13 @@ impl<'a> Stats for &'a [f64] {
 
     fn percentile(self, pct: f64) -> f64 {
         let mut tmp = self.to_owned();
-        sort::tim_sort(tmp);
+        tmp.sort(|a,b| a <= b);
         percentile_of_sorted(tmp, pct)
     }
 
     fn quartiles(self) -> (f64,f64,f64) {
         let mut tmp = self.to_owned();
-        sort::tim_sort(tmp);
+        tmp.sort(|a,b| a <= b);
         let a = percentile_of_sorted(tmp, 25.0);
         let b = percentile_of_sorted(tmp, 50.0);
         let c = percentile_of_sorted(tmp, 75.0);
@@ -291,7 +290,7 @@ fn percentile_of_sorted(sorted_samples: &[f64],
 /// See: http://en.wikipedia.org/wiki/Winsorising
 pub fn winsorize(samples: &mut [f64], pct: f64) {
     let mut tmp = samples.to_owned();
-    sort::tim_sort(tmp);
+    tmp.sort(|a,b| a <= b);
     let lo = percentile_of_sorted(tmp, pct);
     let hi = percentile_of_sorted(tmp, 100.0-pct);
     for samp in samples.mut_iter() {
