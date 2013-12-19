@@ -539,9 +539,12 @@ pub fn get_vtable(bcx: @Block,
 
     // Check the cache.
     let hash_id = (self_ty, vtable_id(ccx, &origins[0]));
-    match ccx.vtables.find(&hash_id) {
-        Some(&val) => { return val }
-        None => { }
+    {
+        let vtables = ccx.vtables.borrow();
+        match vtables.get().find(&hash_id) {
+            Some(&val) => { return val }
+            None => { }
+        }
     }
 
     // Not in the cache. Actually build it.
@@ -559,7 +562,9 @@ pub fn get_vtable(bcx: @Block,
     glue::lazily_emit_all_tydesc_glue(ccx, tydesc);
 
     let vtable = make_vtable(ccx, tydesc, methods);
-    ccx.vtables.insert(hash_id, vtable);
+
+    let mut vtables = ccx.vtables.borrow_mut();
+    vtables.get().insert(hash_id, vtable);
     return vtable;
 }
 
