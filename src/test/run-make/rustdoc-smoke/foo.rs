@@ -1,4 +1,4 @@
-#[pkgid = "foo#0.1"];
+#[crate_id = "foo#0.1"];
 
 //! Very docs
 
