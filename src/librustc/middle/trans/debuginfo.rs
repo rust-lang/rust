@@ -142,7 +142,7 @@ use middle::pat_util;
 use util::ppaux;
 
 use std::c_str::ToCStr;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::hashmap::HashMap;
 use std::hashmap::HashSet;
 use std::libc::{c_uint, c_ulonglong, c_longlong};
@@ -175,7 +175,7 @@ pub struct CrateDebugContext {
     priv crate_file: ~str,
     priv llcontext: ContextRef,
     priv builder: DIBuilderRef,
-    priv current_debug_location: DebugLocation,
+    priv current_debug_location: Cell<DebugLocation>,
     priv created_files: RefCell<HashMap<~str, DIFile>>,
     priv created_types: RefCell<HashMap<uint, DIType>>,
     priv namespace_map: RefCell<HashMap<~[ast::Ident], @NamespaceTreeNode>>,
@@ -194,7 +194,7 @@ impl CrateDebugContext {
             crate_file: crate,
             llcontext: llcontext,
             builder: builder,
-            current_debug_location: UnknownLocation,
+            current_debug_location: Cell::new(UnknownLocation),
             created_files: RefCell::new(HashMap::new()),
             created_types: RefCell::new(HashMap::new()),
             namespace_map: RefCell::new(HashMap::new()),
@@ -2193,7 +2193,7 @@ impl DebugLocation {
 }
 
 fn set_debug_location(cx: &mut CrateContext, debug_location: DebugLocation) {
-    if debug_location == debug_context(cx).current_debug_location {
+    if debug_location == debug_context(cx).current_debug_location.get() {
         return;
     }
 
@@ -2220,7 +2220,7 @@ fn set_debug_location(cx: &mut CrateContext, debug_location: DebugLocation) {
         llvm::LLVMSetCurrentDebugLocation(cx.builder.B, metadata_node);
     }
 
-    debug_context(cx).current_debug_location = debug_location;
+    debug_context(cx).current_debug_location.set(debug_location);
 }
 
 //=-------------------------------------------------------------------------------------------------
