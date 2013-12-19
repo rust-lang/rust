@@ -3056,14 +3056,12 @@ pub fn crate_ctxt_to_encode_parms<'r>(cx: &'r CrateContext, ie: encoder::encode_
 
         let diag = cx.sess.diagnostic();
         let item_symbols = &cx.item_symbols;
-        let discrim_symbols = &cx.discrim_symbols;
         let link_meta = &cx.link_meta;
         encoder::EncodeParams {
             diag: diag,
             tcx: cx.tcx,
             reexports2: cx.exp_map2,
             item_symbols: item_symbols,
-            discrim_symbols: discrim_symbols,
             non_inlineable_statics: &cx.non_inlineable_statics,
             link_meta: link_meta,
             cstore: cx.sess.cstore,
