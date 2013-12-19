@@ -360,7 +360,8 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
         }
 
         let lname = link_name(ccx, foreign_item);
-        ccx.item_symbols.insert(foreign_item.id, lname.to_owned());
+        let mut item_symbols = ccx.item_symbols.borrow_mut();
+        item_symbols.get().insert(foreign_item.id, lname.to_owned());
     }
 }
 
