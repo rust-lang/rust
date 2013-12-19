@@ -52,7 +52,7 @@
 lexer.ml
 TAGS
 TAGS.emacs
-TAGS.vim
+TAGS.vi
 version.ml
 version.texi
 /Makefile
