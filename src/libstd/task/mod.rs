@@ -437,9 +437,6 @@ pub fn failing() -> bool {
 // !!! These tests are dangerous. If Something is buggy, they will hang, !!!
 // !!! instead of exiting cleanly. This might wedge the buildbots.       !!!
 
-#[cfg(test)]
-fn block_forever() { let (po, _ch) = Chan::<()>::new(); po.recv(); }
-
 #[test]
 fn test_unnamed_task() {
     use rt::test::run_in_uv_task;
@@ -505,11 +502,6 @@ fn test_run_basic() {
         ch.send(());
     }
     po.recv();
-}
-
-#[cfg(test)]
-struct Wrapper {
-    f: Option<Chan<()>>
 }
 
 #[test]

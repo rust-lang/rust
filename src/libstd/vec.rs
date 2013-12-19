@@ -2678,7 +2678,7 @@ impl<A> Extendable<A> for ~[A] {
 
 #[cfg(test)]
 mod tests {
-    use option::{None, Option, Some};
+    use option::{None, Some};
     use mem;
     use vec::*;
     use cmp::*;
@@ -2688,21 +2688,7 @@ mod tests {
 
     fn square_ref(n: &uint) -> uint { square(*n) }
 
-    fn is_three(n: &uint) -> bool { *n == 3u }
-
     fn is_odd(n: &uint) -> bool { *n % 2u == 1u }
-
-    fn is_equal(x: &uint, y:&uint) -> bool { *x == *y }
-
-    fn square_if_odd_r(n: &uint) -> Option<uint> {
-        if *n % 2u == 1u { Some(*n * *n) } else { None }
-    }
-
-    fn square_if_odd_v(n: uint) -> Option<uint> {
-        if n % 2u == 1u { Some(n * n) } else { None }
-    }
-
-    fn add(x: uint, y: &uint) -> uint { x + *y }
 
     #[test]
     fn test_unsafe_ptrs() {
@@ -2982,6 +2968,7 @@ mod tests {
         assert_eq!(g, None);
     }
 
+    #[test]
     fn test_swap_remove() {
         let mut v = ~[1, 2, 3, 4, 5];
         let mut e = v.swap_remove(0);

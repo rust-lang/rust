@@ -2734,7 +2734,6 @@ mod tests {
     use option::{None, Some, Option};
     use ptr;
     use str::*;
-    use vec;
     use vec::{Vector, ImmutableVector, CopyableVector};
     use cmp::{TotalOrd, Less, Equal, Greater};
     use send_str::{SendStrOwned, SendStrStatic};

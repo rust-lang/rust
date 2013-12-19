@@ -557,8 +557,6 @@ pub mod ptr_tests {
 
     #[test]
     fn test_ptr_addition() {
-        use vec::raw::*;
-
         unsafe {
             let xs = ~[5, ..16];
             let mut ptr = xs.as_ptr();

@@ -395,6 +395,9 @@ pub unsafe fn record_sp_limit(limit: uint) {
 /// As with the setter, this function does not have a __morestack header and can
 /// therefore be called in a "we're out of stack" situation.
 #[inline(always)]
+// currently only called by `rust_stack_exhausted`, which doesn't
+// exist in a test build.
+#[cfg(not(test))]
 pub unsafe fn get_sp_limit() -> uint {
     return target_get_sp_limit();
 
