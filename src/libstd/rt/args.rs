@@ -64,23 +64,25 @@ pub unsafe fn init(argc: int, argv: **u8) { realargs::init(argc, argv) }
 #[cfg(target_os = "freebsd")]
 mod imp {
     use cast;
-    use libc;
+    #[cfg(not(test))] use libc;
     use option::{Option, Some, None};
     use iter::Iterator;
-    use str;
+    #[cfg(not(test))] use str;
     use unstable::finally::Finally;
     use unstable::mutex::{Mutex, MUTEX_INIT};
     use util;
-    use vec;
+    #[cfg(not(test))] use vec;
 
     static mut global_args_ptr: uint = 0;
     static mut lock: Mutex = MUTEX_INIT;
 
+    #[cfg(not(test))]
     pub unsafe fn init(argc: int, argv: **u8) {
         let args = load_argc_and_argv(argc, argv);
         put(args);
     }
 
+    #[cfg(not(test))]
     pub unsafe fn cleanup() {
         rtassert!(take().is_some());
         lock.destroy();
@@ -127,6 +129,7 @@ mod imp {
     }
 
     // Copied from `os`.
+    #[cfg(not(test))]
     unsafe fn load_argc_and_argv(argc: int, argv: **u8) -> ~[~str] {
         vec::from_fn(argc as uint, |i| {
             str::raw::from_c_str(*(argv as **libc::c_char).offset(i as int))
@@ -163,8 +166,8 @@ mod imp {
     }
 }
 
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "win32")]
+#[cfg(target_os = "macos", not(test))]
+#[cfg(target_os = "win32", not(test))]
 mod imp {
     use option::Option;
 
