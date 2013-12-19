@@ -27,7 +27,7 @@ use middle::trans::type_::Type;
 
 use util::sha2::Sha256;
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::c_str::ToCStr;
 use std::hashmap::{HashMap, HashSet};
 use std::local_data;
@@ -55,7 +55,7 @@ pub struct CrateContext {
      tydescs: RefCell<HashMap<ty::t, @mut tydesc_info>>,
      // Set when running emit_tydescs to enforce that no more tydescs are
      // created.
-     finished_tydescs: bool,
+     finished_tydescs: Cell<bool>,
      // Track mapping of external ids to local items imported for inlining
      external: RefCell<HashMap<ast::DefId, Option<ast::NodeId>>>,
      // Backwards version of the `external` map (inlined items to where they
@@ -189,7 +189,7 @@ impl CrateContext {
                   item_symbols: RefCell::new(HashMap::new()),
                   link_meta: link_meta,
                   tydescs: RefCell::new(HashMap::new()),
-                  finished_tydescs: false,
+                  finished_tydescs: Cell::new(false),
                   external: RefCell::new(HashMap::new()),
                   external_srcs: RefCell::new(HashMap::new()),
                   non_inlineable_statics: RefCell::new(HashSet::new()),
