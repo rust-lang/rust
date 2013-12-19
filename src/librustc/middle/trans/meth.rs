@@ -296,10 +296,13 @@ pub fn trans_static_method_callee(bcx: @Block,
 pub fn method_with_name(ccx: &mut CrateContext,
                         impl_id: ast::DefId,
                         name: ast::Name) -> ast::DefId {
-    let meth_id_opt = ccx.impl_method_cache.find_copy(&(impl_id, name));
-    match meth_id_opt {
-        Some(m) => return m,
-        None => {}
+    {
+        let impl_method_cache = ccx.impl_method_cache.borrow();
+        let meth_id_opt = impl_method_cache.get().find_copy(&(impl_id, name));
+        match meth_id_opt {
+            Some(m) => return m,
+            None => {}
+        }
     }
 
     let imp = ccx.tcx.impls.find(&impl_id)
@@ -307,7 +310,8 @@ pub fn method_with_name(ccx: &mut CrateContext,
     let meth = imp.methods.iter().find(|m| m.ident.name == name)
         .expect("could not find method while translating");
 
-    ccx.impl_method_cache.insert((impl_id, name), meth.def_id);
+    let mut impl_method_cache = ccx.impl_method_cache.borrow_mut();
+    impl_method_cache.get().insert((impl_id, name), meth.def_id);
     meth.def_id
 }
 
