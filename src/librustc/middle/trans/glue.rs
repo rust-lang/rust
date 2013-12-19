@@ -696,8 +696,8 @@ pub fn emit_tydescs(ccx: &mut CrateContext) {
     // As of this point, allow no more tydescs to be created.
     ccx.finished_tydescs = true;
     let glue_fn_ty = Type::generic_glue_fn(ccx).ptr_to();
-    let tyds = &mut ccx.tydescs;
-    for (_, &val) in tyds.iter() {
+    let mut tyds = ccx.tydescs.borrow_mut();
+    for (_, &val) in tyds.get().iter() {
         let ti = val;
 
         // Each of the glue functions needs to be cast to a generic type

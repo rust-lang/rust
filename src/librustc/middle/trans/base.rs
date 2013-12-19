@@ -439,16 +439,19 @@ pub fn get_tydesc_simple(ccx: &mut CrateContext, t: ty::t) -> ValueRef {
 }
 
 pub fn get_tydesc(ccx: &mut CrateContext, t: ty::t) -> @mut tydesc_info {
-    match ccx.tydescs.find(&t) {
-        Some(&inf) => {
-            return inf;
+    {
+        let tydescs = ccx.tydescs.borrow();
+        match tydescs.get().find(&t) {
+            Some(&inf) => return inf,
+            _ => { }
         }
-        _ => { }
     }
 
     ccx.stats.n_static_tydescs += 1u;
     let inf = glue::declare_tydesc(ccx, t);
-    ccx.tydescs.insert(t, inf);
+
+    let mut tydescs = ccx.tydescs.borrow_mut();
+    tydescs.get().insert(t, inf);
     return inf;
 }
 
