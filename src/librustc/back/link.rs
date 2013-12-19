@@ -521,14 +521,18 @@ pub fn symbol_hash(tcx: ty::ctxt,
 }
 
 pub fn get_symbol_hash(ccx: &mut CrateContext, t: ty::t) -> @str {
-    match ccx.type_hashcodes.find(&t) {
-      Some(&h) => h,
-      None => {
-        let hash = symbol_hash(ccx.tcx, &mut ccx.symbol_hasher, t, &ccx.link_meta);
-        ccx.type_hashcodes.insert(t, hash);
-        hash
-      }
+    {
+        let type_hashcodes = ccx.type_hashcodes.borrow();
+        match type_hashcodes.get().find(&t) {
+            Some(&h) => return h,
+            None => {}
+        }
     }
+
+    let mut type_hashcodes = ccx.type_hashcodes.borrow_mut();
+    let hash = symbol_hash(ccx.tcx, &mut ccx.symbol_hasher, t, &ccx.link_meta);
+    type_hashcodes.get().insert(t, hash);
+    hash
 }
 
 
