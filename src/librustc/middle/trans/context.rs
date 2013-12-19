@@ -89,7 +89,7 @@ pub struct CrateContext {
      // Cache of external const values
      extern_const_values: RefCell<HashMap<ast::DefId, ValueRef>>,
 
-     impl_method_cache: HashMap<(ast::DefId, ast::Name), ast::DefId>,
+     impl_method_cache: RefCell<HashMap<(ast::DefId, ast::Name), ast::DefId>>,
 
      module_data: HashMap<~str, ValueRef>,
      lltypes: HashMap<ty::t, Type>,
@@ -201,7 +201,7 @@ impl CrateContext {
                   const_globals: RefCell::new(HashMap::new()),
                   const_values: RefCell::new(HashMap::new()),
                   extern_const_values: RefCell::new(HashMap::new()),
-                  impl_method_cache: HashMap::new(),
+                  impl_method_cache: RefCell::new(HashMap::new()),
                   module_data: HashMap::new(),
                   lltypes: HashMap::new(),
                   llsizingtypes: HashMap::new(),
