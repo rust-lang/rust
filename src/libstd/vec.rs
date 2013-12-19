@@ -1416,6 +1416,22 @@ pub trait OwnedVector<T> {
     /// elements after position i one position to the right.
     fn insert(&mut self, i: uint, x:T);
 
+    /// Remove and return the element at position `i` within `v`,
+    /// shifting all elements after position `i` one position to the
+    /// left. Returns `None` if `i` is out of bounds.
+    ///
+    /// # Example
+    /// ```rust
+    /// let mut v = ~[1, 2, 3];
+    /// assert_eq!(v.remove_opt(1), Some(2));
+    /// assert_eq!(v, ~[1, 3]);
+    ///
+    /// assert_eq!(v.remove_opt(4), None);
+    /// // v is unchanged:
+    /// assert_eq!(v, ~[1, 3]);
+    /// ```
+    fn remove_opt(&mut self, i: uint) -> Option<T>;
+
     /// Remove and return the element at position i within v, shifting
     /// all elements after position i one position to the left.
     fn remove(&mut self, i: uint) -> T;
@@ -1625,39 +1641,7 @@ impl<T> OwnedVector<T> for ~[T] {
     }
 
     fn shift_opt(&mut self) -> Option<T> {
-        match self.len() {
-            0 => None,
-            1 => self.pop_opt(),
-            2 => {
-                let last = self.pop();
-                let first = self.pop_opt();
-                self.push(last);
-                first
-            }
-            len => {
-                unsafe {
-                    let next_len = len - 1;
-
-                    let ptr = self.as_ptr();
-
-                    // copy out the head element, for the moment it exists
-                    // unsafely on the stack and as the first element of the
-                    // vector.
-                    let head = ptr::read_ptr(ptr);
-
-                    // Memcpy everything to the left one element (leaving the
-                    // last element unsafely in two consecutive memory
-                    // locations)
-                    ptr::copy_memory(self.as_mut_ptr(), ptr.offset(1), next_len);
-
-                    // set the new length, which means the second instance of
-                    // the last element is forgotten.
-                    self.set_len(next_len);
-
-                    Some(head)
-                }
-            }
-        }
+        self.remove_opt(0)
     }
 
     fn unshift(&mut self, x: T) {
@@ -1683,16 +1667,33 @@ impl<T> OwnedVector<T> for ~[T] {
         }
     }
 
+    #[inline]
     fn remove(&mut self, i: uint) -> T {
-        let len = self.len();
-        assert!(i < len);
-
-        let mut j = i;
-        while j < len - 1 {
-            self.swap(j, j + 1);
-            j += 1;
+        match self.remove_opt(i) {
+            Some(t) => t,
+            None => fail!("remove: the len is {} but the index is {}", self.len(), i)
         }
-        self.pop()
+    }
+
+    fn remove_opt(&mut self, i: uint) -> Option<T> {
+        let len = self.len();
+        if i < len {
+            unsafe { // infallible
+                // the place we are taking from.
+                let ptr = self.as_mut_ptr().offset(i as int);
+                // copy it out, unsafely having a copy of the value on
+                // the stack and in the vector at the same time.
+                let ret = Some(ptr::read_ptr(ptr as *T));
+
+                // Shift everything down to fill in that spot.
+                ptr::copy_memory(ptr, ptr.offset(1), len - i - 1);
+                self.set_len(len - 1);
+
+                ret
+            }
+        } else {
+            None
+        }
     }
     fn swap_remove(&mut self, index: uint) -> T {
         let ln = self.len();
@@ -3423,6 +3424,29 @@ mod tests {
     }
 
     #[test]
+    fn test_remove_opt() {
+        let mut a = ~[1,2,3,4];
+
+        assert_eq!(a.remove_opt(2), Some(3));
+        assert_eq!(a, ~[1,2,4]);
+
+        assert_eq!(a.remove_opt(2), Some(4));
+        assert_eq!(a, ~[1,2]);
+
+        assert_eq!(a.remove_opt(2), None);
+        assert_eq!(a, ~[1,2]);
+
+        assert_eq!(a.remove_opt(0), Some(1));
+        assert_eq!(a, ~[2]);
+
+        assert_eq!(a.remove_opt(0), Some(2));
+        assert_eq!(a, ~[]);
+
+        assert_eq!(a.remove_opt(0), None);
+        assert_eq!(a.remove_opt(10), None);
+    }
+
+    #[test]
     fn test_remove() {
         let mut a = ~[1, 2, 3, 4];
         a.remove(2);
@@ -4339,6 +4363,17 @@ mod bench {
                     let l = v.len();
                     v.insert(rng.gen::<uint>() % (l + 1),
                              (1, 1));
+                }
+            })
+    }
+    #[bench]
+    fn random_removes(bh: &mut BenchHarness) {
+        let mut rng = weak_rng();
+        bh.iter(|| {
+                let mut v = vec::from_elem(130, (0u, 0u));
+                for _ in range(0, 100) {
+                    let l = v.len();
+                    v.remove(rng.gen::<uint>() % l);
                 }
             })
     }
