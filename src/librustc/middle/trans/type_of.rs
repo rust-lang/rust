@@ -101,9 +101,12 @@ pub fn type_of_fn_from_ty(cx: &mut CrateContext, fty: ty::t) -> Type {
 //     recursive types. For example, enum types rely on this behavior.
 
 pub fn sizing_type_of(cx: &mut CrateContext, t: ty::t) -> Type {
-    match cx.llsizingtypes.find_copy(&t) {
-        Some(t) => return t,
-        None => ()
+    {
+        let llsizingtypes = cx.llsizingtypes.borrow();
+        match llsizingtypes.get().find_copy(&t) {
+            Some(t) => return t,
+            None => ()
+        }
     }
 
     let llsizingty = match ty::get(t).sty {
@@ -166,7 +169,8 @@ pub fn sizing_type_of(cx: &mut CrateContext, t: ty::t) -> Type {
         }
     };
 
-    cx.llsizingtypes.insert(t, llsizingty);
+    let mut llsizingtypes = cx.llsizingtypes.borrow_mut();
+    llsizingtypes.get().insert(t, llsizingty);
     llsizingty
 }
 
