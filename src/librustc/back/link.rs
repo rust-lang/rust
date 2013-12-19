@@ -530,7 +530,8 @@ pub fn get_symbol_hash(ccx: &mut CrateContext, t: ty::t) -> @str {
     }
 
     let mut type_hashcodes = ccx.type_hashcodes.borrow_mut();
-    let hash = symbol_hash(ccx.tcx, &mut ccx.symbol_hasher, t, &ccx.link_meta);
+    let mut symbol_hasher = ccx.symbol_hasher.borrow_mut();
+    let hash = symbol_hash(ccx.tcx, symbol_hasher.get(), t, &ccx.link_meta);
     type_hashcodes.get().insert(t, hash);
     hash
 }
