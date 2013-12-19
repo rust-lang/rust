@@ -267,17 +267,16 @@ impl<'a> ToCStr for &'a [u8] {
     }
 
     unsafe fn to_c_str_unchecked(&self) -> CString {
-        self.as_imm_buf(|self_buf, self_len| {
-            let buf = libc::malloc(self_len as libc::size_t + 1) as *mut u8;
-            if buf.is_null() {
-                fail!("failed to allocate memory!");
-            }
+        let self_len = self.len();
+        let buf = libc::malloc(self_len as libc::size_t + 1) as *mut u8;
+        if buf.is_null() {
+            fail!("failed to allocate memory!");
+        }
 
-            ptr::copy_memory(buf, self_buf, self_len);
-            *ptr::mut_offset(buf, self_len as int) = 0;
+        ptr::copy_memory(buf, self.as_ptr(), self_len);
+        *ptr::mut_offset(buf, self_len as int) = 0;
 
-            CString::new(buf as *libc::c_char, true)
-        })
+        CString::new(buf as *libc::c_char, true)
     }
 
     fn with_c_str<T>(&self, f: |*libc::c_char| -> T) -> T {
@@ -296,13 +295,12 @@ unsafe fn with_c_str<T>(v: &[u8], checked: bool, f: |*libc::c_char| -> T) -> T {
         vec::bytes::copy_memory(buf, v);
         buf[v.len()] = 0;
 
-        buf.as_mut_buf(|buf, _| {
-            if checked {
-                check_for_null(v, buf as *mut libc::c_char);
-            }
+        let buf = buf.as_mut_ptr();
+        if checked {
+            check_for_null(v, buf as *mut libc::c_char);
+        }
 
-            f(buf as *libc::c_char)
-        })
+        f(buf as *libc::c_char)
     } else if checked {
         v.to_c_str().with_ref(f)
     } else {
@@ -575,15 +573,14 @@ mod bench {
 
     #[inline]
     fn check(s: &str, c_str: *libc::c_char) {
-        s.as_imm_buf(|s_buf, s_len| {
-            for i in range(0, s_len) {
-                unsafe {
-                    assert_eq!(
-                        *ptr::offset(s_buf, i as int) as libc::c_char,
-                        *ptr::offset(c_str, i as int));
-                }
+        let s_buf = s.as_ptr();
+        for i in range(0, s.len()) {
+            unsafe {
+                assert_eq!(
+                    *ptr::offset(s_buf, i as int) as libc::c_char,
+                    *ptr::offset(c_str, i as int));
             }
-        })
+        }
     }
 
     static s_short: &'static str = "Mary";

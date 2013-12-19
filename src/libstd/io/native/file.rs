@@ -37,8 +37,8 @@ fn keep_going(data: &[u8], f: |*u8, uint| -> i64) -> i64 {
     #[cfg(windows)] static eintr: int = 0; // doesn't matter
     #[cfg(not(windows))] static eintr: int = libc::EINTR as int;
 
-    let (data, origamt) = data.as_imm_buf(|data, amt| (data, amt));
-    let mut data = data;
+    let origamt = data.len();
+    let mut data = data.as_ptr();
     let mut amt = origamt;
     while amt > 0 {
         let mut ret;

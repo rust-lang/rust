@@ -59,15 +59,12 @@ static BUF_BYTES : uint = 2048u;
 #[cfg(unix)]
 pub fn getcwd() -> Path {
     let mut buf = [0 as libc::c_char, ..BUF_BYTES];
-    buf.as_mut_buf(|buf, len| {
-        unsafe {
-            if libc::getcwd(buf, len as size_t).is_null() {
-                fail!()
-            }
-
-            Path::new(CString::new(buf as *c_char, false))
+    unsafe {
+        if libc::getcwd(buf.as_mut_ptr(), buf.len() as size_t).is_null() {
+            fail!()
         }
-    })
+        Path::new(CString::new(buf.as_ptr(), false))
+    }
 }
 
 #[cfg(windows)]
@@ -75,13 +72,11 @@ pub fn getcwd() -> Path {
     use libc::DWORD;
     use libc::GetCurrentDirectoryW;
     let mut buf = [0 as u16, ..BUF_BYTES];
-    buf.as_mut_buf(|buf, len| {
-        unsafe {
-            if libc::GetCurrentDirectoryW(len as DWORD, buf) == 0 as DWORD {
-                fail!();
-            }
+    unsafe {
+        if libc::GetCurrentDirectoryW(buf.len() as DWORD, buf.as_mut_ptr()) == 0 as DWORD {
+            fail!();
         }
-    });
+    }
     Path::new(str::from_utf16(buf))
 }
 
@@ -103,20 +98,17 @@ pub mod win32 {
             let mut res = None;
             let mut done = false;
             while !done {
-                let mut k: DWORD = 0;
                 let mut buf = vec::from_elem(n as uint, 0u16);
-                buf.as_mut_buf(|b, _sz| {
-                    k = f(b, TMPBUF_SZ as DWORD);
-                    if k == (0 as DWORD) {
-                        done = true;
-                    } else if (k == n &&
-                               libc::GetLastError() ==
-                               libc::ERROR_INSUFFICIENT_BUFFER as DWORD) {
-                        n *= (2 as DWORD);
-                    } else {
-                        done = true;
-                    }
-                });
+                let k = f(buf.as_mut_ptr(), TMPBUF_SZ as DWORD);
+                if k == (0 as DWORD) {
+                    done = true;
+                } else if (k == n &&
+                           libc::GetLastError() ==
+                           libc::ERROR_INSUFFICIENT_BUFFER as DWORD) {
+                    n *= (2 as DWORD);
+                } else {
+                    done = true;
+                }
                 if k != 0 && done {
                     let sub = buf.slice(0, k as uint);
                     res = option::Some(str::from_utf16(sub));
@@ -130,7 +122,7 @@ pub mod win32 {
         let mut t = s.to_utf16();
         // Null terminate before passing on.
         t.push(0u16);
-        t.as_imm_buf(|buf, _len| f(buf))
+        f(t.as_ptr())
     }
 }
 
@@ -363,10 +355,8 @@ pub fn self_exe_path() -> Option<Path> {
             if err != 0 { return None; }
             if sz == 0 { return None; }
             let mut v: ~[u8] = vec::with_capacity(sz as uint);
-            let err = v.as_mut_buf(|buf,_| {
-                sysctl(mib.as_ptr(), mib.len() as ::libc::c_uint,
-                       buf as *mut c_void, &mut sz, ptr::null(), 0u as size_t)
-            });
+            let err = sysctl(mib.as_ptr(), mib.len() as ::libc::c_uint,
+                             v.as_mut_ptr() as *mut c_void, &mut sz, ptr::null(), 0u as size_t);
             if err != 0 { return None; }
             if sz == 0 { return None; }
             v.set_len(sz as uint - 1); // chop off trailing NUL
@@ -394,9 +384,7 @@ pub fn self_exe_path() -> Option<Path> {
             _NSGetExecutablePath(ptr::mut_null(), &mut sz);
             if sz == 0 { return None; }
             let mut v: ~[u8] = vec::with_capacity(sz as uint);
-            let err = v.as_mut_buf(|buf, _| {
-                _NSGetExecutablePath(buf as *mut i8, &mut sz)
-            });
+            let err = _NSGetExecutablePath(v.as_mut_ptr() as *mut i8, &mut sz);
             if err != 0 { return None; }
             v.set_len(sz as uint - 1); // chop off trailing NUL
             Some(v)
@@ -628,15 +616,14 @@ pub fn last_os_error() -> ~str {
 
         let mut buf = [0 as c_char, ..TMPBUF_SZ];
 
-        buf.as_mut_buf(|buf, len| {
-            unsafe {
-                if strerror_r(errno() as c_int, buf, len as size_t) < 0 {
-                    fail!("strerror_r failure");
-                }
-
-                str::raw::from_c_str(buf as *c_char)
+        let p = buf.as_mut_ptr();
+        unsafe {
+            if strerror_r(errno() as c_int, p, buf.len() as size_t) < 0 {
+                fail!("strerror_r failure");
             }
-        })
+
+            str::raw::from_c_str(p as *c_char)
+        }
     }
 
     #[cfg(windows)]
@@ -669,19 +656,17 @@ pub fn last_os_error() -> ~str {
         let mut buf = [0 as WCHAR, ..TMPBUF_SZ];
 
         unsafe {
-            buf.as_mut_buf(|buf, len| {
-                let res = FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM |
-                                         FORMAT_MESSAGE_IGNORE_INSERTS,
-                                         ptr::mut_null(),
-                                         err,
-                                         langId,
-                                         buf,
-                                         len as DWORD,
-                                         ptr::null());
-                if res == 0 {
-                    fail!("[{}] FormatMessage failure", errno());
-                }
-            });
+            let res = FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM |
+                                     FORMAT_MESSAGE_IGNORE_INSERTS,
+                                     ptr::mut_null(),
+                                     err,
+                                     langId,
+                                     buf.as_mut_ptr(),
+                                     buf.len() as DWORD,
+                                     ptr::null());
+            if res == 0 {
+                fail!("[{}] FormatMessage failure", errno());
+            }
 
             str::from_utf16(buf)
         }

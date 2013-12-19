@@ -55,7 +55,7 @@ mod windows {
         let mut t = s.to_utf16();
         // Null terminate before passing on.
         t.push(0u16);
-        t.as_imm_buf(|buf, _len| f(buf))
+        f(t.as_ptr())
     }
 
     #[link_name = "kernel32"]
@@ -86,14 +86,12 @@ mod windows {
                 return Err(format!("failure in BeginUpdateResourceW: {}", os::last_os_error()));
             }
 
-            let ok = manifest.as_imm_buf(|p, len| {
-                UpdateResourceW(hUpdate,
-                                MAKEINTRESOURCEW(24), // RT_MANIFEST
-                                MAKEINTRESOURCEW(1),  // CREATEPROCESS_MANIFEST_RESOURCE_ID
-                                0,                    // LANG_NEUTRAL, SUBLANG_NEUTRAL
-                                p as LPCVOID,
-                                len as u32)
-            });
+            let ok = UpdateResourceW(hUpdate,
+                                     MAKEINTRESOURCEW(24), // RT_MANIFEST
+                                     MAKEINTRESOURCEW(1),  // CREATEPROCESS_MANIFEST_RESOURCE_ID
+                                     0,                    // LANG_NEUTRAL, SUBLANG_NEUTRAL
+                                     manifest.as_ptr() as LPCVOID,
+                                     manifest.len() as u32);
             if ok == FALSE {
                 return Err(format!("failure in UpdateResourceW: {}", os::last_os_error()));
             }

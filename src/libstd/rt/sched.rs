@@ -914,13 +914,11 @@ fn new_sched_rng() -> XorShiftRng {
     let mut seeds = [0u32, .. 4];
     let size = mem::size_of_val(&seeds);
     loop {
-        let nbytes = seeds.as_mut_buf(|buf, _| {
-            unsafe {
-                libc::read(fd,
-                           buf as *mut libc::c_void,
-                           size as libc::size_t)
-            }
-        });
+        let nbytes = unsafe {
+            libc::read(fd,
+                       seeds.as_mut_ptr() as *mut libc::c_void,
+                       size as libc::size_t)
+        };
         rtassert!(nbytes as uint == size);
 
         if !seeds.iter().all(|x| *x == 0) {

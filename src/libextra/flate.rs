@@ -44,21 +44,18 @@ static TINFL_FLAG_PARSE_ZLIB_HEADER : c_int = 0x1; // parse zlib header and adle
 static TDEFL_WRITE_ZLIB_HEADER : c_int = 0x01000; // write zlib header and adler32 checksum
 
 fn deflate_bytes_internal(bytes: &[u8], flags: c_int) -> ~[u8] {
-    bytes.as_imm_buf(|b, len| {
-        unsafe {
-            let mut outsz : size_t = 0;
-            let res =
-                rustrt::tdefl_compress_mem_to_heap(b as *c_void,
-                                                   len as size_t,
-                                                   &mut outsz,
-                                                   flags);
-            assert!(res as int != 0);
+    unsafe {
+        let mut outsz : size_t = 0;
+        let res = rustrt::tdefl_compress_mem_to_heap(bytes.as_ptr() as *c_void,
+                                                     bytes.len() as size_t,
+                                                     &mut outsz,
+                                                     flags);
+        assert!(res as int != 0);
             let out = vec::raw::from_buf_raw(res as *u8,
                                              outsz as uint);
-            libc::free(res);
-            out
-        }
-    })
+        libc::free(res);
+        out
+    }
 }
 
 pub fn deflate_bytes(bytes: &[u8]) -> ~[u8] {
@@ -70,21 +67,18 @@ pub fn deflate_bytes_zlib(bytes: &[u8]) -> ~[u8] {
 }
 
 fn inflate_bytes_internal(bytes: &[u8], flags: c_int) -> ~[u8] {
-    bytes.as_imm_buf(|b, len| {
-        unsafe {
-            let mut outsz : size_t = 0;
-            let res =
-                rustrt::tinfl_decompress_mem_to_heap(b as *c_void,
-                                                     len as size_t,
-                                                     &mut outsz,
-                                                     flags);
-            assert!(res as int != 0);
-            let out = vec::raw::from_buf_raw(res as *u8,
-                                            outsz as uint);
-            libc::free(res);
-            out
-        }
-    })
+    unsafe {
+        let mut outsz : size_t = 0;
+        let res = rustrt::tinfl_decompress_mem_to_heap(bytes.as_ptr() as *c_void,
+                                                       bytes.len() as size_t,
+                                                       &mut outsz,
+                                                       flags);
+        assert!(res as int != 0);
+        let out = vec::raw::from_buf_raw(res as *u8,
+                                         outsz as uint);
+        libc::free(res);
+        out
+    }
 }
 
 pub fn inflate_bytes(bytes: &[u8]) -> ~[u8] {
