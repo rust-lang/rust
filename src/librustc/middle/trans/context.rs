@@ -52,7 +52,7 @@ pub struct CrateContext {
      reachable: @mut HashSet<ast::NodeId>,
      item_symbols: RefCell<HashMap<ast::NodeId, ~str>>,
      link_meta: LinkMeta,
-     tydescs: HashMap<ty::t, @mut tydesc_info>,
+     tydescs: RefCell<HashMap<ty::t, @mut tydesc_info>>,
      // Set when running emit_tydescs to enforce that no more tydescs are
      // created.
      finished_tydescs: bool,
@@ -188,7 +188,7 @@ impl CrateContext {
                   reachable: reachable,
                   item_symbols: RefCell::new(HashMap::new()),
                   link_meta: link_meta,
-                  tydescs: HashMap::new(),
+                  tydescs: RefCell::new(HashMap::new()),
                   finished_tydescs: false,
                   external: HashMap::new(),
                   external_srcs: HashMap::new(),
