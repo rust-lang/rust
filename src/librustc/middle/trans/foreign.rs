@@ -146,8 +146,16 @@ pub fn register_foreign_item_fn(ccx: @mut CrateContext,
 
     // Create the LLVM value for the C extern fn
     let llfn_ty = lltype_for_fn_from_foreign_types(&tys);
-    let llfn = base::get_extern_fn(&mut ccx.externs, ccx.llmod,
-                                   lname, cc, llfn_ty);
+
+    let llfn;
+    {
+        let mut externs = ccx.externs.borrow_mut();
+        llfn = base::get_extern_fn(externs.get(),
+                                   ccx.llmod,
+                                   lname,
+                                   cc,
+                                   llfn_ty);
+    };
     add_argument_attributes(&tys, llfn);
 
     return llfn;
