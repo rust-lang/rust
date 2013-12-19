@@ -38,7 +38,7 @@ pub struct PortReader {
 }
 
 impl PortReader {
-    pub fn new(port: Port<~[u8]>) -> PortReader<P> {
+    pub fn new(port: Port<~[u8]>) -> PortReader {
         PortReader {
             buf: None,
             pos: 0,
@@ -94,7 +94,7 @@ pub struct ChanWriter {
 }
 
 impl ChanWriter {
-    pub fn new(chan: C) -> ChanWriter<C> {
+    pub fn new(chan: Chan<~[u8]>) -> ChanWriter {
         ChanWriter { chan: chan }
     }
 }
