@@ -37,6 +37,18 @@ use std::vec;
 use extra::test::MetricMap;
 
 pub fn run(config: config, testfile: ~str) {
+
+    match config.target {
+
+        ~"arm-linux-androideabi" => {
+            if !config.adb_device_status {
+                fail!("android device not available");
+            }
+        }
+
+        _=> { }
+    }
+
     let mut _mm = MetricMap::new();
     run_metrics(config, testfile, &mut _mm);
 }
@@ -99,20 +111,8 @@ fn run_rfail_test(config: &config, props: &TestProps, testfile: &Path) {
         fatal_ProcRes(~"run-fail test isn't valgrind-clean!", &ProcRes);
     }
 
-    match config.target {
-
-        ~"arm-linux-androideabi" => {
-            if (config.adb_device_status) {
-                check_correct_failure_status(&ProcRes);
-                check_error_patterns(props, testfile, &ProcRes);
-            }
-        }
-
-        _=> {
-            check_correct_failure_status(&ProcRes);
-            check_error_patterns(props, testfile, &ProcRes);
-        }
-    }
+    check_correct_failure_status(&ProcRes);
+    check_error_patterns(props, testfile, &ProcRes);
 }
 
 fn check_correct_failure_status(ProcRes: &ProcRes) {
@@ -275,86 +275,86 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
     let mut ProcArgs;
     match config.target {
         ~"arm-linux-androideabi" => {
-            if (config.adb_device_status) {
 
-                cmds = cmds.replace("run","continue");
+            cmds = cmds.replace("run","continue");
 
-                // write debugger script
-                let script_str = [~"set charset UTF-8",
-                    format!("file {}",exe_file.as_str().unwrap().to_owned()),
-                    ~"target remote :5039",
-                    cmds,
-                    ~"quit"].connect("\n");
-                debug!("script_str = {}", script_str);
-                dump_output_file(config, testfile, script_str, "debugger.script");
+            // write debugger script
+            let script_str = [~"set charset UTF-8",
+                              format!("file {}",exe_file.as_str().unwrap().to_owned()),
+                              ~"target remote :5039",
+                              cmds,
+                              ~"quit"].connect("\n");
+            debug!("script_str = {}", script_str);
+            dump_output_file(config, testfile, script_str, "debugger.script");
 
 
-                procsrv::run("", config.adb_path,
-                    [~"push", exe_file.as_str().unwrap().to_owned(), config.adb_test_dir.clone()],
-                    ~[(~"",~"")], Some(~""))
-                    .expect(format!("failed to exec `{}`", config.adb_path));
+            procsrv::run("", config.adb_path,
+                         [~"push", exe_file.as_str().unwrap().to_owned(),
+                          config.adb_test_dir.clone()],
+                         ~[(~"",~"")], Some(~""))
+                .expect(format!("failed to exec `{}`", config.adb_path));
 
-                procsrv::run("", config.adb_path,
-                    [~"forward", ~"tcp:5039", ~"tcp:5039"],
-                    ~[(~"",~"")], Some(~""))
-                    .expect(format!("failed to exec `{}`", config.adb_path));
+            procsrv::run("", config.adb_path,
+                         [~"forward", ~"tcp:5039", ~"tcp:5039"],
+                         ~[(~"",~"")], Some(~""))
+                .expect(format!("failed to exec `{}`", config.adb_path));
 
-                let adb_arg = format!("export LD_LIBRARY_PATH={}; gdbserver :5039 {}/{}",
-                         config.adb_test_dir.clone(), config.adb_test_dir.clone(),
-                         str::from_utf8(exe_file.filename().unwrap()));
+            let adb_arg = format!("export LD_LIBRARY_PATH={}; gdbserver :5039 {}/{}",
+                                  config.adb_test_dir.clone(), config.adb_test_dir.clone(),
+                                  str::from_utf8(exe_file.filename().unwrap()));
 
-                let mut process = procsrv::run_background("", config.adb_path,
-                        [~"shell",adb_arg.clone()],~[(~"",~"")], Some(~""))
-                        .expect(format!("failed to exec `{}`", config.adb_path));
-                loop {
-                    //waiting 1 second for gdbserver start
-                    timer::sleep(1000);
-                    let result = do task::try {
-                        tcp::TcpStream::connect(
+            let mut process = procsrv::run_background("", config.adb_path,
+                                                      [~"shell",adb_arg.clone()],
+                                                      ~[(~"",~"")], Some(~""))
+                .expect(format!("failed to exec `{}`", config.adb_path));
+            loop {
+                //waiting 1 second for gdbserver start
+                timer::sleep(1000);
+                let result = do task::try {
+                    tcp::TcpStream::connect(
                         SocketAddr { ip: Ipv4Addr(127, 0, 0, 1), port: 5039 });
-                    };
-                    if result.is_err() {
-                        continue;
-                    }
+                };
+                if result.is_err() {
+                    continue;
+                }
+                break;
+            }
+
+            let args = split_maybe_args(&config.rustcflags);
+            let mut tool_path:~str = ~"";
+            for arg in args.iter() {
+                if arg.contains("--android-cross-path=") {
+                    tool_path = arg.replace("--android-cross-path=","");
                     break;
                 }
-
-                let args = split_maybe_args(&config.rustcflags);
-                let mut tool_path:~str = ~"";
-                for arg in args.iter() {
-                    if arg.contains("--android-cross-path=") {
-                        tool_path = arg.replace("--android-cross-path=","");
-                        break;
-                    }
-                }
-
-                if tool_path.equals(&~"") {
-                    fatal(~"cannot found android cross path");
-                }
-
-                let debugger_script = make_out_name(config, testfile, "debugger.script");
-                // FIXME (#9639): This needs to handle non-utf8 paths
-                let debugger_opts = ~[~"-quiet", ~"-batch", ~"-nx",
-                    "-command=" + debugger_script.as_str().unwrap().to_owned()];
-
-                let gdb_path = tool_path.append("/bin/arm-linux-androideabi-gdb");
-                let procsrv::Result{ out, err, status }=
-                    procsrv::run("",
-                            gdb_path,
-                            debugger_opts, ~[(~"",~"")], None)
-                    .expect(format!("failed to exec `{}`", gdb_path));
-                let cmdline = {
-                    let cmdline = make_cmdline("", "arm-linux-androideabi-gdb", debugger_opts);
-                    logv(config, format!("executing {}", cmdline));
-                    cmdline
-                };
-
-                ProcRes = ProcRes {status: status,
-                    stdout: out,
-                    stderr: err,
-                    cmdline: cmdline};
-                process.force_destroy();
             }
+
+            if tool_path.equals(&~"") {
+                fatal(~"cannot found android cross path");
+            }
+
+            let debugger_script = make_out_name(config, testfile, "debugger.script");
+            // FIXME (#9639): This needs to handle non-utf8 paths
+            let debugger_opts = ~[~"-quiet", ~"-batch", ~"-nx",
+                                  "-command=" + debugger_script.as_str().unwrap().to_owned()];
+
+            let gdb_path = tool_path.append("/bin/arm-linux-androideabi-gdb");
+            let procsrv::Result{ out, err, status }=
+                procsrv::run("",
+                             gdb_path,
+                             debugger_opts, ~[(~"",~"")], None)
+                .expect(format!("failed to exec `{}`", gdb_path));
+            let cmdline = {
+                let cmdline = make_cmdline("", "arm-linux-androideabi-gdb", debugger_opts);
+                logv(config, format!("executing {}", cmdline));
+                cmdline
+            };
+
+            ProcRes = ProcRes {status: status,
+                               stdout: out,
+                               stderr: err,
+                               cmdline: cmdline};
+            process.force_destroy();
         }
 
         _=> {
@@ -662,11 +662,7 @@ fn exec_compiled_test(config: &config, props: &TestProps,
     match config.target {
 
         ~"arm-linux-androideabi" => {
-            if (config.adb_device_status) {
-                _arm_exec_compiled_test(config, props, testfile, env)
-            } else {
-                _dummy_exec_compiled_test(config, props, testfile)
-            }
+            _arm_exec_compiled_test(config, props, testfile, env)
         }
 
         _=> {
@@ -710,9 +706,7 @@ fn compose_and_run_compiler(
         match config.target {
 
             ~"arm-linux-androideabi" => {
-                if (config.adb_device_status) {
-                    _arm_push_aux_shared_library(config, testfile);
-                }
+                _arm_push_aux_shared_library(config, testfile);
             }
 
             _=> { }
@@ -989,20 +983,6 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
         stdout: stdout_out,
         stderr: stderr_out,
         cmdline: cmdline
-    }
-}
-
-fn _dummy_exec_compiled_test(config: &config, props: &TestProps,
-                      testfile: &Path) -> ProcRes {
-
-    let args = make_run_args(config, props, testfile);
-    let cmdline = make_cmdline("", args.prog, args.args);
-
-    match config.mode {
-        mode_run_fail => ProcRes {status: process::ExitStatus(101), stdout: ~"",
-                                 stderr: ~"", cmdline: cmdline},
-        _             => ProcRes {status: process::ExitStatus(0), stdout: ~"",
-                                 stderr: ~"", cmdline: cmdline}
     }
 }
 
