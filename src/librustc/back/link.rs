@@ -751,14 +751,10 @@ fn is_writeable(p: &Path) -> bool {
     }
 }
 
-fn link_binary_output(sess: Session,
-                      trans: &CrateTranslation,
-                      output: session::OutputStyle,
-                      obj_filename: &Path,
-                      out_filename: &Path,
-                      lm: &LinkMeta) -> Path {
+pub fn filename_for_input(sess: &Session, output: session::OutputStyle, lm: &LinkMeta,
+                      out_filename: &Path) -> Path {
     let libname = output_lib_filename(lm);
-    let out_filename = match output {
+    match output {
         session::OutputRlib => {
             out_filename.with_filename(format!("lib{}.rlib", libname))
         }
@@ -776,7 +772,17 @@ fn link_binary_output(sess: Session,
             out_filename.with_filename(format!("lib{}.a", libname))
         }
         session::OutputExecutable => out_filename.clone(),
-    };
+    }
+
+}
+
+fn link_binary_output(sess: Session,
+                      trans: &CrateTranslation,
+                      output: session::OutputStyle,
+                      obj_filename: &Path,
+                      out_filename: &Path,
+                      lm: &LinkMeta) -> Path {
+    let out_filename = filename_for_input(&sess, output, lm, out_filename);
 
     // Make sure the output and obj_filename are both writeable.
     // Mac, FreeBSD, and Windows system linkers check this already --

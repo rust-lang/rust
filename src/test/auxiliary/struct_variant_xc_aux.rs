@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[pkgid="struct_variant_xc_aux#0.1"];
+#[crate_id="struct_variant_xc_aux#0.1"];
 // NOTE: remove after the next snapshot
 #[link(name = "struct_variant_xc_aux",
        vers = "0.1")];
