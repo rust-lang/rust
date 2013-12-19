@@ -44,6 +44,7 @@ i = 0
 c.write(
 """
 // AUTO-GENERATED FILE: DO NOT EDIT
+#[crate_id=\"run_pass_stage2#0.1\"];
 #[pkgid=\"run_pass_stage2#0.1\"];
 #[link(name=\"run_pass_stage2\", vers=\"0.1\")];
 #[feature(globs, macro_rules, struct_variant, managed_boxes)];
