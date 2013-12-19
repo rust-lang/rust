@@ -14,9 +14,6 @@ use prelude::*;
 use cast;
 use util::NonCopyable;
 
-#[cfg(stage0)]
-use unstable::intrinsics;
-
 /// A mutable memory location that admits only `Pod` data.
 #[no_freeze]
 #[deriving(Clone)]
@@ -24,38 +21,6 @@ pub struct Cell<T> {
     priv value: T,
 }
 
-// NB: For `stage0`, we omit the `Pod` bound. This is unsound but will help
-// us get started on removing `@mut` from `rustc`.
-
-#[cfg(stage0)]
-impl<T> Cell<T> {
-    /// Creates a new `Cell` containing the given value.
-    pub fn new(value: T) -> Cell<T> {
-        Cell {
-            value: value,
-        }
-    }
-
-    /// Returns a copy of the contained value.
-    #[inline]
-    pub fn get(&self) -> T {
-        unsafe {
-            let mut result = intrinsics::uninit();
-            intrinsics::copy_nonoverlapping_memory(&mut result, &self.value, 1);
-            result
-        }
-    }
-
-    /// Sets the contained value.
-    #[inline]
-    pub fn set(&self, value: T) {
-        unsafe {
-            intrinsics::copy_nonoverlapping_memory(cast::transmute_mut(&self.value), &value, 1)
-        }
-    }
-}
-
-#[cfg(not(stage0))]
 impl<T: ::kinds::Pod> Cell<T> {
     /// Creates a new `Cell` containing the given value.
     pub fn new(value: T) -> Cell<T> {
