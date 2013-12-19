@@ -1813,8 +1813,15 @@ pub fn trans_log_level(bcx: @Block) -> DatumBlock {
         (modpath, modname)
     };
 
-    let global = if ccx.module_data.contains_key(&modname) {
-        ccx.module_data.get_copy(&modname)
+    let module_data_exists;
+    {
+        let module_data = ccx.module_data.borrow();
+        module_data_exists = module_data.get().contains_key(&modname);
+    }
+
+    let global = if module_data_exists {
+        let mut module_data = ccx.module_data.borrow_mut();
+        module_data.get().get_copy(&modname)
     } else {
         let s = link::mangle_internal_name_by_path_and_seq(
             ccx, modpath, "loglevel");
@@ -1827,8 +1834,11 @@ pub fn trans_log_level(bcx: @Block) -> DatumBlock {
             llvm::LLVMSetInitializer(global, C_null(Type::i32()));
             lib::llvm::SetLinkage(global, lib::llvm::InternalLinkage);
         }
-        ccx.module_data.insert(modname, global);
-        global
+        {
+            let mut module_data = ccx.module_data.borrow_mut();
+            module_data.get().insert(modname, global);
+            global
+        }
     };
 
     return immediate_rvalue_bcx(bcx, Load(bcx, global), ty::mk_u32());
