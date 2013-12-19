@@ -2450,7 +2450,11 @@ fn exported_name(ccx: &mut CrateContext, path: path, ty: ty::t, attrs: &[ast::At
 pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
     debug!("get_item_val(id=`{:?}`)", id);
 
-    let val = ccx.item_vals.find_copy(&id);
+    let val = {
+        let item_vals = ccx.item_vals.borrow();
+        item_vals.get().find_copy(&id)
+    };
+
     match val {
         Some(v) => v,
         None => {
@@ -2689,7 +2693,8 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                 lib::llvm::SetLinkage(val, lib::llvm::InternalLinkage);
             }
 
-            ccx.item_vals.insert(id, val);
+            let mut item_vals = ccx.item_vals.borrow_mut();
+            item_vals.get().insert(id, val);
             val
         }
     }
