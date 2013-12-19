@@ -2233,7 +2233,9 @@ pub fn trans_item(ccx: @mut CrateContext, item: &ast::item) {
                                       "cannot have static_assert on a mutable \
                                        static");
               }
-              let v = ccx.const_values.get_copy(&item.id);
+
+              let const_values = ccx.const_values.borrow();
+              let v = const_values.get().get_copy(&item.id);
               unsafe {
                   if !(llvm::LLVMConstIntGetZExtValue(v) != 0) {
                       ccx.sess.span_fatal(expr.span, "static assertion failed");
@@ -2489,7 +2491,11 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                             // We need the translated value here, because for enums the
                             // LLVM type is not fully determined by the Rust type.
                             let (v, inlineable) = consts::const_expr(ccx, expr);
-                            ccx.const_values.insert(id, v);
+                            {
+                                let mut const_values = ccx.const_values
+                                                          .borrow_mut();
+                                const_values.get().insert(id, v);
+                            }
                             let mut inlineable = inlineable;
 
                             unsafe {

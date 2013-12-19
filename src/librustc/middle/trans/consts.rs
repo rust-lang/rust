@@ -157,7 +157,10 @@ fn const_deref(cx: &mut CrateContext, v: ValueRef, t: ty::t, explicit: bool)
 
 pub fn get_const_val(cx: @mut CrateContext,
                      mut def_id: ast::DefId) -> (ValueRef, bool) {
-    let contains_key = cx.const_values.contains_key(&def_id.node);
+    let contains_key = {
+        let const_values = cx.const_values.borrow();
+        const_values.get().contains_key(&def_id.node)
+    };
     if !ast_util::is_local(def_id) || !contains_key {
         if !ast_util::is_local(def_id) {
             def_id = inline::maybe_instantiate_inline(cx, def_id);
@@ -171,7 +174,9 @@ pub fn get_const_val(cx: @mut CrateContext,
             _ => cx.tcx.sess.bug("expected a const to be an item")
         }
     }
-    (cx.const_values.get_copy(&def_id.node),
+
+    let const_values = cx.const_values.borrow();
+    (const_values.get().get_copy(&def_id.node),
      !cx.non_inlineable_statics.contains(&def_id.node))
 }
 
@@ -642,7 +647,8 @@ pub fn trans_const(ccx: @mut CrateContext, m: ast::Mutability, id: ast::NodeId) 
         let g = base::get_item_val(ccx, id);
         // At this point, get_item_val has already translated the
         // constant's initializer to determine its LLVM type.
-        let v = ccx.const_values.get_copy(&id);
+        let const_values = ccx.const_values.borrow();
+        let v = const_values.get().get_copy(&id);
         llvm::LLVMSetInitializer(g, v);
         if m != ast::MutMutable {
             llvm::LLVMSetGlobalConstant(g, True);
