@@ -2917,14 +2917,19 @@ pub fn decl_gc_metadata(ccx: &mut CrateContext, llmod_id: &str) {
     unsafe {
         llvm::LLVMSetGlobalConstant(gc_metadata, True);
         lib::llvm::SetLinkage(gc_metadata, lib::llvm::ExternalLinkage);
-        ccx.module_data.insert(~"_gc_module_metadata", gc_metadata);
+
+        let mut module_data = ccx.module_data.borrow_mut();
+        module_data.get().insert(~"_gc_module_metadata", gc_metadata);
     }
 }
 
 pub fn create_module_map(ccx: &mut CrateContext) -> (ValueRef, uint) {
     let str_slice_type = Type::struct_([Type::i8p(), ccx.int_type], false);
     let elttype = Type::struct_([str_slice_type, ccx.int_type], false);
-    let maptype = Type::array(&elttype, ccx.module_data.len() as u64);
+    let maptype = {
+        let module_data = ccx.module_data.borrow();
+        Type::array(&elttype, module_data.get().len() as u64)
+    };
     let map = "_rust_mod_map".with_c_str(|buf| {
         unsafe {
             llvm::LLVMAddGlobal(ccx.llmod, maptype.to_ref(), buf)
@@ -2936,16 +2941,22 @@ pub fn create_module_map(ccx: &mut CrateContext) -> (ValueRef, uint) {
     // This is not ideal, but the borrow checker doesn't
     // like the multiple borrows. At least, it doesn't
     // like them on the current snapshot. (2013-06-14)
-    let mut keys = ~[];
-    for (k, _) in ccx.module_data.iter() {
-        keys.push(k.to_managed());
-    }
+    let keys = {
+        let mut keys = ~[];
+        let module_data = ccx.module_data.borrow();
+        for (k, _) in module_data.get().iter() {
+            keys.push(k.to_managed());
+        }
+        keys
+    };
 
     for key in keys.iter() {
-            let val = *ccx.module_data.find_equiv(key).unwrap();
+            let llestrval = C_estr_slice(ccx, *key);
+            let module_data = ccx.module_data.borrow();
+            let val = *module_data.get().find_equiv(key).unwrap();
             let v_ptr = p2i(ccx, val);
             let elt = C_struct([
-                C_estr_slice(ccx, *key),
+                llestrval,
                 v_ptr
             ], false);
             elts.push(elt);
