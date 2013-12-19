@@ -490,14 +490,23 @@ pub fn node_item_query<Result>(items: map, id: NodeId, query: |@item| -> Result,
     }
 }
 
-pub fn item_span(items: map,
+pub fn node_span(items: map,
                  id: ast::NodeId)
                  -> Span {
     match items.find(&id) {
         Some(&node_item(item, _)) => item.span,
-        r => {
-            fail!(format!("item_span: expected item with id {} but found {:?}",
-                           id, r))
-        }
+        Some(&node_foreign_item(foreign_item, _, _, _)) => foreign_item.span,
+        Some(&node_trait_method(@required(ref type_method), _, _)) => type_method.span,
+        Some(&node_trait_method(@provided(ref method), _, _)) => method.span,
+        Some(&node_method(method, _, _)) => method.span,
+        Some(&node_variant(variant, _, _)) => variant.span,
+        Some(&node_expr(expr)) => expr.span,
+        Some(&node_stmt(stmt)) => stmt.span,
+        Some(&node_arg(pat)) => pat.span,
+        Some(&node_local(_)) => fail!("node_span: cannot get span from node_local"),
+        Some(&node_block(block)) => block.span,
+        Some(&node_struct_ctor(_, item, _)) => item.span,
+        Some(&node_callee_scope(expr)) => expr.span,
+        None => fail!("node_span: could not find id {}", id),
     }
 }
