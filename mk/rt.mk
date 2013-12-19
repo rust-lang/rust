@@ -186,25 +186,34 @@ else
 endif
 
 LIBUV_NAME_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),uv)
-LIBUV_LIB_$(1) := $$(RT_OUTPUT_DIR_$(1))/libuv/$$(LIBUV_NAME_$(1))
+LIBUV_DIR_$(1) := $$(RT_OUTPUT_DIR_$(1))/libuv
+LIBUV_LIB_$(1) := $$(LIBUV_DIR_$(1))/$$(LIBUV_NAME_$(1))
 
 LIBUV_MAKEFILE_$(1) := $$(CFG_BUILD_DIR)$$(RT_OUTPUT_DIR_$(1))/libuv/Makefile
+
+LIBUV_STAMP_$(1) = $$(LIBUV_DIR_$(1))/libuv-auto-clean-stamp
+
+$$(LIBUV_STAMP_$(1)): $(S)src/rt/libuv-auto-clean-trigger
+	$$(Q)rm -rf $$(LIBUV_DIR_$(1))
+	$$(Q)mkdir -p $$(@D)
+	touch $$@
 
 # libuv triggers a few warnings on some platforms
 LIBUV_CFLAGS_$(1) := $(subst -Werror,,$(CFG_GCCISH_CFLAGS_$(1)))
 
-$$(LIBUV_MAKEFILE_$(1)): $$(LIBUV_DEPS)
+$$(LIBUV_MAKEFILE_$(1)): $$(LIBUV_DEPS) $$(MKFILE_DEPS) $$(LIBUV_STAMP_$(1))
 	(cd $(S)src/libuv/ && \
 	 $$(CFG_PYTHON) ./gyp_uv.py -f make -Dtarget_arch=$$(LIBUV_ARCH_$(1)) \
 	   -D ninja \
 	   -DOS=$$(LIBUV_OSTYPE_$(1)) \
 	   -Goutput_dir=$$(@D) --generator-output $$(@D))
+	touch $$@
 
 # Windows has a completely different build system for libuv because of mingw. In
 # theory when we support msvc then we should be using gyp's msvc output instead
 # of mingw's makefile for windows
 ifdef CFG_WINDOWSY_$(1)
-$$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS)
+$$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS) $$(MKFILE_DEPS)
 	$$(Q)$$(MAKE) -C $$(S)src/libuv -f Makefile.mingw \
 		LDFLAGS="$$(CFG_GCCISH_LINK_FLAGS_$(1))" \
 		CC="$$(CC_$(1)) $$(LIBUV_CFLAGS_$(1)) $$(SNAP_DEFINES)" \
@@ -213,15 +222,17 @@ $$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS)
 		V=$$(VERBOSE)
 	$$(Q)cp $$(S)src/libuv/libuv.a $$@
 else
-$$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS) $$(LIBUV_MAKEFILE_$(1))
-	$$(Q)$$(MAKE) -C $$(@D) \
+$$(LIBUV_LIB_$(1)): $$(LIBUV_DIR_$(1))/Release/libuv.a $$(MKFILE_DEPS)
+	$$(Q)ln -f $$< $$@
+$$(LIBUV_DIR_$(1))/Release/libuv.a: $$(LIBUV_DEPS) $$(LIBUV_MAKEFILE_$(1)) \
+				    $$(MKFILE_DEPS)
+	$$(Q)$$(MAKE) -C $$(LIBUV_DIR_$(1)) \
 		CFLAGS="$$(LIBUV_CFLAGS_$(1)) $$(SNAP_DEFINES)" \
 		LDFLAGS="$$(CFG_GCCISH_LINK_FLAGS_$(1))" \
 		CC="$$(CC_$(1))" \
 		CXX="$$(CXX_$(1))" \
 		AR="$$(AR_$(1))" \
 		$$(LIBUV_ARGS_$(1)) \
-		builddir="." \
 		BUILDTYPE=Release \
 		NO_LOAD="$$(LIBUV_NO_LOAD)" \
 		V=$$(VERBOSE)
