@@ -81,7 +81,7 @@ pub struct CrateContext {
      // when we ptrcast, and we have to ptrcast during translation
      // of a [T] const because we form a slice, a [*T,int] pair, not
      // a pointer to an LLVM array type.
-     const_globals: HashMap<int, ValueRef>,
+     const_globals: RefCell<HashMap<int, ValueRef>>,
 
      // Cache of emitted const values
      const_values: HashMap<ast::NodeId, ValueRef>,
@@ -198,7 +198,7 @@ impl CrateContext {
                   monomorphizing: RefCell::new(HashMap::new()),
                   vtables: RefCell::new(HashMap::new()),
                   const_cstr_cache: RefCell::new(HashMap::new()),
-                  const_globals: HashMap::new(),
+                  const_globals: RefCell::new(HashMap::new()),
                   const_values: HashMap::new(),
                   extern_const_values: HashMap::new(),
                   impl_method_cache: HashMap::new(),
