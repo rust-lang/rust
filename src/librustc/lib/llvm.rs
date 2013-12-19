@@ -1821,13 +1821,6 @@ impl TypeNames {
         assert!(self.named_types.insert(s.to_owned(), t.to_ref()));
     }
 
-    pub fn find_name<'r>(&'r self, ty: &Type) -> Option<&'r str> {
-        match self.type_names.find(&ty.to_ref()) {
-            Some(a) => Some(a.slice(0, a.len())),
-            None => None
-        }
-    }
-
     pub fn find_type(&self, s: &str) -> Option<Type> {
         self.named_types.find_equiv(&s).map(|x| Type::from_ref(*x))
     }
