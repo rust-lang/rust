@@ -205,15 +205,21 @@ pub fn get_extern_fn(externs: &mut ExternMap, llmod: ModuleRef, name: &str,
 
 fn get_extern_rust_fn(ccx: &mut CrateContext, inputs: &[ty::t], output: ty::t,
                       name: &str, did: ast::DefId) -> ValueRef {
-    match ccx.externs.find_equiv(&name) {
-        Some(n) => return *n,
-        None => ()
+    {
+        let externs = ccx.externs.borrow();
+        match externs.get().find_equiv(&name) {
+            Some(n) => return *n,
+            None => ()
+        }
     }
+
     let f = decl_rust_fn(ccx, inputs, output, name);
     csearch::get_item_attrs(ccx.tcx.cstore, did, |meta_items| {
         set_llvm_fn_attrs(meta_items.iter().map(|&x| attr::mk_attr(x)).to_owned_vec(), f)
     });
-    ccx.externs.insert(name.to_owned(), f);
+
+    let mut externs = ccx.externs.borrow_mut();
+    externs.get().insert(name.to_owned(), f);
     f
 }
 
@@ -559,11 +565,15 @@ pub fn get_res_dtor(ccx: @mut CrateContext,
                                      None,
                                      ty::lookup_item_type(tcx, parent_id).ty);
         let llty = type_of_dtor(ccx, class_ty);
-        get_extern_fn(&mut ccx.externs,
-                      ccx.llmod,
-                      name,
-                      lib::llvm::CCallConv,
-                      llty)
+
+        {
+            let mut externs = ccx.externs.borrow_mut();
+            get_extern_fn(externs.get(),
+                          ccx.llmod,
+                          name,
+                          lib::llvm::CCallConv,
+                          llty)
+        }
     }
 }
 
@@ -865,7 +875,8 @@ pub fn trans_external_path(ccx: &mut CrateContext, did: ast::DefId, t: ty::t) ->
                     let c = foreign::llvm_calling_convention(ccx, fn_ty.abis);
                     let cconv = c.unwrap_or(lib::llvm::CCallConv);
                     let llty = type_of_fn_from_ty(ccx, t);
-                    get_extern_fn(&mut ccx.externs, ccx.llmod, name, cconv, llty)
+                    let mut externs = ccx.externs.borrow_mut();
+                    get_extern_fn(externs.get(), ccx.llmod, name, cconv, llty)
                 }
             }
         }
@@ -874,7 +885,8 @@ pub fn trans_external_path(ccx: &mut CrateContext, did: ast::DefId, t: ty::t) ->
         }
         _ => {
             let llty = type_of(ccx, t);
-            get_extern_const(&mut ccx.externs, ccx.llmod, name, llty)
+            let mut externs = ccx.externs.borrow_mut();
+            get_extern_const(externs.get(), ccx.llmod, name, llty)
         }
     }
 }
