@@ -133,16 +133,13 @@ $(foreach target,$(CFG_TARGET), \
   $(if $(findstring $(target),"arm-linux-androideabi"), \
     $(if $(findstring adb,$(CFG_ADB)), \
       $(if $(findstring device,$(shell $(CFG_ADB) devices 2>/dev/null | grep -E '^[_A-Za-z0-9-]+[[:blank:]]+device')), \
-        $(info check: $(target) test enabled \
-          $(info check: android device attached) \
-          $(eval $(call DEF_ADB_DEVICE_STATUS, true))), \
-        $(info check: $(target) test disabled \
-          $(info check: android device not attached) \
-          $(eval $(call DEF_ADB_DEVICE_STATUS, false))) \
+        $(info check: android device attached) \
+        $(eval $(call DEF_ADB_DEVICE_STATUS, true)), \
+        $(info check: android device not attached) \
+        $(eval $(call DEF_ADB_DEVICE_STATUS, false)) \
       ), \
-      $(info check: $(target) test disabled \
-        $(info check: adb not found) \
-        $(eval $(call DEF_ADB_DEVICE_STATUS, false))) \
+      $(info check: adb not found) \
+      $(eval $(call DEF_ADB_DEVICE_STATUS, false)) \
     ), \
   ) \
 )
@@ -451,8 +448,8 @@ check-stage$(1)-T-$(2)-H-$(3)-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4
 
 $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
 		$(3)/stage$(1)/test/$(4)test-$(2)$$(X_$(2))
-	@$$(call E, run: skipped $$< )
-	@touch $$@
+	@$$(call E, failing: no device for $$< )
+	false
 endef
 
 $(foreach host,$(CFG_HOST), \
