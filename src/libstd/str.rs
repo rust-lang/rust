@@ -1662,7 +1662,7 @@ pub trait StrSlice<'a> {
     /// ```rust
     /// let s = "Löwe 老虎 Léopard";
     /// assert_eq!(s.slice_chars(0, 4), "Löwe");
-    /// assert_eq!(s.slice_chars(6, 8), "老虎");
+    /// assert_eq!(s.slice_chars(5, 7), "老虎");
     /// ```
     fn slice_chars(&self, begin: uint, end: uint) -> &'a str;
 
