@@ -45,8 +45,6 @@ use std::vec;
 
 use extra::arc::Arc;
 use extra::json::ToJson;
-use extra::sort;
-
 use syntax::ast;
 use syntax::attr;
 
@@ -900,16 +898,16 @@ fn item_module(w: &mut Writer, cx: &Context,
     debug!("{:?}", items);
     let mut indices = vec::from_fn(items.len(), |i| i);
 
-    fn lt(i1: &clean::Item, i2: &clean::Item, idx1: uint, idx2: uint) -> bool {
+    fn le(i1: &clean::Item, i2: &clean::Item, idx1: uint, idx2: uint) -> bool {
         if shortty(i1) == shortty(i2) {
-            return i1.name < i2.name;
+            return i1.name <= i2.name;
         }
         match (&i1.inner, &i2.inner) {
             (&clean::ViewItemItem(ref a), &clean::ViewItemItem(ref b)) => {
                 match (&a.inner, &b.inner) {
                     (&clean::ExternMod(..), _) => true,
                     (_, &clean::ExternMod(..)) => false,
-                    _ => idx1 < idx2,
+                    _ => idx1 <= idx2,
                 }
             }
             (&clean::ViewItemItem(..), _) => true,
@@ -932,12 +930,12 @@ fn item_module(w: &mut Writer, cx: &Context,
             (_, &clean::FunctionItem(..)) => false,
             (&clean::TypedefItem(..), _) => true,
             (_, &clean::TypedefItem(..)) => false,
-            _ => idx1 < idx2,
+            _ => idx1 <= idx2,
         }
     }
 
     debug!("{:?}", indices);
-    sort::quick_sort(indices, |&i1, &i2| lt(&items[i1], &items[i2], i1, i2));
+    indices.sort(|&i1, &i2| le(&items[i1], &items[i2], i1, i2));
 
     debug!("{:?}", indices);
     let mut curty = "";
@@ -1532,7 +1530,7 @@ fn build_sidebar(m: &clean::Module) -> HashMap<~str, ~[~str]> {
     }
 
     for (_, items) in map.mut_iter() {
-        sort::quick_sort(*items, |i1, i2| i1 < i2);
+        items.sort(|i1, i2| i1 <= i2);
     }
     return map;
 }
