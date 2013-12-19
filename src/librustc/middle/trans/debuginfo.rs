@@ -181,7 +181,7 @@ pub struct CrateDebugContext {
     priv namespace_map: RefCell<HashMap<~[ast::Ident], @NamespaceTreeNode>>,
     // This collection is used to assert that composite types (structs, enums, ...) have their
     // members only set once:
-    priv composite_types_completed: HashSet<DIType>,
+    priv composite_types_completed: RefCell<HashSet<DIType>>,
 }
 
 impl CrateDebugContext {
@@ -198,7 +198,7 @@ impl CrateDebugContext {
             created_files: RefCell::new(HashMap::new()),
             created_types: RefCell::new(HashMap::new()),
             namespace_map: RefCell::new(HashMap::new()),
-            composite_types_completed: HashSet::new(),
+            composite_types_completed: RefCell::new(HashSet::new()),
         };
     }
 }
@@ -1646,11 +1646,16 @@ fn set_members_of_composite_type(cx: &mut CrateContext,
     // used instead of a new one created in create_struct_stub. This would cause a hard to trace
     // assertion in DICompositeType::SetTypeArray(). The following check makes sure that we get a
     // better error message if this should happen again due to some regression.
-    if debug_context(cx).composite_types_completed.contains(&composite_type_metadata) {
-        cx.sess.span_bug(definition_span, "debuginfo::set_members_of_composite_type() - Already \
-                                           completed forward declaration re-encountered.");
-    } else {
-        debug_context(cx).composite_types_completed.insert(composite_type_metadata);
+    {
+        let mut composite_types_completed =
+            debug_context(cx).composite_types_completed.borrow_mut();
+        if composite_types_completed.get().contains(&composite_type_metadata) {
+            cx.sess.span_bug(definition_span, "debuginfo::set_members_of_composite_type() - \
+                                               Already completed forward declaration \
+                                               re-encountered.");
+        } else {
+            composite_types_completed.get().insert(composite_type_metadata);
+        }
     }
 
     let loc = span_start(cx, definition_span);
