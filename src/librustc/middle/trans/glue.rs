@@ -589,7 +589,7 @@ pub fn incr_refcnt_of_boxed(cx: @Block, box_ptr: ValueRef) {
 pub fn declare_tydesc(ccx: &mut CrateContext, t: ty::t) -> @mut tydesc_info {
     // If emit_tydescs already ran, then we shouldn't be creating any new
     // tydescs.
-    assert!(!ccx.finished_tydescs);
+    assert!(!ccx.finished_tydescs.get());
 
     let llty = type_of(ccx, t);
 
@@ -694,7 +694,7 @@ pub fn make_generic_glue(ccx: @mut CrateContext,
 pub fn emit_tydescs(ccx: &mut CrateContext) {
     let _icx = push_ctxt("emit_tydescs");
     // As of this point, allow no more tydescs to be created.
-    ccx.finished_tydescs = true;
+    ccx.finished_tydescs.set(true);
     let glue_fn_ty = Type::generic_glue_fn(ccx).ptr_to();
     let mut tyds = ccx.tydescs.borrow_mut();
     for (_, &val) in tyds.get().iter() {
