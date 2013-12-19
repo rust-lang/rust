@@ -266,7 +266,7 @@ fn print_frequencies(frequencies: &Table, frame: i32) {
     for frequencies.each |entry| {
         vector.push((entry.code, entry.count));
     }
-    vector.sort(|a,b| a <= b);
+    vector.sort();
 
     let mut total_count = 0;
     for vector.each |&(_, count)| {

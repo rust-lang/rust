@@ -48,7 +48,7 @@ pub fn main() {
             // work out the total number of comparisons required to sort
             // this array...
             let mut count = 0;
-            main.clone().sort(|a, b| { count += 1; a <= b });
+            main.clone().sort_by(|a, b| { count += 1; a <= b });
 
             // ... and then fail on each and every single one.
             for fail_countdown in range(0, count) {
@@ -63,7 +63,7 @@ pub fn main() {
                 std::task::try(proc() {
                         let mut v = v;
                         let mut fail_countdown = fail_countdown;
-                        v.sort(|a, b| {
+                        v.sort_by(|a, b| {
                                 if fail_countdown == 0 {
                                     fail!()
                                 }

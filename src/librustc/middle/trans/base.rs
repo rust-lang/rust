@@ -3163,7 +3163,7 @@ pub fn trans_crate(sess: session::Session,
         println!("n_closures: {}", ccx.stats.n_closures);
         println("fn stats:");
 
-        ccx.stats.fn_stats.sort(|&(_, _, insns_a), &(_, _, insns_b)| insns_a >= insns_b);
+        ccx.stats.fn_stats.sort_by(|&(_, _, insns_a), &(_, _, insns_b)| insns_a >= insns_b);
 
         for tuple in ccx.stats.fn_stats.iter() {
             match *tuple {

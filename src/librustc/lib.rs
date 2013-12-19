@@ -162,7 +162,7 @@ Available lint options:
     let mut lint_dict = lint_dict.move_iter()
                                  .map(|(k, v)| (v, k))
                                  .collect::<~[(lint::LintSpec, &'static str)]>();
-    lint_dict.sort(|a,b| a <= b);
+    lint_dict.sort();
 
     let mut max_key = 0;
     for &(_, name) in lint_dict.iter() {

@@ -54,8 +54,8 @@ fn sort_and_fmt(mm: &HashMap<~[u8], uint>, total: uint) -> ~str {
 
    // sort by key, then by value
    fn sortKV<TT:Clone + Ord, UU:Clone + Ord>(mut orig: ~[(TT,UU)]) -> ~[(TT,UU)] {
-        orig.sort(le_by_key);
-        orig.sort(le_by_val);
+        orig.sort_by(le_by_key);
+        orig.sort_by(le_by_val);
         origin
    }
 
