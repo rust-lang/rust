@@ -303,7 +303,7 @@ struct ctxt_ {
     /// Despite its name, `items` does not only map NodeId to an item but
     /// also to expr/stmt/local/arg/etc
     items: ast_map::map,
-    intrinsic_defs: @mut HashMap<ast::DefId, t>,
+    intrinsic_defs: RefCell<HashMap<ast::DefId, t>>,
     freevars: freevars::freevar_map,
     tcache: type_cache,
     rcache: creader_cache,
@@ -989,7 +989,7 @@ pub fn mk_ctxt(s: session::Session,
         trait_refs: RefCell::new(HashMap::new()),
         trait_defs: RefCell::new(HashMap::new()),
         items: amap,
-        intrinsic_defs: @mut HashMap::new(),
+        intrinsic_defs: RefCell::new(HashMap::new()),
         freevars: freevars,
         tcache: @mut HashMap::new(),
         rcache: mk_rcache(),
@@ -4417,14 +4417,16 @@ pub fn count_traits_and_supertraits(tcx: ctxt,
 
 pub fn get_tydesc_ty(tcx: ctxt) -> Result<t, ~str> {
     tcx.lang_items.require(TyDescStructLangItem).map(|tydesc_lang_item| {
-        tcx.intrinsic_defs.find_copy(&tydesc_lang_item)
+        let intrinsic_defs = tcx.intrinsic_defs.borrow();
+        intrinsic_defs.get().find_copy(&tydesc_lang_item)
             .expect("Failed to resolve TyDesc")
     })
 }
 
 pub fn get_opaque_ty(tcx: ctxt) -> Result<t, ~str> {
     tcx.lang_items.require(OpaqueStructLangItem).map(|opaque_lang_item| {
-        tcx.intrinsic_defs.find_copy(&opaque_lang_item)
+        let intrinsic_defs = tcx.intrinsic_defs.borrow();
+        intrinsic_defs.get().find_copy(&opaque_lang_item)
             .expect("Failed to resolve Opaque")
     })
 }

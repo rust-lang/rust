@@ -76,7 +76,8 @@ pub fn collect_item_types(ccx: @mut CrateCtxt, crate: &ast::Crate) {
                               lang_item: ast::DefId) {
         let ty::ty_param_bounds_and_ty { ty: ty, .. } =
             ccx.get_item_ty(lang_item);
-        ccx.tcx.intrinsic_defs.insert(lang_item, ty);
+        let mut intrinsic_defs = ccx.tcx.intrinsic_defs.borrow_mut();
+        intrinsic_defs.get().insert(lang_item, ty);
     }
 
     match ccx.tcx.lang_items.ty_desc() {
