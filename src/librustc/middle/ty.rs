@@ -297,7 +297,7 @@ struct ctxt_ {
 
     impl_trait_cache: RefCell<HashMap<ast::DefId, Option<@ty::TraitRef>>>,
 
-    trait_refs: @mut HashMap<NodeId, @TraitRef>,
+    trait_refs: RefCell<HashMap<NodeId, @TraitRef>>,
     trait_defs: @mut HashMap<DefId, @TraitDef>,
 
     /// Despite its name, `items` does not only map NodeId to an item but
@@ -986,7 +986,7 @@ pub fn mk_ctxt(s: session::Session,
         region_maps: region_maps,
         node_types: @mut HashMap::new(),
         node_type_substs: RefCell::new(HashMap::new()),
-        trait_refs: @mut HashMap::new(),
+        trait_refs: RefCell::new(HashMap::new()),
         trait_defs: @mut HashMap::new(),
         items: amap,
         intrinsic_defs: @mut HashMap::new(),
@@ -2654,7 +2654,8 @@ pub fn index_sty(sty: &sty) -> Option<mt> {
 }
 
 pub fn node_id_to_trait_ref(cx: ctxt, id: ast::NodeId) -> @ty::TraitRef {
-    match cx.trait_refs.find(&id) {
+    let trait_refs = cx.trait_refs.borrow();
+    match trait_refs.get().find(&id) {
        Some(&t) => t,
        None => cx.sess.bug(
            format!("node_id_to_trait_ref: no trait ref for node `{}`",

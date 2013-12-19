@@ -710,8 +710,9 @@ pub fn instantiate_trait_ref(ccx: &CrateCtxt,
             let trait_ref =
                 astconv::ast_path_to_trait_ref(
                     ccx, &rscope, trait_did, Some(self_ty), &ast_trait_ref.path);
-            ccx.tcx.trait_refs.insert(
-                ast_trait_ref.ref_id, trait_ref);
+
+            let mut trait_refs = ccx.tcx.trait_refs.borrow_mut();
+            trait_refs.get().insert(ast_trait_ref.ref_id, trait_ref);
             return trait_ref;
         }
         _ => {
