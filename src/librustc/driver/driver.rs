@@ -446,13 +446,49 @@ pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &input,
     let (outputs, trans) = {
         let expanded_crate = {
             let crate = phase_1_parse_input(sess, cfg.clone(), input);
+            let (crate_id, crate_name, crate_file_name) = sess.opts.print_metas;
+            // these nasty nested conditions are to avoid doing extra work
+            if crate_id || crate_name || crate_file_name {
+                let t_outputs = build_output_filenames(input, outdir, output, crate.attrs, sess);
+                if crate_id || crate_name {
+                    let pkgid = match attr::find_pkgid(crate.attrs) {
+                        Some(pkgid) => pkgid,
+                        None => fail!("No crate_id and --crate-id or --crate-name requested")
+                    };
+                    if crate_id {
+                        println(pkgid.to_str());
+                    }
+                    if crate_name {
+                        println(pkgid.name);
+                    }
+                }
+
+                if crate_file_name {
+                    let lm = link::build_link_meta(sess, &crate, &t_outputs.obj_filename,
+                                                   &mut ::util::sha2::Sha256::new());
+                    // if the vector is empty we default to OutputExecutable.
+                    let style = sess.opts.outputs.get_opt(0).unwrap_or(&OutputExecutable);
+                    let fname = link::filename_for_input(&sess, *style, &lm,
+                                                         &t_outputs.out_filename);
+                    println!("{}", fname.display());
+
+                    // we already maybe printed the first one, so skip it
+                    for style in sess.opts.outputs.iter().skip(1) {
+                        let fname = link::filename_for_input(&sess, *style, &lm,
+                                                             &t_outputs.out_filename);
+                        println!("{}", fname.display());
+                    }
+                }
+
+                return;
+            }
             if stop_after_phase_1(sess) { return; }
             phase_2_configure_and_expand(sess, cfg, crate)
         };
-        let analysis = phase_3_run_analysis_passes(sess, &expanded_crate);
-        if stop_after_phase_3(sess) { return; }
         let outputs = build_output_filenames(input, outdir, output,
                                              expanded_crate.attrs, sess);
+        let analysis = phase_3_run_analysis_passes(sess, &expanded_crate);
+        if stop_after_phase_3(sess) { return; }
         let trans = phase_4_translate_to_llvm(sess, expanded_crate,
                                               &analysis, outputs);
         (outputs, trans)
@@ -789,6 +825,9 @@ pub fn build_session_options(binary: @str,
             }).collect()
         }
     };
+    let print_metas = (matches.opt_present("crate-id"),
+                       matches.opt_present("crate-name"),
+                       matches.opt_present("crate-file-name"));
 
     let sopts = @session::options {
         outputs: outputs,
@@ -817,6 +856,7 @@ pub fn build_session_options(binary: @str,
         debugging_opts: debugging_opts,
         android_cross_path: android_cross_path,
         write_dependency_info: write_dependency_info,
+        print_metas: print_metas,
     };
     return sopts;
 }
@@ -897,6 +937,10 @@ pub fn optgroups() -> ~[getopts::groups::OptGroup] {
   optflag("",  "dylib", "Compile a dynamic library crate"),
   optopt("", "linker", "Program to use for linking instead of the default.", "LINKER"),
   optopt("", "ar", "Program to use for managing archives instead of the default.", "AR"),
+  optflag("", "crate-id", "Output the crate id and exit"),
+  optflag("", "crate-name", "Output the crate name and exit"),
+  optflag("", "crate-file-name", "Output the file(s) that would be written if compilation \
+          continued and exit"),
   optmulti("",  "link-args", "FLAGS is a space-separated list of flags
                             passed to the linker", "FLAGS"),
   optflag("",  "ls",  "List the symbols defined by a library crate"),

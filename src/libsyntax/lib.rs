@@ -13,7 +13,9 @@
  *  macros.
  */
 
+// NOTE: remove pkgid after snapshot
 #[pkgid = "syntax#0.9-pre"];
+#[crate_id = "syntax#0.9-pre"];
 #[license = "MIT/ASL2"];
 #[crate_type = "dylib"];
 #[crate_type = "rlib"];

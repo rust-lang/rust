@@ -237,7 +237,7 @@ pub fn find_linkage_metas(attrs: &[Attribute]) -> ~[@MetaItem] {
 }
 
 pub fn find_pkgid(attrs: &[Attribute]) -> Option<PkgId> {
-    match first_attr_value_str_by_name(attrs, "pkgid") {
+    match first_attr_value_str_by_name(attrs, "crate_id") {
         None => None,
         Some(id) => from_str::<PkgId>(id),
     }

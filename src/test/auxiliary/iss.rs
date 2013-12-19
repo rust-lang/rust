@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[pkgid="issue6919_3#0.1"];
+#[crate_id="issue6919_3#0.1"];
 // NOTE: remove after the next snapshot
 #[link(name="iss6919_3", vers="0.1")];
 

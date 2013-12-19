@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[pkgid="foreign_lib"];
+#[crate_id="foreign_lib"];
 // NOTE: remove after the next snapshot
 #[link(name="foreign_lib", vers="0.0")];
 

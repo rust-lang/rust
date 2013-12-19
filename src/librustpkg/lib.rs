@@ -10,7 +10,9 @@
 
 // rustpkg - a package manager and build system for Rust
 
+// NOTE: remove after snapshot
 #[pkgid = "rustpkg#0.9-pre"];
+#[crate_id = "rustpkg#0.9-pre"];
 #[license = "MIT/ASL2"];
 #[crate_type = "dylib"];
 

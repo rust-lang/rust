@@ -11,7 +11,7 @@
 // aux-build:iss.rs
 // xfail-fast
 
-#[pkgid="issue-6919"];
+#[crate_id="issue-6919"];
 
 extern mod issue6919_3;
 

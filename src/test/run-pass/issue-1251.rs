@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[pkgid="rust_get_test_int"];
+#[crate_id="rust_get_test_int"];
 // NOTE: remove after the next snapshot
 #[link(name = "rust_get_test_int")];
 
