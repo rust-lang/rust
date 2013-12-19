@@ -2289,7 +2289,10 @@ pub fn trans_mod(ccx: @mut CrateContext, m: &ast::_mod) {
 
 fn finish_register_fn(ccx: @mut CrateContext, sp: Span, sym: ~str, node_id: ast::NodeId,
                       llfn: ValueRef) {
-    ccx.item_symbols.insert(node_id, sym);
+    {
+        let mut item_symbols = ccx.item_symbols.borrow_mut();
+        item_symbols.get().insert(node_id, sym);
+    }
 
     if !ccx.reachable.contains(&node_id) {
         lib::llvm::SetLinkage(llfn, lib::llvm::InternalLinkage);
@@ -2537,7 +2540,10 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
                                     debug!("{} not inlined", sym);
                                     ccx.non_inlineable_statics.insert(id);
                                 }
-                                ccx.item_symbols.insert(i.id, sym);
+
+                                let mut item_symbols = ccx.item_symbols
+                                                          .borrow_mut();
+                                item_symbols.get().insert(i.id, sym);
                                 g
                             }
                         }
@@ -3195,7 +3201,8 @@ pub fn trans_crate(sess: session::Session,
     let link_meta = ccx.link_meta.clone();
     let llmod = ccx.llmod;
     let mut reachable = ccx.reachable.iter().filter_map(|id| {
-        ccx.item_symbols.find(id).map(|s| s.to_owned())
+        let item_symbols = ccx.item_symbols.borrow();
+        item_symbols.get().find(id).map(|s| s.to_owned())
     }).to_owned_vec();
 
     // Make sure that some other crucial symbols are not eliminated from the

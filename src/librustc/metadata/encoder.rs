@@ -22,6 +22,7 @@ use middle::typeck;
 use middle;
 
 use std::cast;
+use std::cell::RefCell;
 use std::hashmap::{HashMap, HashSet};
 use std::io::mem::MemWriter;
 use std::io::{Writer, Seek, Decorator};
@@ -59,7 +60,7 @@ pub struct EncodeParams<'a> {
     diag: @mut span_handler,
     tcx: ty::ctxt,
     reexports2: middle::resolve::ExportMap2,
-    item_symbols: &'a HashMap<ast::NodeId, ~str>,
+    item_symbols: &'a RefCell<HashMap<ast::NodeId, ~str>>,
     discrim_symbols: &'a HashMap<ast::NodeId, @str>,
     non_inlineable_statics: &'a HashSet<ast::NodeId>,
     link_meta: &'a LinkMeta,
@@ -89,7 +90,7 @@ pub struct EncodeContext<'a> {
     tcx: ty::ctxt,
     stats: @mut Stats,
     reexports2: middle::resolve::ExportMap2,
-    item_symbols: &'a HashMap<ast::NodeId, ~str>,
+    item_symbols: &'a RefCell<HashMap<ast::NodeId, ~str>>,
     discrim_symbols: &'a HashMap<ast::NodeId, @str>,
     non_inlineable_statics: &'a HashSet<ast::NodeId>,
     link_meta: &'a LinkMeta,
@@ -283,7 +284,8 @@ fn encode_symbol(ecx: &EncodeContext,
                  ebml_w: &mut writer::Encoder,
                  id: NodeId) {
     ebml_w.start_tag(tag_items_data_item_symbol);
-    match ecx.item_symbols.find(&id) {
+    let item_symbols = ecx.item_symbols.borrow();
+    match item_symbols.get().find(&id) {
         Some(x) => {
             debug!("encode_symbol(id={:?}, str={})", id, *x);
             ebml_w.writer.write(x.as_bytes());
@@ -763,7 +765,8 @@ fn encode_info_for_struct_ctor(ecx: &EncodeContext,
     encode_path(ecx, ebml_w, path, ast_map::path_name(name));
     encode_parent_item(ebml_w, local_def(struct_id));
 
-    if ecx.item_symbols.contains_key(&ctor_id) {
+    let item_symbols = ecx.item_symbols.borrow();
+    if item_symbols.get().contains_key(&ctor_id) {
         encode_symbol(ecx, ebml_w, ctor_id);
     }
 
