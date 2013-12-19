@@ -1661,20 +1661,28 @@ impl<T> OwnedVector<T> for ~[T] {
     }
 
     fn unshift(&mut self, x: T) {
-        let v = util::replace(self, ~[x]);
-        self.push_all_move(v);
+        self.insert(0, x)
     }
-    fn insert(&mut self, i: uint, x:T) {
+
+    fn insert(&mut self, i: uint, x: T) {
         let len = self.len();
         assert!(i <= len);
+        // space for the new element
+        self.reserve_additional(1);
 
-        self.push(x);
-        let mut j = len;
-        while j > i {
-            self.swap(j, j - 1);
-            j -= 1;
+        unsafe { // infallible
+            // The spot to put the new value
+            let p = self.as_mut_ptr().offset(i as int);
+            // Shift everything over to make space. (Duplicating the
+            // `i`th element into two consecutive places.)
+            ptr::copy_memory(p.offset(1), p, len - i);
+            // Write it in, overwriting the first copy of the `i`th
+            // element.
+            intrinsics::move_val_init(&mut *p, x);
+            self.set_len(len + 1);
         }
     }
+
     fn remove(&mut self, i: uint) -> T {
         let len = self.len();
         assert!(i < len);
@@ -4144,6 +4152,7 @@ mod bench {
     use vec::VectorVector;
     use option::*;
     use ptr;
+    use rand::{weak_rng, Rng};
 
     #[bench]
     fn iterator(bh: &mut BenchHarness) {
@@ -4319,5 +4328,18 @@ mod bench {
                 *x = 0;
             }
         });
+    }
+
+    #[bench]
+    fn random_inserts(bh: &mut BenchHarness) {
+        let mut rng = weak_rng();
+        bh.iter(|| {
+                let mut v = vec::from_elem(30, (0u, 0u));
+                for _ in range(0, 100) {
+                    let l = v.len();
+                    v.insert(rng.gen::<uint>() % (l + 1),
+                             (1, 1));
+                }
+            })
     }
 }
