@@ -177,7 +177,7 @@ pub struct CrateDebugContext {
     priv builder: DIBuilderRef,
     priv current_debug_location: DebugLocation,
     priv created_files: RefCell<HashMap<~str, DIFile>>,
-    priv created_types: HashMap<uint, DIType>,
+    priv created_types: RefCell<HashMap<uint, DIType>>,
     priv namespace_map: HashMap<~[ast::Ident], @NamespaceTreeNode>,
     // This collection is used to assert that composite types (structs, enums, ...) have their
     // members only set once:
@@ -196,7 +196,7 @@ impl CrateDebugContext {
             builder: builder,
             current_debug_location: UnknownLocation,
             created_files: RefCell::new(HashMap::new()),
-            created_types: HashMap::new(),
+            created_types: RefCell::new(HashMap::new()),
             namespace_map: HashMap::new(),
             composite_types_completed: HashSet::new(),
         };
@@ -1238,7 +1238,11 @@ impl RecursiveTypeDescription {
                 member_description_factory
             } => {
                 // Insert the stub into the cache in order to allow recursive references ...
-                debug_context(cx).created_types.insert(cache_id, metadata_stub);
+                {
+                    let mut created_types = debug_context(cx).created_types
+                                                             .borrow_mut();
+                    created_types.get().insert(cache_id, metadata_stub);
+                }
 
                 // ... then create the member descriptions ...
                 let member_descriptions = member_description_factory.
@@ -2042,9 +2046,13 @@ fn type_metadata(cx: &mut CrateContext,
                  usage_site_span: Span)
               -> DIType {
     let cache_id = cache_id_for_type(t);
-    match debug_context(cx).created_types.find(&cache_id) {
-        Some(type_metadata) => return *type_metadata,
-        None => ()
+
+    {
+        let created_types = debug_context(cx).created_types.borrow();
+        match created_types.get().find(&cache_id) {
+            Some(type_metadata) => return *type_metadata,
+            None => ()
+        }
     }
 
     fn create_pointer_to_box_metadata(cx: &mut CrateContext,
@@ -2158,7 +2166,8 @@ fn type_metadata(cx: &mut CrateContext,
         _ => cx.sess.bug(format!("debuginfo: unexpected type in type_metadata: {:?}", sty))
     };
 
-    debug_context(cx).created_types.insert(cache_id, type_metadata);
+    let mut created_types = debug_context(cx).created_types.borrow_mut();
+    created_types.get().insert(cache_id, type_metadata);
     return type_metadata;
 }
 
