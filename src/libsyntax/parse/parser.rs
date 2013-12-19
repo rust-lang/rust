@@ -2800,8 +2800,13 @@ impl Parser {
         let mut etc = false;
         let mut first = true;
         while *self.token != token::RBRACE {
-            if first { first = false; }
-            else { self.expect(&token::COMMA); }
+            if first {
+                first = false;
+            } else {
+                self.expect(&token::COMMA);
+                // accept trailing commas
+                if *self.token == token::RBRACE { break }
+            }
 
             etc = *self.token == token::UNDERSCORE || *self.token == token::DOTDOT;
             if *self.token == token::UNDERSCORE {
