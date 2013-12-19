@@ -2545,7 +2545,10 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
 
                                 if !inlineable {
                                     debug!("{} not inlined", sym);
-                                    ccx.non_inlineable_statics.insert(id);
+                                    let mut non_inlineable_statics =
+                                        ccx.non_inlineable_statics
+                                           .borrow_mut();
+                                    non_inlineable_statics.get().insert(id);
                                 }
 
                                 let mut item_symbols = ccx.item_symbols

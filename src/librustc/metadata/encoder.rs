@@ -61,7 +61,7 @@ pub struct EncodeParams<'a> {
     tcx: ty::ctxt,
     reexports2: middle::resolve::ExportMap2,
     item_symbols: &'a RefCell<HashMap<ast::NodeId, ~str>>,
-    non_inlineable_statics: &'a HashSet<ast::NodeId>,
+    non_inlineable_statics: &'a RefCell<HashSet<ast::NodeId>>,
     link_meta: &'a LinkMeta,
     cstore: @mut cstore::CStore,
     encode_inlined_item: encode_inlined_item<'a>,
@@ -90,7 +90,7 @@ pub struct EncodeContext<'a> {
     stats: @mut Stats,
     reexports2: middle::resolve::ExportMap2,
     item_symbols: &'a RefCell<HashMap<ast::NodeId, ~str>>,
-    non_inlineable_statics: &'a HashSet<ast::NodeId>,
+    non_inlineable_statics: &'a RefCell<HashSet<ast::NodeId>>,
     link_meta: &'a LinkMeta,
     cstore: &'a cstore::CStore,
     encode_inlined_item: encode_inlined_item<'a>,
@@ -923,7 +923,14 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_name(ecx, ebml_w, item.ident);
         let elt = ast_map::path_pretty_name(item.ident, item.id as u64);
         encode_path(ecx, ebml_w, path, elt);
-        if !ecx.non_inlineable_statics.contains(&item.id) {
+
+        let non_inlineable;
+        {
+            let non_inlineable_statics = ecx.non_inlineable_statics.borrow();
+            non_inlineable = non_inlineable_statics.get().contains(&item.id);
+        }
+
+        if !non_inlineable {
             (ecx.encode_inlined_item)(ecx, ebml_w, path, ii_item(item));
         }
         encode_visibility(ebml_w, vis);
