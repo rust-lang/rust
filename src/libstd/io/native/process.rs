@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use cast;
 use io;
 use libc::{pid_t, c_void, c_int};
 use libc;
@@ -17,6 +16,8 @@ use prelude::*;
 use ptr;
 use rt::rtio;
 use super::file;
+#[cfg(windows)]
+use cast;
 
 use p = io::process;
 
@@ -453,7 +454,7 @@ fn with_argv<T>(prog: &str, args: &[~str], cb: |**libc::c_char| -> T) -> T {
     // Finally, make sure we add a null pointer.
     ptrs.push(ptr::null());
 
-    ptrs.as_imm_buf(|buf, _| cb(buf))
+    cb(ptrs.as_ptr())
 }
 
 #[cfg(unix)]
@@ -476,7 +477,7 @@ fn with_envp<T>(env: Option<~[(~str, ~str)]>, cb: |*c_void| -> T) -> T {
             let mut ptrs = tmps.map(|tmp| tmp.with_ref(|buf| buf));
             ptrs.push(ptr::null());
 
-            ptrs.as_imm_buf(|buf, _| unsafe { cb(cast::transmute(buf)) })
+            cb(ptrs.as_ptr() as *c_void)
         }
         _ => cb(ptr::null())
     }
@@ -499,7 +500,7 @@ fn with_envp<T>(env: Option<~[(~str, ~str)]>, cb: |*mut c_void| -> T) -> T {
 
             blk.push(0);
 
-            blk.as_imm_buf(|p, _len| unsafe { cb(cast::transmute(p)) })
+            cb(blk.as_mut_ptr() as *mut c_void)
         }
         _ => cb(ptr::mut_null())
     }

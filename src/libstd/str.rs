@@ -111,6 +111,7 @@ use vec;
 use vec::{OwnedVector, OwnedCopyableVector, ImmutableVector, MutableVector};
 use default::Default;
 use send_str::{SendStr, SendStrOwned};
+use unstable::raw::Repr;
 
 /*
 Section: Conditions
@@ -382,11 +383,7 @@ impl<'a> Iterator<(uint, char)> for CharOffsetIterator<'a> {
     fn next(&mut self) -> Option<(uint, char)> {
         // Compute the byte offset by using the pointer offset between
         // the original string slice and the iterator's remaining part
-        let offset = self.string.as_imm_buf(|a, _| {
-            self.iter.string.as_imm_buf(|b, _| {
-                b as uint - a as uint
-            })
-        });
+        let offset = self.iter.string.as_ptr() as uint - self.string.as_ptr() as uint;
         self.iter.next().map(|ch| (offset, ch))
     }
 
@@ -400,11 +397,8 @@ impl<'a> DoubleEndedIterator<(uint, char)> for CharOffsetIterator<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<(uint, char)> {
         self.iter.next_back().map(|ch| {
-            let offset = self.string.as_imm_buf(|a, _| {
-                self.iter.string.as_imm_buf(|b, len| {
-                    b as uint - a as uint + len
-                })
-            });
+            let offset = self.iter.string.len() +
+                    self.iter.string.as_ptr() as uint - self.string.as_ptr() as uint;
             (offset, ch)
         })
     }
@@ -748,41 +742,30 @@ pub fn replace(s: &str, from: &str, to: &str) -> ~str {
 Section: Comparing strings
 */
 
+// share the implementation of the lang-item vs. non-lang-item
+// eq_slice.
+#[inline]
+fn eq_slice_(a: &str, b: &str) -> bool {
+    a.len() == b.len() && unsafe {
+        libc::memcmp(a.as_ptr() as *libc::c_void,
+                     b.as_ptr() as *libc::c_void,
+                     a.len() as libc::size_t) == 0
+    }
+}
+
 /// Bytewise slice equality
 #[cfg(not(test))]
 #[lang="str_eq"]
 #[inline]
 pub fn eq_slice(a: &str, b: &str) -> bool {
-    a.as_imm_buf(|ap, alen| {
-        b.as_imm_buf(|bp, blen| {
-            if (alen != blen) { false }
-            else {
-                unsafe {
-                    libc::memcmp(ap as *libc::c_void,
-                                 bp as *libc::c_void,
-                                 alen as libc::size_t) == 0
-                }
-            }
-        })
-    })
+    eq_slice_(a, b)
 }
 
 /// Bytewise slice equality
 #[cfg(test)]
 #[inline]
 pub fn eq_slice(a: &str, b: &str) -> bool {
-    a.as_imm_buf(|ap, alen| {
-        b.as_imm_buf(|bp, blen| {
-            if (alen != blen) { false }
-            else {
-                unsafe {
-                    libc::memcmp(ap as *libc::c_void,
-                                 bp as *libc::c_void,
-                                 alen as libc::size_t) == 0
-                }
-            }
-        })
-    })
+    eq_slice_(a, b)
 }
 
 /// Bytewise string equality
@@ -1000,7 +983,7 @@ pub mod raw {
     /// Create a Rust string from a *u8 buffer of the given length
     pub unsafe fn from_buf_len(buf: *u8, len: uint) -> ~str {
         let mut v: ~[u8] = vec::with_capacity(len);
-        v.as_mut_buf(|vbuf, _len| ptr::copy_memory(vbuf, buf as *u8, len));
+        ptr::copy_memory(v.as_mut_ptr(), buf as *u8, len);
         v.set_len(len);
 
         assert!(is_utf8(v));
@@ -1080,12 +1063,10 @@ pub mod raw {
     /// Caller must check slice boundaries!
     #[inline]
     pub unsafe fn slice_unchecked<'a>(s: &'a str, begin: uint, end: uint) -> &'a str {
-        s.as_imm_buf(|sbuf, _n| {
-             cast::transmute(Slice {
-                 data: sbuf.offset(begin as int),
-                 len: end - begin,
-             })
-        })
+        cast::transmute(Slice {
+                data: s.as_ptr().offset(begin as int),
+                len: end - begin,
+            })
     }
 
     /// Appends a byte to a string.
@@ -1309,7 +1290,7 @@ impl<'a> Str for @str {
 impl<'a> Container for &'a str {
     #[inline]
     fn len(&self) -> uint {
-        self.as_imm_buf(|_p, n| n)
+        self.repr().len
     }
 }
 
@@ -1997,10 +1978,12 @@ pub trait StrSlice<'a> {
     /// ```
     fn subslice_offset(&self, inner: &str) -> uint;
 
-    /// Work with the byte buffer and length of a slice.
+    /// Return an unsafe pointer to the strings buffer.
     ///
-    /// The buffer does not have a null terminator.
-    fn as_imm_buf<T>(&self, f: |*u8, uint| -> T) -> T;
+    /// The caller must ensure that the string outlives this pointer,
+    /// and that it is not reallocated (e.g. by pushing to the
+    /// string).
+    fn as_ptr(&self) -> *u8;
 }
 
 impl<'a> StrSlice<'a> for &'a str {
@@ -2278,15 +2261,14 @@ impl<'a> StrSlice<'a> for &'a str {
 
     #[inline]
     fn to_owned(&self) -> ~str {
-        self.as_imm_buf(|src, len| {
-            unsafe {
-                let mut v = vec::with_capacity(len);
+        let len = self.len();
+        unsafe {
+            let mut v = vec::with_capacity(len);
 
-                v.as_mut_buf(|dst, _| ptr::copy_memory(dst, src, len));
-                v.set_len(len);
-                ::cast::transmute(v)
-            }
-        })
+            ptr::copy_memory(v.as_mut_ptr(), self.as_ptr(), len);
+            v.set_len(len);
+            ::cast::transmute(v)
+        }
     }
 
     #[inline]
@@ -2482,27 +2464,19 @@ impl<'a> StrSlice<'a> for &'a str {
     }
 
     fn subslice_offset(&self, inner: &str) -> uint {
-        self.as_imm_buf(|a, a_len| {
-            inner.as_imm_buf(|b, b_len| {
-                let a_start: uint;
-                let a_end: uint;
-                let b_start: uint;
-                let b_end: uint;
-                unsafe {
-                    a_start = cast::transmute(a); a_end = a_len + cast::transmute(a);
-                    b_start = cast::transmute(b); b_end = b_len + cast::transmute(b);
-                }
-                assert!(a_start <= b_start);
-                assert!(b_end <= a_end);
-                b_start - a_start
-            })
-        })
+        let a_start = self.as_ptr() as uint;
+        let a_end = a_start + self.len();
+        let b_start = inner.as_ptr() as uint;
+        let b_end = b_start + inner.len();
+
+        assert!(a_start <= b_start);
+        assert!(b_end <= a_end);
+        b_start - a_start
     }
 
     #[inline]
-    fn as_imm_buf<T>(&self, f: |*u8, uint| -> T) -> T {
-        let v: &[u8] = unsafe { cast::transmute(*self) };
-        v.as_imm_buf(f)
+    fn as_ptr(&self) -> *u8 {
+        self.repr().data
     }
 }
 
@@ -2581,14 +2555,6 @@ pub trait OwnedStr {
     /// The buffer does not have a null terminator.
     fn into_bytes(self) -> ~[u8];
 
-    /// Work with the mutable byte buffer and length of a slice.
-    ///
-    /// The buffer does not have a null terminator.
-    ///
-    /// The caller must make sure any mutations to this buffer keep the string
-    /// valid UTF-8!
-    fn as_mut_buf<T>(&mut self, f: |*mut u8, uint| -> T) -> T;
-
     /// Sets the length of a string
     ///
     /// This will explicitly set the size of the string, without actually
@@ -2617,16 +2583,15 @@ impl OwnedStr for ~str {
         let cur_len = self.len();
         // may use up to 4 bytes.
         unsafe {
-            raw::as_owned_vec(self).reserve_additional(4);
+            let v = raw::as_owned_vec(self);
+            v.reserve_additional(4);
 
             // Attempt to not use an intermediate buffer by just pushing bytes
             // directly onto this string.
-            let used = self.as_mut_buf(|buf, _| {
-                vec::raw::mut_buf_as_slice(buf.offset(cur_len as int), 4, |slc| {
-                    c.encode_utf8(slc)
-                })
-            });
-            self.set_len(cur_len + used);
+            let write_ptr = v.as_mut_ptr().offset(cur_len as int);
+            let used = vec::raw::mut_buf_as_slice(write_ptr, 4, |slc| c.encode_utf8(slc));
+
+            v.set_len(cur_len + used);
         }
     }
 
@@ -2692,13 +2657,6 @@ impl OwnedStr for ~str {
     #[inline]
     fn into_bytes(self) -> ~[u8] {
         unsafe { cast::transmute(self) }
-    }
-
-    #[inline]
-    fn as_mut_buf<T>(&mut self, f: |*mut u8, uint| -> T) -> T {
-        unsafe {
-            raw::as_owned_vec(self).as_mut_buf(f)
-        }
     }
 
     #[inline]
@@ -3390,19 +3348,15 @@ mod tests {
     }
 
     #[test]
-    fn test_as_imm_buf() {
-        "".as_imm_buf(|_, len| assert_eq!(len, 0));
-
-        "hello".as_imm_buf(|buf, len| {
-            assert_eq!(len, 5);
-            unsafe {
-                assert_eq!(*ptr::offset(buf, 0), 'h' as u8);
-                assert_eq!(*ptr::offset(buf, 1), 'e' as u8);
-                assert_eq!(*ptr::offset(buf, 2), 'l' as u8);
-                assert_eq!(*ptr::offset(buf, 3), 'l' as u8);
-                assert_eq!(*ptr::offset(buf, 4), 'o' as u8);
-            }
-        })
+    fn test_as_ptr() {
+        let buf = "hello".as_ptr();
+        unsafe {
+            assert_eq!(*ptr::offset(buf, 0), 'h' as u8);
+            assert_eq!(*ptr::offset(buf, 1), 'e' as u8);
+            assert_eq!(*ptr::offset(buf, 2), 'l' as u8);
+            assert_eq!(*ptr::offset(buf, 3), 'l' as u8);
+            assert_eq!(*ptr::offset(buf, 4), 'o' as u8);
+        }
     }
 
     #[test]
@@ -3935,10 +3889,10 @@ mod tests {
         assert_eq!(s.as_slice(), "");
 
         let mut s = ~"12345";
-        let p = s.as_imm_buf(|p,_| p);
+        let p = s.as_ptr();
         s.truncate(3);
         s.push_str("6");
-        let p_ = s.as_imm_buf(|p,_| p);
+        let p_ = s.as_ptr();
         assert_eq!(p_, p);
     }
 

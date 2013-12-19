@@ -894,9 +894,9 @@ pub fn C_cstr(cx: &mut CrateContext, s: @str) -> ValueRef {
             None => ()
         }
 
-        let sc = s.as_imm_buf(|buf, buflen| {
-            llvm::LLVMConstStringInContext(cx.llcx, buf as *c_char, buflen as c_uint, False)
-        });
+        let sc = llvm::LLVMConstStringInContext(cx.llcx,
+                                                s.as_ptr() as *c_char, s.len() as c_uint,
+                                                False);
 
         let gsym = token::gensym("str");
         let g = format!("str{}", gsym).with_c_str(|buf| {
@@ -952,17 +952,16 @@ pub fn C_zero_byte_arr(size: uint) -> ValueRef {
 
 pub fn C_struct(elts: &[ValueRef], packed: bool) -> ValueRef {
     unsafe {
-        elts.as_imm_buf(|ptr, len| {
-            llvm::LLVMConstStructInContext(base::task_llcx(), ptr, len as c_uint, packed as Bool)
-        })
+
+        llvm::LLVMConstStructInContext(base::task_llcx(),
+                                       elts.as_ptr(), elts.len() as c_uint,
+                                       packed as Bool)
     }
 }
 
 pub fn C_named_struct(T: Type, elts: &[ValueRef]) -> ValueRef {
     unsafe {
-        elts.as_imm_buf(|ptr, len| {
-            llvm::LLVMConstNamedStruct(T.to_ref(), ptr, len as c_uint)
-        })
+        llvm::LLVMConstNamedStruct(T.to_ref(), elts.as_ptr(), elts.len() as c_uint)
     }
 }
 
@@ -988,9 +987,7 @@ pub fn get_param(fndecl: ValueRef, param: uint) -> ValueRef {
 pub fn const_get_elt(cx: &CrateContext, v: ValueRef, us: &[c_uint])
                   -> ValueRef {
     unsafe {
-        let r = us.as_imm_buf(|p, len| {
-            llvm::LLVMConstExtractValue(v, p, len as c_uint)
-        });
+        let r = llvm::LLVMConstExtractValue(v, us.as_ptr(), us.len() as c_uint);
 
         debug!("const_get_elt(v={}, us={:?}, r={})",
                cx.tn.val_to_str(v), us, cx.tn.val_to_str(r));

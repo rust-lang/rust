@@ -436,10 +436,10 @@ mod tests {
     #[test]
     fn test_get_str() {
         let x = ~"test";
-        let addr_x = x.as_imm_buf(|buf, _len| buf);
+        let addr_x = x.as_ptr();
         let opt = Some(x);
         let y = opt.unwrap();
-        let addr_y = y.as_imm_buf(|buf, _len| buf);
+        let addr_y = y.as_ptr();
         assert_eq!(addr_x, addr_y);
     }
 

@@ -70,7 +70,7 @@ impl Process {
                     },
                     flags: 0,
                     stdio_count: stdio.len() as libc::c_int,
-                    stdio: stdio.as_imm_buf(|p, _| p),
+                    stdio: stdio.as_ptr(),
                     uid: 0,
                     gid: 0,
                 };
@@ -163,7 +163,7 @@ fn with_argv<T>(prog: &str, args: &[~str], f: |**libc::c_char| -> T) -> T {
         c_args.push(s.with_ref(|p| p));
     }
     c_args.push(ptr::null());
-    c_args.as_imm_buf(|buf, _| f(buf))
+    f(c_args.as_ptr())
 }
 
 /// Converts the environment to the env array expected by libuv
@@ -182,7 +182,7 @@ fn with_env<T>(env: Option<&[(~str, ~str)]>, f: |**libc::c_char| -> T) -> T {
         c_envp.push(s.with_ref(|p| p));
     }
     c_envp.push(ptr::null());
-    c_envp.as_imm_buf(|buf, _| f(buf))
+    f(c_envp.as_ptr())
 }
 
 impl HomingIO for Process {
