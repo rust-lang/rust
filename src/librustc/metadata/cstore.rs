@@ -191,7 +191,7 @@ pub fn get_dep_hashes(cstore: &CStore) -> ~[@str] {
         });
     }
 
-    result.sort(|a, b| (a.name, a.vers, a.hash) <= (b.name, b.vers, b.hash));
+    result.sort();
 
     debug!("sorted:");
     for x in result.iter() {

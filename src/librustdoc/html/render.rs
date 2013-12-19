@@ -935,7 +935,7 @@ fn item_module(w: &mut Writer, cx: &Context,
     }
 
     debug!("{:?}", indices);
-    indices.sort(|&i1, &i2| le(&items[i1], &items[i2], i1, i2));
+    indices.sort_by(|&i1, &i2| le(&items[i1], &items[i2], i1, i2));
 
     debug!("{:?}", indices);
     let mut curty = "";

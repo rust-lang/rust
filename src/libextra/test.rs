@@ -37,7 +37,6 @@ use std::to_str::ToStr;
 use std::f64;
 use std::os;
 
-
 // The name of a test. By convention this follows the rules for rust
 // paths; i.e. it should be a series of identifiers separated by double
 // colons. This way if some test runner wants to arrange the tests
@@ -487,7 +486,7 @@ impl<T: Writer> ConsoleTestState<T> {
         for f in self.failures.iter() {
             failures.push(f.name.to_str());
         }
-        failures.sort(|a,b| a <= b);
+        failures.sort();
         for name in failures.iter() {
             self.write_plain(format!("    {}\n", name.to_str()));
         }
@@ -841,7 +840,7 @@ pub fn filter_tests(
     fn lteq(t1: &TestDescAndFn, t2: &TestDescAndFn) -> bool {
         t1.desc.name.to_str() <= t2.desc.name.to_str()
     }
-    filtered.sort(lteq);
+    filtered.sort_by(lteq);
 
     // Shard the remaining tests, if sharding requested.
     match opts.test_shard {

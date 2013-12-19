@@ -464,7 +464,7 @@ fn missing_ctor(cx: &MatchCheckCtxt,
 
         // Sort them by length such that for patterns of the same length,
         // those with a destructured slice come first.
-        vec_pat_lens.sort(|&(len1, slice1), &(len2, slice2)| {
+        vec_pat_lens.sort_by(|&(len1, slice1), &(len2, slice2)| {
                     if len1 == len2 {
                         slice1 > slice2
                     } else {

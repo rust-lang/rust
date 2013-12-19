@@ -203,7 +203,11 @@ pub fn sort_meta_items(items: &[@MetaItem]) -> ~[@MetaItem] {
         .map(|&mi| (mi.name(), mi))
         .collect::<~[(@str, @MetaItem)]>();
 
+<<<<<<< HEAD
     v.sort(|&(a, _), &(b, _)| a <= b);
+=======
+    v.sort_by(|&(a, _): &(@str, @MetaItem), &(b, _): &(@str, @MetaItem)| a <= b);
+>>>>>>> 9ceda35... std::vec: add a sugary .sort() method for plain Ord sorting.
 
     // There doesn't seem to be a more optimal way to do this
     v.move_iter().map(|(_, m)| {

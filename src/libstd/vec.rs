@@ -2181,7 +2181,7 @@ pub trait MutableVector<'a, T> {
     /// v.sort(|a, b| *b <= *a);
     /// assert_eq!(v, [5, 4, 3, 2, 1]);
     /// ```
-    fn sort(self, less_eq: |&T, &T| -> bool);
+    fn sort_by(self, less_eq: |&T, &T| -> bool);
 
     /**
      * Consumes `src` and moves as many elements as it can into `self`
@@ -2328,7 +2328,11 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
     }
 
     #[inline]
+<<<<<<< HEAD
     fn sort(self, less_eq: |&T, &T| -> bool) {
+=======
+    fn sort_by<Sort: SortComparator<T>>(self, less_eq: Sort) {
+>>>>>>> 9ceda35... std::vec: add a sugary .sort() method for plain Ord sorting.
         merge_sort(self, less_eq)
     }
 
@@ -2382,6 +2386,32 @@ impl<'a, T:Clone> MutableCloneableVector<T> for &'a mut [T] {
             a.clone_from(b);
         }
         cmp::min(self.len(), src.len())
+    }
+}
+
+/// Methods for mutable vectors with orderable elements, such as
+/// in-place sorting.
+pub trait MutableOrdVector<T> {
+    /// Sort the vector, in place.
+    ///
+    /// This is equivalent to `self.sort_by(std::vec::SortForward)`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::vec;
+    ///
+    /// let mut v = [-5, 4, 1, -3, 2];
+    ///
+    /// v.sort();
+    /// assert_eq!(v, [-5, -3, 1, 2, 4]);
+    /// ```
+    fn sort(self);
+}
+impl<'a, T: Ord> MutableOrdVector<T> for &'a mut [T] {
+    #[inline]
+    fn sort(self) {
+        self.sort_by(SortForward)
     }
 }
 
@@ -3474,16 +3504,39 @@ mod tests {
                 let mut v = task_rng().gen_vec::<uint>(len);
                 v.sort(|a,b| a <= b);
 
+<<<<<<< HEAD
                 assert!(v.windows(2).all(|w| w[0] <= w[1]));
+=======
+                let mut v1 = v.clone();
+                let mut v2 = v.clone();
+                v.sort();
+                assert!(v.windows(2).all(|w| w[0] <= w[1]));
+
+                v1.sort_by(vec::SortForward);
+                assert!(v1.windows(2).all(|w| w[0] <= w[1]));
+
+                v1.sort_by(vec::SortReverse);
+                assert!(v1.windows(2).all(|w| w[0] >= w[1]));
+
+                v2.sort_by(|a: &uint, b: &uint| a <= b);
+                assert!(v2.windows(2).all(|w| w[0] <= w[1]));
+>>>>>>> 9ceda35... std::vec: add a sugary .sort() method for plain Ord sorting.
             }
         }
 
         // shouldn't fail/crash
         let mut v: [uint, .. 0] = [];
+<<<<<<< HEAD
         v.sort(|a,b| a <= b);
 
         let mut v = [0xDEADBEEF];
         v.sort(|a,b| a <= b);
+=======
+        v.sort_by(SortForward);
+
+        let mut v = [0xDEADBEEF];
+        v.sort_by(SortForward);
+>>>>>>> 9ceda35... std::vec: add a sugary .sort() method for plain Ord sorting.
         assert_eq!(v, [0xDEADBEEF]);
     }
 
@@ -3506,7 +3559,11 @@ mod tests {
 
                 // only sort on the first element, so an unstable sort
                 // may mix up the counts.
+<<<<<<< HEAD
                 v.sort(|&(a,_), &(b,_)| a <= b);
+=======
+                v.sort_by(|&(a,_): &(uint, uint), &(b,_): &(uint, uint)| a <= b);
+>>>>>>> 9ceda35... std::vec: add a sugary .sort() method for plain Ord sorting.
 
                 // this comparison includes the count (the second item
                 // of the tuple), so elements with equal first items
@@ -4341,7 +4398,7 @@ mod bench {
     use extra::test::BenchHarness;
     use iter::range;
     use vec;
-    use vec::VectorVector;
+    use vec::{VectorVector, MutableOrdVector};
     use option::*;
     use ptr;
     use rand::{weak_rng, task_rng, Rng};
@@ -4551,7 +4608,7 @@ mod bench {
         let mut rng = weak_rng();
         bh.iter(|| {
             let mut v: ~[f64] = rng.gen_vec(5);
-            v.sort(|a,b| *a <= *b);
+            v.sort();
         });
         bh.bytes = 5 * mem::size_of::<f64>() as u64;
     }
@@ -4561,7 +4618,7 @@ mod bench {
         let mut rng = weak_rng();
         bh.iter(|| {
             let mut v: ~[f64] = rng.gen_vec(100);
-            v.sort(|a,b| *a <= *b);
+            v.sort();
         });
         bh.bytes = 100 * mem::size_of::<f64>() as u64;
     }
@@ -4571,7 +4628,7 @@ mod bench {
         let mut rng = weak_rng();
         bh.iter(|| {
             let mut v: ~[f64] = rng.gen_vec(10000);
-            v.sort(|a,b| *a <= *b);
+            v.sort();
         });
         bh.bytes = 10000 * mem::size_of::<f64>() as u64;
     }
@@ -4580,7 +4637,7 @@ mod bench {
     fn sort_sorted(bh: &mut BenchHarness) {
         let mut v = vec::from_fn(10000, |i| i);
         bh.iter(|| {
-            v.sort(|a,b| *a <= *b);
+            v.sort();
         });
         bh.bytes = (v.len() * mem::size_of_val(&v[0])) as u64;
     }
