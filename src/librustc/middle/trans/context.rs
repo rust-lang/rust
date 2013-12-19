@@ -93,7 +93,7 @@ pub struct CrateContext {
 
      module_data: RefCell<HashMap<~str, ValueRef>>,
      lltypes: RefCell<HashMap<ty::t, Type>>,
-     llsizingtypes: HashMap<ty::t, Type>,
+     llsizingtypes: RefCell<HashMap<ty::t, Type>>,
      adt_reprs: HashMap<ty::t, @adt::Repr>,
      symbol_hasher: Sha256,
      type_hashcodes: HashMap<ty::t, @str>,
@@ -204,7 +204,7 @@ impl CrateContext {
                   impl_method_cache: RefCell::new(HashMap::new()),
                   module_data: RefCell::new(HashMap::new()),
                   lltypes: RefCell::new(HashMap::new()),
-                  llsizingtypes: HashMap::new(),
+                  llsizingtypes: RefCell::new(HashMap::new()),
                   adt_reprs: HashMap::new(),
                   symbol_hasher: symbol_hasher,
                   type_hashcodes: HashMap::new(),
