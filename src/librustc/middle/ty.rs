@@ -298,7 +298,7 @@ struct ctxt_ {
     impl_trait_cache: RefCell<HashMap<ast::DefId, Option<@ty::TraitRef>>>,
 
     trait_refs: RefCell<HashMap<NodeId, @TraitRef>>,
-    trait_defs: @mut HashMap<DefId, @TraitDef>,
+    trait_defs: RefCell<HashMap<DefId, @TraitDef>>,
 
     /// Despite its name, `items` does not only map NodeId to an item but
     /// also to expr/stmt/local/arg/etc
@@ -987,7 +987,7 @@ pub fn mk_ctxt(s: session::Session,
         node_types: @mut HashMap::new(),
         node_type_substs: RefCell::new(HashMap::new()),
         trait_refs: RefCell::new(HashMap::new()),
-        trait_defs: @mut HashMap::new(),
+        trait_defs: RefCell::new(HashMap::new()),
         items: amap,
         intrinsic_defs: @mut HashMap::new(),
         freevars: freevars,
@@ -3963,7 +3963,8 @@ pub fn lookup_impl_vtables(cx: ctxt,
 
 /// Given the did of a trait, returns its canonical trait ref.
 pub fn lookup_trait_def(cx: ctxt, did: ast::DefId) -> @ty::TraitDef {
-    match cx.trait_defs.find(&did) {
+    let mut trait_defs = cx.trait_defs.borrow_mut();
+    match trait_defs.get().find(&did) {
         Some(&trait_def) => {
             // The item is in this crate. The caller should have added it to the
             // type cache already
@@ -3972,7 +3973,7 @@ pub fn lookup_trait_def(cx: ctxt, did: ast::DefId) -> @ty::TraitDef {
         None => {
             assert!(did.crate != ast::LOCAL_CRATE);
             let trait_def = @csearch::get_trait_def(cx, did);
-            cx.trait_defs.insert(did, trait_def);
+            trait_defs.get().insert(did, trait_def);
             return trait_def;
         }
     }
