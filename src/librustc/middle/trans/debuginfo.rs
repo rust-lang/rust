@@ -178,7 +178,7 @@ pub struct CrateDebugContext {
     priv current_debug_location: DebugLocation,
     priv created_files: RefCell<HashMap<~str, DIFile>>,
     priv created_types: RefCell<HashMap<uint, DIType>>,
-    priv namespace_map: HashMap<~[ast::Ident], @NamespaceTreeNode>,
+    priv namespace_map: RefCell<HashMap<~[ast::Ident], @NamespaceTreeNode>>,
     // This collection is used to assert that composite types (structs, enums, ...) have their
     // members only set once:
     priv composite_types_completed: HashSet<DIType>,
@@ -197,7 +197,7 @@ impl CrateDebugContext {
             current_debug_location: UnknownLocation,
             created_files: RefCell::new(HashMap::new()),
             created_types: RefCell::new(HashMap::new()),
-            namespace_map: HashMap::new(),
+            namespace_map: RefCell::new(HashMap::new()),
             composite_types_completed: HashSet::new(),
         };
     }
@@ -2819,7 +2819,10 @@ fn namespace_for_item(cx: &mut CrateContext,
         let ident = path_element.ident();
         current_key.push(ident);
 
-        let existing_node = debug_context(cx).namespace_map.find_copy(&current_key);
+        let existing_node = {
+            let namespace_map = debug_context(cx).namespace_map.borrow();
+            namespace_map.get().find_copy(&current_key)
+        };
         let current_node = match existing_node {
             Some(existing_node) => existing_node,
             None => {
@@ -2847,7 +2850,11 @@ fn namespace_for_item(cx: &mut CrateContext,
                     parent: parent_node,
                 };
 
-                debug_context(cx).namespace_map.insert(current_key.clone(), node);
+                {
+                    let mut namespace_map = debug_context(cx).namespace_map
+                                                             .borrow_mut();
+                    namespace_map.get().insert(current_key.clone(), node);
+                }
 
                 node
             }
