@@ -84,7 +84,7 @@ pub struct CrateContext {
      const_globals: RefCell<HashMap<int, ValueRef>>,
 
      // Cache of emitted const values
-     const_values: HashMap<ast::NodeId, ValueRef>,
+     const_values: RefCell<HashMap<ast::NodeId, ValueRef>>,
 
      // Cache of external const values
      extern_const_values: HashMap<ast::DefId, ValueRef>,
@@ -199,7 +199,7 @@ impl CrateContext {
                   vtables: RefCell::new(HashMap::new()),
                   const_cstr_cache: RefCell::new(HashMap::new()),
                   const_globals: RefCell::new(HashMap::new()),
-                  const_values: HashMap::new(),
+                  const_values: RefCell::new(HashMap::new()),
                   extern_const_values: HashMap::new(),
                   impl_method_cache: HashMap::new(),
                   module_data: HashMap::new(),
