@@ -142,6 +142,7 @@ use middle::pat_util;
 use util::ppaux;
 
 use std::c_str::ToCStr;
+use std::cell::RefCell;
 use std::hashmap::HashMap;
 use std::hashmap::HashSet;
 use std::libc::{c_uint, c_ulonglong, c_longlong};
@@ -175,7 +176,7 @@ pub struct CrateDebugContext {
     priv llcontext: ContextRef,
     priv builder: DIBuilderRef,
     priv current_debug_location: DebugLocation,
-    priv created_files: HashMap<~str, DIFile>,
+    priv created_files: RefCell<HashMap<~str, DIFile>>,
     priv created_types: HashMap<uint, DIType>,
     priv namespace_map: HashMap<~[ast::Ident], @NamespaceTreeNode>,
     // This collection is used to assert that composite types (structs, enums, ...) have their
@@ -194,7 +195,7 @@ impl CrateDebugContext {
             llcontext: llcontext,
             builder: builder,
             current_debug_location: UnknownLocation,
-            created_files: HashMap::new(),
+            created_files: RefCell::new(HashMap::new()),
             created_types: HashMap::new(),
             namespace_map: HashMap::new(),
             composite_types_completed: HashSet::new(),
@@ -1031,9 +1032,12 @@ fn declare_local(bcx: @Block,
 }
 
 fn file_metadata(cx: &mut CrateContext, full_path: &str) -> DIFile {
-    match debug_context(cx).created_files.find_equiv(&full_path) {
-        Some(file_metadata) => return *file_metadata,
-        None => ()
+    {
+        let created_files = debug_context(cx).created_files.borrow();
+        match created_files.get().find_equiv(&full_path) {
+            Some(file_metadata) => return *file_metadata,
+            None => ()
+        }
     }
 
     debug!("file_metadata: {}", full_path);
@@ -1056,7 +1060,8 @@ fn file_metadata(cx: &mut CrateContext, full_path: &str) -> DIFile {
             })
         });
 
-    debug_context(cx).created_files.insert(full_path.to_owned(), file_metadata);
+    let mut created_files = debug_context(cx).created_files.borrow_mut();
+    created_files.get().insert(full_path.to_owned(), file_metadata);
     return file_metadata;
 }
 
