@@ -70,7 +70,7 @@ pub struct CrateContext {
      non_inlineable_statics: HashSet<ast::NodeId>,
      // Cache instances of monomorphized functions
      monomorphized: RefCell<HashMap<mono_id, ValueRef>>,
-     monomorphizing: HashMap<ast::DefId, uint>,
+     monomorphizing: RefCell<HashMap<ast::DefId, uint>>,
      // Cache generated vtables
      vtables: HashMap<(ty::t, mono_id), ValueRef>,
      // Cache of constant strings,
@@ -201,7 +201,7 @@ impl CrateContext {
                   external_srcs: HashMap::new(),
                   non_inlineable_statics: HashSet::new(),
                   monomorphized: RefCell::new(HashMap::new()),
-                  monomorphizing: HashMap::new(),
+                  monomorphizing: RefCell::new(HashMap::new()),
                   vtables: HashMap::new(),
                   const_cstr_cache: HashMap::new(),
                   const_globals: HashMap::new(),

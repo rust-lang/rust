@@ -184,17 +184,22 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
 
     ccx.stats.n_monos += 1;
 
-    let depth = match ccx.monomorphizing.find(&fn_id) {
-        Some(&d) => d, None => 0
-    };
-    // Random cut-off -- code that needs to instantiate the same function
-    // recursively more than thirty times can probably safely be assumed to be
-    // causing an infinite expansion.
-    if depth > 30 {
-        ccx.sess.span_fatal(
-            span, "overly deep expansion of inlined function");
+    let depth;
+    {
+        let mut monomorphizing = ccx.monomorphizing.borrow_mut();
+        depth = match monomorphizing.get().find(&fn_id) {
+            Some(&d) => d, None => 0
+        };
+
+        // Random cut-off -- code that needs to instantiate the same function
+        // recursively more than thirty times can probably safely be assumed
+        // to be causing an infinite expansion.
+        if depth > 30 {
+            ccx.sess.span_fatal(
+                span, "overly deep expansion of inlined function");
+        }
+        monomorphizing.get().insert(fn_id, depth + 1);
     }
-    ccx.monomorphizing.insert(fn_id, depth + 1);
 
     let (_, elt) = gensym_name(ccx.sess.str_of(name));
     let mut pt = (*pt).clone();
@@ -292,7 +297,11 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
         ccx.tcx.sess.bug(format!("Can't monomorphize a {:?}", map_node))
       }
     };
-    ccx.monomorphizing.insert(fn_id, depth);
+
+    {
+        let mut monomorphizing = ccx.monomorphizing.borrow_mut();
+        monomorphizing.get().insert(fn_id, depth);
+    }
 
     debug!("leaving monomorphic fn {}", ty::item_path_str(ccx.tcx, fn_id));
     (lldecl, must_cast)
