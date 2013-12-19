@@ -165,7 +165,7 @@ pub fn phase_2_configure_and_expand(sess: Session,
     let time_passes = sess.time_passes();
 
     *sess.building_library = session::building_library(sess.opts, &crate);
-    *sess.outputs = session::collect_outputs(sess.opts, &crate);
+    *sess.outputs = session::collect_outputs(sess.opts, crate.attrs);
 
     time(time_passes, "gated feature checking", (), |_|
          front::feature_gate::check_crate(sess, &crate));
@@ -446,42 +446,6 @@ pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &input,
     let (outputs, trans) = {
         let expanded_crate = {
             let crate = phase_1_parse_input(sess, cfg.clone(), input);
-            let (crate_id, crate_name, crate_file_name) = sess.opts.print_metas;
-            // these nasty nested conditions are to avoid doing extra work
-            if crate_id || crate_name || crate_file_name {
-                let t_outputs = build_output_filenames(input, outdir, output, crate.attrs, sess);
-                if crate_id || crate_name {
-                    let pkgid = match attr::find_pkgid(crate.attrs) {
-                        Some(pkgid) => pkgid,
-                        None => fail!("No crate_id and --crate-id or --crate-name requested")
-                    };
-                    if crate_id {
-                        println(pkgid.to_str());
-                    }
-                    if crate_name {
-                        println(pkgid.name);
-                    }
-                }
-
-                if crate_file_name {
-                    let lm = link::build_link_meta(sess, &crate, &t_outputs.obj_filename,
-                                                   &mut ::util::sha2::Sha256::new());
-                    // if the vector is empty we default to OutputExecutable.
-                    let style = sess.opts.outputs.get_opt(0).unwrap_or(&OutputExecutable);
-                    let fname = link::filename_for_input(&sess, *style, &lm,
-                                                         &t_outputs.out_filename);
-                    println!("{}", fname.display());
-
-                    // we already maybe printed the first one, so skip it
-                    for style in sess.opts.outputs.iter().skip(1) {
-                        let fname = link::filename_for_input(&sess, *style, &lm,
-                                                             &t_outputs.out_filename);
-                        println!("{}", fname.display());
-                    }
-                }
-
-                return;
-            }
             if stop_after_phase_1(sess) { return; }
             phase_2_configure_and_expand(sess, cfg, crate)
         };
