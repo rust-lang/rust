@@ -308,7 +308,7 @@ struct ctxt_ {
     tcache: type_cache,
     rcache: creader_cache,
     short_names_cache: RefCell<HashMap<t, @str>>,
-    needs_unwind_cleanup_cache: @mut HashMap<t, bool>,
+    needs_unwind_cleanup_cache: RefCell<HashMap<t, bool>>,
     tc_cache: @mut HashMap<uint, TypeContents>,
     ast_ty_to_ty_cache: @mut HashMap<NodeId, ast_ty_to_ty_cache_entry>,
     enum_var_cache: @mut HashMap<DefId, @~[@VariantInfo]>,
@@ -994,7 +994,7 @@ pub fn mk_ctxt(s: session::Session,
         tcache: @mut HashMap::new(),
         rcache: mk_rcache(),
         short_names_cache: RefCell::new(HashMap::new()),
-        needs_unwind_cleanup_cache: new_ty_hash(),
+        needs_unwind_cleanup_cache: RefCell::new(HashMap::new()),
         tc_cache: @mut HashMap::new(),
         ast_ty_to_ty_cache: @mut HashMap::new(),
         enum_var_cache: @mut HashMap::new(),
@@ -1668,15 +1668,21 @@ pub fn type_needs_drop(cx: ctxt, ty: t) -> bool {
 // that only contain scalars and shared boxes can avoid unwind
 // cleanups.
 pub fn type_needs_unwind_cleanup(cx: ctxt, ty: t) -> bool {
-    match cx.needs_unwind_cleanup_cache.find(&ty) {
-      Some(&result) => return result,
-      None => ()
+    {
+        let needs_unwind_cleanup_cache = cx.needs_unwind_cleanup_cache
+                                           .borrow();
+        match needs_unwind_cleanup_cache.get().find(&ty) {
+            Some(&result) => return result,
+            None => ()
+        }
     }
 
     let mut tycache = HashSet::new();
     let needs_unwind_cleanup =
         type_needs_unwind_cleanup_(cx, ty, &mut tycache, false);
-    cx.needs_unwind_cleanup_cache.insert(ty, needs_unwind_cleanup);
+    let mut needs_unwind_cleanup_cache = cx.needs_unwind_cleanup_cache
+                                           .borrow_mut();
+    needs_unwind_cleanup_cache.get().insert(ty, needs_unwind_cleanup);
     return needs_unwind_cleanup;
 }
 
