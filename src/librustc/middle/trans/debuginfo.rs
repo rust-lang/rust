@@ -2241,8 +2241,9 @@ fn bytes_to_bits(bytes: uint) -> c_ulonglong {
 }
 
 #[inline]
-fn debug_context<'a>(cx: &'a mut CrateContext) -> &'a mut CrateDebugContext {
-    cx.dbg_cx.get_mut_ref()
+fn debug_context<'a>(cx: &'a mut CrateContext) -> &'a CrateDebugContext {
+    let debug_context: &'a CrateDebugContext = cx.dbg_cx.get_mut_ref();
+    debug_context
 }
 
 #[inline]
