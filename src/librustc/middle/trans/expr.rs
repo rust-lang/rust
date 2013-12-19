@@ -1796,11 +1796,15 @@ pub fn trans_log_level(bcx: @Block) -> DatumBlock {
     let ccx = bcx.ccx();
 
     let (modpath, modname) = {
-        let srccrate = match ccx.external_srcs.find(&bcx.fcx.id) {
-            Some(&src) => {
-                ccx.sess.cstore.get_crate_data(src.crate).name
-            }
-            None => ccx.link_meta.pkgid.name.to_managed(),
+        let srccrate;
+        {
+            let external_srcs = ccx.external_srcs.borrow();
+            srccrate = match external_srcs.get().find(&bcx.fcx.id) {
+                Some(&src) => {
+                    ccx.sess.cstore.get_crate_data(src.crate).name
+                }
+                None => ccx.link_meta.pkgid.name.to_managed(),
+            };
         };
         let mut modpath = ~[path_mod(ccx.sess.ident_of(srccrate))];
         for e in bcx.fcx.path.iter() {
