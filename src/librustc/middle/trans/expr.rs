@@ -1018,8 +1018,10 @@ fn trans_lvalue_unadjusted(bcx: @Block, expr: &ast::Expr) -> DatumBlock {
                         PointerCast(bcx, val, pty)
                     } else {
                         {
-                            let extern_const_values = &bcx.ccx().extern_const_values;
-                            match extern_const_values.find(&did) {
+                            let extern_const_values = bcx.ccx()
+                                                         .extern_const_values
+                                                         .borrow();
+                            match extern_const_values.get().find(&did) {
                                 None => {}  // Continue.
                                 Some(llval) => {
                                     return *llval;
@@ -1037,8 +1039,9 @@ fn trans_lvalue_unadjusted(bcx: @Block, expr: &ast::Expr) -> DatumBlock {
                                                     llty.to_ref(),
                                                     buf)
                             });
-                            let extern_const_values = &mut bcx.ccx().extern_const_values;
-                            extern_const_values.insert(did, llval);
+                            let mut extern_const_values =
+                                bcx.ccx().extern_const_values.borrow_mut();
+                            extern_const_values.get().insert(did, llval);
                             llval
                         }
                     }
