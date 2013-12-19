@@ -13,36 +13,66 @@
 #[feature(globs)];
 
 mod rusti {
-    extern "rust-intrinsic" {
+    extern {
+        #[link_name = "llvm.sqrt.f32"]
         pub fn sqrtf32(x: f32) -> f32;
+        #[link_name = "llvm.sqrt.f64"]
         pub fn sqrtf64(x: f64) -> f64;
+        #[link_name = "llvm.powi.f32"]
         pub fn powif32(a: f32, x: i32) -> f32;
+        #[link_name = "llvm.powi.f64"]
         pub fn powif64(a: f64, x: i32) -> f64;
+        #[link_name = "llvm.sin.f32"]
         pub fn sinf32(x: f32) -> f32;
+        #[link_name = "llvm.sin.f64"]
         pub fn sinf64(x: f64) -> f64;
+        #[link_name = "llvm.cos.f32"]
         pub fn cosf32(x: f32) -> f32;
+        #[link_name = "llvm.cos.f64"]
         pub fn cosf64(x: f64) -> f64;
+        #[link_name = "llvm.pow.f32"]
         pub fn powf32(a: f32, x: f32) -> f32;
+        #[link_name = "llvm.pow.f64"]
         pub fn powf64(a: f64, x: f64) -> f64;
+        #[link_name = "llvm.exp.f32"]
         pub fn expf32(x: f32) -> f32;
+        #[link_name = "llvm.exp.f64"]
         pub fn expf64(x: f64) -> f64;
+        #[link_name = "llvm.exp2.f32"]
         pub fn exp2f32(x: f32) -> f32;
+        #[link_name = "llvm.exp2.f64"]
         pub fn exp2f64(x: f64) -> f64;
+        #[link_name = "llvm.log.f32"]
         pub fn logf32(x: f32) -> f32;
+        #[link_name = "llvm.log.f64"]
         pub fn logf64(x: f64) -> f64;
+        #[link_name = "llvm.log10.f32"]
         pub fn log10f32(x: f32) -> f32;
+        #[link_name = "llvm.log10.f64"]
         pub fn log10f64(x: f64) -> f64;
+        #[link_name = "llvm.log2.f32"]
         pub fn log2f32(x: f32) -> f32;
+        #[link_name = "llvm.log2.f64"]
         pub fn log2f64(x: f64) -> f64;
+        #[link_name = "llvm.fma.f32"]
         pub fn fmaf32(a: f32, b: f32, c: f32) -> f32;
+        #[link_name = "llvm.fma.f64"]
         pub fn fmaf64(a: f64, b: f64, c: f64) -> f64;
+        #[link_name = "llvm.fabs.f32"]
         pub fn fabsf32(x: f32) -> f32;
+        #[link_name = "llvm.fabs.f64"]
         pub fn fabsf64(x: f64) -> f64;
+        #[link_name = "llvm.floor.f32"]
         pub fn floorf32(x: f32) -> f32;
+        #[link_name = "llvm.floor.f64"]
         pub fn floorf64(x: f64) -> f64;
+        #[link_name = "llvm.ceil.f32"]
         pub fn ceilf32(x: f32) -> f32;
+        #[link_name = "llvm.ceil.f64"]
         pub fn ceilf64(x: f64) -> f64;
+        #[link_name = "llvm.trunc.f32"]
         pub fn truncf32(x: f32) -> f32;
+        #[link_name = "llvm.trunc.f64"]
         pub fn truncf64(x: f64) -> f64;
     }
 }
