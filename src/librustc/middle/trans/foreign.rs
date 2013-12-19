@@ -646,11 +646,9 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: @mut CrateContext,
         }
 
         // Perform the call itself
-        let llrust_ret_val = llrust_args.as_imm_buf(|ptr, len| {
-            debug!("calling llrustfn = {}", ccx.tn.val_to_str(llrustfn));
-            llvm::LLVMBuildCall(builder, llrustfn, ptr,
-                                len as c_uint, noname())
-        });
+        debug!("calling llrustfn = {}", ccx.tn.val_to_str(llrustfn));
+        let llrust_ret_val = llvm::LLVMBuildCall(builder, llrustfn, llrust_args.as_ptr(),
+                                                 llrust_args.len() as c_uint, noname());
 
         // Get the return value where the foreign fn expects it.
         let llforeign_ret_ty = match tys.fn_ty.ret_ty.cast {

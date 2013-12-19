@@ -111,9 +111,7 @@ impl Rng for OSRng {
                                    pbBuffer: *mut BYTE);
         }
 
-        v.as_mut_buf(|ptr, len| {
-            unsafe {rust_win32_rand_gen(self.hcryptprov, len as DWORD, ptr)}
-        })
+        unsafe {rust_win32_rand_gen(self.hcryptprov, v.len() as DWORD, v.as_mut_ptr())}
     }
 }
 
