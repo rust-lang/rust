@@ -15,3 +15,4 @@
 
 pub trait RequiresFreeze : Freeze { }
 pub trait RequiresRequiresFreezeAndSend : RequiresFreeze + Send { }
+pub trait RequiresPod : Pod { }
