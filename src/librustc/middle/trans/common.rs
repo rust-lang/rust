@@ -245,7 +245,7 @@ pub struct FunctionContext {
     // them in llallocas.
     lllocals: @mut HashMap<ast::NodeId, ValueRef>,
     // Same as above, but for closure upvars
-    llupvars: @mut HashMap<ast::NodeId, ValueRef>,
+    llupvars: RefCell<HashMap<ast::NodeId, ValueRef>>,
 
     // The NodeId of the function, or -1 if it doesn't correspond to
     // a user-defined function.

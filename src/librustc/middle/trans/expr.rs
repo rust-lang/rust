@@ -1084,7 +1084,8 @@ pub fn trans_local_var(bcx: @Block, def: ast::Def) -> Datum {
         ast::DefUpvar(nid, _, _, _) => {
             // Can't move upvars, so this is never a ZeroMemLastUse.
             let local_ty = node_id_type(bcx, nid);
-            match bcx.fcx.llupvars.find(&nid) {
+            let llupvars = bcx.fcx.llupvars.borrow();
+            match llupvars.get().find(&nid) {
                 Some(&val) => {
                     Datum {
                         val: val,

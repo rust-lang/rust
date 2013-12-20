@@ -328,7 +328,11 @@ pub fn load_environment(fcx: @mut FunctionContext,
             ast::ManagedSigil | ast::OwnedSigil => {}
         }
         let def_id = ast_util::def_id_of_def(cap_var.def);
-        fcx.llupvars.insert(def_id.node, upvarptr);
+
+        {
+            let mut llupvars = fcx.llupvars.borrow_mut();
+            llupvars.get().insert(def_id.node, upvarptr);
+        }
 
         for &env_pointer_alloca in env_pointer_alloca.iter() {
             debuginfo::create_captured_var_metadata(
