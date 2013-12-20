@@ -372,8 +372,10 @@ impl CoherenceChecker {
 
             // Pair the new synthesized ID up with the
             // ID of the method.
-            self.crate_context.tcx.provided_method_sources
-                .insert(new_did, trait_method.def_id);
+            let mut provided_method_sources =
+                self.crate_context.tcx.provided_method_sources.borrow_mut();
+            provided_method_sources.get().insert(new_did,
+                                                 trait_method.def_id);
         }
     }
 
@@ -653,7 +655,9 @@ impl CoherenceChecker {
         // the map. This is a bit unfortunate.
         for method in implementation.methods.iter() {
             for source in method.provided_source.iter() {
-                tcx.provided_method_sources.insert(method.def_id, *source);
+                let mut provided_method_sources = tcx.provided_method_sources
+                                                     .borrow_mut();
+                provided_method_sources.get().insert(method.def_id, *source);
             }
         }
 
