@@ -953,7 +953,7 @@ pub struct ty_param_substs_and_ty {
     ty: ty::t
 }
 
-type type_cache = @mut HashMap<ast::DefId, ty_param_bounds_and_ty>;
+type type_cache = RefCell<HashMap<ast::DefId, ty_param_bounds_and_ty>>;
 
 pub type node_type_table = @mut HashMap<uint,t>;
 
@@ -986,7 +986,7 @@ pub fn mk_ctxt(s: session::Session,
         items: amap,
         intrinsic_defs: RefCell::new(HashMap::new()),
         freevars: freevars,
-        tcache: @mut HashMap::new(),
+        tcache: RefCell::new(HashMap::new()),
         rcache: mk_rcache(),
         short_names_cache: RefCell::new(HashMap::new()),
         needs_unwind_cleanup_cache: RefCell::new(HashMap::new()),
@@ -3975,8 +3975,9 @@ pub fn enum_variant_with_id(cx: ctxt,
 pub fn lookup_item_type(cx: ctxt,
                         did: ast::DefId)
                      -> ty_param_bounds_and_ty {
+    let mut tcache = cx.tcache.borrow_mut();
     lookup_locally_or_in_crate_store(
-        "tcache", did, cx.tcache,
+        "tcache", did, tcache.get(),
         || csearch::get_type(cx, did))
 }
 
@@ -4071,15 +4072,17 @@ pub fn lookup_field_type(tcx: ctxt,
                       -> ty::t {
     let t = if id.crate == ast::LOCAL_CRATE {
         node_id_to_type(tcx, id.node)
-    }
-    else {
-        match tcx.tcache.find(&id) {
-           Some(&ty_param_bounds_and_ty {ty, ..}) => ty,
-           None => {
-               let tpt = csearch::get_field_type(tcx, struct_id, id);
-               tcx.tcache.insert(id, tpt);
-               tpt.ty
-           }
+    } else {
+        {
+            let mut tcache = tcx.tcache.borrow_mut();
+            match tcache.get().find(&id) {
+               Some(&ty_param_bounds_and_ty {ty, ..}) => ty,
+               None => {
+                   let tpt = csearch::get_field_type(tcx, struct_id, id);
+                   tcache.get().insert(id, tpt);
+                   tpt.ty
+               }
+            }
         }
     };
     subst(tcx, substs, t)
