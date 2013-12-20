@@ -3096,7 +3096,7 @@ pub fn trans_crate(sess: session::Session,
     }
 
     let mut symbol_hasher = Sha256::new();
-    let link_meta = link::build_link_meta(sess, &crate, output,
+    let link_meta = link::build_link_meta(sess, crate.attrs, output,
                                           &mut symbol_hasher);
 
     // Append ".rc" to crate name as LLVM module identifier.

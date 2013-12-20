@@ -21,13 +21,11 @@
 extern mod extra;
 extern mod syntax;
 
-use driver::driver::{host_triple, optgroups, early_error};
-use driver::driver::{str_input, file_input, build_session_options};
-use driver::driver::{build_session, build_configuration, parse_pretty};
-use driver::driver::{PpMode, pretty_print_input, list_metadata};
-use driver::driver::{compile_input};
+use back::link;
 use driver::session;
 use middle::lint;
+
+use d = driver::driver;
 
 use std::cast;
 use std::comm;
@@ -41,9 +39,12 @@ use std::task;
 use std::vec;
 use extra::getopts::groups;
 use extra::getopts;
+use syntax::ast;
+use syntax::attr;
 use syntax::codemap;
 use syntax::diagnostic::Emitter;
 use syntax::diagnostic;
+use syntax::parse;
 
 pub mod middle {
     pub mod trans;
@@ -137,7 +138,7 @@ pub fn version(argv0: &str) {
         None => "unknown version"
     };
     println!("{} {}", argv0, vers);
-    println!("host: {}", host_triple());
+    println!("host: {}", d::host_triple());
 }
 
 pub fn usage(argv0: &str) {
@@ -146,7 +147,7 @@ pub fn usage(argv0: &str) {
 Additional help:
     -W help             Print 'lint' options and default settings
     -Z help             Print internal options for debugging rustc\n",
-              groups::usage(message, optgroups()));
+              groups::usage(message, d::optgroups()));
 }
 
 pub fn describe_warnings() {
@@ -206,10 +207,10 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
     if args.is_empty() { usage(binary); return; }
 
     let matches =
-        &match getopts::groups::getopts(args, optgroups()) {
+        &match getopts::groups::getopts(args, d::optgroups()) {
           Ok(m) => m,
           Err(f) => {
-            early_error(demitter, f.to_err_msg());
+            d::early_error(demitter, f.to_err_msg());
           }
         };
 
@@ -246,48 +247,97 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
         return;
     }
     let input = match matches.free.len() {
-      0u => early_error(demitter, "no input filename given"),
+      0u => d::early_error(demitter, "no input filename given"),
       1u => {
         let ifile = matches.free[0].as_slice();
         if "-" == ifile {
             let src = str::from_utf8_owned(io::stdin().read_to_end());
-            str_input(src.to_managed())
+            d::str_input(src.to_managed())
         } else {
-            file_input(Path::new(ifile))
+            d::file_input(Path::new(ifile))
         }
       }
-      _ => early_error(demitter, "multiple input filenames provided")
+      _ => d::early_error(demitter, "multiple input filenames provided")
     };
 
-    let sopts = build_session_options(binary, matches, demitter);
-    let sess = build_session(sopts, demitter);
+    let sopts = d::build_session_options(binary, matches, demitter);
+    let sess = d::build_session(sopts, demitter);
     let odir = matches.opt_str("out-dir").map(|o| Path::new(o));
     let ofile = matches.opt_str("o").map(|o| Path::new(o));
-    let cfg = build_configuration(sess);
+    let cfg = d::build_configuration(sess);
     let pretty = matches.opt_default("pretty", "normal").map(|a| {
-        parse_pretty(sess, a)
+        d::parse_pretty(sess, a)
     });
     match pretty {
-      Some::<PpMode>(ppm) => {
-        pretty_print_input(sess, cfg, &input, ppm);
+      Some::<d::PpMode>(ppm) => {
+        d::pretty_print_input(sess, cfg, &input, ppm);
         return;
       }
-      None::<PpMode> => {/* continue */ }
+      None::<d::PpMode> => {/* continue */ }
     }
     let ls = matches.opt_present("ls");
     if ls {
         match input {
-          file_input(ref ifile) => {
-            list_metadata(sess, &(*ifile), @mut io::stdout() as @mut io::Writer);
+          d::file_input(ref ifile) => {
+            d::list_metadata(sess, &(*ifile),
+                                  @mut io::stdout() as @mut io::Writer);
           }
-          str_input(_) => {
-            early_error(demitter, "can not list metadata for stdin");
+          d::str_input(_) => {
+            d::early_error(demitter, "can not list metadata for stdin");
           }
         }
         return;
     }
+    let (crate_id, crate_name, crate_file_name) = sopts.print_metas;
+    // these nasty nested conditions are to avoid doing extra work
+    if crate_id || crate_name || crate_file_name {
+        let attrs = parse_crate_attrs(sess, &input);
+        let t_outputs = d::build_output_filenames(&input, &odir, &ofile,
+                                                  attrs, sess);
+        if crate_id || crate_name {
+            let pkgid = match attr::find_pkgid(attrs) {
+                Some(pkgid) => pkgid,
+                None => {
+                    sess.fatal("No crate_id and --crate-id or \
+                                --crate-name requested")
+                }
+            };
+            if crate_id {
+                println(pkgid.to_str());
+            }
+            if crate_name {
+                println(pkgid.name);
+            }
+        }
 
-    compile_input(sess, cfg, &input, &odir, &ofile);
+        if crate_file_name {
+            let lm = link::build_link_meta(sess, attrs, &t_outputs.obj_filename,
+                                           &mut ::util::sha2::Sha256::new());
+            let outputs = session::collect_outputs(sopts, attrs);
+            for &style in outputs.iter() {
+                let fname = link::filename_for_input(&sess, style, &lm,
+                                                     &t_outputs.out_filename);
+                println!("{}", fname.filename_display());
+            }
+        }
+
+        return;
+    }
+
+    d::compile_input(sess, cfg, &input, &odir, &ofile);
+}
+
+fn parse_crate_attrs(sess: session::Session,
+                     input: &d::input) -> ~[ast::Attribute] {
+    match *input {
+        d::file_input(ref ifile) => {
+            parse::parse_crate_attrs_from_file(ifile, ~[], sess.parse_sess)
+        }
+        d::str_input(src) => {
+            parse::parse_crate_attrs_from_source_str(
+                d::anon_src(), src, ~[], sess.parse_sess)
+        }
+    }
 }
 
 #[deriving(Eq)]
