@@ -384,10 +384,11 @@ impl CoherenceChecker {
                              implementation: @Impl) {
         let tcx = self.crate_context.tcx;
         let implementation_list;
-        match tcx.inherent_impls.find(&base_def_id) {
+        let mut inherent_impls = tcx.inherent_impls.borrow_mut();
+        match inherent_impls.get().find(&base_def_id) {
             None => {
                 implementation_list = @mut ~[];
-                tcx.inherent_impls.insert(base_def_id, implementation_list);
+                inherent_impls.get().insert(base_def_id, implementation_list);
             }
             Some(&existing_implementation_list) => {
                 implementation_list = existing_implementation_list;

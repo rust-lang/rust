@@ -282,7 +282,8 @@ impl DeadVisitor {
         // method of a private type is used, but the type itself is never
         // called directly.
         let def_id = local_def(id);
-        match self.tcx.inherent_impls.find(&def_id) {
+        let inherent_impls = self.tcx.inherent_impls.borrow();
+        match inherent_impls.get().find(&def_id) {
             None => (),
             Some(ref impl_list) => {
                 for impl_ in impl_list.iter() {

@@ -338,7 +338,7 @@ struct ctxt_ {
     // Maps a def_id of a type to a list of its inherent impls.
     // Contains implementations of methods that are inherent to a type.
     // Methods in these implementations don't need to be exported.
-    inherent_impls: @mut HashMap<ast::DefId, @mut ~[@Impl]>,
+    inherent_impls: RefCell<HashMap<ast::DefId, @mut ~[@Impl]>>,
 
     // Maps a def_id of an impl to an Impl structure.
     // Note that this contains all of the impls that we know about,
@@ -1006,7 +1006,7 @@ pub fn mk_ctxt(s: session::Session,
         destructor_for_type: RefCell::new(HashMap::new()),
         destructors: RefCell::new(HashSet::new()),
         trait_impls: RefCell::new(HashMap::new()),
-        inherent_impls:  @mut HashMap::new(),
+        inherent_impls: RefCell::new(HashMap::new()),
         impls:  @mut HashMap::new(),
         used_unsafe: @mut HashSet::new(),
         used_mut_nodes: @mut HashSet::new(),
@@ -4549,10 +4549,11 @@ pub fn populate_implementations_for_type_if_necessary(tcx: ctxt,
         // If this is an inherent implementation, record it.
         if associated_traits.is_none() {
             let implementation_list;
-            match tcx.inherent_impls.find(&type_id) {
+            let mut inherent_impls = tcx.inherent_impls.borrow_mut();
+            match inherent_impls.get().find(&type_id) {
                 None => {
                     implementation_list = @mut ~[];
-                    tcx.inherent_impls.insert(type_id, implementation_list);
+                    inherent_impls.get().insert(type_id, implementation_list);
                 }
                 Some(&existing_implementation_list) => {
                     implementation_list = existing_implementation_list;

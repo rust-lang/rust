@@ -527,7 +527,8 @@ impl<'a> LookupContext<'a> {
         // metadata if necessary.
         ty::populate_implementations_for_type_if_necessary(self.tcx(), did);
 
-        let opt_impl_infos = self.tcx().inherent_impls.find(&did);
+        let inherent_impls = self.tcx().inherent_impls.borrow();
+        let opt_impl_infos = inherent_impls.get().find(&did);
         for impl_infos in opt_impl_infos.iter() {
             for impl_info in impl_infos.iter() {
                 self.push_candidates_from_impl(
