@@ -24,6 +24,7 @@ use middle::graph::{Direction, NodeIndex};
 use util::common::indenter;
 use util::ppaux::{Repr};
 
+use std::cell::RefCell;
 use std::hashmap::{HashMap, HashSet};
 use std::uint;
 use std::vec;
@@ -88,7 +89,7 @@ type CombineMap = HashMap<TwoRegions, RegionVid>;
 pub struct RegionVarBindings {
     tcx: ty::ctxt,
     var_origins: ~[RegionVariableOrigin],
-    constraints: HashMap<Constraint, SubregionOrigin>,
+    constraints: RefCell<HashMap<Constraint, SubregionOrigin>>,
     lubs: CombineMap,
     glbs: CombineMap,
     skolemization_count: uint,
@@ -114,7 +115,7 @@ pub fn RegionVarBindings(tcx: ty::ctxt) -> RegionVarBindings {
         tcx: tcx,
         var_origins: ~[],
         values: None,
-        constraints: HashMap::new(),
+        constraints: RefCell::new(HashMap::new()),
         lubs: HashMap::new(),
         glbs: HashMap::new(),
         skolemization_count: 0,
@@ -157,7 +158,8 @@ impl RegionVarBindings {
                 self.var_origins.pop();
               }
               AddConstraint(ref constraint) => {
-                self.constraints.remove(constraint);
+                let mut constraints = self.constraints.borrow_mut();
+                constraints.get().remove(constraint);
               }
               AddCombination(Glb, ref regions) => {
                 self.glbs.remove(regions);
@@ -228,7 +230,8 @@ impl RegionVarBindings {
 
         debug!("RegionVarBindings: add_constraint({:?})", constraint);
 
-        if self.constraints.insert(constraint, origin) {
+        let mut constraints = self.constraints.borrow_mut();
+        if constraints.get().insert(constraint, origin) {
             if self.in_snapshot() {
                 self.undo_log.push(AddConstraint(constraint));
             }
@@ -925,7 +928,8 @@ impl RegionVarBindings {
         &self,
         errors: &mut OptVec<RegionResolutionError>)
     {
-        for (constraint, _) in self.constraints.iter() {
+        let constraints = self.constraints.borrow();
+        for (constraint, _) in constraints.get().iter() {
             let (sub, sup) = match *constraint {
                 ConstrainVarSubVar(..) |
                 ConstrainRegSubVar(..) |
@@ -943,7 +947,7 @@ impl RegionVarBindings {
 
             debug!("ConcreteFailure: !(sub <= sup): sub={:?}, sup={:?}",
                    sub, sup);
-            let origin = self.constraints.get_copy(constraint);
+            let origin = constraints.get().get_copy(constraint);
             errors.push(ConcreteFailure(origin, sub, sup));
         }
     }
@@ -1031,7 +1035,9 @@ impl RegionVarBindings {
 
     fn construct_graph(&self) -> RegionGraph {
         let num_vars = self.num_vars();
-        let num_edges = self.constraints.len();
+
+        let constraints = self.constraints.borrow();
+        let num_edges = constraints.get().len();
 
         let mut graph = graph::Graph::with_capacity(num_vars + 1,
                                                     num_edges);
@@ -1041,7 +1047,7 @@ impl RegionVarBindings {
         }
         let dummy_idx = graph.add_node(());
 
-        for (constraint, _) in self.constraints.iter() {
+        for (constraint, _) in constraints.get().iter() {
             match *constraint {
                 ConstrainVarSubVar(a_id, b_id) => {
                     graph.add_edge(NodeIndex(a_id.to_uint()),
@@ -1230,9 +1236,10 @@ impl RegionVarBindings {
 
                     ConstrainRegSubVar(region, _) |
                     ConstrainVarSubReg(_, region) => {
+                        let constraints = this.constraints.borrow();
                         state.result.push(RegionAndOrigin {
                             region: region,
-                            origin: this.constraints.get_copy(&edge.data)
+                            origin: constraints.get().get_copy(&edge.data)
                         });
                     }
 
@@ -1252,7 +1259,8 @@ impl RegionVarBindings {
             changed = false;
             iteration += 1;
             debug!("---- {} Iteration \\#{}", tag, iteration);
-            for (constraint, _) in self.constraints.iter() {
+            let constraints = self.constraints.borrow();
+            for (constraint, _) in constraints.get().iter() {
                 let edge_changed = body(constraint);
                 if edge_changed {
                     debug!("Updated due to constraint {}",
