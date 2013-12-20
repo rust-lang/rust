@@ -313,7 +313,7 @@ struct ctxt_ {
     enum_var_cache: RefCell<HashMap<DefId, @~[@VariantInfo]>>,
     ty_param_defs: RefCell<HashMap<ast::NodeId, TypeParameterDef>>,
     adjustments: RefCell<HashMap<ast::NodeId, @AutoAdjustment>>,
-    normalized_cache: @mut HashMap<t, t>,
+    normalized_cache: RefCell<HashMap<t, t>>,
     lang_items: middle::lang_items::LanguageItems,
     // A mapping of fake provided method def_ids to the default implementation
     provided_method_sources: RefCell<HashMap<ast::DefId, ast::DefId>>,
@@ -961,10 +961,6 @@ fn mk_rcache() -> creader_cache {
     return @mut HashMap::new();
 }
 
-pub fn new_ty_hash<V:'static>() -> @mut HashMap<t, V> {
-    @mut HashMap::new()
-}
-
 pub fn mk_ctxt(s: session::Session,
                dm: resolve::DefMap,
                named_region_map: @mut resolve_lifetime::NamedRegionMap,
@@ -1003,7 +999,7 @@ pub fn mk_ctxt(s: session::Session,
         impl_trait_cache: RefCell::new(HashMap::new()),
         ty_param_defs: RefCell::new(HashMap::new()),
         adjustments: RefCell::new(HashMap::new()),
-        normalized_cache: new_ty_hash(),
+        normalized_cache: RefCell::new(HashMap::new()),
         lang_items: lang_items,
         provided_method_sources: RefCell::new(HashMap::new()),
         supertraits: RefCell::new(HashMap::new()),
@@ -4265,13 +4261,20 @@ pub fn normalize_ty(cx: ctxt, t: t) -> t {
         fn tcx(&self) -> ty::ctxt { **self }
 
         fn fold_ty(&mut self, t: ty::t) -> ty::t {
-            match self.tcx().normalized_cache.find_copy(&t) {
+            let normalized_opt = {
+                let normalized_cache = self.tcx().normalized_cache.borrow();
+                normalized_cache.get().find_copy(&t)
+            };
+            match normalized_opt {
                 Some(u) => {
                     return u;
                 }
                 None => {
                     let t_norm = ty_fold::super_fold_ty(self, t);
-                    self.tcx().normalized_cache.insert(t, t_norm);
+                    let mut normalized_cache = self.tcx()
+                                                   .normalized_cache
+                                                   .borrow_mut();
+                    normalized_cache.get().insert(t, t_norm);
                     return t_norm;
                 }
             }
