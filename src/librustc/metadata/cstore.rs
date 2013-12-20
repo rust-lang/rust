@@ -15,6 +15,7 @@
 
 use metadata::cstore;
 use metadata::decoder;
+use metadata::loader;
 
 use std::hashmap::HashMap;
 use extra;
@@ -29,6 +30,7 @@ pub type cnum_map = @mut HashMap<ast::CrateNum, ast::CrateNum>;
 
 pub enum MetadataBlob {
     MetadataVec(~[u8]),
+    MetadataArchive(loader::ArchiveMetadata),
 }
 
 pub struct crate_metadata {
@@ -216,6 +218,7 @@ impl MetadataBlob {
     pub fn as_slice<'a>(&'a self) -> &'a [u8] {
         match *self {
             MetadataVec(ref vec) => vec.as_slice(),
+            MetadataArchive(ref ar) => ar.as_slice(),
         }
     }
 }

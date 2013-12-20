@@ -123,7 +123,16 @@ pub fn search(filesearch: @FileSearch, pick: pick) {
         match io::result(|| fs::readdir(lib_search_path)) {
             Ok(files) => {
                 let mut rslt = FileDoesntMatch;
-                for path in files.iter() {
+                let is_rlib = |p: & &Path| {
+                    p.extension_str() == Some("rlib")
+                };
+                // Reading metadata out of rlibs is faster, and if we find both
+                // an rlib and a dylib we only read one of the files of
+                // metadata, so in the name of speed, bring all rlib files to
+                // the front of the search list.
+                let files1 = files.iter().filter(|p| is_rlib(p));
+                let files2 = files.iter().filter(|p| !is_rlib(p));
+                for path in files1.chain(files2) {
                     debug!("testing {}", path.display());
                     let maybe_picked = pick(path);
                     match maybe_picked {
