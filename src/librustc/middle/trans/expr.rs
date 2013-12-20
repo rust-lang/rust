@@ -997,7 +997,7 @@ fn trans_lvalue_unadjusted(bcx: @Block, expr: &ast::Expr) -> DatumBlock {
             ast::DefStatic(did, _) => {
                 let const_ty = expr_ty(bcx, ref_expr);
 
-                fn get_did(ccx: @mut CrateContext, did: ast::DefId)
+                fn get_did(ccx: @CrateContext, did: ast::DefId)
                     -> ast::DefId {
                     if did.crate != ast::LOCAL_CRATE {
                         inline::maybe_instantiate_inline(ccx, did)

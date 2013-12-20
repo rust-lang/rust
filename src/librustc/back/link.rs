@@ -520,7 +520,7 @@ pub fn symbol_hash(tcx: ty::ctxt,
     hash.to_managed()
 }
 
-pub fn get_symbol_hash(ccx: &mut CrateContext, t: ty::t) -> @str {
+pub fn get_symbol_hash(ccx: &CrateContext, t: ty::t) -> @str {
     {
         let type_hashcodes = ccx.type_hashcodes.borrow();
         match type_hashcodes.get().find(&t) {
@@ -662,7 +662,7 @@ pub fn exported_name(sess: Session,
     mangle(sess, path, Some(hash), Some(vers.as_slice()))
 }
 
-pub fn mangle_exported_name(ccx: &mut CrateContext,
+pub fn mangle_exported_name(ccx: &CrateContext,
                             path: path,
                             t: ty::t) -> ~str {
     let hash = get_symbol_hash(ccx, t);
@@ -671,7 +671,7 @@ pub fn mangle_exported_name(ccx: &mut CrateContext,
                          ccx.link_meta.pkgid.version_or_default());
 }
 
-pub fn mangle_internal_name_by_type_only(ccx: &mut CrateContext,
+pub fn mangle_internal_name_by_type_only(ccx: &CrateContext,
                                          t: ty::t,
                                          name: &str) -> ~str {
     let s = ppaux::ty_to_short_str(ccx.tcx, t);
@@ -683,7 +683,7 @@ pub fn mangle_internal_name_by_type_only(ccx: &mut CrateContext,
                   None);
 }
 
-pub fn mangle_internal_name_by_type_and_seq(ccx: &mut CrateContext,
+pub fn mangle_internal_name_by_type_and_seq(ccx: &CrateContext,
                                             t: ty::t,
                                             name: &str) -> ~str {
     let s = ppaux::ty_to_str(ccx.tcx, t);
@@ -695,7 +695,7 @@ pub fn mangle_internal_name_by_type_and_seq(ccx: &mut CrateContext,
                   None);
 }
 
-pub fn mangle_internal_name_by_path_and_seq(ccx: &mut CrateContext,
+pub fn mangle_internal_name_by_path_and_seq(ccx: &CrateContext,
                                             mut path: path,
                                             flav: &str) -> ~str {
     let (_, name) = gensym_name(flav);
@@ -703,7 +703,7 @@ pub fn mangle_internal_name_by_path_and_seq(ccx: &mut CrateContext,
     mangle(ccx.sess, path, None, None)
 }
 
-pub fn mangle_internal_name_by_path(ccx: &mut CrateContext, path: path) -> ~str {
+pub fn mangle_internal_name_by_path(ccx: &CrateContext, path: path) -> ~str {
     mangle(ccx.sess, path, None, None)
 }
 

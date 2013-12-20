@@ -188,7 +188,7 @@ pub fn scratch_datum(bcx: @Block, ty: ty::t, name: &str, zero: bool) -> Datum {
     Datum { val: scratch, ty: ty, mode: ByRef(RevokeClean) }
 }
 
-pub fn appropriate_mode(ccx: &mut CrateContext, ty: ty::t) -> DatumMode {
+pub fn appropriate_mode(ccx: &CrateContext, ty: ty::t) -> DatumMode {
     /*!
      * Indicates the "appropriate" mode for this value,
      * which is either by ref or by value, depending
@@ -492,7 +492,7 @@ impl Datum {
         }
     }
 
-    pub fn appropriate_mode(&self, ccx: &mut CrateContext) -> DatumMode {
+    pub fn appropriate_mode(&self, ccx: &CrateContext) -> DatumMode {
         /*! See the `appropriate_mode()` function */
 
         appropriate_mode(ccx, self.ty)
@@ -857,7 +857,7 @@ impl DatumBlock {
         rslt(self.bcx, self.datum.to_appropriate_llval(self.bcx))
     }
 
-    pub fn ccx(&self) -> @mut CrateContext {
+    pub fn ccx(&self) -> @CrateContext {
         self.bcx.ccx()
     }
 

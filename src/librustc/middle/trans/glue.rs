@@ -108,7 +108,7 @@ pub fn free_ty_immediate(bcx: @Block, v: ValueRef, t: ty::t) -> @Block {
     }
 }
 
-pub fn lazily_emit_all_tydesc_glue(ccx: @mut CrateContext,
+pub fn lazily_emit_all_tydesc_glue(ccx: @CrateContext,
                                    static_ti: @mut tydesc_info) {
     lazily_emit_tydesc_glue(ccx, abi::tydesc_field_take_glue, static_ti);
     lazily_emit_tydesc_glue(ccx, abi::tydesc_field_drop_glue, static_ti);
@@ -173,7 +173,7 @@ pub fn simplified_glue_type(tcx: ty::ctxt, field: uint, t: ty::t) -> ty::t {
     return t;
 }
 
-pub fn lazily_emit_simplified_tydesc_glue(ccx: @mut CrateContext,
+pub fn lazily_emit_simplified_tydesc_glue(ccx: @CrateContext,
                                           field: uint,
                                           ti: &mut tydesc_info) -> bool {
     let _icx = push_ctxt("lazily_emit_simplified_tydesc_glue");
@@ -198,7 +198,7 @@ pub fn lazily_emit_simplified_tydesc_glue(ccx: @mut CrateContext,
 }
 
 
-pub fn lazily_emit_tydesc_glue(ccx: @mut CrateContext,
+pub fn lazily_emit_tydesc_glue(ccx: @CrateContext,
                                field: uint,
                                ti: @mut tydesc_info) {
     let _icx = push_ctxt("lazily_emit_tydesc_glue");
@@ -586,7 +586,7 @@ pub fn incr_refcnt_of_boxed(cx: @Block, box_ptr: ValueRef) {
 
 
 // Generates the declaration for (but doesn't emit) a type descriptor.
-pub fn declare_tydesc(ccx: &mut CrateContext, t: ty::t) -> @mut tydesc_info {
+pub fn declare_tydesc(ccx: &CrateContext, t: ty::t) -> @mut tydesc_info {
     // If emit_tydescs already ran, then we shouldn't be creating any new
     // tydescs.
     assert!(!ccx.finished_tydescs.get());
@@ -642,7 +642,7 @@ pub fn declare_tydesc(ccx: &mut CrateContext, t: ty::t) -> @mut tydesc_info {
 pub type glue_helper<'a> = 'a |@Block, ValueRef, ty::t|
                                      -> @Block;
 
-pub fn declare_generic_glue(ccx: &mut CrateContext, t: ty::t, llfnty: Type,
+pub fn declare_generic_glue(ccx: &CrateContext, t: ty::t, llfnty: Type,
                             name: &str) -> ValueRef {
     let _icx = push_ctxt("declare_generic_glue");
     let fn_nm = mangle_internal_name_by_type_and_seq(ccx, t, (~"glue_" + name)).to_managed();
@@ -652,7 +652,7 @@ pub fn declare_generic_glue(ccx: &mut CrateContext, t: ty::t, llfnty: Type,
     return llfn;
 }
 
-pub fn make_generic_glue_inner(ccx: @mut CrateContext,
+pub fn make_generic_glue_inner(ccx: @CrateContext,
                                t: ty::t,
                                llfn: ValueRef,
                                helper: glue_helper)
@@ -679,7 +679,7 @@ pub fn make_generic_glue_inner(ccx: @mut CrateContext,
     return llfn;
 }
 
-pub fn make_generic_glue(ccx: @mut CrateContext,
+pub fn make_generic_glue(ccx: @CrateContext,
                          t: ty::t,
                          llfn: ValueRef,
                          helper: glue_helper,
@@ -691,7 +691,7 @@ pub fn make_generic_glue(ccx: @mut CrateContext,
     make_generic_glue_inner(ccx, t, llfn, helper)
 }
 
-pub fn emit_tydescs(ccx: &mut CrateContext) {
+pub fn emit_tydescs(ccx: &CrateContext) {
     let _icx = push_ctxt("emit_tydescs");
     // As of this point, allow no more tydescs to be created.
     ccx.finished_tydescs.set(true);
