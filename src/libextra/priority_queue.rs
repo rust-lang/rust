@@ -231,11 +231,7 @@ mod tests {
     fn test_top_and_pop() {
         let data = ~[2u, 4, 6, 2, 1, 8, 10, 3, 5, 7, 0, 9, 1];
         let mut sorted = data.clone();
-<<<<<<< HEAD
-        sorted.sort(|x, y| x.le(y));
-=======
         sorted.sort();
->>>>>>> 9ceda35... std::vec: add a sugary .sort() method for plain Ord sorting.
         let mut heap = PriorityQueue::from_vec(data);
         while !heap.is_empty() {
             assert_eq!(heap.top(), sorted.last());

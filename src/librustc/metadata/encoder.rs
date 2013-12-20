@@ -1531,7 +1531,7 @@ fn encode_crate_deps(ecx: &EncodeContext,
         });
 
         // Sort by cnum
-        deps.sort_by(|kv1, kv2| kv1.cnum <= kv2.cnum);
+        deps.sort_by(|kv1, kv2| kv1.cnum.cmp(&kv2.cnum));
 
         // Sanity-check the crate numbers
         let mut expected_cnum = 1;

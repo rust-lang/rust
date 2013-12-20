@@ -14,7 +14,7 @@ static MAX_LEN: uint = 20;
 static mut drop_counts: [uint, .. MAX_LEN] = [0, .. MAX_LEN];
 static mut clone_count: uint = 0;
 
-#[deriving(Rand, Ord)]
+#[deriving(Rand, Ord, TotalEq, TotalOrd)]
 struct DropCounter { x: uint, clone_num: uint }
 
 impl Clone for DropCounter {
@@ -48,7 +48,7 @@ pub fn main() {
             // work out the total number of comparisons required to sort
             // this array...
             let mut count = 0;
-            main.clone().sort_by(|a, b| { count += 1; a <= b });
+            main.clone().sort_by(|a, b| { count += 1; a.cmp(b) });
 
             // ... and then fail on each and every single one.
             for fail_countdown in range(0, count) {
@@ -68,7 +68,7 @@ pub fn main() {
                                     fail!()
                                 }
                                 fail_countdown -= 1;
-                                a <= b
+                                a.cmp(b)
                             })
                     });
 

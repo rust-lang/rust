@@ -148,7 +148,7 @@ impl Iterator<Path> for GlobIterator {
 fn list_dir_sorted(path: &Path) -> ~[Path] {
     match io::result(|| fs::readdir(path)) {
         Ok(mut children) => {
-            children.sort_by(|p1, p2| p2.filename() <= p1.filename());
+            children.sort_by(|p1, p2| p2.filename().cmp(&p1.filename()));
             children
         }
         Err(..) => ~[]

@@ -1921,7 +1921,7 @@ impl<T:Eq> OwnedEqVector<T> for ~[T] {
     }
 }
 
-fn merge_sort<T>(v: &mut [T], less_eq: |&T, &T| -> bool) {
+fn merge_sort<T>(v: &mut [T], compare: |&T, &T| -> Ordering) {
     // warning: this wildly uses unsafe.
     static INSERTION: uint = 8;
 
@@ -1930,7 +1930,7 @@ fn merge_sort<T>(v: &mut [T], less_eq: |&T, &T| -> bool) {
     // allocate some memory to use as scratch memory, we keep the
     // length 0 so we can keep shallow copies of the contents of `v`
     // without risking the dtors running on an object twice if
-    // `less_eq` fails.
+    // `compare` fails.
     let mut working_space = with_capacity(2 * len);
     // these both are buffers of length `len`.
     let mut buf_dat = working_space.as_mut_ptr();
@@ -1960,7 +1960,8 @@ fn merge_sort<T>(v: &mut [T], less_eq: |&T, &T| -> bool) {
 
                 // start <= j - 1 < len, so .offset(j - 1) is in
                 // bounds.
-                while j > start as int && !less_eq(&*buf_dat.offset(j - 1), &*read_ptr) {
+                while j > start as int &&
+                        compare(&*read_ptr, &*buf_dat.offset(j - 1)) == Less {
                     j -= 1;
                 }
 
@@ -2034,10 +2035,10 @@ fn merge_sort<T>(v: &mut [T], less_eq: |&T, &T| -> bool) {
 
                     // `left < right_start` and `right < right_end`,
                     // so these are valid.
-                    let to_copy = if less_eq(&*left, &*right) {
-                        step(&mut left)
-                    } else {
+                    let to_copy = if compare(&*left, &*right) == Greater {
                         step(&mut right)
+                    } else {
+                        step(&mut left)
                     };
                     ptr::copy_nonoverlapping_memory(out, to_copy, 1);
                     step(&mut out);
@@ -2164,8 +2165,8 @@ pub trait MutableVector<'a, T> {
     /// Reverse the order of elements in a vector, in place
     fn reverse(self);
 
-    /// Sort the vector, in place, using `less_eq` to compare `a <=
-    /// b`.
+    /// Sort the vector, in place, using `compare` to compare
+    /// elements.
     ///
     /// This sort is `O(n log n)` worst-case and stable, but allocates
     /// approximately `2 * n`, where `n` is the length of `self`.
@@ -2174,14 +2175,14 @@ pub trait MutableVector<'a, T> {
     ///
     /// ```rust
     /// let mut v = [5, 4, 1, 3, 2];
-    /// v.sort(|a, b| *a <= *b);
+    /// v.sort(|a, b| a.cmp(b));
     /// assert_eq!(v, [1, 2, 3, 4, 5]);
     ///
     /// // reverse sorting
-    /// v.sort(|a, b| *b <= *a);
+    /// v.sort(|a, b| b.cmp(a));
     /// assert_eq!(v, [5, 4, 3, 2, 1]);
     /// ```
-    fn sort_by(self, less_eq: |&T, &T| -> bool);
+    fn sort_by(self, compare: |&T, &T| -> Ordering);
 
     /**
      * Consumes `src` and moves as many elements as it can into `self`
@@ -2328,12 +2329,8 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
     }
 
     #[inline]
-<<<<<<< HEAD
-    fn sort(self, less_eq: |&T, &T| -> bool) {
-=======
-    fn sort_by<Sort: SortComparator<T>>(self, less_eq: Sort) {
->>>>>>> 9ceda35... std::vec: add a sugary .sort() method for plain Ord sorting.
-        merge_sort(self, less_eq)
+    fn sort_by(self, compare: |&T, &T| -> Ordering) {
+        merge_sort(self, compare)
     }
 
     #[inline]
@@ -2391,7 +2388,7 @@ impl<'a, T:Clone> MutableCloneableVector<T> for &'a mut [T] {
 
 /// Methods for mutable vectors with orderable elements, such as
 /// in-place sorting.
-pub trait MutableOrdVector<T> {
+pub trait MutableTotalOrdVector<T> {
     /// Sort the vector, in place.
     ///
     /// This is equivalent to `self.sort_by(std::vec::SortForward)`.
@@ -2408,10 +2405,10 @@ pub trait MutableOrdVector<T> {
     /// ```
     fn sort(self);
 }
-impl<'a, T: Ord> MutableOrdVector<T> for &'a mut [T] {
+impl<'a, T: TotalOrd> MutableTotalOrdVector<T> for &'a mut [T] {
     #[inline]
     fn sort(self) {
-        self.sort_by(SortForward)
+        self.sort_by(|a,b| a.cmp(b))
     }
 }
 
@@ -3502,41 +3499,25 @@ mod tests {
         for len in range(4u, 25) {
             for _ in range(0, 100) {
                 let mut v = task_rng().gen_vec::<uint>(len);
-                v.sort(|a,b| a <= b);
-
-<<<<<<< HEAD
-                assert!(v.windows(2).all(|w| w[0] <= w[1]));
-=======
                 let mut v1 = v.clone();
-                let mut v2 = v.clone();
+
                 v.sort();
                 assert!(v.windows(2).all(|w| w[0] <= w[1]));
 
-                v1.sort_by(vec::SortForward);
+                v1.sort_by(|a, b| a.cmp(b));
                 assert!(v1.windows(2).all(|w| w[0] <= w[1]));
 
-                v1.sort_by(vec::SortReverse);
+                v1.sort_by(|a, b| b.cmp(a));
                 assert!(v1.windows(2).all(|w| w[0] >= w[1]));
-
-                v2.sort_by(|a: &uint, b: &uint| a <= b);
-                assert!(v2.windows(2).all(|w| w[0] <= w[1]));
->>>>>>> 9ceda35... std::vec: add a sugary .sort() method for plain Ord sorting.
             }
         }
 
         // shouldn't fail/crash
         let mut v: [uint, .. 0] = [];
-<<<<<<< HEAD
-        v.sort(|a,b| a <= b);
+        v.sort();
 
         let mut v = [0xDEADBEEF];
-        v.sort(|a,b| a <= b);
-=======
-        v.sort_by(SortForward);
-
-        let mut v = [0xDEADBEEF];
-        v.sort_by(SortForward);
->>>>>>> 9ceda35... std::vec: add a sugary .sort() method for plain Ord sorting.
+        v.sort();
         assert_eq!(v, [0xDEADBEEF]);
     }
 
@@ -3559,11 +3540,7 @@ mod tests {
 
                 // only sort on the first element, so an unstable sort
                 // may mix up the counts.
-<<<<<<< HEAD
-                v.sort(|&(a,_), &(b,_)| a <= b);
-=======
-                v.sort_by(|&(a,_): &(uint, uint), &(b,_): &(uint, uint)| a <= b);
->>>>>>> 9ceda35... std::vec: add a sugary .sort() method for plain Ord sorting.
+                v.sort_by(|&(a,_), &(b,_)| a.cmp(&b));
 
                 // this comparison includes the count (the second item
                 // of the tuple), so elements with equal first items
@@ -4398,10 +4375,10 @@ mod bench {
     use extra::test::BenchHarness;
     use iter::range;
     use vec;
-    use vec::{VectorVector, MutableOrdVector};
+    use vec::{VectorVector, MutableTotalOrdVector};
     use option::*;
     use ptr;
-    use rand::{weak_rng, task_rng, Rng};
+    use rand::{weak_rng, Rng};
     use mem;
 
     #[bench]
@@ -4604,33 +4581,34 @@ mod bench {
             })
     }
 
+    #[bench]
     fn sort_random_small(bh: &mut BenchHarness) {
         let mut rng = weak_rng();
         bh.iter(|| {
-            let mut v: ~[f64] = rng.gen_vec(5);
+            let mut v: ~[u64] = rng.gen_vec(5);
             v.sort();
         });
-        bh.bytes = 5 * mem::size_of::<f64>() as u64;
+        bh.bytes = 5 * mem::size_of::<u64>() as u64;
     }
 
     #[bench]
     fn sort_random_medium(bh: &mut BenchHarness) {
         let mut rng = weak_rng();
         bh.iter(|| {
-            let mut v: ~[f64] = rng.gen_vec(100);
+            let mut v: ~[u64] = rng.gen_vec(100);
             v.sort();
         });
-        bh.bytes = 100 * mem::size_of::<f64>() as u64;
+        bh.bytes = 100 * mem::size_of::<u64>() as u64;
     }
 
     #[bench]
     fn sort_random_large(bh: &mut BenchHarness) {
         let mut rng = weak_rng();
         bh.iter(|| {
-            let mut v: ~[f64] = rng.gen_vec(10000);
+            let mut v: ~[u64] = rng.gen_vec(10000);
             v.sort();
         });
-        bh.bytes = 10000 * mem::size_of::<f64>() as u64;
+        bh.bytes = 10000 * mem::size_of::<u64>() as u64;
     }
 
     #[bench]

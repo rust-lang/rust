@@ -837,10 +837,7 @@ pub fn filter_tests(
     };
 
     // Sort the tests alphabetically
-    fn lteq(t1: &TestDescAndFn, t2: &TestDescAndFn) -> bool {
-        t1.desc.name.to_str() <= t2.desc.name.to_str()
-    }
-    filtered.sort_by(lteq);
+    filtered.sort_by(|t1, t2| t1.desc.name.to_str().cmp(&t2.desc.name.to_str()));
 
     // Shard the remaining tests, if sharding requested.
     match opts.test_shard {

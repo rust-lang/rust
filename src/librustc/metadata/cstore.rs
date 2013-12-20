@@ -167,7 +167,7 @@ pub fn find_extern_mod_stmt_cnum(cstore: &CStore,
     cstore.extern_mod_crate_map.find(&emod_id).map(|x| *x)
 }
 
-#[deriving(Clone)]
+#[deriving(Clone, TotalEq, TotalOrd)]
 struct crate_hash {
     name: @str,
     vers: @str,
