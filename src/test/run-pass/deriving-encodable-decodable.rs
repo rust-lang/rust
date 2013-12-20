@@ -12,6 +12,7 @@
 // job done at least
 
 // xfail-fast
+// xfail-test FIXME(#5121)
 
 #[feature(struct_variant, managed_boxes)];
 
@@ -54,7 +55,8 @@ struct G<T> {
     t: T
 }
 
-fn roundtrip<T: Rand + Eq + Encodable<Encoder> + Decodable<Decoder>>() {
+fn roundtrip<'a, T: Rand + Eq + Encodable<Encoder> +
+                    Decodable<Decoder<'a>>>() {
     let obj: T = random();
     let w = @mut MemWriter::new();
     let mut e = Encoder(w);

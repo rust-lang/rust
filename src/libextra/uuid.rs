@@ -792,7 +792,7 @@ mod test {
         let u = Uuid::new_v4();
         let wr = @mut MemWriter::new();
         u.encode(&mut ebml::writer::Encoder(wr));
-        let doc = ebml::reader::Doc(@wr.inner_ref().to_owned());
+        let doc = ebml::reader::Doc(wr.inner_ref().as_slice());
         let u2 = Decodable::decode(&mut ebml::reader::Decoder(doc));
         assert_eq!(u, u2);
     }
