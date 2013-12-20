@@ -416,7 +416,7 @@ enum ModuleKind {
 /// One node in the tree of modules.
 struct Module {
     parent_link: ParentLink,
-    def_id: Option<DefId>,
+    def_id: Cell<Option<DefId>>,
     kind: Cell<ModuleKind>,
     is_public: bool,
 
@@ -467,7 +467,7 @@ impl Module {
            -> Module {
         Module {
             parent_link: parent_link,
-            def_id: def_id,
+            def_id: Cell::new(def_id),
             kind: Cell::new(kind),
             is_public: is_public,
             children: @mut HashMap::new(),
@@ -668,7 +668,7 @@ impl NameBindings {
                             None => {
                                 match type_def.module_def {
                                     Some(module) => {
-                                        match module.def_id {
+                                        match module.def_id.get() {
                                             Some(did) => Some(DefMod(did)),
                                             None => None,
                                         }
@@ -1591,7 +1591,7 @@ impl Resolver {
         let is_public = vis == ast::public;
         let is_exported = is_public && match new_parent {
             ModuleReducedGraphParent(module) => {
-                match module.def_id {
+                match module.def_id.get() {
                     None => true,
                     Some(did) => self.external_exports.contains(&did)
                 }
@@ -1607,7 +1607,7 @@ impl Resolver {
               Some(TypeNsDef { module_def: Some(module_def), .. }) => {
                 debug!("(building reduced graph for external crate) \
                         already created module");
-                module_def.def_id = Some(def_id);
+                module_def.def_id.set(Some(def_id));
               }
               Some(_) | None => {
                 debug!("(building reduced graph for \
@@ -1869,7 +1869,7 @@ impl Resolver {
         debug!("(populating external module) attempting to populate {}",
                self.module_to_str(module));
 
-        let def_id = match module.def_id {
+        let def_id = match module.def_id.get() {
             None => {
                 debug!("(populating external module) ... no def ID!");
                 return
@@ -1904,7 +1904,10 @@ impl Resolver {
     fn build_reduced_graph_for_external_crate(&mut self,
                                               root: @mut Module) {
         csearch::each_top_level_item_of_crate(self.session.cstore,
-                                              root.def_id.unwrap().crate,
+                                              root.def_id
+                                                  .get()
+                                                  .unwrap()
+                                                  .crate,
                                               |def_like, ident, visibility| {
             self.build_reduced_graph_for_external_crate_def(root,
                                                             def_like,
@@ -2568,7 +2571,7 @@ impl Resolver {
         }
 
         // Record the destination of this import
-        match containing_module.def_id {
+        match containing_module.def_id.get() {
             Some(did) => {
                 self.def_map.insert(id, DefMod(did));
                 self.last_private.insert(id, lp);
@@ -2667,7 +2670,8 @@ impl Resolver {
                                             // resolving this import chain.
                                             if !used_proxy &&
                                                !search_module.is_public {
-                                                match search_module.def_id {
+                                                match search_module.def_id
+                                                                   .get() {
                                                     Some(did) => {
                                                         closest_private =
                                                             DependsOn(did);
@@ -2787,7 +2791,9 @@ impl Resolver {
             Success(PrefixFound(containing_module, index)) => {
                 search_module = containing_module;
                 start_index = index;
-                last_private = DependsOn(containing_module.def_id.unwrap());
+                last_private = DependsOn(containing_module.def_id
+                                                          .get()
+                                                          .unwrap());
             }
         }
 
@@ -3196,7 +3202,7 @@ impl Resolver {
         // If this isn't a local crate, then bail out. We don't need to record
         // exports for nonlocal crates.
 
-        match module_.def_id {
+        match module_.def_id.get() {
             Some(def_id) if def_id.crate == LOCAL_CRATE => {
                 // OK. Continue.
                 debug!("(recording exports for module subtree) recording \
@@ -3241,7 +3247,7 @@ impl Resolver {
         let mut exports2 = ~[];
 
         self.add_exports_for_module(&mut exports2, module_);
-        match module_.def_id {
+        match module_.def_id.get() {
             Some(def_id) => {
                 self.export_map2.insert(def_id.node, exports2);
                 debug!("(computing exports) writing exports for {} (some)",
@@ -4644,7 +4650,7 @@ impl Resolver {
             match containing_module.external_module_children.find(&name.name) {
                 None => {}
                 Some(module) => {
-                    match module.def_id {
+                    match module.def_id.get() {
                         None => {} // Continue.
                         Some(def_id) => {
                             let lp = if module.is_public {AllPublic} else {
@@ -4707,7 +4713,7 @@ impl Resolver {
             TraitModuleKind | ImplModuleKind => {
                 match self.method_map.find(&ident.name) {
                     Some(s) => {
-                        match containing_module.def_id {
+                        match containing_module.def_id.get() {
                             Some(def_id) if s.contains(&def_id) => {
                                 debug!("containing module was a trait or impl \
                                         and name was a method -> not resolved");
