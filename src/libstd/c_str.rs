@@ -377,7 +377,6 @@ mod tests {
     use libc;
     use ptr;
     use option::{Some, None};
-    use vec;
 
     #[test]
     fn test_str_multistring_parsing() {
@@ -440,7 +439,7 @@ mod tests {
                 assert_eq!(*ptr::offset(buf, 0), 'f' as libc::c_char);
                 assert_eq!(*ptr::offset(buf, 1), 'o' as libc::c_char);
                 assert_eq!(*ptr::offset(buf, 2), 'o' as libc::c_char);
-                assert_eq!(*ptr::offset(buf, 3), 0xff);
+                assert_eq!(*ptr::offset(buf, 3), 0xff as i8);
                 assert_eq!(*ptr::offset(buf, 4), 0);
             }
         });

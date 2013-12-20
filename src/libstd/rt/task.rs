@@ -26,7 +26,6 @@ use local_data;
 use option::{Option, Some, None};
 use rt::borrowck::BorrowRecord;
 use rt::borrowck;
-use rt::context;
 use rt::context::Context;
 use rt::env;
 use rt::kill::Death;
@@ -511,6 +510,7 @@ impl Unwinder {
                   //   irrelevant for documentation purposes.
 #[cfg(not(test))] // in testing, use the original libstd's version
 pub extern "C" fn rust_stack_exhausted() {
+    use rt::context;
     use rt::in_green_task_context;
     use rt::task::Task;
     use rt::local::Local;

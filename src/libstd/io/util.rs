@@ -220,7 +220,7 @@ mod test {
     #[test]
     fn test_null_writer() {
         let mut s = NullWriter;
-        let mut buf = ~[0, 0, 0];
+        let buf = ~[0, 0, 0];
         s.write(buf);
         s.flush();
     }
@@ -248,7 +248,7 @@ mod test {
 
         struct TestWriter;
         impl Writer for TestWriter {
-            fn write(&mut self, buf: &[u8]) {
+            fn write(&mut self, _buf: &[u8]) {
                 unsafe { writes += 1 }
             }
 
