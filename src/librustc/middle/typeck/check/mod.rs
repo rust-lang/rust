@@ -266,7 +266,7 @@ impl Inherited {
             node_type_substs: RefCell::new(HashMap::new()),
             adjustments: RefCell::new(HashMap::new()),
             method_map: @mut HashMap::new(),
-            vtable_map: @mut HashMap::new(),
+            vtable_map: @RefCell::new(HashMap::new()),
         }
     }
 }

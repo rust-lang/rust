@@ -262,8 +262,11 @@ pub fn trans_static_method_callee(bcx: @Block,
     debug!("trans_static_method_callee: method_id={:?}, callee_id={:?}, \
             name={}", method_id, callee_id, ccx.sess.str_of(mname));
 
-    let vtbls = resolve_vtables_in_fn_ctxt(
-        bcx.fcx, ccx.maps.vtable_map.get_copy(&callee_id));
+    let vtbls = {
+        let vtable_map = ccx.maps.vtable_map.borrow();
+        vtable_map.get().get_copy(&callee_id)
+    };
+    let vtbls = resolve_vtables_in_fn_ctxt(bcx.fcx, vtbls);
 
     match vtbls[bound_index][0] {
         typeck::vtable_static(impl_did, ref rcvr_substs, rcvr_origins) => {
@@ -670,8 +673,11 @@ pub fn trans_trait_cast(bcx: @Block,
     // Store the vtable into the pair or triple.
     // This is structured a bit funny because of dynamic borrow failures.
     let origins = {
-        let res = ccx.maps.vtable_map.get(&id);
-        let res = resolve_vtables_in_fn_ctxt(bcx.fcx, *res);
+        let res = {
+            let vtable_map = ccx.maps.vtable_map.borrow();
+            *vtable_map.get().get(&id)
+        };
+        let res = resolve_vtables_in_fn_ctxt(bcx.fcx, res);
         res[0]
     };
     let vtable = get_vtable(bcx, v_ty, origins);

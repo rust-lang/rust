@@ -992,7 +992,8 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
     }
 
     {
-        let r = maps.vtable_map.find(&id);
+        let vtable_map = maps.vtable_map.borrow();
+        let r = vtable_map.get().find(&id);
         for &dr in r.iter() {
             ebml_w.tag(c::tag_table_vtable_map, |ebml_w| {
                 ebml_w.id(id);
@@ -1267,9 +1268,11 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
                             val_dsr.read_method_map_entry(xcx));
                     }
                     c::tag_table_vtable_map => {
-                        dcx.maps.vtable_map.insert(
-                            id,
-                            val_dsr.read_vtable_res(xcx.dcx.tcx, xcx.dcx.cdata));
+                        let vtable_res =
+                            val_dsr.read_vtable_res(xcx.dcx.tcx,
+                                                    xcx.dcx.cdata);
+                        let mut vtable_map = dcx.maps.vtable_map.borrow_mut();
+                        vtable_map.get().insert(id, vtable_res);
                     }
                     c::tag_table_adjustments => {
                         let adj: @ty::AutoAdjustment = @Decodable::decode(val_dsr);
