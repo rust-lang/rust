@@ -35,7 +35,7 @@ use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::to_str::InferStr;
 use middle::typeck::infer::unify::{ValsAndBindings, Root};
 use middle::typeck::infer::error_reporting::ErrorReporting;
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::hashmap::HashMap;
 use std::result;
 use std::vec;
@@ -80,15 +80,17 @@ pub struct InferCtxt {
     // We instantiate ValsAndBindings with bounds<ty::t> because the
     // types that might instantiate a general type variable have an
     // order, represented by its upper and lower bounds.
-    ty_var_bindings: ValsAndBindings<ty::TyVid, Bounds<ty::t>>,
+    ty_var_bindings: RefCell<ValsAndBindings<ty::TyVid, Bounds<ty::t>>>,
     ty_var_counter: Cell<uint>,
 
     // Map from integral variable to the kind of integer it represents
-    int_var_bindings: ValsAndBindings<ty::IntVid, Option<IntVarValue>>,
+    int_var_bindings: RefCell<ValsAndBindings<ty::IntVid,
+                                              Option<IntVarValue>>>,
     int_var_counter: Cell<uint>,
 
     // Map from floating variable to the kind of float it represents
-    float_var_bindings: ValsAndBindings<ty::FloatVid, Option<ast::float_ty>>,
+    float_var_bindings: RefCell<ValsAndBindings<ty::FloatVid,
+                                                Option<ast::float_ty>>>,
     float_var_counter: Cell<uint>,
 
     // For region variables.
@@ -260,13 +262,13 @@ pub fn new_infer_ctxt(tcx: ty::ctxt) -> @mut InferCtxt {
     @mut InferCtxt {
         tcx: tcx,
 
-        ty_var_bindings: new_ValsAndBindings(),
+        ty_var_bindings: RefCell::new(new_ValsAndBindings()),
         ty_var_counter: Cell::new(0),
 
-        int_var_bindings: new_ValsAndBindings(),
+        int_var_bindings: RefCell::new(new_ValsAndBindings()),
         int_var_counter: Cell::new(0),
 
-        float_var_bindings: new_ValsAndBindings(),
+        float_var_bindings: RefCell::new(new_ValsAndBindings()),
         float_var_counter: Cell::new(0),
 
         region_vars: RegionVarBindings(tcx),
@@ -522,25 +524,25 @@ impl InferCtxt {
     }
 
     pub fn start_snapshot(&mut self) -> Snapshot {
+        let ty_var_bindings = self.ty_var_bindings.borrow();
+        let int_var_bindings = self.int_var_bindings.borrow();
+        let float_var_bindings = self.float_var_bindings.borrow();
         Snapshot {
-            ty_var_bindings_len:
-                self.ty_var_bindings.bindings.len(),
-            int_var_bindings_len:
-                self.int_var_bindings.bindings.len(),
-            float_var_bindings_len:
-                self.float_var_bindings.bindings.len(),
-            region_vars_snapshot:
-                self.region_vars.start_snapshot(),
+            ty_var_bindings_len: ty_var_bindings.get().bindings.len(),
+            int_var_bindings_len: int_var_bindings.get().bindings.len(),
+            float_var_bindings_len: float_var_bindings.get().bindings.len(),
+            region_vars_snapshot: self.region_vars.start_snapshot(),
         }
     }
 
     pub fn rollback_to(&mut self, snapshot: &Snapshot) {
         debug!("rollback!");
-        rollback_to(&mut self.ty_var_bindings, snapshot.ty_var_bindings_len);
-
-        rollback_to(&mut self.int_var_bindings,
-                    snapshot.int_var_bindings_len);
-        rollback_to(&mut self.float_var_bindings,
+        let mut ty_var_bindings = self.ty_var_bindings.borrow_mut();
+        let mut int_var_bindings = self.int_var_bindings.borrow_mut();
+        let mut float_var_bindings = self.float_var_bindings.borrow_mut();
+        rollback_to(ty_var_bindings.get(), snapshot.ty_var_bindings_len);
+        rollback_to(int_var_bindings.get(), snapshot.int_var_bindings_len);
+        rollback_to(float_var_bindings.get(),
                     snapshot.float_var_bindings_len);
 
         self.region_vars.rollback_to(snapshot.region_vars_snapshot);
@@ -554,8 +556,10 @@ impl InferCtxt {
         indent(|| {
             let r = self.try(|| f());
 
-            self.ty_var_bindings.bindings.truncate(0);
-            self.int_var_bindings.bindings.truncate(0);
+            let mut ty_var_bindings = self.ty_var_bindings.borrow_mut();
+            let mut int_var_bindings = self.int_var_bindings.borrow_mut();
+            ty_var_bindings.get().bindings.truncate(0);
+            int_var_bindings.get().bindings.truncate(0);
             self.region_vars.commit();
             r
         })
@@ -603,7 +607,8 @@ impl InferCtxt {
         let id = self.ty_var_counter.get();
         self.ty_var_counter.set(id + 1);
         {
-            let vals = &mut self.ty_var_bindings.vals;
+            let mut ty_var_bindings = self.ty_var_bindings.borrow_mut();
+            let vals = &mut ty_var_bindings.get().vals;
             vals.insert(id, Root(Bounds { lb: None, ub: None }, 0u));
         }
         return TyVid(id);
@@ -619,8 +624,9 @@ impl InferCtxt {
 
     pub fn next_int_var_id(&mut self) -> IntVid {
         let mut int_var_counter = self.int_var_counter.get();
+        let mut int_var_bindings = self.int_var_bindings.borrow_mut();
         let result = IntVid(next_simple_var(&mut int_var_counter,
-                                            &mut self.int_var_bindings));
+                                            int_var_bindings.get()));
         self.int_var_counter.set(int_var_counter);
         result
     }
@@ -631,8 +637,9 @@ impl InferCtxt {
 
     pub fn next_float_var_id(&mut self) -> FloatVid {
         let mut float_var_counter = self.float_var_counter.get();
+        let mut float_var_bindings = self.float_var_bindings.borrow_mut();
         let result = FloatVid(next_simple_var(&mut float_var_counter,
-                                              &mut self.float_var_bindings));
+                                              float_var_bindings.get()));
         self.float_var_counter.set(float_var_counter);
         result
     }

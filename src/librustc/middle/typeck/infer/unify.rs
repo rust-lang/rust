@@ -16,6 +16,7 @@ use middle::ty;
 use middle::typeck::infer::{Bounds, uok, ures};
 use middle::typeck::infer::InferCtxt;
 use middle::typeck::infer::to_str::InferStr;
+use std::cell::RefCell;
 use syntax::ast;
 
 #[deriving(Clone)]
@@ -37,7 +38,8 @@ pub struct Node<V, T> {
 
 pub trait UnifyVid<T> {
     fn appropriate_vals_and_bindings<'v>(infcx: &'v mut InferCtxt)
-                                      -> &'v mut ValsAndBindings<Self, T>;
+                                      -> &'v mut RefCell<ValsAndBindings<Self,
+                                                                         T>>;
 }
 
 pub trait UnifyInferCtxtMethods {
@@ -74,7 +76,8 @@ impl UnifyInferCtxtMethods for InferCtxt {
 
         let tcx = self.tcx;
         let vb = UnifyVid::appropriate_vals_and_bindings(self);
-        return helper(tcx, vb, vid);
+        let mut vb = vb.borrow_mut();
+        return helper(tcx, vb.get(), vid);
 
         fn helper<T:Clone, V:Clone+Eq+Vid>(
             tcx: ty::ctxt,
@@ -120,9 +123,10 @@ impl UnifyInferCtxtMethods for InferCtxt {
                vid.to_str(), new_v.inf_str(self));
 
         let vb = UnifyVid::appropriate_vals_and_bindings(self);
-        let old_v = (*vb.vals.get(&vid.to_uint())).clone();
-        vb.bindings.push((vid.clone(), old_v));
-        vb.vals.insert(vid.to_uint(), new_v);
+        let mut vb = vb.borrow_mut();
+        let old_v = (*vb.get().vals.get(&vid.to_uint())).clone();
+        vb.get().bindings.push((vid.clone(), old_v));
+        vb.get().vals.insert(vid.to_uint(), new_v);
     }
 
     fn unify<T:Clone + InferStr,
@@ -275,14 +279,14 @@ impl InferCtxtMethods for InferCtxt {
 
 impl UnifyVid<Bounds<ty::t>> for ty::TyVid {
     fn appropriate_vals_and_bindings<'v>(infcx: &'v mut InferCtxt)
-        -> &'v mut ValsAndBindings<ty::TyVid, Bounds<ty::t>> {
+        -> &'v mut RefCell<ValsAndBindings<ty::TyVid, Bounds<ty::t>>> {
         return &mut infcx.ty_var_bindings;
     }
 }
 
 impl UnifyVid<Option<IntVarValue>> for ty::IntVid {
     fn appropriate_vals_and_bindings<'v>(infcx: &'v mut InferCtxt)
-        -> &'v mut ValsAndBindings<ty::IntVid, Option<IntVarValue>> {
+        -> &'v mut RefCell<ValsAndBindings<ty::IntVid, Option<IntVarValue>>> {
         return &mut infcx.int_var_bindings;
     }
 }
@@ -295,7 +299,8 @@ impl SimplyUnifiable for IntVarValue {
 
 impl UnifyVid<Option<ast::float_ty>> for ty::FloatVid {
     fn appropriate_vals_and_bindings<'v>(infcx: &'v mut InferCtxt)
-        -> &'v mut ValsAndBindings<ty::FloatVid, Option<ast::float_ty>> {
+        -> &'v mut RefCell<ValsAndBindings<ty::FloatVid,
+                                           Option<ast::float_ty>>> {
         return &mut infcx.float_var_bindings;
     }
 }
