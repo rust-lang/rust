@@ -112,7 +112,7 @@ pub struct CrateContext {
      // is not emitted by LLVM's GC pass when no functions use GC.
      uses_gc: bool,
      dbg_cx: Option<debuginfo::CrateDebugContext>,
-     do_not_commit_warning_issued: bool
+     do_not_commit_warning_issued: Cell<bool>,
 }
 
 impl CrateContext {
@@ -232,7 +232,7 @@ impl CrateContext {
                   crate_map_name: crate_map_name,
                   uses_gc: false,
                   dbg_cx: dbg_cx,
-                  do_not_commit_warning_issued: false
+                  do_not_commit_warning_issued: Cell::new(false),
             }
         }
     }

@@ -307,8 +307,8 @@ impl FunctionContext {
 }
 
 pub fn warn_not_to_commit(ccx: &mut CrateContext, msg: &str) {
-    if !ccx.do_not_commit_warning_issued {
-        ccx.do_not_commit_warning_issued = true;
+    if !ccx.do_not_commit_warning_issued.get() {
+        ccx.do_not_commit_warning_issued.set(true);
         ccx.sess.warn(msg.to_str() + " -- do not commit like this!");
     }
 }
