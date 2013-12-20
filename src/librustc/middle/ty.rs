@@ -344,7 +344,7 @@ struct ctxt_ {
     // Note that this contains all of the impls that we know about,
     // including ones in other crates. It's not clear that this is the best
     // way to do it.
-    impls: @mut HashMap<ast::DefId, @Impl>,
+    impls: RefCell<HashMap<ast::DefId, @Impl>>,
 
     // Set of used unsafe nodes (functions or blocks). Unsafe nodes not
     // present in this set can be warned about.
@@ -1007,7 +1007,7 @@ pub fn mk_ctxt(s: session::Session,
         destructors: RefCell::new(HashSet::new()),
         trait_impls: RefCell::new(HashMap::new()),
         inherent_impls: RefCell::new(HashMap::new()),
-        impls:  @mut HashMap::new(),
+        impls: RefCell::new(HashMap::new()),
         used_unsafe: @mut HashSet::new(),
         used_mut_nodes: @mut HashSet::new(),
         impl_vtables: @mut HashMap::new(),
@@ -4563,7 +4563,8 @@ pub fn populate_implementations_for_type_if_necessary(tcx: ctxt,
         }
 
         // Store the implementation info.
-        tcx.impls.insert(implementation_def_id, implementation);
+        let mut impls = tcx.impls.borrow_mut();
+        impls.get().insert(implementation_def_id, implementation);
     });
 
     tcx.populated_external_types.insert(type_id);
@@ -4599,7 +4600,8 @@ pub fn populate_implementations_for_trait_if_necessary(
         }
 
         // Store the implementation info.
-        tcx.impls.insert(implementation_def_id, implementation);
+        let mut impls = tcx.impls.borrow_mut();
+        impls.get().insert(implementation_def_id, implementation);
     });
 
     tcx.populated_external_traits.insert(trait_id);

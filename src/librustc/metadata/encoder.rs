@@ -1084,7 +1084,8 @@ fn encode_info_for_item(ecx: &EncodeContext,
       item_impl(_, ref opt_trait, ty, ref ast_methods) => {
         // We need to encode information about the default methods we
         // have inherited, so we drive this based on the impl structure.
-        let imp = tcx.impls.get(&def_id);
+        let impls = tcx.impls.borrow();
+        let imp = impls.get().get(&def_id);
 
         add_to_index();
         ebml_w.start_tag(tag_items_data_item);

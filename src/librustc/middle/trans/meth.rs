@@ -305,7 +305,8 @@ pub fn method_with_name(ccx: &CrateContext,
         }
     }
 
-    let imp = ccx.tcx.impls.find(&impl_id)
+    let impls = ccx.tcx.impls.borrow();
+    let imp = impls.get().find(&impl_id)
         .expect("could not find impl while translating");
     let meth = imp.methods.iter().find(|m| m.ident.name == name)
         .expect("could not find method while translating");
