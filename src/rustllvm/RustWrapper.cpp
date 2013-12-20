@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #include "rustllvm.h"
+#include "llvm/Object/Archive.h"
 
 //===----------------------------------------------------------------------===
 //
@@ -19,6 +20,7 @@
 
 using namespace llvm;
 using namespace llvm::sys;
+using namespace llvm::object;
 
 const char *LLVMRustError;
 
@@ -557,4 +559,42 @@ LLVMRustLinkInExternalBitcode(LLVMModuleRef dst, char *bc, size_t len) {
         return false;
     }
     return true;
+}
+
+extern "C" void*
+LLVMRustOpenArchive(char *path) {
+    OwningPtr<MemoryBuffer> buf;
+    error_code err = MemoryBuffer::getFile(path, buf);
+    if (err) {
+        LLVMRustError = err.message().c_str();
+        return NULL;
+    }
+    Archive *ret = new Archive(buf.take(), err);
+    if (err) {
+        LLVMRustError = err.message().c_str();
+        return NULL;
+    }
+    return ret;
+}
+
+extern "C" const char*
+LLVMRustArchiveReadSection(Archive *ar, char *name, size_t *size) {
+    for (Archive::child_iterator child = ar->begin_children(),
+                                   end = ar->end_children();
+         child != end; ++child) {
+        StringRef sect_name;
+        error_code err = child->getName(sect_name);
+        if (err) continue;
+        if (sect_name.trim(" ") == name) {
+            StringRef buf = child->getBuffer();
+            *size = buf.size();
+            return buf.data();
+        }
+    }
+    return NULL;
+}
+
+extern "C" void
+LLVMRustDestroyArchive(Archive *ar) {
+    delete ar;
 }

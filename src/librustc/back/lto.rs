@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use back::archive::Archive;
+use back::archive::ArchiveRO;
 use back::link;
 use driver::session;
 use lib::llvm::{ModuleRef, TargetMachineRef, llvm, True, False};
@@ -43,10 +43,11 @@ pub fn run(sess: session::Session, llmod: ModuleRef,
             }
         };
 
-        let archive = Archive::open(sess, path);
+        let archive = ArchiveRO::open(&path).expect("wanted an rlib");
         debug!("reading {}", name);
         let bc = time(sess.time_passes(), format!("read {}.bc", name), (), |_|
                       archive.read(format!("{}.bc", name)));
+        let bc = bc.expect("missing bytecode in archive!");
         let ptr = bc.as_ptr();
         debug!("linking {}", name);
         time(sess.time_passes(), format!("ll link {}", name), (), |()| unsafe {
