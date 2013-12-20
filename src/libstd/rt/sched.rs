@@ -1341,6 +1341,8 @@ mod test {
     }
 
     // FIXME: #9407: xfail-test
+    #[ignore]
+    #[test]
     fn dont_starve_1() {
         stress_factor().times(|| {
             do run_in_mt_newsched_task {

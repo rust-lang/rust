@@ -438,6 +438,9 @@ mod tests {
         static int_key: Key<@int> = &Key;
         do task::spawn {
             set(str_key, @~"string data");
+            set(str_key, @~"string data 2");
+            set(box_key, @@());
+            set(box_key, @@());
             set(int_key, @42);
             // This could cause a segfault if overwriting-destruction is done
             // with the crazy polymorphic transmute rather than the provided
