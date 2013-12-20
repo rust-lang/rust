@@ -321,7 +321,7 @@ struct ctxt_ {
 
     // Maps from def-id of a type or region parameter to its
     // (inferred) variance.
-    item_variance_map: @mut HashMap<ast::DefId, @ItemVariances>,
+    item_variance_map: RefCell<HashMap<ast::DefId, @ItemVariances>>,
 
     // A mapping from the def ID of an enum or struct type to the def ID
     // of the method that implements its destructor. If the type is not
@@ -975,7 +975,7 @@ pub fn mk_ctxt(s: session::Session,
             -> ctxt {
     @ctxt_ {
         named_region_map: named_region_map,
-        item_variance_map: @mut HashMap::new(),
+        item_variance_map: RefCell::new(HashMap::new()),
         diag: s.diagnostic(),
         interner: RefCell::new(HashMap::new()),
         next_id: @mut primitives::LAST_PRIMITIVE_ID,
@@ -4483,8 +4483,9 @@ pub fn visitor_object_ty(tcx: ctxt,
 }
 
 pub fn item_variances(tcx: ctxt, item_id: ast::DefId) -> @ItemVariances {
+    let mut item_variance_map = tcx.item_variance_map.borrow_mut();
     lookup_locally_or_in_crate_store(
-        "item_variance_map", item_id, tcx.item_variance_map,
+        "item_variance_map", item_id, item_variance_map.get(),
         || @csearch::get_item_variances(tcx.cstore, item_id))
 }
 
