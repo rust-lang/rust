@@ -1894,9 +1894,11 @@ fn crateid_pointing_to_subdir() {
     fs::mkdir_recursive(&foo_dir, io::UserRWX);
     fs::mkdir_recursive(&bar_dir, io::UserRWX);
     writeFile(&foo_dir.join("lib.rs"),
-              "#[crate_id=\"mockgithub.com/mozilla/some_repo/extras/foo\"]; pub fn f() {}");
+              "#[crate_id=\"mockgithub.com/mozilla/some_repo/extras/rust-foo#foo:0.0\"];" +
+              "pub fn f() {}");
     writeFile(&bar_dir.join("lib.rs"),
-              "#[crate_id=\"mockgithub.com/mozilla/some_repo/extras/bar\"]; pub fn g() {}");
+              "#[crate_id=\"mockgithub.com/mozilla/some_repo/extras/rust-bar#bar:0.0\"];" +
+              "pub fn g() {}");
 
     debug!("Creating a file in {}", workspace.display());
     let testpkg_dir = workspace.join_many(["src", "testpkg-0.0"]);
@@ -2318,7 +2320,7 @@ fn find_sources_in_cwd() {
     let source_dir = temp_dir.join("foo");
     fs::mkdir_recursive(&source_dir, io::UserRWX);
     writeFile(&source_dir.join("main.rs"),
-              r#"#[crate_id="foo"]; fn main() { let _x = (); }"#);
+              r#"#[crate_id="rust-foo#foo:0.0"]; fn main() { let _x = (); }"#);
     command_line_test([~"install", ~"foo"], &source_dir);
     assert_executable_exists(&source_dir.join(".rust"), "foo");
 }
