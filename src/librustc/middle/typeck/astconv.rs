@@ -383,16 +383,22 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
 
     let tcx = this.tcx();
 
-    match tcx.ast_ty_to_ty_cache.find(&ast_ty.id) {
-      Some(&ty::atttce_resolved(ty)) => return ty,
-      Some(&ty::atttce_unresolved) => {
-        tcx.sess.span_fatal(ast_ty.span, "illegal recursive type; \
-                                          insert an enum in the cycle, if this is desired");
-      }
-      None => { /* go on */ }
+    {
+        let mut ast_ty_to_ty_cache = tcx.ast_ty_to_ty_cache.borrow_mut();
+        match ast_ty_to_ty_cache.get().find(&ast_ty.id) {
+            Some(&ty::atttce_resolved(ty)) => return ty,
+            Some(&ty::atttce_unresolved) => {
+                tcx.sess.span_fatal(ast_ty.span,
+                                    "illegal recursive type; insert an enum \
+                                     or struct in the cycle, if this is \
+                                     desired");
+            }
+            None => { /* go on */ }
+        }
+        ast_ty_to_ty_cache.get().insert(ast_ty.id, ty::atttce_unresolved);
     }
 
-    tcx.ast_ty_to_ty_cache.insert(ast_ty.id, ty::atttce_unresolved);
+
     let typ = match ast_ty.node {
       ast::ty_nil => ty::mk_nil(),
       ast::ty_bot => ty::mk_bot(),
@@ -576,7 +582,8 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
       }
     };
 
-    tcx.ast_ty_to_ty_cache.insert(ast_ty.id, ty::atttce_resolved(typ));
+    let mut ast_ty_to_ty_cache = tcx.ast_ty_to_ty_cache.borrow_mut();
+    ast_ty_to_ty_cache.get().insert(ast_ty.id, ty::atttce_resolved(typ));
     return typ;
 }
 
