@@ -3625,7 +3625,10 @@ pub fn check_enum_variants(ccx: @mut CrateCtxt,
     let variants = do_check(ccx, vs, id, hint);
 
     // cache so that ty::enum_variants won't repeat this work
-    ccx.tcx.enum_var_cache.insert(local_def(id), @variants);
+    {
+        let mut enum_var_cache = ccx.tcx.enum_var_cache.borrow_mut();
+        enum_var_cache.get().insert(local_def(id), @variants);
+    }
 
     // Check that it is possible to represent this enum:
     let mut outer = true;

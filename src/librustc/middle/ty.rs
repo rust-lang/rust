@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use driver::session;
 use metadata::csearch;
 use metadata;
@@ -311,7 +310,7 @@ struct ctxt_ {
     needs_unwind_cleanup_cache: RefCell<HashMap<t, bool>>,
     tc_cache: RefCell<HashMap<uint, TypeContents>>,
     ast_ty_to_ty_cache: RefCell<HashMap<NodeId, ast_ty_to_ty_cache_entry>>,
-    enum_var_cache: @mut HashMap<DefId, @~[@VariantInfo]>,
+    enum_var_cache: RefCell<HashMap<DefId, @~[@VariantInfo]>>,
     ty_param_defs: @mut HashMap<ast::NodeId, TypeParameterDef>,
     adjustments: @mut HashMap<ast::NodeId, @AutoAdjustment>,
     normalized_cache: @mut HashMap<t, t>,
@@ -997,7 +996,7 @@ pub fn mk_ctxt(s: session::Session,
         needs_unwind_cleanup_cache: RefCell::new(HashMap::new()),
         tc_cache: RefCell::new(HashMap::new()),
         ast_ty_to_ty_cache: RefCell::new(HashMap::new()),
-        enum_var_cache: @mut HashMap::new(),
+        enum_var_cache: RefCell::new(HashMap::new()),
         methods: RefCell::new(HashMap::new()),
         trait_method_def_ids: RefCell::new(HashMap::new()),
         trait_methods_cache: RefCell::new(HashMap::new()),
@@ -3888,9 +3887,12 @@ pub fn type_is_empty(cx: ctxt, t: t) -> bool {
 }
 
 pub fn enum_variants(cx: ctxt, id: ast::DefId) -> @~[@VariantInfo] {
-    match cx.enum_var_cache.find(&id) {
-      Some(&variants) => return variants,
-      _ => { /* fallthrough */ }
+    {
+        let enum_var_cache = cx.enum_var_cache.borrow();
+        match enum_var_cache.get().find(&id) {
+            Some(&variants) => return variants,
+            _ => { /* fallthrough */ }
+        }
     }
 
     let result = if ast::LOCAL_CRATE != id.crate {
@@ -3937,8 +3939,12 @@ pub fn enum_variants(cx: ctxt, id: ast::DefId) -> @~[@VariantInfo] {
           _ => cx.sess.bug("enum_variants: id not bound to an enum")
         }
     };
-    cx.enum_var_cache.insert(id, result);
-    result
+
+    {
+        let mut enum_var_cache = cx.enum_var_cache.borrow_mut();
+        enum_var_cache.get().insert(id, result);
+        result
+    }
 }
 
 
