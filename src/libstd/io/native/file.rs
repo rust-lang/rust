@@ -907,22 +907,14 @@ pub fn utime(p: &CString, atime: u64, mtime: u64) -> IoResult<()> {
 #[cfg(test)]
 mod tests {
     use io::native::file::{CFile, FileDesc};
-    use io::fs;
     use io;
     use libc;
     use os;
-    use path::Path;
-    use rand;
     use result::Ok;
     use rt::rtio::RtioFileStream;
 
-    fn tmpdir() -> Path {
-        let ret = os::tmpdir().join(format!("rust-{}", rand::random::<u32>()));
-        fs::mkdir(&ret, io::UserRWX);
-        ret
-    }
-
     #[ignore(cfg(target_os = "freebsd"))] // hmm, maybe pipes have a tiny buffer
+    #[test]
     fn test_file_desc() {
         // Run this test with some pipes so we don't have to mess around with
         // opening or closing files.
@@ -949,6 +941,7 @@ mod tests {
     }
 
     #[ignore(cfg(windows))] // apparently windows doesn't like tmpfile
+    #[test]
     fn test_cfile() {
         unsafe {
             let f = libc::tmpfile();
