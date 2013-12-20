@@ -45,22 +45,20 @@ An example program that does this task reads like this:
 
 ~~~~{.xfail-test}
 # #[allow(unused_imports)];
-extern mod extra;
-use extra::fileinput::FileInput;
-use std::int;
-# mod FileInput {
-#    use std::io::{Reader, BytesReader};
-#    static s : &'static [u8] = bytes!("1 2\n\
-#                                       34 56\n\
-#                                       789 123\n\
-#                                       45 67\n\
-#                                       ");
-#    pub fn from_args() -> @Reader{
-#        @BytesReader {
-#            bytes: s,
-#            pos: @mut 0
-#        } as @Reader
-#    }
+use std::io::buffered::BufferedReader;
+use std::io::fs::File;
+# mod BufferedReader {
+#     use std::io::fs::File;
+#     use std::io::mem::MemReader;
+#     use std::io::buffered::BufferedReader;
+#     static s : &'static [u8] = bytes!("1 2\n\
+#                                        34 56\n\
+#                                        789 123\n\
+#                                        45 67\n\
+#                                        ");
+#     pub fn new(_inner: Option<File>) -> BufferedReader<MemReader> {
+#           BufferedReader::new(MemReader::new(s.to_owned()))
+#     }
 # }
 
 fn main() {
@@ -70,42 +68,37 @@ fn main() {
     }
 }
 
-
 fn read_int_pairs() -> ~[(int,int)] {
-
     let mut pairs = ~[];
 
-    let fi = FileInput::from_args();
-    while ! fi.eof() {
+    let args = std::os::args();
 
-        // 1. Read a line of input.
-        let line = fi.read_line();
+    // Path takes a generic by-value, rather than by reference
+    let path = Path::new(args.get_opt(1).expect("No input file parameter!").as_slice());
+    let mut reader = BufferedReader::new(File::open(&path));
 
+    // 1. Iterate over the lines of our file.
+    for line in reader.lines() {
         // 2. Split the line into fields ("words").
         let fields = line.words().to_owned_vec();
-
         // 3. Match the vector of fields against a vector pattern.
         match fields {
 
             // 4. When the line had two fields:
             [a, b] => {
-
                 // 5. Try parsing both fields as ints.
                 match (from_str::<int>(a), from_str::<int>(b)) {
 
                     // 6. If parsing succeeded for both, push both.
                     (Some(a), Some(b)) => pairs.push((a,b)),
-
                     // 7. Ignore non-int fields.
                     _ => ()
                 }
             }
-
             // 8. Ignore lines that don't have 2 fields.
             _ => ()
         }
     }
-
     pairs
 }
 ~~~~
@@ -114,7 +107,6 @@ This example shows the use of `Option`,
 along with some other forms of error-handling (and non-handling).
 We will look at these mechanisms
 and then modify parts of the example to perform "better" error handling.
-
 
 # Options
 
@@ -152,7 +144,6 @@ several unwanted cases are silently ignored:
 lines that do not contain two fields, as well as fields that do not parse as ints.
 To propagate these cases to the caller using `Option` would require even more verbose code.
 
-
 # Results
 
 Before getting into _trapping_ the error,
@@ -181,7 +172,7 @@ This would give the caller more information for both handling and reporting the 
 but would otherwise retain the verbosity problems of using `Option`.
 In particular, it would still be necessary for the caller to return a further `Result` to _its_ caller if it did not want to handle the error.
 Manually propagating result values this way can be attractive in certain circumstances
--- for example when processing must halt on the very first error, or backtrack --
+&mdash; for example when processing must halt on the very first error, or backtrack &mdash;
 but as we will see later, many cases have simpler options available.
 
 # Failure
@@ -251,26 +242,23 @@ If the example is rewritten to use failure, these error cases can be trapped.
 In this rewriting, failures are trapped by placing the I/O logic in a sub-task,
 and trapping its exit status using `task::try`:
 
-~~~~ {.xfail-test}
-# #[allowed(unused_imports)];
-extern mod extra;
-use extra::fileinput::FileInput;
-use std::int;
+~~~~{.xfail-test}
+# #[allow(unused_imports)];
+use std::io::buffered::BufferedReader;
+use std::io::fs::File;
 use std::task;
-# mod FileInput {
-#    use std::io::{Reader, BytesReader};
-#    static s : &'static [u8] = bytes!("1 2\n\
-#                                       34 56\n\
-#                                       ostrich\n\
-#                                       789 123\n\
-#                                       45 67\n\
-#                                       ");
-#    pub fn from_args() -> @Reader{
-#        @BytesReader {
-#            bytes: s,
-#            pos: @mut 0
-#        } as @Reader
-#    }
+# mod BufferedReader {
+#     use std::io::fs::File;
+#     use std::io::mem::MemReader;
+#     use std::io::buffered::BufferedReader;
+#     static s : &'static [u8] = bytes!("1 2\n\
+#                                        34 56\n\
+#                                        789 123\n\
+#                                        45 67\n\
+#                                        ");
+#     pub fn new(_inner: Option<File>) -> BufferedReader<MemReader> {
+#           BufferedReader::new(MemReader::new(s.to_owned()))
+#     }
 # }
 
 fn main() {
@@ -292,11 +280,12 @@ fn main() {
 
 fn read_int_pairs() -> ~[(int,int)] {
     let mut pairs = ~[];
-    let fi = FileInput::from_args();
-    while ! fi.eof() {
-        let line = fi.read_line();
-        let fields = line.words().to_owned_vec();
-        match fields {
+    let args = std::os::args();
+    let path = Path::new(args.get_opt(1).expect("No input file parameter!").as_slice());
+
+    let mut reader = BufferedReader::new(File::open(&path));
+    for line in reader.lines() {
+        match line.words().to_owned_vec() {
             [a, b] => pairs.push((from_str::<int>(a).unwrap(),
                                   from_str::<int>(b).unwrap())),
 
@@ -323,7 +312,6 @@ Failure of a (sub-)task is analogous to calling `exit(1)` or `abort()` in a unix
 all the state of a sub-task is cleanly discarded on exit,
 and a supervisor task can take appropriate action
 without worrying about its own state having been corrupted.
-
 
 # Conditions
 
@@ -358,25 +346,22 @@ If no handler is found, `Condition::raise` will fail the task with an appropriat
 Rewriting the example to use a condition in place of ignoring malformed lines makes it slightly longer,
 but similarly clear as the version that used `fail!` in the logic where the error occurs:
 
-~~~~ {.xfail-test}
+~~~~{.xfail-test}
 # #[allow(unused_imports)];
-extern mod extra;
-use extra::fileinput::FileInput;
-use std::int;
-# mod FileInput {
-#    use std::io::{Reader, BytesReader};
-#    static s : &'static [u8] = bytes!("1 2\n\
-#                                       34 56\n\
-#                                       ostrich\n\
-#                                       789 123\n\
-#                                       45 67\n\
-#                                       ");
-#    pub fn from_args() -> @Reader{
-#        @BytesReader {
-#            bytes: s,
-#            pos: @mut 0
-#        } as @Reader
-#    }
+use std::io::buffered::BufferedReader;
+use std::io::fs::File;
+# mod BufferedReader {
+#     use std::io::fs::File;
+#     use std::io::mem::MemReader;
+#     use std::io::buffered::BufferedReader;
+#     static s : &'static [u8] = bytes!("1 2\n\
+#                                        34 56\n\
+#                                        789 123\n\
+#                                        45 67\n\
+#                                        ");
+#     pub fn new(_inner: Option<File>) -> BufferedReader<MemReader> {
+#           BufferedReader::new(MemReader::new(s.to_owned()))
+#     }
 # }
 
 // Introduce a new condition.
@@ -393,14 +378,14 @@ fn main() {
 
 fn read_int_pairs() -> ~[(int,int)] {
     let mut pairs = ~[];
-    let fi = FileInput::from_args();
-    while ! fi.eof() {
-        let line = fi.read_line();
-        let fields = line.words().to_owned_vec();
-        match fields {
+    let args = std::os::args();
+    let path = Path::new(args.get_opt(1).expect("No input file parameter!").as_slice());
+
+    let mut reader = BufferedReader::new(File::open(&path));
+    for line in reader.lines() {
+        match line.words().to_owned_vec() {
             [a, b] => pairs.push((from_str::<int>(a).unwrap(),
                                   from_str::<int>(b).unwrap())),
-
             // On malformed lines, call the condition handler and
             // push whatever the condition handler returns.
             _ => pairs.push(malformed_line::cond.raise(line.clone()))
@@ -432,23 +417,20 @@ and replaces bad input lines with the pair `(-1,-1)`:
 
 ~~~~{.xfail-test}
 # #[allow(unused_imports)];
-extern mod extra;
-use extra::fileinput::FileInput;
-use std::int;
-# mod FileInput {
-#    use std::io::{Reader, BytesReader};
-#    static s : &'static [u8] = bytes!("1 2\n\
-#                                       34 56\n\
-#                                       ostrich\n\
-#                                       789 123\n\
-#                                       45 67\n\
-#                                       ");
-#    pub fn from_args() -> @Reader{
-#        @BytesReader {
-#            bytes: s,
-#            pos: @mut 0
-#        } as @Reader
-#    }
+use std::io::buffered::BufferedReader;
+use std::io::fs::File;
+# mod BufferedReader {
+#     use std::io::fs::File;
+#     use std::io::mem::MemReader;
+#     use std::io::buffered::BufferedReader;
+#     static s : &'static [u8] = bytes!("1 2\n\
+#                                        34 56\n\
+#                                        789 123\n\
+#                                        45 67\n\
+#                                        ");
+#     pub fn new(_inner: Option<File>) -> BufferedReader<MemReader> {
+#           BufferedReader::new(MemReader::new(s.to_owned()))
+#     }
 # }
 
 condition! {
@@ -470,11 +452,12 @@ fn main() {
 
 fn read_int_pairs() -> ~[(int,int)] {
     let mut pairs = ~[];
-    let fi = FileInput::from_args();
-    while ! fi.eof() {
-        let line = fi.read_line();
-        let fields = line.words().to_owned_vec();
-        match fields {
+    let args = std::os::args();
+    let path = Path::new(args.get_opt(1).expect("No input file parameter!").as_slice());
+
+    let mut reader = BufferedReader::new(File::open(&path));
+    for line in reader.lines() {
+        match line.words().to_owned_vec() {
             [a, b] => pairs.push((from_str::<int>(a).unwrap(),
                                   from_str::<int>(b).unwrap())),
             _ => pairs.push(malformed_line::cond.raise(line.clone()))
@@ -509,23 +492,20 @@ Changing the condition's return type from `(int,int)` to `Option<(int,int)>` wil
 
 ~~~~{.xfail-test}
 # #[allow(unused_imports)];
-extern mod extra;
-use extra::fileinput::FileInput;
-use std::int;
-# mod FileInput {
-#    use std::io::{Reader, BytesReader};
-#    static s : &'static [u8] = bytes!("1 2\n\
-#                                       34 56\n\
-#                                       ostrich\n\
-#                                       789 123\n\
-#                                       45 67\n\
-#                                       ");
-#    pub fn from_args() -> @Reader{
-#        @BytesReader {
-#            bytes: s,
-#            pos: @mut 0
-#        } as @Reader
-#    }
+use std::io::buffered::BufferedReader;
+use std::io::fs::File;
+# mod BufferedReader {
+#     use std::io::fs::File;
+#     use std::io::mem::MemReader;
+#     use std::io::buffered::BufferedReader;
+#     static s : &'static [u8] = bytes!("1 2\n\
+#                                        34 56\n\
+#                                        789 123\n\
+#                                        45 67\n\
+#                                        ");
+#     pub fn new(_inner: Option<File>) -> BufferedReader<MemReader> {
+#           BufferedReader::new(MemReader::new(s.to_owned()))
+#     }
 # }
 
 // Modify the condition signature to return an Option.
@@ -548,11 +528,12 @@ fn main() {
 
 fn read_int_pairs() -> ~[(int,int)] {
     let mut pairs = ~[];
-    let fi = FileInput::from_args();
-    while ! fi.eof() {
-        let line = fi.read_line();
-        let fields = line.words().to_owned_vec();
-        match fields {
+    let args = std::os::args();
+    let path = Path::new(args.get_opt(1).expect("No input file parameter!").as_slice());
+
+    let mut reader = BufferedReader::new(File::open(&path));
+    for line in reader.lines() {
+        match line.words().to_owned_vec() {
             [a, b] => pairs.push((from_str::<int>(a).unwrap(),
                                   from_str::<int>(b).unwrap())),
 
@@ -596,23 +577,20 @@ This can be encoded in the handler API by introducing a helper type: `enum Malfo
 
 ~~~~{.xfail-test}
 # #[allow(unused_imports)];
-extern mod extra;
-use extra::fileinput::FileInput;
-use std::int;
-# mod FileInput {
-#    use std::io::{Reader, BytesReader};
-#    static s : &'static [u8] = bytes!("1 2\n\
-#                                       34 56\n\
-#                                       ostrich\n\
-#                                       789 123\n\
-#                                       45 67\n\
-#                                       ");
-#    pub fn from_args() -> @Reader{
-#        @BytesReader {
-#            bytes: s,
-#            pos: @mut 0
-#        } as @Reader
-#    }
+use std::io::buffered::BufferedReader;
+use std::io::fs::File;
+# mod BufferedReader {
+#     use std::io::fs::File;
+#     use std::io::mem::MemReader;
+#     use std::io::buffered::BufferedReader;
+#     static s : &'static [u8] = bytes!("1 2\n\
+#                                        34 56\n\
+#                                        789 123\n\
+#                                        45 67\n\
+#                                        ");
+#     pub fn new(_inner: Option<File>) -> BufferedReader<MemReader> {
+#           BufferedReader::new(MemReader::new(s.to_owned()))
+#     }
 # }
 
 // Introduce a new enum to convey condition-handling strategy to error site.
@@ -644,11 +622,12 @@ fn main() {
 
 fn read_int_pairs() -> ~[(int,int)] {
     let mut pairs = ~[];
-    let fi = FileInput::from_args();
-    while ! fi.eof() {
-        let line = fi.read_line();
-        let fields = line.words().to_owned_vec();
-        match fields {
+    let args = std::os::args();
+    let path = Path::new(args.get_opt(1).expect("No input file parameter!").as_slice());
+
+    let mut reader = BufferedReader::new(File::open(&path));
+    for line in reader.lines() {
+        match line.words().to_owned_vec() {
             [a, b] => pairs.push((from_str::<int>(a).unwrap(),
                                   from_str::<int>(b).unwrap())),
 
@@ -717,28 +696,25 @@ $ ./example bad.txt
 task <unnamed> failed at 'called `Option::unwrap()` on a `None` value', .../libstd/option.rs:314
 ~~~~
 
-To make the program robust -- or at least flexible -- in the face of this potential failure,
+To make the program robust &mdash; or at least flexible &mdash; in the face of this potential failure,
 a second condition and a helper function will suffice:
 
 ~~~~{.xfail-test}
 # #[allow(unused_imports)];
-extern mod extra;
-use extra::fileinput::FileInput;
-use std::int;
-# mod FileInput {
-#    use std::io::{Reader, BytesReader};
-#    static s : &'static [u8] = bytes!("1 2\n\
-#                                       34 56\n\
-#                                       7 marmot\n\
-#                                       789 123\n\
-#                                       45 67\n\
-#                                       ");
-#    pub fn from_args() -> @Reader{
-#        @BytesReader {
-#            bytes: s,
-#            pos: @mut 0
-#        } as @Reader
-#    }
+use std::io::buffered::BufferedReader;
+use std::io::fs::File;
+# mod BufferedReader {
+#     use std::io::fs::File;
+#     use std::io::mem::MemReader;
+#     use std::io::buffered::BufferedReader;
+#     static s : &'static [u8] = bytes!("1 2\n\
+#                                        34 56\n\
+#                                        789 123\n\
+#                                        45 67\n\
+#                                        ");
+#     pub fn new(_inner: Option<File>) -> BufferedReader<MemReader> {
+#           BufferedReader::new(MemReader::new(s.to_owned()))
+#     }
 # }
 
 pub enum MalformedLineFix {
@@ -784,12 +760,12 @@ fn parse_int(x: &str) -> int {
 
 fn read_int_pairs() -> ~[(int,int)] {
     let mut pairs = ~[];
-    let fi = FileInput::from_args();
-    while ! fi.eof() {
-        let line = fi.read_line();
-        let fields = line.words().to_owned_vec();
-        match fields {
+    let args = std::os::args();
+    let path = Path::new(args.get_opt(1).expect("No input file parameter!").as_slice());
 
+    let mut reader = BufferedReader::new(File::open(&path));
+    for line in reader.lines() {
+        match line.words().to_owned_vec() {
             // Delegate parsing ints to helper function that will
             // handle parse errors by calling `malformed_int`.
             [a, b] => pairs.push((parse_int(a), parse_int(b))),
@@ -850,7 +826,7 @@ Each is appropriate to different circumstances:
     Between `Option` and `Result`: use an `Option` when there is only one kind of error,
     otherwise make an `enum FooErr` to represent the possible error codes and use `Result<T,FooErr>`.
 
-  - If an error can reasonably be handled at the site it occurs by one of a few strategies -- possibly including failure --
+  - If an error can reasonably be handled at the site it occurs by one of a few strategies &mdash; possibly including failure &mdash;
     and it is not clear which strategy a caller would want to use, a condition is best.
     For many errors, the only reasonable "non-stop" recovery strategies are to retry some number of times,
     create or substitute an empty or sentinel value, ignore the error, or fail.
@@ -869,7 +845,7 @@ but with the option to halt unwinding partway through the process and continue e
 This behavior unfortunately means that the _heap_ may be left in an inconsistent but accessible state,
 if an exception is thrown part way through the process of initializing or modifying memory.
 To compensate for this risk, correct C++ and Java code must program in an extremely elaborate and difficult "exception-safe" style
--- effectively transactional style against heap structures --
+&mdash; effectively transactional style against heap structures &mdash;
 or else risk introducing silent and very difficult-to-debug errors due to control resuming in a corrupted heap after a caught exception.
 These errors are frequently memory-safety errors, which Rust strives to eliminate,
 and so Rust unwinding is unrecoverable within a single task:
