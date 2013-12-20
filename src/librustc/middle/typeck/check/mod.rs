@@ -162,7 +162,7 @@ pub struct Inherited {
     param_env: ty::ParameterEnvironment,
 
     // Temporary tables:
-    node_types: @mut HashMap<ast::NodeId, ty::t>,
+    node_types: RefCell<HashMap<ast::NodeId, ty::t>>,
     node_type_substs: RefCell<HashMap<ast::NodeId, ty::substs>>,
     adjustments: RefCell<HashMap<ast::NodeId, @ty::AutoAdjustment>>,
     method_map: method_map,
@@ -262,7 +262,7 @@ impl Inherited {
             infcx: infer::new_infer_ctxt(tcx),
             locals: @mut HashMap::new(),
             param_env: param_env,
-            node_types: @mut HashMap::new(),
+            node_types: RefCell::new(HashMap::new()),
             node_type_substs: RefCell::new(HashMap::new()),
             adjustments: RefCell::new(HashMap::new()),
             method_map: @mut HashMap::new(),
@@ -1097,7 +1097,8 @@ impl FnCtxt {
     pub fn write_ty(&self, node_id: ast::NodeId, ty: ty::t) {
         debug!("write_ty({}, {}) in fcx {}",
                node_id, ppaux::ty_to_str(self.tcx(), ty), self.tag());
-        self.inh.node_types.insert(node_id, ty);
+        let mut node_types = self.inh.node_types.borrow_mut();
+        node_types.get().insert(node_id, ty);
     }
 
     pub fn write_substs(&self, node_id: ast::NodeId, substs: ty::substs) {
@@ -1160,7 +1161,8 @@ impl FnCtxt {
     }
 
     pub fn expr_ty(&self, ex: &ast::Expr) -> ty::t {
-        match self.inh.node_types.find(&ex.id) {
+        let node_types = self.inh.node_types.borrow();
+        match node_types.get().find(&ex.id) {
             Some(&t) => t,
             None => {
                 self.tcx().sess.bug(format!("no type for expr in fcx {}",
@@ -1170,7 +1172,8 @@ impl FnCtxt {
     }
 
     pub fn node_ty(&self, id: ast::NodeId) -> ty::t {
-        match self.inh.node_types.find(&id) {
+        let node_types = self.inh.node_types.borrow();
+        match node_types.get().find(&id) {
             Some(&t) => t,
             None => {
                 self.tcx().sess.bug(

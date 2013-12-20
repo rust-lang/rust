@@ -911,7 +911,8 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
     }
 
     {
-        let r = tcx.node_types.find(&(id as uint));
+        let node_types = tcx.node_types.borrow();
+        let r = node_types.get().find(&(id as uint));
         for &ty in r.iter() {
             ebml_w.tag(c::tag_table_node_type, |ebml_w| {
                 ebml_w.id(id);
@@ -1230,7 +1231,8 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
                         let ty = val_dsr.read_ty(xcx);
                         debug!("inserting ty for node {:?}: {}",
                                id, ty_to_str(dcx.tcx, ty));
-                        dcx.tcx.node_types.insert(id as uint, ty);
+                        let mut node_types = dcx.tcx.node_types.borrow_mut();
+                        node_types.get().insert(id as uint, ty);
                     }
                     c::tag_table_node_type_subst => {
                         let tys = val_dsr.read_tys(xcx);

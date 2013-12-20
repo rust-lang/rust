@@ -2018,7 +2018,9 @@ fn insert_synthetic_type_entries(bcx: @Block,
 
         let pat_id = fn_args[i].pat.id;
         let arg_ty = arg_tys[i];
-        tcx.node_types.insert(pat_id as uint, arg_ty);
+
+        let mut node_types = tcx.node_types.borrow_mut();
+        node_types.get().insert(pat_id as uint, arg_ty);
     }
 }
 
