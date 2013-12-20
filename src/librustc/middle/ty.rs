@@ -330,7 +330,7 @@ struct ctxt_ {
     destructor_for_type: RefCell<HashMap<ast::DefId, ast::DefId>>,
 
     // A method will be in this list if and only if it is a destructor.
-    destructors: @mut HashSet<ast::DefId>,
+    destructors: RefCell<HashSet<ast::DefId>>,
 
     // Maps a trait onto a list of impls of that trait.
     trait_impls: @mut HashMap<ast::DefId, @mut ~[@Impl]>,
@@ -1004,7 +1004,7 @@ pub fn mk_ctxt(s: session::Session,
         provided_method_sources: RefCell::new(HashMap::new()),
         supertraits: RefCell::new(HashMap::new()),
         destructor_for_type: RefCell::new(HashMap::new()),
-        destructors: @mut HashSet::new(),
+        destructors: RefCell::new(HashSet::new()),
         trait_impls: @mut HashMap::new(),
         inherent_impls:  @mut HashMap::new(),
         impls:  @mut HashMap::new(),
