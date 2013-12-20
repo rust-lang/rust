@@ -1804,20 +1804,17 @@ pub fn SetFunctionAttribute(Fn: ValueRef, attr: Attribute) {
 /* Memory-managed object interface to type handles. */
 
 pub struct TypeNames {
-    type_names: HashMap<TypeRef, ~str>,
     named_types: HashMap<~str, TypeRef>
 }
 
 impl TypeNames {
     pub fn new() -> TypeNames {
         TypeNames {
-            type_names: HashMap::new(),
             named_types: HashMap::new()
         }
     }
 
     pub fn associate_type(&mut self, s: &str, t: &Type) {
-        assert!(self.type_names.insert(t.to_ref(), s.to_owned()));
         assert!(self.named_types.insert(s.to_owned(), t.to_ref()));
     }
 
