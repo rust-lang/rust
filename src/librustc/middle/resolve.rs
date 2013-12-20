@@ -447,7 +447,7 @@ struct Module {
     import_resolutions: @mut HashMap<Name, @mut ImportResolution>,
 
     // The number of unresolved globs that this module exports.
-    glob_count: uint,
+    glob_count: Cell<uint>,
 
     // The index of the import we're resolving.
     resolved_import_count: uint,
@@ -475,7 +475,7 @@ impl Module {
             external_module_children: @mut HashMap::new(),
             anonymous_children: @mut HashMap::new(),
             import_resolutions: @mut HashMap::new(),
-            glob_count: 0,
+            glob_count: Cell::new(0),
             resolved_import_count: 0,
             populated: Cell::new(!external),
         }
@@ -1961,7 +1961,7 @@ impl Resolver {
                 // Set the glob flag. This tells us that we don't know the
                 // module's exports ahead of time.
 
-                module_.glob_count += 1;
+                module_.glob_count.set(module_.glob_count.get() + 1);
             }
         }
 
@@ -2192,8 +2192,8 @@ impl Resolver {
         if !resolution_result.indeterminate() {
             match *import_directive.subclass {
                 GlobImport => {
-                    assert!(module_.glob_count >= 1);
-                    module_.glob_count -= 1;
+                    assert!(module_.glob_count.get() >= 1);
+                    module_.glob_count.set(module_.glob_count.get() - 1);
                 }
                 SingleImport(..) => {
                     // Ignore.
@@ -2268,7 +2268,7 @@ impl Resolver {
                 // containing module, bail out. We don't know enough to be
                 // able to resolve this import.
 
-                if containing_module.glob_count > 0 {
+                if containing_module.glob_count.get() > 0 {
                     debug!("(resolving single import) unresolved glob; \
                             bailing out");
                     return Indeterminate;
@@ -2463,7 +2463,7 @@ impl Resolver {
             return Indeterminate;
         }
 
-        assert_eq!(containing_module.glob_count, 0);
+        assert_eq!(containing_module.glob_count.get(), 0);
 
         // Add all resolved imports from the containing module.
         for (ident, target_import_resolution) in containing_module.import_resolutions.iter() {
@@ -3102,7 +3102,7 @@ impl Resolver {
         // If this is a search of all imports, we should be done with glob
         // resolution at this point.
         if name_search_type == PathSearch {
-            assert_eq!(module_.glob_count, 0);
+            assert_eq!(module_.glob_count.get(), 0);
         }
 
         // Check the list of resolved imports.
