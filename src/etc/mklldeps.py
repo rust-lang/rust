@@ -7,6 +7,7 @@ import subprocess
 f = open(sys.argv[1], 'wb')
 
 components = sys.argv[2].split(' ')
+components = [i for i in components if i]  # ignore extra whitespaces
 
 f.write("""// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
@@ -50,6 +51,10 @@ for llconfig in sys.argv[3:]:
     args.extend(components)
     proc = subprocess.Popen(args, stdout = subprocess.PIPE)
     out, err = proc.communicate()
+
+    if err:
+        print("failed to run llconfig: args = `{}`".format(args))
+        sys.exit(1)
 
     for lib in out.strip().split(' '):
         lib = lib[2:] # chop of the leading '-l'

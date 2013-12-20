@@ -219,7 +219,11 @@ fn visit_item(e: &Env, i: @ast::item) {
                                 @"foo"
                             }
                         };
-                        cstore::add_used_library(cstore, n.to_owned(), kind);
+                        if n.is_empty() {
+                            e.sess.span_err(m.span, "#[link(name = \"\")] given with empty name");
+                        } else {
+                            cstore::add_used_library(cstore, n.to_owned(), kind);
+                        }
                     }
                     None => {}
                 }
