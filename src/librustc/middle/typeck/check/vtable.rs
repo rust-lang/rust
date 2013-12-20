@@ -329,7 +329,12 @@ fn search_for_vtable(vcx: &VtableContext,
 
     // XXX: this is a bad way to do this, since we do
     // pointless allocations.
-    let impls = tcx.trait_impls.find(&trait_ref.def_id).map_default(@mut ~[], |x| *x);
+    let impls = {
+        let trait_impls = tcx.trait_impls.borrow();
+        trait_impls.get()
+                   .find(&trait_ref.def_id)
+                   .map_default(@mut ~[], |x| *x)
+    };
     // impls is the list of all impls in scope for trait_ref.
     for im in impls.iter() {
         // im is one specific impl of trait_ref.

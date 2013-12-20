@@ -333,7 +333,7 @@ struct ctxt_ {
     destructors: RefCell<HashSet<ast::DefId>>,
 
     // Maps a trait onto a list of impls of that trait.
-    trait_impls: @mut HashMap<ast::DefId, @mut ~[@Impl]>,
+    trait_impls: RefCell<HashMap<ast::DefId, @mut ~[@Impl]>>,
 
     // Maps a def_id of a type to a list of its inherent impls.
     // Contains implementations of methods that are inherent to a type.
@@ -1005,7 +1005,7 @@ pub fn mk_ctxt(s: session::Session,
         supertraits: RefCell::new(HashMap::new()),
         destructor_for_type: RefCell::new(HashMap::new()),
         destructors: RefCell::new(HashSet::new()),
-        trait_impls: @mut HashMap::new(),
+        trait_impls: RefCell::new(HashMap::new()),
         inherent_impls:  @mut HashMap::new(),
         impls:  @mut HashMap::new(),
         used_unsafe: @mut HashSet::new(),
@@ -4498,10 +4498,11 @@ fn record_trait_implementation(tcx: ctxt,
                                trait_def_id: DefId,
                                implementation: @Impl) {
     let implementation_list;
-    match tcx.trait_impls.find(&trait_def_id) {
+    let mut trait_impls = tcx.trait_impls.borrow_mut();
+    match trait_impls.get().find(&trait_def_id) {
         None => {
             implementation_list = @mut ~[];
-            tcx.trait_impls.insert(trait_def_id, implementation_list);
+            trait_impls.get().insert(trait_def_id, implementation_list);
         }
         Some(&existing_implementation_list) => {
             implementation_list = existing_implementation_list

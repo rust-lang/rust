@@ -352,7 +352,8 @@ impl<'a> LookupContext<'a> {
                     *trait_did);
 
                 // Look for explicit implementations.
-                let opt_impl_infos = self.tcx().trait_impls.find(trait_did);
+                let trait_impls = self.tcx().trait_impls.borrow();
+                let opt_impl_infos = trait_impls.get().find(trait_did);
                 for impl_infos in opt_impl_infos.iter() {
                     for impl_info in impl_infos.iter() {
                         self.push_candidates_from_impl(
