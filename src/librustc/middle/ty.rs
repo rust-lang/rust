@@ -316,7 +316,7 @@ struct ctxt_ {
     normalized_cache: @mut HashMap<t, t>,
     lang_items: middle::lang_items::LanguageItems,
     // A mapping of fake provided method def_ids to the default implementation
-    provided_method_sources: @mut HashMap<ast::DefId, ast::DefId>,
+    provided_method_sources: RefCell<HashMap<ast::DefId, ast::DefId>>,
     supertraits: @mut HashMap<ast::DefId, @~[@TraitRef]>,
 
     // Maps from def-id of a type or region parameter to its
@@ -1005,7 +1005,7 @@ pub fn mk_ctxt(s: session::Session,
         adjustments: RefCell::new(HashMap::new()),
         normalized_cache: new_ty_hash(),
         lang_items: lang_items,
-        provided_method_sources: @mut HashMap::new(),
+        provided_method_sources: RefCell::new(HashMap::new()),
         supertraits: @mut HashMap::new(),
         destructor_for_type: @mut HashMap::new(),
         destructors: @mut HashSet::new(),
@@ -3530,7 +3530,8 @@ pub fn def_has_ty_params(def: ast::Def) -> bool {
 }
 
 pub fn provided_source(cx: ctxt, id: ast::DefId) -> Option<ast::DefId> {
-    cx.provided_method_sources.find(&id).map(|x| *x)
+    let provided_method_sources = cx.provided_method_sources.borrow();
+    provided_method_sources.get().find(&id).map(|x| *x)
 }
 
 pub fn provided_trait_methods(cx: ctxt, id: ast::DefId) -> ~[@Method] {
@@ -4531,7 +4532,9 @@ pub fn populate_implementations_for_type_if_necessary(tcx: ctxt,
         // the map. This is a bit unfortunate.
         for method in implementation.methods.iter() {
             for source in method.provided_source.iter() {
-                tcx.provided_method_sources.insert(method.def_id, *source);
+                let mut provided_method_sources =
+                    tcx.provided_method_sources.borrow_mut();
+                provided_method_sources.get().insert(method.def_id, *source);
             }
         }
 
@@ -4580,7 +4583,9 @@ pub fn populate_implementations_for_trait_if_necessary(
         // the map. This is a bit unfortunate.
         for method in implementation.methods.iter() {
             for source in method.provided_source.iter() {
-                tcx.provided_method_sources.insert(method.def_id, *source);
+                let mut provided_method_sources =
+                    tcx.provided_method_sources.borrow_mut();
+                provided_method_sources.get().insert(method.def_id, *source);
             }
         }
 
