@@ -1151,7 +1151,8 @@ impl<'a> LookupContext<'a> {
         let bad;
         match candidate.origin {
             method_static(method_id) => {
-                bad = self.tcx().destructors.contains(&method_id);
+                let destructors = self.tcx().destructors.borrow();
+                bad = destructors.get().contains(&method_id);
             }
             // XXX: does this properly enforce this on everything now
             // that self has been merged in? -sully

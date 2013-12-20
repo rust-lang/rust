@@ -709,7 +709,8 @@ impl CoherenceChecker {
                                                      .borrow_mut();
                     destructor_for_type.get().insert(type_def_id,
                                                      method_def_id);
-                    tcx.destructors.insert(method_def_id);
+                    let mut destructors = tcx.destructors.borrow_mut();
+                    destructors.get().insert(method_def_id);
                 }
                 _ => {
                     // Destructors only work on nominal types.
