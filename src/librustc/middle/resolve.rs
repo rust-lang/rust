@@ -455,7 +455,7 @@ struct Module {
     // Whether this module is populated. If not populated, any attempt to
     // access the children must be preceded with a
     // `populate_module_if_necessary` call.
-    populated: bool,
+    populated: Cell<bool>,
 }
 
 impl Module {
@@ -477,7 +477,7 @@ impl Module {
             import_resolutions: @mut HashMap::new(),
             glob_count: 0,
             resolved_import_count: 0,
-            populated: !external,
+            populated: Cell::new(!external),
         }
     }
 
@@ -1887,16 +1887,16 @@ impl Resolver {
                                                             child_ident,
                                                             visibility)
         });
-        module.populated = true
+        module.populated.set(true)
     }
 
     /// Ensures that the reduced graph rooted at the given external module
     /// is built, building it if it is not.
     fn populate_module_if_necessary(&mut self, module: @mut Module) {
-        if !module.populated {
+        if !module.populated.get() {
             self.populate_external_module(module)
         }
-        assert!(module.populated)
+        assert!(module.populated.get())
     }
 
     /// Builds the reduced graph rooted at the 'use' directive for an external
