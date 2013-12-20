@@ -68,6 +68,7 @@ use util::common::time;
 use util::ppaux::Repr;
 use util::ppaux;
 
+use std::cell::RefCell;
 use std::hashmap::HashMap;
 use std::result;
 use extra::list::List;
@@ -225,7 +226,7 @@ impl Repr for impl_res {
     }
 }
 
-pub type impl_vtable_map = @mut HashMap<ast::DefId, impl_res>;
+pub type impl_vtable_map = RefCell<HashMap<ast::DefId, impl_res>>;
 
 pub struct CrateCtxt {
     // A mapping from method call sites to traits that have that method.
