@@ -447,7 +447,7 @@ pub mod write {
  */
 
 pub fn build_link_meta(sess: Session,
-                       c: &ast::Crate,
+                       attrs: &[ast::Attribute],
                        output: &Path,
                        symbol_hasher: &mut Sha256)
                        -> LinkMeta {
@@ -458,7 +458,7 @@ pub fn build_link_meta(sess: Session,
         truncated_hash_result(symbol_hasher).to_managed()
     }
 
-    let pkgid = match attr::find_pkgid(c.attrs) {
+    let pkgid = match attr::find_pkgid(attrs) {
         None => {
             let stem = session::expect(
                 sess,

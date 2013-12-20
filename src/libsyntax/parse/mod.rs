@@ -79,6 +79,16 @@ pub fn parse_crate_from_file(
     // why is there no p.abort_if_errors here?
 }
 
+pub fn parse_crate_attrs_from_file(
+    input: &Path,
+    cfg: ast::CrateConfig,
+    sess: @mut ParseSess
+) -> ~[ast::Attribute] {
+    let parser = new_parser_from_file(sess, cfg, input);
+    let (inner, _) = parser.parse_inner_attrs_and_next();
+    return inner;
+}
+
 pub fn parse_crate_from_source_str(
     name: @str,
     source: @str,
@@ -90,6 +100,20 @@ pub fn parse_crate_from_source_str(
                                        name,
                                        source);
     maybe_aborted(p.parse_crate_mod(),p)
+}
+
+pub fn parse_crate_attrs_from_source_str(
+    name: @str,
+    source: @str,
+    cfg: ast::CrateConfig,
+    sess: @mut ParseSess
+) -> ~[ast::Attribute] {
+    let p = new_parser_from_source_str(sess,
+                                       /*bad*/ cfg.clone(),
+                                       name,
+                                       source);
+    let (inner, _) = maybe_aborted(p.parse_inner_attrs_and_next(),p);
+    return inner;
 }
 
 pub fn parse_expr_from_source_str(
