@@ -111,9 +111,12 @@ pub fn lookup_variant_by_id(tcx: ty::ctxt,
             Some(_) => None
         }
     } else {
-        match tcx.extern_const_variants.find(&variant_def) {
-            Some(&e) => return e,
-            None => {}
+        {
+            let extern_const_variants = tcx.extern_const_variants.borrow();
+            match extern_const_variants.get().find(&variant_def) {
+                Some(&e) => return e,
+                None => {}
+            }
         }
         let maps = astencode::Maps {
             root_map: @mut HashMap::new(),
@@ -136,8 +139,12 @@ pub fn lookup_variant_by_id(tcx: ty::ctxt,
             },
             _ => None
         };
-        tcx.extern_const_variants.insert(variant_def, e);
-        return e;
+        {
+            let mut extern_const_variants = tcx.extern_const_variants
+                                               .borrow_mut();
+            extern_const_variants.get().insert(variant_def, e);
+            return e;
+        }
     }
 }
 
