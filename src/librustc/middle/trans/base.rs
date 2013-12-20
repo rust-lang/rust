@@ -69,6 +69,7 @@ use util::sha2::Sha256;
 use middle::trans::type_::Type;
 
 use std::c_str::ToCStr;
+use std::cell::RefCell;
 use std::hashmap::HashMap;
 use std::libc::c_uint;
 use std::vec;
@@ -1693,7 +1694,7 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
           caller_expects_out_pointer: uses_outptr,
           llargs: @mut HashMap::new(),
           lllocals: @mut HashMap::new(),
-          llupvars: @mut HashMap::new(),
+          llupvars: RefCell::new(HashMap::new()),
           id: id,
           param_substs: param_substs,
           span: sp,
