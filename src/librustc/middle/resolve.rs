@@ -29,6 +29,7 @@ use syntax::opt_vec::OptVec;
 use syntax::visit;
 use syntax::visit::Visitor;
 
+use std::cell::Cell;
 use std::uint;
 use std::hashmap::{HashMap, HashSet};
 use std::util;
@@ -416,7 +417,7 @@ enum ModuleKind {
 struct Module {
     parent_link: ParentLink,
     def_id: Option<DefId>,
-    kind: ModuleKind,
+    kind: Cell<ModuleKind>,
     is_public: bool,
 
     children: @mut HashMap<Name, @mut NameBindings>,
@@ -463,11 +464,11 @@ impl Module {
            kind: ModuleKind,
            external: bool,
            is_public: bool)
-                -> Module {
+           -> Module {
         Module {
             parent_link: parent_link,
             def_id: def_id,
-            kind: kind,
+            kind: Cell::new(kind),
             is_public: is_public,
             children: @mut HashMap::new(),
             imports: @mut ~[],
@@ -581,7 +582,7 @@ impl NameBindings {
                             type_span: None,
                         })
                     }
-                    Some(module_def) => module_def.kind = kind,
+                    Some(module_def) => module_def.kind.set(kind),
                 }
             }
         }
@@ -1238,7 +1239,7 @@ impl Resolver {
                             // It already exists
                             Some(&child) if child.get_module_if_available()
                                                  .is_some() &&
-                                            child.get_module().kind ==
+                                            child.get_module().kind.get() ==
                                                 ImplModuleKind => {
                                 ModuleReducedGraphParent(child.get_module())
                             }
@@ -1805,7 +1806,7 @@ impl Resolver {
 
                                         // Mark it as an impl module if
                                         // necessary.
-                                        type_module.kind = ImplModuleKind;
+                                        type_module.kind.set(ImplModuleKind);
                                     }
                                     Some(_) | None => {
                                         let parent_link =
@@ -2649,7 +2650,7 @@ impl Resolver {
                                     // import, do not allow traits and impls
                                     // to be selected.
                                     match (name_search_type,
-                                           module_def.kind) {
+                                           module_def.kind.get()) {
                                         (ImportSearch, TraitModuleKind) |
                                         (ImportSearch, ImplModuleKind) => {
                                             self.resolve_error(
@@ -2879,7 +2880,7 @@ impl Resolver {
                 ModuleParentLink(parent_module_node, _) => {
                     match search_through_modules {
                         DontSearchThroughModules => {
-                            match search_module.kind {
+                            match search_module.kind.get() {
                                 NormalModuleKind => {
                                     // We stop the search here.
                                     debug!("(resolving item in lexical \
@@ -2987,7 +2988,7 @@ impl Resolver {
                 NoParentLink => return None,
                 ModuleParentLink(new_module, _) |
                 BlockParentLink(new_module, _) => {
-                    match new_module.kind {
+                    match new_module.kind.get() {
                         NormalModuleKind => return Some(new_module),
                         ExternModuleKind |
                         TraitModuleKind |
@@ -3004,7 +3005,7 @@ impl Resolver {
     fn get_nearest_normal_module_parent_or_self(&mut self,
                                                     module_: @mut Module)
                                                     -> @mut Module {
-        match module_.kind {
+        match module_.kind.get() {
             NormalModuleKind => return module_,
             ExternModuleKind |
             TraitModuleKind |
@@ -4702,7 +4703,7 @@ impl Resolver {
                 (def, last_private.or(lp))
             }
         };
-        match containing_module.kind {
+        match containing_module.kind.get() {
             TraitModuleKind | ImplModuleKind => {
                 match self.method_map.find(&ident.name) {
                     Some(s) => {
