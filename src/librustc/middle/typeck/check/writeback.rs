@@ -206,7 +206,11 @@ fn maybe_resolve_type_vars_for_node(wbcx: &mut WbCtxt,
                                     sp: Span,
                                     id: ast::NodeId)
                                  -> Option<ty::t> {
-    if wbcx.fcx.inh.node_types.contains_key(&id) {
+    let contained = {
+        let node_types = wbcx.fcx.inh.node_types.borrow();
+        node_types.get().contains_key(&id)
+    };
+    if contained {
         resolve_type_vars_for_node(wbcx, sp, id)
     } else {
         None

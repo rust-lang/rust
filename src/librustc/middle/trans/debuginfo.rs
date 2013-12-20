@@ -2259,7 +2259,8 @@ fn fn_should_be_ignored(fcx: &FunctionContext) -> bool {
 }
 
 fn assert_type_for_node_id(cx: &CrateContext, node_id: ast::NodeId, error_span: Span) {
-    if !cx.tcx.node_types.contains_key(&(node_id as uint)) {
+    let node_types = cx.tcx.node_types.borrow();
+    if !node_types.get().contains_key(&(node_id as uint)) {
         cx.sess.span_bug(error_span, "debuginfo: Could not find type for node id!");
     }
 }

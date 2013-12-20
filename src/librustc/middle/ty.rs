@@ -955,7 +955,7 @@ pub struct ty_param_substs_and_ty {
 
 type type_cache = RefCell<HashMap<ast::DefId, ty_param_bounds_and_ty>>;
 
-pub type node_type_table = @mut HashMap<uint,t>;
+pub type node_type_table = RefCell<HashMap<uint,t>>;
 
 pub fn mk_ctxt(s: session::Session,
                dm: resolve::DefMap,
@@ -975,7 +975,7 @@ pub fn mk_ctxt(s: session::Session,
         sess: s,
         def_map: dm,
         region_maps: region_maps,
-        node_types: @mut HashMap::new(),
+        node_types: RefCell::new(HashMap::new()),
         node_type_substs: RefCell::new(HashMap::new()),
         trait_refs: RefCell::new(HashMap::new()),
         trait_defs: RefCell::new(HashMap::new()),
@@ -2674,7 +2674,8 @@ pub fn node_id_to_trait_ref(cx: ctxt, id: ast::NodeId) -> @ty::TraitRef {
 
 pub fn node_id_to_type(cx: ctxt, id: ast::NodeId) -> t {
     //printfln!("{:?}/{:?}", id, cx.node_types.len());
-    match cx.node_types.find(&(id as uint)) {
+    let node_types = cx.node_types.borrow();
+    match node_types.get().find(&(id as uint)) {
        Some(&t) => t,
        None => cx.sess.bug(
            format!("node_id_to_type: no type for node `{}`",
@@ -3172,7 +3173,8 @@ pub fn expr_kind(tcx: ctxt,
         }
 
         ast::ExprCast(..) => {
-            match tcx.node_types.find(&(expr.id as uint)) {
+            let node_types = tcx.node_types.borrow();
+            match node_types.get().find(&(expr.id as uint)) {
                 Some(&t) => {
                     if type_is_trait(t) {
                         RvalueDpsExpr

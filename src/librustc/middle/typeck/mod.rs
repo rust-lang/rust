@@ -240,7 +240,8 @@ pub struct CrateCtxt {
 pub fn write_ty_to_tcx(tcx: ty::ctxt, node_id: ast::NodeId, ty: ty::t) {
     debug!("write_ty_to_tcx({}, {})", node_id, ppaux::ty_to_str(tcx, ty));
     assert!(!ty::type_needs_infer(ty));
-    tcx.node_types.insert(node_id as uint, ty);
+    let mut node_types = tcx.node_types.borrow_mut();
+    node_types.get().insert(node_id as uint, ty);
 }
 pub fn write_substs_to_tcx(tcx: ty::ctxt,
                            node_id: ast::NodeId,
