@@ -216,6 +216,10 @@ dd {
     list-style-type: none;
     padding-left: 0px;
 }
+/* Only display one level of hierarchy in the TOC */
+#TOC ul ul {
+    display: none;
+}
 
 sub,
 sup {
