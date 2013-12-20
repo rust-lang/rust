@@ -401,7 +401,10 @@ pub fn ensure_supertraits(ccx: &CrateCtxt,
 
     // Called only the first time trait_def_of_item is called.
     // Supertraits are ensured at the same time.
-    assert!(!tcx.supertraits.contains_key(&local_def(id)));
+    {
+        let supertraits = tcx.supertraits.borrow();
+        assert!(!supertraits.get().contains_key(&local_def(id)));
+    }
 
     let self_ty = ty::mk_self(ccx.tcx, local_def(id));
     let mut ty_trait_refs: ~[@ty::TraitRef] = ~[];
@@ -425,7 +428,9 @@ pub fn ensure_supertraits(ccx: &CrateCtxt,
             }
         }
     }
-    tcx.supertraits.insert(local_def(id), @ty_trait_refs);
+
+    let mut supertraits = tcx.supertraits.borrow_mut();
+    supertraits.get().insert(local_def(id), @ty_trait_refs);
     bounds
 }
 

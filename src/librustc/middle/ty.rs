@@ -317,7 +317,7 @@ struct ctxt_ {
     lang_items: middle::lang_items::LanguageItems,
     // A mapping of fake provided method def_ids to the default implementation
     provided_method_sources: RefCell<HashMap<ast::DefId, ast::DefId>>,
-    supertraits: @mut HashMap<ast::DefId, @~[@TraitRef]>,
+    supertraits: RefCell<HashMap<ast::DefId, @~[@TraitRef]>>,
 
     // Maps from def-id of a type or region parameter to its
     // (inferred) variance.
@@ -1006,7 +1006,7 @@ pub fn mk_ctxt(s: session::Session,
         normalized_cache: new_ty_hash(),
         lang_items: lang_items,
         provided_method_sources: RefCell::new(HashMap::new()),
-        supertraits: @mut HashMap::new(),
+        supertraits: RefCell::new(HashMap::new()),
         destructor_for_type: @mut HashMap::new(),
         destructors: @mut HashSet::new(),
         trait_impls: @mut HashMap::new(),
@@ -3552,13 +3552,14 @@ pub fn provided_trait_methods(cx: ctxt, id: ast::DefId) -> ~[@Method] {
     }
 }
 
-pub fn trait_supertraits(cx: ctxt,
-                         id: ast::DefId) -> @~[@TraitRef]
-{
+pub fn trait_supertraits(cx: ctxt, id: ast::DefId) -> @~[@TraitRef] {
     // Check the cache.
-    match cx.supertraits.find(&id) {
-        Some(&trait_refs) => { return trait_refs; }
-        None => {}  // Continue.
+    {
+        let supertraits = cx.supertraits.borrow();
+        match supertraits.get().find(&id) {
+            Some(&trait_refs) => { return trait_refs; }
+            None => {}  // Continue.
+        }
     }
 
     // Not in the cache. It had better be in the metadata, which means it
@@ -3568,7 +3569,8 @@ pub fn trait_supertraits(cx: ctxt,
     // Get the supertraits out of the metadata and create the
     // TraitRef for each.
     let result = @csearch::get_supertraits(cx, id);
-    cx.supertraits.insert(id, result);
+    let mut supertraits = cx.supertraits.borrow_mut();
+    supertraits.get().insert(id, result);
     return result;
 }
 
