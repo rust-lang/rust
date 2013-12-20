@@ -90,8 +90,8 @@ pub struct RegionVarBindings {
     tcx: ty::ctxt,
     var_origins: ~[RegionVariableOrigin],
     constraints: RefCell<HashMap<Constraint, SubregionOrigin>>,
-    lubs: CombineMap,
-    glbs: CombineMap,
+    lubs: RefCell<CombineMap>,
+    glbs: RefCell<CombineMap>,
     skolemization_count: Cell<uint>,
     bound_count: Cell<uint>,
 
@@ -116,8 +116,8 @@ pub fn RegionVarBindings(tcx: ty::ctxt) -> RegionVarBindings {
         var_origins: ~[],
         values: None,
         constraints: RefCell::new(HashMap::new()),
-        lubs: HashMap::new(),
-        glbs: HashMap::new(),
+        lubs: RefCell::new(HashMap::new()),
+        glbs: RefCell::new(HashMap::new()),
         skolemization_count: Cell::new(0),
         bound_count: Cell::new(0),
         undo_log: ~[]
@@ -162,10 +162,12 @@ impl RegionVarBindings {
                 constraints.get().remove(constraint);
               }
               AddCombination(Glb, ref regions) => {
-                self.glbs.remove(regions);
+                let mut glbs = self.glbs.borrow_mut();
+                glbs.get().remove(regions);
               }
               AddCombination(Lub, ref regions) => {
-                self.lubs.remove(regions);
+                let mut lubs = self.lubs.borrow_mut();
+                lubs.get().remove(regions);
               }
             }
         }
@@ -345,10 +347,8 @@ impl RegionVarBindings {
         }
     }
 
-    fn combine_map<'a>(&'a mut self,
-                       t: CombineMapType)
-                       -> &'a mut CombineMap
-    {
+    fn combine_map<'a>(&'a mut self, t: CombineMapType)
+                   -> &'a mut RefCell<CombineMap> {
         match t {
             Glb => &mut self.glbs,
             Lub => &mut self.lubs,
@@ -365,14 +365,20 @@ impl RegionVarBindings {
                                  new_r: Region|)
                         -> Region {
         let vars = TwoRegions { a: a, b: b };
-        match self.combine_map(t).find(&vars) {
-            Some(&c) => {
-                return ReInfer(ReVar(c));
+        {
+            let map = self.combine_map(t).borrow();
+            match map.get().find(&vars) {
+                Some(&c) => {
+                    return ReInfer(ReVar(c));
+                }
+                None => {}
             }
-            None => {}
         }
         let c = self.new_region_var(infer::MiscVariable(origin.span()));
-        self.combine_map(t).insert(vars, c);
+        {
+            let mut map = self.combine_map(t).borrow_mut();
+            map.get().insert(vars, c);
+        }
         if self.in_snapshot() {
             self.undo_log.push(AddCombination(t, vars));
         }
