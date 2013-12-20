@@ -1112,7 +1112,8 @@ fn pats_require_rooting(bcx: @Block,
     m.iter().any(|br| {
         let pat_id = br.pats[col].id;
         let key = root_map_key {id: pat_id, derefs: 0u };
-        bcx.ccx().maps.root_map.contains_key(&key)
+        let root_map = bcx.ccx().maps.root_map.borrow();
+        root_map.get().contains_key(&key)
     })
 }
 

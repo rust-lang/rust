@@ -45,9 +45,12 @@ pub fn root_and_write_guard(datum: &Datum,
     //
     // (Note: root'd values are always boxes)
     let ccx = bcx.ccx();
-    bcx = match ccx.maps.root_map.find(&key) {
-        None => bcx,
-        Some(&root_info) => root(datum, bcx, span, key, root_info)
+    bcx = {
+        let root_map = ccx.maps.root_map.borrow();
+        match root_map.get().find(&key) {
+            None => bcx,
+            Some(&root_info) => root(datum, bcx, span, key, root_info)
+        }
     };
 
     // Perform the write guard, if necessary.

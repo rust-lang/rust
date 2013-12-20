@@ -19,6 +19,7 @@ use syntax::visit;
 use syntax::visit::Visitor;
 use syntax::ast::*;
 
+use std::cell::RefCell;
 use std::hashmap::{HashMap, HashSet};
 
 //
@@ -119,7 +120,7 @@ pub fn lookup_variant_by_id(tcx: ty::ctxt,
             }
         }
         let maps = astencode::Maps {
-            root_map: @mut HashMap::new(),
+            root_map: @RefCell::new(HashMap::new()),
             method_map: @mut HashMap::new(),
             vtable_map: @mut HashMap::new(),
             write_guard_map: @mut HashSet::new(),
@@ -169,7 +170,7 @@ pub fn lookup_const_by_id(tcx: ty::ctxt,
             }
         }
         let maps = astencode::Maps {
-            root_map: @mut HashMap::new(),
+            root_map: @RefCell::new(HashMap::new()),
             method_map: @mut HashMap::new(),
             vtable_map: @mut HashMap::new(),
             write_guard_map: @mut HashSet::new(),

@@ -20,6 +20,7 @@ use middle::dataflow::DataFlowOperator;
 use util::common::stmt_set;
 use util::ppaux::{note_and_explain_region, Repr, UserString};
 
+use std::cell::RefCell;
 use std::hashmap::{HashSet, HashMap};
 use std::ops::{BitOr, BitAnd};
 use std::result::{Result};
@@ -413,10 +414,10 @@ pub struct RootInfo {
     freeze: Option<DynaFreezeKind> // Some() if we should freeze box at runtime
 }
 
-pub type root_map = @mut HashMap<root_map_key, RootInfo>;
+pub type root_map = @RefCell<HashMap<root_map_key, RootInfo>>;
 
 pub fn root_map() -> root_map {
-    return @mut HashMap::new();
+    return @RefCell::new(HashMap::new());
 }
 
 pub enum DynaFreezeKind {
