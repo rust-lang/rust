@@ -3446,7 +3446,10 @@ pub fn check_const(ccx: @mut CrateCtxt,
                    id: ast::NodeId) {
     let rty = ty::node_id_to_type(ccx.tcx, id);
     let fcx = blank_fn_ctxt(ccx, rty, e.id);
-    let declty = fcx.ccx.tcx.tcache.get(&local_def(id)).ty;
+    let declty = {
+        let tcache = fcx.ccx.tcx.tcache.borrow();
+        tcache.get().get(&local_def(id)).ty
+    };
     check_const_with_ty(fcx, sp, e, declty);
 }
 

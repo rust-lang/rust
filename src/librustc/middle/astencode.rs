@@ -951,7 +951,8 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
 
     let lid = ast::DefId { crate: ast::LOCAL_CRATE, node: id };
     {
-        let r = tcx.tcache.find(&lid);
+        let tcache = tcx.tcache.borrow();
+        let r = tcache.get().find(&lid);
         for &tpbt in r.iter() {
             ebml_w.tag(c::tag_table_tcache, |ebml_w| {
                 ebml_w.id(id);
@@ -1247,7 +1248,8 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
                     c::tag_table_tcache => {
                         let tpbt = val_dsr.read_ty_param_bounds_and_ty(xcx);
                         let lid = ast::DefId { crate: ast::LOCAL_CRATE, node: id };
-                        dcx.tcx.tcache.insert(lid, tpbt);
+                        let mut tcache = dcx.tcx.tcache.borrow_mut();
+                        tcache.get().insert(lid, tpbt);
                     }
                     c::tag_table_param_defs => {
                         let bounds = val_dsr.read_type_param_def(xcx);

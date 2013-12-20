@@ -366,7 +366,10 @@ impl CoherenceChecker {
             };
             debug!("new_polytype={}", new_polytype.repr(tcx));
 
-            tcx.tcache.insert(new_did, new_polytype);
+            {
+                let mut tcache = tcx.tcache.borrow_mut();
+                tcache.get().insert(new_did, new_polytype);
+            }
 
             let mut methods = tcx.methods.borrow_mut();
             methods.get().insert(new_did, new_method_ty);
@@ -528,7 +531,8 @@ impl CoherenceChecker {
 
     pub fn get_self_type_for_implementation(&self, implementation: @Impl)
                                             -> ty_param_bounds_and_ty {
-        return self.crate_context.tcx.tcache.get_copy(&implementation.did);
+        let tcache = self.crate_context.tcx.tcache.borrow();
+        return tcache.get().get_copy(&implementation.did);
     }
 
     // Privileged scope checking
