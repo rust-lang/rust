@@ -327,7 +327,7 @@ struct ctxt_ {
     // of the method that implements its destructor. If the type is not
     // present in this map, it does not have a destructor. This map is
     // populated during the coherence phase of typechecking.
-    destructor_for_type: @mut HashMap<ast::DefId, ast::DefId>,
+    destructor_for_type: RefCell<HashMap<ast::DefId, ast::DefId>>,
 
     // A method will be in this list if and only if it is a destructor.
     destructors: @mut HashSet<ast::DefId>,
@@ -1003,7 +1003,7 @@ pub fn mk_ctxt(s: session::Session,
         lang_items: lang_items,
         provided_method_sources: RefCell::new(HashMap::new()),
         supertraits: RefCell::new(HashMap::new()),
-        destructor_for_type: @mut HashMap::new(),
+        destructor_for_type: RefCell::new(HashMap::new()),
         destructors: @mut HashSet::new(),
         trait_impls: @mut HashMap::new(),
         inherent_impls:  @mut HashMap::new(),
@@ -3813,7 +3813,8 @@ impl DtorKind {
 /* If struct_id names a struct with a dtor, return Some(the dtor's id).
    Otherwise return none. */
 pub fn ty_dtor(cx: ctxt, struct_id: DefId) -> DtorKind {
-    match cx.destructor_for_type.find(&struct_id) {
+    let destructor_for_type = cx.destructor_for_type.borrow();
+    match destructor_for_type.get().find(&struct_id) {
         Some(&method_def_id) => {
             let flag = !has_attr(cx, struct_id, "unsafe_no_drop_flag");
 

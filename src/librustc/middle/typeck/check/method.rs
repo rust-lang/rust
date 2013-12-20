@@ -1157,7 +1157,10 @@ impl<'a> LookupContext<'a> {
             // that self has been merged in? -sully
             method_param(method_param { trait_id: trait_id, .. }) |
             method_object(method_object { trait_id: trait_id, .. }) => {
-                bad = self.tcx().destructor_for_type.contains_key(&trait_id);
+                let destructor_for_type = self.tcx()
+                                              .destructor_for_type
+                                              .borrow();
+                bad = destructor_for_type.get().contains_key(&trait_id);
             }
         }
 
