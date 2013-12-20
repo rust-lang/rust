@@ -450,7 +450,7 @@ struct Module {
     glob_count: Cell<uint>,
 
     // The index of the import we're resolving.
-    resolved_import_count: uint,
+    resolved_import_count: Cell<uint>,
 
     // Whether this module is populated. If not populated, any attempt to
     // access the children must be preceded with a
@@ -476,14 +476,14 @@ impl Module {
             anonymous_children: @mut HashMap::new(),
             import_resolutions: @mut HashMap::new(),
             glob_count: Cell::new(0),
-            resolved_import_count: 0,
+            resolved_import_count: Cell::new(0),
             populated: Cell::new(!external),
         }
     }
 
     fn all_imports_resolved(&self) -> bool {
         let imports = &mut *self.imports;
-        return imports.len() == self.resolved_import_count;
+        return imports.len() == self.resolved_import_count.get();
     }
 }
 
@@ -2039,8 +2039,8 @@ impl Resolver {
 
         let imports = &mut *module.imports;
         let import_count = imports.len();
-        while module.resolved_import_count < import_count {
-            let import_index = module.resolved_import_count;
+        while module.resolved_import_count.get() < import_count {
+            let import_index = module.resolved_import_count.get();
             let import_directive = imports[import_index];
             match self.resolve_import_for_module(module, import_directive) {
                 Failed => {
@@ -2060,7 +2060,8 @@ impl Resolver {
                 }
             }
 
-            module.resolved_import_count += 1;
+            module.resolved_import_count
+                  .set(module.resolved_import_count.get() + 1);
         }
     }
 
@@ -3151,7 +3152,7 @@ impl Resolver {
     }
 
     fn report_unresolved_imports(&mut self, module_: @mut Module) {
-        let index = module_.resolved_import_count;
+        let index = module_.resolved_import_count.get();
         let imports: &mut ~[@ImportDirective] = &mut *module_.imports;
         let import_count = imports.len();
         if index != import_count {
