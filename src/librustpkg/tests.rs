@@ -746,8 +746,8 @@ fn test_crate_ids_must_be_relative_path_like() {
             CrateId::new("github.com/catamorphism/test-pkg").to_str());
 
     cond.trap(|(p, e)| {
-        assert!(p.filename().is_none())
-        assert!("0-length crate_id" == e);
+        assert!(p.filename().is_none());
+        assert!("bad crateid" == e);
         whatever.clone()
     }).inside(|| {
         let x = CrateId::new("");
@@ -757,7 +757,7 @@ fn test_crate_ids_must_be_relative_path_like() {
     cond.trap(|(p, e)| {
         let abs = os::make_absolute(&Path::new("foo/bar/quux"));
         assert_eq!(p, abs);
-        assert!("absolute crate_id" == e);
+        assert!("bad crateid" == e);
         whatever.clone()
     }).inside(|| {
         let zp = os::make_absolute(&Path::new("foo/bar/quux"));
