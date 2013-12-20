@@ -134,9 +134,11 @@ impl Rcx {
             ty_unadjusted
         } else {
             let tcx = self.fcx.tcx();
-            let adjustments = self.fcx.inh.adjustments;
-            ty::adjust_ty(tcx, expr.span, ty_unadjusted,
-                          adjustments.find_copy(&expr.id))
+            let adjustment = {
+                let adjustments = self.fcx.inh.adjustments.borrow();
+                adjustments.get().find_copy(&expr.id)
+            };
+            ty::adjust_ty(tcx, expr.span, ty_unadjusted, adjustment)
         }
     }
 }
@@ -300,7 +302,8 @@ fn visit_expr(rcx: &mut Rcx, expr: @ast::Expr) {
 
     // Check any autoderefs or autorefs that appear.
     {
-        let r = rcx.fcx.inh.adjustments.find(&expr.id);
+        let adjustments = rcx.fcx.inh.adjustments.borrow();
+        let r = adjustments.get().find(&expr.id);
         for &adjustment in r.iter() {
             debug!("adjustment={:?}", adjustment);
             match *adjustment {
@@ -699,7 +702,10 @@ fn constrain_regions_in_type_of_node(
     // is going to fail anyway, so just stop here and let typeck
     // report errors later on in the writeback phase.
     let ty0 = rcx.resolve_node_type(id);
-    let adjustment = rcx.fcx.inh.adjustments.find_copy(&id);
+    let adjustment = {
+        let adjustments = rcx.fcx.inh.adjustments.borrow();
+        adjustments.get().find_copy(&id)
+    };
     let ty = ty::adjust_ty(tcx, origin.span(), ty0, adjustment);
     debug!("constrain_regions_in_type_of_node(\
             ty={}, ty0={}, id={}, minimum_lifetime={:?}, adjustment={:?})",
@@ -1055,7 +1061,8 @@ pub mod guarantor {
         let mut expr_ct = categorize_unadjusted(rcx, expr);
         debug!("before adjustments, cat={:?}", expr_ct.cat);
 
-        match rcx.fcx.inh.adjustments.find(&expr.id) {
+        let adjustments = rcx.fcx.inh.adjustments.borrow();
+        match adjustments.get().find(&expr.id) {
             Some(&@ty::AutoAddEnv(..)) => {
                 // This is basically an rvalue, not a pointer, no regions
                 // involved.

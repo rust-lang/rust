@@ -208,7 +208,8 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
 
     // If this expression is borrowed, have to ensure it remains valid:
     {
-        let r = tcx.adjustments.find(&ex.id);
+        let adjustments = tcx.adjustments.borrow();
+        let r = adjustments.get().find(&ex.id);
         for &adjustments in r.iter() {
             this.guarantee_adjustments(ex, *adjustments);
         }

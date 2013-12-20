@@ -186,7 +186,10 @@ pub fn const_expr(cx: @CrateContext, e: &ast::Expr) -> (ValueRef, bool) {
     let mut llconst = llconst;
     let mut inlineable = inlineable;
     let ety = ty::expr_ty(cx.tcx, e);
-    let adjustment = cx.tcx.adjustments.find_copy(&e.id);
+    let adjustment = {
+        let adjustments = cx.tcx.adjustments.borrow();
+        adjustments.get().find_copy(&e.id)
+    };
     match adjustment {
         None => { }
         Some(@ty::AutoAddEnv(ty::ReStatic, ast::BorrowedSigil)) => {
