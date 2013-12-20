@@ -442,7 +442,8 @@ fn encode_reexported_static_base_methods(ecx: &EncodeContext,
                                          ebml_w: &mut writer::Encoder,
                                          exp: &middle::resolve::Export2)
                                          -> bool {
-    match ecx.tcx.inherent_impls.find(&exp.def_id) {
+    let inherent_impls = ecx.tcx.inherent_impls.borrow();
+    match inherent_impls.get().find(&exp.def_id) {
         Some(implementations) => {
             for &base_impl in implementations.iter() {
                 for &m in base_impl.methods.iter() {
@@ -862,7 +863,8 @@ fn should_inline(attrs: &[Attribute]) -> bool {
 fn encode_inherent_implementations(ecx: &EncodeContext,
                                    ebml_w: &mut writer::Encoder,
                                    def_id: DefId) {
-    match ecx.tcx.inherent_impls.find(&def_id) {
+    let inherent_impls = ecx.tcx.inherent_impls.borrow();
+    match inherent_impls.get().find(&def_id) {
         None => {}
         Some(&implementations) => {
             for implementation in implementations.iter() {
