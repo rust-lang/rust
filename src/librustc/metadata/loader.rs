@@ -13,6 +13,7 @@
 use back::archive::{Archive, METADATA_FILENAME};
 use driver::session::Session;
 use lib::llvm::{False, llvm, ObjectFile, mk_section_iter};
+use metadata::cstore::{MetadataBlob, MetadataVec};
 use metadata::decoder;
 use metadata::encoder;
 use metadata::filesearch::{FileMatches, FileDoesntMatch};
@@ -57,7 +58,7 @@ pub struct Context {
 pub struct Library {
     dylib: Option<Path>,
     rlib: Option<Path>,
-    metadata: @~[u8],
+    metadata: MetadataBlob,
 }
 
 impl Context {
@@ -103,8 +104,10 @@ impl Context {
                     } else if candidate {
                         match get_metadata_section(self.sess, self.os, path) {
                             Some(cvec) =>
-                                if crate_matches(cvec, self.name, self.version, self.hash) {
-                                    debug!("found {} with matching pkgid", path.display());
+                                if crate_matches(cvec.as_slice(), self.name,
+                                                 self.version, self.hash) {
+                                    debug!("found {} with matching pkgid",
+                                           path.display());
                                     let (rlib, dylib) = if file.ends_with(".rlib") {
                                         (Some(path.clone()), None)
                                     } else {
@@ -154,7 +157,8 @@ impl Context {
                         }
                         None => {}
                     }
-                    let attrs = decoder::get_crate_attributes(lib.metadata);
+                    let data = lib.metadata.as_slice();
+                    let attrs = decoder::get_crate_attributes(data);
                     match attr::find_pkgid(attrs) {
                         None => {}
                         Some(pkgid) => {
@@ -226,7 +230,7 @@ pub fn note_pkgid_attr(diag: @mut span_handler,
     diag.handler().note(format!("pkgid: {}", pkgid.to_str()));
 }
 
-fn crate_matches(crate_data: @~[u8],
+fn crate_matches(crate_data: &[u8],
                  name: @str,
                  version: @str,
                  hash: @str) -> bool {
@@ -244,10 +248,11 @@ fn crate_matches(crate_data: @~[u8],
     }
 }
 
-fn get_metadata_section(sess: Session, os: Os, filename: &Path) -> Option<@~[u8]> {
+fn get_metadata_section(sess: Session, os: Os,
+                        filename: &Path) -> Option<MetadataBlob> {
     if filename.filename_str().unwrap().ends_with(".rlib") {
         let archive = Archive::open(sess, filename.clone());
-        return Some(@archive.read(METADATA_FILENAME));
+        return Some(MetadataVec(archive.read(METADATA_FILENAME)));
     }
     unsafe {
         let mb = filename.with_c_str(|buf| {
@@ -284,15 +289,15 @@ fn get_metadata_section(sess: Session, os: Os, filename: &Path) -> Option<@~[u8]
                        csz - vlen);
                 vec::raw::buf_as_slice(cvbuf1, csz-vlen, |bytes| {
                     let inflated = flate::inflate_bytes(bytes);
-                    found = Some(@(inflated));
+                    found = Some(MetadataVec(inflated));
                 });
-                if found != None {
+                if found.is_some() {
                     return found;
                 }
             }
             llvm::LLVMMoveToNextSection(si.llsi);
         }
-        return option::None::<@~[u8]>;
+        return None;
     }
 }
 
@@ -323,7 +328,8 @@ pub fn list_file_metadata(sess: Session,
                           path: &Path,
                           out: @mut io::Writer) {
     match get_metadata_section(sess, os, path) {
-      option::Some(bytes) => decoder::list_crate_metadata(intr, bytes, out),
+      option::Some(bytes) => decoder::list_crate_metadata(intr, bytes.as_slice(),
+                                                          out),
       option::None => {
         write!(out, "could not find metadata in {}.\n", path.display())
       }

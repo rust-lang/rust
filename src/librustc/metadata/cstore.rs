@@ -27,9 +27,13 @@ use syntax::parse::token::ident_interner;
 // own crate numbers.
 pub type cnum_map = @mut HashMap<ast::CrateNum, ast::CrateNum>;
 
+pub enum MetadataBlob {
+    MetadataVec(~[u8]),
+}
+
 pub struct crate_metadata {
     name: @str,
-    data: @~[u8],
+    data: MetadataBlob,
     cnum_map: cnum_map,
     cnum: ast::CrateNum
 }
@@ -86,12 +90,12 @@ pub fn get_crate_data(cstore: &CStore, cnum: ast::CrateNum)
 
 pub fn get_crate_hash(cstore: &CStore, cnum: ast::CrateNum) -> @str {
     let cdata = get_crate_data(cstore, cnum);
-    decoder::get_crate_hash(cdata.data)
+    decoder::get_crate_hash(cdata.data())
 }
 
 pub fn get_crate_vers(cstore: &CStore, cnum: ast::CrateNum) -> @str {
     let cdata = get_crate_data(cstore, cnum);
-    decoder::get_crate_vers(cdata.data)
+    decoder::get_crate_vers(cdata.data())
 }
 
 pub fn set_crate_data(cstore: &mut CStore,
@@ -182,8 +186,8 @@ pub fn get_dep_hashes(cstore: &CStore) -> ~[@str] {
 
     for (_, &cnum) in cstore.extern_mod_crate_map.iter() {
         let cdata = cstore::get_crate_data(cstore, cnum);
-        let hash = decoder::get_crate_hash(cdata.data);
-        let vers = decoder::get_crate_vers(cdata.data);
+        let hash = decoder::get_crate_hash(cdata.data());
+        let vers = decoder::get_crate_vers(cdata.data());
         debug!("Add hash[{}]: {} {}", cdata.name, vers, hash);
         result.push(crate_hash {
             name: cdata.name,
@@ -202,4 +206,16 @@ pub fn get_dep_hashes(cstore: &CStore) -> ~[@str] {
     }
 
     sorted.map(|ch| ch.hash)
+}
+
+impl crate_metadata {
+    pub fn data<'a>(&'a self) -> &'a [u8] { self.data.as_slice() }
+}
+
+impl MetadataBlob {
+    pub fn as_slice<'a>(&'a self) -> &'a [u8] {
+        match *self {
+            MetadataVec(ref vec) => vec.as_slice(),
+        }
+    }
 }

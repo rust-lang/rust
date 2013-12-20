@@ -511,7 +511,7 @@ trait ebml_decoder_helper {
                           -> freevar_entry;
 }
 
-impl ebml_decoder_helper for reader::Decoder {
+impl<'a> ebml_decoder_helper for reader::Decoder<'a> {
     fn read_freevar_entry(&mut self, xcx: @ExtendedDecodeContext)
                           -> freevar_entry {
         let fv: freevar_entry = Decodable::decode(self);
@@ -536,7 +536,7 @@ trait capture_var_helper {
                         -> moves::CaptureVar;
 }
 
-impl capture_var_helper for reader::Decoder {
+impl<'a> capture_var_helper for reader::Decoder<'a> {
     fn read_capture_var(&mut self, xcx: @ExtendedDecodeContext)
                         -> moves::CaptureVar {
         let cvar: moves::CaptureVar = Decodable::decode(self);
@@ -581,7 +581,7 @@ fn encode_method_map_entry(ecx: &e::EncodeContext,
     })
 }
 
-impl read_method_map_entry_helper for reader::Decoder {
+impl<'a> read_method_map_entry_helper for reader::Decoder<'a> {
     fn read_method_map_entry(&mut self, xcx: @ExtendedDecodeContext)
                              -> method_map_entry {
         self.read_struct("method_map_entry", 3, |this| {
@@ -703,7 +703,7 @@ pub trait vtable_decoder_helpers {
                           -> typeck::vtable_origin;
 }
 
-impl vtable_decoder_helpers for reader::Decoder {
+impl<'a> vtable_decoder_helpers for reader::Decoder<'a> {
     fn read_vtable_res(&mut self,
                        tcx: ty::ctxt, cdata: @cstore::crate_metadata)
                       -> typeck::vtable_res {
@@ -1026,12 +1026,12 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
 
 trait doc_decoder_helpers {
     fn as_int(&self) -> int;
-    fn opt_child(&self, tag: c::astencode_tag) -> Option<ebml::Doc>;
+    fn opt_child(&self, tag: c::astencode_tag) -> Option<Self>;
 }
 
-impl doc_decoder_helpers for ebml::Doc {
+impl<'a> doc_decoder_helpers for ebml::Doc<'a> {
     fn as_int(&self) -> int { reader::doc_as_u64(*self) as int }
-    fn opt_child(&self, tag: c::astencode_tag) -> Option<ebml::Doc> {
+    fn opt_child(&self, tag: c::astencode_tag) -> Option<ebml::Doc<'a>> {
         reader::maybe_get_doc(*self, tag as uint)
     }
 }
@@ -1058,12 +1058,12 @@ trait ebml_decoder_decoder_helpers {
                       cdata: @cstore::crate_metadata) -> ~[ty::t];
 }
 
-impl ebml_decoder_decoder_helpers for reader::Decoder {
+impl<'a> ebml_decoder_decoder_helpers for reader::Decoder<'a> {
     fn read_ty_noxcx(&mut self,
                      tcx: ty::ctxt, cdata: @cstore::crate_metadata) -> ty::t {
         self.read_opaque(|_, doc| {
             tydecode::parse_ty_data(
-                *doc.data,
+                doc.data,
                 cdata.cnum,
                 doc.start,
                 tcx,
@@ -1087,7 +1087,7 @@ impl ebml_decoder_decoder_helpers for reader::Decoder {
             debug!("read_ty({})", type_string(doc));
 
             let ty = tydecode::parse_ty_data(
-                *doc.data,
+                doc.data,
                 xcx.dcx.cdata.cnum,
                 doc.start,
                 xcx.dcx.tcx,
@@ -1113,7 +1113,7 @@ impl ebml_decoder_decoder_helpers for reader::Decoder {
                            -> ty::TypeParameterDef {
         self.read_opaque(|this, doc| {
             tydecode::parse_type_param_def_data(
-                *doc.data,
+                doc.data,
                 doc.start,
                 xcx.dcx.cdata.cnum,
                 xcx.dcx.tcx,
@@ -1338,7 +1338,7 @@ fn roundtrip(in_item: Option<@ast::item>) {
     let wr = @mut MemWriter::new();
     let mut ebml_w = writer::Encoder(wr);
     encode_item_ast(&mut ebml_w, in_item);
-    let ebml_doc = reader::Doc(@wr.inner_ref().to_owned());
+    let ebml_doc = reader::Doc(wr.inner_ref().as_slice());
     let out_item = decode_item_ast(ebml_doc);
 
     assert_eq!(in_item, out_item);
