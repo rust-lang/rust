@@ -11,6 +11,7 @@
 #[allow(non_uppercase_pattern_statics)];
 
 use std::c_str::ToCStr;
+use std::cell::RefCell;
 use std::hashmap::HashMap;
 use std::libc::{c_uint, c_ushort, c_void, free};
 use std::str::raw::from_c_str;
@@ -1804,22 +1805,24 @@ pub fn SetFunctionAttribute(Fn: ValueRef, attr: Attribute) {
 /* Memory-managed object interface to type handles. */
 
 pub struct TypeNames {
-    named_types: HashMap<~str, TypeRef>
+    named_types: RefCell<HashMap<~str, TypeRef>>,
 }
 
 impl TypeNames {
     pub fn new() -> TypeNames {
         TypeNames {
-            named_types: HashMap::new()
+            named_types: RefCell::new(HashMap::new())
         }
     }
 
-    pub fn associate_type(&mut self, s: &str, t: &Type) {
-        assert!(self.named_types.insert(s.to_owned(), t.to_ref()));
+    pub fn associate_type(&self, s: &str, t: &Type) {
+        let mut named_types = self.named_types.borrow_mut();
+        assert!(named_types.get().insert(s.to_owned(), t.to_ref()));
     }
 
     pub fn find_type(&self, s: &str) -> Option<Type> {
-        self.named_types.find_equiv(&s).map(|x| Type::from_ref(*x))
+        let named_types = self.named_types.borrow();
+        named_types.get().find_equiv(&s).map(|x| Type::from_ref(*x))
     }
 
     pub fn type_to_str(&self, ty: Type) -> ~str {

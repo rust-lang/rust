@@ -147,7 +147,7 @@ impl CrateContext {
             let targ_cfg = sess.targ_cfg;
 
             let td = mk_target_data(sess.targ_cfg.target_strs.data_layout);
-            let mut tn = TypeNames::new();
+            let tn = TypeNames::new();
 
             let mut intrinsics = base::declare_intrinsics(llmod);
             if sess.opts.extra_debuginfo {
