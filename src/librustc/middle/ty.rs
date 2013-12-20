@@ -368,7 +368,7 @@ struct ctxt_ {
 
     // These two caches are used by const_eval when decoding external statics
     // and variants that are found.
-    extern_const_statics: @mut HashMap<ast::DefId, Option<@ast::Expr>>,
+    extern_const_statics: RefCell<HashMap<ast::DefId, Option<@ast::Expr>>>,
     extern_const_variants: @mut HashMap<ast::DefId, Option<@ast::Expr>>,
 }
 
@@ -1014,7 +1014,7 @@ pub fn mk_ctxt(s: session::Session,
         populated_external_types: @mut HashSet::new(),
         populated_external_traits: @mut HashSet::new(),
 
-        extern_const_statics: @mut HashMap::new(),
+        extern_const_statics: RefCell::new(HashMap::new()),
         extern_const_variants: @mut HashMap::new(),
      }
 }
