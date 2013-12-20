@@ -728,7 +728,7 @@ fn resolve_expr(fcx: @FnCtxt,
     visit::walk_expr(&mut fcx, ex, ());
 }
 
-pub fn resolve_impl(ccx: @mut CrateCtxt,
+pub fn resolve_impl(ccx: @CrateCtxt,
                     impl_item: @ast::item,
                     impl_generics: &ty::Generics,
                     impl_trait_ref: &ty::TraitRef) {

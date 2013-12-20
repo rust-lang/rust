@@ -343,7 +343,7 @@ impl<'a> LookupContext<'a> {
         // If the method being called is associated with a trait, then
         // find all the impls of that trait.  Each of those are
         // candidates.
-        let trait_map: &mut resolve::TraitMap = &mut self.fcx.ccx.trait_map;
+        let trait_map: &resolve::TraitMap = &self.fcx.ccx.trait_map;
         let opt_applicable_traits = trait_map.find(&self.expr.id);
         for applicable_traits in opt_applicable_traits.iter() {
             for trait_did in applicable_traits.iter() {
