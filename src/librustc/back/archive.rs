@@ -12,19 +12,27 @@
 
 use driver::session::Session;
 use metadata::filesearch;
+use lib::llvm::{ArchiveRef, llvm};
 
+use std::cast;
 use std::io::fs;
+use std::libc;
 use std::os;
 use std::run::{ProcessOptions, Process, ProcessOutput};
 use std::str;
+use std::unstable::raw;
 use extra::tempfile::TempDir;
 use syntax::abi;
 
-pub static METADATA_FILENAME: &'static str = "metadata";
+pub static METADATA_FILENAME: &'static str = "rust.metadata.bin";
 
 pub struct Archive {
     priv sess: Session,
     priv dst: Path,
+}
+
+pub struct ArchiveRO {
+    priv ptr: ArchiveRef,
 }
 
 fn run_ar(sess: Session, args: &str, cwd: Option<&Path>,
@@ -191,5 +199,52 @@ impl Archive {
         }
         self.sess.fatal(format!("could not find native static library `{}`, \
                                  perhaps an -L flag is missing?", name));
+    }
+}
+
+impl ArchiveRO {
+    /// Opens a static archive for read-only purposes. This is more optimized
+    /// than the `open` method because it uses LLVM's internal `Archive` class
+    /// rather than shelling out to `ar` for everything.
+    ///
+    /// If this archive is used with a mutable method, then an error will be
+    /// raised.
+    pub fn open(dst: &Path) -> Option<ArchiveRO> {
+        unsafe {
+            let ar = dst.with_c_str(|dst| {
+                llvm::LLVMRustOpenArchive(dst)
+            });
+            if ar.is_null() {
+                None
+            } else {
+                Some(ArchiveRO { ptr: ar })
+            }
+        }
+    }
+
+    /// Read a file in the archive
+    pub fn read<'a>(&'a self, file: &str) -> Option<&'a [u8]> {
+        unsafe {
+            let mut size = 0 as libc::size_t;
+            let ptr = file.with_c_str(|file| {
+                llvm::LLVMRustArchiveReadSection(self.ptr, file, &mut size)
+            });
+            if ptr.is_null() {
+                None
+            } else {
+                Some(cast::transmute(raw::Slice {
+                    data: ptr,
+                    len: size as uint,
+                }))
+            }
+        }
+    }
+}
+
+impl Drop for ArchiveRO {
+    fn drop(&mut self) {
+        unsafe {
+            llvm::LLVMRustDestroyArchive(self.ptr);
+        }
     }
 }
