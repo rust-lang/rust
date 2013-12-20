@@ -495,7 +495,8 @@ fn visit_expr(v: &mut LivenessVisitor, expr: @Expr, this: @mut IrMaps) {
         // being the location that the variable is used.  This results
         // in better error messages than just pointing at the closure
         // construction site.
-        let cvs = this.capture_map.get(&expr.id);
+        let capture_map = this.capture_map.borrow();
+        let cvs = capture_map.get().get(&expr.id);
         let mut call_caps = ~[];
         for cv in cvs.iter() {
             match moves::moved_variable_node_id_from_def(cv.def) {

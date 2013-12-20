@@ -400,7 +400,10 @@ pub fn trans_expr_fn(bcx: @Block,
 
     let Result {bcx: bcx, val: closure} = match sigil {
         ast::BorrowedSigil | ast::ManagedSigil | ast::OwnedSigil => {
-            let cap_vars = ccx.maps.capture_map.get_copy(&user_id);
+            let cap_vars = {
+                let capture_map = ccx.maps.capture_map.borrow();
+                capture_map.get().get_copy(&user_id)
+            };
             let ClosureResult {llbox, cdata_ty, bcx}
                 = build_closure(bcx, cap_vars, sigil);
             trans_closure(ccx,

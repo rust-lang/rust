@@ -137,6 +137,7 @@ use util::common::indenter;
 use util::ppaux::UserString;
 
 use std::at_vec;
+use std::cell::RefCell;
 use std::hashmap::{HashSet, HashMap};
 use syntax::ast::*;
 use syntax::ast_util;
@@ -158,7 +159,7 @@ pub struct CaptureVar {
     mode: CaptureMode // How variable is being accessed
 }
 
-pub type CaptureMap = @mut HashMap<NodeId, @[CaptureVar]>;
+pub type CaptureMap = @RefCell<HashMap<NodeId, @[CaptureVar]>>;
 
 pub type MovesMap = @mut HashSet<NodeId>;
 
@@ -215,7 +216,7 @@ pub fn compute_moves(tcx: ty::ctxt,
         method_map: method_map,
         move_maps: MoveMaps {
             moves_map: @mut HashSet::new(),
-            capture_map: @mut HashMap::new(),
+            capture_map: @RefCell::new(HashMap::new()),
             moved_variables_set: @mut HashSet::new()
         }
     };
@@ -564,7 +565,12 @@ impl VisitContext {
                     self.use_pat(a.pat);
                 }
                 let cap_vars = self.compute_captures(expr.id);
-                self.move_maps.capture_map.insert(expr.id, cap_vars);
+                {
+                    let mut capture_map = self.move_maps
+                                              .capture_map
+                                              .borrow_mut();
+                    capture_map.get().insert(expr.id, cap_vars);
+                }
                 self.consume_block(body);
             }
 
