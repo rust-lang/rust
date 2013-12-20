@@ -69,7 +69,8 @@ fn gather_move_from_expr_or_pat(bccx: &BorrowckCtxt,
 pub fn gather_captures(bccx: &BorrowckCtxt,
                        move_data: &mut MoveData,
                        closure_expr: @ast::Expr) {
-    let captured_vars = bccx.capture_map.get(&closure_expr.id);
+    let capture_map = bccx.capture_map.borrow();
+    let captured_vars = capture_map.get().get(&closure_expr.id);
     for captured_var in captured_vars.iter() {
         match captured_var.mode {
             moves::CapMove => {

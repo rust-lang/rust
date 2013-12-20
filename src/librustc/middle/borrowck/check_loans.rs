@@ -713,7 +713,8 @@ fn check_loans_in_fn<'a>(this: &mut CheckLoanCtxt<'a>,
     fn check_captured_variables(this: &CheckLoanCtxt,
                                 closure_id: ast::NodeId,
                                 span: Span) {
-        let cap_vars = this.bccx.capture_map.get(&closure_id);
+        let capture_map = this.bccx.capture_map.borrow();
+        let cap_vars = capture_map.get().get(&closure_id);
         for cap_var in cap_vars.iter() {
             let var_id = ast_util::def_id_of_def(cap_var.def).node;
             let var_path = @LpVar(var_id);

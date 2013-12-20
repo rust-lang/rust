@@ -124,7 +124,7 @@ pub fn lookup_variant_by_id(tcx: ty::ctxt,
             method_map: @mut HashMap::new(),
             vtable_map: @mut HashMap::new(),
             write_guard_map: @mut HashSet::new(),
-            capture_map: @mut HashMap::new()
+            capture_map: @RefCell::new(HashMap::new())
         };
         let e = match csearch::maybe_get_item_ast(tcx, enum_def,
             |a, b, c, d| astencode::decode_inlined_item(a,
@@ -174,7 +174,7 @@ pub fn lookup_const_by_id(tcx: ty::ctxt,
             method_map: @mut HashMap::new(),
             vtable_map: @mut HashMap::new(),
             write_guard_map: @mut HashSet::new(),
-            capture_map: @mut HashMap::new()
+            capture_map: @RefCell::new(HashMap::new())
         };
         let e = match csearch::maybe_get_item_ast(tcx, def_id,
             |a, b, c, d| astencode::decode_inlined_item(a, b, maps, c, d)) {

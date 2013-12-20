@@ -1017,7 +1017,8 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
     }
 
     {
-        let r = maps.capture_map.find(&id);
+        let capture_map = maps.capture_map.borrow();
+        let r = capture_map.get().find(&id);
         for &cap_vars in r.iter() {
             ebml_w.tag(c::tag_table_capture_map, |ebml_w| {
                 ebml_w.id(id);
@@ -1283,7 +1284,10 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
                             at_vec::to_managed_move(
                                 val_dsr.read_to_vec(
                                     |val_dsr| val_dsr.read_capture_var(xcx)));
-                        dcx.maps.capture_map.insert(id, cvars);
+                        let mut capture_map = dcx.maps
+                                                 .capture_map
+                                                 .borrow_mut();
+                        capture_map.get().insert(id, cvars);
                     }
                     _ => {
                         xcx.dcx.tcx.sess.bug(
