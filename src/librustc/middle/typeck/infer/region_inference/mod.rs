@@ -24,7 +24,7 @@ use middle::graph::{Direction, NodeIndex};
 use util::common::indenter;
 use util::ppaux::{Repr};
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::hashmap::{HashMap, HashSet};
 use std::uint;
 use std::vec;
@@ -92,7 +92,7 @@ pub struct RegionVarBindings {
     constraints: RefCell<HashMap<Constraint, SubregionOrigin>>,
     lubs: CombineMap,
     glbs: CombineMap,
-    skolemization_count: uint,
+    skolemization_count: Cell<uint>,
     bound_count: uint,
 
     // The undo log records actions that might later be undone.
@@ -118,7 +118,7 @@ pub fn RegionVarBindings(tcx: ty::ctxt) -> RegionVarBindings {
         constraints: RefCell::new(HashMap::new()),
         lubs: HashMap::new(),
         glbs: HashMap::new(),
-        skolemization_count: 0,
+        skolemization_count: Cell::new(0),
         bound_count: 0,
         undo_log: ~[]
     }
@@ -188,8 +188,8 @@ impl RegionVarBindings {
     }
 
     pub fn new_skolemized(&mut self, br: ty::BoundRegion) -> Region {
-        let sc = self.skolemization_count;
-        self.skolemization_count += 1;
+        let sc = self.skolemization_count.get();
+        self.skolemization_count.set(sc + 1);
         ReInfer(ReSkolemized(sc, br))
     }
 
