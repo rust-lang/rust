@@ -892,8 +892,12 @@ pub fn ty_generics(ccx: &CrateCtxt,
                                          def_id: local_def(l.id) }
             }).collect(),
         type_param_defs: @generics.ty_params.mapi_to_vec(|offset, param| {
-            match ccx.tcx.ty_param_defs.find(&param.id) {
-                Some(&def) => def,
+            let existing_def_opt = {
+                let ty_param_defs = ccx.tcx.ty_param_defs.borrow();
+                ty_param_defs.get().find(&param.id).map(|def| *def)
+            };
+            match existing_def_opt {
+                Some(def) => def,
                 None => {
                     let param_ty = ty::param_ty {idx: base_index + offset,
                                                  def_id: local_def(param.id)};
@@ -904,7 +908,11 @@ pub fn ty_generics(ccx: &CrateCtxt,
                         bounds: bounds
                     };
                     debug!("def for param: {}", def.repr(ccx.tcx));
-                    ccx.tcx.ty_param_defs.insert(param.id, def);
+
+                    let mut ty_param_defs = ccx.tcx
+                                               .ty_param_defs
+                                               .borrow_mut();
+                    ty_param_defs.get().insert(param.id, def);
                     def
                 }
             }
