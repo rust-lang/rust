@@ -35,6 +35,7 @@ use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::to_str::InferStr;
 use middle::typeck::infer::unify::{ValsAndBindings, Root};
 use middle::typeck::infer::error_reporting::ErrorReporting;
+use std::cell::Cell;
 use std::hashmap::HashMap;
 use std::result;
 use std::vec;
@@ -43,8 +44,8 @@ use syntax::ast;
 use syntax::codemap;
 use syntax::codemap::Span;
 use util::common::indent;
-use util::ppaux::{bound_region_to_str, ty_to_str, trait_ref_to_str, Repr,
-                  UserString};
+use util::ppaux::{bound_region_to_str, ty_to_str, trait_ref_to_str, Repr};
+use util::ppaux::{UserString};
 
 pub mod doc;
 pub mod macros;
@@ -80,15 +81,15 @@ pub struct InferCtxt {
     // types that might instantiate a general type variable have an
     // order, represented by its upper and lower bounds.
     ty_var_bindings: ValsAndBindings<ty::TyVid, Bounds<ty::t>>,
-    ty_var_counter: uint,
+    ty_var_counter: Cell<uint>,
 
     // Map from integral variable to the kind of integer it represents
     int_var_bindings: ValsAndBindings<ty::IntVid, Option<IntVarValue>>,
-    int_var_counter: uint,
+    int_var_counter: Cell<uint>,
 
     // Map from floating variable to the kind of float it represents
     float_var_bindings: ValsAndBindings<ty::FloatVid, Option<ast::float_ty>>,
-    float_var_counter: uint,
+    float_var_counter: Cell<uint>,
 
     // For region variables.
     region_vars: RegionVarBindings,
@@ -260,13 +261,13 @@ pub fn new_infer_ctxt(tcx: ty::ctxt) -> @mut InferCtxt {
         tcx: tcx,
 
         ty_var_bindings: new_ValsAndBindings(),
-        ty_var_counter: 0,
+        ty_var_counter: Cell::new(0),
 
         int_var_bindings: new_ValsAndBindings(),
-        int_var_counter: 0,
+        int_var_counter: Cell::new(0),
 
         float_var_bindings: new_ValsAndBindings(),
-        float_var_counter: 0,
+        float_var_counter: Cell::new(0),
 
         region_vars: RegionVarBindings(tcx),
     }
@@ -599,8 +600,8 @@ fn next_simple_var<V:Clone,T:Clone>(counter: &mut uint,
 
 impl InferCtxt {
     pub fn next_ty_var_id(&mut self) -> TyVid {
-        let id = self.ty_var_counter;
-        self.ty_var_counter += 1;
+        let id = self.ty_var_counter.get();
+        self.ty_var_counter.set(id + 1);
         {
             let vals = &mut self.ty_var_bindings.vals;
             vals.insert(id, Root(Bounds { lb: None, ub: None }, 0u));
@@ -617,8 +618,11 @@ impl InferCtxt {
     }
 
     pub fn next_int_var_id(&mut self) -> IntVid {
-        IntVid(next_simple_var(&mut self.int_var_counter,
-                               &mut self.int_var_bindings))
+        let mut int_var_counter = self.int_var_counter.get();
+        let result = IntVid(next_simple_var(&mut int_var_counter,
+                                            &mut self.int_var_bindings));
+        self.int_var_counter.set(int_var_counter);
+        result
     }
 
     pub fn next_int_var(&mut self) -> ty::t {
@@ -626,8 +630,11 @@ impl InferCtxt {
     }
 
     pub fn next_float_var_id(&mut self) -> FloatVid {
-        FloatVid(next_simple_var(&mut self.float_var_counter,
-                                 &mut self.float_var_bindings))
+        let mut float_var_counter = self.float_var_counter.get();
+        let result = FloatVid(next_simple_var(&mut float_var_counter,
+                                              &mut self.float_var_bindings));
+        self.float_var_counter.set(float_var_counter);
+        result
     }
 
     pub fn next_float_var(&mut self) -> ty::t {
