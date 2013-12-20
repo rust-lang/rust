@@ -47,7 +47,7 @@ use syntax::{ast, ast_map};
 
 pub use middle::trans::context::CrateContext;
 
-fn type_is_newtype_immediate(ccx: &mut CrateContext, ty: ty::t) -> bool {
+fn type_is_newtype_immediate(ccx: &CrateContext, ty: ty::t) -> bool {
     match ty::get(ty).sty {
         ty::ty_struct(def_id, ref substs) => {
             let fields = ty::struct_fields(ccx.tcx, def_id, substs);
@@ -59,7 +59,7 @@ fn type_is_newtype_immediate(ccx: &mut CrateContext, ty: ty::t) -> bool {
     }
 }
 
-pub fn type_is_immediate(ccx: &mut CrateContext, ty: ty::t) -> bool {
+pub fn type_is_immediate(ccx: &CrateContext, ty: ty::t) -> bool {
     use middle::trans::machine::llsize_of_alloc;
     use middle::trans::type_of::sizing_type_of;
     let tcx = ccx.tcx;
@@ -261,7 +261,7 @@ pub struct FunctionContext {
     path: path,
 
     // This function's enclosing crate context.
-    ccx: @mut CrateContext,
+    ccx: @CrateContext,
 
     // Used and maintained by the debuginfo module.
     debug_context: debuginfo::FunctionDebugContext,
@@ -306,7 +306,7 @@ impl FunctionContext {
     }
 }
 
-pub fn warn_not_to_commit(ccx: &mut CrateContext, msg: &str) {
+pub fn warn_not_to_commit(ccx: &CrateContext, msg: &str) {
     if !ccx.do_not_commit_warning_issued.get() {
         ccx.do_not_commit_warning_issued.set(true);
         ccx.sess.warn(msg.to_str() + " -- do not commit like this!");
@@ -692,7 +692,7 @@ impl Block {
         }
     }
 
-    pub fn ccx(&self) -> @mut CrateContext { self.fcx.ccx }
+    pub fn ccx(&self) -> @CrateContext { self.fcx.ccx }
     pub fn tcx(&self) -> ty::ctxt { self.fcx.ccx.tcx }
     pub fn sess(&self) -> Session { self.fcx.ccx.sess }
 
@@ -888,7 +888,7 @@ pub fn C_u8(i: uint) -> ValueRef {
 
 // This is a 'c-like' raw string, which differs from
 // our boxed-and-length-annotated strings.
-pub fn C_cstr(cx: &mut CrateContext, s: @str) -> ValueRef {
+pub fn C_cstr(cx: &CrateContext, s: @str) -> ValueRef {
     unsafe {
         {
             let const_cstr_cache = cx.const_cstr_cache.borrow();
@@ -918,7 +918,7 @@ pub fn C_cstr(cx: &mut CrateContext, s: @str) -> ValueRef {
 
 // NB: Do not use `do_spill_noroot` to make this into a constant string, or
 // you will be kicked off fast isel. See issue #4352 for an example of this.
-pub fn C_estr_slice(cx: &mut CrateContext, s: @str) -> ValueRef {
+pub fn C_estr_slice(cx: &CrateContext, s: @str) -> ValueRef {
     unsafe {
         let len = s.len();
         let cs = llvm::LLVMConstPointerCast(C_cstr(cx, s), Type::i8p().to_ref());
@@ -926,7 +926,7 @@ pub fn C_estr_slice(cx: &mut CrateContext, s: @str) -> ValueRef {
     }
 }
 
-pub fn C_binary_slice(cx: &mut CrateContext, data: &[u8]) -> ValueRef {
+pub fn C_binary_slice(cx: &CrateContext, data: &[u8]) -> ValueRef {
     unsafe {
         let len = data.len();
         let lldata = C_bytes(data);

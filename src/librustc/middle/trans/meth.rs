@@ -46,7 +46,7 @@ for non-monomorphized methods only.  Other methods will
 be generated once they are invoked with specific type parameters,
 see `trans::base::lval_static_fn()` or `trans::base::monomorphic_fn()`.
 */
-pub fn trans_impl(ccx: @mut CrateContext,
+pub fn trans_impl(ccx: @CrateContext,
                   path: path,
                   name: ast::Ident,
                   methods: &[@ast::method],
@@ -97,7 +97,7 @@ pub fn trans_impl(ccx: @mut CrateContext,
 /// * `impl_id`: the node ID of the impl this method is inside
 ///
 /// XXX(pcwalton) Can we take `path` by reference?
-pub fn trans_method(ccx: @mut CrateContext,
+pub fn trans_method(ccx: @CrateContext,
                     path: path,
                     method: &ast::method,
                     param_substs: Option<@param_substs>,
@@ -293,7 +293,7 @@ pub fn trans_static_method_callee(bcx: @Block,
     }
 }
 
-pub fn method_with_name(ccx: &mut CrateContext,
+pub fn method_with_name(ccx: &CrateContext,
                         impl_id: ast::DefId,
                         name: ast::Name) -> ast::DefId {
     {
@@ -509,7 +509,7 @@ pub fn trans_trait_callee_from_llval(bcx: @Block,
     };
 }
 
-pub fn vtable_id(ccx: @mut CrateContext,
+pub fn vtable_id(ccx: @CrateContext,
                  origin: &typeck::vtable_origin)
               -> mono_id {
     match origin {
@@ -573,7 +573,7 @@ pub fn get_vtable(bcx: @Block,
 }
 
 /// Helper function to declare and initialize the vtable.
-pub fn make_vtable(ccx: &mut CrateContext,
+pub fn make_vtable(ccx: &CrateContext,
                    tydesc: &tydesc_info,
                    ptrs: &[ValueRef])
                    -> ValueRef {

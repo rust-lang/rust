@@ -332,7 +332,7 @@ fn llreg_ty(cls: &[RegClass]) -> Type {
     return Type::struct_(tys, false);
 }
 
-pub fn compute_abi_info(_ccx: &mut CrateContext,
+pub fn compute_abi_info(_ccx: &CrateContext,
                         atys: &[Type],
                         rty: Type,
                         ret_def: bool) -> FnType {

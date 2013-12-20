@@ -72,7 +72,7 @@ struct LlvmSignature {
 ///////////////////////////////////////////////////////////////////////////
 // Calls to external functions
 
-pub fn llvm_calling_convention(ccx: &mut CrateContext,
+pub fn llvm_calling_convention(ccx: &CrateContext,
                                abis: AbiSet) -> Option<CallConv> {
     let os = ccx.sess.targ_cfg.os;
     let arch = ccx.sess.targ_cfg.arch;
@@ -105,7 +105,7 @@ pub fn llvm_calling_convention(ccx: &mut CrateContext,
 }
 
 
-pub fn register_foreign_item_fn(ccx: @mut CrateContext,
+pub fn register_foreign_item_fn(ccx: @CrateContext,
                                 abis: AbiSet,
                                 path: &ast_map::path,
                                 foreign_item: @ast::foreign_item) -> ValueRef {
@@ -349,7 +349,7 @@ pub fn trans_native_call(bcx: @Block,
     return bcx;
 }
 
-pub fn trans_foreign_mod(ccx: @mut CrateContext,
+pub fn trans_foreign_mod(ccx: @CrateContext,
                          foreign_mod: &ast::foreign_mod) {
     let _icx = push_ctxt("foreign::trans_foreign_mod");
     for &foreign_item in foreign_mod.items.iter() {
@@ -398,7 +398,7 @@ pub fn trans_foreign_mod(ccx: @mut CrateContext,
 // inline the one into the other. Of course we could just generate the
 // correct code in the first place, but this is much simpler.
 
-pub fn register_rust_fn_with_foreign_abi(ccx: @mut CrateContext,
+pub fn register_rust_fn_with_foreign_abi(ccx: @CrateContext,
                                          sp: Span,
                                          sym: ~str,
                                          node_id: ast::NodeId)
@@ -427,7 +427,7 @@ pub fn register_rust_fn_with_foreign_abi(ccx: @mut CrateContext,
     llfn
 }
 
-pub fn trans_rust_fn_with_foreign_abi(ccx: @mut CrateContext,
+pub fn trans_rust_fn_with_foreign_abi(ccx: @CrateContext,
                                       path: &ast_map::path,
                                       decl: &ast::fn_decl,
                                       body: &ast::Block,
@@ -445,7 +445,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: @mut CrateContext,
         return build_wrap_fn(ccx, llrustfn, llwrapfn, &tys);
     }
 
-    fn build_rust_fn(ccx: @mut CrateContext,
+    fn build_rust_fn(ccx: @CrateContext,
                      path: &ast_map::path,
                      decl: &ast::fn_decl,
                      body: &ast::Block,
@@ -494,7 +494,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: @mut CrateContext,
         return llfndecl;
     }
 
-    unsafe fn build_wrap_fn(ccx: @mut CrateContext,
+    unsafe fn build_wrap_fn(ccx: @CrateContext,
                             llrustfn: ValueRef,
                             llwrapfn: ValueRef,
                             tys: &ForeignTypes) {
@@ -746,7 +746,7 @@ pub fn link_name(ccx: &CrateContext, i: @ast::foreign_item) -> @str {
     }
 }
 
-fn foreign_signature(ccx: &mut CrateContext, fn_sig: &ty::FnSig, arg_tys: &[ty::t])
+fn foreign_signature(ccx: &CrateContext, fn_sig: &ty::FnSig, arg_tys: &[ty::t])
                      -> LlvmSignature {
     /*!
      * The ForeignSignature is the LLVM types of the arguments/return type
@@ -765,12 +765,12 @@ fn foreign_signature(ccx: &mut CrateContext, fn_sig: &ty::FnSig, arg_tys: &[ty::
     }
 }
 
-fn foreign_types_for_id(ccx: &mut CrateContext,
+fn foreign_types_for_id(ccx: &CrateContext,
                         id: ast::NodeId) -> ForeignTypes {
     foreign_types_for_fn_ty(ccx, ty::node_id_to_type(ccx.tcx, id))
 }
 
-fn foreign_types_for_fn_ty(ccx: &mut CrateContext,
+fn foreign_types_for_fn_ty(ccx: &CrateContext,
                            ty: ty::t) -> ForeignTypes {
     let fn_sig = match ty::get(ty).sty {
         ty::ty_bare_fn(ref fn_ty) => fn_ty.sig.clone(),
@@ -842,7 +842,7 @@ fn lltype_for_fn_from_foreign_types(tys: &ForeignTypes) -> Type {
     }
 }
 
-pub fn lltype_for_foreign_fn(ccx: &mut CrateContext, ty: ty::t) -> Type {
+pub fn lltype_for_foreign_fn(ccx: &CrateContext, ty: ty::t) -> Type {
     let fn_types = foreign_types_for_fn_ty(ccx, ty);
     lltype_for_fn_from_foreign_types(&fn_types)
 }

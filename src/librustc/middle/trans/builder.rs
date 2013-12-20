@@ -25,7 +25,7 @@ use std::ptr::is_not_null;
 
 pub struct Builder {
     llbuilder: BuilderRef,
-    ccx: @mut CrateContext,
+    ccx: @CrateContext,
 }
 
 // This is a really awful way to get a zero-length c-string, but better (and a
@@ -38,7 +38,7 @@ pub fn noname() -> *c_char {
 }
 
 impl Builder {
-    pub fn new(ccx: @mut CrateContext) -> Builder {
+    pub fn new(ccx: @CrateContext) -> Builder {
         Builder {
             llbuilder: ccx.builder.B,
             ccx: ccx,

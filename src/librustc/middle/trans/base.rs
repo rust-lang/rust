@@ -131,14 +131,14 @@ pub fn push_ctxt(s: &'static str) -> _InsnCtxt {
 }
 
 pub struct StatRecorder<'a> {
-    ccx: @mut CrateContext,
+    ccx: @CrateContext,
     name: &'a str,
     start: u64,
     istart: uint,
 }
 
 impl<'a> StatRecorder<'a> {
-    pub fn new(ccx: @mut CrateContext,
+    pub fn new(ccx: @CrateContext,
                name: &'a str) -> StatRecorder<'a> {
         let start = if ccx.sess.trans_stats() {
             time::precise_time_ns()
@@ -203,7 +203,7 @@ pub fn get_extern_fn(externs: &mut ExternMap, llmod: ModuleRef, name: &str,
     f
 }
 
-fn get_extern_rust_fn(ccx: &mut CrateContext, inputs: &[ty::t], output: ty::t,
+fn get_extern_rust_fn(ccx: &CrateContext, inputs: &[ty::t], output: ty::t,
                       name: &str, did: ast::DefId) -> ValueRef {
     {
         let externs = ccx.externs.borrow();
@@ -223,7 +223,7 @@ fn get_extern_rust_fn(ccx: &mut CrateContext, inputs: &[ty::t], output: ty::t,
     f
 }
 
-fn decl_rust_fn(ccx: &mut CrateContext, inputs: &[ty::t], output: ty::t, name: &str) -> ValueRef {
+fn decl_rust_fn(ccx: &CrateContext, inputs: &[ty::t], output: ty::t, name: &str) -> ValueRef {
     let llfty = type_of_rust_fn(ccx, inputs, output);
     let llfn = decl_cdecl_fn(ccx.llmod, name, llfty);
 
@@ -276,7 +276,7 @@ fn decl_rust_fn(ccx: &mut CrateContext, inputs: &[ty::t], output: ty::t, name: &
     llfn
 }
 
-pub fn decl_internal_rust_fn(ccx: &mut CrateContext, inputs: &[ty::t], output: ty::t,
+pub fn decl_internal_rust_fn(ccx: &CrateContext, inputs: &[ty::t], output: ty::t,
                              name: &str) -> ValueRef {
     let llfn = decl_rust_fn(ccx, inputs, output, name);
     lib::llvm::SetLinkage(llfn, lib::llvm::InternalLinkage);
@@ -440,11 +440,11 @@ pub fn maybe_set_managed_unique_rc(bcx: @Block, bx: ValueRef, heap: heap) {
 
 // Type descriptor and type glue stuff
 
-pub fn get_tydesc_simple(ccx: &mut CrateContext, t: ty::t) -> ValueRef {
+pub fn get_tydesc_simple(ccx: &CrateContext, t: ty::t) -> ValueRef {
     get_tydesc(ccx, t).tydesc
 }
 
-pub fn get_tydesc(ccx: &mut CrateContext, t: ty::t) -> @mut tydesc_info {
+pub fn get_tydesc(ccx: &CrateContext, t: ty::t) -> @mut tydesc_info {
     {
         let tydescs = ccx.tydescs.borrow();
         match tydescs.get().find(&t) {
@@ -515,7 +515,7 @@ pub fn set_no_split_stack(f: ValueRef) {
 
 // Double-check that we never ask LLVM to declare the same symbol twice. It
 // silently mangles such symbols, breaking our linkage model.
-pub fn note_unique_llvm_symbol(ccx: &mut CrateContext, sym: @str) {
+pub fn note_unique_llvm_symbol(ccx: &CrateContext, sym: @str) {
     let mut all_llvm_symbols = ccx.all_llvm_symbols.borrow_mut();
     if all_llvm_symbols.get().contains(&sym) {
         ccx.sess.bug(~"duplicate LLVM symbol: " + sym);
@@ -524,7 +524,7 @@ pub fn note_unique_llvm_symbol(ccx: &mut CrateContext, sym: @str) {
 }
 
 
-pub fn get_res_dtor(ccx: @mut CrateContext,
+pub fn get_res_dtor(ccx: @CrateContext,
                     did: ast::DefId,
                     parent_id: ast::DefId,
                     substs: &[ty::t])
@@ -862,7 +862,7 @@ pub fn null_env_ptr(ccx: &CrateContext) -> ValueRef {
     C_null(Type::opaque_box(ccx).ptr_to())
 }
 
-pub fn trans_external_path(ccx: &mut CrateContext, did: ast::DefId, t: ty::t) -> ValueRef {
+pub fn trans_external_path(ccx: &CrateContext, did: ast::DefId, t: ty::t) -> ValueRef {
     let name = csearch::get_symbol(ccx.sess.cstore, did);
     match ty::get(t).sty {
         ty::ty_bare_fn(ref fn_ty) => {
@@ -1652,7 +1652,7 @@ pub fn make_return_pointer(fcx: @mut FunctionContext, output_type: ty::t) -> Val
 //  - create_llargs_for_fn_args.
 //  - new_fn_ctxt
 //  - trans_args
-pub fn new_fn_ctxt_w_id(ccx: @mut CrateContext,
+pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
                         path: path,
                         llfndecl: ValueRef,
                         id: ast::NodeId,
@@ -1726,7 +1726,7 @@ pub fn new_fn_ctxt_w_id(ccx: @mut CrateContext,
     fcx
 }
 
-pub fn new_fn_ctxt(ccx: @mut CrateContext,
+pub fn new_fn_ctxt(ccx: @CrateContext,
                    path: path,
                    llfndecl: ValueRef,
                    output_type: ty::t,
@@ -1888,7 +1888,7 @@ pub enum self_arg { impl_self(ty::t, ty::SelfMode), no_self, }
 // trans_closure: Builds an LLVM function out of a source function.
 // If the function closes over its environment a closure will be
 // returned.
-pub fn trans_closure(ccx: @mut CrateContext,
+pub fn trans_closure(ccx: @CrateContext,
                      path: path,
                      decl: &ast::fn_decl,
                      body: &ast::Block,
@@ -1965,7 +1965,7 @@ pub fn trans_closure(ccx: @mut CrateContext,
 
 // trans_fn: creates an LLVM function corresponding to a source language
 // function.
-pub fn trans_fn(ccx: @mut CrateContext,
+pub fn trans_fn(ccx: @CrateContext,
                 path: path,
                 decl: &ast::fn_decl,
                 body: &ast::Block,
@@ -2022,7 +2022,7 @@ fn insert_synthetic_type_entries(bcx: @Block,
     }
 }
 
-pub fn trans_enum_variant(ccx: @mut CrateContext,
+pub fn trans_enum_variant(ccx: @CrateContext,
                           _enum_id: ast::NodeId,
                           variant: &ast::variant,
                           args: &[ast::variant_arg],
@@ -2040,7 +2040,7 @@ pub fn trans_enum_variant(ccx: @mut CrateContext,
         llfndecl);
 }
 
-pub fn trans_tuple_struct(ccx: @mut CrateContext,
+pub fn trans_tuple_struct(ccx: @CrateContext,
                           fields: &[ast::struct_field],
                           ctor_id: ast::NodeId,
                           param_substs: Option<@param_substs>,
@@ -2072,7 +2072,7 @@ impl IdAndTy for ast::struct_field {
 }
 
 pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
-    ccx: @mut CrateContext,
+    ccx: @CrateContext,
     ctor_id: ast::NodeId,
     args: &[A],
     disr: ty::Disr,
@@ -2150,7 +2150,7 @@ pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
     finish_fn(fcx, bcx);
 }
 
-pub fn trans_enum_def(ccx: @mut CrateContext, enum_definition: &ast::enum_def,
+pub fn trans_enum_def(ccx: @CrateContext, enum_definition: &ast::enum_def,
                       id: ast::NodeId, vi: @~[@ty::VariantInfo],
                       i: &mut uint) {
     for &variant in enum_definition.variants.iter() {
@@ -2174,7 +2174,7 @@ pub fn trans_enum_def(ccx: @mut CrateContext, enum_definition: &ast::enum_def,
 }
 
 pub struct TransItemVisitor {
-    ccx: @mut CrateContext,
+    ccx: @CrateContext,
 }
 
 impl Visitor<()> for TransItemVisitor {
@@ -2183,7 +2183,7 @@ impl Visitor<()> for TransItemVisitor {
     }
 }
 
-pub fn trans_item(ccx: @mut CrateContext, item: &ast::item) {
+pub fn trans_item(ccx: @CrateContext, item: &ast::item) {
     let _icx = push_ctxt("trans_item");
     let path = match ccx.tcx.items.get_copy(&item.id) {
         ast_map::node_item(_, p) => p,
@@ -2279,7 +2279,7 @@ pub fn trans_item(ccx: @mut CrateContext, item: &ast::item) {
     }
 }
 
-pub fn trans_struct_def(ccx: @mut CrateContext, struct_def: @ast::struct_def) {
+pub fn trans_struct_def(ccx: @CrateContext, struct_def: @ast::struct_def) {
     // If this is a tuple-like struct, translate the constructor.
     match struct_def.ctor_id {
         // We only need to translate a constructor if there are fields;
@@ -2298,14 +2298,14 @@ pub fn trans_struct_def(ccx: @mut CrateContext, struct_def: @ast::struct_def) {
 // separate modules in the compiled program.  That's because modules exist
 // only as a convenience for humans working with the code, to organize names
 // and control visibility.
-pub fn trans_mod(ccx: @mut CrateContext, m: &ast::_mod) {
+pub fn trans_mod(ccx: @CrateContext, m: &ast::_mod) {
     let _icx = push_ctxt("trans_mod");
     for item in m.items.iter() {
         trans_item(ccx, *item);
     }
 }
 
-fn finish_register_fn(ccx: @mut CrateContext, sp: Span, sym: ~str, node_id: ast::NodeId,
+fn finish_register_fn(ccx: @CrateContext, sp: Span, sym: ~str, node_id: ast::NodeId,
                       llfn: ValueRef) {
     {
         let mut item_symbols = ccx.item_symbols.borrow_mut();
@@ -2321,7 +2321,7 @@ fn finish_register_fn(ccx: @mut CrateContext, sp: Span, sym: ~str, node_id: ast:
     }
 }
 
-pub fn register_fn(ccx: @mut CrateContext,
+pub fn register_fn(ccx: @CrateContext,
                    sp: Span,
                    sym: ~str,
                    node_id: ast::NodeId,
@@ -2341,7 +2341,7 @@ pub fn register_fn(ccx: @mut CrateContext,
 }
 
 // only use this for foreign function ABIs and glue, use `register_fn` for Rust functions
-pub fn register_fn_llvmty(ccx: @mut CrateContext,
+pub fn register_fn_llvmty(ccx: @CrateContext,
                           sp: Span,
                           sym: ~str,
                           node_id: ast::NodeId,
@@ -2366,7 +2366,7 @@ pub fn is_entry_fn(sess: &Session, node_id: ast::NodeId) -> bool {
 
 // Create a _rust_main(args: ~[str]) function which will be called from the
 // runtime rust_start function
-pub fn create_entry_wrapper(ccx: @mut CrateContext,
+pub fn create_entry_wrapper(ccx: @CrateContext,
                            _sp: Span,
                            main_llfn: ValueRef) {
     let et = ccx.sess.entry_type.unwrap();
@@ -2378,7 +2378,7 @@ pub fn create_entry_wrapper(ccx: @mut CrateContext,
         session::EntryNone => {}    // Do nothing.
     }
 
-    fn create_entry_fn(ccx: @mut CrateContext,
+    fn create_entry_fn(ccx: @CrateContext,
                        rust_main: ValueRef,
                        use_start_lang_item: bool) {
         let llfty = Type::func([ccx.int_type, Type::i8().ptr_to().ptr_to()],
@@ -2454,7 +2454,7 @@ pub fn item_path(ccx: &CrateContext, id: &ast::NodeId) -> path {
     ty::item_path(ccx.tcx, ast_util::local_def(*id))
 }
 
-fn exported_name(ccx: &mut CrateContext, path: path, ty: ty::t, attrs: &[ast::Attribute]) -> ~str {
+fn exported_name(ccx: &CrateContext, path: path, ty: ty::t, attrs: &[ast::Attribute]) -> ~str {
     match attr::first_attr_value_str_by_name(attrs, "export_name") {
         // Use provided name
         Some(name) => name.to_owned(),
@@ -2468,7 +2468,7 @@ fn exported_name(ccx: &mut CrateContext, path: path, ty: ty::t, attrs: &[ast::At
     }
 }
 
-pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
+pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
     debug!("get_item_val(id=`{:?}`)", id);
 
     let val = {
@@ -2736,7 +2736,7 @@ pub fn get_item_val(ccx: @mut CrateContext, id: ast::NodeId) -> ValueRef {
     }
 }
 
-pub fn register_method(ccx: @mut CrateContext,
+pub fn register_method(ccx: @CrateContext,
                        id: ast::NodeId,
                        path: @ast_map::path,
                        m: @ast::method) -> ValueRef {
@@ -2927,7 +2927,7 @@ pub fn trap(bcx: @Block) {
     }
 }
 
-pub fn decl_gc_metadata(ccx: &mut CrateContext, llmod_id: &str) {
+pub fn decl_gc_metadata(ccx: &CrateContext, llmod_id: &str) {
     if !ccx.sess.opts.gc || !ccx.uses_gc {
         return;
     }
@@ -2947,7 +2947,7 @@ pub fn decl_gc_metadata(ccx: &mut CrateContext, llmod_id: &str) {
     }
 }
 
-pub fn create_module_map(ccx: &mut CrateContext) -> (ValueRef, uint) {
+pub fn create_module_map(ccx: &CrateContext) -> (ValueRef, uint) {
     let str_slice_type = Type::struct_([Type::i8p(), ccx.int_type], false);
     let elttype = Type::struct_([str_slice_type, ccx.int_type], false);
     let maptype = {
@@ -3035,7 +3035,7 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
     return (sym_name, map);
 }
 
-pub fn fill_crate_map(ccx: @mut CrateContext, map: ValueRef) {
+pub fn fill_crate_map(ccx: @CrateContext, map: ValueRef) {
     let mut subcrates: ~[ValueRef] = ~[];
     let mut i = 1;
     let cstore = ccx.sess.cstore;
@@ -3165,7 +3165,7 @@ pub fn trans_crate(sess: session::Session,
     // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
     let llmod_id = link_meta.pkgid.name.clone() + ".rc";
 
-    let ccx = @mut CrateContext::new(sess,
+    let ccx = @CrateContext::new(sess,
                                      llmod_id,
                                      analysis.ty_cx,
                                      analysis.exp_map2,

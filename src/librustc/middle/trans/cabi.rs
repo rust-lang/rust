@@ -89,7 +89,7 @@ pub struct FnType {
     ret_ty: ArgType,
 }
 
-pub fn compute_abi_info(ccx: &mut CrateContext,
+pub fn compute_abi_info(ccx: &CrateContext,
                         atys: &[Type],
                         rty: Type,
                         ret_def: bool) -> FnType {

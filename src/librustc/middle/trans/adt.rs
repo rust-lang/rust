@@ -116,7 +116,7 @@ pub fn represent_node(bcx: @Block, node: ast::NodeId) -> @Repr {
 }
 
 /// Decides how to represent a given type.
-pub fn represent_type(cx: &mut CrateContext, t: ty::t) -> @Repr {
+pub fn represent_type(cx: &CrateContext, t: ty::t) -> @Repr {
     debug!("Representing: {}", ty_to_str(cx.tcx, t));
     {
         let adt_reprs = cx.adt_reprs.borrow();
@@ -133,7 +133,7 @@ pub fn represent_type(cx: &mut CrateContext, t: ty::t) -> @Repr {
     return repr;
 }
 
-fn represent_type_uncached(cx: &mut CrateContext, t: ty::t) -> Repr {
+fn represent_type_uncached(cx: &CrateContext, t: ty::t) -> Repr {
     match ty::get(t).sty {
         ty::ty_tup(ref elems) => {
             return Univariant(mk_struct(cx, *elems, false), false)
@@ -255,7 +255,7 @@ pub fn is_ffi_safe(tcx: ty::ctxt, def_id: ast::DefId) -> bool {
 // this should probably all be in ty
 struct Case { discr: Disr, tys: ~[ty::t] }
 impl Case {
-    fn is_zerolen(&self, cx: &mut CrateContext) -> bool {
+    fn is_zerolen(&self, cx: &CrateContext) -> bool {
         mk_struct(cx, self.tys, false).size == 0
     }
     fn find_ptr(&self) -> Option<uint> {
@@ -273,7 +273,7 @@ fn get_cases(tcx: ty::ctxt, def_id: ast::DefId, substs: &ty::substs) -> ~[Case] 
 }
 
 
-fn mk_struct(cx: &mut CrateContext, tys: &[ty::t], packed: bool) -> Struct {
+fn mk_struct(cx: &CrateContext, tys: &[ty::t], packed: bool) -> Struct {
     let lltys = tys.map(|&ty| type_of::sizing_type_of(cx, ty));
     let llty_rec = Type::struct_(lltys, packed);
     Struct {
@@ -291,7 +291,7 @@ struct IntBounds {
     uhi: u64
 }
 
-fn mk_cenum(cx: &mut CrateContext, hint: Hint, bounds: &IntBounds) -> Repr {
+fn mk_cenum(cx: &CrateContext, hint: Hint, bounds: &IntBounds) -> Repr {
     let it = range_to_inttype(cx, hint, bounds);
     match it {
         attr::SignedInt(_) => CEnum(it, bounds.slo as Disr, bounds.shi as Disr),
@@ -299,7 +299,7 @@ fn mk_cenum(cx: &mut CrateContext, hint: Hint, bounds: &IntBounds) -> Repr {
     }
 }
 
-fn range_to_inttype(cx: &mut CrateContext, hint: Hint, bounds: &IntBounds) -> IntType {
+fn range_to_inttype(cx: &CrateContext, hint: Hint, bounds: &IntBounds) -> IntType {
     debug!("range_to_inttype: {:?} {:?}", hint, bounds);
     // Lists of sizes to try.  u64 is always allowed as a fallback.
     static choose_shortest: &'static[IntType] = &[
@@ -339,14 +339,14 @@ fn range_to_inttype(cx: &mut CrateContext, hint: Hint, bounds: &IntBounds) -> In
     return attr::UnsignedInt(ast::ty_u64);
 }
 
-pub fn ll_inttype(cx: &mut CrateContext, ity: IntType) -> Type {
+pub fn ll_inttype(cx: &CrateContext, ity: IntType) -> Type {
     match ity {
         attr::SignedInt(t) => Type::int_from_ty(cx, t),
         attr::UnsignedInt(t) => Type::uint_from_ty(cx, t)
     }
 }
 
-fn bounds_usable(cx: &mut CrateContext, ity: IntType, bounds: &IntBounds) -> bool {
+fn bounds_usable(cx: &CrateContext, ity: IntType, bounds: &IntBounds) -> bool {
     debug!("bounds_usable: {:?} {:?}", ity, bounds);
     match ity {
         attr::SignedInt(_) => {
@@ -380,16 +380,16 @@ pub fn ty_of_inttype(ity: IntType) -> ty::t {
  * and fill in the actual contents in a second pass to prevent
  * unbounded recursion; see also the comments in `trans::type_of`.
  */
-pub fn type_of(cx: &mut CrateContext, r: &Repr) -> Type {
+pub fn type_of(cx: &CrateContext, r: &Repr) -> Type {
     generic_type_of(cx, r, None, false)
 }
-pub fn sizing_type_of(cx: &mut CrateContext, r: &Repr) -> Type {
+pub fn sizing_type_of(cx: &CrateContext, r: &Repr) -> Type {
     generic_type_of(cx, r, None, true)
 }
-pub fn incomplete_type_of(cx: &mut CrateContext, r: &Repr, name: &str) -> Type {
+pub fn incomplete_type_of(cx: &CrateContext, r: &Repr, name: &str) -> Type {
     generic_type_of(cx, r, Some(name), false)
 }
-pub fn finish_type_of(cx: &mut CrateContext, r: &Repr, llty: &mut Type) {
+pub fn finish_type_of(cx: &CrateContext, r: &Repr, llty: &mut Type) {
     match *r {
         CEnum(..) | General(..) => { }
         Univariant(ref st, _) | NullablePointer{ nonnull: ref st, .. } =>
@@ -397,7 +397,7 @@ pub fn finish_type_of(cx: &mut CrateContext, r: &Repr, llty: &mut Type) {
     }
 }
 
-fn generic_type_of(cx: &mut CrateContext, r: &Repr, name: Option<&str>, sizing: bool) -> Type {
+fn generic_type_of(cx: &CrateContext, r: &Repr, name: Option<&str>, sizing: bool) -> Type {
     match *r {
         CEnum(ity, _, _) => ll_inttype(cx, ity),
         Univariant(ref st, _) | NullablePointer{ nonnull: ref st, .. } => {
@@ -449,7 +449,7 @@ fn generic_type_of(cx: &mut CrateContext, r: &Repr, name: Option<&str>, sizing: 
     }
 }
 
-fn struct_llfields(cx: &mut CrateContext, st: &Struct, sizing: bool) -> ~[Type] {
+fn struct_llfields(cx: &CrateContext, st: &Struct, sizing: bool) -> ~[Type] {
     if sizing {
         st.fields.map(|&ty| type_of::sizing_type_of(cx, ty))
     } else {
@@ -705,7 +705,7 @@ pub fn trans_drop_flag_ptr(bcx: @Block, r: &Repr, val: ValueRef) -> ValueRef {
  * this could be changed in the future to avoid allocating unnecessary
  * space after values of shorter-than-maximum cases.
  */
-pub fn trans_const(ccx: &mut CrateContext, r: &Repr, discr: Disr,
+pub fn trans_const(ccx: &CrateContext, r: &Repr, discr: Disr,
                    vals: &[ValueRef]) -> ValueRef {
     match *r {
         CEnum(ity, min, max) => {
@@ -750,7 +750,7 @@ pub fn trans_const(ccx: &mut CrateContext, r: &Repr, discr: Disr,
  * a two-element struct will locate it at offset 4, and accesses to it
  * will read the wrong memory.
  */
-fn build_const_struct(ccx: &mut CrateContext, st: &Struct, vals: &[ValueRef])
+fn build_const_struct(ccx: &CrateContext, st: &Struct, vals: &[ValueRef])
     -> ~[ValueRef] {
     assert_eq!(vals.len(), st.fields.len());
 
@@ -791,7 +791,7 @@ fn padding(size: u64) -> ValueRef {
 fn roundup(x: u64, a: u64) -> u64 { ((x + (a - 1)) / a) * a }
 
 /// Get the discriminant of a constant value.  (Not currently used.)
-pub fn const_get_discrim(ccx: &mut CrateContext, r: &Repr, val: ValueRef)
+pub fn const_get_discrim(ccx: &CrateContext, r: &Repr, val: ValueRef)
     -> Disr {
     match *r {
         CEnum(ity, _, _) => {
@@ -825,7 +825,7 @@ pub fn const_get_discrim(ccx: &mut CrateContext, r: &Repr, val: ValueRef)
  * (Not to be confused with `common::const_get_elt`, which operates on
  * raw LLVM-level structs and arrays.)
  */
-pub fn const_get_field(ccx: &mut CrateContext, r: &Repr, val: ValueRef,
+pub fn const_get_field(ccx: &CrateContext, r: &Repr, val: ValueRef,
                        _discr: Disr, ix: uint) -> ValueRef {
     match *r {
         CEnum(..) => ccx.sess.bug("element access in C-like enum const"),
@@ -836,7 +836,7 @@ pub fn const_get_field(ccx: &mut CrateContext, r: &Repr, val: ValueRef,
 }
 
 /// Extract field of struct-like const, skipping our alignment padding.
-fn const_struct_field(ccx: &mut CrateContext, val: ValueRef, ix: uint)
+fn const_struct_field(ccx: &CrateContext, val: ValueRef, ix: uint)
     -> ValueRef {
     // Get the ix-th non-undef element of the struct.
     let mut real_ix = 0; // actual position in the struct
