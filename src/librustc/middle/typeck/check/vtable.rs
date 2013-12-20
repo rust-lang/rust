@@ -778,7 +778,9 @@ pub fn resolve_impl(ccx: @mut CrateCtxt,
         self_vtables: self_vtable_res
     };
     let impl_def_id = ast_util::local_def(impl_item.id);
-    ccx.tcx.impl_vtables.insert(impl_def_id, res);
+
+    let mut impl_vtables = ccx.tcx.impl_vtables.borrow_mut();
+    impl_vtables.get().insert(impl_def_id, res);
 }
 
 impl visit::Visitor<()> for @FnCtxt {

@@ -1006,7 +1006,7 @@ pub fn mk_ctxt(s: session::Session,
         impls: RefCell::new(HashMap::new()),
         used_unsafe: @mut HashSet::new(),
         used_mut_nodes: @mut HashSet::new(),
-        impl_vtables: @mut HashMap::new(),
+        impl_vtables: RefCell::new(HashMap::new()),
         populated_external_types: @mut HashSet::new(),
         populated_external_traits: @mut HashSet::new(),
 
@@ -3980,8 +3980,9 @@ pub fn lookup_item_type(cx: ctxt,
 pub fn lookup_impl_vtables(cx: ctxt,
                            did: ast::DefId)
                      -> typeck::impl_res {
+    let mut impl_vtables = cx.impl_vtables.borrow_mut();
     lookup_locally_or_in_crate_store(
-        "impl_vtables", did, cx.impl_vtables,
+        "impl_vtables", did, impl_vtables.get(),
         || csearch::get_impl_vtables(cx, did) )
 }
 
