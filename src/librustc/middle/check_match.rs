@@ -466,9 +466,9 @@ fn missing_ctor(cx: &MatchCheckCtxt,
         // those with a destructured slice come first.
         vec_pat_lens.sort_by(|&(len1, slice1), &(len2, slice2)| {
                     if len1 == len2 {
-                        slice1 > slice2
+                        slice2.cmp(&slice1)
                     } else {
-                        len1 <= len2
+                        len1.cmp(&len2)
                     }
                 });
         vec_pat_lens.dedup();
