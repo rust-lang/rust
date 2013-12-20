@@ -472,11 +472,10 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       ty_infer(infer_ty) => infer_ty.to_str(),
       ty_err => ~"[type error]",
       ty_param(param_ty {idx: id, def_id: did}) => {
-          let param_def = cx.ty_param_defs.find(&did.node);
+          let ty_param_defs = cx.ty_param_defs.borrow();
+          let param_def = ty_param_defs.get().find(&did.node);
           let ident = match param_def {
-              Some(def) => {
-                  cx.sess.str_of(def.ident).to_owned()
-              }
+              Some(def) => cx.sess.str_of(def.ident).to_owned(),
               None => {
                   // This should not happen...
                   format!("BUG[{:?}]", id)

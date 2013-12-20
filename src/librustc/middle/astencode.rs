@@ -963,8 +963,11 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
     }
 
     {
-        let r = tcx.ty_param_defs.find(&id);
-        for &type_param_def in r.iter() {
+        let r = {
+            let ty_param_defs = tcx.ty_param_defs.borrow();
+            ty_param_defs.get().find(&id).map(|def| *def)
+        };
+        for type_param_def in r.iter() {
             ebml_w.tag(c::tag_table_param_defs, |ebml_w| {
                 ebml_w.id(id);
                 ebml_w.tag(c::tag_table_val, |ebml_w| {
@@ -1247,7 +1250,10 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
                     }
                     c::tag_table_param_defs => {
                         let bounds = val_dsr.read_type_param_def(xcx);
-                        dcx.tcx.ty_param_defs.insert(id, bounds);
+                        let mut ty_param_defs = dcx.tcx
+                                                   .ty_param_defs
+                                                   .borrow_mut();
+                        ty_param_defs.get().insert(id, bounds);
                     }
                     c::tag_table_method_map => {
                         dcx.maps.method_map.insert(

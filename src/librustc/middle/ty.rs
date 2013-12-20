@@ -311,7 +311,7 @@ struct ctxt_ {
     tc_cache: RefCell<HashMap<uint, TypeContents>>,
     ast_ty_to_ty_cache: RefCell<HashMap<NodeId, ast_ty_to_ty_cache_entry>>,
     enum_var_cache: RefCell<HashMap<DefId, @~[@VariantInfo]>>,
-    ty_param_defs: @mut HashMap<ast::NodeId, TypeParameterDef>,
+    ty_param_defs: RefCell<HashMap<ast::NodeId, TypeParameterDef>>,
     adjustments: @mut HashMap<ast::NodeId, @AutoAdjustment>,
     normalized_cache: @mut HashMap<t, t>,
     lang_items: middle::lang_items::LanguageItems,
@@ -1001,7 +1001,7 @@ pub fn mk_ctxt(s: session::Session,
         trait_method_def_ids: RefCell::new(HashMap::new()),
         trait_methods_cache: RefCell::new(HashMap::new()),
         impl_trait_cache: RefCell::new(HashMap::new()),
-        ty_param_defs: @mut HashMap::new(),
+        ty_param_defs: RefCell::new(HashMap::new()),
         adjustments: @mut HashMap::new(),
         normalized_cache: new_ty_hash(),
         lang_items: lang_items,
@@ -2123,7 +2123,8 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 // def-id.
                 assert_eq!(p.def_id.crate, ast::LOCAL_CRATE);
 
-                let tp_def = cx.ty_param_defs.get(&p.def_id.node);
+                let ty_param_defs = cx.ty_param_defs.borrow();
+                let tp_def = ty_param_defs.get().get(&p.def_id.node);
                 kind_bounds_to_contents(cx,
                                         tp_def.bounds.builtin_bounds,
                                         tp_def.bounds.trait_bounds)
@@ -2568,7 +2569,8 @@ pub fn type_is_sized(cx: ctxt, ty: ty::t) -> bool {
     match get(ty).sty {
         // FIXME(#6308) add trait, vec, str, etc here.
         ty_param(p) => {
-            let param_def = cx.ty_param_defs.get(&p.def_id.node);
+            let ty_param_defs = cx.ty_param_defs.borrow();
+            let param_def = ty_param_defs.get().get(&p.def_id.node);
             if param_def.bounds.builtin_bounds.contains_elem(BoundSized) {
                 return true;
             }
