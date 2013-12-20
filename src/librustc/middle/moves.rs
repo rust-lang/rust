@@ -321,11 +321,14 @@ impl VisitContext {
         // `expr_mode` refers to the post-adjustment value.  If one of
         // those adjustments is to take a reference, then it's only
         // reading the underlying expression, not moving it.
-        let comp_mode = match self.tcx.adjustments.find(&expr.id) {
-            Some(&@ty::AutoDerefRef(
-                ty::AutoDerefRef {
-                    autoref: Some(_), ..})) => Read,
-            _ => expr_mode
+        let comp_mode = {
+            let adjustments = self.tcx.adjustments.borrow();
+            match adjustments.get().find(&expr.id) {
+                Some(&@ty::AutoDerefRef(
+                    ty::AutoDerefRef {
+                        autoref: Some(_), ..})) => Read,
+                _ => expr_mode
+            }
         };
 
         debug!("comp_mode = {:?}", comp_mode);

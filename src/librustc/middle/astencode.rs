@@ -1002,7 +1002,8 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
     }
 
     {
-        let r = tcx.adjustments.find(&id);
+        let adjustments = tcx.adjustments.borrow();
+        let r = adjustments.get().find(&id);
         for adj in r.iter() {
             ebml_w.tag(c::tag_table_adjustments, |ebml_w| {
                 ebml_w.id(id);
@@ -1268,7 +1269,10 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
                     c::tag_table_adjustments => {
                         let adj: @ty::AutoAdjustment = @Decodable::decode(val_dsr);
                         adj.tr(xcx);
-                        dcx.tcx.adjustments.insert(id, adj);
+                        let mut adjustments = dcx.tcx
+                                                 .adjustments
+                                                 .borrow_mut();
+                        adjustments.get().insert(id, adj);
                     }
                     c::tag_table_capture_map => {
                         let cvars =

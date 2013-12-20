@@ -340,7 +340,8 @@ impl mem_categorization_ctxt {
     }
 
     pub fn cat_expr(&self, expr: @ast::Expr) -> cmt {
-        match self.tcx.adjustments.find(&expr.id) {
+        let adjustments = self.tcx.adjustments.borrow();
+        match adjustments.get().find(&expr.id) {
             None => {
                 // No adjustments.
                 self.cat_expr_unadjusted(expr)

@@ -1073,7 +1073,11 @@ fn check_unnecessary_allocation(cx: &Context, e: &ast::Expr) {
         cx.span_lint(unnecessary_allocation, e.span, msg);
     };
 
-    match cx.tcx.adjustments.find_copy(&e.id) {
+    let adjustment = {
+        let adjustments = cx.tcx.adjustments.borrow();
+        adjustments.get().find_copy(&e.id)
+    };
+    match adjustment {
         Some(@ty::AutoDerefRef(ty::AutoDerefRef { autoref, .. })) => {
             match (allocation, autoref) {
                 (VectorAllocation, Some(ty::AutoBorrowVec(..))) => {

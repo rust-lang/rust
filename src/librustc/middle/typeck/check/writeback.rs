@@ -120,10 +120,14 @@ fn resolve_type_vars_for_node(wbcx: &mut WbCtxt, sp: Span, id: ast::NodeId)
     let tcx = fcx.ccx.tcx;
 
     // Resolve any borrowings for the node with id `id`
-    match fcx.inh.adjustments.find(&id) {
+    let adjustment = {
+        let adjustments = fcx.inh.adjustments.borrow();
+        adjustments.get().find_copy(&id)
+    };
+    match adjustment {
         None => (),
 
-        Some(&@ty::AutoAddEnv(r, s)) => {
+        Some(@ty::AutoAddEnv(r, s)) => {
             match resolve_region(fcx.infcx(), r, resolve_all | force_all) {
                 Err(e) => {
                     // This should not, I think, happen:
@@ -134,12 +138,13 @@ fn resolve_type_vars_for_node(wbcx: &mut WbCtxt, sp: Span, id: ast::NodeId)
                 Ok(r1) => {
                     let resolved_adj = @ty::AutoAddEnv(r1, s);
                     debug!("Adjustments for node {}: {:?}", id, resolved_adj);
-                    fcx.tcx().adjustments.insert(id, resolved_adj);
+                    let mut adjustments = fcx.tcx().adjustments.borrow_mut();
+                    adjustments.get().insert(id, resolved_adj);
                 }
             }
         }
 
-        Some(&@ty::AutoDerefRef(adj)) => {
+        Some(@ty::AutoDerefRef(adj)) => {
             let fixup_region = |r| {
                 match resolve_region(fcx.infcx(), r, resolve_all | force_all) {
                     Ok(r1) => r1,
@@ -163,7 +168,8 @@ fn resolve_type_vars_for_node(wbcx: &mut WbCtxt, sp: Span, id: ast::NodeId)
                 autoref: resolved_autoref,
             });
             debug!("Adjustments for node {}: {:?}", id, resolved_adj);
-            fcx.tcx().adjustments.insert(id, resolved_adj);
+            let mut adjustments = fcx.tcx().adjustments.borrow_mut();
+            adjustments.get().insert(id, resolved_adj);
         }
     }
 

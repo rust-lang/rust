@@ -180,9 +180,12 @@ pub fn trans_to_datum(bcx: @Block, expr: &ast::Expr) -> DatumBlock {
 
     let mut bcx = bcx;
     let mut datum = unpack_datum!(bcx, trans_to_datum_unadjusted(bcx, expr));
-    let adjustment = match bcx.tcx().adjustments.find_copy(&expr.id) {
-        None => { return DatumBlock {bcx: bcx, datum: datum}; }
-        Some(adj) => { adj }
+    let adjustment = {
+        let adjustments = bcx.tcx().adjustments.borrow();
+        match adjustments.get().find_copy(&expr.id) {
+            None => { return DatumBlock {bcx: bcx, datum: datum}; }
+            Some(adj) => { adj }
+        }
     };
     debug!("unadjusted datum: {}", datum.to_str(bcx.ccx()));
     match *adjustment {
@@ -415,7 +418,11 @@ pub fn trans_to_datum(bcx: @Block, expr: &ast::Expr) -> DatumBlock {
 }
 
 pub fn trans_into(bcx: @Block, expr: &ast::Expr, dest: Dest) -> @Block {
-    if bcx.tcx().adjustments.contains_key(&expr.id) {
+    let adjustment_found = {
+        let adjustments = bcx.tcx().adjustments.borrow();
+        adjustments.get().contains_key(&expr.id)
+    };
+    if adjustment_found {
         // use trans_to_datum, which is mildly less efficient but
         // which will perform the adjustments:
         let datumblock = trans_to_datum(bcx, expr);
@@ -480,7 +487,11 @@ fn trans_lvalue(bcx: @Block, expr: &ast::Expr) -> DatumBlock {
      * instead, but sometimes we call trans_lvalue() directly as a
      * means of asserting that a particular expression is an lvalue. */
 
-    return match bcx.tcx().adjustments.find(&expr.id) {
+    let adjustment_opt = {
+        let adjustments = bcx.tcx().adjustments.borrow();
+        adjustments.get().find_copy(&expr.id)
+    };
+    match adjustment_opt {
         None => trans_lvalue_unadjusted(bcx, expr),
         Some(_) => {
             bcx.sess().span_bug(
@@ -488,7 +499,7 @@ fn trans_lvalue(bcx: @Block, expr: &ast::Expr) -> DatumBlock {
                 format!("trans_lvalue() called on an expression \
                       with adjustments"));
         }
-    };
+    }
 }
 
 fn trans_to_datum_unadjusted(bcx: @Block, expr: &ast::Expr) -> DatumBlock {

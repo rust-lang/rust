@@ -312,7 +312,7 @@ struct ctxt_ {
     ast_ty_to_ty_cache: RefCell<HashMap<NodeId, ast_ty_to_ty_cache_entry>>,
     enum_var_cache: RefCell<HashMap<DefId, @~[@VariantInfo]>>,
     ty_param_defs: RefCell<HashMap<ast::NodeId, TypeParameterDef>>,
-    adjustments: @mut HashMap<ast::NodeId, @AutoAdjustment>,
+    adjustments: RefCell<HashMap<ast::NodeId, @AutoAdjustment>>,
     normalized_cache: @mut HashMap<t, t>,
     lang_items: middle::lang_items::LanguageItems,
     // A mapping of fake provided method def_ids to the default implementation
@@ -1002,7 +1002,7 @@ pub fn mk_ctxt(s: session::Session,
         trait_methods_cache: RefCell::new(HashMap::new()),
         impl_trait_cache: RefCell::new(HashMap::new()),
         ty_param_defs: RefCell::new(HashMap::new()),
-        adjustments: @mut HashMap::new(),
+        adjustments: RefCell::new(HashMap::new()),
         normalized_cache: new_ty_hash(),
         lang_items: lang_items,
         provided_method_sources: @mut HashMap::new(),
@@ -2876,14 +2876,18 @@ pub fn expr_ty_adjusted(cx: ctxt, expr: &ast::Expr) -> t {
      */
 
     let unadjusted_ty = expr_ty(cx, expr);
-    adjust_ty(cx, expr.span, unadjusted_ty, cx.adjustments.find_copy(&expr.id))
+    let adjustment = {
+        let adjustments = cx.adjustments.borrow();
+        adjustments.get().find_copy(&expr.id)
+    };
+    adjust_ty(cx, expr.span, unadjusted_ty, adjustment)
 }
 
 pub fn adjust_ty(cx: ctxt,
                  span: Span,
                  unadjusted_ty: ty::t,
-                 adjustment: Option<@AutoAdjustment>) -> ty::t
-{
+                 adjustment: Option<@AutoAdjustment>)
+                 -> ty::t {
     /*! See `expr_ty_adjusted` */
 
     return match adjustment {

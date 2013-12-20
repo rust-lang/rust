@@ -164,7 +164,7 @@ pub struct Inherited {
     // Temporary tables:
     node_types: @mut HashMap<ast::NodeId, ty::t>,
     node_type_substs: RefCell<HashMap<ast::NodeId, ty::substs>>,
-    adjustments: @mut HashMap<ast::NodeId, @ty::AutoAdjustment>,
+    adjustments: RefCell<HashMap<ast::NodeId, @ty::AutoAdjustment>>,
     method_map: method_map,
     vtable_map: vtable_map,
 }
@@ -264,7 +264,7 @@ impl Inherited {
             param_env: param_env,
             node_types: @mut HashMap::new(),
             node_type_substs: RefCell::new(HashMap::new()),
-            adjustments: @mut HashMap::new(),
+            adjustments: RefCell::new(HashMap::new()),
             method_map: @mut HashMap::new(),
             vtable_map: @mut HashMap::new(),
         }
@@ -1137,7 +1137,8 @@ impl FnCtxt {
                             node_id: ast::NodeId,
                             adj: @ty::AutoAdjustment) {
         debug!("write_adjustment(node_id={:?}, adj={:?})", node_id, adj);
-        self.inh.adjustments.insert(node_id, adj);
+        let mut adjustments = self.inh.adjustments.borrow_mut();
+        adjustments.get().insert(node_id, adj);
     }
 
     pub fn write_nil(&self, node_id: ast::NodeId) {
