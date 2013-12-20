@@ -174,7 +174,7 @@ pub struct creader_cache_key {
     len: uint
 }
 
-type creader_cache = @mut HashMap<creader_cache_key, t>;
+type creader_cache = RefCell<HashMap<creader_cache_key, t>>;
 
 struct intern_key {
     sty: *sty,
@@ -957,10 +957,6 @@ type type_cache = RefCell<HashMap<ast::DefId, ty_param_bounds_and_ty>>;
 
 pub type node_type_table = @mut HashMap<uint,t>;
 
-fn mk_rcache() -> creader_cache {
-    return @mut HashMap::new();
-}
-
 pub fn mk_ctxt(s: session::Session,
                dm: resolve::DefMap,
                named_region_map: @mut resolve_lifetime::NamedRegionMap,
@@ -987,7 +983,7 @@ pub fn mk_ctxt(s: session::Session,
         intrinsic_defs: RefCell::new(HashMap::new()),
         freevars: freevars,
         tcache: RefCell::new(HashMap::new()),
-        rcache: mk_rcache(),
+        rcache: RefCell::new(HashMap::new()),
         short_names_cache: RefCell::new(HashMap::new()),
         needs_unwind_cleanup_cache: RefCell::new(HashMap::new()),
         tc_cache: RefCell::new(HashMap::new()),

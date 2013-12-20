@@ -380,15 +380,21 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
         let key = ty::creader_cache_key {cnum: st.crate,
                                          pos: pos,
                                          len: len };
-        match st.tcx.rcache.find(&key) {
-          Some(&tt) => return tt,
+
+        let tt_opt = {
+            let rcache = st.tcx.rcache.borrow();
+            rcache.get().find_copy(&key)
+        };
+        match tt_opt {
+          Some(tt) => return tt,
           None => {
             let mut ps = PState {
                 pos: pos,
                 .. *st
             };
             let tt = parse_ty(&mut ps, |x,y| conv(x,y));
-            st.tcx.rcache.insert(key, tt);
+            let mut rcache = st.tcx.rcache.borrow_mut();
+            rcache.get().insert(key, tt);
             return tt;
           }
         }
