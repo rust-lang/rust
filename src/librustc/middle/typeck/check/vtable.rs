@@ -538,7 +538,8 @@ fn insert_vtables(fcx: @FnCtxt,
                   vtables: vtable_res) {
     debug!("insert_vtables(callee_id={}, vtables={:?})",
            callee_id, vtables.repr(fcx.tcx()));
-    fcx.inh.vtable_map.insert(callee_id, vtables);
+    let mut vtable_map = fcx.inh.vtable_map.borrow_mut();
+    vtable_map.get().insert(callee_id, vtables);
 }
 
 pub fn location_info_for_expr(expr: @ast::Expr) -> LocationInfo {

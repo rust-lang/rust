@@ -204,7 +204,7 @@ impl Repr for vtable_origin {
     }
 }
 
-pub type vtable_map = @mut HashMap<ast::NodeId, vtable_res>;
+pub type vtable_map = @RefCell<HashMap<ast::NodeId, vtable_res>>;
 
 
 // Information about the vtable resolutions for for a trait impl.
@@ -459,7 +459,7 @@ pub fn check_crate(tcx: ty::ctxt,
     let ccx = @mut CrateCtxt {
         trait_map: trait_map,
         method_map: @mut HashMap::new(),
-        vtable_map: @mut HashMap::new(),
+        vtable_map: @RefCell::new(HashMap::new()),
         tcx: tcx
     };
 

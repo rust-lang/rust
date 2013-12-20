@@ -122,7 +122,7 @@ pub fn lookup_variant_by_id(tcx: ty::ctxt,
         let maps = astencode::Maps {
             root_map: @RefCell::new(HashMap::new()),
             method_map: @mut HashMap::new(),
-            vtable_map: @mut HashMap::new(),
+            vtable_map: @RefCell::new(HashMap::new()),
             write_guard_map: @mut HashSet::new(),
             capture_map: @RefCell::new(HashMap::new())
         };
@@ -172,7 +172,7 @@ pub fn lookup_const_by_id(tcx: ty::ctxt,
         let maps = astencode::Maps {
             root_map: @RefCell::new(HashMap::new()),
             method_map: @mut HashMap::new(),
-            vtable_map: @mut HashMap::new(),
+            vtable_map: @RefCell::new(HashMap::new()),
             write_guard_map: @mut HashSet::new(),
             capture_map: @RefCell::new(HashMap::new())
         };

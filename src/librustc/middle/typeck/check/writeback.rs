@@ -82,14 +82,20 @@ fn resolve_method_map_entry(fcx: @FnCtxt, sp: Span, id: ast::NodeId) {
 
 fn resolve_vtable_map_entry(fcx: @FnCtxt, sp: Span, id: ast::NodeId) {
     // Resolve any method map entry
-    match fcx.inh.vtable_map.find(&id) {
-        None => {}
-        Some(origins) => {
-            let r_origins = resolve_origins(fcx, sp, *origins);
-            let vtable_map = fcx.ccx.vtable_map;
-            vtable_map.insert(id, r_origins);
-            debug!("writeback::resolve_vtable_map_entry(id={}, vtables={:?})",
-                   id, r_origins.repr(fcx.tcx()));
+    {
+        let origins_opt = {
+            let vtable_map = fcx.inh.vtable_map.borrow();
+            vtable_map.get().find_copy(&id)
+        };
+        match origins_opt {
+            None => {}
+            Some(origins) => {
+                let r_origins = resolve_origins(fcx, sp, origins);
+                let mut vtable_map = fcx.ccx.vtable_map.borrow_mut();
+                vtable_map.get().insert(id, r_origins);
+                debug!("writeback::resolve_vtable_map_entry(id={}, vtables={:?})",
+                       id, r_origins.repr(fcx.tcx()));
+            }
         }
     }
 

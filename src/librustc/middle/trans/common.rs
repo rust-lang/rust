@@ -1160,7 +1160,8 @@ pub fn node_id_type_params(bcx: &Block, id: ast::NodeId) -> ~[ty::t] {
 
 pub fn node_vtables(bcx: @Block, id: ast::NodeId)
                  -> Option<typeck::vtable_res> {
-    let raw_vtables = bcx.ccx().maps.vtable_map.find(&id);
+    let vtable_map = bcx.ccx().maps.vtable_map.borrow();
+    let raw_vtables = vtable_map.get().find(&id);
     raw_vtables.map(|vts| resolve_vtables_in_fn_ctxt(bcx.fcx, *vts))
 }
 
