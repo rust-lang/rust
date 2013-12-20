@@ -251,7 +251,7 @@ pub struct FnCtxt {
 
     inh: @Inherited,
 
-    ccx: @mut CrateCtxt,
+    ccx: @CrateCtxt,
 }
 
 impl Inherited {
@@ -272,7 +272,7 @@ impl Inherited {
 }
 
 // Used by check_const and check_enum_variants
-pub fn blank_fn_ctxt(ccx: @mut CrateCtxt,
+pub fn blank_fn_ctxt(ccx: @CrateCtxt,
                      rty: ty::t,
                      region_bnd: ast::NodeId)
                      -> @FnCtxt {
@@ -302,7 +302,7 @@ impl ExprTyProvider for FnCtxt {
     }
 }
 
-struct CheckItemTypesVisitor { ccx: @mut CrateCtxt }
+struct CheckItemTypesVisitor { ccx: @CrateCtxt }
 
 impl Visitor<()> for CheckItemTypesVisitor {
     fn visit_item(&mut self, i:@ast::item, _:()) {
@@ -311,12 +311,12 @@ impl Visitor<()> for CheckItemTypesVisitor {
     }
 }
 
-pub fn check_item_types(ccx: @mut CrateCtxt, crate: &ast::Crate) {
+pub fn check_item_types(ccx: @CrateCtxt, crate: &ast::Crate) {
     let mut visit = CheckItemTypesVisitor { ccx: ccx };
     visit::walk_crate(&mut visit, crate, ());
 }
 
-pub fn check_bare_fn(ccx: @mut CrateCtxt,
+pub fn check_bare_fn(ccx: @CrateCtxt,
                      decl: &ast::fn_decl,
                      body: ast::P<ast::Block>,
                      id: ast::NodeId,
@@ -407,7 +407,7 @@ impl Visitor<()> for GatherLocalsVisitor {
 
 }
 
-pub fn check_fn(ccx: @mut CrateCtxt,
+pub fn check_fn(ccx: @CrateCtxt,
                 opt_self_info: Option<SelfInfo>,
                 purity: ast::purity,
                 fn_sig: &ty::FnSig,
@@ -556,7 +556,7 @@ pub fn check_no_duplicate_fields(tcx: ty::ctxt,
     }
 }
 
-pub fn check_struct(ccx: @mut CrateCtxt, id: ast::NodeId, span: Span) {
+pub fn check_struct(ccx: @CrateCtxt, id: ast::NodeId, span: Span) {
     let tcx = ccx.tcx;
 
     // Check that the class is instantiable
@@ -567,7 +567,7 @@ pub fn check_struct(ccx: @mut CrateCtxt, id: ast::NodeId, span: Span) {
     }
 }
 
-pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
+pub fn check_item(ccx: @CrateCtxt, it: @ast::item) {
     debug!("check_item(it.id={}, it.ident={})",
            it.id,
            ty::item_path_str(ccx.tcx, local_def(it.id)));
@@ -670,7 +670,7 @@ pub fn check_item(ccx: @mut CrateCtxt, it: @ast::item) {
     }
 }
 
-fn check_method_body(ccx: @mut CrateCtxt,
+fn check_method_body(ccx: @CrateCtxt,
                      item_generics: &ty::Generics,
                      self_bound: Option<@ty::TraitRef>,
                      method: @ast::method) {
@@ -722,7 +722,7 @@ fn check_method_body(ccx: @mut CrateCtxt,
         param_env);
 }
 
-fn check_impl_methods_against_trait(ccx: @mut CrateCtxt,
+fn check_impl_methods_against_trait(ccx: @CrateCtxt,
                                     impl_span: Span,
                                     impl_generics: &ty::Generics,
                                     ast_trait_ref: &ast::trait_ref,
@@ -1388,7 +1388,7 @@ pub fn check_lit(fcx: @FnCtxt, lit: @ast::lit) -> ty::t {
     }
 }
 
-pub fn valid_range_bounds(ccx: @mut CrateCtxt,
+pub fn valid_range_bounds(ccx: @CrateCtxt,
                           from: @ast::Expr,
                           to: @ast::Expr)
                        -> Option<bool> {
@@ -3443,7 +3443,7 @@ pub fn check_block_with_expected(fcx: @FnCtxt,
     fcx.ps.set(prev);
 }
 
-pub fn check_const(ccx: @mut CrateCtxt,
+pub fn check_const(ccx: @CrateCtxt,
                    sp: Span,
                    e: @ast::Expr,
                    id: ast::NodeId) {
@@ -3519,15 +3519,15 @@ pub fn check_simd(tcx: ty::ctxt, sp: Span, id: ast::NodeId) {
     }
 }
 
-pub fn check_enum_variants(ccx: @mut CrateCtxt,
+pub fn check_enum_variants(ccx: @CrateCtxt,
                            sp: Span,
                            vs: &[ast::P<ast::variant>],
                            id: ast::NodeId) {
 
-    fn disr_in_range(ccx: @mut CrateCtxt,
+    fn disr_in_range(ccx: @CrateCtxt,
                      ty: attr::IntType,
                      disr: ty::Disr) -> bool {
-        fn uint_in_range(ccx: @mut CrateCtxt, ty: ast::uint_ty, disr: ty::Disr) -> bool {
+        fn uint_in_range(ccx: @CrateCtxt, ty: ast::uint_ty, disr: ty::Disr) -> bool {
             match ty {
                 ast::ty_u8 => disr as u8 as Disr == disr,
                 ast::ty_u16 => disr as u16 as Disr == disr,
@@ -3536,7 +3536,7 @@ pub fn check_enum_variants(ccx: @mut CrateCtxt,
                 ast::ty_u => uint_in_range(ccx, ccx.tcx.sess.targ_cfg.uint_type, disr)
             }
         }
-        fn int_in_range(ccx: @mut CrateCtxt, ty: ast::int_ty, disr: ty::Disr) -> bool {
+        fn int_in_range(ccx: @CrateCtxt, ty: ast::int_ty, disr: ty::Disr) -> bool {
             match ty {
                 ast::ty_i8 => disr as i8 as Disr == disr,
                 ast::ty_i16 => disr as i16 as Disr == disr,
@@ -3551,7 +3551,7 @@ pub fn check_enum_variants(ccx: @mut CrateCtxt,
         }
     }
 
-    fn do_check(ccx: @mut CrateCtxt,
+    fn do_check(ccx: @CrateCtxt,
                 vs: &[ast::P<ast::variant>],
                 id: ast::NodeId,
                 hint: attr::ReprAttr)
@@ -3923,7 +3923,7 @@ pub fn may_break(cx: ty::ctxt, id: ast::NodeId, b: ast::P<ast::Block>) -> bool {
         }}))
 }
 
-pub fn check_bounds_are_used(ccx: @mut CrateCtxt,
+pub fn check_bounds_are_used(ccx: @CrateCtxt,
                              span: Span,
                              tps: &OptVec<ast::TyParam>,
                              ty: ty::t) {
@@ -3953,8 +3953,8 @@ pub fn check_bounds_are_used(ccx: @mut CrateCtxt,
     }
 }
 
-pub fn check_intrinsic_type(ccx: @mut CrateCtxt, it: @ast::foreign_item) {
-    fn param(ccx: @mut CrateCtxt, n: uint) -> ty::t {
+pub fn check_intrinsic_type(ccx: @CrateCtxt, it: @ast::foreign_item) {
+    fn param(ccx: @CrateCtxt, n: uint) -> ty::t {
         ty::mk_param(ccx.tcx, n, local_def(0))
     }
 

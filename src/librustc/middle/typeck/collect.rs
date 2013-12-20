@@ -57,7 +57,7 @@ use syntax::opt_vec::OptVec;
 use syntax::parse::token::special_idents;
 
 struct CollectItemTypesVisitor {
-    ccx: @mut CrateCtxt
+    ccx: @CrateCtxt
 }
 
 impl visit::Visitor<()> for CollectItemTypesVisitor {
@@ -71,7 +71,7 @@ impl visit::Visitor<()> for CollectItemTypesVisitor {
     }
 }
 
-pub fn collect_item_types(ccx: @mut CrateCtxt, crate: &ast::Crate) {
+pub fn collect_item_types(ccx: @CrateCtxt, crate: &ast::Crate) {
     fn collect_intrinsic_type(ccx: &CrateCtxt,
                               lang_item: ast::DefId) {
         let ty::ty_param_bounds_and_ty { ty: ty, .. } =

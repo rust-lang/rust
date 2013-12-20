@@ -142,7 +142,7 @@ pub fn get_base_type_def_id(inference_context: @mut InferCtxt,
     }
 }
 
-pub fn CoherenceChecker(crate_context: @mut CrateCtxt) -> CoherenceChecker {
+pub fn CoherenceChecker(crate_context: @CrateCtxt) -> CoherenceChecker {
     CoherenceChecker {
         crate_context: crate_context,
         inference_context: new_infer_ctxt(crate_context.tcx),
@@ -150,7 +150,7 @@ pub fn CoherenceChecker(crate_context: @mut CrateCtxt) -> CoherenceChecker {
 }
 
 pub struct CoherenceChecker {
-    crate_context: @mut CrateCtxt,
+    crate_context: @CrateCtxt,
     inference_context: @mut InferCtxt,
 }
 
@@ -825,7 +825,7 @@ fn subst_receiver_types_in_method_ty(tcx: ty::ctxt,
     )
 }
 
-pub fn check_coherence(crate_context: @mut CrateCtxt, crate: &Crate) {
+pub fn check_coherence(crate_context: @CrateCtxt, crate: &Crate) {
     let coherence_checker = CoherenceChecker(crate_context);
     coherence_checker.check_coherence(crate);
 }

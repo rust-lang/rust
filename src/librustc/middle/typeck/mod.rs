@@ -456,7 +456,7 @@ pub fn check_crate(tcx: ty::ctxt,
                    crate: &ast::Crate)
                 -> (method_map, vtable_map) {
     let time_passes = tcx.sess.time_passes();
-    let ccx = @mut CrateCtxt {
+    let ccx = @CrateCtxt {
         trait_map: trait_map,
         method_map: @mut HashMap::new(),
         vtable_map: @RefCell::new(HashMap::new()),
