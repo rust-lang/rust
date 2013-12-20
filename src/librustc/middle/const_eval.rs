@@ -154,9 +154,12 @@ pub fn lookup_const_by_id(tcx: ty::ctxt,
             Some(_) => None
         }
     } else {
-        match tcx.extern_const_statics.find(&def_id) {
-            Some(&e) => return e,
-            None => {}
+        {
+            let extern_const_statics = tcx.extern_const_statics.borrow();
+            match extern_const_statics.get().find(&def_id) {
+                Some(&e) => return e,
+                None => {}
+            }
         }
         let maps = astencode::Maps {
             root_map: @mut HashMap::new(),
@@ -173,8 +176,12 @@ pub fn lookup_const_by_id(tcx: ty::ctxt,
             },
             _ => None
         };
-        tcx.extern_const_statics.insert(def_id, e);
-        return e;
+        {
+            let mut extern_const_statics = tcx.extern_const_statics
+                                              .borrow_mut();
+            extern_const_statics.get().insert(def_id, e);
+            return e;
+        }
     }
 }
 
