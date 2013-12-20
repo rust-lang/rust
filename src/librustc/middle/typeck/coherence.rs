@@ -402,10 +402,11 @@ impl CoherenceChecker {
                           implementation: @Impl) {
         let tcx = self.crate_context.tcx;
         let implementation_list;
-        match tcx.trait_impls.find(&base_def_id) {
+        let mut trait_impls = tcx.trait_impls.borrow_mut();
+        match trait_impls.get().find(&base_def_id) {
             None => {
                 implementation_list = @mut ~[];
-                tcx.trait_impls.insert(base_def_id, implementation_list);
+                trait_impls.get().insert(base_def_id, implementation_list);
             }
             Some(&existing_implementation_list) => {
                 implementation_list = existing_implementation_list;
@@ -416,7 +417,8 @@ impl CoherenceChecker {
     }
 
     pub fn check_implementation_coherence(&self) {
-        self.crate_context.tcx.trait_impls.each_key(|&trait_id| {
+        let trait_impls = self.crate_context.tcx.trait_impls.borrow();
+        trait_impls.get().each_key(|&trait_id| {
             self.check_implementation_coherence_of(trait_id);
             true
         });
@@ -455,7 +457,8 @@ impl CoherenceChecker {
     }
 
     pub fn iter_impls_of_trait(&self, trait_def_id: DefId, f: |@Impl|) {
-        match self.crate_context.tcx.trait_impls.find(&trait_def_id) {
+        let trait_impls = self.crate_context.tcx.trait_impls.borrow();
+        match trait_impls.get().find(&trait_def_id) {
             Some(impls) => {
                 for &im in impls.iter() {
                     f(im);
@@ -687,11 +690,12 @@ impl CoherenceChecker {
         let drop_trait = match tcx.lang_items.drop_trait() {
             Some(id) => id, None => { return }
         };
-        let impls_opt = tcx.trait_impls.find(&drop_trait);
 
+        let trait_impls = tcx.trait_impls.borrow();
+        let impls_opt = trait_impls.get().find(&drop_trait);
         let impls;
         match impls_opt {
-            None => return, // No types with (new-style) destructors present.
+            None => return, // No types with (new-style) dtors present.
             Some(found_impls) => impls = found_impls
         }
 

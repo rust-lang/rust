@@ -878,7 +878,8 @@ fn encode_inherent_implementations(ecx: &EncodeContext,
 fn encode_extension_implementations(ecx: &EncodeContext,
                                     ebml_w: &mut writer::Encoder,
                                     trait_def_id: DefId) {
-    match ecx.tcx.trait_impls.find(&trait_def_id) {
+    let trait_impls = ecx.tcx.trait_impls.borrow();
+    match trait_impls.get().find(&trait_def_id) {
         None => {}
         Some(&implementations) => {
             for implementation in implementations.iter() {
