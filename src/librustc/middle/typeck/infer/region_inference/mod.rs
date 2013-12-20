@@ -103,7 +103,7 @@ pub struct RegionVarBindings {
     // actively snapshotting.  The reason for this is that otherwise
     // we end up adding entries for things like the lower bound on
     // a variable and so forth, which can never be rolled back.
-    undo_log: ~[UndoLogEntry],
+    undo_log: RefCell<~[UndoLogEntry]>,
 
     // This contains the results of inference.  It begins as an empty
     // option and only acquires a value after inference is complete.
@@ -120,36 +120,45 @@ pub fn RegionVarBindings(tcx: ty::ctxt) -> RegionVarBindings {
         glbs: RefCell::new(HashMap::new()),
         skolemization_count: Cell::new(0),
         bound_count: Cell::new(0),
-        undo_log: ~[]
+        undo_log: RefCell::new(~[])
     }
 }
 
 impl RegionVarBindings {
     pub fn in_snapshot(&self) -> bool {
-        self.undo_log.len() > 0
+        let undo_log = self.undo_log.borrow();
+        undo_log.get().len() > 0
     }
 
     pub fn start_snapshot(&mut self) -> uint {
-        debug!("RegionVarBindings: snapshot()={}", self.undo_log.len());
+        debug!("RegionVarBindings: start_snapshot()");
         if self.in_snapshot() {
-            self.undo_log.len()
+            {
+                let undo_log = self.undo_log.borrow();
+                undo_log.get().len()
+            }
         } else {
-            self.undo_log.push(Snapshot);
-            0
+            {
+                let mut undo_log = self.undo_log.borrow_mut();
+                undo_log.get().push(Snapshot);
+                0
+            }
         }
     }
 
     pub fn commit(&mut self) {
         debug!("RegionVarBindings: commit()");
-        while self.undo_log.len() > 0 {
-            self.undo_log.pop();
+        let mut undo_log = self.undo_log.borrow_mut();
+        while undo_log.get().len() > 0 {
+            undo_log.get().pop();
         }
     }
 
     pub fn rollback_to(&mut self, snapshot: uint) {
         debug!("RegionVarBindings: rollback_to({})", snapshot);
-        while self.undo_log.len() > snapshot {
-            let undo_item = self.undo_log.pop();
+        let mut undo_log = self.undo_log.borrow_mut();
+        while undo_log.get().len() > snapshot {
+            let undo_item = undo_log.get().pop();
             debug!("undo_item={:?}", undo_item);
             match undo_item {
               Snapshot => {}
@@ -182,7 +191,10 @@ impl RegionVarBindings {
         self.var_origins.push(origin);
         let vid = RegionVid { id: id };
         if self.in_snapshot() {
-            self.undo_log.push(AddVar(vid));
+            {
+                let mut undo_log = self.undo_log.borrow_mut();
+                undo_log.get().push(AddVar(vid));
+            }
         }
         debug!("created new region variable {:?} with origin {:?}",
                vid, origin.repr(self.tcx));
@@ -235,7 +247,10 @@ impl RegionVarBindings {
         let mut constraints = self.constraints.borrow_mut();
         if constraints.get().insert(constraint, origin) {
             if self.in_snapshot() {
-                self.undo_log.push(AddConstraint(constraint));
+                {
+                    let mut undo_log = self.undo_log.borrow_mut();
+                    undo_log.get().push(AddConstraint(constraint));
+                }
             }
         }
     }
@@ -380,7 +395,10 @@ impl RegionVarBindings {
             map.get().insert(vars, c);
         }
         if self.in_snapshot() {
-            self.undo_log.push(AddCombination(t, vars));
+            {
+                let mut undo_log = self.undo_log.borrow_mut();
+                undo_log.get().push(AddCombination(t, vars));
+            }
         }
         relate(self, a, ReInfer(ReVar(c)));
         relate(self, b, ReInfer(ReVar(c)));
@@ -390,7 +408,8 @@ impl RegionVarBindings {
 
     pub fn vars_created_since_snapshot(&mut self, snapshot: uint)
                                        -> ~[RegionVid] {
-        self.undo_log.slice_from(snapshot).iter()
+        let undo_log = self.undo_log.borrow();
+        undo_log.get().slice_from(snapshot).iter()
             .filter_map(|&elt| match elt {
                 AddVar(vid) => Some(vid),
                 _ => None
@@ -410,7 +429,10 @@ impl RegionVarBindings {
         debug!("tainted(snapshot={}, r0={:?})", snapshot, r0);
         let _indenter = indenter();
 
-        let undo_len = self.undo_log.len();
+        let undo_len = {
+            let undo_log = self.undo_log.borrow();
+            undo_log.get().len()
+        };
 
         // `result_set` acts as a worklist: we explore all outgoing
         // edges and add any new regions we find to result_set.  This
@@ -426,22 +448,25 @@ impl RegionVarBindings {
             let mut undo_index = snapshot;
             while undo_index < undo_len {
                 // nb: can't use uint::range() here as we move result_set
-                let regs = match self.undo_log[undo_index] {
-                    AddConstraint(ConstrainVarSubVar(ref a, ref b)) => {
-                        Some((ReInfer(ReVar(*a)),
-                              ReInfer(ReVar(*b))))
-                    }
-                    AddConstraint(ConstrainRegSubVar(ref a, ref b)) => {
-                        Some((*a, ReInfer(ReVar(*b))))
-                    }
-                    AddConstraint(ConstrainVarSubReg(ref a, ref b)) => {
-                        Some((ReInfer(ReVar(*a)), *b))
-                    }
-                    AddConstraint(ConstrainRegSubReg(a, b)) => {
-                        Some((a, b))
-                    }
-                    _ => {
-                        None
+                let regs = {
+                    let undo_log = self.undo_log.borrow();
+                    match undo_log.get()[undo_index] {
+                        AddConstraint(ConstrainVarSubVar(ref a, ref b)) => {
+                            Some((ReInfer(ReVar(*a)),
+                                  ReInfer(ReVar(*b))))
+                        }
+                        AddConstraint(ConstrainRegSubVar(ref a, ref b)) => {
+                            Some((*a, ReInfer(ReVar(*b))))
+                        }
+                        AddConstraint(ConstrainVarSubReg(ref a, ref b)) => {
+                            Some((ReInfer(ReVar(*a)), *b))
+                        }
+                        AddConstraint(ConstrainRegSubReg(a, b)) => {
+                            Some((a, b))
+                        }
+                        _ => {
+                            None
+                        }
                     }
                 };
 
