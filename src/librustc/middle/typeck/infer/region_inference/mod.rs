@@ -93,7 +93,7 @@ pub struct RegionVarBindings {
     lubs: CombineMap,
     glbs: CombineMap,
     skolemization_count: Cell<uint>,
-    bound_count: uint,
+    bound_count: Cell<uint>,
 
     // The undo log records actions that might later be undone.
     //
@@ -119,7 +119,7 @@ pub fn RegionVarBindings(tcx: ty::ctxt) -> RegionVarBindings {
         lubs: HashMap::new(),
         glbs: HashMap::new(),
         skolemization_count: Cell::new(0),
-        bound_count: 0,
+        bound_count: Cell::new(0),
         undo_log: ~[]
     }
 }
@@ -212,10 +212,10 @@ impl RegionVarBindings {
         // changing the representation of bound regions in a fn
         // declaration
 
-        let sc = self.bound_count;
-        self.bound_count += 1;
+        let sc = self.bound_count.get();
+        self.bound_count.set(sc + 1);
 
-        if sc >= self.bound_count {
+        if sc >= self.bound_count.get() {
             self.tcx.sess.bug("Rollover in RegionInference new_bound()");
         }
 
