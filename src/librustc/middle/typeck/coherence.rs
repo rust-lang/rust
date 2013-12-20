@@ -313,7 +313,8 @@ impl CoherenceChecker {
             }
         }
 
-        tcx.impls.insert(implementation.did, implementation);
+        let mut impls = tcx.impls.borrow_mut();
+        impls.get().insert(implementation.did, implementation);
     }
 
     // Creates default method IDs and performs type substitutions for an impl
@@ -665,7 +666,8 @@ impl CoherenceChecker {
             }
         }
 
-        tcx.impls.insert(implementation.did, implementation);
+        let mut impls = tcx.impls.borrow_mut();
+        impls.get().insert(implementation.did, implementation);
     }
 
     // Adds implementations and traits from external crates to the coherence
