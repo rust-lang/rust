@@ -77,33 +77,33 @@ use util::ppaux::bound_region_to_str;
 use util::ppaux::note_and_explain_region;
 
 pub trait ErrorReporting {
-    fn report_region_errors(@mut self,
+    fn report_region_errors(@self,
                             errors: &OptVec<RegionResolutionError>);
 
-    fn report_and_explain_type_error(@mut self,
+    fn report_and_explain_type_error(@self,
                                      trace: TypeTrace,
                                      terr: &ty::type_err);
 
-    fn values_str(@mut self, values: &ValuePairs) -> Option<~str>;
+    fn values_str(@self, values: &ValuePairs) -> Option<~str>;
 
     fn expected_found_str<T:UserString+Resolvable>(
-        @mut self,
+        @self,
         exp_found: &ty::expected_found<T>)
         -> Option<~str>;
 
-    fn report_concrete_failure(@mut self,
+    fn report_concrete_failure(@self,
                                origin: SubregionOrigin,
                                sub: Region,
                                sup: Region);
 
-    fn report_sub_sup_conflict(@mut self,
+    fn report_sub_sup_conflict(@self,
                                var_origin: RegionVariableOrigin,
                                sub_origin: SubregionOrigin,
                                sub_region: Region,
                                sup_origin: SubregionOrigin,
                                sup_region: Region);
 
-    fn report_sup_sup_conflict(@mut self,
+    fn report_sup_sup_conflict(@self,
                                var_origin: RegionVariableOrigin,
                                origin1: SubregionOrigin,
                                region1: Region,
@@ -112,15 +112,15 @@ pub trait ErrorReporting {
 }
 
 trait ErrorReportingHelpers {
-    fn report_inference_failure(@mut self,
+    fn report_inference_failure(@self,
                                 var_origin: RegionVariableOrigin);
 
-    fn note_region_origin(@mut self,
+    fn note_region_origin(@self,
                           origin: SubregionOrigin);
 }
 
 impl ErrorReporting for InferCtxt {
-    fn report_region_errors(@mut self,
+    fn report_region_errors(@self,
                             errors: &OptVec<RegionResolutionError>) {
         for error in errors.iter() {
             match *error {
@@ -147,7 +147,7 @@ impl ErrorReporting for InferCtxt {
         }
     }
 
-    fn report_and_explain_type_error(@mut self,
+    fn report_and_explain_type_error(@self,
                                      trace: TypeTrace,
                                      terr: &ty::type_err) {
         let tcx = self.tcx;
@@ -179,7 +179,7 @@ impl ErrorReporting for InferCtxt {
         ty::note_and_explain_type_err(self.tcx, terr);
     }
 
-    fn values_str(@mut self, values: &ValuePairs) -> Option<~str> {
+    fn values_str(@self, values: &ValuePairs) -> Option<~str> {
         /*!
          * Returns a string of the form "expected `{}` but found `{}`",
          * or None if this is a derived error.
@@ -195,7 +195,7 @@ impl ErrorReporting for InferCtxt {
     }
 
     fn expected_found_str<T:UserString+Resolvable>(
-        @mut self,
+        @self,
         exp_found: &ty::expected_found<T>)
         -> Option<~str>
     {
@@ -214,7 +214,7 @@ impl ErrorReporting for InferCtxt {
                   found.user_string(self.tcx)))
     }
 
-    fn report_concrete_failure(@mut self,
+    fn report_concrete_failure(@self,
                                origin: SubregionOrigin,
                                sub: Region,
                                sup: Region) {
@@ -400,7 +400,7 @@ impl ErrorReporting for InferCtxt {
         }
     }
 
-    fn report_sub_sup_conflict(@mut self,
+    fn report_sub_sup_conflict(@self,
                                var_origin: RegionVariableOrigin,
                                sub_origin: SubregionOrigin,
                                sub_region: Region,
@@ -425,7 +425,7 @@ impl ErrorReporting for InferCtxt {
         self.note_region_origin(sub_origin);
     }
 
-    fn report_sup_sup_conflict(@mut self,
+    fn report_sup_sup_conflict(@self,
                                var_origin: RegionVariableOrigin,
                                origin1: SubregionOrigin,
                                region1: Region,
@@ -452,7 +452,7 @@ impl ErrorReporting for InferCtxt {
 }
 
 impl ErrorReportingHelpers for InferCtxt {
-    fn report_inference_failure(@mut self,
+    fn report_inference_failure(@self,
                                 var_origin: RegionVariableOrigin) {
         let var_description = match var_origin {
             infer::MiscVariable(_) => ~"",
@@ -484,8 +484,7 @@ impl ErrorReportingHelpers for InferCtxt {
                     var_description));
     }
 
-    fn note_region_origin(@mut self,
-                          origin: SubregionOrigin) {
+    fn note_region_origin(@self, origin: SubregionOrigin) {
         match origin {
             infer::Subtype(ref trace) => {
                 let desc = match trace.origin {
@@ -612,12 +611,12 @@ impl ErrorReportingHelpers for InferCtxt {
 }
 
 trait Resolvable {
-    fn resolve(&self, infcx: @mut InferCtxt) -> Self;
+    fn resolve(&self, infcx: @InferCtxt) -> Self;
     fn contains_error(&self) -> bool;
 }
 
 impl Resolvable for ty::t {
-    fn resolve(&self, infcx: @mut InferCtxt) -> ty::t {
+    fn resolve(&self, infcx: @InferCtxt) -> ty::t {
         infcx.resolve_type_vars_if_possible(*self)
     }
     fn contains_error(&self) -> bool {
@@ -626,7 +625,7 @@ impl Resolvable for ty::t {
 }
 
 impl Resolvable for @ty::TraitRef {
-    fn resolve(&self, infcx: @mut InferCtxt) -> @ty::TraitRef {
+    fn resolve(&self, infcx: @InferCtxt) -> @ty::TraitRef {
         @infcx.resolve_type_vars_in_trait_ref_if_possible(*self)
     }
     fn contains_error(&self) -> bool {
