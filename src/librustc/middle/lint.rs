@@ -276,7 +276,7 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
      LintSpec {
         lint: unnecessary_cast,
         desc: "detects unnecessary type casts, that can be removed",
-        default: warn,
+        default: allow,
     }),
 
     ("unused_mut",
