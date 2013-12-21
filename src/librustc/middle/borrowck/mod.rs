@@ -17,7 +17,6 @@ use middle::typeck;
 use middle::moves;
 use middle::dataflow::DataFlowContext;
 use middle::dataflow::DataFlowOperator;
-use util::common::stmt_set;
 use util::ppaux::{note_and_explain_region, Repr, UserString};
 
 use std::cell::RefCell;
@@ -85,7 +84,6 @@ pub fn check_crate(
         root_map: root_map(),
         loan_map: @mut HashMap::new(),
         write_guard_map: @mut HashSet::new(),
-        stmt_map: @mut HashSet::new(),
         stats: @mut BorrowStats {
             loaned_paths_same: 0,
             loaned_paths_imm: 0,
@@ -177,7 +175,6 @@ pub struct BorrowckCtxt {
     root_map: root_map,
     loan_map: LoanMap,
     write_guard_map: write_guard_map,
-    stmt_map: stmt_set,
 
     // Statistics:
     stats: @mut BorrowStats
