@@ -314,7 +314,7 @@ pub fn Alloca(cx: &Block, Ty: Type, name: &str) -> ValueRef {
     unsafe {
         if cx.unreachable.get() { return llvm::LLVMGetUndef(Ty.ptr_to().to_ref()); }
         let b = cx.fcx.ccx.builder();
-        b.position_before(cx.fcx.alloca_insert_pt.unwrap());
+        b.position_before(cx.fcx.alloca_insert_pt.get().unwrap());
         b.alloca(Ty, name)
     }
 }
@@ -323,7 +323,7 @@ pub fn ArrayAlloca(cx: &Block, Ty: Type, Val: ValueRef) -> ValueRef {
     unsafe {
         if cx.unreachable.get() { return llvm::LLVMGetUndef(Ty.ptr_to().to_ref()); }
         let b = cx.fcx.ccx.builder();
-        b.position_before(cx.fcx.alloca_insert_pt.unwrap());
+        b.position_before(cx.fcx.alloca_insert_pt.get().unwrap());
         b.array_alloca(Ty, Val)
     }
 }

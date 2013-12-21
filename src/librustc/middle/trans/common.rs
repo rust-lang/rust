@@ -221,7 +221,7 @@ pub struct FunctionContext {
     // the function, due to LLVM's quirks.
     // A marker for the place where we want to insert the function's static
     // allocas, so that LLVM will coalesce them into a single alloca call.
-    alloca_insert_pt: Option<ValueRef>,
+    alloca_insert_pt: Cell<Option<ValueRef>>,
     llreturn: Option<BasicBlockRef>,
     // The 'self' value currently in use in this function, if there
     // is one.
@@ -291,7 +291,9 @@ impl FunctionContext {
 
     pub fn cleanup(&mut self) {
         unsafe {
-            llvm::LLVMInstructionEraseFromParent(self.alloca_insert_pt.unwrap());
+            llvm::LLVMInstructionEraseFromParent(self.alloca_insert_pt
+                                                     .get()
+                                                     .unwrap());
         }
         // Remove the cycle between fcx and bcx, so memory can be freed
         self.entry_bcx = None;
