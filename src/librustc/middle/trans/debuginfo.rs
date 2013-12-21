@@ -298,11 +298,15 @@ pub fn create_local_var_metadata(bcx: @Block,
         let var_ident = ast_util::path_to_ident(path_ref);
         let var_type = node_id_type(bcx, node_id);
 
-        let llptr = match bcx.fcx.lllocals.find_copy(&node_id) {
-            Some(v) => v,
-            None => {
-                bcx.tcx().sess.span_bug(span,
-                    format!("No entry in lllocals table for {:?}", node_id));
+        let llptr = {
+            let lllocals = bcx.fcx.lllocals.borrow();
+            match lllocals.get().find_copy(&node_id) {
+                Some(v) => v,
+                None => {
+                    bcx.tcx().sess.span_bug(span,
+                        format!("No entry in lllocals table for {:?}",
+                                node_id));
+                }
             }
         };
 
@@ -397,10 +401,17 @@ pub fn create_match_binding_metadata(bcx: @Block,
         return;
     }
 
-    let llptr = match bcx.fcx.lllocals.find_copy(&node_id) {
-        Some(v) => v,
-        None => {
-            bcx.tcx().sess.span_bug(span, format!("No entry in lllocals table for {:?}", node_id));
+    let llptr = {
+        let lllocals = bcx.fcx.lllocals.borrow();
+        match lllocals.get().find_copy(&node_id) {
+            Some(v) => v,
+            None => {
+                bcx.tcx()
+                   .sess
+                   .span_bug(span,
+                             format!("No entry in lllocals table for {:?}",
+                                     node_id));
+            }
         }
     };
 
@@ -506,11 +517,15 @@ pub fn create_argument_metadata(bcx: @Block,
     let scope_metadata = bcx.fcx.debug_context.get_ref(cx, arg.pat.span).fn_metadata;
 
     pat_util::pat_bindings(def_map, arg.pat, |_, node_id, span, path_ref| {
-        let llptr = match bcx.fcx.llargs.find_copy(&node_id) {
-            Some(v) => v,
-            None => {
-                bcx.tcx().sess.span_bug(span,
-                    format!("No entry in llargs table for {:?}", node_id));
+        let llptr = {
+            let llargs = bcx.fcx.llargs.borrow();
+            match llargs.get().find_copy(&node_id) {
+                Some(v) => v,
+                None => {
+                    bcx.tcx().sess.span_bug(span,
+                        format!("No entry in llargs table for {:?}",
+                                node_id));
+                }
             }
         };
 

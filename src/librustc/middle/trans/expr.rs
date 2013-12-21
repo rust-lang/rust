@@ -1100,10 +1100,12 @@ pub fn trans_local_var(bcx: @Block, def: ast::Def) -> Datum {
             }
         }
         ast::DefArg(nid, _) => {
-            take_local(bcx, bcx.fcx.llargs, nid)
+            let llargs = bcx.fcx.llargs.borrow();
+            take_local(bcx, llargs.get(), nid)
         }
         ast::DefLocal(nid, _) | ast::DefBinding(nid, _) => {
-            take_local(bcx, bcx.fcx.lllocals, nid)
+            let lllocals = bcx.fcx.lllocals.borrow();
+            take_local(bcx, lllocals.get(), nid)
         }
         ast::DefSelf(nid, _) => {
             let self_info: ValSelfData = match bcx.fcx.llself {

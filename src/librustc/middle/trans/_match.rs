@@ -1358,8 +1358,6 @@ fn insert_lllocals(bcx: @Block,
      * the bindings.
      */
 
-    let llmap = bcx.fcx.lllocals;
-
     for (&ident, &binding_info) in bindings_map.iter() {
         let llval = match binding_info.trmode {
             // By value bindings: use the stack slot that we
@@ -1378,8 +1376,13 @@ fn insert_lllocals(bcx: @Block,
             }
         };
 
-        debug!("binding {:?} to {}", binding_info.id, bcx.val_to_str(llval));
-        llmap.insert(binding_info.id, llval);
+        {
+            debug!("binding {:?} to {}",
+                   binding_info.id,
+                   bcx.val_to_str(llval));
+            let mut llmap = bcx.fcx.lllocals.borrow_mut();
+            llmap.get().insert(binding_info.id, llval);
+        }
 
         if bcx.sess().opts.extra_debuginfo {
             debuginfo::create_match_binding_metadata(bcx,
@@ -1442,7 +1445,8 @@ fn compile_guard(bcx: @Block,
                 }
                 TrByRef => {}
             }
-            bcx.fcx.lllocals.remove(&binding_info.id);
+            let mut lllocals = bcx.fcx.lllocals.borrow_mut();
+            lllocals.get().remove(&binding_info.id);
         }
         return bcx;
     }
@@ -2057,7 +2061,8 @@ pub fn store_arg(mut bcx: @Block,
         // Optimized path for `x: T` case. This just adopts
         // `llval` wholesale as the pointer for `x`, avoiding the
         // general logic which may copy out of `llval`.
-        bcx.fcx.llargs.insert(pat.id, llval);
+        let mut llargs = bcx.fcx.llargs.borrow_mut();
+        llargs.get().insert(pat.id, llval);
     } else {
         // General path. Copy out the values that are used in the
         // pattern.
@@ -2077,11 +2082,11 @@ fn mk_binding_alloca(mut bcx: @Block,
     let ident = ast_util::path_to_ident(path);
     let llval = alloc_ty(bcx, var_ty, bcx.ident(ident));
     bcx = populate(bcx, var_ty, llval);
-    let llmap = match binding_mode {
-        BindLocal => bcx.fcx.lllocals,
-        BindArgument => bcx.fcx.llargs
+    let mut llmap = match binding_mode {
+        BindLocal => bcx.fcx.lllocals.borrow_mut(),
+        BindArgument => bcx.fcx.llargs.borrow_mut(),
     };
-    llmap.insert(p_id, llval);
+    llmap.get().insert(p_id, llval);
     add_clean(bcx, llval, var_ty);
     return bcx;
 }

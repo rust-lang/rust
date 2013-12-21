@@ -240,10 +240,10 @@ pub struct FunctionContext {
     caller_expects_out_pointer: bool,
 
     // Maps arguments to allocas created for them in llallocas.
-    llargs: @mut HashMap<ast::NodeId, ValueRef>,
+    llargs: RefCell<HashMap<ast::NodeId, ValueRef>>,
     // Maps the def_ids for local variables to the allocas created for
     // them in llallocas.
-    lllocals: @mut HashMap<ast::NodeId, ValueRef>,
+    lllocals: RefCell<HashMap<ast::NodeId, ValueRef>>,
     // Same as above, but for closure upvars
     llupvars: RefCell<HashMap<ast::NodeId, ValueRef>>,
 
