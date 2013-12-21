@@ -55,7 +55,7 @@ pub struct UniversalQuantificationResult {
     type_param_defs: @~[ty::TypeParameterDef]
 }
 
-pub fn get_base_type(inference_context: @mut InferCtxt,
+pub fn get_base_type(inference_context: @InferCtxt,
                      span: Span,
                      original_type: t)
                   -> Option<t> {
@@ -118,7 +118,7 @@ pub fn type_is_defined_in_local_crate(original_type: t) -> bool {
 }
 
 // Returns the def ID of the base type, if there is one.
-pub fn get_base_type_def_id(inference_context: @mut InferCtxt,
+pub fn get_base_type_def_id(inference_context: @InferCtxt,
                             span: Span,
                             original_type: t)
                          -> Option<DefId> {
@@ -151,7 +151,7 @@ pub fn CoherenceChecker(crate_context: @CrateCtxt) -> CoherenceChecker {
 
 pub struct CoherenceChecker {
     crate_context: @CrateCtxt,
-    inference_context: @mut InferCtxt,
+    inference_context: @InferCtxt,
 }
 
 struct CoherenceCheckVisitor { cc: CoherenceChecker }

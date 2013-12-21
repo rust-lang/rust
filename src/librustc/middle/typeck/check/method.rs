@@ -1326,7 +1326,7 @@ impl<'a> LookupContext<'a> {
                  ty::item_path_str(self.tcx(), did)));
     }
 
-    fn infcx(&self) -> @mut infer::InferCtxt {
+    fn infcx(&self) -> @infer::InferCtxt {
         self.fcx.inh.infcx
     }
 

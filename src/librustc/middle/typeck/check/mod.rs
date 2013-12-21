@@ -157,7 +157,7 @@ pub struct SelfInfo {
 /// `bar()` will each have their own `FnCtxt`, but they will
 /// share the inherited fields.
 pub struct Inherited {
-    infcx: @mut infer::InferCtxt,
+    infcx: @infer::InferCtxt,
     locals: @mut HashMap<ast::NodeId, ty::t>,
     param_env: ty::ParameterEnvironment,
 
@@ -1045,7 +1045,7 @@ impl AstConv for FnCtxt {
 }
 
 impl FnCtxt {
-    pub fn infcx(&self) -> @mut infer::InferCtxt {
+    pub fn infcx(&self) -> @infer::InferCtxt {
         self.inh.infcx
     }
 
@@ -1061,7 +1061,7 @@ impl FnCtxt {
     }
 }
 
-impl RegionScope for @mut infer::InferCtxt {
+impl RegionScope for @infer::InferCtxt {
     fn anon_regions(&self,
                     span: Span,
                     count: uint) -> Result<~[ty::Region], ()> {
