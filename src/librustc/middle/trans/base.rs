@@ -971,7 +971,8 @@ pub fn need_invoke(bcx: @Block) -> bool {
     loop {
         cur_scope = match cur_scope {
             Some(inf) => {
-                for cleanup in inf.cleanups.iter() {
+                let cleanups = inf.cleanups.borrow();
+                for cleanup in cleanups.get().iter() {
                     match *cleanup {
                         clean(_, cleanup_type) | clean_temp(_, _, cleanup_type) => {
                             if cleanup_type == normal_exit_and_unwind {
@@ -1221,7 +1222,7 @@ pub fn simple_block_scope(parent: Option<@mut ScopeInfo>,
         parent: parent,
         loop_break: None,
         loop_label: None,
-        cleanups: ~[],
+        cleanups: RefCell::new(~[]),
         cleanup_paths: ~[],
         landing_pad: None,
         node_info: node_info,
@@ -1251,7 +1252,7 @@ pub fn loop_scope_block(bcx: @Block,
         parent: None,
         loop_break: Some(loop_break),
         loop_label: loop_label,
-        cleanups: ~[],
+        cleanups: RefCell::new(~[]),
         cleanup_paths: ~[],
         landing_pad: None,
         node_info: opt_node_info,
@@ -1334,7 +1335,8 @@ pub fn cleanup_and_leave(bcx: @Block,
                         {
                             let r = (*inf).cleanup_paths.rev_iter().find(|cp| cp.target == leave);
                             for cp in r.iter() {
-                                if cp.size == inf.cleanups.len() {
+                                let cleanups = inf.cleanups.borrow();
+                                if cp.size == cleanups.get().len() {
                                     Br(bcx, cp.dest);
                                     return;
                                 }
@@ -1345,12 +1347,13 @@ pub fn cleanup_and_leave(bcx: @Block,
                         }
                         let sub_cx = sub_block(bcx, "cleanup");
                         Br(bcx, sub_cx.llbb);
+                        let cleanups = inf.cleanups.borrow();
                         inf.cleanup_paths.push(cleanup_path {
                             target: leave,
-                            size: inf.cleanups.len(),
+                            size: cleanups.get().len(),
                             dest: sub_cx.llbb
                         });
-                        (sub_cx, dest, inf.cleanups.tailn(skip).to_owned())
+                        (sub_cx, dest, cleanups.get().tailn(skip).to_owned())
                     };
                     bcx = trans_block_cleanups_(sub_cx,
                                                 inf_cleanups,
@@ -1394,8 +1397,11 @@ pub fn cleanup_block(bcx: @Block, upto: Option<BasicBlockRef>) -> @Block{
         let mut cur_scope = cur.scope.get();
         loop {
             cur_scope = match cur_scope {
-                Some (inf) => {
-                    bcx = trans_block_cleanups_(bcx, inf.cleanups.to_owned(), false);
+                Some(inf) => {
+                    let cleanups = inf.cleanups.borrow();
+                    bcx = trans_block_cleanups_(bcx,
+                                                cleanups.get().to_owned(),
+                                                false);
                     inf.parent
                 }
                 None => break
@@ -1443,7 +1449,7 @@ pub fn with_scope(bcx: @Block,
     let scope = simple_block_scope(bcx.scope.get(), opt_node_info);
     bcx.scope.set(Some(scope));
     let ret = f(bcx);
-    let ret = trans_block_cleanups_(ret, (scope.cleanups).clone(), false);
+    let ret = trans_block_cleanups_(ret, scope.cleanups.get(), false);
     bcx.scope.set(scope.parent);
     ret
 }
@@ -1458,9 +1464,7 @@ pub fn with_scope_result(bcx: @Block,
     let scope = simple_block_scope(bcx.scope.get(), opt_node_info);
     bcx.scope.set(Some(scope));
     let Result { bcx: out_bcx, val } = f(bcx);
-    let out_bcx = trans_block_cleanups_(out_bcx,
-                                        (scope.cleanups).clone(),
-                                        false);
+    let out_bcx = trans_block_cleanups_(out_bcx, scope.cleanups.get(), false);
     bcx.scope.set(scope.parent);
 
     rslt(out_bcx, val)

@@ -457,11 +457,14 @@ pub fn add_clean(bcx: @Block, val: ValueRef, t: ty::t) {
 
     let cleanup_type = cleanup_type(bcx.tcx(), t);
     in_scope_cx(bcx, None, |scope_info| {
-        scope_info.cleanups.push(clean(@TypeDroppingCleanupFunction {
-            val: val,
-            t: t,
-        } as @CleanupFunction,
-        cleanup_type));
+        {
+            let mut cleanups = scope_info.cleanups.borrow_mut();
+            cleanups.get().push(clean(@TypeDroppingCleanupFunction {
+                val: val,
+                t: t,
+            } as @CleanupFunction,
+            cleanup_type));
+        }
         grow_scope_clean(scope_info);
     })
 }
@@ -473,12 +476,15 @@ pub fn add_clean_temp_immediate(cx: @Block, val: ValueRef, ty: ty::t) {
            ty.repr(cx.tcx()));
     let cleanup_type = cleanup_type(cx.tcx(), ty);
     in_scope_cx(cx, None, |scope_info| {
-        scope_info.cleanups.push(clean_temp(val,
-            @ImmediateTypeDroppingCleanupFunction {
-                val: val,
-                t: ty,
-            } as @CleanupFunction,
-            cleanup_type));
+        {
+            let mut cleanups = scope_info.cleanups.borrow_mut();
+            cleanups.get().push(clean_temp(val,
+                @ImmediateTypeDroppingCleanupFunction {
+                    val: val,
+                    t: ty,
+                } as @CleanupFunction,
+                cleanup_type));
+        }
         grow_scope_clean(scope_info);
     })
 }
@@ -502,12 +508,15 @@ pub fn add_clean_temp_mem_in_scope_(bcx: @Block, scope_id: Option<ast::NodeId>,
            t.repr(bcx.tcx()));
     let cleanup_type = cleanup_type(bcx.tcx(), t);
     in_scope_cx(bcx, scope_id, |scope_info| {
-        scope_info.cleanups.push(clean_temp(val,
-            @TypeDroppingCleanupFunction {
-                val: val,
-                t: t,
-            } as @CleanupFunction,
-            cleanup_type));
+        {
+            let mut cleanups = scope_info.cleanups.borrow_mut();
+            cleanups.get().push(clean_temp(val,
+                @TypeDroppingCleanupFunction {
+                    val: val,
+                    t: t,
+                } as @CleanupFunction,
+                cleanup_type));
+        }
         grow_scope_clean(scope_info);
     })
 }
@@ -531,16 +540,19 @@ pub fn add_clean_return_to_mut(bcx: @Block,
            bcx.val_to_str(frozen_val_ref),
            bcx.val_to_str(bits_val_ref));
     in_scope_cx(bcx, Some(scope_id), |scope_info| {
-        scope_info.cleanups.push(clean_temp(
-                frozen_val_ref,
-                @WriteGuardReleasingCleanupFunction {
-                    root_key: root_key,
-                    frozen_val_ref: frozen_val_ref,
-                    bits_val_ref: bits_val_ref,
-                    filename_val: filename_val,
-                    line_val: line_val,
-                } as @CleanupFunction,
-                normal_exit_only));
+        {
+            let mut cleanups = scope_info.cleanups.borrow_mut();
+            cleanups.get().push(clean_temp(
+                    frozen_val_ref,
+                    @WriteGuardReleasingCleanupFunction {
+                        root_key: root_key,
+                        frozen_val_ref: frozen_val_ref,
+                        bits_val_ref: bits_val_ref,
+                        filename_val: filename_val,
+                        line_val: line_val,
+                    } as @CleanupFunction,
+                    normal_exit_only));
+        }
         grow_scope_clean(scope_info);
     })
 }
@@ -558,9 +570,12 @@ pub fn add_clean_free(cx: @Block, ptr: ValueRef, heap: heap) {
         }
     };
     in_scope_cx(cx, None, |scope_info| {
-        scope_info.cleanups.push(clean_temp(ptr,
-                                            free_fn,
-                                            normal_exit_and_unwind));
+        {
+            let mut cleanups = scope_info.cleanups.borrow_mut();
+            cleanups.get().push(clean_temp(ptr,
+                                           free_fn,
+                                           normal_exit_and_unwind));
+        }
         grow_scope_clean(scope_info);
     })
 }
@@ -571,16 +586,23 @@ pub fn add_clean_free(cx: @Block, ptr: ValueRef, heap: heap) {
 // drop glue checks whether it is zero.
 pub fn revoke_clean(cx: @Block, val: ValueRef) {
     in_scope_cx(cx, None, |scope_info| {
-        let cleanup_pos = scope_info.cleanups.iter().position(
-            |cu| match *cu {
-                clean_temp(v, _, _) if v == val => true,
-                _ => false
-            });
+        let cleanup_pos = {
+            let mut cleanups = scope_info.cleanups.borrow_mut();
+            cleanups.get().iter().position(|cu| {
+                match *cu {
+                    clean_temp(v, _, _) if v == val => true,
+                    _ => false
+                }
+            })
+        };
         for i in cleanup_pos.iter() {
-            scope_info.cleanups =
-                vec::append(scope_info.cleanups.slice(0u, *i).to_owned(),
-                            scope_info.cleanups.slice(*i + 1u,
-                                                      scope_info.cleanups.len()));
+            let new_cleanups = {
+                let cleanups = scope_info.cleanups.borrow();
+                vec::append(cleanups.get().slice(0u, *i).to_owned(),
+                            cleanups.get().slice(*i + 1u, cleanups.get()
+                                                                  .len()))
+            };
+            scope_info.cleanups.set(new_cleanups);
             shrink_scope_clean(scope_info, *i);
         }
     })
@@ -589,7 +611,7 @@ pub fn revoke_clean(cx: @Block, val: ValueRef) {
 pub fn block_cleanups(bcx: &Block) -> ~[cleanup] {
     match bcx.scope.get() {
        None  => ~[],
-       Some(inf) => inf.cleanups.clone(),
+       Some(inf) => inf.cleanups.get(),
     }
 }
 
@@ -600,7 +622,7 @@ pub struct ScopeInfo {
     // A list of functions that must be run at when leaving this
     // block, cleaning up any variables that were introduced in the
     // block.
-    cleanups: ~[cleanup],
+    cleanups: RefCell<~[cleanup]>,
     // Existing cleanup paths that may be reused, indexed by destination and
     // cleared when the set of cleanups changes.
     cleanup_paths: ~[cleanup_path],
@@ -612,7 +634,8 @@ pub struct ScopeInfo {
 
 impl ScopeInfo {
     pub fn empty_cleanups(&mut self) -> bool {
-        self.cleanups.is_empty()
+        let cleanups = self.cleanups.borrow();
+        cleanups.get().is_empty()
     }
 }
 
