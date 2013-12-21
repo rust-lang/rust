@@ -997,7 +997,7 @@ pub fn need_invoke(bcx: @Block) -> bool {
 pub fn have_cached_lpad(bcx: @Block) -> bool {
     let mut res = false;
     in_lpad_scope_cx(bcx, |inf| {
-        match inf.landing_pad {
+        match inf.landing_pad.get() {
           Some(_) => res = true,
           None => res = false
         }
@@ -1032,11 +1032,11 @@ pub fn get_landing_pad(bcx: @Block) -> BasicBlockRef {
     let mut pad_bcx = bcx; // Guaranteed to be set below
     in_lpad_scope_cx(bcx, |inf| {
         // If there is a valid landing pad still around, use it
-        match inf.landing_pad {
+        match inf.landing_pad.get() {
           Some(target) => cached = Some(target),
           None => {
             pad_bcx = lpad_block(bcx, "unwind");
-            inf.landing_pad = Some(pad_bcx.llbb);
+            inf.landing_pad.set(Some(pad_bcx.llbb));
           }
         }
     });
@@ -1224,7 +1224,7 @@ pub fn simple_block_scope(parent: Option<@mut ScopeInfo>,
         loop_label: None,
         cleanups: RefCell::new(~[]),
         cleanup_paths: RefCell::new(~[]),
-        landing_pad: None,
+        landing_pad: Cell::new(None),
         node_info: node_info,
     }
 }
@@ -1254,7 +1254,7 @@ pub fn loop_scope_block(bcx: @Block,
         loop_label: loop_label,
         cleanups: RefCell::new(~[]),
         cleanup_paths: RefCell::new(~[]),
-        landing_pad: None,
+        landing_pad: Cell::new(None),
         node_info: opt_node_info,
     }), bcx.is_lpad, n, opt_node_info);
 }
