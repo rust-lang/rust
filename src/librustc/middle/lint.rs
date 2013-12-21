@@ -1425,7 +1425,8 @@ impl<'a> Visitor<()> for Context<'a> {
 
 impl<'a> IdVisitingOperation for Context<'a> {
     fn visit_id(&self, id: ast::NodeId) {
-        match self.tcx.sess.lints.pop(&id) {
+        let mut lints = self.tcx.sess.lints.borrow_mut();
+        match lints.get().pop(&id) {
             None => {}
             Some(l) => {
                 for (lint, span, msg) in l.move_iter() {
@@ -1477,7 +1478,8 @@ pub fn check_crate(tcx: ty::ctxt,
 
     // If we missed any lints added to the session, then there's a bug somewhere
     // in the iteration code.
-    for (id, v) in tcx.sess.lints.iter() {
+    let lints = tcx.sess.lints.borrow();
+    for (id, v) in lints.get().iter() {
         for &(lint, span, ref msg) in v.iter() {
             tcx.sess.span_bug(span, format!("unprocessed lint {:?} at {}: {}",
                                             lint,

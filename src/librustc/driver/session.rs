@@ -28,6 +28,7 @@ use syntax::abi;
 use syntax::parse::token;
 use syntax;
 
+use std::cell::RefCell;
 use std::hashmap::{HashMap,HashSet};
 
 pub struct config {
@@ -211,7 +212,8 @@ pub struct Session_ {
     filesearch: @filesearch::FileSearch,
     building_library: @mut bool,
     working_dir: Path,
-    lints: @mut HashMap<ast::NodeId, ~[(lint::lint, codemap::Span, ~str)]>,
+    lints: RefCell<HashMap<ast::NodeId,
+                           ~[(lint::lint, codemap::Span, ~str)]>>,
     node_id: @mut ast::NodeId,
     outputs: @mut ~[OutputStyle],
 }
@@ -269,11 +271,12 @@ impl Session_ {
                     id: ast::NodeId,
                     sp: Span,
                     msg: ~str) {
-        match self.lints.find_mut(&id) {
+        let mut lints = self.lints.borrow_mut();
+        match lints.get().find_mut(&id) {
             Some(arr) => { arr.push((lint, sp, msg)); return; }
             None => {}
         }
-        self.lints.insert(id, ~[(lint, sp, msg)]);
+        lints.get().insert(id, ~[(lint, sp, msg)]);
     }
     pub fn next_node_id(&self) -> ast::NodeId {
         self.reserve_node_ids(1)

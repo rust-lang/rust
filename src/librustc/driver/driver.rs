@@ -26,6 +26,7 @@ use middle;
 use util::common::time;
 use util::ppaux;
 
+use std::cell::RefCell;
 use std::hashmap::{HashMap,HashSet};
 use std::io;
 use std::io::fs;
@@ -872,7 +873,7 @@ pub fn build_session_(sopts: @session::options,
         filesearch: filesearch,
         building_library: @mut false,
         working_dir: os::getcwd(),
-        lints: @mut HashMap::new(),
+        lints: RefCell::new(HashMap::new()),
         node_id: @mut 1,
         outputs: @mut ~[],
     }
