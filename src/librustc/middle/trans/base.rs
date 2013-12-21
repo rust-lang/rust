@@ -1688,7 +1688,7 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
           llretptr: Cell::new(None),
           entry_bcx: None,
           alloca_insert_pt: Cell::new(None),
-          llreturn: None,
+          llreturn: Cell::new(None),
           llself: None,
           personality: None,
           caller_expects_out_pointer: uses_outptr,
@@ -1843,7 +1843,7 @@ pub fn copy_args_to_allocas(fcx: @mut FunctionContext,
 pub fn finish_fn(fcx: @mut FunctionContext, last_bcx: @Block) {
     let _icx = push_ctxt("finish_fn");
 
-    let ret_cx = match fcx.llreturn {
+    let ret_cx = match fcx.llreturn.get() {
         Some(llreturn) => {
             if !last_bcx.terminated.get() {
                 Br(last_bcx, llreturn);
@@ -1949,7 +1949,7 @@ pub fn trans_closure(ccx: @CrateContext,
         bcx = controlflow::trans_block(bcx, body, dest);
     }
 
-    match fcx.llreturn {
+    match fcx.llreturn.get() {
         Some(llreturn) => cleanup_and_Br(bcx, bcx_top, llreturn),
         None => bcx = cleanup_block(bcx, Some(bcx_top.llbb))
     };
@@ -1957,7 +1957,8 @@ pub fn trans_closure(ccx: @CrateContext,
     // Put return block after all other blocks.
     // This somewhat improves single-stepping experience in debugger.
     unsafe {
-        for &llreturn in fcx.llreturn.iter() {
+        let llreturn = fcx.llreturn.get();
+        for &llreturn in llreturn.iter() {
             llvm::LLVMMoveBasicBlockAfter(llreturn, bcx.llbb);
         }
     }
