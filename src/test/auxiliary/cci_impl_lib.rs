@@ -9,8 +9,6 @@
 // except according to those terms.
 
 #[crate_id="cci_impl_lib"];
-// NOTE: remove after the next snapshot
-#[link(name="cci_impl_lib", vers="0.0")];
 
 trait uint_helpers {
     fn to(&self, v: uint, f: |uint|);

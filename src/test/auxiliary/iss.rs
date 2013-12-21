@@ -9,8 +9,6 @@
 // except according to those terms.
 
 #[crate_id="issue6919_3#0.1"];
-// NOTE: remove after the next snapshot
-#[link(name="iss6919_3", vers="0.1")];
 
 // part of issue-6919.rs
 

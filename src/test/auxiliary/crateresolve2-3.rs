@@ -9,9 +9,6 @@
 // except according to those terms.
 
 #[crate_id="crateresolve2#0.3"];
-// NOTE: remove after the next snapshot
-#[link(name = "crateresolve2",
-       vers = "0.3")];
 
 #[crate_type = "lib"];
 
