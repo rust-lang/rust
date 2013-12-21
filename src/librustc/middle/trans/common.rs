@@ -214,7 +214,7 @@ pub struct FunctionContext {
     // always be Some.
     llretptr: Cell<Option<ValueRef>>,
 
-    entry_bcx: Option<@Block>,
+    entry_bcx: RefCell<Option<@Block>>,
 
     // These elements: "hoisted basic blocks" containing
     // administrative activities that have to happen in only one place in
@@ -296,7 +296,7 @@ impl FunctionContext {
                                                      .unwrap());
         }
         // Remove the cycle between fcx and bcx, so memory can be freed
-        self.entry_bcx = None;
+        self.entry_bcx.set(None);
     }
 
     pub fn get_llreturn(&mut self) -> BasicBlockRef {

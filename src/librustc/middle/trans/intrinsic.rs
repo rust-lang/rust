@@ -148,7 +148,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
 
     set_always_inline(fcx.llfn);
 
-    let mut bcx = fcx.entry_bcx.unwrap();
+    let mut bcx = fcx.entry_bcx.get().unwrap();
     let first_real_arg = fcx.arg_pos(0u);
 
     let nm = ccx.sess.str_of(item.ident);
