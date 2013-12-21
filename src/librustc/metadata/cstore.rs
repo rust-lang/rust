@@ -65,7 +65,7 @@ pub struct CStore {
     priv extern_mod_crate_map: RefCell<extern_mod_crate_map>,
     priv used_crate_sources: RefCell<~[CrateSource]>,
     priv used_libraries: RefCell<~[(~str, NativeLibaryKind)]>,
-    priv used_link_args: ~[~str],
+    priv used_link_args: RefCell<~[~str]>,
     intr: @ident_interner
 }
 
@@ -79,7 +79,7 @@ impl CStore {
             extern_mod_crate_map: RefCell::new(HashMap::new()),
             used_crate_sources: RefCell::new(~[]),
             used_libraries: RefCell::new(~[]),
-            used_link_args: ~[],
+            used_link_args: RefCell::new(~[]),
             intr: intr
         }
     }
@@ -151,13 +151,14 @@ impl CStore {
     }
 
     pub fn add_used_link_args(&mut self, args: &str) {
+        let mut used_link_args = self.used_link_args.borrow_mut();
         for s in args.split(' ') {
-            self.used_link_args.push(s.to_owned());
+            used_link_args.get().push(s.to_owned());
         }
     }
 
-    pub fn get_used_link_args<'a>(&'a self) -> &'a [~str] {
-        self.used_link_args.as_slice()
+    pub fn get_used_link_args<'a>(&'a self) -> &'a RefCell<~[~str]> {
+        &self.used_link_args
     }
 
     pub fn add_extern_mod_stmt_cnum(&mut self,
