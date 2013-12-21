@@ -853,7 +853,9 @@ fn link_rlib(sess: Session,
              out_filename: &Path) -> Archive {
     let mut a = Archive::create(sess, out_filename, obj_filename);
 
-    for &(ref l, kind) in sess.cstore.get_used_libraries().iter() {
+    let used_libraries = sess.cstore.get_used_libraries();
+    let used_libraries = used_libraries.borrow();
+    for &(ref l, kind) in used_libraries.get().iter() {
         match kind {
             cstore::NativeStatic => {
                 a.add_native_library(l.as_slice());
@@ -1116,7 +1118,9 @@ fn add_local_native_libraries(args: &mut ~[~str], sess: Session) {
         args.push("-L" + path.as_str().unwrap().to_owned());
     }
 
-    for &(ref l, kind) in sess.cstore.get_used_libraries().iter() {
+    let used_libraries = sess.cstore.get_used_libraries();
+    let used_libraries = used_libraries.borrow();
+    for &(ref l, kind) in used_libraries.get().iter() {
         match kind {
             cstore::NativeUnknown | cstore::NativeStatic => {
                 args.push("-l" + *l);

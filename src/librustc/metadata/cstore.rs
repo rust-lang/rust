@@ -64,7 +64,7 @@ pub struct CStore {
     priv metas: RefCell<HashMap<ast::CrateNum, @crate_metadata>>,
     priv extern_mod_crate_map: RefCell<extern_mod_crate_map>,
     priv used_crate_sources: RefCell<~[CrateSource]>,
-    priv used_libraries: ~[(~str, NativeLibaryKind)],
+    priv used_libraries: RefCell<~[(~str, NativeLibaryKind)]>,
     priv used_link_args: ~[~str],
     intr: @ident_interner
 }
@@ -78,7 +78,7 @@ impl CStore {
             metas: RefCell::new(HashMap::new()),
             extern_mod_crate_map: RefCell::new(HashMap::new()),
             used_crate_sources: RefCell::new(~[]),
-            used_libraries: ~[],
+            used_libraries: RefCell::new(~[]),
             used_link_args: ~[],
             intr: intr
         }
@@ -137,15 +137,17 @@ impl CStore {
 
     pub fn add_used_library(&mut self, lib: ~str, kind: NativeLibaryKind) -> bool {
         assert!(!lib.is_empty());
-        if self.used_libraries.iter().any(|&(ref x, _)| x == &lib) {
+        let mut used_libraries = self.used_libraries.borrow_mut();
+        if used_libraries.get().iter().any(|&(ref x, _)| x == &lib) {
             return false;
         }
-        self.used_libraries.push((lib, kind));
+        used_libraries.get().push((lib, kind));
         true
     }
 
-    pub fn get_used_libraries<'a>(&'a self) -> &'a [(~str, NativeLibaryKind)] {
-        self.used_libraries.as_slice()
+    pub fn get_used_libraries<'a>(&'a self)
+                              -> &'a RefCell<~[(~str, NativeLibaryKind)]> {
+        &self.used_libraries
     }
 
     pub fn add_used_link_args(&mut self, args: &str) {
