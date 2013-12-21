@@ -854,7 +854,7 @@ pub fn build_session_(sopts: @session::options,
     let target_cfg = build_target_config(sopts, demitter);
     let p_s = parse::new_parse_sess_special_handler(span_diagnostic_handler,
                                                     cm);
-    let cstore = @mut CStore::new(token::get_ident_interner());
+    let cstore = @CStore::new(token::get_ident_interner());
     let filesearch = filesearch::mk_filesearch(
         &sopts.maybe_sysroot,
         sopts.target_triple,

@@ -63,7 +63,7 @@ pub struct EncodeParams<'a> {
     item_symbols: &'a RefCell<HashMap<ast::NodeId, ~str>>,
     non_inlineable_statics: &'a RefCell<HashSet<ast::NodeId>>,
     link_meta: &'a LinkMeta,
-    cstore: @mut cstore::CStore,
+    cstore: @cstore::CStore,
     encode_inlined_item: encode_inlined_item<'a>,
     reachable: @mut HashSet<ast::NodeId>,
 }

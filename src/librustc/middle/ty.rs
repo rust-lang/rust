@@ -266,7 +266,7 @@ struct ctxt_ {
     diag: @mut syntax::diagnostic::span_handler,
     interner: RefCell<HashMap<intern_key, ~t_box_>>,
     next_id: @mut uint,
-    cstore: @mut metadata::cstore::CStore,
+    cstore: @metadata::cstore::CStore,
     sess: session::Session,
     def_map: resolve::DefMap,
 

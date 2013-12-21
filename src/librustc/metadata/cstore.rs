@@ -99,7 +99,7 @@ impl CStore {
         decoder::get_crate_vers(cdata.data())
     }
 
-    pub fn set_crate_data(&mut self, cnum: ast::CrateNum, data: @crate_metadata) {
+    pub fn set_crate_data(&self, cnum: ast::CrateNum, data: @crate_metadata) {
         let mut metas = self.metas.borrow_mut();
         metas.get().insert(cnum, data);
     }
@@ -116,7 +116,7 @@ impl CStore {
         }
     }
 
-    pub fn add_used_crate_source(&mut self, src: CrateSource) {
+    pub fn add_used_crate_source(&self, src: CrateSource) {
         let mut used_crate_sources = self.used_crate_sources.borrow_mut();
         if !used_crate_sources.get().contains(&src) {
             used_crate_sources.get().push(src);
@@ -135,7 +135,8 @@ impl CStore {
             .collect()
     }
 
-    pub fn add_used_library(&mut self, lib: ~str, kind: NativeLibaryKind) -> bool {
+    pub fn add_used_library(&self, lib: ~str, kind: NativeLibaryKind)
+                            -> bool {
         assert!(!lib.is_empty());
         let mut used_libraries = self.used_libraries.borrow_mut();
         if used_libraries.get().iter().any(|&(ref x, _)| x == &lib) {
@@ -150,7 +151,7 @@ impl CStore {
         &self.used_libraries
     }
 
-    pub fn add_used_link_args(&mut self, args: &str) {
+    pub fn add_used_link_args(&self, args: &str) {
         let mut used_link_args = self.used_link_args.borrow_mut();
         for s in args.split(' ') {
             used_link_args.get().push(s.to_owned());
@@ -161,7 +162,7 @@ impl CStore {
         &self.used_link_args
     }
 
-    pub fn add_extern_mod_stmt_cnum(&mut self,
+    pub fn add_extern_mod_stmt_cnum(&self,
                                     emod_id: ast::NodeId,
                                     cnum: ast::CrateNum) {
         let mut extern_mod_crate_map = self.extern_mod_crate_map.borrow_mut();
