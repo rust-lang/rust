@@ -320,7 +320,7 @@ pub fn parse(file: &mut io::Reader,
 pub fn msys_terminfo() -> ~TermInfo {
     let mut strings = HashMap::new();
     strings.insert(~"sgr0", bytes!("\x1b[0m").to_owned());
-    strings.insert(~"bold", bytes!("\x1b[1m;").to_owned());
+    strings.insert(~"bold", bytes!("\x1b[1m").to_owned());
     strings.insert(~"setaf", bytes!("\x1b[3%p1%dm").to_owned());
     strings.insert(~"setab", bytes!("\x1b[4%p1%dm").to_owned());
     ~TermInfo {
