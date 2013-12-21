@@ -1692,8 +1692,8 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
           llself: None,
           personality: None,
           caller_expects_out_pointer: uses_outptr,
-          llargs: @mut HashMap::new(),
-          lllocals: @mut HashMap::new(),
+          llargs: RefCell::new(HashMap::new()),
+          lllocals: RefCell::new(HashMap::new()),
           llupvars: RefCell::new(HashMap::new()),
           id: id,
           param_substs: param_substs,
@@ -2146,7 +2146,10 @@ pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
                                              fcx.llretptr.unwrap(),
                                              disr,
                                              i);
-        let llarg = fcx.llargs.get_copy(&fn_arg.pat.id);
+        let llarg = {
+            let llargs = fcx.llargs.borrow();
+            llargs.get().get_copy(&fn_arg.pat.id)
+        };
         let arg_ty = arg_tys[i];
         memcpy_ty(bcx, lldestptr, llarg, arg_ty);
     }
