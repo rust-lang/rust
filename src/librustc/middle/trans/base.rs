@@ -1188,7 +1188,7 @@ pub fn trans_stmt(cx: @Block, s: &ast::Stmt) -> @Block {
 
 // You probably don't want to use this one. See the
 // next three functions instead.
-pub fn new_block(cx: @mut FunctionContext,
+pub fn new_block(cx: @FunctionContext,
                  parent: Option<@Block>,
                  scope: Option<@mut ScopeInfo>,
                  is_lpad: bool,
@@ -1229,7 +1229,7 @@ pub fn simple_block_scope(parent: Option<@mut ScopeInfo>,
 }
 
 // Use this when you're at the top block of a function or the like.
-pub fn top_scope_block(fcx: @mut FunctionContext, opt_node_info: Option<NodeInfo>)
+pub fn top_scope_block(fcx: @FunctionContext, opt_node_info: Option<NodeInfo>)
                     -> @Block {
     return new_block(fcx, None, Some(simple_block_scope(None, opt_node_info)), false,
                   "function top level", opt_node_info);
@@ -1268,7 +1268,7 @@ pub fn sub_block(bcx: @Block, n: &str) -> @Block {
     new_block(bcx.fcx, Some(bcx), None, bcx.is_lpad, n, None)
 }
 
-pub fn raw_block(fcx: @mut FunctionContext, is_lpad: bool, llbb: BasicBlockRef) -> @Block {
+pub fn raw_block(fcx: @FunctionContext, is_lpad: bool, llbb: BasicBlockRef) -> @Block {
     @Block::new(llbb, None, is_lpad, None, fcx)
 }
 
@@ -1635,7 +1635,7 @@ pub fn mk_return_basic_block(llfn: ValueRef) -> BasicBlockRef {
 
 // Creates and returns space for, or returns the argument representing, the
 // slot where the return value of the function must go.
-pub fn make_return_pointer(fcx: @mut FunctionContext, output_type: ty::t) -> ValueRef {
+pub fn make_return_pointer(fcx: @FunctionContext, output_type: ty::t) -> ValueRef {
     unsafe {
         if type_of::return_uses_outptr(fcx.ccx, output_type) {
             llvm::LLVMGetParam(fcx.llfn, 0)
@@ -1662,7 +1662,7 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
                         param_substs: Option<@param_substs>,
                         opt_node_info: Option<NodeInfo>,
                         sp: Option<Span>)
-                     -> @mut FunctionContext {
+                     -> @FunctionContext {
     for p in param_substs.iter() { p.validate(); }
 
     debug!("new_fn_ctxt_w_id(path={}, id={:?}, \
@@ -1680,7 +1680,7 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
     let uses_outptr = type_of::return_uses_outptr(ccx, substd_output_type);
     let debug_context = debuginfo::create_function_debug_context(ccx, id, param_substs, llfndecl);
 
-    let fcx = @mut FunctionContext {
+    let fcx = @FunctionContext {
           llfn: llfndecl,
           llenv: unsafe {
               Cell::new(llvm::LLVMGetUndef(Type::i8p().to_ref()))
@@ -1734,7 +1734,7 @@ pub fn new_fn_ctxt(ccx: @CrateContext,
                    llfndecl: ValueRef,
                    output_type: ty::t,
                    sp: Option<Span>)
-                -> @mut FunctionContext {
+                -> @FunctionContext {
     new_fn_ctxt_w_id(ccx, path, llfndecl, -1, output_type, false, None, None, sp)
 }
 
@@ -1752,7 +1752,7 @@ pub fn new_fn_ctxt(ccx: @CrateContext,
 // spaces that have been created for them (by code in the llallocas field of
 // the function's fn_ctxt).  create_llargs_for_fn_args populates the llargs
 // field of the fn_ctxt with
-pub fn create_llargs_for_fn_args(cx: @mut FunctionContext,
+pub fn create_llargs_for_fn_args(cx: @FunctionContext,
                                  self_arg: self_arg,
                                  args: &[ast::arg])
                               -> ~[ValueRef] {
@@ -1776,7 +1776,7 @@ pub fn create_llargs_for_fn_args(cx: @mut FunctionContext,
     })
 }
 
-pub fn copy_args_to_allocas(fcx: @mut FunctionContext,
+pub fn copy_args_to_allocas(fcx: @FunctionContext,
                             bcx: @Block,
                             args: &[ast::arg],
                             raw_llargs: &[ValueRef],
@@ -1840,7 +1840,7 @@ pub fn copy_args_to_allocas(fcx: @mut FunctionContext,
 
 // Ties up the llstaticallocas -> llloadenv -> lltop edges,
 // and builds the return block.
-pub fn finish_fn(fcx: @mut FunctionContext, last_bcx: @Block) {
+pub fn finish_fn(fcx: @FunctionContext, last_bcx: @Block) {
     let _icx = push_ctxt("finish_fn");
 
     let ret_cx = match fcx.llreturn.get() {
@@ -1901,7 +1901,7 @@ pub fn trans_closure(ccx: @CrateContext,
                      id: ast::NodeId,
                      _attributes: &[ast::Attribute],
                      output_type: ty::t,
-                     maybe_load_env: |@mut FunctionContext|) {
+                     maybe_load_env: |@FunctionContext|) {
     ccx.stats.n_closures += 1;
     let _icx = push_ctxt("trans_closure");
     set_uwtable(llfndecl);

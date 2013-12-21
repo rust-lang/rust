@@ -289,7 +289,7 @@ impl FunctionContext {
         }
     }
 
-    pub fn cleanup(&mut self) {
+    pub fn cleanup(&self) {
         unsafe {
             llvm::LLVMInstructionEraseFromParent(self.alloca_insert_pt
                                                      .get()
@@ -299,7 +299,7 @@ impl FunctionContext {
         self.entry_bcx.set(None);
     }
 
-    pub fn get_llreturn(&mut self) -> BasicBlockRef {
+    pub fn get_llreturn(&self) -> BasicBlockRef {
         if self.llreturn.get().is_none() {
             self.llreturn.set(Some(base::mk_return_basic_block(self.llfn)));
         }
@@ -671,17 +671,16 @@ pub struct Block {
     node_info: Option<NodeInfo>,
     // The function context for the function to which this block is
     // attached.
-    fcx: @mut FunctionContext
+    fcx: @FunctionContext
 }
 
 impl Block {
-
     pub fn new(llbb: BasicBlockRef,
                parent: Option<@Block>,
                is_lpad: bool,
                node_info: Option<NodeInfo>,
-               fcx: @mut FunctionContext)
-            -> Block {
+               fcx: @FunctionContext)
+               -> Block {
         Block {
             llbb: llbb,
             terminated: Cell::new(false),

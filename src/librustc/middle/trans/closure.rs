@@ -293,7 +293,7 @@ pub fn build_closure(bcx0: @Block,
 // Given an enclosing block context, a new function context, a closure type,
 // and a list of upvars, generate code to load and populate the environment
 // with the upvars and type descriptors.
-pub fn load_environment(fcx: @mut FunctionContext,
+pub fn load_environment(fcx: @FunctionContext,
                         cdata_ty: ty::t,
                         cap_vars: &[moves::CaptureVar],
                         sigil: ast::Sigil) {
