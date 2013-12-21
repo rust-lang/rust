@@ -206,7 +206,7 @@ pub struct FunctionContext {
 
     // The implicit environment argument that arrives in the function we're
     // creating.
-    llenv: ValueRef,
+    llenv: Cell<ValueRef>,
 
     // The place to store the return value. If the return type is immediate,
     // this is an alloca in the function. Otherwise, it's the hidden first
