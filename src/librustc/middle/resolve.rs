@@ -442,7 +442,7 @@ struct Module {
     anonymous_children: RefCell<HashMap<NodeId,@Module>>,
 
     // The status of resolving each import in this module.
-    import_resolutions: @mut HashMap<Name, @mut ImportResolution>,
+    import_resolutions: RefCell<HashMap<Name, @mut ImportResolution>>,
 
     // The number of unresolved globs that this module exports.
     glob_count: Cell<uint>,
@@ -472,7 +472,7 @@ impl Module {
             imports: @mut ~[],
             external_module_children: RefCell::new(HashMap::new()),
             anonymous_children: RefCell::new(HashMap::new()),
-            import_resolutions: @mut HashMap::new(),
+            import_resolutions: RefCell::new(HashMap::new()),
             glob_count: Cell::new(0),
             resolved_import_count: Cell::new(0),
             populated: Cell::new(!external),
@@ -1951,7 +1951,9 @@ impl Resolver {
                        self.idents_to_str(directive.module_path),
                        self.session.str_of(target));
 
-                match module_.import_resolutions.find(&target.name) {
+                let mut import_resolutions = module_.import_resolutions
+                                                    .borrow_mut();
+                match import_resolutions.get().find(&target.name) {
                     Some(&resolution) => {
                         debug!("(building import directive) bumping \
                                 reference");
@@ -1965,7 +1967,8 @@ impl Resolver {
                         debug!("(building import directive) creating new");
                         let resolution = @mut ImportResolution::new(id, is_public);
                         resolution.outstanding_references = 1;
-                        module_.import_resolutions.insert(target.name, resolution);
+                        import_resolutions.get().insert(target.name,
+                                                        resolution);
                     }
                 }
             }
@@ -2290,7 +2293,9 @@ impl Resolver {
                 // Now search the exported imports within the containing
                 // module.
 
-                match containing_module.import_resolutions.find(&source.name) {
+                let import_resolutions = containing_module.import_resolutions
+                                                          .borrow();
+                match import_resolutions.get().find(&source.name) {
                     None => {
                         // The containing module definitely doesn't have an
                         // exported import with the name in question. We can
@@ -2385,8 +2390,11 @@ impl Resolver {
         }
 
         // We've successfully resolved the import. Write the results in.
-        assert!(module_.import_resolutions.contains_key(&target.name));
-        let import_resolution = module_.import_resolutions.get(&target.name);
+        let import_resolution = {
+            let import_resolutions = module_.import_resolutions.borrow();
+            assert!(import_resolutions.get().contains_key(&target.name));
+            import_resolutions.get().get_copy(&target.name)
+        };
 
         match value_result {
             BoundResult(target_module, name_bindings) => {
@@ -2484,8 +2492,10 @@ impl Resolver {
         assert_eq!(containing_module.glob_count.get(), 0);
 
         // Add all resolved imports from the containing module.
-        for (ident, target_import_resolution) in containing_module.import_resolutions.iter() {
-
+        let import_resolutions = containing_module.import_resolutions
+                                                  .borrow();
+        for (ident, target_import_resolution) in import_resolutions.get()
+                                                                   .iter() {
             debug!("(resolving glob import) writing module resolution \
                     {:?} into `{}`",
                    target_import_resolution.type_target.is_none(),
@@ -2497,7 +2507,9 @@ impl Resolver {
             }
 
             // Here we merge two import resolutions.
-            match module_.import_resolutions.find(ident) {
+            let mut import_resolutions = module_.import_resolutions
+                                                .borrow_mut();
+            match import_resolutions.get().find(ident) {
                 None => {
                     // Simple: just copy the old import resolution.
                     let new_import_resolution =
@@ -2507,7 +2519,7 @@ impl Resolver {
                     new_import_resolution.type_target =
                         target_import_resolution.type_target;
 
-                    module_.import_resolutions.insert
+                    import_resolutions.get().insert
                         (*ident, new_import_resolution);
                 }
                 Some(&dest_import_resolution) => {
@@ -2539,13 +2551,15 @@ impl Resolver {
 
         let merge_import_resolution = |name, name_bindings: @NameBindings| {
             let dest_import_resolution;
-            match module_.import_resolutions.find(&name) {
+            let mut import_resolutions = module_.import_resolutions
+                                                .borrow_mut();
+            match import_resolutions.get().find(&name) {
                 None => {
                     // Create a new import resolution from this child.
                     dest_import_resolution = @mut ImportResolution::new(id,
                                                                         is_public);
-                    module_.import_resolutions.insert
-                        (name, dest_import_resolution);
+                    import_resolutions.get().insert(name,
+                                                    dest_import_resolution);
                 }
                 Some(&existing_import_resolution) => {
                     dest_import_resolution = existing_import_resolution;
@@ -2857,7 +2871,8 @@ impl Resolver {
         // all its imports in the usual way; this is because chains of
         // adjacent import statements are processed as though they mutated the
         // current scope.
-        match module_.import_resolutions.find(&name.name) {
+        let import_resolutions = module_.import_resolutions.borrow();
+        match import_resolutions.get().find(&name.name) {
             None => {
                 // Not found; continue.
             }
@@ -3130,7 +3145,8 @@ impl Resolver {
         }
 
         // Check the list of resolved imports.
-        match module_.import_resolutions.find(&name.name) {
+        let import_resolutions = module_.import_resolutions.borrow();
+        match import_resolutions.get().find(&name.name) {
             Some(import_resolution) => {
                 if import_resolution.is_public &&
                         import_resolution.outstanding_references != 0 {
@@ -3315,8 +3331,11 @@ impl Resolver {
     fn add_exports_for_module(&mut self,
                               exports2: &mut ~[Export2],
                               module_: @Module) {
-        for (name, importresolution) in module_.import_resolutions.iter() {
-            if !importresolution.is_public { continue }
+        let import_resolutions = module_.import_resolutions.borrow();
+        for (name, importresolution) in import_resolutions.get().iter() {
+            if !importresolution.is_public {
+                continue
+            }
             let xs = [TypeNS, ValueNS];
             for &ns in xs.iter() {
                 match importresolution.target_for_namespace(ns) {
@@ -4673,7 +4692,9 @@ impl Resolver {
         }
 
         // Next, search import resolutions.
-        match containing_module.import_resolutions.find(&name.name) {
+        let import_resolutions = containing_module.import_resolutions
+                                                  .borrow();
+        match import_resolutions.get().find(&name.name) {
             Some(import_resolution) if import_resolution.is_public => {
                 match (*import_resolution).target_for_namespace(namespace) {
                     Some(target) => {
@@ -5300,7 +5321,10 @@ impl Resolver {
                 }
 
                 // Look for imports.
-                for (_, &import_resolution) in search_module.import_resolutions.iter() {
+                let import_resolutions = search_module.import_resolutions
+                                                      .borrow();
+                for (_, &import_resolution) in import_resolutions.get()
+                                                                 .iter() {
                     match import_resolution.target_for_namespace(TypeNS) {
                         None => {
                             // Continue.
@@ -5493,7 +5517,8 @@ impl Resolver {
         }
 
         debug!("Import resolutions:");
-        for (name, import_resolution) in module_.import_resolutions.iter() {
+        let import_resolutions = module_.import_resolutions.borrow();
+        for (name, import_resolution) in import_resolutions.get().iter() {
             let value_repr;
             match import_resolution.target_for_namespace(ValueNS) {
                 None => { value_repr = ~""; }
