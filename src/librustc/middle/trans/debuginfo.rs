@@ -251,7 +251,7 @@ struct FunctionDebugContextData {
     scope_map: RefCell<HashMap<ast::NodeId, DIScope>>,
     fn_metadata: DISubprogram,
     argument_counter: Cell<uint>,
-    source_locations_enabled: bool,
+    source_locations_enabled: Cell<bool>,
 }
 
 enum VariableAccess<'a> {
@@ -569,7 +569,7 @@ pub fn set_source_location(fcx: &FunctionContext,
 
     debug!("set_source_location: {}", cx.sess.codemap.span_to_str(span));
 
-    if fcx.debug_context.get_ref(cx, span).source_locations_enabled {
+    if fcx.debug_context.get_ref(cx, span).source_locations_enabled.get() {
         let loc = span_start(cx, span);
         let scope = scope_metadata(fcx, node_id, span);
 
@@ -598,7 +598,9 @@ pub fn clear_source_location(fcx: &FunctionContext) {
 /// translated.
 pub fn start_emitting_source_locations(fcx: &mut FunctionContext) {
     match fcx.debug_context {
-        FunctionDebugContext(~ref mut data) => data.source_locations_enabled = true,
+        FunctionDebugContext(~ref mut data) => {
+            data.source_locations_enabled.set(true)
+        },
         _ => { /* safe to ignore */ }
     }
 }
@@ -765,7 +767,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
         scope_map: RefCell::new(HashMap::new()),
         fn_metadata: fn_metadata,
         argument_counter: Cell::new(1),
-        source_locations_enabled: false,
+        source_locations_enabled: Cell::new(false),
     };
 
     let arg_pats = fn_decl.inputs.map(|arg_ref| arg_ref.pat);
@@ -1049,7 +1051,11 @@ fn declare_local(bcx: @Block,
 
     match variable_kind {
         ArgumentVariable(_) | CapturedVariable => {
-            assert!(!bcx.fcx.debug_context.get_ref(cx, span).source_locations_enabled);
+            assert!(!bcx.fcx
+                        .debug_context
+                        .get_ref(cx, span)
+                        .source_locations_enabled
+                        .get());
             set_debug_location(cx, UnknownLocation);
         }
         _ => { /* nothing to do */ }
