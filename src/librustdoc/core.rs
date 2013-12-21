@@ -17,6 +17,7 @@ use syntax::diagnostic;
 use syntax::parse;
 use syntax;
 
+use std::cell::RefCell;
 use std::os;
 use std::local_data;
 use std::hashmap::{HashSet};
@@ -50,7 +51,7 @@ fn get_ast_and_resolve(cpath: &Path,
     let sessopts = @driver::session::options {
         binary: @"rustdoc",
         maybe_sysroot: Some(@os::self_exe_path().unwrap().dir_path()),
-        addl_lib_search_paths: @mut libs,
+        addl_lib_search_paths: @RefCell::new(libs),
         outputs: ~[driver::session::OutputDylib],
         .. (*rustc::driver::session::basic_options()).clone()
     };

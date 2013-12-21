@@ -187,7 +187,11 @@ impl Archive {
 
         let mut rustpath = filesearch::rust_path();
         rustpath.push(self.sess.filesearch.get_target_lib_path());
-        let path = self.sess.opts.addl_lib_search_paths.iter();
+        let addl_lib_search_paths = self.sess
+                                        .opts
+                                        .addl_lib_search_paths
+                                        .borrow();
+        let path = addl_lib_search_paths.get().iter();
         for path in path.chain(rustpath.iter()) {
             debug!("looking for {} inside {}", name, path.display());
             let test = path.join(oslibname.as_slice());

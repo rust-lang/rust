@@ -148,9 +148,9 @@ pub struct options {
     lint_opts: ~[(lint::lint, lint::level)],
     save_temps: bool,
     output_type: back::link::output_type,
-    addl_lib_search_paths: @mut HashSet<Path>, // This is mutable for rustpkg, which
-                                               // updates search paths based on the
-                                               // parsed code
+    // This is mutable for rustpkg, which updates search paths based on the
+    // parsed code.
+    addl_lib_search_paths: @RefCell<HashSet<Path>>,
     ar: Option<~str>,
     linker: Option<~str>,
     linker_args: ~[~str],
@@ -385,7 +385,7 @@ pub fn basic_options() -> @options {
         lint_opts: ~[],
         save_temps: false,
         output_type: link::output_type_exe,
-        addl_lib_search_paths: @mut HashSet::new(),
+        addl_lib_search_paths: @RefCell::new(HashSet::new()),
         ar: None,
         linker: None,
         linker_args: ~[],
