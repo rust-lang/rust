@@ -247,7 +247,7 @@ struct IrMaps {
 
     num_live_nodes: Cell<uint>,
     num_vars: Cell<uint>,
-    live_node_map: HashMap<NodeId, LiveNode>,
+    live_node_map: RefCell<HashMap<NodeId, LiveNode>>,
     variable_map: HashMap<NodeId, Variable>,
     capture_info_map: HashMap<NodeId, @~[CaptureInfo]>,
     var_kinds: ~[VarKind],
@@ -264,7 +264,7 @@ fn IrMaps(tcx: ty::ctxt,
         capture_map: capture_map,
         num_live_nodes: Cell::new(0),
         num_vars: Cell::new(0),
-        live_node_map: HashMap::new(),
+        live_node_map: RefCell::new(HashMap::new()),
         variable_map: HashMap::new(),
         capture_info_map: HashMap::new(),
         var_kinds: ~[],
@@ -289,7 +289,8 @@ impl IrMaps {
                                   node_id: NodeId,
                                   lnk: LiveNodeKind) {
         let ln = self.add_live_node(lnk);
-        self.live_node_map.insert(node_id, ln);
+        let mut live_node_map = self.live_node_map.borrow_mut();
+        live_node_map.get().insert(node_id, ln);
 
         debug!("{} is node {}", ln.to_str(), node_id);
     }
@@ -616,7 +617,8 @@ fn Liveness(ir: @mut IrMaps, specials: Specials) -> Liveness {
 impl Liveness {
     pub fn live_node(&self, node_id: NodeId, span: Span) -> LiveNode {
         let ir: &mut IrMaps = self.ir;
-        match ir.live_node_map.find(&node_id) {
+        let live_node_map = ir.live_node_map.borrow();
+        match live_node_map.get().find(&node_id) {
           Some(&ln) => ln,
           None => {
             // This must be a mismatch between the ir_map construction
