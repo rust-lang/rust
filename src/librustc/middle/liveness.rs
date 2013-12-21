@@ -248,7 +248,7 @@ struct IrMaps {
     num_live_nodes: Cell<uint>,
     num_vars: Cell<uint>,
     live_node_map: RefCell<HashMap<NodeId, LiveNode>>,
-    variable_map: HashMap<NodeId, Variable>,
+    variable_map: RefCell<HashMap<NodeId, Variable>>,
     capture_info_map: HashMap<NodeId, @~[CaptureInfo]>,
     var_kinds: ~[VarKind],
     lnks: ~[LiveNodeKind],
@@ -265,7 +265,7 @@ fn IrMaps(tcx: ty::ctxt,
         num_live_nodes: Cell::new(0),
         num_vars: Cell::new(0),
         live_node_map: RefCell::new(HashMap::new()),
-        variable_map: HashMap::new(),
+        variable_map: RefCell::new(HashMap::new()),
         capture_info_map: HashMap::new(),
         var_kinds: ~[],
         lnks: ~[],
@@ -302,7 +302,8 @@ impl IrMaps {
 
         match vk {
             Local(LocalInfo { id: node_id, .. }) | Arg(node_id, _) => {
-                self.variable_map.insert(node_id, v);
+                let mut variable_map = self.variable_map.borrow_mut();
+                variable_map.get().insert(node_id, v);
             },
             ImplicitRet => {}
         }
@@ -313,7 +314,8 @@ impl IrMaps {
     }
 
     pub fn variable(&mut self, node_id: NodeId, span: Span) -> Variable {
-        match self.variable_map.find(&node_id) {
+        let variable_map = self.variable_map.borrow();
+        match variable_map.get().find(&node_id) {
           Some(&var) => var,
           None => {
             self.tcx.sess.span_bug(
