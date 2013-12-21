@@ -113,7 +113,7 @@ enum NamespaceResult {
     UnboundResult,
     /// Means that resolve has determined that the name is bound in the Module
     /// argument, and specified by the NameBindings argument.
-    BoundResult(@Module, @mut NameBindings)
+    BoundResult(@Module, @NameBindings)
 }
 
 impl NamespaceResult {
@@ -328,13 +328,11 @@ impl ImportDirective {
 /// The item that an import resolves to.
 struct Target {
     target_module: @Module,
-    bindings: @mut NameBindings,
+    bindings: @NameBindings,
 }
 
 impl Target {
-    fn new(target_module: @Module,
-               bindings: @mut NameBindings)
-               -> Target {
+    fn new(target_module: @Module, bindings: @NameBindings) -> Target {
         Target {
             target_module: target_module,
             bindings: bindings
@@ -420,7 +418,7 @@ struct Module {
     kind: Cell<ModuleKind>,
     is_public: bool,
 
-    children: @mut HashMap<Name, @mut NameBindings>,
+    children: @mut HashMap<Name, @NameBindings>,
     imports: @mut ~[@ImportDirective],
 
     // The external module children of this node that were declared with
@@ -520,7 +518,7 @@ enum TraitReferenceType {
 
 impl NameBindings {
     /// Creates a new module in this set of name bindings.
-    fn define_module(&mut self,
+    fn define_module(&self,
                      parent_link: ParentLink,
                      def_id: Option<DefId>,
                      kind: ModuleKind,
@@ -551,7 +549,7 @@ impl NameBindings {
     }
 
     /// Sets the kind of the module, creating a new one if necessary.
-    fn set_module_kind(&mut self,
+    fn set_module_kind(&self,
                        parent_link: ParentLink,
                        def_id: Option<DefId>,
                        kind: ModuleKind,
@@ -591,7 +589,7 @@ impl NameBindings {
     }
 
     /// Records a type definition.
-    fn define_type(&mut self, def: Def, sp: Span, is_public: bool) {
+    fn define_type(&self, def: Def, sp: Span, is_public: bool) {
         // Merges the type with the existing type def or creates a new one.
         match self.type_def.get() {
             None => {
@@ -614,7 +612,7 @@ impl NameBindings {
     }
 
     /// Records a value definition.
-    fn define_value(&mut self, def: Def, sp: Span, is_public: bool) {
+    fn define_value(&self, def: Def, sp: Span, is_public: bool) {
         self.value_def.set(Some(ValueNsDef {
             def: def,
             value_span: Some(sp),
@@ -635,7 +633,7 @@ impl NameBindings {
      * Returns the module node. Fails if this node does not have a module
      * definition.
      */
-    fn get_module(&mut self) -> @Module {
+    fn get_module(&self) -> @Module {
         match self.get_module_if_available() {
             None => {
                 fail!("get_module called on a node with no module \
@@ -774,7 +772,7 @@ fn namespace_error_to_str(ns: NamespaceError) -> &'static str {
 fn Resolver(session: Session,
             lang_items: LanguageItems,
             crate_span: Span) -> Resolver {
-    let graph_root = @mut NameBindings();
+    let graph_root = @NameBindings();
 
     graph_root.define_module(NoParentLink,
                              Some(DefId { crate: 0, node: 0 }),
@@ -834,7 +832,7 @@ struct Resolver {
 
     intr: @ident_interner,
 
-    graph_root: @mut NameBindings,
+    graph_root: @NameBindings,
 
     method_map: @mut HashMap<Name, HashSet<DefId>>,
     structs: HashSet<DefId>,
@@ -985,7 +983,7 @@ impl Resolver {
                      duplicate_checking_mode: DuplicateCheckingMode,
                      // For printing errors
                      sp: Span)
-                     -> (@mut NameBindings, ReducedGraphParent) {
+                     -> (@NameBindings, ReducedGraphParent) {
         // If this is the immediate descendant of a module, then we add the
         // child name directly. Otherwise, we create or reuse an anonymous
         // module and add the child to that.
@@ -1001,7 +999,7 @@ impl Resolver {
         let new_parent = ModuleReducedGraphParent(module_);
         match module_.children.find(&name.name) {
             None => {
-                let child = @mut NameBindings();
+                let child = @NameBindings();
                 module_.children.insert(name.name, child);
                 return (child, new_parent);
             }
@@ -1591,7 +1589,7 @@ impl Resolver {
     fn handle_external_def(&mut self,
                            def: Def,
                            vis: visibility,
-                           child_name_bindings: @mut NameBindings,
+                           child_name_bindings: @NameBindings,
                            final_ident: &str,
                            ident: Ident,
                            new_parent: ReducedGraphParent) {
@@ -2215,8 +2213,7 @@ impl Resolver {
         return resolution_result;
     }
 
-    fn create_name_bindings_from_module(module: @Module)
-                                            -> NameBindings {
+    fn create_name_bindings_from_module(module: @Module) -> NameBindings {
         NameBindings {
             type_def: RefCell::new(Some(TypeNsDef {
                 is_public: false,
@@ -2372,7 +2369,7 @@ impl Resolver {
                     None => {} // Continue.
                     Some(module) => {
                         let name_bindings =
-                            @mut Resolver::create_name_bindings_from_module(
+                            @Resolver::create_name_bindings_from_module(
                                 module);
                         type_result = BoundResult(containing_module,
                                                   name_bindings);
@@ -2535,8 +2532,7 @@ impl Resolver {
             }
         }
 
-        let merge_import_resolution = |name,
-                                       name_bindings: @mut NameBindings| {
+        let merge_import_resolution = |name, name_bindings: @NameBindings| {
             let dest_import_resolution;
             match module_.import_resolutions.find(&name) {
                 None => {
@@ -2585,7 +2581,7 @@ impl Resolver {
                 containing_module.external_module_children.borrow();
             for (&name, module) in external_module_children.get().iter() {
                 let name_bindings =
-                    @mut Resolver::create_name_bindings_from_module(*module);
+                    @Resolver::create_name_bindings_from_module(*module);
                 merge_import_resolution(name, name_bindings);
             }
         }
@@ -2889,8 +2885,7 @@ impl Resolver {
                 None => {}
                 Some(module) => {
                     let name_bindings =
-                        @mut Resolver::create_name_bindings_from_module(
-                            module);
+                        @Resolver::create_name_bindings_from_module(module);
                     debug!("lower name bindings succeeded");
                     return Success((Target::new(module_, name_bindings), false));
                 }
@@ -2975,7 +2970,7 @@ impl Resolver {
             module_, name, TypeNS, DontSearchThroughModules);
         match resolve_result {
             Success((target, _)) => {
-                let bindings = &mut *target.bindings;
+                let bindings = &*target.bindings;
                 match bindings.type_def.get() {
                     Some(type_def) => {
                         match type_def.module_def {
@@ -3166,8 +3161,7 @@ impl Resolver {
                 None => {}
                 Some(module) => {
                     let name_bindings =
-                        @mut Resolver::create_name_bindings_from_module(
-                            module);
+                        @Resolver::create_name_bindings_from_module(module);
                     return Success((Target::new(module_, name_bindings), false));
                 }
             }
@@ -3290,7 +3284,7 @@ impl Resolver {
     fn add_exports_of_namebindings(&mut self,
                                    exports2: &mut ~[Export2],
                                    name: Name,
-                                   namebindings: @mut NameBindings,
+                                   namebindings: @NameBindings,
                                    ns: Namespace,
                                    reexport: bool) {
         match namebindings.def_for_namespace(ns) {
