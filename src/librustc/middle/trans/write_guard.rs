@@ -56,7 +56,8 @@ pub fn root_and_write_guard(datum: &Datum,
     // Perform the write guard, if necessary.
     //
     // (Note: write-guarded values are always boxes)
-    if ccx.maps.write_guard_map.contains(&key) {
+    let write_guard_map = ccx.maps.write_guard_map.borrow();
+    if write_guard_map.get().contains(&key) {
         perform_write_guard(datum, bcx, span)
     } else {
         bcx

@@ -82,7 +82,7 @@ pub fn check_crate(
         moved_variables_set: moved_variables_set,
         capture_map: capture_map,
         root_map: root_map(),
-        write_guard_map: @mut HashSet::new(),
+        write_guard_map: @RefCell::new(HashSet::new()),
         stats: @mut BorrowStats {
             loaned_paths_same: 0,
             loaned_paths_imm: 0,
@@ -217,7 +217,7 @@ pub struct root_map_key {
 
 // A set containing IDs of expressions of gc'd type that need to have a write
 // guard.
-pub type write_guard_map = @mut HashSet<root_map_key>;
+pub type write_guard_map = @RefCell<HashSet<root_map_key>>;
 
 pub type BckResult<T> = Result<T, BckError>;
 

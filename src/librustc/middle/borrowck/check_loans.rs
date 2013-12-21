@@ -419,7 +419,10 @@ impl<'a> CheckLoanCtxt<'a> {
                         derefs: deref_count
                     };
                     debug!("Inserting write guard at {:?}", key);
-                    this.bccx.write_guard_map.insert(key);
+                    let mut write_guard_map = this.bccx
+                                                  .write_guard_map
+                                                  .borrow_mut();
+                    write_guard_map.get().insert(key);
                 }
 
                 _ => {}
