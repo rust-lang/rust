@@ -15,6 +15,7 @@
 use metadata::decoder;
 use metadata::loader;
 
+use std::cell::RefCell;
 use std::hashmap::HashMap;
 use syntax::ast;
 use syntax::parse::token::ident_interner;
@@ -60,7 +61,7 @@ pub struct CrateSource {
 }
 
 pub struct CStore {
-    priv metas: HashMap <ast::CrateNum, @crate_metadata>,
+    priv metas: RefCell<HashMap<ast::CrateNum, @crate_metadata>>,
     priv extern_mod_crate_map: extern_mod_crate_map,
     priv used_crate_sources: ~[CrateSource],
     priv used_libraries: ~[(~str, NativeLibaryKind)],
@@ -74,7 +75,7 @@ type extern_mod_crate_map = HashMap<ast::NodeId, ast::CrateNum>;
 impl CStore {
     pub fn new(intr: @ident_interner) -> CStore {
         CStore {
-            metas: HashMap::new(),
+            metas: RefCell::new(HashMap::new()),
             extern_mod_crate_map: HashMap::new(),
             used_crate_sources: ~[],
             used_libraries: ~[],
@@ -84,7 +85,8 @@ impl CStore {
     }
 
     pub fn get_crate_data(&self, cnum: ast::CrateNum) -> @crate_metadata {
-        *self.metas.get(&cnum)
+        let metas = self.metas.borrow();
+        *metas.get().get(&cnum)
     }
 
     pub fn get_crate_hash(&self, cnum: ast::CrateNum) -> @str {
@@ -98,15 +100,18 @@ impl CStore {
     }
 
     pub fn set_crate_data(&mut self, cnum: ast::CrateNum, data: @crate_metadata) {
-        self.metas.insert(cnum, data);
+        let mut metas = self.metas.borrow_mut();
+        metas.get().insert(cnum, data);
     }
 
     pub fn have_crate_data(&self, cnum: ast::CrateNum) -> bool {
-        self.metas.contains_key(&cnum)
+        let metas = self.metas.borrow();
+        metas.get().contains_key(&cnum)
     }
 
     pub fn iter_crate_data(&self, i: |ast::CrateNum, @crate_metadata|) {
-        for (&k, &v) in self.metas.iter() {
+        let metas = self.metas.borrow();
+        for (&k, &v) in metas.get().iter() {
             i(k, v);
         }
     }
