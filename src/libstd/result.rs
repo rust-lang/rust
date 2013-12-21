@@ -13,12 +13,10 @@
 use clone::Clone;
 use cmp::Eq;
 use fmt;
-use iter::Iterator;
+use iter::{Iterator, FromIterator};
 use option::{None, Option, Some};
 use str::OwnedStr;
 use to_str::ToStr;
-use vec::OwnedVector;
-use vec;
 
 /// `Result` is a type that represents either success (`Ok`) or failure (`Err`).
 #[deriving(Clone, DeepClone, Eq, Ord, TotalEq, TotalOrd, ToStr)]
@@ -221,10 +219,9 @@ impl<T: fmt::Default, E: fmt::Default> fmt::Default for Result<T, E> {
 // Free functions
 /////////////////////////////////////////////////////////////////////////////
 
-/// Takes each element in the iterator: if it is an error, no further
-/// elements are taken, and the error is returned.
-/// Should no error occur, a vector containing the values of each Result
-/// is returned.
+/// Takes each element in the `Iterator`: if it is an `Err`, no further
+/// elements are taken, and the `Err` is returned. Should no `Err` occur, a
+/// vector containing the values of each `Result` is returned.
 ///
 /// Here is an example which increments every integer in a vector,
 /// checking for overflow:
@@ -237,17 +234,24 @@ impl<T: fmt::Default, E: fmt::Default> fmt::Default for Result<T, E> {
 ///     let res = collect(v.iter().map(|&x| inc_conditionally(x)));
 ///     assert!(res == Ok(~[2u, 3, 4]));
 #[inline]
-pub fn collect<T, E, Iter: Iterator<Result<T, E>>>(mut iterator: Iter)
-    -> Result<~[T], E> {
-    let (lower, _) = iterator.size_hint();
-    let mut vs: ~[T] = vec::with_capacity(lower);
-    for t in iterator {
-        match t {
-            Ok(v) => vs.push(v),
-            Err(u) => return Err(u)
+pub fn collect<T, E, Iter: Iterator<Result<T, E>>, V: FromIterator<T>>(iter: Iter) -> Result<V, E> {
+    // FIXME(#11084): This should be twice as fast once this bug is closed.
+    let mut iter = iter.scan(None, |state, x| {
+        match x {
+            Ok(x) => Some(x),
+            Err(err) => {
+                *state = Some(err);
+                None
+            }
         }
+    });
+
+    let v: V = FromIterator::from_iterator(&mut iter);
+
+    match iter.state {
+        Some(err) => Err(err),
+        None => Ok(v),
     }
-    Ok(vs)
 }
 
 /// Perform a fold operation over the result values from an iterator.
@@ -291,8 +295,8 @@ mod tests {
     use super::*;
 
     use iter::range;
-    use vec::ImmutableVector;
     use to_str::ToStr;
+    use vec::ImmutableVector;
 
     pub fn op1() -> Result<int, ~str> { Ok(666) }
     pub fn op2() -> Result<int, ~str> { Err(~"sadface") }
@@ -347,21 +351,21 @@ mod tests {
 
     #[test]
     fn test_collect() {
-        assert_eq!(collect(range(0, 0)
-                           .map(|_| Ok::<int, ()>(0))),
-                   Ok(~[]));
-        assert_eq!(collect(range(0, 3)
-                           .map(|x| Ok::<int, ()>(x))),
-                   Ok(~[0, 1, 2]));
-        assert_eq!(collect(range(0, 3)
-                           .map(|x| if x > 1 { Err(x) } else { Ok(x) })),
-                   Err(2));
+        let v: Result<~[int], ()> = collect(range(0, 0).map(|_| Ok::<int, ()>(0)));
+        assert_eq!(v, Ok(~[]));
+
+        let v: Result<~[int], ()> = collect(range(0, 3).map(|x| Ok::<int, ()>(x)));
+        assert_eq!(v, Ok(~[0, 1, 2]));
+
+        let v: Result<~[int], int> = collect(range(0, 3)
+                                             .map(|x| if x > 1 { Err(x) } else { Ok(x) }));
+        assert_eq!(v, Err(2));
 
         // test that it does not take more elements than it needs
         let functions = [|| Ok(()), || Err(1), || fail!()];
 
-        assert_eq!(collect(functions.iter().map(|f| (*f)())),
-                   Err(1));
+        let v: Result<~[()], int> = collect(functions.iter().map(|f| (*f)()));
+        assert_eq!(v, Err(1));
     }
 
     #[test]
