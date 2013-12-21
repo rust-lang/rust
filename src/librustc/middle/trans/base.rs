@@ -1689,7 +1689,7 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
           entry_bcx: None,
           alloca_insert_pt: Cell::new(None),
           llreturn: Cell::new(None),
-          llself: None,
+          llself: Cell::new(None),
           personality: None,
           caller_expects_out_pointer: uses_outptr,
           llargs: RefCell::new(HashMap::new()),
@@ -1760,11 +1760,11 @@ pub fn create_llargs_for_fn_args(cx: @mut FunctionContext,
 
     match self_arg {
       impl_self(tt, self_mode) => {
-        cx.llself = Some(ValSelfData {
+        cx.llself.set(Some(ValSelfData {
             v: cx.llenv.get(),
             t: tt,
             is_copy: self_mode == ty::ByCopy
-        });
+        }));
       }
       no_self => ()
     }
@@ -1788,7 +1788,7 @@ pub fn copy_args_to_allocas(fcx: @mut FunctionContext,
     let _icx = push_ctxt("copy_args_to_allocas");
     let mut bcx = bcx;
 
-    match fcx.llself {
+    match fcx.llself.get() {
         Some(slf) => {
             let self_val = if slf.is_copy
                     && datum::appropriate_mode(bcx.ccx(), slf.t).is_by_value() {
@@ -1800,7 +1800,7 @@ pub fn copy_args_to_allocas(fcx: @mut FunctionContext,
                 PointerCast(bcx, slf.v, type_of(bcx.ccx(), slf.t).ptr_to())
             };
 
-            fcx.llself = Some(ValSelfData {v: self_val, ..slf});
+            fcx.llself.set(Some(ValSelfData {v: self_val, ..slf}));
             add_clean(bcx, self_val, slf.t);
 
             if fcx.ccx.sess.opts.extra_debuginfo {

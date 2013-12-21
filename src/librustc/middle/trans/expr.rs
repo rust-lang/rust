@@ -1108,8 +1108,8 @@ pub fn trans_local_var(bcx: @Block, def: ast::Def) -> Datum {
             take_local(bcx, lllocals.get(), nid)
         }
         ast::DefSelf(nid, _) => {
-            let self_info: ValSelfData = match bcx.fcx.llself {
-                Some(ref self_info) => *self_info,
+            let self_info: ValSelfData = match bcx.fcx.llself.get() {
+                Some(self_info) => self_info,
                 None => {
                     bcx.sess().bug(format!(
                         "trans_local_var: reference to self \
