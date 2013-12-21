@@ -310,7 +310,7 @@ impl Reflector {
                 let arg = BitCast(bcx, arg, llptrty);
                 let ret = adt::trans_get_discr(bcx, repr, arg, Some(Type::i64()));
                 Store(bcx, ret, fcx.llretptr.get().unwrap());
-                match fcx.llreturn {
+                match fcx.llreturn.get() {
                     Some(llreturn) => cleanup_and_Br(bcx, bcx, llreturn),
                     None => bcx = cleanup_block(bcx, Some(bcx.llbb))
                 };

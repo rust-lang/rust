@@ -222,7 +222,7 @@ pub struct FunctionContext {
     // A marker for the place where we want to insert the function's static
     // allocas, so that LLVM will coalesce them into a single alloca call.
     alloca_insert_pt: Cell<Option<ValueRef>>,
-    llreturn: Option<BasicBlockRef>,
+    llreturn: Cell<Option<BasicBlockRef>>,
     // The 'self' value currently in use in this function, if there
     // is one.
     //
@@ -300,11 +300,11 @@ impl FunctionContext {
     }
 
     pub fn get_llreturn(&mut self) -> BasicBlockRef {
-        if self.llreturn.is_none() {
-            self.llreturn = Some(base::mk_return_basic_block(self.llfn));
+        if self.llreturn.get().is_none() {
+            self.llreturn.set(Some(base::mk_return_basic_block(self.llfn)));
         }
 
-        self.llreturn.unwrap()
+        self.llreturn.get().unwrap()
     }
 }
 
