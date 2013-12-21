@@ -49,7 +49,7 @@ use syntax;
 use writer = extra::ebml::writer;
 
 // used by astencode:
-type abbrev_map = @mut HashMap<ty::t, tyencode::ty_abbrev>;
+type abbrev_map = @RefCell<HashMap<ty::t, tyencode::ty_abbrev>>;
 
 pub type encode_inlined_item<'a> = 'a |ecx: &EncodeContext,
                                              ebml_w: &mut writer::Encoder,
@@ -1774,7 +1774,7 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
         non_inlineable_statics,
         ..
     } = parms;
-    let type_abbrevs = @mut HashMap::new();
+    let type_abbrevs = @RefCell::new(HashMap::new());
     let stats = @mut stats;
     let ecx = EncodeContext {
         diag: diag,

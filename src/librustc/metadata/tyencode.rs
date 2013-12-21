@@ -10,6 +10,7 @@
 
 // Type encoding
 
+use std::cell::RefCell;
 use std::hashmap::HashMap;
 use std::io;
 use std::io::{Decorator, Writer, Seek};
@@ -50,7 +51,7 @@ pub struct ty_abbrev {
 
 pub enum abbrev_ctxt {
     ac_no_abbrevs,
-    ac_use_abbrevs(@mut HashMap<ty::t, ty_abbrev>),
+    ac_use_abbrevs(@RefCell<HashMap<ty::t, ty_abbrev>>),
 }
 
 fn mywrite(w: &mut MemWriter, fmt: &fmt::Arguments) {
@@ -83,9 +84,12 @@ pub fn enc_ty(w: &mut MemWriter, cx: @ctxt, t: ty::t) {
           w.write(result_str.as_bytes());
       }
       ac_use_abbrevs(abbrevs) => {
-          match abbrevs.find(&t) {
-              Some(a) => { w.write(a.s.as_bytes()); return; }
-              None => {}
+          {
+              let mut abbrevs = abbrevs.borrow_mut();
+              match abbrevs.get().find(&t) {
+                  Some(a) => { w.write(a.s.as_bytes()); return; }
+                  None => {}
+              }
           }
           let pos = w.tell();
           enc_sty(w, cx, &ty::get(t).sty);
@@ -104,7 +108,10 @@ pub fn enc_ty(w: &mut MemWriter, cx: @ctxt, t: ty::t) {
               let a = ty_abbrev { pos: pos as uint,
                                   len: len as uint,
                                   s: s };
-              abbrevs.insert(t, a);
+              {
+                  let mut abbrevs = abbrevs.borrow_mut();
+                  abbrevs.get().insert(t, a);
+              }
           }
           return;
       }
