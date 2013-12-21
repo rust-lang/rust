@@ -1089,7 +1089,9 @@ fn link_args(sess: Session,
     // Finally add all the linker arguments provided on the command line along
     // with any #[link_args] attributes found inside the crate
     args.push_all(sess.opts.linker_args);
-    for arg in sess.cstore.get_used_link_args().iter() {
+    let used_link_args = sess.cstore.get_used_link_args();
+    let used_link_args = used_link_args.borrow();
+    for arg in used_link_args.get().iter() {
         args.push(arg.clone());
     }
     return args;
