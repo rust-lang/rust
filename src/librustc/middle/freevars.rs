@@ -33,8 +33,8 @@ pub type freevar_info = @~[@freevar_entry];
 pub type freevar_map = @mut HashMap<ast::NodeId, freevar_info>;
 
 struct CollectFreevarsVisitor {
-    seen: @mut HashMap<ast::NodeId, ()>,
-    refs: @mut ~[@freevar_entry],
+    seen: HashMap<ast::NodeId, ()>,
+    refs: ~[@freevar_entry],
     def_map: resolve::DefMap,
 }
 
@@ -90,8 +90,8 @@ impl Visitor<int> for CollectFreevarsVisitor {
 // in order to start the search.
 fn collect_freevars(def_map: resolve::DefMap, blk: ast::P<ast::Block>)
     -> freevar_info {
-    let seen = @mut HashMap::new();
-    let refs = @mut ~[];
+    let seen = HashMap::new();
+    let refs = ~[];
 
     let mut v = CollectFreevarsVisitor {
         seen: seen,
@@ -100,7 +100,11 @@ fn collect_freevars(def_map: resolve::DefMap, blk: ast::P<ast::Block>)
     };
 
     v.visit_block(blk, 1);
-    return @(*refs).clone();
+    let CollectFreevarsVisitor {
+        refs,
+        ..
+    } = v;
+    return @refs;
 }
 
 struct AnnotateFreevarsVisitor {
