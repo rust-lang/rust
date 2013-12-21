@@ -212,7 +212,7 @@ pub struct FunctionContext {
     // this is an alloca in the function. Otherwise, it's the hidden first
     // parameter to the function. After function construction, this should
     // always be Some.
-    llretptr: Option<ValueRef>,
+    llretptr: Cell<Option<ValueRef>>,
 
     entry_bcx: Option<@Block>,
 
