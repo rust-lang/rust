@@ -15,11 +15,11 @@
 
 use std::io::{Decorator, Writer};
 
-#[cfg(not(target_os = "win32"))] use std::os;
-#[cfg(not(target_os = "win32"))] use terminfo::*;
-#[cfg(not(target_os = "win32"))] use terminfo::searcher::open;
-#[cfg(not(target_os = "win32"))] use terminfo::parser::compiled::parse;
-#[cfg(not(target_os = "win32"))] use terminfo::parm::{expand, Number, Variables};
+use std::os;
+use terminfo::*;
+use terminfo::searcher::open;
+use terminfo::parser::compiled::{parse, msys_terminfo};
+use terminfo::parm::{expand, Number, Variables};
 
 // FIXME (#2807): Windows support.
 
@@ -74,7 +74,6 @@ pub mod attr {
     }
 }
 
-#[cfg(not(target_os = "win32"))]
 fn cap_for_attr(attr: attr::Attr) -> &'static str {
     match attr {
         attr::Bold               => "bold",
@@ -93,29 +92,24 @@ fn cap_for_attr(attr: attr::Attr) -> &'static str {
     }
 }
 
-#[cfg(not(target_os = "win32"))]
 pub struct Terminal<T> {
     priv num_colors: u16,
     priv out: T,
     priv ti: ~TermInfo
 }
 
-#[cfg(target_os = "win32")]
-pub struct Terminal<T> {
-    priv num_colors: u16,
-    priv out: T,
-}
-
-#[cfg(not(target_os = "win32"))]
 impl<T: Writer> Terminal<T> {
     pub fn new(out: T) -> Result<Terminal<T>, ~str> {
-        let term = os::getenv("TERM");
-        if term.is_none() {
-            return Err(~"TERM environment variable undefined");
-        }
+        let term = match os::getenv("TERM") {
+            Some(t) => t,
+            None => return Err(~"TERM environment variable undefined")
+        };
 
-        let entry = open(term.unwrap());
+        let entry = open(term);
         if entry.is_err() {
+            if "cygwin" == term { // msys terminal
+                return Ok(Terminal {out: out, ti: msys_terminfo(), num_colors: 8});
+            }
             return Err(entry.unwrap_err());
         }
 
@@ -238,32 +232,6 @@ impl<T: Writer> Terminal<T> {
         if color >= self.num_colors && color >= 8 && color < 16 {
             color-8
         } else { color }
-    }
-}
-
-#[cfg(target_os = "win32")]
-impl<T: Writer> Terminal<T> {
-    pub fn new(out: T) -> Result<Terminal<T>, ~str> {
-        return Ok(Terminal {out: out, num_colors: 0});
-    }
-
-    pub fn fg(&mut self, _color: color::Color) -> bool {
-        false
-    }
-
-    pub fn bg(&mut self, _color: color::Color) -> bool {
-        false
-    }
-
-    pub fn attr(&mut self, _attr: attr::Attr) -> bool {
-        false
-    }
-
-    pub fn supports_attr(&self, _attr: attr::Attr) -> bool {
-        false
-    }
-
-    pub fn reset(&self) {
     }
 }
 
