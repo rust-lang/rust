@@ -1223,7 +1223,7 @@ pub fn simple_block_scope(parent: Option<@mut ScopeInfo>,
         loop_break: None,
         loop_label: None,
         cleanups: RefCell::new(~[]),
-        cleanup_paths: ~[],
+        cleanup_paths: RefCell::new(~[]),
         landing_pad: None,
         node_info: node_info,
     }
@@ -1253,7 +1253,7 @@ pub fn loop_scope_block(bcx: @Block,
         loop_break: Some(loop_break),
         loop_label: loop_label,
         cleanups: RefCell::new(~[]),
-        cleanup_paths: ~[],
+        cleanup_paths: RefCell::new(~[]),
         landing_pad: None,
         node_info: opt_node_info,
     }), bcx.is_lpad, n, opt_node_info);
@@ -1333,7 +1333,12 @@ pub fn cleanup_and_leave(bcx: @Block,
                         let mut skip = 0;
                         let mut dest = None;
                         {
-                            let r = (*inf).cleanup_paths.rev_iter().find(|cp| cp.target == leave);
+                            let cleanup_paths = inf.cleanup_paths.borrow();
+                            let r = cleanup_paths.get()
+                                                 .rev_iter()
+                                                 .find(|cp| {
+                                cp.target == leave
+                            });
                             for cp in r.iter() {
                                 let cleanups = inf.cleanups.borrow();
                                 if cp.size == cleanups.get().len() {
@@ -1348,7 +1353,9 @@ pub fn cleanup_and_leave(bcx: @Block,
                         let sub_cx = sub_block(bcx, "cleanup");
                         Br(bcx, sub_cx.llbb);
                         let cleanups = inf.cleanups.borrow();
-                        inf.cleanup_paths.push(cleanup_path {
+                        let mut cleanup_paths = inf.cleanup_paths
+                                                   .borrow_mut();
+                        cleanup_paths.get().push(cleanup_path {
                             target: leave,
                             size: cleanups.get().len(),
                             dest: sub_cx.llbb
