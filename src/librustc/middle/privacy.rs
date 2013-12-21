@@ -293,8 +293,9 @@ impl<'a> Visitor<()> for EmbargoVisitor<'a> {
         // This code is here instead of in visit_item so that the
         // crate module gets processed as well.
         if self.prev_exported {
-            assert!(self.exp_map2.contains_key(&id), "wut {:?}", id);
-            for export in self.exp_map2.get(&id).iter() {
+            let exp_map2 = self.exp_map2.borrow();
+            assert!(exp_map2.get().contains_key(&id), "wut {:?}", id);
+            for export in exp_map2.get().get(&id).iter() {
                 if is_local(export.def_id) && export.reexport {
                     self.reexports.insert(export.def_id.node);
                 }

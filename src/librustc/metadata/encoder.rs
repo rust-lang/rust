@@ -556,7 +556,8 @@ fn encode_reexports(ecx: &EncodeContext,
                     id: NodeId,
                     path: &[ast_map::path_elt]) {
     debug!("(encoding info for module) encoding reexports for {}", id);
-    match ecx.reexports2.find(&id) {
+    let reexports2 = ecx.reexports2.borrow();
+    match reexports2.get().find(&id) {
         Some(ref exports) => {
             debug!("(encoding info for module) found reexports for {}", id);
             for exp in exports.iter() {
