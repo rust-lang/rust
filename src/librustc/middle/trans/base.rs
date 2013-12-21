@@ -1685,7 +1685,7 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
           llenv: unsafe {
               Cell::new(llvm::LLVMGetUndef(Type::i8p().to_ref()))
           },
-          llretptr: None,
+          llretptr: Cell::new(None),
           entry_bcx: None,
           alloca_insert_pt: None,
           llreturn: None,
@@ -1721,7 +1721,8 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
             // Otherwise, we normally allocate the llretptr, unless we
             // have been instructed to skip it for immediate return
             // values.
-            fcx.llretptr = Some(make_return_pointer(fcx, substd_output_type));
+            fcx.llretptr.set(Some(make_return_pointer(fcx,
+                                                      substd_output_type)));
         }
     }
     fcx
@@ -1858,11 +1859,11 @@ pub fn finish_fn(fcx: @mut FunctionContext, last_bcx: @Block) {
 // Builds the return block for a function.
 pub fn build_return_block(fcx: &FunctionContext, ret_cx: @Block) {
     // Return the value if this function immediate; otherwise, return void.
-    if fcx.llretptr.is_none() || fcx.caller_expects_out_pointer {
+    if fcx.llretptr.get().is_none() || fcx.caller_expects_out_pointer {
         return RetVoid(ret_cx);
     }
 
-    let retptr = Value(fcx.llretptr.unwrap());
+    let retptr = Value(fcx.llretptr.get().unwrap());
     let retval = match retptr.get_dominating_store(ret_cx) {
         // If there's only a single store to the ret slot, we can directly return
         // the value that was stored and omit the store and the alloca
@@ -1877,7 +1878,7 @@ pub fn build_return_block(fcx: &FunctionContext, ret_cx: @Block) {
             retval
         }
         // Otherwise, load the return value from the ret slot
-        None => Load(ret_cx, fcx.llretptr.unwrap())
+        None => Load(ret_cx, fcx.llretptr.get().unwrap())
     };
 
 
@@ -1943,7 +1944,7 @@ pub fn trans_closure(ccx: @CrateContext,
     if body.expr.is_none() || ty::type_is_voidish(bcx.tcx(), block_ty) {
         bcx = controlflow::trans_block(bcx, body, expr::Ignore);
     } else {
-        let dest = expr::SaveIn(fcx.llretptr.unwrap());
+        let dest = expr::SaveIn(fcx.llretptr.get().unwrap());
         bcx = controlflow::trans_block(bcx, body, dest);
     }
 
@@ -2139,11 +2140,11 @@ pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
     let bcx = copy_args_to_allocas(fcx, bcx, fn_args, raw_llargs, arg_tys);
 
     let repr = adt::represent_type(ccx, result_ty);
-    adt::trans_start_init(bcx, repr, fcx.llretptr.unwrap(), disr);
+    adt::trans_start_init(bcx, repr, fcx.llretptr.get().unwrap(), disr);
     for (i, fn_arg) in fn_args.iter().enumerate() {
         let lldestptr = adt::trans_field_ptr(bcx,
                                              repr,
-                                             fcx.llretptr.unwrap(),
+                                             fcx.llretptr.get().unwrap(),
                                              disr,
                                              i);
         let llarg = {

@@ -290,7 +290,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
             // NB: This needs to be kept in lockstep with the TypeId struct in
             //     libstd/unstable/intrinsics.rs
             let val = C_named_struct(type_of::type_of(ccx, output_type), [C_u64(hash)]);
-            match bcx.fcx.llretptr {
+            match bcx.fcx.llretptr.get() {
                 Some(ptr) => {
                     Store(bcx, val, ptr);
                     RetVoid(bcx);
@@ -301,7 +301,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
         "init" => {
             let tp_ty = substs.tys[0];
             let lltp_ty = type_of::type_of(ccx, tp_ty);
-            match bcx.fcx.llretptr {
+            match bcx.fcx.llretptr.get() {
                 Some(ptr) => { Store(bcx, C_null(lltp_ty), ptr); RetVoid(bcx); }
                 None if ty::type_is_nil(tp_ty) => RetVoid(bcx),
                 None => Ret(bcx, C_null(lltp_ty)),
@@ -349,7 +349,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
             if !ty::type_is_voidish(ccx.tcx, out_type) {
                 let llsrcval = get_param(decl, first_real_arg);
                 if type_is_immediate(ccx, in_type) {
-                    match fcx.llretptr {
+                    match fcx.llretptr.get() {
                         Some(llretptr) => {
                             Store(bcx, llsrcval, PointerCast(bcx, llretptr, llintype.ptr_to()));
                             RetVoid(bcx);
@@ -379,7 +379,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                     // NB: Do not use a Load and Store here. This causes massive
                     // code bloat when `transmute` is used on large structural
                     // types.
-                    let lldestptr = fcx.llretptr.unwrap();
+                    let lldestptr = fcx.llretptr.get().unwrap();
                     let lldestptr = PointerCast(bcx, lldestptr, Type::i8p());
                     let llsrcptr = PointerCast(bcx, llsrcval, Type::i8p());
 

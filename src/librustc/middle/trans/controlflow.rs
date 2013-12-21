@@ -266,7 +266,9 @@ pub fn trans_break_cont(bcx: @Block,
                     Some(bcx) => bcx,
                         // This is a return from a loop body block
                         None => {
-                            Store(bcx, C_bool(!to_end), bcx.fcx.llretptr.unwrap());
+                            Store(bcx,
+                                  C_bool(!to_end),
+                                  bcx.fcx.llretptr.get().unwrap());
                             cleanup_and_leave(bcx, None, Some(bcx.fcx.get_llreturn()));
                             Unreachable(bcx);
                             return bcx;
@@ -292,7 +294,7 @@ pub fn trans_cont(bcx: @Block, label_opt: Option<Name>) -> @Block {
 pub fn trans_ret(bcx: @Block, e: Option<@ast::Expr>) -> @Block {
     let _icx = push_ctxt("trans_ret");
     let mut bcx = bcx;
-    let dest = match bcx.fcx.llretptr {
+    let dest = match bcx.fcx.llretptr.get() {
         None => expr::Ignore,
         Some(retptr) => expr::SaveIn(retptr),
     };
