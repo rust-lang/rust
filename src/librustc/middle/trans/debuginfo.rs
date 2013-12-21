@@ -250,7 +250,7 @@ impl FunctionDebugContext {
 struct FunctionDebugContextData {
     scope_map: RefCell<HashMap<ast::NodeId, DIScope>>,
     fn_metadata: DISubprogram,
-    argument_counter: uint,
+    argument_counter: Cell<uint>,
     source_locations_enabled: bool,
 }
 
@@ -460,8 +460,8 @@ pub fn create_self_argument_metadata(bcx: @Block,
 
     let argument_index = {
         let counter = &mut bcx.fcx.debug_context.get_mut_ref(bcx.ccx(), span).argument_counter;
-        let argument_index = *counter;
-        *counter += 1;
+        let argument_index = counter.get();
+        counter.set(argument_index + 1);
         argument_index
     };
 
@@ -538,9 +538,9 @@ pub fn create_argument_metadata(bcx: @Block,
         let argument_ident = ast_util::path_to_ident(path_ref);
 
         let argument_index = {
-            let counter = &mut fcx.debug_context.get_mut_ref(cx, span).argument_counter;
-            let argument_index = *counter;
-            *counter += 1;
+            let counter = &fcx.debug_context.get_mut_ref(cx, span).argument_counter;
+            let argument_index = counter.get();
+            counter.set(argument_index + 1);
             argument_index
         };
 
@@ -761,10 +761,10 @@ pub fn create_function_debug_context(cx: &CrateContext,
     });
 
     // Initialize fn debug context (including scope map and namespace map)
-    let mut fn_debug_context = ~FunctionDebugContextData {
+    let fn_debug_context = ~FunctionDebugContextData {
         scope_map: RefCell::new(HashMap::new()),
         fn_metadata: fn_metadata,
-        argument_counter: 1,
+        argument_counter: Cell::new(1),
         source_locations_enabled: false,
     };
 
