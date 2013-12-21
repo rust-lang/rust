@@ -1056,11 +1056,11 @@ pub fn get_landing_pad(bcx: @Block) -> BasicBlockRef {
 
     // We store the retval in a function-central alloca, so that calls to
     // Resume can find it.
-    match bcx.fcx.personality {
+    match bcx.fcx.personality.get() {
       Some(addr) => Store(pad_bcx, llretval, addr),
       None => {
         let addr = alloca(pad_bcx, val_ty(llretval), "");
-        bcx.fcx.personality = Some(addr);
+        bcx.fcx.personality.set(Some(addr));
         Store(pad_bcx, llretval, addr);
       }
     }
@@ -1378,7 +1378,7 @@ pub fn cleanup_and_leave(bcx: @Block,
     match leave {
       Some(target) => Br(bcx, target),
       None => {
-          let ll_load = Load(bcx, bcx.fcx.personality.unwrap());
+          let ll_load = Load(bcx, bcx.fcx.personality.get().unwrap());
           Resume(bcx, ll_load);
       }
     }
@@ -1690,7 +1690,7 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
           alloca_insert_pt: Cell::new(None),
           llreturn: Cell::new(None),
           llself: Cell::new(None),
-          personality: None,
+          personality: Cell::new(None),
           caller_expects_out_pointer: uses_outptr,
           llargs: RefCell::new(HashMap::new()),
           lllocals: RefCell::new(HashMap::new()),
