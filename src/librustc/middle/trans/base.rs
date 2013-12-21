@@ -69,7 +69,7 @@ use util::sha2::Sha256;
 use middle::trans::type_::Type;
 
 use std::c_str::ToCStr;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::hashmap::HashMap;
 use std::libc::c_uint;
 use std::vec;
@@ -1683,7 +1683,7 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
     let fcx = @mut FunctionContext {
           llfn: llfndecl,
           llenv: unsafe {
-              llvm::LLVMGetUndef(Type::i8p().to_ref())
+              Cell::new(llvm::LLVMGetUndef(Type::i8p().to_ref()))
           },
           llretptr: None,
           entry_bcx: None,
@@ -1702,9 +1702,9 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
           ccx: ccx,
           debug_context: debug_context,
     };
-    fcx.llenv = unsafe {
+    fcx.llenv.set(unsafe {
           llvm::LLVMGetParam(llfndecl, fcx.env_arg_pos() as c_uint)
-    };
+    });
 
     unsafe {
         let entry_bcx = top_scope_block(fcx, opt_node_info);
@@ -1759,7 +1759,7 @@ pub fn create_llargs_for_fn_args(cx: @mut FunctionContext,
     match self_arg {
       impl_self(tt, self_mode) => {
         cx.llself = Some(ValSelfData {
-            v: cx.llenv,
+            v: cx.llenv.get(),
             t: tt,
             is_copy: self_mode == ty::ByCopy
         });

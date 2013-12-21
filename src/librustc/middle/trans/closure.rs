@@ -307,7 +307,7 @@ pub fn load_environment(fcx: @mut FunctionContext,
     let bcx = fcx.entry_bcx.unwrap();
 
     // Load a pointer to the closure data, skipping over the box header:
-    let llcdata = opaque_box_body(bcx, cdata_ty, fcx.llenv);
+    let llcdata = opaque_box_body(bcx, cdata_ty, fcx.llenv.get());
 
     // Store the pointer to closure data in an alloca for debug info because that's what the
     // llvm.dbg.declare intrinsic expects
