@@ -497,6 +497,7 @@ struct TypeNsDef {
 }
 
 // Records a possibly-private value definition.
+#[deriving(Clone)]
 struct ValueNsDef {
     is_public: bool, // see note in ImportResolution about how to use this
     def: Def,
@@ -507,7 +508,7 @@ struct ValueNsDef {
 // bound to.
 struct NameBindings {
     type_def: RefCell<Option<TypeNsDef>>,   //< Meaning in type namespace.
-    value_def: Option<ValueNsDef>,  //< Meaning in value namespace.
+    value_def: RefCell<Option<ValueNsDef>>, //< Meaning in value namespace.
 }
 
 /// Ways in which a trait can be referenced
@@ -614,8 +615,11 @@ impl NameBindings {
 
     /// Records a value definition.
     fn define_value(&mut self, def: Def, sp: Span, is_public: bool) {
-        self.value_def = Some(ValueNsDef { def: def, value_span: Some(sp),
-                                           is_public: is_public });
+        self.value_def.set(Some(ValueNsDef {
+            def: def,
+            value_span: Some(sp),
+            is_public: is_public,
+        }));
     }
 
     /// Returns the module node if applicable.
@@ -644,7 +648,7 @@ impl NameBindings {
     fn defined_in_namespace(&self, namespace: Namespace) -> bool {
         match namespace {
             TypeNS   => return self.type_def.get().is_some(),
-            ValueNS  => return self.value_def.is_some()
+            ValueNS  => return self.value_def.get().is_some()
         }
     }
 
@@ -653,7 +657,7 @@ impl NameBindings {
             TypeNS => match self.type_def.get() {
                 Some(def) => def.is_public, None => false
             },
-            ValueNS => match self.value_def {
+            ValueNS => match self.value_def.get() {
                 Some(def) => def.is_public, None => false
             }
         }
@@ -683,7 +687,7 @@ impl NameBindings {
                 }
             }
             ValueNS => {
-                match self.value_def {
+                match self.value_def.get() {
                     None => None,
                     Some(value_def) => Some(value_def.def)
                 }
@@ -701,7 +705,7 @@ impl NameBindings {
                     }
                 }
                 ValueNS => {
-                    match self.value_def {
+                    match self.value_def.get() {
                         None => None,
                         Some(value_def) => value_def.value_span
                     }
@@ -716,7 +720,7 @@ impl NameBindings {
 fn NameBindings() -> NameBindings {
     NameBindings {
         type_def: RefCell::new(None),
-        value_def: None
+        value_def: RefCell::new(None),
     }
 }
 
@@ -2220,7 +2224,7 @@ impl Resolver {
                 type_def: None,
                 type_span: None
             })),
-            value_def: None,
+            value_def: RefCell::new(None),
         }
     }
 
@@ -4534,8 +4538,9 @@ impl Resolver {
             Success((target, _)) => {
                 debug!("(resolve bare identifier pattern) succeeded in \
                          finding {} at {:?}",
-                        self.session.str_of(name), target.bindings.value_def);
-                match target.bindings.value_def {
+                        self.session.str_of(name),
+                        target.bindings.value_def.get());
+                match target.bindings.value_def.get() {
                     None => {
                         fail!("resolved name in the value namespace to a \
                               set of name bindings with no def?!");
