@@ -339,7 +339,7 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
                             id: NodeId,
                             variants: &[P<variant>],
                             path: &[ast_map::path_elt],
-                            index: @mut ~[entry<i64>],
+                            index: @RefCell<~[entry<i64>]>,
                             generics: &ast::Generics) {
     debug!("encode_enum_variant_info(id={:?})", id);
 
@@ -349,8 +349,13 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
                                ast::DefId { crate: LOCAL_CRATE, node: id });
     for variant in variants.iter() {
         let def_id = local_def(variant.node.id);
-        index.push(entry {val: variant.node.id as i64,
-                          pos: ebml_w.writer.tell()});
+        {
+            let mut index = index.borrow_mut();
+            index.get().push(entry {
+                val: variant.node.id as i64,
+                pos: ebml_w.writer.tell(),
+            });
+        }
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, def_id);
         match variant.node.kind {
@@ -719,7 +724,7 @@ fn encode_info_for_struct(ecx: &EncodeContext,
                           ebml_w: &mut writer::Encoder,
                           path: &[ast_map::path_elt],
                           fields: &[struct_field],
-                          global_index: @mut ~[entry<i64>])
+                          global_index: @RefCell<~[entry<i64>]>)
                           -> ~[entry<i64>] {
     /* Each class has its own index, since different classes
        may have fields with the same name */
@@ -735,7 +740,13 @@ fn encode_info_for_struct(ecx: &EncodeContext,
 
         let id = field.node.id;
         index.push(entry {val: id as i64, pos: ebml_w.writer.tell()});
-        global_index.push(entry {val: id as i64, pos: ebml_w.writer.tell()});
+        {
+            let mut global_index = global_index.borrow_mut();
+            global_index.get().push(entry {
+                val: id as i64,
+                pos: ebml_w.writer.tell(),
+            });
+        }
         ebml_w.start_tag(tag_items_data_item);
         debug!("encode_info_for_struct: doing {} {}",
                tcx.sess.str_of(nm), id);
@@ -754,9 +765,15 @@ fn encode_info_for_struct_ctor(ecx: &EncodeContext,
                                path: &[ast_map::path_elt],
                                name: ast::Ident,
                                ctor_id: NodeId,
-                               index: @mut ~[entry<i64>],
+                               index: @RefCell<~[entry<i64>]>,
                                struct_id: NodeId) {
-    index.push(entry { val: ctor_id as i64, pos: ebml_w.writer.tell() });
+    {
+        let mut index = index.borrow_mut();
+        index.get().push(entry {
+            val: ctor_id as i64,
+            pos: ebml_w.writer.tell(),
+        });
+    }
 
     ebml_w.start_tag(tag_items_data_item);
     encode_def_id(ebml_w, local_def(ctor_id));
@@ -898,14 +915,18 @@ fn encode_extension_implementations(ecx: &EncodeContext,
 fn encode_info_for_item(ecx: &EncodeContext,
                         ebml_w: &mut writer::Encoder,
                         item: @item,
-                        index: @mut ~[entry<i64>],
+                        index: @RefCell<~[entry<i64>]>,
                         path: &[ast_map::path_elt],
                         vis: ast::visibility) {
     let tcx = ecx.tcx;
 
     fn add_to_index(item: @item, ebml_w: &writer::Encoder,
-                     index: @mut ~[entry<i64>]) {
-        index.push(entry { val: item.id as i64, pos: ebml_w.writer.tell() });
+                     index: @RefCell<~[entry<i64>]>) {
+        let mut index = index.borrow_mut();
+        index.get().push(entry {
+            val: item.id as i64,
+            pos: ebml_w.writer.tell(),
+        });
     }
     let add_to_index: || = || add_to_index(item, ebml_w, index);
 
@@ -1136,8 +1157,13 @@ fn encode_info_for_item(ecx: &EncodeContext,
                 Some(ast_methods[i])
             } else { None };
 
-            index.push(entry {val: m.def_id.node as i64,
-                              pos: ebml_w.writer.tell()});
+            {
+                let mut index = index.borrow_mut();
+                index.get().push(entry {
+                    val: m.def_id.node as i64,
+                    pos: ebml_w.writer.tell(),
+                });
+            }
             encode_info_for_method(ecx,
                                    ebml_w,
                                    *m,
@@ -1192,8 +1218,13 @@ fn encode_info_for_item(ecx: &EncodeContext,
 
             let method_ty = ty::method(tcx, method_def_id);
 
-            index.push(entry {val: method_def_id.node as i64,
-                              pos: ebml_w.writer.tell()});
+            {
+                let mut index = index.borrow_mut();
+                index.get().push(entry {
+                    val: method_def_id.node as i64,
+                    pos: ebml_w.writer.tell(),
+                });
+            }
 
             ebml_w.start_tag(tag_items_data_item);
 
@@ -1257,10 +1288,16 @@ fn encode_info_for_item(ecx: &EncodeContext,
 fn encode_info_for_foreign_item(ecx: &EncodeContext,
                                 ebml_w: &mut writer::Encoder,
                                 nitem: @foreign_item,
-                                index: @mut ~[entry<i64>],
+                                index: @RefCell<~[entry<i64>]>,
                                 path: &ast_map::path,
                                 abi: AbiSet) {
-    index.push(entry { val: nitem.id as i64, pos: ebml_w.writer.tell() });
+    {
+        let mut index = index.borrow_mut();
+        index.get().push(entry {
+            val: nitem.id as i64,
+            pos: ebml_w.writer.tell(),
+        });
+    }
 
     ebml_w.start_tag(tag_items_data_item);
     match nitem.node {
@@ -1299,7 +1336,7 @@ fn my_visit_item(i: @item,
                  items: ast_map::map,
                  ebml_w: &mut writer::Encoder,
                  ecx_ptr: *int,
-                 index: @mut ~[entry<i64>]) {
+                 index: @RefCell<~[entry<i64>]>) {
     match items.get_copy(&i.id) {
         ast_map::node_item(_, pt) => {
             let mut ebml_w = unsafe {
@@ -1317,7 +1354,7 @@ fn my_visit_foreign_item(ni: @foreign_item,
                          items: ast_map::map,
                          ebml_w: &mut writer::Encoder,
                          ecx_ptr:*int,
-                         index: @mut ~[entry<i64>]) {
+                         index: @RefCell<~[entry<i64>]>) {
     match items.get_copy(&ni.id) {
         ast_map::node_foreign_item(_, abi, _, pt) => {
             debug!("writing foreign item {}::{}",
@@ -1347,7 +1384,7 @@ struct EncodeVisitor<'a,'b> {
     ebml_w_for_visit_item: &'a mut writer::Encoder<'b>,
     ecx_ptr:*int,
     items: ast_map::map,
-    index: @mut ~[entry<i64>],
+    index: @RefCell<~[entry<i64>]>,
 }
 
 impl<'a,'b> visit::Visitor<()> for EncodeVisitor<'a,'b> {
@@ -1377,9 +1414,15 @@ fn encode_info_for_items(ecx: &EncodeContext,
                          ebml_w: &mut writer::Encoder,
                          crate: &Crate)
                          -> ~[entry<i64>] {
-    let index = @mut ~[];
+    let index = @RefCell::new(~[]);
     ebml_w.start_tag(tag_items_data);
-    index.push(entry { val: CRATE_NODE_ID as i64, pos: ebml_w.writer.tell() });
+    {
+        let mut index = index.borrow_mut();
+        index.get().push(entry {
+            val: CRATE_NODE_ID as i64,
+            pos: ebml_w.writer.tell(),
+        });
+    }
     encode_info_for_mod(ecx,
                         ebml_w,
                         &crate.module,
@@ -1403,7 +1446,7 @@ fn encode_info_for_items(ecx: &EncodeContext,
     }
 
     ebml_w.end_tag();
-    return /*bad*/(*index).clone();
+    return /*bad*/(*index).get();
 }
 
 
@@ -1412,16 +1455,19 @@ fn encode_info_for_items(ecx: &EncodeContext,
 fn create_index<T:Clone + Hash + IterBytes + 'static>(
                 index: ~[entry<T>])
                 -> ~[@~[entry<T>]] {
-    let mut buckets: ~[@mut ~[entry<T>]] = ~[];
-    for _ in range(0u, 256u) { buckets.push(@mut ~[]); };
+    let mut buckets: ~[@RefCell<~[entry<T>]>] = ~[];
+    for _ in range(0u, 256u) {
+        buckets.push(@RefCell::new(~[]));
+    }
     for elt in index.iter() {
         let h = elt.val.hash() as uint;
-        buckets[h % 256].push((*elt).clone());
+        let mut bucket = buckets[h % 256].borrow_mut();
+        bucket.get().push((*elt).clone());
     }
 
     let mut buckets_frozen = ~[];
     for bucket in buckets.iter() {
-        buckets_frozen.push(@/*bad*/(**bucket).clone());
+        buckets_frozen.push(@/*bad*/(**bucket).get());
     }
     return buckets_frozen;
 }
