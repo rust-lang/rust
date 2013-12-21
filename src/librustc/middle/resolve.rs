@@ -439,7 +439,7 @@ struct Module {
     //
     // There will be an anonymous module created around `g` with the ID of the
     // entry block for `f`.
-    anonymous_children: @mut HashMap<NodeId,@Module>,
+    anonymous_children: RefCell<HashMap<NodeId,@Module>>,
 
     // The status of resolving each import in this module.
     import_resolutions: @mut HashMap<Name, @mut ImportResolution>,
@@ -471,7 +471,7 @@ impl Module {
             children: @mut HashMap::new(),
             imports: @mut ~[],
             external_module_children: RefCell::new(HashMap::new()),
-            anonymous_children: @mut HashMap::new(),
+            anonymous_children: RefCell::new(HashMap::new()),
             import_resolutions: @mut HashMap::new(),
             glob_count: Cell::new(0),
             resolved_import_count: Cell::new(0),
@@ -1579,8 +1579,12 @@ impl Resolver {
                 AnonymousModuleKind,
                 false,
                 false);
-            parent_module.anonymous_children.insert(block_id, new_module);
-            ModuleReducedGraphParent(new_module)
+            {
+                let mut anonymous_children = parent_module.anonymous_children
+                                                          .borrow_mut();
+                anonymous_children.get().insert(block_id, new_module);
+                ModuleReducedGraphParent(new_module)
+            }
         } else {
             parent
         }
@@ -2031,7 +2035,8 @@ impl Resolver {
             }
         }
 
-        for (_, &child_module) in module_.anonymous_children.iter() {
+        let anonymous_children = module_.anonymous_children.borrow();
+        for (_, &child_module) in anonymous_children.get().iter() {
             self.resolve_imports_for_module_subtree(child_module);
         }
     }
@@ -3201,7 +3206,8 @@ impl Resolver {
             }
         }
 
-        for (_, &module_) in module_.anonymous_children.iter() {
+        let anonymous_children = module_.anonymous_children.borrow();
+        for (_, &module_) in anonymous_children.get().iter() {
             self.report_unresolved_imports(module_);
         }
     }
@@ -3261,7 +3267,8 @@ impl Resolver {
             }
         }
 
-        for (_, &child_module) in module_.anonymous_children.iter() {
+        let anonymous_children = module_.anonymous_children.borrow();
+        for (_, &child_module) in anonymous_children.get().iter() {
             self.record_exports_for_module_subtree(child_module);
         }
     }
@@ -4142,7 +4149,10 @@ impl Resolver {
 
         // Move down in the graph, if there's an anonymous module rooted here.
         let orig_module = self.current_module;
-        match self.current_module.anonymous_children.find(&block.id) {
+        let anonymous_children = self.current_module
+                                     .anonymous_children
+                                     .borrow();
+        match anonymous_children.get().find(&block.id) {
             None => { /* Nothing to do. */ }
             Some(&anonymous_module) => {
                 debug!("(resolving block) found anonymous module, moving \
