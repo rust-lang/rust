@@ -554,7 +554,7 @@ pub enum Expr_ {
     ExprBinary(NodeId, BinOp, @Expr, @Expr),
     ExprUnary(NodeId, UnOp, @Expr),
     ExprLit(@lit),
-    ExprCast(@Expr, P<Ty>),
+    ExprCast(@Expr, P<Ty>, bool),
     ExprIf(@Expr, P<Block>, Option<@Expr>),
     ExprWhile(@Expr, P<Block>),
     // FIXME #6993: change to Option<Name>

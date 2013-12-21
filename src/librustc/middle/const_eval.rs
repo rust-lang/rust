@@ -248,7 +248,7 @@ impl ConstEvalVisitor {
                 join_all(cs)
             }
 
-            ast::ExprCast(base, _) => {
+            ast::ExprCast(base, _, _) => {
                 let ty = ty::expr_ty(self.tcx, e);
                 let base = self.classify(base);
                 if ty::type_is_integral(ty) {
@@ -447,7 +447,7 @@ pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &Expr)
           _ => Err(~"Bad operands for binary")
         }
       }
-      ExprCast(base, _) => {
+      ExprCast(base, _, _) => {
         let ety = tcx.expr_ty(e);
         let base = eval_const_expr_partial(tcx, base);
         match base {

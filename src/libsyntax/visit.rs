@@ -660,7 +660,7 @@ pub fn walk_expr<E:Clone, V:Visitor<E>>(visitor: &mut V, expression: @Expr, env:
             visitor.visit_expr(subexpression, env.clone())
         }
         ExprLit(_) => {}
-        ExprCast(subexpression, typ) => {
+        ExprCast(subexpression, typ, _) => {
             visitor.visit_expr(subexpression, env.clone());
             visitor.visit_ty(typ, env.clone())
         }

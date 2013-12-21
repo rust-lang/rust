@@ -1250,7 +1250,7 @@ impl Liveness {
 
           ExprAddrOf(_, e) |
           ExprDoBody(e) |
-          ExprCast(e, _) |
+          ExprCast(e, _, _) |
           ExprUnary(_, _, e) |
           ExprParen(e) => {
             self.propagate_through_expr(e, succ)

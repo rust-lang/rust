@@ -400,7 +400,7 @@ fn visit_expr(rcx: &mut Rcx, expr: @ast::Expr) {
             visit::walk_expr(rcx, expr, ());
         }
 
-        ast::ExprCast(source, _) => {
+        ast::ExprCast(source, _, _) => {
             // Determine if we are casting `source` to an trait
             // instance.  If so, we have to be sure that the type of
             // the source obeys the trait's region bound.

@@ -749,8 +749,8 @@ pub fn noop_fold_expr<T:ast_fold>(e: @ast::Expr, folder: &mut T) -> @ast::Expr {
         }
         ExprDoBody(f) => ExprDoBody(folder.fold_expr(f)),
         ExprLit(_) => e.node.clone(),
-        ExprCast(expr, ty) => {
-            ExprCast(folder.fold_expr(expr), folder.fold_ty(ty))
+        ExprCast(expr, ty, expanded) => {
+            ExprCast(folder.fold_expr(expr), folder.fold_ty(ty), expanded)
         }
         ExprAddrOf(m, ohs) => ExprAddrOf(m, folder.fold_expr(ohs)),
         ExprIf(cond, tr, fl) => {

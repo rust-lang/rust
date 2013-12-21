@@ -47,6 +47,7 @@ use util::common::indent;
 use util::ppaux::{bound_region_to_str, ty_to_str, trait_ref_to_str, Repr};
 use util::ppaux::{UserString};
 
+use middle::typeck::rscope::RegionScope;
 pub mod doc;
 pub mod macros;
 pub mod combine;
@@ -96,6 +97,19 @@ pub struct InferCtxt {
     // For region variables.
     region_vars: RegionVarBindings,
 }
+
+impl RegionScope for @mut InferCtxt {
+
+    fn anon_regions(&self,
+                    span: Span,
+                    count: uint) -> Result<~[ty::Region], ()> {
+        Ok(vec::from_fn(
+                count,
+                |_| self.next_region_var(MiscVariable(span))))
+    }
+}
+
+
 
 /// Why did we require that the two types be related?
 ///

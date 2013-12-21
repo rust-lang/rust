@@ -448,7 +448,7 @@ fn const_expr_unadjusted(cx: @CrateContext,
               }
               (const_get_elt(cx, arr, [iv as c_uint]), inlineable)
           }
-          ast::ExprCast(base, _) => {
+          ast::ExprCast(base, _, _) => {
             let ety = ty::expr_ty(cx.tcx, e);
             let llty = type_of::type_of(cx, ety);
             let basety = ty::expr_ty(cx.tcx, base);

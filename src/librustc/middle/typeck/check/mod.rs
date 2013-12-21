@@ -101,7 +101,6 @@ use middle::typeck::check::vtable::{LocationInfo, VtableContext};
 use middle::typeck::CrateCtxt;
 use middle::typeck::infer::{resolve_type, force_tvar};
 use middle::typeck::infer;
-use middle::typeck::rscope::RegionScope;
 use middle::typeck::{lookup_def_ccx};
 use middle::typeck::no_params;
 use middle::typeck::{require_same_types, method_map, vtable_map};
@@ -3037,7 +3036,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
             fcx.write_bot(id);
         }
       }
-      ast::ExprCast(e, t) => {
+      ast::ExprCast(e, t, _) => {
         check_expr(fcx, e);
         let t_1 = fcx.to_ty(t);
         let t_e = fcx.expr_ty(e);

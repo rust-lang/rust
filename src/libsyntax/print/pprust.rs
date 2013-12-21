@@ -1248,7 +1248,7 @@ pub fn print_expr(s: &mut ps, expr: &ast::Expr) {
         print_expr(s, expr);
       }
       ast::ExprLit(lit) => print_literal(s, lit),
-      ast::ExprCast(expr, ty) => {
+      ast::ExprCast(expr, ty, _) => {
         print_expr(s, expr);
         space(&mut s.s);
         word_space(s, "as");

@@ -2387,7 +2387,7 @@ impl Parser {
                     let rhs = self.parse_ty(true);
                     let _as = self.mk_expr(lhs.span.lo,
                                            rhs.span.hi,
-                                           ExprCast(lhs, rhs));
+                                           ExprCast(lhs, rhs, false));
                     self.parse_more_binops(_as, min_prec)
                 } else {
                     lhs

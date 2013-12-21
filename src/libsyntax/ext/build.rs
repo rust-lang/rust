@@ -578,7 +578,7 @@ impl AstBuilder for ExtCtxt {
 
 
     fn expr_cast(&self, sp: Span, expr: @ast::Expr, ty: P<ast::Ty>) -> @ast::Expr {
-        self.expr(sp, ast::ExprCast(expr, ty))
+        self.expr(sp, ast::ExprCast(expr, ty, false))
     }
 
 

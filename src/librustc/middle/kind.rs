@@ -310,7 +310,7 @@ pub fn check_expr(cx: &mut Context, e: @Expr) {
             let interior_type = ty::expr_ty(cx.tcx, interior);
             let _ = check_durable(cx.tcx, interior_type, interior.span);
         }
-        ExprCast(source, _) => {
+        ExprCast(source, _, _) => {
             let source_ty = ty::expr_ty(cx.tcx, source);
             let target_ty = ty::expr_ty(cx.tcx, e);
             check_trait_cast(cx, source_ty, target_ty, source.span);

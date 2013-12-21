@@ -2871,6 +2871,11 @@ pub fn expr_ty(cx: ctxt, expr: &ast::Expr) -> t {
     return node_id_to_type(cx, expr.id);
 }
 
+pub fn ast_ty_to_ty(cx: ctxt, expr: &ast::Ty) -> t {
+    return node_id_to_type(cx, expr.id);
+}
+
+
 pub fn expr_ty_adjusted(cx: ctxt, expr: &ast::Expr) -> t {
     /*!
      *

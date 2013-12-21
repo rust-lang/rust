@@ -24,6 +24,7 @@ use fold::*;
 use parse;
 use parse::{parse_item_from_source_str};
 use parse::token;
+//use parse::token::{fresh_mark, fresh_name, ident_to_str, intern, interner_get};
 use parse::token::{fresh_mark, fresh_name, ident_to_str, intern};
 use visit;
 use visit::Visitor;
@@ -914,9 +915,41 @@ pub struct MacroExpander<'a> {
     cx: &'a mut ExtCtxt,
 }
 
-impl<'a> ast_fold for MacroExpander<'a> {
+static mut expansions: uint = 0;
+
+
+impl ast_fold for MacroExpander {
     fn fold_expr(&mut self, expr: @ast::Expr) -> @ast::Expr {
-        expand_expr(expr, self)
+
+        let start_macro = match expr.node {
+            ast::ExprMac(..) => true,
+            _ => false
+        };
+        if start_macro {
+            unsafe {
+                expansions += 1;
+            }
+        }
+        let folded_expr = expand_expr(self.extsbox,
+                                      self.cx,
+                                      expr,
+                                      self);
+        unsafe {
+            if start_macro {
+                expansions -= 1;
+            }
+
+            match folded_expr.node {
+                ast::ExprCast(a, b, _) if expansions > 0 => {
+                    @ast::Expr {
+                        id: folded_expr.id,
+                        node: ast::ExprCast(a, b, true),
+                        span: folded_expr.span
+                    }
+                }
+                _ => folded_expr
+            }
+        }
     }
 
     fn fold_mod(&mut self, module: &ast::_mod) -> ast::_mod {
@@ -924,11 +957,48 @@ impl<'a> ast_fold for MacroExpander<'a> {
     }
 
     fn fold_item(&mut self, item: @ast::item) -> SmallVector<@ast::item> {
-        expand_item(item, self)
+        let start_macro = match item.node {
+            ast::item_mac(..) => true,
+            _ => false
+        };
+        if start_macro {
+            unsafe {
+                expansions += 1;
+            }
+        }
+        let expanded_item =expand_item(self.extsbox,
+                    self.cx,
+                    item,
+                    self);
+        unsafe {
+            if start_macro {
+                expansions -= 1;
+            }
+        }
+        expanded_item
     }
 
     fn fold_stmt(&mut self, stmt: &ast::Stmt) -> SmallVector<@ast::Stmt> {
-        expand_stmt(stmt, self)
+        let start_macro = match stmt.node {
+            ast::StmtMac(..) => true,
+            _ => false
+        };
+        if start_macro {
+            unsafe {
+                expansions += 1;
+            }
+        }
+
+        let expanded_stmt = expand_stmt(self.extsbox,
+                    self.cx,
+                    stmt,
+                    self);
+        unsafe {
+            if start_macro {
+                expansions -= 1;
+            }
+        }
+        expanded_stmt
     }
 
     fn fold_block(&mut self, block: P<Block>) -> P<Block> {

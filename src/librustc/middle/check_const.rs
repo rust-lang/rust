@@ -130,7 +130,7 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
             }
           }
           ExprLit(_) => (),
-          ExprCast(_, _) => {
+          ExprCast(..) => {
             let ety = ty::expr_ty(tcx, e);
             if !ty::type_is_numeric(ety) && !ty::type_is_unsafe_ptr(ety) {
                 sess.span_err(e.span, ~"can not cast to `" +

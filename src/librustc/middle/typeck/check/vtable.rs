@@ -730,7 +730,7 @@ pub fn early_resolve_expr(ex: @ast::Expr,
           None => ()
         }
       }
-      ast::ExprCast(src, _) => {
+      ast::ExprCast(src, _, _) => {
           debug!("vtable resolution on expr {}", ex.repr(fcx.tcx()));
           let target_ty = fcx.expr_ty(ex);
           resolve_object_cast(src, target_ty);

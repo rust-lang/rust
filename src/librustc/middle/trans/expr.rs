@@ -617,7 +617,7 @@ fn trans_rvalue_datum_unadjusted(bcx: @Block, expr: &ast::Expr) -> DatumBlock {
         ast::ExprAddrOf(_, x) => {
             return trans_addr_of(bcx, expr, x);
         }
-        ast::ExprCast(val, _) => {
+        ast::ExprCast(val, _, _) => {
             return trans_imm_cast(bcx, val, expr.id);
         }
         ast::ExprParen(e) => {
@@ -789,7 +789,7 @@ fn trans_rvalue_dps_unadjusted(bcx: @Block, expr: &ast::Expr,
                                        expr_ty(bcx, expr),
                                        dest);
         }
-        ast::ExprCast(val, _) => {
+        ast::ExprCast(val, _, _) => {
             match ty::get(node_id_type(bcx, expr.id)).sty {
                 ty::ty_trait(_, _, store, _, _) => {
                     return meth::trans_trait_cast(bcx, val, expr.id,

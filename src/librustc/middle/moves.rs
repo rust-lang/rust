@@ -549,7 +549,7 @@ impl VisitContext {
                 self.consume_expr(rhs);
             }
 
-            ExprCast(base, _) => {
+            ExprCast(base, _, _) => {
                 self.consume_expr(base);
             }
 
