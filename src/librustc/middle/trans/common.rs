@@ -432,8 +432,15 @@ pub struct cleanup_path {
 
 pub fn shrink_scope_clean(scope_info: &mut ScopeInfo, size: uint) {
     scope_info.landing_pad = None;
-    scope_info.cleanup_paths = scope_info.cleanup_paths.iter()
-            .take_while(|&cu| cu.size <= size).map(|&x|x).collect();
+    let new_cleanup_paths = {
+        let cleanup_paths = scope_info.cleanup_paths.borrow();
+        cleanup_paths.get()
+                     .iter()
+                     .take_while(|&cu| cu.size <= size)
+                     .map(|&x| x)
+                     .collect()
+    };
+    scope_info.cleanup_paths.set(new_cleanup_paths)
 }
 
 pub fn grow_scope_clean(scope_info: &mut ScopeInfo) {
@@ -625,7 +632,7 @@ pub struct ScopeInfo {
     cleanups: RefCell<~[cleanup]>,
     // Existing cleanup paths that may be reused, indexed by destination and
     // cleared when the set of cleanups changes.
-    cleanup_paths: ~[cleanup_path],
+    cleanup_paths: RefCell<~[cleanup_path]>,
     // Unwinding landing pad. Also cleared when cleanups change.
     landing_pad: Option<BasicBlockRef>,
     // info about the AST node this scope originated from, if any
