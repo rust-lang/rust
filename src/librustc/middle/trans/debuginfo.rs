@@ -222,21 +222,6 @@ impl FunctionDebugContext {
         }
     }
 
-    fn get_mut_ref<'a>(&'a mut self,
-                       cx: &CrateContext,
-                       span: Span)
-                    -> &'a mut FunctionDebugContextData {
-        match *self {
-            FunctionDebugContext(~ref mut data) => data,
-            DebugInfoDisabled => {
-                cx.sess.span_bug(span, FunctionDebugContext::debuginfo_disabled_message());
-            }
-            FunctionWithoutDebugInfo => {
-                cx.sess.span_bug(span, FunctionDebugContext::should_be_ignored_message());
-            }
-        }
-    }
-
     fn debuginfo_disabled_message() -> &'static str {
         "debuginfo: Error trying to access FunctionDebugContext although debug info is disabled!"
     }
@@ -459,7 +444,7 @@ pub fn create_self_argument_metadata(bcx: @Block,
     let scope_metadata = bcx.fcx.debug_context.get_ref(bcx.ccx(), span).fn_metadata;
 
     let argument_index = {
-        let counter = &mut bcx.fcx.debug_context.get_mut_ref(bcx.ccx(), span).argument_counter;
+        let counter = &bcx.fcx.debug_context.get_ref(bcx.ccx(), span).argument_counter;
         let argument_index = counter.get();
         counter.set(argument_index + 1);
         argument_index
@@ -538,7 +523,7 @@ pub fn create_argument_metadata(bcx: @Block,
         let argument_ident = ast_util::path_to_ident(path_ref);
 
         let argument_index = {
-            let counter = &fcx.debug_context.get_mut_ref(cx, span).argument_counter;
+            let counter = &fcx.debug_context.get_ref(cx, span).argument_counter;
             let argument_index = counter.get();
             counter.set(argument_index + 1);
             argument_index
@@ -596,9 +581,9 @@ pub fn clear_source_location(fcx: &FunctionContext) {
 /// when beginning to translate a new function. This functions switches source location emitting on
 /// and must therefore be called before the first real statement/expression of the function is
 /// translated.
-pub fn start_emitting_source_locations(fcx: &mut FunctionContext) {
+pub fn start_emitting_source_locations(fcx: &FunctionContext) {
     match fcx.debug_context {
-        FunctionDebugContext(~ref mut data) => {
+        FunctionDebugContext(~ref data) => {
             data.source_locations_enabled.set(true)
         },
         _ => { /* safe to ignore */ }
