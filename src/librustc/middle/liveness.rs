@@ -249,7 +249,7 @@ struct IrMaps {
     num_vars: Cell<uint>,
     live_node_map: RefCell<HashMap<NodeId, LiveNode>>,
     variable_map: RefCell<HashMap<NodeId, Variable>>,
-    capture_info_map: HashMap<NodeId, @~[CaptureInfo]>,
+    capture_info_map: RefCell<HashMap<NodeId, @~[CaptureInfo]>>,
     var_kinds: ~[VarKind],
     lnks: ~[LiveNodeKind],
 }
@@ -266,7 +266,7 @@ fn IrMaps(tcx: ty::ctxt,
         num_vars: Cell::new(0),
         live_node_map: RefCell::new(HashMap::new()),
         variable_map: RefCell::new(HashMap::new()),
-        capture_info_map: HashMap::new(),
+        capture_info_map: RefCell::new(HashMap::new()),
         var_kinds: ~[],
         lnks: ~[],
     }
@@ -334,11 +334,13 @@ impl IrMaps {
     }
 
     pub fn set_captures(&mut self, node_id: NodeId, cs: ~[CaptureInfo]) {
-        self.capture_info_map.insert(node_id, @cs);
+        let mut capture_info_map = self.capture_info_map.borrow_mut();
+        capture_info_map.get().insert(node_id, @cs);
     }
 
     pub fn captures(&mut self, expr: &Expr) -> @~[CaptureInfo] {
-        match self.capture_info_map.find(&expr.id) {
+        let capture_info_map = self.capture_info_map.borrow();
+        match capture_info_map.get().find(&expr.id) {
           Some(&caps) => caps,
           None => {
             self.tcx.sess.span_bug(expr.span, "no registered caps");
