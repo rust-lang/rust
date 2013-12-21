@@ -19,6 +19,7 @@ use middle::ty;
 use middle::typeck;
 use middle::privacy;
 
+use std::cell::RefCell;
 use std::hashmap::HashSet;
 use syntax::ast;
 use syntax::ast_map;
@@ -84,7 +85,7 @@ struct ReachableContext {
     // methods they've been resolved to.
     method_map: typeck::method_map,
     // The set of items which must be exported in the linkage sense.
-    reachable_symbols: @mut HashSet<ast::NodeId>,
+    reachable_symbols: @RefCell<HashSet<ast::NodeId>>,
     // A worklist of item IDs. Each item ID in this worklist will be inlined
     // and will be scanned for further references.
     worklist: @mut ~[ast::NodeId],
@@ -94,7 +95,7 @@ struct MarkSymbolVisitor {
     worklist: @mut ~[ast::NodeId],
     method_map: typeck::method_map,
     tcx: ty::ctxt,
-    reachable_symbols: @mut HashSet<ast::NodeId>,
+    reachable_symbols: @RefCell<HashSet<ast::NodeId>>,
 }
 
 impl Visitor<()> for MarkSymbolVisitor {
@@ -129,7 +130,9 @@ impl Visitor<()> for MarkSymbolVisitor {
                             // If this wasn't a static, then this destination is
                             // surely reachable.
                             _ => {
-                                self.reachable_symbols.insert(def_id.node);
+                                let mut reachable_symbols =
+                                    self.reachable_symbols.borrow_mut();
+                                reachable_symbols.get().insert(def_id.node);
                             }
                         }
                     }
@@ -146,9 +149,13 @@ impl Visitor<()> for MarkSymbolVisitor {
                                 def_id_represents_local_inlined_item(
                                     self.tcx,
                                     def_id) {
-                                    self.worklist.push(def_id.node)
-                                }
-                            self.reachable_symbols.insert(def_id.node);
+                                self.worklist.push(def_id.node)
+                            }
+                            {
+                                let mut reachable_symbols =
+                                    self.reachable_symbols.borrow_mut();
+                                reachable_symbols.get().insert(def_id.node);
+                            }
                         }
                     }
                     Some(_) => {}
@@ -177,7 +184,7 @@ impl ReachableContext {
         ReachableContext {
             tcx: tcx,
             method_map: method_map,
-            reachable_symbols: @mut HashSet::new(),
+            reachable_symbols: @RefCell::new(HashSet::new()),
             worklist: @mut ~[],
         }
     }
@@ -289,7 +296,9 @@ impl ReachableContext {
                 ast_map::node_item(item, _) => {
                     match item.node {
                         ast::item_fn(_, ast::extern_fn, _, _, _) => {
-                            self.reachable_symbols.insert(search_item);
+                            let mut reachable_symbols =
+                                self.reachable_symbols.borrow_mut();
+                            reachable_symbols.get().insert(search_item);
                         }
                         _ => {}
                     }
@@ -301,7 +310,8 @@ impl ReachableContext {
             // continue to participate in linkage after this product is
             // produced. In this case, we traverse the ast node, recursing on
             // all reachable nodes from this one.
-            self.reachable_symbols.insert(search_item);
+            let mut reachable_symbols = self.reachable_symbols.borrow_mut();
+            reachable_symbols.get().insert(search_item);
         }
 
         match *node {
@@ -318,7 +328,9 @@ impl ReachableContext {
                     ast::item_static(..) => {
                         if attr::contains_name(item.attrs,
                                                "address_insignificant") {
-                            self.reachable_symbols.remove(&search_item);
+                            let mut reachable_symbols =
+                                self.reachable_symbols.borrow_mut();
+                            reachable_symbols.get().remove(&search_item);
                         }
                     }
 
@@ -377,7 +389,9 @@ impl ReachableContext {
         let destructor_for_type = self.tcx.destructor_for_type.borrow();
         for (_, destructor_def_id) in destructor_for_type.get().iter() {
             if destructor_def_id.crate == ast::LOCAL_CRATE {
-                self.reachable_symbols.insert(destructor_def_id.node);
+                let mut reachable_symbols = self.reachable_symbols
+                                                .borrow_mut();
+                reachable_symbols.get().insert(destructor_def_id.node);
             }
         }
     }
@@ -386,7 +400,7 @@ impl ReachableContext {
 pub fn find_reachable(tcx: ty::ctxt,
                       method_map: typeck::method_map,
                       exported_items: &privacy::ExportedItems)
-                      -> @mut HashSet<ast::NodeId> {
+                      -> @RefCell<HashSet<ast::NodeId>> {
     let reachable_context = ReachableContext::new(tcx, method_map);
 
     // Step 1: Seed the worklist with all nodes which were found to be public as

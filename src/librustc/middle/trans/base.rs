@@ -2318,8 +2318,11 @@ fn finish_register_fn(ccx: @CrateContext, sp: Span, sym: ~str, node_id: ast::Nod
         item_symbols.get().insert(node_id, sym);
     }
 
-    if !ccx.reachable.contains(&node_id) {
-        lib::llvm::SetLinkage(llfn, lib::llvm::InternalLinkage);
+    {
+        let reachable = ccx.reachable.borrow();
+        if !reachable.get().contains(&node_id) {
+            lib::llvm::SetLinkage(llfn, lib::llvm::InternalLinkage);
+        }
     }
 
     if is_entry_fn(&ccx.sess, node_id) && !*ccx.sess.building_library {
@@ -2531,18 +2534,27 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
                                     llvm::LLVMAddGlobal(ccx.llmod, llty, buf)
                                 });
 
-                                if !ccx.reachable.contains(&id) {
-                                    lib::llvm::SetLinkage(g, lib::llvm::InternalLinkage);
+                                {
+                                    let reachable = ccx.reachable.borrow();
+                                    if !reachable.get().contains(&id) {
+                                        lib::llvm::SetLinkage(
+                                            g,
+                                            lib::llvm::InternalLinkage);
+                                    }
                                 }
 
                                 // Apply the `unnamed_addr` attribute if
                                 // requested
                                 if attr::contains_name(i.attrs,
                                                        "address_insignificant"){
-                                    if ccx.reachable.contains(&id) {
-                                        ccx.sess.span_bug(i.span,
-                                            "insignificant static is \
-                                             reachable");
+                                    {
+                                        let reachable =
+                                            ccx.reachable.borrow();
+                                        if reachable.get().contains(&id) {
+                                            ccx.sess.span_bug(i.span,
+                                                "insignificant static is \
+                                                 reachable");
+                                        }
                                     }
                                     lib::llvm::SetUnnamedAddr(g, true);
 
@@ -2731,8 +2743,11 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
             // foreign items (extern fns and extern statics) don't have internal
             // linkage b/c that doesn't quite make sense. Otherwise items can
             // have internal linkage if they're not reachable.
-            if !foreign && !ccx.reachable.contains(&id) {
-                lib::llvm::SetLinkage(val, lib::llvm::InternalLinkage);
+            {
+                let reachable = ccx.reachable.borrow();
+                if !foreign && !reachable.get().contains(&id) {
+                    lib::llvm::SetLinkage(val, lib::llvm::InternalLinkage);
+                }
             }
 
             let mut item_vals = ccx.item_vals.borrow_mut();
@@ -3245,10 +3260,14 @@ pub fn trans_crate(sess: session::Session,
     let llcx = ccx.llcx;
     let link_meta = ccx.link_meta.clone();
     let llmod = ccx.llmod;
-    let mut reachable = ccx.reachable.iter().filter_map(|id| {
-        let item_symbols = ccx.item_symbols.borrow();
-        item_symbols.get().find(id).map(|s| s.to_owned())
-    }).to_owned_vec();
+
+    let mut reachable = {
+        let reachable_map = ccx.reachable.borrow();
+        reachable_map.get().iter().filter_map(|id| {
+            let item_symbols = ccx.item_symbols.borrow();
+            item_symbols.get().find(id).map(|s| s.to_owned())
+        }).to_owned_vec()
+    };
 
     // Make sure that some other crucial symbols are not eliminated from the
     // module. This includes the main function, the crate map (used for debug

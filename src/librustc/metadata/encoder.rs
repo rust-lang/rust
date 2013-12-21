@@ -65,7 +65,7 @@ pub struct EncodeParams<'a> {
     link_meta: &'a LinkMeta,
     cstore: @cstore::CStore,
     encode_inlined_item: encode_inlined_item<'a>,
-    reachable: @mut HashSet<ast::NodeId>,
+    reachable: @RefCell<HashSet<ast::NodeId>>,
 }
 
 struct Stats {
@@ -95,11 +95,12 @@ pub struct EncodeContext<'a> {
     cstore: &'a cstore::CStore,
     encode_inlined_item: encode_inlined_item<'a>,
     type_abbrevs: abbrev_map,
-    reachable: @mut HashSet<ast::NodeId>,
+    reachable: @RefCell<HashSet<ast::NodeId>>,
 }
 
 pub fn reachable(ecx: &EncodeContext, id: NodeId) -> bool {
-    ecx.reachable.contains(&id)
+    let reachable = ecx.reachable.borrow();
+    reachable.get().contains(&id)
 }
 
 fn encode_name(ecx: &EncodeContext,
