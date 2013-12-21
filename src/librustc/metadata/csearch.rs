@@ -30,19 +30,19 @@ pub struct StaticMethodInfo {
     vis: ast::visibility,
 }
 
-pub fn get_symbol(cstore: @mut cstore::CStore, def: ast::DefId) -> ~str {
+pub fn get_symbol(cstore: @cstore::CStore, def: ast::DefId) -> ~str {
     let cdata = cstore.get_crate_data(def.crate).data();
     return decoder::get_symbol(cdata, def.node);
 }
 
-pub fn get_type_param_count(cstore: @mut cstore::CStore, def: ast::DefId)
+pub fn get_type_param_count(cstore: @cstore::CStore, def: ast::DefId)
                          -> uint {
     let cdata = cstore.get_crate_data(def.crate).data();
     return decoder::get_type_param_count(cdata, def.node);
 }
 
 /// Iterates over all the language items in the given crate.
-pub fn each_lang_item(cstore: @mut cstore::CStore,
+pub fn each_lang_item(cstore: @cstore::CStore,
                       cnum: ast::CrateNum,
                       f: |ast::NodeId, uint| -> bool)
                       -> bool {
@@ -51,7 +51,7 @@ pub fn each_lang_item(cstore: @mut cstore::CStore,
 }
 
 /// Iterates over each child of the given item.
-pub fn each_child_of_item(cstore: @mut cstore::CStore,
+pub fn each_child_of_item(cstore: @cstore::CStore,
                           def_id: ast::DefId,
                           callback: |decoder::DefLike,
                                      ast::Ident,
@@ -68,7 +68,7 @@ pub fn each_child_of_item(cstore: @mut cstore::CStore,
 }
 
 /// Iterates over each top-level crate item.
-pub fn each_top_level_item_of_crate(cstore: @mut cstore::CStore,
+pub fn each_top_level_item_of_crate(cstore: @cstore::CStore,
                                     cnum: ast::CrateNum,
                                     callback: |decoder::DefLike,
                                                ast::Ident,
@@ -131,7 +131,7 @@ pub fn get_method(tcx: ty::ctxt, def: ast::DefId) -> ty::Method {
     decoder::get_method(tcx.cstore.intr, cdata, def.node, tcx)
 }
 
-pub fn get_method_name_and_explicit_self(cstore: @mut cstore::CStore,
+pub fn get_method_name_and_explicit_self(cstore: @cstore::CStore,
                                          def: ast::DefId)
                                      -> (ast::Ident, ast::explicit_self_)
 {
@@ -139,13 +139,13 @@ pub fn get_method_name_and_explicit_self(cstore: @mut cstore::CStore,
     decoder::get_method_name_and_explicit_self(cstore.intr, cdata, def.node)
 }
 
-pub fn get_trait_method_def_ids(cstore: @mut cstore::CStore,
+pub fn get_trait_method_def_ids(cstore: @cstore::CStore,
                                 def: ast::DefId) -> ~[ast::DefId] {
     let cdata = cstore.get_crate_data(def.crate);
     decoder::get_trait_method_def_ids(cdata, def.node)
 }
 
-pub fn get_item_variances(cstore: @mut cstore::CStore,
+pub fn get_item_variances(cstore: @cstore::CStore,
                           def: ast::DefId) -> ty::ItemVariances {
     let cdata = cstore.get_crate_data(def.crate);
     decoder::get_item_variances(cdata, def.node)
@@ -165,27 +165,27 @@ pub fn get_supertraits(tcx: ty::ctxt, def: ast::DefId) -> ~[@ty::TraitRef] {
     decoder::get_supertraits(cdata, def.node, tcx)
 }
 
-pub fn get_type_name_if_impl(cstore: @mut cstore::CStore, def: ast::DefId)
+pub fn get_type_name_if_impl(cstore: @cstore::CStore, def: ast::DefId)
                           -> Option<ast::Ident> {
     let cdata = cstore.get_crate_data(def.crate);
     decoder::get_type_name_if_impl(cdata, def.node)
 }
 
-pub fn get_static_methods_if_impl(cstore: @mut cstore::CStore,
+pub fn get_static_methods_if_impl(cstore: @cstore::CStore,
                                   def: ast::DefId)
                                -> Option<~[StaticMethodInfo]> {
     let cdata = cstore.get_crate_data(def.crate);
     decoder::get_static_methods_if_impl(cstore.intr, cdata, def.node)
 }
 
-pub fn get_item_attrs(cstore: @mut cstore::CStore,
+pub fn get_item_attrs(cstore: @cstore::CStore,
                       def_id: ast::DefId,
                       f: |~[@ast::MetaItem]|) {
     let cdata = cstore.get_crate_data(def_id.crate);
     decoder::get_item_attrs(cdata, def_id.node, f)
 }
 
-pub fn get_struct_fields(cstore: @mut cstore::CStore,
+pub fn get_struct_fields(cstore: @cstore::CStore,
                          def: ast::DefId)
                       -> ~[ty::field_ty] {
     let cdata = cstore.get_crate_data(def.crate);
@@ -247,7 +247,7 @@ pub fn get_impl_vtables(tcx: ty::ctxt,
     decoder::get_impl_vtables(cdata, def.node, tcx)
 }
 
-pub fn get_impl_method(cstore: @mut cstore::CStore,
+pub fn get_impl_method(cstore: @cstore::CStore,
                        def: ast::DefId,
                        mname: ast::Ident)
                     -> Option<ast::DefId> {
@@ -255,35 +255,35 @@ pub fn get_impl_method(cstore: @mut cstore::CStore,
     decoder::get_impl_method(cstore.intr, cdata, def.node, mname)
 }
 
-pub fn get_item_visibility(cstore: @mut cstore::CStore,
+pub fn get_item_visibility(cstore: @cstore::CStore,
                            def_id: ast::DefId)
                         -> ast::visibility {
     let cdata = cstore.get_crate_data(def_id.crate);
     decoder::get_item_visibility(cdata, def_id.node)
 }
 
-pub fn get_native_libraries(cstore: @mut cstore::CStore,
+pub fn get_native_libraries(cstore: @cstore::CStore,
                             crate_num: ast::CrateNum)
                                 -> ~[(cstore::NativeLibaryKind, ~str)] {
     let cdata = cstore.get_crate_data(crate_num);
     decoder::get_native_libraries(cdata)
 }
 
-pub fn each_impl(cstore: @mut cstore::CStore,
+pub fn each_impl(cstore: @cstore::CStore,
                  crate_num: ast::CrateNum,
                  callback: |ast::DefId|) {
     let cdata = cstore.get_crate_data(crate_num);
     decoder::each_impl(cdata, callback)
 }
 
-pub fn each_implementation_for_type(cstore: @mut cstore::CStore,
+pub fn each_implementation_for_type(cstore: @cstore::CStore,
                                     def_id: ast::DefId,
                                     callback: |ast::DefId|) {
     let cdata = cstore.get_crate_data(def_id.crate);
     decoder::each_implementation_for_type(cdata, def_id.node, callback)
 }
 
-pub fn each_implementation_for_trait(cstore: @mut cstore::CStore,
+pub fn each_implementation_for_trait(cstore: @cstore::CStore,
                                      def_id: ast::DefId,
                                      callback: |ast::DefId|) {
     let cdata = cstore.get_crate_data(def_id.crate);
@@ -293,7 +293,7 @@ pub fn each_implementation_for_trait(cstore: @mut cstore::CStore,
 /// If the given def ID describes a method belonging to a trait (either a
 /// default method or an implementation of a trait method), returns the ID of
 /// the trait that the method belongs to. Otherwise, returns `None`.
-pub fn get_trait_of_method(cstore: @mut cstore::CStore,
+pub fn get_trait_of_method(cstore: @cstore::CStore,
                            def_id: ast::DefId,
                            tcx: ty::ctxt)
                            -> Option<ast::DefId> {

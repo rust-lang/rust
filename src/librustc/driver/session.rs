@@ -201,7 +201,7 @@ pub enum OutputStyle {
 pub struct Session_ {
     targ_cfg: @config,
     opts: @options,
-    cstore: @mut metadata::cstore::CStore,
+    cstore: @metadata::cstore::CStore,
     parse_sess: @mut ParseSess,
     codemap: @codemap::CodeMap,
     // For a library crate, this is always none
