@@ -155,13 +155,13 @@ fn live_node_kind_to_str(lnk: LiveNodeKind, cx: ty::ctxt) -> ~str {
 
 struct LivenessVisitor;
 
-impl Visitor<@mut IrMaps> for LivenessVisitor {
-    fn visit_fn(&mut self, fk:&fn_kind, fd:&fn_decl, b:P<Block>, s:Span, n:NodeId, e:@mut IrMaps) {
+impl Visitor<@IrMaps> for LivenessVisitor {
+    fn visit_fn(&mut self, fk:&fn_kind, fd:&fn_decl, b:P<Block>, s:Span, n:NodeId, e:@IrMaps) {
         visit_fn(self, fk, fd, b, s, n, e);
     }
-    fn visit_local(&mut self, l:@Local, e:@mut IrMaps) { visit_local(self, l, e); }
-    fn visit_expr(&mut self, ex:@Expr, e:@mut IrMaps) { visit_expr(self, ex, e); }
-    fn visit_arm(&mut self, a:&Arm, e:@mut IrMaps) { visit_arm(self, a, e); }
+    fn visit_local(&mut self, l:@Local, e:@IrMaps) { visit_local(self, l, e); }
+    fn visit_expr(&mut self, ex:@Expr, e:@IrMaps) { visit_expr(self, ex, e); }
+    fn visit_arm(&mut self, a:&Arm, e:@IrMaps) { visit_arm(self, a, e); }
 }
 
 pub fn check_crate(tcx: ty::ctxt,
@@ -170,9 +170,7 @@ pub fn check_crate(tcx: ty::ctxt,
                    crate: &Crate) {
     let mut visitor = LivenessVisitor;
 
-    let initial_maps = @mut IrMaps(tcx,
-                                   method_map,
-                                   capture_map);
+    let initial_maps = @IrMaps(tcx, method_map, capture_map);
     visit::walk_crate(&mut visitor, crate, initial_maps);
     tcx.sess.abort_if_errors();
 }
@@ -273,7 +271,7 @@ fn IrMaps(tcx: ty::ctxt,
 }
 
 impl IrMaps {
-    pub fn add_live_node(&mut self, lnk: LiveNodeKind) -> LiveNode {
+    pub fn add_live_node(&self, lnk: LiveNodeKind) -> LiveNode {
         let num_live_nodes = self.num_live_nodes.get();
         let ln = LiveNode(num_live_nodes);
         let mut lnks = self.lnks.borrow_mut();
@@ -286,9 +284,7 @@ impl IrMaps {
         ln
     }
 
-    pub fn add_live_node_for_node(&mut self,
-                                  node_id: NodeId,
-                                  lnk: LiveNodeKind) {
+    pub fn add_live_node_for_node(&self, node_id: NodeId, lnk: LiveNodeKind) {
         let ln = self.add_live_node(lnk);
         let mut live_node_map = self.live_node_map.borrow_mut();
         live_node_map.get().insert(node_id, ln);
@@ -296,7 +292,7 @@ impl IrMaps {
         debug!("{} is node {}", ln.to_str(), node_id);
     }
 
-    pub fn add_variable(&mut self, vk: VarKind) -> Variable {
+    pub fn add_variable(&self, vk: VarKind) -> Variable {
         let v = Variable(self.num_vars.get());
         {
             let mut var_kinds = self.var_kinds.borrow_mut();
@@ -317,7 +313,7 @@ impl IrMaps {
         v
     }
 
-    pub fn variable(&mut self, node_id: NodeId, span: Span) -> Variable {
+    pub fn variable(&self, node_id: NodeId, span: Span) -> Variable {
         let variable_map = self.variable_map.borrow();
         match variable_map.get().find(&node_id) {
           Some(&var) => var,
@@ -328,7 +324,7 @@ impl IrMaps {
         }
     }
 
-    pub fn variable_name(&mut self, var: Variable) -> @str {
+    pub fn variable_name(&self, var: Variable) -> @str {
         let var_kinds = self.var_kinds.borrow();
         match var_kinds.get()[*var] {
             Local(LocalInfo { ident: nm, .. }) | Arg(_, nm) => {
@@ -338,12 +334,12 @@ impl IrMaps {
         }
     }
 
-    pub fn set_captures(&mut self, node_id: NodeId, cs: ~[CaptureInfo]) {
+    pub fn set_captures(&self, node_id: NodeId, cs: ~[CaptureInfo]) {
         let mut capture_info_map = self.capture_info_map.borrow_mut();
         capture_info_map.get().insert(node_id, @cs);
     }
 
-    pub fn captures(&mut self, expr: &Expr) -> @~[CaptureInfo] {
+    pub fn captures(&self, expr: &Expr) -> @~[CaptureInfo] {
         let capture_info_map = self.capture_info_map.borrow();
         match capture_info_map.get().find(&expr.id) {
           Some(&caps) => caps,
@@ -353,7 +349,7 @@ impl IrMaps {
         }
     }
 
-    pub fn lnk(&mut self, ln: LiveNode) -> LiveNodeKind {
+    pub fn lnk(&self, ln: LiveNode) -> LiveNodeKind {
         let lnks = self.lnks.borrow();
         lnks.get()[*ln]
     }
@@ -380,14 +376,12 @@ fn visit_fn(v: &mut LivenessVisitor,
             body: P<Block>,
             sp: Span,
             id: NodeId,
-            this: @mut IrMaps) {
+            this: @IrMaps) {
     debug!("visit_fn: id={}", id);
     let _i = ::util::common::indenter();
 
     // swap in a new set of IR maps for this function body:
-    let fn_maps = @mut IrMaps(this.tcx,
-                              this.method_map,
-                              this.capture_map);
+    let fn_maps = @IrMaps(this.tcx, this.method_map, this.capture_map);
 
     unsafe {
         debug!("creating fn_maps: {}", transmute::<&IrMaps, *IrMaps>(fn_maps));
@@ -441,7 +435,7 @@ fn visit_fn(v: &mut LivenessVisitor,
     lsets.warn_about_unused_args(decl, entry_ln);
 }
 
-fn visit_local(v: &mut LivenessVisitor, local: @Local, this: @mut IrMaps) {
+fn visit_local(v: &mut LivenessVisitor, local: @Local, this: @IrMaps) {
     let def_map = this.tcx.def_map;
     pat_util::pat_bindings(def_map, local.pat, |bm, p_id, sp, path| {
         debug!("adding local variable {}", p_id);
@@ -465,7 +459,7 @@ fn visit_local(v: &mut LivenessVisitor, local: @Local, this: @mut IrMaps) {
     visit::walk_local(v, local, this);
 }
 
-fn visit_arm(v: &mut LivenessVisitor, arm: &Arm, this: @mut IrMaps) {
+fn visit_arm(v: &mut LivenessVisitor, arm: &Arm, this: @IrMaps) {
     let def_map = this.tcx.def_map;
     for pat in arm.pats.iter() {
         pat_util::pat_bindings(def_map, *pat, |bm, p_id, sp, path| {
@@ -488,7 +482,7 @@ fn visit_arm(v: &mut LivenessVisitor, arm: &Arm, this: @mut IrMaps) {
     visit::walk_arm(v, arm, this);
 }
 
-fn visit_expr(v: &mut LivenessVisitor, expr: @Expr, this: @mut IrMaps) {
+fn visit_expr(v: &mut LivenessVisitor, expr: @Expr, this: @IrMaps) {
     match expr.node {
       // live nodes required for uses or definitions of variables:
       ExprPath(_) | ExprSelf => {
@@ -594,7 +588,7 @@ type LiveNodeMap = @RefCell<HashMap<NodeId, LiveNode>>;
 
 pub struct Liveness {
     tcx: ty::ctxt,
-    ir: @mut IrMaps,
+    ir: @IrMaps,
     s: Specials,
     successors: @mut ~[LiveNode],
     users: @mut ~[Users],
@@ -608,7 +602,7 @@ pub struct Liveness {
     cont_ln: LiveNodeMap
 }
 
-fn Liveness(ir: @mut IrMaps, specials: Specials) -> Liveness {
+fn Liveness(ir: @IrMaps, specials: Specials) -> Liveness {
     Liveness {
         ir: ir,
         tcx: ir.tcx,
@@ -626,7 +620,7 @@ fn Liveness(ir: @mut IrMaps, specials: Specials) -> Liveness {
 
 impl Liveness {
     pub fn live_node(&self, node_id: NodeId, span: Span) -> LiveNode {
-        let ir: &mut IrMaps = self.ir;
+        let ir: &IrMaps = self.ir;
         let live_node_map = ir.live_node_map.borrow();
         match live_node_map.get().find(&node_id) {
           Some(&ln) => ln,
