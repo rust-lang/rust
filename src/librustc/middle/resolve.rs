@@ -418,7 +418,7 @@ struct Module {
     kind: Cell<ModuleKind>,
     is_public: bool,
 
-    children: @mut HashMap<Name, @NameBindings>,
+    children: RefCell<HashMap<Name, @NameBindings>>,
     imports: @mut ~[@ImportDirective],
 
     // The external module children of this node that were declared with
@@ -468,7 +468,7 @@ impl Module {
             def_id: Cell::new(def_id),
             kind: Cell::new(kind),
             is_public: is_public,
-            children: @mut HashMap::new(),
+            children: RefCell::new(HashMap::new()),
             imports: @mut ~[],
             external_module_children: RefCell::new(HashMap::new()),
             anonymous_children: RefCell::new(HashMap::new()),
@@ -997,13 +997,18 @@ impl Resolver {
 
         // Add or reuse the child.
         let new_parent = ModuleReducedGraphParent(module_);
-        match module_.children.find(&name.name) {
+        let child_opt = {
+            let children = module_.children.borrow();
+            children.get().find_copy(&name.name)
+        };
+        match child_opt {
             None => {
                 let child = @NameBindings();
-                module_.children.insert(name.name, child);
+                let mut children = module_.children.borrow_mut();
+                children.get().insert(name.name, child);
                 return (child, new_parent);
             }
-            Some(&child) => {
+            Some(child) => {
                 // Enforce the duplicate checking mode:
                 //
                 // * If we're requesting duplicate module checking, check that
@@ -1239,11 +1244,15 @@ impl Resolver {
                     ty_path(ref path, _, _) if path.segments.len() == 1 => {
                         let name = path_to_ident(path);
 
-                        let new_parent = match parent.children.find(&name.name) {
+                        let existing_parent_opt = {
+                            let children = parent.children.borrow();
+                            children.get().find_copy(&name.name)
+                        };
+                        let new_parent = match existing_parent_opt {
                             // It already exists
-                            Some(&child) if child.get_module_if_available()
-                                                 .is_some() &&
-                                            child.get_module().kind.get() ==
+                            Some(child) if child.get_module_if_available()
+                                                .is_some() &&
+                                           child.get_module().kind.get() ==
                                                 ImplModuleKind => {
                                 ModuleReducedGraphParent(child.get_module())
                             }
@@ -2027,13 +2036,16 @@ impl Resolver {
         self.resolve_imports_for_module(module_);
 
         self.populate_module_if_necessary(module_);
-        for (_, &child_node) in module_.children.iter() {
-            match child_node.get_module_if_available() {
-                None => {
-                    // Nothing to do.
-                }
-                Some(child_module) => {
-                    self.resolve_imports_for_module_subtree(child_module);
+        {
+            let children = module_.children.borrow();
+            for (_, &child_node) in children.get().iter() {
+                match child_node.get_module_if_available() {
+                    None => {
+                        // Nothing to do.
+                    }
+                    Some(child_module) => {
+                        self.resolve_imports_for_module_subtree(child_module);
+                    }
                 }
             }
         }
@@ -2258,18 +2270,22 @@ impl Resolver {
 
         // Search for direct children of the containing module.
         self.populate_module_if_necessary(containing_module);
-        match containing_module.children.find(&source.name) {
-            None => {
-                // Continue.
-            }
-            Some(child_name_bindings) => {
-                if child_name_bindings.defined_in_namespace(ValueNS) {
-                    value_result = BoundResult(containing_module,
-                                               *child_name_bindings);
+
+        {
+            let children = containing_module.children.borrow();
+            match children.get().find(&source.name) {
+                None => {
+                    // Continue.
                 }
-                if child_name_bindings.defined_in_namespace(TypeNS) {
-                    type_result = BoundResult(containing_module,
-                                              *child_name_bindings);
+                Some(child_name_bindings) => {
+                    if child_name_bindings.defined_in_namespace(ValueNS) {
+                        value_result = BoundResult(containing_module,
+                                                   *child_name_bindings);
+                    }
+                    if child_name_bindings.defined_in_namespace(TypeNS) {
+                        type_result = BoundResult(containing_module,
+                                                  *child_name_bindings);
+                    }
                 }
             }
         }
@@ -2590,8 +2606,12 @@ impl Resolver {
 
         // Add all children from the containing module.
         self.populate_module_if_necessary(containing_module);
-        for (&name, name_bindings) in containing_module.children.iter() {
-            merge_import_resolution(name, *name_bindings);
+
+        {
+            let children = containing_module.children.borrow();
+            for (&name, name_bindings) in children.get().iter() {
+                merge_import_resolution(name, *name_bindings);
+            }
         }
 
         // Add external module children from the containing module.
@@ -2858,13 +2878,18 @@ impl Resolver {
         // The current module node is handled specially. First, check for
         // its immediate children.
         self.populate_module_if_necessary(module_);
-        match module_.children.find(&name.name) {
-            Some(name_bindings)
-                    if name_bindings.defined_in_namespace(namespace) => {
-                debug!("top name bindings succeeded");
-                return Success((Target::new(module_, *name_bindings), false));
+
+        {
+            let children = module_.children.borrow();
+            match children.get().find(&name.name) {
+                Some(name_bindings)
+                        if name_bindings.defined_in_namespace(namespace) => {
+                    debug!("top name bindings succeeded");
+                    return Success((Target::new(module_, *name_bindings),
+                                   false));
+                }
+                Some(_) | None => { /* Not found; continue. */ }
             }
-            Some(_) | None => { /* Not found; continue. */ }
         }
 
         // Now check for its import directives. We don't have to have resolved
@@ -3125,14 +3150,19 @@ impl Resolver {
 
         // First, check the direct children of the module.
         self.populate_module_if_necessary(module_);
-        match module_.children.find(&name.name) {
-            Some(name_bindings)
-                    if name_bindings.defined_in_namespace(namespace) => {
-                debug!("(resolving name in module) found node as child");
-                return Success((Target::new(module_, *name_bindings), false));
-            }
-            Some(_) | None => {
-                // Continue.
+
+        {
+            let children = module_.children.borrow();
+            match children.get().find(&name.name) {
+                Some(name_bindings)
+                        if name_bindings.defined_in_namespace(namespace) => {
+                    debug!("(resolving name in module) found node as child");
+                    return Success((Target::new(module_, *name_bindings),
+                                   false));
+                }
+                Some(_) | None => {
+                    // Continue.
+                }
             }
         }
 
@@ -3211,13 +3241,17 @@ impl Resolver {
 
         // Descend into children and anonymous children.
         self.populate_module_if_necessary(module_);
-        for (_, &child_node) in module_.children.iter() {
-            match child_node.get_module_if_available() {
-                None => {
-                    // Continue.
-                }
-                Some(child_module) => {
-                    self.report_unresolved_imports(child_module);
+
+        {
+            let children = module_.children.borrow();
+            for (_, &child_node) in children.get().iter() {
+                match child_node.get_module_if_available() {
+                    None => {
+                        // Continue.
+                    }
+                    Some(child_module) => {
+                        self.report_unresolved_imports(child_module);
+                    }
                 }
             }
         }
@@ -3272,13 +3306,16 @@ impl Resolver {
         self.record_exports_for_module(module_);
         self.populate_module_if_necessary(module_);
 
-        for (_, &child_name_bindings) in module_.children.iter() {
-            match child_name_bindings.get_module_if_available() {
-                None => {
-                    // Nothing to do.
-                }
-                Some(child_module) => {
-                    self.record_exports_for_module_subtree(child_module);
+        {
+            let children = module_.children.borrow();
+            for (_, &child_name_bindings) in children.get().iter() {
+                match child_name_bindings.get_module_if_available() {
+                    None => {
+                        // Nothing to do.
+                    }
+                    Some(child_module) => {
+                        self.record_exports_for_module_subtree(child_module);
+                    }
                 }
             }
         }
@@ -3382,7 +3419,9 @@ impl Resolver {
             }
             Some(name) => {
                 self.populate_module_if_necessary(orig_module);
-                match orig_module.children.find(&name.name) {
+
+                let children = orig_module.children.borrow();
+                match children.get().find(&name.name) {
                     None => {
                         debug!("!!! (with scope) didn't find `{}` in `{}`",
                                self.session.str_of(name),
@@ -4675,22 +4714,26 @@ impl Resolver {
                                                 -> NameDefinition {
         // First, search children.
         self.populate_module_if_necessary(containing_module);
-        match containing_module.children.find(&name.name) {
-            Some(child_name_bindings) => {
-                match child_name_bindings.def_for_namespace(namespace) {
-                    Some(def) => {
-                        // Found it. Stop the search here.
-                        let p = child_name_bindings.defined_in_public_namespace(
-                                        namespace);
-                        let lp = if p {AllPublic} else {
-                            DependsOn(def_id_of_def(def))
-                        };
-                        return ChildNameDefinition(def, lp);
+
+        {
+            let children = containing_module.children.borrow();
+            match children.get().find(&name.name) {
+                Some(child_name_bindings) => {
+                    match child_name_bindings.def_for_namespace(namespace) {
+                        Some(def) => {
+                            // Found it. Stop the search here.
+                            let p = child_name_bindings.defined_in_public_namespace(
+                                            namespace);
+                            let lp = if p {AllPublic} else {
+                                DependsOn(def_id_of_def(def))
+                            };
+                            return ChildNameDefinition(def, lp);
+                        }
+                        None => {}
                     }
-                    None => {}
                 }
+                None => {}
             }
-            None => {}
         }
 
         // Next, search import resolutions.
@@ -5299,8 +5342,9 @@ impl Resolver {
 
                 // Look for trait children.
                 self.populate_module_if_necessary(search_module);
-                for (_, &child_name_bindings) in
-                        search_module.children.iter() {
+
+                let children = search_module.children.borrow();
+                for (_, &child_name_bindings) in children.get().iter() {
                     match child_name_bindings.def_for_namespace(TypeNS) {
                         Some(def) => {
                             match def {
@@ -5514,7 +5558,8 @@ impl Resolver {
 
         debug!("Children:");
         self.populate_module_if_necessary(module_);
-        for (&name, _) in module_.children.iter() {
+        let children = module_.children.borrow();
+        for (&name, _) in children.get().iter() {
             debug!("* {}", interner_get(name));
         }
 
