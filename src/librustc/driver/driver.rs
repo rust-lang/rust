@@ -212,7 +212,7 @@ pub struct CrateAnalysis {
     exported_items: middle::privacy::ExportedItems,
     ty_cx: ty::ctxt,
     maps: astencode::Maps,
-    reachable: @mut HashSet<ast::NodeId>
+    reachable: @RefCell<HashSet<ast::NodeId>>
 }
 
 /// Run the resolution, typechecking, region checking and other
@@ -309,9 +309,16 @@ pub fn phase_3_run_analysis_passes(sess: Session,
         time(time_passes, "reachability checking", (), |_|
              reachable::find_reachable(ty_cx, method_map, &exported_items));
 
-    time(time_passes, "death checking", (), |_|
-         middle::dead::check_crate(ty_cx, method_map,
-                                   &exported_items, reachable_map, crate));
+    {
+        let reachable_map = reachable_map.borrow();
+        time(time_passes, "death checking", (), |_| {
+             middle::dead::check_crate(ty_cx,
+                                       method_map,
+                                       &exported_items,
+                                       reachable_map.get(),
+                                       crate)
+        });
+    }
 
     time(time_passes, "lint checking", (), |_|
          lint::check_crate(ty_cx, method_map, &exported_items, crate));

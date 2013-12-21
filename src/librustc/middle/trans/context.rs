@@ -49,7 +49,7 @@ pub struct CrateContext {
      intrinsics: HashMap<&'static str, ValueRef>,
      item_vals: RefCell<HashMap<ast::NodeId, ValueRef>>,
      exp_map2: resolve::ExportMap2,
-     reachable: @mut HashSet<ast::NodeId>,
+     reachable: @RefCell<HashSet<ast::NodeId>>,
      item_symbols: RefCell<HashMap<ast::NodeId, ~str>>,
      link_meta: LinkMeta,
      tydescs: RefCell<HashMap<ty::t, @mut tydesc_info>>,
@@ -123,7 +123,7 @@ impl CrateContext {
                maps: astencode::Maps,
                symbol_hasher: Sha256,
                link_meta: LinkMeta,
-               reachable: @mut HashSet<ast::NodeId>)
+               reachable: @RefCell<HashSet<ast::NodeId>>)
                -> CrateContext {
         unsafe {
             let llcx = llvm::LLVMContextCreate();
