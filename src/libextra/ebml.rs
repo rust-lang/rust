@@ -593,22 +593,13 @@ pub mod writer {
     use std::io::extensions::u64_to_be_bytes;
 
     // ebml writing
-    pub struct Encoder {
+    pub struct Encoder<'a> {
         // FIXME(#5665): this should take a trait object
-        writer: @mut MemWriter,
+        writer: &'a mut MemWriter,
         priv size_positions: ~[uint],
     }
 
-    impl Clone for Encoder {
-        fn clone(&self) -> Encoder {
-            Encoder {
-                writer: self.writer,
-                size_positions: self.size_positions.clone(),
-            }
-        }
-    }
-
-    fn write_sized_vuint(w: @mut MemWriter, n: uint, size: uint) {
+    fn write_sized_vuint(w: &mut MemWriter, n: uint, size: uint) {
         match size {
             1u => w.write(&[0x80u8 | (n as u8)]),
             2u => w.write(&[0x40u8 | ((n >> 8_u) as u8), n as u8]),
@@ -620,7 +611,7 @@ pub mod writer {
         };
     }
 
-    fn write_vuint(w: @mut MemWriter, n: uint) {
+    fn write_vuint(w: &mut MemWriter, n: uint) {
         if n < 0x7f_u { write_sized_vuint(w, n, 1u); return; }
         if n < 0x4000_u { write_sized_vuint(w, n, 2u); return; }
         if n < 0x200000_u { write_sized_vuint(w, n, 3u); return; }
@@ -628,7 +619,7 @@ pub mod writer {
         fail!("vint to write too big: {}", n);
     }
 
-    pub fn Encoder(w: @mut MemWriter) -> Encoder {
+    pub fn Encoder<'a>(w: &'a mut MemWriter) -> Encoder<'a> {
         let size_positions: ~[uint] = ~[];
         Encoder {
             writer: w,
@@ -637,7 +628,15 @@ pub mod writer {
     }
 
     // FIXME (#2741): Provide a function to write the standard ebml header.
-    impl Encoder {
+    impl<'a> Encoder<'a> {
+        /// XXX(pcwalton): Workaround for badness in trans. DO NOT USE ME.
+        pub unsafe fn unsafe_clone(&self) -> Encoder<'a> {
+            Encoder {
+                writer: cast::transmute_copy(&self.writer),
+                size_positions: self.size_positions.clone(),
+            }
+        }
+
         pub fn start_tag(&mut self, tag_id: uint) {
             debug!("Start tag {}", tag_id);
 
@@ -739,7 +738,7 @@ pub mod writer {
     // Totally lame approach.
     static DEBUG: bool = true;
 
-    impl Encoder {
+    impl<'a> Encoder<'a> {
         // used internally to emit things like the vector length and so on
         fn _emit_tagged_uint(&mut self, t: EbmlEncoderTag, v: uint) {
             assert!(v <= 0xFFFF_FFFF_u);
@@ -755,9 +754,7 @@ pub mod writer {
             // try and check failures more quickly.
             if DEBUG { self.wr_tagged_str(EsLabel as uint, label) }
         }
-    }
 
-    impl Encoder {
         pub fn emit_opaque(&mut self, f: |&mut Encoder|) {
             self.start_tag(EsOpaque as uint);
             f(self);
@@ -765,7 +762,7 @@ pub mod writer {
         }
     }
 
-    impl ::serialize::Encoder for Encoder {
+    impl<'a> ::serialize::Encoder for Encoder<'a> {
         fn emit_nil(&mut self) {}
 
         fn emit_uint(&mut self, v: uint) {
@@ -820,7 +817,7 @@ pub mod writer {
             self.wr_tagged_str(EsStr as uint, v)
         }
 
-        fn emit_enum(&mut self, name: &str, f: |&mut Encoder|) {
+        fn emit_enum(&mut self, name: &str, f: |&mut Encoder<'a>|) {
             self._emit_label(name);
             self.start_tag(EsEnum as uint);
             f(self);
@@ -831,14 +828,14 @@ pub mod writer {
                              _: &str,
                              v_id: uint,
                              _: uint,
-                             f: |&mut Encoder|) {
+                             f: |&mut Encoder<'a>|) {
             self._emit_tagged_uint(EsEnumVid, v_id);
             self.start_tag(EsEnumBody as uint);
             f(self);
             self.end_tag();
         }
 
-        fn emit_enum_variant_arg(&mut self, _: uint, f: |&mut Encoder|) {
+        fn emit_enum_variant_arg(&mut self, _: uint, f: |&mut Encoder<'a>|) {
             f(self)
         }
 
@@ -846,83 +843,88 @@ pub mod writer {
                                     v_name: &str,
                                     v_id: uint,
                                     cnt: uint,
-                                    f: |&mut Encoder|) {
+                                    f: |&mut Encoder<'a>|) {
             self.emit_enum_variant(v_name, v_id, cnt, f)
         }
 
         fn emit_enum_struct_variant_field(&mut self,
                                           _: &str,
                                           idx: uint,
-                                          f: |&mut Encoder|) {
+                                          f: |&mut Encoder<'a>|) {
             self.emit_enum_variant_arg(idx, f)
         }
 
-        fn emit_struct(&mut self, _: &str, _len: uint, f: |&mut Encoder|) {
+        fn emit_struct(&mut self,
+                       _: &str,
+                       _len: uint,
+                       f: |&mut Encoder<'a>|) {
             f(self)
         }
 
         fn emit_struct_field(&mut self,
                              name: &str,
                              _: uint,
-                             f: |&mut Encoder|) {
+                             f: |&mut Encoder<'a>|) {
             self._emit_label(name);
             f(self)
         }
 
-        fn emit_tuple(&mut self, len: uint, f: |&mut Encoder|) {
+        fn emit_tuple(&mut self, len: uint, f: |&mut Encoder<'a>|) {
             self.emit_seq(len, f)
         }
-        fn emit_tuple_arg(&mut self, idx: uint, f: |&mut Encoder|) {
+        fn emit_tuple_arg(&mut self, idx: uint, f: |&mut Encoder<'a>|) {
             self.emit_seq_elt(idx, f)
         }
 
         fn emit_tuple_struct(&mut self,
                              _: &str,
                              len: uint,
-                             f: |&mut Encoder|) {
+                             f: |&mut Encoder<'a>|) {
             self.emit_seq(len, f)
         }
-        fn emit_tuple_struct_arg(&mut self, idx: uint, f: |&mut Encoder|) {
+        fn emit_tuple_struct_arg(&mut self,
+                                 idx: uint,
+                                 f: |&mut Encoder<'a>|) {
             self.emit_seq_elt(idx, f)
         }
 
-        fn emit_option(&mut self, f: |&mut Encoder|) {
+        fn emit_option(&mut self, f: |&mut Encoder<'a>|) {
             self.emit_enum("Option", f);
         }
         fn emit_option_none(&mut self) {
             self.emit_enum_variant("None", 0, 0, |_| ())
         }
-        fn emit_option_some(&mut self, f: |&mut Encoder|) {
+        fn emit_option_some(&mut self, f: |&mut Encoder<'a>|) {
             self.emit_enum_variant("Some", 1, 1, f)
         }
 
-        fn emit_seq(&mut self, len: uint, f: |&mut Encoder|) {
+        fn emit_seq(&mut self, len: uint, f: |&mut Encoder<'a>|) {
             self.start_tag(EsVec as uint);
             self._emit_tagged_uint(EsVecLen, len);
             f(self);
             self.end_tag();
         }
 
-        fn emit_seq_elt(&mut self, _idx: uint, f: |&mut Encoder|) {
+        fn emit_seq_elt(&mut self, _idx: uint, f: |&mut Encoder<'a>|) {
             self.start_tag(EsVecElt as uint);
             f(self);
             self.end_tag();
         }
 
-        fn emit_map(&mut self, len: uint, f: |&mut Encoder|) {
+        fn emit_map(&mut self, len: uint, f: |&mut Encoder<'a>|) {
             self.start_tag(EsMap as uint);
             self._emit_tagged_uint(EsMapLen, len);
             f(self);
             self.end_tag();
         }
 
-        fn emit_map_elt_key(&mut self, _idx: uint, f: |&mut Encoder|) {
+        fn emit_map_elt_key(&mut self, _idx: uint, f: |&mut Encoder<'a>|) {
             self.start_tag(EsMapKey as uint);
             f(self);
             self.end_tag();
         }
 
-        fn emit_map_elt_val(&mut self, _idx: uint, f: |&mut Encoder|) {
+        fn emit_map_elt_val(&mut self, _idx: uint, f: |&mut Encoder<'a>|) {
             self.start_tag(EsMapVal as uint);
             f(self);
             self.end_tag();
@@ -948,9 +950,11 @@ mod tests {
     fn test_option_int() {
         fn test_v(v: Option<int>) {
             debug!("v == {:?}", v);
-            let wr = @mut MemWriter::new();
-            let mut ebml_w = writer::Encoder(wr);
-            v.encode(&mut ebml_w);
+            let mut wr = MemWriter::new();
+            {
+                let mut ebml_w = writer::Encoder(&mut wr);
+                v.encode(&mut ebml_w);
+            }
             let ebml_doc = reader::Doc(*wr.inner_ref());
             let mut deser = reader::Decoder(ebml_doc);
             let v1 = serialize::Decodable::decode(&mut deser);
