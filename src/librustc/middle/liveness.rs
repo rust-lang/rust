@@ -250,7 +250,7 @@ struct IrMaps {
     live_node_map: RefCell<HashMap<NodeId, LiveNode>>,
     variable_map: RefCell<HashMap<NodeId, Variable>>,
     capture_info_map: RefCell<HashMap<NodeId, @~[CaptureInfo]>>,
-    var_kinds: ~[VarKind],
+    var_kinds: RefCell<~[VarKind]>,
     lnks: ~[LiveNodeKind],
 }
 
@@ -267,7 +267,7 @@ fn IrMaps(tcx: ty::ctxt,
         live_node_map: RefCell::new(HashMap::new()),
         variable_map: RefCell::new(HashMap::new()),
         capture_info_map: RefCell::new(HashMap::new()),
-        var_kinds: ~[],
+        var_kinds: RefCell::new(~[]),
         lnks: ~[],
     }
 }
@@ -297,7 +297,10 @@ impl IrMaps {
 
     pub fn add_variable(&mut self, vk: VarKind) -> Variable {
         let v = Variable(self.num_vars.get());
-        self.var_kinds.push(vk);
+        {
+            let mut var_kinds = self.var_kinds.borrow_mut();
+            var_kinds.get().push(vk);
+        }
         self.num_vars.set(self.num_vars.get() + 1);
 
         match vk {
@@ -325,7 +328,8 @@ impl IrMaps {
     }
 
     pub fn variable_name(&mut self, var: Variable) -> @str {
-        match self.var_kinds[*var] {
+        let var_kinds = self.var_kinds.borrow();
+        match var_kinds.get()[*var] {
             Local(LocalInfo { ident: nm, .. }) | Arg(_, nm) => {
                 self.tcx.sess.str_of(nm)
             },
