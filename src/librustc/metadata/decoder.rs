@@ -1110,7 +1110,7 @@ fn get_attributes(md: ebml::Doc) -> ~[ast::Attribute] {
 }
 
 fn list_crate_attributes(intr: @ident_interner, md: ebml::Doc, hash: &str,
-                         out: @mut io::Writer) {
+                         out: &mut io::Writer) {
     write!(out, "=Crate Attributes ({})=\n", hash);
 
     let r = get_attributes(md);
@@ -1153,7 +1153,7 @@ pub fn get_crate_deps(data: &[u8]) -> ~[CrateDep] {
     return deps;
 }
 
-fn list_crate_deps(data: &[u8], out: @mut io::Writer) {
+fn list_crate_deps(data: &[u8], out: &mut io::Writer) {
     write!(out, "=External Dependencies=\n");
 
     let r = get_crate_deps(data);
@@ -1180,7 +1180,7 @@ pub fn get_crate_vers(data: &[u8]) -> @str {
 }
 
 pub fn list_crate_metadata(intr: @ident_interner, bytes: &[u8],
-                           out: @mut io::Writer) {
+                           out: &mut io::Writer) {
     let hash = get_crate_hash(bytes);
     let md = reader::Doc(bytes);
     list_crate_attributes(intr, md, hash, out);

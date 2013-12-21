@@ -569,13 +569,14 @@ pub fn pretty_print_input(sess: Session,
 
     let src = sess.codemap.get_filemap(source_name(input)).src;
     let rdr = @mut MemReader::new(src.as_bytes().to_owned());
+    let stdout = io::stdout();
     pprust::print_crate(sess.codemap,
                         token::get_ident_interner(),
                         sess.span_diagnostic,
                         &crate,
                         source_name(input),
                         rdr as @mut io::Reader,
-                        @mut io::stdout() as @mut io::Writer,
+                        @mut stdout as @mut io::Writer,
                         annotation,
                         is_expanded);
 }
@@ -1080,7 +1081,7 @@ pub fn early_error(emitter: @diagnostic::Emitter, msg: &str) -> ! {
     fail!();
 }
 
-pub fn list_metadata(sess: Session, path: &Path, out: @mut io::Writer) {
+pub fn list_metadata(sess: Session, path: &Path, out: &mut io::Writer) {
     metadata::loader::list_file_metadata(
         token::get_ident_interner(),
         session::sess_os_to_meta_os(sess.targ_cfg.os), path, out);

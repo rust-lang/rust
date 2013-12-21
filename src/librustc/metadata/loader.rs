@@ -380,7 +380,7 @@ pub fn read_meta_section_name(os: Os) -> &'static str {
 pub fn list_file_metadata(intr: @ident_interner,
                           os: Os,
                           path: &Path,
-                          out: @mut io::Writer) {
+                          out: &mut io::Writer) {
     match get_metadata_section(os, path) {
       option::Some(bytes) => decoder::list_crate_metadata(intr,
                                                           bytes.as_slice(),
