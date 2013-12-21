@@ -946,7 +946,8 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
     }
 
     {
-        let r = tcx.freevars.find(&id);
+        let freevars = tcx.freevars.borrow();
+        let r = freevars.get().find(&id);
         for &fv in r.iter() {
             ebml_w.tag(c::tag_table_freevars, |ebml_w| {
                 ebml_w.id(id);
@@ -1256,7 +1257,8 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
                         let fv_info = @val_dsr.read_to_vec(|val_dsr| {
                             @val_dsr.read_freevar_entry(xcx)
                         });
-                        dcx.tcx.freevars.insert(id, fv_info);
+                        let mut freevars = dcx.tcx.freevars.borrow_mut();
+                        freevars.get().insert(id, fv_info);
                     }
                     c::tag_table_tcache => {
                         let tpbt = val_dsr.read_ty_param_bounds_and_ty(xcx);

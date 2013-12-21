@@ -30,7 +30,7 @@ pub struct freevar_entry {
     span: Span     //< First span where it is accessed (there can be multiple)
 }
 pub type freevar_info = @~[@freevar_entry];
-pub type freevar_map = @mut HashMap<ast::NodeId, freevar_info>;
+pub type freevar_map = HashMap<ast::NodeId, freevar_info>;
 
 struct CollectFreevarsVisitor {
     seen: HashMap<ast::NodeId, ()>,
@@ -128,21 +128,24 @@ impl Visitor<()> for AnnotateFreevarsVisitor {
 // one pass. This could be improved upon if it turns out to matter.
 pub fn annotate_freevars(def_map: resolve::DefMap, crate: &ast::Crate) ->
    freevar_map {
-    let freevars = @mut HashMap::new();
-
     let mut visitor = AnnotateFreevarsVisitor {
         def_map: def_map,
-        freevars: freevars,
+        freevars: HashMap::new(),
     };
     visit::walk_crate(&mut visitor, crate, ());
 
-    return freevars;
+    let AnnotateFreevarsVisitor {
+        freevars,
+        ..
+    } = visitor;
+    freevars
 }
 
 pub fn get_freevars(tcx: ty::ctxt, fid: ast::NodeId) -> freevar_info {
-    match tcx.freevars.find(&fid) {
-      None => fail!("get_freevars: {} has no freevars", fid),
-      Some(&d) => return d
+    let freevars = tcx.freevars.borrow();
+    match freevars.get().find(&fid) {
+        None => fail!("get_freevars: {} has no freevars", fid),
+        Some(&d) => return d
     }
 }
 
