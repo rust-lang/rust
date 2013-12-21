@@ -788,7 +788,7 @@ trait ebml_writer_helpers {
                  tpbt: ty::ty_param_bounds_and_ty);
 }
 
-impl ebml_writer_helpers for writer::Encoder {
+impl<'a> ebml_writer_helpers for writer::Encoder<'a> {
     fn emit_ty(&mut self, ecx: &e::EncodeContext, ty: ty::t) {
         self.emit_opaque(|this| e::write_type(ecx, this, ty))
     }
@@ -840,8 +840,10 @@ trait write_tag_and_id {
     fn id(&mut self, id: ast::NodeId);
 }
 
-impl write_tag_and_id for writer::Encoder {
-    fn tag(&mut self, tag_id: c::astencode_tag, f: |&mut writer::Encoder|) {
+impl<'a> write_tag_and_id for writer::Encoder<'a> {
+    fn tag(&mut self,
+           tag_id: c::astencode_tag,
+           f: |&mut writer::Encoder<'a>|) {
         self.start_tag(tag_id as uint);
         f(self);
         self.end_tag();
@@ -852,18 +854,23 @@ impl write_tag_and_id for writer::Encoder {
     }
 }
 
-struct SideTableEncodingIdVisitor {
+struct SideTableEncodingIdVisitor<'a,'b> {
     ecx_ptr: *libc::c_void,
-    new_ebml_w: writer::Encoder,
+    new_ebml_w: &'a mut writer::Encoder<'b>,
     maps: Maps,
 }
 
-impl ast_util::IdVisitingOperation for SideTableEncodingIdVisitor {
+impl<'a,'b> ast_util::IdVisitingOperation for
+        SideTableEncodingIdVisitor<'a,'b> {
     fn visit_id(&self, id: ast::NodeId) {
         // Note: this will cause a copy of ebml_w, which is bad as
         // it is mutable. But I believe it's harmless since we generate
         // balanced EBML.
-        let mut new_ebml_w = self.new_ebml_w.clone();
+        //
+        // XXX(pcwalton): Don't copy this way.
+        let mut new_ebml_w = unsafe {
+            self.new_ebml_w.unsafe_clone()
+        };
         // See above
         let ecx: &e::EncodeContext = unsafe {
             cast::transmute(self.ecx_ptr)
@@ -877,7 +884,9 @@ fn encode_side_tables_for_ii(ecx: &e::EncodeContext,
                              ebml_w: &mut writer::Encoder,
                              ii: &ast::inlined_item) {
     ebml_w.start_tag(c::tag_table as uint);
-    let new_ebml_w = (*ebml_w).clone();
+    let mut new_ebml_w = unsafe {
+        ebml_w.unsafe_clone()
+    };
 
     // Because the ast visitor uses @IdVisitingOperation, I can't pass in
     // ecx directly, but /I/ know that it'll be fine since the lifetime is
@@ -886,7 +895,7 @@ fn encode_side_tables_for_ii(ecx: &e::EncodeContext,
         ecx_ptr: unsafe {
             cast::transmute(ecx)
         },
-        new_ebml_w: new_ebml_w,
+        new_ebml_w: &mut new_ebml_w,
         maps: maps,
     });
     ebml_w.end_tag();
@@ -1360,9 +1369,11 @@ fn roundtrip(in_item: Option<@ast::item>) {
     use std::io::mem::MemWriter;
 
     let in_item = in_item.unwrap();
-    let wr = @mut MemWriter::new();
-    let mut ebml_w = writer::Encoder(wr);
-    encode_item_ast(&mut ebml_w, in_item);
+    let mut wr = MemWriter::new();
+    {
+        let mut ebml_w = writer::Encoder(&mut wr);
+        encode_item_ast(&mut ebml_w, in_item);
+    }
     let ebml_doc = reader::Doc(wr.inner_ref().as_slice());
     let out_item = decode_item_ast(ebml_doc);
 
