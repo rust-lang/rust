@@ -110,7 +110,7 @@ use middle::typeck;
 use middle::moves;
 
 use std::cast::transmute;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::hashmap::HashMap;
 use std::io;
 use std::str;
@@ -245,7 +245,7 @@ struct IrMaps {
     method_map: typeck::method_map,
     capture_map: moves::CaptureMap,
 
-    num_live_nodes: uint,
+    num_live_nodes: Cell<uint>,
     num_vars: uint,
     live_node_map: HashMap<NodeId, LiveNode>,
     variable_map: HashMap<NodeId, Variable>,
@@ -262,7 +262,7 @@ fn IrMaps(tcx: ty::ctxt,
         tcx: tcx,
         method_map: method_map,
         capture_map: capture_map,
-        num_live_nodes: 0,
+        num_live_nodes: Cell::new(0),
         num_vars: 0,
         live_node_map: HashMap::new(),
         variable_map: HashMap::new(),
@@ -274,9 +274,10 @@ fn IrMaps(tcx: ty::ctxt,
 
 impl IrMaps {
     pub fn add_live_node(&mut self, lnk: LiveNodeKind) -> LiveNode {
-        let ln = LiveNode(self.num_live_nodes);
+        let num_live_nodes = self.num_live_nodes.get();
+        let ln = LiveNode(num_live_nodes);
         self.lnks.push(lnk);
-        self.num_live_nodes += 1;
+        self.num_live_nodes.set(num_live_nodes + 1);
 
         debug!("{} is of kind {}", ln.to_str(),
                live_node_kind_to_str(lnk, self.tcx));
@@ -601,8 +602,9 @@ fn Liveness(ir: @mut IrMaps, specials: Specials) -> Liveness {
         ir: ir,
         tcx: ir.tcx,
         s: specials,
-        successors: @mut vec::from_elem(ir.num_live_nodes, invalid_node()),
-        users: @mut vec::from_elem(ir.num_live_nodes * ir.num_vars,
+        successors: @mut vec::from_elem(ir.num_live_nodes.get(),
+                                        invalid_node()),
+        users: @mut vec::from_elem(ir.num_live_nodes.get() * ir.num_vars,
                                    invalid_users()),
         loop_scope: @mut ~[],
         break_ln: @RefCell::new(HashMap::new()),
@@ -883,7 +885,7 @@ impl Liveness {
         // hack to skip the loop unless debug! is enabled:
         debug!("^^ liveness computation results for body {} (entry={})",
                {
-                   for ln_idx in range(0u, self.ir.num_live_nodes) {
+                   for ln_idx in range(0u, self.ir.num_live_nodes.get()) {
                        debug!("{}", self.ln_str(LiveNode(ln_idx)));
                    }
                    body.id
