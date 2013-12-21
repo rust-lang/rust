@@ -284,7 +284,7 @@ enum DuplicateCheckingMode {
 
 /// One local scope.
 struct Rib {
-    bindings: @mut HashMap<Name, DefLike>,
+    bindings: RefCell<HashMap<Name, DefLike>>,
     self_binding: @mut Option<DefLike>,
     kind: RibKind,
 }
@@ -292,7 +292,7 @@ struct Rib {
 impl Rib {
     fn new(kind: RibKind) -> Rib {
         Rib {
-            bindings: @mut HashMap::new(),
+            bindings: RefCell::new(HashMap::new()),
             self_binding: @mut None,
             kind: kind
         }
@@ -3494,8 +3494,12 @@ impl Resolver {
         let mut i = ribs.len();
         while i != 0 {
             i -= 1;
-            match ribs[i].bindings.find(&name) {
-                Some(&def_like) => {
+            let binding_opt = {
+                let bindings = ribs[i].bindings.borrow();
+                bindings.get().find_copy(&name)
+            };
+            match binding_opt {
+                Some(def_like) => {
                     return self.upvarify(ribs, i, def_like, span,
                                          allow_capturing_self);
                 }
@@ -3572,8 +3576,10 @@ impl Resolver {
                 self.type_ribs.push(self_type_rib);
                 // plain insert (no renaming)
                 let name = self.type_self_ident.name;
-                self_type_rib.bindings.insert(name,
-                                              DlDef(DefSelfTy(item.id)));
+                {
+                    let mut bindings = self_type_rib.bindings.borrow_mut();
+                    bindings.get().insert(name, DlDef(DefSelfTy(item.id)));
+                }
 
                 // Create a new rib for the trait-wide type parameters.
                 self.with_type_parameter_rib(HasTypeParameters(generics,
@@ -3710,7 +3716,9 @@ impl Resolver {
                     self.record_def(type_parameter.id,
                                     (DefTyParamBinder(node_id), AllPublic));
                     // plain insert (no renaming)
-                    function_type_rib.bindings.insert(ident.name, def_like);
+                    let mut bindings = function_type_rib.bindings
+                                                        .borrow_mut();
+                    bindings.get().insert(ident.name, def_like);
                 }
             }
 
@@ -4333,8 +4341,12 @@ impl Resolver {
                                     let this = &mut *self;
                                     let last_rib = this.value_ribs[
                                             this.value_ribs.len() - 1];
-                                    last_rib.bindings.insert(renamed,
-                                                             DlDef(def));
+                                    {
+                                        let mut bindings =
+                                            last_rib.bindings.borrow_mut();
+                                        bindings.get().insert(renamed,
+                                                              DlDef(def));
+                                    }
                                     bindings_list.insert(renamed, pat_id);
                                 }
                                 Some(b) => {
@@ -4354,8 +4366,12 @@ impl Resolver {
                                     let this = &mut *self;
                                     let last_rib = this.value_ribs[
                                             this.value_ribs.len() - 1];
-                                    last_rib.bindings.insert(renamed,
-                                                             DlDef(def));
+                                    {
+                                        let mut bindings =
+                                            last_rib.bindings.borrow_mut();
+                                        bindings.get().insert(renamed,
+                                                              DlDef(def));
+                                    }
                                 }
                             }
                         }
@@ -4911,7 +4927,8 @@ impl Resolver {
         let mut j = this.value_ribs.len();
         while j != 0 {
             j -= 1;
-            for (&k, _) in this.value_ribs[j].bindings.iter() {
+            let bindings = this.value_ribs[j].bindings.borrow();
+            for (&k, _) in bindings.get().iter() {
                 maybes.push(interner_get(k));
                 values.push(uint::max_value);
             }
@@ -5060,7 +5077,10 @@ impl Resolver {
                     let def_like = DlDef(DefLabel(expr.id));
                     let rib = this.label_ribs[this.label_ribs.len() - 1];
                     // plain insert (no renaming)
-                    rib.bindings.insert(label.name, def_like);
+                    {
+                        let mut bindings = rib.bindings.borrow_mut();
+                        bindings.get().insert(label.name, def_like);
+                    }
 
                     visit::walk_expr(this, expr, ());
                 })
