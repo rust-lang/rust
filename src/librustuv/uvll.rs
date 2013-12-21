@@ -728,7 +728,9 @@ extern {
 // libuv requires other native libraries on various platforms. These are all
 // listed here (for each platform)
 
-#[cfg(not(target_os = "android"))] // apparently pthreads isn't on android?
+// libuv doesn't use pthread on windows
+// android libc (bionic) provides pthread, so no additional link is required
+#[cfg(not(windows), not(target_os = "android"))]
 #[link(name = "pthread")]
 extern {}
 
