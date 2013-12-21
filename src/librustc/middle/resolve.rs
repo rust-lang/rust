@@ -29,7 +29,7 @@ use syntax::opt_vec::OptVec;
 use syntax::visit;
 use syntax::visit::Visitor;
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::uint;
 use std::hashmap::{HashMap, HashSet};
 use std::util;
@@ -50,7 +50,7 @@ pub type TraitMap = HashMap<NodeId,@mut ~[DefId]>;
 
 // This is the replacement export map. It maps a module to all of the exports
 // within.
-pub type ExportMap2 = @mut HashMap<NodeId, ~[Export2]>;
+pub type ExportMap2 = @RefCell<HashMap<NodeId, ~[Export2]>>;
 
 pub struct Export2 {
     name: @str,        // The name of the target.
@@ -808,7 +808,7 @@ fn Resolver(session: Session,
         namespaces: ~[ TypeNS, ValueNS ],
 
         def_map: @mut HashMap::new(),
-        export_map2: @mut HashMap::new(),
+        export_map2: @RefCell::new(HashMap::new()),
         trait_map: HashMap::new(),
         used_imports: HashSet::new(),
         external_exports: HashSet::new(),
@@ -3249,7 +3249,8 @@ impl Resolver {
         self.add_exports_for_module(&mut exports2, module_);
         match module_.def_id.get() {
             Some(def_id) => {
-                self.export_map2.insert(def_id.node, exports2);
+                let mut export_map2 = self.export_map2.borrow_mut();
+                export_map2.get().insert(def_id.node, exports2);
                 debug!("(computing exports) writing exports for {} (some)",
                        def_id.node);
             }
