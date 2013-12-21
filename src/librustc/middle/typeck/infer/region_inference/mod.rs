@@ -88,7 +88,7 @@ type CombineMap = HashMap<TwoRegions, RegionVid>;
 
 pub struct RegionVarBindings {
     tcx: ty::ctxt,
-    var_origins: ~[RegionVariableOrigin],
+    var_origins: RefCell<~[RegionVariableOrigin]>,
     constraints: RefCell<HashMap<Constraint, SubregionOrigin>>,
     lubs: RefCell<CombineMap>,
     glbs: RefCell<CombineMap>,
@@ -113,7 +113,7 @@ pub struct RegionVarBindings {
 pub fn RegionVarBindings(tcx: ty::ctxt) -> RegionVarBindings {
     RegionVarBindings {
         tcx: tcx,
-        var_origins: ~[],
+        var_origins: RefCell::new(~[]),
         values: RefCell::new(None),
         constraints: RefCell::new(HashMap::new()),
         lubs: RefCell::new(HashMap::new()),
@@ -163,8 +163,9 @@ impl RegionVarBindings {
             match undo_item {
               Snapshot => {}
               AddVar(vid) => {
-                assert_eq!(self.var_origins.len(), vid.to_uint() + 1);
-                self.var_origins.pop();
+                let mut var_origins = self.var_origins.borrow_mut();
+                assert_eq!(var_origins.get().len(), vid.to_uint() + 1);
+                var_origins.get().pop();
               }
               AddConstraint(ref constraint) => {
                 let mut constraints = self.constraints.borrow_mut();
@@ -183,12 +184,14 @@ impl RegionVarBindings {
     }
 
     pub fn num_vars(&self) -> uint {
-        self.var_origins.len()
+        let var_origins = self.var_origins.borrow();
+        var_origins.get().len()
     }
 
     pub fn new_region_var(&mut self, origin: RegionVariableOrigin) -> RegionVid {
         let id = self.num_vars();
-        self.var_origins.push(origin);
+        let mut var_origins = self.var_origins.borrow_mut();
+        var_origins.get().push(origin);
         let vid = RegionVid { id: id };
         if self.in_snapshot() {
             {
@@ -344,10 +347,13 @@ impl RegionVarBindings {
     pub fn resolve_var(&mut self, rid: RegionVid) -> ty::Region {
         let values = self.values.borrow();
         let v = match *values.get() {
-            None => self.tcx.sess.span_bug(
-                self.var_origins[rid.to_uint()].span(),
-                format!("Attempt to resolve region variable before values have \
-                      been computed!")),
+            None => {
+                let var_origins = self.var_origins.borrow();
+                self.tcx.sess.span_bug(
+                    var_origins.get()[rid.to_uint()].span(),
+                    format!("Attempt to resolve region variable before \
+                             values have been computed!"))
+            }
             Some(ref values) => values[rid.to_uint()]
         };
 
@@ -553,8 +559,9 @@ impl RegionVarBindings {
           }
 
           (ReInfer(ReVar(v_id)), _) | (_, ReInfer(ReVar(v_id))) => {
+            let var_origins = self.var_origins.borrow();
             self.tcx.sess.span_bug(
-                self.var_origins[v_id.to_uint()].span(),
+                var_origins.get()[v_id.to_uint()].span(),
                 format!("lub_concrete_regions invoked with \
                       non-concrete regions: {:?}, {:?}", a, b));
           }
@@ -660,8 +667,9 @@ impl RegionVarBindings {
 
             (ReInfer(ReVar(v_id)), _) |
             (_, ReInfer(ReVar(v_id))) => {
+                let var_origins = self.var_origins.borrow();
                 self.tcx.sess.span_bug(
-                    self.var_origins[v_id.to_uint()].span(),
+                    var_origins.get()[v_id.to_uint()].span(),
                     format!("glb_concrete_regions invoked with \
                           non-concrete regions: {:?}, {:?}", a, b));
             }
@@ -1137,19 +1145,23 @@ impl RegionVarBindings {
             for upper_bound in upper_bounds.iter() {
                 if !self.is_subregion_of(lower_bound.region,
                                          upper_bound.region) {
-                    errors.push(SubSupConflict(
-                        self.var_origins[node_idx.to_uint()],
-                        lower_bound.origin,
-                        lower_bound.region,
-                        upper_bound.origin,
-                        upper_bound.region));
-                    return;
+                    {
+                        let var_origins = self.var_origins.borrow();
+                        errors.push(SubSupConflict(
+                            var_origins.get()[node_idx.to_uint()],
+                            lower_bound.origin,
+                            lower_bound.region,
+                            upper_bound.origin,
+                            upper_bound.region));
+                        return;
+                    }
                 }
             }
         }
 
+        let var_origins = self.var_origins.borrow();
         self.tcx.sess.span_bug(
-            self.var_origins[node_idx.to_uint()].span(),
+            var_origins.get()[node_idx.to_uint()].span(),
             format!("collect_error_for_expanding_node() could not find error \
                   for var {:?}, lower_bounds={}, upper_bounds={}",
                  node_idx,
@@ -1181,8 +1193,9 @@ impl RegionVarBindings {
                                                 upper_bound_2.region) {
                   Ok(_) => {}
                   Err(_) => {
+                    let var_origins = self.var_origins.borrow();
                     errors.push(SupSupConflict(
-                        self.var_origins[node_idx.to_uint()],
+                        var_origins.get()[node_idx.to_uint()],
                         upper_bound_1.origin,
                         upper_bound_1.region,
                         upper_bound_2.origin,
@@ -1193,8 +1206,9 @@ impl RegionVarBindings {
             }
         }
 
+        let var_origins = self.var_origins.borrow();
         self.tcx.sess.span_bug(
-            self.var_origins[node_idx.to_uint()].span(),
+            var_origins.get()[node_idx.to_uint()].span(),
             format!("collect_error_for_contracting_node() could not find error \
                   for var {:?}, upper_bounds={}",
                  node_idx,
