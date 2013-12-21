@@ -246,7 +246,7 @@ struct IrMaps {
     capture_map: moves::CaptureMap,
 
     num_live_nodes: Cell<uint>,
-    num_vars: uint,
+    num_vars: Cell<uint>,
     live_node_map: HashMap<NodeId, LiveNode>,
     variable_map: HashMap<NodeId, Variable>,
     capture_info_map: HashMap<NodeId, @~[CaptureInfo]>,
@@ -263,7 +263,7 @@ fn IrMaps(tcx: ty::ctxt,
         method_map: method_map,
         capture_map: capture_map,
         num_live_nodes: Cell::new(0),
-        num_vars: 0,
+        num_vars: Cell::new(0),
         live_node_map: HashMap::new(),
         variable_map: HashMap::new(),
         capture_info_map: HashMap::new(),
@@ -295,9 +295,9 @@ impl IrMaps {
     }
 
     pub fn add_variable(&mut self, vk: VarKind) -> Variable {
-        let v = Variable(self.num_vars);
+        let v = Variable(self.num_vars.get());
         self.var_kinds.push(vk);
-        self.num_vars += 1;
+        self.num_vars.set(self.num_vars.get() + 1);
 
         match vk {
             Local(LocalInfo { id: node_id, .. }) | Arg(node_id, _) => {
@@ -604,7 +604,8 @@ fn Liveness(ir: @mut IrMaps, specials: Specials) -> Liveness {
         s: specials,
         successors: @mut vec::from_elem(ir.num_live_nodes.get(),
                                         invalid_node()),
-        users: @mut vec::from_elem(ir.num_live_nodes.get() * ir.num_vars,
+        users: @mut vec::from_elem(ir.num_live_nodes.get() *
+                                   ir.num_vars.get(),
                                    invalid_users()),
         loop_scope: @mut ~[],
         break_ln: @RefCell::new(HashMap::new()),
@@ -672,7 +673,7 @@ impl Liveness {
     }
 
     pub fn idx(&self, ln: LiveNode, var: Variable) -> uint {
-        *ln * self.ir.num_vars + *var
+        *ln * self.ir.num_vars.get() + *var
     }
 
     pub fn live_on_entry(&self, ln: LiveNode, var: Variable)
@@ -713,7 +714,7 @@ impl Liveness {
                     op: |uint, uint|) {
         let node_base_idx = self.idx(ln, Variable(0u));
         let succ_base_idx = self.idx(succ_ln, Variable(0u));
-        for var_idx in range(0u, self.ir.num_vars) {
+        for var_idx in range(0u, self.ir.num_vars.get()) {
             op(node_base_idx + var_idx, succ_base_idx + var_idx);
         }
     }
@@ -723,7 +724,7 @@ impl Liveness {
                       ln: LiveNode,
                       test: |uint| -> LiveNode) {
         let node_base_idx = self.idx(ln, Variable(0));
-        for var_idx in range(0u, self.ir.num_vars) {
+        for var_idx in range(0u, self.ir.num_vars.get()) {
             let idx = node_base_idx + var_idx;
             if test(idx).is_valid() {
                 write!(wr, " {}", Variable(var_idx).to_str());
