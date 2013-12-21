@@ -4147,9 +4147,11 @@ impl Resolver {
     fn resolve_arm(&mut self, arm: &Arm) {
         self.value_ribs.push(@Rib::new(NormalRibKind));
 
-        let bindings_list = @mut HashMap::new();
+        let mut bindings_list = HashMap::new();
         for pattern in arm.pats.iter() {
-            self.resolve_pattern(*pattern, RefutableMode, Some(bindings_list));
+            self.resolve_pattern(*pattern,
+                                 RefutableMode,
+                                 Some(&mut bindings_list));
         }
 
         // This has to happen *after* we determine which
@@ -4298,7 +4300,7 @@ impl Resolver {
                        mode: PatternBindingMode,
                        // Maps idents to the node ID for the (outermost)
                        // pattern that binds them
-                       bindings_list: Option<@mut HashMap<Name,NodeId>>) {
+                       mut bindings_list: Option<&mut HashMap<Name,NodeId>>) {
         let pat_id = pattern.id;
         walk_pat(pattern, |pattern| {
             match pattern.node {
@@ -4388,7 +4390,7 @@ impl Resolver {
                             // passes make about or-patterns.)
 
                             match bindings_list {
-                                Some(bindings_list)
+                                Some(ref mut bindings_list)
                                 if !bindings_list.contains_key(&renamed) => {
                                     let this = &mut *self;
                                     let last_rib = this.value_ribs[
@@ -4401,7 +4403,7 @@ impl Resolver {
                                     }
                                     bindings_list.insert(renamed, pat_id);
                                 }
-                                Some(b) => {
+                                Some(ref mut b) => {
                                   if b.find(&renamed) == Some(&pat_id) {
                                       // Then this is a duplicate variable
                                       // in the same disjunct, which is an
