@@ -425,7 +425,7 @@ struct Module {
 
     // The external module children of this node that were declared with
     // `extern mod`.
-    external_module_children: @mut HashMap<Name, @Module>,
+    external_module_children: RefCell<HashMap<Name, @Module>>,
 
     // The anonymous children of this node. Anonymous children are pseudo-
     // modules that are implicitly created around items contained within
@@ -472,7 +472,7 @@ impl Module {
             is_public: is_public,
             children: @mut HashMap::new(),
             imports: @mut ~[],
-            external_module_children: @mut HashMap::new(),
+            external_module_children: RefCell::new(HashMap::new()),
             anonymous_children: @mut HashMap::new(),
             import_resolutions: @mut HashMap::new(),
             glob_count: Cell::new(0),
@@ -1506,9 +1506,13 @@ impl Resolver {
                                                           false,
                                                           true);
 
-                        parent.external_module_children.insert(
-                            name.name,
-                            external_module);
+                        {
+                            let mut external_module_children =
+                                parent.external_module_children.borrow_mut();
+                            external_module_children.get().insert(
+                                name.name,
+                                external_module);
+                        }
 
                         self.build_reduced_graph_for_external_crate(
                             external_module);
@@ -2352,13 +2356,18 @@ impl Resolver {
         match type_result {
             BoundResult(..) => {}
             _ => {
-                match containing_module.external_module_children
-                                       .find(&source.name) {
+                let module_opt = {
+                    let mut external_module_children =
+                        containing_module.external_module_children
+                                         .borrow_mut();
+                    external_module_children.get().find_copy(&source.name)
+                };
+                match module_opt {
                     None => {} // Continue.
                     Some(module) => {
                         let name_bindings =
                             @mut Resolver::create_name_bindings_from_module(
-                                *module);
+                                module);
                         type_result = BoundResult(containing_module,
                                                   name_bindings);
                         used_public = true;
@@ -2565,10 +2574,14 @@ impl Resolver {
         }
 
         // Add external module children from the containing module.
-        for (&name, module) in containing_module.external_module_children.iter() {
-            let name_bindings =
-                @mut Resolver::create_name_bindings_from_module(*module);
-            merge_import_resolution(name, name_bindings);
+        {
+            let external_module_children =
+                containing_module.external_module_children.borrow();
+            for (&name, module) in external_module_children.get().iter() {
+                let name_bindings =
+                    @mut Resolver::create_name_bindings_from_module(*module);
+                merge_import_resolution(name, name_bindings);
+            }
         }
 
         // Record the destination of this import
@@ -2861,12 +2874,17 @@ impl Resolver {
 
         // Search for external modules.
         if namespace == TypeNS {
-            match module_.external_module_children.find(&name.name) {
+            let module_opt = {
+                let external_module_children =
+                    module_.external_module_children.borrow();
+                external_module_children.get().find_copy(&name.name)
+            };
+            match module_opt {
                 None => {}
                 Some(module) => {
                     let name_bindings =
                         @mut Resolver::create_name_bindings_from_module(
-                            *module);
+                            module);
                     debug!("lower name bindings succeeded");
                     return Success((Target::new(module_, name_bindings), false));
                 }
@@ -3133,12 +3151,17 @@ impl Resolver {
 
         // Finally, search through external children.
         if namespace == TypeNS {
-            match module_.external_module_children.find(&name.name) {
+            let module_opt = {
+                let external_module_children =
+                    module_.external_module_children.borrow();
+                external_module_children.get().find_copy(&name.name)
+            };
+            match module_opt {
                 None => {}
                 Some(module) => {
                     let name_bindings =
                         @mut Resolver::create_name_bindings_from_module(
-                            *module);
+                            module);
                     return Success((Target::new(module_, name_bindings), false));
                 }
             }
@@ -4664,7 +4687,12 @@ impl Resolver {
 
         // Finally, search through external children.
         if namespace == TypeNS {
-            match containing_module.external_module_children.find(&name.name) {
+            let module_opt = {
+                let external_module_children =
+                    containing_module.external_module_children.borrow();
+                external_module_children.get().find_copy(&name.name)
+            };
+            match module_opt {
                 None => {}
                 Some(module) => {
                     match module.def_id.get() {
