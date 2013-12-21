@@ -1641,7 +1641,7 @@ pub fn make_return_pointer(fcx: @mut FunctionContext, output_type: ty::t) -> Val
             llvm::LLVMGetParam(fcx.llfn, 0)
         } else {
             let lloutputtype = type_of::type_of(fcx.ccx, output_type);
-            let bcx = fcx.entry_bcx.unwrap();
+            let bcx = fcx.entry_bcx.get().unwrap();
             Alloca(bcx, lloutputtype, "__make_return_pointer")
         }
     }
@@ -1686,7 +1686,7 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
               Cell::new(llvm::LLVMGetUndef(Type::i8p().to_ref()))
           },
           llretptr: Cell::new(None),
-          entry_bcx: None,
+          entry_bcx: RefCell::new(None),
           alloca_insert_pt: Cell::new(None),
           llreturn: Cell::new(None),
           llself: Cell::new(None),
@@ -1710,7 +1710,7 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
         let entry_bcx = top_scope_block(fcx, opt_node_info);
         Load(entry_bcx, C_null(Type::i8p()));
 
-        fcx.entry_bcx = Some(entry_bcx);
+        fcx.entry_bcx.set(Some(entry_bcx));
         fcx.alloca_insert_pt.set(Some(
                 llvm::LLVMGetFirstInstruction(entry_bcx.llbb)));
     }
@@ -1921,7 +1921,7 @@ pub fn trans_closure(ccx: @CrateContext,
 
     // Create the first basic block in the function and keep a handle on it to
     //  pass to finish_fn later.
-    let bcx_top = fcx.entry_bcx.unwrap();
+    let bcx_top = fcx.entry_bcx.get().unwrap();
     let mut bcx = bcx_top;
     let block_ty = node_id_type(bcx, body.id);
 
@@ -2136,7 +2136,7 @@ pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
 
     let raw_llargs = create_llargs_for_fn_args(fcx, no_self, fn_args);
 
-    let bcx = fcx.entry_bcx.unwrap();
+    let bcx = fcx.entry_bcx.get().unwrap();
 
     insert_synthetic_type_entries(bcx, fn_args, arg_tys);
     let bcx = copy_args_to_allocas(fcx, bcx, fn_args, raw_llargs, arg_tys);

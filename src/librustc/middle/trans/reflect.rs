@@ -306,7 +306,7 @@ impl Reflector {
                     //
                     llvm::LLVMGetParam(llfdecl, fcx.arg_pos(0u) as c_uint)
                 };
-                let mut bcx = fcx.entry_bcx.unwrap();
+                let mut bcx = fcx.entry_bcx.get().unwrap();
                 let arg = BitCast(bcx, arg, llptrty);
                 let ret = adt::trans_get_discr(bcx, repr, arg, Some(Type::i64()));
                 Store(bcx, ret, fcx.llretptr.get().unwrap());

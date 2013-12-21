@@ -304,7 +304,7 @@ pub fn load_environment(fcx: @mut FunctionContext,
         return;
     }
 
-    let bcx = fcx.entry_bcx.unwrap();
+    let bcx = fcx.entry_bcx.get().unwrap();
 
     // Load a pointer to the closure data, skipping over the box header:
     let llcdata = opaque_box_body(bcx, cdata_ty, fcx.llenv.get());

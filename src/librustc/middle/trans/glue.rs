@@ -669,7 +669,7 @@ pub fn make_generic_glue_inner(ccx: @CrateContext,
     // llfn is expected be declared to take a parameter of the appropriate
     // type, so we don't need to explicitly cast the function parameter.
 
-    let bcx = fcx.entry_bcx.unwrap();
+    let bcx = fcx.entry_bcx.get().unwrap();
     let rawptr0_arg = fcx.arg_pos(0u);
     let llrawptr0 = unsafe { llvm::LLVMGetParam(llfn, rawptr0_arg as c_uint) };
     let bcx = helper(bcx, llrawptr0, t);
