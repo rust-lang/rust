@@ -348,7 +348,7 @@ struct ctxt_ {
 
     // Set of used unsafe nodes (functions or blocks). Unsafe nodes not
     // present in this set can be warned about.
-    used_unsafe: @mut HashSet<ast::NodeId>,
+    used_unsafe: RefCell<HashSet<ast::NodeId>>,
 
     // Set of nodes which mark locals as mutable which end up getting used at
     // some point. Local variable definitions not in this set can be warned
@@ -1004,7 +1004,7 @@ pub fn mk_ctxt(s: session::Session,
         trait_impls: RefCell::new(HashMap::new()),
         inherent_impls: RefCell::new(HashMap::new()),
         impls: RefCell::new(HashMap::new()),
-        used_unsafe: @mut HashSet::new(),
+        used_unsafe: RefCell::new(HashSet::new()),
         used_mut_nodes: @mut HashSet::new(),
         impl_vtables: RefCell::new(HashMap::new()),
         populated_external_types: @mut HashSet::new(),
