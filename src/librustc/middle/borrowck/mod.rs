@@ -82,7 +82,6 @@ pub fn check_crate(
         moved_variables_set: moved_variables_set,
         capture_map: capture_map,
         root_map: root_map(),
-        loan_map: @mut HashMap::new(),
         write_guard_map: @mut HashSet::new(),
         stats: @mut BorrowStats {
             loaned_paths_same: 0,
@@ -173,7 +172,6 @@ pub struct BorrowckCtxt {
     moved_variables_set: moves::MovedVariablesSet,
     capture_map: moves::CaptureMap,
     root_map: root_map,
-    loan_map: LoanMap,
     write_guard_map: write_guard_map,
 
     // Statistics:
@@ -187,8 +185,6 @@ pub struct BorrowStats {
     req_pure_paths: uint,
     guaranteed_paths: uint
 }
-
-pub type LoanMap = @mut HashMap<ast::NodeId, @Loan>;
 
 // The keys to the root map combine the `id` of the deref expression
 // with the number of types that it is *autodereferenced*. So, for
