@@ -10,6 +10,7 @@
 
 #[allow(dead_code)];
 
+use std::cell::RefCell;
 use std::libc;
 use std::os;
 use std::io;
@@ -244,7 +245,8 @@ pub fn compile_input(context: &BuildContext,
         optimize: opt,
         test: what == Test || what == Bench,
         maybe_sysroot: Some(sysroot_to_use),
-        addl_lib_search_paths: @mut context.additional_library_paths(),
+        addl_lib_search_paths:
+            @RefCell::new(context.additional_library_paths()),
         output_type: output_type,
         .. (*driver::build_session_options(binary,
                                            &matches,
@@ -254,15 +256,20 @@ pub fn compile_input(context: &BuildContext,
 
     debug!("Created options...");
 
-    let addl_lib_search_paths = @mut options.addl_lib_search_paths;
+    let addl_lib_search_paths = @RefCell::new(options.addl_lib_search_paths);
     // Make sure all the library directories actually exist, since the linker will complain
     // otherwise
-    for p in addl_lib_search_paths.iter() {
-        if p.exists() {
-            assert!(p.is_dir())
-        }
-        else {
-            fs::mkdir_recursive(p, io::UserRWX);
+    {
+        let mut addl_lib_search_paths = addl_lib_search_paths.borrow_mut();
+        let addl_lib_search_paths = addl_lib_search_paths.get();
+        let mut addl_lib_search_paths = addl_lib_search_paths.borrow_mut();
+        for p in addl_lib_search_paths.get().iter() {
+            if p.exists() {
+                assert!(p.is_dir())
+            }
+            else {
+                fs::mkdir_recursive(p, io::UserRWX);
+            }
         }
     }
 
@@ -285,9 +292,15 @@ pub fn compile_input(context: &BuildContext,
     find_and_install_dependencies(context, pkg_id, in_file, sess, exec, &crate, deps,
                                   |p| {
                                       debug!("a dependency: {}", p.display());
+                                      let mut addl_lib_search_paths =
+                                        addl_lib_search_paths.borrow_mut();
+                                      let addl_lib_search_paths =
+                                        addl_lib_search_paths.get();
+                                      let mut addl_lib_search_paths =
+                                        addl_lib_search_paths.borrow_mut();
                                       // Pass the directory containing a dependency
                                       // as an additional lib search path
-                                      addl_lib_search_paths.insert(p);
+                                      addl_lib_search_paths.get().insert(p);
                                   });
 
     // Inject the pkgid attribute so we get the right package name and version
@@ -376,8 +389,11 @@ pub fn compile_crate_from_input(input: &Path,
            outputs.obj_filename.display(),
            sess.opts.output_type);
     debug!("additional libraries:");
-    for lib in sess.opts.addl_lib_search_paths.iter() {
-        debug!("an additional library: {}", lib.display());
+    {
+        let addl_lib_search_paths = sess.opts.addl_lib_search_paths.borrow();
+        for lib in addl_lib_search_paths.get().iter() {
+            debug!("an additional library: {}", lib.display());
+        }
     }
     let analysis = driver::phase_3_run_analysis_passes(sess, &crate);
     if driver::stop_after_phase_3(sess) { return None; }

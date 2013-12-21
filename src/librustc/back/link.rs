@@ -1109,7 +1109,8 @@ fn link_args(sess: Session,
 // in the current crate. Upstream crates with native library dependencies
 // may have their native library pulled in above.
 fn add_local_native_libraries(args: &mut ~[~str], sess: Session) {
-    for path in sess.opts.addl_lib_search_paths.iter() {
+    let addl_lib_search_paths = sess.opts.addl_lib_search_paths.borrow();
+    for path in addl_lib_search_paths.get().iter() {
         // FIXME (#9639): This needs to handle non-utf8 paths
         args.push("-L" + path.as_str().unwrap().to_owned());
     }
