@@ -229,7 +229,7 @@ pub struct FunctionContext {
     // NB: This is the type of the self *variable*, not the self *type*. The
     // self type is set only for default methods, while the self variable is
     // set for all methods.
-    llself: Option<ValSelfData>,
+    llself: Cell<Option<ValSelfData>>,
     // The a value alloca'd for calls to upcalls.rust_personality. Used when
     // outputting the resume instruction.
     personality: Option<ValueRef>,
