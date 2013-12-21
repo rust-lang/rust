@@ -1594,7 +1594,7 @@ pub fn alloca_maybe_zeroed(cx: @Block, ty: Type, name: &str, zero: bool) -> Valu
     let p = Alloca(cx, ty, name);
     if zero {
         let b = cx.fcx.ccx.builder();
-        b.position_before(cx.fcx.alloca_insert_pt.unwrap());
+        b.position_before(cx.fcx.alloca_insert_pt.get().unwrap());
         memzero(&b, p, ty);
     }
     p
@@ -1687,7 +1687,7 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
           },
           llretptr: Cell::new(None),
           entry_bcx: None,
-          alloca_insert_pt: None,
+          alloca_insert_pt: Cell::new(None),
           llreturn: None,
           llself: None,
           personality: None,
@@ -1711,7 +1711,8 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
         Load(entry_bcx, C_null(Type::i8p()));
 
         fcx.entry_bcx = Some(entry_bcx);
-        fcx.alloca_insert_pt = Some(llvm::LLVMGetFirstInstruction(entry_bcx.llbb));
+        fcx.alloca_insert_pt.set(Some(
+                llvm::LLVMGetFirstInstruction(entry_bcx.llbb)));
     }
 
     if !ty::type_is_voidish(ccx.tcx, substd_output_type) {
