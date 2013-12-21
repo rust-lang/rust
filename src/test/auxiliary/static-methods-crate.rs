@@ -9,10 +9,6 @@
 // except according to those terms.
 
 #[crate_id="static_methods_crate#0.1"];
-// NOTE: remove after the next snapshot
-#[link(name = "static_methods_crate",
-       vers = "0.1")];
-
 #[crate_type = "lib"];
 
 use std::int;

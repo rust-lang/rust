@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[link (name = "issue2378b")];
 #[crate_type = "lib"];
 
 extern mod issue2378a;

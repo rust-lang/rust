@@ -9,8 +9,6 @@
 // except according to those terms.
 
 #[crate_id="rust_get_test_int"];
-// NOTE: remove after the next snapshot
-#[link(name = "rust_get_test_int")];
 
 mod rustrt {
     use std::libc;

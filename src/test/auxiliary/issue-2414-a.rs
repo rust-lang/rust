@@ -9,8 +9,6 @@
 // except according to those terms.
 
 #[crate_id="a#0.1"];
-// NOTE: remove after the next snapshot
-#[link(name = "a", vers = "0.1")];
 #[crate_type = "lib"];
 
 type t1 = uint;

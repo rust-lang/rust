@@ -10,8 +10,6 @@
 
 #[feature(managed_boxes)];
 #[crate_id="crate_method_reexport_grrrrrrr2"];
-// NOTE: remove after the next snapshot
-#[link(name = "crate_method_reexport_grrrrrrr2")];
 
 pub use name_pool::add;
 
