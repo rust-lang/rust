@@ -130,7 +130,7 @@ impl RegionVarBindings {
         undo_log.get().len() > 0
     }
 
-    pub fn start_snapshot(&mut self) -> uint {
+    pub fn start_snapshot(&self) -> uint {
         debug!("RegionVarBindings: start_snapshot()");
         if self.in_snapshot() {
             {
@@ -146,7 +146,7 @@ impl RegionVarBindings {
         }
     }
 
-    pub fn commit(&mut self) {
+    pub fn commit(&self) {
         debug!("RegionVarBindings: commit()");
         let mut undo_log = self.undo_log.borrow_mut();
         while undo_log.get().len() > 0 {
@@ -154,7 +154,7 @@ impl RegionVarBindings {
         }
     }
 
-    pub fn rollback_to(&mut self, snapshot: uint) {
+    pub fn rollback_to(&self, snapshot: uint) {
         debug!("RegionVarBindings: rollback_to({})", snapshot);
         let mut undo_log = self.undo_log.borrow_mut();
         while undo_log.get().len() > snapshot {
@@ -188,7 +188,7 @@ impl RegionVarBindings {
         var_origins.get().len()
     }
 
-    pub fn new_region_var(&mut self, origin: RegionVariableOrigin) -> RegionVid {
+    pub fn new_region_var(&self, origin: RegionVariableOrigin) -> RegionVid {
         let id = self.num_vars();
         let mut var_origins = self.var_origins.borrow_mut();
         var_origins.get().push(origin);
@@ -204,13 +204,13 @@ impl RegionVarBindings {
         return vid;
     }
 
-    pub fn new_skolemized(&mut self, br: ty::BoundRegion) -> Region {
+    pub fn new_skolemized(&self, br: ty::BoundRegion) -> Region {
         let sc = self.skolemization_count.get();
         self.skolemization_count.set(sc + 1);
         ReInfer(ReSkolemized(sc, br))
     }
 
-    pub fn new_bound(&mut self, binder_id: ast::NodeId) -> Region {
+    pub fn new_bound(&self, binder_id: ast::NodeId) -> Region {
         // Creates a fresh bound variable for use in GLB computations.
         // See discussion of GLB computation in the large comment at
         // the top of this file for more details.
@@ -244,7 +244,7 @@ impl RegionVarBindings {
         values.get().is_none()
     }
 
-    pub fn add_constraint(&mut self,
+    pub fn add_constraint(&self,
                           constraint: Constraint,
                           origin: SubregionOrigin) {
         // cannot add constraints once regions are resolved
@@ -263,7 +263,7 @@ impl RegionVarBindings {
         }
     }
 
-    pub fn make_subregion(&mut self,
+    pub fn make_subregion(&self,
                           origin: SubregionOrigin,
                           sub: Region,
                           sup: Region) {
@@ -297,7 +297,7 @@ impl RegionVarBindings {
         }
     }
 
-    pub fn lub_regions(&mut self,
+    pub fn lub_regions(&self,
                        origin: SubregionOrigin,
                        a: Region,
                        b: Region)
@@ -320,7 +320,7 @@ impl RegionVarBindings {
         }
     }
 
-    pub fn glb_regions(&mut self,
+    pub fn glb_regions(&self,
                        origin: SubregionOrigin,
                        a: Region,
                        b: Region)
@@ -344,7 +344,7 @@ impl RegionVarBindings {
         }
     }
 
-    pub fn resolve_var(&mut self, rid: RegionVid) -> ty::Region {
+    pub fn resolve_var(&self, rid: RegionVid) -> ty::Region {
         let values = self.values.borrow();
         let v = match *values.get() {
             None => {
@@ -374,20 +374,20 @@ impl RegionVarBindings {
         }
     }
 
-    fn combine_map<'a>(&'a mut self, t: CombineMapType)
-                   -> &'a mut RefCell<CombineMap> {
+    fn combine_map<'a>(&'a self, t: CombineMapType)
+                   -> &'a RefCell<CombineMap> {
         match t {
-            Glb => &mut self.glbs,
-            Lub => &mut self.lubs,
+            Glb => &self.glbs,
+            Lub => &self.lubs,
         }
     }
 
-    pub fn combine_vars(&mut self,
+    pub fn combine_vars(&self,
                         t: CombineMapType,
                         a: Region,
                         b: Region,
                         origin: SubregionOrigin,
-                        relate: |this: &mut RegionVarBindings,
+                        relate: |this: &RegionVarBindings,
                                  old_r: Region,
                                  new_r: Region|)
                         -> Region {
@@ -418,7 +418,7 @@ impl RegionVarBindings {
         ReInfer(ReVar(c))
     }
 
-    pub fn vars_created_since_snapshot(&mut self, snapshot: uint)
+    pub fn vars_created_since_snapshot(&self, snapshot: uint)
                                        -> ~[RegionVid] {
         let undo_log = self.undo_log.borrow();
         undo_log.get().slice_from(snapshot).iter()
@@ -429,7 +429,7 @@ impl RegionVarBindings {
             .collect()
     }
 
-    pub fn tainted(&mut self, snapshot: uint, r0: Region) -> ~[Region] {
+    pub fn tainted(&self, snapshot: uint, r0: Region) -> ~[Region] {
         /*!
          * Computes all regions that have been related to `r0` in any
          * way since the snapshot `snapshot` was taken---`r0` itself
@@ -522,7 +522,7 @@ impl RegionVarBindings {
     constraints, assuming such values can be found; if they cannot,
     errors are reported.
     */
-    pub fn resolve_regions(&mut self) -> OptVec<RegionResolutionError> {
+    pub fn resolve_regions(&self) -> OptVec<RegionResolutionError> {
         debug!("RegionVarBindings: resolve_regions()");
         let mut errors = opt_vec::Empty;
         let v = self.infer_variable_values(&mut errors);
