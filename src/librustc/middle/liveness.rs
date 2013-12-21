@@ -110,6 +110,7 @@ use middle::typeck;
 use middle::moves;
 
 use std::cast::transmute;
+use std::cell::RefCell;
 use std::hashmap::HashMap;
 use std::io;
 use std::str;
@@ -577,7 +578,7 @@ static ACC_READ: uint = 1u;
 static ACC_WRITE: uint = 2u;
 static ACC_USE: uint = 4u;
 
-type LiveNodeMap = @mut HashMap<NodeId, LiveNode>;
+type LiveNodeMap = @RefCell<HashMap<NodeId, LiveNode>>;
 
 pub struct Liveness {
     tcx: ty::ctxt,
@@ -604,8 +605,8 @@ fn Liveness(ir: @mut IrMaps, specials: Specials) -> Liveness {
         users: @mut vec::from_elem(ir.num_live_nodes * ir.num_vars,
                                    invalid_users()),
         loop_scope: @mut ~[],
-        break_ln: @mut HashMap::new(),
-        cont_ln: @mut HashMap::new()
+        break_ln: @RefCell::new(HashMap::new()),
+        cont_ln: @RefCell::new(HashMap::new()),
     }
 }
 
@@ -1091,7 +1092,8 @@ impl Liveness {
               // Now that we know the label we're going to,
               // look it up in the break loop nodes table
 
-              match self.break_ln.find(&sc) {
+              let break_ln = self.break_ln.borrow();
+              match break_ln.get().find(&sc) {
                   Some(&b) => b,
                   None => self.tcx.sess.span_bug(expr.span,
                                                  "Break to unknown label")
@@ -1105,7 +1107,8 @@ impl Liveness {
               // Now that we know the label we're going to,
               // look it up in the continue loop nodes table
 
-              match self.cont_ln.find(&sc) {
+              let cont_ln = self.cont_ln.borrow();
+              match cont_ln.get().find(&sc) {
                   Some(&b) => b,
                   None => self.tcx.sess.span_bug(expr.span,
                                                  "Loop to unknown label")
@@ -1383,8 +1386,12 @@ impl Liveness {
                            -> R {
       debug!("with_loop_nodes: {} {}", loop_node_id, *break_ln);
         self.loop_scope.push(loop_node_id);
-        self.break_ln.insert(loop_node_id, break_ln);
-        self.cont_ln.insert(loop_node_id, cont_ln);
+        {
+            let mut this_break_ln = self.break_ln.borrow_mut();
+            let mut this_cont_ln = self.cont_ln.borrow_mut();
+            this_break_ln.get().insert(loop_node_id, break_ln);
+            this_cont_ln.get().insert(loop_node_id, cont_ln);
+        }
         let r = f();
         self.loop_scope.pop();
         r
