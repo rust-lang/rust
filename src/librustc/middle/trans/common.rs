@@ -431,7 +431,7 @@ pub struct cleanup_path {
 }
 
 pub fn shrink_scope_clean(scope_info: &mut ScopeInfo, size: uint) {
-    scope_info.landing_pad = None;
+    scope_info.landing_pad.set(None);
     let new_cleanup_paths = {
         let cleanup_paths = scope_info.cleanup_paths.borrow();
         cleanup_paths.get()
@@ -444,7 +444,7 @@ pub fn shrink_scope_clean(scope_info: &mut ScopeInfo, size: uint) {
 }
 
 pub fn grow_scope_clean(scope_info: &mut ScopeInfo) {
-    scope_info.landing_pad = None;
+    scope_info.landing_pad.set(None);
 }
 
 pub fn cleanup_type(cx: ty::ctxt, ty: ty::t) -> cleantype {
@@ -634,7 +634,7 @@ pub struct ScopeInfo {
     // cleared when the set of cleanups changes.
     cleanup_paths: RefCell<~[cleanup_path]>,
     // Unwinding landing pad. Also cleared when cleanups change.
-    landing_pad: Option<BasicBlockRef>,
+    landing_pad: Cell<Option<BasicBlockRef>>,
     // info about the AST node this scope originated from, if any
     node_info: Option<NodeInfo>,
 }
