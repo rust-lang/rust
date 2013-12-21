@@ -62,7 +62,7 @@ pub struct CrateSource {
 
 pub struct CStore {
     priv metas: RefCell<HashMap<ast::CrateNum, @crate_metadata>>,
-    priv extern_mod_crate_map: extern_mod_crate_map,
+    priv extern_mod_crate_map: RefCell<extern_mod_crate_map>,
     priv used_crate_sources: ~[CrateSource],
     priv used_libraries: ~[(~str, NativeLibaryKind)],
     priv used_link_args: ~[~str],
@@ -76,7 +76,7 @@ impl CStore {
     pub fn new(intr: @ident_interner) -> CStore {
         CStore {
             metas: RefCell::new(HashMap::new()),
-            extern_mod_crate_map: HashMap::new(),
+            extern_mod_crate_map: RefCell::new(HashMap::new()),
             used_crate_sources: ~[],
             used_libraries: ~[],
             used_link_args: ~[],
@@ -162,12 +162,14 @@ impl CStore {
     pub fn add_extern_mod_stmt_cnum(&mut self,
                                     emod_id: ast::NodeId,
                                     cnum: ast::CrateNum) {
-        self.extern_mod_crate_map.insert(emod_id, cnum);
+        let mut extern_mod_crate_map = self.extern_mod_crate_map.borrow_mut();
+        extern_mod_crate_map.get().insert(emod_id, cnum);
     }
 
     pub fn find_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId)
                                      -> Option<ast::CrateNum> {
-        self.extern_mod_crate_map.find(&emod_id).map(|x| *x)
+        let extern_mod_crate_map = self.extern_mod_crate_map.borrow();
+        extern_mod_crate_map.get().find(&emod_id).map(|x| *x)
     }
 
     // returns hashes of crates directly used by this crate. Hashes are sorted by
@@ -175,7 +177,8 @@ impl CStore {
     pub fn get_dep_hashes(&self) -> ~[@str] {
         let mut result = ~[];
 
-        for (_, &cnum) in self.extern_mod_crate_map.iter() {
+        let extern_mod_crate_map = self.extern_mod_crate_map.borrow();
+        for (_, &cnum) in extern_mod_crate_map.get().iter() {
             let cdata = self.get_crate_data(cnum);
             let hash = decoder::get_crate_hash(cdata.data());
             let vers = decoder::get_crate_vers(cdata.data());
