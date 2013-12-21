@@ -63,7 +63,7 @@ pub struct CrateSource {
 pub struct CStore {
     priv metas: RefCell<HashMap<ast::CrateNum, @crate_metadata>>,
     priv extern_mod_crate_map: RefCell<extern_mod_crate_map>,
-    priv used_crate_sources: ~[CrateSource],
+    priv used_crate_sources: RefCell<~[CrateSource]>,
     priv used_libraries: ~[(~str, NativeLibaryKind)],
     priv used_link_args: ~[~str],
     intr: @ident_interner
@@ -77,7 +77,7 @@ impl CStore {
         CStore {
             metas: RefCell::new(HashMap::new()),
             extern_mod_crate_map: RefCell::new(HashMap::new()),
-            used_crate_sources: ~[],
+            used_crate_sources: RefCell::new(~[]),
             used_libraries: ~[],
             used_link_args: ~[],
             intr: intr
@@ -117,18 +117,17 @@ impl CStore {
     }
 
     pub fn add_used_crate_source(&mut self, src: CrateSource) {
-        if !self.used_crate_sources.contains(&src) {
-            self.used_crate_sources.push(src);
+        let mut used_crate_sources = self.used_crate_sources.borrow_mut();
+        if !used_crate_sources.get().contains(&src) {
+            used_crate_sources.get().push(src);
         }
-    }
-
-    pub fn get_used_crate_sources<'a>(&'a self) -> &'a [CrateSource] {
-        self.used_crate_sources.as_slice()
     }
 
     pub fn get_used_crates(&self, prefer: LinkagePreference)
                            -> ~[(ast::CrateNum, Option<Path>)] {
-        self.used_crate_sources.iter()
+        let used_crate_sources = self.used_crate_sources.borrow();
+        used_crate_sources.get()
+            .iter()
             .map(|src| (src.cnum, match prefer {
                 RequireDynamic => src.dylib.clone(),
                 RequireStatic => src.rlib.clone(),
