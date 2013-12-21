@@ -488,6 +488,7 @@ impl Module {
 }
 
 // Records a possibly-private type definition.
+#[deriving(Clone)]
 struct TypeNsDef {
     is_public: bool, // see note in ImportResolution about how to use this
     module_def: Option<@Module>,
@@ -505,7 +506,7 @@ struct ValueNsDef {
 // Records the definitions (at most one for each namespace) that a name is
 // bound to.
 struct NameBindings {
-    type_def: Option<TypeNsDef>,    //< Meaning in type namespace.
+    type_def: RefCell<Option<TypeNsDef>>,   //< Meaning in type namespace.
     value_def: Option<ValueNsDef>,  //< Meaning in value namespace.
 }
 
@@ -528,22 +529,22 @@ impl NameBindings {
         // Merges the module with the existing type def or creates a new one.
         let module_ = @Module::new(parent_link, def_id, kind, external,
                                        is_public);
-        match self.type_def {
+        match self.type_def.get() {
             None => {
-                self.type_def = Some(TypeNsDef {
+                self.type_def.set(Some(TypeNsDef {
                     is_public: is_public,
                     module_def: Some(module_),
                     type_def: None,
                     type_span: Some(sp)
-                });
+                }));
             }
             Some(type_def) => {
-                self.type_def = Some(TypeNsDef {
+                self.type_def.set(Some(TypeNsDef {
                     is_public: is_public,
                     module_def: Some(module_),
                     type_span: Some(sp),
                     type_def: type_def.type_def
-                });
+                }));
             }
         }
     }
@@ -556,16 +557,16 @@ impl NameBindings {
                        external: bool,
                        is_public: bool,
                        _sp: Span) {
-        match self.type_def {
+        match self.type_def.get() {
             None => {
                 let module = @Module::new(parent_link, def_id, kind,
                                               external, is_public);
-                self.type_def = Some(TypeNsDef {
+                self.type_def.set(Some(TypeNsDef {
                     is_public: is_public,
                     module_def: Some(module),
                     type_def: None,
                     type_span: None,
-                })
+                }))
             }
             Some(type_def) => {
                 match type_def.module_def {
@@ -575,12 +576,12 @@ impl NameBindings {
                                                       kind,
                                                       external,
                                                       is_public);
-                        self.type_def = Some(TypeNsDef {
+                        self.type_def.set(Some(TypeNsDef {
                             is_public: is_public,
                             module_def: Some(module),
                             type_def: type_def.type_def,
                             type_span: None,
-                        })
+                        }))
                     }
                     Some(module_def) => module_def.kind.set(kind),
                 }
@@ -591,22 +592,22 @@ impl NameBindings {
     /// Records a type definition.
     fn define_type(&mut self, def: Def, sp: Span, is_public: bool) {
         // Merges the type with the existing type def or creates a new one.
-        match self.type_def {
+        match self.type_def.get() {
             None => {
-                self.type_def = Some(TypeNsDef {
+                self.type_def.set(Some(TypeNsDef {
                     module_def: None,
                     type_def: Some(def),
                     type_span: Some(sp),
                     is_public: is_public,
-                });
+                }));
             }
             Some(type_def) => {
-                self.type_def = Some(TypeNsDef {
+                self.type_def.set(Some(TypeNsDef {
                     type_def: Some(def),
                     type_span: Some(sp),
                     module_def: type_def.module_def,
                     is_public: is_public,
-                });
+                }));
             }
         }
     }
@@ -619,7 +620,8 @@ impl NameBindings {
 
     /// Returns the module node if applicable.
     fn get_module_if_available(&self) -> Option<@Module> {
-        match self.type_def {
+        let type_def = self.type_def.borrow();
+        match *type_def.get() {
             Some(ref type_def) => (*type_def).module_def,
             None => None
         }
@@ -641,14 +643,14 @@ impl NameBindings {
 
     fn defined_in_namespace(&self, namespace: Namespace) -> bool {
         match namespace {
-            TypeNS   => return self.type_def.is_some(),
+            TypeNS   => return self.type_def.get().is_some(),
             ValueNS  => return self.value_def.is_some()
         }
     }
 
     fn defined_in_public_namespace(&self, namespace: Namespace) -> bool {
         match namespace {
-            TypeNS => match self.type_def {
+            TypeNS => match self.type_def.get() {
                 Some(def) => def.is_public, None => false
             },
             ValueNS => match self.value_def {
@@ -660,10 +662,10 @@ impl NameBindings {
     fn def_for_namespace(&self, namespace: Namespace) -> Option<Def> {
         match namespace {
             TypeNS => {
-                match self.type_def {
+                match self.type_def.get() {
                     None => None,
-                    Some(ref type_def) => {
-                        match (*type_def).type_def {
+                    Some(type_def) => {
+                        match type_def.type_def {
                             Some(type_def) => Some(type_def),
                             None => {
                                 match type_def.module_def {
@@ -693,7 +695,7 @@ impl NameBindings {
         if self.defined_in_namespace(namespace) {
             match namespace {
                 TypeNS  => {
-                    match self.type_def {
+                    match self.type_def.get() {
                         None => None,
                         Some(type_def) => type_def.type_span
                     }
@@ -713,7 +715,7 @@ impl NameBindings {
 
 fn NameBindings() -> NameBindings {
     NameBindings {
-        type_def: None,
+        type_def: RefCell::new(None),
         value_def: None
     }
 }
@@ -1607,7 +1609,7 @@ impl Resolver {
         match def {
           DefMod(def_id) | DefForeignMod(def_id) | DefStruct(def_id) |
           DefTy(def_id) => {
-            match child_name_bindings.type_def {
+            match child_name_bindings.type_def.get() {
               Some(TypeNsDef { module_def: Some(module_def), .. }) => {
                 debug!("(building reduced graph for external crate) \
                         already created module");
@@ -1799,7 +1801,7 @@ impl Resolver {
                                 // Process the static methods. First,
                                 // create the module.
                                 let type_module;
-                                match child_name_bindings.type_def {
+                                match child_name_bindings.type_def.get() {
                                     Some(TypeNsDef {
                                         module_def: Some(module_def),
                                         ..
@@ -2212,12 +2214,12 @@ impl Resolver {
     fn create_name_bindings_from_module(module: @Module)
                                             -> NameBindings {
         NameBindings {
-            type_def: Some(TypeNsDef {
+            type_def: RefCell::new(Some(TypeNsDef {
                 is_public: false,
                 module_def: Some(module),
                 type_def: None,
                 type_span: None
-            }),
+            })),
             value_def: None,
         }
     }
@@ -2396,7 +2398,7 @@ impl Resolver {
         match type_result {
             BoundResult(target_module, name_bindings) => {
                 debug!("(resolving single import) found type target: {:?}",
-                        name_bindings.type_def.unwrap().type_def);
+                        name_bindings.type_def.get().unwrap().type_def);
                 import_resolution.type_target =
                     Some(Target::new(target_module, name_bindings));
                 import_resolution.type_id = directive.id;
@@ -2649,7 +2651,7 @@ impl Resolver {
                 Success((target, used_proxy)) => {
                     // Check to see whether there are type bindings, and, if
                     // so, whether there is a module within.
-                    match target.bindings.type_def {
+                    match target.bindings.type_def.get() {
                         Some(type_def) => {
                             match type_def.module_def {
                                 None => {
@@ -2970,9 +2972,9 @@ impl Resolver {
         match resolve_result {
             Success((target, _)) => {
                 let bindings = &mut *target.bindings;
-                match bindings.type_def {
-                    Some(ref type_def) => {
-                        match (*type_def).module_def {
+                match bindings.type_def.get() {
+                    Some(type_def) => {
+                        match type_def.module_def {
                             None => {
                                 error!("!!! (resolving module in lexical \
                                         scope) module wasn't actually a \
