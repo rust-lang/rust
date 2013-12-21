@@ -158,7 +158,7 @@ pub struct SelfInfo {
 /// share the inherited fields.
 pub struct Inherited {
     infcx: @infer::InferCtxt,
-    locals: @mut HashMap<ast::NodeId, ty::t>,
+    locals: @RefCell<HashMap<ast::NodeId, ty::t>>,
     param_env: ty::ParameterEnvironment,
 
     // Temporary tables:
@@ -260,7 +260,7 @@ impl Inherited {
            -> Inherited {
         Inherited {
             infcx: infer::new_infer_ctxt(tcx),
-            locals: @mut HashMap::new(),
+            locals: @RefCell::new(HashMap::new()),
             param_env: param_env,
             node_types: RefCell::new(HashMap::new()),
             node_type_substs: RefCell::new(HashMap::new()),
@@ -351,11 +351,13 @@ impl GatherLocalsVisitor {
                     // infer the variable's type
                     let var_id = self.fcx.infcx().next_ty_var_id();
                     let var_ty = ty::mk_var(self.fcx.tcx(), var_id);
-                    self.fcx.inh.locals.insert(nid, var_ty);
+                    let mut locals = self.fcx.inh.locals.borrow_mut();
+                    locals.get().insert(nid, var_ty);
                 }
                 Some(typ) => {
                     // take type that the user specified
-                    self.fcx.inh.locals.insert(nid, typ);
+                    let mut locals = self.fcx.inh.locals.borrow_mut();
+                    locals.get().insert(nid, typ);
                 }
             }
     }
@@ -369,10 +371,13 @@ impl Visitor<()> for GatherLocalsVisitor {
               _ => Some(self.fcx.to_ty(local.ty))
             };
             self.assign(local.id, o_ty);
-            debug!("Local variable {} is assigned type {}",
-                   self.fcx.pat_to_str(local.pat),
-                   self.fcx.infcx().ty_to_str(
-                       self.fcx.inh.locals.get_copy(&local.id)));
+            {
+                let locals = self.fcx.inh.locals.borrow();
+                debug!("Local variable {} is assigned type {}",
+                       self.fcx.pat_to_str(local.pat),
+                       self.fcx.infcx().ty_to_str(
+                           locals.get().get_copy(&local.id)));
+            }
             visit::walk_local(self, local, ());
 
     }
@@ -382,10 +387,13 @@ impl Visitor<()> for GatherLocalsVisitor {
               ast::PatIdent(_, ref path, _)
                   if pat_util::pat_is_binding(self.fcx.ccx.tcx.def_map, p) => {
                 self.assign(p.id, None);
-                debug!("Pattern binding {} is assigned to {}",
-                       self.tcx.sess.str_of(path.segments[0].identifier),
-                       self.fcx.infcx().ty_to_str(
-                           self.fcx.inh.locals.get_copy(&p.id)));
+                {
+                    let locals = self.fcx.inh.locals.borrow();
+                    debug!("Pattern binding {} is assigned to {}",
+                           self.tcx.sess.str_of(path.segments[0].identifier),
+                           self.fcx.infcx().ty_to_str(
+                               locals.get().get_copy(&p.id)));
+                }
               }
               _ => {}
             }
@@ -509,9 +517,10 @@ pub fn check_fn(ccx: @CrateCtxt,
         // Add the self parameter
         for self_info in opt_self_info.iter() {
             visit.assign(self_info.self_id, Some(self_info.self_ty));
+            let locals = fcx.inh.locals.borrow();
             debug!("self is assigned to {}",
                    fcx.infcx().ty_to_str(
-                       fcx.inh.locals.get_copy(&self_info.self_id)));
+                       locals.get().get_copy(&self_info.self_id)));
         }
 
         // Add formal parameters.
@@ -1079,7 +1088,8 @@ impl FnCtxt {
     }
 
     pub fn local_ty(&self, span: Span, nid: ast::NodeId) -> ty::t {
-        match self.inh.locals.find(&nid) {
+        let locals = self.inh.locals.borrow();
+        match locals.get().find(&nid) {
             Some(&t) => t,
             None => {
                 self.tcx().sess.span_bug(
