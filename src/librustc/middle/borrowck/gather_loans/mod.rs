@@ -85,7 +85,7 @@ impl<'a> visit::Visitor<()> for GatherLoanCtxt<'a> {
         gather_loans_in_fn(self, fk, fd, b, s, n);
     }
     fn visit_stmt(&mut self, s:@Stmt, _:()) {
-        add_stmt_to_map(self, s);
+        visit::walk_stmt(self, s, ());
     }
     fn visit_pat(&mut self, p:&Pat, _:()) {
         add_pat_to_id_range(self, p);
@@ -824,15 +824,3 @@ impl<'a> GatherLoanCtxt<'a> {
     }
 }
 
-// Setting up info that preserve needs.
-// This is just the most convenient place to do it.
-fn add_stmt_to_map(this: &mut GatherLoanCtxt,
-                   stmt: @ast::Stmt) {
-    match stmt.node {
-        ast::StmtExpr(_, id) | ast::StmtSemi(_, id) => {
-            this.bccx.stmt_map.insert(id);
-        }
-        _ => ()
-    }
-    visit::walk_stmt(this, stmt, ());
-}
