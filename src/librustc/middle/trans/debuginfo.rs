@@ -248,7 +248,7 @@ impl FunctionDebugContext {
 }
 
 struct FunctionDebugContextData {
-    scope_map: HashMap<ast::NodeId, DIScope>,
+    scope_map: RefCell<HashMap<ast::NodeId, DIScope>>,
     fn_metadata: DISubprogram,
     argument_counter: uint,
     source_locations_enabled: bool,
@@ -762,14 +762,21 @@ pub fn create_function_debug_context(cx: &CrateContext,
 
     // Initialize fn debug context (including scope map and namespace map)
     let mut fn_debug_context = ~FunctionDebugContextData {
-        scope_map: HashMap::new(),
+        scope_map: RefCell::new(HashMap::new()),
         fn_metadata: fn_metadata,
         argument_counter: 1,
         source_locations_enabled: false,
     };
 
     let arg_pats = fn_decl.inputs.map(|arg_ref| arg_ref.pat);
-    populate_scope_map(cx, arg_pats, top_level_block, fn_metadata, &mut fn_debug_context.scope_map);
+    {
+        let mut scope_map = fn_debug_context.scope_map.borrow_mut();
+        populate_scope_map(cx,
+                           arg_pats,
+                           top_level_block,
+                           fn_metadata,
+                           scope_map.get());
+    }
 
     // Clear the debug location so we don't assign them in the function prelude
     set_debug_location(cx, UnknownLocation);
@@ -1089,8 +1096,9 @@ fn scope_metadata(fcx: &FunctionContext,
                   span: Span)
                -> DIScope {
     let scope_map = &fcx.debug_context.get_ref(fcx.ccx, span).scope_map;
+    let scope_map = scope_map.borrow();
 
-    match scope_map.find_copy(&node_id) {
+    match scope_map.get().find_copy(&node_id) {
         Some(scope_metadata) => scope_metadata,
         None => {
             let node = fcx.ccx.tcx.items.get_copy(&node_id);
