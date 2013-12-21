@@ -251,7 +251,7 @@ struct IrMaps {
     variable_map: RefCell<HashMap<NodeId, Variable>>,
     capture_info_map: RefCell<HashMap<NodeId, @~[CaptureInfo]>>,
     var_kinds: RefCell<~[VarKind]>,
-    lnks: ~[LiveNodeKind],
+    lnks: RefCell<~[LiveNodeKind]>,
 }
 
 fn IrMaps(tcx: ty::ctxt,
@@ -268,7 +268,7 @@ fn IrMaps(tcx: ty::ctxt,
         variable_map: RefCell::new(HashMap::new()),
         capture_info_map: RefCell::new(HashMap::new()),
         var_kinds: RefCell::new(~[]),
-        lnks: ~[],
+        lnks: RefCell::new(~[]),
     }
 }
 
@@ -276,7 +276,8 @@ impl IrMaps {
     pub fn add_live_node(&mut self, lnk: LiveNodeKind) -> LiveNode {
         let num_live_nodes = self.num_live_nodes.get();
         let ln = LiveNode(num_live_nodes);
-        self.lnks.push(lnk);
+        let mut lnks = self.lnks.borrow_mut();
+        lnks.get().push(lnk);
         self.num_live_nodes.set(num_live_nodes + 1);
 
         debug!("{} is of kind {}", ln.to_str(),
@@ -353,7 +354,8 @@ impl IrMaps {
     }
 
     pub fn lnk(&mut self, ln: LiveNode) -> LiveNodeKind {
-        self.lnks[*ln]
+        let lnks = self.lnks.borrow();
+        lnks.get()[*ln]
     }
 }
 
@@ -776,10 +778,16 @@ impl Liveness {
     pub fn ln_str(&self, ln: LiveNode) -> ~str {
         str::from_utf8_owned(io::mem::with_mem_writer(|wr| {
             let wr = wr as &mut io::Writer;
-            write!(wr, "[ln({}) of kind {:?} reads", *ln, self.ir.lnks[*ln]);
-            self.write_vars(wr, ln, |idx| self.users[idx].reader );
+            {
+                let lnks = self.ir.lnks.borrow();
+                write!(wr,
+                       "[ln({}) of kind {:?} reads",
+                       *ln,
+                       lnks.get()[*ln]);
+            }
+            self.write_vars(wr, ln, |idx| self.users[idx].reader);
             write!(wr, "  writes");
-            self.write_vars(wr, ln, |idx| self.users[idx].writer );
+            self.write_vars(wr, ln, |idx| self.users[idx].writer);
             write!(wr, "  precedes {}]", self.successors[*ln].to_str());
         }))
     }
