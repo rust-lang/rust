@@ -232,7 +232,7 @@ pub struct FunctionContext {
     llself: Cell<Option<ValSelfData>>,
     // The a value alloca'd for calls to upcalls.rust_personality. Used when
     // outputting the resume instruction.
-    personality: Option<ValueRef>,
+    personality: Cell<Option<ValueRef>>,
 
     // True if the caller expects this fn to use the out pointer to
     // return. Either way, your code should write into llretptr, but if
