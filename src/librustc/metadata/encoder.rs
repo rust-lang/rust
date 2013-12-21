@@ -1611,7 +1611,9 @@ fn encode_lang_items(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
 fn encode_native_libraries(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
     ebml_w.start_tag(tag_native_libraries);
 
-    for &(ref lib, kind) in ecx.cstore.get_used_libraries().iter() {
+    let used_libraries = ecx.tcx.sess.cstore.get_used_libraries();
+    let used_libraries = used_libraries.borrow();
+    for &(ref lib, kind) in used_libraries.get().iter() {
         match kind {
             cstore::NativeStatic => {} // these libraries are not propagated
             cstore::NativeFramework | cstore::NativeUnknown => {
