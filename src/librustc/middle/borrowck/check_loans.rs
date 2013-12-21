@@ -18,7 +18,6 @@
 // 4. moves do not affect things loaned out in any way
 
 
-use std::hashmap::HashSet;
 use mc = middle::mem_categorization;
 use middle::borrowck::*;
 use middle::moves;
@@ -37,7 +36,6 @@ struct CheckLoanCtxt<'a> {
     dfcx_loans: &'a LoanDataFlow,
     move_data: @move_data::FlowedMoveData,
     all_loans: &'a [Loan],
-    reported: @mut HashSet<ast::NodeId>,
 }
 
 impl<'a> Visitor<()> for CheckLoanCtxt<'a> {
@@ -75,7 +73,6 @@ pub fn check_loans(bccx: &BorrowckCtxt,
         dfcx_loans: dfcx_loans,
         move_data: @move_data,
         all_loans: all_loans,
-        reported: @mut HashSet::new(),
     };
 
     clcx.visit_block(body, ());
