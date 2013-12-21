@@ -1,8 +1,8 @@
-% Rust Foreign Function Interface Tutorial
+% Rust Foreign Function Interface Guide
 
 # Introduction
 
-This tutorial will use the [snappy](https://code.google.com/p/snappy/)
+This guide will use the [snappy](https://code.google.com/p/snappy/)
 compression/decompression library as an introduction to writing bindings for
 foreign code. Rust is currently unable to call directly into a C++ library, but
 snappy includes a C interface (documented in

@@ -3035,8 +3035,6 @@ but for this tutorial it's only important to know that you can optionally annota
 extern mod rust = "github.com/mozilla/rust"; // pretend Rust is a simple library
 ~~~
 
-[rustpkg]: rustpkg.html
-
 ## Crate metadata and settings
 
 For every crate you can define a number of metadata items, such as link name, version or author.
@@ -3194,7 +3192,7 @@ re-export a bunch of 'officially blessed' crates that get managed with `rustpkg`
 # What next?
 
 Now that you know the essentials, check out any of the additional
-tutorials on individual topics.
+guides on individual topics.
 
 * [Borrowed pointers][borrow]
 * [Tasks and communication][tasks]
@@ -3209,14 +3207,14 @@ tutorials on individual topics.
 There is further documentation on the [wiki], however those tend to be even
 more out of date than this document.
 
-[borrow]: tutorial-borrowed-ptr.html
-[tasks]: tutorial-tasks.html
-[macros]: tutorial-macros.html
-[ffi]: tutorial-ffi.html
-[container]: tutorial-container.html
-[conditions]: tutorial-conditions.html
-[rustpkg]: tutorial-rustpkg.html
-[testing]: tutorial-testing.html
+[borrow]: guide-borrowed-ptr.html
+[tasks]: guide-tasks.html
+[macros]: guide-macros.html
+[ffi]: guide-ffi.html
+[container]: guide-container.html
+[conditions]: guide-conditions.html
+[rustpkg]: guide-rustpkg.html
+[testing]: guide-testing.html
 [rustdoc]: rustdoc.html
 
 [wiki]: https://github.com/mozilla/rust/wiki/Docs

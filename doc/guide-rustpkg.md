@@ -1,9 +1,9 @@
-% Rust Packaging Tutorial
+% Rust Packaging Guide
 
 # Introduction
 
 Sharing is caring. Rust comes with a tool, `rustpkg`, which allows you to
-package up your Rust code and share it with other people. This tutorial will
+package up your Rust code and share it with other people. This guide will
 get you started on all of the concepts and commands you need to give the gift
 of Rust code to someone else.
 
@@ -92,7 +92,7 @@ There are also default file names you'll want to follow as well:
 Now that you've got workspaces down, let's build your own copy of `hello`. Go
 to wherever you keep your personal projects, and let's make all of the
 directories we'll need. I'll refer to this personal project directory as
-`~/src` for the rest of this tutorial.
+`~/src` for the rest of this guide.
 
 ## Creating our workspace
 
