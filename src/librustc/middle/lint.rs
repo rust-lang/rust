@@ -1001,8 +1001,9 @@ fn check_unused_unsafe(cx: &Context, e: &ast::Expr) {
     match e.node {
         // Don't warn about generated blocks, that'll just pollute the output.
         ast::ExprBlock(ref blk) => {
+            let used_unsafe = cx.tcx.used_unsafe.borrow();
             if blk.rules == ast::UnsafeBlock(ast::UserProvided) &&
-                !cx.tcx.used_unsafe.contains(&blk.id) {
+                !used_unsafe.get().contains(&blk.id) {
                 cx.span_lint(unused_unsafe, blk.span,
                              "unnecessary `unsafe` block");
             }
