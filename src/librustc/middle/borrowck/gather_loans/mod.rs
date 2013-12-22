@@ -607,7 +607,10 @@ impl<'a> GatherLoanCtxt<'a> {
 
         match *loan_path {
             LpVar(local_id) => {
-                self.tcx().used_mut_nodes.insert(local_id);
+                let mut used_mut_nodes = self.tcx()
+                                             .used_mut_nodes
+                                             .borrow_mut();
+                used_mut_nodes.get().insert(local_id);
             }
             LpExtend(base, mc::McInherited, _) => {
                 self.mark_loan_path_as_mutated(base);

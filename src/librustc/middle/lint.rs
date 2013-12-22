@@ -1038,7 +1038,8 @@ fn check_unused_mut_pat(cx: &Context, p: &ast::Pat) {
                 }
             };
 
-            if !initial_underscore && !cx.tcx.used_mut_nodes.contains(&p.id) {
+            let used_mut_nodes = cx.tcx.used_mut_nodes.borrow();
+            if !initial_underscore && !used_mut_nodes.get().contains(&p.id) {
                 cx.span_lint(unused_mut, p.span,
                              "variable does not need to be mutable");
             }

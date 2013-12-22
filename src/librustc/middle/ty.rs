@@ -353,7 +353,7 @@ struct ctxt_ {
     // Set of nodes which mark locals as mutable which end up getting used at
     // some point. Local variable definitions not in this set can be warned
     // about.
-    used_mut_nodes: @mut HashSet<ast::NodeId>,
+    used_mut_nodes: RefCell<HashSet<ast::NodeId>>,
 
     // vtable resolution information for impl declarations
     impl_vtables: typeck::impl_vtable_map,
@@ -1005,7 +1005,7 @@ pub fn mk_ctxt(s: session::Session,
         inherent_impls: RefCell::new(HashMap::new()),
         impls: RefCell::new(HashMap::new()),
         used_unsafe: RefCell::new(HashSet::new()),
-        used_mut_nodes: @mut HashSet::new(),
+        used_mut_nodes: RefCell::new(HashSet::new()),
         impl_vtables: RefCell::new(HashMap::new()),
         populated_external_types: @mut HashSet::new(),
         populated_external_traits: @mut HashSet::new(),
