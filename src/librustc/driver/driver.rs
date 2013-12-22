@@ -167,7 +167,7 @@ pub fn phase_2_configure_and_expand(sess: Session,
     let time_passes = sess.time_passes();
 
     sess.building_library.set(session::building_library(sess.opts, &crate));
-    *sess.outputs = session::collect_outputs(sess.opts, crate.attrs);
+    sess.outputs.set(session::collect_outputs(sess.opts, crate.attrs));
 
     time(time_passes, "gated feature checking", (), |_|
          front::feature_gate::check_crate(sess, &crate));
@@ -882,7 +882,7 @@ pub fn build_session_(sopts: @session::options,
         working_dir: os::getcwd(),
         lints: RefCell::new(HashMap::new()),
         node_id: Cell::new(1),
-        outputs: @mut ~[],
+        outputs: @RefCell::new(~[]),
     }
 }
 

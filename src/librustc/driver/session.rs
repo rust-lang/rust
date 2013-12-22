@@ -215,7 +215,7 @@ pub struct Session_ {
     lints: RefCell<HashMap<ast::NodeId,
                            ~[(lint::lint, codemap::Span, ~str)]>>,
     node_id: Cell<ast::NodeId>,
-    outputs: @mut ~[OutputStyle],
+    outputs: @RefCell<~[OutputStyle]>,
 }
 
 pub type Session = @Session_;
