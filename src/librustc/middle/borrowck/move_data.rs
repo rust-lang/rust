@@ -43,7 +43,7 @@ pub struct MoveData {
     /// Assignments to a variable, like `x = foo`. These are assigned
     /// bits for dataflow, since we must track them to ensure that
     /// immutable variables are assigned at most once along each path.
-    var_assignments: ~[Assignment],
+    var_assignments: RefCell<~[Assignment]>,
 
     /// Assignments to a path, like `x.f = foo`. These are not
     /// assigned dataflow bits, but we track them because they still
@@ -169,7 +169,7 @@ impl MoveData {
             path_map: RefCell::new(HashMap::new()),
             moves: RefCell::new(~[]),
             path_assignments: RefCell::new(~[]),
-            var_assignments: ~[],
+            var_assignments: RefCell::new(~[]),
             assignee_ids: HashSet::new(),
         }
     }
@@ -404,10 +404,11 @@ impl MoveData {
         };
 
         if self.is_var_path(path_index) {
+            let mut var_assignments = self.var_assignments.borrow_mut();
             debug!("add_assignment[var](lp={}, assignment={}, path_index={:?})",
-                   lp.repr(tcx), self.var_assignments.len(), path_index);
+                   lp.repr(tcx), var_assignments.get().len(), path_index);
 
-            self.var_assignments.push(assignment);
+            var_assignments.get().push(assignment);
         } else {
             debug!("add_assignment[path](lp={}, path_index={:?})",
                    lp.repr(tcx), path_index);
@@ -438,9 +439,12 @@ impl MoveData {
             }
         }
 
-        for (i, assignment) in self.var_assignments.iter().enumerate() {
-            dfcx_assign.add_gen(assignment.id, i);
-            self.kill_moves(assignment.path, assignment.id, dfcx_moves);
+        {
+            let var_assignments = self.var_assignments.borrow();
+            for (i, assignment) in var_assignments.get().iter().enumerate() {
+                dfcx_assign.add_gen(assignment.id, i);
+                self.kill_moves(assignment.path, assignment.id, dfcx_moves);
+            }
         }
 
         {
@@ -470,14 +474,18 @@ impl MoveData {
         }
 
         // Kill all assignments when the variable goes out of scope:
-        for (assignment_index, assignment) in self.var_assignments.iter().enumerate() {
-            match *self.path_loan_path(assignment.path) {
-                LpVar(id) => {
-                    let kill_id = tcx.region_maps.encl_scope(id);
-                    dfcx_assign.add_kill(kill_id, assignment_index);
-                }
-                LpExtend(..) => {
-                    tcx.sess.bug("Var assignment for non var path");
+        {
+            let var_assignments = self.var_assignments.borrow();
+            for (assignment_index, assignment) in
+                    var_assignments.get().iter().enumerate() {
+                match *self.path_loan_path(assignment.path) {
+                    LpVar(id) => {
+                        let kill_id = tcx.region_maps.encl_scope(id);
+                        dfcx_assign.add_kill(kill_id, assignment_index);
+                    }
+                    LpExtend(..) => {
+                        tcx.sess.bug("Var assignment for non var path");
+                    }
                 }
             }
         }
@@ -560,12 +568,14 @@ impl FlowedMoveData {
                                  id_range,
                                  moves.get().len())
         };
-        let mut dfcx_assign =
+        let mut dfcx_assign = {
+            let var_assignments = move_data.var_assignments.borrow();
             DataFlowContext::new(tcx,
                                  method_map,
                                  AssignDataFlowOperator,
                                  id_range,
-                                 move_data.var_assignments.len());
+                                 var_assignments.get().len())
+        };
         move_data.add_gen_kills(tcx, &mut dfcx_moves, &mut dfcx_assign);
         dfcx_moves.propagate(body);
         dfcx_assign.propagate(body);
@@ -681,7 +691,8 @@ impl FlowedMoveData {
         };
 
         self.dfcx_assign.each_bit_on_entry_frozen(id, |index| {
-            let assignment = &self.move_data.var_assignments[index];
+            let var_assignments = self.move_data.var_assignments.borrow();
+            let assignment = &var_assignments.get()[index];
             if assignment.path == loan_path_index && !f(assignment) {
                 false
             } else {
