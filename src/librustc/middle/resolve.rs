@@ -46,7 +46,7 @@ struct binding_info {
 type BindingMap = HashMap<Name,binding_info>;
 
 // Trait method resolution
-pub type TraitMap = HashMap<NodeId,@mut ~[DefId]>;
+pub type TraitMap = HashMap<NodeId,@RefCell<~[DefId]>>;
 
 // This is the replacement export map. It maps a module to all of the exports
 // within.
@@ -5244,14 +5244,14 @@ impl Resolver {
                 // the field name so that we can do some nice error reporting
                 // later on in typeck.
                 let traits = self.search_for_traits_containing_method(ident);
-                self.trait_map.insert(expr.id, @mut traits);
+                self.trait_map.insert(expr.id, @RefCell::new(traits));
             }
             ExprMethodCall(_, _, ident, _, _, _) => {
                 debug!("(recording candidate traits for expr) recording \
                         traits for {}",
                        expr.id);
                 let traits = self.search_for_traits_containing_method(ident);
-                self.trait_map.insert(expr.id, @mut traits);
+                self.trait_map.insert(expr.id, @RefCell::new(traits));
             }
             ExprBinary(_, BiAdd, _, _) | ExprAssignOp(_, BiAdd, _, _) => {
                 let i = self.lang_items.add_trait();
@@ -5442,7 +5442,7 @@ impl Resolver {
                                     trait_id: Option<DefId>) {
         match trait_id {
             Some(trait_id) => {
-                self.trait_map.insert(expr_id, @mut ~[trait_id]);
+                self.trait_map.insert(expr_id, @RefCell::new(~[trait_id]));
             }
             None => {}
         }
