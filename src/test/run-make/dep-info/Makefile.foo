@@ -1,10 +1,6 @@
-ifeq ($(shell uname),Darwin)
-LIBEXT=dylib
-else
-LIBEXT=so
-endif
+LIB := $(shell $(RUSTC) --crate-file-name --lib lib.rs)
 
-$(TMPDIR)/libfoo-b517899a-0.1.$(LIBEXT):
+$(TMPDIR)/$(LIB):
 	$(RUSTC) --dep-info --lib lib.rs
 	touch $(TMPDIR)/done
 
