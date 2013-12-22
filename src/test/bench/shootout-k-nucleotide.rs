@@ -9,7 +9,6 @@ use std::libc::{stat, strlen};
 use std::ptr::null;
 use std::unstable::intrinsics::init;
 use std::vec::{reverse};
-use extra::sort::quick_sort3;
 
 static LINE_LEN: uint = 80;
 static TABLE: [u8, ..4] = [ 'A' as u8, 'C' as u8, 'G' as u8, 'T' as u8 ];
@@ -267,7 +266,7 @@ fn print_frequencies(frequencies: &Table, frame: i32) {
     for frequencies.each |entry| {
         vector.push((entry.code, entry.count));
     }
-    quick_sort3(vector);
+    vector.sort();
 
     let mut total_count = 0;
     for vector.each |&(_, count)| {

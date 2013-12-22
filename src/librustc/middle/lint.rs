@@ -63,7 +63,7 @@ use syntax::{ast, ast_util, visit};
 use syntax::ast_util::IdVisitingOperation;
 use syntax::visit::Visitor;
 
-#[deriving(Clone, Eq)]
+#[deriving(Clone, Eq, Ord, TotalEq, TotalOrd)]
 pub enum lint {
     ctypes,
     unused_imports,
@@ -110,20 +110,16 @@ pub fn level_to_str(lv: level) -> &'static str {
     }
 }
 
-#[deriving(Clone, Eq, Ord)]
+#[deriving(Clone, Eq, Ord, TotalEq, TotalOrd)]
 pub enum level {
     allow, warn, deny, forbid
 }
 
-#[deriving(Clone, Eq)]
+#[deriving(Clone, Eq, Ord, TotalEq, TotalOrd)]
 pub struct LintSpec {
+    default: level,
     lint: lint,
     desc: &'static str,
-    default: level
-}
-
-impl Ord for LintSpec {
-    fn lt(&self, other: &LintSpec) -> bool { self.default < other.default }
 }
 
 pub type LintDict = HashMap<&'static str, LintSpec>;

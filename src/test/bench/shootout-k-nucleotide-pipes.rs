@@ -15,7 +15,6 @@
 
 extern mod extra;
 
-use extra::sort;
 use std::cmp::Ord;
 use std::comm;
 use std::hashmap::HashMap;
@@ -27,35 +26,32 @@ use std::task;
 use std::util;
 use std::vec;
 
+fn f64_cmp(x: f64, y: f64) -> Ordering {
+    // arbitrarily decide that NaNs are larger than everything.
+    if y.is_nan() {
+        Less
+    } else if x.is_nan() {
+        Greater
+    } else if x < y {
+        Less
+    } else if x == y {
+        Equal
+    } else {
+        Greater
+    }
+}
+
 // given a map, print a sorted version of it
 fn sort_and_fmt(mm: &HashMap<~[u8], uint>, total: uint) -> ~str {
    fn pct(xx: uint, yy: uint) -> f64 {
       return (xx as f64) * 100.0 / (yy as f64);
    }
 
-   fn le_by_val<TT:Clone,
-                UU:Clone + Ord>(
-                kv0: &(TT,UU),
-                kv1: &(TT,UU))
-                -> bool {
-      let (_, v0) = (*kv0).clone();
-      let (_, v1) = (*kv1).clone();
-      return v0 >= v1;
-   }
-
-   fn le_by_key<TT:Clone + Ord,
-                UU:Clone>(
-                kv0: &(TT,UU),
-                kv1: &(TT,UU))
-                -> bool {
-      let (k0, _) = (*kv0).clone();
-      let (k1, _) = (*kv1).clone();
-      return k0 <= k1;
-   }
-
    // sort by key, then by value
-   fn sortKV<TT:Clone + Ord, UU:Clone + Ord>(orig: ~[(TT,UU)]) -> ~[(TT,UU)] {
-      return sort::merge_sort(sort::merge_sort(orig, le_by_key), le_by_val);
+   fn sortKV(mut orig: ~[(~[u8],f64)]) -> ~[(~[u8],f64)] {
+        orig.sort_by(|&(ref a, _), &(ref b, _)| a.cmp(b));
+        orig.sort_by(|&(_, a), &(_, b)| f64_cmp(b, a));
+        orig
    }
 
    let mut pairs = ~[];

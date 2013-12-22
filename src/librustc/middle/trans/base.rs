@@ -73,7 +73,6 @@ use std::libc::c_uint;
 use std::vec;
 use std::local_data;
 use extra::time;
-use extra::sort;
 use syntax::ast::Name;
 use syntax::ast_map::{path, path_elt_to_str, path_name, path_pretty_name};
 use syntax::ast_util::{local_def, is_local};
@@ -3163,10 +3162,9 @@ pub fn trans_crate(sess: session::Session,
         println!("n_inlines: {}", ccx.stats.n_inlines);
         println!("n_closures: {}", ccx.stats.n_closures);
         println("fn stats:");
-        sort::quick_sort(ccx.stats.fn_stats,
-                         |&(_, _, insns_a), &(_, _, insns_b)| {
-            insns_a > insns_b
-        });
+
+        ccx.stats.fn_stats.sort_by(|&(_, _, insns_a), &(_, _, insns_b)| insns_b.cmp(&insns_a));
+
         for tuple in ccx.stats.fn_stats.iter() {
             match *tuple {
                 (ref name, ms, insns) => {
