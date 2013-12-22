@@ -52,7 +52,7 @@ The region maps encode information about region relationships.
 */
 pub struct RegionMaps {
     priv scope_map: RefCell<HashMap<ast::NodeId, ast::NodeId>>,
-    priv free_region_map: HashMap<FreeRegion, ~[FreeRegion]>,
+    priv free_region_map: RefCell<HashMap<FreeRegion, ~[FreeRegion]>>,
     priv cleanup_scopes: HashSet<ast::NodeId>
 }
 
@@ -75,7 +75,8 @@ struct RegionResolutionVisitor {
 
 impl RegionMaps {
     pub fn relate_free_regions(&mut self, sub: FreeRegion, sup: FreeRegion) {
-        match self.free_region_map.find_mut(&sub) {
+        let mut free_region_map = self.free_region_map.borrow_mut();
+        match free_region_map.get().find_mut(&sub) {
             Some(sups) => {
                 if !sups.iter().any(|x| x == &sup) {
                     sups.push(sup);
@@ -87,7 +88,7 @@ impl RegionMaps {
 
         debug!("relate_free_regions(sub={:?}, sup={:?})", sub, sup);
 
-        self.free_region_map.insert(sub, ~[sup]);
+        free_region_map.get().insert(sub, ~[sup]);
     }
 
     pub fn record_parent(&mut self, sub: ast::NodeId, sup: ast::NodeId) {
@@ -198,7 +199,8 @@ impl RegionMaps {
         let mut queue = ~[sub];
         let mut i = 0;
         while i < queue.len() {
-            match self.free_region_map.find(&queue[i]) {
+            let free_region_map = self.free_region_map.borrow();
+            match free_region_map.get().find(&queue[i]) {
                 Some(parents) => {
                     for parent in parents.iter() {
                         if *parent == sup {
@@ -504,7 +506,7 @@ pub fn resolve_crate(sess: Session,
 {
     let region_maps = @mut RegionMaps {
         scope_map: RefCell::new(HashMap::new()),
-        free_region_map: HashMap::new(),
+        free_region_map: RefCell::new(HashMap::new()),
         cleanup_scopes: HashSet::new(),
     };
     let cx = Context {parent: None,
