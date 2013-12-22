@@ -214,7 +214,7 @@ pub struct Session_ {
     working_dir: Path,
     lints: RefCell<HashMap<ast::NodeId,
                            ~[(lint::lint, codemap::Span, ~str)]>>,
-    node_id: @mut ast::NodeId,
+    node_id: Cell<ast::NodeId>,
     outputs: @mut ~[OutputStyle],
 }
 
@@ -282,10 +282,10 @@ impl Session_ {
         self.reserve_node_ids(1)
     }
     pub fn reserve_node_ids(&self, count: ast::NodeId) -> ast::NodeId {
-        let v = *self.node_id;
+        let v = self.node_id.get();
 
         match v.checked_add(&count) {
-            Some(next) => { *self.node_id = next; }
+            Some(next) => { self.node_id.set(next); }
             None => self.bug("Input too large, ran out of node ids!")
         }
 
