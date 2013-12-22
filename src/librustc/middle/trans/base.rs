@@ -445,7 +445,7 @@ pub fn get_tydesc_simple(ccx: &CrateContext, t: ty::t) -> ValueRef {
     get_tydesc(ccx, t).tydesc
 }
 
-pub fn get_tydesc(ccx: &CrateContext, t: ty::t) -> @mut tydesc_info {
+pub fn get_tydesc(ccx: &CrateContext, t: ty::t) -> @tydesc_info {
     {
         let tydescs = ccx.tydescs.borrow();
         match tydescs.get().find(&t) {

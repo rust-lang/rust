@@ -110,7 +110,7 @@ pub fn free_ty_immediate(bcx: @Block, v: ValueRef, t: ty::t) -> @Block {
 }
 
 pub fn lazily_emit_all_tydesc_glue(ccx: @CrateContext,
-                                   static_ti: @mut tydesc_info) {
+                                   static_ti: @tydesc_info) {
     lazily_emit_tydesc_glue(ccx, abi::tydesc_field_take_glue, static_ti);
     lazily_emit_tydesc_glue(ccx, abi::tydesc_field_drop_glue, static_ti);
     lazily_emit_tydesc_glue(ccx, abi::tydesc_field_free_glue, static_ti);
@@ -176,7 +176,8 @@ pub fn simplified_glue_type(tcx: ty::ctxt, field: uint, t: ty::t) -> ty::t {
 
 pub fn lazily_emit_simplified_tydesc_glue(ccx: @CrateContext,
                                           field: uint,
-                                          ti: &mut tydesc_info) -> bool {
+                                          ti: &tydesc_info)
+                                          -> bool {
     let _icx = push_ctxt("lazily_emit_simplified_tydesc_glue");
     let simpl = simplified_glue_type(ccx.tcx, field, ti.ty);
     if simpl != ti.ty {
@@ -201,7 +202,7 @@ pub fn lazily_emit_simplified_tydesc_glue(ccx: @CrateContext,
 
 pub fn lazily_emit_tydesc_glue(ccx: @CrateContext,
                                field: uint,
-                               ti: @mut tydesc_info) {
+                               ti: @tydesc_info) {
     let _icx = push_ctxt("lazily_emit_tydesc_glue");
     let llfnty = Type::glue_fn(type_of(ccx, ti.ty).ptr_to());
 
@@ -269,7 +270,7 @@ pub fn call_tydesc_glue_full(bcx: @Block,
                              v: ValueRef,
                              tydesc: ValueRef,
                              field: uint,
-                             static_ti: Option<@mut tydesc_info>) {
+                             static_ti: Option<@tydesc_info>) {
     let _icx = push_ctxt("call_tydesc_glue_full");
     let ccx = bcx.ccx();
     // NB: Don't short-circuit even if this block is unreachable because
@@ -587,7 +588,7 @@ pub fn incr_refcnt_of_boxed(cx: @Block, box_ptr: ValueRef) {
 
 
 // Generates the declaration for (but doesn't emit) a type descriptor.
-pub fn declare_tydesc(ccx: &CrateContext, t: ty::t) -> @mut tydesc_info {
+pub fn declare_tydesc(ccx: &CrateContext, t: ty::t) -> @tydesc_info {
     // If emit_tydescs already ran, then we shouldn't be creating any new
     // tydescs.
     assert!(!ccx.finished_tydescs.get());
@@ -624,7 +625,7 @@ pub fn declare_tydesc(ccx: &CrateContext, t: ty::t) -> @mut tydesc_info {
 
     let ty_name = C_estr_slice(ccx, ppaux::ty_to_str(ccx.tcx, t).to_managed());
 
-    let inf = @mut tydesc_info {
+    let inf = @tydesc_info {
         ty: t,
         tydesc: gvar,
         size: llsize,
