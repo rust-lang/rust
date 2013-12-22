@@ -1914,7 +1914,8 @@ pub fn trans_closure(ccx: @CrateContext,
                      _attributes: &[ast::Attribute],
                      output_type: ty::t,
                      maybe_load_env: |@FunctionContext|) {
-    ccx.stats.n_closures += 1;
+    ccx.stats.n_closures.set(ccx.stats.n_closures.get() + 1);
+
     let _icx = push_ctxt("trans_closure");
     set_uwtable(llfndecl);
 
@@ -3253,7 +3254,7 @@ pub fn trans_crate(sess: session::Session,
         println!("n_fns: {}", ccx.stats.n_fns.get());
         println!("n_monos: {}", ccx.stats.n_monos.get());
         println!("n_inlines: {}", ccx.stats.n_inlines.get());
-        println!("n_closures: {}", ccx.stats.n_closures);
+        println!("n_closures: {}", ccx.stats.n_closures.get());
         println("fn stats:");
 
         ccx.stats.fn_stats.sort_by(|&(_, _, insns_a), &(_, _, insns_b)| insns_b.cmp(&insns_a));

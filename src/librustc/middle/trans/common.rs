@@ -133,7 +133,7 @@ pub struct Stats {
     n_fns: Cell<uint>,
     n_monos: Cell<uint>,
     n_inlines: Cell<uint>,
-    n_closures: uint,
+    n_closures: Cell<uint>,
     n_llvm_insns: uint,
     llvm_insn_ctxt: ~[~str],
     llvm_insns: HashMap<~str, uint>,
