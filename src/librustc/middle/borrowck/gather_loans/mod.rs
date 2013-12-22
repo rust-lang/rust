@@ -26,6 +26,7 @@ use middle::ty;
 use util::common::indenter;
 use util::ppaux::{Repr};
 
+use std::cell::RefCell;
 use syntax::ast;
 use syntax::ast_util::id_range;
 use syntax::codemap::Span;
@@ -68,7 +69,7 @@ struct GatherLoanCtxt<'a> {
     bccx: &'a BorrowckCtxt,
     id_range: id_range,
     move_data: @move_data::MoveData,
-    all_loans: @mut ~[Loan],
+    all_loans: @RefCell<~[Loan]>,
     item_ub: ast::NodeId,
     repeating_ids: ~[ast::NodeId]
 }
@@ -103,11 +104,11 @@ impl<'a> visit::Visitor<()> for GatherLoanCtxt<'a> {
 pub fn gather_loans(bccx: &BorrowckCtxt,
                     decl: &ast::fn_decl,
                     body: ast::P<ast::Block>)
-                    -> (id_range, @mut ~[Loan], @move_data::MoveData) {
+                    -> (id_range, @RefCell<~[Loan]>, @move_data::MoveData) {
     let mut glcx = GatherLoanCtxt {
         bccx: bccx,
         id_range: id_range::max(),
-        all_loans: @mut ~[],
+        all_loans: @RefCell::new(~[]),
         item_ub: body.id,
         repeating_ids: ~[body.id],
         move_data: @MoveData::new()
@@ -511,9 +512,9 @@ impl<'a> GatherLoanCtxt<'a> {
                     self.mark_loan_path_as_mutated(loan_path);
                 }
 
-                let all_loans = &mut *self.all_loans; // FIXME(#5074)
+                let all_loans = self.all_loans.borrow();
                 Loan {
-                    index: all_loans.len(),
+                    index: all_loans.get().len(),
                     loan_path: loan_path,
                     cmt: cmt,
                     mutbl: req_mutbl,
@@ -531,7 +532,10 @@ impl<'a> GatherLoanCtxt<'a> {
         // let loan_path = loan.loan_path;
         // let loan_gen_scope = loan.gen_scope;
         // let loan_kill_scope = loan.kill_scope;
-        self.all_loans.push(loan);
+        {
+            let mut all_loans = self.all_loans.borrow_mut();
+            all_loans.get().push(loan);
+        }
 
         // if loan_gen_scope != borrow_id {
             // FIXME(#6268) Nested method calls
