@@ -1794,7 +1794,7 @@ pub static metadata_encoding_version : &'static [u8] =
       0, 0, 0, 1 ];
 
 pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
-    let wr = @mut MemWriter::new();
+    let mut wr = MemWriter::new();
     let stats = Stats {
         inline_bytes: 0,
         attr_bytes: 0,
@@ -1837,7 +1837,7 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
         reachable: reachable,
      };
 
-    let mut ebml_w = writer::Encoder(wr);
+    let mut ebml_w = writer::Encoder(&mut wr);
 
     encode_hash(&mut ebml_w, ecx.link_meta.crate_hash);
 
@@ -1921,7 +1921,7 @@ pub fn encoded_ty(tcx: ty::ctxt, t: ty::t) -> ~str {
         ds: def_to_str,
         tcx: tcx,
         abbrevs: tyencode::ac_no_abbrevs};
-    let wr = @mut MemWriter::new();
-    tyencode::enc_ty(wr, cx, t);
+    let mut wr = MemWriter::new();
+    tyencode::enc_ty(&mut wr, cx, t);
     str::from_utf8_owned(wr.inner_ref().to_owned())
 }
