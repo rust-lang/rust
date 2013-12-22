@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::task;
 use std::rand::{task_rng, Rng};
 
 static MAX_LEN: uint = 20;
@@ -60,7 +61,7 @@ pub fn main() {
 
                 let v = main.clone();
 
-                std::task::try(proc() {
+                task::try(proc() {
                         let mut v = v;
                         let mut fail_countdown = fail_countdown;
                         v.sort_by(|a, b| {
