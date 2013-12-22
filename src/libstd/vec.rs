@@ -3254,7 +3254,7 @@ mod tests {
 
     #[test]
     fn test_truncate() {
-        let mut v = ~[@6,@5,@4];
+        let mut v = ~[~6,~5,~4];
         v.truncate(1);
         assert_eq!(v.len(), 1);
         assert_eq!(*(v[0]), 6);
@@ -3263,7 +3263,7 @@ mod tests {
 
     #[test]
     fn test_clear() {
-        let mut v = ~[@6,@5,@4];
+        let mut v = ~[~6,~5,~4];
         v.clear();
         assert_eq!(v.len(), 0);
         // If the unsafe block didn't drop things properly, we blow up here.
@@ -3302,14 +3302,14 @@ mod tests {
 
     #[test]
     fn test_dedup_shared() {
-        let mut v0 = ~[@1, @1, @2, @3];
+        let mut v0 = ~[~1, ~1, ~2, ~3];
         v0.dedup();
-        let mut v1 = ~[@1, @2, @2, @3];
+        let mut v1 = ~[~1, ~2, ~2, ~3];
         v1.dedup();
-        let mut v2 = ~[@1, @2, @3, @3];
+        let mut v2 = ~[~1, ~2, ~3, ~3];
         v2.dedup();
         /*
-         * If the @pointers were leaked or otherwise misused, valgrind and/or
+         * If the pointers were leaked or otherwise misused, valgrind and/or
          * rustrt should raise errors.
          */
     }
@@ -3694,7 +3694,7 @@ mod tests {
     fn test_from_fn_fail() {
         from_fn(100, |v| {
             if v == 50 { fail!() }
-            (~0, @0)
+            ~0
         });
     }
 
@@ -3702,10 +3702,11 @@ mod tests {
     #[should_fail]
     fn test_from_elem_fail() {
         use cast;
+        use rc::Rc;
 
         struct S {
             f: int,
-            boxes: (~int, @int)
+            boxes: (~int, Rc<int>)
         }
 
         impl Clone for S {
@@ -3717,18 +3718,19 @@ mod tests {
             }
         }
 
-        let s = S { f: 0, boxes: (~0, @0) };
+        let s = S { f: 0, boxes: (~0, Rc::new(0)) };
         let _ = from_elem(100, s);
     }
 
     #[test]
     #[should_fail]
     fn test_build_fail() {
+        use rc::Rc;
         build(None, |push| {
-            push((~0, @0));
-            push((~0, @0));
-            push((~0, @0));
-            push((~0, @0));
+            push((~0, Rc::new(0)));
+            push((~0, Rc::new(0)));
+            push((~0, Rc::new(0)));
+            push((~0, Rc::new(0)));
             fail!();
         });
     }
@@ -3736,47 +3738,51 @@ mod tests {
     #[test]
     #[should_fail]
     fn test_grow_fn_fail() {
+        use rc::Rc;
         let mut v = ~[];
         v.grow_fn(100, |i| {
             if i == 50 {
                 fail!()
             }
-            (~0, @0)
+            (~0, Rc::new(0))
         })
     }
 
     #[test]
     #[should_fail]
     fn test_map_fail() {
-        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        use rc::Rc;
+        let v = [(~0, Rc::new(0)), (~0, Rc::new(0)), (~0, Rc::new(0)), (~0, Rc::new(0))];
         let mut i = 0;
         v.map(|_elt| {
             if i == 2 {
                 fail!()
             }
             i += 1;
-            ~[(~0, @0)]
+            ~[(~0, Rc::new(0))]
         });
     }
 
     #[test]
     #[should_fail]
     fn test_flat_map_fail() {
-        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        use rc::Rc;
+        let v = [(~0, Rc::new(0)), (~0, Rc::new(0)), (~0, Rc::new(0)), (~0, Rc::new(0))];
         let mut i = 0;
         flat_map(v, |_elt| {
             if i == 2 {
                 fail!()
             }
             i += 1;
-            ~[(~0, @0)]
+            ~[(~0, Rc::new(0))]
         });
     }
 
     #[test]
     #[should_fail]
     fn test_permute_fail() {
-        let v = [(~0, @0), (~0, @0), (~0, @0), (~0, @0)];
+        use rc::Rc;
+        let v = [(~0, Rc::new(0)), (~0, Rc::new(0)), (~0, Rc::new(0)), (~0, Rc::new(0))];
         let mut i = 0;
         for _ in v.permutations() {
             if i == 2 {
@@ -4114,9 +4120,10 @@ mod tests {
     #[test]
     #[should_fail]
     fn test_overflow_does_not_cause_segfault_managed() {
-        let mut v = ~[@1];
+        use rc::Rc;
+        let mut v = ~[Rc::new(1)];
         v.reserve(-1);
-        v.push(@2);
+        v.push(Rc::new(2));
     }
 
     #[test]
