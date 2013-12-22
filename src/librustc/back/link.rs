@@ -208,8 +208,9 @@ pub mod write {
             // Emit the bytecode if we're either saving our temporaries or
             // emitting an rlib. Whenever an rlib is create, the bytecode is
             // inserted into the archive in order to allow LTO against it.
+            let outputs = sess.outputs.borrow();
             if sess.opts.save_temps ||
-               sess.outputs.iter().any(|&o| o == session::OutputRlib) {
+               outputs.get().iter().any(|&o| o == session::OutputRlib) {
                 output.with_extension("bc").with_c_str(|buf| {
                     llvm::LLVMWriteBitcodeToFile(llmod, buf);
                 })
@@ -745,7 +746,8 @@ pub fn link_binary(sess: Session,
                    out_filename: &Path,
                    lm: &LinkMeta) -> ~[Path] {
     let mut out_filenames = ~[];
-    for &output in sess.outputs.iter() {
+    let outputs = sess.outputs.borrow();
+    for &output in outputs.get().iter() {
         let out_file = link_binary_output(sess, trans, output, obj_filename,
                                           out_filename, lm);
         out_filenames.push(out_file);
