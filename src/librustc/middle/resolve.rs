@@ -346,7 +346,7 @@ struct ImportResolution {
     /// should *not* be used whenever resolution is being performed, this is
     /// only looked at for glob imports statements currently. Privacy testing
     /// occurs during a later phase of compilation.
-    is_public: bool,
+    is_public: Cell<bool>,
 
     // The number of outstanding references to this name. When this reaches
     // zero, outside modules can count on the targets being correct. Before
@@ -374,7 +374,7 @@ impl ImportResolution {
             outstanding_references: Cell::new(0),
             value_target: None,
             type_target: None,
-            is_public: is_public,
+            is_public: Cell::new(is_public),
         }
     }
 
@@ -2340,7 +2340,7 @@ impl Resolver {
 
                             // Import resolutions must be declared with "pub"
                             // in order to be exported.
-                            if !import_resolution.is_public {
+                            if !import_resolution.is_public.get() {
                                 return UnboundResult;
                             }
 
@@ -2363,12 +2363,12 @@ impl Resolver {
                         if value_result.is_unknown() {
                             value_result = get_binding(self, *import_resolution,
                                                        ValueNS);
-                            used_reexport = import_resolution.is_public;
+                            used_reexport = import_resolution.is_public.get();
                         }
                         if type_result.is_unknown() {
                             type_result = get_binding(self, *import_resolution,
                                                       TypeNS);
-                            used_reexport = import_resolution.is_public;
+                            used_reexport = import_resolution.is_public.get();
                         }
 
                     }
@@ -2521,7 +2521,7 @@ impl Resolver {
                    target_import_resolution.type_target.is_none(),
                    self.module_to_str(module_));
 
-            if !target_import_resolution.is_public {
+            if !target_import_resolution.is_public.get() {
                 debug!("(resolving glob import) nevermind, just kidding");
                 continue
             }
@@ -2564,7 +2564,7 @@ impl Resolver {
                                 Some(type_target);
                         }
                     }
-                    dest_import_resolution.is_public = is_public;
+                    dest_import_resolution.is_public.set(is_public);
                 }
             }
         }
@@ -2605,7 +2605,7 @@ impl Resolver {
                     Some(Target::new(containing_module, name_bindings));
                 dest_import_resolution.type_id = id;
             }
-            dest_import_resolution.is_public = is_public;
+            dest_import_resolution.is_public.set(is_public);
         };
 
         // Add all children from the containing module.
@@ -3182,7 +3182,7 @@ impl Resolver {
         let import_resolutions = module_.import_resolutions.borrow();
         match import_resolutions.get().find(&name.name) {
             Some(import_resolution) => {
-                if import_resolution.is_public &&
+                if import_resolution.is_public.get() &&
                         import_resolution.outstanding_references.get() != 0 {
                     debug!("(resolving name in module) import \
                            unresolved; bailing out");
@@ -3374,7 +3374,7 @@ impl Resolver {
                               module_: @Module) {
         let import_resolutions = module_.import_resolutions.borrow();
         for (name, importresolution) in import_resolutions.get().iter() {
-            if !importresolution.is_public {
+            if !importresolution.is_public.get() {
                 continue
             }
             let xs = [TypeNS, ValueNS];
@@ -4744,7 +4744,7 @@ impl Resolver {
         let import_resolutions = containing_module.import_resolutions
                                                   .borrow();
         match import_resolutions.get().find(&name.name) {
-            Some(import_resolution) if import_resolution.is_public => {
+            Some(import_resolution) if import_resolution.is_public.get() => {
                 match (*import_resolution).target_for_namespace(namespace) {
                     Some(target) => {
                         match target.bindings.def_for_namespace(namespace) {
