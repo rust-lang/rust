@@ -3268,7 +3268,8 @@ pub fn trans_crate(sess: session::Session,
         }
     }
     if ccx.sess.count_llvm_insns() {
-        for (k, v) in ccx.stats.llvm_insns.iter() {
+        let llvm_insns = ccx.stats.llvm_insns.borrow();
+        for (k, v) in llvm_insns.get().iter() {
             println!("{:7u} {}", *v, *k);
         }
     }
