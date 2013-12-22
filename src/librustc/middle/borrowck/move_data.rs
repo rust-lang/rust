@@ -49,7 +49,7 @@ pub struct MoveData {
     /// assigned dataflow bits, but we track them because they still
     /// kill move bits.
     path_assignments: RefCell<~[Assignment]>,
-    assignee_ids: HashSet<ast::NodeId>,
+    assignee_ids: RefCell<HashSet<ast::NodeId>>,
 }
 
 pub struct FlowedMoveData {
@@ -170,7 +170,7 @@ impl MoveData {
             moves: RefCell::new(~[]),
             path_assignments: RefCell::new(~[]),
             var_assignments: RefCell::new(~[]),
-            assignee_ids: HashSet::new(),
+            assignee_ids: RefCell::new(HashSet::new()),
         }
     }
 
@@ -395,7 +395,10 @@ impl MoveData {
 
         let path_index = self.move_path(tcx, lp);
 
-        self.assignee_ids.insert(assignee_id);
+        {
+            let mut assignee_ids = self.assignee_ids.borrow_mut();
+            assignee_ids.get().insert(assignee_id);
+        }
 
         let assignment = Assignment {
             path: path_index,
@@ -666,7 +669,8 @@ impl FlowedMoveData {
                        -> bool {
         //! True if `id` is the id of the LHS of an assignment
 
-        self.move_data.assignee_ids.iter().any(|x| x == &id)
+        let assignee_ids = self.move_data.assignee_ids.borrow();
+        assignee_ids.get().iter().any(|x| x == &id)
     }
 
     pub fn each_assignment_of(&self,
