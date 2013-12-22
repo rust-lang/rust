@@ -64,7 +64,7 @@ pub fn maybe_instantiate_inline(ccx: @CrateContext, fn_id: ast::DefId)
                 external_srcs.get().insert(item.id, fn_id);
             }
 
-            ccx.stats.n_inlines += 1;
+            ccx.stats.n_inlines.set(ccx.stats.n_inlines.get() + 1);
             trans_item(ccx, item);
 
             // We're bringing an external global into this crate, but we don't
@@ -146,7 +146,8 @@ pub fn maybe_instantiate_inline(ccx: @CrateContext, fn_id: ast::DefId)
                 external_srcs.get().insert(mth.id, fn_id);
             }
 
-          ccx.stats.n_inlines += 1;
+          ccx.stats.n_inlines.set(ccx.stats.n_inlines.get() + 1);
+
           // If this is a default method, we can't look up the
           // impl type. But we aren't going to translate anyways, so don't.
           if is_provided { return local_def(mth.id); }
