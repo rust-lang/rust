@@ -22,7 +22,7 @@ use middle::typeck;
 use middle;
 
 use std::cast;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::hashmap::{HashMap, HashSet};
 use std::io::mem::MemWriter;
 use std::io::{Writer, Seek, Decorator};
@@ -69,25 +69,23 @@ pub struct EncodeParams<'a> {
 }
 
 struct Stats {
-    inline_bytes: u64,
-    attr_bytes: u64,
-    dep_bytes: u64,
-    lang_item_bytes: u64,
-    native_lib_bytes: u64,
-    impl_bytes: u64,
-    misc_bytes: u64,
-    item_bytes: u64,
-    index_bytes: u64,
-    zero_bytes: u64,
-    total_bytes: u64,
-
-    n_inlines: uint
+    inline_bytes: Cell<u64>,
+    attr_bytes: Cell<u64>,
+    dep_bytes: Cell<u64>,
+    lang_item_bytes: Cell<u64>,
+    native_lib_bytes: Cell<u64>,
+    impl_bytes: Cell<u64>,
+    misc_bytes: Cell<u64>,
+    item_bytes: Cell<u64>,
+    index_bytes: Cell<u64>,
+    zero_bytes: Cell<u64>,
+    total_bytes: Cell<u64>,
 }
 
 pub struct EncodeContext<'a> {
     diag: @mut span_handler,
     tcx: ty::ctxt,
-    stats: @mut Stats,
+    stats: @Stats,
     reexports2: middle::resolve::ExportMap2,
     item_symbols: &'a RefCell<HashMap<ast::NodeId, ~str>>,
     non_inlineable_statics: &'a RefCell<HashSet<ast::NodeId>>,
@@ -1796,18 +1794,17 @@ pub static metadata_encoding_version : &'static [u8] =
 pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
     let mut wr = MemWriter::new();
     let stats = Stats {
-        inline_bytes: 0,
-        attr_bytes: 0,
-        dep_bytes: 0,
-        lang_item_bytes: 0,
-        native_lib_bytes: 0,
-        impl_bytes: 0,
-        misc_bytes: 0,
-        item_bytes: 0,
-        index_bytes: 0,
-        zero_bytes: 0,
-        total_bytes: 0,
-        n_inlines: 0
+        inline_bytes: Cell::new(0),
+        attr_bytes: Cell::new(0),
+        dep_bytes: Cell::new(0),
+        lang_item_bytes: Cell::new(0),
+        native_lib_bytes: Cell::new(0),
+        impl_bytes: Cell::new(0),
+        misc_bytes: Cell::new(0),
+        item_bytes: Cell::new(0),
+        index_bytes: Cell::new(0),
+        zero_bytes: Cell::new(0),
+        total_bytes: Cell::new(0),
     };
     let EncodeParams {
         item_symbols,
@@ -1822,7 +1819,7 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
         ..
     } = parms;
     let type_abbrevs = @RefCell::new(HashMap::new());
-    let stats = @mut stats;
+    let stats = @stats;
     let ecx = EncodeContext {
         diag: diag,
         tcx: tcx,
@@ -1844,65 +1841,65 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
     let mut i = ebml_w.writer.tell();
     let crate_attrs = synthesize_crate_attrs(&ecx, crate);
     encode_attributes(&mut ebml_w, crate_attrs);
-    ecx.stats.attr_bytes = ebml_w.writer.tell() - i;
+    ecx.stats.attr_bytes.set(ebml_w.writer.tell() - i);
 
     i = ebml_w.writer.tell();
     encode_crate_deps(&ecx, &mut ebml_w, ecx.cstore);
-    ecx.stats.dep_bytes = ebml_w.writer.tell() - i;
+    ecx.stats.dep_bytes.set(ebml_w.writer.tell() - i);
 
     // Encode the language items.
     i = ebml_w.writer.tell();
     encode_lang_items(&ecx, &mut ebml_w);
-    ecx.stats.lang_item_bytes = ebml_w.writer.tell() - i;
+    ecx.stats.lang_item_bytes.set(ebml_w.writer.tell() - i);
 
     // Encode the native libraries used
     i = ebml_w.writer.tell();
     encode_native_libraries(&ecx, &mut ebml_w);
-    ecx.stats.native_lib_bytes = ebml_w.writer.tell() - i;
+    ecx.stats.native_lib_bytes.set(ebml_w.writer.tell() - i);
 
     // Encode the def IDs of impls, for coherence checking.
     i = ebml_w.writer.tell();
     encode_impls(&ecx, crate, &mut ebml_w);
-    ecx.stats.impl_bytes = ebml_w.writer.tell() - i;
+    ecx.stats.impl_bytes.set(ebml_w.writer.tell() - i);
 
     // Encode miscellaneous info.
     i = ebml_w.writer.tell();
     encode_misc_info(&ecx, crate, &mut ebml_w);
-    ecx.stats.misc_bytes = ebml_w.writer.tell() - i;
+    ecx.stats.misc_bytes.set(ebml_w.writer.tell() - i);
 
     // Encode and index the items.
     ebml_w.start_tag(tag_items);
     i = ebml_w.writer.tell();
     let items_index = encode_info_for_items(&ecx, &mut ebml_w, crate);
-    ecx.stats.item_bytes = ebml_w.writer.tell() - i;
+    ecx.stats.item_bytes.set(ebml_w.writer.tell() - i);
 
     i = ebml_w.writer.tell();
     let items_buckets = create_index(items_index);
     encode_index(&mut ebml_w, items_buckets, write_i64);
-    ecx.stats.index_bytes = ebml_w.writer.tell() - i;
+    ecx.stats.index_bytes.set(ebml_w.writer.tell() - i);
     ebml_w.end_tag();
 
-    ecx.stats.total_bytes = ebml_w.writer.tell();
+    ecx.stats.total_bytes.set(ebml_w.writer.tell());
 
     if (tcx.sess.meta_stats()) {
         for e in ebml_w.writer.inner_ref().iter() {
             if *e == 0 {
-                ecx.stats.zero_bytes += 1;
+                ecx.stats.zero_bytes.set(ecx.stats.zero_bytes.get() + 1);
             }
         }
 
         println("metadata stats:");
-        println!("    inline bytes: {}", ecx.stats.inline_bytes);
-        println!(" attribute bytes: {}", ecx.stats.attr_bytes);
-        println!("       dep bytes: {}", ecx.stats.dep_bytes);
-        println!(" lang item bytes: {}", ecx.stats.lang_item_bytes);
-        println!("    native bytes: {}", ecx.stats.native_lib_bytes);
-        println!("      impl bytes: {}", ecx.stats.impl_bytes);
-        println!("      misc bytes: {}", ecx.stats.misc_bytes);
-        println!("      item bytes: {}", ecx.stats.item_bytes);
-        println!("     index bytes: {}", ecx.stats.index_bytes);
-        println!("      zero bytes: {}", ecx.stats.zero_bytes);
-        println!("     total bytes: {}", ecx.stats.total_bytes);
+        println!("    inline bytes: {}", ecx.stats.inline_bytes.get());
+        println!(" attribute bytes: {}", ecx.stats.attr_bytes.get());
+        println!("       dep bytes: {}", ecx.stats.dep_bytes.get());
+        println!(" lang item bytes: {}", ecx.stats.lang_item_bytes.get());
+        println!("    native bytes: {}", ecx.stats.native_lib_bytes.get());
+        println!("      impl bytes: {}", ecx.stats.impl_bytes.get());
+        println!("      misc bytes: {}", ecx.stats.misc_bytes.get());
+        println!("      item bytes: {}", ecx.stats.item_bytes.get());
+        println!("     index bytes: {}", ecx.stats.index_bytes.get());
+        println!("      zero bytes: {}", ecx.stats.zero_bytes.get());
+        println!("     total bytes: {}", ecx.stats.total_bytes.get());
     }
 
     // Pad this, since something (LLVM, presumably) is cutting off the
