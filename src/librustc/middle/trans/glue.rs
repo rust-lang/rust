@@ -662,7 +662,7 @@ pub fn make_generic_glue_inner(ccx: @CrateContext,
     let _icx = push_ctxt("make_generic_glue_inner");
     let fcx = new_fn_ctxt(ccx, ~[], llfn, ty::mk_nil(), None);
     lib::llvm::SetLinkage(llfn, lib::llvm::InternalLinkage);
-    ccx.stats.n_glues_created += 1u;
+    ccx.stats.n_glues_created.set(ccx.stats.n_glues_created.get() + 1u);
     // All glue functions take values passed *by alias*; this is a
     // requirement since in many contexts glue is invoked indirectly and
     // the caller has no idea if it's dealing with something that can be

@@ -212,7 +212,7 @@ impl CrateContext {
                   maps: maps,
                   stats: @mut Stats {
                     n_static_tydescs: Cell::new(0u),
-                    n_glues_created: 0u,
+                    n_glues_created: Cell::new(0u),
                     n_null_glues: 0u,
                     n_real_glues: 0u,
                     n_fns: 0u,
