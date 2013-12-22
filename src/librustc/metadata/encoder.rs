@@ -30,7 +30,6 @@ use std::util;
 use std::vec;
 
 use extra::serialize::Encodable;
-use extra;
 
 use syntax::abi::AbiSet;
 use syntax::ast::*;
@@ -1532,7 +1531,7 @@ fn encode_crate_deps(ecx: &EncodeContext,
         });
 
         // Sort by cnum
-        extra::sort::quick_sort(deps, |kv1, kv2| kv1.cnum <= kv2.cnum);
+        deps.sort_by(|kv1, kv2| kv1.cnum.cmp(&kv2.cnum));
 
         // Sanity-check the crate numbers
         let mut expected_cnum = 1;

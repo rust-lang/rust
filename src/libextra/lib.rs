@@ -61,8 +61,6 @@ pub mod ringbuf;
 pub mod priority_queue;
 pub mod smallintmap;
 
-pub mod sort;
-
 pub mod dlist;
 pub mod treemap;
 pub mod btree;

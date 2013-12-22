@@ -10,8 +10,6 @@
 
 // Functions dealing with attributes and meta items
 
-use extra;
-
 use ast;
 use ast::{Attribute, Attribute_, MetaItem, MetaWord, MetaNameValue, MetaList};
 use codemap::{Span, Spanned, spanned, dummy_spanned};
@@ -205,7 +203,7 @@ pub fn sort_meta_items(items: &[@MetaItem]) -> ~[@MetaItem] {
         .map(|&mi| (mi.name(), mi))
         .collect::<~[(@str, @MetaItem)]>();
 
-    extra::sort::quick_sort(v, |&(a, _), &(b, _)| a <= b);
+    v.sort_by(|&(a, _), &(b, _)| a.cmp(&b));
 
     // There doesn't seem to be a more optimal way to do this
     v.move_iter().map(|(_, m)| {

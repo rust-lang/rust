@@ -10,7 +10,6 @@
 
 #[allow(missing_doc)];
 
-use sort;
 use std::cmp;
 use std::hashmap;
 use std::io;
@@ -19,6 +18,25 @@ use std::util;
 
 // NB: this can probably be rewritten in terms of num::Num
 // to be less f64-specific.
+
+fn f64_cmp(x: f64, y: f64) -> Ordering {
+    // arbitrarily decide that NaNs are larger than everything.
+    if y.is_nan() {
+        Less
+    } else if x.is_nan() {
+        Greater
+    } else if x < y {
+        Less
+    } else if x == y {
+        Equal
+    } else {
+        Greater
+    }
+}
+
+fn f64_sort(v: &mut [f64]) {
+    v.sort_by(|x: &f64, y: &f64| f64_cmp(*x, *y));
+}
 
 /// Trait that provides simple descriptive statistics on a univariate set of numeric samples.
 pub trait Stats {
@@ -240,13 +258,13 @@ impl<'a> Stats for &'a [f64] {
 
     fn percentile(self, pct: f64) -> f64 {
         let mut tmp = self.to_owned();
-        sort::tim_sort(tmp);
+        f64_sort(tmp);
         percentile_of_sorted(tmp, pct)
     }
 
     fn quartiles(self) -> (f64,f64,f64) {
         let mut tmp = self.to_owned();
-        sort::tim_sort(tmp);
+        f64_sort(tmp);
         let a = percentile_of_sorted(tmp, 25.0);
         let b = percentile_of_sorted(tmp, 50.0);
         let c = percentile_of_sorted(tmp, 75.0);
@@ -291,7 +309,7 @@ fn percentile_of_sorted(sorted_samples: &[f64],
 /// See: http://en.wikipedia.org/wiki/Winsorising
 pub fn winsorize(samples: &mut [f64], pct: f64) {
     let mut tmp = samples.to_owned();
-    sort::tim_sort(tmp);
+    f64_sort(tmp);
     let lo = percentile_of_sorted(tmp, pct);
     let hi = percentile_of_sorted(tmp, 100.0-pct);
     for samp in samples.mut_iter() {

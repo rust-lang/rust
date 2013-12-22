@@ -45,8 +45,6 @@ use std::vec;
 
 use extra::arc::Arc;
 use extra::json::ToJson;
-use extra::sort;
-
 use syntax::ast;
 use syntax::attr;
 
@@ -900,44 +898,44 @@ fn item_module(w: &mut Writer, cx: &Context,
     debug!("{:?}", items);
     let mut indices = vec::from_fn(items.len(), |i| i);
 
-    fn lt(i1: &clean::Item, i2: &clean::Item, idx1: uint, idx2: uint) -> bool {
+    fn cmp(i1: &clean::Item, i2: &clean::Item, idx1: uint, idx2: uint) -> Ordering {
         if shortty(i1) == shortty(i2) {
-            return i1.name < i2.name;
+            return i1.name.cmp(&i2.name);
         }
         match (&i1.inner, &i2.inner) {
             (&clean::ViewItemItem(ref a), &clean::ViewItemItem(ref b)) => {
                 match (&a.inner, &b.inner) {
-                    (&clean::ExternMod(..), _) => true,
-                    (_, &clean::ExternMod(..)) => false,
-                    _ => idx1 < idx2,
+                    (&clean::ExternMod(..), _) => Less,
+                    (_, &clean::ExternMod(..)) => Greater,
+                    _ => idx1.cmp(&idx2),
                 }
             }
-            (&clean::ViewItemItem(..), _) => true,
-            (_, &clean::ViewItemItem(..)) => false,
-            (&clean::ModuleItem(..), _) => true,
-            (_, &clean::ModuleItem(..)) => false,
-            (&clean::StructItem(..), _) => true,
-            (_, &clean::StructItem(..)) => false,
-            (&clean::EnumItem(..), _) => true,
-            (_, &clean::EnumItem(..)) => false,
-            (&clean::StaticItem(..), _) => true,
-            (_, &clean::StaticItem(..)) => false,
-            (&clean::ForeignFunctionItem(..), _) => true,
-            (_, &clean::ForeignFunctionItem(..)) => false,
-            (&clean::ForeignStaticItem(..), _) => true,
-            (_, &clean::ForeignStaticItem(..)) => false,
-            (&clean::TraitItem(..), _) => true,
-            (_, &clean::TraitItem(..)) => false,
-            (&clean::FunctionItem(..), _) => true,
-            (_, &clean::FunctionItem(..)) => false,
-            (&clean::TypedefItem(..), _) => true,
-            (_, &clean::TypedefItem(..)) => false,
-            _ => idx1 < idx2,
+            (&clean::ViewItemItem(..), _) => Less,
+            (_, &clean::ViewItemItem(..)) => Greater,
+            (&clean::ModuleItem(..), _) => Less,
+            (_, &clean::ModuleItem(..)) => Greater,
+            (&clean::StructItem(..), _) => Less,
+            (_, &clean::StructItem(..)) => Greater,
+            (&clean::EnumItem(..), _) => Less,
+            (_, &clean::EnumItem(..)) => Greater,
+            (&clean::StaticItem(..), _) => Less,
+            (_, &clean::StaticItem(..)) => Greater,
+            (&clean::ForeignFunctionItem(..), _) => Less,
+            (_, &clean::ForeignFunctionItem(..)) => Greater,
+            (&clean::ForeignStaticItem(..), _) => Less,
+            (_, &clean::ForeignStaticItem(..)) => Greater,
+            (&clean::TraitItem(..), _) => Less,
+            (_, &clean::TraitItem(..)) => Greater,
+            (&clean::FunctionItem(..), _) => Less,
+            (_, &clean::FunctionItem(..)) => Greater,
+            (&clean::TypedefItem(..), _) => Less,
+            (_, &clean::TypedefItem(..)) => Greater,
+            _ => idx1.cmp(&idx2),
         }
     }
 
     debug!("{:?}", indices);
-    sort::quick_sort(indices, |&i1, &i2| lt(&items[i1], &items[i2], i1, i2));
+    indices.sort_by(|&i1, &i2| cmp(&items[i1], &items[i2], i1, i2));
 
     debug!("{:?}", indices);
     let mut curty = "";
@@ -1532,7 +1530,7 @@ fn build_sidebar(m: &clean::Module) -> HashMap<~str, ~[~str]> {
     }
 
     for (_, items) in map.mut_iter() {
-        sort::quick_sort(*items, |i1, i2| i1 < i2);
+        items.sort();
     }
     return map;
 }

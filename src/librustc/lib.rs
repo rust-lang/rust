@@ -151,7 +151,6 @@ Additional help:
 }
 
 pub fn describe_warnings() {
-    use extra::sort::Sort;
     println("
 Available lint options:
     -W <foo>           Warn about <foo>
@@ -164,7 +163,7 @@ Available lint options:
     let mut lint_dict = lint_dict.move_iter()
                                  .map(|(k, v)| (v, k))
                                  .collect::<~[(lint::LintSpec, &'static str)]>();
-    lint_dict.qsort();
+    lint_dict.sort();
 
     let mut max_key = 0;
     for &(_, name) in lint_dict.iter() {

@@ -21,7 +21,6 @@ use util::ppaux::ty_to_str;
 use std::iter;
 use std::num;
 use std::vec;
-use extra::sort;
 use syntax::ast::*;
 use syntax::ast_util::{unguarded_pat, walk_pat};
 use syntax::codemap::{Span, dummy_sp, Spanned};
@@ -454,7 +453,7 @@ fn missing_ctor(cx: &MatchCheckCtxt,
       ty::ty_unboxed_vec(..) | ty::ty_evec(..) => {
 
         // Find the lengths and slices of all vector patterns.
-        let vec_pat_lens = m.iter().filter_map(|r| {
+        let mut vec_pat_lens = m.iter().filter_map(|r| {
             match r[0].node {
                 PatVec(ref before, ref slice, ref after) => {
                     Some((before.len() + after.len(), slice.is_some()))
@@ -465,21 +464,19 @@ fn missing_ctor(cx: &MatchCheckCtxt,
 
         // Sort them by length such that for patterns of the same length,
         // those with a destructured slice come first.
-        let mut sorted_vec_lens = sort::merge_sort(vec_pat_lens,
-            |&(len1, slice1), &(len2, slice2)| {
-                if len1 == len2 {
-                    slice1 > slice2
-                } else {
-                    len1 <= len2
-                }
-            }
-        );
-        sorted_vec_lens.dedup();
+        vec_pat_lens.sort_by(|&(len1, slice1), &(len2, slice2)| {
+                    if len1 == len2 {
+                        slice2.cmp(&slice1)
+                    } else {
+                        len1.cmp(&len2)
+                    }
+                });
+        vec_pat_lens.dedup();
 
         let mut found_slice = false;
         let mut next = 0;
         let mut missing = None;
-        for &(length, slice) in sorted_vec_lens.iter() {
+        for &(length, slice) in vec_pat_lens.iter() {
             if length != next {
                 missing = Some(next);
                 break;
