@@ -216,7 +216,7 @@ impl CrateContext {
                     n_null_glues: Cell::new(0u),
                     n_real_glues: Cell::new(0u),
                     n_fns: Cell::new(0u),
-                    n_monos: 0u,
+                    n_monos: Cell::new(0u),
                     n_inlines: 0u,
                     n_closures: 0u,
                     n_llvm_insns: 0u,

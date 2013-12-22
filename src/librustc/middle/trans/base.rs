@@ -3251,7 +3251,7 @@ pub fn trans_crate(sess: session::Session,
         println!("n_real_glues: {}", ccx.stats.n_real_glues.get());
 
         println!("n_fns: {}", ccx.stats.n_fns.get());
-        println!("n_monos: {}", ccx.stats.n_monos);
+        println!("n_monos: {}", ccx.stats.n_monos.get());
         println!("n_inlines: {}", ccx.stats.n_inlines);
         println!("n_closures: {}", ccx.stats.n_closures);
         println("fn stats:");
