@@ -2382,7 +2382,7 @@ pub fn register_fn_llvmty(ccx: @CrateContext,
 }
 
 pub fn is_entry_fn(sess: &Session, node_id: ast::NodeId) -> bool {
-    match *sess.entry_fn {
+    match sess.entry_fn.get() {
         Some((entry_id, _)) => node_id == entry_id,
         None => false
     }
@@ -2393,7 +2393,7 @@ pub fn is_entry_fn(sess: &Session, node_id: ast::NodeId) -> bool {
 pub fn create_entry_wrapper(ccx: @CrateContext,
                            _sp: Span,
                            main_llfn: ValueRef) {
-    let et = ccx.sess.entry_type.unwrap();
+    let et = ccx.sess.entry_type.get().unwrap();
     match et {
         session::EntryMain => {
             create_entry_fn(ccx, main_llfn, true);

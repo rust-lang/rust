@@ -26,7 +26,7 @@ use middle;
 use util::common::time;
 use util::ppaux;
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::hashmap::{HashMap,HashSet};
 use std::io;
 use std::io::fs;
@@ -874,8 +874,8 @@ pub fn build_session_(sopts: @session::options,
         parse_sess: p_s,
         codemap: cm,
         // For a library crate, this is always none
-        entry_fn: @mut None,
-        entry_type: @mut None,
+        entry_fn: RefCell::new(None),
+        entry_type: Cell::new(None),
         span_diagnostic: span_diagnostic_handler,
         filesearch: filesearch,
         building_library: @mut false,
