@@ -177,6 +177,10 @@ impl MoveData {
         self.paths[*index].loan_path
     }
 
+    fn path_parent(&self, index: MovePathIndex) -> MovePathIndex {
+        self.paths[*index].parent
+    }
+
     fn path<'a>(&'a self, index: MovePathIndex) -> &'a MovePath {
         //! Type safe indexing operator
         &self.paths[*index]
@@ -194,7 +198,7 @@ impl MoveData {
 
     fn is_var_path(&self, index: MovePathIndex) -> bool {
         //! True if `index` refers to a variable
-        self.path(index).parent == InvalidMovePathIndex
+        self.path_parent(index) == InvalidMovePathIndex
     }
 
     pub fn move_path(&mut self,
@@ -232,7 +236,7 @@ impl MoveData {
                 let parent_index = self.move_path(tcx, base);
                 let index = MovePathIndex(self.paths.len());
 
-                let next_sibling = self.path(parent_index).first_child;
+                let next_sibling = self.path_first_child(parent_index);
                 self.mut_path(parent_index).first_child = index;
 
                 self.paths.push(MovePath {
@@ -422,7 +426,7 @@ impl MoveData {
             if !f(p) {
                 return false;
             }
-            p = self.path(p).parent;
+            p = self.path_parent(p);
         }
         return true;
     }
