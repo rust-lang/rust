@@ -161,7 +161,7 @@ pub struct CaptureVar {
 
 pub type CaptureMap = @RefCell<HashMap<NodeId, @[CaptureVar]>>;
 
-pub type MovesMap = @mut HashSet<NodeId>;
+pub type MovesMap = @RefCell<HashSet<NodeId>>;
 
 /**
  * Set of variable node-ids that are moved.
@@ -215,7 +215,7 @@ pub fn compute_moves(tcx: ty::ctxt,
         tcx: tcx,
         method_map: method_map,
         move_maps: MoveMaps {
-            moves_map: @mut HashSet::new(),
+            moves_map: @RefCell::new(HashSet::new()),
             capture_map: @RefCell::new(HashMap::new()),
             moved_variables_set: @mut HashSet::new()
         }
@@ -283,7 +283,10 @@ impl VisitContext {
 
         let expr_ty = ty::expr_ty_adjusted(self.tcx, expr);
         if ty::type_moves_by_default(self.tcx, expr_ty) {
-            self.move_maps.moves_map.insert(expr.id);
+            {
+                let mut moves_map = self.move_maps.moves_map.borrow_mut();
+                moves_map.get().insert(expr.id);
+            }
             self.use_expr(expr, Move);
         } else {
             self.use_expr(expr, Read);
@@ -388,7 +391,12 @@ impl VisitContext {
                 // closures should be noncopyable, they shouldn't move by default;
                 // calling a closure should only consume it if it's once.
                 if mode == Move {
-                    self.move_maps.moves_map.insert(callee.id);
+                    {
+                        let mut moves_map = self.move_maps
+                                                .moves_map
+                                                .borrow_mut();
+                        moves_map.get().insert(callee.id);
+                    }
                 }
                 self.use_expr(callee, mode);
                 self.use_fn_args(callee.id, *args);
@@ -643,7 +651,10 @@ impl VisitContext {
                    id, bm, binding_moves);
 
             if binding_moves {
-                self.move_maps.moves_map.insert(id);
+                {
+                    let mut moves_map = self.move_maps.moves_map.borrow_mut();
+                    moves_map.get().insert(id);
+                }
             }
         })
     }

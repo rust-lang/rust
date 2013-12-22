@@ -475,7 +475,8 @@ impl BorrowckCtxt {
     }
 
     pub fn is_move(&self, id: ast::NodeId) -> bool {
-        self.moves_map.contains(&id)
+        let moves_map = self.moves_map.borrow();
+        moves_map.get().contains(&id)
     }
 
     pub fn cat_expr(&self, expr: @ast::Expr) -> mc::cmt {
