@@ -568,13 +568,16 @@ impl RWLock {
      * # Example
      *
      * ```rust
+     * use extra::sync::RWLock;
+     *
+     * let lock = RWLock::new();
      * lock.write_downgrade(|mut write_token| {
      *     write_token.write_cond(|condvar| {
-     *         ... exclusive access ...
+     *         // ... exclusive access ...
      *     });
      *     let read_token = lock.downgrade(write_token);
      *     read_token.read(|| {
-     *         ... shared access ...
+     *         // ... shared access ...
      *     })
      * })
      * ```

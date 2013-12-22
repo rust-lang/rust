@@ -15,9 +15,10 @@
  * # Example
  *
  * ```rust
+ * use extra::future::Future;
  * # fn fib(n: uint) -> uint {42};
  * # fn make_a_sandwich() {};
- * let mut delayed_fib = extra::future::spawn (|| fib(5000) );
+ * let mut delayed_fib = do Future::spawn { fib(5000) };
  * make_a_sandwich();
  * println!("fib(5000) = {}", delayed_fib.get())
  * ```
