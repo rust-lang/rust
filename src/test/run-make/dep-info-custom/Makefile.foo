@@ -1,0 +1,7 @@
+LIB := $(shell $(RUSTC) --crate-file-name --lib lib.rs)
+
+$(TMPDIR)/$(LIB):
+	$(RUSTC) --dep-info $(TMPDIR)/custom-deps-file.d --lib lib.rs
+	touch $(TMPDIR)/done
+
+-include $(TMPDIR)/custom-deps-file.d

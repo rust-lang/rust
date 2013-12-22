@@ -393,24 +393,33 @@ pub fn phase_6_link_output(sess: Session,
                            &outputs.out_filename,
                            &trans.link));
 
-    // Write out dependency rules to the .d file if requested
-    if sess.opts.write_dependency_info {
-        match *input {
+    // Write out dependency rules to the dep-info file if requested with --dep-info
+    let deps_filename = match sess.opts.write_dependency_info {
+        // Use filename from --dep-file argument if given
+        (true, Some(ref filename)) => filename.clone(),
+        // Use default filename: crate source filename with extension replaced by ".d"
+        (true, None) => match *input {
             file_input(ref input_path) => {
-                let files: ~[@str] = sess.codemap.files.iter()
-                    .filter_map(|fmap| if fmap.is_real_file() { Some(fmap.name) } else { None })
-                    .collect();
-                let mut output_path = outputs[0].dir_path();
                 let filestem = input_path.filestem().expect("input file must have stem");
-                output_path.push(Path::new(filestem).with_extension("d"));
-                let mut file = io::File::create(&output_path);
-                for output in outputs.iter() {
-                    write!(&mut file as &mut Writer,
-                           "{}: {}\n\n", output.display(), files.connect(" "));
-                }
-            }
-            str_input(_) => {}
-        }
+                let filename = outputs[0].dir_path().join(filestem).with_extension("d");
+                filename
+            },
+            str_input(..) => {
+                sess.warn("can not write --dep-info without a filename when compiling stdin.");
+                return;
+            },
+        },
+        _ => return,
+    };
+    // Build a list of files used to compile the output and
+    // write Makefile-compatible dependency rules
+    let files: ~[@str] = sess.codemap.files.iter()
+        .filter_map(|fmap| if fmap.is_real_file() { Some(fmap.name) } else { None })
+        .collect();
+    let mut file = io::File::create(&deps_filename);
+    for output in outputs.iter() {
+        write!(&mut file as &mut Writer,
+               "{}: {}\n\n", output.display(), files.connect(" "));
     }
 }
 
@@ -771,7 +780,8 @@ pub fn build_session_options(binary: @str,
     let cfg = parse_cfgspecs(matches.opt_strs("cfg"), demitter);
     let test = matches.opt_present("test");
     let android_cross_path = matches.opt_str("android-cross-path");
-    let write_dependency_info = matches.opt_present("dep-info");
+    let write_dependency_info = (matches.opt_present("dep-info"),
+                                 matches.opt_str("dep-info").map(|p| Path::new(p)));
 
     let custom_passes = match matches.opt_str("passes") {
         None => ~[],
@@ -933,8 +943,8 @@ pub fn optgroups() -> ~[getopts::groups::OptGroup] {
                           or identified (fully parenthesized,
                           AST nodes and blocks with IDs)", "TYPE"),
   optflag("S", "",    "Compile only; do not assemble or link"),
-  optflag("", "dep-info",
-                        "Output dependency info to .d file after compiling"),
+  optflagopt("", "dep-info",
+                        "Output dependency info to <filename> after compiling", "FILENAME"),
   optflag("", "save-temps",
                         "Write intermediate files (.bc, .opt.bc, .o)
                           in addition to normal output"),
