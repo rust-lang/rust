@@ -14,6 +14,7 @@
 use driver::session;
 use front::config;
 
+use std::cell::RefCell;
 use std::vec;
 use syntax::ast_util::*;
 use syntax::attr::AttrMetaMethods;
@@ -38,7 +39,7 @@ struct Test {
 
 struct TestCtxt {
     sess: session::Session,
-    path: ~[ast::Ident],
+    path: RefCell<~[ast::Ident]>,
     ext_cx: @ExtCtxt,
     testfns: ~[Test],
     is_extra: bool,
@@ -78,9 +79,12 @@ impl fold::ast_fold for TestHarnessGenerator {
     }
 
     fn fold_item(&self, i: @ast::item) -> SmallVector<@ast::item> {
-        self.cx.path.push(i.ident);
+        {
+            let mut path = self.cx.path.borrow_mut();
+            path.get().push(i.ident);
+        }
         debug!("current path: {}",
-               ast_util::path_name_i(self.cx.path.clone()));
+               ast_util::path_name_i(self.cx.path.get()));
 
         if is_test_fn(self.cx, i) || is_bench_fn(i) {
             match i.node {
@@ -95,7 +99,7 @@ impl fold::ast_fold for TestHarnessGenerator {
                     debug!("this is a test function");
                     let test = Test {
                         span: i.span,
-                        path: self.cx.path.clone(),
+                        path: self.cx.path.get(),
                         bench: is_bench_fn(i),
                         ignore: is_ignored(self.cx, i),
                         should_fail: should_fail(i)
@@ -108,7 +112,10 @@ impl fold::ast_fold for TestHarnessGenerator {
         }
 
         let res = fold::noop_fold_item(i, self);
-        self.cx.path.pop();
+        {
+            let mut path = self.cx.path.borrow_mut();
+            path.get().pop();
+        }
         res
     }
 
@@ -147,7 +154,7 @@ fn generate_test_harness(sess: session::Session, crate: ast::Crate)
     let cx: @mut TestCtxt = @mut TestCtxt {
         sess: sess,
         ext_cx: ExtCtxt::new(sess.parse_sess, sess.opts.cfg.clone()),
-        path: ~[],
+        path: RefCell::new(~[]),
         testfns: ~[],
         is_extra: is_extra(&crate),
         config: crate.config.clone(),
