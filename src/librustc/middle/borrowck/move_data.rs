@@ -15,6 +15,7 @@ comments in the section "Moves and initialization" and in `doc.rs`.
 
 */
 
+use std::cell::RefCell;
 use std::hashmap::{HashMap, HashSet};
 use std::uint;
 use middle::borrowck::*;
@@ -31,7 +32,7 @@ use util::ppaux::Repr;
 
 pub struct MoveData {
     /// Move paths. See section "Move paths" in `doc.rs`.
-    paths: ~[MovePath],
+    paths: RefCell<~[MovePath]>,
 
     /// Cache of loan path to move path index, for easy lookup.
     path_map: HashMap<@LoanPath, MovePathIndex>,
@@ -164,7 +165,7 @@ pub type AssignDataFlow = DataFlowContext<AssignDataFlowOperator>;
 impl MoveData {
     pub fn new() -> MoveData {
         MoveData {
-            paths: ~[],
+            paths: RefCell::new(~[]),
             path_map: HashMap::new(),
             moves: ~[],
             path_assignments: ~[],
@@ -174,35 +175,42 @@ impl MoveData {
     }
 
     fn path_loan_path(&self, index: MovePathIndex) -> @LoanPath {
-        self.paths[*index].loan_path
+        let paths = self.paths.borrow();
+        paths.get()[*index].loan_path
     }
 
     fn path_parent(&self, index: MovePathIndex) -> MovePathIndex {
-        self.paths[*index].parent
+        let paths = self.paths.borrow();
+        paths.get()[*index].parent
     }
 
     fn path_first_move(&self, index: MovePathIndex) -> MoveIndex {
-        self.paths[*index].first_move
+        let paths = self.paths.borrow();
+        paths.get()[*index].first_move
     }
 
     fn path_first_child(&self, index: MovePathIndex) -> MovePathIndex {
-        self.paths[*index].first_child
+        let paths = self.paths.borrow();
+        paths.get()[*index].first_child
     }
 
     fn path_next_sibling(&self, index: MovePathIndex) -> MovePathIndex {
-        self.paths[*index].next_sibling
+        let paths = self.paths.borrow();
+        paths.get()[*index].next_sibling
     }
 
     fn set_path_first_move(&mut self,
                            index: MovePathIndex,
                            first_move: MoveIndex) {
-        self.paths[*index].first_move = first_move
+        let mut paths = self.paths.borrow_mut();
+        paths.get()[*index].first_move = first_move
     }
 
     fn set_path_first_child(&mut self,
                             index: MovePathIndex,
                             first_child: MovePathIndex) {
-        self.paths[*index].first_child = first_child
+        let mut paths = self.paths.borrow_mut();
+        paths.get()[*index].first_child = first_child
     }
                             
 
@@ -234,9 +242,10 @@ impl MoveData {
 
         let index = match *lp {
             LpVar(..) => {
-                let index = MovePathIndex(self.paths.len());
+                let mut paths = self.paths.borrow_mut();
+                let index = MovePathIndex(paths.get().len());
 
-                self.paths.push(MovePath {
+                paths.get().push(MovePath {
                     loan_path: lp,
                     parent: InvalidMovePathIndex,
                     first_move: InvalidMoveIndex,
@@ -249,18 +258,25 @@ impl MoveData {
 
             LpExtend(base, _, _) => {
                 let parent_index = self.move_path(tcx, base);
-                let index = MovePathIndex(self.paths.len());
+
+                let index = {
+                    let paths = self.paths.borrow();
+                    MovePathIndex(paths.get().len())
+                };
 
                 let next_sibling = self.path_first_child(parent_index);
                 self.set_path_first_child(parent_index, index);
 
-                self.paths.push(MovePath {
-                    loan_path: lp,
-                    parent: parent_index,
-                    first_move: InvalidMoveIndex,
-                    first_child: InvalidMovePathIndex,
-                    next_sibling: next_sibling,
-                });
+                {
+                    let mut paths = self.paths.borrow_mut();
+                    paths.get().push(MovePath {
+                        loan_path: lp,
+                        parent: parent_index,
+                        first_move: InvalidMoveIndex,
+                        first_child: InvalidMovePathIndex,
+                        next_sibling: next_sibling,
+                    });
+                }
 
                 index
             }
@@ -270,7 +286,8 @@ impl MoveData {
                lp.repr(tcx),
                index);
 
-        assert_eq!(*index, self.paths.len() - 1);
+        let paths = self.paths.borrow();
+        assert_eq!(*index, paths.get().len() - 1);
         self.path_map.insert(lp, index);
         return index;
     }
@@ -409,14 +426,17 @@ impl MoveData {
 
         // Kill all moves related to a variable `x` when it goes out
         // of scope:
-        for path in self.paths.iter() {
-            match *path.loan_path {
-                LpVar(id) => {
-                    let kill_id = tcx.region_maps.encl_scope(id);
-                    let path = *self.path_map.get(&path.loan_path);
-                    self.kill_moves(path, kill_id, dfcx_moves);
+        {
+            let paths = self.paths.borrow();
+            for path in paths.get().iter() {
+                match *path.loan_path {
+                    LpVar(id) => {
+                        let kill_id = tcx.region_maps.encl_scope(id);
+                        let path = *self.path_map.get(&path.loan_path);
+                        self.kill_moves(path, kill_id, dfcx_moves);
+                    }
+                    LpExtend(..) => {}
                 }
-                LpExtend(..) => {}
             }
         }
 
