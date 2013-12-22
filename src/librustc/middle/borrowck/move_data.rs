@@ -185,9 +185,12 @@ impl MoveData {
         self.paths[*index].first_move
     }
 
-    fn path<'a>(&'a self, index: MovePathIndex) -> &'a MovePath {
-        //! Type safe indexing operator
-        &self.paths[*index]
+    fn path_first_child(&self, index: MovePathIndex) -> MovePathIndex {
+        self.paths[*index].first_child
+    }
+
+    fn path_next_sibling(&self, index: MovePathIndex) -> MovePathIndex {
+        self.paths[*index].next_sibling
     }
 
     fn mut_path<'a>(&'a mut self, index: MovePathIndex) -> &'a mut MovePath {
@@ -443,12 +446,12 @@ impl MoveData {
             return false;
         }
 
-        let mut p = self.path(index).first_child;
+        let mut p = self.path_first_child(index);
         while p != InvalidMovePathIndex {
             if !self.each_extending_path(p, |x| f(x)) {
                 return false;
             }
-            p = self.path(p).next_sibling;
+            p = self.path_next_sibling(p);
         }
 
         return true;
