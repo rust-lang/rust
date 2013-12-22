@@ -889,7 +889,8 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
                     by_ref_span = Some(span);
                 }
                 BindByValue(_) => {
-                    if cx.moves_map.contains(&id) {
+                    let moves_map = cx.moves_map.borrow();
+                    if moves_map.get().contains(&id) {
                         any_by_move = true;
                     }
                 }
@@ -926,7 +927,8 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
             if pat_is_binding(def_map, p) {
                 match p.node {
                     PatIdent(_, _, sub) => {
-                        if cx.moves_map.contains(&p.id) {
+                        let moves_map = cx.moves_map.borrow();
+                        if moves_map.get().contains(&p.id) {
                             check_move(p, sub);
                         }
                     }
