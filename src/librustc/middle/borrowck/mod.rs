@@ -133,16 +133,18 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
             // Check the body of fn items.
             let (id_range, all_loans, move_data) =
                 gather_loans::gather_loans(this, decl, body);
-            let mut loan_dfcx =
-                DataFlowContext::new(this.tcx,
-                                     this.method_map,
-                                     LoanDataFlowOperator,
-                                     id_range,
-                                     all_loans.len());
-            for (loan_idx, loan) in all_loans.iter().enumerate() {
+
+            let all_loans = all_loans.borrow();
+            let mut loan_dfcx = DataFlowContext::new(this.tcx,
+                                                     this.method_map,
+                                                     LoanDataFlowOperator,
+                                                     id_range,
+                                                     all_loans.get().len());
+            for (loan_idx, loan) in all_loans.get().iter().enumerate() {
                 loan_dfcx.add_gen(loan.gen_scope, loan_idx);
                 loan_dfcx.add_kill(loan.kill_scope, loan_idx);
             }
+
             loan_dfcx.propagate(body);
 
             let flowed_moves = move_data::FlowedMoveData::new(move_data,
@@ -152,7 +154,7 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
                                                               body);
 
             check_loans::check_loans(this, &loan_dfcx, flowed_moves,
-                                     *all_loans, body);
+                                     *all_loans.get(), body);
         }
     }
 
