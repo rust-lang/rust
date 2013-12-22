@@ -134,7 +134,7 @@ pub struct Stats {
     n_monos: Cell<uint>,
     n_inlines: Cell<uint>,
     n_closures: Cell<uint>,
-    n_llvm_insns: uint,
+    n_llvm_insns: Cell<uint>,
     llvm_insn_ctxt: ~[~str],
     llvm_insns: HashMap<~str, uint>,
     fn_stats: ~[(~str, uint, uint)] // (ident, time-in-ms, llvm-instructions)

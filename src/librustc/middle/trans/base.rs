@@ -146,7 +146,7 @@ impl<'a> StatRecorder<'a> {
         } else {
             0
         };
-        let istart = ccx.stats.n_llvm_insns;
+        let istart = ccx.stats.n_llvm_insns.get();
         StatRecorder {
             ccx: ccx,
             name: name,
@@ -162,13 +162,13 @@ impl<'a> Drop for StatRecorder<'a> {
         if self.ccx.sess.trans_stats() {
             let end = time::precise_time_ns();
             let elapsed = ((end - self.start) / 1_000_000) as uint;
-            let iend = self.ccx.stats.n_llvm_insns;
+            let iend = self.ccx.stats.n_llvm_insns.get();
             self.ccx.stats.fn_stats.push((self.name.to_owned(),
                                           elapsed,
                                           iend - self.istart));
             self.ccx.stats.n_fns.set(self.ccx.stats.n_fns.get() + 1);
             // Reset LLVM insn count to avoid compound costs.
-            self.ccx.stats.n_llvm_insns = self.istart;
+            self.ccx.stats.n_llvm_insns.set(self.istart);
         }
     }
 }
