@@ -220,7 +220,6 @@ impl CrateContext {
                     n_inlines: Cell::new(0u),
                     n_closures: Cell::new(0u),
                     n_llvm_insns: Cell::new(0u),
-                    llvm_insn_ctxt: ~[],
                     llvm_insns: HashMap::new(),
                     fn_stats: ~[]
                   },
