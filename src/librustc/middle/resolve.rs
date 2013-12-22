@@ -351,7 +351,7 @@ struct ImportResolution {
     // The number of outstanding references to this name. When this reaches
     // zero, outside modules can count on the targets being correct. Before
     // then, all bets are off; future imports could override this name.
-    outstanding_references: uint,
+    outstanding_references: Cell<uint>,
 
     /// The value that this `use` directive names, if there is one.
     value_target: Option<Target>,
@@ -371,7 +371,7 @@ impl ImportResolution {
         ImportResolution {
             type_id: id,
             value_id: id,
-            outstanding_references: 0,
+            outstanding_references: Cell::new(0),
             value_target: None,
             type_target: None,
             is_public: is_public,
@@ -1968,7 +1968,8 @@ impl Resolver {
                     Some(&resolution) => {
                         debug!("(building import directive) bumping \
                                 reference");
-                        resolution.outstanding_references += 1;
+                        resolution.outstanding_references.set(
+                            resolution.outstanding_references.get() + 1);
 
                         // the source of this name is different now
                         resolution.type_id = id;
@@ -1977,7 +1978,7 @@ impl Resolver {
                     None => {
                         debug!("(building import directive) creating new");
                         let resolution = @mut ImportResolution::new(id, is_public);
-                        resolution.outstanding_references = 1;
+                        resolution.outstanding_references.set(1);
                         import_resolutions.get().insert(target.name,
                                                         resolution);
                     }
@@ -2328,7 +2329,7 @@ impl Resolver {
                         }
                     }
                     Some(import_resolution)
-                            if import_resolution.outstanding_references
+                            if import_resolution.outstanding_references.get()
                                 == 0 => {
 
                         fn get_binding(this: &mut Resolver,
@@ -2453,8 +2454,9 @@ impl Resolver {
         }
         let used_public = used_reexport || used_public;
 
-        assert!(import_resolution.outstanding_references >= 1);
-        import_resolution.outstanding_references -= 1;
+        assert!(import_resolution.outstanding_references.get() >= 1);
+        import_resolution.outstanding_references.set(
+            import_resolution.outstanding_references.get() - 1);
 
         // record what this import resolves to for later uses in documentation,
         // this may resolve to either a value or a type, but for documentation
@@ -3181,7 +3183,7 @@ impl Resolver {
         match import_resolutions.get().find(&name.name) {
             Some(import_resolution) => {
                 if import_resolution.is_public &&
-                        import_resolution.outstanding_references != 0 {
+                        import_resolution.outstanding_references.get() != 0 {
                     debug!("(resolving name in module) import \
                            unresolved; bailing out");
                     return Indeterminate;
