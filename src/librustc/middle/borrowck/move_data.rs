@@ -35,7 +35,7 @@ pub struct MoveData {
     paths: RefCell<~[MovePath]>,
 
     /// Cache of loan path to move path index, for easy lookup.
-    path_map: HashMap<@LoanPath, MovePathIndex>,
+    path_map: RefCell<HashMap<@LoanPath, MovePathIndex>>,
 
     /// Each move or uninitialized variable gets an entry here.
     moves: RefCell<~[Move]>,
@@ -166,7 +166,7 @@ impl MoveData {
     pub fn new() -> MoveData {
         MoveData {
             paths: RefCell::new(~[]),
-            path_map: HashMap::new(),
+            path_map: RefCell::new(HashMap::new()),
             moves: RefCell::new(~[]),
             path_assignments: ~[],
             var_assignments: ~[],
@@ -234,11 +234,14 @@ impl MoveData {
          * base paths that do not yet have an index.
          */
 
-        match self.path_map.find(&lp) {
-            Some(&index) => {
-                return index;
+        {
+            let path_map = self.path_map.borrow();
+            match path_map.get().find(&lp) {
+                Some(&index) => {
+                    return index;
+                }
+                None => {}
             }
-            None => {}
         }
 
         let index = match *lp {
@@ -289,14 +292,17 @@ impl MoveData {
 
         let paths = self.paths.borrow();
         assert_eq!(*index, paths.get().len() - 1);
-        self.path_map.insert(lp, index);
+
+        let mut path_map = self.path_map.borrow_mut();
+        path_map.get().insert(lp, index);
         return index;
     }
 
     fn existing_move_path(&self,
                           lp: @LoanPath)
                           -> Option<MovePathIndex> {
-        self.path_map.find_copy(&lp)
+        let path_map = self.path_map.borrow();
+        path_map.get().find_copy(&lp)
     }
 
     fn existing_base_paths(&self,
@@ -315,7 +321,11 @@ impl MoveData {
          * paths of `lp` to `result`, but does not add new move paths
          */
 
-        match self.path_map.find_copy(&lp) {
+        let index_opt = {
+            let path_map = self.path_map.borrow();
+            path_map.get().find_copy(&lp)
+        };
+        match index_opt {
             Some(index) => {
                 self.each_base_path(index, |p| {
                     result.push(p);
@@ -442,7 +452,10 @@ impl MoveData {
                 match *path.loan_path {
                     LpVar(id) => {
                         let kill_id = tcx.region_maps.encl_scope(id);
-                        let path = *self.path_map.get(&path.loan_path);
+                        let path = {
+                            let path_map = self.path_map.borrow();
+                            *path_map.get().get(&path.loan_path)
+                        };
                         self.kill_moves(path, kill_id, dfcx_moves);
                     }
                     LpExtend(..) => {}
