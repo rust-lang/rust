@@ -358,7 +358,7 @@ struct ImportResolution {
     value_target: RefCell<Option<Target>>,
     /// The source node of the `use` directive leading to the value target
     /// being non-none
-    value_id: NodeId,
+    value_id: Cell<NodeId>,
 
     /// The type that this `use` directive names, if there is one.
     type_target: Option<Target>,
@@ -371,7 +371,7 @@ impl ImportResolution {
     fn new(id: NodeId, is_public: bool) -> ImportResolution {
         ImportResolution {
             type_id: id,
-            value_id: id,
+            value_id: Cell::new(id),
             outstanding_references: Cell::new(0),
             value_target: RefCell::new(None),
             type_target: None,
@@ -390,7 +390,7 @@ impl ImportResolution {
     fn id(&self, namespace: Namespace) -> NodeId {
         match namespace {
             TypeNS  => self.type_id,
-            ValueNS => self.value_id,
+            ValueNS => self.value_id.get(),
         }
     }
 }
@@ -1974,7 +1974,7 @@ impl Resolver {
 
                         // the source of this name is different now
                         resolution.type_id = id;
-                        resolution.value_id = id;
+                        resolution.value_id.set(id);
                     }
                     None => {
                         debug!("(building import directive) creating new");
@@ -2421,7 +2421,7 @@ impl Resolver {
                 debug!("(resolving single import) found value target");
                 import_resolution.value_target.set(
                     Some(Target::new(target_module, name_bindings)));
-                import_resolution.value_id = directive.id;
+                import_resolution.value_id.set(directive.id);
                 used_public = name_bindings.defined_in_public_namespace(ValueNS);
             }
             UnboundResult => { /* Continue. */ }
@@ -2598,7 +2598,7 @@ impl Resolver {
                 debug!("(resolving glob import) ... for value target");
                 dest_import_resolution.value_target.set(
                     Some(Target::new(containing_module, name_bindings)));
-                dest_import_resolution.value_id = id;
+                dest_import_resolution.value_id.set(id);
             }
             if name_bindings.defined_in_public_namespace(TypeNS) {
                 debug!("(resolving glob import) ... for type target");
