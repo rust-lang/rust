@@ -69,12 +69,12 @@ struct RegionResolutionVisitor {
     sess: Session,
 
     // Generated maps:
-    region_maps: @mut RegionMaps,
+    region_maps: @RegionMaps,
 }
 
 
 impl RegionMaps {
-    pub fn relate_free_regions(&mut self, sub: FreeRegion, sup: FreeRegion) {
+    pub fn relate_free_regions(&self, sub: FreeRegion, sup: FreeRegion) {
         let mut free_region_map = self.free_region_map.borrow_mut();
         match free_region_map.get().find_mut(&sub) {
             Some(sups) => {
@@ -91,7 +91,7 @@ impl RegionMaps {
         free_region_map.get().insert(sub, ~[sup]);
     }
 
-    pub fn record_parent(&mut self, sub: ast::NodeId, sup: ast::NodeId) {
+    pub fn record_parent(&self, sub: ast::NodeId, sup: ast::NodeId) {
         debug!("record_parent(sub={:?}, sup={:?})", sub, sup);
         assert!(sub != sup);
 
@@ -99,7 +99,7 @@ impl RegionMaps {
         scope_map.get().insert(sub, sup);
     }
 
-    pub fn record_cleanup_scope(&mut self, scope_id: ast::NodeId) {
+    pub fn record_cleanup_scope(&self, scope_id: ast::NodeId) {
         //! Records that a scope is a CLEANUP SCOPE.  This is invoked
         //! from within regionck.  We wait until regionck because we do
         //! not know which operators are overloaded until that point,
@@ -504,10 +504,8 @@ impl Visitor<Context> for RegionResolutionVisitor {
     }
 }
 
-pub fn resolve_crate(sess: Session,
-                     crate: &ast::Crate) -> @mut RegionMaps
-{
-    let region_maps = @mut RegionMaps {
+pub fn resolve_crate(sess: Session, crate: &ast::Crate) -> @RegionMaps {
+    let region_maps = @RegionMaps {
         scope_map: RefCell::new(HashMap::new()),
         free_region_map: RefCell::new(HashMap::new()),
         cleanup_scopes: RefCell::new(HashSet::new()),
