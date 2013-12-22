@@ -364,7 +364,7 @@ struct ctxt_ {
 
     // The set of external traits whose implementations have been read. This
     // is used for lazy resolution of traits.
-    populated_external_traits: @mut HashSet<ast::DefId>,
+    populated_external_traits: RefCell<HashSet<ast::DefId>>,
 
     // These two caches are used by const_eval when decoding external statics
     // and variants that are found.
@@ -1008,7 +1008,7 @@ pub fn mk_ctxt(s: session::Session,
         used_mut_nodes: RefCell::new(HashSet::new()),
         impl_vtables: RefCell::new(HashMap::new()),
         populated_external_types: RefCell::new(HashSet::new()),
-        populated_external_traits: @mut HashSet::new(),
+        populated_external_traits: RefCell::new(HashSet::new()),
 
         extern_const_statics: RefCell::new(HashMap::new()),
         extern_const_variants: RefCell::new(HashMap::new()),
@@ -4589,8 +4589,12 @@ pub fn populate_implementations_for_trait_if_necessary(
     if trait_id.crate == LOCAL_CRATE {
         return
     }
-    if tcx.populated_external_traits.contains(&trait_id) {
-        return
+    {
+        let populated_external_traits = tcx.populated_external_traits
+                                           .borrow();
+        if populated_external_traits.get().contains(&trait_id) {
+            return
+        }
     }
 
     csearch::each_implementation_for_trait(tcx.sess.cstore, trait_id,
@@ -4615,7 +4619,9 @@ pub fn populate_implementations_for_trait_if_necessary(
         impls.get().insert(implementation_def_id, implementation);
     });
 
-    tcx.populated_external_traits.insert(trait_id);
+    let mut populated_external_traits = tcx.populated_external_traits
+                                           .borrow_mut();
+    populated_external_traits.get().insert(trait_id);
 }
 
 /// Given the def_id of an impl, return the def_id of the trait it implements.
