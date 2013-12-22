@@ -15,6 +15,7 @@ use metadata::cstore;
 use metadata::decoder;
 use metadata::loader;
 
+use std::cell::RefCell;
 use std::hashmap::HashMap;
 use syntax::ast;
 use syntax::abi;
@@ -347,5 +348,5 @@ fn resolve_crate_deps(e: &mut Env, cdata: &[u8]) -> cstore::cnum_map {
           }
         }
     }
-    return @mut cnum_map;
+    return @RefCell::new(cnum_map);
 }

@@ -83,7 +83,7 @@ pub fn check_crate(
         capture_map: capture_map,
         root_map: root_map(),
         write_guard_map: @RefCell::new(HashSet::new()),
-        stats: @mut BorrowStats {
+        stats: @BorrowStats {
             loaned_paths_same: Cell::new(0),
             loaned_paths_imm: Cell::new(0),
             stable_paths: Cell::new(0),
@@ -172,7 +172,7 @@ pub struct BorrowckCtxt {
     write_guard_map: write_guard_map,
 
     // Statistics:
-    stats: @mut BorrowStats
+    stats: @BorrowStats
 }
 
 pub struct BorrowStats {

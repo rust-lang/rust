@@ -24,7 +24,7 @@ use syntax::parse::token::ident_interner;
 // local crate numbers (as generated during this session). Each external
 // crate may refer to types in other external crates, and each has their
 // own crate numbers.
-pub type cnum_map = @mut HashMap<ast::CrateNum, ast::CrateNum>;
+pub type cnum_map = @RefCell<HashMap<ast::CrateNum, ast::CrateNum>>;
 
 pub enum MetadataBlob {
     MetadataVec(~[u8]),
