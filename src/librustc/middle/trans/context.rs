@@ -100,7 +100,7 @@ pub struct CrateContext {
      all_llvm_symbols: RefCell<HashSet<@str>>,
      tcx: ty::ctxt,
      maps: astencode::Maps,
-     stats: @mut Stats,
+     stats: @Stats,
      tydesc_type: Type,
      int_type: Type,
      opaque_vec_type: Type,
@@ -210,7 +210,7 @@ impl CrateContext {
                   all_llvm_symbols: RefCell::new(HashSet::new()),
                   tcx: tcx,
                   maps: maps,
-                  stats: @mut Stats {
+                  stats: @Stats {
                     n_static_tydescs: Cell::new(0u),
                     n_glues_created: Cell::new(0u),
                     n_null_glues: Cell::new(0u),
