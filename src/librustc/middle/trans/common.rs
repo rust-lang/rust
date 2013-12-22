@@ -128,7 +128,7 @@ pub struct tydesc_info {
 pub struct Stats {
     n_static_tydescs: Cell<uint>,
     n_glues_created: Cell<uint>,
-    n_null_glues: uint,
+    n_null_glues: Cell<uint>,
     n_real_glues: uint,
     n_fns: uint,
     n_monos: uint,
