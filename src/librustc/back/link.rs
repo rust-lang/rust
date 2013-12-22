@@ -33,6 +33,7 @@ use std::os::consts::{macos, freebsd, linux, android, win32};
 use std::ptr;
 use std::run;
 use std::str;
+use std::io;
 use std::io::fs;
 use extra::tempfile::TempDir;
 use syntax::abi;
@@ -97,6 +98,7 @@ pub mod write {
     use util::common::time;
 
     use std::c_str::ToCStr;
+    use std::io;
     use std::libc::{c_uint, c_int};
     use std::path::Path;
     use std::run;
@@ -310,7 +312,11 @@ pub mod write {
             assembly.as_str().unwrap().to_owned()];
 
         debug!("{} '{}'", cc, args.connect("' '"));
-        match run::process_output(cc, args) {
+        let opt_prog = {
+            let _guard = io::ignore_io_error();
+            run::process_output(cc, args)
+        };
+        match opt_prog {
             Some(prog) => {
                 if !prog.status.success() {
                     sess.err(format!("linking with `{}` failed: {}", cc, prog.status));
@@ -320,7 +326,7 @@ pub mod write {
                 }
             },
             None => {
-                sess.err(format!("could not exec `{}`", cc));
+                sess.err(format!("could not exec the linker `{}`", cc));
                 sess.abort_if_errors();
             }
         }
@@ -952,8 +958,11 @@ fn link_natively(sess: Session, dylib: bool, obj_filename: &Path,
 
     // Invoke the system linker
     debug!("{} {}", cc_prog, cc_args.connect(" "));
-    let opt_prog = time(sess.time_passes(), "running linker", (), |()|
-                        run::process_output(cc_prog, cc_args));
+    let opt_prog = {
+        let _guard = io::ignore_io_error();
+        time(sess.time_passes(), "running linker", (), |()|
+             run::process_output(cc_prog, cc_args))
+    };
 
     match opt_prog {
         Some(prog) => {
@@ -965,7 +974,7 @@ fn link_natively(sess: Session, dylib: bool, obj_filename: &Path,
             }
         },
         None => {
-            sess.err(format!("could not exec `{}`", cc_prog));
+            sess.err(format!("could not exec the linker `{}`", cc_prog));
             sess.abort_if_errors();
         }
     }
