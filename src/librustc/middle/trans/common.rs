@@ -132,7 +132,7 @@ pub struct Stats {
     n_real_glues: Cell<uint>,
     n_fns: Cell<uint>,
     n_monos: Cell<uint>,
-    n_inlines: uint,
+    n_inlines: Cell<uint>,
     n_closures: uint,
     n_llvm_insns: uint,
     llvm_insn_ctxt: ~[~str],
