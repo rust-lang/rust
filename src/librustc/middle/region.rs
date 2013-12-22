@@ -53,7 +53,7 @@ The region maps encode information about region relationships.
 pub struct RegionMaps {
     priv scope_map: RefCell<HashMap<ast::NodeId, ast::NodeId>>,
     priv free_region_map: RefCell<HashMap<FreeRegion, ~[FreeRegion]>>,
-    priv cleanup_scopes: HashSet<ast::NodeId>
+    priv cleanup_scopes: RefCell<HashSet<ast::NodeId>>,
 }
 
 #[deriving(Clone)]
@@ -105,7 +105,8 @@ impl RegionMaps {
         //! not know which operators are overloaded until that point,
         //! and only overloaded operators result in cleanup scopes.
 
-        self.cleanup_scopes.insert(scope_id);
+        let mut cleanup_scopes = self.cleanup_scopes.borrow_mut();
+        cleanup_scopes.get().insert(scope_id);
     }
 
     pub fn opt_encl_scope(&self, id: ast::NodeId) -> Option<ast::NodeId> {
@@ -126,14 +127,16 @@ impl RegionMaps {
     }
 
     pub fn is_cleanup_scope(&self, scope_id: ast::NodeId) -> bool {
-        self.cleanup_scopes.contains(&scope_id)
+        let cleanup_scopes = self.cleanup_scopes.borrow();
+        cleanup_scopes.get().contains(&scope_id)
     }
 
     pub fn cleanup_scope(&self, expr_id: ast::NodeId) -> ast::NodeId {
         //! Returns the scope when temps in expr will be cleaned up
 
         let mut id = self.encl_scope(expr_id);
-        while !self.cleanup_scopes.contains(&id) {
+        let cleanup_scopes = self.cleanup_scopes.borrow();
+        while !cleanup_scopes.get().contains(&id) {
             id = self.encl_scope(id);
         }
         return id;
@@ -507,7 +510,7 @@ pub fn resolve_crate(sess: Session,
     let region_maps = @mut RegionMaps {
         scope_map: RefCell::new(HashMap::new()),
         free_region_map: RefCell::new(HashMap::new()),
-        cleanup_scopes: HashSet::new(),
+        cleanup_scopes: RefCell::new(HashSet::new()),
     };
     let cx = Context {parent: None,
                       var_parent: None};
