@@ -166,7 +166,7 @@ impl<'a> Drop for StatRecorder<'a> {
             self.ccx.stats.fn_stats.push((self.name.to_owned(),
                                           elapsed,
                                           iend - self.istart));
-            self.ccx.stats.n_fns += 1;
+            self.ccx.stats.n_fns.set(self.ccx.stats.n_fns.get() + 1);
             // Reset LLVM insn count to avoid compound costs.
             self.ccx.stats.n_llvm_insns = self.istart;
         }
@@ -3250,7 +3250,7 @@ pub fn trans_crate(sess: session::Session,
         println!("n_null_glues: {}", ccx.stats.n_null_glues.get());
         println!("n_real_glues: {}", ccx.stats.n_real_glues.get());
 
-        println!("n_fns: {}", ccx.stats.n_fns);
+        println!("n_fns: {}", ccx.stats.n_fns.get());
         println!("n_monos: {}", ccx.stats.n_monos);
         println!("n_inlines: {}", ccx.stats.n_inlines);
         println!("n_closures: {}", ccx.stats.n_closures);
