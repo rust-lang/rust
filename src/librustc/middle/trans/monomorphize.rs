@@ -182,7 +182,7 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         _ => fail!("expected bare rust fn or an intrinsic")
     };
 
-    ccx.stats.n_monos += 1;
+    ccx.stats.n_monos.set(ccx.stats.n_monos.get() + 1);
 
     let depth;
     {
