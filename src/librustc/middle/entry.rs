@@ -45,7 +45,7 @@ impl Visitor<()> for EntryContext {
 }
 
 pub fn find_entry_point(session: Session, crate: &Crate, ast_map: ast_map::map) {
-    if *session.building_library {
+    if session.building_library.get() {
         // No need to find a main function
         return;
     }
@@ -131,7 +131,7 @@ fn configure_main(this: &mut EntryContext) {
         this.session.entry_fn.set(this.main_fn);
         this.session.entry_type.set(Some(session::EntryMain));
     } else {
-        if !*this.session.building_library {
+        if !this.session.building_library.get() {
             // No main function
             this.session.err("main function not found");
             if !this.non_main_fns.is_empty() {

@@ -210,7 +210,7 @@ pub struct Session_ {
     entry_type: Cell<Option<EntryFnType>>,
     span_diagnostic: @mut diagnostic::span_handler,
     filesearch: @filesearch::FileSearch,
-    building_library: @mut bool,
+    building_library: Cell<bool>,
     working_dir: Path,
     lints: RefCell<HashMap<ast::NodeId,
                            ~[(lint::lint, codemap::Span, ~str)]>>,

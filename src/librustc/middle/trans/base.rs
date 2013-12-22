@@ -2344,7 +2344,7 @@ fn finish_register_fn(ccx: @CrateContext, sp: Span, sym: ~str, node_id: ast::Nod
         }
     }
 
-    if is_entry_fn(&ccx.sess, node_id) && !*ccx.sess.building_library {
+    if is_entry_fn(&ccx.sess, node_id) && !ccx.sess.building_library.get() {
         create_entry_wrapper(ccx, sp, llfn);
     }
 }
@@ -2678,7 +2678,7 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
                             // library then we've already declared the crate map
                             // so use that instead.
                             if attr::contains_name(ni.attrs, "crate_map") {
-                                if *ccx.sess.building_library {
+                                if ccx.sess.building_library.get() {
                                     let s = "_rust_crate_map_toplevel";
                                     let g = unsafe {
                                         s.with_c_str(|buf| {
@@ -3044,7 +3044,7 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
     let mut n_subcrates = 1;
     let cstore = sess.cstore;
     while cstore.have_crate_data(n_subcrates) { n_subcrates += 1; }
-    let is_top = !*sess.building_library || sess.gen_crate_map();
+    let is_top = !sess.building_library.get() || sess.gen_crate_map();
     let sym_name = if is_top {
         ~"_rust_crate_map_toplevel"
     } else {
@@ -3154,7 +3154,9 @@ pub fn crate_ctxt_to_encode_parms<'r>(cx: &'r CrateContext, ie: encoder::encode_
 pub fn write_metadata(cx: &CrateContext, crate: &ast::Crate) -> ~[u8] {
     use extra::flate;
 
-    if !*cx.sess.building_library { return ~[]; }
+    if !cx.sess.building_library.get() {
+        return ~[]
+    }
 
     let encode_inlined_item: encoder::encode_inlined_item =
         |ecx, ebml_w, path, ii|
@@ -3227,8 +3229,7 @@ pub fn trans_crate(sess: session::Session,
     // __rust_crate_map_toplevel symbol (extra underscore) which it will
     // subsequently fail to find. So to mitigate that we just introduce
     // an alias from the symbol it expects to the one that actually exists.
-    if ccx.sess.targ_cfg.os == OsWin32 &&
-       !*ccx.sess.building_library {
+    if ccx.sess.targ_cfg.os == OsWin32 && !ccx.sess.building_library.get() {
 
         let maptype = val_ty(ccx.crate_map).to_ref();
 
