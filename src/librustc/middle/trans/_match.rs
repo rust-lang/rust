@@ -219,6 +219,7 @@ use middle::ty;
 use util::common::indenter;
 use util::ppaux::{Repr, vec_map_to_str};
 
+use std::cell::Cell;
 use std::hashmap::HashMap;
 use std::ptr;
 use std::vec;
@@ -1188,19 +1189,19 @@ struct DynamicFailureHandler {
     bcx: @Block,
     sp: Span,
     msg: @str,
-    finished: @mut Option<BasicBlockRef>,
+    finished: @Cell<Option<BasicBlockRef>>,
 }
 
 impl CustomFailureHandler for DynamicFailureHandler {
     fn handle_fail(&self) -> BasicBlockRef {
-        match *self.finished {
+        match self.finished.get() {
             Some(bb) => return bb,
             _ => (),
         }
 
         let fail_cx = sub_block(self.bcx, "case_fallthrough");
         controlflow::trans_fail(fail_cx, Some(self.sp), self.msg);
-        *self.finished = Some(fail_cx.llbb);
+        self.finished.set(Some(fail_cx.llbb));
         fail_cx.llbb
     }
 }
@@ -1911,7 +1912,7 @@ fn trans_match_inner(scope_cx: @Block,
     let chk = {
         if ty::type_is_empty(tcx, t) {
             // Special case for empty types
-            let fail_cx = @mut None;
+            let fail_cx = @Cell::new(None);
             let fail_handler = @DynamicFailureHandler {
                 bcx: scope_cx,
                 sp: discr_expr.span,
