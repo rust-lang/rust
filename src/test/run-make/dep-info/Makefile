@@ -1,4 +1,5 @@
 -include ../tools.mk
+
 all:
 	$(RUSTC) --dep-info --lib lib.rs
 	sleep 1
