@@ -181,6 +181,10 @@ impl MoveData {
         self.paths[*index].parent
     }
 
+    fn path_first_move(&self, index: MovePathIndex) -> MoveIndex {
+        self.paths[*index].first_move
+    }
+
     fn path<'a>(&'a self, index: MovePathIndex) -> &'a MovePath {
         //! Type safe indexing operator
         &self.paths[*index]
@@ -319,7 +323,7 @@ impl MoveData {
         let path_index = self.move_path(tcx, lp);
         let move_index = MoveIndex(self.moves.len());
 
-        let next_move = self.path(path_index).first_move;
+        let next_move = self.path_first_move(path_index);
         self.mut_path(path_index).first_move = move_index;
 
         self.moves.push(Move {
@@ -456,7 +460,7 @@ impl MoveData {
                             -> bool {
         let mut ret = true;
         self.each_extending_path(index0, |index| {
-            let mut p = self.path(index).first_move;
+            let mut p = self.path_first_move(index);
             while p != InvalidMoveIndex {
                 if !f(p) {
                     ret = false;
