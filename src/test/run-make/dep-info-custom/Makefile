@@ -1,7 +1,7 @@
 -include ../tools.mk
 
 all:
-	$(RUSTC) --dep-info --lib lib.rs
+	$(RUSTC) --dep-info $(TMPDIR)/custom-deps-file.d --lib lib.rs
 	sleep 1
 	touch foo.rs
 	-rm -f $(TMPDIR)/done

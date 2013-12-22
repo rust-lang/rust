@@ -168,8 +168,8 @@ pub struct options {
     no_trans: bool,
     debugging_opts: uint,
     android_cross_path: Option<~str>,
-    /// Whether to write .d dependency files
-    write_dependency_info: bool,
+    /// Whether to write dependency files. It's (enabled, optional filename).
+    write_dependency_info: (bool, Option<Path>),
     /// Crate id-related things to maybe print. It's (crate_id, crate_name, crate_file_name).
     print_metas: (bool, bool, bool),
 }
@@ -397,7 +397,7 @@ pub fn basic_options() -> @options {
         no_trans: false,
         debugging_opts: 0u,
         android_cross_path: None,
-        write_dependency_info: false,
+        write_dependency_info: (false, None),
         print_metas: (false, false, false),
     }
 }
