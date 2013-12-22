@@ -361,7 +361,7 @@ struct ImportResolution {
     value_id: Cell<NodeId>,
 
     /// The type that this `use` directive names, if there is one.
-    type_target: Option<Target>,
+    type_target: RefCell<Option<Target>>,
     /// The source node of the `use` directive leading to the type target
     /// being non-none
     type_id: NodeId,
@@ -374,7 +374,7 @@ impl ImportResolution {
             value_id: Cell::new(id),
             outstanding_references: Cell::new(0),
             value_target: RefCell::new(None),
-            type_target: None,
+            type_target: RefCell::new(None),
             is_public: Cell::new(is_public),
         }
     }
@@ -382,7 +382,7 @@ impl ImportResolution {
     fn target_for_namespace(&self, namespace: Namespace)
                                 -> Option<Target> {
         match namespace {
-            TypeNS      => return self.type_target,
+            TypeNS      => return self.type_target.get(),
             ValueNS     => return self.value_target.get(),
         }
     }
@@ -2433,8 +2433,8 @@ impl Resolver {
             BoundResult(target_module, name_bindings) => {
                 debug!("(resolving single import) found type target: {:?}",
                         name_bindings.type_def.get().unwrap().type_def);
-                import_resolution.type_target =
-                    Some(Target::new(target_module, name_bindings));
+                import_resolution.type_target.set(
+                    Some(Target::new(target_module, name_bindings)));
                 import_resolution.type_id = directive.id;
                 used_public = name_bindings.defined_in_public_namespace(TypeNS);
             }
@@ -2445,7 +2445,7 @@ impl Resolver {
         }
 
         if import_resolution.value_target.get().is_none() &&
-           import_resolution.type_target.is_none() {
+           import_resolution.type_target.get().is_none() {
             let msg = format!("unresolved import: there is no \
                                `{}` in `{}`",
                               self.session.str_of(source),
@@ -2472,7 +2472,7 @@ impl Resolver {
             }
             None => {}
         }
-        match import_resolution.type_target {
+        match import_resolution.type_target.get() {
             Some(target) => {
                 let def = target.bindings.def_for_namespace(TypeNS).unwrap();
                 self.def_map.insert(directive.id, def);
@@ -2519,7 +2519,7 @@ impl Resolver {
                                                                    .iter() {
             debug!("(resolving glob import) writing module resolution \
                     {:?} into `{}`",
-                   target_import_resolution.type_target.is_none(),
+                   target_import_resolution.type_target.get().is_none(),
                    self.module_to_str(module_));
 
             if !target_import_resolution.is_public.get() {
@@ -2537,8 +2537,8 @@ impl Resolver {
                         @mut ImportResolution::new(id, is_public);
                     new_import_resolution.value_target.set(
                         target_import_resolution.value_target.get());
-                    new_import_resolution.type_target =
-                        target_import_resolution.type_target;
+                    new_import_resolution.type_target.set(
+                        target_import_resolution.type_target.get());
 
                     import_resolutions.get().insert
                         (*ident, new_import_resolution);
@@ -2556,13 +2556,13 @@ impl Resolver {
                                 Some(value_target));
                         }
                     }
-                    match target_import_resolution.type_target {
+                    match target_import_resolution.type_target.get() {
                         None => {
                             // Continue.
                         }
                         Some(type_target) => {
-                            dest_import_resolution.type_target =
-                                Some(type_target);
+                            dest_import_resolution.type_target.set(
+                                Some(type_target));
                         }
                     }
                     dest_import_resolution.is_public.set(is_public);
@@ -2602,8 +2602,8 @@ impl Resolver {
             }
             if name_bindings.defined_in_public_namespace(TypeNS) {
                 debug!("(resolving glob import) ... for type target");
-                dest_import_resolution.type_target =
-                    Some(Target::new(containing_module, name_bindings));
+                dest_import_resolution.type_target.set(
+                    Some(Target::new(containing_module, name_bindings)));
                 dest_import_resolution.type_id = id;
             }
             dest_import_resolution.is_public.set(is_public);
