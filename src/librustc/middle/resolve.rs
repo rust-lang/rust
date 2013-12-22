@@ -285,7 +285,7 @@ enum DuplicateCheckingMode {
 /// One local scope.
 struct Rib {
     bindings: RefCell<HashMap<Name, DefLike>>,
-    self_binding: @mut Option<DefLike>,
+    self_binding: RefCell<Option<DefLike>>,
     kind: RibKind,
 }
 
@@ -293,7 +293,7 @@ impl Rib {
     fn new(kind: RibKind) -> Rib {
         Rib {
             bindings: RefCell::new(HashMap::new()),
-            self_binding: @mut None,
+            self_binding: RefCell::new(None),
             kind: kind
         }
     }
@@ -3883,7 +3883,7 @@ impl Resolver {
                         _ => false
                     };
                     let def_like = DlDef(DefSelf(self_node_id, mutable));
-                    *function_value_rib.self_binding = Some(def_like);
+                    function_value_rib.self_binding.set(Some(def_like));
                 }
             }
 
@@ -4947,7 +4947,7 @@ impl Resolver {
         let mut i = self.value_ribs.len();
         while i != 0 {
             i -= 1;
-            match *self.value_ribs[i].self_binding {
+            match self.value_ribs[i].self_binding.get() {
                 Some(def_like) => {
                     match self.upvarify(self.value_ribs,
                                         i,
