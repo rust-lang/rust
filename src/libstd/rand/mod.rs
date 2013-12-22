@@ -64,7 +64,7 @@ use std::rand;
 
 fn main () {
     let tuple_ptr = rand::random::<~(f64, char)>();
-    println!(tuple_ptr)
+    println!("{:?}", tuple_ptr)
 }
  ```
 */
@@ -227,7 +227,7 @@ pub trait Rng {
     ///    let mut rng = rand::task_rng();
     ///    let n: uint = rng.gen_range(0u, 10);
     ///    println!("{}", n);
-    ///    let m: float = rng.gen_range(-40.0, 1.3e5);
+    ///    let m: f64 = rng.gen_range(-40.0, 1.3e5);
     ///    println!("{}", m);
     /// }
     /// ```
@@ -292,8 +292,10 @@ pub trait Rng {
     /// use std::rand::Rng;
     ///
     /// fn main() {
-    ///     println!("{:?}", rand::task_rng().choose_option([1,2,4,8,16,32]));
-    ///     println!("{:?}", rand::task_rng().choose_option([]));
+    ///     let choices = [1, 2, 4, 8, 16, 32];
+    ///     let mut rng = rand::task_rng();
+    ///     println!("{:?}", rng.choose_option(choices));
+    ///     println!("{:?}", rng.choose_option(choices.slice_to(0)));
     /// }
     /// ```
     fn choose_option<'a, T>(&mut self, values: &'a [T]) -> Option<&'a T> {
@@ -388,11 +390,10 @@ pub trait SeedableRng<Seed>: Rng {
     /// # Example
     ///
     /// ```rust
-    /// use std::rand;
-    /// use std::rand::Rng;
+    /// use std::rand::{Rng, SeedableRng, StdRng};
     ///
     /// fn main() {
-    ///     let mut rng: rand::StdRng = rand::SeedableRng::from_seed(&[1, 2, 3, 4]);
+    ///     let mut rng: StdRng = SeedableRng::from_seed(&[1, 2, 3, 4]);
     ///     println!("{}", rng.gen::<f64>());
     ///     rng.reseed([5, 6, 7, 8]);
     ///     println!("{}", rng.gen::<f64>());

@@ -1458,10 +1458,10 @@ pub trait StrSlice<'a> {
     /// let v: ~[(uint, uint)] = "abcXXXabcYYYabc".match_indices("abc").collect();
     /// assert_eq!(v, ~[(0,3), (6,9), (12,15)]);
     ///
-    /// let v: ~[(uint, uint)] = "1abcabc2".split_str("abc").collect();
+    /// let v: ~[(uint, uint)] = "1abcabc2".match_indices("abc").collect();
     /// assert_eq!(v, ~[(1,4), (4,7)]);
     ///
-    /// let v: ~[(uint, uint)] = "ababa".split_str("aba").collect();
+    /// let v: ~[(uint, uint)] = "ababa".match_indices("aba").collect();
     /// assert_eq!(v, ~[(0, 3)]); // only the first `aba`
     /// ```
     fn match_indices(&self, sep: &'a str) -> MatchesIndexIterator<'a>;
@@ -1536,7 +1536,7 @@ pub trait StrSlice<'a> {
     /// assert!(" \t\n".is_whitespace());
     /// assert!("".is_whitespace());
     ///
-    /// assert!( !"abc.is_whitespace());
+    /// assert!( !"abc".is_whitespace());
     /// ```
     fn is_whitespace(&self) -> bool;
 
@@ -1606,7 +1606,7 @@ pub trait StrSlice<'a> {
     /// let s = "Löwe 老虎 Léopard";
     /// assert_eq!(s.slice(0, 1), "L");
     ///
-    /// assert_eq!(s.slice(1, 9), "öwe 老"));
+    /// assert_eq!(s.slice(1, 9), "öwe 老");
     ///
     /// // these will fail:
     /// // byte 2 lies within `ö`:
@@ -1808,6 +1808,8 @@ pub trait StrSlice<'a> {
     /// `.char_indices`.
     ///
     /// ```rust
+    /// use std::str::CharRange;
+    ///
     /// let s = "中华Việt Nam";
     /// let mut i = 0u;
     /// while i < s.len() {
@@ -1949,11 +1951,11 @@ pub trait StrSlice<'a> {
     ///
     /// ```rust
     /// let s = "Löwe 老虎 Léopard";
-    /// let (c, s1) = s.shift_slice_char();
+    /// let (c, s1) = s.slice_shift_char();
     /// assert_eq!(c, 'L');
     /// assert_eq!(s1, "öwe 老虎 Léopard");
     ///
-    /// let (c, s2) = s1.shift_slice_char();
+    /// let (c, s2) = s1.slice_shift_char();
     /// assert_eq!(c, 'ö');
     /// assert_eq!(s2, "we 老虎 Léopard");
     /// ```
