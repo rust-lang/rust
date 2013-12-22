@@ -990,7 +990,8 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
     }
 
     {
-        let r = maps.method_map.find(&id);
+        let method_map = maps.method_map.borrow();
+        let r = method_map.get().find(&id);
         for &mme in r.iter() {
             ebml_w.tag(c::tag_table_method_map, |ebml_w| {
                 ebml_w.id(id);
@@ -1274,9 +1275,9 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
                         ty_param_defs.get().insert(id, bounds);
                     }
                     c::tag_table_method_map => {
-                        dcx.maps.method_map.insert(
-                            id,
-                            val_dsr.read_method_map_entry(xcx));
+                        let entry = val_dsr.read_method_map_entry(xcx);
+                        let mut method_map = dcx.maps.method_map.borrow_mut();
+                        method_map.get().insert(id, entry);
                     }
                     c::tag_table_vtable_map => {
                         let vtable_res =

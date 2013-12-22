@@ -62,18 +62,23 @@ fn resolve_type_vars_in_types(fcx: @FnCtxt, sp: Span, tys: &[ty::t])
 
 fn resolve_method_map_entry(fcx: @FnCtxt, sp: Span, id: ast::NodeId) {
     // Resolve any method map entry
-    match fcx.inh.method_map.find(&id) {
+    let method_map_entry_opt = {
+        let method_map = fcx.inh.method_map.borrow();
+        method_map.get().find_copy(&id)
+    };
+    match method_map_entry_opt {
         None => {}
         Some(mme) => {
             {
                 let r = resolve_type_vars_in_type(fcx, sp, mme.self_ty);
                 for t in r.iter() {
                     let method_map = fcx.ccx.method_map;
-                    let new_entry = method_map_entry { self_ty: *t, ..*mme };
+                    let new_entry = method_map_entry { self_ty: *t, ..mme };
                     debug!("writeback::resolve_method_map_entry(id={:?}, \
                             new_entry={:?})",
                            id, new_entry);
-                    method_map.insert(id, new_entry);
+                    let mut method_map = method_map.borrow_mut();
+                    method_map.get().insert(id, new_entry);
                 }
             }
         }

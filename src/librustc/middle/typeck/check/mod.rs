@@ -265,7 +265,7 @@ impl Inherited {
             node_types: RefCell::new(HashMap::new()),
             node_type_substs: RefCell::new(HashMap::new()),
             adjustments: RefCell::new(HashMap::new()),
-            method_map: @mut HashMap::new(),
+            method_map: @RefCell::new(HashMap::new()),
             vtable_map: @RefCell::new(HashMap::new()),
         }
     }
@@ -1950,7 +1950,8 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                              AutoderefReceiver) {
             Some(ref entry) => {
                 let method_map = fcx.inh.method_map;
-                method_map.insert(expr.id, (*entry));
+                let mut method_map = method_map.borrow_mut();
+                method_map.get().insert(expr.id, (*entry));
             }
             None => {
                 debug!("(checking method call) failing expr is {}", expr.id);
@@ -2040,7 +2041,10 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
             Some(ref origin) => {
                 let method_ty = fcx.node_ty(callee_id);
                 let method_map = fcx.inh.method_map;
-                method_map.insert(op_ex.id, *origin);
+                {
+                    let mut method_map = method_map.borrow_mut();
+                    method_map.get().insert(op_ex.id, *origin);
+                }
                 check_method_argument_types(fcx, op_ex.span,
                                             method_ty, op_ex, args,
                                             ast::NoSugar, deref_args)

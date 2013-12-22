@@ -3049,7 +3049,8 @@ pub fn method_call_type_param_defs(tcx: ctxt,
                                    method_map: typeck::method_map,
                                    id: ast::NodeId)
                                    -> Option<@~[TypeParameterDef]> {
-    method_map.find(&id).map(|method| {
+    let method_map = method_map.borrow();
+    method_map.get().find(&id).map(|method| {
         match method.origin {
           typeck::method_static(did) => {
             // n.b.: When we encode impl methods, the bounds
@@ -3112,14 +3113,17 @@ pub enum ExprKind {
 pub fn expr_kind(tcx: ctxt,
                  method_map: typeck::method_map,
                  expr: &ast::Expr) -> ExprKind {
-    if method_map.contains_key(&expr.id) {
-        // Overloaded operations are generally calls, and hence they are
-        // generated via DPS.  However, assign_op (e.g., `x += y`) is an
-        // exception, as its result is always unit.
-        return match expr.node {
-            ast::ExprAssignOp(..) => RvalueStmtExpr,
-            _ => RvalueDpsExpr
-        };
+    {
+        let method_map = method_map.borrow();
+        if method_map.get().contains_key(&expr.id) {
+            // Overloaded operations are generally calls, and hence they are
+            // generated via DPS.  However, assign_op (e.g., `x += y`) is an
+            // exception, as its result is always unit.
+            return match expr.node {
+                ast::ExprAssignOp(..) => RvalueStmtExpr,
+                _ => RvalueDpsExpr
+            };
+        }
     }
 
     match expr.node {

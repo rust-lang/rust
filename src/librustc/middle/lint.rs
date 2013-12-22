@@ -1202,7 +1202,8 @@ fn check_stability(cx: &Context, e: &ast::Expr) {
             }
         }
         ast::ExprMethodCall(..) => {
-            match cx.method_map.find(&e.id) {
+            let method_map = cx.method_map.borrow();
+            match method_map.get().find(&e.id) {
                 Some(&typeck::method_map_entry { origin, .. }) => {
                     match origin {
                         typeck::method_static(def_id) => {

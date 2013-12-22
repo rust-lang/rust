@@ -390,7 +390,8 @@ impl mem_categorization_ctxt {
         let expr_ty = self.expr_ty(expr);
         match expr.node {
           ast::ExprUnary(_, ast::UnDeref, e_base) => {
-            if self.method_map.contains_key(&expr.id) {
+            let method_map = self.method_map.borrow();
+            if method_map.get().contains_key(&expr.id) {
                 return self.cat_rvalue_node(expr, expr_ty);
             }
 
@@ -401,14 +402,16 @@ impl mem_categorization_ctxt {
           ast::ExprField(base, f_name, _) => {
             // Method calls are now a special syntactic form,
             // so `a.b` should always be a field.
-            assert!(!self.method_map.contains_key(&expr.id));
+            let method_map = self.method_map.borrow();
+            assert!(!method_map.get().contains_key(&expr.id));
 
             let base_cmt = self.cat_expr(base);
             self.cat_field(expr, base_cmt, f_name, self.expr_ty(expr))
           }
 
           ast::ExprIndex(_, base, _) => {
-            if self.method_map.contains_key(&expr.id) {
+            let method_map = self.method_map.borrow();
+            if method_map.get().contains_key(&expr.id) {
                 return self.cat_rvalue_node(expr, expr_ty);
             }
 

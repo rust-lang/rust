@@ -223,6 +223,7 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
     }
 
     // Special checks for various kinds of expressions:
+    let method_map = this.bccx.method_map.borrow();
     match ex.node {
       ast::ExprAddrOf(mutbl, base) => {
         let base_cmt = this.bccx.cat_expr(base);
@@ -270,7 +271,7 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
 
       ast::ExprIndex(_, _, arg) |
       ast::ExprBinary(_, _, _, arg)
-      if this.bccx.method_map.contains_key(&ex.id) => {
+      if method_map.get().contains_key(&ex.id) => {
           // Arguments in method calls are always passed by ref.
           //
           // Currently these do not use adjustments, so we have to
