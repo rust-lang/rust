@@ -958,6 +958,7 @@ fn new_sched_rng() -> XorShiftRng {
 
 #[cfg(test)]
 mod test {
+    use std::comm;
     use std::task::TaskOpts;
     use std::rt::Runtime;
     use std::rt::task::Task;
@@ -1376,7 +1377,7 @@ mod test {
             // This task should not be able to starve the sender;
             // The sender should get stolen to another thread.
             do spawn {
-                while port.try_recv().is_none() { }
+                while port.try_recv() != comm::Data(()) { }
             }
 
             chan.send(());
@@ -1393,7 +1394,7 @@ mod test {
             // This task should not be able to starve the other task.
             // The sends should eventually yield.
             do spawn {
-                while port.try_recv().is_none() {
+                while port.try_recv() != comm::Data(()) {
                     chan2.send(());
                 }
             }

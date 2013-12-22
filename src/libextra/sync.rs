@@ -19,6 +19,7 @@
 
 
 use std::borrow;
+use std::comm;
 use std::unstable::sync::Exclusive;
 use std::sync::arc::UnsafeArc;
 use std::sync::atomics;
@@ -49,7 +50,7 @@ impl WaitQueue {
     // Signals one live task from the queue.
     fn signal(&self) -> bool {
         match self.head.try_recv() {
-            Some(ch) => {
+            comm::Data(ch) => {
                 // Send a wakeup signal. If the waiter was killed, its port will
                 // have closed. Keep trying until we get a live task.
                 if ch.try_send_deferred(()) {
@@ -58,7 +59,7 @@ impl WaitQueue {
                     self.signal()
                 }
             }
-            None => false
+            _ => false
         }
     }
 
@@ -66,12 +67,12 @@ impl WaitQueue {
         let mut count = 0;
         loop {
             match self.head.try_recv() {
-                None => break,
-                Some(ch) => {
+                comm::Data(ch) => {
                     if ch.try_send_deferred(()) {
                         count += 1;
                     }
                 }
+                _ => break
             }
         }
         count
