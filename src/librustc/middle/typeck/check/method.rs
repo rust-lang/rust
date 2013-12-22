@@ -95,6 +95,7 @@ use middle::typeck::check::regionmanip::replace_bound_regions_in_fn_sig;
 use util::common::indenter;
 use util::ppaux::Repr;
 
+use std::cell::RefCell;
 use std::hashmap::HashSet;
 use std::result;
 use std::vec;
@@ -132,7 +133,7 @@ pub fn lookup(
         check_traits: CheckTraitsFlag,      // Whether we check traits only.
         autoderef_receiver: AutoderefReceiverFlag)
      -> Option<method_map_entry> {
-    let impl_dups = @mut HashSet::new();
+    let impl_dups = @RefCell::new(HashSet::new());
     let lcx = LookupContext {
         fcx: fcx,
         expr: expr,
@@ -174,7 +175,7 @@ pub struct LookupContext<'a> {
     callee_id: NodeId,
     m_name: ast::Name,
     supplied_tps: &'a [ty::t],
-    impl_dups: @mut HashSet<DefId>,
+    impl_dups: @RefCell<HashSet<DefId>>,
     inherent_candidates: @mut ~[Candidate],
     extension_candidates: @mut ~[Candidate],
     deref_args: check::DerefArgs,
@@ -540,8 +541,11 @@ impl<'a> LookupContext<'a> {
     fn push_candidates_from_impl(&self,
                                      candidates: &mut ~[Candidate],
                                      impl_info: &ty::Impl) {
-        if !self.impl_dups.insert(impl_info.did) {
-            return; // already visited
+        {
+            let mut impl_dups = self.impl_dups.borrow_mut();
+            if !impl_dups.get().insert(impl_info.did) {
+                return; // already visited
+            }
         }
         debug!("push_candidates_from_impl: {} {} {}",
                token::interner_get(self.m_name),
