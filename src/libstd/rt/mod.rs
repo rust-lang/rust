@@ -173,6 +173,9 @@ mod local_ptr;
 /// Bindings to pthread/windows thread-local storage.
 mod thread_local_storage;
 
+/// Stack unwinding
+pub mod unwind;
+
 /// Just stuff
 mod util;
 

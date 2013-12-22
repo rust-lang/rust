@@ -708,10 +708,7 @@ pub fn get_cc_prog(sess: Session) -> ~str {
     // In the future, FreeBSD will use clang as default compiler.
     // It would be flexible to use cc (system's default C compiler)
     // instead of hard-coded gcc.
-    // For win32, there is no cc command, so we add a condition to make it use
-    // g++.  We use g++ rather than gcc because it automatically adds linker
-    // options required for generation of dll modules that correctly register
-    // stack unwind tables.
+    // For win32, there is no cc command, so we add a condition to make it use gcc.
     match sess.targ_cfg.os {
         abi::OsAndroid => match sess.opts.android_cross_path {
             Some(ref path) => format!("{}/bin/arm-linux-androideabi-gcc", *path),
@@ -720,7 +717,7 @@ pub fn get_cc_prog(sess: Session) -> ~str {
                             (--android-cross-path)")
             }
         },
-        abi::OsWin32 => ~"g++",
+        abi::OsWin32 => ~"gcc",
         _ => ~"cc",
     }
 }
@@ -1030,6 +1027,12 @@ fn link_args(sess: Session,
            sess.opts.optimize == session::Aggressive {
             args.push(~"-Wl,-O1");
         }
+    }
+
+    if sess.targ_cfg.os == abi::OsWin32 {
+        // Make sure that we link to the dynamic libgcc, otherwise cross-module
+        // DWARF stack unwinding will not work.
+        args.push(~"-shared-libgcc");
     }
 
     add_local_native_libraries(&mut args, sess);

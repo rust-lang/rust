@@ -31,8 +31,7 @@ snapshot_files = {
     "freebsd": ["bin/rustc"],
     }
 
-winnt_runtime_deps = ["libgcc_s_dw2-1.dll",
-                      "libstdc++-6.dll"]
+winnt_runtime_deps = ["libgcc_s_dw2-1.dll"]
 
 def parse_line(n, line):
   global snapshotfile

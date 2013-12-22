@@ -208,7 +208,7 @@ pub fn collect_language_items(crate: &ast::Crate,
 }
 
 lets_do_this! {
-    There are 42 lang items.
+    There are 43 lang items.
 
 //  ID, Variant name,                    Name,                      Method name;
     0,  FreezeTraitLangItem,             "freeze",                  freeze_trait;
@@ -261,5 +261,7 @@ lets_do_this! {
     40, EventLoopFactoryLangItem,        "event_loop_factory",      event_loop_factory;
 
     41, TypeIdLangItem,                  "type_id",                 type_id;
+
+    42, EhPersonalityLangItem,           "eh_personality",          eh_personality_fn;
 }
 

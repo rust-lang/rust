@@ -16,7 +16,7 @@
 #[crate_type = "dylib"];
 #[crate_type = "rlib"];
 
-#[feature(macro_rules, globs, struct_variant, managed_boxes)];
+#[feature(macro_rules, globs, struct_variant, managed_boxes, link_args)];
 
 extern mod extra;
 extern mod syntax;
@@ -92,7 +92,6 @@ pub mod back {
     pub mod link;
     pub mod manifest;
     pub mod abi;
-    pub mod upcall;
     pub mod arm;
     pub mod mips;
     pub mod x86;
