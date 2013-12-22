@@ -41,7 +41,7 @@ struct TestCtxt {
     sess: session::Session,
     path: RefCell<~[ast::Ident]>,
     ext_cx: @ExtCtxt,
-    testfns: ~[Test],
+    testfns: RefCell<~[Test]>,
     is_extra: bool,
     config: ast::CrateConfig,
 }
@@ -104,7 +104,10 @@ impl fold::ast_fold for TestHarnessGenerator {
                         ignore: is_ignored(self.cx, i),
                         should_fail: should_fail(i)
                     };
-                    self.cx.testfns.push(test);
+                    {
+                        let mut testfns = self.cx.testfns.borrow_mut();
+                        testfns.get().push(test);
+                    }
                     // debug!("have {} test/bench functions",
                     //        cx.testfns.len());
                 }
@@ -155,7 +158,7 @@ fn generate_test_harness(sess: session::Session, crate: ast::Crate)
         sess: sess,
         ext_cx: ExtCtxt::new(sess.parse_sess, sess.opts.cfg.clone()),
         path: RefCell::new(~[]),
-        testfns: ~[],
+        testfns: RefCell::new(~[]),
         is_extra: is_extra(&crate),
         config: crate.config.clone(),
     };
@@ -389,10 +392,13 @@ fn is_extra(crate: &ast::Crate) -> bool {
 }
 
 fn mk_test_descs(cx: &TestCtxt) -> @ast::Expr {
-    debug!("building test vector from {} tests", cx.testfns.len());
     let mut descs = ~[];
-    for test in cx.testfns.iter() {
-        descs.push(mk_test_desc_and_fn_rec(cx, test));
+    {
+        let testfns = cx.testfns.borrow();
+        debug!("building test vector from {} tests", testfns.get().len());
+        for test in testfns.get().iter() {
+            descs.push(mk_test_desc_and_fn_rec(cx, test));
+        }
     }
 
     let inner_expr = @ast::Expr {
