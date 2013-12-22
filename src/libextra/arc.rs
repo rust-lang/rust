@@ -51,7 +51,7 @@ use std::borrow;
 /// As sync::condvar, a mechanism for unlock-and-descheduling and signaling.
 pub struct Condvar<'a> {
     priv is_mutex: bool,
-    priv failed: &'a mut bool,
+    priv failed: &'a bool,
     priv cond: &'a sync::Condvar<'a>
 }
 
@@ -242,7 +242,7 @@ impl<T:Send> MutexArc<T> {
             let _z = PoisonOnFail::new(&mut (*state).failed);
             blk(&mut (*state).data,
                 &Condvar {is_mutex: true,
-                          failed: &mut (*state).failed,
+                          failed: &(*state).failed,
                           cond: cond })
         })
     }
@@ -414,7 +414,7 @@ impl<T:Freeze + Send> RWArc<T> {
                 let _z = PoisonOnFail::new(&mut (*state).failed);
                 blk(&mut (*state).data,
                     &Condvar {is_mutex: false,
-                              failed: &mut (*state).failed,
+                              failed: &(*state).failed,
                               cond: cond})
             })
         }
@@ -567,7 +567,7 @@ impl<'a, T:Freeze + Send> RWWriteMode<'a, T> {
                     unsafe {
                         let cvar = Condvar {
                             is_mutex: false,
-                            failed: &mut *poison.flag,
+                            failed: &*poison.flag,
                             cond: cond
                         };
                         blk(data, &cvar)
