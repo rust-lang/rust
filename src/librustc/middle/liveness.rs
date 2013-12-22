@@ -594,7 +594,7 @@ pub struct Liveness {
     users: @mut ~[Users],
     // The list of node IDs for the nested loop scopes
     // we're in.
-    loop_scope: @mut ~[NodeId],
+    loop_scope: @RefCell<~[NodeId]>,
     // mappings from loop node ID to LiveNode
     // ("break" label should map to loop node ID,
     // it probably doesn't now)
@@ -612,7 +612,7 @@ fn Liveness(ir: @IrMaps, specials: Specials) -> Liveness {
         users: @mut vec::from_elem(ir.num_live_nodes.get() *
                                    ir.num_vars.get(),
                                    invalid_users()),
-        loop_scope: @mut ~[],
+        loop_scope: @RefCell::new(~[]),
         break_ln: @RefCell::new(HashMap::new()),
         cont_ln: @RefCell::new(HashMap::new()),
     }
@@ -762,7 +762,8 @@ impl Liveness {
             None => {
                 // Vanilla 'break' or 'loop', so use the enclosing
                 // loop scope
-                if self.loop_scope.len() == 0 {
+                let loop_scope = self.loop_scope.borrow();
+                if loop_scope.get().len() == 0 {
                     self.tcx.sess.span_bug(sp, "break outside loop");
                 } else {
                     // FIXME(#5275): this shouldn't have to be a method...
@@ -773,8 +774,8 @@ impl Liveness {
     }
 
     pub fn last_loop_scope(&self) -> NodeId {
-        let loop_scope = &mut *self.loop_scope;
-        *loop_scope.last()
+        let loop_scope = self.loop_scope.borrow();
+        *loop_scope.get().last()
     }
 
     pub fn ln_str(&self, ln: LiveNode) -> ~str {
@@ -1418,8 +1419,11 @@ impl Liveness {
                            cont_ln: LiveNode,
                            f: || -> R)
                            -> R {
-      debug!("with_loop_nodes: {} {}", loop_node_id, *break_ln);
-        self.loop_scope.push(loop_node_id);
+        debug!("with_loop_nodes: {} {}", loop_node_id, *break_ln);
+        {
+            let mut loop_scope = self.loop_scope.borrow_mut();
+            loop_scope.get().push(loop_node_id);
+        }
         {
             let mut this_break_ln = self.break_ln.borrow_mut();
             let mut this_cont_ln = self.cont_ln.borrow_mut();
@@ -1427,7 +1431,10 @@ impl Liveness {
             this_cont_ln.get().insert(loop_node_id, cont_ln);
         }
         let r = f();
-        self.loop_scope.pop();
+        {
+            let mut loop_scope = self.loop_scope.borrow_mut();
+            loop_scope.get().pop();
+        }
         r
     }
 }
