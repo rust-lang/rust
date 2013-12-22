@@ -136,7 +136,8 @@ pub struct Stats {
     n_closures: Cell<uint>,
     n_llvm_insns: Cell<uint>,
     llvm_insns: RefCell<HashMap<~str, uint>>,
-    fn_stats: ~[(~str, uint, uint)] // (ident, time-in-ms, llvm-instructions)
+    // (ident, time-in-ms, llvm-instructions)
+    fn_stats: RefCell<~[(~str, uint, uint)]>,
 }
 
 pub struct BuilderRef_res {
