@@ -326,6 +326,7 @@ impl ImportDirective {
 }
 
 /// The item that an import resolves to.
+#[deriving(Clone)]
 struct Target {
     target_module: @Module,
     bindings: @NameBindings,
@@ -354,7 +355,7 @@ struct ImportResolution {
     outstanding_references: Cell<uint>,
 
     /// The value that this `use` directive names, if there is one.
-    value_target: Option<Target>,
+    value_target: RefCell<Option<Target>>,
     /// The source node of the `use` directive leading to the value target
     /// being non-none
     value_id: NodeId,
@@ -372,7 +373,7 @@ impl ImportResolution {
             type_id: id,
             value_id: id,
             outstanding_references: Cell::new(0),
-            value_target: None,
+            value_target: RefCell::new(None),
             type_target: None,
             is_public: Cell::new(is_public),
         }
@@ -382,7 +383,7 @@ impl ImportResolution {
                                 -> Option<Target> {
         match namespace {
             TypeNS      => return self.type_target,
-            ValueNS     => return self.value_target,
+            ValueNS     => return self.value_target.get(),
         }
     }
 
@@ -2418,8 +2419,8 @@ impl Resolver {
         match value_result {
             BoundResult(target_module, name_bindings) => {
                 debug!("(resolving single import) found value target");
-                import_resolution.value_target =
-                    Some(Target::new(target_module, name_bindings));
+                import_resolution.value_target.set(
+                    Some(Target::new(target_module, name_bindings)));
                 import_resolution.value_id = directive.id;
                 used_public = name_bindings.defined_in_public_namespace(ValueNS);
             }
@@ -2443,7 +2444,7 @@ impl Resolver {
             }
         }
 
-        if import_resolution.value_target.is_none() &&
+        if import_resolution.value_target.get().is_none() &&
            import_resolution.type_target.is_none() {
             let msg = format!("unresolved import: there is no \
                                `{}` in `{}`",
@@ -2461,7 +2462,7 @@ impl Resolver {
         // record what this import resolves to for later uses in documentation,
         // this may resolve to either a value or a type, but for documentation
         // purposes it's good enough to just favor one over the other.
-        match import_resolution.value_target {
+        match import_resolution.value_target.get() {
             Some(target) => {
                 let def = target.bindings.def_for_namespace(ValueNS).unwrap();
                 self.def_map.insert(directive.id, def);
@@ -2534,8 +2535,8 @@ impl Resolver {
                     // Simple: just copy the old import resolution.
                     let new_import_resolution =
                         @mut ImportResolution::new(id, is_public);
-                    new_import_resolution.value_target =
-                        target_import_resolution.value_target;
+                    new_import_resolution.value_target.set(
+                        target_import_resolution.value_target.get());
                     new_import_resolution.type_target =
                         target_import_resolution.type_target;
 
@@ -2546,13 +2547,13 @@ impl Resolver {
                     // Merge the two import resolutions at a finer-grained
                     // level.
 
-                    match target_import_resolution.value_target {
+                    match target_import_resolution.value_target.get() {
                         None => {
                             // Continue.
                         }
                         Some(value_target) => {
-                            dest_import_resolution.value_target =
-                                Some(value_target);
+                            dest_import_resolution.value_target.set(
+                                Some(value_target));
                         }
                     }
                     match target_import_resolution.type_target {
@@ -2595,8 +2596,8 @@ impl Resolver {
             // Merge the child item into the import resolution.
             if name_bindings.defined_in_public_namespace(ValueNS) {
                 debug!("(resolving glob import) ... for value target");
-                dest_import_resolution.value_target =
-                    Some(Target::new(containing_module, name_bindings));
+                dest_import_resolution.value_target.set(
+                    Some(Target::new(containing_module, name_bindings)));
                 dest_import_resolution.value_id = id;
             }
             if name_bindings.defined_in_public_namespace(TypeNS) {
