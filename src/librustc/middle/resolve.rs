@@ -364,13 +364,13 @@ struct ImportResolution {
     type_target: RefCell<Option<Target>>,
     /// The source node of the `use` directive leading to the type target
     /// being non-none
-    type_id: NodeId,
+    type_id: Cell<NodeId>,
 }
 
 impl ImportResolution {
     fn new(id: NodeId, is_public: bool) -> ImportResolution {
         ImportResolution {
-            type_id: id,
+            type_id: Cell::new(id),
             value_id: Cell::new(id),
             outstanding_references: Cell::new(0),
             value_target: RefCell::new(None),
@@ -389,7 +389,7 @@ impl ImportResolution {
 
     fn id(&self, namespace: Namespace) -> NodeId {
         match namespace {
-            TypeNS  => self.type_id,
+            TypeNS  => self.type_id.get(),
             ValueNS => self.value_id.get(),
         }
     }
@@ -1973,7 +1973,7 @@ impl Resolver {
                             resolution.outstanding_references.get() + 1);
 
                         // the source of this name is different now
-                        resolution.type_id = id;
+                        resolution.type_id.set(id);
                         resolution.value_id.set(id);
                     }
                     None => {
@@ -2435,7 +2435,7 @@ impl Resolver {
                         name_bindings.type_def.get().unwrap().type_def);
                 import_resolution.type_target.set(
                     Some(Target::new(target_module, name_bindings)));
-                import_resolution.type_id = directive.id;
+                import_resolution.type_id.set(directive.id);
                 used_public = name_bindings.defined_in_public_namespace(TypeNS);
             }
             UnboundResult => { /* Continue. */ }
@@ -2604,7 +2604,7 @@ impl Resolver {
                 debug!("(resolving glob import) ... for type target");
                 dest_import_resolution.type_target.set(
                     Some(Target::new(containing_module, name_bindings)));
-                dest_import_resolution.type_id = id;
+                dest_import_resolution.type_id.set(id);
             }
             dest_import_resolution.is_public.set(is_public);
         };
@@ -5392,7 +5392,8 @@ impl Resolver {
                                                     &mut found_traits,
                                                     trait_def_id, name);
                                                 self.used_imports.insert(
-                                                    import_resolution.type_id);
+                                                    import_resolution.type_id
+                                                                     .get());
                                             }
                                         }
                                         _ => {
