@@ -169,7 +169,7 @@ pub type MovesMap = @RefCell<HashSet<NodeId>>;
  * Note: The `VariableMovesMap` stores expression ids that
  * are moves, whereas this set stores the ids of the variables
  * that are moved at some point */
-pub type MovedVariablesSet = @mut HashSet<NodeId>;
+pub type MovedVariablesSet = @RefCell<HashSet<NodeId>>;
 
 /** See the section Output on the module comment for explanation. */
 #[deriving(Clone)]
@@ -217,7 +217,7 @@ pub fn compute_moves(tcx: ty::ctxt,
         move_maps: MoveMaps {
             moves_map: @RefCell::new(HashSet::new()),
             capture_map: @RefCell::new(HashMap::new()),
-            moved_variables_set: @mut HashSet::new()
+            moved_variables_set: @RefCell::new(HashSet::new())
         }
     };
     let visit_cx = &mut visit_cx;
@@ -344,7 +344,11 @@ impl VisitContext {
                         let def = self.tcx.def_map.get_copy(&expr.id);
                         let r = moved_variable_node_id_from_def(def);
                         for &id in r.iter() {
-                            self.move_maps.moved_variables_set.insert(id);
+                            let mut moved_variables_set =
+                                self.move_maps
+                                    .moved_variables_set
+                                    .borrow_mut();
+                            moved_variables_set.get().insert(id);
                         }
                     }
                     Read => {}

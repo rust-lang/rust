@@ -305,7 +305,10 @@ impl<'a> GuaranteeLifetimeContext<'a> {
             mc::cat_local(id) |
             mc::cat_self(id) |
             mc::cat_arg(id) => {
-                self.bccx.moved_variables_set.contains(&id)
+                let moved_variables_set = self.bccx
+                                              .moved_variables_set
+                                              .borrow();
+                moved_variables_set.get().contains(&id)
             }
             mc::cat_rvalue(..) |
             mc::cat_static_item |
