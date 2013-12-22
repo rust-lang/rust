@@ -454,7 +454,7 @@ pub fn get_tydesc(ccx: &CrateContext, t: ty::t) -> @tydesc_info {
         }
     }
 
-    ccx.stats.n_static_tydescs += 1u;
+    ccx.stats.n_static_tydescs.set(ccx.stats.n_static_tydescs.get() + 1u);
     let inf = glue::declare_tydesc(ccx, t);
 
     let mut tydescs = ccx.tydescs.borrow_mut();
@@ -3245,7 +3245,7 @@ pub fn trans_crate(sess: session::Session,
     let metadata = write_metadata(ccx, &crate);
     if ccx.sess.trans_stats() {
         println("--- trans stats ---");
-        println!("n_static_tydescs: {}", ccx.stats.n_static_tydescs);
+        println!("n_static_tydescs: {}", ccx.stats.n_static_tydescs.get());
         println!("n_glues_created: {}", ccx.stats.n_glues_created);
         println!("n_null_glues: {}", ccx.stats.n_null_glues);
         println!("n_real_glues: {}", ccx.stats.n_real_glues);
