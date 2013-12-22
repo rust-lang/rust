@@ -353,56 +353,56 @@ mod tests {
 
     #[test]
     fn test_tls_multitask() {
-        static my_key: Key<@~str> = &Key;
-        set(my_key, @~"parent data");
+        static my_key: Key<~str> = &Key;
+        set(my_key, ~"parent data");
         do task::spawn {
             // TLS shouldn't carry over.
-            assert!(get(my_key, |k| k.map(|k| *k)).is_none());
-            set(my_key, @~"child data");
-            assert!(*(get(my_key, |k| k.map(|k| *k)).unwrap()) ==
+            assert!(get(my_key, |k| k.map(|k| (*k).clone())).is_none());
+            set(my_key, ~"child data");
+            assert!(get(my_key, |k| k.map(|k| (*k).clone())).unwrap() ==
                     ~"child data");
             // should be cleaned up for us
         }
         // Must work multiple times
-        assert!(*(get(my_key, |k| k.map(|k| *k)).unwrap()) == ~"parent data");
-        assert!(*(get(my_key, |k| k.map(|k| *k)).unwrap()) == ~"parent data");
-        assert!(*(get(my_key, |k| k.map(|k| *k)).unwrap()) == ~"parent data");
+        assert!(get(my_key, |k| k.map(|k| (*k).clone())).unwrap() == ~"parent data");
+        assert!(get(my_key, |k| k.map(|k| (*k).clone())).unwrap() == ~"parent data");
+        assert!(get(my_key, |k| k.map(|k| (*k).clone())).unwrap() == ~"parent data");
     }
 
     #[test]
     fn test_tls_overwrite() {
-        static my_key: Key<@~str> = &Key;
-        set(my_key, @~"first data");
-        set(my_key, @~"next data"); // Shouldn't leak.
-        assert!(*(get(my_key, |k| k.map(|k| *k)).unwrap()) == ~"next data");
+        static my_key: Key<~str> = &Key;
+        set(my_key, ~"first data");
+        set(my_key, ~"next data"); // Shouldn't leak.
+        assert!(get(my_key, |k| k.map(|k| (*k).clone())).unwrap() == ~"next data");
     }
 
     #[test]
     fn test_tls_pop() {
-        static my_key: Key<@~str> = &Key;
-        set(my_key, @~"weasel");
-        assert!(*(pop(my_key).unwrap()) == ~"weasel");
+        static my_key: Key<~str> = &Key;
+        set(my_key, ~"weasel");
+        assert!(pop(my_key).unwrap() == ~"weasel");
         // Pop must remove the data from the map.
         assert!(pop(my_key).is_none());
     }
 
     #[test]
     fn test_tls_modify() {
-        static my_key: Key<@~str> = &Key;
+        static my_key: Key<~str> = &Key;
         modify(my_key, |data| {
             match data {
-                Some(@ref val) => fail!("unwelcome value: {}", *val),
-                None           => Some(@~"first data")
+                Some(ref val) => fail!("unwelcome value: {}", *val),
+                None           => Some(~"first data")
             }
         });
         modify(my_key, |data| {
             match data {
-                Some(@~"first data") => Some(@~"next data"),
-                Some(@ref val)       => fail!("wrong value: {}", *val),
+                Some(~"first data") => Some(~"next data"),
+                Some(ref val)       => fail!("wrong value: {}", *val),
                 None                 => fail!("missing value")
             }
         });
-        assert!(*(pop(my_key).unwrap()) == ~"next data");
+        assert!(pop(my_key).unwrap() == ~"next data");
     }
 
     #[test]
@@ -413,67 +413,67 @@ mod tests {
         // to get recorded as something within a rust stack segment. Then a
         // subsequent upcall (esp. for logging, think vsnprintf) would run on
         // a stack smaller than 1 MB.
-        static my_key: Key<@~str> = &Key;
+        static my_key: Key<~str> = &Key;
         do task::spawn {
-            set(my_key, @~"hax");
+            set(my_key, ~"hax");
         }
     }
 
     #[test]
     fn test_tls_multiple_types() {
-        static str_key: Key<@~str> = &Key;
-        static box_key: Key<@@()> = &Key;
-        static int_key: Key<@int> = &Key;
+        static str_key: Key<~str> = &Key;
+        static box_key: Key<@()> = &Key;
+        static int_key: Key<int> = &Key;
         do task::spawn {
-            set(str_key, @~"string data");
-            set(box_key, @@());
-            set(int_key, @42);
+            set(str_key, ~"string data");
+            set(box_key, @());
+            set(int_key, 42);
         }
     }
 
     #[test]
     fn test_tls_overwrite_multiple_types() {
-        static str_key: Key<@~str> = &Key;
-        static box_key: Key<@@()> = &Key;
-        static int_key: Key<@int> = &Key;
+        static str_key: Key<~str> = &Key;
+        static box_key: Key<@()> = &Key;
+        static int_key: Key<int> = &Key;
         do task::spawn {
-            set(str_key, @~"string data");
-            set(str_key, @~"string data 2");
-            set(box_key, @@());
-            set(box_key, @@());
-            set(int_key, @42);
+            set(str_key, ~"string data");
+            set(str_key, ~"string data 2");
+            set(box_key, @());
+            set(box_key, @());
+            set(int_key, 42);
             // This could cause a segfault if overwriting-destruction is done
             // with the crazy polymorphic transmute rather than the provided
             // finaliser.
-            set(int_key, @31337);
+            set(int_key, 31337);
         }
     }
 
     #[test]
     #[should_fail]
     fn test_tls_cleanup_on_failure() {
-        static str_key: Key<@~str> = &Key;
-        static box_key: Key<@@()> = &Key;
-        static int_key: Key<@int> = &Key;
-        set(str_key, @~"parent data");
-        set(box_key, @@());
+        static str_key: Key<~str> = &Key;
+        static box_key: Key<@()> = &Key;
+        static int_key: Key<int> = &Key;
+        set(str_key, ~"parent data");
+        set(box_key, @());
         do task::spawn {
             // spawn_linked
-            set(str_key, @~"string data");
-            set(box_key, @@());
-            set(int_key, @42);
+            set(str_key, ~"string data");
+            set(box_key, @());
+            set(int_key, 42);
             fail!();
         }
         // Not quite nondeterministic.
-        set(int_key, @31337);
+        set(int_key, 31337);
         fail!();
     }
 
     #[test]
     fn test_static_pointer() {
-        static key: Key<@&'static int> = &Key;
+        static key: Key<&'static int> = &Key;
         static VALUE: int = 0;
-        let v: @&'static int = @&VALUE;
+        let v: &'static int = &VALUE;
         set(key, v);
     }
 
