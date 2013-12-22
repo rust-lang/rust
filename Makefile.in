@@ -657,11 +657,6 @@ ifneq ($(strip $(findstring snap,$(MAKECMDGOALS))   \
   include $(CFG_SRC_DIR)mk/snap.mk
 endif
 
-ifneq ($(findstring reformat,$(MAKECMDGOALS)),)
-  CFG_INFO := $(info cfg: including reformat rules)
-  include $(CFG_SRC_DIR)mk/pp.mk
-endif
-
 ifneq ($(strip $(findstring check,$(MAKECMDGOALS)) \
                $(findstring test,$(MAKECMDGOALS))  \
                $(findstring perf,$(MAKECMDGOALS))  \
