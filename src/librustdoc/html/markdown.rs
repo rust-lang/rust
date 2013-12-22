@@ -22,9 +22,12 @@
 //! // ... something using html
 //! ```
 
+use std::cast;
 use std::fmt;
-use std::libc;
 use std::io;
+use std::libc;
+use std::str;
+use std::unstable::intrinsics;
 use std::vec;
 
 /// A unit struct which has the `fmt::Default` trait implemented. When
@@ -41,8 +44,10 @@ static MKDEXT_STRIKETHROUGH: libc::c_uint = 1 << 4;
 
 type sd_markdown = libc::c_void;  // this is opaque to us
 
-// this is a large struct of callbacks we don't use
-type sd_callbacks = [libc::size_t, ..26];
+struct sd_callbacks {
+    blockcode: extern "C" fn(*buf, *buf, *buf, *libc::c_void),
+    other: [libc::size_t, ..25],
+}
 
 struct html_toc_data {
     header_count: libc::c_int,
@@ -54,6 +59,11 @@ struct html_renderopt {
     toc_data: html_toc_data,
     flags: libc::c_uint,
     link_attributes: Option<extern "C" fn(*buf, *buf, *libc::c_void)>,
+}
+
+struct my_opaque {
+    opt: html_renderopt,
+    dfltblk: extern "C" fn(*buf, *buf, *buf, *libc::c_void),
 }
 
 struct buf {
@@ -84,7 +94,28 @@ extern {
 
 }
 
-fn render(w: &mut io::Writer, s: &str) {
+pub fn render(w: &mut io::Writer, s: &str) {
+    extern fn block(ob: *buf, text: *buf, lang: *buf, opaque: *libc::c_void) {
+        unsafe {
+            let my_opaque: &my_opaque = cast::transmute(opaque);
+            vec::raw::buf_as_slice((*text).data, (*text).size as uint, |text| {
+                let text = str::from_utf8(text);
+                let mut lines = text.lines().filter(|l| {
+                    !l.trim().starts_with("#")
+                });
+                let text = lines.to_owned_vec().connect("\n");
+
+                let buf = buf {
+                    data: text.as_bytes().as_ptr(),
+                    size: text.len() as libc::size_t,
+                    asize: text.len() as libc::size_t,
+                    unit: 0,
+                };
+                (my_opaque.dfltblk)(ob, &buf, lang, opaque);
+            })
+        }
+    }
+
     // This code is all lifted from examples/sundown.c in the sundown repo
     unsafe {
         let ob = bufnew(OUTPUT_UNIT);
@@ -100,11 +131,16 @@ fn render(w: &mut io::Writer, s: &str) {
             flags: 0,
             link_attributes: None,
         };
-        let callbacks: sd_callbacks = [0, ..26];
+        let mut callbacks: sd_callbacks = intrinsics::init();
 
         sdhtml_renderer(&callbacks, &options, 0);
+        let opaque = my_opaque {
+            opt: options,
+            dfltblk: callbacks.blockcode,
+        };
+        callbacks.blockcode = block;
         let markdown = sd_markdown_new(extensions, 16, &callbacks,
-                                       &options as *html_renderopt as *libc::c_void);
+                                       &opaque as *my_opaque as *libc::c_void);
 
 
         sd_markdown_render(ob, s.as_ptr(), s.len() as libc::size_t, markdown);
@@ -114,6 +150,48 @@ fn render(w: &mut io::Writer, s: &str) {
             w.write(buf);
         });
 
+        bufrelease(ob);
+    }
+}
+
+pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
+    extern fn block(_ob: *buf, text: *buf, lang: *buf, opaque: *libc::c_void) {
+        unsafe {
+            if text.is_null() || lang.is_null() { return }
+            let (test, shouldfail, ignore) =
+                vec::raw::buf_as_slice((*lang).data,
+                                       (*lang).size as uint, |lang| {
+                    let s = str::from_utf8(lang);
+                    (s.contains("rust"), s.contains("should_fail"),
+                     s.contains("ignore"))
+                });
+            if !test { return }
+            vec::raw::buf_as_slice((*text).data, (*text).size as uint, |text| {
+                let tests: &mut ::test::Collector = intrinsics::transmute(opaque);
+                let text = str::from_utf8(text);
+                let mut lines = text.lines().map(|l| l.trim_chars(&'#'));
+                let text = lines.to_owned_vec().connect("\n");
+                tests.add_test(text, ignore, shouldfail);
+            })
+        }
+    }
+
+    unsafe {
+        let ob = bufnew(OUTPUT_UNIT);
+        let extensions = MKDEXT_NO_INTRA_EMPHASIS | MKDEXT_TABLES |
+                         MKDEXT_FENCED_CODE | MKDEXT_AUTOLINK |
+                         MKDEXT_STRIKETHROUGH;
+        let callbacks = sd_callbacks {
+            blockcode: block,
+            other: intrinsics::init()
+        };
+
+        let tests = tests as *mut ::test::Collector as *libc::c_void;
+        let markdown = sd_markdown_new(extensions, 16, &callbacks, tests);
+
+        sd_markdown_render(ob, doc.as_ptr(), doc.len() as libc::size_t,
+                           markdown);
+        sd_markdown_free(markdown);
         bufrelease(ob);
     }
 }
