@@ -443,7 +443,7 @@ struct Module {
     anonymous_children: RefCell<HashMap<NodeId,@Module>>,
 
     // The status of resolving each import in this module.
-    import_resolutions: RefCell<HashMap<Name, @mut ImportResolution>>,
+    import_resolutions: RefCell<HashMap<Name, @ImportResolution>>,
 
     // The number of unresolved globs that this module exports.
     glob_count: Cell<uint>,
@@ -1978,7 +1978,7 @@ impl Resolver {
                     }
                     None => {
                         debug!("(building import directive) creating new");
-                        let resolution = @mut ImportResolution::new(id, is_public);
+                        let resolution = @ImportResolution::new(id, is_public);
                         resolution.outstanding_references.set(1);
                         import_resolutions.get().insert(target.name,
                                                         resolution);
@@ -2334,8 +2334,7 @@ impl Resolver {
                                 == 0 => {
 
                         fn get_binding(this: &mut Resolver,
-                                       import_resolution:
-                                          @mut ImportResolution,
+                                       import_resolution: @ImportResolution,
                                        namespace: Namespace)
                                     -> NamespaceResult {
 
@@ -2534,7 +2533,7 @@ impl Resolver {
                 None => {
                     // Simple: just copy the old import resolution.
                     let new_import_resolution =
-                        @mut ImportResolution::new(id, is_public);
+                        @ImportResolution::new(id, is_public);
                     new_import_resolution.value_target.set(
                         target_import_resolution.value_target.get());
                     new_import_resolution.type_target.set(
@@ -2577,8 +2576,8 @@ impl Resolver {
             match import_resolutions.get().find(&name) {
                 None => {
                     // Create a new import resolution from this child.
-                    dest_import_resolution = @mut ImportResolution::new(id,
-                                                                        is_public);
+                    dest_import_resolution =
+                        @ImportResolution::new(id, is_public);
                     import_resolutions.get().insert(name,
                                                     dest_import_resolution);
                 }
