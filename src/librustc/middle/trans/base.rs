@@ -3246,7 +3246,7 @@ pub fn trans_crate(sess: session::Session,
     if ccx.sess.trans_stats() {
         println("--- trans stats ---");
         println!("n_static_tydescs: {}", ccx.stats.n_static_tydescs.get());
-        println!("n_glues_created: {}", ccx.stats.n_glues_created);
+        println!("n_glues_created: {}", ccx.stats.n_glues_created.get());
         println!("n_null_glues: {}", ccx.stats.n_null_glues);
         println!("n_real_glues: {}", ccx.stats.n_real_glues);
 
