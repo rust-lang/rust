@@ -1005,7 +1005,7 @@ pub fn have_cached_lpad(bcx: @Block) -> bool {
     return res;
 }
 
-pub fn in_lpad_scope_cx(bcx: @Block, f: |si: &mut ScopeInfo|) {
+pub fn in_lpad_scope_cx(bcx: @Block, f: |si: &ScopeInfo|) {
     let mut bcx = bcx;
     let mut cur_scope = bcx.scope.get();
     loop {
@@ -1191,7 +1191,7 @@ pub fn trans_stmt(cx: @Block, s: &ast::Stmt) -> @Block {
 // next three functions instead.
 pub fn new_block(cx: @FunctionContext,
                  parent: Option<@Block>,
-                 scope: Option<@mut ScopeInfo>,
+                 scope: Option<@ScopeInfo>,
                  is_lpad: bool,
                  name: &str,
                  opt_node_info: Option<NodeInfo>)
@@ -1216,9 +1216,10 @@ pub fn new_block(cx: @FunctionContext,
     }
 }
 
-pub fn simple_block_scope(parent: Option<@mut ScopeInfo>,
-                          node_info: Option<NodeInfo>) -> @mut ScopeInfo {
-    @mut ScopeInfo {
+pub fn simple_block_scope(parent: Option<@ScopeInfo>,
+                          node_info: Option<NodeInfo>)
+                          -> @ScopeInfo {
+    @ScopeInfo {
         parent: parent,
         loop_break: None,
         loop_label: None,
@@ -1248,7 +1249,7 @@ pub fn loop_scope_block(bcx: @Block,
                         loop_label: Option<Name>,
                         n: &str,
                         opt_node_info: Option<NodeInfo>) -> @Block {
-    return new_block(bcx.fcx, Some(bcx), Some(@mut ScopeInfo {
+    return new_block(bcx.fcx, Some(bcx), Some(@ScopeInfo {
         parent: None,
         loop_break: Some(loop_break),
         loop_label: loop_label,
@@ -1329,7 +1330,7 @@ pub fn cleanup_and_leave(bcx: @Block,
             cur_scope = match cur_scope {
                 Some (inf) if !inf.empty_cleanups() => {
                     let (sub_cx, dest, inf_cleanups) = {
-                        let inf = &mut *inf;
+                        let inf = &*inf;
                         let mut skip = 0;
                         let mut dest = None;
                         {
