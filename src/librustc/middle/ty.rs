@@ -360,7 +360,7 @@ struct ctxt_ {
 
     // The set of external nominal types whose implementations have been read.
     // This is used for lazy resolution of methods.
-    populated_external_types: @mut HashSet<ast::DefId>,
+    populated_external_types: RefCell<HashSet<ast::DefId>>,
 
     // The set of external traits whose implementations have been read. This
     // is used for lazy resolution of traits.
@@ -1007,7 +1007,7 @@ pub fn mk_ctxt(s: session::Session,
         used_unsafe: RefCell::new(HashSet::new()),
         used_mut_nodes: RefCell::new(HashSet::new()),
         impl_vtables: RefCell::new(HashMap::new()),
-        populated_external_types: @mut HashSet::new(),
+        populated_external_types: RefCell::new(HashSet::new()),
         populated_external_traits: @mut HashSet::new(),
 
         extern_const_statics: RefCell::new(HashMap::new()),
@@ -4525,8 +4525,11 @@ pub fn populate_implementations_for_type_if_necessary(tcx: ctxt,
     if type_id.crate == LOCAL_CRATE {
         return
     }
-    if tcx.populated_external_types.contains(&type_id) {
-        return
+    {
+        let populated_external_types = tcx.populated_external_types.borrow();
+        if populated_external_types.get().contains(&type_id) {
+            return
+        }
     }
 
     csearch::each_implementation_for_type(tcx.sess.cstore, type_id,
@@ -4573,7 +4576,9 @@ pub fn populate_implementations_for_type_if_necessary(tcx: ctxt,
         impls.get().insert(implementation_def_id, implementation);
     });
 
-    tcx.populated_external_types.insert(type_id);
+    let mut populated_external_types = tcx.populated_external_types
+                                          .borrow_mut();
+    populated_external_types.get().insert(type_id);
 }
 
 /// Populates the type context with all the implementations for the given
