@@ -430,7 +430,7 @@ pub struct cleanup_path {
     dest: BasicBlockRef
 }
 
-pub fn shrink_scope_clean(scope_info: &mut ScopeInfo, size: uint) {
+pub fn shrink_scope_clean(scope_info: &ScopeInfo, size: uint) {
     scope_info.landing_pad.set(None);
     let new_cleanup_paths = {
         let cleanup_paths = scope_info.cleanup_paths.borrow();
@@ -443,7 +443,7 @@ pub fn shrink_scope_clean(scope_info: &mut ScopeInfo, size: uint) {
     scope_info.cleanup_paths.set(new_cleanup_paths)
 }
 
-pub fn grow_scope_clean(scope_info: &mut ScopeInfo) {
+pub fn grow_scope_clean(scope_info: &ScopeInfo) {
     scope_info.landing_pad.set(None);
 }
 
@@ -623,7 +623,7 @@ pub fn block_cleanups(bcx: &Block) -> ~[cleanup] {
 }
 
 pub struct ScopeInfo {
-    parent: Option<@mut ScopeInfo>,
+    parent: Option<@ScopeInfo>,
     loop_break: Option<@Block>,
     loop_label: Option<Name>,
     // A list of functions that must be run at when leaving this
@@ -640,7 +640,7 @@ pub struct ScopeInfo {
 }
 
 impl ScopeInfo {
-    pub fn empty_cleanups(&mut self) -> bool {
+    pub fn empty_cleanups(&self) -> bool {
         let cleanups = self.cleanups.borrow();
         cleanups.get().is_empty()
     }
@@ -694,7 +694,7 @@ pub struct Block {
     unreachable: Cell<bool>,
     parent: Option<@Block>,
     // The current scope within this basic block
-    scope: RefCell<Option<@mut ScopeInfo>>,
+    scope: RefCell<Option<@ScopeInfo>>,
     // Is this block part of a landing pad?
     is_lpad: bool,
     // info about the AST node this block originated from, if any
@@ -803,7 +803,7 @@ pub fn val_ty(v: ValueRef) -> Type {
 
 pub fn in_scope_cx(cx: @Block,
                    scope_id: Option<ast::NodeId>,
-                   f: |si: &mut ScopeInfo|) {
+                   f: |si: &ScopeInfo|) {
     let mut cur = cx;
     let mut cur_scope = cur.scope.get();
     loop {
