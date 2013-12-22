@@ -37,6 +37,7 @@ use util::ppaux::ty_to_short_str;
 use middle::trans::type_::Type;
 
 use std::c_str::ToCStr;
+use std::cell::Cell;
 use std::libc::c_uint;
 use syntax::ast;
 
@@ -183,13 +184,13 @@ pub fn lazily_emit_simplified_tydesc_glue(ccx: @CrateContext,
         lazily_emit_tydesc_glue(ccx, field, simpl_ti);
         {
             if field == abi::tydesc_field_take_glue {
-                ti.take_glue = simpl_ti.take_glue;
+                ti.take_glue.set(simpl_ti.take_glue.get());
             } else if field == abi::tydesc_field_drop_glue {
-                ti.drop_glue = simpl_ti.drop_glue;
+                ti.drop_glue.set(simpl_ti.drop_glue.get());
             } else if field == abi::tydesc_field_free_glue {
-                ti.free_glue = simpl_ti.free_glue;
+                ti.free_glue.set(simpl_ti.free_glue.get());
             } else if field == abi::tydesc_field_visit_glue {
-                ti.visit_glue = simpl_ti.visit_glue;
+                ti.visit_glue.set(simpl_ti.visit_glue.get());
             }
         }
         return true;
@@ -209,52 +210,52 @@ pub fn lazily_emit_tydesc_glue(ccx: @CrateContext,
     }
 
     if field == abi::tydesc_field_take_glue {
-        match ti.take_glue {
+        match ti.take_glue.get() {
           Some(_) => (),
           None => {
             debug!("+++ lazily_emit_tydesc_glue TAKE {}",
                    ppaux::ty_to_str(ccx.tcx, ti.ty));
             let glue_fn = declare_generic_glue(ccx, ti.ty, llfnty, "take");
-            ti.take_glue = Some(glue_fn);
+            ti.take_glue.set(Some(glue_fn));
             make_generic_glue(ccx, ti.ty, glue_fn, make_take_glue, "take");
             debug!("--- lazily_emit_tydesc_glue TAKE {}",
                    ppaux::ty_to_str(ccx.tcx, ti.ty));
           }
         }
     } else if field == abi::tydesc_field_drop_glue {
-        match ti.drop_glue {
+        match ti.drop_glue.get() {
           Some(_) => (),
           None => {
             debug!("+++ lazily_emit_tydesc_glue DROP {}",
                    ppaux::ty_to_str(ccx.tcx, ti.ty));
             let glue_fn = declare_generic_glue(ccx, ti.ty, llfnty, "drop");
-            ti.drop_glue = Some(glue_fn);
+            ti.drop_glue.set(Some(glue_fn));
             make_generic_glue(ccx, ti.ty, glue_fn, make_drop_glue, "drop");
             debug!("--- lazily_emit_tydesc_glue DROP {}",
                    ppaux::ty_to_str(ccx.tcx, ti.ty));
           }
         }
     } else if field == abi::tydesc_field_free_glue {
-        match ti.free_glue {
+        match ti.free_glue.get() {
           Some(_) => (),
           None => {
             debug!("+++ lazily_emit_tydesc_glue FREE {}",
                    ppaux::ty_to_str(ccx.tcx, ti.ty));
             let glue_fn = declare_generic_glue(ccx, ti.ty, llfnty, "free");
-            ti.free_glue = Some(glue_fn);
+            ti.free_glue.set(Some(glue_fn));
             make_generic_glue(ccx, ti.ty, glue_fn, make_free_glue, "free");
             debug!("--- lazily_emit_tydesc_glue FREE {}",
                    ppaux::ty_to_str(ccx.tcx, ti.ty));
           }
         }
     } else if field == abi::tydesc_field_visit_glue {
-        match ti.visit_glue {
+        match ti.visit_glue.get() {
           Some(_) => (),
           None => {
             debug!("+++ lazily_emit_tydesc_glue VISIT {}",
                    ppaux::ty_to_str(ccx.tcx, ti.ty));
             let glue_fn = declare_generic_glue(ccx, ti.ty, llfnty, "visit");
-            ti.visit_glue = Some(glue_fn);
+            ti.visit_glue.set(Some(glue_fn));
             make_generic_glue(ccx, ti.ty, glue_fn, make_visit_glue, "visit");
             debug!("--- lazily_emit_tydesc_glue VISIT {}",
                    ppaux::ty_to_str(ccx.tcx, ti.ty));
@@ -280,13 +281,13 @@ pub fn call_tydesc_glue_full(bcx: @Block,
       Some(sti) => {
         lazily_emit_tydesc_glue(ccx, field, sti);
         if field == abi::tydesc_field_take_glue {
-            sti.take_glue
+            sti.take_glue.get()
         } else if field == abi::tydesc_field_drop_glue {
-            sti.drop_glue
+            sti.drop_glue.get()
         } else if field == abi::tydesc_field_free_glue {
-            sti.free_glue
+            sti.free_glue.get()
         } else if field == abi::tydesc_field_visit_glue {
-            sti.visit_glue
+            sti.visit_glue.get()
         } else {
             None
         }
@@ -630,10 +631,10 @@ pub fn declare_tydesc(ccx: &CrateContext, t: ty::t) -> @mut tydesc_info {
         align: llalign,
         borrow_offset: borrow_offset,
         name: ty_name,
-        take_glue: None,
-        drop_glue: None,
-        free_glue: None,
-        visit_glue: None
+        take_glue: Cell::new(None),
+        drop_glue: Cell::new(None),
+        free_glue: Cell::new(None),
+        visit_glue: Cell::new(None),
     };
     debug!("--- declare_tydesc {}", ppaux::ty_to_str(ccx.tcx, t));
     return inf;
@@ -705,7 +706,7 @@ pub fn emit_tydescs(ccx: &CrateContext) {
         // tydesc type. Then we'll recast each function to its real type when
         // calling it.
         let take_glue =
-            match ti.take_glue {
+            match ti.take_glue.get() {
               None => { ccx.stats.n_null_glues += 1u; C_null(glue_fn_ty) }
               Some(v) => {
                 unsafe {
@@ -715,7 +716,7 @@ pub fn emit_tydescs(ccx: &CrateContext) {
               }
             };
         let drop_glue =
-            match ti.drop_glue {
+            match ti.drop_glue.get() {
               None => { ccx.stats.n_null_glues += 1u; C_null(glue_fn_ty) }
               Some(v) => {
                 unsafe {
@@ -725,7 +726,7 @@ pub fn emit_tydescs(ccx: &CrateContext) {
               }
             };
         let free_glue =
-            match ti.free_glue {
+            match ti.free_glue.get() {
               None => { ccx.stats.n_null_glues += 1u; C_null(glue_fn_ty) }
               Some(v) => {
                 unsafe {
@@ -735,7 +736,7 @@ pub fn emit_tydescs(ccx: &CrateContext) {
               }
             };
         let visit_glue =
-            match ti.visit_glue {
+            match ti.visit_glue.get() {
               None => { ccx.stats.n_null_glues += 1u; C_null(glue_fn_ty) }
               Some(v) => {
                 unsafe {

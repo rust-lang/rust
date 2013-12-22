@@ -93,10 +93,10 @@ pub struct tydesc_info {
     align: ValueRef,
     borrow_offset: ValueRef,
     name: ValueRef,
-    take_glue: Option<ValueRef>,
-    drop_glue: Option<ValueRef>,
-    free_glue: Option<ValueRef>,
-    visit_glue: Option<ValueRef>
+    take_glue: Cell<Option<ValueRef>>,
+    drop_glue: Cell<Option<ValueRef>>,
+    free_glue: Cell<Option<ValueRef>>,
+    visit_glue: Cell<Option<ValueRef>>,
 }
 
 /*
