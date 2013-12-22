@@ -908,6 +908,8 @@ define DEF_RMAKE_FOR_T_H
 # $(2) target triple
 # $(3) host triple
 
+
+ifeq ($(2)$(3),$$(CFG_BUILD)$$(CFG_BUILD))
 check-stage$(1)-T-$(2)-H-$(3)-rmake-exec: \
 		$$(call TEST_OK_FILE,$(1),$(2),$(3),rmake)
 
@@ -927,6 +929,13 @@ $(3)/test/run-make/%-$(1)-T-$(2)-H-$(3).ok: \
 	    "$$(CC_$(3)) $$(CFG_GCCISH_CFLAGS_$(3))" \
 	    $$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3))
 	@touch $$@
+else
+# FIXME #11094 - The above rule doesn't work right for multiple targets
+check-stage$(1)-T-$(2)-H-$(3)-rmake-exec:
+	@true
+
+endif
+
 
 endef
 
