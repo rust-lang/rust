@@ -715,7 +715,8 @@ pub fn emit_tydescs(ccx: &CrateContext) {
               }
               Some(v) => {
                 unsafe {
-                    ccx.stats.n_real_glues += 1u;
+                    ccx.stats.n_real_glues.set(ccx.stats.n_real_glues.get() +
+                                               1);
                     llvm::LLVMConstPointerCast(v, glue_fn_ty.to_ref())
                 }
               }
@@ -729,7 +730,8 @@ pub fn emit_tydescs(ccx: &CrateContext) {
               }
               Some(v) => {
                 unsafe {
-                    ccx.stats.n_real_glues += 1u;
+                    ccx.stats.n_real_glues.set(ccx.stats.n_real_glues.get() +
+                                               1);
                     llvm::LLVMConstPointerCast(v, glue_fn_ty.to_ref())
                 }
               }
@@ -743,7 +745,8 @@ pub fn emit_tydescs(ccx: &CrateContext) {
               }
               Some(v) => {
                 unsafe {
-                    ccx.stats.n_real_glues += 1u;
+                    ccx.stats.n_real_glues.set(ccx.stats.n_real_glues.get() +
+                                               1);
                     llvm::LLVMConstPointerCast(v, glue_fn_ty.to_ref())
                 }
               }
@@ -757,7 +760,8 @@ pub fn emit_tydescs(ccx: &CrateContext) {
               }
               Some(v) => {
                 unsafe {
-                    ccx.stats.n_real_glues += 1u;
+                    ccx.stats.n_real_glues.set(ccx.stats.n_real_glues.get() +
+                                               1);
                     llvm::LLVMConstPointerCast(v, glue_fn_ty.to_ref())
                 }
               }
