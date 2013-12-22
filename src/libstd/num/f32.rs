@@ -339,7 +339,8 @@ impl Round for f32 {
     /// The fractional part of the number, satisfying:
     ///
     /// ```rust
-    /// assert!(x == trunc(x) + fract(x))
+    /// let x = 1.65f32;
+    /// assert!(x == x.trunc() + x.fract())
     /// ```
     ///
     #[inline]

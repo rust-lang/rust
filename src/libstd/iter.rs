@@ -218,8 +218,8 @@ pub trait Iterator<A> {
     /// # Example
     ///
     /// ```rust
-    /// let a = [100, 200, 300];
-    /// let mut it = xs.iter().map(|&x|x).peekable();
+    /// let xs = [100, 200, 300];
+    /// let mut it = xs.iter().map(|x| *x).peekable();
     /// assert_eq!(it.peek().unwrap(), &100);
     /// assert_eq!(it.next().unwrap(), 100);
     /// assert_eq!(it.next().unwrap(), 200);
@@ -338,12 +338,14 @@ pub trait Iterator<A> {
     /// # Example
     ///
     /// ```rust
+    /// use std::iter::count;
+    ///
     /// let xs = [2u, 3];
     /// let ys = [0u, 1, 0, 1, 2];
     /// let mut it = xs.iter().flat_map(|&x| count(0u, 1).take(x));
     /// // Check that `it` has the same elements as `ys`
     /// let mut i = 0;
-    /// for x: uint in it {
+    /// for x in it {
     ///     assert_eq!(x, ys[i]);
     ///     i += 1;
     /// }
@@ -366,7 +368,7 @@ pub trait Iterator<A> {
     ///     let mut sum = 0;
     ///     for x in it {
     ///         if x > 5 {
-    ///             break;
+    ///             continue;
     ///         }
     ///         sum += x;
     ///     }
@@ -391,14 +393,16 @@ pub trait Iterator<A> {
     /// # Example
     ///
     /// ```rust
-    ///let xs = [1u, 4, 2, 3, 8, 9, 6];
-    ///let sum = xs.iter()
-    ///            .map(|&x| x)
-    ///            .inspect(|&x| debug!("filtering %u", x))
-    ///            .filter(|&x| x % 2 == 0)
-    ///            .inspect(|&x| debug!("%u made it through", x))
-    ///            .sum();
-    ///println(sum.to_str());
+    /// use std::iter::AdditiveIterator;
+    ///
+    /// let xs = [1u, 4, 2, 3, 8, 9, 6];
+    /// let sum = xs.iter()
+    ///             .map(|&x| x)
+    ///             .inspect(|&x| debug!("filtering {}", x))
+    ///             .filter(|&x| x % 2 == 0)
+    ///             .inspect(|&x| debug!("{} made it through", x))
+    ///             .sum();
+    /// println(sum.to_str());
     /// ```
     #[inline]
     fn inspect<'r>(self, f: 'r |&A|) -> Inspect<'r, A, Self> {
@@ -554,8 +558,8 @@ pub trait Iterator<A> {
     ///
     /// ```rust
     /// let a = [1, 2, 3, 4, 5];
-    /// assert!(a.iter().all(|&x| *x > 0));
-    /// assert!(!a.iter().all(|&x| *x > 2));
+    /// assert!(a.iter().all(|x| *x > 0));
+    /// assert!(!a.iter().all(|x| *x > 2));
     /// ```
     #[inline]
     fn all(&mut self, f: |A| -> bool) -> bool {
@@ -571,8 +575,8 @@ pub trait Iterator<A> {
     /// ```rust
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter();
-    /// assert!(it.any(|&x| *x == 3));
-    /// assert!(!it.any(|&x| *x == 3));
+    /// assert!(it.any(|x| *x == 3));
+    /// assert!(!it.any(|x| *x == 3));
     /// ```
     #[inline]
     fn any(&mut self, f: |A| -> bool) -> bool {
@@ -618,7 +622,7 @@ pub trait Iterator<A> {
     /// # Example
     ///
     /// ```rust
-    /// let xs = [-3, 0, 1, 5, -10];
+    /// let xs = [-3i, 0, 1, 5, -10];
     /// assert_eq!(*xs.iter().max_by(|x| x.abs()).unwrap(), -10);
     /// ```
     #[inline]
@@ -642,7 +646,7 @@ pub trait Iterator<A> {
     /// # Example
     ///
     /// ```rust
-    /// let xs = [-3, 0, 1, 5, -10];
+    /// let xs = [-3i, 0, 1, 5, -10];
     /// assert_eq!(*xs.iter().min_by(|x| x.abs()).unwrap(), 0);
     /// ```
     #[inline]
@@ -811,6 +815,8 @@ pub trait AdditiveIterator<A> {
     /// # Example
     ///
     /// ```rust
+    /// use std::iter::AdditiveIterator;
+    ///
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter().map(|&x| x);
     /// assert!(it.sum() == 15);
@@ -834,7 +840,7 @@ pub trait MultiplicativeIterator<A> {
     /// # Example
     ///
     /// ```rust
-    /// use std::iter::count;
+    /// use std::iter::{count, MultiplicativeIterator};
     ///
     /// fn factorial(n: uint) -> uint {
     ///     count(1u, 1).take_while(|&i| i <= n).product()
@@ -907,6 +913,8 @@ pub trait ClonableIterator {
     /// # Example
     ///
     /// ```rust
+    /// use std::iter::{ClonableIterator, count};
+    ///
     /// let a = count(1,1).take(1);
     /// let mut cy = a.cycle();
     /// assert_eq!(cy.next(), Some(1));

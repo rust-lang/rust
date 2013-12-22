@@ -49,7 +49,9 @@ pub unsafe fn bump_box_refcount<T>(t: @T) { forget(t); }
  * # Example
  *
  * ```rust
- * let v: &[u8] = transmute("L");
+ * use std::cast;
+ *
+ * let v: &[u8] = unsafe { cast::transmute("L") };
  * assert!(v == [76u8]);
  * ```
  */

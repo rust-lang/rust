@@ -51,13 +51,13 @@ let my_string = "Hello, world!";
 let my_c_string = my_string.to_c_str();
 my_c_string.with_ref(|c_buffer| {
     unsafe { puts(c_buffer); }
-})
+});
 
 // Don't save off the allocation of the C string, the `c_buffer` will be
 // deallocated when this block returns!
 my_string.with_c_str(|c_buffer| {
     unsafe { puts(c_buffer); }
-})
+});
  ```
 
 */
@@ -216,7 +216,11 @@ pub trait ToCStr {
     /// # Example
     ///
     /// ```rust
-    /// let s = "PATH".with_c_str(|path| libc::getenv(path))
+    /// use std::libc;
+    ///
+    /// let s = "PATH".with_c_str(|path| unsafe {
+    ///     libc::getenv(path)
+    /// });
     /// ```
     ///
     /// # Failure
