@@ -134,7 +134,8 @@ impl Visitor<()> for MarkSymbolVisitor {
     fn visit_expr(&mut self, expr: @ast::Expr, _: ()) {
         match expr.node {
             ast::ExprMethodCall(..) => {
-                match self.method_map.find(&expr.id) {
+                let method_map = self.method_map.borrow();
+                match method_map.get().find(&expr.id) {
                     Some(&typeck::method_map_entry {
                         origin: typeck::method_static(def_id),
                         ..

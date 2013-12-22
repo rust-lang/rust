@@ -622,7 +622,8 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
             ast::ExprField(base, ident, _) => {
                 // Method calls are now a special syntactic form,
                 // so `a.b` should always be a field.
-                assert!(!self.method_map.contains_key(&expr.id));
+                let method_map = self.method_map.borrow();
+                assert!(!method_map.get().contains_key(&expr.id));
 
                 // With type_autoderef, make sure we don't
                 // allow pointers to violate privacy
@@ -641,7 +642,8 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
                                            ty::expr_ty(self.tcx, base));
                 match ty::get(t).sty {
                     ty::ty_enum(_, _) | ty::ty_struct(_, _) => {
-                        let entry = match self.method_map.find(&expr.id) {
+                        let method_map = self.method_map.borrow();
+                        let entry = match method_map.get().find(&expr.id) {
                             None => {
                                 self.tcx.sess.span_bug(expr.span,
                                                        "method call not in \

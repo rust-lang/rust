@@ -130,7 +130,7 @@ and so on.
 use middle::pat_util::{pat_bindings};
 use middle::freevars;
 use middle::ty;
-use middle::typeck::{method_map};
+use middle::typeck::method_map;
 use util::ppaux;
 use util::ppaux::Repr;
 use util::common::indenter;
@@ -591,7 +591,8 @@ impl VisitContext {
                                    receiver_expr: @Expr,
                                    arg_exprs: &[@Expr])
                                    -> bool {
-        if !self.method_map.contains_key(&expr.id) {
+        let method_map = self.method_map.borrow();
+        if !method_map.get().contains_key(&expr.id) {
             return false;
         }
 

@@ -792,7 +792,7 @@ fn Resolver(session: Session,
 
         graph_root: graph_root,
 
-        method_map: @mut HashMap::new(),
+        method_map: @RefCell::new(HashMap::new()),
         structs: HashSet::new(),
 
         unresolved_imports: 0,
@@ -834,7 +834,7 @@ struct Resolver {
 
     graph_root: @NameBindings,
 
-    method_map: @mut HashMap<Name, HashSet<DefId>>,
+    method_map: @RefCell<HashMap<Name, HashSet<DefId>>>,
     structs: HashSet<DefId>,
 
     // The number of imports that are currently unresolved.
@@ -1378,10 +1378,11 @@ impl Resolver {
 
                 let def_id = local_def(item.id);
                 for (name, _) in method_names.iter() {
-                    if !self.method_map.contains_key(name) {
-                        self.method_map.insert(*name, HashSet::new());
+                    let mut method_map = self.method_map.borrow_mut();
+                    if !method_map.get().contains_key(name) {
+                        method_map.get().insert(*name, HashSet::new());
                     }
-                    match self.method_map.find_mut(name) {
+                    match method_map.get().find_mut(name) {
                         Some(s) => { s.insert(def_id); },
                         _ => fail!("Can't happen"),
                     }
@@ -1699,10 +1700,11 @@ impl Resolver {
                   }
               }
               for name in interned_method_names.iter() {
-                  if !self.method_map.contains_key(name) {
-                      self.method_map.insert(*name, HashSet::new());
+                  let mut method_map = self.method_map.borrow_mut();
+                  if !method_map.get().contains_key(name) {
+                      method_map.get().insert(*name, HashSet::new());
                   }
-                  match self.method_map.find_mut(name) {
+                  match method_map.get().find_mut(name) {
                       Some(s) => { s.insert(def_id); },
                       _ => fail!("Can't happen"),
                   }
@@ -4833,7 +4835,8 @@ impl Resolver {
         };
         match containing_module.kind.get() {
             TraitModuleKind | ImplModuleKind => {
-                match self.method_map.find(&ident.name) {
+                let method_map = self.method_map.borrow();
+                match method_map.get().find(&ident.name) {
                     Some(s) => {
                         match containing_module.def_id.get() {
                             Some(def_id) if s.contains(&def_id) => {
@@ -5322,7 +5325,8 @@ impl Resolver {
 
         let mut found_traits = ~[];
         let mut search_module = self.current_module;
-        match self.method_map.find(&name.name) {
+        let method_map = self.method_map.borrow();
+        match method_map.get().find(&name.name) {
             Some(candidate_traits) => loop {
                 // Look for the current trait.
                 match self.current_trait_refs {

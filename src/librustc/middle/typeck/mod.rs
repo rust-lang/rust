@@ -160,7 +160,7 @@ pub struct method_map_entry {
 
 // maps from an expression id that corresponds to a method call to the details
 // of the method to be invoked
-pub type method_map = @mut HashMap<ast::NodeId, method_map_entry>;
+pub type method_map = @RefCell<HashMap<ast::NodeId, method_map_entry>>;
 
 pub type vtable_param_res = @~[vtable_origin];
 // Resolutions for bounds of all parameters, left to right, for a given path.
@@ -458,7 +458,7 @@ pub fn check_crate(tcx: ty::ctxt,
     let time_passes = tcx.sess.time_passes();
     let ccx = @CrateCtxt {
         trait_map: trait_map,
-        method_map: @mut HashMap::new(),
+        method_map: @RefCell::new(HashMap::new()),
         vtable_map: @RefCell::new(HashMap::new()),
         tcx: tcx
     };

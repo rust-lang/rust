@@ -122,7 +122,8 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
           }
           ExprLit(@codemap::Spanned {node: lit_str(..), ..}) => { }
           ExprBinary(..) | ExprUnary(..) => {
-            if method_map.contains_key(&e.id) {
+            let method_map = method_map.borrow();
+            if method_map.get().contains_key(&e.id) {
                 sess.span_err(e.span, "user-defined operators are not \
                                        allowed in constant expressions");
             }

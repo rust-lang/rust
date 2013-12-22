@@ -249,7 +249,10 @@ fn visit_expr(rcx: &mut Rcx, expr: @ast::Expr) {
     debug!("regionck::visit_expr(e={}, repeating_scope={:?})",
            expr.repr(rcx.fcx.tcx()), rcx.repeating_scope);
 
-    let has_method_map = rcx.fcx.inh.method_map.contains_key(&expr.id);
+    let has_method_map = {
+        let method_map = rcx.fcx.inh.method_map;
+        method_map.get().contains_key(&expr.id)
+    };
 
     // Record cleanup scopes, which are used by borrowck to decide the
     // maximum lifetime of a temporary rvalue.  These were derived by
@@ -1113,7 +1116,8 @@ pub mod guarantor {
         debug!("categorize_unadjusted()");
 
         let guarantor = {
-            if rcx.fcx.inh.method_map.contains_key(&expr.id) {
+            let method_map = rcx.fcx.inh.method_map.borrow();
+            if method_map.get().contains_key(&expr.id) {
                 None
             } else {
                 guarantor(rcx, expr)

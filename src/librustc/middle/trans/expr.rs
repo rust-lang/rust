@@ -590,7 +590,10 @@ fn trans_rvalue_datum_unadjusted(bcx: @Block, expr: &ast::Expr) -> DatumBlock {
         }
         ast::ExprBinary(_, op, lhs, rhs) => {
             // if overloaded, would be RvalueDpsExpr
-            assert!(!bcx.ccx().maps.method_map.contains_key(&expr.id));
+            {
+                let method_map = bcx.ccx().maps.method_map.borrow();
+                assert!(!method_map.get().contains_key(&expr.id));
+            }
 
             return trans_binary(bcx, expr, op, lhs, rhs);
         }
@@ -1346,7 +1349,10 @@ fn trans_unary_datum(bcx: @Block,
     assert!(op != ast::UnDeref);
 
     // if overloaded, would be RvalueDpsExpr
-    assert!(!bcx.ccx().maps.method_map.contains_key(&un_expr.id));
+    {
+        let method_map = bcx.ccx().maps.method_map.borrow();
+        assert!(!method_map.get().contains_key(&un_expr.id));
+    }
 
     let un_ty = expr_ty(bcx, un_expr);
     let sub_ty = expr_ty(bcx, sub_expr);
@@ -1618,7 +1624,10 @@ fn trans_overloaded_op(bcx: @Block,
                        ret_ty: ty::t,
                        dest: Dest)
                        -> @Block {
-    let origin = bcx.ccx().maps.method_map.get_copy(&expr.id);
+    let origin = {
+        let method_map = bcx.ccx().maps.method_map.borrow();
+        method_map.get().get_copy(&expr.id)
+    };
     let fty = node_id_type(bcx, callee_id);
     callee::trans_call_inner(bcx,
                              expr.info(),
@@ -1780,7 +1789,11 @@ fn trans_assign_op(bcx: @Block,
     let dst_datum = unpack_datum!(bcx, trans_lvalue_unadjusted(bcx, dst));
 
     // A user-defined operator method
-    if bcx.ccx().maps.method_map.find(&expr.id).is_some() {
+    let found = {
+        let method_map = bcx.ccx().maps.method_map.borrow();
+        method_map.get().find(&expr.id).is_some()
+    };
+    if found {
         // FIXME(#2528) evaluates the receiver twice!!
         let scratch = scratch_datum(bcx, dst_datum.ty, "__assign_op", false);
         let bcx = trans_overloaded_op(bcx,

@@ -479,7 +479,11 @@ pub fn trans_method_call(in_cx: @Block,
         node_id_type(in_cx, callee_id),
         expr_ty(in_cx, call_ex),
         |cx| {
-            match cx.ccx().maps.method_map.find_copy(&call_ex.id) {
+            let origin_opt = {
+                let mut method_map = cx.ccx().maps.method_map.borrow_mut();
+                method_map.get().find_copy(&call_ex.id)
+            };
+            match origin_opt {
                 Some(origin) => {
                     debug!("origin for {}: {}",
                            call_ex.repr(in_cx.tcx()),

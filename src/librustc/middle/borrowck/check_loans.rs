@@ -767,6 +767,7 @@ fn check_loans_in_expr<'a>(this: &mut CheckLoanCtxt<'a>,
     this.check_for_conflicting_loans(expr.id);
     this.check_move_out_from_expr(expr);
 
+    let method_map = this.bccx.method_map.borrow();
     match expr.node {
       ast::ExprSelf |
       ast::ExprPath(..) => {
@@ -791,7 +792,7 @@ fn check_loans_in_expr<'a>(this: &mut CheckLoanCtxt<'a>,
       }
       ast::ExprIndex(callee_id, _, rval) |
       ast::ExprBinary(callee_id, _, _, rval)
-      if this.bccx.method_map.contains_key(&expr.id) => {
+      if method_map.get().contains_key(&expr.id) => {
         this.check_call(expr,
                         None,
                         callee_id,
@@ -799,7 +800,7 @@ fn check_loans_in_expr<'a>(this: &mut CheckLoanCtxt<'a>,
                         [rval]);
       }
       ast::ExprUnary(callee_id, _, _) | ast::ExprIndex(callee_id, _, _)
-      if this.bccx.method_map.contains_key(&expr.id) => {
+      if method_map.get().contains_key(&expr.id) => {
         this.check_call(expr,
                         None,
                         callee_id,

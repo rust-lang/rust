@@ -519,6 +519,7 @@ impl CFGBuilder {
     }
 
     fn is_method_call(&self, expr: &ast::Expr) -> bool {
-        self.method_map.contains_key(&expr.id)
+        let method_map = self.method_map.borrow();
+        method_map.get().contains_key(&expr.id)
     }
 }
