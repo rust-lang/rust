@@ -347,7 +347,8 @@ impl<'a> LookupContext<'a> {
         let trait_map: &resolve::TraitMap = &self.fcx.ccx.trait_map;
         let opt_applicable_traits = trait_map.find(&self.expr.id);
         for applicable_traits in opt_applicable_traits.iter() {
-            for trait_did in applicable_traits.iter() {
+            let applicable_traits = applicable_traits.borrow();
+            for trait_did in applicable_traits.get().iter() {
                 ty::populate_implementations_for_trait_if_necessary(
                     self.tcx(),
                     *trait_did);
