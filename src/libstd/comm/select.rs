@@ -45,6 +45,7 @@
 #[allow(dead_code)];
 
 use cast;
+use comm;
 use iter::Iterator;
 use kinds::Send;
 use ops::Drop;
@@ -279,7 +280,9 @@ impl<'port, T: Send> Handle<'port, T> {
     pub fn recv_opt(&mut self) -> Option<T> { self.port.recv_opt() }
     /// Immediately attempt to receive a value on a port, this function will
     /// never block. Has the same semantics as `Port.try_recv`.
-    pub fn try_recv(&mut self) -> Option<T> { self.port.try_recv() }
+    pub fn try_recv(&mut self) -> comm::TryRecvResult<T> {
+        self.port.try_recv()
+    }
 }
 
 #[unsafe_destructor]
@@ -409,8 +412,8 @@ mod test {
             a = p1.recv() => { assert_eq!(a, 1); },
             a = p2.recv() => { assert_eq!(a, 2); }
         )
-        assert_eq!(p1.try_recv(), None);
-        assert_eq!(p2.try_recv(), None);
+        assert_eq!(p1.try_recv(), Empty);
+        assert_eq!(p2.try_recv(), Empty);
         c3.send(());
     })
 
