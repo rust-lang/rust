@@ -67,7 +67,7 @@ mod gather_moves;
 struct GatherLoanCtxt<'a> {
     bccx: &'a BorrowckCtxt,
     id_range: id_range,
-    move_data: @mut move_data::MoveData,
+    move_data: @move_data::MoveData,
     all_loans: @mut ~[Loan],
     item_ub: ast::NodeId,
     repeating_ids: ~[ast::NodeId]
@@ -103,14 +103,14 @@ impl<'a> visit::Visitor<()> for GatherLoanCtxt<'a> {
 pub fn gather_loans(bccx: &BorrowckCtxt,
                     decl: &ast::fn_decl,
                     body: ast::P<ast::Block>)
-                    -> (id_range, @mut ~[Loan], @mut move_data::MoveData) {
+                    -> (id_range, @mut ~[Loan], @move_data::MoveData) {
     let mut glcx = GatherLoanCtxt {
         bccx: bccx,
         id_range: id_range::max(),
         all_loans: @mut ~[],
         item_ub: body.id,
         repeating_ids: ~[body.id],
-        move_data: @mut MoveData::new()
+        move_data: @MoveData::new()
     };
     glcx.gather_fn_arg_patterns(decl, body);
 
