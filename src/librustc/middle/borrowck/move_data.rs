@@ -38,7 +38,7 @@ pub struct MoveData {
     path_map: HashMap<@LoanPath, MovePathIndex>,
 
     /// Each move or uninitialized variable gets an entry here.
-    moves: ~[Move],
+    moves: RefCell<~[Move]>,
 
     /// Assignments to a variable, like `x = foo`. These are assigned
     /// bits for dataflow, since we must track them to ensure that
@@ -167,7 +167,7 @@ impl MoveData {
         MoveData {
             paths: RefCell::new(~[]),
             path_map: HashMap::new(),
-            moves: ~[],
+            moves: RefCell::new(~[]),
             path_assignments: ~[],
             var_assignments: ~[],
             assignee_ids: HashSet::new(),
@@ -216,7 +216,8 @@ impl MoveData {
 
     fn move_next_move(&self, index: MoveIndex) -> MoveIndex {
         //! Type safe indexing operator
-        self.moves[*index].next_move
+        let moves = self.moves.borrow();
+        moves.get()[*index].next_move
     }
 
     fn is_var_path(&self, index: MovePathIndex) -> bool {
@@ -349,17 +350,23 @@ impl MoveData {
                kind);
 
         let path_index = self.move_path(tcx, lp);
-        let move_index = MoveIndex(self.moves.len());
+        let move_index = {
+            let moves = self.moves.borrow();
+            MoveIndex(moves.get().len())
+        };
 
         let next_move = self.path_first_move(path_index);
         self.set_path_first_move(path_index, move_index);
 
-        self.moves.push(Move {
-            path: path_index,
-            id: id,
-            kind: kind,
-            next_move: next_move
-        });
+        {
+            let mut moves = self.moves.borrow_mut();
+            moves.get().push(Move {
+                path: path_index,
+                id: id,
+                kind: kind,
+                next_move: next_move
+            });
+        }
     }
 
     pub fn add_assignment(&mut self,
@@ -411,8 +418,11 @@ impl MoveData {
          * killed by scoping. See `doc.rs` for more details.
          */
 
-        for (i, move) in self.moves.iter().enumerate() {
-            dfcx_moves.add_gen(move.id, i);
+        {
+            let moves = self.moves.borrow();
+            for (i, move) in moves.get().iter().enumerate() {
+                dfcx_moves.add_gen(move.id, i);
+            }
         }
 
         for (i, assignment) in self.var_assignments.iter().enumerate() {
@@ -523,12 +533,14 @@ impl FlowedMoveData {
                body: &ast::Block)
                -> FlowedMoveData
     {
-        let mut dfcx_moves =
+        let mut dfcx_moves = {
+            let moves = move_data.moves.borrow();
             DataFlowContext::new(tcx,
                                  method_map,
                                  MoveDataFlowOperator,
                                  id_range,
-                                 move_data.moves.len());
+                                 moves.get().len())
+        };
         let mut dfcx_assign =
             DataFlowContext::new(tcx,
                                  method_map,
@@ -554,7 +566,8 @@ impl FlowedMoveData {
          */
 
         self.dfcx_moves.each_gen_bit_frozen(id, |index| {
-            let move = &self.move_data.moves[index];
+            let moves = self.move_data.moves.borrow();
+            let move = &moves.get()[index];
             let moved_path = move.path;
             f(move, self.move_data.path_loan_path(moved_path))
         })
@@ -592,7 +605,8 @@ impl FlowedMoveData {
         let mut ret = true;
 
         self.dfcx_moves.each_bit_on_entry_frozen(id, |index| {
-            let move = &self.move_data.moves[index];
+            let moves = self.move_data.moves.borrow();
+            let move = &moves.get()[index];
             let moved_path = move.path;
             if base_indices.iter().any(|x| x == &moved_path) {
                 // Scenario 1 or 2: `loan_path` or some base path of
