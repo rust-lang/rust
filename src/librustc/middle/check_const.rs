@@ -15,6 +15,7 @@ use middle::ty;
 use middle::typeck;
 use util::ppaux;
 
+use std::cell::RefCell;
 use syntax::ast::*;
 use syntax::codemap;
 use syntax::{ast_util, ast_map};
@@ -215,7 +216,7 @@ struct env {
     sess: Session,
     ast_map: ast_map::map,
     def_map: resolve::DefMap,
-    idstack: @mut ~[NodeId]
+    idstack: @RefCell<~[NodeId]>,
 }
 
 struct CheckItemRecursionVisitor {
@@ -233,7 +234,7 @@ pub fn check_item_recursion(sess: Session,
         sess: sess,
         ast_map: ast_map,
         def_map: def_map,
-        idstack: @mut ~[]
+        idstack: @RefCell::new(~[]),
     };
 
     let mut visitor = CheckItemRecursionVisitor { env: env };
@@ -242,12 +243,19 @@ pub fn check_item_recursion(sess: Session,
 
 impl Visitor<()> for CheckItemRecursionVisitor {
     fn visit_item(&mut self, it: @item, _: ()) {
-        if self.env.idstack.iter().any(|x| x == &(it.id)) {
-            self.env.sess.span_fatal(self.env.root_it.span, "recursive constant");
+        {
+            let mut idstack = self.env.idstack.borrow_mut();
+            if idstack.get().iter().any(|x| x == &(it.id)) {
+                self.env.sess.span_fatal(self.env.root_it.span,
+                                         "recursive constant");
+            }
+            idstack.get().push(it.id);
         }
-        self.env.idstack.push(it.id);
         visit::walk_item(self, it, ());
-        self.env.idstack.pop();
+        {
+            let mut idstack = self.env.idstack.borrow_mut();
+            idstack.get().pop();
+        }
     }
 
     fn visit_expr(&mut self, e: @Expr, _: ()) {
