@@ -445,28 +445,34 @@ mod tests {
 
     #[test]
     fn test_get_resource() {
+        use rc::Rc;
+        use cell::RefCell;
+
         struct R {
-           i: @mut int,
+           i: Rc<RefCell<int>>,
         }
 
         #[unsafe_destructor]
         impl ::ops::Drop for R {
-           fn drop(&mut self) { *(self.i) += 1; }
+           fn drop(&mut self) {
+                let ii = self.i.borrow();
+                ii.set(ii.get() + 1);
+            }
         }
 
-        fn R(i: @mut int) -> R {
+        fn R(i: Rc<RefCell<int>>) -> R {
             R {
                 i: i
             }
         }
 
-        let i = @mut 0;
+        let i = Rc::from_send(RefCell::new(0));
         {
-            let x = R(i);
+            let x = R(i.clone());
             let opt = Some(x);
             let _y = opt.unwrap();
         }
-        assert_eq!(*i, 1);
+        assert_eq!(i.borrow().get(), 1);
     }
 
     #[test]
