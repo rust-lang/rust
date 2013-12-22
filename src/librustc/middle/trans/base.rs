@@ -163,9 +163,12 @@ impl<'a> Drop for StatRecorder<'a> {
             let end = time::precise_time_ns();
             let elapsed = ((end - self.start) / 1_000_000) as uint;
             let iend = self.ccx.stats.n_llvm_insns.get();
-            self.ccx.stats.fn_stats.push((self.name.to_owned(),
-                                          elapsed,
-                                          iend - self.istart));
+            {
+                let mut fn_stats = self.ccx.stats.fn_stats.borrow_mut();
+                fn_stats.get().push((self.name.to_owned(),
+                                     elapsed,
+                                     iend - self.istart));
+            }
             self.ccx.stats.n_fns.set(self.ccx.stats.n_fns.get() + 1);
             // Reset LLVM insn count to avoid compound costs.
             self.ccx.stats.n_llvm_insns.set(self.istart);
@@ -3256,13 +3259,16 @@ pub fn trans_crate(sess: session::Session,
         println!("n_inlines: {}", ccx.stats.n_inlines.get());
         println!("n_closures: {}", ccx.stats.n_closures.get());
         println("fn stats:");
-
-        ccx.stats.fn_stats.sort_by(|&(_, _, insns_a), &(_, _, insns_b)| insns_b.cmp(&insns_a));
-
-        for tuple in ccx.stats.fn_stats.iter() {
-            match *tuple {
-                (ref name, ms, insns) => {
-                    println!("{} insns, {} ms, {}", insns, ms, *name);
+        {
+            let mut fn_stats = ccx.stats.fn_stats.borrow_mut();
+            fn_stats.get().sort_by(|&(_, _, insns_a), &(_, _, insns_b)| {
+                insns_b.cmp(&insns_a)
+            });
+            for tuple in fn_stats.get().iter() {
+                match *tuple {
+                    (ref name, ms, insns) => {
+                        println!("{} insns, {} ms, {}", insns, ms, *name);
+                    }
                 }
             }
         }

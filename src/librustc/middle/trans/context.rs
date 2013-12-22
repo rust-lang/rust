@@ -221,7 +221,7 @@ impl CrateContext {
                     n_closures: Cell::new(0u),
                     n_llvm_insns: Cell::new(0u),
                     llvm_insns: RefCell::new(HashMap::new()),
-                    fn_stats: ~[]
+                    fn_stats: RefCell::new(~[]),
                   },
                   tydesc_type: tydesc_type,
                   int_type: int_type,
