@@ -88,11 +88,11 @@ struct ReachableContext {
     reachable_symbols: @RefCell<HashSet<ast::NodeId>>,
     // A worklist of item IDs. Each item ID in this worklist will be inlined
     // and will be scanned for further references.
-    worklist: @mut ~[ast::NodeId],
+    worklist: @RefCell<~[ast::NodeId]>,
 }
 
 struct MarkSymbolVisitor {
-    worklist: @mut ~[ast::NodeId],
+    worklist: @RefCell<~[ast::NodeId]>,
     method_map: typeck::method_map,
     tcx: ty::ctxt,
     reachable_symbols: @RefCell<HashSet<ast::NodeId>>,
@@ -116,7 +116,10 @@ impl Visitor<()> for MarkSymbolVisitor {
                 if is_local(def_id) {
                     if ReachableContext::
                         def_id_represents_local_inlined_item(self.tcx, def_id) {
-                            self.worklist.push(def_id.node)
+                            {
+                                let mut worklist = self.worklist.borrow_mut();
+                                worklist.get().push(def_id.node)
+                            }
                     } else {
                         match def {
                             // If this path leads to a static, then we may have
@@ -124,7 +127,8 @@ impl Visitor<()> for MarkSymbolVisitor {
                             // is indeed reachable (address_insignificant
                             // statics are *never* reachable).
                             ast::DefStatic(..) => {
-                                self.worklist.push(def_id.node);
+                                let mut worklist = self.worklist.borrow_mut();
+                                worklist.get().push(def_id.node);
                             }
 
                             // If this wasn't a static, then this destination is
@@ -150,7 +154,11 @@ impl Visitor<()> for MarkSymbolVisitor {
                                 def_id_represents_local_inlined_item(
                                     self.tcx,
                                     def_id) {
-                                self.worklist.push(def_id.node)
+                                {
+                                    let mut worklist = self.worklist
+                                                           .borrow_mut();
+                                    worklist.get().push(def_id.node)
+                                }
                             }
                             {
                                 let mut reachable_symbols =
@@ -186,7 +194,7 @@ impl ReachableContext {
             tcx: tcx,
             method_map: method_map,
             reachable_symbols: @RefCell::new(HashSet::new()),
-            worklist: @mut ~[],
+            worklist: @RefCell::new(~[]),
         }
     }
 
@@ -265,11 +273,19 @@ impl ReachableContext {
     fn propagate(&self) {
         let mut visitor = self.init_visitor();
         let mut scanned = HashSet::new();
-        while self.worklist.len() > 0 {
-            let search_item = self.worklist.pop();
-            if scanned.contains(&search_item) {
-                continue
-            }
+        loop {
+            let search_item = {
+                let mut worklist = self.worklist.borrow_mut();
+                if worklist.get().len() == 0 {
+                    break
+                }
+                let search_item = worklist.get().pop();
+                if scanned.contains(&search_item) {
+                    continue
+                }
+                search_item
+            };
+
             scanned.insert(search_item);
             match self.tcx.items.find(&search_item) {
                 Some(item) => self.propagate_node(item, search_item,
@@ -407,7 +423,8 @@ pub fn find_reachable(tcx: ty::ctxt,
     // Step 1: Seed the worklist with all nodes which were found to be public as
     //         a result of the privacy pass
     for &id in exported_items.iter() {
-        reachable_context.worklist.push(id);
+        let mut worklist = reachable_context.worklist.borrow_mut();
+        worklist.get().push(id);
     }
 
     // Step 2: Mark all symbols that the symbols on the worklist touch.
