@@ -801,7 +801,7 @@ fn Resolver(session: Session,
         current_module: current_module,
         value_ribs: @mut ~[],
         type_ribs: @mut ~[],
-        label_ribs: @mut ~[],
+        label_ribs: @RefCell::new(~[]),
 
         current_trait_refs: None,
 
@@ -852,7 +852,7 @@ struct Resolver {
     type_ribs: @mut ~[@Rib],
 
     // The current set of local scopes, for labels.
-    label_ribs: @mut ~[@Rib],
+    label_ribs: @RefCell<~[@Rib]>,
 
     // The trait that the current context can refer to.
     current_trait_refs: Option<~[DefId]>,
@@ -3833,9 +3833,17 @@ impl Resolver {
     }
 
     fn with_label_rib(&mut self, f: |&mut Resolver|) {
-        self.label_ribs.push(@Rib::new(NormalRibKind));
+        {
+            let mut label_ribs = self.label_ribs.borrow_mut();
+            label_ribs.get().push(@Rib::new(NormalRibKind));
+        }
+
         f(self);
-        self.label_ribs.pop();
+
+        {
+            let mut label_ribs = self.label_ribs.borrow_mut();
+            label_ribs.get().pop();
+        }
     }
 
     fn with_constant_rib(&mut self, f: |&mut Resolver|) {
@@ -3857,8 +3865,11 @@ impl Resolver {
         self.value_ribs.push(function_value_rib);
 
         // Create a label rib for the function.
-        let function_label_rib = @Rib::new(rib_kind);
-        self.label_ribs.push(function_label_rib);
+        {
+            let mut label_ribs = self.label_ribs.borrow_mut();
+            let function_label_rib = @Rib::new(rib_kind);
+            label_ribs.get().push(function_label_rib);
+        }
 
         // If this function has type parameters, add them now.
         self.with_type_parameter_rib(type_parameters, |this| {
@@ -3914,7 +3925,8 @@ impl Resolver {
             debug!("(resolving function) leaving function");
         });
 
-        self.label_ribs.pop();
+        let mut label_ribs = self.label_ribs.borrow_mut();
+        label_ribs.get().pop();
         self.value_ribs.pop();
     }
 
@@ -5185,9 +5197,11 @@ impl Resolver {
             ExprLoop(_, Some(label)) => {
                 self.with_label_rib(|this| {
                     let def_like = DlDef(DefLabel(expr.id));
-                    let rib = this.label_ribs[this.label_ribs.len() - 1];
                     // plain insert (no renaming)
                     {
+                        let mut label_ribs = this.label_ribs.borrow_mut();
+                        let rib = label_ribs.get()[label_ribs.get().len() -
+                                                   1];
                         let mut bindings = rib.bindings.borrow_mut();
                         bindings.get().insert(label.name, def_like);
                     }
@@ -5199,7 +5213,8 @@ impl Resolver {
             ExprForLoop(..) => fail!("non-desugared expr_for_loop"),
 
             ExprBreak(Some(label)) | ExprAgain(Some(label)) => {
-                match self.search_ribs(self.label_ribs, label, expr.span,
+                let mut label_ribs = self.label_ribs.borrow_mut();
+                match self.search_ribs(label_ribs.get(), label, expr.span,
                                        DontAllowCapturingSelf) {
                     None =>
                         self.resolve_error(expr.span,
