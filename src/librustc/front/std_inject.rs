@@ -69,7 +69,7 @@ impl fold::ast_fold for StandardLibraryInjector {
             span: dummy_sp()
         }];
 
-        if use_uv(&crate) && !*self.sess.building_library {
+        if use_uv(&crate) && !self.sess.building_library.get() {
             vis.push(ast::view_item {
                 node: ast::view_item_extern_mod(self.sess.ident_of("green"),
                                                 None,

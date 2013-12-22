@@ -127,7 +127,7 @@ impl fold::ast_fold for TestHarnessGenerator {
         // the one we're going to add. Only if compiling an executable.
 
         fn nomain(cx: @TestCtxt, item: @ast::item) -> @ast::item {
-            if !*cx.sess.building_library {
+            if !cx.sess.building_library.get() {
                 @ast::item {
                     attrs: item.attrs.iter().filter_map(|attr| {
                         if "main" != attr.name() {

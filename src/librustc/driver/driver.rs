@@ -166,7 +166,7 @@ pub fn phase_2_configure_and_expand(sess: Session,
                                     mut crate: ast::Crate) -> ast::Crate {
     let time_passes = sess.time_passes();
 
-    *sess.building_library = session::building_library(sess.opts, &crate);
+    sess.building_library.set(session::building_library(sess.opts, &crate));
     *sess.outputs = session::collect_outputs(sess.opts, crate.attrs);
 
     time(time_passes, "gated feature checking", (), |_|
@@ -878,7 +878,7 @@ pub fn build_session_(sopts: @session::options,
         entry_type: Cell::new(None),
         span_diagnostic: span_diagnostic_handler,
         filesearch: filesearch,
-        building_library: @mut false,
+        building_library: Cell::new(false),
         working_dir: os::getcwd(),
         lints: RefCell::new(HashMap::new()),
         node_id: Cell::new(1),
@@ -1039,7 +1039,7 @@ pub fn build_output_filenames(input: &input,
               }
           }
 
-          if *sess.building_library {
+          if sess.building_library.get() {
               out_path = dirpath.join(os::dll_filename(stem));
               obj_path = {
                   let mut p = dirpath.join(stem);
@@ -1060,7 +1060,7 @@ pub fn build_output_filenames(input: &input,
             out_file.with_extension(obj_suffix)
         };
 
-        if *sess.building_library {
+        if sess.building_library.get() {
             sess.warn("ignoring specified output filename for library.");
         }
 

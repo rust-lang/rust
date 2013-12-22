@@ -303,7 +303,7 @@ impl ReachableContext {
     fn propagate_node(&self, node: &ast_map::ast_node,
                       search_item: ast::NodeId,
                       visitor: &mut MarkSymbolVisitor) {
-        if !*self.tcx.sess.building_library {
+        if !self.tcx.sess.building_library.get() {
             // If we are building an executable, then there's no need to flag
             // anything as external except for `extern fn` types. These
             // functions may still participate in some form of native interface,
