@@ -25,6 +25,7 @@ use driver::session::Session;
 use middle::ty::{FreeRegion};
 use middle::ty;
 
+use std::cell::RefCell;
 use std::hashmap::{HashMap, HashSet};
 use syntax::codemap::Span;
 use syntax::{ast, visit};
@@ -50,7 +51,7 @@ The region maps encode information about region relationships.
     necessarily how I think things ought to work
 */
 pub struct RegionMaps {
-    priv scope_map: HashMap<ast::NodeId, ast::NodeId>,
+    priv scope_map: RefCell<HashMap<ast::NodeId, ast::NodeId>>,
     priv free_region_map: HashMap<FreeRegion, ~[FreeRegion]>,
     priv cleanup_scopes: HashSet<ast::NodeId>
 }
@@ -93,7 +94,8 @@ impl RegionMaps {
         debug!("record_parent(sub={:?}, sup={:?})", sub, sup);
         assert!(sub != sup);
 
-        self.scope_map.insert(sub, sup);
+        let mut scope_map = self.scope_map.borrow_mut();
+        scope_map.get().insert(sub, sup);
     }
 
     pub fn record_cleanup_scope(&mut self, scope_id: ast::NodeId) {
@@ -108,13 +110,15 @@ impl RegionMaps {
     pub fn opt_encl_scope(&self, id: ast::NodeId) -> Option<ast::NodeId> {
         //! Returns the narrowest scope that encloses `id`, if any.
 
-        self.scope_map.find(&id).map(|x| *x)
+        let scope_map = self.scope_map.borrow();
+        scope_map.get().find(&id).map(|x| *x)
     }
 
     pub fn encl_scope(&self, id: ast::NodeId) -> ast::NodeId {
         //! Returns the narrowest scope that encloses `id`, if any.
 
-        match self.scope_map.find(&id) {
+        let scope_map = self.scope_map.borrow();
+        match scope_map.get().find(&id) {
             Some(&r) => r,
             None => { fail!("No enclosing scope for id {:?}", id); }
         }
@@ -157,7 +161,8 @@ impl RegionMaps {
 
         let mut s = subscope;
         while superscope != s {
-            match self.scope_map.find(&s) {
+            let scope_map = self.scope_map.borrow();
+            match scope_map.get().find(&s) {
                 None => {
                     debug!("is_subscope_of({:?}, {:?}, s={:?})=false",
                            subscope, superscope, s);
@@ -298,7 +303,8 @@ impl RegionMaps {
             let mut result = ~[scope];
             let mut scope = scope;
             loop {
-                match this.scope_map.find(&scope) {
+                let scope_map = this.scope_map.borrow();
+                match scope_map.get().find(&scope) {
                     None => return result,
                     Some(&superscope) => {
                         result.push(superscope);
@@ -497,7 +503,7 @@ pub fn resolve_crate(sess: Session,
                      crate: &ast::Crate) -> @mut RegionMaps
 {
     let region_maps = @mut RegionMaps {
-        scope_map: HashMap::new(),
+        scope_map: RefCell::new(HashMap::new()),
         free_region_map: HashMap::new(),
         cleanup_scopes: HashSet::new(),
     };
