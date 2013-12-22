@@ -881,7 +881,7 @@ pub fn build_session_(sopts: @session::options,
         building_library: @mut false,
         working_dir: os::getcwd(),
         lints: RefCell::new(HashMap::new()),
-        node_id: @mut 1,
+        node_id: Cell::new(1),
         outputs: @mut ~[],
     }
 }
