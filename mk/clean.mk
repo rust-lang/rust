@@ -63,6 +63,7 @@ clean-generic-$(2)-$(1):
          -name '*.[odasS]' -o \
          -name '*.so' -o      \
          -name '*.dylib' -o   \
+         -name '*.lib' -o     \
          -name '*.dll' -o     \
          -name '*.def' -o     \
          -name '*.bc'         \
