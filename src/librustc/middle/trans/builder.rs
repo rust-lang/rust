@@ -54,7 +54,7 @@ impl Builder {
         }
         if self.ccx.sess.count_llvm_insns() {
             base::with_insn_ctxt(|v| {
-                let h = &mut self.ccx.stats.llvm_insns;
+                let mut h = self.ccx.stats.llvm_insns.borrow_mut();
 
                 // Build version of path with cycles removed.
 
@@ -82,11 +82,11 @@ impl Builder {
                 s.push_char('/');
                 s.push_str(category);
 
-                let n = match h.find(&s) {
+                let n = match h.get().find(&s) {
                     Some(&n) => n,
                     _ => 0u
                 };
-                h.insert(s, n+1u);
+                h.get().insert(s, n+1u);
             })
         }
     }
