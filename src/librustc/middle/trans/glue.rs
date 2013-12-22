@@ -708,7 +708,11 @@ pub fn emit_tydescs(ccx: &CrateContext) {
         // calling it.
         let take_glue =
             match ti.take_glue.get() {
-              None => { ccx.stats.n_null_glues += 1u; C_null(glue_fn_ty) }
+              None => {
+                  ccx.stats.n_null_glues.set(ccx.stats.n_null_glues.get() +
+                                             1);
+                  C_null(glue_fn_ty)
+              }
               Some(v) => {
                 unsafe {
                     ccx.stats.n_real_glues += 1u;
@@ -718,7 +722,11 @@ pub fn emit_tydescs(ccx: &CrateContext) {
             };
         let drop_glue =
             match ti.drop_glue.get() {
-              None => { ccx.stats.n_null_glues += 1u; C_null(glue_fn_ty) }
+              None => {
+                  ccx.stats.n_null_glues.set(ccx.stats.n_null_glues.get() +
+                                             1u);
+                  C_null(glue_fn_ty)
+              }
               Some(v) => {
                 unsafe {
                     ccx.stats.n_real_glues += 1u;
@@ -728,7 +736,11 @@ pub fn emit_tydescs(ccx: &CrateContext) {
             };
         let free_glue =
             match ti.free_glue.get() {
-              None => { ccx.stats.n_null_glues += 1u; C_null(glue_fn_ty) }
+              None => {
+                  ccx.stats.n_null_glues.set(ccx.stats.n_null_glues.get() +
+                                             1u);
+                  C_null(glue_fn_ty)
+              }
               Some(v) => {
                 unsafe {
                     ccx.stats.n_real_glues += 1u;
@@ -738,7 +750,11 @@ pub fn emit_tydescs(ccx: &CrateContext) {
             };
         let visit_glue =
             match ti.visit_glue.get() {
-              None => { ccx.stats.n_null_glues += 1u; C_null(glue_fn_ty) }
+              None => {
+                  ccx.stats.n_null_glues.set(ccx.stats.n_null_glues.get() +
+                                             1u);
+                  C_null(glue_fn_ty)
+              }
               Some(v) => {
                 unsafe {
                     ccx.stats.n_real_glues += 1u;
