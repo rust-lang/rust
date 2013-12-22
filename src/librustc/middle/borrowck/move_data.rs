@@ -48,7 +48,7 @@ pub struct MoveData {
     /// Assignments to a path, like `x.f = foo`. These are not
     /// assigned dataflow bits, but we track them because they still
     /// kill move bits.
-    path_assignments: ~[Assignment],
+    path_assignments: RefCell<~[Assignment]>,
     assignee_ids: HashSet<ast::NodeId>,
 }
 
@@ -168,7 +168,7 @@ impl MoveData {
             paths: RefCell::new(~[]),
             path_map: RefCell::new(HashMap::new()),
             moves: RefCell::new(~[]),
-            path_assignments: ~[],
+            path_assignments: RefCell::new(~[]),
             var_assignments: ~[],
             assignee_ids: HashSet::new(),
         }
@@ -412,7 +412,10 @@ impl MoveData {
             debug!("add_assignment[path](lp={}, path_index={:?})",
                    lp.repr(tcx), path_index);
 
-            self.path_assignments.push(assignment);
+            {
+                let mut path_assignments = self.path_assignments.borrow_mut();
+                path_assignments.get().push(assignment);
+            }
         }
     }
 
@@ -440,8 +443,11 @@ impl MoveData {
             self.kill_moves(assignment.path, assignment.id, dfcx_moves);
         }
 
-        for assignment in self.path_assignments.iter() {
-            self.kill_moves(assignment.path, assignment.id, dfcx_moves);
+        {
+            let path_assignments = self.path_assignments.borrow();
+            for assignment in path_assignments.get().iter() {
+                self.kill_moves(assignment.path, assignment.id, dfcx_moves);
+            }
         }
 
         // Kill all moves related to a variable `x` when it goes out
