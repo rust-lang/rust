@@ -28,8 +28,6 @@ use std::io;
 use std::io::fs;
 use std::path::is_sep;
 
-use sort;
-
 /**
  * An iterator that yields Paths from the filesystem that match a particular
  * pattern - see the `glob` function for more details.
@@ -149,9 +147,8 @@ impl Iterator<Path> for GlobIterator {
 
 fn list_dir_sorted(path: &Path) -> ~[Path] {
     match io::result(|| fs::readdir(path)) {
-        Ok(children) => {
-            let mut children = children;
-            sort::quick_sort(children, |p1, p2| p2.filename() <= p1.filename());
+        Ok(mut children) => {
+            children.sort_by(|p1, p2| p2.filename().cmp(&p1.filename()));
             children
         }
         Err(..) => ~[]
@@ -771,4 +768,3 @@ mod test {
         assert!(Pattern::new("a/b").matches_path(&Path::new("a/b")));
     }
 }
-

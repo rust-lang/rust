@@ -18,7 +18,6 @@ use metadata::decoder;
 use metadata::loader;
 
 use std::hashmap::HashMap;
-use extra;
 use syntax::ast;
 use syntax::parse::token::ident_interner;
 
@@ -174,7 +173,7 @@ pub fn find_extern_mod_stmt_cnum(cstore: &CStore,
     cstore.extern_mod_crate_map.find(&emod_id).map(|x| *x)
 }
 
-#[deriving(Clone)]
+#[deriving(Clone, TotalEq, TotalOrd)]
 struct crate_hash {
     name: @str,
     vers: @str,
@@ -198,16 +197,14 @@ pub fn get_dep_hashes(cstore: &CStore) -> ~[@str] {
         });
     }
 
-    let sorted = extra::sort::merge_sort(result, |a, b| {
-        (a.name, a.vers, a.hash) <= (b.name, b.vers, b.hash)
-    });
+    result.sort();
 
     debug!("sorted:");
-    for x in sorted.iter() {
+    for x in result.iter() {
         debug!("  hash[{}]: {}", x.name, x.hash);
     }
 
-    sorted.map(|ch| ch.hash)
+    result.map(|ch| ch.hash)
 }
 
 impl crate_metadata {

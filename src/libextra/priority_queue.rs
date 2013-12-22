@@ -213,7 +213,6 @@ impl<T: Ord> Extendable<T> for PriorityQueue<T> {
 
 #[cfg(test)]
 mod tests {
-    use sort::merge_sort;
     use priority_queue::PriorityQueue;
 
     #[test]
@@ -231,7 +230,8 @@ mod tests {
     #[test]
     fn test_top_and_pop() {
         let data = ~[2u, 4, 6, 2, 1, 8, 10, 3, 5, 7, 0, 9, 1];
-        let mut sorted = merge_sort(data, |x, y| x.le(y));
+        let mut sorted = data.clone();
+        sorted.sort();
         let mut heap = PriorityQueue::from_vec(data);
         while !heap.is_empty() {
             assert_eq!(heap.top(), sorted.last());
@@ -311,11 +311,14 @@ mod tests {
         assert_eq!(heap.len(), 5);
     }
 
-    fn check_to_vec(data: ~[int]) {
+    fn check_to_vec(mut data: ~[int]) {
         let heap = PriorityQueue::from_vec(data.clone());
-        assert_eq!(merge_sort(heap.clone().to_vec(), |x, y| x.le(y)),
-                   merge_sort(data, |x, y| x.le(y)));
-        assert_eq!(heap.to_sorted_vec(), merge_sort(data, |x, y| x.le(y)));
+        let mut v = heap.clone().to_vec();
+        v.sort();
+        data.sort();
+
+        assert_eq!(v, data);
+        assert_eq!(heap.to_sorted_vec(), data);
     }
 
     #[test]
