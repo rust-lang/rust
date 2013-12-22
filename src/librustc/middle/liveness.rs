@@ -590,7 +590,7 @@ pub struct Liveness {
     tcx: ty::ctxt,
     ir: @IrMaps,
     s: Specials,
-    successors: @mut ~[LiveNode],
+    successors: @RefCell<~[LiveNode]>,
     users: @mut ~[Users],
     // The list of node IDs for the nested loop scopes
     // we're in.
@@ -607,8 +607,8 @@ fn Liveness(ir: @IrMaps, specials: Specials) -> Liveness {
         ir: ir,
         tcx: ir.tcx,
         s: specials,
-        successors: @mut vec::from_elem(ir.num_live_nodes.get(),
-                                        invalid_node()),
+        successors: @RefCell::new(vec::from_elem(ir.num_live_nodes.get(),
+                                                 invalid_node())),
         users: @mut vec::from_elem(ir.num_live_nodes.get() *
                                    ir.num_vars.get(),
                                    invalid_users()),
@@ -694,7 +694,11 @@ impl Liveness {
     */
     pub fn live_on_exit(&self, ln: LiveNode, var: Variable)
                         -> Option<LiveNodeKind> {
-        self.live_on_entry(self.successors[*ln], var)
+        let successor = {
+            let successors = self.successors.borrow();
+            successors.get()[*ln]
+        };
+        self.live_on_entry(successor, var)
     }
 
     pub fn used_on_entry(&self, ln: LiveNode, var: Variable) -> bool {
@@ -711,7 +715,11 @@ impl Liveness {
 
     pub fn assigned_on_exit(&self, ln: LiveNode, var: Variable)
                             -> Option<LiveNodeKind> {
-        self.assigned_on_entry(self.successors[*ln], var)
+        let successor = {
+            let successors = self.successors.borrow();
+            successors.get()[*ln]
+        };
+        self.assigned_on_entry(successor, var)
     }
 
     pub fn indices2(&self,
@@ -782,12 +790,19 @@ impl Liveness {
             self.write_vars(wr, ln, |idx| self.users[idx].reader);
             write!(wr, "  writes");
             self.write_vars(wr, ln, |idx| self.users[idx].writer);
-            write!(wr, "  precedes {}]", self.successors[*ln].to_str());
+            let successor = {
+                let successors = self.successors.borrow();
+                successors.get()[*ln]
+            };
+            write!(wr, "  precedes {}]", successor.to_str());
         }))
     }
 
     pub fn init_empty(&self, ln: LiveNode, succ_ln: LiveNode) {
-        self.successors[*ln] = succ_ln;
+        {
+            let mut successors = self.successors.borrow_mut();
+            successors.get()[*ln] = succ_ln;
+        }
 
         // It is not necessary to initialize the
         // values to empty because this is the value
@@ -801,7 +816,11 @@ impl Liveness {
 
     pub fn init_from_succ(&self, ln: LiveNode, succ_ln: LiveNode) {
         // more efficient version of init_empty() / merge_from_succ()
-        self.successors[*ln] = succ_ln;
+        {
+            let mut successors = self.successors.borrow_mut();
+            successors.get()[*ln] = succ_ln;
+        }
+
         self.indices2(ln, succ_ln, |idx, succ_idx| {
             self.users[idx] = self.users[succ_idx]
         });
