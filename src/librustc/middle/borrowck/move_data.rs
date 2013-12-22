@@ -214,9 +214,9 @@ impl MoveData {
     }
                             
 
-    fn move<'a>(&'a self, index: MoveIndex) -> &'a Move {
+    fn move_next_move(&self, index: MoveIndex) -> MoveIndex {
         //! Type safe indexing operator
-        &self.moves[*index]
+        self.moves[*index].next_move
     }
 
     fn is_var_path(&self, index: MovePathIndex) -> bool {
@@ -497,7 +497,7 @@ impl MoveData {
                     ret = false;
                     break;
                 }
-                p = self.move(p).next_move;
+                p = self.move_next_move(p);
             }
             ret
         });
