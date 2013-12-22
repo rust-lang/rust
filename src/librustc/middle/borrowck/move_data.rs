@@ -15,7 +15,6 @@ comments in the section "Moves and initialization" and in `doc.rs`.
 
 */
 
-
 use std::hashmap::{HashMap, HashSet};
 use std::uint;
 use middle::borrowck::*;
@@ -172,6 +171,10 @@ impl MoveData {
             var_assignments: ~[],
             assignee_ids: HashSet::new(),
         }
+    }
+
+    fn path_loan_path(&self, index: MovePathIndex) -> @LoanPath {
+        self.paths[*index].loan_path
     }
 
     fn path<'a>(&'a self, index: MovePathIndex) -> &'a MovePath {
@@ -400,7 +403,7 @@ impl MoveData {
 
         // Kill all assignments when the variable goes out of scope:
         for (assignment_index, assignment) in self.var_assignments.iter().enumerate() {
-            match *self.path(assignment.path).loan_path {
+            match *self.path_loan_path(assignment.path) {
                 LpVar(id) => {
                     let kill_id = tcx.region_maps.encl_scope(id);
                     dfcx_assign.add_kill(kill_id, assignment_index);
@@ -514,7 +517,7 @@ impl FlowedMoveData {
         self.dfcx_moves.each_gen_bit_frozen(id, |index| {
             let move = &self.move_data.moves[index];
             let moved_path = move.path;
-            f(move, self.move_data.path(moved_path).loan_path)
+            f(move, self.move_data.path_loan_path(moved_path))
         })
     }
 
@@ -555,7 +558,7 @@ impl FlowedMoveData {
             if base_indices.iter().any(|x| x == &moved_path) {
                 // Scenario 1 or 2: `loan_path` or some base path of
                 // `loan_path` was moved.
-                if !f(move, self.move_data.path(moved_path).loan_path) {
+                if !f(move, self.move_data.path_loan_path(moved_path)) {
                     ret = false;
                 }
             } else {
@@ -564,7 +567,7 @@ impl FlowedMoveData {
                         if p == loan_path_index {
                             // Scenario 3: some extension of `loan_path`
                             // was moved
-                            f(move, self.move_data.path(moved_path).loan_path)
+                            f(move, self.move_data.path_loan_path(moved_path))
                         } else {
                             true
                         }
