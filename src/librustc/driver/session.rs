@@ -28,7 +28,7 @@ use syntax::abi;
 use syntax::parse::token;
 use syntax;
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::hashmap::{HashMap,HashSet};
 
 pub struct config {
@@ -206,8 +206,8 @@ pub struct Session_ {
     parse_sess: @mut ParseSess,
     codemap: @codemap::CodeMap,
     // For a library crate, this is always none
-    entry_fn: @mut Option<(NodeId, codemap::Span)>,
-    entry_type: @mut Option<EntryFnType>,
+    entry_fn: RefCell<Option<(NodeId, codemap::Span)>>,
+    entry_type: Cell<Option<EntryFnType>>,
     span_diagnostic: @mut diagnostic::span_handler,
     filesearch: @filesearch::FileSearch,
     building_library: @mut bool,

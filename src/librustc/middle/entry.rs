@@ -52,7 +52,7 @@ pub fn find_entry_point(session: Session, crate: &Crate, ast_map: ast_map::map) 
 
     // If the user wants no main function at all, then stop here.
     if attr::contains_name(crate.attrs, "no_main") {
-        *session.entry_type = Some(session::EntryNone);
+        session.entry_type.set(Some(session::EntryNone));
         return
     }
 
@@ -122,14 +122,14 @@ fn find_item(item: @item, ctxt: &mut EntryContext) {
 
 fn configure_main(this: &mut EntryContext) {
     if this.start_fn.is_some() {
-        *this.session.entry_fn = this.start_fn;
-        *this.session.entry_type = Some(session::EntryStart);
+        this.session.entry_fn.set(this.start_fn);
+        this.session.entry_type.set(Some(session::EntryStart));
     } else if this.attr_main_fn.is_some() {
-        *this.session.entry_fn = this.attr_main_fn;
-        *this.session.entry_type = Some(session::EntryMain);
+        this.session.entry_fn.set(this.attr_main_fn);
+        this.session.entry_type.set(Some(session::EntryMain));
     } else if this.main_fn.is_some() {
-        *this.session.entry_fn = this.main_fn;
-        *this.session.entry_type = Some(session::EntryMain);
+        this.session.entry_fn.set(this.main_fn);
+        this.session.entry_type.set(Some(session::EntryMain));
     } else {
         if !*this.session.building_library {
             // No main function
