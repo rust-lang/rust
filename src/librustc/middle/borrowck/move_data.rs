@@ -53,11 +53,12 @@ pub struct MoveData {
 }
 
 pub struct FlowedMoveData {
-    move_data: @mut MoveData,
-    //         ^~~~~~~~~~~~~
-    // It makes me sad to use @mut here, except that due to
-    // the visitor design, this is what gather_loans
-    // must produce.
+    move_data: @MoveData,
+    //         ^~~~~~~~~
+    // It makes me sad to use @ here, except that due to
+    // the old visitor design, this is what gather_loans
+    // used to have to produce, and this code hasn't been
+    // updated.
 
     dfcx_moves: MoveDataFlow,
 
@@ -199,14 +200,14 @@ impl MoveData {
         paths.get()[*index].next_sibling
     }
 
-    fn set_path_first_move(&mut self,
+    fn set_path_first_move(&self,
                            index: MovePathIndex,
                            first_move: MoveIndex) {
         let mut paths = self.paths.borrow_mut();
         paths.get()[*index].first_move = first_move
     }
 
-    fn set_path_first_child(&mut self,
+    fn set_path_first_child(&self,
                             index: MovePathIndex,
                             first_child: MovePathIndex) {
         let mut paths = self.paths.borrow_mut();
@@ -225,7 +226,7 @@ impl MoveData {
         self.path_parent(index) == InvalidMovePathIndex
     }
 
-    pub fn move_path(&mut self,
+    pub fn move_path(&self,
                      tcx: ty::ctxt,
                      lp: @LoanPath) -> MovePathIndex {
         /*!
@@ -344,7 +345,7 @@ impl MoveData {
 
     }
 
-    pub fn add_move(&mut self,
+    pub fn add_move(&self,
                     tcx: ty::ctxt,
                     lp: @LoanPath,
                     id: ast::NodeId,
@@ -379,7 +380,7 @@ impl MoveData {
         }
     }
 
-    pub fn add_assignment(&mut self,
+    pub fn add_assignment(&self,
                           tcx: ty::ctxt,
                           lp: @LoanPath,
                           assign_id: ast::NodeId,
@@ -556,13 +557,12 @@ impl MoveData {
 }
 
 impl FlowedMoveData {
-    pub fn new(move_data: @mut MoveData,
+    pub fn new(move_data: @MoveData,
                tcx: ty::ctxt,
                method_map: typeck::method_map,
                id_range: ast_util::id_range,
                body: &ast::Block)
-               -> FlowedMoveData
-    {
+               -> FlowedMoveData {
         let mut dfcx_moves = {
             let moves = move_data.moves.borrow();
             DataFlowContext::new(tcx,
