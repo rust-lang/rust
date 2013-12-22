@@ -357,7 +357,10 @@ impl<'a> CheckLoanCtxt<'a> {
                     mc::cat_local(id) |
                     mc::cat_arg(id) |
                     mc::cat_self(id) => {
-                        this.tcx().used_mut_nodes.insert(id);
+                        let mut used_mut_nodes = this.tcx()
+                                                     .used_mut_nodes
+                                                     .borrow_mut();
+                        used_mut_nodes.get().insert(id);
                         return;
                     }
 
