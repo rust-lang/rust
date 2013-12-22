@@ -47,7 +47,10 @@ impl Builder {
 
     pub fn count_insn(&self, category: &str) {
         if self.ccx.sess.trans_stats() {
-            self.ccx.stats.n_llvm_insns += 1;
+            self.ccx.stats.n_llvm_insns.set(self.ccx
+                                                .stats
+                                                .n_llvm_insns
+                                                .get() + 1);
         }
         if self.ccx.sess.count_llvm_insns() {
             base::with_insn_ctxt(|v| {
