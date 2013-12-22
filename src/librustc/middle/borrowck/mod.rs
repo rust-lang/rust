@@ -19,7 +19,7 @@ use middle::dataflow::DataFlowContext;
 use middle::dataflow::DataFlowOperator;
 use util::ppaux::{note_and_explain_region, Repr, UserString};
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::hashmap::{HashSet, HashMap};
 use std::ops::{BitOr, BitAnd};
 use std::result::{Result};
@@ -84,11 +84,10 @@ pub fn check_crate(
         root_map: root_map(),
         write_guard_map: @RefCell::new(HashSet::new()),
         stats: @mut BorrowStats {
-            loaned_paths_same: 0,
-            loaned_paths_imm: 0,
-            stable_paths: 0,
-            req_pure_paths: 0,
-            guaranteed_paths: 0,
+            loaned_paths_same: Cell::new(0),
+            loaned_paths_imm: Cell::new(0),
+            stable_paths: Cell::new(0),
+            guaranteed_paths: Cell::new(0),
         }
     };
     let bccx = &mut bccx;
@@ -98,22 +97,20 @@ pub fn check_crate(
     if tcx.sess.borrowck_stats() {
         println("--- borrowck stats ---");
         println!("paths requiring guarantees: {}",
-                 bccx.stats.guaranteed_paths);
+                 bccx.stats.guaranteed_paths.get());
         println!("paths requiring loans     : {}",
-                 make_stat(bccx, bccx.stats.loaned_paths_same));
+                 make_stat(bccx, bccx.stats.loaned_paths_same.get()));
         println!("paths requiring imm loans : {}",
-                 make_stat(bccx, bccx.stats.loaned_paths_imm));
+                 make_stat(bccx, bccx.stats.loaned_paths_imm.get()));
         println!("stable paths              : {}",
-                 make_stat(bccx, bccx.stats.stable_paths));
-        println!("paths requiring purity    : {}",
-                 make_stat(bccx, bccx.stats.req_pure_paths));
+                 make_stat(bccx, bccx.stats.stable_paths.get()));
     }
 
     return (bccx.root_map, bccx.write_guard_map);
 
     fn make_stat(bccx: &mut BorrowckCtxt, stat: uint) -> ~str {
         let stat_f = stat as f64;
-        let total = bccx.stats.guaranteed_paths as f64;
+        let total = bccx.stats.guaranteed_paths.get() as f64;
         format!("{} ({:.0f}%)", stat  , stat_f * 100.0 / total)
     }
 }
@@ -179,11 +176,10 @@ pub struct BorrowckCtxt {
 }
 
 pub struct BorrowStats {
-    loaned_paths_same: uint,
-    loaned_paths_imm: uint,
-    stable_paths: uint,
-    req_pure_paths: uint,
-    guaranteed_paths: uint
+    loaned_paths_same: Cell<uint>,
+    loaned_paths_imm: Cell<uint>,
+    stable_paths: Cell<uint>,
+    guaranteed_paths: Cell<uint>,
 }
 
 // The keys to the root map combine the `id` of the deref expression
