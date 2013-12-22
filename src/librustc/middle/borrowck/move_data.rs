@@ -193,10 +193,18 @@ impl MoveData {
         self.paths[*index].next_sibling
     }
 
-    fn mut_path<'a>(&'a mut self, index: MovePathIndex) -> &'a mut MovePath {
-        //! Type safe indexing operator
-        &mut self.paths[*index]
+    fn set_path_first_move(&mut self,
+                           index: MovePathIndex,
+                           first_move: MoveIndex) {
+        self.paths[*index].first_move = first_move
     }
+
+    fn set_path_first_child(&mut self,
+                            index: MovePathIndex,
+                            first_child: MovePathIndex) {
+        self.paths[*index].first_child = first_child
+    }
+                            
 
     fn move<'a>(&'a self, index: MoveIndex) -> &'a Move {
         //! Type safe indexing operator
@@ -244,7 +252,7 @@ impl MoveData {
                 let index = MovePathIndex(self.paths.len());
 
                 let next_sibling = self.path_first_child(parent_index);
-                self.mut_path(parent_index).first_child = index;
+                self.set_path_first_child(parent_index, index);
 
                 self.paths.push(MovePath {
                     loan_path: lp,
@@ -327,7 +335,7 @@ impl MoveData {
         let move_index = MoveIndex(self.moves.len());
 
         let next_move = self.path_first_move(path_index);
-        self.mut_path(path_index).first_move = move_index;
+        self.set_path_first_move(path_index, move_index);
 
         self.moves.push(Move {
             path: path_index,
