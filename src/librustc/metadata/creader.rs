@@ -37,7 +37,7 @@ pub fn read_crates(sess: Session,
     let mut e = Env {
         sess: sess,
         os: os,
-        crate_cache: @mut ~[],
+        crate_cache: @RefCell::new(~[]),
         next_crate_num: 1,
         intr: intr
     };
@@ -48,8 +48,9 @@ pub fn read_crates(sess: Session,
         };
         visit::walk_crate(&mut v, crate, ());
     }
-    dump_crates(*e.crate_cache);
-    warn_if_multiple_versions(&mut e, sess.diagnostic(), *e.crate_cache);
+    let crate_cache = e.crate_cache.borrow();
+    dump_crates(*crate_cache.get());
+    warn_if_multiple_versions(&mut e, sess.diagnostic(), *crate_cache.get());
 }
 
 struct ReadCrateVisitor<'a> {
@@ -111,7 +112,7 @@ fn warn_if_multiple_versions(e: &mut Env,
 struct Env {
     sess: Session,
     os: loader::Os,
-    crate_cache: @mut ~[cache_entry],
+    crate_cache: @RefCell<~[cache_entry]>,
     next_crate_num: ast::CrateNum,
     intr: @ident_interner
 }
@@ -242,7 +243,8 @@ fn visit_item(e: &Env, i: @ast::item) {
 }
 
 fn existing_match(e: &Env, name: @str, version: @str, hash: &str) -> Option<ast::CrateNum> {
-    for c in e.crate_cache.iter() {
+    let crate_cache = e.crate_cache.borrow();
+    for c in crate_cache.get().iter() {
         let pkgid_version = match c.pkgid.version {
             None => @"0.0",
             Some(ref ver) => ver.to_managed(),
@@ -285,12 +287,15 @@ fn resolve_crate(e: &mut Env,
 
         // Claim this crate number and cache it
         let cnum = e.next_crate_num;
-        e.crate_cache.push(cache_entry {
-            cnum: cnum,
-            span: span,
-            hash: hash,
-            pkgid: pkgid,
-        });
+        {
+            let mut crate_cache = e.crate_cache.borrow_mut();
+            crate_cache.get().push(cache_entry {
+                cnum: cnum,
+                span: span,
+                hash: hash,
+                pkgid: pkgid,
+            });
+        }
         e.next_crate_num += 1;
 
         // Now resolve the crates referenced by this crate
