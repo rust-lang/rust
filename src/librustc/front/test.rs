@@ -63,7 +63,7 @@ pub fn modify_for_testing(sess: session::Session,
 }
 
 struct TestHarnessGenerator {
-    cx: @mut TestCtxt,
+    cx: @TestCtxt,
 }
 
 impl fold::ast_fold for TestHarnessGenerator {
@@ -126,7 +126,7 @@ impl fold::ast_fold for TestHarnessGenerator {
         // Remove any #[main] from the AST so it doesn't clash with
         // the one we're going to add. Only if compiling an executable.
 
-        fn nomain(cx: @mut TestCtxt, item: @ast::item) -> @ast::item {
+        fn nomain(cx: @TestCtxt, item: @ast::item) -> @ast::item {
             if !*cx.sess.building_library {
                 @ast::item {
                     attrs: item.attrs.iter().filter_map(|attr| {
@@ -154,7 +154,7 @@ impl fold::ast_fold for TestHarnessGenerator {
 
 fn generate_test_harness(sess: session::Session, crate: ast::Crate)
                          -> ast::Crate {
-    let cx: @mut TestCtxt = @mut TestCtxt {
+    let cx: @TestCtxt = @TestCtxt {
         sess: sess,
         ext_cx: ExtCtxt::new(sess.parse_sess, sess.opts.cfg.clone()),
         path: RefCell::new(~[]),
@@ -190,7 +190,7 @@ fn strip_test_functions(crate: ast::Crate) -> ast::Crate {
     })
 }
 
-fn is_test_fn(cx: @mut TestCtxt, i: @ast::item) -> bool {
+fn is_test_fn(cx: @TestCtxt, i: @ast::item) -> bool {
     let has_test_attr = attr::contains_name(i.attrs, "test");
 
     fn has_test_signature(i: @ast::item) -> bool {
@@ -243,7 +243,7 @@ fn is_bench_fn(i: @ast::item) -> bool {
     return has_bench_attr && has_test_signature(i);
 }
 
-fn is_ignored(cx: @mut TestCtxt, i: @ast::item) -> bool {
+fn is_ignored(cx: @TestCtxt, i: @ast::item) -> bool {
     i.attrs.iter().any(|attr| {
         // check ignore(cfg(foo, bar))
         "ignore" == attr.name() && match attr.meta_item_list() {
