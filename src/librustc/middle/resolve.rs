@@ -420,7 +420,7 @@ struct Module {
     is_public: bool,
 
     children: RefCell<HashMap<Name, @NameBindings>>,
-    imports: @mut ~[@ImportDirective],
+    imports: RefCell<~[@ImportDirective]>,
 
     // The external module children of this node that were declared with
     // `extern mod`.
@@ -470,7 +470,7 @@ impl Module {
             kind: Cell::new(kind),
             is_public: is_public,
             children: RefCell::new(HashMap::new()),
-            imports: @mut ~[],
+            imports: RefCell::new(~[]),
             external_module_children: RefCell::new(HashMap::new()),
             anonymous_children: RefCell::new(HashMap::new()),
             import_resolutions: RefCell::new(HashMap::new()),
@@ -481,8 +481,8 @@ impl Module {
     }
 
     fn all_imports_resolved(&self) -> bool {
-        let imports = &mut *self.imports;
-        return imports.len() == self.resolved_import_count.get();
+        let mut imports = self.imports.borrow_mut();
+        return imports.get().len() == self.resolved_import_count.get();
     }
 }
 
@@ -1951,7 +1951,11 @@ impl Resolver {
         let directive = @ImportDirective::new(module_path,
                                               subclass, span, id,
                                               is_public);
-        module_.imports.push(directive);
+
+        {
+            let mut imports = module_.imports.borrow_mut();
+            imports.get().push(directive);
+        }
 
         // Bump the reference count on the name. Or, if this is a glob, set
         // the appropriate flag.
@@ -2069,11 +2073,11 @@ impl Resolver {
             return;
         }
 
-        let imports = &mut *module.imports;
-        let import_count = imports.len();
+        let mut imports = module.imports.borrow_mut();
+        let import_count = imports.get().len();
         while module.resolved_import_count.get() < import_count {
             let import_index = module.resolved_import_count.get();
-            let import_directive = imports[import_index];
+            let import_directive = imports.get()[import_index];
             match self.resolve_import_for_module(module, import_directive) {
                 Failed => {
                     // We presumably emitted an error. Continue.
@@ -2149,7 +2153,7 @@ impl Resolver {
     fn resolve_import_for_module(&mut self,
                                  module_: @Module,
                                  import_directive: @ImportDirective)
-                                     -> ResolveResult<()> {
+                                 -> ResolveResult<()> {
         let mut resolution_result = Failed;
         let module_path = &import_directive.module_path;
 
@@ -3230,16 +3234,20 @@ impl Resolver {
 
     fn report_unresolved_imports(&mut self, module_: @Module) {
         let index = module_.resolved_import_count.get();
-        let imports: &mut ~[@ImportDirective] = &mut *module_.imports;
-        let import_count = imports.len();
+        let mut imports = module_.imports.borrow_mut();
+        let import_count = imports.get().len();
         if index != import_count {
-            let sn = self.session.codemap.span_to_snippet(imports[index].span).unwrap();
+            let sn = self.session
+                         .codemap
+                         .span_to_snippet(imports.get()[index].span)
+                         .unwrap();
             if sn.contains("::") {
-                self.resolve_error(imports[index].span, "unresolved import");
+                self.resolve_error(imports.get()[index].span,
+                                   "unresolved import");
             } else {
                 let err = format!("unresolved import (maybe you meant `{}::*`?)",
                                sn.slice(0, sn.len()));
-                self.resolve_error(imports[index].span, err);
+                self.resolve_error(imports.get()[index].span, err);
             }
         }
 
