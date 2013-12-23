@@ -15,6 +15,7 @@
 
 # The names of crates that must be tested
 TEST_TARGET_CRATES = std extra rustuv
+TEST_DOC_CRATES = std extra
 TEST_HOST_CRATES = rustpkg rustc rustdoc syntax
 TEST_CRATES = $(TEST_TARGET_CRATES) $(TEST_HOST_CRATES)
 
@@ -281,6 +282,7 @@ check-stage$(1)-T-$(2)-H-$(3)-exec:     				\
 	check-stage$(1)-T-$(2)-H-$(3)-rpass-full-exec			\
 	check-stage$(1)-T-$(2)-H-$(3)-rmake-exec			\
         check-stage$(1)-T-$(2)-H-$(3)-crates-exec                       \
+        check-stage$(1)-T-$(2)-H-$(3)-doc-crates-exec                   \
 	check-stage$(1)-T-$(2)-H-$(3)-bench-exec			\
 	check-stage$(1)-T-$(2)-H-$(3)-debuginfo-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-codegen-exec \
@@ -302,6 +304,10 @@ check-stage$(1)-T-$(2)-H-$(3)-crates-exec: \
            check-stage$(1)-T-$(2)-H-$(3)-$$(crate)-exec)
 
 endif
+
+check-stage$(1)-T-$(2)-H-$(3)-doc-crates-exec: \
+        $$(foreach crate,$$(TEST_DOC_CRATES), \
+           check-stage$(1)-T-$(2)-H-$(3)-doc-$$(crate)-exec)
 
 check-stage$(1)-T-$(2)-H-$(3)-doc-exec: \
         $$(foreach docname,$$(DOC_TEST_NAMES), \
@@ -734,6 +740,26 @@ $(foreach host,$(CFG_HOST), \
    $(foreach docname,$(DOC_TEST_NAMES), \
     $(eval $(call DEF_RUN_DOC_TEST,$(stage),$(target),$(host),$(docname)))))))
 
+CRATE_DOC_LIB-std = $(STDLIB_CRATE)
+CRATE_DOC_LIB-extra = $(EXTRALIB_CRATE)
+
+define DEF_CRATE_DOC_TEST
+
+check-stage$(1)-T-$(2)-H-$(2)-doc-$(3)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(2),doc-$(3))
+
+$$(call TEST_OK_FILE,$(1),$(2),$(2),doc-$(3)):		\
+	        $$(TEST_SREQ$(1)_T_$(2)_H_$(2))		\
+		$$(HBIN$(1)_H_$(2))/rustdoc$$(X_$(2))
+	@$$(call E, run doc-$(3) [$(2)])
+	$$(Q)$$(HBIN$(1)_H_$(2))/rustdoc$$(X_$(2)) --test \
+	    $$(CRATE_DOC_LIB-$(3)) && touch $$@
+
+endef
+
+$(foreach host,$(CFG_HOST), \
+ $(foreach stage,$(STAGES), \
+  $(foreach crate,$(TEST_DOC_CRATES), \
+   $(eval $(call DEF_CRATE_DOC_TEST,$(stage),$(host),$(crate))))))
 
 ######################################################################
 # Extracting tests for docs
@@ -762,6 +788,7 @@ $(foreach host,$(CFG_HOST), \
 TEST_GROUPS = \
 	crates \
 	$(foreach crate,$(TEST_CRATES),$(crate)) \
+	$(foreach crate,$(TEST_DOC_CRATES),doc-$(crate)) \
 	rpass \
 	rpass-full \
 	rfail \

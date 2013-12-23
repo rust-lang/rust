@@ -1147,13 +1147,17 @@ fn name_from_pat(p: &ast::Pat) -> ~str {
 fn resolve_type(path: Path, tpbs: Option<~[TyParamBound]>,
                 id: ast::NodeId) -> Type {
     let cx = local_data::get(super::ctxtkey, |x| *x.unwrap());
+    let tycx = match cx.tycx {
+        Some(tycx) => tycx,
+        // If we're extracting tests, this return value doesn't matter.
+        None => return Bool
+    };
     debug!("searching for {:?} in defmap", id);
-    let d = match cx.tycx.def_map.find(&id) {
+    let d = match tycx.def_map.find(&id) {
         Some(k) => k,
         None => {
-            let ctxt = local_data::get(super::ctxtkey, |x| *x.unwrap());
             debug!("could not find {:?} in defmap (`{}`)", id,
-                   syntax::ast_map::node_id_to_str(ctxt.tycx.items, id, ctxt.sess.intr()));
+                   syntax::ast_map::node_id_to_str(tycx.items, id, cx.sess.intr()));
             fail!("Unexpected failure: unresolved id not in defmap (this is a bug!)")
         }
     };
@@ -1182,7 +1186,7 @@ fn resolve_type(path: Path, tpbs: Option<~[TyParamBound]>,
     if ast_util::is_local(def_id) {
         ResolvedPath{ path: path, typarams: tpbs, id: def_id.node }
     } else {
-        let fqn = csearch::get_item_path(cx.tycx, def_id);
+        let fqn = csearch::get_item_path(tycx, def_id);
         let fqn = fqn.move_iter().map(|i| {
             match i {
                 ast_map::path_mod(id) |
@@ -1203,6 +1207,11 @@ fn resolve_use_source(path: Path, id: ast::NodeId) -> ImportSource {
 }
 
 fn resolve_def(id: ast::NodeId) -> Option<ast::DefId> {
-    let dm = local_data::get(super::ctxtkey, |x| *x.unwrap()).tycx.def_map;
-    dm.find(&id).map(|&d| ast_util::def_id_of_def(d))
+    let cx = local_data::get(super::ctxtkey, |x| *x.unwrap());
+    match cx.tycx {
+        Some(tcx) => {
+            tcx.def_map.find(&id).map(|&d| ast_util::def_id_of_def(d))
+        }
+        None => None
+    }
 }

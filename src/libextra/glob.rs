@@ -53,8 +53,10 @@ pub struct GlobIterator {
 /// `puppies.jpg` and `hamsters.gif`:
 ///
 /// ```rust
+/// use extra::glob::glob;
+///
 /// for path in glob("/media/pictures/*.jpg") {
-///     println(path.to_str());
+///     println!("{}", path.display());
 /// }
 /// ```
 ///
@@ -188,21 +190,23 @@ enum MatchResult {
 impl Pattern {
 
     /**
-     * This function compiles Unix shell style patterns: `?` matches any single character,
-     * `*` matches any (possibly empty) sequence of characters and `[...]` matches any character
-     * inside the brackets, unless the first character is `!` in which case it matches any
-     * character except those between the `!` and the `]`. Character sequences can also specify
-     * ranges of characters, as ordered by Unicode, so e.g. `[0-9]` specifies any character
-     * between 0 and 9 inclusive.
+     * This function compiles Unix shell style patterns: `?` matches any single
+     * character, `*` matches any (possibly empty) sequence of characters and
+     * `[...]` matches any character inside the brackets, unless the first
+     * character is `!` in which case it matches any character except those
+     * between the `!` and the `]`. Character sequences can also specify ranges
+     * of characters, as ordered by Unicode, so e.g. `[0-9]` specifies any
+     * character between 0 and 9 inclusive.
      *
-     * The metacharacters `?`, `*`, `[`, `]` can be matched by using brackets (e.g. `[?]`).
-     * When a `]` occurs immediately following `[` or `[!` then it is interpreted as
-     * being part of, rather then ending, the character set, so `]` and NOT `]` can be
-     * matched by `[]]` and `[!]]` respectively. The `-` character can be specified inside a
-     * character sequence pattern by placing it at the start or the end, e.g. `[abc-]`.
+     * The metacharacters `?`, `*`, `[`, `]` can be matched by using brackets
+     * (e.g. `[?]`).  When a `]` occurs immediately following `[` or `[!` then
+     * it is interpreted as being part of, rather then ending, the character
+     * set, so `]` and NOT `]` can be matched by `[]]` and `[!]]` respectively.
+     * The `-` character can be specified inside a character sequence pattern by
+     * placing it at the start or the end, e.g. `[abc-]`.
      *
-     * When a `[` does not have a closing `]` before the end of the string then the `[` will
-     * be treated literally.
+     * When a `[` does not have a closing `]` before the end of the string then
+     * the `[` will be treated literally.
      */
     pub fn new(pattern: &str) -> Pattern {
 
@@ -229,7 +233,8 @@ impl Pattern {
                         match chars.slice_from(i + 3).position_elem(&']') {
                             None => (),
                             Some(j) => {
-                                let cs = parse_char_specifiers(chars.slice(i + 2, i + 3 + j));
+                                let chars = chars.slice(i + 2, i + 3 + j);
+                                let cs = parse_char_specifiers(chars);
                                 tokens.push(AnyExcept(cs));
                                 i += j + 4;
                                 continue;
@@ -292,6 +297,8 @@ impl Pattern {
      * # Example
      *
      * ```rust
+     * use extra::glob::Pattern;
+     *
      * assert!(Pattern::new("c?t").matches("cat"));
      * assert!(Pattern::new("k[!e]tteh").matches("kitteh"));
      * assert!(Pattern::new("d*g").matches("doog"));
@@ -509,7 +516,7 @@ impl MatchOptions {
      *
      * This function always returns this value:
      *
-     * ```rust
+     * ```rust,ignore
      * MatchOptions {
      *     case_sensitive: true,
      *     require_literal_separator: false.

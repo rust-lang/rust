@@ -101,8 +101,7 @@ pub trait Unsigned: Num {}
 /// Times trait
 ///
 /// ```rust
-/// use num::Times;
-/// let ten = 10 as uint;
+/// let ten = 10u;
 /// let mut accum = 0;
 /// ten.times(|| { accum += 1; })
 /// ```
@@ -176,10 +175,10 @@ pub trait Round {
     /// # Example
     ///
     /// ```rust
-    /// assert_approx_eq!(1.3f32.round(), 1.0);
-    /// assert_approx_eq!((-1.3f32).round(), -1.0);
-    /// assert_approx_eq!(1.5f32.round(), 1.0);
-    /// assert_approx_eq!((-1.5f32).round(), -1.0);
+    /// assert_approx_eq!(1.3f32.trunc(), 1.0);
+    /// assert_approx_eq!((-1.3f32).trunc(), -1.0);
+    /// assert_approx_eq!(1.5f32.trunc(), 1.0);
+    /// assert_approx_eq!((-1.5f32).trunc(), -1.0);
     /// ```
     fn trunc(&self) -> Self;
 
@@ -188,10 +187,10 @@ pub trait Round {
     /// # Example
     ///
     /// ```rust
-    /// assert_approx_eq!(1.3f32.round(), 0.3);
-    /// assert_approx_eq!((-1.3f32).round(), -0.3);
-    /// assert_approx_eq!(1.5f32.round(), 0.5);
-    /// assert_approx_eq!((-1.5f32).round(), -0.5);
+    /// assert_approx_eq!(1.3f32.fract(), 0.3);
+    /// assert_approx_eq!((-1.3f32).fract(), -0.3);
+    /// assert_approx_eq!(1.5f32.fract(), 0.5);
+    /// assert_approx_eq!((-1.5f32).fract(), -0.5);
     /// ```
     fn fract(&self) -> Self;
 }
@@ -225,7 +224,9 @@ pub trait Algebraic {
 /// # Example
 ///
 /// ```rust
-/// let sixteen: float = num::pow(2.0, 4.0);
+/// use std::num;
+///
+/// let sixteen: f64 = num::pow(2.0, 4.0);
 /// assert_eq!(sixteen, 16.0);
 /// ```
 #[inline(always)] pub fn pow<T: Algebraic>(value: T, n: T) -> T { value.pow(&n) }
@@ -266,6 +267,8 @@ pub trait Trigonometric {
     /// # Example
     ///
     /// ```rust
+    /// use std::f32;
+    ///
     /// let y = 3f32.sqrt();
     /// let x = 1f32;
     /// assert_approx_eq!(y.atan2(&x), f32::consts::PI / 3f32);

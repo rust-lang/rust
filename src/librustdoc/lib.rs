@@ -47,6 +47,7 @@ pub mod html {
 pub mod passes;
 pub mod plugins;
 pub mod visit_ast;
+pub mod test;
 
 pub static SCHEMA_VERSION: &'static str = "0.8.1";
 
@@ -100,6 +101,9 @@ pub fn opts() -> ~[groups::OptGroup] {
         optmulti("", "plugins", "space separated list of plugins to also load",
                  "PLUGINS"),
         optflag("", "no-defaults", "don't run the default passes"),
+        optflag("", "test", "run code examples as tests"),
+        optmulti("", "test-args", "arguments to pass to the test runner",
+                 "ARGS"),
     ]
 }
 
@@ -114,6 +118,19 @@ pub fn main_args(args: &[~str]) -> int {
         return 0;
     }
 
+    if matches.free.len() == 0 {
+        println("expected an input file to act on");
+        return 1;
+    } if matches.free.len() > 1 {
+        println("only one input file may be specified");
+        return 1;
+    }
+    let input = matches.free[0].as_slice();
+
+    if matches.opt_present("test") {
+        return test::run(input, &matches);
+    }
+
     if matches.opt_strs("passes") == ~[~"list"] {
         println("Available passes for running rustdoc:");
         for &(name, _, description) in PASSES.iter() {
@@ -126,7 +143,7 @@ pub fn main_args(args: &[~str]) -> int {
         return 0;
     }
 
-    let (crate, res) = match acquire_input(&matches) {
+    let (crate, res) = match acquire_input(input, &matches) {
         Ok(pair) => pair,
         Err(s) => {
             println!("input error: {}", s);
@@ -157,14 +174,8 @@ pub fn main_args(args: &[~str]) -> int {
 
 /// Looks inside the command line arguments to extract the relevant input format
 /// and files and then generates the necessary rustdoc output for formatting.
-fn acquire_input(matches: &getopts::Matches) -> Result<Output, ~str> {
-    if matches.free.len() == 0 {
-        return Err(~"expected an input file to act on");
-    } if matches.free.len() > 1 {
-        return Err(~"only one input file may be specified");
-    }
-
-    let input = matches.free[0].as_slice();
+fn acquire_input(input: &str,
+                 matches: &getopts::Matches) -> Result<Output, ~str> {
     match matches.opt_str("r") {
         Some(~"rust") => Ok(rust_input(input, matches)),
         Some(~"json") => json_input(input),
