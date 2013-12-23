@@ -799,8 +799,8 @@ fn Resolver(session: Session,
         unresolved_imports: 0,
 
         current_module: current_module,
-        value_ribs: @mut ~[],
-        type_ribs: @mut ~[],
+        value_ribs: @RefCell::new(~[]),
+        type_ribs: @RefCell::new(~[]),
         label_ribs: @RefCell::new(~[]),
 
         current_trait_refs: None,
@@ -846,10 +846,10 @@ struct Resolver {
 
     // The current set of local scopes, for values.
     // FIXME #4948: Reuse ribs to avoid allocation.
-    value_ribs: @mut ~[@Rib],
+    value_ribs: @RefCell<~[@Rib]>,
 
     // The current set of local scopes, for types.
-    type_ribs: @mut ~[@Rib],
+    type_ribs: @RefCell<~[@Rib]>,
 
     // The current set of local scopes, for labels.
     label_ribs: @RefCell<~[@Rib]>,
@@ -3673,7 +3673,10 @@ impl Resolver {
             item_trait(ref generics, ref traits, ref methods) => {
                 // Create a new rib for the self type.
                 let self_type_rib = @Rib::new(NormalRibKind);
-                self.type_ribs.push(self_type_rib);
+                {
+                    let mut type_ribs = self.type_ribs.borrow_mut();
+                    type_ribs.get().push(self_type_rib);
+                }
                 // plain insert (no renaming)
                 let name = self.type_self_ident.name;
                 {
@@ -3731,7 +3734,8 @@ impl Resolver {
                     }
                 });
 
-                self.type_ribs.pop();
+                let mut type_ribs = self.type_ribs.borrow_mut();
+                type_ribs.get().pop();
             }
 
             item_struct(ref struct_def, ref generics) => {
@@ -3802,7 +3806,10 @@ impl Resolver {
                               rib_kind) => {
 
                 let function_type_rib = @Rib::new(rib_kind);
-                self.type_ribs.push(function_type_rib);
+                {
+                    let mut type_ribs = self.type_ribs.borrow_mut();
+                    type_ribs.get().push(function_type_rib);
+                }
 
                 for (index, type_parameter) in generics.ty_params.iter().enumerate() {
                     let ident = type_parameter.ident;
@@ -3831,7 +3838,8 @@ impl Resolver {
 
         match type_parameters {
             HasTypeParameters(..) => {
-                self.type_ribs.pop();
+                let mut type_ribs = self.type_ribs.borrow_mut();
+                type_ribs.get().pop();
             }
 
             NoTypeParameters => {
@@ -3855,11 +3863,19 @@ impl Resolver {
     }
 
     fn with_constant_rib(&mut self, f: |&mut Resolver|) {
-        self.value_ribs.push(@Rib::new(ConstantItemRibKind));
-        self.type_ribs.push(@Rib::new(ConstantItemRibKind));
+        {
+            let mut value_ribs = self.value_ribs.borrow_mut();
+            let mut type_ribs = self.type_ribs.borrow_mut();
+            value_ribs.get().push(@Rib::new(ConstantItemRibKind));
+            type_ribs.get().push(@Rib::new(ConstantItemRibKind));
+        }
         f(self);
-        self.type_ribs.pop();
-        self.value_ribs.pop();
+        {
+            let mut value_ribs = self.value_ribs.borrow_mut();
+            let mut type_ribs = self.type_ribs.borrow_mut();
+            type_ribs.get().pop();
+            value_ribs.get().pop();
+        }
     }
 
     fn resolve_function(&mut self,
@@ -3870,7 +3886,10 @@ impl Resolver {
                             self_binding: SelfBinding) {
         // Create a value rib for the function.
         let function_value_rib = @Rib::new(rib_kind);
-        self.value_ribs.push(function_value_rib);
+        {
+            let mut value_ribs = self.value_ribs.borrow_mut();
+            value_ribs.get().push(function_value_rib);
+        }
 
         // Create a label rib for the function.
         {
@@ -3935,7 +3954,9 @@ impl Resolver {
 
         let mut label_ribs = self.label_ribs.borrow_mut();
         label_ribs.get().pop();
-        self.value_ribs.pop();
+
+        let mut value_ribs = self.value_ribs.borrow_mut();
+        value_ribs.get().pop();
     }
 
     fn resolve_type_parameters(&mut self,
@@ -4208,7 +4229,10 @@ impl Resolver {
     }
 
     fn resolve_arm(&mut self, arm: &Arm) {
-        self.value_ribs.push(@Rib::new(NormalRibKind));
+        {
+            let mut value_ribs = self.value_ribs.borrow_mut();
+            value_ribs.get().push(@Rib::new(NormalRibKind));
+        }
 
         let mut bindings_list = HashMap::new();
         for pattern in arm.pats.iter() {
@@ -4224,12 +4248,16 @@ impl Resolver {
         visit::walk_expr_opt(self, arm.guard, ());
         self.resolve_block(arm.body);
 
-        self.value_ribs.pop();
+        let mut value_ribs = self.value_ribs.borrow_mut();
+        value_ribs.get().pop();
     }
 
     fn resolve_block(&mut self, block: P<Block>) {
         debug!("(resolving block) entering block");
-        self.value_ribs.push(@Rib::new(NormalRibKind));
+        {
+            let mut value_ribs = self.value_ribs.borrow_mut();
+            value_ribs.get().push(@Rib::new(NormalRibKind));
+        }
 
         // Move down in the graph, if there's an anonymous module rooted here.
         let orig_module = self.current_module;
@@ -4251,7 +4279,8 @@ impl Resolver {
         // Move back up.
         self.current_module = orig_module;
 
-        self.value_ribs.pop();
+        let mut value_ribs = self.value_ribs.borrow_mut();
+        value_ribs.get().pop();
         debug!("(resolving block) leaving block");
     }
 
@@ -4456,9 +4485,11 @@ impl Resolver {
                                 Some(ref mut bindings_list)
                                 if !bindings_list.contains_key(&renamed) => {
                                     let this = &mut *self;
-                                    let last_rib = this.value_ribs[
-                                            this.value_ribs.len() - 1];
                                     {
+                                        let mut value_ribs =
+                                            this.value_ribs.borrow_mut();
+                                        let last_rib = value_ribs.get()[
+                                            value_ribs.get().len() - 1];
                                         let mut bindings =
                                             last_rib.bindings.borrow_mut();
                                         bindings.get().insert(renamed,
@@ -4481,9 +4512,11 @@ impl Resolver {
                                 }
                                 None => {
                                     let this = &mut *self;
-                                    let last_rib = this.value_ribs[
-                                            this.value_ribs.len() - 1];
                                     {
+                                        let mut value_ribs =
+                                            this.value_ribs.borrow_mut();
+                                        let last_rib = value_ribs.get()[
+                                                value_ribs.get().len() - 1];
                                         let mut bindings =
                                             last_rib.bindings.borrow_mut();
                                         bindings.get().insert(renamed,
@@ -4936,14 +4969,19 @@ impl Resolver {
         match namespace {
             ValueNS => {
                 let renamed = mtwt_resolve(ident);
-                search_result = self.search_ribs(self.value_ribs, renamed,
+                let mut value_ribs = self.value_ribs.borrow_mut();
+                search_result = self.search_ribs(value_ribs.get(),
+                                                 renamed,
                                                  span,
                                                  DontAllowCapturingSelf);
             }
             TypeNS => {
                 let name = ident.name;
-                search_result = self.search_ribs(self.type_ribs, name,
-                                                 span, AllowCapturingSelf);
+                let mut type_ribs = self.type_ribs.borrow_mut();
+                search_result = self.search_ribs(type_ribs.get(),
+                                                 name,
+                                                 span,
+                                                 AllowCapturingSelf);
             }
         }
 
@@ -4964,12 +5002,20 @@ impl Resolver {
     fn resolve_self_value_in_local_ribs(&mut self, span: Span)
                                             -> Option<Def> {
         // FIXME #4950: This should not use a while loop.
-        let mut i = self.value_ribs.len();
+        let mut i = {
+            let value_ribs = self.value_ribs.borrow();
+            value_ribs.get().len()
+        };
         while i != 0 {
             i -= 1;
-            match self.value_ribs[i].self_binding.get() {
+            let self_binding_opt = {
+                let value_ribs = self.value_ribs.borrow();
+                value_ribs.get()[i].self_binding.get()
+            };
+            match self_binding_opt {
                 Some(def_like) => {
-                    match self.upvarify(self.value_ribs,
+                    let mut value_ribs = self.value_ribs.borrow_mut();
+                    match self.upvarify(value_ribs.get(),
                                         i,
                                         def_like,
                                         span,
@@ -5054,10 +5100,14 @@ impl Resolver {
         let mut maybes: ~[@str] = ~[];
         let mut values: ~[uint] = ~[];
 
-        let mut j = this.value_ribs.len();
+        let mut j = {
+            let value_ribs = this.value_ribs.borrow();
+            value_ribs.get().len()
+        };
         while j != 0 {
             j -= 1;
-            let bindings = this.value_ribs[j].bindings.borrow();
+            let value_ribs = this.value_ribs.borrow();
+            let bindings = value_ribs.get()[j].bindings.borrow();
             for (&k, _) in bindings.get().iter() {
                 maybes.push(interner_get(k));
                 values.push(uint::max_value);
