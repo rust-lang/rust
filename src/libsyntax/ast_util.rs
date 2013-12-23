@@ -904,7 +904,7 @@ pub fn mtwt_outer_mark(ctxt: SyntaxContext) -> Mrk {
 /// case pop and discard (so two of the same marks cancel)
 pub fn xorPush(marks: &mut ~[Mrk], mark: Mrk) {
     if (marks.len() > 0) && (getLast(marks) == mark) {
-        marks.pop();
+        marks.pop().unwrap();
     } else {
         marks.push(mark);
     }

@@ -40,7 +40,7 @@ fn recv(p: &pipe) -> uint {
             while state.is_empty() {
                 cond.wait();
             }
-            state.pop()
+            state.pop().unwrap()
         })
     }
 }

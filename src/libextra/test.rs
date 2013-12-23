@@ -753,7 +753,7 @@ fn run_tests(opts: &TestOpts,
 
     while pending > 0 || !remaining.is_empty() {
         while pending < concurrency && !remaining.is_empty() {
-            let test = remaining.pop();
+            let test = remaining.pop().unwrap();
             if concurrency == 1 {
                 // We are doing one test at a time so we can print the name
                 // of the test before we run it. Useful for debugging tests

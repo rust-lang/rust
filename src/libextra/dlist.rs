@@ -1049,7 +1049,7 @@ mod tests {
             match r % 6 {
                 0 => {
                     m.pop_back();
-                    if v.len() > 0 { v.pop(); }
+                    v.pop();
                 }
                 1 => {
                     m.pop_front();

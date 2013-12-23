@@ -1025,7 +1025,7 @@ fn normalize_helper<'a>(s: &'a str, prefix: Option<PathPrefix>) -> (bool,Option<
             };
             if (is_abs || has_abs_prefix) && comps.is_empty() { changed = true }
             else if comps.len() == n_up { comps.push(".."); n_up += 1 }
-            else { comps.pop(); changed = true }
+            else { comps.pop().unwrap(); changed = true }
         } else { comps.push(comp) }
     }
     if !changed && !prefix_is_verbatim(prefix) {

@@ -635,8 +635,8 @@ impl DocFolder for Cache {
             i => i,
         };
 
-        if pushed { self.stack.pop(); }
-        if parent_pushed { self.parent_stack.pop(); }
+        if pushed { self.stack.pop().unwrap(); }
+        if parent_pushed { self.parent_stack.pop().unwrap(); }
         self.privmod = orig_privmod;
         return ret;
     }
@@ -673,7 +673,7 @@ impl Context {
         self.dst = prev;
         let len = self.root_path.len();
         self.root_path.truncate(len - 3);
-        self.current.pop();
+        self.current.pop().unwrap();
 
         return ret;
     }
@@ -693,11 +693,13 @@ impl Context {
         local_data::set(cache_key, Arc::new(cache));
 
         let mut work = ~[(self, item)];
-        while work.len() > 0 {
-            let (mut cx, item) = work.pop();
-            cx.item(item, |cx, item| {
-                work.push((cx.clone(), item));
-            })
+        loop {
+            match work.pop() {
+                Some((mut cx, item)) => cx.item(item, |cx, item| {
+                    work.push((cx.clone(), item));
+                }),
+                None => break,
+            }
         }
     }
 

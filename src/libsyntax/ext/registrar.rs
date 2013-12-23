@@ -42,7 +42,7 @@ pub fn find_macro_registrar(diagnostic: @diagnostic::SpanHandler,
     match ctx.registrars.len() {
         0 => None,
         1 => {
-            let (node_id, _) = ctx.registrars.pop();
+            let (node_id, _) = ctx.registrars.pop().unwrap();
             Some(ast::DefId {
                 crate: ast::LOCAL_CRATE,
                 node: node_id

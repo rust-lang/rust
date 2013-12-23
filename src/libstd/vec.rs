@@ -1381,10 +1381,8 @@ pub trait OwnedVector<T> {
     /// assert!(a == ~[~1, ~2, ~3, ~4]);
     /// ```
     fn push_all_move(&mut self, rhs: ~[T]);
-    /// Remove the last element from a vector and return it, failing if it is empty
-    fn pop(&mut self) -> T;
     /// Remove the last element from a vector and return it, or `None` if it is empty
-    fn pop_opt(&mut self) -> Option<T>;
+    fn pop(&mut self) -> Option<T>;
     /// Removes the first element from a vector and return it
     fn shift(&mut self) -> T;
     /// Removes the first element from a vector and return it, or `None` if it is empty
@@ -1565,7 +1563,7 @@ impl<T> OwnedVector<T> for ~[T] {
         }
     }
 
-    fn pop_opt(&mut self) -> Option<T> {
+    fn pop(&mut self) -> Option<T> {
         match self.len() {
             0  => None,
             ln => {
@@ -1578,11 +1576,6 @@ impl<T> OwnedVector<T> for ~[T] {
         }
     }
 
-
-    #[inline]
-    fn pop(&mut self) -> T {
-        self.pop_opt().expect("pop: empty vector")
-    }
 
     #[inline]
     fn shift(&mut self) -> T {
@@ -3168,28 +3161,16 @@ mod tests {
         assert_eq!(vec.slice_to(0), &[]);
     }
 
-    #[test]
-    fn test_pop() {
-        // Test on-heap pop.
-        let mut v = ~[1, 2, 3, 4, 5];
-        let e = v.pop();
-        assert_eq!(v.len(), 4u);
-        assert_eq!(v[0], 1);
-        assert_eq!(v[1], 2);
-        assert_eq!(v[2], 3);
-        assert_eq!(v[3], 4);
-        assert_eq!(e, 5);
-    }
 
     #[test]
-    fn test_pop_opt() {
+    fn test_pop() {
         let mut v = ~[5];
-        let e = v.pop_opt();
+        let e = v.pop();
         assert_eq!(v.len(), 0);
         assert_eq!(e, Some(5));
-        let f = v.pop_opt();
+        let f = v.pop();
         assert_eq!(f, None);
-        let g = v.pop_opt();
+        let g = v.pop();
         assert_eq!(g, None);
     }
 

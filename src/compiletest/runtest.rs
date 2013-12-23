@@ -917,7 +917,7 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
 
     // get bare program string
     let mut tvec: ~[~str] = args.prog.split('/').map(|ts| ts.to_owned()).collect();
-    let prog_short = tvec.pop();
+    let prog_short = tvec.pop().unwrap();
 
     // copy to target
     let copy_result = procsrv::run("", config.adb_path,

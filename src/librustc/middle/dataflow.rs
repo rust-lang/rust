@@ -504,7 +504,7 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
 
                     // add the bits from any early return via `break`,
                     // `continue`, or `return` into `func_bits`
-                    let loop_scope = loop_scopes.pop();
+                    let loop_scope = loop_scopes.pop().unwrap();
                     join_bits(&self.dfcx.oper, loop_scope.break_bits, func_bits);
 
                     // add `func_bits` to the entry bits for `expr`,
@@ -563,7 +563,7 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
                 });
                 self.walk_block(blk, body_bits, loop_scopes);
                 self.add_to_entry_set(expr.id, body_bits);
-                let new_loop_scope = loop_scopes.pop();
+                let new_loop_scope = loop_scopes.pop().unwrap();
                 copy_bits(new_loop_scope.break_bits, in_out);
             }
 
@@ -588,7 +588,7 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
                 self.walk_block(blk, body_bits, loop_scopes);
                 self.add_to_entry_set(expr.id, body_bits);
 
-                let new_loop_scope = loop_scopes.pop();
+                let new_loop_scope = loop_scopes.pop().unwrap();
                 assert_eq!(new_loop_scope.loop_id, expr.id);
                 copy_bits(new_loop_scope.break_bits, in_out);
             }

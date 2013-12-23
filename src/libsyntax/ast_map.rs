@@ -340,7 +340,7 @@ impl<F: FoldOps> Folder for Ctx<F> {
             _ => {}
         }
 
-        self.path.pop();
+        self.path.pop().unwrap();
 
         SmallVector::one(i)
     }

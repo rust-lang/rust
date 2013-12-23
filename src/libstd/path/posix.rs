@@ -426,7 +426,7 @@ fn normalize_helper<'a>(v: &'a [u8], is_abs: bool) -> Option<~[&'a [u8]]> {
         else if comp == bytes!("..") {
             if is_abs && comps.is_empty() { changed = true }
             else if comps.len() == n_up { comps.push(dot_dot_static); n_up += 1 }
-            else { comps.pop(); changed = true }
+            else { comps.pop().unwrap(); changed = true }
         } else { comps.push(comp) }
     }
     if changed {
