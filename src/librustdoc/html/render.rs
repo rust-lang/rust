@@ -427,7 +427,7 @@ impl<'a> SourceCollector<'a> {
                 }
             }
         }
-        let contents = str::from_utf8_owned(contents);
+        let contents = str::from_utf8_owned(contents).unwrap();
 
         // Create the intermediate directories
         let mut cur = self.dst.clone();

@@ -198,7 +198,7 @@ impl<'a> FromBase64 for &'a str {
      *     println!("base64 output: {}", hello_str);
      *     let res = hello_str.from_base64();
      *     if res.is_ok() {
-     *       let optBytes = str::from_utf8_owned_opt(res.unwrap());
+     *       let optBytes = str::from_utf8_owned(res.unwrap());
      *       if optBytes.is_some() {
      *         println!("decoded from base64: {}", optBytes.unwrap());
      *       }

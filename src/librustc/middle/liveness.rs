@@ -825,7 +825,7 @@ impl Liveness {
                 }
             }
         }
-        str::from_utf8_owned(wr.unwrap())
+        str::from_utf8_owned(wr.unwrap()).unwrap()
     }
 
     pub fn init_empty(&self, ln: LiveNode, succ_ln: LiveNode) {

@@ -187,7 +187,7 @@ fn to_utf8(raw_sol: &List<u64>) -> ~str {
             if m & 1 << i != 0 {sol[i] = '0' as u8 + id;}
         }
     }
-    std::str::from_utf8_owned(sol)
+    std::str::from_utf8_owned(sol).unwrap()
 }
 
 // Prints a solution in ~str form.

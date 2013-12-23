@@ -216,7 +216,7 @@ pub fn parse(file: &mut io::Reader,
     }
 
     // don't read NUL
-    let names_str = str::from_utf8_owned(file.read_bytes(names_bytes as uint - 1));
+    let names_str = str::from_utf8_owned(file.read_bytes(names_bytes as uint - 1)).unwrap();
 
     let term_names: ~[~str] = names_str.split('|').map(|s| s.to_owned()).collect();
 

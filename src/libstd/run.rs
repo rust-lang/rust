@@ -372,7 +372,7 @@ mod tests {
 
         let run::ProcessOutput {status, output, error}
              = run::process_output("echo", [~"hello"]).expect("failed to exec `echo`");
-        let output_str = str::from_utf8_owned(output);
+        let output_str = str::from_utf8_owned(output).unwrap();
 
         assert!(status.success());
         assert_eq!(output_str.trim().to_owned(), ~"hello");
@@ -439,7 +439,7 @@ mod tests {
                 None => break
             }
         }
-        str::from_utf8_owned(res)
+        str::from_utf8_owned(res).unwrap()
     }
 
     #[test]
@@ -467,7 +467,7 @@ mod tests {
             .expect("failed to exec `echo`");
         let run::ProcessOutput {status, output, error}
             = prog.finish_with_output();
-        let output_str = str::from_utf8_owned(output);
+        let output_str = str::from_utf8_owned(output).unwrap();
 
         assert!(status.success());
         assert_eq!(output_str.trim().to_owned(), ~"hello");
@@ -486,7 +486,7 @@ mod tests {
         let run::ProcessOutput {status, output, error}
             = prog.finish_with_output();
 
-        let output_str = str::from_utf8_owned(output);
+        let output_str = str::from_utf8_owned(output).unwrap();
 
         assert!(status.success());
         assert_eq!(output_str.trim().to_owned(), ~"hello");
@@ -533,7 +533,7 @@ mod tests {
     fn test_keep_current_working_dir() {
         let mut prog = run_pwd(None);
 
-        let output = str::from_utf8_owned(prog.finish_with_output().output);
+        let output = str::from_utf8_owned(prog.finish_with_output().output).unwrap();
         let parent_dir = os::getcwd();
         let child_dir = Path::new(output.trim());
 
@@ -551,7 +551,7 @@ mod tests {
         let parent_dir = os::getcwd().dir_path();
         let mut prog = run_pwd(Some(&parent_dir));
 
-        let output = str::from_utf8_owned(prog.finish_with_output().output);
+        let output = str::from_utf8_owned(prog.finish_with_output().output).unwrap();
         let child_dir = Path::new(output.trim());
 
         let parent_stat = parent_dir.stat();
@@ -590,7 +590,7 @@ mod tests {
         if running_on_valgrind() { return; }
 
         let mut prog = run_env(None);
-        let output = str::from_utf8_owned(prog.finish_with_output().output);
+        let output = str::from_utf8_owned(prog.finish_with_output().output).unwrap();
 
         let r = os::env();
         for &(ref k, ref v) in r.iter() {
@@ -604,7 +604,7 @@ mod tests {
         if running_on_valgrind() { return; }
 
         let mut prog = run_env(None);
-        let output = str::from_utf8_owned(prog.finish_with_output().output);
+        let output = str::from_utf8_owned(prog.finish_with_output().output).unwrap();
 
         let r = os::env();
         for &(ref k, ref v) in r.iter() {
@@ -623,7 +623,7 @@ mod tests {
         new_env.push((~"RUN_TEST_NEW_ENV", ~"123"));
 
         let mut prog = run_env(Some(new_env));
-        let output = str::from_utf8_owned(prog.finish_with_output().output);
+        let output = str::from_utf8_owned(prog.finish_with_output().output).unwrap();
 
         assert!(output.contains("RUN_TEST_NEW_ENV=123"));
     }

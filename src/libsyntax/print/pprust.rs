@@ -2316,7 +2316,7 @@ pub fn print_string(s: &mut State, st: &str, style: ast::StrStyle) {
 // downcasts.
 unsafe fn get_mem_writer(writer: &mut ~io::Writer) -> ~str {
     let (_, wr): (uint, ~MemWriter) = cast::transmute_copy(writer);
-    let result = str::from_utf8_owned(wr.get_ref().to_owned());
+    let result = str::from_utf8_owned(wr.get_ref().to_owned()).unwrap();
     cast::forget(wr);
     result
 }

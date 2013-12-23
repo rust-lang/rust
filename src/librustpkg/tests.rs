@@ -1191,7 +1191,7 @@ fn test_info() {
     let expected_info = ~"package foo"; // fill in
     let workspace = create_local_package(&CrateId::new("foo"));
     let output = command_line_test([~"info", ~"foo"], workspace.path());
-    assert_eq!(str::from_utf8_owned(output.output), expected_info);
+    assert_eq!(str::from_utf8_owned(output.output).unwrap(), expected_info);
 }
 
 #[test]

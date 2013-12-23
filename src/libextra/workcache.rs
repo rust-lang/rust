@@ -243,7 +243,7 @@ fn json_encode<'a, T:Encodable<json::Encoder<'a>>>(t: &T) -> ~str {
     let mut writer = MemWriter::new();
     let mut encoder = json::Encoder::new(&mut writer as &mut io::Writer);
     t.encode(&mut encoder);
-    str::from_utf8_owned(writer.unwrap())
+    str::from_utf8_owned(writer.unwrap()).unwrap()
 }
 
 // FIXME(#5121)
@@ -491,7 +491,7 @@ fn test() {
         let subcx = cx.clone();
         let pth = pth.clone();
 
-        let file_content = from_utf8_owned(File::open(&pth).read_to_end());
+        let file_content = from_utf8_owned(File::open(&pth).read_to_end()).unwrap();
 
         // FIXME (#9639): This needs to handle non-utf8 paths
         prep.declare_input("file", pth.as_str().unwrap(), file_content);

@@ -260,7 +260,7 @@ fn test_write() {
         writeln!(w, "{foo}", foo="bar");
     }
 
-    let s = str::from_utf8_owned(buf.unwrap());
+    let s = str::from_utf8_owned(buf.unwrap()).unwrap();
     t!(s, "34helloline\nbar\n");
 }
 
@@ -284,7 +284,7 @@ fn test_format_args() {
         format_args!(|args| { fmt::write(w, args) }, "test");
         format_args!(|args| { fmt::write(w, args) }, "{test}", test=3);
     }
-    let s = str::from_utf8_owned(buf.unwrap());
+    let s = str::from_utf8_owned(buf.unwrap()).unwrap();
     t!(s, "1test3");
 
     let s = format_args!(fmt::format, "hello {}", "world");

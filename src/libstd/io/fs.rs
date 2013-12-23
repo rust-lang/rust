@@ -754,7 +754,7 @@ mod test {
             let mut read_buf = [0, .. 1028];
             let read_str = match read_stream.read(read_buf).unwrap() {
                 -1|0 => fail!("shouldn't happen"),
-                n => str::from_utf8_owned(read_buf.slice_to(n).to_owned())
+                n => str::from_utf8_owned(read_buf.slice_to(n).to_owned()).unwrap()
             };
             assert_eq!(read_str, message.to_owned());
         }

@@ -38,8 +38,8 @@ pub fn safe_git_clone(source: &Path, v: &Version, target: &Path) -> CloneResult 
                                                        target.as_str().unwrap().to_owned()]);
             let outp = opt_outp.expect("Failed to exec `git`");
             if !outp.status.success() {
-                println!("{}", str::from_utf8_owned(outp.output.clone()));
-                println!("{}", str::from_utf8_owned(outp.error));
+                println!("{}", str::from_utf8_owned(outp.output.clone()).unwrap());
+                println!("{}", str::from_utf8_owned(outp.error).unwrap());
                 return DirToUse(target.clone());
             }
             else {
@@ -54,8 +54,8 @@ pub fn safe_git_clone(source: &Path, v: &Version, target: &Path) -> CloneResult 
                              format!("--git-dir={}", git_dir.as_str().unwrap().to_owned()),
                              ~"checkout", format!("{}", *s)]).expect("Failed to exec `git`");
                         if !outp.status.success() {
-                            println!("{}", str::from_utf8_owned(outp.output.clone()));
-                            println!("{}", str::from_utf8_owned(outp.error));
+                            println!("{}", str::from_utf8_owned(outp.output.clone()).unwrap());
+                            println!("{}", str::from_utf8_owned(outp.error).unwrap());
                             return DirToUse(target.clone());
                         }
                     }
@@ -114,8 +114,8 @@ pub fn git_clone_url(source: &str, target: &Path, v: &Version) {
                                                target.as_str().unwrap().to_owned()]);
     let outp = opt_outp.expect("Failed to exec `git`");
     if !outp.status.success() {
-         debug!("{}", str::from_utf8_owned(outp.output.clone()));
-         debug!("{}", str::from_utf8_owned(outp.error));
+         debug!("{}", str::from_utf8_owned(outp.output.clone()).unwrap());
+         debug!("{}", str::from_utf8_owned(outp.error).unwrap());
          cond.raise((source.to_owned(), target.clone()))
     }
     else {
@@ -125,8 +125,8 @@ pub fn git_clone_url(source: &str, target: &Path, v: &Version) {
                                                          target);
                     let outp = opt_outp.expect("Failed to exec `git`");
                     if !outp.status.success() {
-                        debug!("{}", str::from_utf8_owned(outp.output.clone()));
-                        debug!("{}", str::from_utf8_owned(outp.error));
+                        debug!("{}", str::from_utf8_owned(outp.output.clone()).unwrap());
+                        debug!("{}", str::from_utf8_owned(outp.error).unwrap());
                         cond.raise((source.to_owned(), target.clone()))
                     }
             }

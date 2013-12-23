@@ -608,7 +608,7 @@ pub fn repr_to_str<T>(t: &T) -> ~str {
 
     let mut result = io::MemWriter::new();
     write_repr(&mut result as &mut io::Writer, t);
-    str::from_utf8_owned(result.unwrap())
+    str::from_utf8_owned(result.unwrap()).unwrap()
 }
 
 #[cfg(test)]
@@ -626,7 +626,7 @@ fn test_repr() {
     fn exact_test<T>(t: &T, e:&str) {
         let mut m = io::MemWriter::new();
         write_repr(&mut m as &mut io::Writer, t);
-        let s = str::from_utf8_owned(m.unwrap());
+        let s = str::from_utf8_owned(m.unwrap()).unwrap();
         assert_eq!(s.as_slice(), e);
     }
 
