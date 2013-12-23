@@ -17,6 +17,8 @@
 //! # Example
 //!
 //! ```rust
+//! use extra::lru_cache::LruCache;
+//!
 //! let mut cache: LruCache<int, int> = LruCache::new(2);
 //! cache.put(1, 10);
 //! cache.put(2, 20);

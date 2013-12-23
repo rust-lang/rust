@@ -27,7 +27,7 @@ use clean::Clean;
 
 pub struct DocContext {
     crate: ast::Crate,
-    tycx: middle::ty::ctxt,
+    tycx: Option<middle::ty::ctxt>,
     sess: driver::session::Session
 }
 
@@ -78,17 +78,13 @@ fn get_ast_and_resolve(cpath: &Path,
     } = phase_3_run_analysis_passes(sess, &crate);
 
     debug!("crate: {:?}", crate);
-    return (DocContext { crate: crate, tycx: ty_cx, sess: sess },
+    return (DocContext { crate: crate, tycx: Some(ty_cx), sess: sess },
             CrateAnalysis { exported_items: exported_items });
 }
 
 pub fn run_core (libs: HashSet<Path>, cfgs: ~[~str], path: &Path) -> (clean::Crate, CrateAnalysis) {
     let (ctxt, analysis) = get_ast_and_resolve(path, libs, cfgs);
     let ctxt = @ctxt;
-    debug!("defmap:");
-    for (k, v) in ctxt.tycx.def_map.iter() {
-        debug!("{:?}: {:?}", k, v);
-    }
     local_data::set(super::ctxtkey, ctxt);
 
     let v = @mut RustdocVisitor::new();

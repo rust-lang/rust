@@ -29,10 +29,10 @@ local_data_key!(key_int: int)
 local_data_key!(key_vector: ~[int])
 
 local_data::set(key_int, 3);
-local_data::get(key_int, |opt| assert_eq!(opt, Some(&3)));
+local_data::get(key_int, |opt| assert_eq!(opt.map(|x| *x), Some(3)));
 
 local_data::set(key_vector, ~[4]);
-local_data::get(key_vector, |opt| assert_eq!(opt, Some(&~[4])));
+local_data::get(key_vector, |opt| assert_eq!(*opt.unwrap(), ~[4]));
  ```
 
 */

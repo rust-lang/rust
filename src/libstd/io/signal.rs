@@ -60,11 +60,11 @@ pub enum Signum {
 ///
 /// # Example
 ///
-/// ```rust
+/// ```rust,ignore
 /// use std::io::signal::{Listener, Interrupt};
 ///
 /// let mut listener = Listener::new();
-/// listener.register(signal::Interrupt);
+/// listener.register(Interrupt);
 ///
 /// do spawn {
 ///     loop {

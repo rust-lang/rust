@@ -18,18 +18,19 @@
  * With simple pipes, without Arc, a copy would have to be made for each task.
  *
  * ```rust
- * extern mod std;
- * use extra::arc;
- * let numbers=vec::from_fn(100, |ind| (ind as float)*rand::random());
- * let shared_numbers=arc::Arc::new(numbers);
+ * use extra::arc::Arc;
+ * use std::{rand, vec};
  *
- *   do 10.times {
- *       let (port, chan)  = stream();
+ * let numbers = vec::from_fn(100, |i| (i as f32) * rand::random());
+ * let shared_numbers = Arc::new(numbers);
+ *
+ *   for _ in range(0, 10) {
+ *       let (port, chan) = Chan::new();
  *       chan.send(shared_numbers.clone());
  *
  *       do spawn {
- *           let shared_numbers=port.recv();
- *           let local_numbers=shared_numbers.get();
+ *           let shared_numbers = port.recv();
+ *           let local_numbers = shared_numbers.get();
  *
  *           // Work with the local numbers
  *       }
@@ -448,15 +449,18 @@ impl<T:Freeze + Send> RWArc<T> {
      * # Example
      *
      * ```rust
-     * do arc.write_downgrade |mut write_token| {
-     *     do write_token.write_cond |state, condvar| {
-     *         ... exclusive access with mutable state ...
-     *     }
+     * use extra::arc::RWArc;
+     *
+     * let arc = RWArc::new(1);
+     * arc.write_downgrade(|mut write_token| {
+     *     write_token.write_cond(|state, condvar| {
+     *         // ... exclusive access with mutable state ...
+     *     });
      *     let read_token = arc.downgrade(write_token);
-     *     do read_token.read |state| {
-     *         ... shared access with immutable state ...
-     *     }
-     * }
+     *     read_token.read(|state| {
+     *         // ... shared access with immutable state ...
+     *     });
+     * })
      * ```
      */
     pub fn write_downgrade<U>(&self, blk: |v: RWWriteMode<T>| -> U) -> U {

@@ -12,11 +12,10 @@
 //! usable for clean
 
 use syntax::abi::AbiSet;
-use syntax::{ast, ast_map};
+use syntax::ast;
 use syntax::codemap::Span;
 
 use doctree::*;
-use std::local_data;
 
 pub struct RustdocVisitor {
     module: Module,
@@ -91,15 +90,8 @@ impl RustdocVisitor {
         }
 
         fn visit_mod_contents(span: Span, attrs: ~[ast::Attribute], vis:
-                              ast::visibility, id: ast::NodeId, m: &ast::_mod) -> Module {
-            let am = local_data::get(super::ctxtkey, |x| *x.unwrap()).tycx.items;
-            let name = match am.find(&id) {
-                Some(m) => match m {
-                    &ast_map::node_item(ref it, _) => Some(it.ident),
-                    _ => fail!("mod id mapped to non-item in the ast map")
-                },
-                None => None
-            };
+                              ast::visibility, id: ast::NodeId, m: &ast::_mod,
+                              name: Option<ast::Ident>) -> Module {
             let mut om = Module::new(name);
             om.view_items = m.view_items.clone();
             om.where = span;
@@ -117,7 +109,8 @@ impl RustdocVisitor {
             match item.node {
                 ast::item_mod(ref m) => {
                     om.mods.push(visit_mod_contents(item.span, item.attrs.clone(),
-                                                    item.vis, item.id, m));
+                                                    item.vis, item.id, m,
+                                                    Some(item.ident)));
                 },
                 ast::item_enum(ref ed, ref gen) => om.enums.push(visit_enum_def(item, ed, gen)),
                 ast::item_struct(sd, ref gen) => om.structs.push(visit_struct_def(item, sd, gen)),
@@ -182,6 +175,7 @@ impl RustdocVisitor {
         }
 
         self.module = visit_mod_contents(crate.span, crate.attrs.clone(),
-                                         ast::public, ast::CRATE_NODE_ID, &crate.module);
+                                         ast::public, ast::CRATE_NODE_ID,
+                                         &crate.module, None);
     }
 }

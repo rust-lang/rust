@@ -57,7 +57,7 @@
 //!
 //! # Example
 //!
-//! ```rust
+//! ```rust,should_fail
 //! // Create a simple streaming channel
 //! let (port, chan) = Chan::new();
 //! do spawn {
@@ -81,7 +81,7 @@
 //!
 //! // The call to recv() will fail!() because the channel has already hung
 //! // up (or been deallocated)
-//! let (port, chan) = Chan::new();
+//! let (port, chan) = Chan::<int>::new();
 //! drop(chan);
 //! port.recv();
 //! ```

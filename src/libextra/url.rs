@@ -26,6 +26,8 @@ use std::uint;
 /// # Example
 ///
 /// ```rust
+/// use extra::url::{Url, UserInfo};
+///
 /// let url = Url { scheme: ~"https",
 ///                 user: Some(UserInfo { user: ~"username", pass: None }),
 ///                 host: ~"example.com",
@@ -388,8 +390,10 @@ fn query_from_str(rawquery: &str) -> Query {
  * # Example
  *
  * ```rust
+ * use extra::url;
+ *
  * let query = ~[(~"title", ~"The Village"), (~"north", ~"52.91"), (~"west", ~"4.10")];
- * println(query_to_str(&query));  // title=The%20Village&north=52.91&west=4.10
+ * println(url::query_to_str(&query));  // title=The%20Village&north=52.91&west=4.10
  * ```
  */
 pub fn query_to_str(query: &Query) -> ~str {

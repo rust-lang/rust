@@ -17,7 +17,7 @@ and create ports which will receive notifications after a period of time.
 
 # Example
 
-```rust
+```rust,ignore
 
 use std::io::Timer;
 
