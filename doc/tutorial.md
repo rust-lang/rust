@@ -3275,8 +3275,7 @@ guides on individual topics.
 * [Documenting Rust code][rustdoc]
 * [Testing Rust code][testing]
 
-There is further documentation on the [wiki], however those tend to be even
-more out of date than this document.
+There is further documentation on the [Main Page](index.html).
 
 [borrow]: guide-borrowed-ptr.html
 [tasks]: guide-tasks.html
@@ -3288,5 +3287,4 @@ more out of date than this document.
 [testing]: guide-testing.html
 [rustdoc]: rustdoc.html
 
-[wiki]: https://github.com/mozilla/rust/wiki/Docs
 [wiki-packages]: https://github.com/mozilla/rust/wiki/Doc-packages,-editors,-and-other-tools
