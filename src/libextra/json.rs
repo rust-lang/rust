@@ -312,7 +312,7 @@ impl<'a> Encoder<'a> {
     /// Encode the specified struct into a json str
     pub fn str_encode<T:Encodable<Encoder<'a>>>(to_encode_object: &T) -> ~str  {
         let buff:~[u8] = Encoder::buffer_encode(to_encode_object);
-        str::from_utf8_owned(buff)
+        str::from_utf8_owned(buff).unwrap()
     }
 }
 
@@ -684,7 +684,7 @@ impl Json{
     pub fn to_pretty_str(&self) -> ~str {
         let mut s = MemWriter::new();
         self.to_pretty_writer(&mut s as &mut io::Writer);
-        str::from_utf8_owned(s.unwrap())
+        str::from_utf8_owned(s.unwrap()).unwrap()
     }
 }
 
@@ -1067,7 +1067,7 @@ impl<T : Iterator<char>> Parser<T> {
 
 /// Decodes a json value from an `&mut io::Reader`
 pub fn from_reader(rdr: &mut io::Reader) -> Result<Json, Error> {
-    let s = str::from_utf8_owned(rdr.read_to_end());
+    let s = str::from_utf8_owned(rdr.read_to_end()).unwrap();
     let mut parser = Parser::new(s.chars());
     parser.parse()
 }
@@ -1541,7 +1541,7 @@ impl to_str::ToStr for Json {
     fn to_str(&self) -> ~str {
         let mut s = MemWriter::new();
         self.to_writer(&mut s as &mut io::Writer);
-        str::from_utf8_owned(s.unwrap())
+        str::from_utf8_owned(s.unwrap()).unwrap()
     }
 }
 
@@ -1732,7 +1732,7 @@ mod tests {
 
         let mut m = MemWriter::new();
         f(&mut m as &mut io::Writer);
-        str::from_utf8_owned(m.unwrap())
+        str::from_utf8_owned(m.unwrap()).unwrap()
     }
 
     #[test]

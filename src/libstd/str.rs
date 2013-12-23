@@ -129,26 +129,9 @@ condition! {
 Section: Creating a string
 */
 
-/// Consumes a vector of bytes to create a new utf-8 string
-///
-/// # Failure
-///
-/// Raises the `not_utf8` condition if invalid UTF-8
-pub fn from_utf8_owned(vv: ~[u8]) -> ~str {
-    use str::not_utf8::cond;
-
-    if !is_utf8(vv) {
-        let first_bad_byte = *vv.iter().find(|&b| !is_utf8([*b])).unwrap();
-        cond.raise(format!("from_utf8: input is not UTF-8; first bad byte is {}",
-                           first_bad_byte))
-    } else {
-        unsafe { raw::from_utf8_owned(vv) }
-    }
-}
-
 /// Consumes a vector of bytes to create a new utf-8 string.
 /// Returns None if the vector contains invalid UTF-8.
-pub fn from_utf8_owned_opt(vv: ~[u8]) -> Option<~str> {
+pub fn from_utf8_owned(vv: ~[u8]) -> Option<~str> {
     if is_utf8(vv) {
         Some(unsafe { raw::from_utf8_owned(vv) })
     } else {
@@ -3964,22 +3947,13 @@ mod tests {
     #[test]
     fn test_str_from_utf8_owned() {
         let xs = bytes!("hello").to_owned();
-        assert_eq!(from_utf8_owned(xs), ~"hello");
+        assert_eq!(from_utf8_owned(xs), Some(~"hello"));
 
         let xs = bytes!("ศไทย中华Việt Nam").to_owned();
-        assert_eq!(from_utf8_owned(xs), ~"ศไทย中华Việt Nam");
-    }
-
-    #[test]
-    fn test_str_from_utf8_owned_opt() {
-        let xs = bytes!("hello").to_owned();
-        assert_eq!(from_utf8_owned_opt(xs), Some(~"hello"));
-
-        let xs = bytes!("ศไทย中华Việt Nam").to_owned();
-        assert_eq!(from_utf8_owned_opt(xs), Some(~"ศไทย中华Việt Nam"));
+        assert_eq!(from_utf8_owned(xs), Some(~"ศไทย中华Việt Nam"));
 
         let xs = bytes!("hello", 0xff).to_owned();
-        assert_eq!(from_utf8_owned_opt(xs), None);
+        assert_eq!(from_utf8_owned(xs), None);
     }
 
     #[test]

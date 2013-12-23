@@ -246,7 +246,7 @@ pub fn file_to_filemap(sess: @ParseSess, path: &Path, spanopt: Option<Span>)
             unreachable!()
         }
     };
-    match str::from_utf8_owned_opt(bytes) {
+    match str::from_utf8_owned(bytes) {
         Some(s) => {
             return string_to_filemap(sess, s.to_managed(),
                                      path.as_str().unwrap().to_managed());
@@ -315,7 +315,7 @@ mod test {
         let mut writer = MemWriter::new();
         let mut encoder = extra::json::Encoder::new(&mut writer as &mut io::Writer);
         val.encode(&mut encoder);
-        str::from_utf8_owned(writer.unwrap())
+        str::from_utf8_owned(writer.unwrap()).unwrap()
     }
 
     // produce a codemap::span
