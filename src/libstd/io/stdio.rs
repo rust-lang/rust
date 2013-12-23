@@ -32,8 +32,7 @@ use option::{Option, Some, None};
 use result::{Ok, Err};
 use io::buffered::LineBufferedWriter;
 use rt::rtio::{DontClose, IoFactory, LocalIo, RtioFileStream, RtioTTY};
-use super::{Reader, Writer, io_error, IoError, OtherIoError,
-            standard_error, EndOfFile};
+use super::{Reader, Writer, io_error, IoError, OtherIoError};
 
 // And so begins the tale of acquiring a uv handle to a stdio stream on all
 // platforms in all situations. Our story begins by splitting the world into two
@@ -202,10 +201,7 @@ impl Reader for StdReader {
             // return an actual EOF error, but apparently for stdin it's a
             // little different. Hence, here we convert a 0 length read to an
             // end-of-file indicator so the caller knows to stop reading.
-            Ok(0) => {
-                io_error::cond.raise(standard_error(EndOfFile));
-                None
-            }
+            Ok(0) => None,
             Ok(amt) => Some(amt as uint),
             Err(e) => {
                 io_error::cond.raise(e);
