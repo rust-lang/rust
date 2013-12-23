@@ -941,7 +941,7 @@ pub trait ImmutableVector<'a, T> {
 
     /// Returns the element of a vector at the given index, or `None` if the
     /// index is out of bounds
-    fn get_opt(&self, index: uint) -> Option<&'a T>;
+    fn get(&self, index: uint) -> Option<&'a T>;
     /// Returns the first element of a vector, failing if the vector is empty.
     fn head(&self) -> &'a T;
     /// Returns the first element of a vector, or `None` if it is empty
@@ -1118,7 +1118,7 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
     }
 
     #[inline]
-    fn get_opt(&self, index: uint) -> Option<&'a T> {
+    fn get(&self, index: uint) -> Option<&'a T> {
         if index < self.len() { Some(&self[index]) } else { None }
     }
 
@@ -3043,13 +3043,13 @@ mod tests {
     }
 
     #[test]
-    fn test_get_opt() {
+    fn test_get() {
         let mut a = ~[11];
-        assert_eq!(a.get_opt(1), None);
+        assert_eq!(a.get(1), None);
         a = ~[11, 12];
-        assert_eq!(a.get_opt(1).unwrap(), &12);
+        assert_eq!(a.get(1).unwrap(), &12);
         a = ~[11, 12, 13];
-        assert_eq!(a.get_opt(1).unwrap(), &12);
+        assert_eq!(a.get(1).unwrap(), &12);
     }
 
     #[test]
