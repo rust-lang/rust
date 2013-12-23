@@ -942,10 +942,8 @@ pub trait ImmutableVector<'a, T> {
     /// Returns the element of a vector at the given index, or `None` if the
     /// index is out of bounds
     fn get(&self, index: uint) -> Option<&'a T>;
-    /// Returns the first element of a vector, failing if the vector is empty.
-    fn head(&self) -> &'a T;
     /// Returns the first element of a vector, or `None` if it is empty
-    fn head_opt(&self) -> Option<&'a T>;
+    fn head(&self) -> Option<&'a T>;
     /// Returns all but the first element of a vector
     fn tail(&self) -> &'a [T];
     /// Returns all but the first `n' elements of a vector
@@ -1123,13 +1121,7 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
     }
 
     #[inline]
-    fn head(&self) -> &'a T {
-        if self.len() == 0 { fail!("head: empty vector") }
-        &self[0]
-    }
-
-    #[inline]
-    fn head_opt(&self) -> Option<&'a T> {
+    fn head(&self) -> Option<&'a T> {
         if self.len() == 0 { None } else { Some(&self[0]) }
     }
 
@@ -3054,27 +3046,12 @@ mod tests {
 
     #[test]
     fn test_head() {
-        let mut a = ~[11];
-        assert_eq!(a.head(), &11);
-        a = ~[11, 12];
-        assert_eq!(a.head(), &11);
-    }
-
-    #[test]
-    #[should_fail]
-    fn test_head_empty() {
-        let a: ~[int] = ~[];
-        a.head();
-    }
-
-    #[test]
-    fn test_head_opt() {
         let mut a = ~[];
-        assert_eq!(a.head_opt(), None);
+        assert_eq!(a.head(), None);
         a = ~[11];
-        assert_eq!(a.head_opt().unwrap(), &11);
+        assert_eq!(a.head().unwrap(), &11);
         a = ~[11, 12];
-        assert_eq!(a.head_opt().unwrap(), &11);
+        assert_eq!(a.head().unwrap(), &11);
     }
 
     #[test]
