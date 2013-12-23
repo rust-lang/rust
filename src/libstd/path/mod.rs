@@ -426,7 +426,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
         let t: Option<T> = None;
         if BytesContainer::is_str(t) {
             for p in paths.iter() {
-                self.push(p.container_as_str())
+                self.push(p.container_as_str().unwrap())
             }
         } else {
             for p in paths.iter() {
@@ -499,18 +499,9 @@ pub trait BytesContainer {
     fn container_into_owned_bytes(self) -> ~[u8] {
         self.container_as_bytes().to_owned()
     }
-    /// Returns the receiver interpreted as a utf-8 string
-    ///
-    /// # Failure
-    ///
-    /// Raises `str::null_byte` if not utf-8
-    #[inline]
-    fn container_as_str<'a>(&'a self) -> &'a str {
-        str::from_utf8(self.container_as_bytes())
-    }
     /// Returns the receiver interpreted as a utf-8 string, if possible
     #[inline]
-    fn container_as_str_opt<'a>(&'a self) -> Option<&'a str> {
+    fn container_as_str<'a>(&'a self) -> Option<&'a str> {
         str::from_utf8_opt(self.container_as_bytes())
     }
     /// Returns whether .container_as_str() is guaranteed to not fail
@@ -589,11 +580,7 @@ impl<'a> BytesContainer for &'a str {
         self.as_bytes()
     }
     #[inline]
-    fn container_as_str<'a>(&'a self) -> &'a str {
-        *self
-    }
-    #[inline]
-    fn container_as_str_opt<'a>(&'a self) -> Option<&'a str> {
+    fn container_as_str<'a>(&'a self) -> Option<&'a str> {
         Some(*self)
     }
     #[inline]
@@ -610,11 +597,7 @@ impl BytesContainer for ~str {
         self.into_bytes()
     }
     #[inline]
-    fn container_as_str<'a>(&'a self) -> &'a str {
-        self.as_slice()
-    }
-    #[inline]
-    fn container_as_str_opt<'a>(&'a self) -> Option<&'a str> {
+    fn container_as_str<'a>(&'a self) -> Option<&'a str> {
         Some(self.as_slice())
     }
     #[inline]
@@ -627,11 +610,7 @@ impl BytesContainer for @str {
         self.as_bytes()
     }
     #[inline]
-    fn container_as_str<'a>(&'a self) -> &'a str {
-        self.as_slice()
-    }
-    #[inline]
-    fn container_as_str_opt<'a>(&'a self) -> Option<&'a str> {
+    fn container_as_str<'a>(&'a self) -> Option<&'a str> {
         Some(self.as_slice())
     }
     #[inline]
