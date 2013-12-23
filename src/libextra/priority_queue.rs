@@ -234,7 +234,7 @@ mod tests {
         sorted.sort();
         let mut heap = PriorityQueue::from_vec(data);
         while !heap.is_empty() {
-            assert_eq!(heap.top(), sorted.last());
+            assert_eq!(heap.top(), sorted.last().unwrap());
             assert_eq!(heap.pop(), sorted.pop());
         }
     }

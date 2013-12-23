@@ -920,7 +920,7 @@ enum StructType {
 // general helper methods.
 impl<'a> TraitDef<'a> {
     fn set_expn_info(&self, mut to_set: Span) -> Span {
-        let trait_name = match self.path.path.last_opt() {
+        let trait_name = match self.path.path.last() {
             None => self.cx.span_bug(self.span, "trait with empty path in generic `deriving`"),
             Some(name) => *name
         };

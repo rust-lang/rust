@@ -1476,7 +1476,7 @@ impl Resolver {
                     match view_path.node {
                         ViewPathSimple(binding, ref full_path, id) => {
                             let source_ident =
-                                full_path.segments.last().identifier;
+                                full_path.segments.last().unwrap().identifier;
                             let subclass = @SingleImport(binding,
                                                          source_ident);
                             self.build_import_directive(module_,
@@ -4303,7 +4303,7 @@ impl Resolver {
 
                 // First, check to see whether the name is a primitive type.
                 if path.segments.len() == 1 {
-                    let id = path.segments.last().identifier;
+                    let id = path.segments.last().unwrap().identifier;
 
                     match self.primitive_type_table
                             .primitive_types
@@ -4342,7 +4342,7 @@ impl Resolver {
                                 debug!("(resolving type) resolved `{}` to \
                                         type {:?}",
                                        self.session.str_of(path.segments
-                                                               .last()
+                                                               .last().unwrap()
                                                                .identifier),
                                        def);
                                 result_def = Some(def);
@@ -4561,7 +4561,7 @@ impl Resolver {
                                 path.span,
                                 format!("`{}` is not an enum variant or constant",
                                      self.session.str_of(
-                                         path.segments.last().identifier)))
+                                         path.segments.last().unwrap().identifier)))
                         }
                         None => {
                             self.resolve_error(path.span,
@@ -4592,7 +4592,7 @@ impl Resolver {
                                 format!("`{}` is not an enum variant, struct or const",
                                      self.session
                                          .str_of(path.segments
-                                                     .last()
+                                                     .last().unwrap()
                                                      .identifier)));
                         }
                         None => {
@@ -4601,7 +4601,7 @@ impl Resolver {
                                                     struct or const `{}`",
                                                     self.session
                                                         .str_of(path.segments
-                                                                    .last()
+                                                                    .last().unwrap()
                                                                     .identifier)));
                         }
                     }
@@ -4722,7 +4722,7 @@ impl Resolver {
 
         let unqualified_def =
                 self.resolve_identifier(path.segments
-                                            .last()
+                                            .last().unwrap()
                                             .identifier,
                                         namespace,
                                         check_ribs,
@@ -4883,7 +4883,7 @@ impl Resolver {
             }
         }
 
-        let ident = path.segments.last().identifier;
+        let ident = path.segments.last().unwrap().identifier;
         let def = match self.resolve_definition_of_name_in_module(containing_module,
                                                         ident,
                                                         namespace) {
@@ -4952,7 +4952,7 @@ impl Resolver {
             }
         }
 
-        let name = path.segments.last().identifier;
+        let name = path.segments.last().unwrap().identifier;
         match self.resolve_definition_of_name_in_module(containing_module,
                                                         name,
                                                         namespace) {

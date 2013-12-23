@@ -31,7 +31,7 @@ pub fn path_name_i(idents: &[Ident]) -> ~str {
 // totally scary function: ignores all but the last element, should have
 // a different name
 pub fn path_to_ident(path: &Path) -> Ident {
-    path.segments.last().identifier
+    path.segments.last().unwrap().identifier
 }
 
 pub fn local_def(id: NodeId) -> DefId {
@@ -913,7 +913,7 @@ pub fn xorPush(marks: &mut ~[Mrk], mark: Mrk) {
 // get the last element of a mutable array.
 // FIXME #4903: , must be a separate procedure for now.
 pub fn getLast(arr: &~[Mrk]) -> Mrk {
-    *arr.last()
+    *arr.last().unwrap()
 }
 
 // are two paths equal when compared unhygienically?

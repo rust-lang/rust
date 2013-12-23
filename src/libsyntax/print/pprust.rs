@@ -1947,7 +1947,7 @@ pub fn print_view_path(s: &mut State, vp: &ast::ViewPath) {
     match vp.node {
       ast::ViewPathSimple(ident, ref path, _) => {
         // FIXME(#6993) can't compare identifiers directly here
-        if path.segments.last().identifier.name != ident.name {
+        if path.segments.last().unwrap().identifier.name != ident.name {
             print_ident(s, ident);
             space(&mut s.s);
             word_space(s, "=");
