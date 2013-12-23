@@ -519,7 +519,7 @@ pub struct Directories {
 
 impl Iterator<Path> for Directories {
     fn next(&mut self) -> Option<Path> {
-        match self.stack.shift_opt() {
+        match self.stack.shift() {
             Some(path) => {
                 if path.is_dir() {
                     self.stack.push_all_move(readdir(&path));

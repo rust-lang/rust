@@ -1383,10 +1383,8 @@ pub trait OwnedVector<T> {
     fn push_all_move(&mut self, rhs: ~[T]);
     /// Remove the last element from a vector and return it, or `None` if it is empty
     fn pop(&mut self) -> Option<T>;
-    /// Removes the first element from a vector and return it
-    fn shift(&mut self) -> T;
     /// Removes the first element from a vector and return it, or `None` if it is empty
-    fn shift_opt(&mut self) -> Option<T>;
+    fn shift(&mut self) -> Option<T>;
     /// Prepend an element to the vector
     fn unshift(&mut self, x: T);
 
@@ -1578,14 +1576,11 @@ impl<T> OwnedVector<T> for ~[T] {
 
 
     #[inline]
-    fn shift(&mut self) -> T {
-        self.shift_opt().expect("shift: empty vector")
-    }
-
-    fn shift_opt(&mut self) -> Option<T> {
+    fn shift(&mut self) -> Option<T> {
         self.remove_opt(0)
     }
 
+    #[inline]
     fn unshift(&mut self, x: T) {
         self.insert(0, x)
     }
@@ -1645,7 +1640,7 @@ impl<T> OwnedVector<T> for ~[T] {
         if index < ln - 1 {
             self.swap(index, ln - 1);
         }
-        self.pop()
+        self.pop().unwrap()
     }
     fn truncate(&mut self, newlen: uint) {
         let oldlen = self.len();
@@ -3580,21 +3575,11 @@ mod tests {
     #[test]
     fn test_shift() {
         let mut x = ~[1, 2, 3];
-        assert_eq!(x.shift(), 1);
+        assert_eq!(x.shift(), Some(1));
         assert_eq!(&x, &~[2, 3]);
-        assert_eq!(x.shift(), 2);
-        assert_eq!(x.shift(), 3);
-        assert_eq!(x.len(), 0);
-    }
-
-    #[test]
-    fn test_shift_opt() {
-        let mut x = ~[1, 2, 3];
-        assert_eq!(x.shift_opt(), Some(1));
-        assert_eq!(&x, &~[2, 3]);
-        assert_eq!(x.shift_opt(), Some(2));
-        assert_eq!(x.shift_opt(), Some(3));
-        assert_eq!(x.shift_opt(), None);
+        assert_eq!(x.shift(), Some(2));
+        assert_eq!(x.shift(), Some(3));
+        assert_eq!(x.shift(), None);
         assert_eq!(x.len(), 0);
     }
 

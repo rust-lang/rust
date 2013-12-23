@@ -370,7 +370,7 @@ mod test {
 
     impl Reader for ShortReader {
         fn read(&mut self, _: &mut [u8]) -> Option<uint> {
-            self.lengths.shift_opt()
+            self.lengths.shift()
         }
     }
 
