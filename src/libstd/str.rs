@@ -118,14 +118,6 @@ use send_str::{SendStr, SendStrOwned};
 use unstable::raw::Repr;
 
 /*
-Section: Conditions
-*/
-
-condition! {
-    pub not_utf8: (~str) -> ~str;
-}
-
-/*
 Section: Creating a string
 */
 

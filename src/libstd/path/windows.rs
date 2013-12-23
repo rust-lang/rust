@@ -154,7 +154,7 @@ impl GenericPathUnsafe for Path {
     ///
     /// # Failure
     ///
-    /// Raises the `str::not_utf8` condition if not valid UTF-8.
+    /// Fails if not valid UTF-8.
     #[inline]
     unsafe fn new_unchecked<T: BytesContainer>(path: T) -> Path {
         let (prefix, path) = Path::normalize_(path.container_as_str().unwrap());
@@ -168,7 +168,7 @@ impl GenericPathUnsafe for Path {
     ///
     /// # Failure
     ///
-    /// Raises the `str::not_utf8` condition if not valid UTF-8.
+    /// Fails if not valid UTF-8.
     unsafe fn set_filename_unchecked<T: BytesContainer>(&mut self, filename: T) {
         let filename = filename.container_as_str().unwrap();
         match self.sepidx_or_prefix_len() {
@@ -591,7 +591,7 @@ impl Path {
     /// # Failure
     ///
     /// Raises the `null_byte` condition if the vector contains a NUL.
-    /// Raises the `str::not_utf8` condition if invalid UTF-8.
+    /// Fails if invalid UTF-8.
     #[inline]
     pub fn new<T: BytesContainer>(path: T) -> Path {
         GenericPath::new(path)
