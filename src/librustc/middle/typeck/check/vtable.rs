@@ -24,6 +24,7 @@ use middle::subst::Subst;
 use util::common::indenter;
 use util::ppaux;
 
+use std::cell::RefCell;
 use std::hashmap::HashSet;
 use std::result;
 use syntax::ast;
@@ -333,10 +334,11 @@ fn search_for_vtable(vcx: &VtableContext,
         let trait_impls = tcx.trait_impls.borrow();
         trait_impls.get()
                    .find(&trait_ref.def_id)
-                   .map_default(@mut ~[], |x| *x)
+                   .map_default(@RefCell::new(~[]), |x| *x)
     };
     // impls is the list of all impls in scope for trait_ref.
-    for im in impls.iter() {
+    let impls = impls.borrow();
+    for im in impls.get().iter() {
         // im is one specific impl of trait_ref.
 
         // First, ensure we haven't processed this impl yet.

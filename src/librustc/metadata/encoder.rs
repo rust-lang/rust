@@ -903,7 +903,8 @@ fn encode_extension_implementations(ecx: &EncodeContext,
     match trait_impls.get().find(&trait_def_id) {
         None => {}
         Some(&implementations) => {
-            for implementation in implementations.iter() {
+            let implementations = implementations.borrow();
+            for implementation in implementations.get().iter() {
                 ebml_w.start_tag(tag_items_data_item_extension_impl);
                 encode_def_id(ebml_w, implementation.did);
                 ebml_w.end_tag();

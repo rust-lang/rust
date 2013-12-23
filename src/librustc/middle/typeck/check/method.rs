@@ -357,7 +357,8 @@ impl<'a> LookupContext<'a> {
                 let trait_impls = self.tcx().trait_impls.borrow();
                 let opt_impl_infos = trait_impls.get().find(trait_did);
                 for impl_infos in opt_impl_infos.iter() {
-                    for impl_info in impl_infos.iter() {
+                    let impl_infos = impl_infos.borrow();
+                    for impl_info in impl_infos.get().iter() {
                         let mut extension_candidates =
                             self.extension_candidates.borrow_mut();
                         self.push_candidates_from_impl(
