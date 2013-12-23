@@ -78,7 +78,7 @@ error,hello=warn     // turn on global error logging and also warn for hello
 
 Each of these macros will expand to code similar to:
 
-```rust
+```rust,ignore
 if log_level <= my_module_log_level() {
     ::std::logging::log(log_level, format!(...));
 }

@@ -28,7 +28,6 @@ impl<'a> ToHex for &'a [u8] {
      * # Example
      *
      * ```rust
-     * extern mod extra;
      * use extra::hex::ToHex;
      *
      * fn main () {
@@ -71,12 +70,11 @@ impl<'a> FromHex for &'a str {
      * This converts a string literal to hexadecimal and back.
      *
      * ```rust
-     * extern mod extra;
      * use extra::hex::{FromHex, ToHex};
      * use std::str;
      *
      * fn main () {
-     *     let hello_str = "Hello, World".to_hex();
+     *     let hello_str = "Hello, World".as_bytes().to_hex();
      *     println!("{}", hello_str);
      *     let bytes = hello_str.from_hex().unwrap();
      *     println!("{:?}", bytes);

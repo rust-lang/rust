@@ -39,7 +39,7 @@ use num;
 ///
 /// fn main() {
 ///     let gamma = Gamma::new(2.0, 5.0);
-///     let v = gamma.ind_sample(rand::task_rng());
+///     let v = gamma.ind_sample(&mut rand::task_rng());
 ///     println!("{} is from a Gamma(2, 5) distribution", v);
 /// }
 /// ```
