@@ -204,8 +204,8 @@ pub fn tt_next_token(r: &TtReader) -> TokenAndSpan {
                     {
                         let mut repeat_idx = r.repeat_idx.borrow_mut();
                         let mut repeat_len = r.repeat_len.borrow_mut();
-                        repeat_idx.get().pop();
-                        repeat_len.get().pop();
+                        repeat_idx.get().pop().unwrap();
+                        repeat_len.get().pop().unwrap();
                     }
                 }
 

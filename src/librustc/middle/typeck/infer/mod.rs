@@ -489,7 +489,7 @@ pub fn uok() -> ures {
 fn rollback_to<V:Clone + Vid,T:Clone>(vb: &mut ValsAndBindings<V, T>,
                                       len: uint) {
     while vb.bindings.len() != len {
-        let (vid, old_v) = vb.bindings.pop();
+        let (vid, old_v) = vb.bindings.pop().unwrap();
         vb.vals.insert(vid.to_uint(), old_v);
     }
 }

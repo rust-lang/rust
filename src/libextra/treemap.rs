@@ -359,7 +359,7 @@ macro_rules! define_iterator {
                         }
                         self.stack.push(node);
                     } else {
-                        let node = self.stack.pop();
+                        let node = self.stack.pop().unwrap();
                         let next_node = if forward {
                             addr!(& $($addr_mut)* node.right)
                         } else {
@@ -496,7 +496,7 @@ impl<K, V> Iterator<(K, V)> for MoveEntries<K,V> {
                 left: left,
                 right: right,
                 level: level
-            } = self.stack.pop();
+            } = self.stack.pop().unwrap();
 
             match left {
                 Some(~left) => {

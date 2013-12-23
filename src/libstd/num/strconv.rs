@@ -351,7 +351,7 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Float+Round+
                 char::from_digit(val, radix).unwrap() as u8
             };
 
-            let extra_digit = ascii2value(buf.pop());
+            let extra_digit = ascii2value(buf.pop().unwrap());
             if extra_digit >= radix / 2 { // -> need to round
                 let mut i: int = buf.len() as int - 1;
                 loop {

@@ -2158,7 +2158,7 @@ impl Parser {
 
                 // Parse the close delimiter.
                 result.push(parse_any_tt_tok(self));
-                self.open_braces.pop();
+                self.open_braces.pop().unwrap();
 
                 TTDelim(@result)
             }
@@ -3593,7 +3593,7 @@ impl Parser {
                 }
             );
 
-        let variadic = match args.pop_opt() {
+        let variadic = match args.pop() {
             Some(None) => true,
             Some(x) => {
                 // Need to put back that last arg
@@ -4218,7 +4218,7 @@ impl Parser {
     }
 
     fn pop_mod_path(&mut self) {
-        self.mod_path_stack.pop();
+        self.mod_path_stack.pop().unwrap();
     }
 
     // read a module from a source file.

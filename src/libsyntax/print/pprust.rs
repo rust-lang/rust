@@ -78,7 +78,7 @@ pub fn ibox(s: &mut State, u: uint) {
 pub fn end(s: &mut State) {
     {
         let mut boxes = s.boxes.borrow_mut();
-        boxes.get().pop();
+        boxes.get().pop().unwrap();
     }
     pp::end(&mut s.s);
 }
@@ -1090,11 +1090,11 @@ pub fn print_call_pre(s: &mut State,
     match sugar {
         ast::DoSugar => {
             head(s, "do");
-            Some(base_args.pop())
+            Some(base_args.pop().unwrap())
         }
         ast::ForSugar => {
             head(s, "for");
-            Some(base_args.pop())
+            Some(base_args.pop().unwrap())
         }
         ast::NoSugar => None
     }

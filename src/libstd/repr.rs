@@ -123,7 +123,7 @@ impl<'a> MovePtr for ReprVisitor<'a> {
         self.ptr_stk.push(self.ptr);
     }
     fn pop_ptr(&mut self) {
-        self.ptr = self.ptr_stk.pop();
+        self.ptr = self.ptr_stk.pop().unwrap();
     }
 }
 
@@ -471,7 +471,7 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
                                 n_fields: uint,
                                 name: &str) -> bool {
         let mut write = false;
-        match self.var_stk.pop() {
+        match self.var_stk.pop().unwrap() {
             SearchingFor(sought) => {
                 if disr_val == sought {
                     self.var_stk.push(Matched);
@@ -534,7 +534,7 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
                         _sz: uint,
                         _align: uint)
                         -> bool {
-        match self.var_stk.pop() {
+        match self.var_stk.pop().unwrap() {
             SearchingFor(..) => fail!("enum value matched no variant"),
             _ => true
         }

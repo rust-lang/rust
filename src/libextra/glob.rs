@@ -122,7 +122,7 @@ impl Iterator<Path> for Paths {
                 return None;
             }
 
-            let (path,idx) = self.todo.pop();
+            let (path,idx) = self.todo.pop().unwrap();
             let ref pattern = self.dir_patterns[idx];
 
             if pattern.matches_with(match path.filename_str() {

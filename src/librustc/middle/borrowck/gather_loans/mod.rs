@@ -339,7 +339,7 @@ impl<'a> GatherLoanCtxt<'a> {
     }
 
     pub fn pop_repeating_id(&mut self, id: ast::NodeId) {
-        let popped = self.repeating_ids.pop();
+        let popped = self.repeating_ids.pop().unwrap();
         assert_eq!(id, popped);
     }
 

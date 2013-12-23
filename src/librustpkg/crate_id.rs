@@ -121,7 +121,7 @@ impl Iterator<(Path, Path)> for Prefixes {
             None
         }
         else {
-            let last = self.components.pop();
+            let last = self.components.pop().unwrap();
             self.remaining.unshift(last);
             // converting to str and then back is a little unfortunate
             Some((Path::new(self.components.connect("/")),
