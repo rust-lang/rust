@@ -666,7 +666,7 @@ impl<'a> Iterator<char> for Normalizations<'a> {
     fn next(&mut self) -> Option<char> {
         use unicode::decompose::canonical_combining_class;
 
-        match self.buffer.head_opt() {
+        match self.buffer.head() {
             Some(&(c, 0)) => {
                 self.sorted = false;
                 self.buffer.shift();
