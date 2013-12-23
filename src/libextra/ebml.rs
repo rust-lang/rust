@@ -30,7 +30,7 @@ impl<'doc> Doc<'doc> {
     }
 
     pub fn as_str_slice<'a>(&'a self) -> &'a str {
-        str::from_utf8(self.data.slice(self.start, self.end))
+        str::from_utf8(self.data.slice(self.start, self.end)).unwrap()
     }
 
     pub fn as_str(&self) -> ~str {

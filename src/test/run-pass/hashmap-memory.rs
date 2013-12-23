@@ -81,7 +81,7 @@ mod map_reduce {
               mapper_done => { num_mappers -= 1; }
               find_reducer(k, cc) => {
                 let mut c;
-                match reducers.find(&str::from_utf8(k).to_owned()) {
+                match reducers.find(&str::from_utf8(k).unwrap().to_owned()) {
                   Some(&_c) => { c = _c; }
                   None => { c = 0; }
                 }
