@@ -449,7 +449,8 @@ fn encode_reexported_static_base_methods(ecx: &EncodeContext,
     let inherent_impls = ecx.tcx.inherent_impls.borrow();
     match inherent_impls.get().find(&exp.def_id) {
         Some(implementations) => {
-            for &base_impl in implementations.iter() {
+            let implementations = implementations.borrow();
+            for &base_impl in implementations.get().iter() {
                 for &m in base_impl.methods.iter() {
                     if m.explicit_self == ast::sty_static {
                         encode_reexported_static_method(ecx, ebml_w, exp,
@@ -884,7 +885,8 @@ fn encode_inherent_implementations(ecx: &EncodeContext,
     match inherent_impls.get().find(&def_id) {
         None => {}
         Some(&implementations) => {
-            for implementation in implementations.iter() {
+            let implementations = implementations.borrow();
+            for implementation in implementations.get().iter() {
                 ebml_w.start_tag(tag_items_data_item_inherent_impl);
                 encode_def_id(ebml_w, implementation.did);
                 ebml_w.end_tag();

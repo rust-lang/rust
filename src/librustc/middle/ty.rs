@@ -338,7 +338,7 @@ struct ctxt_ {
     // Maps a def_id of a type to a list of its inherent impls.
     // Contains implementations of methods that are inherent to a type.
     // Methods in these implementations don't need to be exported.
-    inherent_impls: RefCell<HashMap<ast::DefId, @mut ~[@Impl]>>,
+    inherent_impls: RefCell<HashMap<ast::DefId, @RefCell<~[@Impl]>>>,
 
     // Maps a def_id of an impl to an Impl structure.
     // Note that this contains all of the impls that we know about,
@@ -4561,14 +4561,18 @@ pub fn populate_implementations_for_type_if_necessary(tcx: ctxt,
             let mut inherent_impls = tcx.inherent_impls.borrow_mut();
             match inherent_impls.get().find(&type_id) {
                 None => {
-                    implementation_list = @mut ~[];
+                    implementation_list = @RefCell::new(~[]);
                     inherent_impls.get().insert(type_id, implementation_list);
                 }
                 Some(&existing_implementation_list) => {
                     implementation_list = existing_implementation_list;
                 }
             }
-            implementation_list.push(implementation);
+            {
+                let mut implementation_list =
+                    implementation_list.borrow_mut();
+                implementation_list.get().push(implementation);
+            }
         }
 
         // Store the implementation info.
