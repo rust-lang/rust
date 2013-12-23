@@ -118,14 +118,14 @@ impl<R: Reader> Reader for BufferedReader<R> {
     fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
         let nread = {
             let available = self.fill();
-            if available.len() == 0 {
-                return None;
-            }
             let nread = num::min(available.len(), buf.len());
             vec::bytes::copy_memory(buf, available.slice_to(nread));
             nread
         };
         self.pos += nread;
+        if nread == 0 && self.inner.eof() && buf.len() != 0 {
+                return None;
+        }
         Some(nread)
     }
 
@@ -322,6 +322,21 @@ mod test {
         fn write(&mut self, _: &[u8]) { }
     }
 
+    /// A dummy reader intended at testing short-reads propagation.
+    pub struct ShortReader {
+        priv lengths: ~[uint],
+    }
+
+    impl Reader for ShortReader {
+        fn read(&mut self, _: &mut [u8]) -> Option<uint> {
+            self.lengths.shift_opt()
+        }
+
+        fn eof(&mut self) -> bool {
+            self.lengths.len() == 0
+        }
+    }
+
     #[test]
     fn test_buffered_reader() {
         let inner = MemReader::new(~[0, 1, 2, 3, 4]);
@@ -473,6 +488,19 @@ mod test {
         assert_eq!(it.next(), Some(~"b\n"));
         assert_eq!(it.next(), Some(~"c"));
         assert_eq!(it.next(), None);
+    }
+
+    #[test]
+    fn test_short_reads() {
+        let inner = ShortReader{lengths: ~[0, 1, 2, 0, 1, 0]};
+        let mut reader = BufferedReader::new(inner);
+        let mut buf = [0, 0];
+        assert_eq!(reader.read(buf), Some(0));
+        assert_eq!(reader.read(buf), Some(1));
+        assert_eq!(reader.read(buf), Some(2));
+        assert_eq!(reader.read(buf), Some(0));
+        assert_eq!(reader.read(buf), Some(1));
+        assert_eq!(reader.read(buf), None);
     }
 
 
