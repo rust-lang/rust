@@ -3080,7 +3080,8 @@ pub fn method_call_type_param_defs(tcx: ctxt,
 }
 
 pub fn resolve_expr(tcx: ctxt, expr: &ast::Expr) -> ast::Def {
-    match tcx.def_map.find(&expr.id) {
+    let def_map = tcx.def_map.borrow();
+    match def_map.get().find(&expr.id) {
         Some(&def) => def,
         None => {
             tcx.sess.span_bug(expr.span, format!(
@@ -3675,7 +3676,10 @@ pub fn impl_trait_ref(cx: ctxt, id: ast::DefId) -> Option<@TraitRef> {
 }
 
 pub fn trait_ref_to_def_id(tcx: ctxt, tr: &ast::trait_ref) -> ast::DefId {
-    let def = tcx.def_map.find(&tr.ref_id).expect("no def-map entry for trait");
+    let def_map = tcx.def_map.borrow();
+    let def = def_map.get()
+                     .find(&tr.ref_id)
+                     .expect("no def-map entry for trait");
     ast_util::def_id_of_def(*def)
 }
 

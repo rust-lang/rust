@@ -1180,7 +1180,11 @@ pub fn with_field_tys<R>(
                         ty.repr(tcx)));
                 }
                 Some(node_id) => {
-                    match tcx.def_map.get_copy(&node_id) {
+                    let opt_def = {
+                        let def_map = tcx.def_map.borrow();
+                        def_map.get().get_copy(&node_id)
+                    };
+                    match opt_def {
                         ast::DefVariant(enum_id, variant_id, _) => {
                             let variant_info = ty::enum_variant_with_id(
                                 tcx, enum_id, variant_id);

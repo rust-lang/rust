@@ -265,7 +265,8 @@ pub fn write_tpt_to_tcx(tcx: ty::ctxt,
 }
 
 pub fn lookup_def_tcx(tcx: ty::ctxt, sp: Span, id: ast::NodeId) -> ast::Def {
-    match tcx.def_map.find(&id) {
+    let def_map = tcx.def_map.borrow();
+    match def_map.get().find(&id) {
       Some(&x) => x,
       _ => {
         tcx.sess.span_fatal(sp, "internal error looking up a definition")

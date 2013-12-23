@@ -148,7 +148,8 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
                     e.span, "paths in constants may only refer to \
                              items without type parameters");
             }
-            match def_map.find(&e.id) {
+            let def_map = def_map.borrow();
+            match def_map.get().find(&e.id) {
               Some(&DefStatic(..)) |
               Some(&DefFn(_, _)) |
               Some(&DefVariant(_, _, _)) |
@@ -167,7 +168,8 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
             }
           }
           ExprCall(callee, _, NoSugar) => {
-            match def_map.find(&callee.id) {
+            let def_map = def_map.borrow();
+            match def_map.get().find(&callee.id) {
                 Some(&DefStruct(..)) => {}    // OK.
                 Some(&DefVariant(..)) => {}    // OK.
                 _ => {
@@ -260,15 +262,19 @@ impl Visitor<()> for CheckItemRecursionVisitor {
 
     fn visit_expr(&mut self, e: @Expr, _: ()) {
         match e.node {
-            ExprPath(..) => match self.env.def_map.find(&e.id) {
-                Some(&DefStatic(def_id, _)) if ast_util::is_local(def_id) =>
-                    match self.env.ast_map.get_copy(&def_id.node) {
-                        ast_map::node_item(it, _) => {
-                            self.visit_item(it, ());
-                        }
-                        _ => fail!("const not bound to an item")
-                    },
-                _ => ()
+            ExprPath(..) => {
+                let def_map = self.env.def_map.borrow();
+                match def_map.get().find(&e.id) {
+                    Some(&DefStatic(def_id, _)) if
+                            ast_util::is_local(def_id) =>
+                        match self.env.ast_map.get_copy(&def_id.node) {
+                            ast_map::node_item(it, _) => {
+                                self.visit_item(it, ());
+                            }
+                            _ => fail!("const not bound to an item")
+                        },
+                    _ => ()
+                }
             },
             _ => ()
         }

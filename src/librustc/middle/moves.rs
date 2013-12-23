@@ -341,7 +341,8 @@ impl VisitContext {
             ExprPath(..) | ExprSelf => {
                 match comp_mode {
                     Move => {
-                        let def = self.tcx.def_map.get_copy(&expr.id);
+                        let def_map = self.tcx.def_map.borrow();
+                        let def = def_map.get().get_copy(&expr.id);
                         let r = moved_variable_node_id_from_def(def);
                         for &id in r.iter() {
                             let mut moved_variables_set =

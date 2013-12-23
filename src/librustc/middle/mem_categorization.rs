@@ -420,7 +420,8 @@ impl mem_categorization_ctxt {
           }
 
           ast::ExprPath(_) | ast::ExprSelf => {
-            let def = self.tcx.def_map.get_copy(&expr.id);
+            let def_map = self.tcx.def_map.borrow();
+            let def = def_map.get().get_copy(&expr.id);
             self.cat_def(expr.id, expr.span, expr_ty, def)
           }
 
@@ -888,7 +889,8 @@ impl mem_categorization_ctxt {
             // variant(..)
           }
           ast::PatEnum(_, Some(ref subpats)) => {
-            match self.tcx.def_map.find(&pat.id) {
+            let def_map = self.tcx.def_map.borrow();
+            match def_map.get().find(&pat.id) {
                 Some(&ast::DefVariant(enum_did, _, _)) => {
                     // variant(x, y, z)
 
@@ -1074,7 +1076,8 @@ pub fn field_mutbl(tcx: ty::ctxt,
         }
       }
       ty::ty_enum(..) => {
-        match tcx.def_map.get_copy(&node_id) {
+        let def_map = tcx.def_map.borrow();
+        match def_map.get().get_copy(&node_id) {
           ast::DefVariant(_, variant_id, _) => {
             let r = ty::lookup_struct_fields(tcx, variant_id);
             for fld in r.iter() {

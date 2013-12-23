@@ -104,7 +104,8 @@ impl Visitor<()> for MarkSymbolVisitor {
 
         match expr.node {
             ast::ExprPath(_) => {
-                let def = match self.tcx.def_map.find(&expr.id) {
+                let def_map = self.tcx.def_map.borrow();
+                let def = match def_map.get().find(&expr.id) {
                     Some(&def) => def,
                     None => {
                         self.tcx.sess.span_bug(expr.span,

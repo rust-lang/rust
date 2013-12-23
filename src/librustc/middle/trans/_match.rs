@@ -349,7 +349,8 @@ fn trans_opt(bcx: @Block, o: &Opt) -> opt_result {
 fn variant_opt(bcx: @Block, pat_id: ast::NodeId)
     -> Opt {
     let ccx = bcx.ccx();
-    match ccx.tcx.def_map.get_copy(&pat_id) {
+    let def_map = ccx.tcx.def_map.borrow();
+    match def_map.get().get_copy(&pat_id) {
         ast::DefVariant(enum_id, var_id, _) => {
             let variants = ty::enum_variants(ccx.tcx, enum_id);
             for v in (*variants).iter() {
@@ -622,7 +623,10 @@ fn enter_opt<'r>(bcx: @Block,
         let answer = match p.node {
             ast::PatEnum(..) |
             ast::PatIdent(_, _, None) if pat_is_const(tcx.def_map, p) => {
-                let const_def = tcx.def_map.get_copy(&p.id);
+                let const_def = {
+                    let def_map = tcx.def_map.borrow();
+                    def_map.get().get_copy(&p.id)
+                };
                 let const_def_id = ast_util::def_id_of_def(const_def);
                 if opt_eq(tcx, &lit(ConstLit(const_def_id)), opt) {
                     Some(~[])
@@ -659,7 +663,11 @@ fn enter_opt<'r>(bcx: @Block,
                 if opt_eq(tcx, &variant_opt(bcx, p.id), opt) {
                     // Look up the struct variant ID.
                     let struct_id;
-                    match tcx.def_map.get_copy(&p.id) {
+                    let defn = {
+                        let def_map = tcx.def_map.borrow();
+                        def_map.get().get_copy(&p.id)
+                    };
+                    match defn {
                         ast::DefVariant(_, found_struct_id, _) => {
                             struct_id = found_struct_id;
                         }
@@ -940,16 +948,20 @@ fn get_options(bcx: @Block, m: &[Match], col: uint) -> ~[Opt] {
             ast::PatIdent(..) => {
                 // This is one of: an enum variant, a unit-like struct, or a
                 // variable binding.
-                match ccx.tcx.def_map.find(&cur.id) {
-                    Some(&ast::DefVariant(..)) => {
+                let opt_def = {
+                    let def_map = ccx.tcx.def_map.borrow();
+                    def_map.get().find_copy(&cur.id)
+                };
+                match opt_def {
+                    Some(ast::DefVariant(..)) => {
                         add_to_set(ccx.tcx, &mut found,
                                    variant_opt(bcx, cur.id));
                     }
-                    Some(&ast::DefStruct(..)) => {
+                    Some(ast::DefStruct(..)) => {
                         add_to_set(ccx.tcx, &mut found,
                                    lit(UnitLikeStructLit(cur.id)));
                     }
-                    Some(&ast::DefStatic(const_did, false)) => {
+                    Some(ast::DefStatic(const_did, false)) => {
                         add_to_set(ccx.tcx, &mut found,
                                    lit(ConstLit(const_did)));
                     }
@@ -959,13 +971,17 @@ fn get_options(bcx: @Block, m: &[Match], col: uint) -> ~[Opt] {
             ast::PatEnum(..) | ast::PatStruct(..) => {
                 // This could be one of: a tuple-like enum variant, a
                 // struct-like enum variant, or a struct.
-                match ccx.tcx.def_map.find(&cur.id) {
-                    Some(&ast::DefFn(..)) |
-                    Some(&ast::DefVariant(..)) => {
+                let opt_def = {
+                    let def_map = ccx.tcx.def_map.borrow();
+                    def_map.get().find_copy(&cur.id)
+                };
+                match opt_def {
+                    Some(ast::DefFn(..)) |
+                    Some(ast::DefVariant(..)) => {
                         add_to_set(ccx.tcx, &mut found,
                                    variant_opt(bcx, cur.id));
                     }
-                    Some(&ast::DefStatic(const_did, false)) => {
+                    Some(ast::DefStatic(const_did, false)) => {
                         add_to_set(ccx.tcx, &mut found,
                                    lit(ConstLit(const_did)));
                     }
@@ -1170,7 +1186,8 @@ fn any_tuple_struct_pat(bcx: @Block, m: &[Match], col: uint) -> bool {
         let pat = br.pats[col];
         match pat.node {
             ast::PatEnum(_, Some(_)) => {
-                match bcx.tcx().def_map.find(&pat.id) {
+                let def_map = bcx.tcx().def_map.borrow();
+                match def_map.get().find(&pat.id) {
                     Some(&ast::DefFn(..)) |
                     Some(&ast::DefStruct(..)) => true,
                     _ => false
@@ -2166,7 +2183,8 @@ fn bind_irrefutable_pat(bcx: @Block,
             }
         }
         ast::PatEnum(_, ref sub_pats) => {
-            match bcx.tcx().def_map.find(&pat.id) {
+            let def_map = bcx.tcx().def_map.borrow();
+            match def_map.get().find(&pat.id) {
                 Some(&ast::DefVariant(enum_id, var_id, _)) => {
                     let repr = adt::represent_node(bcx, pat.id);
                     let vinfo = ty::enum_variant_with_id(ccx.tcx,

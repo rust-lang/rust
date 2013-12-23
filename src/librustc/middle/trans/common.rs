@@ -748,7 +748,8 @@ impl Block {
     }
 
     pub fn def(&self, nid: ast::NodeId) -> ast::Def {
-        match self.tcx().def_map.find(&nid) {
+        let def_map = self.tcx().def_map.borrow();
+        match def_map.get().find(&nid) {
             Some(&v) => v,
             None => {
                 self.tcx().sess.bug(format!(

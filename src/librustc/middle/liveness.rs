@@ -486,7 +486,8 @@ fn visit_expr(v: &mut LivenessVisitor, expr: @Expr, this: @IrMaps) {
     match expr.node {
       // live nodes required for uses or definitions of variables:
       ExprPath(_) | ExprSelf => {
-        let def = this.tcx.def_map.get_copy(&expr.id);
+        let def_map = this.tcx.def_map.borrow();
+        let def = def_map.get().get_copy(&expr.id);
         debug!("expr {}: path that leads to {:?}", expr.id, def);
         if moves::moved_variable_node_id_from_def(def).is_some() {
             this.add_live_node_for_node(expr.id, ExprNode(expr.span));
@@ -755,13 +756,16 @@ impl Liveness {
                            sp: Span)
                            -> NodeId {
         match opt_label {
-            Some(_) => // Refers to a labeled loop. Use the results of resolve
-                      // to find with one
-                match self.tcx.def_map.find(&id) {
+            Some(_) => {
+                // Refers to a labeled loop. Use the results of resolve
+                // to find with one
+                let def_map = self.tcx.def_map.borrow();
+                match def_map.get().find(&id) {
                     Some(&DefLabel(loop_id)) => loop_id,
                     _ => self.tcx.sess.span_bug(sp, "Label on break/loop \
                                                      doesn't refer to a loop")
-                },
+                }
+            }
             None => {
                 // Vanilla 'break' or 'loop', so use the enclosing
                 // loop scope
@@ -1344,7 +1348,8 @@ impl Liveness {
 
     pub fn access_path(&self, expr: &Expr, succ: LiveNode, acc: uint)
                        -> LiveNode {
-        let def = self.tcx.def_map.get_copy(&expr.id);
+        let def_map = self.tcx.def_map.borrow();
+        let def = def_map.get().get_copy(&expr.id);
         match moves::moved_variable_node_id_from_def(def) {
           Some(nid) => {
             let ln = self.live_node(expr.id, expr.span);
@@ -1572,7 +1577,8 @@ impl Liveness {
     pub fn check_lvalue(&mut self, expr: @Expr) {
         match expr.node {
           ExprPath(_) => {
-            match self.tcx.def_map.get_copy(&expr.id) {
+            let def_map = self.tcx.def_map.borrow();
+            match def_map.get().get_copy(&expr.id) {
               DefLocal(nid, _) => {
                 // Assignment to an immutable variable or argument: only legal
                 // if there is no later assignment. If this local is actually
