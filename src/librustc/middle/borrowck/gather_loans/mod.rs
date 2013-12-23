@@ -445,7 +445,7 @@ impl<'a> GatherLoanCtxt<'a> {
             return;
         }
 
-        let root_ub = { *self.repeating_ids.last() }; // FIXME(#5074)
+        let root_ub = { *self.repeating_ids.last().unwrap() }; // FIXME(#5074)
 
         // Check that the lifetime of the borrow does not exceed
         // the lifetime of the data being borrowed.

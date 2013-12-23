@@ -595,7 +595,7 @@ impl<'a> PrivacyVisitor<'a> {
             match *self.last_private_map.get(&path_id) {
                 resolve::AllPublic => {},
                 resolve::DependsOn(def) => {
-                    let name = token::ident_to_str(&path.segments.last()
+                    let name = token::ident_to_str(&path.segments.last().unwrap()
                                                         .identifier);
                     self.ensure_public(span, def, Some(origdid),
                                        format!("{} `{}`", tyname, name));

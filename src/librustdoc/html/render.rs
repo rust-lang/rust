@@ -275,7 +275,7 @@ pub fn run(mut crate: clean::Crate, dst: Path) {
         for (i, (&id, &(ref fqp, short))) in cache.paths.iter().enumerate() {
             if i > 0 { write!(w, ","); }
             write!(w, "'{}':\\{type:'{}',name:'{}'\\}",
-                   id, short, *fqp.last());
+                   id, short, *fqp.last().unwrap());
         }
         write!(w, "\\};");
         w.flush();
@@ -522,7 +522,7 @@ impl DocFolder for Cache {
                     clean::TyMethodItem(..) |
                     clean::StructFieldItem(..) |
                     clean::VariantItem(..) => {
-                        Some((Some(*self.parent_stack.last()),
+                        Some((Some(*self.parent_stack.last().unwrap()),
                               self.stack.slice_to(self.stack.len() - 1)))
 
                     }
@@ -530,7 +530,7 @@ impl DocFolder for Cache {
                         if self.parent_stack.len() == 0 {
                             None
                         } else {
-                            let last = self.parent_stack.last();
+                            let last = self.parent_stack.last().unwrap();
                             let amt = match self.paths.find(last) {
                                 Some(&(_, "trait")) => self.stack.len() - 1,
                                 Some(..) | None => self.stack.len(),

@@ -55,10 +55,10 @@ impl<T> OptVec<T> {
         }
     }
 
-    pub fn last<'a>(&'a self) -> &'a T {
+    pub fn last<'a>(&'a self) -> Option<&'a T> {
         match *self {
             Vec(ref v) => v.last(),
-            Empty => fail!("last on empty opt_vec")
+            Empty => None
         }
     }
 

@@ -475,7 +475,7 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
 
     fn top_scope<R>(&self, f: |&CleanupScope<'a>| -> R) -> R {
         let scopes = self.scopes.borrow();
-        f(scopes.get().last())
+        f(scopes.get().last().unwrap())
     }
 
     fn trans_cleanups_to_exit_scope(&self,
@@ -568,7 +568,7 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
             // and this scope is that loop, then stop popping and set
             // `prev_llbb` to the appropriate exit block from the loop.
             popped_scopes.push(self.pop_scope());
-            let scope = popped_scopes.last();
+            let scope = popped_scopes.last().unwrap();
             match label {
                 UnwindExit | ReturnExit => { }
                 LoopExit(id, exit) => {

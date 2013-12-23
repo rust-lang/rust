@@ -952,10 +952,8 @@ pub trait ImmutableVector<'a, T> {
     fn init(&self) -> &'a [T];
     /// Returns all but the last `n' elements of a vector
     fn initn(&self, n: uint) -> &'a [T];
-    /// Returns the last element of a vector, failing if the vector is empty.
-    fn last(&self) -> &'a T;
     /// Returns the last element of a vector, or `None` if it is empty.
-    fn last_opt(&self) -> Option<&'a T>;
+    fn last(&self) -> Option<&'a T>;
     /**
      * Apply a function to each element of a vector and return a concatenation
      * of each result vector
@@ -1142,13 +1140,7 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
     }
 
     #[inline]
-    fn last(&self) -> &'a T {
-        if self.len() == 0 { fail!("last: empty vector") }
-        &self[self.len() - 1]
-    }
-
-    #[inline]
-    fn last_opt(&self) -> Option<&'a T> {
+    fn last(&self) -> Option<&'a T> {
             if self.len() == 0 { None } else { Some(&self[self.len() - 1]) }
     }
 
@@ -3116,27 +3108,12 @@ mod tests {
 
     #[test]
     fn test_last() {
-        let mut a = ~[11];
-        assert_eq!(a.last(), &11);
-        a = ~[11, 12];
-        assert_eq!(a.last(), &12);
-    }
-
-    #[test]
-    #[should_fail]
-    fn test_last_empty() {
-        let a: ~[int] = ~[];
-        a.last();
-    }
-
-    #[test]
-    fn test_last_opt() {
         let mut a = ~[];
-        assert_eq!(a.last_opt(), None);
+        assert_eq!(a.last(), None);
         a = ~[11];
-        assert_eq!(a.last_opt().unwrap(), &11);
+        assert_eq!(a.last().unwrap(), &11);
         a = ~[11, 12];
-        assert_eq!(a.last_opt().unwrap(), &12);
+        assert_eq!(a.last().unwrap(), &12);
     }
 
     #[test]

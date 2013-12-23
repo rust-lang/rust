@@ -1753,19 +1753,19 @@ impl Parser {
                 return self.mk_expr(lo, hi, ExprLit(lit));
             }
             let mut es = ~[self.parse_expr()];
-            self.commit_expr(*es.last(), &[], &[token::COMMA, token::RPAREN]);
+            self.commit_expr(*es.last().unwrap(), &[], &[token::COMMA, token::RPAREN]);
             while self.token == token::COMMA {
                 self.bump();
                 if self.token != token::RPAREN {
                     es.push(self.parse_expr());
-                    self.commit_expr(*es.last(), &[], &[token::COMMA, token::RPAREN]);
+                    self.commit_expr(*es.last().unwrap(), &[], &[token::COMMA, token::RPAREN]);
                 }
                 else {
                     trailing_comma = true;
                 }
             }
             hi = self.span.hi;
-            self.commit_expr_expecting(*es.last(), token::RPAREN);
+            self.commit_expr_expecting(*es.last().unwrap(), token::RPAREN);
 
             return if es.len() == 1 && !trailing_comma {
                 self.mk_expr(lo, self.span.hi, ExprParen(es[0]))
@@ -1924,7 +1924,8 @@ impl Parser {
 
                     fields.push(self.parse_field());
                     while self.token != token::RBRACE {
-                        self.commit_expr(fields.last().expr, &[token::COMMA], &[token::RBRACE]);
+                        self.commit_expr(fields.last().unwrap().expr,
+                                         &[token::COMMA], &[token::RBRACE]);
 
                         if self.eat(&token::DOTDOT) {
                             base = Some(self.parse_expr());
@@ -1939,7 +1940,7 @@ impl Parser {
                     }
 
                     hi = pth.span.hi;
-                    self.commit_expr_expecting(fields.last().expr, token::RBRACE);
+                    self.commit_expr_expecting(fields.last().unwrap().expr, token::RBRACE);
                     ex = ExprStruct(pth, fields, base);
                     return self.mk_expr(lo, hi, ex);
                 }
@@ -2092,7 +2093,7 @@ impl Parser {
                   // This is a conservative error: only report the last unclosed delimiter. The
                   // previous unclosed delimiters could actually be closed! The parser just hasn't
                   // gotten to them yet.
-                  match p.open_braces.last_opt() {
+                  match p.open_braces.last() {
                       None => {}
                       Some(&sp) => p.span_note(sp, "unclosed delimiter"),
                   };
