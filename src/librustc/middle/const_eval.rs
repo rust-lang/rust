@@ -78,11 +78,17 @@ pub fn join_all<It: Iterator<constness>>(mut cs: It) -> constness {
 }
 
 pub fn lookup_const(tcx: ty::ctxt, e: &Expr) -> Option<@Expr> {
-    match tcx.def_map.find(&e.id) {
-        Some(&ast::DefStatic(def_id, false)) =>
-            lookup_const_by_id(tcx, def_id),
-        Some(&ast::DefVariant(enum_def, variant_def, _)) =>
-            lookup_variant_by_id(tcx, enum_def, variant_def),
+    let opt_def = {
+        let def_map = tcx.def_map.borrow();
+        def_map.get().find_copy(&e.id)
+    };
+    match opt_def {
+        Some(ast::DefStatic(def_id, false)) => {
+            lookup_const_by_id(tcx, def_id)
+        }
+        Some(ast::DefVariant(enum_def, variant_def, _)) => {
+            lookup_variant_by_id(tcx, enum_def, variant_def)
+        }
         _ => None
     }
 }

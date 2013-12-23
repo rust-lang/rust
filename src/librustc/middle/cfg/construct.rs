@@ -496,7 +496,8 @@ impl CFGBuilder {
             }
 
             Some(_) => {
-                match self.tcx.def_map.find(&expr.id) {
+                let def_map = self.tcx.def_map.borrow();
+                match def_map.get().find(&expr.id) {
                     Some(&ast::DefLabel(loop_id)) => {
                         for l in self.loop_scopes.iter() {
                             if l.loop_id == loop_id {

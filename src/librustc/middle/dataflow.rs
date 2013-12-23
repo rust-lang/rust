@@ -874,7 +874,8 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
             }
 
             Some(_) => {
-                match self.tcx().def_map.find(&expr.id) {
+                let def_map = self.tcx().def_map.borrow();
+                match def_map.get().find(&expr.id) {
                     Some(&ast::DefLabel(loop_id)) => {
                         match loop_scopes.iter().position(|l| l.loop_id == loop_id) {
                             Some(i) => i,

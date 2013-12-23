@@ -1153,7 +1153,8 @@ fn resolve_type(path: Path, tpbs: Option<~[TyParamBound]>,
         None => return Bool
     };
     debug!("searching for {:?} in defmap", id);
-    let d = match tycx.def_map.find(&id) {
+    let def_map = tycx.def_map.borrow();
+    let d = match def_map.get().find(&id) {
         Some(k) => k,
         None => {
             debug!("could not find {:?} in defmap (`{}`)", id,
@@ -1210,7 +1211,8 @@ fn resolve_def(id: ast::NodeId) -> Option<ast::DefId> {
     let cx = local_data::get(super::ctxtkey, |x| *x.unwrap());
     match cx.tycx {
         Some(tcx) => {
-            tcx.def_map.find(&id).map(|&d| ast_util::def_id_of_def(d))
+            let def_map = tcx.def_map.borrow();
+            def_map.get().find(&id).map(|&d| ast_util::def_id_of_def(d))
         }
         None => None
     }

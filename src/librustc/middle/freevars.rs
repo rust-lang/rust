@@ -52,7 +52,8 @@ impl Visitor<int> for CollectFreevarsVisitor {
               }
               ast::ExprPath(..) | ast::ExprSelf => {
                   let mut i = 0;
-                  match self.def_map.find(&expr.id) {
+                  let def_map = self.def_map.borrow();
+                  match def_map.get().find(&expr.id) {
                     None => fail!("path not found"),
                     Some(&df) => {
                       let mut def = df;

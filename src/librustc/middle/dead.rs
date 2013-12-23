@@ -63,7 +63,8 @@ impl MarkSymbolVisitor {
     }
 
     fn lookup_and_handle_definition(&mut self, id: &ast::NodeId) {
-        let def = match self.tcx.def_map.find(id) {
+        let def_map = self.tcx.def_map.borrow();
+        let def = match def_map.get().find(id) {
             Some(&def) => def,
             None => return
         };

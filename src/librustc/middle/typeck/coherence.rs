@@ -547,7 +547,8 @@ impl CoherenceChecker {
 
     pub fn trait_ref_to_trait_def_id(&self, trait_ref: &trait_ref) -> DefId {
         let def_map = self.crate_context.tcx.def_map;
-        let trait_def = def_map.get_copy(&trait_ref.ref_id);
+        let def_map = def_map.borrow();
+        let trait_def = def_map.get().get_copy(&trait_ref.ref_id);
         let trait_id = def_id_of_def(trait_def);
         return trait_id;
     }
@@ -559,7 +560,8 @@ impl CoherenceChecker {
                                               -> bool {
         match original_type.node {
             ty_path(_, _, path_id) => {
-                match self.crate_context.tcx.def_map.get_copy(&path_id) {
+                let def_map = self.crate_context.tcx.def_map.borrow();
+                match def_map.get().get_copy(&path_id) {
                     DefTy(def_id) | DefStruct(def_id) => {
                         if def_id.crate != LOCAL_CRATE {
                             return false;

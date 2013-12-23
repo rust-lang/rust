@@ -3200,7 +3200,8 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
       }
       ast::ExprStruct(ref path, ref fields, base_expr) => {
         // Resolve the path.
-        match tcx.def_map.find(&id) {
+        let def_map = tcx.def_map.borrow();
+        match def_map.get().find(&id) {
             Some(&ast::DefStruct(type_def_id)) => {
                 check_struct_constructor(fcx, id, expr.span, type_def_id,
                                          *fields, base_expr);
@@ -3928,11 +3929,13 @@ pub fn may_break(cx: ty::ctxt, id: ast::NodeId, b: ast::P<ast::Block>) -> bool {
    // <id> nested anywhere inside the loop?
     (block_query(b, |e| {
         match e.node {
-            ast::ExprBreak(Some(_)) =>
-                match cx.def_map.find(&e.id) {
+            ast::ExprBreak(Some(_)) => {
+                let def_map = cx.def_map.borrow();
+                match def_map.get().find(&e.id) {
                     Some(&ast::DefLabel(loop_id)) if id == loop_id => true,
                     _ => false,
-                },
+                }
+            }
             _ => false
         }}))
 }

@@ -1694,7 +1694,8 @@ impl<'a,'b> Visitor<()> for ImplVisitor<'a,'b> {
         match item.node {
             item_impl(_, Some(ref trait_ref), _, _) => {
                 let def_map = self.ecx.tcx.def_map;
-                let trait_def = def_map.get_copy(&trait_ref.ref_id);
+                let def_map = def_map.borrow();
+                let trait_def = def_map.get().get_copy(&trait_ref.ref_id);
                 let def_id = ast_util::def_id_of_def(trait_def);
 
                 // Load eagerly if this is an implementation of the Drop trait

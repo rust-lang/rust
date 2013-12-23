@@ -220,7 +220,8 @@ impl<'a> Visitor<()> for EmbargoVisitor<'a> {
             ast::item_impl(_, _, ref ty, ref methods) => {
                 let public_ty = match ty.node {
                     ast::ty_path(_, _, id) => {
-                        match self.tcx.def_map.get_copy(&id) {
+                        let def_map = self.tcx.def_map.borrow();
+                        match def_map.get().get_copy(&id) {
                             ast::DefPrimTy(..) => true,
                             def => {
                                 let did = def_id_of_def(def);
@@ -559,7 +560,8 @@ impl<'a> PrivacyVisitor<'a> {
     // Checks that a path is in scope.
     fn check_path(&mut self, span: Span, path_id: ast::NodeId, path: &ast::Path) {
         debug!("privacy - path {}", self.nodestr(path_id));
-        let def = self.tcx.def_map.get_copy(&path_id);
+        let def_map = self.tcx.def_map.borrow();
+        let def = def_map.get().get_copy(&path_id);
         let ck = |tyname: &str| {
             let origdid = def_id_of_def(def);
             match *self.last_private_map.get(&path_id) {
@@ -572,7 +574,8 @@ impl<'a> PrivacyVisitor<'a> {
                 }
             }
         };
-        match self.tcx.def_map.get_copy(&path_id) {
+        let def_map = self.tcx.def_map.borrow();
+        match def_map.get().get_copy(&path_id) {
             ast::DefStaticMethod(..) => ck("static method"),
             ast::DefFn(..) => ck("function"),
             ast::DefStatic(..) => ck("static"),
@@ -665,7 +668,8 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
                         }
                     }
                     ty::ty_enum(_, _) => {
-                        match self.tcx.def_map.get_copy(&expr.id) {
+                        let def_map = self.tcx.def_map.borrow();
+                        match def_map.get().get_copy(&expr.id) {
                             ast::DefVariant(_, variant_id, _) => {
                                 for field in fields.iter() {
                                     self.check_field(expr.span, variant_id,
@@ -750,7 +754,8 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
                         }
                     }
                     ty::ty_enum(_, _) => {
-                        match self.tcx.def_map.find(&pattern.id) {
+                        let def_map = self.tcx.def_map.borrow();
+                        match def_map.get().find(&pattern.id) {
                             Some(&ast::DefVariant(_, variant_id, _)) => {
                                 for field in fields.iter() {
                                     self.check_field(pattern.span, variant_id,

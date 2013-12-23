@@ -31,7 +31,8 @@ pub fn pat_id_map(dm: resolve::DefMap, pat: &Pat) -> PatIdMap {
 pub fn pat_is_variant_or_struct(dm: resolve::DefMap, pat: &Pat) -> bool {
     match pat.node {
         PatEnum(_, _) | PatIdent(_, _, None) | PatStruct(..) => {
-            match dm.find(&pat.id) {
+            let dm = dm.borrow();
+            match dm.get().find(&pat.id) {
                 Some(&DefVariant(..)) | Some(&DefStruct(..)) => true,
                 _ => false
             }
@@ -43,7 +44,8 @@ pub fn pat_is_variant_or_struct(dm: resolve::DefMap, pat: &Pat) -> bool {
 pub fn pat_is_const(dm: resolve::DefMap, pat: &Pat) -> bool {
     match pat.node {
         PatIdent(_, _, None) | PatEnum(..) => {
-            match dm.find(&pat.id) {
+            let dm = dm.borrow();
+            match dm.get().find(&pat.id) {
                 Some(&DefStatic(_, false)) => true,
                 _ => false
             }

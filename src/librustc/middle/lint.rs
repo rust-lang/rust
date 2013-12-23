@@ -712,7 +712,8 @@ fn check_item_ctypes(cx: &Context, it: &ast::item) {
     fn check_ty(cx: &Context, ty: &ast::Ty) {
         match ty.node {
             ast::ty_path(_, _, id) => {
-                match cx.tcx.def_map.get_copy(&id) {
+                let def_map = cx.tcx.def_map.borrow();
+                match def_map.get().get_copy(&id) {
                     ast::DefPrimTy(ast::ty_int(ast::ty_i)) => {
                         cx.span_lint(ctypes, ty.span,
                                 "found rust type `int` in foreign module, while \
@@ -983,7 +984,8 @@ fn check_item_non_uppercase_statics(cx: &Context, it: &ast::item) {
 
 fn check_pat_non_uppercase_statics(cx: &Context, p: &ast::Pat) {
     // Lint for constants that look like binding identifiers (#7526)
-    match (&p.node, cx.tcx.def_map.find(&p.id)) {
+    let def_map = cx.tcx.def_map.borrow();
+    match (&p.node, def_map.get().find(&p.id)) {
         (&ast::PatIdent(_, ref path, _), Some(&ast::DefStatic(_, false))) => {
             // last identifier alone is right choice for this lint.
             let ident = path.segments.last().identifier;
@@ -1197,7 +1199,8 @@ fn check_missing_doc_variant(cx: &Context, v: &ast::variant) {
 fn check_stability(cx: &Context, e: &ast::Expr) {
     let id = match e.node {
         ast::ExprPath(..) | ast::ExprStruct(..) => {
-            match cx.tcx.def_map.find(&e.id) {
+            let def_map = cx.tcx.def_map.borrow();
+            match def_map.get().find(&e.id) {
                 Some(&def) => ast_util::def_id_of_def(def),
                 None => return
             }

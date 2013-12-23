@@ -585,8 +585,12 @@ fn const_expr_unadjusted(cx: @CrateContext,
             assert!(pth.segments.iter().all(|seg| seg.types.is_empty()));
 
             let tcx = cx.tcx;
-            match tcx.def_map.find(&e.id) {
-                Some(&ast::DefFn(def_id, _purity)) => {
+            let opt_def = {
+                let def_map = tcx.def_map.borrow();
+                def_map.get().find_copy(&e.id)
+            };
+            match opt_def {
+                Some(ast::DefFn(def_id, _purity)) => {
                     if !ast_util::is_local(def_id) {
                         let ty = csearch::get_type(cx.tcx, def_id).ty;
                         (base::trans_external_path(cx, def_id, ty), true)
@@ -595,10 +599,10 @@ fn const_expr_unadjusted(cx: @CrateContext,
                         (base::get_item_val(cx, def_id.node), true)
                     }
                 }
-                Some(&ast::DefStatic(def_id, false)) => {
+                Some(ast::DefStatic(def_id, false)) => {
                     get_const_val(cx, def_id)
                 }
-                Some(&ast::DefVariant(enum_did, variant_did, _)) => {
+                Some(ast::DefVariant(enum_did, variant_did, _)) => {
                     let ety = ty::expr_ty(cx.tcx, e);
                     let repr = adt::represent_type(cx, ety);
                     let vinfo = ty::enum_variant_with_id(cx.tcx,
@@ -606,7 +610,7 @@ fn const_expr_unadjusted(cx: @CrateContext,
                                                          variant_did);
                     (adt::trans_const(cx, repr, vinfo.disr_val, []), true)
                 }
-                Some(&ast::DefStruct(_)) => {
+                Some(ast::DefStruct(_)) => {
                     let ety = ty::expr_ty(cx.tcx, e);
                     let llty = type_of::type_of(cx, ety);
                     (C_null(llty), true)
@@ -618,14 +622,18 @@ fn const_expr_unadjusted(cx: @CrateContext,
           }
           ast::ExprCall(callee, ref args, _) => {
               let tcx = cx.tcx;
-              match tcx.def_map.find(&callee.id) {
-                  Some(&ast::DefStruct(_)) => {
+              let opt_def = {
+                  let def_map = tcx.def_map.borrow();
+                  def_map.get().find_copy(&callee.id)
+              };
+              match opt_def {
+                  Some(ast::DefStruct(_)) => {
                       let ety = ty::expr_ty(cx.tcx, e);
                       let repr = adt::represent_type(cx, ety);
                       let (arg_vals, inlineable) = map_list(cx, *args);
                       (adt::trans_const(cx, repr, 0, arg_vals), inlineable)
                   }
-                  Some(&ast::DefVariant(enum_did, variant_did, _)) => {
+                  Some(ast::DefVariant(enum_did, variant_did, _)) => {
                       let ety = ty::expr_ty(cx.tcx, e);
                       let repr = adt::represent_type(cx, ety);
                       let vinfo = ty::enum_variant_with_id(cx.tcx,

@@ -910,7 +910,8 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
     debug!("Encoding side tables for id {}", id);
 
     {
-        let r = tcx.def_map.find(&id);
+        let def_map = tcx.def_map.borrow();
+        let r = def_map.get().find(&id);
         for def in r.iter() {
             ebml_w.tag(c::tag_table_def, |ebml_w| {
                 ebml_w.id(id);
@@ -1238,7 +1239,8 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
                 match value {
                     c::tag_table_def => {
                         let def = decode_def(xcx, val_doc);
-                        dcx.tcx.def_map.insert(id, def);
+                        let mut def_map = dcx.tcx.def_map.borrow_mut();
+                        def_map.get().insert(id, def);
                     }
                     c::tag_table_node_type => {
                         let ty = val_dsr.read_ty(xcx);

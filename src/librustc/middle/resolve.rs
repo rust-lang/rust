@@ -35,7 +35,7 @@ use std::hashmap::{HashMap, HashSet};
 use std::util;
 
 // Definition mapping
-pub type DefMap = @mut HashMap<NodeId,Def>;
+pub type DefMap = @RefCell<HashMap<NodeId,Def>>;
 
 struct binding_info {
     span: Span,
@@ -812,7 +812,7 @@ fn Resolver(session: Session,
 
         namespaces: ~[ TypeNS, ValueNS ],
 
-        def_map: @mut HashMap::new(),
+        def_map: @RefCell::new(HashMap::new()),
         export_map2: @RefCell::new(HashMap::new()),
         trait_map: HashMap::new(),
         used_imports: HashSet::new(),
@@ -2468,7 +2468,8 @@ impl Resolver {
         match import_resolution.value_target.get() {
             Some(target) => {
                 let def = target.bindings.def_for_namespace(ValueNS).unwrap();
-                self.def_map.insert(directive.id, def);
+                let mut def_map = self.def_map.borrow_mut();
+                def_map.get().insert(directive.id, def);
                 let did = def_id_of_def(def);
                 self.last_private.insert(directive.id,
                     if used_public {lp} else {DependsOn(did)});
@@ -2478,7 +2479,8 @@ impl Resolver {
         match import_resolution.type_target.get() {
             Some(target) => {
                 let def = target.bindings.def_for_namespace(TypeNS).unwrap();
-                self.def_map.insert(directive.id, def);
+                let mut def_map = self.def_map.borrow_mut();
+                def_map.get().insert(directive.id, def);
                 let did = def_id_of_def(def);
                 self.last_private.insert(directive.id,
                     if used_public {lp} else {DependsOn(did)});
@@ -2636,7 +2638,8 @@ impl Resolver {
         // Record the destination of this import
         match containing_module.def_id.get() {
             Some(did) => {
-                self.def_map.insert(id, DefMod(did));
+                let mut def_map = self.def_map.borrow_mut();
+                def_map.get().insert(id, DefMod(did));
                 self.last_private.insert(id, lp);
             }
             None => {}
@@ -3511,9 +3514,11 @@ impl Resolver {
                   // If the def is a ty param, and came from the parent
                   // item, it's ok
                   match def {
-                    DefTyParam(did, _)
-                        if self.def_map.find(&did.node).map(|x| *x)
-                            == Some(DefTyParamBinder(item_id)) => {
+                    DefTyParam(did, _) if {
+                        let def_map = self.def_map.borrow();
+                        def_map.get().find(&did.node).map(|x| *x)
+                            == Some(DefTyParamBinder(item_id))
+                    } => {
                       // ok
                     }
                     _ => {
@@ -4094,7 +4099,8 @@ impl Resolver {
                     // Record the current set of trait references.
                     let mut new_trait_refs = ~[];
                     {
-                        let r = this.def_map.find(&trait_reference.ref_id);
+                        let def_map = this.def_map.borrow();
+                        let r = def_map.get().find(&trait_reference.ref_id);
                         for &def in r.iter() {
                             new_trait_refs.push(def_id_of_def(*def));
                         }
@@ -5525,7 +5531,8 @@ impl Resolver {
         debug!("(recording def) recording {:?} for {:?}, last private {:?}",
                 def, node_id, lp);
         self.last_private.insert(node_id, lp);
-        self.def_map.insert_or_update_with(node_id, def, |_, old_value| {
+        let mut def_map = self.def_map.borrow_mut();
+        def_map.get().insert_or_update_with(node_id, def, |_, old_value| {
             // Resolve appears to "resolve" the same ID multiple
             // times, so here is a sanity check it at least comes to
             // the same conclusion! - nmatsakis
