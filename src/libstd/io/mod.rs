@@ -29,6 +29,7 @@ Some examples of obvious things you might want to do
     use std::io::buffered::BufferedReader;
     use std::io::stdin;
 
+    # let _g = ::std::io::ignore_io_error();
     let mut stdin = BufferedReader::new(stdin());
     for line in stdin.lines() {
         print(line);
@@ -40,6 +41,7 @@ Some examples of obvious things you might want to do
     ```rust
     use std::io::File;
 
+    # let _g = ::std::io::ignore_io_error();
     let contents = File::open(&Path::new("message.txt")).read_to_end();
     ```
 
@@ -48,6 +50,7 @@ Some examples of obvious things you might want to do
     ```rust
     use std::io::File;
 
+    # let _g = ::std::io::ignore_io_error();
     let mut file = File::create(&Path::new("message.txt"));
     file.write(bytes!("hello, file!\n"));
     ```
@@ -58,6 +61,7 @@ Some examples of obvious things you might want to do
     use std::io::buffered::BufferedReader;
     use std::io::File;
 
+    # let _g = ::std::io::ignore_io_error();
     let path = Path::new("message.txt");
     let mut file = BufferedReader::new(File::open(&path));
     for line in file.lines() {
@@ -71,6 +75,7 @@ Some examples of obvious things you might want to do
     use std::io::buffered::BufferedReader;
     use std::io::File;
 
+    # let _g = ::std::io::ignore_io_error();
     let path = Path::new("message.txt");
     let mut file = BufferedReader::new(File::open(&path));
     let lines: ~[~str] = file.lines().collect();
@@ -80,10 +85,11 @@ Some examples of obvious things you might want to do
   XXX This needs more improvement: TcpStream constructor taking &str,
   `write_str` and `write_line` methods.
 
-    ```rust,ignore
+    ```rust,should_fail
     use std::io::net::ip::SocketAddr;
     use std::io::net::tcp::TcpStream;
 
+    # let _g = ::std::io::ignore_io_error();
     let addr = from_str::<SocketAddr>("127.0.0.1:8080").unwrap();
     let mut socket = TcpStream::connect(addr).unwrap();
     socket.write(bytes!("GET / HTTP/1.0\n\n"));
