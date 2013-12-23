@@ -412,7 +412,7 @@ impl CoherenceChecker {
         let mut trait_impls = tcx.trait_impls.borrow_mut();
         match trait_impls.get().find(&base_def_id) {
             None => {
-                implementation_list = @mut ~[];
+                implementation_list = @RefCell::new(~[]);
                 trait_impls.get().insert(base_def_id, implementation_list);
             }
             Some(&existing_implementation_list) => {
@@ -420,7 +420,8 @@ impl CoherenceChecker {
             }
         }
 
-        implementation_list.push(implementation);
+        let mut implementation_list = implementation_list.borrow_mut();
+        implementation_list.get().push(implementation);
     }
 
     pub fn check_implementation_coherence(&self) {
@@ -467,7 +468,8 @@ impl CoherenceChecker {
         let trait_impls = self.crate_context.tcx.trait_impls.borrow();
         match trait_impls.get().find(&trait_def_id) {
             Some(impls) => {
-                for &im in impls.iter() {
+                let impls = impls.borrow();
+                for &im in impls.get().iter() {
                     f(im);
                 }
             }
@@ -708,7 +710,8 @@ impl CoherenceChecker {
             Some(found_impls) => impls = found_impls
         }
 
-        for impl_info in impls.iter() {
+        let impls = impls.borrow();
+        for impl_info in impls.get().iter() {
             if impl_info.methods.len() < 1 {
                 // We'll error out later. For now, just don't ICE.
                 continue;
