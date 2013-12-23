@@ -190,7 +190,7 @@ pub fn describe_debug_flags() {
 
 pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
     let mut args = args.to_owned();
-    let binary = args.shift();
+    let binary = args.shift().unwrap();
 
     if args.is_empty() { usage(binary); return; }
 

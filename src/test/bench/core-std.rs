@@ -65,7 +65,7 @@ fn shift_push() {
     let mut v2 = ~[];
 
     while v1.len() > 0 {
-        v2.push(v1.shift());
+        v2.push(v1.shift().unwrap());
     }
 }
 

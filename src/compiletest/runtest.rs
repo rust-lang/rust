@@ -788,7 +788,7 @@ fn make_run_args(config: &config, _props: &TestProps, testfile: &Path) ->
     let exe_file = make_exe_name(config, testfile);
     // FIXME (#9639): This needs to handle non-utf8 paths
     args.push(exe_file.as_str().unwrap().to_owned());
-    let prog = args.shift();
+    let prog = args.shift().unwrap();
     return ProcArgs {prog: prog, args: args};
 }
 

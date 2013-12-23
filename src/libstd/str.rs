@@ -703,7 +703,7 @@ impl<'a> Iterator<char> for Normalizations<'a> {
             self.sorted = true;
         }
 
-        match self.buffer.shift_opt() {
+        match self.buffer.shift() {
             Some((c, 0)) => {
                 self.sorted = false;
                 Some(c)

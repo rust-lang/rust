@@ -1053,7 +1053,7 @@ mod tests {
                 }
                 1 => {
                     m.pop_front();
-                    if v.len() > 0 { v.shift(); }
+                    v.shift();
                 }
                 2 | 4 =>  {
                     m.push_front(-i);
