@@ -516,7 +516,7 @@ impl MatchOptions {
      *
      * This function always returns this value:
      *
-     * ```rust,notest
+     * ```rust,ignore
      * MatchOptions {
      *     case_sensitive: true,
      *     require_literal_separator: false.

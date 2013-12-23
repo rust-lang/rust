@@ -25,7 +25,7 @@
 //!
 //! # Example
 //!
-//! ```rust,notest
+//! ```rust,ignore
 //! let (mut p1, c1) = Chan::new();
 //! let (mut p2, c2) = Chan::new();
 //!
