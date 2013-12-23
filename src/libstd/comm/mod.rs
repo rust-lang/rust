@@ -292,6 +292,7 @@ impl<T: Send> Consumer<T>{
 
 /// The receiving-half of Rust's channel type. This half can only be owned by
 /// one task
+#[no_freeze] // can't share ports in an arc
 pub struct Port<T> {
     priv queue: Consumer<T>,
 }
@@ -305,12 +306,15 @@ pub struct PortIterator<'a, T> {
 
 /// The sending-half of Rust's channel type. This half can only be owned by one
 /// task
+#[no_freeze] // can't share chans in an arc
 pub struct Chan<T> {
     priv queue: spsc::Producer<T, Packet>,
 }
 
 /// The sending-half of Rust's channel type. This half can be shared among many
 /// tasks by creating copies of itself through the `clone` method.
+#[no_freeze] // technically this implementation is shareable, but it shouldn't
+             // be required to be shareable in an arc
 pub struct SharedChan<T> {
     priv queue: mpsc::Producer<T, Packet>,
 }
