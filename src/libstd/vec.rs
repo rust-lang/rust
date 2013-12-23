@@ -2215,17 +2215,25 @@ pub trait MutableVector<'a, T> {
     /// Unsafely sets the element in index to the value
     unsafe fn unsafe_set(self, index: uint, val: T);
 
-    /**
-     * Unchecked vector index assignment.  Does not drop the
-     * old value and hence is only suitable when the vector
-     * is newly allocated.
-     */
+    /// Unchecked vector index assignment.  Does not drop the
+    /// old value and hence is only suitable when the vector
+    /// is newly allocated.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut v = [~"foo", ~"bar"];
+    ///
+    /// // memory leak! `~"bar"` is not deallocated.
+    /// unsafe { v.init_elem(1, ~"baz"); }
+    /// ```
     unsafe fn init_elem(self, i: uint, val: T);
 
-    /// Copies data from `src` to `self`.
+    /// Copies raw bytes from `src` to `self`.
     ///
-    /// `self` and `src` must not overlap. Fails if `self` is
-    /// shorter than `src`.
+    /// This does not run destructors on the overwritten elements, and
+    /// ignores move semantics. `self` and `src` must not
+    /// overlap. Fails if `self` is shorter than `src`.
     unsafe fn copy_memory(self, src: &[T]);
 }
 
@@ -2370,8 +2378,25 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
 
 /// Trait for &[T] where T is Cloneable
 pub trait MutableCloneableVector<T> {
-    /// Copies as many elements from `src` as it can into `self`
-    /// (the shorter of self.len() and src.len()). Returns the number of elements copied.
+    /// Copies as many elements from `src` as it can into `self` (the
+    /// shorter of `self.len()` and `src.len()`). Returns the number
+    /// of elements copied.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::vec::MutableCloneableVector;
+    ///
+    /// let mut dst = [0, 0, 0];
+    /// let src = [1, 2];
+    ///
+    /// assert_eq!(dst.copy_from(src), 2);
+    /// assert_eq!(dst, [1, 2, 0]);
+    ///
+    /// let src2 = [3, 4, 5, 6];
+    /// assert_eq!(dst.copy_from(src2), 3);
+    /// assert_eq!(dst, [3, 4, 5]);
+    /// ```
     fn copy_from(self, &[T]) -> uint;
 }
 
@@ -2390,7 +2415,7 @@ impl<'a, T:Clone> MutableCloneableVector<T> for &'a mut [T] {
 pub trait MutableTotalOrdVector<T> {
     /// Sort the vector, in place.
     ///
-    /// This is equivalent to `self.sort_by(std::vec::SortForward)`.
+    /// This is equivalent to `self.sort_by(|a, b| a.cmp(b))`.
     ///
     /// # Example
     ///
