@@ -254,7 +254,7 @@ mod tests {
         loop {
             match input.read(buf) {
                 None => { break }
-                Some(n) => { ret.push_str(str::from_utf8(buf.slice_to(n))); }
+                Some(n) => { ret.push_str(str::from_utf8(buf.slice_to(n)).unwrap()); }
             }
         }
         return ret;

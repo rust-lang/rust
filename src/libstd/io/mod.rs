@@ -1202,7 +1202,7 @@ pub trait Buffer: Reader {
                 }
             }
         }
-        match str::from_utf8_opt(buf.slice_to(width)) {
+        match str::from_utf8(buf.slice_to(width)) {
             Some(s) => Some(s.char_at(0)),
             None => None
         }

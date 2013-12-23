@@ -704,7 +704,7 @@ fn should_sort_failures_before_printing_them() {
 
     st.write_failures();
     let s = match st.out {
-        Raw(ref m) => str::from_utf8(m.get_ref()),
+        Raw(ref m) => str::from_utf8(m.get_ref()).unwrap(),
         Pretty(_) => unreachable!()
     };
 
