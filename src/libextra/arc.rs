@@ -51,7 +51,7 @@ use std::borrow;
 /// As sync::condvar, a mechanism for unlock-and-descheduling and signaling.
 pub struct Condvar<'a> {
     priv is_mutex: bool,
-    priv failed: &'a mut bool,
+    priv failed: &'a bool,
     priv cond: &'a sync::Condvar<'a>
 }
 
@@ -226,7 +226,7 @@ impl<T:Send> MutexArc<T> {
         // not already unsafe. See borrow_rwlock, far below.
         (&(*state).lock).lock(|| {
             check_poison(true, (*state).failed);
-            let _z = PoisonOnFail(&mut (*state).failed);
+            let _z = PoisonOnFail::new(&mut (*state).failed);
             blk(&mut (*state).data)
         })
     }
@@ -239,10 +239,10 @@ impl<T:Send> MutexArc<T> {
         let state = self.x.get();
         (&(*state).lock).lock_cond(|cond| {
             check_poison(true, (*state).failed);
-            let _z = PoisonOnFail(&mut (*state).failed);
+            let _z = PoisonOnFail::new(&mut (*state).failed);
             blk(&mut (*state).data,
                 &Condvar {is_mutex: true,
-                          failed: &mut (*state).failed,
+                          failed: &(*state).failed,
                           cond: cond })
         })
     }
@@ -311,7 +311,8 @@ fn check_poison(is_mutex: bool, failed: bool) {
 
 #[doc(hidden)]
 struct PoisonOnFail {
-    failed: *mut bool,
+    flag: *mut bool,
+    failed: bool,
 }
 
 impl Drop for PoisonOnFail {
@@ -319,16 +320,19 @@ impl Drop for PoisonOnFail {
         unsafe {
             /* assert!(!*self.failed);
                -- might be false in case of cond.wait() */
-            if task::failing() {
-                *self.failed = true;
+            if !self.failed && task::failing() {
+                *self.flag = true;
             }
         }
     }
 }
 
-fn PoisonOnFail<'r>(failed: &'r mut bool) -> PoisonOnFail {
-    PoisonOnFail {
-        failed: failed
+impl PoisonOnFail {
+    fn new<'a>(flag: &'a mut bool) -> PoisonOnFail {
+        PoisonOnFail {
+            flag: flag,
+            failed: task::failing()
+        }
     }
 }
 
@@ -392,7 +396,7 @@ impl<T:Freeze + Send> RWArc<T> {
             let state = self.x.get();
             (*borrow_rwlock(state)).write(|| {
                 check_poison(false, (*state).failed);
-                let _z = PoisonOnFail(&mut (*state).failed);
+                let _z = PoisonOnFail::new(&mut (*state).failed);
                 blk(&mut (*state).data)
             })
         }
@@ -407,10 +411,10 @@ impl<T:Freeze + Send> RWArc<T> {
             let state = self.x.get();
             (*borrow_rwlock(state)).write_cond(|cond| {
                 check_poison(false, (*state).failed);
-                let _z = PoisonOnFail(&mut (*state).failed);
+                let _z = PoisonOnFail::new(&mut (*state).failed);
                 blk(&mut (*state).data,
                     &Condvar {is_mutex: false,
-                              failed: &mut (*state).failed,
+                              failed: &(*state).failed,
                               cond: cond})
             })
         }
@@ -463,7 +467,7 @@ impl<T:Freeze + Send> RWArc<T> {
                 blk(RWWriteMode {
                     data: &mut (*state).data,
                     token: write_mode,
-                    poison: PoisonOnFail(&mut (*state).failed)
+                    poison: PoisonOnFail::new(&mut (*state).failed)
                 })
             })
         }
@@ -563,7 +567,7 @@ impl<'a, T:Freeze + Send> RWWriteMode<'a, T> {
                     unsafe {
                         let cvar = Condvar {
                             is_mutex: false,
-                            failed: &mut *poison.failed,
+                            failed: &*poison.flag,
                             cond: cond
                         };
                         blk(data, &cvar)
@@ -714,6 +718,25 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_mutex_arc_access_in_unwind() {
+        let arc = MutexArc::new(1i);
+        let arc2 = arc.clone();
+        task::try::<()>(proc() {
+            struct Unwinder {
+                i: MutexArc<int>
+            }
+            impl Drop for Unwinder {
+                fn drop(&mut self) {
+                    self.i.access(|num| *num += 1);
+                }
+            }
+            let _u = Unwinder { i: arc2 };
+            fail!();
+        });
+        assert_eq!(2, arc.access(|n| *n));
+    }
+
     #[test] #[should_fail]
     fn test_rw_arc_poison_wr() {
         let arc = RWArc::new(1);
@@ -840,6 +863,26 @@ mod tests {
             assert_eq!(*num, 10);
         })
     }
+
+    #[test]
+    fn test_rw_arc_access_in_unwind() {
+        let arc = RWArc::new(1i);
+        let arc2 = arc.clone();
+        task::try::<()>(proc() {
+            struct Unwinder {
+                i: RWArc<int>
+            }
+            impl Drop for Unwinder {
+                fn drop(&mut self) {
+                    self.i.write(|num| *num += 1);
+                }
+            }
+            let _u = Unwinder { i: arc2 };
+            fail!();
+        });
+        assert_eq!(2, arc.read(|n| *n));
+    }
+
     #[test]
     fn test_rw_downgrade() {
         // (1) A downgrader gets in write mode and does cond.wait.
