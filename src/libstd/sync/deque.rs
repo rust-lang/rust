@@ -157,7 +157,7 @@ impl<T: Send> BufferPool<T> {
         unsafe {
             self.pool.with(|pool| {
                 match pool.iter().position(|x| x.size() >= (1 << bits)) {
-                    Some(i) => pool.remove(i),
+                    Some(i) => pool.remove(i).unwrap(),
                     None => ~Buffer::new(bits)
                 }
             })

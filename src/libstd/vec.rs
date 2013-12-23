@@ -1399,18 +1399,14 @@ pub trait OwnedVector<T> {
     /// # Example
     /// ```rust
     /// let mut v = ~[1, 2, 3];
-    /// assert_eq!(v.remove_opt(1), Some(2));
+    /// assert_eq!(v.remove(1), Some(2));
     /// assert_eq!(v, ~[1, 3]);
     ///
-    /// assert_eq!(v.remove_opt(4), None);
+    /// assert_eq!(v.remove(4), None);
     /// // v is unchanged:
     /// assert_eq!(v, ~[1, 3]);
     /// ```
-    fn remove_opt(&mut self, i: uint) -> Option<T>;
-
-    /// Remove and return the element at position i within v, shifting
-    /// all elements after position i one position to the left.
-    fn remove(&mut self, i: uint) -> T;
+    fn remove(&mut self, i: uint) -> Option<T>;
 
     /**
      * Remove an element from anywhere in the vector and return it, replacing it
@@ -1577,7 +1573,7 @@ impl<T> OwnedVector<T> for ~[T] {
 
     #[inline]
     fn shift(&mut self) -> Option<T> {
-        self.remove_opt(0)
+        self.remove(0)
     }
 
     #[inline]
@@ -1604,15 +1600,7 @@ impl<T> OwnedVector<T> for ~[T] {
         }
     }
 
-    #[inline]
-    fn remove(&mut self, i: uint) -> T {
-        match self.remove_opt(i) {
-            Some(t) => t,
-            None => fail!("remove: the len is {} but the index is {}", self.len(), i)
-        }
-    }
-
-    fn remove_opt(&mut self, i: uint) -> Option<T> {
+    fn remove(&mut self, i: uint) -> Option<T> {
         let len = self.len();
         if i < len {
             unsafe { // infallible
@@ -3617,48 +3605,26 @@ mod tests {
     }
 
     #[test]
-    fn test_remove_opt() {
+    fn test_remove() {
         let mut a = ~[1,2,3,4];
 
-        assert_eq!(a.remove_opt(2), Some(3));
+        assert_eq!(a.remove(2), Some(3));
         assert_eq!(a, ~[1,2,4]);
 
-        assert_eq!(a.remove_opt(2), Some(4));
+        assert_eq!(a.remove(2), Some(4));
         assert_eq!(a, ~[1,2]);
 
-        assert_eq!(a.remove_opt(2), None);
+        assert_eq!(a.remove(2), None);
         assert_eq!(a, ~[1,2]);
 
-        assert_eq!(a.remove_opt(0), Some(1));
+        assert_eq!(a.remove(0), Some(1));
         assert_eq!(a, ~[2]);
 
-        assert_eq!(a.remove_opt(0), Some(2));
+        assert_eq!(a.remove(0), Some(2));
         assert_eq!(a, ~[]);
 
-        assert_eq!(a.remove_opt(0), None);
-        assert_eq!(a.remove_opt(10), None);
-    }
-
-    #[test]
-    fn test_remove() {
-        let mut a = ~[1, 2, 3, 4];
-        a.remove(2);
-        assert_eq!(a, ~[1, 2, 4]);
-
-        let mut a = ~[1, 2, 3];
-        a.remove(0);
-        assert_eq!(a, ~[2, 3]);
-
-        let mut a = ~[1];
-        a.remove(0);
-        assert_eq!(a, ~[]);
-    }
-
-    #[test]
-    #[should_fail]
-    fn test_remove_oob() {
-        let mut a = ~[1, 2, 3];
-        a.remove(3);
+        assert_eq!(a.remove(0), None);
+        assert_eq!(a.remove(10), None);
     }
 
     #[test]
