@@ -45,6 +45,7 @@ use syntax::codemap::Span;
 use syntax::opt_vec;
 use syntax::visit;
 
+use std::cell::RefCell;
 use std::hashmap::HashSet;
 use std::result::Ok;
 use std::vec;
@@ -391,7 +392,7 @@ impl CoherenceChecker {
         let mut inherent_impls = tcx.inherent_impls.borrow_mut();
         match inherent_impls.get().find(&base_def_id) {
             None => {
-                implementation_list = @mut ~[];
+                implementation_list = @RefCell::new(~[]);
                 inherent_impls.get().insert(base_def_id, implementation_list);
             }
             Some(&existing_implementation_list) => {
@@ -399,7 +400,8 @@ impl CoherenceChecker {
             }
         }
 
-        implementation_list.push(implementation);
+        let mut implementation_list = implementation_list.borrow_mut();
+        implementation_list.get().push(implementation);
     }
 
     pub fn add_trait_impl(&self,

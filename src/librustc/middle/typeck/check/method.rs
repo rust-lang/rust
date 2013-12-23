@@ -536,7 +536,8 @@ impl<'a> LookupContext<'a> {
         let inherent_impls = self.tcx().inherent_impls.borrow();
         let opt_impl_infos = inherent_impls.get().find(&did);
         for impl_infos in opt_impl_infos.iter() {
-            for impl_info in impl_infos.iter() {
+            let impl_infos = impl_infos.borrow();
+            for impl_info in impl_infos.get().iter() {
                 let mut inherent_candidates = self.inherent_candidates
                                                   .borrow_mut();
                 self.push_candidates_from_impl(inherent_candidates.get(),

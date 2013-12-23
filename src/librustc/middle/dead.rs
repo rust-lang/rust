@@ -287,7 +287,8 @@ impl DeadVisitor {
         match inherent_impls.get().find(&def_id) {
             None => (),
             Some(ref impl_list) => {
-                for impl_ in impl_list.iter() {
+                let impl_list = impl_list.borrow();
+                for impl_ in impl_list.get().iter() {
                     for method in impl_.methods.iter() {
                         if self.live_symbols.contains(&method.def_id.node) {
                             return true;
