@@ -59,6 +59,7 @@ for llconfig in sys.argv[3:]:
     for lib in out.strip().split(' '):
         lib = lib[2:] # chop of the leading '-l'
         f.write("#[link(name = \"" + lib + "\", kind = \"static\")]\n")
+    f.write("#[link(name = \"stdc++\")]\n")
     if os == 'win32':
         f.write("#[link(name = \"imagehlp\")]\n")
     f.write("extern {}\n")
