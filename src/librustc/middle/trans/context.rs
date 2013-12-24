@@ -9,7 +9,6 @@
 // except according to those terms.
 
 
-use back::{upcall};
 use driver::session;
 use lib::llvm::{ContextRef, ModuleRef, ValueRef};
 use lib::llvm::{llvm, TargetData, TypeNames};
@@ -105,7 +104,6 @@ pub struct CrateContext {
      tcx: ty::ctxt,
      maps: astencode::Maps,
      stats: @mut Stats,
-     upcalls: @upcall::Upcalls,
      tydesc_type: Type,
      int_type: Type,
      opaque_vec_type: Type,
@@ -233,7 +231,6 @@ impl CrateContext {
                     llvm_insns: HashMap::new(),
                     fn_stats: ~[]
                   },
-                  upcalls: upcall::declare_upcalls(targ_cfg, llmod),
                   tydesc_type: tydesc_type,
                   int_type: int_type,
                   opaque_vec_type: opaque_vec_type,

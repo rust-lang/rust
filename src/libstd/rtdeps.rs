@@ -26,24 +26,45 @@ extern {}
 #[link(name = "dl")]
 #[link(name = "m")]
 #[link(name = "pthread")]
-#[link(name = "stdc++")]
 extern {}
 
 #[cfg(target_os = "android")]
 #[link(name = "dl")]
 #[link(name = "log")]
-#[link(name = "supc++")]
 #[link(name = "m")]
 extern {}
 
 #[cfg(target_os = "freebsd")]
 #[link(name = "execinfo")]
 #[link(name = "rt")]
-#[link(name = "stdc++")]
 #[link(name = "pthread")]
 extern {}
 
 #[cfg(target_os = "macos")]
 #[link(name = "pthread")]
-#[link(name = "stdc++")]
 extern {}
+
+// NOTE: remove after snapshot
+// stage0-generated code still depends on c++
+#[cfg(stage0)]
+mod stage0 {
+    #[cfg(target_os = "linux")]
+    #[link(name = "stdc++")]
+    extern {}
+
+    #[cfg(target_os = "android")]
+    #[link(name = "supc++")]
+    extern {}
+
+    #[cfg(target_os = "freebsd")]
+    #[link(name = "stdc++")]
+    extern {}
+
+    #[cfg(target_os = "macos")]
+    #[link(name = "stdc++")]
+    extern {}
+
+    #[cfg(target_os = "win32")]
+    #[link(name = "stdc++")]
+    extern {}
+}

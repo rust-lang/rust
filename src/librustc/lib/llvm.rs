@@ -319,7 +319,6 @@ pub mod llvm {
     // automatically updated whenever LLVM is updated to include an up-to-date
     // set of the libraries we need to link to LLVM for.
     #[link(name = "rustllvm", kind = "static")]
-    #[link(name = "stdc++")]
     extern {
         /* Create and destroy contexts. */
         pub fn LLVMContextCreate() -> ContextRef;
