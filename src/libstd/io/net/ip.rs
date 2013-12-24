@@ -153,11 +153,11 @@ impl<'a> Parser<'a> {
             let c = c as u8;
             // assuming radix is either 10 or 16
             if c >= '0' as u8 && c <= '9' as u8 {
-                Some((c - '0' as u8) as u8)
+                Some(c - '0' as u8)
             } else if radix > 10 && c >= 'a' as u8 && c < 'a' as u8 + (radix - 10) {
-                Some((c - 'a' as u8 + 10) as u8)
+                Some(c - 'a' as u8 + 10)
             } else if radix > 10 && c >= 'A' as u8 && c < 'A' as u8 + (radix - 10) {
-                Some((c - 'A' as u8 + 10) as u8)
+                Some(c - 'A' as u8 + 10)
             } else {
                 None
             }
