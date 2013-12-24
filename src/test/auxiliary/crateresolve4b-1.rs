@@ -11,8 +11,6 @@
 // aux-build:crateresolve4a-1.rs
 // aux-build:crateresolve4a-2.rs
 #[crate_id="crateresolve4b#0.1"];
-// NOTE: remove after the next snapshot
-#[link(name = "crateresolve4b", vers = "0.1")];
 #[crate_type = "lib"];
 
 extern mod crateresolve4a = "crateresolve4a#0.2";

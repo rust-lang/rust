@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 #[crate_id="lint_stability#0.1"];
-// NOTE: remove after the next snapshot
-#[link(name = "lint_stability",
-       vers = "0.1")];
 #[crate_type = "lib"];
 
 #[deprecated]

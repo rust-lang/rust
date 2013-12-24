@@ -17,12 +17,6 @@
 #[attr4(attr5)];
 
 #[crate_id="extra#0.1"];
-// NOTE: remove after the next snapshot
-// Special linkage attributes for the crate
-#[link(name = "extra",
-       vers = "0.1",
-       uuid = "122bed0b-c19b-4b82-b0b7-7ae8aead7297",
-       url = "http://rust-lang.org/src/extra")];
 
 // These are attributes of the following mod
 #[attr1 = "val"]
