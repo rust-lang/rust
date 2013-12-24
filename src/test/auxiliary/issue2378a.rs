@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[link (name = "issue2378a")];
 #[crate_type = "lib"];
 
 pub enum maybe<T> { just(T), nothing }

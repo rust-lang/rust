@@ -9,10 +9,6 @@
 // except according to those terms.
 
 #[crate_id="externcallback#0.1"];
-// NOTE: remove after the next snapshot
-#[link(name = "externcallback",
-       vers = "0.1")];
-
 #[crate_type = "lib"];
 
 use std::libc;

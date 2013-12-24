@@ -9,8 +9,6 @@
 // except according to those terms.
 
 #[crate_id="inline_dtor#0.1"];
-// NOTE: remove after the next snapshot
-#[link(name="inline_dtor", vers="0.1")];
 
 pub struct Foo;
 

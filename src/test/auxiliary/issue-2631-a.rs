@@ -10,8 +10,6 @@
 
 #[feature(managed_boxes)];
 #[crate_id="req"];
-// NOTE: remove after the next snapshot
-#[link(name = "req")];
 #[crate_type = "lib"];
 
 extern mod extra;
