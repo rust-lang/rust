@@ -213,7 +213,6 @@ impl MoveData {
         let mut paths = self.paths.borrow_mut();
         paths.get()[*index].first_child = first_child
     }
-                            
 
     fn move_next_move(&self, index: MoveIndex) -> MoveIndex {
         //! Type safe indexing operator
