@@ -10,7 +10,7 @@
 
 /*!
 
-The `ToBytes` and `IterBytes` traits
+The `ToBytes` and `IterBytes` traits for converting to raw bytes
 
 */
 

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Utilities for manipulating the char type
+//! Unicode characters manipulation (`char` type)
 
 use cast::transmute;
 use option::{None, Option, Some};

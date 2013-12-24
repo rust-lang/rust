@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Operations and constants for `i8`
+//! Operations and constants for signed 8-bits integers (`i8` type)
 
 #[allow(non_uppercase_statics)];
 
