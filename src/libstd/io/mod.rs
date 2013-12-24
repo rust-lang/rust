@@ -725,7 +725,7 @@ pub trait Reader {
     ///
     /// `u64`s are 8 bytes long.
     fn read_be_u64(&mut self) -> u64 {
-        self.read_be_uint_n(8) as u64
+        self.read_be_uint_n(8)
     }
 
     /// Reads a big-endian `u32`.
@@ -746,7 +746,7 @@ pub trait Reader {
     ///
     /// `i64`s are 8 bytes long.
     fn read_be_i64(&mut self) -> i64 {
-        self.read_be_int_n(8) as i64
+        self.read_be_int_n(8)
     }
 
     /// Reads a big-endian `i32`.
@@ -785,7 +785,7 @@ pub trait Reader {
     ///
     /// `u64`s are 8 bytes long.
     fn read_le_u64(&mut self) -> u64 {
-        self.read_le_uint_n(8) as u64
+        self.read_le_uint_n(8)
     }
 
     /// Reads a little-endian `u32`.
@@ -806,7 +806,7 @@ pub trait Reader {
     ///
     /// `i64`s are 8 bytes long.
     fn read_le_i64(&mut self) -> i64 {
-        self.read_le_int_n(8) as i64
+        self.read_le_int_n(8)
     }
 
     /// Reads a little-endian `i32`.
@@ -846,7 +846,7 @@ pub trait Reader {
     /// `u8`s are 1 byte.
     fn read_u8(&mut self) -> u8 {
         match self.read_byte() {
-            Some(b) => b as u8,
+            Some(b) => b,
             None => 0
         }
     }

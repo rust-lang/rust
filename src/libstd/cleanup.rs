@@ -42,7 +42,7 @@ unsafe fn each_live_alloc(read_next_before: bool,
         let next_before = (*alloc).next;
         let uniq = (*alloc).ref_count == managed::RC_MANAGED_UNIQUE;
 
-        if !f(alloc as *mut raw::Box<()>, uniq) {
+        if !f(alloc, uniq) {
             return false;
         }
 
