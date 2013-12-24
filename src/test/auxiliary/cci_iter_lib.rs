@@ -9,8 +9,6 @@
 // except according to those terms.
 
 #[crate_id="cci_iter_lib"];
-// NOTE: remove after the next snapshot
-#[link(name="cci_iter_lib", vers="0.0")];
 
 #[inline]
 pub fn iter<T>(v: &[T], f: |&T|) {

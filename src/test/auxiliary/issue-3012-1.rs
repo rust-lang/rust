@@ -9,8 +9,6 @@
 // except according to those terms.
 
 #[crate_id="socketlib"];
-// NOTE: remove after the next snapshot
-#[link(name="socketlib", vers="0.0")];
 #[crate_type = "lib"];
 
 pub mod socket {

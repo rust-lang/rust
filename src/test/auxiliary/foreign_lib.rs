@@ -9,8 +9,6 @@
 // except according to those terms.
 
 #[crate_id="foreign_lib"];
-// NOTE: remove after the next snapshot
-#[link(name="foreign_lib", vers="0.0")];
 
 pub mod rustrt {
     use std::libc;

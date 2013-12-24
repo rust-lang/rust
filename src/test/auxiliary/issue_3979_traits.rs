@@ -9,9 +9,6 @@
 // except according to those terms.
 
 #[crate_id="issue_3979_traits#0.1"];
-// NOTE: remove after the next snapshot
-#[link(name = "issue_3979_traits",
-       vers = "0.1")];
 
 #[crate_type = "lib"];
 
