@@ -39,7 +39,7 @@ pub fn keep_going(data: &[u8], f: |*u8, uint| -> i64) -> i64 {
             ret = f(data, amt);
             if cfg!(windows) { break } // windows has no eintr
             // if we get an eintr, then try again
-            if ret != -1 || os::errno() as int != eintr { break }
+            if ret != -1 || os::errno() != eintr { break }
         }
         if ret == 0 {
             break
@@ -81,7 +81,7 @@ impl FileDesc {
         #[cfg(not(windows))] type rlen = libc::size_t;
         let ret = keep_going(buf, |buf, len| {
             unsafe {
-                libc::read(self.fd, buf as *mut libc::c_void, len as rlen) as i64
+                libc::read(self.fd, buf as *mut libc::c_void, len as rlen)
             }
         });
         if ret == 0 {
@@ -97,7 +97,7 @@ impl FileDesc {
         #[cfg(not(windows))] type wlen = libc::size_t;
         let ret = keep_going(buf, |buf, len| {
             unsafe {
-                libc::write(self.fd, buf as *libc::c_void, len as wlen) as i64
+                libc::write(self.fd, buf as *libc::c_void, len as wlen)
             }
         });
         if ret < 0 {
@@ -213,7 +213,7 @@ impl rtio::RtioFileStream for FileDesc {
             io::SeekEnd => libc::SEEK_END,
             io::SeekCur => libc::SEEK_CUR,
         };
-        let n = unsafe { libc::lseek(self.fd, pos as libc::off_t, whence) };
+        let n = unsafe { libc::lseek(self.fd, pos, whence) };
         if n < 0 {
             Err(super::last_error())
         } else {
@@ -279,7 +279,7 @@ impl rtio::RtioFileStream for FileDesc {
     #[cfg(unix)]
     fn truncate(&mut self, offset: i64) -> Result<(), IoError> {
         super::mkerr_libc(unsafe {
-            libc::ftruncate(self.fd, offset as libc::off_t)
+            libc::ftruncate(self.fd, offset)
         })
     }
 }
@@ -385,7 +385,7 @@ impl rtio::RtioFileStream for CFile {
             io::SeekEnd => libc::SEEK_END,
             io::SeekCur => libc::SEEK_CUR,
         };
-        let n = unsafe { libc::fseek(self.file, pos as libc::c_long, whence) };
+        let n = unsafe { libc::fseek(self.file, pos, whence) };
         if n < 0 {
             Err(super::last_error())
         } else {
@@ -816,15 +816,15 @@ fn mkstat(stat: &libc::stat, path: &CString) -> io::FileStat {
         path: Path::new(path),
         size: stat.st_size as u64,
         kind: kind,
-        perm: (stat.st_mode) as io::FilePermission & io::AllPermissions,
+        perm: stat.st_mode & io::AllPermissions,
         created: mktime(stat.st_ctime as u64, stat.st_ctime_nsec as u64),
         modified: mktime(stat.st_mtime as u64, stat.st_mtime_nsec as u64),
         accessed: mktime(stat.st_atime as u64, stat.st_atime_nsec as u64),
         unstable: io::UnstableFileStat {
-            device: stat.st_dev as u64,
-            inode: stat.st_ino as u64,
-            rdev: stat.st_rdev as u64,
-            nlink: stat.st_nlink as u64,
+            device: stat.st_dev,
+            inode: stat.st_ino,
+            rdev: stat.st_rdev,
+            nlink: stat.st_nlink,
             uid: stat.st_uid as u64,
             gid: stat.st_gid as u64,
             blksize: stat.st_blksize as u64,

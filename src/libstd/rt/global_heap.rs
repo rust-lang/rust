@@ -57,7 +57,7 @@ pub unsafe fn realloc_raw(ptr: *mut c_void, size: uint) -> *mut c_void {
 #[lang="exchange_malloc"]
 #[inline]
 pub unsafe fn exchange_malloc(size: uintptr_t) -> *c_char {
-    malloc_raw(size as uint) as *c_char
+    malloc_raw(size) as *c_char
 }
 
 // FIXME: #7496
@@ -71,12 +71,12 @@ pub unsafe fn closure_exchange_malloc_(td: *c_char, size: uintptr_t) -> *c_char 
 #[inline]
 pub unsafe fn closure_exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
     let td = td as *TyDesc;
-    let size = size as uint;
+    let size: uint = size;
 
     assert!(td.is_not_null());
 
     let total_size = get_box_size(size, (*td).align);
-    let p = malloc_raw(total_size as uint);
+    let p = malloc_raw(total_size);
 
     let alloc = p as *mut raw::Box<()>;
     (*alloc).type_desc = td;
