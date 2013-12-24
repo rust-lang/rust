@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Rust Communication Primitives
+//! Communication primitives for concurrent tasks (`Chan` and `Port` types)
 //!
 //! Rust makes it very difficult to share data among tasks to prevent race
 //! conditions and to improve parallelism, but there is often a need for

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Operations and constants for `f64`
+//! Operations and constants for 64-bits floats (`f64` type)
 
 #[allow(missing_doc)];
 

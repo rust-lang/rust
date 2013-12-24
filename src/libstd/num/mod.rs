@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Numeric traits and functions for generic mathematics.
+//! Numeric traits and functions for generic mathematics
 //!
 //! These are implemented for the primitive numeric types in `std::{u8, u16,
 //! u32, u64, uint, i8, i16, i32, i64, int, f32, f64, float}`.

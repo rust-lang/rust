@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*! The Clone trait for types that cannot be "implicitly copied"
+/*! The `Clone` trait for types that cannot be 'implicitly copied'
 
 In Rust, some simple types are "implicitly copyable" and when you
 assign them or pass them as arguments, the receiver will get a copy,

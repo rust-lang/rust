@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Process spawning.
+//! Utilities for spawning and managing processes
 
 #[allow(missing_doc)];
 

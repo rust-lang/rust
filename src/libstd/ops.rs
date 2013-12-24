@@ -13,8 +13,10 @@
 
 /*!
  *
- * Traits for the built-in operators. Implementing these traits allows you to get
- * an effect similar to overloading operators.
+ * Traits representing built-in operators, useful for overloading
+ *
+ * Implementing these traits allows you to get an effect similar to
+ * overloading operators.
  *
  * The values for the right hand side of an operator are automatically
  * borrowed, so `a + b` is sugar for `a.add(&b)`.

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*! Task-local reference counted boxes
+/*! Task-local reference-counted boxes (`Rc` type)
 
 The `Rc` type provides shared ownership of an immutable value. Destruction is deterministic, and
 will occur as soon as the last owner is gone. It is marked as non-sendable because it avoids the

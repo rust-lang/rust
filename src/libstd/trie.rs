@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! An ordered map and set for integer keys implemented as a radix trie
+//! Ordered containers with integer keys, implemented as radix tries (`TrieSet` and `TrieMap` types)
 
 use prelude::*;
 use uint;
