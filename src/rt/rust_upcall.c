@@ -19,7 +19,7 @@
   switch to the C stack.
  */
 
-#include "rust_globals.h"
+#include <stdint.h>
 
 //Unwinding ABI declarations.
 typedef int _Unwind_Reason_Code;
