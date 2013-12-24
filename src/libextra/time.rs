@@ -767,13 +767,13 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
 
         let mut buf = [0];
         let c = match rdr.read(buf) {
-            Some(..) => buf[0] as u8 as char,
+            Some(..) => buf[0] as char,
             None => break
         };
         match c {
             '%' => {
                 let ch = match rdr.read(buf) {
-                    Some(..) => buf[0] as u8 as char,
+                    Some(..) => buf[0] as char,
                     None => break
                 };
                 match parse_type(s, pos, ch, &mut tm) {
