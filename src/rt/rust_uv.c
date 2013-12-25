@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#include <stdlib.h>
+#include <assert.h>
+
 #ifdef __WIN32__
 // For alloca
 #include <malloc.h>
@@ -19,8 +22,6 @@
 #endif
 
 #include "uv.h"
-
-#include "rust_globals.h"
 
 void*
 rust_uv_loop_new() {
