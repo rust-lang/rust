@@ -34,7 +34,7 @@ enum Position {
 }
 
 struct Context<'a> {
-    ecx: &'a mut ExtCtxt,
+    ecx: &'a mut ExtCtxt<'a>,
     fmtsp: Span,
 
     // Parsed argument expressions and the types that we've found so far for

@@ -1400,10 +1400,7 @@ impl Resolver {
                 name_bindings.define_type(DefTrait(def_id), sp, is_public);
                 new_parent
             }
-
-            ItemMac(..) => {
-                fail!("item macros unimplemented")
-            }
+            ItemMac(..) => parent
         }
     }
 
@@ -3804,9 +3801,9 @@ impl Resolver {
                 });
             }
 
-            ItemMac(..) => {
-                fail!("item macros unimplemented")
-            }
+           ItemMac(..) => {
+                // do nothing, these are just around to be encoded
+           }
         }
     }
 

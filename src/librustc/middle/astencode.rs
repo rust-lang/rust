@@ -107,6 +107,13 @@ pub fn encode_inlined_item(ecx: &e::EncodeContext,
            ebml_w.writer.tell());
 }
 
+pub fn encode_exported_macro(ebml_w: &mut writer::Encoder, i: &ast::Item) {
+    match i.node {
+        ast::ItemMac(..) => encode_ast(ebml_w, ast::IIItem(@i.clone())),
+        _ => fail!("expected a macro")
+    }
+}
+
 pub fn decode_inlined_item(cdata: @cstore::crate_metadata,
                            tcx: ty::ctxt,
                            maps: Maps,
@@ -156,6 +163,13 @@ pub fn decode_inlined_item(cdata: @cstore::crate_metadata,
         }
         Some(ii)
       }
+    }
+}
+
+pub fn decode_exported_macro(par_doc: ebml::Doc) -> @ast::Item {
+    match decode_ast(par_doc) {
+        ast::IIItem(item) => item,
+        _ => fail!("expected item")
     }
 }
 

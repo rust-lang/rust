@@ -79,6 +79,8 @@ struct Stats {
     dep_bytes: Cell<u64>,
     lang_item_bytes: Cell<u64>,
     native_lib_bytes: Cell<u64>,
+    macro_registrar_fn_bytes: Cell<u64>,
+    macro_defs_bytes: Cell<u64>,
     impl_bytes: Cell<u64>,
     misc_bytes: Cell<u64>,
     item_bytes: Cell<u64>,
@@ -1287,7 +1289,9 @@ fn encode_info_for_item(ecx: &EncodeContext,
         // Encode inherent implementations for this trait.
         encode_inherent_implementations(ecx, ebml_w, def_id);
       }
-      ItemMac(..) => fail!("item macros unimplemented")
+      ItemMac(..) => {
+        // macros are encoded separately
+      }
     }
 }
 
@@ -1691,6 +1695,50 @@ fn encode_native_libraries(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
     ebml_w.end_tag();
 }
 
+fn encode_macro_registrar_fn(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
+    let ptr = ecx.tcx.sess.macro_registrar_fn.borrow();
+    match *ptr.get() {
+        Some(did) => {
+            ebml_w.start_tag(tag_macro_registrar_fn);
+            encode_def_id(ebml_w, did);
+            ebml_w.end_tag();
+        }
+        None => {}
+    }
+}
+
+struct MacroDefVisitor<'a, 'b> {
+    ecx: &'a EncodeContext<'a>,
+    ebml_w: &'a mut writer::Encoder<'b>
+}
+
+impl<'a, 'b> Visitor<()> for MacroDefVisitor<'a, 'b> {
+    fn visit_item(&mut self, item: &Item, _: ()) {
+        match item.node {
+            ItemMac(..) => {
+                self.ebml_w.start_tag(tag_macro_def);
+                astencode::encode_exported_macro(self.ebml_w, item);
+                self.ebml_w.end_tag();
+            }
+            _ => {}
+        }
+    }
+}
+
+fn encode_macro_defs(ecx: &EncodeContext,
+                     crate: &Crate,
+                     ebml_w: &mut writer::Encoder) {
+    ebml_w.start_tag(tag_exported_macros);
+    {
+        let mut visitor = MacroDefVisitor {
+            ecx: ecx,
+            ebml_w: ebml_w,
+        };
+        visit::walk_crate(&mut visitor, crate, ());
+    }
+    ebml_w.end_tag();
+}
+
 struct ImplVisitor<'a,'b> {
     ecx: &'a EncodeContext<'a>,
     ebml_w: &'a mut writer::Encoder<'b>,
@@ -1815,6 +1863,8 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, crate: &Crate)
         dep_bytes: Cell::new(0),
         lang_item_bytes: Cell::new(0),
         native_lib_bytes: Cell::new(0),
+        macro_registrar_fn_bytes: Cell::new(0),
+        macro_defs_bytes: Cell::new(0),
         impl_bytes: Cell::new(0),
         misc_bytes: Cell::new(0),
         item_bytes: Cell::new(0),
@@ -1873,6 +1923,16 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, crate: &Crate)
     encode_native_libraries(&ecx, &mut ebml_w);
     ecx.stats.native_lib_bytes.set(ebml_w.writer.tell() - i);
 
+    // Encode the macro registrar function
+    i = ebml_w.writer.tell();
+    encode_macro_registrar_fn(&ecx, &mut ebml_w);
+    ecx.stats.macro_registrar_fn_bytes.set(ebml_w.writer.tell() - i);
+
+    // Encode macro definitions
+    i = ebml_w.writer.tell();
+    encode_macro_defs(&ecx, crate, &mut ebml_w);
+    ecx.stats.macro_defs_bytes.set(ebml_w.writer.tell() - i);
+
     // Encode the def IDs of impls, for coherence checking.
     i = ebml_w.writer.tell();
     encode_impls(&ecx, crate, &mut ebml_w);
@@ -1905,17 +1965,19 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, crate: &Crate)
         }
 
         println!("metadata stats:");
-        println!("    inline bytes: {}", ecx.stats.inline_bytes.get());
-        println!(" attribute bytes: {}", ecx.stats.attr_bytes.get());
-        println!("       dep bytes: {}", ecx.stats.dep_bytes.get());
-        println!(" lang item bytes: {}", ecx.stats.lang_item_bytes.get());
-        println!("    native bytes: {}", ecx.stats.native_lib_bytes.get());
-        println!("      impl bytes: {}", ecx.stats.impl_bytes.get());
-        println!("      misc bytes: {}", ecx.stats.misc_bytes.get());
-        println!("      item bytes: {}", ecx.stats.item_bytes.get());
-        println!("     index bytes: {}", ecx.stats.index_bytes.get());
-        println!("      zero bytes: {}", ecx.stats.zero_bytes.get());
-        println!("     total bytes: {}", ecx.stats.total_bytes.get());
+        println!("         inline bytes: {}", ecx.stats.inline_bytes.get());
+        println!("      attribute bytes: {}", ecx.stats.attr_bytes.get());
+        println!("            dep bytes: {}", ecx.stats.dep_bytes.get());
+        println!("      lang item bytes: {}", ecx.stats.lang_item_bytes.get());
+        println!("         native bytes: {}", ecx.stats.native_lib_bytes.get());
+        println!("macro registrar bytes: {}", ecx.stats.macro_registrar_fn_bytes.get());
+        println!("      macro def bytes: {}", ecx.stats.macro_defs_bytes.get());
+        println!("           impl bytes: {}", ecx.stats.impl_bytes.get());
+        println!("           misc bytes: {}", ecx.stats.misc_bytes.get());
+        println!("           item bytes: {}", ecx.stats.item_bytes.get());
+        println!("          index bytes: {}", ecx.stats.index_bytes.get());
+        println!("           zero bytes: {}", ecx.stats.zero_bytes.get());
+        println!("          total bytes: {}", ecx.stats.total_bytes.get());
     }
 }
 

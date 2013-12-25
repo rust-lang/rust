@@ -20,6 +20,7 @@ use extra::getopts;
 use extra::test;
 use rustc::driver::driver;
 use rustc::driver::session;
+use rustc::metadata::creader::Loader;
 use syntax::diagnostic;
 use syntax::parse;
 
@@ -58,7 +59,8 @@ pub fn run(input: &str, matches: &getopts::Matches) -> int {
 
     let cfg = driver::build_configuration(sess);
     let crate = driver::phase_1_parse_input(sess, cfg.clone(), &input);
-    let (crate, _) = driver::phase_2_configure_and_expand(sess, cfg, crate);
+    let loader = &mut Loader::new(sess);
+    let (crate, _) = driver::phase_2_configure_and_expand(sess, cfg, loader, crate);
 
     let ctx = @core::DocContext {
         crate: crate,

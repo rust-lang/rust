@@ -16,11 +16,13 @@ use std::os;
 use std::io;
 use std::io::fs;
 use extra::workcache;
+use rustc::metadata::creader::Loader;
 use rustc::driver::{driver, session};
 use extra::getopts::groups::getopts;
 use syntax;
 use syntax::codemap::{DUMMY_SP, Spanned};
-use syntax::ext::base::ExtCtxt;
+use syntax::ext::base;
+use syntax::ext::base::{ExtCtxt, MacroCrate};
 use syntax::{ast, attr, codemap, diagnostic, fold, visit};
 use syntax::attr::AttrMetaMethods;
 use syntax::fold::Folder;
@@ -63,9 +65,9 @@ struct ListenerFn {
     path: ~[ast::Ident]
 }
 
-struct ReadyCtx {
+struct ReadyCtx<'a> {
     sess: session::Session,
-    ext_cx: ExtCtxt,
+    ext_cx: ExtCtxt<'a>,
     path: ~[ast::Ident],
     fns: ~[ListenerFn]
 }
@@ -130,7 +132,7 @@ fn fold_item(item: @ast::Item, fold: &mut CrateSetup)
 }
 
 struct CrateSetup<'a> {
-    ctx: &'a mut ReadyCtx,
+    ctx: &'a mut ReadyCtx<'a>,
 }
 
 impl<'a> fold::Folder for CrateSetup<'a> {
@@ -145,9 +147,10 @@ impl<'a> fold::Folder for CrateSetup<'a> {
 /// Generate/filter main function, add the list of commands, etc.
 pub fn ready_crate(sess: session::Session,
                    crate: ast::Crate) -> ast::Crate {
+    let loader = &mut Loader::new(sess);
     let mut ctx = ReadyCtx {
         sess: sess,
-        ext_cx: ExtCtxt::new(sess.parse_sess, sess.opts.cfg.clone()),
+        ext_cx: ExtCtxt::new(sess.parse_sess, sess.opts.cfg.clone(), loader),
         path: ~[],
         fns: ~[]
     };
@@ -269,23 +272,41 @@ pub fn compile_input(context: &BuildContext,
     // `extern mod` directives.
     let cfg = driver::build_configuration(sess);
     let crate = driver::phase_1_parse_input(sess, cfg.clone(), &input);
-    let (mut crate, ast_map) = driver::phase_2_configure_and_expand(sess, cfg.clone(), crate);
 
-    debug!("About to call find_and_install_dependencies...");
-
-    find_and_install_dependencies(context, pkg_id, in_file, sess, exec, &crate, deps,
-                                  |p| {
-                                      debug!("a dependency: {}", p.display());
-                                      let mut addl_lib_search_paths =
-                                        addl_lib_search_paths.borrow_mut();
-                                      let addl_lib_search_paths =
-                                        addl_lib_search_paths.get();
-                                      let mut addl_lib_search_paths =
-                                        addl_lib_search_paths.borrow_mut();
-                                      // Pass the directory containing a dependency
-                                      // as an additional lib search path
-                                      addl_lib_search_paths.get().insert(p);
-                                  });
+    let (mut crate, ast_map) = {
+        let installer = CrateInstaller {
+            context: context,
+            parent: pkg_id,
+            parent_crate: in_file,
+            sess: sess,
+            exec: exec,
+            deps: deps,
+            save: |p| {
+                debug!("a dependency: {}", p.display());
+                let mut addl_lib_search_paths =
+                    addl_lib_search_paths.borrow_mut();
+                let addl_lib_search_paths =
+                    addl_lib_search_paths.get();
+                let mut addl_lib_search_paths =
+                    addl_lib_search_paths.borrow_mut();
+                // Pass the directory containing a dependency
+                // as an additional lib search path
+                addl_lib_search_paths.get().insert(p);
+            },
+        };
+        let mut loader = CrateLoader {
+            installer: installer,
+            loader: Loader::new(sess),
+        };
+        let (crate, ast_map) = driver::phase_2_configure_and_expand(sess,
+                                                     cfg.clone(),
+                                                     &mut loader,
+                                                     crate);
+        let CrateLoader { mut installer, .. } = loader;
+        debug!("About to call find_and_install_dependencies...");
+        find_and_install_dependencies(&mut installer, &crate);
+        (crate, ast_map)
+    };
 
     // Inject the crate_id attribute so we get the right package name and version
     if !attr::contains_name(crate.attrs, "crate_id") {
@@ -430,19 +451,18 @@ pub fn compile_crate(ctxt: &BuildContext,
     compile_input(ctxt, exec, pkg_id, crate, workspace, deps, flags, cfgs, opt, what)
 }
 
-struct ViewItemVisitor<'a> {
+struct CrateInstaller<'a> {
     context: &'a BuildContext,
     parent: &'a CrateId,
     parent_crate: &'a Path,
     sess: session::Session,
     exec: &'a mut workcache::Exec,
-    c: &'a ast::Crate,
     save: 'a |Path|,
     deps: &'a mut DepMap
 }
 
-impl<'a> Visitor<()> for ViewItemVisitor<'a> {
-    fn visit_view_item(&mut self, vi: &ast::ViewItem, env: ()) {
+impl<'a> CrateInstaller<'a> {
+    fn install_crate(&mut self, vi: &ast::ViewItem) {
         use conditions::nonexistent_package::cond;
 
         match vi.node {
@@ -585,33 +605,43 @@ impl<'a> Visitor<()> for ViewItemVisitor<'a> {
             // Ignore `use`s
             _ => ()
         }
+    }
+}
+
+impl<'a> Visitor<()> for CrateInstaller<'a> {
+    fn visit_view_item(&mut self, vi: &ast::ViewItem, env: ()) {
+        self.install_crate(vi);
         visit::walk_view_item(self, vi, env)
+    }
+}
+
+struct CrateLoader<'a> {
+    installer: CrateInstaller<'a>,
+    loader: Loader,
+}
+
+impl<'a> base::CrateLoader for CrateLoader<'a> {
+    fn load_crate(&mut self, crate: &ast::ViewItem) -> MacroCrate {
+        self.installer.install_crate(crate);
+        self.loader.load_crate(crate)
+    }
+
+    fn get_exported_macros(&mut self, cnum: ast::CrateNum) -> ~[@ast::Item] {
+        self.loader.get_exported_macros(cnum)
+    }
+
+    fn get_registrar_symbol(&mut self, cnum: ast::CrateNum) -> Option<~str> {
+        self.loader.get_registrar_symbol(cnum)
     }
 }
 
 /// Collect all `extern mod` directives in `c`, then
 /// try to install their targets, failing if any target
 /// can't be found.
-pub fn find_and_install_dependencies(context: &BuildContext,
-                                     parent: &CrateId,
-                                     parent_crate: &Path,
-                                     sess: session::Session,
-                                     exec: &mut workcache::Exec,
-                                     c: &ast::Crate,
-                                     deps: &mut DepMap,
-                                     save: |Path|) {
+pub fn find_and_install_dependencies(installer: &mut CrateInstaller,
+                                     c: &ast::Crate) {
     debug!("In find_and_install_dependencies...");
-    let mut visitor = ViewItemVisitor {
-        context: context,
-        parent: parent,
-        parent_crate: parent_crate,
-        sess: sess,
-        exec: exec,
-        c: c,
-        save: save,
-        deps: deps
-    };
-    visit::walk_crate(&mut visitor, c, ())
+    visit::walk_crate(installer, c, ())
 }
 
 pub fn mk_string_lit(s: @str) -> ast::Lit {
