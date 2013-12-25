@@ -43,6 +43,8 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("non_ascii_idents", Active),
     ("thread_local", Active),
     ("link_args", Active),
+    ("phase", Active),
+    ("macro_registrar", Active),
 
     // These are used to test this portion of the compiler, they don't actually
     // mean anything
@@ -114,7 +116,15 @@ impl Visitor<()> for Context {
                     }
                 }
             }
-            _ => {}
+            ast::ViewItemExternMod(..) => {
+                for attr in i.attrs.iter() {
+                    if "phase" == attr.name() {
+                        self.gate_feature("phase", attr.span,
+                                          "compile time crate loading is \
+                                           experimental and possibly buggy");
+                    }
+                }
+            }
         }
         visit::walk_view_item(self, i, ())
     }
@@ -148,6 +158,14 @@ impl Visitor<()> for Context {
                                       "the `link_args` attribute is not portable \
                                        across platforms, it is recommended to \
                                        use `#[link(name = \"foo\")]` instead")
+                }
+            }
+
+            ast::ItemFn(..) => {
+                if attr::contains_name(i.attrs, "macro_registrar") {
+                    self.gate_feature("macro_registrar", i.span,
+                                      "cross-crate macro exports are \
+                                       experimental and possibly buggy");
                 }
             }
 

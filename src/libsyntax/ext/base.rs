@@ -20,6 +20,7 @@ use parse::token::{ident_to_str, intern, str_to_ident};
 use util::small_vector::SmallVector;
 
 use std::hashmap::HashMap;
+use std::unstable::dynamic_lib::DynamicLibrary;
 
 // new-style macro! tt code:
 //
@@ -120,6 +121,9 @@ pub type SyntaxExpanderTTItemFun =
 pub type SyntaxExpanderTTItemFunNoCtxt =
     fn(&mut ExtCtxt, Span, ast::Ident, ~[ast::TokenTree]) -> MacResult;
 
+pub type MacroCrateRegistrationFun =
+    extern "Rust" fn(|ast::Name, SyntaxExtension|);
+
 pub trait AnyMacro {
     fn make_expr(&self) -> @ast::Expr;
     fn make_items(&self) -> SmallVector<@ast::Item>;
@@ -151,24 +155,21 @@ pub enum SyntaxExtension {
     IdentTT(~SyntaxExpanderTTItemTrait:'static, Option<Span>),
 }
 
-
-// The SyntaxEnv is the environment that's threaded through the expansion
-// of macros. It contains bindings for macros, and also a special binding
-// for " block" (not a legal identifier) that maps to a BlockInfo
-pub type SyntaxEnv = MapChain<Name, SyntaxExtension>;
-
 pub struct BlockInfo {
     // should macros escape from this scope?
     macros_escape : bool,
     // what are the pending renames?
-    pending_renames : RenameList
+    pending_renames : RenameList,
+    // references for crates loaded in this scope
+    macro_crates: ~[DynamicLibrary],
 }
 
 impl BlockInfo {
     pub fn new() -> BlockInfo {
         BlockInfo {
             macros_escape: false,
-            pending_renames: ~[]
+            pending_renames: ~[],
+            macro_crates: ~[],
         }
     }
 }
@@ -189,7 +190,7 @@ pub fn syntax_expander_table() -> SyntaxEnv {
         None)
     }
 
-    let mut syntax_expanders = MapChain::new();
+    let mut syntax_expanders = SyntaxEnv::new();
     syntax_expanders.insert(intern(&"macro_rules"),
                             IdentTT(~SyntaxExpanderTTItem {
                                 expander: SyntaxExpanderTTItemExpanderWithContext(
@@ -280,25 +281,38 @@ pub fn syntax_expander_table() -> SyntaxEnv {
     syntax_expanders
 }
 
+pub struct MacroCrate {
+    lib: Option<Path>,
+    cnum: ast::CrateNum,
+}
+
+pub trait CrateLoader {
+    fn load_crate(&mut self, crate: &ast::ViewItem) -> MacroCrate;
+    fn get_exported_macros(&mut self, crate_num: ast::CrateNum) -> ~[@ast::Item];
+    fn get_registrar_symbol(&mut self, crate_num: ast::CrateNum) -> Option<~str>;
+}
+
 // One of these is made during expansion and incrementally updated as we go;
 // when a macro expansion occurs, the resulting nodes have the backtrace()
 // -> expn_info of their expansion context stored into their span.
-pub struct ExtCtxt {
+pub struct ExtCtxt<'a> {
     parse_sess: @parse::ParseSess,
     cfg: ast::CrateConfig,
     backtrace: Option<@ExpnInfo>,
+    loader: &'a mut CrateLoader,
 
     mod_path: ~[ast::Ident],
     trace_mac: bool
 }
 
-impl ExtCtxt {
-    pub fn new(parse_sess: @parse::ParseSess, cfg: ast::CrateConfig)
-               -> ExtCtxt {
+impl<'a> ExtCtxt<'a> {
+    pub fn new<'a>(parse_sess: @parse::ParseSess, cfg: ast::CrateConfig,
+               loader: &'a mut CrateLoader) -> ExtCtxt<'a> {
         ExtCtxt {
             parse_sess: parse_sess,
             cfg: cfg,
             backtrace: None,
+            loader: loader,
             mod_path: ~[],
             trace_mac: false
         }
@@ -456,20 +470,27 @@ pub fn get_exprs_from_tts(cx: &ExtCtxt,
 // able to refer to a macro that was added to an enclosing
 // scope lexically later than the deeper scope.
 
-// Only generic to make it easy to test
-struct MapChainFrame<K, V> {
+struct MapChainFrame {
     info: BlockInfo,
-    map: HashMap<K, V>,
+    map: HashMap<Name, SyntaxExtension>,
+}
+
+#[unsafe_destructor]
+impl Drop for MapChainFrame {
+    fn drop(&mut self) {
+        // make sure that syntax extension dtors run before we drop the libs
+        self.map.clear();
+    }
 }
 
 // Only generic to make it easy to test
-pub struct MapChain<K, V> {
-    priv chain: ~[MapChainFrame<K, V>],
+pub struct SyntaxEnv {
+    priv chain: ~[MapChainFrame],
 }
 
-impl<K: Hash+Eq, V> MapChain<K, V> {
-    pub fn new() -> MapChain<K, V> {
-        let mut map = MapChain { chain: ~[] };
+impl SyntaxEnv {
+    pub fn new() -> SyntaxEnv {
+        let mut map = SyntaxEnv { chain: ~[] };
         map.push_frame();
         map
     }
@@ -486,7 +507,7 @@ impl<K: Hash+Eq, V> MapChain<K, V> {
         self.chain.pop();
     }
 
-    fn find_escape_frame<'a>(&'a mut self) -> &'a mut MapChainFrame<K, V> {
+    fn find_escape_frame<'a>(&'a mut self) -> &'a mut MapChainFrame {
         for (i, frame) in self.chain.mut_iter().enumerate().invert() {
             if !frame.info.macros_escape || i == 0 {
                 return frame
@@ -495,7 +516,7 @@ impl<K: Hash+Eq, V> MapChain<K, V> {
         unreachable!()
     }
 
-    pub fn find<'a>(&'a self, k: &K) -> Option<&'a V> {
+    pub fn find<'a>(&'a self, k: &Name) -> Option<&'a SyntaxExtension> {
         for frame in self.chain.iter().invert() {
             match frame.map.find(k) {
                 Some(v) => return Some(v),
@@ -505,49 +526,15 @@ impl<K: Hash+Eq, V> MapChain<K, V> {
         None
     }
 
-    pub fn insert(&mut self, k: K, v: V) {
+    pub fn insert(&mut self, k: Name, v: SyntaxExtension) {
         self.find_escape_frame().map.insert(k, v);
+    }
+
+    pub fn insert_macro_crate(&mut self, lib: DynamicLibrary) {
+        self.find_escape_frame().info.macro_crates.push(lib);
     }
 
     pub fn info<'a>(&'a mut self) -> &'a mut BlockInfo {
         &mut self.chain[self.chain.len()-1].info
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::MapChain;
-
-    #[test]
-    fn testenv() {
-        let mut m = MapChain::new();
-        let (a,b,c,d) = ("a", "b", "c", "d");
-        m.insert(1, a);
-        assert_eq!(Some(&a), m.find(&1));
-
-        m.push_frame();
-        m.info().macros_escape = true;
-        m.insert(2, b);
-        assert_eq!(Some(&a), m.find(&1));
-        assert_eq!(Some(&b), m.find(&2));
-        m.pop_frame();
-
-        assert_eq!(Some(&a), m.find(&1));
-        assert_eq!(Some(&b), m.find(&2));
-
-        m.push_frame();
-        m.push_frame();
-        m.info().macros_escape = true;
-        m.insert(3, c);
-        assert_eq!(Some(&c), m.find(&3));
-        m.pop_frame();
-        assert_eq!(Some(&c), m.find(&3));
-        m.pop_frame();
-        assert_eq!(None, m.find(&3));
-
-        m.push_frame();
-        m.insert(4, d);
-        m.pop_frame();
-        assert_eq!(None, m.find(&4));
     }
 }

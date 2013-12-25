@@ -190,7 +190,7 @@ mod ty;
 
 pub struct TraitDef<'a> {
     /// The extension context
-    cx: &'a ExtCtxt,
+    cx: &'a ExtCtxt<'a>,
     /// The span for the current #[deriving(Foo)] header.
     span: Span,
 

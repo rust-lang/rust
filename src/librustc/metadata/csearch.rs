@@ -301,3 +301,16 @@ pub fn get_trait_of_method(cstore: @cstore::CStore,
     decoder::get_trait_of_method(cdata, def_id.node, tcx)
 }
 
+pub fn get_macro_registrar_fn(cstore: @cstore::CStore,
+                              crate_num: ast::CrateNum)
+                              -> Option<ast::DefId> {
+    let cdata = cstore.get_crate_data(crate_num);
+    decoder::get_macro_registrar_fn(cdata)
+}
+
+pub fn get_exported_macros(cstore: @cstore::CStore,
+                           crate_num: ast::CrateNum)
+                           -> ~[@ast::Item] {
+    let cdata = cstore.get_crate_data(crate_num);
+    decoder::get_exported_macros(cdata)
+}

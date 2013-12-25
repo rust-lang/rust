@@ -14,6 +14,7 @@
 use driver::session;
 use front::config;
 use front::std_inject::with_version;
+use metadata::creader::Loader;
 
 use std::cell::RefCell;
 use std::vec;
@@ -38,10 +39,10 @@ struct Test {
     should_fail: bool
 }
 
-struct TestCtxt {
+struct TestCtxt<'a> {
     sess: session::Session,
     path: RefCell<~[ast::Ident]>,
-    ext_cx: ExtCtxt,
+    ext_cx: ExtCtxt<'a>,
     testfns: RefCell<~[Test]>,
     is_extra: bool,
     config: ast::CrateConfig,
@@ -63,11 +64,11 @@ pub fn modify_for_testing(sess: session::Session,
     }
 }
 
-struct TestHarnessGenerator {
-    cx: TestCtxt,
+struct TestHarnessGenerator<'a> {
+    cx: TestCtxt<'a>,
 }
 
-impl fold::Folder for TestHarnessGenerator {
+impl<'a> fold::Folder for TestHarnessGenerator<'a> {
     fn fold_crate(&mut self, c: ast::Crate) -> ast::Crate {
         let folded = fold::noop_fold_crate(c, self);
 
@@ -155,9 +156,10 @@ impl fold::Folder for TestHarnessGenerator {
 
 fn generate_test_harness(sess: session::Session, crate: ast::Crate)
                          -> ast::Crate {
+    let loader = &mut Loader::new(sess);
     let mut cx: TestCtxt = TestCtxt {
         sess: sess,
-        ext_cx: ExtCtxt::new(sess.parse_sess, sess.opts.cfg.clone()),
+        ext_cx: ExtCtxt::new(sess.parse_sess, sess.opts.cfg.clone(), loader),
         path: RefCell::new(~[]),
         testfns: RefCell::new(~[]),
         is_extra: is_extra(&crate),

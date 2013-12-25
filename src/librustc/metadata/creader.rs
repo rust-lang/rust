@@ -10,10 +10,13 @@
 
 //! Validates all used crates and extern libraries and loads their metadata
 
+use driver::{driver, session};
 use driver::session::Session;
+use metadata::csearch;
 use metadata::cstore;
 use metadata::decoder;
 use metadata::loader;
+use metadata::loader::Os;
 
 use std::cell::RefCell;
 use std::hashmap::HashMap;
@@ -23,6 +26,7 @@ use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::{Span, DUMMY_SP};
 use syntax::diagnostic::SpanHandler;
+use syntax::ext::base::{CrateLoader, MacroCrate};
 use syntax::parse::token;
 use syntax::parse::token::IdentInterner;
 use syntax::crateid::CrateId;
@@ -131,37 +135,65 @@ fn visit_crate(e: &Env, c: &ast::Crate) {
 }
 
 fn visit_view_item(e: &mut Env, i: &ast::ViewItem) {
+    let should_load = i.attrs.iter().all(|attr| {
+        "phase" != attr.name() ||
+            attr.meta_item_list().map_or(false, |phases| {
+                attr::contains_name(phases, "link")
+            })
+    });
+
+    if !should_load {
+        return;
+    }
+
+    match extract_crate_info(i) {
+        Some(info) => {
+            let cnum = resolve_crate(e, info.ident, info.name, info.version,
+                                     @"", i.span);
+            e.sess.cstore.add_extern_mod_stmt_cnum(info.id, cnum);
+        }
+        None => ()
+    }
+}
+
+struct CrateInfo {
+    ident: @str,
+    name: @str,
+    version: @str,
+    id: ast::NodeId,
+}
+
+fn extract_crate_info(i: &ast::ViewItem) -> Option<CrateInfo> {
     match i.node {
-      ast::ViewItemExternMod(ident, path_opt, id) => {
-          let ident = token::ident_to_str(&ident);
-          debug!("resolving extern mod stmt. ident: {:?} path_opt: {:?}",
-                 ident, path_opt);
-          let (name, version) = match path_opt {
-              Some((path_str, _)) => {
-                  let crateid: Option<CrateId> = from_str(path_str);
-                  match crateid {
-                      None => (@"", @""),
-                      Some(crateid) => {
-                          let version = match crateid.version {
-                              None => @"",
-                              Some(ref ver) => ver.to_managed(),
-                          };
-                          (crateid.name.to_managed(), version)
-                      }
-                  }
-              }
-              None => (ident, @""),
-          };
-          let cnum = resolve_crate(e,
-                                   ident,
-                                   name,
-                                   version,
-                                   @"",
-                                   i.span);
-          e.sess.cstore.add_extern_mod_stmt_cnum(id, cnum);
-      }
-      _ => ()
-  }
+        ast::ViewItemExternMod(ident, path_opt, id) => {
+            let ident = token::ident_to_str(&ident);
+            debug!("resolving extern mod stmt. ident: {:?} path_opt: {:?}",
+                   ident, path_opt);
+            let (name, version) = match path_opt {
+                Some((path_str, _)) => {
+                    let crateid: Option<CrateId> = from_str(path_str);
+                    match crateid {
+                        None => (@"", @""),
+                        Some(crateid) => {
+                            let version = match crateid.version {
+                                None => @"",
+                                Some(ref ver) => ver.to_managed(),
+                            };
+                            (crateid.name.to_managed(), version)
+                        }
+                    }
+                }
+                None => (ident, @""),
+            };
+            Some(CrateInfo {
+                  ident: ident,
+                  name: name,
+                  version: version,
+                  id: id,
+            })
+        }
+        _ => None
+    }
 }
 
 fn visit_item(e: &Env, i: &ast::Item) {
@@ -354,4 +386,47 @@ fn resolve_crate_deps(e: &mut Env, cdata: &[u8]) -> cstore::cnum_map {
         }
     }
     return @RefCell::new(cnum_map);
+}
+
+pub struct Loader {
+    priv env: Env,
+}
+
+impl Loader {
+    pub fn new(sess: Session) -> Loader {
+        let os = driver::get_os(driver::host_triple()).unwrap();
+        let os = session::sess_os_to_meta_os(os);
+        Loader {
+            env: Env {
+                sess: sess,
+                os: os,
+                crate_cache: @RefCell::new(~[]),
+                next_crate_num: 1,
+                intr: token::get_ident_interner(),
+            }
+        }
+    }
+}
+
+impl CrateLoader for Loader {
+    fn load_crate(&mut self, crate: &ast::ViewItem) -> MacroCrate {
+        let info = extract_crate_info(crate).unwrap();
+        let cnum = resolve_crate(&mut self.env, info.ident, info.name,
+                                 info.version, @"", crate.span);
+        let library = self.env.sess.cstore.get_used_crate_source(cnum).unwrap();
+        MacroCrate {
+            lib: library.dylib,
+            cnum: cnum
+        }
+    }
+
+    fn get_exported_macros(&mut self, cnum: ast::CrateNum) -> ~[@ast::Item] {
+        csearch::get_exported_macros(self.env.sess.cstore, cnum)
+    }
+
+    fn get_registrar_symbol(&mut self, cnum: ast::CrateNum) -> Option<~str> {
+        let cstore = self.env.sess.cstore;
+        csearch::get_macro_registrar_fn(cstore, cnum)
+            .map(|did| csearch::get_symbol(cstore, did))
+    }
 }

@@ -236,7 +236,7 @@ pub trait AstBuilder {
                      vis: ast::Visibility, path: ~[ast::Ident]) -> ast::ViewItem;
 }
 
-impl AstBuilder for ExtCtxt {
+impl<'a> AstBuilder for ExtCtxt<'a> {
     fn path(&self, span: Span, strs: ~[ast::Ident]) -> ast::Path {
         self.path_all(span, false, strs, opt_vec::Empty, ~[])
     }
@@ -896,7 +896,7 @@ impl AstBuilder for ExtCtxt {
 }
 
 struct Duplicator<'a> {
-    cx: &'a ExtCtxt,
+    cx: &'a ExtCtxt<'a>,
 }
 
 impl<'a> Folder for Duplicator<'a> {

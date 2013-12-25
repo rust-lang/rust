@@ -20,6 +20,7 @@ use lib::llvm::{ContextRef, ModuleRef};
 use metadata::common::LinkMeta;
 use metadata::{creader, filesearch};
 use metadata::cstore::CStore;
+use metadata::creader::Loader;
 use metadata;
 use middle::{trans, freevars, kind, ty, typeck, lint, astencode, reachable};
 use middle;
@@ -41,6 +42,7 @@ use syntax::attr;
 use syntax::attr::{AttrMetaMethods};
 use syntax::codemap;
 use syntax::diagnostic;
+use syntax::ext::base::CrateLoader;
 use syntax::parse;
 use syntax::parse::token;
 use syntax::print::{pp, pprust};
@@ -163,6 +165,7 @@ pub fn phase_1_parse_input(sess: Session, cfg: ast::CrateConfig, input: &input)
 /// standard library and prelude.
 pub fn phase_2_configure_and_expand(sess: Session,
                                     cfg: ast::CrateConfig,
+                                    loader: &mut CrateLoader,
                                     mut crate: ast::Crate)
                                     -> (ast::Crate, syntax::ast_map::Map) {
     let time_passes = sess.time_passes();
@@ -188,9 +191,14 @@ pub fn phase_2_configure_and_expand(sess: Session,
     crate = time(time_passes, "configuration 1", crate, |crate|
                  front::config::strip_unconfigured_items(crate));
 
-    crate = time(time_passes, "expansion", crate, |crate|
-                 syntax::ext::expand::expand_crate(sess.parse_sess, cfg.clone(),
-                                                   crate));
+    crate = time(time_passes, "expansion", crate, |crate| {
+        syntax::ext::expand::expand_crate(sess.parse_sess,
+                                          loader,
+                                          cfg.clone(),
+                                          crate)
+    });
+    // dump the syntax-time crates
+    sess.cstore.reset();
 
     // strip again, in case expansion added anything with a #[cfg].
     crate = time(time_passes, "configuration 2", crate, |crate|
@@ -247,6 +255,11 @@ pub fn phase_3_run_analysis_passes(sess: Session,
 
     time(time_passes, "looking for entry point", (),
          |_| middle::entry::find_entry_point(sess, crate, ast_map));
+
+    sess.macro_registrar_fn.with_mut(|r| *r =
+        time(time_passes, "looking for macro registrar", (), |_|
+            syntax::ext::registrar::find_macro_registrar(
+                sess.span_diagnostic, crate)));
 
     let freevars = time(time_passes, "freevar finding", (), |_|
                         freevars::annotate_freevars(def_map, crate));
@@ -491,7 +504,8 @@ pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &input,
         let (expanded_crate, ast_map) = {
             let crate = phase_1_parse_input(sess, cfg.clone(), input);
             if stop_after_phase_1(sess) { return; }
-            phase_2_configure_and_expand(sess, cfg, crate)
+            let loader = &mut Loader::new(sess);
+            phase_2_configure_and_expand(sess, cfg, loader, crate)
         };
         let outputs = build_output_filenames(input, outdir, output,
                                              expanded_crate.attrs, sess);
@@ -579,7 +593,8 @@ pub fn pretty_print_input(sess: Session,
 
     let (crate, ast_map, is_expanded) = match ppm {
         PpmExpanded | PpmExpandedIdentified | PpmTyped => {
-            let (crate, ast_map) = phase_2_configure_and_expand(sess, cfg, crate);
+            let loader = &mut Loader::new(sess);
+            let (crate, ast_map) = phase_2_configure_and_expand(sess, cfg, loader, crate);
             (crate, Some(ast_map), true)
         }
         _ => (crate, None, false)
@@ -912,6 +927,7 @@ pub fn build_session_(sopts: @session::options,
         // For a library crate, this is always none
         entry_fn: RefCell::new(None),
         entry_type: Cell::new(None),
+        macro_registrar_fn: RefCell::new(None),
         span_diagnostic: span_diagnostic_handler,
         filesearch: filesearch,
         building_library: Cell::new(false),
