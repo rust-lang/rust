@@ -10,28 +10,35 @@
 
 /* Foreign builtins. */
 
-#include "rust_globals.h"
 #include "vg/valgrind.h"
 
+#include <stdint.h>
 #include <time.h>
-
-#ifdef __APPLE__
-    #include <TargetConditionals.h>
-    #include <mach/mach_time.h>
-
-    #if (TARGET_OS_IPHONE)
-        extern char **environ;
-    #else
-        #include <crt_externs.h>
-    #endif
-#endif
+#include <string.h>
+#include <assert.h>
+#include <stdlib.h>
 
 #if !defined(__WIN32__)
 #include <sys/time.h>
+#include <sys/types.h>
+#include <dirent.h>
+#include <signal.h>
+#include <unistd.h>
+#include <pthread.h>
+#else
+#include <windows.h>
+#include <wincrypt.h>
+#include <stdio.h>
+#include <tchar.h>
 #endif
 
-#ifdef __FreeBSD__
-extern char **environ;
+#ifdef __APPLE__
+#include <TargetConditionals.h>
+#include <mach/mach_time.h>
+
+#if !(TARGET_OS_IPHONE)
+#include <crt_externs.h>
+#endif
 #endif
 
 #ifdef __ANDROID__
@@ -55,6 +62,16 @@ timegm(struct tm *tm)
     tzset();
     return ret;
 }
+#endif
+
+#ifdef __APPLE__
+#if (TARGET_OS_IPHONE)
+extern char **environ;
+#endif
+#endif
+
+#if defined(__FreeBSD__) || defined(__linux__) || defined(__ANDROID__)
+extern char **environ;
 #endif
 
 #if defined(__WIN32__)
@@ -323,8 +340,6 @@ rust_mktime(rust_tm* timeptr) {
 }
 
 #ifndef _WIN32
-#include <sys/types.h>
-#include <dirent.h>
 
 DIR*
 rust_opendir(char *dirname) {
@@ -418,9 +433,6 @@ rust_unset_sigprocmask() {
 }
 
 #else
-
-#include <signal.h>
-#include <unistd.h>
 
 void
 rust_unset_sigprocmask() {
