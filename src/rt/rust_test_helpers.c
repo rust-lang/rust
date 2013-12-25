@@ -10,7 +10,8 @@
 
 // Helper functions used only in tests
 
-#include "rust_globals.h"
+#include <stdint.h>
+#include <assert.h>
 
 // These functions are used in the unit tests for C ABI calls.
 
