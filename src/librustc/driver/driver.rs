@@ -18,7 +18,8 @@ use front;
 use lib::llvm::llvm;
 use lib::llvm::{ContextRef, ModuleRef};
 use metadata::common::LinkMeta;
-use metadata::{creader, cstore, filesearch};
+use metadata::{creader, filesearch};
+use metadata::cstore::CStore;
 use metadata;
 use middle::{trans, freevars, kind, ty, typeck, lint, astencode, reachable};
 use middle;
@@ -853,7 +854,7 @@ pub fn build_session_(sopts: @session::options,
     let target_cfg = build_target_config(sopts, demitter);
     let p_s = parse::new_parse_sess_special_handler(span_diagnostic_handler,
                                                     cm);
-    let cstore = @mut cstore::mk_cstore(token::get_ident_interner());
+    let cstore = @mut CStore::new(token::get_ident_interner());
     let filesearch = filesearch::mk_filesearch(
         &sopts.maybe_sysroot,
         sopts.target_triple,
