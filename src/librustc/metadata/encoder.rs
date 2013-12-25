@@ -1522,7 +1522,7 @@ fn encode_crate_deps(ecx: &EncodeContext,
 
         // Pull the cnums and name,vers,hash out of cstore
         let mut deps = ~[];
-        cstore::iter_crate_data(cstore, |key, val| {
+        cstore.iter_crate_data(|key, val| {
             let dep = decoder::CrateDep {cnum: key,
                        name: ecx.tcx.sess.ident_of(val.name),
                        vers: decoder::get_crate_vers(val.data()),
@@ -1588,7 +1588,7 @@ fn encode_lang_items(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
 fn encode_native_libraries(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
     ebml_w.start_tag(tag_native_libraries);
 
-    for &(ref lib, kind) in cstore::get_used_libraries(ecx.cstore).iter() {
+    for &(ref lib, kind) in ecx.cstore.get_used_libraries().iter() {
         match kind {
             cstore::NativeStatic => {} // these libraries are not propagated
             cstore::NativeFramework | cstore::NativeUnknown => {

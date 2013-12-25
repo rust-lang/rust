@@ -114,7 +114,7 @@ fn visit_crate(e: &Env, c: &ast::Crate) {
     for a in c.attrs.iter().filter(|m| "link_args" == m.name()) {
         match a.value_str() {
           Some(ref linkarg) => {
-            cstore::add_used_link_args(cstore, *linkarg);
+            cstore.add_used_link_args(*linkarg);
           }
           None => {/* fallthrough */ }
         }
@@ -149,7 +149,7 @@ fn visit_view_item(e: @mut Env, i: &ast::view_item) {
                                    version,
                                    @"",
                                    i.span);
-          cstore::add_extern_mod_stmt_cnum(e.sess.cstore, id, cnum);
+          e.sess.cstore.add_extern_mod_stmt_cnum(id, cnum);
       }
       _ => ()
   }
@@ -170,7 +170,7 @@ fn visit_item(e: &Env, i: @ast::item) {
             for m in link_args.iter() {
                 match m.value_str() {
                     Some(linkarg) => {
-                        cstore::add_used_link_args(cstore, linkarg);
+                        cstore.add_used_link_args(linkarg);
                     }
                     None => { /* fallthrough */ }
                 }
@@ -222,7 +222,7 @@ fn visit_item(e: &Env, i: @ast::item) {
                         if n.is_empty() {
                             e.sess.span_err(m.span, "#[link(name = \"\")] given with empty name");
                         } else {
-                            cstore::add_used_library(cstore, n.to_owned(), kind);
+                            cstore.add_used_library(n.to_owned(), kind);
                         }
                     }
                     None => {}
@@ -296,8 +296,8 @@ fn resolve_crate(e: @mut Env,
         };
 
         let cstore = e.sess.cstore;
-        cstore::set_crate_data(cstore, cnum, cmeta);
-        cstore::add_used_crate_source(cstore, cstore::CrateSource {
+        cstore.set_crate_data(cnum, cmeta);
+        cstore.add_used_crate_source(cstore::CrateSource {
             dylib: dylib,
             rlib: rlib,
             cnum: cnum,
