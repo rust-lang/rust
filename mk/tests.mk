@@ -745,21 +745,27 @@ CRATE_DOC_LIB-extra = $(EXTRALIB_CRATE)
 
 define DEF_CRATE_DOC_TEST
 
-check-stage$(1)-T-$(2)-H-$(2)-doc-$(3)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(2),doc-$(3))
+check-stage$(1)-T-$(2)-H-$(3)-doc-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),doc-$(4))
 
-$$(call TEST_OK_FILE,$(1),$(2),$(2),doc-$(3)):		\
-	        $$(TEST_SREQ$(1)_T_$(2)_H_$(2))		\
-		$$(HBIN$(1)_H_$(2))/rustdoc$$(X_$(2))
-	@$$(call E, run doc-$(3) [$(2)])
-	$$(Q)$$(HBIN$(1)_H_$(2))/rustdoc$$(X_$(2)) --test \
-	    $$(CRATE_DOC_LIB-$(3)) && touch $$@
+ifeq ($(2),$$(CFG_BUILD))
+$$(call TEST_OK_FILE,$(1),$(2),$(3),doc-$(4)):		\
+	        $$(TEST_SREQ$(1)_T_$(2)_H_$(3))		\
+		$$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3))
+	@$$(call E, run doc-$(4) [$(2)])
+	$$(Q)$$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3)) --test \
+	    $$(CRATE_DOC_LIB-$(4)) && touch $$@
+else
+$$(call TEST_OK_FILE,$(1),$(2),$(3),doc-$(4)):
+	touch $$@
+endif
 
 endef
 
 $(foreach host,$(CFG_HOST), \
- $(foreach stage,$(STAGES), \
-  $(foreach crate,$(TEST_DOC_CRATES), \
-   $(eval $(call DEF_CRATE_DOC_TEST,$(stage),$(host),$(crate))))))
+ $(foreach target,$(CFG_TARGET), \
+  $(foreach stage,$(STAGES), \
+   $(foreach crate,$(TEST_DOC_CRATES), \
+    $(eval $(call DEF_CRATE_DOC_TEST,$(stage),$(target),$(host),$(crate)))))))
 
 ######################################################################
 # Extracting tests for docs
