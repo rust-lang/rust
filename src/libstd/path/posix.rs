@@ -1404,4 +1404,45 @@ mod bench {
             posix_home_path.ends_with_path(&Path::new("jome"));
         });
     }
+
+    #[bench]
+    fn is_ancestor_of_path_with_10_dirs(bh: &mut BenchHarness) {
+        let path = Path::new("/home/1/2/3/4/5/6/7/8/9");
+        let mut sub = path.clone();
+        sub.pop();
+        bh.iter(|| {
+            path.is_ancestor_of(&sub);
+        });
+    }
+
+    #[bench]
+    fn path_relative_from_forward(bh: &mut BenchHarness) {
+        let path = Path::new("/a/b/c");
+        let mut other = path.clone();
+        other.pop();
+        bh.iter(|| {
+            path.path_relative_from(&other);
+        });
+    }
+
+    #[bench]
+    fn path_relative_from_same_level(bh: &mut BenchHarness) {
+        let path = Path::new("/a/b/c");
+        let mut other = path.clone();
+        other.pop();
+        other.push("d");
+        bh.iter(|| {
+            path.path_relative_from(&other);
+        });
+    }
+
+    #[bench]
+    fn path_relative_from_backward(bh: &mut BenchHarness) {
+        let path = Path::new("/a/b");
+        let mut other = path.clone();
+        other.push("c");
+        bh.iter(|| {
+            path.path_relative_from(&other);
+        });
+    }
 }
