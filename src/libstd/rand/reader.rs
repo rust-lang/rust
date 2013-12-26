@@ -26,10 +26,8 @@ use rand::Rng;
 /// use std::rand::{reader, Rng};
 /// use std::io::mem;
 ///
-/// fn main() {
-///     let mut rng = reader::ReaderRng::new(mem::MemReader::new(~[1,2,3,4,5,6,7,8]));
-///     println!("{:x}", rng.gen::<uint>());
-/// }
+/// let mut rng = reader::ReaderRng::new(mem::MemReader::new(~[1,2,3,4,5,6,7,8]));
+/// println!("{:x}", rng.gen::<uint>());
 /// ```
 pub struct ReaderRng<R> {
     priv reader: R

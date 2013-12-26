@@ -94,15 +94,13 @@ pub struct Weighted<T> {
 /// use std::rand;
 /// use std::rand::distributions::{Weighted, WeightedChoice, IndependentSample};
 ///
-/// fn main() {
-///     let wc = WeightedChoice::new(~[Weighted { weight: 2, item: 'a' },
-///                                    Weighted { weight: 4, item: 'b' },
-///                                    Weighted { weight: 1, item: 'c' }]);
-///     let mut rng = rand::task_rng();
-///     for _ in range(0, 16) {
-///          // on average prints 'a' 4 times, 'b' 8 and 'c' twice.
-///          println!("{}", wc.ind_sample(&mut rng));
-///     }
+/// let wc = WeightedChoice::new(~[Weighted { weight: 2, item: 'a' },
+///                                Weighted { weight: 4, item: 'b' },
+///                                Weighted { weight: 1, item: 'c' }]);
+/// let mut rng = rand::task_rng();
+/// for _ in range(0, 16) {
+///      // on average prints 'a' 4 times, 'b' 8 and 'c' twice.
+///      println!("{}", wc.ind_sample(&mut rng));
 /// }
 /// ```
 pub struct WeightedChoice<T> {
