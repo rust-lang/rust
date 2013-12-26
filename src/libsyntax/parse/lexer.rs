@@ -19,7 +19,6 @@ use parse::token::{str_to_ident};
 
 use std::cast::transmute;
 use std::char;
-use std::either;
 use std::num::from_str_radix;
 use std::util;
 
@@ -475,34 +474,35 @@ fn scan_number(c: char, rdr: @mut StringReader) -> token::Token {
     c = rdr.curr;
     nextch(rdr);
     if c == 'u' || c == 'i' {
+        enum Result { Signed(ast::int_ty), Unsigned(ast::uint_ty) }
         let signed = c == 'i';
         let mut tp = {
-            if signed { either::Left(ast::ty_i) }
-            else { either::Right(ast::ty_u) }
+            if signed { Signed(ast::ty_i) }
+            else { Unsigned(ast::ty_u) }
         };
         bump(rdr);
         c = rdr.curr;
         if c == '8' {
             bump(rdr);
-            tp = if signed { either::Left(ast::ty_i8) }
-                      else { either::Right(ast::ty_u8) };
+            tp = if signed { Signed(ast::ty_i8) }
+                      else { Unsigned(ast::ty_u8) };
         }
         n = nextch(rdr);
         if c == '1' && n == '6' {
             bump(rdr);
             bump(rdr);
-            tp = if signed { either::Left(ast::ty_i16) }
-                      else { either::Right(ast::ty_u16) };
+            tp = if signed { Signed(ast::ty_i16) }
+                      else { Unsigned(ast::ty_u16) };
         } else if c == '3' && n == '2' {
             bump(rdr);
             bump(rdr);
-            tp = if signed { either::Left(ast::ty_i32) }
-                      else { either::Right(ast::ty_u32) };
+            tp = if signed { Signed(ast::ty_i32) }
+                      else { Unsigned(ast::ty_u32) };
         } else if c == '6' && n == '4' {
             bump(rdr);
             bump(rdr);
-            tp = if signed { either::Left(ast::ty_i64) }
-                      else { either::Right(ast::ty_u64) };
+            tp = if signed { Signed(ast::ty_i64) }
+                      else { Unsigned(ast::ty_u64) };
         }
         if num_str.len() == 0u {
             fatal_span(rdr, start_bpos, rdr.last_pos,
@@ -515,8 +515,8 @@ fn scan_number(c: char, rdr: @mut StringReader) -> token::Token {
         };
 
         match tp {
-          either::Left(t) => return token::LIT_INT(parsed as i64, t),
-          either::Right(t) => return token::LIT_UINT(parsed, t)
+          Signed(t) => return token::LIT_INT(parsed as i64, t),
+          Unsigned(t) => return token::LIT_UINT(parsed, t)
         }
     }
     let mut is_float = false;
