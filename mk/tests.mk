@@ -14,7 +14,7 @@
 ######################################################################
 
 # The names of crates that must be tested
-TEST_TARGET_CRATES = std extra rustuv
+TEST_TARGET_CRATES = std extra rustuv green native
 TEST_DOC_CRATES = std extra
 TEST_HOST_CRATES = rustpkg rustc rustdoc syntax
 TEST_CRATES = $(TEST_TARGET_CRATES) $(TEST_HOST_CRATES)
@@ -162,6 +162,8 @@ $(info check: android device test dir $(CFG_ADB_TEST_DIR) ready \
                   $(CFG_ADB_TEST_DIR)) \
  $(shell adb push $(TLIB2_T_arm-linux-androideabi_H_$(CFG_BUILD))/$(LIBRUSTUV_GLOB_arm-linux-androideabi) \
                   $(CFG_ADB_TEST_DIR)) \
+ $(shell adb push $(TLIB2_T_arm-linux-androideabi_H_$(CFG_BUILD))/$(LIBGREEN_GLOB_arm-linux-androideabi) \
+                  $(CFG_ADB_TEST_DIR)) \
  )
 else
 CFG_ADB_TEST_DIR=
@@ -187,7 +189,7 @@ check-test: cleantestlibs cleantmptestlogs all check-stage2-rfail
 
 check-lite: cleantestlibs cleantmptestlogs \
 	check-stage2-std check-stage2-extra check-stage2-rpass \
-	check-stage2-rustuv \
+	check-stage2-rustuv check-stage2-native check-stage2-green \
 	check-stage2-rustpkg \
 	check-stage2-rfail check-stage2-cfail check-stage2-rmake
 	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
@@ -339,19 +341,20 @@ define TEST_RUNNER
 ifeq ($(NO_REBUILD),)
 STDTESTDEP_$(1)_$(2)_$(3) = $$(SREQ$(1)_T_$(2)_H_$(3)) \
                             $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_EXTRALIB_$(2)) \
-                            $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTUV_$(2))
+                            $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTUV_$(2)) \
+                            $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBGREEN_$(2))
 else
 STDTESTDEP_$(1)_$(2)_$(3) =
 endif
 
 $(3)/stage$(1)/test/stdtest-$(2)$$(X_$(2)):			\
-		$$(STDLIB_CRATE) $$(STDLIB_INPUTS)	\
+		$$(STDLIB_CRATE) $$(STDLIB_INPUTS)		\
 		$$(STDTESTDEP_$(1)_$(2)_$(3))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
 
 $(3)/stage$(1)/test/extratest-$(2)$$(X_$(2)):			\
-		$$(EXTRALIB_CRATE) $$(EXTRALIB_INPUTS)	\
+		$$(EXTRALIB_CRATE) $$(EXTRALIB_INPUTS)		\
 		$$(STDTESTDEP_$(1)_$(2)_$(3))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
@@ -364,6 +367,18 @@ $(3)/stage$(1)/test/rustuvtest-$(2)$$(X_$(2)):			\
 		-L $$(UV_SUPPORT_DIR_$(2)) \
 		-L $$(dir $$(LIBUV_LIB_$(2)))
 
+$(3)/stage$(1)/test/nativetest-$(2)$$(X_$(2)):			\
+		$$(LIBNATIVE_CRATE) $$(LIBNATIVE_INPUTS)	\
+		$$(STDTESTDEP_$(1)_$(2)_$(3))
+	@$$(call E, compile_and_link: $$@)
+	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
+
+$(3)/stage$(1)/test/greentest-$(2)$$(X_$(2)):			\
+		$$(LIBGREEN_CRATE) $$(LIBGREEN_INPUTS)	\
+		$$(STDTESTDEP_$(1)_$(2)_$(3))
+	@$$(call E, compile_and_link: $$@)
+	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
+
 $(3)/stage$(1)/test/syntaxtest-$(2)$$(X_$(2)):			\
 		$$(LIBSYNTAX_CRATE) $$(LIBSYNTAX_INPUTS)	\
 		$$(STDTESTDEP_$(1)_$(2)_$(3))
@@ -375,7 +390,7 @@ $(3)/stage$(1)/test/rustctest-$(2)$$(X_$(2)):					\
 		$$(COMPILER_CRATE) $$(COMPILER_INPUTS) \
 		$$(SREQ$(1)_T_$(2)_H_$(3)) \
 		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_RUSTLLVM_$(2)) \
-                $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBSYNTAX_$(2))
+		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBSYNTAX_$(2))
 	@$$(call E, compile_and_link: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test \
 	    -L "$$(LLVM_LIBDIR_$(2))"
@@ -416,10 +431,10 @@ check-stage$(1)-T-$(2)-H-$(3)-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4
 $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
 		$(3)/stage$(1)/test/$(4)test-$(2)$$(X_$(2))
 	@$$(call E, run: $$<)
-	$$(Q)$$(call CFG_RUN_TEST_$(2),$$<,$(2),$(3)) $$(TESTARGS)	\
-	--logfile $$(call TEST_LOG_FILE,$(1),$(2),$(3),$(4)) \
-	$$(call CRATE_TEST_EXTRA_ARGS,$(1),$(2),$(3),$(4)) \
-	&& touch $$@
+	$$(Q)$$(call CFG_RUN_TEST_$(2),$$<,$(2),$(3)) $$(TESTARGS) \
+	    --logfile $$(call TEST_LOG_FILE,$(1),$(2),$(3),$(4)) \
+	    $$(call CRATE_TEST_EXTRA_ARGS,$(1),$(2),$(3),$(4)) \
+	    && touch $$@
 endef
 
 define DEF_TEST_CRATE_RULES_arm-linux-androideabi

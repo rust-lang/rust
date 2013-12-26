@@ -487,8 +487,9 @@ fn lib_output_file_name(workspace: &Path, short_name: &str) -> Path {
 }
 
 fn output_file_name(workspace: &Path, short_name: ~str) -> Path {
-    target_build_dir(workspace).join(short_name.as_slice()).join(format!("{}{}", short_name,
-                                                                         os::EXE_SUFFIX))
+    target_build_dir(workspace).join(short_name.as_slice())
+                               .join(format!("{}{}", short_name,
+                                             os::consts::EXE_SUFFIX))
 }
 
 #[cfg(target_os = "linux")]
@@ -1353,7 +1354,7 @@ fn test_import_rustpkg() {
     command_line_test([~"build", ~"foo"], workspace);
     debug!("workspace = {}", workspace.display());
     assert!(target_build_dir(workspace).join("foo").join(format!("pkg{}",
-        os::EXE_SUFFIX)).exists());
+        os::consts::EXE_SUFFIX)).exists());
 }
 
 #[test]
@@ -1366,7 +1367,7 @@ fn test_macro_pkg_script() {
     command_line_test([~"build", ~"foo"], workspace);
     debug!("workspace = {}", workspace.display());
     assert!(target_build_dir(workspace).join("foo").join(format!("pkg{}",
-        os::EXE_SUFFIX)).exists());
+        os::consts::EXE_SUFFIX)).exists());
 }
 
 #[test]

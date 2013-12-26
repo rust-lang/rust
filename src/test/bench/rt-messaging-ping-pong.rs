@@ -1,4 +1,3 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -12,7 +11,6 @@ extern mod extra;
 
 use std::os;
 use std::uint;
-use std::rt::test::spawntask_later;
 
 // This is a simple bench that creates M pairs of of tasks. These
 // tasks ping-pong back and forth over a pair of streams. This is a
@@ -28,7 +26,7 @@ fn ping_pong_bench(n: uint, m: uint) {
         // Create a stream B->A
         let (pb,cb) = Chan::<()>::new();
 
-        do spawntask_later() || {
+        do spawn() || {
             let chan = ca;
             let port = pb;
             n.times(|| {
@@ -37,7 +35,7 @@ fn ping_pong_bench(n: uint, m: uint) {
             })
         }
 
-        do spawntask_later() || {
+        do spawn() || {
             let chan = cb;
             let port = pa;
             n.times(|| {

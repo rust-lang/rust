@@ -97,72 +97,102 @@ impl Drop for IdleWatcher {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use std::rt::tube::Tube;
+    use std::cast;
+    use std::cell::RefCell;
+    use std::rc::Rc;
     use std::rt::rtio::{Callback, PausableIdleCallback};
+    use std::rt::task::{BlockedTask, Task};
+    use std::rt::local::Local;
+    use super::IdleWatcher;
     use super::super::local_loop;
 
-    struct MyCallback(Tube<int>, int);
+    type Chan = Rc<RefCell<(Option<BlockedTask>, uint)>>;
+
+    struct MyCallback(Rc<RefCell<(Option<BlockedTask>, uint)>>, uint);
     impl Callback for MyCallback {
         fn call(&mut self) {
-            match *self {
-                MyCallback(ref mut tube, val) => tube.send(val)
-            }
+            let task = match *self {
+                MyCallback(ref rc, n) => {
+                    let mut slot = rc.borrow().borrow_mut();
+                    match *slot.get() {
+                        (ref mut task, ref mut val) => {
+                            *val = n;
+                            task.take_unwrap()
+                        }
+                    }
+                }
+            };
+            task.wake().map(|t| t.reawaken(true));
         }
+    }
+
+    fn mk(v: uint) -> (~IdleWatcher, Chan) {
+        let rc = Rc::from_send(RefCell::new((None, 0)));
+        let cb = ~MyCallback(rc.clone(), v);
+        let cb = cb as ~Callback:;
+        let cb = unsafe { cast::transmute(cb) };
+        (IdleWatcher::new(&mut local_loop().loop_, cb), rc)
+    }
+
+    fn sleep(chan: &Chan) -> uint {
+        let task: ~Task = Local::take();
+        task.deschedule(1, |task| {
+            let mut slot = chan.borrow().borrow_mut();
+            match *slot.get() {
+                (ref mut slot, _) => {
+                    assert!(slot.is_none());
+                    *slot = Some(task);
+                }
+            }
+            Ok(())
+        });
+
+        let slot = chan.borrow().borrow();
+        match *slot.get() { (_, n) => n }
     }
 
     #[test]
     fn not_used() {
-        let cb = ~MyCallback(Tube::new(), 1);
-        let _idle = IdleWatcher::new(local_loop(), cb as ~Callback);
+        let (_idle, _chan) = mk(1);
     }
 
     #[test]
     fn smoke_test() {
-        let mut tube = Tube::new();
-        let cb = ~MyCallback(tube.clone(), 1);
-        let mut idle = IdleWatcher::new(local_loop(), cb as ~Callback);
+        let (mut idle, chan) = mk(1);
         idle.resume();
-        tube.recv();
+        assert_eq!(sleep(&chan), 1);
     }
 
     #[test] #[should_fail]
     fn smoke_fail() {
-        let tube = Tube::new();
-        let cb = ~MyCallback(tube.clone(), 1);
-        let mut idle = IdleWatcher::new(local_loop(), cb as ~Callback);
+        let (mut idle, _chan) = mk(1);
         idle.resume();
         fail!();
     }
 
     #[test]
     fn fun_combinations_of_methods() {
-        let mut tube = Tube::new();
-        let cb = ~MyCallback(tube.clone(), 1);
-        let mut idle = IdleWatcher::new(local_loop(), cb as ~Callback);
+        let (mut idle, chan) = mk(1);
         idle.resume();
-        tube.recv();
+        assert_eq!(sleep(&chan), 1);
         idle.pause();
         idle.resume();
         idle.resume();
-        tube.recv();
+        assert_eq!(sleep(&chan), 1);
         idle.pause();
         idle.pause();
         idle.resume();
-        tube.recv();
+        assert_eq!(sleep(&chan), 1);
     }
 
     #[test]
     fn pause_pauses() {
-        let mut tube = Tube::new();
-        let cb = ~MyCallback(tube.clone(), 1);
-        let mut idle1 = IdleWatcher::new(local_loop(), cb as ~Callback);
-        let cb = ~MyCallback(tube.clone(), 2);
-        let mut idle2 = IdleWatcher::new(local_loop(), cb as ~Callback);
+        let (mut idle1, chan1) = mk(1);
+        let (mut idle2, chan2) = mk(2);
         idle2.resume();
-        assert_eq!(tube.recv(), 2);
+        assert_eq!(sleep(&chan2), 2);
         idle2.pause();
         idle1.resume();
-        assert_eq!(tube.recv(), 1);
+        assert_eq!(sleep(&chan1), 1);
     }
 }

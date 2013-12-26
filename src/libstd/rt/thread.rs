@@ -33,7 +33,7 @@ pub struct Thread<T> {
     priv packet: ~Option<T>,
 }
 
-static DEFAULT_STACK_SIZE: libc::size_t = 1024 * 1024;
+static DEFAULT_STACK_SIZE: uint = 1024 * 1024;
 
 // This is the starting point of rust os threads. The first thing we do
 // is make sure that we don't trigger __morestack (also why this has a
@@ -41,9 +41,9 @@ static DEFAULT_STACK_SIZE: libc::size_t = 1024 * 1024;
 // and invoke it.
 #[no_split_stack]
 extern fn thread_start(main: *libc::c_void) -> imp::rust_thread_return {
-    use rt::context;
+    use unstable::stack;
     unsafe {
-        context::record_stack_bounds(0, uint::max_value);
+        stack::record_stack_bounds(0, uint::max_value);
         let f: ~proc() = cast::transmute(main);
         (*f)();
         cast::transmute(0 as imp::rust_thread_return)
@@ -69,6 +69,12 @@ impl Thread<()> {
     /// called, when the `Thread` falls out of scope its destructor will block
     /// waiting for the OS thread.
     pub fn start<T: Send>(main: proc() -> T) -> Thread<T> {
+        Thread::start_stack(DEFAULT_STACK_SIZE, main)
+    }
+
+    /// Performs the same functionality as `start`, but specifies an explicit
+    /// stack size for the new thread.
+    pub fn start_stack<T: Send>(stack: uint, main: proc() -> T) -> Thread<T> {
 
         // We need the address of the packet to fill in to be stable so when
         // `main` fills it in it's still valid, so allocate an extra ~ box to do
@@ -78,7 +84,7 @@ impl Thread<()> {
             *cast::transmute::<&~Option<T>, **mut Option<T>>(&packet)
         };
         let main: proc() = proc() unsafe { *packet2 = Some(main()); };
-        let native = unsafe { imp::create(~main) };
+        let native = unsafe { imp::create(stack, ~main) };
 
         Thread {
             native: native,
@@ -94,8 +100,14 @@ impl Thread<()> {
     /// systems. Note that platforms may not keep the main program alive even if
     /// there are detached thread still running around.
     pub fn spawn(main: proc()) {
+        Thread::spawn_stack(DEFAULT_STACK_SIZE, main)
+    }
+
+    /// Performs the same functionality as `spawn`, but explicitly specifies a
+    /// stack size for the new thread.
+    pub fn spawn_stack(stack: uint, main: proc()) {
         unsafe {
-            let handle = imp::create(~main);
+            let handle = imp::create(stack, ~main);
             imp::detach(handle);
         }
     }
@@ -132,8 +144,6 @@ impl<T: Send> Drop for Thread<T> {
 
 #[cfg(windows)]
 mod imp {
-    use super::DEFAULT_STACK_SIZE;
-
     use cast;
     use libc;
     use libc::types::os::arch::extra::{LPSECURITY_ATTRIBUTES, SIZE_T, BOOL,
@@ -143,9 +153,9 @@ mod imp {
     pub type rust_thread = HANDLE;
     pub type rust_thread_return = DWORD;
 
-    pub unsafe fn create(p: ~proc()) -> rust_thread {
+    pub unsafe fn create(stack: uint, p: ~proc()) -> rust_thread {
         let arg: *mut libc::c_void = cast::transmute(p);
-        CreateThread(ptr::mut_null(), DEFAULT_STACK_SIZE, super::thread_start,
+        CreateThread(ptr::mut_null(), stack as libc::size_t, super::thread_start,
                      arg, 0, ptr::mut_null())
     }
 
@@ -183,17 +193,17 @@ mod imp {
     use libc::consts::os::posix01::PTHREAD_CREATE_JOINABLE;
     use libc;
     use ptr;
-    use super::DEFAULT_STACK_SIZE;
     use unstable::intrinsics;
 
     pub type rust_thread = libc::pthread_t;
     pub type rust_thread_return = *libc::c_void;
 
-    pub unsafe fn create(p: ~proc()) -> rust_thread {
+    pub unsafe fn create(stack: uint, p: ~proc()) -> rust_thread {
         let mut native: libc::pthread_t = intrinsics::uninit();
         let mut attr: libc::pthread_attr_t = intrinsics::uninit();
         assert_eq!(pthread_attr_init(&mut attr), 0);
-        assert_eq!(pthread_attr_setstacksize(&mut attr, DEFAULT_STACK_SIZE), 0);
+        assert_eq!(pthread_attr_setstacksize(&mut attr,
+                                             stack as libc::size_t), 0);
         assert_eq!(pthread_attr_setdetachstate(&mut attr,
                                                PTHREAD_CREATE_JOINABLE), 0);
 

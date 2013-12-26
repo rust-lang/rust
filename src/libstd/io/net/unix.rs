@@ -59,14 +59,9 @@ impl UnixStream {
     ///     stream.write([1, 2, 3]);
     ///
     pub fn connect<P: ToCStr>(path: &P) -> Option<UnixStream> {
-        let mut io = LocalIo::borrow();
-        match io.get().unix_connect(&path.to_c_str()) {
-            Ok(s) => Some(UnixStream::new(s)),
-            Err(ioerr) => {
-                io_error::cond.raise(ioerr);
-                None
-            }
-        }
+        LocalIo::maybe_raise(|io| {
+            io.unix_connect(&path.to_c_str()).map(UnixStream::new)
+        })
     }
 }
 
@@ -107,14 +102,9 @@ impl UnixListener {
     ///     }
     ///
     pub fn bind<P: ToCStr>(path: &P) -> Option<UnixListener> {
-        let mut io = LocalIo::borrow();
-        match io.get().unix_bind(&path.to_c_str()) {
-            Ok(s) => Some(UnixListener{ obj: s }),
-            Err(ioerr) => {
-                io_error::cond.raise(ioerr);
-                None
-            }
-        }
+        LocalIo::maybe_raise(|io| {
+            io.unix_bind(&path.to_c_str()).map(|s| UnixListener { obj: s })
+        })
     }
 }
 
@@ -150,55 +140,49 @@ impl Acceptor<UnixStream> for UnixAcceptor {
 mod tests {
     use prelude::*;
     use super::*;
-    use rt::test::*;
     use io::*;
+    use io::test::*;
 
     fn smalltest(server: proc(UnixStream), client: proc(UnixStream)) {
-        do run_in_mt_newsched_task {
-            let path1 = next_test_unix();
-            let path2 = path1.clone();
-            let (client, server) = (client, server);
-            let (port, chan) = Chan::new();
+        let path1 = next_test_unix();
+        let path2 = path1.clone();
+        let (port, chan) = Chan::new();
 
-            do spawntask {
-                let mut acceptor = UnixListener::bind(&path1).listen();
-                chan.send(());
-                server(acceptor.accept().unwrap());
-            }
-
+        do spawn {
             port.recv();
             client(UnixStream::connect(&path2).unwrap());
         }
+
+        let mut acceptor = UnixListener::bind(&path1).listen();
+        chan.send(());
+        server(acceptor.accept().unwrap());
     }
 
     #[test]
     fn bind_error() {
-        do run_in_mt_newsched_task {
-            let mut called = false;
-            io_error::cond.trap(|e| {
-                assert!(e.kind == PermissionDenied);
-                called = true;
-            }).inside(|| {
-                let listener = UnixListener::bind(&("path/to/nowhere"));
-                assert!(listener.is_none());
-            });
-            assert!(called);
-        }
+        let mut called = false;
+        io_error::cond.trap(|e| {
+            assert!(e.kind == PermissionDenied);
+            called = true;
+        }).inside(|| {
+            let listener = UnixListener::bind(&("path/to/nowhere"));
+            assert!(listener.is_none());
+        });
+        assert!(called);
     }
 
     #[test]
     fn connect_error() {
-        do run_in_mt_newsched_task {
-            let mut called = false;
-            io_error::cond.trap(|e| {
-                assert_eq!(e.kind, FileNotFound);
-                called = true;
-            }).inside(|| {
-                let stream = UnixStream::connect(&("path/to/nowhere"));
-                assert!(stream.is_none());
-            });
-            assert!(called);
-        }
+        let mut called = false;
+        io_error::cond.trap(|e| {
+            assert_eq!(e.kind,
+                       if cfg!(windows) {OtherIoError} else {FileNotFound});
+            called = true;
+        }).inside(|| {
+            let stream = UnixStream::connect(&("path/to/nowhere"));
+            assert!(stream.is_none());
+        });
+        assert!(called);
     }
 
     #[test]
@@ -244,37 +228,33 @@ mod tests {
 
     #[test]
     fn accept_lots() {
-        do run_in_mt_newsched_task {
-            let times = 10;
-            let path1 = next_test_unix();
-            let path2 = path1.clone();
-            let (port, chan) = Chan::new();
+        let times = 10;
+        let path1 = next_test_unix();
+        let path2 = path1.clone();
+        let (port, chan) = Chan::new();
 
-            do spawntask {
-                let mut acceptor = UnixListener::bind(&path1).listen();
-                chan.send(());
-                times.times(|| {
-                    let mut client = acceptor.accept();
-                    let mut buf = [0];
-                    client.read(buf);
-                    assert_eq!(buf[0], 100);
-                })
-            }
-
+        do spawn {
             port.recv();
             times.times(|| {
                 let mut stream = UnixStream::connect(&path2);
                 stream.write([100]);
             })
         }
+
+        let mut acceptor = UnixListener::bind(&path1).listen();
+        chan.send(());
+        times.times(|| {
+            let mut client = acceptor.accept();
+            let mut buf = [0];
+            client.read(buf);
+            assert_eq!(buf[0], 100);
+        })
     }
 
     #[test]
     fn path_exists() {
-        do run_in_mt_newsched_task {
-            let path = next_test_unix();
-            let _acceptor = UnixListener::bind(&path).listen();
-            assert!(path.exists());
-        }
+        let path = next_test_unix();
+        let _acceptor = UnixListener::bind(&path).listen();
+        assert!(path.exists());
     }
 }

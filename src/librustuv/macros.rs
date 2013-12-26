@@ -27,18 +27,20 @@ macro_rules! uvdebug (
     })
 )
 
-// get a handle for the current scheduler
-macro_rules! get_handle_to_current_scheduler(
-    () => ({
-        let mut sched = Local::borrow(None::<Scheduler>);
-        sched.get().make_handle()
-    })
-)
-
 pub fn dumb_println(args: &fmt::Arguments) {
-    use std::io::native::file::FileDesc;
     use std::io;
     use std::libc;
-    let mut out = FileDesc::new(libc::STDERR_FILENO, false);
-    fmt::writeln(&mut out as &mut io::Writer, args);
+
+    struct Stderr;
+    impl io::Writer for Stderr {
+        fn write(&mut self, data: &[u8]) {
+            unsafe {
+                libc::write(libc::STDERR_FILENO,
+                            data.as_ptr() as *libc::c_void,
+                            data.len() as libc::size_t);
+            }
+        }
+    }
+    let mut w = Stderr;
+    fmt::writeln(&mut w as &mut io::Writer, args);
 }

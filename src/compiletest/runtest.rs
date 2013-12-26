@@ -757,8 +757,8 @@ fn make_lib_name(config: &config, auxfile: &Path, testfile: &Path) -> Path {
 
 fn make_exe_name(config: &config, testfile: &Path) -> Path {
     let mut f = output_base_name(config, testfile);
-    if !os::EXE_SUFFIX.is_empty() {
-        match f.filename().map(|s| s + os::EXE_SUFFIX.as_bytes()) {
+    if !os::consts::EXE_SUFFIX.is_empty() {
+        match f.filename().map(|s| s + os::consts::EXE_SUFFIX.as_bytes()) {
             Some(v) => f.set_filename(v),
             None => ()
         }

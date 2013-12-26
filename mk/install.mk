@@ -94,6 +94,10 @@ install-target-$(1)-host-$(2): $$(TSREQ$$(ISTAGE)_T_$(1)_H_$(2)) $$(SREQ$$(ISTAG
 	$$(Q)$$(call INSTALL_LIB,$$(EXTRALIB_RGLOB_$(1)))
 	$$(Q)$$(call INSTALL_LIB,$$(LIBRUSTUV_GLOB_$(1)))
 	$$(Q)$$(call INSTALL_LIB,$$(LIBRUSTUV_RGLOB_$(1)))
+	$$(Q)$$(call INSTALL_LIB,$$(LIBGREEN_GLOB_$(1)))
+	$$(Q)$$(call INSTALL_LIB,$$(LIBGREEN_RGLOB_$(1)))
+	$$(Q)$$(call INSTALL_LIB,$$(LIBNATIVE_GLOB_$(1)))
+	$$(Q)$$(call INSTALL_LIB,$$(LIBNATIVE_RGLOB_$(1)))
 	$$(Q)$$(call INSTALL_LIB,libmorestack.a)
 
 endef
@@ -109,6 +113,10 @@ install-target-$(1)-host-$(2): $$(CSREQ$$(ISTAGE)_T_$(1)_H_$(2))
 	$$(Q)$$(call INSTALL_LIB,$$(EXTRALIB_RGLOB_$(1)))
 	$$(Q)$$(call INSTALL_LIB,$$(LIBRUSTUV_GLOB_$(1)))
 	$$(Q)$$(call INSTALL_LIB,$$(LIBRUSTUV_RGLOB_$(1)))
+	$$(Q)$$(call INSTALL_LIB,$$(LIBGREEN_GLOB_$(1)))
+	$$(Q)$$(call INSTALL_LIB,$$(LIBGREEN_RGLOB_$(1)))
+	$$(Q)$$(call INSTALL_LIB,$$(LIBNATIVE_GLOB_$(1)))
+	$$(Q)$$(call INSTALL_LIB,$$(LIBNATIVE_RGLOB_$(1)))
 	$$(Q)$$(call INSTALL_LIB,$$(LIBRUSTC_GLOB_$(1)))
 	$$(Q)$$(call INSTALL_LIB,$$(LIBSYNTAX_GLOB_$(1)))
 	$$(Q)$$(call INSTALL_LIB,$$(LIBRUSTPKG_GLOB_$(1)))
@@ -149,6 +157,7 @@ install-host: $(CSREQ$(ISTAGE)_T_$(CFG_BUILD_)_H_$(CFG_BUILD_))
 	$(Q)$(call INSTALL_LIB,$(STDLIB_GLOB_$(CFG_BUILD)))
 	$(Q)$(call INSTALL_LIB,$(EXTRALIB_GLOB_$(CFG_BUILD)))
 	$(Q)$(call INSTALL_LIB,$(LIBRUSTUV_GLOB_$(CFG_BUILD)))
+	$(Q)$(call INSTALL_LIB,$(LIBGREEN_GLOB_$(CFG_BUILD)))
 	$(Q)$(call INSTALL_LIB,$(LIBRUSTC_GLOB_$(CFG_BUILD)))
 	$(Q)$(call INSTALL_LIB,$(LIBSYNTAX_GLOB_$(CFG_BUILD)))
 	$(Q)$(call INSTALL_LIB,$(LIBRUSTPKG_GLOB_$(CFG_BUILD)))
@@ -174,6 +183,10 @@ uninstall:
           $(call HOST_LIB_FROM_HL_GLOB,$(EXTRALIB_RGLOB_$(CFG_BUILD))) \
           $(call HOST_LIB_FROM_HL_GLOB,$(LIBRUSTUV_GLOB_$(CFG_BUILD))) \
           $(call HOST_LIB_FROM_HL_GLOB,$(LIBRUSTUV_RGLOB_$(CFG_BUILD))) \
+          $(call HOST_LIB_FROM_HL_GLOB,$(LIBGREEN_GLOB_$(CFG_BUILD))) \
+          $(call HOST_LIB_FROM_HL_GLOB,$(LIBGREEN_RGLOB_$(CFG_BUILD))) \
+          $(call HOST_LIB_FROM_HL_GLOB,$(LIBNATIVE_GLOB_$(CFG_BUILD))) \
+          $(call HOST_LIB_FROM_HL_GLOB,$(LIBNATIVE_RGLOB_$(CFG_BUILD))) \
           $(call HOST_LIB_FROM_HL_GLOB,$(LIBRUSTC_GLOB_$(CFG_BUILD))) \
           $(call HOST_LIB_FROM_HL_GLOB,$(LIBSYNTAX_GLOB_$(CFG_BUILD))) \
           $(call HOST_LIB_FROM_HL_GLOB,$(LIBRUSTPKG_GLOB_$(CFG_BUILD))) \
@@ -237,6 +250,7 @@ install-runtime-target-$(1)-host-$(2): $$(TSREQ$$(ISTAGE)_T_$(1)_H_$(2)) $$(SREQ
 	$(Q)$(call ADB_PUSH,$$(TL$(1)$(2))/$$(STDLIB_GLOB_$(1)),$(CFG_RUNTIME_PUSH_DIR))
 	$(Q)$(call ADB_PUSH,$$(TL$(1)$(2))/$$(EXTRALIB_GLOB_$(1)),$(CFG_RUNTIME_PUSH_DIR))
 	$(Q)$(call ADB_PUSH,$$(TL$(1)$(2))/$$(LIBRUSTUV_GLOB_$(1)),$(CFG_RUNTIME_PUSH_DIR))
+	$(Q)$(call ADB_PUSH,$$(TL$(1)$(2))/$$(LIBGREEN_GLOB_$(1)),$(CFG_RUNTIME_PUSH_DIR))
 endef
 
 define INSTALL_RUNTIME_TARGET_CLEANUP_N
@@ -245,6 +259,7 @@ install-runtime-target-$(1)-cleanup:
 	$(Q)$(call ADB_SHELL,rm,$(CFG_RUNTIME_PUSH_DIR)/$(STDLIB_GLOB_$(1)))
 	$(Q)$(call ADB_SHELL,rm,$(CFG_RUNTIME_PUSH_DIR)/$(EXTRALIB_GLOB_$(1)))
 	$(Q)$(call ADB_SHELL,rm,$(CFG_RUNTIME_PUSH_DIR)/$(LIBRUSTUV_GLOB_$(1)))
+	$(Q)$(call ADB_SHELL,rm,$(CFG_RUNTIME_PUSH_DIR)/$(LIBGREEN_GLOB_$(1)))
 endef
 
 $(eval $(call INSTALL_RUNTIME_TARGET_N,arm-linux-androideabi,$(CFG_BUILD)))

@@ -235,6 +235,8 @@ CFG_LIBSYNTAX_$(1) :=$(call CFG_LIB_NAME_$(1),syntax)
 CFG_LIBRUSTPKG_$(1) :=$(call CFG_LIB_NAME_$(1),rustpkg)
 CFG_LIBRUSTDOC_$(1) :=$(call CFG_LIB_NAME_$(1),rustdoc)
 CFG_LIBRUSTUV_$(1) :=$(call CFG_LIB_NAME_$(1),rustuv)
+CFG_LIBGREEN_$(1) :=$(call CFG_LIB_NAME_$(1),green)
+CFG_LIBNATIVE_$(1) :=$(call CFG_LIB_NAME_$(1),native)
 
 EXTRALIB_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),extra)
 STDLIB_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),std)
@@ -243,6 +245,8 @@ LIBSYNTAX_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),syntax)
 LIBRUSTPKG_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),rustpkg)
 LIBRUSTDOC_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),rustdoc)
 LIBRUSTUV_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),rustuv)
+LIBGREEN_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),green)
+LIBNATIVE_GLOB_$(1) :=$(call CFG_LIB_GLOB_$(1),native)
 EXTRALIB_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),extra)
 STDLIB_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),std)
 LIBRUSTC_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),rustc)
@@ -250,12 +254,16 @@ LIBSYNTAX_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),syntax)
 LIBRUSTPKG_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),rustpkg)
 LIBRUSTDOC_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),rustdoc)
 LIBRUSTUV_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),rustuv)
+LIBGREEN_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),green)
+LIBNATIVE_DSYM_GLOB_$(1) :=$(call CFG_LIB_DSYM_GLOB_$(1),native)
 
 EXTRALIB_RGLOB_$(1) :=$(call CFG_RLIB_GLOB,extra)
 STDLIB_RGLOB_$(1) :=$(call CFG_RLIB_GLOB,std)
 LIBRUSTUV_RGLOB_$(1) :=$(call CFG_RLIB_GLOB,rustuv)
 LIBSYNTAX_RGLOB_$(1) :=$(call CFG_RLIB_GLOB,syntax)
 LIBRUSTC_RGLOB_$(1) :=$(call CFG_RLIB_GLOB,rustc)
+LIBNATIVE_RGLOB_$(1) :=$(call CFG_RLIB_GLOB,native)
+LIBGREEN_RGLOB_$(1) :=$(call CFG_RLIB_GLOB,green)
 
 endef
 
@@ -272,9 +280,15 @@ define CHECK_FOR_OLD_GLOB_MATCHES_EXCEPT
 endef
 
 # Same interface as above, but deletes rather than just listing the files.
+ifdef VERBOSE
 define REMOVE_ALL_OLD_GLOB_MATCHES_EXCEPT
   $(Q)MATCHES="$(filter-out %$(3),$(wildcard $(1)/$(2)))"; if [ -n "$$MATCHES" ] ; then echo "warning: removing previous" \'$(2)\' "libraries:" $$MATCHES; rm $$MATCHES ; fi
 endef
+else
+define REMOVE_ALL_OLD_GLOB_MATCHES_EXCEPT
+  $(Q)MATCHES="$(filter-out %$(3),$(wildcard $(1)/$(2)))"; if [ -n "$$MATCHES" ] ; then rm $$MATCHES ; fi
+endef
+endif
 
 # We use a different strategy for LIST_ALL_OLD_GLOB_MATCHES_EXCEPT
 # than in the macros above because it needs the result of running the
@@ -317,6 +331,22 @@ EXTRALIB_INPUTS := $(wildcard $(addprefix $(S)src/libextra/,          \
 
 LIBRUSTUV_CRATE := $(S)src/librustuv/lib.rs
 LIBRUSTUV_INPUTS := $(wildcard $(addprefix $(S)src/librustuv/,          \
+                                          *.rs */*.rs))
+
+######################################################################
+# Green threading library variables
+######################################################################
+
+LIBGREEN_CRATE := $(S)src/libgreen/lib.rs
+LIBGREEN_INPUTS := $(wildcard $(addprefix $(S)src/libgreen/,          \
+                                          *.rs */*.rs))
+
+######################################################################
+# Native threading library variables
+######################################################################
+
+LIBNATIVE_CRATE := $(S)src/libnative/lib.rs
+LIBNATIVE_INPUTS := $(wildcard $(addprefix $(S)src/libnative/,          \
                                           *.rs */*.rs))
 
 ######################################################################
@@ -430,6 +460,16 @@ HLIBRUSTUV_DEFAULT$(1)_H_$(3) = \
 TLIBRUSTUV_DEFAULT$(1)_T_$(2)_H_$(3) = \
   $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTUV_$(2))
 
+HLIBGREEN_DEFAULT$(1)_H_$(3) = \
+  $$(HLIB$(1)_H_$(3))/$(CFG_LIBGREEN_$(3))
+TLIBGREEN_DEFAULT$(1)_T_$(2)_H_$(3) = \
+  $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBGREEN_$(2))
+
+HLIBNATIVE_DEFAULT$(1)_H_$(3) = \
+  $$(HLIB$(1)_H_$(3))/$(CFG_LIBNATIVE_$(3))
+TLIBNATIVE_DEFAULT$(1)_T_$(2)_H_$(3) = \
+  $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBNATIVE_$(2))
+
 # Preqrequisites for using the stageN compiler
 ifeq ($(1),0)
 HSREQ$(1)_H_$(3) = $$(HBIN$(1)_H_$(3))/rustc$$(X_$(3))
@@ -441,6 +481,8 @@ HSREQ$(1)_H_$(3) = \
 	$$(HLIBSYNTAX_DEFAULT$(1)_H_$(3)) \
 	$$(HLIBRUSTC_DEFAULT$(1)_H_$(3)) \
 	$$(HLIBRUSTUV_DEFAULT$(1)_H_$(3)) \
+	$$(HLIBGREEN_DEFAULT$(1)_H_$(3)) \
+	$$(HLIBNATIVE_DEFAULT$(1)_H_$(3)) \
 	$$(MKFILE_DEPS)
 endif
 
@@ -455,7 +497,9 @@ SREQ$(1)_T_$(2)_H_$(3) = \
 	$$(TSREQ$(1)_T_$(2)_H_$(3)) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_STDLIB_$(2)) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_EXTRALIB_$(2)) \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTUV_$(2))
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTUV_$(2)) \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBGREEN_$(2)) \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBNATIVE_$(2))
 
 # Prerequisites for a working stageN compiler and libraries, for a specific target
 CSREQ$(1)_T_$(2)_H_$(3) = \
@@ -470,7 +514,9 @@ CSREQ$(1)_T_$(2)_H_$(3) = \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTC_$(2)) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTPKG_$(2)) \
 	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTDOC_$(2)) \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTUV_$(2))
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBRUSTUV_$(2)) \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBGREEN_$(2)) \
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_LIBNATIVE_$(2))
 
 ifeq ($(1),0)
 # Don't run the the stage0 compiler under valgrind - that ship has sailed

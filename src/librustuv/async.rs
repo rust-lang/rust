@@ -127,16 +127,15 @@ impl Drop for AsyncWatcher {
 mod test_remote {
     use std::rt::rtio::Callback;
     use std::rt::thread::Thread;
-    use std::rt::tube::Tube;
 
-    use super::*;
+    use super::AsyncWatcher;
     use super::super::local_loop;
 
     // Make sure that we can fire watchers in remote threads and that they
     // actually trigger what they say they will.
     #[test]
     fn smoke_test() {
-        struct MyCallback(Option<Tube<int>>);
+        struct MyCallback(Option<Chan<int>>);
         impl Callback for MyCallback {
             fn call(&mut self) {
                 // this can get called more than once, but we only want to send
@@ -147,16 +146,17 @@ mod test_remote {
             }
         }
 
-        let mut tube = Tube::new();
-        let cb = ~MyCallback(Some(tube.clone()));
-        let watcher = AsyncWatcher::new(local_loop(), cb as ~Callback);
+        let (port, chan) = Chan::new();
+        let cb = ~MyCallback(Some(chan));
+        let watcher = AsyncWatcher::new(&mut local_loop().loop_,
+                                        cb as ~Callback);
 
         let thread = do Thread::start {
             let mut watcher = watcher;
             watcher.fire();
         };
 
-        assert_eq!(tube.recv(), 1);
+        assert_eq!(port.recv(), 1);
         thread.join();
     }
 }
