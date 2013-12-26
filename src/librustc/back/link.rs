@@ -838,7 +838,7 @@ fn link_rlib(sess: Session,
              out_filename: &Path) -> Archive {
     let mut a = Archive::create(sess, out_filename, obj_filename);
 
-    for &(ref l, kind) in cstore::get_used_libraries(sess.cstore).iter() {
+    for &(ref l, kind) in sess.cstore.get_used_libraries().iter() {
         match kind {
             cstore::NativeStatic => {
                 a.add_native_library(l.as_slice());
@@ -912,9 +912,9 @@ fn link_staticlib(sess: Session, obj_filename: &Path, out_filename: &Path) {
     let mut a = link_rlib(sess, None, obj_filename, out_filename);
     a.add_native_library("morestack");
 
-    let crates = cstore::get_used_crates(sess.cstore, cstore::RequireStatic);
+    let crates = sess.cstore.get_used_crates(cstore::RequireStatic);
     for &(cnum, ref path) in crates.iter() {
-        let name = cstore::get_crate_data(sess.cstore, cnum).name;
+        let name = sess.cstore.get_crate_data(cnum).name;
         let p = match *path {
             Some(ref p) => p.clone(), None => {
                 sess.err(format!("could not find rlib for: `{}`", name));
@@ -1072,7 +1072,7 @@ fn link_args(sess: Session,
     // Finally add all the linker arguments provided on the command line along
     // with any #[link_args] attributes found inside the crate
     args.push_all(sess.opts.linker_args);
-    for arg in cstore::get_used_link_args(sess.cstore).iter() {
+    for arg in sess.cstore.get_used_link_args().iter() {
         args.push(arg.clone());
     }
     return args;
@@ -1101,7 +1101,7 @@ fn add_local_native_libraries(args: &mut ~[~str], sess: Session) {
         args.push("-L" + path.as_str().unwrap().to_owned());
     }
 
-    for &(ref l, kind) in cstore::get_used_libraries(sess.cstore).iter() {
+    for &(ref l, kind) in sess.cstore.get_used_libraries().iter() {
         match kind {
             cstore::NativeUnknown | cstore::NativeStatic => {
                 args.push("-l" + *l);
@@ -1143,7 +1143,7 @@ fn add_upstream_rust_crates(args: &mut ~[~str], sess: Session,
         // all dynamic libaries require dynamic dependencies (see above), so
         // it's satisfactory to include either all static libraries or all
         // dynamic libraries.
-        let crates = cstore::get_used_crates(cstore, cstore::RequireStatic);
+        let crates = cstore.get_used_crates(cstore::RequireStatic);
         if crates.iter().all(|&(_, ref p)| p.is_some()) {
             for (cnum, path) in crates.move_iter() {
                 let cratepath = path.unwrap();
@@ -1163,7 +1163,7 @@ fn add_upstream_rust_crates(args: &mut ~[~str], sess: Session,
                 // If we're not doing LTO, then our job is simply to just link
                 // against the archive.
                 if sess.lto() {
-                    let name = cstore::get_crate_data(sess.cstore, cnum).name;
+                    let name = sess.cstore.get_crate_data(cnum).name;
                     time(sess.time_passes(), format!("altering {}.rlib", name),
                          (), |()| {
                         let dst = tmpdir.join(cratepath.filename().unwrap());
@@ -1196,13 +1196,13 @@ fn add_upstream_rust_crates(args: &mut ~[~str], sess: Session,
     //   this case is the fallback
     // * If an executable is being created, and one of the inputs is missing as
     //   a static library, then this is the fallback case.
-    let crates = cstore::get_used_crates(cstore, cstore::RequireDynamic);
+    let crates = cstore.get_used_crates(cstore::RequireDynamic);
     for &(cnum, ref path) in crates.iter() {
         let cratepath = match *path {
             Some(ref p) => p.clone(),
             None => {
                 sess.err(format!("could not find dynamic library for: `{}`",
-                                 cstore::get_crate_data(sess.cstore, cnum).name));
+                                 sess.cstore.get_crate_data(cnum).name));
                 return
             }
         };
@@ -1235,7 +1235,7 @@ fn add_upstream_rust_crates(args: &mut ~[~str], sess: Session,
 // also be resolved in the target crate.
 fn add_upstream_native_libraries(args: &mut ~[~str], sess: Session) {
     let cstore = sess.cstore;
-    cstore::iter_crate_data(cstore, |cnum, _| {
+    cstore.iter_crate_data(|cnum, _| {
         let libs = csearch::get_native_libraries(cstore, cnum);
         for &(kind, ref lib) in libs.iter() {
             match kind {

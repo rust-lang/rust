@@ -10,12 +10,7 @@
 
 
 use driver::session::Session;
-use metadata::csearch::get_trait_method_def_ids;
-use metadata::csearch::get_method_name_and_explicit_self;
-use metadata::csearch::get_static_methods_if_impl;
-use metadata::csearch::{get_type_name_if_impl, get_struct_fields};
 use metadata::csearch;
-use metadata::cstore::find_extern_mod_stmt_cnum;
 use metadata::decoder::{DefLike, DlDef, DlField, DlImpl};
 use middle::lang_items::LanguageItems;
 use middle::lint::{unnecessary_qualification, unused_imports};
@@ -1498,8 +1493,7 @@ impl Resolver {
 
             view_item_extern_mod(name, _, _, node_id) => {
                 // n.b. we don't need to look at the path option here, because cstore already did
-                match find_extern_mod_stmt_cnum(self.session.cstore,
-                                                        node_id) {
+                match self.session.cstore.find_extern_mod_stmt_cnum(node_id) {
                     Some(crate_id) => {
                         let def_id = DefId { crate: crate_id, node: 0 };
                         self.external_exports.insert(def_id);
@@ -1662,12 +1656,12 @@ impl Resolver {
               // to the trait info.
 
               let method_def_ids =
-                get_trait_method_def_ids(self.session.cstore, def_id);
+                csearch::get_trait_method_def_ids(self.session.cstore, def_id);
               let mut interned_method_names = HashSet::new();
               for &method_def_id in method_def_ids.iter() {
                   let (method_name, explicit_self) =
-                      get_method_name_and_explicit_self(self.session.cstore,
-                                                        method_def_id);
+                      csearch::get_method_name_and_explicit_self(self.session.cstore,
+                                                                 method_def_id);
 
                   debug!("(building reduced graph for \
                           external crate) ... adding \
@@ -1714,7 +1708,7 @@ impl Resolver {
                     crate) building type and value for {}",
                    final_ident);
             child_name_bindings.define_type(def, dummy_sp(), is_public);
-            if get_struct_fields(self.session.cstore, def_id).len() == 0 {
+            if csearch::get_struct_fields(self.session.cstore, def_id).len() == 0 {
                 child_name_bindings.define_value(def, dummy_sp(), is_public);
             }
             self.structs.insert(def_id);
@@ -1776,12 +1770,11 @@ impl Resolver {
             }
             DlImpl(def) => {
                 // We only process static methods of impls here.
-                match get_type_name_if_impl(self.session.cstore, def) {
+                match csearch::get_type_name_if_impl(self.session.cstore, def) {
                     None => {}
                     Some(final_ident) => {
                         let static_methods_opt =
-                            get_static_methods_if_impl(self.session.cstore,
-                                                       def);
+                            csearch::get_static_methods_if_impl(self.session.cstore, def);
                         match static_methods_opt {
                             Some(ref static_methods) if
                                 static_methods.len() >= 1 => {
