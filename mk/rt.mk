@@ -74,7 +74,6 @@ endif
 
 RUNTIME_CS_$(1)_$(2) := \
               rt/rust_builtin.c \
-              rt/rust_upcall.c \
               rt/miniz.c \
               rt/rust_android_dummy.c \
               rt/rust_test_helpers.c
