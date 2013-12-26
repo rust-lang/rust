@@ -43,8 +43,6 @@
 //!
 //!     use std::prelude::*;
 
-// NOTE: remove after snapshot
-#[pkgid = "std#0.9-pre"];
 #[crate_id = "std#0.9-pre"];
 #[comment = "The Rust standard library"];
 #[license = "MIT/ASL2"];

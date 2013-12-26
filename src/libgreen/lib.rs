@@ -17,7 +17,6 @@
 //! This can be optionally linked in to rust programs in order to provide M:N
 //! functionality inside of 1:1 programs.
 
-#[pkgid = "green#0.9-pre"];
 #[crate_id = "green#0.9-pre"];
 #[license = "MIT/ASL2"];
 #[crate_type = "rlib"];
