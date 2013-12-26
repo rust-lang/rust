@@ -10,15 +10,17 @@
 
 //! A type representing either success or failure
 
+use any::Any;
 use clone::Clone;
 use cmp::Eq;
 use fmt;
 use iter::Iterator;
+use kinds::Send;
 use option::{None, Option, Some};
 use str::OwnedStr;
 use to_str::ToStr;
-use vec::OwnedVector;
 use vec;
+use vec::OwnedVector;
 
 /// `Result` is a type that represents either success (`Ok`) or failure (`Err`).
 #[deriving(Clone, DeepClone, Eq, Ord, TotalEq, TotalOrd, ToStr)]
@@ -199,6 +201,19 @@ impl<T, E> Result<T, E> {
         match self {
             Ok(_) => fail!("called `Result::unwrap_err()` on an `Ok` value"),
             Err(e) => e
+        }
+    }
+
+}
+
+impl<T, E: Send> Result<T, E> {
+    /// Unwraps a result, yielding the content of a `Ok`
+    /// Fails if the value is an `Err` with a custom failure message provided by `msg`.
+    #[inline]
+    pub fn expect<M: Any + Send>(self, msg: M) -> T {
+        match self {
+            Ok(t) => t,
+            Err(_) => fail!(msg)
         }
     }
 }
