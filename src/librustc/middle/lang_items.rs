@@ -22,7 +22,6 @@
 
 use driver::session::Session;
 use metadata::csearch::each_lang_item;
-use metadata::cstore::iter_crate_data;
 use middle::ty::{BuiltinBound, BoundFreeze, BoundPod, BoundSend, BoundSized};
 use syntax::ast;
 use syntax::ast_util::local_def;
@@ -165,7 +164,7 @@ impl LanguageItemCollector {
 
     pub fn collect_external_language_items(&mut self) {
         let crate_store = self.session.cstore;
-        iter_crate_data(crate_store, |crate_number, _crate_metadata| {
+        crate_store.iter_crate_data(|crate_number, _crate_metadata| {
             each_lang_item(crate_store, crate_number, |node_id, item_index| {
                 let def_id = ast::DefId { crate: crate_number, node: node_id };
                 self.collect_item(item_index, def_id);

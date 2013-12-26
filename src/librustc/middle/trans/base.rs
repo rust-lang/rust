@@ -33,7 +33,7 @@ use lib::llvm::{ModuleRef, ValueRef, BasicBlockRef};
 use lib::llvm::{llvm, True};
 use lib;
 use metadata::common::LinkMeta;
-use metadata::{csearch, cstore, encoder};
+use metadata::{csearch, encoder};
 use middle::astencode;
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
 use middle::lang_items::{MallocFnLangItem, ClosureExchangeMallocFnLangItem};
@@ -2945,7 +2945,7 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
     let int_type = Type::int(targ_cfg.arch);
     let mut n_subcrates = 1;
     let cstore = sess.cstore;
-    while cstore::have_crate_data(cstore, n_subcrates) { n_subcrates += 1; }
+    while cstore.have_crate_data(n_subcrates) { n_subcrates += 1; }
     let is_top = !*sess.building_library || sess.gen_crate_map();
     let sym_name = if is_top {
         ~"_rust_crate_map_toplevel"
@@ -2981,11 +2981,11 @@ pub fn fill_crate_map(ccx: @mut CrateContext, map: ValueRef) {
     let mut subcrates: ~[ValueRef] = ~[];
     let mut i = 1;
     let cstore = ccx.sess.cstore;
-    while cstore::have_crate_data(cstore, i) {
-        let cdata = cstore::get_crate_data(cstore, i);
+    while cstore.have_crate_data(i) {
+        let cdata = cstore.get_crate_data(i);
         let nm = symname(ccx.sess, format!("_rust_crate_map_{}", cdata.name),
-                         cstore::get_crate_hash(cstore, i),
-                         cstore::get_crate_vers(cstore, i));
+                         cstore.get_crate_hash(i),
+                         cstore.get_crate_vers(i));
         let cr = nm.with_c_str(|buf| {
             unsafe {
                 llvm::LLVMAddGlobal(ccx.llmod, ccx.int_type.to_ref(), buf)
