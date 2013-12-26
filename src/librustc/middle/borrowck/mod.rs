@@ -490,7 +490,7 @@ impl BorrowckCtxt {
                                adj: @ty::AutoAdjustment)
                                -> mc::cmt {
         match *adj {
-            ty::AutoAddEnv(..) => {
+            ty::AutoAddEnv(..) | ty::AutoObject(..) => {
                 // no autoderefs
                 mc::cat_expr_unadjusted(self.tcx, self.method_map, expr)
             }

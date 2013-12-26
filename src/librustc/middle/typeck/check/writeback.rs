@@ -182,6 +182,12 @@ fn resolve_type_vars_for_node(wbcx: &mut WbCtxt, sp: Span, id: ast::NodeId)
             let mut adjustments = fcx.tcx().adjustments.borrow_mut();
             adjustments.get().insert(id, resolved_adj);
         }
+
+        Some(adjustment @ @ty::AutoObject(..)) => {
+            debug!("Adjustments for node {}: {:?}", id, adjustment);
+            let mut adjustments = fcx.tcx().adjustments.borrow_mut();
+            adjustments.get().insert(id, adjustment);
+        }
     }
 
     // Resolve the type of the node with id `id`

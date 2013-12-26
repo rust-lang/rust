@@ -646,14 +646,22 @@ pub fn trans_trait_cast(bcx: @Block,
                         val: &ast::Expr,
                         id: ast::NodeId,
                         dest: expr::Dest,
-                        _store: ty::TraitStore)
+                        _store: ty::TraitStore,
+                        do_adjustments: bool)
                      -> @Block {
     let mut bcx = bcx;
     let _icx = push_ctxt("impl::trans_cast");
 
+    // Pick the right trans function
+    let trans_into = if do_adjustments {
+        expr::trans_into
+    } else {
+        expr::trans_into_unadjusted
+    };
+
     let lldest = match dest {
         Ignore => {
-            return expr::trans_into(bcx, val, Ignore);
+            return trans_into(bcx, val, Ignore);
         }
         SaveIn(dest) => dest
     };
@@ -668,7 +676,7 @@ pub fn trans_trait_cast(bcx: @Block,
     llboxdest = PointerCast(bcx,
                             llboxdest,
                             type_of(bcx.ccx(), v_ty).ptr_to());
-    bcx = expr::trans_into(bcx, val, SaveIn(llboxdest));
+    bcx = trans_into(bcx, val, SaveIn(llboxdest));
 
     // Store the vtable into the pair or triple.
     // This is structured a bit funny because of dynamic borrow failures.
