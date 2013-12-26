@@ -167,6 +167,7 @@ pub struct options {
     test: bool,
     parse_only: bool,
     no_trans: bool,
+    no_analysis: bool,
     debugging_opts: uint,
     android_cross_path: Option<~str>,
     /// Whether to write dependency files. It's (enabled, optional filename).
@@ -398,6 +399,7 @@ pub fn basic_options() -> @options {
         test: false,
         parse_only: false,
         no_trans: false,
+        no_analysis: false,
         debugging_opts: 0u,
         android_cross_path: None,
         write_dependency_info: (false, None),
