@@ -31,7 +31,7 @@
 //!
 //! ~~~{.rust}
 //! extern mod extra;
-//! use extra::getopts::*;
+//! use extra::getopts::{optopt,optflag,getopts};
 //! use std::os;
 //!
 //! fn do_work(inp: &str, out: Option<~str>) {
