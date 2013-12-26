@@ -32,7 +32,7 @@ impl Rand for StandardNormal {
     fn rand<R:Rng>(rng: &mut R) -> StandardNormal {
         #[inline]
         fn pdf(x: f64) -> f64 {
-            ((-x*x/2.0) as f64).exp()
+            (-x*x/2.0).exp()
         }
         #[inline]
         fn zero_case<R:Rng>(rng: &mut R, u: f64) -> f64 {

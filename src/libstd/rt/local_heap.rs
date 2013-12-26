@@ -285,7 +285,7 @@ pub unsafe fn local_malloc(td: *libc::c_char, size: libc::uintptr_t) -> *libc::c
     let task: Option<*mut Task> = Local::try_unsafe_borrow();
     match task {
         Some(task) => {
-            (*task).heap.alloc(td as *TyDesc, size as uint) as *libc::c_char
+            (*task).heap.alloc(td as *TyDesc, size) as *libc::c_char
         }
         None => rtabort!("local malloc outside of task")
     }

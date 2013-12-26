@@ -409,7 +409,7 @@ fn spawn_process_os(prog: &str, args: &[~str],
         }
         // close all other fds
         for fd in range(3, getdtablesize()).invert() {
-            close(fd as c_int);
+            close(fd);
         }
 
         with_dirp(dir, |dirp| {

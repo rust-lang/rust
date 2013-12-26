@@ -101,7 +101,6 @@ use middle::typeck::check::vtable::{LocationInfo, VtableContext};
 use middle::typeck::CrateCtxt;
 use middle::typeck::infer::{resolve_type, force_tvar};
 use middle::typeck::infer;
-use middle::typeck::rscope::RegionScope;
 use middle::typeck::{lookup_def_ccx};
 use middle::typeck::no_params;
 use middle::typeck::{require_same_types, method_map, vtable_map};
@@ -1057,16 +1056,6 @@ impl FnCtxt {
             infcx: self.infcx(),
             param_env: &self.inh.param_env
         }
-    }
-}
-
-impl RegionScope for @mut infer::InferCtxt {
-    fn anon_regions(&self,
-                    span: Span,
-                    count: uint) -> Result<~[ty::Region], ()> {
-        Ok(vec::from_fn(
-                count,
-                |_| self.next_region_var(infer::MiscVariable(span))))
     }
 }
 
