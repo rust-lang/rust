@@ -51,21 +51,17 @@ randomness.
 use std::rand;
 use std::rand::Rng;
 
-fn main() {
-    let mut rng = rand::rng();
-    if rng.gen() { // bool
-        println!("int: {}, uint: {}", rng.gen::<int>(), rng.gen::<uint>())
-    }
+let mut rng = rand::rng();
+if rng.gen() { // bool
+    println!("int: {}, uint: {}", rng.gen::<int>(), rng.gen::<uint>())
 }
  ```
 
 ```rust
 use std::rand;
 
-fn main () {
-    let tuple_ptr = rand::random::<~(f64, char)>();
-    println!("{:?}", tuple_ptr)
-}
+let tuple_ptr = rand::random::<~(f64, char)>();
+println!("{:?}", tuple_ptr)
  ```
 */
 
@@ -91,27 +87,28 @@ pub mod reader;
 pub mod reseeding;
 mod rand_impls;
 
-/// A type that can be randomly generated using an Rng
+/// A type that can be randomly generated using an `Rng`.
 pub trait Rand {
     /// Generates a random instance of this type using the specified source of
-    /// randomness
+    /// randomness.
     fn rand<R: Rng>(rng: &mut R) -> Self;
 }
 
-/// A random number generator
+/// A random number generator.
 pub trait Rng {
-    /// Return the next random u32. This rarely needs to be called
-    /// directly, prefer `r.gen()` to `r.next_u32()`.
+    /// Return the next random u32.
     ///
+    /// This rarely needs to be called directly, prefer `r.gen()` to
+    /// `r.next_u32()`.
     // FIXME #7771: Should be implemented in terms of next_u64
     fn next_u32(&mut self) -> u32;
 
-    /// Return the next random u64. This rarely needs to be called
-    /// directly, prefer `r.gen()` to `r.next_u64()`.
+    /// Return the next random u64.
     ///
     /// By default this is implemented in terms of `next_u32`. An
     /// implementation of this trait must provide at least one of
-    /// these two methods.
+    /// these two methods. Similarly to `next_u32`, this rarely needs
+    /// to be called directly, prefer `r.gen()` to `r.next_u64()`.
     fn next_u64(&mut self) -> u64 {
         (self.next_u32() as u64 << 32) | (self.next_u32() as u64)
     }
@@ -139,11 +136,9 @@ pub trait Rng {
     /// ```rust
     /// use std::rand::{task_rng, Rng};
     ///
-    /// fn main() {
-    ///    let mut v = [0u8, .. 13579];
-    ///    task_rng().fill_bytes(v);
-    ///    println!("{:?}", v);
-    /// }
+    /// let mut v = [0u8, .. 13579];
+    /// task_rng().fill_bytes(v);
+    /// println!("{:?}", v);
     /// ```
     fn fill_bytes(&mut self, dest: &mut [u8]) {
         // this could, in theory, be done by transmuting dest to a
@@ -169,20 +164,17 @@ pub trait Rng {
         }
     }
 
-    /// Return a random value of a Rand type.
+    /// Return a random value of a `Rand` type.
     ///
     /// # Example
     ///
     /// ```rust
-    /// use std::rand;
-    /// use std::rand::Rng;
+    /// use std::rand::{task_rng, Rng};
     ///
-    /// fn main() {
-    ///    let mut rng = rand::task_rng();
-    ///    let x: uint = rng.gen();
-    ///    println!("{}", x);
-    ///    println!("{:?}", rng.gen::<(f64, bool)>());
-    /// }
+    /// let mut rng = task_rng();
+    /// let x: uint = rng.gen();
+    /// println!("{}", x);
+    /// println!("{:?}", rng.gen::<(f64, bool)>());
     /// ```
     #[inline(always)]
     fn gen<T: Rand>(&mut self) -> T {
@@ -194,15 +186,12 @@ pub trait Rng {
     /// # Example
     ///
     /// ```rust
-    /// use std::rand;
-    /// use std::rand::Rng;
+    /// use std::rand::{task_rng, Rng};
     ///
-    /// fn main() {
-    ///    let mut rng = rand::task_rng();
-    ///    let x: ~[uint] = rng.gen_vec(10);
-    ///    println!("{:?}", x);
-    ///    println!("{:?}", rng.gen_vec::<(f64, bool)>(5));
-    /// }
+    /// let mut rng = task_rng();
+    /// let x: ~[uint] = rng.gen_vec(10);
+    /// println!("{:?}", x);
+    /// println!("{:?}", rng.gen_vec::<(f64, bool)>(5));
     /// ```
     fn gen_vec<T: Rand>(&mut self, len: uint) -> ~[T] {
         vec::from_fn(len, |_| self.gen())
@@ -220,16 +209,13 @@ pub trait Rng {
     /// # Example
     ///
     /// ```rust
-    /// use std::rand;
-    /// use std::rand::Rng;
+    /// use std::rand::{task_rng, Rng};
     ///
-    /// fn main() {
-    ///    let mut rng = rand::task_rng();
-    ///    let n: uint = rng.gen_range(0u, 10);
-    ///    println!("{}", n);
-    ///    let m: f64 = rng.gen_range(-40.0, 1.3e5);
-    ///    println!("{}", m);
-    /// }
+    /// let mut rng = task_rng();
+    /// let n: uint = rng.gen_range(0u, 10);
+    /// println!("{}", n);
+    /// let m: f64 = rng.gen_range(-40.0, 1.3e5);
+    /// println!("{}", m);
     /// ```
     fn gen_range<T: Ord + SampleRange>(&mut self, low: T, high: T) -> T {
         assert!(low < high, "Rng.gen_range called with low >= high");
@@ -241,13 +227,10 @@ pub trait Rng {
     /// # Example
     ///
     /// ```rust
-    /// use std::rand;
-    /// use std::rand::Rng;
+    /// use std::rand::{task_rng, Rng};
     ///
-    /// fn main() {
-    ///     let mut rng = rand::rng();
-    ///     println!("{:b}", rng.gen_weighted_bool(3));
-    /// }
+    /// let mut rng = task_rng();
+    /// println!("{:b}", rng.gen_weighted_bool(3));
     /// ```
     fn gen_weighted_bool(&mut self, n: uint) -> bool {
         n == 0 || self.gen_range(0, n) == 0
@@ -259,12 +242,9 @@ pub trait Rng {
     /// # Example
     ///
     /// ```rust
-    /// use std::rand;
-    /// use std::rand::Rng;
+    /// use std::rand::{task_rng, Rng};
     ///
-    /// fn main() {
-    ///    println(rand::task_rng().gen_ascii_str(10));
-    /// }
+    /// println(task_rng().gen_ascii_str(10));
     /// ```
     fn gen_ascii_str(&mut self, len: uint) -> ~str {
         static GEN_ASCII_STR_CHARSET: &'static [u8] = bytes!("ABCDEFGHIJKLMNOPQRSTUVWXYZ\
@@ -288,15 +268,12 @@ pub trait Rng {
     /// # Example
     ///
     /// ```rust
-    /// use std::rand;
-    /// use std::rand::Rng;
+    /// use std::rand::{task_rng, Rng};
     ///
-    /// fn main() {
-    ///     let choices = [1, 2, 4, 8, 16, 32];
-    ///     let mut rng = rand::task_rng();
-    ///     println!("{:?}", rng.choose_option(choices));
-    ///     println!("{:?}", rng.choose_option(choices.slice_to(0)));
-    /// }
+    /// let choices = [1, 2, 4, 8, 16, 32];
+    /// let mut rng = task_rng();
+    /// println!("{:?}", rng.choose_option(choices));
+    /// println!("{:?}", rng.choose_option(choices.slice_to(0)));
     /// ```
     fn choose_option<'a, T>(&mut self, values: &'a [T]) -> Option<&'a T> {
         if values.is_empty() {
@@ -311,12 +288,9 @@ pub trait Rng {
     /// # Example
     ///
     /// ```rust
-    /// use std::rand;
-    /// use std::rand::Rng;
+    /// use std::rand::{task_rng, Rng};
     ///
-    /// fn main() {
-    ///     println!("{:?}", rand::task_rng().shuffle(~[1,2,3]));
-    /// }
+    /// println!("{:?}", task_rng().shuffle(~[1,2,3]));
     /// ```
     fn shuffle<T>(&mut self, values: ~[T]) -> ~[T] {
         let mut v = values;
@@ -329,17 +303,14 @@ pub trait Rng {
     /// # Example
     ///
     /// ```rust
-    /// use std::rand;
-    /// use std::rand::Rng;
+    /// use std::rand::{task_rng, Rng};
     ///
-    /// fn main() {
-    ///    let mut rng = rand::task_rng();
-    ///    let mut y = [1,2,3];
-    ///    rng.shuffle_mut(y);
-    ///    println!("{:?}", y);
-    ///    rng.shuffle_mut(y);
-    ///    println!("{:?}", y);
-    /// }
+    /// let mut rng = task_rng();
+    /// let mut y = [1,2,3];
+    /// rng.shuffle_mut(y);
+    /// println!("{:?}", y);
+    /// rng.shuffle_mut(y);
+    /// println!("{:?}", y);
     /// ```
     fn shuffle_mut<T>(&mut self, values: &mut [T]) {
         let mut i = values.len();
@@ -356,14 +327,11 @@ pub trait Rng {
     /// # Example
     ///
     /// ```rust
-    /// use std::rand;
-    /// use std::rand::Rng;
+    /// use std::rand::{task_rng, Rng};
     ///
-    /// fn main() {
-    ///    let mut rng = rand::task_rng();
-    ///    let sample = rng.sample(range(1, 100), 5);
-    ///    println!("{:?}", sample);
-    /// }
+    /// let mut rng = task_rng();
+    /// let sample = rng.sample(range(1, 100), 5);
+    /// println!("{:?}", sample);
     /// ```
     fn sample<A, T: Iterator<A>>(&mut self, iter: T, n: uint) -> ~[A] {
         let mut reservoir : ~[A] = vec::with_capacity(n);
@@ -392,12 +360,10 @@ pub trait SeedableRng<Seed>: Rng {
     /// ```rust
     /// use std::rand::{Rng, SeedableRng, StdRng};
     ///
-    /// fn main() {
-    ///     let mut rng: StdRng = SeedableRng::from_seed(&[1, 2, 3, 4]);
-    ///     println!("{}", rng.gen::<f64>());
-    ///     rng.reseed([5, 6, 7, 8]);
-    ///     println!("{}", rng.gen::<f64>());
-    /// }
+    /// let mut rng: StdRng = SeedableRng::from_seed(&[1, 2, 3, 4]);
+    /// println!("{}", rng.gen::<f64>());
+    /// rng.reseed([5, 6, 7, 8]);
+    /// println!("{}", rng.gen::<f64>());
     /// ```
     fn reseed(&mut self, Seed);
 
@@ -406,13 +372,10 @@ pub trait SeedableRng<Seed>: Rng {
     /// # Example
     ///
     /// ```rust
-    /// use std::rand;
-    /// use std::rand::Rng;
+    /// use std::rand::{Rng, SeedableRng, StdRng};
     ///
-    /// fn main() {
-    ///     let mut rng: rand::StdRng = rand::SeedableRng::from_seed(&[1, 2, 3, 4]);
-    ///     println!("{}", rng.gen::<f64>());
-    /// }
+    /// let mut rng: StdRng = SeedableRng::from_seed(&[1, 2, 3, 4]);
+    /// println!("{}", rng.gen::<f64>());
     /// ```
     fn from_seed(seed: Seed) -> Self;
 }
@@ -647,13 +610,11 @@ impl Rng for TaskRng {
 /// ```rust
 /// use std::rand::random;
 ///
-/// fn main() {
-///     if random() {
-///         let x = random();
-///         println!("{}", 2u * x);
-///     } else {
-///         println!("{}", random::<f64>());
-///     }
+/// if random() {
+///     let x = random();
+///     println!("{}", 2u * x);
+/// } else {
+///     println!("{}", random::<f64>());
 /// }
 /// ```
 #[inline]
@@ -672,12 +633,10 @@ pub fn random<T: Rand>() -> T {
 /// ```rust
 /// use std::rand::{random, Open01};
 ///
-/// fn main() {
-///     println!("f32 from (0,1): {}", *random::<Open01<f32>>());
+/// println!("f32 from (0,1): {}", *random::<Open01<f32>>());
 ///
-///     let x: Open01<f64> = random();
-///     println!("f64 from (0,1): {}", *x);
-/// }
+/// let x: Open01<f64> = random();
+/// println!("f64 from (0,1): {}", *x);
 /// ```
 pub struct Open01<F>(F);
 
@@ -692,12 +651,10 @@ pub struct Open01<F>(F);
 /// ```rust
 /// use std::rand::{random, Closed01};
 ///
-/// fn main() {
-///     println!("f32 from [0,1]: {}", *random::<Closed01<f32>>());
+/// println!("f32 from [0,1]: {}", *random::<Closed01<f32>>());
 ///
-///     let x: Closed01<f64> = random();
-///     println!("f64 from [0,1]: {}", *x);
-/// }
+/// let x: Closed01<f64> = random();
+/// println!("f64 from [0,1]: {}", *x);
 /// ```
 pub struct Closed01<F>(F);
 
