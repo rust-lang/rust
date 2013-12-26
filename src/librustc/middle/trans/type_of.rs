@@ -21,15 +21,15 @@ use middle::trans::type_::Type;
 use syntax::ast;
 use syntax::opt_vec;
 
-pub fn arg_is_indirect(ccx: &mut CrateContext, arg_ty: ty::t) -> bool {
+pub fn arg_is_indirect(ccx: &CrateContext, arg_ty: ty::t) -> bool {
     !type_is_immediate(ccx, arg_ty)
 }
 
-pub fn return_uses_outptr(ccx: &mut CrateContext, ty: ty::t) -> bool {
+pub fn return_uses_outptr(ccx: &CrateContext, ty: ty::t) -> bool {
     !type_is_immediate(ccx, ty)
 }
 
-pub fn type_of_explicit_arg(ccx: &mut CrateContext, arg_ty: ty::t) -> Type {
+pub fn type_of_explicit_arg(ccx: &CrateContext, arg_ty: ty::t) -> Type {
     let llty = type_of(ccx, arg_ty);
     if arg_is_indirect(ccx, arg_ty) {
         llty.ptr_to()
@@ -38,12 +38,12 @@ pub fn type_of_explicit_arg(ccx: &mut CrateContext, arg_ty: ty::t) -> Type {
     }
 }
 
-pub fn type_of_explicit_args(ccx: &mut CrateContext,
+pub fn type_of_explicit_args(ccx: &CrateContext,
                              inputs: &[ty::t]) -> ~[Type] {
     inputs.map(|&arg_ty| type_of_explicit_arg(ccx, arg_ty))
 }
 
-pub fn type_of_rust_fn(cx: &mut CrateContext,
+pub fn type_of_rust_fn(cx: &CrateContext,
                        inputs: &[ty::t],
                        output: ty::t) -> Type {
     let mut atys: ~[Type] = ~[];
@@ -71,7 +71,7 @@ pub fn type_of_rust_fn(cx: &mut CrateContext,
 }
 
 // Given a function type and a count of ty params, construct an llvm type
-pub fn type_of_fn_from_ty(cx: &mut CrateContext, fty: ty::t) -> Type {
+pub fn type_of_fn_from_ty(cx: &CrateContext, fty: ty::t) -> Type {
     return match ty::get(fty).sty {
         ty::ty_closure(ref f) => {
             type_of_rust_fn(cx, f.sig.inputs, f.sig.output)
@@ -100,10 +100,13 @@ pub fn type_of_fn_from_ty(cx: &mut CrateContext, fty: ty::t) -> Type {
 //     type behind pointers. This can help prevent infinite loops for
 //     recursive types. For example, enum types rely on this behavior.
 
-pub fn sizing_type_of(cx: &mut CrateContext, t: ty::t) -> Type {
-    match cx.llsizingtypes.find_copy(&t) {
-        Some(t) => return t,
-        None => ()
+pub fn sizing_type_of(cx: &CrateContext, t: ty::t) -> Type {
+    {
+        let llsizingtypes = cx.llsizingtypes.borrow();
+        match llsizingtypes.get().find_copy(&t) {
+            Some(t) => return t,
+            None => ()
+        }
     }
 
     let llsizingty = match ty::get(t).sty {
@@ -166,18 +169,20 @@ pub fn sizing_type_of(cx: &mut CrateContext, t: ty::t) -> Type {
         }
     };
 
-    cx.llsizingtypes.insert(t, llsizingty);
+    let mut llsizingtypes = cx.llsizingtypes.borrow_mut();
+    llsizingtypes.get().insert(t, llsizingty);
     llsizingty
 }
 
 // NB: If you update this, be sure to update `sizing_type_of()` as well.
-pub fn type_of(cx: &mut CrateContext, t: ty::t) -> Type {
+pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
     // Check the cache.
-    match cx.lltypes.find(&t) {
-        Some(&llty) => {
-            return llty;
+    {
+        let lltypes = cx.lltypes.borrow();
+        match lltypes.get().find(&t) {
+            Some(&llty) => return llty,
+            None => ()
         }
-        None => ()
     }
 
     debug!("type_of {} {:?}", t.repr(cx.tcx), t);
@@ -197,7 +202,8 @@ pub fn type_of(cx: &mut CrateContext, t: ty::t) -> Type {
                 t_norm.repr(cx.tcx),
                 t_norm,
                 cx.tn.type_to_str(llty));
-        cx.lltypes.insert(t, llty);
+        let mut lltypes = cx.lltypes.borrow_mut();
+        lltypes.get().insert(t, llty);
         return llty;
     }
 
@@ -316,7 +322,10 @@ pub fn type_of(cx: &mut CrateContext, t: ty::t) -> Type {
             t.repr(cx.tcx),
             t,
             cx.tn.type_to_str(llty));
-    cx.lltypes.insert(t, llty);
+    {
+        let mut lltypes = cx.lltypes.borrow_mut();
+        lltypes.get().insert(t, llty);
+    }
 
     // If this was an enum or struct, fill in the type now.
     match ty::get(t).sty {
@@ -350,7 +359,7 @@ pub fn llvm_type_name(cx: &CrateContext,
     }
 }
 
-pub fn type_of_dtor(ccx: &mut CrateContext, self_ty: ty::t) -> Type {
+pub fn type_of_dtor(ccx: &CrateContext, self_ty: ty::t) -> Type {
     let self_ty = type_of(ccx, self_ty).ptr_to();
     Type::func([self_ty], &Type::void())
 }

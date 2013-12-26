@@ -11,6 +11,7 @@
 
 use middle::ty;
 
+use std::cell::Cell;
 use std::vec;
 use syntax::ast;
 use syntax::codemap::Span;
@@ -49,14 +50,14 @@ impl RegionScope for ExplicitRscope {
 /// omitted regions. This occurs in function signatures.
 pub struct BindingRscope {
     binder_id: ast::NodeId,
-    anon_bindings: @mut uint
+    anon_bindings: Cell<uint>,
 }
 
 impl BindingRscope {
     pub fn new(binder_id: ast::NodeId) -> BindingRscope {
         BindingRscope {
             binder_id: binder_id,
-            anon_bindings: @mut 0
+            anon_bindings: Cell::new(0),
         }
     }
 }
@@ -66,8 +67,8 @@ impl RegionScope for BindingRscope {
                     _: Span,
                     count: uint)
                     -> Result<~[ty::Region], ()> {
-        let idx = *self.anon_bindings;
-        *self.anon_bindings += count;
+        let idx = self.anon_bindings.get();
+        self.anon_bindings.set(idx + count);
         Ok(vec::from_fn(count, |i| ty::ReLateBound(self.binder_id,
                                                    ty::BrAnon(idx + i))))
     }

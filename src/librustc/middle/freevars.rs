@@ -30,11 +30,11 @@ pub struct freevar_entry {
     span: Span     //< First span where it is accessed (there can be multiple)
 }
 pub type freevar_info = @~[@freevar_entry];
-pub type freevar_map = @mut HashMap<ast::NodeId, freevar_info>;
+pub type freevar_map = HashMap<ast::NodeId, freevar_info>;
 
 struct CollectFreevarsVisitor {
-    seen: @mut HashMap<ast::NodeId, ()>,
-    refs: @mut ~[@freevar_entry],
+    seen: HashMap<ast::NodeId, ()>,
+    refs: ~[@freevar_entry],
     def_map: resolve::DefMap,
 }
 
@@ -52,7 +52,8 @@ impl Visitor<int> for CollectFreevarsVisitor {
               }
               ast::ExprPath(..) | ast::ExprSelf => {
                   let mut i = 0;
-                  match self.def_map.find(&expr.id) {
+                  let def_map = self.def_map.borrow();
+                  match def_map.get().find(&expr.id) {
                     None => fail!("path not found"),
                     Some(&df) => {
                       let mut def = df;
@@ -90,8 +91,8 @@ impl Visitor<int> for CollectFreevarsVisitor {
 // in order to start the search.
 fn collect_freevars(def_map: resolve::DefMap, blk: ast::P<ast::Block>)
     -> freevar_info {
-    let seen = @mut HashMap::new();
-    let refs = @mut ~[];
+    let seen = HashMap::new();
+    let refs = ~[];
 
     let mut v = CollectFreevarsVisitor {
         seen: seen,
@@ -100,7 +101,11 @@ fn collect_freevars(def_map: resolve::DefMap, blk: ast::P<ast::Block>)
     };
 
     v.visit_block(blk, 1);
-    return @(*refs).clone();
+    let CollectFreevarsVisitor {
+        refs,
+        ..
+    } = v;
+    return @refs;
 }
 
 struct AnnotateFreevarsVisitor {
@@ -124,21 +129,24 @@ impl Visitor<()> for AnnotateFreevarsVisitor {
 // one pass. This could be improved upon if it turns out to matter.
 pub fn annotate_freevars(def_map: resolve::DefMap, crate: &ast::Crate) ->
    freevar_map {
-    let freevars = @mut HashMap::new();
-
     let mut visitor = AnnotateFreevarsVisitor {
         def_map: def_map,
-        freevars: freevars,
+        freevars: HashMap::new(),
     };
     visit::walk_crate(&mut visitor, crate, ());
 
-    return freevars;
+    let AnnotateFreevarsVisitor {
+        freevars,
+        ..
+    } = visitor;
+    freevars
 }
 
 pub fn get_freevars(tcx: ty::ctxt, fid: ast::NodeId) -> freevar_info {
-    match tcx.freevars.find(&fid) {
-      None => fail!("get_freevars: {} has no freevars", fid),
-      Some(&d) => return d
+    let freevars = tcx.freevars.borrow();
+    match freevars.get().find(&fid) {
+        None => fail!("get_freevars: {} has no freevars", fid),
+        Some(&d) => return d
     }
 }
 

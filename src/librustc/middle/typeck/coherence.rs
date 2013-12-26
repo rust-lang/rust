@@ -45,6 +45,7 @@ use syntax::codemap::Span;
 use syntax::opt_vec;
 use syntax::visit;
 
+use std::cell::RefCell;
 use std::hashmap::HashSet;
 use std::result::Ok;
 use std::vec;
@@ -55,7 +56,7 @@ pub struct UniversalQuantificationResult {
     type_param_defs: @~[ty::TypeParameterDef]
 }
 
-pub fn get_base_type(inference_context: @mut InferCtxt,
+pub fn get_base_type(inference_context: @InferCtxt,
                      span: Span,
                      original_type: t)
                   -> Option<t> {
@@ -118,7 +119,7 @@ pub fn type_is_defined_in_local_crate(original_type: t) -> bool {
 }
 
 // Returns the def ID of the base type, if there is one.
-pub fn get_base_type_def_id(inference_context: @mut InferCtxt,
+pub fn get_base_type_def_id(inference_context: @InferCtxt,
                             span: Span,
                             original_type: t)
                          -> Option<DefId> {
@@ -142,7 +143,7 @@ pub fn get_base_type_def_id(inference_context: @mut InferCtxt,
     }
 }
 
-pub fn CoherenceChecker(crate_context: @mut CrateCtxt) -> CoherenceChecker {
+pub fn CoherenceChecker(crate_context: @CrateCtxt) -> CoherenceChecker {
     CoherenceChecker {
         crate_context: crate_context,
         inference_context: new_infer_ctxt(crate_context.tcx),
@@ -150,8 +151,8 @@ pub fn CoherenceChecker(crate_context: @mut CrateCtxt) -> CoherenceChecker {
 }
 
 pub struct CoherenceChecker {
-    crate_context: @mut CrateCtxt,
-    inference_context: @mut InferCtxt,
+    crate_context: @CrateCtxt,
+    inference_context: @InferCtxt,
 }
 
 struct CoherenceCheckVisitor { cc: CoherenceChecker }
@@ -313,7 +314,8 @@ impl CoherenceChecker {
             }
         }
 
-        tcx.impls.insert(implementation.did, implementation);
+        let mut impls = tcx.impls.borrow_mut();
+        impls.get().insert(implementation.did, implementation);
     }
 
     // Creates default method IDs and performs type substitutions for an impl
@@ -365,13 +367,20 @@ impl CoherenceChecker {
             };
             debug!("new_polytype={}", new_polytype.repr(tcx));
 
-            tcx.tcache.insert(new_did, new_polytype);
-            tcx.methods.insert(new_did, new_method_ty);
+            {
+                let mut tcache = tcx.tcache.borrow_mut();
+                tcache.get().insert(new_did, new_polytype);
+            }
+
+            let mut methods = tcx.methods.borrow_mut();
+            methods.get().insert(new_did, new_method_ty);
 
             // Pair the new synthesized ID up with the
             // ID of the method.
-            self.crate_context.tcx.provided_method_sources
-                .insert(new_did, trait_method.def_id);
+            let mut provided_method_sources =
+                self.crate_context.tcx.provided_method_sources.borrow_mut();
+            provided_method_sources.get().insert(new_did,
+                                                 trait_method.def_id);
         }
     }
 
@@ -380,17 +389,19 @@ impl CoherenceChecker {
                              implementation: @Impl) {
         let tcx = self.crate_context.tcx;
         let implementation_list;
-        match tcx.inherent_impls.find(&base_def_id) {
+        let mut inherent_impls = tcx.inherent_impls.borrow_mut();
+        match inherent_impls.get().find(&base_def_id) {
             None => {
-                implementation_list = @mut ~[];
-                tcx.inherent_impls.insert(base_def_id, implementation_list);
+                implementation_list = @RefCell::new(~[]);
+                inherent_impls.get().insert(base_def_id, implementation_list);
             }
             Some(&existing_implementation_list) => {
                 implementation_list = existing_implementation_list;
             }
         }
 
-        implementation_list.push(implementation);
+        let mut implementation_list = implementation_list.borrow_mut();
+        implementation_list.get().push(implementation);
     }
 
     pub fn add_trait_impl(&self,
@@ -398,21 +409,24 @@ impl CoherenceChecker {
                           implementation: @Impl) {
         let tcx = self.crate_context.tcx;
         let implementation_list;
-        match tcx.trait_impls.find(&base_def_id) {
+        let mut trait_impls = tcx.trait_impls.borrow_mut();
+        match trait_impls.get().find(&base_def_id) {
             None => {
-                implementation_list = @mut ~[];
-                tcx.trait_impls.insert(base_def_id, implementation_list);
+                implementation_list = @RefCell::new(~[]);
+                trait_impls.get().insert(base_def_id, implementation_list);
             }
             Some(&existing_implementation_list) => {
                 implementation_list = existing_implementation_list;
             }
         }
 
-        implementation_list.push(implementation);
+        let mut implementation_list = implementation_list.borrow_mut();
+        implementation_list.get().push(implementation);
     }
 
     pub fn check_implementation_coherence(&self) {
-        self.crate_context.tcx.trait_impls.each_key(|&trait_id| {
+        let trait_impls = self.crate_context.tcx.trait_impls.borrow();
+        trait_impls.get().each_key(|&trait_id| {
             self.check_implementation_coherence_of(trait_id);
             true
         });
@@ -451,9 +465,11 @@ impl CoherenceChecker {
     }
 
     pub fn iter_impls_of_trait(&self, trait_def_id: DefId, f: |@Impl|) {
-        match self.crate_context.tcx.trait_impls.find(&trait_def_id) {
+        let trait_impls = self.crate_context.tcx.trait_impls.borrow();
+        match trait_impls.get().find(&trait_def_id) {
             Some(impls) => {
-                for &im in impls.iter() {
+                let impls = impls.borrow();
+                for &im in impls.get().iter() {
                     f(im);
                 }
             }
@@ -519,7 +535,8 @@ impl CoherenceChecker {
 
     pub fn get_self_type_for_implementation(&self, implementation: @Impl)
                                             -> ty_param_bounds_and_ty {
-        return self.crate_context.tcx.tcache.get_copy(&implementation.did);
+        let tcache = self.crate_context.tcx.tcache.borrow();
+        return tcache.get().get_copy(&implementation.did);
     }
 
     // Privileged scope checking
@@ -530,7 +547,8 @@ impl CoherenceChecker {
 
     pub fn trait_ref_to_trait_def_id(&self, trait_ref: &trait_ref) -> DefId {
         let def_map = self.crate_context.tcx.def_map;
-        let trait_def = def_map.get_copy(&trait_ref.ref_id);
+        let def_map = def_map.borrow();
+        let trait_def = def_map.get().get_copy(&trait_ref.ref_id);
         let trait_id = def_id_of_def(trait_def);
         return trait_id;
     }
@@ -542,7 +560,8 @@ impl CoherenceChecker {
                                               -> bool {
         match original_type.node {
             ty_path(_, _, path_id) => {
-                match self.crate_context.tcx.def_map.get_copy(&path_id) {
+                let def_map = self.crate_context.tcx.def_map.borrow();
+                match def_map.get().get_copy(&path_id) {
                     DefTy(def_id) | DefStruct(def_id) => {
                         if def_id.crate != LOCAL_CRATE {
                             return false;
@@ -651,11 +670,14 @@ impl CoherenceChecker {
         // the map. This is a bit unfortunate.
         for method in implementation.methods.iter() {
             for source in method.provided_source.iter() {
-                tcx.provided_method_sources.insert(method.def_id, *source);
+                let mut provided_method_sources = tcx.provided_method_sources
+                                                     .borrow_mut();
+                provided_method_sources.get().insert(method.def_id, *source);
             }
         }
 
-        tcx.impls.insert(implementation.did, implementation);
+        let mut impls = tcx.impls.borrow_mut();
+        impls.get().insert(implementation.did, implementation);
     }
 
     // Adds implementations and traits from external crates to the coherence
@@ -681,15 +703,17 @@ impl CoherenceChecker {
         let drop_trait = match tcx.lang_items.drop_trait() {
             Some(id) => id, None => { return }
         };
-        let impls_opt = tcx.trait_impls.find(&drop_trait);
 
+        let trait_impls = tcx.trait_impls.borrow();
+        let impls_opt = trait_impls.get().find(&drop_trait);
         let impls;
         match impls_opt {
-            None => return, // No types with (new-style) destructors present.
+            None => return, // No types with (new-style) dtors present.
             Some(found_impls) => impls = found_impls
         }
 
-        for impl_info in impls.iter() {
+        let impls = impls.borrow();
+        for impl_info in impls.get().iter() {
             if impl_info.methods.len() < 1 {
                 // We'll error out later. For now, just don't ICE.
                 continue;
@@ -699,9 +723,12 @@ impl CoherenceChecker {
             let self_type = self.get_self_type_for_implementation(*impl_info);
             match ty::get(self_type.ty).sty {
                 ty::ty_struct(type_def_id, _) => {
-                    tcx.destructor_for_type.insert(type_def_id,
-                                                   method_def_id);
-                    tcx.destructors.insert(method_def_id);
+                    let mut destructor_for_type = tcx.destructor_for_type
+                                                     .borrow_mut();
+                    destructor_for_type.get().insert(type_def_id,
+                                                     method_def_id);
+                    let mut destructors = tcx.destructors.borrow_mut();
+                    destructors.get().insert(method_def_id);
                 }
                 _ => {
                     // Destructors only work on nominal types.
@@ -805,7 +832,7 @@ fn subst_receiver_types_in_method_ty(tcx: ty::ctxt,
     )
 }
 
-pub fn check_coherence(crate_context: @mut CrateCtxt, crate: &Crate) {
+pub fn check_coherence(crate_context: @CrateCtxt, crate: &Crate) {
     let coherence_checker = CoherenceChecker(crate_context);
     coherence_checker.check_coherence(crate);
 }

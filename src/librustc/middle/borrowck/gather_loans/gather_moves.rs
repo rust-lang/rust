@@ -23,7 +23,7 @@ use syntax::codemap::Span;
 use util::ppaux::{UserString};
 
 pub fn gather_decl(bccx: &BorrowckCtxt,
-                   move_data: &mut MoveData,
+                   move_data: &MoveData,
                    decl_id: ast::NodeId,
                    _decl_span: Span,
                    var_id: ast::NodeId) {
@@ -32,7 +32,7 @@ pub fn gather_decl(bccx: &BorrowckCtxt,
 }
 
 pub fn gather_move_from_expr(bccx: &BorrowckCtxt,
-                             move_data: &mut MoveData,
+                             move_data: &MoveData,
                              move_expr: @ast::Expr,
                              cmt: mc::cmt) {
     gather_move_from_expr_or_pat(bccx, move_data, move_expr.id,
@@ -40,7 +40,7 @@ pub fn gather_move_from_expr(bccx: &BorrowckCtxt,
 }
 
 pub fn gather_move_from_pat(bccx: &BorrowckCtxt,
-                            move_data: &mut MoveData,
+                            move_data: &MoveData,
                             move_pat: @ast::Pat,
                             cmt: mc::cmt) {
     gather_move_from_expr_or_pat(bccx, move_data, move_pat.id,
@@ -48,7 +48,7 @@ pub fn gather_move_from_pat(bccx: &BorrowckCtxt,
 }
 
 fn gather_move_from_expr_or_pat(bccx: &BorrowckCtxt,
-                                move_data: &mut MoveData,
+                                move_data: &MoveData,
                                 move_id: ast::NodeId,
                                 move_kind: MoveKind,
                                 cmt: mc::cmt) {
@@ -67,9 +67,10 @@ fn gather_move_from_expr_or_pat(bccx: &BorrowckCtxt,
 }
 
 pub fn gather_captures(bccx: &BorrowckCtxt,
-                       move_data: &mut MoveData,
+                       move_data: &MoveData,
                        closure_expr: @ast::Expr) {
-    let captured_vars = bccx.capture_map.get(&closure_expr.id);
+    let capture_map = bccx.capture_map.borrow();
+    let captured_vars = capture_map.get().get(&closure_expr.id);
     for captured_var in captured_vars.iter() {
         match captured_var.mode {
             moves::CapMove => {
@@ -84,7 +85,7 @@ pub fn gather_captures(bccx: &BorrowckCtxt,
 }
 
 pub fn gather_assignment(bccx: &BorrowckCtxt,
-                         move_data: &mut MoveData,
+                         move_data: &MoveData,
                          assignment_id: ast::NodeId,
                          assignment_span: Span,
                          assignee_loan_path: @LoanPath,

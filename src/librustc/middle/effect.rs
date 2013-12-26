@@ -56,7 +56,8 @@ impl EffectCheckVisitor {
             UnsafeBlock(block_id) => {
                 // OK, but record this.
                 debug!("effect: recording unsafe block as used: {:?}", block_id);
-                let _ = self.tcx.used_unsafe.insert(block_id);
+                let mut used_unsafe = self.tcx.used_unsafe.borrow_mut();
+                let _ = used_unsafe.get().insert(block_id);
             }
             UnsafeFn => {}
         }

@@ -29,7 +29,7 @@ use util::ppaux::ty_to_str;
 use middle::trans::machine::llsize_of;
 use middle::trans::type_::Type;
 
-pub fn trans_intrinsic(ccx: @mut CrateContext,
+pub fn trans_intrinsic(ccx: @CrateContext,
                        decl: ValueRef,
                        item: &ast::foreign_item,
                        path: ast_map::path,
@@ -38,7 +38,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
                        ref_id: Option<ast::NodeId>) {
     debug!("trans_intrinsic(item.ident={})", ccx.sess.str_of(item.ident));
 
-    fn simple_llvm_intrinsic(bcx: @mut Block, name: &'static str, num_args: uint) {
+    fn simple_llvm_intrinsic(bcx: @Block, name: &'static str, num_args: uint) {
         assert!(num_args <= 4);
         let mut args = [0 as ValueRef, ..4];
         let first_real_arg = bcx.fcx.arg_pos(0u);
@@ -50,7 +50,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         Ret(bcx, llcall);
     }
 
-    fn with_overflow_instrinsic(bcx: @mut Block, name: &'static str, t: ty::t) {
+    fn with_overflow_instrinsic(bcx: @Block, name: &'static str, t: ty::t) {
         let first_real_arg = bcx.fcx.arg_pos(0u);
         let a = get_param(bcx.fcx.llfn, first_real_arg);
         let b = get_param(bcx.fcx.llfn, first_real_arg + 1);
@@ -73,7 +73,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         }
     }
 
-    fn copy_intrinsic(bcx: @mut Block, allow_overlap: bool, tp_ty: ty::t) {
+    fn copy_intrinsic(bcx: @Block, allow_overlap: bool, tp_ty: ty::t) {
         let ccx = bcx.ccx();
         let lltp_ty = type_of::type_of(ccx, tp_ty);
         let align = C_i32(machine::llalign_of_min(ccx, lltp_ty) as i32);
@@ -104,7 +104,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         RetVoid(bcx);
     }
 
-    fn memset_intrinsic(bcx: @mut Block, tp_ty: ty::t) {
+    fn memset_intrinsic(bcx: @Block, tp_ty: ty::t) {
         let ccx = bcx.ccx();
         let lltp_ty = type_of::type_of(ccx, tp_ty);
         let align = C_i32(machine::llalign_of_min(ccx, lltp_ty) as i32);
@@ -126,7 +126,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         RetVoid(bcx);
     }
 
-    fn count_zeros_intrinsic(bcx: @mut Block, name: &'static str) {
+    fn count_zeros_intrinsic(bcx: @Block, name: &'static str) {
         let x = get_param(bcx.fcx.llfn, bcx.fcx.arg_pos(0u));
         let y = C_i1(false);
         let llfn = bcx.ccx().intrinsics.get_copy(&name);
@@ -148,7 +148,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
 
     set_always_inline(fcx.llfn);
 
-    let mut bcx = fcx.entry_bcx.unwrap();
+    let mut bcx = fcx.entry_bcx.get().unwrap();
     let first_real_arg = fcx.arg_pos(0u);
 
     let nm = ccx.sess.str_of(item.ident);
@@ -290,7 +290,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
             // NB: This needs to be kept in lockstep with the TypeId struct in
             //     libstd/unstable/intrinsics.rs
             let val = C_named_struct(type_of::type_of(ccx, output_type), [C_u64(hash)]);
-            match bcx.fcx.llretptr {
+            match bcx.fcx.llretptr.get() {
                 Some(ptr) => {
                     Store(bcx, val, ptr);
                     RetVoid(bcx);
@@ -301,7 +301,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
         "init" => {
             let tp_ty = substs.tys[0];
             let lltp_ty = type_of::type_of(ccx, tp_ty);
-            match bcx.fcx.llretptr {
+            match bcx.fcx.llretptr.get() {
                 Some(ptr) => { Store(bcx, C_null(lltp_ty), ptr); RetVoid(bcx); }
                 None if ty::type_is_nil(tp_ty) => RetVoid(bcx),
                 None => Ret(bcx, C_null(lltp_ty)),
@@ -349,7 +349,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
             if !ty::type_is_voidish(ccx.tcx, out_type) {
                 let llsrcval = get_param(decl, first_real_arg);
                 if type_is_immediate(ccx, in_type) {
-                    match fcx.llretptr {
+                    match fcx.llretptr.get() {
                         Some(llretptr) => {
                             Store(bcx, llsrcval, PointerCast(bcx, llretptr, llintype.ptr_to()));
                             RetVoid(bcx);
@@ -379,7 +379,7 @@ pub fn trans_intrinsic(ccx: @mut CrateContext,
                     // NB: Do not use a Load and Store here. This causes massive
                     // code bloat when `transmute` is used on large structural
                     // types.
-                    let lldestptr = fcx.llretptr.unwrap();
+                    let lldestptr = fcx.llretptr.get().unwrap();
                     let lldestptr = PointerCast(bcx, lldestptr, Type::i8p());
                     let llsrcptr = PointerCast(bcx, llsrcval, Type::i8p());
 

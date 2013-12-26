@@ -24,6 +24,7 @@ use middle::subst::Subst;
 use util::common::indenter;
 use util::ppaux;
 
+use std::cell::RefCell;
 use std::hashmap::HashSet;
 use std::result;
 use syntax::ast;
@@ -70,7 +71,7 @@ pub struct LocationInfo {
 /// A vtable context includes an inference context, a crate context, and a
 /// callback function to call in case of type error.
 pub struct VtableContext<'a> {
-    infcx: @mut infer::InferCtxt,
+    infcx: @infer::InferCtxt,
     param_env: &'a ty::ParameterEnvironment,
 }
 
@@ -329,9 +330,15 @@ fn search_for_vtable(vcx: &VtableContext,
 
     // XXX: this is a bad way to do this, since we do
     // pointless allocations.
-    let impls = tcx.trait_impls.find(&trait_ref.def_id).map_default(@mut ~[], |x| *x);
+    let impls = {
+        let trait_impls = tcx.trait_impls.borrow();
+        trait_impls.get()
+                   .find(&trait_ref.def_id)
+                   .map_default(@RefCell::new(~[]), |x| *x)
+    };
     // impls is the list of all impls in scope for trait_ref.
-    for im in impls.iter() {
+    let impls = impls.borrow();
+    for im in impls.get().iter() {
         // im is one specific impl of trait_ref.
 
         // First, ensure we haven't processed this impl yet.
@@ -528,12 +535,13 @@ fn connect_trait_tps(vcx: &VtableContext,
     relate_trait_refs(vcx, location_info, impl_trait_ref, trait_ref);
 }
 
-fn insert_vtables(fcx: @mut FnCtxt,
+fn insert_vtables(fcx: @FnCtxt,
                   callee_id: ast::NodeId,
                   vtables: vtable_res) {
     debug!("insert_vtables(callee_id={}, vtables={:?})",
            callee_id, vtables.repr(fcx.tcx()));
-    fcx.inh.vtable_map.insert(callee_id, vtables);
+    let mut vtable_map = fcx.inh.vtable_map.borrow_mut();
+    vtable_map.get().insert(callee_id, vtables);
 }
 
 pub fn location_info_for_expr(expr: @ast::Expr) -> LocationInfo {
@@ -550,7 +558,7 @@ pub fn location_info_for_item(item: @ast::item) -> LocationInfo {
 }
 
 pub fn early_resolve_expr(ex: @ast::Expr,
-                          fcx: @mut FnCtxt,
+                          fcx: @FnCtxt,
                           is_early: bool) {
     debug!("vtable: early_resolve_expr() ex with id {:?} (early: {}): {}",
            ex.id, is_early, expr_to_str(ex, fcx.tcx().sess.intr()));
@@ -562,7 +570,8 @@ pub fn early_resolve_expr(ex: @ast::Expr,
         fcx.opt_node_ty_substs(ex.id, |substs| {
             debug!("vtable resolution on parameter bounds for expr {}",
                    ex.repr(fcx.tcx()));
-            let def = cx.tcx.def_map.get_copy(&ex.id);
+            let def_map = cx.tcx.def_map.borrow();
+            let def = def_map.get().get_copy(&ex.id);
             let did = ast_util::def_id_of_def(def);
             let item_ty = ty::lookup_item_type(cx.tcx, did);
             debug!("early resolve expr: def {:?} {:?}, {:?}, {}", ex.id, did, def,
@@ -715,14 +724,14 @@ pub fn early_resolve_expr(ex: @ast::Expr,
     }
 }
 
-fn resolve_expr(fcx: @mut FnCtxt,
+fn resolve_expr(fcx: @FnCtxt,
                 ex: @ast::Expr) {
     let mut fcx = fcx;
     early_resolve_expr(ex, fcx, false);
     visit::walk_expr(&mut fcx, ex, ());
 }
 
-pub fn resolve_impl(ccx: @mut CrateCtxt,
+pub fn resolve_impl(ccx: @CrateCtxt,
                     impl_item: @ast::item,
                     impl_generics: &ty::Generics,
                     impl_trait_ref: &ty::TraitRef) {
@@ -773,10 +782,12 @@ pub fn resolve_impl(ccx: @mut CrateCtxt,
         self_vtables: self_vtable_res
     };
     let impl_def_id = ast_util::local_def(impl_item.id);
-    ccx.tcx.impl_vtables.insert(impl_def_id, res);
+
+    let mut impl_vtables = ccx.tcx.impl_vtables.borrow_mut();
+    impl_vtables.get().insert(impl_def_id, res);
 }
 
-impl visit::Visitor<()> for @mut FnCtxt {
+impl visit::Visitor<()> for @FnCtxt {
     fn visit_expr(&mut self, ex:@ast::Expr, _:()) {
         resolve_expr(*self, ex);
     }
@@ -787,7 +798,7 @@ impl visit::Visitor<()> for @mut FnCtxt {
 
 // Detect points where a trait-bounded type parameter is
 // instantiated, resolve the impls for the parameters.
-pub fn resolve_in_block(fcx: @mut FnCtxt, bl: ast::P<ast::Block>) {
+pub fn resolve_in_block(fcx: @FnCtxt, bl: ast::P<ast::Block>) {
     let mut fcx = fcx;
     visit::walk_block(&mut fcx, bl, ());
 }

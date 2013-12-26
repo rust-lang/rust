@@ -76,12 +76,10 @@ pub trait AstConv {
     fn ty_infer(&self, span: Span) -> ty::t;
 }
 
-pub fn ast_region_to_region(
-    tcx: ty::ctxt,
-    lifetime: &ast::Lifetime)
-    -> ty::Region
-{
-    let r = match tcx.named_region_map.find(&lifetime.id) {
+pub fn ast_region_to_region(tcx: ty::ctxt, lifetime: &ast::Lifetime)
+                            -> ty::Region {
+    let named_region_map = tcx.named_region_map.borrow();
+    let r = match named_region_map.get().find(&lifetime.id) {
         None => {
             // should have been recorded by the `resolve_lifetime` pass
             tcx.sess.span_bug(lifetime.span, "unresolved lifetime");
@@ -321,7 +319,8 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                 // Note that the "bounds must be empty if path is not a trait"
                 // restriction is enforced in the below case for ty_path, which
                 // will run after this as long as the path isn't a trait.
-                match tcx.def_map.find(&id) {
+                let def_map = tcx.def_map.borrow();
+                match def_map.get().find(&id) {
                     Some(&ast::DefPrimTy(ast::ty_str)) if a_seq_ty.mutbl == ast::MutImmutable => {
                         check_path_args(tcx, path, NO_TPS | NO_REGIONS);
                         return ty::mk_estr(tcx, vst);
@@ -383,16 +382,22 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
 
     let tcx = this.tcx();
 
-    match tcx.ast_ty_to_ty_cache.find(&ast_ty.id) {
-      Some(&ty::atttce_resolved(ty)) => return ty,
-      Some(&ty::atttce_unresolved) => {
-        tcx.sess.span_fatal(ast_ty.span, "illegal recursive type; \
-                                          insert an enum in the cycle, if this is desired");
-      }
-      None => { /* go on */ }
+    {
+        let mut ast_ty_to_ty_cache = tcx.ast_ty_to_ty_cache.borrow_mut();
+        match ast_ty_to_ty_cache.get().find(&ast_ty.id) {
+            Some(&ty::atttce_resolved(ty)) => return ty,
+            Some(&ty::atttce_unresolved) => {
+                tcx.sess.span_fatal(ast_ty.span,
+                                    "illegal recursive type; insert an enum \
+                                     or struct in the cycle, if this is \
+                                     desired");
+            }
+            None => { /* go on */ }
+        }
+        ast_ty_to_ty_cache.get().insert(ast_ty.id, ty::atttce_unresolved);
     }
 
-    tcx.ast_ty_to_ty_cache.insert(ast_ty.id, ty::atttce_unresolved);
+
     let typ = match ast_ty.node {
       ast::ty_nil => ty::mk_nil(),
       ast::ty_bot => ty::mk_bot(),
@@ -457,7 +462,8 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
           ty::mk_closure(tcx, fn_decl)
       }
       ast::ty_path(ref path, ref bounds, id) => {
-        let a_def = match tcx.def_map.find(&id) {
+        let def_map = tcx.def_map.borrow();
+        let a_def = match def_map.get().find(&id) {
           None => tcx.sess.span_fatal(
               ast_ty.span, format!("unbound path {}",
                                 path_to_str(path, tcx.sess.intr()))),
@@ -576,7 +582,8 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
       }
     };
 
-    tcx.ast_ty_to_ty_cache.insert(ast_ty.id, ty::atttce_resolved(typ));
+    let mut ast_ty_to_ty_cache = tcx.ast_ty_to_ty_cache.borrow_mut();
+    ast_ty_to_ty_cache.get().insert(ast_ty.id, ty::atttce_resolved(typ));
     return typ;
 }
 

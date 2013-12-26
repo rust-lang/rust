@@ -158,7 +158,7 @@ fn struct_ty(ty: Type) -> Type {
     return Type::struct_(fields, false);
 }
 
-pub fn compute_abi_info(_ccx: &mut CrateContext,
+pub fn compute_abi_info(_ccx: &CrateContext,
                         atys: &[Type],
                         rty: Type,
                         ret_def: bool) -> FnType {

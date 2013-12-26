@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::cell::RefCell;
 use std::hashmap::HashSet;
 use std::local_data;
 use std::os;
@@ -34,7 +35,7 @@ pub fn run(input: &str, matches: &getopts::Matches) -> int {
     let parsesess = parse::new_parse_sess(None);
     let input = driver::file_input(Path::new(input));
     let libs = matches.opt_strs("L").map(|s| Path::new(s.as_slice()));
-    let libs = @mut libs.move_iter().collect();
+    let libs = @RefCell::new(libs.move_iter().collect());
 
     let sessopts = @session::options {
         binary: @"rustdoc",
@@ -99,7 +100,7 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>) {
     let sessopts = @session::options {
         binary: @"rustdoctest",
         maybe_sysroot: Some(@os::self_exe_path().unwrap().dir_path()),
-        addl_lib_search_paths: @mut libs,
+        addl_lib_search_paths: @RefCell::new(libs),
         outputs: ~[session::OutputExecutable],
         debugging_opts: session::prefer_dynamic,
         .. (*session::basic_options()).clone()
@@ -159,7 +160,7 @@ fn maketest(s: &str, cratename: &str) -> @str {
 pub struct Collector {
     priv tests: ~[test::TestDescAndFn],
     priv names: ~[~str],
-    priv libs: @mut HashSet<Path>,
+    priv libs: @RefCell<HashSet<Path>>,
     priv cnt: uint,
     priv cratename: ~str,
 }
@@ -169,7 +170,8 @@ impl Collector {
         let test = test.to_owned();
         let name = format!("{}_{}", self.names.connect("::"), self.cnt);
         self.cnt += 1;
-        let libs = (*self.libs).clone();
+        let libs = self.libs.borrow();
+        let libs = (*libs.get()).clone();
         let cratename = self.cratename.to_owned();
         self.tests.push(test::TestDescAndFn {
             desc: test::TestDesc {

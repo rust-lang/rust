@@ -208,8 +208,9 @@ pub mod write {
             // Emit the bytecode if we're either saving our temporaries or
             // emitting an rlib. Whenever an rlib is create, the bytecode is
             // inserted into the archive in order to allow LTO against it.
+            let outputs = sess.outputs.borrow();
             if sess.opts.save_temps ||
-               sess.outputs.iter().any(|&o| o == session::OutputRlib) {
+               outputs.get().iter().any(|&o| o == session::OutputRlib) {
                 output.with_extension("bc").with_c_str(|buf| {
                     llvm::LLVMWriteBitcodeToFile(llmod, buf);
                 })
@@ -520,15 +521,20 @@ pub fn symbol_hash(tcx: ty::ctxt,
     hash.to_managed()
 }
 
-pub fn get_symbol_hash(ccx: &mut CrateContext, t: ty::t) -> @str {
-    match ccx.type_hashcodes.find(&t) {
-      Some(&h) => h,
-      None => {
-        let hash = symbol_hash(ccx.tcx, &mut ccx.symbol_hasher, t, &ccx.link_meta);
-        ccx.type_hashcodes.insert(t, hash);
-        hash
-      }
+pub fn get_symbol_hash(ccx: &CrateContext, t: ty::t) -> @str {
+    {
+        let type_hashcodes = ccx.type_hashcodes.borrow();
+        match type_hashcodes.get().find(&t) {
+            Some(&h) => return h,
+            None => {}
+        }
     }
+
+    let mut type_hashcodes = ccx.type_hashcodes.borrow_mut();
+    let mut symbol_hasher = ccx.symbol_hasher.borrow_mut();
+    let hash = symbol_hash(ccx.tcx, symbol_hasher.get(), t, &ccx.link_meta);
+    type_hashcodes.get().insert(t, hash);
+    hash
 }
 
 
@@ -657,7 +663,7 @@ pub fn exported_name(sess: Session,
     mangle(sess, path, Some(hash), Some(vers.as_slice()))
 }
 
-pub fn mangle_exported_name(ccx: &mut CrateContext,
+pub fn mangle_exported_name(ccx: &CrateContext,
                             path: path,
                             t: ty::t) -> ~str {
     let hash = get_symbol_hash(ccx, t);
@@ -666,7 +672,7 @@ pub fn mangle_exported_name(ccx: &mut CrateContext,
                          ccx.link_meta.pkgid.version_or_default());
 }
 
-pub fn mangle_internal_name_by_type_only(ccx: &mut CrateContext,
+pub fn mangle_internal_name_by_type_only(ccx: &CrateContext,
                                          t: ty::t,
                                          name: &str) -> ~str {
     let s = ppaux::ty_to_short_str(ccx.tcx, t);
@@ -678,7 +684,7 @@ pub fn mangle_internal_name_by_type_only(ccx: &mut CrateContext,
                   None);
 }
 
-pub fn mangle_internal_name_by_type_and_seq(ccx: &mut CrateContext,
+pub fn mangle_internal_name_by_type_and_seq(ccx: &CrateContext,
                                             t: ty::t,
                                             name: &str) -> ~str {
     let s = ppaux::ty_to_str(ccx.tcx, t);
@@ -690,7 +696,7 @@ pub fn mangle_internal_name_by_type_and_seq(ccx: &mut CrateContext,
                   None);
 }
 
-pub fn mangle_internal_name_by_path_and_seq(ccx: &mut CrateContext,
+pub fn mangle_internal_name_by_path_and_seq(ccx: &CrateContext,
                                             mut path: path,
                                             flav: &str) -> ~str {
     let (_, name) = gensym_name(flav);
@@ -698,7 +704,7 @@ pub fn mangle_internal_name_by_path_and_seq(ccx: &mut CrateContext,
     mangle(ccx.sess, path, None, None)
 }
 
-pub fn mangle_internal_name_by_path(ccx: &mut CrateContext, path: path) -> ~str {
+pub fn mangle_internal_name_by_path(ccx: &CrateContext, path: path) -> ~str {
     mangle(ccx.sess, path, None, None)
 }
 
@@ -740,7 +746,8 @@ pub fn link_binary(sess: Session,
                    out_filename: &Path,
                    lm: &LinkMeta) -> ~[Path] {
     let mut out_filenames = ~[];
-    for &output in sess.outputs.iter() {
+    let outputs = sess.outputs.borrow();
+    for &output in outputs.get().iter() {
         let out_file = link_binary_output(sess, trans, output, obj_filename,
                                           out_filename, lm);
         out_filenames.push(out_file);
@@ -848,7 +855,9 @@ fn link_rlib(sess: Session,
              out_filename: &Path) -> Archive {
     let mut a = Archive::create(sess, out_filename, obj_filename);
 
-    for &(ref l, kind) in sess.cstore.get_used_libraries().iter() {
+    let used_libraries = sess.cstore.get_used_libraries();
+    let used_libraries = used_libraries.borrow();
+    for &(ref l, kind) in used_libraries.get().iter() {
         match kind {
             cstore::NativeStatic => {
                 a.add_native_library(l.as_slice());
@@ -1082,7 +1091,9 @@ fn link_args(sess: Session,
     // Finally add all the linker arguments provided on the command line along
     // with any #[link_args] attributes found inside the crate
     args.push_all(sess.opts.linker_args);
-    for arg in sess.cstore.get_used_link_args().iter() {
+    let used_link_args = sess.cstore.get_used_link_args();
+    let used_link_args = used_link_args.borrow();
+    for arg in used_link_args.get().iter() {
         args.push(arg.clone());
     }
     return args;
@@ -1100,7 +1111,8 @@ fn link_args(sess: Session,
 // in the current crate. Upstream crates with native library dependencies
 // may have their native library pulled in above.
 fn add_local_native_libraries(args: &mut ~[~str], sess: Session) {
-    for path in sess.opts.addl_lib_search_paths.iter() {
+    let addl_lib_search_paths = sess.opts.addl_lib_search_paths.borrow();
+    for path in addl_lib_search_paths.get().iter() {
         // FIXME (#9639): This needs to handle non-utf8 paths
         args.push("-L" + path.as_str().unwrap().to_owned());
     }
@@ -1111,7 +1123,9 @@ fn add_local_native_libraries(args: &mut ~[~str], sess: Session) {
         args.push("-L" + path.as_str().unwrap().to_owned());
     }
 
-    for &(ref l, kind) in sess.cstore.get_used_libraries().iter() {
+    let used_libraries = sess.cstore.get_used_libraries();
+    let used_libraries = used_libraries.borrow();
+    for &(ref l, kind) in used_libraries.get().iter() {
         match kind {
             cstore::NativeUnknown | cstore::NativeStatic => {
                 args.push("-l" + *l);

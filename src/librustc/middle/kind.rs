@@ -116,11 +116,18 @@ fn check_struct_safe_for_destructor(cx: &mut Context,
 }
 
 fn check_impl_of_trait(cx: &mut Context, it: @item, trait_ref: &trait_ref, self_type: &Ty) {
-    let ast_trait_def = cx.tcx.def_map.find(&trait_ref.ref_id)
-                            .expect("trait ref not in def map!");
+    let def_map = cx.tcx.def_map.borrow();
+    let ast_trait_def = def_map.get()
+                               .find(&trait_ref.ref_id)
+                               .expect("trait ref not in def map!");
     let trait_def_id = ast_util::def_id_of_def(*ast_trait_def);
-    let trait_def = cx.tcx.trait_defs.find(&trait_def_id)
-                        .expect("trait def not in trait-defs map!");
+    let trait_def;
+    {
+        let trait_defs = cx.tcx.trait_defs.borrow();
+        trait_def = *trait_defs.get()
+                               .find(&trait_def_id)
+                               .expect("trait def not in trait-defs map!");
+    }
 
     // If this trait has builtin-kind supertraits, meet them.
     let self_ty: ty::t = ty::node_id_to_type(cx.tcx, it.id);
@@ -139,7 +146,7 @@ fn check_impl_of_trait(cx: &mut Context, it: @item, trait_ref: &trait_ref, self_
         match self_type.node {
             ty_path(_, ref bounds, path_node_id) => {
                 assert!(bounds.is_none());
-                let struct_def = cx.tcx.def_map.get_copy(&path_node_id);
+                let struct_def = def_map.get().get_copy(&path_node_id);
                 let struct_did = ast_util::def_id_of_def(struct_def);
                 check_struct_safe_for_destructor(cx, self_type.span, struct_did);
             }
@@ -264,11 +271,14 @@ pub fn check_expr(cx: &mut Context, e: @Expr) {
         None => e.id,
     };
     {
-        let r = cx.tcx.node_type_substs.find(&type_parameter_id);
+        let node_type_substs = cx.tcx.node_type_substs.borrow();
+        let r = node_type_substs.get().find(&type_parameter_id);
         for ts in r.iter() {
+            let def_map = cx.tcx.def_map.borrow();
             let type_param_defs = match e.node {
               ExprPath(_) => {
-                let did = ast_util::def_id_of_def(cx.tcx.def_map.get_copy(&e.id));
+                let did = ast_util::def_id_of_def(def_map.get()
+                                                         .get_copy(&e.id));
                 ty::lookup_item_type(cx.tcx, did).generics.type_param_defs
               }
               _ => {
@@ -326,9 +336,11 @@ pub fn check_expr(cx: &mut Context, e: @Expr) {
 fn check_ty(cx: &mut Context, aty: &Ty) {
     match aty.node {
       ty_path(_, _, id) => {
-          let r = cx.tcx.node_type_substs.find(&id);
+          let node_type_substs = cx.tcx.node_type_substs.borrow();
+          let r = node_type_substs.get().find(&id);
           for ts in r.iter() {
-              let did = ast_util::def_id_of_def(cx.tcx.def_map.get_copy(&id));
+              let def_map = cx.tcx.def_map.borrow();
+              let did = ast_util::def_id_of_def(def_map.get().get_copy(&id));
               let type_param_defs =
                   ty::lookup_item_type(cx.tcx, did).generics.type_param_defs;
               for (&ty, type_param_def) in ts.iter().zip(type_param_defs.iter()) {

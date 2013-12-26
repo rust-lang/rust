@@ -49,7 +49,7 @@ impl Value {
     /// This only performs a search for a trivially dominating store. The store
     /// must be the only user of this value, and there must not be any conditional
     /// branches between the store and the given block.
-    pub fn get_dominating_store(self, bcx: &mut Block) -> Option<Value> {
+    pub fn get_dominating_store(self, bcx: &Block) -> Option<Value> {
         match self.get_single_user().and_then(|user| user.as_store_inst()) {
             Some(store) => {
                 store.get_parent().and_then(|store_bb| {

@@ -18,7 +18,6 @@
 // 4. moves do not affect things loaned out in any way
 
 
-use std::hashmap::HashSet;
 use mc = middle::mem_categorization;
 use middle::borrowck::*;
 use middle::moves;
@@ -37,7 +36,6 @@ struct CheckLoanCtxt<'a> {
     dfcx_loans: &'a LoanDataFlow,
     move_data: @move_data::FlowedMoveData,
     all_loans: &'a [Loan],
-    reported: @mut HashSet<ast::NodeId>,
 }
 
 impl<'a> Visitor<()> for CheckLoanCtxt<'a> {
@@ -75,7 +73,6 @@ pub fn check_loans(bccx: &BorrowckCtxt,
         dfcx_loans: dfcx_loans,
         move_data: @move_data,
         all_loans: all_loans,
-        reported: @mut HashSet::new(),
     };
 
     clcx.visit_block(body, ());
@@ -296,9 +293,13 @@ impl<'a> CheckLoanCtxt<'a> {
     pub fn check_assignment(&self, expr: @ast::Expr) {
         // We don't use cat_expr() here because we don't want to treat
         // auto-ref'd parameters in overloaded operators as rvalues.
-        let cmt = match self.bccx.tcx.adjustments.find(&expr.id) {
+        let adj = {
+            let adjustments = self.bccx.tcx.adjustments.borrow();
+            adjustments.get().find_copy(&expr.id)
+        };
+        let cmt = match adj {
             None => self.bccx.cat_expr_unadjusted(expr),
-            Some(&adj) => self.bccx.cat_expr_autoderefd(expr, adj)
+            Some(adj) => self.bccx.cat_expr_autoderefd(expr, adj)
         };
 
         debug!("check_assignment(cmt={})", cmt.repr(self.tcx()));
@@ -356,7 +357,10 @@ impl<'a> CheckLoanCtxt<'a> {
                     mc::cat_local(id) |
                     mc::cat_arg(id) |
                     mc::cat_self(id) => {
-                        this.tcx().used_mut_nodes.insert(id);
+                        let mut used_mut_nodes = this.tcx()
+                                                     .used_mut_nodes
+                                                     .borrow_mut();
+                        used_mut_nodes.get().insert(id);
                         return;
                     }
 
@@ -415,7 +419,10 @@ impl<'a> CheckLoanCtxt<'a> {
                         derefs: deref_count
                     };
                     debug!("Inserting write guard at {:?}", key);
-                    this.bccx.write_guard_map.insert(key);
+                    let mut write_guard_map = this.bccx
+                                                  .write_guard_map
+                                                  .borrow_mut();
+                    write_guard_map.get().insert(key);
                 }
 
                 _ => {}
@@ -709,7 +716,8 @@ fn check_loans_in_fn<'a>(this: &mut CheckLoanCtxt<'a>,
     fn check_captured_variables(this: &CheckLoanCtxt,
                                 closure_id: ast::NodeId,
                                 span: Span) {
-        let cap_vars = this.bccx.capture_map.get(&closure_id);
+        let capture_map = this.bccx.capture_map.borrow();
+        let cap_vars = capture_map.get().get(&closure_id);
         for cap_var in cap_vars.iter() {
             let var_id = ast_util::def_id_of_def(cap_var.def).node;
             let var_path = @LpVar(var_id);
@@ -762,6 +770,7 @@ fn check_loans_in_expr<'a>(this: &mut CheckLoanCtxt<'a>,
     this.check_for_conflicting_loans(expr.id);
     this.check_move_out_from_expr(expr);
 
+    let method_map = this.bccx.method_map.borrow();
     match expr.node {
       ast::ExprSelf |
       ast::ExprPath(..) => {
@@ -786,7 +795,7 @@ fn check_loans_in_expr<'a>(this: &mut CheckLoanCtxt<'a>,
       }
       ast::ExprIndex(callee_id, _, rval) |
       ast::ExprBinary(callee_id, _, _, rval)
-      if this.bccx.method_map.contains_key(&expr.id) => {
+      if method_map.get().contains_key(&expr.id) => {
         this.check_call(expr,
                         None,
                         callee_id,
@@ -794,7 +803,7 @@ fn check_loans_in_expr<'a>(this: &mut CheckLoanCtxt<'a>,
                         [rval]);
       }
       ast::ExprUnary(callee_id, _, _) | ast::ExprIndex(callee_id, _, _)
-      if this.bccx.method_map.contains_key(&expr.id) => {
+      if method_map.get().contains_key(&expr.id) => {
         this.check_call(expr,
                         None,
                         callee_id,

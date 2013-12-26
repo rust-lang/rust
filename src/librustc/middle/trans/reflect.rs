@@ -37,9 +37,9 @@ use middle::trans::type_::Type;
 pub struct Reflector {
     visitor_val: ValueRef,
     visitor_methods: @~[@ty::Method],
-    final_bcx: @mut Block,
+    final_bcx: @Block,
     tydesc_ty: Type,
-    bcx: @mut Block
+    bcx: @Block
 }
 
 impl Reflector {
@@ -306,11 +306,11 @@ impl Reflector {
                     //
                     llvm::LLVMGetParam(llfdecl, fcx.arg_pos(0u) as c_uint)
                 };
-                let mut bcx = fcx.entry_bcx.unwrap();
+                let mut bcx = fcx.entry_bcx.get().unwrap();
                 let arg = BitCast(bcx, arg, llptrty);
                 let ret = adt::trans_get_discr(bcx, repr, arg, Some(Type::i64()));
-                Store(bcx, ret, fcx.llretptr.unwrap());
-                match fcx.llreturn {
+                Store(bcx, ret, fcx.llretptr.get().unwrap());
+                match fcx.llreturn.get() {
                     Some(llreturn) => cleanup_and_Br(bcx, bcx, llreturn),
                     None => bcx = cleanup_block(bcx, Some(bcx.llbb))
                 };
@@ -382,11 +382,11 @@ impl Reflector {
 }
 
 // Emit a sequence of calls to visit_ty::visit_foo
-pub fn emit_calls_to_trait_visit_ty(bcx: @mut Block,
+pub fn emit_calls_to_trait_visit_ty(bcx: @Block,
                                     t: ty::t,
                                     visitor_val: ValueRef,
                                     visitor_trait_id: DefId)
-                                 -> @mut Block {
+                                 -> @Block {
     let final = sub_block(bcx, "final");
     let tydesc_ty = ty::get_tydesc_ty(bcx.ccx().tcx).unwrap();
     let tydesc_ty = type_of(bcx.ccx(), tydesc_ty);

@@ -712,7 +712,8 @@ fn check_item_ctypes(cx: &Context, it: &ast::item) {
     fn check_ty(cx: &Context, ty: &ast::Ty) {
         match ty.node {
             ast::ty_path(_, _, id) => {
-                match cx.tcx.def_map.get_copy(&id) {
+                let def_map = cx.tcx.def_map.borrow();
+                match def_map.get().get_copy(&id) {
                     ast::DefPrimTy(ast::ty_int(ast::ty_i)) => {
                         cx.span_lint(ctypes, ty.span,
                                 "found rust type `int` in foreign module, while \
@@ -983,7 +984,8 @@ fn check_item_non_uppercase_statics(cx: &Context, it: &ast::item) {
 
 fn check_pat_non_uppercase_statics(cx: &Context, p: &ast::Pat) {
     // Lint for constants that look like binding identifiers (#7526)
-    match (&p.node, cx.tcx.def_map.find(&p.id)) {
+    let def_map = cx.tcx.def_map.borrow();
+    match (&p.node, def_map.get().find(&p.id)) {
         (&ast::PatIdent(_, ref path, _), Some(&ast::DefStatic(_, false))) => {
             // last identifier alone is right choice for this lint.
             let ident = path.segments.last().identifier;
@@ -1001,8 +1003,9 @@ fn check_unused_unsafe(cx: &Context, e: &ast::Expr) {
     match e.node {
         // Don't warn about generated blocks, that'll just pollute the output.
         ast::ExprBlock(ref blk) => {
+            let used_unsafe = cx.tcx.used_unsafe.borrow();
             if blk.rules == ast::UnsafeBlock(ast::UserProvided) &&
-                !cx.tcx.used_unsafe.contains(&blk.id) {
+                !used_unsafe.get().contains(&blk.id) {
                 cx.span_lint(unused_unsafe, blk.span,
                              "unnecessary `unsafe` block");
             }
@@ -1037,7 +1040,8 @@ fn check_unused_mut_pat(cx: &Context, p: &ast::Pat) {
                 }
             };
 
-            if !initial_underscore && !cx.tcx.used_mut_nodes.contains(&p.id) {
+            let used_mut_nodes = cx.tcx.used_mut_nodes.borrow();
+            if !initial_underscore && !used_mut_nodes.get().contains(&p.id) {
                 cx.span_lint(unused_mut, p.span,
                              "variable does not need to be mutable");
             }
@@ -1073,7 +1077,11 @@ fn check_unnecessary_allocation(cx: &Context, e: &ast::Expr) {
         cx.span_lint(unnecessary_allocation, e.span, msg);
     };
 
-    match cx.tcx.adjustments.find_copy(&e.id) {
+    let adjustment = {
+        let adjustments = cx.tcx.adjustments.borrow();
+        adjustments.get().find_copy(&e.id)
+    };
+    match adjustment {
         Some(@ty::AutoDerefRef(ty::AutoDerefRef { autoref, .. })) => {
             match (allocation, autoref) {
                 (VectorAllocation, Some(ty::AutoBorrowVec(..))) => {
@@ -1141,7 +1149,14 @@ fn check_missing_doc_method(cx: &Context, m: &ast::method) {
         crate: ast::LOCAL_CRATE,
         node: m.id
     };
-    match cx.tcx.methods.find(&did) {
+
+    let method_opt;
+    {
+        let methods = cx.tcx.methods.borrow();
+        method_opt = methods.get().find(&did).map(|method| *method);
+    }
+
+    match method_opt {
         None => cx.tcx.sess.span_bug(m.span, "missing method descriptor?!"),
         Some(md) => {
             match md.container {
@@ -1184,13 +1199,15 @@ fn check_missing_doc_variant(cx: &Context, v: &ast::variant) {
 fn check_stability(cx: &Context, e: &ast::Expr) {
     let id = match e.node {
         ast::ExprPath(..) | ast::ExprStruct(..) => {
-            match cx.tcx.def_map.find(&e.id) {
+            let def_map = cx.tcx.def_map.borrow();
+            match def_map.get().find(&e.id) {
                 Some(&def) => ast_util::def_id_of_def(def),
                 None => return
             }
         }
         ast::ExprMethodCall(..) => {
-            match cx.method_map.find(&e.id) {
+            let method_map = cx.method_map.borrow();
+            match method_map.get().find(&e.id) {
                 Some(&typeck::method_map_entry { origin, .. }) => {
                     match origin {
                         typeck::method_static(def_id) => {
@@ -1413,7 +1430,8 @@ impl<'a> Visitor<()> for Context<'a> {
 
 impl<'a> IdVisitingOperation for Context<'a> {
     fn visit_id(&self, id: ast::NodeId) {
-        match self.tcx.sess.lints.pop(&id) {
+        let mut lints = self.tcx.sess.lints.borrow_mut();
+        match lints.get().pop(&id) {
             None => {}
             Some(l) => {
                 for (lint, span, msg) in l.move_iter() {
@@ -1465,7 +1483,8 @@ pub fn check_crate(tcx: ty::ctxt,
 
     // If we missed any lints added to the session, then there's a bug somewhere
     // in the iteration code.
-    for (id, v) in tcx.sess.lints.iter() {
+    let lints = tcx.sess.lints.borrow();
+    for (id, v) in lints.get().iter() {
         for &(lint, span, ref msg) in v.iter() {
             tcx.sess.span_bug(span, format!("unprocessed lint {:?} at {}: {}",
                                             lint,

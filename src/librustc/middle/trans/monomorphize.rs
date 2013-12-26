@@ -28,7 +28,7 @@ use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::local_def;
 
-pub fn monomorphic_fn(ccx: @mut CrateContext,
+pub fn monomorphic_fn(ccx: @CrateContext,
                       fn_id: ast::DefId,
                       real_substs: &ty::substs,
                       vtables: Option<typeck::vtable_res>,
@@ -76,13 +76,16 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
            psubsts.repr(ccx.tcx),
            hash_id);
 
-    match ccx.monomorphized.find(&hash_id) {
-      Some(&val) => {
-        debug!("leaving monomorphic fn {}",
-               ty::item_path_str(ccx.tcx, fn_id));
-        return (val, must_cast);
-      }
-      None => ()
+    {
+        let monomorphized = ccx.monomorphized.borrow();
+        match monomorphized.get().find(&hash_id) {
+          Some(&val) => {
+            debug!("leaving monomorphic fn {}",
+                   ty::item_path_str(ccx.tcx, fn_id));
+            return (val, must_cast);
+          }
+          None => ()
+        }
     }
 
     let tpt = ty::lookup_item_type(ccx.tcx, fn_id);
@@ -179,19 +182,24 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
         _ => fail!("expected bare rust fn or an intrinsic")
     };
 
-    ccx.stats.n_monos += 1;
+    ccx.stats.n_monos.set(ccx.stats.n_monos.get() + 1);
 
-    let depth = match ccx.monomorphizing.find(&fn_id) {
-        Some(&d) => d, None => 0
-    };
-    // Random cut-off -- code that needs to instantiate the same function
-    // recursively more than thirty times can probably safely be assumed to be
-    // causing an infinite expansion.
-    if depth > 30 {
-        ccx.sess.span_fatal(
-            span, "overly deep expansion of inlined function");
+    let depth;
+    {
+        let mut monomorphizing = ccx.monomorphizing.borrow_mut();
+        depth = match monomorphizing.get().find(&fn_id) {
+            Some(&d) => d, None => 0
+        };
+
+        // Random cut-off -- code that needs to instantiate the same function
+        // recursively more than thirty times can probably safely be assumed
+        // to be causing an infinite expansion.
+        if depth > 30 {
+            ccx.sess.span_fatal(
+                span, "overly deep expansion of inlined function");
+        }
+        monomorphizing.get().insert(fn_id, depth + 1);
     }
-    ccx.monomorphizing.insert(fn_id, depth + 1);
 
     let (_, elt) = gensym_name(ccx.sess.str_of(name));
     let mut pt = (*pt).clone();
@@ -201,7 +209,8 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
 
     let mk_lldecl = || {
         let lldecl = decl_internal_rust_fn(ccx, f.sig.inputs, f.sig.output, s);
-        ccx.monomorphized.insert(hash_id, lldecl);
+        let mut monomorphized = ccx.monomorphized.borrow_mut();
+        monomorphized.get().insert(hash_id, lldecl);
         lldecl
     };
 
@@ -288,13 +297,17 @@ pub fn monomorphic_fn(ccx: @mut CrateContext,
         ccx.tcx.sess.bug(format!("Can't monomorphize a {:?}", map_node))
       }
     };
-    ccx.monomorphizing.insert(fn_id, depth);
+
+    {
+        let mut monomorphizing = ccx.monomorphizing.borrow_mut();
+        monomorphizing.get().insert(fn_id, depth);
+    }
 
     debug!("leaving monomorphic fn {}", ty::item_path_str(ccx.tcx, fn_id));
     (lldecl, must_cast)
 }
 
-pub fn make_mono_id(ccx: @mut CrateContext,
+pub fn make_mono_id(ccx: @CrateContext,
                     item: ast::DefId,
                     substs: &param_substs) -> mono_id {
     // FIXME (possibly #5801): Need a lot of type hints to get
