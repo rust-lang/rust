@@ -34,8 +34,6 @@ via `close` and `delete` methods.
 
 */
 
-// NOTE: remove after snapshot
-#[pkgid = "rustuv#0.9-pre"];
 #[crate_id = "rustuv#0.9-pre"];
 #[license = "MIT/ASL2"];
 #[crate_type = "rlib"];

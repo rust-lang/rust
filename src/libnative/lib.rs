@@ -14,7 +14,6 @@
 //! runtime. In addition, all I/O provided by this crate is the thread blocking
 //! version of I/O.
 
-#[pkgid = "native#0.9-pre"];
 #[crate_id = "native#0.9-pre"];
 #[license = "MIT/ASL2"];
 #[crate_type = "rlib"];
