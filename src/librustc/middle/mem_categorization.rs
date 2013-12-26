@@ -347,6 +347,13 @@ impl mem_categorization_ctxt {
                 self.cat_expr_unadjusted(expr)
             }
 
+            Some(&@ty::AutoObject(..)) => {
+                // Implicity casts a concrete object to trait object
+                // Result is an rvalue
+                let expr_ty = ty::expr_ty_adjusted(self.tcx, expr);
+                self.cat_rvalue_node(expr, expr_ty)
+            }
+
             Some(&@ty::AutoAddEnv(..)) => {
                 // Convert a bare fn to a closure by adding NULL env.
                 // Result is an rvalue.

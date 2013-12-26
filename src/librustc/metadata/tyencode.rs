@@ -140,7 +140,7 @@ fn enc_opt<T>(w: &mut MemWriter, t: Option<T>, enc_f: |&mut MemWriter, T|) {
     }
 }
 
-fn enc_substs(w: &mut MemWriter, cx: @ctxt, substs: &ty::substs) {
+pub fn enc_substs(w: &mut MemWriter, cx: @ctxt, substs: &ty::substs) {
     enc_region_substs(w, cx, &substs.regions);
     enc_opt(w, substs.self_ty, |w, t| enc_ty(w, cx, t));
     mywrite!(w, "[");

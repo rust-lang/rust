@@ -327,6 +327,25 @@ fn visit_expr(rcx: &mut Rcx, expr: @ast::Expr) {
                             infer::AutoBorrow(expr.span));
                     }
                 }
+                @ty::AutoObject(ast::BorrowedSigil, Some(trait_region), _, _, _, _) => {
+                    // Determine if we are casting `expr` to an trait
+                    // instance.  If so, we have to be sure that the type of
+                    // the source obeys the trait's region bound.
+                    //
+                    // Note: there is a subtle point here concerning type
+                    // parameters.  It is possible that the type of `source`
+                    // contains type parameters, which in turn may contain
+                    // regions that are not visible to us (only the caller
+                    // knows about them).  The kind checker is ultimately
+                    // responsible for guaranteeing region safety in that
+                    // particular case.  There is an extensive comment on the
+                    // function check_cast_for_escaping_regions() in kind.rs
+                    // explaining how it goes about doing that.
+
+                    let source_ty = rcx.fcx.expr_ty(expr);
+                    constrain_regions_in_type(rcx, trait_region,
+                                              infer::RelateObjectBound(expr.span), source_ty);
+                }
                 _ => {}
             }
         }
@@ -1075,6 +1094,27 @@ pub mod guarantor {
                 };
             }
 
+            Some(&@ty::AutoObject(ast::BorrowedSigil, Some(region), _, _, _, _)) => {
+                expr_ct.cat = ExprCategorization {
+                    guarantor: None,
+                    pointer: BorrowedPointer(region)
+                };
+            }
+
+            Some(&@ty::AutoObject(ast::OwnedSigil, _, _, _, _, _)) => {
+                expr_ct.cat = ExprCategorization {
+                    guarantor: None,
+                    pointer: OwnedPointer
+                };
+            }
+
+            Some(&@ty::AutoObject(ast::ManagedSigil, _, _, _, _, _)) => {
+                expr_ct.cat = ExprCategorization {
+                    guarantor: None,
+                    pointer: OtherPointer
+                };
+            }
+
             Some(&@ty::AutoDerefRef(ref adjustment)) => {
                 debug!("adjustment={:?}", adjustment);
 
@@ -1102,6 +1142,8 @@ pub mod guarantor {
                     }
                 }
             }
+
+            Some(..) => fail!("invalid or unhandled adjustment"),
 
             None => {}
         }

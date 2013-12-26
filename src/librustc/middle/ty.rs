@@ -224,10 +224,14 @@ pub enum Variance {
     Bivariant,      // T<A> <: T<B>            -- e.g., unused type parameter
 }
 
-#[deriving(Decodable, Encodable)]
 pub enum AutoAdjustment {
     AutoAddEnv(ty::Region, ast::Sigil),
-    AutoDerefRef(AutoDerefRef)
+    AutoDerefRef(AutoDerefRef),
+    AutoObject(ast::Sigil, Option<ty::Region>,
+               ast::Mutability,
+               ty::BuiltinBounds,
+               ast::DefId, /* Trait ID */
+               ty::substs /* Trait substitutions */)
 }
 
 #[deriving(Decodable, Encodable)]
@@ -730,7 +734,7 @@ pub struct ParamBounds {
 
 pub type BuiltinBounds = EnumSet<BuiltinBound>;
 
-#[deriving(Clone, Eq, IterBytes, ToStr)]
+#[deriving(Clone, Encodable, Eq, Decodable, IterBytes, ToStr)]
 #[repr(uint)]
 pub enum BuiltinBound {
     BoundStatic,
@@ -2955,6 +2959,10 @@ pub fn adjust_ty(cx: ctxt,
                 }
             }
         }
+
+        Some(@AutoObject(ref sigil, ref region, m, b, def_id, ref substs)) => {
+            trait_adjustment_to_ty(cx, sigil, region, def_id, substs, m, b)
+        }
     };
 
     fn borrow_vec(cx: ctxt, span: Span,
@@ -3012,6 +3020,19 @@ pub fn adjust_ty(cx: ctxt,
             }
         }
     }
+}
+
+pub fn trait_adjustment_to_ty(cx: ctxt, sigil: &ast::Sigil, region: &Option<Region>,
+                              def_id: ast::DefId, substs: &substs, m: ast::Mutability,
+                              bounds: BuiltinBounds) -> t {
+
+    let trait_store = match *sigil {
+        BorrowedSigil => RegionTraitStore(region.expect("expected valid region")),
+        OwnedSigil => UniqTraitStore,
+        ManagedSigil => BoxTraitStore
+    };
+
+    mk_trait(cx, def_id, substs.clone(), trait_store, m, bounds)
 }
 
 impl AutoRef {
