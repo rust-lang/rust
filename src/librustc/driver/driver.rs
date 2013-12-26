@@ -392,43 +392,13 @@ pub fn phase_5_run_llvm_passes(sess: Session,
 /// This should produce either a finished executable or library.
 pub fn phase_6_link_output(sess: Session,
                            trans: &CrateTranslation,
-                           input: &input,
                            outputs: &OutputFilenames) {
-    let outputs = time(sess.time_passes(), "linking", (), |_|
+    time(sess.time_passes(), "linking", (), |_|
          link::link_binary(sess,
                            trans,
                            &outputs.obj_filename,
                            &outputs.out_filename,
                            &trans.link));
-
-    // Write out dependency rules to the dep-info file if requested with --dep-info
-    let deps_filename = match sess.opts.write_dependency_info {
-        // Use filename from --dep-file argument if given
-        (true, Some(ref filename)) => filename.clone(),
-        // Use default filename: crate source filename with extension replaced by ".d"
-        (true, None) => match *input {
-            file_input(ref input_path) => {
-                let filestem = input_path.filestem().expect("input file must have stem");
-                let filename = outputs[0].dir_path().join(filestem).with_extension("d");
-                filename
-            },
-            str_input(..) => {
-                sess.warn("can not write --dep-info without a filename when compiling stdin.");
-                return;
-            },
-        },
-        _ => return,
-    };
-    // Build a list of files used to compile the output and
-    // write Makefile-compatible dependency rules
-    let files: ~[@str] = sess.codemap.files.iter()
-        .filter_map(|fmap| if fmap.is_real_file() { Some(fmap.name) } else { None })
-        .collect();
-    let mut file = io::File::create(&deps_filename);
-    for output in outputs.iter() {
-        write!(&mut file as &mut Writer,
-               "{}: {}\n\n", output.display(), files.connect(" "));
-    }
 }
 
 pub fn stop_after_phase_3(sess: Session) -> bool {
@@ -455,6 +425,47 @@ pub fn stop_after_phase_5(sess: Session) -> bool {
     return false;
 }
 
+fn write_out_deps(sess: Session, input: &input, outputs: &OutputFilenames, crate: &ast::Crate)
+{
+    let lm = link::build_link_meta(sess, crate.attrs, &outputs.obj_filename,
+                                       &mut ::util::sha2::Sha256::new());
+
+    let sess_outputs = sess.outputs.borrow();
+    let out_filenames = sess_outputs.get().iter()
+        .map(|&output| link::filename_for_input(&sess, output, &lm, &outputs.out_filename))
+        .to_owned_vec();
+
+    // Write out dependency rules to the dep-info file if requested with --dep-info
+    let deps_filename = match sess.opts.write_dependency_info {
+        // Use filename from --dep-file argument if given
+        (true, Some(ref filename)) => filename.clone(),
+        // Use default filename: crate source filename with extension replaced by ".d"
+        (true, None) => match *input {
+            file_input(ref input_path) => {
+                let filestem = input_path.filestem().expect("input file must have stem");
+                let filename = out_filenames[0].dir_path().join(filestem).with_extension("d");
+                filename
+            },
+            str_input(..) => {
+                sess.warn("can not write --dep-info without a filename when compiling stdin.");
+                return;
+            },
+        },
+        _ => return,
+    };
+
+    // Build a list of files used to compile the output and
+    // write Makefile-compatible dependency rules
+    let files: ~[@str] = sess.codemap.files.iter()
+        .filter_map(|fmap| if fmap.is_real_file() { Some(fmap.name) } else { None })
+        .collect();
+    let mut file = io::File::create(&deps_filename);
+    for path in out_filenames.iter() {
+        write!(&mut file as &mut Writer,
+               "{}: {}\n\n", path.display(), files.connect(" "));
+    }
+}
+
 pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &input,
                      outdir: &Option<Path>, output: &Option<Path>) {
     // We need nested scopes here, because the intermediate results can keep
@@ -468,6 +479,9 @@ pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &input,
         };
         let outputs = build_output_filenames(input, outdir, output,
                                              expanded_crate.attrs, sess);
+
+        write_out_deps(sess, input, outputs, &expanded_crate);
+
         let analysis = phase_3_run_analysis_passes(sess, &expanded_crate);
         if stop_after_phase_3(sess) { return; }
         let trans = phase_4_translate_to_llvm(sess, expanded_crate,
@@ -476,7 +490,7 @@ pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &input,
     };
     phase_5_run_llvm_passes(sess, &trans, outputs);
     if stop_after_phase_5(sess) { return; }
-    phase_6_link_output(sess, &trans, input, outputs);
+    phase_6_link_output(sess, &trans, outputs);
 }
 
 struct IdentifiedAnnotation {
