@@ -140,7 +140,6 @@ pub mod dl {
     use path;
     use ptr;
     use str;
-    use unstable::sync::atomic;
     use result::*;
 
     pub unsafe fn open_external(filename: &path::Path) -> *libc::c_void {
@@ -158,11 +157,7 @@ pub mod dl {
         static mut lock: Mutex = MUTEX_INIT;
         unsafe {
             // dlerror isn't thread safe, so we need to lock around this entire
-            // sequence. `atomic` asserts that we don't do anything that
-            // would cause this task to be descheduled, which could deadlock
-            // the scheduler if it happens while the lock is held.
-            // FIXME #9105 use a Rust mutex instead of C++ mutexes.
-            let _guard = atomic();
+            // sequence
             lock.lock();
             let _old_error = dlerror();
 
@@ -208,7 +203,6 @@ pub mod dl {
     use libc;
     use path;
     use ptr;
-    use unstable::sync::atomic;
     use result::*;
 
     pub unsafe fn open_external(filename: &path::Path) -> *libc::c_void {
@@ -225,7 +219,6 @@ pub mod dl {
 
     pub fn check_for_errors_in<T>(f: || -> T) -> Result<T, ~str> {
         unsafe {
-            let _guard = atomic();
             SetLastError(0);
 
             let result = f();

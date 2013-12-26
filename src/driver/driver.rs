@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[cfg(stage0)] extern mod green;
+
 #[cfg(rustpkg)]
 extern mod this = "rustpkg";
 

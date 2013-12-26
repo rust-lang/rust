@@ -606,7 +606,6 @@ impl AstBuilder for @ExtCtxt {
             ~[
                 self.ident_of("std"),
                 self.ident_of("rt"),
-                self.ident_of("task"),
                 self.ident_of("begin_unwind"),
             ],
             ~[

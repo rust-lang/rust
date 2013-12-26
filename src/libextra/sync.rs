@@ -19,8 +19,9 @@
 
 
 use std::borrow;
-use std::unstable::sync::{Exclusive, UnsafeArc};
-use std::unstable::atomics;
+use std::unstable::sync::Exclusive;
+use std::sync::arc::UnsafeArc;
+use std::sync::atomics;
 use std::unstable::finally::Finally;
 use std::util;
 use std::util::NonCopyable;
@@ -78,7 +79,7 @@ impl WaitQueue {
 
     fn wait_end(&self) -> WaitEnd {
         let (wait_end, signal_end) = Chan::new();
-        self.tail.send_deferred(signal_end);
+        assert!(self.tail.try_send_deferred(signal_end));
         wait_end
     }
 }
@@ -760,23 +761,21 @@ mod tests {
     fn test_sem_runtime_friendly_blocking() {
         // Force the runtime to schedule two threads on the same sched_loop.
         // When one blocks, it should schedule the other one.
-        do task::spawn_sched(task::SingleThreaded) {
-            let s = Semaphore::new(1);
-            let s2 = s.clone();
-            let (p, c) = Chan::new();
-            let mut child_data = Some((s2, c));
-            s.access(|| {
-                let (s2, c) = child_data.take_unwrap();
-                do task::spawn {
-                    c.send(());
-                    s2.access(|| { });
-                    c.send(());
-                }
-                let _ = p.recv(); // wait for child to come alive
-                5.times(|| { task::deschedule(); }); // let the child contend
-            });
-            let _ = p.recv(); // wait for child to be done
-        }
+        let s = Semaphore::new(1);
+        let s2 = s.clone();
+        let (p, c) = Chan::new();
+        let mut child_data = Some((s2, c));
+        s.access(|| {
+            let (s2, c) = child_data.take_unwrap();
+            do task::spawn {
+                c.send(());
+                s2.access(|| { });
+                c.send(());
+            }
+            let _ = p.recv(); // wait for child to come alive
+            5.times(|| { task::deschedule(); }); // let the child contend
+        });
+        let _ = p.recv(); // wait for child to be done
     }
     /************************************************************************
      * Mutex tests

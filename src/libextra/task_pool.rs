@@ -14,11 +14,8 @@
 /// parallelism.
 
 
-use std::task::SchedMode;
 use std::task;
 use std::vec;
-
-#[cfg(test)] use std::task::SingleThreaded;
 
 enum Msg<T> {
     Execute(proc(&T)),
@@ -46,7 +43,6 @@ impl<T> TaskPool<T> {
     /// returns a function which, given the index of the task, should return
     /// local data to be kept around in that task.
     pub fn new(n_tasks: uint,
-               opt_sched_mode: Option<SchedMode>,
                init_fn_factory: || -> proc(uint) -> T)
                -> TaskPool<T> {
         assert!(n_tasks >= 1);
@@ -65,18 +61,8 @@ impl<T> TaskPool<T> {
                 }
             };
 
-            // Start the task.
-            match opt_sched_mode {
-                None => {
-                    // Run on this scheduler.
-                    task::spawn(task_body);
-                }
-                Some(sched_mode) => {
-                    let mut task = task::task();
-                    task.sched_mode(sched_mode);
-                    task.spawn(task_body);
-                }
-            }
+            // Run on this scheduler.
+            task::spawn(task_body);
 
             chan
         });
@@ -99,7 +85,7 @@ fn test_task_pool() {
         let g: proc(uint) -> uint = proc(i) i;
         g
     };
-    let mut pool = TaskPool::new(4, Some(SingleThreaded), f);
+    let mut pool = TaskPool::new(4, f);
     8.times(|| {
         pool.execute(proc(i) println!("Hello from thread {}!", *i));
     })

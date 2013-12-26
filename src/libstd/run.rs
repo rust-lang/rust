@@ -338,8 +338,8 @@ mod tests {
     use str;
     use task::spawn;
     use unstable::running_on_valgrind;
-    use io::native::file;
-    use io::{FileNotFound, Reader, Writer, io_error};
+    use io::pipe::PipeStream;
+    use io::{Writer, Reader, io_error, FileNotFound, OtherIoError};
 
     #[test]
     #[cfg(not(target_os="android"))] // FIXME(#10380)
@@ -426,13 +426,13 @@ mod tests {
     }
 
     fn writeclose(fd: c_int, s: &str) {
-        let mut writer = file::FileDesc::new(fd, true);
+        let mut writer = PipeStream::open(fd);
         writer.write(s.as_bytes());
     }
 
     fn readclose(fd: c_int) -> ~str {
         let mut res = ~[];
-        let mut reader = file::FileDesc::new(fd, true);
+        let mut reader = PipeStream::open(fd);
         let mut buf = [0, ..1024];
         loop {
             match reader.read(buf) {

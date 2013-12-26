@@ -11,15 +11,13 @@
 //! Runtime calls emitted by the compiler.
 
 use c_str::ToCStr;
-use cast::transmute;
 use libc::{c_char, size_t, uintptr_t};
-use rt::task;
 use rt::borrowck;
 
 #[cold]
 #[lang="fail_"]
 pub fn fail_(expr: *c_char, file: *c_char, line: size_t) -> ! {
-    task::begin_unwind_raw(expr, file, line);
+    ::rt::begin_unwind_raw(expr, file, line);
 }
 
 #[cold]
@@ -80,16 +78,4 @@ pub unsafe fn check_not_borrowed(a: *u8,
                                  file: *c_char,
                                  line: size_t) {
     borrowck::check_not_borrowed(a, file, line)
-}
-
-#[lang="start"]
-pub fn start(main: *u8, argc: int, argv: **c_char) -> int {
-    use rt;
-
-    unsafe {
-        return do rt::start(argc, argv as **u8) {
-            let main: extern "Rust" fn() = transmute(main);
-            main();
-        };
-    }
 }

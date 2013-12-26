@@ -10,6 +10,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-fast
+
 #[allow(unused_imports)];
 
 #[no_std];
@@ -25,4 +27,5 @@ mod baz {
     pub use x = std::str;
 }
 
-pub fn main() { }
+#[start]
+pub fn start(_: int, _: **u8) -> int { 0 }

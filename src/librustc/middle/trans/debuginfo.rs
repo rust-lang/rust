@@ -146,7 +146,7 @@ use std::hashmap::HashMap;
 use std::hashmap::HashSet;
 use std::libc::{c_uint, c_ulonglong, c_longlong};
 use std::ptr;
-use std::unstable::atomics;
+use std::sync::atomics;
 use std::vec;
 use syntax::codemap::{Span, Pos};
 use syntax::{ast, codemap, ast_util, ast_map, opt_vec};

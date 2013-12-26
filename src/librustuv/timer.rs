@@ -9,19 +9,19 @@
 // except according to those terms.
 
 use std::libc::c_int;
-use std::rt::BlockedTask;
 use std::rt::local::Local;
 use std::rt::rtio::RtioTimer;
-use std::rt::sched::{Scheduler, SchedHandle};
+use std::rt::task::{BlockedTask, Task};
 use std::util;
 
+use homing::{HomeHandle, HomingIO};
+use super::{UvHandle, ForbidUnwind, ForbidSwitch};
+use uvio::UvIoFactory;
 use uvll;
-use super::{Loop, UvHandle, ForbidUnwind, ForbidSwitch};
-use uvio::HomingIO;
 
 pub struct TimerWatcher {
     handle: *uvll::uv_timer_t,
-    home: SchedHandle,
+    home: HomeHandle,
     action: Option<NextAction>,
     id: uint, // see comments in timer_cb
 }
@@ -33,15 +33,15 @@ pub enum NextAction {
 }
 
 impl TimerWatcher {
-    pub fn new(loop_: &mut Loop) -> ~TimerWatcher {
+    pub fn new(io: &mut UvIoFactory) -> ~TimerWatcher {
         let handle = UvHandle::alloc(None::<TimerWatcher>, uvll::UV_TIMER);
         assert_eq!(unsafe {
-            uvll::uv_timer_init(loop_.handle, handle)
+            uvll::uv_timer_init(io.uv_loop(), handle)
         }, 0);
         let me = ~TimerWatcher {
             handle: handle,
             action: None,
-            home: get_handle_to_current_scheduler!(),
+            home: io.make_handle(),
             id: 0,
         };
         return me.install();
@@ -59,7 +59,7 @@ impl TimerWatcher {
 }
 
 impl HomingIO for TimerWatcher {
-    fn home<'r>(&'r mut self) -> &'r mut SchedHandle { &mut self.home }
+    fn home<'r>(&'r mut self) -> &'r mut HomeHandle { &mut self.home }
 }
 
 impl UvHandle<uvll::uv_timer_t> for TimerWatcher {
@@ -89,10 +89,11 @@ impl RtioTimer for TimerWatcher {
         // started, then we need to call stop on the timer.
         let _f = ForbidUnwind::new("timer");
 
-        let sched: ~Scheduler = Local::take();
-        sched.deschedule_running_task_and_then(|_sched, task| {
+        let task: ~Task = Local::take();
+        task.deschedule(1, |task| {
             self.action = Some(WakeTask(task));
             self.start(msecs, 0);
+            Ok(())
         });
         self.stop();
     }
@@ -137,12 +138,11 @@ extern fn timer_cb(handle: *uvll::uv_timer_t, status: c_int) {
 
     match timer.action.take_unwrap() {
         WakeTask(task) => {
-            let sched: ~Scheduler = Local::take();
-            sched.resume_blocked_task_immediately(task);
+            task.wake().map(|t| t.reawaken(true));
         }
-        SendOnce(chan) => { chan.try_send_deferred(()); }
+        SendOnce(chan) => { chan.try_send(()); }
         SendMany(chan, id) => {
-            chan.try_send_deferred(());
+            chan.try_send(());
 
             // Note that the above operation could have performed some form of
             // scheduling. This means that the timer may have decided to insert
@@ -169,7 +169,7 @@ impl Drop for TimerWatcher {
         let _action = {
             let _m = self.fire_homing_missile();
             self.stop();
-            self.close_async_();
+            self.close();
             self.action.take()
         };
     }
@@ -177,9 +177,9 @@ impl Drop for TimerWatcher {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use std::rt::rtio::RtioTimer;
     use super::super::local_loop;
+    use super::TimerWatcher;
 
     #[test]
     fn oneshot() {
@@ -207,9 +207,9 @@ mod test {
         let port = timer.period(1);
         port.recv();
         port.recv();
-        let port = timer.period(1);
-        port.recv();
-        port.recv();
+        let port2 = timer.period(1);
+        port2.recv();
+        port2.recv();
     }
 
     #[test]

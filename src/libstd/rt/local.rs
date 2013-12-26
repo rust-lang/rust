@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use option::{Option, Some, None};
-use rt::sched::Scheduler;
+use option::Option;
 use rt::task::Task;
 use rt::local_ptr;
 
@@ -46,87 +45,10 @@ impl Local<local_ptr::Borrowed<Task>> for Task {
     }
 }
 
-/// Encapsulates a temporarily-borrowed scheduler.
-pub struct BorrowedScheduler {
-    priv task: local_ptr::Borrowed<Task>,
-}
-
-impl BorrowedScheduler {
-    fn new(mut task: local_ptr::Borrowed<Task>) -> BorrowedScheduler {
-        if task.get().sched.is_none() {
-            rtabort!("no scheduler")
-        } else {
-            BorrowedScheduler {
-                task: task,
-            }
-        }
-    }
-
-    #[inline]
-    pub fn get<'a>(&'a mut self) -> &'a mut ~Scheduler {
-        match self.task.get().sched {
-            None => rtabort!("no scheduler"),
-            Some(ref mut sched) => sched,
-        }
-    }
-}
-
-impl Local<BorrowedScheduler> for Scheduler {
-    fn put(value: ~Scheduler) {
-        let mut task = Local::borrow(None::<Task>);
-        task.get().sched = Some(value);
-    }
-    #[inline]
-    fn take() -> ~Scheduler {
-        unsafe {
-            // XXX: Unsafe for speed
-            let task: *mut Task = Local::unsafe_borrow();
-            (*task).sched.take_unwrap()
-        }
-    }
-    fn exists(_: Option<Scheduler>) -> bool {
-        let mut task = Local::borrow(None::<Task>);
-        task.get().sched.is_some()
-    }
-    #[inline]
-    fn borrow(_: Option<Scheduler>) -> BorrowedScheduler {
-        BorrowedScheduler::new(Local::borrow(None::<Task>))
-    }
-    unsafe fn unsafe_take() -> ~Scheduler { rtabort!("unimpl") }
-    unsafe fn unsafe_borrow() -> *mut Scheduler {
-        let task: *mut Task = Local::unsafe_borrow();
-        match (*task).sched {
-            Some(~ref mut sched) => {
-                let s: *mut Scheduler = &mut *sched;
-                return s;
-            }
-            None => {
-                rtabort!("no scheduler")
-            }
-        }
-    }
-    unsafe fn try_unsafe_borrow() -> Option<*mut Scheduler> {
-        let task_opt: Option<*mut Task> = Local::try_unsafe_borrow();
-        match task_opt {
-            Some(task) => {
-                match (*task).sched {
-                    Some(~ref mut sched) => {
-                        let s: *mut Scheduler = &mut *sched;
-                        Some(s)
-                    }
-                    None => None
-                }
-            }
-            None => None
-        }
-    }
-}
-
 #[cfg(test)]
 mod test {
     use option::None;
     use unstable::run_in_bare_thread;
-    use rt::test::*;
     use super::*;
     use rt::task::Task;
     use rt::local_ptr;
@@ -135,8 +57,7 @@ mod test {
     fn thread_local_task_smoke_test() {
         do run_in_bare_thread {
             local_ptr::init();
-            let mut sched = ~new_test_uv_sched();
-            let task = ~Task::new_root(&mut sched.stack_pool, None, proc(){});
+            let task = ~Task::new();
             Local::put(task);
             let task: ~Task = Local::take();
             cleanup_task(task);
@@ -147,12 +68,11 @@ mod test {
     fn thread_local_task_two_instances() {
         do run_in_bare_thread {
             local_ptr::init();
-            let mut sched = ~new_test_uv_sched();
-            let task = ~Task::new_root(&mut sched.stack_pool, None, proc(){});
+            let task = ~Task::new();
             Local::put(task);
             let task: ~Task = Local::take();
             cleanup_task(task);
-            let task = ~Task::new_root(&mut sched.stack_pool, None, proc(){});
+            let task = ~Task::new();
             Local::put(task);
             let task: ~Task = Local::take();
             cleanup_task(task);
@@ -164,8 +84,7 @@ mod test {
     fn borrow_smoke_test() {
         do run_in_bare_thread {
             local_ptr::init();
-            let mut sched = ~new_test_uv_sched();
-            let task = ~Task::new_root(&mut sched.stack_pool, None, proc(){});
+            let task = ~Task::new();
             Local::put(task);
 
             unsafe {
@@ -180,8 +99,7 @@ mod test {
     fn borrow_with_return() {
         do run_in_bare_thread {
             local_ptr::init();
-            let mut sched = ~new_test_uv_sched();
-            let task = ~Task::new_root(&mut sched.stack_pool, None, proc(){});
+            let task = ~Task::new();
             Local::put(task);
 
             {
@@ -191,6 +109,10 @@ mod test {
             let task: ~Task = Local::take();
             cleanup_task(task);
         }
+    }
+
+    fn cleanup_task(mut t: ~Task) {
+        t.destroyed = true;
     }
 
 }

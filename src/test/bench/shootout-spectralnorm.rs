@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-test arcs no longer unwrap
+
 extern mod extra;
 
 use std::from_str::FromStr;

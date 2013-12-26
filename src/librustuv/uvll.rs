@@ -37,7 +37,8 @@ use std::libc;
 #[cfg(test)]
 use std::libc::uintptr_t;
 
-pub use self::errors::*;
+pub use self::errors::{EACCES, ECONNREFUSED, ECONNRESET, EPIPE, ECONNABORTED,
+                       ECANCELED, EBADF, ENOTCONN, ENOENT};
 
 pub static OK: c_int = 0;
 pub static EOF: c_int = -4095;
@@ -576,6 +577,8 @@ extern {
 
     // generic uv functions
     pub fn uv_loop_delete(l: *uv_loop_t);
+    pub fn uv_ref(t: *uv_handle_t);
+    pub fn uv_unref(t: *uv_handle_t);
     pub fn uv_handle_size(ty: uv_handle_type) -> size_t;
     pub fn uv_req_size(ty: uv_req_type) -> size_t;
     pub fn uv_run(l: *uv_loop_t, mode: uv_run_mode) -> c_int;

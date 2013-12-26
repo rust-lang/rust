@@ -9,121 +9,41 @@
 // except according to those terms.
 
 use std::c_str::CString;
+use std::cast;
 use std::comm::SharedChan;
-use std::libc::c_int;
-use std::libc;
-use std::path::Path;
 use std::io::IoError;
 use std::io::net::ip::SocketAddr;
 use std::io::process::ProcessConfig;
-use std::io;
-use std::rt::local::Local;
-use std::rt::rtio::*;
-use std::rt::sched::{Scheduler, SchedHandle};
-use std::rt::task::Task;
-use std::libc::{O_CREAT, O_APPEND, O_TRUNC, O_RDWR, O_RDONLY, O_WRONLY,
-                S_IRUSR, S_IWUSR};
-use std::io::{FileMode, FileAccess, Open, Append, Truncate, Read, Write,
-                  ReadWrite, FileStat};
 use std::io::signal::Signum;
+use std::io::{FileMode, FileAccess, Open, Append, Truncate, Read, Write,
+              ReadWrite, FileStat};
+use std::io;
+use std::libc::c_int;
+use std::libc::{O_CREAT, O_APPEND, O_TRUNC, O_RDWR, O_RDONLY, O_WRONLY, S_IRUSR,
+                S_IWUSR};
+use std::libc;
+use std::path::Path;
+use std::rt::rtio;
+use std::rt::rtio::IoFactory;
 use ai = std::io::net::addrinfo;
 
 #[cfg(test)] use std::unstable::run_in_bare_thread;
 
-use super::*;
+use super::{uv_error_to_io_error, Loop};
+
 use addrinfo::GetAddrInfoRequest;
-
-pub trait HomingIO {
-
-    fn home<'r>(&'r mut self) -> &'r mut SchedHandle;
-
-    /// This function will move tasks to run on their home I/O scheduler. Note
-    /// that this function does *not* pin the task to the I/O scheduler, but
-    /// rather it simply moves it to running on the I/O scheduler.
-    fn go_to_IO_home(&mut self) -> uint {
-        use std::rt::sched::RunOnce;
-
-        let _f = ForbidUnwind::new("going home");
-
-        let current_sched_id = {
-            let mut sched = Local::borrow(None::<Scheduler>);
-            sched.get().sched_id()
-        };
-
-        // Only need to invoke a context switch if we're not on the right
-        // scheduler.
-        if current_sched_id != self.home().sched_id {
-            let scheduler: ~Scheduler = Local::take();
-            scheduler.deschedule_running_task_and_then(|_, task| {
-                task.wake().map(|task| {
-                    self.home().send(RunOnce(task));
-                });
-            })
-        }
-        let current_sched_id = {
-            let mut sched = Local::borrow(None::<Scheduler>);
-            sched.get().sched_id()
-        };
-        assert!(current_sched_id == self.home().sched_id);
-
-        self.home().sched_id
-    }
-
-    /// Fires a single homing missile, returning another missile targeted back
-    /// at the original home of this task. In other words, this function will
-    /// move the local task to its I/O scheduler and then return an RAII wrapper
-    /// which will return the task home.
-    fn fire_homing_missile(&mut self) -> HomingMissile {
-        HomingMissile { io_home: self.go_to_IO_home() }
-    }
-
-    /// Same as `fire_homing_missile`, but returns the local I/O scheduler as
-    /// well (the one that was homed to).
-    fn fire_homing_missile_sched(&mut self) -> (HomingMissile, ~Scheduler) {
-        // First, transplant ourselves to the home I/O scheduler
-        let missile = self.fire_homing_missile();
-        // Next (must happen next), grab the local I/O scheduler
-        let io_sched: ~Scheduler = Local::take();
-
-        (missile, io_sched)
-    }
-}
-
-/// After a homing operation has been completed, this will return the current
-/// task back to its appropriate home (if applicable). The field is used to
-/// assert that we are where we think we are.
-struct HomingMissile {
-    priv io_home: uint,
-}
-
-impl HomingMissile {
-    pub fn check(&self, msg: &'static str) {
-        let mut sched = Local::borrow(None::<Scheduler>);
-        let local_id = sched.get().sched_id();
-        assert!(local_id == self.io_home, "{}", msg);
-    }
-}
-
-impl Drop for HomingMissile {
-    fn drop(&mut self) {
-        let _f = ForbidUnwind::new("leaving home");
-
-        // It would truly be a sad day if we had moved off the home I/O
-        // scheduler while we were doing I/O.
-        self.check("task moved away from the home scheduler");
-
-        // If we were a homed task, then we must send ourselves back to the
-        // original scheduler. Otherwise, we can just return and keep running
-        if !Task::on_appropriate_sched() {
-            let scheduler: ~Scheduler = Local::take();
-            scheduler.deschedule_running_task_and_then(|_, task| {
-                task.wake().map(|task| {
-                    Scheduler::run_task(task);
-                });
-            })
-        }
-    }
-}
+use async::AsyncWatcher;
+use file::{FsRequest, FileWatcher};
+use queue::QueuePool;
+use homing::HomeHandle;
+use idle::IdleWatcher;
+use net::{TcpWatcher, TcpListener, UdpWatcher};
+use pipe::{PipeWatcher, PipeListener};
+use process::Process;
+use signal::SignalWatcher;
+use timer::TimerWatcher;
+use tty::TtyWatcher;
+use uvll;
 
 // Obviously an Event Loop is always home.
 pub struct UvEventLoop {
@@ -132,49 +52,65 @@ pub struct UvEventLoop {
 
 impl UvEventLoop {
     pub fn new() -> UvEventLoop {
+        let mut loop_ = Loop::new();
+        let handle_pool = QueuePool::new(&mut loop_);
         UvEventLoop {
-            uvio: UvIoFactory(Loop::new())
+            uvio: UvIoFactory {
+                loop_: loop_,
+                handle_pool: Some(handle_pool),
+            }
         }
     }
 }
 
 impl Drop for UvEventLoop {
     fn drop(&mut self) {
-        self.uvio.uv_loop().close();
+        // Must first destroy the pool of handles before we destroy the loop
+        // because otherwise the contained async handle will be destroyed after
+        // the loop is free'd (use-after-free). We also must free the uv handle
+        // after the loop has been closed because during the closing of the loop
+        // the handle is required to be used apparently.
+        let handle = self.uvio.handle_pool.get_ref().handle();
+        self.uvio.handle_pool.take();
+        self.uvio.loop_.close();
+        unsafe { uvll::free_handle(handle) }
     }
 }
 
-impl EventLoop for UvEventLoop {
+impl rtio::EventLoop for UvEventLoop {
     fn run(&mut self) {
-        self.uvio.uv_loop().run();
+        self.uvio.loop_.run();
     }
 
     fn callback(&mut self, f: proc()) {
-        IdleWatcher::onetime(self.uvio.uv_loop(), f);
+        IdleWatcher::onetime(&mut self.uvio.loop_, f);
     }
 
-    fn pausable_idle_callback(&mut self, cb: ~Callback) -> ~PausableIdleCallback {
-        IdleWatcher::new(self.uvio.uv_loop(), cb) as ~PausableIdleCallback
+    fn pausable_idle_callback(&mut self, cb: ~rtio::Callback)
+        -> ~rtio::PausableIdleCallback
+    {
+        IdleWatcher::new(&mut self.uvio.loop_, cb) as ~rtio::PausableIdleCallback
     }
 
-    fn remote_callback(&mut self, f: ~Callback) -> ~RemoteCallback {
-        ~AsyncWatcher::new(self.uvio.uv_loop(), f) as ~RemoteCallback
+    fn remote_callback(&mut self, f: ~rtio::Callback) -> ~rtio::RemoteCallback {
+        ~AsyncWatcher::new(&mut self.uvio.loop_, f) as ~rtio::RemoteCallback
     }
 
-    fn io<'a>(&'a mut self) -> Option<&'a mut IoFactory> {
-        let factory = &mut self.uvio as &mut IoFactory;
+    fn io<'a>(&'a mut self) -> Option<&'a mut rtio::IoFactory> {
+        let factory = &mut self.uvio as &mut rtio::IoFactory;
         Some(factory)
     }
 }
 
 #[cfg(not(test))]
 #[lang = "event_loop_factory"]
-pub extern "C" fn new_loop() -> ~EventLoop {
-    ~UvEventLoop::new() as ~EventLoop
+pub fn new_loop() -> ~rtio::EventLoop {
+    ~UvEventLoop::new() as ~rtio::EventLoop
 }
 
 #[test]
 fn test_callback_run_once() {
+    use std::rt::rtio::EventLoop;
     do run_in_bare_thread {
         let mut event_loop = UvEventLoop::new();
         let mut count = 0;
@@ -187,11 +123,19 @@ fn test_callback_run_once() {
     }
 }
 
-pub struct UvIoFactory(Loop);
+pub struct UvIoFactory {
+    loop_: Loop,
+    priv handle_pool: Option<~QueuePool>,
+}
 
 impl UvIoFactory {
-    pub fn uv_loop<'a>(&'a mut self) -> &'a mut Loop {
-        match self { &UvIoFactory(ref mut ptr) => ptr }
+    pub fn uv_loop<'a>(&mut self) -> *uvll::uv_loop_t { self.loop_.handle }
+
+    pub fn make_handle(&mut self) -> HomeHandle {
+        // It's understood by the homing code that the "local id" is just the
+        // pointer of the local I/O factory cast to a uint.
+        let id: uint = unsafe { cast::transmute_copy(&self) };
+        HomeHandle::new(id, &mut **self.handle_pool.get_mut_ref())
     }
 }
 
@@ -200,46 +144,45 @@ impl IoFactory for UvIoFactory {
     // NB: This blocks the task waiting on the connection.
     // It would probably be better to return a future
     fn tcp_connect(&mut self, addr: SocketAddr)
-        -> Result<~RtioTcpStream, IoError>
+        -> Result<~rtio::RtioTcpStream, IoError>
     {
-        match TcpWatcher::connect(self.uv_loop(), addr) {
-            Ok(t) => Ok(~t as ~RtioTcpStream),
+        match TcpWatcher::connect(self, addr) {
+            Ok(t) => Ok(~t as ~rtio::RtioTcpStream),
             Err(e) => Err(uv_error_to_io_error(e)),
         }
     }
 
-    fn tcp_bind(&mut self, addr: SocketAddr) -> Result<~RtioTcpListener, IoError> {
-        match TcpListener::bind(self.uv_loop(), addr) {
-            Ok(t) => Ok(t as ~RtioTcpListener),
+    fn tcp_bind(&mut self, addr: SocketAddr) -> Result<~rtio::RtioTcpListener, IoError> {
+        match TcpListener::bind(self, addr) {
+            Ok(t) => Ok(t as ~rtio::RtioTcpListener),
             Err(e) => Err(uv_error_to_io_error(e)),
         }
     }
 
-    fn udp_bind(&mut self, addr: SocketAddr) -> Result<~RtioUdpSocket, IoError> {
-        match UdpWatcher::bind(self.uv_loop(), addr) {
-            Ok(u) => Ok(~u as ~RtioUdpSocket),
+    fn udp_bind(&mut self, addr: SocketAddr) -> Result<~rtio::RtioUdpSocket, IoError> {
+        match UdpWatcher::bind(self, addr) {
+            Ok(u) => Ok(~u as ~rtio::RtioUdpSocket),
             Err(e) => Err(uv_error_to_io_error(e)),
         }
     }
 
-    fn timer_init(&mut self) -> Result<~RtioTimer, IoError> {
-        Ok(TimerWatcher::new(self.uv_loop()) as ~RtioTimer)
+    fn timer_init(&mut self) -> Result<~rtio::RtioTimer, IoError> {
+        Ok(TimerWatcher::new(self) as ~rtio::RtioTimer)
     }
 
     fn get_host_addresses(&mut self, host: Option<&str>, servname: Option<&str>,
                           hint: Option<ai::Hint>) -> Result<~[ai::Info], IoError> {
-        let r = GetAddrInfoRequest::run(self.uv_loop(), host, servname, hint);
+        let r = GetAddrInfoRequest::run(&self.loop_, host, servname, hint);
         r.map_err(uv_error_to_io_error)
     }
 
     fn fs_from_raw_fd(&mut self, fd: c_int,
-                      close: CloseBehavior) -> ~RtioFileStream {
-        let loop_ = Loop::wrap(self.uv_loop().handle);
-        ~FileWatcher::new(loop_, fd, close) as ~RtioFileStream
+                      close: rtio::CloseBehavior) -> ~rtio::RtioFileStream {
+        ~FileWatcher::new(self, fd, close) as ~rtio::RtioFileStream
     }
 
     fn fs_open(&mut self, path: &CString, fm: FileMode, fa: FileAccess)
-        -> Result<~RtioFileStream, IoError> {
+        -> Result<~rtio::RtioFileStream, IoError> {
         let flags = match fm {
             io::Open => 0,
             io::Append => libc::O_APPEND,
@@ -254,117 +197,117 @@ impl IoFactory for UvIoFactory {
                               libc::S_IRUSR | libc::S_IWUSR),
         };
 
-        match FsRequest::open(self.uv_loop(), path, flags as int, mode as int) {
-            Ok(fs) => Ok(~fs as ~RtioFileStream),
+        match FsRequest::open(self, path, flags as int, mode as int) {
+            Ok(fs) => Ok(~fs as ~rtio::RtioFileStream),
             Err(e) => Err(uv_error_to_io_error(e))
         }
     }
 
     fn fs_unlink(&mut self, path: &CString) -> Result<(), IoError> {
-        let r = FsRequest::unlink(self.uv_loop(), path);
+        let r = FsRequest::unlink(&self.loop_, path);
         r.map_err(uv_error_to_io_error)
     }
     fn fs_lstat(&mut self, path: &CString) -> Result<FileStat, IoError> {
-        let r = FsRequest::lstat(self.uv_loop(), path);
+        let r = FsRequest::lstat(&self.loop_, path);
         r.map_err(uv_error_to_io_error)
     }
     fn fs_stat(&mut self, path: &CString) -> Result<FileStat, IoError> {
-        let r = FsRequest::stat(self.uv_loop(), path);
+        let r = FsRequest::stat(&self.loop_, path);
         r.map_err(uv_error_to_io_error)
     }
     fn fs_mkdir(&mut self, path: &CString,
                 perm: io::FilePermission) -> Result<(), IoError> {
-        let r = FsRequest::mkdir(self.uv_loop(), path, perm as c_int);
+        let r = FsRequest::mkdir(&self.loop_, path, perm as c_int);
         r.map_err(uv_error_to_io_error)
     }
     fn fs_rmdir(&mut self, path: &CString) -> Result<(), IoError> {
-        let r = FsRequest::rmdir(self.uv_loop(), path);
+        let r = FsRequest::rmdir(&self.loop_, path);
         r.map_err(uv_error_to_io_error)
     }
     fn fs_rename(&mut self, path: &CString, to: &CString) -> Result<(), IoError> {
-        let r = FsRequest::rename(self.uv_loop(), path, to);
+        let r = FsRequest::rename(&self.loop_, path, to);
         r.map_err(uv_error_to_io_error)
     }
     fn fs_chmod(&mut self, path: &CString,
                 perm: io::FilePermission) -> Result<(), IoError> {
-        let r = FsRequest::chmod(self.uv_loop(), path, perm as c_int);
+        let r = FsRequest::chmod(&self.loop_, path, perm as c_int);
         r.map_err(uv_error_to_io_error)
     }
     fn fs_readdir(&mut self, path: &CString, flags: c_int)
         -> Result<~[Path], IoError>
     {
-        let r = FsRequest::readdir(self.uv_loop(), path, flags);
+        let r = FsRequest::readdir(&self.loop_, path, flags);
         r.map_err(uv_error_to_io_error)
     }
     fn fs_link(&mut self, src: &CString, dst: &CString) -> Result<(), IoError> {
-        let r = FsRequest::link(self.uv_loop(), src, dst);
+        let r = FsRequest::link(&self.loop_, src, dst);
         r.map_err(uv_error_to_io_error)
     }
     fn fs_symlink(&mut self, src: &CString, dst: &CString) -> Result<(), IoError> {
-        let r = FsRequest::symlink(self.uv_loop(), src, dst);
+        let r = FsRequest::symlink(&self.loop_, src, dst);
         r.map_err(uv_error_to_io_error)
     }
     fn fs_chown(&mut self, path: &CString, uid: int, gid: int) -> Result<(), IoError> {
-        let r = FsRequest::chown(self.uv_loop(), path, uid, gid);
+        let r = FsRequest::chown(&self.loop_, path, uid, gid);
         r.map_err(uv_error_to_io_error)
     }
     fn fs_readlink(&mut self, path: &CString) -> Result<Path, IoError> {
-        let r = FsRequest::readlink(self.uv_loop(), path);
+        let r = FsRequest::readlink(&self.loop_, path);
         r.map_err(uv_error_to_io_error)
     }
     fn fs_utime(&mut self, path: &CString, atime: u64, mtime: u64)
         -> Result<(), IoError>
     {
-        let r = FsRequest::utime(self.uv_loop(), path, atime, mtime);
+        let r = FsRequest::utime(&self.loop_, path, atime, mtime);
         r.map_err(uv_error_to_io_error)
     }
 
     fn spawn(&mut self, config: ProcessConfig)
-            -> Result<(~RtioProcess, ~[Option<~RtioPipe>]), IoError>
+            -> Result<(~rtio::RtioProcess, ~[Option<~rtio::RtioPipe>]), IoError>
     {
-        match Process::spawn(self.uv_loop(), config) {
+        match Process::spawn(self, config) {
             Ok((p, io)) => {
-                Ok((p as ~RtioProcess,
-                    io.move_iter().map(|i| i.map(|p| ~p as ~RtioPipe)).collect()))
+                Ok((p as ~rtio::RtioProcess,
+                    io.move_iter().map(|i| i.map(|p| ~p as ~rtio::RtioPipe)).collect()))
             }
             Err(e) => Err(uv_error_to_io_error(e)),
         }
     }
 
-    fn unix_bind(&mut self, path: &CString) -> Result<~RtioUnixListener, IoError>
+    fn unix_bind(&mut self, path: &CString) -> Result<~rtio::RtioUnixListener, IoError>
     {
-        match PipeListener::bind(self.uv_loop(), path) {
-            Ok(p) => Ok(p as ~RtioUnixListener),
+        match PipeListener::bind(self, path) {
+            Ok(p) => Ok(p as ~rtio::RtioUnixListener),
             Err(e) => Err(uv_error_to_io_error(e)),
         }
     }
 
-    fn unix_connect(&mut self, path: &CString) -> Result<~RtioPipe, IoError> {
-        match PipeWatcher::connect(self.uv_loop(), path) {
-            Ok(p) => Ok(~p as ~RtioPipe),
+    fn unix_connect(&mut self, path: &CString) -> Result<~rtio::RtioPipe, IoError> {
+        match PipeWatcher::connect(self, path) {
+            Ok(p) => Ok(~p as ~rtio::RtioPipe),
             Err(e) => Err(uv_error_to_io_error(e)),
         }
     }
 
     fn tty_open(&mut self, fd: c_int, readable: bool)
-            -> Result<~RtioTTY, IoError> {
-        match TtyWatcher::new(self.uv_loop(), fd, readable) {
-            Ok(tty) => Ok(~tty as ~RtioTTY),
+            -> Result<~rtio::RtioTTY, IoError> {
+        match TtyWatcher::new(self, fd, readable) {
+            Ok(tty) => Ok(~tty as ~rtio::RtioTTY),
             Err(e) => Err(uv_error_to_io_error(e))
         }
     }
 
-    fn pipe_open(&mut self, fd: c_int) -> Result<~RtioPipe, IoError> {
-        match PipeWatcher::open(self.uv_loop(), fd) {
-            Ok(s) => Ok(~s as ~RtioPipe),
+    fn pipe_open(&mut self, fd: c_int) -> Result<~rtio::RtioPipe, IoError> {
+        match PipeWatcher::open(self, fd) {
+            Ok(s) => Ok(~s as ~rtio::RtioPipe),
             Err(e) => Err(uv_error_to_io_error(e))
         }
     }
 
     fn signal(&mut self, signum: Signum, channel: SharedChan<Signum>)
-        -> Result<~RtioSignal, IoError> {
-        match SignalWatcher::new(self.uv_loop(), signum, channel) {
-            Ok(s) => Ok(s as ~RtioSignal),
+        -> Result<~rtio::RtioSignal, IoError> {
+        match SignalWatcher::new(self, signum, channel) {
+            Ok(s) => Ok(s as ~rtio::RtioSignal),
             Err(e) => Err(uv_error_to_io_error(e)),
         }
     }

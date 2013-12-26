@@ -48,7 +48,7 @@
 #[allow(non_camel_case_types)];
 
 use libc::c_void;
-use unstable::atomics;
+use sync::atomics;
 
 pub struct Mutex {
     // pointers for the lock/cond handles, atomically updated
@@ -333,12 +333,12 @@ mod test {
     fn somke_cond() {
         static mut lock: Mutex = MUTEX_INIT;
         unsafe {
+            lock.lock();
             let t = do Thread::start {
                 lock.lock();
                 lock.signal();
                 lock.unlock();
             };
-            lock.lock();
             lock.wait();
             lock.unlock();
             t.join();

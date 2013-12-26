@@ -35,6 +35,9 @@ PKG_FILES := \
       libextra                                 \
       libstd                                   \
       libsyntax                                \
+      librustuv				       \
+      libgreen 				       \
+      libnative 			       \
       rt                                       \
       librustdoc                               \
       rustllvm                                 \

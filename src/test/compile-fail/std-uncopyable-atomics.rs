@@ -12,7 +12,7 @@
 
 #[feature(globs)];
 
-use std::unstable::atomics::*;
+use std::sync::atomics::*;
 use std::ptr;
 
 fn main() {

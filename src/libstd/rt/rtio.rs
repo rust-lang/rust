@@ -14,14 +14,15 @@ use comm::{SharedChan, Port};
 use libc::c_int;
 use libc;
 use ops::Drop;
-use option::*;
+use option::{Option, Some, None};
 use path::Path;
-use result::*;
+use result::{Result, Ok, Err};
+use rt::task::Task;
+use rt::local::Local;
 
 use ai = io::net::addrinfo;
+use io;
 use io::IoError;
-use io::native::NATIVE_IO_FACTORY;
-use io::native;
 use io::net::ip::{IpAddr, SocketAddr};
 use io::process::{ProcessConfig, ProcessExit};
 use io::signal::Signum;
@@ -93,34 +94,50 @@ impl<'a> Drop for LocalIo<'a> {
 impl<'a> LocalIo<'a> {
     /// Returns the local I/O: either the local scheduler's I/O services or
     /// the native I/O services.
-    pub fn borrow() -> LocalIo {
-        use rt::sched::Scheduler;
-        use rt::local::Local;
+    pub fn borrow() -> Option<LocalIo> {
+        // FIXME(#11053): bad
+        //
+        // This is currently very unsafely implemented. We don't actually
+        // *take* the local I/O so there's a very real possibility that we
+        // can have two borrows at once. Currently there is not a clear way
+        // to actually borrow the local I/O factory safely because even if
+        // ownership were transferred down to the functions that the I/O
+        // factory implements it's just too much of a pain to know when to
+        // relinquish ownership back into the local task (but that would be
+        // the safe way of implementing this function).
+        //
+        // In order to get around this, we just transmute a copy out of the task
+        // in order to have what is likely a static lifetime (bad).
+        let mut t: ~Task = Local::take();
+        let ret = t.local_io().map(|t| {
+            unsafe { cast::transmute_copy(&t) }
+        });
+        Local::put(t);
+        return ret;
+    }
 
-        unsafe {
-            // First, attempt to use the local scheduler's I/O services
-            let sched: Option<*mut Scheduler> = Local::try_unsafe_borrow();
-            match sched {
-                Some(sched) => {
-                    match (*sched).event_loop.io() {
-                        Some(factory) => {
-                            return LocalIo {
-                                factory: factory,
-                            }
-                        }
-                        None => {}
+    pub fn maybe_raise<T>(f: |io: &mut IoFactory| -> Result<T, IoError>)
+        -> Option<T>
+    {
+        match LocalIo::borrow() {
+            None => {
+                io::io_error::cond.raise(io::standard_error(io::IoUnavailable));
+                None
+            }
+            Some(mut io) => {
+                match f(io.get()) {
+                    Ok(t) => Some(t),
+                    Err(ioerr) => {
+                        io::io_error::cond.raise(ioerr);
+                        None
                     }
                 }
-                None => {}
-            }
-            // If we don't have a scheduler or the scheduler doesn't have I/O
-            // services, then fall back to the native I/O services.
-            let native_io: &'static mut native::IoFactory =
-                &mut NATIVE_IO_FACTORY;
-            LocalIo {
-                factory: native_io as &mut IoFactory:'static
             }
         }
+    }
+
+    pub fn new<'a>(io: &'a mut IoFactory) -> LocalIo<'a> {
+        LocalIo { factory: io }
     }
 
     /// Returns the underlying I/O factory as a trait reference.

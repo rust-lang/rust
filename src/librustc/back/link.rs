@@ -333,6 +333,10 @@ pub mod write {
     }
 
     unsafe fn configure_llvm(sess: Session) {
+        use std::unstable::mutex::{MUTEX_INIT, Mutex};
+        static mut LOCK: Mutex = MUTEX_INIT;
+        static mut CONFIGURED: bool = false;
+
         // Copy what clan does by turning on loop vectorization at O2 and
         // slp vectorization at O3
         let vectorize_loop = !sess.no_vectorize_loops() &&
@@ -360,7 +364,13 @@ pub mod write {
             add(*arg);
         }
 
-        llvm::LLVMRustSetLLVMOptions(llvm_args.len() as c_int, llvm_args.as_ptr());
+        LOCK.lock();
+        if !CONFIGURED {
+            llvm::LLVMRustSetLLVMOptions(llvm_args.len() as c_int,
+                                         llvm_args.as_ptr());
+            CONFIGURED = true;
+        }
+        LOCK.unlock();
     }
 
     unsafe fn populate_llvm_passes(fpm: lib::llvm::PassManagerRef,

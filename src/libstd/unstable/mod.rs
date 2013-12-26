@@ -22,8 +22,8 @@ pub mod simd;
 pub mod lang;
 pub mod sync;
 pub mod mutex;
-pub mod atomics;
 pub mod raw;
+pub mod stack;
 
 /**
 
