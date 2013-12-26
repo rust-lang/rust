@@ -148,7 +148,6 @@ pub mod any;
 
 pub mod option;
 pub mod result;
-pub mod either;
 pub mod hashmap;
 pub mod cell;
 pub mod trie;

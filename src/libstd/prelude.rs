@@ -29,7 +29,6 @@ Rust's prelude has three main parts:
 */
 
 // Reexported core operators
-pub use either::{Either, Left, Right};
 pub use kinds::{Freeze, Pod, Send, Sized};
 pub use ops::{Add, Sub, Mul, Div, Rem, Neg, Not};
 pub use ops::{BitAnd, BitOr, BitXor};

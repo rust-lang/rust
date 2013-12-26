@@ -82,7 +82,6 @@ mod tests {
     use clone::Clone;
     use ops::Drop;
     use option::{None, Some};
-    use either::{Either, Left, Right};
     use mem::size_of;
 
     #[test]
@@ -109,15 +108,6 @@ mod tests {
         let y = replace(&mut x, None);
         assert!(x.is_none());
         assert!(y.is_some());
-    }
-
-    #[test]
-    fn test_uninhabited() {
-        let could_only_be_coin : Either <Void, ()> = Right (());
-        match could_only_be_coin {
-            Right (coin) => coin,
-            Left (is_void) => is_void.uninhabited ()
-        }
     }
 
     #[test]

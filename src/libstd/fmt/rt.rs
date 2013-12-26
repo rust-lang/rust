@@ -17,7 +17,6 @@
 #[allow(missing_doc)];
 #[doc(hidden)];
 
-use either::Either;
 use fmt::parse;
 use option::Option;
 
@@ -55,8 +54,13 @@ pub enum Method<'a> {
     Select(&'a [SelectArm<'a>], &'a [Piece<'a>]),
 }
 
+pub enum PluralSelector {
+    Keyword(parse::PluralKeyword),
+    Literal(uint),
+}
+
 pub struct PluralArm<'a> {
-    selector: Either<parse::PluralKeyword, uint>,
+    selector: PluralSelector,
     result: &'a [Piece<'a>],
 }
 

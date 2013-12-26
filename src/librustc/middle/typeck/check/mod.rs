@@ -1705,9 +1705,12 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                 fn_inputs.map(|a| *a)
             } else {
                 let msg = format!(
-                    "this function takes at least {0, plural, =1{# parameter} \
-                    other{# parameters}} but {1, plural, =1{# parameter was} \
-                    other{# parameters were}} supplied", expected_arg_count, supplied_arg_count);
+                    "this function takes at least {} parameter{} \
+                     but {} parameter{} supplied",
+                     expected_arg_count,
+                     if expected_arg_count == 1 {""} else {"s"},
+                     supplied_arg_count,
+                     if supplied_arg_count == 1 {" was"} else {"s were"});
 
                 tcx.sess.span_err(sp, msg);
 
@@ -1722,10 +1725,12 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                                   the `for` keyword)"
             };
             let msg = format!(
-                "this function takes {0, plural, =1{# parameter} \
-                other{# parameters}} but {1, plural, =1{# parameter was} \
-                other{# parameters were}} supplied{2}",
-                expected_arg_count, supplied_arg_count, suffix);
+                "this function takes {} parameter{} \
+                 but {} parameter{} supplied{}",
+                 expected_arg_count, if expected_arg_count == 1 {""} else {"s"},
+                 supplied_arg_count,
+                 if supplied_arg_count == 1 {" was"} else {"s were"},
+                 suffix);
 
             tcx.sess.span_err(sp, msg);
 

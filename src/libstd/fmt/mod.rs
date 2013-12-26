@@ -757,7 +757,7 @@ impl<'a> Formatter<'a> {
                 // offsetted value
                 for s in selectors.iter() {
                     match s.selector {
-                        Right(val) if value == val => {
+                        rt::Literal(val) if value == val => {
                             return self.runplural(value, s.result);
                         }
                         _ => {}
@@ -769,17 +769,17 @@ impl<'a> Formatter<'a> {
                 let value = value - match offset { Some(i) => i, None => 0 };
                 for s in selectors.iter() {
                     let run = match s.selector {
-                        Left(parse::Zero) => value == 0,
-                        Left(parse::One) => value == 1,
-                        Left(parse::Two) => value == 2,
+                        rt::Keyword(parse::Zero) => value == 0,
+                        rt::Keyword(parse::One) => value == 1,
+                        rt::Keyword(parse::Two) => value == 2,
 
                         // XXX: Few/Many should have a user-specified boundary
                         //      One possible option would be in the function
                         //      pointer of the 'arg: Argument' struct.
-                        Left(parse::Few) => value < 8,
-                        Left(parse::Many) => value >= 8,
+                        rt::Keyword(parse::Few) => value < 8,
+                        rt::Keyword(parse::Many) => value >= 8,
 
-                        Right(..) => false
+                        rt::Literal(..) => false
                     };
                     if run {
                         return self.runplural(value, s.result);
