@@ -354,6 +354,43 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
 
     /// Modify and return the value corresponding to the key in the map, or
     /// insert and return a new value if it doesn't exist.
+    ///
+    /// This method allows for all insertion behaviours of a hashmap,
+    /// see methods like `insert`, `find_or_insert` and
+    /// `insert_or_update_with` for less general and more friendly
+    /// variations of this.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::hashmap::HashMap;
+    ///
+    /// // map some strings to vectors of strings
+    /// let mut map = HashMap::<~str, ~[~str]>::new();
+    /// map.insert(~"a key", ~[~"value"]);
+    /// map.insert(~"z key", ~[~"value"]);
+    ///
+    /// let new = ~[~"a key", ~"b key", ~"z key"];
+    /// for k in new.move_iter() {
+    ///     map.mangle(k, ~"new value",
+    ///                // if the key doesn't exist in the map yet, add it in
+    ///                // the obvious way.
+    ///                |_k, v| ~[v],
+    ///                // if the key does exist either prepend or append this
+    ///                // new value based on the first letter of the key.
+    ///                |key, already, new| {
+    ///                     if key.starts_with("z") {
+    ///                         already.unshift(new);
+    ///                     } else {
+    ///                         already.push(new);
+    ///                     }
+    ///                });
+    /// }
+    ///
+    /// for (k, v) in map.iter() {
+    ///    println!("{} -> {:?}", *k, *v);
+    /// }
+    /// ```
     pub fn mangle<'a,
                   A>(
                   &'a mut self,
