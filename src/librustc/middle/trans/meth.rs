@@ -364,6 +364,9 @@ pub fn trans_monomorphized_callee(bcx: @mut Block,
       typeck::vtable_param(..) => {
           fail!("vtable_param left in monomorphized function's vtable substs");
       }
+      typeck::vtable_none => {
+          fail!("unexpected vtable_none in trans");
+      }
     };
 
 }

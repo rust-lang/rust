@@ -687,6 +687,9 @@ pub fn encode_vtable_origin(ecx: &e::EncodeContext,
                 })
             })
           }
+          typeck::vtable_none => {
+            fail!("unexpected vtable_none in astencode")
+          }
         }
     })
 }
