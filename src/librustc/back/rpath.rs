@@ -41,7 +41,7 @@ pub fn get_rpath_flags(sess: session::Session, out_filename: &Path) -> ~[~str] {
 
     let sysroot = sess.filesearch.sysroot();
     let output = out_filename;
-    let libs = cstore::get_used_crates(sess.cstore, cstore::RequireDynamic);
+    let libs = sess.cstore.get_used_crates(cstore::RequireDynamic);
     let libs = libs.move_iter().filter_map(|(_, l)| l.map(|p| p.clone())).collect();
     // We don't currently rpath extern libraries, but we know
     // where rustrt is and we know every rust program needs it
