@@ -15,7 +15,6 @@ use libc;
 use option::{Some, None, Option};
 use os;
 use str::StrSlice;
-use unstable::atomics::{AtomicInt, INIT_ATOMIC_INT, SeqCst};
 use unstable::running_on_valgrind;
 
 // Indicates whether we should perform expensive sanity checks, including rtassert!
@@ -68,11 +67,21 @@ pub fn default_sched_threads() -> uint {
 }
 
 pub fn dumb_println(args: &fmt::Arguments) {
-    use io::native::file::FileDesc;
     use io;
     use libc;
-    let mut out = FileDesc::new(libc::STDERR_FILENO, false);
-    fmt::writeln(&mut out as &mut io::Writer, args);
+
+    struct Stderr;
+    impl io::Writer for Stderr {
+        fn write(&mut self, data: &[u8]) {
+            unsafe {
+                libc::write(libc::STDERR_FILENO,
+                            data.as_ptr() as *libc::c_void,
+                            data.len() as libc::size_t);
+            }
+        }
+    }
+    let mut w = Stderr;
+    fmt::writeln(&mut w as &mut io::Writer, args);
 }
 
 pub fn abort(msg: &str) -> ! {
@@ -132,14 +141,4 @@ memory and partly incapable of presentation to others.",
     fn abort() -> ! {
         unsafe { libc::abort() }
     }
-}
-
-static mut EXIT_STATUS: AtomicInt = INIT_ATOMIC_INT;
-
-pub fn set_exit_status(code: int) {
-    unsafe { EXIT_STATUS.store(code, SeqCst) }
-}
-
-pub fn get_exit_status() -> int {
-    unsafe { EXIT_STATUS.load(SeqCst) }
 }

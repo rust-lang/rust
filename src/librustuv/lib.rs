@@ -41,22 +41,22 @@ via `close` and `delete` methods.
 #[crate_type = "rlib"];
 #[crate_type = "dylib"];
 
-#[feature(macro_rules, globs)];
+#[feature(macro_rules)];
 
-use std::cast::transmute;
+#[cfg(test)] extern mod green;
+
 use std::cast;
+use std::io;
+use std::io::IoError;
 use std::libc::{c_int, malloc};
 use std::ptr::null;
 use std::ptr;
-use std::rt::BlockedTask;
 use std::rt::local::Local;
-use std::rt::sched::Scheduler;
+use std::rt::task::{BlockedTask, Task};
 use std::str::raw::from_c_str;
 use std::str;
 use std::task;
 use std::unstable::finally::Finally;
-
-use std::io::IoError;
 
 pub use self::async::AsyncWatcher;
 pub use self::file::{FsRequest, FileWatcher};
@@ -69,6 +69,9 @@ pub use self::timer::TimerWatcher;
 pub use self::tty::TtyWatcher;
 
 mod macros;
+
+mod queue;
+mod homing;
 
 /// The implementation of `rtio` for libuv
 pub mod uvio;
@@ -144,32 +147,29 @@ pub trait UvHandle<T> {
                 uvll::free_handle(handle);
                 if data == ptr::null() { return }
                 let slot: &mut Option<BlockedTask> = cast::transmute(data);
-                let sched: ~Scheduler = Local::take();
-                sched.resume_blocked_task_immediately(slot.take_unwrap());
+                wakeup(slot);
             }
         }
     }
 }
 
 pub struct ForbidSwitch {
-    msg: &'static str,
-    sched: uint,
+    priv msg: &'static str,
+    priv io: uint,
 }
 
 impl ForbidSwitch {
     fn new(s: &'static str) -> ForbidSwitch {
-        let mut sched = Local::borrow(None::<Scheduler>);
         ForbidSwitch {
             msg: s,
-            sched: sched.get().sched_id(),
+            io: homing::local_id(),
         }
     }
 }
 
 impl Drop for ForbidSwitch {
     fn drop(&mut self) {
-        let mut sched = Local::borrow(None::<Scheduler>);
-        assert!(self.sched == sched.get().sched_id(),
+        assert!(self.io == homing::local_id(),
                 "didnt want a scheduler switch: {}",
                 self.msg);
     }
@@ -199,12 +199,18 @@ fn wait_until_woken_after(slot: *mut Option<BlockedTask>, f: ||) {
     let _f = ForbidUnwind::new("wait_until_woken_after");
     unsafe {
         assert!((*slot).is_none());
-        let sched: ~Scheduler = Local::take();
-        sched.deschedule_running_task_and_then(|_, task| {
-            f();
+        let task: ~Task = Local::take();
+        task.deschedule(1, |task| {
             *slot = Some(task);
-        })
+            f();
+            Ok(())
+        });
     }
+}
+
+fn wakeup(slot: &mut Option<BlockedTask>) {
+    assert!(slot.is_some());
+    slot.take_unwrap().wake().map(|t| t.reawaken(true));
 }
 
 pub struct Request {
@@ -325,28 +331,26 @@ fn error_smoke_test() {
 pub fn uv_error_to_io_error(uverr: UvError) -> IoError {
     unsafe {
         // Importing error constants
-        use uvll::*;
-        use std::io::*;
 
         // uv error descriptions are static
         let c_desc = uvll::uv_strerror(*uverr);
         let desc = str::raw::c_str_to_static_slice(c_desc);
 
         let kind = match *uverr {
-            UNKNOWN => OtherIoError,
-            OK => OtherIoError,
-            EOF => EndOfFile,
-            EACCES => PermissionDenied,
-            ECONNREFUSED => ConnectionRefused,
-            ECONNRESET => ConnectionReset,
-            ENOENT => FileNotFound,
-            ENOTCONN => NotConnected,
-            EPIPE => BrokenPipe,
-            ECONNABORTED => ConnectionAborted,
+            uvll::UNKNOWN => io::OtherIoError,
+            uvll::OK => io::OtherIoError,
+            uvll::EOF => io::EndOfFile,
+            uvll::EACCES => io::PermissionDenied,
+            uvll::ECONNREFUSED => io::ConnectionRefused,
+            uvll::ECONNRESET => io::ConnectionReset,
+            uvll::ENOTCONN => io::NotConnected,
+            uvll::ENOENT => io::FileNotFound,
+            uvll::EPIPE => io::BrokenPipe,
+            uvll::ECONNABORTED => io::ConnectionAborted,
             err => {
                 uvdebug!("uverr.code {}", err as int);
                 // XXX: Need to map remaining uv error types
-                OtherIoError
+                io::OtherIoError
             }
         };
 
@@ -387,15 +391,17 @@ pub fn slice_to_uv_buf(v: &[u8]) -> Buf {
     uvll::uv_buf_t { base: data, len: v.len() as uvll::uv_buf_len_t }
 }
 
+// This function is full of lies!
 #[cfg(test)]
-fn local_loop() -> &'static mut Loop {
+fn local_loop() -> &'static mut uvio::UvIoFactory {
     unsafe {
         cast::transmute({
-            let mut sched = Local::borrow(None::<Scheduler>);
+            let mut task = Local::borrow(None::<Task>);
+            let mut io = task.get().local_io().unwrap();
             let (_vtable, uvio): (uint, &'static mut uvio::UvIoFactory) =
-                cast::transmute(sched.get().event_loop.io().unwrap());
+                cast::transmute(io.get());
             uvio
-        }.uv_loop())
+        })
     }
 }
 

@@ -65,13 +65,15 @@
 // When testing libstd, bring in libuv as the I/O backend so tests can print
 // things and all of the std::io tests have an I/O interface to run on top
 // of
-#[cfg(test)] extern mod rustuv = "rustuv#0.9-pre";
+#[cfg(test)] extern mod rustuv = "rustuv";
+#[cfg(test)] extern mod native = "native";
+#[cfg(test)] extern mod green = "green";
 
 // Make extra accessible for benchmarking
-#[cfg(test)] extern mod extra = "extra#0.9-pre";
+#[cfg(test)] extern mod extra = "extra";
 
 // Make std testable by not duplicating lang items. See #2912
-#[cfg(test)] extern mod realstd = "std#0.9-pre";
+#[cfg(test)] extern mod realstd = "std";
 #[cfg(test)] pub use kinds = realstd::kinds;
 #[cfg(test)] pub use ops = realstd::ops;
 #[cfg(test)] pub use cmp = realstd::cmp;
@@ -159,6 +161,7 @@ pub mod trie;
 pub mod task;
 pub mod comm;
 pub mod local_data;
+pub mod sync;
 
 
 /* Runtime and platform support */

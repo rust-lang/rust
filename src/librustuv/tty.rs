@@ -10,24 +10,23 @@
 
 use std::libc;
 use std::io::IoError;
-use std::rt::local::Local;
 use std::rt::rtio::RtioTTY;
-use std::rt::sched::{Scheduler, SchedHandle};
 
+use homing::{HomingIO, HomeHandle};
 use stream::StreamWatcher;
-use super::{Loop, UvError, UvHandle, uv_error_to_io_error};
-use uvio::HomingIO;
+use super::{UvError, UvHandle, uv_error_to_io_error};
+use uvio::UvIoFactory;
 use uvll;
 
 pub struct TtyWatcher{
     tty: *uvll::uv_tty_t,
     stream: StreamWatcher,
-    home: SchedHandle,
+    home: HomeHandle,
     fd: libc::c_int,
 }
 
 impl TtyWatcher {
-    pub fn new(loop_: &Loop, fd: libc::c_int, readable: bool)
+    pub fn new(io: &mut UvIoFactory, fd: libc::c_int, readable: bool)
         -> Result<TtyWatcher, UvError>
     {
         // libuv may succeed in giving us a handle (via uv_tty_init), but if the
@@ -56,14 +55,14 @@ impl TtyWatcher {
         // with attempting to open it as a tty.
         let handle = UvHandle::alloc(None::<TtyWatcher>, uvll::UV_TTY);
         match unsafe {
-            uvll::uv_tty_init(loop_.handle, handle, fd as libc::c_int,
+            uvll::uv_tty_init(io.uv_loop(), handle, fd as libc::c_int,
                               readable as libc::c_int)
         } {
             0 => {
                 Ok(TtyWatcher {
                     tty: handle,
                     stream: StreamWatcher::new(handle),
-                    home: get_handle_to_current_scheduler!(),
+                    home: io.make_handle(),
                     fd: fd,
                 })
             }
@@ -120,7 +119,7 @@ impl UvHandle<uvll::uv_tty_t> for TtyWatcher {
 }
 
 impl HomingIO for TtyWatcher {
-    fn home<'a>(&'a mut self) -> &'a mut SchedHandle { &mut self.home }
+    fn home<'a>(&'a mut self) -> &'a mut HomeHandle { &mut self.home }
 }
 
 impl Drop for TtyWatcher {

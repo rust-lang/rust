@@ -740,10 +740,10 @@ pub fn std_macros() -> @str {
             fail!("explicit failure")
         );
         ($msg:expr) => (
-            ::std::rt::task::begin_unwind($msg, file!(), line!())
+            ::std::rt::begin_unwind($msg, file!(), line!())
         );
         ($fmt:expr, $($arg:tt)*) => (
-            ::std::rt::task::begin_unwind(format!($fmt, $($arg)*), file!(), line!())
+            ::std::rt::begin_unwind(format!($fmt, $($arg)*), file!(), line!())
         )
     )
 

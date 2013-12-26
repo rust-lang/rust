@@ -45,7 +45,7 @@ use sync;
 use sync::{Mutex, RWLock};
 
 use std::cast;
-use std::unstable::sync::UnsafeArc;
+use std::sync::arc::UnsafeArc;
 use std::task;
 use std::borrow;
 
@@ -126,20 +126,6 @@ impl<T:Freeze+Send> Arc<T> {
     #[inline]
     pub fn get<'a>(&'a self) -> &'a T {
         unsafe { &*self.x.get_immut() }
-    }
-
-    /**
-     * Retrieve the data back out of the Arc. This function blocks until the
-     * reference given to it is the last existing one, and then unwrap the data
-     * instead of destroying it.
-     *
-     * If multiple tasks call unwrap, all but the first will fail. Do not call
-     * unwrap from a task that holds another reference to the same Arc; it is
-     * guaranteed to deadlock.
-     */
-    pub fn unwrap(self) -> T {
-        let Arc { x: x } = self;
-        x.unwrap()
     }
 }
 
@@ -246,22 +232,6 @@ impl<T:Send> MutexArc<T> {
                           failed: &(*state).failed,
                           cond: cond })
         })
-    }
-
-    /**
-     * Retrieves the data, blocking until all other references are dropped,
-     * exactly as arc::unwrap.
-     *
-     * Will additionally fail if another task has failed while accessing the arc.
-     */
-    pub fn unwrap(self) -> T {
-        let MutexArc { x: x } = self;
-        let inner = x.unwrap();
-        let MutexArcInner { failed: failed, data: data, .. } = inner;
-        if failed {
-            fail!("Can't unwrap poisoned MutexArc - another task failed inside!");
-        }
-        data
     }
 }
 
@@ -503,23 +473,6 @@ impl<T:Freeze + Send> RWArc<T> {
             }
         }
     }
-
-    /**
-     * Retrieves the data, blocking until all other references are dropped,
-     * exactly as arc::unwrap.
-     *
-     * Will additionally fail if another task has failed while accessing the arc
-     * in write mode.
-     */
-    pub fn unwrap(self) -> T {
-        let RWArc { x: x, .. } = self;
-        let inner = x.unwrap();
-        let RWArcInner { failed: failed, data: data, .. } = inner;
-        if failed {
-            fail!("Can't unwrap poisoned RWArc - another task failed inside!")
-        }
-        data
-    }
 }
 
 // Borrowck rightly complains about immutably aliasing the rwlock in order to
@@ -687,22 +640,6 @@ mod tests {
         arc.access(|one| {
             assert_eq!(*one, 1);
         })
-    }
-
-    #[test] #[should_fail]
-    pub fn test_mutex_arc_unwrap_poison() {
-        let arc = MutexArc::new(1);
-        let arc2 = ~(&arc).clone();
-        let (p, c) = Chan::new();
-        do task::spawn {
-            arc2.access(|one| {
-                c.send(());
-                assert!(*one == 2);
-            })
-        }
-        let _ = p.recv();
-        let one = arc.unwrap();
-        assert!(one == 1);
     }
 
     #[test]

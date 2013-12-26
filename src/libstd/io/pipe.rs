@@ -14,10 +14,9 @@
 //! enough so that pipes can be created to child processes.
 
 use prelude::*;
-use super::{Reader, Writer};
 use io::{io_error, EndOfFile};
-use io::native::file;
-use rt::rtio::{LocalIo, RtioPipe};
+use libc;
+use rt::rtio::{RtioPipe, LocalIo};
 
 pub struct PipeStream {
     priv obj: ~RtioPipe,
@@ -43,15 +42,10 @@ impl PipeStream {
     ///
     /// If the pipe cannot be created, an error will be raised on the
     /// `io_error` condition.
-    pub fn open(fd: file::fd_t) -> Option<PipeStream> {
-        let mut io = LocalIo::borrow();
-        match io.get().pipe_open(fd) {
-            Ok(obj) => Some(PipeStream { obj: obj }),
-            Err(e) => {
-                io_error::cond.raise(e);
-                None
-            }
-        }
+    pub fn open(fd: libc::c_int) -> Option<PipeStream> {
+        LocalIo::maybe_raise(|io| {
+            io.pipe_open(fd).map(|obj| PipeStream { obj: obj })
+        })
     }
 
     pub fn new(inner: ~RtioPipe) -> PipeStream {

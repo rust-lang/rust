@@ -25,13 +25,7 @@ define CP_HOST_STAGE_N
 
 $$(HBIN$(2)_H_$(4))/rustc$$(X_$(4)): \
 	$$(TBIN$(1)_T_$(4)_H_$(3))/rustc$$(X_$(4)) \
-	$$(HLIB$(2)_H_$(4))/$(CFG_RUNTIME_$(4)) \
 	$$(HLIB$(2)_H_$(4))/$(CFG_LIBRUSTC_$(4)) \
-	$$(HSTDLIB_DEFAULT$(2)_H_$(4)) \
-	$$(HEXTRALIB_DEFAULT$(2)_H_$(4)) \
-	$$(HLIBRUSTUV_DEFAULT$(2)_H_$(4)) \
-	$$(HLIBRUSTC_DEFAULT$(2)_H_$(4)) \
-	$$(HLIBSYNTAX_DEFAULT$(2)_H_$(4)) \
 	| $$(HBIN$(2)_H_$(4))/
 	@$$(call E, cp: $$@)
 	$$(Q)cp $$< $$@
@@ -39,10 +33,6 @@ $$(HBIN$(2)_H_$(4))/rustc$$(X_$(4)): \
 $$(HLIB$(2)_H_$(4))/$(CFG_LIBRUSTC_$(4)): \
 	$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTC_$(4)) \
 	$$(HLIB$(2)_H_$(4))/$(CFG_LIBSYNTAX_$(4)) \
-	$$(HLIB$(2)_H_$(4))/$(CFG_RUNTIME_$(4)) \
-	$$(HSTDLIB_DEFAULT$(2)_H_$(4)) \
-	$$(HEXTRALIB_DEFAULT$(2)_H_$(4)) \
-	$$(HLIBRUSTUV_DEFAULT$(2)_H_$(4)) \
 	| $$(HLIB$(2)_H_$(4))/
 
 	@$$(call E, cp: $$@)
@@ -55,10 +45,11 @@ $$(HLIB$(2)_H_$(4))/$(CFG_LIBRUSTC_$(4)): \
 
 $$(HLIB$(2)_H_$(4))/$(CFG_LIBSYNTAX_$(4)): \
 	$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBSYNTAX_$(4)) \
-	$$(HLIB$(2)_H_$(4))/$(CFG_RUNTIME_$(4)) \
 	$$(HSTDLIB_DEFAULT$(2)_H_$(4)) \
 	$$(HEXTRALIB_DEFAULT$(2)_H_$(4)) \
 	$$(HLIBRUSTUV_DEFAULT$(2)_H_$(4)) \
+	$$(HLIBGREEN_DEFAULT$(2)_H_$(4)) \
+	$$(HLIBNATIVE_DEFAULT$(2)_H_$(4)) \
 	| $$(HLIB$(2)_H_$(4))/
 	@$$(call E, cp: $$@)
 	$$(call REMOVE_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBSYNTAX_GLOB_$(4)),$$(notdir $$@))
@@ -76,7 +67,6 @@ $$(HLIB$(2)_H_$(4))/$(CFG_RUNTIME_$(4)): \
 
 $$(HLIB$(2)_H_$(4))/$(CFG_STDLIB_$(4)): \
 	$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_STDLIB_$(4)) \
-	$$(HLIB$(2)_H_$(4))/$(CFG_RUNTIME_$(4)) \
 	| $$(HLIB$(2)_H_$(4))/
 	@$$(call E, cp: $$@)
 	$$(call REMOVE_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(STDLIB_GLOB_$(4)),$$(notdir $$@))
@@ -98,8 +88,7 @@ $$(HLIB$(2)_H_$(4))/$(CFG_STDLIB_$(4)): \
 
 $$(HLIB$(2)_H_$(4))/$(CFG_EXTRALIB_$(4)): \
 	$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_EXTRALIB_$(4)) \
-	$$(HLIB$(2)_H_$(4))/$(CFG_STDLIB_$(4)) \
-	$$(HLIB$(2)_H_$(4))/$(CFG_RUNTIME_$(4)) \
+	$$(HSTDLIB_DEFAULT$(2)_H_$(4)) \
 	| $$(HLIB$(2)_H_$(4))/
 	@$$(call E, cp: $$@)
 	$$(call REMOVE_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(EXTRALIB_GLOB_$(4)),$$(notdir $$@))
@@ -115,7 +104,6 @@ $$(HLIB$(2)_H_$(4))/$(CFG_EXTRALIB_$(4)): \
 $$(HLIB$(2)_H_$(4))/$(CFG_LIBRUSTUV_$(4)): \
 	$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBRUSTUV_$(4)) \
 	$$(HLIB$(2)_H_$(4))/$(CFG_STDLIB_$(4)) \
-	$$(HLIB$(2)_H_$(4))/$(CFG_RUNTIME_$(4)) \
 	| $$(HLIB$(2)_H_$(4))/
 	@$$(call E, cp: $$@)
 	$$(call REMOVE_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUSTUV_GLOB_$(4)),$$(notdir $$@))
@@ -127,6 +115,36 @@ $$(HLIB$(2)_H_$(4))/$(CFG_LIBRUSTUV_$(4)): \
 	        $$(HLIB$(2)_H_$(4))
 	$$(call LIST_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUSTUV_GLOB_$(4)),$$(notdir $$@))
 	$$(call LIST_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBRUSTUV_RGLOB_$(4)),$$(notdir $$@))
+
+$$(HLIB$(2)_H_$(4))/$(CFG_LIBGREEN_$(4)): \
+	$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBGREEN_$(4)) \
+	$$(HLIB$(2)_H_$(4))/$(CFG_STDLIB_$(4)) \
+	| $$(HLIB$(2)_H_$(4))/
+	@$$(call E, cp: $$@)
+	$$(call REMOVE_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBGREEN_GLOB_$(4)),$$(notdir $$@))
+	$$(call REMOVE_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBGREEN_RGLOB_$(4)),$$(notdir $$@))
+	$$(Q)cp $$< $$@
+	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBGREEN_GLOB_$(4)) \
+		$$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBGREEN_RGLOB_$(4))) \
+		$$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBGREEN_DSYM_GLOB_$(4))) \
+	        $$(HLIB$(2)_H_$(4))
+	$$(call LIST_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBGREEN_GLOB_$(4)),$$(notdir $$@))
+	$$(call LIST_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBGREEN_RGLOB_$(4)),$$(notdir $$@))
+
+$$(HLIB$(2)_H_$(4))/$(CFG_LIBNATIVE_$(4)): \
+	$$(TLIB$(1)_T_$(4)_H_$(3))/$(CFG_LIBNATIVE_$(4)) \
+	$$(HLIB$(2)_H_$(4))/$(CFG_STDLIB_$(4)) \
+	| $$(HLIB$(2)_H_$(4))/
+	@$$(call E, cp: $$@)
+	$$(call REMOVE_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBNATIVE_GLOB_$(4)),$$(notdir $$@))
+	$$(call REMOVE_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBNATIVE_RGLOB_$(4)),$$(notdir $$@))
+	$$(Q)cp $$< $$@
+	$$(Q)cp -R $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBNATIVE_GLOB_$(4)) \
+		$$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBNATIVE_RGLOB_$(4))) \
+		$$(wildcard $$(TLIB$(1)_T_$(4)_H_$(3))/$(LIBNATIVE_DSYM_GLOB_$(4))) \
+	        $$(HLIB$(2)_H_$(4))
+	$$(call LIST_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBNATIVE_GLOB_$(4)),$$(notdir $$@))
+	$$(call LIST_ALL_OLD_GLOB_MATCHES_EXCEPT,$$(dir $$@),$(LIBNATIVE_RGLOB_$(4)),$$(notdir $$@))
 
 $$(HBIN$(2)_H_$(4))/:
 	mkdir -p $$@

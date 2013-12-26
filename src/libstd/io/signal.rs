@@ -23,8 +23,7 @@ use clone::Clone;
 use comm::{Port, SharedChan};
 use container::{Map, MutableMap};
 use hashmap;
-use io::io_error;
-use result::{Err, Ok};
+use option::{Some, None};
 use rt::rtio::{IoFactory, LocalIo, RtioSignal};
 
 #[repr(int)]
@@ -122,16 +121,14 @@ impl Listener {
         if self.handles.contains_key(&signum) {
             return true; // self is already listening to signum, so succeed
         }
-        let mut io = LocalIo::borrow();
-        match io.get().signal(signum, self.chan.clone()) {
-            Ok(w) => {
-                self.handles.insert(signum, w);
+        match LocalIo::maybe_raise(|io| {
+            io.signal(signum, self.chan.clone())
+        }) {
+            Some(handle) => {
+                self.handles.insert(signum, handle);
                 true
-            },
-            Err(ioerr) => {
-                io_error::cond.raise(ioerr);
-                false
             }
+            None => false
         }
     }
 

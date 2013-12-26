@@ -20,10 +20,11 @@
 
 use cast::transmute;
 use option::{Option, Some, None};
+use result::{Result, Ok, Err};
 use to_str::ToStr;
+use unstable::intrinsics::TypeId;
 use unstable::intrinsics;
 use util::Void;
-use unstable::intrinsics::TypeId;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Any trait
@@ -118,13 +119,13 @@ impl<'a> AnyMutRefExt<'a> for &'a mut Any {
 /// Extension methods for a owning `Any` trait object
 pub trait AnyOwnExt {
     /// Returns the boxed value if it is of type `T`, or
-    /// `None` if it isn't.
-    fn move<T: 'static>(self) -> Option<~T>;
+    /// `Err(Self)` if it isn't.
+    fn move<T: 'static>(self) -> Result<~T, Self>;
 }
 
 impl AnyOwnExt for ~Any {
     #[inline]
-    fn move<T: 'static>(self) -> Option<~T> {
+    fn move<T: 'static>(self) -> Result<~T, ~Any> {
         if self.is::<T>() {
             unsafe {
                 // Extract the pointer to the boxed value, temporary alias with self
@@ -133,10 +134,10 @@ impl AnyOwnExt for ~Any {
                 // Prevent destructor on self being run
                 intrinsics::forget(self);
 
-                Some(ptr)
+                Ok(ptr)
             }
         } else {
-            None
+            Err(self)
         }
     }
 }
@@ -155,9 +156,8 @@ impl<'a> ToStr for &'a Any {
 
 #[cfg(test)]
 mod tests {
+    use prelude::*;
     use super::*;
-    use super::AnyRefExt;
-    use option::{Some, None};
 
     #[deriving(Eq)]
     struct Test;
@@ -384,13 +384,19 @@ mod tests {
         let a = ~8u as ~Any;
         let b = ~Test as ~Any;
 
-        assert_eq!(a.move(), Some(~8u));
-        assert_eq!(b.move(), Some(~Test));
+        match a.move::<uint>() {
+            Ok(a) => { assert_eq!(a, ~8u); }
+            Err(..) => fail!()
+        }
+        match b.move::<Test>() {
+            Ok(a) => { assert_eq!(a, ~Test); }
+            Err(..) => fail!()
+        }
 
         let a = ~8u as ~Any;
         let b = ~Test as ~Any;
 
-        assert_eq!(a.move(), None::<~Test>);
-        assert_eq!(b.move(), None::<~uint>);
+        assert!(a.move::<~Test>().is_err());
+        assert!(b.move::<~uint>().is_err());
     }
 }

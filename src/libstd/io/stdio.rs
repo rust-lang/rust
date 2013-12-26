@@ -27,13 +27,13 @@ out.write(bytes!("Hello, world!"));
 */
 
 use fmt;
+use io::buffered::LineBufferedWriter;
+use io::{Reader, Writer, io_error, IoError, OtherIoError,
+         standard_error, EndOfFile};
 use libc;
 use option::{Option, Some, None};
 use result::{Ok, Err};
-use io::buffered::LineBufferedWriter;
 use rt::rtio::{DontClose, IoFactory, LocalIo, RtioFileStream, RtioTTY};
-use super::{Reader, Writer, io_error, IoError, OtherIoError,
-            standard_error, EndOfFile};
 
 // And so begins the tale of acquiring a uv handle to a stdio stream on all
 // platforms in all situations. Our story begins by splitting the world into two
@@ -69,19 +69,12 @@ enum StdSource {
 }
 
 fn src<T>(fd: libc::c_int, readable: bool, f: |StdSource| -> T) -> T {
-    let mut io = LocalIo::borrow();
-    match io.get().tty_open(fd, readable) {
-        Ok(tty) => f(TTY(tty)),
-        Err(_) => {
-            // It's not really that desirable if these handles are closed
-            // synchronously, and because they're squirreled away in a task
-            // structure the destructors will be run when the task is
-            // attempted to get destroyed. This means that if we run a
-            // synchronous destructor we'll attempt to do some scheduling
-            // operations which will just result in sadness.
-            f(File(io.get().fs_from_raw_fd(fd, DontClose)))
-        }
-    }
+    LocalIo::maybe_raise(|io| {
+        Ok(match io.tty_open(fd, readable) {
+            Ok(tty) => f(TTY(tty)),
+            Err(_) => f(File(io.fs_from_raw_fd(fd, DontClose))),
+        })
+    }).unwrap()
 }
 
 /// Creates a new non-blocking handle to the stdin of the current process.
@@ -138,7 +131,17 @@ fn with_task_stdout(f: |&mut Writer|) {
             }
 
             None => {
-                let mut io = stdout();
+                struct Stdout;
+                impl Writer for Stdout {
+                    fn write(&mut self, data: &[u8]) {
+                        unsafe {
+                            libc::write(libc::STDOUT_FILENO,
+                                        data.as_ptr() as *libc::c_void,
+                                        data.len() as libc::size_t);
+                        }
+                    }
+                }
+                let mut io = Stdout;
                 f(&mut io as &mut Writer);
             }
         }
@@ -304,23 +307,10 @@ impl Writer for StdWriter {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use rt::test::run_in_newsched_task;
-
-    #[test]
-    fn smoke_uv() {
+    iotest!(fn smoke() {
         // Just make sure we can acquire handles
         stdin();
         stdout();
         stderr();
-    }
-
-    #[test]
-    fn smoke_native() {
-        do run_in_newsched_task {
-            stdin();
-            stdout();
-            stderr();
-        }
-    }
+    })
 }

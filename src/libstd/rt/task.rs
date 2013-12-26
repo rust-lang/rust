@@ -13,29 +13,41 @@
 //! local storage, and logging. Even a 'freestanding' Rust would likely want
 //! to implement this.
 
-use super::local_heap::LocalHeap;
-
-use prelude::*;
-
+use any::AnyOwnExt;
 use borrow;
+use cast;
 use cleanup;
 use io::Writer;
-use libc::{c_char, size_t};
+use iter::{Iterator, Take};
 use local_data;
+use ops::Drop;
 use option::{Option, Some, None};
+use prelude::drop;
+use result::{Result, Ok, Err};
+use rt::Runtime;
 use rt::borrowck::BorrowRecord;
 use rt::borrowck;
-use rt::context::Context;
-use rt::env;
-use rt::kill::Death;
 use rt::local::Local;
+use rt::local_heap::LocalHeap;
 use rt::logging::StdErrLogger;
-use rt::sched::{Scheduler, SchedHandle};
-use rt::stack::{StackSegment, StackPool};
+use rt::rtio::LocalIo;
 use rt::unwind::Unwinder;
 use send_str::SendStr;
+use sync::arc::UnsafeArc;
+use sync::atomics::{AtomicUint, SeqCst, INIT_ATOMIC_UINT};
+use task::{TaskResult, TaskOpts};
 use unstable::finally::Finally;
-use unstable::mutex::Mutex;
+use unstable::mutex::{Mutex, MUTEX_INIT};
+
+#[cfg(stage0)]
+pub use rt::unwind::begin_unwind;
+
+// These two statics are used as bookeeping to keep track of the rust runtime's
+// count of threads. In 1:1 contexts, this is used to know when to return from
+// the main function, and in M:N contexts this is used to know when to shut down
+// the pool of schedulers.
+static mut TASK_COUNT: AtomicUint = INIT_ATOMIC_UINT;
+static mut TASK_LOCK: Mutex = MUTEX_INIT;
 
 // The Task struct represents all state associated with a rust
 // task. There are at this point two primary "subtypes" of task,
@@ -45,201 +57,90 @@ use unstable::mutex::Mutex;
 
 pub struct Task {
     heap: LocalHeap,
-    priv gc: GarbageCollector,
+    gc: GarbageCollector,
     storage: LocalStorage,
-    logger: Option<StdErrLogger>,
     unwinder: Unwinder,
     death: Death,
     destroyed: bool,
     name: Option<SendStr>,
-    coroutine: Option<Coroutine>,
-    sched: Option<~Scheduler>,
-    task_type: TaskType,
     // Dynamic borrowck debugging info
     borrow_list: Option<~[BorrowRecord]>,
+
+    logger: Option<StdErrLogger>,
     stdout_handle: Option<~Writer>,
 
-    // See the comments in the scheduler about why this is necessary
-    nasty_deschedule_lock: Mutex,
-}
-
-pub enum TaskType {
-    GreenTask(Option<SchedHome>),
-    SchedTask
-}
-
-/// A coroutine is nothing more than a (register context, stack) pair.
-pub struct Coroutine {
-    /// The segment of stack on which the task is currently running or
-    /// if the task is blocked, on which the task will resume
-    /// execution.
-    ///
-    /// Servo needs this to be public in order to tell SpiderMonkey
-    /// about the stack bounds.
-    current_stack_segment: StackSegment,
-    /// Always valid if the task is alive and not running.
-    saved_context: Context
-}
-
-/// Some tasks have a dedicated home scheduler that they must run on.
-pub enum SchedHome {
-    AnySched,
-    Sched(SchedHandle)
+    priv imp: Option<~Runtime>,
 }
 
 pub struct GarbageCollector;
 pub struct LocalStorage(Option<local_data::Map>);
 
+/// A handle to a blocked task. Usually this means having the ~Task pointer by
+/// ownership, but if the task is killable, a killer can steal it at any time.
+pub enum BlockedTask {
+    Owned(~Task),
+    Shared(UnsafeArc<AtomicUint>),
+}
+
+/// Per-task state related to task death, killing, failure, etc.
+pub struct Death {
+    // Action to be done with the exit code. If set, also makes the task wait
+    // until all its watched children exit before collecting the status.
+    on_exit: Option<proc(TaskResult)>,
+}
+
+pub struct BlockedTaskIterator {
+    priv inner: UnsafeArc<AtomicUint>,
+}
+
 impl Task {
-
-    // A helper to build a new task using the dynamically found
-    // scheduler and task. Only works in GreenTask context.
-    pub fn build_homed_child(stack_size: Option<uint>,
-                             f: proc(),
-                             home: SchedHome)
-                             -> ~Task {
-        let mut running_task = Local::borrow(None::<Task>);
-        let mut sched = running_task.get().sched.take_unwrap();
-        let new_task = ~running_task.get()
-                                    .new_child_homed(&mut sched.stack_pool,
-                                                     stack_size,
-                                                     home,
-                                                     f);
-        running_task.get().sched = Some(sched);
-        new_task
-    }
-
-    pub fn build_child(stack_size: Option<uint>, f: proc()) -> ~Task {
-        Task::build_homed_child(stack_size, f, AnySched)
-    }
-
-    pub fn build_homed_root(stack_size: Option<uint>,
-                            f: proc(),
-                            home: SchedHome)
-                            -> ~Task {
-        let mut running_task = Local::borrow(None::<Task>);
-        let mut sched = running_task.get().sched.take_unwrap();
-        let new_task = ~Task::new_root_homed(&mut sched.stack_pool,
-                                             stack_size,
-                                             home,
-                                             f);
-        running_task.get().sched = Some(sched);
-        new_task
-    }
-
-    pub fn build_root(stack_size: Option<uint>, f: proc()) -> ~Task {
-        Task::build_homed_root(stack_size, f, AnySched)
-    }
-
-    pub fn new_sched_task() -> Task {
+    pub fn new() -> Task {
         Task {
             heap: LocalHeap::new(),
             gc: GarbageCollector,
             storage: LocalStorage(None),
-            logger: None,
-            unwinder: Unwinder { unwinding: false, cause: None },
-            death: Death::new(),
-            destroyed: false,
-            coroutine: Some(Coroutine::empty()),
-            name: None,
-            sched: None,
-            task_type: SchedTask,
-            borrow_list: None,
-            stdout_handle: None,
-            nasty_deschedule_lock: unsafe { Mutex::new() },
-        }
-    }
-
-    pub fn new_root(stack_pool: &mut StackPool,
-                    stack_size: Option<uint>,
-                    start: proc()) -> Task {
-        Task::new_root_homed(stack_pool, stack_size, AnySched, start)
-    }
-
-    pub fn new_child(&mut self,
-                     stack_pool: &mut StackPool,
-                     stack_size: Option<uint>,
-                     start: proc()) -> Task {
-        self.new_child_homed(stack_pool, stack_size, AnySched, start)
-    }
-
-    pub fn new_root_homed(stack_pool: &mut StackPool,
-                          stack_size: Option<uint>,
-                          home: SchedHome,
-                          start: proc()) -> Task {
-        Task {
-            heap: LocalHeap::new(),
-            gc: GarbageCollector,
-            storage: LocalStorage(None),
-            logger: None,
-            unwinder: Unwinder { unwinding: false, cause: None },
+            unwinder: Unwinder::new(),
             death: Death::new(),
             destroyed: false,
             name: None,
-            coroutine: Some(Coroutine::new(stack_pool, stack_size, start)),
-            sched: None,
-            task_type: GreenTask(Some(home)),
             borrow_list: None,
-            stdout_handle: None,
-            nasty_deschedule_lock: unsafe { Mutex::new() },
-        }
-    }
-
-    pub fn new_child_homed(&mut self,
-                           stack_pool: &mut StackPool,
-                           stack_size: Option<uint>,
-                           home: SchedHome,
-                           start: proc()) -> Task {
-        Task {
-            heap: LocalHeap::new(),
-            gc: GarbageCollector,
-            storage: LocalStorage(None),
             logger: None,
-            unwinder: Unwinder { unwinding: false, cause: None },
-            death: Death::new(),
-            destroyed: false,
-            name: None,
-            coroutine: Some(Coroutine::new(stack_pool, stack_size, start)),
-            sched: None,
-            task_type: GreenTask(Some(home)),
-            borrow_list: None,
             stdout_handle: None,
-            nasty_deschedule_lock: unsafe { Mutex::new() },
+            imp: None,
         }
     }
 
-    pub fn give_home(&mut self, new_home: SchedHome) {
-        match self.task_type {
-            GreenTask(ref mut home) => {
-                *home = Some(new_home);
-            }
-            SchedTask => {
-                rtabort!("type error: used SchedTask as GreenTask");
-            }
-        }
-    }
-
-    pub fn take_unwrap_home(&mut self) -> SchedHome {
-        match self.task_type {
-            GreenTask(ref mut home) => {
-                let out = home.take_unwrap();
-                return out;
-            }
-            SchedTask => {
-                rtabort!("type error: used SchedTask as GreenTask");
-            }
-        }
-    }
-
-    pub fn run(&mut self, f: ||) {
-        rtdebug!("run called on task: {}", borrow::to_uint(self));
+    /// Executes the given closure as if it's running inside this task. The task
+    /// is consumed upon entry, and the destroyed task is returned from this
+    /// function in order for the caller to free. This function is guaranteed to
+    /// not unwind because the closure specified is run inside of a `rust_try`
+    /// block. (this is the only try/catch block in the world).
+    ///
+    /// This function is *not* meant to be abused as a "try/catch" block. This
+    /// is meant to be used at the absolute boundaries of a task's lifetime, and
+    /// only for that purpose.
+    pub fn run(~self, f: ||) -> ~Task {
+        // Need to put ourselves into TLS, but also need access to the unwinder.
+        // Unsafely get a handle to the task so we can continue to use it after
+        // putting it in tls (so we can invoke the unwinder).
+        let handle: *mut Task = unsafe {
+            *cast::transmute::<&~Task, &*mut Task>(&self)
+        };
+        Local::put(self);
+        unsafe { TASK_COUNT.fetch_add(1, SeqCst); }
 
         // The only try/catch block in the world. Attempt to run the task's
         // client-specified code and catch any failures.
-        self.unwinder.try(|| {
+        let try_block = || {
 
             // Run the task main function, then do some cleanup.
             f.finally(|| {
+                fn flush(w: Option<~Writer>) {
+                    match w {
+                        Some(mut w) => { w.flush(); }
+                        None => {}
+                    }
+                }
 
                 // First, destroy task-local storage. This may run user dtors.
                 //
@@ -260,7 +161,10 @@ impl Task {
                 // TLS, or possibly some destructors for those objects being
                 // annihilated invoke TLS. Sadly these two operations seemed to
                 // be intertwined, and miraculously work for now...
-                self.storage.take();
+                let mut task = Local::borrow(None::<Task>);
+                let storage = task.get().storage.take();
+                drop(task);
+                drop(storage);
 
                 // Destroy remaining boxes. Also may run user dtors.
                 unsafe { cleanup::annihilate(); }
@@ -268,77 +172,141 @@ impl Task {
                 // Finally flush and destroy any output handles which the task
                 // owns. There are no boxes here, and no user destructors should
                 // run after this any more.
-                match self.stdout_handle.take() {
-                    Some(handle) => {
-                        let mut handle = handle;
-                        handle.flush();
-                    }
-                    None => {}
-                }
-                self.logger.take();
+                let mut task = Local::borrow(None::<Task>);
+                let stdout = task.get().stdout_handle.take();
+                let logger = task.get().logger.take();
+                drop(task);
+
+                flush(stdout);
+                drop(logger);
             })
-        });
+        };
+
+        unsafe { (*handle).unwinder.try(try_block); }
 
         // Cleanup the dynamic borrowck debugging info
         borrowck::clear_task_borrow_list();
 
-        self.death.collect_failure(self.unwinder.result());
-        self.destroyed = true;
+        // Here we must unsafely borrow the task in order to not remove it from
+        // TLS. When collecting failure, we may attempt to send on a channel (or
+        // just run aribitrary code), so we must be sure to still have a local
+        // task in TLS.
+        unsafe {
+            let me: *mut Task = Local::unsafe_borrow();
+            (*me).death.collect_failure((*me).unwinder.result());
+
+            // see comments on these statics for why they're used
+            if TASK_COUNT.fetch_sub(1, SeqCst) == 1 {
+                TASK_LOCK.lock();
+                TASK_LOCK.signal();
+                TASK_LOCK.unlock();
+            }
+        }
+        let mut me: ~Task = Local::take();
+        me.destroyed = true;
+        return me;
     }
 
-    // New utility functions for homes.
+    /// Inserts a runtime object into this task, transferring ownership to the
+    /// task. It is illegal to replace a previous runtime object in this task
+    /// with this argument.
+    pub fn put_runtime(&mut self, ops: ~Runtime) {
+        assert!(self.imp.is_none());
+        self.imp = Some(ops);
+    }
 
-    pub fn is_home_no_tls(&self, sched: &~Scheduler) -> bool {
-        match self.task_type {
-            GreenTask(Some(AnySched)) => { false }
-            GreenTask(Some(Sched(SchedHandle { sched_id: ref id, .. }))) => {
-                *id == sched.sched_id()
-            }
-            GreenTask(None) => {
-                rtabort!("task without home");
-            }
-            SchedTask => {
-                // Awe yea
-                rtabort!("type error: expected: GreenTask, found: SchedTask");
+    /// Attempts to extract the runtime as a specific type. If the runtime does
+    /// not have the provided type, then the runtime is not removed. If the
+    /// runtime does have the specified type, then it is removed and returned
+    /// (transfer of ownership).
+    ///
+    /// It is recommended to only use this method when *absolutely necessary*.
+    /// This function may not be available in the future.
+    pub fn maybe_take_runtime<T: 'static>(&mut self) -> Option<~T> {
+        // This is a terrible, terrible function. The general idea here is to
+        // take the runtime, cast it to ~Any, check if it has the right type,
+        // and then re-cast it back if necessary. The method of doing this is
+        // pretty sketchy and involves shuffling vtables of trait objects
+        // around, but it gets the job done.
+        //
+        // XXX: This function is a serious code smell and should be avoided at
+        //      all costs. I have yet to think of a method to avoid this
+        //      function, and I would be saddened if more usage of the function
+        //      crops up.
+        unsafe {
+            let imp = self.imp.take_unwrap();
+            let &(vtable, _): &(uint, uint) = cast::transmute(&imp);
+            match imp.wrap().move::<T>() {
+                Ok(t) => Some(t),
+                Err(t) => {
+                    let (_, obj): (uint, uint) = cast::transmute(t);
+                    let obj: ~Runtime = cast::transmute((vtable, obj));
+                    self.put_runtime(obj);
+                    None
+                }
             }
         }
     }
 
-    pub fn homed(&self) -> bool {
-        match self.task_type {
-            GreenTask(Some(AnySched)) => { false }
-            GreenTask(Some(Sched(SchedHandle { .. }))) => { true }
-            GreenTask(None) => {
-                rtabort!("task without home");
-            }
-            SchedTask => {
-                rtabort!("type error: expected: GreenTask, found: SchedTask");
-            }
-        }
+    /// Spawns a sibling to this task. The newly spawned task is configured with
+    /// the `opts` structure and will run `f` as the body of its code.
+    pub fn spawn_sibling(mut ~self, opts: TaskOpts, f: proc()) {
+        let ops = self.imp.take_unwrap();
+        ops.spawn_sibling(self, opts, f)
     }
 
-    // Grab both the scheduler and the task from TLS and check if the
-    // task is executing on an appropriate scheduler.
-    pub fn on_appropriate_sched() -> bool {
-        let mut task = Local::borrow(None::<Task>);
-        let sched_id = task.get().sched.get_ref().sched_id();
-        let sched_run_anything = task.get().sched.get_ref().run_anything;
-        match task.get().task_type {
-            GreenTask(Some(AnySched)) => {
-                rtdebug!("anysched task in sched check ****");
-                sched_run_anything
-            }
-            GreenTask(Some(Sched(SchedHandle { sched_id: ref id, ..}))) => {
-                rtdebug!("homed task in sched check ****");
-                *id == sched_id
-            }
-            GreenTask(None) => {
-                rtabort!("task without home");
-            }
-            SchedTask => {
-                rtabort!("type error: expected: GreenTask, found: SchedTask");
-            }
+    /// Deschedules the current task, invoking `f` `amt` times. It is not
+    /// recommended to use this function directly, but rather communication
+    /// primitives in `std::comm` should be used.
+    pub fn deschedule(mut ~self, amt: uint,
+                      f: |BlockedTask| -> Result<(), BlockedTask>) {
+        let ops = self.imp.take_unwrap();
+        ops.deschedule(amt, self, f)
+    }
+
+    /// Wakes up a previously blocked task, optionally specifiying whether the
+    /// current task can accept a change in scheduling. This function can only
+    /// be called on tasks that were previously blocked in `deschedule`.
+    pub fn reawaken(mut ~self, can_resched: bool) {
+        let ops = self.imp.take_unwrap();
+        ops.reawaken(self, can_resched);
+    }
+
+    /// Yields control of this task to another task. This function will
+    /// eventually return, but possibly not immediately. This is used as an
+    /// opportunity to allow other tasks a chance to run.
+    pub fn yield_now(mut ~self) {
+        let ops = self.imp.take_unwrap();
+        ops.yield_now(self);
+    }
+
+    /// Similar to `yield_now`, except that this function may immediately return
+    /// without yielding (depending on what the runtime decides to do).
+    pub fn maybe_yield(mut ~self) {
+        let ops = self.imp.take_unwrap();
+        ops.maybe_yield(self);
+    }
+
+    /// Acquires a handle to the I/O factory that this task contains, normally
+    /// stored in the task's runtime. This factory may not always be available,
+    /// which is why the return type is `Option`
+    pub fn local_io<'a>(&'a mut self) -> Option<LocalIo<'a>> {
+        self.imp.get_mut_ref().local_io()
+    }
+
+    /// The main function of all rust executables will by default use this
+    /// function. This function will *block* the OS thread (hence the `unsafe`)
+    /// waiting for all known tasks to complete. Once this function has
+    /// returned, it is guaranteed that no more user-defined code is still
+    /// running.
+    pub unsafe fn wait_for_other_tasks(&mut self) {
+        TASK_COUNT.fetch_sub(1, SeqCst); // don't count ourselves
+        TASK_LOCK.lock();
+        while TASK_COUNT.load(SeqCst) > 0 {
+            TASK_LOCK.wait();
         }
+        TASK_LOCK.unlock();
+        TASK_COUNT.fetch_add(1, SeqCst); // add ourselves back in
     }
 }
 
@@ -346,348 +314,192 @@ impl Drop for Task {
     fn drop(&mut self) {
         rtdebug!("called drop for a task: {}", borrow::to_uint(self));
         rtassert!(self.destroyed);
-
-        unsafe { self.nasty_deschedule_lock.destroy(); }
     }
 }
 
-// Coroutines represent nothing more than a context and a stack
-// segment.
-
-impl Coroutine {
-
-    pub fn new(stack_pool: &mut StackPool,
-               stack_size: Option<uint>,
-               start: proc())
-               -> Coroutine {
-        let stack_size = match stack_size {
-            Some(size) => size,
-            None => env::min_stack()
-        };
-        let start = Coroutine::build_start_wrapper(start);
-        let mut stack = stack_pool.take_segment(stack_size);
-        let initial_context = Context::new(start, &mut stack);
-        Coroutine {
-            current_stack_segment: stack,
-            saved_context: initial_context
-        }
+impl Iterator<BlockedTask> for BlockedTaskIterator {
+    fn next(&mut self) -> Option<BlockedTask> {
+        Some(Shared(self.inner.clone()))
     }
+}
 
-    pub fn empty() -> Coroutine {
-        Coroutine {
-            current_stack_segment: StackSegment::new(0),
-            saved_context: Context::empty()
-        }
-    }
-
-    fn build_start_wrapper(start: proc()) -> proc() {
-        let wrapper: proc() = proc() {
-            // First code after swap to this new context. Run our
-            // cleanup job.
-            unsafe {
-
-                // Again - might work while safe, or it might not.
-                {
-                    let mut sched = Local::borrow(None::<Scheduler>);
-                    sched.get().run_cleanup_job();
-                }
-
-                // To call the run method on a task we need a direct
-                // reference to it. The task is in TLS, so we can
-                // simply unsafe_borrow it to get this reference. We
-                // need to still have the task in TLS though, so we
-                // need to unsafe_borrow.
-                let task: *mut Task = Local::unsafe_borrow();
-
-                let mut start_cell = Some(start);
-                (*task).run(|| {
-                    // N.B. Removing `start` from the start wrapper
-                    // closure by emptying a cell is critical for
-                    // correctness. The ~Task pointer, and in turn the
-                    // closure used to initialize the first call
-                    // frame, is destroyed in the scheduler context,
-                    // not task context. So any captured closures must
-                    // not contain user-definable dtors that expect to
-                    // be in task context. By moving `start` out of
-                    // the closure, all the user code goes our of
-                    // scope while the task is still running.
-                    let start = start_cell.take_unwrap();
-                    start();
-                });
-            }
-
-            // We remove the sched from the Task in TLS right now.
-            let sched: ~Scheduler = Local::take();
-            // ... allowing us to give it away when performing a
-            // scheduling operation.
-            sched.terminate_current_task()
-        };
-        return wrapper;
-    }
-
-    /// Destroy coroutine and try to reuse stack segment.
-    pub fn recycle(self, stack_pool: &mut StackPool) {
+impl BlockedTask {
+    /// Returns Some if the task was successfully woken; None if already killed.
+    pub fn wake(self) -> Option<~Task> {
         match self {
-            Coroutine { current_stack_segment, .. } => {
-                stack_pool.give_segment(current_stack_segment);
-            }
-        }
-    }
-
-}
-
-/// This function is invoked from rust's current __morestack function. Segmented
-/// stacks are currently not enabled as segmented stacks, but rather one giant
-/// stack segment. This means that whenever we run out of stack, we want to
-/// truly consider it to be stack overflow rather than allocating a new stack.
-#[no_mangle]      // - this is called from C code
-#[no_split_stack] // - it would be sad for this function to trigger __morestack
-#[doc(hidden)]    // - Function must be `pub` to get exported, but it's
-                  //   irrelevant for documentation purposes.
-#[cfg(not(test))] // in testing, use the original libstd's version
-pub extern "C" fn rust_stack_exhausted() {
-    use rt::context;
-    use rt::in_green_task_context;
-    use rt::task::Task;
-    use rt::local::Local;
-    use unstable::intrinsics;
-
-    unsafe {
-        // We're calling this function because the stack just ran out. We need
-        // to call some other rust functions, but if we invoke the functions
-        // right now it'll just trigger this handler being called again. In
-        // order to alleviate this, we move the stack limit to be inside of the
-        // red zone that was allocated for exactly this reason.
-        let limit = context::get_sp_limit();
-        context::record_sp_limit(limit - context::RED_ZONE / 2);
-
-        // This probably isn't the best course of action. Ideally one would want
-        // to unwind the stack here instead of just aborting the entire process.
-        // This is a tricky problem, however. There's a few things which need to
-        // be considered:
-        //
-        //  1. We're here because of a stack overflow, yet unwinding will run
-        //     destructors and hence arbitrary code. What if that code overflows
-        //     the stack? One possibility is to use the above allocation of an
-        //     extra 10k to hope that we don't hit the limit, and if we do then
-        //     abort the whole program. Not the best, but kind of hard to deal
-        //     with unless we want to switch stacks.
-        //
-        //  2. LLVM will optimize functions based on whether they can unwind or
-        //     not. It will flag functions with 'nounwind' if it believes that
-        //     the function cannot trigger unwinding, but if we do unwind on
-        //     stack overflow then it means that we could unwind in any function
-        //     anywhere. We would have to make sure that LLVM only places the
-        //     nounwind flag on functions which don't call any other functions.
-        //
-        //  3. The function that overflowed may have owned arguments. These
-        //     arguments need to have their destructors run, but we haven't even
-        //     begun executing the function yet, so unwinding will not run the
-        //     any landing pads for these functions. If this is ignored, then
-        //     the arguments will just be leaked.
-        //
-        // Exactly what to do here is a very delicate topic, and is possibly
-        // still up in the air for what exactly to do. Some relevant issues:
-        //
-        //  #3555 - out-of-stack failure leaks arguments
-        //  #3695 - should there be a stack limit?
-        //  #9855 - possible strategies which could be taken
-        //  #9854 - unwinding on windows through __morestack has never worked
-        //  #2361 - possible implementation of not using landing pads
-
-        if in_green_task_context() {
-            let mut task = Local::borrow(None::<Task>);
-            let n = task.get()
-                        .name
-                        .as_ref()
-                        .map(|n| n.as_slice())
-                        .unwrap_or("<unnamed>");
-
-            // See the message below for why this is not emitted to the
-            // task's logger. This has the additional conundrum of the
-            // logger may not be initialized just yet, meaning that an FFI
-            // call would happen to initialized it (calling out to libuv),
-            // and the FFI call needs 2MB of stack when we just ran out.
-            rterrln!("task '{}' has overflowed its stack", n);
-        } else {
-            rterrln!("stack overflow in non-task context");
-        }
-
-        intrinsics::abort();
-    }
-}
-
-/// This is the entry point of unwinding for things like lang items and such.
-/// The arguments are normally generated by the compiler, and need to
-/// have static lifetimes.
-pub fn begin_unwind_raw(msg: *c_char, file: *c_char, line: size_t) -> ! {
-    use c_str::CString;
-    use cast::transmute;
-
-    #[inline]
-    fn static_char_ptr(p: *c_char) -> &'static str {
-        let s = unsafe { CString::new(p, false) };
-        match s.as_str() {
-            Some(s) => unsafe { transmute::<&str, &'static str>(s) },
-            None => rtabort!("message wasn't utf8?")
-        }
-    }
-
-    let msg = static_char_ptr(msg);
-    let file = static_char_ptr(file);
-
-    begin_unwind(msg, file, line as uint)
-}
-
-/// This is the entry point of unwinding for fail!() and assert!().
-pub fn begin_unwind<M: Any + Send>(msg: M, file: &'static str, line: uint) -> ! {
-    use any::AnyRefExt;
-    use rt::in_green_task_context;
-    use rt::local::Local;
-    use rt::task::Task;
-    use str::Str;
-    use unstable::intrinsics;
-
-    unsafe {
-        let task: *mut Task;
-        // Note that this should be the only allocation performed in this block.
-        // Currently this means that fail!() on OOM will invoke this code path,
-        // but then again we're not really ready for failing on OOM anyway. If
-        // we do start doing this, then we should propagate this allocation to
-        // be performed in the parent of this task instead of the task that's
-        // failing.
-        let msg = ~msg as ~Any;
-
-        {
-            //let msg: &Any = msg;
-            let msg_s = match msg.as_ref::<&'static str>() {
-                Some(s) => *s,
-                None => match msg.as_ref::<~str>() {
-                    Some(s) => s.as_slice(),
-                    None => "~Any",
+            Owned(task) => Some(task),
+            Shared(arc) => unsafe {
+                match (*arc.get()).swap(0, SeqCst) {
+                    0 => None,
+                    n => Some(cast::transmute(n)),
                 }
-            };
-
-            if !in_green_task_context() {
-                rterrln!("failed in non-task context at '{}', {}:{}",
-                         msg_s, file, line);
-                intrinsics::abort();
-            }
-
-            task = Local::unsafe_borrow();
-            let n = (*task).name.as_ref().map(|n| n.as_slice()).unwrap_or("<unnamed>");
-
-            // XXX: this should no get forcibly printed to the console, this should
-            //      either be sent to the parent task (ideally), or get printed to
-            //      the task's logger. Right now the logger is actually a uvio
-            //      instance, which uses unkillable blocks internally for various
-            //      reasons. This will cause serious trouble if the task is failing
-            //      due to mismanagment of its own kill flag, so calling our own
-            //      logger in its current state is a bit of a problem.
-
-            rterrln!("task '{}' failed at '{}', {}:{}", n, msg_s, file, line);
-
-            if (*task).unwinder.unwinding {
-                rtabort!("unwinding again");
             }
         }
+    }
 
-        (*task).unwinder.begin_unwind(msg);
+    // This assertion has two flavours because the wake involves an atomic op.
+    // In the faster version, destructors will fail dramatically instead.
+    #[cfg(not(test))] pub fn trash(self) { }
+    #[cfg(test)]      pub fn trash(self) { assert!(self.wake().is_none()); }
+
+    /// Create a blocked task, unless the task was already killed.
+    pub fn block(task: ~Task) -> BlockedTask {
+        Owned(task)
+    }
+
+    /// Converts one blocked task handle to a list of many handles to the same.
+    pub fn make_selectable(self, num_handles: uint) -> Take<BlockedTaskIterator>
+    {
+        let arc = match self {
+            Owned(task) => {
+                let flag = unsafe { AtomicUint::new(cast::transmute(task)) };
+                UnsafeArc::new(flag)
+            }
+            Shared(arc) => arc.clone(),
+        };
+        BlockedTaskIterator{ inner: arc }.take(num_handles)
+    }
+
+    /// Convert to an unsafe uint value. Useful for storing in a pipe's state
+    /// flag.
+    #[inline]
+    pub unsafe fn cast_to_uint(self) -> uint {
+        match self {
+            Owned(task) => {
+                let blocked_task_ptr: uint = cast::transmute(task);
+                rtassert!(blocked_task_ptr & 0x1 == 0);
+                blocked_task_ptr
+            }
+            Shared(arc) => {
+                let blocked_task_ptr: uint = cast::transmute(~arc);
+                rtassert!(blocked_task_ptr & 0x1 == 0);
+                blocked_task_ptr | 0x1
+            }
+        }
+    }
+
+    /// Convert from an unsafe uint value. Useful for retrieving a pipe's state
+    /// flag.
+    #[inline]
+    pub unsafe fn cast_from_uint(blocked_task_ptr: uint) -> BlockedTask {
+        if blocked_task_ptr & 0x1 == 0 {
+            Owned(cast::transmute(blocked_task_ptr))
+        } else {
+            let ptr: ~UnsafeArc<AtomicUint> =
+                cast::transmute(blocked_task_ptr & !1);
+            Shared(*ptr)
+        }
+    }
+}
+
+impl Death {
+    pub fn new() -> Death {
+        Death { on_exit: None, }
+    }
+
+    /// Collect failure exit codes from children and propagate them to a parent.
+    pub fn collect_failure(&mut self, result: TaskResult) {
+        match self.on_exit.take() {
+            Some(f) => f(result),
+            None => {}
+        }
+    }
+}
+
+impl Drop for Death {
+    fn drop(&mut self) {
+        // make this type noncopyable
     }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use rt::test::*;
     use prelude::*;
+    use task;
 
     #[test]
     fn local_heap() {
-        do run_in_newsched_task() {
-            let a = @5;
-            let b = a;
-            assert!(*a == 5);
-            assert!(*b == 5);
-        }
+        let a = @5;
+        let b = a;
+        assert!(*a == 5);
+        assert!(*b == 5);
     }
 
     #[test]
     fn tls() {
         use local_data;
-        do run_in_newsched_task() {
-            local_data_key!(key: @~str)
-            local_data::set(key, @~"data");
-            assert!(*local_data::get(key, |k| k.map(|k| *k)).unwrap() == ~"data");
-            local_data_key!(key2: @~str)
-            local_data::set(key2, @~"data");
-            assert!(*local_data::get(key2, |k| k.map(|k| *k)).unwrap() == ~"data");
-        }
+        local_data_key!(key: @~str)
+        local_data::set(key, @~"data");
+        assert!(*local_data::get(key, |k| k.map(|k| *k)).unwrap() == ~"data");
+        local_data_key!(key2: @~str)
+        local_data::set(key2, @~"data");
+        assert!(*local_data::get(key2, |k| k.map(|k| *k)).unwrap() == ~"data");
     }
 
     #[test]
     fn unwind() {
-        do run_in_newsched_task() {
-            let result = spawntask_try(proc()());
-            rtdebug!("trying first assert");
-            assert!(result.is_ok());
-            let result = spawntask_try(proc() fail!());
-            rtdebug!("trying second assert");
-            assert!(result.is_err());
-        }
+        let result = task::try(proc()());
+        rtdebug!("trying first assert");
+        assert!(result.is_ok());
+        let result = task::try::<()>(proc() fail!());
+        rtdebug!("trying second assert");
+        assert!(result.is_err());
     }
 
     #[test]
     fn rng() {
-        do run_in_uv_task() {
-            use rand::{rng, Rng};
-            let mut r = rng();
-            let _ = r.next_u32();
-        }
+        use rand::{rng, Rng};
+        let mut r = rng();
+        let _ = r.next_u32();
     }
 
     #[test]
     fn logging() {
-        do run_in_uv_task() {
-            info!("here i am. logging in a newsched task");
-        }
+        info!("here i am. logging in a newsched task");
     }
 
     #[test]
     fn comm_stream() {
-        do run_in_newsched_task() {
-            let (port, chan) = Chan::new();
-            chan.send(10);
-            assert!(port.recv() == 10);
-        }
+        let (port, chan) = Chan::new();
+        chan.send(10);
+        assert!(port.recv() == 10);
     }
 
     #[test]
     fn comm_shared_chan() {
-        do run_in_newsched_task() {
-            let (port, chan) = SharedChan::new();
-            chan.send(10);
-            assert!(port.recv() == 10);
-        }
+        let (port, chan) = SharedChan::new();
+        chan.send(10);
+        assert!(port.recv() == 10);
     }
 
     #[test]
     fn heap_cycles() {
         use option::{Option, Some, None};
 
-        do run_in_newsched_task {
-            struct List {
-                next: Option<@mut List>,
-            }
-
-            let a = @mut List { next: None };
-            let b = @mut List { next: Some(a) };
-
-            a.next = Some(b);
+        struct List {
+            next: Option<@mut List>,
         }
+
+        let a = @mut List { next: None };
+        let b = @mut List { next: Some(a) };
+
+        a.next = Some(b);
     }
 
     #[test]
     #[should_fail]
-    fn test_begin_unwind() { begin_unwind("cause", file!(), line!()) }
+    fn test_begin_unwind() {
+        use rt::unwind::begin_unwind;
+        begin_unwind("cause", file!(), line!())
+    }
+
+    // Task blocking tests
+
+    #[test]
+    fn block_and_wake() {
+        let task = ~Task::new();
+        let mut task = BlockedTask::block(task).wake().unwrap();
+        task.destroyed = true;
+    }
 }

@@ -18,8 +18,6 @@ getaddrinfo()
 */
 
 use option::{Option, Some, None};
-use result::{Ok, Err};
-use io::{io_error};
 use io::net::ip::{SocketAddr, IpAddr};
 use rt::rtio::{IoFactory, LocalIo};
 use vec::ImmutableVector;
@@ -97,14 +95,7 @@ pub fn get_host_addresses(host: &str) -> Option<~[IpAddr]> {
 ///      consumption just yet.
 fn lookup(hostname: Option<&str>, servname: Option<&str>, hint: Option<Hint>)
           -> Option<~[Info]> {
-    let mut io = LocalIo::borrow();
-    match io.get().get_host_addresses(hostname, servname, hint) {
-        Ok(i) => Some(i),
-        Err(ioerr) => {
-            io_error::cond.raise(ioerr);
-            None
-        }
-    }
+    LocalIo::maybe_raise(|io| io.get_host_addresses(hostname, servname, hint))
 }
 
 #[cfg(test)]

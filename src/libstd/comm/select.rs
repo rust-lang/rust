@@ -50,10 +50,13 @@ use kinds::Send;
 use ops::Drop;
 use option::{Some, None, Option};
 use ptr::RawPtr;
-use super::imp::BlockingContext;
-use super::{Packet, Port, imp};
+use result::{Ok, Err};
+use rt::local::Local;
+use rt::task::Task;
+use super::{Packet, Port};
+use sync::atomics::{Relaxed, SeqCst};
+use task;
 use uint;
-use unstable::atomics::{Relaxed, SeqCst};
 
 macro_rules! select {
     (
@@ -184,19 +187,22 @@ impl Select {
             // Acquire a number of blocking contexts, and block on each one
             // sequentially until one fails. If one fails, then abort
             // immediately so we can go unblock on all the other ports.
-            BlockingContext::many(amt, |ctx| {
+            let task: ~Task = Local::take();
+            task.deschedule(amt, |task| {
+                // Prepare for the block
                 let (i, packet) = iter.next().unwrap();
+                assert!((*packet).to_wake.is_none());
+                (*packet).to_wake = Some(task);
                 (*packet).selecting.store(true, SeqCst);
-                if !ctx.block(&mut (*packet).data,
-                              &mut (*packet).to_wake,
-                              || (*packet).decrement()) {
+
+                if (*packet).decrement() {
+                    Ok(())
+                } else {
                     (*packet).abort_selection(false);
                     (*packet).selecting.store(false, SeqCst);
                     ready_index = i;
                     ready_id = (*packet).selection_id;
-                    false
-                } else {
-                    true
+                    Err((*packet).to_wake.take_unwrap())
                 }
             });
 
@@ -225,7 +231,7 @@ impl Select {
                 if (*packet).abort_selection(true) {
                     ready_id = (*packet).selection_id;
                     while (*packet).selecting.load(Relaxed) {
-                        imp::yield_now();
+                        task::deschedule();
                     }
                 }
             }
@@ -304,6 +310,7 @@ impl Iterator<*mut Packet> for PacketIterator {
 }
 
 #[cfg(test)]
+#[allow(unused_imports)]
 mod test {
     use super::super::*;
     use prelude::*;
@@ -359,19 +366,16 @@ mod test {
         )
     })
 
-    #[test]
-    fn unblocks() {
-        use std::io::timer;
-
+    test!(fn unblocks() {
         let (mut p1, c1) = Chan::<int>::new();
         let (mut p2, _c2) = Chan::<int>::new();
         let (p3, c3) = Chan::<int>::new();
 
         do spawn {
-            timer::sleep(3);
+            20.times(task::deschedule);
             c1.send(1);
             p3.recv();
-            timer::sleep(3);
+            20.times(task::deschedule);
         }
 
         select! (
@@ -383,18 +387,15 @@ mod test {
             a = p1.recv_opt() => { assert_eq!(a, None); },
             _b = p2.recv() => { fail!() }
         )
-    }
+    })
 
-    #[test]
-    fn both_ready() {
-        use std::io::timer;
-
+    test!(fn both_ready() {
         let (mut p1, c1) = Chan::<int>::new();
         let (mut p2, c2) = Chan::<int>::new();
         let (p3, c3) = Chan::<()>::new();
 
         do spawn {
-            timer::sleep(3);
+            20.times(task::deschedule);
             c1.send(1);
             c2.send(2);
             p3.recv();
@@ -408,11 +409,12 @@ mod test {
             a = p1.recv() => { assert_eq!(a, 1); },
             a = p2.recv() => { assert_eq!(a, 2); }
         )
+        assert_eq!(p1.try_recv(), None);
+        assert_eq!(p2.try_recv(), None);
         c3.send(());
-    }
+    })
 
-    #[test]
-    fn stress() {
+    test!(fn stress() {
         static AMT: int = 10000;
         let (mut p1, c1) = Chan::<int>::new();
         let (mut p2, c2) = Chan::<int>::new();
@@ -436,69 +438,5 @@ mod test {
             )
             c3.send(());
         }
-    }
-
-    #[test]
-    #[ignore(cfg(windows))] // FIXME(#11003)
-    fn stress_native() {
-        use std::rt::thread::Thread;
-        use std::unstable::run_in_bare_thread;
-        static AMT: int = 10000;
-
-        do run_in_bare_thread {
-            let (mut p1, c1) = Chan::<int>::new();
-            let (mut p2, c2) = Chan::<int>::new();
-            let (p3, c3) = Chan::<()>::new();
-
-            let t = do Thread::start {
-                for i in range(0, AMT) {
-                    if i % 2 == 0 {
-                        c1.send(i);
-                    } else {
-                        c2.send(i);
-                    }
-                    p3.recv();
-                }
-            };
-
-            for i in range(0, AMT) {
-                select! (
-                    i1 = p1.recv() => { assert!(i % 2 == 0 && i == i1); },
-                    i2 = p2.recv() => { assert!(i % 2 == 1 && i == i2); }
-                )
-                c3.send(());
-            }
-            t.join();
-        }
-    }
-
-    #[test]
-    #[ignore(cfg(windows))] // FIXME(#11003)
-    fn native_both_ready() {
-        use std::rt::thread::Thread;
-        use std::unstable::run_in_bare_thread;
-
-        do run_in_bare_thread {
-            let (mut p1, c1) = Chan::<int>::new();
-            let (mut p2, c2) = Chan::<int>::new();
-            let (p3, c3) = Chan::<()>::new();
-
-            let t = do Thread::start {
-                c1.send(1);
-                c2.send(2);
-                p3.recv();
-            };
-
-            select! (
-                a = p1.recv() => { assert_eq!(a, 1); },
-                b = p2.recv() => { assert_eq!(b, 2); }
-            )
-            select! (
-                a = p1.recv() => { assert_eq!(a, 1); },
-                b = p2.recv() => { assert_eq!(b, 2); }
-            )
-            c3.send(());
-            t.join();
-        }
-    }
+    })
 }

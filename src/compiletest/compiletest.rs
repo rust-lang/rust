@@ -13,10 +13,11 @@
 #[allow(non_camel_case_types)];
 #[deny(warnings)];
 
+#[cfg(stage0)] extern mod green;
 extern mod extra;
 
 use std::os;
-use std::rt;
+use std::io;
 use std::io::fs;
 
 use extra::getopts;
@@ -234,7 +235,7 @@ pub fn run_tests(config: &config) {
     // sadly osx needs some file descriptor limits raised for running tests in
     // parallel (especially when we have lots and lots of child processes).
     // For context, see #8904
-    rt::test::prepare_for_lots_of_tests();
+    io::test::raise_fd_limit();
     let res = test::run_tests_console(&opts, tests);
     if !res { fail!("Some tests failed"); }
 }

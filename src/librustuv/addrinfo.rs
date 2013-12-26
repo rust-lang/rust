@@ -11,12 +11,10 @@
 use ai = std::io::net::addrinfo;
 use std::libc::c_int;
 use std::ptr::null;
-use std::rt::BlockedTask;
-use std::rt::local::Local;
-use std::rt::sched::Scheduler;
+use std::rt::task::BlockedTask;
 
 use net;
-use super::{Loop, UvError, Request, wait_until_woken_after};
+use super::{Loop, UvError, Request, wait_until_woken_after, wakeup};
 use uvll;
 
 struct Addrinfo {
@@ -108,8 +106,7 @@ impl GetAddrInfoRequest {
             cx.status = status;
             cx.addrinfo = Some(Addrinfo { handle: res });
 
-            let sched: ~Scheduler = Local::take();
-            sched.resume_blocked_task_immediately(cx.slot.take_unwrap());
+            wakeup(&mut cx.slot);
         }
     }
 }
@@ -188,12 +185,13 @@ pub fn accum_addrinfo(addr: &Addrinfo) -> ~[ai::Info] {
 #[cfg(test, not(target_os="android"))]
 mod test {
     use std::io::net::ip::{SocketAddr, Ipv4Addr};
-    use super::*;
     use super::super::local_loop;
+    use super::GetAddrInfoRequest;
 
     #[test]
     fn getaddrinfo_test() {
-        match GetAddrInfoRequest::run(local_loop(), Some("localhost"), None, None) {
+        let loop_ = &mut local_loop().loop_;
+        match GetAddrInfoRequest::run(loop_, Some("localhost"), None, None) {
             Ok(infos) => {
                 let mut found_local = false;
                 let local_addr = &SocketAddr {
@@ -211,9 +209,10 @@ mod test {
 
     #[test]
     fn issue_10663() {
+        let loop_ = &mut local_loop().loop_;
         // Something should happen here, but this certainly shouldn't cause
         // everything to die. The actual outcome we don't care too much about.
-        GetAddrInfoRequest::run(local_loop(), Some("irc.n0v4.com"), None,
+        GetAddrInfoRequest::run(loop_, Some("irc.n0v4.com"), None,
                                 None);
     }
 }

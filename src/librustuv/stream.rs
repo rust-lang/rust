@@ -11,12 +11,10 @@
 use std::cast;
 use std::libc::{c_int, size_t, ssize_t};
 use std::ptr;
-use std::rt::BlockedTask;
-use std::rt::local::Local;
-use std::rt::sched::Scheduler;
+use std::rt::task::BlockedTask;
 
 use super::{UvError, Buf, slice_to_uv_buf, Request, wait_until_woken_after,
-            ForbidUnwind};
+            ForbidUnwind, wakeup};
 use uvll;
 
 // This is a helper structure which is intended to get embedded into other
@@ -164,8 +162,7 @@ extern fn read_cb(handle: *uvll::uv_stream_t, nread: ssize_t, _buf: *Buf) {
     unsafe { assert_eq!(uvll::uv_read_stop(handle), 0); }
     rcx.result = nread;
 
-    let scheduler: ~Scheduler = Local::take();
-    scheduler.resume_blocked_task_immediately(rcx.task.take_unwrap());
+    wakeup(&mut rcx.task);
 }
 
 // Unlike reading, the WriteContext is stored in the uv_write_t request. Like
@@ -180,6 +177,5 @@ extern fn write_cb(req: *uvll::uv_write_t, status: c_int) {
     wcx.result = status;
     req.defuse();
 
-    let sched: ~Scheduler = Local::take();
-    sched.resume_blocked_task_immediately(wcx.task.take_unwrap());
+    wakeup(&mut wcx.task);
 }
