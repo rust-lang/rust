@@ -107,10 +107,10 @@ pub fn spawn_opts(opts: TaskOpts, f: proc()) {
 
 // This structure is the glue between channels and the 1:1 scheduling mode. This
 // structure is allocated once per task.
-struct Ops {
-    lock: Mutex,       // native synchronization
-    awoken: bool,      // used to prevent spurious wakeups
-    io: io::IoFactory, // local I/O factory
+pub struct Ops {
+    priv lock: Mutex,       // native synchronization
+    priv awoken: bool,      // used to prevent spurious wakeups
+    priv io: io::IoFactory, // local I/O factory
 
     // This field holds the known bounds of the stack in (lo, hi) form. Not all
     // native tasks necessarily know their precise bounds, hence this is

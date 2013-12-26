@@ -248,6 +248,9 @@ pub fn phase_3_run_analysis_passes(sess: Session,
     time(time_passes, "looking for entry point", (),
          |_| middle::entry::find_entry_point(sess, crate, ast_map));
 
+    time(time_passes, "looking for boot function", (),
+         |_| middle::entry::find_boot_fn(sess, crate));
+
     let freevars = time(time_passes, "freevar finding", (), |_|
                         freevars::annotate_freevars(def_map, crate));
 
@@ -912,6 +915,7 @@ pub fn build_session_(sopts: @session::options,
         // For a library crate, this is always none
         entry_fn: RefCell::new(None),
         entry_type: Cell::new(None),
+        boot_fn: Cell::new(None),
         span_diagnostic: span_diagnostic_handler,
         filesearch: filesearch,
         building_library: Cell::new(false),

@@ -40,6 +40,10 @@ fn use_uv(crate: &ast::Crate) -> bool {
     !attr::contains_name(crate.attrs, "no_uv")
 }
 
+fn use_stdboot(crate: &ast::Crate) -> bool {
+    !attr::contains_name(crate.attrs, "no_boot")
+}
+
 fn no_prelude(attrs: &[ast::Attribute]) -> bool {
     attr::contains_name(attrs, "no_implicit_prelude")
 }
@@ -67,25 +71,28 @@ impl fold::Folder for StandardLibraryInjector {
             span: DUMMY_SP
         }];
 
-        if use_uv(&crate) && !self.sess.building_library.get() {
-            vis.push(ast::ViewItem {
+        if use_stdboot(&crate) && !self.sess.building_library.get() {
+            let boot = attr::mk_word_item(@"boot");
+            vis.push(ast::view_item {
                 node: ast::ViewItemExternMod(self.sess.ident_of("green"),
                                              Some((format!("green\\#{}", VERSION).to_managed(),
                                                    ast::CookedStr)),
                                              ast::DUMMY_NODE_ID),
-                attrs: ~[],
+                attrs: ~[attr::mk_attr(boot)],
                 vis: ast::Private,
                 span: DUMMY_SP
             });
-            vis.push(ast::ViewItem {
-                node: ast::ViewItemExternMod(self.sess.ident_of("rustuv"),
-                                             Some((format!("rustuv\\#{}", VERSION).to_managed(),
-                                                   ast::CookedStr)),
-                                             ast::DUMMY_NODE_ID),
-                attrs: ~[],
-                vis: ast::Private,
-                span: DUMMY_SP
-            });
+            if use_uv(&crate) {
+                vis.push(ast::view_item {
+                    node: ast::view_item_extern_mod(self.sess.ident_of("rustuv"),
+                                                    Some((format!("rustuv\\#{}", VERSION).to_managed(),
+                                                          ast::CookedStr)),
+                                                    ast::DUMMY_NODE_ID),
+                    attrs: ~[],
+                    vis: ast::Private,
+                    span: DUMMY_SP
+                });
+            }
         }
 
         vis.push_all(crate.module.view_items);

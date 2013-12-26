@@ -79,3 +79,19 @@ pub unsafe fn check_not_borrowed(a: *u8,
                                  line: size_t) {
     borrowck::check_not_borrowed(a, file, line)
 }
+
+#[lang = "start"]
+#[cfg(not(stage0))]
+pub fn lang_start(main: *u8, boot: *u8, argc: int, argv: **u8) -> int {
+    use cast;
+    use rt;
+    use os;
+    rt::init(argc, argv);
+    {
+        let main: fn() = unsafe { cast::transmute(main) };
+        let boot: fn(fn()) = unsafe { cast::transmute(boot) };
+        boot(main);
+    }
+    unsafe { rt::cleanup(); }
+    os::get_exit_status()
+}

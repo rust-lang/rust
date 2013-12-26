@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use driver::session;
 use driver::session::Session;
-use syntax::ast::{Crate, NodeId, Item, ItemFn};
+use metadata::csearch;
+
+use syntax::ast;
 use syntax::ast_map;
 use syntax::attr;
 use syntax::codemap::Span;
@@ -25,26 +26,26 @@ struct EntryContext {
     ast_map: ast_map::Map,
 
     // The top-level function called 'main'
-    main_fn: Option<(NodeId, Span)>,
+    main_fn: Option<(ast::NodeId, Span)>,
 
     // The function that has attribute named 'main'
-    attr_main_fn: Option<(NodeId, Span)>,
+    attr_main_fn: Option<(ast::NodeId, Span)>,
 
     // The function that has the attribute 'start' on it
-    start_fn: Option<(NodeId, Span)>,
+    start_fn: Option<(ast::NodeId, Span)>,
 
     // The functions that one might think are 'main' but aren't, e.g.
     // main functions not defined at the top level. For diagnostics.
-    non_main_fns: ~[(NodeId, Span)],
+    non_main_fns: ~[(ast::NodeId, Span)],
 }
 
 impl Visitor<()> for EntryContext {
-    fn visit_item(&mut self, item: &Item, _:()) {
+    fn visit_item(&mut self, item: &ast::Item, _:()) {
         find_item(item, self);
     }
 }
 
-pub fn find_entry_point(session: Session, crate: &Crate, ast_map: ast_map::Map) {
+pub fn find_entry_point(session: Session, crate: &ast::Crate, ast_map: ast_map::Map) {
     if session.building_library.get() {
         // No need to find a main function
         return;
@@ -70,9 +71,9 @@ pub fn find_entry_point(session: Session, crate: &Crate, ast_map: ast_map::Map) 
     configure_main(&mut ctxt);
 }
 
-fn find_item(item: &Item, ctxt: &mut EntryContext) {
+fn find_item(item: &ast::Item, ctxt: &mut EntryContext) {
     match item.node {
-        ItemFn(..) => {
+        ast::ItemFn(..) => {
             if item.ident.name == special_idents::main.name {
                 {
                     let ast_map = ctxt.ast_map.borrow();
@@ -149,5 +150,91 @@ fn configure_main(this: &mut EntryContext) {
             }
             this.session.abort_if_errors();
         }
+    }
+}
+
+struct BootFinder {
+    local_candidates: ~[(ast::NodeId, Span)],
+    extern_candidates: ~[(ast::CrateNum, Span)],
+    sess: Session,
+}
+
+pub fn find_boot_fn(sess: Session, crate: &ast::Crate) {
+    let mut cx = BootFinder {
+        local_candidates: ~[],
+        extern_candidates: ~[],
+        sess: sess,
+    };
+    visit::walk_crate(&mut cx, crate, ());
+    match cx.local_candidates.len() + cx.extern_candidates.len() {
+        0 => {
+            if !sess.building_library.get() {
+                match sess.entry_type.get() {
+                    Some(session::EntryNone) => {},
+                    Some(session::EntryStart) => {},
+                    Some(session::EntryMain) => {
+                        sess.err("main function found but no #[boot] \
+                                  functions found");
+                    }
+                    None => {
+                        sess.bug("expected entry calculation by now");
+                    }
+                }
+            }
+        }
+
+        1 => {
+            for &(id, _) in cx.local_candidates.iter() {
+                sess.boot_fn.set(Some(ast::DefId {
+                    crate: ast::LOCAL_CRATE,
+                    node: id,
+                }));
+            }
+            for &(cnum, span) in cx.extern_candidates.iter() {
+                sess.boot_fn.set(csearch::get_boot_fn(sess.cstore, cnum));
+                if sess.boot_fn.get().is_none() {
+                    sess.span_err(span, "no #[boot] function found in crate");
+                }
+            }
+        }
+
+        _ => {
+            sess.err("too many #[boot] functions found");
+            let lcandidates = cx.local_candidates.iter().map(|&(_, span)| span);
+            let ecandidates = cx.extern_candidates.iter().map(|&(_, span)| span);
+            for (i, span) in ecandidates.chain(lcandidates).enumerate() {
+                sess.span_note(span, format!(r"candidate \#{}", i));
+            }
+        }
+    }
+
+    sess.abort_if_errors();
+}
+
+impl Visitor<()> for BootFinder {
+    fn visit_item(&mut self, it: @ast::item, _: ()) {
+        match it.node {
+            ast::item_fn(..) if attr::contains_name(it.attrs, "boot") => {
+                self.local_candidates.push((it.id, it.span))
+            }
+            _ => {}
+        }
+        visit::walk_item(self, it, ());
+    }
+
+    fn visit_view_item(&mut self, it: &ast::view_item, _: ()) {
+        match it.node {
+            ast::view_item_extern_mod(name, _, _, _) => {
+                if attr::contains_name(it.attrs, "boot") {
+                    self.sess.cstore.iter_crate_data(|num, meta| {
+                        if meta.name == self.sess.str_of(name) {
+                            self.extern_candidates.push((num, it.span));
+                        }
+                    });
+                }
+            }
+            _ => {}
+        }
+        visit::walk_view_item(self, it, ());
     }
 }

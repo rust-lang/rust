@@ -301,3 +301,8 @@ pub fn get_trait_of_method(cstore: @cstore::CStore,
     decoder::get_trait_of_method(cdata, def_id.node, tcx)
 }
 
+pub fn get_boot_fn(cstore: @mut cstore::CStore,
+                   crate: ast::CrateNum) -> Option<ast::DefId> {
+    let cdata = cstore.get_crate_data(crate);
+    decoder::get_boot_fn(cdata)
+}
