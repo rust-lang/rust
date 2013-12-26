@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// NOTE: remove after snapshot
-#[pkgid = "rustdoc#0.9-pre"];
 #[crate_id = "rustdoc#0.9-pre"];
 #[desc = "rustdoc, the Rust documentation extractor"];
 #[license = "MIT/ASL2"];

@@ -20,8 +20,6 @@ Rust extras are part of the standard Rust distribution.
 
 */
 
-// NOTE: remove after snapshot
-#[pkgid = "extra#0.9-pre"];
 #[crate_id = "extra#0.9-pre"];
 #[comment = "Rust extras"];
 #[license = "MIT/ASL2"];
