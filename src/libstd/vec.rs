@@ -2143,26 +2143,69 @@ pub trait MutableVector<'a, T> {
      */
     fn mut_pop_ref(&mut self) -> &'a mut T;
 
-    /**
-     * Swaps two elements in a vector
-     *
-     * # Arguments
-     *
-     * * a - The index of the first element
-     * * b - The index of the second element
-     */
+    /// Swaps two elements in a vector.
+    ///
+    /// Fails if `a` or `b` are out of bounds.
+    ///
+    /// # Arguments
+    ///
+    /// * a - The index of the first element
+    /// * b - The index of the second element
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut v = ["a", "b", "c", "d"];
+    /// v.swap(1, 3);
+    /// assert_eq!(v, ["a", "d", "c", "b"]);
+    /// ```
     fn swap(self, a: uint, b: uint);
 
-    /**
-     * Divides one `&mut` into two. The first will
-     * contain all indices from `0..mid` (excluding the index `mid`
-     * itself) and the second will contain all indices from
-     * `mid..len` (excluding the index `len` itself).
-     */
+
+    /// Divides one `&mut` into two at an index.
+    ///
+    /// The first will contain all indices from `[0, mid)` (excluding
+    /// the index `mid` itself) and the second will contain all
+    /// indices from `[mid, len)` (excluding the index `len` itself).
+    ///
+    /// Fails if `mid > len`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut v = [1, 2, 3, 4, 5, 6];
+    ///
+    /// // scoped to restrict the lifetime of the borrows
+    /// {
+    ///    let (left, right) = v.mut_split_at(0);
+    ///    assert_eq!(left, &mut []);
+    ///    assert_eq!(right, &mut [1, 2, 3, 4, 5, 6]);
+    /// }
+    ///
+    /// {
+    ///     let (left, right) = v.mut_split_at(2);
+    ///     assert_eq!(left, &mut [1, 2]);
+    ///     assert_eq!(right, &mut [3, 4, 5, 6]);
+    /// }
+    ///
+    /// {
+    ///     let (left, right) = v.mut_split_at(6);
+    ///     assert_eq!(left, &mut [1, 2, 3, 4, 5, 6]);
+    ///     assert_eq!(right, &mut []);
+    /// }
+    /// ```
     fn mut_split_at(self, mid: uint) -> (&'a mut [T],
                                       &'a mut [T]);
 
-    /// Reverse the order of elements in a vector, in place
+    /// Reverse the order of elements in a vector, in place.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut v = [1, 2, 3];
+    /// v.reverse();
+    /// assert_eq!(v, [3, 2, 1]);
+    /// ```
     fn reverse(self);
 
     /// Sort the vector, in place, using `compare` to compare
@@ -2212,20 +2255,48 @@ pub trait MutableVector<'a, T> {
     #[inline]
     fn as_mut_ptr(self) -> *mut T;
 
-    /// Unsafely sets the element in index to the value
+    /// Unsafely sets the element in index to the value.
+    ///
+    /// This performs no bounds checks, and it is undefined behaviour
+    /// if `index` is larger than the length of `self`. However, it
+    /// does run the destructor at `index`. It is equivalent to
+    /// `self[index] = val`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut v = ~[~"foo", ~"bar", ~"baz"];
+    ///
+    /// unsafe {
+    ///     // `~"baz"` is deallocated.
+    ///     v.unsafe_set(2, ~"qux");
+    ///
+    ///     // Out of bounds: could cause a crash, or overwriting
+    ///     // other data, or something else.
+    ///     // v.unsafe_set(10, ~"oops");
+    /// }
+    /// ```
     unsafe fn unsafe_set(self, index: uint, val: T);
 
-    /**
-     * Unchecked vector index assignment.  Does not drop the
-     * old value and hence is only suitable when the vector
-     * is newly allocated.
-     */
+    /// Unchecked vector index assignment.  Does not drop the
+    /// old value and hence is only suitable when the vector
+    /// is newly allocated.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut v = [~"foo", ~"bar"];
+    ///
+    /// // memory leak! `~"bar"` is not deallocated.
+    /// unsafe { v.init_elem(1, ~"baz"); }
+    /// ```
     unsafe fn init_elem(self, i: uint, val: T);
 
-    /// Copies data from `src` to `self`.
+    /// Copies raw bytes from `src` to `self`.
     ///
-    /// `self` and `src` must not overlap. Fails if `self` is
-    /// shorter than `src`.
+    /// This does not run destructors on the overwritten elements, and
+    /// ignores move semantics. `self` and `src` must not
+    /// overlap. Fails if `self` is shorter than `src`.
     unsafe fn copy_memory(self, src: &[T]);
 }
 
@@ -2370,8 +2441,25 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
 
 /// Trait for &[T] where T is Cloneable
 pub trait MutableCloneableVector<T> {
-    /// Copies as many elements from `src` as it can into `self`
-    /// (the shorter of self.len() and src.len()). Returns the number of elements copied.
+    /// Copies as many elements from `src` as it can into `self` (the
+    /// shorter of `self.len()` and `src.len()`). Returns the number
+    /// of elements copied.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::vec::MutableCloneableVector;
+    ///
+    /// let mut dst = [0, 0, 0];
+    /// let src = [1, 2];
+    ///
+    /// assert_eq!(dst.copy_from(src), 2);
+    /// assert_eq!(dst, [1, 2, 0]);
+    ///
+    /// let src2 = [3, 4, 5, 6];
+    /// assert_eq!(dst.copy_from(src2), 3);
+    /// assert_eq!(dst, [3, 4, 5]);
+    /// ```
     fn copy_from(self, &[T]) -> uint;
 }
 
@@ -2390,7 +2478,7 @@ impl<'a, T:Clone> MutableCloneableVector<T> for &'a mut [T] {
 pub trait MutableTotalOrdVector<T> {
     /// Sort the vector, in place.
     ///
-    /// This is equivalent to `self.sort_by(std::vec::SortForward)`.
+    /// This is equivalent to `self.sort_by(|a, b| a.cmp(b))`.
     ///
     /// # Example
     ///
