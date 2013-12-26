@@ -417,6 +417,14 @@ pub fn stop_after_phase_1(sess: Session) -> bool {
     return false;
 }
 
+pub fn stop_after_phase_2(sess: Session) -> bool {
+    if sess.opts.no_analysis {
+        debug!("invoked with --no-analysis, returning early from compile_input");
+        return true;
+    }
+    return false;
+}
+
 pub fn stop_after_phase_5(sess: Session) -> bool {
     if sess.opts.output_type != link::output_type_exe {
         debug!("not building executable, returning early from compile_input");
@@ -481,6 +489,8 @@ pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &input,
                                              expanded_crate.attrs, sess);
 
         write_out_deps(sess, input, outputs, &expanded_crate);
+
+        if stop_after_phase_2(sess) { return; }
 
         let analysis = phase_3_run_analysis_passes(sess, &expanded_crate);
         if stop_after_phase_3(sess) { return; }
@@ -697,6 +707,7 @@ pub fn build_session_options(binary: @str,
 
     let parse_only = matches.opt_present("parse-only");
     let no_trans = matches.opt_present("no-trans");
+    let no_analysis = matches.opt_present("no-analysis");
 
     let lint_levels = [lint::allow, lint::warn,
                        lint::deny, lint::forbid];
@@ -850,6 +861,7 @@ pub fn build_session_options(binary: @str,
         test: test,
         parse_only: parse_only,
         no_trans: no_trans,
+        no_analysis: no_analysis,
         debugging_opts: debugging_opts,
         android_cross_path: android_cross_path,
         write_dependency_info: write_dependency_info,
@@ -943,6 +955,9 @@ pub fn optgroups() -> ~[getopts::groups::OptGroup] {
   optflag("",  "ls",  "List the symbols defined by a library crate"),
   optflag("", "no-trans",
                         "Run all passes except translation; no output"),
+  optflag("", "no-analysis",
+                        "Parse and expand the output, but run no analysis or produce \
+                        output"),
   optflag("O", "",    "Equivalent to --opt-level=2"),
   optopt("o", "",     "Write output to <filename>", "FILENAME"),
   optopt("", "opt-level",
