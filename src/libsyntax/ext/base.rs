@@ -20,6 +20,7 @@ use parse::token;
 use parse::token::{ident_to_str, intern, str_to_ident};
 use util::small_vector::SmallVector;
 
+use std::cell::RefCell;
 use std::hashmap::HashMap;
 
 // new-style macro! tt code:
@@ -325,7 +326,7 @@ impl ExtCtxt {
             match e.node {
                 ast::ExprMac(..) => {
                     let mut expander = expand::MacroExpander {
-                        extsbox: @mut syntax_expander_table(),
+                        extsbox: @RefCell::new(syntax_expander_table()),
                         cx: self,
                     };
                     e = expand::expand_expr(e, &mut expander);

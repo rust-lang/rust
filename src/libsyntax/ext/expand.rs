@@ -29,6 +29,7 @@ use visit;
 use visit::Visitor;
 use util::small_vector::SmallVector;
 
+use std::cell::RefCell;
 use std::vec;
 
 pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
@@ -52,8 +53,8 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
                     }
                     let extname = &pth.segments[0].identifier;
                     let extnamestr = ident_to_str(extname);
-                    // leaving explicit deref here to highlight unbox op:
-                    match (*fld.extsbox).find(&extname.name) {
+                    let extsbox = fld.extsbox.borrow();
+                    match extsbox.get().find(&extname.name) {
                         None => {
                             fld.cx.span_fatal(
                                 pth.span,
@@ -210,7 +211,8 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
 //
 // NB: there is some redundancy between this and expand_item, below, and
 // they might benefit from some amount of semantic and language-UI merger.
-pub fn expand_mod_items(module_: &ast::_mod, fld: &mut MacroExpander) -> ast::_mod {
+pub fn expand_mod_items(module_: &ast::_mod, fld: &mut MacroExpander)
+                        -> ast::_mod {
     // Fold the contents first:
     let module_ = noop_fold_mod(module_, fld);
 
@@ -221,7 +223,8 @@ pub fn expand_mod_items(module_: &ast::_mod, fld: &mut MacroExpander) -> ast::_m
         item.attrs.rev_iter().fold(~[*item], |items, attr| {
             let mname = attr.name();
 
-            match (*fld.extsbox).find(&intern(mname)) {
+            let extsbox = fld.extsbox.borrow();
+            match extsbox.get().find(&intern(mname)) {
               Some(@SE(ItemDecorator(dec_fn))) => {
                   fld.cx.bt_push(ExpnInfo {
                       call_site: attr.span,
@@ -250,12 +253,16 @@ pub fn expand_mod_items(module_: &ast::_mod, fld: &mut MacroExpander) -> ast::_m
 macro_rules! with_exts_frame (
     ($extsboxexpr:expr,$macros_escape:expr,$e:expr) =>
     ({let extsbox = $extsboxexpr;
-      let oldexts = *extsbox;
-      *extsbox = oldexts.push_frame();
-      extsbox.insert(intern(special_block_name),
-                     @BlockInfo(BlockInfo{macros_escape:$macros_escape,pending_renames:@mut ~[]}));
+      let oldexts = extsbox.get();
+      extsbox.set(oldexts.push_frame());
+      extsbox.get().insert(
+          intern(special_block_name),
+          @BlockInfo(BlockInfo {
+              macros_escape: $macros_escape,
+              pending_renames: @mut ~[]
+          }));
       let result = $e;
-      *extsbox = oldexts;
+      extsbox.set(oldexts);
       result
      })
 )
@@ -302,7 +309,8 @@ pub fn expand_item_mac(it: @ast::item, fld: &mut MacroExpander)
     let extname = &pth.segments[0].identifier;
     let extnamestr = ident_to_str(extname);
     let fm = fresh_mark();
-    let expanded = match (*fld.extsbox).find(&extname.name) {
+    let extsbox = fld.extsbox.borrow();
+    let expanded = match extsbox.get().find(&extname.name) {
         None => fld.cx.span_fatal(pth.span,
                                   format!("macro undefined: '{}!'", extnamestr)),
 
@@ -369,7 +377,8 @@ pub fn expand_item_mac(it: @ast::item, fld: &mut MacroExpander)
         MRDef(ref mdef) => {
             // yikes... no idea how to apply the mark to this. I'm afraid
             // we're going to have to wait-and-see on this one.
-            insert_macro(*fld.extsbox,intern(mdef.name), @SE((*mdef).ext));
+            let extsbox = fld.extsbox.get();
+            insert_macro(extsbox,intern(mdef.name), @SE((*mdef).ext));
             SmallVector::zero()
         }
     };
@@ -414,7 +423,9 @@ pub fn expand_stmt(s: &Stmt, fld: &mut MacroExpander) -> SmallVector<@Stmt> {
     }
     let extname = &pth.segments[0].identifier;
     let extnamestr = ident_to_str(extname);
-    let fully_expanded: SmallVector<@Stmt> = match (*fld.extsbox).find(&extname.name) {
+    let extsbox = fld.extsbox.borrow();
+    let fully_expanded: SmallVector<@Stmt> =
+            match extsbox.get().find(&extname.name) {
         None => {
             fld.cx.span_fatal(pth.span, format!("macro undefined: '{}'", extnamestr))
         }
@@ -497,7 +508,7 @@ fn expand_non_macro_stmt(s: &Stmt, fld: &mut MacroExpander)
             span: stmt_span
         },
         node_id) => {
-            let block_info = get_block_info(*fld.extsbox);
+            let block_info = get_block_info(fld.extsbox.get());
             let pending_renames = block_info.pending_renames;
 
             // take it apart:
@@ -618,7 +629,7 @@ pub fn expand_block(blk: &Block, fld: &mut MacroExpander) -> P<Block> {
 
 // expand the elements of a block.
 pub fn expand_block_elts(b: &Block, fld: &mut MacroExpander) -> P<Block> {
-    let block_info = get_block_info(*fld.extsbox);
+    let block_info = get_block_info(fld.extsbox.get());
     let pending_renames = block_info.pending_renames;
     let mut rename_fld = renames_to_fold(pending_renames);
     let new_view_items = b.view_items.map(|x| fld.fold_view_item(x));
@@ -931,7 +942,7 @@ pub fn inject_std_macros(parse_sess: @parse::ParseSess,
 }
 
 pub struct MacroExpander<'a> {
-    extsbox: @mut SyntaxEnv,
+    extsbox: @RefCell<SyntaxEnv>,
     cx: &'a mut ExtCtxt,
 }
 
@@ -972,7 +983,7 @@ pub fn expand_crate(parse_sess: @parse::ParseSess,
     let extsbox = syntax_expander_table();
     let mut cx = ExtCtxt::new(parse_sess, cfg.clone());
     let mut expander = MacroExpander {
-        extsbox: @mut extsbox,
+        extsbox: @RefCell::new(extsbox),
         cx: &mut cx,
     };
 
