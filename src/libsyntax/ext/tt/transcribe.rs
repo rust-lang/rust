@@ -36,7 +36,7 @@ pub struct TtReader {
     stack: @mut TtFrame,
     /* for MBE-style macro transcription */
     priv interpolations: RefCell<HashMap<Ident, @named_match>>,
-    repeat_idx: ~[uint],
+    priv repeat_idx: RefCell<~[uint]>,
     repeat_len: ~[uint],
     /* cached: */
     cur_tok: Token,
@@ -63,7 +63,7 @@ pub fn new_tt_reader(sp_diag: @mut SpanHandler,
             None => RefCell::new(HashMap::new()),
             Some(x) => RefCell::new(x),
         },
-        repeat_idx: ~[],
+        repeat_idx: RefCell::new(~[]),
         repeat_len: ~[],
         /* dummy values, never read: */
         cur_tok: EOF,
@@ -111,7 +111,8 @@ fn lookup_cur_matched_by_matched(r: &mut TtReader,
           matched_seq(ref ads, _) => ads[*idx]
         }
     }
-    r.repeat_idx.iter().fold(start, red)
+    let repeat_idx = r.repeat_idx.borrow();
+    repeat_idx.get().iter().fold(start, red)
 }
 
 fn lookup_cur_matched(r: &mut TtReader, name: Ident) -> @named_match {
@@ -186,8 +187,10 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
         }
 
         /* done with this set; pop or repeat? */
-        if ! r.stack.dotdotdoted
-            || { *r.repeat_idx.last() == *r.repeat_len.last() - 1 } {
+        if ! r.stack.dotdotdoted || {
+                let repeat_idx = r.repeat_idx.borrow();
+                *repeat_idx.get().last() == *r.repeat_len.last() - 1
+            } {
 
             match r.stack.up {
               None => {
@@ -196,8 +199,11 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
               }
               Some(tt_f) => {
                 if r.stack.dotdotdoted {
-                    r.repeat_idx.pop();
-                    r.repeat_len.pop();
+                    {
+                        let mut repeat_idx = r.repeat_idx.borrow_mut();
+                        repeat_idx.get().pop();
+                        r.repeat_len.pop();
+                    }
                 }
 
                 r.stack = tt_f;
@@ -207,7 +213,10 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
 
         } else { /* repeat */
             r.stack.idx = 0u;
-            r.repeat_idx[r.repeat_idx.len() - 1u] += 1u;
+            {
+                let mut repeat_idx = r.repeat_idx.borrow_mut();
+                repeat_idx.get()[repeat_idx.get().len() - 1u] += 1u;
+            }
             match r.stack.sep.clone() {
               Some(tk) => {
                 r.cur_tok = tk; /* repeat same span, I guess */
@@ -264,15 +273,18 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                     r.stack.idx += 1u;
                     return tt_next_token(r);
                 } else {
-                    r.repeat_len.push(len);
-                    r.repeat_idx.push(0u);
-                    r.stack = @mut TtFrame {
-                        forest: tts,
-                        idx: 0u,
-                        dotdotdoted: true,
-                        sep: sep,
-                        up: Some(r.stack)
-                    };
+                    {
+                        let mut repeat_idx = r.repeat_idx.borrow_mut();
+                        r.repeat_len.push(len);
+                        repeat_idx.get().push(0u);
+                        r.stack = @mut TtFrame {
+                            forest: tts,
+                            idx: 0u,
+                            dotdotdoted: true,
+                            sep: sep,
+                            up: Some(r.stack)
+                        };
+                    }
                 }
               }
             }
