@@ -10,6 +10,7 @@
 
 //! A helper class for dealing with static archives
 
+use back::link::{get_ar_prog};
 use driver::session::Session;
 use metadata::filesearch;
 use lib::llvm::{ArchiveRef, llvm};
@@ -37,14 +38,7 @@ pub struct ArchiveRO {
 
 fn run_ar(sess: Session, args: &str, cwd: Option<&Path>,
         paths: &[&Path]) -> ProcessOutput {
-    let ar = if sess.opts.target_triple == ~"arm-linux-androideabi" {
-        match sess.opts.android_cross_path {
-            Some(ref path) => *path + "/bin/" + "arm-linux-androideabi-ar",
-            None => ~"arm-linux-androideabi-ar"
-        }
-    } else {
-        sess.opts.ar.clone().unwrap_or_else(|| ~"ar")
-    };
+    let ar = get_ar_prog(sess);
 
     let mut args = ~[args.to_owned()];
     let mut paths = paths.iter().map(|p| p.as_str().unwrap().to_owned());
