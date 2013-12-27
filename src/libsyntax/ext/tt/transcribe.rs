@@ -39,7 +39,7 @@ pub struct TtReader {
     priv repeat_idx: RefCell<~[uint]>,
     priv repeat_len: RefCell<~[uint]>,
     /* cached: */
-    cur_tok: Token,
+    cur_tok: RefCell<Token>,
     cur_span: Span
 }
 
@@ -66,7 +66,7 @@ pub fn new_tt_reader(sp_diag: @mut span_handler,
         repeat_idx: RefCell::new(~[]),
         repeat_len: RefCell::new(~[]),
         /* dummy values, never read: */
-        cur_tok: EOF,
+        cur_tok: RefCell::new(EOF),
         cur_span: dummy_sp()
     };
     tt_next_token(r); /* get cur_tok and cur_span set up */
@@ -175,7 +175,7 @@ fn lockstep_iter_size(t: &token_tree, r: &mut TtReader) -> lis {
 pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
     // XXX(pcwalton): Bad copy?
     let ret_val = TokenAndSpan {
-        tok: r.cur_tok.clone(),
+        tok: r.cur_tok.get(),
         sp: r.cur_span,
     };
     loop {
@@ -195,7 +195,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
 
             match r.stack.up {
               None => {
-                r.cur_tok = EOF;
+                r.cur_tok.set(EOF);
                 return ret_val;
               }
               Some(tt_f) => {
@@ -221,7 +221,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
             }
             match r.stack.sep.clone() {
               Some(tk) => {
-                r.cur_tok = tk; /* repeat same span, I guess */
+                r.cur_tok.set(tk); /* repeat same span, I guess */
                 return ret_val;
               }
               None => ()
@@ -244,7 +244,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
           }
           tt_tok(sp, tok) => {
             r.cur_span = sp;
-            r.cur_tok = tok;
+            r.cur_tok.set(tok);
             r.stack.idx += 1u;
             return ret_val;
           }
@@ -299,14 +299,15 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
               (a) idents can be in lots of places, so it'd be a pain
               (b) we actually can, since it's a token. */
               matched_nonterminal(nt_ident(~sn,b)) => {
-                r.cur_span = sp; r.cur_tok = IDENT(sn,b);
+                r.cur_span = sp;
+                r.cur_tok.set(IDENT(sn,b));
                 r.stack.idx += 1u;
                 return ret_val;
               }
               matched_nonterminal(ref other_whole_nt) => {
                 // XXX(pcwalton): Bad copy.
                 r.cur_span = sp;
-                r.cur_tok = INTERPOLATED((*other_whole_nt).clone());
+                r.cur_tok.set(INTERPOLATED((*other_whole_nt).clone()));
                 r.stack.idx += 1u;
                 return ret_val;
               }

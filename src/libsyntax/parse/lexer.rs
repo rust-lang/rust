@@ -134,7 +134,10 @@ impl reader for StringReader {
 }
 
 impl reader for TtReader {
-    fn is_eof(@mut self) -> bool { self.cur_tok == token::EOF }
+    fn is_eof(@mut self) -> bool {
+        let cur_tok = self.cur_tok.borrow();
+        *cur_tok.get() == token::EOF
+    }
     fn next_token(@mut self) -> TokenAndSpan {
         let r = tt_next_token(self);
         debug!("TtReader: r={:?}", r);
@@ -146,7 +149,7 @@ impl reader for TtReader {
     fn span_diag(@mut self) -> @mut span_handler { self.sp_diag }
     fn peek(@mut self) -> TokenAndSpan {
         TokenAndSpan {
-            tok: self.cur_tok.clone(),
+            tok: self.cur_tok.get(),
             sp: self.cur_span,
         }
     }
