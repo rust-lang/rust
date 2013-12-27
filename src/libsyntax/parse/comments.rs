@@ -137,11 +137,11 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
 
 fn read_to_eol(rdr: @mut StringReader) -> ~str {
     let mut val = ~"";
-    while rdr.curr != '\n' && !is_eof(rdr) {
-        val.push_char(rdr.curr);
+    while rdr.curr.get() != '\n' && !is_eof(rdr) {
+        val.push_char(rdr.curr.get());
         bump(rdr);
     }
-    if rdr.curr == '\n' { bump(rdr); }
+    if rdr.curr.get() == '\n' { bump(rdr); }
     return val;
 }
 
@@ -153,7 +153,8 @@ fn read_one_line_comment(rdr: @mut StringReader) -> ~str {
 }
 
 fn consume_non_eol_whitespace(rdr: @mut StringReader) {
-    while is_whitespace(rdr.curr) && rdr.curr != '\n' && !is_eof(rdr) {
+    while is_whitespace(rdr.curr.get()) && rdr.curr.get() != '\n' &&
+            !is_eof(rdr) {
         bump(rdr);
     }
 }
@@ -170,8 +171,8 @@ fn push_blank_line_comment(rdr: @mut StringReader, comments: &mut ~[cmnt]) {
 
 fn consume_whitespace_counting_blank_lines(rdr: @mut StringReader,
                                            comments: &mut ~[cmnt]) {
-    while is_whitespace(rdr.curr) && !is_eof(rdr) {
-        if rdr.col.get() == CharPos(0u) && rdr.curr == '\n' {
+    while is_whitespace(rdr.curr.get()) && !is_eof(rdr) {
+        if rdr.col.get() == CharPos(0u) && rdr.curr.get() == '\n' {
             push_blank_line_comment(rdr, &mut *comments);
         }
         bump(rdr);
@@ -196,7 +197,7 @@ fn read_line_comments(rdr: @mut StringReader, code_to_the_left: bool,
     debug!(">>> line comments");
     let p = rdr.last_pos.get();
     let mut lines: ~[~str] = ~[];
-    while rdr.curr == '/' && nextch(rdr) == '/' {
+    while rdr.curr.get() == '/' && nextch(rdr) == '/' {
         let line = read_one_line_comment(rdr);
         debug!("{}", line);
         if is_doc_comment(line) { // doc-comments are not put in comments
@@ -261,9 +262,9 @@ fn read_block_comment(rdr: @mut StringReader,
     let mut curr_line = ~"/*";
 
     // doc-comments are not really comments, they are attributes
-    if rdr.curr == '*' || rdr.curr == '!' {
-        while !(rdr.curr == '*' && nextch(rdr) == '/') && !is_eof(rdr) {
-            curr_line.push_char(rdr.curr);
+    if rdr.curr.get() == '*' || rdr.curr.get() == '!' {
+        while !(rdr.curr.get() == '*' && nextch(rdr) == '/') && !is_eof(rdr) {
+            curr_line.push_char(rdr.curr.get());
             bump(rdr);
         }
         if !is_eof(rdr) {
@@ -281,20 +282,20 @@ fn read_block_comment(rdr: @mut StringReader,
             if is_eof(rdr) {
                 (rdr as @mut reader).fatal(~"unterminated block comment");
             }
-            if rdr.curr == '\n' {
+            if rdr.curr.get() == '\n' {
                 trim_whitespace_prefix_and_push_line(&mut lines, curr_line,
                                                      col);
                 curr_line = ~"";
                 bump(rdr);
             } else {
-                curr_line.push_char(rdr.curr);
-                if rdr.curr == '/' && nextch(rdr) == '*' {
+                curr_line.push_char(rdr.curr.get());
+                if rdr.curr.get() == '/' && nextch(rdr) == '*' {
                     bump(rdr);
                     bump(rdr);
                     curr_line.push_char('*');
                     level += 1;
                 } else {
-                    if rdr.curr == '*' && nextch(rdr) == '/' {
+                    if rdr.curr.get() == '*' && nextch(rdr) == '/' {
                         bump(rdr);
                         bump(rdr);
                         curr_line.push_char('/');
@@ -310,7 +311,7 @@ fn read_block_comment(rdr: @mut StringReader,
 
     let mut style = if code_to_the_left { trailing } else { isolated };
     consume_non_eol_whitespace(rdr);
-    if !is_eof(rdr) && rdr.curr != '\n' && lines.len() == 1u {
+    if !is_eof(rdr) && rdr.curr.get() != '\n' && lines.len() == 1u {
         style = mixed;
     }
     debug!("<<< block comment");
@@ -318,20 +319,20 @@ fn read_block_comment(rdr: @mut StringReader,
 }
 
 fn peeking_at_comment(rdr: @mut StringReader) -> bool {
-    return ((rdr.curr == '/' && nextch(rdr) == '/') ||
-         (rdr.curr == '/' && nextch(rdr) == '*')) ||
-         (rdr.curr == '#' && nextch(rdr) == '!');
+    return ((rdr.curr.get() == '/' && nextch(rdr) == '/') ||
+         (rdr.curr.get() == '/' && nextch(rdr) == '*')) ||
+         (rdr.curr.get() == '#' && nextch(rdr) == '!');
 }
 
 fn consume_comment(rdr: @mut StringReader,
                    code_to_the_left: bool,
                    comments: &mut ~[cmnt]) {
     debug!(">>> consume comment");
-    if rdr.curr == '/' && nextch(rdr) == '/' {
+    if rdr.curr.get() == '/' && nextch(rdr) == '/' {
         read_line_comments(rdr, code_to_the_left, comments);
-    } else if rdr.curr == '/' && nextch(rdr) == '*' {
+    } else if rdr.curr.get() == '/' && nextch(rdr) == '*' {
         read_block_comment(rdr, code_to_the_left, comments);
-    } else if rdr.curr == '#' && nextch(rdr) == '!' {
+    } else if rdr.curr.get() == '#' && nextch(rdr) == '!' {
         read_shebang_comment(rdr, code_to_the_left, comments);
     } else { fail!(); }
     debug!("<<< consume comment");
@@ -362,7 +363,7 @@ pub fn gather_comments_and_literals(span_diagnostic:
         loop {
             let mut code_to_the_left = !first_read;
             consume_non_eol_whitespace(rdr);
-            if rdr.curr == '\n' {
+            if rdr.curr.get() == '\n' {
                 code_to_the_left = false;
                 consume_whitespace_counting_blank_lines(rdr, &mut comments);
             }
