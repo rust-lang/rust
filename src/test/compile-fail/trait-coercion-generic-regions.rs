@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,14 +10,23 @@
 
 #[feature(managed_boxes)];
 
-use std::container::Map;
-use std::hashmap::HashMap;
+struct Struct {
+    person: &'static str
+}
 
-// Test that trait types printed in error msgs include the type arguments.
+trait Trait<T> {
+    fn f(&self, x: T);
+}
+
+impl Trait<&'static str> for Struct {
+    fn f(&self, x: &'static str) {
+        println!("Hello, {}!", x);
+    }
+}
 
 fn main() {
-    let x: @HashMap<~str, ~str> = @HashMap::new();
-    let x: @Map<~str, ~str> = x;
-    let y: @Map<uint, ~str> = @x;
-    //~^ ERROR failed to find an implementation of trait std::container::Map<uint,~str> for @std::container::Map<~str,~str>:'static
+    let person = ~"Fred";
+    let person: &str = person;  //~ ERROR borrowed value does not live long enough
+    let s: @Trait<&'static str> = @Struct { person: person };
 }
+

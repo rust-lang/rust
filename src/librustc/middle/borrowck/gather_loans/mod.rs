@@ -419,6 +419,10 @@ impl<'a> GatherLoanCtxt<'a> {
                     ty::AutoUnsafe(_) => {}
                 }
             }
+
+            ty::AutoObject(..) => {
+                // XXX: Handle @Trait to &Trait casts here?
+            }
         }
     }
 
