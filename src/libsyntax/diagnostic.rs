@@ -31,7 +31,7 @@ pub trait Emitter {
 // accepts span information for source-location
 // reporting.
 pub struct SpanHandler {
-    handler: @mut Handler,
+    handler: @Handler,
     cm: @codemap::CodeMap,
 }
 
@@ -56,7 +56,7 @@ impl SpanHandler {
     pub fn span_unimpl(@self, sp: Span, msg: &str) -> ! {
         self.span_bug(sp, ~"unimplemented " + msg);
     }
-    pub fn handler(@self) -> @mut Handler {
+    pub fn handler(@self) -> @Handler {
         self.handler
     }
 }
@@ -70,24 +70,24 @@ pub struct Handler {
 }
 
 impl Handler {
-    pub fn fatal(@mut self, msg: &str) -> ! {
+    pub fn fatal(@self, msg: &str) -> ! {
         self.emit.emit(None, msg, fatal);
         fail!();
     }
-    pub fn err(@mut self, msg: &str) {
+    pub fn err(@self, msg: &str) {
         self.emit.emit(None, msg, error);
         self.bump_err_count();
     }
-    pub fn bump_err_count(@mut self) {
+    pub fn bump_err_count(@self) {
         self.err_count.set(self.err_count.get() + 1u);
     }
-    pub fn err_count(@mut self) -> uint {
+    pub fn err_count(@self) -> uint {
         self.err_count.get()
     }
-    pub fn has_errors(@mut self) -> bool {
+    pub fn has_errors(@self) -> bool {
         self.err_count.get()> 0u
     }
-    pub fn abort_if_errors(@mut self) {
+    pub fn abort_if_errors(@self) {
         let s;
         match self.err_count.get() {
           0u => return,
@@ -99,19 +99,19 @@ impl Handler {
         }
         self.fatal(s);
     }
-    pub fn warn(@mut self, msg: &str) {
+    pub fn warn(@self, msg: &str) {
         self.emit.emit(None, msg, warning);
     }
-    pub fn note(@mut self, msg: &str) {
+    pub fn note(@self, msg: &str) {
         self.emit.emit(None, msg, note);
     }
-    pub fn bug(@mut self, msg: &str) -> ! {
+    pub fn bug(@self, msg: &str) -> ! {
         self.fatal(ice_msg(msg));
     }
-    pub fn unimpl(@mut self, msg: &str) -> ! {
+    pub fn unimpl(@self, msg: &str) -> ! {
         self.bug(~"unimplemented " + msg);
     }
-    pub fn emit(@mut self,
+    pub fn emit(@self,
             cmsp: Option<(&codemap::CodeMap, Span)>,
             msg: &str,
             lvl: level) {
@@ -124,7 +124,7 @@ pub fn ice_msg(msg: &str) -> ~str {
             \nWe would appreciate a bug report: {}", msg, BUG_REPORT_URL)
 }
 
-pub fn mk_span_handler(handler: @mut Handler, cm: @codemap::CodeMap)
+pub fn mk_span_handler(handler: @Handler, cm: @codemap::CodeMap)
                        -> @SpanHandler {
     @SpanHandler {
         handler: handler,
@@ -132,13 +132,13 @@ pub fn mk_span_handler(handler: @mut Handler, cm: @codemap::CodeMap)
     }
 }
 
-pub fn mk_handler(emitter: Option<@Emitter>) -> @mut Handler {
+pub fn mk_handler(emitter: Option<@Emitter>) -> @Handler {
     let emit: @Emitter = match emitter {
         Some(e) => e,
         None => @DefaultEmitter as @Emitter
     };
 
-    @mut Handler {
+    @Handler {
         err_count: Cell::new(0),
         emit: emit,
     }
