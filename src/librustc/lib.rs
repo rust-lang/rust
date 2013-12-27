@@ -197,7 +197,7 @@ pub fn describe_debug_flags() {
 
 pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
     let mut args = args.to_owned();
-    let binary = args.shift().to_managed();
+    let binary = args.shift();
 
     if args.is_empty() { usage(binary); return; }
 
