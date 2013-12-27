@@ -27,13 +27,13 @@ struct TtFrame {
     idx: Cell<uint>,
     dotdotdoted: bool,
     sep: Option<Token>,
-    up: Option<@mut TtFrame>,
+    up: Option<@TtFrame>,
 }
 
 pub struct TtReader {
     sp_diag: @SpanHandler,
     // the unzipped tree:
-    priv stack: RefCell<@mut TtFrame>,
+    priv stack: RefCell<@TtFrame>,
     /* for MBE-style macro transcription */
     priv interpolations: RefCell<HashMap<Ident, @named_match>>,
     priv repeat_idx: RefCell<~[uint]>,
@@ -52,7 +52,7 @@ pub fn new_tt_reader(sp_diag: @SpanHandler,
                      -> @TtReader {
     let r = @TtReader {
         sp_diag: sp_diag,
-        stack: RefCell::new(@mut TtFrame {
+        stack: RefCell::new(@TtFrame {
             forest: @src,
             idx: Cell::new(0u),
             dotdotdoted: false,
@@ -73,8 +73,8 @@ pub fn new_tt_reader(sp_diag: @SpanHandler,
     return r;
 }
 
-fn dup_tt_frame(f: @mut TtFrame) -> @mut TtFrame {
-    @mut TtFrame {
+fn dup_tt_frame(f: @TtFrame) -> @TtFrame {
+    @TtFrame {
         forest: @(*f.forest).clone(),
         idx: f.idx.clone(),
         dotdotdoted: f.dotdotdoted,
@@ -233,7 +233,7 @@ pub fn tt_next_token(r: &TtReader) -> TokenAndSpan {
         // XXX(pcwalton): Bad copy.
         match r.stack.get().forest[r.stack.get().idx.get()].clone() {
           tt_delim(tts) => {
-            r.stack.set(@mut TtFrame {
+            r.stack.set(@TtFrame {
                 forest: tts,
                 idx: Cell::new(0u),
                 dotdotdoted: false,
@@ -280,7 +280,7 @@ pub fn tt_next_token(r: &TtReader) -> TokenAndSpan {
                         let mut repeat_len = r.repeat_len.borrow_mut();
                         repeat_len.get().push(len);
                         repeat_idx.get().push(0u);
-                        r.stack.set(@mut TtFrame {
+                        r.stack.set(@TtFrame {
                             forest: tts,
                             idx: Cell::new(0u),
                             dotdotdoted: true,
