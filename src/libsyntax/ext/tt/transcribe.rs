@@ -33,7 +33,7 @@ struct TtFrame {
 pub struct TtReader {
     sp_diag: @mut SpanHandler,
     // the unzipped tree:
-    stack: @mut TtFrame,
+    priv stack: RefCell<@mut TtFrame>,
     /* for MBE-style macro transcription */
     priv interpolations: RefCell<HashMap<Ident, @named_match>>,
     priv repeat_idx: RefCell<~[uint]>,
@@ -52,13 +52,13 @@ pub fn new_tt_reader(sp_diag: @mut SpanHandler,
                   -> @mut TtReader {
     let r = @mut TtReader {
         sp_diag: sp_diag,
-        stack: @mut TtFrame {
+        stack: RefCell::new(@mut TtFrame {
             forest: @src,
             idx: 0u,
             dotdotdoted: false,
             sep: None,
             up: option::None
-        },
+        }),
         interpolations: match interp { /* just a convienience */
             None => RefCell::new(HashMap::new()),
             Some(x) => RefCell::new(x),
@@ -89,7 +89,7 @@ fn dup_tt_frame(f: @mut TtFrame) -> @mut TtFrame {
 pub fn dup_tt_reader(r: @mut TtReader) -> @mut TtReader {
     @mut TtReader {
         sp_diag: r.sp_diag,
-        stack: dup_tt_frame(r.stack),
+        stack: RefCell::new(dup_tt_frame(r.stack.get())),
         repeat_idx: r.repeat_idx.clone(),
         repeat_len: r.repeat_len.clone(),
         cur_tok: r.cur_tok.clone(),
@@ -181,26 +181,26 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
     };
     loop {
         {
-            let stack = &mut *r.stack;
-            if stack.idx < stack.forest.len() {
+            let mut stack = r.stack.borrow_mut();
+            if stack.get().idx < stack.get().forest.len() {
                 break;
             }
         }
 
         /* done with this set; pop or repeat? */
-        if ! r.stack.dotdotdoted || {
+        if !r.stack.get().dotdotdoted || {
                 let repeat_idx = r.repeat_idx.borrow();
                 let repeat_len = r.repeat_len.borrow();
                 *repeat_idx.get().last() == *repeat_len.get().last() - 1
             } {
 
-            match r.stack.up {
+            match r.stack.get().up {
               None => {
                 r.cur_tok.set(EOF);
                 return ret_val;
               }
               Some(tt_f) => {
-                if r.stack.dotdotdoted {
+                if r.stack.get().dotdotdoted {
                     {
                         let mut repeat_idx = r.repeat_idx.borrow_mut();
                         let mut repeat_len = r.repeat_len.borrow_mut();
@@ -209,18 +209,18 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                     }
                 }
 
-                r.stack = tt_f;
-                r.stack.idx += 1u;
+                r.stack.set(tt_f);
+                r.stack.get().idx += 1u;
               }
             }
 
         } else { /* repeat */
-            r.stack.idx = 0u;
+            r.stack.get().idx = 0u;
             {
                 let mut repeat_idx = r.repeat_idx.borrow_mut();
                 repeat_idx.get()[repeat_idx.get().len() - 1u] += 1u;
             }
-            match r.stack.sep.clone() {
+            match r.stack.get().sep.clone() {
               Some(tk) => {
                 r.cur_tok.set(tk); /* repeat same span, I guess */
                 return ret_val;
@@ -232,21 +232,21 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
     loop { /* because it's easiest, this handles `tt_delim` not starting
     with a `tt_tok`, even though it won't happen */
         // XXX(pcwalton): Bad copy.
-        match r.stack.forest[r.stack.idx].clone() {
+        match r.stack.get().forest[r.stack.get().idx].clone() {
           tt_delim(tts) => {
-            r.stack = @mut TtFrame {
+            r.stack.set(@mut TtFrame {
                 forest: tts,
                 idx: 0u,
                 dotdotdoted: false,
                 sep: None,
-                up: option::Some(r.stack)
-            };
+                up: option::Some(r.stack.get())
+            });
             // if this could be 0-length, we'd need to potentially recur here
           }
           tt_tok(sp, tok) => {
             r.cur_span.set(sp);
             r.cur_tok.set(tok);
-            r.stack.idx += 1u;
+            r.stack.get().idx += 1u;
             return ret_val;
           }
           tt_seq(sp, tts, sep, zerok) => {
@@ -273,7 +273,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                                               once");
                           }
 
-                    r.stack.idx += 1u;
+                    r.stack.get().idx += 1u;
                     return tt_next_token(r);
                 } else {
                     {
@@ -281,13 +281,13 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                         let mut repeat_len = r.repeat_len.borrow_mut();
                         repeat_len.get().push(len);
                         repeat_idx.get().push(0u);
-                        r.stack = @mut TtFrame {
+                        r.stack.set(@mut TtFrame {
                             forest: tts,
                             idx: 0u,
                             dotdotdoted: true,
                             sep: sep,
-                            up: Some(r.stack)
-                        };
+                            up: Some(r.stack.get())
+                        });
                     }
                 }
               }
@@ -302,14 +302,14 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
               matched_nonterminal(nt_ident(~sn,b)) => {
                 r.cur_span.set(sp);
                 r.cur_tok.set(IDENT(sn,b));
-                r.stack.idx += 1u;
+                r.stack.get().idx += 1u;
                 return ret_val;
               }
               matched_nonterminal(ref other_whole_nt) => {
                 // XXX(pcwalton): Bad copy.
                 r.cur_span.set(sp);
                 r.cur_tok.set(INTERPOLATED((*other_whole_nt).clone()));
-                r.stack.idx += 1u;
+                r.stack.get().idx += 1u;
                 return ret_val;
               }
               matched_seq(..) => {
