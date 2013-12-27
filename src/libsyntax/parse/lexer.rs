@@ -54,7 +54,7 @@ pub struct StringReader {
     filemap: @codemap::FileMap,
     /* cached: */
     peek_tok: RefCell<token::Token>,
-    peek_span: Span
+    peek_span: RefCell<Span>,
 }
 
 pub fn new_string_reader(span_diagnostic: @mut SpanHandler,
@@ -81,7 +81,7 @@ pub fn new_low_level_string_reader(span_diagnostic: @mut SpanHandler,
         filemap: filemap,
         /* dummy values; not read */
         peek_tok: RefCell::new(token::EOF),
-        peek_span: codemap::DUMMY_SP
+        peek_span: RefCell::new(codemap::DUMMY_SP),
     };
     bump(r);
     return r;
@@ -100,7 +100,7 @@ fn dup_string_reader(r: @mut StringReader) -> @mut StringReader {
         curr: Cell::new(r.curr.get()),
         filemap: r.filemap,
         peek_tok: r.peek_tok.clone(),
-        peek_span: r.peek_span
+        peek_span: r.peek_span.clone(),
     }
 }
 
@@ -112,21 +112,21 @@ impl reader for StringReader {
             let mut peek_tok = self.peek_tok.borrow_mut();
             TokenAndSpan {
                 tok: util::replace(peek_tok.get(), token::UNDERSCORE),
-                sp: self.peek_span,
+                sp: self.peek_span.get(),
             }
         };
         string_advance_token(self);
         ret_val
     }
     fn fatal(@mut self, m: ~str) -> ! {
-        self.span_diagnostic.span_fatal(self.peek_span, m)
+        self.span_diagnostic.span_fatal(self.peek_span.get(), m)
     }
     fn span_diag(@mut self) -> @mut SpanHandler { self.span_diagnostic }
     fn peek(@mut self) -> TokenAndSpan {
         // XXX(pcwalton): Bad copy!
         TokenAndSpan {
             tok: self.peek_tok.get(),
-            sp: self.peek_span,
+            sp: self.peek_span.get(),
         }
     }
     fn dup(@mut self) -> @mut reader { dup_string_reader(self) as @mut reader }
@@ -158,7 +158,7 @@ fn fatal_span(rdr: @mut StringReader,
               to_pos: BytePos,
               m: ~str)
            -> ! {
-    rdr.peek_span = codemap::mk_sp(from_pos, to_pos);
+    rdr.peek_span.set(codemap::mk_sp(from_pos, to_pos));
     rdr.fatal(m);
 }
 
@@ -197,7 +197,7 @@ fn fatal_span_verbose(rdr: @mut StringReader,
 fn string_advance_token(r: @mut StringReader) {
     match (consume_whitespace_and_comments(r)) {
         Some(comment) => {
-            r.peek_span = comment.sp;
+            r.peek_span.set(comment.sp);
             r.peek_tok.set(comment.tok);
         },
         None => {
@@ -206,7 +206,8 @@ fn string_advance_token(r: @mut StringReader) {
             } else {
                 let start_bytepos = r.last_pos.get();
                 r.peek_tok.set(next_token_inner(r));
-                r.peek_span = codemap::mk_sp(start_bytepos, r.last_pos.get());
+                r.peek_span.set(codemap::mk_sp(start_bytepos,
+                                               r.last_pos.get()));
             };
         }
     }
