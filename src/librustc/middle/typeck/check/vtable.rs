@@ -9,8 +9,8 @@
 // except according to those terms.
 
 
-use middle::ty::param_ty;
 use middle::ty;
+use middle::ty::{AutoAddEnv, AutoDerefRef, AutoObject, param_ty};
 use middle::ty_fold::TypeFolder;
 use middle::typeck::check::{FnCtxt, impl_self_ty};
 use middle::typeck::check::{structurally_resolved_type};
@@ -565,6 +565,106 @@ pub fn early_resolve_expr(ex: @ast::Expr,
     let _indent = indenter();
 
     let cx = fcx.ccx;
+    let resolve_object_cast = |src: @ast::Expr, target_ty: ty::t| {
+      match ty::get(target_ty).sty {
+          // Bounds of type's contents are not checked here, but in kind.rs.
+          ty::ty_trait(target_def_id, ref target_substs, store,
+                       target_mutbl, _bounds) => {
+              fn mutability_allowed(a_mutbl: ast::Mutability,
+                                    b_mutbl: ast::Mutability) -> bool {
+                  a_mutbl == b_mutbl ||
+                  (a_mutbl == ast::MutMutable && b_mutbl == ast::MutImmutable)
+              }
+              // Look up vtables for the type we're casting to,
+              // passing in the source and target type.  The source
+              // must be a pointer type suitable to the object sigil,
+              // e.g.: `@x as @Trait`, `&x as &Trait` or `~x as ~Trait`
+              let ty = structurally_resolved_type(fcx, ex.span,
+                                                  fcx.expr_ty(src));
+              match (&ty::get(ty).sty, store) {
+                  (&ty::ty_box(mt), ty::BoxTraitStore) |
+                  (&ty::ty_uniq(mt), ty::UniqTraitStore) |
+                  (&ty::ty_rptr(_, mt), ty::RegionTraitStore(..))
+                    if !mutability_allowed(mt.mutbl, target_mutbl) => {
+                      fcx.tcx().sess.span_err(ex.span,
+                                              format!("types differ in mutability"));
+                  }
+
+                  (&ty::ty_box(mt), ty::BoxTraitStore) |
+                  (&ty::ty_uniq(mt), ty::UniqTraitStore) |
+                  (&ty::ty_rptr(_, mt), ty::RegionTraitStore(..)) => {
+                      let location_info =
+                          &location_info_for_expr(ex);
+                      let vcx = fcx.vtable_context();
+                      let target_trait_ref = @ty::TraitRef {
+                          def_id: target_def_id,
+                          substs: ty::substs {
+                              tps: target_substs.tps.clone(),
+                              regions: target_substs.regions.clone(),
+                              self_ty: Some(mt.ty)
+                          }
+                      };
+
+                      let param_bounds = ty::ParamBounds {
+                          builtin_bounds: ty::EmptyBuiltinBounds(),
+                          trait_bounds: ~[target_trait_ref]
+                      };
+                      let vtables =
+                            lookup_vtables_for_param(&vcx,
+                                                     location_info,
+                                                     None,
+                                                     &param_bounds,
+                                                     mt.ty,
+                                                     is_early);
+
+                      if !is_early {
+                          insert_vtables(fcx, ex.id, @~[vtables]);
+                      }
+
+                      // Now, if this is &trait, we need to link the
+                      // regions.
+                      match (&ty::get(ty).sty, store) {
+                          (&ty::ty_rptr(ra, _),
+                           ty::RegionTraitStore(rb)) => {
+                              infer::mk_subr(fcx.infcx(),
+                                             false,
+                                             infer::RelateObjectBound(
+                                                 ex.span),
+                                             rb,
+                                             ra);
+                          }
+                          _ => {}
+                      }
+                  }
+
+                  (_, ty::UniqTraitStore) => {
+                      fcx.ccx.tcx.sess.span_err(
+                          ex.span,
+                          format!("can only cast an ~-pointer \
+                                to a ~-object, not a {}",
+                               ty::ty_sort_str(fcx.tcx(), ty)));
+                  }
+
+                  (_, ty::BoxTraitStore) => {
+                      fcx.ccx.tcx.sess.span_err(
+                          ex.span,
+                          format!("can only cast an @-pointer \
+                                to an @-object, not a {}",
+                               ty::ty_sort_str(fcx.tcx(), ty)));
+                  }
+
+                  (_, ty::RegionTraitStore(_)) => {
+                      fcx.ccx.tcx.sess.span_err(
+                          ex.span,
+                          format!("can only cast an &-pointer \
+                                to an &-object, not a {}",
+                               ty::ty_sort_str(fcx.tcx(), ty)));
+                  }
+              }
+          }
+          _ => { /* not a cast to a trait; ignore */ }
+      }
+    };
     match ex.node {
       ast::ExprPath(..) => {
         fcx.opt_node_ty_substs(ex.id, |substs| {
@@ -621,106 +721,23 @@ pub fn early_resolve_expr(ex: @ast::Expr,
       ast::ExprCast(src, _) => {
           debug!("vtable resolution on expr {}", ex.repr(fcx.tcx()));
           let target_ty = fcx.expr_ty(ex);
-          match ty::get(target_ty).sty {
-              // Bounds of type's contents are not checked here, but in kind.rs.
-              ty::ty_trait(target_def_id, ref target_substs, store,
-                           target_mutbl, _bounds) => {
-                  fn mutability_allowed(a_mutbl: ast::Mutability,
-                                        b_mutbl: ast::Mutability) -> bool {
-                      a_mutbl == b_mutbl ||
-                      (a_mutbl == ast::MutMutable && b_mutbl == ast::MutImmutable)
-                  }
-                  // Look up vtables for the type we're casting to,
-                  // passing in the source and target type.  The source
-                  // must be a pointer type suitable to the object sigil,
-                  // e.g.: `@x as @Trait`, `&x as &Trait` or `~x as ~Trait`
-                  let ty = structurally_resolved_type(fcx, ex.span,
-                                                      fcx.expr_ty(src));
-                  match (&ty::get(ty).sty, store) {
-                      (&ty::ty_box(mt), ty::BoxTraitStore) |
-                      (&ty::ty_uniq(mt), ty::UniqTraitStore) |
-                      (&ty::ty_rptr(_, mt), ty::RegionTraitStore(..))
-                        if !mutability_allowed(mt.mutbl, target_mutbl) => {
-                          fcx.tcx().sess.span_err(ex.span,
-                                                  format!("types differ in mutability"));
-                      }
-
-                      (&ty::ty_box(mt), ty::BoxTraitStore) |
-                      (&ty::ty_uniq(mt), ty::UniqTraitStore) |
-                      (&ty::ty_rptr(_, mt), ty::RegionTraitStore(..)) => {
-                          let location_info =
-                              &location_info_for_expr(ex);
-                          let vcx = fcx.vtable_context();
-                          let target_trait_ref = @ty::TraitRef {
-                              def_id: target_def_id,
-                              substs: ty::substs {
-                                  tps: target_substs.tps.clone(),
-                                  regions: target_substs.regions.clone(),
-                                  self_ty: Some(mt.ty)
-                              }
-                          };
-
-                          let param_bounds = ty::ParamBounds {
-                              builtin_bounds: ty::EmptyBuiltinBounds(),
-                              trait_bounds: ~[target_trait_ref]
-                          };
-                          let vtables =
-                                lookup_vtables_for_param(&vcx,
-                                                         location_info,
-                                                         None,
-                                                         &param_bounds,
-                                                         mt.ty,
-                                                         is_early);
-
-                          if !is_early {
-                              insert_vtables(fcx, ex.id, @~[vtables]);
-                          }
-
-                          // Now, if this is &trait, we need to link the
-                          // regions.
-                          match (&ty::get(ty).sty, store) {
-                              (&ty::ty_rptr(ra, _),
-                               ty::RegionTraitStore(rb)) => {
-                                  infer::mk_subr(fcx.infcx(),
-                                                 false,
-                                                 infer::RelateObjectBound(
-                                                     ex.span),
-                                                 rb,
-                                                 ra);
-                              }
-                              _ => {}
-                          }
-                      }
-
-                      (_, ty::UniqTraitStore) => {
-                          fcx.ccx.tcx.sess.span_err(
-                              ex.span,
-                              format!("can only cast an ~-pointer \
-                                    to a ~-object, not a {}",
-                                   ty::ty_sort_str(fcx.tcx(), ty)));
-                      }
-
-                      (_, ty::BoxTraitStore) => {
-                          fcx.ccx.tcx.sess.span_err(
-                              ex.span,
-                              format!("can only cast an @-pointer \
-                                    to an @-object, not a {}",
-                                   ty::ty_sort_str(fcx.tcx(), ty)));
-                      }
-
-                      (_, ty::RegionTraitStore(_)) => {
-                          fcx.ccx.tcx.sess.span_err(
-                              ex.span,
-                              format!("can only cast an &-pointer \
-                                    to an &-object, not a {}",
-                                   ty::ty_sort_str(fcx.tcx(), ty)));
-                      }
-                  }
-              }
-              _ => { /* not a cast to a trait; ignore */ }
-          }
+          resolve_object_cast(src, target_ty);
       }
       _ => ()
+    }
+
+    // Search for auto-adjustments to find trait coercions
+    let adjustments = fcx.inh.adjustments.borrow();
+    match adjustments.get().find(&ex.id) {
+        Some(&@AutoObject(ref sigil, ref region, m, b, def_id, ref substs)) => {
+            debug!("doing trait adjustment for expr {} {} (early? {})",
+                   ex.id, ex.repr(fcx.tcx()), is_early);
+
+            let object_ty = ty::trait_adjustment_to_ty(cx.tcx, sigil, region,
+                                                       def_id, substs, m, b);
+            resolve_object_cast(ex, object_ty);
+        }
+        Some(&@AutoAddEnv(..)) | Some(&@AutoDerefRef(..)) | None => {}
     }
 }
 

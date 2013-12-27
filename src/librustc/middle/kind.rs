@@ -311,14 +311,9 @@ pub fn check_expr(cx: &mut Context, e: @Expr) {
             let _ = check_durable(cx.tcx, interior_type, interior.span);
         }
         ExprCast(source, _) => {
-            check_cast_for_escaping_regions(cx, source, e);
-            match ty::get(ty::expr_ty(cx.tcx, e)).sty {
-                ty::ty_trait(_, _, _, _, bounds) => {
-                    let source_ty = ty::expr_ty(cx.tcx, source);
-                    check_trait_cast_bounds(cx, e.span, source_ty, bounds)
-                }
-                _ => { }
-            }
+            let source_ty = ty::expr_ty(cx.tcx, source);
+            let target_ty = ty::expr_ty(cx.tcx, e);
+            check_trait_cast(cx, source_ty, target_ty, source.span);
         }
         ExprRepeat(element, count_expr, _) => {
             let count = ty::eval_repeat_count(&cx.tcx, count_expr);
@@ -330,7 +325,29 @@ pub fn check_expr(cx: &mut Context, e: @Expr) {
         }
         _ => {}
     }
+
+    // Search for auto-adjustments to find trait coercions.
+    let adjustments = cx.tcx.adjustments.borrow();
+    match adjustments.get().find(&e.id) {
+        Some(&@ty::AutoObject(..)) => {
+            let source_ty = ty::expr_ty(cx.tcx, e);
+            let target_ty = ty::expr_ty_adjusted(cx.tcx, e);
+            check_trait_cast(cx, source_ty, target_ty, e.span);
+        }
+        Some(&@ty::AutoAddEnv(..)) | Some(&@ty::AutoDerefRef(..)) | None => {}
+    }
+
     visit::walk_expr(cx, e, ());
+}
+
+fn check_trait_cast(cx: &mut Context, source_ty: ty::t, target_ty: ty::t, span: Span) {
+    check_cast_for_escaping_regions(cx, source_ty, target_ty, span);
+    match ty::get(target_ty).sty {
+        ty::ty_trait(_, _, _, _, bounds) => {
+            check_trait_cast_bounds(cx, span, source_ty, bounds);
+        }
+        _ => {}
+    }
 }
 
 fn check_ty(cx: &mut Context, aty: &Ty) {
@@ -510,12 +527,12 @@ pub fn check_durable(tcx: ty::ctxt, ty: ty::t, sp: Span) -> bool {
 /// FIXME(#5723)---This code should probably move into regionck.
 pub fn check_cast_for_escaping_regions(
     cx: &Context,
-    source: &Expr,
-    target: &Expr)
+    source_ty: ty::t,
+    target_ty: ty::t,
+    source_span: Span)
 {
     // Determine what type we are casting to; if it is not an trait, then no
     // worries.
-    let target_ty = ty::expr_ty(cx.tcx, target);
     match ty::get(target_ty).sty {
         ty::ty_trait(..) => {}
         _ => { return; }
@@ -545,7 +562,6 @@ pub fn check_cast_for_escaping_regions(
     // Assuming the trait instance can escape, then ensure that each parameter
     // either appears in the trait type or is sendable.
     let target_params = ty::param_tys_in_type(target_ty);
-    let source_ty = ty::expr_ty(cx.tcx, source);
     ty::walk_regions_and_ty(
         cx.tcx,
         source_ty,
@@ -555,7 +571,7 @@ pub fn check_cast_for_escaping_regions(
             //
             // if !target_regions.iter().any(|t_r| is_subregion_of(cx, *t_r, r)) {
             //     cx.tcx.sess.span_err(
-            //         source.span,
+            //         source_span,
             //         format!("source contains borrowed pointer with lifetime \
             //               not found in the target type `{}`",
             //              ty_to_str(cx.tcx, target_ty)));
@@ -570,7 +586,7 @@ pub fn check_cast_for_escaping_regions(
                     if target_params.iter().any(|x| x == &source_param) {
                         /* case (2) */
                     } else {
-                        check_durable(cx.tcx, ty, source.span); /* case (3) */
+                        check_durable(cx.tcx, ty, source_span); /* case (3) */
                     }
                 }
                 _ => {}

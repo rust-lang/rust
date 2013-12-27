@@ -450,15 +450,13 @@ impl tr for ast::Def {
 // ______________________________________________________________________
 // Encoding and decoding of adjustment information
 
-impl tr for ty::AutoAdjustment {
-    fn tr(&self, xcx: @ExtendedDecodeContext) -> ty::AutoAdjustment {
-        match *self {
-            ty::AutoAddEnv(r, s) => ty::AutoAddEnv(r.tr(xcx), s),
-            ty::AutoDerefRef(ref adr) => {
-                ty::AutoDerefRef(ty::AutoDerefRef {
-                    autoderefs: adr.autoderefs,
-                    autoref: adr.autoref.map(|ar| ar.tr(xcx)),
-                })
+impl tr for ty::AutoDerefRef {
+    fn tr(&self, xcx: @ExtendedDecodeContext) -> ty::AutoDerefRef {
+        ty::AutoDerefRef {
+            autoderefs: self.autoderefs,
+            autoref: match self.autoref {
+                Some(ref autoref) => Some(autoref.tr(xcx)),
+                None => None
             }
         }
     }
@@ -786,6 +784,8 @@ trait ebml_writer_helpers {
     fn emit_tpbt(&mut self,
                  ecx: &e::EncodeContext,
                  tpbt: ty::ty_param_bounds_and_ty);
+    fn emit_substs(&mut self, ecx: &e::EncodeContext, substs: &ty::substs);
+    fn emit_auto_adjustment(&mut self, ecx: &e::EncodeContext, adj: &ty::AutoAdjustment);
 }
 
 impl<'a> ebml_writer_helpers for writer::Encoder<'a> {
@@ -832,6 +832,40 @@ impl<'a> ebml_writer_helpers for writer::Encoder<'a> {
                 this.emit_ty(ecx, tpbt.ty);
             })
         })
+    }
+
+    fn emit_substs(&mut self, ecx: &e::EncodeContext, substs: &ty::substs) {
+        self.emit_opaque(|this| tyencode::enc_substs(this.writer, ecx.ty_str_ctxt(), substs))
+    }
+
+    fn emit_auto_adjustment(&mut self, ecx: &e::EncodeContext, adj: &ty::AutoAdjustment) {
+        self.emit_enum("AutoAdjustment", |this| {
+            match *adj {
+                ty::AutoAddEnv(region, sigil) => {
+                    this.emit_enum_variant("AutoAddEnv", 0, 2, |this| {
+                        this.emit_enum_variant_arg(0, |this| region.encode(this));
+                        this.emit_enum_variant_arg(1, |this| sigil.encode(this));
+                    });
+                }
+
+                ty::AutoDerefRef(ref auto_deref_ref) => {
+                    this.emit_enum_variant("AutoDerefRef", 1, 1, |this| {
+                        this.emit_enum_variant_arg(0, |this| auto_deref_ref.encode(this));
+                    });
+                }
+
+                ty::AutoObject(sigil, region, m, b, def_id, ref substs) => {
+                    this.emit_enum_variant("AutoObject", 2, 6, |this| {
+                        this.emit_enum_variant_arg(0, |this| sigil.encode(this));
+                        this.emit_enum_variant_arg(1, |this| region.encode(this));
+                        this.emit_enum_variant_arg(2, |this| m.encode(this));
+                        this.emit_enum_variant_arg(3, |this| b.encode(this));
+                        this.emit_enum_variant_arg(4, |this| def_id.encode(this));
+                        this.emit_enum_variant_arg(5, |this| this.emit_substs(ecx, substs));
+                    });
+                }
+            }
+        });
     }
 }
 
@@ -1023,7 +1057,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
             ebml_w.tag(c::tag_table_adjustments, |ebml_w| {
                 ebml_w.id(id);
                 ebml_w.tag(c::tag_table_val, |ebml_w| {
-                    (**adj).encode(ebml_w)
+                    ebml_w.emit_auto_adjustment(ecx, **adj);
                 })
             })
         }
@@ -1064,6 +1098,8 @@ trait ebml_decoder_decoder_helpers {
                            -> ty::TypeParameterDef;
     fn read_ty_param_bounds_and_ty(&mut self, xcx: @ExtendedDecodeContext)
                                 -> ty::ty_param_bounds_and_ty;
+    fn read_substs(&mut self, xcx: @ExtendedDecodeContext) -> ty::substs;
+    fn read_auto_adjustment(&mut self, xcx: @ExtendedDecodeContext) -> ty::AutoAdjustment;
     fn convert_def_id(&mut self,
                       xcx: @ExtendedDecodeContext,
                       source: DefIdSource,
@@ -1169,6 +1205,61 @@ impl<'a> ebml_decoder_decoder_helpers for reader::Decoder<'a> {
                     this.read_ty(xcx)
                 })
             }
+        })
+    }
+
+    fn read_substs(&mut self, xcx: @ExtendedDecodeContext) -> ty::substs {
+        self.read_opaque(|this, doc| {
+            tydecode::parse_substs_data(doc.data,
+                                        xcx.dcx.cdata.cnum,
+                                        doc.start,
+                                        xcx.dcx.tcx,
+                                        |s, a| this.convert_def_id(xcx, s, a))
+        })
+    }
+
+    fn read_auto_adjustment(&mut self, xcx: @ExtendedDecodeContext) -> ty::AutoAdjustment {
+        self.read_enum("AutoAdjustment", |this| {
+            let variants = ["AutoAddEnv", "AutoDerefRef", "AutoObject"];
+            this.read_enum_variant(variants, |this, i| {
+                match i {
+                    0 => {
+                        let region: ty::Region =
+                            this.read_enum_variant_arg(0, |this| Decodable::decode(this));
+                        let sigil: ast::Sigil =
+                            this.read_enum_variant_arg(1, |this| Decodable::decode(this));
+
+                        ty:: AutoAddEnv(region.tr(xcx), sigil)
+                    }
+                    1 => {
+                        let auto_deref_ref: ty::AutoDerefRef =
+                            this.read_enum_variant_arg(0, |this| Decodable::decode(this));
+
+                        ty::AutoDerefRef(auto_deref_ref.tr(xcx))
+                    }
+                    2 => {
+                        let sigil: ast::Sigil =
+                            this.read_enum_variant_arg(0, |this| Decodable::decode(this));
+                        let region: Option<ty::Region> =
+                            this.read_enum_variant_arg(1, |this| Decodable::decode(this));
+                        let m: ast::Mutability =
+                            this.read_enum_variant_arg(2, |this| Decodable::decode(this));
+                        let b: ty::BuiltinBounds =
+                            this.read_enum_variant_arg(3, |this| Decodable::decode(this));
+                        let def_id: ast::DefId =
+                            this.read_enum_variant_arg(4, |this| Decodable::decode(this));
+                        let substs = this.read_enum_variant_arg(5, |this| this.read_substs(xcx));
+
+                        let region = match region {
+                            Some(r) => Some(r.tr(xcx)),
+                            None => None
+                        };
+
+                        ty::AutoObject(sigil, region, m, b, def_id.tr(xcx), substs)
+                    }
+                    _ => fail!("bad enum variant for ty::AutoAdjustment")
+                }
+            })
         })
     }
 
@@ -1289,8 +1380,7 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
                         vtable_map.get().insert(id, vtable_res);
                     }
                     c::tag_table_adjustments => {
-                        let adj: @ty::AutoAdjustment = @Decodable::decode(val_dsr);
-                        adj.tr(xcx);
+                        let adj: @ty::AutoAdjustment = @val_dsr.read_auto_adjustment(xcx);
                         let mut adjustments = dcx.tcx
                                                  .adjustments
                                                  .borrow_mut();

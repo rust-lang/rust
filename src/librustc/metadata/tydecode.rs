@@ -129,6 +129,12 @@ pub fn parse_trait_ref_data(data: &[u8], crate_num: ast::CrateNum, pos: uint, tc
     parse_trait_ref(&mut st, conv)
 }
 
+pub fn parse_substs_data(data: &[u8], crate_num: ast::CrateNum, pos: uint, tcx: ty::ctxt,
+                         conv: conv_did) -> ty::substs {
+    let mut st = parse_state_from_data(data, crate_num, pos, tcx);
+    parse_substs(&mut st, conv)
+}
+
 fn parse_sigil(st: &mut PState) -> ast::Sigil {
     match next(st) {
         '@' => ast::ManagedSigil,
