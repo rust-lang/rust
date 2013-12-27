@@ -25,7 +25,7 @@ pub fn expand_trace_macros(cx: &mut ExtCtxt,
     let tt_rdr = new_tt_reader(cx.parse_sess().span_diagnostic,
                                None,
                                tt.to_owned());
-    let rdr = tt_rdr as @mut reader;
+    let rdr = tt_rdr as @reader;
     let mut rust_parser = Parser(sess, cfg.clone(), rdr.dup());
 
     if rust_parser.is_keyword(keywords::True) {
