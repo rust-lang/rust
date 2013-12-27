@@ -883,7 +883,7 @@ pub fn build_session(sopts: @session::options, demitter: @diagnostic::Emitter)
 pub fn build_session_(sopts: @session::options,
                       cm: @codemap::CodeMap,
                       demitter: @diagnostic::Emitter,
-                      span_diagnostic_handler: @mut diagnostic::SpanHandler)
+                      span_diagnostic_handler: @diagnostic::SpanHandler)
                       -> Session {
     let target_cfg = build_target_config(sopts, demitter);
     let p_s = parse::new_parse_sess_special_handler(span_diagnostic_handler,

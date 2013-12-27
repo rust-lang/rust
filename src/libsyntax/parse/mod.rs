@@ -42,7 +42,7 @@ pub mod obsolete;
 // info about a parsing session.
 pub struct ParseSess {
     cm: @codemap::CodeMap, // better be the same as the one in the reader!
-    span_diagnostic: @mut SpanHandler, // better be the same as the one in the reader!
+    span_diagnostic: @SpanHandler, // better be the same as the one in the reader!
     /// Used to determine and report recursive mod inclusions
     included_mod_stack: RefCell<~[Path]>,
 }
@@ -56,9 +56,9 @@ pub fn new_parse_sess(demitter: Option<@Emitter>) -> @ParseSess {
     }
 }
 
-pub fn new_parse_sess_special_handler(sh: @mut SpanHandler,
+pub fn new_parse_sess_special_handler(sh: @SpanHandler,
                                       cm: @codemap::CodeMap)
-                                   -> @ParseSess {
+                                      -> @ParseSess {
     @ParseSess {
         cm: cm,
         span_diagnostic: sh,

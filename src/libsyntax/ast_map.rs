@@ -197,7 +197,7 @@ pub type map = @mut HashMap<NodeId, ast_node>;
 pub struct Ctx {
     map: map,
     path: path,
-    diag: @mut SpanHandler,
+    diag: @SpanHandler,
 }
 
 impl Ctx {
@@ -418,7 +418,7 @@ impl Visitor<()> for Ctx {
     }
 }
 
-pub fn map_crate(diag: @mut SpanHandler, c: &Crate) -> map {
+pub fn map_crate(diag: @SpanHandler, c: &Crate) -> map {
     let cx = @mut Ctx {
         map: @mut HashMap::new(),
         path: ~[],
@@ -431,7 +431,7 @@ pub fn map_crate(diag: @mut SpanHandler, c: &Crate) -> map {
 // Used for items loaded from external crate that are being inlined into this
 // crate.  The `path` should be the path to the item but should not include
 // the item itself.
-pub fn map_decoded_item(diag: @mut SpanHandler,
+pub fn map_decoded_item(diag: @SpanHandler,
                         map: map,
                         path: path,
                         ii: &inlined_item) {

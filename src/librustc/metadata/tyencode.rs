@@ -32,7 +32,7 @@ macro_rules! mywrite( ($wr:expr, $($arg:tt)*) => (
 ) )
 
 pub struct ctxt {
-    diag: @mut SpanHandler,
+    diag: @SpanHandler,
     // Def -> str Callback:
     ds: extern "Rust" fn(DefId) -> ~str,
     // The type context.
