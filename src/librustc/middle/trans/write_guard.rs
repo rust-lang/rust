@@ -34,10 +34,10 @@ use syntax::ast;
 use middle::trans::type_::Type;
 
 pub fn root_and_write_guard(datum: &Datum,
-                            mut bcx: @mut Block,
+                            mut bcx: @Block,
                             span: Span,
                             expr_id: ast::NodeId,
-                            derefs: uint) -> @mut Block {
+                            derefs: uint) -> @Block {
     let key = root_map_key { id: expr_id, derefs: derefs };
     debug!("write_guard::root_and_write_guard(key={:?})", key);
 
@@ -45,27 +45,31 @@ pub fn root_and_write_guard(datum: &Datum,
     //
     // (Note: root'd values are always boxes)
     let ccx = bcx.ccx();
-    bcx = match ccx.maps.root_map.find(&key) {
-        None => bcx,
-        Some(&root_info) => root(datum, bcx, span, key, root_info)
+    bcx = {
+        let root_map = ccx.maps.root_map.borrow();
+        match root_map.get().find(&key) {
+            None => bcx,
+            Some(&root_info) => root(datum, bcx, span, key, root_info)
+        }
     };
 
     // Perform the write guard, if necessary.
     //
     // (Note: write-guarded values are always boxes)
-    if ccx.maps.write_guard_map.contains(&key) {
+    let write_guard_map = ccx.maps.write_guard_map.borrow();
+    if write_guard_map.get().contains(&key) {
         perform_write_guard(datum, bcx, span)
     } else {
         bcx
     }
 }
 
-pub fn return_to_mut(mut bcx: @mut Block,
+pub fn return_to_mut(mut bcx: @Block,
                      root_key: root_map_key,
                      frozen_val_ref: ValueRef,
                      bits_val_ref: ValueRef,
                      filename_val: ValueRef,
-                     line_val: ValueRef) -> @mut Block {
+                     line_val: ValueRef) -> @Block {
     debug!("write_guard::return_to_mut(root_key={:?}, {}, {}, {})",
            root_key,
            bcx.to_str(),
@@ -102,10 +106,10 @@ pub fn return_to_mut(mut bcx: @mut Block,
 }
 
 fn root(datum: &Datum,
-        mut bcx: @mut Block,
+        mut bcx: @Block,
         span: Span,
         root_key: root_map_key,
-        root_info: RootInfo) -> @mut Block {
+        root_info: RootInfo) -> @Block {
     //! In some cases, borrowck will decide that an @T/@[]/@str
     //! value must be rooted for the program to be safe.  In that
     //! case, we will call this function, which will stash a copy
@@ -120,7 +124,10 @@ fn root(datum: &Datum,
     let scratch = scratch_datum(bcx, datum.ty, "__write_guard", true);
     datum.copy_to_datum(bcx, INIT, scratch);
     let cleanup_bcx = find_bcx_for_scope(bcx, root_info.scope);
-    add_clean_temp_mem_in_scope(cleanup_bcx, root_info.scope, scratch.val, scratch.ty);
+    add_clean_temp_mem_in_scope(cleanup_bcx,
+                                root_info.scope,
+                                scratch.val,
+                                scratch.ty);
 
     // Now, consider also freezing it.
     match root_info.freeze {
@@ -165,9 +172,13 @@ fn root(datum: &Datum,
                     Some(expr::Ignore)).bcx;
             }
 
-            add_clean_return_to_mut(
-                cleanup_bcx, root_info.scope, root_key, scratch.val, scratch_bits.val,
-                filename, line);
+            add_clean_return_to_mut(cleanup_bcx,
+                                    root_info.scope,
+                                    root_key,
+                                    scratch.val,
+                                    scratch_bits.val,
+                                    filename,
+                                    line);
         }
     }
 
@@ -175,8 +186,8 @@ fn root(datum: &Datum,
 }
 
 fn perform_write_guard(datum: &Datum,
-                       bcx: @mut Block,
-                       span: Span) -> @mut Block {
+                       bcx: @Block,
+                       span: Span) -> @Block {
     debug!("perform_write_guard");
 
     let llval = datum.to_value_llval(bcx);

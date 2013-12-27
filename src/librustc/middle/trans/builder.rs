@@ -25,7 +25,7 @@ use std::ptr::is_not_null;
 
 pub struct Builder {
     llbuilder: BuilderRef,
-    ccx: @mut CrateContext,
+    ccx: @CrateContext,
 }
 
 // This is a really awful way to get a zero-length c-string, but better (and a
@@ -38,7 +38,7 @@ pub fn noname() -> *c_char {
 }
 
 impl Builder {
-    pub fn new(ccx: @mut CrateContext) -> Builder {
+    pub fn new(ccx: @CrateContext) -> Builder {
         Builder {
             llbuilder: ccx.builder.B,
             ccx: ccx,
@@ -47,11 +47,14 @@ impl Builder {
 
     pub fn count_insn(&self, category: &str) {
         if self.ccx.sess.trans_stats() {
-            self.ccx.stats.n_llvm_insns += 1;
+            self.ccx.stats.n_llvm_insns.set(self.ccx
+                                                .stats
+                                                .n_llvm_insns
+                                                .get() + 1);
         }
         if self.ccx.sess.count_llvm_insns() {
             base::with_insn_ctxt(|v| {
-                let h = &mut self.ccx.stats.llvm_insns;
+                let mut h = self.ccx.stats.llvm_insns.borrow_mut();
 
                 // Build version of path with cycles removed.
 
@@ -79,11 +82,11 @@ impl Builder {
                 s.push_char('/');
                 s.push_str(category);
 
-                let n = match h.find(&s) {
+                let n = match h.get().find(&s) {
                     Some(&n) => n,
                     _ => 0u
                 };
-                h.insert(s, n+1u);
+                h.get().insert(s, n+1u);
             })
         }
     }

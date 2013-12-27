@@ -17,9 +17,9 @@ use middle::typeck;
 use middle::moves;
 use middle::dataflow::DataFlowContext;
 use middle::dataflow::DataFlowOperator;
-use util::common::stmt_set;
 use util::ppaux::{note_and_explain_region, Repr, UserString};
 
+use std::cell::{Cell, RefCell};
 use std::hashmap::{HashSet, HashMap};
 use std::ops::{BitOr, BitAnd};
 use std::result::{Result};
@@ -82,15 +82,12 @@ pub fn check_crate(
         moved_variables_set: moved_variables_set,
         capture_map: capture_map,
         root_map: root_map(),
-        loan_map: @mut HashMap::new(),
-        write_guard_map: @mut HashSet::new(),
-        stmt_map: @mut HashSet::new(),
-        stats: @mut BorrowStats {
-            loaned_paths_same: 0,
-            loaned_paths_imm: 0,
-            stable_paths: 0,
-            req_pure_paths: 0,
-            guaranteed_paths: 0,
+        write_guard_map: @RefCell::new(HashSet::new()),
+        stats: @BorrowStats {
+            loaned_paths_same: Cell::new(0),
+            loaned_paths_imm: Cell::new(0),
+            stable_paths: Cell::new(0),
+            guaranteed_paths: Cell::new(0),
         }
     };
     let bccx = &mut bccx;
@@ -100,22 +97,20 @@ pub fn check_crate(
     if tcx.sess.borrowck_stats() {
         println("--- borrowck stats ---");
         println!("paths requiring guarantees: {}",
-                 bccx.stats.guaranteed_paths);
+                 bccx.stats.guaranteed_paths.get());
         println!("paths requiring loans     : {}",
-                 make_stat(bccx, bccx.stats.loaned_paths_same));
+                 make_stat(bccx, bccx.stats.loaned_paths_same.get()));
         println!("paths requiring imm loans : {}",
-                 make_stat(bccx, bccx.stats.loaned_paths_imm));
+                 make_stat(bccx, bccx.stats.loaned_paths_imm.get()));
         println!("stable paths              : {}",
-                 make_stat(bccx, bccx.stats.stable_paths));
-        println!("paths requiring purity    : {}",
-                 make_stat(bccx, bccx.stats.req_pure_paths));
+                 make_stat(bccx, bccx.stats.stable_paths.get()));
     }
 
     return (bccx.root_map, bccx.write_guard_map);
 
     fn make_stat(bccx: &mut BorrowckCtxt, stat: uint) -> ~str {
         let stat_f = stat as f64;
-        let total = bccx.stats.guaranteed_paths as f64;
+        let total = bccx.stats.guaranteed_paths.get() as f64;
         format!("{} ({:.0f}%)", stat  , stat_f * 100.0 / total)
     }
 }
@@ -138,16 +133,18 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
             // Check the body of fn items.
             let (id_range, all_loans, move_data) =
                 gather_loans::gather_loans(this, decl, body);
-            let mut loan_dfcx =
-                DataFlowContext::new(this.tcx,
-                                     this.method_map,
-                                     LoanDataFlowOperator,
-                                     id_range,
-                                     all_loans.len());
-            for (loan_idx, loan) in all_loans.iter().enumerate() {
+
+            let all_loans = all_loans.borrow();
+            let mut loan_dfcx = DataFlowContext::new(this.tcx,
+                                                     this.method_map,
+                                                     LoanDataFlowOperator,
+                                                     id_range,
+                                                     all_loans.get().len());
+            for (loan_idx, loan) in all_loans.get().iter().enumerate() {
                 loan_dfcx.add_gen(loan.gen_scope, loan_idx);
                 loan_dfcx.add_kill(loan.kill_scope, loan_idx);
             }
+
             loan_dfcx.propagate(body);
 
             let flowed_moves = move_data::FlowedMoveData::new(move_data,
@@ -157,7 +154,7 @@ fn borrowck_fn(this: &mut BorrowckCtxt,
                                                               body);
 
             check_loans::check_loans(this, &loan_dfcx, flowed_moves,
-                                     *all_loans, body);
+                                     *all_loans.get(), body);
         }
     }
 
@@ -174,23 +171,18 @@ pub struct BorrowckCtxt {
     moved_variables_set: moves::MovedVariablesSet,
     capture_map: moves::CaptureMap,
     root_map: root_map,
-    loan_map: LoanMap,
     write_guard_map: write_guard_map,
-    stmt_map: stmt_set,
 
     // Statistics:
-    stats: @mut BorrowStats
+    stats: @BorrowStats
 }
 
 pub struct BorrowStats {
-    loaned_paths_same: uint,
-    loaned_paths_imm: uint,
-    stable_paths: uint,
-    req_pure_paths: uint,
-    guaranteed_paths: uint
+    loaned_paths_same: Cell<uint>,
+    loaned_paths_imm: Cell<uint>,
+    stable_paths: Cell<uint>,
+    guaranteed_paths: Cell<uint>,
 }
-
-pub type LoanMap = @mut HashMap<ast::NodeId, @Loan>;
 
 // The keys to the root map combine the `id` of the deref expression
 // with the number of types that it is *autodereferenced*. So, for
@@ -223,7 +215,7 @@ pub struct root_map_key {
 
 // A set containing IDs of expressions of gc'd type that need to have a write
 // guard.
-pub type write_guard_map = @mut HashSet<root_map_key>;
+pub type write_guard_map = @RefCell<HashSet<root_map_key>>;
 
 pub type BckResult<T> = Result<T, BckError>;
 
@@ -413,10 +405,10 @@ pub struct RootInfo {
     freeze: Option<DynaFreezeKind> // Some() if we should freeze box at runtime
 }
 
-pub type root_map = @mut HashMap<root_map_key, RootInfo>;
+pub type root_map = @RefCell<HashMap<root_map_key, RootInfo>>;
 
 pub fn root_map() -> root_map {
-    return @mut HashMap::new();
+    return @RefCell::new(HashMap::new());
 }
 
 pub enum DynaFreezeKind {
@@ -481,7 +473,8 @@ impl BorrowckCtxt {
     }
 
     pub fn is_move(&self, id: ast::NodeId) -> bool {
-        self.moves_map.contains(&id)
+        let moves_map = self.moves_map.borrow();
+        moves_map.get().contains(&id)
     }
 
     pub fn cat_expr(&self, expr: @ast::Expr) -> mc::cmt {

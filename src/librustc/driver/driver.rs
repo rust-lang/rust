@@ -26,6 +26,7 @@ use middle;
 use util::common::time;
 use util::ppaux;
 
+use std::cell::{Cell, RefCell};
 use std::hashmap::{HashMap,HashSet};
 use std::io;
 use std::io::fs;
@@ -165,8 +166,8 @@ pub fn phase_2_configure_and_expand(sess: Session,
                                     mut crate: ast::Crate) -> ast::Crate {
     let time_passes = sess.time_passes();
 
-    *sess.building_library = session::building_library(sess.opts, &crate);
-    *sess.outputs = session::collect_outputs(sess.opts, crate.attrs);
+    sess.building_library.set(session::building_library(sess.opts, &crate));
+    sess.outputs.set(session::collect_outputs(sess.opts, crate.attrs));
 
     time(time_passes, "gated feature checking", (), |_|
          front::feature_gate::check_crate(sess, &crate));
@@ -211,7 +212,7 @@ pub struct CrateAnalysis {
     exported_items: middle::privacy::ExportedItems,
     ty_cx: ty::ctxt,
     maps: astencode::Maps,
-    reachable: @mut HashSet<ast::NodeId>
+    reachable: @RefCell<HashSet<ast::NodeId>>
 }
 
 /// Run the resolution, typechecking, region checking and other
@@ -271,8 +272,7 @@ pub fn phase_3_run_analysis_passes(sess: Session,
                                           method_map, ty_cx));
 
     let maps = (external_exports, last_private_map);
-    let exported_items =
-        time(time_passes, "privacy checking", maps, |(a, b)|
+    let exported_items = time(time_passes, "privacy checking", maps, |(a, b)|
              middle::privacy::check_crate(ty_cx, &method_map, &exp_map2,
                                           a, b, crate));
 
@@ -308,9 +308,16 @@ pub fn phase_3_run_analysis_passes(sess: Session,
         time(time_passes, "reachability checking", (), |_|
              reachable::find_reachable(ty_cx, method_map, &exported_items));
 
-    time(time_passes, "death checking", (), |_|
-         middle::dead::check_crate(ty_cx, method_map,
-                                   &exported_items, reachable_map, crate));
+    {
+        let reachable_map = reachable_map.borrow();
+        time(time_passes, "death checking", (), |_| {
+             middle::dead::check_crate(ty_cx,
+                                       method_map,
+                                       &exported_items,
+                                       reachable_map.get(),
+                                       crate)
+        });
+    }
 
     time(time_passes, "lint checking", (), |_|
          lint::check_crate(ty_cx, method_map, &exported_items, crate));
@@ -562,13 +569,14 @@ pub fn pretty_print_input(sess: Session,
 
     let src = sess.codemap.get_filemap(source_name(input)).src;
     let rdr = @mut MemReader::new(src.as_bytes().to_owned());
+    let stdout = io::stdout();
     pprust::print_crate(sess.codemap,
                         token::get_ident_interner(),
                         sess.span_diagnostic,
                         &crate,
                         source_name(input),
                         rdr as @mut io::Reader,
-                        @mut io::stdout() as @mut io::Writer,
+                        @mut stdout as @mut io::Writer,
                         annotation,
                         is_expanded);
 }
@@ -815,7 +823,7 @@ pub fn build_session_options(binary: @str,
         lint_opts: lint_opts,
         save_temps: save_temps,
         output_type: output_type,
-        addl_lib_search_paths: @mut addl_lib_search_paths,
+        addl_lib_search_paths: @RefCell::new(addl_lib_search_paths),
         ar: ar,
         linker: linker,
         linker_args: linker_args,
@@ -854,7 +862,7 @@ pub fn build_session_(sopts: @session::options,
     let target_cfg = build_target_config(sopts, demitter);
     let p_s = parse::new_parse_sess_special_handler(span_diagnostic_handler,
                                                     cm);
-    let cstore = @mut CStore::new(token::get_ident_interner());
+    let cstore = @CStore::new(token::get_ident_interner());
     let filesearch = filesearch::mk_filesearch(
         &sopts.maybe_sysroot,
         sopts.target_triple,
@@ -866,15 +874,15 @@ pub fn build_session_(sopts: @session::options,
         parse_sess: p_s,
         codemap: cm,
         // For a library crate, this is always none
-        entry_fn: @mut None,
-        entry_type: @mut None,
+        entry_fn: RefCell::new(None),
+        entry_type: Cell::new(None),
         span_diagnostic: span_diagnostic_handler,
         filesearch: filesearch,
-        building_library: @mut false,
+        building_library: Cell::new(false),
         working_dir: os::getcwd(),
-        lints: @mut HashMap::new(),
-        node_id: @mut 1,
-        outputs: @mut ~[],
+        lints: RefCell::new(HashMap::new()),
+        node_id: Cell::new(1),
+        outputs: @RefCell::new(~[]),
     }
 }
 
@@ -1031,7 +1039,7 @@ pub fn build_output_filenames(input: &input,
               }
           }
 
-          if *sess.building_library {
+          if sess.building_library.get() {
               out_path = dirpath.join(os::dll_filename(stem));
               obj_path = {
                   let mut p = dirpath.join(stem);
@@ -1052,7 +1060,7 @@ pub fn build_output_filenames(input: &input,
             out_file.with_extension(obj_suffix)
         };
 
-        if *sess.building_library {
+        if sess.building_library.get() {
             sess.warn("ignoring specified output filename for library.");
         }
 
@@ -1073,7 +1081,7 @@ pub fn early_error(emitter: @diagnostic::Emitter, msg: &str) -> ! {
     fail!();
 }
 
-pub fn list_metadata(sess: Session, path: &Path, out: @mut io::Writer) {
+pub fn list_metadata(sess: Session, path: &Path, out: &mut io::Writer) {
     metadata::loader::list_file_metadata(
         token::get_ident_interner(),
         session::sess_os_to_meta_os(sess.targ_cfg.os), path, out);

@@ -15,6 +15,7 @@ use metadata::cstore;
 use metadata::decoder;
 use metadata::loader;
 
+use std::cell::RefCell;
 use std::hashmap::HashMap;
 use syntax::ast;
 use syntax::abi;
@@ -33,22 +34,30 @@ pub fn read_crates(sess: Session,
                    crate: &ast::Crate,
                    os: loader::Os,
                    intr: @ident_interner) {
-    let e = @mut Env {
+    let mut e = Env {
         sess: sess,
         os: os,
-        crate_cache: @mut ~[],
+        crate_cache: @RefCell::new(~[]),
         next_crate_num: 1,
         intr: intr
     };
-    let mut v = ReadCrateVisitor{ e:e };
-    visit_crate(e, crate);
-    visit::walk_crate(&mut v, crate, ());
-    dump_crates(*e.crate_cache);
-    warn_if_multiple_versions(e, sess.diagnostic(), *e.crate_cache);
+    visit_crate(&e, crate);
+    {
+        let mut v = ReadCrateVisitor {
+            e: &mut e
+        };
+        visit::walk_crate(&mut v, crate, ());
+    }
+    let crate_cache = e.crate_cache.borrow();
+    dump_crates(*crate_cache.get());
+    warn_if_multiple_versions(&mut e, sess.diagnostic(), *crate_cache.get());
 }
 
-struct ReadCrateVisitor { e:@mut Env }
-impl visit::Visitor<()> for ReadCrateVisitor {
+struct ReadCrateVisitor<'a> {
+    e: &'a mut Env,
+}
+
+impl<'a> visit::Visitor<()> for ReadCrateVisitor<'a> {
     fn visit_view_item(&mut self, a:&ast::view_item, _:()) {
         visit_view_item(self.e, a);
         visit::walk_view_item(self, a, ());
@@ -76,7 +85,7 @@ fn dump_crates(crate_cache: &[cache_entry]) {
     }
 }
 
-fn warn_if_multiple_versions(e: @mut Env,
+fn warn_if_multiple_versions(e: &mut Env,
                              diag: @mut span_handler,
                              crate_cache: &[cache_entry]) {
     if crate_cache.len() != 0u {
@@ -103,7 +112,7 @@ fn warn_if_multiple_versions(e: @mut Env,
 struct Env {
     sess: Session,
     os: loader::Os,
-    crate_cache: @mut ~[cache_entry],
+    crate_cache: @RefCell<~[cache_entry]>,
     next_crate_num: ast::CrateNum,
     intr: @ident_interner
 }
@@ -121,7 +130,7 @@ fn visit_crate(e: &Env, c: &ast::Crate) {
     }
 }
 
-fn visit_view_item(e: @mut Env, i: &ast::view_item) {
+fn visit_view_item(e: &mut Env, i: &ast::view_item) {
     match i.node {
       ast::view_item_extern_mod(ident, path_opt, _, id) => {
           let ident = token::ident_to_str(&ident);
@@ -234,7 +243,8 @@ fn visit_item(e: &Env, i: @ast::item) {
 }
 
 fn existing_match(e: &Env, name: @str, version: @str, hash: &str) -> Option<ast::CrateNum> {
-    for c in e.crate_cache.iter() {
+    let crate_cache = e.crate_cache.borrow();
+    for c in crate_cache.get().iter() {
         let pkgid_version = match c.pkgid.version {
             None => @"0.0",
             Some(ref ver) => ver.to_managed(),
@@ -248,7 +258,7 @@ fn existing_match(e: &Env, name: @str, version: @str, hash: &str) -> Option<ast:
     None
 }
 
-fn resolve_crate(e: @mut Env,
+fn resolve_crate(e: &mut Env,
                  ident: @str,
                  name: @str,
                  version: @str,
@@ -277,12 +287,15 @@ fn resolve_crate(e: @mut Env,
 
         // Claim this crate number and cache it
         let cnum = e.next_crate_num;
-        e.crate_cache.push(cache_entry {
-            cnum: cnum,
-            span: span,
-            hash: hash,
-            pkgid: pkgid,
-        });
+        {
+            let mut crate_cache = e.crate_cache.borrow_mut();
+            crate_cache.get().push(cache_entry {
+                cnum: cnum,
+                span: span,
+                hash: hash,
+                pkgid: pkgid,
+            });
+        }
         e.next_crate_num += 1;
 
         // Now resolve the crates referenced by this crate
@@ -311,7 +324,7 @@ fn resolve_crate(e: @mut Env,
 }
 
 // Go through the crate metadata and load any crates that it references
-fn resolve_crate_deps(e: @mut Env, cdata: &[u8]) -> cstore::cnum_map {
+fn resolve_crate_deps(e: &mut Env, cdata: &[u8]) -> cstore::cnum_map {
     debug!("resolving deps of external crate");
     // The map from crate numbers in the crate we're resolving to local crate
     // numbers
@@ -340,5 +353,5 @@ fn resolve_crate_deps(e: @mut Env, cdata: &[u8]) -> cstore::cnum_map {
           }
         }
     }
-    return @mut cnum_map;
+    return @RefCell::new(cnum_map);
 }

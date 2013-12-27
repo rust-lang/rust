@@ -275,8 +275,9 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
     if ls {
         match input {
           d::file_input(ref ifile) => {
+            let mut stdout = io::stdout();
             d::list_metadata(sess, &(*ifile),
-                                  @mut io::stdout() as @mut io::Writer);
+                                  &mut stdout as &mut io::Writer);
           }
           d::str_input(_) => {
             d::early_error(demitter, "can not list metadata for stdin");

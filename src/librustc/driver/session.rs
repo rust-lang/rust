@@ -28,6 +28,7 @@ use syntax::abi;
 use syntax::parse::token;
 use syntax;
 
+use std::cell::{Cell, RefCell};
 use std::hashmap::{HashMap,HashSet};
 
 pub struct config {
@@ -147,9 +148,9 @@ pub struct options {
     lint_opts: ~[(lint::lint, lint::level)],
     save_temps: bool,
     output_type: back::link::output_type,
-    addl_lib_search_paths: @mut HashSet<Path>, // This is mutable for rustpkg, which
-                                               // updates search paths based on the
-                                               // parsed code
+    // This is mutable for rustpkg, which updates search paths based on the
+    // parsed code.
+    addl_lib_search_paths: @RefCell<HashSet<Path>>,
     ar: Option<~str>,
     linker: Option<~str>,
     linker_args: ~[~str],
@@ -201,19 +202,20 @@ pub enum OutputStyle {
 pub struct Session_ {
     targ_cfg: @config,
     opts: @options,
-    cstore: @mut metadata::cstore::CStore,
+    cstore: @metadata::cstore::CStore,
     parse_sess: @mut ParseSess,
     codemap: @codemap::CodeMap,
     // For a library crate, this is always none
-    entry_fn: @mut Option<(NodeId, codemap::Span)>,
-    entry_type: @mut Option<EntryFnType>,
+    entry_fn: RefCell<Option<(NodeId, codemap::Span)>>,
+    entry_type: Cell<Option<EntryFnType>>,
     span_diagnostic: @mut diagnostic::span_handler,
     filesearch: @filesearch::FileSearch,
-    building_library: @mut bool,
+    building_library: Cell<bool>,
     working_dir: Path,
-    lints: @mut HashMap<ast::NodeId, ~[(lint::lint, codemap::Span, ~str)]>,
-    node_id: @mut ast::NodeId,
-    outputs: @mut ~[OutputStyle],
+    lints: RefCell<HashMap<ast::NodeId,
+                           ~[(lint::lint, codemap::Span, ~str)]>>,
+    node_id: Cell<ast::NodeId>,
+    outputs: @RefCell<~[OutputStyle]>,
 }
 
 pub type Session = @Session_;
@@ -269,20 +271,21 @@ impl Session_ {
                     id: ast::NodeId,
                     sp: Span,
                     msg: ~str) {
-        match self.lints.find_mut(&id) {
+        let mut lints = self.lints.borrow_mut();
+        match lints.get().find_mut(&id) {
             Some(arr) => { arr.push((lint, sp, msg)); return; }
             None => {}
         }
-        self.lints.insert(id, ~[(lint, sp, msg)]);
+        lints.get().insert(id, ~[(lint, sp, msg)]);
     }
     pub fn next_node_id(&self) -> ast::NodeId {
         self.reserve_node_ids(1)
     }
     pub fn reserve_node_ids(&self, count: ast::NodeId) -> ast::NodeId {
-        let v = *self.node_id;
+        let v = self.node_id.get();
 
         match v.checked_add(&count) {
-            Some(next) => { *self.node_id = next; }
+            Some(next) => { self.node_id.set(next); }
             None => self.bug("Input too large, ran out of node ids!")
         }
 
@@ -382,7 +385,7 @@ pub fn basic_options() -> @options {
         lint_opts: ~[],
         save_temps: false,
         output_type: link::output_type_exe,
-        addl_lib_search_paths: @mut HashSet::new(),
+        addl_lib_search_paths: @RefCell::new(HashSet::new()),
         ar: None,
         linker: None,
         linker_args: ~[],

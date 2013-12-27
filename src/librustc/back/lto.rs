@@ -20,7 +20,8 @@ use std::libc;
 pub fn run(sess: session::Session, llmod: ModuleRef,
            tm: TargetMachineRef, reachable: &[~str]) {
     // Make sure we actually can run LTO
-    for output in sess.outputs.iter() {
+    let outputs = sess.outputs.borrow();
+    for output in outputs.get().iter() {
         match *output {
             session::OutputExecutable | session::OutputStaticlib => {}
             _ => {

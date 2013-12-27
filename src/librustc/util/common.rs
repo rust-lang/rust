@@ -14,7 +14,6 @@ use syntax::codemap::{Span};
 use syntax::visit;
 use syntax::visit::Visitor;
 
-use std::hashmap::HashSet;
 use std::local_data;
 use extra;
 
@@ -132,5 +131,3 @@ pub fn pluralize(n: uint, s: ~str) -> ~str {
     else { format!("{}s", s) }
 }
 
-// A set of node IDs (used to keep track of which node IDs are for statements)
-pub type stmt_set = @mut HashSet<ast::NodeId>;

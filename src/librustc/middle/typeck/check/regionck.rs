@@ -47,14 +47,14 @@ use syntax::visit;
 use syntax::visit::Visitor;
 
 pub struct Rcx {
-    fcx: @mut FnCtxt,
+    fcx: @FnCtxt,
     errors_reported: uint,
 
     // id of innermost fn or loop
     repeating_scope: ast::NodeId,
 }
 
-fn encl_region_of_def(fcx: @mut FnCtxt, def: ast::Def) -> ty::Region {
+fn encl_region_of_def(fcx: @FnCtxt, def: ast::Def) -> ty::Region {
     let tcx = fcx.tcx();
     match def {
         DefLocal(node_id, _) | DefArg(node_id, _) |
@@ -134,14 +134,16 @@ impl Rcx {
             ty_unadjusted
         } else {
             let tcx = self.fcx.tcx();
-            let adjustments = self.fcx.inh.adjustments;
-            ty::adjust_ty(tcx, expr.span, ty_unadjusted,
-                          adjustments.find_copy(&expr.id))
+            let adjustment = {
+                let adjustments = self.fcx.inh.adjustments.borrow();
+                adjustments.get().find_copy(&expr.id)
+            };
+            ty::adjust_ty(tcx, expr.span, ty_unadjusted, adjustment)
         }
     }
 }
 
-pub fn regionck_expr(fcx: @mut FnCtxt, e: @ast::Expr) {
+pub fn regionck_expr(fcx: @FnCtxt, e: @ast::Expr) {
     let mut rcx = Rcx { fcx: fcx, errors_reported: 0,
                          repeating_scope: e.id };
     let rcx = &mut rcx;
@@ -152,7 +154,7 @@ pub fn regionck_expr(fcx: @mut FnCtxt, e: @ast::Expr) {
     fcx.infcx().resolve_regions();
 }
 
-pub fn regionck_fn(fcx: @mut FnCtxt, blk: ast::P<ast::Block>) {
+pub fn regionck_fn(fcx: @FnCtxt, blk: ast::P<ast::Block>) {
     let mut rcx = Rcx { fcx: fcx, errors_reported: 0,
                          repeating_scope: blk.id };
     let rcx = &mut rcx;
@@ -247,7 +249,10 @@ fn visit_expr(rcx: &mut Rcx, expr: @ast::Expr) {
     debug!("regionck::visit_expr(e={}, repeating_scope={:?})",
            expr.repr(rcx.fcx.tcx()), rcx.repeating_scope);
 
-    let has_method_map = rcx.fcx.inh.method_map.contains_key(&expr.id);
+    let has_method_map = {
+        let method_map = rcx.fcx.inh.method_map;
+        method_map.get().contains_key(&expr.id)
+    };
 
     // Record cleanup scopes, which are used by borrowck to decide the
     // maximum lifetime of a temporary rvalue.  These were derived by
@@ -300,7 +305,8 @@ fn visit_expr(rcx: &mut Rcx, expr: @ast::Expr) {
 
     // Check any autoderefs or autorefs that appear.
     {
-        let r = rcx.fcx.inh.adjustments.find(&expr.id);
+        let adjustments = rcx.fcx.inh.adjustments.borrow();
+        let r = adjustments.get().find(&expr.id);
         for &adjustment in r.iter() {
             debug!("adjustment={:?}", adjustment);
             match *adjustment {
@@ -699,7 +705,10 @@ fn constrain_regions_in_type_of_node(
     // is going to fail anyway, so just stop here and let typeck
     // report errors later on in the writeback phase.
     let ty0 = rcx.resolve_node_type(id);
-    let adjustment = rcx.fcx.inh.adjustments.find_copy(&id);
+    let adjustment = {
+        let adjustments = rcx.fcx.inh.adjustments.borrow();
+        adjustments.get().find_copy(&id)
+    };
     let ty = ty::adjust_ty(tcx, origin.span(), ty0, adjustment);
     debug!("constrain_regions_in_type_of_node(\
             ty={}, ty0={}, id={}, minimum_lifetime={:?}, adjustment={:?})",
@@ -1055,7 +1064,8 @@ pub mod guarantor {
         let mut expr_ct = categorize_unadjusted(rcx, expr);
         debug!("before adjustments, cat={:?}", expr_ct.cat);
 
-        match rcx.fcx.inh.adjustments.find(&expr.id) {
+        let adjustments = rcx.fcx.inh.adjustments.borrow();
+        match adjustments.get().find(&expr.id) {
             Some(&@ty::AutoAddEnv(..)) => {
                 // This is basically an rvalue, not a pointer, no regions
                 // involved.
@@ -1106,7 +1116,8 @@ pub mod guarantor {
         debug!("categorize_unadjusted()");
 
         let guarantor = {
-            if rcx.fcx.inh.method_map.contains_key(&expr.id) {
+            let method_map = rcx.fcx.inh.method_map.borrow();
+            if method_map.get().contains_key(&expr.id) {
                 None
             } else {
                 guarantor(rcx, expr)

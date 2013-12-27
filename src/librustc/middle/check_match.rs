@@ -121,8 +121,12 @@ fn check_arms(cx: &MatchCheckCtxt, arms: &[Arm]) {
 
             // Check that we do not match against a static NaN (#6804)
             let pat_matches_nan: |&Pat| -> bool = |p| {
-                match cx.tcx.def_map.find(&p.id) {
-                    Some(&DefStatic(did, false)) => {
+                let opt_def = {
+                    let def_map = cx.tcx.def_map.borrow();
+                    def_map.get().find_copy(&p.id)
+                };
+                match opt_def {
+                    Some(DefStatic(did, false)) => {
                         let const_expr = lookup_const_by_id(cx.tcx, did).unwrap();
                         match eval_const_expr(cx.tcx, const_expr) {
                             const_float(f) if f.is_nan() => true,
@@ -334,9 +338,13 @@ fn pat_ctor_id(cx: &MatchCheckCtxt, p: @Pat) -> Option<ctor> {
     match pat.node {
       PatWild | PatWildMulti => { None }
       PatIdent(_, _, _) | PatEnum(_, _) => {
-        match cx.tcx.def_map.find(&pat.id) {
-          Some(&DefVariant(_, id, _)) => Some(variant(id)),
-          Some(&DefStatic(did, false)) => {
+        let opt_def = {
+            let def_map = cx.tcx.def_map.borrow();
+            def_map.get().find_copy(&pat.id)
+        };
+        match opt_def {
+          Some(DefVariant(_, id, _)) => Some(variant(id)),
+          Some(DefStatic(did, false)) => {
             let const_expr = lookup_const_by_id(cx.tcx, did).unwrap();
             Some(val(eval_const_expr(cx.tcx, const_expr)))
           }
@@ -348,7 +356,8 @@ fn pat_ctor_id(cx: &MatchCheckCtxt, p: @Pat) -> Option<ctor> {
         Some(range(eval_const_expr(cx.tcx, lo), eval_const_expr(cx.tcx, hi)))
       }
       PatStruct(..) => {
-        match cx.tcx.def_map.find(&pat.id) {
+        let def_map = cx.tcx.def_map.borrow();
+        match def_map.get().find(&pat.id) {
           Some(&DefVariant(_, id, _)) => Some(variant(id)),
           _ => Some(single)
         }
@@ -370,7 +379,8 @@ fn is_wild(cx: &MatchCheckCtxt, p: @Pat) -> bool {
     match pat.node {
       PatWild | PatWildMulti => { true }
       PatIdent(_, _, _) => {
-        match cx.tcx.def_map.find(&pat.id) {
+        let def_map = cx.tcx.def_map.borrow();
+        match def_map.get().find(&pat.id) {
           Some(&DefVariant(_, _, _)) | Some(&DefStatic(..)) => { false }
           _ => { true }
         }
@@ -551,15 +561,19 @@ fn specialize(cx: &MatchCheckCtxt,
                 Some(vec::append(vec::from_elem(arity, wild_multi()), r.tail()))
             }
             PatIdent(_, _, _) => {
-                match cx.tcx.def_map.find(&pat_id) {
-                    Some(&DefVariant(_, id, _)) => {
+                let opt_def = {
+                    let def_map = cx.tcx.def_map.borrow();
+                    def_map.get().find_copy(&pat_id)
+                };
+                match opt_def {
+                    Some(DefVariant(_, id, _)) => {
                         if variant(id) == *ctor_id {
                             Some(r.tail().to_owned())
                         } else {
                             None
                         }
                     }
-                    Some(&DefStatic(did, _)) => {
+                    Some(DefStatic(did, _)) => {
                         let const_expr =
                             lookup_const_by_id(cx.tcx, did).unwrap();
                         let e_v = eval_const_expr(cx.tcx, const_expr);
@@ -608,7 +622,11 @@ fn specialize(cx: &MatchCheckCtxt,
                 }
             }
             PatEnum(_, args) => {
-                match cx.tcx.def_map.get_copy(&pat_id) {
+                let opt_def = {
+                    let def_map = cx.tcx.def_map.borrow();
+                    def_map.get().get_copy(&pat_id)
+                };
+                match opt_def {
                     DefStatic(did, _) => {
                         let const_expr =
                             lookup_const_by_id(cx.tcx, did).unwrap();
@@ -668,7 +686,11 @@ fn specialize(cx: &MatchCheckCtxt,
             }
             PatStruct(_, ref pattern_fields, _) => {
                 // Is this a struct or an enum variant?
-                match cx.tcx.def_map.get_copy(&pat_id) {
+                let opt_def = {
+                    let def_map = cx.tcx.def_map.borrow();
+                    def_map.get().get_copy(&pat_id)
+                };
+                match opt_def {
                     DefVariant(_, variant_id, _) => {
                         if variant(variant_id) == *ctor_id {
                             let struct_fields = ty::lookup_struct_fields(cx.tcx, variant_id);
@@ -838,13 +860,17 @@ fn check_fn(v: &mut CheckMatchVisitor,
 }
 
 fn is_refutable(cx: &MatchCheckCtxt, pat: &Pat) -> bool {
-    match cx.tcx.def_map.find(&pat.id) {
-      Some(&DefVariant(enum_id, _, _)) => {
+    let opt_def = {
+        let def_map = cx.tcx.def_map.borrow();
+        def_map.get().find_copy(&pat.id)
+    };
+    match opt_def {
+      Some(DefVariant(enum_id, _, _)) => {
         if ty::enum_variants(cx.tcx, enum_id).len() != 1u {
             return true;
         }
       }
-      Some(&DefStatic(..)) => return true,
+      Some(DefStatic(..)) => return true,
       _ => ()
     }
 
@@ -889,7 +915,8 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
                     by_ref_span = Some(span);
                 }
                 BindByValue(_) => {
-                    if cx.moves_map.contains(&id) {
+                    let moves_map = cx.moves_map.borrow();
+                    if moves_map.get().contains(&id) {
                         any_by_move = true;
                     }
                 }
@@ -926,7 +953,8 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
             if pat_is_binding(def_map, p) {
                 match p.node {
                     PatIdent(_, _, sub) => {
-                        if cx.moves_map.contains(&p.id) {
+                        let moves_map = cx.moves_map.borrow();
+                        if moves_map.get().contains(&p.id) {
                             check_move(p, sub);
                         }
                     }

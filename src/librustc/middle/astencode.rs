@@ -788,7 +788,7 @@ trait ebml_writer_helpers {
                  tpbt: ty::ty_param_bounds_and_ty);
 }
 
-impl ebml_writer_helpers for writer::Encoder {
+impl<'a> ebml_writer_helpers for writer::Encoder<'a> {
     fn emit_ty(&mut self, ecx: &e::EncodeContext, ty: ty::t) {
         self.emit_opaque(|this| e::write_type(ecx, this, ty))
     }
@@ -840,8 +840,10 @@ trait write_tag_and_id {
     fn id(&mut self, id: ast::NodeId);
 }
 
-impl write_tag_and_id for writer::Encoder {
-    fn tag(&mut self, tag_id: c::astencode_tag, f: |&mut writer::Encoder|) {
+impl<'a> write_tag_and_id for writer::Encoder<'a> {
+    fn tag(&mut self,
+           tag_id: c::astencode_tag,
+           f: |&mut writer::Encoder<'a>|) {
         self.start_tag(tag_id as uint);
         f(self);
         self.end_tag();
@@ -852,18 +854,23 @@ impl write_tag_and_id for writer::Encoder {
     }
 }
 
-struct SideTableEncodingIdVisitor {
+struct SideTableEncodingIdVisitor<'a,'b> {
     ecx_ptr: *libc::c_void,
-    new_ebml_w: writer::Encoder,
+    new_ebml_w: &'a mut writer::Encoder<'b>,
     maps: Maps,
 }
 
-impl ast_util::IdVisitingOperation for SideTableEncodingIdVisitor {
+impl<'a,'b> ast_util::IdVisitingOperation for
+        SideTableEncodingIdVisitor<'a,'b> {
     fn visit_id(&self, id: ast::NodeId) {
         // Note: this will cause a copy of ebml_w, which is bad as
         // it is mutable. But I believe it's harmless since we generate
         // balanced EBML.
-        let mut new_ebml_w = self.new_ebml_w.clone();
+        //
+        // XXX(pcwalton): Don't copy this way.
+        let mut new_ebml_w = unsafe {
+            self.new_ebml_w.unsafe_clone()
+        };
         // See above
         let ecx: &e::EncodeContext = unsafe {
             cast::transmute(self.ecx_ptr)
@@ -877,7 +884,9 @@ fn encode_side_tables_for_ii(ecx: &e::EncodeContext,
                              ebml_w: &mut writer::Encoder,
                              ii: &ast::inlined_item) {
     ebml_w.start_tag(c::tag_table as uint);
-    let new_ebml_w = (*ebml_w).clone();
+    let mut new_ebml_w = unsafe {
+        ebml_w.unsafe_clone()
+    };
 
     // Because the ast visitor uses @IdVisitingOperation, I can't pass in
     // ecx directly, but /I/ know that it'll be fine since the lifetime is
@@ -886,7 +895,7 @@ fn encode_side_tables_for_ii(ecx: &e::EncodeContext,
         ecx_ptr: unsafe {
             cast::transmute(ecx)
         },
-        new_ebml_w: new_ebml_w,
+        new_ebml_w: &mut new_ebml_w,
         maps: maps,
     });
     ebml_w.end_tag();
@@ -901,7 +910,8 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
     debug!("Encoding side tables for id {}", id);
 
     {
-        let r = tcx.def_map.find(&id);
+        let def_map = tcx.def_map.borrow();
+        let r = def_map.get().find(&id);
         for def in r.iter() {
             ebml_w.tag(c::tag_table_def, |ebml_w| {
                 ebml_w.id(id);
@@ -911,7 +921,8 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
     }
 
     {
-        let r = tcx.node_types.find(&(id as uint));
+        let node_types = tcx.node_types.borrow();
+        let r = node_types.get().find(&(id as uint));
         for &ty in r.iter() {
             ebml_w.tag(c::tag_table_node_type, |ebml_w| {
                 ebml_w.id(id);
@@ -923,7 +934,8 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
     }
 
     {
-        let r = tcx.node_type_substs.find(&id);
+        let node_type_substs = tcx.node_type_substs.borrow();
+        let r = node_type_substs.get().find(&id);
         for tys in r.iter() {
             ebml_w.tag(c::tag_table_node_type_subst, |ebml_w| {
                 ebml_w.id(id);
@@ -935,7 +947,8 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
     }
 
     {
-        let r = tcx.freevars.find(&id);
+        let freevars = tcx.freevars.borrow();
+        let r = freevars.get().find(&id);
         for &fv in r.iter() {
             ebml_w.tag(c::tag_table_freevars, |ebml_w| {
                 ebml_w.id(id);
@@ -950,7 +963,8 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
 
     let lid = ast::DefId { crate: ast::LOCAL_CRATE, node: id };
     {
-        let r = tcx.tcache.find(&lid);
+        let tcache = tcx.tcache.borrow();
+        let r = tcache.get().find(&lid);
         for &tpbt in r.iter() {
             ebml_w.tag(c::tag_table_tcache, |ebml_w| {
                 ebml_w.id(id);
@@ -962,8 +976,11 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
     }
 
     {
-        let r = tcx.ty_param_defs.find(&id);
-        for &type_param_def in r.iter() {
+        let r = {
+            let ty_param_defs = tcx.ty_param_defs.borrow();
+            ty_param_defs.get().find(&id).map(|def| *def)
+        };
+        for type_param_def in r.iter() {
             ebml_w.tag(c::tag_table_param_defs, |ebml_w| {
                 ebml_w.id(id);
                 ebml_w.tag(c::tag_table_val, |ebml_w| {
@@ -974,7 +991,8 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
     }
 
     {
-        let r = maps.method_map.find(&id);
+        let method_map = maps.method_map.borrow();
+        let r = method_map.get().find(&id);
         for &mme in r.iter() {
             ebml_w.tag(c::tag_table_method_map, |ebml_w| {
                 ebml_w.id(id);
@@ -986,7 +1004,8 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
     }
 
     {
-        let r = maps.vtable_map.find(&id);
+        let vtable_map = maps.vtable_map.borrow();
+        let r = vtable_map.get().find(&id);
         for &dr in r.iter() {
             ebml_w.tag(c::tag_table_vtable_map, |ebml_w| {
                 ebml_w.id(id);
@@ -998,7 +1017,8 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
     }
 
     {
-        let r = tcx.adjustments.find(&id);
+        let adjustments = tcx.adjustments.borrow();
+        let r = adjustments.get().find(&id);
         for adj in r.iter() {
             ebml_w.tag(c::tag_table_adjustments, |ebml_w| {
                 ebml_w.id(id);
@@ -1010,7 +1030,8 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
     }
 
     {
-        let r = maps.capture_map.find(&id);
+        let capture_map = maps.capture_map.borrow();
+        let r = capture_map.get().find(&id);
         for &cap_vars in r.iter() {
             ebml_w.tag(c::tag_table_capture_map, |ebml_w| {
                 ebml_w.id(id);
@@ -1218,54 +1239,72 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
                 match value {
                     c::tag_table_def => {
                         let def = decode_def(xcx, val_doc);
-                        dcx.tcx.def_map.insert(id, def);
+                        let mut def_map = dcx.tcx.def_map.borrow_mut();
+                        def_map.get().insert(id, def);
                     }
                     c::tag_table_node_type => {
                         let ty = val_dsr.read_ty(xcx);
                         debug!("inserting ty for node {:?}: {}",
                                id, ty_to_str(dcx.tcx, ty));
-                        dcx.tcx.node_types.insert(id as uint, ty);
+                        let mut node_types = dcx.tcx.node_types.borrow_mut();
+                        node_types.get().insert(id as uint, ty);
                     }
                     c::tag_table_node_type_subst => {
                         let tys = val_dsr.read_tys(xcx);
-                        dcx.tcx.node_type_substs.insert(id, tys);
+                        let mut node_type_substs = dcx.tcx
+                                                      .node_type_substs
+                                                      .borrow_mut();
+                        node_type_substs.get().insert(id, tys);
                     }
                     c::tag_table_freevars => {
                         let fv_info = @val_dsr.read_to_vec(|val_dsr| {
                             @val_dsr.read_freevar_entry(xcx)
                         });
-                        dcx.tcx.freevars.insert(id, fv_info);
+                        let mut freevars = dcx.tcx.freevars.borrow_mut();
+                        freevars.get().insert(id, fv_info);
                     }
                     c::tag_table_tcache => {
                         let tpbt = val_dsr.read_ty_param_bounds_and_ty(xcx);
                         let lid = ast::DefId { crate: ast::LOCAL_CRATE, node: id };
-                        dcx.tcx.tcache.insert(lid, tpbt);
+                        let mut tcache = dcx.tcx.tcache.borrow_mut();
+                        tcache.get().insert(lid, tpbt);
                     }
                     c::tag_table_param_defs => {
                         let bounds = val_dsr.read_type_param_def(xcx);
-                        dcx.tcx.ty_param_defs.insert(id, bounds);
+                        let mut ty_param_defs = dcx.tcx
+                                                   .ty_param_defs
+                                                   .borrow_mut();
+                        ty_param_defs.get().insert(id, bounds);
                     }
                     c::tag_table_method_map => {
-                        dcx.maps.method_map.insert(
-                            id,
-                            val_dsr.read_method_map_entry(xcx));
+                        let entry = val_dsr.read_method_map_entry(xcx);
+                        let mut method_map = dcx.maps.method_map.borrow_mut();
+                        method_map.get().insert(id, entry);
                     }
                     c::tag_table_vtable_map => {
-                        dcx.maps.vtable_map.insert(
-                            id,
-                            val_dsr.read_vtable_res(xcx.dcx.tcx, xcx.dcx.cdata));
+                        let vtable_res =
+                            val_dsr.read_vtable_res(xcx.dcx.tcx,
+                                                    xcx.dcx.cdata);
+                        let mut vtable_map = dcx.maps.vtable_map.borrow_mut();
+                        vtable_map.get().insert(id, vtable_res);
                     }
                     c::tag_table_adjustments => {
                         let adj: @ty::AutoAdjustment = @Decodable::decode(val_dsr);
                         adj.tr(xcx);
-                        dcx.tcx.adjustments.insert(id, adj);
+                        let mut adjustments = dcx.tcx
+                                                 .adjustments
+                                                 .borrow_mut();
+                        adjustments.get().insert(id, adj);
                     }
                     c::tag_table_capture_map => {
                         let cvars =
                             at_vec::to_managed_move(
                                 val_dsr.read_to_vec(
                                     |val_dsr| val_dsr.read_capture_var(xcx)));
-                        dcx.maps.capture_map.insert(id, cvars);
+                        let mut capture_map = dcx.maps
+                                                 .capture_map
+                                                 .borrow_mut();
+                        capture_map.get().insert(id, cvars);
                     }
                     _ => {
                         xcx.dcx.tcx.sess.bug(
@@ -1335,9 +1374,11 @@ fn roundtrip(in_item: Option<@ast::item>) {
     use std::io::mem::MemWriter;
 
     let in_item = in_item.unwrap();
-    let wr = @mut MemWriter::new();
-    let mut ebml_w = writer::Encoder(wr);
-    encode_item_ast(&mut ebml_w, in_item);
+    let mut wr = MemWriter::new();
+    {
+        let mut ebml_w = writer::Encoder(&mut wr);
+        encode_item_ast(&mut ebml_w, in_item);
+    }
     let ebml_doc = reader::Doc(wr.inner_ref().as_slice());
     let out_item = decode_item_ast(ebml_doc);
 

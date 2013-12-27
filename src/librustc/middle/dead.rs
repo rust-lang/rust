@@ -63,7 +63,8 @@ impl MarkSymbolVisitor {
     }
 
     fn lookup_and_handle_definition(&mut self, id: &ast::NodeId) {
-        let def = match self.tcx.def_map.find(id) {
+        let def_map = self.tcx.def_map.borrow();
+        let def = match def_map.get().find(id) {
             Some(&def) => def,
             None => return
         };
@@ -134,7 +135,8 @@ impl Visitor<()> for MarkSymbolVisitor {
     fn visit_expr(&mut self, expr: @ast::Expr, _: ()) {
         match expr.node {
             ast::ExprMethodCall(..) => {
-                match self.method_map.find(&expr.id) {
+                let method_map = self.method_map.borrow();
+                match method_map.get().find(&expr.id) {
                     Some(&typeck::method_map_entry {
                         origin: typeck::method_static(def_id),
                         ..
@@ -211,7 +213,7 @@ fn create_and_seed_worklist(tcx: ty::ctxt,
     }
 
     // Seed entry point
-    match *tcx.sess.entry_fn {
+    match tcx.sess.entry_fn.get() {
         Some((id, _)) => worklist.push(id),
         None => ()
     }
@@ -282,10 +284,12 @@ impl DeadVisitor {
         // method of a private type is used, but the type itself is never
         // called directly.
         let def_id = local_def(id);
-        match self.tcx.inherent_impls.find(&def_id) {
+        let inherent_impls = self.tcx.inherent_impls.borrow();
+        match inherent_impls.get().find(&def_id) {
             None => (),
             Some(ref impl_list) => {
-                for impl_ in impl_list.iter() {
+                let impl_list = impl_list.borrow();
+                for impl_ in impl_list.get().iter() {
                     for method in impl_.methods.iter() {
                         if self.live_symbols.contains(&method.def_id.node) {
                             return true;

@@ -15,6 +15,7 @@ use middle::ty;
 use middle::typeck;
 use util::ppaux;
 
+use std::cell::RefCell;
 use syntax::ast::*;
 use syntax::codemap;
 use syntax::{ast_util, ast_map};
@@ -122,7 +123,8 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
           }
           ExprLit(@codemap::Spanned {node: lit_str(..), ..}) => { }
           ExprBinary(..) | ExprUnary(..) => {
-            if method_map.contains_key(&e.id) {
+            let method_map = method_map.borrow();
+            if method_map.get().contains_key(&e.id) {
                 sess.span_err(e.span, "user-defined operators are not \
                                        allowed in constant expressions");
             }
@@ -146,7 +148,8 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
                     e.span, "paths in constants may only refer to \
                              items without type parameters");
             }
-            match def_map.find(&e.id) {
+            let def_map = def_map.borrow();
+            match def_map.get().find(&e.id) {
               Some(&DefStatic(..)) |
               Some(&DefFn(_, _)) |
               Some(&DefVariant(_, _, _)) |
@@ -165,7 +168,8 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
             }
           }
           ExprCall(callee, _, NoSugar) => {
-            match def_map.find(&callee.id) {
+            let def_map = def_map.borrow();
+            match def_map.get().find(&callee.id) {
                 Some(&DefStruct(..)) => {}    // OK.
                 Some(&DefVariant(..)) => {}    // OK.
                 _ => {
@@ -214,7 +218,7 @@ struct env {
     sess: Session,
     ast_map: ast_map::map,
     def_map: resolve::DefMap,
-    idstack: @mut ~[NodeId]
+    idstack: @RefCell<~[NodeId]>,
 }
 
 struct CheckItemRecursionVisitor {
@@ -232,7 +236,7 @@ pub fn check_item_recursion(sess: Session,
         sess: sess,
         ast_map: ast_map,
         def_map: def_map,
-        idstack: @mut ~[]
+        idstack: @RefCell::new(~[]),
     };
 
     let mut visitor = CheckItemRecursionVisitor { env: env };
@@ -241,25 +245,36 @@ pub fn check_item_recursion(sess: Session,
 
 impl Visitor<()> for CheckItemRecursionVisitor {
     fn visit_item(&mut self, it: @item, _: ()) {
-        if self.env.idstack.iter().any(|x| x == &(it.id)) {
-            self.env.sess.span_fatal(self.env.root_it.span, "recursive constant");
+        {
+            let mut idstack = self.env.idstack.borrow_mut();
+            if idstack.get().iter().any(|x| x == &(it.id)) {
+                self.env.sess.span_fatal(self.env.root_it.span,
+                                         "recursive constant");
+            }
+            idstack.get().push(it.id);
         }
-        self.env.idstack.push(it.id);
         visit::walk_item(self, it, ());
-        self.env.idstack.pop();
+        {
+            let mut idstack = self.env.idstack.borrow_mut();
+            idstack.get().pop();
+        }
     }
 
     fn visit_expr(&mut self, e: @Expr, _: ()) {
         match e.node {
-            ExprPath(..) => match self.env.def_map.find(&e.id) {
-                Some(&DefStatic(def_id, _)) if ast_util::is_local(def_id) =>
-                    match self.env.ast_map.get_copy(&def_id.node) {
-                        ast_map::node_item(it, _) => {
-                            self.visit_item(it, ());
-                        }
-                        _ => fail!("const not bound to an item")
-                    },
-                _ => ()
+            ExprPath(..) => {
+                let def_map = self.env.def_map.borrow();
+                match def_map.get().find(&e.id) {
+                    Some(&DefStatic(def_id, _)) if
+                            ast_util::is_local(def_id) =>
+                        match self.env.ast_map.get_copy(&def_id.node) {
+                            ast_map::node_item(it, _) => {
+                                self.visit_item(it, ());
+                            }
+                            _ => fail!("const not bound to an item")
+                        },
+                    _ => ()
+                }
             },
             _ => ()
         }

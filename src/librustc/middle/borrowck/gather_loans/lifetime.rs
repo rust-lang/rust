@@ -279,7 +279,9 @@ impl<'a> GuaranteeLifetimeContext<'a> {
         // Add a record of what is required
         let rm_key = root_map_key {id: cmt_deref.id, derefs: derefs};
         let root_info = RootInfo {scope: root_scope, freeze: opt_dyna};
-        self.bccx.root_map.insert(rm_key, root_info);
+
+        let mut root_map = self.bccx.root_map.borrow_mut();
+        root_map.get().insert(rm_key, root_info);
 
         debug!("root_key: {:?} root_info: {:?}", rm_key, root_info);
         Ok(())
@@ -303,7 +305,10 @@ impl<'a> GuaranteeLifetimeContext<'a> {
             mc::cat_local(id) |
             mc::cat_self(id) |
             mc::cat_arg(id) => {
-                self.bccx.moved_variables_set.contains(&id)
+                let moved_variables_set = self.bccx
+                                              .moved_variables_set
+                                              .borrow();
+                moved_variables_set.get().contains(&id)
             }
             mc::cat_rvalue(..) |
             mc::cat_static_item |

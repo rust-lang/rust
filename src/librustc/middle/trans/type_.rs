@@ -187,7 +187,7 @@ impl Type {
         Type::array(&Type::i8().ptr_to(), 1)
     }
 
-    pub fn generic_glue_fn(cx: &mut CrateContext) -> Type {
+    pub fn generic_glue_fn(cx: &CrateContext) -> Type {
         match cx.tn.find_type("glue_fn") {
             Some(ty) => return ty,
             None => ()

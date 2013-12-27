@@ -29,7 +29,7 @@ use syntax::ast::{Onceness, purity};
 pub struct Sub(CombineFields);  // "subtype", "subregion" etc
 
 impl Combine for Sub {
-    fn infcx(&self) -> @mut InferCtxt { self.infcx }
+    fn infcx(&self) -> @InferCtxt { self.infcx }
     fn tag(&self) -> ~str { ~"sub" }
     fn a_is_expected(&self) -> bool { self.a_is_expected }
     fn trace(&self) -> TypeTrace { self.trace }

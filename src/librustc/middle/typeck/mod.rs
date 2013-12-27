@@ -68,6 +68,7 @@ use util::common::time;
 use util::ppaux::Repr;
 use util::ppaux;
 
+use std::cell::RefCell;
 use std::hashmap::HashMap;
 use std::result;
 use extra::list::List;
@@ -159,7 +160,7 @@ pub struct method_map_entry {
 
 // maps from an expression id that corresponds to a method call to the details
 // of the method to be invoked
-pub type method_map = @mut HashMap<ast::NodeId, method_map_entry>;
+pub type method_map = @RefCell<HashMap<ast::NodeId, method_map_entry>>;
 
 pub type vtable_param_res = @~[vtable_origin];
 // Resolutions for bounds of all parameters, left to right, for a given path.
@@ -203,7 +204,7 @@ impl Repr for vtable_origin {
     }
 }
 
-pub type vtable_map = @mut HashMap<ast::NodeId, vtable_res>;
+pub type vtable_map = @RefCell<HashMap<ast::NodeId, vtable_res>>;
 
 
 // Information about the vtable resolutions for for a trait impl.
@@ -225,7 +226,7 @@ impl Repr for impl_res {
     }
 }
 
-pub type impl_vtable_map = @mut HashMap<ast::DefId, impl_res>;
+pub type impl_vtable_map = RefCell<HashMap<ast::DefId, impl_res>>;
 
 pub struct CrateCtxt {
     // A mapping from method call sites to traits that have that method.
@@ -239,7 +240,8 @@ pub struct CrateCtxt {
 pub fn write_ty_to_tcx(tcx: ty::ctxt, node_id: ast::NodeId, ty: ty::t) {
     debug!("write_ty_to_tcx({}, {})", node_id, ppaux::ty_to_str(tcx, ty));
     assert!(!ty::type_needs_infer(ty));
-    tcx.node_types.insert(node_id as uint, ty);
+    let mut node_types = tcx.node_types.borrow_mut();
+    node_types.get().insert(node_id as uint, ty);
 }
 pub fn write_substs_to_tcx(tcx: ty::ctxt,
                            node_id: ast::NodeId,
@@ -248,7 +250,9 @@ pub fn write_substs_to_tcx(tcx: ty::ctxt,
         debug!("write_substs_to_tcx({}, {:?})", node_id,
                substs.map(|t| ppaux::ty_to_str(tcx, *t)));
         assert!(substs.iter().all(|t| !ty::type_needs_infer(*t)));
-        tcx.node_type_substs.insert(node_id, substs);
+
+        let mut node_type_substs = tcx.node_type_substs.borrow_mut();
+        node_type_substs.get().insert(node_id, substs);
     }
 }
 pub fn write_tpt_to_tcx(tcx: ty::ctxt,
@@ -261,7 +265,8 @@ pub fn write_tpt_to_tcx(tcx: ty::ctxt,
 }
 
 pub fn lookup_def_tcx(tcx: ty::ctxt, sp: Span, id: ast::NodeId) -> ast::Def {
-    match tcx.def_map.find(&id) {
+    let def_map = tcx.def_map.borrow();
+    match def_map.get().find(&id) {
       Some(&x) => x,
       _ => {
         tcx.sess.span_fatal(sp, "internal error looking up a definition")
@@ -283,7 +288,7 @@ pub fn no_params(t: ty::t) -> ty::ty_param_bounds_and_ty {
 }
 
 pub fn require_same_types(tcx: ty::ctxt,
-                          maybe_infcx: Option<@mut infer::InferCtxt>,
+                          maybe_infcx: Option<@infer::InferCtxt>,
                           t1_is_expected: bool,
                           span: Span,
                           t1: ty::t,
@@ -434,9 +439,9 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
 
 fn check_for_entry_fn(ccx: &CrateCtxt) {
     let tcx = ccx.tcx;
-    if !*tcx.sess.building_library {
-        match *tcx.sess.entry_fn {
-          Some((id, sp)) => match *tcx.sess.entry_type {
+    if !tcx.sess.building_library.get() {
+        match tcx.sess.entry_fn.get() {
+          Some((id, sp)) => match tcx.sess.entry_type.get() {
               Some(session::EntryMain) => check_main_fn_ty(ccx, id, sp),
               Some(session::EntryStart) => check_start_fn_ty(ccx, id, sp),
               Some(session::EntryNone) => {}
@@ -452,10 +457,10 @@ pub fn check_crate(tcx: ty::ctxt,
                    crate: &ast::Crate)
                 -> (method_map, vtable_map) {
     let time_passes = tcx.sess.time_passes();
-    let ccx = @mut CrateCtxt {
+    let ccx = @CrateCtxt {
         trait_map: trait_map,
-        method_map: @mut HashMap::new(),
-        vtable_map: @mut HashMap::new(),
+        method_map: @RefCell::new(HashMap::new()),
+        vtable_map: @RefCell::new(HashMap::new()),
         tcx: tcx
     };
 
