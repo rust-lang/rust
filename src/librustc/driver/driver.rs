@@ -517,20 +517,20 @@ impl pprust::pp_ann for IdentifiedAnnotation {
     fn post(&self, node: pprust::ann_node) {
         match node {
             pprust::node_item(s, item) => {
-                pp::space(s.s);
+                pp::space(&mut s.s);
                 pprust::synth_comment(s, item.id.to_str());
             }
-            pprust::node_block(s, ref blk) => {
-                pp::space(s.s);
+            pprust::node_block(s, blk) => {
+                pp::space(&mut s.s);
                 pprust::synth_comment(s, ~"block " + blk.id.to_str());
             }
             pprust::node_expr(s, expr) => {
-                pp::space(s.s);
+                pp::space(&mut s.s);
                 pprust::synth_comment(s, expr.id.to_str());
                 pprust::pclose(s);
             }
             pprust::node_pat(s, pat) => {
-                pp::space(s.s);
+                pp::space(&mut s.s);
                 pprust::synth_comment(s, ~"pat " + pat.id.to_str());
             }
         }
@@ -552,10 +552,10 @@ impl pprust::pp_ann for TypedAnnotation {
         let tcx = self.analysis.ty_cx;
         match node {
             pprust::node_expr(s, expr) => {
-                pp::space(s.s);
-                pp::word(s.s, "as");
-                pp::space(s.s);
-                pp::word(s.s, ppaux::ty_to_str(tcx, ty::expr_ty(tcx, expr)));
+                pp::space(&mut s.s);
+                pp::word(&mut s.s, "as");
+                pp::space(&mut s.s);
+                pp::word(&mut s.s, ppaux::ty_to_str(tcx, ty::expr_ty(tcx, expr)));
                 pprust::pclose(s);
             }
             _ => ()
