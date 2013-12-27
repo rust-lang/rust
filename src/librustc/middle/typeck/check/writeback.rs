@@ -32,7 +32,7 @@ use syntax::print::pprust::pat_to_str;
 use syntax::visit;
 use syntax::visit::Visitor;
 
-fn resolve_type_vars_in_type(fcx: @mut FnCtxt, sp: Span, typ: ty::t)
+fn resolve_type_vars_in_type(fcx: @FnCtxt, sp: Span, typ: ty::t)
                           -> Option<ty::t> {
     if !ty::type_needs_infer(typ) { return Some(typ); }
     match resolve_type(fcx.infcx(), typ, resolve_all | force_all) {
@@ -50,7 +50,7 @@ fn resolve_type_vars_in_type(fcx: @mut FnCtxt, sp: Span, typ: ty::t)
     }
 }
 
-fn resolve_type_vars_in_types(fcx: @mut FnCtxt, sp: Span, tys: &[ty::t])
+fn resolve_type_vars_in_types(fcx: @FnCtxt, sp: Span, tys: &[ty::t])
                           -> ~[ty::t] {
     tys.map(|t| {
         match resolve_type_vars_in_type(fcx, sp, *t) {
@@ -60,45 +60,56 @@ fn resolve_type_vars_in_types(fcx: @mut FnCtxt, sp: Span, tys: &[ty::t])
     })
 }
 
-fn resolve_method_map_entry(fcx: @mut FnCtxt, sp: Span, id: ast::NodeId) {
+fn resolve_method_map_entry(fcx: @FnCtxt, sp: Span, id: ast::NodeId) {
     // Resolve any method map entry
-    match fcx.inh.method_map.find(&id) {
+    let method_map_entry_opt = {
+        let method_map = fcx.inh.method_map.borrow();
+        method_map.get().find_copy(&id)
+    };
+    match method_map_entry_opt {
         None => {}
         Some(mme) => {
             {
                 let r = resolve_type_vars_in_type(fcx, sp, mme.self_ty);
                 for t in r.iter() {
                     let method_map = fcx.ccx.method_map;
-                    let new_entry = method_map_entry { self_ty: *t, ..*mme };
+                    let new_entry = method_map_entry { self_ty: *t, ..mme };
                     debug!("writeback::resolve_method_map_entry(id={:?}, \
                             new_entry={:?})",
                            id, new_entry);
-                    method_map.insert(id, new_entry);
+                    let mut method_map = method_map.borrow_mut();
+                    method_map.get().insert(id, new_entry);
                 }
             }
         }
     }
 }
 
-fn resolve_vtable_map_entry(fcx: @mut FnCtxt, sp: Span, id: ast::NodeId) {
+fn resolve_vtable_map_entry(fcx: @FnCtxt, sp: Span, id: ast::NodeId) {
     // Resolve any method map entry
-    match fcx.inh.vtable_map.find(&id) {
-        None => {}
-        Some(origins) => {
-            let r_origins = resolve_origins(fcx, sp, *origins);
-            let vtable_map = fcx.ccx.vtable_map;
-            vtable_map.insert(id, r_origins);
-            debug!("writeback::resolve_vtable_map_entry(id={}, vtables={:?})",
-                   id, r_origins.repr(fcx.tcx()));
+    {
+        let origins_opt = {
+            let vtable_map = fcx.inh.vtable_map.borrow();
+            vtable_map.get().find_copy(&id)
+        };
+        match origins_opt {
+            None => {}
+            Some(origins) => {
+                let r_origins = resolve_origins(fcx, sp, origins);
+                let mut vtable_map = fcx.ccx.vtable_map.borrow_mut();
+                vtable_map.get().insert(id, r_origins);
+                debug!("writeback::resolve_vtable_map_entry(id={}, vtables={:?})",
+                       id, r_origins.repr(fcx.tcx()));
+            }
         }
     }
 
-    fn resolve_origins(fcx: @mut FnCtxt, sp: Span,
+    fn resolve_origins(fcx: @FnCtxt, sp: Span,
                        vtbls: vtable_res) -> vtable_res {
         @vtbls.map(|os| @os.map(|o| resolve_origin(fcx, sp, o)))
     }
 
-    fn resolve_origin(fcx: @mut FnCtxt,
+    fn resolve_origin(fcx: @FnCtxt,
                       sp: Span,
                       origin: &vtable_origin) -> vtable_origin {
         match origin {
@@ -120,10 +131,14 @@ fn resolve_type_vars_for_node(wbcx: &mut WbCtxt, sp: Span, id: ast::NodeId)
     let tcx = fcx.ccx.tcx;
 
     // Resolve any borrowings for the node with id `id`
-    match fcx.inh.adjustments.find(&id) {
+    let adjustment = {
+        let adjustments = fcx.inh.adjustments.borrow();
+        adjustments.get().find_copy(&id)
+    };
+    match adjustment {
         None => (),
 
-        Some(&@ty::AutoAddEnv(r, s)) => {
+        Some(@ty::AutoAddEnv(r, s)) => {
             match resolve_region(fcx.infcx(), r, resolve_all | force_all) {
                 Err(e) => {
                     // This should not, I think, happen:
@@ -134,12 +149,13 @@ fn resolve_type_vars_for_node(wbcx: &mut WbCtxt, sp: Span, id: ast::NodeId)
                 Ok(r1) => {
                     let resolved_adj = @ty::AutoAddEnv(r1, s);
                     debug!("Adjustments for node {}: {:?}", id, resolved_adj);
-                    fcx.tcx().adjustments.insert(id, resolved_adj);
+                    let mut adjustments = fcx.tcx().adjustments.borrow_mut();
+                    adjustments.get().insert(id, resolved_adj);
                 }
             }
         }
 
-        Some(&@ty::AutoDerefRef(adj)) => {
+        Some(@ty::AutoDerefRef(adj)) => {
             let fixup_region = |r| {
                 match resolve_region(fcx.infcx(), r, resolve_all | force_all) {
                     Ok(r1) => r1,
@@ -163,7 +179,8 @@ fn resolve_type_vars_for_node(wbcx: &mut WbCtxt, sp: Span, id: ast::NodeId)
                 autoref: resolved_autoref,
             });
             debug!("Adjustments for node {}: {:?}", id, resolved_adj);
-            fcx.tcx().adjustments.insert(id, resolved_adj);
+            let mut adjustments = fcx.tcx().adjustments.borrow_mut();
+            adjustments.get().insert(id, resolved_adj);
         }
     }
 
@@ -200,7 +217,11 @@ fn maybe_resolve_type_vars_for_node(wbcx: &mut WbCtxt,
                                     sp: Span,
                                     id: ast::NodeId)
                                  -> Option<ty::t> {
-    if wbcx.fcx.inh.node_types.contains_key(&id) {
+    let contained = {
+        let node_types = wbcx.fcx.inh.node_types.borrow();
+        node_types.get().contains_key(&id)
+    };
+    if contained {
         resolve_type_vars_for_node(wbcx, sp, id)
     } else {
         None
@@ -208,7 +229,7 @@ fn maybe_resolve_type_vars_for_node(wbcx: &mut WbCtxt,
 }
 
 struct WbCtxt {
-    fcx: @mut FnCtxt,
+    fcx: @FnCtxt,
 
     // As soon as we hit an error we have to stop resolving
     // the entire function.
@@ -329,14 +350,14 @@ impl Visitor<()> for WbCtxt {
     fn visit_ty(&mut self, _t: &ast::Ty, _:()) {}
 }
 
-pub fn resolve_type_vars_in_expr(fcx: @mut FnCtxt, e: @ast::Expr) -> bool {
+pub fn resolve_type_vars_in_expr(fcx: @FnCtxt, e: @ast::Expr) -> bool {
     let mut wbcx = WbCtxt { fcx: fcx, success: true };
     let wbcx = &mut wbcx;
     wbcx.visit_expr(e, ());
     return wbcx.success;
 }
 
-pub fn resolve_type_vars_in_fn(fcx: @mut FnCtxt,
+pub fn resolve_type_vars_in_fn(fcx: @FnCtxt,
                                decl: &ast::fn_decl,
                                blk: ast::P<ast::Block>,
                                self_info: Option<SelfInfo>) -> bool {

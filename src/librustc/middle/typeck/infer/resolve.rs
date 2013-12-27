@@ -80,14 +80,14 @@ pub static resolve_and_force_all_but_regions: uint =
     (resolve_all | force_all) & not_regions;
 
 pub struct ResolveState {
-    infcx: @mut InferCtxt,
+    infcx: @InferCtxt,
     modes: uint,
     err: Option<fixup_err>,
     v_seen: ~[TyVid],
     type_depth: uint
 }
 
-pub fn resolver(infcx: @mut InferCtxt, modes: uint) -> ResolveState {
+pub fn resolver(infcx: @InferCtxt, modes: uint) -> ResolveState {
     ResolveState {
         infcx: infcx,
         modes: modes,

@@ -36,7 +36,7 @@ impl Lub {
 }
 
 impl Combine for Lub {
-    fn infcx(&self) -> @mut InferCtxt { self.infcx }
+    fn infcx(&self) -> @InferCtxt { self.infcx }
     fn tag(&self) -> ~str { ~"lub" }
     fn a_is_expected(&self) -> bool { self.a_is_expected }
     fn trace(&self) -> TypeTrace { self.trace }

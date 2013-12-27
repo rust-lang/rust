@@ -35,7 +35,7 @@ use std::libc::c_uint;
 use std::vec;
 use syntax::{ast, ast_util, ast_map};
 
-pub fn const_lit(cx: &mut CrateContext, e: &ast::Expr, lit: ast::lit)
+pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: ast::lit)
     -> ValueRef {
     let _icx = push_ctxt("trans_lit");
     match lit.node {
@@ -76,15 +76,16 @@ pub fn const_lit(cx: &mut CrateContext, e: &ast::Expr, lit: ast::lit)
     }
 }
 
-pub fn const_ptrcast(cx: &mut CrateContext, a: ValueRef, t: Type) -> ValueRef {
+pub fn const_ptrcast(cx: &CrateContext, a: ValueRef, t: Type) -> ValueRef {
     unsafe {
         let b = llvm::LLVMConstPointerCast(a, t.ptr_to().to_ref());
-        assert!(cx.const_globals.insert(b as int, a));
+        let mut const_globals = cx.const_globals.borrow_mut();
+        assert!(const_globals.get().insert(b as int, a));
         b
     }
 }
 
-fn const_vec(cx: @mut CrateContext, e: &ast::Expr, es: &[@ast::Expr]) -> (ValueRef, Type, bool) {
+fn const_vec(cx: @CrateContext, e: &ast::Expr, es: &[@ast::Expr]) -> (ValueRef, Type, bool) {
     let vec_ty = ty::expr_ty(cx.tcx, e);
     let unit_ty = ty::sequence_element_type(cx.tcx, vec_ty);
     let llunitty = type_of::type_of(cx, unit_ty);
@@ -98,7 +99,7 @@ fn const_vec(cx: @mut CrateContext, e: &ast::Expr, es: &[@ast::Expr]) -> (ValueR
     (v, llunitty, inlineable.iter().fold(true, |a, &b| a && b))
 }
 
-fn const_addr_of(cx: &mut CrateContext, cv: ValueRef) -> ValueRef {
+fn const_addr_of(cx: &CrateContext, cv: ValueRef) -> ValueRef {
     unsafe {
         let gv = "const".with_c_str(|name| {
             llvm::LLVMAddGlobal(cx.llmod, val_ty(cv).to_ref(), name)
@@ -110,8 +111,9 @@ fn const_addr_of(cx: &mut CrateContext, cv: ValueRef) -> ValueRef {
     }
 }
 
-fn const_deref_ptr(cx: &mut CrateContext, v: ValueRef) -> ValueRef {
-    let v = match cx.const_globals.find(&(v as int)) {
+fn const_deref_ptr(cx: &CrateContext, v: ValueRef) -> ValueRef {
+    let const_globals = cx.const_globals.borrow();
+    let v = match const_globals.get().find(&(v as int)) {
         Some(&v) => v,
         None => v
     };
@@ -121,13 +123,13 @@ fn const_deref_ptr(cx: &mut CrateContext, v: ValueRef) -> ValueRef {
     }
 }
 
-fn const_deref_newtype(cx: &mut CrateContext, v: ValueRef, t: ty::t)
+fn const_deref_newtype(cx: &CrateContext, v: ValueRef, t: ty::t)
     -> ValueRef {
     let repr = adt::represent_type(cx, t);
     adt::const_get_field(cx, repr, v, 0, 0)
 }
 
-fn const_deref(cx: &mut CrateContext, v: ValueRef, t: ty::t, explicit: bool)
+fn const_deref(cx: &CrateContext, v: ValueRef, t: ty::t, explicit: bool)
     -> (ValueRef, ty::t) {
     match ty::deref(cx.tcx, t, explicit) {
         Some(ref mt) => {
@@ -153,9 +155,12 @@ fn const_deref(cx: &mut CrateContext, v: ValueRef, t: ty::t, explicit: bool)
     }
 }
 
-pub fn get_const_val(cx: @mut CrateContext,
+pub fn get_const_val(cx: @CrateContext,
                      mut def_id: ast::DefId) -> (ValueRef, bool) {
-    let contains_key = cx.const_values.contains_key(&def_id.node);
+    let contains_key = {
+        let const_values = cx.const_values.borrow();
+        const_values.get().contains_key(&def_id.node)
+    };
     if !ast_util::is_local(def_id) || !contains_key {
         if !ast_util::is_local(def_id) {
             def_id = inline::maybe_instantiate_inline(cx, def_id);
@@ -169,16 +174,22 @@ pub fn get_const_val(cx: @mut CrateContext,
             _ => cx.tcx.sess.bug("expected a const to be an item")
         }
     }
-    (cx.const_values.get_copy(&def_id.node),
-     !cx.non_inlineable_statics.contains(&def_id.node))
+
+    let const_values = cx.const_values.borrow();
+    let non_inlineable_statics = cx.non_inlineable_statics.borrow();
+    (const_values.get().get_copy(&def_id.node),
+     !non_inlineable_statics.get().contains(&def_id.node))
 }
 
-pub fn const_expr(cx: @mut CrateContext, e: &ast::Expr) -> (ValueRef, bool) {
+pub fn const_expr(cx: @CrateContext, e: &ast::Expr) -> (ValueRef, bool) {
     let (llconst, inlineable) = const_expr_unadjusted(cx, e);
     let mut llconst = llconst;
     let mut inlineable = inlineable;
     let ety = ty::expr_ty(cx.tcx, e);
-    let adjustment = cx.tcx.adjustments.find_copy(&e.id);
+    let adjustment = {
+        let adjustments = cx.tcx.adjustments.borrow();
+        adjustments.get().find_copy(&e.id)
+    };
     match adjustment {
         None => { }
         Some(@ty::AutoAddEnv(ty::ReStatic, ast::BorrowedSigil)) => {
@@ -257,9 +268,9 @@ pub fn const_expr(cx: @mut CrateContext, e: &ast::Expr) -> (ValueRef, bool) {
 
 // the bool returned is whether this expression can be inlined into other crates
 // if it's assigned to a static.
-fn const_expr_unadjusted(cx: @mut CrateContext,
+fn const_expr_unadjusted(cx: @CrateContext,
                          e: &ast::Expr) -> (ValueRef, bool) {
-    fn map_list(cx: @mut CrateContext,
+    fn map_list(cx: @CrateContext,
                 exprs: &[@ast::Expr]) -> (~[ValueRef], bool) {
         exprs.iter().map(|&e| const_expr(cx, e))
              .fold((~[], true), |(L, all_inlineable), (val, inlineable)| {
@@ -574,8 +585,12 @@ fn const_expr_unadjusted(cx: @mut CrateContext,
             assert!(pth.segments.iter().all(|seg| seg.types.is_empty()));
 
             let tcx = cx.tcx;
-            match tcx.def_map.find(&e.id) {
-                Some(&ast::DefFn(def_id, _purity)) => {
+            let opt_def = {
+                let def_map = tcx.def_map.borrow();
+                def_map.get().find_copy(&e.id)
+            };
+            match opt_def {
+                Some(ast::DefFn(def_id, _purity)) => {
                     if !ast_util::is_local(def_id) {
                         let ty = csearch::get_type(cx.tcx, def_id).ty;
                         (base::trans_external_path(cx, def_id, ty), true)
@@ -584,10 +599,10 @@ fn const_expr_unadjusted(cx: @mut CrateContext,
                         (base::get_item_val(cx, def_id.node), true)
                     }
                 }
-                Some(&ast::DefStatic(def_id, false)) => {
+                Some(ast::DefStatic(def_id, false)) => {
                     get_const_val(cx, def_id)
                 }
-                Some(&ast::DefVariant(enum_did, variant_did, _)) => {
+                Some(ast::DefVariant(enum_did, variant_did, _)) => {
                     let ety = ty::expr_ty(cx.tcx, e);
                     let repr = adt::represent_type(cx, ety);
                     let vinfo = ty::enum_variant_with_id(cx.tcx,
@@ -595,7 +610,7 @@ fn const_expr_unadjusted(cx: @mut CrateContext,
                                                          variant_did);
                     (adt::trans_const(cx, repr, vinfo.disr_val, []), true)
                 }
-                Some(&ast::DefStruct(_)) => {
+                Some(ast::DefStruct(_)) => {
                     let ety = ty::expr_ty(cx.tcx, e);
                     let llty = type_of::type_of(cx, ety);
                     (C_null(llty), true)
@@ -607,14 +622,18 @@ fn const_expr_unadjusted(cx: @mut CrateContext,
           }
           ast::ExprCall(callee, ref args, _) => {
               let tcx = cx.tcx;
-              match tcx.def_map.find(&callee.id) {
-                  Some(&ast::DefStruct(_)) => {
+              let opt_def = {
+                  let def_map = tcx.def_map.borrow();
+                  def_map.get().find_copy(&callee.id)
+              };
+              match opt_def {
+                  Some(ast::DefStruct(_)) => {
                       let ety = ty::expr_ty(cx.tcx, e);
                       let repr = adt::represent_type(cx, ety);
                       let (arg_vals, inlineable) = map_list(cx, *args);
                       (adt::trans_const(cx, repr, 0, arg_vals), inlineable)
                   }
-                  Some(&ast::DefVariant(enum_did, variant_did, _)) => {
+                  Some(ast::DefVariant(enum_did, variant_did, _)) => {
                       let ety = ty::expr_ty(cx.tcx, e);
                       let repr = adt::represent_type(cx, ety);
                       let vinfo = ty::enum_variant_with_id(cx.tcx,
@@ -634,13 +653,14 @@ fn const_expr_unadjusted(cx: @mut CrateContext,
     }
 }
 
-pub fn trans_const(ccx: @mut CrateContext, m: ast::Mutability, id: ast::NodeId) {
+pub fn trans_const(ccx: @CrateContext, m: ast::Mutability, id: ast::NodeId) {
     unsafe {
         let _icx = push_ctxt("trans_const");
         let g = base::get_item_val(ccx, id);
         // At this point, get_item_val has already translated the
         // constant's initializer to determine its LLVM type.
-        let v = ccx.const_values.get_copy(&id);
+        let const_values = ccx.const_values.borrow();
+        let v = const_values.get().get_copy(&id);
         llvm::LLVMSetInitializer(g, v);
         if m != ast::MutMutable {
             llvm::LLVMSetGlobalConstant(g, True);

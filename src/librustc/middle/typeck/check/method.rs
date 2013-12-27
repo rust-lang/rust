@@ -95,6 +95,7 @@ use middle::typeck::check::regionmanip::replace_bound_regions_in_fn_sig;
 use util::common::indenter;
 use util::ppaux::Repr;
 
+use std::cell::RefCell;
 use std::hashmap::HashSet;
 use std::result;
 use std::vec;
@@ -118,7 +119,7 @@ pub enum AutoderefReceiverFlag {
 }
 
 pub fn lookup(
-        fcx: @mut FnCtxt,
+        fcx: @FnCtxt,
 
         // In a call `a.b::<X, Y, ...>(...)`:
         expr: @ast::Expr,                   // The expression `a.b(...)`.
@@ -132,7 +133,7 @@ pub fn lookup(
         check_traits: CheckTraitsFlag,      // Whether we check traits only.
         autoderef_receiver: AutoderefReceiverFlag)
      -> Option<method_map_entry> {
-    let impl_dups = @mut HashSet::new();
+    let impl_dups = @RefCell::new(HashSet::new());
     let lcx = LookupContext {
         fcx: fcx,
         expr: expr,
@@ -141,8 +142,8 @@ pub fn lookup(
         m_name: m_name,
         supplied_tps: supplied_tps,
         impl_dups: impl_dups,
-        inherent_candidates: @mut ~[],
-        extension_candidates: @mut ~[],
+        inherent_candidates: @RefCell::new(~[]),
+        extension_candidates: @RefCell::new(~[]),
         deref_args: deref_args,
         check_traits: check_traits,
         autoderef_receiver: autoderef_receiver,
@@ -168,15 +169,15 @@ pub fn lookup(
 }
 
 pub struct LookupContext<'a> {
-    fcx: @mut FnCtxt,
+    fcx: @FnCtxt,
     expr: @ast::Expr,
     self_expr: @ast::Expr,
     callee_id: NodeId,
     m_name: ast::Name,
     supplied_tps: &'a [ty::t],
-    impl_dups: @mut HashSet<DefId>,
-    inherent_candidates: @mut ~[Candidate],
-    extension_candidates: @mut ~[Candidate],
+    impl_dups: @RefCell<HashSet<DefId>>,
+    inherent_candidates: @RefCell<~[Candidate]>,
+    extension_candidates: @RefCell<~[Candidate]>,
     deref_args: check::DerefArgs,
     check_traits: CheckTraitsFlag,
     autoderef_receiver: AutoderefReceiverFlag,
@@ -278,8 +279,8 @@ impl<'a> LookupContext<'a> {
     // Candidate collection (see comment at start of file)
 
     fn reset_candidates(&self) {
-        *self.inherent_candidates = ~[];
-        *self.extension_candidates = ~[];
+        self.inherent_candidates.set(~[]);
+        self.extension_candidates.set(~[]);
     }
 
     fn push_inherent_candidates(&self, self_ty: ty::t) {
@@ -343,20 +344,25 @@ impl<'a> LookupContext<'a> {
         // If the method being called is associated with a trait, then
         // find all the impls of that trait.  Each of those are
         // candidates.
-        let trait_map: &mut resolve::TraitMap = &mut self.fcx.ccx.trait_map;
+        let trait_map: &resolve::TraitMap = &self.fcx.ccx.trait_map;
         let opt_applicable_traits = trait_map.find(&self.expr.id);
         for applicable_traits in opt_applicable_traits.iter() {
-            for trait_did in applicable_traits.iter() {
+            let applicable_traits = applicable_traits.borrow();
+            for trait_did in applicable_traits.get().iter() {
                 ty::populate_implementations_for_trait_if_necessary(
                     self.tcx(),
                     *trait_did);
 
                 // Look for explicit implementations.
-                let opt_impl_infos = self.tcx().trait_impls.find(trait_did);
+                let trait_impls = self.tcx().trait_impls.borrow();
+                let opt_impl_infos = trait_impls.get().find(trait_did);
                 for impl_infos in opt_impl_infos.iter() {
-                    for impl_info in impl_infos.iter() {
+                    let impl_infos = impl_infos.borrow();
+                    for impl_info in impl_infos.get().iter() {
+                        let mut extension_candidates =
+                            self.extension_candidates.borrow_mut();
                         self.push_candidates_from_impl(
-                            self.extension_candidates, *impl_info);
+                            extension_candidates.get(), *impl_info);
 
                     }
                 }
@@ -508,7 +514,9 @@ impl<'a> LookupContext<'a> {
                                        pos, this_bound_idx);
 
                     debug!("pushing inherent candidate for param: {:?}", cand);
-                    self.inherent_candidates.push(cand);
+                    let mut inherent_candidates = self.inherent_candidates
+                                                      .borrow_mut();
+                    inherent_candidates.get().push(cand);
                 }
                 None => {
                     debug!("trait doesn't contain method: {:?}",
@@ -526,11 +534,15 @@ impl<'a> LookupContext<'a> {
         // metadata if necessary.
         ty::populate_implementations_for_type_if_necessary(self.tcx(), did);
 
-        let opt_impl_infos = self.tcx().inherent_impls.find(&did);
+        let inherent_impls = self.tcx().inherent_impls.borrow();
+        let opt_impl_infos = inherent_impls.get().find(&did);
         for impl_infos in opt_impl_infos.iter() {
-            for impl_info in impl_infos.iter() {
-                self.push_candidates_from_impl(
-                    self.inherent_candidates, *impl_info);
+            let impl_infos = impl_infos.borrow();
+            for impl_info in impl_infos.get().iter() {
+                let mut inherent_candidates = self.inherent_candidates
+                                                  .borrow_mut();
+                self.push_candidates_from_impl(inherent_candidates.get(),
+                                               *impl_info);
             }
         }
     }
@@ -538,8 +550,11 @@ impl<'a> LookupContext<'a> {
     fn push_candidates_from_impl(&self,
                                      candidates: &mut ~[Candidate],
                                      impl_info: &ty::Impl) {
-        if !self.impl_dups.insert(impl_info.did) {
-            return; // already visited
+        {
+            let mut impl_dups = self.impl_dups.borrow_mut();
+            if !impl_dups.get().insert(impl_info.did) {
+                return; // already visited
+            }
         }
         debug!("push_candidates_from_impl: {} {} {}",
                token::interner_get(self.m_name),
@@ -821,7 +836,8 @@ impl<'a> LookupContext<'a> {
         // existing code.
 
         debug!("searching inherent candidates");
-        match self.consider_candidates(rcvr_ty, self.inherent_candidates) {
+        let mut inherent_candidates = self.inherent_candidates.borrow_mut();
+        match self.consider_candidates(rcvr_ty, inherent_candidates.get()) {
             None => {}
             Some(mme) => {
                 return Some(mme);
@@ -829,7 +845,8 @@ impl<'a> LookupContext<'a> {
         }
 
         debug!("searching extension candidates");
-        match self.consider_candidates(rcvr_ty, self.extension_candidates) {
+        let mut extension_candidates = self.extension_candidates.borrow_mut();
+        match self.consider_candidates(rcvr_ty, extension_candidates.get()) {
             None => {
                 return None;
             }
@@ -840,9 +857,9 @@ impl<'a> LookupContext<'a> {
     }
 
     fn consider_candidates(&self,
-                               rcvr_ty: ty::t,
-                               candidates: &mut ~[Candidate])
-                               -> Option<method_map_entry> {
+                           rcvr_ty: ty::t,
+                           candidates: &mut ~[Candidate])
+                           -> Option<method_map_entry> {
         // XXX(pcwalton): Do we need to clone here?
         let relevant_candidates: ~[Candidate] =
             candidates.iter().map(|c| (*c).clone()).
@@ -1151,13 +1168,17 @@ impl<'a> LookupContext<'a> {
         let bad;
         match candidate.origin {
             method_static(method_id) => {
-                bad = self.tcx().destructors.contains(&method_id);
+                let destructors = self.tcx().destructors.borrow();
+                bad = destructors.get().contains(&method_id);
             }
             // XXX: does this properly enforce this on everything now
             // that self has been merged in? -sully
             method_param(method_param { trait_id: trait_id, .. }) |
             method_object(method_object { trait_id: trait_id, .. }) => {
-                bad = self.tcx().destructor_for_type.contains_key(&trait_id);
+                let destructor_for_type = self.tcx()
+                                              .destructor_for_type
+                                              .borrow();
+                bad = destructor_for_type.get().contains_key(&trait_id);
             }
         }
 
@@ -1245,7 +1266,7 @@ impl<'a> LookupContext<'a> {
             }
         }
 
-        fn rcvr_matches_ty(fcx: @mut FnCtxt,
+        fn rcvr_matches_ty(fcx: @FnCtxt,
                            rcvr_ty: ty::t,
                            candidate: &Candidate) -> bool {
             match candidate.rcvr_match_condition {
@@ -1320,7 +1341,7 @@ impl<'a> LookupContext<'a> {
                  ty::item_path_str(self.tcx(), did)));
     }
 
-    fn infcx(&self) -> @mut infer::InferCtxt {
+    fn infcx(&self) -> @infer::InferCtxt {
         self.fcx.inh.infcx
     }
 

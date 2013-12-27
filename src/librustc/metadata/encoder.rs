@@ -22,6 +22,7 @@ use middle::typeck;
 use middle;
 
 use std::cast;
+use std::cell::{Cell, RefCell};
 use std::hashmap::{HashMap, HashSet};
 use std::io::mem::MemWriter;
 use std::io::{Writer, Seek, Decorator};
@@ -48,7 +49,7 @@ use syntax;
 use writer = extra::ebml::writer;
 
 // used by astencode:
-type abbrev_map = @mut HashMap<ty::t, tyencode::ty_abbrev>;
+type abbrev_map = @RefCell<HashMap<ty::t, tyencode::ty_abbrev>>;
 
 pub type encode_inlined_item<'a> = 'a |ecx: &EncodeContext,
                                              ebml_w: &mut writer::Encoder,
@@ -59,48 +60,45 @@ pub struct EncodeParams<'a> {
     diag: @mut span_handler,
     tcx: ty::ctxt,
     reexports2: middle::resolve::ExportMap2,
-    item_symbols: &'a HashMap<ast::NodeId, ~str>,
-    discrim_symbols: &'a HashMap<ast::NodeId, @str>,
-    non_inlineable_statics: &'a HashSet<ast::NodeId>,
+    item_symbols: &'a RefCell<HashMap<ast::NodeId, ~str>>,
+    non_inlineable_statics: &'a RefCell<HashSet<ast::NodeId>>,
     link_meta: &'a LinkMeta,
-    cstore: @mut cstore::CStore,
+    cstore: @cstore::CStore,
     encode_inlined_item: encode_inlined_item<'a>,
-    reachable: @mut HashSet<ast::NodeId>,
+    reachable: @RefCell<HashSet<ast::NodeId>>,
 }
 
 struct Stats {
-    inline_bytes: u64,
-    attr_bytes: u64,
-    dep_bytes: u64,
-    lang_item_bytes: u64,
-    native_lib_bytes: u64,
-    impl_bytes: u64,
-    misc_bytes: u64,
-    item_bytes: u64,
-    index_bytes: u64,
-    zero_bytes: u64,
-    total_bytes: u64,
-
-    n_inlines: uint
+    inline_bytes: Cell<u64>,
+    attr_bytes: Cell<u64>,
+    dep_bytes: Cell<u64>,
+    lang_item_bytes: Cell<u64>,
+    native_lib_bytes: Cell<u64>,
+    impl_bytes: Cell<u64>,
+    misc_bytes: Cell<u64>,
+    item_bytes: Cell<u64>,
+    index_bytes: Cell<u64>,
+    zero_bytes: Cell<u64>,
+    total_bytes: Cell<u64>,
 }
 
 pub struct EncodeContext<'a> {
     diag: @mut span_handler,
     tcx: ty::ctxt,
-    stats: @mut Stats,
+    stats: @Stats,
     reexports2: middle::resolve::ExportMap2,
-    item_symbols: &'a HashMap<ast::NodeId, ~str>,
-    discrim_symbols: &'a HashMap<ast::NodeId, @str>,
-    non_inlineable_statics: &'a HashSet<ast::NodeId>,
+    item_symbols: &'a RefCell<HashMap<ast::NodeId, ~str>>,
+    non_inlineable_statics: &'a RefCell<HashSet<ast::NodeId>>,
     link_meta: &'a LinkMeta,
     cstore: &'a cstore::CStore,
     encode_inlined_item: encode_inlined_item<'a>,
     type_abbrevs: abbrev_map,
-    reachable: @mut HashSet<ast::NodeId>,
+    reachable: @RefCell<HashSet<ast::NodeId>>,
 }
 
 pub fn reachable(ecx: &EncodeContext, id: NodeId) -> bool {
-    ecx.reachable.contains(&id)
+    let reachable = ecx.reachable.borrow();
+    reachable.get().contains(&id)
 }
 
 fn encode_name(ecx: &EncodeContext,
@@ -283,7 +281,8 @@ fn encode_symbol(ecx: &EncodeContext,
                  ebml_w: &mut writer::Encoder,
                  id: NodeId) {
     ebml_w.start_tag(tag_items_data_item_symbol);
-    match ecx.item_symbols.find(&id) {
+    let item_symbols = ecx.item_symbols.borrow();
+    match item_symbols.get().find(&id) {
         Some(x) => {
             debug!("encode_symbol(id={:?}, str={})", id, *x);
             ebml_w.writer.write(x.as_bytes());
@@ -338,7 +337,7 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
                             id: NodeId,
                             variants: &[P<variant>],
                             path: &[ast_map::path_elt],
-                            index: @mut ~[entry<i64>],
+                            index: @RefCell<~[entry<i64>]>,
                             generics: &ast::Generics) {
     debug!("encode_enum_variant_info(id={:?})", id);
 
@@ -348,8 +347,13 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
                                ast::DefId { crate: LOCAL_CRATE, node: id });
     for variant in variants.iter() {
         let def_id = local_def(variant.node.id);
-        index.push(entry {val: variant.node.id as i64,
-                          pos: ebml_w.writer.tell()});
+        {
+            let mut index = index.borrow_mut();
+            index.get().push(entry {
+                val: variant.node.id as i64,
+                pos: ebml_w.writer.tell(),
+            });
+        }
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, def_id);
         match variant.node.kind {
@@ -442,9 +446,11 @@ fn encode_reexported_static_base_methods(ecx: &EncodeContext,
                                          ebml_w: &mut writer::Encoder,
                                          exp: &middle::resolve::Export2)
                                          -> bool {
-    match ecx.tcx.inherent_impls.find(&exp.def_id) {
+    let inherent_impls = ecx.tcx.inherent_impls.borrow();
+    match inherent_impls.get().find(&exp.def_id) {
         Some(implementations) => {
-            for &base_impl in implementations.iter() {
+            let implementations = implementations.borrow();
+            for &base_impl in implementations.get().iter() {
                 for &m in base_impl.methods.iter() {
                     if m.explicit_self == ast::sty_static {
                         encode_reexported_static_method(ecx, ebml_w, exp,
@@ -463,7 +469,8 @@ fn encode_reexported_static_trait_methods(ecx: &EncodeContext,
                                           ebml_w: &mut writer::Encoder,
                                           exp: &middle::resolve::Export2)
                                           -> bool {
-    match ecx.tcx.trait_methods_cache.find(&exp.def_id) {
+    let trait_methods_cache = ecx.tcx.trait_methods_cache.borrow();
+    match trait_methods_cache.get().find(&exp.def_id) {
         Some(methods) => {
             for &m in methods.iter() {
                 if m.explicit_self == ast::sty_static {
@@ -553,7 +560,8 @@ fn encode_reexports(ecx: &EncodeContext,
                     id: NodeId,
                     path: &[ast_map::path_elt]) {
     debug!("(encoding info for module) encoding reexports for {}", id);
-    match ecx.reexports2.find(&id) {
+    let reexports2 = ecx.reexports2.borrow();
+    match reexports2.get().find(&id) {
         Some(ref exports) => {
             debug!("(encoding info for module) found reexports for {}", id);
             for exp in exports.iter() {
@@ -715,7 +723,7 @@ fn encode_info_for_struct(ecx: &EncodeContext,
                           ebml_w: &mut writer::Encoder,
                           path: &[ast_map::path_elt],
                           fields: &[struct_field],
-                          global_index: @mut ~[entry<i64>])
+                          global_index: @RefCell<~[entry<i64>]>)
                           -> ~[entry<i64>] {
     /* Each class has its own index, since different classes
        may have fields with the same name */
@@ -731,7 +739,13 @@ fn encode_info_for_struct(ecx: &EncodeContext,
 
         let id = field.node.id;
         index.push(entry {val: id as i64, pos: ebml_w.writer.tell()});
-        global_index.push(entry {val: id as i64, pos: ebml_w.writer.tell()});
+        {
+            let mut global_index = global_index.borrow_mut();
+            global_index.get().push(entry {
+                val: id as i64,
+                pos: ebml_w.writer.tell(),
+            });
+        }
         ebml_w.start_tag(tag_items_data_item);
         debug!("encode_info_for_struct: doing {} {}",
                tcx.sess.str_of(nm), id);
@@ -750,9 +764,15 @@ fn encode_info_for_struct_ctor(ecx: &EncodeContext,
                                path: &[ast_map::path_elt],
                                name: ast::Ident,
                                ctor_id: NodeId,
-                               index: @mut ~[entry<i64>],
+                               index: @RefCell<~[entry<i64>]>,
                                struct_id: NodeId) {
-    index.push(entry { val: ctor_id as i64, pos: ebml_w.writer.tell() });
+    {
+        let mut index = index.borrow_mut();
+        index.get().push(entry {
+            val: ctor_id as i64,
+            pos: ebml_w.writer.tell(),
+        });
+    }
 
     ebml_w.start_tag(tag_items_data_item);
     encode_def_id(ebml_w, local_def(ctor_id));
@@ -762,7 +782,8 @@ fn encode_info_for_struct_ctor(ecx: &EncodeContext,
     encode_path(ecx, ebml_w, path, ast_map::path_name(name));
     encode_parent_item(ebml_w, local_def(struct_id));
 
-    if ecx.item_symbols.contains_key(&ctor_id) {
+    let item_symbols = ecx.item_symbols.borrow();
+    if item_symbols.get().contains_key(&ctor_id) {
         encode_symbol(ecx, ebml_w, ctor_id);
     }
 
@@ -860,10 +881,12 @@ fn should_inline(attrs: &[Attribute]) -> bool {
 fn encode_inherent_implementations(ecx: &EncodeContext,
                                    ebml_w: &mut writer::Encoder,
                                    def_id: DefId) {
-    match ecx.tcx.inherent_impls.find(&def_id) {
+    let inherent_impls = ecx.tcx.inherent_impls.borrow();
+    match inherent_impls.get().find(&def_id) {
         None => {}
         Some(&implementations) => {
-            for implementation in implementations.iter() {
+            let implementations = implementations.borrow();
+            for implementation in implementations.get().iter() {
                 ebml_w.start_tag(tag_items_data_item_inherent_impl);
                 encode_def_id(ebml_w, implementation.did);
                 ebml_w.end_tag();
@@ -876,10 +899,12 @@ fn encode_inherent_implementations(ecx: &EncodeContext,
 fn encode_extension_implementations(ecx: &EncodeContext,
                                     ebml_w: &mut writer::Encoder,
                                     trait_def_id: DefId) {
-    match ecx.tcx.trait_impls.find(&trait_def_id) {
+    let trait_impls = ecx.tcx.trait_impls.borrow();
+    match trait_impls.get().find(&trait_def_id) {
         None => {}
         Some(&implementations) => {
-            for implementation in implementations.iter() {
+            let implementations = implementations.borrow();
+            for implementation in implementations.get().iter() {
                 ebml_w.start_tag(tag_items_data_item_extension_impl);
                 encode_def_id(ebml_w, implementation.did);
                 ebml_w.end_tag();
@@ -891,14 +916,18 @@ fn encode_extension_implementations(ecx: &EncodeContext,
 fn encode_info_for_item(ecx: &EncodeContext,
                         ebml_w: &mut writer::Encoder,
                         item: @item,
-                        index: @mut ~[entry<i64>],
+                        index: @RefCell<~[entry<i64>]>,
                         path: &[ast_map::path_elt],
                         vis: ast::visibility) {
     let tcx = ecx.tcx;
 
     fn add_to_index(item: @item, ebml_w: &writer::Encoder,
-                     index: @mut ~[entry<i64>]) {
-        index.push(entry { val: item.id as i64, pos: ebml_w.writer.tell() });
+                     index: @RefCell<~[entry<i64>]>) {
+        let mut index = index.borrow_mut();
+        index.get().push(entry {
+            val: item.id as i64,
+            pos: ebml_w.writer.tell(),
+        });
     }
     let add_to_index: || = || add_to_index(item, ebml_w, index);
 
@@ -921,7 +950,14 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_name(ecx, ebml_w, item.ident);
         let elt = ast_map::path_pretty_name(item.ident, item.id as u64);
         encode_path(ecx, ebml_w, path, elt);
-        if !ecx.non_inlineable_statics.contains(&item.id) {
+
+        let non_inlineable;
+        {
+            let non_inlineable_statics = ecx.non_inlineable_statics.borrow();
+            non_inlineable = non_inlineable_statics.get().contains(&item.id);
+        }
+
+        if !non_inlineable {
             (ecx.encode_inlined_item)(ecx, ebml_w, path, ii_item(item));
         }
         encode_visibility(ebml_w, vis);
@@ -1072,7 +1108,8 @@ fn encode_info_for_item(ecx: &EncodeContext,
       item_impl(_, ref opt_trait, ty, ref ast_methods) => {
         // We need to encode information about the default methods we
         // have inherited, so we drive this based on the impl structure.
-        let imp = tcx.impls.get(&def_id);
+        let impls = tcx.impls.borrow();
+        let imp = impls.get().get(&def_id);
 
         add_to_index();
         ebml_w.start_tag(tag_items_data_item);
@@ -1121,8 +1158,13 @@ fn encode_info_for_item(ecx: &EncodeContext,
                 Some(ast_methods[i])
             } else { None };
 
-            index.push(entry {val: m.def_id.node as i64,
-                              pos: ebml_w.writer.tell()});
+            {
+                let mut index = index.borrow_mut();
+                index.get().push(entry {
+                    val: m.def_id.node as i64,
+                    pos: ebml_w.writer.tell(),
+                });
+            }
             encode_info_for_method(ecx,
                                    ebml_w,
                                    *m,
@@ -1177,8 +1219,13 @@ fn encode_info_for_item(ecx: &EncodeContext,
 
             let method_ty = ty::method(tcx, method_def_id);
 
-            index.push(entry {val: method_def_id.node as i64,
-                              pos: ebml_w.writer.tell()});
+            {
+                let mut index = index.borrow_mut();
+                index.get().push(entry {
+                    val: method_def_id.node as i64,
+                    pos: ebml_w.writer.tell(),
+                });
+            }
 
             ebml_w.start_tag(tag_items_data_item);
 
@@ -1242,10 +1289,16 @@ fn encode_info_for_item(ecx: &EncodeContext,
 fn encode_info_for_foreign_item(ecx: &EncodeContext,
                                 ebml_w: &mut writer::Encoder,
                                 nitem: @foreign_item,
-                                index: @mut ~[entry<i64>],
+                                index: @RefCell<~[entry<i64>]>,
                                 path: &ast_map::path,
                                 abi: AbiSet) {
-    index.push(entry { val: nitem.id as i64, pos: ebml_w.writer.tell() });
+    {
+        let mut index = index.borrow_mut();
+        index.get().push(entry {
+            val: nitem.id as i64,
+            pos: ebml_w.writer.tell(),
+        });
+    }
 
     ebml_w.start_tag(tag_items_data_item);
     match nitem.node {
@@ -1280,11 +1333,16 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
 
 fn my_visit_expr(_e:@Expr) { }
 
-fn my_visit_item(i:@item, items: ast_map::map, ebml_w:&writer::Encoder,
-                 ecx_ptr:*int, index: @mut ~[entry<i64>]) {
+fn my_visit_item(i: @item,
+                 items: ast_map::map,
+                 ebml_w: &mut writer::Encoder,
+                 ecx_ptr: *int,
+                 index: @RefCell<~[entry<i64>]>) {
     match items.get_copy(&i.id) {
         ast_map::node_item(_, pt) => {
-            let mut ebml_w = ebml_w.clone();
+            let mut ebml_w = unsafe {
+                ebml_w.unsafe_clone()
+            };
             // See above
             let ecx : &EncodeContext = unsafe { cast::transmute(ecx_ptr) };
             encode_info_for_item(ecx, &mut ebml_w, i, index, *pt, i.vis);
@@ -1293,8 +1351,11 @@ fn my_visit_item(i:@item, items: ast_map::map, ebml_w:&writer::Encoder,
     }
 }
 
-fn my_visit_foreign_item(ni:@foreign_item, items: ast_map::map, ebml_w:&writer::Encoder,
-                         ecx_ptr:*int, index: @mut ~[entry<i64>]) {
+fn my_visit_foreign_item(ni: @foreign_item,
+                         items: ast_map::map,
+                         ebml_w: &mut writer::Encoder,
+                         ecx_ptr:*int,
+                         index: @RefCell<~[entry<i64>]>) {
     match items.get_copy(&ni.id) {
         ast_map::node_foreign_item(_, abi, _, pt) => {
             debug!("writing foreign item {}::{}",
@@ -1303,9 +1364,11 @@ fn my_visit_foreign_item(ni:@foreign_item, items: ast_map::map, ebml_w:&writer::
                        token::get_ident_interner()),
                    token::ident_to_str(&ni.ident));
 
-            let mut ebml_w = ebml_w.clone();
+            let mut ebml_w = unsafe {
+                ebml_w.unsafe_clone()
+            };
             // See above
-            let ecx : &EncodeContext = unsafe { cast::transmute(ecx_ptr) };
+            let ecx: &EncodeContext = unsafe { cast::transmute(ecx_ptr) };
             encode_info_for_foreign_item(ecx,
                                          &mut ebml_w,
                                          ni,
@@ -1318,15 +1381,14 @@ fn my_visit_foreign_item(ni:@foreign_item, items: ast_map::map, ebml_w:&writer::
     }
 }
 
-struct EncodeVisitor {
-    ebml_w_for_visit_item: writer::Encoder,
-    ebml_w_for_visit_foreign_item: writer::Encoder,
+struct EncodeVisitor<'a,'b> {
+    ebml_w_for_visit_item: &'a mut writer::Encoder<'b>,
     ecx_ptr:*int,
     items: ast_map::map,
-    index: @mut ~[entry<i64>],
+    index: @RefCell<~[entry<i64>]>,
 }
 
-impl visit::Visitor<()> for EncodeVisitor {
+impl<'a,'b> visit::Visitor<()> for EncodeVisitor<'a,'b> {
     fn visit_expr(&mut self, ex:@Expr, _:()) {
         visit::walk_expr(self, ex, ());
         my_visit_expr(ex);
@@ -1335,7 +1397,7 @@ impl visit::Visitor<()> for EncodeVisitor {
         visit::walk_item(self, i, ());
         my_visit_item(i,
                       self.items,
-                      &self.ebml_w_for_visit_item,
+                      self.ebml_w_for_visit_item,
                       self.ecx_ptr,
                       self.index);
     }
@@ -1343,7 +1405,7 @@ impl visit::Visitor<()> for EncodeVisitor {
         visit::walk_foreign_item(self, ni, ());
         my_visit_foreign_item(ni,
                               self.items,
-                              &self.ebml_w_for_visit_foreign_item,
+                              self.ebml_w_for_visit_item,
                               self.ecx_ptr,
                               self.index);
     }
@@ -1353,9 +1415,15 @@ fn encode_info_for_items(ecx: &EncodeContext,
                          ebml_w: &mut writer::Encoder,
                          crate: &Crate)
                          -> ~[entry<i64>] {
-    let index = @mut ~[];
+    let index = @RefCell::new(~[]);
     ebml_w.start_tag(tag_items_data);
-    index.push(entry { val: CRATE_NODE_ID as i64, pos: ebml_w.writer.tell() });
+    {
+        let mut index = index.borrow_mut();
+        index.get().push(entry {
+            val: CRATE_NODE_ID as i64,
+            pos: ebml_w.writer.tell(),
+        });
+    }
     encode_info_for_mod(ecx,
                         ebml_w,
                         &crate.module,
@@ -1367,18 +1435,19 @@ fn encode_info_for_items(ecx: &EncodeContext,
 
     // See comment in `encode_side_tables_for_ii` in astencode
     let ecx_ptr : *int = unsafe { cast::transmute(ecx) };
-    let mut visitor = EncodeVisitor {
-        index: index,
-        items: items,
-        ecx_ptr: ecx_ptr,
-        ebml_w_for_visit_item: (*ebml_w).clone(),
-        ebml_w_for_visit_foreign_item: (*ebml_w).clone(),
-    };
+    {
+        let mut visitor = EncodeVisitor {
+            index: index,
+            items: items,
+            ecx_ptr: ecx_ptr,
+            ebml_w_for_visit_item: &mut *ebml_w,
+        };
 
-    visit::walk_crate(&mut visitor, crate, ());
+        visit::walk_crate(&mut visitor, crate, ());
+    }
 
     ebml_w.end_tag();
-    return /*bad*/(*index).clone();
+    return /*bad*/(*index).get();
 }
 
 
@@ -1387,16 +1456,19 @@ fn encode_info_for_items(ecx: &EncodeContext,
 fn create_index<T:Clone + Hash + IterBytes + 'static>(
                 index: ~[entry<T>])
                 -> ~[@~[entry<T>]] {
-    let mut buckets: ~[@mut ~[entry<T>]] = ~[];
-    for _ in range(0u, 256u) { buckets.push(@mut ~[]); };
+    let mut buckets: ~[@RefCell<~[entry<T>]>] = ~[];
+    for _ in range(0u, 256u) {
+        buckets.push(@RefCell::new(~[]));
+    }
     for elt in index.iter() {
         let h = elt.val.hash() as uint;
-        buckets[h % 256].push((*elt).clone());
+        let mut bucket = buckets[h % 256].borrow_mut();
+        bucket.get().push((*elt).clone());
     }
 
     let mut buckets_frozen = ~[];
     for bucket in buckets.iter() {
-        buckets_frozen.push(@/*bad*/(**bucket).clone());
+        buckets_frozen.push(@/*bad*/(**bucket).get());
     }
     return buckets_frozen;
 }
@@ -1404,7 +1476,7 @@ fn create_index<T:Clone + Hash + IterBytes + 'static>(
 fn encode_index<T:'static>(
                 ebml_w: &mut writer::Encoder,
                 buckets: ~[@~[entry<T>]],
-                write_fn: |@mut MemWriter, &T|) {
+                write_fn: |&mut MemWriter, &T|) {
     ebml_w.start_tag(tag_index);
     let mut bucket_locs = ~[];
     ebml_w.start_tag(tag_index_buckets);
@@ -1434,7 +1506,7 @@ fn encode_index<T:'static>(
     ebml_w.end_tag();
 }
 
-fn write_i64(writer: @mut MemWriter, &n: &i64) {
+fn write_i64(writer: &mut MemWriter, &n: &i64) {
     let wr: &mut MemWriter = writer;
     assert!(n < 0x7fff_ffff);
     wr.write_be_u32(n as u32);
@@ -1588,7 +1660,9 @@ fn encode_lang_items(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
 fn encode_native_libraries(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
     ebml_w.start_tag(tag_native_libraries);
 
-    for &(ref lib, kind) in ecx.cstore.get_used_libraries().iter() {
+    let used_libraries = ecx.tcx.sess.cstore.get_used_libraries();
+    let used_libraries = used_libraries.borrow();
+    for &(ref lib, kind) in used_libraries.get().iter() {
         match kind {
             cstore::NativeStatic => {} // these libraries are not propagated
             cstore::NativeFramework | cstore::NativeUnknown => {
@@ -1610,17 +1684,18 @@ fn encode_native_libraries(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
     ebml_w.end_tag();
 }
 
-struct ImplVisitor<'a> {
+struct ImplVisitor<'a,'b> {
     ecx: &'a EncodeContext<'a>,
-    ebml_w: &'a mut writer::Encoder,
+    ebml_w: &'a mut writer::Encoder<'b>,
 }
 
-impl<'a> Visitor<()> for ImplVisitor<'a> {
+impl<'a,'b> Visitor<()> for ImplVisitor<'a,'b> {
     fn visit_item(&mut self, item: @item, _: ()) {
         match item.node {
             item_impl(_, Some(ref trait_ref), _, _) => {
                 let def_map = self.ecx.tcx.def_map;
-                let trait_def = def_map.get_copy(&trait_ref.ref_id);
+                let def_map = def_map.borrow();
+                let trait_def = def_map.get().get_copy(&trait_ref.ref_id);
                 let def_id = ast_util::def_id_of_def(trait_def);
 
                 // Load eagerly if this is an implementation of the Drop trait
@@ -1721,27 +1796,25 @@ pub static metadata_encoding_version : &'static [u8] =
       0, 0, 0, 1 ];
 
 pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
-    let wr = @mut MemWriter::new();
+    let mut wr = MemWriter::new();
     let stats = Stats {
-        inline_bytes: 0,
-        attr_bytes: 0,
-        dep_bytes: 0,
-        lang_item_bytes: 0,
-        native_lib_bytes: 0,
-        impl_bytes: 0,
-        misc_bytes: 0,
-        item_bytes: 0,
-        index_bytes: 0,
-        zero_bytes: 0,
-        total_bytes: 0,
-        n_inlines: 0
+        inline_bytes: Cell::new(0),
+        attr_bytes: Cell::new(0),
+        dep_bytes: Cell::new(0),
+        lang_item_bytes: Cell::new(0),
+        native_lib_bytes: Cell::new(0),
+        impl_bytes: Cell::new(0),
+        misc_bytes: Cell::new(0),
+        item_bytes: Cell::new(0),
+        index_bytes: Cell::new(0),
+        zero_bytes: Cell::new(0),
+        total_bytes: Cell::new(0),
     };
     let EncodeParams {
         item_symbols,
         diag,
         tcx,
         reexports2,
-        discrim_symbols,
         cstore,
         encode_inlined_item,
         link_meta,
@@ -1749,15 +1822,14 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
         non_inlineable_statics,
         ..
     } = parms;
-    let type_abbrevs = @mut HashMap::new();
-    let stats = @mut stats;
+    let type_abbrevs = @RefCell::new(HashMap::new());
+    let stats = @stats;
     let ecx = EncodeContext {
         diag: diag,
         tcx: tcx,
         stats: stats,
         reexports2: reexports2,
         item_symbols: item_symbols,
-        discrim_symbols: discrim_symbols,
         non_inlineable_statics: non_inlineable_statics,
         link_meta: link_meta,
         cstore: cstore,
@@ -1766,81 +1838,81 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
         reachable: reachable,
      };
 
-    let mut ebml_w = writer::Encoder(wr);
+    let mut ebml_w = writer::Encoder(&mut wr);
 
     encode_hash(&mut ebml_w, ecx.link_meta.crate_hash);
 
-    let mut i = wr.tell();
+    let mut i = ebml_w.writer.tell();
     let crate_attrs = synthesize_crate_attrs(&ecx, crate);
     encode_attributes(&mut ebml_w, crate_attrs);
-    ecx.stats.attr_bytes = wr.tell() - i;
+    ecx.stats.attr_bytes.set(ebml_w.writer.tell() - i);
 
-    i = wr.tell();
+    i = ebml_w.writer.tell();
     encode_crate_deps(&ecx, &mut ebml_w, ecx.cstore);
-    ecx.stats.dep_bytes = wr.tell() - i;
+    ecx.stats.dep_bytes.set(ebml_w.writer.tell() - i);
 
     // Encode the language items.
-    i = wr.tell();
+    i = ebml_w.writer.tell();
     encode_lang_items(&ecx, &mut ebml_w);
-    ecx.stats.lang_item_bytes = wr.tell() - i;
+    ecx.stats.lang_item_bytes.set(ebml_w.writer.tell() - i);
 
     // Encode the native libraries used
-    i = wr.tell();
+    i = ebml_w.writer.tell();
     encode_native_libraries(&ecx, &mut ebml_w);
-    ecx.stats.native_lib_bytes = wr.tell() - i;
+    ecx.stats.native_lib_bytes.set(ebml_w.writer.tell() - i);
 
     // Encode the def IDs of impls, for coherence checking.
-    i = wr.tell();
+    i = ebml_w.writer.tell();
     encode_impls(&ecx, crate, &mut ebml_w);
-    ecx.stats.impl_bytes = wr.tell() - i;
+    ecx.stats.impl_bytes.set(ebml_w.writer.tell() - i);
 
     // Encode miscellaneous info.
-    i = wr.tell();
+    i = ebml_w.writer.tell();
     encode_misc_info(&ecx, crate, &mut ebml_w);
-    ecx.stats.misc_bytes = wr.tell() - i;
+    ecx.stats.misc_bytes.set(ebml_w.writer.tell() - i);
 
     // Encode and index the items.
     ebml_w.start_tag(tag_items);
-    i = wr.tell();
+    i = ebml_w.writer.tell();
     let items_index = encode_info_for_items(&ecx, &mut ebml_w, crate);
-    ecx.stats.item_bytes = wr.tell() - i;
+    ecx.stats.item_bytes.set(ebml_w.writer.tell() - i);
 
-    i = wr.tell();
+    i = ebml_w.writer.tell();
     let items_buckets = create_index(items_index);
     encode_index(&mut ebml_w, items_buckets, write_i64);
-    ecx.stats.index_bytes = wr.tell() - i;
+    ecx.stats.index_bytes.set(ebml_w.writer.tell() - i);
     ebml_w.end_tag();
 
-    ecx.stats.total_bytes = wr.tell();
+    ecx.stats.total_bytes.set(ebml_w.writer.tell());
 
     if (tcx.sess.meta_stats()) {
-        for e in wr.inner_ref().iter() {
+        for e in ebml_w.writer.inner_ref().iter() {
             if *e == 0 {
-                ecx.stats.zero_bytes += 1;
+                ecx.stats.zero_bytes.set(ecx.stats.zero_bytes.get() + 1);
             }
         }
 
         println("metadata stats:");
-        println!("    inline bytes: {}", ecx.stats.inline_bytes);
-        println!(" attribute bytes: {}", ecx.stats.attr_bytes);
-        println!("       dep bytes: {}", ecx.stats.dep_bytes);
-        println!(" lang item bytes: {}", ecx.stats.lang_item_bytes);
-        println!("    native bytes: {}", ecx.stats.native_lib_bytes);
-        println!("      impl bytes: {}", ecx.stats.impl_bytes);
-        println!("      misc bytes: {}", ecx.stats.misc_bytes);
-        println!("      item bytes: {}", ecx.stats.item_bytes);
-        println!("     index bytes: {}", ecx.stats.index_bytes);
-        println!("      zero bytes: {}", ecx.stats.zero_bytes);
-        println!("     total bytes: {}", ecx.stats.total_bytes);
+        println!("    inline bytes: {}", ecx.stats.inline_bytes.get());
+        println!(" attribute bytes: {}", ecx.stats.attr_bytes.get());
+        println!("       dep bytes: {}", ecx.stats.dep_bytes.get());
+        println!(" lang item bytes: {}", ecx.stats.lang_item_bytes.get());
+        println!("    native bytes: {}", ecx.stats.native_lib_bytes.get());
+        println!("      impl bytes: {}", ecx.stats.impl_bytes.get());
+        println!("      misc bytes: {}", ecx.stats.misc_bytes.get());
+        println!("      item bytes: {}", ecx.stats.item_bytes.get());
+        println!("     index bytes: {}", ecx.stats.index_bytes.get());
+        println!("      zero bytes: {}", ecx.stats.zero_bytes.get());
+        println!("     total bytes: {}", ecx.stats.total_bytes.get());
     }
 
     // Pad this, since something (LLVM, presumably) is cutting off the
     // remaining % 4 bytes.
-    wr.write(&[0u8, 0u8, 0u8, 0u8]);
+    ebml_w.writer.write(&[0u8, 0u8, 0u8, 0u8]);
 
     // This is a horrible thing to do to the outer MemWriter, but thankfully we
     // don't use it again so... it's ok right?
-    return util::replace(wr.inner_mut_ref(), ~[]);
+    return util::replace(ebml_w.writer.inner_mut_ref(), ~[]);
 }
 
 // Get the encoded string for a type
@@ -1850,7 +1922,7 @@ pub fn encoded_ty(tcx: ty::ctxt, t: ty::t) -> ~str {
         ds: def_to_str,
         tcx: tcx,
         abbrevs: tyencode::ac_no_abbrevs};
-    let wr = @mut MemWriter::new();
-    tyencode::enc_ty(wr, cx, t);
+    let mut wr = MemWriter::new();
+    tyencode::enc_ty(&mut wr, cx, t);
     str::from_utf8_owned(wr.inner_ref().to_owned())
 }

@@ -18,6 +18,7 @@
  */
 
 use driver::session;
+use std::cell::RefCell;
 use std::hashmap::HashMap;
 use syntax::ast;
 use syntax::codemap::Span;
@@ -33,7 +34,7 @@ pub type NamedRegionMap = HashMap<ast::NodeId, ast::DefRegion>;
 
 struct LifetimeContext {
     sess: session::Session,
-    named_region_map: @mut NamedRegionMap,
+    named_region_map: @RefCell<NamedRegionMap>,
 }
 
 enum ScopeChain<'a> {
@@ -43,12 +44,11 @@ enum ScopeChain<'a> {
     RootScope
 }
 
-pub fn crate(sess: session::Session,
-             crate: &ast::Crate)
-             -> @mut NamedRegionMap {
+pub fn crate(sess: session::Session, crate: &ast::Crate)
+             -> @RefCell<NamedRegionMap> {
     let mut ctxt = LifetimeContext {
         sess: sess,
-        named_region_map: @mut HashMap::new()
+        named_region_map: @RefCell::new(HashMap::new())
     };
     visit::walk_crate(&mut ctxt, crate, &RootScope);
     sess.abort_if_errors();
@@ -305,7 +305,8 @@ impl LifetimeContext {
                                 self.sess.intr()),
                 lifetime_ref.id,
                 def);
-        self.named_region_map.insert(lifetime_ref.id, def);
+        let mut named_region_map = self.named_region_map.borrow_mut();
+        named_region_map.get().insert(lifetime_ref.id, def);
     }
 }
 

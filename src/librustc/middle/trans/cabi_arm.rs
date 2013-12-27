@@ -127,7 +127,7 @@ fn is_reg_ty(ty: Type) -> bool {
     }
 }
 
-pub fn compute_abi_info(_ccx: &mut CrateContext,
+pub fn compute_abi_info(_ccx: &CrateContext,
                         atys: &[Type],
                         rty: Type,
                         ret_def: bool) -> FnType {

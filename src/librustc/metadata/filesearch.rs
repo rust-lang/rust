@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
+use std::cell::RefCell;
 use std::option;
 use std::os;
 use std::io;
@@ -42,11 +42,11 @@ pub trait FileSearch {
 
 pub fn mk_filesearch(maybe_sysroot: &Option<@Path>,
                      target_triple: &str,
-                     addl_lib_search_paths: @mut HashSet<Path>)
+                     addl_lib_search_paths: @RefCell<HashSet<Path>>)
                   -> @FileSearch {
     struct FileSearchImpl {
         sysroot: @Path,
-        addl_lib_search_paths: @mut HashSet<Path>,
+        addl_lib_search_paths: @RefCell<HashSet<Path>>,
         target_triple: ~str
     }
     impl FileSearch for FileSearchImpl {
@@ -56,9 +56,10 @@ pub fn mk_filesearch(maybe_sysroot: &Option<@Path>,
             let mut visited_dirs = HashSet::new();
             let mut found = false;
 
+            let addl_lib_search_paths = self.addl_lib_search_paths.borrow();
             debug!("filesearch: searching additional lib search paths [{:?}]",
-                   self.addl_lib_search_paths.len());
-            for path in self.addl_lib_search_paths.iter() {
+                   addl_lib_search_paths.get().len());
+            for path in addl_lib_search_paths.get().iter() {
                 match f(path) {
                     FileMatches => found = true,
                     FileDoesntMatch => ()

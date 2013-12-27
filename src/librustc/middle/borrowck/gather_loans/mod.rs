@@ -26,6 +26,7 @@ use middle::ty;
 use util::common::indenter;
 use util::ppaux::{Repr};
 
+use std::cell::RefCell;
 use syntax::ast;
 use syntax::ast_util::id_range;
 use syntax::codemap::Span;
@@ -67,8 +68,8 @@ mod gather_moves;
 struct GatherLoanCtxt<'a> {
     bccx: &'a BorrowckCtxt,
     id_range: id_range,
-    move_data: @mut move_data::MoveData,
-    all_loans: @mut ~[Loan],
+    move_data: @move_data::MoveData,
+    all_loans: @RefCell<~[Loan]>,
     item_ub: ast::NodeId,
     repeating_ids: ~[ast::NodeId]
 }
@@ -85,7 +86,7 @@ impl<'a> visit::Visitor<()> for GatherLoanCtxt<'a> {
         gather_loans_in_fn(self, fk, fd, b, s, n);
     }
     fn visit_stmt(&mut self, s:@Stmt, _:()) {
-        add_stmt_to_map(self, s);
+        visit::walk_stmt(self, s, ());
     }
     fn visit_pat(&mut self, p:&Pat, _:()) {
         add_pat_to_id_range(self, p);
@@ -103,14 +104,14 @@ impl<'a> visit::Visitor<()> for GatherLoanCtxt<'a> {
 pub fn gather_loans(bccx: &BorrowckCtxt,
                     decl: &ast::fn_decl,
                     body: ast::P<ast::Block>)
-                    -> (id_range, @mut ~[Loan], @mut move_data::MoveData) {
+                    -> (id_range, @RefCell<~[Loan]>, @move_data::MoveData) {
     let mut glcx = GatherLoanCtxt {
         bccx: bccx,
         id_range: id_range::max(),
-        all_loans: @mut ~[],
+        all_loans: @RefCell::new(~[]),
         item_ub: body.id,
         repeating_ids: ~[body.id],
-        move_data: @mut MoveData::new()
+        move_data: @MoveData::new()
     };
     glcx.gather_fn_arg_patterns(decl, body);
 
@@ -208,7 +209,8 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
 
     // If this expression is borrowed, have to ensure it remains valid:
     {
-        let r = tcx.adjustments.find(&ex.id);
+        let adjustments = tcx.adjustments.borrow();
+        let r = adjustments.get().find(&ex.id);
         for &adjustments in r.iter() {
             this.guarantee_adjustments(ex, *adjustments);
         }
@@ -222,6 +224,7 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
     }
 
     // Special checks for various kinds of expressions:
+    let method_map = this.bccx.method_map.borrow();
     match ex.node {
       ast::ExprAddrOf(mutbl, base) => {
         let base_cmt = this.bccx.cat_expr(base);
@@ -269,7 +272,7 @@ fn gather_loans_in_expr(this: &mut GatherLoanCtxt,
 
       ast::ExprIndex(_, _, arg) |
       ast::ExprBinary(_, _, _, arg)
-      if this.bccx.method_map.contains_key(&ex.id) => {
+      if method_map.get().contains_key(&ex.id) => {
           // Arguments in method calls are always passed by ref.
           //
           // Currently these do not use adjustments, so we have to
@@ -509,9 +512,9 @@ impl<'a> GatherLoanCtxt<'a> {
                     self.mark_loan_path_as_mutated(loan_path);
                 }
 
-                let all_loans = &mut *self.all_loans; // FIXME(#5074)
+                let all_loans = self.all_loans.borrow();
                 Loan {
-                    index: all_loans.len(),
+                    index: all_loans.get().len(),
                     loan_path: loan_path,
                     cmt: cmt,
                     mutbl: req_mutbl,
@@ -529,7 +532,10 @@ impl<'a> GatherLoanCtxt<'a> {
         // let loan_path = loan.loan_path;
         // let loan_gen_scope = loan.gen_scope;
         // let loan_kill_scope = loan.kill_scope;
-        self.all_loans.push(loan);
+        {
+            let mut all_loans = self.all_loans.borrow_mut();
+            all_loans.get().push(loan);
+        }
 
         // if loan_gen_scope != borrow_id {
             // FIXME(#6268) Nested method calls
@@ -605,7 +611,10 @@ impl<'a> GatherLoanCtxt<'a> {
 
         match *loan_path {
             LpVar(local_id) => {
-                self.tcx().used_mut_nodes.insert(local_id);
+                let mut used_mut_nodes = self.tcx()
+                                             .used_mut_nodes
+                                             .borrow_mut();
+                used_mut_nodes.get().insert(local_id);
             }
             LpExtend(base, mc::McInherited, _) => {
                 self.mark_loan_path_as_mutated(base);
@@ -823,15 +832,3 @@ impl<'a> GatherLoanCtxt<'a> {
     }
 }
 
-// Setting up info that preserve needs.
-// This is just the most convenient place to do it.
-fn add_stmt_to_map(this: &mut GatherLoanCtxt,
-                   stmt: @ast::Stmt) {
-    match stmt.node {
-        ast::StmtExpr(_, id) | ast::StmtSemi(_, id) => {
-            this.bccx.stmt_map.insert(id);
-        }
-        _ => ()
-    }
-    visit::walk_stmt(this, stmt, ());
-}

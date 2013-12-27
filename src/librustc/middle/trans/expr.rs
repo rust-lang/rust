@@ -175,14 +175,17 @@ impl Dest {
     }
 }
 
-pub fn trans_to_datum(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
+pub fn trans_to_datum(bcx: @Block, expr: &ast::Expr) -> DatumBlock {
     debug!("trans_to_datum(expr={})", bcx.expr_to_str(expr));
 
     let mut bcx = bcx;
     let mut datum = unpack_datum!(bcx, trans_to_datum_unadjusted(bcx, expr));
-    let adjustment = match bcx.tcx().adjustments.find_copy(&expr.id) {
-        None => { return DatumBlock {bcx: bcx, datum: datum}; }
-        Some(adj) => { adj }
+    let adjustment = {
+        let adjustments = bcx.tcx().adjustments.borrow();
+        match adjustments.get().find_copy(&expr.id) {
+            None => { return DatumBlock {bcx: bcx, datum: datum}; }
+            Some(adj) => { adj }
+        }
     };
     debug!("unadjusted datum: {}", datum.to_str(bcx.ccx()));
     match *adjustment {
@@ -229,11 +232,11 @@ pub fn trans_to_datum(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
     debug!("after adjustments, datum={}", datum.to_str(bcx.ccx()));
     return DatumBlock {bcx: bcx, datum: datum};
 
-    fn auto_ref(bcx: @mut Block, datum: Datum) -> DatumBlock {
+    fn auto_ref(bcx: @Block, datum: Datum) -> DatumBlock {
         DatumBlock {bcx: bcx, datum: datum.to_rptr(bcx)}
     }
 
-    fn auto_borrow_fn(bcx: @mut Block,
+    fn auto_borrow_fn(bcx: @Block,
                       adjusted_ty: ty::t,
                       datum: Datum) -> DatumBlock {
         // Currently, all closure types are represented precisely the
@@ -244,7 +247,7 @@ pub fn trans_to_datum(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
                                   mode: datum.mode}}
     }
 
-    fn auto_slice(bcx: @mut Block,
+    fn auto_slice(bcx: @Block,
                   autoderefs: uint,
                   expr: &ast::Expr,
                   datum: Datum) -> DatumBlock {
@@ -273,7 +276,7 @@ pub fn trans_to_datum(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
         DatumBlock {bcx: bcx, datum: scratch}
     }
 
-    fn add_env(bcx: @mut Block, expr: &ast::Expr, datum: Datum) -> DatumBlock {
+    fn add_env(bcx: @Block, expr: &ast::Expr, datum: Datum) -> DatumBlock {
         // This is not the most efficient thing possible; since closures
         // are two words it'd be better if this were compiled in
         // 'dest' mode, but I can't find a nice way to structure the
@@ -292,7 +295,7 @@ pub fn trans_to_datum(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
         DatumBlock {bcx: bcx, datum: scratch}
     }
 
-    fn auto_slice_and_ref(bcx: @mut Block,
+    fn auto_slice_and_ref(bcx: @Block,
                           autoderefs: uint,
                           expr: &ast::Expr,
                           datum: Datum) -> DatumBlock {
@@ -300,7 +303,7 @@ pub fn trans_to_datum(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
         auto_ref(bcx, datum)
     }
 
-    fn auto_borrow_obj(mut bcx: @mut Block,
+    fn auto_borrow_obj(mut bcx: @Block,
                        autoderefs: uint,
                        expr: &ast::Expr,
                        source_datum: Datum) -> DatumBlock {
@@ -414,8 +417,12 @@ pub fn trans_to_datum(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
     }
 }
 
-pub fn trans_into(bcx: @mut Block, expr: &ast::Expr, dest: Dest) -> @mut Block {
-    if bcx.tcx().adjustments.contains_key(&expr.id) {
+pub fn trans_into(bcx: @Block, expr: &ast::Expr, dest: Dest) -> @Block {
+    let adjustment_found = {
+        let adjustments = bcx.tcx().adjustments.borrow();
+        adjustments.get().contains_key(&expr.id)
+    };
+    if adjustment_found {
         // use trans_to_datum, which is mildly less efficient but
         // which will perform the adjustments:
         let datumblock = trans_to_datum(bcx, expr);
@@ -472,7 +479,7 @@ pub fn trans_into(bcx: @mut Block, expr: &ast::Expr, dest: Dest) -> @mut Block {
     };
 }
 
-fn trans_lvalue(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
+fn trans_lvalue(bcx: @Block, expr: &ast::Expr) -> DatumBlock {
     /*!
      *
      * Translates an lvalue expression, always yielding a by-ref
@@ -480,7 +487,11 @@ fn trans_lvalue(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
      * instead, but sometimes we call trans_lvalue() directly as a
      * means of asserting that a particular expression is an lvalue. */
 
-    return match bcx.tcx().adjustments.find(&expr.id) {
+    let adjustment_opt = {
+        let adjustments = bcx.tcx().adjustments.borrow();
+        adjustments.get().find_copy(&expr.id)
+    };
+    match adjustment_opt {
         None => trans_lvalue_unadjusted(bcx, expr),
         Some(_) => {
             bcx.sess().span_bug(
@@ -488,10 +499,10 @@ fn trans_lvalue(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
                 format!("trans_lvalue() called on an expression \
                       with adjustments"));
         }
-    };
+    }
 }
 
-fn trans_to_datum_unadjusted(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
+fn trans_to_datum_unadjusted(bcx: @Block, expr: &ast::Expr) -> DatumBlock {
     /*!
      * Translates an expression into a datum.  If this expression
      * is an rvalue, this will result in a temporary value being
@@ -551,13 +562,13 @@ fn trans_to_datum_unadjusted(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
         }
     }
 
-    fn nil(bcx: @mut Block, ty: ty::t) -> DatumBlock {
+    fn nil(bcx: @Block, ty: ty::t) -> DatumBlock {
         let datum = immediate_rvalue(C_nil(), ty);
         DatumBlock {bcx: bcx, datum: datum}
     }
 }
 
-fn trans_rvalue_datum_unadjusted(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
+fn trans_rvalue_datum_unadjusted(bcx: @Block, expr: &ast::Expr) -> DatumBlock {
     let _icx = push_ctxt("trans_rvalue_datum_unadjusted");
 
     match expr.node {
@@ -579,7 +590,10 @@ fn trans_rvalue_datum_unadjusted(bcx: @mut Block, expr: &ast::Expr) -> DatumBloc
         }
         ast::ExprBinary(_, op, lhs, rhs) => {
             // if overloaded, would be RvalueDpsExpr
-            assert!(!bcx.ccx().maps.method_map.contains_key(&expr.id));
+            {
+                let method_map = bcx.ccx().maps.method_map.borrow();
+                assert!(!method_map.get().contains_key(&expr.id));
+            }
 
             return trans_binary(bcx, expr, op, lhs, rhs);
         }
@@ -608,11 +622,11 @@ fn trans_rvalue_datum_unadjusted(bcx: @mut Block, expr: &ast::Expr) -> DatumBloc
     }
 }
 
-fn trans_rvalue_stmt_unadjusted(bcx: @mut Block, expr: &ast::Expr) -> @mut Block {
+fn trans_rvalue_stmt_unadjusted(bcx: @Block, expr: &ast::Expr) -> @Block {
     let mut bcx = bcx;
     let _icx = push_ctxt("trans_rvalue_stmt");
 
-    if bcx.unreachable {
+    if bcx.unreachable.get() {
         return bcx;
     }
 
@@ -660,8 +674,8 @@ fn trans_rvalue_stmt_unadjusted(bcx: @mut Block, expr: &ast::Expr) -> @mut Block
     };
 }
 
-fn trans_rvalue_dps_unadjusted(bcx: @mut Block, expr: &ast::Expr,
-                               dest: Dest) -> @mut Block {
+fn trans_rvalue_dps_unadjusted(bcx: @Block, expr: &ast::Expr,
+                               dest: Dest) -> @Block {
     let _icx = push_ctxt("trans_rvalue_dps_unadjusted");
     let tcx = bcx.tcx();
 
@@ -785,8 +799,8 @@ fn trans_rvalue_dps_unadjusted(bcx: @mut Block, expr: &ast::Expr,
     }
 }
 
-fn trans_def_dps_unadjusted(bcx: @mut Block, ref_expr: &ast::Expr,
-                            def: ast::Def, dest: Dest) -> @mut Block {
+fn trans_def_dps_unadjusted(bcx: @Block, ref_expr: &ast::Expr,
+                            def: ast::Def, dest: Dest) -> @Block {
     let _icx = push_ctxt("trans_def_dps_unadjusted");
     let ccx = bcx.ccx();
 
@@ -835,7 +849,7 @@ fn trans_def_dps_unadjusted(bcx: @mut Block, ref_expr: &ast::Expr,
     }
 }
 
-fn trans_def_datum_unadjusted(bcx: @mut Block,
+fn trans_def_datum_unadjusted(bcx: @Block,
                               ref_expr: &ast::Expr,
                               def: ast::Def) -> DatumBlock
 {
@@ -870,7 +884,7 @@ fn trans_def_datum_unadjusted(bcx: @mut Block,
     }
 }
 
-fn trans_lvalue_unadjusted(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
+fn trans_lvalue_unadjusted(bcx: @Block, expr: &ast::Expr) -> DatumBlock {
     /*!
      *
      * Translates an lvalue expression, always yielding a by-ref
@@ -907,7 +921,7 @@ fn trans_lvalue_unadjusted(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
         }
     };
 
-    fn trans_rec_field(bcx: @mut Block,
+    fn trans_rec_field(bcx: @Block,
                        base: &ast::Expr,
                        field: ast::Ident) -> DatumBlock {
         //! Translates `base.field`.
@@ -931,7 +945,7 @@ fn trans_lvalue_unadjusted(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
         })
     }
 
-    fn trans_index(bcx: @mut Block,
+    fn trans_index(bcx: @Block,
                    index_expr: &ast::Expr,
                    base: &ast::Expr,
                    idx: &ast::Expr) -> DatumBlock {
@@ -985,7 +999,7 @@ fn trans_lvalue_unadjusted(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
         };
     }
 
-    fn trans_def_lvalue(bcx: @mut Block,
+    fn trans_def_lvalue(bcx: @Block,
                         ref_expr: &ast::Expr,
                         def: ast::Def)
         -> DatumBlock
@@ -997,7 +1011,7 @@ fn trans_lvalue_unadjusted(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
             ast::DefStatic(did, _) => {
                 let const_ty = expr_ty(bcx, ref_expr);
 
-                fn get_did(ccx: @mut CrateContext, did: ast::DefId)
+                fn get_did(ccx: @CrateContext, did: ast::DefId)
                     -> ast::DefId {
                     if did.crate != ast::LOCAL_CRATE {
                         inline::maybe_instantiate_inline(ccx, did)
@@ -1006,7 +1020,7 @@ fn trans_lvalue_unadjusted(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
                     }
                 }
 
-                fn get_val(bcx: @mut Block, did: ast::DefId, const_ty: ty::t)
+                fn get_val(bcx: @Block, did: ast::DefId, const_ty: ty::t)
                            -> ValueRef {
                     // For external constants, we don't inline.
                     if did.crate == ast::LOCAL_CRATE {
@@ -1018,8 +1032,10 @@ fn trans_lvalue_unadjusted(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
                         PointerCast(bcx, val, pty)
                     } else {
                         {
-                            let extern_const_values = &bcx.ccx().extern_const_values;
-                            match extern_const_values.find(&did) {
+                            let extern_const_values = bcx.ccx()
+                                                         .extern_const_values
+                                                         .borrow();
+                            match extern_const_values.get().find(&did) {
                                 None => {}  // Continue.
                                 Some(llval) => {
                                     return *llval;
@@ -1037,8 +1053,9 @@ fn trans_lvalue_unadjusted(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
                                                     llty.to_ref(),
                                                     buf)
                             });
-                            let extern_const_values = &mut bcx.ccx().extern_const_values;
-                            extern_const_values.insert(did, llval);
+                            let mut extern_const_values =
+                                bcx.ccx().extern_const_values.borrow_mut();
+                            extern_const_values.get().insert(did, llval);
                             llval
                         }
                     }
@@ -1063,14 +1080,15 @@ fn trans_lvalue_unadjusted(bcx: @mut Block, expr: &ast::Expr) -> DatumBlock {
     }
 }
 
-pub fn trans_local_var(bcx: @mut Block, def: ast::Def) -> Datum {
+pub fn trans_local_var(bcx: @Block, def: ast::Def) -> Datum {
     let _icx = push_ctxt("trans_local_var");
 
     return match def {
         ast::DefUpvar(nid, _, _, _) => {
             // Can't move upvars, so this is never a ZeroMemLastUse.
             let local_ty = node_id_type(bcx, nid);
-            match bcx.fcx.llupvars.find(&nid) {
+            let llupvars = bcx.fcx.llupvars.borrow();
+            match llupvars.get().find(&nid) {
                 Some(&val) => {
                     Datum {
                         val: val,
@@ -1085,14 +1103,16 @@ pub fn trans_local_var(bcx: @mut Block, def: ast::Def) -> Datum {
             }
         }
         ast::DefArg(nid, _) => {
-            take_local(bcx, bcx.fcx.llargs, nid)
+            let llargs = bcx.fcx.llargs.borrow();
+            take_local(bcx, llargs.get(), nid)
         }
         ast::DefLocal(nid, _) | ast::DefBinding(nid, _) => {
-            take_local(bcx, bcx.fcx.lllocals, nid)
+            let lllocals = bcx.fcx.lllocals.borrow();
+            take_local(bcx, lllocals.get(), nid)
         }
         ast::DefSelf(nid, _) => {
-            let self_info: ValSelfData = match bcx.fcx.llself {
-                Some(ref self_info) => *self_info,
+            let self_info: ValSelfData = match bcx.fcx.llself.get() {
+                Some(self_info) => self_info,
                 None => {
                     bcx.sess().bug(format!(
                         "trans_local_var: reference to self \
@@ -1115,7 +1135,7 @@ pub fn trans_local_var(bcx: @mut Block, def: ast::Def) -> Datum {
         }
     };
 
-    fn take_local(bcx: @mut Block,
+    fn take_local(bcx: @Block,
                   table: &HashMap<ast::NodeId, ValueRef>,
                   nid: ast::NodeId) -> Datum {
         let v = match table.find(&nid) {
@@ -1160,7 +1180,11 @@ pub fn with_field_tys<R>(
                         ty.repr(tcx)));
                 }
                 Some(node_id) => {
-                    match tcx.def_map.get_copy(&node_id) {
+                    let opt_def = {
+                        let def_map = tcx.def_map.borrow();
+                        def_map.get().get_copy(&node_id)
+                    };
+                    match opt_def {
                         ast::DefVariant(enum_id, variant_id, _) => {
                             let variant_info = ty::enum_variant_with_id(
                                 tcx, enum_id, variant_id);
@@ -1184,12 +1208,12 @@ pub fn with_field_tys<R>(
     }
 }
 
-fn trans_rec_or_struct(bcx: @mut Block,
+fn trans_rec_or_struct(bcx: @Block,
                        fields: &[ast::Field],
                        base: Option<@ast::Expr>,
                        expr_span: codemap::Span,
                        id: ast::NodeId,
-                       dest: Dest) -> @mut Block
+                       dest: Dest) -> @Block
 {
     let _icx = push_ctxt("trans_rec");
     let bcx = bcx;
@@ -1263,10 +1287,10 @@ struct StructBaseInfo {
  * - `optbase` contains information on the base struct (if any) from
  * which remaining fields are copied; see comments on `StructBaseInfo`.
  */
-fn trans_adt(bcx: @mut Block, repr: &adt::Repr, discr: ty::Disr,
+fn trans_adt(bcx: @Block, repr: &adt::Repr, discr: ty::Disr,
              fields: &[(uint, @ast::Expr)],
              optbase: Option<StructBaseInfo>,
-             dest: Dest) -> @mut Block {
+             dest: Dest) -> @Block {
     let _icx = push_ctxt("trans_adt");
     let mut bcx = bcx;
     let addr = match dest {
@@ -1311,7 +1335,7 @@ fn trans_adt(bcx: @mut Block, repr: &adt::Repr, discr: ty::Disr,
 }
 
 
-fn trans_immediate_lit(bcx: @mut Block, expr: &ast::Expr,
+fn trans_immediate_lit(bcx: @Block, expr: &ast::Expr,
                        lit: ast::lit) -> DatumBlock {
     // must not be a string constant, that is a RvalueDpsExpr
     let _icx = push_ctxt("trans_immediate_lit");
@@ -1319,7 +1343,7 @@ fn trans_immediate_lit(bcx: @mut Block, expr: &ast::Expr,
     immediate_rvalue_bcx(bcx, consts::const_lit(bcx.ccx(), expr, lit), ty)
 }
 
-fn trans_unary_datum(bcx: @mut Block,
+fn trans_unary_datum(bcx: @Block,
                      un_expr: &ast::Expr,
                      op: ast::UnOp,
                      sub_expr: &ast::Expr) -> DatumBlock {
@@ -1329,7 +1353,10 @@ fn trans_unary_datum(bcx: @mut Block,
     assert!(op != ast::UnDeref);
 
     // if overloaded, would be RvalueDpsExpr
-    assert!(!bcx.ccx().maps.method_map.contains_key(&un_expr.id));
+    {
+        let method_map = bcx.ccx().maps.method_map.borrow();
+        assert!(!method_map.get().contains_key(&un_expr.id));
+    }
 
     let un_ty = expr_ty(bcx, un_expr);
     let sub_ty = expr_ty(bcx, sub_expr);
@@ -1379,7 +1406,7 @@ fn trans_unary_datum(bcx: @mut Block,
         }
     };
 
-    fn trans_boxed_expr(bcx: @mut Block,
+    fn trans_boxed_expr(bcx: @Block,
                         box_ty: ty::t,
                         contents: &ast::Expr,
                         contents_ty: ty::t,
@@ -1408,7 +1435,7 @@ fn trans_unary_datum(bcx: @mut Block,
     }
 }
 
-fn trans_addr_of(bcx: @mut Block, expr: &ast::Expr,
+fn trans_addr_of(bcx: @Block, expr: &ast::Expr,
                  subexpr: &ast::Expr) -> DatumBlock {
     let _icx = push_ctxt("trans_addr_of");
     let mut bcx = bcx;
@@ -1419,7 +1446,7 @@ fn trans_addr_of(bcx: @mut Block, expr: &ast::Expr,
 
 // Important to get types for both lhs and rhs, because one might be _|_
 // and the other not.
-fn trans_eager_binop(bcx: @mut Block,
+fn trans_eager_binop(bcx: @Block,
                      binop_expr: &ast::Expr,
                      binop_ty: ty::t,
                      op: ast::BinOp,
@@ -1522,7 +1549,7 @@ fn trans_eager_binop(bcx: @mut Block,
 // refinement types would obviate the need for this
 enum lazy_binop_ty { lazy_and, lazy_or }
 
-fn trans_lazy_binop(bcx: @mut Block,
+fn trans_lazy_binop(bcx: @Block,
                     binop_expr: &ast::Expr,
                     op: lazy_binop_ty,
                     a: &ast::Expr,
@@ -1537,7 +1564,7 @@ fn trans_lazy_binop(bcx: @mut Block,
         })
     };
 
-    if past_lhs.unreachable {
+    if past_lhs.unreachable.get() {
         return immediate_rvalue_bcx(past_lhs, lhs, binop_ty);
     }
 
@@ -1556,7 +1583,7 @@ fn trans_lazy_binop(bcx: @mut Block,
         })
     };
 
-    if past_rhs.unreachable {
+    if past_rhs.unreachable.get() {
         return immediate_rvalue_bcx(join, lhs, binop_ty);
     }
 
@@ -1567,7 +1594,7 @@ fn trans_lazy_binop(bcx: @mut Block,
     return immediate_rvalue_bcx(join, phi, binop_ty);
 }
 
-fn trans_binary(bcx: @mut Block,
+fn trans_binary(bcx: @Block,
                 binop_expr: &ast::Expr,
                 op: ast::BinOp,
                 lhs: &ast::Expr,
@@ -1593,15 +1620,18 @@ fn trans_binary(bcx: @mut Block,
     }
 }
 
-fn trans_overloaded_op(bcx: @mut Block,
+fn trans_overloaded_op(bcx: @Block,
                        expr: &ast::Expr,
                        callee_id: ast::NodeId,
                        rcvr: &ast::Expr,
                        args: ~[@ast::Expr],
                        ret_ty: ty::t,
                        dest: Dest)
-                       -> @mut Block {
-    let origin = bcx.ccx().maps.method_map.get_copy(&expr.id);
+                       -> @Block {
+    let origin = {
+        let method_map = bcx.ccx().maps.method_map.borrow();
+        method_map.get().get_copy(&expr.id)
+    };
     let fty = node_id_type(bcx, callee_id);
     callee::trans_call_inner(bcx,
                              expr.info(),
@@ -1618,7 +1648,7 @@ fn trans_overloaded_op(bcx: @mut Block,
                              DoAutorefArg).bcx
 }
 
-fn int_cast(bcx: @mut Block, lldsttype: Type, llsrctype: Type,
+fn int_cast(bcx: @Block, lldsttype: Type, llsrctype: Type,
             llsrc: ValueRef, signed: bool) -> ValueRef {
     let _icx = push_ctxt("int_cast");
     unsafe {
@@ -1636,7 +1666,7 @@ fn int_cast(bcx: @mut Block, lldsttype: Type, llsrctype: Type,
     }
 }
 
-fn float_cast(bcx: @mut Block, lldsttype: Type, llsrctype: Type,
+fn float_cast(bcx: @Block, lldsttype: Type, llsrctype: Type,
               llsrc: ValueRef) -> ValueRef {
     let _icx = push_ctxt("float_cast");
     let srcsz = llsrctype.float_width();
@@ -1672,7 +1702,7 @@ pub fn cast_type_kind(t: ty::t) -> cast_kind {
     }
 }
 
-fn trans_imm_cast(bcx: @mut Block, expr: &ast::Expr,
+fn trans_imm_cast(bcx: @Block, expr: &ast::Expr,
                   id: ast::NodeId) -> DatumBlock {
     let _icx = push_ctxt("trans_cast");
     let ccx = bcx.ccx();
@@ -1747,12 +1777,12 @@ fn trans_imm_cast(bcx: @mut Block, expr: &ast::Expr,
     return immediate_rvalue_bcx(bcx, newval, t_out);
 }
 
-fn trans_assign_op(bcx: @mut Block,
+fn trans_assign_op(bcx: @Block,
                    expr: &ast::Expr,
                    callee_id: ast::NodeId,
                    op: ast::BinOp,
                    dst: &ast::Expr,
-                   src: @ast::Expr) -> @mut Block
+                   src: @ast::Expr) -> @Block
 {
     let _icx = push_ctxt("trans_assign_op");
     let mut bcx = bcx;
@@ -1763,7 +1793,11 @@ fn trans_assign_op(bcx: @mut Block,
     let dst_datum = unpack_datum!(bcx, trans_lvalue_unadjusted(bcx, dst));
 
     // A user-defined operator method
-    if bcx.ccx().maps.method_map.find(&expr.id).is_some() {
+    let found = {
+        let method_map = bcx.ccx().maps.method_map.borrow();
+        method_map.get().find(&expr.id).is_some()
+    };
+    if found {
         // FIXME(#2528) evaluates the receiver twice!!
         let scratch = scratch_datum(bcx, dst_datum.ty, "__assign_op", false);
         let bcx = trans_overloaded_op(bcx,
@@ -1788,16 +1822,20 @@ fn trans_assign_op(bcx: @mut Block,
     return result_datum.copy_to_datum(bcx, DROP_EXISTING, dst_datum);
 }
 
-pub fn trans_log_level(bcx: @mut Block) -> DatumBlock {
+pub fn trans_log_level(bcx: @Block) -> DatumBlock {
     let _icx = push_ctxt("trans_log_level");
     let ccx = bcx.ccx();
 
     let (modpath, modname) = {
-        let srccrate = match ccx.external_srcs.find(&bcx.fcx.id) {
-            Some(&src) => {
-                ccx.sess.cstore.get_crate_data(src.crate).name
-            }
-            None => ccx.link_meta.pkgid.name.to_managed(),
+        let srccrate;
+        {
+            let external_srcs = ccx.external_srcs.borrow();
+            srccrate = match external_srcs.get().find(&bcx.fcx.id) {
+                Some(&src) => {
+                    ccx.sess.cstore.get_crate_data(src.crate).name
+                }
+                None => ccx.link_meta.pkgid.name.to_managed(),
+            };
         };
         let mut modpath = ~[path_mod(ccx.sess.ident_of(srccrate))];
         for e in bcx.fcx.path.iter() {
@@ -1810,8 +1848,15 @@ pub fn trans_log_level(bcx: @mut Block) -> DatumBlock {
         (modpath, modname)
     };
 
-    let global = if ccx.module_data.contains_key(&modname) {
-        ccx.module_data.get_copy(&modname)
+    let module_data_exists;
+    {
+        let module_data = ccx.module_data.borrow();
+        module_data_exists = module_data.get().contains_key(&modname);
+    }
+
+    let global = if module_data_exists {
+        let mut module_data = ccx.module_data.borrow_mut();
+        module_data.get().get_copy(&modname)
     } else {
         let s = link::mangle_internal_name_by_path_and_seq(
             ccx, modpath, "loglevel");
@@ -1824,8 +1869,11 @@ pub fn trans_log_level(bcx: @mut Block) -> DatumBlock {
             llvm::LLVMSetInitializer(global, C_null(Type::i32()));
             lib::llvm::SetLinkage(global, lib::llvm::InternalLinkage);
         }
-        ccx.module_data.insert(modname, global);
-        global
+        {
+            let mut module_data = ccx.module_data.borrow_mut();
+            module_data.get().insert(modname, global);
+            global
+        }
     };
 
     return immediate_rvalue_bcx(bcx, Load(bcx, global), ty::mk_u32());

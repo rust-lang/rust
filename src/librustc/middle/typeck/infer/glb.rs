@@ -30,7 +30,7 @@ use util::ppaux::mt_to_str;
 pub struct Glb(CombineFields);  // "greatest lower bound" (common subtype)
 
 impl Combine for Glb {
-    fn infcx(&self) -> @mut InferCtxt { self.infcx }
+    fn infcx(&self) -> @InferCtxt { self.infcx }
     fn tag(&self) -> ~str { ~"glb" }
     fn a_is_expected(&self) -> bool { self.a_is_expected }
     fn trace(&self) -> TypeTrace { self.trace }

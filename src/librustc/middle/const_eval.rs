@@ -19,6 +19,7 @@ use syntax::visit;
 use syntax::visit::Visitor;
 use syntax::ast::*;
 
+use std::cell::RefCell;
 use std::hashmap::{HashMap, HashSet};
 
 //
@@ -77,11 +78,17 @@ pub fn join_all<It: Iterator<constness>>(mut cs: It) -> constness {
 }
 
 pub fn lookup_const(tcx: ty::ctxt, e: &Expr) -> Option<@Expr> {
-    match tcx.def_map.find(&e.id) {
-        Some(&ast::DefStatic(def_id, false)) =>
-            lookup_const_by_id(tcx, def_id),
-        Some(&ast::DefVariant(enum_def, variant_def, _)) =>
-            lookup_variant_by_id(tcx, enum_def, variant_def),
+    let opt_def = {
+        let def_map = tcx.def_map.borrow();
+        def_map.get().find_copy(&e.id)
+    };
+    match opt_def {
+        Some(ast::DefStatic(def_id, false)) => {
+            lookup_const_by_id(tcx, def_id)
+        }
+        Some(ast::DefVariant(enum_def, variant_def, _)) => {
+            lookup_variant_by_id(tcx, enum_def, variant_def)
+        }
         _ => None
     }
 }
@@ -111,16 +118,19 @@ pub fn lookup_variant_by_id(tcx: ty::ctxt,
             Some(_) => None
         }
     } else {
-        match tcx.extern_const_variants.find(&variant_def) {
-            Some(&e) => return e,
-            None => {}
+        {
+            let extern_const_variants = tcx.extern_const_variants.borrow();
+            match extern_const_variants.get().find(&variant_def) {
+                Some(&e) => return e,
+                None => {}
+            }
         }
         let maps = astencode::Maps {
-            root_map: @mut HashMap::new(),
-            method_map: @mut HashMap::new(),
-            vtable_map: @mut HashMap::new(),
-            write_guard_map: @mut HashSet::new(),
-            capture_map: @mut HashMap::new()
+            root_map: @RefCell::new(HashMap::new()),
+            method_map: @RefCell::new(HashMap::new()),
+            vtable_map: @RefCell::new(HashMap::new()),
+            write_guard_map: @RefCell::new(HashSet::new()),
+            capture_map: @RefCell::new(HashMap::new())
         };
         let e = match csearch::maybe_get_item_ast(tcx, enum_def,
             |a, b, c, d| astencode::decode_inlined_item(a,
@@ -136,8 +146,12 @@ pub fn lookup_variant_by_id(tcx: ty::ctxt,
             },
             _ => None
         };
-        tcx.extern_const_variants.insert(variant_def, e);
-        return e;
+        {
+            let mut extern_const_variants = tcx.extern_const_variants
+                                               .borrow_mut();
+            extern_const_variants.get().insert(variant_def, e);
+            return e;
+        }
     }
 }
 
@@ -154,16 +168,19 @@ pub fn lookup_const_by_id(tcx: ty::ctxt,
             Some(_) => None
         }
     } else {
-        match tcx.extern_const_statics.find(&def_id) {
-            Some(&e) => return e,
-            None => {}
+        {
+            let extern_const_statics = tcx.extern_const_statics.borrow();
+            match extern_const_statics.get().find(&def_id) {
+                Some(&e) => return e,
+                None => {}
+            }
         }
         let maps = astencode::Maps {
-            root_map: @mut HashMap::new(),
-            method_map: @mut HashMap::new(),
-            vtable_map: @mut HashMap::new(),
-            write_guard_map: @mut HashSet::new(),
-            capture_map: @mut HashMap::new()
+            root_map: @RefCell::new(HashMap::new()),
+            method_map: @RefCell::new(HashMap::new()),
+            vtable_map: @RefCell::new(HashMap::new()),
+            write_guard_map: @RefCell::new(HashSet::new()),
+            capture_map: @RefCell::new(HashMap::new())
         };
         let e = match csearch::maybe_get_item_ast(tcx, def_id,
             |a, b, c, d| astencode::decode_inlined_item(a, b, maps, c, d)) {
@@ -173,8 +190,12 @@ pub fn lookup_const_by_id(tcx: ty::ctxt,
             },
             _ => None
         };
-        tcx.extern_const_statics.insert(def_id, e);
-        return e;
+        {
+            let mut extern_const_statics = tcx.extern_const_statics
+                                              .borrow_mut();
+            extern_const_statics.get().insert(def_id, e);
+            return e;
+        }
     }
 }
 

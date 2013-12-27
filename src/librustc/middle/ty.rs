@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use driver::session;
 use metadata::csearch;
 use metadata;
@@ -30,6 +29,7 @@ use util::ppaux::{Repr, UserString};
 use util::common::{indenter};
 
 use std::cast;
+use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::hashmap::{HashMap, HashSet};
 use std::ops;
@@ -174,7 +174,7 @@ pub struct creader_cache_key {
     len: uint
 }
 
-type creader_cache = @mut HashMap<creader_cache_key, t>;
+type creader_cache = RefCell<HashMap<creader_cache_key, t>>;
 
 struct intern_key {
     sty: *sty,
@@ -264,15 +264,15 @@ pub type ctxt = @ctxt_;
 /// later on.
 struct ctxt_ {
     diag: @mut syntax::diagnostic::span_handler,
-    interner: @mut HashMap<intern_key, ~t_box_>,
-    next_id: @mut uint,
-    cstore: @mut metadata::cstore::CStore,
+    interner: RefCell<HashMap<intern_key, ~t_box_>>,
+    next_id: Cell<uint>,
+    cstore: @metadata::cstore::CStore,
     sess: session::Session,
     def_map: resolve::DefMap,
 
-    named_region_map: @mut resolve_lifetime::NamedRegionMap,
+    named_region_map: @RefCell<resolve_lifetime::NamedRegionMap>,
 
-    region_maps: @mut middle::region::RegionMaps,
+    region_maps: @middle::region::RegionMaps,
 
     // Stores the types for various nodes in the AST.  Note that this table
     // is not guaranteed to be populated until after typeck.  See
@@ -283,93 +283,93 @@ struct ctxt_ {
     // of this node.  This only applies to nodes that refer to entities
     // parameterized by type parameters, such as generic fns, types, or
     // other items.
-    node_type_substs: @mut HashMap<NodeId, ~[t]>,
+    node_type_substs: RefCell<HashMap<NodeId, ~[t]>>,
 
     // Maps from a method to the method "descriptor"
-    methods: @mut HashMap<DefId, @Method>,
+    methods: RefCell<HashMap<DefId, @Method>>,
 
     // Maps from a trait def-id to a list of the def-ids of its methods
-    trait_method_def_ids: @mut HashMap<DefId, @~[DefId]>,
+    trait_method_def_ids: RefCell<HashMap<DefId, @~[DefId]>>,
 
     // A cache for the trait_methods() routine
-    trait_methods_cache: @mut HashMap<DefId, @~[@Method]>,
+    trait_methods_cache: RefCell<HashMap<DefId, @~[@Method]>>,
 
-    impl_trait_cache: @mut HashMap<ast::DefId, Option<@ty::TraitRef>>,
+    impl_trait_cache: RefCell<HashMap<ast::DefId, Option<@ty::TraitRef>>>,
 
-    trait_refs: @mut HashMap<NodeId, @TraitRef>,
-    trait_defs: @mut HashMap<DefId, @TraitDef>,
+    trait_refs: RefCell<HashMap<NodeId, @TraitRef>>,
+    trait_defs: RefCell<HashMap<DefId, @TraitDef>>,
 
     /// Despite its name, `items` does not only map NodeId to an item but
     /// also to expr/stmt/local/arg/etc
     items: ast_map::map,
-    intrinsic_defs: @mut HashMap<ast::DefId, t>,
-    freevars: freevars::freevar_map,
+    intrinsic_defs: RefCell<HashMap<ast::DefId, t>>,
+    freevars: RefCell<freevars::freevar_map>,
     tcache: type_cache,
     rcache: creader_cache,
-    short_names_cache: @mut HashMap<t, @str>,
-    needs_unwind_cleanup_cache: @mut HashMap<t, bool>,
-    tc_cache: @mut HashMap<uint, TypeContents>,
-    ast_ty_to_ty_cache: @mut HashMap<NodeId, ast_ty_to_ty_cache_entry>,
-    enum_var_cache: @mut HashMap<DefId, @~[@VariantInfo]>,
-    ty_param_defs: @mut HashMap<ast::NodeId, TypeParameterDef>,
-    adjustments: @mut HashMap<ast::NodeId, @AutoAdjustment>,
-    normalized_cache: @mut HashMap<t, t>,
+    short_names_cache: RefCell<HashMap<t, @str>>,
+    needs_unwind_cleanup_cache: RefCell<HashMap<t, bool>>,
+    tc_cache: RefCell<HashMap<uint, TypeContents>>,
+    ast_ty_to_ty_cache: RefCell<HashMap<NodeId, ast_ty_to_ty_cache_entry>>,
+    enum_var_cache: RefCell<HashMap<DefId, @~[@VariantInfo]>>,
+    ty_param_defs: RefCell<HashMap<ast::NodeId, TypeParameterDef>>,
+    adjustments: RefCell<HashMap<ast::NodeId, @AutoAdjustment>>,
+    normalized_cache: RefCell<HashMap<t, t>>,
     lang_items: middle::lang_items::LanguageItems,
     // A mapping of fake provided method def_ids to the default implementation
-    provided_method_sources: @mut HashMap<ast::DefId, ast::DefId>,
-    supertraits: @mut HashMap<ast::DefId, @~[@TraitRef]>,
+    provided_method_sources: RefCell<HashMap<ast::DefId, ast::DefId>>,
+    supertraits: RefCell<HashMap<ast::DefId, @~[@TraitRef]>>,
 
     // Maps from def-id of a type or region parameter to its
     // (inferred) variance.
-    item_variance_map: @mut HashMap<ast::DefId, @ItemVariances>,
+    item_variance_map: RefCell<HashMap<ast::DefId, @ItemVariances>>,
 
     // A mapping from the def ID of an enum or struct type to the def ID
     // of the method that implements its destructor. If the type is not
     // present in this map, it does not have a destructor. This map is
     // populated during the coherence phase of typechecking.
-    destructor_for_type: @mut HashMap<ast::DefId, ast::DefId>,
+    destructor_for_type: RefCell<HashMap<ast::DefId, ast::DefId>>,
 
     // A method will be in this list if and only if it is a destructor.
-    destructors: @mut HashSet<ast::DefId>,
+    destructors: RefCell<HashSet<ast::DefId>>,
 
     // Maps a trait onto a list of impls of that trait.
-    trait_impls: @mut HashMap<ast::DefId, @mut ~[@Impl]>,
+    trait_impls: RefCell<HashMap<ast::DefId, @RefCell<~[@Impl]>>>,
 
     // Maps a def_id of a type to a list of its inherent impls.
     // Contains implementations of methods that are inherent to a type.
     // Methods in these implementations don't need to be exported.
-    inherent_impls: @mut HashMap<ast::DefId, @mut ~[@Impl]>,
+    inherent_impls: RefCell<HashMap<ast::DefId, @RefCell<~[@Impl]>>>,
 
     // Maps a def_id of an impl to an Impl structure.
     // Note that this contains all of the impls that we know about,
     // including ones in other crates. It's not clear that this is the best
     // way to do it.
-    impls: @mut HashMap<ast::DefId, @Impl>,
+    impls: RefCell<HashMap<ast::DefId, @Impl>>,
 
     // Set of used unsafe nodes (functions or blocks). Unsafe nodes not
     // present in this set can be warned about.
-    used_unsafe: @mut HashSet<ast::NodeId>,
+    used_unsafe: RefCell<HashSet<ast::NodeId>>,
 
     // Set of nodes which mark locals as mutable which end up getting used at
     // some point. Local variable definitions not in this set can be warned
     // about.
-    used_mut_nodes: @mut HashSet<ast::NodeId>,
+    used_mut_nodes: RefCell<HashSet<ast::NodeId>>,
 
     // vtable resolution information for impl declarations
     impl_vtables: typeck::impl_vtable_map,
 
     // The set of external nominal types whose implementations have been read.
     // This is used for lazy resolution of methods.
-    populated_external_types: @mut HashSet<ast::DefId>,
+    populated_external_types: RefCell<HashSet<ast::DefId>>,
 
     // The set of external traits whose implementations have been read. This
     // is used for lazy resolution of traits.
-    populated_external_traits: @mut HashSet<ast::DefId>,
+    populated_external_traits: RefCell<HashSet<ast::DefId>>,
 
     // These two caches are used by const_eval when decoding external statics
     // and variants that are found.
-    extern_const_statics: @mut HashMap<ast::DefId, Option<@ast::Expr>>,
-    extern_const_variants: @mut HashMap<ast::DefId, Option<@ast::Expr>>,
+    extern_const_statics: RefCell<HashMap<ast::DefId, Option<@ast::Expr>>>,
+    extern_const_variants: RefCell<HashMap<ast::DefId, Option<@ast::Expr>>>,
 }
 
 pub enum tbox_flag {
@@ -953,73 +953,65 @@ pub struct ty_param_substs_and_ty {
     ty: ty::t
 }
 
-type type_cache = @mut HashMap<ast::DefId, ty_param_bounds_and_ty>;
+type type_cache = RefCell<HashMap<ast::DefId, ty_param_bounds_and_ty>>;
 
-pub type node_type_table = @mut HashMap<uint,t>;
-
-fn mk_rcache() -> creader_cache {
-    return @mut HashMap::new();
-}
-
-pub fn new_ty_hash<V:'static>() -> @mut HashMap<t, V> {
-    @mut HashMap::new()
-}
+pub type node_type_table = RefCell<HashMap<uint,t>>;
 
 pub fn mk_ctxt(s: session::Session,
                dm: resolve::DefMap,
-               named_region_map: @mut resolve_lifetime::NamedRegionMap,
+               named_region_map: @RefCell<resolve_lifetime::NamedRegionMap>,
                amap: ast_map::map,
                freevars: freevars::freevar_map,
-               region_maps: @mut middle::region::RegionMaps,
+               region_maps: @middle::region::RegionMaps,
                lang_items: middle::lang_items::LanguageItems)
             -> ctxt {
     @ctxt_ {
         named_region_map: named_region_map,
-        item_variance_map: @mut HashMap::new(),
+        item_variance_map: RefCell::new(HashMap::new()),
         diag: s.diagnostic(),
-        interner: @mut HashMap::new(),
-        next_id: @mut primitives::LAST_PRIMITIVE_ID,
+        interner: RefCell::new(HashMap::new()),
+        next_id: Cell::new(primitives::LAST_PRIMITIVE_ID),
         cstore: s.cstore,
         sess: s,
         def_map: dm,
         region_maps: region_maps,
-        node_types: @mut HashMap::new(),
-        node_type_substs: @mut HashMap::new(),
-        trait_refs: @mut HashMap::new(),
-        trait_defs: @mut HashMap::new(),
+        node_types: RefCell::new(HashMap::new()),
+        node_type_substs: RefCell::new(HashMap::new()),
+        trait_refs: RefCell::new(HashMap::new()),
+        trait_defs: RefCell::new(HashMap::new()),
         items: amap,
-        intrinsic_defs: @mut HashMap::new(),
-        freevars: freevars,
-        tcache: @mut HashMap::new(),
-        rcache: mk_rcache(),
-        short_names_cache: new_ty_hash(),
-        needs_unwind_cleanup_cache: new_ty_hash(),
-        tc_cache: @mut HashMap::new(),
-        ast_ty_to_ty_cache: @mut HashMap::new(),
-        enum_var_cache: @mut HashMap::new(),
-        methods: @mut HashMap::new(),
-        trait_method_def_ids: @mut HashMap::new(),
-        trait_methods_cache: @mut HashMap::new(),
-        impl_trait_cache: @mut HashMap::new(),
-        ty_param_defs: @mut HashMap::new(),
-        adjustments: @mut HashMap::new(),
-        normalized_cache: new_ty_hash(),
+        intrinsic_defs: RefCell::new(HashMap::new()),
+        freevars: RefCell::new(freevars),
+        tcache: RefCell::new(HashMap::new()),
+        rcache: RefCell::new(HashMap::new()),
+        short_names_cache: RefCell::new(HashMap::new()),
+        needs_unwind_cleanup_cache: RefCell::new(HashMap::new()),
+        tc_cache: RefCell::new(HashMap::new()),
+        ast_ty_to_ty_cache: RefCell::new(HashMap::new()),
+        enum_var_cache: RefCell::new(HashMap::new()),
+        methods: RefCell::new(HashMap::new()),
+        trait_method_def_ids: RefCell::new(HashMap::new()),
+        trait_methods_cache: RefCell::new(HashMap::new()),
+        impl_trait_cache: RefCell::new(HashMap::new()),
+        ty_param_defs: RefCell::new(HashMap::new()),
+        adjustments: RefCell::new(HashMap::new()),
+        normalized_cache: RefCell::new(HashMap::new()),
         lang_items: lang_items,
-        provided_method_sources: @mut HashMap::new(),
-        supertraits: @mut HashMap::new(),
-        destructor_for_type: @mut HashMap::new(),
-        destructors: @mut HashSet::new(),
-        trait_impls: @mut HashMap::new(),
-        inherent_impls:  @mut HashMap::new(),
-        impls:  @mut HashMap::new(),
-        used_unsafe: @mut HashSet::new(),
-        used_mut_nodes: @mut HashSet::new(),
-        impl_vtables: @mut HashMap::new(),
-        populated_external_types: @mut HashSet::new(),
-        populated_external_traits: @mut HashSet::new(),
+        provided_method_sources: RefCell::new(HashMap::new()),
+        supertraits: RefCell::new(HashMap::new()),
+        destructor_for_type: RefCell::new(HashMap::new()),
+        destructors: RefCell::new(HashSet::new()),
+        trait_impls: RefCell::new(HashMap::new()),
+        inherent_impls: RefCell::new(HashMap::new()),
+        impls: RefCell::new(HashMap::new()),
+        used_unsafe: RefCell::new(HashSet::new()),
+        used_mut_nodes: RefCell::new(HashSet::new()),
+        impl_vtables: RefCell::new(HashMap::new()),
+        populated_external_types: RefCell::new(HashSet::new()),
+        populated_external_traits: RefCell::new(HashSet::new()),
 
-        extern_const_statics: @mut HashMap::new(),
-        extern_const_variants: @mut HashMap::new(),
+        extern_const_statics: RefCell::new(HashMap::new()),
+        extern_const_variants: RefCell::new(HashMap::new()),
      }
 }
 
@@ -1042,9 +1034,13 @@ pub fn mk_t(cx: ctxt, st: sty) -> t {
     };
 
     let key = intern_key { sty: to_unsafe_ptr(&st) };
-    match cx.interner.find(&key) {
-      Some(t) => unsafe { return cast::transmute(&t.sty); },
-      _ => ()
+
+    {
+        let mut interner = cx.interner.borrow_mut();
+        match interner.get().find(&key) {
+          Some(t) => unsafe { return cast::transmute(&t.sty); },
+          _ => ()
+        }
     }
 
     let mut flags = 0u;
@@ -1128,7 +1124,7 @@ pub fn mk_t(cx: ctxt, st: sty) -> t {
 
     let t = ~t_box_ {
         sty: st,
-        id: *cx.next_id,
+        id: cx.next_id.get(),
         flags: flags,
     };
 
@@ -1138,9 +1134,10 @@ pub fn mk_t(cx: ctxt, st: sty) -> t {
         sty: sty_ptr,
     };
 
-    cx.interner.insert(key, t);
+    let mut interner = cx.interner.borrow_mut();
+    interner.get().insert(key, t);
 
-    *cx.next_id += 1;
+    cx.next_id.set(cx.next_id.get() + 1);
 
     unsafe {
         cast::transmute::<*sty, t>(sty_ptr)
@@ -1662,15 +1659,21 @@ pub fn type_needs_drop(cx: ctxt, ty: t) -> bool {
 // that only contain scalars and shared boxes can avoid unwind
 // cleanups.
 pub fn type_needs_unwind_cleanup(cx: ctxt, ty: t) -> bool {
-    match cx.needs_unwind_cleanup_cache.find(&ty) {
-      Some(&result) => return result,
-      None => ()
+    {
+        let needs_unwind_cleanup_cache = cx.needs_unwind_cleanup_cache
+                                           .borrow();
+        match needs_unwind_cleanup_cache.get().find(&ty) {
+            Some(&result) => return result,
+            None => ()
+        }
     }
 
     let mut tycache = HashSet::new();
     let needs_unwind_cleanup =
         type_needs_unwind_cleanup_(cx, ty, &mut tycache, false);
-    cx.needs_unwind_cleanup_cache.insert(ty, needs_unwind_cleanup);
+    let mut needs_unwind_cleanup_cache = cx.needs_unwind_cleanup_cache
+                                           .borrow_mut();
+    needs_unwind_cleanup_cache.get().insert(ty, needs_unwind_cleanup);
     return needs_unwind_cleanup;
 }
 
@@ -1958,14 +1961,20 @@ pub fn type_is_freezable(cx: ctxt, t: ty::t) -> bool {
 
 pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
     let ty_id = type_id(ty);
-    match cx.tc_cache.find(&ty_id) {
-        Some(tc) => { return *tc; }
-        None => {}
+
+    {
+        let tc_cache = cx.tc_cache.borrow();
+        match tc_cache.get().find(&ty_id) {
+            Some(tc) => { return *tc; }
+            None => {}
+        }
     }
 
     let mut cache = HashMap::new();
     let result = tc_ty(cx, ty, &mut cache);
-    cx.tc_cache.insert(ty_id, result);
+
+    let mut tc_cache = cx.tc_cache.borrow_mut();
+    tc_cache.get().insert(ty_id, result);
     return result;
 
     fn tc_ty(cx: ctxt,
@@ -1998,9 +2007,12 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             Some(tc) => { return *tc; }
             None => {}
         }
-        match cx.tc_cache.find(&ty_id) {    // Must check both caches!
-            Some(tc) => { return *tc; }
-            None => {}
+        {
+            let tc_cache = cx.tc_cache.borrow();
+            match tc_cache.get().find(&ty_id) {    // Must check both caches!
+                Some(tc) => { return *tc; }
+                None => {}
+            }
         }
         cache.insert(ty_id, TC::None);
 
@@ -2103,7 +2115,8 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 // def-id.
                 assert_eq!(p.def_id.crate, ast::LOCAL_CRATE);
 
-                let tp_def = cx.ty_param_defs.get(&p.def_id.node);
+                let ty_param_defs = cx.ty_param_defs.borrow();
+                let tp_def = ty_param_defs.get().get(&p.def_id.node);
                 kind_bounds_to_contents(cx,
                                         tp_def.bounds.builtin_bounds,
                                         tp_def.bounds.trait_bounds)
@@ -2548,7 +2561,8 @@ pub fn type_is_sized(cx: ctxt, ty: ty::t) -> bool {
     match get(ty).sty {
         // FIXME(#6308) add trait, vec, str, etc here.
         ty_param(p) => {
-            let param_def = cx.ty_param_defs.get(&p.def_id.node);
+            let ty_param_defs = cx.ty_param_defs.borrow();
+            let param_def = ty_param_defs.get().get(&p.def_id.node);
             if param_def.bounds.builtin_bounds.contains_elem(BoundSized) {
                 return true;
             }
@@ -2648,7 +2662,8 @@ pub fn index_sty(sty: &sty) -> Option<mt> {
 }
 
 pub fn node_id_to_trait_ref(cx: ctxt, id: ast::NodeId) -> @ty::TraitRef {
-    match cx.trait_refs.find(&id) {
+    let trait_refs = cx.trait_refs.borrow();
+    match trait_refs.get().find(&id) {
        Some(&t) => t,
        None => cx.sess.bug(
            format!("node_id_to_trait_ref: no trait ref for node `{}`",
@@ -2659,7 +2674,8 @@ pub fn node_id_to_trait_ref(cx: ctxt, id: ast::NodeId) -> @ty::TraitRef {
 
 pub fn node_id_to_type(cx: ctxt, id: ast::NodeId) -> t {
     //printfln!("{:?}/{:?}", id, cx.node_types.len());
-    match cx.node_types.find(&(id as uint)) {
+    let node_types = cx.node_types.borrow();
+    match node_types.get().find(&(id as uint)) {
        Some(&t) => t,
        None => cx.sess.bug(
            format!("node_id_to_type: no type for node `{}`",
@@ -2670,14 +2686,16 @@ pub fn node_id_to_type(cx: ctxt, id: ast::NodeId) -> t {
 
 // XXX(pcwalton): Makes a copy, bleh. Probably better to not do that.
 pub fn node_id_to_type_params(cx: ctxt, id: ast::NodeId) -> ~[t] {
-    match cx.node_type_substs.find(&id) {
+    let node_type_substs = cx.node_type_substs.borrow();
+    match node_type_substs.get().find(&id) {
       None => return ~[],
       Some(ts) => return (*ts).clone(),
     }
 }
 
 fn node_id_has_type_params(cx: ctxt, id: ast::NodeId) -> bool {
-    cx.node_type_substs.contains_key(&id)
+    let node_type_substs = cx.node_type_substs.borrow();
+    node_type_substs.get().contains_key(&id)
 }
 
 pub fn fn_is_variadic(fty: t) -> bool {
@@ -2851,14 +2869,18 @@ pub fn expr_ty_adjusted(cx: ctxt, expr: &ast::Expr) -> t {
      */
 
     let unadjusted_ty = expr_ty(cx, expr);
-    adjust_ty(cx, expr.span, unadjusted_ty, cx.adjustments.find_copy(&expr.id))
+    let adjustment = {
+        let adjustments = cx.adjustments.borrow();
+        adjustments.get().find_copy(&expr.id)
+    };
+    adjust_ty(cx, expr.span, unadjusted_ty, adjustment)
 }
 
 pub fn adjust_ty(cx: ctxt,
                  span: Span,
                  unadjusted_ty: ty::t,
-                 adjustment: Option<@AutoAdjustment>) -> ty::t
-{
+                 adjustment: Option<@AutoAdjustment>)
+                 -> ty::t {
     /*! See `expr_ty_adjusted` */
 
     return match adjustment {
@@ -3027,7 +3049,8 @@ pub fn method_call_type_param_defs(tcx: ctxt,
                                    method_map: typeck::method_map,
                                    id: ast::NodeId)
                                    -> Option<@~[TypeParameterDef]> {
-    method_map.find(&id).map(|method| {
+    let method_map = method_map.borrow();
+    method_map.get().find(&id).map(|method| {
         match method.origin {
           typeck::method_static(did) => {
             // n.b.: When we encode impl methods, the bounds
@@ -3057,7 +3080,8 @@ pub fn method_call_type_param_defs(tcx: ctxt,
 }
 
 pub fn resolve_expr(tcx: ctxt, expr: &ast::Expr) -> ast::Def {
-    match tcx.def_map.find(&expr.id) {
+    let def_map = tcx.def_map.borrow();
+    match def_map.get().find(&expr.id) {
         Some(&def) => def,
         None => {
             tcx.sess.span_bug(expr.span, format!(
@@ -3090,14 +3114,17 @@ pub enum ExprKind {
 pub fn expr_kind(tcx: ctxt,
                  method_map: typeck::method_map,
                  expr: &ast::Expr) -> ExprKind {
-    if method_map.contains_key(&expr.id) {
-        // Overloaded operations are generally calls, and hence they are
-        // generated via DPS.  However, assign_op (e.g., `x += y`) is an
-        // exception, as its result is always unit.
-        return match expr.node {
-            ast::ExprAssignOp(..) => RvalueStmtExpr,
-            _ => RvalueDpsExpr
-        };
+    {
+        let method_map = method_map.borrow();
+        if method_map.get().contains_key(&expr.id) {
+            // Overloaded operations are generally calls, and hence they are
+            // generated via DPS.  However, assign_op (e.g., `x += y`) is an
+            // exception, as its result is always unit.
+            return match expr.node {
+                ast::ExprAssignOp(..) => RvalueStmtExpr,
+                _ => RvalueDpsExpr
+            };
+        }
     }
 
     match expr.node {
@@ -3151,7 +3178,8 @@ pub fn expr_kind(tcx: ctxt,
         }
 
         ast::ExprCast(..) => {
-            match tcx.node_types.find(&(expr.id as uint)) {
+            let node_types = tcx.node_types.borrow();
+            match node_types.get().find(&(expr.id as uint)) {
                 Some(&t) => {
                     if type_is_trait(t) {
                         RvalueDpsExpr
@@ -3501,7 +3529,8 @@ pub fn def_has_ty_params(def: ast::Def) -> bool {
 }
 
 pub fn provided_source(cx: ctxt, id: ast::DefId) -> Option<ast::DefId> {
-    cx.provided_method_sources.find(&id).map(|x| *x)
+    let provided_method_sources = cx.provided_method_sources.borrow();
+    provided_method_sources.get().find(&id).map(|x| *x)
 }
 
 pub fn provided_trait_methods(cx: ctxt, id: ast::DefId) -> ~[@Method] {
@@ -3522,13 +3551,14 @@ pub fn provided_trait_methods(cx: ctxt, id: ast::DefId) -> ~[@Method] {
     }
 }
 
-pub fn trait_supertraits(cx: ctxt,
-                         id: ast::DefId) -> @~[@TraitRef]
-{
+pub fn trait_supertraits(cx: ctxt, id: ast::DefId) -> @~[@TraitRef] {
     // Check the cache.
-    match cx.supertraits.find(&id) {
-        Some(&trait_refs) => { return trait_refs; }
-        None => {}  // Continue.
+    {
+        let supertraits = cx.supertraits.borrow();
+        match supertraits.get().find(&id) {
+            Some(&trait_refs) => { return trait_refs; }
+            None => {}  // Continue.
+        }
     }
 
     // Not in the cache. It had better be in the metadata, which means it
@@ -3538,7 +3568,8 @@ pub fn trait_supertraits(cx: ctxt,
     // Get the supertraits out of the metadata and create the
     // TraitRef for each.
     let result = @csearch::get_supertraits(cx, id);
-    cx.supertraits.insert(id, result);
+    let mut supertraits = cx.supertraits.borrow_mut();
+    supertraits.get().insert(id, result);
     return result;
 }
 
@@ -3583,34 +3614,44 @@ pub fn trait_method(cx: ctxt, trait_did: ast::DefId, idx: uint) -> @Method {
 
 
 pub fn trait_methods(cx: ctxt, trait_did: ast::DefId) -> @~[@Method] {
-    match cx.trait_methods_cache.find(&trait_did) {
+    let mut trait_methods_cache = cx.trait_methods_cache.borrow_mut();
+    match trait_methods_cache.get().find(&trait_did) {
         Some(&methods) => methods,
         None => {
             let def_ids = ty::trait_method_def_ids(cx, trait_did);
             let methods = @def_ids.map(|d| ty::method(cx, *d));
-            cx.trait_methods_cache.insert(trait_did, methods);
+            trait_methods_cache.get().insert(trait_did, methods);
             methods
         }
     }
 }
 
 pub fn method(cx: ctxt, id: ast::DefId) -> @Method {
-    lookup_locally_or_in_crate_store(
-        "methods", id, cx.methods,
-        || @csearch::get_method(cx, id))
+    let mut methods = cx.methods.borrow_mut();
+    lookup_locally_or_in_crate_store("methods", id, methods.get(), || {
+        @csearch::get_method(cx, id)
+    })
 }
 
 pub fn trait_method_def_ids(cx: ctxt, id: ast::DefId) -> @~[DefId] {
-    lookup_locally_or_in_crate_store(
-        "trait_method_def_ids", id, cx.trait_method_def_ids,
-        || @csearch::get_trait_method_def_ids(cx.cstore, id))
+    let mut trait_method_def_ids = cx.trait_method_def_ids.borrow_mut();
+    lookup_locally_or_in_crate_store("trait_method_def_ids",
+                                     id,
+                                     trait_method_def_ids.get(),
+                                     || {
+        @csearch::get_trait_method_def_ids(cx.cstore, id)
+    })
 }
 
 pub fn impl_trait_ref(cx: ctxt, id: ast::DefId) -> Option<@TraitRef> {
-    match cx.impl_trait_cache.find(&id) {
-        Some(&ret) => { return ret; }
-        None => {}
+    {
+        let mut impl_trait_cache = cx.impl_trait_cache.borrow_mut();
+        match impl_trait_cache.get().find(&id) {
+            Some(&ret) => { return ret; }
+            None => {}
+        }
     }
+
     let ret = if id.crate == ast::LOCAL_CRATE {
         debug!("(impl_trait_ref) searching for trait impl {:?}", id);
         match cx.items.find(&id.node) {
@@ -3628,12 +3669,17 @@ pub fn impl_trait_ref(cx: ctxt, id: ast::DefId) -> Option<@TraitRef> {
     } else {
         csearch::get_impl_trait(cx, id)
     };
-    cx.impl_trait_cache.insert(id, ret);
+
+    let mut impl_trait_cache = cx.impl_trait_cache.borrow_mut();
+    impl_trait_cache.get().insert(id, ret);
     return ret;
 }
 
 pub fn trait_ref_to_def_id(tcx: ctxt, tr: &ast::trait_ref) -> ast::DefId {
-    let def = tcx.def_map.find(&tr.ref_id).expect("no def-map entry for trait");
+    let def_map = tcx.def_map.borrow();
+    let def = def_map.get()
+                     .find(&tr.ref_id)
+                     .expect("no def-map entry for trait");
     ast_util::def_id_of_def(*def)
 }
 
@@ -3773,7 +3819,8 @@ impl DtorKind {
 /* If struct_id names a struct with a dtor, return Some(the dtor's id).
    Otherwise return none. */
 pub fn ty_dtor(cx: ctxt, struct_id: DefId) -> DtorKind {
-    match cx.destructor_for_type.find(&struct_id) {
+    let destructor_for_type = cx.destructor_for_type.borrow();
+    match destructor_for_type.get().find(&struct_id) {
         Some(&method_def_id) => {
             let flag = !has_attr(cx, struct_id, "unsafe_no_drop_flag");
 
@@ -3852,9 +3899,12 @@ pub fn type_is_empty(cx: ctxt, t: t) -> bool {
 }
 
 pub fn enum_variants(cx: ctxt, id: ast::DefId) -> @~[@VariantInfo] {
-    match cx.enum_var_cache.find(&id) {
-      Some(&variants) => return variants,
-      _ => { /* fallthrough */ }
+    {
+        let enum_var_cache = cx.enum_var_cache.borrow();
+        match enum_var_cache.get().find(&id) {
+            Some(&variants) => return variants,
+            _ => { /* fallthrough */ }
+        }
     }
 
     let result = if ast::LOCAL_CRATE != id.crate {
@@ -3901,8 +3951,12 @@ pub fn enum_variants(cx: ctxt, id: ast::DefId) -> @~[@VariantInfo] {
           _ => cx.sess.bug("enum_variants: id not bound to an enum")
         }
     };
-    cx.enum_var_cache.insert(id, result);
-    result
+
+    {
+        let mut enum_var_cache = cx.enum_var_cache.borrow_mut();
+        enum_var_cache.get().insert(id, result);
+        result
+    }
 }
 
 
@@ -3927,22 +3981,25 @@ pub fn enum_variant_with_id(cx: ctxt,
 pub fn lookup_item_type(cx: ctxt,
                         did: ast::DefId)
                      -> ty_param_bounds_and_ty {
+    let mut tcache = cx.tcache.borrow_mut();
     lookup_locally_or_in_crate_store(
-        "tcache", did, cx.tcache,
+        "tcache", did, tcache.get(),
         || csearch::get_type(cx, did))
 }
 
 pub fn lookup_impl_vtables(cx: ctxt,
                            did: ast::DefId)
                      -> typeck::impl_res {
+    let mut impl_vtables = cx.impl_vtables.borrow_mut();
     lookup_locally_or_in_crate_store(
-        "impl_vtables", did, cx.impl_vtables,
+        "impl_vtables", did, impl_vtables.get(),
         || csearch::get_impl_vtables(cx, did) )
 }
 
 /// Given the did of a trait, returns its canonical trait ref.
 pub fn lookup_trait_def(cx: ctxt, did: ast::DefId) -> @ty::TraitDef {
-    match cx.trait_defs.find(&did) {
+    let mut trait_defs = cx.trait_defs.borrow_mut();
+    match trait_defs.get().find(&did) {
         Some(&trait_def) => {
             // The item is in this crate. The caller should have added it to the
             // type cache already
@@ -3951,7 +4008,7 @@ pub fn lookup_trait_def(cx: ctxt, did: ast::DefId) -> @ty::TraitDef {
         None => {
             assert!(did.crate != ast::LOCAL_CRATE);
             let trait_def = @csearch::get_trait_def(cx, did);
-            cx.trait_defs.insert(did, trait_def);
+            trait_defs.get().insert(did, trait_def);
             return trait_def;
         }
     }
@@ -4022,15 +4079,17 @@ pub fn lookup_field_type(tcx: ctxt,
                       -> ty::t {
     let t = if id.crate == ast::LOCAL_CRATE {
         node_id_to_type(tcx, id.node)
-    }
-    else {
-        match tcx.tcache.find(&id) {
-           Some(&ty_param_bounds_and_ty {ty, ..}) => ty,
-           None => {
-               let tpt = csearch::get_field_type(tcx, struct_id, id);
-               tcx.tcache.insert(id, tpt);
-               tpt.ty
-           }
+    } else {
+        {
+            let mut tcache = tcx.tcache.borrow_mut();
+            match tcache.get().find(&id) {
+               Some(&ty_param_bounds_and_ty {ty, ..}) => ty,
+               None => {
+                   let tpt = csearch::get_field_type(tcx, struct_id, id);
+                   tcache.get().insert(id, tpt);
+                   tpt.ty
+               }
+            }
         }
     };
     subst(tcx, substs, t)
@@ -4213,13 +4272,20 @@ pub fn normalize_ty(cx: ctxt, t: t) -> t {
         fn tcx(&self) -> ty::ctxt { **self }
 
         fn fold_ty(&mut self, t: ty::t) -> ty::t {
-            match self.tcx().normalized_cache.find_copy(&t) {
+            let normalized_opt = {
+                let normalized_cache = self.tcx().normalized_cache.borrow();
+                normalized_cache.get().find_copy(&t)
+            };
+            match normalized_opt {
                 Some(u) => {
                     return u;
                 }
                 None => {
                     let t_norm = ty_fold::super_fold_ty(self, t);
-                    self.tcx().normalized_cache.insert(t, t_norm);
+                    let mut normalized_cache = self.tcx()
+                                                   .normalized_cache
+                                                   .borrow_mut();
+                    normalized_cache.get().insert(t, t_norm);
                     return t_norm;
                 }
             }
@@ -4395,14 +4461,16 @@ pub fn count_traits_and_supertraits(tcx: ctxt,
 
 pub fn get_tydesc_ty(tcx: ctxt) -> Result<t, ~str> {
     tcx.lang_items.require(TyDescStructLangItem).map(|tydesc_lang_item| {
-        tcx.intrinsic_defs.find_copy(&tydesc_lang_item)
+        let intrinsic_defs = tcx.intrinsic_defs.borrow();
+        intrinsic_defs.get().find_copy(&tydesc_lang_item)
             .expect("Failed to resolve TyDesc")
     })
 }
 
 pub fn get_opaque_ty(tcx: ctxt) -> Result<t, ~str> {
     tcx.lang_items.require(OpaqueStructLangItem).map(|opaque_lang_item| {
-        tcx.intrinsic_defs.find_copy(&opaque_lang_item)
+        let intrinsic_defs = tcx.intrinsic_defs.borrow();
+        intrinsic_defs.get().find_copy(&opaque_lang_item)
             .expect("Failed to resolve Opaque")
     })
 }
@@ -4429,8 +4497,9 @@ pub fn visitor_object_ty(tcx: ctxt,
 }
 
 pub fn item_variances(tcx: ctxt, item_id: ast::DefId) -> @ItemVariances {
+    let mut item_variance_map = tcx.item_variance_map.borrow_mut();
     lookup_locally_or_in_crate_store(
-        "item_variance_map", item_id, tcx.item_variance_map,
+        "item_variance_map", item_id, item_variance_map.get(),
         || @csearch::get_item_variances(tcx.cstore, item_id))
 }
 
@@ -4439,17 +4508,19 @@ fn record_trait_implementation(tcx: ctxt,
                                trait_def_id: DefId,
                                implementation: @Impl) {
     let implementation_list;
-    match tcx.trait_impls.find(&trait_def_id) {
+    let mut trait_impls = tcx.trait_impls.borrow_mut();
+    match trait_impls.get().find(&trait_def_id) {
         None => {
-            implementation_list = @mut ~[];
-            tcx.trait_impls.insert(trait_def_id, implementation_list);
+            implementation_list = @RefCell::new(~[]);
+            trait_impls.get().insert(trait_def_id, implementation_list);
         }
         Some(&existing_implementation_list) => {
             implementation_list = existing_implementation_list
         }
     }
 
-    implementation_list.push(implementation);
+    let mut implementation_list = implementation_list.borrow_mut();
+    implementation_list.get().push(implementation);
 }
 
 /// Populates the type context with all the implementations for the given type
@@ -4459,8 +4530,11 @@ pub fn populate_implementations_for_type_if_necessary(tcx: ctxt,
     if type_id.crate == LOCAL_CRATE {
         return
     }
-    if tcx.populated_external_types.contains(&type_id) {
-        return
+    {
+        let populated_external_types = tcx.populated_external_types.borrow();
+        if populated_external_types.get().contains(&type_id) {
+            return
+        }
     }
 
     csearch::each_implementation_for_type(tcx.sess.cstore, type_id,
@@ -4480,30 +4554,40 @@ pub fn populate_implementations_for_type_if_necessary(tcx: ctxt,
         // the map. This is a bit unfortunate.
         for method in implementation.methods.iter() {
             for source in method.provided_source.iter() {
-                tcx.provided_method_sources.insert(method.def_id, *source);
+                let mut provided_method_sources =
+                    tcx.provided_method_sources.borrow_mut();
+                provided_method_sources.get().insert(method.def_id, *source);
             }
         }
 
         // If this is an inherent implementation, record it.
         if associated_traits.is_none() {
             let implementation_list;
-            match tcx.inherent_impls.find(&type_id) {
+            let mut inherent_impls = tcx.inherent_impls.borrow_mut();
+            match inherent_impls.get().find(&type_id) {
                 None => {
-                    implementation_list = @mut ~[];
-                    tcx.inherent_impls.insert(type_id, implementation_list);
+                    implementation_list = @RefCell::new(~[]);
+                    inherent_impls.get().insert(type_id, implementation_list);
                 }
                 Some(&existing_implementation_list) => {
                     implementation_list = existing_implementation_list;
                 }
             }
-            implementation_list.push(implementation);
+            {
+                let mut implementation_list =
+                    implementation_list.borrow_mut();
+                implementation_list.get().push(implementation);
+            }
         }
 
         // Store the implementation info.
-        tcx.impls.insert(implementation_def_id, implementation);
+        let mut impls = tcx.impls.borrow_mut();
+        impls.get().insert(implementation_def_id, implementation);
     });
 
-    tcx.populated_external_types.insert(type_id);
+    let mut populated_external_types = tcx.populated_external_types
+                                          .borrow_mut();
+    populated_external_types.get().insert(type_id);
 }
 
 /// Populates the type context with all the implementations for the given
@@ -4514,8 +4598,12 @@ pub fn populate_implementations_for_trait_if_necessary(
     if trait_id.crate == LOCAL_CRATE {
         return
     }
-    if tcx.populated_external_traits.contains(&trait_id) {
-        return
+    {
+        let populated_external_traits = tcx.populated_external_traits
+                                           .borrow();
+        if populated_external_traits.get().contains(&trait_id) {
+            return
+        }
     }
 
     csearch::each_implementation_for_trait(tcx.sess.cstore, trait_id,
@@ -4529,15 +4617,20 @@ pub fn populate_implementations_for_trait_if_necessary(
         // the map. This is a bit unfortunate.
         for method in implementation.methods.iter() {
             for source in method.provided_source.iter() {
-                tcx.provided_method_sources.insert(method.def_id, *source);
+                let mut provided_method_sources =
+                    tcx.provided_method_sources.borrow_mut();
+                provided_method_sources.get().insert(method.def_id, *source);
             }
         }
 
         // Store the implementation info.
-        tcx.impls.insert(implementation_def_id, implementation);
+        let mut impls = tcx.impls.borrow_mut();
+        impls.get().insert(implementation_def_id, implementation);
     });
 
-    tcx.populated_external_traits.insert(trait_id);
+    let mut populated_external_traits = tcx.populated_external_traits
+                                           .borrow_mut();
+    populated_external_traits.get().insert(trait_id);
 }
 
 /// Given the def_id of an impl, return the def_id of the trait it implements.
@@ -4569,7 +4662,12 @@ pub fn trait_of_method(tcx: ctxt, def_id: ast::DefId)
     if def_id.crate != LOCAL_CRATE {
         return csearch::get_trait_of_method(tcx.cstore, def_id, tcx);
     }
-    match tcx.methods.find(&def_id) {
+    let method;
+    {
+        let methods = tcx.methods.borrow();
+        method = methods.get().find(&def_id).map(|method| *method);
+    }
+    match method {
         Some(method) => {
             match method.container {
                 TraitContainer(def_id) => Some(def_id),
@@ -4588,10 +4686,15 @@ pub fn trait_of_method(tcx: ctxt, def_id: ast::DefId)
 /// Otherwise, return `None`.
 pub fn trait_method_of_method(tcx: ctxt,
                               def_id: ast::DefId) -> Option<ast::DefId> {
-    let name = match tcx.methods.find(&def_id) {
-        Some(method) => method.ident.name,
-        None => return None
-    };
+    let method;
+    {
+        let methods = tcx.methods.borrow();
+        match methods.get().find(&def_id) {
+            Some(m) => method = *m,
+            None => return None,
+        }
+    }
+    let name = method.ident.name;
     match trait_of_method(tcx, def_id) {
         Some(trait_did) => {
             let trait_methods = ty::trait_methods(tcx, trait_did);

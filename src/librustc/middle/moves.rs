@@ -130,13 +130,14 @@ and so on.
 use middle::pat_util::{pat_bindings};
 use middle::freevars;
 use middle::ty;
-use middle::typeck::{method_map};
+use middle::typeck::method_map;
 use util::ppaux;
 use util::ppaux::Repr;
 use util::common::indenter;
 use util::ppaux::UserString;
 
 use std::at_vec;
+use std::cell::RefCell;
 use std::hashmap::{HashSet, HashMap};
 use syntax::ast::*;
 use syntax::ast_util;
@@ -158,9 +159,9 @@ pub struct CaptureVar {
     mode: CaptureMode // How variable is being accessed
 }
 
-pub type CaptureMap = @mut HashMap<NodeId, @[CaptureVar]>;
+pub type CaptureMap = @RefCell<HashMap<NodeId, @[CaptureVar]>>;
 
-pub type MovesMap = @mut HashSet<NodeId>;
+pub type MovesMap = @RefCell<HashSet<NodeId>>;
 
 /**
  * Set of variable node-ids that are moved.
@@ -168,7 +169,7 @@ pub type MovesMap = @mut HashSet<NodeId>;
  * Note: The `VariableMovesMap` stores expression ids that
  * are moves, whereas this set stores the ids of the variables
  * that are moved at some point */
-pub type MovedVariablesSet = @mut HashSet<NodeId>;
+pub type MovedVariablesSet = @RefCell<HashSet<NodeId>>;
 
 /** See the section Output on the module comment for explanation. */
 #[deriving(Clone)]
@@ -214,9 +215,9 @@ pub fn compute_moves(tcx: ty::ctxt,
         tcx: tcx,
         method_map: method_map,
         move_maps: MoveMaps {
-            moves_map: @mut HashSet::new(),
-            capture_map: @mut HashMap::new(),
-            moved_variables_set: @mut HashSet::new()
+            moves_map: @RefCell::new(HashSet::new()),
+            capture_map: @RefCell::new(HashMap::new()),
+            moved_variables_set: @RefCell::new(HashSet::new())
         }
     };
     let visit_cx = &mut visit_cx;
@@ -282,7 +283,10 @@ impl VisitContext {
 
         let expr_ty = ty::expr_ty_adjusted(self.tcx, expr);
         if ty::type_moves_by_default(self.tcx, expr_ty) {
-            self.move_maps.moves_map.insert(expr.id);
+            {
+                let mut moves_map = self.move_maps.moves_map.borrow_mut();
+                moves_map.get().insert(expr.id);
+            }
             self.use_expr(expr, Move);
         } else {
             self.use_expr(expr, Read);
@@ -321,11 +325,14 @@ impl VisitContext {
         // `expr_mode` refers to the post-adjustment value.  If one of
         // those adjustments is to take a reference, then it's only
         // reading the underlying expression, not moving it.
-        let comp_mode = match self.tcx.adjustments.find(&expr.id) {
-            Some(&@ty::AutoDerefRef(
-                ty::AutoDerefRef {
-                    autoref: Some(_), ..})) => Read,
-            _ => expr_mode
+        let comp_mode = {
+            let adjustments = self.tcx.adjustments.borrow();
+            match adjustments.get().find(&expr.id) {
+                Some(&@ty::AutoDerefRef(
+                    ty::AutoDerefRef {
+                        autoref: Some(_), ..})) => Read,
+                _ => expr_mode
+            }
         };
 
         debug!("comp_mode = {:?}", comp_mode);
@@ -334,10 +341,15 @@ impl VisitContext {
             ExprPath(..) | ExprSelf => {
                 match comp_mode {
                     Move => {
-                        let def = self.tcx.def_map.get_copy(&expr.id);
+                        let def_map = self.tcx.def_map.borrow();
+                        let def = def_map.get().get_copy(&expr.id);
                         let r = moved_variable_node_id_from_def(def);
                         for &id in r.iter() {
-                            self.move_maps.moved_variables_set.insert(id);
+                            let mut moved_variables_set =
+                                self.move_maps
+                                    .moved_variables_set
+                                    .borrow_mut();
+                            moved_variables_set.get().insert(id);
                         }
                     }
                     Read => {}
@@ -384,7 +396,12 @@ impl VisitContext {
                 // closures should be noncopyable, they shouldn't move by default;
                 // calling a closure should only consume it if it's once.
                 if mode == Move {
-                    self.move_maps.moves_map.insert(callee.id);
+                    {
+                        let mut moves_map = self.move_maps
+                                                .moves_map
+                                                .borrow_mut();
+                        moves_map.get().insert(callee.id);
+                    }
                 }
                 self.use_expr(callee, mode);
                 self.use_fn_args(callee.id, *args);
@@ -561,7 +578,12 @@ impl VisitContext {
                     self.use_pat(a.pat);
                 }
                 let cap_vars = self.compute_captures(expr.id);
-                self.move_maps.capture_map.insert(expr.id, cap_vars);
+                {
+                    let mut capture_map = self.move_maps
+                                              .capture_map
+                                              .borrow_mut();
+                    capture_map.get().insert(expr.id, cap_vars);
+                }
                 self.consume_block(body);
             }
 
@@ -582,7 +604,8 @@ impl VisitContext {
                                    receiver_expr: @Expr,
                                    arg_exprs: &[@Expr])
                                    -> bool {
-        if !self.method_map.contains_key(&expr.id) {
+        let method_map = self.method_map.borrow();
+        if !method_map.get().contains_key(&expr.id) {
             return false;
         }
 
@@ -633,7 +656,10 @@ impl VisitContext {
                    id, bm, binding_moves);
 
             if binding_moves {
-                self.move_maps.moves_map.insert(id);
+                {
+                    let mut moves_map = self.move_maps.moves_map.borrow_mut();
+                    moves_map.get().insert(id);
+                }
             }
         })
     }

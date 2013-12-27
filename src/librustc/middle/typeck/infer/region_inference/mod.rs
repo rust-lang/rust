@@ -24,6 +24,7 @@ use middle::graph::{Direction, NodeIndex};
 use util::common::indenter;
 use util::ppaux::{Repr};
 
+use std::cell::{Cell, RefCell};
 use std::hashmap::{HashMap, HashSet};
 use std::uint;
 use std::vec;
@@ -87,12 +88,12 @@ type CombineMap = HashMap<TwoRegions, RegionVid>;
 
 pub struct RegionVarBindings {
     tcx: ty::ctxt,
-    var_origins: ~[RegionVariableOrigin],
-    constraints: HashMap<Constraint, SubregionOrigin>,
-    lubs: CombineMap,
-    glbs: CombineMap,
-    skolemization_count: uint,
-    bound_count: uint,
+    var_origins: RefCell<~[RegionVariableOrigin]>,
+    constraints: RefCell<HashMap<Constraint, SubregionOrigin>>,
+    lubs: RefCell<CombineMap>,
+    glbs: RefCell<CombineMap>,
+    skolemization_count: Cell<uint>,
+    bound_count: Cell<uint>,
 
     // The undo log records actions that might later be undone.
     //
@@ -102,96 +103,114 @@ pub struct RegionVarBindings {
     // actively snapshotting.  The reason for this is that otherwise
     // we end up adding entries for things like the lower bound on
     // a variable and so forth, which can never be rolled back.
-    undo_log: ~[UndoLogEntry],
+    undo_log: RefCell<~[UndoLogEntry]>,
 
     // This contains the results of inference.  It begins as an empty
     // option and only acquires a value after inference is complete.
-    values: Option<~[VarValue]>,
+    values: RefCell<Option<~[VarValue]>>,
 }
 
 pub fn RegionVarBindings(tcx: ty::ctxt) -> RegionVarBindings {
     RegionVarBindings {
         tcx: tcx,
-        var_origins: ~[],
-        values: None,
-        constraints: HashMap::new(),
-        lubs: HashMap::new(),
-        glbs: HashMap::new(),
-        skolemization_count: 0,
-        bound_count: 0,
-        undo_log: ~[]
+        var_origins: RefCell::new(~[]),
+        values: RefCell::new(None),
+        constraints: RefCell::new(HashMap::new()),
+        lubs: RefCell::new(HashMap::new()),
+        glbs: RefCell::new(HashMap::new()),
+        skolemization_count: Cell::new(0),
+        bound_count: Cell::new(0),
+        undo_log: RefCell::new(~[])
     }
 }
 
 impl RegionVarBindings {
     pub fn in_snapshot(&self) -> bool {
-        self.undo_log.len() > 0
+        let undo_log = self.undo_log.borrow();
+        undo_log.get().len() > 0
     }
 
-    pub fn start_snapshot(&mut self) -> uint {
-        debug!("RegionVarBindings: snapshot()={}", self.undo_log.len());
+    pub fn start_snapshot(&self) -> uint {
+        debug!("RegionVarBindings: start_snapshot()");
         if self.in_snapshot() {
-            self.undo_log.len()
+            {
+                let undo_log = self.undo_log.borrow();
+                undo_log.get().len()
+            }
         } else {
-            self.undo_log.push(Snapshot);
-            0
+            {
+                let mut undo_log = self.undo_log.borrow_mut();
+                undo_log.get().push(Snapshot);
+                0
+            }
         }
     }
 
-    pub fn commit(&mut self) {
+    pub fn commit(&self) {
         debug!("RegionVarBindings: commit()");
-        while self.undo_log.len() > 0 {
-            self.undo_log.pop();
+        let mut undo_log = self.undo_log.borrow_mut();
+        while undo_log.get().len() > 0 {
+            undo_log.get().pop();
         }
     }
 
-    pub fn rollback_to(&mut self, snapshot: uint) {
+    pub fn rollback_to(&self, snapshot: uint) {
         debug!("RegionVarBindings: rollback_to({})", snapshot);
-        while self.undo_log.len() > snapshot {
-            let undo_item = self.undo_log.pop();
+        let mut undo_log = self.undo_log.borrow_mut();
+        while undo_log.get().len() > snapshot {
+            let undo_item = undo_log.get().pop();
             debug!("undo_item={:?}", undo_item);
             match undo_item {
               Snapshot => {}
               AddVar(vid) => {
-                assert_eq!(self.var_origins.len(), vid.to_uint() + 1);
-                self.var_origins.pop();
+                let mut var_origins = self.var_origins.borrow_mut();
+                assert_eq!(var_origins.get().len(), vid.to_uint() + 1);
+                var_origins.get().pop();
               }
               AddConstraint(ref constraint) => {
-                self.constraints.remove(constraint);
+                let mut constraints = self.constraints.borrow_mut();
+                constraints.get().remove(constraint);
               }
               AddCombination(Glb, ref regions) => {
-                self.glbs.remove(regions);
+                let mut glbs = self.glbs.borrow_mut();
+                glbs.get().remove(regions);
               }
               AddCombination(Lub, ref regions) => {
-                self.lubs.remove(regions);
+                let mut lubs = self.lubs.borrow_mut();
+                lubs.get().remove(regions);
               }
             }
         }
     }
 
     pub fn num_vars(&self) -> uint {
-        self.var_origins.len()
+        let var_origins = self.var_origins.borrow();
+        var_origins.get().len()
     }
 
-    pub fn new_region_var(&mut self, origin: RegionVariableOrigin) -> RegionVid {
+    pub fn new_region_var(&self, origin: RegionVariableOrigin) -> RegionVid {
         let id = self.num_vars();
-        self.var_origins.push(origin);
+        let mut var_origins = self.var_origins.borrow_mut();
+        var_origins.get().push(origin);
         let vid = RegionVid { id: id };
         if self.in_snapshot() {
-            self.undo_log.push(AddVar(vid));
+            {
+                let mut undo_log = self.undo_log.borrow_mut();
+                undo_log.get().push(AddVar(vid));
+            }
         }
         debug!("created new region variable {:?} with origin {:?}",
                vid, origin.repr(self.tcx));
         return vid;
     }
 
-    pub fn new_skolemized(&mut self, br: ty::BoundRegion) -> Region {
-        let sc = self.skolemization_count;
-        self.skolemization_count += 1;
+    pub fn new_skolemized(&self, br: ty::BoundRegion) -> Region {
+        let sc = self.skolemization_count.get();
+        self.skolemization_count.set(sc + 1);
         ReInfer(ReSkolemized(sc, br))
     }
 
-    pub fn new_bound(&mut self, binder_id: ast::NodeId) -> Region {
+    pub fn new_bound(&self, binder_id: ast::NodeId) -> Region {
         // Creates a fresh bound variable for use in GLB computations.
         // See discussion of GLB computation in the large comment at
         // the top of this file for more details.
@@ -210,37 +229,46 @@ impl RegionVarBindings {
         // changing the representation of bound regions in a fn
         // declaration
 
-        let sc = self.bound_count;
-        self.bound_count += 1;
+        let sc = self.bound_count.get();
+        self.bound_count.set(sc + 1);
 
-        if sc >= self.bound_count {
+        if sc >= self.bound_count.get() {
             self.tcx.sess.bug("Rollover in RegionInference new_bound()");
         }
 
         ReLateBound(binder_id, BrFresh(sc))
     }
 
-    pub fn add_constraint(&mut self,
+    fn values_are_none(&self) -> bool {
+        let values = self.values.borrow();
+        values.get().is_none()
+    }
+
+    pub fn add_constraint(&self,
                           constraint: Constraint,
                           origin: SubregionOrigin) {
         // cannot add constraints once regions are resolved
-        assert!(self.values.is_none());
+        assert!(self.values_are_none());
 
         debug!("RegionVarBindings: add_constraint({:?})", constraint);
 
-        if self.constraints.insert(constraint, origin) {
+        let mut constraints = self.constraints.borrow_mut();
+        if constraints.get().insert(constraint, origin) {
             if self.in_snapshot() {
-                self.undo_log.push(AddConstraint(constraint));
+                {
+                    let mut undo_log = self.undo_log.borrow_mut();
+                    undo_log.get().push(AddConstraint(constraint));
+                }
             }
         }
     }
 
-    pub fn make_subregion(&mut self,
+    pub fn make_subregion(&self,
                           origin: SubregionOrigin,
                           sub: Region,
                           sup: Region) {
         // cannot add constraints once regions are resolved
-        assert!(self.values.is_none());
+        assert!(self.values_are_none());
 
         debug!("RegionVarBindings: make_subregion({:?}, {:?})", sub, sup);
         match (sub, sup) {
@@ -269,13 +297,13 @@ impl RegionVarBindings {
         }
     }
 
-    pub fn lub_regions(&mut self,
+    pub fn lub_regions(&self,
                        origin: SubregionOrigin,
                        a: Region,
                        b: Region)
                        -> Region {
         // cannot add constraints once regions are resolved
-        assert!(self.values.is_none());
+        assert!(self.values_are_none());
 
         debug!("RegionVarBindings: lub_regions({:?}, {:?})", a, b);
         match (a, b) {
@@ -292,13 +320,13 @@ impl RegionVarBindings {
         }
     }
 
-    pub fn glb_regions(&mut self,
+    pub fn glb_regions(&self,
                        origin: SubregionOrigin,
                        a: Region,
                        b: Region)
                        -> Region {
         // cannot add constraints once regions are resolved
-        assert!(self.values.is_none());
+        assert!(self.values_are_none());
 
         debug!("RegionVarBindings: glb_regions({:?}, {:?})", a, b);
         match (a, b) {
@@ -316,12 +344,16 @@ impl RegionVarBindings {
         }
     }
 
-    pub fn resolve_var(&mut self, rid: RegionVid) -> ty::Region {
-        let v = match self.values {
-            None => self.tcx.sess.span_bug(
-                self.var_origins[rid.to_uint()].span(),
-                format!("Attempt to resolve region variable before values have \
-                      been computed!")),
+    pub fn resolve_var(&self, rid: RegionVid) -> ty::Region {
+        let values = self.values.borrow();
+        let v = match *values.get() {
+            None => {
+                let var_origins = self.var_origins.borrow();
+                self.tcx.sess.span_bug(
+                    var_origins.get()[rid.to_uint()].span(),
+                    format!("Attempt to resolve region variable before \
+                             values have been computed!"))
+            }
             Some(ref values) => values[rid.to_uint()]
         };
 
@@ -342,36 +374,43 @@ impl RegionVarBindings {
         }
     }
 
-    fn combine_map<'a>(&'a mut self,
-                       t: CombineMapType)
-                       -> &'a mut CombineMap
-    {
+    fn combine_map<'a>(&'a self, t: CombineMapType)
+                   -> &'a RefCell<CombineMap> {
         match t {
-            Glb => &mut self.glbs,
-            Lub => &mut self.lubs,
+            Glb => &self.glbs,
+            Lub => &self.lubs,
         }
     }
 
-    pub fn combine_vars(&mut self,
+    pub fn combine_vars(&self,
                         t: CombineMapType,
                         a: Region,
                         b: Region,
                         origin: SubregionOrigin,
-                        relate: |this: &mut RegionVarBindings,
+                        relate: |this: &RegionVarBindings,
                                  old_r: Region,
                                  new_r: Region|)
                         -> Region {
         let vars = TwoRegions { a: a, b: b };
-        match self.combine_map(t).find(&vars) {
-            Some(&c) => {
-                return ReInfer(ReVar(c));
+        {
+            let map = self.combine_map(t).borrow();
+            match map.get().find(&vars) {
+                Some(&c) => {
+                    return ReInfer(ReVar(c));
+                }
+                None => {}
             }
-            None => {}
         }
         let c = self.new_region_var(infer::MiscVariable(origin.span()));
-        self.combine_map(t).insert(vars, c);
+        {
+            let mut map = self.combine_map(t).borrow_mut();
+            map.get().insert(vars, c);
+        }
         if self.in_snapshot() {
-            self.undo_log.push(AddCombination(t, vars));
+            {
+                let mut undo_log = self.undo_log.borrow_mut();
+                undo_log.get().push(AddCombination(t, vars));
+            }
         }
         relate(self, a, ReInfer(ReVar(c)));
         relate(self, b, ReInfer(ReVar(c)));
@@ -379,9 +418,10 @@ impl RegionVarBindings {
         ReInfer(ReVar(c))
     }
 
-    pub fn vars_created_since_snapshot(&mut self, snapshot: uint)
+    pub fn vars_created_since_snapshot(&self, snapshot: uint)
                                        -> ~[RegionVid] {
-        self.undo_log.slice_from(snapshot).iter()
+        let undo_log = self.undo_log.borrow();
+        undo_log.get().slice_from(snapshot).iter()
             .filter_map(|&elt| match elt {
                 AddVar(vid) => Some(vid),
                 _ => None
@@ -389,7 +429,7 @@ impl RegionVarBindings {
             .collect()
     }
 
-    pub fn tainted(&mut self, snapshot: uint, r0: Region) -> ~[Region] {
+    pub fn tainted(&self, snapshot: uint, r0: Region) -> ~[Region] {
         /*!
          * Computes all regions that have been related to `r0` in any
          * way since the snapshot `snapshot` was taken---`r0` itself
@@ -401,7 +441,10 @@ impl RegionVarBindings {
         debug!("tainted(snapshot={}, r0={:?})", snapshot, r0);
         let _indenter = indenter();
 
-        let undo_len = self.undo_log.len();
+        let undo_len = {
+            let undo_log = self.undo_log.borrow();
+            undo_log.get().len()
+        };
 
         // `result_set` acts as a worklist: we explore all outgoing
         // edges and add any new regions we find to result_set.  This
@@ -417,22 +460,25 @@ impl RegionVarBindings {
             let mut undo_index = snapshot;
             while undo_index < undo_len {
                 // nb: can't use uint::range() here as we move result_set
-                let regs = match self.undo_log[undo_index] {
-                    AddConstraint(ConstrainVarSubVar(ref a, ref b)) => {
-                        Some((ReInfer(ReVar(*a)),
-                              ReInfer(ReVar(*b))))
-                    }
-                    AddConstraint(ConstrainRegSubVar(ref a, ref b)) => {
-                        Some((*a, ReInfer(ReVar(*b))))
-                    }
-                    AddConstraint(ConstrainVarSubReg(ref a, ref b)) => {
-                        Some((ReInfer(ReVar(*a)), *b))
-                    }
-                    AddConstraint(ConstrainRegSubReg(a, b)) => {
-                        Some((a, b))
-                    }
-                    _ => {
-                        None
+                let regs = {
+                    let undo_log = self.undo_log.borrow();
+                    match undo_log.get()[undo_index] {
+                        AddConstraint(ConstrainVarSubVar(ref a, ref b)) => {
+                            Some((ReInfer(ReVar(*a)),
+                                  ReInfer(ReVar(*b))))
+                        }
+                        AddConstraint(ConstrainRegSubVar(ref a, ref b)) => {
+                            Some((*a, ReInfer(ReVar(*b))))
+                        }
+                        AddConstraint(ConstrainVarSubReg(ref a, ref b)) => {
+                            Some((ReInfer(ReVar(*a)), *b))
+                        }
+                        AddConstraint(ConstrainRegSubReg(a, b)) => {
+                            Some((a, b))
+                        }
+                        _ => {
+                            None
+                        }
                     }
                 };
 
@@ -476,11 +522,12 @@ impl RegionVarBindings {
     constraints, assuming such values can be found; if they cannot,
     errors are reported.
     */
-    pub fn resolve_regions(&mut self) -> OptVec<RegionResolutionError> {
+    pub fn resolve_regions(&self) -> OptVec<RegionResolutionError> {
         debug!("RegionVarBindings: resolve_regions()");
         let mut errors = opt_vec::Empty;
         let v = self.infer_variable_values(&mut errors);
-        self.values = Some(v);
+        let mut values = self.values.borrow_mut();
+        *values.get() = Some(v);
         errors
     }
 }
@@ -512,8 +559,9 @@ impl RegionVarBindings {
           }
 
           (ReInfer(ReVar(v_id)), _) | (_, ReInfer(ReVar(v_id))) => {
+            let var_origins = self.var_origins.borrow();
             self.tcx.sess.span_bug(
-                self.var_origins[v_id.to_uint()].span(),
+                var_origins.get()[v_id.to_uint()].span(),
                 format!("lub_concrete_regions invoked with \
                       non-concrete regions: {:?}, {:?}", a, b));
           }
@@ -619,8 +667,9 @@ impl RegionVarBindings {
 
             (ReInfer(ReVar(v_id)), _) |
             (_, ReInfer(ReVar(v_id))) => {
+                let var_origins = self.var_origins.borrow();
                 self.tcx.sess.span_bug(
-                    self.var_origins[v_id.to_uint()].span(),
+                    var_origins.get()[v_id.to_uint()].span(),
                     format!("glb_concrete_regions invoked with \
                           non-concrete regions: {:?}, {:?}", a, b));
             }
@@ -925,7 +974,8 @@ impl RegionVarBindings {
         &self,
         errors: &mut OptVec<RegionResolutionError>)
     {
-        for (constraint, _) in self.constraints.iter() {
+        let constraints = self.constraints.borrow();
+        for (constraint, _) in constraints.get().iter() {
             let (sub, sup) = match *constraint {
                 ConstrainVarSubVar(..) |
                 ConstrainRegSubVar(..) |
@@ -943,7 +993,7 @@ impl RegionVarBindings {
 
             debug!("ConcreteFailure: !(sub <= sup): sub={:?}, sup={:?}",
                    sub, sup);
-            let origin = self.constraints.get_copy(constraint);
+            let origin = constraints.get().get_copy(constraint);
             errors.push(ConcreteFailure(origin, sub, sup));
         }
     }
@@ -1031,7 +1081,9 @@ impl RegionVarBindings {
 
     fn construct_graph(&self) -> RegionGraph {
         let num_vars = self.num_vars();
-        let num_edges = self.constraints.len();
+
+        let constraints = self.constraints.borrow();
+        let num_edges = constraints.get().len();
 
         let mut graph = graph::Graph::with_capacity(num_vars + 1,
                                                     num_edges);
@@ -1041,7 +1093,7 @@ impl RegionVarBindings {
         }
         let dummy_idx = graph.add_node(());
 
-        for (constraint, _) in self.constraints.iter() {
+        for (constraint, _) in constraints.get().iter() {
             match *constraint {
                 ConstrainVarSubVar(a_id, b_id) => {
                     graph.add_edge(NodeIndex(a_id.to_uint()),
@@ -1093,19 +1145,23 @@ impl RegionVarBindings {
             for upper_bound in upper_bounds.iter() {
                 if !self.is_subregion_of(lower_bound.region,
                                          upper_bound.region) {
-                    errors.push(SubSupConflict(
-                        self.var_origins[node_idx.to_uint()],
-                        lower_bound.origin,
-                        lower_bound.region,
-                        upper_bound.origin,
-                        upper_bound.region));
-                    return;
+                    {
+                        let var_origins = self.var_origins.borrow();
+                        errors.push(SubSupConflict(
+                            var_origins.get()[node_idx.to_uint()],
+                            lower_bound.origin,
+                            lower_bound.region,
+                            upper_bound.origin,
+                            upper_bound.region));
+                        return;
+                    }
                 }
             }
         }
 
+        let var_origins = self.var_origins.borrow();
         self.tcx.sess.span_bug(
-            self.var_origins[node_idx.to_uint()].span(),
+            var_origins.get()[node_idx.to_uint()].span(),
             format!("collect_error_for_expanding_node() could not find error \
                   for var {:?}, lower_bounds={}, upper_bounds={}",
                  node_idx,
@@ -1137,8 +1193,9 @@ impl RegionVarBindings {
                                                 upper_bound_2.region) {
                   Ok(_) => {}
                   Err(_) => {
+                    let var_origins = self.var_origins.borrow();
                     errors.push(SupSupConflict(
-                        self.var_origins[node_idx.to_uint()],
+                        var_origins.get()[node_idx.to_uint()],
                         upper_bound_1.origin,
                         upper_bound_1.region,
                         upper_bound_2.origin,
@@ -1149,8 +1206,9 @@ impl RegionVarBindings {
             }
         }
 
+        let var_origins = self.var_origins.borrow();
         self.tcx.sess.span_bug(
-            self.var_origins[node_idx.to_uint()].span(),
+            var_origins.get()[node_idx.to_uint()].span(),
             format!("collect_error_for_contracting_node() could not find error \
                   for var {:?}, upper_bounds={}",
                  node_idx,
@@ -1230,9 +1288,10 @@ impl RegionVarBindings {
 
                     ConstrainRegSubVar(region, _) |
                     ConstrainVarSubReg(_, region) => {
+                        let constraints = this.constraints.borrow();
                         state.result.push(RegionAndOrigin {
                             region: region,
-                            origin: this.constraints.get_copy(&edge.data)
+                            origin: constraints.get().get_copy(&edge.data)
                         });
                     }
 
@@ -1252,7 +1311,8 @@ impl RegionVarBindings {
             changed = false;
             iteration += 1;
             debug!("---- {} Iteration \\#{}", tag, iteration);
-            for (constraint, _) in self.constraints.iter() {
+            let constraints = self.constraints.borrow();
+            for (constraint, _) in constraints.get().iter() {
                 let edge_changed = body(constraint);
                 if edge_changed {
                     debug!("Updated due to constraint {}",

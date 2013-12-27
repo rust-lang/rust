@@ -340,7 +340,8 @@ impl mem_categorization_ctxt {
     }
 
     pub fn cat_expr(&self, expr: @ast::Expr) -> cmt {
-        match self.tcx.adjustments.find(&expr.id) {
+        let adjustments = self.tcx.adjustments.borrow();
+        match adjustments.get().find(&expr.id) {
             None => {
                 // No adjustments.
                 self.cat_expr_unadjusted(expr)
@@ -389,7 +390,8 @@ impl mem_categorization_ctxt {
         let expr_ty = self.expr_ty(expr);
         match expr.node {
           ast::ExprUnary(_, ast::UnDeref, e_base) => {
-            if self.method_map.contains_key(&expr.id) {
+            let method_map = self.method_map.borrow();
+            if method_map.get().contains_key(&expr.id) {
                 return self.cat_rvalue_node(expr, expr_ty);
             }
 
@@ -400,14 +402,16 @@ impl mem_categorization_ctxt {
           ast::ExprField(base, f_name, _) => {
             // Method calls are now a special syntactic form,
             // so `a.b` should always be a field.
-            assert!(!self.method_map.contains_key(&expr.id));
+            let method_map = self.method_map.borrow();
+            assert!(!method_map.get().contains_key(&expr.id));
 
             let base_cmt = self.cat_expr(base);
             self.cat_field(expr, base_cmt, f_name, self.expr_ty(expr))
           }
 
           ast::ExprIndex(_, base, _) => {
-            if self.method_map.contains_key(&expr.id) {
+            let method_map = self.method_map.borrow();
+            if method_map.get().contains_key(&expr.id) {
                 return self.cat_rvalue_node(expr, expr_ty);
             }
 
@@ -416,7 +420,8 @@ impl mem_categorization_ctxt {
           }
 
           ast::ExprPath(_) | ast::ExprSelf => {
-            let def = self.tcx.def_map.get_copy(&expr.id);
+            let def_map = self.tcx.def_map.borrow();
+            let def = def_map.get().get_copy(&expr.id);
             self.cat_def(expr.id, expr.span, expr_ty, def)
           }
 
@@ -884,7 +889,8 @@ impl mem_categorization_ctxt {
             // variant(..)
           }
           ast::PatEnum(_, Some(ref subpats)) => {
-            match self.tcx.def_map.find(&pat.id) {
+            let def_map = self.tcx.def_map.borrow();
+            match def_map.get().find(&pat.id) {
                 Some(&ast::DefVariant(enum_did, _, _)) => {
                     // variant(x, y, z)
 
@@ -1070,7 +1076,8 @@ pub fn field_mutbl(tcx: ty::ctxt,
         }
       }
       ty::ty_enum(..) => {
-        match tcx.def_map.get_copy(&node_id) {
+        let def_map = tcx.def_map.borrow();
+        match def_map.get().get_copy(&node_id) {
           ast::DefVariant(_, variant_id, _) => {
             let r = ty::lookup_struct_fields(tcx, variant_id);
             for fld in r.iter() {
