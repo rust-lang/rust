@@ -30,7 +30,7 @@ pub trait reader {
     fn is_eof(@self) -> bool;
     fn next_token(@self) -> TokenAndSpan;
     fn fatal(@self, ~str) -> !;
-    fn span_diag(@self) -> @mut span_handler;
+    fn span_diag(@self) -> @span_handler;
     fn peek(@self) -> TokenAndSpan;
     fn dup(@self) -> @reader;
 }
@@ -42,7 +42,7 @@ pub struct TokenAndSpan {
 }
 
 pub struct StringReader {
-    span_diagnostic: @mut span_handler,
+    span_diagnostic: @span_handler,
     src: @str,
     // The absolute offset within the codemap of the next character to read
     pos: Cell<BytePos>,
@@ -58,7 +58,7 @@ pub struct StringReader {
     peek_span: RefCell<Span>,
 }
 
-pub fn new_string_reader(span_diagnostic: @mut span_handler,
+pub fn new_string_reader(span_diagnostic: @span_handler,
                          filemap: @codemap::FileMap)
                       -> @StringReader {
     let r = new_low_level_string_reader(span_diagnostic, filemap);
@@ -67,7 +67,7 @@ pub fn new_string_reader(span_diagnostic: @mut span_handler,
 }
 
 /* For comments.rs, which hackily pokes into 'pos' and 'curr' */
-pub fn new_low_level_string_reader(span_diagnostic: @mut span_handler,
+pub fn new_low_level_string_reader(span_diagnostic: @span_handler,
                                    filemap: @codemap::FileMap)
                                 -> @StringReader {
     // Force the initial reader bump to start on a fresh line
@@ -122,7 +122,7 @@ impl reader for StringReader {
     fn fatal(@self, m: ~str) -> ! {
         self.span_diagnostic.span_fatal(self.peek_span.get(), m)
     }
-    fn span_diag(@self) -> @mut span_handler { self.span_diagnostic }
+    fn span_diag(@self) -> @span_handler { self.span_diagnostic }
     fn peek(@self) -> TokenAndSpan {
         // XXX(pcwalton): Bad copy!
         TokenAndSpan {
@@ -146,7 +146,7 @@ impl reader for TtReader {
     fn fatal(@self, m: ~str) -> ! {
         self.sp_diag.span_fatal(self.cur_span.get(), m);
     }
-    fn span_diag(@self) -> @mut span_handler { self.sp_diag }
+    fn span_diag(@self) -> @span_handler { self.sp_diag }
     fn peek(@self) -> TokenAndSpan {
         TokenAndSpan {
             tok: self.cur_tok.get(),

@@ -51,13 +51,13 @@ pub trait handler {
 // accepts span information for source-location
 // reporting.
 pub trait span_handler {
-    fn span_fatal(@mut self, sp: Span, msg: &str) -> !;
-    fn span_err(@mut self, sp: Span, msg: &str);
-    fn span_warn(@mut self, sp: Span, msg: &str);
-    fn span_note(@mut self, sp: Span, msg: &str);
-    fn span_bug(@mut self, sp: Span, msg: &str) -> !;
-    fn span_unimpl(@mut self, sp: Span, msg: &str) -> !;
-    fn handler(@mut self) -> @mut handler;
+    fn span_fatal(@self, sp: Span, msg: &str) -> !;
+    fn span_err(@self, sp: Span, msg: &str);
+    fn span_warn(@self, sp: Span, msg: &str);
+    fn span_note(@self, sp: Span, msg: &str);
+    fn span_bug(@self, sp: Span, msg: &str) -> !;
+    fn span_unimpl(@self, sp: Span, msg: &str) -> !;
+    fn handler(@self) -> @mut handler;
 }
 
 struct HandlerT {
@@ -71,27 +71,27 @@ struct CodemapT {
 }
 
 impl span_handler for CodemapT {
-    fn span_fatal(@mut self, sp: Span, msg: &str) -> ! {
+    fn span_fatal(@self, sp: Span, msg: &str) -> ! {
         self.handler.emit(Some((self.cm, sp)), msg, fatal);
         fail!();
     }
-    fn span_err(@mut self, sp: Span, msg: &str) {
+    fn span_err(@self, sp: Span, msg: &str) {
         self.handler.emit(Some((self.cm, sp)), msg, error);
         self.handler.bump_err_count();
     }
-    fn span_warn(@mut self, sp: Span, msg: &str) {
+    fn span_warn(@self, sp: Span, msg: &str) {
         self.handler.emit(Some((self.cm, sp)), msg, warning);
     }
-    fn span_note(@mut self, sp: Span, msg: &str) {
+    fn span_note(@self, sp: Span, msg: &str) {
         self.handler.emit(Some((self.cm, sp)), msg, note);
     }
-    fn span_bug(@mut self, sp: Span, msg: &str) -> ! {
+    fn span_bug(@self, sp: Span, msg: &str) -> ! {
         self.span_fatal(sp, ice_msg(msg));
     }
-    fn span_unimpl(@mut self, sp: Span, msg: &str) -> ! {
+    fn span_unimpl(@self, sp: Span, msg: &str) -> ! {
         self.span_bug(sp, ~"unimplemented " + msg);
     }
-    fn handler(@mut self) -> @mut handler {
+    fn handler(@self) -> @mut handler {
         self.handler
     }
 }
@@ -152,11 +152,11 @@ pub fn ice_msg(msg: &str) -> ~str {
 }
 
 pub fn mk_span_handler(handler: @mut handler, cm: @codemap::CodeMap)
-                    -> @mut span_handler {
-    @mut CodemapT {
+                       -> @span_handler {
+    @CodemapT {
         handler: handler,
         cm: cm,
-    } as @mut span_handler
+    } as @span_handler
 }
 
 pub fn mk_handler(emitter: Option<@Emitter>) -> @mut handler {
@@ -355,10 +355,7 @@ fn print_macro_backtrace(cm: @codemap::CodeMap, sp: Span) {
     }
 }
 
-pub fn expect<T:Clone>(
-              diag: @mut span_handler,
-              opt: Option<T>,
-              msg: || -> ~str)
+pub fn expect<T:Clone>(diag: @span_handler, opt: Option<T>, msg: || -> ~str)
               -> T {
     match opt {
        Some(ref t) => (*t).clone(),
