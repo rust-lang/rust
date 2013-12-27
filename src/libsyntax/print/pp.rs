@@ -148,7 +148,7 @@ pub struct print_stack_elt {
 
 pub static size_infinity: int = 0xffff;
 
-pub fn mk_printer(out: @mut io::Writer, linewidth: uint) -> Printer {
+pub fn mk_printer(out: ~io::Writer, linewidth: uint) -> Printer {
     // Yes 3, it makes the ring buffers big enough to never
     // fall behind.
     let n: uint = 3 * linewidth;
@@ -255,7 +255,7 @@ pub fn mk_printer(out: @mut io::Writer, linewidth: uint) -> Printer {
  * called 'print'.
  */
 pub struct Printer {
-    out: @mut io::Writer,
+    out: ~io::Writer,
     buf_len: uint,
     margin: int, // width of lines we're constrained to
     space: int, // number of spaces left on line
