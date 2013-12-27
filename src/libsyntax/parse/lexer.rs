@@ -18,7 +18,7 @@ use parse::token;
 use parse::token::{str_to_ident};
 
 use std::cast::transmute;
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::char;
 use std::either;
 use std::num::from_str_radix;
@@ -54,7 +54,7 @@ pub struct StringReader {
     curr: Cell<char>,
     filemap: @codemap::FileMap,
     /* cached: */
-    peek_tok: token::Token,
+    peek_tok: RefCell<token::Token>,
     peek_span: Span
 }
 
@@ -81,7 +81,7 @@ pub fn new_low_level_string_reader(span_diagnostic: @mut span_handler,
         curr: Cell::new(initial_char),
         filemap: filemap,
         /* dummy values; not read */
-        peek_tok: token::EOF,
+        peek_tok: RefCell::new(token::EOF),
         peek_span: codemap::dummy_sp()
     };
     bump(r);
@@ -109,9 +109,12 @@ impl reader for StringReader {
     fn is_eof(@mut self) -> bool { is_eof(self) }
     // return the next token. EFFECT: advances the string_reader.
     fn next_token(@mut self) -> TokenAndSpan {
-        let ret_val = TokenAndSpan {
-            tok: util::replace(&mut self.peek_tok, token::UNDERSCORE),
-            sp: self.peek_span,
+        let ret_val = {
+            let mut peek_tok = self.peek_tok.borrow_mut();
+            TokenAndSpan {
+                tok: util::replace(peek_tok.get(), token::UNDERSCORE),
+                sp: self.peek_span,
+            }
         };
         string_advance_token(self);
         ret_val
@@ -123,7 +126,7 @@ impl reader for StringReader {
     fn peek(@mut self) -> TokenAndSpan {
         // XXX(pcwalton): Bad copy!
         TokenAndSpan {
-            tok: self.peek_tok.clone(),
+            tok: self.peek_tok.get(),
             sp: self.peek_span,
         }
     }
@@ -196,14 +199,14 @@ fn string_advance_token(r: @mut StringReader) {
     match (consume_whitespace_and_comments(r)) {
         Some(comment) => {
             r.peek_span = comment.sp;
-            r.peek_tok = comment.tok;
+            r.peek_tok.set(comment.tok);
         },
         None => {
             if is_eof(r) {
-                r.peek_tok = token::EOF;
+                r.peek_tok.set(token::EOF);
             } else {
                 let start_bytepos = r.last_pos.get();
-                r.peek_tok = next_token_inner(r);
+                r.peek_tok.set(next_token_inner(r));
                 r.peek_span = codemap::mk_sp(start_bytepos, r.last_pos.get());
             };
         }
