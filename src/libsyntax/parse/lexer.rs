@@ -144,13 +144,13 @@ impl reader for TtReader {
         return r;
     }
     fn fatal(@mut self, m: ~str) -> ! {
-        self.sp_diag.span_fatal(self.cur_span, m);
+        self.sp_diag.span_fatal(self.cur_span.get(), m);
     }
     fn span_diag(@mut self) -> @mut span_handler { self.sp_diag }
     fn peek(@mut self) -> TokenAndSpan {
         TokenAndSpan {
             tok: self.cur_tok.get(),
-            sp: self.cur_span,
+            sp: self.cur_span.get(),
         }
     }
     fn dup(@mut self) -> @mut reader { dup_tt_reader(self) as @mut reader }

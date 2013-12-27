@@ -40,7 +40,7 @@ pub struct TtReader {
     priv repeat_len: RefCell<~[uint]>,
     /* cached: */
     cur_tok: RefCell<Token>,
-    cur_span: Span
+    cur_span: RefCell<Span>,
 }
 
 /** This can do Macro-By-Example transcription. On the other hand, if
@@ -67,7 +67,7 @@ pub fn new_tt_reader(sp_diag: @mut span_handler,
         repeat_len: RefCell::new(~[]),
         /* dummy values, never read: */
         cur_tok: RefCell::new(EOF),
-        cur_span: dummy_sp()
+        cur_span: RefCell::new(dummy_sp()),
     };
     tt_next_token(r); /* get cur_tok and cur_span set up */
     return r;
@@ -93,7 +93,7 @@ pub fn dup_tt_reader(r: @mut TtReader) -> @mut TtReader {
         repeat_idx: r.repeat_idx.clone(),
         repeat_len: r.repeat_len.clone(),
         cur_tok: r.cur_tok.clone(),
-        cur_span: r.cur_span,
+        cur_span: r.cur_span.clone(),
         interpolations: r.interpolations.clone(),
     }
 }
@@ -123,8 +123,9 @@ fn lookup_cur_matched(r: &mut TtReader, name: Ident) -> @named_match {
     match matched_opt {
         Some(s) => lookup_cur_matched_by_matched(r, s),
         None => {
-            r.sp_diag.span_fatal(r.cur_span, format!("unknown macro variable `{}`",
-                                                  ident_to_str(&name)));
+            r.sp_diag.span_fatal(r.cur_span.get(),
+                                 format!("unknown macro variable `{}`",
+                                         ident_to_str(&name)));
         }
     }
 }
@@ -176,7 +177,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
     // XXX(pcwalton): Bad copy?
     let ret_val = TokenAndSpan {
         tok: r.cur_tok.get(),
-        sp: r.cur_span,
+        sp: r.cur_span.get(),
     };
     loop {
         {
@@ -243,7 +244,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
             // if this could be 0-length, we'd need to potentially recur here
           }
           tt_tok(sp, tok) => {
-            r.cur_span = sp;
+            r.cur_span.set(sp);
             r.cur_tok.set(tok);
             r.stack.idx += 1u;
             return ret_val;
@@ -299,21 +300,21 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
               (a) idents can be in lots of places, so it'd be a pain
               (b) we actually can, since it's a token. */
               matched_nonterminal(nt_ident(~sn,b)) => {
-                r.cur_span = sp;
+                r.cur_span.set(sp);
                 r.cur_tok.set(IDENT(sn,b));
                 r.stack.idx += 1u;
                 return ret_val;
               }
               matched_nonterminal(ref other_whole_nt) => {
                 // XXX(pcwalton): Bad copy.
-                r.cur_span = sp;
+                r.cur_span.set(sp);
                 r.cur_tok.set(INTERPOLATED((*other_whole_nt).clone()));
                 r.stack.idx += 1u;
                 return ret_val;
               }
               matched_seq(..) => {
                 r.sp_diag.span_fatal(
-                    r.cur_span, /* blame the macro writer */
+                    r.cur_span.get(), /* blame the macro writer */
                     format!("variable '{}' is still repeating at this depth",
                          ident_to_str(&ident)));
               }
