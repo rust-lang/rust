@@ -148,7 +148,7 @@ pub struct print_stack_elt {
 
 pub static size_infinity: int = 0xffff;
 
-pub fn mk_printer(out: @mut io::Writer, linewidth: uint) -> @mut Printer {
+pub fn mk_printer(out: @mut io::Writer, linewidth: uint) -> Printer {
     // Yes 3, it makes the ring buffers big enough to never
     // fall behind.
     let n: uint = 3 * linewidth;
@@ -156,7 +156,7 @@ pub fn mk_printer(out: @mut io::Writer, linewidth: uint) -> @mut Printer {
     let token: ~[token] = vec::from_elem(n, EOF);
     let size: ~[int] = vec::from_elem(n, 0);
     let scan_stack: ~[uint] = vec::from_elem(n, 0u);
-    @mut Printer {
+    Printer {
         out: out,
         buf_len: n,
         margin: linewidth as int,
@@ -557,47 +557,47 @@ impl Printer {
 // Convenience functions to talk to the printer.
 //
 // "raw box"
-pub fn rbox(p: @mut Printer, indent: uint, b: breaks) {
+pub fn rbox(p: &mut Printer, indent: uint, b: breaks) {
     p.pretty_print(BEGIN(begin_t {
         offset: indent as int,
         breaks: b
     }));
 }
 
-pub fn ibox(p: @mut Printer, indent: uint) { rbox(p, indent, inconsistent); }
+pub fn ibox(p: &mut Printer, indent: uint) { rbox(p, indent, inconsistent); }
 
-pub fn cbox(p: @mut Printer, indent: uint) { rbox(p, indent, consistent); }
+pub fn cbox(p: &mut Printer, indent: uint) { rbox(p, indent, consistent); }
 
-pub fn break_offset(p: @mut Printer, n: uint, off: int) {
+pub fn break_offset(p: &mut Printer, n: uint, off: int) {
     p.pretty_print(BREAK(break_t {
         offset: off,
         blank_space: n as int
     }));
 }
 
-pub fn end(p: @mut Printer) { p.pretty_print(END); }
+pub fn end(p: &mut Printer) { p.pretty_print(END); }
 
-pub fn eof(p: @mut Printer) { p.pretty_print(EOF); }
+pub fn eof(p: &mut Printer) { p.pretty_print(EOF); }
 
-pub fn word(p: @mut Printer, wrd: &str) {
+pub fn word(p: &mut Printer, wrd: &str) {
     p.pretty_print(STRING(/* bad */ wrd.to_managed(), wrd.len() as int));
 }
 
-pub fn huge_word(p: @mut Printer, wrd: &str) {
+pub fn huge_word(p: &mut Printer, wrd: &str) {
     p.pretty_print(STRING(/* bad */ wrd.to_managed(), size_infinity));
 }
 
-pub fn zero_word(p: @mut Printer, wrd: &str) {
+pub fn zero_word(p: &mut Printer, wrd: &str) {
     p.pretty_print(STRING(/* bad */ wrd.to_managed(), 0));
 }
 
-pub fn spaces(p: @mut Printer, n: uint) { break_offset(p, n, 0); }
+pub fn spaces(p: &mut Printer, n: uint) { break_offset(p, n, 0); }
 
-pub fn zerobreak(p: @mut Printer) { spaces(p, 0u); }
+pub fn zerobreak(p: &mut Printer) { spaces(p, 0u); }
 
-pub fn space(p: @mut Printer) { spaces(p, 1u); }
+pub fn space(p: &mut Printer) { spaces(p, 1u); }
 
-pub fn hardbreak(p: @mut Printer) { spaces(p, size_infinity as uint); }
+pub fn hardbreak(p: &mut Printer) { spaces(p, size_infinity as uint); }
 
 pub fn hardbreak_tok_offset(off: int) -> token {
     BREAK(break_t {offset: off, blank_space: size_infinity})
