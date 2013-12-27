@@ -27,6 +27,7 @@ use print::pp::{breaks, consistent, inconsistent, eof};
 use print::pp;
 use print::pprust;
 
+use std::cast;
 use std::char;
 use std::str;
 use std::io;
@@ -86,11 +87,11 @@ pub fn end(s: &mut ps) {
     pp::end(&mut s.s);
 }
 
-pub fn rust_printer(writer: @mut io::Writer, intr: @ident_interner) -> ps {
+pub fn rust_printer(writer: ~io::Writer, intr: @ident_interner) -> ps {
     return rust_printer_annotated(writer, intr, @no_ann::new() as @pp_ann);
 }
 
-pub fn rust_printer_annotated(writer: @mut io::Writer,
+pub fn rust_printer_annotated(writer: ~io::Writer,
                               intr: @ident_interner,
                               ann: @pp_ann)
                               -> ps {
@@ -122,7 +123,7 @@ pub fn print_crate(cm: @CodeMap,
                    crate: &ast::Crate,
                    filename: @str,
                    input: @mut io::Reader,
-                   out: @mut io::Writer,
+                   out: ~io::Writer,
                    ann: @pp_ann,
                    is_expanded: bool) {
     let (cmnts, lits) = comments::gather_comments_and_literals(
@@ -203,26 +204,40 @@ pub fn path_to_str(p: &ast::Path, intr: @ident_interner) -> ~str {
 pub fn fun_to_str(decl: &ast::fn_decl, purity: ast::purity, name: ast::Ident,
                   opt_explicit_self: Option<ast::explicit_self_>,
                   generics: &ast::Generics, intr: @ident_interner) -> ~str {
-    let wr = @mut MemWriter::new();
-    let mut s = rust_printer(wr as @mut io::Writer, intr);
+    let wr = ~MemWriter::new();
+    let mut s = rust_printer(wr as ~io::Writer, intr);
     print_fn(&mut s, decl, Some(purity), AbiSet::Rust(),
              name, generics, opt_explicit_self, ast::inherited);
     end(&mut s); // Close the head box
     end(&mut s); // Close the outer box
     eof(&mut s.s);
-    str::from_utf8_owned(wr.inner_ref().to_owned())
+
+    // XXX(pcwalton): Need checked downcasts.
+    unsafe {
+        let (_, wr): (uint, ~MemWriter) = cast::transmute(s.s.out);
+        let result = str::from_utf8_owned(wr.inner_ref().to_owned());
+        cast::forget(wr);
+        result
+    }
 }
 
 pub fn block_to_str(blk: &ast::Block, intr: @ident_interner) -> ~str {
-    let wr = @mut MemWriter::new();
-    let mut s = rust_printer(wr as @mut io::Writer, intr);
+    let wr = ~MemWriter::new();
+    let mut s = rust_printer(wr as ~io::Writer, intr);
     // containing cbox, will be closed by print-block at }
     cbox(&mut s, indent_unit);
     // head-ibox, will be closed by print-block after {
     ibox(&mut s, 0u);
     print_block(&mut s, blk);
     eof(&mut s.s);
-    str::from_utf8_owned(wr.inner_ref().to_owned())
+
+    // XXX(pcwalton): Need checked downcasts.
+    unsafe {
+        let (_, wr): (uint, ~MemWriter) = cast::transmute(s.s.out);
+        let result = str::from_utf8_owned(wr.inner_ref().to_owned());
+        cast::forget(wr);
+        result
+    }
 }
 
 pub fn meta_item_to_str(mi: &ast::MetaItem, intr: @ident_interner) -> ~str {
@@ -2309,11 +2324,17 @@ pub fn print_string(s: &mut ps, st: &str, style: ast::StrStyle) {
 }
 
 pub fn to_str<T>(t: &T, f: |&mut ps, &T|, intr: @ident_interner) -> ~str {
-    let wr = @mut MemWriter::new();
-    let mut s = rust_printer(wr as @mut io::Writer, intr);
+    let wr = ~MemWriter::new();
+    let mut s = rust_printer(wr as ~io::Writer, intr);
     f(&mut s, t);
     eof(&mut s.s);
-    str::from_utf8_owned(wr.inner_ref().to_owned())
+    // XXX(pcwalton): Need checked downcasts.
+    unsafe {
+        let (_, wr): (uint, ~MemWriter) = cast::transmute(s.s.out);
+        let result = str::from_utf8_owned(wr.inner_ref().to_owned());
+        cast::forget(wr);
+        result
+    }
 }
 
 pub fn next_comment(s: &mut ps) -> Option<comments::cmnt> {

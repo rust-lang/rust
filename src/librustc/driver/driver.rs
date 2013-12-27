@@ -600,7 +600,7 @@ pub fn pretty_print_input(sess: Session,
                         &crate,
                         source_name(input),
                         rdr as @mut io::Reader,
-                        @mut stdout as @mut io::Writer,
+                        ~stdout as ~io::Writer,
                         annotation,
                         is_expanded);
 }
