@@ -49,7 +49,7 @@ pub struct StringReader {
     // The absolute offset within the codemap of the last character read(curr)
     last_pos: Cell<BytePos>,
     // The column of the next character to read
-    col: CharPos,
+    col: Cell<CharPos>,
     // The last character to be read
     curr: char,
     filemap: @codemap::FileMap,
@@ -77,7 +77,7 @@ pub fn new_low_level_string_reader(span_diagnostic: @mut span_handler,
         src: filemap.src,
         pos: Cell::new(filemap.start_pos),
         last_pos: Cell::new(filemap.start_pos),
-        col: CharPos(0),
+        col: Cell::new(CharPos(0)),
         curr: initial_char,
         filemap: filemap,
         /* dummy values; not read */
@@ -97,7 +97,7 @@ fn dup_string_reader(r: @mut StringReader) -> @mut StringReader {
         src: r.src,
         pos: Cell::new(r.pos.get()),
         last_pos: Cell::new(r.last_pos.get()),
-        col: r.col,
+        col: Cell::new(r.col.get()),
         curr: r.curr,
         filemap: r.filemap,
         peek_tok: r.peek_tok.clone(),
@@ -250,10 +250,10 @@ pub fn bump(rdr: &mut StringReader) {
         let byte_offset_diff = next.next - current_byte_offset;
         rdr.pos.set(rdr.pos.get() + Pos::from_uint(byte_offset_diff));
         rdr.curr = next.ch;
-        rdr.col = rdr.col + CharPos(1u);
+        rdr.col.set(rdr.col.get() + CharPos(1u));
         if last_char == '\n' {
             rdr.filemap.next_line(rdr.last_pos.get());
-            rdr.col = CharPos(0u);
+            rdr.col.set(CharPos(0u));
         }
 
         if byte_offset_diff > 1 {

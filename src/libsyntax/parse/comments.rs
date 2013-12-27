@@ -171,7 +171,7 @@ fn push_blank_line_comment(rdr: @mut StringReader, comments: &mut ~[cmnt]) {
 fn consume_whitespace_counting_blank_lines(rdr: @mut StringReader,
                                            comments: &mut ~[cmnt]) {
     while is_whitespace(rdr.curr) && !is_eof(rdr) {
-        if rdr.col == CharPos(0u) && rdr.curr == '\n' {
+        if rdr.col.get() == CharPos(0u) && rdr.curr == '\n' {
             push_blank_line_comment(rdr, &mut *comments);
         }
         bump(rdr);
@@ -254,7 +254,7 @@ fn read_block_comment(rdr: @mut StringReader,
     debug!(">>> block comment");
     let p = rdr.last_pos.get();
     let mut lines: ~[~str] = ~[];
-    let col: CharPos = rdr.col;
+    let col: CharPos = rdr.col.get();
     bump(rdr);
     bump(rdr);
 
