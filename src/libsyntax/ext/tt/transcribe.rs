@@ -17,6 +17,7 @@ use parse::token::{EOF, INTERPOLATED, IDENT, Token, nt_ident};
 use parse::token::{ident_to_str};
 use parse::lexer::TokenAndSpan;
 
+use std::cell::RefCell;
 use std::hashmap::HashMap;
 use std::option;
 
@@ -34,7 +35,7 @@ pub struct TtReader {
     // the unzipped tree:
     stack: @mut TtFrame,
     /* for MBE-style macro transcription */
-    interpolations: HashMap<Ident, @named_match>,
+    priv interpolations: RefCell<HashMap<Ident, @named_match>>,
     repeat_idx: ~[uint],
     repeat_len: ~[uint],
     /* cached: */
@@ -59,8 +60,8 @@ pub fn new_tt_reader(sp_diag: @mut SpanHandler,
             up: option::None
         },
         interpolations: match interp { /* just a convienience */
-            None => HashMap::new(),
-            Some(x) => x
+            None => RefCell::new(HashMap::new()),
+            Some(x) => RefCell::new(x),
         },
         repeat_idx: ~[],
         repeat_len: ~[],
@@ -114,7 +115,11 @@ fn lookup_cur_matched_by_matched(r: &mut TtReader,
 }
 
 fn lookup_cur_matched(r: &mut TtReader, name: Ident) -> @named_match {
-    match r.interpolations.find_copy(&name) {
+    let matched_opt = {
+        let interpolations = r.interpolations.borrow();
+        interpolations.get().find_copy(&name)
+    };
+    match matched_opt {
         Some(s) => lookup_cur_matched_by_matched(r, s),
         None => {
             r.sp_diag.span_fatal(r.cur_span, format!("unknown macro variable `{}`",
