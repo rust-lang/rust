@@ -19,6 +19,7 @@ use parse::attr::parser_attr;
 use parse::lexer::reader;
 use parse::parser::Parser;
 
+use std::cell::RefCell;
 use std::io;
 use std::io::File;
 use std::str;
@@ -43,7 +44,7 @@ pub struct ParseSess {
     cm: @codemap::CodeMap, // better be the same as the one in the reader!
     span_diagnostic: @mut span_handler, // better be the same as the one in the reader!
     /// Used to determine and report recursive mod inclusions
-    included_mod_stack: ~[Path],
+    included_mod_stack: RefCell<~[Path]>,
 }
 
 pub fn new_parse_sess(demitter: Option<@Emitter>) -> @mut ParseSess {
@@ -51,7 +52,7 @@ pub fn new_parse_sess(demitter: Option<@Emitter>) -> @mut ParseSess {
     @mut ParseSess {
         cm: cm,
         span_diagnostic: mk_span_handler(mk_handler(demitter), cm),
-        included_mod_stack: ~[],
+        included_mod_stack: RefCell::new(~[]),
     }
 }
 
@@ -61,7 +62,7 @@ pub fn new_parse_sess_special_handler(sh: @mut span_handler,
     @mut ParseSess {
         cm: cm,
         span_diagnostic: sh,
-        included_mod_stack: ~[],
+        included_mod_stack: RefCell::new(~[]),
     }
 }
 
