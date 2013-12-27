@@ -18,6 +18,7 @@ use parse::token;
 use parse::token::{str_to_ident};
 
 use std::cast::transmute;
+use std::cell::Cell;
 use std::char;
 use std::either;
 use std::num::from_str_radix;
@@ -44,7 +45,7 @@ pub struct StringReader {
     span_diagnostic: @mut span_handler,
     src: @str,
     // The absolute offset within the codemap of the next character to read
-    pos: BytePos,
+    pos: Cell<BytePos>,
     // The absolute offset within the codemap of the last character read(curr)
     last_pos: BytePos,
     // The column of the next character to read
@@ -74,7 +75,7 @@ pub fn new_low_level_string_reader(span_diagnostic: @mut span_handler,
     let r = @mut StringReader {
         span_diagnostic: span_diagnostic,
         src: filemap.src,
-        pos: filemap.start_pos,
+        pos: Cell::new(filemap.start_pos),
         last_pos: filemap.start_pos,
         col: CharPos(0),
         curr: initial_char,
@@ -94,7 +95,7 @@ fn dup_string_reader(r: @mut StringReader) -> @mut StringReader {
     @mut StringReader {
         span_diagnostic: r.span_diagnostic,
         src: r.src,
-        pos: r.pos,
+        pos: Cell::new(r.pos.get()),
         last_pos: r.last_pos,
         col: r.col,
         curr: r.curr,
@@ -240,14 +241,14 @@ fn with_str_from_to<T>(
 // EFFECT: advance the StringReader by one character. If a newline is
 // discovered, add it to the FileMap's list of line start offsets.
 pub fn bump(rdr: &mut StringReader) {
-    rdr.last_pos = rdr.pos;
-    let current_byte_offset = byte_offset(rdr, rdr.pos).to_uint();
+    rdr.last_pos = rdr.pos.get();
+    let current_byte_offset = byte_offset(rdr, rdr.pos.get()).to_uint();
     if current_byte_offset < (rdr.src).len() {
         assert!(rdr.curr != unsafe { transmute(-1u32) }); // FIXME: #8971: unsound
         let last_char = rdr.curr;
         let next = rdr.src.char_range_at(current_byte_offset);
         let byte_offset_diff = next.next - current_byte_offset;
-        rdr.pos = rdr.pos + Pos::from_uint(byte_offset_diff);
+        rdr.pos.set(rdr.pos.get() + Pos::from_uint(byte_offset_diff));
         rdr.curr = next.ch;
         rdr.col = rdr.col + CharPos(1u);
         if last_char == '\n' {
@@ -267,7 +268,7 @@ pub fn is_eof(rdr: @mut StringReader) -> bool {
     rdr.curr == unsafe { transmute(-1u32) } // FIXME: #8971: unsound
 }
 pub fn nextch(rdr: @mut StringReader) -> char {
-    let offset = byte_offset(rdr, rdr.pos).to_uint();
+    let offset = byte_offset(rdr, rdr.pos.get()).to_uint();
     if offset < (rdr.src).len() {
         return rdr.src.char_at(offset);
     } else { return unsafe { transmute(-1u32) }; } // FIXME: #8971: unsound
@@ -319,7 +320,7 @@ fn consume_any_line_comment(rdr: @mut StringReader)
             bump(rdr);
             // line comments starting with "///" or "//!" are doc-comments
             if rdr.curr == '/' || rdr.curr == '!' {
-                let start_bpos = rdr.pos - BytePos(3);
+                let start_bpos = rdr.pos.get() - BytePos(3);
                 while rdr.curr != '\n' && !is_eof(rdr) {
                     bump(rdr);
                 }
@@ -328,7 +329,7 @@ fn consume_any_line_comment(rdr: @mut StringReader)
                     if !is_line_non_doc_comment(string) {
                         Some(TokenAndSpan{
                             tok: token::DOC_COMMENT(str_to_ident(string)),
-                            sp: codemap::mk_sp(start_bpos, rdr.pos)
+                            sp: codemap::mk_sp(start_bpos, rdr.pos.get())
                         })
                     } else {
                         None
@@ -372,7 +373,7 @@ fn consume_block_comment(rdr: @mut StringReader)
                       -> Option<TokenAndSpan> {
     // block comments starting with "/**" or "/*!" are doc-comments
     let is_doc_comment = rdr.curr == '*' || rdr.curr == '!';
-    let start_bpos = rdr.pos - BytePos(if is_doc_comment {3} else {2});
+    let start_bpos = rdr.pos.get() - BytePos(if is_doc_comment {3} else {2});
 
     let mut level: int = 1;
     while level > 0 {
@@ -402,7 +403,7 @@ fn consume_block_comment(rdr: @mut StringReader)
             if !is_block_non_doc_comment(string) {
                 Some(TokenAndSpan{
                         tok: token::DOC_COMMENT(str_to_ident(string)),
-                        sp: codemap::mk_sp(start_bpos, rdr.pos)
+                        sp: codemap::mk_sp(start_bpos, rdr.pos.get())
                     })
             } else {
                 None
@@ -592,7 +593,7 @@ fn scan_numeric_escape(rdr: @mut StringReader, n_hex_digits: uint) -> char {
     while i != 0u {
         let n = rdr.curr;
         if !is_hex_digit(n) {
-            fatal_span_char(rdr, rdr.last_pos, rdr.pos,
+            fatal_span_char(rdr, rdr.last_pos, rdr.pos.get(),
                             ~"illegal character in numeric character escape",
                             n);
         }
@@ -932,7 +933,7 @@ fn next_token_inner(rdr: @mut StringReader) -> token::Token {
       '^' => { return binop(rdr, token::CARET); }
       '%' => { return binop(rdr, token::PERCENT); }
       c => {
-          fatal_span_char(rdr, rdr.last_pos, rdr.pos,
+          fatal_span_char(rdr, rdr.last_pos, rdr.pos.get(),
                           ~"unknown start of token", c);
       }
     }
