@@ -139,7 +139,7 @@ use middle::trans::inline;
 use middle::trans::tvec;
 use middle::trans::type_of;
 use middle::ty::struct_fields;
-use middle::ty::{AutoBorrowObj, AutoDerefRef, AutoAddEnv, AutoUnsafe};
+use middle::ty::{AutoBorrowObj, AutoDerefRef, AutoAddEnv, AutoObject, AutoUnsafe};
 use middle::ty::{AutoPtr, AutoBorrowVec, AutoBorrowVecRef, AutoBorrowFn};
 use middle::ty;
 use util::common::indenter;
@@ -227,6 +227,23 @@ pub fn trans_to_datum(bcx: @Block, expr: &ast::Expr) -> DatumBlock {
                         bcx, adj.autoderefs, expr, datum))
                 }
             };
+        }
+        AutoObject(ref sigil, ref region, _, _, _, _) => {
+
+            let adjusted_ty = ty::expr_ty_adjusted(bcx.tcx(), expr);
+            let scratch = scratch_datum(bcx, adjusted_ty, "__adjust", false);
+
+            let trait_store = match *sigil {
+                ast::BorrowedSigil => ty::RegionTraitStore(region.expect("expected valid region")),
+                ast::OwnedSigil => ty::UniqTraitStore,
+                ast::ManagedSigil => ty::BoxTraitStore
+            };
+
+            bcx = meth::trans_trait_cast(bcx, expr, expr.id, SaveIn(scratch.val),
+                                         trait_store, false /* no adjustments */);
+
+            datum = scratch.to_appropriate_datum(bcx);
+            datum.add_clean(bcx);
         }
     }
     debug!("after adjustments, datum={}", datum.to_str(bcx.ccx()));
@@ -432,6 +449,10 @@ pub fn trans_into(bcx: @Block, expr: &ast::Expr, dest: Dest) -> @Block {
         };
     }
 
+    trans_into_unadjusted(bcx, expr, dest)
+}
+
+pub fn trans_into_unadjusted(bcx: @Block, expr: &ast::Expr, dest: Dest) -> @Block {
     let ty = expr_ty(bcx, expr);
 
     debug!("trans_into_unadjusted(expr={}, dest={})",
@@ -778,8 +799,8 @@ fn trans_rvalue_dps_unadjusted(bcx: @Block, expr: &ast::Expr,
         ast::ExprCast(val, _) => {
             match ty::get(node_id_type(bcx, expr.id)).sty {
                 ty::ty_trait(_, _, store, _, _) => {
-                    return meth::trans_trait_cast(bcx, val, expr.id, dest,
-                                                  store);
+                    return meth::trans_trait_cast(bcx, val, expr.id,
+                                                  dest, store, true /* adjustments */);
                 }
                 _ => {
                     bcx.tcx().sess.span_bug(expr.span,

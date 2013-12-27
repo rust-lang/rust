@@ -199,6 +199,9 @@ pub fn const_expr(cx: @CrateContext, e: &ast::Expr) -> (ValueRef, bool) {
             cx.sess.span_bug(e.span, format!("unexpected static function: \
                                            region {:?} sigil {:?}", *r, *s))
         }
+        Some(@ty::AutoObject(..)) => {
+            cx.sess.span_unimpl(e.span, "unimplemented const coercion to trait object");
+        }
         Some(@ty::AutoDerefRef(ref adj)) => {
             let mut ty = ety;
             let mut maybe_ptr = None;
