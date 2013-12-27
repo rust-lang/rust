@@ -17,6 +17,7 @@ use parse::token;
 use visit::Visitor;
 use visit;
 
+use std::cell::RefCell;
 use std::hashmap::HashMap;
 use std::u32;
 use std::local_data;
@@ -799,7 +800,9 @@ fn idx_push<T>(vec: &mut ~[T], val: T) -> u32 {
 
 /// Resolve a syntax object to a name, per MTWT.
 pub fn mtwt_resolve(id : Ident) -> Name {
-    resolve_internal(id, get_sctable(), get_resolve_table())
+    let resolve_table = get_resolve_table();
+    let mut resolve_table = resolve_table.borrow_mut();
+    resolve_internal(id, get_sctable(), resolve_table.get())
 }
 
 // FIXME #8215: must be pub for testing
@@ -807,12 +810,12 @@ pub type ResolveTable = HashMap<(Name,SyntaxContext),Name>;
 
 // okay, I admit, putting this in TLS is not so nice:
 // fetch the SCTable from TLS, create one if it doesn't yet exist.
-pub fn get_resolve_table() -> @mut ResolveTable {
-    local_data_key!(resolve_table_key: @@mut ResolveTable)
+pub fn get_resolve_table() -> @RefCell<ResolveTable> {
+    local_data_key!(resolve_table_key: @@RefCell<ResolveTable>)
     match local_data::get(resolve_table_key, |k| k.map(|k| *k)) {
         None => {
-            let new_table = @@mut HashMap::new();
-            local_data::set(resolve_table_key,new_table);
+            let new_table = @@RefCell::new(HashMap::new());
+            local_data::set(resolve_table_key, new_table);
             *new_table
         },
         Some(intr) => *intr
