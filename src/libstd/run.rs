@@ -339,7 +339,7 @@ mod tests {
     use task::spawn;
     use unstable::running_on_valgrind;
     use io::pipe::PipeStream;
-    use io::{Writer, Reader, io_error, FileNotFound, OtherIoError};
+    use io::{Writer, Reader, io_error, FileNotFound};
 
     #[test]
     #[cfg(not(target_os="android"))] // FIXME(#10380)

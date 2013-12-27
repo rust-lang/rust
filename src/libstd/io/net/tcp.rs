@@ -134,9 +134,8 @@ impl Acceptor<TcpStream> for TcpAcceptor {
 #[cfg(test)]
 mod test {
     use super::*;
-    use io::net::ip::{Ipv4Addr, SocketAddr};
+    use io::net::ip::SocketAddr;
     use io::*;
-    use io::test::{next_test_ip4, next_test_ip6};
     use prelude::*;
 
     #[test] #[ignore]
