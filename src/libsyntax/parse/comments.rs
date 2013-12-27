@@ -135,7 +135,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
     fail!("not a doc-comment: {}", comment);
 }
 
-fn read_to_eol(rdr: @mut StringReader) -> ~str {
+fn read_to_eol(rdr: @StringReader) -> ~str {
     let mut val = ~"";
     while rdr.curr.get() != '\n' && !is_eof(rdr) {
         val.push_char(rdr.curr.get());
@@ -145,21 +145,21 @@ fn read_to_eol(rdr: @mut StringReader) -> ~str {
     return val;
 }
 
-fn read_one_line_comment(rdr: @mut StringReader) -> ~str {
+fn read_one_line_comment(rdr: @StringReader) -> ~str {
     let val = read_to_eol(rdr);
     assert!((val[0] == '/' as u8 && val[1] == '/' as u8) ||
                  (val[0] == '#' as u8 && val[1] == '!' as u8));
     return val;
 }
 
-fn consume_non_eol_whitespace(rdr: @mut StringReader) {
+fn consume_non_eol_whitespace(rdr: @StringReader) {
     while is_whitespace(rdr.curr.get()) && rdr.curr.get() != '\n' &&
             !is_eof(rdr) {
         bump(rdr);
     }
 }
 
-fn push_blank_line_comment(rdr: @mut StringReader, comments: &mut ~[cmnt]) {
+fn push_blank_line_comment(rdr: @StringReader, comments: &mut ~[cmnt]) {
     debug!(">>> blank-line comment");
     let v: ~[~str] = ~[];
     comments.push(cmnt {
@@ -169,7 +169,7 @@ fn push_blank_line_comment(rdr: @mut StringReader, comments: &mut ~[cmnt]) {
     });
 }
 
-fn consume_whitespace_counting_blank_lines(rdr: @mut StringReader,
+fn consume_whitespace_counting_blank_lines(rdr: @StringReader,
                                            comments: &mut ~[cmnt]) {
     while is_whitespace(rdr.curr.get()) && !is_eof(rdr) {
         if rdr.col.get() == CharPos(0u) && rdr.curr.get() == '\n' {
@@ -180,7 +180,7 @@ fn consume_whitespace_counting_blank_lines(rdr: @mut StringReader,
 }
 
 
-fn read_shebang_comment(rdr: @mut StringReader, code_to_the_left: bool,
+fn read_shebang_comment(rdr: @StringReader, code_to_the_left: bool,
                                             comments: &mut ~[cmnt]) {
     debug!(">>> shebang comment");
     let p = rdr.last_pos.get();
@@ -192,7 +192,7 @@ fn read_shebang_comment(rdr: @mut StringReader, code_to_the_left: bool,
     });
 }
 
-fn read_line_comments(rdr: @mut StringReader, code_to_the_left: bool,
+fn read_line_comments(rdr: @StringReader, code_to_the_left: bool,
                                           comments: &mut ~[cmnt]) {
     debug!(">>> line comments");
     let p = rdr.last_pos.get();
@@ -249,7 +249,7 @@ fn trim_whitespace_prefix_and_push_line(lines: &mut ~[~str],
     lines.push(s1);
 }
 
-fn read_block_comment(rdr: @mut StringReader,
+fn read_block_comment(rdr: @StringReader,
                       code_to_the_left: bool,
                       comments: &mut ~[cmnt]) {
     debug!(">>> block comment");
@@ -280,7 +280,7 @@ fn read_block_comment(rdr: @mut StringReader,
         while level > 0 {
             debug!("=== block comment level {}", level);
             if is_eof(rdr) {
-                (rdr as @mut reader).fatal(~"unterminated block comment");
+                (rdr as @reader).fatal(~"unterminated block comment");
             }
             if rdr.curr.get() == '\n' {
                 trim_whitespace_prefix_and_push_line(&mut lines, curr_line,
@@ -318,13 +318,13 @@ fn read_block_comment(rdr: @mut StringReader,
     comments.push(cmnt {style: style, lines: lines, pos: p});
 }
 
-fn peeking_at_comment(rdr: @mut StringReader) -> bool {
+fn peeking_at_comment(rdr: @StringReader) -> bool {
     return ((rdr.curr.get() == '/' && nextch(rdr) == '/') ||
          (rdr.curr.get() == '/' && nextch(rdr) == '*')) ||
          (rdr.curr.get() == '#' && nextch(rdr) == '!');
 }
 
-fn consume_comment(rdr: @mut StringReader,
+fn consume_comment(rdr: @StringReader,
                    code_to_the_left: bool,
                    comments: &mut ~[cmnt]) {
     debug!(">>> consume comment");

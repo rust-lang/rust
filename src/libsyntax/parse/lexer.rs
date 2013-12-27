@@ -26,12 +26,12 @@ use std::util;
 pub use ext::tt::transcribe::{TtReader, new_tt_reader};
 
 pub trait reader {
-    fn is_eof(@mut self) -> bool;
-    fn next_token(@mut self) -> TokenAndSpan;
-    fn fatal(@mut self, ~str) -> !;
-    fn span_diag(@mut self) -> @mut SpanHandler;
-    fn peek(@mut self) -> TokenAndSpan;
-    fn dup(@mut self) -> @mut reader;
+    fn is_eof(@self) -> bool;
+    fn next_token(@self) -> TokenAndSpan;
+    fn fatal(@self, ~str) -> !;
+    fn span_diag(@self) -> @mut SpanHandler;
+    fn peek(@self) -> TokenAndSpan;
+    fn dup(@self) -> @reader;
 }
 
 #[deriving(Clone, Eq)]
@@ -59,7 +59,7 @@ pub struct StringReader {
 
 pub fn new_string_reader(span_diagnostic: @mut SpanHandler,
                          filemap: @codemap::FileMap)
-                      -> @mut StringReader {
+                      -> @StringReader {
     let r = new_low_level_string_reader(span_diagnostic, filemap);
     string_advance_token(r); /* fill in peek_* */
     return r;
@@ -68,10 +68,10 @@ pub fn new_string_reader(span_diagnostic: @mut SpanHandler,
 /* For comments.rs, which hackily pokes into 'pos' and 'curr' */
 pub fn new_low_level_string_reader(span_diagnostic: @mut SpanHandler,
                                    filemap: @codemap::FileMap)
-                                -> @mut StringReader {
+                                -> @StringReader {
     // Force the initial reader bump to start on a fresh line
     let initial_char = '\n';
-    let r = @mut StringReader {
+    let r = @StringReader {
         span_diagnostic: span_diagnostic,
         src: filemap.src,
         pos: Cell::new(filemap.start_pos),
@@ -90,8 +90,8 @@ pub fn new_low_level_string_reader(span_diagnostic: @mut SpanHandler,
 // duplicating the string reader is probably a bad idea, in
 // that using them will cause interleaved pushes of line
 // offsets to the underlying filemap...
-fn dup_string_reader(r: @mut StringReader) -> @mut StringReader {
-    @mut StringReader {
+fn dup_string_reader(r: @StringReader) -> @StringReader {
+    @StringReader {
         span_diagnostic: r.span_diagnostic,
         src: r.src,
         pos: Cell::new(r.pos.get()),
@@ -105,9 +105,9 @@ fn dup_string_reader(r: @mut StringReader) -> @mut StringReader {
 }
 
 impl reader for StringReader {
-    fn is_eof(@mut self) -> bool { is_eof(self) }
+    fn is_eof(@self) -> bool { is_eof(self) }
     // return the next token. EFFECT: advances the string_reader.
-    fn next_token(@mut self) -> TokenAndSpan {
+    fn next_token(@self) -> TokenAndSpan {
         let ret_val = {
             let mut peek_tok = self.peek_tok.borrow_mut();
             TokenAndSpan {
@@ -118,45 +118,45 @@ impl reader for StringReader {
         string_advance_token(self);
         ret_val
     }
-    fn fatal(@mut self, m: ~str) -> ! {
+    fn fatal(@self, m: ~str) -> ! {
         self.span_diagnostic.span_fatal(self.peek_span.get(), m)
     }
-    fn span_diag(@mut self) -> @mut SpanHandler { self.span_diagnostic }
-    fn peek(@mut self) -> TokenAndSpan {
+    fn span_diag(@self) -> @mut SpanHandler { self.span_diagnostic }
+    fn peek(@self) -> TokenAndSpan {
         // XXX(pcwalton): Bad copy!
         TokenAndSpan {
             tok: self.peek_tok.get(),
             sp: self.peek_span.get(),
         }
     }
-    fn dup(@mut self) -> @mut reader { dup_string_reader(self) as @mut reader }
+    fn dup(@self) -> @reader { dup_string_reader(self) as @reader }
 }
 
 impl reader for TtReader {
-    fn is_eof(@mut self) -> bool {
+    fn is_eof(@self) -> bool {
         let cur_tok = self.cur_tok.borrow();
         *cur_tok.get() == token::EOF
     }
-    fn next_token(@mut self) -> TokenAndSpan {
+    fn next_token(@self) -> TokenAndSpan {
         let r = tt_next_token(self);
         debug!("TtReader: r={:?}", r);
         return r;
     }
-    fn fatal(@mut self, m: ~str) -> ! {
+    fn fatal(@self, m: ~str) -> ! {
         self.sp_diag.span_fatal(self.cur_span.get(), m);
     }
-    fn span_diag(@mut self) -> @mut SpanHandler { self.sp_diag }
-    fn peek(@mut self) -> TokenAndSpan {
+    fn span_diag(@self) -> @mut SpanHandler { self.sp_diag }
+    fn peek(@self) -> TokenAndSpan {
         TokenAndSpan {
             tok: self.cur_tok.get(),
             sp: self.cur_span.get(),
         }
     }
-    fn dup(@mut self) -> @mut reader { dup_tt_reader(self) as @mut reader }
+    fn dup(@self) -> @reader { dup_tt_reader(self) as @reader }
 }
 
 // report a lexical error spanning [`from_pos`, `to_pos`)
-fn fatal_span(rdr: @mut StringReader,
+fn fatal_span(rdr: @StringReader,
               from_pos: BytePos,
               to_pos: BytePos,
               m: ~str)
@@ -167,7 +167,7 @@ fn fatal_span(rdr: @mut StringReader,
 
 // report a lexical error spanning [`from_pos`, `to_pos`), appending an
 // escaped character to the error message
-fn fatal_span_char(rdr: @mut StringReader,
+fn fatal_span_char(rdr: @StringReader,
                    from_pos: BytePos,
                    to_pos: BytePos,
                    m: ~str,
@@ -181,7 +181,7 @@ fn fatal_span_char(rdr: @mut StringReader,
 
 // report a lexical error spanning [`from_pos`, `to_pos`), appending the
 // offending string to the error message
-fn fatal_span_verbose(rdr: @mut StringReader,
+fn fatal_span_verbose(rdr: @StringReader,
                       from_pos: BytePos,
                       to_pos: BytePos,
                       m: ~str)
@@ -197,7 +197,7 @@ fn fatal_span_verbose(rdr: @mut StringReader,
 
 // EFFECT: advance peek_tok and peek_span to refer to the next token.
 // EFFECT: update the interner, maybe.
-fn string_advance_token(r: @mut StringReader) {
+fn string_advance_token(r: @StringReader) {
     match (consume_whitespace_and_comments(r)) {
         Some(comment) => {
             r.peek_span.set(comment.sp);
@@ -224,7 +224,7 @@ fn byte_offset(rdr: &StringReader, pos: BytePos) -> BytePos {
 /// up to but excluding `rdr.last_pos`, meaning the slice does not include
 /// the character `rdr.curr`.
 pub fn with_str_from<T>(
-                     rdr: @mut StringReader,
+                     rdr: @StringReader,
                      start: BytePos,
                      f: |s: &str| -> T)
                      -> T {
@@ -234,7 +234,7 @@ pub fn with_str_from<T>(
 /// Calls `f` with astring slice of the source text spanning from `start`
 /// up to but excluding `end`.
 fn with_str_from_to<T>(
-                    rdr: @mut StringReader,
+                    rdr: @StringReader,
                     start: BytePos,
                     end: BytePos,
                     f: |s: &str| -> T)
@@ -246,7 +246,7 @@ fn with_str_from_to<T>(
 
 // EFFECT: advance the StringReader by one character. If a newline is
 // discovered, add it to the FileMap's list of line start offsets.
-pub fn bump(rdr: &mut StringReader) {
+pub fn bump(rdr: &StringReader) {
     rdr.last_pos.set(rdr.pos.get());
     let current_byte_offset = byte_offset(rdr, rdr.pos.get()).to_uint();
     if current_byte_offset < (rdr.src).len() {
@@ -272,10 +272,10 @@ pub fn bump(rdr: &mut StringReader) {
         rdr.curr.set(unsafe { transmute(-1u32) }); // FIXME: #8971: unsound
     }
 }
-pub fn is_eof(rdr: @mut StringReader) -> bool {
+pub fn is_eof(rdr: @StringReader) -> bool {
     rdr.curr.get() == unsafe { transmute(-1u32) } // FIXME: #8971: unsound
 }
-pub fn nextch(rdr: @mut StringReader) -> char {
+pub fn nextch(rdr: @StringReader) -> char {
     let offset = byte_offset(rdr, rdr.pos.get()).to_uint();
     if offset < (rdr.src).len() {
         return rdr.src.char_at(offset);
@@ -306,7 +306,7 @@ fn is_hex_digit(c: char) -> bool {
 
 // EFFECT: eats whitespace and comments.
 // returns a Some(sugared-doc-attr) if one exists, None otherwise.
-fn consume_whitespace_and_comments(rdr: @mut StringReader)
+fn consume_whitespace_and_comments(rdr: @StringReader)
                                 -> Option<TokenAndSpan> {
     while is_whitespace(rdr.curr.get()) { bump(rdr); }
     return consume_any_line_comment(rdr);
@@ -319,7 +319,7 @@ pub fn is_line_non_doc_comment(s: &str) -> bool {
 // PRECONDITION: rdr.curr is not whitespace
 // EFFECT: eats any kind of comment.
 // returns a Some(sugared-doc-attr) if one exists, None otherwise
-fn consume_any_line_comment(rdr: @mut StringReader)
+fn consume_any_line_comment(rdr: @StringReader)
                          -> Option<TokenAndSpan> {
     if rdr.curr.get() == '/' {
         match nextch(rdr) {
@@ -377,8 +377,7 @@ pub fn is_block_non_doc_comment(s: &str) -> bool {
 }
 
 // might return a sugared-doc-attr
-fn consume_block_comment(rdr: @mut StringReader)
-                      -> Option<TokenAndSpan> {
+fn consume_block_comment(rdr: @StringReader) -> Option<TokenAndSpan> {
     // block comments starting with "/**" or "/*!" are doc-comments
     let is_doc_comment = rdr.curr.get() == '*' || rdr.curr.get() == '!';
     let start_bpos = rdr.pos.get() - BytePos(if is_doc_comment {3} else {2});
@@ -425,7 +424,7 @@ fn consume_block_comment(rdr: @mut StringReader)
     if res.is_some() { res } else { consume_whitespace_and_comments(rdr) }
 }
 
-fn scan_exponent(rdr: @mut StringReader, start_bpos: BytePos) -> Option<~str> {
+fn scan_exponent(rdr: @StringReader, start_bpos: BytePos) -> Option<~str> {
     let mut c = rdr.curr.get();
     let mut rslt = ~"";
     if c == 'e' || c == 'E' {
@@ -446,7 +445,7 @@ fn scan_exponent(rdr: @mut StringReader, start_bpos: BytePos) -> Option<~str> {
     } else { return None::<~str>; }
 }
 
-fn scan_digits(rdr: @mut StringReader, radix: uint) -> ~str {
+fn scan_digits(rdr: @StringReader, radix: uint) -> ~str {
     let mut rslt = ~"";
     loop {
         let c = rdr.curr.get();
@@ -461,7 +460,7 @@ fn scan_digits(rdr: @mut StringReader, radix: uint) -> ~str {
     };
 }
 
-fn scan_number(c: char, rdr: @mut StringReader) -> token::Token {
+fn scan_number(c: char, rdr: @StringReader) -> token::Token {
     let mut num_str;
     let mut base = 10u;
     let mut c = c;
@@ -597,7 +596,7 @@ fn scan_number(c: char, rdr: @mut StringReader) -> token::Token {
     }
 }
 
-fn scan_numeric_escape(rdr: @mut StringReader, n_hex_digits: uint) -> char {
+fn scan_numeric_escape(rdr: @StringReader, n_hex_digits: uint) -> char {
     let mut accum_int = 0;
     let mut i = n_hex_digits;
     let start_bpos = rdr.last_pos.get();
@@ -638,7 +637,7 @@ fn ident_continue(c: char) -> bool {
 // return the next token from the string
 // EFFECT: advances the input past that token
 // EFFECT: updates the interner
-fn next_token_inner(rdr: @mut StringReader) -> token::Token {
+fn next_token_inner(rdr: @StringReader) -> token::Token {
     let c = rdr.curr.get();
     if ident_start(c) && nextch(rdr) != '"' && nextch(rdr) != '#' {
         // Note: r as in r" or r#" is part of a raw string literal,
@@ -663,7 +662,7 @@ fn next_token_inner(rdr: @mut StringReader) -> token::Token {
     if is_dec_digit(c) {
         return scan_number(c, rdr);
     }
-    fn binop(rdr: @mut StringReader, op: token::binop) -> token::Token {
+    fn binop(rdr: @StringReader, op: token::binop) -> token::Token {
         bump(rdr);
         if rdr.curr.get() == '=' {
             bump(rdr);
@@ -951,7 +950,7 @@ fn next_token_inner(rdr: @mut StringReader) -> token::Token {
     }
 }
 
-fn consume_whitespace(rdr: @mut StringReader) {
+fn consume_whitespace(rdr: @StringReader) {
     while is_whitespace(rdr.curr.get()) && !is_eof(rdr) { bump(rdr); }
 }
 
@@ -966,7 +965,7 @@ mod test {
 
     // represents a testing reader (incl. both reader and interner)
     struct Env {
-        string_reader: @mut StringReader
+        string_reader: @StringReader
     }
 
     // open a string reader for the given string
