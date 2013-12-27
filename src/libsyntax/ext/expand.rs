@@ -53,8 +53,12 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
                     }
                     let extname = &pth.segments[0].identifier;
                     let extnamestr = ident_to_str(extname);
-                    let extsbox = fld.extsbox.borrow();
-                    match extsbox.get().find(&extname.name) {
+                    let opt_syntax_env = {
+                        let extsbox = fld.extsbox.get();
+                        let extsbox = extsbox.borrow();
+                        extsbox.get().find(&extname.name)
+                    };
+                    match opt_syntax_env {
                         None => {
                             fld.cx.span_fatal(
                                 pth.span,
@@ -223,8 +227,12 @@ pub fn expand_mod_items(module_: &ast::_mod, fld: &mut MacroExpander)
         item.attrs.rev_iter().fold(~[*item], |items, attr| {
             let mname = attr.name();
 
-            let extsbox = fld.extsbox.borrow();
-            match extsbox.get().find(&intern(mname)) {
+            let opt_syntax_env = {
+                let extsbox = fld.extsbox.get();
+                let extsbox = extsbox.borrow();
+                extsbox.get().find(&intern(mname))
+            };
+            match opt_syntax_env {
               Some(@SE(ItemDecorator(dec_fn))) => {
                   fld.cx.bt_push(ExpnInfo {
                       call_site: attr.span,
@@ -254,13 +262,17 @@ macro_rules! with_exts_frame (
     ($extsboxexpr:expr,$macros_escape:expr,$e:expr) =>
     ({let extsbox = $extsboxexpr;
       let oldexts = extsbox.get();
-      extsbox.set(oldexts.push_frame());
-      extsbox.get().insert(
-          intern(special_block_name),
-          @BlockInfo(BlockInfo {
-              macros_escape: $macros_escape,
-              pending_renames: @mut ~[]
-          }));
+      extsbox.set(MapChain::push_frame(oldexts));
+      {
+          let extsbox = extsbox.get();
+          let mut extsbox = extsbox.borrow_mut();
+          extsbox.get().insert(
+              intern(special_block_name),
+              @BlockInfo(BlockInfo {
+                  macros_escape: $macros_escape,
+                  pending_renames: @mut ~[]
+              }));
+      }
       let result = $e;
       extsbox.set(oldexts);
       result
@@ -309,10 +321,16 @@ pub fn expand_item_mac(it: @ast::item, fld: &mut MacroExpander)
     let extname = &pth.segments[0].identifier;
     let extnamestr = ident_to_str(extname);
     let fm = fresh_mark();
-    let extsbox = fld.extsbox.borrow();
-    let expanded = match extsbox.get().find(&extname.name) {
-        None => fld.cx.span_fatal(pth.span,
-                                  format!("macro undefined: '{}!'", extnamestr)),
+    let opt_syntax_env = {
+        let extsbox = fld.extsbox.get();
+        let extsbox = extsbox.borrow();
+        extsbox.get().find(&extname.name)
+    };
+    let expanded = match opt_syntax_env {
+        None => {
+            fld.cx.span_fatal(pth.span,
+                              format!("macro undefined: '{}!'", extnamestr))
+        }
 
         Some(@SE(NormalTT(expander, span))) => {
             if it.ident.name != parse::token::special_idents::invalid.name {
@@ -399,8 +417,12 @@ fn insert_macro(exts: SyntaxEnv, name: ast::Name, transformer: @Transformer) {
                         special_block_name)
         }
     };
-    exts.insert_into_frame(name,transformer,intern(special_block_name),
-                           is_non_escaping_block)
+
+    let mut exts = exts.borrow_mut();
+    exts.get().insert_into_frame(name,
+                                 transformer,
+                                 intern(special_block_name),
+                                 is_non_escaping_block)
 }
 
 // expand a stmt
@@ -423,64 +445,76 @@ pub fn expand_stmt(s: &Stmt, fld: &mut MacroExpander) -> SmallVector<@Stmt> {
     }
     let extname = &pth.segments[0].identifier;
     let extnamestr = ident_to_str(extname);
-    let extsbox = fld.extsbox.borrow();
-    let fully_expanded: SmallVector<@Stmt> =
-            match extsbox.get().find(&extname.name) {
-        None => {
-            fld.cx.span_fatal(pth.span, format!("macro undefined: '{}'", extnamestr))
-        }
-
-        Some(@SE(NormalTT(expandfun, exp_span))) => {
-            fld.cx.bt_push(ExpnInfo {
-                call_site: s.span,
-                callee: NameAndSpan {
-                    name: extnamestr,
-                    format: MacroBang,
-                    span: exp_span,
-                }
-            });
-            let fm = fresh_mark();
-            // mark before expansion:
-            let marked_tts = mark_tts(tts,fm);
-            let marked_ctxt = new_mark(fm,ctxt);
-
-            // See the comment in expand_expr for why we want the original span,
-            // not the current mac.span.
-            let mac_span = original_span(fld.cx);
-
-            let expanded = match expandfun.expand(fld.cx,
-                                                  mac_span.call_site,
-                                                  marked_tts,
-                                                  marked_ctxt) {
-                MRExpr(e) => {
-                    @codemap::Spanned {
-                        node: StmtExpr(e, ast::DUMMY_NODE_ID),
-                        span: e.span,
-                    }
-                }
-                MRAny(any_macro) => any_macro.make_stmt(),
-                _ => fld.cx.span_fatal(
-                    pth.span,
-                    format!("non-stmt macro in stmt pos: {}", extnamestr))
-            };
-            let marked_after = mark_stmt(expanded,fm);
-
-            // Keep going, outside-in.
-            let fully_expanded = fld.fold_stmt(marked_after);
-            if fully_expanded.is_empty() {
+    let fully_expanded: SmallVector<@Stmt> = {
+        let opt_syntax_env = {
+            let extsbox = fld.extsbox.get();
+            let extsbox = extsbox.borrow();
+            extsbox.get().find(&extname.name)
+        };
+        match opt_syntax_env {
+            None => {
                 fld.cx.span_fatal(pth.span,
-                              "macro didn't expand to a statement");
+                              format!("macro undefined: '{}'", extnamestr))
             }
-            fld.cx.bt_pop();
-            fully_expanded.move_iter()
-                    .map(|s| @Spanned { span: s.span, node: s.node.clone() })
-                    .collect()
-        }
 
-        _ => {
-            fld.cx.span_fatal(pth.span,
-                              format!("'{}' is not a tt-style macro",
-                                      extnamestr))
+            Some(@SE(NormalTT(expandfun, exp_span))) => {
+                fld.cx.bt_push(ExpnInfo {
+                    call_site: s.span,
+                    callee: NameAndSpan {
+                        name: extnamestr,
+                        format: MacroBang,
+                        span: exp_span,
+                    }
+                });
+                let fm = fresh_mark();
+                // mark before expansion:
+                let marked_tts = mark_tts(tts,fm);
+                let marked_ctxt = new_mark(fm,ctxt);
+
+                // See the comment in expand_expr for why we want the original span,
+                // not the current mac.span.
+                let mac_span = original_span(fld.cx);
+
+                let expanded = match expandfun.expand(fld.cx,
+                                                      mac_span.call_site,
+                                                      marked_tts,
+                                                      marked_ctxt) {
+                    MRExpr(e) => {
+                        @codemap::Spanned {
+                            node: StmtExpr(e, ast::DUMMY_NODE_ID),
+                            span: e.span,
+                        }
+                    }
+                    MRAny(any_macro) => any_macro.make_stmt(),
+                    _ => {
+                        fld.cx.span_fatal(pth.span,
+                                          format!("non-stmt macro in stmt \
+                                                   pos: {}",
+                                                  extnamestr))
+                    }
+                };
+                let marked_after = mark_stmt(expanded,fm);
+
+                // Keep going, outside-in.
+                let fully_expanded = fld.fold_stmt(marked_after);
+                if fully_expanded.is_empty() {
+                    fld.cx.span_fatal(pth.span,
+                                      "macro didn't expand to a statement");
+                }
+                fld.cx.bt_pop();
+                fully_expanded.move_iter()
+                        .map(|s| @Spanned {
+                            span: s.span,
+                            node: s.node.clone()
+                        })
+                        .collect()
+            }
+
+            _ => {
+                fld.cx.span_fatal(pth.span,
+                                  format!("'{}' is not a tt-style macro",
+                                          extnamestr))
+            }
         }
     };
 
@@ -651,7 +685,8 @@ pub fn expand_block_elts(b: &Block, fld: &mut MacroExpander) -> P<Block> {
 
 // get the (innermost) BlockInfo from an exts stack
 fn get_block_info(exts : SyntaxEnv) -> BlockInfo {
-    match exts.find_in_topmost_frame(&intern(special_block_name)) {
+    let exts = exts.borrow();
+    match exts.get().find_in_topmost_frame(&intern(special_block_name)) {
         Some(@BlockInfo(bi)) => bi,
         _ => fail!("special identifier {:?} was bound to a non-BlockInfo",
                     @" block")

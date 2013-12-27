@@ -157,7 +157,7 @@ pub enum SyntaxExtension {
 // The SyntaxEnv is the environment that's threaded through the expansion
 // of macros. It contains bindings for macros, and also a special binding
 // for " block" (not a legal identifier) that maps to a BlockInfo
-pub type SyntaxEnv = @mut MapChain<Name, Transformer>;
+pub type SyntaxEnv = @RefCell<MapChain<Name, Transformer>>;
 
 // Transformer : the codomain of SyntaxEnvs
 
@@ -494,20 +494,21 @@ pub fn get_exprs_from_tts(cx: &ExtCtxt,
 // of another chain.
 pub enum MapChain<K,V> {
     BaseMapChain(~HashMap<K,@V>),
-    ConsMapChain(~HashMap<K,@V>,@mut MapChain<K,V>)
+    ConsMapChain(~HashMap<K,@V>, @RefCell<MapChain<K,V>>)
 }
 
 
 // get the map from an env frame
 impl <K: Eq + Hash + IterBytes + 'static, V: 'static> MapChain<K,V>{
     // Constructor. I don't think we need a zero-arg one.
-    pub fn new(init: ~HashMap<K,@V>) -> @mut MapChain<K,V> {
-        @mut BaseMapChain(init)
+    pub fn new(init: ~HashMap<K,@V>) -> @RefCell<MapChain<K,V>> {
+        @RefCell::new(BaseMapChain(init))
     }
 
     // add a new frame to the environment (functionally)
-    pub fn push_frame (@mut self) -> @mut MapChain<K,V> {
-        @mut ConsMapChain(~HashMap::new() ,self)
+    pub fn push_frame(this: @RefCell<MapChain<K,V>>)
+                      -> @RefCell<MapChain<K,V>> {
+        @RefCell::new(ConsMapChain(~HashMap::new(), this))
     }
 
 // no need for pop, it'll just be functional.
@@ -526,22 +527,23 @@ impl <K: Eq + Hash + IterBytes + 'static, V: 'static> MapChain<K,V>{
 // traits just don't work anywhere...?
 //impl Map<Name,SyntaxExtension> for MapChain {
 
-    pub fn contains_key (&self, key: &K) -> bool {
+    pub fn contains_key(&self, key: &K) -> bool {
         match *self {
             BaseMapChain (ref map) => map.contains_key(key),
-            ConsMapChain (ref map,ref rest) =>
-            (map.contains_key(key)
-             || rest.contains_key(key))
+            ConsMapChain (ref map,ref rest) => {
+                let rest = rest.borrow();
+                (map.contains_key(key) || rest.get().contains_key(key))
+            }
         }
     }
     // should each_key and each_value operate on shadowed
     // names? I think not.
     // delaying implementing this....
-    pub fn each_key (&self, _f: |&K| -> bool) {
+    pub fn each_key(&self, _f: |&K| -> bool) {
         fail!("unimplemented 2013-02-15T10:01");
     }
 
-    pub fn each_value (&self, _f: |&V| -> bool) {
+    pub fn each_value(&self, _f: |&V| -> bool) {
         fail!("unimplemented 2013-02-15T10:02");
     }
 
@@ -551,8 +553,11 @@ impl <K: Eq + Hash + IterBytes + 'static, V: 'static> MapChain<K,V>{
         match self.get_map().find (key) {
             Some(ref v) => Some(**v),
             None => match *self {
-                BaseMapChain (_) => None,
-                ConsMapChain (_,ref rest) => rest.find(key)
+                BaseMapChain(_) => None,
+                ConsMapChain(_, ref rest) => {
+                    let rest = rest.borrow();
+                    rest.get().find(key)
+                }
             }
         }
     }
@@ -596,7 +601,8 @@ impl <K: Eq + Hash + IterBytes + 'static, V: 'static> MapChain<K,V>{
                 if satisfies_pred(map,&n,|v|pred(v)) {
                     map.insert(key,ext);
                 } else {
-                    rest.insert_into_frame(key,ext,n,pred)
+                    let mut rest = rest.borrow_mut();
+                    rest.get().insert_into_frame(key, ext, n, pred)
                 }
             }
         }
@@ -631,7 +637,7 @@ mod test {
         assert_eq!(m.find(&@"def"),Some(@16));
         assert_eq!(*(m.find(&@"abc").unwrap()),15);
         assert_eq!(*(m.find(&@"def").unwrap()),16);
-        let n = m.push_frame();
+        let n = MapChain::push_frame(m);
         // old bindings are still present:
         assert_eq!(*(n.find(&@"abc").unwrap()),15);
         assert_eq!(*(n.find(&@"def").unwrap()),16);
