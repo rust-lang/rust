@@ -171,7 +171,7 @@ impl Scheduler {
 
     // Take a main task to run, and a scheduler to run it in. Create a
     // scheduler task and bootstrap into it.
-    pub fn bootstrap(mut ~self, task: ~GreenTask) {
+    pub fn bootstrap(mut ~self) {
 
         // Build an Idle callback.
         let cb = ~SchedRunner as ~Callback;
@@ -187,18 +187,11 @@ impl Scheduler {
         self.idle_callback.get_mut_ref().resume();
 
         // Now, as far as all the scheduler state is concerned, we are inside
-        // the "scheduler" context. So we can act like the scheduler and resume
-        // the provided task. Let it think that the currently running task is
-        // actually the sched_task so it knows where to squirrel it away.
-        let mut sched_task = self.resume_task_immediately(sched_task, task);
-
-        // Now we are back in the scheduler context, having
-        // successfully run the input task. Start by running the
-        // scheduler. Grab it out of TLS - performing the scheduler
-        // action will have given it away.
-        let sched = sched_task.sched.take_unwrap();
-        rtdebug!("starting scheduler {}", sched.sched_id());
-        let mut sched_task = sched.run(sched_task);
+        // the "scheduler" context. The scheduler immediately hands over control
+        // to the event loop, and this will only exit once the event loop no
+        // longer has any references (handles or I/O objects).
+        rtdebug!("starting scheduler {}", self.sched_id());
+        let mut sched_task = self.run(sched_task);
 
         // Close the idle callback.
         let mut sched = sched_task.sched.take_unwrap();
@@ -548,7 +541,10 @@ impl Scheduler {
         // We push the task onto our local queue clone.
         assert!(!task.is_sched());
         self.work_queue.push(task);
-        self.idle_callback.get_mut_ref().resume();
+        match self.idle_callback {
+            Some(ref mut idle) => idle.resume(),
+            None => {} // allow enqueuing before the scheduler starts
+        }
 
         // We've made work available. Notify a
         // sleeping scheduler.
@@ -1176,7 +1172,7 @@ mod test {
                 let mut sh = special_handle;
                 sh.send(Shutdown);
             };
-
+            normal_sched.enqueue_task(normal_task);
 
             let special_task = do GreenTask::new(&mut special_sched.stack_pool,
                                                  None) {
@@ -1184,17 +1180,13 @@ mod test {
                 run(task3);
                 chan.send(());
             };
-
+            special_sched.enqueue_task(special_task);
 
             let normal_sched = normal_sched;
-            let normal_thread = do Thread::start {
-                normal_sched.bootstrap(normal_task);
-            };
+            let normal_thread = do Thread::start { normal_sched.bootstrap() };
 
             let special_sched = special_sched;
-            let special_thread = do Thread::start {
-                special_sched.bootstrap(special_task);
-            };
+            let special_thread = do Thread::start { special_sched.bootstrap() };
 
             normal_thread.join();
             special_thread.join();

@@ -214,11 +214,7 @@ impl SchedPool {
             pool.handles.push(sched.make_handle());
             let sched = sched;
             pool.threads.push(do Thread::start {
-                let mut sched = sched;
-                let task = do GreenTask::new(&mut sched.stack_pool, None) {
-                    rtdebug!("boostraping a non-primary scheduler");
-                };
-                sched.bootstrap(task);
+                sched.bootstrap();
             });
         }
 
@@ -270,13 +266,7 @@ impl SchedPool {
         let ret = sched.make_handle();
         self.handles.push(sched.make_handle());
         let sched = sched;
-        self.threads.push(do Thread::start {
-            let mut sched = sched;
-            let task = do GreenTask::new(&mut sched.stack_pool, None) {
-                rtdebug!("boostraping a non-primary scheduler");
-            };
-            sched.bootstrap(task);
-        });
+        self.threads.push(do Thread::start { sched.bootstrap() });
 
         return ret;
     }
