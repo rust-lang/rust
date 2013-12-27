@@ -33,6 +33,7 @@ macro_rules! iotest (
             use io::net::udp::*;
             #[cfg(unix)]
             use io::net::unix::*;
+            use io::process::*;
             use str;
             use util;
 

@@ -117,7 +117,6 @@ mod test {
     use prelude::*;
     use super::*;
     use io;
-    use comm;
     use task;
 
     #[test]
