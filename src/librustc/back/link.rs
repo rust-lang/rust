@@ -736,6 +736,22 @@ pub fn get_cc_prog(sess: Session) -> ~str {
     }
 }
 
+pub fn get_ar_prog(sess: Session) -> ~str {
+    match sess.targ_cfg.os {
+        abi::OsAndroid => match sess.opts.android_cross_path {
+            Some(ref path) => format!("{}/bin/arm-linux-androideabi-ar", *path),
+            None => {
+                sess.fatal("need Android NDK path for linking \
+                            (--android-cross-path)")
+            }
+        },
+        _ => match sess.opts.ar {
+            Some(ref ar) => format!("{}", *ar),
+            None => ~"ar"
+        },
+    }
+}
+
 /// Perform the linkage portion of the compilation phase. This will generate all
 /// of the requested outputs for this compilation session.
 pub fn link_binary(sess: Session,
