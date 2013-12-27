@@ -161,7 +161,11 @@ fn consume_non_eol_whitespace(rdr: @mut StringReader) {
 fn push_blank_line_comment(rdr: @mut StringReader, comments: &mut ~[cmnt]) {
     debug!(">>> blank-line comment");
     let v: ~[~str] = ~[];
-    comments.push(cmnt {style: blank_line, lines: v, pos: rdr.last_pos});
+    comments.push(cmnt {
+        style: blank_line,
+        lines: v,
+        pos: rdr.last_pos.get(),
+    });
 }
 
 fn consume_whitespace_counting_blank_lines(rdr: @mut StringReader,
@@ -178,7 +182,7 @@ fn consume_whitespace_counting_blank_lines(rdr: @mut StringReader,
 fn read_shebang_comment(rdr: @mut StringReader, code_to_the_left: bool,
                                             comments: &mut ~[cmnt]) {
     debug!(">>> shebang comment");
-    let p = rdr.last_pos;
+    let p = rdr.last_pos.get();
     debug!("<<< shebang comment");
     comments.push(cmnt {
         style: if code_to_the_left { trailing } else { isolated },
@@ -190,7 +194,7 @@ fn read_shebang_comment(rdr: @mut StringReader, code_to_the_left: bool,
 fn read_line_comments(rdr: @mut StringReader, code_to_the_left: bool,
                                           comments: &mut ~[cmnt]) {
     debug!(">>> line comments");
-    let p = rdr.last_pos;
+    let p = rdr.last_pos.get();
     let mut lines: ~[~str] = ~[];
     while rdr.curr == '/' && nextch(rdr) == '/' {
         let line = read_one_line_comment(rdr);
@@ -248,7 +252,7 @@ fn read_block_comment(rdr: @mut StringReader,
                       code_to_the_left: bool,
                       comments: &mut ~[cmnt]) {
     debug!(">>> block comment");
-    let p = rdr.last_pos;
+    let p = rdr.last_pos.get();
     let mut lines: ~[~str] = ~[];
     let col: CharPos = rdr.col;
     bump(rdr);
@@ -370,7 +374,7 @@ pub fn gather_comments_and_literals(span_diagnostic:
         }
 
 
-        let bstart = rdr.last_pos;
+        let bstart = rdr.last_pos.get();
         rdr.next_token();
         //discard, and look ahead; we're working with internal state
         let TokenAndSpan {tok: tok, sp: sp} = rdr.peek();
