@@ -11,6 +11,7 @@
 use codemap::{Pos, Span};
 use codemap;
 
+use std::cell::Cell;
 use std::io;
 use std::io::stdio::StdWriter;
 use std::local_data;
@@ -64,7 +65,7 @@ impl SpanHandler {
 // (fatal, bug, unimpl) may cause immediate exit,
 // others log errors for later reporting.
 pub struct Handler {
-    err_count: uint,
+    err_count: Cell<uint>,
     emit: @Emitter,
 }
 
@@ -78,22 +79,22 @@ impl Handler {
         self.bump_err_count();
     }
     pub fn bump_err_count(@mut self) {
-        self.err_count += 1u;
+        self.err_count.set(self.err_count.get() + 1u);
     }
     pub fn err_count(@mut self) -> uint {
-        self.err_count
+        self.err_count.get()
     }
     pub fn has_errors(@mut self) -> bool {
-        self.err_count > 0u
+        self.err_count.get()> 0u
     }
     pub fn abort_if_errors(@mut self) {
         let s;
-        match self.err_count {
+        match self.err_count.get() {
           0u => return,
           1u => s = ~"aborting due to previous error",
           _  => {
             s = format!("aborting due to {} previous errors",
-                     self.err_count);
+                     self.err_count.get());
           }
         }
         self.fatal(s);
@@ -138,7 +139,7 @@ pub fn mk_handler(emitter: Option<@Emitter>) -> @mut Handler {
     };
 
     @mut Handler {
-        err_count: 0,
+        err_count: Cell::new(0),
         emit: emit,
     }
 }
