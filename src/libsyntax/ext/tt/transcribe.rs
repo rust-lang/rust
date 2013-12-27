@@ -37,7 +37,7 @@ pub struct TtReader {
     /* for MBE-style macro transcription */
     priv interpolations: RefCell<HashMap<Ident, @named_match>>,
     priv repeat_idx: RefCell<~[uint]>,
-    repeat_len: ~[uint],
+    priv repeat_len: RefCell<~[uint]>,
     /* cached: */
     cur_tok: Token,
     cur_span: Span
@@ -64,7 +64,7 @@ pub fn new_tt_reader(sp_diag: @mut span_handler,
             Some(x) => RefCell::new(x),
         },
         repeat_idx: RefCell::new(~[]),
-        repeat_len: ~[],
+        repeat_len: RefCell::new(~[]),
         /* dummy values, never read: */
         cur_tok: EOF,
         cur_span: dummy_sp()
@@ -189,7 +189,8 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
         /* done with this set; pop or repeat? */
         if ! r.stack.dotdotdoted || {
                 let repeat_idx = r.repeat_idx.borrow();
-                *repeat_idx.get().last() == *r.repeat_len.last() - 1
+                let repeat_len = r.repeat_len.borrow();
+                *repeat_idx.get().last() == *repeat_len.get().last() - 1
             } {
 
             match r.stack.up {
@@ -201,8 +202,9 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                 if r.stack.dotdotdoted {
                     {
                         let mut repeat_idx = r.repeat_idx.borrow_mut();
+                        let mut repeat_len = r.repeat_len.borrow_mut();
                         repeat_idx.get().pop();
-                        r.repeat_len.pop();
+                        repeat_len.get().pop();
                     }
                 }
 
@@ -275,7 +277,8 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                 } else {
                     {
                         let mut repeat_idx = r.repeat_idx.borrow_mut();
-                        r.repeat_len.push(len);
+                        let mut repeat_len = r.repeat_len.borrow_mut();
+                        repeat_len.get().push(len);
                         repeat_idx.get().push(0u);
                         r.stack = @mut TtFrame {
                             forest: tts,
