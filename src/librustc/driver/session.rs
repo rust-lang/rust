@@ -204,7 +204,7 @@ pub struct Session_ {
     targ_cfg: @config,
     opts: @options,
     cstore: @metadata::cstore::CStore,
-    parse_sess: @mut ParseSess,
+    parse_sess: @ParseSess,
     codemap: @codemap::CodeMap,
     // For a library crate, this is always none
     entry_fn: RefCell<Option<(NodeId, codemap::Span)>>,

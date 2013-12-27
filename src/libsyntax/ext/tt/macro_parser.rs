@@ -188,9 +188,9 @@ pub enum named_match {
 
 pub type earley_item = ~MatcherPos;
 
-pub fn nameize(p_s: @mut ParseSess, ms: &[matcher], res: &[@named_match])
+pub fn nameize(p_s: @ParseSess, ms: &[matcher], res: &[@named_match])
             -> HashMap<Ident,@named_match> {
-    fn n_rec(p_s: @mut ParseSess, m: &matcher, res: &[@named_match],
+    fn n_rec(p_s: @ParseSess, m: &matcher, res: &[@named_match],
              ret_val: &mut HashMap<Ident, @named_match>) {
         match *m {
           codemap::Spanned {node: match_tok(_), .. } => (),
@@ -222,7 +222,7 @@ pub enum parse_result {
 }
 
 pub fn parse_or_else(
-    sess: @mut ParseSess,
+    sess: @ParseSess,
     cfg: ast::CrateConfig,
     rdr: @mut reader,
     ms: ~[matcher]
@@ -243,12 +243,11 @@ pub fn token_name_eq(t1 : &Token, t2 : &Token) -> bool {
     }
 }
 
-pub fn parse(
-    sess: @mut ParseSess,
-    cfg: ast::CrateConfig,
-    rdr: @mut reader,
-    ms: &[matcher]
-) -> parse_result {
+pub fn parse(sess: @ParseSess,
+             cfg: ast::CrateConfig,
+             rdr: @mut reader,
+             ms: &[matcher])
+             -> parse_result {
     let mut cur_eis = ~[];
     cur_eis.push(initial_matcher_pos(ms.to_owned(), None, rdr.peek().sp.lo));
 

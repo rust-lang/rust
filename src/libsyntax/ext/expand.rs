@@ -911,7 +911,7 @@ impl ast_fold for Injector {
 
 // add a bunch of macros as though they were placed at the head of the
 // program (ick). This should run before cfg stripping.
-pub fn inject_std_macros(parse_sess: @mut parse::ParseSess,
+pub fn inject_std_macros(parse_sess: @parse::ParseSess,
                          cfg: ast::CrateConfig,
                          c: Crate)
                          -> Crate {
@@ -961,7 +961,7 @@ impl<'a> ast_fold for MacroExpander<'a> {
     }
 }
 
-pub fn expand_crate(parse_sess: @mut parse::ParseSess,
+pub fn expand_crate(parse_sess: @parse::ParseSess,
                     cfg: ast::CrateConfig,
                     c: Crate) -> Crate {
     // adding *another* layer of indirection here so that the block

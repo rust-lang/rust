@@ -286,8 +286,8 @@ struct ParsedItemsAndViewItems {
 
 /* ident is handled by common.rs */
 
-pub fn Parser(sess: @mut ParseSess, cfg: ast::CrateConfig, rdr: @mut reader)
-           -> Parser {
+pub fn Parser(sess: @ParseSess, cfg: ast::CrateConfig, rdr: @mut reader)
+              -> Parser {
     let tok0 = rdr.next_token();
     let interner = get_ident_interner();
     let span = tok0.sp;
@@ -324,7 +324,7 @@ pub fn Parser(sess: @mut ParseSess, cfg: ast::CrateConfig, rdr: @mut reader)
 }
 
 pub struct Parser {
-    sess: @mut ParseSess,
+    sess: @ParseSess,
     cfg: CrateConfig,
     // the current token:
     token: token::Token,
