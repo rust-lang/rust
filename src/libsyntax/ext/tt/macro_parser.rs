@@ -221,12 +221,11 @@ pub enum parse_result {
     error(codemap::Span, ~str)
 }
 
-pub fn parse_or_else(
-    sess: @ParseSess,
-    cfg: ast::CrateConfig,
-    rdr: @mut reader,
-    ms: ~[matcher]
-) -> HashMap<Ident, @named_match> {
+pub fn parse_or_else(sess: @ParseSess,
+                     cfg: ast::CrateConfig,
+                     rdr: @reader,
+                     ms: ~[matcher])
+                     -> HashMap<Ident, @named_match> {
     match parse(sess, cfg, rdr, ms) {
       success(m) => m,
       failure(sp, str) => sess.span_diagnostic.span_fatal(sp, str),
@@ -245,7 +244,7 @@ pub fn token_name_eq(t1 : &Token, t2 : &Token) -> bool {
 
 pub fn parse(sess: @ParseSess,
              cfg: ast::CrateConfig,
-             rdr: @mut reader,
+             rdr: @reader,
              ms: &[matcher])
              -> parse_result {
     let mut cur_eis = ~[];

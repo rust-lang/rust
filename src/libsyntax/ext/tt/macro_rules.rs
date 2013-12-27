@@ -130,11 +130,7 @@ fn generic_extension(cx: &ExtCtxt,
         match *lhs {
           @matched_nonterminal(nt_matchers(ref mtcs)) => {
             // `none` is because we're not interpolating
-            let arg_rdr = new_tt_reader(
-                s_d,
-                None,
-                arg.to_owned()
-            ) as @mut reader;
+            let arg_rdr = new_tt_reader(s_d, None, arg.to_owned()) as @reader;
             match parse(cx.parse_sess(), cx.cfg(), arg_rdr, *mtcs) {
               success(named_matches) => {
                 let rhs = match rhses[i] {
@@ -154,10 +150,7 @@ fn generic_extension(cx: &ExtCtxt,
                 // rhs has holes ( `$id` and `$(...)` that need filled)
                 let trncbr = new_tt_reader(s_d, Some(named_matches),
                                            rhs);
-                let p = Parser(cx.parse_sess(),
-                               cx.cfg(),
-                               trncbr as @mut reader);
-
+                let p = Parser(cx.parse_sess(), cx.cfg(), trncbr as @reader);
                 // Let the context choose how to interpret the result.
                 // Weird, but useful for X-macros.
                 return MRAny(@ParserAnyMacro {
@@ -218,7 +211,7 @@ pub fn add_new_extension(cx: &mut ExtCtxt,
                                    arg.clone());
     let argument_map = parse_or_else(cx.parse_sess(),
                                      cx.cfg(),
-                                     arg_reader as @mut reader,
+                                     arg_reader as @reader,
                                      argument_gram);
 
     // Extract the arguments:
