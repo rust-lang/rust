@@ -209,7 +209,7 @@ pub struct Session_ {
     // For a library crate, this is always none
     entry_fn: RefCell<Option<(NodeId, codemap::Span)>>,
     entry_type: Cell<Option<EntryFnType>>,
-    span_diagnostic: @mut diagnostic::SpanHandler,
+    span_diagnostic: @diagnostic::SpanHandler,
     filesearch: @filesearch::FileSearch,
     building_library: Cell<bool>,
     working_dir: Path,
@@ -292,7 +292,7 @@ impl Session_ {
 
         v
     }
-    pub fn diagnostic(&self) -> @mut diagnostic::SpanHandler {
+    pub fn diagnostic(&self) -> @diagnostic::SpanHandler {
         self.span_diagnostic
     }
     pub fn debugging_opt(&self, opt: uint) -> bool {

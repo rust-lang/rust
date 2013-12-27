@@ -57,7 +57,7 @@ pub type encode_inlined_item<'a> = 'a |ecx: &EncodeContext,
                                              ii: ast::inlined_item|;
 
 pub struct EncodeParams<'a> {
-    diag: @mut SpanHandler,
+    diag: @SpanHandler,
     tcx: ty::ctxt,
     reexports2: middle::resolve::ExportMap2,
     item_symbols: &'a RefCell<HashMap<ast::NodeId, ~str>>,
@@ -83,7 +83,7 @@ struct Stats {
 }
 
 pub struct EncodeContext<'a> {
-    diag: @mut SpanHandler,
+    diag: @SpanHandler,
     tcx: ty::ctxt,
     stats: @Stats,
     reexports2: middle::resolve::ExportMap2,

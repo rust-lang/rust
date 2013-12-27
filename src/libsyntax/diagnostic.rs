@@ -35,27 +35,27 @@ pub struct SpanHandler {
 }
 
 impl SpanHandler {
-    pub fn span_fatal(@mut self, sp: Span, msg: &str) -> ! {
+    pub fn span_fatal(@self, sp: Span, msg: &str) -> ! {
         self.handler.emit(Some((&*self.cm, sp)), msg, fatal);
         fail!();
     }
-    pub fn span_err(@mut self, sp: Span, msg: &str) {
+    pub fn span_err(@self, sp: Span, msg: &str) {
         self.handler.emit(Some((&*self.cm, sp)), msg, error);
         self.handler.bump_err_count();
     }
-    pub fn span_warn(@mut self, sp: Span, msg: &str) {
+    pub fn span_warn(@self, sp: Span, msg: &str) {
         self.handler.emit(Some((&*self.cm, sp)), msg, warning);
     }
-    pub fn span_note(@mut self, sp: Span, msg: &str) {
+    pub fn span_note(@self, sp: Span, msg: &str) {
         self.handler.emit(Some((&*self.cm, sp)), msg, note);
     }
-    pub fn span_bug(@mut self, sp: Span, msg: &str) -> ! {
+    pub fn span_bug(@self, sp: Span, msg: &str) -> ! {
         self.span_fatal(sp, ice_msg(msg));
     }
-    pub fn span_unimpl(@mut self, sp: Span, msg: &str) -> ! {
+    pub fn span_unimpl(@self, sp: Span, msg: &str) -> ! {
         self.span_bug(sp, ~"unimplemented " + msg);
     }
-    pub fn handler(@mut self) -> @mut Handler {
+    pub fn handler(@self) -> @mut Handler {
         self.handler
     }
 }
@@ -124,8 +124,8 @@ pub fn ice_msg(msg: &str) -> ~str {
 }
 
 pub fn mk_span_handler(handler: @mut Handler, cm: @codemap::CodeMap)
-                    -> @mut SpanHandler {
-    @mut SpanHandler {
+                       -> @SpanHandler {
+    @SpanHandler {
         handler: handler,
         cm: cm,
     }
@@ -327,10 +327,7 @@ fn print_macro_backtrace(cm: &codemap::CodeMap, sp: Span) {
     }
 }
 
-pub fn expect<T:Clone>(
-              diag: @mut SpanHandler,
-              opt: Option<T>,
-              msg: || -> ~str)
+pub fn expect<T:Clone>(diag: @SpanHandler, opt: Option<T>, msg: || -> ~str)
               -> T {
     match opt {
        Some(ref t) => (*t).clone(),
