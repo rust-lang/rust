@@ -189,7 +189,7 @@ pub fn compile_input(context: &BuildContext,
     // Make the output directory if it doesn't exist already
     fs::mkdir_recursive(&out_dir, io::UserRWX);
 
-    let binary = os::args()[0].to_managed();
+    let binary = os::args()[0].to_owned();
 
     debug!("flags: {}", flags.connect(" "));
     debug!("cfgs: {}", cfgs.connect(" "));

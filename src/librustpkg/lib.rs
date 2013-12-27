@@ -101,7 +101,7 @@ impl<'a> PkgScript<'a> {
                  workspace: &Path,
                  id: &'a CrateId) -> PkgScript<'a> {
         // Get the executable name that was invoked
-        let binary = os::args()[0].to_managed();
+        let binary = os::args()[0].to_owned();
         // Build the rustc session data structures to pass
         // to the compiler
         debug!("pkgscript parse: {}", sysroot.display());
