@@ -72,7 +72,7 @@ pub struct ps {
     intr: @token::ident_interner,
     comments: Option<~[comments::cmnt]>,
     literals: Option<~[comments::lit]>,
-    cur_cmnt_and_lit: @mut CurrentCommentAndLiteral,
+    cur_cmnt_and_lit: CurrentCommentAndLiteral,
     boxes: @mut ~[pp::breaks],
     ann: @pp_ann
 }
@@ -101,7 +101,7 @@ pub fn rust_printer_annotated(writer: ~io::Writer,
         intr: intr,
         comments: None::<~[comments::cmnt]>,
         literals: None::<~[comments::lit]>,
-        cur_cmnt_and_lit: @mut CurrentCommentAndLiteral {
+        cur_cmnt_and_lit: CurrentCommentAndLiteral {
             cur_cmnt: 0,
             cur_lit: 0
         },
@@ -144,7 +144,7 @@ pub fn print_crate(cm: @CodeMap,
         } else {
             Some(lits)
         },
-        cur_cmnt_and_lit: @mut CurrentCommentAndLiteral {
+        cur_cmnt_and_lit: CurrentCommentAndLiteral {
             cur_cmnt: 0,
             cur_lit: 0
         },
