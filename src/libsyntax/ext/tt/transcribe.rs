@@ -17,14 +17,14 @@ use parse::token::{EOF, INTERPOLATED, IDENT, Token, nt_ident};
 use parse::token::{ident_to_str};
 use parse::lexer::TokenAndSpan;
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::hashmap::HashMap;
 use std::option;
 
 ///an unzipping of `token_tree`s
 struct TtFrame {
     forest: @~[ast::token_tree],
-    idx: uint,
+    idx: Cell<uint>,
     dotdotdoted: bool,
     sep: Option<Token>,
     up: Option<@mut TtFrame>,
@@ -54,7 +54,7 @@ pub fn new_tt_reader(sp_diag: @span_handler,
         sp_diag: sp_diag,
         stack: RefCell::new(@mut TtFrame {
             forest: @src,
-            idx: 0u,
+            idx: Cell::new(0u),
             dotdotdoted: false,
             sep: None,
             up: option::None
@@ -76,7 +76,7 @@ pub fn new_tt_reader(sp_diag: @span_handler,
 fn dup_tt_frame(f: @mut TtFrame) -> @mut TtFrame {
     @mut TtFrame {
         forest: @(*f.forest).clone(),
-        idx: f.idx,
+        idx: f.idx.clone(),
         dotdotdoted: f.dotdotdoted,
         sep: f.sep.clone(),
         up: match f.up {
@@ -181,7 +181,7 @@ pub fn tt_next_token(r: &TtReader) -> TokenAndSpan {
     loop {
         {
             let mut stack = r.stack.borrow_mut();
-            if stack.get().idx < stack.get().forest.len() {
+            if stack.get().idx.get() < stack.get().forest.len() {
                 break;
             }
         }
@@ -209,12 +209,12 @@ pub fn tt_next_token(r: &TtReader) -> TokenAndSpan {
                 }
 
                 r.stack.set(tt_f);
-                r.stack.get().idx += 1u;
+                r.stack.get().idx.set(r.stack.get().idx.get() + 1u);
               }
             }
 
         } else { /* repeat */
-            r.stack.get().idx = 0u;
+            r.stack.get().idx.set(0u);
             {
                 let mut repeat_idx = r.repeat_idx.borrow_mut();
                 repeat_idx.get()[repeat_idx.get().len() - 1u] += 1u;
@@ -231,11 +231,11 @@ pub fn tt_next_token(r: &TtReader) -> TokenAndSpan {
     loop { /* because it's easiest, this handles `tt_delim` not starting
     with a `tt_tok`, even though it won't happen */
         // XXX(pcwalton): Bad copy.
-        match r.stack.get().forest[r.stack.get().idx].clone() {
+        match r.stack.get().forest[r.stack.get().idx.get()].clone() {
           tt_delim(tts) => {
             r.stack.set(@mut TtFrame {
                 forest: tts,
-                idx: 0u,
+                idx: Cell::new(0u),
                 dotdotdoted: false,
                 sep: None,
                 up: option::Some(r.stack.get())
@@ -245,7 +245,7 @@ pub fn tt_next_token(r: &TtReader) -> TokenAndSpan {
           tt_tok(sp, tok) => {
             r.cur_span.set(sp);
             r.cur_tok.set(tok);
-            r.stack.get().idx += 1u;
+            r.stack.get().idx.set(r.stack.get().idx.get() + 1u);
             return ret_val;
           }
           tt_seq(sp, tts, sep, zerok) => {
@@ -272,7 +272,7 @@ pub fn tt_next_token(r: &TtReader) -> TokenAndSpan {
                                               once");
                           }
 
-                    r.stack.get().idx += 1u;
+                    r.stack.get().idx.set(r.stack.get().idx.get() + 1u);
                     return tt_next_token(r);
                 } else {
                     {
@@ -282,7 +282,7 @@ pub fn tt_next_token(r: &TtReader) -> TokenAndSpan {
                         repeat_idx.get().push(0u);
                         r.stack.set(@mut TtFrame {
                             forest: tts,
-                            idx: 0u,
+                            idx: Cell::new(0u),
                             dotdotdoted: true,
                             sep: sep,
                             up: Some(r.stack.get())
@@ -301,14 +301,14 @@ pub fn tt_next_token(r: &TtReader) -> TokenAndSpan {
               matched_nonterminal(nt_ident(~sn,b)) => {
                 r.cur_span.set(sp);
                 r.cur_tok.set(IDENT(sn,b));
-                r.stack.get().idx += 1u;
+                r.stack.get().idx.set(r.stack.get().idx.get() + 1u);
                 return ret_val;
               }
               matched_nonterminal(ref other_whole_nt) => {
                 // XXX(pcwalton): Bad copy.
                 r.cur_span.set(sp);
                 r.cur_tok.set(INTERPOLATED((*other_whole_nt).clone()));
-                r.stack.get().idx += 1u;
+                r.stack.get().idx.set(r.stack.get().idx.get() + 1u);
                 return ret_val;
               }
               matched_seq(..) => {
