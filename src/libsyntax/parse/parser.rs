@@ -4264,21 +4264,28 @@ impl Parser {
                               path: Path,
                               outer_attrs: ~[ast::Attribute],
                               id_sp: Span) -> (ast::item_, ~[ast::Attribute]) {
-        let maybe_i = self.sess.included_mod_stack.iter().position(|p| *p == path);
-        match maybe_i {
-            Some(i) => {
-                let stack = &self.sess.included_mod_stack;
-                let mut err = ~"circular modules: ";
-                for p in stack.slice(i, stack.len()).iter() {
-                    p.display().with_str(|s| err.push_str(s));
-                    err.push_str(" -> ");
+        {
+            let mut included_mod_stack = self.sess
+                                             .included_mod_stack
+                                             .borrow_mut();
+            let maybe_i = included_mod_stack.get()
+                                            .iter()
+                                            .position(|p| *p == path);
+            match maybe_i {
+                Some(i) => {
+                    let mut err = ~"circular modules: ";
+                    let len = included_mod_stack.get().len();
+                    for p in included_mod_stack.get().slice(i, len).iter() {
+                        p.display().with_str(|s| err.push_str(s));
+                        err.push_str(" -> ");
+                    }
+                    path.display().with_str(|s| err.push_str(s));
+                    self.span_fatal(id_sp, err);
                 }
-                path.display().with_str(|s| err.push_str(s));
-                self.span_fatal(id_sp, err);
+                None => ()
             }
-            None => ()
+            included_mod_stack.get().push(path.clone());
         }
-        self.sess.included_mod_stack.push(path.clone());
 
         let mut p0 =
             new_sub_parser_from_file(self.sess,
@@ -4289,7 +4296,12 @@ impl Parser {
         let mod_attrs = vec::append(outer_attrs, inner);
         let first_item_outer_attrs = next;
         let m0 = p0.parse_mod_items(token::EOF, first_item_outer_attrs);
-        self.sess.included_mod_stack.pop();
+        {
+            let mut included_mod_stack = self.sess
+                                             .included_mod_stack
+                                             .borrow_mut();
+            included_mod_stack.get().pop();
+        }
         return (ast::item_mod(m0), mod_attrs);
     }
 
