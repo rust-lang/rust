@@ -14,11 +14,12 @@
 
 use ast::Name;
 
+use std::cell::RefCell;
 use std::cmp::Equiv;
 use std::hashmap::HashMap;
 
 pub struct Interner<T> {
-    priv map: @mut HashMap<T, Name>,
+    priv map: @RefCell<HashMap<T, Name>>,
     priv vect: @mut ~[T],
 }
 
@@ -26,7 +27,7 @@ pub struct Interner<T> {
 impl<T:Eq + IterBytes + Hash + Freeze + Clone + 'static> Interner<T> {
     pub fn new() -> Interner<T> {
         Interner {
-            map: @mut HashMap::new(),
+            map: @RefCell::new(HashMap::new()),
             vect: @mut ~[],
         }
     }
@@ -40,14 +41,15 @@ impl<T:Eq + IterBytes + Hash + Freeze + Clone + 'static> Interner<T> {
     }
 
     pub fn intern(&self, val: T) -> Name {
-        match self.map.find(&val) {
+        let mut map = self.map.borrow_mut();
+        match map.get().find(&val) {
             Some(&idx) => return idx,
             None => (),
         }
 
         let vect = &mut *self.vect;
         let new_idx = vect.len() as Name;
-        self.map.insert(val.clone(), new_idx);
+        map.get().insert(val.clone(), new_idx);
         vect.push(val);
         new_idx
     }
@@ -70,7 +72,8 @@ impl<T:Eq + IterBytes + Hash + Freeze + Clone + 'static> Interner<T> {
 
     pub fn find_equiv<Q:Hash + IterBytes + Equiv<T>>(&self, val: &Q)
                                               -> Option<Name> {
-        match self.map.find_equiv(val) {
+        let map = self.map.borrow();
+        match map.get().find_equiv(val) {
             Some(v) => Some(*v),
             None => None,
         }
@@ -80,7 +83,7 @@ impl<T:Eq + IterBytes + Hash + Freeze + Clone + 'static> Interner<T> {
 // A StrInterner differs from Interner<String> in that it accepts
 // borrowed pointers rather than @ ones, resulting in less allocation.
 pub struct StrInterner {
-    priv map: @mut HashMap<@str, Name>,
+    priv map: @RefCell<HashMap<@str, Name>>,
     priv vect: @mut ~[@str],
 }
 
@@ -88,7 +91,7 @@ pub struct StrInterner {
 impl StrInterner {
     pub fn new() -> StrInterner {
         StrInterner {
-            map: @mut HashMap::new(),
+            map: @RefCell::new(HashMap::new()),
             vect: @mut ~[],
         }
     }
@@ -100,14 +103,15 @@ impl StrInterner {
     }
 
     pub fn intern(&self, val: &str) -> Name {
-        match self.map.find_equiv(&val) {
+        let mut map = self.map.borrow_mut();
+        match map.get().find_equiv(&val) {
             Some(&idx) => return idx,
             None => (),
         }
 
         let new_idx = self.len() as Name;
         let val = val.to_managed();
-        self.map.insert(val, new_idx);
+        map.get().insert(val, new_idx);
         self.vect.push(val);
         new_idx
     }
@@ -142,7 +146,8 @@ impl StrInterner {
 
     pub fn find_equiv<Q:Hash + IterBytes + Equiv<@str>>(&self, val: &Q)
                                                          -> Option<Name> {
-        match self.map.find_equiv(val) {
+        let map = self.map.borrow();
+        match map.get().find_equiv(val) {
             Some(v) => Some(*v),
             None => None,
         }
