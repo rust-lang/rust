@@ -111,37 +111,13 @@ pub mod write {
         let llmod = trans.module;
         let llcx = trans.context;
         unsafe {
-            llvm::LLVMInitializePasses();
-
-            // Only initialize the platforms supported by Rust here, because
-            // using --llvm-root will have multiple platforms that rustllvm
-            // doesn't actually link to and it's pointless to put target info
-            // into the registry that Rust can not generate machine code for.
-            llvm::LLVMInitializeX86TargetInfo();
-            llvm::LLVMInitializeX86Target();
-            llvm::LLVMInitializeX86TargetMC();
-            llvm::LLVMInitializeX86AsmPrinter();
-            llvm::LLVMInitializeX86AsmParser();
-
-            llvm::LLVMInitializeARMTargetInfo();
-            llvm::LLVMInitializeARMTarget();
-            llvm::LLVMInitializeARMTargetMC();
-            llvm::LLVMInitializeARMAsmPrinter();
-            llvm::LLVMInitializeARMAsmParser();
-
-            llvm::LLVMInitializeMipsTargetInfo();
-            llvm::LLVMInitializeMipsTarget();
-            llvm::LLVMInitializeMipsTargetMC();
-            llvm::LLVMInitializeMipsAsmPrinter();
-            llvm::LLVMInitializeMipsAsmParser();
+            configure_llvm(sess);
 
             if sess.opts.save_temps {
                 output.with_extension("no-opt.bc").with_c_str(|buf| {
                     llvm::LLVMWriteBitcodeToFile(llmod, buf);
                 })
             }
-
-            configure_llvm(sess);
 
             let OptLevel = match sess.opts.optimize {
               session::No => lib::llvm::CodeGenLevelNone,
@@ -367,6 +343,30 @@ pub mod write {
 
         LOCK.lock();
         if !CONFIGURED {
+            llvm::LLVMInitializePasses();
+
+            // Only initialize the platforms supported by Rust here, because
+            // using --llvm-root will have multiple platforms that rustllvm
+            // doesn't actually link to and it's pointless to put target info
+            // into the registry that Rust can not generate machine code for.
+            llvm::LLVMInitializeX86TargetInfo();
+            llvm::LLVMInitializeX86Target();
+            llvm::LLVMInitializeX86TargetMC();
+            llvm::LLVMInitializeX86AsmPrinter();
+            llvm::LLVMInitializeX86AsmParser();
+
+            llvm::LLVMInitializeARMTargetInfo();
+            llvm::LLVMInitializeARMTarget();
+            llvm::LLVMInitializeARMTargetMC();
+            llvm::LLVMInitializeARMAsmPrinter();
+            llvm::LLVMInitializeARMAsmParser();
+
+            llvm::LLVMInitializeMipsTargetInfo();
+            llvm::LLVMInitializeMipsTarget();
+            llvm::LLVMInitializeMipsTargetMC();
+            llvm::LLVMInitializeMipsAsmPrinter();
+            llvm::LLVMInitializeMipsAsmParser();
+
             llvm::LLVMRustSetLLVMOptions(llvm_args.len() as c_int,
                                          llvm_args.as_ptr());
             CONFIGURED = true;
