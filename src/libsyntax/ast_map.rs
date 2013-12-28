@@ -23,6 +23,7 @@ use print::pprust;
 use visit::{Visitor, fn_kind};
 use visit;
 
+use std::cell::RefCell;
 use std::hashmap::HashMap;
 use std::vec;
 
@@ -147,7 +148,7 @@ impl ast_node {
     }
 }
 
-pub type map = @mut HashMap<NodeId, ast_node>;
+pub type map = @RefCell<HashMap<NodeId, ast_node>>;
 
 pub struct Ctx {
     map: map,
@@ -170,8 +171,10 @@ impl Ctx {
         } else {
             node_method(m, impl_did, impl_path)
         };
-        self.map.insert(m.id, entry);
-        self.map.insert(m.self_id, node_local(special_idents::self_));
+
+        let mut map = self.map.borrow_mut();
+        map.get().insert(m.id, entry);
+        map.get().insert(m.self_id, node_local(special_idents::self_));
     }
 
     fn map_struct_def(&mut self,
@@ -186,10 +189,11 @@ impl Ctx {
             Some(ctor_id) => {
                 match parent_node {
                     node_item(item, _) => {
-                        self.map.insert(ctor_id,
-                                        node_struct_ctor(struct_def,
-                                                         item,
-                                                         p));
+                        let mut map = self.map.borrow_mut();
+                        map.get().insert(ctor_id,
+                                         node_struct_ctor(struct_def,
+                                                          item,
+                                                          p));
                     }
                     _ => fail!("struct def parent wasn't an item")
                 }
@@ -198,13 +202,17 @@ impl Ctx {
     }
 
     fn map_expr(&mut self, ex: @Expr) {
-        self.map.insert(ex.id, node_expr(ex));
+        {
+            let mut map = self.map.borrow_mut();
+            map.get().insert(ex.id, node_expr(ex));
+        }
 
         // Expressions which are or might be calls:
         {
             let r = ex.get_callee_id();
             for callee_id in r.iter() {
-                self.map.insert(*callee_id, node_callee_scope(ex));
+                let mut map = self.map.borrow_mut();
+                map.get().insert(*callee_id, node_callee_scope(ex));
             }
         }
 
@@ -218,7 +226,8 @@ impl Ctx {
               sp: codemap::Span,
               id: NodeId) {
         for a in decl.inputs.iter() {
-            self.map.insert(a.id, node_arg(a.pat));
+            let mut map = self.map.borrow_mut();
+            map.get().insert(a.id, node_arg(a.pat));
         }
         match *fk {
             visit::fk_method(name, _, _) => { self.path.push(path_name(name)) }
@@ -232,12 +241,19 @@ impl Ctx {
     }
 
     fn map_stmt(&mut self, stmt: @Stmt) {
-        self.map.insert(stmt_id(stmt), node_stmt(stmt));
+        {
+            let mut map = self.map.borrow_mut();
+            map.get().insert(stmt_id(stmt), node_stmt(stmt));
+        }
         visit::walk_stmt(self, stmt, ());
     }
 
     fn map_block(&mut self, b: P<Block>) {
-        self.map.insert(b.id, node_block(b));
+        {
+            let mut map = self.map.borrow_mut();
+            map.get().insert(b.id, node_block(b));
+        }
+
         visit::walk_block(self, b, ());
     }
 
@@ -245,8 +261,9 @@ impl Ctx {
         match pat.node {
             PatIdent(_, ref path, _) => {
                 // Note: this is at least *potentially* a pattern...
-                self.map.insert(pat.id,
-                                node_local(ast_util::path_to_ident(path)));
+                let mut map = self.map.borrow_mut();
+                map.get().insert(pat.id,
+                                 node_local(ast_util::path_to_ident(path)));
             }
             _ => ()
         }
@@ -259,7 +276,10 @@ impl Visitor<()> for Ctx {
     fn visit_item(&mut self, i: @item, _: ()) {
         // clone is FIXME #2543
         let item_path = @self.path.clone();
-        self.map.insert(i.id, node_item(i, item_path));
+        {
+            let mut map = self.map.borrow_mut();
+            map.get().insert(i.id, node_item(i, item_path));
+        }
         match i.node {
             item_impl(_, ref maybe_trait, ty, ref ms) => {
                 // Right now the ident on impls is __extensions__ which isn't
@@ -278,8 +298,9 @@ impl Visitor<()> for Ctx {
             item_enum(ref enum_definition, _) => {
                 for &v in enum_definition.variants.iter() {
                     let elt = path_name(i.ident);
-                    self.map.insert(v.node.id,
-                                    node_variant(v, i, self.extend(elt)));
+                    let mut map = self.map.borrow_mut();
+                    map.get().insert(v.node.id,
+                                     node_variant(v, i, self.extend(elt)));
                 }
             }
             item_foreign_mod(ref nm) => {
@@ -291,16 +312,17 @@ impl Visitor<()> for Ctx {
                         inherited => i.vis
                     };
 
-                    self.map.insert(nitem.id,
-                                    node_foreign_item(*nitem,
-                                                      nm.abis,
-                                                      visibility,
-                                                      // FIXME (#2543)
+                    let mut map = self.map.borrow_mut();
+                    map.get().insert(nitem.id,
+                                     node_foreign_item(*nitem,
+                                                       nm.abis,
+                                                       visibility,
+                                                       // FIXME (#2543)
                                                         // Anonymous extern
                                                         // mods go in the
                                                         // parent scope.
                                                         @self.path.clone()
-                                                      ));
+                                                       ));
                 }
             }
             item_struct(struct_def, _) => {
@@ -310,7 +332,8 @@ impl Visitor<()> for Ctx {
             }
             item_trait(_, ref traits, ref methods) => {
                 for p in traits.iter() {
-                    self.map.insert(p.ref_id, node_item(i, item_path));
+                    let mut map = self.map.borrow_mut();
+                    map.get().insert(p.ref_id, node_item(i, item_path));
                 }
                 for tm in methods.iter() {
                     let ext = { self.extend(path_name(i.ident)) };
@@ -319,7 +342,8 @@ impl Visitor<()> for Ctx {
                         required(ref m) => {
                             let entry =
                                 node_trait_method(@(*tm).clone(), d_id, ext);
-                            self.map.insert(m.id, entry);
+                            let mut map = self.map.borrow_mut();
+                            map.get().insert(m.id, entry);
                         }
                         provided(m) => {
                             self.map_method(d_id, ext, m, true);
@@ -375,7 +399,7 @@ impl Visitor<()> for Ctx {
 
 pub fn map_crate(diag: @span_handler, c: &Crate) -> map {
     let cx = @mut Ctx {
-        map: @mut HashMap::new(),
+        map: @RefCell::new(HashMap::new()),
         path: ~[],
         diag: diag,
     };
@@ -405,10 +429,11 @@ pub fn map_decoded_item(diag: @span_handler,
     match *ii {
         ii_item(..) => {} // fallthrough
         ii_foreign(i) => {
-            cx.map.insert(i.id, node_foreign_item(i,
-                                                  AbiSet::Intrinsic(),
-                                                  i.vis,    // Wrong but OK
-                                                  @path));
+            let mut map = cx.map.borrow_mut();
+            map.get().insert(i.id, node_foreign_item(i,
+                                                     AbiSet::Intrinsic(),
+                                                     i.vis,    // Wrong but OK
+                                                     @path));
         }
         ii_method(impl_did, is_provided, m) => {
             cx.map_method(impl_did, @path, m, is_provided);
@@ -420,7 +445,8 @@ pub fn map_decoded_item(diag: @span_handler,
 }
 
 pub fn node_id_to_str(map: map, id: NodeId, itr: @ident_interner) -> ~str {
-    match map.find(&id) {
+    let map = map.borrow();
+    match map.get().find(&id) {
       None => {
         format!("unknown node (id={})", id)
       }
@@ -484,7 +510,8 @@ pub fn node_id_to_str(map: map, id: NodeId, itr: @ident_interner) -> ~str {
 
 pub fn node_item_query<Result>(items: map, id: NodeId, query: |@item| -> Result, error_msg: ~str)
                        -> Result {
-    match items.find(&id) {
+    let items = items.borrow();
+    match items.get().find(&id) {
         Some(&node_item(it, _)) => query(it),
         _ => fail!("{}", error_msg)
     }
@@ -493,7 +520,8 @@ pub fn node_item_query<Result>(items: map, id: NodeId, query: |@item| -> Result,
 pub fn node_span(items: map,
                  id: ast::NodeId)
                  -> Span {
-    match items.find(&id) {
+    let items = items.borrow();
+    match items.get().find(&id) {
         Some(&node_item(item, _)) => item.span,
         Some(&node_foreign_item(foreign_item, _, _, _)) => foreign_item.span,
         Some(&node_trait_method(@required(ref type_method), _, _)) => type_method.span,

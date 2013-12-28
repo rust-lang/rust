@@ -74,23 +74,26 @@ fn find_item(item: @item, ctxt: &mut EntryContext) {
     match item.node {
         item_fn(..) => {
             if item.ident.name == special_idents::main.name {
-                match ctxt.ast_map.find(&item.id) {
-                    Some(&ast_map::node_item(_, path)) => {
-                        if path.len() == 0 {
-                            // This is a top-level function so can be 'main'
-                            if ctxt.main_fn.is_none() {
-                                ctxt.main_fn = Some((item.id, item.span));
+                {
+                    let ast_map = ctxt.ast_map.borrow();
+                    match ast_map.get().find(&item.id) {
+                        Some(&ast_map::node_item(_, path)) => {
+                            if path.len() == 0 {
+                                // This is a top-level function so can be 'main'
+                                if ctxt.main_fn.is_none() {
+                                    ctxt.main_fn = Some((item.id, item.span));
+                                } else {
+                                    ctxt.session.span_err(
+                                        item.span,
+                                        "multiple 'main' functions");
+                                }
                             } else {
-                                ctxt.session.span_err(
-                                    item.span,
-                                    "multiple 'main' functions");
+                                // This isn't main
+                                ctxt.non_main_fns.push((item.id, item.span));
                             }
-                        } else {
-                            // This isn't main
-                            ctxt.non_main_fns.push((item.id, item.span));
                         }
+                        _ => unreachable!()
                     }
-                    _ => unreachable!()
                 }
             }
 

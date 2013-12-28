@@ -355,10 +355,17 @@ pub fn trans_foreign_mod(ccx: @CrateContext,
     for &foreign_item in foreign_mod.items.iter() {
         match foreign_item.node {
             ast::foreign_item_fn(..) => {
-                let (abis, mut path) = match ccx.tcx.items.get_copy(&foreign_item.id) {
-                    ast_map::node_foreign_item(_, abis, _, path) => (abis, (*path).clone()),
-                    _ => fail!("Unable to find foreign item in tcx.items table.")
-                };
+                let items = ccx.tcx.items.borrow();
+                let (abis, mut path) =
+                    match items.get().get_copy(&foreign_item.id) {
+                        ast_map::node_foreign_item(_, abis, _, path) => {
+                            (abis, (*path).clone())
+                        }
+                        _ => {
+                            fail!("Unable to find foreign item in tcx.items \
+                                   table.")
+                        }
+                    };
                 if !(abis.is_rust() || abis.is_intrinsic()) {
                     path.push(ast_map::path_name(foreign_item.ident));
                     register_foreign_item_fn(ccx, abis, &path, foreign_item);

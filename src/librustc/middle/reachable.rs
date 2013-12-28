@@ -65,10 +65,15 @@ fn method_might_be_inlined(tcx: ty::ctxt, method: &ast::method,
         return true
     }
     if is_local(impl_src) {
-        match tcx.items.find(&impl_src.node) {
-            Some(&ast_map::node_item(item, _)) => item_might_be_inlined(item),
-            Some(..) | None => {
-                tcx.sess.span_bug(method.span, "impl did is not an item")
+        {
+            let items = tcx.items.borrow();
+            match items.get().find(&impl_src.node) {
+                Some(&ast_map::node_item(item, _)) => {
+                    item_might_be_inlined(item)
+                }
+                Some(..) | None => {
+                    tcx.sess.span_bug(method.span, "impl did is not an item")
+                }
             }
         }
     } else {
@@ -208,7 +213,8 @@ impl ReachableContext {
         }
 
         let node_id = def_id.node;
-        match tcx.items.find(&node_id) {
+        let items = tcx.items.borrow();
+        match items.get().find(&node_id) {
             Some(&ast_map::node_item(item, _)) => {
                 match item.node {
                     ast::item_fn(..) => item_might_be_inlined(item),
@@ -229,7 +235,7 @@ impl ReachableContext {
                     // Check the impl. If the generics on the self type of the
                     // impl require inlining, this method does too.
                     assert!(impl_did.crate == ast::LOCAL_CRATE);
-                    match tcx.items.find(&impl_did.node) {
+                    match items.get().find(&impl_did.node) {
                         Some(&ast_map::node_item(item, _)) => {
                             match item.node {
                                 ast::item_impl(ref generics, _, _, _) => {
@@ -288,7 +294,8 @@ impl ReachableContext {
             };
 
             scanned.insert(search_item);
-            match self.tcx.items.find(&search_item) {
+            let items = self.tcx.items.borrow();
+            match items.get().find(&search_item) {
                 Some(item) => self.propagate_node(item, search_item,
                                                   &mut visitor),
                 None if search_item == ast::CRATE_NODE_ID => {}
