@@ -43,7 +43,7 @@ use clone::DeepClone;
 use cmp::{Eq, TotalEq, TotalOrd};
 use default::Default;
 use fmt;
-use iter::{Iterator, DoubleEndedIterator, ExactSize};
+use iter::{Iterator, DoubleEndedIterator, FromIterator, ExactSize};
 use kinds::Send;
 use str::OwnedStr;
 use to_str::ToStr;
@@ -411,6 +411,46 @@ impl<A> DoubleEndedIterator<A> for OptionIterator<A> {
 impl<A> ExactSize<A> for OptionIterator<A> {}
 
 /////////////////////////////////////////////////////////////////////////////
+// Free functions
+/////////////////////////////////////////////////////////////////////////////
+
+/// Takes each element in the `Iterator`: if it is `None`, no further
+/// elements are taken, and the `None` is returned. Should no `None` occur, a
+/// vector containing the values of each `Option` is returned.
+///
+/// Here is an example which increments every integer in a vector,
+/// checking for overflow:
+///
+///     fn inc_conditionally(x: uint) -> Option<uint> {
+///         if x == uint::max_value { return None; }
+///         else { return Some(x+1u); }
+///     }
+///     let v = [1u, 2, 3];
+///     let res = collect(v.iter().map(|&x| inc_conditionally(x)));
+///     assert!(res == Some(~[2u, 3, 4]));
+#[inline]
+pub fn collect<T, Iter: Iterator<Option<T>>, V: FromIterator<T>>(iter: Iter) -> Option<V> {
+    // FIXME(#11084): This should be twice as fast once this bug is closed.
+    let mut iter = iter.scan(false, |state, x| {
+        match x {
+            Some(x) => Some(x),
+            None => {
+                *state = true;
+                None
+            }
+        }
+    });
+
+    let v: V = FromIterator::from_iterator(&mut iter);
+
+    if iter.state {
+        None
+    } else {
+        Some(v)
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////
 // Tests
 /////////////////////////////////////////////////////////////////////////////
 
@@ -418,8 +458,10 @@ impl<A> ExactSize<A> for OptionIterator<A> {}
 mod tests {
     use super::*;
 
+    use iter::range;
     use str::StrSlice;
     use util;
+    use vec::ImmutableVector;
 
     #[test]
     fn test_get_ptr() {
@@ -660,5 +702,27 @@ mod tests {
         assert_eq!(x, None);
         assert!(!x.mutate_default(0i, |i| i+1));
         assert_eq!(x, Some(0i));
+    }
+
+    #[test]
+    fn test_collect() {
+        let v: Option<~[int]> = collect(range(0, 0)
+                                        .map(|_| Some(0)));
+        assert_eq!(v, Some(~[]));
+
+        let v: Option<~[int]> = collect(range(0, 3)
+                                        .map(|x| Some(x)));
+        assert_eq!(v, Some(~[0, 1, 2]));
+
+        let v: Option<~[int]> = collect(range(0, 3)
+                                        .map(|x| if x > 1 { None } else { Some(x) }));
+        assert_eq!(v, None);
+
+        // test that it does not take more elements than it needs
+        let functions = [|| Some(()), || None, || fail!()];
+
+        let v: Option<~[()]> = collect(functions.iter().map(|f| (*f)()));
+
+        assert_eq!(v, None);
     }
 }

@@ -117,7 +117,6 @@ mod test {
     use prelude::*;
     use super::*;
     use io;
-    use comm;
     use task;
 
     #[test]
@@ -136,7 +135,7 @@ mod test {
 
         assert_eq!(false, reader.eof());
 
-        assert_eq!(Some(0), reader.read(~[]));
+        assert_eq!(Some(0), reader.read([]));
         assert_eq!(false, reader.eof());
 
         assert_eq!(Some(3), reader.read(buf));
