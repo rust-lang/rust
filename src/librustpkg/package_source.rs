@@ -11,7 +11,7 @@
 extern mod extra;
 
 use target::*;
-use package_id::PkgId;
+use crate_id::CrateId;
 use std::io;
 use std::io::fs;
 use std::os;
@@ -49,7 +49,7 @@ pub struct PkgSrc {
     // Directory to start looking in for packages -- normally
     // this is workspace/src/id but it may be just workspace
     start_dir: Path,
-    id: PkgId,
+    id: CrateId,
     libs: ~[Crate],
     mains: ~[Crate],
     tests: ~[Crate],
@@ -77,7 +77,7 @@ impl PkgSrc {
     pub fn new(mut source_workspace: Path,
                destination_workspace: Path,
                use_rust_path_hack: bool,
-               id: PkgId) -> PkgSrc {
+               id: CrateId) -> PkgSrc {
         use conditions::nonexistent_package::cond;
 
         debug!("Checking package source for package ID {}, \
@@ -133,14 +133,14 @@ impl PkgSrc {
                 // See if any of the prefixes of this package ID form a valid package ID
                 // That is, is this a package ID that points into the middle of a workspace?
                 for (prefix, suffix) in id.prefixes() {
-                    let package_id = PkgId::new(prefix.as_str().unwrap());
-                    let path = build_dir.join(&package_id.path);
+                    let crate_id = CrateId::new(prefix.as_str().unwrap());
+                    let path = build_dir.join(&crate_id.path);
                     debug!("in loop: checking if {} is a directory", path.display());
                     if path.is_dir() {
                         let ps = PkgSrc::new(source_workspace,
                                              destination_workspace,
                                              use_rust_path_hack,
-                                             package_id);
+                                             crate_id);
                         match ps {
                             PkgSrc {
                                 source_workspace: source,
@@ -264,36 +264,36 @@ impl PkgSrc {
     /// if this was successful, None otherwise. Similarly, if the package id
     /// refers to a git repo on the local version, also check it out.
     /// (right now we only support git)
-    pub fn fetch_git(local: &Path, pkgid: &PkgId) -> Option<Path> {
+    pub fn fetch_git(local: &Path, crateid: &CrateId) -> Option<Path> {
         use conditions::git_checkout_failed::cond;
 
         let cwd = os::getcwd();
         debug!("Checking whether {} (path = {}) exists locally. Cwd = {}, does it? {:?}",
-                pkgid.to_str(), pkgid.path.display(),
+                crateid.to_str(), crateid.path.display(),
                 cwd.display(),
-                pkgid.path.exists());
+                crateid.path.exists());
 
-        match safe_git_clone(&pkgid.path, &pkgid.version, local) {
+        match safe_git_clone(&crateid.path, &crateid.version, local) {
             CheckedOutSources => {
                 make_read_only(local);
                 Some(local.clone())
             }
             DirToUse(clone_target) => {
-                if pkgid.path.components().nth(1).is_none() {
+                if crateid.path.components().nth(1).is_none() {
                     // If a non-URL, don't bother trying to fetch
                     return None;
                 }
 
                 // FIXME (#9639): This needs to handle non-utf8 paths
-                let url = format!("https://{}", pkgid.path.as_str().unwrap());
+                let url = format!("https://{}", crateid.path.as_str().unwrap());
                 debug!("Fetching package: git clone {} {} [version={}]",
-                        url, clone_target.display(), pkgid.version.to_str());
+                        url, clone_target.display(), crateid.version.to_str());
 
                 let mut failed = false;
 
                 cond.trap(|_| {
                     failed = true;
-                }).inside(|| git_clone_url(url, &clone_target, &pkgid.version));
+                }).inside(|| git_clone_url(url, &clone_target, &crateid.version));
 
                 if failed {
                     return None;

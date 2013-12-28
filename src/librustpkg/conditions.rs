@@ -10,7 +10,7 @@
 
 // Useful conditions
 
-pub use package_id::PkgId;
+pub use crate_id::CrateId;
 pub use std::io::FileStat;
 pub use std::io::process::ProcessExit;
 pub use std::path::Path;
@@ -20,15 +20,15 @@ condition! {
 }
 
 condition! {
-    pub nonexistent_package: (PkgId, ~str) -> Path;
+    pub nonexistent_package: (CrateId, ~str) -> Path;
 }
 
 condition! {
-    pub missing_pkg_files: (PkgId) -> ();
+    pub missing_pkg_files: (CrateId) -> ();
 }
 
 condition! {
-    pub bad_pkg_id: (Path, ~str) -> PkgId;
+    pub bad_pkg_id: (Path, ~str) -> CrateId;
 }
 
 condition! {
