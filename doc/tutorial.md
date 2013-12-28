@@ -3071,7 +3071,7 @@ Therefore, if you plan to compile your crate as a library, you should annotate i
 
 # #[crate_type = "lib"];
 // Package ID
-#[pkgid = "farm#2.5"];
+#[crate_id = "farm#2.5"];
 
 // ...
 # fn farm() {}
@@ -3095,7 +3095,7 @@ or setting the crate type (library or executable) explicitly:
 // ...
 
 // This crate is a library ("bin" is the default)
-#[pkgid = "farm#2.5"];
+#[crate_id = "farm#2.5"];
 #[crate_type = "lib"];
 
 // Turn on a warning
@@ -3116,7 +3116,7 @@ We define two crates, and use one of them as a library in the other.
 
 ~~~~
 // world.rs
-#[pkgid = "world#0.42"];
+#[crate_id = "world#0.42"];
 # extern mod extra;
 pub fn explore() -> &'static str { "world" }
 # fn main() {}
