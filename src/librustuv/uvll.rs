@@ -38,7 +38,7 @@ use std::libc;
 use std::libc::uintptr_t;
 
 pub use self::errors::{EACCES, ECONNREFUSED, ECONNRESET, EPIPE, ECONNABORTED,
-                       ECANCELED, EBADF, ENOTCONN, ENOENT};
+                       ECANCELED, EBADF, ENOTCONN, ENOENT, EADDRNOTAVAIL};
 
 pub static OK: c_int = 0;
 pub static EOF: c_int = -4095;
@@ -60,6 +60,7 @@ pub mod errors {
     pub static ECONNABORTED: c_int = -4079;
     pub static ECANCELED: c_int = -4081;
     pub static EBADF: c_int = -4083;
+    pub static EADDRNOTAVAIL: c_int = -4090;
 }
 #[cfg(not(windows))]
 pub mod errors {
@@ -75,6 +76,7 @@ pub mod errors {
     pub static ECONNABORTED: c_int = -libc::ECONNABORTED;
     pub static ECANCELED : c_int = -libc::ECANCELED;
     pub static EBADF : c_int = -libc::EBADF;
+    pub static EADDRNOTAVAIL : c_int = -libc::EADDRNOTAVAIL;
 }
 
 pub static PROCESS_SETUID: c_int = 1 << 0;
