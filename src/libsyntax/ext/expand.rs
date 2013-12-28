@@ -1590,8 +1590,12 @@ foo_module!()
                          mtwt_resolve(v.segments[0].identifier));
                 let table = get_sctable();
                 println("SC table:");
-                for (idx,val) in table.table.iter().enumerate() {
-                    println!("{:4u} : {:?}",idx,val);
+
+                {
+                    let table = table.table.borrow();
+                    for (idx,val) in table.get().iter().enumerate() {
+                        println!("{:4u} : {:?}",idx,val);
+                    }
                 }
             }
             assert_eq!(mtwt_resolve(v.segments[0].identifier),resolved_binding);

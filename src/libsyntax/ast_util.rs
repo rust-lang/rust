@@ -719,7 +719,10 @@ pub fn new_mark_internal(m:Mrk, tail:SyntaxContext,table:&mut SCTable)
     // let try_lookup = table.mark_memo.find(&key);
     match table.mark_memo.contains_key(&key) {
         false => {
-            let new_idx = idx_push(&mut table.table,Mark(m,tail));
+            let new_idx = {
+                let mut table = table.table.borrow_mut();
+                idx_push(table.get(), Mark(m,tail))
+            };
             table.mark_memo.insert(key,new_idx);
             new_idx
         }
@@ -746,7 +749,10 @@ pub fn new_rename_internal(id:Ident, to:Name, tail:SyntaxContext, table: &mut SC
     //let try_lookup = table.rename_memo.find(&key);
     match table.rename_memo.contains_key(&key) {
         false => {
-            let new_idx = idx_push(&mut table.table,Rename(id,to,tail));
+            let new_idx = {
+                let mut table = table.table.borrow_mut();
+                idx_push(table.get(), Rename(id,to,tail))
+            };
             table.rename_memo.insert(key,new_idx);
             new_idx
         }
@@ -764,7 +770,7 @@ pub fn new_rename_internal(id:Ident, to:Name, tail:SyntaxContext, table: &mut SC
 // FIXME #8215 : currently pub to allow testing
 pub fn new_sctable_internal() -> SCTable {
     SCTable {
-        table: ~[EmptyCtxt,IllegalCtxt],
+        table: RefCell::new(~[EmptyCtxt,IllegalCtxt]),
         mark_memo: HashMap::new(),
         rename_memo: HashMap::new()
     }
@@ -786,7 +792,8 @@ pub fn get_sctable() -> @mut SCTable {
 /// print out an SCTable for debugging
 pub fn display_sctable(table : &SCTable) {
     error!("SC table:");
-    for (idx,val) in table.table.iter().enumerate() {
+    let table = table.table.borrow();
+    for (idx,val) in table.get().iter().enumerate() {
         error!("{:4u} : {:?}",idx,val);
     }
 }
@@ -832,7 +839,11 @@ pub fn resolve_internal(id : Ident,
     match resolve_table.contains_key(&key) {
         false => {
             let resolved = {
-                match table.table[id.ctxt] {
+                let result = {
+                    let table = table.table.borrow();
+                    table.get()[id.ctxt]
+                };
+                match result {
                     EmptyCtxt => id.name,
                     // ignore marks here:
                     Mark(_,subctxt) =>
@@ -877,7 +888,11 @@ pub fn marksof(ctxt: SyntaxContext, stopname: Name, table: &SCTable) -> ~[Mrk] {
     let mut result = ~[];
     let mut loopvar = ctxt;
     loop {
-        match table.table[loopvar] {
+        let table_entry = {
+            let table = table.table.borrow();
+            table.get()[loopvar]
+        };
+        match table_entry {
             EmptyCtxt => {return result;},
             Mark(mark,tl) => {
                 xorPush(&mut result,mark);
@@ -901,7 +916,8 @@ pub fn marksof(ctxt: SyntaxContext, stopname: Name, table: &SCTable) -> ~[Mrk] {
 /// FAILS when outside is not a mark.
 pub fn mtwt_outer_mark(ctxt: SyntaxContext) -> Mrk {
     let sctable = get_sctable();
-    match sctable.table[ctxt] {
+    let table = sctable.table.borrow();
+    match table.get()[ctxt] {
         ast::Mark(mrk,_) => mrk,
         _ => fail!("can't retrieve outer mark when outside is not a mark")
     }
@@ -1018,7 +1034,8 @@ mod test {
     fn refold_test_sc(mut sc: SyntaxContext, table : &SCTable) -> ~[TestSC] {
         let mut result = ~[];
         loop {
-            match table.table[sc] {
+            let table = table.table.borrow();
+            match table.get()[sc] {
                 EmptyCtxt => {return result;},
                 Mark(mrk,tail) => {
                     result.push(M(mrk));
@@ -1040,9 +1057,12 @@ mod test {
 
         let test_sc = ~[M(3),R(id(101,0),14),M(9)];
         assert_eq!(unfold_test_sc(test_sc.clone(),EMPTY_CTXT,&mut t),4);
-        assert_eq!(t.table[2],Mark(9,0));
-        assert_eq!(t.table[3],Rename(id(101,0),14,2));
-        assert_eq!(t.table[4],Mark(3,3));
+        {
+            let table = t.table.borrow();
+            assert_eq!(table.get()[2],Mark(9,0));
+            assert_eq!(table.get()[3],Rename(id(101,0),14,2));
+            assert_eq!(table.get()[4],Mark(3,3));
+        }
         assert_eq!(refold_test_sc(4,&t),test_sc);
     }
 
@@ -1057,8 +1077,11 @@ mod test {
         let mut t = new_sctable_internal();
 
         assert_eq!(unfold_marks(~[3,7],EMPTY_CTXT,&mut t),3);
-        assert_eq!(t.table[2],Mark(7,0));
-        assert_eq!(t.table[3],Mark(3,2));
+        {
+            let table = t.table.borrow();
+            assert_eq!(table.get()[2],Mark(7,0));
+            assert_eq!(table.get()[3],Mark(3,2));
+        }
     }
 
     #[test] fn test_marksof () {
