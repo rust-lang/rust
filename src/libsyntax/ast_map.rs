@@ -411,12 +411,12 @@ impl Visitor<()> for Ctx {
 }
 
 pub fn map_crate(diag: @span_handler, c: &Crate) -> map {
-    let cx = @mut Ctx {
+    let mut cx = Ctx {
         map: @RefCell::new(HashMap::new()),
         path: RefCell::new(~[]),
         diag: diag,
     };
-    visit::walk_crate(cx, c, ());
+    visit::walk_crate(&mut cx, c, ());
     cx.map
 }
 
@@ -430,7 +430,7 @@ pub fn map_decoded_item(diag: @span_handler,
     // I believe it is ok for the local IDs of inlined items from other crates
     // to overlap with the local ids from this crate, so just generate the ids
     // starting from 0.
-    let cx = @mut Ctx {
+    let mut cx = Ctx {
         map: map,
         path: RefCell::new(path.clone()),
         diag: diag,
@@ -454,7 +454,7 @@ pub fn map_decoded_item(diag: @span_handler,
     }
 
     // visit the item / method contents and add those to the map:
-    ii.accept((), cx);
+    ii.accept((), &mut cx);
 }
 
 pub fn node_id_to_str(map: map, id: NodeId, itr: @ident_interner) -> ~str {
