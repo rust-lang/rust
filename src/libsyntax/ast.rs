@@ -91,7 +91,7 @@ pub type SyntaxContext = u32;
 pub struct SCTable {
     table: RefCell<~[SyntaxContext_]>,
     mark_memo: RefCell<HashMap<(SyntaxContext,Mrk),SyntaxContext>>,
-    rename_memo: HashMap<(SyntaxContext,Ident,Name),SyntaxContext>
+    rename_memo: RefCell<HashMap<(SyntaxContext,Ident,Name),SyntaxContext>>,
 }
 
 // NB: these must be placed in any SCTable...
