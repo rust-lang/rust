@@ -748,17 +748,18 @@ pub fn new_rename_internal(id:Ident, to:Name, tail:SyntaxContext, table: &mut SC
     let key = (tail,id,to);
     // FIXME #5074
     //let try_lookup = table.rename_memo.find(&key);
-    match table.rename_memo.contains_key(&key) {
+    let mut rename_memo = table.rename_memo.borrow_mut();
+    match rename_memo.get().contains_key(&key) {
         false => {
             let new_idx = {
                 let mut table = table.table.borrow_mut();
                 idx_push(table.get(), Rename(id,to,tail))
             };
-            table.rename_memo.insert(key,new_idx);
+            rename_memo.get().insert(key,new_idx);
             new_idx
         }
         true => {
-            match table.rename_memo.find(&key) {
+            match rename_memo.get().find(&key) {
                 None => fail!("internal error: key disappeared 2013042902"),
                 Some(idxptr) => {*idxptr}
             }
@@ -773,7 +774,7 @@ pub fn new_sctable_internal() -> SCTable {
     SCTable {
         table: RefCell::new(~[EmptyCtxt,IllegalCtxt]),
         mark_memo: RefCell::new(HashMap::new()),
-        rename_memo: HashMap::new()
+        rename_memo: RefCell::new(HashMap::new()),
     }
 }
 
