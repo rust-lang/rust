@@ -90,7 +90,7 @@ then both `bar` and `bar/extras/baz` are valid package identifiers
 in the workspace `foo`.
 
 Because rustpkg uses generic source file names as the main inputs, you will
-need to specify the package identifier in them using the `pkgid` attribute
+need to specify the package identifier in them using the `crate_id` attribute
 on the crate.
 
 ## Source files
