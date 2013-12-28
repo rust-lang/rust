@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub struct PkgId {
+pub struct CrateId {
     local_path: ~str,
     junk: ~str
 }
 
-impl PkgId {
-    fn new(s: &str) -> PkgId {
-        PkgId {
+impl CrateId {
+    fn new(s: &str) -> CrateId {
+        CrateId {
             local_path: s.to_owned(),
             junk: ~"wutevs"
         }
@@ -23,8 +23,8 @@ impl PkgId {
 }
 
 pub fn remove_package_from_database() {
-    let mut lines_to_use: ~[&PkgId] = ~[]; //~ ERROR cannot infer an appropriate lifetime
-    let push_id = |installed_id: &PkgId| {
+    let mut lines_to_use: ~[&CrateId] = ~[]; //~ ERROR cannot infer an appropriate lifetime
+    let push_id = |installed_id: &CrateId| {
         lines_to_use.push(installed_id);
     };
     list_database(push_id);
@@ -35,11 +35,11 @@ pub fn remove_package_from_database() {
 
 }
 
-pub fn list_database(f: |&PkgId|) {
+pub fn list_database(f: |&CrateId|) {
     let stuff = ["foo", "bar"];
 
     for l in stuff.iter() {
-        f(&PkgId::new(*l));
+        f(&CrateId::new(*l));
     }
 }
 

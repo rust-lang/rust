@@ -29,7 +29,7 @@ use syntax::util::small_vector::SmallVector;
 use rustc::back::link::output_type_exe;
 use rustc::back::link;
 use context::{in_target, StopBefore, Link, Assemble, BuildContext};
-use package_id::PkgId;
+use crate_id::CrateId;
 use package_source::PkgSrc;
 use workspace::pkg_parent_workspaces;
 use path_util::{system_library, target_build_dir};
@@ -52,7 +52,7 @@ static COMMANDS: &'static [&'static str] =
 pub type ExitCode = int; // For now
 
 pub struct Pkg {
-    id: PkgId,
+    id: CrateId,
     bins: ~[~str],
     libs: ~[~str],
 }
@@ -170,7 +170,7 @@ pub fn ready_crate(sess: session::Session,
 
 pub fn compile_input(context: &BuildContext,
                      exec: &mut workcache::Exec,
-                     pkg_id: &PkgId,
+                     pkg_id: &CrateId,
                      in_file: &Path,
                      workspace: &Path,
                      deps: &mut DepMap,
@@ -303,17 +303,17 @@ pub fn compile_input(context: &BuildContext,
                                       addl_lib_search_paths.get().insert(p);
                                   });
 
-    // Inject the pkgid attribute so we get the right package name and version
+    // Inject the crate_id attribute so we get the right package name and version
     if !attr::contains_name(crate.attrs, "crate_id") {
         // FIXME (#9639): This needs to handle non-utf8 paths
-        let pkgid_attr =
+        let crateid_attr =
             attr::mk_name_value_item_str(@"crate_id",
                                          format!("{}\\#{}",
                                                  pkg_id.path.as_str().unwrap(),
                                                  pkg_id.version.to_str()).to_managed());
 
-        debug!("pkgid attr: {:?}", pkgid_attr);
-        crate.attrs.push(attr::mk_attr(pkgid_attr));
+        debug!("crateid attr: {:?}", crateid_attr);
+        crate.attrs.push(attr::mk_attr(crateid_attr));
     }
 
     debug!("calling compile_crate_from_input, workspace = {},
@@ -428,7 +428,7 @@ pub fn exe_suffix() -> ~str { ~"" }
 // Called by build_crates
 pub fn compile_crate(ctxt: &BuildContext,
                      exec: &mut workcache::Exec,
-                     pkg_id: &PkgId,
+                     pkg_id: &CrateId,
                      crate: &Path,
                      workspace: &Path,
                      deps: &mut DepMap,
@@ -446,7 +446,7 @@ pub fn compile_crate(ctxt: &BuildContext,
 
 struct ViewItemVisitor<'a> {
     context: &'a BuildContext,
-    parent: &'a PkgId,
+    parent: &'a CrateId,
     parent_crate: &'a Path,
     sess: session::Session,
     exec: &'a mut workcache::Exec,
@@ -491,7 +491,7 @@ impl<'a> Visitor<()> for ViewItemVisitor<'a> {
                         debug!("Trying to install library {}, rebuilding it",
                                lib_name.to_str());
                         // Try to install it
-                        let pkg_id = PkgId::new(lib_name);
+                        let pkg_id = CrateId::new(lib_name);
                         // Find all the workspaces in the RUST_PATH that contain this package.
                         let workspaces = pkg_parent_workspaces(&self.context.context,
                                                                &pkg_id);
@@ -607,7 +607,7 @@ impl<'a> Visitor<()> for ViewItemVisitor<'a> {
 /// try to install their targets, failing if any target
 /// can't be found.
 pub fn find_and_install_dependencies(context: &BuildContext,
-                                     parent: &PkgId,
+                                     parent: &CrateId,
                                      parent_crate: &Path,
                                      sess: session::Session,
                                      exec: &mut workcache::Exec,

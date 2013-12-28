@@ -17,7 +17,7 @@ use std::hash;
 /// 'github.com/graydon/test'; path must be a relative
 /// path with >=1 component.
 #[deriving(Clone)]
-pub struct PkgId {
+pub struct CrateId {
     /// This is a path, on the local filesystem, referring to where the
     /// files for this package live. For example:
     /// github.com/mozilla/quux-whatever (it's assumed that if we're
@@ -35,14 +35,14 @@ pub struct PkgId {
     version: Version
 }
 
-impl Eq for PkgId {
-    fn eq(&self, other: &PkgId) -> bool {
+impl Eq for CrateId {
+    fn eq(&self, other: &CrateId) -> bool {
         self.path == other.path && self.version == other.version
     }
 }
 
-impl PkgId {
-    pub fn new(s: &str) -> PkgId {
+impl CrateId {
+    pub fn new(s: &str) -> CrateId {
         use conditions::bad_pkg_id::cond;
 
         let mut given_version = None;
@@ -60,10 +60,10 @@ impl PkgId {
 
         let path = Path::new(s);
         if !path.is_relative() {
-            return cond.raise((path, ~"absolute pkgid"));
+            return cond.raise((path, ~"absolute crate_id"));
         }
         if path.filename().is_none() {
-            return cond.raise((path, ~"0-length pkgid"));
+            return cond.raise((path, ~"0-length crate_id"));
         }
         let short_name = path.filestem_str().expect(format!("Strange path! {}", s));
 
@@ -78,7 +78,7 @@ impl PkgId {
             }
         };
 
-        PkgId {
+        CrateId {
             path: path.clone(),
             short_name: short_name.to_owned(),
             version: version
@@ -142,7 +142,7 @@ impl Iterator<(Path, Path)> for Prefixes {
     }
 }
 
-impl ToStr for PkgId {
+impl ToStr for CrateId {
     fn to_str(&self) -> ~str {
         // should probably use the filestem and not the whole path
         format!("{}-{}", self.path.as_str().unwrap(), self.version.to_str())
