@@ -413,7 +413,8 @@ impl<'a> PrivacyVisitor<'a> {
         let mut closest_private_id = did.node;
         loop {
             debug!("privacy - examining {}", self.nodestr(closest_private_id));
-            let vis = match self.tcx.items.find(&closest_private_id) {
+            let items = self.tcx.items.borrow();
+            let vis = match items.get().find(&closest_private_id) {
                 // If this item is a method, then we know for sure that it's an
                 // actual method and not a static method. The reason for this is
                 // that these cases are only hit in the ExprMethodCall
@@ -519,7 +520,8 @@ impl<'a> PrivacyVisitor<'a> {
                     self.tcx.sess.span_err(span, format!("{} is inaccessible",
                                                          msg));
                 }
-                match self.tcx.items.find(&id) {
+                let items = self.tcx.items.borrow();
+                match items.get().find(&id) {
                     Some(&ast_map::node_item(item, _)) => {
                         let desc = match item.node {
                             ast::item_mod(..) => "module",

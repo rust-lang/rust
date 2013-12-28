@@ -266,13 +266,15 @@ impl Visitor<()> for CheckItemRecursionVisitor {
                 let def_map = self.env.def_map.borrow();
                 match def_map.get().find(&e.id) {
                     Some(&DefStatic(def_id, _)) if
-                            ast_util::is_local(def_id) =>
-                        match self.env.ast_map.get_copy(&def_id.node) {
+                            ast_util::is_local(def_id) => {
+                        let ast_map = self.env.ast_map.borrow();
+                        match ast_map.get().get_copy(&def_id.node) {
                             ast_map::node_item(it, _) => {
                                 self.visit_item(it, ());
                             }
                             _ => fail!("const not bound to an item")
-                        },
+                        }
+                    }
                     _ => ()
                 }
             },

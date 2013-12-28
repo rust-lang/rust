@@ -165,7 +165,13 @@ pub fn get_const_val(cx: @CrateContext,
         if !ast_util::is_local(def_id) {
             def_id = inline::maybe_instantiate_inline(cx, def_id);
         }
-        match cx.tcx.items.get_copy(&def_id.node) {
+
+        let opt_item = {
+            let items = cx.tcx.items.borrow();
+            items.get().get_copy(&def_id.node)
+        };
+
+        match opt_item {
             ast_map::node_item(@ast::item {
                 node: ast::item_static(_, ast::MutImmutable, _), ..
             }, _) => {
