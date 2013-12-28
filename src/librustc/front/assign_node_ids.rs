@@ -18,14 +18,14 @@ struct NodeIdAssigner {
 }
 
 impl ast_fold for NodeIdAssigner {
-    fn new_id(&self, old_id: ast::NodeId) -> ast::NodeId {
+    fn new_id(&mut self, old_id: ast::NodeId) -> ast::NodeId {
         assert_eq!(old_id, ast::DUMMY_NODE_ID);
         self.sess.next_node_id()
     }
 }
 
 pub fn assign_node_ids(sess: Session, crate: ast::Crate) -> ast::Crate {
-    let fold = NodeIdAssigner {
+    let mut fold = NodeIdAssigner {
         sess: sess,
     };
     fold.fold_crate(crate)
