@@ -47,7 +47,7 @@ pub mod fold;
 
 
 pub mod parse;
-pub mod pkgid;
+pub mod crateid;
 
 pub mod print {
     pub mod pp;
