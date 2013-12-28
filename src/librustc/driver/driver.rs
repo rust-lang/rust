@@ -1030,12 +1030,12 @@ pub fn build_output_filenames(input: &input,
               str_input(_) => @"rust_out"
           };
 
-          // If a pkgid is present, we use it as the link name
-          let pkgid = attr::find_pkgid(attrs);
-          match pkgid {
+          // If a crateid is present, we use it as the link name
+          let crateid = attr::find_crateid(attrs);
+          match crateid {
               None => {}
-              Some(pkgid) => {
-                  stem = pkgid.name.to_managed()
+              Some(crateid) => {
+                  stem = crateid.name.to_managed()
               }
           }
 
