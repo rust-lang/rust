@@ -1309,10 +1309,17 @@ impl<'a> LookupContext<'a> {
 
     fn report_static_candidate(&self, idx: uint, did: DefId) {
         let span = if did.crate == ast::LOCAL_CRATE {
-            match self.tcx().items.find(&did.node) {
-              Some(&ast_map::node_method(m, _, _))
-              | Some(&ast_map::node_trait_method(@ast::provided(m), _, _)) => m.span,
-              _ => fail!("report_static_candidate: bad item {:?}", did)
+            {
+                let items = self.tcx().items.borrow();
+                match items.get().find(&did.node) {
+                  Some(&ast_map::node_method(m, _, _))
+                  | Some(&ast_map::node_trait_method(@ast::provided(m),
+                                                     _,
+                                                     _)) => {
+                      m.span
+                  }
+                  _ => fail!("report_static_candidate: bad item {:?}", did)
+                }
             }
         } else {
             self.expr.span

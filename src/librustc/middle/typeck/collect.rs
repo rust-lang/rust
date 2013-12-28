@@ -106,19 +106,18 @@ impl AstConv for CrateCtxt {
 
     fn get_item_ty(&self, id: ast::DefId) -> ty::ty_param_bounds_and_ty {
         if id.crate != ast::LOCAL_CRATE {
-            csearch::get_type(self.tcx, id)
-        } else {
-            match self.tcx.items.find(&id.node) {
-              Some(&ast_map::node_item(item, _)) => {
-                ty_of_item(self, item)
-              }
-              Some(&ast_map::node_foreign_item(foreign_item, abis, _, _)) => {
+            return csearch::get_type(self.tcx, id)
+        }
+
+        let items = self.tcx.items.borrow();
+        match items.get().find(&id.node) {
+            Some(&ast_map::node_item(item, _)) => ty_of_item(self, item),
+            Some(&ast_map::node_foreign_item(foreign_item, abis, _, _)) => {
                 ty_of_foreign_item(self, foreign_item, abis)
-              }
-              ref x => {
+            }
+            ref x => {
                 self.tcx.sess.bug(format!("unexpected sort of item \
-                                        in get_item_ty(): {:?}", (*x)));
-              }
+                                           in get_item_ty(): {:?}", (*x)));
             }
         }
     }
@@ -187,7 +186,8 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt,
                             trait_id: ast::NodeId)
 {
     let tcx = ccx.tcx;
-    match tcx.items.get_copy(&trait_id) {
+    let items = tcx.items.borrow();
+    match items.get().get_copy(&trait_id) {
         ast_map::node_item(@ast::item {
             node: ast::item_trait(ref generics, _, ref ms),
             ..
@@ -715,7 +715,8 @@ pub fn convert_foreign(ccx: &CrateCtxt, i: &ast::foreign_item) {
     // map, and I regard each time that I use it as a personal and
     // moral failing, but at the moment it seems like the only
     // convenient way to extract the ABI. - ndm
-    let abis = match ccx.tcx.items.find(&i.id) {
+    let items = ccx.tcx.items.borrow();
+    let abis = match items.get().find(&i.id) {
         Some(&ast_map::node_foreign_item(_, abis, _, _)) => abis,
         ref x => {
             ccx.tcx.sess.bug(format!("unexpected sort of item \
@@ -765,13 +766,14 @@ pub fn instantiate_trait_ref(ccx: &CrateCtxt,
 
 fn get_trait_def(ccx: &CrateCtxt, trait_id: ast::DefId) -> @ty::TraitDef {
     if trait_id.crate != ast::LOCAL_CRATE {
-        ty::lookup_trait_def(ccx.tcx, trait_id)
-    } else {
-        match ccx.tcx.items.get(&trait_id.node) {
-            &ast_map::node_item(item, _) => trait_def_of_item(ccx, item),
-            _ => ccx.tcx.sess.bug(format!("get_trait_def({}): not an item",
-                                       trait_id.node))
-        }
+        return ty::lookup_trait_def(ccx.tcx, trait_id)
+    }
+
+    let items = ccx.tcx.items.borrow();
+    match items.get().get(&trait_id.node) {
+        &ast_map::node_item(item, _) => trait_def_of_item(ccx, item),
+        _ => ccx.tcx.sess.bug(format!("get_trait_def({}): not an item",
+                                   trait_id.node))
     }
 }
 

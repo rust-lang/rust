@@ -1238,7 +1238,8 @@ fn check_stability(cx: &Context, e: &ast::Expr) {
 
     let stability = if ast_util::is_local(id) {
         // this crate
-        match cx.tcx.items.find(&id.node) {
+        let items = cx.tcx.items.borrow();
+        match items.get().find(&id.node) {
             Some(ast_node) => {
                 let s = ast_node.with_attrs(|attrs| {
                     attrs.map(|a| {
