@@ -789,21 +789,32 @@ impl Liveness {
         str::from_utf8_owned(io::mem::with_mem_writer(|wr| {
             let wr = wr as &mut io::Writer;
             {
-                let lnks = self.ir.lnks.borrow();
+                let lnks = self.ir.lnks.try_borrow();
                 write!(wr,
                        "[ln({}) of kind {:?} reads",
                        *ln,
-                       lnks.get()[*ln]);
+                       lnks.and_then(|lnks| Some(lnks.get()[*ln])));
             }
-            let users = self.users.borrow();
-            self.write_vars(wr, ln, |idx| users.get()[idx].reader);
-            write!(wr, "  writes");
-            self.write_vars(wr, ln, |idx| users.get()[idx].writer);
-            let successor = {
-                let successors = self.successors.borrow();
-                successors.get()[*ln]
-            };
-            write!(wr, "  precedes {}]", successor.to_str());
+            let users = self.users.try_borrow();
+            match users {
+                Some(users) => {
+                    self.write_vars(wr, ln, |idx| users.get()[idx].reader);
+                    write!(wr, "  writes");
+                    self.write_vars(wr, ln, |idx| users.get()[idx].writer);
+                }
+                None => {
+                    write!(wr, "  (users borrowed)");
+                }
+            }
+            let successors = self.successors.try_borrow();
+            match successors {
+                Some(successors) => {
+                    write!(wr, "  precedes {}]", successors.get()[*ln].to_str());
+                }
+                None => {
+                    write!(wr, "  precedes (successors borrowed)]");
+                }
+            }
         }))
     }
 
