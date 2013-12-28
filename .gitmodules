@@ -8,4 +8,4 @@
 	branch = master
 [submodule "src/gyp"]
 	path = src/gyp
-	url = https://github.com/brson/gyp.git
+	url = https://github.com/alexcrichton/gyp.git
