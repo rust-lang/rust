@@ -44,6 +44,7 @@ pub use self::process::Process;
 // Native I/O implementations
 pub mod file;
 pub mod process;
+pub mod net;
 
 type IoResult<T> = Result<T, IoError>;
 
@@ -55,12 +56,25 @@ fn unimpl() -> IoError {
     }
 }
 
-fn last_error() -> IoError {
+fn translate_error(errno: i32, detail: bool) -> IoError {
     #[cfg(windows)]
     fn get_err(errno: i32) -> (io::IoErrorKind, &'static str) {
         match errno {
             libc::EOF => (io::EndOfFile, "end of file"),
-            _ => (io::OtherIoError, "unknown error"),
+            libc::WSAECONNREFUSED => (io::ConnectionRefused, "connection refused"),
+            libc::WSAECONNRESET => (io::ConnectionReset, "connection reset"),
+            libc::WSAEACCES => (io::PermissionDenied, "permission denied"),
+            libc::WSAEWOULDBLOCK =>
+                (io::ResourceUnavailable, "resource temporarily unavailable"),
+            libc::WSAENOTCONN => (io::NotConnected, "not connected"),
+            libc::WSAECONNABORTED => (io::ConnectionAborted, "connection aborted"),
+            libc::WSAEADDRNOTAVAIL => (io::ConnectionRefused, "address not available"),
+            libc::WSAEADDRINUSE => (io::ConnectionRefused, "address in use"),
+
+            x => {
+                debug!("ignoring {}: {}", x, os::last_os_error());
+                (io::OtherIoError, "unknown error")
+            }
         }
     }
 
@@ -69,23 +83,37 @@ fn last_error() -> IoError {
         // XXX: this should probably be a bit more descriptive...
         match errno {
             libc::EOF => (io::EndOfFile, "end of file"),
+            libc::ECONNREFUSED => (io::ConnectionRefused, "connection refused"),
+            libc::ECONNRESET => (io::ConnectionReset, "connection reset"),
+            libc::EPERM | libc::EACCES =>
+                (io::PermissionDenied, "permission denied"),
+            libc::EPIPE => (io::BrokenPipe, "broken pipe"),
+            libc::ENOTCONN => (io::NotConnected, "not connected"),
+            libc::ECONNABORTED => (io::ConnectionAborted, "connection aborted"),
+            libc::EADDRNOTAVAIL => (io::ConnectionRefused, "address not available"),
+            libc::EADDRINUSE => (io::ConnectionRefused, "address in use"),
 
             // These two constants can have the same value on some systems, but
             // different values on others, so we can't use a match clause
             x if x == libc::EAGAIN || x == libc::EWOULDBLOCK =>
                 (io::ResourceUnavailable, "resource temporarily unavailable"),
 
-            _ => (io::OtherIoError, "unknown error"),
+            x => {
+                debug!("ignoring {}: {}", x, os::last_os_error());
+                (io::OtherIoError, "unknown error")
+            }
         }
     }
 
-    let (kind, desc) = get_err(os::errno() as i32);
+    let (kind, desc) = get_err(errno);
     IoError {
         kind: kind,
         desc: desc,
-        detail: Some(os::last_os_error())
+        detail: if detail {Some(os::last_os_error())} else {None},
     }
 }
+
+fn last_error() -> IoError { translate_error(os::errno() as i32, true) }
 
 // unix has nonzero values as errors
 fn mkerr_libc(ret: libc::c_int) -> IoResult<()> {
@@ -106,17 +134,37 @@ fn mkerr_winbool(ret: libc::c_int) -> IoResult<()> {
     }
 }
 
+#[cfg(unix)]
+fn retry(f: || -> libc::c_int) -> IoResult<libc::c_int> {
+    loop {
+        match f() {
+            -1 if os::errno() as int == libc::EINTR as int => {}
+            -1 => return Err(last_error()),
+            n => return Ok(n),
+        }
+    }
+}
+
 /// Implementation of rt::rtio's IoFactory trait to generate handles to the
 /// native I/O functionality.
-pub struct IoFactory;
+pub struct IoFactory {
+    priv cannot_construct_outside_of_this_module: ()
+}
+
+impl IoFactory {
+    pub fn new() -> IoFactory {
+        net::init();
+        IoFactory { cannot_construct_outside_of_this_module: () }
+    }
+}
 
 impl rtio::IoFactory for IoFactory {
     // networking
-    fn tcp_connect(&mut self, _addr: SocketAddr) -> IoResult<~RtioTcpStream> {
-        Err(unimpl())
+    fn tcp_connect(&mut self, addr: SocketAddr) -> IoResult<~RtioTcpStream> {
+        net::TcpStream::connect(addr).map(|s| ~s as ~RtioTcpStream)
     }
-    fn tcp_bind(&mut self, _addr: SocketAddr) -> IoResult<~RtioTcpListener> {
-        Err(unimpl())
+    fn tcp_bind(&mut self, addr: SocketAddr) -> IoResult<~RtioTcpListener> {
+        net::TcpListener::bind(addr).map(|s| ~s as ~RtioTcpListener)
     }
     fn udp_bind(&mut self, _addr: SocketAddr) -> IoResult<~RtioUdpSocket> {
         Err(unimpl())
@@ -204,9 +252,7 @@ impl rtio::IoFactory for IoFactory {
     }
     fn tty_open(&mut self, fd: c_int, _readable: bool) -> IoResult<~RtioTTY> {
         if unsafe { libc::isatty(fd) } != 0 {
-            // Don't ever close the stdio file descriptors, nothing good really
-            // comes of that.
-            Ok(~file::FileDesc::new(fd, fd > libc::STDERR_FILENO) as ~RtioTTY)
+            Ok(~file::FileDesc::new(fd, true) as ~RtioTTY)
         } else {
             Err(IoError {
                 kind: io::MismatchedFileTypeForOperation,
