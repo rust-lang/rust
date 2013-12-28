@@ -710,8 +710,8 @@ pub fn new_mark(m:Mrk, tail:SyntaxContext) -> SyntaxContext {
 
 // Extend a syntax context with a given mark and table
 // FIXME #8215 : currently pub to allow testing
-pub fn new_mark_internal(m:Mrk, tail:SyntaxContext,table:&mut SCTable)
-    -> SyntaxContext {
+pub fn new_mark_internal(m: Mrk, tail: SyntaxContext, table: &SCTable)
+                         -> SyntaxContext {
     let key = (tail,m);
     // FIXME #5074 : can't use more natural style because we're missing
     // flow-sensitivity. Results in two lookups on a hash table hit.
@@ -743,8 +743,11 @@ pub fn new_rename(id:Ident, to:Name, tail:SyntaxContext) -> SyntaxContext {
 
 // Extend a syntax context with a given rename and sctable
 // FIXME #8215 : currently pub to allow testing
-pub fn new_rename_internal(id:Ident, to:Name, tail:SyntaxContext, table: &mut SCTable)
-    -> SyntaxContext {
+pub fn new_rename_internal(id: Ident,
+                           to: Name,
+                           tail: SyntaxContext,
+                           table: &SCTable)
+                           -> SyntaxContext {
     let key = (tail,id,to);
     // FIXME #5074
     //let try_lookup = table.rename_memo.find(&key);
@@ -779,11 +782,11 @@ pub fn new_sctable_internal() -> SCTable {
 }
 
 // fetch the SCTable from TLS, create one if it doesn't yet exist.
-pub fn get_sctable() -> @mut SCTable {
-    local_data_key!(sctable_key: @@mut SCTable)
+pub fn get_sctable() -> @SCTable {
+    local_data_key!(sctable_key: @@SCTable)
     match local_data::get(sctable_key, |k| k.map(|k| *k)) {
         None => {
-            let new_table = @@mut new_sctable_internal();
+            let new_table = @@new_sctable_internal();
             local_data::set(sctable_key,new_table);
             *new_table
         },
@@ -835,7 +838,7 @@ pub fn get_resolve_table() -> @RefCell<ResolveTable> {
 // adding memoization to possibly resolve 500+ seconds in resolve for librustc (!)
 // FIXME #8215 : currently pub to allow testing
 pub fn resolve_internal(id : Ident,
-                        table : &mut SCTable,
+                        table : &SCTable,
                         resolve_table : &mut ResolveTable) -> Name {
     let key = (id.name,id.ctxt);
     match resolve_table.contains_key(&key) {
@@ -1024,7 +1027,7 @@ mod test {
 
     // unfold a vector of TestSC values into a SCTable,
     // returning the resulting index
-    fn unfold_test_sc(tscs : ~[TestSC], tail: SyntaxContext, table : &mut SCTable)
+    fn unfold_test_sc(tscs : ~[TestSC], tail: SyntaxContext, table: &SCTable)
         -> SyntaxContext {
         tscs.rev_iter().fold(tail, |tail : SyntaxContext, tsc : &TestSC|
                   {match *tsc {
@@ -1070,7 +1073,8 @@ mod test {
 
     // extend a syntax context with a sequence of marks given
     // in a vector. v[0] will be the outermost mark.
-    fn unfold_marks(mrks:~[Mrk],tail:SyntaxContext,table: &mut SCTable) -> SyntaxContext {
+    fn unfold_marks(mrks: ~[Mrk], tail: SyntaxContext, table: &SCTable)
+                    -> SyntaxContext {
         mrks.rev_iter().fold(tail, |tail:SyntaxContext, mrk:&Mrk|
                    {new_mark_internal(*mrk,tail,table)})
     }
