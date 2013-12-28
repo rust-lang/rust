@@ -1406,7 +1406,7 @@ mod test {
     }
 
     fn fake_print_crate(crate: &ast::Crate) {
-        let out = @mut std::io::stderr() as @mut std::io::Writer;
+        let mut out = ~std::io::stderr() as ~std::io::Writer;
         let s = pprust::rust_printer(out, get_ident_interner());
         pprust::print_crate_(s, crate);
     }

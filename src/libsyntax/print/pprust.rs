@@ -122,7 +122,7 @@ pub fn print_crate(cm: @CodeMap,
                    span_diagnostic: @diagnostic::span_handler,
                    crate: &ast::Crate,
                    filename: @str,
-                   input: @mut io::Reader,
+                   input: &mut io::Reader,
                    out: ~io::Writer,
                    ann: @pp_ann,
                    is_expanded: bool) {
@@ -211,13 +211,8 @@ pub fn fun_to_str(decl: &ast::fn_decl, purity: ast::purity, name: ast::Ident,
     end(&mut s); // Close the head box
     end(&mut s); // Close the outer box
     eof(&mut s.s);
-
-    // XXX(pcwalton): Need checked downcasts.
     unsafe {
-        let (_, wr): (uint, ~MemWriter) = cast::transmute(s.s.out);
-        let result = str::from_utf8_owned(wr.inner_ref().to_owned());
-        cast::forget(wr);
-        result
+        get_mem_writer(&mut s.s.out)
     }
 }
 
@@ -230,13 +225,8 @@ pub fn block_to_str(blk: &ast::Block, intr: @ident_interner) -> ~str {
     ibox(&mut s, 0u);
     print_block(&mut s, blk);
     eof(&mut s.s);
-
-    // XXX(pcwalton): Need checked downcasts.
     unsafe {
-        let (_, wr): (uint, ~MemWriter) = cast::transmute(s.s.out);
-        let result = str::from_utf8_owned(wr.inner_ref().to_owned());
-        cast::forget(wr);
-        result
+        get_mem_writer(&mut s.s.out)
     }
 }
 
@@ -2323,17 +2313,23 @@ pub fn print_string(s: &mut ps, st: &str, style: ast::StrStyle) {
     word(&mut s.s, st);
 }
 
+// XXX(pcwalton): A nasty function to extract the string from an `io::Writer`
+// that we "know" to be a `MemWriter` that works around the lack of checked
+// downcasts.
+unsafe fn get_mem_writer(writer: &mut ~io::Writer) -> ~str {
+    let (_, wr): (uint, ~MemWriter) = cast::transmute_copy(writer);
+    let result = str::from_utf8_owned(wr.inner_ref().to_owned());
+    cast::forget(wr);
+    result
+}
+
 pub fn to_str<T>(t: &T, f: |&mut ps, &T|, intr: @ident_interner) -> ~str {
     let wr = ~MemWriter::new();
     let mut s = rust_printer(wr as ~io::Writer, intr);
     f(&mut s, t);
     eof(&mut s.s);
-    // XXX(pcwalton): Need checked downcasts.
     unsafe {
-        let (_, wr): (uint, ~MemWriter) = cast::transmute(s.s.out);
-        let result = str::from_utf8_owned(wr.inner_ref().to_owned());
-        cast::forget(wr);
-        result
+        get_mem_writer(&mut s.s.out)
     }
 }
 
