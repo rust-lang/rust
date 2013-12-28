@@ -132,9 +132,10 @@ specifiers that can be used to dictate how a code block is tested:
 ~~~
 
 Rustdoc also supplies some extra sugar for helping with some tedious
-documentation examples. If a line is prefixed with a `#` character, then the
-line will not show up in the HTML documentation, but it will be used when
-testing the code block.
+documentation examples. If a line is prefixed with `# `, then the line
+will not show up in the HTML documentation, but it will be used when
+testing the code block (NB. the space after the `#` is required, so
+that one can still write things like `#[deriving(Eq)]`).
 
 ~~~
 ```rust

@@ -101,7 +101,7 @@ pub fn render(w: &mut io::Writer, s: &str) {
             vec::raw::buf_as_slice((*text).data, (*text).size as uint, |text| {
                 let text = str::from_utf8(text);
                 let mut lines = text.lines().filter(|l| {
-                    !l.trim().starts_with("#")
+                    !l.trim().starts_with("# ")
                 });
                 let text = lines.to_owned_vec().connect("\n");
 
@@ -169,7 +169,9 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
             vec::raw::buf_as_slice((*text).data, (*text).size as uint, |text| {
                 let tests: &mut ::test::Collector = intrinsics::transmute(opaque);
                 let text = str::from_utf8(text);
-                let mut lines = text.lines().map(|l| l.trim_chars(&'#'));
+                let mut lines = text.lines().map(|l| {
+                            if l.starts_with("# ") {l.slice_from(2)} else {l}
+                        });
                 let text = lines.to_owned_vec().connect("\n");
                 tests.add_test(text, ignore, shouldfail);
             })

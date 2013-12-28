@@ -171,6 +171,7 @@ impl Collector {
         self.cnt += 1;
         let libs = (*self.libs).clone();
         let cratename = self.cratename.to_owned();
+        debug!("Creating test {}: {}", name, test);
         self.tests.push(test::TestDescAndFn {
             desc: test::TestDesc {
                 name: test::DynTestName(name),
