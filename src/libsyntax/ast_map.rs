@@ -152,13 +152,13 @@ pub type map = @RefCell<HashMap<NodeId, ast_node>>;
 
 pub struct Ctx {
     map: map,
-    path: path,
+    path: RefCell<path>,
     diag: @span_handler,
 }
 
 impl Ctx {
     fn extend(&self, elt: path_elt) -> @path {
-        @vec::append(self.path.clone(), [elt])
+        @vec::append(self.path.get(), [elt])
     }
 
     fn map_method(&mut self,
@@ -230,12 +230,18 @@ impl Ctx {
             map.get().insert(a.id, node_arg(a.pat));
         }
         match *fk {
-            visit::fk_method(name, _, _) => { self.path.push(path_name(name)) }
+            visit::fk_method(name, _, _) => {
+                let mut path = self.path.borrow_mut();
+                path.get().push(path_name(name))
+            }
             _ => {}
         }
         visit::walk_fn(self, fk, decl, body, sp, id, ());
         match *fk {
-            visit::fk_method(..) => { self.path.pop(); }
+            visit::fk_method(..) => {
+                let mut path = self.path.borrow_mut();
+                path.get().pop();
+            }
             _ => {}
         }
     }
@@ -275,7 +281,7 @@ impl Ctx {
 impl Visitor<()> for Ctx {
     fn visit_item(&mut self, i: @item, _: ()) {
         // clone is FIXME #2543
-        let item_path = @self.path.clone();
+        let item_path = @self.path.get();
         {
             let mut map = self.map.borrow_mut();
             map.get().insert(i.id, node_item(i, item_path));
@@ -293,7 +299,8 @@ impl Visitor<()> for Ctx {
                     self.map_method(impl_did, extended, *m, false)
                 }
 
-                self.path.push(elt);
+                let mut path = self.path.borrow_mut();
+                path.get().push(elt);
             }
             item_enum(ref enum_definition, _) => {
                 for &v in enum_definition.variants.iter() {
@@ -321,7 +328,7 @@ impl Visitor<()> for Ctx {
                                                         // Anonymous extern
                                                         // mods go in the
                                                         // parent scope.
-                                                        @self.path.clone()
+                                                        @self.path.get()
                                                        ));
                 }
             }
@@ -356,13 +363,19 @@ impl Visitor<()> for Ctx {
 
         match i.node {
             item_mod(_) | item_foreign_mod(_) => {
-                self.path.push(path_mod(i.ident));
+                let mut path = self.path.borrow_mut();
+                path.get().push(path_mod(i.ident));
             }
             item_impl(..) => {} // this was guessed above.
-            _ => self.path.push(path_name(i.ident))
+            _ => {
+                let mut path = self.path.borrow_mut();
+                path.get().push(path_name(i.ident))
+            }
         }
         visit::walk_item(self, i, ());
-        self.path.pop();
+
+        let mut path = self.path.borrow_mut();
+        path.get().pop();
     }
 
     fn visit_pat(&mut self, pat: &Pat, _: ()) {
@@ -400,7 +413,7 @@ impl Visitor<()> for Ctx {
 pub fn map_crate(diag: @span_handler, c: &Crate) -> map {
     let cx = @mut Ctx {
         map: @RefCell::new(HashMap::new()),
-        path: ~[],
+        path: RefCell::new(~[]),
         diag: diag,
     };
     visit::walk_crate(cx, c, ());
@@ -419,7 +432,7 @@ pub fn map_decoded_item(diag: @span_handler,
     // starting from 0.
     let cx = @mut Ctx {
         map: map,
-        path: path.clone(),
+        path: RefCell::new(path.clone()),
         diag: diag,
     };
 
