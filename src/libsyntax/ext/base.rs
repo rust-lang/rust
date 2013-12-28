@@ -35,11 +35,8 @@ pub struct MacroDef {
     ext: SyntaxExtension
 }
 
-pub type ItemDecorator = extern "Rust" fn(&ExtCtxt,
-                                          Span,
-                                          @ast::MetaItem,
-                                          ~[@ast::item])
-                                          -> ~[@ast::item];
+pub type ItemDecorator =
+    fn(&ExtCtxt, Span, @ast::MetaItem, ~[@ast::item]) -> ~[@ast::item];
 
 pub struct SyntaxExpanderTT {
     expander: SyntaxExpanderTTExpander,
@@ -56,10 +53,8 @@ pub trait SyntaxExpanderTTTrait {
 }
 
 pub type SyntaxExpanderTTFunNoCtxt =
-    extern "Rust" fn(ecx: &ExtCtxt,
-                     span: codemap::Span,
-                     token_tree: &[ast::token_tree])
-                     -> MacResult;
+    fn(ecx: &ExtCtxt, span: codemap::Span, token_tree: &[ast::token_tree])
+       -> MacResult;
 
 enum SyntaxExpanderTTExpander {
     SyntaxExpanderTTExpanderWithoutContext(SyntaxExpanderTTFunNoCtxt),
@@ -119,16 +114,12 @@ impl SyntaxExpanderTTItemTrait for SyntaxExpanderTTItem {
     }
 }
 
-pub type SyntaxExpanderTTItemFun = extern "Rust" fn(&ExtCtxt,
-                                                    Span,
-                                                    ast::Ident,
-                                                    ~[ast::token_tree],
-                                                    ast::SyntaxContext)
-                                                    -> MacResult;
+pub type SyntaxExpanderTTItemFun =
+    fn(&ExtCtxt, Span, ast::Ident, ~[ast::token_tree], ast::SyntaxContext)
+       -> MacResult;
 
 pub type SyntaxExpanderTTItemFunNoCtxt =
-    extern "Rust" fn(&ExtCtxt, Span, ast::Ident, ~[ast::token_tree])
-                     -> MacResult;
+    fn(&ExtCtxt, Span, ast::Ident, ~[ast::token_tree]) -> MacResult;
 
 pub trait AnyMacro {
     fn make_expr(&self) -> @ast::Expr;
