@@ -89,9 +89,9 @@ pub type SyntaxContext = u32;
 // it should cut down on memory use *a lot*; applying a mark
 // to a tree containing 50 identifiers would otherwise generate
 pub struct SCTable {
-    table : RefCell<~[SyntaxContext_]>,
-    mark_memo : HashMap<(SyntaxContext,Mrk),SyntaxContext>,
-    rename_memo : HashMap<(SyntaxContext,Ident,Name),SyntaxContext>
+    table: RefCell<~[SyntaxContext_]>,
+    mark_memo: RefCell<HashMap<(SyntaxContext,Mrk),SyntaxContext>>,
+    rename_memo: HashMap<(SyntaxContext,Ident,Name),SyntaxContext>
 }
 
 // NB: these must be placed in any SCTable...
