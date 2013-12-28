@@ -78,7 +78,7 @@ syn keyword rustTrait Default
 syn keyword rustTrait Hash
 syn keyword rustTrait FromStr
 syn keyword rustTrait FromIterator Extendable
-syn keyword rustTrait Iterator DoubleEndedIterator RandomAccessIterator ClonableIterator
+syn keyword rustTrait Iterator DoubleEndedIterator RandomAccessIterator CloneableIterator
 syn keyword rustTrait OrdIterator MutableDoubleEndedIterator ExactSize
 syn keyword rustTrait Times
 

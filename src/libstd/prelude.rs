@@ -55,7 +55,7 @@ pub use default::Default;
 pub use from_str::FromStr;
 pub use hash::Hash;
 pub use iter::{FromIterator, Extendable};
-pub use iter::{Iterator, DoubleEndedIterator, RandomAccessIterator, ClonableIterator};
+pub use iter::{Iterator, DoubleEndedIterator, RandomAccessIterator, CloneableIterator};
 pub use iter::{OrdIterator, MutableDoubleEndedIterator, ExactSize};
 pub use num::Times;
 pub use num::{Algebraic, Trigonometric, Exponential, Hyperbolic};
