@@ -908,7 +908,7 @@ struct Duplicator<'a> {
 }
 
 impl<'a> ast_fold for Duplicator<'a> {
-    fn new_id(&self, _: NodeId) -> NodeId {
+    fn new_id(&mut self, _: NodeId) -> NodeId {
         ast::DUMMY_NODE_ID
     }
 }
@@ -925,7 +925,7 @@ pub trait Duplicate {
 
 impl Duplicate for @ast::Expr {
     fn duplicate(&self, cx: &ExtCtxt) -> @ast::Expr {
-        let folder = Duplicator {
+        let mut folder = Duplicator {
             cx: cx,
         };
         folder.fold_expr(*self)

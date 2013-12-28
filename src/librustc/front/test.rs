@@ -67,7 +67,7 @@ struct TestHarnessGenerator {
 }
 
 impl fold::ast_fold for TestHarnessGenerator {
-    fn fold_crate(&self, c: ast::Crate) -> ast::Crate {
+    fn fold_crate(&mut self, c: ast::Crate) -> ast::Crate {
         let folded = fold::noop_fold_crate(c, self);
 
         // Add a special __test module to the crate that will contain code
@@ -78,7 +78,7 @@ impl fold::ast_fold for TestHarnessGenerator {
         }
     }
 
-    fn fold_item(&self, i: @ast::item) -> SmallVector<@ast::item> {
+    fn fold_item(&mut self, i: @ast::item) -> SmallVector<@ast::item> {
         {
             let mut path = self.cx.path.borrow_mut();
             path.get().push(i.ident);
@@ -122,7 +122,7 @@ impl fold::ast_fold for TestHarnessGenerator {
         res
     }
 
-    fn fold_mod(&self, m: &ast::_mod) -> ast::_mod {
+    fn fold_mod(&mut self, m: &ast::_mod) -> ast::_mod {
         // Remove any #[main] from the AST so it doesn't clash with
         // the one we're going to add. Only if compiling an executable.
 
@@ -172,7 +172,7 @@ fn generate_test_harness(sess: session::Session, crate: ast::Crate)
         }
     });
 
-    let fold = TestHarnessGenerator {
+    let mut fold = TestHarnessGenerator {
         cx: cx
     };
     let res = fold.fold_crate(crate);

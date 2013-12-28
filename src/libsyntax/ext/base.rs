@@ -324,11 +324,11 @@ impl ExtCtxt {
         loop {
             match e.node {
                 ast::ExprMac(..) => {
-                    let expander = expand::MacroExpander {
+                    let mut expander = expand::MacroExpander {
                         extsbox: @mut syntax_expander_table(),
                         cx: self,
                     };
-                    e = expand::expand_expr(e, &expander);
+                    e = expand::expand_expr(e, &mut expander);
                 }
                 _ => return e
             }
