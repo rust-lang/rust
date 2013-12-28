@@ -906,14 +906,14 @@ impl<A: Ord, T: Iterator<A>> OrdIterator<A> for T {
     }
 }
 
-/// A trait for iterators that are clonable.
-pub trait ClonableIterator {
+/// A trait for iterators that are cloneable.
+pub trait CloneableIterator {
     /// Repeats an iterator endlessly
     ///
     /// # Example
     ///
     /// ```rust
-    /// use std::iter::{ClonableIterator, count};
+    /// use std::iter::{CloneableIterator, count};
     ///
     /// let a = count(1,1).take(1);
     /// let mut cy = a.cycle();
@@ -923,7 +923,7 @@ pub trait ClonableIterator {
     fn cycle(self) -> Cycle<Self>;
 }
 
-impl<A, T: Clone + Iterator<A>> ClonableIterator for T {
+impl<A, T: Clone + Iterator<A>> CloneableIterator for T {
     #[inline]
     fn cycle(self) -> Cycle<T> {
         Cycle{orig: self.clone(), iter: self}
