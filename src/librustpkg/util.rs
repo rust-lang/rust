@@ -75,7 +75,7 @@ struct ListenerFn {
 
 struct ReadyCtx {
     sess: session::Session,
-    ext_cx: @ExtCtxt,
+    ext_cx: ExtCtxt,
     path: ~[ast::Ident],
     fns: ~[ListenerFn]
 }

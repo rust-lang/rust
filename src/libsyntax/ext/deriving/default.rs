@@ -14,7 +14,7 @@ use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 
-pub fn expand_deriving_default(cx: @ExtCtxt,
+pub fn expand_deriving_default(cx: &ExtCtxt,
                             span: Span,
                             mitem: @MetaItem,
                             in_items: ~[@item])
@@ -41,7 +41,7 @@ pub fn expand_deriving_default(cx: @ExtCtxt,
     trait_def.expand(mitem, in_items)
 }
 
-fn default_substructure(cx: @ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
+fn default_substructure(cx: &ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
     let default_ident = ~[
         cx.ident_of("std"),
         cx.ident_of("default"),
