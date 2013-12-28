@@ -26,7 +26,7 @@ use super::IoResult;
 #[cfg(windows)] use std::ptr;
 #[cfg(windows)] use std::str;
 
-fn keep_going(data: &[u8], f: |*u8, uint| -> i64) -> i64 {
+pub fn keep_going(data: &[u8], f: |*u8, uint| -> i64) -> i64 {
     #[cfg(windows)] static eintr: int = 0; // doesn't matter
     #[cfg(not(windows))] static eintr: int = libc::EINTR as int;
 
@@ -92,7 +92,7 @@ impl FileDesc {
             Ok(ret as uint)
         }
     }
-    fn inner_write(&mut self, buf: &[u8]) -> Result<(), IoError> {
+    pub fn inner_write(&mut self, buf: &[u8]) -> Result<(), IoError> {
         #[cfg(windows)] type wlen = libc::c_uint;
         #[cfg(not(windows))] type wlen = libc::size_t;
         let ret = keep_going(buf, |buf, len| {
@@ -106,6 +106,8 @@ impl FileDesc {
             Ok(())
         }
     }
+
+    pub fn fd(&self) -> fd_t { self.fd }
 }
 
 impl io::Reader for FileDesc {
@@ -902,7 +904,7 @@ pub fn utime(p: &CString, atime: u64, mtime: u64) -> IoResult<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::{CFile, FileDesc, CloseFd};
+    use super::{CFile, FileDesc};
     use std::io;
     use std::libc;
     use std::os;

@@ -407,8 +407,8 @@ fn spawn_process_os(prog: &str, args: &[~str],
     }
 
     let pipe = os::pipe();
-    let mut input = file::FileDesc::new(pipe.input, file::CloseFd);
-    let mut output = file::FileDesc::new(pipe.out, file::CloseFd);
+    let mut input = file::FileDesc::new(pipe.input, true);
+    let mut output = file::FileDesc::new(pipe.out, true);
 
     unsafe { set_cloexec(output.fd()) };
 
