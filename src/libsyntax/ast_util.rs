@@ -717,17 +717,18 @@ pub fn new_mark_internal(m:Mrk, tail:SyntaxContext,table:&mut SCTable)
     // flow-sensitivity. Results in two lookups on a hash table hit.
     // also applies to new_rename_internal, below.
     // let try_lookup = table.mark_memo.find(&key);
-    match table.mark_memo.contains_key(&key) {
+    let mut mark_memo = table.mark_memo.borrow_mut();
+    match mark_memo.get().contains_key(&key) {
         false => {
             let new_idx = {
                 let mut table = table.table.borrow_mut();
                 idx_push(table.get(), Mark(m,tail))
             };
-            table.mark_memo.insert(key,new_idx);
+            mark_memo.get().insert(key,new_idx);
             new_idx
         }
         true => {
-            match table.mark_memo.find(&key) {
+            match mark_memo.get().find(&key) {
                 None => fail!("internal error: key disappeared 2013042901"),
                 Some(idxptr) => {*idxptr}
             }
@@ -771,7 +772,7 @@ pub fn new_rename_internal(id:Ident, to:Name, tail:SyntaxContext, table: &mut SC
 pub fn new_sctable_internal() -> SCTable {
     SCTable {
         table: RefCell::new(~[EmptyCtxt,IllegalCtxt]),
-        mark_memo: HashMap::new(),
+        mark_memo: RefCell::new(HashMap::new()),
         rename_memo: HashMap::new()
     }
 }
