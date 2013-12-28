@@ -18,7 +18,7 @@ use std::io::net::ip::*;
 use sync::atomics::{AtomicUint, INIT_ATOMIC_UINT, Relaxed};
 
 macro_rules! iotest (
-    { fn $name:ident() $b:block } => (
+    { fn $name:ident() $b:block $($a:attr)* } => (
         mod $name {
             #[allow(unused_imports)];
 
@@ -28,18 +28,20 @@ macro_rules! iotest (
             use prelude::*;
             use io::*;
             use io::fs::*;
+            use io::test::*;
             use io::net::tcp::*;
             use io::net::ip::*;
             use io::net::udp::*;
             #[cfg(unix)]
             use io::net::unix::*;
+            use io::process::*;
             use str;
             use util;
 
             fn f() $b
 
-            #[test] fn green() { f() }
-            #[test] fn native() {
+            $($a)* #[test] fn green() { f() }
+            $($a)* #[test] fn native() {
                 use native;
                 let (p, c) = Chan::new();
                 do native::task::spawn { c.send(f()) }
@@ -90,9 +92,9 @@ fn base_port() -> u16 {
 
     let bases = [
         ("32-opt", base + range * 1),
-        ("32-noopt", base + range * 2),
+        ("32-nopt", base + range * 2),
         ("64-opt", base + range * 3),
-        ("64-noopt", base + range * 4),
+        ("64-nopt", base + range * 4),
         ("64-opt-vg", base + range * 5),
         ("all-opt", base + range * 6),
         ("snap3", base + range * 7),

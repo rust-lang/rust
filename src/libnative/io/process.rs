@@ -18,6 +18,7 @@ use p = std::io::process;
 
 #[cfg(windows)] use std::cast;
 
+use super::IoResult;
 use super::file;
 
 /**
@@ -37,7 +38,7 @@ pub struct Process {
     priv handle: *(),
 
     /// None until finish() is called.
-    priv exit_code: Option<int>,
+    priv exit_code: Option<p::ProcessExit>,
 }
 
 impl Process {
@@ -105,7 +106,13 @@ impl Process {
             for pipe in err_pipe.iter() { libc::close(pipe.out); }
         }
 
-        Ok((Process { pid: res.pid, handle: res.handle, exit_code: None }, ret_io))
+        match res {
+            Ok(res) => {
+                Ok((Process { pid: res.pid, handle: res.handle, exit_code: None },
+                    ret_io))
+            }
+            Err(e) => Err(e)
+        }
     }
 }
 
@@ -113,15 +120,14 @@ impl rtio::RtioProcess for Process {
     fn id(&self) -> pid_t { self.pid }
 
     fn wait(&mut self) -> p::ProcessExit {
-        let code = match self.exit_code {
+        match self.exit_code {
             Some(code) => code,
             None => {
                 let code = waitpid(self.pid);
                 self.exit_code = Some(code);
                 code
             }
-        };
-        return p::ExitStatus(code); // XXX: this is wrong
+        }
     }
 
     fn kill(&mut self, signum: int) -> Result<(), io::IoError> {
@@ -177,7 +183,8 @@ struct SpawnProcessResult {
 fn spawn_process_os(prog: &str, args: &[~str],
                     env: Option<~[(~str, ~str)]>,
                     dir: Option<&Path>,
-                    in_fd: c_int, out_fd: c_int, err_fd: c_int) -> SpawnProcessResult {
+                    in_fd: c_int, out_fd: c_int,
+                    err_fd: c_int) -> IoResult<SpawnProcessResult> {
     use std::libc::types::os::arch::extra::{DWORD, HANDLE, STARTUPINFO};
     use std::libc::consts::os::extra::{
         TRUE, FALSE,
@@ -241,7 +248,7 @@ fn spawn_process_os(prog: &str, args: &[~str],
                                                  ptr::mut_null(), ptr::mut_null(), TRUE,
                                                  0, envp, dirp, &mut si, &mut pi);
                     if created == FALSE {
-                        create_err = Some(os::last_os_error());
+                        create_err = Some(super::last_error());
                     }
                 })
             })
@@ -251,21 +258,22 @@ fn spawn_process_os(prog: &str, args: &[~str],
         CloseHandle(si.hStdOutput);
         CloseHandle(si.hStdError);
 
-        for msg in create_err.iter() {
-            fail!("failure in CreateProcess: {}", *msg);
+        match create_err {
+            Some(err) => return Err(err),
+            None => {}
         }
 
-        // We close the thread handle because std::we don't care about keeping the
+        // We close the thread handle because we don't care about keeping the
         // thread id valid, and we aren't keeping the thread handle around to be
         // able to close it later. We don't close the process handle however
         // because std::we want the process id to stay valid at least until the
         // calling code closes the process handle.
         CloseHandle(pi.hThread);
 
-        SpawnProcessResult {
+        Ok(SpawnProcessResult {
             pid: pi.dwProcessId as pid_t,
             handle: pi.hProcess as *()
-        }
+        })
     }
 }
 
@@ -303,9 +311,8 @@ fn zeroed_process_information() -> libc::types::os::arch::extra::PROCESS_INFORMA
     }
 }
 
-// FIXME: this is only pub so it can be tested (see issue #4536)
 #[cfg(windows)]
-pub fn make_command_line(prog: &str, args: &[~str]) -> ~str {
+fn make_command_line(prog: &str, args: &[~str]) -> ~str {
     let mut cmd = ~"";
     append_arg(&mut cmd, prog);
     for arg in args.iter() {
@@ -360,9 +367,12 @@ pub fn make_command_line(prog: &str, args: &[~str]) -> ~str {
 fn spawn_process_os(prog: &str, args: &[~str],
                     env: Option<~[(~str, ~str)]>,
                     dir: Option<&Path>,
-                    in_fd: c_int, out_fd: c_int, err_fd: c_int) -> SpawnProcessResult {
+                    in_fd: c_int, out_fd: c_int,
+                    err_fd: c_int) -> IoResult<SpawnProcessResult> {
     use std::libc::funcs::posix88::unistd::{fork, dup2, close, chdir, execvp};
     use std::libc::funcs::bsd44::getdtablesize;
+    use std::libc::c_ulong;
+    use std::unstable::intrinsics;
 
     mod rustrt {
         extern {
@@ -370,45 +380,89 @@ fn spawn_process_os(prog: &str, args: &[~str],
         }
     }
 
-    #[cfg(windows)]
-    unsafe fn set_environ(_envp: *c_void) {}
     #[cfg(target_os = "macos")]
     unsafe fn set_environ(envp: *c_void) {
         extern { fn _NSGetEnviron() -> *mut *c_void; }
 
         *_NSGetEnviron() = envp;
     }
-    #[cfg(not(target_os = "macos"), not(windows))]
+    #[cfg(not(target_os = "macos"))]
     unsafe fn set_environ(envp: *c_void) {
-        extern {
-            static mut environ: *c_void;
-        }
+        extern { static mut environ: *c_void; }
         environ = envp;
     }
 
-    unsafe {
+    unsafe fn set_cloexec(fd: c_int) {
+        extern { fn ioctl(fd: c_int, req: c_ulong) -> c_int; }
 
+        #[cfg(target_os = "macos")]
+        #[cfg(target_os = "freebsd")]
+        static FIOCLEX: c_ulong = 0x20006601;
+        #[cfg(target_os = "linux")]
+        #[cfg(target_os = "android")]
+        static FIOCLEX: c_ulong = 0x5451;
+
+        let ret = ioctl(fd, FIOCLEX);
+        assert_eq!(ret, 0);
+    }
+
+    let pipe = os::pipe();
+    let mut input = file::FileDesc::new(pipe.input, true);
+    let mut output = file::FileDesc::new(pipe.out, true);
+
+    unsafe { set_cloexec(output.fd()) };
+
+    unsafe {
         let pid = fork();
         if pid < 0 {
             fail!("failure in fork: {}", os::last_os_error());
         } else if pid > 0 {
-            return SpawnProcessResult {pid: pid, handle: ptr::null()};
+            drop(output);
+            let mut bytes = [0, ..4];
+            return match input.inner_read(bytes) {
+                Ok(4) => {
+                    let errno = (bytes[0] << 24) as i32 |
+                                (bytes[1] << 16) as i32 |
+                                (bytes[2] <<  8) as i32 |
+                                (bytes[3] <<  0) as i32;
+                    Err(super::translate_error(errno, false))
+                }
+                Err(e) => {
+                    assert!(e.kind == io::BrokenPipe ||
+                            e.kind == io::EndOfFile,
+                            "unexpected error: {:?}", e);
+                    Ok(SpawnProcessResult {
+                        pid: pid,
+                        handle: ptr::null()
+                    })
+                }
+                Ok(..) => fail!("short read on the cloexec pipe"),
+            };
         }
+        drop(input);
 
         rustrt::rust_unset_sigprocmask();
 
-        if dup2(in_fd, 0) == -1 {
+        if in_fd == -1 {
+            libc::close(libc::STDIN_FILENO);
+        } else if dup2(in_fd, 0) == -1 {
             fail!("failure in dup2(in_fd, 0): {}", os::last_os_error());
         }
-        if dup2(out_fd, 1) == -1 {
+        if out_fd == -1 {
+            libc::close(libc::STDOUT_FILENO);
+        } else if dup2(out_fd, 1) == -1 {
             fail!("failure in dup2(out_fd, 1): {}", os::last_os_error());
         }
-        if dup2(err_fd, 2) == -1 {
+        if err_fd == -1 {
+            libc::close(libc::STDERR_FILENO);
+        } else if dup2(err_fd, 2) == -1 {
             fail!("failure in dup3(err_fd, 2): {}", os::last_os_error());
         }
         // close all other fds
         for fd in range(3, getdtablesize()).invert() {
-            close(fd as c_int);
+            if fd != output.fd() {
+                close(fd as c_int);
+            }
         }
 
         with_dirp(dir, |dirp| {
@@ -421,11 +475,18 @@ fn spawn_process_os(prog: &str, args: &[~str],
             if !envp.is_null() {
                 set_environ(envp);
             }
-            with_argv(prog, args, |argv| {
-                execvp(*argv, argv);
-                // execvp only returns if an error occurred
-                fail!("failure in execvp: {}", os::last_os_error());
-            })
+        });
+        with_argv(prog, args, |argv| {
+            execvp(*argv, argv);
+            let errno = os::errno();
+            let bytes = [
+                (errno << 24) as u8,
+                (errno << 16) as u8,
+                (errno <<  8) as u8,
+                (errno <<  0) as u8,
+            ];
+            output.inner_write(bytes);
+            intrinsics::abort();
         })
     }
 }
@@ -534,11 +595,11 @@ fn free_handle(_handle: *()) {
  * operate on a none-existent process or, even worse, on a newer process
  * with the same id.
  */
-fn waitpid(pid: pid_t) -> int {
+fn waitpid(pid: pid_t) -> p::ProcessExit {
     return waitpid_os(pid);
 
     #[cfg(windows)]
-    fn waitpid_os(pid: pid_t) -> int {
+    fn waitpid_os(pid: pid_t) -> p::ProcessExit {
         use std::libc::types::os::arch::extra::DWORD;
         use std::libc::consts::os::extra::{
             SYNCHRONIZE,
@@ -572,7 +633,7 @@ fn waitpid(pid: pid_t) -> int {
                 }
                 if status != STILL_ACTIVE {
                     CloseHandle(process);
-                    return status as int;
+                    return p::ExitStatus(status as int);
                 }
                 if WaitForSingleObject(process, INFINITE) == WAIT_FAILED {
                     CloseHandle(process);
@@ -583,43 +644,36 @@ fn waitpid(pid: pid_t) -> int {
     }
 
     #[cfg(unix)]
-    fn waitpid_os(pid: pid_t) -> int {
+    fn waitpid_os(pid: pid_t) -> p::ProcessExit {
         use std::libc::funcs::posix01::wait;
 
         #[cfg(target_os = "linux")]
         #[cfg(target_os = "android")]
-        fn WIFEXITED(status: i32) -> bool {
-            (status & 0xffi32) == 0i32
+        mod imp {
+            pub fn WIFEXITED(status: i32) -> bool { (status & 0xff) == 0 }
+            pub fn WEXITSTATUS(status: i32) -> i32 { (status >> 8) & 0xff }
+            pub fn WTERMSIG(status: i32) -> i32 { status & 0x7f }
         }
 
         #[cfg(target_os = "macos")]
         #[cfg(target_os = "freebsd")]
-        fn WIFEXITED(status: i32) -> bool {
-            (status & 0x7fi32) == 0i32
-        }
-
-        #[cfg(target_os = "linux")]
-        #[cfg(target_os = "android")]
-        fn WEXITSTATUS(status: i32) -> i32 {
-            (status >> 8i32) & 0xffi32
-        }
-
-        #[cfg(target_os = "macos")]
-        #[cfg(target_os = "freebsd")]
-        fn WEXITSTATUS(status: i32) -> i32 {
-            status >> 8i32
+        mod imp {
+            pub fn WIFEXITED(status: i32) -> bool { (status & 0x7f) == 0 }
+            pub fn WEXITSTATUS(status: i32) -> i32 { status >> 8 }
+            pub fn WTERMSIG(status: i32) -> i32 { status & 0o177 }
         }
 
         let mut status = 0 as c_int;
-        if unsafe { wait::waitpid(pid, &mut status, 0) } == -1 {
-            fail!("failure in waitpid: {}", os::last_os_error());
+        match super::retry(|| unsafe { wait::waitpid(pid, &mut status, 0) }) {
+            Err(e) => fail!("unknown waitpid error: {:?}", e),
+            Ok(_ret) => {
+                if imp::WIFEXITED(status) {
+                    p::ExitStatus(imp::WEXITSTATUS(status) as int)
+                } else {
+                    p::ExitSignal(imp::WTERMSIG(status) as int)
+                }
+            }
         }
-
-        return if WIFEXITED(status) {
-            WEXITSTATUS(status) as int
-        } else {
-            1
-        };
     }
 }
 
@@ -646,8 +700,4 @@ mod tests {
             ~"echo \"a b c\""
         );
     }
-
-    // Currently most of the tests of this functionality live inside std::run,
-    // but they may move here eventually as a non-blocking backend is added to
-    // std::run
 }

@@ -26,7 +26,7 @@ use super::IoResult;
 #[cfg(windows)] use std::ptr;
 #[cfg(windows)] use std::str;
 
-fn keep_going(data: &[u8], f: |*u8, uint| -> i64) -> i64 {
+pub fn keep_going(data: &[u8], f: |*u8, uint| -> i64) -> i64 {
     #[cfg(windows)] static eintr: int = 0; // doesn't matter
     #[cfg(not(windows))] static eintr: int = libc::EINTR as int;
 
@@ -37,7 +37,7 @@ fn keep_going(data: &[u8], f: |*u8, uint| -> i64) -> i64 {
         let mut ret;
         loop {
             ret = f(data, amt);
-            if cfg!(not(windows)) { break } // windows has no eintr
+            if cfg!(windows) { break } // windows has no eintr
             // if we get an eintr, then try again
             if ret != -1 || os::errno() as int != eintr { break }
         }
@@ -73,7 +73,10 @@ impl FileDesc {
         FileDesc { fd: fd, close_on_drop: close_on_drop }
     }
 
-    fn inner_read(&mut self, buf: &mut [u8]) -> Result<uint, IoError> {
+    // FIXME(#10465) these functions should not be public, but anything in
+    //               native::io wanting to use them is forced to have all the
+    //               rtio traits in scope
+    pub fn inner_read(&mut self, buf: &mut [u8]) -> Result<uint, IoError> {
         #[cfg(windows)] type rlen = libc::c_uint;
         #[cfg(not(windows))] type rlen = libc::size_t;
         let ret = keep_going(buf, |buf, len| {
@@ -89,7 +92,7 @@ impl FileDesc {
             Ok(ret as uint)
         }
     }
-    fn inner_write(&mut self, buf: &[u8]) -> Result<(), IoError> {
+    pub fn inner_write(&mut self, buf: &[u8]) -> Result<(), IoError> {
         #[cfg(windows)] type wlen = libc::c_uint;
         #[cfg(not(windows))] type wlen = libc::size_t;
         let ret = keep_going(buf, |buf, len| {
@@ -103,6 +106,8 @@ impl FileDesc {
             Ok(())
         }
     }
+
+    pub fn fd(&self) -> fd_t { self.fd }
 }
 
 impl io::Reader for FileDesc {

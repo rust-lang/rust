@@ -34,6 +34,7 @@ pub fn new() -> ~Task {
     task.put_runtime(~Ops {
         lock: unsafe { Mutex::new() },
         awoken: false,
+        io: io::IoFactory::new(),
     } as ~rt::Runtime);
     return task;
 }
@@ -86,8 +87,9 @@ pub fn spawn_opts(opts: TaskOpts, f: proc()) {
 // This structure is the glue between channels and the 1:1 scheduling mode. This
 // structure is allocated once per task.
 struct Ops {
-    lock: Mutex,  // native synchronization
-    awoken: bool, // used to prevent spurious wakeups
+    lock: Mutex,       // native synchronization
+    awoken: bool,      // used to prevent spurious wakeups
+    io: io::IoFactory, // local I/O factory
 }
 
 impl rt::Runtime for Ops {
@@ -217,11 +219,7 @@ impl rt::Runtime for Ops {
     }
 
     fn local_io<'a>(&'a mut self) -> Option<rtio::LocalIo<'a>> {
-        static mut io: io::IoFactory = io::IoFactory;
-        // Unsafety is from accessing `io`, which is guaranteed to be safe
-        // because you can't do anything usable with this statically initialized
-        // unit struct.
-        Some(unsafe { rtio::LocalIo::new(&mut io as &mut rtio::IoFactory) })
+        Some(rtio::LocalIo::new(&mut self.io as &mut rtio::IoFactory))
     }
 }
 
