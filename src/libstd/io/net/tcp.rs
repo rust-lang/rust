@@ -138,8 +138,7 @@ mod test {
     use io::*;
     use prelude::*;
 
-    #[test] #[ignore]
-    fn bind_error() {
+    iotest!(fn bind_error() {
         let mut called = false;
         io_error::cond.trap(|e| {
             assert!(e.kind == PermissionDenied);
@@ -150,19 +149,12 @@ mod test {
             assert!(listener.is_none());
         });
         assert!(called);
-    }
+    } #[ignore(cfg(windows))])
 
-    #[test]
-    fn connect_error() {
+    iotest!(fn connect_error() {
         let mut called = false;
         io_error::cond.trap(|e| {
-            let expected_error = if cfg!(unix) {
-                ConnectionRefused
-            } else {
-                // On Win32, opening port 1 gives WSAEADDRNOTAVAIL error.
-                OtherIoError
-            };
-            assert_eq!(e.kind, expected_error);
+            assert_eq!(e.kind, ConnectionRefused);
             called = true;
         }).inside(|| {
             let addr = SocketAddr { ip: Ipv4Addr(0, 0, 0, 0), port: 1 };
@@ -170,10 +162,9 @@ mod test {
             assert!(stream.is_none());
         });
         assert!(called);
-    }
+    })
 
-    #[test]
-    fn smoke_test_ip4() {
+    iotest!(fn smoke_test_ip4() {
         let addr = next_test_ip4();
         let (port, chan) = Chan::new();
 
@@ -189,10 +180,9 @@ mod test {
         let mut buf = [0];
         stream.read(buf);
         assert!(buf[0] == 99);
-    }
+    })
 
-    #[test]
-    fn smoke_test_ip6() {
+    iotest!(fn smoke_test_ip6() {
         let addr = next_test_ip6();
         let (port, chan) = Chan::new();
 
@@ -208,10 +198,9 @@ mod test {
         let mut buf = [0];
         stream.read(buf);
         assert!(buf[0] == 99);
-    }
+    })
 
-    #[test]
-    fn read_eof_ip4() {
+    iotest!(fn read_eof_ip4() {
         let addr = next_test_ip4();
         let (port, chan) = Chan::new();
 
@@ -227,10 +216,9 @@ mod test {
         let mut buf = [0];
         let nread = stream.read(buf);
         assert!(nread.is_none());
-    }
+    })
 
-    #[test]
-    fn read_eof_ip6() {
+    iotest!(fn read_eof_ip6() {
         let addr = next_test_ip6();
         let (port, chan) = Chan::new();
 
@@ -246,10 +234,9 @@ mod test {
         let mut buf = [0];
         let nread = stream.read(buf);
         assert!(nread.is_none());
-    }
+    })
 
-    #[test]
-    fn read_eof_twice_ip4() {
+    iotest!(fn read_eof_twice_ip4() {
         let addr = next_test_ip4();
         let (port, chan) = Chan::new();
 
@@ -275,10 +262,9 @@ mod test {
             let nread = stream.read(buf);
             assert!(nread.is_none());
         })
-    }
+    })
 
-    #[test]
-    fn read_eof_twice_ip6() {
+    iotest!(fn read_eof_twice_ip6() {
         let addr = next_test_ip6();
         let (port, chan) = Chan::new();
 
@@ -304,10 +290,9 @@ mod test {
             let nread = stream.read(buf);
             assert!(nread.is_none());
         })
-    }
+    })
 
-    #[test]
-    fn write_close_ip4() {
+    iotest!(fn write_close_ip4() {
         let addr = next_test_ip4();
         let (port, chan) = Chan::new();
 
@@ -336,10 +321,9 @@ mod test {
             });
             if stop { break }
         }
-    }
+    })
 
-    #[test]
-    fn write_close_ip6() {
+    iotest!(fn write_close_ip6() {
         let addr = next_test_ip6();
         let (port, chan) = Chan::new();
 
@@ -368,10 +352,9 @@ mod test {
             });
             if stop { break }
         }
-    }
+    })
 
-    #[test]
-    fn multiple_connect_serial_ip4() {
+    iotest!(fn multiple_connect_serial_ip4() {
         let addr = next_test_ip4();
         let max = 10;
         let (port, chan) = Chan::new();
@@ -391,10 +374,9 @@ mod test {
             stream.read(buf);
             assert_eq!(buf[0], 99);
         }
-    }
+    })
 
-    #[test]
-    fn multiple_connect_serial_ip6() {
+    iotest!(fn multiple_connect_serial_ip6() {
         let addr = next_test_ip6();
         let max = 10;
         let (port, chan) = Chan::new();
@@ -414,10 +396,9 @@ mod test {
             stream.read(buf);
             assert_eq!(buf[0], 99);
         }
-    }
+    })
 
-    #[test]
-    fn multiple_connect_interleaved_greedy_schedule_ip4() {
+    iotest!(fn multiple_connect_interleaved_greedy_schedule_ip4() {
         let addr = next_test_ip4();
         static MAX: int = 10;
         let (port, chan) = Chan::new();
@@ -452,10 +433,9 @@ mod test {
                 stream.write([i as u8]);
             }
         }
-    }
+    })
 
-    #[test]
-    fn multiple_connect_interleaved_greedy_schedule_ip6() {
+    iotest!(fn multiple_connect_interleaved_greedy_schedule_ip6() {
         let addr = next_test_ip6();
         static MAX: int = 10;
         let (port, chan) = Chan::<()>::new();
@@ -490,10 +470,9 @@ mod test {
                 stream.write([i as u8]);
             }
         }
-    }
+    })
 
-    #[test]
-    fn multiple_connect_interleaved_lazy_schedule_ip4() {
+    iotest!(fn multiple_connect_interleaved_lazy_schedule_ip4() {
         let addr = next_test_ip4();
         static MAX: int = 10;
         let (port, chan) = Chan::new();
@@ -528,9 +507,9 @@ mod test {
                 stream.write([99]);
             }
         }
-    }
-    #[test]
-    fn multiple_connect_interleaved_lazy_schedule_ip6() {
+    })
+
+    iotest!(fn multiple_connect_interleaved_lazy_schedule_ip6() {
         let addr = next_test_ip6();
         static MAX: int = 10;
         let (port, chan) = Chan::new();
@@ -565,10 +544,9 @@ mod test {
                 stream.write([99]);
             }
         }
-    }
+    })
 
-    #[cfg(test)]
-    fn socket_name(addr: SocketAddr) {
+    pub fn socket_name(addr: SocketAddr) {
         let mut listener = TcpListener::bind(addr).unwrap();
 
         // Make sure socket_name gives
@@ -578,8 +556,7 @@ mod test {
         assert_eq!(addr, so_name.unwrap());
     }
 
-    #[cfg(test)]
-    fn peer_name(addr: SocketAddr) {
+    pub fn peer_name(addr: SocketAddr) {
         let (port, chan) = Chan::new();
 
         do spawn {
@@ -602,16 +579,14 @@ mod test {
         assert_eq!(addr, peer_name.unwrap());
     }
 
-    #[test]
-    fn socket_and_peer_name_ip4() {
+    iotest!(fn socket_and_peer_name_ip4() {
         peer_name(next_test_ip4());
         socket_name(next_test_ip4());
-    }
+    })
 
-    #[test]
-    fn socket_and_peer_name_ip6() {
+    iotest!(fn socket_and_peer_name_ip6() {
         // XXX: peer name is not consistent
         //peer_name(next_test_ip6());
         socket_name(next_test_ip6());
-    }
+    })
 }
