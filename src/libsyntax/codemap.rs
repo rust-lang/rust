@@ -308,7 +308,7 @@ impl CodeMap {
     pub fn mk_substr_filename(&self, sp: Span) -> ~str {
         let pos = self.lookup_char_pos(sp.lo);
         return format!("<{}:{}:{}>", pos.file.name,
-                    pos.line, pos.col.to_uint());
+                       pos.line, pos.col.to_uint() + 1)
     }
 
     /// Lookup source information about a BytePos
@@ -354,7 +354,7 @@ impl CodeMap {
         let lo = self.lookup_char_pos_adj(sp.lo);
         let hi = self.lookup_char_pos_adj(sp.hi);
         return format!("{}:{}:{}: {}:{}", lo.filename,
-                    lo.line, lo.col.to_uint(), hi.line, hi.col.to_uint())
+                       lo.line, lo.col.to_uint() + 1, hi.line, hi.col.to_uint() + 1)
     }
 
     pub fn span_to_filename(&self, sp: Span) -> FileName {
