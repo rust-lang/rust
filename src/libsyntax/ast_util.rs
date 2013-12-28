@@ -17,7 +17,7 @@ use parse::token;
 use visit::Visitor;
 use visit;
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::hashmap::HashMap;
 use std::u32;
 use std::local_data;
@@ -602,21 +602,23 @@ pub fn visit_ids_for_inlined_item<O: IdVisitingOperation>(item: &inlined_item,
 }
 
 struct IdRangeComputingVisitor {
-    result: @mut id_range,
+    result: Cell<id_range>,
 }
 
 impl IdVisitingOperation for IdRangeComputingVisitor {
     fn visit_id(&self, id: NodeId) {
-        self.result.add(id)
+        let mut id_range = self.result.get();
+        id_range.add(id);
+        self.result.set(id_range)
     }
 }
 
 pub fn compute_id_range_for_inlined_item(item: &inlined_item) -> id_range {
-    let result = @mut id_range::max();
-    visit_ids_for_inlined_item(item, &IdRangeComputingVisitor {
-        result: result,
-    });
-    *result
+    let visitor = IdRangeComputingVisitor {
+        result: Cell::new(id_range::max())
+    };
+    visit_ids_for_inlined_item(item, &visitor);
+    visitor.result.get()
 }
 
 pub fn is_item_impl(item: @ast::item) -> bool {
