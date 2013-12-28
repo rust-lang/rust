@@ -234,6 +234,10 @@ endef
 
 $(eval $(call libdoc,std,$(STDLIB_CRATE),$(CFG_BUILD)))
 $(eval $(call libdoc,extra,$(EXTRALIB_CRATE),$(CFG_BUILD)))
+$(eval $(call libdoc,native,$(LIBNATIVE_CRATE),$(CFG_BUILD)))
+$(eval $(call libdoc,green,$(LIBGREEN_CRATE),$(CFG_BUILD)))
+$(eval $(call libdoc,rustc,$(COMPILER_CRATE),$(CFG_BUILD)))
+$(eval $(call libdoc,syntax,$(LIBSYNTAX_CRATE),$(CFG_BUILD)))
 
 
 ifdef CFG_DISABLE_DOCS
