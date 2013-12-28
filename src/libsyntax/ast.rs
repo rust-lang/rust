@@ -15,6 +15,7 @@ use abi::AbiSet;
 use opt_vec::OptVec;
 use parse::token::{interner_get, str_to_ident};
 
+use std::cell::RefCell;
 use std::hashmap::HashMap;
 use std::option::Option;
 use std::to_str::ToStr;
@@ -88,7 +89,7 @@ pub type SyntaxContext = u32;
 // it should cut down on memory use *a lot*; applying a mark
 // to a tree containing 50 identifiers would otherwise generate
 pub struct SCTable {
-    table : ~[SyntaxContext_],
+    table : RefCell<~[SyntaxContext_]>,
     mark_memo : HashMap<(SyntaxContext,Mrk),SyntaxContext>,
     rename_memo : HashMap<(SyntaxContext,Ident,Name),SyntaxContext>
 }
