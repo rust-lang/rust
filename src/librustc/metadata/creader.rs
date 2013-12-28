@@ -138,15 +138,15 @@ fn visit_view_item(e: &mut Env, i: &ast::view_item) {
                  ident, path_opt);
           let (name, version) = match path_opt {
               Some((path_str, _)) => {
-                  let pkgid: Option<PkgId> = from_str(path_str);
-                  match pkgid {
+                  let crateid: Option<PkgId> = from_str(path_str);
+                  match crateid {
                       None => (@"", @""),
-                      Some(pkgid) => {
-                          let version = match pkgid.version {
+                      Some(crateid) => {
+                          let version = match crateid.version {
                               None => @"",
                               Some(ref ver) => ver.to_managed(),
                           };
-                          (pkgid.name.to_managed(), version)
+                          (crateid.name.to_managed(), version)
                       }
                   }
               }
@@ -282,7 +282,7 @@ fn resolve_crate(e: &mut Env,
         } = load_ctxt.load_library_crate();
 
         let attrs = decoder::get_crate_attributes(metadata.as_slice());
-        let pkgid = attr::find_pkgid(attrs).unwrap();
+        let crateid = attr::find_crateid(attrs).unwrap();
         let hash = decoder::get_crate_hash(metadata.as_slice());
 
         // Claim this crate number and cache it

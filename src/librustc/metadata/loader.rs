@@ -165,7 +165,7 @@ impl Context {
                     }
                     let data = lib.metadata.as_slice();
                     let attrs = decoder::get_crate_attributes(data);
-                    match attr::find_pkgid(attrs) {
+                    match attr::find_crateid(attrs) {
                         None => {}
                         Some(pkgid) => {
                             note_pkgid_attr(self.sess.diagnostic(), &pkgid);
@@ -241,7 +241,7 @@ fn crate_matches(crate_data: &[u8],
                  version: @str,
                  hash: @str) -> bool {
     let attrs = decoder::get_crate_attributes(crate_data);
-    match attr::find_pkgid(attrs) {
+    match attr::find_crateid(attrs) {
         None => false,
         Some(pkgid) => {
             if !hash.is_empty() {

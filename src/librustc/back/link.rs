@@ -475,7 +475,7 @@ pub fn build_link_meta(sess: Session,
         truncated_hash_result(symbol_hasher).to_managed()
     }
 
-    let pkgid = match attr::find_pkgid(attrs) {
+    let crateid = match attr::find_crateid(attrs) {
         None => {
             let stem = session::expect(
                 sess,
