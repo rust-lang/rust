@@ -1855,7 +1855,7 @@ pub fn trans_log_level(bcx: @Block) -> DatumBlock {
                 Some(&src) => {
                     ccx.sess.cstore.get_crate_data(src.crate).name
                 }
-                None => ccx.link_meta.pkgid.name.to_managed(),
+                None => ccx.link_meta.crateid.name.to_managed(),
             };
         };
         let mut modpath = ~[path_mod(ccx.sess.ident_of(srccrate))];
