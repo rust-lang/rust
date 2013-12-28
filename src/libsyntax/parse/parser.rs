@@ -81,6 +81,7 @@ use parse::{new_sub_parser_from_file, ParseSess};
 use opt_vec;
 use opt_vec::OptVec;
 
+use std::cell::Cell;
 use std::hashmap::HashSet;
 use std::util;
 use std::vec;
@@ -2185,7 +2186,7 @@ impl Parser {
         // unification of matchers and token_trees would vastly improve
         // the interpolation of matchers
         maybe_whole!(self, nt_matchers);
-        let name_idx = @mut 0u;
+        let name_idx = @Cell::new(0u);
         match self.token {
             token::LBRACE | token::LPAREN | token::LBRACKET => {
                 let other_delimiter = token::flip_delimiter(&self.token);
@@ -2200,7 +2201,7 @@ impl Parser {
     // Otherwise, `$( ( )` would be a valid matcher, and `$( () )` would be
     // invalid. It's similar to common::parse_seq.
     pub fn parse_matcher_subseq_upto(&mut self,
-                                     name_idx: @mut uint,
+                                     name_idx: @Cell<uint>,
                                      ket: &token::Token)
                                      -> ~[matcher] {
         let mut ret_val = ~[];
@@ -2217,13 +2218,13 @@ impl Parser {
         return ret_val;
     }
 
-    pub fn parse_matcher(&mut self, name_idx: @mut uint) -> matcher {
+    pub fn parse_matcher(&mut self, name_idx: @Cell<uint>) -> matcher {
         let lo = self.span.lo;
 
         let m = if self.token == token::DOLLAR {
             self.bump();
             if self.token == token::LPAREN {
-                let name_idx_lo = *name_idx;
+                let name_idx_lo = name_idx.get();
                 self.bump();
                 let ms = self.parse_matcher_subseq_upto(name_idx,
                                                         &token::RPAREN);
@@ -2231,13 +2232,13 @@ impl Parser {
                     self.fatal("repetition body must be nonempty");
                 }
                 let (sep, zerok) = self.parse_sep_and_zerok();
-                match_seq(ms, sep, zerok, name_idx_lo, *name_idx)
+                match_seq(ms, sep, zerok, name_idx_lo, name_idx.get())
             } else {
                 let bound_to = self.parse_ident();
                 self.expect(&token::COLON);
                 let nt_name = self.parse_ident();
-                let m = match_nonterminal(bound_to, nt_name, *name_idx);
-                *name_idx += 1u;
+                let m = match_nonterminal(bound_to, nt_name, name_idx.get());
+                name_idx.set(name_idx.get() + 1u);
                 m
             }
         } else {
