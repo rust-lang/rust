@@ -16,7 +16,7 @@ extern mod syntax;
 
 use syntax::ext::base::ExtCtxt;
 
-fn syntax_extension(cx: @ExtCtxt) {
+fn syntax_extension(cx: &ExtCtxt) {
     let e_toks : ~[syntax::ast::token_tree] = quote_tokens!(cx, 1 + 2);
     let p_toks : ~[syntax::ast::token_tree] = quote_tokens!(cx, (x, 1 .. 4, *));
 

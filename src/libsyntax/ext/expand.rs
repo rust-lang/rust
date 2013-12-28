@@ -32,7 +32,7 @@ use util::small_vector::SmallVector;
 use std::vec;
 
 pub fn expand_expr(extsbox: @mut SyntaxEnv,
-                   cx: @ExtCtxt,
+                   cx: &ExtCtxt,
                    e: @ast::Expr,
                    fld: &MacroExpander)
                    -> @ast::Expr {
@@ -214,7 +214,7 @@ pub fn expand_expr(extsbox: @mut SyntaxEnv,
 // NB: there is some redundancy between this and expand_item, below, and
 // they might benefit from some amount of semantic and language-UI merger.
 pub fn expand_mod_items(extsbox: @mut SyntaxEnv,
-                        cx: @ExtCtxt,
+                        cx: &ExtCtxt,
                         module_: &ast::_mod,
                         fld: &MacroExpander)
                         -> ast::_mod {
@@ -271,7 +271,7 @@ static special_block_name : &'static str = " block";
 
 // When we enter a module, record it, for the sake of `module!`
 pub fn expand_item(extsbox: @mut SyntaxEnv,
-                   cx: @ExtCtxt,
+                   cx: &ExtCtxt,
                    it: @ast::item,
                    fld: &MacroExpander)
                    -> SmallVector<@ast::item> {
@@ -298,7 +298,7 @@ pub fn contains_macro_escape(attrs: &[ast::Attribute]) -> bool {
 // Support for item-position macro invocations, exactly the same
 // logic as for expression-position macro invocations.
 pub fn expand_item_mac(extsbox: @mut SyntaxEnv,
-                       cx: @ExtCtxt,
+                       cx: &ExtCtxt,
                        it: @ast::item,
                        fld: &MacroExpander)
                        -> SmallVector<@ast::item> {
@@ -407,7 +407,7 @@ fn insert_macro(exts: SyntaxEnv, name: ast::Name, transformer: @Transformer) {
 
 // expand a stmt
 pub fn expand_stmt(extsbox: @mut SyntaxEnv,
-                   cx: @ExtCtxt,
+                   cx: &ExtCtxt,
                    s: &Stmt,
                    fld: &MacroExpander)
                    -> SmallVector<@Stmt> {
@@ -625,7 +625,7 @@ pub fn new_name_finder(idents: ~[ast::Ident]) -> NewNameFinderContext {
 
 // expand a block. pushes a new exts_frame, then calls expand_block_elts
 pub fn expand_block(extsbox: @mut SyntaxEnv,
-                    _: @ExtCtxt,
+                    _: &ExtCtxt,
                     blk: &Block,
                     fld: &MacroExpander)
                     -> P<Block> {
@@ -690,7 +690,7 @@ pub fn renames_to_fold(renames: @mut ~[(ast::Ident,ast::Name)]) -> @ast_fold {
     } as @ast_fold
 }
 
-pub fn new_span(cx: @ExtCtxt, sp: Span) -> Span {
+pub fn new_span(cx: &ExtCtxt, sp: Span) -> Span {
     /* this discards information in the case of macro-defining macros */
     Span {
         lo: sp.lo,
@@ -949,12 +949,12 @@ pub fn inject_std_macros(parse_sess: @mut parse::ParseSess,
     injector.fold_crate(c)
 }
 
-pub struct MacroExpander {
+pub struct MacroExpander<'a> {
     extsbox: @mut SyntaxEnv,
-    cx: @ExtCtxt,
+    cx: &'a ExtCtxt,
 }
 
-impl ast_fold for MacroExpander {
+impl<'a> ast_fold for MacroExpander<'a> {
     fn fold_expr(&self, expr: @ast::Expr) -> @ast::Expr {
         expand_expr(self.extsbox,
                     self.cx,
@@ -1005,10 +1005,10 @@ pub fn expand_crate(parse_sess: @mut parse::ParseSess,
     // every method/element of AstFoldFns in fold.rs.
     let extsbox = syntax_expander_table();
     let cx = ExtCtxt::new(parse_sess, cfg.clone());
-    let expander = @MacroExpander {
+    let expander = MacroExpander {
         extsbox: @mut extsbox,
-        cx: cx,
-    } as @ast_fold;
+        cx: &cx,
+    };
 
     let ret = expander.fold_crate(c);
     parse_sess.span_diagnostic.handler().abort_if_errors();
@@ -1159,7 +1159,7 @@ pub fn mtwt_cancel_outer_mark(tts: &[ast::token_tree], ctxt: ast::SyntaxContext)
     mark_tts(tts,outer_mark)
 }
 
-fn original_span(cx: @ExtCtxt) -> @codemap::ExpnInfo {
+fn original_span(cx: &ExtCtxt) -> @codemap::ExpnInfo {
     let mut relevant_info = cx.backtrace();
     let mut einfo = relevant_info.unwrap();
     loop {

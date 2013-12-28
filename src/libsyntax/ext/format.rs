@@ -28,8 +28,8 @@ enum ArgumentType {
     String,
 }
 
-struct Context {
-    ecx: @ExtCtxt,
+struct Context<'a> {
+    ecx: &'a ExtCtxt,
     fmtsp: Span,
 
     // Parsed argument expressions and the types that we've found so far for
@@ -50,7 +50,7 @@ struct Context {
     next_arg: uint,
 }
 
-impl Context {
+impl<'a> Context<'a> {
     /// Parses the arguments from the given list of tokens, returning None if
     /// there's a parse error so we can continue parsing other format! expressions.
     fn parse_args(&mut self, sp: Span,
@@ -722,7 +722,7 @@ impl Context {
     }
 }
 
-pub fn expand_args(ecx: @ExtCtxt, sp: Span,
+pub fn expand_args(ecx: &ExtCtxt, sp: Span,
                    tts: &[ast::token_tree]) -> base::MacResult {
     let mut cx = Context {
         ecx: ecx,

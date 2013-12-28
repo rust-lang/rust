@@ -40,7 +40,7 @@ struct Test {
 struct TestCtxt {
     sess: session::Session,
     path: RefCell<~[ast::Ident]>,
-    ext_cx: @ExtCtxt,
+    ext_cx: ExtCtxt,
     testfns: RefCell<~[Test]>,
     is_extra: bool,
     config: ast::CrateConfig,
@@ -163,8 +163,7 @@ fn generate_test_harness(sess: session::Session, crate: ast::Crate)
         config: crate.config.clone(),
     };
 
-    let ext_cx = cx.ext_cx;
-    ext_cx.bt_push(ExpnInfo {
+    cx.ext_cx.bt_push(ExpnInfo {
         call_site: dummy_sp(),
         callee: NameAndSpan {
             name: @"test",
@@ -177,7 +176,7 @@ fn generate_test_harness(sess: session::Session, crate: ast::Crate)
         cx: cx
     };
     let res = fold.fold_crate(crate);
-    ext_cx.bt_pop();
+    cx.ext_cx.bt_pop();
     return res;
 }
 
@@ -313,7 +312,7 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::item {
 
     // The synthesized main function which will call the console test runner
     // with our list of tests
-    let mainfn = (quote_item!(cx.ext_cx,
+    let mainfn = (quote_item!(&cx.ext_cx,
         pub fn main() {
             #[main];
             extra::test::test_main_static(::std::os::args(), TESTS);
@@ -377,7 +376,7 @@ fn mk_tests(cx: &TestCtxt) -> @ast::item {
     // The vector of test_descs for this crate
     let test_descs = mk_test_descs(cx);
 
-    (quote_item!(cx.ext_cx,
+    (quote_item!(&cx.ext_cx,
         pub static TESTS : &'static [self::extra::test::TestDescAndFn] =
             $test_descs
         ;
@@ -438,24 +437,24 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> @ast::Expr {
     };
 
     let t_expr = if test.bench {
-        quote_expr!(cx.ext_cx, self::extra::test::StaticBenchFn($fn_expr) )
+        quote_expr!(&cx.ext_cx, self::extra::test::StaticBenchFn($fn_expr) )
     } else {
-        quote_expr!(cx.ext_cx, self::extra::test::StaticTestFn($fn_expr) )
+        quote_expr!(&cx.ext_cx, self::extra::test::StaticTestFn($fn_expr) )
     };
 
     let ignore_expr = if test.ignore {
-        quote_expr!(cx.ext_cx, true )
+        quote_expr!(&cx.ext_cx, true )
     } else {
-        quote_expr!(cx.ext_cx, false )
+        quote_expr!(&cx.ext_cx, false )
     };
 
     let fail_expr = if test.should_fail {
-        quote_expr!(cx.ext_cx, true )
+        quote_expr!(&cx.ext_cx, true )
     } else {
-        quote_expr!(cx.ext_cx, false )
+        quote_expr!(&cx.ext_cx, false )
     };
 
-    let e = quote_expr!(cx.ext_cx,
+    let e = quote_expr!(&cx.ext_cx,
         self::extra::test::TestDescAndFn {
             desc: self::extra::test::TestDesc {
                 name: self::extra::test::StaticTestName($name_expr),

@@ -81,7 +81,7 @@ use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 
-pub fn expand_deriving_encodable(cx: @ExtCtxt,
+pub fn expand_deriving_encodable(cx: &ExtCtxt,
                                  span: Span,
                                  mitem: @MetaItem,
                                  in_items: ~[@item]) -> ~[@item] {
@@ -113,7 +113,7 @@ pub fn expand_deriving_encodable(cx: @ExtCtxt,
     trait_def.expand(mitem, in_items)
 }
 
-fn encodable_substructure(cx: @ExtCtxt, span: Span,
+fn encodable_substructure(cx: &ExtCtxt, span: Span,
                           substr: &Substructure) -> @Expr {
     let encoder = substr.nonself_args[0];
     // throw an underscore in front to suppress unused variable warnings

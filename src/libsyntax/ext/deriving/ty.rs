@@ -58,7 +58,7 @@ impl<'a> Path<'a> {
     }
 
     pub fn to_ty(&self,
-                 cx: @ExtCtxt,
+                 cx: &ExtCtxt,
                  span: Span,
                  self_ty: Ident,
                  self_generics: &Generics)
@@ -66,7 +66,7 @@ impl<'a> Path<'a> {
         cx.ty_path(self.to_path(cx, span, self_ty, self_generics), None)
     }
     pub fn to_path(&self,
-                   cx: @ExtCtxt,
+                   cx: &ExtCtxt,
                    span: Span,
                    self_ty: Ident,
                    self_generics: &Generics)
@@ -110,14 +110,14 @@ pub fn nil_ty() -> Ty<'static> {
     Tuple(~[])
 }
 
-fn mk_lifetime(cx: @ExtCtxt, span: Span, lt: &Option<&str>) -> Option<ast::Lifetime> {
+fn mk_lifetime(cx: &ExtCtxt, span: Span, lt: &Option<&str>) -> Option<ast::Lifetime> {
     match *lt {
         Some(ref s) => Some(cx.lifetime(span, cx.ident_of(*s))),
         None => None
     }
 }
 
-fn mk_lifetimes(cx: @ExtCtxt, span: Span, lt: &Option<&str>) -> OptVec<ast::Lifetime> {
+fn mk_lifetimes(cx: &ExtCtxt, span: Span, lt: &Option<&str>) -> OptVec<ast::Lifetime> {
     match *lt {
         Some(ref s) => opt_vec::with(cx.lifetime(span, cx.ident_of(*s))),
         None => opt_vec::Empty
@@ -126,7 +126,7 @@ fn mk_lifetimes(cx: @ExtCtxt, span: Span, lt: &Option<&str>) -> OptVec<ast::Life
 
 impl<'a> Ty<'a> {
     pub fn to_ty(&self,
-                 cx: @ExtCtxt,
+                 cx: &ExtCtxt,
                  span: Span,
                  self_ty: Ident,
                  self_generics: &Generics)
@@ -164,7 +164,7 @@ impl<'a> Ty<'a> {
     }
 
     pub fn to_path(&self,
-                   cx: @ExtCtxt,
+                   cx: &ExtCtxt,
                    span: Span,
                    self_ty: Ident,
                    self_generics: &Generics)
@@ -189,7 +189,7 @@ impl<'a> Ty<'a> {
 }
 
 
-fn mk_ty_param(cx: @ExtCtxt, span: Span, name: &str, bounds: &[Path],
+fn mk_ty_param(cx: &ExtCtxt, span: Span, name: &str, bounds: &[Path],
                self_ident: Ident, self_generics: &Generics) -> ast::TyParam {
     let bounds = opt_vec::from(
         bounds.map(|b| {
@@ -219,7 +219,7 @@ impl<'a> LifetimeBounds<'a> {
         }
     }
     pub fn to_generics(&self,
-                       cx: @ExtCtxt,
+                       cx: &ExtCtxt,
                        span: Span,
                        self_ty: Ident,
                        self_generics: &Generics)
@@ -239,7 +239,7 @@ impl<'a> LifetimeBounds<'a> {
 }
 
 
-pub fn get_explicit_self(cx: @ExtCtxt, span: Span, self_ptr: &Option<PtrTy>)
+pub fn get_explicit_self(cx: &ExtCtxt, span: Span, self_ptr: &Option<PtrTy>)
     -> (@Expr, ast::explicit_self) {
     let self_path = cx.expr_self(span);
     match *self_ptr {
