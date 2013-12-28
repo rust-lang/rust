@@ -349,6 +349,13 @@ pub fn Load(cx: &Block, PointerVal: ValueRef) -> ValueRef {
     }
 }
 
+pub fn VolatileLoad(cx: &Block, PointerVal: ValueRef) -> ValueRef {
+    unsafe {
+        if cx.unreachable.get() { return llvm::LLVMGetUndef(Type::nil().to_ref()); }
+        B(cx).volatile_load(PointerVal)
+    }
+}
+
 pub fn AtomicLoad(cx: &Block, PointerVal: ValueRef, order: AtomicOrdering) -> ValueRef {
     unsafe {
         let ccx = cx.fcx.ccx;
@@ -381,6 +388,11 @@ pub fn LoadRangeAssert(cx: &Block, PointerVal: ValueRef, lo: c_ulonglong,
 pub fn Store(cx: &Block, Val: ValueRef, Ptr: ValueRef) {
     if cx.unreachable.get() { return; }
     B(cx).store(Val, Ptr)
+}
+
+pub fn VolatileStore(cx: &Block, Val: ValueRef, Ptr: ValueRef) {
+    if cx.unreachable.get() { return; }
+    B(cx).volatile_store(Val, Ptr)
 }
 
 pub fn AtomicStore(cx: &Block, Val: ValueRef, Ptr: ValueRef, order: AtomicOrdering) {
