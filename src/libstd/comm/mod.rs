@@ -599,7 +599,7 @@ impl<T: Send> Chan<T> {
                 // the TLS overhead can be a bit much.
                 n => {
                     assert!(n >= 0);
-                    if n > 0 && n % RESCHED_FREQ == 0 {
+                    if can_resched && n > 0 && n % RESCHED_FREQ == 0 {
                         let task: ~Task = Local::take();
                         task.maybe_yield();
                     }
