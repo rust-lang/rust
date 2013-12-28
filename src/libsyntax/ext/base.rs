@@ -173,9 +173,9 @@ pub enum Transformer {
 
 pub struct BlockInfo {
     // should macros escape from this scope?
-    macros_escape : bool,
+    macros_escape: bool,
     // what are the pending renames?
-    pending_renames : @mut RenameList
+    pending_renames: @RefCell<RenameList>,
 }
 
 // a list of ident->name renamings
@@ -198,8 +198,8 @@ pub fn syntax_expander_table() -> SyntaxEnv {
     // NB identifier starts with space, and can't conflict with legal idents
     syntax_expanders.insert(intern(&" block"),
                             @BlockInfo(BlockInfo{
-                                macros_escape : false,
-                                pending_renames : @mut ~[]
+                                macros_escape: false,
+                                pending_renames: @RefCell::new(~[]),
                             }));
     syntax_expanders.insert(intern(&"macro_rules"),
                             @SE(IdentTT(@SyntaxExpanderTTItem {

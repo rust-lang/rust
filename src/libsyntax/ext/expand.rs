@@ -270,7 +270,7 @@ macro_rules! with_exts_frame (
               intern(special_block_name),
               @BlockInfo(BlockInfo {
                   macros_escape: $macros_escape,
-                  pending_renames: @mut ~[]
+                  pending_renames: @RefCell::new(~[]),
               }));
       }
       let result = $e;
@@ -562,17 +562,25 @@ fn expand_non_macro_stmt(s: &Stmt, fld: &mut MacroExpander)
             let mut name_finder = new_name_finder(~[]);
             name_finder.visit_pat(expanded_pat,());
             // generate fresh names, push them to a new pending list
-            let new_pending_renames = @mut ~[];
+            let new_pending_renames = @RefCell::new(~[]);
             for ident in name_finder.ident_accumulator.iter() {
                 let new_name = fresh_name(ident);
-                new_pending_renames.push((*ident,new_name));
+                let mut new_pending_renames =
+                    new_pending_renames.borrow_mut();
+                new_pending_renames.get().push((*ident,new_name));
             }
             let mut rename_fld = renames_to_fold(new_pending_renames);
             // rewrite the pattern using the new names (the old ones
             // have already been applied):
             let rewritten_pat = rename_fld.fold_pat(expanded_pat);
             // add them to the existing pending renames:
-            for pr in new_pending_renames.iter() {pending_renames.push(*pr)}
+            {
+                let new_pending_renames = new_pending_renames.borrow();
+                for pr in new_pending_renames.get().iter() {
+                    let mut pending_renames = pending_renames.borrow_mut();
+                    pending_renames.get().push(*pr)
+                }
+            }
             // also, don't forget to expand the init:
             let new_init_opt = init.map(|e| fld.fold_expr(e));
             let rewritten_local =
@@ -694,12 +702,15 @@ fn get_block_info(exts : SyntaxEnv) -> BlockInfo {
 }
 
 struct IdentRenamer {
-    renames: @mut ~[(ast::Ident,ast::Name)],
+    renames: @RefCell<~[(ast::Ident,ast::Name)]>,
 }
 
 impl ast_fold for IdentRenamer {
     fn fold_ident(&mut self, id: ast::Ident) -> ast::Ident {
-        let new_ctxt = self.renames.iter().fold(id.ctxt, |ctxt, &(from, to)| {
+        let renames = self.renames.borrow();
+        let new_ctxt = renames.get()
+                              .iter()
+                              .fold(id.ctxt, |ctxt, &(from, to)| {
             new_rename(from, to, ctxt)
         });
         ast::Ident {
@@ -711,7 +722,8 @@ impl ast_fold for IdentRenamer {
 
 // given a mutable list of renames, return a tree-folder that applies those
 // renames.
-pub fn renames_to_fold(renames: @mut ~[(ast::Ident,ast::Name)]) -> IdentRenamer {
+pub fn renames_to_fold(renames: @RefCell<~[(ast::Ident,ast::Name)]>)
+                       -> IdentRenamer {
     IdentRenamer {
         renames: renames,
     }
@@ -1057,14 +1069,15 @@ impl CtxtFn for Renamer {
 
 // a renamer that performs a whole bunch of renames
 pub struct MultiRenamer {
-    renames : @mut ~[(ast::Ident,ast::Name)]
+    renames: @RefCell<~[(ast::Ident,ast::Name)]>
 }
 
 impl CtxtFn for MultiRenamer {
     fn f(&self, starting_ctxt : ast::SyntaxContext) -> ast::SyntaxContext {
         // the individual elements are memoized... it would
         // also be possible to memoize on the whole list at once.
-        self.renames.iter().fold(starting_ctxt,|ctxt,&(from,to)| {
+        let renames = self.renames.borrow();
+        renames.get().iter().fold(starting_ctxt,|ctxt,&(from,to)| {
             new_rename(from,to,ctxt)
         })
     }
