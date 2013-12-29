@@ -1019,7 +1019,6 @@ mod test {
     })
 
     #[test]
-    #[ignore(cfg(windows))] // FIXME(#11003)
     fn send_from_outside_runtime() {
         let (p, c) = Chan::<int>::new();
         let (p1, c1) = Chan::new();
@@ -1044,7 +1043,6 @@ mod test {
     }
 
     #[test]
-    #[ignore(cfg(windows))] // FIXME(#11003)
     fn recv_from_outside_runtime() {
         let (p, c) = Chan::<int>::new();
         let (dp, dc) = Chan::new();
@@ -1061,7 +1059,6 @@ mod test {
     }
 
     #[test]
-    #[ignore(cfg(windows))] // FIXME(#11003)
     fn no_runtime() {
         let (p1, c1) = Chan::<int>::new();
         let (p2, c2) = Chan::<int>::new();
