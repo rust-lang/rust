@@ -12,6 +12,45 @@
 //!
 //! The tables use a keyed hash with new random keys generated for each container, so the ordering
 //! of a set of keys in a hash table is randomized.
+//!
+//! # Example
+//!
+//! ```rust
+//! use std::hashmap::HashMap;
+//!
+//! // type inference lets us omit an explicit type signature (which
+//! // would be `HashMap<&str, &str>` in this example).
+//! let mut book_reviews = HashMap::new();
+//!
+//! // review some books.
+//! book_reviews.insert("Adventures of Hucklebury Fin",      "My favorite book.");
+//! book_reviews.insert("Grimms' Fairy Tales",               "Masterpiece.");
+//! book_reviews.insert("Pride and Prejudice",               "Very enjoyable.");
+//! book_reviews.insert("The Adventures of Sherlock Holmes", "Eye lyked it alot.");
+//!
+//! // check for a specific one.
+//! if !book_reviews.contains_key(& &"Les Misérables") {
+//!     println!("We've got {} reviews, but Les Misérables ain't one.",
+//!              book_reviews.len());
+//! }
+//!
+//! // oops, this review has a lot of spelling mistakes, let's delete it.
+//! book_reviews.remove(& &"The Adventures of Sherlock Holmes");
+//!
+//! // look up the values associated with some keys.
+//! let to_find = ["Pride and Prejudice", "Alice's Adventure in Wonderland"];
+//! for book in to_find.iter() {
+//!     match book_reviews.find(book) {
+//!         Some(review) => println!("{}: {}", *book, *review),
+//!         None => println!("{} is unreviewed.", *book)
+//!     }
+//! }
+//!
+//! // iterate over everything.
+//! for (book, review) in book_reviews.iter() {
+//!     println!("{}: \"{}\"", *book, *review);
+//! }
+//! ```
 
 use container::{Container, Mutable, Map, MutableMap, Set, MutableSet};
 use clone::Clone;
@@ -354,6 +393,43 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
 
     /// Modify and return the value corresponding to the key in the map, or
     /// insert and return a new value if it doesn't exist.
+    ///
+    /// This method allows for all insertion behaviours of a hashmap,
+    /// see methods like `insert`, `find_or_insert` and
+    /// `insert_or_update_with` for less general and more friendly
+    /// variations of this.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::hashmap::HashMap;
+    ///
+    /// // map some strings to vectors of strings
+    /// let mut map = HashMap::<~str, ~[~str]>::new();
+    /// map.insert(~"a key", ~[~"value"]);
+    /// map.insert(~"z key", ~[~"value"]);
+    ///
+    /// let new = ~[~"a key", ~"b key", ~"z key"];
+    /// for k in new.move_iter() {
+    ///     map.mangle(k, ~"new value",
+    ///                // if the key doesn't exist in the map yet, add it in
+    ///                // the obvious way.
+    ///                |_k, v| ~[v],
+    ///                // if the key does exist either prepend or append this
+    ///                // new value based on the first letter of the key.
+    ///                |key, already, new| {
+    ///                     if key.starts_with("z") {
+    ///                         already.unshift(new);
+    ///                     } else {
+    ///                         already.push(new);
+    ///                     }
+    ///                });
+    /// }
+    ///
+    /// for (k, v) in map.iter() {
+    ///    println!("{} -> {:?}", *k, *v);
+    /// }
+    /// ```
     pub fn mangle<'a,
                   A>(
                   &'a mut self,

@@ -37,11 +37,9 @@ use num;
 /// use std::rand;
 /// use std::rand::distributions::{IndependentSample, Gamma};
 ///
-/// fn main() {
-///     let gamma = Gamma::new(2.0, 5.0);
-///     let v = gamma.ind_sample(&mut rand::task_rng());
-///     println!("{} is from a Gamma(2, 5) distribution", v);
-/// }
+/// let gamma = Gamma::new(2.0, 5.0);
+/// let v = gamma.ind_sample(&mut rand::task_rng());
+/// println!("{} is from a Gamma(2, 5) distribution", v);
 /// ```
 ///
 /// [1]: George Marsaglia and Wai Wan Tsang. 2000. "A Simple Method
@@ -183,11 +181,9 @@ impl IndependentSample<f64> for GammaLargeShape {
 /// use std::rand;
 /// use std::rand::distributions::{ChiSquared, IndependentSample};
 ///
-/// fn main() {
-///     let chi = ChiSquared::new(11.0);
-///     let v = chi.ind_sample(&mut rand::task_rng());
-///     println!("{} is from a χ²(11) distribution", v)
-/// }
+/// let chi = ChiSquared::new(11.0);
+/// let v = chi.ind_sample(&mut rand::task_rng());
+/// println!("{} is from a χ²(11) distribution", v)
 /// ```
 pub enum ChiSquared {
     // k == 1, Gamma(alpha, ..) is particularly slow for alpha < 1,
@@ -237,11 +233,9 @@ impl IndependentSample<f64> for ChiSquared {
 /// use std::rand;
 /// use std::rand::distributions::{FisherF, IndependentSample};
 ///
-/// fn main() {
-///     let f = FisherF::new(2.0, 32.0);
-///     let v = f.ind_sample(&mut rand::task_rng());
-///     println!("{} is from an F(2, 32) distribution", v)
-/// }
+/// let f = FisherF::new(2.0, 32.0);
+/// let v = f.ind_sample(&mut rand::task_rng());
+/// println!("{} is from an F(2, 32) distribution", v)
 /// ```
 pub struct FisherF {
     priv numer: ChiSquared,
@@ -283,11 +277,9 @@ impl IndependentSample<f64> for FisherF {
 /// use std::rand;
 /// use std::rand::distributions::{StudentT, IndependentSample};
 ///
-/// fn main() {
-///     let t = StudentT::new(11.0);
-///     let v = t.ind_sample(&mut rand::task_rng());
-///     println!("{} is from a t(11) distribution", v)
-/// }
+/// let t = StudentT::new(11.0);
+/// let v = t.ind_sample(&mut rand::task_rng());
+/// println!("{} is from a t(11) distribution", v)
 /// ```
 pub struct StudentT {
     priv chi: ChiSquared,
