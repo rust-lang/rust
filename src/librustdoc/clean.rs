@@ -1123,6 +1123,8 @@ fn lit_to_str(lit: &ast::lit) -> ~str {
 
 fn name_from_pat(p: &ast::Pat) -> ~str {
     use syntax::ast::*;
+    debug!("Trying to get a name from pattern: {:?}", p);
+
     match p.node {
         PatWild => ~"_",
         PatWildMulti => ~"..",
@@ -1134,9 +1136,12 @@ fn name_from_pat(p: &ast::Pat) -> ~str {
         PatBox(p) => name_from_pat(p),
         PatUniq(p) => name_from_pat(p),
         PatRegion(p) => name_from_pat(p),
-        PatLit(..) => fail!("tried to get argument name from pat_lit, \
-                            which is not allowed in function arguments"),
-        PatRange(..) => fail!("tried to get argument name from pat_range, \
+        PatLit(..) => {
+            warn!("tried to get argument name from PatLit, \
+                  which is silly in function arguments");
+            ~"()"
+        },
+        PatRange(..) => fail!("tried to get argument name from PatRange, \
                               which is not allowed in function arguments"),
         PatVec(..) => fail!("tried to get argument name from pat_vec, \
                              which is not allowed in function arguments")
