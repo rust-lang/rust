@@ -10,7 +10,7 @@
 
 /*!
 
-Logging
+Utilities for program-wide and customizable logging
 
 This module is used by the compiler when emitting output for the logging family
 of macros. The methods of this module shouldn't necessarily be used directly,

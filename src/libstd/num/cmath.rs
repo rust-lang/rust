@@ -12,6 +12,8 @@
 #[allow(non_uppercase_statics)];
 #[allow(dead_code)];
 
+//! Bindings for the C math library (for basic mathematic functions)
+
 // function names are almost identical to C's libmath, a few have been
 // renamed, grep for "rename:"
 

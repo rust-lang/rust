@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/*! The Rust Runtime, including the task scheduler and I/O
+/*! Runtime services, including the task scheduler and I/O dispatcher
 
 The `rt` module provides the private runtime infrastructure necessary
 to support core language features like the exchange and local heap,

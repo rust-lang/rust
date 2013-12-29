@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! A type representing either success or failure
+//! Signaling success or failure states (`Result` type)
 
 use clone::Clone;
 use cmp::Eq;

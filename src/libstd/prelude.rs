@@ -10,6 +10,8 @@
 
 /*!
 
+The standard module imported by default into all Rust modules
+
 Many programming languages have a 'prelude': a particular subset of the
 libraries that come with the language. Every program imports the prelude by
 default.

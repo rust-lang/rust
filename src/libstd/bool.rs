@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The `bool` module contains useful code to help work with boolean values.
+//! Operations on boolean values (`bool` type)
 //!
 //! A quick summary:
 //!

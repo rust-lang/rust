@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Container traits
+//! Traits for generic containers (including `Map` and `Set`)
 
 use option::Option;
 

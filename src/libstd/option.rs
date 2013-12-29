@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Operations on the ubiquitous `Option` type.
+//! Optionally nullable values (`Option` type)
 //!
 //! Type `Option` represents an optional value.
 //!

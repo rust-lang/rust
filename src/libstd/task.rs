@@ -9,7 +9,7 @@
 // except according to those terms.
 
 /*!
- * Task management.
+ * Utilities for managing and scheduling tasks
  *
  * An executing Rust program consists of a tree of tasks, each with their own
  * stack, and sole ownership of their allocated heap data. Tasks communicate

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! An unordered map and set type implemented as hash tables
+//! Unordered containers, implemented as hash-tables (`HashSet` and `HashMap` types)
 //!
 //! The tables use a keyed hash with new random keys generated for each container, so the ordering
 //! of a set of keys in a hash table is randomized.

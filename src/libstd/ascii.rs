@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Operations on ASCII strings and characters.
+//! Operations on ASCII strings and characters
 
 use to_str::{ToStr,IntoStr};
 use str;

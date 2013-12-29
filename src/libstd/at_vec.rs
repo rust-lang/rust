@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Managed vectors
+//! Operations on managed vectors (`@[T]` type)
 
 use clone::Clone;
 use container::Container;
