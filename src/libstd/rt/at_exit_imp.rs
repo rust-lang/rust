@@ -13,13 +13,20 @@
 //! Documentation can be found on the `rt::at_exit` function.
 
 use cast;
+use iter::Iterator;
 use option::{Some, None};
 use ptr::RawPtr;
 use unstable::sync::Exclusive;
 use util;
+use vec::OwnedVector;
 
 type Queue = Exclusive<~[proc()]>;
 
+// You'll note that these variables are *not* atomic, and this is done on
+// purpose. This module is designed to have init() called *once* in a
+// single-task context, and then run() is called only once in another
+// single-task context. As a result of this, only the `push` function is
+// thread-safe, and it assumes that the `init` function has run previously.
 static mut QUEUE: *mut Queue = 0 as *mut Queue;
 static mut RUNNING: bool = false;
 
