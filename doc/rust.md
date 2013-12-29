@@ -610,12 +610,12 @@ the behavior of the compiler.
 
 ~~~~
 // Package ID
-#[ pkgid = "projx#2.5" ];
+#[ crate_id = "projx#2.5" ];
 
 // Additional metadata attributes
 #[ desc = "Project X" ];
 #[ license = "BSD" ];
-#[ author = "Jane Doe" ];
+#[ comment = "This is a comment on Project X." ];
 
 // Specify the output type
 #[ crate_type = "lib" ];
