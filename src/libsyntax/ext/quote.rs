@@ -289,7 +289,7 @@ pub mod rt {
 
 }
 
-pub fn expand_quote_tokens(cx: &ExtCtxt,
+pub fn expand_quote_tokens(cx: &mut ExtCtxt,
                            sp: Span,
                            tts: &[ast::token_tree]) -> base::MacResult {
     let (cx_expr, expr) = expand_tts(cx, sp, tts);
@@ -297,14 +297,14 @@ pub fn expand_quote_tokens(cx: &ExtCtxt,
     base::MRExpr(expanded)
 }
 
-pub fn expand_quote_expr(cx: &ExtCtxt,
+pub fn expand_quote_expr(cx: &mut ExtCtxt,
                          sp: Span,
                          tts: &[ast::token_tree]) -> base::MacResult {
     let expanded = expand_parse_call(cx, sp, "parse_expr", ~[], tts);
     base::MRExpr(expanded)
 }
 
-pub fn expand_quote_item(cx: &ExtCtxt,
+pub fn expand_quote_item(cx: &mut ExtCtxt,
                          sp: Span,
                          tts: &[ast::token_tree]) -> base::MacResult {
     let e_attrs = cx.expr_vec_uniq(sp, ~[]);
@@ -313,7 +313,7 @@ pub fn expand_quote_item(cx: &ExtCtxt,
     base::MRExpr(expanded)
 }
 
-pub fn expand_quote_pat(cx: &ExtCtxt,
+pub fn expand_quote_pat(cx: &mut ExtCtxt,
                         sp: Span,
                         tts: &[ast::token_tree]) -> base::MacResult {
     let e_refutable = cx.expr_lit(sp, ast::lit_bool(true));
@@ -322,7 +322,7 @@ pub fn expand_quote_pat(cx: &ExtCtxt,
     base::MRExpr(expanded)
 }
 
-pub fn expand_quote_ty(cx: &ExtCtxt,
+pub fn expand_quote_ty(cx: &mut ExtCtxt,
                        sp: Span,
                        tts: &[ast::token_tree]) -> base::MacResult {
     let e_param_colons = cx.expr_lit(sp, ast::lit_bool(false));
@@ -331,7 +331,7 @@ pub fn expand_quote_ty(cx: &ExtCtxt,
     base::MRExpr(expanded)
 }
 
-pub fn expand_quote_stmt(cx: &ExtCtxt,
+pub fn expand_quote_stmt(cx: &mut ExtCtxt,
                          sp: Span,
                          tts: &[ast::token_tree]) -> base::MacResult {
     let e_attrs = cx.expr_vec_uniq(sp, ~[]);

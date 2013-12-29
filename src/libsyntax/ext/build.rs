@@ -236,7 +236,7 @@ pub trait AstBuilder {
                      vis: ast::visibility, path: ~[ast::Ident]) -> ast::view_item;
 }
 
-impl<'a> AstBuilder for &'a ExtCtxt {
+impl AstBuilder for ExtCtxt {
     fn path(&self, span: Span, strs: ~[ast::Ident]) -> ast::Path {
         self.path_all(span, false, strs, opt_vec::Empty, ~[])
     }
@@ -686,12 +686,12 @@ impl<'a> AstBuilder for &'a ExtCtxt {
     }
     fn lambda0(&self, _span: Span, blk: P<ast::Block>) -> @ast::Expr {
         let blk_e = self.expr(blk.span, ast::ExprBlock(blk));
-        quote_expr!(*self, || $blk_e )
+        quote_expr!(self, || $blk_e )
     }
 
     fn lambda1(&self, _span: Span, blk: P<ast::Block>, ident: ast::Ident) -> @ast::Expr {
         let blk_e = self.expr(blk.span, ast::ExprBlock(blk));
-        quote_expr!(*self, |$ident| $blk_e )
+        quote_expr!(self, |$ident| $blk_e )
     }
 
     fn lambda_expr(&self, span: Span, ids: ~[ast::Ident], expr: @ast::Expr) -> @ast::Expr {

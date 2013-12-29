@@ -932,7 +932,7 @@ pub fn inject_std_macros(parse_sess: @mut parse::ParseSess,
 
 pub struct MacroExpander<'a> {
     extsbox: @mut SyntaxEnv,
-    cx: &'a ExtCtxt,
+    cx: &'a mut ExtCtxt,
 }
 
 impl<'a> ast_fold for MacroExpander<'a> {
@@ -970,10 +970,10 @@ pub fn expand_crate(parse_sess: @mut parse::ParseSess,
     // exts table through the fold, but that would require updating
     // every method/element of AstFoldFns in fold.rs.
     let extsbox = syntax_expander_table();
-    let cx = ExtCtxt::new(parse_sess, cfg.clone());
+    let mut cx = ExtCtxt::new(parse_sess, cfg.clone());
     let mut expander = MacroExpander {
         extsbox: @mut extsbox,
-        cx: &cx,
+        cx: &mut cx,
     };
 
     let ret = expander.fold_crate(c);
