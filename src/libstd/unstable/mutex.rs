@@ -47,6 +47,7 @@
 
 #[allow(non_camel_case_types)];
 
+use int;
 use libc::c_void;
 use sync::atomics;
 
@@ -339,15 +340,15 @@ mod imp {
 /// ```
 pub struct Once {
     priv mutex: Mutex,
-    priv cnt: AtomicInt,
-    priv lock_cnt: AtomicInt,
+    priv cnt: atomics::AtomicInt,
+    priv lock_cnt: atomics::AtomicInt,
 }
 
 /// Initialization value for static `Once` values.
 pub static ONCE_INIT: Once = Once {
     mutex: MUTEX_INIT,
-    cnt: INIT_ATOMIC_INT,
-    lock_cnt: INIT_ATOMIC_INT,
+    cnt: atomics::INIT_ATOMIC_INT,
+    lock_cnt: atomics::INIT_ATOMIC_INT,
 };
 
 impl Once {
@@ -388,11 +389,11 @@ impl Once {
         // calling `doit` will return immediately before the initialization has
         // completed.
 
-        let prev = self.cnt.fetch_add(1, SeqCst);
+        let prev = self.cnt.fetch_add(1, atomics::SeqCst);
         if prev < 0 {
             // Make sure we never overflow, we'll never have int::min_value
             // simultaneous calls to `doit` to make this value go back to 0
-            self.cnt.store(int::min_value, SeqCst);
+            self.cnt.store(int::min_value, atomics::SeqCst);
             return
         }
 
@@ -400,15 +401,15 @@ impl Once {
         // otherwise we run the job and record how many people will try to grab
         // this lock
         unsafe { self.mutex.lock() }
-        if self.cnt.load(SeqCst) > 0 {
+        if self.cnt.load(atomics::SeqCst) > 0 {
             f();
-            let prev = self.cnt.swap(int::min_value, SeqCst);
-            self.lock_cnt.store(prev, SeqCst);
+            let prev = self.cnt.swap(int::min_value, atomics::SeqCst);
+            self.lock_cnt.store(prev, atomics::SeqCst);
         }
         unsafe { self.mutex.unlock() }
 
         // Last one out cleans up after everyone else, no leaks!
-        if self.lock_cnt.fetch_add(-1, SeqCst) == 1 {
+        if self.lock_cnt.fetch_add(-1, atomics::SeqCst) == 1 {
             unsafe { self.mutex.destroy() }
         }
     }
@@ -416,6 +417,8 @@ impl Once {
 
 #[cfg(test)]
 mod test {
+    use prelude::*;
+
     use rt::thread::Thread;
     use super::{ONCE_INIT, Once, Mutex, MUTEX_INIT};
     use task;
