@@ -63,7 +63,7 @@ pub fn modify_for_testing(sess: session::Session,
 }
 
 struct TestHarnessGenerator {
-    cx: @TestCtxt,
+    cx: TestCtxt,
 }
 
 impl fold::ast_fold for TestHarnessGenerator {
@@ -73,7 +73,7 @@ impl fold::ast_fold for TestHarnessGenerator {
         // Add a special __test module to the crate that will contain code
         // generated for the test harness
         ast::Crate {
-            module: add_test_module(self.cx, &folded.module),
+            module: add_test_module(&self.cx, &folded.module),
             .. folded
         }
     }
@@ -86,7 +86,7 @@ impl fold::ast_fold for TestHarnessGenerator {
         debug!("current path: {}",
                ast_util::path_name_i(self.cx.path.get()));
 
-        if is_test_fn(self.cx, i) || is_bench_fn(i) {
+        if is_test_fn(&self.cx, i) || is_bench_fn(i) {
             match i.node {
                 ast::item_fn(_, purity, _, _, _)
                     if purity == ast::unsafe_fn => {
@@ -101,7 +101,7 @@ impl fold::ast_fold for TestHarnessGenerator {
                         span: i.span,
                         path: self.cx.path.get(),
                         bench: is_bench_fn(i),
-                        ignore: is_ignored(self.cx, i),
+                        ignore: is_ignored(&self.cx, i),
                         should_fail: should_fail(i)
                     };
                     {
@@ -126,7 +126,7 @@ impl fold::ast_fold for TestHarnessGenerator {
         // Remove any #[main] from the AST so it doesn't clash with
         // the one we're going to add. Only if compiling an executable.
 
-        fn nomain(cx: @TestCtxt, item: @ast::item) -> @ast::item {
+        fn nomain(cx: &TestCtxt, item: @ast::item) -> @ast::item {
             if !cx.sess.building_library.get() {
                 @ast::item {
                     attrs: item.attrs.iter().filter_map(|attr| {
@@ -145,7 +145,7 @@ impl fold::ast_fold for TestHarnessGenerator {
 
         let mod_nomain = ast::_mod {
             view_items: m.view_items.clone(),
-            items: m.items.iter().map(|i| nomain(self.cx, *i)).collect(),
+            items: m.items.iter().map(|i| nomain(&self.cx, *i)).collect(),
         };
 
         fold::noop_fold_mod(&mod_nomain, self)
@@ -154,7 +154,7 @@ impl fold::ast_fold for TestHarnessGenerator {
 
 fn generate_test_harness(sess: session::Session, crate: ast::Crate)
                          -> ast::Crate {
-    let cx: @TestCtxt = @TestCtxt {
+    let mut cx: TestCtxt = TestCtxt {
         sess: sess,
         ext_cx: ExtCtxt::new(sess.parse_sess, sess.opts.cfg.clone()),
         path: RefCell::new(~[]),
@@ -176,7 +176,7 @@ fn generate_test_harness(sess: session::Session, crate: ast::Crate)
         cx: cx
     };
     let res = fold.fold_crate(crate);
-    cx.ext_cx.bt_pop();
+    fold.cx.ext_cx.bt_pop();
     return res;
 }
 
@@ -189,7 +189,7 @@ fn strip_test_functions(crate: ast::Crate) -> ast::Crate {
     })
 }
 
-fn is_test_fn(cx: @TestCtxt, i: @ast::item) -> bool {
+fn is_test_fn(cx: &TestCtxt, i: @ast::item) -> bool {
     let has_test_attr = attr::contains_name(i.attrs, "test");
 
     fn has_test_signature(i: @ast::item) -> bool {
@@ -242,7 +242,7 @@ fn is_bench_fn(i: @ast::item) -> bool {
     return has_bench_attr && has_test_signature(i);
 }
 
-fn is_ignored(cx: @TestCtxt, i: @ast::item) -> bool {
+fn is_ignored(cx: &TestCtxt, i: @ast::item) -> bool {
     i.attrs.iter().any(|attr| {
         // check ignore(cfg(foo, bar))
         "ignore" == attr.name() && match attr.meta_item_list() {
