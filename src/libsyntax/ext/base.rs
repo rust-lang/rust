@@ -297,15 +297,15 @@ pub fn syntax_expander_table() -> SyntaxEnv {
 pub struct ExtCtxt {
     parse_sess: @mut parse::ParseSess,
     cfg: ast::CrateConfig,
-    backtrace: @mut Option<@ExpnInfo>,
+    backtrace: Option<@ExpnInfo>,
 
     // These two @mut's should really not be here,
     // but the self types for CtxtRepr are all wrong
     // and there are bugs in the code for object
     // types that make this hard to get right at the
     // moment. - nmatsakis
-    mod_path: @mut ~[ast::Ident],
-    trace_mac: @mut bool
+    mod_path: ~[ast::Ident],
+    trace_mac: bool
 }
 
 impl ExtCtxt {
@@ -314,9 +314,9 @@ impl ExtCtxt {
         ExtCtxt {
             parse_sess: parse_sess,
             cfg: cfg,
-            backtrace: @mut None,
-            mod_path: @mut ~[],
-            trace_mac: @mut false
+            backtrace: None,
+            mod_path: ~[],
+            trace_mac: false
         }
     }
 
@@ -339,32 +339,32 @@ impl ExtCtxt {
     pub fn parse_sess(&self) -> @mut parse::ParseSess { self.parse_sess }
     pub fn cfg(&self) -> ast::CrateConfig { self.cfg.clone() }
     pub fn call_site(&self) -> Span {
-        match *self.backtrace {
+        match self.backtrace {
             Some(@ExpnInfo {call_site: cs, ..}) => cs,
             None => self.bug("missing top span")
         }
     }
     pub fn print_backtrace(&self) { }
-    pub fn backtrace(&self) -> Option<@ExpnInfo> { *self.backtrace }
-    pub fn mod_push(&self, i: ast::Ident) { self.mod_path.push(i); }
-    pub fn mod_pop(&self) { self.mod_path.pop(); }
-    pub fn mod_path(&self) -> ~[ast::Ident] { (*self.mod_path).clone() }
-    pub fn bt_push(&self, ei: codemap::ExpnInfo) {
+    pub fn backtrace(&self) -> Option<@ExpnInfo> { self.backtrace }
+    pub fn mod_push(&mut self, i: ast::Ident) { self.mod_path.push(i); }
+    pub fn mod_pop(&mut self) { self.mod_path.pop(); }
+    pub fn mod_path(&self) -> ~[ast::Ident] { self.mod_path.clone() }
+    pub fn bt_push(&mut self, ei: codemap::ExpnInfo) {
         match ei {
             ExpnInfo {call_site: cs, callee: ref callee} => {
-                *self.backtrace =
+                self.backtrace =
                     Some(@ExpnInfo {
                         call_site: Span {lo: cs.lo, hi: cs.hi,
-                                         expn_info: *self.backtrace},
+                                         expn_info: self.backtrace},
                         callee: *callee});
             }
         }
     }
-    pub fn bt_pop(&self) {
-        match *self.backtrace {
+    pub fn bt_pop(&mut self) {
+        match self.backtrace {
             Some(@ExpnInfo {
                 call_site: Span {expn_info: prev, ..}, ..}) => {
-                *self.backtrace = prev
+                self.backtrace = prev
             }
             _ => self.bug("tried to pop without a push")
         }
@@ -394,10 +394,10 @@ impl ExtCtxt {
         self.parse_sess.span_diagnostic.handler().bug(msg);
     }
     pub fn trace_macros(&self) -> bool {
-        *self.trace_mac
+        self.trace_mac
     }
-    pub fn set_trace_macros(&self, x: bool) {
-        *self.trace_mac = x
+    pub fn set_trace_macros(&mut self, x: bool) {
+        self.trace_mac = x
     }
     pub fn str_of(&self, id: ast::Ident) -> @str {
         ident_to_str(&id)
