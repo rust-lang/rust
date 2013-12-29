@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! A type that represents one of two alternatives
+//! Representing values with two possibilities (`Either` type)
 
 #[allow(missing_doc)];
 

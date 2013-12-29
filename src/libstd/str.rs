@@ -10,7 +10,7 @@
 
 /*!
 
-String manipulation
+Unicode string manipulation (`str` type)
 
 # Basic Usage
 

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! `SendStr` definition and trait implementations
+//! The `SendStr` trait for optionally static strings
 
 use clone::{Clone, DeepClone};
 use cmp::{Eq, TotalEq, Ord, TotalOrd, Equiv};

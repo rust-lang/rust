@@ -9,7 +9,7 @@
 // except according to those terms.
 
 /*!
-The kind traits
+Primitive traits representing basic 'kinds' of types
 
 Rust types can be classified in various useful ways according to
 intrinsic properties of the type. These classifications, often called

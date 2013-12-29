@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Operations and constants for `int`
+//! Operations and constants for architecture-sized signed integers (`int` type)
 
 #[allow(non_uppercase_statics)];
 

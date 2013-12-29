@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Operations and constants for `f32`
+//! Operations and constants for 32-bits floats (`f32` type)
 #[allow(missing_doc)];
 
 use prelude::*;

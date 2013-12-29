@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The Default trait
+//! The `Default` trait for types which may have meaningful default values
 
 /// A trait that types which have a useful default value should implement.
 pub trait Default {
