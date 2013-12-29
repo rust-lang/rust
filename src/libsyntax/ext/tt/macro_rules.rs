@@ -83,7 +83,7 @@ struct MacroRulesSyntaxExpanderTTFun {
 
 impl SyntaxExpanderTTTrait for MacroRulesSyntaxExpanderTTFun {
     fn expand(&self,
-              cx: &ExtCtxt,
+              cx: &mut ExtCtxt,
               sp: Span,
               arg: &[ast::token_tree],
               _: ast::SyntaxContext)
@@ -168,7 +168,7 @@ fn generic_extension(cx: &ExtCtxt,
 // this procedure performs the expansion of the
 // macro_rules! macro. It parses the RHS and adds
 // an extension to the current context.
-pub fn add_new_extension(cx: &ExtCtxt,
+pub fn add_new_extension(cx: &mut ExtCtxt,
                          sp: Span,
                          name: Ident,
                          arg: ~[ast::token_tree],

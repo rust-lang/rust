@@ -45,7 +45,7 @@ pub struct SyntaxExpanderTT {
 
 pub trait SyntaxExpanderTTTrait {
     fn expand(&self,
-              ecx: &ExtCtxt,
+              ecx: &mut ExtCtxt,
               span: Span,
               token_tree: &[ast::token_tree],
               context: ast::SyntaxContext)
@@ -53,7 +53,7 @@ pub trait SyntaxExpanderTTTrait {
 }
 
 pub type SyntaxExpanderTTFunNoCtxt =
-    fn(ecx: &ExtCtxt, span: codemap::Span, token_tree: &[ast::token_tree])
+    fn(ecx: &mut ExtCtxt, span: codemap::Span, token_tree: &[ast::token_tree])
        -> MacResult;
 
 enum SyntaxExpanderTTExpander {
@@ -62,7 +62,7 @@ enum SyntaxExpanderTTExpander {
 
 impl SyntaxExpanderTTTrait for SyntaxExpanderTT {
     fn expand(&self,
-              ecx: &ExtCtxt,
+              ecx: &mut ExtCtxt,
               span: Span,
               token_tree: &[ast::token_tree],
               _: ast::SyntaxContext)
@@ -87,7 +87,7 @@ pub struct SyntaxExpanderTTItem {
 
 pub trait SyntaxExpanderTTItemTrait {
     fn expand(&self,
-              cx: &ExtCtxt,
+              cx: &mut ExtCtxt,
               sp: Span,
               ident: ast::Ident,
               token_tree: ~[ast::token_tree],
@@ -97,7 +97,7 @@ pub trait SyntaxExpanderTTItemTrait {
 
 impl SyntaxExpanderTTItemTrait for SyntaxExpanderTTItem {
     fn expand(&self,
-              cx: &ExtCtxt,
+              cx: &mut ExtCtxt,
               sp: Span,
               ident: ast::Ident,
               token_tree: ~[ast::token_tree],
@@ -115,11 +115,11 @@ impl SyntaxExpanderTTItemTrait for SyntaxExpanderTTItem {
 }
 
 pub type SyntaxExpanderTTItemFun =
-    fn(&ExtCtxt, Span, ast::Ident, ~[ast::token_tree], ast::SyntaxContext)
+    fn(&mut ExtCtxt, Span, ast::Ident, ~[ast::token_tree], ast::SyntaxContext)
        -> MacResult;
 
 pub type SyntaxExpanderTTItemFunNoCtxt =
-    fn(&ExtCtxt, Span, ast::Ident, ~[ast::token_tree]) -> MacResult;
+    fn(&mut ExtCtxt, Span, ast::Ident, ~[ast::token_tree]) -> MacResult;
 
 pub trait AnyMacro {
     fn make_expr(&self) -> @ast::Expr;
@@ -320,7 +320,7 @@ impl ExtCtxt {
         }
     }
 
-    pub fn expand_expr(&self, mut e: @ast::Expr) -> @ast::Expr {
+    pub fn expand_expr(&mut self, mut e: @ast::Expr) -> @ast::Expr {
         loop {
             match e.node {
                 ast::ExprMac(..) => {
