@@ -3189,8 +3189,21 @@ pub fn trans_crate(sess: session::Session,
                    analysis: &CrateAnalysis,
                    output: &Path) -> CrateTranslation {
     // Before we touch LLVM, make sure that multithreading is enabled.
-    if unsafe { !llvm::LLVMRustStartMultithreading() } {
-        sess.bug("couldn't enable multi-threaded LLVM");
+    unsafe {
+        use std::unstable::mutex::{Once, ONCE_INIT};
+        static mut INIT: Once = ONCE_INIT;
+        static mut POISONED: bool = false;
+        INIT.doit(|| {
+            if llvm::LLVMStartMultithreaded() != 1 {
+                // use an extra bool to make sure that all future usage of LLVM
+                // cannot proceed despite the Once not running more than once.
+                POISONED = true;
+            }
+        });
+
+        if POISONED {
+            sess.bug("couldn't enable multi-threaded LLVM");
+        }
     }
 
     let mut symbol_hasher = Sha256::new();
