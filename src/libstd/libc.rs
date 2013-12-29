@@ -243,6 +243,8 @@ pub mod types {
                 }
             }
             pub mod bsd44 {
+                use libc::types::os::arch::c95::c_uint;
+
                 pub type socklen_t = u32;
                 pub type sa_family_t = u16;
                 pub type in_port_t = u16;
@@ -274,6 +276,14 @@ pub mod types {
                 }
                 pub struct in6_addr {
                     s6_addr: [u16, ..8]
+                }
+                pub struct ip_mreq {
+                    imr_multiaddr: in_addr,
+                    imr_interface: in_addr,
+                }
+                pub struct ip6_mreq {
+                    ipv6mr_multiaddr: in6_addr,
+                    ipv6mr_interface: c_uint,
                 }
             }
         }
@@ -575,6 +585,8 @@ pub mod types {
                 }
             }
             pub mod bsd44 {
+                use libc::types::os::arch::c95::c_uint;
+
                 pub type socklen_t = u32;
                 pub type sa_family_t = u8;
                 pub type in_port_t = u16;
@@ -611,6 +623,14 @@ pub mod types {
                 }
                 pub struct in6_addr {
                     s6_addr: [u16, ..8]
+                }
+                pub struct ip_mreq {
+                    imr_multiaddr: in_addr,
+                    imr_interface: in_addr,
+                }
+                pub struct ip6_mreq {
+                    ipv6mr_multiaddr: in6_addr,
+                    ipv6mr_interface: c_uint,
                 }
             }
         }
@@ -772,6 +792,14 @@ pub mod types {
                 }
                 pub struct in6_addr {
                     s6_addr: [u16, ..8]
+                }
+                pub struct ip_mreq {
+                    imr_multiaddr: in_addr,
+                    imr_interface: in_addr,
+                }
+                pub struct ip6_mreq {
+                    ipv6mr_multiaddr: in6_addr,
+                    ipv6mr_interface: c_uint,
                 }
             }
         }
@@ -1015,7 +1043,7 @@ pub mod types {
             }
 
             pub mod bsd44 {
-                use libc::types::os::arch::c95::c_int;
+                use libc::types::os::arch::c95::{c_int, c_uint};
 
                 pub type socklen_t = c_int;
                 pub type sa_family_t = u8;
@@ -1053,6 +1081,14 @@ pub mod types {
                 }
                 pub struct in6_addr {
                     s6_addr: [u16, ..8]
+                }
+                pub struct ip_mreq {
+                    imr_multiaddr: in_addr,
+                    imr_interface: in_addr,
+                }
+                pub struct ip6_mreq {
+                    ipv6mr_multiaddr: in6_addr,
+                    ipv6mr_interface: c_uint,
                 }
             }
         }
@@ -1364,10 +1400,20 @@ pub mod consts {
             pub static SOCK_STREAM: c_int = 1;
             pub static SOCK_DGRAM: c_int = 2;
             pub static IPPROTO_TCP: c_int = 6;
+            pub static IPPROTO_IP: c_int = 0;
+            pub static IPPROTO_IPV6: c_int = 41;
+            pub static IP_MULTICAST_TTL: c_int = 3;
+            pub static IP_MULTICAST_LOOP: c_int = 4;
+            pub static IP_ADD_MEMBERSHIP: c_int = 5;
+            pub static IP_DROP_MEMBERSHIP: c_int = 6;
+            pub static IPV6_ADD_MEMBERSHIP: c_int = 5;
+            pub static IPV6_DROP_MEMBERSHIP: c_int = 6;
+            pub static IP_TTL: c_int = 4;
 
             pub static TCP_NODELAY: c_int = 0x0001;
             pub static SOL_SOCKET: c_int = 0xffff;
             pub static SO_KEEPALIVE: c_int = 8;
+            pub static SO_BROADCAST: c_int = 32;
         }
         pub mod extra {
             use libc::types::os::arch::c95::c_int;
@@ -2070,10 +2116,20 @@ pub mod consts {
             pub static SOCK_STREAM: c_int = 1;
             pub static SOCK_DGRAM: c_int = 2;
             pub static IPPROTO_TCP: c_int = 6;
+            pub static IPPROTO_IP: c_int = 0;
+            pub static IPPROTO_IPV6: c_int = 41;
+            pub static IP_MULTICAST_TTL: c_int = 33;
+            pub static IP_MULTICAST_LOOP: c_int = 34;
+            pub static IP_TTL: c_int = 2;
+            pub static IP_ADD_MEMBERSHIP: c_int = 35;
+            pub static IP_DROP_MEMBERSHIP: c_int = 36;
+            pub static IPV6_ADD_MEMBERSHIP: c_int = 20;
+            pub static IPV6_DROP_MEMBERSHIP: c_int = 21;
 
             pub static TCP_NODELAY: c_int = 1;
             pub static SOL_SOCKET: c_int = 1;
             pub static SO_KEEPALIVE: c_int = 9;
+            pub static SO_BROADCAST: c_int = 6;
         }
         #[cfg(target_arch = "x86")]
         #[cfg(target_arch = "x86_64")]
@@ -2497,11 +2553,21 @@ pub mod consts {
             pub static SOCK_STREAM: c_int = 1;
             pub static SOCK_DGRAM: c_int = 2;
             pub static IPPROTO_TCP: c_int = 6;
+            pub static IPPROTO_IP: c_int = 0;
+            pub static IPPROTO_IPV6: c_int = 41;
+            pub static IP_MULTICAST_TTL: c_int = 10;
+            pub static IP_MULTICAST_LOOP: c_int = 11;
+            pub static IP_TTL: c_int = 4;
+            pub static IP_ADD_MEMBERSHIP: c_int = 12;
+            pub static IP_DROP_MEMBERSHIP: c_int = 13;
+            pub static IPV6_ADD_MEMBERSHIP: c_int = 12;
+            pub static IPV6_DROP_MEMBERSHIP: c_int = 13;
 
             pub static TCP_NODELAY: c_int = 1;
             pub static TCP_KEEPIDLE: c_int = 256;
             pub static SOL_SOCKET: c_int = 0xffff;
             pub static SO_KEEPALIVE: c_int = 0x0008;
+            pub static SO_BROADCAST: c_int = 0x0020;
         }
         pub mod extra {
             use libc::types::os::arch::c95::c_int;
@@ -2862,11 +2928,21 @@ pub mod consts {
             pub static SOCK_STREAM: c_int = 1;
             pub static SOCK_DGRAM: c_int = 2;
             pub static IPPROTO_TCP: c_int = 6;
+            pub static IPPROTO_IP: c_int = 0;
+            pub static IPPROTO_IPV6: c_int = 41;
+            pub static IP_MULTICAST_TTL: c_int = 10;
+            pub static IP_MULTICAST_LOOP: c_int = 11;
+            pub static IP_TTL: c_int = 4;
+            pub static IP_ADD_MEMBERSHIP: c_int = 12;
+            pub static IP_DROP_MEMBERSHIP: c_int = 13;
+            pub static IPV6_ADD_MEMBERSHIP: c_int = 12;
+            pub static IPV6_DROP_MEMBERSHIP: c_int = 13;
 
             pub static TCP_NODELAY: c_int = 0x01;
             pub static TCP_KEEPALIVE: c_int = 0x10;
             pub static SOL_SOCKET: c_int = 0xffff;
             pub static SO_KEEPALIVE: c_int = 0x0008;
+            pub static SO_BROADCAST: c_int = 0x0020;
         }
         pub mod extra {
             use libc::types::os::arch::c95::c_int;
@@ -3573,6 +3649,12 @@ pub mod funcs {
                         flags: c_int) -> ssize_t;
             pub fn send(socket: c_int, buf: *mut c_void, len: size_t,
                         flags: c_int) -> ssize_t;
+            pub fn recvfrom(socket: c_int, buf: *mut c_void, len: size_t,
+                            flags: c_int, addr: *mut sockaddr,
+                            addrlen: *mut socklen_t) -> ssize_t;
+            pub fn sendto(socket: c_int, buf: *c_void, len: size_t,
+                          flags: c_int, addr: *sockaddr,
+                          addrlen: socklen_t) -> ssize_t;
         }
     }
 
@@ -3581,6 +3663,7 @@ pub mod funcs {
         use libc::types::common::c95::{c_void};
         use libc::types::os::common::bsd44::{socklen_t, sockaddr, SOCKET};
         use libc::types::os::arch::c95::c_int;
+        use libc::types::os::arch::posix88::ssize_t;
 
         extern "system" {
             pub fn socket(domain: c_int, ty: c_int, protocol: c_int) -> SOCKET;
@@ -3602,6 +3685,12 @@ pub mod funcs {
                         flags: c_int) -> c_int;
             pub fn send(socket: SOCKET, buf: *mut c_void, len: c_int,
                         flags: c_int) -> c_int;
+            pub fn recvfrom(socket: SOCKET, buf: *mut c_void, len: c_int,
+                            flags: c_int, addr: *mut sockaddr,
+                            addrlen: *mut c_int) -> ssize_t;
+            pub fn sendto(socket: SOCKET, buf: *c_void, len: c_int,
+                          flags: c_int, addr: *sockaddr,
+                          addrlen: c_int) -> c_int;
         }
     }
 
