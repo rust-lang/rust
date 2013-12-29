@@ -13,6 +13,7 @@
 ######################################################################
 
 DOCS :=
+CDOCS :=
 DOCS_L10N :=
 
 BASE_DOC_OPTS := --from=markdown --standalone --toc --number-sections
@@ -232,8 +233,21 @@ doc/$(1)/index.html: $$(RUSTDOC) $$(TLIB2_T_$(3)_H_$(3))/$(CFG_STDLIB_$(3))
 DOCS += doc/$(1)/index.html
 endef
 
+define compiledoc
+doc/$(1)/index.html: $$(RUSTDOC) $$(TLIB2_T_$(3)_H_$(3))/$(CFG_STDLIB_$(3))
+	@$$(call E, rustdoc: $$@)
+	$(Q)$(RUSTDOC) --cfg stage2 $(2)
+
+CDOCS += doc/$(1)/index.html
+endef
+
 $(eval $(call libdoc,std,$(STDLIB_CRATE),$(CFG_BUILD)))
 $(eval $(call libdoc,extra,$(EXTRALIB_CRATE),$(CFG_BUILD)))
+$(eval $(call libdoc,native,$(LIBNATIVE_CRATE),$(CFG_BUILD)))
+$(eval $(call libdoc,green,$(LIBGREEN_CRATE),$(CFG_BUILD)))
+
+$(eval $(call compiledoc,rustc,$(COMPILER_CRATE),$(CFG_BUILD)))
+$(eval $(call compiledoc,syntax,$(LIBSYNTAX_CRATE),$(CFG_BUILD)))
 
 
 ifdef CFG_DISABLE_DOCS
@@ -256,6 +270,7 @@ doc/version_info.html: version_info.html.template $(MKFILE_DEPS) \
 GENERATED += doc/version.md doc/version_info.html
 
 docs: $(DOCS)
+compiler-docs: $(CDOCS)
 
 docs-l10n: $(DOCS_L10N)
 
