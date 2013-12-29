@@ -77,6 +77,8 @@ src/.DS_Store
 /doc/extra
 /doc/green
 /doc/native
+/doc/rustc
+/doc/syntax
 /nd/
 /llvm/
 version.md
