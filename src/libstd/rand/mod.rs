@@ -9,7 +9,7 @@
 // except according to those terms.
 
 /*!
-Random number generation.
+Utilities for random number generation
 
 The key functions are `random()` and `Rng::gen()`. These are polymorphic
 and so can be used to generate any type that implements `Rand`. Type inference

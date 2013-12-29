@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Operations and constants for `i32`
+//! Operations and constants for signed 32-bits integers (`i32` type)
 
 #[allow(non_uppercase_statics)];
 

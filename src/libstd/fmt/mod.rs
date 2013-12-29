@@ -10,7 +10,7 @@
 
 /*!
 
-The Formatting Module
+Utilities for formatting and printing strings
 
 This module contains the runtime support for the `format!` syntax extension.
 This macro is implemented in the compiler to emit calls to this module in order
