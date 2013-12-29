@@ -3548,6 +3548,7 @@ pub mod funcs {
                 pub fn setsid() -> pid_t;
                 pub fn setuid(uid: uid_t) -> c_int;
                 pub fn sleep(secs: c_uint) -> c_uint;
+                pub fn usleep(secs: c_uint) -> c_int;
                 pub fn sysconf(name: c_int) -> c_long;
                 pub fn tcgetpgrp(fd: c_int) -> pid_t;
                 pub fn ttyname(fd: c_int) -> *c_char;
