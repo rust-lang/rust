@@ -286,9 +286,7 @@ struct ParsedItemsAndViewItems {
 
 /* ident is handled by common.rs */
 
-pub fn Parser(sess: @mut ParseSess,
-              cfg: ast::CrateConfig,
-              rdr: @mut reader)
+pub fn Parser(sess: @mut ParseSess, cfg: ast::CrateConfig, rdr: @mut reader)
            -> Parser {
     let tok0 = rdr.next_token();
     let interner = get_ident_interner();
@@ -305,7 +303,7 @@ pub fn Parser(sess: @mut ParseSess,
         cfg: cfg,
         token: tok0.tok,
         span: span,
-        last_span: @mut span,
+        last_span: span,
         last_token: @mut None,
         buffer: @mut ([
             placeholder.clone(),
@@ -334,7 +332,7 @@ pub struct Parser {
     // the span of the current token:
     span: Span,
     // the span of the prior token:
-    last_span: @mut Span,
+    last_span: Span,
     // the previous token or None (only stashed sometimes).
     last_token: @mut Option<~token::Token>,
     buffer: @mut [TokenAndSpan, ..4],
@@ -373,8 +371,8 @@ impl Parser {
 
     pub fn unexpected_last(&mut self, t: &token::Token) -> ! {
         let token_str = Parser::token_to_str(t);
-        self.span_fatal(*self.last_span, format!("unexpected token: `{}`",
-                                                 token_str));
+        self.span_fatal(self.last_span, format!("unexpected token: `{}`",
+                                                token_str));
     }
 
     pub fn unexpected(&mut self) -> ! {
@@ -728,7 +726,7 @@ impl Parser {
 
     // advance the parser by one token
     pub fn bump(&mut self) {
-        *self.last_span = self.span;
+        self.last_span = self.span;
         // Stash token for error recovery (sometimes; clone is not necessarily cheap).
         *self.last_token = if is_ident_or_path(&self.token) {
             Some(~self.token.clone())
@@ -940,7 +938,7 @@ impl Parser {
 
                     // Re-parse the region here. What a hack.
                     if region.is_some() {
-                        self.span_err(*self.last_span,
+                        self.span_err(self.last_span,
                                       "lifetime declarations must precede \
                                        the lifetime associated with a \
                                        closure");
@@ -1281,13 +1279,13 @@ impl Parser {
         match self.token {
             token::LIFETIME(..) => {
                 let lifetime = self.parse_lifetime();
-                self.obsolete(*self.last_span, ObsoleteBoxedClosure);
+                self.obsolete(self.last_span, ObsoleteBoxedClosure);
                 return self.parse_ty_closure(Some(sigil), Some(lifetime));
             }
 
             token::IDENT(..) => {
                 if self.token_is_old_style_closure_keyword() {
-                    self.obsolete(*self.last_span, ObsoleteBoxedClosure);
+                    self.obsolete(self.last_span, ObsoleteBoxedClosure);
                     return self.parse_ty_closure(Some(sigil), None);
                 }
             }
@@ -1310,7 +1308,7 @@ impl Parser {
         let opt_lifetime = self.parse_opt_lifetime();
 
         if self.token_is_old_style_closure_keyword() {
-            self.obsolete(*self.last_span, ObsoleteClosureType);
+            self.obsolete(self.last_span, ObsoleteClosureType);
             return self.parse_ty_closure(Some(BorrowedSigil), opt_lifetime);
         }
 
@@ -1350,7 +1348,7 @@ impl Parser {
         } else {
             debug!("parse_arg_general ident_to_pat");
             ast_util::ident_to_pat(ast::DUMMY_NODE_ID,
-                                   *self.last_span,
+                                   self.last_span,
                                    special_idents::invalid)
         };
 
@@ -1649,7 +1647,7 @@ impl Parser {
         if self.eat_keyword(keywords::Mut) {
             MutMutable
         } else if self.eat_keyword(keywords::Const) {
-            self.obsolete(*self.last_span, ObsoleteConstPointer);
+            self.obsolete(self.last_span, ObsoleteConstPointer);
             MutImmutable
         } else {
             MutImmutable
@@ -2630,11 +2628,11 @@ impl Parser {
         } else {
             // This is an obsolete 'continue' expression
             if opt_ident.is_some() {
-                self.span_err(*self.last_span,
+                self.span_err(self.last_span,
                               "a label may not be used with a `loop` expression");
             }
 
-            self.obsolete(*self.last_span, ObsoleteLoopAsContinue);
+            self.obsolete(self.last_span, ObsoleteLoopAsContinue);
             let lo = self.span.lo;
             let ex = if Parser::token_is_lifetime(&self.token) {
                 let lifetime = self.get_lifetime();
@@ -2848,7 +2846,7 @@ impl Parser {
                 subpat = @ast::Pat {
                     id: ast::DUMMY_NODE_ID,
                     node: PatIdent(bind_type, fieldpath, None),
-                    span: *self.last_span
+                    span: self.last_span
                 };
             }
             fields.push(ast::FieldPat { ident: fieldname, pat: subpat });
@@ -3138,7 +3136,7 @@ impl Parser {
                        binding_mode: ast::BindingMode)
                        -> ast::Pat_ {
         if !is_plain_ident(&self.token) {
-            self.span_fatal(*self.last_span,
+            self.span_fatal(self.last_span,
                             "expected identifier, found path");
         }
         // why a path here, and not just an identifier?
@@ -3157,7 +3155,7 @@ impl Parser {
         // will direct us over to parse_enum_variant()
         if self.token == token::LPAREN {
             self.span_fatal(
-                *self.last_span,
+                self.last_span,
                 "expected identifier, found enum pattern");
         }
 
@@ -3223,7 +3221,7 @@ impl Parser {
         fn check_expected_item(p: &mut Parser, found_attrs: bool) {
             // If we have attributes then we should have an item
             if found_attrs {
-                p.span_err(*p.last_span, "expected item after attributes");
+                p.span_err(p.last_span, "expected item after attributes");
             }
         }
 
@@ -3383,7 +3381,7 @@ impl Parser {
             match self.token {
                 token::SEMI => {
                     if !attributes_box.is_empty() {
-                        self.span_err(*self.last_span, "expected item after attributes");
+                        self.span_err(self.last_span, "expected item after attributes");
                         attributes_box = ~[];
                     }
                     self.bump(); // empty
@@ -3461,7 +3459,7 @@ impl Parser {
         }
 
         if !attributes_box.is_empty() {
-            self.span_err(*self.last_span, "expected item after attributes");
+            self.span_err(self.last_span, "expected item after attributes");
         }
 
         let hi = self.span.hi;
@@ -3709,7 +3707,7 @@ impl Parser {
           token::TILDE => {
             maybe_parse_explicit_self(|mutability| {
                 if mutability != MutImmutable {
-                    self.span_err(*self.last_span,
+                    self.span_err(self.last_span,
                                   "mutability declaration not allowed here");
                 }
                 sty_uniq(MutImmutable)
@@ -3983,7 +3981,7 @@ impl Parser {
 
         let mut meths = ~[];
         let inner_attrs = if self.eat(&token::SEMI) {
-            self.obsolete(*self.last_span, ObsoleteEmptyImpl);
+            self.obsolete(self.last_span, ObsoleteEmptyImpl);
             None
         } else {
             self.expect(&token::LBRACE);
@@ -4166,7 +4164,7 @@ impl Parser {
 
         if first && attrs_remaining_len > 0u {
             // We parsed attributes for the first item but didn't find it
-            self.span_err(*self.last_span, "expected item after attributes");
+            self.span_err(self.last_span, "expected item after attributes");
         }
 
         ast::_mod { view_items: view_items, items: items }
@@ -4300,7 +4298,7 @@ impl Parser {
         // Parse obsolete purity.
         let purity = self.parse_fn_purity();
         if purity != impure_fn {
-            self.obsolete(*self.last_span, ObsoleteUnsafeExternFn);
+            self.obsolete(self.last_span, ObsoleteUnsafeExternFn);
         }
 
         let (ident, generics) = self.parse_fn_header();
@@ -4360,7 +4358,7 @@ impl Parser {
             foreign_items: foreign_items
         } = self.parse_foreign_items(first_item_attrs, true);
         if (! attrs_remaining.is_empty()) {
-            self.span_err(*self.last_span,
+            self.span_err(self.last_span,
                           "expected item after attributes");
         }
         assert!(self.token == token::RBRACE);
@@ -4418,7 +4416,7 @@ impl Parser {
         if items_allowed && self.eat(&token::LBRACE) {
             // `extern mod foo { ... }` is obsolete.
             if named {
-                self.obsolete(*self.last_span, ObsoleteNamedExternModule);
+                self.obsolete(self.last_span, ObsoleteNamedExternModule);
             }
 
             let abis = opt_abis.unwrap_or(AbiSet::C());
@@ -4863,7 +4861,7 @@ impl Parser {
                 s.push_str("priv")
             }
             s.push_char('`');
-            self.span_fatal(*self.last_span, s);
+            self.span_fatal(self.last_span, s);
         }
         return iovi_none(attrs);
     }
@@ -5018,7 +5016,7 @@ impl Parser {
         let mut vp = ~[self.parse_view_path()];
         while self.token == token::COMMA {
             self.bump();
-            self.obsolete(*self.last_span, ObsoleteMultipleImport);
+            self.obsolete(self.last_span, ObsoleteMultipleImport);
             vp.push(self.parse_view_path());
         }
         return vp;
