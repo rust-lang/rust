@@ -15,7 +15,7 @@ use ext::base;
 use print;
 use parse::token::{get_ident_interner};
 
-pub fn expand_syntax_ext(cx: @ExtCtxt,
+pub fn expand_syntax_ext(cx: &mut ExtCtxt,
                          sp: codemap::Span,
                          tt: &[ast::token_tree])
                       -> base::MacResult {

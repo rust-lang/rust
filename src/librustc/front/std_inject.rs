@@ -56,7 +56,7 @@ struct StandardLibraryInjector {
 }
 
 impl fold::ast_fold for StandardLibraryInjector {
-    fn fold_crate(&self, crate: ast::Crate) -> ast::Crate {
+    fn fold_crate(&mut self, crate: ast::Crate) -> ast::Crate {
         let version = STD_VERSION.to_managed();
         let vers_item = attr::mk_name_value_item_str(@"vers", version);
         let mut vis = ~[ast::view_item {
@@ -108,7 +108,7 @@ impl fold::ast_fold for StandardLibraryInjector {
         }
     }
 
-    fn fold_item(&self, item: @ast::item) -> SmallVector<@ast::item> {
+    fn fold_item(&mut self, item: @ast::item) -> SmallVector<@ast::item> {
         if !no_prelude(item.attrs) {
             // only recur if there wasn't `#[no_implicit_prelude];`
             // on this item, i.e. this means that the prelude is not
@@ -119,7 +119,7 @@ impl fold::ast_fold for StandardLibraryInjector {
         }
     }
 
-    fn fold_mod(&self, module: &ast::_mod) -> ast::_mod {
+    fn fold_mod(&mut self, module: &ast::_mod) -> ast::_mod {
         let prelude_path = ast::Path {
             span: dummy_sp(),
             global: false,
@@ -158,7 +158,7 @@ impl fold::ast_fold for StandardLibraryInjector {
 }
 
 fn inject_libstd_ref(sess: Session, crate: ast::Crate) -> ast::Crate {
-    let fold = StandardLibraryInjector {
+    let mut fold = StandardLibraryInjector {
         sess: sess,
     };
     fold.fold_crate(crate)
