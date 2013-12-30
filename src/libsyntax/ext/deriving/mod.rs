@@ -46,20 +46,20 @@ pub mod totalord;
 
 pub mod generic;
 
-pub type ExpandDerivingStructDefFn<'a> = 'a |@ExtCtxt,
+pub type ExpandDerivingStructDefFn<'a> = 'a |&ExtCtxt,
                                                    Span,
                                                    x: &struct_def,
                                                    Ident,
                                                    y: &Generics|
                                                    -> @item;
-pub type ExpandDerivingEnumDefFn<'a> = 'a |@ExtCtxt,
+pub type ExpandDerivingEnumDefFn<'a> = 'a |&ExtCtxt,
                                                  Span,
                                                  x: &enum_def,
                                                  Ident,
                                                  y: &Generics|
                                                  -> @item;
 
-pub fn expand_meta_deriving(cx: @ExtCtxt,
+pub fn expand_meta_deriving(cx: &ExtCtxt,
                             _span: Span,
                             mitem: @MetaItem,
                             in_items: ~[@item])

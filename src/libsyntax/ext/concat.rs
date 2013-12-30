@@ -15,7 +15,7 @@ use codemap;
 use ext::base;
 use ext::build::AstBuilder;
 
-pub fn expand_syntax_ext(cx: @base::ExtCtxt,
+pub fn expand_syntax_ext(cx: &mut base::ExtCtxt,
                          sp: codemap::Span,
                          tts: &[ast::token_tree]) -> base::MacResult {
     let es = base::get_exprs_from_tts(cx, sp, tts);

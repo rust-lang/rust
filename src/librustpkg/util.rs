@@ -75,12 +75,12 @@ struct ListenerFn {
 
 struct ReadyCtx {
     sess: session::Session,
-    ext_cx: @ExtCtxt,
+    ext_cx: ExtCtxt,
     path: ~[ast::Ident],
     fns: ~[ListenerFn]
 }
 
-fn fold_mod(_ctx: @mut ReadyCtx, m: &ast::_mod, fold: &CrateSetup)
+fn fold_mod(_ctx: @mut ReadyCtx, m: &ast::_mod, fold: &mut CrateSetup)
             -> ast::_mod {
     fn strip_main(item: @ast::item) -> @ast::item {
         @ast::item {
@@ -101,7 +101,7 @@ fn fold_mod(_ctx: @mut ReadyCtx, m: &ast::_mod, fold: &CrateSetup)
     }, fold)
 }
 
-fn fold_item(ctx: @mut ReadyCtx, item: @ast::item, fold: &CrateSetup)
+fn fold_item(ctx: @mut ReadyCtx, item: @ast::item, fold: &mut CrateSetup)
              -> SmallVector<@ast::item> {
     ctx.path.push(item.ident);
 
@@ -145,10 +145,10 @@ struct CrateSetup {
 }
 
 impl fold::ast_fold for CrateSetup {
-    fn fold_item(&self, item: @ast::item) -> SmallVector<@ast::item> {
+    fn fold_item(&mut self, item: @ast::item) -> SmallVector<@ast::item> {
         fold_item(self.ctx, item, self)
     }
-    fn fold_mod(&self, module: &ast::_mod) -> ast::_mod {
+    fn fold_mod(&mut self, module: &ast::_mod) -> ast::_mod {
         fold_mod(self.ctx, module, self)
     }
 }
@@ -162,7 +162,7 @@ pub fn ready_crate(sess: session::Session,
         path: ~[],
         fns: ~[]
     };
-    let fold = CrateSetup {
+    let mut fold = CrateSetup {
         ctx: ctx,
     };
     fold.fold_crate(crate)

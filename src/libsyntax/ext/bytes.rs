@@ -18,7 +18,7 @@ use ext::build::AstBuilder;
 
 use std::char;
 
-pub fn expand_syntax_ext(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree]) -> base::MacResult {
+pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree]) -> base::MacResult {
     // Gather all argument expressions
     let exprs = get_exprs_from_tts(cx, sp, tts);
     let mut bytes = ~[];

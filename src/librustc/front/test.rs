@@ -40,7 +40,7 @@ struct Test {
 struct TestCtxt {
     sess: session::Session,
     path: RefCell<~[ast::Ident]>,
-    ext_cx: @ExtCtxt,
+    ext_cx: ExtCtxt,
     testfns: RefCell<~[Test]>,
     is_extra: bool,
     config: ast::CrateConfig,
@@ -63,22 +63,22 @@ pub fn modify_for_testing(sess: session::Session,
 }
 
 struct TestHarnessGenerator {
-    cx: @TestCtxt,
+    cx: TestCtxt,
 }
 
 impl fold::ast_fold for TestHarnessGenerator {
-    fn fold_crate(&self, c: ast::Crate) -> ast::Crate {
+    fn fold_crate(&mut self, c: ast::Crate) -> ast::Crate {
         let folded = fold::noop_fold_crate(c, self);
 
         // Add a special __test module to the crate that will contain code
         // generated for the test harness
         ast::Crate {
-            module: add_test_module(self.cx, &folded.module),
+            module: add_test_module(&self.cx, &folded.module),
             .. folded
         }
     }
 
-    fn fold_item(&self, i: @ast::item) -> SmallVector<@ast::item> {
+    fn fold_item(&mut self, i: @ast::item) -> SmallVector<@ast::item> {
         {
             let mut path = self.cx.path.borrow_mut();
             path.get().push(i.ident);
@@ -86,7 +86,7 @@ impl fold::ast_fold for TestHarnessGenerator {
         debug!("current path: {}",
                ast_util::path_name_i(self.cx.path.get()));
 
-        if is_test_fn(self.cx, i) || is_bench_fn(i) {
+        if is_test_fn(&self.cx, i) || is_bench_fn(i) {
             match i.node {
                 ast::item_fn(_, purity, _, _, _)
                     if purity == ast::unsafe_fn => {
@@ -101,7 +101,7 @@ impl fold::ast_fold for TestHarnessGenerator {
                         span: i.span,
                         path: self.cx.path.get(),
                         bench: is_bench_fn(i),
-                        ignore: is_ignored(self.cx, i),
+                        ignore: is_ignored(&self.cx, i),
                         should_fail: should_fail(i)
                     };
                     {
@@ -122,11 +122,11 @@ impl fold::ast_fold for TestHarnessGenerator {
         res
     }
 
-    fn fold_mod(&self, m: &ast::_mod) -> ast::_mod {
+    fn fold_mod(&mut self, m: &ast::_mod) -> ast::_mod {
         // Remove any #[main] from the AST so it doesn't clash with
         // the one we're going to add. Only if compiling an executable.
 
-        fn nomain(cx: @TestCtxt, item: @ast::item) -> @ast::item {
+        fn nomain(cx: &TestCtxt, item: @ast::item) -> @ast::item {
             if !cx.sess.building_library.get() {
                 @ast::item {
                     attrs: item.attrs.iter().filter_map(|attr| {
@@ -145,7 +145,7 @@ impl fold::ast_fold for TestHarnessGenerator {
 
         let mod_nomain = ast::_mod {
             view_items: m.view_items.clone(),
-            items: m.items.iter().map(|i| nomain(self.cx, *i)).collect(),
+            items: m.items.iter().map(|i| nomain(&self.cx, *i)).collect(),
         };
 
         fold::noop_fold_mod(&mod_nomain, self)
@@ -154,7 +154,7 @@ impl fold::ast_fold for TestHarnessGenerator {
 
 fn generate_test_harness(sess: session::Session, crate: ast::Crate)
                          -> ast::Crate {
-    let cx: @TestCtxt = @TestCtxt {
+    let mut cx: TestCtxt = TestCtxt {
         sess: sess,
         ext_cx: ExtCtxt::new(sess.parse_sess, sess.opts.cfg.clone()),
         path: RefCell::new(~[]),
@@ -163,8 +163,7 @@ fn generate_test_harness(sess: session::Session, crate: ast::Crate)
         config: crate.config.clone(),
     };
 
-    let ext_cx = cx.ext_cx;
-    ext_cx.bt_push(ExpnInfo {
+    cx.ext_cx.bt_push(ExpnInfo {
         call_site: dummy_sp(),
         callee: NameAndSpan {
             name: @"test",
@@ -173,11 +172,11 @@ fn generate_test_harness(sess: session::Session, crate: ast::Crate)
         }
     });
 
-    let fold = TestHarnessGenerator {
+    let mut fold = TestHarnessGenerator {
         cx: cx
     };
     let res = fold.fold_crate(crate);
-    ext_cx.bt_pop();
+    fold.cx.ext_cx.bt_pop();
     return res;
 }
 
@@ -190,7 +189,7 @@ fn strip_test_functions(crate: ast::Crate) -> ast::Crate {
     })
 }
 
-fn is_test_fn(cx: @TestCtxt, i: @ast::item) -> bool {
+fn is_test_fn(cx: &TestCtxt, i: @ast::item) -> bool {
     let has_test_attr = attr::contains_name(i.attrs, "test");
 
     fn has_test_signature(i: @ast::item) -> bool {
@@ -243,7 +242,7 @@ fn is_bench_fn(i: @ast::item) -> bool {
     return has_bench_attr && has_test_signature(i);
 }
 
-fn is_ignored(cx: @TestCtxt, i: @ast::item) -> bool {
+fn is_ignored(cx: &TestCtxt, i: @ast::item) -> bool {
     i.attrs.iter().any(|attr| {
         // check ignore(cfg(foo, bar))
         "ignore" == attr.name() && match attr.meta_item_list() {
@@ -313,7 +312,7 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::item {
 
     // The synthesized main function which will call the console test runner
     // with our list of tests
-    let mainfn = (quote_item!(cx.ext_cx,
+    let mainfn = (quote_item!(&cx.ext_cx,
         pub fn main() {
             #[main];
             extra::test::test_main_static(::std::os::args(), TESTS);
@@ -377,7 +376,7 @@ fn mk_tests(cx: &TestCtxt) -> @ast::item {
     // The vector of test_descs for this crate
     let test_descs = mk_test_descs(cx);
 
-    (quote_item!(cx.ext_cx,
+    (quote_item!(&cx.ext_cx,
         pub static TESTS : &'static [self::extra::test::TestDescAndFn] =
             $test_descs
         ;
@@ -438,24 +437,24 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> @ast::Expr {
     };
 
     let t_expr = if test.bench {
-        quote_expr!(cx.ext_cx, self::extra::test::StaticBenchFn($fn_expr) )
+        quote_expr!(&cx.ext_cx, self::extra::test::StaticBenchFn($fn_expr) )
     } else {
-        quote_expr!(cx.ext_cx, self::extra::test::StaticTestFn($fn_expr) )
+        quote_expr!(&cx.ext_cx, self::extra::test::StaticTestFn($fn_expr) )
     };
 
     let ignore_expr = if test.ignore {
-        quote_expr!(cx.ext_cx, true )
+        quote_expr!(&cx.ext_cx, true )
     } else {
-        quote_expr!(cx.ext_cx, false )
+        quote_expr!(&cx.ext_cx, false )
     };
 
     let fail_expr = if test.should_fail {
-        quote_expr!(cx.ext_cx, true )
+        quote_expr!(&cx.ext_cx, true )
     } else {
-        quote_expr!(cx.ext_cx, false )
+        quote_expr!(&cx.ext_cx, false )
     };
 
-    let e = quote_expr!(cx.ext_cx,
+    let e = quote_expr!(&cx.ext_cx,
         self::extra::test::TestDescAndFn {
             desc: self::extra::test::TestDesc {
                 name: self::extra::test::StaticTestName($name_expr),

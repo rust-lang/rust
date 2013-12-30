@@ -15,7 +15,7 @@ use codemap::Span;
 use ext::base;
 use ext::build::AstBuilder;
 
-pub fn expand_syntax_ext(ecx: @base::ExtCtxt, sp: Span,
+pub fn expand_syntax_ext(ecx: &mut base::ExtCtxt, sp: Span,
                          _tts: &[ast::token_tree]) -> base::MacResult {
     ecx.span_err(sp, "`fmt!` is deprecated, use `format!` instead");
     ecx.parse_sess.span_diagnostic.span_note(sp,

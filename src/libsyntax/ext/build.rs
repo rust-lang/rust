@@ -15,7 +15,7 @@ use ast_util;
 use codemap::{Span, respan, dummy_sp};
 use ext::base::ExtCtxt;
 use ext::quote::rt::*;
-use fold;
+use fold::ast_fold;
 use opt_vec;
 use opt_vec::OptVec;
 
@@ -236,7 +236,7 @@ pub trait AstBuilder {
                      vis: ast::visibility, path: ~[ast::Ident]) -> ast::view_item;
 }
 
-impl AstBuilder for @ExtCtxt {
+impl AstBuilder for ExtCtxt {
     fn path(&self, span: Span, strs: ~[ast::Ident]) -> ast::Path {
         self.path_all(span, false, strs, opt_vec::Empty, ~[])
     }
@@ -686,12 +686,12 @@ impl AstBuilder for @ExtCtxt {
     }
     fn lambda0(&self, _span: Span, blk: P<ast::Block>) -> @ast::Expr {
         let blk_e = self.expr(blk.span, ast::ExprBlock(blk));
-        quote_expr!(*self, || $blk_e )
+        quote_expr!(self, || $blk_e )
     }
 
     fn lambda1(&self, _span: Span, blk: P<ast::Block>, ident: ast::Ident) -> @ast::Expr {
         let blk_e = self.expr(blk.span, ast::ExprBlock(blk));
-        quote_expr!(*self, |$ident| $blk_e )
+        quote_expr!(self, |$ident| $blk_e )
     }
 
     fn lambda_expr(&self, span: Span, ids: ~[ast::Ident], expr: @ast::Expr) -> @ast::Expr {
@@ -903,12 +903,12 @@ impl AstBuilder for @ExtCtxt {
     }
 }
 
-struct Duplicator {
-    cx: @ExtCtxt,
+struct Duplicator<'a> {
+    cx: &'a ExtCtxt,
 }
 
-impl fold::ast_fold for Duplicator {
-    fn new_id(&self, _: NodeId) -> NodeId {
+impl<'a> ast_fold for Duplicator<'a> {
+    fn new_id(&mut self, _: NodeId) -> NodeId {
         ast::DUMMY_NODE_ID
     }
 }
@@ -920,14 +920,14 @@ pub trait Duplicate {
     // These functions just duplicate AST nodes.
     //
 
-    fn duplicate(&self, cx: @ExtCtxt) -> Self;
+    fn duplicate(&self, cx: &ExtCtxt) -> Self;
 }
 
 impl Duplicate for @ast::Expr {
-    fn duplicate(&self, cx: @ExtCtxt) -> @ast::Expr {
-        let folder = @Duplicator {
+    fn duplicate(&self, cx: &ExtCtxt) -> @ast::Expr {
+        let mut folder = Duplicator {
             cx: cx,
-        } as @fold::ast_fold;
+        };
         folder.fold_expr(*self)
     }
 }

@@ -16,7 +16,7 @@ use opt_vec;
 use parse::token;
 use parse::token::{str_to_ident};
 
-pub fn expand_syntax_ext(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree])
+pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree])
     -> base::MacResult {
     let mut res_str = ~"";
     for (i, e) in tts.iter().enumerate() {
