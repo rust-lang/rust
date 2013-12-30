@@ -313,7 +313,7 @@ pub fn Parser(sess: @mut ParseSess, cfg: ast::CrateConfig, rdr: @mut reader)
         ],
         buffer_start: 0,
         buffer_end: 0,
-        tokens_consumed: @mut 0,
+        tokens_consumed: 0,
         restriction: @mut UNRESTRICTED,
         quote_depth: 0,
         obsolete_set: @mut HashSet::new(),
@@ -338,7 +338,7 @@ pub struct Parser {
     buffer: [TokenAndSpan, ..4],
     buffer_start: int,
     buffer_end: int,
-    tokens_consumed: @mut uint,
+    tokens_consumed: uint,
     restriction: @mut restriction,
     quote_depth: uint, // not (yet) related to the quasiquoter
     reader: @mut reader,
@@ -749,7 +749,7 @@ impl Parser {
         };
         self.span = next.sp;
         self.token = next.tok;
-        *self.tokens_consumed += 1u;
+        self.tokens_consumed += 1u;
     }
 
     // Advance the parser by one token and return the bumped token.
