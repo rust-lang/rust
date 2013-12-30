@@ -316,7 +316,7 @@ pub fn Parser(sess: @mut ParseSess, cfg: ast::CrateConfig, rdr: @mut reader)
         tokens_consumed: 0,
         restriction: UNRESTRICTED,
         quote_depth: 0,
-        obsolete_set: @mut HashSet::new(),
+        obsolete_set: HashSet::new(),
         mod_path_stack: @mut ~[],
         open_braces: @mut ~[],
         non_copyable: util::NonCopyable
@@ -345,7 +345,7 @@ pub struct Parser {
     interner: @token::ident_interner,
     /// The set of seen errors about obsolete syntax. Used to suppress
     /// extra detail when the same error is seen twice
-    obsolete_set: @mut HashSet<ObsoleteSyntax>,
+    obsolete_set: HashSet<ObsoleteSyntax>,
     /// Used to determine the path to externally loaded source files
     mod_path_stack: @mut ~[@str],
     /// Stack of spans of open delimiters. Used for error message.
