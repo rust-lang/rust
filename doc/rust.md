@@ -615,7 +615,7 @@ the behavior of the compiler.
 // Additional metadata attributes
 #[ desc = "Project X" ];
 #[ license = "BSD" ];
-#[ author = "Jane Doe" ];
+#[ comment = "This is a comment on Project X." ];
 
 // Specify the output type
 #[ crate_type = "lib" ];
