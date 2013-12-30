@@ -292,18 +292,18 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
         let t_outputs = d::build_output_filenames(&input, &odir, &ofile,
                                                   attrs, sess);
         if crate_id || crate_name {
-            let pkgid = match attr::find_pkgid(attrs) {
-                Some(pkgid) => pkgid,
+            let crateid = match attr::find_crateid(attrs) {
+                Some(crateid) => crateid,
                 None => {
                     sess.fatal("No crate_id and --crate-id or \
                                 --crate-name requested")
                 }
             };
             if crate_id {
-                println(pkgid.to_str());
+                println(crateid.to_str());
             }
             if crate_name {
-                println(pkgid.name);
+                println(crateid.name);
             }
         }
 

@@ -21,7 +21,7 @@ use metadata::filesearch;
 use syntax::codemap::Span;
 use syntax::diagnostic::span_handler;
 use syntax::parse::token::ident_interner;
-use syntax::pkgid::PkgId;
+use syntax::crateid::CrateId;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 
@@ -112,7 +112,7 @@ impl Context {
                             Some(cvec) =>
                                 if crate_matches(cvec.as_slice(), self.name,
                                                  self.version, self.hash) {
-                                    debug!("found {} with matching pkgid",
+                                    debug!("found {} with matching crate_id",
                                            path.display());
                                     let (rlib, dylib) = if file.ends_with(".rlib") {
                                         (Some(path.clone()), None)
@@ -126,7 +126,7 @@ impl Context {
                                     });
                                     FileMatches
                                 } else {
-                                    debug!("skipping {}, pkgid doesn't match",
+                                    debug!("skipping {}, crate_id doesn't match",
                                            path.display());
                                     FileDoesntMatch
                                 },
@@ -165,10 +165,10 @@ impl Context {
                     }
                     let data = lib.metadata.as_slice();
                     let attrs = decoder::get_crate_attributes(data);
-                    match attr::find_pkgid(attrs) {
+                    match attr::find_crateid(attrs) {
                         None => {}
-                        Some(pkgid) => {
-                            note_pkgid_attr(self.sess.diagnostic(), &pkgid);
+                        Some(crateid) => {
+                            note_crateid_attr(self.sess.diagnostic(), &crateid);
                         }
                     }
                 }
@@ -231,9 +231,9 @@ impl Context {
     }
 }
 
-pub fn note_pkgid_attr(diag: @mut span_handler,
-                       pkgid: &PkgId) {
-    diag.handler().note(format!("pkgid: {}", pkgid.to_str()));
+pub fn note_crateid_attr(diag: @mut span_handler,
+                       crateid: &CrateId) {
+    diag.handler().note(format!("crate_id: {}", crateid.to_str()));
 }
 
 fn crate_matches(crate_data: &[u8],
@@ -241,15 +241,15 @@ fn crate_matches(crate_data: &[u8],
                  version: @str,
                  hash: @str) -> bool {
     let attrs = decoder::get_crate_attributes(crate_data);
-    match attr::find_pkgid(attrs) {
+    match attr::find_crateid(attrs) {
         None => false,
-        Some(pkgid) => {
+        Some(crateid) => {
             if !hash.is_empty() {
                 let chash = decoder::get_crate_hash(crate_data);
                 if chash != hash { return false; }
             }
-            name == pkgid.name.to_managed() &&
-                (version.is_empty() || version == pkgid.version_or_default().to_managed())
+            name == crateid.name.to_managed() &&
+                (version.is_empty() || version == crateid.version_or_default().to_managed())
         }
     }
 }

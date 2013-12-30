@@ -1559,19 +1559,19 @@ fn encode_attributes(ebml_w: &mut writer::Encoder, attrs: &[Attribute]) {
     ebml_w.end_tag();
 }
 
-// So there's a special crate attribute called 'pkgid' which defines the
+// So there's a special crate attribute called 'crate_id' which defines the
 // metadata that Rust cares about for linking crates. If the user didn't
 // provide it we will throw it in anyway with a default value.
 fn synthesize_crate_attrs(ecx: &EncodeContext,
                           crate: &Crate) -> ~[Attribute] {
 
-    fn synthesize_pkgid_attr(ecx: &EncodeContext) -> Attribute {
-        assert!(!ecx.link_meta.pkgid.name.is_empty());
+    fn synthesize_crateid_attr(ecx: &EncodeContext) -> Attribute {
+        assert!(!ecx.link_meta.crateid.name.is_empty());
 
         attr::mk_attr(
             attr::mk_name_value_item_str(
                 @"crate_id",
-                ecx.link_meta.pkgid.to_str().to_managed()))
+                ecx.link_meta.crateid.to_str().to_managed()))
     }
 
     let mut attrs = ~[];
@@ -1580,7 +1580,7 @@ fn synthesize_crate_attrs(ecx: &EncodeContext,
             attrs.push(*attr);
         }
     }
-    attrs.push(synthesize_pkgid_attr(ecx));
+    attrs.push(synthesize_crateid_attr(ecx));
 
     attrs
 }

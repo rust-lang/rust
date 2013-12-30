@@ -41,7 +41,7 @@ use syntax::ast;
 use syntax::ast_map::{path, path_mod, path_name, path_pretty_name};
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
-use syntax::pkgid::PkgId;
+use syntax::crateid::CrateId;
 
 #[deriving(Clone, Eq)]
 pub enum output_type {
@@ -444,13 +444,13 @@ pub mod write {
  *
  * So here is what we do:
  *
- *  - Consider the package id; every crate has one (specified with pkgid
+ *  - Consider the package id; every crate has one (specified with crate_id
  *    attribute).  If a package id isn't provided explicitly, we infer a
  *    versionless one from the output name. The version will end up being 0.0
  *    in this case. CNAME and CVERS are taken from this package id. For
  *    example, github.com/mozilla/CNAME#CVERS.
  *
- *  - Define CMH as SHA256(pkgid).
+ *  - Define CMH as SHA256(crateid).
  *
  *  - Define CMH8 as the first 8 characters of CMH.
  *
@@ -469,13 +469,13 @@ pub fn build_link_meta(sess: Session,
                        symbol_hasher: &mut Sha256)
                        -> LinkMeta {
     // This calculates CMH as defined above
-    fn crate_hash(symbol_hasher: &mut Sha256, pkgid: &PkgId) -> @str {
+    fn crate_hash(symbol_hasher: &mut Sha256, crateid: &CrateId) -> @str {
         symbol_hasher.reset();
-        symbol_hasher.input_str(pkgid.to_str());
+        symbol_hasher.input_str(crateid.to_str());
         truncated_hash_result(symbol_hasher).to_managed()
     }
 
-    let pkgid = match attr::find_pkgid(attrs) {
+    let crateid = match attr::find_crateid(attrs) {
         None => {
             let stem = session::expect(
                 sess,
@@ -487,10 +487,10 @@ pub fn build_link_meta(sess: Session,
         Some(s) => s,
     };
 
-    let hash = crate_hash(symbol_hasher, &pkgid);
+    let hash = crate_hash(symbol_hasher, &crateid);
 
     LinkMeta {
-        pkgid: pkgid,
+        crateid: crateid,
         crate_hash: hash,
     }
 }
@@ -509,7 +509,7 @@ pub fn symbol_hash(tcx: ty::ctxt,
     // to be independent of one another in the crate.
 
     symbol_hasher.reset();
-    symbol_hasher.input_str(link_meta.pkgid.name);
+    symbol_hasher.input_str(link_meta.crateid.name);
     symbol_hasher.input_str("-");
     symbol_hasher.input_str(link_meta.crate_hash);
     symbol_hasher.input_str("-");
@@ -669,7 +669,7 @@ pub fn mangle_exported_name(ccx: &CrateContext,
     let hash = get_symbol_hash(ccx, t);
     return exported_name(ccx.sess, path,
                          hash,
-                         ccx.link_meta.pkgid.version_or_default());
+                         ccx.link_meta.crateid.version_or_default());
 }
 
 pub fn mangle_internal_name_by_type_only(ccx: &CrateContext,
@@ -710,9 +710,9 @@ pub fn mangle_internal_name_by_path(ccx: &CrateContext, path: path) -> ~str {
 
 pub fn output_lib_filename(lm: &LinkMeta) -> ~str {
     format!("{}-{}-{}",
-            lm.pkgid.name,
+            lm.crateid.name,
             lm.crate_hash.slice_chars(0, 8),
-            lm.pkgid.version_or_default())
+            lm.crateid.version_or_default())
 }
 
 pub fn get_cc_prog(sess: Session) -> ~str {

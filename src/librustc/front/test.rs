@@ -384,7 +384,7 @@ fn mk_tests(cx: &TestCtxt) -> @ast::item {
 }
 
 fn is_extra(crate: &ast::Crate) -> bool {
-    match attr::find_pkgid(crate.attrs) {
+    match attr::find_crateid(crate.attrs) {
         Some(ref s) if "extra" == s.name => true,
         _ => false
     }
