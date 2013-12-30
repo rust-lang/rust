@@ -438,10 +438,12 @@ pub fn parse_nt(p: &mut Parser, name: &str) -> nonterminal {
       "expr" => token::nt_expr(p.parse_expr()),
       "ty" => token::nt_ty(p.parse_ty(false /* no need to disambiguate*/)),
       // this could be handled like a token, since it is one
-      "ident" => match *p.token {
+      "ident" => match p.token {
         token::IDENT(sn,b) => { p.bump(); token::nt_ident(~sn,b) }
-        _ => p.fatal(~"expected ident, found "
-                     + token::to_str(get_ident_interner(), p.token))
+        _ => {
+            let token_str = token::to_str(get_ident_interner(), &p.token);
+            p.fatal(~"expected ident, found " + token_str)
+        }
       },
       "path" => {
         token::nt_path(~p.parse_path(LifetimeAndTypesWithoutColons).path)

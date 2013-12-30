@@ -66,9 +66,9 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree])
                 asm_str_style = Some(style);
             }
             Outputs => {
-                while *p.token != token::EOF &&
-                      *p.token != token::COLON &&
-                      *p.token != token::MOD_SEP {
+                while p.token != token::EOF &&
+                      p.token != token::COLON &&
+                      p.token != token::MOD_SEP {
 
                     if outputs.len() != 0 {
                         p.eat(&token::COMMA);
@@ -91,9 +91,9 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree])
                 }
             }
             Inputs => {
-                while *p.token != token::EOF &&
-                      *p.token != token::COLON &&
-                      *p.token != token::MOD_SEP {
+                while p.token != token::EOF &&
+                      p.token != token::COLON &&
+                      p.token != token::MOD_SEP {
 
                     if inputs.len() != 0 {
                         p.eat(&token::COMMA);
@@ -116,9 +116,9 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree])
             }
             Clobbers => {
                 let mut clobs = ~[];
-                while *p.token != token::EOF &&
-                      *p.token != token::COLON &&
-                      *p.token != token::MOD_SEP {
+                while p.token != token::EOF &&
+                      p.token != token::COLON &&
+                      p.token != token::MOD_SEP {
 
                     if clobs.len() != 0 {
                         p.eat(&token::COMMA);
@@ -142,16 +142,16 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree])
                     dialect = ast::asm_intel;
                 }
 
-                if *p.token == token::COMMA {
+                if p.token == token::COMMA {
                     p.eat(&token::COMMA);
                 }
             }
         }
 
-        while *p.token == token::COLON   ||
-              *p.token == token::MOD_SEP ||
-              *p.token == token::EOF {
-            state = if *p.token == token::COLON {
+        while p.token == token::COLON   ||
+              p.token == token::MOD_SEP ||
+              p.token == token::EOF {
+            state = if p.token == token::COLON {
                 p.bump();
                 match next_state(state) {
                     Some(x) => x,
@@ -160,7 +160,7 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree])
                         break
                     }
                 }
-            } else if *p.token == token::MOD_SEP {
+            } else if p.token == token::MOD_SEP {
                 p.bump();
                 let s = match next_state(state) {
                     Some(x) => x,
@@ -176,7 +176,7 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree])
                         break
                     }
                 }
-            } else if *p.token == token::EOF {
+            } else if p.token == token::EOF {
                 continue_ = false;
                 break;
             } else {

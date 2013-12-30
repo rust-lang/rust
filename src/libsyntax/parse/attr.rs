@@ -33,7 +33,7 @@ impl parser_attr for Parser {
         loop {
             debug!("parse_outer_attributes: self.token={:?}",
                    self.token);
-            match *self.token {
+            match self.token {
               token::INTERPOLATED(token::nt_attr(..)) => {
                 attrs.push(self.parse_attribute(false));
               }
@@ -68,7 +68,7 @@ impl parser_attr for Parser {
     fn parse_attribute(&mut self, permit_inner: bool) -> ast::Attribute {
         debug!("parse_attributes: permit_inner={:?} self.token={:?}",
                permit_inner, self.token);
-        let (span, value) = match *self.token {
+        let (span, value) = match self.token {
             INTERPOLATED(token::nt_attr(attr)) => {
                 assert!(attr.node.style == ast::AttrOuter);
                 self.bump();
@@ -89,7 +89,7 @@ impl parser_attr for Parser {
                                    token_str));
             }
         };
-        let style = if permit_inner && *self.token == token::SEMI {
+        let style = if permit_inner && self.token == token::SEMI {
             self.bump();
             ast::AttrInner
         } else {
@@ -120,7 +120,7 @@ impl parser_attr for Parser {
         let mut inner_attrs: ~[ast::Attribute] = ~[];
         let mut next_outer_attrs: ~[ast::Attribute] = ~[];
         loop {
-            let attr = match *self.token {
+            let attr = match self.token {
                 token::INTERPOLATED(token::nt_attr(..)) => {
                     self.parse_attribute(true)
                 }
@@ -158,7 +158,7 @@ impl parser_attr for Parser {
         let lo = self.span.lo;
         let ident = self.parse_ident();
         let name = self.id_to_str(ident);
-        match *self.token {
+        match self.token {
             token::EQ => {
                 self.bump();
                 let lit = self.parse_lit();
@@ -196,7 +196,7 @@ impl parser_attr for Parser {
     }
 
     fn parse_optional_meta(&mut self) -> ~[@ast::MetaItem] {
-        match *self.token {
+        match self.token {
             token::LPAREN => self.parse_meta_seq(),
             _ => ~[]
         }
