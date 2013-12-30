@@ -1433,7 +1433,7 @@ mod test {
             drop(handle);
 
             let mut handle = pool.spawn_sched();
-            handle.send(TaskFromFriend(pool.task(TaskOpts::new(), proc() {
+            handle.send(PinnedTask(pool.task(TaskOpts::new(), proc() {
                 // Wait until the other task has its lock
                 start_po.recv();
 
