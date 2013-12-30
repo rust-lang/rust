@@ -14,7 +14,7 @@
 use std::cmp;
 use std::from_str::FromStr;
 use std::num::{Zero,One,ToStrRadix,FromStrRadix,Round};
-use super::bigint::BigInt;
+use super::bigint::{BigInt, BigUint, Sign, Plus, Minus};
 
 /// Represents the ratio between 2 numbers.
 #[deriving(Clone)]
@@ -104,6 +104,27 @@ impl<T: Clone + Integer + Ord>
         let mut ret = self.clone();
         ret.reduce();
         ret
+    }
+}
+
+impl Ratio<BigInt> {
+    /// Converts a float into a rational number
+    pub fn from_float<T: Float>(f: T) -> Option<BigRational> {
+        if !f.is_finite() {
+            return None;
+        }
+        let (mantissa, exponent, sign) = f.integer_decode();
+        let bigint_sign: Sign = if sign == 1 { Plus } else { Minus };
+        if exponent < 0 {
+            let one: BigInt = One::one();
+            let denom: BigInt = one << ((-exponent) as uint);
+            let numer: BigUint = FromPrimitive::from_u64(mantissa).unwrap();
+            Some(Ratio::new(BigInt::from_biguint(bigint_sign, numer), denom))
+        } else {
+            let mut numer: BigUint = FromPrimitive::from_u64(mantissa).unwrap();
+            numer = numer << (exponent as uint);
+            Some(Ratio::from_integer(BigInt::from_biguint(bigint_sign, numer)))
+        }
     }
 }
 
@@ -620,5 +641,43 @@ mod test {
         for &s in xs.iter() {
             test(s);
         }
+    }
+
+    #[test]
+    fn test_from_float() {
+        fn test<T: Float>(given: T, (numer, denom): (&str, &str)) {
+            let ratio: BigRational = Ratio::from_float(given).unwrap();
+            assert_eq!(ratio, Ratio::new(
+                FromStr::from_str(numer).unwrap(),
+                FromStr::from_str(denom).unwrap()));
+        }
+
+        // f32
+        test(3.14159265359f32, ("13176795", "4194304"));
+        test(2f32.pow(&100.), ("1267650600228229401496703205376", "1"));
+        test(-2f32.pow(&100.), ("-1267650600228229401496703205376", "1"));
+        test(1.0 / 2f32.pow(&100.), ("1", "1267650600228229401496703205376"));
+        test(684729.48391f32, ("1369459", "2"));
+        test(-8573.5918555f32, ("-4389679", "512"));
+
+        // f64
+        test(3.14159265359f64, ("3537118876014453", "1125899906842624"));
+        test(2f64.pow(&100.), ("1267650600228229401496703205376", "1"));
+        test(-2f64.pow(&100.), ("-1267650600228229401496703205376", "1"));
+        test(684729.48391f64, ("367611342500051", "536870912"));
+        test(-8573.5918555, ("-4713381968463931", "549755813888"));
+        test(1.0 / 2f64.pow(&100.), ("1", "1267650600228229401496703205376"));
+    }
+
+    #[test]
+    fn test_from_float_fail() {
+        use std::{f32, f64};
+
+        assert_eq!(Ratio::from_float(f32::NAN), None);
+        assert_eq!(Ratio::from_float(f32::INFINITY), None);
+        assert_eq!(Ratio::from_float(f32::NEG_INFINITY), None);
+        assert_eq!(Ratio::from_float(f64::NAN), None);
+        assert_eq!(Ratio::from_float(f64::INFINITY), None);
+        assert_eq!(Ratio::from_float(f64::NEG_INFINITY), None);
     }
 }
