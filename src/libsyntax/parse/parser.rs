@@ -311,8 +311,8 @@ pub fn Parser(sess: @mut ParseSess, cfg: ast::CrateConfig, rdr: @mut reader)
             placeholder.clone(),
             placeholder.clone(),
         ],
-        buffer_start: @mut 0,
-        buffer_end: @mut 0,
+        buffer_start: 0,
+        buffer_end: 0,
         tokens_consumed: @mut 0,
         restriction: @mut UNRESTRICTED,
         quote_depth: 0,
@@ -336,8 +336,8 @@ pub struct Parser {
     // the previous token or None (only stashed sometimes).
     last_token: Option<~token::Token>,
     buffer: [TokenAndSpan, ..4],
-    buffer_start: @mut int,
-    buffer_end: @mut int,
+    buffer_start: int,
+    buffer_end: int,
     tokens_consumed: @mut uint,
     restriction: @mut restriction,
     quote_depth: uint, // not (yet) related to the quasiquoter
@@ -733,13 +733,13 @@ impl Parser {
         } else {
             None
         };
-        let next = if *self.buffer_start == *self.buffer_end {
+        let next = if self.buffer_start == self.buffer_end {
             self.reader.next_token()
         } else {
             // Avoid token copies with `util::replace`.
-            let buffer_start = *self.buffer_start as uint;
+            let buffer_start = self.buffer_start as uint;
             let next_index = (buffer_start + 1) & 3 as uint;
-            *self.buffer_start = next_index as int;
+            self.buffer_start = next_index as int;
 
             let placeholder = TokenAndSpan {
                 tok: token::UNDERSCORE,
@@ -768,19 +768,19 @@ impl Parser {
         self.span = mk_sp(lo, hi);
     }
     pub fn buffer_length(&mut self) -> int {
-        if *self.buffer_start <= *self.buffer_end {
-            return *self.buffer_end - *self.buffer_start;
+        if self.buffer_start <= self.buffer_end {
+            return self.buffer_end - self.buffer_start;
         }
-        return (4 - *self.buffer_start) + *self.buffer_end;
+        return (4 - self.buffer_start) + self.buffer_end;
     }
     pub fn look_ahead<R>(&mut self, distance: uint, f: |&token::Token| -> R)
                       -> R {
         let dist = distance as int;
         while self.buffer_length() < dist {
-            self.buffer[*self.buffer_end] = self.reader.next_token();
-            *self.buffer_end = (*self.buffer_end + 1) & 3;
+            self.buffer[self.buffer_end] = self.reader.next_token();
+            self.buffer_end = (self.buffer_end + 1) & 3;
         }
-        f(&self.buffer[(*self.buffer_start + dist - 1) & 3].tok)
+        f(&self.buffer[(self.buffer_start + dist - 1) & 3].tok)
     }
     pub fn fatal(&mut self, m: &str) -> ! {
         self.sess.span_diagnostic.span_fatal(self.span, m)
