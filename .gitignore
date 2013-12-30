@@ -75,6 +75,10 @@ src/.DS_Store
 /doc/latex
 /doc/std
 /doc/extra
+/doc/green
+/doc/native
+/doc/rustc
+/doc/syntax
 /nd/
 /llvm/
 version.md
