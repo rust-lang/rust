@@ -33,11 +33,32 @@ use stack::StackPool;
 /// The necessary fields needed to keep track of a green task (as opposed to a
 /// 1:1 task).
 pub struct GreenTask {
+    /// Coroutine that this task is running on, otherwise known as the register
+    /// context and the stack that this task owns. This field is optional to
+    /// relinquish ownership back to a scheduler to recycle stacks at a later
+    /// date.
     coroutine: Option<Coroutine>,
+
+    /// Optional handle back into the home sched pool of this task. This field
+    /// is lazily initialized.
     handle: Option<SchedHandle>,
+
+    /// Slot for maintaining ownership of a scheduler. If a task is running,
+    /// this value will be Some(sched) where the task is running on "sched".
     sched: Option<~Scheduler>,
+
+    /// Temporary ownership slot of a std::rt::task::Task object. This is used
+    /// to squirrel that libstd task away while we're performing green task
+    /// operations.
     task: Option<~Task>,
+
+    /// Dictates whether this is a sched task or a normal green task
     task_type: TaskType,
+
+    /// Home pool that this task was spawned into. This field is lazily
+    /// initialized until when the task is initially scheduled, and is used to
+    /// make sure that tasks are always woken up in the correct pool of
+    /// schedulers.
     pool_id: uint,
 
     // See the comments in the scheduler about why this is necessary
@@ -147,10 +168,15 @@ impl GreenTask {
             // cleanup job after we have re-acquired ownership of the green
             // task.
             let mut task: ~GreenTask = unsafe { GreenTask::from_uint(ops) };
-            task.sched.get_mut_ref().run_cleanup_job();
+            task.pool_id = {
+                let sched = task.sched.get_mut_ref();
+                sched.run_cleanup_job();
+                sched.task_state.increment();
+                sched.pool_id
+            };
 
             // Convert our green task to a libstd task and then execute the code
-            // requeted. This is the "try/catch" block for this green task and
+            // requested. This is the "try/catch" block for this green task and
             // is the wrapper for *all* code run in the task.
             let mut start = Some(start);
             let task = task.swap().run(|| start.take_unwrap()());
@@ -350,6 +376,14 @@ impl Runtime for GreenTask {
         self.put_task(to_wake);
         assert!(self.sched.is_none());
 
+        // Optimistically look for a local task, but if one's not available to
+        // inspect (in order to see if it's in the same sched pool as we are),
+        // then just use our remote wakeup routine and carry on!
+        let mut running_task: ~Task = match Local::try_take() {
+            Some(task) => task,
+            None => return self.reawaken_remotely()
+        };
+
         // Waking up a green thread is a bit of a tricky situation. We have no
         // guarantee about where the current task is running. The options we
         // have for where this current task is running are:
@@ -368,7 +402,6 @@ impl Runtime for GreenTask {
         //
         // In case 2 and 3, we need to remotely reawaken ourself in order to be
         // transplanted back to the correct scheduler pool.
-        let mut running_task: ~Task = Local::take();
         match running_task.maybe_take_runtime::<GreenTask>() {
             Some(mut running_green_task) => {
                 running_green_task.put_task(running_task);
