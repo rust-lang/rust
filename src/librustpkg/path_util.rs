@@ -12,7 +12,7 @@
 
 #[allow(dead_code)];
 
-pub use package_id::PkgId;
+pub use crate_id::CrateId;
 pub use target::{OutputType, Main, Lib, Test, Bench, Target, Build, Install};
 pub use version::{Version, NoVersion, split_version_general, try_parsing_version};
 pub use rustc::metadata::filesearch::rust_path;
@@ -59,12 +59,12 @@ pub fn make_dir_rwx_recursive(p: &Path) -> bool {
 // now. Should fix that.
 
 /// True if there's a directory in <workspace> with
-/// pkgid's short name
-pub fn workspace_contains_package_id(pkgid: &PkgId, workspace: &Path) -> bool {
-    workspace_contains_package_id_(pkgid, workspace, |p| p.join("src")).is_some()
+/// crateid's short name
+pub fn workspace_contains_crate_id(crateid: &CrateId, workspace: &Path) -> bool {
+    workspace_contains_crate_id_(crateid, workspace, |p| p.join("src")).is_some()
 }
 
-pub fn workspace_contains_package_id_(pkgid: &PkgId, workspace: &Path,
+pub fn workspace_contains_crate_id_(crateid: &CrateId, workspace: &Path,
 // Returns the directory it was actually found in
              workspace_to_src_dir: |&Path| -> Path) -> Option<Path> {
     if !workspace.is_dir() {
@@ -77,14 +77,14 @@ pub fn workspace_contains_package_id_(pkgid: &PkgId, workspace: &Path,
     let mut found = None;
     for p in fs::walk_dir(&src_dir) {
         if p.is_dir() {
-            if p == src_dir.join(&pkgid.path) || {
+            if p == src_dir.join(&crateid.path) || {
                 let pf = p.filename_str();
                 pf.iter().any(|&g| {
                     match split_version_general(g, '-') {
                         None => false,
                         Some((ref might_match, ref vers)) => {
-                            *might_match == pkgid.short_name
-                                && (pkgid.version == *vers || pkgid.version == NoVersion)
+                            *might_match == crateid.short_name
+                                && (crateid.version == *vers || crateid.version == NoVersion)
                         }
                     }
                 })
@@ -96,9 +96,9 @@ pub fn workspace_contains_package_id_(pkgid: &PkgId, workspace: &Path,
     }
 
     if found.is_some() {
-        debug!("Found {} in {}", pkgid.to_str(), workspace.display());
+        debug!("Found {} in {}", crateid.to_str(), workspace.display());
     } else {
-        debug!("Didn't find {} in {}", pkgid.to_str(), workspace.display());
+        debug!("Didn't find {} in {}", crateid.to_str(), workspace.display());
     }
     found
 }
@@ -126,11 +126,11 @@ fn target_bin_dir(workspace: &Path) -> Path {
     workspace.join("bin")
 }
 
-/// Figure out what the executable name for <pkgid> in <workspace>'s build
+/// Figure out what the executable name for <crateid> in <workspace>'s build
 /// directory is, and if the file exists, return it.
-pub fn built_executable_in_workspace(pkgid: &PkgId, workspace: &Path) -> Option<Path> {
+pub fn built_executable_in_workspace(crateid: &CrateId, workspace: &Path) -> Option<Path> {
     let mut result = target_build_dir(workspace);
-    result = mk_output_path(Main, Build, pkgid, result);
+    result = mk_output_path(Main, Build, crateid, result);
     debug!("built_executable_in_workspace: checking whether {} exists",
            result.display());
     if result.exists() {
@@ -142,22 +142,22 @@ pub fn built_executable_in_workspace(pkgid: &PkgId, workspace: &Path) -> Option<
     }
 }
 
-/// Figure out what the test name for <pkgid> in <workspace>'s build
+/// Figure out what the test name for <crateid> in <workspace>'s build
 /// directory is, and if the file exists, return it.
-pub fn built_test_in_workspace(pkgid: &PkgId, workspace: &Path) -> Option<Path> {
-    output_in_workspace(pkgid, workspace, Test)
+pub fn built_test_in_workspace(crateid: &CrateId, workspace: &Path) -> Option<Path> {
+    output_in_workspace(crateid, workspace, Test)
 }
 
-/// Figure out what the test name for <pkgid> in <workspace>'s build
+/// Figure out what the test name for <crateid> in <workspace>'s build
 /// directory is, and if the file exists, return it.
-pub fn built_bench_in_workspace(pkgid: &PkgId, workspace: &Path) -> Option<Path> {
-    output_in_workspace(pkgid, workspace, Bench)
+pub fn built_bench_in_workspace(crateid: &CrateId, workspace: &Path) -> Option<Path> {
+    output_in_workspace(crateid, workspace, Bench)
 }
 
-fn output_in_workspace(pkgid: &PkgId, workspace: &Path, what: OutputType) -> Option<Path> {
+fn output_in_workspace(crateid: &CrateId, workspace: &Path, what: OutputType) -> Option<Path> {
     let mut result = target_build_dir(workspace);
     // should use a target-specific subdirectory
-    result = mk_output_path(what, Build, pkgid, result);
+    result = mk_output_path(what, Build, crateid, result);
     debug!("output_in_workspace: checking whether {} exists",
            result.display());
     if result.exists() {
@@ -169,10 +169,11 @@ fn output_in_workspace(pkgid: &PkgId, workspace: &Path, what: OutputType) -> Opt
     }
 }
 
-/// Figure out what the library name for <pkgid> in <workspace>'s build
+/// Figure out what the library name for <crateid> in <workspace>'s build
 /// directory is, and if the file exists, return it.
-pub fn built_library_in_workspace(pkgid: &PkgId, workspace: &Path) -> Option<Path> {
-    library_in_workspace(&pkgid.path, pkgid.short_name, Build, workspace, "build", &pkgid.version)
+pub fn built_library_in_workspace(crateid: &CrateId, workspace: &Path) -> Option<Path> {
+    library_in_workspace(&crateid.path, crateid.short_name, Build, workspace, "build",
+                         &crateid.version)
 }
 
 /// Does the actual searching stuff
@@ -292,45 +293,45 @@ fn library_in(short_name: &str, version: &Version, dir_to_search: &Path) -> Opti
     abs_path
 }
 
-/// Returns the executable that would be installed for <pkgid>
+/// Returns the executable that would be installed for <crateid>
 /// in <workspace>
 /// As a side effect, creates the bin-dir if it doesn't exist
-pub fn target_executable_in_workspace(pkgid: &PkgId, workspace: &Path) -> Path {
-    target_file_in_workspace(pkgid, workspace, Main, Install)
+pub fn target_executable_in_workspace(crateid: &CrateId, workspace: &Path) -> Path {
+    target_file_in_workspace(crateid, workspace, Main, Install)
 }
 
 
-/// Returns the executable that would be installed for <pkgid>
+/// Returns the executable that would be installed for <crateid>
 /// in <workspace>
 /// As a side effect, creates the lib-dir if it doesn't exist
-pub fn target_library_in_workspace(pkgid: &PkgId, workspace: &Path) -> Path {
+pub fn target_library_in_workspace(crateid: &CrateId, workspace: &Path) -> Path {
     use conditions::bad_path::cond;
     if !workspace.is_dir() {
         cond.raise(((*workspace).clone(),
                     format!("Workspace supplied to target_library_in_workspace \
                              is not a directory! {}", workspace.display())));
     }
-    target_file_in_workspace(pkgid, workspace, Lib, Install)
+    target_file_in_workspace(crateid, workspace, Lib, Install)
 }
 
-/// Returns the test executable that would be installed for <pkgid>
+/// Returns the test executable that would be installed for <crateid>
 /// in <workspace>
 /// note that we *don't* install test executables, so this is just for unit testing
-pub fn target_test_in_workspace(pkgid: &PkgId, workspace: &Path) -> Path {
-    target_file_in_workspace(pkgid, workspace, Test, Install)
+pub fn target_test_in_workspace(crateid: &CrateId, workspace: &Path) -> Path {
+    target_file_in_workspace(crateid, workspace, Test, Install)
 }
 
-/// Returns the bench executable that would be installed for <pkgid>
+/// Returns the bench executable that would be installed for <crateid>
 /// in <workspace>
 /// note that we *don't* install bench executables, so this is just for unit testing
-pub fn target_bench_in_workspace(pkgid: &PkgId, workspace: &Path) -> Path {
-    target_file_in_workspace(pkgid, workspace, Bench, Install)
+pub fn target_bench_in_workspace(crateid: &CrateId, workspace: &Path) -> Path {
+    target_file_in_workspace(crateid, workspace, Bench, Install)
 }
 
 
-/// Returns the path that pkgid `pkgid` would have if placed `where`
+/// Returns the path that crateid `crateid` would have if placed `where`
 /// in `workspace`
-fn target_file_in_workspace(pkgid: &PkgId, workspace: &Path,
+fn target_file_in_workspace(crateid: &CrateId, workspace: &Path,
                             what: OutputType, where: Target) -> Path {
     use conditions::bad_path::cond;
 
@@ -340,25 +341,25 @@ fn target_file_in_workspace(pkgid: &PkgId, workspace: &Path,
     // Artifacts in the build directory live in a package-ID-specific subdirectory,
     // but installed ones don't.
     let result = match (where, what) {
-                (Build, _)      => target_build_dir(workspace).join(&pkgid.path),
+                (Build, _)      => target_build_dir(workspace).join(&crateid.path),
                 (Install, Lib)  => target_lib_dir(workspace),
                 (Install, _)    => target_bin_dir(workspace)
     };
     if io::result(|| fs::mkdir_recursive(&result, io::UserRWX)).is_err() {
         cond.raise((result.clone(), format!("target_file_in_workspace couldn't \
-            create the {} dir (pkgid={}, workspace={}, what={:?}, where={:?}",
-            subdir, pkgid.to_str(), workspace.display(), what, where)));
+            create the {} dir (crateid={}, workspace={}, what={:?}, where={:?}",
+            subdir, crateid.to_str(), workspace.display(), what, where)));
     }
-    mk_output_path(what, where, pkgid, result)
+    mk_output_path(what, where, crateid, result)
 }
 
-/// Return the directory for <pkgid>'s build artifacts in <workspace>.
+/// Return the directory for <crateid>'s build artifacts in <workspace>.
 /// Creates it if it doesn't exist.
-pub fn build_pkg_id_in_workspace(pkgid: &PkgId, workspace: &Path) -> Path {
+pub fn build_pkg_id_in_workspace(crateid: &CrateId, workspace: &Path) -> Path {
     let mut result = target_build_dir(workspace);
-    result.push(&pkgid.path);
+    result.push(&crateid.path);
     debug!("Creating build dir {} for package id {}", result.display(),
-           pkgid.to_str());
+           crateid.to_str());
     fs::mkdir_recursive(&result, io::UserRWX);
     return result;
 }
@@ -366,7 +367,7 @@ pub fn build_pkg_id_in_workspace(pkgid: &PkgId, workspace: &Path) -> Path {
 /// Return the output file for a given directory name,
 /// given whether we're building a library and whether we're building tests
 pub fn mk_output_path(what: OutputType, where: Target,
-                      pkg_id: &PkgId, workspace: Path) -> Path {
+                      pkg_id: &CrateId, workspace: Path) -> Path {
     let short_name_with_version = format!("{}-{}", pkg_id.short_name,
                                           pkg_id.version.to_str());
     // Not local_path.dir_path()! For package foo/bar/blat/, we want
@@ -399,22 +400,22 @@ pub fn mk_output_path(what: OutputType, where: Target,
     output_path
 }
 
-/// Removes files for the package `pkgid`, assuming it's installed in workspace `workspace`
-pub fn uninstall_package_from(workspace: &Path, pkgid: &PkgId) {
+/// Removes files for the package `crateid`, assuming it's installed in workspace `workspace`
+pub fn uninstall_package_from(workspace: &Path, crateid: &CrateId) {
     let mut did_something = false;
-    let installed_bin = target_executable_in_workspace(pkgid, workspace);
+    let installed_bin = target_executable_in_workspace(crateid, workspace);
     if installed_bin.exists() {
         fs::unlink(&installed_bin);
         did_something = true;
     }
-    let installed_lib = target_library_in_workspace(pkgid, workspace);
+    let installed_lib = target_library_in_workspace(crateid, workspace);
     if installed_lib.exists() {
         fs::unlink(&installed_lib);
         did_something = true;
     }
     if !did_something {
         warn(format!("Warning: there don't seem to be any files for {} installed in {}",
-             pkgid.to_str(), workspace.display()));
+             crateid.to_str(), workspace.display()));
     }
 
 }
@@ -429,7 +430,7 @@ fn dir_has_file(dir: &Path, file: &str) -> bool {
     dir.join(file).exists()
 }
 
-pub fn find_dir_using_rust_path_hack(p: &PkgId) -> Option<Path> {
+pub fn find_dir_using_rust_path_hack(p: &CrateId) -> Option<Path> {
     let rp = rust_path();
     for dir in rp.iter() {
         // Require that the parent directory match the package ID

@@ -25,7 +25,7 @@ use syntax::codemap::{Span, dummy_sp};
 use syntax::diagnostic::span_handler;
 use syntax::parse::token;
 use syntax::parse::token::ident_interner;
-use syntax::pkgid::PkgId;
+use syntax::crateid::CrateId;
 use syntax::visit;
 
 // Traverses an AST, reading all the information about use'd crates and extern
@@ -73,7 +73,7 @@ struct cache_entry {
     cnum: ast::CrateNum,
     span: Span,
     hash: @str,
-    pkgid: PkgId,
+    crateid: CrateId,
 }
 
 fn dump_crates(crate_cache: &[cache_entry]) {
@@ -89,10 +89,10 @@ fn warn_if_multiple_versions(e: &mut Env,
                              diag: @mut span_handler,
                              crate_cache: &[cache_entry]) {
     if crate_cache.len() != 0u {
-        let name = crate_cache[crate_cache.len() - 1].pkgid.name.clone();
+        let name = crate_cache[crate_cache.len() - 1].crateid.name.clone();
 
         let (matches, non_matches) = crate_cache.partitioned(|entry|
-            name == entry.pkgid.name);
+            name == entry.crateid.name);
 
         assert!(!matches.is_empty());
 
@@ -101,7 +101,7 @@ fn warn_if_multiple_versions(e: &mut Env,
                 format!("using multiple versions of crate `{}`", name));
             for match_ in matches.iter() {
                 diag.span_note(match_.span, "used here");
-                loader::note_pkgid_attr(diag, &match_.pkgid);
+                loader::note_crateid_attr(diag, &match_.crateid);
             }
         }
 
@@ -138,15 +138,15 @@ fn visit_view_item(e: &mut Env, i: &ast::view_item) {
                  ident, path_opt);
           let (name, version) = match path_opt {
               Some((path_str, _)) => {
-                  let pkgid: Option<PkgId> = from_str(path_str);
-                  match pkgid {
+                  let crateid: Option<CrateId> = from_str(path_str);
+                  match crateid {
                       None => (@"", @""),
-                      Some(pkgid) => {
-                          let version = match pkgid.version {
+                      Some(crateid) => {
+                          let version = match crateid.version {
                               None => @"",
                               Some(ref ver) => ver.to_managed(),
                           };
-                          (pkgid.name.to_managed(), version)
+                          (crateid.name.to_managed(), version)
                       }
                   }
               }
@@ -245,12 +245,12 @@ fn visit_item(e: &Env, i: @ast::item) {
 fn existing_match(e: &Env, name: @str, version: @str, hash: &str) -> Option<ast::CrateNum> {
     let crate_cache = e.crate_cache.borrow();
     for c in crate_cache.get().iter() {
-        let pkgid_version = match c.pkgid.version {
+        let crateid_version = match c.crateid.version {
             None => @"0.0",
             Some(ref ver) => ver.to_managed(),
         };
-        if (name.is_empty() || c.pkgid.name.to_managed() == name) &&
-            (version.is_empty() || pkgid_version == version) &&
+        if (name.is_empty() || c.crateid.name.to_managed() == name) &&
+            (version.is_empty() || crateid_version == version) &&
             (hash.is_empty() || c.hash.as_slice() == hash) {
             return Some(c.cnum);
         }
@@ -282,7 +282,7 @@ fn resolve_crate(e: &mut Env,
         } = load_ctxt.load_library_crate();
 
         let attrs = decoder::get_crate_attributes(metadata.as_slice());
-        let pkgid = attr::find_pkgid(attrs).unwrap();
+        let crateid = attr::find_crateid(attrs).unwrap();
         let hash = decoder::get_crate_hash(metadata.as_slice());
 
         // Claim this crate number and cache it
@@ -293,7 +293,7 @@ fn resolve_crate(e: &mut Env,
                 cnum: cnum,
                 span: span,
                 hash: hash,
-                pkgid: pkgid,
+                crateid: crateid,
             });
         }
         e.next_crate_num += 1;
