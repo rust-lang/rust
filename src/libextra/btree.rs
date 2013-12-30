@@ -60,7 +60,6 @@ impl<K: TotalOrd, V> BTree<K, V> {
         }
     }
 
-
     ///Stub for add method in progress.
     pub fn add(self, k: K, v: V) -> BTree<K, V> {
         //replace(&self.root,self.root.add(k, v));
@@ -69,7 +68,6 @@ impl<K: TotalOrd, V> BTree<K, V> {
 }
 
 impl<K: TotalOrd, V: Clone> BTree<K, V> {
-
     ///Returns the value of a given key, which may not exist in the tree.
     ///Calls the root node's get method.
     pub fn get(self, k: K) -> Option<V> {
@@ -84,7 +82,6 @@ impl<K: Clone + TotalOrd, V: Clone> Clone for BTree<K, V> {
         BTree::new_with_node_len(self.root.clone(), self.len, self.lower_bound)
     }
 }
-
 
 impl<K: TotalOrd, V: TotalEq> TotalEq for BTree<K, V> {
     
@@ -197,7 +194,6 @@ impl<K: TotalOrd, V: TotalEq> TotalEq for Node<K, V> {
             }
         }
     }
-}
 
 impl<K: TotalOrd, V: TotalEq> TotalOrd for Node<K, V> {
     ///Implementation of TotalOrd for Nodes.
@@ -266,7 +262,6 @@ impl<K: TotalOrd, V> Leaf<K, V> {
 }
 
 impl<K: TotalOrd, V: Clone> Leaf<K, V> {
-
     ///Returns the corresponding value to the supplied key.
     fn get(&self, k: K) -> Option<V> {
         for s in self.elts.iter() {
@@ -409,6 +404,31 @@ impl<K: ToStr + TotalOrd, V: ToStr> ToStr for Branch<K, V> {
     }
 }
 
+impl<K: TotalOrd, V: TotalEq> TotalEq for Branch<K, V>{
+    
+    ///Equals function for Branches--compares first elt (Placeholder)
+    fn equals(&self, other: &Branch<K, V>) -> bool {
+        if self.elts[0].equals(&other.elts[0]){
+            return true;
+        }
+        return false;
+    }
+}
+
+impl<K: ToStr + TotalOrd, V: ToStr> ToStr for Branch<K, V> {
+
+    ///Returns a string representation of a Branch.
+    fn to_str(&self) -> ~str {
+        let mut ret = ~"";
+        for s in self.elts.iter() {
+            ret = ret + " // " + s.to_str();
+        }
+        ret = ret + " // " + self.rightmost_child.to_str();
+        ret
+    }
+
+}
+
 //A LeafElt containts no left child, but a key-value pair.
 //#[deriving(Eq)]
 struct LeafElt<K, V> {
@@ -505,13 +525,13 @@ impl<K: TotalOrd, V> BranchElt<K, V> {
         }
     }
 
+
     ///Placeholder for add method in progress.
     ///Overall implementation will determine the actual return value of this method.
     fn add(&self, k: K, v: V) -> LeafElt<K, V> {
         return LeafElt::new(k, v);
     }
 }
-
 
 impl<K: Clone + TotalOrd, V: Clone> Clone for BranchElt<K, V> {
     ///Returns a new BranchElt by cloning the key, value, and left child.
@@ -549,9 +569,7 @@ impl<K: ToStr + TotalOrd, V: ToStr> ToStr for BranchElt<K, V> {
 
 #[cfg(test)]
 mod test_btree {
-
     use super::{BTree, LeafElt};
-
     //Tests the functionality of the add methods (which are unfinished).
     /*#[test]
     fn add_test(){
@@ -630,6 +648,5 @@ mod test_btree {
         let b = BTree::new(1, ~"abc", 2);
         assert_eq!(b.to_str(), ~"Key: 1, value: abc;")
     }
-
 }
 
