@@ -48,7 +48,7 @@ impl ParserAnyMacro {
             let msg = format!("macro expansion ignores token `{}` and any \
                                following",
                               token_str);
-            let span = *parser.get().span;
+            let span = parser.get().span;
             parser.get().span_err(span, msg);
         }
     }

@@ -304,7 +304,7 @@ pub fn Parser(sess: @mut ParseSess,
         sess: sess,
         cfg: cfg,
         token: tok0.tok,
-        span: @mut span,
+        span: span,
         last_span: @mut span,
         last_token: @mut None,
         buffer: @mut ([
@@ -332,7 +332,7 @@ pub struct Parser {
     // the current token:
     token: token::Token,
     // the span of the current token:
-    span: @mut Span,
+    span: Span,
     // the span of the prior token:
     last_span: @mut Span,
     // the previous token or None (only stashed sometimes).
@@ -434,7 +434,7 @@ impl Parser {
             && expected.iter().all(|t| *t != token::LBRACE)
             && self.look_ahead(1, |t| *t == token::RBRACE) {
             // matched; signal non-fatal error and recover.
-            self.span_err(*self.span,
+            self.span_err(self.span,
                           "Unit-like struct construction is written with no trailing `{ }`");
             self.eat(&token::LBRACE);
             self.eat(&token::RBRACE);
@@ -547,7 +547,7 @@ impl Parser {
     pub fn check_strict_keywords(&mut self) {
         if token::is_strict_keyword(&self.token) {
             let token_str = self.this_token_to_str();
-            self.span_err(*self.span,
+            self.span_err(self.span,
                           format!("found `{}` in ident position", token_str));
         }
     }
@@ -566,9 +566,8 @@ impl Parser {
         match self.token {
             token::BINOP(token::OR) => self.bump(),
             token::OROR => {
-                self.replace_token(token::BINOP(token::OR),
-                                   self.span.lo + BytePos(1),
-                                   self.span.hi)
+                let lo = self.span.lo + BytePos(1);
+                self.replace_token(token::BINOP(token::OR), lo, self.span.hi)
             }
             _ => {
                 let token_str = self.this_token_to_str();
@@ -608,11 +607,10 @@ impl Parser {
     pub fn expect_gt(&mut self) {
         match self.token {
             token::GT => self.bump(),
-            token::BINOP(token::SHR) => self.replace_token(
-                token::GT,
-                self.span.lo + BytePos(1),
-                self.span.hi
-            ),
+            token::BINOP(token::SHR) => {
+                let lo = self.span.lo + BytePos(1);
+                self.replace_token(token::GT, lo, self.span.hi)
+            }
             _ => {
                 let gt_str = Parser::token_to_str(&token::GT);
                 let this_token_str = self.this_token_to_str();
@@ -730,7 +728,7 @@ impl Parser {
 
     // advance the parser by one token
     pub fn bump(&mut self) {
-        *self.last_span = *self.span;
+        *self.last_span = self.span;
         // Stash token for error recovery (sometimes; clone is not necessarily cheap).
         *self.last_token = if is_ident_or_path(&self.token) {
             Some(~self.token.clone())
@@ -747,11 +745,11 @@ impl Parser {
 
             let placeholder = TokenAndSpan {
                 tok: token::UNDERSCORE,
-                sp: *self.span,
+                sp: self.span,
             };
             util::replace(&mut self.buffer[buffer_start], placeholder)
         };
-        *self.span = next.sp;
+        self.span = next.sp;
         self.token = next.tok;
         *self.tokens_consumed += 1u;
     }
@@ -769,7 +767,7 @@ impl Parser {
                          lo: BytePos,
                          hi: BytePos) {
         self.token = next;
-        *self.span = mk_sp(lo, hi);
+        self.span = mk_sp(lo, hi);
     }
     pub fn buffer_length(&mut self) -> int {
         if *self.buffer_start <= *self.buffer_end {
@@ -787,7 +785,7 @@ impl Parser {
         f(&self.buffer[(*self.buffer_start + dist - 1) & 3].tok)
     }
     pub fn fatal(&mut self, m: &str) -> ! {
-        self.sess.span_diagnostic.span_fatal(*self.span, m)
+        self.sess.span_diagnostic.span_fatal(self.span, m)
     }
     pub fn span_fatal(&mut self, sp: Span, m: &str) -> ! {
         self.sess.span_diagnostic.span_fatal(sp, m)
@@ -796,10 +794,10 @@ impl Parser {
         self.sess.span_diagnostic.span_note(sp, m)
     }
     pub fn bug(&mut self, m: &str) -> ! {
-        self.sess.span_diagnostic.span_bug(*self.span, m)
+        self.sess.span_diagnostic.span_bug(self.span, m)
     }
     pub fn warn(&mut self, m: &str) {
-        self.sess.span_diagnostic.span_warn(*self.span, m)
+        self.sess.span_diagnostic.span_warn(self.span, m)
     }
     pub fn span_err(&mut self, sp: Span, m: &str) {
         self.sess.span_diagnostic.span_err(sp, m)
@@ -1047,7 +1045,7 @@ impl Parser {
             let attrs = p.parse_outer_attributes();
             let lo = p.span.lo;
 
-            let vis_span = *p.span;
+            let vis_span = p.span;
             let vis = p.parse_visibility();
             let pur = p.parse_fn_purity();
             // NB: at the moment, trait methods are public by default; this
@@ -1590,7 +1588,7 @@ impl Parser {
     pub fn parse_lifetime(&mut self) -> ast::Lifetime {
         match self.token {
             token::LIFETIME(i) => {
-                let span = *self.span;
+                let span = self.span;
                 self.bump();
                 return ast::Lifetime {
                     id: ast::DUMMY_NODE_ID,
@@ -1722,7 +1720,7 @@ impl Parser {
     }
 
     pub fn mk_lit_u32(&mut self, i: u32) -> @Expr {
-        let span = self.span;
+        let span = &self.span;
         let lv_lit = @codemap::Spanned {
             node: lit_uint(i as u64, ty_u32),
             span: *span
@@ -2105,7 +2103,7 @@ impl Parser {
               /* we ought to allow different depths of unquotation */
               token::DOLLAR if p.quote_depth > 0u => {
                 p.bump();
-                let sp = *p.span;
+                let sp = p.span;
 
                 if p.token == token::LPAREN {
                     let seq = p.parse_seq(
@@ -2136,7 +2134,7 @@ impl Parser {
 
         // turn the next token into a tt_tok:
         fn parse_any_tt_tok(p: &mut Parser) -> token_tree{
-            tt_tok(*p.span, p.bump_and_get())
+            tt_tok(p.span, p.bump_and_get())
         }
 
         match self.token {
@@ -2152,7 +2150,7 @@ impl Parser {
                 let close_delim = token::flip_delimiter(&self.token);
 
                 // Parse the open delimiter.
-                (*self.open_braces).push(*self.span);
+                (*self.open_braces).push(self.span);
                 let mut result = ~[parse_any_tt_tok(self)];
 
                 let trees =
@@ -2430,7 +2428,7 @@ impl Parser {
               self.mk_expr(lo, rhs.span.hi, assign_op)
           }
           token::DARROW => {
-            self.obsolete(*self.span, ObsoleteSwap);
+            self.obsolete(self.span, ObsoleteSwap);
             self.bump();
             // Ignore what we get, this is an error anyway
             self.parse_expr();
@@ -2472,7 +2470,7 @@ impl Parser {
                           output: P(Ty {
                               id: ast::DUMMY_NODE_ID,
                               node: ty_infer,
-                              span: *p.span
+                              span: p.span
                           }),
                           cf: return_val,
                           variadic: false
@@ -2758,13 +2756,13 @@ impl Parser {
                     slice = Some(@ast::Pat {
                         id: ast::DUMMY_NODE_ID,
                         node: PatWildMulti,
-                        span: *self.span,
+                        span: self.span,
                     })
                 } else {
                     let subpat = self.parse_pat();
                     match subpat {
                         @ast::Pat { id, node: PatWild, span } => {
-                            self.obsolete(*self.span, ObsoleteVecDotDotWildcard);
+                            self.obsolete(self.span, ObsoleteVecDotDotWildcard);
                             slice = Some(@ast::Pat {
                                 id: id,
                                 node: PatWildMulti,
@@ -2808,7 +2806,7 @@ impl Parser {
 
             etc = self.token == token::UNDERSCORE || self.token == token::DOTDOT;
             if self.token == token::UNDERSCORE {
-                self.obsolete(*self.span, ObsoleteStructWildcard);
+                self.obsolete(self.span, ObsoleteStructWildcard);
             }
             if etc {
                 self.bump();
@@ -3093,7 +3091,7 @@ impl Parser {
                                 // This is a "top constructor only" pat
                                 self.bump();
                                 if is_star {
-                                    self.obsolete(*self.span, ObsoleteEnumWildcard);
+                                    self.obsolete(self.span, ObsoleteEnumWildcard);
                                 }
                                 self.bump();
                                 self.expect(&token::RPAREN);
@@ -3193,7 +3191,7 @@ impl Parser {
         let local = self.parse_local();
         while self.eat(&token::COMMA) {
             let _ = self.parse_local();
-            self.obsolete(*self.span, ObsoleteMultipleLocalDecl);
+            self.obsolete(self.span, ObsoleteMultipleLocalDecl);
         }
         return @spanned(lo, self.last_span.hi, DeclLocal(local));
     }
@@ -3324,7 +3322,7 @@ impl Parser {
 
         let lo = self.span.lo;
         if self.eat_keyword(keywords::Unsafe) {
-            self.obsolete(*self.span, ObsoleteUnsafeBlock);
+            self.obsolete(self.span, ObsoleteUnsafeBlock);
         }
         self.expect(&token::LBRACE);
 
@@ -3339,7 +3337,7 @@ impl Parser {
 
         let lo = self.span.lo;
         if self.eat_keyword(keywords::Unsafe) {
-            self.obsolete(*self.span, ObsoleteUnsafeBlock);
+            self.obsolete(self.span, ObsoleteUnsafeBlock);
         }
         self.expect(&token::LBRACE);
         let (inner, next) = self.parse_inner_attrs_and_next();
@@ -3497,7 +3495,7 @@ impl Parser {
                     if "static" == self.id_to_str(lifetime) {
                         result.push(RegionTyParamBound);
                     } else {
-                        self.span_err(*self.span,
+                        self.span_err(self.span,
                                       "`'static` is the only permissible region bound here");
                     }
                     self.bump();
@@ -3552,7 +3550,7 @@ impl Parser {
 
     fn parse_fn_args(&mut self, named_args: bool, allow_variadic: bool)
                      -> (~[arg], bool) {
-        let sp = *self.span;
+        let sp = self.span;
         let mut args: ~[Option<arg>] =
             self.parse_unspanned_seq(
                 &token::LPAREN,
@@ -3563,11 +3561,11 @@ impl Parser {
                         p.bump();
                         if allow_variadic {
                             if p.token != token::RPAREN {
-                                p.span_fatal(*p.span,
+                                p.span_fatal(p.span,
                                     "`...` must be last in argument list for variadic function");
                             }
                         } else {
-                            p.span_fatal(*p.span,
+                            p.span_fatal(p.span,
                                          "only foreign functions are allowed to be variadic");
                         }
                         None
@@ -3729,7 +3727,7 @@ impl Parser {
                 self.parse_mutability()
             } else { MutImmutable };
             if self.is_self_ident() {
-                self.span_err(*self.span, "cannot pass self by unsafe pointer");
+                self.span_err(self.span, "cannot pass self by unsafe pointer");
                 self.bump();
             }
             sty_value(mutability)
@@ -3815,7 +3813,11 @@ impl Parser {
         let output = if self.eat(&token::RARROW) {
             self.parse_ty(false)
         } else {
-            P(Ty { id: ast::DUMMY_NODE_ID, node: ty_infer, span: *self.span })
+            P(Ty {
+                id: ast::DUMMY_NODE_ID,
+                node: ty_infer,
+                span: self.span,
+            })
         };
 
         P(ast::fn_decl {
@@ -3840,7 +3842,7 @@ impl Parser {
             P(Ty {
                 id: ast::DUMMY_NODE_ID,
                 node: ty_infer,
-                span: *self.span,
+                span: self.span,
             })
         };
 
@@ -4087,7 +4089,7 @@ impl Parser {
             token::RBRACE => {}
             _ => {
                 let token_str = self.this_token_to_str();
-                self.span_fatal(*self.span,
+                self.span_fatal(self.span,
                                 format!("expected `,`, or `\\}` but found `{}`",
                                         token_str))
             }
@@ -4183,7 +4185,7 @@ impl Parser {
 
     // parse a `mod <foo> { ... }` or `mod <foo>;` item
     fn parse_item_mod(&mut self, outer_attrs: &[Attribute]) -> item_info {
-        let id_span = *self.span;
+        let id_span = self.span;
         let id = self.parse_ident();
         if self.token == token::SEMI {
             self.bump();
@@ -4221,7 +4223,7 @@ impl Parser {
                     outer_attrs: &[ast::Attribute],
                     id_sp: Span)
                     -> (ast::item_, ~[ast::Attribute]) {
-        let mut prefix = Path::new(self.sess.cm.span_to_filename(*self.span));
+        let mut prefix = Path::new(self.sess.cm.span_to_filename(self.span));
         prefix.pop();
         let mod_path_stack = &*self.mod_path_stack;
         let mod_path = Path::new(".").join_many(*mod_path_stack);
@@ -4383,7 +4385,7 @@ impl Parser {
             self.expect_keyword(keywords::Mod);
         } else if self.token != token::LBRACE {
             let token_str = self.this_token_to_str();
-            self.span_fatal(*self.span,
+            self.span_fatal(self.span,
                             format!("expected `\\{` or `mod` but found `{}`",
                                     token_str))
         }
@@ -4401,7 +4403,7 @@ impl Parser {
             _ => {
                 if must_be_named_mod {
                     let token_str = self.this_token_to_str();
-                    self.span_fatal(*self.span,
+                    self.span_fatal(self.span,
                                     format!("expected foreign module name but \
                                              found `{}`",
                                             token_str))
@@ -4435,7 +4437,7 @@ impl Parser {
         }
 
         if opt_abis.is_some() {
-            self.span_err(*self.span, "an ABI may not be specified here");
+            self.span_err(self.span, "an ABI may not be specified here");
         }
 
         // extern mod foo;
@@ -4573,7 +4575,7 @@ impl Parser {
                         Some(abi) => {
                             if abis.contains(abi) {
                                 self.span_err(
-                                    *self.span,
+                                    self.span,
                                     format!("ABI `{}` appears twice",
                                          word));
                             } else {
@@ -4583,7 +4585,7 @@ impl Parser {
 
                         None => {
                             self.span_err(
-                                *self.span,
+                                self.span,
                                 format!("illegal ABI: \
                                       expected one of [{}], \
                                       found `{}`",
