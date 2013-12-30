@@ -39,9 +39,9 @@ fn next_state(s: State) -> Option<State> {
 
 pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree])
                -> base::MacResult {
-    let p = parse::new_parser_from_tts(cx.parse_sess(),
-                                       cx.cfg(),
-                                       tts.to_owned());
+    let mut p = parse::new_parser_from_tts(cx.parse_sess(),
+                                           cx.cfg(),
+                                           tts.to_owned());
 
     let mut asm = @"";
     let mut asm_str_style = None;
