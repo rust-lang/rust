@@ -2069,6 +2069,10 @@ fn merge_sort<T>(v: &mut [T], compare: |&T, &T| -> Ordering) {
 /// Extension methods for vectors such that their elements are
 /// mutable.
 pub trait MutableVector<'a, T> {
+    /// Work with `self` as a mut slice.
+    /// Primarily intended for getting a &mut [T] from a [T, ..N].
+    fn as_mut_slice(self) -> &'a mut [T];
+
     /// Return a slice that points into another slice.
     fn mut_slice(self, start: uint, end: uint) -> &'a mut [T];
 
@@ -2302,6 +2306,8 @@ pub trait MutableVector<'a, T> {
 
 impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
     #[inline]
+    fn as_mut_slice(self) -> &'a mut [T] { self }
+
     fn mut_slice(self, start: uint, end: uint) -> &'a mut [T] {
         assert!(start <= end);
         assert!(end <= self.len());
