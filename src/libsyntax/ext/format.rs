@@ -28,8 +28,8 @@ enum ArgumentType {
     String,
 }
 
-struct Context {
-    ecx: @ExtCtxt,
+struct Context<'a> {
+    ecx: &'a mut ExtCtxt,
     fmtsp: Span,
 
     // Parsed argument expressions and the types that we've found so far for
@@ -50,7 +50,7 @@ struct Context {
     next_arg: uint,
 }
 
-impl Context {
+impl<'a> Context<'a> {
     /// Parses the arguments from the given list of tokens, returning None if
     /// there's a parse error so we can continue parsing other format! expressions.
     fn parse_args(&mut self, sp: Span,
@@ -722,7 +722,7 @@ impl Context {
     }
 }
 
-pub fn expand_args(ecx: @ExtCtxt, sp: Span,
+pub fn expand_args(ecx: &mut ExtCtxt, sp: Span,
                    tts: &[ast::token_tree]) -> base::MacResult {
     let mut cx = Context {
         ecx: ecx,
@@ -739,19 +739,20 @@ pub fn expand_args(ecx: @ExtCtxt, sp: Span,
     };
     let (extra, efmt) = match cx.parse_args(sp, tts) {
         (extra, Some(e)) => (extra, e),
-        (_, None) => { return MRExpr(ecx.expr_uint(sp, 2)); }
+        (_, None) => { return MRExpr(cx.ecx.expr_uint(sp, 2)); }
     };
     cx.fmtsp = efmt.span;
     // Be sure to recursively expand macros just in case the format string uses
     // a macro to build the format expression.
-    let (fmt, _) = expr_to_str(ecx, ecx.expand_expr(efmt),
+    let expr = cx.ecx.expand_expr(efmt);
+    let (fmt, _) = expr_to_str(cx.ecx, expr,
                                "format argument must be a string literal.");
 
     let mut err = false;
     parse::parse_error::cond.trap(|m| {
         if !err {
             err = true;
-            ecx.span_err(efmt.span, m);
+            cx.ecx.span_err(efmt.span, m);
         }
     }).inside(|| {
         for piece in parse::Parser::new(fmt) {
@@ -767,12 +768,12 @@ pub fn expand_args(ecx: @ExtCtxt, sp: Span,
     // Make sure that all arguments were used and all arguments have types.
     for (i, ty) in cx.arg_types.iter().enumerate() {
         if ty.is_none() {
-            ecx.span_err(cx.args[i].span, "argument never used");
+            cx.ecx.span_err(cx.args[i].span, "argument never used");
         }
     }
     for (name, e) in cx.names.iter() {
         if !cx.name_types.contains_key(name) {
-            ecx.span_err(e.span, "named argument never used");
+            cx.ecx.span_err(e.span, "named argument never used");
         }
     }
 

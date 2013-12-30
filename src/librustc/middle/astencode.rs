@@ -301,7 +301,7 @@ struct NestedItemsDropper {
 }
 
 impl fold::ast_fold for NestedItemsDropper {
-    fn fold_block(&self, blk: ast::P<ast::Block>) -> ast::P<ast::Block> {
+    fn fold_block(&mut self, blk: ast::P<ast::Block>) -> ast::P<ast::Block> {
         let stmts_sans_items = blk.stmts.iter().filter_map(|stmt| {
             match stmt.node {
                 ast::StmtExpr(_, _) | ast::StmtSemi(_, _) |
@@ -340,7 +340,7 @@ impl fold::ast_fold for NestedItemsDropper {
 // nested items, as otherwise it would get confused when translating
 // inlined items.
 fn simplify_ast(ii: &ast::inlined_item) -> ast::inlined_item {
-    let fld = NestedItemsDropper {
+    let mut fld = NestedItemsDropper {
         contents: (),
     };
 
@@ -365,17 +365,17 @@ struct AstRenumberer {
 }
 
 impl fold::ast_fold for AstRenumberer {
-    fn new_id(&self, id: ast::NodeId) -> ast::NodeId {
+    fn new_id(&mut self, id: ast::NodeId) -> ast::NodeId {
         self.xcx.tr_id(id)
     }
-    fn new_span(&self, span: Span) -> Span {
+    fn new_span(&mut self, span: Span) -> Span {
         self.xcx.tr_span(span)
     }
 }
 
 fn renumber_ast(xcx: @ExtendedDecodeContext, ii: ast::inlined_item)
     -> ast::inlined_item {
-    let fld = AstRenumberer {
+    let mut fld = AstRenumberer {
         xcx: xcx,
     };
     match ii {

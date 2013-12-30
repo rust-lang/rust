@@ -35,11 +35,8 @@ pub struct MacroDef {
     ext: SyntaxExtension
 }
 
-pub type ItemDecorator = extern "Rust" fn(@ExtCtxt,
-                                          Span,
-                                          @ast::MetaItem,
-                                          ~[@ast::item])
-                                          -> ~[@ast::item];
+pub type ItemDecorator =
+    fn(&ExtCtxt, Span, @ast::MetaItem, ~[@ast::item]) -> ~[@ast::item];
 
 pub struct SyntaxExpanderTT {
     expander: SyntaxExpanderTTExpander,
@@ -48,7 +45,7 @@ pub struct SyntaxExpanderTT {
 
 pub trait SyntaxExpanderTTTrait {
     fn expand(&self,
-              ecx: @ExtCtxt,
+              ecx: &mut ExtCtxt,
               span: Span,
               token_tree: &[ast::token_tree],
               context: ast::SyntaxContext)
@@ -56,10 +53,8 @@ pub trait SyntaxExpanderTTTrait {
 }
 
 pub type SyntaxExpanderTTFunNoCtxt =
-    extern "Rust" fn(ecx: @ExtCtxt,
-                     span: codemap::Span,
-                     token_tree: &[ast::token_tree])
-                     -> MacResult;
+    fn(ecx: &mut ExtCtxt, span: codemap::Span, token_tree: &[ast::token_tree])
+       -> MacResult;
 
 enum SyntaxExpanderTTExpander {
     SyntaxExpanderTTExpanderWithoutContext(SyntaxExpanderTTFunNoCtxt),
@@ -67,7 +62,7 @@ enum SyntaxExpanderTTExpander {
 
 impl SyntaxExpanderTTTrait for SyntaxExpanderTT {
     fn expand(&self,
-              ecx: @ExtCtxt,
+              ecx: &mut ExtCtxt,
               span: Span,
               token_tree: &[ast::token_tree],
               _: ast::SyntaxContext)
@@ -92,7 +87,7 @@ pub struct SyntaxExpanderTTItem {
 
 pub trait SyntaxExpanderTTItemTrait {
     fn expand(&self,
-              cx: @ExtCtxt,
+              cx: &mut ExtCtxt,
               sp: Span,
               ident: ast::Ident,
               token_tree: ~[ast::token_tree],
@@ -102,7 +97,7 @@ pub trait SyntaxExpanderTTItemTrait {
 
 impl SyntaxExpanderTTItemTrait for SyntaxExpanderTTItem {
     fn expand(&self,
-              cx: @ExtCtxt,
+              cx: &mut ExtCtxt,
               sp: Span,
               ident: ast::Ident,
               token_tree: ~[ast::token_tree],
@@ -119,16 +114,12 @@ impl SyntaxExpanderTTItemTrait for SyntaxExpanderTTItem {
     }
 }
 
-pub type SyntaxExpanderTTItemFun = extern "Rust" fn(@ExtCtxt,
-                                                    Span,
-                                                    ast::Ident,
-                                                    ~[ast::token_tree],
-                                                    ast::SyntaxContext)
-                                                    -> MacResult;
+pub type SyntaxExpanderTTItemFun =
+    fn(&mut ExtCtxt, Span, ast::Ident, ~[ast::token_tree], ast::SyntaxContext)
+       -> MacResult;
 
 pub type SyntaxExpanderTTItemFunNoCtxt =
-    extern "Rust" fn(@ExtCtxt, Span, ast::Ident, ~[ast::token_tree])
-                     -> MacResult;
+    fn(&mut ExtCtxt, Span, ast::Ident, ~[ast::token_tree]) -> MacResult;
 
 pub trait AnyMacro {
     fn make_expr(&self) -> @ast::Expr;
@@ -306,39 +297,38 @@ pub fn syntax_expander_table() -> SyntaxEnv {
 pub struct ExtCtxt {
     parse_sess: @mut parse::ParseSess,
     cfg: ast::CrateConfig,
-    backtrace: @mut Option<@ExpnInfo>,
+    backtrace: Option<@ExpnInfo>,
 
     // These two @mut's should really not be here,
     // but the self types for CtxtRepr are all wrong
     // and there are bugs in the code for object
     // types that make this hard to get right at the
     // moment. - nmatsakis
-    mod_path: @mut ~[ast::Ident],
-    trace_mac: @mut bool
+    mod_path: ~[ast::Ident],
+    trace_mac: bool
 }
 
 impl ExtCtxt {
     pub fn new(parse_sess: @mut parse::ParseSess, cfg: ast::CrateConfig)
-               -> @ExtCtxt {
-        @ExtCtxt {
+               -> ExtCtxt {
+        ExtCtxt {
             parse_sess: parse_sess,
             cfg: cfg,
-            backtrace: @mut None,
-            mod_path: @mut ~[],
-            trace_mac: @mut false
+            backtrace: None,
+            mod_path: ~[],
+            trace_mac: false
         }
     }
 
-    pub fn expand_expr(@self, mut e: @ast::Expr) -> @ast::Expr {
+    pub fn expand_expr(&mut self, mut e: @ast::Expr) -> @ast::Expr {
         loop {
             match e.node {
                 ast::ExprMac(..) => {
-                    let extsbox = @mut syntax_expander_table();
-                    let expander = expand::MacroExpander {
-                        extsbox: extsbox,
+                    let mut expander = expand::MacroExpander {
+                        extsbox: @mut syntax_expander_table(),
                         cx: self,
                     };
-                    e = expand::expand_expr(extsbox, self, e, &expander);
+                    e = expand::expand_expr(e, &mut expander);
                 }
                 _ => return e
             }
@@ -349,32 +339,32 @@ impl ExtCtxt {
     pub fn parse_sess(&self) -> @mut parse::ParseSess { self.parse_sess }
     pub fn cfg(&self) -> ast::CrateConfig { self.cfg.clone() }
     pub fn call_site(&self) -> Span {
-        match *self.backtrace {
+        match self.backtrace {
             Some(@ExpnInfo {call_site: cs, ..}) => cs,
             None => self.bug("missing top span")
         }
     }
     pub fn print_backtrace(&self) { }
-    pub fn backtrace(&self) -> Option<@ExpnInfo> { *self.backtrace }
-    pub fn mod_push(&self, i: ast::Ident) { self.mod_path.push(i); }
-    pub fn mod_pop(&self) { self.mod_path.pop(); }
-    pub fn mod_path(&self) -> ~[ast::Ident] { (*self.mod_path).clone() }
-    pub fn bt_push(&self, ei: codemap::ExpnInfo) {
+    pub fn backtrace(&self) -> Option<@ExpnInfo> { self.backtrace }
+    pub fn mod_push(&mut self, i: ast::Ident) { self.mod_path.push(i); }
+    pub fn mod_pop(&mut self) { self.mod_path.pop(); }
+    pub fn mod_path(&self) -> ~[ast::Ident] { self.mod_path.clone() }
+    pub fn bt_push(&mut self, ei: codemap::ExpnInfo) {
         match ei {
             ExpnInfo {call_site: cs, callee: ref callee} => {
-                *self.backtrace =
+                self.backtrace =
                     Some(@ExpnInfo {
                         call_site: Span {lo: cs.lo, hi: cs.hi,
-                                         expn_info: *self.backtrace},
+                                         expn_info: self.backtrace},
                         callee: *callee});
             }
         }
     }
-    pub fn bt_pop(&self) {
-        match *self.backtrace {
+    pub fn bt_pop(&mut self) {
+        match self.backtrace {
             Some(@ExpnInfo {
                 call_site: Span {expn_info: prev, ..}, ..}) => {
-                *self.backtrace = prev
+                self.backtrace = prev
             }
             _ => self.bug("tried to pop without a push")
         }
@@ -404,10 +394,10 @@ impl ExtCtxt {
         self.parse_sess.span_diagnostic.handler().bug(msg);
     }
     pub fn trace_macros(&self) -> bool {
-        *self.trace_mac
+        self.trace_mac
     }
-    pub fn set_trace_macros(&self, x: bool) {
-        *self.trace_mac = x
+    pub fn set_trace_macros(&mut self, x: bool) {
+        self.trace_mac = x
     }
     pub fn str_of(&self, id: ast::Ident) -> @str {
         ident_to_str(&id)
@@ -417,7 +407,7 @@ impl ExtCtxt {
     }
 }
 
-pub fn expr_to_str(cx: @ExtCtxt, expr: @ast::Expr, err_msg: &str) -> (@str, ast::StrStyle) {
+pub fn expr_to_str(cx: &ExtCtxt, expr: @ast::Expr, err_msg: &str) -> (@str, ast::StrStyle) {
     match expr.node {
       ast::ExprLit(l) => match l.node {
         ast::lit_str(s, style) => (s, style),
@@ -427,14 +417,14 @@ pub fn expr_to_str(cx: @ExtCtxt, expr: @ast::Expr, err_msg: &str) -> (@str, ast:
     }
 }
 
-pub fn check_zero_tts(cx: @ExtCtxt, sp: Span, tts: &[ast::token_tree],
+pub fn check_zero_tts(cx: &ExtCtxt, sp: Span, tts: &[ast::token_tree],
                       name: &str) {
     if tts.len() != 0 {
         cx.span_fatal(sp, format!("{} takes no arguments", name));
     }
 }
 
-pub fn get_single_str_from_tts(cx: @ExtCtxt,
+pub fn get_single_str_from_tts(cx: &ExtCtxt,
                                sp: Span,
                                tts: &[ast::token_tree],
                                name: &str)
@@ -450,7 +440,7 @@ pub fn get_single_str_from_tts(cx: @ExtCtxt,
     }
 }
 
-pub fn get_exprs_from_tts(cx: @ExtCtxt,
+pub fn get_exprs_from_tts(cx: &ExtCtxt,
                           sp: Span,
                           tts: &[ast::token_tree]) -> ~[@ast::Expr] {
     let p = parse::new_parser_from_tts(cx.parse_sess(),

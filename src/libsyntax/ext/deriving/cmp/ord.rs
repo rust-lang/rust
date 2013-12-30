@@ -15,7 +15,7 @@ use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 
-pub fn expand_deriving_ord(cx: @ExtCtxt,
+pub fn expand_deriving_ord(cx: &ExtCtxt,
                            span: Span,
                            mitem: @MetaItem,
                            in_items: ~[@item]) -> ~[@item] {
@@ -51,7 +51,7 @@ pub fn expand_deriving_ord(cx: @ExtCtxt,
 }
 
 /// Strict inequality.
-fn cs_op(less: bool, equal: bool, cx: @ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
+fn cs_op(less: bool, equal: bool, cx: &ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
     let op = if less {ast::BiLt} else {ast::BiGt};
     cs_fold(
         false, // need foldr,

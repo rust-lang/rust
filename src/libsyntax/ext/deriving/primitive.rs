@@ -15,7 +15,7 @@ use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 
-pub fn expand_deriving_from_primitive(cx: @ExtCtxt,
+pub fn expand_deriving_from_primitive(cx: &ExtCtxt,
                                       span: Span,
                                       mitem: @MetaItem,
                                       in_items: ~[@item]) -> ~[@item] {
@@ -64,7 +64,7 @@ pub fn expand_deriving_from_primitive(cx: @ExtCtxt,
     trait_def.expand(mitem, in_items)
 }
 
-fn cs_from(name: &str, cx: @ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
+fn cs_from(name: &str, cx: &ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
     let n = match substr.nonself_args {
         [n] => n,
         _ => cx.span_bug(span, "Incorrect number of arguments in `deriving(FromPrimitive)`")
