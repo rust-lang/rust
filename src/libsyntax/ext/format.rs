@@ -65,22 +65,22 @@ impl<'a> Context<'a> {
             return (extra, None);
         }
 
-        if *p.token == token::EOF {
+        if p.token == token::EOF {
             self.ecx.span_err(sp, "requires at least a format string argument");
             return (extra, None);
         }
         let fmtstr = p.parse_expr();
         let mut named = false;
-        while *p.token != token::EOF {
+        while p.token != token::EOF {
             if !p.eat(&token::COMMA) {
                 self.ecx.span_err(sp, "expected token: `,`");
                 return (extra, None);
             }
-            if *p.token == token::EOF { break } // accept trailing commas
-            if named || (token::is_ident(p.token) &&
+            if p.token == token::EOF { break } // accept trailing commas
+            if named || (token::is_ident(&p.token) &&
                          p.look_ahead(1, |t| *t == token::EQ)) {
                 named = true;
-                let ident = match *p.token {
+                let ident = match p.token {
                     token::IDENT(i, _) => {
                         p.bump();
                         i
