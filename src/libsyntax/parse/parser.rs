@@ -323,7 +323,6 @@ pub fn Parser(sess: @mut ParseSess, cfg: ast::CrateConfig, rdr: @mut reader)
     }
 }
 
-// ooh, nasty mutable fields everywhere....
 pub struct Parser {
     sess: @mut ParseSess,
     cfg: CrateConfig,
