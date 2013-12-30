@@ -127,6 +127,9 @@ mod util;
 // Global command line argument storage
 pub mod args;
 
+// Support for running procedures when a program has exited.
+mod at_exit_imp;
+
 /// The default error code of the rust runtime if the main task fails instead
 /// of exiting cleanly.
 pub static DEFAULT_ERROR_CODE: int = 101;
@@ -171,7 +174,25 @@ pub fn init(argc: int, argv: **u8) {
         env::init();
         logging::init();
         local_ptr::init();
+        at_exit_imp::init();
     }
+}
+
+/// Enqueues a procedure to run when the runtime is cleaned up
+///
+/// The procedure passed to this function will be executed as part of the
+/// runtime cleanup phase. For normal rust programs, this means that it will run
+/// after all other tasks have exited.
+///
+/// The procedure is *not* executed with a local `Task` available to it, so
+/// primitives like logging, I/O, channels, spawning, etc, are *not* available.
+/// This is meant for "bare bones" usage to clean up runtime details, this is
+/// not meant as a general-purpose "let's clean everything up" function.
+///
+/// It is forbidden for procedures to register more `at_exit` handlers when they
+/// are running, and doing so will lead to a process abort.
+pub fn at_exit(f: proc()) {
+    at_exit_imp::push(f);
 }
 
 /// One-time runtime cleanup.
@@ -184,6 +205,7 @@ pub fn init(argc: int, argv: **u8) {
 /// Invoking cleanup while portions of the runtime are still in use may cause
 /// undefined behavior.
 pub unsafe fn cleanup() {
+    at_exit_imp::run();
     args::cleanup();
     local_ptr::cleanup();
 }
