@@ -86,13 +86,13 @@ impl<'a> Context<'a> {
                         i
                     }
                     _ if named => {
-                        self.ecx.span_err(*p.span,
+                        self.ecx.span_err(p.span,
                                           "expected ident, positional arguments \
                                            cannot follow named arguments");
                         return (extra, None);
                     }
                     _ => {
-                        self.ecx.span_err(*p.span,
+                        self.ecx.span_err(p.span,
                                           format!("expected ident for named \
                                                 argument, but found `{}`",
                                                p.this_token_to_str()));
