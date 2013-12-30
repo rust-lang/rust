@@ -305,12 +305,12 @@ pub fn Parser(sess: @mut ParseSess, cfg: ast::CrateConfig, rdr: @mut reader)
         span: span,
         last_span: span,
         last_token: None,
-        buffer: @mut ([
+        buffer: [
             placeholder.clone(),
             placeholder.clone(),
             placeholder.clone(),
             placeholder.clone(),
-        ]),
+        ],
         buffer_start: @mut 0,
         buffer_end: @mut 0,
         tokens_consumed: @mut 0,
@@ -335,7 +335,7 @@ pub struct Parser {
     last_span: Span,
     // the previous token or None (only stashed sometimes).
     last_token: Option<~token::Token>,
-    buffer: @mut [TokenAndSpan, ..4],
+    buffer: [TokenAndSpan, ..4],
     buffer_start: @mut int,
     buffer_end: @mut int,
     tokens_consumed: @mut uint,
