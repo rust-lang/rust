@@ -16,7 +16,7 @@ use codemap::{Span, Spanned, spanned, dummy_spanned};
 use codemap::BytePos;
 use diagnostic::span_handler;
 use parse::comments::{doc_comment_style, strip_doc_comment_decoration};
-use pkgid::PkgId;
+use crateid::CrateId;
 
 use std::hashmap::HashSet;
 
@@ -234,10 +234,10 @@ pub fn find_linkage_metas(attrs: &[Attribute]) -> ~[@MetaItem] {
     result
 }
 
-pub fn find_pkgid(attrs: &[Attribute]) -> Option<PkgId> {
+pub fn find_crateid(attrs: &[Attribute]) -> Option<CrateId> {
     match first_attr_value_str_by_name(attrs, "crate_id") {
         None => None,
-        Some(id) => from_str::<PkgId>(id),
+        Some(id) => from_str::<CrateId>(id),
     }
 }
 

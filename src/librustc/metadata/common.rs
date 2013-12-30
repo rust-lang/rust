@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::cast;
-use syntax::pkgid::PkgId;
+use syntax::crateid::CrateId;
 
 // EBML enum definitions and utils shared by the encoder and decoder
 
@@ -206,6 +206,6 @@ pub static tag_native_libraries_kind: uint = 0x106;
 
 #[deriving(Clone)]
 pub struct LinkMeta {
-    pkgid: PkgId,
+    crateid: CrateId,
     crate_hash: @str,
 }

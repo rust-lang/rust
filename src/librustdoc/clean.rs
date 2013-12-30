@@ -73,7 +73,7 @@ pub struct Crate {
 
 impl Clean<Crate> for visit_ast::RustdocVisitor {
     fn clean(&self) -> Crate {
-        use syntax::attr::find_pkgid;
+        use syntax::attr::find_crateid;
         let cx = local_data::get(super::ctxtkey, |x| *x.unwrap());
 
         let mut externs = HashMap::new();
@@ -82,7 +82,7 @@ impl Clean<Crate> for visit_ast::RustdocVisitor {
         });
 
         Crate {
-            name: match find_pkgid(self.attrs) {
+            name: match find_crateid(self.attrs) {
                 Some(n) => n.name,
                 None => fail!("rustdoc requires a `crate_id` crate attribute"),
             },

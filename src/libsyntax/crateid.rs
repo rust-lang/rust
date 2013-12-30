@@ -8,15 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/// PkgIds identify crates and include the crate name and optionall a path and
-/// version. In the full form, they look like relative URLs. Example:
+/// CrateIds identify crates and include the crate name and optionally a path
+/// and version. In the full form, they look like relative URLs. Example:
 /// `github.com/mozilla/rust#std:1.0` would be a package ID with a path of
 /// `gitub.com/mozilla/rust` and a crate name of `std` with a version of
 /// `1.0`. If no crate name is given after the hash, the name is inferred to
 /// be the last component of the path. If no version is given, it is inferred
 /// to be `0.0`.
 #[deriving(Clone, Eq)]
-pub struct PkgId {
+pub struct CrateId {
     /// A path which represents the codes origin. By convention this is the
     /// URL, without `http://` or `https://` prefix, to the crate's repository
     path: ~str,
@@ -26,7 +26,7 @@ pub struct PkgId {
     version: Option<~str>,
 }
 
-impl ToStr for PkgId {
+impl ToStr for CrateId {
     fn to_str(&self) -> ~str {
         let version = match self.version {
             None => "0.0",
@@ -40,8 +40,8 @@ impl ToStr for PkgId {
     }
 }
 
-impl FromStr for PkgId {
-    fn from_str(s: &str) -> Option<PkgId> {
+impl FromStr for CrateId {
+    fn from_str(s: &str) -> Option<CrateId> {
         let pieces: ~[&str] = s.splitn('#', 1).collect();
         let path = pieces[0].to_owned();
 
@@ -78,7 +78,7 @@ impl FromStr for PkgId {
             (name, version)
         };
 
-        Some(PkgId {
+        Some(CrateId {
             path: path,
             name: name,
             version: version,
@@ -86,7 +86,7 @@ impl FromStr for PkgId {
     }
 }
 
-impl PkgId {
+impl CrateId {
     pub fn version_or_default<'a>(&'a self) -> &'a str {
         match self.version {
             None => "0.0",
@@ -97,90 +97,90 @@ impl PkgId {
 
 #[test]
 fn bare_name() {
-    let pkgid: PkgId = from_str("foo").expect("valid pkgid");
-    assert_eq!(pkgid.name, ~"foo");
-    assert_eq!(pkgid.version, None);
-    assert_eq!(pkgid.path, ~"foo");
+    let crateid: CrateId = from_str("foo").expect("valid crateid");
+    assert_eq!(crateid.name, ~"foo");
+    assert_eq!(crateid.version, None);
+    assert_eq!(crateid.path, ~"foo");
 }
 
 #[test]
 fn bare_name_single_char() {
-    let pkgid: PkgId = from_str("f").expect("valid pkgid");
-    assert_eq!(pkgid.name, ~"f");
-    assert_eq!(pkgid.version, None);
-    assert_eq!(pkgid.path, ~"f");
+    let crateid: CrateId = from_str("f").expect("valid crateid");
+    assert_eq!(crateid.name, ~"f");
+    assert_eq!(crateid.version, None);
+    assert_eq!(crateid.path, ~"f");
 }
 
 #[test]
-fn empty_pkgid() {
-    let pkgid: Option<PkgId> = from_str("");
-    assert!(pkgid.is_none());
+fn empty_crateid() {
+    let crateid: Option<CrateId> = from_str("");
+    assert!(crateid.is_none());
 }
 
 #[test]
 fn simple_path() {
-    let pkgid: PkgId = from_str("example.com/foo/bar").expect("valid pkgid");
-    assert_eq!(pkgid.name, ~"bar");
-    assert_eq!(pkgid.version, None);
-    assert_eq!(pkgid.path, ~"example.com/foo/bar");
+    let crateid: CrateId = from_str("example.com/foo/bar").expect("valid crateid");
+    assert_eq!(crateid.name, ~"bar");
+    assert_eq!(crateid.version, None);
+    assert_eq!(crateid.path, ~"example.com/foo/bar");
 }
 
 #[test]
 fn simple_version() {
-    let pkgid: PkgId = from_str("foo#1.0").expect("valid pkgid");
-    assert_eq!(pkgid.name, ~"foo");
-    assert_eq!(pkgid.version, Some(~"1.0"));
-    assert_eq!(pkgid.path, ~"foo");
+    let crateid: CrateId = from_str("foo#1.0").expect("valid crateid");
+    assert_eq!(crateid.name, ~"foo");
+    assert_eq!(crateid.version, Some(~"1.0"));
+    assert_eq!(crateid.path, ~"foo");
 }
 
 #[test]
 fn absolute_path() {
-    let pkgid: Option<PkgId> = from_str("/foo/bar");
-    assert!(pkgid.is_none());
+    let crateid: Option<CrateId> = from_str("/foo/bar");
+    assert!(crateid.is_none());
 }
 
 #[test]
 fn path_ends_with_slash() {
-    let pkgid: Option<PkgId> = from_str("foo/bar/");
-    assert!(pkgid.is_none());
+    let crateid: Option<CrateId> = from_str("foo/bar/");
+    assert!(crateid.is_none());
 }
 
 #[test]
 fn path_and_version() {
-    let pkgid: PkgId = from_str("example.com/foo/bar#1.0").expect("valid pkgid");
-    assert_eq!(pkgid.name, ~"bar");
-    assert_eq!(pkgid.version, Some(~"1.0"));
-    assert_eq!(pkgid.path, ~"example.com/foo/bar");
+    let crateid: CrateId = from_str("example.com/foo/bar#1.0").expect("valid crateid");
+    assert_eq!(crateid.name, ~"bar");
+    assert_eq!(crateid.version, Some(~"1.0"));
+    assert_eq!(crateid.path, ~"example.com/foo/bar");
 }
 
 #[test]
 fn single_chars() {
-    let pkgid: PkgId = from_str("a/b#1").expect("valid pkgid");
-    assert_eq!(pkgid.name, ~"b");
-    assert_eq!(pkgid.version, Some(~"1"));
-    assert_eq!(pkgid.path, ~"a/b");
+    let crateid: CrateId = from_str("a/b#1").expect("valid crateid");
+    assert_eq!(crateid.name, ~"b");
+    assert_eq!(crateid.version, Some(~"1"));
+    assert_eq!(crateid.path, ~"a/b");
 }
 
 #[test]
 fn missing_version() {
-    let pkgid: PkgId = from_str("foo#").expect("valid pkgid");
-    assert_eq!(pkgid.name, ~"foo");
-    assert_eq!(pkgid.version, None);
-    assert_eq!(pkgid.path, ~"foo");
+    let crateid: CrateId = from_str("foo#").expect("valid crateid");
+    assert_eq!(crateid.name, ~"foo");
+    assert_eq!(crateid.version, None);
+    assert_eq!(crateid.path, ~"foo");
 }
 
 #[test]
 fn path_and_name() {
-    let pkgid: PkgId = from_str("foo/rust-bar#bar:1.0").expect("valid pkgid");
-    assert_eq!(pkgid.name, ~"bar");
-    assert_eq!(pkgid.version, Some(~"1.0"));
-    assert_eq!(pkgid.path, ~"foo/rust-bar");
+    let crateid: CrateId = from_str("foo/rust-bar#bar:1.0").expect("valid crateid");
+    assert_eq!(crateid.name, ~"bar");
+    assert_eq!(crateid.version, Some(~"1.0"));
+    assert_eq!(crateid.path, ~"foo/rust-bar");
 }
 
 #[test]
 fn empty_name() {
-    let pkgid: PkgId = from_str("foo/bar#:1.0").expect("valid pkgid");
-    assert_eq!(pkgid.name, ~"bar");
-    assert_eq!(pkgid.version, Some(~"1.0"));
-    assert_eq!(pkgid.path, ~"foo/bar");
+    let crateid: CrateId = from_str("foo/bar#:1.0").expect("valid crateid");
+    assert_eq!(crateid.name, ~"bar");
+    assert_eq!(crateid.version, Some(~"1.0"));
+    assert_eq!(crateid.path, ~"foo/bar");
 }

@@ -16,7 +16,7 @@ use std::os;
 use std::io;
 use std::io::fs;
 
-pub fn list_installed_packages(f: |&PkgId| -> bool) -> bool  {
+pub fn list_installed_packages(f: |&CrateId| -> bool) -> bool  {
     let workspaces = rust_path();
     for p in workspaces.iter() {
         let binfiles = {
@@ -28,7 +28,7 @@ pub fn list_installed_packages(f: |&PkgId| -> bool) -> bool  {
             match exec.filestem_str() {
                 None => (),
                 Some(exec_path) => {
-                    if !f(&PkgId::new(exec_path)) {
+                    if !f(&CrateId::new(exec_path)) {
                         return false;
                     }
                 }
@@ -50,7 +50,7 @@ pub fn list_installed_packages(f: |&PkgId| -> bool) -> bool  {
                     let rel_path = rel_p.join(basename);
                     rel_path.display().with_str(|s| {
                         debug!("Rel name: {}", s);
-                        f(&PkgId::new(s));
+                        f(&CrateId::new(s));
                     });
                 }
                 None => ()
@@ -78,7 +78,7 @@ pub fn has_library(p: &Path) -> Option<~str> {
     None
 }
 
-pub fn package_is_installed(p: &PkgId) -> bool {
+pub fn package_is_installed(p: &CrateId) -> bool {
     let mut is_installed = false;
     list_installed_packages(|installed| {
         if installed == p {

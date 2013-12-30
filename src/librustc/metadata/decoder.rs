@@ -1173,9 +1173,9 @@ pub fn get_crate_hash(data: &[u8]) -> @str {
 
 pub fn get_crate_vers(data: &[u8]) -> @str {
     let attrs = decoder::get_crate_attributes(data);
-    match attr::find_pkgid(attrs) {
+    match attr::find_crateid(attrs) {
         None => @"0.0",
-        Some(pkgid) => pkgid.version_or_default().to_managed(),
+        Some(crateid) => crateid.version_or_default().to_managed(),
     }
 }
 
