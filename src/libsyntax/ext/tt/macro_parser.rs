@@ -403,13 +403,13 @@ pub fn parse(
                 }
                 rdr.next_token();
             } else /* bb_eis.len() == 1 */ {
-                let rust_parser = Parser(sess, cfg.clone(), rdr.dup());
+                let mut rust_parser = Parser(sess, cfg.clone(), rdr.dup());
 
                 let mut ei = bb_eis.pop();
                 match ei.elts[ei.idx].node {
                   match_nonterminal(_, ref name, idx) => {
                     ei.matches[idx].push(@matched_nonterminal(
-                        parse_nt(&rust_parser, ident_to_str(name))));
+                        parse_nt(&mut rust_parser, ident_to_str(name))));
                     ei.idx += 1u;
                   }
                   _ => fail!()
@@ -426,7 +426,7 @@ pub fn parse(
     }
 }
 
-pub fn parse_nt(p: &Parser, name: &str) -> nonterminal {
+pub fn parse_nt(p: &mut Parser, name: &str) -> nonterminal {
     match name {
       "item" => match p.parse_item(~[]) {
         Some(i) => token::nt_item(i),

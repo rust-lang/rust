@@ -26,7 +26,7 @@ pub fn expand_trace_macros(cx: &mut ExtCtxt,
                                None,
                                tt.to_owned());
     let rdr = tt_rdr as @mut reader;
-    let rust_parser = Parser(sess, cfg.clone(), rdr.dup());
+    let mut rust_parser = Parser(sess, cfg.clone(), rdr.dup());
 
     if rust_parser.is_keyword(keywords::True) {
         cx.set_trace_macros(true);
@@ -38,7 +38,7 @@ pub fn expand_trace_macros(cx: &mut ExtCtxt,
 
     rust_parser.bump();
 
-    let rust_parser = Parser(sess, cfg, rdr.dup());
+    let mut rust_parser = Parser(sess, cfg, rdr.dup());
     let result = rust_parser.parse_expr();
     base::MRExpr(result)
 }
