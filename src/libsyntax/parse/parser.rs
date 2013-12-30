@@ -304,7 +304,7 @@ pub fn Parser(sess: @mut ParseSess, cfg: ast::CrateConfig, rdr: @mut reader)
         token: tok0.tok,
         span: span,
         last_span: span,
-        last_token: @mut None,
+        last_token: None,
         buffer: @mut ([
             placeholder.clone(),
             placeholder.clone(),
@@ -334,7 +334,7 @@ pub struct Parser {
     // the span of the prior token:
     last_span: Span,
     // the previous token or None (only stashed sometimes).
-    last_token: @mut Option<~token::Token>,
+    last_token: Option<~token::Token>,
     buffer: @mut [TokenAndSpan, ..4],
     buffer_start: @mut int,
     buffer_end: @mut int,
@@ -728,7 +728,7 @@ impl Parser {
     pub fn bump(&mut self) {
         self.last_span = self.span;
         // Stash token for error recovery (sometimes; clone is not necessarily cheap).
-        *self.last_token = if is_ident_or_path(&self.token) {
+        self.last_token = if is_ident_or_path(&self.token) {
             Some(~self.token.clone())
         } else {
             None
