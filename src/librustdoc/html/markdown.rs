@@ -94,15 +94,26 @@ extern {
 
 }
 
+/// Returns Some(code) if `s` is a line that should be stripped from
+/// documentation but used in example code. `code` is the portion of
+/// `s` that should be used in tests. (None for lines that should be
+/// left as-is.)
+fn stripped_filtered_line<'a>(s: &'a str) -> Option<&'a str> {
+    let trimmed = s.trim();
+    if trimmed.starts_with("# ") {
+        Some(trimmed.slice_from(2))
+    } else {
+        None
+    }
+}
+
 pub fn render(w: &mut io::Writer, s: &str) {
     extern fn block(ob: *buf, text: *buf, lang: *buf, opaque: *libc::c_void) {
         unsafe {
             let my_opaque: &my_opaque = cast::transmute(opaque);
             vec::raw::buf_as_slice((*text).data, (*text).size as uint, |text| {
                 let text = str::from_utf8(text);
-                let mut lines = text.lines().filter(|l| {
-                    !l.trim().starts_with("#")
-                });
+                let mut lines = text.lines().filter(|l| stripped_filtered_line(*l).is_none());
                 let text = lines.to_owned_vec().connect("\n");
 
                 let buf = buf {
@@ -169,7 +180,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
             vec::raw::buf_as_slice((*text).data, (*text).size as uint, |text| {
                 let tests: &mut ::test::Collector = intrinsics::transmute(opaque);
                 let text = str::from_utf8(text);
-                let mut lines = text.lines().map(|l| l.trim_chars(&'#'));
+                let mut lines = text.lines().map(|l| stripped_filtered_line(l).unwrap_or(l));
                 let text = lines.to_owned_vec().connect("\n");
                 tests.add_test(text, ignore, shouldfail);
             })
