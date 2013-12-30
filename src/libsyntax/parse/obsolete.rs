@@ -20,7 +20,6 @@ removed.
 use ast::{Expr, ExprLit, lit_nil};
 use codemap::{Span, respan};
 use parse::parser::Parser;
-use parse::token::Token;
 use parse::token;
 
 use std::str;
@@ -65,7 +64,6 @@ pub trait ParserObsoleteMethods {
               kind: ObsoleteSyntax,
               kind_str: &str,
               desc: &str);
-    fn token_is_obsolete_ident(&mut self, ident: &str, token: &Token) -> bool;
     fn is_obsolete_ident(&mut self, ident: &str) -> bool;
     fn eat_obsolete_ident(&mut self, ident: &str) -> bool;
 }
@@ -170,18 +168,13 @@ impl ParserObsoleteMethods for Parser {
         }
     }
 
-    fn token_is_obsolete_ident(&mut self, ident: &str, token: &Token)
-                               -> bool {
-        match *token {
+    fn is_obsolete_ident(&mut self, ident: &str) -> bool {
+        match self.token {
             token::IDENT(sid, _) => {
                 str::eq_slice(self.id_to_str(sid), ident)
             }
             _ => false
         }
-    }
-
-    fn is_obsolete_ident(&mut self, ident: &str) -> bool {
-        self.token_is_obsolete_ident(ident, self.token)
     }
 
     fn eat_obsolete_ident(&mut self, ident: &str) -> bool {

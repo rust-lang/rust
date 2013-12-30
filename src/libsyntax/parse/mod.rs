@@ -631,7 +631,7 @@ mod test {
     }
 
     fn parser_done(p: Parser){
-        assert_eq!((*p.token).clone(), token::EOF);
+        assert_eq!(p.token.clone(), token::EOF);
     }
 
     #[test] fn parse_ident_pat () {

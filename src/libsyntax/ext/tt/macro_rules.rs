@@ -40,10 +40,10 @@ impl ParserAnyMacro {
     /// allowed to be there.
     fn ensure_complete_parse(&self, allow_semi: bool) {
         let mut parser = self.parser.borrow_mut();
-        if allow_semi && *parser.get().token == SEMI {
+        if allow_semi && parser.get().token == SEMI {
             parser.get().bump()
         }
-        if *parser.get().token != EOF {
+        if parser.get().token != EOF {
             let token_str = parser.get().this_token_to_str();
             let msg = format!("macro expansion ignores token `{}` and any \
                                following",
