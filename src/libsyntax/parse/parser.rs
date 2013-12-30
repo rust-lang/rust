@@ -314,7 +314,7 @@ pub fn Parser(sess: @mut ParseSess, cfg: ast::CrateConfig, rdr: @mut reader)
         buffer_start: 0,
         buffer_end: 0,
         tokens_consumed: 0,
-        restriction: @mut UNRESTRICTED,
+        restriction: UNRESTRICTED,
         quote_depth: 0,
         obsolete_set: @mut HashSet::new(),
         mod_path_stack: @mut ~[],
@@ -339,7 +339,7 @@ pub struct Parser {
     buffer_start: int,
     buffer_end: int,
     tokens_consumed: uint,
-    restriction: @mut restriction,
+    restriction: restriction,
     quote_depth: uint, // not (yet) related to the quasiquoter
     reader: @mut reader,
     interner: @token::ident_interner,
@@ -2356,7 +2356,7 @@ impl Parser {
         // scope of the borrows.
         {
             let token: &token::Token = &self.token;
-            let restriction: &restriction = self.restriction;
+            let restriction: &restriction = &self.restriction;
             match (token, restriction) {
                 (&token::BINOP(token::OR), &RESTRICT_NO_BAR_OP) => return lhs,
                 (&token::BINOP(token::OR),
@@ -2700,10 +2700,10 @@ impl Parser {
 
     // parse an expression, subject to the given restriction
     fn parse_expr_res(&mut self, r: restriction) -> @Expr {
-        let old = *self.restriction;
-        *self.restriction = r;
+        let old = self.restriction;
+        self.restriction = r;
         let e = self.parse_assign_expr();
-        *self.restriction = old;
+        self.restriction = old;
         return e;
     }
 
@@ -3310,7 +3310,7 @@ impl Parser {
 
     // is this expression a successfully-parsed statement?
     fn expr_is_complete(&mut self, e: @Expr) -> bool {
-        return *self.restriction == RESTRICT_STMT_EXPR &&
+        return self.restriction == RESTRICT_STMT_EXPR &&
             !classify::expr_requires_semi_to_be_stmt(e);
     }
 
