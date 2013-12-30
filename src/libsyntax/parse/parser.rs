@@ -318,7 +318,7 @@ pub fn Parser(sess: @mut ParseSess, cfg: ast::CrateConfig, rdr: @mut reader)
         quote_depth: 0,
         obsolete_set: HashSet::new(),
         mod_path_stack: ~[],
-        open_braces: @mut ~[],
+        open_braces: ~[],
         non_copyable: util::NonCopyable
     }
 }
@@ -349,7 +349,7 @@ pub struct Parser {
     /// Used to determine the path to externally loaded source files
     mod_path_stack: ~[@str],
     /// Stack of spans of open delimiters. Used for error message.
-    open_braces: @mut ~[Span],
+    open_braces: ~[Span],
     /* do not copy the parser; its state is tied to outside state */
     priv non_copyable: util::NonCopyable
 }
@@ -2093,7 +2093,10 @@ impl Parser {
                   // This is a conservative error: only report the last unclosed delimiter. The
                   // previous unclosed delimiters could actually be closed! The parser just hasn't
                   // gotten to them yet.
-                  p.open_braces.last_opt().map(|sp| p.span_note(*sp, "unclosed delimiter"));
+                  match p.open_braces.last_opt() {
+                      None => {}
+                      Some(&sp) => p.span_note(sp, "unclosed delimiter"),
+                  };
                   let token_str = p.this_token_to_str();
                   p.fatal(format!("incorrect close delimiter: `{}`",
                                   token_str))
@@ -2137,7 +2140,8 @@ impl Parser {
 
         match self.token {
             token::EOF => {
-                for sp in self.open_braces.iter() {
+                let open_braces = self.open_braces.clone();
+                for sp in open_braces.iter() {
                     self.span_note(*sp, "Did you mean to close this delimiter?");
                 }
                 // There shouldn't really be a span, but it's easier for the test runner
@@ -2148,7 +2152,7 @@ impl Parser {
                 let close_delim = token::flip_delimiter(&self.token);
 
                 // Parse the open delimiter.
-                (*self.open_braces).push(self.span);
+                self.open_braces.push(self.span);
                 let mut result = ~[parse_any_tt_tok(self)];
 
                 let trees =
