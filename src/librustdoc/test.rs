@@ -173,6 +173,7 @@ impl Collector {
         let libs = self.libs.borrow();
         let libs = (*libs.get()).clone();
         let cratename = self.cratename.to_owned();
+        debug!("Creating test {}: {}", name, test);
         self.tests.push(test::TestDescAndFn {
             desc: test::TestDesc {
                 name: test::DynTestName(name),
