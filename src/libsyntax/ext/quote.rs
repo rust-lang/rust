@@ -590,7 +590,7 @@ fn expand_tts(cx: &ExtCtxt, sp: Span, tts: &[ast::token_tree])
     let mut p = parse::new_parser_from_tts(cx.parse_sess(),
                                            cx.cfg(),
                                            tts.to_owned());
-    *p.quote_depth += 1u;
+    p.quote_depth += 1u;
 
     let cx_expr = p.parse_expr();
     if !p.eat(&token::COMMA) {

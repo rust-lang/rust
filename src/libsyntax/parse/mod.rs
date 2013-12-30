@@ -175,7 +175,7 @@ pub fn parse_tts_from_source_str(
         name,
         source
     );
-    *p.quote_depth += 1u;
+    p.quote_depth += 1u;
     // right now this is re-creating the token trees from ... token trees.
     maybe_aborted(p.parse_all_token_trees(),p)
 }

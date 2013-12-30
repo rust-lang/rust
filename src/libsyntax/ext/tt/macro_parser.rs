@@ -448,9 +448,9 @@ pub fn parse_nt(p: &mut Parser, name: &str) -> nonterminal {
       }
       "attr" => token::nt_attr(@p.parse_attribute(false)),
       "tt" => {
-        *p.quote_depth += 1u; //but in theory, non-quoted tts might be useful
+        p.quote_depth += 1u; //but in theory, non-quoted tts might be useful
         let res = token::nt_tt(@p.parse_token_tree());
-        *p.quote_depth -= 1u;
+        p.quote_depth -= 1u;
         res
       }
       "matchers" => token::nt_matchers(p.parse_matchers()),

@@ -315,7 +315,7 @@ pub fn Parser(sess: @mut ParseSess,
         buffer_end: @mut 0,
         tokens_consumed: @mut 0,
         restriction: @mut UNRESTRICTED,
-        quote_depth: @mut 0,
+        quote_depth: 0,
         obsolete_set: @mut HashSet::new(),
         mod_path_stack: @mut ~[],
         open_braces: @mut ~[],
@@ -340,7 +340,7 @@ pub struct Parser {
     buffer_end: @mut int,
     tokens_consumed: @mut uint,
     restriction: @mut restriction,
-    quote_depth: @mut uint, // not (yet) related to the quasiquoter
+    quote_depth: uint, // not (yet) related to the quasiquoter
     reader: @mut reader,
     interner: @token::ident_interner,
     /// The set of seen errors about obsolete syntax. Used to suppress
@@ -2097,7 +2097,7 @@ impl Parser {
                                   token_str))
               },
               /* we ought to allow different depths of unquotation */
-              token::DOLLAR if *p.quote_depth > 0u => {
+              token::DOLLAR if p.quote_depth > 0u => {
                 p.bump();
                 let sp = *p.span;
 
