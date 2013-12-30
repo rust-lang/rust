@@ -81,9 +81,7 @@ LLVMRustCreateTargetMachine(const char *triple,
     TargetOptions Options;
     Options.NoFramePointerElim = true;
     Options.EnableSegmentedStacks = EnableSegmentedStacks;
-    Options.FloatABIType =
-         (Trip.getEnvironment() == Triple::GNUEABIHF) ? FloatABI::Hard :
-                                                        FloatABI::Default;
+    Options.FloatABIType = FloatABI::Default;
     Options.UseSoftFloat = UseSoftFloat;
     if (UseSoftFloat) {
         Options.FloatABIType = FloatABI::Soft;
