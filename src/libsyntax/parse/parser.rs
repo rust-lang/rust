@@ -1002,7 +1002,8 @@ impl Parser {
     }
 
     // parse a function type (following the 'fn')
-    pub fn parse_ty_fn_decl(&mut self, allow_variadic: bool) -> (P<fn_decl>, OptVec<ast::Lifetime>) {
+    pub fn parse_ty_fn_decl(&mut self, allow_variadic: bool)
+                            -> (P<fn_decl>, OptVec<ast::Lifetime>) {
         /*
 
         (fn) <'lt> (S) -> T
