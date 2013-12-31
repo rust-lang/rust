@@ -38,11 +38,15 @@ there are three common kinds of strings in rust:
 As an example, here's a few different kinds of strings.
 
 ```rust
-let owned_string = ~"I am an owned string";
-let managed_string = @"This string is garbage-collected";
-let borrowed_string1 = "This string is borrowed with the 'static lifetime";
-let borrowed_string2: &str = owned_string;   // owned strings can be borrowed
-let borrowed_string3: &str = managed_string; // managed strings can also be borrowed
+#[feature(managed_boxes)];
+
+fn main() {
+    let owned_string = ~"I am an owned string";
+    let managed_string = @"This string is garbage-collected";
+    let borrowed_string1 = "This string is borrowed with the 'static lifetime";
+    let borrowed_string2: &str = owned_string;   // owned strings can be borrowed
+    let borrowed_string3: &str = managed_string; // managed strings can also be borrowed
+}
  ```
 
 From the example above, you can see that rust has 3 different kinds of string
