@@ -32,40 +32,6 @@ def unpack_snapshot(triple, dl_path):
   tar.close()
   shutil.rmtree(download_unpack_base)
 
-def determine_curr_snapshot(triple):
-  i = 0
-  platform = get_platform(triple)
-
-  found_file = False
-  found_snap = False
-  hsh = None
-  date = None
-  rev = None
-
-  f = open(snapshotfile)
-  for line in f.readlines():
-    i += 1
-    parsed = parse_line(i, line)
-    if (not parsed): continue
-
-    if found_snap and parsed["type"] == "file":
-      if parsed["platform"] == platform:
-        hsh = parsed["hash"]
-        found_file = True
-        break;
-    elif parsed["type"] == "snapshot":
-      date = parsed["date"]
-      rev = parsed["rev"]
-      found_snap = True
-
-  if not found_snap:
-    raise Exception("no snapshot entries in file")
-
-  if not found_file:
-    raise Exception("no snapshot file found for platform %s, rev %s" %
-                    (platform, rev))
-
-  return full_snapshot_name(date, rev, platform, hsh)
 
 # Main
 
