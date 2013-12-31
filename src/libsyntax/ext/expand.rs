@@ -1393,8 +1393,9 @@ mod test {
         let a3_name = gensym("a3");
         // a context that renames from ("a",empty) to "a2" :
         let ctxt2 = new_rename(ast::Ident::new(a_name),a2_name,EMPTY_CTXT);
-        let pending_renames = @mut ~[(ast::Ident::new(a_name),a2_name),
-                                     (ast::Ident{name:a_name,ctxt:ctxt2},a3_name)];
+        let pending_renames =
+            @RefCell::new(~[(ast::Ident::new(a_name),a2_name),
+                            (ast::Ident{name:a_name,ctxt:ctxt2},a3_name)]);
         let double_renamed = renames_to_fold(pending_renames).fold_crate(item_ast);
         let mut path_finder = new_path_finder(~[]);
         visit::walk_crate(&mut path_finder, &double_renamed, ());
