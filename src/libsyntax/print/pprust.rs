@@ -28,6 +28,7 @@ use print::pp;
 use print::pprust;
 
 use std::cast;
+use std::cell::RefCell;
 use std::char;
 use std::str;
 use std::io;
@@ -73,17 +74,23 @@ pub struct ps {
     comments: Option<~[comments::cmnt]>,
     literals: Option<~[comments::lit]>,
     cur_cmnt_and_lit: CurrentCommentAndLiteral,
-    boxes: @mut ~[pp::breaks],
+    boxes: RefCell<~[pp::breaks]>,
     ann: @pp_ann
 }
 
 pub fn ibox(s: &mut ps, u: uint) {
-    s.boxes.push(pp::inconsistent);
+    {
+        let mut boxes = s.boxes.borrow_mut();
+        boxes.get().push(pp::inconsistent);
+    }
     pp::ibox(&mut s.s, u);
 }
 
 pub fn end(s: &mut ps) {
-    s.boxes.pop();
+    {
+        let mut boxes = s.boxes.borrow_mut();
+        boxes.get().pop();
+    }
     pp::end(&mut s.s);
 }
 
@@ -105,7 +112,7 @@ pub fn rust_printer_annotated(writer: ~io::Writer,
             cur_cmnt: 0,
             cur_lit: 0
         },
-        boxes: @mut ~[],
+        boxes: RefCell::new(~[]),
         ann: ann
     };
 }
@@ -148,7 +155,7 @@ pub fn print_crate(cm: @CodeMap,
             cur_cmnt: 0,
             cur_lit: 0
         },
-        boxes: @mut ~[],
+        boxes: RefCell::new(~[]),
         ann: ann
     };
     print_crate_(&mut s, crate);
@@ -243,13 +250,19 @@ pub fn variant_to_str(var: &ast::variant, intr: @ident_interner) -> ~str {
 }
 
 pub fn cbox(s: &mut ps, u: uint) {
-    s.boxes.push(pp::consistent);
+    {
+        let mut boxes = s.boxes.borrow_mut();
+        boxes.get().push(pp::consistent);
+    }
     pp::cbox(&mut s.s, u);
 }
 
 // "raw box"
 pub fn rbox(s: &mut ps, u: uint, b: pp::breaks) {
-    s.boxes.push(b);
+    {
+        let mut boxes = s.boxes.borrow_mut();
+        boxes.get().push(b);
+    }
     pp::rbox(&mut s.s, u, b);
 }
 
@@ -306,10 +319,10 @@ pub fn is_bol(s: &mut ps) -> bool {
 }
 
 pub fn in_cbox(s: &mut ps) -> bool {
-    let boxes = &*s.boxes;
-    let len = boxes.len();
+    let boxes = s.boxes.borrow();
+    let len = boxes.get().len();
     if len == 0u { return false; }
-    return boxes[len - 1u] == pp::consistent;
+    return boxes.get()[len - 1u] == pp::consistent;
 }
 
 pub fn hardbreak_if_not_bol(s: &mut ps) {
