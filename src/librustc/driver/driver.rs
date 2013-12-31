@@ -392,43 +392,13 @@ pub fn phase_5_run_llvm_passes(sess: Session,
 /// This should produce either a finished executable or library.
 pub fn phase_6_link_output(sess: Session,
                            trans: &CrateTranslation,
-                           input: &input,
                            outputs: &OutputFilenames) {
-    let outputs = time(sess.time_passes(), "linking", (), |_|
+    time(sess.time_passes(), "linking", (), |_|
          link::link_binary(sess,
                            trans,
                            &outputs.obj_filename,
                            &outputs.out_filename,
                            &trans.link));
-
-    // Write out dependency rules to the dep-info file if requested with --dep-info
-    let deps_filename = match sess.opts.write_dependency_info {
-        // Use filename from --dep-file argument if given
-        (true, Some(ref filename)) => filename.clone(),
-        // Use default filename: crate source filename with extension replaced by ".d"
-        (true, None) => match *input {
-            file_input(ref input_path) => {
-                let filestem = input_path.filestem().expect("input file must have stem");
-                let filename = outputs[0].dir_path().join(filestem).with_extension("d");
-                filename
-            },
-            str_input(..) => {
-                sess.warn("can not write --dep-info without a filename when compiling stdin.");
-                return;
-            },
-        },
-        _ => return,
-    };
-    // Build a list of files used to compile the output and
-    // write Makefile-compatible dependency rules
-    let files: ~[@str] = sess.codemap.files.iter()
-        .filter_map(|fmap| if fmap.is_real_file() { Some(fmap.name) } else { None })
-        .collect();
-    let mut file = io::File::create(&deps_filename);
-    for output in outputs.iter() {
-        write!(&mut file as &mut Writer,
-               "{}: {}\n\n", output.display(), files.connect(" "));
-    }
 }
 
 pub fn stop_after_phase_3(sess: Session) -> bool {
@@ -447,12 +417,61 @@ pub fn stop_after_phase_1(sess: Session) -> bool {
     return false;
 }
 
+pub fn stop_after_phase_2(sess: Session) -> bool {
+    if sess.opts.no_analysis {
+        debug!("invoked with --no-analysis, returning early from compile_input");
+        return true;
+    }
+    return false;
+}
+
 pub fn stop_after_phase_5(sess: Session) -> bool {
     if sess.opts.output_type != link::output_type_exe {
         debug!("not building executable, returning early from compile_input");
         return true;
     }
     return false;
+}
+
+fn write_out_deps(sess: Session, input: &input, outputs: &OutputFilenames, crate: &ast::Crate)
+{
+    let lm = link::build_link_meta(sess, crate.attrs, &outputs.obj_filename,
+                                       &mut ::util::sha2::Sha256::new());
+
+    let sess_outputs = sess.outputs.borrow();
+    let out_filenames = sess_outputs.get().iter()
+        .map(|&output| link::filename_for_input(&sess, output, &lm, &outputs.out_filename))
+        .to_owned_vec();
+
+    // Write out dependency rules to the dep-info file if requested with --dep-info
+    let deps_filename = match sess.opts.write_dependency_info {
+        // Use filename from --dep-file argument if given
+        (true, Some(ref filename)) => filename.clone(),
+        // Use default filename: crate source filename with extension replaced by ".d"
+        (true, None) => match *input {
+            file_input(ref input_path) => {
+                let filestem = input_path.filestem().expect("input file must have stem");
+                let filename = out_filenames[0].dir_path().join(filestem).with_extension("d");
+                filename
+            },
+            str_input(..) => {
+                sess.warn("can not write --dep-info without a filename when compiling stdin.");
+                return;
+            },
+        },
+        _ => return,
+    };
+
+    // Build a list of files used to compile the output and
+    // write Makefile-compatible dependency rules
+    let files: ~[@str] = sess.codemap.files.iter()
+        .filter_map(|fmap| if fmap.is_real_file() { Some(fmap.name) } else { None })
+        .collect();
+    let mut file = io::File::create(&deps_filename);
+    for path in out_filenames.iter() {
+        write!(&mut file as &mut Writer,
+               "{}: {}\n\n", path.display(), files.connect(" "));
+    }
 }
 
 pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &input,
@@ -468,6 +487,11 @@ pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &input,
         };
         let outputs = build_output_filenames(input, outdir, output,
                                              expanded_crate.attrs, sess);
+
+        write_out_deps(sess, input, outputs, &expanded_crate);
+
+        if stop_after_phase_2(sess) { return; }
+
         let analysis = phase_3_run_analysis_passes(sess, &expanded_crate);
         if stop_after_phase_3(sess) { return; }
         let trans = phase_4_translate_to_llvm(sess, expanded_crate,
@@ -476,7 +500,7 @@ pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &input,
     };
     phase_5_run_llvm_passes(sess, &trans, outputs);
     if stop_after_phase_5(sess) { return; }
-    phase_6_link_output(sess, &trans, input, outputs);
+    phase_6_link_output(sess, &trans, outputs);
 }
 
 struct IdentifiedAnnotation {
@@ -683,6 +707,7 @@ pub fn build_session_options(binary: @str,
 
     let parse_only = matches.opt_present("parse-only");
     let no_trans = matches.opt_present("no-trans");
+    let no_analysis = matches.opt_present("no-analysis");
 
     let lint_levels = [lint::allow, lint::warn,
                        lint::deny, lint::forbid];
@@ -836,6 +861,7 @@ pub fn build_session_options(binary: @str,
         test: test,
         parse_only: parse_only,
         no_trans: no_trans,
+        no_analysis: no_analysis,
         debugging_opts: debugging_opts,
         android_cross_path: android_cross_path,
         write_dependency_info: write_dependency_info,
@@ -929,6 +955,9 @@ pub fn optgroups() -> ~[getopts::groups::OptGroup] {
   optflag("",  "ls",  "List the symbols defined by a library crate"),
   optflag("", "no-trans",
                         "Run all passes except translation; no output"),
+  optflag("", "no-analysis",
+                        "Parse and expand the output, but run no analysis or produce \
+                        output"),
   optflag("O", "",    "Equivalent to --opt-level=2"),
   optopt("o", "",     "Write output to <filename>", "FILENAME"),
   optopt("", "opt-level",
