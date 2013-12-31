@@ -11,25 +11,24 @@
 // xfail-fast
 // exec-env:RUST_LOG=debug
 
-#[feature(managed_boxes)];
-
+use std::cell::Cell;
 use std::fmt;
 
-struct Foo(@mut int);
+struct Foo(Cell<int>);
 
 impl fmt::Default for Foo {
     fn fmt(f: &Foo, _fmt: &mut fmt::Formatter) {
-        assert!(***f == 0);
-        ***f = 1;
+        assert!(f.get() == 0);
+        f.set(1);
     }
 }
 
 pub fn main() {
     let (p,c) = Chan::new();
     do spawn {
-        let f = Foo(@mut 0);
+        let mut f = Foo(Cell::new(0));
         debug!("{}", f);
-        assert!(**f == 1);
+        assert!(f.get() == 1);
         c.send(());
     }
     p.recv();

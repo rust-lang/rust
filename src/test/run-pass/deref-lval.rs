@@ -10,4 +10,10 @@
 
 #[feature(managed_boxes)];
 
-pub fn main() { let x = @mut 5; *x = 1000; info!("{:?}", *x); }
+use std::cell::Cell;
+
+pub fn main() {
+    let x = @Cell::new(5);
+    x.set(1000);
+    info!("{:?}", x.get());
+}

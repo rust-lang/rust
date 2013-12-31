@@ -10,25 +10,27 @@
 
 #[feature(managed_boxes)];
 
+use std::cell::Cell;
+
 struct r {
-  i: @mut int,
+    i: @Cell<int>,
 }
 
 #[unsafe_destructor]
 impl Drop for r {
     fn drop(&mut self) {
-        *(self.i) += 1;
+        self.i.set(self.i.get() + 1);
     }
 }
 
-fn r(i: @mut int) -> r {
+fn r(i: @Cell<int>) -> r {
     r {
         i: i
     }
 }
 
 pub fn main() {
-    let i = @mut 0;
+    let i = @Cell::new(0);
     // Even though these look like copies, they are guaranteed not to be
     {
         let a = r(i);
@@ -36,5 +38,5 @@ pub fn main() {
         let (c, _d) = b;
         info!("{:?}", c);
     }
-    assert_eq!(*i, 1);
+    assert_eq!(i.get(), 1);
 }

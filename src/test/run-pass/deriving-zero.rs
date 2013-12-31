@@ -30,7 +30,7 @@ struct Lots {
     e: char,
     f: f64,
     g: (f32, char),
-    h: @mut (int, int),
+    h: @(int, int),
     i: bool,
     j: (),
 }

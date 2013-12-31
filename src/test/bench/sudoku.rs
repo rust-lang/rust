@@ -86,7 +86,7 @@ impl Sudoku {
         return Sudoku::new(g)
     }
 
-    pub fn write(&self, writer: @mut io::Writer) {
+    pub fn write(&self, writer: &mut io::Writer) {
         for row in range(0u8, 9u8) {
             write!(writer, "{}", self.grid[row][0]);
             for col in range(1u8, 9u8) {
@@ -280,5 +280,5 @@ fn main() {
         Sudoku::read(BufferedReader::new(io::stdin()))
     };
     sudoku.solve();
-    sudoku.write(@mut io::stdout() as @mut io::Writer);
+    sudoku.write(&mut io::stdout());
 }

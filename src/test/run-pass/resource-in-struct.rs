@@ -13,7 +13,9 @@
 // Ensures that class dtors run if the object is inside an enum
 // variant
 
-type closable = @mut bool;
+use std::cell::Cell;
+
+type closable = @Cell<bool>;
 
 struct close_res {
   i: closable,
@@ -23,7 +25,7 @@ struct close_res {
 #[unsafe_destructor]
 impl Drop for close_res {
     fn drop(&mut self) {
-        *(self.i) = false;
+        self.i.set(false);
     }
 }
 
@@ -38,8 +40,8 @@ enum option<T> { none, some(T), }
 fn sink(_res: option<close_res>) { }
 
 pub fn main() {
-    let c = @mut true;
+    let c = @Cell::new(true);
     sink(none);
     sink(some(close_res(c)));
-    assert!((!*c));
+    assert!(!c.get());
 }
