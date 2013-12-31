@@ -267,7 +267,7 @@ pub type ctxt = @ctxt_;
 /// generates so that so that it can be reused and doesn't have to be redone
 /// later on.
 struct ctxt_ {
-    diag: @mut syntax::diagnostic::span_handler,
+    diag: @mut syntax::diagnostic::SpanHandler,
     interner: RefCell<HashMap<intern_key, ~t_box_>>,
     next_id: Cell<uint>,
     cstore: @metadata::cstore::CStore,

@@ -342,7 +342,7 @@ pub struct lit {
 // it appears this function is called only from pprust... that's
 // probably not a good thing.
 pub fn gather_comments_and_literals(span_diagnostic:
-                                    @mut diagnostic::span_handler,
+                                    @mut diagnostic::SpanHandler,
                                     path: @str,
                                     srdr: &mut io::Reader)
                                  -> (~[cmnt], ~[lit]) {

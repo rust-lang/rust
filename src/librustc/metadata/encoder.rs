@@ -39,7 +39,7 @@ use syntax::ast_map;
 use syntax::ast_util::*;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
-use syntax::diagnostic::span_handler;
+use syntax::diagnostic::SpanHandler;
 use syntax::parse::token::special_idents;
 use syntax::ast_util;
 use syntax::visit::Visitor;
@@ -57,7 +57,7 @@ pub type encode_inlined_item<'a> = 'a |ecx: &EncodeContext,
                                              ii: ast::inlined_item|;
 
 pub struct EncodeParams<'a> {
-    diag: @mut span_handler,
+    diag: @mut SpanHandler,
     tcx: ty::ctxt,
     reexports2: middle::resolve::ExportMap2,
     item_symbols: &'a RefCell<HashMap<ast::NodeId, ~str>>,
@@ -83,7 +83,7 @@ struct Stats {
 }
 
 pub struct EncodeContext<'a> {
-    diag: @mut span_handler,
+    diag: @mut SpanHandler,
     tcx: ty::ctxt,
     stats: @Stats,
     reexports2: middle::resolve::ExportMap2,

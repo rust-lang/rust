@@ -22,7 +22,7 @@ use syntax::abi;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::{Span, dummy_sp};
-use syntax::diagnostic::span_handler;
+use syntax::diagnostic::SpanHandler;
 use syntax::parse::token;
 use syntax::parse::token::ident_interner;
 use syntax::crateid::CrateId;
@@ -86,7 +86,7 @@ fn dump_crates(crate_cache: &[cache_entry]) {
 }
 
 fn warn_if_multiple_versions(e: &mut Env,
-                             diag: @mut span_handler,
+                             diag: @mut SpanHandler,
                              crate_cache: &[cache_entry]) {
     if crate_cache.len() != 0u {
         let name = crate_cache[crate_cache.len() - 1].crateid.name.clone();
