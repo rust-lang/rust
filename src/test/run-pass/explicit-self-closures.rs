@@ -18,9 +18,6 @@ impl Box {
     pub fn set_many(&mut self, xs: &[uint]) {
         for x in xs.iter() { self.x = *x; }
     }
-    pub fn set_many2(@mut self, xs: &[uint]) {
-        for x in xs.iter() { self.x = *x; }
-    }
 }
 
 pub fn main() {}

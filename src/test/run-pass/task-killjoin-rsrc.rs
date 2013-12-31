@@ -13,12 +13,14 @@
 // A port of task-killjoin to use a class with a dtor to manage
 // the join.
 
+use std::cell::Cell;
 use std::comm::*;
 use std::ptr;
 use std::task;
 
 struct notify {
-    ch: Chan<bool>, v: @mut bool,
+    ch: Chan<bool>,
+    v: @Cell<bool>,
 }
 
 #[unsafe_destructor]
@@ -36,7 +38,7 @@ impl Drop for notify {
     }
 }
 
-fn notify(ch: Chan<bool>, v: @mut bool) -> notify {
+fn notify(ch: Chan<bool>, v: @Cell<bool>) -> notify {
     notify {
         ch: ch,
         v: v
@@ -45,10 +47,10 @@ fn notify(ch: Chan<bool>, v: @mut bool) -> notify {
 
 fn joinable(f: proc()) -> Port<bool> {
     fn wrapper(c: Chan<bool>, f: ||) {
-        let b = @mut false;
+        let b = @Cell::new(false);
         error!("wrapper: task=%? allocated v=%x",
                0,
-               ptr::to_unsafe_ptr(&(*b)) as uint);
+               ptr::to_unsafe_ptr(&b) as uint);
         let _r = notify(c, b);
         f();
         *b = true;

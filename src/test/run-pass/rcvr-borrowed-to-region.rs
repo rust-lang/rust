@@ -24,7 +24,7 @@ impl<'a> get for &'a int {
 }
 
 pub fn main() {
-    let x = @mut 6;
+    let x = @6;
     let y = x.get();
     assert_eq!(y, 6);
 

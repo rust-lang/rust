@@ -10,26 +10,28 @@
 
 #[feature(managed_boxes)];
 
+use std::cell::Cell;
+
 // This test should behave exactly like issue-2735-3
 struct defer {
-    b: @mut bool,
+    b: @Cell<bool>,
 }
 
 #[unsafe_destructor]
 impl Drop for defer {
     fn drop(&mut self) {
-        *self.b = true;
+        self.b.set(true);
     }
 }
 
-fn defer(b: @mut bool) -> defer {
+fn defer(b: @Cell<bool>) -> defer {
     defer {
         b: b
     }
 }
 
 pub fn main() {
-    let dtor_ran = @mut false;
+    let dtor_ran = @Cell::new(false);
     let _  = defer(dtor_ran);
-    assert!(*dtor_ran);
+    assert!(dtor_ran.get());
 }

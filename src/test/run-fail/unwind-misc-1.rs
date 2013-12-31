@@ -14,7 +14,7 @@
 #[feature(managed_boxes)];
 
 fn main() {
-    let _count = @mut 0u;
+    let _count = @0u;
     let mut map = std::hashmap::HashMap::new();
     let mut arr = ~[];
     for _i in range(0u, 10u) {
