@@ -295,7 +295,7 @@ pub fn phase_3_run_analysis_passes(sess: Session,
          middle::liveness::check_crate(ty_cx, method_map,
                                        capture_map, crate));
 
-    let (root_map, write_guard_map) =
+    let root_map =
         time(time_passes, "borrow checking", (), |_|
              middle::borrowck::check_crate(ty_cx, method_map,
                                            moves_map, moved_variables_set,
@@ -330,7 +330,6 @@ pub fn phase_3_run_analysis_passes(sess: Session,
             root_map: root_map,
             method_map: method_map,
             vtable_map: vtable_map,
-            write_guard_map: write_guard_map,
             capture_map: capture_map
         },
         reachable: reachable_map

@@ -157,7 +157,10 @@ pub fn simplified_glue_type(tcx: ty::ctxt, field: uint, t: ty::t) -> ty::t {
     if (field == abi::tydesc_field_free_glue ||
         field == abi::tydesc_field_drop_glue) {
         match ty::get(t).sty {
-          ty::ty_box(mt) |
+          ty::ty_box(typ)
+          if ! ty::type_needs_drop(tcx, typ) =>
+          return ty::mk_imm_box(tcx, ty::mk_u32()),
+
           ty::ty_evec(mt, ty::vstore_box)
           if ! ty::type_needs_drop(tcx, mt.ty) =>
           return ty::mk_imm_box(tcx, ty::mk_u32()),
@@ -356,10 +359,10 @@ pub fn make_free_glue(bcx: @Block, v: ValueRef, t: ty::t) -> @Block {
     // NB: v0 is an *alias* of type t here, not a direct value.
     let _icx = push_ctxt("make_free_glue");
     match ty::get(t).sty {
-      ty::ty_box(body_mt) => {
+      ty::ty_box(body_ty) => {
         let v = Load(bcx, v);
         let body = GEPi(bcx, v, [0u, abi::box_field_body]);
-        let bcx = drop_ty(bcx, body, body_mt.ty);
+        let bcx = drop_ty(bcx, body, body_ty);
         trans_free(bcx, v)
       }
       ty::ty_opaque_box => {

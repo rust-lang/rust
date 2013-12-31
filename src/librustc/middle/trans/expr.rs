@@ -378,18 +378,12 @@ pub fn trans_to_datum(bcx: @Block, expr: &ast::Expr) -> DatumBlock {
         let source_data = Load(bcx, source_data_ptr); // always a ptr
         let target_data = match source_store {
             ty::BoxTraitStore(..) => {
-                // For deref of @T or @mut T, create a dummy datum and
-                // use the datum's deref method. This is more work
-                // than just calling GEPi ourselves, but it ensures
-                // that any write guards will be appropriate
-                // processed.  Note that we don't know the type T, so
+                // For deref of @T, create a dummy datum and use the datum's
+                // deref method. This is more work than just calling GEPi
+                // ourselves. Note that we don't know the type T, so
                 // just substitute `i8`-- it doesn't really matter for
                 // our purposes right now.
-                let source_ty =
-                    ty::mk_box(tcx,
-                               ty::mt {
-                                   ty: ty::mk_i8(),
-                                   mutbl: source_mutbl});
+                let source_ty = ty::mk_box(tcx, ty::mk_i8());
                 let source_datum =
                     Datum {val: source_data,
                            ty: source_ty,
