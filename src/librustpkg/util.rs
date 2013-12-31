@@ -80,8 +80,7 @@ struct ReadyCtx {
     fns: ~[ListenerFn]
 }
 
-fn fold_mod(_ctx: @mut ReadyCtx, m: &ast::_mod, fold: &mut CrateSetup)
-            -> ast::_mod {
+fn fold_mod(m: &ast::_mod, fold: &mut CrateSetup) -> ast::_mod {
     fn strip_main(item: @ast::item) -> @ast::item {
         @ast::item {
             attrs: item.attrs.iter().filter_map(|attr| {
@@ -101,9 +100,9 @@ fn fold_mod(_ctx: @mut ReadyCtx, m: &ast::_mod, fold: &mut CrateSetup)
     }, fold)
 }
 
-fn fold_item(ctx: @mut ReadyCtx, item: @ast::item, fold: &mut CrateSetup)
+fn fold_item(item: @ast::item, fold: &mut CrateSetup)
              -> SmallVector<@ast::item> {
-    ctx.path.push(item.ident);
+    fold.ctx.path.push(item.ident);
 
     let mut cmds = ~[];
     let mut had_pkg_do = false;
@@ -126,44 +125,44 @@ fn fold_item(ctx: @mut ReadyCtx, item: @ast::item, fold: &mut CrateSetup)
     }
 
     if had_pkg_do {
-        ctx.fns.push(ListenerFn {
+        fold.ctx.fns.push(ListenerFn {
             cmds: cmds,
             span: item.span,
-            path: /*bad*/ctx.path.clone()
+            path: /*bad*/fold.ctx.path.clone()
         });
     }
 
     let res = fold::noop_fold_item(item, fold);
 
-    ctx.path.pop();
+    fold.ctx.path.pop();
 
     res
 }
 
-struct CrateSetup {
-    ctx: @mut ReadyCtx,
+struct CrateSetup<'a> {
+    ctx: &'a mut ReadyCtx,
 }
 
-impl fold::ast_fold for CrateSetup {
+impl<'a> fold::ast_fold for CrateSetup<'a> {
     fn fold_item(&mut self, item: @ast::item) -> SmallVector<@ast::item> {
-        fold_item(self.ctx, item, self)
+        fold_item(item, self)
     }
     fn fold_mod(&mut self, module: &ast::_mod) -> ast::_mod {
-        fold_mod(self.ctx, module, self)
+        fold_mod(module, self)
     }
 }
 
 /// Generate/filter main function, add the list of commands, etc.
 pub fn ready_crate(sess: session::Session,
                    crate: ast::Crate) -> ast::Crate {
-    let ctx = @mut ReadyCtx {
+    let mut ctx = ReadyCtx {
         sess: sess,
         ext_cx: ExtCtxt::new(sess.parse_sess, sess.opts.cfg.clone()),
         path: ~[],
         fns: ~[]
     };
     let mut fold = CrateSetup {
-        ctx: ctx,
+        ctx: &mut ctx,
     };
     fold.fold_crate(crate)
 }
