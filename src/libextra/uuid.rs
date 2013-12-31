@@ -796,8 +796,8 @@ mod test {
         use serialize::{Encodable, Decodable};
 
         let u = Uuid::new_v4();
-        let wr = @mut MemWriter::new();
-        u.encode(&mut ebml::writer::Encoder(wr));
+        let mut wr = MemWriter::new();
+        u.encode(&mut ebml::writer::Encoder(&mut wr));
         let doc = ebml::reader::Doc(wr.inner_ref().as_slice());
         let u2 = Decodable::decode(&mut ebml::reader::Decoder(doc));
         assert_eq!(u, u2);
