@@ -14,7 +14,7 @@ use ast;
 use ast::{Attribute, Attribute_, MetaItem, MetaWord, MetaNameValue, MetaList};
 use codemap::{Span, Spanned, spanned, dummy_spanned};
 use codemap::BytePos;
-use diagnostic::span_handler;
+use diagnostic::SpanHandler;
 use parse::comments::{doc_comment_style, strip_doc_comment_decoration};
 use crateid::CrateId;
 
@@ -355,7 +355,7 @@ pub fn find_stability<AM: AttrMetaMethods, It: Iterator<AM>>(mut metas: It) -> O
     None
 }
 
-pub fn require_unique_names(diagnostic: @mut span_handler,
+pub fn require_unique_names(diagnostic: @mut SpanHandler,
                             metas: &[@MetaItem]) {
     let mut set = HashSet::new();
     for meta in metas.iter() {
@@ -381,7 +381,7 @@ pub fn require_unique_names(diagnostic: @mut span_handler,
  * present (before fields, if any) with that type; reprensentation
  * optimizations which would remove it will not be done.
  */
-pub fn find_repr_attr(diagnostic: @mut span_handler, attr: @ast::MetaItem, acc: ReprAttr)
+pub fn find_repr_attr(diagnostic: @mut SpanHandler, attr: @ast::MetaItem, acc: ReprAttr)
     -> ReprAttr {
     let mut acc = acc;
     match attr.node {

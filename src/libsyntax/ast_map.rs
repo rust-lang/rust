@@ -15,7 +15,7 @@ use ast_util::{inlined_item_utils, stmt_id};
 use ast_util;
 use codemap::Span;
 use codemap;
-use diagnostic::span_handler;
+use diagnostic::SpanHandler;
 use parse::token::get_ident_interner;
 use parse::token::ident_interner;
 use parse::token::special_idents;
@@ -152,7 +152,7 @@ pub type map = @mut HashMap<NodeId, ast_node>;
 pub struct Ctx {
     map: map,
     path: path,
-    diag: @mut span_handler,
+    diag: @mut SpanHandler,
 }
 
 impl Ctx {
@@ -373,7 +373,7 @@ impl Visitor<()> for Ctx {
     }
 }
 
-pub fn map_crate(diag: @mut span_handler, c: &Crate) -> map {
+pub fn map_crate(diag: @mut SpanHandler, c: &Crate) -> map {
     let cx = @mut Ctx {
         map: @mut HashMap::new(),
         path: ~[],
@@ -386,7 +386,7 @@ pub fn map_crate(diag: @mut span_handler, c: &Crate) -> map {
 // Used for items loaded from external crate that are being inlined into this
 // crate.  The `path` should be the path to the item but should not include
 // the item itself.
-pub fn map_decoded_item(diag: @mut span_handler,
+pub fn map_decoded_item(diag: @mut SpanHandler,
                         map: map,
                         path: path,
                         ii: &inlined_item) {

@@ -19,7 +19,7 @@ use metadata::encoder;
 use metadata::filesearch::{FileMatches, FileDoesntMatch};
 use metadata::filesearch;
 use syntax::codemap::Span;
-use syntax::diagnostic::span_handler;
+use syntax::diagnostic::SpanHandler;
 use syntax::parse::token::ident_interner;
 use syntax::crateid::CrateId;
 use syntax::attr;
@@ -231,8 +231,8 @@ impl Context {
     }
 }
 
-pub fn note_crateid_attr(diag: @mut span_handler,
-                       crateid: &CrateId) {
+pub fn note_crateid_attr(diag: @mut SpanHandler,
+                         crateid: &CrateId) {
     diag.handler().note(format!("crate_id: {}", crateid.to_str()));
 }
 
