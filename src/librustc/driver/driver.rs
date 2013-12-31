@@ -602,14 +602,14 @@ pub fn pretty_print_input(sess: Session,
     };
 
     let src = sess.codemap.get_filemap(source_name(input)).src;
-    let rdr = @mut MemReader::new(src.as_bytes().to_owned());
+    let mut rdr = MemReader::new(src.as_bytes().to_owned());
     let stdout = io::stdout();
     pprust::print_crate(sess.codemap,
                         token::get_ident_interner(),
                         sess.span_diagnostic,
                         &crate,
                         source_name(input),
-                        rdr as @mut io::Reader,
+                        &mut rdr,
                         ~stdout as ~io::Writer,
                         annotation,
                         is_expanded);
