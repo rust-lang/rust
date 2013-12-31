@@ -14,6 +14,6 @@ struct F { f: @G }
 struct G { g: ~[int] }
 
 pub fn main() {
-    let rec = @mut F {f: @G {g: ~[1, 2, 3]}};
+    let rec = @F {f: @G {g: ~[1, 2, 3]}};
     while rec.f.g.len() == 23 {}
 }
