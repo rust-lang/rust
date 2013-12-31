@@ -226,7 +226,8 @@ pub mod types {
         pub mod common {
             pub mod posix01 {
                 use libc::types::common::c95::{c_void};
-                use libc::types::os::arch::c95::{c_char, c_ulong, size_t};
+                use libc::types::os::arch::c95::{c_char, c_ulong, size_t,
+                                                 time_t, suseconds_t, c_long};
 
                 pub type pthread_t = c_ulong;
 
@@ -241,6 +242,18 @@ pub mod types {
                     __unused4: *c_void,
                     __unused5: *c_void,
                 }
+
+                pub struct timeval {
+                    tv_sec: time_t,
+                    tv_usec: suseconds_t,
+                }
+
+                pub struct timespec {
+                    tv_sec: time_t,
+                    tv_nsec: c_long,
+                }
+
+                pub enum timezone {}
             }
             pub mod bsd44 {
                 pub type socklen_t = u32;
@@ -298,6 +311,7 @@ pub mod types {
                 pub type ptrdiff_t = i32;
                 pub type clock_t = i32;
                 pub type time_t = i32;
+                pub type suseconds_t = i32;
                 pub type wchar_t = i32;
             }
             pub mod c99 {
@@ -481,6 +495,7 @@ pub mod types {
                 pub type ptrdiff_t = i64;
                 pub type clock_t = i64;
                 pub type time_t = i64;
+                pub type suseconds_t = i64;
                 pub type wchar_t = i32;
             }
             pub mod c99 {
@@ -553,7 +568,8 @@ pub mod types {
         pub mod common {
             pub mod posix01 {
                 use libc::types::common::c95::{c_void};
-                use libc::types::os::arch::c95::{c_char, c_int, size_t};
+                use libc::types::os::arch::c95::{c_char, c_int, size_t,
+                                                 time_t, suseconds_t, c_long};
                 use libc::types::os::arch::c99::{uintptr_t};
 
                 pub type pthread_t = uintptr_t;
@@ -573,6 +589,18 @@ pub mod types {
                     __unused7: *c_void,
                     __unused8: *c_void,
                 }
+
+                pub struct timeval {
+                    tv_sec: time_t,
+                    tv_usec: suseconds_t,
+                }
+
+                pub struct timespec {
+                    tv_sec: time_t,
+                    tv_nsec: c_long,
+                }
+
+                pub enum timezone {}
             }
             pub mod bsd44 {
                 pub type socklen_t = u32;
@@ -633,6 +661,7 @@ pub mod types {
                 pub type ptrdiff_t = i64;
                 pub type clock_t = i32;
                 pub type time_t = i64;
+                pub type suseconds_t = i64;
                 pub type wchar_t = i32;
             }
             pub mod c99 {
@@ -709,7 +738,8 @@ pub mod types {
     pub mod os {
         pub mod common {
             pub mod posix01 {
-                use libc::types::os::arch::c95::c_short;
+                use libc::types::os::arch::c95::{c_short, time_t, suseconds_t,
+                                                 c_long};
                 use libc::types::os::arch::extra::{int64, time64_t};
                 use libc::types::os::arch::posix88::{dev_t, ino_t};
                 use libc::types::os::arch::posix88::mode_t;
@@ -735,6 +765,18 @@ pub mod types {
                     actime: time64_t,
                     modtime: time64_t,
                 }
+
+                pub struct timeval {
+                    tv_sec: time_t,
+                    tv_usec: suseconds_t,
+                }
+
+                pub struct timespec {
+                    tv_sec: time_t,
+                    tv_nsec: c_long,
+                }
+
+                pub enum timezone {}
             }
 
             pub mod bsd44 {
@@ -806,6 +848,11 @@ pub mod types {
                 pub type time_t = i32;
                 #[cfg(target_arch = "x86_64")]
                 pub type time_t = i64;
+
+                #[cfg(target_arch = "x86")]
+                pub type suseconds_t = i32;
+                #[cfg(target_arch = "x86_64")]
+                pub type suseconds_t = i64;
 
                 pub type wchar_t = u16;
             }
@@ -983,6 +1030,13 @@ pub mod types {
                 }
 
                 pub type LPOVERLAPPED = *mut OVERLAPPED;
+
+                pub struct FILETIME {
+                    dwLowDateTime: DWORD,
+                    dwHighDateTime: DWORD,
+                }
+
+                pub type LPFILETIME = *mut FILETIME;
             }
         }
     }
@@ -991,8 +1045,9 @@ pub mod types {
     pub mod os {
         pub mod common {
             pub mod posix01 {
-                use libc::types::common::c95::{c_void};
-                use libc::types::os::arch::c95::{c_char, c_int, size_t};
+                use libc::types::common::c95::c_void;
+                use libc::types::os::arch::c95::{c_char, c_int, size_t,
+                                                 time_t, suseconds_t, c_long};
                 use libc::types::os::arch::c99::{uintptr_t};
 
                 pub type pthread_t = uintptr_t;
@@ -1012,6 +1067,18 @@ pub mod types {
                     __unused7: *c_void,
                     __unused8: *c_void,
                 }
+
+                pub struct timeval {
+                    tv_sec: time_t,
+                    tv_usec: suseconds_t,
+                }
+
+                pub struct timespec {
+                    tv_sec: time_t,
+                    tv_nsec: c_long,
+                }
+
+                pub enum timezone {}
             }
 
             pub mod bsd44 {
@@ -1075,6 +1142,7 @@ pub mod types {
                 pub type ptrdiff_t = i32;
                 pub type clock_t = u32;
                 pub type time_t = i32;
+                pub type suseconds_t = i32;
                 pub type wchar_t = i32;
             }
             pub mod c99 {
@@ -1144,6 +1212,12 @@ pub mod types {
             pub mod bsd44 {
             }
             pub mod extra {
+                pub struct mach_timebase_info {
+                    numer: u32,
+                    denom: u32,
+                }
+
+                pub type mach_timebase_info_data_t = mach_timebase_info;
             }
         }
 
@@ -1165,6 +1239,7 @@ pub mod types {
                 pub type ptrdiff_t = i64;
                 pub type clock_t = u64;
                 pub type time_t = i64;
+                pub type suseconds_t = i32;
                 pub type wchar_t = i32;
             }
             pub mod c99 {
@@ -1235,6 +1310,12 @@ pub mod types {
             pub mod bsd44 {
             }
             pub mod extra {
+                pub struct mach_timebase_info {
+                    numer: u32,
+                    denom: u32,
+                }
+
+                pub type mach_timebase_info_data_t = mach_timebase_info;
             }
         }
     }
@@ -2047,6 +2128,9 @@ pub mod consts {
 
             pub static PTHREAD_CREATE_JOINABLE: c_int = 0;
             pub static PTHREAD_CREATE_DETACHED: c_int = 1;
+
+            pub static CLOCK_REALTIME: c_int = 0;
+            pub static CLOCK_MONOTONIC: c_int = 1;
         }
         pub mod posix08 {
         }
@@ -2467,6 +2551,9 @@ pub mod consts {
 
             pub static PTHREAD_CREATE_JOINABLE: c_int = 0;
             pub static PTHREAD_CREATE_DETACHED: c_int = 1;
+
+            pub static CLOCK_REALTIME: c_int = 0;
+            pub static CLOCK_MONOTONIC: c_int = 4;
         }
         pub mod posix08 {
         }
@@ -3609,8 +3696,7 @@ pub mod funcs {
     #[cfg(target_os = "freebsd")]
     pub mod bsd44 {
         use libc::types::common::c95::{c_void};
-        use libc::types::os::arch::c95::{c_char, c_uchar, c_int, c_uint,
-                                         size_t};
+        use libc::types::os::arch::c95::{c_char, c_uchar, c_int, c_uint, size_t};
 
         extern {
             pub fn sysctl(name: *c_int,
@@ -3694,7 +3780,7 @@ pub mod funcs {
                                                LPMEMORY_BASIC_INFORMATION,
                                                LPSYSTEM_INFO};
             use libc::types::os::arch::extra::{HANDLE, LPHANDLE, LARGE_INTEGER,
-                                               PLARGE_INTEGER};
+                                               PLARGE_INTEGER, LPFILETIME};
 
             extern "system" {
                 pub fn GetEnvironmentVariableW(n: LPCWSTR,
@@ -3838,6 +3924,14 @@ pub mod funcs {
                                         lpNewFilePointer: PLARGE_INTEGER,
                                         dwMoveMethod: DWORD) -> BOOL;
                 pub fn SetEndOfFile(hFile: HANDLE) -> BOOL;
+
+                pub fn GetSystemTimeAsFileTime(
+                            lpSystemTimeAsFileTime: LPFILETIME);
+
+                pub fn QueryPerformanceFrequency(
+                            lpFrequency: *mut LARGE_INTEGER) -> BOOL;
+                pub fn QueryPerformanceCounter(
+                            lpPerformanceCount: *mut LARGE_INTEGER) -> BOOL;
             }
         }
 

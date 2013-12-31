@@ -739,6 +739,10 @@ extern {
 #[link(name = "pthread")]
 extern {}
 
+#[cfg(target_os = "linux")]
+#[link(name = "rt")]
+extern {}
+
 #[cfg(target_os = "win32")]
 #[link(name = "ws2_32")]
 #[link(name = "psapi")]
