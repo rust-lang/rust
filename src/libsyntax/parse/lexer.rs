@@ -361,7 +361,10 @@ fn consume_any_line_comment(rdr: @StringReader)
             // I guess this is the only way to figure out if
             // we're at the beginning of the file...
             let cmap = @CodeMap::new();
-            (*cmap).files.push(rdr.filemap);
+            {
+                let mut files = cmap.files.borrow_mut();
+                files.get().push(rdr.filemap);
+            }
             let loc = cmap.lookup_char_pos_adj(rdr.last_pos.get());
             if loc.line == 1u && loc.col == CharPos(0u) {
                 while rdr.curr.get() != '\n' && !is_eof(rdr) { bump(rdr); }

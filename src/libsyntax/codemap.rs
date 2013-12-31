@@ -268,13 +268,13 @@ impl FileMap {
 }
 
 pub struct CodeMap {
-    files: @mut ~[@FileMap]
+    files: RefCell<~[@FileMap]>
 }
 
 impl CodeMap {
     pub fn new() -> CodeMap {
         CodeMap {
-            files: @mut ~[],
+            files: RefCell::new(~[]),
         }
     }
 
@@ -288,12 +288,12 @@ impl CodeMap {
                                 substr: FileSubstr,
                                 src: @str)
                                 -> @FileMap {
-        let files = &mut *self.files;
-        let start_pos = if files.len() == 0 {
+        let mut files = self.files.borrow_mut();
+        let start_pos = if files.get().len() == 0 {
             0
         } else {
-            let last_start = files.last().start_pos.to_uint();
-            let last_len = files.last().src.len();
+            let last_start = files.get().last().start_pos.to_uint();
+            let last_len = files.get().last().src.len();
             last_start + last_len
         };
 
@@ -304,7 +304,7 @@ impl CodeMap {
             multibyte_chars: RefCell::new(~[]),
         };
 
-        files.push(filemap);
+        files.get().push(filemap);
 
         return filemap;
     }
@@ -350,9 +350,11 @@ impl CodeMap {
     }
 
     pub fn span_to_str(&self, sp: Span) -> ~str {
-        let files = &*self.files;
-        if files.len() == 0 && sp == DUMMY_SP {
-            return ~"no-location";
+        {
+            let files = self.files.borrow();
+            if files.get().len() == 0 && sp == DUMMY_SP {
+                return ~"no-location";
+            }
         }
 
         let lo = self.lookup_char_pos_adj(sp.lo);
@@ -392,7 +394,12 @@ impl CodeMap {
     }
 
     pub fn get_filemap(&self, filename: &str) -> @FileMap {
-        for fm in self.files.iter() { if filename == fm.name { return *fm; } }
+        let files = self.files.borrow();
+        for fm in files.get().iter() {
+            if filename == fm.name {
+                return *fm
+            }
+        }
         //XXjdm the following triggers a mismatched type bug
         //      (or expected function, found _|_)
         fail!(); // ("asking for " + filename + " which we don't know about");
@@ -401,13 +408,14 @@ impl CodeMap {
 
 impl CodeMap {
     fn lookup_filemap_idx(&self, pos: BytePos) -> uint {
-        let files = &*self.files;
+        let files = self.files.borrow();
+        let files = files.get();
         let len = files.len();
         let mut a = 0u;
         let mut b = len;
         while b - a > 1u {
             let m = (a + b) / 2u;
-            if self.files[m].start_pos > pos {
+            if files[m].start_pos > pos {
                 b = m;
             } else {
                 a = m;
@@ -423,7 +431,9 @@ impl CodeMap {
     fn lookup_line(&self, pos: BytePos) -> FileMapAndLine
     {
         let idx = self.lookup_filemap_idx(pos);
-        let f = self.files[idx];
+
+        let files = self.files.borrow();
+        let f = files.get()[idx];
         let mut a = 0u;
         let mut lines = f.lines.borrow_mut();
         let mut b = lines.get().len();
@@ -457,7 +467,8 @@ impl CodeMap {
     fn lookup_byte_offset(&self, bpos: BytePos)
         -> FileMapAndBytePos {
         let idx = self.lookup_filemap_idx(bpos);
-        let fm = self.files[idx];
+        let files = self.files.borrow();
+        let fm = files.get()[idx];
         let offset = bpos - fm.start_pos;
         return FileMapAndBytePos {fm: fm, pos: offset};
     }
@@ -467,7 +478,8 @@ impl CodeMap {
     fn bytepos_to_local_charpos(&self, bpos: BytePos) -> CharPos {
         debug!("codemap: converting {:?} to char pos", bpos);
         let idx = self.lookup_filemap_idx(bpos);
-        let map = self.files[idx];
+        let files = self.files.borrow();
+        let map = files.get()[idx];
 
         // The number of extra bytes due to multibyte chars in the FileMap
         let mut total_extra_bytes = 0;

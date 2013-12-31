@@ -464,9 +464,19 @@ fn write_out_deps(sess: Session, input: &input, outputs: &OutputFilenames, crate
 
     // Build a list of files used to compile the output and
     // write Makefile-compatible dependency rules
-    let files: ~[@str] = sess.codemap.files.iter()
-        .filter_map(|fmap| if fmap.is_real_file() { Some(fmap.name) } else { None })
-        .collect();
+    let files: ~[@str] = {
+        let files = sess.codemap.files.borrow();
+        files.get()
+             .iter()
+             .filter_map(|fmap| {
+                 if fmap.is_real_file() {
+                     Some(fmap.name)
+                 } else {
+                     None
+                 }
+             })
+             .collect()
+    };
     let mut file = io::File::create(&deps_filename);
     for path in out_filenames.iter() {
         write!(&mut file as &mut Writer,
