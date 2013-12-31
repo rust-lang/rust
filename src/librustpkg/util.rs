@@ -405,7 +405,7 @@ pub fn compile_crate_from_input(input: &Path,
     // -c
     if driver::stop_after_phase_5(sess)
         || stop_before == Link || stop_before == Assemble { return Some(outputs.out_filename); }
-    driver::phase_6_link_output(sess, &translation, &file_input, outputs);
+    driver::phase_6_link_output(sess, &translation, outputs);
 
     // Register dependency on the source file
     // FIXME (#9639): This needs to handle non-utf8 paths
