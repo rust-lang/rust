@@ -3,6 +3,7 @@
 
 import sys, fileinput, subprocess, re
 from licenseck import *
+import snapshot
 
 err=0
 cols=100
@@ -52,6 +53,16 @@ try:
             match = re.match(r'^.*//\s*(NOTE.*)$', line)
             if match:
                 report_warn(match.group(1))
+            match = re.match(r'^.*//\s*SNAP\s+(\w+)', line)
+            if match:
+                hsh = match.group(1)
+                a, b, c, phash = snapshot.determine_curr_snapshot_info()
+                if not phash.startswith(hsh):
+                    report_err("Snapshot out of date: " + line)
+            else:
+                if "SNAP" in line:
+                    report_warn("Unmatched SNAP line: " + line)
+
         if (line.find('\t') != -1 and
             fileinput.filename().find("Makefile") == -1):
             report_err("tab character")
