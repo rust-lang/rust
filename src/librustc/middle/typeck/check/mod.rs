@@ -2765,6 +2765,16 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                         }
                         None => {
                             match *sty {
+                                ty::ty_struct(did, ref substs) if {
+                                    let fields = ty::struct_fields(fcx.tcx(), did, substs);
+                                    fields.len() == 1
+                                      && fields[0].ident == token::special_idents::unnamed_field
+                                } => {
+                                    // This is an obsolete struct deref
+                                    tcx.sess.span_err(
+                                        expr.span,
+                                        "single-field tuple-structs can no longer be dereferenced");
+                                }
                                 _ => {
                                     fcx.type_error_message(expr.span,
                                         |actual| {
