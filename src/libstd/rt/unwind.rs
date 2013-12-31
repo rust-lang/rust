@@ -180,22 +180,29 @@ impl Unwinder {
         self.unwinding = true;
         self.cause = Some(cause);
 
-        unsafe {
-            let exception = ~uw::_Unwind_Exception {
-                exception_class: rust_exception_class(),
-                exception_cleanup: exception_cleanup,
-                private_1: 0,
-                private_2: 0
-            };
-            let error = uw::_Unwind_RaiseException(cast::transmute(exception));
-            rtabort!("Could not unwind stack, error = {}", error as int)
-        }
+        rust_fail();
 
-        extern "C" fn exception_cleanup(_unwind_code: uw::_Unwind_Reason_Code,
-                                        exception: *uw::_Unwind_Exception) {
-            rtdebug!("exception_cleanup()");
+        // An uninlined, unmangled function upon which to slap yer breakpoints
+        #[inline(never)]
+        #[no_mangle]
+        fn rust_fail() -> ! {
             unsafe {
-                let _: ~uw::_Unwind_Exception = cast::transmute(exception);
+                let exception = ~uw::_Unwind_Exception {
+                    exception_class: rust_exception_class(),
+                    exception_cleanup: exception_cleanup,
+                    private_1: 0,
+                    private_2: 0
+                };
+                let error = uw::_Unwind_RaiseException(cast::transmute(exception));
+                rtabort!("Could not unwind stack, error = {}", error as int)
+            }
+
+            extern "C" fn exception_cleanup(_unwind_code: uw::_Unwind_Reason_Code,
+                                            exception: *uw::_Unwind_Exception) {
+                rtdebug!("exception_cleanup()");
+                unsafe {
+                    let _: ~uw::_Unwind_Exception = cast::transmute(exception);
+                }
             }
         }
     }
