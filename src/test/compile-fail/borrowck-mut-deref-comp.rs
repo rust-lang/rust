@@ -12,7 +12,7 @@
 
 struct foo(~int);
 
-fn borrow(x: @mut foo) {
+fn borrow(x: @foo) {
     let _y = &***x;
     *x = foo(~4); //~ ERROR cannot assign
 }
