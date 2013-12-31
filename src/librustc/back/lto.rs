@@ -19,6 +19,12 @@ use std::libc;
 
 pub fn run(sess: session::Session, llmod: ModuleRef,
            tm: TargetMachineRef, reachable: &[~str]) {
+    if sess.prefer_dynamic() {
+        sess.err("cannot prefer dynamic linking when performing LTO");
+        sess.note("only 'staticlib' and 'bin' outputs are supported with LTO");
+        sess.abort_if_errors();
+    }
+
     // Make sure we actually can run LTO
     let outputs = sess.outputs.borrow();
     for output in outputs.get().iter() {
