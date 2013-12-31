@@ -17,7 +17,7 @@ use io::stdio::StdWriter;
 use io::buffered::LineBufferedWriter;
 use rt::crate_map::{ModEntry, CrateMap, iter_crate_map, get_crate_map};
 use str::StrSlice;
-use vec::ImmutableVector;
+use vec::{ImmutableVector, MutableTotalOrdVector};
 #[cfg(test)] use cast::transmute;
 
 struct LogDirective {
@@ -141,7 +141,14 @@ fn update_log_settings(crate_map: &CrateMap, settings: ~str) {
     if settings.len() > 0 {
         if settings == ~"::help" || settings == ~"?" {
             rterrln!("\nCrate log map:\n");
-            iter_crate_map(crate_map, |entry| rterrln!(" {}", entry.name));
+
+            let mut entries = ~[];
+            iter_crate_map(crate_map, |entry| entries.push(entry.name.to_owned()));
+            entries.sort();
+
+            for name in entries.iter() {
+                rterrln!(" {}", *name);
+            }
             unsafe { exit(1); }
         }
         dirs = parse_logging_spec(settings);
