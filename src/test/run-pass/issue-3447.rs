@@ -10,11 +10,13 @@
 
 #[feature(managed_boxes)];
 
+use std::cell::RefCell;
+
 static S: &'static str = "str";
 
 struct list<T> {
     element: T,
-    next: Option<@mut list<T>>
+    next: Option<@RefCell<list<T>>>
 }
 
 impl<T:'static> list<T> {
@@ -24,7 +26,7 @@ impl<T:'static> list<T> {
             next: None
         };
 
-        self.next = Some(@mut newList);
+        self.next = Some(@RefCell::new(newList));
     }
 }
 

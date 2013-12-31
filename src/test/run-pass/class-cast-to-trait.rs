@@ -58,6 +58,7 @@ fn cat(in_x : uint, in_y : int, in_name: ~str) -> cat {
 
 
 pub fn main() {
-  let nyan: @mut noisy = @mut cat(0u, 2, ~"nyan") as @mut noisy;
-  nyan.speak();
+    let mut nyan = cat(0u, 2, ~"nyan");
+    let mut nyan: &mut noisy = &mut nyan;
+    nyan.speak();
 }

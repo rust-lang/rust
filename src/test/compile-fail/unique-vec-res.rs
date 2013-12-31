@@ -10,15 +10,17 @@
 
 #[feature(managed_boxes)];
 
+use std::cell::Cell;
+
 struct r {
-  i: @mut int,
+  i: @Cell<int>,
 }
 
 #[unsafe_destructor]
 impl Drop for r {
     fn drop(&mut self) {
         unsafe {
-            *(self.i) = *(self.i) + 1;
+            self.i.set(self.i.get() + 1);
         }
     }
 }
@@ -27,12 +29,12 @@ fn f<T>(_i: ~[T], _j: ~[T]) {
 }
 
 fn main() {
-    let i1 = @mut 0;
-    let i2 = @mut 1;
+    let i1 = @Cell::new(0);
+    let i2 = @Cell::new(1);
     let r1 = ~[~r { i: i1 }];
     let r2 = ~[~r { i: i2 }];
     f(r1.clone(), r2.clone());
     //~^ ERROR failed to find an implementation of
-    info!("{:?}", (r2, *i1));
-    info!("{:?}", (r1, *i2));
+    info!("{:?}", (r2, i1.get()));
+    info!("{:?}", (r1, i2.get()));
 }

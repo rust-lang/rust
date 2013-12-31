@@ -10,6 +10,8 @@
 
 #[feature(managed_boxes)];
 
+use std::cell::RefCell;
+
 struct Pair<A,B> {
     a: A, b: B
 }
@@ -17,12 +19,15 @@ struct Pair<A,B> {
 struct RecEnum<A>(Rec<A>);
 struct Rec<A> {
     val: A,
-    rec: Option<@mut RecEnum<A>>
+    rec: Option<@RefCell<RecEnum<A>>>
 }
 
 fn make_cycle<A:'static>(a: A) {
-    let g: @mut RecEnum<A> = @mut RecEnum(Rec {val: a, rec: None});
-    g.rec = Some(g);
+    let g: @RefCell<RecEnum<A>> = @RefCell::new(RecEnum(Rec {val: a, rec: None}));
+    {
+        let mut gb = g.borrow_mut();
+        gb.get().rec = Some(g);
+    }
 }
 
 struct Invoker<A,B> {

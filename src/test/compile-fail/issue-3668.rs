@@ -10,7 +10,7 @@
 
 #[feature(managed_boxes)];
 
-struct P { child: Option<@mut P> }
+struct P { child: Option<@P> }
 trait PTrait {
    fn getChildOption(&self) -> Option<@P>;
 }
