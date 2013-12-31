@@ -655,13 +655,10 @@ fn test_repr() {
     exact_test(&(~"he\u10f3llo"), "~\"he\\u10f3llo\"");
 
     exact_test(&(@10), "@10");
-    exact_test(&(@mut 10), "@mut 10");
-    exact_test(&((@mut 10, 2)), "(@mut 10, 2)");
     exact_test(&(~10), "~10");
     exact_test(&(&10), "&10");
     let mut x = 10;
     exact_test(&(&mut x), "&mut 10");
-    exact_test(&(@mut [1, 2]), "@mut [1, 2]");
 
     exact_test(&(0 as *()), "(0x0 as *())");
     exact_test(&(0 as *mut ()), "(0x0 as *mut ())");
