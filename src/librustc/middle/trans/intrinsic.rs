@@ -73,6 +73,23 @@ pub fn trans_intrinsic(ccx: @CrateContext,
         }
     }
 
+    fn volatile_load_intrinsic(bcx: @Block) {
+        let first_real_arg = bcx.fcx.arg_pos(0u);
+        let src = get_param(bcx.fcx.llfn, first_real_arg);
+
+        let val = VolatileLoad(bcx, src);
+        Ret(bcx, val);
+    }
+
+    fn volatile_store_intrinsic(bcx: @Block) {
+        let first_real_arg = bcx.fcx.arg_pos(0u);
+        let dst = get_param(bcx.fcx.llfn, first_real_arg);
+        let val = get_param(bcx.fcx.llfn, first_real_arg + 1);
+
+        VolatileStore(bcx, val, dst);
+        RetVoid(bcx);
+    }
+
     fn copy_intrinsic(bcx: @Block, allow_overlap: bool, tp_ty: ty::t) {
         let ccx = bcx.ccx();
         let lltp_ty = type_of::type_of(ccx, tp_ty);
@@ -479,6 +496,9 @@ pub fn trans_intrinsic(ccx: @CrateContext,
         "bswap16" => simple_llvm_intrinsic(bcx, "llvm.bswap.i16", 1),
         "bswap32" => simple_llvm_intrinsic(bcx, "llvm.bswap.i32", 1),
         "bswap64" => simple_llvm_intrinsic(bcx, "llvm.bswap.i64", 1),
+
+        "volatile_load" => volatile_load_intrinsic(bcx),
+        "volatile_store" => volatile_store_intrinsic(bcx),
 
         "i8_add_with_overflow" =>
             with_overflow_instrinsic(bcx, "llvm.sadd.with.overflow.i8", output_type),

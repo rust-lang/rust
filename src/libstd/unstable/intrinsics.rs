@@ -12,6 +12,15 @@
 
 The corresponding definitions are in librustc/middle/trans/foreign.rs.
 
+# Volatiles
+
+The volatile intrinsics provide operations intended to act on I/O
+memory, which are guaranteed to not be reordered by the compiler
+across other volatile intrinsics. See the LLVM documentation on
+[[volatile]].
+
+[volatile]: http://llvm.org/docs/LangRef.html#volatile-memory-accesses
+
 # Atomics
 
 The atomic intrinsics provide common atomic operations on machine
@@ -178,6 +187,9 @@ extern "rust-intrinsic" {
 
     /// Execute a breakpoint trap, for inspection by a debugger.
     pub fn breakpoint();
+
+    #[cfg(not(stage0))] pub fn volatile_load<T>(src: *T) -> T;
+    #[cfg(not(stage0))] pub fn volatile_store<T>(dst: *mut T, val: T);
 
     /// Atomic compare and exchange, sequentially consistent.
     pub fn atomic_cxchg(dst: &mut int, old: int, src: int) -> int;

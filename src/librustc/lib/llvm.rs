@@ -787,6 +787,10 @@ pub mod llvm {
         pub fn LLVMIsTailCall(CallInst: ValueRef) -> Bool;
         pub fn LLVMSetTailCall(CallInst: ValueRef, IsTailCall: Bool);
 
+        /* Operations on load/store instructions (only) */
+        pub fn LLVMGetVolatile(MemoryAccessInst: ValueRef) -> Bool;
+        pub fn LLVMSetVolatile(MemoryAccessInst: ValueRef, volatile: Bool);
+
         /* Operations on phi nodes */
         pub fn LLVMAddIncoming(PhiNode: ValueRef,
                                IncomingValues: *ValueRef,
