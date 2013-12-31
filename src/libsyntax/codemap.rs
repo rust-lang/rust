@@ -223,7 +223,7 @@ pub struct FileMap {
     /// Locations of lines beginnings in the source code
     lines: RefCell<~[BytePos]>,
     /// Locations of multi-byte characters in the source code
-    multibyte_chars: @mut ~[MultiByteChar],
+    multibyte_chars: RefCell<~[MultiByteChar]>,
 }
 
 impl FileMap {
@@ -258,7 +258,8 @@ impl FileMap {
             pos: pos,
             bytes: bytes,
         };
-        self.multibyte_chars.push(mbc);
+        let mut multibyte_chars = self.multibyte_chars.borrow_mut();
+        multibyte_chars.get().push(mbc);
     }
 
     pub fn is_real_file(&self) -> bool {
@@ -300,7 +301,7 @@ impl CodeMap {
             name: filename, substr: substr, src: src,
             start_pos: Pos::from_uint(start_pos),
             lines: RefCell::new(~[]),
-            multibyte_chars: @mut ~[],
+            multibyte_chars: RefCell::new(~[]),
         };
 
         files.push(filemap);
@@ -471,7 +472,8 @@ impl CodeMap {
         // The number of extra bytes due to multibyte chars in the FileMap
         let mut total_extra_bytes = 0;
 
-        for mbc in map.multibyte_chars.iter() {
+        let multibyte_chars = map.multibyte_chars.borrow();
+        for mbc in multibyte_chars.get().iter() {
             debug!("codemap: {:?}-byte char at {:?}", mbc.bytes, mbc.pos);
             if mbc.pos < bpos {
                 total_extra_bytes += mbc.bytes;
