@@ -189,7 +189,15 @@ rust_precise_time_ns(uint64_t *ns) {
     *ns = (uint64_t)((ticks.QuadPart * ns_per_s) / ticks_per_s.QuadPart);
 #else
     struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
+#if defined(CLOCK_MONOTONIC_RAW)
+    const clockid_t id = CLOCK_MONOTONIC_RAW;
+#elif defined(CLOCK_MONOTONIC_PRECISE)
+    const clockid_t id = CLOCK_MONOTONIC_PRECISE;
+#else
+    const clockid_t id = CLOCK_MONOTONIC;
+#endif
+
+    clock_gettime(id, &ts);
     *ns = (uint64_t)(ts.tv_sec * ns_per_s + ts.tv_nsec);
 #endif
 }
