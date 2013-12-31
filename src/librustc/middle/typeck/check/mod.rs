@@ -1330,12 +1330,20 @@ pub fn do_autoderef(fcx: @FnCtxt, sp: Span, t: ty::t) -> (ty::t, uint) {
 
         // Some extra checks to detect weird cycles and so forth:
         match *sty {
-            ty::ty_box(inner) | ty::ty_uniq(inner) |
-            ty::ty_rptr(_, inner) => {
+            ty::ty_box(inner) => {
                 match ty::get(t1).sty {
                     ty::ty_infer(ty::TyVar(v1)) => {
                         ty::occurs_check(fcx.ccx.tcx, sp, v1,
                                          ty::mk_box(fcx.ccx.tcx, inner));
+                    }
+                    _ => ()
+                }
+            }
+            ty::ty_uniq(inner) | ty::ty_rptr(_, inner) => {
+                match ty::get(t1).sty {
+                    ty::ty_infer(ty::TyVar(v1)) => {
+                        ty::occurs_check(fcx.ccx.tcx, sp, v1,
+                                         ty::mk_box(fcx.ccx.tcx, inner.ty));
                     }
                     _ => ()
                 }
@@ -2734,7 +2742,8 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
         let exp_inner = unpack_expected(fcx, expected, |sty| {
             match unop {
               ast::UnBox(_) | ast::UnUniq => match *sty {
-                ty::ty_box(ref mt) | ty::ty_uniq(ref mt) => Some(mt.ty),
+                ty::ty_box(ty) => Some(ty),
+                ty::ty_uniq(ref mt) => Some(mt.ty),
                 _ => None
               },
               ast::UnNot | ast::UnNeg => expected,
@@ -2746,9 +2755,8 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
         if !ty::type_is_error(oprnd_t) &&
               !ty::type_is_bot(oprnd_t) {
             match unop {
-                ast::UnBox(mutbl) => {
-                    oprnd_t = ty::mk_box(tcx,
-                                         ty::mt {ty: oprnd_t, mutbl: mutbl});
+                ast::UnBox(_) => {
+                    oprnd_t = ty::mk_box(tcx, oprnd_t)
                 }
                 ast::UnUniq => {
                     oprnd_t = ty::mk_uniq(tcx,

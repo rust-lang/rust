@@ -55,7 +55,6 @@ pub struct Maps {
     root_map: middle::borrowck::root_map,
     method_map: middle::typeck::method_map,
     vtable_map: middle::typeck::vtable_map,
-    write_guard_map: middle::borrowck::write_guard_map,
     capture_map: middle::moves::CaptureMap,
 }
 

@@ -95,7 +95,7 @@ pub fn path_elt_to_str(pe: path_elt, itr: @ident_interner) -> ~str {
 fn pretty_ty(ty: &Ty, itr: @ident_interner, out: &mut ~str) {
     let (prefix, subty) = match ty.node {
         ty_uniq(ty) => ("$UP$", &*ty),
-        ty_box(mt { ty, .. }) => ("$SP$", &*ty),
+        ty_box(ty) => ("$SP$", &*ty),
         ty_ptr(mt { ty, mutbl }) => (if mutbl == MutMutable {"$RPmut$"} else {"$RP$"},
                                      &*ty),
         ty_rptr(_, mt { ty, mutbl }) => (if mutbl == MutMutable {"$BPmut$"} else {"$BP$"},

@@ -2142,8 +2142,8 @@ fn type_metadata(cx: &CrateContext,
         ty::ty_enum(def_id, _) => {
             prepare_enum_metadata(cx, t, def_id, usage_site_span).finalize(cx)
         },
-        ty::ty_box(ref mt) => {
-            create_pointer_to_box_metadata(cx, t, mt.ty)
+        ty::ty_box(typ) => {
+            create_pointer_to_box_metadata(cx, t, typ)
         },
         ty::ty_evec(ref mt, ref vstore) => {
             match *vstore {

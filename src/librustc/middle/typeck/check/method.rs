@@ -1092,9 +1092,9 @@ impl<'a> LookupContext<'a> {
                                      substs, RegionTraitStore(r), mt.mutbl,
                                      ty::EmptyBuiltinBounds())
                     }
-                    ty::ty_box(mt) => { // must be sty_box
+                    ty::ty_box(_) => { // must be sty_box
                         ty::mk_trait(self.tcx(), trait_def_id,
-                                     substs, BoxTraitStore, mt.mutbl,
+                                     substs, BoxTraitStore, ast::MutImmutable,
                                      ty::EmptyBuiltinBounds())
                     }
                     ty::ty_uniq(mt) => { // must be sty_uniq
@@ -1224,9 +1224,8 @@ impl<'a> LookupContext<'a> {
             sty_box(m) => {
                 debug!("(is relevant?) explicit self is a box");
                 match ty::get(rcvr_ty).sty {
-                    ty::ty_box(mt) => {
-                        mutability_matches(mt.mutbl, m) &&
-                        rcvr_matches_ty(self.fcx, mt.ty, candidate)
+                    ty::ty_box(typ) => {
+                        rcvr_matches_ty(self.fcx, typ, candidate)
                     }
 
                     ty::ty_trait(self_did, _, BoxTraitStore, self_m, _) => {

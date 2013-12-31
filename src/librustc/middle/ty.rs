@@ -637,7 +637,7 @@ pub enum sty {
     ty_float(ast::float_ty),
     ty_estr(vstore),
     ty_enum(DefId, substs),
-    ty_box(mt),
+    ty_box(t),
     ty_uniq(mt),
     ty_evec(mt, vstore),
     ty_ptr(mt),
@@ -1102,8 +1102,9 @@ pub fn mk_t(cx: ctxt, st: sty) -> t {
               _ => {}
           }
       }
-      &ty_box(ref m) | &ty_uniq(ref m) | &ty_evec(ref m, _) |
-      &ty_ptr(ref m) | &ty_unboxed_vec(ref m) => {
+      &ty_box(ref tt) => flags |= get(*tt).flags,
+      &ty_uniq(ref m) | &ty_evec(ref m, _) | &ty_ptr(ref m) |
+      &ty_unboxed_vec(ref m) => {
         flags |= get(m.ty).flags;
       }
       &ty_rptr(r, ref m) => {
@@ -1242,10 +1243,10 @@ pub fn mk_enum(cx: ctxt, did: ast::DefId, substs: substs) -> t {
     mk_t(cx, ty_enum(did, substs))
 }
 
-pub fn mk_box(cx: ctxt, tm: mt) -> t { mk_t(cx, ty_box(tm)) }
+pub fn mk_box(cx: ctxt, ty: t) -> t { mk_t(cx, ty_box(ty)) }
 
 pub fn mk_imm_box(cx: ctxt, ty: t) -> t {
-    mk_box(cx, mt {ty: ty, mutbl: ast::MutImmutable})
+    mk_box(cx, ty)
 }
 
 pub fn mk_uniq(cx: ctxt, tm: mt) -> t { mk_t(cx, ty_uniq(tm)) }
@@ -1368,8 +1369,11 @@ pub fn maybe_walk_ty(ty: t, f: |t| -> bool) {
       ty_estr(_) | ty_type | ty_opaque_box | ty_self(_) |
       ty_opaque_closure_ptr(_) | ty_infer(_) | ty_param(_) | ty_err => {
       }
-      ty_box(ref tm) | ty_evec(ref tm, _) | ty_unboxed_vec(ref tm) |
-      ty_ptr(ref tm) | ty_rptr(_, ref tm) | ty_uniq(ref tm) => {
+      ty_box(ref ty) => {
+        maybe_walk_ty(*ty, f);
+      }
+      ty_evec(ref tm, _) | ty_unboxed_vec(ref tm) | ty_ptr(ref tm) |
+      ty_rptr(_, ref tm) | ty_uniq(ref tm) => {
         maybe_walk_ty(tm.ty, f);
       }
       ty_enum(_, ref substs) | ty_struct(_, ref substs) |
@@ -2035,8 +2039,8 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 closure_contents(cx, c)
             }
 
-            ty_box(mt) => {
-                tc_mt(cx, mt, cache).managed_pointer()
+            ty_box(typ) => {
+                tc_ty(cx, typ, cache).managed_pointer()
             }
 
             ty_trait(_, _, store, mutbl, bounds) => {
@@ -2334,7 +2338,9 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
             ty_unboxed_vec(_) => {
                 false
             }
-            ty_box(ref mt) |
+            ty_box(typ) => {
+                type_requires(cx, seen, r_ty, typ)
+            }
             ty_uniq(ref mt) |
             ty_rptr(_, ref mt) => {
                 type_requires(cx, seen, r_ty, mt.ty)
@@ -2610,7 +2616,14 @@ pub fn deref(cx: ctxt, t: t, explicit: bool) -> Option<mt> {
 
 pub fn deref_sty(cx: ctxt, sty: &sty, explicit: bool) -> Option<mt> {
     match *sty {
-      ty_rptr(_, mt) | ty_box(mt) | ty_uniq(mt) => {
+      ty_box(typ) => {
+        Some(mt {
+          ty: typ,
+          mutbl: ast::MutImmutable,
+        })
+      }
+
+      ty_rptr(_, mt) | ty_uniq(mt) => {
         Some(mt)
       }
 
@@ -4818,9 +4831,8 @@ pub fn hash_crate_independent(tcx: ctxt, t: t, local_hash: @str) -> u64 {
                 hash.input([8]);
                 did(&mut hash, d);
             }
-            ty_box(m) => {
+            ty_box(_) => {
                 hash.input([9]);
-                mt(&mut hash, m);
             }
             ty_uniq(m) => {
                 hash.input([10]);
