@@ -2628,15 +2628,12 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
           }
           ast::ExprVec(ref args, mutbl) => {
             let tt = ast_expr_vstore_to_vstore(fcx, ev, vst);
-            let mutability;
             let mut any_error = false;
             let mut any_bot = false;
-            match vst {
-                ast::ExprVstoreMutBox | ast::ExprVstoreMutSlice => {
-                    mutability = ast::MutMutable
-                }
-                _ => mutability = mutbl
-            }
+            let mutability = match vst {
+                ast::ExprVstoreMutSlice => ast::MutMutable,
+                _ => mutbl,
+            };
             let t: ty::t = fcx.infcx().next_ty_var();
             for e in args.iter() {
                 check_expr_has_type(fcx, *e, t);
@@ -2650,11 +2647,9 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
             }
             if any_error {
                 ty::mk_err()
-            }
-            else if any_bot {
+            } else if any_bot {
                 ty::mk_bot()
-            }
-            else {
+            } else {
                 ty::mk_evec(tcx, ty::mt {ty: t, mutbl: mutability}, tt)
             }
           }
@@ -2663,10 +2658,8 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
             let _ = ty::eval_repeat_count(fcx, count_expr);
             let tt = ast_expr_vstore_to_vstore(fcx, ev, vst);
             let mutability = match vst {
-                ast::ExprVstoreMutBox | ast::ExprVstoreMutSlice => {
-                    ast::MutMutable
-                }
-                _ => mutbl
+                ast::ExprVstoreMutSlice => ast::MutMutable,
+                _ => mutbl,
             };
             let t: ty::t = fcx.infcx().next_ty_var();
             check_expr_has_type(fcx, element, t);
@@ -2741,7 +2734,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
       ast::ExprUnary(callee_id, unop, oprnd) => {
         let exp_inner = unpack_expected(fcx, expected, |sty| {
             match unop {
-              ast::UnBox(_) | ast::UnUniq => match *sty {
+              ast::UnBox | ast::UnUniq => match *sty {
                 ty::ty_box(ty) => Some(ty),
                 ty::ty_uniq(ref mt) => Some(mt.ty),
                 _ => None
@@ -2755,7 +2748,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
         if !ty::type_is_error(oprnd_t) &&
               !ty::type_is_bot(oprnd_t) {
             match unop {
-                ast::UnBox(_) => {
+                ast::UnBox => {
                     oprnd_t = ty::mk_box(tcx, oprnd_t)
                 }
                 ast::UnUniq => {
@@ -3920,7 +3913,7 @@ pub fn ast_expr_vstore_to_vstore(fcx: @FnCtxt,
                               -> ty::vstore {
     match v {
         ast::ExprVstoreUniq => ty::vstore_uniq,
-        ast::ExprVstoreBox | ast::ExprVstoreMutBox => ty::vstore_box,
+        ast::ExprVstoreBox => ty::vstore_box,
         ast::ExprVstoreSlice | ast::ExprVstoreMutSlice => {
             let r = fcx.infcx().next_region_var(infer::AddrOfSlice(e.span));
             ty::vstore_slice(r)

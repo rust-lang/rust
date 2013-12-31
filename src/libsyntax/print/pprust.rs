@@ -422,7 +422,7 @@ pub fn print_type(s: &mut ps, ty: &ast::Ty) {
     match ty.node {
       ast::ty_nil => word(&mut s.s, "()"),
       ast::ty_bot => word(&mut s.s, "!"),
-      ast::ty_box(ref mt) => { word(&mut s.s, "@"); print_mt(s, mt); }
+      ast::ty_box(ty) => { word(&mut s.s, "@"); print_type(s, ty); }
       ast::ty_uniq(ty) => { word(&mut s.s, "~"); print_type(s, ty); }
       ast::ty_vec(ty) => {
         word(&mut s.s, "[");
@@ -1083,10 +1083,6 @@ pub fn print_expr_vstore(s: &mut ps, t: ast::ExprVstore) {
     match t {
       ast::ExprVstoreUniq => word(&mut s.s, "~"),
       ast::ExprVstoreBox => word(&mut s.s, "@"),
-      ast::ExprVstoreMutBox => {
-        word(&mut s.s, "@");
-        word(&mut s.s, "mut");
-      }
       ast::ExprVstoreSlice => word(&mut s.s, "&"),
       ast::ExprVstoreMutSlice => {
         word(&mut s.s, "&");

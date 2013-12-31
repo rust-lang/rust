@@ -415,7 +415,6 @@ pub enum Vstore {
 pub enum ExprVstore {
     ExprVstoreUniq,                 // ~[1,2,3,4]
     ExprVstoreBox,                  // @[1,2,3,4]
-    ExprVstoreMutBox,               // @mut [1,2,3,4]
     ExprVstoreSlice,                // &[1,2,3,4]
     ExprVstoreMutSlice,             // &mut [1,2,3,4]
 }
@@ -444,7 +443,7 @@ pub enum BinOp {
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum UnOp {
-    UnBox(Mutability),
+    UnBox,
     UnUniq,
     UnDeref,
     UnNot,
@@ -875,7 +874,7 @@ pub struct TyBareFn {
 pub enum ty_ {
     ty_nil,
     ty_bot, /* bottom type */
-    ty_box(mt),
+    ty_box(P<Ty>),
     ty_uniq(P<Ty>),
     ty_vec(P<Ty>),
     ty_fixed_length_vec(P<Ty>, @Expr),

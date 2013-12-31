@@ -137,13 +137,13 @@ pub fn is_shift_binop(b: BinOp) -> bool {
     }
 }
 
-pub fn unop_to_str(op: UnOp) -> ~str {
+pub fn unop_to_str(op: UnOp) -> &'static str {
     match op {
-      UnBox(mt) => if mt == MutMutable { ~"@mut " } else { ~"@" },
-      UnUniq => ~"~",
-      UnDeref => ~"*",
-      UnNot => ~"!",
-      UnNeg => ~"-"
+      UnBox => "@",
+      UnUniq => "~",
+      UnDeref => "*",
+      UnNot => "!",
+      UnNeg => "-",
     }
 }
 

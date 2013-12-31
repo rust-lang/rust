@@ -1068,7 +1068,7 @@ fn check_unnecessary_allocation(cx: &Context, e: &ast::Expr) {
             }
         }
         ast::ExprUnary(_, ast::UnUniq, _) |
-        ast::ExprUnary(_, ast::UnBox(..), _) => BoxAllocation,
+        ast::ExprUnary(_, ast::UnBox, _) => BoxAllocation,
 
         _ => return
     };

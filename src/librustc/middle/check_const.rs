@@ -116,7 +116,7 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
     if is_const {
         match e.node {
           ExprUnary(_, UnDeref, _) => { }
-          ExprUnary(_, UnBox(_), _) | ExprUnary(_, UnUniq, _) => {
+          ExprUnary(_, UnBox, _) | ExprUnary(_, UnUniq, _) => {
             sess.span_err(e.span,
                           "cannot do allocations in constant expressions");
             return;
@@ -197,8 +197,7 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
                      immutable values");
           },
           ExprVstore(_, ExprVstoreUniq) |
-          ExprVstore(_, ExprVstoreBox) |
-          ExprVstore(_, ExprVstoreMutBox) => {
+          ExprVstore(_, ExprVstoreBox) => {
               sess.span_err(e.span, "cannot allocate vectors in constant expressions")
           },
 
