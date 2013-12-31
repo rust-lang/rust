@@ -8,14 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(managed_boxes)];
-
 fn main() {
     struct A {
         a: int,
         w: B,
-        x: @B,
-        z: @mut B
     }
     struct B {
         a: int
@@ -23,8 +19,6 @@ fn main() {
     let mut p = A {
         a: 1,
         w: B {a: 1},
-        x: @B {a: 1},
-        z: @mut B {a: 1}
     };
 
     // even though `x` is not declared as a mutable field,
@@ -33,9 +27,4 @@ fn main() {
 
     // this is true for an interior field too
     p.w.a = 2;
-
-    // in these cases we pass through a box, so the mut
-    // of the box is dominant
-    p.x.a = 2;     //~ ERROR cannot assign to immutable field
-    p.z.a = 2;
 }
