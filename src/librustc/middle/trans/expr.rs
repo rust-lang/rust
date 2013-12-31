@@ -590,8 +590,7 @@ fn trans_rvalue_datum_unadjusted(bcx: @Block, expr: &ast::Expr) -> DatumBlock {
         ast::ExprPath(_) | ast::ExprSelf => {
             return trans_def_datum_unadjusted(bcx, expr, bcx.def(expr.id));
         }
-        ast::ExprVstore(contents, ast::ExprVstoreBox) |
-        ast::ExprVstore(contents, ast::ExprVstoreMutBox) => {
+        ast::ExprVstore(contents, ast::ExprVstoreBox) => {
             return tvec::trans_uniq_or_managed_vstore(bcx, heap_managed,
                                                       expr, contents);
         }
@@ -1406,9 +1405,8 @@ fn trans_unary_datum(bcx: @Block,
             };
             immediate_rvalue_bcx(bcx, llneg, un_ty)
         }
-        ast::UnBox(_) => {
-            trans_boxed_expr(bcx, un_ty, sub_expr, sub_ty,
-                             heap_managed)
+        ast::UnBox => {
+            trans_boxed_expr(bcx, un_ty, sub_expr, sub_ty, heap_managed)
         }
         ast::UnUniq => {
             let heap  = heap_for_unique(bcx, un_ty);

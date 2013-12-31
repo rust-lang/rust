@@ -239,7 +239,6 @@ impl ConstEvalVisitor {
                     ast::ExprVstoreSlice => self.classify(e),
                     ast::ExprVstoreUniq |
                     ast::ExprVstoreBox |
-                    ast::ExprVstoreMutBox |
                     ast::ExprVstoreMutSlice => non_const
                 }
             }

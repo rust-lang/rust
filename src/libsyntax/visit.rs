@@ -302,10 +302,10 @@ pub fn skip_ty<E, V:Visitor<E>>(_: &mut V, _: &Ty, _: E) {
 
 pub fn walk_ty<E:Clone, V:Visitor<E>>(visitor: &mut V, typ: &Ty, env: E) {
     match typ.node {
-        ty_uniq(ty) | ty_vec(ty) => {
+        ty_uniq(ty) | ty_vec(ty) | ty_box(ty) => {
             visitor.visit_ty(ty, env)
         }
-        ty_box(ref mutable_type) | ty_ptr(ref mutable_type) => {
+        ty_ptr(ref mutable_type) => {
             visitor.visit_ty(mutable_type.ty, env)
         }
         ty_rptr(ref lifetime, ref mutable_type) => {

@@ -3257,7 +3257,6 @@ pub fn expr_kind(tcx: ctxt,
         ast::ExprAddrOf(..) |
         ast::ExprBinary(..) |
         ast::ExprVstore(_, ast::ExprVstoreBox) |
-        ast::ExprVstore(_, ast::ExprVstoreMutBox) |
         ast::ExprVstore(_, ast::ExprVstoreUniq) => {
             RvalueDatumExpr
         }

@@ -29,8 +29,7 @@ use ast::{ExprField, ExprFnBlock, ExprIf, ExprIndex};
 use ast::{ExprLit, ExprLogLevel, ExprLoop, ExprMac};
 use ast::{ExprMethodCall, ExprParen, ExprPath, ExprProc, ExprRepeat};
 use ast::{ExprRet, ExprSelf, ExprStruct, ExprTup, ExprUnary};
-use ast::{ExprVec, ExprVstore, ExprVstoreMutBox};
-use ast::{ExprVstoreSlice, ExprVstoreBox};
+use ast::{ExprVec, ExprVstore, ExprVstoreSlice, ExprVstoreBox};
 use ast::{ExprVstoreMutSlice, ExprWhile, ExprForLoop, extern_fn, Field, fn_decl};
 use ast::{ExprVstoreUniq, Onceness, Once, Many};
 use ast::{foreign_item, foreign_item_static, foreign_item_fn, foreign_mod};
@@ -1300,7 +1299,7 @@ impl Parser {
         if sigil == OwnedSigil {
             ty_uniq(self.parse_ty(false))
         } else {
-            ty_box(self.parse_mt())
+            ty_box(self.parse_ty(false))
         }
     }
 
@@ -2300,17 +2299,14 @@ impl Parser {
           }
           token::AT => {
             self.bump();
-            let m = self.parse_mutability();
             let e = self.parse_prefix_expr();
             hi = e.span.hi;
             // HACK: turn @[...] into a @-evec
             ex = match e.node {
-              ExprVec(..) | ExprRepeat(..) if m == MutMutable =>
-                ExprVstore(e, ExprVstoreMutBox),
               ExprVec(..) |
               ExprLit(@codemap::Spanned { node: lit_str(..), span: _}) |
-              ExprRepeat(..) if m == MutImmutable => ExprVstore(e, ExprVstoreBox),
-              _ => self.mk_unary(UnBox(m), e)
+              ExprRepeat(..) => ExprVstore(e, ExprVstoreBox),
+              _ => self.mk_unary(UnBox, e)
             };
           }
           token::TILDE => {

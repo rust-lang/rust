@@ -401,8 +401,8 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
     let typ = match ast_ty.node {
       ast::ty_nil => ty::mk_nil(),
       ast::ty_bot => ty::mk_bot(),
-      ast::ty_box(ref mt) => {
-        let mt = ast::mt { ty: mt.ty, mutbl: ast::MutImmutable };
+      ast::ty_box(ty) => {
+        let mt = ast::mt { ty: ty, mutbl: ast::MutImmutable };
         mk_pointer(this, rscope, &mt, ty::vstore_box,
                    |tmt| ty::mk_box(tcx, tmt.ty))
       }
