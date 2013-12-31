@@ -35,11 +35,13 @@
 #[allow(missing_doc)];
 
 
-use list::{MutList, MutCons, MutNil};
+use list::{List, Cons, Nil};
+use list;
 
 use std::at_vec;
 use std::cast::{transmute, transmute_mut, transmute_mut_region};
 use std::cast;
+use std::cell::{Cell, RefCell};
 use std::num;
 use std::ptr;
 use std::mem;
@@ -50,10 +52,11 @@ use std::unstable::intrinsics::{TyDesc, get_tydesc};
 // The way arena uses arrays is really deeply awful. The arrays are
 // allocated, and have capacities reserved, but the fill for the array
 // will always stay at 0.
+#[deriving(Clone)]
 struct Chunk {
-    data: @[u8],
-    fill: uint,
-    is_pod: bool,
+    data: RefCell<@[u8]>,
+    fill: Cell<uint>,
+    is_pod: Cell<bool>,
 }
 
 #[no_freeze]
@@ -63,7 +66,7 @@ pub struct Arena {
     // access the head.
     priv head: Chunk,
     priv pod_head: Chunk,
-    priv chunks: @mut MutList<Chunk>,
+    priv chunks: RefCell<@List<Chunk>>,
 }
 
 impl Arena {
@@ -75,7 +78,7 @@ impl Arena {
         Arena {
             head: chunk(initial_size, false),
             pod_head: chunk(initial_size, true),
-            chunks: @mut MutNil,
+            chunks: RefCell::new(@Nil),
         }
     }
 }
@@ -84,9 +87,9 @@ fn chunk(size: uint, is_pod: bool) -> Chunk {
     let mut v: @[u8] = @[];
     unsafe { at_vec::raw::reserve(&mut v, size); }
     Chunk {
-        data: unsafe { cast::transmute(v) },
-        fill: 0u,
-        is_pod: is_pod,
+        data: RefCell::new(unsafe { cast::transmute(v) }),
+        fill: Cell::new(0u),
+        is_pod: Cell::new(is_pod),
     }
 }
 
@@ -95,8 +98,9 @@ impl Drop for Arena {
     fn drop(&mut self) {
         unsafe {
             destroy_chunk(&self.head);
-            self.chunks.each(|chunk| {
-                if !chunk.is_pod {
+
+            list::each(self.chunks.get(), |chunk| {
+                if !chunk.is_pod.get() {
                     destroy_chunk(chunk);
                 }
                 true
@@ -114,8 +118,11 @@ fn round_up_to(base: uint, align: uint) -> uint {
 // in it.
 unsafe fn destroy_chunk(chunk: &Chunk) {
     let mut idx = 0;
-    let buf = chunk.data.as_ptr();
-    let fill = chunk.fill;
+    let buf = {
+        let data = chunk.data.borrow();
+        data.get().as_ptr()
+    };
+    let fill = chunk.fill.get();
 
     while idx < fill {
         let tydesc_data: *uint = transmute(ptr::offset(buf, idx as int));
@@ -155,9 +162,9 @@ impl Arena {
     // Functions for the POD part of the arena
     fn alloc_pod_grow(&mut self, n_bytes: uint, align: uint) -> *u8 {
         // Allocate a new chunk.
-        let chunk_size = at_vec::capacity(self.pod_head.data);
+        let chunk_size = at_vec::capacity(self.pod_head.data.get());
         let new_min_chunk_size = num::max(n_bytes, chunk_size);
-        self.chunks = @mut MutCons(self.pod_head, self.chunks);
+        self.chunks.set(@Cons(self.pod_head.clone(), self.chunks.get()));
         self.pod_head =
             chunk(uint::next_power_of_two(new_min_chunk_size + 1u), true);
 
@@ -168,17 +175,17 @@ impl Arena {
     fn alloc_pod_inner(&mut self, n_bytes: uint, align: uint) -> *u8 {
         unsafe {
             let this = transmute_mut_region(self);
-            let start = round_up_to(this.pod_head.fill, align);
+            let start = round_up_to(this.pod_head.fill.get(), align);
             let end = start + n_bytes;
-            if end > at_vec::capacity(this.pod_head.data) {
+            if end > at_vec::capacity(this.pod_head.data.get()) {
                 return this.alloc_pod_grow(n_bytes, align);
             }
-            this.pod_head.fill = end;
+            this.pod_head.fill.set(end);
 
             //debug!("idx = {}, size = {}, align = {}, fill = {}",
-            //       start, n_bytes, align, head.fill);
+            //       start, n_bytes, align, head.fill.get());
 
-            ptr::offset(this.pod_head.data.as_ptr(), start as int)
+            ptr::offset(this.pod_head.data.get().as_ptr(), start as int)
         }
     }
 
@@ -197,9 +204,9 @@ impl Arena {
     fn alloc_nonpod_grow(&mut self, n_bytes: uint, align: uint)
                          -> (*u8, *u8) {
         // Allocate a new chunk.
-        let chunk_size = at_vec::capacity(self.head.data);
+        let chunk_size = at_vec::capacity(self.head.data.get());
         let new_min_chunk_size = num::max(n_bytes, chunk_size);
-        self.chunks = @mut MutCons(self.head, self.chunks);
+        self.chunks.set(@Cons(self.head.clone(), self.chunks.get()));
         self.head =
             chunk(uint::next_power_of_two(new_min_chunk_size + 1u), false);
 
@@ -218,23 +225,23 @@ impl Arena {
             {
                 let head = transmute_mut_region(&mut self.head);
 
-                tydesc_start = head.fill;
-                after_tydesc = head.fill + mem::size_of::<*TyDesc>();
+                tydesc_start = head.fill.get();
+                after_tydesc = head.fill.get() + mem::size_of::<*TyDesc>();
                 start = round_up_to(after_tydesc, align);
                 end = start + n_bytes;
             }
 
-            if end > at_vec::capacity(self.head.data) {
+            if end > at_vec::capacity(self.head.data.get()) {
                 return self.alloc_nonpod_grow(n_bytes, align);
             }
 
             let head = transmute_mut_region(&mut self.head);
-            head.fill = round_up_to(end, mem::pref_align_of::<*TyDesc>());
+            head.fill.set(round_up_to(end, mem::pref_align_of::<*TyDesc>()));
 
             //debug!("idx = {}, size = {}, align = {}, fill = {}",
             //       start, n_bytes, align, head.fill);
 
-            let buf = self.head.data.as_ptr();
+            let buf = self.head.data.get().as_ptr();
             return (ptr::offset(buf, tydesc_start as int), ptr::offset(buf, start as int));
         }
     }
