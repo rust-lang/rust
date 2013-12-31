@@ -1,10 +1,156 @@
-Version 0.9 (XXX 2013)
+Version 0.9 (January 2014)
 --------------------------
 
-   * ~XXX changes, numerous bugfixes
+   * ~1600 changes, numerous bugfixes
+
+   * Language
+      * The `float` type has been removed. Use `f32` or `f64` instead.
+      * A new facility for enabling experimental features (feature gating) has
+        been added, using the crate-level `#[feature(foo)]` attribute.
+      * Managed boxes (@) are now behind a feature gate
+        (`#[feature(managed_boxes)]`) in preperation for future removal. Use the
+        standard library's `Gc` or `Rc` types instead.
+      * `@mut` has been removed. Use `std::cell::{Cell, RefCell}` instead.
+      * Jumping back to the top of a loop is now done with `continue` instead of
+        `loop`.
+      * Strings can no longer be mutated through index assignment.
+      * Raw strings can be created via the basic `r"foo"` syntax or with matched
+        hash delimiters, as in `r###"foo"###`.
+      * `~fn` is now written `proc (args) -> retval { ... }` and may only be
+        called once.
+      * The `&fn` type is now written `|args| -> ret` to match the literal form.
+      * `@fn`s have been removed.
+      * `do` only works with procs in order to make it obvious what the cost
+        of `do` is.
+      * The `#[link(...)]` attribute has been replaced with
+        `#[crate_id = "name#vers"]`.
+      * Empty `impl`s must be terminated with empty braces and may not be
+        terminated with a semicolon.
+      * Keywords are no longer allowed as lifetime names; the `self` lifetime
+        no longer has any special meaning.
+      * The old `fmt!` string formatting macro has been removed.
+      * `printf!` and `printfln!` (old-style formatting) removed in favor of
+        `print!` and `println!`.
+      * `mut` works in patterns now, as in `let (mut x, y) = (1, 2);`.
+      * New reserved keywords: `alignof`, `offsetof`, `sizeof`.
+      * Macros can have attributes.
+      * Macros can expand to items with attributes.
+      * Macros can expand to multiple items.
+      * The `asm!` macro is feature-gated (`#[feature(asm)]`).
+      * Comments may be nested.
+      * Values automatically coerce to trait objects they implement, without
+        an explicit `as`.
+      * Enum discriminants are no longer an entire word but as small as needed to
+        contain all the variants. The `repr` attribute can be used to override
+        the discriminant size, as in `#[repr(int)]` for integer-sized, and
+        `#[repr(C)]` to match C enums.
+      * Non-string literals are not allowed in attributes (they never worked).
+      * The FFI now supports variadic functions.
+      * Octal numeric literals, as in `0o7777`.
+      * The `concat!` syntax extension performs compile-time string concatenation.
+      * The `#[fixed_stack_segment]` and `#[rust_stack]` attributes have been
+        removed as Rust no longer uses segmented stacks.
+      * Non-ascii identifiers are feature-gated (`#[feature(non_ascii_idents)]`).
+      * Ignoring all fields of an enum variant or tuple-struct is done with `..`,
+        not `*`; ignoring remaining fields of a struct is also done with `..`,
+        not `_`; ignoring a slice of a vector is done with `..`, not `.._`.
+      * `rustc` supports the "win64" calling convention via `extern "win64"`.
+      * `rustc` supports the "system" calling convention, which defaults to the
+        preferred convention for the target platform, "stdcall" on 32-bit Windows,
+        "C" elsewhere.
+      * The `type_overflow` lint (default: warn) checks literals for overflow.
+      * The `unsafe_block` lint (default: allow) checks for usage of `unsafe`.
+      * The `attribute_usage` lint (default: warn) warns about unknown
+        attributes.
+      * The `unknown_features` lint (default: warn) warns about unknown
+        feature gates.
+      * The `dead_code` lint (default: warn) checks for dead code.
+      * Rust libraries can be linked statically to one another
+      * `#[link_args]` is behind the `link_args` feature gate.
+      * Native libraries are now linked with `#[link(name = "foo")]`
+      * Native libraries can be statically linked to a rust crate
+        (`#[link(name = "foo", kind = "static")]`).
+      * Native OS X frameworks are now officially supported
+        (`#[link(name = "foo", kind = "framework")]`).
+      * The `#[thread_local]` attribute creates thread-local (not task-local)
+        variables. Currently behind the `thread_local` feature gate.
+      * The `return` keyword may be used in closures.
+      * Types that can be copied via a memcpy implement the `Pod` kind.
+
+   * Libraries
+      * std: The `option` and `result` API's have been overhauled to make them
+        simpler, more consistent, and more composable.
+      * std: The entire `std::io` module has been replaced with one that is
+        more comprehensive and that properly interfaces with the underlying
+        scheduler. File, TCP, UDP, Unix sockets, pipes, and timers are all
+        implemented.
+      * std: `io::util` contains a number of useful implementations of
+        `Reader` and `Writer`, including `NullReader`, `NullWriter`,
+        `ZeroReader`, `TeeReader`.
+      * std: The reference counted pointer type `extra::rc` moved into std.
+      * std: The `Gc` type in the `gc` module will replace `@` (it is currently
+        just a wrapper around it).
+      * std: `fmt::Default` can be implemented for any type to provide default
+        formatting to the `format!` macro, as in `format!("{}", myfoo)`.
+      * std: The `rand` API continues to be tweaked.
+      * std: Functions dealing with type size and alignment have moved from the
+        `sys` module to the `mem` module.
+      * std: The `path` module was written and API changed.
+      * std: `str::from_utf8` has been changed to cast instead of allocate.
+      * std: `starts_with` and `ends_with` methods added to vectors via the
+        `ImmutableEqVector` trait, which is in the prelude.
+      * std: Vectors can be indexed with the `get_opt` method, which returns `None`
+        if the index is out of bounds.
+      * std: Task failure no longer propagates between tasks, as the model was
+        complex, expensive, and incompatible with thread-based tasks.
+      * std: The `Any` type can be used for dynamic typing.
+      * std: `~Any` can be passed to the `fail!` macro and retrieved via
+        `task::try`.
+      * std: Methods that produce iterators generally do not have an `_iter`
+        suffix now.
+      * std: `cell::Cell` and `cell::RefCell` can be used to introduce mutability
+        roots (mutable fields, etc.). Use instead of e.g. `@mut`.
+      * std: `util::ignore` renamed to `prelude::drop`.
+      * std: Slices have `sort` and `sort_by` methods via the `MutableVector`
+        trait.
+      * std: `vec::raw` has seen a lot of cleanup and API changes.
+      * std: The standard library no longer includes any C++ code, and very
+        minimal C, eliminating the dependency on libstdc++.
+      * std: Runtime scheduling and I/O functionality has been factored out into
+        extensible interfaces and is now implemented by two different crates:
+        libnative, for native threading and I/O; and libgreen, for green threading
+        and I/O. This paves the way for using the standard library in more limited
+        embeded environments.
+      * std: The `comm` module has been rewritten to be much faster, have a
+        simpler, more consistent API, and to work for both native and green
+        threading.
+      * std: All libuv dependencies have been moved into the rustuv crate.
+      * native: New implementations of runtime scheduling on top of OS threads.
+      * native: New native implementations of TCP, UDP, file I/O, process spawning,
+        and other I/O.
+      * green: The green thread scheduler and message passing types are almost
+        entirely lock-free.
+      * extra: The `flatpipes` module had bitrotted and was removed.
+      * extra: All crypto functions have been removed and Rust now has a policy of
+        not reimplementing crypto in the standard library. In the future crypto
+        will be provided by external crates with bindings to established libraries.
+      * extra: `c_vec` has been modernized.
+      * extra: The `sort` module has been removed. Use the `sort` method on
+        mutable slices.
 
    * Tooling
-      * The `rust` and `rusti` commands have been removed, due to lack of maintenance.
+      * The `rust` and `rusti` commands have been removed, due to lack of
+        maintenance.
+      * `rustdoc` was completely rewritten.
+      * `rustdoc` can test code examples in documentation.
+      * `rustpkg` can test packages with the argument, 'test'.
+      * `rustpkg` supports arbitrary dependencies, including C libraries.
+      * `rustc`'s support for generating debug info is improved again.
+      * `rustc` has better error reporting for unbalanced delimiters.
+      * `rustc`'s JIT support was removed due to bitrot.
+      * Executables and static libraries can be built with LTO (-Z lto)
+      * `rustc` adds a `--dep-info` flag for communicating dependencies to
+        build tools.
 
 Version 0.8 (September 2013)
 --------------------------
