@@ -53,6 +53,8 @@ Some examples of obvious things you might want to do
     # let _g = ::std::io::ignore_io_error();
     let mut file = File::create(&Path::new("message.txt"));
     file.write(bytes!("hello, file!\n"));
+    # drop(file);
+    # ::std::io::fs::unlink(&Path::new("message.txt"));
     ```
 
 * Iterate over the lines of a file
