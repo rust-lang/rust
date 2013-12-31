@@ -19,6 +19,7 @@ use parse;
 use parse::token::{get_ident_interner};
 use print::pprust;
 
+use std::cell::RefCell;
 use std::io;
 use std::io::File;
 use std::str;
@@ -113,7 +114,7 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree])
                 substr: codemap::FssNone,
                 src: s,
                 start_pos: codemap::BytePos(0),
-                lines: @mut ~[],
+                lines: RefCell::new(~[]),
                 multibyte_chars: @mut ~[],
             });
             base::MRExpr(cx.expr_str(sp, s))
