@@ -171,7 +171,7 @@ pub fn mk_printer(out: ~io::Writer, linewidth: uint) -> Printer {
         scan_stack_empty: true,
         top: 0,
         bottom: 0,
-        print_stack: @mut ~[],
+        print_stack: ~[],
         pending_indentation: 0
     }
 }
@@ -276,7 +276,7 @@ pub struct Printer {
     top: uint, // index of top of scan_stack
     bottom: uint, // index of bottom of scan_stack
     // stack of blocks-in-progress being flushed by print
-    print_stack: @mut ~[print_stack_elt],
+    print_stack: ~[print_stack_elt],
     // buffered indentation to avoid writing trailing whitespace
     pending_indentation: int,
 }
@@ -461,7 +461,7 @@ impl Printer {
         self.pending_indentation += amount;
     }
     pub fn get_top(&mut self) -> print_stack_elt {
-        let print_stack = &mut *self.print_stack;
+        let print_stack = &mut self.print_stack;
         let n = print_stack.len();
         if n != 0u {
             print_stack[n - 1u]
@@ -506,7 +506,7 @@ impl Printer {
           }
           END => {
             debug!("print END -> pop END");
-            let print_stack = &mut *self.print_stack;
+            let print_stack = &mut self.print_stack;
             assert!((print_stack.len() != 0u));
             print_stack.pop();
           }
