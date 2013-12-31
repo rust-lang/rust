@@ -138,7 +138,6 @@ fn maketest(s: &str, cratename: &str) -> @str {
     let mut prog = ~r"
 #[deny(warnings)];
 #[allow(unused_variable, dead_assignment, unused_mut, attribute_usage, dead_code)];
-#[feature(macro_rules, globs, struct_variant, managed_boxes)];
 ";
     if s.contains("extra") {
         prog.push_str("extern mod extra;\n");
