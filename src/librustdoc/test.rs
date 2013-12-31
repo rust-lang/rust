@@ -67,7 +67,7 @@ pub fn run(input: &str, matches: &getopts::Matches) -> int {
     };
     local_data::set(super::ctxtkey, ctx);
 
-    let v = @mut RustdocVisitor::new();
+    let mut v = RustdocVisitor::new();
     v.visit(&ctx.crate);
     let crate = v.clean();
     let (crate, _) = passes::unindent_comments(crate);
