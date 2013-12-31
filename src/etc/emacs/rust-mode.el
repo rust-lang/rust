@@ -54,7 +54,9 @@
     ;; We don't want to indent out to the open bracket if the
     ;; open bracket ends the line
     (when (not (looking-at "[[:blank:]]*\\(?://.*\\)?$"))
-      (when (looking-at "[[:space:]]") (forward-to-word 1))
+      (when (looking-at "[[:space:]]")
+	(forward-word 1)
+	(backward-word 1))
       (current-column))))
 
 (defun rust-mode-indent-line ()
