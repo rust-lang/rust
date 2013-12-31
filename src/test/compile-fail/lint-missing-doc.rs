@@ -50,6 +50,7 @@ pub trait A {
     /// dox
     fn foo_with_impl() {}
 }
+#[allow(missing_doc)]
 trait B {
     fn foo();
     fn foo_with_impl() {}
