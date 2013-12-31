@@ -115,7 +115,7 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree])
                 src: s,
                 start_pos: codemap::BytePos(0),
                 lines: RefCell::new(~[]),
-                multibyte_chars: @mut ~[],
+                multibyte_chars: RefCell::new(~[]),
             });
             base::MRExpr(cx.expr_str(sp, s))
         }
