@@ -559,7 +559,7 @@ pub struct CowArc<T> { priv x: UnsafeArc<T> }
 /// mutation of the contents if there is only a single reference to
 /// the data. If there are multiple references the data is automatically
 /// cloned and the task modifies the cloned data in place of the shared data.
-impl<T:Clone+Send> CowArc<T> {
+impl<T:Clone+Send+Freeze> CowArc<T> {
     /// Create a copy-on-write atomically reference counted wrapper
     #[inline]
     pub fn new(data: T) -> CowArc<T> {
@@ -583,7 +583,7 @@ impl<T:Clone+Send> CowArc<T> {
     }
 }
 
-impl<T:Clone+Send> Clone for CowArc<T> {
+impl<T:Clone+Send+Freeze> Clone for CowArc<T> {
     /// Duplicate a Copy-on-write Arc. See arc::clone for more details.
     #[inline]
     fn clone(&self) -> CowArc<T> {
