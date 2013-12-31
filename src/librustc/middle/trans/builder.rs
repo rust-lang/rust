@@ -449,6 +449,15 @@ impl Builder {
         }
     }
 
+    pub fn volatile_load(&self, ptr: ValueRef) -> ValueRef {
+        self.count_insn("load.volatile");
+        unsafe {
+            let insn = llvm::LLVMBuildLoad(self.llbuilder, ptr, noname());
+            llvm::LLVMSetVolatile(insn, lib::llvm::True);
+            insn
+        }
+    }
+
     pub fn atomic_load(&self, ptr: ValueRef, order: AtomicOrdering) -> ValueRef {
         self.count_insn("load.atomic");
         unsafe {
@@ -485,6 +494,18 @@ impl Builder {
         self.count_insn("store");
         unsafe {
             llvm::LLVMBuildStore(self.llbuilder, val, ptr);
+        }
+    }
+
+    pub fn volatile_store(&self, val: ValueRef, ptr: ValueRef) {
+        debug!("Store {} -> {}",
+               self.ccx.tn.val_to_str(val),
+               self.ccx.tn.val_to_str(ptr));
+        assert!(is_not_null(self.llbuilder));
+        self.count_insn("store.volatile");
+        unsafe {
+            let insn = llvm::LLVMBuildStore(self.llbuilder, val, ptr);
+            llvm::LLVMSetVolatile(insn, lib::llvm::True);
         }
     }
 

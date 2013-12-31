@@ -4226,6 +4226,11 @@ pub fn check_intrinsic_type(ccx: @CrateCtxt, it: @ast::foreign_item) {
             "bswap32"      => (0, ~[ ty::mk_i32() ], ty::mk_i32()),
             "bswap64"      => (0, ~[ ty::mk_i64() ], ty::mk_i64()),
 
+            "volatile_load" =>
+                (1, ~[ ty::mk_imm_ptr(tcx, param(ccx, 0)) ], param(ccx, 0)),
+            "volatile_store" =>
+                (1, ~[ ty::mk_mut_ptr(tcx, param(ccx, 0)), param(ccx, 0) ], ty::mk_nil()),
+
             "i8_add_with_overflow" | "i8_sub_with_overflow" | "i8_mul_with_overflow" =>
                 (0, ~[ty::mk_i8(), ty::mk_i8()],
                 ty::mk_tup(tcx, ~[ty::mk_i8(), ty::mk_bool()])),
