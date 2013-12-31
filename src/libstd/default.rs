@@ -16,10 +16,6 @@ pub trait Default {
     fn default() -> Self;
 }
 
-impl<T: Default + 'static> Default for @mut T {
-    fn default() -> @mut T { @mut Default::default() }
-}
-
 impl<T: Default + 'static> Default for @T {
     fn default() -> @T { @Default::default() }
 }

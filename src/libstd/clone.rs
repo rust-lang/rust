@@ -58,12 +58,6 @@ impl<T> Clone for @T {
     fn clone(&self) -> @T { *self }
 }
 
-impl<T> Clone for @mut T {
-    /// Return a shallow copy of the managed box.
-    #[inline]
-    fn clone(&self) -> @mut T { *self }
-}
-
 impl<'a, T> Clone for &'a T {
     /// Return a shallow copy of the borrowed pointer.
     #[inline]
@@ -168,14 +162,6 @@ impl<T: Freeze + DeepClone + 'static> DeepClone for @T {
     fn deep_clone(&self) -> @T { @(**self).deep_clone() }
 }
 
-// FIXME: #6525: should also be implemented for `T: Send + DeepClone`
-impl<T: Freeze + DeepClone + 'static> DeepClone for @mut T {
-    /// Return a deep copy of the managed box. The `Freeze` trait is required to prevent performing
-    /// a deep clone of a potentially cyclical type.
-    #[inline]
-    fn deep_clone(&self) -> @mut T { @mut (**self).deep_clone() }
-}
-
 macro_rules! deep_clone_impl(
     ($t:ty) => {
         impl DeepClone for $t {
@@ -236,23 +222,6 @@ fn test_owned_clone() {
 fn test_managed_clone() {
     let a = @5i;
     let b: @int = a.clone();
-    assert_eq!(a, b);
-}
-
-#[test]
-fn test_managed_mut_deep_clone() {
-    let x = @mut 5i;
-    let y: @mut int = x.deep_clone();
-    *x = 20;
-    assert_eq!(*y, 5);
-}
-
-#[test]
-fn test_managed_mut_clone() {
-    let a = @mut 5i;
-    let b: @mut int = a.clone();
-    assert_eq!(a, b);
-    *b = 10;
     assert_eq!(a, b);
 }
 
