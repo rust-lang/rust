@@ -53,13 +53,13 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
                     let extname = &pth.segments[0].identifier;
                     let extnamestr = ident_to_str(extname);
                     // leaving explicit deref here to highlight unbox op:
-                    match (*fld.extsbox).find(&extname.name) {
+                    match fld.extsbox.find(&extname.name) {
                         None => {
                             fld.cx.span_fatal(
                                 pth.span,
                                 format!("macro undefined: '{}'", extnamestr))
                         }
-                        Some(@SE(NormalTT(expandfun, exp_span))) => {
+                        Some(&NormalTT(expandfun, exp_span)) => {
                             fld.cx.bt_push(ExpnInfo {
                                 call_site: e.span,
                                 callee: NameAndSpan {
@@ -221,8 +221,8 @@ pub fn expand_mod_items(module_: &ast::_mod, fld: &mut MacroExpander) -> ast::_m
         item.attrs.rev_iter().fold(~[*item], |items, attr| {
             let mname = attr.name();
 
-            match (*fld.extsbox).find(&intern(mname)) {
-              Some(@SE(ItemDecorator(dec_fn))) => {
+            match fld.extsbox.find(&intern(mname)) {
+              Some(&ItemDecorator(dec_fn)) => {
                   fld.cx.bt_push(ExpnInfo {
                       call_site: attr.span,
                       callee: NameAndSpan {
@@ -249,18 +249,13 @@ pub fn expand_mod_items(module_: &ast::_mod, fld: &mut MacroExpander) -> ast::_m
 // eval $e with a new exts frame:
 macro_rules! with_exts_frame (
     ($extsboxexpr:expr,$macros_escape:expr,$e:expr) =>
-    ({let extsbox = $extsboxexpr;
-      let oldexts = *extsbox;
-      *extsbox = oldexts.push_frame();
-      extsbox.insert(intern(special_block_name),
-                     @BlockInfo(BlockInfo{macros_escape:$macros_escape,pending_renames:@mut ~[]}));
+    ({$extsboxexpr.push_frame();
+      $extsboxexpr.info().macros_escape = $macros_escape;
       let result = $e;
-      *extsbox = oldexts;
+      $extsboxexpr.pop_frame();
       result
      })
 )
-
-static special_block_name : &'static str = " block";
 
 // When we enter a module, record it, for the sake of `module!`
 pub fn expand_item(it: @ast::item, fld: &mut MacroExpander)
@@ -302,11 +297,11 @@ pub fn expand_item_mac(it: @ast::item, fld: &mut MacroExpander)
     let extname = &pth.segments[0].identifier;
     let extnamestr = ident_to_str(extname);
     let fm = fresh_mark();
-    let expanded = match (*fld.extsbox).find(&extname.name) {
+    let expanded = match fld.extsbox.find(&extname.name) {
         None => fld.cx.span_fatal(pth.span,
                                   format!("macro undefined: '{}!'", extnamestr)),
 
-        Some(@SE(NormalTT(expander, span))) => {
+        Some(&NormalTT(expander, span)) => {
             if it.ident.name != parse::token::special_idents::invalid.name {
                 fld.cx.span_fatal(pth.span,
                                   format!("macro {}! expects no ident argument, \
@@ -326,7 +321,7 @@ pub fn expand_item_mac(it: @ast::item, fld: &mut MacroExpander)
             let marked_ctxt = new_mark(fm,ctxt);
             expander.expand(fld.cx, it.span, marked_before, marked_ctxt)
         }
-        Some(@SE(IdentTT(expander, span))) => {
+        Some(&IdentTT(expander, span)) => {
             if it.ident.name == parse::token::special_idents::invalid.name {
                 fld.cx.span_fatal(pth.span,
                                   format!("macro {}! expects an ident argument",
@@ -369,29 +364,12 @@ pub fn expand_item_mac(it: @ast::item, fld: &mut MacroExpander)
         MRDef(ref mdef) => {
             // yikes... no idea how to apply the mark to this. I'm afraid
             // we're going to have to wait-and-see on this one.
-            insert_macro(*fld.extsbox,intern(mdef.name), @SE((*mdef).ext));
+            fld.extsbox.insert(intern(mdef.name), (*mdef).ext);
             SmallVector::zero()
         }
     };
     fld.cx.bt_pop();
     return items;
-}
-
-
-// insert a macro into the innermost frame that doesn't have the
-// macro_escape tag.
-fn insert_macro(exts: SyntaxEnv, name: ast::Name, transformer: @Transformer) {
-    let is_non_escaping_block =
-        |t : &@Transformer| -> bool{
-        match t {
-            &@BlockInfo(BlockInfo {macros_escape:false,..}) => true,
-            &@BlockInfo(BlockInfo {..}) => false,
-            _ => fail!("special identifier {:?} was bound to a non-BlockInfo",
-                        special_block_name)
-        }
-    };
-    exts.insert_into_frame(name,transformer,intern(special_block_name),
-                           is_non_escaping_block)
 }
 
 // expand a stmt
@@ -414,12 +392,12 @@ pub fn expand_stmt(s: &Stmt, fld: &mut MacroExpander) -> SmallVector<@Stmt> {
     }
     let extname = &pth.segments[0].identifier;
     let extnamestr = ident_to_str(extname);
-    let fully_expanded: SmallVector<@Stmt> = match (*fld.extsbox).find(&extname.name) {
+    let fully_expanded: SmallVector<@Stmt> = match fld.extsbox.find(&extname.name) {
         None => {
             fld.cx.span_fatal(pth.span, format!("macro undefined: '{}'", extnamestr))
         }
 
-        Some(@SE(NormalTT(expandfun, exp_span))) => {
+        Some(&NormalTT(expandfun, exp_span)) => {
             fld.cx.bt_push(ExpnInfo {
                 call_site: s.span,
                 callee: NameAndSpan {
@@ -497,8 +475,6 @@ fn expand_non_macro_stmt(s: &Stmt, fld: &mut MacroExpander)
             span: stmt_span
         },
         node_id) => {
-            let block_info = get_block_info(*fld.extsbox);
-            let pending_renames = block_info.pending_renames;
 
             // take it apart:
             let @Local {
@@ -522,12 +498,16 @@ fn expand_non_macro_stmt(s: &Stmt, fld: &mut MacroExpander)
                 let new_name = fresh_name(ident);
                 new_pending_renames.push((*ident,new_name));
             }
-            let mut rename_fld = renames_to_fold(new_pending_renames);
-            // rewrite the pattern using the new names (the old ones
-            // have already been applied):
-            let rewritten_pat = rename_fld.fold_pat(expanded_pat);
+            let rewritten_pat = {
+                let mut rename_fld = renames_to_fold(new_pending_renames);
+                // rewrite the pattern using the new names (the old ones
+                // have already been applied):
+                rename_fld.fold_pat(expanded_pat)
+            };
             // add them to the existing pending renames:
-            for pr in new_pending_renames.iter() {pending_renames.push(*pr)}
+            for pr in new_pending_renames.iter() {
+                fld.extsbox.info().pending_renames.push(*pr)
+            }
             // also, don't forget to expand the init:
             let new_init_opt = init.map(|e| fld.fold_expr(e));
             let rewritten_local =
@@ -618,16 +598,23 @@ pub fn expand_block(blk: &Block, fld: &mut MacroExpander) -> P<Block> {
 
 // expand the elements of a block.
 pub fn expand_block_elts(b: &Block, fld: &mut MacroExpander) -> P<Block> {
-    let block_info = get_block_info(*fld.extsbox);
-    let pending_renames = block_info.pending_renames;
-    let mut rename_fld = renames_to_fold(pending_renames);
     let new_view_items = b.view_items.map(|x| fld.fold_view_item(x));
     let new_stmts = b.stmts.iter()
-            .map(|x| rename_fld.fold_stmt(*x)
-                 .expect_one("rename_fold didn't return one value"))
+            .map(|x| {
+                let pending_renames = &mut fld.extsbox.info().pending_renames;
+                let mut rename_fld = renames_to_fold(pending_renames);
+                rename_fld.fold_stmt(*x).expect_one("rename_fold didn't return one value")
+             })
             .flat_map(|x| fld.fold_stmt(x).move_iter())
             .collect();
-    let new_expr = b.expr.map(|x| fld.fold_expr(rename_fld.fold_expr(x)));
+    let new_expr = b.expr.map(|x| {
+        let expr = {
+            let pending_renames = &mut fld.extsbox.info().pending_renames;
+            let mut rename_fld = renames_to_fold(pending_renames);
+            rename_fld.fold_expr(x)
+        };
+        fld.fold_expr(expr)
+    });
     P(Block {
         view_items: new_view_items,
         stmts: new_stmts,
@@ -638,20 +625,11 @@ pub fn expand_block_elts(b: &Block, fld: &mut MacroExpander) -> P<Block> {
     })
 }
 
-// get the (innermost) BlockInfo from an exts stack
-fn get_block_info(exts : SyntaxEnv) -> BlockInfo {
-    match exts.find_in_topmost_frame(&intern(special_block_name)) {
-        Some(@BlockInfo(bi)) => bi,
-        _ => fail!("special identifier {:?} was bound to a non-BlockInfo",
-                    @" block")
-    }
+struct IdentRenamer<'a> {
+    renames: &'a mut RenameList,
 }
 
-struct IdentRenamer {
-    renames: @mut ~[(ast::Ident,ast::Name)],
-}
-
-impl ast_fold for IdentRenamer {
+impl<'a> ast_fold for IdentRenamer<'a> {
     fn fold_ident(&mut self, id: ast::Ident) -> ast::Ident {
         let new_ctxt = self.renames.iter().fold(id.ctxt, |ctxt, &(from, to)| {
             new_rename(from, to, ctxt)
@@ -665,7 +643,7 @@ impl ast_fold for IdentRenamer {
 
 // given a mutable list of renames, return a tree-folder that applies those
 // renames.
-pub fn renames_to_fold(renames: @mut ~[(ast::Ident,ast::Name)]) -> IdentRenamer {
+pub fn renames_to_fold<'a>(renames: &'a mut RenameList) -> IdentRenamer<'a> {
     IdentRenamer {
         renames: renames,
     }
@@ -931,7 +909,7 @@ pub fn inject_std_macros(parse_sess: @mut parse::ParseSess,
 }
 
 pub struct MacroExpander<'a> {
-    extsbox: @mut SyntaxEnv,
+    extsbox: SyntaxEnv,
     cx: &'a mut ExtCtxt,
 }
 
@@ -964,15 +942,9 @@ impl<'a> ast_fold for MacroExpander<'a> {
 pub fn expand_crate(parse_sess: @mut parse::ParseSess,
                     cfg: ast::CrateConfig,
                     c: Crate) -> Crate {
-    // adding *another* layer of indirection here so that the block
-    // visitor can swap out one exts table for another for the duration
-    // of the block.  The cleaner alternative would be to thread the
-    // exts table through the fold, but that would require updating
-    // every method/element of AstFoldFns in fold.rs.
-    let extsbox = syntax_expander_table();
     let mut cx = ExtCtxt::new(parse_sess, cfg.clone());
     let mut expander = MacroExpander {
-        extsbox: @mut extsbox,
+        extsbox: syntax_expander_table(),
         cx: &mut cx,
     };
 
