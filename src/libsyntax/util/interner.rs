@@ -20,7 +20,7 @@ use std::hashmap::HashMap;
 
 pub struct Interner<T> {
     priv map: @RefCell<HashMap<T, Name>>,
-    priv vect: @mut ~[T],
+    priv vect: @RefCell<~[T]>,
 }
 
 // when traits can extend traits, we should extend index<Name,T> to get []
@@ -28,7 +28,7 @@ impl<T:Eq + IterBytes + Hash + Freeze + Clone + 'static> Interner<T> {
     pub fn new() -> Interner<T> {
         Interner {
             map: @RefCell::new(HashMap::new()),
-            vect: @mut ~[],
+            vect: @RefCell::new(~[]),
         }
     }
 
@@ -47,28 +47,30 @@ impl<T:Eq + IterBytes + Hash + Freeze + Clone + 'static> Interner<T> {
             None => (),
         }
 
-        let vect = &mut *self.vect;
-        let new_idx = vect.len() as Name;
+        let mut vect = self.vect.borrow_mut();
+        let new_idx = vect.get().len() as Name;
         map.get().insert(val.clone(), new_idx);
-        vect.push(val);
+        vect.get().push(val);
         new_idx
     }
 
     pub fn gensym(&self, val: T) -> Name {
-        let new_idx = {
-            let vect = &*self.vect;
-            vect.len() as Name
-        };
+        let mut vect = self.vect.borrow_mut();
+        let new_idx = vect.get().len() as Name;
         // leave out of .map to avoid colliding
-        self.vect.push(val);
+        vect.get().push(val);
         new_idx
     }
 
     pub fn get(&self, idx: Name) -> T {
-        self.vect[idx].clone()
+        let vect = self.vect.borrow();
+        vect.get()[idx].clone()
     }
 
-    pub fn len(&self) -> uint { let vect = &*self.vect; vect.len() }
+    pub fn len(&self) -> uint {
+        let vect = self.vect.borrow();
+        vect.get().len()
+    }
 
     pub fn find_equiv<Q:Hash + IterBytes + Equiv<T>>(&self, val: &Q)
                                               -> Option<Name> {
@@ -84,7 +86,7 @@ impl<T:Eq + IterBytes + Hash + Freeze + Clone + 'static> Interner<T> {
 // borrowed pointers rather than @ ones, resulting in less allocation.
 pub struct StrInterner {
     priv map: @RefCell<HashMap<@str, Name>>,
-    priv vect: @mut ~[@str],
+    priv vect: @RefCell<~[@str]>,
 }
 
 // when traits can extend traits, we should extend index<Name,T> to get []
@@ -92,7 +94,7 @@ impl StrInterner {
     pub fn new() -> StrInterner {
         StrInterner {
             map: @RefCell::new(HashMap::new()),
-            vect: @mut ~[],
+            vect: @RefCell::new(~[]),
         }
     }
 
@@ -112,14 +114,16 @@ impl StrInterner {
         let new_idx = self.len() as Name;
         let val = val.to_managed();
         map.get().insert(val, new_idx);
-        self.vect.push(val);
+        let mut vect = self.vect.borrow_mut();
+        vect.get().push(val);
         new_idx
     }
 
     pub fn gensym(&self, val: &str) -> Name {
         let new_idx = self.len() as Name;
         // leave out of .map to avoid colliding
-        self.vect.push(val.to_managed());
+        let mut vect = self.vect.borrow_mut();
+        vect.get().push(val.to_managed());
         new_idx
     }
 
@@ -136,13 +140,21 @@ impl StrInterner {
     pub fn gensym_copy(&self, idx : Name) -> Name {
         let new_idx = self.len() as Name;
         // leave out of map to avoid colliding
-        self.vect.push(self.vect[idx]);
+        let mut vect = self.vect.borrow_mut();
+        let existing = vect.get()[idx];
+        vect.get().push(existing);
         new_idx
     }
 
-    pub fn get(&self, idx: Name) -> @str { self.vect[idx] }
+    pub fn get(&self, idx: Name) -> @str {
+        let vect = self.vect.borrow();
+        vect.get()[idx]
+    }
 
-    pub fn len(&self) -> uint { let vect = &*self.vect; vect.len() }
+    pub fn len(&self) -> uint {
+        let vect = self.vect.borrow();
+        vect.get().len()
+    }
 
     pub fn find_equiv<Q:Hash + IterBytes + Equiv<@str>>(&self, val: &Q)
                                                          -> Option<Name> {
