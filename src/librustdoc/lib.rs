@@ -242,7 +242,7 @@ fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
     }
 
     // Load all plugins/passes into a PluginManager
-    let path = matches.opt_str("plugin-path").unwrap_or(~"/tmp/rustdoc_ng/plugins");
+    let path = matches.opt_str("plugin-path").unwrap_or(~"/tmp/rustdoc/plugins");
     let mut pm = plugins::PluginManager::new(Path::new(path));
     for pass in passes.iter() {
         let plugin = match PASSES.iter().position(|&(p, _, _)| p == *pass) {
