@@ -104,11 +104,10 @@ mod test {
     use io::test::*;
     use prelude::*;
 
-    #[test]  #[ignore]
-    fn bind_error() {
+    iotest!(fn bind_error() {
         let mut called = false;
         io_error::cond.trap(|e| {
-            assert!(e.kind == PermissionDenied);
+            assert_eq!(e.kind, PermissionDenied);
             called = true;
         }).inside(|| {
             let addr = SocketAddr { ip: Ipv4Addr(0, 0, 0, 0), port: 1 };
@@ -116,13 +115,13 @@ mod test {
             assert!(socket.is_none());
         });
         assert!(called);
-    }
+    } #[ignore(cfg(windows))])
 
-    #[test]
-    fn socket_smoke_test_ip4() {
+    iotest!(fn socket_smoke_test_ip4() {
         let server_ip = next_test_ip4();
         let client_ip = next_test_ip4();
         let (port, chan) = Chan::new();
+        let (port2, chan2) = Chan::new();
 
         do spawn {
             match UdpSocket::bind(client_ip) {
@@ -132,6 +131,7 @@ mod test {
                 }
                 None => fail!()
             }
+            chan2.send(());
         }
 
         match UdpSocket::bind(server_ip) {
@@ -149,10 +149,10 @@ mod test {
             }
             None => fail!()
         }
-    }
+        port2.recv();
+    })
 
-    #[test]
-    fn socket_smoke_test_ip6() {
+    iotest!(fn socket_smoke_test_ip6() {
         let server_ip = next_test_ip6();
         let client_ip = next_test_ip6();
         let (port, chan) = Chan::<()>::new();
@@ -182,13 +182,13 @@ mod test {
             }
             None => fail!()
         }
-    }
+    })
 
-    #[test]
-    fn stream_smoke_test_ip4() {
+    iotest!(fn stream_smoke_test_ip4() {
         let server_ip = next_test_ip4();
         let client_ip = next_test_ip4();
         let (port, chan) = Chan::new();
+        let (port2, chan2) = Chan::new();
 
         do spawn {
             match UdpSocket::bind(client_ip) {
@@ -200,6 +200,7 @@ mod test {
                 }
                 None => fail!()
             }
+            chan2.send(());
         }
 
         match UdpSocket::bind(server_ip) {
@@ -218,13 +219,14 @@ mod test {
             }
             None => fail!()
         }
-    }
+        port2.recv();
+    })
 
-    #[test]
-    fn stream_smoke_test_ip6() {
+    iotest!(fn stream_smoke_test_ip6() {
         let server_ip = next_test_ip6();
         let client_ip = next_test_ip6();
         let (port, chan) = Chan::new();
+        let (port2, chan2) = Chan::new();
 
         do spawn {
             match UdpSocket::bind(client_ip) {
@@ -236,6 +238,7 @@ mod test {
                 }
                 None => fail!()
             }
+            chan2.send(());
         }
 
         match UdpSocket::bind(server_ip) {
@@ -254,9 +257,10 @@ mod test {
             }
             None => fail!()
         }
-    }
+        port2.recv();
+    })
 
-    fn socket_name(addr: SocketAddr) {
+    pub fn socket_name(addr: SocketAddr) {
         let server = UdpSocket::bind(addr);
 
         assert!(server.is_some());
@@ -269,13 +273,11 @@ mod test {
         assert_eq!(addr, so_name.unwrap());
     }
 
-    #[test]
-    fn socket_name_ip4() {
+    iotest!(fn socket_name_ip4() {
         socket_name(next_test_ip4());
-    }
+    })
 
-    #[test]
-    fn socket_name_ip6() {
+    iotest!(fn socket_name_ip6() {
         socket_name(next_test_ip6());
-    }
+    })
 }
