@@ -34,6 +34,7 @@ use std::run;
 use std::str;
 use std::io;
 use std::io::fs;
+use extra::hex::ToHex;
 use extra::tempfile::TempDir;
 use syntax::abi;
 use syntax::ast;
@@ -490,8 +491,10 @@ pub fn build_link_meta(sess: Session,
     }
 }
 
-pub fn truncated_hash_result(symbol_hasher: &mut Sha256) -> ~str {
-    symbol_hasher.result_str()
+fn truncated_hash_result(symbol_hasher: &mut Sha256) -> ~str {
+    let output = symbol_hasher.result_bytes();
+    // 64 bits should be enough to avoid collisions.
+    output.slice_to(8).to_hex()
 }
 
 
