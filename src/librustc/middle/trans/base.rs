@@ -2210,10 +2210,13 @@ impl Visitor<()> for TransItemVisitor {
 
 pub fn trans_item(ccx: @CrateContext, item: &ast::item) {
     let _icx = push_ctxt("trans_item");
-    let path = match ccx.tcx.items.get_copy(&item.id) {
-        ast_map::node_item(_, p) => p,
-        // tjc: ?
-        _ => fail!("trans_item"),
+    let path = {
+        let items = ccx.tcx.items.borrow();
+        match items.get().get_copy(&item.id) {
+            ast_map::node_item(_, p) => p,
+            // tjc: ?
+            _ => fail!("trans_item"),
+        }
     };
     match item.node {
       ast::item_fn(decl, purity, _abis, ref generics, body) => {
@@ -2508,7 +2511,10 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
         Some(v) => v,
         None => {
             let mut foreign = false;
-            let item = ccx.tcx.items.get_copy(&id);
+            let item = {
+                let items = ccx.tcx.items.borrow();
+                items.get().get_copy(&id)
+            };
             let val = match item {
                 ast_map::node_item(i, pth) => {
 

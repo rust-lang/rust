@@ -204,12 +204,12 @@ pub struct Session_ {
     targ_cfg: @config,
     opts: @options,
     cstore: @metadata::cstore::CStore,
-    parse_sess: @mut ParseSess,
+    parse_sess: @ParseSess,
     codemap: @codemap::CodeMap,
     // For a library crate, this is always none
     entry_fn: RefCell<Option<(NodeId, codemap::Span)>>,
     entry_type: Cell<Option<EntryFnType>>,
-    span_diagnostic: @mut diagnostic::span_handler,
+    span_diagnostic: @diagnostic::span_handler,
     filesearch: @filesearch::FileSearch,
     building_library: Cell<bool>,
     working_dir: Path,
@@ -292,7 +292,7 @@ impl Session_ {
 
         v
     }
-    pub fn diagnostic(&self) -> @mut diagnostic::span_handler {
+    pub fn diagnostic(&self) -> @diagnostic::span_handler {
         self.span_diagnostic
     }
     pub fn debugging_opt(&self, opt: uint) -> bool {

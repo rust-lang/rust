@@ -464,9 +464,19 @@ fn write_out_deps(sess: Session, input: &input, outputs: &OutputFilenames, crate
 
     // Build a list of files used to compile the output and
     // write Makefile-compatible dependency rules
-    let files: ~[@str] = sess.codemap.files.iter()
-        .filter_map(|fmap| if fmap.is_real_file() { Some(fmap.name) } else { None })
-        .collect();
+    let files: ~[@str] = {
+        let files = sess.codemap.files.borrow();
+        files.get()
+             .iter()
+             .filter_map(|fmap| {
+                 if fmap.is_real_file() {
+                     Some(fmap.name)
+                 } else {
+                     None
+                 }
+             })
+             .collect()
+    };
     let mut file = io::File::create(&deps_filename);
     for path in out_filenames.iter() {
         write!(&mut file as &mut Writer,
@@ -517,20 +527,20 @@ impl pprust::pp_ann for IdentifiedAnnotation {
     fn post(&self, node: pprust::ann_node) {
         match node {
             pprust::node_item(s, item) => {
-                pp::space(s.s);
+                pp::space(&mut s.s);
                 pprust::synth_comment(s, item.id.to_str());
             }
-            pprust::node_block(s, ref blk) => {
-                pp::space(s.s);
+            pprust::node_block(s, blk) => {
+                pp::space(&mut s.s);
                 pprust::synth_comment(s, ~"block " + blk.id.to_str());
             }
             pprust::node_expr(s, expr) => {
-                pp::space(s.s);
+                pp::space(&mut s.s);
                 pprust::synth_comment(s, expr.id.to_str());
                 pprust::pclose(s);
             }
             pprust::node_pat(s, pat) => {
-                pp::space(s.s);
+                pp::space(&mut s.s);
                 pprust::synth_comment(s, ~"pat " + pat.id.to_str());
             }
         }
@@ -552,10 +562,10 @@ impl pprust::pp_ann for TypedAnnotation {
         let tcx = self.analysis.ty_cx;
         match node {
             pprust::node_expr(s, expr) => {
-                pp::space(s.s);
-                pp::word(s.s, "as");
-                pp::space(s.s);
-                pp::word(s.s, ppaux::ty_to_str(tcx, ty::expr_ty(tcx, expr)));
+                pp::space(&mut s.s);
+                pp::word(&mut s.s, "as");
+                pp::space(&mut s.s);
+                pp::word(&mut s.s, ppaux::ty_to_str(tcx, ty::expr_ty(tcx, expr)));
                 pprust::pclose(s);
             }
             _ => ()
@@ -592,15 +602,15 @@ pub fn pretty_print_input(sess: Session,
     };
 
     let src = sess.codemap.get_filemap(source_name(input)).src;
-    let rdr = @mut MemReader::new(src.as_bytes().to_owned());
+    let mut rdr = MemReader::new(src.as_bytes().to_owned());
     let stdout = io::stdout();
     pprust::print_crate(sess.codemap,
                         token::get_ident_interner(),
                         sess.span_diagnostic,
                         &crate,
                         source_name(input),
-                        rdr as @mut io::Reader,
-                        @mut stdout as @mut io::Writer,
+                        &mut rdr,
+                        ~stdout as ~io::Writer,
                         annotation,
                         is_expanded);
 }
@@ -883,7 +893,7 @@ pub fn build_session(sopts: @session::options, demitter: @diagnostic::Emitter)
 pub fn build_session_(sopts: @session::options,
                       cm: @codemap::CodeMap,
                       demitter: @diagnostic::Emitter,
-                      span_diagnostic_handler: @mut diagnostic::span_handler)
+                      span_diagnostic_handler: @diagnostic::span_handler)
                       -> Session {
     let target_cfg = build_target_config(sopts, demitter);
     let p_s = parse::new_parse_sess_special_handler(span_diagnostic_handler,

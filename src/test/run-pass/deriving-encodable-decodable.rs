@@ -58,8 +58,8 @@ struct G<T> {
 fn roundtrip<'a, T: Rand + Eq + Encodable<Encoder> +
                     Decodable<Decoder<'a>>>() {
     let obj: T = random();
-    let w = @mut MemWriter::new();
-    let mut e = Encoder(w);
+    let mut w = MemWriter::new();
+    let mut e = Encoder(&mut w);
     obj.encode(&mut e);
     let doc = ebml::reader::Doc(@w.inner_ref().to_owned());
     let mut dec = Decoder(doc);

@@ -188,9 +188,9 @@ pub enum named_match {
 
 pub type earley_item = ~MatcherPos;
 
-pub fn nameize(p_s: @mut ParseSess, ms: &[matcher], res: &[@named_match])
+pub fn nameize(p_s: @ParseSess, ms: &[matcher], res: &[@named_match])
             -> HashMap<Ident,@named_match> {
-    fn n_rec(p_s: @mut ParseSess, m: &matcher, res: &[@named_match],
+    fn n_rec(p_s: @ParseSess, m: &matcher, res: &[@named_match],
              ret_val: &mut HashMap<Ident, @named_match>) {
         match *m {
           codemap::Spanned {node: match_tok(_), .. } => (),
@@ -221,12 +221,11 @@ pub enum parse_result {
     error(codemap::Span, ~str)
 }
 
-pub fn parse_or_else(
-    sess: @mut ParseSess,
-    cfg: ast::CrateConfig,
-    rdr: @mut reader,
-    ms: ~[matcher]
-) -> HashMap<Ident, @named_match> {
+pub fn parse_or_else(sess: @ParseSess,
+                     cfg: ast::CrateConfig,
+                     rdr: @reader,
+                     ms: ~[matcher])
+                     -> HashMap<Ident, @named_match> {
     match parse(sess, cfg, rdr, ms) {
       success(m) => m,
       failure(sp, str) => sess.span_diagnostic.span_fatal(sp, str),
@@ -243,12 +242,11 @@ pub fn token_name_eq(t1 : &Token, t2 : &Token) -> bool {
     }
 }
 
-pub fn parse(
-    sess: @mut ParseSess,
-    cfg: ast::CrateConfig,
-    rdr: @mut reader,
-    ms: &[matcher]
-) -> parse_result {
+pub fn parse(sess: @ParseSess,
+             cfg: ast::CrateConfig,
+             rdr: @reader,
+             ms: &[matcher])
+             -> parse_result {
     let mut cur_eis = ~[];
     cur_eis.push(initial_matcher_pos(ms.to_owned(), None, rdr.peek().sp.lo));
 
@@ -403,13 +401,13 @@ pub fn parse(
                 }
                 rdr.next_token();
             } else /* bb_eis.len() == 1 */ {
-                let rust_parser = Parser(sess, cfg.clone(), rdr.dup());
+                let mut rust_parser = Parser(sess, cfg.clone(), rdr.dup());
 
                 let mut ei = bb_eis.pop();
                 match ei.elts[ei.idx].node {
                   match_nonterminal(_, ref name, idx) => {
                     ei.matches[idx].push(@matched_nonterminal(
-                        parse_nt(&rust_parser, ident_to_str(name))));
+                        parse_nt(&mut rust_parser, ident_to_str(name))));
                     ei.idx += 1u;
                   }
                   _ => fail!()
@@ -426,7 +424,7 @@ pub fn parse(
     }
 }
 
-pub fn parse_nt(p: &Parser, name: &str) -> nonterminal {
+pub fn parse_nt(p: &mut Parser, name: &str) -> nonterminal {
     match name {
       "item" => match p.parse_item(~[]) {
         Some(i) => token::nt_item(i),
@@ -438,19 +436,21 @@ pub fn parse_nt(p: &Parser, name: &str) -> nonterminal {
       "expr" => token::nt_expr(p.parse_expr()),
       "ty" => token::nt_ty(p.parse_ty(false /* no need to disambiguate*/)),
       // this could be handled like a token, since it is one
-      "ident" => match *p.token {
+      "ident" => match p.token {
         token::IDENT(sn,b) => { p.bump(); token::nt_ident(~sn,b) }
-        _ => p.fatal(~"expected ident, found "
-                     + token::to_str(get_ident_interner(), p.token))
+        _ => {
+            let token_str = token::to_str(get_ident_interner(), &p.token);
+            p.fatal(~"expected ident, found " + token_str)
+        }
       },
       "path" => {
         token::nt_path(~p.parse_path(LifetimeAndTypesWithoutColons).path)
       }
       "attr" => token::nt_attr(@p.parse_attribute(false)),
       "tt" => {
-        *p.quote_depth += 1u; //but in theory, non-quoted tts might be useful
+        p.quote_depth += 1u; //but in theory, non-quoted tts might be useful
         let res = token::nt_tt(@p.parse_token_tree());
-        *p.quote_depth -= 1u;
+        p.quote_depth -= 1u;
         res
       }
       "matchers" => token::nt_matchers(p.parse_matchers()),

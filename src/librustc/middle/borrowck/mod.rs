@@ -788,7 +788,8 @@ impl BorrowckCtxt {
                                    out: &mut ~str) {
         match *loan_path {
             LpVar(id) => {
-                match self.tcx.items.find(&id) {
+                let items = self.tcx.items.borrow();
+                match items.get().find(&id) {
                     Some(&ast_map::node_local(ref ident)) => {
                         out.push_str(token::ident_to_str(ident));
                     }

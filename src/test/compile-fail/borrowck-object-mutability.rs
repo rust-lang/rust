@@ -30,11 +30,6 @@ fn managed_receiver(x: @Foo) {
     x.borrowed_mut(); //~ ERROR cannot borrow
 }
 
-fn managed_mut_receiver(x: @mut Foo) {
-    x.borrowed();
-    x.borrowed_mut();
-}
-
 fn owned_receiver(x: ~Foo) {
     x.borrowed();
     x.borrowed_mut(); //~ ERROR cannot borrow

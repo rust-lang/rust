@@ -231,8 +231,7 @@ impl Context {
     }
 }
 
-pub fn note_crateid_attr(diag: @mut span_handler,
-                       crateid: &CrateId) {
+pub fn note_crateid_attr(diag: @span_handler, crateid: &CrateId) {
     diag.handler().note(format!("crate_id: {}", crateid.to_str()));
 }
 

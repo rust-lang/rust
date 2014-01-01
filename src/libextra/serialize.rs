@@ -426,18 +426,6 @@ impl<D:Decoder,T:Decodable<D> + 'static> Decodable<D> for @T {
     }
 }
 
-impl<S:Encoder,T:Encodable<S>> Encodable<S> for @mut T {
-    fn encode(&self, s: &mut S) {
-        (**self).encode(s)
-    }
-}
-
-impl<D:Decoder,T:Decodable<D> + 'static> Decodable<D> for @mut T {
-    fn decode(d: &mut D) -> @mut T {
-        @mut Decodable::decode(d)
-    }
-}
-
 impl<'a, S:Encoder,T:Encodable<S>> Encodable<S> for &'a [T] {
     fn encode(&self, s: &mut S) {
         s.emit_seq(self.len(), |s| {

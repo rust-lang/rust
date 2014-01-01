@@ -355,8 +355,7 @@ pub fn find_stability<AM: AttrMetaMethods, It: Iterator<AM>>(mut metas: It) -> O
     None
 }
 
-pub fn require_unique_names(diagnostic: @mut span_handler,
-                            metas: &[@MetaItem]) {
+pub fn require_unique_names(diagnostic: @span_handler, metas: &[@MetaItem]) {
     let mut set = HashSet::new();
     for meta in metas.iter() {
         let name = meta.name();
@@ -381,8 +380,10 @@ pub fn require_unique_names(diagnostic: @mut span_handler,
  * present (before fields, if any) with that type; reprensentation
  * optimizations which would remove it will not be done.
  */
-pub fn find_repr_attr(diagnostic: @mut span_handler, attr: @ast::MetaItem, acc: ReprAttr)
-    -> ReprAttr {
+pub fn find_repr_attr(diagnostic: @span_handler,
+                      attr: @ast::MetaItem,
+                      acc: ReprAttr)
+                      -> ReprAttr {
     let mut acc = acc;
     match attr.node {
         ast::MetaList(s, ref items) if "repr" == s => {

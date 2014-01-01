@@ -20,6 +20,7 @@ use parse::token;
 use parse::token::{ident_to_str, intern, str_to_ident};
 use util::small_vector::SmallVector;
 
+use std::cell::RefCell;
 use std::hashmap::HashMap;
 
 // new-style macro! tt code:
@@ -156,7 +157,7 @@ pub enum SyntaxExtension {
 // The SyntaxEnv is the environment that's threaded through the expansion
 // of macros. It contains bindings for macros, and also a special binding
 // for " block" (not a legal identifier) that maps to a BlockInfo
-pub type SyntaxEnv = @mut MapChain<Name, Transformer>;
+pub type SyntaxEnv = @RefCell<MapChain<Name, Transformer>>;
 
 // Transformer : the codomain of SyntaxEnvs
 
@@ -172,9 +173,9 @@ pub enum Transformer {
 
 pub struct BlockInfo {
     // should macros escape from this scope?
-    macros_escape : bool,
+    macros_escape: bool,
     // what are the pending renames?
-    pending_renames : @mut RenameList
+    pending_renames: @RefCell<RenameList>,
 }
 
 // a list of ident->name renamings
@@ -197,8 +198,8 @@ pub fn syntax_expander_table() -> SyntaxEnv {
     // NB identifier starts with space, and can't conflict with legal idents
     syntax_expanders.insert(intern(&" block"),
                             @BlockInfo(BlockInfo{
-                                macros_escape : false,
-                                pending_renames : @mut ~[]
+                                macros_escape: false,
+                                pending_renames: @RefCell::new(~[]),
                             }));
     syntax_expanders.insert(intern(&"macro_rules"),
                             @SE(IdentTT(@SyntaxExpanderTTItem {
@@ -295,7 +296,7 @@ pub fn syntax_expander_table() -> SyntaxEnv {
 // when a macro expansion occurs, the resulting nodes have the backtrace()
 // -> expn_info of their expansion context stored into their span.
 pub struct ExtCtxt {
-    parse_sess: @mut parse::ParseSess,
+    parse_sess: @parse::ParseSess,
     cfg: ast::CrateConfig,
     backtrace: Option<@ExpnInfo>,
 
@@ -309,7 +310,7 @@ pub struct ExtCtxt {
 }
 
 impl ExtCtxt {
-    pub fn new(parse_sess: @mut parse::ParseSess, cfg: ast::CrateConfig)
+    pub fn new(parse_sess: @parse::ParseSess, cfg: ast::CrateConfig)
                -> ExtCtxt {
         ExtCtxt {
             parse_sess: parse_sess,
@@ -325,7 +326,7 @@ impl ExtCtxt {
             match e.node {
                 ast::ExprMac(..) => {
                     let mut expander = expand::MacroExpander {
-                        extsbox: @mut syntax_expander_table(),
+                        extsbox: @RefCell::new(syntax_expander_table()),
                         cx: self,
                     };
                     e = expand::expand_expr(e, &mut expander);
@@ -336,7 +337,7 @@ impl ExtCtxt {
     }
 
     pub fn codemap(&self) -> @CodeMap { self.parse_sess.cm }
-    pub fn parse_sess(&self) -> @mut parse::ParseSess { self.parse_sess }
+    pub fn parse_sess(&self) -> @parse::ParseSess { self.parse_sess }
     pub fn cfg(&self) -> ast::CrateConfig { self.cfg.clone() }
     pub fn call_site(&self) -> Span {
         match self.backtrace {
@@ -443,11 +444,11 @@ pub fn get_single_str_from_tts(cx: &ExtCtxt,
 pub fn get_exprs_from_tts(cx: &ExtCtxt,
                           sp: Span,
                           tts: &[ast::token_tree]) -> ~[@ast::Expr] {
-    let p = parse::new_parser_from_tts(cx.parse_sess(),
-                                       cx.cfg(),
-                                       tts.to_owned());
+    let mut p = parse::new_parser_from_tts(cx.parse_sess(),
+                                           cx.cfg(),
+                                           tts.to_owned());
     let mut es = ~[];
-    while *p.token != token::EOF {
+    while p.token != token::EOF {
         if es.len() != 0 && !p.eat(&token::COMMA) {
             cx.span_fatal(sp, "expected token: `,`");
         }
@@ -493,20 +494,21 @@ pub fn get_exprs_from_tts(cx: &ExtCtxt,
 // of another chain.
 pub enum MapChain<K,V> {
     BaseMapChain(~HashMap<K,@V>),
-    ConsMapChain(~HashMap<K,@V>,@mut MapChain<K,V>)
+    ConsMapChain(~HashMap<K,@V>, @RefCell<MapChain<K,V>>)
 }
 
 
 // get the map from an env frame
 impl <K: Eq + Hash + IterBytes + 'static, V: 'static> MapChain<K,V>{
     // Constructor. I don't think we need a zero-arg one.
-    pub fn new(init: ~HashMap<K,@V>) -> @mut MapChain<K,V> {
-        @mut BaseMapChain(init)
+    pub fn new(init: ~HashMap<K,@V>) -> @RefCell<MapChain<K,V>> {
+        @RefCell::new(BaseMapChain(init))
     }
 
     // add a new frame to the environment (functionally)
-    pub fn push_frame (@mut self) -> @mut MapChain<K,V> {
-        @mut ConsMapChain(~HashMap::new() ,self)
+    pub fn push_frame(this: @RefCell<MapChain<K,V>>)
+                      -> @RefCell<MapChain<K,V>> {
+        @RefCell::new(ConsMapChain(~HashMap::new(), this))
     }
 
 // no need for pop, it'll just be functional.
@@ -525,22 +527,23 @@ impl <K: Eq + Hash + IterBytes + 'static, V: 'static> MapChain<K,V>{
 // traits just don't work anywhere...?
 //impl Map<Name,SyntaxExtension> for MapChain {
 
-    pub fn contains_key (&self, key: &K) -> bool {
+    pub fn contains_key(&self, key: &K) -> bool {
         match *self {
             BaseMapChain (ref map) => map.contains_key(key),
-            ConsMapChain (ref map,ref rest) =>
-            (map.contains_key(key)
-             || rest.contains_key(key))
+            ConsMapChain (ref map,ref rest) => {
+                let rest = rest.borrow();
+                (map.contains_key(key) || rest.get().contains_key(key))
+            }
         }
     }
     // should each_key and each_value operate on shadowed
     // names? I think not.
     // delaying implementing this....
-    pub fn each_key (&self, _f: |&K| -> bool) {
+    pub fn each_key(&self, _f: |&K| -> bool) {
         fail!("unimplemented 2013-02-15T10:01");
     }
 
-    pub fn each_value (&self, _f: |&V| -> bool) {
+    pub fn each_value(&self, _f: |&V| -> bool) {
         fail!("unimplemented 2013-02-15T10:02");
     }
 
@@ -550,8 +553,11 @@ impl <K: Eq + Hash + IterBytes + 'static, V: 'static> MapChain<K,V>{
         match self.get_map().find (key) {
             Some(ref v) => Some(**v),
             None => match *self {
-                BaseMapChain (_) => None,
-                ConsMapChain (_,ref rest) => rest.find(key)
+                BaseMapChain(_) => None,
+                ConsMapChain(_, ref rest) => {
+                    let rest = rest.borrow();
+                    rest.get().find(key)
+                }
             }
         }
     }
@@ -595,7 +601,8 @@ impl <K: Eq + Hash + IterBytes + 'static, V: 'static> MapChain<K,V>{
                 if satisfies_pred(map,&n,|v|pred(v)) {
                     map.insert(key,ext);
                 } else {
-                    rest.insert_into_frame(key,ext,n,pred)
+                    let mut rest = rest.borrow_mut();
+                    rest.get().insert_into_frame(key, ext, n, pred)
                 }
             }
         }
@@ -630,7 +637,7 @@ mod test {
         assert_eq!(m.find(&@"def"),Some(@16));
         assert_eq!(*(m.find(&@"abc").unwrap()),15);
         assert_eq!(*(m.find(&@"def").unwrap()),16);
-        let n = m.push_frame();
+        let n = MapChain::push_frame(m);
         // old bindings are still present:
         assert_eq!(*(n.find(&@"abc").unwrap()),15);
         assert_eq!(*(n.find(&@"def").unwrap()),16);

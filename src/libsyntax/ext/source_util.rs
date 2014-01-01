@@ -19,6 +19,7 @@ use parse;
 use parse::token::{get_ident_interner};
 use print::pprust;
 
+use std::cell::RefCell;
 use std::io;
 use std::io::File;
 use std::str;
@@ -81,9 +82,13 @@ pub fn expand_include(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree])
     -> base::MacResult {
     let file = get_single_str_from_tts(cx, sp, tts, "include!");
     // The file will be added to the code map by the parser
-    let p = parse::new_sub_parser_from_file(
-        cx.parse_sess(), cx.cfg(),
-        &res_rel_file(cx, sp, &Path::new(file)), sp);
+    let mut p =
+        parse::new_sub_parser_from_file(cx.parse_sess(),
+                                        cx.cfg(),
+                                        &res_rel_file(cx,
+                                                      sp,
+                                                      &Path::new(file)),
+                                        sp);
     base::MRExpr(p.parse_expr())
 }
 
@@ -104,13 +109,14 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree])
             let s = s.to_managed();
             // Add this input file to the code map to make it available as
             // dependency information
-            cx.parse_sess.cm.files.push(@codemap::FileMap {
+            let mut files = cx.parse_sess.cm.files.borrow_mut();
+            files.get().push(@codemap::FileMap {
                 name: file.display().to_str().to_managed(),
                 substr: codemap::FssNone,
                 src: s,
                 start_pos: codemap::BytePos(0),
-                lines: @mut ~[],
-                multibyte_chars: @mut ~[],
+                lines: RefCell::new(~[]),
+                multibyte_chars: RefCell::new(~[]),
             });
             base::MRExpr(cx.expr_str(sp, s))
         }

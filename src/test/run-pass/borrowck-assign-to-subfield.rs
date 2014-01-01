@@ -8,19 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(managed_boxes)];
-
-fn two_args<T>(x: T, y: T) { }
-
 fn main() {
-    let a: @mut int = @mut 3;
-    let b: @int = @3;
+    struct A {
+        a: int,
+        w: B,
+    }
+    struct B {
+        a: int
+    }
+    let mut p = A {
+        a: 1,
+        w: B {a: 1},
+    };
 
-    // NOTE:
-    //
-    // The fact that this test fails to compile reflects a known
-    // shortcoming of the current inference algorithm.  These errors
-    // are *not* desirable.
+    // even though `x` is not declared as a mutable field,
+    // `p` as a whole is mutable, so it can be modified.
+    p.a = 2;
 
-    two_args(a, b); //~ ERROR (values differ in mutability)
+    // this is true for an interior field too
+    p.w.a = 2;
 }

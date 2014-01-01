@@ -11,86 +11,92 @@
 #[feature(managed_boxes)];
 
 trait noisy {
-  fn speak(&self) -> int;
+  fn speak(&mut self) -> int;
 }
 
 struct dog {
-  priv barks : @mut uint,
+  priv barks: uint,
 
-  volume : @mut int,
+  volume: int,
 }
 
 impl dog {
-    fn bark(&self) -> int {
-      info!("Woof {} {}", *self.barks, *self.volume);
-      *self.barks += 1u;
-      if *self.barks % 3u == 0u {
-          *self.volume += 1;
+    fn bark(&mut self) -> int {
+      info!("Woof {} {}", self.barks, self.volume);
+      self.barks += 1u;
+      if self.barks % 3u == 0u {
+          self.volume += 1;
       }
-      if *self.barks % 10u == 0u {
-          *self.volume -= 2;
+      if self.barks % 10u == 0u {
+          self.volume -= 2;
       }
-      info!("Grrr {} {}", *self.barks, *self.volume);
-      *self.volume
+      info!("Grrr {} {}", self.barks, self.volume);
+      self.volume
     }
 }
 
 impl noisy for dog {
-  fn speak(&self) -> int { self.bark() }
+    fn speak(&mut self) -> int {
+        self.bark()
+    }
 }
 
 fn dog() -> dog {
     dog {
-        volume: @mut 0,
-        barks: @mut 0u
+        volume: 0,
+        barks: 0u
     }
 }
 
 #[deriving(Clone)]
 struct cat {
-  priv meows : @mut uint,
+  priv meows: uint,
 
-  how_hungry : @mut int,
-  name : ~str,
+  how_hungry: int,
+  name: ~str,
 }
 
 impl noisy for cat {
-  fn speak(&self) -> int { self.meow() as int }
-}
-
-impl cat {
-  pub fn meow_count(&self) -> uint { *self.meows }
-}
-
-impl cat {
-    fn meow(&self) -> uint {
-      info!("Meow");
-      *self.meows += 1u;
-      if *self.meows % 5u == 0u {
-          *self.how_hungry += 1;
-      }
-      *self.meows
+    fn speak(&mut self) -> int {
+        self.meow() as int
     }
 }
 
-fn cat(in_x : uint, in_y : int, in_name: ~str) -> cat {
+impl cat {
+    pub fn meow_count(&self) -> uint {
+        self.meows
+    }
+}
+
+impl cat {
+    fn meow(&mut self) -> uint {
+        info!("Meow");
+        self.meows += 1u;
+        if self.meows % 5u == 0u {
+            self.how_hungry += 1;
+        }
+        self.meows
+    }
+}
+
+fn cat(in_x: uint, in_y: int, in_name: ~str) -> cat {
     cat {
-        meows: @mut in_x,
-        how_hungry: @mut in_y,
+        meows: in_x,
+        how_hungry: in_y,
         name: in_name
     }
 }
 
 
-fn annoy_neighbors(critter: @noisy) {
+fn annoy_neighbors(critter: &mut noisy) {
     for _i in range(0u, 10) { critter.speak(); }
 }
 
 pub fn main() {
-  let nyan : cat  = cat(0u, 2, ~"nyan");
-  let whitefang : dog = dog();
-  annoy_neighbors(@nyan.clone() as @noisy);
-  annoy_neighbors(@whitefang as @noisy);
+  let mut nyan: cat = cat(0u, 2, ~"nyan");
+  let mut whitefang: dog = dog();
+  annoy_neighbors(&mut nyan);
+  annoy_neighbors(&mut whitefang);
   assert_eq!(nyan.meow_count(), 10u);
-  assert_eq!(*whitefang.volume, 1);
+  assert_eq!(whitefang.volume, 1);
 }
