@@ -19,7 +19,7 @@ use extra::workcache;
 use rustc::driver::{driver, session};
 use extra::getopts::groups::getopts;
 use syntax::ast_util::*;
-use syntax::codemap::{dummy_sp, Spanned};
+use syntax::codemap::{DUMMY_SP, Spanned};
 use syntax::ext::base::ExtCtxt;
 use syntax::{ast, attr, codemap, diagnostic, fold, visit};
 use syntax::attr::AttrMetaMethods;
@@ -631,7 +631,7 @@ pub fn find_and_install_dependencies(context: &BuildContext,
 pub fn mk_string_lit(s: @str) -> ast::lit {
     Spanned {
         node: ast::lit_str(s, ast::CookedStr),
-        span: dummy_sp()
+        span: DUMMY_SP
     }
 }
 

@@ -23,7 +23,7 @@ use std::num;
 use std::vec;
 use syntax::ast::*;
 use syntax::ast_util::{unguarded_pat, walk_pat};
-use syntax::codemap::{Span, dummy_sp, Spanned};
+use syntax::codemap::{Span, DUMMY_SP, Spanned};
 use syntax::visit;
 use syntax::visit::{Visitor,fn_kind};
 
@@ -536,11 +536,11 @@ fn ctor_arity(cx: &MatchCheckCtxt, ctor: &ctor, ty: ty::t) -> uint {
 }
 
 fn wild() -> @Pat {
-    @Pat {id: 0, node: PatWild, span: dummy_sp()}
+    @Pat {id: 0, node: PatWild, span: DUMMY_SP}
 }
 
 fn wild_multi() -> @Pat {
-    @Pat {id: 0, node: PatWildMulti, span: dummy_sp()}
+    @Pat {id: 0, node: PatWildMulti, span: DUMMY_SP}
 }
 
 fn specialize(cx: &MatchCheckCtxt,

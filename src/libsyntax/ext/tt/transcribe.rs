@@ -10,7 +10,7 @@
 
 use ast;
 use ast::{token_tree, tt_delim, tt_tok, tt_seq, tt_nonterminal,Ident};
-use codemap::{Span, dummy_sp};
+use codemap::{Span, DUMMY_SP};
 use diagnostic::SpanHandler;
 use ext::tt::macro_parser::{named_match, matched_seq, matched_nonterminal};
 use parse::token::{EOF, INTERPOLATED, IDENT, Token, nt_ident};
@@ -66,7 +66,7 @@ pub fn new_tt_reader(sp_diag: @mut SpanHandler,
         repeat_len: ~[],
         /* dummy values, never read: */
         cur_tok: EOF,
-        cur_span: dummy_sp()
+        cur_span: DUMMY_SP
     };
     tt_next_token(r); /* get cur_tok and cur_span set up */
     return r;

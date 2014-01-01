@@ -81,7 +81,7 @@ pub fn new_low_level_string_reader(span_diagnostic: @mut SpanHandler,
         filemap: filemap,
         /* dummy values; not read */
         peek_tok: token::EOF,
-        peek_span: codemap::dummy_sp()
+        peek_span: codemap::DUMMY_SP
     };
     bump(r);
     return r;

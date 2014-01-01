@@ -227,7 +227,7 @@ use syntax::ast;
 use syntax::ast::Ident;
 use syntax::ast_util::path_to_ident;
 use syntax::ast_util;
-use syntax::codemap::{Span, dummy_sp};
+use syntax::codemap::{Span, DUMMY_SP};
 
 // An option identifying a literal: either a unit-like struct or an
 // expression.
@@ -617,7 +617,7 @@ fn enter_opt<'r>(bcx: @Block,
     let _indenter = indenter();
 
     let tcx = bcx.tcx();
-    let dummy = @ast::Pat {id: 0, node: ast::PatWild, span: dummy_sp()};
+    let dummy = @ast::Pat {id: 0, node: ast::PatWild, span: DUMMY_SP};
     let mut i = 0;
     enter_match(bcx, tcx.def_map, m, col, val, |p| {
         let answer = match p.node {
@@ -758,7 +758,7 @@ fn enter_rec_or_struct<'r>(bcx: @Block,
            bcx.val_to_str(val));
     let _indenter = indenter();
 
-    let dummy = @ast::Pat {id: 0, node: ast::PatWild, span: dummy_sp()};
+    let dummy = @ast::Pat {id: 0, node: ast::PatWild, span: DUMMY_SP};
     enter_match(bcx, dm, m, col, val, |p| {
         match p.node {
             ast::PatStruct(_, ref fpats, _) => {
@@ -793,7 +793,7 @@ fn enter_tup<'r>(bcx: @Block,
            bcx.val_to_str(val));
     let _indenter = indenter();
 
-    let dummy = @ast::Pat {id: 0, node: ast::PatWild, span: dummy_sp()};
+    let dummy = @ast::Pat {id: 0, node: ast::PatWild, span: DUMMY_SP};
     enter_match(bcx, dm, m, col, val, |p| {
         match p.node {
             ast::PatTup(ref elts) => Some((*elts).clone()),
@@ -819,7 +819,7 @@ fn enter_tuple_struct<'r>(bcx: @Block,
            bcx.val_to_str(val));
     let _indenter = indenter();
 
-    let dummy = @ast::Pat {id: 0, node: ast::PatWild, span: dummy_sp()};
+    let dummy = @ast::Pat {id: 0, node: ast::PatWild, span: DUMMY_SP};
     enter_match(bcx, dm, m, col, val, |p| {
         match p.node {
             ast::PatEnum(_, Some(ref elts)) => Some((*elts).clone()),
@@ -844,7 +844,7 @@ fn enter_box<'r>(bcx: @Block,
            bcx.val_to_str(val));
     let _indenter = indenter();
 
-    let dummy = @ast::Pat {id: 0, node: ast::PatWild, span: dummy_sp()};
+    let dummy = @ast::Pat {id: 0, node: ast::PatWild, span: DUMMY_SP};
     enter_match(bcx, dm, m, col, val, |p| {
         match p.node {
             ast::PatBox(sub) => {
@@ -871,7 +871,7 @@ fn enter_uniq<'r>(bcx: @Block,
            bcx.val_to_str(val));
     let _indenter = indenter();
 
-    let dummy = @ast::Pat {id: 0, node: ast::PatWild, span: dummy_sp()};
+    let dummy = @ast::Pat {id: 0, node: ast::PatWild, span: DUMMY_SP};
     enter_match(bcx, dm, m, col, val, |p| {
         match p.node {
             ast::PatUniq(sub) => {
@@ -898,7 +898,7 @@ fn enter_region<'r>(bcx: @Block,
            bcx.val_to_str(val));
     let _indenter = indenter();
 
-    let dummy = @ast::Pat { id: 0, node: ast::PatWild, span: dummy_sp() };
+    let dummy = @ast::Pat { id: 0, node: ast::PatWild, span: DUMMY_SP };
     enter_match(bcx, dm, m, col, val, |p| {
         match p.node {
             ast::PatRegion(sub) => {
@@ -1535,7 +1535,7 @@ fn compile_submatch_continue(mut bcx: @Block,
                                 vals.slice(col + 1u, vals.len()));
     let ccx = bcx.fcx.ccx;
     let mut pat_id = 0;
-    let mut pat_span = dummy_sp();
+    let mut pat_span = DUMMY_SP;
     for br in m.iter() {
         // Find a real id (we're adding placeholder wildcard patterns, but
         // each column is guaranteed to have at least one real pattern)
