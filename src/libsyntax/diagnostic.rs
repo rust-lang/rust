@@ -21,7 +21,7 @@ static BUG_REPORT_URL: &'static str =
 
 pub trait Emitter {
     fn emit(&self,
-            cmsp: Option<(@codemap::CodeMap, Span)>,
+            cmsp: Option<(&codemap::CodeMap, Span)>,
             msg: &str,
             lvl: level);
 }
@@ -36,18 +36,18 @@ pub struct SpanHandler {
 
 impl SpanHandler {
     pub fn span_fatal(@mut self, sp: Span, msg: &str) -> ! {
-        self.handler.emit(Some((self.cm, sp)), msg, fatal);
+        self.handler.emit(Some((&*self.cm, sp)), msg, fatal);
         fail!();
     }
     pub fn span_err(@mut self, sp: Span, msg: &str) {
-        self.handler.emit(Some((self.cm, sp)), msg, error);
+        self.handler.emit(Some((&*self.cm, sp)), msg, error);
         self.handler.bump_err_count();
     }
     pub fn span_warn(@mut self, sp: Span, msg: &str) {
-        self.handler.emit(Some((self.cm, sp)), msg, warning);
+        self.handler.emit(Some((&*self.cm, sp)), msg, warning);
     }
     pub fn span_note(@mut self, sp: Span, msg: &str) {
-        self.handler.emit(Some((self.cm, sp)), msg, note);
+        self.handler.emit(Some((&*self.cm, sp)), msg, note);
     }
     pub fn span_bug(@mut self, sp: Span, msg: &str) -> ! {
         self.span_fatal(sp, ice_msg(msg));
@@ -111,7 +111,7 @@ impl Handler {
         self.bug(~"unimplemented " + msg);
     }
     pub fn emit(@mut self,
-            cmsp: Option<(@codemap::CodeMap, Span)>,
+            cmsp: Option<(&codemap::CodeMap, Span)>,
             msg: &str,
             lvl: level) {
         self.emit.emit(cmsp, msg, lvl);
@@ -227,7 +227,7 @@ pub struct DefaultEmitter;
 
 impl Emitter for DefaultEmitter {
     fn emit(&self,
-            cmsp: Option<(@codemap::CodeMap, Span)>,
+            cmsp: Option<(&codemap::CodeMap, Span)>,
             msg: &str,
             lvl: level) {
         match cmsp {
@@ -244,10 +244,10 @@ impl Emitter for DefaultEmitter {
     }
 }
 
-fn highlight_lines(cm: @codemap::CodeMap,
+fn highlight_lines(cm: &codemap::CodeMap,
                    sp: Span,
                    lvl: level,
-                   lines: @codemap::FileLines) {
+                   lines: &codemap::FileLines) {
     let fm = lines.file;
     let mut err = io::stderr();
     let err = &mut err as &mut io::Writer;
@@ -255,9 +255,9 @@ fn highlight_lines(cm: @codemap::CodeMap,
     // arbitrarily only print up to six lines of the error
     let max_lines = 6u;
     let mut elided = false;
-    let mut display_lines = /* FIXME (#2543) */ lines.lines.clone();
+    let mut display_lines = lines.lines.as_slice();
     if display_lines.len() > max_lines {
-        display_lines = display_lines.slice(0u, max_lines).to_owned();
+        display_lines = display_lines.slice(0u, max_lines);
         elided = true;
     }
     // Print the offending lines
@@ -311,7 +311,7 @@ fn highlight_lines(cm: @codemap::CodeMap,
     }
 }
 
-fn print_macro_backtrace(cm: @codemap::CodeMap, sp: Span) {
+fn print_macro_backtrace(cm: &codemap::CodeMap, sp: Span) {
     for ei in sp.expn_info.iter() {
         let ss = ei.callee.span.as_ref().map_default(~"", |span| cm.span_to_str(*span));
         let (pre, post) = match ei.callee.format {
