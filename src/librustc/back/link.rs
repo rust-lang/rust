@@ -879,8 +879,11 @@ fn link_rlib(sess: Session,
     match trans {
         Some(trans) => {
             // Instead of putting the metadata in an object file section, rlibs
-            // contain the metadata in a separate file.
-            let metadata = obj_filename.with_filename(METADATA_FILENAME);
+            // contain the metadata in a separate file. We use a temp directory
+            // here so concurrent builds in the same directory don't try to use
+            // the same filename for metadata (stomping over one another)
+            let tmpdir = TempDir::new("rustc").expect("needs a temp dir");
+            let metadata = tmpdir.path().join(METADATA_FILENAME);
             fs::File::create(&metadata).write(trans.metadata);
             a.add_file(&metadata, false);
             fs::unlink(&metadata);
