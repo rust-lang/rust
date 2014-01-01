@@ -21,6 +21,8 @@ use syntax::fold;
 use syntax::opt_vec;
 use syntax::util::small_vector::SmallVector;
 
+pub static VERSION: &'static str = "0.9-pre";
+
 pub fn maybe_inject_libstd_ref(sess: Session, crate: ast::Crate)
                                -> ast::Crate {
     if use_std(&crate) {
@@ -57,7 +59,8 @@ impl fold::ast_fold for StandardLibraryInjector {
     fn fold_crate(&mut self, crate: ast::Crate) -> ast::Crate {
         let mut vis = ~[ast::view_item {
             node: ast::view_item_extern_mod(self.sess.ident_of("std"),
-                                            None,
+                                            Some((format!("std\\#{}", VERSION).to_managed(),
+                                                  ast::CookedStr)),
                                             ast::DUMMY_NODE_ID),
             attrs: ~[],
             vis: ast::private,
@@ -67,7 +70,8 @@ impl fold::ast_fold for StandardLibraryInjector {
         if use_uv(&crate) && !self.sess.building_library.get() {
             vis.push(ast::view_item {
                 node: ast::view_item_extern_mod(self.sess.ident_of("green"),
-                                                None,
+                                                Some((format!("green\\#{}", VERSION).to_managed(),
+                                                      ast::CookedStr)),
                                                 ast::DUMMY_NODE_ID),
                 attrs: ~[],
                 vis: ast::private,
@@ -75,7 +79,8 @@ impl fold::ast_fold for StandardLibraryInjector {
             });
             vis.push(ast::view_item {
                 node: ast::view_item_extern_mod(self.sess.ident_of("rustuv"),
-                                                None,
+                                                Some((format!("rustuv\\#{}", VERSION).to_managed(),
+                                                      ast::CookedStr)),
                                                 ast::DUMMY_NODE_ID),
                 attrs: ~[],
                 vis: ast::private,

@@ -13,6 +13,7 @@
 
 use driver::session;
 use front::config;
+use front::std_inject::VERSION;
 
 use std::cell::RefCell;
 use std::vec;
@@ -291,7 +292,10 @@ fn mk_std(cx: &TestCtxt) -> ast::view_item {
                                             path_node(~[id_extra]),
                                             ast::DUMMY_NODE_ID))])
     } else {
-        ast::view_item_extern_mod(id_extra, None, ast::DUMMY_NODE_ID)
+        ast::view_item_extern_mod(id_extra,
+                                  Some((format!("extra\\#{}", VERSION).to_managed(),
+                                        ast::CookedStr)),
+                                  ast::DUMMY_NODE_ID)
     };
     ast::view_item {
         node: vi,
