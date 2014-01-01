@@ -2422,7 +2422,7 @@ mod test {
             inputs: ~[],
             output: ast::P(ast::Ty {id: 0,
                                     node: ast::ty_nil,
-                                    span: codemap::dummy_sp()}),
+                                    span: codemap::DUMMY_SP}),
             cf: ast::return_val,
             variadic: false
         };
@@ -2436,7 +2436,7 @@ mod test {
     fn test_variant_to_str() {
         let ident = token::str_to_ident("principal_skinner");
 
-        let var = codemap::respan(codemap::dummy_sp(), ast::variant_ {
+        let var = codemap::respan(codemap::DUMMY_SP, ast::variant_ {
             name: ident,
             attrs: ~[],
             // making this up as I go.... ?

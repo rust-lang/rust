@@ -19,7 +19,7 @@ use std::vec;
 use syntax::ast_util::*;
 use syntax::attr::AttrMetaMethods;
 use syntax::attr;
-use syntax::codemap::{dummy_sp, Span, ExpnInfo, NameAndSpan, MacroAttribute};
+use syntax::codemap::{DUMMY_SP, Span, ExpnInfo, NameAndSpan, MacroAttribute};
 use syntax::codemap;
 use syntax::ext::base::ExtCtxt;
 use syntax::fold::ast_fold;
@@ -164,7 +164,7 @@ fn generate_test_harness(sess: session::Session, crate: ast::Crate)
     };
 
     cx.ext_cx.bt_push(ExpnInfo {
-        call_site: dummy_sp(),
+        call_site: DUMMY_SP,
         callee: NameAndSpan {
             name: @"test",
             format: MacroAttribute,
@@ -298,7 +298,7 @@ fn mk_std(cx: &TestCtxt) -> ast::view_item {
         node: vi,
         attrs: ~[],
         vis: ast::public,
-        span: dummy_sp()
+        span: DUMMY_SP
     }
 }
 
@@ -335,7 +335,7 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::item {
         id: ast::DUMMY_NODE_ID,
         node: item_,
         vis: ast::public,
-        span: dummy_sp(),
+        span: DUMMY_SP,
      };
 
     debug!("Synthetic test module:\n{}\n",
@@ -345,12 +345,12 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::item {
 }
 
 fn nospan<T>(t: T) -> codemap::Spanned<T> {
-    codemap::Spanned { node: t, span: dummy_sp() }
+    codemap::Spanned { node: t, span: DUMMY_SP }
 }
 
 fn path_node(ids: ~[ast::Ident]) -> ast::Path {
     ast::Path {
-        span: dummy_sp(),
+        span: DUMMY_SP,
         global: false,
         segments: ids.move_iter().map(|identifier| ast::PathSegment {
             identifier: identifier,
@@ -362,7 +362,7 @@ fn path_node(ids: ~[ast::Ident]) -> ast::Path {
 
 fn path_node_global(ids: ~[ast::Ident]) -> ast::Path {
     ast::Path {
-        span: dummy_sp(),
+        span: DUMMY_SP,
         global: true,
         segments: ids.move_iter().map(|identifier| ast::PathSegment {
             identifier: identifier,
@@ -403,13 +403,13 @@ fn mk_test_descs(cx: &TestCtxt) -> @ast::Expr {
     let inner_expr = @ast::Expr {
         id: ast::DUMMY_NODE_ID,
         node: ast::ExprVec(descs, ast::MutImmutable),
-        span: dummy_sp(),
+        span: DUMMY_SP,
     };
 
     @ast::Expr {
         id: ast::DUMMY_NODE_ID,
         node: ast::ExprVstore(inner_expr, ast::ExprVstoreSlice),
-        span: dummy_sp(),
+        span: DUMMY_SP,
     }
 }
 

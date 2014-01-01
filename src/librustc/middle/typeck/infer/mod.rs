@@ -326,7 +326,7 @@ pub fn can_mk_subty(cx: @InferCtxt, a: ty::t, b: ty::t) -> ures {
     indent(|| {
         cx.probe(|| {
             let trace = TypeTrace {
-                origin: Misc(codemap::dummy_sp()),
+                origin: Misc(codemap::DUMMY_SP),
                 values: Types(expected_found(true, a, b))
             };
             cx.sub(true, trace).tys(a, b)
@@ -418,7 +418,7 @@ pub fn can_mk_coercety(cx: @InferCtxt, a: ty::t, b: ty::t) -> ures {
     indent(|| {
         cx.probe(|| {
             let trace = TypeTrace {
-                origin: Misc(codemap::dummy_sp()),
+                origin: Misc(codemap::DUMMY_SP),
                 values: Types(expected_found(true, a, b))
             };
             Coerce(cx.combine_fields(true, trace)).tys(a, b)
@@ -927,7 +927,7 @@ impl RegionVariableOrigin {
             BoundRegionInFnCall(a, _) => a,
             BoundRegionInFnType(a, _) => a,
             BoundRegionInTypeOrImpl(a) => a,
-            BoundRegionInCoherence => codemap::dummy_sp(),
+            BoundRegionInCoherence => codemap::DUMMY_SP,
         }
     }
 }

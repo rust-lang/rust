@@ -29,7 +29,7 @@ use extra::getopts::{opt_present};
 use extra::getopts;
 use extra::getopts;
 use extra::oldmap::HashMap;
-use syntax::codemap::dummy_sp;
+use syntax::codemap::DUMMY_SP;
 use syntax::parse::parse_crate_from_source_str;
 use syntax::{ast, attr, parse};
 
@@ -221,9 +221,9 @@ impl Env {
         ty::mk_imm_rptr(self.tcx, ty::ReStatic, self.t_int())
     }
 
-    pub fn lub() -> Lub { Lub(self.infcx.combine_fields(true, dummy_sp())) }
+    pub fn lub() -> Lub { Lub(self.infcx.combine_fields(true, DUMMY_SP)) }
 
-    pub fn glb() -> Glb { Glb(self.infcx.combine_fields(true, dummy_sp())) }
+    pub fn glb() -> Glb { Glb(self.infcx.combine_fields(true, DUMMY_SP)) }
 
     pub fn resolve_regions(exp_count: uint) {
         debug!("resolve_regions(%u)", exp_count);

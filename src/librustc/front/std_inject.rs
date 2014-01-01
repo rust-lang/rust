@@ -14,7 +14,7 @@ use driver::session::Session;
 use std::vec;
 use syntax::ast;
 use syntax::attr;
-use syntax::codemap::dummy_sp;
+use syntax::codemap::DUMMY_SP;
 use syntax::codemap;
 use syntax::fold::ast_fold;
 use syntax::fold;
@@ -47,7 +47,7 @@ fn no_prelude(attrs: &[ast::Attribute]) -> bool {
 fn spanned<T>(x: T) -> codemap::Spanned<T> {
     codemap::Spanned {
         node: x,
-        span: dummy_sp(),
+        span: DUMMY_SP,
     }
 }
 
@@ -66,7 +66,7 @@ impl fold::ast_fold for StandardLibraryInjector {
                                             ast::DUMMY_NODE_ID),
             attrs: ~[],
             vis: ast::private,
-            span: dummy_sp()
+            span: DUMMY_SP
         }];
 
         if use_uv(&crate) && !self.sess.building_library.get() {
@@ -77,7 +77,7 @@ impl fold::ast_fold for StandardLibraryInjector {
                                                 ast::DUMMY_NODE_ID),
                 attrs: ~[],
                 vis: ast::private,
-                span: dummy_sp()
+                span: DUMMY_SP
             });
             vis.push(ast::view_item {
                 node: ast::view_item_extern_mod(self.sess.ident_of("rustuv"),
@@ -86,7 +86,7 @@ impl fold::ast_fold for StandardLibraryInjector {
                                                 ast::DUMMY_NODE_ID),
                 attrs: ~[],
                 vis: ast::private,
-                span: dummy_sp()
+                span: DUMMY_SP
             });
         }
 
@@ -121,7 +121,7 @@ impl fold::ast_fold for StandardLibraryInjector {
 
     fn fold_mod(&mut self, module: &ast::_mod) -> ast::_mod {
         let prelude_path = ast::Path {
-            span: dummy_sp(),
+            span: DUMMY_SP,
             global: false,
             segments: ~[
                 ast::PathSegment {
@@ -143,7 +143,7 @@ impl fold::ast_fold for StandardLibraryInjector {
             node: ast::view_item_use(~[vp]),
             attrs: ~[],
             vis: ast::private,
-            span: dummy_sp(),
+            span: DUMMY_SP,
         };
 
         let vis = vec::append(~[vi2], module.view_items);
