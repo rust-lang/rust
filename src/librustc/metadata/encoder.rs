@@ -1140,7 +1140,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
             let impl_vtables = ty::lookup_impl_vtables(tcx, def_id);
             encode_impl_vtables(ebml_w, ecx, &impl_vtables);
         }
-        let elt = ast_map::impl_pretty_name(opt_trait, ty, item.ident);
+        let elt = ast_map::impl_pretty_name(opt_trait, ty);
         encode_path(ecx, ebml_w, path, elt);
         ebml_w.end_tag();
 
