@@ -309,9 +309,8 @@ pub mod write {
     }
 
     unsafe fn configure_llvm(sess: Session) {
-        use std::unstable::mutex::{MUTEX_INIT, Mutex};
-        static mut LOCK: Mutex = MUTEX_INIT;
-        static mut CONFIGURED: bool = false;
+        use std::unstable::mutex::{Once, ONCE_INIT};
+        static mut INIT: Once = ONCE_INIT;
 
         // Copy what clan does by turning on loop vectorization at O2 and
         // slp vectorization at O3
@@ -340,8 +339,7 @@ pub mod write {
             add(*arg);
         }
 
-        LOCK.lock();
-        if !CONFIGURED {
+        INIT.doit(|| {
             llvm::LLVMInitializePasses();
 
             // Only initialize the platforms supported by Rust here, because
@@ -368,9 +366,7 @@ pub mod write {
 
             llvm::LLVMRustSetLLVMOptions(llvm_args.len() as c_int,
                                          llvm_args.as_ptr());
-            CONFIGURED = true;
-        }
-        LOCK.unlock();
+        });
     }
 
     unsafe fn populate_llvm_passes(fpm: lib::llvm::PassManagerRef,

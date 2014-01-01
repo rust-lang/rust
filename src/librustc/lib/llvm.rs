@@ -1459,14 +1459,15 @@ pub mod llvm {
                                                          BufferName: *c_char)
             -> MemoryBufferRef;
 
+        pub fn LLVMIsMultithreaded() -> Bool;
+        pub fn LLVMStartMultithreaded() -> Bool;
+
         /** Returns a string describing the last error caused by an LLVMRust*
             call. */
         pub fn LLVMRustGetLastError() -> *c_char;
 
         /// Print the pass timings since static dtors aren't picking them up.
         pub fn LLVMRustPrintPassTimings();
-
-        pub fn LLVMRustStartMultithreading() -> bool;
 
         pub fn LLVMStructCreateNamed(C: ContextRef, Name: *c_char) -> TypeRef;
 
