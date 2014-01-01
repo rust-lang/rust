@@ -27,6 +27,7 @@ use std::unstable::stack;
 
 use io;
 use task;
+use bookeeping;
 
 /// Creates a new Task which is ready to execute as a 1:1 task.
 pub fn new() -> ~Task {
@@ -79,8 +80,10 @@ pub fn spawn_opts(opts: TaskOpts, f: proc()) {
             stack::record_stack_bounds(my_stack - stack + 1024, my_stack);
         }
 
+        bookeeping::increment();
         let mut f = Some(f);
         task.run(|| { f.take_unwrap()() });
+        bookeeping::decrement();
     })
 }
 

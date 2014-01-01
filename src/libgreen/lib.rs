@@ -25,11 +25,12 @@
 // NB this does *not* include globs, please keep it that way.
 #[feature(macro_rules)];
 
+// Allow check-stage0-green for now
+#[cfg(test, stage0)] extern mod green;
+
 use std::os;
 use std::rt::crate_map;
-use std::rt::local::Local;
 use std::rt::rtio;
-use std::rt::task::Task;
 use std::rt::thread::Thread;
 use std::rt;
 use std::sync::atomics::{SeqCst, AtomicUint, INIT_ATOMIC_UINT};
@@ -37,6 +38,7 @@ use std::sync::deque;
 use std::task::TaskOpts;
 use std::util;
 use std::vec;
+use std::sync::arc::UnsafeArc;
 
 use sched::{Shutdown, Scheduler, SchedHandle, TaskFromFriend, NewNeighbor};
 use sleeper_list::SleeperList;
@@ -118,14 +120,6 @@ pub fn run(main: proc()) -> int {
         os::set_exit_status(rt::DEFAULT_ERROR_CODE);
     }
 
-    // Once the main task has exited and we've set our exit code, wait for all
-    // spawned sub-tasks to finish running. This is done to allow all schedulers
-    // to remain active while there are still tasks possibly running.
-    unsafe {
-        let mut task = Local::borrow(None::<Task>);
-        task.get().wait_for_other_tasks();
-    }
-
     // Now that we're sure all tasks are dead, shut down the pool of schedulers,
     // waiting for them all to return.
     pool.shutdown();
@@ -164,6 +158,17 @@ pub struct SchedPool {
     priv deque_pool: deque::BufferPool<~task::GreenTask>,
     priv sleepers: SleeperList,
     priv factory: fn() -> ~rtio::EventLoop,
+    priv task_state: TaskState,
+    priv tasks_done: Port<()>,
+}
+
+/// This is an internal state shared among a pool of schedulers. This is used to
+/// keep track of how many tasks are currently running in the pool and then
+/// sending on a channel once the entire pool has been drained of all tasks.
+#[deriving(Clone)]
+struct TaskState {
+    cnt: UnsafeArc<AtomicUint>,
+    done: SharedChan<()>,
 }
 
 impl SchedPool {
@@ -182,6 +187,7 @@ impl SchedPool {
         assert!(nscheds > 0);
 
         // The pool of schedulers that will be returned from this function
+        let (p, state) = TaskState::new();
         let mut pool = SchedPool {
             threads: ~[],
             handles: ~[],
@@ -192,6 +198,8 @@ impl SchedPool {
             deque_pool: deque::BufferPool::new(),
             next_friend: 0,
             factory: factory,
+            task_state: state,
+            tasks_done: p,
         };
 
         // Create a work queue for each scheduler, ntimes. Create an extra
@@ -210,21 +218,30 @@ impl SchedPool {
                                             (pool.factory)(),
                                             worker,
                                             pool.stealers.clone(),
-                                            pool.sleepers.clone());
+                                            pool.sleepers.clone(),
+                                            pool.task_state.clone());
             pool.handles.push(sched.make_handle());
             let sched = sched;
-            pool.threads.push(do Thread::start {
-                sched.bootstrap();
-            });
+            pool.threads.push(do Thread::start { sched.bootstrap(); });
         }
 
         return pool;
     }
 
+    /// Creates a new task configured to run inside of this pool of schedulers.
+    /// This is useful to create a task which can then be sent to a specific
+    /// scheduler created by `spawn_sched` (and possibly pin it to that
+    /// scheduler).
     pub fn task(&mut self, opts: TaskOpts, f: proc()) -> ~GreenTask {
         GreenTask::configure(&mut self.stack_pool, opts, f)
     }
 
+    /// Spawns a new task into this pool of schedulers, using the specified
+    /// options to configure the new task which is spawned.
+    ///
+    /// New tasks are spawned in a round-robin fashion to the schedulers in this
+    /// pool, but tasks can certainly migrate among schedulers once they're in
+    /// the pool.
     pub fn spawn(&mut self, opts: TaskOpts, f: proc()) {
         let task = self.task(opts, f);
 
@@ -262,7 +279,8 @@ impl SchedPool {
                                         (self.factory)(),
                                         worker,
                                         self.stealers.clone(),
-                                        self.sleepers.clone());
+                                        self.sleepers.clone(),
+                                        self.task_state.clone());
         let ret = sched.make_handle();
         self.handles.push(sched.make_handle());
         let sched = sched;
@@ -271,14 +289,58 @@ impl SchedPool {
         return ret;
     }
 
+    /// Consumes the pool of schedulers, waiting for all tasks to exit and all
+    /// schedulers to shut down.
+    ///
+    /// This function is required to be called in order to drop a pool of
+    /// schedulers, it is considered an error to drop a pool without calling
+    /// this method.
+    ///
+    /// This only waits for all tasks in *this pool* of schedulers to exit, any
+    /// native tasks or extern pools will not be waited on
     pub fn shutdown(mut self) {
         self.stealers = ~[];
 
+        // Wait for everyone to exit. We may have reached a 0-task count
+        // multiple times in the past, meaning there could be several buffered
+        // messages on the `tasks_done` port. We're guaranteed that after *some*
+        // message the current task count will be 0, so we just receive in a
+        // loop until everything is totally dead.
+        while self.task_state.active() {
+            self.tasks_done.recv();
+        }
+
+        // Now that everyone's gone, tell everything to shut down.
         for mut handle in util::replace(&mut self.handles, ~[]).move_iter() {
             handle.send(Shutdown);
         }
         for thread in util::replace(&mut self.threads, ~[]).move_iter() {
             thread.join();
+        }
+    }
+}
+
+impl TaskState {
+    fn new() -> (Port<()>, TaskState) {
+        let (p, c) = SharedChan::new();
+        (p, TaskState {
+            cnt: UnsafeArc::new(AtomicUint::new(0)),
+            done: c,
+        })
+    }
+
+    fn increment(&mut self) {
+        unsafe { (*self.cnt.get()).fetch_add(1, SeqCst); }
+    }
+
+    fn active(&self) -> bool {
+        unsafe { (*self.cnt.get()).load(SeqCst) != 0 }
+    }
+
+    fn decrement(&mut self) {
+        let prev = unsafe { (*self.cnt.get()).fetch_sub(1, SeqCst) };
+        if prev == 1 {
+            self.done.send(());
         }
     }
 }

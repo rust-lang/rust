@@ -19,6 +19,7 @@ use std::unstable::mutex::Mutex;
 use std::unstable::raw;
 use mpsc = std::sync::mpsc_queue;
 
+use TaskState;
 use context::Context;
 use coroutine::Coroutine;
 use sleeper_list::SleeperList;
@@ -85,6 +86,9 @@ pub struct Scheduler {
     /// A flag to tell the scheduler loop it needs to do some stealing
     /// in order to introduce randomness as part of a yield
     steal_for_yield: bool,
+    /// Bookeeping for the number of tasks which are currently running around
+    /// inside this pool of schedulers
+    task_state: TaskState,
 
     // n.b. currently destructors of an object are run in top-to-bottom in order
     //      of field declaration. Due to its nature, the pausable idle callback
@@ -120,11 +124,12 @@ impl Scheduler {
                event_loop: ~EventLoop,
                work_queue: deque::Worker<~GreenTask>,
                work_queues: ~[deque::Stealer<~GreenTask>],
-               sleeper_list: SleeperList)
+               sleeper_list: SleeperList,
+               state: TaskState)
         -> Scheduler {
 
         Scheduler::new_special(pool_id, event_loop, work_queue, work_queues,
-                               sleeper_list, true, None)
+                               sleeper_list, true, None, state)
 
     }
 
@@ -134,7 +139,8 @@ impl Scheduler {
                        work_queues: ~[deque::Stealer<~GreenTask>],
                        sleeper_list: SleeperList,
                        run_anything: bool,
-                       friend: Option<SchedHandle>)
+                       friend: Option<SchedHandle>,
+                       state: TaskState)
         -> Scheduler {
 
         let (consumer, producer) = mpsc::queue(());
@@ -156,7 +162,8 @@ impl Scheduler {
             rng: new_sched_rng(),
             idle_callback: None,
             yield_check_count: 0,
-            steal_for_yield: false
+            steal_for_yield: false,
+            task_state: state,
         };
 
         sched.yield_check_count = reset_yield_check(&mut sched.rng);
@@ -756,6 +763,7 @@ impl Scheduler {
         let _cur = self.change_task_context(cur, stask, |sched, mut dead_task| {
             let coroutine = dead_task.coroutine.take_unwrap();
             coroutine.recycle(&mut sched.stack_pool);
+            sched.task_state.decrement();
         });
         fail!("should never return!");
     }
@@ -955,11 +963,10 @@ mod test {
     use std::rt::task::Task;
     use std::rt::local::Local;
 
+    use {TaskState, PoolConfig, SchedPool};
     use basic;
     use sched::{TaskFromFriend, PinnedTask};
     use task::{GreenTask, HomeSched};
-    use PoolConfig;
-    use SchedPool;
 
     fn pool() -> SchedPool {
         SchedPool::new(PoolConfig {
@@ -1078,6 +1085,7 @@ mod test {
             let (normal_worker, normal_stealer) = pool.deque();
             let (special_worker, special_stealer) = pool.deque();
             let queues = ~[normal_stealer, special_stealer];
+            let (_p, state) = TaskState::new();
 
             // Our normal scheduler
             let mut normal_sched = ~Scheduler::new(
@@ -1085,7 +1093,8 @@ mod test {
                 basic::event_loop(),
                 normal_worker,
                 queues.clone(),
-                sleepers.clone());
+                sleepers.clone(),
+                state.clone());
 
             let normal_handle = normal_sched.make_handle();
             let friend_handle = normal_sched.make_handle();
@@ -1098,7 +1107,8 @@ mod test {
                 queues.clone(),
                 sleepers.clone(),
                 false,
-                Some(friend_handle));
+                Some(friend_handle),
+                state);
 
             let special_handle = special_sched.make_handle();
 

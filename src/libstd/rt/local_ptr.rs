@@ -117,6 +117,24 @@ pub mod compiled {
         ptr
     }
 
+    /// Optionally take ownership of a pointer from thread-local storage.
+    ///
+    /// # Safety note
+    ///
+    /// Does not validate the pointer type.
+    #[inline]
+    pub unsafe fn try_take<T>() -> Option<~T> {
+        let ptr = RT_TLS_PTR;
+        if ptr.is_null() {
+            None
+        } else {
+            let ptr: ~T = cast::transmute(ptr);
+            // can't use `as`, due to type not matching with `cfg(test)`
+            RT_TLS_PTR = cast::transmute(0);
+            Some(ptr)
+        }
+    }
+
     /// Take ownership of a pointer from thread-local storage.
     ///
     /// # Safety note
@@ -203,6 +221,28 @@ pub mod native {
         let ptr: ~T = cast::transmute(void_ptr);
         tls::set(key, ptr::mut_null());
         return ptr;
+    }
+
+    /// Optionally take ownership of a pointer from thread-local storage.
+    ///
+    /// # Safety note
+    ///
+    /// Does not validate the pointer type.
+    #[inline]
+    pub unsafe fn try_take<T>() -> Option<~T> {
+        match maybe_tls_key() {
+            Some(key) => {
+                let void_ptr: *mut c_void = tls::get(key);
+                if void_ptr.is_null() {
+                    None
+                } else {
+                    let ptr: ~T = cast::transmute(void_ptr);
+                    tls::set(key, ptr::mut_null());
+                    Some(ptr)
+                }
+            }
+            None => None
+        }
     }
 
     /// Take ownership of a pointer from thread-local storage.

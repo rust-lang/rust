@@ -16,6 +16,7 @@ use rt::local_ptr;
 pub trait Local<Borrowed> {
     fn put(value: ~Self);
     fn take() -> ~Self;
+    fn try_take() -> Option<~Self>;
     fn exists(unused_value: Option<Self>) -> bool;
     fn borrow(unused_value: Option<Self>) -> Borrowed;
     unsafe fn unsafe_take() -> ~Self;
@@ -28,6 +29,8 @@ impl Local<local_ptr::Borrowed<Task>> for Task {
     fn put(value: ~Task) { unsafe { local_ptr::put(value) } }
     #[inline]
     fn take() -> ~Task { unsafe { local_ptr::take() } }
+    #[inline]
+    fn try_take() -> Option<~Task> { unsafe { local_ptr::try_take() } }
     fn exists(_: Option<Task>) -> bool { local_ptr::exists() }
     #[inline]
     fn borrow(_: Option<Task>) -> local_ptr::Borrowed<Task> {
@@ -47,7 +50,7 @@ impl Local<local_ptr::Borrowed<Task>> for Task {
 
 #[cfg(test)]
 mod test {
-    use option::None;
+    use option::{None, Option};
     use unstable::run_in_bare_thread;
     use super::*;
     use rt::task::Task;
@@ -56,7 +59,6 @@ mod test {
     #[test]
     fn thread_local_task_smoke_test() {
         do run_in_bare_thread {
-            local_ptr::init();
             let task = ~Task::new();
             Local::put(task);
             let task: ~Task = Local::take();
@@ -67,7 +69,6 @@ mod test {
     #[test]
     fn thread_local_task_two_instances() {
         do run_in_bare_thread {
-            local_ptr::init();
             let task = ~Task::new();
             Local::put(task);
             let task: ~Task = Local::take();
@@ -83,7 +84,6 @@ mod test {
     #[test]
     fn borrow_smoke_test() {
         do run_in_bare_thread {
-            local_ptr::init();
             let task = ~Task::new();
             Local::put(task);
 
@@ -98,7 +98,6 @@ mod test {
     #[test]
     fn borrow_with_return() {
         do run_in_bare_thread {
-            local_ptr::init();
             let task = ~Task::new();
             Local::put(task);
 
@@ -108,6 +107,20 @@ mod test {
 
             let task: ~Task = Local::take();
             cleanup_task(task);
+        }
+    }
+
+    #[test]
+    fn try_take() {
+        do run_in_bare_thread {
+            let task = ~Task::new();
+            Local::put(task);
+
+            let t: ~Task = Local::try_take().unwrap();
+            let u: Option<~Task> = Local::try_take();
+            assert!(u.is_none());
+
+            cleanup_task(t);
         }
     }
 
