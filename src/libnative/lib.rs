@@ -27,13 +27,11 @@
 //    answer is that you don't need them)
 
 use std::os;
-use std::rt::local::Local;
-use std::rt::task::Task;
 use std::rt;
 
+mod bookeeping;
 pub mod io;
 pub mod task;
-
 
 // XXX: this should not exist here
 #[cfg(stage0)]
@@ -83,11 +81,7 @@ pub fn start(argc: int, argv: **u8, main: proc()) -> int {
 /// This function has all of the same details as `start` except for a different
 /// number of arguments.
 pub fn run(main: proc()) -> int {
-    // Run the main procedure and then wait for everything to finish
     main();
-    unsafe {
-        let mut task = Local::borrow(None::<Task>);
-        task.get().wait_for_other_tasks();
-    }
+    bookeeping::wait_for_other_tasks();
     os::get_exit_status()
 }
