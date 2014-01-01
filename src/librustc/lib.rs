@@ -348,7 +348,7 @@ struct RustcEmitter {
 
 impl diagnostic::Emitter for RustcEmitter {
     fn emit(&self,
-            cmsp: Option<(@codemap::CodeMap, codemap::Span)>,
+            cmsp: Option<(&codemap::CodeMap, codemap::Span)>,
             msg: &str,
             lvl: diagnostic::level) {
         if lvl == diagnostic::fatal {
