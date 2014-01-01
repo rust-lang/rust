@@ -474,7 +474,7 @@ pub fn make_opaque_cbox_drop_glue<'a>(
             bcx.tcx().sess.bug("trying to trans drop glue of @fn")
         }
         ast::OwnedSigil => {
-            glue::free_ty(
+            glue::make_free_glue(
                 bcx, cboxptr,
                 ty::mk_opaque_closure_ptr(bcx.tcx(), sigil))
         }

@@ -94,7 +94,6 @@ pub struct tydesc_info {
     name: ValueRef,
     take_glue: Cell<Option<ValueRef>>,
     drop_glue: Cell<Option<ValueRef>>,
-    free_glue: Cell<Option<ValueRef>>,
     visit_glue: Cell<Option<ValueRef>>,
 }
 
