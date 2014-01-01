@@ -673,7 +673,6 @@ fn specialize(cx: &MatchCheckCtxt,
 
                     DefFn(..) |
                     DefStruct(..) => {
-                        // FIXME #4731: Is this right? --pcw
                         let new_args;
                         match args {
                             Some(args) => new_args = args,
