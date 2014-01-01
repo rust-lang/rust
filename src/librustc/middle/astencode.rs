@@ -218,7 +218,7 @@ impl ExtendedDecodeContext {
         ast::DefId { crate: ast::LOCAL_CRATE, node: self.tr_id(did.node) }
     }
     pub fn tr_span(&self, _span: Span) -> Span {
-        codemap::dummy_sp() // FIXME (#1972): handle span properly
+        codemap::DUMMY_SP // FIXME (#1972): handle span properly
     }
 }
 

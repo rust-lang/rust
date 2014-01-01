@@ -11,7 +11,7 @@
 use ast::{Ident, matcher_, matcher, match_tok, match_nonterminal, match_seq};
 use ast::{tt_delim};
 use ast;
-use codemap::{Span, Spanned, dummy_sp};
+use codemap::{Span, Spanned, DUMMY_SP};
 use ext::base::{AnyMacro, ExtCtxt, MacResult, MRAny, MRDef, MacroDef};
 use ext::base::{NormalTT, SyntaxExpanderTTTrait};
 use ext::base;
@@ -109,7 +109,7 @@ fn generic_extension(cx: &ExtCtxt,
     }
 
     // Which arm's failure should we report? (the one furthest along)
-    let mut best_fail_spot = dummy_sp();
+    let mut best_fail_spot = DUMMY_SP;
     let mut best_fail_msg = ~"internal error: ran no matchers";
 
     let s_d = cx.parse_sess().span_diagnostic;
@@ -178,7 +178,7 @@ pub fn add_new_extension(cx: &mut ExtCtxt,
     fn ms(m: matcher_) -> matcher {
         Spanned {
             node: m.clone(),
-            span: dummy_sp()
+            span: DUMMY_SP
         }
     }
 

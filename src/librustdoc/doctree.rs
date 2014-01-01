@@ -40,7 +40,7 @@ impl Module {
             name       : name,
             id: 0,
             vis: ast::private,
-            where: syntax::codemap::dummy_sp(),
+            where: syntax::codemap::DUMMY_SP,
             attrs      : ~[],
             structs    : ~[],
             enums      : ~[],

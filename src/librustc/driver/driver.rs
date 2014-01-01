@@ -686,7 +686,7 @@ pub fn host_triple() -> ~str {
     (env!("CFG_COMPILER")).to_owned()
 }
 
-pub fn build_session_options(binary: @str,
+pub fn build_session_options(binary: ~str,
                              matches: &getopts::Matches,
                              demitter: @diagnostic::Emitter)
                              -> @session::options {
@@ -883,7 +883,7 @@ pub fn build_session(sopts: @session::options, demitter: @diagnostic::Emitter)
 pub fn build_session_(sopts: @session::options,
                       cm: @codemap::CodeMap,
                       demitter: @diagnostic::Emitter,
-                      span_diagnostic_handler: @mut diagnostic::span_handler)
+                      span_diagnostic_handler: @mut diagnostic::SpanHandler)
                       -> Session {
     let target_cfg = build_target_config(sopts, demitter);
     let p_s = parse::new_parse_sess_special_handler(span_diagnostic_handler,
@@ -1105,7 +1105,7 @@ pub fn build_output_filenames(input: &input,
     }
 }
 
-pub fn early_error(emitter: @diagnostic::Emitter, msg: &str) -> ! {
+pub fn early_error(emitter: &diagnostic::Emitter, msg: &str) -> ! {
     emitter.emit(None, msg, diagnostic::fatal);
     fail!();
 }
@@ -1135,7 +1135,7 @@ mod test {
               Err(f) => fail!("test_switch_implies_cfg_test: {}", f.to_err_msg())
             };
         let sessopts = build_session_options(
-            @"rustc",
+            ~"rustc",
             matches,
             @diagnostic::DefaultEmitter as @diagnostic::Emitter);
         let sess = build_session(sessopts,
@@ -1158,7 +1158,7 @@ mod test {
               }
             };
         let sessopts = build_session_options(
-            @"rustc",
+            ~"rustc",
             matches,
             @diagnostic::DefaultEmitter as @diagnostic::Emitter);
         let sess = build_session(sessopts,
