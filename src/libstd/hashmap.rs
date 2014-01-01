@@ -525,6 +525,16 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
         }
     }
 
+    /// Return a mutable reference to the value corresponding to the key
+    /// in the map, using equivalence
+    pub fn find_mut_equiv<'a, Q:Hash + Equiv<K>>(&'a mut self, k: &Q)
+                                                 -> Option<&'a mut V> {
+        match self.bucket_for_key_equiv(k) {
+            FoundEntry(idx) => Some(self.mut_value_for_bucket(idx)),
+            TableFull | FoundHole(_) => None,
+        }
+    }
+
     /// Visit all keys
     pub fn each_key(&self, blk: |k: &K| -> bool) -> bool {
         self.iter().advance(|(k, _)| blk(k))
@@ -1077,6 +1087,24 @@ mod test_map {
         assert_eq!(m.find_equiv(&("baz")), Some(&baz));
 
         assert_eq!(m.find_equiv(&("qux")), None);
+    }
+
+    #[test]
+    fn test_find_mut_equiv() {
+        let mut m = HashMap::new();
+
+        let (foo, bar, baz) = (1,2,3);
+        m.insert(~"foo", foo);
+        m.insert(~"bar", bar);
+        m.insert(~"baz", baz);
+
+        let new = 4;
+        match m.find_mut_equiv(&("bar")) {
+          Some(value) => value = new,
+          None => fail!()
+        }
+
+        assert_eq!(m.find_equiv(&("bar")), Some(&new));
     }
 
     #[test]
