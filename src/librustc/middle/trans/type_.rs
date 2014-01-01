@@ -219,7 +219,6 @@ impl Type {
                      int_ty,     // align
                      glue_fn_ty, // take
                      glue_fn_ty, // drop
-                     glue_fn_ty, // free
                      glue_fn_ty, // visit
                      int_ty, // borrow_offset
                      Type::struct_([Type::i8p(), Type::int(arch)], false)]; // name
