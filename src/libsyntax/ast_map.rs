@@ -82,26 +82,71 @@ pub fn path_elt_to_str(pe: path_elt, itr: @ident_interner) -> ~str {
     }
 }
 
-pub fn impl_pretty_name(trait_ref: &Option<trait_ref>,
-                        ty: &Ty, default: Ident) -> path_elt {
-    let itr = get_ident_interner();
-    let ty_ident = match ty.node {
-        ty_path(ref path, _, _) => path.segments.last().identifier,
-        _ => default
-    };
-    let hash = (trait_ref, ty).hash();
-    match *trait_ref {
-        None => path_pretty_name(ty_ident, hash),
-        Some(ref trait_ref) => {
-            // XXX: this dollar sign is actually a relic of being one of the
-            //      very few valid symbol names on unix. These kinds of
-            //      details shouldn't be exposed way up here in the ast.
-            let s = format!("{}${}",
-                         itr.get(trait_ref.path.segments.last().identifier.name),
-                         itr.get(ty_ident.name));
-            path_pretty_name(Ident::new(itr.gensym(s)), hash)
+/// write a "pretty" version of `ty` to `out`. This is designed so
+/// that symbols of `impl`'d methods give some hint of where they came
+/// from, even if it's hard to read (previously they would all just be
+/// listed as `__extensions__::method_name::hash`, with no indication
+/// of the type).
+// XXX: these dollar signs and the names in general are actually a
+//      relic of $ being one of the very few valid symbol names on
+//      unix. These kinds of details shouldn't be exposed way up here
+//      in the ast.
+fn pretty_ty(ty: &Ty, itr: @ident_interner, out: &mut ~str) {
+    let (prefix, subty) = match ty.node {
+        ty_uniq(ty) => ("$UP$", &*ty),
+        ty_box(mt { ty, .. }) => ("$SP$", &*ty),
+        ty_ptr(mt { ty, mutbl }) => (if mutbl == MutMutable {"$RPmut$"} else {"$RP$"},
+                                     &*ty),
+        ty_rptr(_, mt { ty, mutbl }) => (if mutbl == MutMutable {"$BPmut$"} else {"$BP$"},
+                                      &*ty),
+
+        ty_vec(ty) => ("$VEC$", &*ty),
+        ty_fixed_length_vec(ty, _) => ("$FIXEDVEC$", &*ty),
+
+        // these can't be represented as <prefix><contained ty>, so
+        // need custom handling.
+        ty_nil => { out.push_str("$NIL$"); return }
+        ty_path(ref path, _, _) => {
+                        out.push_str(itr.get(path.segments.last().identifier.name));
+                        return
+                    }
+        ty_tup(ref tys) => {
+            out.push_str(format!("$TUP_{}$", tys.len()));
+            for subty in tys.iter() {
+                pretty_ty(*subty, itr, out);
+                out.push_char('$');
+            }
+            return
         }
-    }
+
+        // meh, better than nothing.
+        ty_bot => { out.push_str("$BOT$"); return }
+        ty_closure(..) => { out.push_str("$CLOSURE$"); return }
+        ty_bare_fn(..) => { out.push_str("$FN$"); return }
+        ty_typeof(..) => { out.push_str("$TYPEOF$"); return }
+        ty_infer(..) => { out.push_str("$INFER$"); return }
+
+    };
+
+    out.push_str(prefix);
+    pretty_ty(subty, itr, out);
+}
+
+pub fn impl_pretty_name(trait_ref: &Option<trait_ref>, ty: &Ty) -> path_elt {
+    let itr = get_ident_interner();
+
+    let hash = (trait_ref, ty).hash();
+    let mut pretty;
+    match *trait_ref {
+        None => pretty = ~"",
+        Some(ref trait_ref) => {
+            pretty = itr.get(trait_ref.path.segments.last().identifier.name).to_owned();
+            pretty.push_char('$');
+        }
+    };
+    pretty_ty(ty, itr, &mut pretty);
+
+    path_pretty_name(Ident::new(itr.gensym(pretty)), hash)
 }
 
 #[deriving(Clone)]
@@ -265,7 +310,7 @@ impl Visitor<()> for Ctx {
                 // Right now the ident on impls is __extensions__ which isn't
                 // very pretty when debugging, so attempt to select a better
                 // name to use.
-                let elt = impl_pretty_name(maybe_trait, ty, i.ident);
+                let elt = impl_pretty_name(maybe_trait, ty);
 
                 let impl_did = ast_util::local_def(i.id);
                 for m in ms.iter() {
