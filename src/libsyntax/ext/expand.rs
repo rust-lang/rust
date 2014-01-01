@@ -1279,12 +1279,12 @@ mod test {
     // make a MetaWord outer attribute with the given name
     fn make_dummy_attr(s: @str) -> ast::Attribute {
         Spanned {
-            span:codemap::dummy_sp(),
+            span:codemap::DUMMY_SP,
             node: Attribute_ {
                 style: AttrOuter,
                 value: @Spanned {
                     node: MetaWord(s),
-                    span: codemap::dummy_sp(),
+                    span: codemap::DUMMY_SP,
                 },
                 is_sugared_doc: false,
             }

@@ -38,7 +38,7 @@ pub fn run(input: &str, matches: &getopts::Matches) -> int {
     let libs = @RefCell::new(libs.move_iter().collect());
 
     let sessopts = @session::options {
-        binary: @"rustdoc",
+        binary: ~"rustdoc",
         maybe_sysroot: Some(@os::self_exe_path().unwrap().dir_path()),
         addl_lib_search_paths: libs,
         outputs: ~[session::OutputDylib],
@@ -98,7 +98,7 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>) {
     let input = driver::str_input(test);
 
     let sessopts = @session::options {
-        binary: @"rustdoctest",
+        binary: ~"rustdoctest",
         maybe_sysroot: Some(@os::self_exe_path().unwrap().dir_path()),
         addl_lib_search_paths: @RefCell::new(libs),
         outputs: ~[session::OutputExecutable],

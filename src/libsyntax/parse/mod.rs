@@ -14,7 +14,7 @@
 use ast;
 use codemap::{Span, CodeMap, FileMap, FileSubstr};
 use codemap;
-use diagnostic::{span_handler, mk_span_handler, mk_handler, Emitter};
+use diagnostic::{SpanHandler, mk_span_handler, mk_handler, Emitter};
 use parse::attr::parser_attr;
 use parse::lexer::reader;
 use parse::parser::Parser;
@@ -41,7 +41,7 @@ pub mod obsolete;
 // info about a parsing session.
 pub struct ParseSess {
     cm: @codemap::CodeMap, // better be the same as the one in the reader!
-    span_diagnostic: @mut span_handler, // better be the same as the one in the reader!
+    span_diagnostic: @mut SpanHandler, // better be the same as the one in the reader!
     /// Used to determine and report recursive mod inclusions
     included_mod_stack: ~[Path],
 }
@@ -55,7 +55,7 @@ pub fn new_parse_sess(demitter: Option<@Emitter>) -> @mut ParseSess {
     }
 }
 
-pub fn new_parse_sess_special_handler(sh: @mut span_handler,
+pub fn new_parse_sess_special_handler(sh: @mut SpanHandler,
                                       cm: @codemap::CodeMap)
                                    -> @mut ParseSess {
     @mut ParseSess {

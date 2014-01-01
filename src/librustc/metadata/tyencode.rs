@@ -24,7 +24,7 @@ use middle::ty;
 use syntax::abi::AbiSet;
 use syntax::ast;
 use syntax::ast::*;
-use syntax::diagnostic::span_handler;
+use syntax::diagnostic::SpanHandler;
 use syntax::print::pprust::*;
 
 macro_rules! mywrite( ($wr:expr, $($arg:tt)*) => (
@@ -32,7 +32,7 @@ macro_rules! mywrite( ($wr:expr, $($arg:tt)*) => (
 ) )
 
 pub struct ctxt {
-    diag: @mut span_handler,
+    diag: @mut SpanHandler,
     // Def -> str Callback:
     ds: extern "Rust" fn(DefId) -> ~str,
     // The type context.

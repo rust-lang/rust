@@ -49,7 +49,7 @@ fn get_ast_and_resolve(cpath: &Path,
     let input = file_input(cpath.clone());
 
     let sessopts = @driver::session::options {
-        binary: @"rustdoc",
+        binary: ~"rustdoc",
         maybe_sysroot: Some(@os::self_exe_path().unwrap().dir_path()),
         addl_lib_search_paths: @RefCell::new(libs),
         outputs: ~[driver::session::OutputDylib],

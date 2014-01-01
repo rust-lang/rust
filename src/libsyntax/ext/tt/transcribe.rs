@@ -10,8 +10,8 @@
 
 use ast;
 use ast::{token_tree, tt_delim, tt_tok, tt_seq, tt_nonterminal,Ident};
-use codemap::{Span, dummy_sp};
-use diagnostic::span_handler;
+use codemap::{Span, DUMMY_SP};
+use diagnostic::SpanHandler;
 use ext::tt::macro_parser::{named_match, matched_seq, matched_nonterminal};
 use parse::token::{EOF, INTERPOLATED, IDENT, Token, nt_ident};
 use parse::token::{ident_to_str};
@@ -30,7 +30,7 @@ struct TtFrame {
 }
 
 pub struct TtReader {
-    sp_diag: @mut span_handler,
+    sp_diag: @mut SpanHandler,
     // the unzipped tree:
     stack: @mut TtFrame,
     /* for MBE-style macro transcription */
@@ -45,7 +45,7 @@ pub struct TtReader {
 /** This can do Macro-By-Example transcription. On the other hand, if
  *  `src` contains no `tt_seq`s and `tt_nonterminal`s, `interp` can (and
  *  should) be none. */
-pub fn new_tt_reader(sp_diag: @mut span_handler,
+pub fn new_tt_reader(sp_diag: @mut SpanHandler,
                      interp: Option<HashMap<Ident,@named_match>>,
                      src: ~[ast::token_tree])
                   -> @mut TtReader {
@@ -66,7 +66,7 @@ pub fn new_tt_reader(sp_diag: @mut span_handler,
         repeat_len: ~[],
         /* dummy values, never read: */
         cur_tok: EOF,
-        cur_span: dummy_sp()
+        cur_span: DUMMY_SP
     };
     tt_next_token(r); /* get cur_tok and cur_span set up */
     return r;

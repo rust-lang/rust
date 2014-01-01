@@ -12,7 +12,6 @@ use ast;
 use ast::Name;
 use codemap;
 use codemap::{CodeMap, Span, ExpnInfo};
-use diagnostic::span_handler;
 use ext;
 use ext::expand;
 use parse;

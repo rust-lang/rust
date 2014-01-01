@@ -197,7 +197,7 @@ pub fn describe_debug_flags() {
 
 pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
     let mut args = args.to_owned();
-    let binary = args.shift().to_managed();
+    let binary = args.shift();
 
     if args.is_empty() { usage(binary); return; }
 
@@ -348,7 +348,7 @@ struct RustcEmitter {
 
 impl diagnostic::Emitter for RustcEmitter {
     fn emit(&self,
-            cmsp: Option<(@codemap::CodeMap, codemap::Span)>,
+            cmsp: Option<(&codemap::CodeMap, codemap::Span)>,
             msg: &str,
             lvl: diagnostic::level) {
         if lvl == diagnostic::fatal {
