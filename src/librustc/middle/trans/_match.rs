@@ -1078,7 +1078,7 @@ fn extract_vec_elems<'a>(
         let slice_begin = tvec::pointer_add_byte(bcx, base, slice_byte_offset);
         let slice_len_offset = C_uint(bcx.ccx(), elem_count - 1u);
         let slice_len = Sub(bcx, len, slice_len_offset);
-        let slice_ty = ty::mk_evec(bcx.tcx(),
+        let slice_ty = ty::mk_vec(bcx.tcx(),
             ty::mt {ty: vt.unit_ty, mutbl: ast::MutImmutable},
             ty::vstore_slice(ty::ReStatic)
         );
@@ -1312,7 +1312,7 @@ fn compare_values<'a>(
     }
 
     match ty::get(rhs_t).sty {
-        ty::ty_estr(ty::vstore_uniq) => {
+        ty::ty_str(ty::vstore_uniq) => {
             let scratch_lhs = alloca(cx, val_ty(lhs), "__lhs");
             Store(cx, lhs, scratch_lhs);
             let scratch_rhs = alloca(cx, val_ty(rhs), "__rhs");
@@ -1326,7 +1326,7 @@ fn compare_values<'a>(
                 val: bool_to_i1(result.bcx, result.val)
             }
         }
-        ty::ty_estr(_) => {
+        ty::ty_str(_) => {
             let did = langcall(cx, None,
                                format!("comparison of `{}`", cx.ty_to_str(rhs_t)),
                                StrEqFnLangItem);

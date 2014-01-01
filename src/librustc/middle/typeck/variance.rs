@@ -625,11 +625,11 @@ impl<'a> ConstraintContext<'a> {
                 self.add_constraints_from_mt(mt, variance);
             }
 
-            ty::ty_estr(vstore) => {
+            ty::ty_str(vstore) => {
                 self.add_constraints_from_vstore(vstore, variance);
             }
 
-            ty::ty_evec(ref mt, vstore) => {
+            ty::ty_vec(ref mt, vstore) => {
                 self.add_constraints_from_vstore(vstore, variance);
                 self.add_constraints_from_mt(mt, variance);
             }

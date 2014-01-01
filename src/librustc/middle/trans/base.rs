@@ -241,7 +241,7 @@ fn decl_rust_fn(ccx: &CrateContext, inputs: &[ty::t], output: ty::t, name: &str)
         }
         // `~` pointer return values never alias because ownership is transferred
         ty::ty_uniq(..) |
-        ty::ty_evec(_, ty::vstore_uniq) => {
+        ty::ty_vec(_, ty::vstore_uniq) => {
             unsafe {
                 llvm::LLVMAddReturnAttribute(llfn, lib::llvm::NoAliasAttribute as c_uint);
             }
@@ -257,7 +257,7 @@ fn decl_rust_fn(ccx: &CrateContext, inputs: &[ty::t], output: ty::t, name: &str)
         match ty::get(arg_ty).sty {
             // `~` pointer parameters never alias because ownership is transferred
             ty::ty_uniq(..) |
-            ty::ty_evec(_, ty::vstore_uniq) |
+            ty::ty_vec(_, ty::vstore_uniq) |
             ty::ty_closure(ty::ClosureTy {sigil: ast::OwnedSigil, ..}) => {
                 unsafe {
                     llvm::LLVMAddAttribute(llarg, lib::llvm::NoAliasAttribute as c_uint);
@@ -758,8 +758,8 @@ pub fn iter_structural_ty<'r,
               }
           })
       }
-      ty::ty_estr(ty::vstore_fixed(_)) |
-      ty::ty_evec(_, ty::vstore_fixed(_)) => {
+      ty::ty_str(ty::vstore_fixed(_)) |
+      ty::ty_vec(_, ty::vstore_fixed(_)) => {
         let (base, len) = tvec::get_base_and_byte_len(cx, av, t);
         cx = tvec::iter_vec_raw(cx, base, t, len, f);
       }
@@ -3120,12 +3120,12 @@ pub fn create_module_map(ccx: &CrateContext) -> (ValueRef, uint) {
     };
 
     for key in keys.iter() {
-            let llestrval = C_estr_slice(ccx, *key);
+            let llstrval = C_str_slice(ccx, *key);
             let module_data = ccx.module_data.borrow();
             let val = *module_data.get().find_equiv(key).unwrap();
             let v_ptr = p2i(ccx, val);
             let elt = C_struct([
-                llestrval,
+                llstrval,
                 v_ptr
             ], false);
             elts.push(elt);

@@ -906,7 +906,7 @@ pub fn C_cstr(cx: &CrateContext, s: @str) -> ValueRef {
 
 // NB: Do not use `do_spill_noroot` to make this into a constant string, or
 // you will be kicked off fast isel. See issue #4352 for an example of this.
-pub fn C_estr_slice(cx: &CrateContext, s: @str) -> ValueRef {
+pub fn C_str_slice(cx: &CrateContext, s: @str) -> ValueRef {
     unsafe {
         let len = s.len();
         let cs = llvm::LLVMConstPointerCast(C_cstr(cx, s), Type::i8p().to_ref());
@@ -1045,8 +1045,8 @@ pub fn mono_data_classify(t: ty::t) -> MonoDataClass {
         ty::ty_float(_) => MonoFloat,
         ty::ty_rptr(..) | ty::ty_uniq(..) |
         ty::ty_box(..) | ty::ty_opaque_box(..) |
-        ty::ty_estr(ty::vstore_uniq) | ty::ty_evec(_, ty::vstore_uniq) |
-        ty::ty_estr(ty::vstore_box) | ty::ty_evec(_, ty::vstore_box) |
+        ty::ty_str(ty::vstore_uniq) | ty::ty_vec(_, ty::vstore_uniq) |
+        ty::ty_str(ty::vstore_box) | ty::ty_vec(_, ty::vstore_box) |
         ty::ty_bare_fn(..) => MonoNonNull,
         // Is that everything?  Would closures or slices qualify?
         _ => MonoBits

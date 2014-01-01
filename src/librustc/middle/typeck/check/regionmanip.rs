@@ -103,7 +103,7 @@ pub fn relate_nested_regions(tcx: ty::ctxt,
         fn fold_ty(&mut self, ty: ty::t) -> ty::t {
             match ty::get(ty).sty {
                 ty::ty_rptr(r, ref mt) |
-                ty::ty_evec(ref mt, ty::vstore_slice(r)) => {
+                ty::ty_vec(ref mt, ty::vstore_slice(r)) => {
                     self.relate(r);
                     self.stack.push(r);
                     ty_fold::super_fold_ty(self, mt.ty);

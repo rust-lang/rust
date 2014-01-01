@@ -101,11 +101,11 @@ pub fn free_ty_immediate<'a>(bcx: &'a Block<'a>, v: ValueRef, t: ty::t)
     let _icx = push_ctxt("free_ty_immediate");
     match ty::get(t).sty {
       ty::ty_uniq(_) |
-      ty::ty_evec(_, ty::vstore_uniq) |
-      ty::ty_estr(ty::vstore_uniq) |
+      ty::ty_vec(_, ty::vstore_uniq) |
+      ty::ty_str(ty::vstore_uniq) |
       ty::ty_box(_) | ty::ty_opaque_box |
-      ty::ty_evec(_, ty::vstore_box) |
-      ty::ty_estr(ty::vstore_box) |
+      ty::ty_vec(_, ty::vstore_box) |
+      ty::ty_str(ty::vstore_box) |
       ty::ty_opaque_closure_ptr(_) => {
         let vp = alloca(bcx, type_of(bcx.ccx(), t), "");
         Store(bcx, v, vp);
@@ -135,8 +135,8 @@ pub fn simplified_glue_type(tcx: ty::ctxt, field: uint, t: ty::t) -> ty::t {
         match ty::get(t).sty {
           ty::ty_unboxed_vec(..) |
               ty::ty_uniq(..) |
-              ty::ty_estr(ty::vstore_uniq) |
-              ty::ty_evec(_, ty::vstore_uniq) => { return ty::mk_u32(); }
+              ty::ty_str(ty::vstore_uniq) |
+              ty::ty_vec(_, ty::vstore_uniq) => { return ty::mk_u32(); }
           _ => ()
         }
     }
@@ -153,8 +153,8 @@ pub fn simplified_glue_type(tcx: ty::ctxt, field: uint, t: ty::t) -> ty::t {
           ty::ty_box(..) |
           ty::ty_opaque_box |
           ty::ty_uniq(..) |
-          ty::ty_evec(_, ty::vstore_uniq) | ty::ty_estr(ty::vstore_uniq) |
-          ty::ty_evec(_, ty::vstore_box) | ty::ty_estr(ty::vstore_box) |
+          ty::ty_vec(_, ty::vstore_uniq) | ty::ty_str(ty::vstore_uniq) |
+          ty::ty_vec(_, ty::vstore_box) | ty::ty_str(ty::vstore_box) |
           ty::ty_opaque_closure_ptr(..) => (),
           _ => { return ty::mk_u32(); }
         }
@@ -167,12 +167,12 @@ pub fn simplified_glue_type(tcx: ty::ctxt, field: uint, t: ty::t) -> ty::t {
           if ! ty::type_needs_drop(tcx, typ) =>
           return ty::mk_imm_box(tcx, ty::mk_u32()),
 
-          ty::ty_evec(mt, ty::vstore_box)
+          ty::ty_vec(mt, ty::vstore_box)
           if ! ty::type_needs_drop(tcx, mt.ty) =>
           return ty::mk_imm_box(tcx, ty::mk_u32()),
 
           ty::ty_uniq(mt) |
-          ty::ty_evec(mt, ty::vstore_uniq)
+          ty::ty_vec(mt, ty::vstore_uniq)
           if ! ty::type_needs_drop(tcx, mt.ty) =>
           return ty::mk_imm_uniq(tcx, ty::mk_u32()),
 
@@ -390,8 +390,8 @@ pub fn make_free_glue<'a>(bcx: &'a Block<'a>, v: ValueRef, t: ty::t)
       ty::ty_uniq(..) => {
         uniq::make_free_glue(bcx, v, t)
       }
-      ty::ty_evec(_, ty::vstore_uniq) | ty::ty_estr(ty::vstore_uniq) |
-      ty::ty_evec(_, ty::vstore_box) | ty::ty_estr(ty::vstore_box) => {
+      ty::ty_vec(_, ty::vstore_uniq) | ty::ty_str(ty::vstore_uniq) |
+      ty::ty_vec(_, ty::vstore_box) | ty::ty_str(ty::vstore_box) => {
         make_free_glue(bcx, v, tvec::expand_boxed_vec_ty(bcx.tcx(), t))
       }
       ty::ty_closure(_) => {
@@ -470,11 +470,11 @@ pub fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t)
     let ccx = bcx.ccx();
     match ty::get(t).sty {
       ty::ty_box(_) | ty::ty_opaque_box |
-      ty::ty_estr(ty::vstore_box) | ty::ty_evec(_, ty::vstore_box) => {
+      ty::ty_str(ty::vstore_box) | ty::ty_vec(_, ty::vstore_box) => {
         decr_refcnt_maybe_free(bcx, Load(bcx, v0), Some(v0), t)
       }
       ty::ty_uniq(_) |
-      ty::ty_evec(_, ty::vstore_uniq) | ty::ty_estr(ty::vstore_uniq) => {
+      ty::ty_vec(_, ty::vstore_uniq) | ty::ty_str(ty::vstore_uniq) => {
         free_ty(bcx, v0, t)
       }
       ty::ty_unboxed_vec(_) => {
@@ -572,11 +572,11 @@ pub fn make_take_glue<'a>(bcx: &'a Block<'a>, v: ValueRef, t: ty::t)
     // NB: v is a *pointer* to type t here, not a direct value.
     match ty::get(t).sty {
       ty::ty_box(_) | ty::ty_opaque_box |
-      ty::ty_evec(_, ty::vstore_box) | ty::ty_estr(ty::vstore_box) => {
+      ty::ty_vec(_, ty::vstore_box) | ty::ty_str(ty::vstore_box) => {
         incr_refcnt_of_boxed(bcx, Load(bcx, v)); bcx
       }
-      ty::ty_evec(_, ty::vstore_slice(_))
-      | ty::ty_estr(ty::vstore_slice(_)) => {
+      ty::ty_vec(_, ty::vstore_slice(_))
+      | ty::ty_str(ty::vstore_slice(_)) => {
         bcx
       }
       ty::ty_closure(_) => bcx,
@@ -654,7 +654,7 @@ pub fn declare_tydesc(ccx: &CrateContext, t: ty::t) -> @tydesc_info {
         }
     });
 
-    let ty_name = C_estr_slice(ccx, ppaux::ty_to_str(ccx.tcx, t).to_managed());
+    let ty_name = C_str_slice(ccx, ppaux::ty_to_str(ccx.tcx, t).to_managed());
 
     let inf = @tydesc_info {
         ty: t,
