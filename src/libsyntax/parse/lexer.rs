@@ -11,7 +11,7 @@
 use ast;
 use codemap::{BytePos, CharPos, CodeMap, Pos, Span};
 use codemap;
-use diagnostic::span_handler;
+use diagnostic::SpanHandler;
 use ext::tt::transcribe::{tt_next_token};
 use ext::tt::transcribe::{dup_tt_reader};
 use parse::token;
@@ -29,7 +29,7 @@ pub trait reader {
     fn is_eof(@mut self) -> bool;
     fn next_token(@mut self) -> TokenAndSpan;
     fn fatal(@mut self, ~str) -> !;
-    fn span_diag(@mut self) -> @mut span_handler;
+    fn span_diag(@mut self) -> @mut SpanHandler;
     fn peek(@mut self) -> TokenAndSpan;
     fn dup(@mut self) -> @mut reader;
 }
@@ -41,7 +41,7 @@ pub struct TokenAndSpan {
 }
 
 pub struct StringReader {
-    span_diagnostic: @mut span_handler,
+    span_diagnostic: @mut SpanHandler,
     src: @str,
     // The absolute offset within the codemap of the next character to read
     pos: BytePos,
@@ -57,7 +57,7 @@ pub struct StringReader {
     peek_span: Span
 }
 
-pub fn new_string_reader(span_diagnostic: @mut span_handler,
+pub fn new_string_reader(span_diagnostic: @mut SpanHandler,
                          filemap: @codemap::FileMap)
                       -> @mut StringReader {
     let r = new_low_level_string_reader(span_diagnostic, filemap);
@@ -66,7 +66,7 @@ pub fn new_string_reader(span_diagnostic: @mut span_handler,
 }
 
 /* For comments.rs, which hackily pokes into 'pos' and 'curr' */
-pub fn new_low_level_string_reader(span_diagnostic: @mut span_handler,
+pub fn new_low_level_string_reader(span_diagnostic: @mut SpanHandler,
                                    filemap: @codemap::FileMap)
                                 -> @mut StringReader {
     // Force the initial reader bump to start on a fresh line
@@ -81,7 +81,7 @@ pub fn new_low_level_string_reader(span_diagnostic: @mut span_handler,
         filemap: filemap,
         /* dummy values; not read */
         peek_tok: token::EOF,
-        peek_span: codemap::dummy_sp()
+        peek_span: codemap::DUMMY_SP
     };
     bump(r);
     return r;
@@ -118,7 +118,7 @@ impl reader for StringReader {
     fn fatal(@mut self, m: ~str) -> ! {
         self.span_diagnostic.span_fatal(self.peek_span, m)
     }
-    fn span_diag(@mut self) -> @mut span_handler { self.span_diagnostic }
+    fn span_diag(@mut self) -> @mut SpanHandler { self.span_diagnostic }
     fn peek(@mut self) -> TokenAndSpan {
         // XXX(pcwalton): Bad copy!
         TokenAndSpan {
@@ -139,7 +139,7 @@ impl reader for TtReader {
     fn fatal(@mut self, m: ~str) -> ! {
         self.sp_diag.span_fatal(self.cur_span, m);
     }
-    fn span_diag(@mut self) -> @mut span_handler { self.sp_diag }
+    fn span_diag(@mut self) -> @mut SpanHandler { self.sp_diag }
     fn peek(@mut self) -> TokenAndSpan {
         TokenAndSpan {
             tok: self.cur_tok.clone(),

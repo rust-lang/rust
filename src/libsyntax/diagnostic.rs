@@ -21,28 +21,7 @@ static BUG_REPORT_URL: &'static str =
 
 pub trait Emitter {
     fn emit(&self,
-            cmsp: Option<(@codemap::CodeMap, Span)>,
-            msg: &str,
-            lvl: level);
-}
-
-// a handler deals with errors; certain errors
-// (fatal, bug, unimpl) may cause immediate exit,
-// others log errors for later reporting.
-pub trait handler {
-    fn fatal(@mut self, msg: &str) -> !;
-    fn err(@mut self, msg: &str);
-    fn bump_err_count(@mut self);
-    fn err_count(@mut self) -> uint;
-    fn has_errors(@mut self) -> bool;
-    fn abort_if_errors(@mut self);
-    fn warn(@mut self, msg: &str);
-    fn note(@mut self, msg: &str);
-    // used to indicate a bug in the compiler:
-    fn bug(@mut self, msg: &str) -> !;
-    fn unimpl(@mut self, msg: &str) -> !;
-    fn emit(@mut self,
-            cmsp: Option<(@codemap::CodeMap, Span)>,
+            cmsp: Option<(&codemap::CodeMap, Span)>,
             msg: &str,
             lvl: level);
 }
@@ -50,71 +29,64 @@ pub trait handler {
 // a span-handler is like a handler but also
 // accepts span information for source-location
 // reporting.
-pub trait span_handler {
-    fn span_fatal(@mut self, sp: Span, msg: &str) -> !;
-    fn span_err(@mut self, sp: Span, msg: &str);
-    fn span_warn(@mut self, sp: Span, msg: &str);
-    fn span_note(@mut self, sp: Span, msg: &str);
-    fn span_bug(@mut self, sp: Span, msg: &str) -> !;
-    fn span_unimpl(@mut self, sp: Span, msg: &str) -> !;
-    fn handler(@mut self) -> @mut handler;
-}
-
-struct HandlerT {
-    err_count: uint,
-    emit: @Emitter,
-}
-
-struct CodemapT {
-    handler: @mut handler,
+pub struct SpanHandler {
+    handler: @mut Handler,
     cm: @codemap::CodeMap,
 }
 
-impl span_handler for CodemapT {
-    fn span_fatal(@mut self, sp: Span, msg: &str) -> ! {
-        self.handler.emit(Some((self.cm, sp)), msg, fatal);
+impl SpanHandler {
+    pub fn span_fatal(@mut self, sp: Span, msg: &str) -> ! {
+        self.handler.emit(Some((&*self.cm, sp)), msg, fatal);
         fail!();
     }
-    fn span_err(@mut self, sp: Span, msg: &str) {
-        self.handler.emit(Some((self.cm, sp)), msg, error);
+    pub fn span_err(@mut self, sp: Span, msg: &str) {
+        self.handler.emit(Some((&*self.cm, sp)), msg, error);
         self.handler.bump_err_count();
     }
-    fn span_warn(@mut self, sp: Span, msg: &str) {
-        self.handler.emit(Some((self.cm, sp)), msg, warning);
+    pub fn span_warn(@mut self, sp: Span, msg: &str) {
+        self.handler.emit(Some((&*self.cm, sp)), msg, warning);
     }
-    fn span_note(@mut self, sp: Span, msg: &str) {
-        self.handler.emit(Some((self.cm, sp)), msg, note);
+    pub fn span_note(@mut self, sp: Span, msg: &str) {
+        self.handler.emit(Some((&*self.cm, sp)), msg, note);
     }
-    fn span_bug(@mut self, sp: Span, msg: &str) -> ! {
+    pub fn span_bug(@mut self, sp: Span, msg: &str) -> ! {
         self.span_fatal(sp, ice_msg(msg));
     }
-    fn span_unimpl(@mut self, sp: Span, msg: &str) -> ! {
+    pub fn span_unimpl(@mut self, sp: Span, msg: &str) -> ! {
         self.span_bug(sp, ~"unimplemented " + msg);
     }
-    fn handler(@mut self) -> @mut handler {
+    pub fn handler(@mut self) -> @mut Handler {
         self.handler
     }
 }
 
-impl handler for HandlerT {
-    fn fatal(@mut self, msg: &str) -> ! {
+// a handler deals with errors; certain errors
+// (fatal, bug, unimpl) may cause immediate exit,
+// others log errors for later reporting.
+pub struct Handler {
+    err_count: uint,
+    emit: @Emitter,
+}
+
+impl Handler {
+    pub fn fatal(@mut self, msg: &str) -> ! {
         self.emit.emit(None, msg, fatal);
         fail!();
     }
-    fn err(@mut self, msg: &str) {
+    pub fn err(@mut self, msg: &str) {
         self.emit.emit(None, msg, error);
         self.bump_err_count();
     }
-    fn bump_err_count(@mut self) {
+    pub fn bump_err_count(@mut self) {
         self.err_count += 1u;
     }
-    fn err_count(@mut self) -> uint {
+    pub fn err_count(@mut self) -> uint {
         self.err_count
     }
-    fn has_errors(@mut self) -> bool {
+    pub fn has_errors(@mut self) -> bool {
         self.err_count > 0u
     }
-    fn abort_if_errors(@mut self) {
+    pub fn abort_if_errors(@mut self) {
         let s;
         match self.err_count {
           0u => return,
@@ -126,20 +98,20 @@ impl handler for HandlerT {
         }
         self.fatal(s);
     }
-    fn warn(@mut self, msg: &str) {
+    pub fn warn(@mut self, msg: &str) {
         self.emit.emit(None, msg, warning);
     }
-    fn note(@mut self, msg: &str) {
+    pub fn note(@mut self, msg: &str) {
         self.emit.emit(None, msg, note);
     }
-    fn bug(@mut self, msg: &str) -> ! {
+    pub fn bug(@mut self, msg: &str) -> ! {
         self.fatal(ice_msg(msg));
     }
-    fn unimpl(@mut self, msg: &str) -> ! {
+    pub fn unimpl(@mut self, msg: &str) -> ! {
         self.bug(~"unimplemented " + msg);
     }
-    fn emit(@mut self,
-            cmsp: Option<(@codemap::CodeMap, Span)>,
+    pub fn emit(@mut self,
+            cmsp: Option<(&codemap::CodeMap, Span)>,
             msg: &str,
             lvl: level) {
         self.emit.emit(cmsp, msg, lvl);
@@ -151,24 +123,24 @@ pub fn ice_msg(msg: &str) -> ~str {
             \nWe would appreciate a bug report: {}", msg, BUG_REPORT_URL)
 }
 
-pub fn mk_span_handler(handler: @mut handler, cm: @codemap::CodeMap)
-                    -> @mut span_handler {
-    @mut CodemapT {
+pub fn mk_span_handler(handler: @mut Handler, cm: @codemap::CodeMap)
+                    -> @mut SpanHandler {
+    @mut SpanHandler {
         handler: handler,
         cm: cm,
-    } as @mut span_handler
+    }
 }
 
-pub fn mk_handler(emitter: Option<@Emitter>) -> @mut handler {
+pub fn mk_handler(emitter: Option<@Emitter>) -> @mut Handler {
     let emit: @Emitter = match emitter {
         Some(e) => e,
         None => @DefaultEmitter as @Emitter
     };
 
-    @mut HandlerT {
+    @mut Handler {
         err_count: 0,
         emit: emit,
-    } as @mut handler
+    }
 }
 
 #[deriving(Eq)]
@@ -255,7 +227,7 @@ pub struct DefaultEmitter;
 
 impl Emitter for DefaultEmitter {
     fn emit(&self,
-            cmsp: Option<(@codemap::CodeMap, Span)>,
+            cmsp: Option<(&codemap::CodeMap, Span)>,
             msg: &str,
             lvl: level) {
         match cmsp {
@@ -272,10 +244,10 @@ impl Emitter for DefaultEmitter {
     }
 }
 
-fn highlight_lines(cm: @codemap::CodeMap,
+fn highlight_lines(cm: &codemap::CodeMap,
                    sp: Span,
                    lvl: level,
-                   lines: @codemap::FileLines) {
+                   lines: &codemap::FileLines) {
     let fm = lines.file;
     let mut err = io::stderr();
     let err = &mut err as &mut io::Writer;
@@ -283,9 +255,9 @@ fn highlight_lines(cm: @codemap::CodeMap,
     // arbitrarily only print up to six lines of the error
     let max_lines = 6u;
     let mut elided = false;
-    let mut display_lines = /* FIXME (#2543) */ lines.lines.clone();
+    let mut display_lines = lines.lines.as_slice();
     if display_lines.len() > max_lines {
-        display_lines = display_lines.slice(0u, max_lines).to_owned();
+        display_lines = display_lines.slice(0u, max_lines);
         elided = true;
     }
     // Print the offending lines
@@ -339,7 +311,7 @@ fn highlight_lines(cm: @codemap::CodeMap,
     }
 }
 
-fn print_macro_backtrace(cm: @codemap::CodeMap, sp: Span) {
+fn print_macro_backtrace(cm: &codemap::CodeMap, sp: Span) {
     for ei in sp.expn_info.iter() {
         let ss = ei.callee.span.as_ref().map_default(~"", |span| cm.span_to_str(*span));
         let (pre, post) = match ei.callee.format {
@@ -356,7 +328,7 @@ fn print_macro_backtrace(cm: @codemap::CodeMap, sp: Span) {
 }
 
 pub fn expect<T:Clone>(
-              diag: @mut span_handler,
+              diag: @mut SpanHandler,
               opt: Option<T>,
               msg: || -> ~str)
               -> T {

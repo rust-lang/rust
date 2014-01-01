@@ -678,7 +678,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
     };
 
     // This can be the case for functions inlined from another crate
-    if span == codemap::dummy_sp() {
+    if span == codemap::DUMMY_SP {
         return FunctionWithoutDebugInfo;
     }
 
@@ -797,7 +797,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
                     }
                 };
 
-                signature.push(type_metadata(cx, return_type, codemap::dummy_sp()));
+                signature.push(type_metadata(cx, return_type, codemap::DUMMY_SP));
             }
         }
 
@@ -812,7 +812,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
                 }
             };
 
-            signature.push(type_metadata(cx, arg_type, codemap::dummy_sp()));
+            signature.push(type_metadata(cx, arg_type, codemap::DUMMY_SP));
         }
 
         return create_DIArray(DIB(cx), signature);
@@ -856,7 +856,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
             if cx.sess.opts.extra_debuginfo {
                 let actual_self_type_metadata = type_metadata(cx,
                                                               actual_self_type,
-                                                              codemap::dummy_sp());
+                                                              codemap::DUMMY_SP);
 
                 let ident = special_idents::type_self;
 
@@ -897,7 +897,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
 
             // Again, only create type information if extra_debuginfo is enabled
             if cx.sess.opts.extra_debuginfo {
-                let actual_type_metadata = type_metadata(cx, actual_type, codemap::dummy_sp());
+                let actual_type_metadata = type_metadata(cx, actual_type, codemap::DUMMY_SP);
                 let param_metadata = token::ident_to_str(&ident).with_c_str(|name| {
                     unsafe {
                         llvm::LLVMDIBuilderCreateTemplateTypeParameter(
@@ -1271,7 +1271,7 @@ impl RecursiveTypeDescription {
                                               llvm_type,
                                               member_descriptions,
                                               file_metadata,
-                                              codemap::dummy_sp());
+                                              codemap::DUMMY_SP);
                 return metadata_stub;
             }
         }
@@ -1364,7 +1364,7 @@ impl MemberDescriptionFactory for GeneralMemberDescriptionFactory {
                                               variant_llvm_type,
                                               member_descriptions,
                                               self.file_metadata,
-                                              codemap::dummy_sp());
+                                              codemap::DUMMY_SP);
                 MemberDescription {
                     name: @"",
                     llvm_type: variant_llvm_type,
@@ -1419,12 +1419,12 @@ fn describe_variant(cx: &CrateContext,
                 cx.sess.span_warn(span,
                     format!("debuginfo::enum_metadata()::adt_struct_metadata() - Unexpected node \
                           type: {:?}. This is a bug.", node));
-                codemap::dummy_sp()
+                codemap::DUMMY_SP
             }
         }
     } else {
         // For definitions from other crates we have no location information available.
-        codemap::dummy_sp()
+        codemap::DUMMY_SP
     };
 
     let metadata_stub = create_struct_stub(cx,
@@ -1511,7 +1511,7 @@ fn prepare_enum_metadata(cx: &CrateContext,
         let discriminant_llvm_type = adt::ll_inttype(cx, inttype);
         let (discriminant_size, discriminant_align) = size_and_align_of(cx, discriminant_llvm_type);
         let discriminant_base_type_metadata = type_metadata(cx, adt::ty_of_inttype(inttype),
-                                                            codemap::dummy_sp());
+                                                            codemap::DUMMY_SP);
         enum_name.with_c_str(|enum_name| {
             unsafe {
                 llvm::LLVMDIBuilderCreateEnumerationType(
@@ -1773,13 +1773,13 @@ fn boxed_type_metadata(cx: &CrateContext,
 
     let int_type = ty::mk_int();
     let nil_pointer_type = ty::mk_nil_ptr(cx.tcx);
-    let nil_pointer_type_metadata = type_metadata(cx, nil_pointer_type, codemap::dummy_sp());
+    let nil_pointer_type_metadata = type_metadata(cx, nil_pointer_type, codemap::DUMMY_SP);
 
     let member_descriptions = [
         MemberDescription {
             name: @"refcnt",
             llvm_type: member_llvm_types[0],
-            type_metadata: type_metadata(cx, int_type, codemap::dummy_sp()),
+            type_metadata: type_metadata(cx, int_type, codemap::DUMMY_SP),
             offset: ComputedMemberOffset,
         },
         MemberDescription {
@@ -2086,14 +2086,14 @@ fn type_metadata(cx: &CrateContext,
         let content_type_metadata = type_metadata(
             cx,
             type_in_box,
-            codemap::dummy_sp());
+            codemap::DUMMY_SP);
 
         let box_metadata = boxed_type_metadata(
             cx,
             Some(content_type_name),
             content_llvm_type,
             content_type_metadata,
-            codemap::dummy_sp());
+            codemap::DUMMY_SP);
 
         pointer_type_metadata(cx, pointer_type, box_metadata)
     }
@@ -2294,13 +2294,13 @@ fn get_namespace_and_span_for_item(cx: &CrateContext,
                 cx.sess.span_warn(warning_span,
                     format!("debuginfo::get_namespace_and_span_for_item() \
                              - Unexpected node type: {:?}", *node));
-                codemap::dummy_sp()
+                codemap::DUMMY_SP
             }
         };
         definition_span
     } else {
         // For external items there is no span information
-        codemap::dummy_sp()
+        codemap::DUMMY_SP
     };
 
     (containing_scope, definition_span)

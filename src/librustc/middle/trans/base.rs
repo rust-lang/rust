@@ -2107,7 +2107,7 @@ pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
             ty: varg.ty(),
             pat: ast_util::ident_to_pat(
                 ccx.tcx.sess.next_node_id(),
-                codemap::dummy_sp(),
+                codemap::DUMMY_SP,
                 special_idents::arg),
             id: varg.id(),
         }

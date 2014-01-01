@@ -24,7 +24,7 @@ use syntax::parse::token;
 use syntax::parse::token::{ident_interner, interner_get};
 use syntax::parse::token::special_idents;
 use syntax::print::pprust::path_to_str;
-use syntax::codemap::{Span, dummy_sp, Pos};
+use syntax::codemap::{Span, DUMMY_SP, Pos};
 use syntax::opt_vec::OptVec;
 use syntax::visit;
 use syntax::visit::Visitor;
@@ -1643,7 +1643,7 @@ impl Resolver {
                                                   NormalModuleKind,
                                                   true,
                                                   is_public,
-                                                  dummy_sp());
+                                                  DUMMY_SP);
               }
             }
           }
@@ -1661,16 +1661,16 @@ impl Resolver {
             // public.
             let is_public = vis != ast::private;
             if is_struct {
-                child_name_bindings.define_type(def, dummy_sp(), is_public);
+                child_name_bindings.define_type(def, DUMMY_SP, is_public);
                 self.structs.insert(variant_id);
             } else {
-                child_name_bindings.define_value(def, dummy_sp(), is_public);
+                child_name_bindings.define_value(def, DUMMY_SP, is_public);
             }
           }
           DefFn(..) | DefStaticMethod(..) | DefStatic(..) => {
             debug!("(building reduced graph for external \
                     crate) building value (fn/static) {}", final_ident);
-            child_name_bindings.define_value(def, dummy_sp(), is_public);
+            child_name_bindings.define_value(def, DUMMY_SP, is_public);
           }
           DefTrait(def_id) => {
               debug!("(building reduced graph for external \
@@ -1711,7 +1711,7 @@ impl Resolver {
                   }
               }
 
-              child_name_bindings.define_type(def, dummy_sp(), is_public);
+              child_name_bindings.define_type(def, DUMMY_SP, is_public);
 
               // Define a module if necessary.
               let parent_link = self.get_parent_link(new_parent, ident);
@@ -1720,21 +1720,21 @@ impl Resolver {
                                                   TraitModuleKind,
                                                   true,
                                                   is_public,
-                                                  dummy_sp())
+                                                  DUMMY_SP)
           }
           DefTy(_) => {
               debug!("(building reduced graph for external \
                       crate) building type {}", final_ident);
 
-              child_name_bindings.define_type(def, dummy_sp(), is_public);
+              child_name_bindings.define_type(def, DUMMY_SP, is_public);
           }
           DefStruct(def_id) => {
             debug!("(building reduced graph for external \
                     crate) building type and value for {}",
                    final_ident);
-            child_name_bindings.define_type(def, dummy_sp(), is_public);
+            child_name_bindings.define_type(def, DUMMY_SP, is_public);
             if csearch::get_struct_fields(self.session.cstore, def_id).len() == 0 {
-                child_name_bindings.define_value(def, dummy_sp(), is_public);
+                child_name_bindings.define_value(def, DUMMY_SP, is_public);
             }
             self.structs.insert(def_id);
           }
@@ -1782,7 +1782,7 @@ impl Resolver {
                             self.add_child(ident,
                                            ModuleReducedGraphParent(root),
                                            OverwriteDuplicates,
-                                           dummy_sp());
+                                           DUMMY_SP);
 
                         self.handle_external_def(def,
                                                  visibility,
@@ -1814,7 +1814,7 @@ impl Resolver {
                                         final_ident,
                                         ModuleReducedGraphParent(root),
                                         OverwriteDuplicates,
-                                        dummy_sp());
+                                        DUMMY_SP);
 
                                 // Process the static methods. First,
                                 // create the module.
@@ -1842,7 +1842,7 @@ impl Resolver {
                                             ImplModuleKind,
                                             true,
                                             true,
-                                            dummy_sp());
+                                            DUMMY_SP);
                                         type_module =
                                             child_name_bindings.
                                                 get_module();
@@ -1864,13 +1864,13 @@ impl Resolver {
                                         self.add_child(ident,
                                                        new_parent,
                                                        OverwriteDuplicates,
-                                                       dummy_sp());
+                                                       DUMMY_SP);
                                     let def = DefFn(
                                         static_method_info.def_id,
                                         static_method_info.purity);
 
                                     method_name_bindings.define_value(
-                                        def, dummy_sp(),
+                                        def, DUMMY_SP,
                                         visibility == ast::public);
                                 }
                             }
@@ -5576,7 +5576,7 @@ impl Resolver {
         // because this means that they were generated in some fashion by the
         // compiler and we don't need to consider them.
         if vi.vis == public { return }
-        if vi.span == dummy_sp() { return }
+        if vi.span == DUMMY_SP { return }
 
         match vi.node {
             view_item_extern_mod(..) => {} // ignore

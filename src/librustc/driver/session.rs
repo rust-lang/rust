@@ -163,7 +163,7 @@ pub struct options {
     // will be added to the crate AST node.  This should not be used for
     // anything except building the full crate config prior to parsing.
     cfg: ast::CrateConfig,
-    binary: @str,
+    binary: ~str,
     test: bool,
     parse_only: bool,
     no_trans: bool,
@@ -209,7 +209,7 @@ pub struct Session_ {
     // For a library crate, this is always none
     entry_fn: RefCell<Option<(NodeId, codemap::Span)>>,
     entry_type: Cell<Option<EntryFnType>>,
-    span_diagnostic: @mut diagnostic::span_handler,
+    span_diagnostic: @mut diagnostic::SpanHandler,
     filesearch: @filesearch::FileSearch,
     building_library: Cell<bool>,
     working_dir: Path,
@@ -292,7 +292,7 @@ impl Session_ {
 
         v
     }
-    pub fn diagnostic(&self) -> @mut diagnostic::span_handler {
+    pub fn diagnostic(&self) -> @mut diagnostic::SpanHandler {
         self.span_diagnostic
     }
     pub fn debugging_opt(&self, opt: uint) -> bool {
@@ -395,7 +395,7 @@ pub fn basic_options() -> @options {
         target_cpu: ~"generic",
         target_feature: ~"",
         cfg: ~[],
-        binary: @"rustc",
+        binary: ~"rustc",
         test: false,
         parse_only: false,
         no_trans: false,

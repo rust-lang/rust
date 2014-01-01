@@ -12,7 +12,7 @@ use abi::AbiSet;
 use ast::{P, Ident};
 use ast;
 use ast_util;
-use codemap::{Span, respan, dummy_sp};
+use codemap::{Span, respan, DUMMY_SP};
 use ext::base::ExtCtxt;
 use ext::quote::rt::*;
 use fold::ast_fold;
@@ -321,7 +321,7 @@ impl AstBuilder for ExtCtxt {
 
     fn ty_option(&self, ty: P<ast::Ty>) -> P<ast::Ty> {
         self.ty_path(
-            self.path_all(dummy_sp(),
+            self.path_all(DUMMY_SP,
                           true,
                           ~[
                               self.ident_of("std"),
@@ -348,7 +348,7 @@ impl AstBuilder for ExtCtxt {
         P(ast::Ty {
             id: ast::DUMMY_NODE_ID,
             node: ast::ty_nil,
-            span: dummy_sp(),
+            span: DUMMY_SP,
         })
     }
 
@@ -361,13 +361,13 @@ impl AstBuilder for ExtCtxt {
     // incorrect code.
     fn ty_vars(&self, ty_params: &OptVec<ast::TyParam>) -> ~[P<ast::Ty>] {
         opt_vec::take_vec(
-            ty_params.map(|p| self.ty_ident(dummy_sp(), p.ident)))
+            ty_params.map(|p| self.ty_ident(DUMMY_SP, p.ident)))
     }
 
     fn ty_vars_global(&self, ty_params: &OptVec<ast::TyParam>) -> ~[P<ast::Ty>] {
         opt_vec::take_vec(
             ty_params.map(|p| self.ty_path(
-                self.path_global(dummy_sp(), ~[p.ident]), None)))
+                self.path_global(DUMMY_SP, ~[p.ident]), None)))
     }
 
     fn strip_bounds(&self, generics: &Generics) -> Generics {
