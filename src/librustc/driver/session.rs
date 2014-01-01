@@ -426,14 +426,14 @@ pub fn building_library(options: &options, crate: &ast::Crate) -> bool {
     }
 }
 
-pub fn collect_outputs(options: &options,
+pub fn collect_outputs(session: &Session,
                        attrs: &[ast::Attribute]) -> ~[OutputStyle] {
     // If we're generating a test executable, then ignore all other output
     // styles at all other locations
-    if options.test {
+    if session.opts.test {
         return ~[OutputExecutable];
     }
-    let mut base = options.outputs.clone();
+    let mut base = session.opts.outputs.clone();
     let mut iter = attrs.iter().filter_map(|a| {
         if "crate_type" == a.name() {
             match a.value_str() {
@@ -442,7 +442,16 @@ pub fn collect_outputs(options: &options,
                 Some(n) if "lib" == n => Some(OutputDylib),
                 Some(n) if "staticlib" == n => Some(OutputStaticlib),
                 Some(n) if "bin" == n => Some(OutputExecutable),
-                _ => None
+                Some(_) => {
+                    session.add_lint(lint::unknown_crate_type, ast::CRATE_NODE_ID,
+                                     a.span, ~"invalid `crate_type` value");
+                    None
+                }
+                _ => {
+                    session.add_lint(lint::unknown_crate_type, ast::CRATE_NODE_ID,
+                                    a.span, ~"`crate_type` requires a value");
+                    None
+                }
             }
         } else {
             None
