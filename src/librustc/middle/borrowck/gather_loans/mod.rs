@@ -808,7 +808,7 @@ impl<'a> GatherLoanCtxt<'a> {
          */
 
         match ty::get(slice_ty).sty {
-            ty::ty_evec(slice_mt, ty::vstore_slice(slice_r)) => {
+            ty::ty_vec(slice_mt, ty::vstore_slice(slice_r)) => {
                 (slice_mt.mutbl, slice_r)
             }
 

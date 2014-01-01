@@ -40,10 +40,10 @@ pub fn expand_boxed_vec_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
     let unit_ty = ty::sequence_element_type(tcx, t);
     let unboxed_vec_ty = ty::mk_mut_unboxed_vec(tcx, unit_ty);
     match ty::get(t).sty {
-      ty::ty_estr(ty::vstore_uniq) | ty::ty_evec(_, ty::vstore_uniq) => {
+      ty::ty_str(ty::vstore_uniq) | ty::ty_vec(_, ty::vstore_uniq) => {
         ty::mk_imm_uniq(tcx, unboxed_vec_ty)
       }
-      ty::ty_estr(ty::vstore_box) | ty::ty_evec(_, ty::vstore_box) => {
+      ty::ty_str(ty::vstore_box) | ty::ty_vec(_, ty::vstore_box) => {
         ty::mk_imm_box(tcx, unboxed_vec_ty)
       }
       _ => tcx.sess.bug("non boxed-vec type \
@@ -239,9 +239,9 @@ pub fn trans_slice_vstore<'a>(
     let llfixed = base::arrayalloca(bcx, vt.llunit_ty, llcount);
 
     // Arrange for the backing array to be cleaned up.
-    let fixed_ty = ty::mk_evec(bcx.tcx(),
-                               ty::mt {ty: vt.unit_ty, mutbl: ast::MutMutable},
-                               ty::vstore_fixed(count));
+    let fixed_ty = ty::mk_vec(bcx.tcx(),
+                              ty::mt {ty: vt.unit_ty, mutbl: ast::MutMutable},
+                              ty::vstore_fixed(count));
     let llfixed_ty = type_of::type_of(bcx.ccx(), fixed_ty).ptr_to();
     let llfixed_casted = BitCast(bcx, llfixed, llfixed_ty);
     add_clean(bcx, llfixed_casted, fixed_ty);
@@ -323,7 +323,7 @@ pub fn trans_uniq_or_managed_vstore<'a>(
                     let llptrval = C_cstr(bcx.ccx(), s);
                     let llptrval = PointerCast(bcx, llptrval, Type::i8p());
                     let llsizeval = C_uint(bcx.ccx(), s.len());
-                    let typ = ty::mk_estr(bcx.tcx(), ty::vstore_uniq);
+                    let typ = ty::mk_str(bcx.tcx(), ty::vstore_uniq);
                     let lldestval = scratch_datum(bcx, typ, "", false);
                     let alloc_fn = langcall(bcx, Some(span), "",
                                             StrDupUniqFnLangItem);
@@ -449,7 +449,7 @@ pub fn write_content<'a>(
         }
         _ => {
             bcx.tcx().sess.span_bug(content_expr.span,
-                                    "Unexpected evec content");
+                                    "Unexpected vec content");
         }
     }
 }
@@ -485,7 +485,7 @@ pub fn elements_required(bcx: &Block, content_expr: &ast::Expr) -> uint {
             ty::eval_repeat_count(&bcx.tcx(), count_expr)
         }
         _ => bcx.tcx().sess.span_bug(content_expr.span,
-                                     "Unexpected evec content")
+                                     "Unexpected vec content")
     }
 }
 
@@ -503,7 +503,7 @@ pub fn get_base_and_byte_len(bcx: &Block, llval: ValueRef, vec_ty: ty::t)
     let vt = vec_types(bcx, vec_ty);
 
     let vstore = match ty::get(vt.vec_ty).sty {
-      ty::ty_estr(vst) | ty::ty_evec(_, vst) => vst,
+      ty::ty_str(vst) | ty::ty_vec(_, vst) => vst,
       _ => ty::vstore_uniq
     };
 
@@ -540,7 +540,7 @@ pub fn get_base_and_len(bcx: &Block, llval: ValueRef, vec_ty: ty::t)
     let vt = vec_types(bcx, vec_ty);
 
     let vstore = match ty::get(vt.vec_ty).sty {
-      ty::ty_estr(vst) | ty::ty_evec(_, vst) => vst,
+      ty::ty_str(vst) | ty::ty_vec(_, vst) => vst,
       _ => ty::vstore_uniq
     };
 

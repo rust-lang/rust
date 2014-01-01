@@ -2115,7 +2115,7 @@ fn type_metadata(cx: &CrateContext,
         ty::ty_float(_) => {
             basic_type_metadata(cx, t)
         },
-        ty::ty_estr(ref vstore) => {
+        ty::ty_str(ref vstore) => {
             let i8_t = ty::mk_i8();
             match *vstore {
                 ty::vstore_fixed(len) => {
@@ -2140,7 +2140,7 @@ fn type_metadata(cx: &CrateContext,
         ty::ty_box(typ) => {
             create_pointer_to_box_metadata(cx, t, typ)
         },
-        ty::ty_evec(ref mt, ref vstore) => {
+        ty::ty_vec(ref mt, ref vstore) => {
             match *vstore {
                 ty::vstore_fixed(len) => {
                     fixed_vec_metadata(cx, mt.ty, len, usage_site_span)

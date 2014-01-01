@@ -195,7 +195,7 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, pats: ~[@Pat]) {
                         }
                     }
                 }
-                ty::ty_unboxed_vec(..) | ty::ty_evec(..) => {
+                ty::ty_unboxed_vec(..) | ty::ty_vec(..) => {
                     match *ctor {
                         vec(n) => Some(format!("vectors of length {}", n).to_managed()),
                         _ => None
@@ -274,10 +274,10 @@ fn is_useful(cx: &MatchCheckCtxt, m: &matrix, v: &[@Pat]) -> useful {
                 }
                 not_useful
               }
-              ty::ty_evec(_, ty::vstore_fixed(n)) => {
+              ty::ty_vec(_, ty::vstore_fixed(n)) => {
                 is_useful_specialized(cx, m, v, vec(n), n, left_ty)
               }
-              ty::ty_unboxed_vec(..) | ty::ty_evec(..) => {
+              ty::ty_unboxed_vec(..) | ty::ty_vec(..) => {
                 let max_len = m.rev_iter().fold(0, |max_len, r| {
                   match r[0].node {
                     PatVec(ref before, _, ref after) => {
@@ -437,7 +437,7 @@ fn missing_ctor(cx: &MatchCheckCtxt,
         else if true_found { Some(val(const_bool(false))) }
         else { Some(val(const_bool(true))) }
       }
-      ty::ty_evec(_, ty::vstore_fixed(n)) => {
+      ty::ty_vec(_, ty::vstore_fixed(n)) => {
         let mut missing = true;
         let mut wrong = false;
         for r in m.iter() {
@@ -460,7 +460,7 @@ fn missing_ctor(cx: &MatchCheckCtxt,
           _         => None
         }
       }
-      ty::ty_unboxed_vec(..) | ty::ty_evec(..) => {
+      ty::ty_unboxed_vec(..) | ty::ty_vec(..) => {
 
         // Find the lengths and slices of all vector patterns.
         let mut vec_pat_lens = m.iter().filter_map(|r| {
@@ -525,7 +525,7 @@ fn ctor_arity(cx: &MatchCheckCtxt, ctor: &ctor, ty: ty::t) -> uint {
         }
       }
       ty::ty_struct(cid, _) => ty::lookup_struct_fields(cx.tcx, cid).len(),
-      ty::ty_unboxed_vec(..) | ty::ty_evec(..) => {
+      ty::ty_unboxed_vec(..) | ty::ty_vec(..) => {
         match *ctor {
           vec(n) => n,
           _ => 0u

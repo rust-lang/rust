@@ -107,13 +107,13 @@ impl Coerce {
                 });
             }
 
-            ty::ty_estr(vstore_slice(_)) => {
+            ty::ty_str(vstore_slice(_)) => {
                 return self.unpack_actual_value(a, |sty_a| {
                     self.coerce_borrowed_string(a, sty_a, b)
                 });
             }
 
-            ty::ty_evec(mt_b, vstore_slice(_)) => {
+            ty::ty_vec(mt_b, vstore_slice(_)) => {
                 return self.unpack_actual_value(a, |sty_a| {
                     self.coerce_borrowed_vector(a, sty_a, b, mt_b)
                 });
@@ -273,15 +273,15 @@ impl Coerce {
                b.inf_str(self.get_ref().infcx));
 
         match *sty_a {
-            ty::ty_estr(vstore_box) |
-            ty::ty_estr(vstore_uniq) => {}
+            ty::ty_str(vstore_box) |
+            ty::ty_str(vstore_uniq) => {}
             _ => {
                 return self.subtype(a, b);
             }
         };
 
         let r_a = self.get_ref().infcx.next_region_var(Coercion(self.get_ref().trace));
-        let a_borrowed = ty::mk_estr(self.get_ref().infcx.tcx, vstore_slice(r_a));
+        let a_borrowed = ty::mk_str(self.get_ref().infcx.tcx, vstore_slice(r_a));
         if_ok!(self.subtype(a_borrowed, b));
         Ok(Some(@AutoDerefRef(AutoDerefRef {
             autoderefs: 0,
@@ -302,15 +302,15 @@ impl Coerce {
         let sub = Sub(*self.get_ref());
         let r_borrow = self.get_ref().infcx.next_region_var(Coercion(self.get_ref().trace));
         let ty_inner = match *sty_a {
-            ty::ty_evec(mt, _) => mt.ty,
+            ty::ty_vec(mt, _) => mt.ty,
             _ => {
                 return self.subtype(a, b);
             }
         };
 
-        let a_borrowed = ty::mk_evec(self.get_ref().infcx.tcx,
-                                     mt {ty: ty_inner, mutbl: mt_b.mutbl},
-                                     vstore_slice(r_borrow));
+        let a_borrowed = ty::mk_vec(self.get_ref().infcx.tcx,
+                                    mt {ty: ty_inner, mutbl: mt_b.mutbl},
+                                    vstore_slice(r_borrow));
         if_ok!(sub.tys(a_borrowed, b));
         Ok(Some(@AutoDerefRef(AutoDerefRef {
             autoderefs: 0,
