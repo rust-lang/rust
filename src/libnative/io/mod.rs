@@ -166,8 +166,8 @@ impl rtio::IoFactory for IoFactory {
     fn tcp_bind(&mut self, addr: SocketAddr) -> IoResult<~RtioTcpListener> {
         net::TcpListener::bind(addr).map(|s| ~s as ~RtioTcpListener)
     }
-    fn udp_bind(&mut self, _addr: SocketAddr) -> IoResult<~RtioUdpSocket> {
-        Err(unimpl())
+    fn udp_bind(&mut self, addr: SocketAddr) -> IoResult<~RtioUdpSocket> {
+        net::UdpSocket::bind(addr).map(|u| ~u as ~RtioUdpSocket)
     }
     fn unix_bind(&mut self, _path: &CString) -> IoResult<~RtioUnixListener> {
         Err(unimpl())
