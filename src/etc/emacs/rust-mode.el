@@ -17,6 +17,7 @@
 
     ;; Strings
     (modify-syntax-entry ?\" "\"" table)
+    (modify-syntax-entry ?\' "\"" table)
     (modify-syntax-entry ?\\ "\\" table)
 
     ;; _ is a word-char
