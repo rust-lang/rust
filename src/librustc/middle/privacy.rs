@@ -167,6 +167,23 @@ struct EmbargoVisitor<'a> {
     reexports: HashSet<ast::NodeId>,
 }
 
+impl<'a> EmbargoVisitor<'a> {
+    // There are checks inside of privacy which depend on knowing whether a
+    // trait should be exported or not. The two current consumers of this are:
+    //
+    //  1. Should default methods of a trait be exported?
+    //  2. Should the methods of an implementation of a trait be exported?
+    //
+    // The answer to both of these questions partly rely on whether the trait
+    // itself is exported or not. If the trait is somehow exported, then the
+    // answers to both questions must be yes. Right now this question involves
+    // more analysis than is currently done in rustc, so we conservatively
+    // answer "yes" so that all traits need to be exported.
+    fn exported_trait(&self, _id: ast::NodeId) -> bool {
+        true
+    }
+}
+
 impl<'a> Visitor<()> for EmbargoVisitor<'a> {
     fn visit_item(&mut self, item: @ast::item, _: ()) {
         let orig_all_pub = self.prev_exported;
@@ -174,6 +191,12 @@ impl<'a> Visitor<()> for EmbargoVisitor<'a> {
             // impls/extern blocks do not break the "public chain" because they
             // cannot have visibility qualifiers on them anyway
             ast::item_impl(..) | ast::item_foreign_mod(..) => {}
+
+            // Traits are a little special in that even if they themselves are
+            // not public they may still be exported.
+            ast::item_trait(..) => {
+                self.prev_exported = self.exported_trait(item.id);
+            }
 
             // Private by default, hence we only retain the "public chain" if
             // `pub` is explicitly listed.
