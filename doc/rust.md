@@ -3806,25 +3806,6 @@ As a convenience, the logging spec can also be set to a special pseudo-crate,
 `::help`. In this case, when the application starts, the runtime will
 simply output a list of loaded modules containing log expressions, then exit.
 
-The Rust runtime itself generates logging information. The runtime's logs are
-generated for a number of artificial modules in the `::rt` pseudo-crate,
-and can be enabled just like the logs for any standard module. The full list
-of runtime logging modules follows.
-
-* `::rt::mem` Memory management
-* `::rt::comm` Messaging and task communication
-* `::rt::task` Task management
-* `::rt::dom` Task scheduling
-* `::rt::trace` Unused
-* `::rt::cache` Type descriptor cache
-* `::rt::upcall` Compiler-generated runtime calls
-* `::rt::timer` The scheduler timer
-* `::rt::gc` Garbage collection
-* `::rt::stdlib` Functions used directly by the standard library
-* `::rt::kern` The runtime kernel
-* `::rt::backtrace` Log a backtrace on task failure
-* `::rt::callback` Unused
-
 #### Logging Expressions
 
 Rust provides several macros to log information. Here's a simple Rust program
