@@ -11,7 +11,7 @@
 // xfail-fast
 //aux-build:extern-crosscrate-source.rs
 
-extern mod externcallback(vers = "0.1");
+extern mod externcallback = "externcallback#0.1";
 
 fn fact(n: uint) -> uint {
     unsafe {

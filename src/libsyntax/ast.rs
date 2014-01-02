@@ -1057,7 +1057,7 @@ pub enum view_item_ {
     // optional @str: if present, this is a location (containing
     // arbitrary characters) from which to fetch the crate sources
     // For example, extern mod whatever = "github.com/mozilla/rust"
-    view_item_extern_mod(Ident, Option<(@str, StrStyle)>, ~[@MetaItem], NodeId),
+    view_item_extern_mod(Ident, Option<(@str, StrStyle)>, NodeId),
     view_item_use(~[@view_path]),
 }
 
