@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[crate_id = "rustdoc#0.9-pre"];
+#[crate_id = "rustdoc#0.9"];
 #[desc = "rustdoc, the Rust documentation extractor"];
 #[license = "MIT/ASL2"];
 #[crate_type = "dylib"];
