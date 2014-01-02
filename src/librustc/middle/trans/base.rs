@@ -20,7 +20,7 @@
 //   * There's no way to find out the ty::t type of a ValueRef.  Doing so
 //     would be "trying to get the eggs out of an omelette" (credit:
 //     pcwalton).  You can, instead, find out its TypeRef by calling val_ty,
-//     but many TypeRefs correspond to one ty::t; for instance, tup(int, int,
+//     but one TypeRef corresponds to many `ty::t`s; for instance, tup(int, int,
 //     int) and rec(x=int, y=int, z=int) will have the same TypeRef.
 
 
