@@ -1,3 +1,5 @@
+Rust was written by these fine people:
+
 Aaron Laursen <aaronlaursen@gmail.com>
 Aaron Todd <github@opprobrio.us>
 Adam Bozanich <adam.boz@gmail.com>
