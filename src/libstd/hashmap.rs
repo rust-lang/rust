@@ -57,6 +57,7 @@ use clone::Clone;
 use cmp::{Eq, Equiv};
 use default::Default;
 use hash::Hash;
+use iter;
 use iter::{Iterator, FromIterator, Extendable};
 use iter::{FilterMap, Chain, Repeat, Zip};
 use num;
@@ -525,14 +526,16 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
         }
     }
 
-    /// Visit all keys
-    pub fn each_key(&self, blk: |k: &K| -> bool) -> bool {
-        self.iter().advance(|(k, _)| blk(k))
+    /// An iterator visiting all keys in arbitrary order.
+    /// Iterator element type is &'a K.
+    pub fn keys<'a>(&'a self) -> HashMapKeyIterator<'a, K, V> {
+        self.iter().map(|(k, _v)| k)
     }
 
-    /// Visit all values
-    pub fn each_value<'a>(&'a self, blk: |v: &'a V| -> bool) -> bool {
-        self.iter().advance(|(_, v)| blk(v))
+    /// An iterator visiting all values in arbitrary order.
+    /// Iterator element type is &'a V.
+    pub fn values<'a>(&'a self) -> HashMapValueIterator<'a, K, V> {
+        self.iter().map(|(_k, v)| v)
     }
 
     /// An iterator visiting all key-value pairs in arbitrary order.
@@ -608,6 +611,14 @@ pub struct HashMapMutIterator<'a, K, V> {
 pub struct HashMapMoveIterator<K, V> {
     priv iter: vec::MoveIterator<Option<Bucket<K, V>>>,
 }
+
+/// HashMap keys iterator
+pub type HashMapKeyIterator<'a, K, V> =
+    iter::Map<'static, (&'a K, &'a V), &'a K, HashMapIterator<'a, K, V>>;
+
+/// HashMap values iterator
+pub type HashMapValueIterator<'a, K, V> =
+    iter::Map<'static, (&'a K, &'a V), &'a V, HashMapIterator<'a, K, V>>;
 
 /// HashSet iterator
 #[deriving(Clone)]
@@ -1013,6 +1024,28 @@ mod test_map {
             observed |= (1 << *k);
         }
         assert_eq!(observed, 0xFFFF_FFFF);
+    }
+
+    #[test]
+    fn test_keys() {
+        let vec = ~[(1, 'a'), (2, 'b'), (3, 'c')];
+        let map = vec.move_iter().collect::<HashMap<int, char>>();
+        let keys = map.keys().map(|&k| k).collect::<~[int]>();
+        assert_eq!(keys.len(), 3);
+        assert!(keys.contains(&1));
+        assert!(keys.contains(&2));
+        assert!(keys.contains(&3));
+    }
+
+    #[test]
+    fn test_values() {
+        let vec = ~[(1, 'a'), (2, 'b'), (3, 'c')];
+        let map = vec.move_iter().collect::<HashMap<int, char>>();
+        let values = map.values().map(|&v| v).collect::<~[char]>();
+        assert_eq!(values.len(), 3);
+        assert!(values.contains(&'a'));
+        assert!(values.contains(&'b'));
+        assert!(values.contains(&'c'));
     }
 
     #[test]
