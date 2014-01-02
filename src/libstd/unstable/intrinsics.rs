@@ -500,6 +500,19 @@ extern "rust-intrinsic" {
 #[cfg(target_endian = "little")] pub fn to_be64(x: i64) -> i64 { unsafe { bswap64(x) } }
 #[cfg(target_endian = "big")]    pub fn to_be64(x: i64) -> i64 { x }
 
+#[cfg(target_endian = "little")] pub fn from_le16(x: i16) -> i16 { x }
+#[cfg(target_endian = "big")]    pub fn from_le16(x: i16) -> i16 { unsafe { bswap16(x) } }
+#[cfg(target_endian = "little")] pub fn from_le32(x: i32) -> i32 { x }
+#[cfg(target_endian = "big")]    pub fn from_le32(x: i32) -> i32 { unsafe { bswap32(x) } }
+#[cfg(target_endian = "little")] pub fn from_le64(x: i64) -> i64 { x }
+#[cfg(target_endian = "big")]    pub fn from_le64(x: i64) -> i64 { unsafe { bswap64(x) } }
+
+#[cfg(target_endian = "little")] pub fn from_be16(x: i16) -> i16 { unsafe { bswap16(x) } }
+#[cfg(target_endian = "big")]    pub fn from_be16(x: i16) -> i16 { x }
+#[cfg(target_endian = "little")] pub fn from_be32(x: i32) -> i32 { unsafe { bswap32(x) } }
+#[cfg(target_endian = "big")]    pub fn from_be32(x: i32) -> i32 { x }
+#[cfg(target_endian = "little")] pub fn from_be64(x: i64) -> i64 { unsafe { bswap64(x) } }
+#[cfg(target_endian = "big")]    pub fn from_be64(x: i64) -> i64 { x }
 
 /// `TypeId` represents a globally unique identifier for a type
 #[lang="type_id"] // This needs to be kept in lockstep with the code in trans/intrinsic.rs and
