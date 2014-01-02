@@ -420,7 +420,8 @@ extern "C" LLVMValueRef LLVMDIBuilderCreateUnionType(
     uint64_t AlignInBits,
     unsigned Flags,
     LLVMValueRef Elements,
-    unsigned RunTimeLang)
+    unsigned RunTimeLang,
+    const char* UniqueId)
 {
     return wrap(Builder->createUnionType(
         unwrapDI<DIDescriptor>(Scope),
@@ -431,7 +432,8 @@ extern "C" LLVMValueRef LLVMDIBuilderCreateUnionType(
         AlignInBits,
         Flags,
         unwrapDI<DIArray>(Elements),
-        RunTimeLang));
+        RunTimeLang,
+        UniqueId));
 }
 
 extern "C" void LLVMSetUnnamedAddr(LLVMValueRef Value, LLVMBool Unnamed) {
