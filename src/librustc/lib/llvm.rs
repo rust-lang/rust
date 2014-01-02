@@ -1658,7 +1658,8 @@ pub mod llvm {
                                             AlignInBits: c_ulonglong,
                                             Flags: c_uint,
                                             Elements: ValueRef,
-                                            RunTimeLang: c_uint)
+                                            RunTimeLang: c_uint,
+                                            UniqueId: *c_char)
                                             -> ValueRef;
 
         pub fn LLVMSetUnnamedAddr(GlobalVar: ValueRef, UnnamedAddr: Bool);
