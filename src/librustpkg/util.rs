@@ -461,7 +461,7 @@ impl<'a> Visitor<()> for ViewItemVisitor<'a> {
 
         match vi.node {
             // ignore metadata, I guess
-            ast::view_item_extern_mod(lib_ident, path_opt, _, _) => {
+            ast::view_item_extern_mod(lib_ident, path_opt, _) => {
                 let lib_name = match path_opt {
                     Some((p, _)) => p,
                     None => self.sess.str_of(lib_ident)

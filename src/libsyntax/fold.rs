@@ -66,11 +66,9 @@ pub trait ast_fold {
         let inner_view_item = match vi.node {
             view_item_extern_mod(ref ident,
                                  string,
-                                 ref meta_items,
                                  node_id) => {
                 view_item_extern_mod(ident.clone(),
                                      string,
-                                     self.fold_meta_items(*meta_items),
                                      self.new_id(node_id))
             }
             view_item_use(ref view_paths) => {

@@ -12,7 +12,6 @@
 // xfail-fast
 
 #[crate_id="issue-6919"];
-
 extern mod issue6919_3;
 
 pub fn main() {
