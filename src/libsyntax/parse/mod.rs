@@ -635,7 +635,7 @@ mod test {
     }
 
     #[test] fn parse_ident_pat () {
-        let parser = string_to_parser(@"b");
+        let mut parser = string_to_parser(@"b");
         assert_eq!(parser.parse_pat(),
                    @ast::Pat{id: ast::DUMMY_NODE_ID,
                              node: ast::PatIdent(
