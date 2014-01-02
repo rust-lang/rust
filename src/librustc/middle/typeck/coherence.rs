@@ -426,10 +426,9 @@ impl CoherenceChecker {
 
     pub fn check_implementation_coherence(&self) {
         let trait_impls = self.crate_context.tcx.trait_impls.borrow();
-        trait_impls.get().each_key(|&trait_id| {
+        for &trait_id in trait_impls.get().keys() {
             self.check_implementation_coherence_of(trait_id);
-            true
-        });
+        }
     }
 
     pub fn check_implementation_coherence_of(&self, trait_def_id: DefId) {
