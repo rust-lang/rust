@@ -122,11 +122,9 @@ pub mod reader {
         fail!("vint too big");
     }
 
-    #[cfg(target_arch = "x86")]
-    #[cfg(target_arch = "x86_64")]
     pub fn vuint_at(data: &[u8], start: uint) -> Res {
         use std::ptr::offset;
-        use std::unstable::intrinsics::bswap32;
+        use std::unstable::intrinsics::from_be32;
 
         if data.len() - start < 4 {
             return vuint_at_slow(data, start);
@@ -136,7 +134,7 @@ pub mod reader {
             let (ptr, _): (*u8, uint) = transmute(data);
             let ptr = offset(ptr, start as int);
             let ptr: *i32 = transmute(ptr);
-            let val = bswap32(*ptr);
+            let val = from_be32(*ptr);
             let val: u32 = transmute(val);
             if (val & 0x80000000) != 0 {
                 Res {
@@ -160,11 +158,6 @@ pub mod reader {
                 }
             }
         }
-    }
-
-    #[cfg(not(target_arch = "x86"), not(target_arch = "x86_64"))]
-    pub fn vuint_at(data: &[u8], start: uint) -> Res {
-        vuint_at_slow(data, start)
     }
 
     pub fn Doc<'a>(data: &'a [u8]) -> Doc<'a> {

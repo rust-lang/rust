@@ -26,15 +26,11 @@ use super::file::keep_going;
 #[cfg(windows)] pub type sock_t = libc::SOCKET;
 #[cfg(unix)]    pub type sock_t = super::file::fd_t;
 
-#[cfg(target_endian = "big")] pub fn htons(x: u16) -> u16 { x }
-#[cfg(target_endian = "big")] pub fn ntohs(x: u16) -> u16 { x }
-#[cfg(target_endian = "little")]
 pub fn htons(u: u16) -> u16 {
-    unsafe { intrinsics::bswap16(u as i16) as u16 }
+    intrinsics::to_be16(u as i16) as u16
 }
-#[cfg(target_endian = "little")]
 pub fn ntohs(u: u16) -> u16 {
-    unsafe { intrinsics::bswap16(u as i16) as u16 }
+    intrinsics::from_be16(u as i16) as u16
 }
 
 enum InAddr {
