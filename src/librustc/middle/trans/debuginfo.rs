@@ -157,7 +157,7 @@ use syntax::parse::token::special_idents;
 static DW_LANG_RUST: c_uint = 0x9000;
 
 static DW_TAG_auto_variable: c_uint = 0x100;
-// static DW_TAG_arg_variable: c_uint = 0x101;
+static DW_TAG_arg_variable: c_uint = 0x101;
 
 static DW_ATE_boolean: c_uint = 0x02;
 static DW_ATE_float: c_uint = 0x04;
@@ -980,11 +980,11 @@ fn declare_local(bcx: @Block,
     let loc = span_start(cx, span);
     let type_metadata = type_metadata(cx, variable_type, span);
 
-    let argument_index = match variable_kind {
-        ArgumentVariable(index) => index,
+    let (argument_index, dwarf_tag) = match variable_kind {
+        ArgumentVariable(index) => (index as c_uint, DW_TAG_arg_variable),
         LocalVariable    |
-        CapturedVariable => 0
-    } as c_uint;
+        CapturedVariable => (0, DW_TAG_auto_variable)
+    };
 
     let (var_alloca, var_metadata) = name.with_c_str(|name| {
         match variable_access {
@@ -993,7 +993,7 @@ fn declare_local(bcx: @Block,
                 unsafe {
                     llvm::LLVMDIBuilderCreateLocalVariable(
                         DIB(cx),
-                        DW_TAG_auto_variable,
+                        dwarf_tag,
                         scope_metadata,
                         name,
                         file_metadata,
@@ -1009,7 +1009,7 @@ fn declare_local(bcx: @Block,
                 unsafe {
                     llvm::LLVMDIBuilderCreateComplexVariable(
                         DIB(cx),
-                        DW_TAG_auto_variable,
+                        dwarf_tag,
                         scope_metadata,
                         name,
                         file_metadata,
@@ -1256,14 +1256,12 @@ impl RecursiveTypeDescription {
             } => {
                 // Insert the stub into the cache in order to allow recursive references ...
                 {
-                    let mut created_types = debug_context(cx).created_types
-                                                             .borrow_mut();
+                    let mut created_types = debug_context(cx).created_types.borrow_mut();
                     created_types.get().insert(cache_id, metadata_stub);
                 }
 
                 // ... then create the member descriptions ...
-                let member_descriptions = member_description_factory.
-                    create_member_descriptions(cx);
+                let member_descriptions = member_description_factory.create_member_descriptions(cx);
 
                 // ... and attach them to the stub to complete it.
                 set_members_of_composite_type(cx,
@@ -1348,13 +1346,13 @@ impl MemberDescriptionFactory for GeneralMemberDescriptionFactory {
             .enumerate()
             .map(|(i, struct_def)| {
                 let (variant_type_metadata, variant_llvm_type, member_desc_factory) =
-                    describe_variant(cx,
-                                     struct_def,
-                                     self.variants[i],
-                                     Some(self.discriminant_type_metadata),
-                                     self.containing_scope,
-                                     self.file_metadata,
-                                     self.span);
+                    describe_enum_variant(cx,
+                                          struct_def,
+                                          self.variants[i],
+                                          Some(self.discriminant_type_metadata),
+                                          self.containing_scope,
+                                          self.file_metadata,
+                                          self.span);
 
                 let member_descriptions =
                     member_desc_factory.create_member_descriptions(cx);
@@ -1398,14 +1396,14 @@ impl MemberDescriptionFactory for EnumVariantMemberDescriptionFactory {
     }
 }
 
-fn describe_variant(cx: &CrateContext,
-                    struct_def: &adt::Struct,
-                    variant_info: &ty::VariantInfo,
-                    discriminant_type_metadata: Option<DIType>,
-                    containing_scope: DIScope,
-                    file_metadata: DIFile,
-                    span: Span)
-                 -> (DICompositeType, Type, @MemberDescriptionFactory) {
+fn describe_enum_variant(cx: &CrateContext,
+                         struct_def: &adt::Struct,
+                         variant_info: &ty::VariantInfo,
+                         discriminant_type_metadata: Option<DIType>,
+                         containing_scope: DIScope,
+                         file_metadata: DIFile,
+                         span: Span)
+                      -> (DICompositeType, Type, @MemberDescriptionFactory) {
     let variant_name = token::ident_to_str(&variant_info.name);
     let variant_llvm_type = Type::struct_(struct_def.fields.map(|&t| type_of::type_of(cx, t)),
                                           struct_def.packed);
@@ -1538,13 +1536,13 @@ fn prepare_enum_metadata(cx: &CrateContext,
             assert!(variants.len() == 1);
             let (metadata_stub,
                  variant_llvm_type,
-                 member_description_factory) = describe_variant(cx,
-                                                                struct_def,
-                                                                variants[0],
-                                                                None,
-                                                                containing_scope,
-                                                                file_metadata,
-                                                                span);
+                 member_description_factory) = describe_enum_variant(cx,
+                                                                     struct_def,
+                                                                     variants[0],
+                                                                     None,
+                                                                     containing_scope,
+                                                                     file_metadata,
+                                                                     span);
             UnfinishedMetadata {
                 cache_id: cache_id_for_type(enum_type),
                 metadata_stub: metadata_stub,
@@ -1557,21 +1555,25 @@ fn prepare_enum_metadata(cx: &CrateContext,
             let discriminant_type_metadata = discriminant_type_metadata(inttype);
             let enum_llvm_type = type_of::type_of(cx, enum_type);
             let (enum_type_size, enum_type_align) = size_and_align_of(cx, enum_llvm_type);
+            let unique_id = generate_unique_type_id("DI_ENUM_");
 
             let enum_metadata = enum_name.with_c_str(|enum_name| {
-                unsafe {
-                    llvm::LLVMDIBuilderCreateUnionType(
-                    DIB(cx),
-                    containing_scope,
-                    enum_name,
-                    file_metadata,
-                    loc.line as c_uint,
-                    bytes_to_bits(enum_type_size),
-                    bytes_to_bits(enum_type_align),
-                    0, // Flags
-                    ptr::null(),
-                    0) // RuntimeLang
-                }
+                unique_id.with_c_str(|unique_id| {
+                    unsafe {
+                        llvm::LLVMDIBuilderCreateUnionType(
+                        DIB(cx),
+                        containing_scope,
+                        enum_name,
+                        file_metadata,
+                        loc.line as c_uint,
+                        bytes_to_bits(enum_type_size),
+                        bytes_to_bits(enum_type_align),
+                        0, // Flags
+                        ptr::null(),
+                        0, // RuntimeLang
+                        unique_id)
+                    }
+                })
             });
 
             UnfinishedMetadata {
@@ -1592,13 +1594,13 @@ fn prepare_enum_metadata(cx: &CrateContext,
         adt::NullablePointer { nonnull: ref struct_def, nndiscr, .. } => {
             let (metadata_stub,
                  variant_llvm_type,
-                 member_description_factory) = describe_variant(cx,
-                                                                struct_def,
-                                                                variants[nndiscr],
-                                                                None,
-                                                                containing_scope,
-                                                                file_metadata,
-                                                                span);
+                 member_description_factory) = describe_enum_variant(cx,
+                                                                     struct_def,
+                                                                     variants[nndiscr],
+                                                                     None,
+                                                                     containing_scope,
+                                                                     file_metadata,
+                                                                     span);
             UnfinishedMetadata {
                 cache_id: cache_id_for_type(enum_type),
                 metadata_stub: metadata_stub,
@@ -1725,10 +1727,7 @@ fn create_struct_stub(cx: &CrateContext,
 
     // We assign unique IDs to the type stubs so LLVM metadata uniquing does not reuse instances
     // where we don't want it.
-    let unique_id = unsafe {
-        static mut unique_id_counter: atomics::AtomicUint = atomics::INIT_ATOMIC_UINT;
-        format!("DiStructStub{}", unique_id_counter.fetch_add(1, atomics::SeqCst))
-    };
+    let unique_id = generate_unique_type_id("DI_STRUCT_");
 
     return unsafe {
         struct_type_name.with_c_str(|name| {
@@ -2059,10 +2058,6 @@ fn trait_metadata(cx: &CrateContext,
                                    definition_span);
 }
 
-fn cache_id_for_type(t: ty::t) -> uint {
-    ty::type_id(t)
-}
-
 fn type_metadata(cx: &CrateContext,
                  t: ty::t,
                  usage_site_span: Span)
@@ -2243,6 +2238,19 @@ fn set_debug_location(cx: &CrateContext, debug_location: DebugLocation) {
 //=-------------------------------------------------------------------------------------------------
 //  Utility Functions
 //=-------------------------------------------------------------------------------------------------
+
+fn cache_id_for_type(t: ty::t) -> uint {
+    ty::type_id(t)
+}
+
+// Used to avoid LLVM metadata uniquing problems. See `create_struct_stub()` and
+// `prepare_enum_metadata()`.
+fn generate_unique_type_id(prefix: &'static str) -> ~str {
+    unsafe {
+        static mut unique_id_counter: atomics::AtomicUint = atomics::INIT_ATOMIC_UINT;
+        format!("{}{}", prefix, unique_id_counter.fetch_add(1, atomics::SeqCst))
+    }
+}
 
 /// Return codemap::Loc corresponding to the beginning of the span
 fn span_start(cx: &CrateContext, span: Span) -> codemap::Loc {
