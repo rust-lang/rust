@@ -45,6 +45,7 @@ pub enum ObsoleteSyntax {
     ObsoleteBoxedClosure,
     ObsoleteClosureType,
     ObsoleteMultipleImport,
+    ObsoleteExternModAttributesInParens
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -145,6 +146,11 @@ impl ParserObsoleteMethods for Parser {
                 "multiple imports",
                 "only one import is allowed per `use` statement"
             ),
+            ObsoleteExternModAttributesInParens => (
+                "`extern mod` with linkage attribute list",
+                "use `extern mod foo = \"bar\";` instead of \
+                `extern mod foo (name = \"bar\")`"
+            )
         };
 
         self.report(sp, kind, kind_str, desc);

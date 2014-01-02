@@ -419,7 +419,7 @@ impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
 
     fn visit_view_item(&mut self, view_item: &view_item, env: ()) {
         match view_item.node {
-            view_item_extern_mod(_, _, _, node_id) => {
+            view_item_extern_mod(_, _, node_id) => {
                 self.operation.visit_id(node_id)
             }
             view_item_use(ref view_paths) => {

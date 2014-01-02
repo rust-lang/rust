@@ -14,7 +14,8 @@
 
 pub use crate_id::CrateId;
 pub use target::{OutputType, Main, Lib, Test, Bench, Target, Build, Install};
-pub use version::{Version, NoVersion, split_version_general, try_parsing_version};
+pub use version::{Version, ExactRevision, NoVersion, split_version, split_version_general,
+    try_parsing_version};
 pub use rustc::metadata::filesearch::rust_path;
 use rustc::metadata::filesearch::libdir;
 use rustc::driver::driver::host_triple;
@@ -213,8 +214,9 @@ pub fn library_in_workspace(path: &Path, short_name: &str, where: Target,
 }
 
 // rustc doesn't use target-specific subdirectories
-pub fn system_library(sysroot: &Path, lib_name: &str) -> Option<Path> {
-    library_in(lib_name, &NoVersion, &sysroot.join(libdir()))
+pub fn system_library(sysroot: &Path, crate_id: &str) -> Option<Path> {
+    let (lib_name, version) = split_crate_id(crate_id);
+    library_in(lib_name, &version, &sysroot.join(libdir()))
 }
 
 fn library_in(short_name: &str, version: &Version, dir_to_search: &Path) -> Option<Path> {
@@ -268,6 +270,7 @@ fn library_in(short_name: &str, version: &Version, dir_to_search: &Path) -> Opti
                                }
                                None => break
                            }
+
                        }
                        _ => { f_name = f_name.slice(0, i); }
                  }
@@ -292,6 +295,22 @@ fn library_in(short_name: &str, version: &Version, dir_to_search: &Path) -> Opti
 
     abs_path
 }
+
+fn split_crate_id<'a>(crate_id: &'a str) -> (&'a str, Version) {
+    match split_version(crate_id) {
+        Some((name, vers)) =>
+            match vers {
+                ExactRevision(ref v) => match v.find('-') {
+                    Some(pos) => (name, ExactRevision(v.slice(0, pos).to_owned())),
+                    None => (name, ExactRevision(v.to_owned()))
+                },
+                _ => (name, vers)
+            },
+        None => (crate_id, NoVersion)
+    }
+}
+
+
 
 /// Returns the executable that would be installed for <crateid>
 /// in <workspace>

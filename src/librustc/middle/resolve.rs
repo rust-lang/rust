@@ -1507,7 +1507,7 @@ impl Resolver {
                 }
             }
 
-            view_item_extern_mod(name, _, _, node_id) => {
+            view_item_extern_mod(name, _, node_id) => {
                 // n.b. we don't need to look at the path option here, because cstore already did
                 match self.session.cstore.find_extern_mod_stmt_cnum(node_id) {
                     Some(crate_id) => {
