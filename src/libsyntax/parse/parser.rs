@@ -4442,12 +4442,12 @@ impl Parser {
         }
 
 
-        if *self.token == token::LPAREN {
+        if self.token == token::LPAREN {
             // `extern mod foo (name = "bar"[,vers = "version"]) is obsolete,
             // `extern mod foo = "bar#[version]";` should be used.
             // Parse obsolete options to avoid wired parser errors
             self.parse_optional_meta();
-            self.obsolete(*self.span, ObsoleteExternModAttributesInParens);
+            self.obsolete(self.span, ObsoleteExternModAttributesInParens);
         }
         // extern mod foo;
         self.expect(&token::SEMI);
