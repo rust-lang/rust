@@ -579,22 +579,18 @@ fn mk_tts(cx: &ExtCtxt, sp: Span, tts: &[ast::token_tree])
     ss
 }
 
-fn expand_tts(cx: &ExtCtxt,
-              sp: Span,
-              tts: &[ast::token_tree]) -> (@ast::Expr, @ast::Expr) {
-
+fn expand_tts(cx: &ExtCtxt, sp: Span, tts: &[ast::token_tree])
+              -> (@ast::Expr, @ast::Expr) {
     // NB: It appears that the main parser loses its mind if we consider
     // $foo as a tt_nonterminal during the main parse, so we have to re-parse
     // under quote_depth > 0. This is silly and should go away; the _guess_ is
     // it has to do with transition away from supporting old-style macros, so
     // try removing it when enough of them are gone.
 
-    let p = parse::new_parser_from_tts(
-        cx.parse_sess(),
-        cx.cfg(),
-        tts.to_owned()
-    );
-    *p.quote_depth += 1u;
+    let mut p = parse::new_parser_from_tts(cx.parse_sess(),
+                                           cx.cfg(),
+                                           tts.to_owned());
+    p.quote_depth += 1u;
 
     let cx_expr = p.parse_expr();
     if !p.eat(&token::COMMA) {

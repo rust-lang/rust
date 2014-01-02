@@ -55,7 +55,7 @@ pub fn string_to_crate (source_str : @str) -> ast::Crate {
 
 // parse a string, return a crate and the ParseSess
 pub fn string_to_crate_and_sess (source_str : @str) -> (ast::Crate,@mut ParseSess) {
-    let (p,ps) = string_to_parser_and_sess(source_str);
+    let (mut p,ps) = string_to_parser_and_sess(source_str);
     (p.parse_crate_mod(),ps)
 }
 

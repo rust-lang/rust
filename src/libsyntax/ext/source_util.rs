@@ -81,9 +81,13 @@ pub fn expand_include(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree])
     -> base::MacResult {
     let file = get_single_str_from_tts(cx, sp, tts, "include!");
     // The file will be added to the code map by the parser
-    let p = parse::new_sub_parser_from_file(
-        cx.parse_sess(), cx.cfg(),
-        &res_rel_file(cx, sp, &Path::new(file)), sp);
+    let mut p =
+        parse::new_sub_parser_from_file(cx.parse_sess(),
+                                        cx.cfg(),
+                                        &res_rel_file(cx,
+                                                      sp,
+                                                      &Path::new(file)),
+                                        sp);
     base::MRExpr(p.parse_expr())
 }
 

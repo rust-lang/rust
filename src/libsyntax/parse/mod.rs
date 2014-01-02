@@ -84,7 +84,7 @@ pub fn parse_crate_attrs_from_file(
     cfg: ast::CrateConfig,
     sess: @mut ParseSess
 ) -> ~[ast::Attribute] {
-    let parser = new_parser_from_file(sess, cfg, input);
+    let mut parser = new_parser_from_file(sess, cfg, input);
     let (inner, _) = parser.parse_inner_attrs_and_next();
     return inner;
 }
@@ -95,10 +95,10 @@ pub fn parse_crate_from_source_str(
     cfg: ast::CrateConfig,
     sess: @mut ParseSess
 ) -> ast::Crate {
-    let p = new_parser_from_source_str(sess,
-                                       /*bad*/ cfg.clone(),
-                                       name,
-                                       source);
+    let mut p = new_parser_from_source_str(sess,
+                                           /*bad*/ cfg.clone(),
+                                           name,
+                                           source);
     maybe_aborted(p.parse_crate_mod(),p)
 }
 
@@ -108,10 +108,10 @@ pub fn parse_crate_attrs_from_source_str(
     cfg: ast::CrateConfig,
     sess: @mut ParseSess
 ) -> ~[ast::Attribute] {
-    let p = new_parser_from_source_str(sess,
-                                       /*bad*/ cfg.clone(),
-                                       name,
-                                       source);
+    let mut p = new_parser_from_source_str(sess,
+                                           /*bad*/ cfg.clone(),
+                                           name,
+                                           source);
     let (inner, _) = maybe_aborted(p.parse_inner_attrs_and_next(),p);
     return inner;
 }
@@ -122,12 +122,7 @@ pub fn parse_expr_from_source_str(
     cfg: ast::CrateConfig,
     sess: @mut ParseSess
 ) -> @ast::Expr {
-    let p = new_parser_from_source_str(
-        sess,
-        cfg,
-        name,
-        source
-    );
+    let mut p = new_parser_from_source_str(sess, cfg, name, source);
     maybe_aborted(p.parse_expr(), p)
 }
 
@@ -138,12 +133,7 @@ pub fn parse_item_from_source_str(
     attrs: ~[ast::Attribute],
     sess: @mut ParseSess
 ) -> Option<@ast::item> {
-    let p = new_parser_from_source_str(
-        sess,
-        cfg,
-        name,
-        source
-    );
+    let mut p = new_parser_from_source_str(sess, cfg, name, source);
     maybe_aborted(p.parse_item(attrs),p)
 }
 
@@ -153,12 +143,7 @@ pub fn parse_meta_from_source_str(
     cfg: ast::CrateConfig,
     sess: @mut ParseSess
 ) -> @ast::MetaItem {
-    let p = new_parser_from_source_str(
-        sess,
-        cfg,
-        name,
-        source
-    );
+    let mut p = new_parser_from_source_str(sess, cfg, name, source);
     maybe_aborted(p.parse_meta_item(),p)
 }
 
@@ -169,7 +154,7 @@ pub fn parse_stmt_from_source_str(
     attrs: ~[ast::Attribute],
     sess: @mut ParseSess
 ) -> @ast::Stmt {
-    let p = new_parser_from_source_str(
+    let mut p = new_parser_from_source_str(
         sess,
         cfg,
         name,
@@ -184,13 +169,13 @@ pub fn parse_tts_from_source_str(
     cfg: ast::CrateConfig,
     sess: @mut ParseSess
 ) -> ~[ast::token_tree] {
-    let p = new_parser_from_source_str(
+    let mut p = new_parser_from_source_str(
         sess,
         cfg,
         name,
         source
     );
-    *p.quote_depth += 1u;
+    p.quote_depth += 1u;
     // right now this is re-creating the token trees from ... token trees.
     maybe_aborted(p.parse_all_token_trees(),p)
 }
@@ -201,15 +186,15 @@ pub fn parse_tts_from_source_str(
 // consumed all of the input before returning the function's
 // result.
 pub fn parse_from_source_str<T>(
-                             f: |&Parser| -> T,
+                             f: |&mut Parser| -> T,
                              name: @str,
                              ss: codemap::FileSubstr,
                              source: @str,
                              cfg: ast::CrateConfig,
                              sess: @mut ParseSess)
                              -> T {
-    let p = new_parser_from_source_substr(sess, cfg, name, ss, source);
-    let r = f(&p);
+    let mut p = new_parser_from_source_substr(sess, cfg, name, ss, source);
+    let r = f(&mut p);
     if !p.reader.is_eof() {
         p.reader.fatal(~"expected end-of-string");
     }
@@ -326,7 +311,7 @@ pub fn filemap_to_tts(sess: @mut ParseSess, filemap: @FileMap)
     // parsing tt's probably shouldn't require a parser at all.
     let cfg = ~[];
     let srdr = lexer::new_string_reader(sess.span_diagnostic, filemap);
-    let p1 = Parser(sess, cfg, srdr as @mut reader);
+    let mut p1 = Parser(sess, cfg, srdr as @mut reader);
     p1.parse_all_token_trees()
 }
 
@@ -339,7 +324,7 @@ pub fn tts_to_parser(sess: @mut ParseSess,
 }
 
 // abort if necessary
-pub fn maybe_aborted<T>(result : T, p: Parser) -> T {
+pub fn maybe_aborted<T>(result: T, mut p: Parser) -> T {
     p.abort_if_errors();
     result
 }
@@ -646,11 +631,11 @@ mod test {
     }
 
     fn parser_done(p: Parser){
-        assert_eq!((*p.token).clone(), token::EOF);
+        assert_eq!(p.token.clone(), token::EOF);
     }
 
     #[test] fn parse_ident_pat () {
-        let parser = string_to_parser(@"b");
+        let mut parser = string_to_parser(@"b");
         assert_eq!(parser.parse_pat(),
                    @ast::Pat{id: ast::DUMMY_NODE_ID,
                              node: ast::PatIdent(

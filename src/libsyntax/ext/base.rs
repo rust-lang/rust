@@ -442,11 +442,11 @@ pub fn get_single_str_from_tts(cx: &ExtCtxt,
 pub fn get_exprs_from_tts(cx: &ExtCtxt,
                           sp: Span,
                           tts: &[ast::token_tree]) -> ~[@ast::Expr] {
-    let p = parse::new_parser_from_tts(cx.parse_sess(),
-                                       cx.cfg(),
-                                       tts.to_owned());
+    let mut p = parse::new_parser_from_tts(cx.parse_sess(),
+                                           cx.cfg(),
+                                           tts.to_owned());
     let mut es = ~[];
-    while *p.token != token::EOF {
+    while p.token != token::EOF {
         if es.len() != 0 && !p.eat(&token::COMMA) {
             cx.span_fatal(sp, "expected token: `,`");
         }

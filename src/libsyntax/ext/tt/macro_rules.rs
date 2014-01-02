@@ -24,10 +24,11 @@ use parse::attr::parser_attr;
 use parse::token::{get_ident_interner, special_idents, gensym_ident, ident_to_str};
 use parse::token::{FAT_ARROW, SEMI, nt_matchers, nt_tt, EOF};
 use print;
+use std::cell::RefCell;
 use util::small_vector::SmallVector;
 
 struct ParserAnyMacro {
-    parser: @Parser,
+    parser: RefCell<Parser>,
 }
 
 impl ParserAnyMacro {
@@ -38,28 +39,36 @@ impl ParserAnyMacro {
     /// fail!(); } )` doesn't get picked up by .parse_expr(), but it's
     /// allowed to be there.
     fn ensure_complete_parse(&self, allow_semi: bool) {
-        if allow_semi && *self.parser.token == SEMI {
-            self.parser.bump()
+        let mut parser = self.parser.borrow_mut();
+        if allow_semi && parser.get().token == SEMI {
+            parser.get().bump()
         }
-        if *self.parser.token != EOF {
-            let msg = format!("macro expansion ignores token `{}` and any following",
-                              self.parser.this_token_to_str());
-            self.parser.span_err(*self.parser.span, msg);
+        if parser.get().token != EOF {
+            let token_str = parser.get().this_token_to_str();
+            let msg = format!("macro expansion ignores token `{}` and any \
+                               following",
+                              token_str);
+            let span = parser.get().span;
+            parser.get().span_err(span, msg);
         }
     }
 }
 
 impl AnyMacro for ParserAnyMacro {
     fn make_expr(&self) -> @ast::Expr {
-        let ret = self.parser.parse_expr();
+        let ret = {
+            let mut parser = self.parser.borrow_mut();
+            parser.get().parse_expr()
+        };
         self.ensure_complete_parse(true);
         ret
     }
     fn make_items(&self) -> SmallVector<@ast::item> {
         let mut ret = SmallVector::zero();
         loop {
-            let attrs = self.parser.parse_outer_attributes();
-            match self.parser.parse_item(attrs) {
+            let mut parser = self.parser.borrow_mut();
+            let attrs = parser.get().parse_outer_attributes();
+            match parser.get().parse_item(attrs) {
                 Some(item) => ret.push(item),
                 None => break
             }
@@ -68,8 +77,11 @@ impl AnyMacro for ParserAnyMacro {
         ret
     }
     fn make_stmt(&self) -> @ast::Stmt {
-        let attrs = self.parser.parse_outer_attributes();
-        let ret = self.parser.parse_stmt(attrs);
+        let ret = {
+            let mut parser = self.parser.borrow_mut();
+            let attrs = parser.get().parse_outer_attributes();
+            parser.get().parse_stmt(attrs)
+        };
         self.ensure_complete_parse(true);
         ret
     }
@@ -142,14 +154,14 @@ fn generic_extension(cx: &ExtCtxt,
                 // rhs has holes ( `$id` and `$(...)` that need filled)
                 let trncbr = new_tt_reader(s_d, Some(named_matches),
                                            rhs);
-                let p = @Parser(cx.parse_sess(),
-                                cx.cfg(),
-                                trncbr as @mut reader);
+                let p = Parser(cx.parse_sess(),
+                               cx.cfg(),
+                               trncbr as @mut reader);
 
                 // Let the context choose how to interpret the result.
                 // Weird, but useful for X-macros.
                 return MRAny(@ParserAnyMacro {
-                    parser: p,
+                    parser: RefCell::new(p),
                 } as @AnyMacro)
               }
               failure(sp, ref msg) => if sp.lo >= best_fail_spot.lo {
