@@ -62,6 +62,7 @@ pub type Key<T> = &'static KeyValue<T>;
 #[allow(missing_doc)]
 pub enum KeyValue<T> { Key }
 
+#[allow(missing_doc)]
 trait LocalData {}
 impl<T: 'static> LocalData for T {}
 
