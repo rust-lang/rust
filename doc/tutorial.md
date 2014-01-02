@@ -2080,9 +2080,10 @@ fn head<T: Clone>(v: &[T]) -> T {
 }
 ~~~~
 
-The bounded type parameter `T: Clone` says that `head` is polymorphic
-over any type `T`, so long as there is an implementation of the
-`Clone` trait for that type.
+The bounded type parameter `T: Clone` says that `head`
+can be called on an argument of type `&[T]` for any `T`,
+so long as there is an implementation of the
+`Clone` trait for `T`.
 When instantiating a generic function,
 we can only instantiate it with types
 that implement the correct trait,
