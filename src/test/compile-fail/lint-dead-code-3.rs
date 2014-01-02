@@ -64,3 +64,19 @@ enum c_void {} //~ ERROR: code is never used
 extern {
     fn free(p: *c_void); //~ ERROR: code is never used
 }
+
+// Check provided method
+mod inner {
+    pub trait Trait {
+        fn f(&self) { f(); }
+    }
+
+    impl Trait for int {}
+
+    fn f() {}
+}
+
+pub fn foo() {
+    let a = &1 as &inner::Trait;
+    a.f();
+}

@@ -62,6 +62,13 @@ impl MarkSymbolVisitor {
         }
     }
 
+    fn check_def_id(&mut self, def_id: ast::DefId) {
+        if should_explore(self.tcx, def_id) {
+            self.worklist.push(def_id.node);
+        }
+        self.live_symbols.insert(def_id.node);
+    }
+
     fn lookup_and_handle_definition(&mut self, id: &ast::NodeId) {
         let def_map = self.tcx.def_map.borrow();
         let def = match def_map.get().find(id) {
@@ -74,13 +81,44 @@ impl MarkSymbolVisitor {
             _ => Some(def_id_of_def(def)),
         };
         match def_id {
-            Some(def_id) => {
-                if should_explore(self.tcx, def_id) {
-                    self.worklist.push(def_id.node);
-                }
-                self.live_symbols.insert(def_id.node);
-            }
+            Some(def_id) => self.check_def_id(def_id),
             None => (),
+        }
+    }
+
+    fn lookup_and_handle_method(&mut self, id: &ast::NodeId,
+                                span: codemap::Span) {
+        let method_map = self.method_map.borrow();
+        match method_map.get().find(id) {
+            Some(&typeck::method_map_entry { origin, .. }) => {
+                match origin {
+                    typeck::method_static(def_id) => {
+                        match ty::provided_source(self.tcx, def_id) {
+                            Some(p_did) => self.check_def_id(p_did),
+                            None => self.check_def_id(def_id)
+                        }
+                    }
+                    typeck::method_param(typeck::method_param {
+                        trait_id: trait_id,
+                        method_num: index,
+                        ..
+                    })
+                    | typeck::method_object(typeck::method_object {
+                        trait_id: trait_id,
+                        method_num: index,
+                        ..
+                    }) => {
+                        let def_id = ty::trait_method(self.tcx,
+                                                      trait_id, index).def_id;
+                        self.check_def_id(def_id);
+                    }
+                }
+            }
+            None => {
+                self.tcx.sess.span_bug(span,
+                                       "method call expression not \
+                                        in method map?!")
+            }
         }
     }
 
@@ -135,24 +173,7 @@ impl Visitor<()> for MarkSymbolVisitor {
     fn visit_expr(&mut self, expr: @ast::Expr, _: ()) {
         match expr.node {
             ast::ExprMethodCall(..) => {
-                let method_map = self.method_map.borrow();
-                match method_map.get().find(&expr.id) {
-                    Some(&typeck::method_map_entry {
-                        origin: typeck::method_static(def_id),
-                        ..
-                    }) => {
-                        if should_explore(self.tcx, def_id) {
-                            self.worklist.push(def_id.node);
-                        }
-                        self.live_symbols.insert(def_id.node);
-                    }
-                    Some(_) => (),
-                    None => {
-                        self.tcx.sess.span_bug(expr.span,
-                                               "method call expression not \
-                                                in method map?!")
-                    }
-                }
+                self.lookup_and_handle_method(&expr.id, expr.span);
             }
             _ => ()
         }
