@@ -53,11 +53,11 @@ struct Context<'a> {
 impl<'a> Context<'a> {
     /// Parses the arguments from the given list of tokens, returning None if
     /// there's a parse error so we can continue parsing other format! expressions.
-    fn parse_args(&mut self, sp: Span,
-                  tts: &[ast::token_tree]) -> (@ast::Expr, Option<@ast::Expr>) {
-        let p = rsparse::new_parser_from_tts(self.ecx.parse_sess(),
-                                             self.ecx.cfg(),
-                                             tts.to_owned());
+    fn parse_args(&mut self, sp: Span, tts: &[ast::token_tree])
+                  -> (@ast::Expr, Option<@ast::Expr>) {
+        let mut p = rsparse::new_parser_from_tts(self.ecx.parse_sess(),
+                                                 self.ecx.cfg(),
+                                                 tts.to_owned());
         // Parse the leading function expression (maybe a block, maybe a path)
         let extra = p.parse_expr();
         if !p.eat(&token::COMMA) {
@@ -65,34 +65,34 @@ impl<'a> Context<'a> {
             return (extra, None);
         }
 
-        if *p.token == token::EOF {
+        if p.token == token::EOF {
             self.ecx.span_err(sp, "requires at least a format string argument");
             return (extra, None);
         }
         let fmtstr = p.parse_expr();
         let mut named = false;
-        while *p.token != token::EOF {
+        while p.token != token::EOF {
             if !p.eat(&token::COMMA) {
                 self.ecx.span_err(sp, "expected token: `,`");
                 return (extra, None);
             }
-            if *p.token == token::EOF { break } // accept trailing commas
-            if named || (token::is_ident(p.token) &&
+            if p.token == token::EOF { break } // accept trailing commas
+            if named || (token::is_ident(&p.token) &&
                          p.look_ahead(1, |t| *t == token::EQ)) {
                 named = true;
-                let ident = match *p.token {
+                let ident = match p.token {
                     token::IDENT(i, _) => {
                         p.bump();
                         i
                     }
                     _ if named => {
-                        self.ecx.span_err(*p.span,
+                        self.ecx.span_err(p.span,
                                           "expected ident, positional arguments \
                                            cannot follow named arguments");
                         return (extra, None);
                     }
                     _ => {
-                        self.ecx.span_err(*p.span,
+                        self.ecx.span_err(p.span,
                                           format!("expected ident for named \
                                                 argument, but found `{}`",
                                                p.this_token_to_str()));
