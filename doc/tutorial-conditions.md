@@ -43,12 +43,13 @@ $ ./example numbers.txt
 
 An example program that does this task reads like this:
 
-~~~~{.xfail-test}
+~~~~
 # #[allow(unused_imports)];
+# extern mod extra;
 use std::io::buffered::BufferedReader;
-use std::io::fs::File;
+use std::io::File;
 # mod BufferedReader {
-#     use std::io::fs::File;
+#     use std::io::File;
 #     use std::io::mem::MemReader;
 #     use std::io::buffered::BufferedReader;
 #     static s : &'static [u8] = bytes!("1 2\n\
@@ -71,10 +72,9 @@ fn main() {
 fn read_int_pairs() -> ~[(int,int)] {
     let mut pairs = ~[];
 
-    let args = std::os::args();
-
     // Path takes a generic by-value, rather than by reference
-    let path = Path::new(args.get_opt(1).expect("No input file parameter!").as_slice());
+#    let _g = std::io::ignore_io_error();
+    let path = Path::new(&"foo.txt");
     let mut reader = BufferedReader::new(File::open(&path));
 
     // 1. Iterate over the lines of our file.
@@ -242,13 +242,14 @@ If the example is rewritten to use failure, these error cases can be trapped.
 In this rewriting, failures are trapped by placing the I/O logic in a sub-task,
 and trapping its exit status using `task::try`:
 
-~~~~{.xfail-test}
+~~~~
 # #[allow(unused_imports)];
+# extern mod extra;
 use std::io::buffered::BufferedReader;
-use std::io::fs::File;
+use std::io::File;
 use std::task;
 # mod BufferedReader {
-#     use std::io::fs::File;
+#     use std::io::File;
 #     use std::io::mem::MemReader;
 #     use std::io::buffered::BufferedReader;
 #     static s : &'static [u8] = bytes!("1 2\n\
@@ -280,8 +281,8 @@ fn main() {
 
 fn read_int_pairs() -> ~[(int,int)] {
     let mut pairs = ~[];
-    let args = std::os::args();
-    let path = Path::new(args.get_opt(1).expect("No input file parameter!").as_slice());
+#    let _g = std::io::ignore_io_error();
+    let path = Path::new(&"foo.txt");
 
     let mut reader = BufferedReader::new(File::open(&path));
     for line in reader.lines() {
@@ -346,12 +347,13 @@ If no handler is found, `Condition::raise` will fail the task with an appropriat
 Rewriting the example to use a condition in place of ignoring malformed lines makes it slightly longer,
 but similarly clear as the version that used `fail!` in the logic where the error occurs:
 
-~~~~{.xfail-test}
+~~~~
 # #[allow(unused_imports)];
+# extern mod extra;
 use std::io::buffered::BufferedReader;
-use std::io::fs::File;
+use std::io::File;
 # mod BufferedReader {
-#     use std::io::fs::File;
+#     use std::io::File;
 #     use std::io::mem::MemReader;
 #     use std::io::buffered::BufferedReader;
 #     static s : &'static [u8] = bytes!("1 2\n\
@@ -378,8 +380,8 @@ fn main() {
 
 fn read_int_pairs() -> ~[(int,int)] {
     let mut pairs = ~[];
-    let args = std::os::args();
-    let path = Path::new(args.get_opt(1).expect("No input file parameter!").as_slice());
+#    let _g = std::io::ignore_io_error();
+    let path = Path::new(&"foo.txt");
 
     let mut reader = BufferedReader::new(File::open(&path));
     for line in reader.lines() {
@@ -415,12 +417,13 @@ To trap a condition, use `Condition::trap` in some caller of the site that calls
 For example, this version of the program traps the `malformed_line` condition
 and replaces bad input lines with the pair `(-1,-1)`:
 
-~~~~{.xfail-test}
+~~~~
 # #[allow(unused_imports)];
+# extern mod extra;
 use std::io::buffered::BufferedReader;
-use std::io::fs::File;
+use std::io::File;
 # mod BufferedReader {
-#     use std::io::fs::File;
+#     use std::io::File;
 #     use std::io::mem::MemReader;
 #     use std::io::buffered::BufferedReader;
 #     static s : &'static [u8] = bytes!("1 2\n\
@@ -452,8 +455,8 @@ fn main() {
 
 fn read_int_pairs() -> ~[(int,int)] {
     let mut pairs = ~[];
-    let args = std::os::args();
-    let path = Path::new(args.get_opt(1).expect("No input file parameter!").as_slice());
+#    let _g = std::io::ignore_io_error();
+    let path = Path::new(&"foo.txt");
 
     let mut reader = BufferedReader::new(File::open(&path));
     for line in reader.lines() {
@@ -490,12 +493,13 @@ In the example program, the first form of the `malformed_line` API implicitly as
 This assumption may not be correct; some callers may wish to skip malformed lines, for example.
 Changing the condition's return type from `(int,int)` to `Option<(int,int)>` will suffice to support this type of recovery:
 
-~~~~{.xfail-test}
+~~~~
 # #[allow(unused_imports)];
+# extern mod extra;
 use std::io::buffered::BufferedReader;
-use std::io::fs::File;
+use std::io::File;
 # mod BufferedReader {
-#     use std::io::fs::File;
+#     use std::io::File;
 #     use std::io::mem::MemReader;
 #     use std::io::buffered::BufferedReader;
 #     static s : &'static [u8] = bytes!("1 2\n\
@@ -528,8 +532,8 @@ fn main() {
 
 fn read_int_pairs() -> ~[(int,int)] {
     let mut pairs = ~[];
-    let args = std::os::args();
-    let path = Path::new(args.get_opt(1).expect("No input file parameter!").as_slice());
+#    let _g = std::io::ignore_io_error();
+    let path = Path::new(&"foo.txt");
 
     let mut reader = BufferedReader::new(File::open(&path));
     for line in reader.lines() {
@@ -575,12 +579,13 @@ until all relevant combinations encountered in practice are encoded.
 In the example, suppose a third possible recovery form arose: reusing the previous value read.
 This can be encoded in the handler API by introducing a helper type: `enum MalformedLineFix`.
 
-~~~~{.xfail-test}
+~~~~
 # #[allow(unused_imports)];
+# extern mod extra;
 use std::io::buffered::BufferedReader;
-use std::io::fs::File;
+use std::io::File;
 # mod BufferedReader {
-#     use std::io::fs::File;
+#     use std::io::File;
 #     use std::io::mem::MemReader;
 #     use std::io::buffered::BufferedReader;
 #     static s : &'static [u8] = bytes!("1 2\n\
@@ -622,8 +627,8 @@ fn main() {
 
 fn read_int_pairs() -> ~[(int,int)] {
     let mut pairs = ~[];
-    let args = std::os::args();
-    let path = Path::new(args.get_opt(1).expect("No input file parameter!").as_slice());
+#    let _g = std::io::ignore_io_error();
+    let path = Path::new(&"foo.txt");
 
     let mut reader = BufferedReader::new(File::open(&path));
     for line in reader.lines() {
@@ -699,12 +704,13 @@ task <unnamed> failed at 'called `Option::unwrap()` on a `None` value', .../libs
 To make the program robust &mdash; or at least flexible &mdash; in the face of this potential failure,
 a second condition and a helper function will suffice:
 
-~~~~{.xfail-test}
+~~~~
 # #[allow(unused_imports)];
+# extern mod extra;
 use std::io::buffered::BufferedReader;
-use std::io::fs::File;
+use std::io::File;
 # mod BufferedReader {
-#     use std::io::fs::File;
+#     use std::io::File;
 #     use std::io::mem::MemReader;
 #     use std::io::buffered::BufferedReader;
 #     static s : &'static [u8] = bytes!("1 2\n\
@@ -760,8 +766,8 @@ fn parse_int(x: &str) -> int {
 
 fn read_int_pairs() -> ~[(int,int)] {
     let mut pairs = ~[];
-    let args = std::os::args();
-    let path = Path::new(args.get_opt(1).expect("No input file parameter!").as_slice());
+#    let _g = std::io::ignore_io_error();
+    let path = Path::new(&"foo.txt");
 
     let mut reader = BufferedReader::new(File::open(&path));
     for line in reader.lines() {
