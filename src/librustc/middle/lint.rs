@@ -332,7 +332,7 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
     ("unknown_features",
      LintSpec {
         lint: unknown_features,
-        desc: "unknown features found in create-level #[feature] directives",
+        desc: "unknown features found in crate-level #[feature] directives",
         default: deny,
     }),
 ];
