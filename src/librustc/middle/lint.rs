@@ -80,6 +80,7 @@ pub enum lint {
     unsafe_block,
     attribute_usage,
     unknown_features,
+    unknown_crate_type,
 
     managed_heap_memory,
     owned_heap_memory,
@@ -335,6 +336,13 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
         desc: "unknown features found in crate-level #[feature] directives",
         default: deny,
     }),
+
+     ("unknown_crate_type",
+     LintSpec {
+         lint: unknown_crate_type,
+         desc: "unknown crate type found in #[crate_type] directive",
+         default: deny,
+     }),
 ];
 
 /*
