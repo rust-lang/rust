@@ -154,7 +154,7 @@ endif
 
 # version-string calculation
 CFG_GIT_DIR := $(CFG_SRC_DIR).git
-CFG_RELEASE = 0.9-pre
+CFG_RELEASE = 0.9
 CFG_VERSION = $(CFG_RELEASE)
 # windows exe's need numeric versions - don't use anything but
 # numbers and dots here
