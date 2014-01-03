@@ -337,9 +337,14 @@ pub enum TestResult {
     TrBench(BenchSamples),
 }
 
+enum OutputLocation<T> {
+    Pretty(term::Terminal<T>),
+    Raw(T),
+}
+
 struct ConsoleTestState<T> {
     log_out: Option<File>,
-    out: Either<term::Terminal<T>, T>,
+    out: OutputLocation<T>,
     use_color: bool,
     total: uint,
     passed: uint,
@@ -358,8 +363,8 @@ impl<T: Writer> ConsoleTestState<T> {
             None => None
         };
         let out = match term::Terminal::new(io::stdout()) {
-            Err(_) => Right(io::stdout()),
-            Ok(t) => Left(t)
+            Err(_) => Raw(io::stdout()),
+            Ok(t) => Pretty(t)
         };
         ConsoleTestState {
             out: out,
@@ -416,7 +421,7 @@ impl<T: Writer> ConsoleTestState<T> {
                         word: &str,
                         color: term::color::Color) {
         match self.out {
-            Left(ref mut term) => {
+            Pretty(ref mut term) => {
                 if self.use_color {
                     term.fg(color);
                 }
@@ -425,14 +430,14 @@ impl<T: Writer> ConsoleTestState<T> {
                     term.reset();
                 }
             }
-            Right(ref mut stdout) => stdout.write(word.as_bytes())
+            Raw(ref mut stdout) => stdout.write(word.as_bytes())
         }
     }
 
     pub fn write_plain(&mut self, s: &str) {
         match self.out {
-            Left(ref mut term) => term.write(s.as_bytes()),
-            Right(ref mut stdout) => stdout.write(s.as_bytes())
+            Pretty(ref mut term) => term.write(s.as_bytes()),
+            Raw(ref mut stdout) => stdout.write(s.as_bytes())
         }
     }
 
@@ -683,7 +688,7 @@ fn should_sort_failures_before_printing_them() {
 
     let mut st = ConsoleTestState {
         log_out: None,
-        out: Right(MemWriter::new()),
+        out: Raw(MemWriter::new()),
         use_color: false,
         total: 0u,
         passed: 0u,
@@ -697,8 +702,8 @@ fn should_sort_failures_before_printing_them() {
 
     st.write_failures();
     let s = match st.out {
-        Right(ref m) => str::from_utf8(*m.inner_ref()),
-        Left(_) => unreachable!()
+        Raw(ref m) => str::from_utf8(*m.inner_ref()),
+        Pretty(_) => unreachable!()
     };
 
     let apos = s.find_str("a").unwrap();

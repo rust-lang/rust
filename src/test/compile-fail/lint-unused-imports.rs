@@ -14,8 +14,6 @@
 
 use cal = bar::c::cc;
 
-use std::either::Right;        //~ ERROR unused import
-
 use std::util::*;              // shouldn't get errors for not using
                                 // everything imported
 

@@ -12,6 +12,9 @@
 
 use std::mem::size_of;
 
+#[deriving(Eq)]
+enum Either<T, U> { Left(T), Right(U) }
+
 macro_rules! check {
     ($t:ty, $sz:expr, $($e:expr, $s:expr),*) => {{
         assert_eq!(size_of::<$t>(), $sz);
