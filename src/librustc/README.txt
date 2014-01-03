@@ -35,7 +35,7 @@ ASTs -- are in a separate crate called "syntax", whose files are in
 ./../libsyntax, where . is the current directory (that is, the parent
 directory of front/, middle/, back/, and so on).
 
-The entry-point for the compiler is main() in rustc.rc, and
+The entry-point for the compiler is main() in lib.rs, and
 this file sequences the various parts together.
 
 
@@ -75,7 +75,7 @@ The 3 central data structures:
 Control and information flow within the compiler:
 -------------------------------------------------
 
-- main() in rustc.rc assumes control on startup. Options are
+- main() in lib.rs assumes control on startup. Options are
   parsed, platform is detected, etc.
 
 - ./../libsyntax/parse/parser.rs parses the input files and produces an AST
