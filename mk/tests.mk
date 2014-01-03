@@ -768,7 +768,7 @@ $$(call TEST_OK_FILE,$(1),$(2),$(3),doc-$(4)):		\
 		$$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3))
 	@$$(call E, run doc-$(4) [$(2)])
 	$$(Q)$$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3)) --test \
-	    $$(CRATE_DOC_LIB-$(4)) && touch $$@
+	    $$(CRATE_DOC_LIB-$(4)) --test-args "$$(TESTARGS)" && touch $$@
 else
 $$(call TEST_OK_FILE,$(1),$(2),$(3),doc-$(4)):
 	touch $$@
@@ -970,12 +970,12 @@ $(3)/test/run-make/%-$(1)-T-$(2)-H-$(3).ok: \
 		$$(CSREQ$(1)_T_$(2)_H_$(3))
 	@rm -rf $(3)/test/run-make/$$*
 	@mkdir -p $(3)/test/run-make/$$*
-	@echo maketest: $$*
 	$$(Q)$$(CFG_PYTHON) $(S)src/etc/maketest.py $$(dir $$<) \
 	    $$(HBIN$(1)_H_$(3))/rustc$$(X_$(3)) \
 	    $(3)/test/run-make/$$* \
 	    "$$(CC_$(3)) $$(CFG_GCCISH_CFLAGS_$(3))" \
-	    $$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3))
+	    $$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3)) \
+	    "$$(TESTNAME)"
 	@touch $$@
 else
 # FIXME #11094 - The above rule doesn't work right for multiple targets
