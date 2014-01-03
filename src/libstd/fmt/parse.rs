@@ -122,12 +122,21 @@ pub enum Method<'a> {
     Select(~[SelectArm<'a>], ~[Piece<'a>]),
 }
 
+/// A selector for what pluralization a plural method should take
+#[deriving(Eq, IterBytes)]
+pub enum PluralSelector {
+    /// One of the plural keywords should be used
+    Keyword(PluralKeyword),
+    /// A literal pluralization should be used
+    Literal(uint),
+}
+
 /// Structure representing one "arm" of the `plural` function.
 #[deriving(Eq)]
 pub struct PluralArm<'a> {
     /// A selector can either be specified by a keyword or with an integer
     /// literal.
-    selector: Either<PluralKeyword, uint>,
+    selector: PluralSelector,
     /// Array of pieces which are the format of this arm
     result: ~[Piece<'a>],
 }
@@ -504,29 +513,29 @@ impl<'a> Parser<'a> {
             let mut isother = false;
             let selector = if self.wsconsume('=') {
                 match self.integer() {
-                    Some(i) => Right(i),
+                    Some(i) => Literal(i),
                     None => {
                         self.err("plural `=` selectors must be followed by an \
                                   integer");
-                        Right(0)
+                        Literal(0)
                     }
                 }
             } else {
                 let word = self.word();
                 match word {
-                    "other" => { isother = true; Left(Zero) }
-                    "zero"  => Left(Zero),
-                    "one"   => Left(One),
-                    "two"   => Left(Two),
-                    "few"   => Left(Few),
-                    "many"  => Left(Many),
+                    "other" => { isother = true; Keyword(Zero) }
+                    "zero"  => Keyword(Zero),
+                    "one"   => Keyword(One),
+                    "two"   => Keyword(Two),
+                    "few"   => Keyword(Few),
+                    "many"  => Keyword(Many),
                     word    => {
                         self.err(format!("unexpected plural selector `{}`",
                                          word));
                         if word == "" {
                             break
                         } else {
-                            Left(Zero)
+                            Keyword(Zero)
                         }
                     }
                 }
@@ -955,9 +964,9 @@ mod tests {
             position: ArgumentNext,
             format: fmtdflt(),
             method: Some(~Plural(Some(1), ~[
-                PluralArm{ selector: Right(2), result: ~[String("2")] },
-                PluralArm{ selector: Right(3), result: ~[String("3")] },
-                PluralArm{ selector: Left(Many), result: ~[String("yes")] }
+                PluralArm{ selector: Literal(2), result: ~[String("2")] },
+                PluralArm{ selector: Literal(3), result: ~[String("3")] },
+                PluralArm{ selector: Keyword(Many), result: ~[String("yes")] }
             ], ~[String("haha")]))
         })]);
     }

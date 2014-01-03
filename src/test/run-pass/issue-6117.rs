@@ -10,6 +10,8 @@
 
 #[feature(managed_boxes)];
 
+enum Either<T, U> { Left(T), Right(U) }
+
 pub fn main() {
     match Left(@17) {
         Right(()) => {}
