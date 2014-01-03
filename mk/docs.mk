@@ -133,6 +133,13 @@ doc/tutorial-ffi.html: tutorial-ffi.md doc/version_info.html doc/rust.css \
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
 
+DOCS += doc/tutorial-testing.html
+doc/tutorial-testing.html: tutorial-testing.md doc/version_info.html doc/rust.css \
+				doc/favicon.inc
+	@$(call E, pandoc: $@)
+	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
+	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
+
 DOCS += doc/tutorial-borrowed-ptr.html
 doc/tutorial-borrowed-ptr.html: tutorial-borrowed-ptr.md doc/version_info.html doc/rust.css \
 				doc/favicon.inc
