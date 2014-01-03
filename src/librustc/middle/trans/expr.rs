@@ -756,8 +756,19 @@ fn trans_rvalue_dps_unadjusted<'a>(
                 args.iter().enumerate().map(|(i, arg)| (i, *arg)).collect();
             return trans_adt(bcx, repr, 0, numbered_fields, None, dest);
         }
-        ast::ExprLit(@codemap::Spanned {node: ast::LitStr(s, _), ..}) => {
-            return tvec::trans_lit_str(bcx, expr, s, dest);
+        ast::ExprLit(lit) => {
+            match lit.node {
+                ast::LitStr(s, _) => {
+                    return tvec::trans_lit_str(bcx, expr, s, dest);
+                }
+                _ => {
+                    bcx.tcx()
+                       .sess
+                       .span_bug(expr.span,
+                                 "trans_rvalue_dps_unadjusted shouldn't be \
+                                  translating this type of literal")
+                }
+            }
         }
         ast::ExprVstore(contents, ast::ExprVstoreSlice) |
         ast::ExprVstore(contents, ast::ExprVstoreMutSlice) => {

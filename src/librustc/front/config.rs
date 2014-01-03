@@ -201,7 +201,7 @@ fn method_in_cfg(cx: &Context, meth: &ast::Method) -> bool {
 fn trait_method_in_cfg(cx: &Context, meth: &ast::TraitMethod) -> bool {
     match *meth {
         ast::Required(ref meth) => (cx.in_cfg)(meth.attrs),
-        ast::Provided(@ref meth) => (cx.in_cfg)(meth.attrs)
+        ast::Provided(meth) => (cx.in_cfg)(meth.attrs)
     }
 }
 

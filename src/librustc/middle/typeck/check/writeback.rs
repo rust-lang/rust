@@ -140,55 +140,71 @@ fn resolve_type_vars_for_node(wbcx: &mut WbCtxt, sp: Span, id: ast::NodeId)
     match adjustment {
         None => (),
 
-        Some(@ty::AutoAddEnv(r, s)) => {
-            match resolve_region(fcx.infcx(), r, resolve_all | force_all) {
-                Err(e) => {
-                    // This should not, I think, happen:
-                    fcx.ccx.tcx.sess.span_err(
-                        sp, format!("cannot resolve bound for closure: {}",
-                                 infer::fixup_err_to_str(e)));
+        Some(adjustment) => {
+            match *adjustment {
+                ty::AutoAddEnv(r, s) => {
+                    match resolve_region(fcx.infcx(),
+                                         r,
+                                         resolve_all | force_all) {
+                        Err(e) => {
+                            // This should not, I think, happen:
+                            fcx.ccx.tcx.sess.span_err(
+                                sp,
+                                format!("cannot resolve bound for closure: \
+                                         {}",
+                                        infer::fixup_err_to_str(e)));
+                        }
+                        Ok(r1) => {
+                            let resolved_adj = @ty::AutoAddEnv(r1, s);
+                            debug!("Adjustments for node {}: {:?}",
+                                   id,
+                                   resolved_adj);
+                            let mut adjustments = fcx.tcx()
+                                                     .adjustments
+                                                     .borrow_mut();
+                            adjustments.get().insert(id, resolved_adj);
+                        }
+                    }
                 }
-                Ok(r1) => {
-                    let resolved_adj = @ty::AutoAddEnv(r1, s);
+
+                ty::AutoDerefRef(adj) => {
+                    let fixup_region = |r| {
+                        match resolve_region(fcx.infcx(),
+                                             r,
+                                             resolve_all | force_all) {
+                            Ok(r1) => r1,
+                            Err(e) => {
+                                // This should not, I think, happen.
+                                fcx.ccx.tcx.sess.span_err(
+                                    sp,
+                                    format!("cannot resolve scope of borrow: \
+                                             {}",
+                                             infer::fixup_err_to_str(e)));
+                                r
+                            }
+                        }
+                    };
+
+                    let resolved_autoref = match adj.autoref {
+                        None => None,
+                        Some(ref r) => Some(r.map_region(fixup_region))
+                    };
+
+                    let resolved_adj = @ty::AutoDerefRef(ty::AutoDerefRef {
+                        autoderefs: adj.autoderefs,
+                        autoref: resolved_autoref,
+                    });
                     debug!("Adjustments for node {}: {:?}", id, resolved_adj);
                     let mut adjustments = fcx.tcx().adjustments.borrow_mut();
                     adjustments.get().insert(id, resolved_adj);
                 }
-            }
-        }
 
-        Some(@ty::AutoDerefRef(adj)) => {
-            let fixup_region = |r| {
-                match resolve_region(fcx.infcx(), r, resolve_all | force_all) {
-                    Ok(r1) => r1,
-                    Err(e) => {
-                        // This should not, I think, happen.
-                        fcx.ccx.tcx.sess.span_err(
-                            sp, format!("cannot resolve scope of borrow: {}",
-                                     infer::fixup_err_to_str(e)));
-                        r
-                    }
+                ty::AutoObject(..) => {
+                    debug!("Adjustments for node {}: {:?}", id, adjustment);
+                    let mut adjustments = fcx.tcx().adjustments.borrow_mut();
+                    adjustments.get().insert(id, adjustment);
                 }
-            };
-
-            let resolved_autoref = match adj.autoref {
-                None => None,
-                Some(ref r) => Some(r.map_region(fixup_region))
-            };
-
-            let resolved_adj = @ty::AutoDerefRef(ty::AutoDerefRef {
-                autoderefs: adj.autoderefs,
-                autoref: resolved_autoref,
-            });
-            debug!("Adjustments for node {}: {:?}", id, resolved_adj);
-            let mut adjustments = fcx.tcx().adjustments.borrow_mut();
-            adjustments.get().insert(id, resolved_adj);
-        }
-
-        Some(adjustment @ @ty::AutoObject(..)) => {
-            debug!("Adjustments for node {}: {:?}", id, adjustment);
-            let mut adjustments = fcx.tcx().adjustments.borrow_mut();
-            adjustments.get().insert(id, adjustment);
+            }
         }
     }
 

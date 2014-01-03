@@ -23,7 +23,7 @@ use std::num;
 use std::vec;
 use syntax::ast::*;
 use syntax::ast_util::{unguarded_pat, walk_pat};
-use syntax::codemap::{Span, DUMMY_SP, Spanned};
+use syntax::codemap::{DUMMY_SP, Span};
 use syntax::visit;
 use syntax::visit::{Visitor, FnKind};
 
@@ -362,7 +362,7 @@ fn pat_ctor_id(cx: &MatchCheckCtxt, p: @Pat) -> Option<ctor> {
           _ => Some(single)
         }
       }
-      PatBox(_) | PatUniq(_) | PatTup(_) | PatRegion(..) => {
+      PatUniq(_) | PatTup(_) | PatRegion(..) => {
         Some(single)
       }
       PatVec(ref before, slice, ref after) => {
@@ -735,7 +735,7 @@ fn specialize(cx: &MatchCheckCtxt,
                 }
             }
             PatTup(args) => Some(vec::append(args, r.tail())),
-            PatBox(a) | PatUniq(a) | PatRegion(a) => {
+            PatUniq(a) | PatRegion(a) => {
                 Some(vec::append(~[a], r.tail()))
             }
             PatLit(expr) => {
@@ -874,16 +874,22 @@ fn is_refutable(cx: &MatchCheckCtxt, pat: &Pat) -> bool {
     }
 
     match pat.node {
-      PatBox(sub) | PatUniq(sub) | PatRegion(sub) |
-      PatIdent(_, _, Some(sub)) => {
+      PatUniq(sub) | PatRegion(sub) | PatIdent(_, _, Some(sub)) => {
         is_refutable(cx, sub)
       }
       PatWild | PatWildMulti | PatIdent(_, _, None) => { false }
-      PatLit(@Expr {node: ExprLit(@Spanned { node: LitNil, ..}), ..}) => {
-        // "()"
-        false
+      PatLit(lit) => {
+          match lit.node {
+            ExprLit(lit) => {
+                match lit.node {
+                    LitNil => false,    // `()`
+                    _ => true,
+                }
+            }
+            _ => true,
+          }
       }
-      PatLit(_) | PatRange(_, _) => { true }
+      PatRange(_, _) => { true }
       PatStruct(_, ref fields, _) => {
         fields.iter().any(|f| is_refutable(cx, f.pat))
       }

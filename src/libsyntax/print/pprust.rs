@@ -1709,10 +1709,6 @@ pub fn print_pat(s: &mut State, pat: &ast::Pat) {
         }
         pclose(s);
       }
-      ast::PatBox(inner) => {
-          word(&mut s.s, "@");
-          print_pat(s, inner);
-      }
       ast::PatUniq(inner) => {
           word(&mut s.s, "~");
           print_pat(s, inner);
@@ -1733,8 +1729,8 @@ pub fn print_pat(s: &mut State, pat: &ast::Pat) {
         commasep(s, Inconsistent, *before, |s, &p| print_pat(s, p));
         for &p in slice.iter() {
             if !before.is_empty() { word_space(s, ","); }
-            match p {
-                @ast::Pat { node: ast::PatWildMulti, .. } => {
+            match *p {
+                ast::Pat { node: ast::PatWildMulti, .. } => {
                     // this case is handled by print_pat
                 }
                 _ => word(&mut s.s, ".."),

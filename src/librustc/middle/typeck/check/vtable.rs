@@ -741,15 +741,33 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: @FnCtxt, is_early: bool) {
     // Search for auto-adjustments to find trait coercions
     let adjustments = fcx.inh.adjustments.borrow();
     match adjustments.get().find(&ex.id) {
-        Some(&@AutoObject(ref sigil, ref region, m, b, def_id, ref substs)) => {
-            debug!("doing trait adjustment for expr {} {} (early? {})",
-                   ex.id, ex.repr(fcx.tcx()), is_early);
+        Some(adjustment) => {
+            match **adjustment {
+                AutoObject(ref sigil,
+                           ref region,
+                           m,
+                           b,
+                           def_id,
+                           ref substs) => {
+                    debug!("doing trait adjustment for expr {} {} \
+                            (early? {})",
+                           ex.id,
+                           ex.repr(fcx.tcx()),
+                           is_early);
 
-            let object_ty = ty::trait_adjustment_to_ty(cx.tcx, sigil, region,
-                                                       def_id, substs, m, b);
-            resolve_object_cast(ex, object_ty);
+                    let object_ty = ty::trait_adjustment_to_ty(cx.tcx,
+                                                               sigil,
+                                                               region,
+                                                               def_id,
+                                                               substs,
+                                                               m,
+                                                               b);
+                    resolve_object_cast(ex, object_ty);
+                }
+                AutoAddEnv(..) | AutoDerefRef(..) => {}
+            }
         }
-        Some(&@AutoAddEnv(..)) | Some(&@AutoDerefRef(..)) | None => {}
+        None => {}
     }
 }
 

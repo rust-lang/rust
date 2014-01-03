@@ -310,8 +310,8 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
         let r = adjustments.get().find(&expr.id);
         for &adjustment in r.iter() {
             debug!("adjustment={:?}", adjustment);
-            match *adjustment {
-                @ty::AutoDerefRef(
+            match **adjustment {
+                ty::AutoDerefRef(
                     ty::AutoDerefRef {autoderefs: autoderefs, autoref: opt_autoref}) =>
                 {
                     let expr_ty = rcx.resolve_node_type(expr.id);
@@ -328,7 +328,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
                             infer::AutoBorrow(expr.span));
                     }
                 }
-                @ty::AutoObject(ast::BorrowedSigil, Some(trait_region), _, _, _, _) => {
+                ty::AutoObject(ast::BorrowedSigil, Some(trait_region), _, _, _, _) => {
                     // Determine if we are casting `expr` to an trait
                     // instance.  If so, we have to be sure that the type of
                     // the source obeys the trait's region bound.
@@ -1086,65 +1086,74 @@ pub mod guarantor {
 
         let adjustments = rcx.fcx.inh.adjustments.borrow();
         match adjustments.get().find(&expr.id) {
-            Some(&@ty::AutoAddEnv(..)) => {
-                // This is basically an rvalue, not a pointer, no regions
-                // involved.
-                expr_ct.cat = ExprCategorization {
-                    guarantor: None,
-                    pointer: NotPointer
-                };
-            }
-
-            Some(&@ty::AutoObject(ast::BorrowedSigil, Some(region), _, _, _, _)) => {
-                expr_ct.cat = ExprCategorization {
-                    guarantor: None,
-                    pointer: BorrowedPointer(region)
-                };
-            }
-
-            Some(&@ty::AutoObject(ast::OwnedSigil, _, _, _, _, _)) => {
-                expr_ct.cat = ExprCategorization {
-                    guarantor: None,
-                    pointer: OwnedPointer
-                };
-            }
-
-            Some(&@ty::AutoObject(ast::ManagedSigil, _, _, _, _, _)) => {
-                expr_ct.cat = ExprCategorization {
-                    guarantor: None,
-                    pointer: OtherPointer
-                };
-            }
-
-            Some(&@ty::AutoDerefRef(ref adjustment)) => {
-                debug!("adjustment={:?}", adjustment);
-
-                expr_ct = apply_autoderefs(
-                    rcx, expr, adjustment.autoderefs, expr_ct);
-
-                match adjustment.autoref {
-                    None => {
+            Some(adjustment) => {
+                match **adjustment {
+                    ty::AutoAddEnv(..) => {
+                        // This is basically an rvalue, not a pointer, no regions
+                        // involved.
+                        expr_ct.cat = ExprCategorization {
+                            guarantor: None,
+                            pointer: NotPointer
+                        };
                     }
-                    Some(ty::AutoUnsafe(_)) => {
-                        expr_ct.cat.guarantor = None;
-                        expr_ct.cat.pointer = OtherPointer;
-                        debug!("autoref, cat={:?}", expr_ct.cat);
+
+                    ty::AutoObject(ast::BorrowedSigil,
+                                   Some(region),
+                                   _,
+                                   _,
+                                   _,
+                                   _) => {
+                        expr_ct.cat = ExprCategorization {
+                            guarantor: None,
+                            pointer: BorrowedPointer(region)
+                        };
                     }
-                    Some(ty::AutoPtr(r, _)) |
-                    Some(ty::AutoBorrowVec(r, _)) |
-                    Some(ty::AutoBorrowVecRef(r, _)) |
-                    Some(ty::AutoBorrowFn(r)) |
-                    Some(ty::AutoBorrowObj(r, _)) => {
-                        // If there is an autoref, then the result of this
-                        // expression will be some sort of reference.
-                        expr_ct.cat.guarantor = None;
-                        expr_ct.cat.pointer = BorrowedPointer(r);
-                        debug!("autoref, cat={:?}", expr_ct.cat);
+
+                    ty::AutoObject(ast::OwnedSigil, _, _, _, _, _) => {
+                        expr_ct.cat = ExprCategorization {
+                            guarantor: None,
+                            pointer: OwnedPointer
+                        };
                     }
+
+                    ty::AutoObject(ast::ManagedSigil, _, _, _, _, _) => {
+                        expr_ct.cat = ExprCategorization {
+                            guarantor: None,
+                            pointer: OtherPointer
+                        };
+                    }
+                    ty::AutoDerefRef(ref adjustment) => {
+                        debug!("adjustment={:?}", adjustment);
+
+                        expr_ct = apply_autoderefs(
+                            rcx, expr, adjustment.autoderefs, expr_ct);
+
+                        match adjustment.autoref {
+                            None => {
+                            }
+                            Some(ty::AutoUnsafe(_)) => {
+                                expr_ct.cat.guarantor = None;
+                                expr_ct.cat.pointer = OtherPointer;
+                                debug!("autoref, cat={:?}", expr_ct.cat);
+                            }
+                            Some(ty::AutoPtr(r, _)) |
+                            Some(ty::AutoBorrowVec(r, _)) |
+                            Some(ty::AutoBorrowVecRef(r, _)) |
+                            Some(ty::AutoBorrowFn(r)) |
+                            Some(ty::AutoBorrowObj(r, _)) => {
+                                // If there is an autoref, then the result of
+                                // this expression will be some sort of
+                                // reference.
+                                expr_ct.cat.guarantor = None;
+                                expr_ct.cat.pointer = BorrowedPointer(r);
+                                debug!("autoref, cat={:?}", expr_ct.cat);
+                            }
+                        }
+                    }
+
+                    _ => fail!("invalid or unhandled adjustment"),
                 }
             }
-
-            Some(..) => fail!("invalid or unhandled adjustment"),
 
             None => {}
         }
@@ -1297,9 +1306,6 @@ pub mod guarantor {
             }
             ast::PatTup(ref ps) => {
                 link_ref_bindings_in_pats(rcx, ps, guarantor)
-            }
-            ast::PatBox(p) => {
-                link_ref_bindings_in_pat(rcx, p, None)
             }
             ast::PatUniq(p) => {
                 link_ref_bindings_in_pat(rcx, p, guarantor)
