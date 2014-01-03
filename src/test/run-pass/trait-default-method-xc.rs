@@ -44,7 +44,7 @@ impl TestEquality for stuff::thing {
 }
 
 
-fn main () {
+pub fn main () {
     // Some tests of random things
     f(0);
 

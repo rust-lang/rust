@@ -13,6 +13,6 @@
 
 extern mod cfg_inner_static;
 
-fn main() {
+pub fn main() {
     cfg_inner_static::foo();
 }

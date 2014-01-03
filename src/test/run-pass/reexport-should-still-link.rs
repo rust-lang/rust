@@ -13,6 +13,6 @@
 
 extern mod foo = "reexport-should-still-link";
 
-fn main() {
+pub fn main() {
     foo::bar();
 }

@@ -13,7 +13,7 @@
 
 extern mod cci_const;
 
-fn main() {
+pub fn main() {
     let x = cci_const::uint_val;
     match x {
         cci_const::uint_val => {}

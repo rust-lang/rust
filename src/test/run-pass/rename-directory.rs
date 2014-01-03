@@ -55,4 +55,4 @@ fn rename_directory() {
     }
 }
 
-fn main() { rename_directory() }
+pub fn main() { rename_directory() }

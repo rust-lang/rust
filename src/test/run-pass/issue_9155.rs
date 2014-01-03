@@ -15,6 +15,6 @@ extern mod issue_9155;
 
 struct Baz;
 
-fn main() {
+pub fn main() {
     issue_9155::Foo::new(Baz);
 }

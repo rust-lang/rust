@@ -43,7 +43,7 @@ enum Bar3 {
     }
 }
 
-fn main() {
+pub fn main() {
     let _f = Foo { foo: 3 };
     let _f = Foo2 { foo: 3 };
 

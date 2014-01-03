@@ -16,7 +16,7 @@
 use std::os;
 use std::io::process;
 
-fn main () {
+pub fn main () {
     let args = os::args();
     if args.len() > 1 && args[1] == ~"child" {
         for _ in range(0, 1000) {

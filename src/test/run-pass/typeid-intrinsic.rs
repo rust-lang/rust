@@ -21,7 +21,7 @@ use std::unstable::intrinsics::TypeId;
 struct A;
 struct Test;
 
-fn main() {
+pub fn main() {
     unsafe {
         assert_eq!(intrinsics::type_id::<other1::A>(), other1::id_A());
         assert_eq!(intrinsics::type_id::<other1::B>(), other1::id_B());

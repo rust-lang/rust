@@ -11,7 +11,7 @@
 // xfail-fast compile-flags directive doesn't work for check-fast
 // exec-env:RUST_LOG=conditional-debug-macro-on=4
 
-fn main() {
+pub fn main() {
     // exits early if debug! evaluates its arguments, otherwise it
     // will hit the fail.
     debug!("{:?}", { if true { return; } });
