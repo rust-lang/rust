@@ -11,6 +11,7 @@
 
 use syntax::fold::ast_fold;
 use syntax::{ast, fold, attr};
+use syntax::codemap;
 
 struct Context<'a> {
     in_cfg: 'a |attrs: &[ast::Attribute]| -> bool,
@@ -109,10 +110,45 @@ fn fold_item_underscore(cx: &mut Context, item: &ast::item_) -> ast::item_ {
                                  .collect();
             ast::item_trait((*a).clone(), (*b).clone(), methods)
         }
-        ref item => (*item).clone(),
+        ast::item_struct(def, ref generics) => {
+            ast::item_struct(fold_struct(cx, def), generics.clone())
+        }
+        ast::item_enum(ref def, ref generics) => {
+            let mut variants = def.variants.iter().map(|c| c.clone()).filter(|m| {
+                (cx.in_cfg)(m.node.attrs)
+            }).map(|v| {
+                match v.node.kind {
+                    ast::tuple_variant_kind(..) => v,
+                    ast::struct_variant_kind(def) => {
+                        let def = fold_struct(cx, def);
+                        @codemap::Spanned {
+                            node: ast::variant_ {
+                                kind: ast::struct_variant_kind(def),
+                                ..v.node.clone()
+                            },
+                            ..*v
+                        }
+                    }
+                }
+            });
+            ast::item_enum(ast::enum_def {
+                variants: variants.collect(),
+            }, generics.clone())
+        }
+        ref item => item.clone(),
     };
 
     fold::noop_fold_item_underscore(&item, cx)
+}
+
+fn fold_struct(cx: &Context, def: &ast::struct_def) -> @ast::struct_def {
+    let mut fields = def.fields.iter().map(|c| c.clone()).filter(|m| {
+        (cx.in_cfg)(m.node.attrs)
+    });
+    @ast::struct_def {
+        fields: fields.collect(),
+        ctor_id: def.ctor_id,
+    }
 }
 
 fn retain_stmt(cx: &Context, stmt: @ast::Stmt) -> bool {
