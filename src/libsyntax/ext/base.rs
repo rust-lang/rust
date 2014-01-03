@@ -324,7 +324,7 @@ impl ExtCtxt {
     pub fn cfg(&self) -> ast::CrateConfig { self.cfg.clone() }
     pub fn call_site(&self) -> Span {
         match self.backtrace {
-            Some(@ExpnInfo {call_site: cs, ..}) => cs,
+            Some(expn_info) => expn_info.call_site,
             None => self.bug("missing top span")
         }
     }
@@ -346,10 +346,7 @@ impl ExtCtxt {
     }
     pub fn bt_pop(&mut self) {
         match self.backtrace {
-            Some(@ExpnInfo {
-                call_site: Span {expn_info: prev, ..}, ..}) => {
-                self.backtrace = prev
-            }
+            Some(expn_info) => self.backtrace = expn_info.call_site.expn_info,
             _ => self.bug("tried to pop without a push")
         }
     }

@@ -101,7 +101,6 @@ impl CFGBuilder {
                 self.add_node(pat.id, [pred])
             }
 
-            ast::PatBox(subpat) |
             ast::PatUniq(subpat) |
             ast::PatRegion(subpat) |
             ast::PatIdent(_, _, Some(subpat)) => {

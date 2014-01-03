@@ -471,63 +471,66 @@ fn expand_non_macro_stmt(s: &Stmt, fld: &mut MacroExpander)
                          -> SmallVector<@Stmt> {
     // is it a let?
     match s.node {
-        StmtDecl(@Spanned {
-            node: DeclLocal(ref local),
-            span: stmt_span
-        },
-        node_id) => {
-
-            // take it apart:
-            let @Local {
-                ty: _,
-                pat: pat,
-                init: init,
-                id: id,
-                span: span
-            } = *local;
-            // expand the pat (it might contain exprs... #:(o)>
-            let expanded_pat = fld.fold_pat(pat);
-            // find the pat_idents in the pattern:
-            // oh dear heaven... this is going to include the enum names, as well....
-            // ... but that should be okay, as long as the new names are gensyms
-            // for the old ones.
-            let mut name_finder = new_name_finder(~[]);
-            name_finder.visit_pat(expanded_pat,());
-            // generate fresh names, push them to a new pending list
-            let mut new_pending_renames = ~[];
-            for ident in name_finder.ident_accumulator.iter() {
-                let new_name = fresh_name(ident);
-                new_pending_renames.push((*ident,new_name));
+        StmtDecl(decl, node_id) => {
+            match *decl {
+                Spanned {
+                    node: DeclLocal(ref local),
+                    span: stmt_span
+                } => {
+                    // take it apart:
+                    let Local {
+                        ty: _,
+                        pat: pat,
+                        init: init,
+                        id: id,
+                        span: span
+                    } = **local;
+                    // expand the pat (it might contain exprs... #:(o)>
+                    let expanded_pat = fld.fold_pat(pat);
+                    // find the pat_idents in the pattern:
+                    // oh dear heaven... this is going to include the enum
+                    // names, as well... but that should be okay, as long as
+                    // the new names are gensyms for the old ones.
+                    let mut name_finder = new_name_finder(~[]);
+                    name_finder.visit_pat(expanded_pat,());
+                    // generate fresh names, push them to a new pending list
+                    let mut new_pending_renames = ~[];
+                    for ident in name_finder.ident_accumulator.iter() {
+                        let new_name = fresh_name(ident);
+                        new_pending_renames.push((*ident,new_name));
+                    }
+                    let rewritten_pat = {
+                        let mut rename_fld =
+                            renames_to_fold(&mut new_pending_renames);
+                        // rewrite the pattern using the new names (the old
+                        // ones have already been applied):
+                        rename_fld.fold_pat(expanded_pat)
+                    };
+                    // add them to the existing pending renames:
+                    for pr in new_pending_renames.iter() {
+                        fld.extsbox.info().pending_renames.push(*pr)
+                    }
+                    // also, don't forget to expand the init:
+                    let new_init_opt = init.map(|e| fld.fold_expr(e));
+                    let rewritten_local =
+                        @Local {
+                            ty: local.ty,
+                            pat: rewritten_pat,
+                            init: new_init_opt,
+                            id: id,
+                            span: span,
+                        };
+                    SmallVector::one(@Spanned {
+                        node: StmtDecl(@Spanned {
+                                node: DeclLocal(rewritten_local),
+                                span: stmt_span
+                            },
+                            node_id),
+                        span: span
+                    })
+                }
+                _ => noop_fold_stmt(s, fld),
             }
-            let rewritten_pat = {
-                let mut rename_fld =
-                    renames_to_fold(&mut new_pending_renames);
-                // rewrite the pattern using the new names (the old ones
-                // have already been applied):
-                rename_fld.fold_pat(expanded_pat)
-            };
-            // add them to the existing pending renames:
-            for pr in new_pending_renames.iter() {
-                fld.extsbox.info().pending_renames.push(*pr)
-            }
-            // also, don't forget to expand the init:
-            let new_init_opt = init.map(|e| fld.fold_expr(e));
-            let rewritten_local =
-                @Local {
-                    ty: local.ty,
-                    pat: rewritten_pat,
-                    init: new_init_opt,
-                    id: id,
-                    span: span,
-                };
-            SmallVector::one(@Spanned {
-                node: StmtDecl(@Spanned {
-                        node: DeclLocal(rewritten_local),
-                        span: stmt_span
-                    },
-                    node_id),
-                span: span
-            })
         },
         _ => noop_fold_stmt(s, fld),
     }

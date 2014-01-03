@@ -2627,7 +2627,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
     match expr.node {
       ast::ExprVstore(ev, vst) => {
         let typ = match ev.node {
-          ast::ExprLit(@codemap::Spanned { node: ast::LitStr(..), .. }) => {
+          ast::ExprLit(lit) if ast_util::lit_is_str(lit) => {
             let tt = ast_expr_vstore_to_vstore(fcx, ev, vst);
             ty::mk_str(tcx, tt)
           }
@@ -3487,11 +3487,13 @@ pub fn check_block_with_expected(fcx: @FnCtxt,
             let s_id = ast_util::stmt_id(*s);
             let s_ty = fcx.node_ty(s_id);
             if last_was_bot && !warned && match s.node {
-                  ast::StmtDecl(@codemap::Spanned { node: ast::DeclLocal(_),
-                                                 ..}, _) |
-                  ast::StmtExpr(_, _) | ast::StmtSemi(_, _) => {
-                    true
+                  ast::StmtDecl(decl, _) => {
+                      match decl.node {
+                          ast::DeclLocal(_) => true,
+                          _ => false,
+                      }
                   }
+                  ast::StmtExpr(_, _) | ast::StmtSemi(_, _) => true,
                   _ => false
                 } {
                 fcx.ccx.tcx.sess.add_lint(UnreachableCode, s_id, s.span,

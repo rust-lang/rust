@@ -330,12 +330,18 @@ pub fn check_expr(cx: &mut Context, e: &Expr) {
     // Search for auto-adjustments to find trait coercions.
     let adjustments = cx.tcx.adjustments.borrow();
     match adjustments.get().find(&e.id) {
-        Some(&@ty::AutoObject(..)) => {
-            let source_ty = ty::expr_ty(cx.tcx, e);
-            let target_ty = ty::expr_ty_adjusted(cx.tcx, e);
-            check_trait_cast(cx, source_ty, target_ty, e.span);
+        Some(adjustment) => {
+            match **adjustment {
+                ty::AutoObject(..) => {
+                    let source_ty = ty::expr_ty(cx.tcx, e);
+                    let target_ty = ty::expr_ty_adjusted(cx.tcx, e);
+                    check_trait_cast(cx, source_ty, target_ty, e.span);
+                }
+                ty::AutoAddEnv(..) |
+                ty::AutoDerefRef(..) => {}
+            }
         }
-        Some(&@ty::AutoAddEnv(..)) | Some(&@ty::AutoDerefRef(..)) | None => {}
+        None => {}
     }
 
     visit::walk_expr(cx, e, ());

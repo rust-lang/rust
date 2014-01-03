@@ -838,34 +838,6 @@ fn enter_tuple_struct<'r,'b>(
     })
 }
 
-fn enter_box<'r,'b>(
-             bcx: &'b Block<'b>,
-             dm: DefMap,
-             m: &[Match<'r,'b>],
-             col: uint,
-             val: ValueRef)
-             -> ~[Match<'r,'b>] {
-    debug!("enter_box(bcx={}, m={}, col={}, val={})",
-           bcx.to_str(),
-           m.repr(bcx.tcx()),
-           col,
-           bcx.val_to_str(val));
-    let _indenter = indenter();
-
-    let dummy = @ast::Pat {id: 0, node: ast::PatWild, span: DUMMY_SP};
-    enter_match(bcx, dm, m, col, val, |p| {
-        match p.node {
-            ast::PatBox(sub) => {
-                Some(~[sub])
-            }
-            _ => {
-                assert_is_binding_or_wild(bcx, p);
-                Some(~[dummy])
-            }
-        }
-    })
-}
-
 fn enter_uniq<'r,'b>(
               bcx: &'b Block<'b>,
               dm: DefMap,
@@ -1146,23 +1118,6 @@ fn pats_require_rooting(bcx: &Block, m: &[Match], col: uint) -> bool {
     })
 }
 
-fn root_pats_as_necessary<'r,'b>(
-                          mut bcx: &'b Block<'b>,
-                          m: &[Match<'r,'b>],
-                          col: uint,
-                          val: ValueRef)
-                          -> &'b Block<'b> {
-    for br in m.iter() {
-        let pat_id = br.pats[col].id;
-        if pat_id != 0 {
-            let datum = Datum {val: val, ty: node_id_type(bcx, pat_id),
-                               mode: ByRef(ZeroMem)};
-            bcx = datum.root_and_write_guard(bcx, br.pats[col].span, pat_id, 0);
-        }
-    }
-    return bcx;
-}
-
 // Macro for deciding whether any of the remaining matches fit a given kind of
 // pattern.  Note that, because the macro is well-typed, either ALL of the
 // matches should fit that sort of pattern or NONE (however, some of the
@@ -1177,10 +1132,6 @@ macro_rules! any_pat (
         })
     )
 )
-
-fn any_box_pat(m: &[Match], col: uint) -> bool {
-    any_pat!(m, ast::PatBox(_))
-}
 
 fn any_uniq_pat(m: &[Match], col: uint) -> bool {
     any_pat!(m, ast::PatUniq(_))
@@ -1570,7 +1521,7 @@ fn compile_submatch_continue<'r,
 
     // If we are not matching against an `@T`, we should not be
     // required to root any values.
-    assert!(any_box_pat(m, col) || !pats_require_rooting(bcx, m, col));
+    assert!(!pats_require_rooting(bcx, m, col));
 
     match collect_record_or_struct_fields(bcx, m, col) {
         Some(ref rec_fields) => {
@@ -1629,16 +1580,6 @@ fn compile_submatch_continue<'r,
                                             struct_element_count),
                          vec::append(llstructvals, vals_left),
                          chk);
-        return;
-    }
-
-    // Unbox in case of a box field
-    if any_box_pat(m, col) {
-        bcx = root_pats_as_necessary(bcx, m, col, val);
-        let llbox = Load(bcx, val);
-        let unboxed = GEPi(bcx, llbox, [0u, abi::box_field_body]);
-        compile_submatch(bcx, enter_box(bcx, dm, m, col, val),
-                         vec::append(~[unboxed], vals_left), chk);
         return;
     }
 
@@ -2289,7 +2230,7 @@ fn bind_irrefutable_pat<'a>(
                 bcx = bind_irrefutable_pat(bcx, *elem, fldptr, binding_mode);
             }
         }
-        ast::PatBox(inner) | ast::PatUniq(inner) => {
+        ast::PatUniq(inner) => {
             let pat_ty = node_id_type(bcx, pat.id);
             let llbox = Load(bcx, val);
             let unboxed = match ty::get(pat_ty).sty {

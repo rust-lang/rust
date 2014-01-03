@@ -736,7 +736,7 @@ impl CoherenceChecker {
                         {
                             let items = tcx.items.borrow();
                             match items.get().find(&impl_info.did.node) {
-                                Some(&ast_map::NodeItem(@ref item, _)) => {
+                                Some(&ast_map::NodeItem(item, _)) => {
                                     tcx.sess.span_err((*item).span,
                                                       "the Drop trait may \
                                                        only be implemented \
