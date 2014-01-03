@@ -17,7 +17,9 @@ use ast::{MetaItem, item, Expr, MutMutable, Ident};
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
-use ext::deriving::generic::*;
+use ext::deriving::generic::{LifetimeBounds, TraitDef, MethodDef, Path};
+use ext::deriving::generic::{Self, Ptr, Literal, Borrowed, StaticFields, Unnamed, Named};
+use ext::deriving::generic::{StaticStruct, StaticEnum, Substructure};
 
 pub fn expand_deriving_decodable(cx: &ExtCtxt,
                                  span: Span,

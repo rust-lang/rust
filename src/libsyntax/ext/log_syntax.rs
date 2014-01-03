@@ -10,7 +10,7 @@
 
 use ast;
 use codemap;
-use ext::base::*;
+use ext::base::{ExtCtxt, MRExpr};
 use ext::base;
 use print;
 use parse::token::{get_ident_interner};

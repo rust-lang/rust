@@ -13,7 +13,9 @@ use ast::{MetaItem, item, Expr, Ident};
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::{AstBuilder};
-use ext::deriving::generic::*;
+use ext::deriving::generic::{Substructure, TraitDef, LifetimeBounds, MethodDef, Path};
+use ext::deriving::generic::{Literal, Borrowed, Ptr, Self};
+use ext::deriving::generic::{StaticFields, StaticStruct, StaticEnum, Unnamed, Named};
 use opt_vec;
 
 pub fn expand_deriving_rand(cx: &ExtCtxt,

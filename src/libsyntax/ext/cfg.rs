@@ -16,11 +16,10 @@ match the current compilation environment.
 
 use ast;
 use codemap::Span;
-use ext::base::*;
+use ext::base::{ExtCtxt,MRExpr};
 use ext::base;
 use ext::build::AstBuilder;
 use attr;
-use attr::*;
 use parse;
 use parse::token;
 use parse::attr::parser_attr;

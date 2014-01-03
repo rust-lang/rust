@@ -15,7 +15,7 @@
 use ast;
 use codemap::Span;
 use ext::base;
-use ext::base::*;
+use ext::base::{ExtCtxt,MRExpr,expr_to_str};
 use parse;
 use parse::token;
 

@@ -11,7 +11,7 @@
 use ast;
 use ast::P;
 use codemap::{Span, respan};
-use ext::base::*;
+use ext::base::{ExtCtxt, MRExpr, expr_to_str};
 use ext::base;
 use ext::build::AstBuilder;
 use rsparse = parse;

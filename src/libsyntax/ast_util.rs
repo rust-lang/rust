@@ -8,8 +8,28 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::*;
 use ast;
+use ast::{LOCAL_CRATE,P,DefId,Ident,NodeId,Block,DefaultBlock,BindByValue,Arm,method,TypeMethod};
+use ast::{Local,Ty,ty_path,Generics,_mod,view_item,foreign_item,fn_decl,struct_field,struct_def};
+use ast::{Stmt,StmtDecl,StmtExpr,StmtSemi,StmtMac};
+use ast::{Def,DefFn,DefStaticMethod,DefSelf,DefSelfTy,DefMod,DefForeignMod,DefStatic,DefArg};
+use ast::{DefLocal,DefVariant,DefTy,DefTrait,DefPrimTy,DefTyParam,DefBinding,DefUse,DefUpvar};
+use ast::{DefStruct,DefTyParamBinder,DefRegion,DefLabel,DefMethod};
+use ast::{BinOp,BiAdd,BiSub,BiMul,BiDiv,BiRem,BiAnd,BiOr,BiBitXor,BiBitAnd,BiBitOr,BiShl,BiShr};
+use ast::{BiEq,BiLt,BiLe,BiNe,BiGe,BiGt,MutMutable,MutImmutable};
+use ast::{UnOp,UnBox,UnUniq,UnDeref,UnNot,UnNeg};
+use ast::{Expr,ExprCall,ExprPath};
+use ast::{Pat,PatIdent,PatWild,PatWildMulti,PatEnum,PatStruct,PatTup,PatBox,PatUniq,PatRegion};
+use ast::{PatLit,PatRange,PatVec};
+use ast::{int_ty,ty_i,ty_i8,ty_i16,ty_i32,ty_i64};
+use ast::{uint_ty,ty_u,ty_u8,ty_u16,ty_u32,ty_u64};
+use ast::{float_ty,ty_f32,ty_f64};
+use ast::{trait_method,required,provided,view_item_extern_mod,view_item_use};
+use ast::{view_path,view_path_simple,view_path_glob,view_path_list};
+use ast::{visibility,public,private,inherited,inlined_item,ii_item,ii_method,ii_foreign};
+use ast::{item,item_enum,item_impl};
+use ast::{SyntaxContext,EmptyCtxt,Mark,Rename,IllegalCtxt,SCTable,Mrk,Name,Path};
+
 use ast_util;
 use codemap::Span;
 use opt_vec;
@@ -246,7 +266,7 @@ pub fn public_methods(ms: ~[@method]) -> ~[@method] {
     ms.move_iter().filter(|m| {
         match m.vis {
             public => true,
-            _   => false
+            private | inherited => false
         }
     }).collect()
 }

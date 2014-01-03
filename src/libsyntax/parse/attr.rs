@@ -10,7 +10,7 @@
 
 use ast;
 use codemap::{spanned, Spanned, mk_sp};
-use parse::common::*; //resolve bug?
+use parse::common::seq_sep_trailing_disallowed;
 use parse::token;
 use parse::parser::Parser;
 use parse::token::INTERPOLATED;

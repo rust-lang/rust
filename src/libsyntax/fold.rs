@@ -8,8 +8,31 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::*;
 use ast;
+use ast::{P,Crate,NodeId,Local,TypeMethod,Lifetime,TyParam,Block,Arm,method,Attribute};
+use ast::{Generics,Field,Ident,fn_decl,foreign_mod,variant,_mod};
+use ast::{struct_field,struct_field_,struct_def,struct_variant_kind};
+use ast::{view_path,view_path_glob,view_path_list,view_path_simple};
+use ast::{view_item,view_item_extern_mod,view_item_use};
+use ast::{foreign_item,foreign_item_fn,foreign_item_static};
+use ast::{item,item_,item_static,item_fn,item_mod,item_foreign_mod,item_ty,item_enum,item_struct};
+use ast::{item_trait,item_impl,item_mac};
+use ast::{Pat,PatWild,PatWildMulti,PatIdent,PatEnum,PatStruct,PatTup,PatBox,PatUniq,PatRegion};
+use ast::{PatLit,PatRange,PatVec};
+use ast::{Stmt,StmtDecl,StmtExpr,StmtSemi,StmtMac,Decl,DeclLocal,DeclItem};
+use ast::{Expr,ExprVstore,ExprVec,ExprCall,ExprMethodCall,ExprTup,ExprBinary,ExprUnary,ExprLit};
+use ast::{ExprCast,ExprIf,ExprWhile,ExprForLoop,ExprMatch,ExprFnBlock,ExprProc,ExprDoBody};
+use ast::{ExprBlock,ExprAssign,ExprAssignOp,ExprField,ExprIndex,ExprPath,ExprSelf,ExprAddrOf};
+use ast::{ExprBreak,ExprAgain,ExprRet,ExprLogLevel,ExprInlineAsm,ExprMac,ExprStruct,ExprRepeat};
+use ast::{ExprParen,ExprLoop};
+use ast::{explicit_self,explicit_self_,sty_static,sty_value,sty_region,sty_box,sty_uniq};
+use ast::{Ty,ty_nil,ty_uniq,ty_bot,ty_box,ty_vec,ty_fixed_length_vec,ty_ptr,ty_rptr,ty_closure};
+use ast::{ty_bare_fn,ty_tup,ty_path,ty_typeof,ty_infer};
+use ast::{TyParamBound,TraitTyParamBound,RegionTyParamBound,TyClosure,TyBareFn};
+use ast::{mt,inline_asm,mac,mac_invoc_tt,path_list_ident_,tuple_variant_kind};
+use ast::{required,provided,MetaItem,MetaWord,MetaList,MetaNameValue};
+use ast::{token_tree,tt_tok,tt_delim,tt_seq,tt_nonterminal,arg,variant_arg,trait_ref,Path};
+
 use codemap::{respan, Span, Spanned};
 use parse::token;
 use opt_vec::OptVec;

@@ -16,7 +16,7 @@
 
 use ast;
 use codemap::Span;
-use ext::base::*;
+use ext::base::{MRExpr, ExtCtxt, get_single_str_from_tts, get_exprs_from_tts, expr_to_str};
 use ext::base;
 use ext::build::AstBuilder;
 

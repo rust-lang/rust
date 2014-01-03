@@ -9,8 +9,15 @@
 // except according to those terms.
 
 use abi::AbiSet;
-use ast::*;
 use ast;
+use ast::{Ident,DefId,P,Expr,Stmt,Block,Attribute,Pat,NodeId,MutMutable,fn_decl,PatIdent,Crate};
+use ast::{Ty,ty_nil,ty_bot,ty_box,ty_uniq,ty_vec,ty_fixed_length_vec,ty_ptr,ty_rptr,ty_closure};
+use ast::{ty_bare_fn,ty_tup,ty_path,ty_typeof,ty_infer,mt};
+use ast::{trait_ref,foreign_item,visibility,public,private,inherited,method,variant};
+use ast::{struct_def,trait_method,required,provided};
+use ast::{item,item_static,item_fn,item_mod,item_foreign_mod,item_ty,item_enum,item_struct};
+use ast::{item_trait,item_impl,item_mac};
+use ast::{inlined_item,ii_item,ii_method,ii_foreign};
 use ast_util::{inlined_item_utils, stmt_id};
 use ast_util;
 use codemap::Span;

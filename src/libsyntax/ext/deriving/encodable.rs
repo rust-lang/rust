@@ -79,7 +79,8 @@ use ast::{MetaItem, item, Expr, MutImmutable, MutMutable};
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
-use ext::deriving::generic::*;
+use ext::deriving::generic::{LifetimeBounds, TraitDef, MethodDef, Path, nil_ty};
+use ext::deriving::generic::{Ptr, Literal, Borrowed, Struct, EnumMatching, Substructure};
 
 pub fn expand_deriving_encodable(cx: &ExtCtxt,
                                  span: Span,
