@@ -31,6 +31,9 @@ extern {}
 #[link(name = "dl")]
 #[link(name = "log")]
 #[link(name = "m")]
+// FIXME #11147. We're using C++ for unwinding on Android
+// but should be using libunwind directly.
+#[link(name = "stdc++")]
 extern {}
 
 #[cfg(target_os = "freebsd")]

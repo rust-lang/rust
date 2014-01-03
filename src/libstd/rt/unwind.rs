@@ -118,7 +118,9 @@ mod libunwind {
                                                           exception: *_Unwind_Exception);
 
     extern "C" {
+        #[cfg(not(target_os = "android"))]
         pub fn _Unwind_RaiseException(exception: *_Unwind_Exception) -> _Unwind_Reason_Code;
+        #[cfg(not(target_os = "android"))]
         pub fn _Unwind_DeleteException(exception: *_Unwind_Exception);
     }
 }
@@ -140,6 +142,7 @@ impl Unwinder {
         self.unwinding
     }
 
+    #[cfg(not(target_os = "android"))]
     pub fn try(&mut self, f: ||) {
         use unstable::raw::Closure;
 
@@ -174,6 +177,35 @@ impl Unwinder {
         }
     }
 
+    // FIXME #11147. On Android we're using C++ to do our unwinding because
+    // our initial attempts at using libunwind directly don't seem to work
+    // correctly. Would love to not be doing this.
+    #[cfg(target_os = "android")]
+    pub fn try(&mut self, f: ||) {
+        use unstable::raw::Closure;
+
+        unsafe {
+            let closure: Closure = cast::transmute(f);
+            rust_cxx_try(try_fn, closure.code as *c_void, closure.env as *c_void);
+        }
+
+        extern fn try_fn(code: *c_void, env: *c_void) {
+            unsafe {
+                let closure: || = cast::transmute(Closure {
+                    code: code as *(),
+                    env: env as *(),
+                });
+                closure();
+            }
+        }
+
+        extern {
+            fn rust_cxx_try(f: extern "C" fn(*c_void, *c_void),
+                            code: *c_void,
+                            data: *c_void);
+        }
+    }
+
     pub fn begin_unwind(&mut self, cause: ~Any) -> ! {
         rtdebug!("begin_unwind()");
 
@@ -186,6 +218,11 @@ impl Unwinder {
         #[inline(never)]
         #[no_mangle]
         fn rust_fail() -> ! {
+            throw();
+        }
+
+        #[cfg(not(target_os = "android"))]
+        fn throw() -> ! {
             unsafe {
                 let exception = ~uw::_Unwind_Exception {
                     exception_class: rust_exception_class(),
@@ -205,6 +242,15 @@ impl Unwinder {
                 }
             }
         }
+
+        #[cfg(target_os = "android")]
+        fn throw() -> ! {
+            unsafe { rust_cxx_throw(); }
+
+            extern {
+                fn rust_cxx_throw() -> !;
+            }
+        }
     }
 
     pub fn result(&mut self) -> TaskResult {
@@ -218,6 +264,7 @@ impl Unwinder {
 
 // Rust's exception class identifier.  This is used by personality routines to
 // determine whether the exception was thrown by their own runtime.
+#[cfg(not(target_os = "android"))]
 fn rust_exception_class() -> uw::_Unwind_Exception_Class {
     // M O Z \0  R U S T -- vendor, language
     0x4d4f5a_00_52555354
@@ -243,7 +290,16 @@ fn rust_exception_class() -> uw::_Unwind_Exception_Class {
 //   say "catch!".
 
 extern "C" {
+    #[cfg(not(target_os = "android"))]
     fn __gcc_personality_v0(version: c_int,
+                            actions: uw::_Unwind_Action,
+                            exception_class: uw::_Unwind_Exception_Class,
+                            ue_header: *uw::_Unwind_Exception,
+                            context: *uw::_Unwind_Context)
+        -> uw::_Unwind_Reason_Code;
+
+    #[cfg(target_os = "android")]
+    fn __gxx_personality_v0(version: c_int,
                             actions: uw::_Unwind_Action,
                             exception_class: uw::_Unwind_Exception_Class,
                             ue_header: *uw::_Unwind_Exception,
@@ -263,10 +319,8 @@ pub extern "C" fn rust_eh_personality(
     context: *uw::_Unwind_Context
 ) -> uw::_Unwind_Reason_Code
 {
-    unsafe {
-        __gcc_personality_v0(version, actions, exception_class, ue_header,
-                             context)
-    }
+    native_personality(version, actions, exception_class, ue_header,
+                       context)
 }
 
 #[no_mangle] // referenced from rust_try.ll
@@ -284,10 +338,38 @@ pub extern "C" fn rust_eh_personality_catch(
         uw::_URC_HANDLER_FOUND // catch!
     }
     else { // cleanup phase
-        unsafe {
-             __gcc_personality_v0(version, actions, exception_class, ue_header,
-                                  context)
-        }
+        native_personality(version, actions, exception_class, ue_header,
+                           context)
+    }
+}
+
+#[cfg(not(target_os = "android"))]
+fn native_personality(
+    version: c_int,
+    actions: uw::_Unwind_Action,
+    exception_class: uw::_Unwind_Exception_Class,
+    ue_header: *uw::_Unwind_Exception,
+    context: *uw::_Unwind_Context
+) -> uw::_Unwind_Reason_Code
+{
+    unsafe {
+        __gcc_personality_v0(version, actions, exception_class, ue_header,
+                             context)
+    }
+}
+
+#[cfg(target_os = "android")]
+fn native_personality(
+    version: c_int,
+    actions: uw::_Unwind_Action,
+    exception_class: uw::_Unwind_Exception_Class,
+    ue_header: *uw::_Unwind_Exception,
+    context: *uw::_Unwind_Context
+) -> uw::_Unwind_Reason_Code
+{
+    unsafe {
+        __gxx_personality_v0(version, actions, exception_class, ue_header,
+                             context)
     }
 }
 

@@ -72,6 +72,14 @@ RUNTIME_CXXFLAGS_$(1)_$(2) = -D_RUST_STAGE1
 endif
 endif
 
+ifeq ($(OSTYPE_$(1)), linux-androideabi)
+# Use c++ to unwind on Android. #11147
+RUNTIME_CXXS_$(1)_$(2) := \
+             rt/rust_cxx_glue.cpp
+else
+RUNTIME_CXXS_$(1)_$(2) :=
+endif
+
 RUNTIME_CS_$(1)_$(2) := \
               rt/rust_builtin.c \
               rt/miniz.c \
@@ -94,6 +102,7 @@ RUNTIME_DEF_$(1)_$(2) := $$(RT_OUTPUT_DIR_$(1))/rustrt$$(CFG_DEF_SUFFIX_$(1))
 RUNTIME_INCS_$(1)_$(2) := -I $$(S)src/rt -I $$(S)src/rt/isaac -I $$(S)src/rt/uthash \
                      -I $$(S)src/rt/arch/$$(HOST_$(1))
 RUNTIME_OBJS_$(1)_$(2) := \
+                     $$(RUNTIME_CXXS_$(1)_$(2):rt/%.cpp=$$(RT_BUILD_DIR_$(1)_$(2))/%.o) \
                      $$(RUNTIME_CS_$(1)_$(2):rt/%.c=$$(RT_BUILD_DIR_$(1)_$(2))/%.o) \
                      $$(RUNTIME_S_$(1)_$(2):rt/%.S=$$(RT_BUILD_DIR_$(1)_$(2))/%.o) \
                      $$(RUNTIME_LL_$(1)_$(2):rt/%.ll=$$(RT_BUILD_DIR_$(1)_$(2))/%.o)
@@ -102,6 +111,11 @@ ALL_OBJ_FILES += $$(RUNTIME_OBJS_$(1)_$(2))
 
 MORESTACK_OBJS_$(1)_$(2) := $$(RT_BUILD_DIR_$(1)_$(2))/arch/$$(HOST_$(1))/morestack.o
 ALL_OBJ_FILES += $$(MORESTACK_OBJS_$(1)_$(2))
+
+$$(RT_BUILD_DIR_$(1)_$(2))/rust_cxx_glue.o: rt/rust_cxx_glue.cpp $$(MKFILE_DEPS)
+	@$$(call E, compile: $$@)
+	$$(Q)$$(call CFG_COMPILE_CXX_$(1), $$@, $$(RUNTIME_INCS_$(1)_$(2)) \
+                 $$(SNAP_DEFINES) $$(RUNTIME_CXXFLAGS_$(1)_$(2))) $$<
 
 $$(RT_BUILD_DIR_$(1)_$(2))/%.o: rt/%.c $$(MKFILE_DEPS)
 	@$$(call E, compile: $$@)
