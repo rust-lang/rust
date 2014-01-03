@@ -2903,7 +2903,10 @@ impl Parser {
                 };
                 PatLit(vst)
               }
-              _ => PatBox(sub)
+              _ => {
+                self.obsolete(self.span, ObsoleteManagedPattern);
+                PatBox(sub)
+              }
             };
             hi = self.last_span.hi;
             return @ast::Pat {
