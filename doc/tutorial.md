@@ -3220,6 +3220,7 @@ tutorials on individual topics.
 * [Error-handling and Conditions][conditions]
 * [Packaging up Rust code][rustpkg]
 * [Documenting Rust code][rustdoc]
+* [Testing Rust code][testing]
 
 There is further documentation on the [wiki], however those tend to be even
 more out of date than this document.
@@ -3231,6 +3232,7 @@ more out of date than this document.
 [container]: tutorial-container.html
 [conditions]: tutorial-conditions.html
 [rustpkg]: tutorial-rustpkg.html
+[testing]: tutorial-testing.html
 [rustdoc]: rustdoc.html
 
 [wiki]: https://github.com/mozilla/rust/wiki/Docs
