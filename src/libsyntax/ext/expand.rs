@@ -493,13 +493,14 @@ fn expand_non_macro_stmt(s: &Stmt, fld: &mut MacroExpander)
             let mut name_finder = new_name_finder(~[]);
             name_finder.visit_pat(expanded_pat,());
             // generate fresh names, push them to a new pending list
-            let new_pending_renames = @mut ~[];
+            let mut new_pending_renames = ~[];
             for ident in name_finder.ident_accumulator.iter() {
                 let new_name = fresh_name(ident);
                 new_pending_renames.push((*ident,new_name));
             }
             let rewritten_pat = {
-                let mut rename_fld = renames_to_fold(new_pending_renames);
+                let mut rename_fld =
+                    renames_to_fold(&mut new_pending_renames);
                 // rewrite the pattern using the new names (the old ones
                 // have already been applied):
                 rename_fld.fold_pat(expanded_pat)
@@ -978,21 +979,6 @@ pub struct Renamer {
 impl CtxtFn for Renamer {
     fn f(&self, ctxt : ast::SyntaxContext) -> ast::SyntaxContext {
         new_rename(self.from,self.to,ctxt)
-    }
-}
-
-// a renamer that performs a whole bunch of renames
-pub struct MultiRenamer {
-    renames : @mut ~[(ast::Ident,ast::Name)]
-}
-
-impl CtxtFn for MultiRenamer {
-    fn f(&self, starting_ctxt : ast::SyntaxContext) -> ast::SyntaxContext {
-        // the individual elements are memoized... it would
-        // also be possible to memoize on the whole list at once.
-        self.renames.iter().fold(starting_ctxt,|ctxt,&(from,to)| {
-            new_rename(from,to,ctxt)
-        })
     }
 }
 
