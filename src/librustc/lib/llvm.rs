@@ -1937,7 +1937,7 @@ impl ObjectFile {
         unsafe {
             let llof = llvm::LLVMCreateObjectFile(llmb);
             if llof as int == 0 {
-                llvm::LLVMDisposeMemoryBuffer(llmb);
+                // LLVMCreateObjectFile took ownership of llmb
                 return None
             }
 
