@@ -407,6 +407,7 @@ pub enum IoErrorKind {
     MismatchedFileTypeForOperation,
     ResourceUnavailable,
     IoUnavailable,
+    InvalidInput,
 }
 
 // FIXME: #8242 implementing manually because deriving doesn't work for some reason
@@ -430,6 +431,7 @@ impl ToStr for IoErrorKind {
             IoUnavailable => ~"IoUnavailable",
             ResourceUnavailable => ~"ResourceUnavailable",
             ConnectionAborted => ~"ConnectionAborted",
+            InvalidInput => ~"InvalidInput",
         }
     }
 }
@@ -599,6 +601,23 @@ pub trait Reader {
             }
         });
         return buf;
+    }
+
+    /// Reads all of the remaining bytes of this stream, interpreting them as a
+    /// UTF-8 encoded stream. The corresponding string is returned.
+    ///
+    /// # Failure
+    ///
+    /// This function will raise all the same conditions as the `read` method,
+    /// along with raising a condition if the input is not valid UTF-8.
+    fn read_to_str(&mut self) -> ~str {
+        match str::from_utf8_owned_opt(self.read_to_end()) {
+            Some(s) => s,
+            None => {
+                io_error::cond.raise(standard_error(InvalidInput));
+                ~""
+            }
+        }
     }
 
     /// Create an iterator that reads a single byte on
@@ -861,6 +880,28 @@ pub trait Writer {
     /// decide whether their stream needs to be buffered or not.
     fn flush(&mut self) {}
 
+    /// Write a rust string into this sink.
+    ///
+    /// The bytes written will be the UTF-8 encoded version of the input string.
+    /// If other encodings are desired, it is recommended to compose this stream
+    /// with another performing the conversion, or to use `write` with a
+    /// converted byte-array instead.
+    fn write_str(&mut self, s: &str) {
+        self.write(s.as_bytes());
+    }
+
+    /// Writes a string into this sink, and then writes a literal newline (`\n`)
+    /// byte afterwards. Note that the writing of the newline is *not* atomic in
+    /// the sense that the call to `write` is invoked twice (once with the
+    /// string and once with a newline character).
+    ///
+    /// If other encodings or line ending flavors are desired, it is recommended
+    /// that the `write` method is used specifically instead.
+    fn write_line(&mut self, s: &str) {
+        self.write_str(s);
+        self.write(['\n' as u8]);
+    }
+
     /// Write the result of passing n through `int::to_str_bytes`.
     fn write_int(&mut self, n: int) {
         int::to_str_bytes(n, 10u, |bytes| self.write(bytes))
@@ -1053,7 +1094,7 @@ pub trait Buffer: Reader {
     /// so they should no longer be returned in calls to `fill` or `read`.
     fn consume(&mut self, amt: uint);
 
-    /// Reads the next line of input, interpreted as a sequence of utf-8
+    /// Reads the next line of input, interpreted as a sequence of UTF-8
     /// encoded unicode codepoints. If a newline is encountered, then the
     /// newline is contained in the returned string.
     ///
@@ -1062,7 +1103,7 @@ pub trait Buffer: Reader {
     /// This function will raise on the `io_error` condition (except for
     /// `EndOfFile` which is swallowed) if a read error is encountered.
     /// The task will also fail if sequence of bytes leading up to
-    /// the newline character are not valid utf-8.
+    /// the newline character are not valid UTF-8.
     fn read_line(&mut self) -> Option<~str> {
         self.read_until('\n' as u8).map(str::from_utf8_owned)
     }
@@ -1246,29 +1287,17 @@ pub trait Decorator<T> {
 }
 
 pub fn standard_error(kind: IoErrorKind) -> IoError {
-    match kind {
-        PreviousIoError => {
-            IoError {
-                kind: PreviousIoError,
-                desc: "Failing due to a previous I/O error",
-                detail: None
-            }
-        }
-        EndOfFile => {
-            IoError {
-                kind: EndOfFile,
-                desc: "End of file",
-                detail: None
-            }
-        }
-        IoUnavailable => {
-            IoError {
-                kind: IoUnavailable,
-                desc: "I/O is unavailable",
-                detail: None
-            }
-        }
+    let desc = match kind {
+        PreviousIoError => "failing due to previous I/O error",
+        EndOfFile => "end of file",
+        IoUnavailable => "I/O is unavailable",
+        InvalidInput => "invalid input",
         _ => fail!()
+    };
+    IoError {
+        kind: kind,
+        desc: desc,
+        detail: None,
     }
 }
 

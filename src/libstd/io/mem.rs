@@ -408,4 +408,24 @@ mod test {
         let mut r = BufReader::new(bytes!(0x80));
         assert_eq!(r.read_char(), None);
     }
+
+    #[test]
+    fn test_write_strings() {
+        let mut writer = MemWriter::new();
+        writer.write_str("testing");
+        writer.write_line("testing");
+        writer.write_str("testing");
+        let mut r = BufReader::new(*writer.inner_ref());
+        assert_eq!(r.read_to_str(), ~"testingtesting\ntesting");
+    }
+
+    #[test]
+    fn test_read_whole_string_bad() {
+        let buf = [0xff];
+        let mut r = BufReader::new(buf);
+        match result(|| r.read_to_str()) {
+            Ok(..) => fail!(),
+            Err(..) => {}
+        }
+    }
 }
