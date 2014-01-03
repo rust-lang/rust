@@ -15,7 +15,7 @@
 
 extern mod foo = "linkage-visibility";
 
-fn main() {
+pub fn main() {
     foo::test();
     foo::foo2::<int>();
     foo::foo();

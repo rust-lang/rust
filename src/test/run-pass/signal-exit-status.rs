@@ -13,7 +13,7 @@
 use std::{os, run};
 use std::io::process;
 
-fn main() {
+pub fn main() {
     let args = os::args();
     if args.len() >= 2 && args[1] == ~"signal" {
         // Raise a segfault.

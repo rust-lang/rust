@@ -17,4 +17,4 @@
 // this test will trigger "output during runtime initialization" to make sure
 // that the bug isn't re-introduced.
 
-fn main() {}
+pub fn main() {}

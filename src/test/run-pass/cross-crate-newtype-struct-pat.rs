@@ -13,7 +13,7 @@
 
 extern mod newtype_struct_xc;
 
-fn main() {
+pub fn main() {
     let x = newtype_struct_xc::Au(21);
     match x {
         newtype_struct_xc::Au(n) => assert_eq!(n, 21)

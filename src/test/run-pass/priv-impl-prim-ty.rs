@@ -13,7 +13,7 @@
 
 extern mod bar = "priv-impl-prim-ty";
 
-fn main() {
+pub fn main() {
     bar::frob(1i);
 
 }

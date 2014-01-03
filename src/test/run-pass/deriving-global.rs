@@ -39,4 +39,4 @@ mod submod {
 
 }
 
-fn main() {}
+pub fn main() {}

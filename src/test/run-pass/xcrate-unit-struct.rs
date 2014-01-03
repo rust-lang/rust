@@ -21,7 +21,7 @@ static s4: xcrate_unit_struct::Unit = xcrate_unit_struct::Argument(s1);
 fn f1(_: xcrate_unit_struct::Struct) {}
 fn f2(_: xcrate_unit_struct::Unit) {}
 
-fn main() {
+pub fn main() {
     f1(xcrate_unit_struct::Struct);
     f2(xcrate_unit_struct::Unit);
     f2(xcrate_unit_struct::Argument(xcrate_unit_struct::Struct));

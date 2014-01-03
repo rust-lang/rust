@@ -16,4 +16,4 @@ use numeric::{sin, Angle};
 
 fn foo<T, A:Angle<T>>(theta: A) -> T { sin(&theta) }
 
-fn main() {}
+pub fn main() {}

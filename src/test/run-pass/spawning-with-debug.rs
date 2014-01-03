@@ -15,7 +15,7 @@
 
 use std::task;
 
-fn main() {
+pub fn main() {
     let mut t = task::task();
     t.spawn(proc() ());
 }

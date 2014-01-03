@@ -26,4 +26,4 @@ impl <T:Freeze+Send> RequiresRequiresFreezeAndSend for X<T> { }
 
 impl <T:Pod> RequiresPod for X<T> { }
 
-fn main() { }
+pub fn main() { }

@@ -60,7 +60,7 @@ impl Pet for Goldfyshe {
     fn of_good_pedigree(&self) -> bool { self.swim_speed >= 500 }
 }
 
-fn main() {
+pub fn main() {
     let catte = Catte { num_whiskers: 7, name: ~"alonzo_church" };
     let dogge1 = Dogge { bark_decibels: 100, tricks_known: 42, name: ~"alan_turing" };
     let dogge2 = Dogge { bark_decibels: 55,  tricks_known: 11, name: ~"albert_einstein" };

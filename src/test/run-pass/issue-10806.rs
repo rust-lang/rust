@@ -38,7 +38,7 @@ pub mod waldo {
     }
 }
 
-fn main() {
+pub fn main() {
     let _x = baz::quux();
     let _y = grault::garply();
     let _z = waldo::plugh();
