@@ -18,7 +18,7 @@ documentation.
 
 [tutorial]: http://static.rust-lang.org/doc/tutorial.html
 [wiki-start]: https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust
-[win-exe]: http://static.rust-lang.org/dist/rust-0.8-install.exe
+[win-exe]: http://static.rust-lang.org/dist/rust-0.9-install.exe
 
 ### Linux / OS X
 
@@ -33,9 +33,9 @@ documentation.
     
     To build from the [tarball] do:
     
-        $ curl -O http://static.rust-lang.org/dist/rust-0.8.tar.gz
-        $ tar -xzf rust-0.8.tar.gz
-        $ cd rust-0.8
+        $ curl -O http://static.rust-lang.org/dist/rust-0.9.tar.gz
+        $ tar -xzf rust-0.9.tar.gz
+        $ cd rust-0.9
     
     Or to build from the [repo] do:
 
@@ -60,8 +60,8 @@ documentation.
 4. Enjoy!
 
 [repo]: https://github.com/mozilla/rust
-[tarball]: http://static.rust-lang.org/dist/rust-0.8.tar.gz
-[tutorial]: http://static.rust-lang.org/doc/0.8/tutorial.html
+[tarball]: http://static.rust-lang.org/dist/rust-0.9.tar.gz
+[tutorial]: http://static.rust-lang.org/doc/0.9/tutorial.html
 
 ## Notes
 

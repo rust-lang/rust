@@ -103,9 +103,9 @@ If you've fulfilled those prerequisites, something along these lines
 should work.
 
 ~~~~ {.notrust}
-$ curl -O http://static.rust-lang.org/dist/rust-0.8.tar.gz
-$ tar -xzf rust-0.8.tar.gz
-$ cd rust-0.8
+$ curl -O http://static.rust-lang.org/dist/rust-0.9.tar.gz
+$ tar -xzf rust-0.9.tar.gz
+$ cd rust-0.9
 $ ./configure
 $ make && make install
 ~~~~
@@ -120,8 +120,8 @@ When complete, `make install` will place several programs into
 `/usr/local/bin`: `rustc`, the Rust compiler; `rustdoc`, the
 API-documentation tool; and `rustpkg`, the Rust package manager.
 
-[tarball]: http://static.rust-lang.org/dist/rust-0.8.tar.gz
-[win-exe]: http://static.rust-lang.org/dist/rust-0.8-install.exe
+[tarball]: http://static.rust-lang.org/dist/rust-0.9.tar.gz
+[win-exe]: http://static.rust-lang.org/dist/rust-0.9-install.exe
 
 ## Compiling your first program
 
