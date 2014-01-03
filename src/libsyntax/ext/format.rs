@@ -28,6 +28,11 @@ enum ArgumentType {
     String,
 }
 
+enum Position {
+    Exact(uint),
+    Named(@str),
+}
+
 struct Context<'a> {
     ecx: &'a mut ExtCtxt,
     fmtsp: Span,
@@ -148,10 +153,10 @@ impl<'a> Context<'a> {
                         if self.check_positional_ok() {
                             self.next_arg += 1;
                         }
-                        Left(i)
+                        Exact(i)
                     }
-                    parse::ArgumentIs(i) => Left(i),
-                    parse::ArgumentNamed(s) => Right(s.to_managed()),
+                    parse::ArgumentIs(i) => Exact(i),
+                    parse::ArgumentNamed(s) => Named(s.to_managed()),
                 };
 
                 // and finally the method being applied
@@ -176,14 +181,14 @@ impl<'a> Context<'a> {
         match c {
             parse::CountImplied | parse::CountIs(..) => {}
             parse::CountIsParam(i) => {
-                self.verify_arg_type(Left(i), Unsigned);
+                self.verify_arg_type(Exact(i), Unsigned);
             }
             parse::CountIsName(s) => {
-                self.verify_arg_type(Right(s.to_managed()), Unsigned);
+                self.verify_arg_type(Named(s.to_managed()), Unsigned);
             }
             parse::CountIsNextParam => {
                 if self.check_positional_ok() {
-                    self.verify_arg_type(Left(self.next_arg), Unsigned);
+                    self.verify_arg_type(Exact(self.next_arg), Unsigned);
                     self.next_arg += 1;
                 }
             }
@@ -200,7 +205,7 @@ impl<'a> Context<'a> {
         }
     }
 
-    fn verify_method(&mut self, pos: Either<uint, @str>, m: &parse::Method) {
+    fn verify_method(&mut self, pos: Position, m: &parse::Method) {
         self.nest_level += 1;
         match *m {
             parse::Plural(_, ref arms, ref default) => {
@@ -209,12 +214,12 @@ impl<'a> Context<'a> {
                 for arm in arms.iter() {
                     if !seen_cases.insert(arm.selector) {
                         match arm.selector {
-                            Left(name) => {
+                            parse::Keyword(name) => {
                                 self.ecx.span_err(self.fmtsp,
                                                   format!("duplicate selector \
                                                            `{:?}`", name));
                             }
-                            Right(idx) => {
+                            parse::Literal(idx) => {
                                 self.ecx.span_err(self.fmtsp,
                                                   format!("duplicate selector \
                                                            `={}`", idx));
@@ -245,9 +250,9 @@ impl<'a> Context<'a> {
         self.nest_level -= 1;
     }
 
-    fn verify_arg_type(&mut self, arg: Either<uint, @str>, ty: ArgumentType) {
+    fn verify_arg_type(&mut self, arg: Position, ty: ArgumentType) {
         match arg {
-            Left(arg) => {
+            Exact(arg) => {
                 if arg < 0 || self.args.len() <= arg {
                     let msg = format!("invalid reference to argument `{}` (there \
                                     are {} arguments)", arg, self.args.len());
@@ -260,7 +265,7 @@ impl<'a> Context<'a> {
                 }
             }
 
-            Right(name) => {
+            Named(name) => {
                 let span = match self.names.find(&name) {
                     Some(e) => e.span,
                     None => {
@@ -434,18 +439,16 @@ impl<'a> Context<'a> {
                             self.trans_piece(p)
                         }).collect();
                         let (lr, selarg) = match arm.selector {
-                            Left(t) => {
+                            parse::Keyword(t) => {
                                 let p = ctpath(format!("{:?}", t));
                                 let p = self.ecx.path_global(sp, p);
-                                (self.ecx.ident_of("Left"),
-                                 self.ecx.expr_path(p))
+                                (rtpath("Keyword"), self.ecx.expr_path(p))
                             }
-                            Right(i) => {
-                                (self.ecx.ident_of("Right"),
-                                 self.ecx.expr_uint(sp, i))
+                            parse::Literal(i) => {
+                                (rtpath("Literal"), self.ecx.expr_uint(sp, i))
                             }
                         };
-                        let selector = self.ecx.expr_call_ident(sp,
+                        let selector = self.ecx.expr_call_global(sp,
                                 lr, ~[selarg]);
                         self.ecx.expr_struct(sp, p, ~[
                             self.ecx.field_imm(sp,
@@ -617,7 +620,7 @@ impl<'a> Context<'a> {
             let name = self.ecx.ident_of(format!("__arg{}", i));
             let e = self.ecx.expr_addr_of(e.span, e);
             lets.push(self.ecx.stmt_let(e.span, false, name, e));
-            locals.push(self.format_arg(e.span, Left(i),
+            locals.push(self.format_arg(e.span, Exact(i),
                                         self.ecx.expr_ident(e.span, name)));
         }
         for (&name, &e) in self.names.iter() {
@@ -627,7 +630,7 @@ impl<'a> Context<'a> {
             let e = self.ecx.expr_addr_of(e.span, e);
             lets.push(self.ecx.stmt_let(e.span, false, lname, e));
             names[*self.name_positions.get(&name)] =
-                Some(self.format_arg(e.span, Right(name),
+                Some(self.format_arg(e.span, Named(name),
                                      self.ecx.expr_ident(e.span, lname)));
         }
 
@@ -662,11 +665,11 @@ impl<'a> Context<'a> {
                                            Some(result)))
     }
 
-    fn format_arg(&self, sp: Span, argno: Either<uint, @str>,
+    fn format_arg(&self, sp: Span, argno: Position,
                   arg: @ast::Expr) -> @ast::Expr {
         let ty = match argno {
-            Left(i) => self.arg_types[i].unwrap(),
-            Right(s) => *self.name_types.get(&s)
+            Exact(i) => self.arg_types[i].unwrap(),
+            Named(s) => *self.name_types.get(&s)
         };
 
         let fmt_trait = match ty {

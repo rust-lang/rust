@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+enum Either<T, U> { Left(T), Right(U) }
 struct S(Either<uint, uint>);
 
 fn main() {
     match *S(Left(5)) {
-      S(_) => {}  //~ ERROR mismatched types: expected `std::either::Either<uint,uint>` but found a structure pattern
+      S(_) => {}  //~ ERROR mismatched types: expected `Either<uint,uint>` but found a structure pattern
     }
 }

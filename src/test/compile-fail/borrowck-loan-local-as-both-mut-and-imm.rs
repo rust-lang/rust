@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::either::{Either, Left, Right};
+enum Either<T, U> { Left(T), Right(U) }
 
     fn f(x: &mut Either<int,f64>, y: &Either<int,f64>) -> int {
         match *y {
