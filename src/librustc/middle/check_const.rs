@@ -116,7 +116,7 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
     if is_const {
         match e.node {
           ExprUnary(_, UnDeref, _) => { }
-          ExprUnary(_, UnBox(_), _) | ExprUnary(_, UnUniq, _) => {
+          ExprUnary(_, UnBox, _) | ExprUnary(_, UnUniq, _) => {
             sess.span_err(e.span,
                           "cannot do allocations in constant expressions");
             return;
@@ -197,8 +197,7 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
                      immutable values");
           },
           ExprVstore(_, ExprVstoreUniq) |
-          ExprVstore(_, ExprVstoreBox) |
-          ExprVstore(_, ExprVstoreMutBox) => {
+          ExprVstore(_, ExprVstoreBox) => {
               sess.span_err(e.span, "cannot allocate vectors in constant expressions")
           },
 
@@ -266,13 +265,15 @@ impl Visitor<()> for CheckItemRecursionVisitor {
                 let def_map = self.env.def_map.borrow();
                 match def_map.get().find(&e.id) {
                     Some(&DefStatic(def_id, _)) if
-                            ast_util::is_local(def_id) =>
-                        match self.env.ast_map.get_copy(&def_id.node) {
+                            ast_util::is_local(def_id) => {
+                        let ast_map = self.env.ast_map.borrow();
+                        match ast_map.get().get_copy(&def_id.node) {
                             ast_map::node_item(it, _) => {
                                 self.visit_item(it, ());
                             }
                             _ => fail!("const not bound to an item")
-                        },
+                        }
+                    }
                     _ => ()
                 }
             },

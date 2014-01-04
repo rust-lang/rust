@@ -12,4 +12,4 @@
 // aux-build:issue-4545.rs
 
 extern mod somelib = "issue-4545";
-fn main() { somelib::mk::<int>(); }
+pub fn main() { somelib::mk::<int>(); }

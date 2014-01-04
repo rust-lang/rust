@@ -40,7 +40,7 @@ mod map_reduce {
     }
 
     fn map_task(ctrl: SharedChan<ctrl_proto>, input: ~str) {
-        let intermediates = @mut HashMap::new();
+        let mut intermediates = HashMap::new();
 
         fn emit(im: &mut HashMap<~str, int>,
                 ctrl: SharedChan<ctrl_proto>, key: ~str,
@@ -58,7 +58,7 @@ mod map_reduce {
         }
 
         let ctrl_clone = ctrl.clone();
-        ::map(input, |a,b| emit(intermediates, ctrl.clone(), a, b) );
+        ::map(input, |a,b| emit(&mut intermediates, ctrl.clone(), a, b) );
         ctrl_clone.send(mapper_done);
     }
 

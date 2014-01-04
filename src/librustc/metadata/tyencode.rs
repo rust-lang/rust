@@ -32,7 +32,7 @@ macro_rules! mywrite( ($wr:expr, $($arg:tt)*) => (
 ) )
 
 pub struct ctxt {
-    diag: @mut SpanHandler,
+    diag: @SpanHandler,
     // Def -> str Callback:
     ds: extern "Rust" fn(DefId) -> ~str,
     // The type context.
@@ -292,7 +292,7 @@ fn enc_sty(w: &mut MemWriter, cx: @ctxt, st: &ty::sty) {
             for t in ts.iter() { enc_ty(w, cx, *t); }
             mywrite!(w, "]");
         }
-        ty::ty_box(mt) => { mywrite!(w, "@"); enc_mt(w, cx, mt); }
+        ty::ty_box(typ) => { mywrite!(w, "@"); enc_ty(w, cx, typ); }
         ty::ty_uniq(mt) => { mywrite!(w, "~"); enc_mt(w, cx, mt); }
         ty::ty_ptr(mt) => { mywrite!(w, "*"); enc_mt(w, cx, mt); }
         ty::ty_rptr(r, mt) => {

@@ -24,7 +24,7 @@
 
 extern mod logging_right_crate;
 
-fn main() {
+pub fn main() {
     // this function fails if logging is turned on
     logging_right_crate::foo::<int>();
 }

@@ -14,24 +14,12 @@
 
 trait Foo {
     fn foo(&self) -> uint;
-    fn bar(&mut self) -> uint;
 }
 
 impl Foo for uint {
     fn foo(&self) -> uint {
         *self
     }
-
-    fn bar(&mut self) -> uint {
-        *self += 1;
-        *self
-    }
-}
-
-fn do_it_mut(obj: &mut Foo) {
-    let x = obj.bar();
-    let y = obj.foo();
-    assert_eq!(x, y);
 }
 
 fn do_it_imm(obj: &Foo, v: uint) {
@@ -40,7 +28,6 @@ fn do_it_imm(obj: &Foo, v: uint) {
 }
 
 pub fn main() {
-    let x = @mut 22u as @mut Foo;
-    do_it_mut(x);
-    do_it_imm(x, 23u);
+    let x = @22u as @Foo;
+    do_it_imm(x, 22u);
 }

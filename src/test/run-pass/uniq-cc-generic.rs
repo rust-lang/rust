@@ -10,11 +10,12 @@
 
 #[feature(managed_boxes)];
 
+use std::cell::RefCell;
 use std::ptr;
 
 enum maybe_pointy {
     none,
-    p(@mut Pointy),
+    p(@RefCell<Pointy>),
 }
 
 struct Pointy {
@@ -27,14 +28,17 @@ fn make_uniq_closure<A:Send>(a: A) -> proc() -> uint {
     result
 }
 
-fn empty_pointy() -> @mut Pointy {
-    return @mut Pointy {
+fn empty_pointy() -> @RefCell<Pointy> {
+    return @RefCell::new(Pointy {
         a : none,
         d : make_uniq_closure(~"hi")
-    }
+    })
 }
 
 pub fn main() {
     let v = empty_pointy();
-    v.a = p(v);
+    {
+        let mut vb = v.borrow_mut();
+        vb.get().a = p(v);
+    }
 }

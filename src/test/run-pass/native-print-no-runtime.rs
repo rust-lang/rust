@@ -13,7 +13,7 @@
 #[no_uv];
 
 #[start]
-fn main(_: int, _: **u8) -> int {
+pub fn main(_: int, _: **u8) -> int {
     println!("hello");
     0
 }

@@ -15,6 +15,7 @@ use abi::AbiSet;
 use opt_vec::OptVec;
 use parse::token::{interner_get, str_to_ident};
 
+use std::cell::RefCell;
 use std::hashmap::HashMap;
 use std::option::Option;
 use std::to_str::ToStr;
@@ -88,9 +89,9 @@ pub type SyntaxContext = u32;
 // it should cut down on memory use *a lot*; applying a mark
 // to a tree containing 50 identifiers would otherwise generate
 pub struct SCTable {
-    table : ~[SyntaxContext_],
-    mark_memo : HashMap<(SyntaxContext,Mrk),SyntaxContext>,
-    rename_memo : HashMap<(SyntaxContext,Ident,Name),SyntaxContext>
+    table: RefCell<~[SyntaxContext_]>,
+    mark_memo: RefCell<HashMap<(SyntaxContext,Mrk),SyntaxContext>>,
+    rename_memo: RefCell<HashMap<(SyntaxContext,Ident,Name),SyntaxContext>>,
 }
 
 // NB: these must be placed in any SCTable...
@@ -414,7 +415,6 @@ pub enum Vstore {
 pub enum ExprVstore {
     ExprVstoreUniq,                 // ~[1,2,3,4]
     ExprVstoreBox,                  // @[1,2,3,4]
-    ExprVstoreMutBox,               // @mut [1,2,3,4]
     ExprVstoreSlice,                // &[1,2,3,4]
     ExprVstoreMutSlice,             // &mut [1,2,3,4]
 }
@@ -443,7 +443,7 @@ pub enum BinOp {
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum UnOp {
-    UnBox(Mutability),
+    UnBox,
     UnUniq,
     UnDeref,
     UnNot,
@@ -874,7 +874,7 @@ pub struct TyBareFn {
 pub enum ty_ {
     ty_nil,
     ty_bot, /* bottom type */
-    ty_box(mt),
+    ty_box(P<Ty>),
     ty_uniq(P<Ty>),
     ty_vec(P<Ty>),
     ty_fixed_length_vec(P<Ty>, @Expr),

@@ -14,4 +14,4 @@
 extern mod other = "issue-8259";
 static a: other::Foo<'static> = other::A;
 
-fn main() {}
+pub fn main() {}

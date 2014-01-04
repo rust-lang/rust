@@ -32,7 +32,7 @@ impl RustdocVisitor {
 }
 
 impl RustdocVisitor {
-    pub fn visit(@mut self, crate: &ast::Crate) {
+    pub fn visit(&mut self, crate: &ast::Crate) {
         self.attrs = crate.attrs.clone();
         fn visit_struct_def(item: &ast::item, sd: @ast::struct_def, generics:
                             &ast::Generics) -> Struct {

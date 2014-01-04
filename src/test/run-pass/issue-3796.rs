@@ -10,7 +10,7 @@
 
 // xfail-test FIXME #3796
 #[deny(dead_assignment)];
-fn main() {
+pub fn main() {
     let mut x = 1;
     let f: || -> int = || { x + 20 };
     assert_eq!(f(), 21);

@@ -19,13 +19,6 @@ pub enum List<T> {
     Nil,
 }
 
-#[deriving(Eq)]
-#[allow(missing_doc)]
-pub enum MutList<T> {
-    MutCons(T, @mut MutList<T>),
-    MutNil,
-}
-
 /// Create a list from a vector
 pub fn from_vec<T:Clone + 'static>(v: &[T]) -> @List<T> {
     v.rev_iter().fold(@Nil::<T>, |t, h| @Cons((*h).clone(), t))
@@ -155,26 +148,6 @@ pub fn each<T>(l: @List<T>, f: |&T| -> bool) -> bool {
           }
           Nil => { return true; }
         }
-    }
-}
-
-impl<T> MutList<T> {
-    /// Iterate over a mutable list
-    pub fn each(@mut self, f: |&mut T| -> bool) -> bool {
-        let mut cur = self;
-        loop {
-            let borrowed = &mut *cur;
-            cur = match *borrowed {
-                MutCons(ref mut hd, tl) => {
-                    if !f(hd) {
-                        return false;
-                    }
-                    tl
-                }
-                MutNil => break
-            }
-        }
-        return true;
     }
 }
 

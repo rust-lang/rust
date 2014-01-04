@@ -10,15 +10,21 @@
 
 #[feature(managed_boxes)];
 
+use std::cell::Cell;
+
 struct Point {x: int, y: int, z: int}
 
-fn f(p: @mut Point) { assert!((p.z == 12)); p.z = 13; assert!((p.z == 13)); }
+fn f(p: @Cell<Point>) {
+    assert!((p.get().z == 12));
+    p.set(Point {x: 10, y: 11, z: 13});
+    assert!((p.get().z == 13));
+}
 
 pub fn main() {
     let a: Point = Point {x: 10, y: 11, z: 12};
-    let b: @mut Point = @mut a;
-    assert_eq!(b.z, 12);
+    let b: @Cell<Point> = @Cell::new(a);
+    assert_eq!(b.get().z, 12);
     f(b);
     assert_eq!(a.z, 12);
-    assert_eq!(b.z, 13);
+    assert_eq!(b.get().z, 13);
 }

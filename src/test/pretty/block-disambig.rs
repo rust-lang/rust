@@ -14,6 +14,8 @@
 
 #[feature(managed_boxes)];
 
+use std::cell::Cell;
+
 fn test1() { let val = @0; { } *val; }
 
 fn test2() -> int { let val = @0; { } *val }
@@ -21,9 +23,9 @@ fn test2() -> int { let val = @0; { } *val }
 struct S { eax: int }
 
 fn test3() {
-    let regs = @mut S {eax: 0};
+    let regs = @Cell::new(S {eax: 0});
     match true { true => { } _ => { } }
-    (*regs).eax = 1;
+    regs.set(S {eax: 1});
 }
 
 fn test4() -> bool { let regs = @true; if true { } *regs || false }
@@ -51,10 +53,13 @@ fn test8() -> int {
     }
 }
 
-fn test9() { let regs = @mut 0; match true { true => { } _ => { } } *regs += 1; }
+fn test9() {
+    let regs = @Cell::new(0);
+    match true { true => { } _ => { } } regs.set(regs.get() + 1);
+}
 
 fn test10() -> int {
-    let regs = @mut ~[0];
+    let regs = @~[0];
     match true { true => { } _ => { } }
     (*regs)[0]
 }

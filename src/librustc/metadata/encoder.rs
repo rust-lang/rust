@@ -57,7 +57,7 @@ pub type encode_inlined_item<'a> = 'a |ecx: &EncodeContext,
                                              ii: ast::inlined_item|;
 
 pub struct EncodeParams<'a> {
-    diag: @mut SpanHandler,
+    diag: @SpanHandler,
     tcx: ty::ctxt,
     reexports2: middle::resolve::ExportMap2,
     item_symbols: &'a RefCell<HashMap<ast::NodeId, ~str>>,
@@ -83,7 +83,7 @@ struct Stats {
 }
 
 pub struct EncodeContext<'a> {
-    diag: @mut SpanHandler,
+    diag: @SpanHandler,
     tcx: ty::ctxt,
     stats: @Stats,
     reexports2: middle::resolve::ExportMap2,
@@ -489,7 +489,8 @@ fn encode_reexported_static_methods(ecx: &EncodeContext,
                                     ebml_w: &mut writer::Encoder,
                                     mod_path: &[ast_map::path_elt],
                                     exp: &middle::resolve::Export2) {
-    match ecx.tcx.items.find(&exp.def_id.node) {
+    let items = ecx.tcx.items.borrow();
+    match items.get().find(&exp.def_id.node) {
         Some(&ast_map::node_item(item, path)) => {
             let original_name = ecx.tcx.sess.str_of(item.ident);
 
@@ -1338,7 +1339,8 @@ fn my_visit_item(i: @item,
                  ebml_w: &mut writer::Encoder,
                  ecx_ptr: *int,
                  index: @RefCell<~[entry<i64>]>) {
-    match items.get_copy(&i.id) {
+    let items = items.borrow();
+    match items.get().get_copy(&i.id) {
         ast_map::node_item(_, pt) => {
             let mut ebml_w = unsafe {
                 ebml_w.unsafe_clone()
@@ -1356,7 +1358,8 @@ fn my_visit_foreign_item(ni: @foreign_item,
                          ebml_w: &mut writer::Encoder,
                          ecx_ptr:*int,
                          index: @RefCell<~[entry<i64>]>) {
-    match items.get_copy(&ni.id) {
+    let items = items.borrow();
+    match items.get().get_copy(&ni.id) {
         ast_map::node_foreign_item(_, abi, _, pt) => {
             debug!("writing foreign item {}::{}",
                    ast_map::path_to_str(

@@ -49,13 +49,5 @@ fn b() {
     q.x += 1; // and OK to mutate it
 }
 
-fn c() {
-    // Here the receiver is in aliased memory but due to write
-    // barriers we can still consider it immutable.
-    let q = @mut Point {x: 3, y: 4};
-    *q + 3;
-    q.times(3);
-}
-
 fn main() {
 }

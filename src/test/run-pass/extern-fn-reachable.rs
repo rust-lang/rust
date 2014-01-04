@@ -27,7 +27,7 @@ pub mod bar {
 
 #[no_mangle] pub fn fun5() {}
 
-fn main() {
+pub fn main() {
     unsafe {
         let a = DynamicLibrary::open(None).unwrap();
         assert!(a.symbol::<int>("fun1").is_ok());

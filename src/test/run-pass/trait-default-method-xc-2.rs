@@ -9,7 +9,7 @@ use aux::A;
 use aux2::{a_struct, welp};
 
 
-fn main () {
+pub fn main () {
 
     let a = a_struct { x: 0 };
     let b = a_struct { x: 1 };

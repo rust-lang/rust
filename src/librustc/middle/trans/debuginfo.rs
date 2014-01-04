@@ -323,7 +323,10 @@ pub fn create_captured_var_metadata(bcx: @Block,
 
     let cx = bcx.ccx();
 
-    let ast_item = cx.tcx.items.find_copy(&node_id);
+    let ast_item = {
+        let items = cx.tcx.items.borrow();
+        items.get().find_copy(&node_id)
+    };
     let variable_ident = match ast_item {
         None => {
             cx.sess.span_bug(span, "debuginfo::create_captured_var_metadata() - NodeId not found");
@@ -422,7 +425,10 @@ pub fn create_self_argument_metadata(bcx: @Block,
     }
 
     // Extract the span of the self argument from the method's AST
-    let fnitem = bcx.ccx().tcx.items.get_copy(&bcx.fcx.id);
+    let fnitem = {
+        let items = bcx.ccx().tcx.items.borrow();
+        items.get().get_copy(&bcx.fcx.id)
+    };
     let span = match fnitem {
         ast_map::node_method(@ast::method { explicit_self: explicit_self, .. }, _, _) => {
             explicit_self.span
@@ -609,7 +615,10 @@ pub fn create_function_debug_context(cx: &CrateContext,
 
     let empty_generics = ast::Generics { lifetimes: opt_vec::Empty, ty_params: opt_vec::Empty };
 
-    let fnitem = cx.tcx.items.get_copy(&fn_ast_id);
+    let fnitem = {
+        let items = cx.tcx.items.borrow();
+        items.get().get_copy(&fn_ast_id)
+    };
     let (ident, fn_decl, generics, top_level_block, span, has_path) = match fnitem {
         ast_map::node_item(ref item, _) => {
             match item.node {
@@ -1092,7 +1101,8 @@ fn scope_metadata(fcx: &FunctionContext,
     match scope_map.get().find_copy(&node_id) {
         Some(scope_metadata) => scope_metadata,
         None => {
-            let node = fcx.ccx.tcx.items.get_copy(&node_id);
+            let items = fcx.ccx.tcx.items.borrow();
+            let node = items.get().get_copy(&node_id);
 
             fcx.ccx.sess.span_bug(span,
                 format!("debuginfo: Could not find scope info for node {:?}", node));
@@ -1411,13 +1421,17 @@ fn describe_enum_variant(cx: &CrateContext,
 
     // Find the source code location of the variant's definition
     let variant_definition_span = if variant_info.id.crate == ast::LOCAL_CRATE {
-        match cx.tcx.items.find(&variant_info.id.node) {
-            Some(&ast_map::node_variant(ref variant, _, _)) => variant.span,
-            ref node => {
-                cx.sess.span_warn(span,
-                    format!("debuginfo::enum_metadata()::adt_struct_metadata() - Unexpected node \
-                          type: {:?}. This is a bug.", node));
-                codemap::DUMMY_SP
+        {
+            let items = cx.tcx.items.borrow();
+            match items.get().find(&variant_info.id.node) {
+                Some(&ast_map::node_variant(ref variant, _, _)) => variant.span,
+                ref node => {
+                    cx.sess.span_warn(span,
+                        format!("debuginfo::enum_metadata()::\
+                                 adt_struct_metadata() - Unexpected node \
+                                 type: {:?}. This is a bug.", node));
+                    codemap::DUMMY_SP
+                }
             }
         }
     } else {
@@ -2128,8 +2142,8 @@ fn type_metadata(cx: &CrateContext,
         ty::ty_enum(def_id, _) => {
             prepare_enum_metadata(cx, t, def_id, usage_site_span).finalize(cx)
         },
-        ty::ty_box(ref mt) => {
-            create_pointer_to_box_metadata(cx, t, mt.ty)
+        ty::ty_box(typ) => {
+            create_pointer_to_box_metadata(cx, t, typ)
         },
         ty::ty_evec(ref mt, ref vstore) => {
             match *vstore {
@@ -2296,16 +2310,20 @@ fn get_namespace_and_span_for_item(cx: &CrateContext,
                                 -> (DIScope, Span) {
     let containing_scope = namespace_for_item(cx, def_id, warning_span).scope;
     let definition_span = if def_id.crate == ast::LOCAL_CRATE {
-        let definition_span = match cx.tcx.items.find(&def_id.node) {
-            Some(&ast_map::node_item(@ast::item { span, .. }, _)) => span,
-            ref node => {
-                cx.sess.span_warn(warning_span,
-                    format!("debuginfo::get_namespace_and_span_for_item() \
-                             - Unexpected node type: {:?}", *node));
-                codemap::DUMMY_SP
-            }
-        };
-        definition_span
+        {
+            let items = cx.tcx.items.borrow();
+            let definition_span = match items.get().find(&def_id.node) {
+                Some(&ast_map::node_item(@ast::item { span, .. }, _)) => span,
+                ref node => {
+                    cx.sess.span_warn(warning_span,
+                        format!("debuginfo::\
+                                 get_namespace_and_span_for_item() \
+                                 - Unexpected node type: {:?}", *node));
+                    codemap::DUMMY_SP
+                }
+            };
+            definition_span
+        }
     } else {
         // For external items there is no span information
         codemap::DUMMY_SP

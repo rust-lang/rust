@@ -32,6 +32,6 @@ mod foo {
     }
 }
 
-fn main() {
+pub fn main() {
     assert!(!bar!())
 }

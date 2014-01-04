@@ -35,8 +35,8 @@ fn test_ebml<'a, A:
     Encodable<EBWriter::Encoder> +
     Decodable<EBReader::Decoder<'a>>
 >(a1: &A) {
-    let mut wr = @mut std::io::mem::MemWriter::new();
-    let mut ebml_w = EBWriter::Encoder(wr);
+    let mut wr = std::io::mem::MemWriter::new();
+    let mut ebml_w = EBWriter::Encoder(&mut wr);
     a1.encode(&mut ebml_w);
     let bytes = wr.inner_ref().as_slice();
 

@@ -113,7 +113,8 @@ impl<T: Writer> Terminal<T> {
             return Err(entry.unwrap_err());
         }
 
-        let ti = parse(entry.unwrap(), false);
+        let mut file = entry.unwrap();
+        let ti = parse(&mut file, false);
         if ti.is_err() {
             return Err(ti.unwrap_err());
         }

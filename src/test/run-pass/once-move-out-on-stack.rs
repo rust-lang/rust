@@ -20,7 +20,7 @@ fn foo(blk: once ||) {
     blk();
 }
 
-fn main() {
+pub fn main() {
     let x = arc::Arc::new(true);
     foo(|| {
         assert!(*x.get());

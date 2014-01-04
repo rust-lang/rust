@@ -48,16 +48,5 @@ fn b() {
     l.x += 1;
 }
 
-fn c() {
-    // Loaning @mut as & is considered legal due to dynamic checks...
-    let q = @mut point {x: 3, y: 4};
-    q.impurem();
-
-    // ...but we still detect errors statically when we can.
-    q.blockm(|| {
-        q.x = 10; //~ ERROR cannot assign
-    })
-}
-
 fn main() {
 }

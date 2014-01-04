@@ -368,11 +368,15 @@ impl<'a> CheckLoanCtxt<'a> {
                         cmt = b;
                     }
 
+                    mc::cat_deref(_, _, mc::gc_ptr) => {
+                        assert_eq!(cmt.mutbl, mc::McImmutable);
+                        return;
+                    }
+
                     mc::cat_rvalue(..) |
                     mc::cat_static_item |
                     mc::cat_copied_upvar(..) |
                     mc::cat_deref(_, _, mc::unsafe_ptr(..)) |
-                    mc::cat_deref(_, _, mc::gc_ptr(..)) |
                     mc::cat_deref(_, _, mc::region_ptr(..)) => {
                         assert_eq!(cmt.mutbl, mc::McDeclared);
                         return;
@@ -411,20 +415,6 @@ impl<'a> CheckLoanCtxt<'a> {
                     check_for_aliasability_violation(this, expr, b);
                 }
 
-                mc::cat_deref(_, deref_count, mc::gc_ptr(ast::MutMutable)) => {
-                    // Dynamically check writes to `@mut`
-
-                    let key = root_map_key {
-                        id: guarantor.id,
-                        derefs: deref_count
-                    };
-                    debug!("Inserting write guard at {:?}", key);
-                    let mut write_guard_map = this.bccx
-                                                  .write_guard_map
-                                                  .borrow_mut();
-                    write_guard_map.get().insert(key);
-                }
-
                 _ => {}
             }
 
@@ -455,7 +445,7 @@ impl<'a> CheckLoanCtxt<'a> {
                     mc::cat_self(..) |
                     mc::cat_deref(_, _, mc::unsafe_ptr(..)) |
                     mc::cat_static_item(..) |
-                    mc::cat_deref(_, _, mc::gc_ptr(_)) |
+                    mc::cat_deref(_, _, mc::gc_ptr) |
                     mc::cat_deref(_, _, mc::region_ptr(MutImmutable, _)) => {
                         // Aliasability is independent of base cmt
                         match cmt.freely_aliasable() {

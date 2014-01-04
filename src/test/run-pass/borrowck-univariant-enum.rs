@@ -10,6 +10,8 @@
 
 #[feature(managed_boxes)];
 
+use std::cell::Cell;
+
 enum newtype {
     newtype(int)
 }
@@ -19,12 +21,12 @@ pub fn main() {
     // Test that borrowck treats enums with a single variant
     // specially.
 
-    let x = @mut 5;
-    let y = @mut newtype(3);
-    let z = match *y {
+    let x = @Cell::new(5);
+    let y = @Cell::new(newtype(3));
+    let z = match y.get() {
       newtype(b) => {
-        *x += 1;
-        *x * b
+        x.set(x.get() + 1);
+        x.get() * b
       }
     };
     assert_eq!(z, 18);

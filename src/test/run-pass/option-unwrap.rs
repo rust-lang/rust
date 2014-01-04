@@ -10,16 +10,17 @@
 
 #[feature(managed_boxes)];
 
-struct dtor {
-    x: @mut int,
+use std::cell::Cell;
 
+struct dtor {
+    x: @Cell<int>,
 }
 
 #[unsafe_destructor]
 impl Drop for dtor {
     fn drop(&mut self) {
         // abuse access to shared mutable state to write this code
-        *self.x -= 1;
+        self.x.set(self.x.get() - 1);
     }
 }
 
@@ -31,12 +32,12 @@ fn unwrap<T>(o: Option<T>) -> T {
 }
 
 pub fn main() {
-    let x = @mut 1;
+    let x = @Cell::new(1);
 
     {
         let b = Some(dtor { x:x });
         let _c = unwrap(b);
     }
 
-    assert_eq!(*x, 0);
+    assert_eq!(x.get(), 0);
 }

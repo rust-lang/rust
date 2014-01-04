@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // xfail-test FIXME #3290
-fn main() {
+pub fn main() {
    let mut x = ~3;
    x = x;
    assert_eq!(*x, 3);

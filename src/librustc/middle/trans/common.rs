@@ -22,12 +22,10 @@ use middle::trans::base;
 use middle::trans::build;
 use middle::trans::datum;
 use middle::trans::glue;
-use middle::trans::write_guard;
 use middle::trans::debuginfo;
 use middle::ty::substs;
 use middle::ty;
 use middle::typeck;
-use middle::borrowck::root_map_key;
 use util::ppaux::Repr;
 
 use middle::trans::type_::Type;
@@ -363,27 +361,6 @@ impl CleanupFunction for ImmediateTypeDroppingCleanupFunction {
     }
 }
 
-/// A cleanup function that releases a write guard, returning a value to
-/// mutable status.
-pub struct WriteGuardReleasingCleanupFunction {
-    root_key: root_map_key,
-    frozen_val_ref: ValueRef,
-    bits_val_ref: ValueRef,
-    filename_val: ValueRef,
-    line_val: ValueRef,
-}
-
-impl CleanupFunction for WriteGuardReleasingCleanupFunction {
-    fn clean(&self, bcx: @Block) -> @Block {
-        write_guard::return_to_mut(bcx,
-                                   self.root_key,
-                                   self.frozen_val_ref,
-                                   self.bits_val_ref,
-                                   self.filename_val,
-                                   self.line_val)
-    }
-}
-
 /// A cleanup function that frees some memory in the garbage-collected heap.
 pub struct GCHeapFreeingCleanupFunction {
     ptr: ValueRef,
@@ -527,42 +504,7 @@ pub fn add_clean_temp_mem_in_scope_(bcx: @Block, scope_id: Option<ast::NodeId>,
         grow_scope_clean(scope_info);
     })
 }
-pub fn add_clean_return_to_mut(bcx: @Block,
-                               scope_id: ast::NodeId,
-                               root_key: root_map_key,
-                               frozen_val_ref: ValueRef,
-                               bits_val_ref: ValueRef,
-                               filename_val: ValueRef,
-                               line_val: ValueRef) {
-    //! When an `@mut` has been frozen, we have to
-    //! call the lang-item `return_to_mut` when the
-    //! freeze goes out of scope. We need to pass
-    //! in both the value which was frozen (`frozen_val`) and
-    //! the value (`bits_val_ref`) which was returned when the
-    //! box was frozen initially. Here, both `frozen_val_ref` and
-    //! `bits_val_ref` are in fact pointers to stack slots.
 
-    debug!("add_clean_return_to_mut({}, {}, {})",
-           bcx.to_str(),
-           bcx.val_to_str(frozen_val_ref),
-           bcx.val_to_str(bits_val_ref));
-    in_scope_cx(bcx, Some(scope_id), |scope_info| {
-        {
-            let mut cleanups = scope_info.cleanups.borrow_mut();
-            cleanups.get().push(clean_temp(
-                    frozen_val_ref,
-                    @WriteGuardReleasingCleanupFunction {
-                        root_key: root_key,
-                        frozen_val_ref: frozen_val_ref,
-                        bits_val_ref: bits_val_ref,
-                        filename_val: filename_val,
-                        line_val: line_val,
-                    } as @CleanupFunction,
-                    normal_exit_only));
-        }
-        grow_scope_clean(scope_info);
-    })
-}
 pub fn add_clean_free(cx: @Block, ptr: ValueRef, heap: heap) {
     let free_fn = match heap {
         heap_managed | heap_managed_unique => {

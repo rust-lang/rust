@@ -13,7 +13,7 @@
 
 extern mod issue_9188;
 
-fn main() {
+pub fn main() {
     let a = issue_9188::bar();
     let b = issue_9188::foo::<int>();
     assert_eq!(*a, *b);

@@ -13,6 +13,6 @@
 
 extern mod privacy_reexport;
 
-fn main() {
+pub fn main() {
     privacy_reexport::bar::frob();
 }

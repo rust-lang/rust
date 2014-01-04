@@ -10,16 +10,20 @@
 
 #[feature(managed_boxes)];
 
+use std::cell::RefCell;
+
 enum maybe_pointy {
     no_pointy,
-    yes_pointy(@mut Pointy),
+    yes_pointy(@RefCell<Pointy>),
 }
 
 struct Pointy {
-    x : maybe_pointy
+    x: maybe_pointy
 }
 
 pub fn main() {
-    let m = @mut Pointy { x : no_pointy };
-    m.x = yes_pointy(m);
+    let m = @RefCell::new(Pointy { x : no_pointy });
+    m.set(Pointy {
+        x: yes_pointy(m)
+    });
 }

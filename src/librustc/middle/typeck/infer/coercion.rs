@@ -241,7 +241,7 @@ impl Coerce {
         let r_borrow = self.infcx.next_region_var(Coercion(self.trace));
 
         let inner_ty = match *sty_a {
-            ty::ty_box(mt_a) => mt_a.ty,
+            ty::ty_box(typ) => typ,
             ty::ty_uniq(mt_a) => mt_a.ty,
             ty::ty_rptr(_, mt_a) => mt_a.ty,
             _ => {
