@@ -1292,10 +1292,11 @@ mod test {
         let a3_name = gensym("a3");
         // a context that renames from ("a",empty) to "a2" :
         let ctxt2 = new_rename(ast::Ident::new(a_name),a2_name,EMPTY_CTXT);
-        let pending_renames =
-            @RefCell::new(~[(ast::Ident::new(a_name),a2_name),
-                            (ast::Ident{name:a_name,ctxt:ctxt2},a3_name)]);
-        let double_renamed = renames_to_fold(pending_renames).fold_crate(item_ast);
+        let mut pending_renames = ~[
+            (ast::Ident::new(a_name),a2_name),
+            (ast::Ident{name:a_name,ctxt:ctxt2},a3_name)
+        ];
+        let double_renamed = renames_to_fold(&mut pending_renames).fold_crate(item_ast);
         let mut path_finder = new_path_finder(~[]);
         visit::walk_crate(&mut path_finder, &double_renamed, ());
         match path_finder.path_accumulator {
@@ -1305,11 +1306,11 @@ mod test {
         }
     }
 
-    fn fake_print_crate(crate: &ast::Crate) {
-        let mut out = ~std::io::stderr() as ~std::io::Writer;
-        let s = pprust::rust_printer(out, get_ident_interner());
-        pprust::print_crate_(s, crate);
-    }
+    //fn fake_print_crate(crate: &ast::Crate) {
+    //    let mut out = ~std::io::stderr() as ~std::io::Writer;
+    //    let mut s = pprust::rust_printer(out, get_ident_interner());
+    //    pprust::print_crate_(&mut s, crate);
+    //}
 
     fn expand_crate_str(crate_str: @str) -> ast::Crate {
         let (crate_ast,ps) = string_to_crate_and_sess(crate_str);

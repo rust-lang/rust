@@ -866,7 +866,7 @@ mod test {
     use super::*;
 
     // this version doesn't care about getting comments or docstrings in.
-    fn fake_print_crate(s: @pprust::ps, crate: &ast::Crate) {
+    fn fake_print_crate(s: &mut pprust::ps, crate: &ast::Crate) {
         pprust::print_mod(s, &crate.module, crate.attrs);
     }
 
