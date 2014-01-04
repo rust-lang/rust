@@ -186,23 +186,29 @@ while still providing feedback about errors. The basic strategy:
   so that nullable values do not have to be 'unwrapped' before use.
 
 These features combine in the API to allow for expressions like
-`File::new("diary.txt").write_line("met a girl")` without having to
-worry about whether "diary.txt" exists or whether the write
-succeeds. As written, if either `new` or `write_line` encounters
-an error the task will fail.
+`File::create(&Path::new("diary.txt")).write(bytes!("Met a girl.\n"))`
+without having to worry about whether "diary.txt" exists or whether
+the write succeeds. As written, if either `new` or `write_line`
+encounters an error the task will fail.
 
-If you wanted to handle the error though you might write
+If you wanted to handle the error though you might write:
 
-    let mut error = None;
-    do io_error::cond(|e: IoError| {
-        error = Some(e);
-    }).in {
-        File::new("diary.txt").write_line("met a girl");
-    }
+```rust
+use std::io::File;
+use std::io::{IoError, io_error};
 
-    if error.is_some() {
-        println("failed to write my diary");
-    }
+let mut error = None;
+io_error::cond.trap(|e: IoError| {
+    error = Some(e);
+}).inside(|| {
+    File::create(&Path::new("diary.txt")).write(bytes!("Met a girl.\n"));
+});
+
+if error.is_some() {
+    println("failed to write my diary");
+}
+# ::std::io::fs::unlink(&Path::new("diary.txt"));
+```
 
 XXX: Need better condition handling syntax
 
@@ -500,10 +506,16 @@ pub trait Reader {
     ///
     /// # Example
     ///
-    ///     let mut reader = BufferedReader::new(File::open(&Path::new("foo.txt")));
-    ///     for line in reader.lines() {
-    ///         println(line);
-    ///     }
+    /// ```rust
+    /// use std::io;
+    /// # let _g = ::std::io::ignore_io_error();
+    /// let mut reader = io::stdin();
+    ///
+    /// let mut bytes = [0, .. 10];
+    /// reader.read(bytes);
+    ///
+    /// if reader.eof() { println("stdin() had at most 10 bytes of data."); }
+    /// ```
     ///
     /// # Failure
     ///
@@ -1097,6 +1109,18 @@ pub trait Buffer: Reader {
     /// Reads the next line of input, interpreted as a sequence of UTF-8
     /// encoded unicode codepoints. If a newline is encountered, then the
     /// newline is contained in the returned string.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::io::buffered::BufferedReader;
+    /// use std::io;
+    /// # let _g = ::std::io::ignore_io_error();
+    ///
+    /// let mut reader = BufferedReader::new(io::stdin());
+    ///
+    /// let input = reader.read_line().unwrap_or(~"nothing");
+    /// ```
     ///
     /// # Failure
     ///
