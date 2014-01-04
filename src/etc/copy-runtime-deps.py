@@ -10,7 +10,8 @@ def copy_runtime_deps(dest_dir):
         shutil.copy(path, dest_dir)
 
     lic_dest = os.path.join(dest_dir, "third-party")
-    shutil.rmtree(lic_dest) # copytree() won't overwrite existing files
+    if os.path.exists(lic_dest):
+        shutil.rmtree(lic_dest) # copytree() won't overwrite existing files
     shutil.copytree(os.path.join(os.path.dirname(__file__), "third-party"), lic_dest)
 
 copy_runtime_deps(sys.argv[1])
