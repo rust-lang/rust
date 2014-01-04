@@ -2595,7 +2595,7 @@ the `priv` keyword:
 mod farm {
 # pub type Chicken = int;
 # struct Human(int);
-# impl Human { fn rest(&self) { } }
+# impl Human { pub fn rest(&self) { } }
 # pub fn make_me_a_farm() -> Farm { Farm { chickens: ~[], farmer: Human(0) } }
     pub struct Farm {
         priv chickens: ~[Chicken],
