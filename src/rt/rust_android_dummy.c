@@ -28,6 +28,11 @@ double log2( double n )
     return log( n ) / log( 2 );
 }
 
+double exp10( double x )
+{
+    return pow( 10, x );
+}
+
 void telldir()
 {
 }
