@@ -354,7 +354,13 @@ pub fn begin_unwind<M: Any + Send>(msg: M, file: &'static str, line: uint) -> ! 
             }
 
             if (*task).unwinder.unwinding {
-                rtabort!("unwinding again");
+                // If a task fails while it's already unwinding then we
+                // have limited options. Currently our preference is to
+                // just abort. In the future we may consider resuming
+                // unwinding or otherwise exiting the task cleanly.
+                rterrln!("task failed during unwinding (double-failure - total drag!)")
+                rterrln!("rust must abort now. so sorry.");
+                intrinsics::abort();
             }
         }
 
