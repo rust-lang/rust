@@ -3605,10 +3605,8 @@ failed destructor. Nonetheless, the outermost unwinding activity will continue
 until the stack is unwound and the task transitions to the *dead*
 state. There is no way to "recover" from task failure.  Once a task has
 temporarily suspended its unwinding in the *failing* state, failure
-occurring from within this destructor results in *hard* failure.  The
-unwinding procedure of hard failure frees resources but does not execute
-destructors.  The original (soft) failure is still resumed at the point where
-it was temporarily suspended.
+occurring from within this destructor results in *hard* failure.
+A hard failure currently results in the process aborting.
 
 A task in the *dead* state cannot transition to other states; it exists
 only to have its termination status inspected by other tasks, and/or to await
