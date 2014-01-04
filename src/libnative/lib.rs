@@ -73,7 +73,8 @@ pub fn start(argc: int, argv: **u8, main: proc()) -> int {
         exit_code = Some(run(main.take_unwrap()));
     });
     unsafe { rt::cleanup(); }
-    return exit_code.unwrap();
+    // If the exit code wasn't set, then the task block must have failed.
+    return exit_code.unwrap_or(rt::DEFAULT_ERROR_CODE);
 }
 
 /// Executes a procedure on the current thread in a Rust task context.
