@@ -254,6 +254,7 @@ mod tests {
     use super::*;
     use option::{Some, None};
 
+    #[deriving(Eq)]
     struct ConstRand(uint);
     impl Rand for ConstRand {
         fn rand<R: Rng>(_: &mut R) -> ConstRand {
@@ -277,8 +278,8 @@ mod tests {
     fn test_rand_sample() {
         let mut rand_sample = RandSample::<ConstRand>;
 
-        assert_eq!(*rand_sample.sample(&mut task_rng()), 0);
-        assert_eq!(*rand_sample.ind_sample(&mut task_rng()), 0);
+        assert_eq!(rand_sample.sample(&mut task_rng()), ConstRand(0));
+        assert_eq!(rand_sample.ind_sample(&mut task_rng()), ConstRand(0));
     }
     #[test]
     fn test_weighted_choice() {

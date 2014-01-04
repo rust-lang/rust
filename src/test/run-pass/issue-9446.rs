@@ -16,7 +16,8 @@ impl Wrapper {
     }
 
     pub fn say_hi(&self) {
-        println!("hello {}", **self);
+        let Wrapper(ref s) = *self;
+        println!("hello {}", *s);
     }
 }
 

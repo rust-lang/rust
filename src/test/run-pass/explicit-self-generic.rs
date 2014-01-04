@@ -32,7 +32,9 @@ fn linear_map<K,V>() -> HashMap<K,V> {
 
 impl<K,V> HashMap<K,V> {
     pub fn len(&mut self) -> uint {
-        self.size
+        match *self {
+            HashMap_(l) => l.size
+        }
     }
 }
 

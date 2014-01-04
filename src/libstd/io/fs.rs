@@ -706,11 +706,24 @@ mod test {
 
     struct TempDir(Path);
 
+    impl TempDir {
+        fn join(&self, path: &str) -> Path {
+            let TempDir(ref p) = *self;
+            p.join(path)
+        }
+
+        fn path<'a>(&'a self) -> &'a Path {
+            let TempDir(ref p) = *self;
+            p
+        }
+    }
+
     impl Drop for TempDir {
         fn drop(&mut self) {
             // Gee, seeing how we're testing the fs module I sure hope that we
             // at least implement this correctly!
-            io::fs::rmdir_recursive(&**self);
+            let TempDir(ref p) = *self;
+            io::fs::rmdir_recursive(p);
         }
     }
 
@@ -961,7 +974,7 @@ mod test {
 
         let tmpdir = tmpdir();
 
-        let mut dirpath = tmpdir.clone();
+        let mut dirpath = tmpdir.path().clone();
         dirpath.push(format!("test-가一ー你好"));
         mkdir(&dirpath, io::UserRWX);
         assert!(dirpath.is_dir());
@@ -978,7 +991,7 @@ mod test {
         assert!(!Path::new("test/nonexistent-bogus-path").exists());
 
         let tmpdir = tmpdir();
-        let unicode = tmpdir.clone();
+        let unicode = tmpdir.path();
         let unicode = unicode.join(format!("test-각丁ー再见"));
         mkdir(&unicode, io::UserRWX);
         assert!(unicode.exists());
@@ -1015,7 +1028,7 @@ mod test {
         let out = tmpdir.join("out");
 
         File::create(&out);
-        match io::result(|| copy(&out, &*tmpdir)) {
+        match io::result(|| copy(&out, tmpdir.path())) {
             Ok(..) => fail!(), Err(..) => {}
         }
     })
@@ -1037,7 +1050,7 @@ mod test {
         let tmpdir = tmpdir();
         let out = tmpdir.join("out");
 
-        match io::result(|| copy(&*tmpdir, &out)) {
+        match io::result(|| copy(tmpdir.path(), &out)) {
             Ok(..) => fail!(), Err(..) => {}
         }
         assert!(!out.exists());
@@ -1082,7 +1095,7 @@ mod test {
 
     iotest!(fn readlink_not_symlink() {
         let tmpdir = tmpdir();
-        match io::result(|| readlink(&*tmpdir)) {
+        match io::result(|| readlink(tmpdir.path())) {
             Ok(..) => fail!("wanted a failure"),
             Err(..) => {}
         }

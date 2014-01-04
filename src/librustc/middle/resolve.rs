@@ -169,6 +169,16 @@ enum ReducedGraphParent {
     ModuleReducedGraphParent(@Module)
 }
 
+impl ReducedGraphParent {
+    fn module(&self) -> @Module {
+        match *self {
+            ModuleReducedGraphParent(m) => {
+                m
+            }
+        }
+    }
+}
+
 enum ResolveResult<T> {
     Failed,         // Failed to resolve the name.
     Indeterminate,  // Couldn't determine due to unresolved globs.
@@ -1246,7 +1256,7 @@ impl Resolver {
                         let name = path_to_ident(path);
 
                         let existing_parent_opt = {
-                            let children = parent.children.borrow();
+                            let children = parent.module().children.borrow();
                             children.get().find_copy(&name.name)
                         };
                         let new_parent = match existing_parent_opt {
@@ -1523,7 +1533,7 @@ impl Resolver {
 
                         {
                             let mut external_module_children =
-                                parent.external_module_children.borrow_mut();
+                                parent.module().external_module_children.borrow_mut();
                             external_module_children.get().insert(
                                 name.name,
                                 external_module);

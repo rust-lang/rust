@@ -46,35 +46,35 @@ pub struct CharPos(uint);
 
 impl Pos for BytePos {
     fn from_uint(n: uint) -> BytePos { BytePos(n as u32) }
-    fn to_uint(&self) -> uint { **self as uint }
+    fn to_uint(&self) -> uint { let BytePos(n) = *self; n as uint }
 }
 
 impl Add<BytePos, BytePos> for BytePos {
     fn add(&self, rhs: &BytePos) -> BytePos {
-        BytePos(**self + **rhs)
+        BytePos((self.to_uint() + rhs.to_uint()) as u32)
     }
 }
 
 impl Sub<BytePos, BytePos> for BytePos {
     fn sub(&self, rhs: &BytePos) -> BytePos {
-        BytePos(**self - **rhs)
+        BytePos((self.to_uint() - rhs.to_uint()) as u32)
     }
 }
 
 impl Pos for CharPos {
     fn from_uint(n: uint) -> CharPos { CharPos(n) }
-    fn to_uint(&self) -> uint { **self }
+    fn to_uint(&self) -> uint { let CharPos(n) = *self; n }
 }
 
 impl Add<CharPos,CharPos> for CharPos {
     fn add(&self, rhs: &CharPos) -> CharPos {
-        CharPos(**self + **rhs)
+        CharPos(self.to_uint() + rhs.to_uint())
     }
 }
 
 impl Sub<CharPos,CharPos> for CharPos {
     fn sub(&self, rhs: &CharPos) -> CharPos {
-        CharPos(**self - **rhs)
+        CharPos(self.to_uint() - rhs.to_uint())
     }
 }
 

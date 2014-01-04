@@ -131,7 +131,7 @@ fn const_deref_newtype(cx: &CrateContext, v: ValueRef, t: ty::t)
 
 fn const_deref(cx: &CrateContext, v: ValueRef, t: ty::t, explicit: bool)
     -> (ValueRef, ty::t) {
-    match ty::deref(cx.tcx, t, explicit) {
+    match ty::deref(t, explicit) {
         Some(ref mt) => {
             assert!(mt.mutbl != ast::MutMutable);
             let dv = match ty::get(t).sty {

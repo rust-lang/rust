@@ -265,7 +265,7 @@ impl<'a> LookupContext<'a> {
     }
 
     fn deref(&self, ty: ty::t) -> Option<ty::t> {
-        match ty::deref(self.tcx(), ty, false) {
+        match ty::deref(ty, false) {
             None => None,
             Some(t) => {
                 Some(structurally_resolved_type(self.fcx,

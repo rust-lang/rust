@@ -116,13 +116,14 @@ impl WorkMap {
 
     fn insert_work_key(&mut self, k: WorkKey, val: ~str) {
         let WorkKey { kind, name } = k;
-        match self.find_mut(&name) {
+        let WorkMap(ref mut map) = *self;
+        match map.find_mut(&name) {
             Some(&KindMap(ref mut m)) => { m.insert(kind, val); return; }
             None => ()
         }
         let mut new_map = TreeMap::new();
         new_map.insert(kind, val);
-        self.insert(name, KindMap(new_map));
+        map.insert(name, KindMap(new_map));
     }
 }
 
@@ -328,8 +329,10 @@ impl Exec {
     // returns pairs of (kind, name)
     pub fn lookup_discovered_inputs(&self) -> ~[(~str, ~str)] {
         let mut rs = ~[];
-        for (k, v) in self.discovered_inputs.iter() {
-            for (k1, _) in v.iter() {
+        let WorkMap(ref discovered_inputs) = self.discovered_inputs;
+        for (k, v) in discovered_inputs.iter() {
+            let KindMap(ref vmap) = *v;
+            for (k1, _) in vmap.iter() {
                 rs.push((k1.clone(), k.clone()));
             }
         }
@@ -348,8 +351,10 @@ impl<'a> Prep<'a> {
 
     pub fn lookup_declared_inputs(&self) -> ~[~str] {
         let mut rs = ~[];
-        for (_, v) in self.declared_inputs.iter() {
-            for (inp, _) in v.iter() {
+        let WorkMap(ref declared_inputs) = self.declared_inputs;
+        for (_, v) in declared_inputs.iter() {
+            let KindMap(ref vmap) = *v;
+            for (inp, _) in vmap.iter() {
                 rs.push(inp.clone());
             }
         }
@@ -386,8 +391,10 @@ impl<'a> Prep<'a> {
     }
 
     fn all_fresh(&self, cat: &str, map: &WorkMap) -> bool {
+        let WorkMap(ref map) = *map;
         for (k_name, kindmap) in map.iter() {
-            for (k_kind, v) in kindmap.iter() {
+            let KindMap(ref kindmap_) = *kindmap;
+            for (k_kind, v) in kindmap_.iter() {
                if ! self.is_fresh(cat, *k_kind, *k_name, *v) {
                   return false;
             }
