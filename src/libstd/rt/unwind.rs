@@ -59,8 +59,7 @@ use any::{Any, AnyRefExt};
 use c_str::CString;
 use cast;
 use kinds::Send;
-use libc::{c_char, size_t};
-use libc::{c_void, c_int};
+use libc::{c_void, c_char, size_t};
 use option::{Some, None, Option};
 use result::{Err, Ok};
 use rt::local::Local;
@@ -78,6 +77,7 @@ mod libunwind {
 
     use libc::{uintptr_t, uint64_t};
 
+    #[cfg(not(target_os = "android"))]
     #[repr(C)]
     pub enum _Unwind_Action
     {
@@ -86,6 +86,18 @@ mod libunwind {
         _UA_HANDLER_FRAME = 4,
         _UA_FORCE_UNWIND = 8,
         _UA_END_OF_STACK = 16,
+    }
+
+    #[cfg(target_os = "android")]
+    #[repr(C)]
+    pub enum _Unwind_State
+    {
+      _US_VIRTUAL_UNWIND_FRAME = 0,
+      _US_UNWIND_FRAME_STARTING = 1,
+      _US_UNWIND_FRAME_RESUME = 2,
+      _US_ACTION_MASK = 3,
+      _US_FORCE_UNWIND = 8,
+      _US_END_OF_STACK = 16
     }
 
     #[repr(C)]
@@ -99,6 +111,7 @@ mod libunwind {
         _URC_HANDLER_FOUND = 6,
         _URC_INSTALL_CONTEXT = 7,
         _URC_CONTINUE_UNWIND = 8,
+        _URC_FAILURE = 9, // used only by ARM EABI
     }
 
     pub type _Unwind_Exception_Class = uint64_t;
@@ -108,8 +121,7 @@ mod libunwind {
     pub struct _Unwind_Exception {
         exception_class: _Unwind_Exception_Class,
         exception_cleanup: _Unwind_Exception_Cleanup_Fn,
-        private_1: _Unwind_Word,
-        private_2: _Unwind_Word,
+        private: [_Unwind_Word, ..20],
     }
 
     pub enum _Unwind_Context {}
@@ -148,7 +160,7 @@ impl Unwinder {
             let ep = rust_try(try_fn, closure.code as *c_void,
                               closure.env as *c_void);
             if !ep.is_null() {
-                rtdebug!("Caught {}", (*ep).exception_class);
+                rtdebug!("caught {}", (*ep).exception_class);
                 uw::_Unwind_DeleteException(ep);
             }
         }
@@ -190,8 +202,7 @@ impl Unwinder {
                 let exception = ~uw::_Unwind_Exception {
                     exception_class: rust_exception_class(),
                     exception_cleanup: exception_cleanup,
-                    private_1: 0,
-                    private_2: 0
+                    private: [0, ..20],
                 };
                 let error = uw::_Unwind_RaiseException(cast::transmute(exception));
                 rtabort!("Could not unwind stack, error = {}", error as int)
@@ -242,51 +253,107 @@ fn rust_exception_class() -> uw::_Unwind_Exception_Class {
 //   This is achieved by overriding the return value in search phase to always
 //   say "catch!".
 
-extern "C" {
-    fn __gcc_personality_v0(version: c_int,
-                            actions: uw::_Unwind_Action,
-                            exception_class: uw::_Unwind_Exception_Class,
-                            ue_header: *uw::_Unwind_Exception,
-                            context: *uw::_Unwind_Context)
-        -> uw::_Unwind_Reason_Code;
-}
+#[cfg(not(target_os = "android"))]
+pub mod eabi {
+    use uw = super::libunwind;
+    use libc::c_int;
 
-#[lang="eh_personality"]
-#[no_mangle] // so we can reference it by name from middle/trans/base.rs
-#[doc(hidden)]
-#[cfg(not(test))]
-pub extern "C" fn rust_eh_personality(
-    version: c_int,
-    actions: uw::_Unwind_Action,
-    exception_class: uw::_Unwind_Exception_Class,
-    ue_header: *uw::_Unwind_Exception,
-    context: *uw::_Unwind_Context
-) -> uw::_Unwind_Reason_Code
-{
-    unsafe {
-        __gcc_personality_v0(version, actions, exception_class, ue_header,
-                             context)
+    extern "C" {
+        fn __gcc_personality_v0(version: c_int,
+                                actions: uw::_Unwind_Action,
+                                exception_class: uw::_Unwind_Exception_Class,
+                                ue_header: *uw::_Unwind_Exception,
+                                context: *uw::_Unwind_Context)
+            -> uw::_Unwind_Reason_Code;
     }
-}
 
-#[no_mangle] // referenced from rust_try.ll
-#[doc(hidden)]
-#[cfg(not(test))]
-pub extern "C" fn rust_eh_personality_catch(
-    version: c_int,
-    actions: uw::_Unwind_Action,
-    exception_class: uw::_Unwind_Exception_Class,
-    ue_header: *uw::_Unwind_Exception,
-    context: *uw::_Unwind_Context
-) -> uw::_Unwind_Reason_Code
-{
-    if (actions as c_int & uw::_UA_SEARCH_PHASE as c_int) != 0 { // search phase
-        uw::_URC_HANDLER_FOUND // catch!
-    }
-    else { // cleanup phase
+    #[lang="eh_personality"]
+    #[no_mangle] // so we can reference it by name from middle/trans/base.rs
+    #[doc(hidden)]
+    #[cfg(not(test))]
+    pub extern "C" fn rust_eh_personality(
+        version: c_int,
+        actions: uw::_Unwind_Action,
+        exception_class: uw::_Unwind_Exception_Class,
+        ue_header: *uw::_Unwind_Exception,
+        context: *uw::_Unwind_Context
+    ) -> uw::_Unwind_Reason_Code
+    {
         unsafe {
-             __gcc_personality_v0(version, actions, exception_class, ue_header,
-                                  context)
+            __gcc_personality_v0(version, actions, exception_class, ue_header,
+                                 context)
+        }
+    }
+
+    #[no_mangle] // referenced from rust_try.ll
+    #[doc(hidden)]
+    #[cfg(not(test))]
+    pub extern "C" fn rust_eh_personality_catch(
+        version: c_int,
+        actions: uw::_Unwind_Action,
+        exception_class: uw::_Unwind_Exception_Class,
+        ue_header: *uw::_Unwind_Exception,
+        context: *uw::_Unwind_Context
+    ) -> uw::_Unwind_Reason_Code
+    {
+        if (actions as c_int & uw::_UA_SEARCH_PHASE as c_int) != 0 { // search phase
+            uw::_URC_HANDLER_FOUND // catch!
+        }
+        else { // cleanup phase
+            unsafe {
+                 __gcc_personality_v0(version, actions, exception_class, ue_header,
+                                      context)
+            }
+        }
+    }
+}
+
+// ARM EHABI uses a slightly different personality routine signature,
+// but otherwise works the same.
+#[cfg(target_os = "android")]
+pub mod eabi {
+    use uw = super::libunwind;
+    use libc::c_int;
+
+    extern "C" {
+        fn __gcc_personality_v0(state: uw::_Unwind_State,
+                                ue_header: *uw::_Unwind_Exception,
+                                context: *uw::_Unwind_Context)
+            -> uw::_Unwind_Reason_Code;
+    }
+
+    #[lang="eh_personality"]
+    #[no_mangle] // so we can reference it by name from middle/trans/base.rs
+    #[doc(hidden)]
+    #[cfg(not(test))]
+    pub extern "C" fn rust_eh_personality(
+        state: uw::_Unwind_State,
+        ue_header: *uw::_Unwind_Exception,
+        context: *uw::_Unwind_Context
+    ) -> uw::_Unwind_Reason_Code
+    {
+        unsafe {
+            __gcc_personality_v0(state, ue_header, context)
+        }
+    }
+
+    #[no_mangle] // referenced from rust_try.ll
+    #[doc(hidden)]
+    #[cfg(not(test))]
+    pub extern "C" fn rust_eh_personality_catch(
+        state: uw::_Unwind_State,
+        ue_header: *uw::_Unwind_Exception,
+        context: *uw::_Unwind_Context
+    ) -> uw::_Unwind_Reason_Code
+    {
+        if (state as c_int & uw::_US_ACTION_MASK as c_int)
+                           == uw::_US_VIRTUAL_UNWIND_FRAME as c_int { // search phase
+            uw::_URC_HANDLER_FOUND // catch!
+        }
+        else { // cleanup phase
+            unsafe {
+                 __gcc_personality_v0(state, ue_header, context)
+            }
         }
     }
 }
