@@ -2453,12 +2453,6 @@ mod test {
     use codemap;
     use parse::token;
 
-    fn string_check<T:Eq> (given : &T, expected: &T) {
-        if !(given == expected) {
-            fail!("given {:?}, expected {:?}", given, expected);
-        }
-    }
-
     #[test]
     fn test_fun_to_str() {
         let abba_ident = token::str_to_ident("abba");

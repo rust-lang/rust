@@ -1469,7 +1469,6 @@ let mut owned = ~20;
 let mut value = 30;
 let borrowed = &mut value;
 
-*managed = *owned + 10;
 *owned = *borrowed + 100;
 *borrowed = *managed + 1000;
 ~~~
