@@ -277,6 +277,13 @@ impl Task {
     pub fn local_io<'a>(&'a mut self) -> Option<LocalIo<'a>> {
         self.imp.get_mut_ref().local_io()
     }
+
+    /// Returns the stack bounds for this task in (lo, hi) format. The stack
+    /// bounds may not be known for all tasks, so the return value may be
+    /// `None`.
+    pub fn stack_bounds(&self) -> Option<(uint, uint)> {
+        self.imp.get_ref().stack_bounds()
+    }
 }
 
 impl Drop for Task {
