@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[deriving(Eq)]
 struct Foo(uint);
 
 fn foo() -> Foo {
@@ -15,5 +16,5 @@ fn foo() -> Foo {
 }
 
 pub fn main() {
-    assert_eq!(*foo(), 42);
+    assert_eq!(foo(), Foo(42));
 }

@@ -19,7 +19,8 @@ struct Foo(@Cell<int>);
 #[unsafe_destructor]
 impl Drop for Foo {
     fn drop(&mut self) {
-        self.set(23);
+        let Foo(i) = *self;
+        i.set(23);
     }
 }
 

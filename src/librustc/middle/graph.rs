@@ -67,6 +67,14 @@ pub struct Direction { priv repr: uint }
 pub static Outgoing: Direction = Direction { repr: 0 };
 pub static Incoming: Direction = Direction { repr: 1 };
 
+impl NodeIndex {
+    fn get(&self) -> uint { let NodeIndex(v) = *self; v }
+}
+
+impl EdgeIndex {
+    fn get(&self) -> uint { let EdgeIndex(v) = *self; v }
+}
+
 impl<N,E> Graph<N,E> {
     pub fn new() -> Graph<N,E> {
         Graph {nodes: ~[], edges: ~[]}
@@ -110,15 +118,15 @@ impl<N,E> Graph<N,E> {
     }
 
     pub fn mut_node_data<'a>(&'a mut self, idx: NodeIndex) -> &'a mut N {
-        &mut self.nodes[*idx].data
+        &mut self.nodes[idx.get()].data
     }
 
     pub fn node_data<'a>(&'a self, idx: NodeIndex) -> &'a N {
-        &self.nodes[*idx].data
+        &self.nodes[idx.get()].data
     }
 
     pub fn node<'a>(&'a self, idx: NodeIndex) -> &'a Node<N> {
-        &self.nodes[*idx]
+        &self.nodes[idx.get()]
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -135,8 +143,8 @@ impl<N,E> Graph<N,E> {
         let idx = self.next_edge_index();
 
         // read current first of the list of edges from each node
-        let source_first = self.nodes[*source].first_edge[Outgoing.repr];
-        let target_first = self.nodes[*target].first_edge[Incoming.repr];
+        let source_first = self.nodes[source.get()].first_edge[Outgoing.repr];
+        let target_first = self.nodes[target.get()].first_edge[Incoming.repr];
 
         // create the new edge, with the previous firsts from each node
         // as the next pointers
@@ -148,22 +156,22 @@ impl<N,E> Graph<N,E> {
         });
 
         // adjust the firsts for each node target be the next object.
-        self.nodes[*source].first_edge[Outgoing.repr] = idx;
-        self.nodes[*target].first_edge[Incoming.repr] = idx;
+        self.nodes[source.get()].first_edge[Outgoing.repr] = idx;
+        self.nodes[target.get()].first_edge[Incoming.repr] = idx;
 
         return idx;
     }
 
     pub fn mut_edge_data<'a>(&'a mut self, idx: EdgeIndex) -> &'a mut E {
-        &mut self.edges[*idx].data
+        &mut self.edges[idx.get()].data
     }
 
     pub fn edge_data<'a>(&'a self, idx: EdgeIndex) -> &'a E {
-        &self.edges[*idx].data
+        &self.edges[idx.get()].data
     }
 
     pub fn edge<'a>(&'a self, idx: EdgeIndex) -> &'a Edge<E> {
-        &self.edges[*idx]
+        &self.edges[idx.get()]
     }
 
     pub fn first_adjacent(&self, node: NodeIndex, dir: Direction) -> EdgeIndex {
@@ -171,7 +179,7 @@ impl<N,E> Graph<N,E> {
         //! This is useful if you wish to modify the graph while walking
         //! the linked list of edges.
 
-        self.nodes[*node].first_edge[dir.repr]
+        self.nodes[node.get()].first_edge[dir.repr]
     }
 
     pub fn next_adjacent(&self, edge: EdgeIndex, dir: Direction) -> EdgeIndex {
@@ -179,7 +187,7 @@ impl<N,E> Graph<N,E> {
         //! This is useful if you wish to modify the graph while walking
         //! the linked list of edges.
 
-        self.edges[*edge].next_edge[dir.repr]
+        self.edges[edge.get()].next_edge[dir.repr]
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -223,7 +231,7 @@ impl<N,E> Graph<N,E> {
 
         let mut edge_idx = self.first_adjacent(node, dir);
         while edge_idx != InvalidEdgeIndex {
-            let edge = &self.edges[*edge_idx];
+            let edge = &self.edges[edge_idx.get()];
             if !f(edge_idx, edge) {
                 return false;
             }
@@ -260,7 +268,7 @@ impl<N,E> Graph<N,E> {
 
 pub fn each_edge_index(max_edge_index: EdgeIndex, f: |EdgeIndex| -> bool) {
     let mut i = 0;
-    let n = *max_edge_index;
+    let n = max_edge_index.get();
     while i < n {
         if !f(EdgeIndex(i)) {
             return;
@@ -319,8 +327,8 @@ mod test {
         let graph = create_graph();
         let expected = ["A", "B", "C", "D", "E", "F"];
         graph.each_node(|idx, node| {
-            assert_eq!(&expected[*idx], graph.node_data(idx));
-            assert_eq!(expected[*idx], node.data);
+            assert_eq!(&expected[idx.get()], graph.node_data(idx));
+            assert_eq!(expected[idx.get()], node.data);
             true
         });
     }
@@ -330,8 +338,8 @@ mod test {
         let graph = create_graph();
         let expected = ["AB", "BC", "BD", "DE", "EC", "FB"];
         graph.each_edge(|idx, edge| {
-            assert_eq!(&expected[*idx], graph.edge_data(idx));
-            assert_eq!(expected[*idx], edge.data);
+            assert_eq!(&expected[idx.get()], graph.edge_data(idx));
+            assert_eq!(expected[idx.get()], edge.data);
             true
         });
     }

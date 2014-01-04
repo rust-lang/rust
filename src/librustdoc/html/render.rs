@@ -972,6 +972,7 @@ fn item_module(w: &mut Writer, cx: &Context,
                 struct Initializer<'a>(&'a str);
                 impl<'a> fmt::Default for Initializer<'a> {
                     fn fmt(s: &Initializer<'a>, f: &mut fmt::Formatter) {
+                        let Initializer(s) = *s;
                         if s.len() == 0 { return; }
                         write!(f.buf, "<code> = </code>");
                         let tag = if s.contains("\n") { "pre" } else { "code" };
@@ -1537,6 +1538,7 @@ fn build_sidebar(m: &clean::Module) -> HashMap<~str, ~[~str]> {
 
 impl<'a> fmt::Default for Source<'a> {
     fn fmt(s: &Source<'a>, fmt: &mut fmt::Formatter) {
+        let Source(s) = *s;
         let lines = s.lines().len();
         let mut cols = 0;
         let mut tmp = lines;

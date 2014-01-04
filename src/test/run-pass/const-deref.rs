@@ -10,11 +10,7 @@
 
 static C: &'static int = &1000;
 static D: int = *C;
-struct S(&'static int);
-static E: &'static S = &S(C);
-static F: int = ***E;
 
 pub fn main() {
     assert_eq!(D, 1000);
-    assert_eq!(F, 1000);
 }

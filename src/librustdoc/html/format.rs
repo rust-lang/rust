@@ -35,6 +35,18 @@ pub struct PuritySpace(ast::purity);
 /// Wrapper struct for properly emitting a method declaration.
 pub struct Method<'a>(&'a clean::SelfTy, &'a clean::FnDecl);
 
+impl VisSpace {
+    pub fn get(&self) -> Option<ast::visibility> {
+        let VisSpace(v) = *self; v
+    }
+}
+
+impl PuritySpace {
+    pub fn get(&self) -> ast::purity {
+        let PuritySpace(v) = *self; v
+    }
+}
+
 impl fmt::Default for clean::Generics {
     fn fmt(g: &clean::Generics, f: &mut fmt::Formatter) {
         if g.lifetimes.len() == 0 && g.type_params.len() == 0 { return }
@@ -68,7 +80,7 @@ impl fmt::Default for clean::Generics {
 impl fmt::Default for clean::Lifetime {
     fn fmt(l: &clean::Lifetime, f: &mut fmt::Formatter) {
         f.buf.write("'".as_bytes());
-        f.buf.write(l.as_bytes());
+        f.buf.write(l.get_ref().as_bytes());
     }
 }
 
@@ -424,7 +436,7 @@ impl<'a> fmt::Default for Method<'a> {
 
 impl fmt::Default for VisSpace {
     fn fmt(v: &VisSpace, f: &mut fmt::Formatter) {
-        match **v {
+        match v.get() {
             Some(ast::public) => { write!(f.buf, "pub "); }
             Some(ast::private) => { write!(f.buf, "priv "); }
             Some(ast::inherited) | None => {}
@@ -434,7 +446,7 @@ impl fmt::Default for VisSpace {
 
 impl fmt::Default for PuritySpace {
     fn fmt(p: &PuritySpace, f: &mut fmt::Formatter) {
-        match **p {
+        match p.get() {
             ast::unsafe_fn => write!(f.buf, "unsafe "),
             ast::extern_fn => write!(f.buf, "extern "),
             ast::impure_fn => {}

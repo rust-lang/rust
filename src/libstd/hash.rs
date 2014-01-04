@@ -309,7 +309,8 @@ mod tests {
     struct Bytes<'a>(&'a [u8]);
     impl<'a> IterBytes for Bytes<'a> {
         fn iter_bytes(&self, _lsb0: bool, f: |&[u8]| -> bool) -> bool {
-            f(**self)
+            let Bytes(v) = *self;
+            f(v)
         }
     }
 

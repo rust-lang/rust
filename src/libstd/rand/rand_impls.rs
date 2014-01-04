@@ -233,10 +233,12 @@ mod tests {
     struct ConstantRng(u64);
     impl Rng for ConstantRng {
         fn next_u32(&mut self) -> u32 {
-            (**self) as u32
+            let ConstantRng(v) = *self;
+            v as u32
         }
         fn next_u64(&mut self) -> u64 {
-            **self
+            let ConstantRng(v) = *self;
+            v
         }
     }
 
@@ -254,10 +256,10 @@ mod tests {
         let mut rng = task_rng();
         for _ in range(0, 1_000) {
             // strict inequalities
-            let f = *rng.gen::<Open01<f64>>();
+            let Open01(f) = rng.gen::<Open01<f64>>();
             assert!(0.0 < f && f < 1.0);
 
-            let f = *rng.gen::<Open01<f32>>();
+            let Open01(f) = rng.gen::<Open01<f32>>();
             assert!(0.0 < f && f < 1.0);
         }
     }
@@ -267,10 +269,10 @@ mod tests {
         let mut rng = task_rng();
         for _ in range(0, 1_000) {
             // strict inequalities
-            let f = *rng.gen::<Closed01<f64>>();
+            let Closed01(f) = rng.gen::<Closed01<f64>>();
             assert!(0.0 <= f && f <= 1.0);
 
-            let f = *rng.gen::<Closed01<f32>>();
+            let Closed01(f) = rng.gen::<Closed01<f32>>();
             assert!(0.0 <= f && f <= 1.0);
         }
     }

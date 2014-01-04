@@ -129,9 +129,17 @@ struct Variable(uint);
 #[deriving(Eq)]
 struct LiveNode(uint);
 
+impl Variable {
+    fn get(&self) -> uint { let Variable(v) = *self; v }
+}
+
+impl LiveNode {
+    fn get(&self) -> uint { let LiveNode(v) = *self; v }
+}
+
 impl Clone for LiveNode {
     fn clone(&self) -> LiveNode {
-        LiveNode(**self)
+        LiveNode(self.get())
     }
 }
 
@@ -176,11 +184,11 @@ pub fn check_crate(tcx: ty::ctxt,
 }
 
 impl to_str::ToStr for LiveNode {
-    fn to_str(&self) -> ~str { format!("ln({})", **self) }
+    fn to_str(&self) -> ~str { format!("ln({})", self.get()) }
 }
 
 impl to_str::ToStr for Variable {
-    fn to_str(&self) -> ~str { format!("v({})", **self) }
+    fn to_str(&self) -> ~str { format!("v({})", self.get()) }
 }
 
 // ______________________________________________________________________
@@ -207,7 +215,7 @@ impl to_str::ToStr for Variable {
 
 impl LiveNode {
     pub fn is_valid(&self) -> bool {
-        **self != uint::max_value
+        self.get() != uint::max_value
     }
 }
 
@@ -326,7 +334,7 @@ impl IrMaps {
 
     pub fn variable_name(&self, var: Variable) -> @str {
         let var_kinds = self.var_kinds.borrow();
-        match var_kinds.get()[*var] {
+        match var_kinds.get()[var.get()] {
             Local(LocalInfo { ident: nm, .. }) | Arg(_, nm) => {
                 self.tcx.sess.str_of(nm)
             },
@@ -351,7 +359,7 @@ impl IrMaps {
 
     pub fn lnk(&self, ln: LiveNode) -> LiveNodeKind {
         let lnks = self.lnks.borrow();
-        lnks.get()[*ln]
+        lnks.get()[ln.get()]
     }
 }
 
@@ -680,7 +688,7 @@ impl Liveness {
     }
 
     pub fn idx(&self, ln: LiveNode, var: Variable) -> uint {
-        *ln * self.ir.num_vars.get() + *var
+        ln.get() * self.ir.num_vars.get() + var.get()
     }
 
     pub fn live_on_entry(&self, ln: LiveNode, var: Variable)
@@ -698,7 +706,7 @@ impl Liveness {
                         -> Option<LiveNodeKind> {
         let successor = {
             let successors = self.successors.borrow();
-            successors.get()[*ln]
+            successors.get()[ln.get()]
         };
         self.live_on_entry(successor, var)
     }
@@ -721,7 +729,7 @@ impl Liveness {
                             -> Option<LiveNodeKind> {
         let successor = {
             let successors = self.successors.borrow();
-            successors.get()[*ln]
+            successors.get()[ln.get()]
         };
         self.assigned_on_entry(successor, var)
     }
@@ -792,8 +800,8 @@ impl Liveness {
                 let lnks = self.ir.lnks.try_borrow();
                 write!(wr,
                        "[ln({}) of kind {:?} reads",
-                       *ln,
-                       lnks.and_then(|lnks| Some(lnks.get()[*ln])));
+                       ln.get(),
+                       lnks.and_then(|lnks| Some(lnks.get()[ln.get()])));
             }
             let users = self.users.try_borrow();
             match users {
@@ -809,7 +817,7 @@ impl Liveness {
             let successors = self.successors.try_borrow();
             match successors {
                 Some(successors) => {
-                    write!(wr, "  precedes {}]", successors.get()[*ln].to_str());
+                    write!(wr, "  precedes {}]", successors.get()[ln.get()].to_str());
                 }
                 None => {
                     write!(wr, "  precedes (successors borrowed)]");
@@ -821,7 +829,7 @@ impl Liveness {
     pub fn init_empty(&self, ln: LiveNode, succ_ln: LiveNode) {
         {
             let mut successors = self.successors.borrow_mut();
-            successors.get()[*ln] = succ_ln;
+            successors.get()[ln.get()] = succ_ln;
         }
 
         // It is not necessary to initialize the
@@ -838,7 +846,7 @@ impl Liveness {
         // more efficient version of init_empty() / merge_from_succ()
         {
             let mut successors = self.successors.borrow_mut();
-            successors.get()[*ln] = succ_ln;
+            successors.get()[ln.get()] = succ_ln;
         }
 
         self.indices2(ln, succ_ln, |idx, succ_idx| {
@@ -1441,7 +1449,7 @@ impl Liveness {
                            cont_ln: LiveNode,
                            f: || -> R)
                            -> R {
-        debug!("with_loop_nodes: {} {}", loop_node_id, *break_ln);
+        debug!("with_loop_nodes: {} {}", loop_node_id, break_ln.get());
         {
             let mut loop_scope = self.loop_scope.borrow_mut();
             loop_scope.get().push(loop_node_id);

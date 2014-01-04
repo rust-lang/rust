@@ -12,7 +12,9 @@ struct foo(~uint);
 
 impl Add<foo, foo> for foo {
     fn add(&self, f: &foo) -> foo {
-        foo(~(***self + **(*f)))
+        let foo(~i) = *self;
+        let foo(~j) = *f;
+        foo(~(i + j))
     }
 }
 

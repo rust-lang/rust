@@ -61,11 +61,11 @@ pub struct StackPool(());
 impl StackPool {
     pub fn new() -> StackPool { StackPool(()) }
 
-    fn take_segment(&self, min_size: uint) -> StackSegment {
+    pub fn take_segment(&self, min_size: uint) -> StackSegment {
         StackSegment::new(min_size)
     }
 
-    fn give_segment(&self, _stack: StackSegment) {
+    pub fn give_segment(&self, _stack: StackSegment) {
     }
 }
 

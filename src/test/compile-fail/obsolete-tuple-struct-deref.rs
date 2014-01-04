@@ -8,10 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct S(&'static [int]);
-static C0: S = S([3]);
-static C1: int = C0[0];
-
-pub fn main() {
-    assert_eq!(C1, 3);
+fn main() {
+    struct S(int);
+    let s = S(0);
+    let x = *s; //~ ERROR single-field tuple-structs can no longer be dereferenced
 }
