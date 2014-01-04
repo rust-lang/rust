@@ -27,7 +27,6 @@ use std::hashmap::{HashMap, HashSet};
 use std::io::mem::MemWriter;
 use std::io::{Writer, Seek, Decorator};
 use std::str;
-use std::util;
 use std::vec;
 
 use extra::serialize::Encodable;
@@ -1800,6 +1799,11 @@ pub static metadata_encoding_version : &'static [u8] =
 
 pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
     let mut wr = MemWriter::new();
+    encode_metadata_inner(&mut wr, parms, crate);
+    wr.inner()
+}
+
+fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, crate: &Crate) {
     let stats = Stats {
         inline_bytes: Cell::new(0),
         attr_bytes: Cell::new(0),
@@ -1841,7 +1845,7 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
         reachable: reachable,
      };
 
-    let mut ebml_w = writer::Encoder(&mut wr);
+    let mut ebml_w = writer::Encoder(wr);
 
     encode_hash(&mut ebml_w, ecx.link_meta.crate_hash);
 
@@ -1912,10 +1916,6 @@ pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
     // Pad this, since something (LLVM, presumably) is cutting off the
     // remaining % 4 bytes.
     ebml_w.writer.write(&[0u8, 0u8, 0u8, 0u8]);
-
-    // This is a horrible thing to do to the outer MemWriter, but thankfully we
-    // don't use it again so... it's ok right?
-    return util::replace(ebml_w.writer.inner_mut_ref(), ~[]);
 }
 
 // Get the encoded string for a type
