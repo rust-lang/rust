@@ -88,7 +88,7 @@ pub fn run_core (libs: HashSet<Path>, cfgs: ~[~str], path: &Path) -> (clean::Cra
     let ctxt = @ctxt;
     local_data::set(super::ctxtkey, ctxt);
 
-    let v = @mut RustdocVisitor::new();
+    let mut v = RustdocVisitor::new();
     v.visit(&ctxt.crate);
 
     (v.clean(), analysis)

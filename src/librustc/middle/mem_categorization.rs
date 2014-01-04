@@ -85,7 +85,7 @@ pub struct CopiedUpvar {
 #[deriving(Eq, IterBytes)]
 pub enum PointerKind {
     uniq_ptr,
-    gc_ptr(ast::Mutability),
+    gc_ptr,
     region_ptr(ast::Mutability, ty::Region),
     unsafe_ptr(ast::Mutability)
 }
@@ -178,17 +178,11 @@ pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
             Some(deref_ptr(region_ptr(ast::MutImmutable, r)))
         }
 
-        ty::ty_box(ref mt) |
-        ty::ty_evec(ref mt, ty::vstore_box) => {
-            Some(deref_ptr(gc_ptr(mt.mutbl)))
-        }
-
-        ty::ty_trait(_, _, ty::BoxTraitStore, m, _) => {
-            Some(deref_ptr(gc_ptr(m)))
-        }
-
+        ty::ty_box(_) |
+        ty::ty_evec(_, ty::vstore_box) |
+        ty::ty_trait(_, _, ty::BoxTraitStore, _, _) |
         ty::ty_estr(ty::vstore_box) => {
-            Some(deref_ptr(gc_ptr(ast::MutImmutable)))
+            Some(deref_ptr(gc_ptr))
         }
 
         ty::ty_ptr(ref mt) => {
@@ -681,7 +675,10 @@ impl mem_categorization_ctxt {
                     uniq_ptr => {
                         base_cmt.mutbl.inherit()
                     }
-                    gc_ptr(m) | region_ptr(m, _) | unsafe_ptr(m) => {
+                    gc_ptr => {
+                        McImmutable
+                    }
+                    region_ptr(m, _) | unsafe_ptr(m) => {
                         MutabilityCategory::from_mutbl(m)
                     }
                 };
@@ -759,12 +756,15 @@ impl mem_categorization_ctxt {
             // for unique ptrs, we inherit mutability from the
             // owning reference.
             let m = match ptr {
-              uniq_ptr => {
-                base_cmt.mutbl.inherit()
-              }
-              gc_ptr(m) | region_ptr(m, _) | unsafe_ptr(m) => {
-                MutabilityCategory::from_mutbl(m)
-              }
+                uniq_ptr => {
+                    base_cmt.mutbl.inherit()
+                }
+                gc_ptr => {
+                    McImmutable
+                }
+                region_ptr(m, _) | unsafe_ptr(m) => {
+                    MutabilityCategory::from_mutbl(m)
+                }
             };
 
             // the deref is explicit in the resulting cmt
@@ -1103,7 +1103,7 @@ pub fn field_mutbl(tcx: ty::ctxt,
 }
 
 pub enum AliasableReason {
-    AliasableManaged(ast::Mutability),
+    AliasableManaged,
     AliasableBorrowed(ast::Mutability),
     AliasableOther
 }
@@ -1122,7 +1122,7 @@ impl cmt_ {
             cat_self(..) |
             cat_arg(..) |
             cat_deref(_, _, unsafe_ptr(..)) |
-            cat_deref(_, _, gc_ptr(..)) |
+            cat_deref(_, _, gc_ptr) |
             cat_deref(_, _, region_ptr(..)) => {
                 self
             }
@@ -1166,8 +1166,8 @@ impl cmt_ {
                 Some(AliasableOther)
             }
 
-            cat_deref(_, _, gc_ptr(m)) => {
-                Some(AliasableManaged(m))
+            cat_deref(_, _, gc_ptr) => {
+                Some(AliasableManaged)
             }
 
             cat_deref(_, _, region_ptr(m @ MutImmutable, _)) => {
@@ -1229,7 +1229,7 @@ impl Repr for categorization {
 pub fn ptr_sigil(ptr: PointerKind) -> ~str {
     match ptr {
         uniq_ptr => ~"~",
-        gc_ptr(_) => ~"@",
+        gc_ptr => ~"@",
         region_ptr(_, _) => ~"&",
         unsafe_ptr(_) => ~"*"
     }

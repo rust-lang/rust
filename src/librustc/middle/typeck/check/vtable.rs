@@ -582,7 +582,13 @@ pub fn early_resolve_expr(ex: @ast::Expr,
               let ty = structurally_resolved_type(fcx, ex.span,
                                                   fcx.expr_ty(src));
               match (&ty::get(ty).sty, store) {
-                  (&ty::ty_box(mt), ty::BoxTraitStore) |
+                  (&ty::ty_box(..), ty::BoxTraitStore)
+                    if !mutability_allowed(ast::MutImmutable,
+                                           target_mutbl) => {
+                      fcx.tcx().sess.span_err(ex.span,
+                                              format!("types differ in mutability"));
+                  }
+
                   (&ty::ty_uniq(mt), ty::UniqTraitStore) |
                   (&ty::ty_rptr(_, mt), ty::RegionTraitStore(..))
                     if !mutability_allowed(mt.mutbl, target_mutbl) => {
@@ -590,9 +596,15 @@ pub fn early_resolve_expr(ex: @ast::Expr,
                                               format!("types differ in mutability"));
                   }
 
-                  (&ty::ty_box(mt), ty::BoxTraitStore) |
-                  (&ty::ty_uniq(mt), ty::UniqTraitStore) |
-                  (&ty::ty_rptr(_, mt), ty::RegionTraitStore(..)) => {
+                  (&ty::ty_box(..), ty::BoxTraitStore) |
+                  (&ty::ty_uniq(..), ty::UniqTraitStore) |
+                  (&ty::ty_rptr(..), ty::RegionTraitStore(..)) => {
+                    let typ = match (&ty::get(ty).sty) {
+                        &ty::ty_box(typ) => typ,
+                        &ty::ty_uniq(mt) | &ty::ty_rptr(_, mt) => mt.ty,
+                        _ => fail!("shouldn't get here"),
+                    };
+
                       let location_info =
                           &location_info_for_expr(ex);
                       let vcx = fcx.vtable_context();
@@ -601,7 +613,7 @@ pub fn early_resolve_expr(ex: @ast::Expr,
                           substs: ty::substs {
                               tps: target_substs.tps.clone(),
                               regions: target_substs.regions.clone(),
-                              self_ty: Some(mt.ty)
+                              self_ty: Some(typ)
                           }
                       };
 
@@ -614,7 +626,7 @@ pub fn early_resolve_expr(ex: @ast::Expr,
                                                      location_info,
                                                      None,
                                                      &param_bounds,
-                                                     mt.ty,
+                                                     typ,
                                                      is_early);
 
                       if !is_early {

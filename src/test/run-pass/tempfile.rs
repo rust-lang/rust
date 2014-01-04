@@ -141,7 +141,7 @@ fn in_tmpdir(f: ||) {
     f();
 }
 
-fn main() {
+pub fn main() {
     in_tmpdir(test_tempdir);
     in_tmpdir(test_rm_tempdir);
     in_tmpdir(recursive_mkdir_rel);

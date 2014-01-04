@@ -29,7 +29,7 @@ pub mod linkhack {
 }
 
 #[start]
-fn main(_: int, _: **u8, _: *u8) -> int {
+pub fn main(_: int, _: **u8, _: *u8) -> int {
     no_std_crate::foo();
     0
 }

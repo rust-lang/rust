@@ -340,13 +340,7 @@ impl fmt::Default for clean::Type {
             clean::Unit => f.buf.write("()".as_bytes()),
             clean::Bottom => f.buf.write("!".as_bytes()),
             clean::Unique(ref t) => write!(f.buf, "~{}", **t),
-            clean::Managed(m, ref t) => {
-                write!(f.buf, "@{}{}",
-                       match m {
-                           clean::Mutable => "mut ",
-                           clean::Immutable => "",
-                       }, **t)
-            }
+            clean::Managed(ref t) => write!(f.buf, "@{}", **t),
             clean::RawPointer(m, ref t) => {
                 write!(f.buf, "*{}{}",
                        match m {

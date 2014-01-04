@@ -10,9 +10,11 @@
 
 #[feature(managed_boxes)];
 
+use std::cell::RefCell;
+
 enum maybe_pointy {
     none,
-    p(@mut Pointy),
+    p(@RefCell<Pointy>),
 }
 
 struct Pointy {
@@ -21,15 +23,18 @@ struct Pointy {
     d : proc()->(),
 }
 
-fn empty_pointy() -> @mut Pointy {
-    return @mut Pointy {
+fn empty_pointy() -> @RefCell<Pointy> {
+    return @RefCell::new(Pointy {
         a : none,
         c : ~22,
         d : proc() {},
-    }
+    })
 }
 
 pub fn main() {
     let v = empty_pointy();
-    v.a = p(v);
+    {
+        let mut vb = v.borrow_mut();
+        vb.get().a = p(v);
+    }
 }

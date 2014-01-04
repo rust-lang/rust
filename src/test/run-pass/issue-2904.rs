@@ -62,8 +62,8 @@ fn square_from_char(c: char) -> square {
     }
 }
 
-fn read_board_grid<rdr:'static + io::Reader>(input: rdr) -> ~[~[square]] {
-    let input = @mut input as @mut io::Reader;
+fn read_board_grid<rdr:'static + io::Reader>(mut input: rdr) -> ~[~[square]] {
+    let mut input: &mut io::Reader = &mut input;
     let mut grid = ~[];
     let mut line = [0, ..10];
     input.read(line);

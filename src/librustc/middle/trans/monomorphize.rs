@@ -95,12 +95,16 @@ pub fn monomorphic_fn(ccx: @CrateContext,
     // calling a static provided method. This is sort of unfortunate.
     let mut is_static_provided = None;
 
-    let map_node = session::expect(
-        ccx.sess,
-        ccx.tcx.items.find_copy(&fn_id.node),
-        || format!("While monomorphizing {:?}, couldn't find it in the item map \
-                 (may have attempted to monomorphize an item \
-                 defined in a different crate?)", fn_id));
+    let map_node = {
+        let items = ccx.tcx.items.borrow();
+        session::expect(
+            ccx.sess,
+            items.get().find_copy(&fn_id.node),
+            || format!("While monomorphizing {:?}, couldn't find it in the \
+                        item map (may have attempted to monomorphize an item \
+                        defined in a different crate?)", fn_id))
+    };
+
     // Get the path so that we can create a symbol
     let (pt, name, span) = match map_node {
       ast_map::node_item(i, pt) => (pt, i.ident, i.span),

@@ -207,7 +207,7 @@ pub fn collect_language_items(crate: &ast::Crate,
 }
 
 lets_do_this! {
-    There are 43 lang items.
+    There are 37 lang items.
 
 //  ID, Variant name,                    Name,                      Method name;
     0,  FreezeTraitLangItem,             "freeze",                  freeze_trait;
@@ -243,24 +243,18 @@ lets_do_this! {
     26, ExchangeFreeFnLangItem,          "exchange_free",           exchange_free_fn;
     27, MallocFnLangItem,                "malloc",                  malloc_fn;
     28, FreeFnLangItem,                  "free",                    free_fn;
-    29, BorrowAsImmFnLangItem,           "borrow_as_imm",           borrow_as_imm_fn;
-    30, BorrowAsMutFnLangItem,           "borrow_as_mut",           borrow_as_mut_fn;
-    31, ReturnToMutFnLangItem,           "return_to_mut",           return_to_mut_fn;
-    32, CheckNotBorrowedFnLangItem,      "check_not_borrowed",      check_not_borrowed_fn;
-    33, StrDupUniqFnLangItem,            "strdup_uniq",             strdup_uniq_fn;
-    34, RecordBorrowFnLangItem,          "record_borrow",           record_borrow_fn;
-    35, UnrecordBorrowFnLangItem,        "unrecord_borrow",         unrecord_borrow_fn;
+    29, StrDupUniqFnLangItem,            "strdup_uniq",             strdup_uniq_fn;
 
-    36, StartFnLangItem,                 "start",                   start_fn;
+    30, StartFnLangItem,                 "start",                   start_fn;
 
-    37, TyDescStructLangItem,            "ty_desc",                 ty_desc;
-    38, TyVisitorTraitLangItem,          "ty_visitor",              ty_visitor;
-    39, OpaqueStructLangItem,            "opaque",                  opaque;
+    31, TyDescStructLangItem,            "ty_desc",                 ty_desc;
+    32, TyVisitorTraitLangItem,          "ty_visitor",              ty_visitor;
+    33, OpaqueStructLangItem,            "opaque",                  opaque;
 
-    40, EventLoopFactoryLangItem,        "event_loop_factory",      event_loop_factory;
+    34, EventLoopFactoryLangItem,        "event_loop_factory",      event_loop_factory;
 
-    41, TypeIdLangItem,                  "type_id",                 type_id;
+    35, TypeIdLangItem,                  "type_id",                 type_id;
 
-    42, EhPersonalityLangItem,           "eh_personality",          eh_personality_fn;
+    36, EhPersonalityLangItem,           "eh_personality",          eh_personality_fn;
 }
 

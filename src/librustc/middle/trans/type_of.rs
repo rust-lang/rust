@@ -236,8 +236,8 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
           let v_ty = Type::vec(cx.sess.targ_cfg.arch, &e_ty);
           Type::smart_ptr(cx, &v_ty).ptr_to()
       }
-      ty::ty_box(ref mt) => {
-          let ty = type_of(cx, mt.ty);
+      ty::ty_box(typ) => {
+          let ty = type_of(cx, typ);
           Type::smart_ptr(cx, &ty).ptr_to()
       }
       ty::ty_opaque_box => Type::opaque_box(cx).ptr_to(),

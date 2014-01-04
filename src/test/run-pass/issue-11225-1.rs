@@ -13,6 +13,6 @@
 
 extern mod foo = "issue-11225-1";
 
-fn main() {
+pub fn main() {
     foo::foo(1);
 }

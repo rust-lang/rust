@@ -11,10 +11,9 @@
 /// Implement ncurses-compatible database discovery
 /// Does not support hashed database, only filesystem!
 
-use std::{os, str};
-use std::os::getenv;
-use std::io;
 use std::io::File;
+use std::os::getenv;
+use std::{os, str};
 
 /// Return path to database entry for `term`
 pub fn get_dbpath_for_term(term: &str) -> Option<~Path> {
@@ -74,9 +73,14 @@ pub fn get_dbpath_for_term(term: &str) -> Option<~Path> {
 }
 
 /// Return open file for `term`
-pub fn open(term: &str) -> Result<@mut io::Reader, ~str> {
+pub fn open(term: &str) -> Result<File, ~str> {
     match get_dbpath_for_term(term) {
-        Some(x) => Ok(@mut File::open(x) as @mut io::Reader),
+        Some(x) => {
+            match File::open(x) {
+                Some(file) => Ok(file),
+                None => Err(~"error opening file"),
+            }
+        }
         None => Err(format!("could not find terminfo entry for {}", term))
     }
 }

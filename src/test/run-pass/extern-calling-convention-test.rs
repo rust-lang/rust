@@ -15,6 +15,6 @@ extern mod extern_calling_convention;
 
 use extern_calling_convention::foo;
 
-fn main() {
+pub fn main() {
     foo(1, 2, 3, 4);
 }

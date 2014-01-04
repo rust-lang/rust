@@ -594,7 +594,7 @@ pub enum Type {
     /// aka ty_bot
     Bottom,
     Unique(~Type),
-    Managed(Mutability, ~Type),
+    Managed(~Type),
     RawPointer(Mutability, ~Type),
     BorrowedRef { lifetime: Option<Lifetime>, mutability: Mutability, type_: ~Type},
     // region, raw, other boxes, mutable
@@ -620,7 +620,7 @@ impl Clean<Type> for ast::Ty {
             ty_rptr(ref l, ref m) =>
                 BorrowedRef {lifetime: l.clean(), mutability: m.mutbl.clean(),
                              type_: ~m.ty.clean()},
-            ty_box(ref m) => Managed(m.mutbl.clean(), ~m.ty.clean()),
+            ty_box(ty) => Managed(~ty.clean()),
             ty_uniq(ty) => Unique(~ty.clean()),
             ty_vec(ty) => Vector(~ty.clean()),
             ty_fixed_length_vec(ty, ref e) => FixedVector(~ty.clean(),

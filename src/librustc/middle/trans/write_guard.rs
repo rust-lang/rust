@@ -15,26 +15,15 @@
 //! `RUST_LOG=rustc::middle::trans::write_guard`).
 
 
-use lib::llvm::ValueRef;
-use middle::borrowck::{RootInfo, root_map_key, DynaImm, DynaMut};
-use middle::lang_items::CheckNotBorrowedFnLangItem;
-use middle::lang_items::{BorrowAsImmFnLangItem, BorrowAsMutFnLangItem};
-use middle::lang_items::{RecordBorrowFnLangItem, UnrecordBorrowFnLangItem};
-use middle::lang_items::ReturnToMutFnLangItem;
+use middle::borrowck::{RootInfo, root_map_key};
 use middle::trans::base::*;
-use middle::trans::build::*;
-use middle::trans::callee;
 use middle::trans::common::*;
 use middle::trans::datum::*;
-use middle::trans::expr;
-use middle::ty;
 use syntax::codemap::Span;
 use syntax::ast;
 
-use middle::trans::type_::Type;
-
 pub fn root_and_write_guard(datum: &Datum,
-                            mut bcx: @Block,
+                            bcx: @Block,
                             span: Span,
                             expr_id: ast::NodeId,
                             derefs: uint) -> @Block {
@@ -45,69 +34,16 @@ pub fn root_and_write_guard(datum: &Datum,
     //
     // (Note: root'd values are always boxes)
     let ccx = bcx.ccx();
-    bcx = {
-        let root_map = ccx.maps.root_map.borrow();
-        match root_map.get().find(&key) {
-            None => bcx,
-            Some(&root_info) => root(datum, bcx, span, key, root_info)
-        }
-    };
-
-    // Perform the write guard, if necessary.
-    //
-    // (Note: write-guarded values are always boxes)
-    let write_guard_map = ccx.maps.write_guard_map.borrow();
-    if write_guard_map.get().contains(&key) {
-        perform_write_guard(datum, bcx, span)
-    } else {
-        bcx
+    let root_map = ccx.maps.root_map.borrow();
+    match root_map.get().find(&key) {
+        None => bcx,
+        Some(&root_info) => root(datum, bcx, span, key, root_info)
     }
-}
-
-pub fn return_to_mut(mut bcx: @Block,
-                     root_key: root_map_key,
-                     frozen_val_ref: ValueRef,
-                     bits_val_ref: ValueRef,
-                     filename_val: ValueRef,
-                     line_val: ValueRef) -> @Block {
-    debug!("write_guard::return_to_mut(root_key={:?}, {}, {}, {})",
-           root_key,
-           bcx.to_str(),
-           bcx.val_to_str(frozen_val_ref),
-           bcx.val_to_str(bits_val_ref));
-
-    let box_ptr = Load(bcx, PointerCast(bcx, frozen_val_ref, Type::i8p().ptr_to()));
-
-    let bits_val = Load(bcx, bits_val_ref);
-
-    if bcx.tcx().sess.debug_borrows() {
-        bcx = callee::trans_lang_call( bcx,
-            langcall(bcx, None, "unborrow", UnrecordBorrowFnLangItem),
-            [
-                box_ptr,
-                bits_val,
-                filename_val,
-                line_val
-            ],
-            Some(expr::Ignore)).bcx;
-    }
-
-    callee::trans_lang_call(
-        bcx,
-        langcall(bcx, None, "unborrow", ReturnToMutFnLangItem),
-        [
-            box_ptr,
-            bits_val,
-            filename_val,
-            line_val
-        ],
-        Some(expr::Ignore)
-    ).bcx
 }
 
 fn root(datum: &Datum,
-        mut bcx: @Block,
-        span: Span,
+        bcx: @Block,
+        _: Span,
         root_key: root_map_key,
         root_info: RootInfo) -> @Block {
     //! In some cases, borrowck will decide that an @T/@[]/@str
@@ -129,73 +65,6 @@ fn root(datum: &Datum,
                                 scratch.val,
                                 scratch.ty);
 
-    // Now, consider also freezing it.
-    match root_info.freeze {
-        None => {}
-        Some(freeze_kind) => {
-            let (filename, line) = filename_and_line_num_from_span(bcx, span);
-
-            // in this case, we don't have to zero, because
-            // scratch.val will be NULL should the cleanup get
-            // called without the freezing actually occurring, and
-            // return_to_mut checks for this condition.
-            let scratch_bits = scratch_datum(bcx, ty::mk_uint(),
-                                             "__write_guard_bits", false);
-
-            let freeze_item = match freeze_kind {
-                DynaImm => BorrowAsImmFnLangItem,
-                DynaMut => BorrowAsMutFnLangItem,
-            };
-
-            let box_ptr = Load(bcx, PointerCast(bcx, scratch.val, Type::i8p().ptr_to()));
-
-            let llresult = unpack_result!(bcx, callee::trans_lang_call(
-                bcx,
-                langcall(bcx, Some(span), "freeze", freeze_item),
-                [
-                    box_ptr,
-                    filename,
-                    line
-                ],
-                Some(expr::SaveIn(scratch_bits.val))));
-
-            if bcx.tcx().sess.debug_borrows() {
-                bcx = callee::trans_lang_call(
-                    bcx,
-                    langcall(bcx, Some(span), "freeze", RecordBorrowFnLangItem),
-                    [
-                        box_ptr,
-                        llresult,
-                        filename,
-                        line
-                    ],
-                    Some(expr::Ignore)).bcx;
-            }
-
-            add_clean_return_to_mut(cleanup_bcx,
-                                    root_info.scope,
-                                    root_key,
-                                    scratch.val,
-                                    scratch_bits.val,
-                                    filename,
-                                    line);
-        }
-    }
-
     bcx
 }
 
-fn perform_write_guard(datum: &Datum,
-                       bcx: @Block,
-                       span: Span) -> @Block {
-    debug!("perform_write_guard");
-
-    let llval = datum.to_value_llval(bcx);
-    let (filename, line) = filename_and_line_num_from_span(bcx, span);
-
-    callee::trans_lang_call(
-        bcx,
-        langcall(bcx, Some(span), "write guard", CheckNotBorrowedFnLangItem),
-        [PointerCast(bcx, llval, Type::i8p()), filename, line],
-        Some(expr::Ignore)).bcx
-}

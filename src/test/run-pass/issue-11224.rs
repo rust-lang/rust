@@ -13,4 +13,4 @@
 
 extern mod unused = "issue-11224";
 
-fn main() {}
+pub fn main() {}

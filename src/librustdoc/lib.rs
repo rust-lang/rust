@@ -267,11 +267,11 @@ fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
 /// This input format purely deserializes the json output file. No passes are
 /// run over the deserialized output.
 fn json_input(input: &str) -> Result<Output, ~str> {
-    let input = match File::open(&Path::new(input)) {
+    let mut input = match File::open(&Path::new(input)) {
         Some(f) => f,
         None => return Err(format!("couldn't open {} for reading", input)),
     };
-    match json::from_reader(@mut input as @mut io::Reader) {
+    match json::from_reader(&mut input) {
         Err(s) => Err(s.to_str()),
         Ok(json::Object(obj)) => {
             let mut obj = obj;
@@ -332,6 +332,6 @@ fn json_output(crate: clean::Crate, res: ~[plugins::PluginJson], dst: Path) {
     json.insert(~"crate", crate_json);
     json.insert(~"plugins", json::Object(plugins_json));
 
-    let file = @mut File::create(&dst).unwrap();
-    json::Object(json).to_writer(file as @mut io::Writer);
+    let mut file = File::create(&dst).unwrap();
+    json::Object(json).to_writer(&mut file);
 }

@@ -246,11 +246,14 @@ pub fn trans_static_method_callee(bcx: @Block,
         generics.type_param_defs.len();
 
     let mname = if method_id.crate == ast::LOCAL_CRATE {
-        match bcx.tcx().items.get_copy(&method_id.node) {
-            ast_map::node_trait_method(trait_method, _, _) => {
-                ast_util::trait_method_to_ty_method(trait_method).ident
+        {
+            let items = bcx.tcx().items.borrow();
+            match items.get().get_copy(&method_id.node) {
+                ast_map::node_trait_method(trait_method, _, _) => {
+                    ast_util::trait_method_to_ty_method(trait_method).ident
+                }
+                _ => fail!("callee is not a trait method")
             }
-            _ => fail!("callee is not a trait method")
         }
     } else {
         let path = csearch::get_item_path(bcx.tcx(), method_id);

@@ -10,14 +10,16 @@
 
 #[feature(managed_boxes)];
 
+use std::cell::RefCell;
+
 enum taggy {
-    cons(@mut taggy),
+    cons(@RefCell<taggy>),
     nil,
 }
 
 fn f() {
-    let a_box = @mut nil;
-    *a_box = cons(a_box);
+    let a_box = @RefCell::new(nil);
+    a_box.set(cons(a_box));
 }
 
 pub fn main() {

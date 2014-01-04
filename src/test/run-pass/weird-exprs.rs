@@ -10,6 +10,7 @@
 
 #[feature(managed_boxes)];
 
+use std::cell::Cell;
 use std::util;
 
 // Just a grab bag of stuff that you wouldn't want to actually write.
@@ -22,11 +23,13 @@ fn funny() {
 }
 
 fn what() {
-    fn the(x: @mut bool) { return while !*x { *x = true; }; }
-    let i = @mut false;
+    fn the(x: @Cell<bool>) {
+        return while !x.get() { x.set(true); };
+    }
+    let i = @Cell::new(false);
     let dont = {||the(i)};
     dont();
-    assert!((*i));
+    assert!((i.get()));
 }
 
 fn zombiejesus() {

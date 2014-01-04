@@ -49,7 +49,7 @@ struct S7_Option {
     a: f32,
     b: u8,
     c: u16,
-    d: Option<@mut f64>
+    d: Option<@f64>
 }
 
 // Placing packed structs in statics should work
@@ -63,5 +63,5 @@ pub fn main() {
     assert_eq!(mem::size_of::<S5>(), 5);
     assert_eq!(mem::size_of::<S13_str>(), 13 + mem::size_of::<~str>());
     assert_eq!(mem::size_of::<S3_Foo>(), 3 + mem::size_of::<Foo>());
-    assert_eq!(mem::size_of::<S7_Option>(), 7 + mem::size_of::<Option<@mut f64>>());
+    assert_eq!(mem::size_of::<S7_Option>(), 7 + mem::size_of::<Option<@f64>>());
 }

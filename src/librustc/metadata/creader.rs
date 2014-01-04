@@ -86,7 +86,7 @@ fn dump_crates(crate_cache: &[cache_entry]) {
 }
 
 fn warn_if_multiple_versions(e: &mut Env,
-                             diag: @mut SpanHandler,
+                             diag: @SpanHandler,
                              crate_cache: &[cache_entry]) {
     if crate_cache.len() != 0u {
         let name = crate_cache[crate_cache.len() - 1].crateid.name.clone();

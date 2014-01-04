@@ -444,16 +444,20 @@ mod test {
 
     #[test]
     fn heap_cycles() {
+        use cell::RefCell;
         use option::{Option, Some, None};
 
         struct List {
-            next: Option<@mut List>,
+            next: Option<@RefCell<List>>,
         }
 
-        let a = @mut List { next: None };
-        let b = @mut List { next: Some(a) };
+        let a = @RefCell::new(List { next: None });
+        let b = @RefCell::new(List { next: Some(a) });
 
-        a.next = Some(b);
+        {
+            let mut a = a.borrow_mut();
+            a.get().next = Some(b);
+        }
     }
 
     #[test]

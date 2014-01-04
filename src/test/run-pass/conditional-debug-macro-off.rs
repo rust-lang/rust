@@ -12,7 +12,7 @@
 // compile-flags: --cfg ndebug
 // exec-env:RUST_LOG=conditional-debug-macro-off=4
 
-fn main() {
+pub fn main() {
     // only fails if debug! evaluates its argument.
     debug!("{:?}", { if true { fail!() } });
 }

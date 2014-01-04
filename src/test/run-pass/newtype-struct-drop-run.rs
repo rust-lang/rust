@@ -12,19 +12,21 @@
 
 // Make sure the destructor is run for newtype structs.
 
-struct Foo(@mut int);
+use std::cell::Cell;
+
+struct Foo(@Cell<int>);
 
 #[unsafe_destructor]
 impl Drop for Foo {
     fn drop(&mut self) {
-        ***self = 23;
+        self.set(23);
     }
 }
 
 pub fn main() {
-    let y = @mut 32;
+    let y = @Cell::new(32);
     {
         let _x = Foo(y);
     }
-    assert_eq!(*y, 23);
+    assert_eq!(y.get(), 23);
 }

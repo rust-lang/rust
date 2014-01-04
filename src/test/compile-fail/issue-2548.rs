@@ -12,10 +12,10 @@
 
 // A test case for #2548.
 
+use std::cell::Cell;
+
 struct foo {
-    x: @mut int,
-
-
+    x: @Cell<int>,
 }
 
 #[unsafe_destructor]
@@ -23,17 +23,17 @@ impl Drop for foo {
     fn drop(&mut self) {
         unsafe {
             println("Goodbye, World!");
-            *self.x += 1;
+            self.x.set(self.x.get() + 1);
         }
     }
 }
 
-fn foo(x: @mut int) -> foo {
+fn foo(x: @Cell<int>) -> foo {
     foo { x: x }
 }
 
 fn main() {
-    let x = @mut 0;
+    let x = @Cell::new(0);
 
     {
         let mut res = foo(x);
@@ -43,5 +43,5 @@ fn main() {
         assert_eq!(v.len(), 2);
     }
 
-    assert_eq!(*x, 1);
+    assert_eq!(x.get(), 1);
 }

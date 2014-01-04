@@ -14,7 +14,7 @@ extern mod aux = "static-function-pointer-aux";
 
 fn f(x: int) -> int { x }
 
-fn main() {
+pub fn main() {
     assert_eq!(aux::F(42), -42);
     unsafe {
         assert_eq!(aux::MutF(42), -42);

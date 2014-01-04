@@ -10,7 +10,7 @@
 
 // xfail-test
 
-fn main() {
+pub fn main() {
 // This is ok
     match &[(~5,~7)] {
         ps => {

@@ -72,7 +72,8 @@ pub fn explain_region_and_span(cx: ctxt, region: ty::Region)
                             -> (~str, Option<Span>) {
     return match region {
       ReScope(node_id) => {
-        match cx.items.find(&node_id) {
+        let items = cx.items.borrow();
+        match items.get().find(&node_id) {
           Some(&ast_map::node_block(ref blk)) => {
             explain_span(cx, "block", blk.span)
           }
@@ -113,7 +114,8 @@ pub fn explain_region_and_span(cx: ctxt, region: ty::Region)
                     bound_region_ptr_to_str(cx, fr.bound_region))
         };
 
-        match cx.items.find(&fr.scope_id) {
+        let items = cx.items.borrow();
+        match items.get().find(&fr.scope_id) {
           Some(&ast_map::node_block(ref blk)) => {
             let (msg, opt_span) = explain_span(cx, "block", blk.span);
             (format!("{} {}", prefix, msg), opt_span)
@@ -172,7 +174,8 @@ pub fn bound_region_to_str(cx: ctxt,
 }
 
 pub fn ReScope_id_to_str(cx: ctxt, node_id: ast::NodeId) -> ~str {
-    match cx.items.find(&node_id) {
+    let items = cx.items.borrow();
+    match items.get().find(&node_id) {
       Some(&ast_map::node_block(ref blk)) => {
         format!("<block at {}>",
              cx.sess.codemap.span_to_str(blk.span))
@@ -451,7 +454,7 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       ty_uint(ast::ty_u) => ~"uint",
       ty_uint(t) => ast_util::uint_ty_to_str(t),
       ty_float(t) => ast_util::float_ty_to_str(t),
-      ty_box(ref tm) => ~"@" + mt_to_str(cx, tm),
+      ty_box(typ) => ~"@" + ty_to_str(cx, typ),
       ty_uniq(ref tm) => ~"~" + mt_to_str(cx, tm),
       ty_ptr(ref tm) => ~"*" + mt_to_str(cx, tm),
       ty_rptr(r, ref tm) => {
@@ -740,16 +743,21 @@ impl Repr for ast::DefId {
         // a path for a def-id, so I'll just make a best effort for now
         // and otherwise fallback to just printing the crate/node pair
         if self.crate == ast::LOCAL_CRATE {
-            match tcx.items.find(&self.node) {
-                Some(&ast_map::node_item(..)) |
-                Some(&ast_map::node_foreign_item(..)) |
-                Some(&ast_map::node_method(..)) |
-                Some(&ast_map::node_trait_method(..)) |
-                Some(&ast_map::node_variant(..)) |
-                Some(&ast_map::node_struct_ctor(..)) => {
-                    return format!("{:?}:{}", *self, ty::item_path_str(tcx, *self));
+            {
+                let items = tcx.items.borrow();
+                match items.get().find(&self.node) {
+                    Some(&ast_map::node_item(..)) |
+                    Some(&ast_map::node_foreign_item(..)) |
+                    Some(&ast_map::node_method(..)) |
+                    Some(&ast_map::node_trait_method(..)) |
+                    Some(&ast_map::node_variant(..)) |
+                    Some(&ast_map::node_struct_ctor(..)) => {
+                        return format!("{:?}:{}",
+                                       *self,
+                                       ty::item_path_str(tcx, *self));
+                    }
+                    _ => {}
                 }
-                _ => {}
             }
         }
         return format!("{:?}", *self);

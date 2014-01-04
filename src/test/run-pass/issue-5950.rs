@@ -14,4 +14,4 @@ pub use local_alias = local;
 
 mod local { }
 
-fn main() {}
+pub fn main() {}

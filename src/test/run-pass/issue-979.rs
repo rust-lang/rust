@@ -10,28 +10,30 @@
 
 #[feature(managed_boxes)];
 
+use std::cell::Cell;
+
 struct r {
-  b: @mut int,
+    b: @Cell<int>,
 }
 
 #[unsafe_destructor]
 impl Drop for r {
     fn drop(&mut self) {
-        *(self.b) += 1;
+        self.b.set(self.b.get() + 1);
     }
 }
 
-fn r(b: @mut int) -> r {
+fn r(b: @Cell<int>) -> r {
     r {
         b: b
     }
 }
 
 pub fn main() {
-    let b = @mut 0;
+    let b = @Cell::new(0);
     {
         let _p = Some(r(b));
     }
 
-    assert_eq!(*b, 1);
+    assert_eq!(b.get(), 1);
 }

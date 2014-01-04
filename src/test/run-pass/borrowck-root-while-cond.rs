@@ -15,6 +15,6 @@ fn borrow<'r,T>(x: &'r T) -> &'r T {x}
 struct Rec { f: @int }
 
 pub fn main() {
-    let rec = @mut Rec {f: @22};
+    let rec = @Rec {f: @22};
     while *borrow(rec.f) == 23 {}
 }

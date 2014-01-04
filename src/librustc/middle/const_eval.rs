@@ -20,7 +20,7 @@ use syntax::visit::Visitor;
 use syntax::ast::*;
 
 use std::cell::RefCell;
-use std::hashmap::{HashMap, HashSet};
+use std::hashmap::HashMap;
 
 //
 // This pass classifies expressions by their constant-ness.
@@ -107,15 +107,18 @@ pub fn lookup_variant_by_id(tcx: ty::ctxt,
     }
 
     if ast_util::is_local(enum_def) {
-        match tcx.items.find(&enum_def.node) {
-            None => None,
-            Some(&ast_map::node_item(it, _)) => match it.node {
-                item_enum(ast::enum_def { variants: ref variants }, _) => {
-                    variant_expr(*variants, variant_def.node)
-                }
-                _ => None
-            },
-            Some(_) => None
+        {
+            let items = tcx.items.borrow();
+            match items.get().find(&enum_def.node) {
+                None => None,
+                Some(&ast_map::node_item(it, _)) => match it.node {
+                    item_enum(ast::enum_def { variants: ref variants }, _) => {
+                        variant_expr(*variants, variant_def.node)
+                    }
+                    _ => None
+                },
+                Some(_) => None
+            }
         }
     } else {
         {
@@ -129,7 +132,6 @@ pub fn lookup_variant_by_id(tcx: ty::ctxt,
             root_map: @RefCell::new(HashMap::new()),
             method_map: @RefCell::new(HashMap::new()),
             vtable_map: @RefCell::new(HashMap::new()),
-            write_guard_map: @RefCell::new(HashSet::new()),
             capture_map: @RefCell::new(HashMap::new())
         };
         let e = match csearch::maybe_get_item_ast(tcx, enum_def,
@@ -155,17 +157,21 @@ pub fn lookup_variant_by_id(tcx: ty::ctxt,
     }
 }
 
-pub fn lookup_const_by_id(tcx: ty::ctxt,
-                          def_id: ast::DefId)
-                       -> Option<@Expr> {
+pub fn lookup_const_by_id(tcx: ty::ctxt, def_id: ast::DefId)
+                          -> Option<@Expr> {
     if ast_util::is_local(def_id) {
-        match tcx.items.find(&def_id.node) {
-            None => None,
-            Some(&ast_map::node_item(it, _)) => match it.node {
-                item_static(_, ast::MutImmutable, const_expr) => Some(const_expr),
-                _ => None
-            },
-            Some(_) => None
+        {
+            let items = tcx.items.borrow();
+            match items.get().find(&def_id.node) {
+                None => None,
+                Some(&ast_map::node_item(it, _)) => match it.node {
+                    item_static(_, ast::MutImmutable, const_expr) => {
+                        Some(const_expr)
+                    }
+                    _ => None
+                },
+                Some(_) => None
+            }
         }
     } else {
         {
@@ -179,7 +185,6 @@ pub fn lookup_const_by_id(tcx: ty::ctxt,
             root_map: @RefCell::new(HashMap::new()),
             method_map: @RefCell::new(HashMap::new()),
             vtable_map: @RefCell::new(HashMap::new()),
-            write_guard_map: @RefCell::new(HashSet::new()),
             capture_map: @RefCell::new(HashMap::new())
         };
         let e = match csearch::maybe_get_item_ast(tcx, def_id,
@@ -234,7 +239,6 @@ impl ConstEvalVisitor {
                     ast::ExprVstoreSlice => self.classify(e),
                     ast::ExprVstoreUniq |
                     ast::ExprVstoreBox |
-                    ast::ExprVstoreMutBox |
                     ast::ExprVstoreMutSlice => non_const
                 }
             }

@@ -189,8 +189,11 @@ impl Reflector {
                   self.visit(~"evec_" + name, extra)
               }
           }
-          ty::ty_box(ref mt) => {
-              let extra = self.c_mt(mt);
+          ty::ty_box(typ) => {
+              let extra = self.c_mt(&ty::mt {
+                  ty: typ,
+                  mutbl: ast::MutImmutable,
+              });
               self.visit("box", extra)
           }
           ty::ty_uniq(ref mt) => {

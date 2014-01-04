@@ -15,7 +15,7 @@ extern mod lib = "issue-9968";
 
 use lib::{Trait, Struct};
 
-fn main()
+pub fn main()
 {
     Struct::init().test();
 }

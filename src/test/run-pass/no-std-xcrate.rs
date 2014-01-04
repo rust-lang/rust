@@ -16,6 +16,6 @@
 
 extern mod no_std_crate;
 
-fn main() {
+pub fn main() {
     no_std_crate::foo();
 }

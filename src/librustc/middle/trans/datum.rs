@@ -552,7 +552,7 @@ impl Datum {
          * by-ref datum of type T, pointing at the contents. */
 
         let (content_ty, header) = match ty::get(self.ty).sty {
-            ty::ty_box(mt) => (mt.ty, true),
+            ty::ty_box(typ) => (typ, true),
             ty::ty_uniq(mt) => (mt.ty, false),
             ty::ty_evec(_, ty::vstore_uniq) | ty::ty_estr(ty::vstore_uniq) => {
                 let unit_ty = ty::sequence_element_type(bcx.tcx(), self.ty);

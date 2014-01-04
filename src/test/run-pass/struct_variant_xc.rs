@@ -14,6 +14,6 @@ extern mod struct_variant_xc_aux;
 
 use struct_variant_xc_aux::Variant;
 
-fn main() {
+pub fn main() {
     let _ = Variant { arg: 1 };
 }

@@ -12,23 +12,25 @@
 
 #[feature(managed_boxes)];
 
+use std::cell::RefCell;
 use std::ptr;
 
 struct F { f: ~int }
 
 pub fn main() {
-    let x = @mut @F {f: ~3};
-    match x {
-      @@F{f: ref b_x} => {
+    let x = @RefCell::new(@F {f: ~3});
+    let mut xb = x.borrow_mut();
+    match *xb.get() {
+      @F{f: ref b_x} => {
         assert_eq!(**b_x, 3);
-        assert_eq!(ptr::to_unsafe_ptr(&(x.f)), ptr::to_unsafe_ptr(b_x));
+        assert_eq!(ptr::to_unsafe_ptr(&(xb.get().f)), ptr::to_unsafe_ptr(b_x));
 
-        *x = @F {f: ~4};
+        *xb.get() = @F {f: ~4};
 
         info!("ptr::to_unsafe_ptr(*b_x) = {:x}",
                ptr::to_unsafe_ptr(&(**b_x)) as uint);
         assert_eq!(**b_x, 3);
-        assert!(ptr::to_unsafe_ptr(&(*x.f)) != ptr::to_unsafe_ptr(&(**b_x)));
+        assert!(ptr::to_unsafe_ptr(&(*xb.get().f)) != ptr::to_unsafe_ptr(&(**b_x)));
       }
     }
 }
