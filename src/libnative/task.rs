@@ -32,12 +32,17 @@ use bookeeping;
 /// Creates a new Task which is ready to execute as a 1:1 task.
 pub fn new() -> ~Task {
     let mut task = ~Task::new();
-    task.put_runtime(~Ops {
+    task.put_runtime(ops() as ~rt::Runtime);
+    return task;
+}
+
+fn ops() -> ~Ops {
+    ~Ops {
         lock: unsafe { Mutex::new() },
         awoken: false,
         io: io::IoFactory::new(),
-    } as ~rt::Runtime);
-    return task;
+        stack_bounds: None,
+    }
 }
 
 /// Spawns a function with the default configuration
@@ -53,7 +58,7 @@ pub fn spawn_opts(opts: TaskOpts, f: proc()) {
         notify_chan, name, stack_size
     } = opts;
 
-    let mut task = new();
+    let mut task = ~Task::new();
     task.name = name;
     match notify_chan {
         Some(chan) => {
@@ -65,6 +70,7 @@ pub fn spawn_opts(opts: TaskOpts, f: proc()) {
 
     let stack = stack_size.unwrap_or(env::min_stack());
     let task = task;
+    let ops = ops();
 
     // Spawning a new OS thread guarantees that __morestack will never get
     // triggered, but we must manually set up the actual stack bounds once this
@@ -75,13 +81,17 @@ pub fn spawn_opts(opts: TaskOpts, f: proc()) {
     Thread::spawn_stack(stack, proc() {
         let something_around_the_top_of_the_stack = 1;
         let addr = &something_around_the_top_of_the_stack as *int;
+        let my_stack = addr as uint;
         unsafe {
-            let my_stack = addr as uint;
             stack::record_stack_bounds(my_stack - stack + 1024, my_stack);
         }
+        let mut ops = ops;
+        ops.stack_bounds = Some((my_stack - stack + 1024, my_stack));
 
         bookeeping::increment();
         let mut f = Some(f);
+        let mut task = task;
+        task.put_runtime(ops as ~rt::Runtime);
         task.run(|| { f.take_unwrap()() });
         bookeeping::decrement();
     })
@@ -93,6 +103,11 @@ struct Ops {
     lock: Mutex,       // native synchronization
     awoken: bool,      // used to prevent spurious wakeups
     io: io::IoFactory, // local I/O factory
+
+    // This field holds the known bounds of the stack in (lo, hi) form. Not all
+    // native tasks necessarily know their precise bounds, hence this is
+    // optional.
+    stack_bounds: Option<(uint, uint)>,
 }
 
 impl rt::Runtime for Ops {
@@ -113,6 +128,8 @@ impl rt::Runtime for Ops {
     fn wrap(~self) -> ~Any {
         self as ~Any
     }
+
+    fn stack_bounds(&self) -> Option<(uint, uint)> { self.stack_bounds }
 
     // This function gets a little interesting. There are a few safety and
     // ownership violations going on here, but this is all done in the name of
