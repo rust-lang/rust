@@ -16,11 +16,12 @@
 extern mod req;
 
 use req::request;
+use std::cell::RefCell;
 use std::hashmap::HashMap;
 
 pub fn main() {
   let v = ~[@~"hi"];
   let mut m: req::header_map = HashMap::new();
-  m.insert(~"METHOD", @mut v);
+  m.insert(~"METHOD", @RefCell::new(v));
   request::<int>(&m);
 }

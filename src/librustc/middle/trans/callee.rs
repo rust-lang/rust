@@ -360,17 +360,20 @@ pub fn trans_fn_ref_with_vtables(
     if type_params.len() > 0 || is_default {
         must_monomorphise = true;
     } else if def_id.crate == ast::LOCAL_CRATE {
-        let map_node = session::expect(
-            ccx.sess,
-            ccx.tcx.items.find(&def_id.node),
-            || format!("local item should be in ast map"));
+        {
+            let items = ccx.tcx.items.borrow();
+            let map_node = session::expect(
+                ccx.sess,
+                items.get().find(&def_id.node),
+                || format!("local item should be in ast map"));
 
-        match *map_node {
-            ast_map::node_foreign_item(_, abis, _, _) => {
-                must_monomorphise = abis.is_intrinsic()
-            }
-            _ => {
-                must_monomorphise = false;
+            match *map_node {
+                ast_map::node_foreign_item(_, abis, _, _) => {
+                    must_monomorphise = abis.is_intrinsic()
+                }
+                _ => {
+                    must_monomorphise = false;
+                }
             }
         }
     } else {

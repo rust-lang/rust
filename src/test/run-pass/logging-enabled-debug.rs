@@ -14,7 +14,7 @@
 
 use std::logging;
 
-fn main() {
+pub fn main() {
     if log_enabled!(logging::DEBUG) {
         fail!("what?! debugging?");
     }

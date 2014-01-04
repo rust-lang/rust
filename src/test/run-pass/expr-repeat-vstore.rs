@@ -13,10 +13,4 @@ pub fn main() {
     println(v[2].to_str());
     println(v[3].to_str());
     println(v[4].to_str());
-    let v: @mut [int] = @mut [ 3, ..5 ];
-    println((v[0]).to_str());
-    println((v[1]).to_str());
-    println((v[2]).to_str());
-    println((v[3]).to_str());
-    println((v[4]).to_str());
 }

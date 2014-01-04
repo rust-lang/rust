@@ -17,7 +17,7 @@ extern {
 }
 
 #[cfg(target_os = "macos")]
-fn main() {
+pub fn main() {
     unsafe { CFRunLoopGetTypeID(); }
 }
 

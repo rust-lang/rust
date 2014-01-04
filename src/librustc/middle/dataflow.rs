@@ -118,7 +118,7 @@ impl<O:DataFlowOperator> pprust::pp_ann for DataFlowContext<O> {
             let comment_str = format!("id {}: {}{}{}",
                                       id, entry_str, gens_str, kills_str);
             pprust::synth_comment(ps, comment_str);
-            pp::space(ps.s);
+            pp::space(&mut ps.s);
         }
     }
 }
@@ -347,19 +347,19 @@ impl<O:DataFlowOperator+Clone+'static> DataFlowContext<O> {
         debug!("Dataflow result:");
         debug!("{}", {
             let this = @(*self).clone();
-            this.pretty_print_to(@mut io::stderr() as @mut io::Writer, blk);
+            this.pretty_print_to(~io::stderr() as ~io::Writer, blk);
             ""
         });
     }
 
-    fn pretty_print_to(@self, wr: @mut io::Writer, blk: &ast::Block) {
-        let ps = pprust::rust_printer_annotated(wr,
-                                                self.tcx.sess.intr(),
-                                                self as @pprust::pp_ann);
-        pprust::cbox(ps, pprust::indent_unit);
-        pprust::ibox(ps, 0u);
-        pprust::print_block(ps, blk);
-        pp::eof(ps.s);
+    fn pretty_print_to(@self, wr: ~io::Writer, blk: &ast::Block) {
+        let mut ps = pprust::rust_printer_annotated(wr,
+                                                    self.tcx.sess.intr(),
+                                                    self as @pprust::pp_ann);
+        pprust::cbox(&mut ps, pprust::indent_unit);
+        pprust::ibox(&mut ps, 0u);
+        pprust::print_block(&mut ps, blk);
+        pp::eof(&mut ps.s);
     }
 }
 

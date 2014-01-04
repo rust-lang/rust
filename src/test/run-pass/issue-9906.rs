@@ -13,7 +13,7 @@
 
 extern mod testmod = "issue-9906";
 
-fn main() {
+pub fn main() {
     testmod::foo();
     testmod::FooBar::new(1);
 }

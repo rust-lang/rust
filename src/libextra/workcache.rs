@@ -173,8 +173,8 @@ impl Database {
 
     // FIXME #4330: This should have &mut self and should set self.db_dirty to false.
     fn save(&self) {
-        let f = @mut File::create(&self.db_filename);
-        self.db_cache.to_json().to_pretty_writer(f as @mut io::Writer);
+        let mut f = File::create(&self.db_filename);
+        self.db_cache.to_json().to_pretty_writer(&mut f);
     }
 
     fn load(&mut self) {
@@ -184,14 +184,16 @@ impl Database {
             Err(e) => fail!("Couldn't load workcache database {}: {}",
                             self.db_filename.display(),
                             e.desc),
-            Ok(r) =>
-                match json::from_reader(@mut r.unwrap() as @mut io::Reader) {
+            Ok(r) => {
+                let mut stream = r.unwrap();
+                match json::from_reader(&mut stream) {
                     Err(e) => fail!("Couldn't parse workcache database (from file {}): {}",
                                     self.db_filename.display(), e.to_str()),
                     Ok(r) => {
                         let mut decoder = json::Decoder::new(r);
                         self.db_cache = Decodable::decode(&mut decoder);
                     }
+                }
             }
         }
     }

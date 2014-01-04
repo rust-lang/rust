@@ -54,7 +54,7 @@ pub trait AstBuilder {
                lifetime: Option<ast::Lifetime>,
                mutbl: ast::Mutability) -> P<ast::Ty>;
     fn ty_uniq(&self, span: Span, ty: P<ast::Ty>) -> P<ast::Ty>;
-    fn ty_box(&self, span: Span, ty: P<ast::Ty>, mutbl: ast::Mutability) -> P<ast::Ty>;
+    fn ty_box(&self, span: Span, ty: P<ast::Ty>) -> P<ast::Ty>;
 
     fn ty_option(&self, ty: P<ast::Ty>) -> P<ast::Ty>;
     fn ty_infer(&self, sp: Span) -> P<ast::Ty>;
@@ -311,12 +311,13 @@ impl AstBuilder for ExtCtxt {
         self.ty(span,
                 ast::ty_rptr(lifetime, self.ty_mt(ty, mutbl)))
     }
+
     fn ty_uniq(&self, span: Span, ty: P<ast::Ty>) -> P<ast::Ty> {
         self.ty(span, ast::ty_uniq(ty))
     }
-    fn ty_box(&self, span: Span,
-                 ty: P<ast::Ty>, mutbl: ast::Mutability) -> P<ast::Ty> {
-        self.ty(span, ast::ty_box(self.ty_mt(ty, mutbl)))
+
+    fn ty_box(&self, span: Span, ty: P<ast::Ty>) -> P<ast::Ty> {
+        self.ty(span, ast::ty_box(ty))
     }
 
     fn ty_option(&self, ty: P<ast::Ty>) -> P<ast::Ty> {
@@ -494,7 +495,7 @@ impl AstBuilder for ExtCtxt {
     }
 
     fn expr_managed(&self, sp: Span, e: @ast::Expr) -> @ast::Expr {
-        self.expr_unary(sp, ast::UnBox(ast::MutImmutable), e)
+        self.expr_unary(sp, ast::UnBox, e)
     }
 
     fn expr_field_access(&self, sp: Span, expr: @ast::Expr, ident: ast::Ident) -> @ast::Expr {

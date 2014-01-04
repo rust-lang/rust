@@ -306,7 +306,7 @@ pub fn check_expr(cx: &mut Context, e: @Expr) {
     }
 
     match e.node {
-        ExprUnary(_, UnBox(_), interior) => {
+        ExprUnary(_, UnBox, interior) => {
             let interior_type = ty::expr_ty(cx.tcx, interior);
             let _ = check_durable(cx.tcx, interior_type, interior.span);
         }

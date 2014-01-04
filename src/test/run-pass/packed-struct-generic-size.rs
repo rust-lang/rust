@@ -22,6 +22,6 @@ pub fn main() {
 
     assert_eq!(mem::size_of::<S<u64, u16>>(), 11);
 
-    assert_eq!(mem::size_of::<S<~str, @mut [int]>>(),
-               1 + mem::size_of::<~str>() + mem::size_of::<@mut [int]>());
+    assert_eq!(mem::size_of::<S<~str, @[int]>>(),
+               1 + mem::size_of::<~str>() + mem::size_of::<@[int]>());
 }

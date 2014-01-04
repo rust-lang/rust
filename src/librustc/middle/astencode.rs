@@ -55,7 +55,6 @@ pub struct Maps {
     root_map: middle::borrowck::root_map,
     method_map: middle::typeck::method_map,
     vtable_map: middle::typeck::vtable_map,
-    write_guard_map: middle::borrowck::write_guard_map,
     capture_map: middle::moves::CaptureMap,
 }
 
@@ -1429,18 +1428,18 @@ fn decode_item_ast(par_doc: ebml::Doc) -> @ast::item {
 #[cfg(test)]
 trait fake_ext_ctxt {
     fn cfg(&self) -> ast::CrateConfig;
-    fn parse_sess(&self) -> @mut parse::ParseSess;
+    fn parse_sess(&self) -> @parse::ParseSess;
     fn call_site(&self) -> Span;
     fn ident_of(&self, st: &str) -> ast::Ident;
 }
 
 #[cfg(test)]
-type fake_session = @mut parse::ParseSess;
+type fake_session = @parse::ParseSess;
 
 #[cfg(test)]
 impl fake_ext_ctxt for fake_session {
     fn cfg(&self) -> ast::CrateConfig { ~[] }
-    fn parse_sess(&self) -> @mut parse::ParseSess { *self }
+    fn parse_sess(&self) -> @parse::ParseSess { *self }
     fn call_site(&self) -> Span {
         codemap::Span {
             lo: codemap::BytePos(0),

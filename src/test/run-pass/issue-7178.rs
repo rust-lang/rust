@@ -13,6 +13,6 @@
 
 extern mod cross_crate_self = "issue-7178";
 
-fn main() {
+pub fn main() {
     let _ = cross_crate_self::Foo::new(&1i);
 }

@@ -13,6 +13,6 @@
 
 extern mod foo = "xcrate_address_insignificant";
 
-fn main() {
+pub fn main() {
     assert_eq!(foo::foo::<f64>(), foo::bar());
 }

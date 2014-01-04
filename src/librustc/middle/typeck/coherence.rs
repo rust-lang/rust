@@ -568,10 +568,8 @@ impl CoherenceChecker {
 
                         // Make sure that this type precisely names a nominal
                         // type.
-                        match self.crate_context
-                                  .tcx
-                                  .items
-                                  .find(&def_id.node) {
+                        let items = self.crate_context.tcx.items.borrow();
+                        match items.get().find(&def_id.node) {
                             None => {
                                 self.crate_context.tcx.sess.span_bug(
                                     original_type.span,
@@ -628,7 +626,8 @@ impl CoherenceChecker {
 
     pub fn span_of_impl(&self, implementation: @Impl) -> Span {
         assert_eq!(implementation.did.crate, LOCAL_CRATE);
-        match self.crate_context.tcx.items.find(&implementation.did.node) {
+        let items = self.crate_context.tcx.items.borrow();
+        match items.get().find(&implementation.did.node) {
             Some(&node_item(item, _)) => {
                 return item.span;
             }
@@ -732,14 +731,19 @@ impl CoherenceChecker {
                 _ => {
                     // Destructors only work on nominal types.
                     if impl_info.did.crate == ast::LOCAL_CRATE {
-                        match tcx.items.find(&impl_info.did.node) {
-                            Some(&ast_map::node_item(@ref item, _)) => {
-                                tcx.sess.span_err((*item).span,
-                                                  "the Drop trait may only be implemented on \
-                                                   structures");
-                            }
-                            _ => {
-                                tcx.sess.bug("didn't find impl in ast map");
+                        {
+                            let items = tcx.items.borrow();
+                            match items.get().find(&impl_info.did.node) {
+                                Some(&ast_map::node_item(@ref item, _)) => {
+                                    tcx.sess.span_err((*item).span,
+                                                      "the Drop trait may \
+                                                       only be implemented \
+                                                       on structures");
+                                }
+                                _ => {
+                                    tcx.sess.bug("didn't find impl in ast \
+                                                  map");
+                                }
                             }
                         }
                     } else {

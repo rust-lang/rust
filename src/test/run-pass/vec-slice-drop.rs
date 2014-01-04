@@ -10,29 +10,31 @@
 
 #[feature(managed_boxes)];
 
+use std::cell::Cell;
+
 // Make sure that destructors get run on slice literals
 struct foo {
-    x: @mut int,
+    x: @Cell<int>,
 }
 
 #[unsafe_destructor]
 impl Drop for foo {
     fn drop(&mut self) {
-        *self.x += 1;
+        self.x.set(self.x.get() + 1);
     }
 }
 
-fn foo(x: @mut int) -> foo {
+fn foo(x: @Cell<int>) -> foo {
     foo {
         x: x
     }
 }
 
 pub fn main() {
-    let x = @mut 0;
+    let x = @Cell::new(0);
     {
         let l = &[foo(x)];
-        assert_eq!(*l[0].x, 0);
+        assert_eq!(l[0].x.get(), 0);
     }
-    assert_eq!(*x, 1);
+    assert_eq!(x.get(), 1);
 }

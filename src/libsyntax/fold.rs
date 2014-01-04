@@ -238,7 +238,7 @@ pub trait ast_fold {
     fn fold_ty(&mut self, t: P<Ty>) -> P<Ty> {
         let node = match t.node {
             ty_nil | ty_bot | ty_infer => t.node.clone(),
-            ty_box(ref mt) => ty_box(fold_mt(mt, self)),
+            ty_box(ty) => ty_box(self.fold_ty(ty)),
             ty_uniq(ty) => ty_uniq(self.fold_ty(ty)),
             ty_vec(ty) => ty_vec(self.fold_ty(ty)),
             ty_ptr(ref mt) => ty_ptr(fold_mt(mt, self)),
@@ -866,7 +866,7 @@ mod test {
     use super::*;
 
     // this version doesn't care about getting comments or docstrings in.
-    fn fake_print_crate(s: @pprust::ps, crate: &ast::Crate) {
+    fn fake_print_crate(s: &mut pprust::ps, crate: &ast::Crate) {
         pprust::print_mod(s, &crate.module, crate.attrs);
     }
 

@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,29 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(managed_boxes)];
-
-trait T {
-    fn foo(@mut self);
-}
-
-struct S {
-    unused: int
-}
-
-impl T for S {
-    fn foo(@mut self) {
-    }
-}
-
-fn bar(t: @mut T) {
-    t.foo();
-}
-
 pub fn main() {
-    let s = @mut S { unused: 0 };
-    let s2 = s as @mut T;
-    s2.foo();
-    bar(s2);
-    bar(s as @mut T);
+    struct A {
+        a: int,
+        w: B,
+    }
+    struct B {
+        a: int
+    }
+    let mut p = A {
+        a: 1,
+        w: B {a: 1},
+    };
+
+    // even though `x` is not declared as a mutable field,
+    // `p` as a whole is mutable, so it can be modified.
+    p.a = 2;
+
+    // this is true for an interior field too
+    p.w.a = 2;
 }

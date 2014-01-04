@@ -20,7 +20,7 @@ use middle::dataflow::DataFlowOperator;
 use util::ppaux::{note_and_explain_region, Repr, UserString};
 
 use std::cell::{Cell, RefCell};
-use std::hashmap::{HashSet, HashMap};
+use std::hashmap::HashMap;
 use std::ops::{BitOr, BitAnd};
 use std::result::{Result};
 use syntax::ast;
@@ -67,14 +67,13 @@ impl Visitor<()> for BorrowckCtxt {
     }
 }
 
-pub fn check_crate(
-    tcx: ty::ctxt,
-    method_map: typeck::method_map,
-    moves_map: moves::MovesMap,
-    moved_variables_set: moves::MovedVariablesSet,
-    capture_map: moves::CaptureMap,
-    crate: &ast::Crate) -> (root_map, write_guard_map)
-{
+pub fn check_crate(tcx: ty::ctxt,
+                   method_map: typeck::method_map,
+                   moves_map: moves::MovesMap,
+                   moved_variables_set: moves::MovedVariablesSet,
+                   capture_map: moves::CaptureMap,
+                   crate: &ast::Crate)
+                   -> root_map {
     let mut bccx = BorrowckCtxt {
         tcx: tcx,
         method_map: method_map,
@@ -82,7 +81,6 @@ pub fn check_crate(
         moved_variables_set: moved_variables_set,
         capture_map: capture_map,
         root_map: root_map(),
-        write_guard_map: @RefCell::new(HashSet::new()),
         stats: @BorrowStats {
             loaned_paths_same: Cell::new(0),
             loaned_paths_imm: Cell::new(0),
@@ -106,7 +104,7 @@ pub fn check_crate(
                  make_stat(bccx, bccx.stats.stable_paths.get()));
     }
 
-    return (bccx.root_map, bccx.write_guard_map);
+    return bccx.root_map;
 
     fn make_stat(bccx: &mut BorrowckCtxt, stat: uint) -> ~str {
         let stat_f = stat as f64;
@@ -171,7 +169,6 @@ pub struct BorrowckCtxt {
     moved_variables_set: moves::MovedVariablesSet,
     capture_map: moves::CaptureMap,
     root_map: root_map,
-    write_guard_map: write_guard_map,
 
     // Statistics:
     stats: @BorrowStats
@@ -212,10 +209,6 @@ pub struct root_map_key {
     id: ast::NodeId,
     derefs: uint
 }
-
-// A set containing IDs of expressions of gc'd type that need to have a write
-// guard.
-pub type write_guard_map = @RefCell<HashSet<root_map_key>>;
 
 pub type BckResult<T> = Result<T, BckError>;
 
@@ -402,27 +395,12 @@ impl BitAnd<RestrictionSet,RestrictionSet> for RestrictionSet {
 
 pub struct RootInfo {
     scope: ast::NodeId,
-    freeze: Option<DynaFreezeKind> // Some() if we should freeze box at runtime
 }
 
 pub type root_map = @RefCell<HashMap<root_map_key, RootInfo>>;
 
 pub fn root_map() -> root_map {
     return @RefCell::new(HashMap::new());
-}
-
-pub enum DynaFreezeKind {
-    DynaImm,
-    DynaMut
-}
-
-impl ToStr for DynaFreezeKind {
-    fn to_str(&self) -> ~str {
-        match *self {
-            DynaMut => ~"mutable",
-            DynaImm => ~"immutable"
-        }
-    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -691,20 +669,9 @@ impl BorrowckCtxt {
                     span,
                     format!("{} in an aliasable location", prefix));
             }
-            mc::AliasableManaged(ast::MutMutable) => {
-                // FIXME(#6269) reborrow @mut to &mut
-                self.tcx.sess.span_err(
-                    span,
-                    format!("{} in a `@mut` pointer; \
-                          try borrowing as `&mut` first", prefix));
-            }
-            mc::AliasableManaged(m) => {
-                self.tcx.sess.span_err(
-                    span,
-                    format!("{} in a `@{}` pointer; \
-                          try an `@mut` instead",
-                         prefix,
-                         self.mut_to_keyword(m)));
+            mc::AliasableManaged => {
+                self.tcx.sess.span_err(span, format!("{} in a `@` pointer",
+                                                     prefix))
             }
             mc::AliasableBorrowed(m) => {
                 self.tcx.sess.span_err(
@@ -788,7 +755,8 @@ impl BorrowckCtxt {
                                    out: &mut ~str) {
         match *loan_path {
             LpVar(id) => {
-                match self.tcx.items.find(&id) {
+                let items = self.tcx.items.borrow();
+                match items.get().find(&id) {
                     Some(&ast_map::node_local(ref ident)) => {
                         out.push_str(token::ident_to_str(ident));
                     }

@@ -29,8 +29,7 @@ use ast::{ExprField, ExprFnBlock, ExprIf, ExprIndex};
 use ast::{ExprLit, ExprLogLevel, ExprLoop, ExprMac};
 use ast::{ExprMethodCall, ExprParen, ExprPath, ExprProc, ExprRepeat};
 use ast::{ExprRet, ExprSelf, ExprStruct, ExprTup, ExprUnary};
-use ast::{ExprVec, ExprVstore, ExprVstoreMutBox};
-use ast::{ExprVstoreSlice, ExprVstoreBox};
+use ast::{ExprVec, ExprVstore, ExprVstoreSlice, ExprVstoreBox};
 use ast::{ExprVstoreMutSlice, ExprWhile, ExprForLoop, extern_fn, Field, fn_decl};
 use ast::{ExprVstoreUniq, Onceness, Once, Many};
 use ast::{foreign_item, foreign_item_static, foreign_item_fn, foreign_mod};
@@ -81,6 +80,7 @@ use parse::{new_sub_parser_from_file, ParseSess};
 use opt_vec;
 use opt_vec::OptVec;
 
+use std::cell::Cell;
 use std::hashmap::HashSet;
 use std::util;
 use std::vec;
@@ -286,8 +286,8 @@ struct ParsedItemsAndViewItems {
 
 /* ident is handled by common.rs */
 
-pub fn Parser(sess: @mut ParseSess, cfg: ast::CrateConfig, rdr: @mut reader)
-           -> Parser {
+pub fn Parser(sess: @ParseSess, cfg: ast::CrateConfig, rdr: @reader)
+              -> Parser {
     let tok0 = rdr.next_token();
     let interner = get_ident_interner();
     let span = tok0.sp;
@@ -324,7 +324,7 @@ pub fn Parser(sess: @mut ParseSess, cfg: ast::CrateConfig, rdr: @mut reader)
 }
 
 pub struct Parser {
-    sess: @mut ParseSess,
+    sess: @ParseSess,
     cfg: CrateConfig,
     // the current token:
     token: token::Token,
@@ -340,7 +340,7 @@ pub struct Parser {
     tokens_consumed: uint,
     restriction: restriction,
     quote_depth: uint, // not (yet) related to the quasiquoter
-    reader: @mut reader,
+    reader: @reader,
     interner: @token::ident_interner,
     /// The set of seen errors about obsolete syntax. Used to suppress
     /// extra detail when the same error is seen twice
@@ -1299,7 +1299,7 @@ impl Parser {
         if sigil == OwnedSigil {
             ty_uniq(self.parse_ty(false))
         } else {
-            ty_box(self.parse_mt())
+            ty_box(self.parse_ty(false))
         }
     }
 
@@ -2185,7 +2185,7 @@ impl Parser {
         // unification of matchers and token_trees would vastly improve
         // the interpolation of matchers
         maybe_whole!(self, nt_matchers);
-        let name_idx = @mut 0u;
+        let name_idx = @Cell::new(0u);
         match self.token {
             token::LBRACE | token::LPAREN | token::LBRACKET => {
                 let other_delimiter = token::flip_delimiter(&self.token);
@@ -2200,7 +2200,7 @@ impl Parser {
     // Otherwise, `$( ( )` would be a valid matcher, and `$( () )` would be
     // invalid. It's similar to common::parse_seq.
     pub fn parse_matcher_subseq_upto(&mut self,
-                                     name_idx: @mut uint,
+                                     name_idx: @Cell<uint>,
                                      ket: &token::Token)
                                      -> ~[matcher] {
         let mut ret_val = ~[];
@@ -2217,13 +2217,13 @@ impl Parser {
         return ret_val;
     }
 
-    pub fn parse_matcher(&mut self, name_idx: @mut uint) -> matcher {
+    pub fn parse_matcher(&mut self, name_idx: @Cell<uint>) -> matcher {
         let lo = self.span.lo;
 
         let m = if self.token == token::DOLLAR {
             self.bump();
             if self.token == token::LPAREN {
-                let name_idx_lo = *name_idx;
+                let name_idx_lo = name_idx.get();
                 self.bump();
                 let ms = self.parse_matcher_subseq_upto(name_idx,
                                                         &token::RPAREN);
@@ -2231,13 +2231,13 @@ impl Parser {
                     self.fatal("repetition body must be nonempty");
                 }
                 let (sep, zerok) = self.parse_sep_and_zerok();
-                match_seq(ms, sep, zerok, name_idx_lo, *name_idx)
+                match_seq(ms, sep, zerok, name_idx_lo, name_idx.get())
             } else {
                 let bound_to = self.parse_ident();
                 self.expect(&token::COLON);
                 let nt_name = self.parse_ident();
-                let m = match_nonterminal(bound_to, nt_name, *name_idx);
-                *name_idx += 1u;
+                let m = match_nonterminal(bound_to, nt_name, name_idx.get());
+                name_idx.set(name_idx.get() + 1u);
                 m
             }
         } else {
@@ -2299,17 +2299,14 @@ impl Parser {
           }
           token::AT => {
             self.bump();
-            let m = self.parse_mutability();
             let e = self.parse_prefix_expr();
             hi = e.span.hi;
             // HACK: turn @[...] into a @-evec
             ex = match e.node {
-              ExprVec(..) | ExprRepeat(..) if m == MutMutable =>
-                ExprVstore(e, ExprVstoreMutBox),
               ExprVec(..) |
               ExprLit(@codemap::Spanned { node: lit_str(..), span: _}) |
-              ExprRepeat(..) if m == MutImmutable => ExprVstore(e, ExprVstoreBox),
-              _ => self.mk_unary(UnBox(m), e)
+              ExprRepeat(..) => ExprVstore(e, ExprVstoreBox),
+              _ => self.mk_unary(UnBox, e)
             };
           }
           token::TILDE => {
@@ -4264,21 +4261,28 @@ impl Parser {
                               path: Path,
                               outer_attrs: ~[ast::Attribute],
                               id_sp: Span) -> (ast::item_, ~[ast::Attribute]) {
-        let maybe_i = self.sess.included_mod_stack.iter().position(|p| *p == path);
-        match maybe_i {
-            Some(i) => {
-                let stack = &self.sess.included_mod_stack;
-                let mut err = ~"circular modules: ";
-                for p in stack.slice(i, stack.len()).iter() {
-                    p.display().with_str(|s| err.push_str(s));
-                    err.push_str(" -> ");
+        {
+            let mut included_mod_stack = self.sess
+                                             .included_mod_stack
+                                             .borrow_mut();
+            let maybe_i = included_mod_stack.get()
+                                            .iter()
+                                            .position(|p| *p == path);
+            match maybe_i {
+                Some(i) => {
+                    let mut err = ~"circular modules: ";
+                    let len = included_mod_stack.get().len();
+                    for p in included_mod_stack.get().slice(i, len).iter() {
+                        p.display().with_str(|s| err.push_str(s));
+                        err.push_str(" -> ");
+                    }
+                    path.display().with_str(|s| err.push_str(s));
+                    self.span_fatal(id_sp, err);
                 }
-                path.display().with_str(|s| err.push_str(s));
-                self.span_fatal(id_sp, err);
+                None => ()
             }
-            None => ()
+            included_mod_stack.get().push(path.clone());
         }
-        self.sess.included_mod_stack.push(path.clone());
 
         let mut p0 =
             new_sub_parser_from_file(self.sess,
@@ -4289,7 +4293,12 @@ impl Parser {
         let mod_attrs = vec::append(outer_attrs, inner);
         let first_item_outer_attrs = next;
         let m0 = p0.parse_mod_items(token::EOF, first_item_outer_attrs);
-        self.sess.included_mod_stack.pop();
+        {
+            let mut included_mod_stack = self.sess
+                                             .included_mod_stack
+                                             .borrow_mut();
+            included_mod_stack.get().pop();
+        }
         return (ast::item_mod(m0), mod_attrs);
     }
 

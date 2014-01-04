@@ -10,20 +10,22 @@
 
 #[feature(managed_boxes)];
 
+use std::cell::Cell;
+
 struct r {
-  i: @mut int,
+  i: @Cell<int>,
 }
 
 #[unsafe_destructor]
 impl Drop for r {
     fn drop(&mut self) {
         unsafe {
-            *(self.i) = *(self.i) + 1;
+            self.i.set(self.i.get() + 1);
         }
     }
 }
 
-fn r(i: @mut int) -> r {
+fn r(i: @Cell<int>) -> r {
     r {
         i: i
     }
@@ -34,7 +36,7 @@ struct A {
 }
 
 fn main() {
-    let i = @mut 0;
+    let i = @Cell::new(0);
     {
         // Can't do this copy
         let x = ~~~A {y: r(i)};

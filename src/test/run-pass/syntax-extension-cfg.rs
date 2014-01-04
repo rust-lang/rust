@@ -11,7 +11,7 @@
 // xfail-fast compile-flags doesn't work with fast-check
 // compile-flags: --cfg foo --cfg bar(baz) --cfg qux="foo"
 
-fn main() {
+pub fn main() {
     // check
     if ! cfg!(foo) { fail!() }
     if   cfg!(not(foo)) { fail!() }

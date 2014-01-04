@@ -48,7 +48,7 @@ fn use_c<S:C, T:B+A>(s: &S, t: &T) -> uint {
     s.combine(t)
 }
 
-fn main() {
+pub fn main() {
     let foo = Foo;
     let bar = Bar;
     let r = use_c(&bar, &foo);

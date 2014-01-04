@@ -1431,8 +1431,8 @@ For a more in-depth explanation of borrowed pointers, read the
 ## Freezing
 
 Lending an immutable pointer to an object freezes it and prevents mutation.
-`Freeze` objects have freezing enforced statically at compile-time. Examples
-of non-`Freeze` types are `@mut` and [`RefCell<T>`][refcell].
+`Freeze` objects have freezing enforced statically at compile-time. An example
+of a non-`Freeze` type is [`RefCell<T>`][refcell].
 
 ~~~~
 let mut x = 5;
@@ -1441,20 +1441,6 @@ let mut x = 5;
 }
 // x is now unfrozen again
 # x = 3;
-~~~~
-
-Mutable managed boxes handle freezing dynamically when any of their contents
-are borrowed, and the task will fail if an attempt to modify them is made while
-they are frozen:
-
-~~~~
-let x = @mut 5;
-let y = x;
-{
-    let z = &*y; // the managed box is now frozen
-    // modifying it through x or y will cause a task failure
-}
-// the box is now unfrozen again
 ~~~~
 
 [refcell]: http://static.rust-lang.org/doc/master/std/cell/struct.RefCell.html
@@ -1477,13 +1463,12 @@ assignments. Such an assignment modifies the value that the pointer
 points to.
 
 ~~~
-let managed = @mut 10;
+let managed = @10;
 let mut owned = ~20;
 
 let mut value = 30;
 let borrowed = &mut value;
 
-*managed = *owned + 10;
 *owned = *borrowed + 100;
 *borrowed = *managed + 1000;
 ~~~
@@ -2113,8 +2098,7 @@ unless they contain managed boxes, managed closures, or borrowed pointers.
 
 * `Freeze` - Constant (immutable) types.
 These are types that do not contain anything intrinsically mutable.
-Intrinsically mutable values include `@mut`
-and `Cell` in the standard library.
+Intrinsically mutable values include `Cell` in the standard library.
 
 * `'static` - Non-borrowed types.
 These are types that do not contain any data whose lifetime is bound to

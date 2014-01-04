@@ -17,6 +17,7 @@ use parse::token;
 use visit::Visitor;
 use visit;
 
+use std::cell::{Cell, RefCell};
 use std::hashmap::HashMap;
 use std::u32;
 use std::local_data;
@@ -136,13 +137,13 @@ pub fn is_shift_binop(b: BinOp) -> bool {
     }
 }
 
-pub fn unop_to_str(op: UnOp) -> ~str {
+pub fn unop_to_str(op: UnOp) -> &'static str {
     match op {
-      UnBox(mt) => if mt == MutMutable { ~"@mut " } else { ~"@" },
-      UnUniq => ~"~",
-      UnDeref => ~"*",
-      UnNot => ~"!",
-      UnNeg => ~"-"
+      UnBox => "@",
+      UnUniq => "~",
+      UnDeref => "*",
+      UnNot => "!",
+      UnNeg => "-",
     }
 }
 
@@ -601,21 +602,23 @@ pub fn visit_ids_for_inlined_item<O: IdVisitingOperation>(item: &inlined_item,
 }
 
 struct IdRangeComputingVisitor {
-    result: @mut id_range,
+    result: Cell<id_range>,
 }
 
 impl IdVisitingOperation for IdRangeComputingVisitor {
     fn visit_id(&self, id: NodeId) {
-        self.result.add(id)
+        let mut id_range = self.result.get();
+        id_range.add(id);
+        self.result.set(id_range)
     }
 }
 
 pub fn compute_id_range_for_inlined_item(item: &inlined_item) -> id_range {
-    let result = @mut id_range::max();
-    visit_ids_for_inlined_item(item, &IdRangeComputingVisitor {
-        result: result,
-    });
-    *result
+    let visitor = IdRangeComputingVisitor {
+        result: Cell::new(id_range::max())
+    };
+    visit_ids_for_inlined_item(item, &visitor);
+    visitor.result.get()
 }
 
 pub fn is_item_impl(item: @ast::item) -> bool {
@@ -709,21 +712,25 @@ pub fn new_mark(m:Mrk, tail:SyntaxContext) -> SyntaxContext {
 
 // Extend a syntax context with a given mark and table
 // FIXME #8215 : currently pub to allow testing
-pub fn new_mark_internal(m:Mrk, tail:SyntaxContext,table:&mut SCTable)
-    -> SyntaxContext {
+pub fn new_mark_internal(m: Mrk, tail: SyntaxContext, table: &SCTable)
+                         -> SyntaxContext {
     let key = (tail,m);
     // FIXME #5074 : can't use more natural style because we're missing
     // flow-sensitivity. Results in two lookups on a hash table hit.
     // also applies to new_rename_internal, below.
     // let try_lookup = table.mark_memo.find(&key);
-    match table.mark_memo.contains_key(&key) {
+    let mut mark_memo = table.mark_memo.borrow_mut();
+    match mark_memo.get().contains_key(&key) {
         false => {
-            let new_idx = idx_push(&mut table.table,Mark(m,tail));
-            table.mark_memo.insert(key,new_idx);
+            let new_idx = {
+                let mut table = table.table.borrow_mut();
+                idx_push(table.get(), Mark(m,tail))
+            };
+            mark_memo.get().insert(key,new_idx);
             new_idx
         }
         true => {
-            match table.mark_memo.find(&key) {
+            match mark_memo.get().find(&key) {
                 None => fail!("internal error: key disappeared 2013042901"),
                 Some(idxptr) => {*idxptr}
             }
@@ -738,19 +745,26 @@ pub fn new_rename(id:Ident, to:Name, tail:SyntaxContext) -> SyntaxContext {
 
 // Extend a syntax context with a given rename and sctable
 // FIXME #8215 : currently pub to allow testing
-pub fn new_rename_internal(id:Ident, to:Name, tail:SyntaxContext, table: &mut SCTable)
-    -> SyntaxContext {
+pub fn new_rename_internal(id: Ident,
+                           to: Name,
+                           tail: SyntaxContext,
+                           table: &SCTable)
+                           -> SyntaxContext {
     let key = (tail,id,to);
     // FIXME #5074
     //let try_lookup = table.rename_memo.find(&key);
-    match table.rename_memo.contains_key(&key) {
+    let mut rename_memo = table.rename_memo.borrow_mut();
+    match rename_memo.get().contains_key(&key) {
         false => {
-            let new_idx = idx_push(&mut table.table,Rename(id,to,tail));
-            table.rename_memo.insert(key,new_idx);
+            let new_idx = {
+                let mut table = table.table.borrow_mut();
+                idx_push(table.get(), Rename(id,to,tail))
+            };
+            rename_memo.get().insert(key,new_idx);
             new_idx
         }
         true => {
-            match table.rename_memo.find(&key) {
+            match rename_memo.get().find(&key) {
                 None => fail!("internal error: key disappeared 2013042902"),
                 Some(idxptr) => {*idxptr}
             }
@@ -763,18 +777,18 @@ pub fn new_rename_internal(id:Ident, to:Name, tail:SyntaxContext, table: &mut SC
 // FIXME #8215 : currently pub to allow testing
 pub fn new_sctable_internal() -> SCTable {
     SCTable {
-        table: ~[EmptyCtxt,IllegalCtxt],
-        mark_memo: HashMap::new(),
-        rename_memo: HashMap::new()
+        table: RefCell::new(~[EmptyCtxt,IllegalCtxt]),
+        mark_memo: RefCell::new(HashMap::new()),
+        rename_memo: RefCell::new(HashMap::new()),
     }
 }
 
 // fetch the SCTable from TLS, create one if it doesn't yet exist.
-pub fn get_sctable() -> @mut SCTable {
-    local_data_key!(sctable_key: @@mut SCTable)
+pub fn get_sctable() -> @SCTable {
+    local_data_key!(sctable_key: @@SCTable)
     match local_data::get(sctable_key, |k| k.map(|k| *k)) {
         None => {
-            let new_table = @@mut new_sctable_internal();
+            let new_table = @@new_sctable_internal();
             local_data::set(sctable_key,new_table);
             *new_table
         },
@@ -785,7 +799,8 @@ pub fn get_sctable() -> @mut SCTable {
 /// print out an SCTable for debugging
 pub fn display_sctable(table : &SCTable) {
     error!("SC table:");
-    for (idx,val) in table.table.iter().enumerate() {
+    let table = table.table.borrow();
+    for (idx,val) in table.get().iter().enumerate() {
         error!("{:4u} : {:?}",idx,val);
     }
 }
@@ -799,7 +814,9 @@ fn idx_push<T>(vec: &mut ~[T], val: T) -> u32 {
 
 /// Resolve a syntax object to a name, per MTWT.
 pub fn mtwt_resolve(id : Ident) -> Name {
-    resolve_internal(id, get_sctable(), get_resolve_table())
+    let resolve_table = get_resolve_table();
+    let mut resolve_table = resolve_table.borrow_mut();
+    resolve_internal(id, get_sctable(), resolve_table.get())
 }
 
 // FIXME #8215: must be pub for testing
@@ -807,12 +824,12 @@ pub type ResolveTable = HashMap<(Name,SyntaxContext),Name>;
 
 // okay, I admit, putting this in TLS is not so nice:
 // fetch the SCTable from TLS, create one if it doesn't yet exist.
-pub fn get_resolve_table() -> @mut ResolveTable {
-    local_data_key!(resolve_table_key: @@mut ResolveTable)
+pub fn get_resolve_table() -> @RefCell<ResolveTable> {
+    local_data_key!(resolve_table_key: @@RefCell<ResolveTable>)
     match local_data::get(resolve_table_key, |k| k.map(|k| *k)) {
         None => {
-            let new_table = @@mut HashMap::new();
-            local_data::set(resolve_table_key,new_table);
+            let new_table = @@RefCell::new(HashMap::new());
+            local_data::set(resolve_table_key, new_table);
             *new_table
         },
         Some(intr) => *intr
@@ -823,13 +840,17 @@ pub fn get_resolve_table() -> @mut ResolveTable {
 // adding memoization to possibly resolve 500+ seconds in resolve for librustc (!)
 // FIXME #8215 : currently pub to allow testing
 pub fn resolve_internal(id : Ident,
-                        table : &mut SCTable,
+                        table : &SCTable,
                         resolve_table : &mut ResolveTable) -> Name {
     let key = (id.name,id.ctxt);
     match resolve_table.contains_key(&key) {
         false => {
             let resolved = {
-                match table.table[id.ctxt] {
+                let result = {
+                    let table = table.table.borrow();
+                    table.get()[id.ctxt]
+                };
+                match result {
                     EmptyCtxt => id.name,
                     // ignore marks here:
                     Mark(_,subctxt) =>
@@ -874,7 +895,11 @@ pub fn marksof(ctxt: SyntaxContext, stopname: Name, table: &SCTable) -> ~[Mrk] {
     let mut result = ~[];
     let mut loopvar = ctxt;
     loop {
-        match table.table[loopvar] {
+        let table_entry = {
+            let table = table.table.borrow();
+            table.get()[loopvar]
+        };
+        match table_entry {
             EmptyCtxt => {return result;},
             Mark(mark,tl) => {
                 xorPush(&mut result,mark);
@@ -898,7 +923,8 @@ pub fn marksof(ctxt: SyntaxContext, stopname: Name, table: &SCTable) -> ~[Mrk] {
 /// FAILS when outside is not a mark.
 pub fn mtwt_outer_mark(ctxt: SyntaxContext) -> Mrk {
     let sctable = get_sctable();
-    match sctable.table[ctxt] {
+    let table = sctable.table.borrow();
+    match table.get()[ctxt] {
         ast::Mark(mrk,_) => mrk,
         _ => fail!("can't retrieve outer mark when outside is not a mark")
     }
@@ -1003,7 +1029,7 @@ mod test {
 
     // unfold a vector of TestSC values into a SCTable,
     // returning the resulting index
-    fn unfold_test_sc(tscs : ~[TestSC], tail: SyntaxContext, table : &mut SCTable)
+    fn unfold_test_sc(tscs : ~[TestSC], tail: SyntaxContext, table: &SCTable)
         -> SyntaxContext {
         tscs.rev_iter().fold(tail, |tail : SyntaxContext, tsc : &TestSC|
                   {match *tsc {
@@ -1015,7 +1041,8 @@ mod test {
     fn refold_test_sc(mut sc: SyntaxContext, table : &SCTable) -> ~[TestSC] {
         let mut result = ~[];
         loop {
-            match table.table[sc] {
+            let table = table.table.borrow();
+            match table.get()[sc] {
                 EmptyCtxt => {return result;},
                 Mark(mrk,tail) => {
                     result.push(M(mrk));
@@ -1037,15 +1064,19 @@ mod test {
 
         let test_sc = ~[M(3),R(id(101,0),14),M(9)];
         assert_eq!(unfold_test_sc(test_sc.clone(),EMPTY_CTXT,&mut t),4);
-        assert_eq!(t.table[2],Mark(9,0));
-        assert_eq!(t.table[3],Rename(id(101,0),14,2));
-        assert_eq!(t.table[4],Mark(3,3));
+        {
+            let table = t.table.borrow();
+            assert_eq!(table.get()[2],Mark(9,0));
+            assert_eq!(table.get()[3],Rename(id(101,0),14,2));
+            assert_eq!(table.get()[4],Mark(3,3));
+        }
         assert_eq!(refold_test_sc(4,&t),test_sc);
     }
 
     // extend a syntax context with a sequence of marks given
     // in a vector. v[0] will be the outermost mark.
-    fn unfold_marks(mrks:~[Mrk],tail:SyntaxContext,table: &mut SCTable) -> SyntaxContext {
+    fn unfold_marks(mrks: ~[Mrk], tail: SyntaxContext, table: &SCTable)
+                    -> SyntaxContext {
         mrks.rev_iter().fold(tail, |tail:SyntaxContext, mrk:&Mrk|
                    {new_mark_internal(*mrk,tail,table)})
     }
@@ -1054,8 +1085,11 @@ mod test {
         let mut t = new_sctable_internal();
 
         assert_eq!(unfold_marks(~[3,7],EMPTY_CTXT,&mut t),3);
-        assert_eq!(t.table[2],Mark(7,0));
-        assert_eq!(t.table[3],Mark(3,2));
+        {
+            let table = t.table.borrow();
+            assert_eq!(table.get()[2],Mark(7,0));
+            assert_eq!(table.get()[3],Mark(3,2));
+        }
     }
 
     #[test] fn test_marksof () {

@@ -17,7 +17,7 @@ use parse::token;
 
 // map a string to tts, using a made-up filename: return both the token_trees
 // and the ParseSess
-pub fn string_to_tts_and_sess (source_str : @str) -> (~[ast::token_tree],@mut ParseSess) {
+pub fn string_to_tts_and_sess (source_str : @str) -> (~[ast::token_tree],@ParseSess) {
     let ps = new_parse_sess(None);
     (filemap_to_tts(ps,string_to_filemap(ps,source_str,@"bogofile")),ps)
 }
@@ -28,7 +28,7 @@ pub fn string_to_tts(source_str : @str) -> ~[ast::token_tree] {
     tts
 }
 
-pub fn string_to_parser_and_sess(source_str: @str) -> (Parser,@mut ParseSess) {
+pub fn string_to_parser_and_sess(source_str: @str) -> (Parser,@ParseSess) {
     let ps = new_parse_sess(None);
     (new_parser_from_source_str(ps,~[],@"bogofile",source_str),ps)
 }
@@ -54,7 +54,7 @@ pub fn string_to_crate (source_str : @str) -> ast::Crate {
 }
 
 // parse a string, return a crate and the ParseSess
-pub fn string_to_crate_and_sess (source_str : @str) -> (ast::Crate,@mut ParseSess) {
+pub fn string_to_crate_and_sess (source_str : @str) -> (ast::Crate,@ParseSess) {
     let (mut p,ps) = string_to_parser_and_sess(source_str);
     (p.parse_crate_mod(),ps)
 }

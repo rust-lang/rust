@@ -12,15 +12,18 @@
 
 #[feature(managed_boxes)];
 
+use std::cell::RefCell;
+
 pub fn main() {
-    let x: @mut @Option<~int> = @mut @None;
-    match x {
-      @@Some(ref _y) => {
+    let x: @RefCell<@Option<~int>> = @RefCell::new(@None);
+    let mut xb = x.borrow_mut();
+    match *xb.get() {
+      @Some(ref _y) => {
         // here, the refcount of `*x` is bumped so
         // `_y` remains valid even if `*x` is modified.
-        *x = @None;
+        *xb.get() = @None;
       }
-      @@None => {
+      @None => {
         // here, no bump of the ref count of `*x` is needed, but in
         // fact a bump occurs anyway because of how pattern marching
         // works.

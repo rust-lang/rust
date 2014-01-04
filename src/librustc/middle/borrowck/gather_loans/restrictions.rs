@@ -132,57 +132,9 @@ impl<'a> RestrictionsContext<'a> {
                 Safe
             }
 
-            mc::cat_deref(_, _, mc::gc_ptr(MutImmutable)) => {
+            mc::cat_deref(_, _, mc::gc_ptr) => {
                 // R-Deref-Imm-Managed
                 Safe
-            }
-
-            mc::cat_deref(cmt_base, _, pk @ mc::gc_ptr(MutMutable)) => {
-                // R-Deref-Managed-Borrowed
-                //
-                // Technically, no restrictions are *necessary* here.
-                // The validity of the borrow is guaranteed
-                // dynamically.  However, nonetheless we add a
-                // restriction to make a "best effort" to report
-                // static errors. For example, if there is code like
-                //
-                //    let v = @mut ~[1, 2, 3];
-                //    for e in v.iter() {
-                //        v.push(e + 1);
-                //    }
-                //
-                // Then the code below would add restrictions on `*v`,
-                // which means that an error would be reported
-                // here. This of course is not perfect. For example,
-                // a function like the following would not report an error
-                // at compile-time but would fail dynamically:
-                //
-                //    let v = @mut ~[1, 2, 3];
-                //    let w = v;
-                //    for e in v.iter() {
-                //        w.push(e + 1);
-                //    }
-                //
-                // In addition, we only add a restriction for those cases
-                // where we can construct a sensible loan path, so an
-                // example like the following will fail dynamically:
-                //
-                //    impl V {
-                //      fn get_list(&self) -> @mut ~[int];
-                //    }
-                //    ...
-                //    let v: &V = ...;
-                //    for e in v.get_list().iter() {
-                //        v.get_list().push(e + 1);
-                //    }
-                match opt_loan_path(cmt_base) {
-                    None => Safe,
-                    Some(lp_base) => {
-                        let lp = @LpExtend(lp_base, cmt.mutbl, LpDeref(pk));
-                        SafeIf(lp, ~[Restriction {loan_path: lp,
-                                                  set: restrictions}])
-                    }
-                }
             }
 
             mc::cat_deref(cmt_base, _, pk @ mc::region_ptr(MutMutable, lt)) => {

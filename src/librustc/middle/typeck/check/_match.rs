@@ -667,8 +667,8 @@ pub fn check_pointer_pat(pcx: &pat_ctxt,
                          span: Span,
                          expected: ty::t) {
     let fcx = pcx.fcx;
-    let check_inner: |ty::mt| = |e_inner| {
-        check_pat(pcx, inner, e_inner.ty);
+    let check_inner: |ty::t| = |e_inner| {
+        check_pat(pcx, inner, e_inner);
         fcx.write_ty(pat_id, expected);
     };
     match *structure_of(fcx, span, expected) {
@@ -676,10 +676,10 @@ pub fn check_pointer_pat(pcx: &pat_ctxt,
             check_inner(e_inner);
         }
         ty::ty_uniq(e_inner) if pointer_kind == Send => {
-            check_inner(e_inner);
+            check_inner(e_inner.ty);
         }
         ty::ty_rptr(_, e_inner) if pointer_kind == Borrowed => {
-            check_inner(e_inner);
+            check_inner(e_inner.ty);
         }
         _ => {
             check_pat(pcx, inner, ty::mk_err());

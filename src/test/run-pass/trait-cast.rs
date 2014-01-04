@@ -12,7 +12,9 @@
 
 // Test cyclic detector when using trait instances.
 
-struct Tree(@mut TreeR);
+use std::cell::RefCell;
+
+struct Tree(@RefCell<TreeR>);
 struct TreeR {
     left: Option<Tree>,
     right: Option<Tree>,
@@ -38,8 +40,9 @@ impl to_str for int {
 
 impl to_str for Tree {
     fn to_str_(&self) -> ~str {
-        let (l, r) = (self.left, self.right);
-        let val = &self.val;
+        let this = self.borrow();
+        let (l, r) = (this.get().left, this.get().right);
+        let val = &this.get().val;
         format!("[{}, {}, {}]", val.to_str_(), l.to_str_(), r.to_str_())
     }
 }
@@ -47,14 +50,18 @@ impl to_str for Tree {
 fn foo<T:to_str>(x: T) -> ~str { x.to_str_() }
 
 pub fn main() {
-    let t1 = Tree(@mut TreeR{left: None,
-                             right: None,
-                             val: ~1 as ~to_str });
-    let t2 = Tree(@mut TreeR{left: Some(t1),
-                             right: Some(t1),
-                             val: ~2 as ~to_str });
+    let t1 = Tree(@RefCell::new(TreeR{left: None,
+                                      right: None,
+                                      val: ~1 as ~to_str}));
+    let t2 = Tree(@RefCell::new(TreeR{left: Some(t1),
+                                      right: Some(t1),
+                                      val: ~2 as ~to_str}));
     let expected = ~"[2, some([1, none, none]), some([1, none, none])]";
     assert!(t2.to_str_() == expected);
     assert!(foo(t2) == expected);
-    t1.left = Some(t2); // create cycle
+
+    {
+        let mut t1 = t1.borrow_mut();
+        t1.get().left = Some(t2); // create cycle
+    }
 }

@@ -8,19 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(managed_boxes)];
+fn takes_imm(x: &int) { }
 
-fn takes_mut(x: @mut int) { }
-fn takes_imm(x: @int) { }
+fn takes_mut(x: &mut int) { }
 
 fn apply<T>(t: T, f: |T|) {
     f(t)
 }
 
 fn main() {
-    apply(@3, takes_mut); //~ ERROR (values differ in mutability)
-    apply(@3, takes_imm);
+    apply(&3, takes_mut); //~ ERROR (values differ in mutability)
+    apply(&3, takes_imm);
 
-    apply(@mut 3, takes_mut);
-    apply(@mut 3, takes_imm); //~ ERROR (values differ in mutability)
+    apply(&mut 3, takes_mut);
+    apply(&mut 3, takes_imm); //~ ERROR (values differ in mutability)
 }

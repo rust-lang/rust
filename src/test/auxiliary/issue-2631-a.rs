@@ -14,11 +14,12 @@
 
 extern mod extra;
 
+use std::cell::RefCell;
 use std::hashmap::HashMap;
 
-pub type header_map = HashMap<~str, @mut ~[@~str]>;
+pub type header_map = HashMap<~str, @RefCell<~[@~str]>>;
 
 // the unused ty param is necessary so this gets monomorphized
 pub fn request<T>(req: &header_map) {
-  let _x = (*((**req.get(&~"METHOD")).clone())[0u]).clone();
+  let _x = (*((**req.get(&~"METHOD")).clone()).get()[0u]).clone();
 }

@@ -31,7 +31,7 @@ impl<T: X> Drop for Z<T> {
     }
 }
 
-fn main() {
+pub fn main() {
     let y = Y;
     let _z = Z{x: y};
 }

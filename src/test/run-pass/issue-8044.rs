@@ -14,6 +14,6 @@
 extern mod minimal = "issue-8044";
 use minimal::{BTree, leaf};
 
-fn main() {
+pub fn main() {
     BTree::<int> { node: leaf(1) };
 }

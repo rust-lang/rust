@@ -13,6 +13,6 @@
 
 extern mod inline_dtor;
 
-fn main() {
+pub fn main() {
     let _x = inline_dtor::Foo;
 }

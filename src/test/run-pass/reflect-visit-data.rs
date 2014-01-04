@@ -12,6 +12,7 @@
 
 #[feature(managed_boxes)];
 
+use std::cell::RefCell;
 use std::libc::c_void;
 use std::ptr;
 use std::mem;
@@ -458,8 +459,9 @@ impl<V:TyVisitor + movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
     }
 }
 
-struct my_visitor(@mut Stuff);
+struct my_visitor(@RefCell<Stuff>);
 
+#[deriving(Clone)]
 struct Stuff {
     ptr1: *c_void,
     ptr2: *c_void,
@@ -469,7 +471,7 @@ struct Stuff {
 impl my_visitor {
     pub fn get<T:Clone>(&mut self, f: |T|) {
         unsafe {
-            f((*(self.ptr1 as *T)).clone());
+            f((*((**self).get().ptr1 as *T)).clone());
         }
     }
 
@@ -487,8 +489,9 @@ struct Inner<V> { inner: V }
 
 impl movable_ptr for my_visitor {
     fn move_ptr(&mut self, adjustment: |*c_void| -> *c_void) {
-        self.ptr1 = adjustment(self.ptr1);
-        self.ptr2 = adjustment(self.ptr2);
+        let mut this = self.borrow_mut();
+        this.get().ptr1 = adjustment(this.get().ptr1);
+        this.get().ptr2 = adjustment(this.get().ptr2);
     }
 }
 
@@ -497,11 +500,17 @@ impl TyVisitor for my_visitor {
     fn visit_bot(&mut self) -> bool { true }
     fn visit_nil(&mut self) -> bool { true }
     fn visit_bool(&mut self) -> bool {
-        self.get::<bool>(|b| self.vals.push(b.to_str()));
+        self.get::<bool>(|b| {
+            let mut this = self.borrow_mut();
+            this.get().vals.push(b.to_str());
+        });
         true
     }
     fn visit_int(&mut self) -> bool {
-        self.get::<int>(|i| self.vals.push(i.to_str()));
+        self.get::<int>(|i| {
+            let mut this = self.borrow_mut();
+            this.get().vals.push(i.to_str());
+        });
         true
     }
     fn visit_i8(&mut self) -> bool { true }
@@ -622,21 +631,22 @@ pub fn main() {
     unsafe {
         let r = (1,2,3,true,false, Triple {x:5,y:4,z:3}, (12,));
         let p = ptr::to_unsafe_ptr(&r) as *c_void;
-        let u = my_visitor(@mut Stuff {ptr1: p,
-                                       ptr2: p,
-                                       vals: ~[]});
+        let u = my_visitor(@RefCell::new(Stuff {ptr1: p,
+                                                ptr2: p,
+                                                vals: ~[]}));
         let mut v = ptr_visit_adaptor(Inner {inner: u});
         let td = get_tydesc_for(r);
         error!("tydesc sz: {}, align: {}",
                (*td).size, (*td).align);
         visit_tydesc(td, &mut v as &mut TyVisitor);
 
-        let r = u.vals.clone();
+        let mut ub = u.borrow_mut();
+        let r = ub.get().vals.clone();
         for s in r.iter() {
             println!("val: {}", *s);
         }
-        error!("{:?}", u.vals.clone());
-        assert_eq!(u.vals.clone(),
+        error!("{:?}", ub.get().vals.clone());
+        assert_eq!(ub.get().vals.clone(),
                    ~[ ~"1", ~"2", ~"3", ~"true", ~"false", ~"5", ~"4", ~"3", ~"12"]);
     }
 }
