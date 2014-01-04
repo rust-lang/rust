@@ -1365,7 +1365,7 @@ pub fn do_autoderef(fcx: @FnCtxt, sp: Span, t: ty::t) -> (ty::t, uint) {
         }
 
         // Otherwise, deref if type is derefable:
-        match ty::deref_sty(fcx.ccx.tcx, sty, false) {
+        match ty::deref_sty(sty, false) {
             None => {
                 return (t1, autoderefs);
             }
@@ -2758,23 +2758,22 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                 }
                 ast::UnDeref => {
                     let sty = structure_of(fcx, expr.span, oprnd_t);
-                    let operand_ty = ty::deref_sty(tcx, sty, true);
+                    let operand_ty = ty::deref_sty(sty, true);
                     match operand_ty {
                         Some(mt) => {
                             oprnd_t = mt.ty
                         }
                         None => {
                             match *sty {
-                                ty::ty_enum(..) => {
+                                ty::ty_struct(did, ref substs) if {
+                                    let fields = ty::struct_fields(fcx.tcx(), did, substs);
+                                    fields.len() == 1
+                                      && fields[0].ident == token::special_idents::unnamed_field
+                                } => {
+                                    // This is an obsolete struct deref
                                     tcx.sess.span_err(
                                         expr.span,
-                                        "can only dereference enums with a single variant which \
-                                         has a single argument");
-                                }
-                                ty::ty_struct(..) => {
-                                    tcx.sess.span_err(
-                                        expr.span,
-                                        "can only dereference structs with one anonymous field");
+                                        "single-field tuple-structs can no longer be dereferenced");
                                 }
                                 _ => {
                                     fcx.type_error_message(expr.span,

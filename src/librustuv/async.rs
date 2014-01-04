@@ -140,8 +140,9 @@ mod test_remote {
             fn call(&mut self) {
                 // this can get called more than once, but we only want to send
                 // once
-                if self.is_some() {
-                    self.take_unwrap().send(1);
+                let MyCallback(ref mut s) = *self;
+                if s.is_some() {
+                    s.take_unwrap().send(1);
                 }
             }
         }

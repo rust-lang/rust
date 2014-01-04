@@ -40,7 +40,8 @@ impl to_str for int {
 
 impl to_str for Tree {
     fn to_str_(&self) -> ~str {
-        let this = self.borrow();
+        let Tree(t) = *self;
+        let this = t.borrow();
         let (l, r) = (this.get().left, this.get().right);
         let val = &this.get().val;
         format!("[{}, {}, {}]", val.to_str_(), l.to_str_(), r.to_str_())
@@ -61,7 +62,8 @@ pub fn main() {
     assert!(foo(t2) == expected);
 
     {
-        let mut t1 = t1.borrow_mut();
+        let Tree(t1_) = t1;
+        let mut t1 = t1_.borrow_mut();
         t1.get().left = Some(t2); // create cycle
     }
 }

@@ -28,10 +28,15 @@ macro_rules! opt_val ( ($e:expr) => (
  * Wrapper for LLVM ValueRef
  */
 impl Value {
+    /// Returns the native ValueRef
+    pub fn get(&self) -> ValueRef {
+        let Value(v) = *self; v
+    }
+
     /// Returns the BasicBlock that contains this value
     pub fn get_parent(self) -> Option<BasicBlock> {
         unsafe {
-            match llvm::LLVMGetInstructionParent(*self) {
+            match llvm::LLVMGetInstructionParent(self.get()) {
                 p if p.is_not_null() => Some(BasicBlock(p)),
                 _ => None
             }
@@ -41,7 +46,7 @@ impl Value {
     /// Removes this value from its containing BasicBlock
     pub fn erase_from_parent(self) {
         unsafe {
-            llvm::LLVMInstructionEraseFromParent(*self);
+            llvm::LLVMInstructionEraseFromParent(self.get());
         }
     }
 
@@ -55,7 +60,7 @@ impl Value {
                 store.get_parent().and_then(|store_bb| {
                     let mut bb = BasicBlock(bcx.llbb);
                     let mut ret = Some(store);
-                    while *bb != *store_bb {
+                    while bb.get() != store_bb.get() {
                         match bb.get_single_predecessor() {
                             Some(pred) => bb = pred,
                             None => { ret = None; break }
@@ -71,7 +76,7 @@ impl Value {
     /// Returns the first use of this value, if any
     pub fn get_first_use(self) -> Option<Use> {
         unsafe {
-            match llvm::LLVMGetFirstUse(*self) {
+            match llvm::LLVMGetFirstUse(self.get()) {
                 u if u.is_not_null() => Some(Use(u)),
                 _ => None
             }
@@ -103,18 +108,18 @@ impl Value {
     /// Returns the requested operand of this instruction
     /// Returns None, if there's no operand at the given index
     pub fn get_operand(self, i: uint) -> Option<Value> {
-        opt_val!(llvm::LLVMGetOperand(*self, i as c_uint))
+        opt_val!(llvm::LLVMGetOperand(self.get(), i as c_uint))
     }
 
     /// Returns the Store represent by this value, if any
     pub fn as_store_inst(self) -> Option<Value> {
-        opt_val!(llvm::LLVMIsAStoreInst(*self))
+        opt_val!(llvm::LLVMIsAStoreInst(self.get()))
     }
 
     /// Tests if this value is a terminator instruction
     pub fn is_a_terminator_inst(self) -> bool {
         unsafe {
-            llvm::LLVMIsATerminatorInst(*self).is_not_null()
+            llvm::LLVMIsATerminatorInst(self.get()).is_not_null()
         }
     }
 }
@@ -125,15 +130,19 @@ pub struct Use(UseRef);
  * Wrapper for LLVM UseRef
  */
 impl Use {
+    pub fn get(&self) -> UseRef {
+        let Use(v) = *self; v
+    }
+
     pub fn get_user(self) -> Value {
         unsafe {
-            Value(llvm::LLVMGetUser(*self))
+            Value(llvm::LLVMGetUser(self.get()))
         }
     }
 
     pub fn get_next_use(self) -> Option<Use> {
         unsafe {
-            match llvm::LLVMGetNextUse(*self) {
+            match llvm::LLVMGetNextUse(self.get()) {
                 u if u.is_not_null() => Some(Use(u)),
                 _ => None
             }

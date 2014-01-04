@@ -4042,7 +4042,8 @@ mod bench {
         struct NotAscii(char);
         impl CharEq for NotAscii {
             fn matches(&self, c: char) -> bool {
-                **self == c
+                let NotAscii(cc) = *self;
+                cc == c
             }
             fn only_ascii(&self) -> bool { false }
         }
@@ -4065,7 +4066,10 @@ mod bench {
         struct NotAscii(char);
         impl CharEq for NotAscii {
             #[inline]
-            fn matches(&self, c: char) -> bool { **self == c }
+            fn matches(&self, c: char) -> bool {
+                let NotAscii(cc) = *self;
+                cc == c
+            }
             fn only_ascii(&self) -> bool { false }
         }
         let s = "Mary had a little lamb, Little lamb, little-lamb.";

@@ -19,6 +19,7 @@ use syntax::ast_map;
 use syntax::ast_util;
 use syntax::attr;
 use syntax::attr::AttributeMethods;
+use syntax::codemap::Pos;
 
 use rustc::metadata::cstore;
 use rustc::metadata::csearch;
@@ -288,6 +289,14 @@ impl Clean<TyParamBound> for ast::TyParamBound {
 
 #[deriving(Clone, Encodable, Decodable)]
 pub struct Lifetime(~str);
+
+impl Lifetime {
+    pub fn get_ref<'a>(&'a self) -> &'a str {
+        let Lifetime(ref s) = *self;
+        let s: &'a str = *s;
+        return s;
+    }
+}
 
 impl Clean<Lifetime> for ast::Lifetime {
     fn clean(&self) -> Lifetime {
@@ -798,9 +807,9 @@ impl Clean<Span> for syntax::codemap::Span {
         Span {
             filename: filename.to_owned(),
             loline: lo.line,
-            locol: *lo.col,
+            locol: lo.col.to_uint(),
             hiline: hi.line,
-            hicol: *hi.col,
+            hicol: hi.col.to_uint(),
         }
     }
 }

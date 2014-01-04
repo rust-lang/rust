@@ -793,15 +793,6 @@ synonym for an existing type but is rather its own distinct type.
 struct GizmoId(int);
 ~~~~
 
-For convenience, you can extract the contents of such a struct with the
-dereference (`*`) unary operator:
-
-~~~~
-# struct GizmoId(int);
-let my_gizmo_id: GizmoId = GizmoId(10);
-let id_int: int = *my_gizmo_id;
-~~~~
-
 Types like this can be useful to differentiate between data that have
 the same underlying type but must be used in different ways.
 
@@ -811,7 +802,16 @@ struct Centimeters(int);
 ~~~~
 
 The above definitions allow for a simple way for programs to avoid
-confusing numbers that correspond to different units.
+confusing numbers that correspond to different units. Their integer
+values can be extracted with pattern matching:
+
+~~~
+# struct Inches(int);
+
+let length_with_unit = Inches(10);
+let Inches(integer_length) = length_with_unit;
+println!("length is {} inches", integer_length);
+~~~
 
 # Functions
 
@@ -2595,7 +2595,7 @@ the `priv` keyword:
 mod farm {
 # pub type Chicken = int;
 # struct Human(int);
-# impl Human { fn rest(&self) { } }
+# impl Human { pub fn rest(&self) { } }
 # pub fn make_me_a_farm() -> Farm { Farm { chickens: ~[], farmer: Human(0) } }
     pub struct Farm {
         priv chickens: ~[Chicken],

@@ -242,7 +242,7 @@ impl<'a> ToStr for VarianceTerm<'a> {
             ConstantTerm(c1) => format!("{}", c1.to_str()),
             TransformTerm(v1, v2) => format!("({} \u00D7 {})",
                                           v1.to_str(), v2.to_str()),
-            InferredTerm(id) => format!("[{}]", *id)
+            InferredTerm(id) => format!("[{}]", { let InferredIndex(i) = id; i })
         }
     }
 }
@@ -543,8 +543,8 @@ impl<'a> ConstraintContext<'a> {
             // Parameter on an item defined within current crate:
             // variance not yet inferred, so return a symbolic
             // variance.
-            let index = self.inferred_index(param_def_id.node);
-            self.terms_cx.inferred_infos[*index].term
+            let InferredIndex(index) = self.inferred_index(param_def_id.node);
+            self.terms_cx.inferred_infos[index].term
         } else {
             // Parameter on an item defined within another crate:
             // variance already inferred, just look it up.
@@ -559,11 +559,11 @@ impl<'a> ConstraintContext<'a> {
     }
 
     fn add_constraint(&mut self,
-                      index: InferredIndex,
+                      InferredIndex(index): InferredIndex,
                       variance: VarianceTermPtr<'a>) {
         debug!("add_constraint(index={}, variance={})",
-                *index, variance.to_str());
-        self.constraints.push(Constraint { inferred: index,
+                index, variance.to_str());
+        self.constraints.push(Constraint { inferred: InferredIndex(index),
                                            variance: variance });
     }
 
@@ -852,19 +852,20 @@ impl<'a> SolveContext<'a> {
 
             for constraint in self.constraints.iter() {
                 let Constraint { inferred, variance: term } = *constraint;
+                let InferredIndex(inferred) = inferred;
                 let variance = self.evaluate(term);
-                let old_value = self.solutions[*inferred];
+                let old_value = self.solutions[inferred];
                 let new_value = glb(variance, old_value);
                 if old_value != new_value {
                     debug!("Updating inferred {} (node {}) \
                             from {:?} to {:?} due to {}",
-                            *inferred,
-                            self.terms_cx.inferred_infos[*inferred].param_id,
+                            inferred,
+                            self.terms_cx.inferred_infos[inferred].param_id,
                             old_value,
                             new_value,
                             term.to_str());
 
-                    self.solutions[*inferred] = new_value;
+                    self.solutions[inferred] = new_value;
                     changed = true;
                 }
             }
@@ -943,8 +944,8 @@ impl<'a> SolveContext<'a> {
                 v1.xform(v2)
             }
 
-            InferredTerm(index) => {
-                self.solutions[*index]
+            InferredTerm(InferredIndex(index)) => {
+                self.solutions[index]
             }
         }
     }

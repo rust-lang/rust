@@ -648,7 +648,7 @@ impl mem_categorization_ctxt {
                                  base_cmt: cmt,
                                  deref_cnt: uint)
                                  -> cmt {
-        let mt = match ty::deref(self.tcx, base_cmt.ty, true) {
+        let mt = match ty::deref(base_cmt.ty, true) {
             Some(mt) => mt,
             None => {
                 self.tcx.sess.span_bug(

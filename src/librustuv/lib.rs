@@ -310,7 +310,8 @@ impl UvError {
     }
 
     pub fn is_eof(&self) -> bool {
-        **self == uvll::EOF
+        let UvError(handle) = *self;
+        handle == uvll::EOF
     }
 }
 
@@ -331,10 +332,11 @@ pub fn uv_error_to_io_error(uverr: UvError) -> IoError {
         // Importing error constants
 
         // uv error descriptions are static
-        let c_desc = uvll::uv_strerror(*uverr);
+        let UvError(errcode) = uverr;
+        let c_desc = uvll::uv_strerror(errcode);
         let desc = str::raw::c_str_to_static_slice(c_desc);
 
-        let kind = match *uverr {
+        let kind = match errcode {
             uvll::UNKNOWN => io::OtherIoError,
             uvll::OK => io::OtherIoError,
             uvll::EOF => io::EndOfFile,

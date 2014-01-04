@@ -72,9 +72,15 @@ pub struct FlowedMoveData {
 #[deriving(Eq)]
 pub struct MovePathIndex(uint);
 
+impl MovePathIndex {
+    fn get(&self) -> uint {
+        let MovePathIndex(v) = *self; v
+    }
+}
+
 impl Clone for MovePathIndex {
     fn clone(&self) -> MovePathIndex {
-        MovePathIndex(**self)
+        MovePathIndex(self.get())
     }
 }
 
@@ -84,6 +90,12 @@ static InvalidMovePathIndex: MovePathIndex =
 /// Index into `MoveData.moves`, used like a pointer
 #[deriving(Eq)]
 pub struct MoveIndex(uint);
+
+impl MoveIndex {
+    fn get(&self) -> uint {
+        let MoveIndex(v) = *self; v
+    }
+}
 
 static InvalidMoveIndex: MoveIndex =
     MoveIndex(uint::max_value);
@@ -177,47 +189,47 @@ impl MoveData {
 
     fn path_loan_path(&self, index: MovePathIndex) -> @LoanPath {
         let paths = self.paths.borrow();
-        paths.get()[*index].loan_path
+        paths.get()[index.get()].loan_path
     }
 
     fn path_parent(&self, index: MovePathIndex) -> MovePathIndex {
         let paths = self.paths.borrow();
-        paths.get()[*index].parent
+        paths.get()[index.get()].parent
     }
 
     fn path_first_move(&self, index: MovePathIndex) -> MoveIndex {
         let paths = self.paths.borrow();
-        paths.get()[*index].first_move
+        paths.get()[index.get()].first_move
     }
 
     fn path_first_child(&self, index: MovePathIndex) -> MovePathIndex {
         let paths = self.paths.borrow();
-        paths.get()[*index].first_child
+        paths.get()[index.get()].first_child
     }
 
     fn path_next_sibling(&self, index: MovePathIndex) -> MovePathIndex {
         let paths = self.paths.borrow();
-        paths.get()[*index].next_sibling
+        paths.get()[index.get()].next_sibling
     }
 
     fn set_path_first_move(&self,
                            index: MovePathIndex,
                            first_move: MoveIndex) {
         let mut paths = self.paths.borrow_mut();
-        paths.get()[*index].first_move = first_move
+        paths.get()[index.get()].first_move = first_move
     }
 
     fn set_path_first_child(&self,
                             index: MovePathIndex,
                             first_child: MovePathIndex) {
         let mut paths = self.paths.borrow_mut();
-        paths.get()[*index].first_child = first_child
+        paths.get()[index.get()].first_child = first_child
     }
 
     fn move_next_move(&self, index: MoveIndex) -> MoveIndex {
         //! Type safe indexing operator
         let moves = self.moves.borrow();
-        moves.get()[*index].next_move
+        moves.get()[index.get()].next_move
     }
 
     fn is_var_path(&self, index: MovePathIndex) -> bool {
@@ -291,7 +303,7 @@ impl MoveData {
                index);
 
         let paths = self.paths.borrow();
-        assert_eq!(*index, paths.get().len() - 1);
+        assert_eq!(index.get(), paths.get().len() - 1);
 
         let mut path_map = self.path_map.borrow_mut();
         path_map.get().insert(lp, index);
@@ -549,7 +561,7 @@ impl MoveData {
                   kill_id: ast::NodeId,
                   dfcx_moves: &mut MoveDataFlow) {
         self.each_applicable_move(path, |move_index| {
-            dfcx_moves.add_kill(kill_id, *move_index);
+            dfcx_moves.add_kill(kill_id, move_index.get());
             true
         });
     }

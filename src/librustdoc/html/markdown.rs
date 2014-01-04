@@ -209,6 +209,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
 
 impl<'a> fmt::Default for Markdown<'a> {
     fn fmt(md: &Markdown<'a>, fmt: &mut fmt::Formatter) {
+        let Markdown(md) = *md;
         // This is actually common enough to special-case
         if md.len() == 0 { return; }
         render(fmt.buf, md.as_slice());
