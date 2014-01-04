@@ -47,11 +47,11 @@ endef
 $(foreach host,$(CFG_HOST), \
     $(eval LLVM_CONFIGS := $(LLVM_CONFIGS) $(LLVM_CONFIG_$(host))))
 
+$(foreach host,$(CFG_HOST), \
+ $(eval $(call DEF_LLVM_RULES,$(host))))
+
 $(S)src/librustc/lib/llvmdeps.rs: \
 		    $(LLVM_CONFIGS) \
 		    $(S)src/etc/mklldeps.py
 	$(Q)$(CFG_PYTHON) $(S)src/etc/mklldeps.py \
 	    "$@" "$(LLVM_COMPONENTS)" $(LLVM_CONFIGS)
-
-$(foreach host,$(CFG_HOST), \
- $(eval $(call DEF_LLVM_RULES,$(host))))
