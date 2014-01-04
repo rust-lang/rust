@@ -75,6 +75,7 @@ impl Runtime for SimpleTask {
         fail!()
     }
     fn local_io<'a>(&'a mut self) -> Option<rtio::LocalIo<'a>> { None }
+    fn stack_bounds(&self) -> Option<(uint, uint)> { None }
     fn wrap(~self) -> ~Any { fail!() }
 }
 

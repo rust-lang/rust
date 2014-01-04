@@ -450,6 +450,13 @@ impl Runtime for GreenTask {
         }
     }
 
+    fn stack_bounds(&self) -> Option<(uint, uint)> {
+        self.coroutine.as_ref().map(|c| {
+            (c.current_stack_segment.start() as uint,
+             c.current_stack_segment.end() as uint)
+        })
+    }
+
     fn wrap(~self) -> ~Any { self as ~Any }
 }
 
