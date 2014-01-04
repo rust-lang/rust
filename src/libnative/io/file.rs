@@ -20,7 +20,7 @@ use std::rt::rtio;
 use std::unstable::intrinsics;
 use std::vec;
 
-use super::IoResult;
+use io::{IoResult, retry};
 
 #[cfg(windows)] use std::os::win32::{as_utf16_p, fill_utf16_buf_and_decode};
 #[cfg(windows)] use std::ptr;
@@ -143,8 +143,8 @@ impl rtio::RtioFileStream for FileDesc {
                 overlap.OffsetHigh = (offset >> 32) as libc::DWORD;
 
                 match libc::ReadFile(handle, buf as libc::LPVOID,
-                                     amt as libc::DWORD,
-                                     &mut bytes_read, &mut overlap) {
+                                   amt as libc::DWORD,
+                                   &mut bytes_read, &mut overlap) {
                     0 => Err(super::last_error()),
                     _ => Ok(bytes_read as int)
                 }
@@ -153,10 +153,10 @@ impl rtio::RtioFileStream for FileDesc {
 
         #[cfg(unix)]
         fn os_pread(fd: c_int, buf: *u8, amt: uint, offset: u64) -> IoResult<int> {
-            match unsafe {
+            match retry(|| unsafe {
                 libc::pread(fd, buf as *libc::c_void, amt as libc::size_t,
-                            offset as libc::off_t)
-            } {
+                            offset as libc::off_t) as libc::c_int
+            }) {
                 -1 => Err(super::last_error()),
                 n => Ok(n as int)
             }
@@ -184,10 +184,10 @@ impl rtio::RtioFileStream for FileDesc {
 
         #[cfg(unix)]
         fn os_pwrite(fd: c_int, buf: *u8, amt: uint, offset: u64) -> IoResult<()> {
-            super::mkerr_libc(unsafe {
+            super::mkerr_libc(retry(|| unsafe {
                 libc::pwrite(fd, buf as *libc::c_void, amt as libc::size_t,
                              offset as libc::off_t)
-            } as c_int)
+            } as c_int))
         }
     }
     #[cfg(windows)]
@@ -240,7 +240,7 @@ impl rtio::RtioFileStream for FileDesc {
         }
         #[cfg(unix)]
         fn os_fsync(fd: c_int) -> IoResult<()> {
-            super::mkerr_libc(unsafe { libc::fsync(fd) })
+            super::mkerr_libc(retry(|| unsafe { libc::fsync(fd) }))
         }
     }
     #[cfg(windows)]
@@ -255,9 +255,13 @@ impl rtio::RtioFileStream for FileDesc {
             unsafe { libc::fcntl(fd, libc::F_FULLFSYNC) }
         }
         #[cfg(target_os = "linux")]
-        fn os_datasync(fd: c_int) -> c_int { unsafe { libc::fdatasync(fd) } }
+        fn os_datasync(fd: c_int) -> c_int {
+            retry(|| unsafe { libc::fdatasync(fd) })
+        }
         #[cfg(not(target_os = "macos"), not(target_os = "linux"))]
-        fn os_datasync(fd: c_int) -> c_int { unsafe { libc::fsync(fd) } }
+        fn os_datasync(fd: c_int) -> c_int {
+            retry(|| unsafe { libc::fsync(fd) })
+        }
     }
 
     #[cfg(windows)]
@@ -278,9 +282,9 @@ impl rtio::RtioFileStream for FileDesc {
     }
     #[cfg(unix)]
     fn truncate(&mut self, offset: i64) -> Result<(), IoError> {
-        super::mkerr_libc(unsafe {
+        super::mkerr_libc(retry(|| unsafe {
             libc::ftruncate(self.fd, offset as libc::off_t)
-        })
+        }))
     }
 }
 
@@ -311,9 +315,17 @@ impl rtio::RtioTTY for FileDesc {
 
 impl Drop for FileDesc {
     fn drop(&mut self) {
-        // closing stdio file handles makes no sense, so never do it
+        // closing stdio file handles makes no sense, so never do it. Also, note
+        // that errors are ignored when closing a file descriptor. The reason
+        // for this is that if an error occurs we don't actually know if the
+        // file descriptor was closed or not, and if we retried (for something
+        // like EINTR), we might close another valid file descriptor (opened
+        // after we closed ours.
         if self.close_on_drop && self.fd > libc::STDERR_FILENO {
-            unsafe { libc::close(self.fd); }
+            let n = unsafe { libc::close(self.fd) };
+            if n != 0 {
+                warn!("error {} when closing file descriptor {}", n, self.fd);
+            }
         }
     }
 }
@@ -336,7 +348,7 @@ impl CFile {
     }
 
     pub fn flush(&mut self) -> Result<(), IoError> {
-        super::mkerr_libc(unsafe { libc::fflush(self.file) })
+        super::mkerr_libc(retry(|| unsafe { libc::fflush(self.file) }))
     }
 }
 
@@ -444,13 +456,13 @@ pub fn open(path: &CString, fm: io::FileMode, fa: io::FileAccess)
     #[cfg(windows)]
     fn os_open(path: &CString, flags: c_int, mode: c_int) -> c_int {
         as_utf16_p(path.as_str().unwrap(), |path| {
-            unsafe { libc::wopen(path, flags, mode) }
+            retry(|| unsafe { libc::wopen(path, flags, mode) })
         })
     }
 
     #[cfg(unix)]
     fn os_open(path: &CString, flags: c_int, mode: c_int) -> c_int {
-        unsafe { libc::open(path.with_ref(|p| p), flags, mode) }
+        retry(|| unsafe { libc::open(path.with_ref(|p| p), flags, mode) })
     }
 }
 
@@ -469,9 +481,9 @@ pub fn mkdir(p: &CString, mode: io::FilePermission) -> IoResult<()> {
 
     #[cfg(unix)]
     fn os_mkdir(p: &CString, mode: c_int) -> IoResult<()> {
-        super::mkerr_libc(unsafe {
+        super::mkerr_libc(retry(|| unsafe {
             libc::mkdir(p.with_ref(|p| p), mode as libc::mode_t)
-        })
+        }))
     }
 }
 
@@ -582,7 +594,7 @@ pub fn unlink(p: &CString) -> IoResult<()> {
 
     #[cfg(unix)]
     fn os_unlink(p: &CString) -> IoResult<()> {
-        super::mkerr_libc(unsafe { libc::unlink(p.with_ref(|p| p)) })
+        super::mkerr_libc(retry(|| unsafe { libc::unlink(p.with_ref(|p| p)) }))
     }
 }
 
@@ -602,9 +614,9 @@ pub fn rename(old: &CString, new: &CString) -> IoResult<()> {
 
     #[cfg(unix)]
     fn os_rename(old: &CString, new: &CString) -> IoResult<()> {
-        super::mkerr_libc(unsafe {
+        super::mkerr_libc(retry(|| unsafe {
             libc::rename(old.with_ref(|p| p), new.with_ref(|p| p))
-        })
+        }))
     }
 }
 
@@ -614,13 +626,15 @@ pub fn chmod(p: &CString, mode: io::FilePermission) -> IoResult<()> {
     #[cfg(windows)]
     fn os_chmod(p: &CString, mode: c_int) -> c_int {
         unsafe {
-            as_utf16_p(p.as_str().unwrap(), |p| libc::wchmod(p, mode))
+            as_utf16_p(p.as_str().unwrap(), |p| retry(|| {
+                libc::wchmod(p, mode)
+            }))
         }
     }
 
     #[cfg(unix)]
     fn os_chmod(p: &CString, mode: c_int) -> c_int {
-        unsafe { libc::chmod(p.with_ref(|p| p), mode as libc::mode_t) }
+        retry(||unsafe { libc::chmod(p.with_ref(|p| p), mode as libc::mode_t) })
     }
 }
 
@@ -630,13 +644,15 @@ pub fn rmdir(p: &CString) -> IoResult<()> {
     #[cfg(windows)]
     fn os_rmdir(p: &CString) -> c_int {
         unsafe {
-            as_utf16_p(p.as_str().unwrap(), |p| libc::wrmdir(p))
+            as_utf16_p(p.as_str().unwrap(), |p| retry(|| {
+                libc::wrmdir(p)
+            }))
         }
     }
 
     #[cfg(unix)]
     fn os_rmdir(p: &CString) -> c_int {
-        unsafe { libc::rmdir(p.with_ref(|p| p)) }
+        retry(|| unsafe { libc::rmdir(p.with_ref(|p| p)) })
     }
 }
 
@@ -649,10 +665,10 @@ pub fn chown(p: &CString, uid: int, gid: int) -> IoResult<()> {
 
     #[cfg(unix)]
     fn os_chown(p: &CString, uid: int, gid: int) -> c_int {
-        unsafe {
+        retry(|| unsafe {
             libc::chown(p.with_ref(|p| p), uid as libc::uid_t,
                         gid as libc::gid_t)
-        }
+        })
     }
 }
 
@@ -697,10 +713,10 @@ pub fn readlink(p: &CString) -> IoResult<Path> {
             len = 1024; // XXX: read PATH_MAX from C ffi?
         }
         let mut buf = vec::with_capacity::<u8>(len as uint);
-        match unsafe {
+        match retry(|| unsafe {
             libc::readlink(p, buf.as_ptr() as *mut libc::c_char,
-                           len as libc::size_t)
-        } {
+                           len as libc::size_t) as libc::c_int
+        }) {
             -1 => Err(super::last_error()),
             n => {
                 assert!(n > 0);
@@ -725,9 +741,9 @@ pub fn symlink(src: &CString, dst: &CString) -> IoResult<()> {
 
     #[cfg(unix)]
     fn os_symlink(src: &CString, dst: &CString) -> IoResult<()> {
-        super::mkerr_libc(unsafe {
+        super::mkerr_libc(retry(|| unsafe {
             libc::symlink(src.with_ref(|p| p), dst.with_ref(|p| p))
-        })
+        }))
     }
 }
 
@@ -745,9 +761,9 @@ pub fn link(src: &CString, dst: &CString) -> IoResult<()> {
 
     #[cfg(unix)]
     fn os_link(src: &CString, dst: &CString) -> IoResult<()> {
-        super::mkerr_libc(unsafe {
+        super::mkerr_libc(retry(|| unsafe {
             libc::link(src.with_ref(|p| p), dst.with_ref(|p| p))
-        })
+        }))
     }
 }
 
@@ -842,7 +858,7 @@ pub fn stat(p: &CString) -> IoResult<io::FileStat> {
     fn os_stat(p: &CString) -> IoResult<io::FileStat> {
         let mut stat: libc::stat = unsafe { intrinsics::uninit() };
         as_utf16_p(p.as_str().unwrap(), |up| {
-            match unsafe { libc::wstat(up, &mut stat) } {
+            match retry(|| unsafe { libc::wstat(up, &mut stat) }) {
                 0 => Ok(mkstat(&stat, p)),
                 _ => Err(super::last_error()),
             }
@@ -852,7 +868,7 @@ pub fn stat(p: &CString) -> IoResult<io::FileStat> {
     #[cfg(unix)]
     fn os_stat(p: &CString) -> IoResult<io::FileStat> {
         let mut stat: libc::stat = unsafe { intrinsics::uninit() };
-        match unsafe { libc::stat(p.with_ref(|p| p), &mut stat) } {
+        match retry(|| unsafe { libc::stat(p.with_ref(|p| p), &mut stat) }) {
             0 => Ok(mkstat(&stat, p)),
             _ => Err(super::last_error()),
         }
@@ -871,7 +887,7 @@ pub fn lstat(p: &CString) -> IoResult<io::FileStat> {
     #[cfg(unix)]
     fn os_lstat(p: &CString) -> IoResult<io::FileStat> {
         let mut stat: libc::stat = unsafe { intrinsics::uninit() };
-        match unsafe { libc::lstat(p.with_ref(|p| p), &mut stat) } {
+        match retry(|| unsafe { libc::lstat(p.with_ref(|p| p), &mut stat) }) {
             0 => Ok(mkstat(&stat, p)),
             _ => Err(super::last_error()),
         }
@@ -888,7 +904,9 @@ pub fn utime(p: &CString, atime: u64, mtime: u64) -> IoResult<()> {
             modtime: (mtime / 1000) as libc::time64_t,
         };
         unsafe {
-            as_utf16_p(p.as_str().unwrap(), |p| libc::wutime(p, &buf))
+            as_utf16_p(p.as_str().unwrap(), |p| retry(|| {
+                libc::wutime(p, &buf)
+            }))
         }
     }
 
@@ -898,7 +916,7 @@ pub fn utime(p: &CString, atime: u64, mtime: u64) -> IoResult<()> {
             actime: (atime / 1000) as libc::time_t,
             modtime: (mtime / 1000) as libc::time_t,
         };
-        unsafe { libc::utime(p.with_ref(|p| p), &buf) }
+        retry(|| unsafe { libc::utime(p.with_ref(|p| p), &buf) })
     }
 }
 

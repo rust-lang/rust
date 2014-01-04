@@ -16,10 +16,11 @@ use std::ptr;
 use std::rt::rtio;
 use p = std::io::process;
 
-#[cfg(windows)] use std::cast;
-
 use super::IoResult;
 use super::file;
+
+#[cfg(windows)] use std::cast;
+#[cfg(not(windows))] use super::retry;
 
 /**
  * A value representing a child process.
@@ -445,17 +446,17 @@ fn spawn_process_os(prog: &str, args: &[~str],
 
         if in_fd == -1 {
             libc::close(libc::STDIN_FILENO);
-        } else if dup2(in_fd, 0) == -1 {
+        } else if retry(|| dup2(in_fd, 0)) == -1 {
             fail!("failure in dup2(in_fd, 0): {}", os::last_os_error());
         }
         if out_fd == -1 {
             libc::close(libc::STDOUT_FILENO);
-        } else if dup2(out_fd, 1) == -1 {
+        } else if retry(|| dup2(out_fd, 1)) == -1 {
             fail!("failure in dup2(out_fd, 1): {}", os::last_os_error());
         }
         if err_fd == -1 {
             libc::close(libc::STDERR_FILENO);
-        } else if dup2(err_fd, 2) == -1 {
+        } else if retry(|| dup2(err_fd, 2)) == -1 {
             fail!("failure in dup3(err_fd, 2): {}", os::last_os_error());
         }
         // close all other fds
@@ -664,9 +665,9 @@ fn waitpid(pid: pid_t) -> p::ProcessExit {
         }
 
         let mut status = 0 as c_int;
-        match super::retry(|| unsafe { wait::waitpid(pid, &mut status, 0) }) {
-            Err(e) => fail!("unknown waitpid error: {:?}", e),
-            Ok(_ret) => {
+        match retry(|| unsafe { wait::waitpid(pid, &mut status, 0) }) {
+            -1 => fail!("unknown waitpid error: {:?}", super::last_error()),
+            _ => {
                 if imp::WIFEXITED(status) {
                     p::ExitStatus(imp::WEXITSTATUS(status) as int)
                 } else {
