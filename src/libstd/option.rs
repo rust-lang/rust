@@ -361,7 +361,7 @@ impl<T: Default> Option<T> {
 // Trait implementations
 /////////////////////////////////////////////////////////////////////////////
 
-impl<T: fmt::Default> fmt::Default for Option<T> {
+impl<T: fmt::Format> fmt::Format for Option<T> {
     #[inline]
     fn fmt(s: &Option<T>, f: &mut fmt::Formatter) {
         match *s {

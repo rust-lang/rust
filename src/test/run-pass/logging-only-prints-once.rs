@@ -16,7 +16,7 @@ use std::fmt;
 
 struct Foo(Cell<int>);
 
-impl fmt::Default for Foo {
+impl fmt::Format for Foo {
     fn fmt(f: &Foo, _fmt: &mut fmt::Formatter) {
         assert!(f.get() == 0);
         f.set(1);

@@ -675,7 +675,7 @@ impl<'a> Context<'a> {
         let fmt_trait = match ty {
             Known(tyname) => {
                 match tyname.as_slice() {
-                    ""  => "Default",
+                    ""  => "Format",
                     "?" => "Poly",
                     "b" => "Bool",
                     "c" => "Char",
