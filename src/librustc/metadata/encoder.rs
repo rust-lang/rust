@@ -1912,10 +1912,6 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, crate: &Crate)
         println!("      zero bytes: {}", ecx.stats.zero_bytes.get());
         println!("     total bytes: {}", ecx.stats.total_bytes.get());
     }
-
-    // Pad this, since something (LLVM, presumably) is cutting off the
-    // remaining % 4 bytes.
-    ebml_w.writer.write(&[0u8, 0u8, 0u8, 0u8]);
 }
 
 // Get the encoded string for a type
