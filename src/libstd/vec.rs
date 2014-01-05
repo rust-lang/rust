@@ -4582,21 +4582,21 @@ mod tests {
         assert_eq!(v.rotate(4), 2);
         assert_eq!(v, [5, 6, 1, 2, 3, 4]);
     }
-    
+
     #[test]
     #[should_fail]
     fn test_rotate_fail() {
         let mut v = [1, 2, 3, 4, 5, 6];
         v.rotate(10);
     }
-    
+
     #[test]
     fn test_is_partitioned() {
         let even = |x: &int| *x % 2 == 0;
         assert!([2, 4, 6, 1, 3, 5].is_partitioned(|x| even(x)));
         assert!(![1, 2, 4, 6, 3, 5].is_partitioned(|x| even(x)));
     }
-    
+
     #[test]
     fn test_partion() {
         let mut v = [1, 2, 3, 4, 5, 6];
@@ -4604,7 +4604,7 @@ mod tests {
         assert_eq!(v.partition(|x| is_even(x)), 3);
         assert!(v.is_partitioned(is_even))
     }
-    
+
     #[test]
     fn test_partion_stable() {
         let mut v = [1, 2, 3, 4, 5, 6];
