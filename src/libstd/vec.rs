@@ -1018,15 +1018,14 @@ pub trait ImmutableVector<'a, T> {
      */
     fn pop_ref(&mut self) -> &'a T;
 
-    /**
-     * Returns true if all the elements in vector
-     * for which pred returns true precede those for which it returns false.
-     *
-     * # Example
-     * ```rust
-     * let even = |x: &int| *x % 2 == 0;
-     * assert!([2, 4, 6, 1, 3, 5].is_partitioned(|x| even(x)));
-     */
+    /// Returns true if all the elements in vector for which pred returns
+    /// true precede those for which it returns false.
+    ///
+    /// # Example
+    /// ```rust
+    /// let even = |x: &int| *x % 2 == 0;
+    /// assert!([2, 4, 6, 1, 3, 5].is_partitioned(|x| even(x)));
+    /// ```
     fn is_partitioned(self, f: |&T| -> bool) -> bool;
 }
 
@@ -2326,8 +2325,9 @@ pub trait MutableVector<'a, T> {
     /// overlap. Fails if `self` is shorter than `src`.
     unsafe fn copy_memory(self, src: &[T]);
 
-    /// Rotates elements of the vector around pivot `mid` in place.
-    /// This method behaves similarly to STL rotate.
+    /// Rotates the vector n places to the right by placing the first n elements at the end of the vector,
+    /// and moving the rest left to fill the gap. Operates in place. Returns the index to which
+    /// the first element of the vector was moved.
     ///
     /// # Example
     ///
@@ -2341,6 +2341,10 @@ pub trait MutableVector<'a, T> {
 
     /// Partitions the vector so that all elements satisfying `pred`
     /// precede those that do not. The partitioning is unstable.
+    /// Returns the index of the first element not satisfying `pred`.
+    ///
+    /// Complexity O(N), where N is the length of the vector.
+    /// For stable version, see `partition_stable`.
     ///
     /// # Example
     ///
@@ -2353,7 +2357,11 @@ pub trait MutableVector<'a, T> {
     fn partition(self, pred: |&T| -> bool) -> uint;
 
     /// Partitions the vector so that all elements satisfying `pred`
-    /// precede those that do not. The partitioning in stable.
+    /// precede those that do not. The partitioning is stable.
+    /// Returns the index of the first element not satisfying `pred`.
+    ///
+    /// Complexity O(N * log(N)), where N is the length of the vector.
+    /// If the stability is not required, consider using linear-time `partition` instead.
     ///
     /// # Example
     ///
