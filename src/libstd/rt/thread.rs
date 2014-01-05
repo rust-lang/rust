@@ -202,10 +202,8 @@ mod imp {
         let mut native: libc::pthread_t = intrinsics::uninit();
         let mut attr: libc::pthread_attr_t = intrinsics::uninit();
         assert_eq!(pthread_attr_init(&mut attr), 0);
-
-        let min_stack = get_min_stack(&attr);
         assert_eq!(pthread_attr_setstacksize(&mut attr,
-                                             min_stack + stack as libc::size_t), 0);
+                                             stack as libc::size_t), 0);
         assert_eq!(pthread_attr_setdetachstate(&mut attr,
                                                PTHREAD_CREATE_JOINABLE), 0);
 
@@ -230,18 +228,6 @@ mod imp {
     #[cfg(not(target_os = "macos"), not(target_os = "android"))]
     pub unsafe fn yield_now() { assert_eq!(pthread_yield(), 0); }
 
-    // Issue #6233. On some platforms, putting a lot of data in
-    // thread-local storage means we need to set the stack-size to be
-    // larger.
-    #[cfg(target_os = "linux")]
-    unsafe fn get_min_stack(attr: &libc::pthread_attr_t) -> libc::size_t {
-        __pthread_get_minstack(attr)
-    }
-    #[cfg(not(target_os = "linux"))]
-    unsafe fn get_min_stack(_: &libc::pthread_attr_t) -> libc::size_t {
-        0
-    }
-
     extern {
         fn pthread_create(native: *mut libc::pthread_t,
                           attr: *libc::pthread_attr_t,
@@ -261,10 +247,6 @@ mod imp {
         fn sched_yield() -> libc::c_int;
         #[cfg(not(target_os = "macos"), not(target_os = "android"))]
         fn pthread_yield() -> libc::c_int;
-
-        // This appears to be glibc specific
-        #[cfg(target_os = "linux")]
-        fn __pthread_get_minstack(attr: *libc::pthread_attr_t) -> libc::size_t;
     }
 }
 
