@@ -77,7 +77,7 @@ mod libunwind {
 
     use libc::{uintptr_t, uint64_t};
 
-    #[cfg(not(target_os = "android"))]
+    #[cfg(not(target_arch = "arm"))]
     #[repr(C)]
     pub enum _Unwind_Action
     {
@@ -88,7 +88,7 @@ mod libunwind {
         _UA_END_OF_STACK = 16,
     }
 
-    #[cfg(target_os = "android")]
+    #[cfg(target_arch = "arm")]
     #[repr(C)]
     pub enum _Unwind_State
     {
@@ -118,10 +118,16 @@ mod libunwind {
 
     pub type _Unwind_Word = uintptr_t;
 
+    #[cfg(not(target_arch = "arm"))]
+    pub static unwinder_private_data_size: int = 2;
+
+    #[cfg(target_arch = "arm")]
+    pub static unwinder_private_data_size: int = 20;
+
     pub struct _Unwind_Exception {
         exception_class: _Unwind_Exception_Class,
         exception_cleanup: _Unwind_Exception_Cleanup_Fn,
-        private: [_Unwind_Word, ..20],
+        private: [_Unwind_Word, ..unwinder_private_data_size],
     }
 
     pub enum _Unwind_Context {}
@@ -202,7 +208,7 @@ impl Unwinder {
                 let exception = ~uw::_Unwind_Exception {
                     exception_class: rust_exception_class(),
                     exception_cleanup: exception_cleanup,
-                    private: [0, ..20],
+                    private: [0, ..uw::unwinder_private_data_size],
                 };
                 let error = uw::_Unwind_RaiseException(cast::transmute(exception));
                 rtabort!("Could not unwind stack, error = {}", error as int)
@@ -253,7 +259,7 @@ fn rust_exception_class() -> uw::_Unwind_Exception_Class {
 //   This is achieved by overriding the return value in search phase to always
 //   say "catch!".
 
-#[cfg(not(target_os = "android"))]
+#[cfg(not(target_arch = "arm"))]
 pub mod eabi {
     use uw = super::libunwind;
     use libc::c_int;
@@ -310,7 +316,7 @@ pub mod eabi {
 
 // ARM EHABI uses a slightly different personality routine signature,
 // but otherwise works the same.
-#[cfg(target_os = "android")]
+#[cfg(target_arch = "arm")]
 pub mod eabi {
     use uw = super::libunwind;
     use libc::c_int;
