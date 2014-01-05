@@ -2156,8 +2156,8 @@ Rust's built-in `Send` and `Freeze` types are examples of traits that
 don't provide any methods.
 
 Traits may be implemented for specific types with [impls]. An impl for
-a particular trait gives an implementation of the methods that that
-trait provides.  For instance, the following the following impls of
+a particular trait gives an implementation of the methods that
+trait provides.  For instance, the following impls of
 `Printable` for `int` and `~str` give implementations of the `print`
 method.
 
@@ -3093,7 +3093,7 @@ they model most closely what people expect to shadow.
 
 ## Package ids
 
-If you use `extern mod`, per default `rustc` will look for libraries in the the library search path (which you can
+If you use `extern mod`, per default `rustc` will look for libraries in the library search path (which you can
 extend with the `-L` switch).
 
 However, Rust also ships with rustpkg, a package manager that is able to automatically download and build
