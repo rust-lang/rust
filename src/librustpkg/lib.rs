@@ -913,8 +913,8 @@ pub fn main_args(args: &[~str]) -> int {
                 cfgs: cfgs.clone(),
                 rustc_flags: rustc_flags.clone(),
                 use_rust_path_hack: use_rust_path_hack,
-                sysroot: sroot.clone(), // Currently, only tests override this
             },
+            sysroot: sroot.clone(), // Currently, only tests override this
             workcache_context: api::default_context(sroot.clone(),
                                                     default_workspace()).workcache_context
         }.run(command, rm_args.clone())
