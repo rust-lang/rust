@@ -12,6 +12,7 @@
 
 use extra::workcache;
 use rustc::driver::session;
+use rustc::metadata::filesearch::rustlibdir;
 
 use std::hashmap::HashSet;
 
@@ -168,13 +169,13 @@ impl Context {
     }
 }
 
-/// We assume that if ../../rustc exists, then we're running
+/// We assume that if ../../rustlib exists, then we're running
 /// rustpkg from a Rust target directory. This is part of a
 /// kludgy hack used to adjust the sysroot.
 pub fn in_target(sysroot: &Path) -> bool {
     debug!("Checking whether {} is in target", sysroot.display());
     let mut p = sysroot.dir_path();
-    p.set_filename("rustc");
+    p.set_filename(rustlibdir());
     p.is_dir()
 }
 

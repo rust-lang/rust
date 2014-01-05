@@ -185,6 +185,7 @@ mod test {
     use back::rpath::{get_absolute_rpath, get_install_prefix_rpath};
     use back::rpath::{minimize_rpaths, rpaths_to_flags, get_rpath_relative_to_output};
     use syntax::abi;
+    use metadata::filesearch;
 
     #[test]
     fn test_rpaths_to_flags() {
@@ -196,7 +197,9 @@ mod test {
     fn test_prefix_rpath() {
         let res = get_install_prefix_rpath("triple");
         let mut d = Path::new(env!("CFG_PREFIX"));
-        d.push("lib/rustc/triple/lib");
+        d.push("lib");
+        d.push(filesearch::rustlibdir());
+        d.push("triple/lib");
         debug!("test_prefix_path: {} vs. {}",
                res,
                d.display());

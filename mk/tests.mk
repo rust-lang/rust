@@ -108,7 +108,7 @@ ifdef CFG_WINDOWSY_$(1)
                stage2/$$(CFG_LIBDIR), \
                $$(if $$(findstring stage3,$$(1)), \
                     stage3/$$(CFG_LIBDIR), \
-               )))))/rustc/$$(CFG_BUILD)/$$(CFG_LIBDIR)
+               )))))/$$(CFG_RUSTLIBDIR)/$$(CFG_BUILD)/$$(CFG_LIBDIR)
   CFG_RUN_TEST_$(1)=$$(call CFG_RUN_$(1),$$(call CFG_TESTLIB_$(1),$$(1),$$(3)),$$(1))
 endif
 
