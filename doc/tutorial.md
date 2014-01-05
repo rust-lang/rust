@@ -2184,12 +2184,12 @@ any other method, using dot notation, as in `1.print()`.
 
 Sometimes, a method that a trait provides will have the same
 implementation for most or all of the types that implement that trait.
-For instance, suppose that we wanted `bool`s and `float`s to be
+For instance, suppose that we wanted `bool`s and `f32`s to be
 printable, and that we wanted the implementation of `print` for those
 types to be exactly as it is for `int`, above:
 
 ~~~~
-impl Printable for float {
+impl Printable for f32 {
     fn print(&self) { println!("{:?}", *self) }
 }
 
@@ -2220,7 +2220,7 @@ impl Printable for ~str {
 
 impl Printable for bool {}
 
-impl Printable for float {}
+impl Printable for f32 {}
 
 # 1.print();
 # (~"foo").print();
@@ -2228,7 +2228,7 @@ impl Printable for float {}
 # 3.14159.print();
 ~~~~
 
-Here, the impls of `Printable` for `int`, `bool`, and `float` don't
+Here, the impls of `Printable` for `int`, `bool`, and `f32` don't
 need to provide an implementation of `print`, because in the absence
 of a specific implementation, Rust just uses the _default method_
 provided in the trait definition.  Depending on the trait, default
