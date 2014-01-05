@@ -54,7 +54,6 @@ mod test {
     use unstable::run_in_bare_thread;
     use super::*;
     use rt::task::Task;
-    use rt::local_ptr;
 
     #[test]
     fn thread_local_task_smoke_test() {
