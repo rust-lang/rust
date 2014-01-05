@@ -234,85 +234,122 @@ impl RustcFlags {
     }
 }
 
+
+#[deriving(Eq)]
+pub enum Command {
+    BuildCmd,
+    CleanCmd,
+    DoCmd,
+    InfoCmd,
+    InstallCmd,
+    ListCmd,
+    PreferCmd,
+    TestCmd,
+    InitCmd,
+    UninstallCmd,
+    UnpreferCmd,
+}
+
+impl FromStr for Command {
+
+    fn from_str(s: &str) -> Option<Command>  {
+       match s {
+            &"build" => Some(BuildCmd),
+            &"clean" => Some(CleanCmd),
+            &"do" => Some(DoCmd),
+            &"info" => Some(InfoCmd),
+            &"install" => Some(InstallCmd),
+            &"list"    => Some(ListCmd),
+            &"prefer" => Some(PreferCmd),
+            &"test" => Some(TestCmd),
+            &"init" => Some(InitCmd),
+            &"uninstall" => Some(UninstallCmd),
+            &"unprefer" => Some(UnpreferCmd),
+            _ => None
+        }
+    }
+}
+
 /// Returns true if any of the flags given are incompatible with the cmd
 pub fn flags_forbidden_for_cmd(flags: &RustcFlags,
                         cfgs: &[~str],
-                        cmd: &str, user_supplied_opt_level: bool) -> bool {
+                        cmd: Command, user_supplied_opt_level: bool) -> bool {
     let complain = |s| {
         println!("The {} option can only be used with the `build` command:
                   rustpkg [options..] build {} [package-ID]", s, s);
     };
 
-    if flags.linker.is_some() && cmd != "build" && cmd != "install" {
+    if flags.linker.is_some() && cmd != BuildCmd && cmd != InstallCmd {
         println("The --linker option can only be used with the build or install commands.");
         return true;
     }
-    if flags.link_args.is_some() && cmd != "build" && cmd != "install" {
+    if flags.link_args.is_some() && cmd != BuildCmd && cmd != InstallCmd {
         println("The --link-args option can only be used with the build or install commands.");
         return true;
     }
 
-    if !cfgs.is_empty() && cmd != "build" && cmd != "install" && cmd != "test" {
+    if !cfgs.is_empty() && cmd != BuildCmd && cmd != InstallCmd && cmd != TestCmd {
         println("The --cfg option can only be used with the build, test, or install commands.");
         return true;
     }
 
-    if user_supplied_opt_level && cmd != "build" && cmd != "install" {
+    if user_supplied_opt_level && cmd != BuildCmd && cmd != InstallCmd {
         println("The -O and --opt-level options can only be used with the build \
                     or install commands.");
         return true;
     }
 
-    if flags.save_temps  && cmd != "build" && cmd != "install" {
+    if flags.save_temps  && cmd != BuildCmd && cmd != InstallCmd {
         println("The --save-temps option can only be used with the build \
                     or install commands.");
         return true;
     }
 
-    if flags.target.is_some()  && cmd != "build" && cmd != "install" {
+    if flags.target.is_some()  && cmd != BuildCmd && cmd != InstallCmd {
         println("The --target option can only be used with the build \
                     or install commands.");
         return true;
     }
-    if flags.target_cpu.is_some()  && cmd != "build" && cmd != "install" {
+    if flags.target_cpu.is_some()  && cmd != BuildCmd && cmd != InstallCmd {
         println("The --target-cpu option can only be used with the build \
                     or install commands.");
         return true;
     }
-    if flags.experimental_features.is_some() && cmd != "build" && cmd != "install" {
+    if flags.experimental_features.is_some() && cmd != BuildCmd && cmd != InstallCmd {
         println("The -Z option can only be used with the build or install commands.");
         return true;
     }
 
     match flags.compile_upto {
-        Link if cmd != "build" => {
+        Link if cmd != BuildCmd => {
             complain("--no-link");
             true
         }
-        Trans if cmd != "build" => {
+        Trans if cmd != BuildCmd => {
             complain("--no-trans");
             true
         }
-        Assemble if cmd != "build" => {
+        Assemble if cmd != BuildCmd => {
             complain("-S");
             true
         }
-        Pretty if cmd != "build" => {
+        Pretty if cmd != BuildCmd => {
             complain("--pretty");
             true
         }
-        Analysis if cmd != "build" => {
+        Analysis if cmd != BuildCmd => {
             complain("--parse-only");
             true
         }
-        LLVMCompileBitcode if cmd != "build" => {
+        LLVMCompileBitcode if cmd != BuildCmd => {
             complain("--emit-llvm");
             true
         }
-        LLVMAssemble if cmd != "build" => {
+        LLVMAssemble if cmd != BuildCmd => {
             complain("--emit-llvm");
             true
         }
         _ => false
     }
 }
+
