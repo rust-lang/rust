@@ -16,7 +16,7 @@ use std::mem;
 use std::rt::rtio;
 use std::unstable::intrinsics;
 
-use super::IoResult;
+use super::{IoResult, retry};
 use super::file::keep_going;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -227,8 +227,10 @@ impl TcpStream {
                 let (addr, len) = addr_to_sockaddr(addr);
                 let addrp = &addr as *libc::sockaddr_storage;
                 let ret = TcpStream { fd: fd };
-                match libc::connect(fd, addrp as *libc::sockaddr,
-                                    len as libc::socklen_t) {
+                match retry(|| {
+                    libc::connect(fd, addrp as *libc::sockaddr,
+                                  len as libc::socklen_t)
+                }) {
                     -1 => Err(super::last_error()),
                     _ => Ok(ret),
                 }
@@ -394,9 +396,11 @@ impl TcpAcceptor {
             let storagep = &mut storage as *mut libc::sockaddr_storage;
             let size = mem::size_of::<libc::sockaddr_storage>();
             let mut size = size as libc::socklen_t;
-            match libc::accept(self.fd(),
-                               storagep as *mut libc::sockaddr,
-                               &mut size as *mut libc::socklen_t) {
+            match retry(|| {
+                libc::accept(self.fd(),
+                             storagep as *mut libc::sockaddr,
+                             &mut size as *mut libc::socklen_t) as libc::c_int
+            }) as sock_t {
                 -1 => Err(super::last_error()),
                 fd => Ok(TcpStream { fd: fd })
             }
@@ -493,12 +497,14 @@ impl rtio::RtioUdpSocket for UdpSocket {
             let storagep = &mut storage as *mut libc::sockaddr_storage;
             let mut addrlen: libc::socklen_t =
                     mem::size_of::<libc::sockaddr_storage>() as libc::socklen_t;
-            let ret = libc::recvfrom(self.fd,
-                                     buf.as_ptr() as *mut libc::c_void,
-                                     buf.len() as msglen_t,
-                                     0,
-                                     storagep as *mut libc::sockaddr,
-                                     &mut addrlen);
+            let ret = retry(|| {
+                libc::recvfrom(self.fd,
+                               buf.as_ptr() as *mut libc::c_void,
+                               buf.len() as msglen_t,
+                               0,
+                               storagep as *mut libc::sockaddr,
+                               &mut addrlen) as libc::c_int
+            });
             if ret < 0 { return Err(super::last_error()) }
             sockaddr_to_addr(&storage, addrlen as uint).and_then(|addr| {
                 Ok((ret as uint, addr))
@@ -509,12 +515,14 @@ impl rtio::RtioUdpSocket for UdpSocket {
         let (dst, len) = addr_to_sockaddr(dst);
         let dstp = &dst as *libc::sockaddr_storage;
         unsafe {
-            let ret = libc::sendto(self.fd,
-                                   buf.as_ptr() as *libc::c_void,
-                                   buf.len() as msglen_t,
-                                   0,
-                                   dstp as *libc::sockaddr,
-                                   len as libc::socklen_t);
+            let ret = retry(|| {
+                libc::sendto(self.fd,
+                             buf.as_ptr() as *libc::c_void,
+                             buf.len() as msglen_t,
+                             0,
+                             dstp as *libc::sockaddr,
+                             len as libc::socklen_t) as libc::c_int
+            });
             match ret {
                 -1 => Err(super::last_error()),
                 n if n as uint != buf.len() => {
