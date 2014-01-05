@@ -49,7 +49,7 @@ for llconfig in sys.argv[3:]:
 
     args = [llconfig, '--libs']
     args.extend(components)
-    proc = subprocess.Popen(args, stdout = subprocess.PIPE)
+    proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out, err = proc.communicate()
 
     if err:
