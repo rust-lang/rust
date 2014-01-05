@@ -45,6 +45,8 @@ use workspace::determine_destination;
 use context::{Context, BuildContext,
                        RustcFlags, Trans, Link, Nothing, Pretty, Analysis, Assemble,
                        LLVMAssemble, LLVMCompileBitcode};
+use context::{Command, BuildCmd, CleanCmd, DoCmd, InfoCmd, InstallCmd, ListCmd,
+    PreferCmd, TestCmd, InitCmd, UninstallCmd, UnpreferCmd};
 use crate_id::CrateId;
 use package_source::PkgSrc;
 use target::{WhatToBuild, Everything, is_lib, is_main, is_test, is_bench};
@@ -205,7 +207,7 @@ impl<'a> PkgScript<'a> {
 }
 
 pub trait CtxMethods {
-    fn run(&self, cmd: &str, args: ~[~str]);
+    fn run(&self, cmd: Command, args: ~[~str]);
     fn do_cmd(&self, _cmd: &str, _pkgname: &str);
     /// Returns a pair of the selected package ID, and the destination workspace
     fn build_args(&self, args: ~[~str], what: &WhatToBuild) -> Option<(CrateId, Path)>;
@@ -281,13 +283,13 @@ impl CtxMethods for BuildContext {
             Some((crateid, dest_ws))
         }
     }
-    fn run(&self, cmd: &str, args: ~[~str]) {
+    fn run(&self, cmd: Command, args: ~[~str]) {
         let cwd = os::getcwd();
         match cmd {
-            "build" => {
+            BuildCmd => {
                 self.build_args(args, &WhatToBuild::new(MaybeCustom, Everything));
             }
-            "clean" => {
+            CleanCmd => {
                 if args.len() < 1 {
                     match cwd_to_workspace() {
                         None => { usage::clean(); return }
@@ -304,17 +306,17 @@ impl CtxMethods for BuildContext {
                     self.clean(&cwd, &crateid); // tjc: should use workspace, not cwd
                 }
             }
-            "do" => {
+            DoCmd => {
                 if args.len() < 2 {
                     return usage::do_cmd();
                 }
 
                 self.do_cmd(args[0].clone(), args[1].clone());
             }
-            "info" => {
+            InfoCmd => {
                 self.info();
             }
-            "install" => {
+            InstallCmd => {
                if args.len() < 1 {
                     match cwd_to_workspace() {
                         None if dir_has_crate_file(&cwd) => {
@@ -360,21 +362,21 @@ impl CtxMethods for BuildContext {
                     }
                 }
             }
-            "list" => {
+            ListCmd => {
                 println("Installed packages:");
                 installed_packages::list_installed_packages(|pkg_id| {
                     pkg_id.path.display().with_str(|s| println(s));
                     true
                 });
             }
-            "prefer" => {
+            PreferCmd => {
                 if args.len() < 1 {
                     return usage::uninstall();
                 }
 
                 self.prefer(args[0], None);
             }
-            "test" => {
+            TestCmd => {
                 // Build the test executable
                 let maybe_id_and_workspace = self.build_args(args,
                                                              &WhatToBuild::new(MaybeCustom, Tests));
@@ -388,14 +390,14 @@ impl CtxMethods for BuildContext {
                     }
                 }
             }
-            "init" => {
+            InitCmd => {
                 if args.len() != 0 {
                     return usage::init();
                 } else {
                     self.init();
                 }
             }
-            "uninstall" => {
+            UninstallCmd => {
                 if args.len() < 1 {
                     return usage::uninstall();
                 }
@@ -417,14 +419,13 @@ impl CtxMethods for BuildContext {
                     });
                 }
             }
-            "unprefer" => {
+            UnpreferCmd => {
                 if args.len() < 1 {
                     return usage::unprefer();
                 }
 
                 self.unprefer(args[0], None);
             }
-            _ => fail!("I don't know the command `{}`", cmd)
         }
     }
 
@@ -864,14 +865,8 @@ pub fn main_args(args: &[~str]) -> int {
         experimental_features: experimental_features
     };
 
-    let mut cmd_opt = None;
-    for a in args.iter() {
-        if util::is_cmd(*a) {
-            cmd_opt = Some(a);
-            break;
-        }
-    }
-    let cmd = match cmd_opt {
+    let cmd_opt = args.iter().filter_map( |s| from_str(s.clone())).next();
+    let command = match(cmd_opt) {
         None => {
             usage::general();
             return 0;
@@ -879,23 +874,10 @@ pub fn main_args(args: &[~str]) -> int {
         Some(cmd) => {
             let bad_option = context::flags_forbidden_for_cmd(&rustc_flags,
                                                               cfgs,
-                                                              *cmd,
+                                                              cmd,
                                                               user_supplied_opt_level);
             if help || bad_option {
-                match *cmd {
-                    ~"build" => usage::build(),
-                    ~"clean" => usage::clean(),
-                    ~"do" => usage::do_cmd(),
-                    ~"info" => usage::info(),
-                    ~"install" => usage::install(),
-                    ~"list"    => usage::list(),
-                    ~"prefer" => usage::prefer(),
-                    ~"test" => usage::test(),
-                    ~"init" => usage::init(),
-                    ~"uninstall" => usage::uninstall(),
-                    ~"unprefer" => usage::unprefer(),
-                    _ => usage::general()
-                };
+                usage::usage_for_command(cmd);
                 if bad_option {
                     return BAD_FLAG_CODE;
                 }
@@ -909,9 +891,10 @@ pub fn main_args(args: &[~str]) -> int {
     };
 
     // Pop off all flags, plus the command
-    let remaining_args = args.iter().skip_while(|s| !util::is_cmd(**s));
-    // I had to add this type annotation to get the code to typecheck
-    let mut remaining_args: ~[~str] = remaining_args.map(|s| (*s).clone()).collect();
+    let mut remaining_args: ~[~str] = args.iter().skip_while(|&s| {
+        let maybe_command: Option<Command> = from_str(*s);
+        maybe_command.is_none()
+    }).map(|s| s.clone()).collect();
     remaining_args.shift();
     let sroot = match supplied_sysroot {
         Some(s) => Path::new(s),
@@ -923,7 +906,6 @@ pub fn main_args(args: &[~str]) -> int {
     debug!("Will store workcache in {}", ws.display());
 
     let rm_args = remaining_args.clone();
-    let sub_cmd = cmd.clone();
     // Wrap the rest in task::try in case of a condition failure in a task
     let result = do task::try {
         BuildContext {
@@ -935,7 +917,7 @@ pub fn main_args(args: &[~str]) -> int {
             },
             workcache_context: api::default_context(sroot.clone(),
                                                     default_workspace()).workcache_context
-        }.run(sub_cmd, rm_args.clone())
+        }.run(command, rm_args.clone())
     };
     // FIXME #9262: This is using the same error code for all errors,
     // and at least one test case succeeds if rustpkg returns COPY_FAILED_CODE,
