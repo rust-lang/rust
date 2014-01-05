@@ -236,6 +236,24 @@ pub fn getenv(n: &str) -> Option<~str> {
     }
 }
 
+#[cfg(windows)]
+static PATH_ENTRY_SEPARATOR: &'static str = ";";
+#[cfg(not(windows))]
+static PATH_ENTRY_SEPARATOR: &'static str = ":";
+
+/// Fetches the environment variable `n` from the current process and
+/// splits into strings.
+///
+/// On Unix, the list is separated by character ':'.
+/// On Windows, the list is separated by character ';'.
+pub fn get_path_env(n: &str) -> ~[Path] {
+    match getenv(n) {
+        Some(s) => {
+            s.split_str(PATH_ENTRY_SEPARATOR).map(|s| Path::new(s)).to_owned_vec()
+        }
+        None => ~[],
+    }
+}
 
 #[cfg(unix)]
 /// Sets the environment variable `n` to the value `v` for the currently running
