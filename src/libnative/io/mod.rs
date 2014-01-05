@@ -134,13 +134,24 @@ fn mkerr_winbool(ret: libc::c_int) -> IoResult<()> {
     }
 }
 
+#[cfg(windows)]
+#[inline]
+fn retry(f: || -> libc::c_int) -> libc::c_int {
+    loop {
+        match f() {
+            -1 if os::errno() as int == libc::WSAEINTR as int => {}
+            n => return n,
+        }
+    }
+}
+
 #[cfg(unix)]
-fn retry(f: || -> libc::c_int) -> IoResult<libc::c_int> {
+#[inline]
+fn retry(f: || -> libc::c_int) -> libc::c_int {
     loop {
         match f() {
             -1 if os::errno() as int == libc::EINTR as int => {}
-            -1 => return Err(last_error()),
-            n => return Ok(n),
+            n => return n,
         }
     }
 }
