@@ -52,7 +52,9 @@ try:
                 report_err("TODO is deprecated; use FIXME")
             match = re.match(r'^.*//\s*(NOTE.*)$', line)
             if match:
-                report_warn(match.group(1))
+                m = match.group(1)
+                if "snap" in m.lower():
+                    report_warn(match.group(1))
             match = re.match(r'^.*//\s*SNAP\s+(\w+)', line)
             if match:
                 hsh = match.group(1)
