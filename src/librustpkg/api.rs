@@ -49,8 +49,8 @@ pub fn new_default_context(c: workcache::Context, p: Path) -> BuildContext {
             cfgs: ~[],
             rustc_flags: RustcFlags::default(),
             use_rust_path_hack: false,
-            sysroot: p
         },
+        sysroot: p,
         workcache_context: c
     }
 }

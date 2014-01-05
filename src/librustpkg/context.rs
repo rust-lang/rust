@@ -26,25 +26,35 @@ pub struct Context {
     // FOO/src/bar-0.1 instead of FOO). The flag doesn't affect where
     // rustpkg stores build artifacts.
     use_rust_path_hack: bool,
-    // The root directory containing the Rust standard libraries
-    sysroot: Path
 }
 
 #[deriving(Clone)]
 pub struct BuildContext {
     // Context for workcache
     workcache_context: workcache::Context,
-    // Everything else
-    context: Context
+    // Parsed command line options
+    context: Context,
+    // The root directory containing the Rust standard libraries
+    sysroot: Path
 }
 
 impl BuildContext {
     pub fn sysroot(&self) -> Path {
-        self.context.sysroot.clone()
+        self.sysroot.clone()
     }
 
+    // Hack so that rustpkg can run either out of a rustc target dir,
+    // or the host dir
     pub fn sysroot_to_use(&self) -> Path {
-        self.context.sysroot_to_use()
+        if !in_target(&self.sysroot) {
+            self.sysroot.clone()
+        } else {
+            let mut p = self.sysroot.clone();
+            p.pop();
+            p.pop();
+            p.pop();
+            p
+        }
     }
 
     /// Returns the flags to pass to rustc, as a vector of strings
@@ -131,28 +141,6 @@ pub enum StopBefore {
 }
 
 impl Context {
-    pub fn sysroot(&self) -> Path {
-        self.sysroot.clone()
-    }
-
-    /// Debugging
-    pub fn sysroot_str(&self) -> ~str {
-        self.sysroot.as_str().unwrap().to_owned()
-    }
-
-    // Hack so that rustpkg can run either out of a rustc target dir,
-    // or the host dir
-    pub fn sysroot_to_use(&self) -> Path {
-        if !in_target(&self.sysroot) {
-            self.sysroot.clone()
-        } else {
-            let mut p = self.sysroot.clone();
-            p.pop();
-            p.pop();
-            p.pop();
-            p
-        }
-    }
 
     /// Returns the flags to pass to rustc, as a vector of strings
     pub fn flag_strs(&self) -> ~[~str] {
