@@ -135,11 +135,6 @@ impl<K: TotalOrd, V> TreeMap<K, V> {
     /// Create an empty TreeMap
     pub fn new() -> TreeMap<K, V> { TreeMap{root: None, length: 0} }
 
-    /// Iterate over the map and mutate the contained values
-    pub fn mutate_values(&mut self, f: |&K, &mut V| -> bool) -> bool {
-        mutate_values(&mut self.root, f)
-    }
-
     /// Get a lazy iterator over the key-value pairs in the map.
     /// Requires that it be frozen (immutable).
     pub fn iter<'a>(&'a self) -> TreeMapIterator<'a, K, V> {
@@ -890,24 +885,6 @@ impl<K: TotalOrd, V> TreeNode<K, V> {
     pub fn new(key: K, value: V) -> TreeNode<K, V> {
         TreeNode{key: key, value: value, left: None, right: None, level: 1}
     }
-}
-
-fn mutate_values<'r,
-                 K:TotalOrd,
-                 V>(
-                 node: &'r mut Option<~TreeNode<K,V>>,
-                 f: |&'r K, &'r mut V| -> bool)
-                 -> bool {
-    match *node {
-      Some(~TreeNode{key: ref key, value: ref mut value, left: ref mut left,
-                     right: ref mut right, ..}) => {
-        if !mutate_values(left,  |k,v| f(k,v)) { return false }
-        if !f(key, value) { return false }
-        if !mutate_values(right, |k,v| f(k,v)) { return false }
-      }
-      None => return false
-    }
-    true
 }
 
 // Remove left horizontal link by rotating right
