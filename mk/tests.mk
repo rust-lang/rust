@@ -133,7 +133,7 @@ endef
 $(foreach target,$(CFG_TARGET), \
   $(if $(findstring $(target),"arm-linux-androideabi"), \
     $(if $(findstring adb,$(CFG_ADB)), \
-      $(if $(findstring device,$(shell $(CFG_ADB) devices 2>/dev/null | grep -E '^[_A-Za-z0-9-]+[[:blank:]]+device')), \
+      $(if $(findstring device,$(shell $(CFG_ADB) devices 2>/dev/null | grep -E '^[:_A-Za-z0-9-]+[[:blank:]]+device')), \
         $(info check: android device attached) \
         $(eval $(call DEF_ADB_DEVICE_STATUS, true)), \
         $(info check: android device not attached) \
@@ -149,21 +149,21 @@ ifeq ($(CFG_ADB_DEVICE_STATUS),true)
 CFG_ADB_TEST_DIR=/data/tmp
 
 $(info check: android device test dir $(CFG_ADB_TEST_DIR) ready \
- $(shell adb remount 1>/dev/null) \
- $(shell adb shell rm -r $(CFG_ADB_TEST_DIR) >/dev/null) \
- $(shell adb shell mkdir $(CFG_ADB_TEST_DIR)) \
- $(shell adb shell mkdir $(CFG_ADB_TEST_DIR)/tmp) \
- $(shell adb push $(S)src/etc/adb_run_wrapper.sh $(CFG_ADB_TEST_DIR) 1>/dev/null) \
- $(shell adb push $(TLIB2_T_arm-linux-androideabi_H_$(CFG_BUILD))/$(CFG_RUNTIME_arm-linux-androideabi) \
-                  $(CFG_ADB_TEST_DIR)) \
- $(shell adb push $(TLIB2_T_arm-linux-androideabi_H_$(CFG_BUILD))/$(STDLIB_GLOB_arm-linux-androideabi) \
-                  $(CFG_ADB_TEST_DIR)) \
- $(shell adb push $(TLIB2_T_arm-linux-androideabi_H_$(CFG_BUILD))/$(EXTRALIB_GLOB_arm-linux-androideabi) \
-                  $(CFG_ADB_TEST_DIR)) \
- $(shell adb push $(TLIB2_T_arm-linux-androideabi_H_$(CFG_BUILD))/$(LIBRUSTUV_GLOB_arm-linux-androideabi) \
-                  $(CFG_ADB_TEST_DIR)) \
- $(shell adb push $(TLIB2_T_arm-linux-androideabi_H_$(CFG_BUILD))/$(LIBGREEN_GLOB_arm-linux-androideabi) \
-                  $(CFG_ADB_TEST_DIR)) \
+ $(shell $(CFG_ADB) remount 1>/dev/null) \
+ $(shell $(CFG_ADB) shell rm -r $(CFG_ADB_TEST_DIR) >/dev/null) \
+ $(shell $(CFG_ADB) shell mkdir $(CFG_ADB_TEST_DIR)) \
+ $(shell $(CFG_ADB) shell mkdir $(CFG_ADB_TEST_DIR)/tmp) \
+ $(shell $(CFG_ADB) push $(S)src/etc/adb_run_wrapper.sh $(CFG_ADB_TEST_DIR) 1>/dev/null) \
+ $(shell $(CFG_ADB) push $(TLIB2_T_arm-linux-androideabi_H_$(CFG_BUILD))/$(CFG_RUNTIME_arm-linux-androideabi) \
+                    $(CFG_ADB_TEST_DIR)) \
+ $(shell $(CFG_ADB) push $(TLIB2_T_arm-linux-androideabi_H_$(CFG_BUILD))/$(STDLIB_GLOB_arm-linux-androideabi) \
+                    $(CFG_ADB_TEST_DIR)) \
+ $(shell $(CFG_ADB) push $(TLIB2_T_arm-linux-androideabi_H_$(CFG_BUILD))/$(EXTRALIB_GLOB_arm-linux-androideabi) \
+                    $(CFG_ADB_TEST_DIR)) \
+ $(shell $(CFG_ADB) push $(TLIB2_T_arm-linux-androideabi_H_$(CFG_BUILD))/$(LIBRUSTUV_GLOB_arm-linux-androideabi) \
+                    $(CFG_ADB_TEST_DIR)) \
+ $(shell $(CFG_ADB) push $(TLIB2_T_arm-linux-androideabi_H_$(CFG_BUILD))/$(LIBGREEN_GLOB_arm-linux-androideabi) \
+                    $(CFG_ADB_TEST_DIR)) \
  )
 else
 CFG_ADB_TEST_DIR=
