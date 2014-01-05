@@ -290,6 +290,7 @@ Out of scope
 #[allow(missing_doc)];
 
 use cast;
+use char::Char;
 use condition::Guard;
 use container::Container;
 use int;
@@ -912,6 +913,13 @@ pub trait Writer {
     fn write_line(&mut self, s: &str) {
         self.write_str(s);
         self.write(['\n' as u8]);
+    }
+
+    /// Write a single char, encoded as UTF-8.
+    fn write_char(&mut self, c: char) {
+        let mut buf = [0u8, ..4];
+        let n = c.encode_utf8(buf.as_mut_slice());
+        self.write(buf.slice_to(n));
     }
 
     /// Write the result of passing n through `int::to_str_bytes`.
