@@ -20,28 +20,16 @@ extern mod extra;
 extern mod rustc;
 extern mod syntax;
 
-pub use std::path::Path;
+use std::path::Path;
+use std::{os, task};
 
 use context::{Trans, Nothing, Pretty, Analysis, LLVMAssemble};
 use context::{LLVMCompileBitcode, BuildCmd, CleanCmd, DoCmd, InfoCmd};
 use context::{InstallCmd, ListCmd, PreferCmd, TestCmd, InitCmd, UninstallCmd};
 use context::{UnpreferCmd};
-//use path_util::{build_pkg_id_in_workspace, built_test_in_workspace};
-//use path_util::{in_rust_path, built_executable_in_workspace};
-//use path_util::{built_library_in_workspace, default_workspace};
-//use path_util::{target_executable_in_workspace, target_library_in_workspace};
-//use path_util::{dir_has_crate_file};
-use run_cmd::{CtxMethods};
-//use source_control::{CheckedOutSources, is_git_dir, make_read_only};
-//use target::{WhatToBuild, Everything, is_lib, is_main, is_test, is_bench};
-//use target::{Tests, MaybeCustom, Inferred, JustOne};
-//use workcache_support::digest_only_date;
-//use workspace::{each_pkg_parent_workspace, pkg_parent_workspaces, cwd_to_workspace};
-//use workspace::{determine_destination};
-
-use std::{os, task};
 use context::{BuildContext};
 use rustc::metadata::filesearch;
+use run_cmd::{run_cmd};
 use parse_args::{ParseResult, parse_args};
 use path_util::{default_workspace};
 use exit_codes::{COPY_FAILED_CODE};
@@ -107,12 +95,13 @@ pub fn main_args(args: &[~str]) -> int {
 
     // Wrap the rest in task::try in case of a condition failure in a task
     let result = do task::try {
-        BuildContext {
+        let build_context = BuildContext {
             context: context,
             sysroot: sysroot.clone(), // Currently, only tests override this
             workcache_context: api::default_context(sysroot.clone(),
                                                     default_workspace()).workcache_context
-        }.run(command, args.clone())
+        };
+        run_cmd(command, args.clone(), &build_context);
     };
     // FIXME #9262: This is using the same error code for all errors,
     // and at least one test case succeeds if rustpkg returns COPY_FAILED_CODE,

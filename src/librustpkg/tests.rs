@@ -22,6 +22,7 @@ use extra::workcache;
 use extra::workcache::{Database, Logger};
 use extra::treemap::TreeMap;
 use extra::getopts::groups::getopts;
+use run_cmd::{run_install};
 use std::run::ProcessOutput;
 use installed_packages::list_installed_packages;
 use crate_id::{CrateId};
@@ -591,7 +592,7 @@ fn test_install_valid() {
                           temp_workspace.clone(),
                           false,
                           temp_pkg_id.clone());
-    ctxt.install(src, &WhatToBuild::new(MaybeCustom, Everything));
+    run_install(src, &WhatToBuild::new(MaybeCustom, Everything), &ctxt);
     // Check that all files exist
     let exec = target_executable_in_workspace(&temp_pkg_id, temp_workspace);
     debug!("exec = {}", exec.display());
@@ -630,7 +631,7 @@ fn test_install_invalid() {
                                   temp_workspace.clone(),
                                   false,
                                   crateid.clone());
-        ctxt.install(pkg_src, &WhatToBuild::new(MaybeCustom, Everything));
+        run_install(pkg_src, &WhatToBuild::new(MaybeCustom, Everything),&ctxt);
     };
     assert!(result.unwrap_err()
             .to_str().contains("supplied path for package dir does not exist"));
