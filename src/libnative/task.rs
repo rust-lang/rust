@@ -72,6 +72,11 @@ pub fn spawn_opts(opts: TaskOpts, f: proc()) {
     let task = task;
     let ops = ops();
 
+    // Note that this increment must happen *before* the spawn in order to
+    // guarantee that if this task exits it will always end up waiting for the
+    // spawned task to exit.
+    bookeeping::increment();
+
     // Spawning a new OS thread guarantees that __morestack will never get
     // triggered, but we must manually set up the actual stack bounds once this
     // function starts executing. This raises the lower limit by a bit because
@@ -88,7 +93,6 @@ pub fn spawn_opts(opts: TaskOpts, f: proc()) {
         let mut ops = ops;
         ops.stack_bounds = Some((my_stack - stack + 1024, my_stack));
 
-        bookeeping::increment();
         let mut f = Some(f);
         let mut task = task;
         task.put_runtime(ops as ~rt::Runtime);
