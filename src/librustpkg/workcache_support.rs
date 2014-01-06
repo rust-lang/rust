@@ -11,7 +11,7 @@
 use std::io;
 use std::io::File;
 use extra::workcache;
-use sha2::{Digest, Sha256};
+use rustc::util::sha2::{Digest, Sha256};
 
 /// Hashes the file contents along with the last-modified time
 pub fn digest_file_with_date(path: &Path) -> ~str {
