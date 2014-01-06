@@ -130,18 +130,18 @@ impl Select {
         let id = this.next_id;
         this.next_id += 1;
         unsafe {
-            let packet = port.queue.packet();
+            let packet = port.inner.packet();
             assert!(!(*packet).selecting.load(Relaxed));
             assert_eq!((*packet).selection_id, 0);
             (*packet).selection_id = id;
             if this.head.is_null() {
-                this.head = packet;
-                this.tail = packet;
+                this.head = packet as *mut Packet;
+                this.tail = packet as *mut Packet;
             } else {
                 (*packet).select_prev = this.tail;
                 assert!((*packet).select_next.is_null());
-                (*this.tail).select_next = packet;
-                this.tail = packet;
+                (*this.tail).select_next = packet as *mut Packet;
+                this.tail = packet as *mut Packet;
             }
         }
         Handle { id: id, selector: this, port: port }
@@ -303,7 +303,7 @@ impl Drop for Select {
 #[unsafe_destructor]
 impl<'port, T: Send> Drop for Handle<'port, T> {
     fn drop(&mut self) {
-        unsafe { self.selector.remove(self.port.queue.packet()) }
+        unsafe { self.selector.remove(self.port.inner.packet()) }
     }
 }
 
