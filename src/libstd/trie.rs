@@ -198,24 +198,24 @@ macro_rules! bound {
             addr!(loop {
                     let children = unsafe {addr!(& $($mut_)* (*node).children)};
                     let child_id = chunk(key, idx);
-                    match children[child_id] {
+                    let (slice_idx, ret) = match children[child_id] {
                         Internal(ref $($mut_)* n) => {
                             node = addr!(& $($mut_)* **n as * $($mut_)* TrieNode<T>);
+                            (child_id + 1, false)
                         }
                         External(stored, _) => {
-                            if stored < key || ($upper && stored == key) {
-                                it.stack.push(children.$slice_from(child_id + 1).$iter());
+                            (if stored < key || ($upper && stored == key) {
+                                child_id + 1
                             } else {
-                                it.stack.push(children.$slice_from(child_id).$iter());
-                            }
-                            return it;
+                                child_id
+                            }, true)
                         }
                         Nothing => {
-                            it.stack.push(children.$slice_from(child_id + 1).$iter());
-                            return it
+                            (child_id + 1, true)
                         }
-                    }
-                    it.stack.push(children.$slice_from(child_id + 1).$iter());
+                    };
+                    it.stack.push(children.$slice_from(slice_idx).$iter());
+                    if ret { return it }
                     idx += 1;
                 })
         }
