@@ -237,6 +237,7 @@ use result::{Ok, Err};
 use rt::local::Local;
 use rt::task::{Task, BlockedTask};
 use rt::thread::Thread;
+use sync::arc::UnsafeArc;
 use sync::atomics::{AtomicInt, AtomicBool, SeqCst, Relaxed};
 use vec::OwnedVector;
 
@@ -273,24 +274,6 @@ macro_rules! test (
 mod select;
 
 ///////////////////////////////////////////////////////////////////////////////
-// Helper type to abstract ports for channels and shared channels
-///////////////////////////////////////////////////////////////////////////////
-
-enum Consumer<T> {
-    SPSC(spsc::Consumer<T, Packet>),
-    MPSC(mpsc::Consumer<T, Packet>),
-}
-
-impl<T: Send> Consumer<T>{
-    unsafe fn packet(&self) -> *mut Packet {
-        match *self {
-            SPSC(ref c) => c.packet(),
-            MPSC(ref c) => c.packet(),
-        }
-    }
-}
-
-///////////////////////////////////////////////////////////////////////////////
 // Public structs
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -298,7 +281,7 @@ impl<T: Send> Consumer<T>{
 /// one task
 #[no_freeze] // can't share ports in an arc
 pub struct Port<T> {
-    priv queue: Consumer<T>,
+    priv inner: PortInner<T>,
 }
 
 /// An iterator over messages received on a port, this iterator will block
@@ -312,7 +295,7 @@ pub struct PortIterator<'a, T> {
 /// task
 #[no_freeze] // can't share chans in an arc
 pub struct Chan<T> {
-    priv queue: spsc::Producer<T, Packet>,
+    priv inner: UnsafeArc<SingleInner<T>>,
 }
 
 /// The sending-half of Rust's channel type. This half can be shared among many
@@ -320,22 +303,32 @@ pub struct Chan<T> {
 #[no_freeze] // technically this implementation is shareable, but it shouldn't
              // be required to be shareable in an arc
 pub struct SharedChan<T> {
-    priv queue: mpsc::Producer<T, Packet>,
+    priv inner: UnsafeArc<SharedInner<T>>,
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // Internal struct definitions
 ///////////////////////////////////////////////////////////////////////////////
 
+enum PortInner<T> {
+    Single(UnsafeArc<SingleInner<T>>),
+    Shared(UnsafeArc<SharedInner<T>>),
+}
+
+struct SingleInner<T> {
+    queue: spsc::Queue<T>,
+    packet: Packet,
+}
+
+struct SharedInner<T> {
+    queue: mpsc::Queue<T>,
+    packet: Packet,
+}
+
 struct Packet {
     cnt: AtomicInt, // How many items are on this channel
     steals: int,    // How many times has a port received without blocking?
     to_wake: Option<BlockedTask>, // Task to wake up
-
-    // This lock is used to wake up native threads blocked in select. The
-    // `lock` field is not used because the thread blocking in select must
-    // block on only one mutex.
-    //selection_lock: Option<UnsafeArc<Mutex>>,
 
     // The number of channels which are currently using this packet. This is
     // used to reference count shared channels.
@@ -354,6 +347,15 @@ struct Packet {
 
 static DISCONNECTED: int = int::min_value;
 static RESCHED_FREQ: int = 200;
+
+impl<T: Send> PortInner<T> {
+    fn packet<'a>(&'a mut self) -> &'a mut Packet {
+        match *self {
+            Single(ref arc) => unsafe { &mut (*arc.get()).packet },
+            Shared(ref arc) => unsafe { &mut (*arc.get()).packet },
+        }
+    }
+}
 
 impl Packet {
     fn new() -> Packet {
@@ -528,9 +530,11 @@ impl<T: Send> Chan<T> {
     pub fn new() -> (Port<T>, Chan<T>) {
         // arbitrary 128 size cache -- this is just a max cache size, not a
         // maximum buffer size
-        let (c, p) = spsc::queue(128, Packet::new());
-        let c = SPSC(c);
-        (Port { queue: c }, Chan { queue: p })
+        let (a, b) = UnsafeArc::new2(SingleInner {
+            queue: spsc::Queue::new(128),
+            packet: Packet::new(),
+        });
+        (Port { inner: Single(a) }, Chan { inner: b })
     }
 
     /// Sends a value along this channel to be received by the corresponding
@@ -579,16 +583,15 @@ impl<T: Send> Chan<T> {
 
     fn try(&self, t: T, can_resched: bool) -> bool {
         unsafe {
-            let this = cast::transmute_mut(self);
-            this.queue.push(t);
-            let packet = this.queue.packet();
-            match (*packet).increment() {
+            let inner = self.inner.get();
+            (*inner).queue.push(t);
+            match (*inner).packet.increment() {
                 // As described above, -1 == wakeup
-                -1 => { (*packet).wakeup(can_resched); true }
+                -1 => { (*inner).packet.wakeup(can_resched); true }
                 // Also as above, SPSC queues must be >= -2
                 -2 => true,
                 // We succeeded if we sent data
-                DISCONNECTED => this.queue.is_empty(),
+                DISCONNECTED => (*inner).queue.is_empty(),
                 // In order to prevent starvation of other tasks in situations
                 // where a task sends repeatedly without ever receiving, we
                 // occassionally yield instead of doing a send immediately.
@@ -613,7 +616,7 @@ impl<T: Send> Chan<T> {
 #[unsafe_destructor]
 impl<T: Send> Drop for Chan<T> {
     fn drop(&mut self) {
-        unsafe { (*self.queue.packet()).drop_chan(); }
+        unsafe { (*self.inner.get()).packet.drop_chan(); }
     }
 }
 
@@ -623,9 +626,11 @@ impl<T: Send> SharedChan<T> {
     /// same time. All data sent on any channel will become available on the
     /// provided port as well.
     pub fn new() -> (Port<T>, SharedChan<T>) {
-        let (c, p) = mpsc::queue(Packet::new());
-        let c = MPSC(c);
-        (Port { queue: c }, SharedChan { queue: p })
+        let (a, b) = UnsafeArc::new2(SharedInner {
+            queue: mpsc::Queue::new(),
+            packet: Packet::new(),
+        });
+        (Port { inner: Shared(a) }, SharedChan { inner: b })
     }
 
     /// Equivalent method to `send` on the `Chan` type (using the same
@@ -665,17 +670,15 @@ impl<T: Send> SharedChan<T> {
             // preflight check serves as the definitive "this will never be
             // received". Once we get beyond this check, we have permanently
             // entered the realm of "this may be received"
-            let packet = self.queue.packet();
-            if (*packet).cnt.load(Relaxed) < DISCONNECTED + 1024 {
+            let inner = self.inner.get();
+            if (*inner).packet.cnt.load(Relaxed) < DISCONNECTED + 1024 {
                 return false
             }
 
-            let this = cast::transmute_mut(self);
-            this.queue.push(t);
-
-            match (*packet).increment() {
+            (*inner).queue.push(t);
+            match (*inner).packet.increment() {
                 DISCONNECTED => {} // oh well, we tried
-                -1 => { (*packet).wakeup(true); }
+                -1 => { (*inner).packet.wakeup(true); }
                 n => {
                     if n > 0 && n % RESCHED_FREQ == 0 {
                         let task: ~Task = Local::take();
@@ -690,15 +693,15 @@ impl<T: Send> SharedChan<T> {
 
 impl<T: Send> Clone for SharedChan<T> {
     fn clone(&self) -> SharedChan<T> {
-        unsafe { (*self.queue.packet()).channels.fetch_add(1, SeqCst); }
-        SharedChan { queue: self.queue.clone() }
+        unsafe { (*self.inner.get()).packet.channels.fetch_add(1, SeqCst); }
+        SharedChan { inner: self.inner.clone() }
     }
 }
 
 #[unsafe_destructor]
 impl<T: Send> Drop for SharedChan<T> {
     fn drop(&mut self) {
-        unsafe { (*self.queue.packet()).drop_chan(); }
+        unsafe { (*self.inner.get()).packet.drop_chan(); }
     }
 }
 
@@ -750,18 +753,18 @@ impl<T: Send> Port<T> {
 
         // See the comment about yielding on sends, but the same applies here.
         // If a thread is spinning in try_recv we should try
-        unsafe {
-            let packet = this.queue.packet();
-            (*packet).recv_cnt += 1;
-            if (*packet).recv_cnt % RESCHED_FREQ == 0 {
+        {
+            let packet = this.inner.packet();
+            packet.recv_cnt += 1;
+            if packet.recv_cnt % RESCHED_FREQ == 0 {
                 let task: ~Task = Local::take();
                 task.maybe_yield();
             }
         }
 
-        let ret = match this.queue {
-            SPSC(ref mut queue) => queue.pop(),
-            MPSC(ref mut queue) => match queue.pop() {
+        let ret = match this.inner {
+            Single(ref mut arc) => unsafe { (*arc.get()).queue.pop() },
+            Shared(ref mut arc) => match unsafe { (*arc.get()).queue.pop() } {
                 mpsc::Data(t) => Some(t),
                 mpsc::Empty => None,
 
@@ -794,7 +797,7 @@ impl<T: Send> Port<T> {
                     let data;
                     loop {
                         Thread::yield_now();
-                        match queue.pop() {
+                        match unsafe { (*arc.get()).queue.pop() } {
                             mpsc::Data(t) => { data = t; break }
                             mpsc::Empty => fail!("inconsistent => empty"),
                             mpsc::Inconsistent => {}
@@ -805,7 +808,7 @@ impl<T: Send> Port<T> {
             }
         };
         if increment && ret.is_some() {
-            unsafe { (*this.queue.packet()).steals += 1; }
+            this.inner.packet().steals += 1;
         }
         return ret;
     }
@@ -830,7 +833,7 @@ impl<T: Send> Port<T> {
         let this;
         unsafe {
             this = cast::transmute_mut(self);
-            packet = this.queue.packet();
+            packet = this.inner.packet();
             let task: ~Task = Local::take();
             task.deschedule(1, |task| {
                 assert!((*packet).to_wake.is_none());
@@ -845,8 +848,8 @@ impl<T: Send> Port<T> {
 
         let data = self.try_recv_inc(false);
         if data.is_none() &&
-           unsafe { (*packet).cnt.load(SeqCst) } != DISCONNECTED {
-            fail!("bug: woke up too soon {}", unsafe { (*packet).cnt.load(SeqCst) });
+           packet.cnt.load(SeqCst) != DISCONNECTED {
+            fail!("bug: woke up too soon {}", packet.cnt.load(SeqCst));
         }
         return data;
     }
@@ -868,9 +871,7 @@ impl<T: Send> Drop for Port<T> {
         // All we need to do is store that we're disconnected. If the channel
         // half has already disconnected, then we'll just deallocate everything
         // when the shared packet is deallocated.
-        unsafe {
-            (*self.queue.packet()).cnt.store(DISCONNECTED, SeqCst);
-        }
+        self.inner.packet().cnt.store(DISCONNECTED, SeqCst);
     }
 }
 
