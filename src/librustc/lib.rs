@@ -38,7 +38,6 @@ use middle::lint;
 
 use d = driver::driver;
 
-use std::cast;
 use std::comm;
 use std::io;
 use std::io::Reader;
@@ -365,8 +364,7 @@ impl diagnostic::Emitter for RustcEmitter {
             msg: &str,
             lvl: diagnostic::Level) {
         if lvl == diagnostic::Fatal {
-            let this = unsafe { cast::transmute_mut(self) };
-            this.ch_capture.send(fatal)
+            self.ch_capture.send(fatal)
         }
 
         diagnostic::DefaultEmitter.emit(cmsp, msg, lvl)
