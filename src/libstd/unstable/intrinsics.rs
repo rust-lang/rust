@@ -188,8 +188,8 @@ extern "rust-intrinsic" {
     /// Execute a breakpoint trap, for inspection by a debugger.
     pub fn breakpoint();
 
-    #[cfg(not(stage0))] pub fn volatile_load<T>(src: *T) -> T;
-    #[cfg(not(stage0))] pub fn volatile_store<T>(dst: *mut T, val: T);
+    pub fn volatile_load<T>(src: *T) -> T;
+    pub fn volatile_store<T>(dst: *mut T, val: T);
 
     /// Atomic compare and exchange, sequentially consistent.
     pub fn atomic_cxchg(dst: &mut int, old: int, src: int) -> int;

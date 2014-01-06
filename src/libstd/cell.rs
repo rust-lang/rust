@@ -21,33 +21,6 @@ pub struct Cell<T> {
     priv value: T,
 }
 
-#[cfg(stage0)]
-impl<T> Cell<T> {
-    /// Creates a new `Cell` containing the given value.
-    pub fn new(value: T) -> Cell<T> {
-        Cell {
-            value: value,
-        }
-    }
-
-    /// Returns a copy of the contained value.
-    #[inline]
-    pub fn get(&self) -> T {
-        unsafe {
-            ::cast::transmute_copy(&self.value)
-        }
-    }
-
-    /// Sets the contained value.
-    #[inline]
-    pub fn set(&self, value: T) {
-        unsafe {
-            *cast::transmute_mut(&self.value) = value
-        }
-    }
-}
-
-#[cfg(not(stage0))]
 impl<T: ::kinds::Pod> Cell<T> {
     /// Creates a new `Cell` containing the given value.
     pub fn new(value: T) -> Cell<T> {

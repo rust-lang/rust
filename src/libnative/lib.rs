@@ -19,9 +19,6 @@
 #[crate_type = "rlib"];
 #[crate_type = "dylib"];
 
-// Allow check-stage0-native for now
-#[cfg(stage0, test)] extern mod green;
-
 // NB this crate explicitly does *not* allow glob imports, please seriously
 //    consider whether they're needed before adding that feature here (the
 //    answer is that you don't need them)
@@ -34,7 +31,7 @@ pub mod io;
 pub mod task;
 
 // XXX: this should not exist here
-#[cfg(stage0)]
+#[cfg(stage0, nativestart)]
 #[lang = "start"]
 pub fn lang_start(main: *u8, argc: int, argv: **u8) -> int {
     use std::cast;
