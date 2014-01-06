@@ -829,6 +829,66 @@ mod test_map {
 }
 
 #[cfg(test)]
+mod bench_map {
+    use super::*;
+    use prelude::*;
+    use rand::{weak_rng, Rng};
+    use extra::test::BenchHarness;
+
+    #[bench]
+    fn bench_iter_small(bh: &mut BenchHarness) {
+        let mut m = TrieMap::<uint>::new();
+        let mut rng = weak_rng();
+        for _ in range(0, 20) {
+            m.insert(rng.gen(), rng.gen());
+        }
+
+        bh.iter(|| for _ in m.iter() {})
+    }
+
+    #[bench]
+    fn bench_iter_large(bh: &mut BenchHarness) {
+        let mut m = TrieMap::<uint>::new();
+        let mut rng = weak_rng();
+        for _ in range(0, 1000) {
+            m.insert(rng.gen(), rng.gen());
+        }
+
+        bh.iter(|| for _ in m.iter() {})
+    }
+
+    #[bench]
+    fn bench_lower_bound(bh: &mut BenchHarness) {
+        let mut m = TrieMap::<uint>::new();
+        let mut rng = weak_rng();
+        for _ in range(0, 1000) {
+            m.insert(rng.gen(), rng.gen());
+        }
+
+        bh.iter(|| {
+                for _ in range(0, 10) {
+                    m.lower_bound(rng.gen());
+                }
+            });
+    }
+
+    #[bench]
+    fn bench_upper_bound(bh: &mut BenchHarness) {
+        let mut m = TrieMap::<uint>::new();
+        let mut rng = weak_rng();
+        for _ in range(0, 1000) {
+            m.insert(rng.gen(), rng.gen());
+        }
+
+        bh.iter(|| {
+                for _ in range(0, 10) {
+                    m.upper_bound(rng.gen());
+                }
+            });
+    }
+}
+
+#[cfg(test)]
 mod test_set {
     use super::*;
     use prelude::*;
