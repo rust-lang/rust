@@ -12,7 +12,7 @@
 
 use ast;
 use codemap::Span;
-use ext::base::*;
+use ext::base::{ExtCtxt,MRExpr,get_exprs_from_tts};
 use ext::base;
 use ext::build::AstBuilder;
 

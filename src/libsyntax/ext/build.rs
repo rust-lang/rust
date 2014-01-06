@@ -9,12 +9,11 @@
 // except according to those terms.
 
 use abi::AbiSet;
-use ast::{P, Ident};
+use ast::{P, Ident, Expr, Generics, NodeId};
 use ast;
 use ast_util;
 use codemap::{Span, respan, DUMMY_SP};
 use ext::base::ExtCtxt;
-use ext::quote::rt::*;
 use fold::ast_fold;
 use opt_vec;
 use opt_vec::OptVec;

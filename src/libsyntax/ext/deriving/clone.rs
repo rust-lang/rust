@@ -12,7 +12,9 @@ use ast::{MetaItem, item, Expr};
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
-use ext::deriving::generic::*;
+use ext::deriving::generic::{Path, TraitDef, MethodDef, LifetimeBounds, borrowed_explicit_self};
+use ext::deriving::generic::{Self, Substructure, FieldInfo};
+use ext::deriving::generic::{Struct, EnumMatching, EnumNonMatching, StaticStruct, StaticEnum};
 
 pub fn expand_deriving_clone(cx: &ExtCtxt,
                              span: Span,

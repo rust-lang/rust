@@ -13,7 +13,8 @@ use ast::{MetaItem, item, Expr};
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
-use ext::deriving::generic::*;
+use ext::deriving::generic::{TraitDef, LifetimeBounds, MethodDef, Substructure, Path};
+use ext::deriving::generic::{Literal, cs_fold, borrowed_explicit_self, borrowed_self};
 
 pub fn expand_deriving_ord(cx: &ExtCtxt,
                            span: Span,

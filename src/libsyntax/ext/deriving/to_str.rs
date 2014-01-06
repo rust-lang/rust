@@ -13,7 +13,8 @@ use ast::{MetaItem, item, Expr};
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
-use ext::deriving::generic::*;
+use ext::deriving::generic::{TraitDef, LifetimeBounds, MethodDef, Path, FieldInfo, Substructure};
+use ext::deriving::generic::{Struct, EnumMatching, Ptr, Send, Literal, borrowed_explicit_self};
 
 pub fn expand_deriving_to_str(cx: &ExtCtxt,
                               span: Span,

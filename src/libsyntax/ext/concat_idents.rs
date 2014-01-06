@@ -10,7 +10,7 @@
 
 use ast;
 use codemap::Span;
-use ext::base::*;
+use ext::base::{ExtCtxt, MRExpr};
 use ext::base;
 use opt_vec;
 use parse::token;

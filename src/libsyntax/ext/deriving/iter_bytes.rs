@@ -12,7 +12,8 @@ use ast::{MetaItem, item, Expr, BiAnd};
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
-use ext::deriving::generic::*;
+use ext::deriving::generic::{TraitDef, MethodDef, FieldInfo, Substructure, Struct, EnumMatching};
+use ext::deriving::generic::{Path, LifetimeBounds, Literal, borrowed_explicit_self};
 
 
 pub fn expand_deriving_iter_bytes(cx: &ExtCtxt,

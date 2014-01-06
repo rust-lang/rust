@@ -13,7 +13,8 @@ use ast::{MetaItem, item, Expr};
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
-use ext::deriving::generic::*;
+use ext::deriving::generic::{TraitDef, LifetimeBounds, MethodDef, Substructure, Path, Literal};
+use ext::deriving::generic::{borrowed_explicit_self, borrowed_self, cs_same_method_fold};
 use std::cmp::{Ordering, Equal, Less, Greater};
 
 pub fn expand_deriving_totalord(cx: &ExtCtxt,

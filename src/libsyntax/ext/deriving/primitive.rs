@@ -13,7 +13,8 @@ use ast;
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
-use ext::deriving::generic::*;
+use ext::deriving::generic::{TraitDef, LifetimeBounds, MethodDef, Substructure, Path};
+use ext::deriving::generic::{Literal, Self, StaticStruct, StaticEnum};
 
 pub fn expand_deriving_from_primitive(cx: &ExtCtxt,
                                       span: Span,

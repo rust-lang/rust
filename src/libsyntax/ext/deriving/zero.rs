@@ -12,7 +12,9 @@ use ast::{MetaItem, item, Expr};
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
-use ext::deriving::generic::*;
+use ext::deriving::generic::{TraitDef, LifetimeBounds, MethodDef, Path, Substructure, Literal};
+use ext::deriving::generic::{Unnamed, Named, cs_and};
+use ext::deriving::generic::{StaticStruct, StaticEnum, Self, borrowed_explicit_self};
 
 pub fn expand_deriving_zero(cx: &ExtCtxt,
                             span: Span,

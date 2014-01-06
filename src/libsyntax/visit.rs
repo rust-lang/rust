@@ -9,8 +9,28 @@
 // except according to those terms.
 
 use abi::AbiSet;
-use ast::*;
 use ast;
+use ast::{P,Ident,Generics,Local,Block,Arm,TypeMethod,purity,method,_mod,NodeId};
+use ast::{Crate,Lifetime,fn_decl,struct_def,struct_field,variant,mac};
+use ast::{CRATE_NODE_ID,foreign_item,foreign_item_fn,foreign_item_static};
+use ast::{view_item,view_item_extern_mod,view_item_use};
+use ast::{view_path_glob,view_path_list,view_path_simple};
+use ast::{item,item_static,item_fn,item_mod,item_foreign_mod,item_ty,item_enum,item_struct};
+use ast::{item_trait,item_impl,item_mac,tuple_variant_kind,struct_variant_kind};
+use ast::{explicit_self,sty_static,sty_value,sty_region,sty_box,sty_uniq};
+use ast::{Ty,ty_nil,ty_uniq,ty_bot,ty_box,ty_vec,ty_fixed_length_vec,ty_ptr,ty_rptr,ty_closure};
+use ast::{ty_bare_fn,ty_tup,ty_path,ty_typeof,ty_infer};
+use ast::{TyParamBound,TraitTyParamBound,RegionTyParamBound};
+use ast::{Expr,ExprVstore,ExprVec,ExprCall,ExprMethodCall,ExprTup,ExprBinary,ExprUnary,ExprLit};
+use ast::{ExprCast,ExprIf,ExprWhile,ExprForLoop,ExprMatch,ExprFnBlock,ExprProc,ExprDoBody};
+use ast::{ExprBlock,ExprAssign,ExprAssignOp,ExprField,ExprIndex,ExprPath,ExprSelf,ExprAddrOf};
+use ast::{ExprBreak,ExprAgain,ExprRet,ExprLogLevel,ExprInlineAsm,ExprMac,ExprStruct,ExprRepeat};
+use ast::{ExprParen,ExprLoop};
+use ast::{Pat,PatWild,PatWildMulti,PatIdent,PatEnum,PatStruct,PatTup,PatBox,PatUniq,PatRegion};
+use ast::{PatLit,PatRange,PatVec};
+use ast::{trait_method,required,provided,named_field};
+use ast::{Stmt,StmtDecl,StmtExpr,StmtSemi,StmtMac,Decl,DeclLocal,DeclItem,Path};
+
 use codemap::Span;
 use parse;
 use opt_vec;

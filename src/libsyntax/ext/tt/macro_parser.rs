@@ -14,7 +14,7 @@ use ast;
 use ast::{matcher, match_tok, match_seq, match_nonterminal, Ident};
 use codemap::{BytePos, mk_sp};
 use codemap;
-use parse::lexer::*; //resolve bug?
+use parse::lexer::{reader, TokenAndSpan};
 use parse::ParseSess;
 use parse::attr::parser_attr;
 use parse::parser::{LifetimeAndTypesWithoutColons, Parser};

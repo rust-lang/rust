@@ -8,12 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use ast::token_tree;
 use ast;
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::base;
 use ext::build::AstBuilder;
-use parse::token::*;
+use parse::token::{str_to_ident, EQ, LT, LE, EQEQ, NE, GE, GT, ANDAND, OROR, NOT, TILDE, BINOP};
+use parse::token::{BINOPEQ, AT, DOT, DOTDOT, COMMA, SEMI, COLON, MOD_SEP, RARROW};
+use parse::token::{LARROW, DARROW, FAT_ARROW, LPAREN, RPAREN, LBRACKET, RBRACKET, LBRACE, RBRACE};
+use parse::token::{POUND, DOLLAR, LIT_CHAR, LIT_INT, LIT_UINT, LIT_INT_UNSUFFIXED, LIT_FLOAT};
+use parse::token::{LIT_STR, LIT_STR_RAW, IDENT, UNDERSCORE, LIFETIME};
+use parse::token::{INTERPOLATED, DOC_COMMENT, EOF};
+use parse::token::{binop, PLUS, MINUS, STAR, SLASH, PERCENT, CARET, AND, OR, SHL, SHR};
 use parse::token;
 use parse;
 
@@ -34,8 +41,15 @@ pub mod rt {
     use parse;
     use print::pprust;
 
-    pub use ast::*;
-    pub use parse::token::*;
+    pub use parse::token::{ident_to_str,get_ident_interner,str_to_ident};
+    pub use parse::token::{str_to_ident, EQ, LT, LE, EQEQ, NE, GE, GT, ANDAND, OROR, NOT, TILDE};
+    pub use parse::token::{BINOP, BINOPEQ, AT, DOT, DOTDOT, COMMA, SEMI, COLON, MOD_SEP, RARROW};
+    pub use parse::token::{LARROW, DARROW, FAT_ARROW, LPAREN, RPAREN, LBRACKET, RBRACKET, LBRACE};
+    pub use parse::token::{RBRACE, POUND, DOLLAR, LIT_CHAR, LIT_INT, LIT_UINT, LIT_INT_UNSUFFIXED};
+    pub use parse::token::{LIT_FLOAT, LIT_STR, LIT_STR_RAW, IDENT, UNDERSCORE, LIFETIME};
+    pub use parse::token::{INTERPOLATED, DOC_COMMENT, EOF};
+    pub use parse::token::{binop, PLUS, MINUS, STAR, SLASH, PERCENT, CARET, AND, OR, SHL, SHR};
+    pub use ast::{Expr,Generics,NodeId,token_tree,tt_tok};
     pub use parse::new_parser_from_tts;
     pub use codemap::{BytePos, Span, dummy_spanned};
 
