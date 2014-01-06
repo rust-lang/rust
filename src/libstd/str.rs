@@ -2514,6 +2514,16 @@ pub trait OwnedStr {
     /// Prepend a char to a string
     fn unshift_char(&mut self, ch: char);
 
+    /// Insert a new sub-string at the given position in a string, in O(n + m) time
+    /// (with n and m the lengths of the string and the substring.)
+    /// This fails if `position` is not at a character boundary.
+    fn insert(&mut self, position: uint, substring: &str);
+
+    /// Insert a char at the given position in a string, in O(n + m) time
+    /// (with n and m the lengths of the string and the substring.)
+    /// This fails if `position` is not at a character boundary.
+    fn insert_char(&mut self, position: uint, ch: char);
+
     /// Concatenate two strings together.
     fn append(self, rhs: &str) -> ~str;
 
@@ -2623,6 +2633,24 @@ impl OwnedStr for ~str {
         let mut new_str = ~"";
         new_str.push_char(ch);
         new_str.push_str(*self);
+        *self = new_str;
+    }
+
+    #[inline]
+    fn insert(&mut self, position: uint, substring: &str) {
+        // This could be more efficient.
+        let mut new_str = self.slice_to(position).to_owned();
+        new_str.push_str(substring);
+        new_str.push_str(self.slice_from(position));
+        *self = new_str;
+    }
+
+    #[inline]
+    fn insert_char(&mut self, position: uint, ch: char) {
+        // This could be more efficient.
+        let mut new_str = self.slice_to(position).to_owned();
+        new_str.push_char(ch);
+        new_str.push_str(self.slice_from(position));
         *self = new_str;
     }
 
@@ -2876,6 +2904,20 @@ mod tests {
         let mut data = ~"ประเทศไทย中";
         data.unshift_char('华');
         assert_eq!(~"华ประเทศไทย中", data);
+    }
+
+    #[test]
+    fn test_insert_char() {
+        let mut data = ~"ประเทศไทย中";
+        data.insert_char(15, '华');
+        assert_eq!(~"ประเท华ศไทย中", data);
+    }
+
+    #[test]
+    fn test_insert() {
+        let mut data = ~"ประเทศไทย中";
+        data.insert(15, "华中");
+        assert_eq!(~"ประเท华中ศไทย中", data);
     }
 
     #[test]
