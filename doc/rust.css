@@ -216,6 +216,7 @@ dd {
     list-style-type: none;
     padding-left: 0px;
 }
+
 /* Only display one level of hierarchy in the TOC */
 #TOC ul ul {
     display: none;
@@ -233,6 +234,21 @@ hr {
     margin-bottom: 20px;
     border: 0;
     border-top: 1px solid #eeeeee;
+}
+
+table {
+    border-collapse: collapse;
+    border-spacing: 0;
+}
+
+table tr.odd {
+    background: #eee;
+}
+
+table td,
+table th {
+    border: 1px solid #ddd;
+    padding: 5px;
 }
 
 @media print {
