@@ -57,7 +57,7 @@ pub fn crate(sess: session::Session, crate: &ast::Crate)
 
 impl<'a> Visitor<&'a ScopeChain<'a>> for LifetimeContext {
     fn visit_item(&mut self,
-                  item: @ast::item,
+                  item: &ast::item,
                   _: &'a ScopeChain<'a>) {
         let scope = match item.node {
             ast::item_fn(..) | // fn lifetimes get added in visit_fn below
@@ -84,7 +84,7 @@ impl<'a> Visitor<&'a ScopeChain<'a>> for LifetimeContext {
     fn visit_fn(&mut self,
                 fk: &visit::fn_kind,
                 fd: &ast::fn_decl,
-                b: ast::P<ast::Block>,
+                b: &ast::Block,
                 s: Span,
                 n: ast::NodeId,
                 scope: &'a ScopeChain<'a>) {
@@ -132,7 +132,7 @@ impl<'a> Visitor<&'a ScopeChain<'a>> for LifetimeContext {
     }
 
     fn visit_block(&mut self,
-                   b: ast::P<ast::Block>,
+                   b: &ast::Block,
                    scope: &'a ScopeChain<'a>) {
         let scope1 = BlockScope(b.id, scope);
         debug!("pushing block scope {}", b.id);

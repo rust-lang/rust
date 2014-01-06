@@ -29,11 +29,11 @@ pub fn check_crate(tcx: ty::ctxt, crate: &ast::Crate) {
 }
 
 impl Visitor<Context> for CheckLoopVisitor {
-    fn visit_item(&mut self, i: @ast::item, _cx: Context) {
+    fn visit_item(&mut self, i: &ast::item, _cx: Context) {
         visit::walk_item(self, i, Normal);
     }
 
-    fn visit_expr(&mut self, e: @ast::Expr, cx:Context) {
+    fn visit_expr(&mut self, e: &ast::Expr, cx:Context) {
         match e.node {
             ast::ExprWhile(e, b) => {
                 self.visit_expr(e, cx);

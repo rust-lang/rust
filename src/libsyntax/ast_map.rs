@@ -11,21 +11,19 @@
 use abi::AbiSet;
 use ast::*;
 use ast;
-use ast_util::{inlined_item_utils, stmt_id};
 use ast_util;
 use codemap::Span;
-use codemap;
 use diagnostic::SpanHandler;
+use fold::ast_fold;
+use fold;
 use parse::token::get_ident_interner;
 use parse::token::ident_interner;
 use parse::token::special_idents;
 use print::pprust;
-use visit::{Visitor, fn_kind};
-use visit;
+use util::small_vector::SmallVector;
 
 use std::cell::RefCell;
 use std::hashmap::HashMap;
-use std::vec;
 
 #[deriving(Clone, Eq)]
 pub enum path_elt {
@@ -165,7 +163,10 @@ pub enum ast_node {
     node_expr(@Expr),
     node_stmt(@Stmt),
     node_arg(@Pat),
-    node_local(Ident),
+    // HACK(eddyb) should always be a pattern, but `self` is not, and thus it
+    // is identified only by an ident and no span is available. In all other
+    // cases, node_span will return the proper span (required by borrowck).
+    node_local(Ident, Option<@Pat>),
     node_block(P<Block>),
 
     /// node_struct_ctor represents a tuple struct.
@@ -195,164 +196,75 @@ impl ast_node {
 
 pub type map = @RefCell<HashMap<NodeId, ast_node>>;
 
-pub struct Ctx {
+pub trait FoldOps {
+    fn new_id(&self, id: ast::NodeId) -> ast::NodeId {
+        id
+    }
+    fn new_span(&self, span: Span) -> Span {
+        span
+    }
+}
+
+pub struct Ctx<F> {
     map: map,
-    path: RefCell<path>,
+    path: path,
     diag: @SpanHandler,
+    fold_ops: F
 }
 
-impl Ctx {
-    fn extend(&self, elt: path_elt) -> @path {
-        @vec::append(self.path.get(), [elt])
-    }
-
-    fn map_method(&mut self,
-                  impl_did: DefId,
-                  impl_path: @path,
-                  m: @method,
-                  is_provided: bool) {
-        let entry = if is_provided {
-            node_trait_method(@provided(m), impl_did, impl_path)
-        } else {
-            node_method(m, impl_did, impl_path)
-        };
-
+impl<F> Ctx<F> {
+    fn insert(&self, id: ast::NodeId, node: ast_node) {
         let mut map = self.map.borrow_mut();
-        map.get().insert(m.id, entry);
-        map.get().insert(m.self_id, node_local(special_idents::self_));
+        map.get().insert(id, node);
     }
 
-    fn map_struct_def(&mut self,
-                      struct_def: @ast::struct_def,
-                      parent_node: ast_node,
-                      ident: ast::Ident) {
-        let p = self.extend(path_name(ident));
-
-        // If this is a tuple-like struct, register the constructor.
-        match struct_def.ctor_id {
-            None => {}
-            Some(ctor_id) => {
-                match parent_node {
-                    node_item(item, _) => {
-                        let mut map = self.map.borrow_mut();
-                        map.get().insert(ctor_id,
-                                         node_struct_ctor(struct_def,
-                                                          item,
-                                                          p));
-                    }
-                    _ => fail!("struct def parent wasn't an item")
-                }
-            }
-        }
-    }
-
-    fn map_expr(&mut self, ex: @Expr) {
-        {
-            let mut map = self.map.borrow_mut();
-            map.get().insert(ex.id, node_expr(ex));
-        }
-
-        // Expressions which are or might be calls:
-        {
-            let r = ex.get_callee_id();
-            for callee_id in r.iter() {
-                let mut map = self.map.borrow_mut();
-                map.get().insert(*callee_id, node_callee_scope(ex));
-            }
-        }
-
-        visit::walk_expr(self, ex, ());
-    }
-
-    fn map_fn(&mut self,
-              fk: &visit::fn_kind,
-              decl: &fn_decl,
-              body: P<Block>,
-              sp: codemap::Span,
-              id: NodeId) {
-        for a in decl.inputs.iter() {
-            let mut map = self.map.borrow_mut();
-            map.get().insert(a.id, node_arg(a.pat));
-        }
-        match *fk {
-            visit::fk_method(name, _, _) => {
-                let mut path = self.path.borrow_mut();
-                path.get().push(path_name(name))
-            }
-            _ => {}
-        }
-        visit::walk_fn(self, fk, decl, body, sp, id, ());
-        match *fk {
-            visit::fk_method(..) => {
-                let mut path = self.path.borrow_mut();
-                path.get().pop();
-            }
-            _ => {}
-        }
-    }
-
-    fn map_stmt(&mut self, stmt: @Stmt) {
-        {
-            let mut map = self.map.borrow_mut();
-            map.get().insert(stmt_id(stmt), node_stmt(stmt));
-        }
-        visit::walk_stmt(self, stmt, ());
-    }
-
-    fn map_block(&mut self, b: P<Block>) {
-        {
-            let mut map = self.map.borrow_mut();
-            map.get().insert(b.id, node_block(b));
-        }
-
-        visit::walk_block(self, b, ());
-    }
-
-    fn map_pat(&mut self, pat: &Pat) {
-        match pat.node {
-            PatIdent(_, ref path, _) => {
-                // Note: this is at least *potentially* a pattern...
-                let mut map = self.map.borrow_mut();
-                map.get().insert(pat.id,
-                                 node_local(ast_util::path_to_ident(path)));
-            }
-            _ => ()
-        }
-
-        visit::walk_pat(self, pat, ());
+    fn map_self(&self, m: @method) {
+        self.insert(m.self_id, node_local(special_idents::self_, None));
     }
 }
 
-impl Visitor<()> for Ctx {
-    fn visit_item(&mut self, i: @item, _: ()) {
+impl<F: FoldOps> ast_fold for Ctx<F> {
+    fn new_id(&mut self, id: ast::NodeId) -> ast::NodeId {
+        self.fold_ops.new_id(id)
+    }
+
+    fn new_span(&mut self, span: Span) -> Span {
+        self.fold_ops.new_span(span)
+    }
+
+    fn fold_item(&mut self, i: @item) -> SmallVector<@item> {
         // clone is FIXME #2543
-        let item_path = @self.path.get();
-        {
-            let mut map = self.map.borrow_mut();
-            map.get().insert(i.id, node_item(i, item_path));
-        }
-        match i.node {
-            item_impl(_, ref maybe_trait, ty, ref ms) => {
+        let item_path = @self.path.clone();
+        self.path.push(match i.node {
+            item_impl(_, ref maybe_trait, ty, _) => {
                 // Right now the ident on impls is __extensions__ which isn't
                 // very pretty when debugging, so attempt to select a better
                 // name to use.
-                let elt = impl_pretty_name(maybe_trait, ty);
+                impl_pretty_name(maybe_trait, ty)
+            }
+            item_mod(_) | item_foreign_mod(_) => path_mod(i.ident),
+            _ => path_name(i.ident)
+        });
 
+        let i = fold::noop_fold_item(i, self).expect_one("expected one item");
+        self.insert(i.id, node_item(i, item_path));
+
+        match i.node {
+            item_impl(_, _, _, ref ms) => {
+                // clone is FIXME #2543
+                let p = @self.path.clone();
                 let impl_did = ast_util::local_def(i.id);
-                for m in ms.iter() {
-                    let extended = { self.extend(elt) };
-                    self.map_method(impl_did, extended, *m, false)
+                for &m in ms.iter() {
+                    self.insert(m.id, node_method(m, impl_did, p));
+                    self.map_self(m);
                 }
 
-                let mut path = self.path.borrow_mut();
-                path.get().push(elt);
             }
             item_enum(ref enum_definition, _) => {
+                // clone is FIXME #2543
+                let p = @self.path.clone();
                 for &v in enum_definition.variants.iter() {
-                    let elt = path_name(i.ident);
-                    let mut map = self.map.borrow_mut();
-                    map.get().insert(v.node.id,
-                                     node_variant(v, i, self.extend(elt)));
+                    self.insert(v.node.id, node_variant(v, i, p));
                 }
             }
             item_foreign_mod(ref nm) => {
@@ -364,41 +276,38 @@ impl Visitor<()> for Ctx {
                         inherited => i.vis
                     };
 
-                    let mut map = self.map.borrow_mut();
-                    map.get().insert(nitem.id,
-                                     node_foreign_item(*nitem,
-                                                       nm.abis,
-                                                       visibility,
-                                                       // FIXME (#2543)
-                                                        // Anonymous extern
-                                                        // mods go in the
-                                                        // parent scope.
-                                                        @self.path.get()
-                                                       ));
+                    self.insert(nitem.id,
+                                // Anonymous extern mods go in the parent scope.
+                                node_foreign_item(*nitem, nm.abis, visibility, item_path));
                 }
             }
             item_struct(struct_def, _) => {
-                self.map_struct_def(struct_def,
-                                    node_item(i, item_path),
-                                    i.ident)
+                // If this is a tuple-like struct, register the constructor.
+                match struct_def.ctor_id {
+                    None => {}
+                    Some(ctor_id) => {
+                        // clone is FIXME #2543
+                        let p = @self.path.clone();
+                        self.insert(ctor_id, node_struct_ctor(struct_def, i, p));
+                    }
+                }
             }
             item_trait(_, ref traits, ref methods) => {
-                for p in traits.iter() {
-                    let mut map = self.map.borrow_mut();
-                    map.get().insert(p.ref_id, node_item(i, item_path));
+                for t in traits.iter() {
+                    self.insert(t.ref_id, node_item(i, item_path));
                 }
+
+                // clone is FIXME #2543
+                let p = @self.path.clone();
                 for tm in methods.iter() {
-                    let ext = { self.extend(path_name(i.ident)) };
                     let d_id = ast_util::local_def(i.id);
                     match *tm {
                         required(ref m) => {
-                            let entry =
-                                node_trait_method(@(*tm).clone(), d_id, ext);
-                            let mut map = self.map.borrow_mut();
-                            map.get().insert(m.id, entry);
+                            self.insert(m.id, node_trait_method(@(*tm).clone(), d_id, p));
                         }
                         provided(m) => {
-                            self.map_method(d_id, ext, m, true);
+                            self.insert(m.id, node_trait_method(@provided(m), d_id, p));
+                            self.map_self(m);
                         }
                     }
                 }
@@ -406,100 +315,123 @@ impl Visitor<()> for Ctx {
             _ => {}
         }
 
-        match i.node {
-            item_mod(_) | item_foreign_mod(_) => {
-                let mut path = self.path.borrow_mut();
-                path.get().push(path_mod(i.ident));
+        self.path.pop();
+
+        SmallVector::one(i)
+    }
+
+    fn fold_pat(&mut self, pat: @Pat) -> @Pat {
+        let pat = fold::noop_fold_pat(pat, self);
+        match pat.node {
+            PatIdent(_, ref path, _) => {
+                // Note: this is at least *potentially* a pattern...
+                self.insert(pat.id, node_local(ast_util::path_to_ident(path), Some(pat)));
             }
-            item_impl(..) => {} // this was guessed above.
-            _ => {
-                let mut path = self.path.borrow_mut();
-                path.get().push(path_name(i.ident))
+            _ => {}
+        }
+
+        pat
+    }
+
+    fn fold_expr(&mut self, expr: @Expr) -> @Expr {
+        let expr = fold::noop_fold_expr(expr, self);
+
+        self.insert(expr.id, node_expr(expr));
+
+        // Expressions which are or might be calls:
+        {
+            let r = expr.get_callee_id();
+            for callee_id in r.iter() {
+                self.insert(*callee_id, node_callee_scope(expr));
             }
         }
-        visit::walk_item(self, i, ());
 
-        let mut path = self.path.borrow_mut();
-        path.get().pop();
+        expr
     }
 
-    fn visit_pat(&mut self, pat: &Pat, _: ()) {
-        self.map_pat(pat);
-        visit::walk_pat(self, pat, ())
+    fn fold_stmt(&mut self, stmt: &Stmt) -> SmallVector<@Stmt> {
+        let stmt = fold::noop_fold_stmt(stmt, self).expect_one("expected one statement");
+        self.insert(ast_util::stmt_id(stmt), node_stmt(stmt));
+        SmallVector::one(stmt)
     }
 
-    fn visit_expr(&mut self, expr: @Expr, _: ()) {
-        self.map_expr(expr)
+    fn fold_method(&mut self, m: @method) -> @method {
+        self.path.push(path_name(m.ident));
+        let m = fold::noop_fold_method(m, self);
+        self.path.pop();
+        m
     }
 
-    fn visit_stmt(&mut self, stmt: @Stmt, _: ()) {
-        self.map_stmt(stmt)
+    fn fold_fn_decl(&mut self, decl: &fn_decl) -> P<fn_decl> {
+        let decl = fold::noop_fold_fn_decl(decl, self);
+        for a in decl.inputs.iter() {
+            self.insert(a.id, node_arg(a.pat));
+        }
+        decl
     }
 
-    fn visit_fn(&mut self,
-                function_kind: &fn_kind,
-                function_declaration: &fn_decl,
-                block: P<Block>,
-                span: Span,
-                node_id: NodeId,
-                _: ()) {
-        self.map_fn(function_kind, function_declaration, block, span, node_id)
-    }
-
-    fn visit_block(&mut self, block: P<Block>, _: ()) {
-        self.map_block(block)
-    }
-
-    fn visit_ty(&mut self, typ: &Ty, _: ()) {
-        visit::walk_ty(self, typ, ())
+    fn fold_block(&mut self, block: P<Block>) -> P<Block> {
+        let block = fold::noop_fold_block(block, self);
+        self.insert(block.id, node_block(block));
+        block
     }
 }
 
-pub fn map_crate(diag: @SpanHandler, c: &Crate) -> map {
+pub fn map_crate<F: 'static + FoldOps>(diag: @SpanHandler, c: Crate,
+                                       fold_ops: F) -> (Crate, map) {
     let mut cx = Ctx {
         map: @RefCell::new(HashMap::new()),
-        path: RefCell::new(~[]),
+        path: ~[],
         diag: diag,
+        fold_ops: fold_ops
     };
-    visit::walk_crate(&mut cx, c, ());
-    cx.map
+    (cx.fold_crate(c), cx.map)
 }
 
 // Used for items loaded from external crate that are being inlined into this
 // crate.  The `path` should be the path to the item but should not include
 // the item itself.
-pub fn map_decoded_item(diag: @SpanHandler,
-                        map: map,
-                        path: path,
-                        ii: &inlined_item) {
+pub fn map_decoded_item<F: 'static + FoldOps>(diag: @SpanHandler,
+                                              map: map,
+                                              path: path,
+                                              fold_ops: F,
+                                              fold_ii: |&mut Ctx<F>| -> inlined_item)
+                                              -> inlined_item {
     // I believe it is ok for the local IDs of inlined items from other crates
     // to overlap with the local ids from this crate, so just generate the ids
     // starting from 0.
     let mut cx = Ctx {
         map: map,
-        path: RefCell::new(path.clone()),
+        path: path.clone(),
         diag: diag,
+        fold_ops: fold_ops
     };
+
+    let ii = fold_ii(&mut cx);
 
     // Methods get added to the AST map when their impl is visited.  Since we
     // don't decode and instantiate the impl, but just the method, we have to
     // add it to the table now. Likewise with foreign items.
-    match *ii {
+    match ii {
         ii_item(..) => {} // fallthrough
         ii_foreign(i) => {
-            let mut map = cx.map.borrow_mut();
-            map.get().insert(i.id, node_foreign_item(i,
-                                                     AbiSet::Intrinsic(),
-                                                     i.vis,    // Wrong but OK
-                                                     @path));
+            cx.insert(i.id, node_foreign_item(i,
+                                              AbiSet::Intrinsic(),
+                                              i.vis,    // Wrong but OK
+                                              @path));
         }
         ii_method(impl_did, is_provided, m) => {
-            cx.map_method(impl_did, @path, m, is_provided);
+            let entry = if is_provided {
+                node_trait_method(@provided(m), impl_did, @path)
+            } else {
+                node_method(m, impl_did, @path)
+            };
+            cx.insert(m.id, entry);
+            cx.map_self(m);
         }
     }
 
-    // visit the item / method contents and add those to the map:
-    ii.accept((), &mut cx);
+    ii
 }
 
 pub fn node_id_to_str(map: map, id: NodeId, itr: @ident_interner) -> ~str {
@@ -554,7 +486,7 @@ pub fn node_id_to_str(map: map, id: NodeId, itr: @ident_interner) -> ~str {
       Some(&node_arg(pat)) => {
         format!("arg {} (id={})", pprust::pat_to_str(pat, itr), id)
       }
-      Some(&node_local(ident)) => {
+      Some(&node_local(ident, _)) => {
         format!("local (id={}, name={})", id, itr.get(ident.name))
       }
       Some(&node_block(block)) => {
@@ -589,7 +521,10 @@ pub fn node_span(items: map,
         Some(&node_expr(expr)) => expr.span,
         Some(&node_stmt(stmt)) => stmt.span,
         Some(&node_arg(pat)) => pat.span,
-        Some(&node_local(_)) => fail!("node_span: cannot get span from node_local"),
+        Some(&node_local(_, pat)) => match pat {
+            Some(pat) => pat.span,
+            None => fail!("node_span: cannot get span from node_local (likely `self`)")
+        },
         Some(&node_block(block)) => block.span,
         Some(&node_struct_ctor(_, item, _)) => item.span,
         Some(&node_callee_scope(expr)) => expr.span,

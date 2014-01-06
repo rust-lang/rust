@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -11,22 +11,19 @@
 use driver::session::Session;
 
 use syntax::ast;
-use syntax::fold::ast_fold;
+use syntax::ast_map;
 
 struct NodeIdAssigner {
-    sess: Session,
+    sess: Session
 }
 
-impl ast_fold for NodeIdAssigner {
-    fn new_id(&mut self, old_id: ast::NodeId) -> ast::NodeId {
+impl ast_map::FoldOps for NodeIdAssigner {
+    fn new_id(&self, old_id: ast::NodeId) -> ast::NodeId {
         assert_eq!(old_id, ast::DUMMY_NODE_ID);
         self.sess.next_node_id()
     }
 }
 
-pub fn assign_node_ids(sess: Session, crate: ast::Crate) -> ast::Crate {
-    let mut fold = NodeIdAssigner {
-        sess: sess,
-    };
-    fold.fold_crate(crate)
+pub fn assign_node_ids_and_map(sess: Session, crate: ast::Crate) -> (ast::Crate, ast_map::map) {
+    ast_map::map_crate(sess.diagnostic(), crate, NodeIdAssigner { sess: sess })
 }

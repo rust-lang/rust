@@ -44,7 +44,7 @@ fn generics_require_inlining(generics: &ast::Generics) -> bool {
 // Returns true if the given item must be inlined because it may be
 // monomorphized or it was marked with `#[inline]`. This will only return
 // true for functions.
-fn item_might_be_inlined(item: @ast::item) -> bool {
+fn item_might_be_inlined(item: &ast::item) -> bool {
     if attributes_specify_inlining(item.attrs) {
         return true
     }
@@ -105,7 +105,7 @@ struct MarkSymbolVisitor {
 
 impl Visitor<()> for MarkSymbolVisitor {
 
-    fn visit_expr(&mut self, expr:@ast::Expr, _:()) {
+    fn visit_expr(&mut self, expr: &ast::Expr, _: ()) {
 
         match expr.node {
             ast::ExprPath(_) => {
@@ -187,7 +187,7 @@ impl Visitor<()> for MarkSymbolVisitor {
         visit::walk_expr(self, expr, ())
     }
 
-    fn visit_item(&mut self, _item: @ast::item, _: ()) {
+    fn visit_item(&mut self, _item: &ast::item, _: ()) {
         // Do not recurse into items. These items will be added to the worklist
         // and recursed into manually if necessary.
     }

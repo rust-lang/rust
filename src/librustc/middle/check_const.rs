@@ -15,7 +15,6 @@ use middle::ty;
 use middle::typeck;
 use util::ppaux;
 
-use std::cell::RefCell;
 use syntax::ast::*;
 use syntax::codemap;
 use syntax::{ast_util, ast_map};
@@ -31,13 +30,13 @@ struct CheckCrateVisitor {
 }
 
 impl Visitor<bool> for CheckCrateVisitor {
-    fn visit_item(&mut self, i:@item, env:bool) {
+    fn visit_item(&mut self, i: &item, env: bool) {
         check_item(self, self.sess, self.ast_map, self.def_map, i, env);
     }
-    fn visit_pat(&mut self, p:&Pat, env:bool) {
+    fn visit_pat(&mut self, p: &Pat, env: bool) {
         check_pat(self, p, env);
     }
-    fn visit_expr(&mut self, ex:@Expr, env:bool) {
+    fn visit_expr(&mut self, ex: &Expr, env: bool) {
         check_expr(self, self.sess, self.def_map, self.method_map,
                    self.tcx, ex, env);
     }
@@ -64,7 +63,7 @@ pub fn check_item(v: &mut CheckCrateVisitor,
                   sess: Session,
                   ast_map: ast_map::map,
                   def_map: resolve::DefMap,
-                  it: @item,
+                  it: &item,
                   _is_const: bool) {
     match it.node {
       item_static(_, _, ex) => {
@@ -111,7 +110,7 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
                   def_map: resolve::DefMap,
                   method_map: typeck::method_map,
                   tcx: ty::ctxt,
-                  e: @Expr,
+                  e: &Expr,
                   is_const: bool) {
     if is_const {
         match e.node {
@@ -211,17 +210,12 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
     visit::walk_expr(v, e, is_const);
 }
 
-#[deriving(Clone)]
-struct env {
-    root_it: @item,
+struct CheckItemRecursionVisitor<'a> {
+    root_it: &'a item,
     sess: Session,
     ast_map: ast_map::map,
     def_map: resolve::DefMap,
-    idstack: @RefCell<~[NodeId]>,
-}
-
-struct CheckItemRecursionVisitor {
-    env: env,
+    idstack: ~[NodeId]
 }
 
 // Make sure a const item doesn't recursively refer to itself
@@ -229,44 +223,36 @@ struct CheckItemRecursionVisitor {
 pub fn check_item_recursion(sess: Session,
                             ast_map: ast_map::map,
                             def_map: resolve::DefMap,
-                            it: @item) {
-    let env = env {
+                            it: &item) {
+
+    let mut visitor = CheckItemRecursionVisitor {
         root_it: it,
         sess: sess,
         ast_map: ast_map,
         def_map: def_map,
-        idstack: @RefCell::new(~[]),
+        idstack: ~[]
     };
-
-    let mut visitor = CheckItemRecursionVisitor { env: env };
     visitor.visit_item(it, ());
 }
 
-impl Visitor<()> for CheckItemRecursionVisitor {
-    fn visit_item(&mut self, it: @item, _: ()) {
-        {
-            let mut idstack = self.env.idstack.borrow_mut();
-            if idstack.get().iter().any(|x| x == &(it.id)) {
-                self.env.sess.span_fatal(self.env.root_it.span,
-                                         "recursive constant");
-            }
-            idstack.get().push(it.id);
+impl<'a> Visitor<()> for CheckItemRecursionVisitor<'a> {
+    fn visit_item(&mut self, it: &item, _: ()) {
+        if self.idstack.iter().any(|x| x == &(it.id)) {
+            self.sess.span_fatal(self.root_it.span, "recursive constant");
         }
+        self.idstack.push(it.id);
         visit::walk_item(self, it, ());
-        {
-            let mut idstack = self.env.idstack.borrow_mut();
-            idstack.get().pop();
-        }
+        self.idstack.pop();
     }
 
-    fn visit_expr(&mut self, e: @Expr, _: ()) {
+    fn visit_expr(&mut self, e: &Expr, _: ()) {
         match e.node {
             ExprPath(..) => {
-                let def_map = self.env.def_map.borrow();
+                let def_map = self.def_map.borrow();
                 match def_map.get().find(&e.id) {
                     Some(&DefStatic(def_id, _)) if
                             ast_util::is_local(def_id) => {
-                        let ast_map = self.env.ast_map.borrow();
+                        let ast_map = self.ast_map.borrow();
                         match ast_map.get().get_copy(&def_id.node) {
                             ast_map::node_item(it, _) => {
                                 self.visit_item(it, ());

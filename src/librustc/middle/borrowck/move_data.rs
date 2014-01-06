@@ -53,12 +53,7 @@ pub struct MoveData {
 }
 
 pub struct FlowedMoveData {
-    move_data: @MoveData,
-    //         ^~~~~~~~~
-    // It makes me sad to use @ here, except that due to
-    // the old visitor design, this is what gather_loans
-    // used to have to produce, and this code hasn't been
-    // updated.
+    move_data: MoveData,
 
     dfcx_moves: MoveDataFlow,
 
@@ -120,10 +115,10 @@ pub struct MovePath {
 }
 
 pub enum MoveKind {
-    Declared,               // When declared, variables start out "moved".
-    MoveExpr(@ast::Expr),   // Expression or binding that moves a variable
-    MovePat(@ast::Pat),     // By-move binding
-    Captured(@ast::Expr),   // Closure creation that moves a value
+    Declared,   // When declared, variables start out "moved".
+    MoveExpr,   // Expression or binding that moves a variable
+    MovePat,    // By-move binding
+    Captured    // Closure creation that moves a value
 }
 
 pub struct Move {
@@ -137,7 +132,7 @@ pub struct Move {
     kind: MoveKind,
 
     /// Next node in linked list of moves from `path`, or `InvalidMoveIndex`
-    next_move: MoveIndex,
+    next_move: MoveIndex
 }
 
 pub struct Assignment {
@@ -568,7 +563,7 @@ impl MoveData {
 }
 
 impl FlowedMoveData {
-    pub fn new(move_data: @MoveData,
+    pub fn new(move_data: MoveData,
                tcx: ty::ctxt,
                method_map: typeck::method_map,
                id_range: ast_util::id_range,

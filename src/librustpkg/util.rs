@@ -18,7 +18,7 @@ use std::io::fs;
 use extra::workcache;
 use rustc::driver::{driver, session};
 use extra::getopts::groups::getopts;
-use syntax::ast_util::*;
+use syntax;
 use syntax::codemap::{DUMMY_SP, Spanned};
 use syntax::ext::base::ExtCtxt;
 use syntax::{ast, attr, codemap, diagnostic, fold, visit};
@@ -283,8 +283,8 @@ pub fn compile_input(context: &BuildContext,
     // Infer dependencies that rustpkg needs to build, by scanning for
     // `extern mod` directives.
     let cfg = driver::build_configuration(sess);
-    let mut crate = driver::phase_1_parse_input(sess, cfg.clone(), &input);
-    crate = driver::phase_2_configure_and_expand(sess, cfg.clone(), crate);
+    let crate = driver::phase_1_parse_input(sess, cfg.clone(), &input);
+    let (mut crate, ast_map) = driver::phase_2_configure_and_expand(sess, cfg.clone(), crate);
 
     debug!("About to call find_and_install_dependencies...");
 
@@ -323,6 +323,7 @@ pub fn compile_input(context: &BuildContext,
                                           &out_dir,
                                           sess,
                                           crate,
+                                          ast_map,
                                           what);
     // Discover the output
     let discovered_output = if what == Lib  {
@@ -359,6 +360,7 @@ pub fn compile_crate_from_input(input: &Path,
 // Returns None if one of the flags that suppresses compilation output was
 // given
                                 crate: ast::Crate,
+                                ast_map: syntax::ast_map::map,
                                 what: OutputType) -> Option<Path> {
     debug!("Calling build_output_filenames with {}, building library? {:?}",
            out_dir.display(), sess.building_library);
@@ -394,7 +396,7 @@ pub fn compile_crate_from_input(input: &Path,
             debug!("an additional library: {}", lib.display());
         }
     }
-    let analysis = driver::phase_3_run_analysis_passes(sess, &crate);
+    let analysis = driver::phase_3_run_analysis_passes(sess, &crate, ast_map);
     if driver::stop_after_phase_3(sess) { return None; }
     let translation = driver::phase_4_translate_to_llvm(sess, crate,
                                                         &analysis,

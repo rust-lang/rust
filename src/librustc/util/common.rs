@@ -74,7 +74,7 @@ struct LoopQueryVisitor<'a> {
 }
 
 impl<'a> Visitor<()> for LoopQueryVisitor<'a> {
-    fn visit_expr(&mut self, e: @ast::Expr, _: ()) {
+    fn visit_expr(&mut self, e: &ast::Expr, _: ()) {
         self.flag |= (self.p)(&e.node);
         match e.node {
           // Skip inner loops, since a break in the inner loop isn't a
@@ -87,7 +87,7 @@ impl<'a> Visitor<()> for LoopQueryVisitor<'a> {
 
 // Takes a predicate p, returns true iff p is true for any subexpressions
 // of b -- skipping any inner loops (loop, while, loop_body)
-pub fn loop_query(b: ast::P<ast::Block>, p: |&ast::Expr_| -> bool) -> bool {
+pub fn loop_query(b: &ast::Block, p: |&ast::Expr_| -> bool) -> bool {
     let mut v = LoopQueryVisitor {
         p: p,
         flag: false,
@@ -97,12 +97,12 @@ pub fn loop_query(b: ast::P<ast::Block>, p: |&ast::Expr_| -> bool) -> bool {
 }
 
 struct BlockQueryVisitor<'a> {
-    p: 'a |@ast::Expr| -> bool,
+    p: 'a |&ast::Expr| -> bool,
     flag: bool,
 }
 
 impl<'a> Visitor<()> for BlockQueryVisitor<'a> {
-    fn visit_expr(&mut self, e: @ast::Expr, _:()) {
+    fn visit_expr(&mut self, e: &ast::Expr, _: ()) {
         self.flag |= (self.p)(e);
         visit::walk_expr(self, e, ())
     }
@@ -110,7 +110,7 @@ impl<'a> Visitor<()> for BlockQueryVisitor<'a> {
 
 // Takes a predicate p, returns true iff p is true for any subexpressions
 // of b -- skipping any inner loops (loop, while, loop_body)
-pub fn block_query(b: ast::P<ast::Block>, p: |@ast::Expr| -> bool) -> bool {
+pub fn block_query(b: ast::P<ast::Block>, p: |&ast::Expr| -> bool) -> bool {
     let mut v = BlockQueryVisitor {
         p: p,
         flag: false,
@@ -119,7 +119,7 @@ pub fn block_query(b: ast::P<ast::Block>, p: |@ast::Expr| -> bool) -> bool {
     return v.flag;
 }
 
-pub fn local_rhs_span(l: @ast::Local, def: Span) -> Span {
+pub fn local_rhs_span(l: &ast::Local, def: Span) -> Span {
     match l.init {
       Some(i) => return i.span,
       _ => return def

@@ -122,8 +122,8 @@ pub fn lookup(
         fcx: @FnCtxt,
 
         // In a call `a.b::<X, Y, ...>(...)`:
-        expr: @ast::Expr,                   // The expression `a.b(...)`.
-        self_expr: @ast::Expr,              // The expression `a`.
+        expr: &ast::Expr,                   // The expression `a.b(...)`.
+        self_expr: &ast::Expr,              // The expression `a`.
         callee_id: NodeId,                  /* Where to store `a.b`'s type,
                                              * also the scope of the call */
         m_name: ast::Name,                  // The name `b`.
@@ -170,8 +170,8 @@ pub fn lookup(
 
 pub struct LookupContext<'a> {
     fcx: @FnCtxt,
-    expr: @ast::Expr,
-    self_expr: @ast::Expr,
+    expr: &'a ast::Expr,
+    self_expr: &'a ast::Expr,
     callee_id: NodeId,
     m_name: ast::Name,
     supplied_tps: &'a [ty::t],
