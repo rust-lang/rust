@@ -163,6 +163,7 @@ pub mod sync;
 
 /* Runtime and platform support */
 
+#[unstable]
 pub mod libc;
 pub mod c_str;
 pub mod os;
@@ -172,9 +173,8 @@ pub mod rand;
 pub mod run;
 pub mod cast;
 pub mod fmt;
-pub mod repr;
 pub mod cleanup;
-pub mod reflect;
+#[deprecated]
 pub mod condition;
 pub mod logging;
 pub mod util;
@@ -183,7 +183,13 @@ pub mod mem;
 
 /* Unsupported interfaces */
 
+#[unstable]
+pub mod repr;
+#[unstable]
+pub mod reflect;
+
 // Private APIs
+#[unstable]
 pub mod unstable;
 
 
@@ -195,6 +201,7 @@ mod cmath;
 
 // FIXME #7809: This shouldn't be pub, and it should be reexported under 'unstable'
 // but name resolution doesn't work without it being pub.
+#[unstable]
 pub mod rt;
 
 // A curious inner-module that's not exported that contains the binding

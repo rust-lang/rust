@@ -99,9 +99,8 @@ impl Writer for UdpStream {
 #[cfg(test)]
 mod test {
     use super::*;
-    use io::net::ip::{Ipv4Addr, SocketAddr};
+    use io::net::ip::{SocketAddr};
     use io::*;
-    use io::test::*;
     use prelude::*;
 
     iotest!(fn bind_error() {
