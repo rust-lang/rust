@@ -163,7 +163,8 @@ pub fn phase_1_parse_input(sess: Session, cfg: ast::CrateConfig, input: &input)
 /// standard library and prelude.
 pub fn phase_2_configure_and_expand(sess: Session,
                                     cfg: ast::CrateConfig,
-                                    mut crate: ast::Crate) -> ast::Crate {
+                                    mut crate: ast::Crate)
+                                    -> (ast::Crate, syntax::ast_map::map) {
     let time_passes = sess.time_passes();
 
     sess.building_library.set(session::building_library(sess.opts, &crate));
@@ -201,10 +202,8 @@ pub fn phase_2_configure_and_expand(sess: Session,
     crate = time(time_passes, "std injection", crate, |crate|
                  front::std_inject::maybe_inject_libstd_ref(sess, crate));
 
-    crate = time(time_passes, "assigning node ids", crate, |crate|
-                 front::assign_node_ids::assign_node_ids(sess, crate));
-
-    return crate;
+    time(time_passes, "assinging node ids and indexing ast", crate, |crate|
+         front::assign_node_ids_and_map::assign_node_ids_and_map(sess, crate))
 }
 
 pub struct CrateAnalysis {
@@ -219,12 +218,10 @@ pub struct CrateAnalysis {
 /// miscellaneous analysis passes on the crate. Return various
 /// structures carrying the results of the analysis.
 pub fn phase_3_run_analysis_passes(sess: Session,
-                                   crate: &ast::Crate) -> CrateAnalysis {
+                                   crate: &ast::Crate,
+                                   ast_map: syntax::ast_map::map) -> CrateAnalysis {
 
     let time_passes = sess.time_passes();
-
-    let ast_map = time(time_passes, "ast indexing", (), |_|
-                       syntax::ast_map::map_crate(sess.diagnostic(), crate));
 
     time(time_passes, "external crate/lib resolution", (), |_|
          creader::read_crates(sess, crate,
@@ -260,8 +257,7 @@ pub fn phase_3_run_analysis_passes(sess: Session,
                             region_map, lang_items);
 
     // passes are timed inside typeck
-    let (method_map, vtable_map) = typeck::check_crate(
-        ty_cx, trait_map, crate);
+    let (method_map, vtable_map) = typeck::check_crate(ty_cx, trait_map, crate);
 
     // These next two const passes can probably be merged
     time(time_passes, "const marking", (), |_|
@@ -489,7 +485,7 @@ pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &input,
     // large chunks of memory alive and we want to free them as soon as
     // possible to keep the peak memory usage low
     let (outputs, trans) = {
-        let expanded_crate = {
+        let (expanded_crate, ast_map) = {
             let crate = phase_1_parse_input(sess, cfg.clone(), input);
             if stop_after_phase_1(sess) { return; }
             phase_2_configure_and_expand(sess, cfg, crate)
@@ -501,7 +497,7 @@ pub fn compile_input(sess: Session, cfg: ast::CrateConfig, input: &input,
 
         if stop_after_phase_2(sess) { return; }
 
-        let analysis = phase_3_run_analysis_passes(sess, &expanded_crate);
+        let analysis = phase_3_run_analysis_passes(sess, &expanded_crate, ast_map);
         if stop_after_phase_3(sess) { return; }
         let trans = phase_4_translate_to_llvm(sess, expanded_crate,
                                               &analysis, outputs);
@@ -578,11 +574,12 @@ pub fn pretty_print_input(sess: Session,
                           ppm: PpMode) {
     let crate = phase_1_parse_input(sess, cfg.clone(), input);
 
-    let (crate, is_expanded) = match ppm {
+    let (crate, ast_map, is_expanded) = match ppm {
         PpmExpanded | PpmExpandedIdentified | PpmTyped => {
-            (phase_2_configure_and_expand(sess, cfg, crate), true)
+            let (crate, ast_map) = phase_2_configure_and_expand(sess, cfg, crate);
+            (crate, Some(ast_map), true)
         }
-        _ => (crate, false)
+        _ => (crate, None, false)
     };
 
     let annotation = match ppm {
@@ -592,7 +589,8 @@ pub fn pretty_print_input(sess: Session,
             } as @pprust::pp_ann
         }
         PpmTyped => {
-            let analysis = phase_3_run_analysis_passes(sess, &crate);
+            let ast_map = ast_map.expect("--pretty=typed missing ast_map");
+            let analysis = phase_3_run_analysis_passes(sess, &crate, ast_map);
             @TypedAnnotation {
                 analysis: analysis
             } as @pprust::pp_ann

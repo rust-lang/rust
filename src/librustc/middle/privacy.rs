@@ -45,7 +45,7 @@ struct ParentVisitor {
 }
 
 impl Visitor<()> for ParentVisitor {
-    fn visit_item(&mut self, item: @ast::item, _: ()) {
+    fn visit_item(&mut self, item: &ast::item, _: ()) {
         self.parents.insert(item.id, self.curparent);
 
         let prev = self.curparent;
@@ -90,13 +90,13 @@ impl Visitor<()> for ParentVisitor {
         self.curparent = prev;
     }
 
-    fn visit_foreign_item(&mut self, a: @ast::foreign_item, _: ()) {
+    fn visit_foreign_item(&mut self, a: &ast::foreign_item, _: ()) {
         self.parents.insert(a.id, self.curparent);
         visit::walk_foreign_item(self, a, ());
     }
 
     fn visit_fn(&mut self, a: &visit::fn_kind, b: &ast::fn_decl,
-                c: ast::P<ast::Block>, d: Span, id: ast::NodeId, _: ()) {
+                c: &ast::Block, d: Span, id: ast::NodeId, _: ()) {
         // We already took care of some trait methods above, otherwise things
         // like impl methods and pub trait methods are parented to the
         // containing module, not the containing trait.
@@ -106,7 +106,7 @@ impl Visitor<()> for ParentVisitor {
         visit::walk_fn(self, a, b, c, d, id, ());
     }
 
-    fn visit_struct_def(&mut self, s: @ast::struct_def, i: ast::Ident,
+    fn visit_struct_def(&mut self, s: &ast::struct_def, i: ast::Ident,
                         g: &ast::Generics, n: ast::NodeId, _: ()) {
         // Struct constructors are parented to their struct definitions because
         // they essentially are the struct definitions.
@@ -185,7 +185,7 @@ impl<'a> EmbargoVisitor<'a> {
 }
 
 impl<'a> Visitor<()> for EmbargoVisitor<'a> {
-    fn visit_item(&mut self, item: @ast::item, _: ()) {
+    fn visit_item(&mut self, item: &ast::item, _: ()) {
         let orig_all_pub = self.prev_exported;
         match item.node {
             // impls/extern blocks do not break the "public chain" because they
@@ -307,7 +307,7 @@ impl<'a> Visitor<()> for EmbargoVisitor<'a> {
         self.prev_exported = orig_all_pub;
     }
 
-    fn visit_foreign_item(&mut self, a: @ast::foreign_item, _: ()) {
+    fn visit_foreign_item(&mut self, a: &ast::foreign_item, _: ()) {
         if self.prev_exported && a.vis == ast::public {
             self.exported_items.insert(a.id);
         }
@@ -620,7 +620,7 @@ impl<'a> PrivacyVisitor<'a> {
 }
 
 impl<'a> Visitor<()> for PrivacyVisitor<'a> {
-    fn visit_item(&mut self, item: @ast::item, _: ()) {
+    fn visit_item(&mut self, item: &ast::item, _: ()) {
         // Do not check privacy inside items with the resolve_unexported
         // attribute. This is used for the test runner.
         if attr::contains_name(item.attrs, "!resolve_unexported") {
@@ -632,7 +632,7 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
         self.curitem = orig_curitem;
     }
 
-    fn visit_expr(&mut self, expr: @ast::Expr, _: ()) {
+    fn visit_expr(&mut self, expr: &ast::Expr, _: ()) {
         match expr.node {
             ast::ExprField(base, ident, _) => {
                 // Method calls are now a special syntactic form,
@@ -778,7 +778,7 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
         visit::walk_pat(self, pattern, ());
     }
 
-    fn visit_foreign_item(&mut self, fi: @ast::foreign_item, _: ()) {
+    fn visit_foreign_item(&mut self, fi: &ast::foreign_item, _: ()) {
         self.in_foreign = true;
         visit::walk_foreign_item(self, fi, ());
         self.in_foreign = false;
@@ -800,7 +800,7 @@ struct SanePrivacyVisitor {
 }
 
 impl Visitor<()> for SanePrivacyVisitor {
-    fn visit_item(&mut self, item: @ast::item, _: ()) {
+    fn visit_item(&mut self, item: &ast::item, _: ()) {
         if self.in_fn {
             self.check_all_inherited(item);
         } else {
@@ -816,7 +816,7 @@ impl Visitor<()> for SanePrivacyVisitor {
     }
 
     fn visit_fn(&mut self, fk: &visit::fn_kind, fd: &ast::fn_decl,
-                b: ast::P<ast::Block>, s: Span, n: ast::NodeId, _: ()) {
+                b: &ast::Block, s: Span, n: ast::NodeId, _: ()) {
         // This catches both functions and methods
         let orig_in_fn = util::replace(&mut self.in_fn, true);
         visit::walk_fn(self, fk, fd, b, s, n, ());
@@ -829,7 +829,7 @@ impl SanePrivacyVisitor {
     /// ensures that there are no extraneous qualifiers that don't actually do
     /// anything. In theory these qualifiers wouldn't parse, but that may happen
     /// later on down the road...
-    fn check_sane_privacy(&self, item: @ast::item) {
+    fn check_sane_privacy(&self, item: &ast::item) {
         let tcx = self.tcx;
         let check_inherited = |sp: Span, vis: ast::visibility, note: &str| {
             if vis != ast::inherited {
@@ -941,7 +941,7 @@ impl SanePrivacyVisitor {
 
     /// When inside of something like a function or a method, visibility has no
     /// control over anything so this forbids any mention of any visibility
-    fn check_all_inherited(&self, item: @ast::item) {
+    fn check_all_inherited(&self, item: &ast::item) {
         let tcx = self.tcx;
         let check_inherited = |sp: Span, vis: ast::visibility| {
             if vis != ast::inherited {

@@ -1128,7 +1128,7 @@ mod test {
 
     impl Visitor<()> for NewPathExprFinderContext {
 
-        fn visit_expr(&mut self, expr: @ast::Expr, _: ()) {
+        fn visit_expr(&mut self, expr: &ast::Expr, _: ()) {
             match *expr {
                 ast::Expr{id:_,span:_,node:ast::ExprPath(ref p)} => {
                     self.path_accumulator.push(p.clone());

@@ -216,7 +216,7 @@ pub fn deref_kind(tcx: ty::ctxt, t: ty::t) -> deref_kind {
 
 pub fn cat_expr(tcx: ty::ctxt,
                 method_map: typeck::method_map,
-                expr: @ast::Expr)
+                expr: &ast::Expr)
              -> cmt {
     let mcx = &mem_categorization_ctxt {
         tcx: tcx, method_map: method_map
@@ -226,7 +226,7 @@ pub fn cat_expr(tcx: ty::ctxt,
 
 pub fn cat_expr_unadjusted(tcx: ty::ctxt,
                            method_map: typeck::method_map,
-                           expr: @ast::Expr)
+                           expr: &ast::Expr)
                         -> cmt {
     let mcx = &mem_categorization_ctxt {
         tcx: tcx, method_map: method_map
@@ -237,7 +237,7 @@ pub fn cat_expr_unadjusted(tcx: ty::ctxt,
 pub fn cat_expr_autoderefd(
     tcx: ty::ctxt,
     method_map: typeck::method_map,
-    expr: @ast::Expr,
+    expr: &ast::Expr,
     autoderefs: uint) -> cmt
 {
     let mcx = &mem_categorization_ctxt {
@@ -265,12 +265,12 @@ pub trait ast_node {
     fn span(&self) -> Span;
 }
 
-impl ast_node for @ast::Expr {
+impl ast_node for ast::Expr {
     fn id(&self) -> ast::NodeId { self.id }
     fn span(&self) -> Span { self.span }
 }
 
-impl ast_node for @ast::Pat {
+impl ast_node for ast::Pat {
     fn id(&self) -> ast::NodeId { self.id }
     fn span(&self) -> Span { self.span }
 }
@@ -325,15 +325,15 @@ impl MutabilityCategory {
 }
 
 impl mem_categorization_ctxt {
-    pub fn expr_ty(&self, expr: @ast::Expr) -> ty::t {
+    pub fn expr_ty(&self, expr: &ast::Expr) -> ty::t {
         ty::expr_ty(self.tcx, expr)
     }
 
-    pub fn pat_ty(&self, pat: @ast::Pat) -> ty::t {
+    pub fn pat_ty(&self, pat: &ast::Pat) -> ty::t {
         ty::node_id_to_type(self.tcx, pat.id)
     }
 
-    pub fn cat_expr(&self, expr: @ast::Expr) -> cmt {
+    pub fn cat_expr(&self, expr: &ast::Expr) -> cmt {
         let adjustments = self.tcx.adjustments.borrow();
         match adjustments.get().find(&expr.id) {
             None => {
@@ -375,7 +375,7 @@ impl mem_categorization_ctxt {
         }
     }
 
-    pub fn cat_expr_autoderefd(&self, expr: @ast::Expr, autoderefs: uint)
+    pub fn cat_expr_autoderefd(&self, expr: &ast::Expr, autoderefs: uint)
                                -> cmt {
         let mut cmt = self.cat_expr_unadjusted(expr);
         for deref in range(1u, autoderefs + 1) {
@@ -384,7 +384,7 @@ impl mem_categorization_ctxt {
         return cmt;
     }
 
-    pub fn cat_expr_unadjusted(&self, expr: @ast::Expr) -> cmt {
+    pub fn cat_expr_unadjusted(&self, expr: &ast::Expr) -> cmt {
         debug!("cat_expr: id={} expr={}",
                expr.id, pprust::expr_to_str(expr, self.tcx.sess.intr()));
 
@@ -577,7 +577,7 @@ impl mem_categorization_ctxt {
     }
 
     pub fn cat_rvalue_node<N:ast_node>(&self,
-                                       node: N,
+                                       node: &N,
                                        expr_ty: ty::t) -> cmt {
         self.cat_rvalue(node.id(),
                         node.span(),
@@ -614,7 +614,7 @@ impl mem_categorization_ctxt {
     }
 
     pub fn cat_field<N:ast_node>(&self,
-                                 node: N,
+                                 node: &N,
                                  base_cmt: cmt,
                                  f_name: ast::Ident,
                                  f_ty: ty::t)
@@ -629,7 +629,7 @@ impl mem_categorization_ctxt {
     }
 
     pub fn cat_deref_fn_or_obj<N:ast_node>(&self,
-                                           node: N,
+                                           node: &N,
                                            base_cmt: cmt,
                                            deref_cnt: uint)
                                            -> cmt {
@@ -644,7 +644,7 @@ impl mem_categorization_ctxt {
     }
 
     pub fn cat_deref<N:ast_node>(&self,
-                                 node: N,
+                                 node: &N,
                                  base_cmt: cmt,
                                  deref_cnt: uint)
                                  -> cmt {
@@ -662,7 +662,7 @@ impl mem_categorization_ctxt {
     }
 
     pub fn cat_deref_common<N:ast_node>(&self,
-                                        node: N,
+                                        node: &N,
                                         base_cmt: cmt,
                                         deref_cnt: uint,
                                         deref_ty: ty::t)
@@ -706,7 +706,7 @@ impl mem_categorization_ctxt {
     }
 
     pub fn cat_index<N:ast_node>(&self,
-                                 elt: N,
+                                 elt: &N,
                                  base_cmt: cmt,
                                  derefs: uint)
                                  -> cmt {
@@ -786,7 +786,7 @@ impl mem_categorization_ctxt {
           }
         };
 
-        fn interior<N: ast_node>(elt: N,
+        fn interior<N: ast_node>(elt: &N,
                                  of_cmt: cmt,
                                  vec_ty: ty::t,
                                  mutbl: MutabilityCategory,
@@ -803,7 +803,7 @@ impl mem_categorization_ctxt {
     }
 
     pub fn cat_imm_interior<N:ast_node>(&self,
-                                        node: N,
+                                        node: &N,
                                         base_cmt: cmt,
                                         interior_ty: ty::t,
                                         interior: InteriorKind)
@@ -818,7 +818,7 @@ impl mem_categorization_ctxt {
     }
 
     pub fn cat_downcast<N:ast_node>(&self,
-                                    node: N,
+                                    node: &N,
                                     base_cmt: cmt,
                                     downcast_ty: ty::t)
                                     -> cmt {
@@ -833,8 +833,8 @@ impl mem_categorization_ctxt {
 
     pub fn cat_pattern(&self,
                        cmt: cmt,
-                       pat: @ast::Pat,
-                       op: |cmt, @ast::Pat|) {
+                       pat: &ast::Pat,
+                       op: |cmt, &ast::Pat|) {
         // Here, `cmt` is the categorization for the value being
         // matched and pat is the pattern it is being matched against.
         //

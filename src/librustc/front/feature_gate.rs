@@ -119,7 +119,7 @@ impl Visitor<()> for Context {
         visit::walk_view_item(self, i, ())
     }
 
-    fn visit_item(&mut self, i: @ast::item, _:()) {
+    fn visit_item(&mut self, i: &ast::item, _:()) {
         for attr in i.attrs.iter() {
             if "thread_local" == attr.name() {
                 self.gate_feature("thread_local", i.span,
@@ -187,7 +187,7 @@ impl Visitor<()> for Context {
         visit::walk_ty(self, t, ());
     }
 
-    fn visit_expr(&mut self, e: @ast::Expr, _: ()) {
+    fn visit_expr(&mut self, e: &ast::Expr, _: ()) {
         match e.node {
             ast::ExprUnary(_, ast::UnBox, _) |
             ast::ExprVstore(_, ast::ExprVstoreBox) => {

@@ -39,7 +39,7 @@ struct EntryContext {
 }
 
 impl Visitor<()> for EntryContext {
-    fn visit_item(&mut self, item:@item, _:()) {
+    fn visit_item(&mut self, item: &item, _:()) {
         find_item(item, self);
     }
 }
@@ -70,7 +70,7 @@ pub fn find_entry_point(session: Session, crate: &Crate, ast_map: ast_map::map) 
     configure_main(&mut ctxt);
 }
 
-fn find_item(item: @item, ctxt: &mut EntryContext) {
+fn find_item(item: &item, ctxt: &mut EntryContext) {
     match item.node {
         item_fn(..) => {
             if item.ident.name == special_idents::main.name {

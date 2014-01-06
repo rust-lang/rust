@@ -292,38 +292,6 @@ pub fn struct_field_visibility(field: ast::struct_field) -> visibility {
     }
 }
 
-pub trait inlined_item_utils {
-    fn ident(&self) -> Ident;
-    fn id(&self) -> ast::NodeId;
-    fn accept<E: Clone, V:Visitor<E>>(&self, e: E, v: &mut V);
-}
-
-impl inlined_item_utils for inlined_item {
-    fn ident(&self) -> Ident {
-        match *self {
-            ii_item(i) => i.ident,
-            ii_foreign(i) => i.ident,
-            ii_method(_, _, m) => m.ident,
-        }
-    }
-
-    fn id(&self) -> ast::NodeId {
-        match *self {
-            ii_item(i) => i.id,
-            ii_foreign(i) => i.id,
-            ii_method(_, _, m) => m.id,
-        }
-    }
-
-    fn accept<E: Clone, V:Visitor<E>>(&self, e: E, v: &mut V) {
-        match *self {
-            ii_item(i) => v.visit_item(i, e),
-            ii_foreign(i) => v.visit_foreign_item(i, e),
-            ii_method(_, _, m) => visit::walk_method_helper(v, m, e),
-        }
-    }
-}
-
 /* True if d is either a def_self, or a chain of def_upvars
  referring to a def_self */
 pub fn is_self(d: ast::Def) -> bool {
@@ -443,12 +411,12 @@ impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
         visit::walk_view_item(self, view_item, env)
     }
 
-    fn visit_foreign_item(&mut self, foreign_item: @foreign_item, env: ()) {
+    fn visit_foreign_item(&mut self, foreign_item: &foreign_item, env: ()) {
         self.operation.visit_id(foreign_item.id);
         visit::walk_foreign_item(self, foreign_item, env)
     }
 
-    fn visit_item(&mut self, item: @item, env: ()) {
+    fn visit_item(&mut self, item: &item, env: ()) {
         if !self.pass_through_items {
             if self.visited_outermost {
                 return
@@ -472,17 +440,17 @@ impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
         self.visited_outermost = false
     }
 
-    fn visit_local(&mut self, local: @Local, env: ()) {
+    fn visit_local(&mut self, local: &Local, env: ()) {
         self.operation.visit_id(local.id);
         visit::walk_local(self, local, env)
     }
 
-    fn visit_block(&mut self, block: P<Block>, env: ()) {
+    fn visit_block(&mut self, block: &Block, env: ()) {
         self.operation.visit_id(block.id);
         visit::walk_block(self, block, env)
     }
 
-    fn visit_stmt(&mut self, statement: @Stmt, env: ()) {
+    fn visit_stmt(&mut self, statement: &Stmt, env: ()) {
         self.operation.visit_id(ast_util::stmt_id(statement));
         visit::walk_stmt(self, statement, env)
     }
@@ -493,7 +461,7 @@ impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
     }
 
 
-    fn visit_expr(&mut self, expression: @Expr, env: ()) {
+    fn visit_expr(&mut self, expression: &Expr, env: ()) {
         {
             let optional_callee_id = expression.get_callee_id();
             for callee_id in optional_callee_id.iter() {
@@ -521,7 +489,7 @@ impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
     fn visit_fn(&mut self,
                 function_kind: &visit::fn_kind,
                 function_declaration: &fn_decl,
-                block: P<Block>,
+                block: &Block,
                 span: Span,
                 node_id: NodeId,
                 env: ()) {
@@ -572,7 +540,7 @@ impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
     }
 
     fn visit_struct_def(&mut self,
-                        struct_def: @struct_def,
+                        struct_def: &struct_def,
                         ident: ast::Ident,
                         generics: &ast::Generics,
                         id: NodeId,
@@ -598,7 +566,12 @@ pub fn visit_ids_for_inlined_item<O: IdVisitingOperation>(item: &inlined_item,
         pass_through_items: true,
         visited_outermost: false,
     };
-    item.accept((), &mut id_visitor);
+
+    match *item {
+        ii_item(i) => id_visitor.visit_item(i, ()),
+        ii_foreign(i) => id_visitor.visit_foreign_item(i, ()),
+        ii_method(_, _, m) => visit::walk_method_helper(&mut id_visitor, m, ()),
+    }
 }
 
 struct IdRangeComputingVisitor {

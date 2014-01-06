@@ -753,7 +753,6 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
         //! concern items that are going out of scope).
 
         let tcx = self.tcx();
-        let region_maps = tcx.region_maps;
 
         debug!("pop_scopes(from_expr={}, to_scope={:?}, in_out={})",
                from_expr.repr(tcx), to_scope.loop_id,
@@ -763,7 +762,7 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
         while id != to_scope.loop_id {
             self.dfcx.apply_kill(id, in_out);
 
-            match region_maps.opt_encl_scope(id) {
+            match tcx.region_maps.opt_encl_scope(id) {
                 Some(i) => { id = i; }
                 None => {
                     tcx.sess.span_bug(

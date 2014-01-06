@@ -1303,7 +1303,7 @@ fn check_stability(cx: &Context, e: &ast::Expr) {
 }
 
 impl<'a> Visitor<()> for Context<'a> {
-    fn visit_item(&mut self, it: @ast::item, _: ()) {
+    fn visit_item(&mut self, it: &ast::item, _: ()) {
         self.with_lint_attrs(it.attrs, |cx| {
             check_item_ctypes(cx, it);
             check_item_non_camel_case_types(cx, it);
@@ -1318,7 +1318,7 @@ impl<'a> Visitor<()> for Context<'a> {
         })
     }
 
-    fn visit_foreign_item(&mut self, it: @ast::foreign_item, _: ()) {
+    fn visit_foreign_item(&mut self, it: &ast::foreign_item, _: ()) {
         self.with_lint_attrs(it.attrs, |cx| {
             check_attrs_usage(cx, it.attrs);
             visit::walk_foreign_item(cx, it, ());
@@ -1339,7 +1339,7 @@ impl<'a> Visitor<()> for Context<'a> {
         visit::walk_pat(self, p, ());
     }
 
-    fn visit_expr(&mut self, e: @ast::Expr, _: ()) {
+    fn visit_expr(&mut self, e: &ast::Expr, _: ()) {
         match e.node {
             ast::ExprUnary(_, ast::UnNeg, expr) => {
                 // propagate negation, if the negation itself isn't negated
@@ -1365,14 +1365,14 @@ impl<'a> Visitor<()> for Context<'a> {
         visit::walk_expr(self, e, ());
     }
 
-    fn visit_stmt(&mut self, s: @ast::Stmt, _: ()) {
+    fn visit_stmt(&mut self, s: &ast::Stmt, _: ()) {
         check_path_statement(self, s);
 
         visit::walk_stmt(self, s, ());
     }
 
     fn visit_fn(&mut self, fk: &visit::fn_kind, decl: &ast::fn_decl,
-                body: ast::P<ast::Block>, span: Span, id: ast::NodeId, _: ()) {
+                body: &ast::Block, span: Span, id: ast::NodeId, _: ()) {
         let recurse = |this: &mut Context| {
             visit::walk_fn(this, fk, decl, body, span, id, ());
         };
@@ -1404,7 +1404,7 @@ impl<'a> Visitor<()> for Context<'a> {
     }
 
     fn visit_struct_def(&mut self,
-                        s: @ast::struct_def,
+                        s: &ast::struct_def,
                         i: ast::Ident,
                         g: &ast::Generics,
                         id: ast::NodeId,
