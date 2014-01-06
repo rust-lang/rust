@@ -193,6 +193,7 @@ use task::GreenTask;
 
 mod macros;
 mod simple;
+mod message_queue;
 
 pub mod basic;
 pub mod context;
