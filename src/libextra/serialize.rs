@@ -768,14 +768,11 @@ impl<
 > Encodable<E> for TrieMap<V> {
     fn encode(&self, e: &mut E) {
         e.emit_map(self.len(), |e| {
-            let mut i = 0;
-            self.each(|key, val| {
-                e.emit_map_elt_key(i, |e| key.encode(e));
-                e.emit_map_elt_val(i, |e| val.encode(e));
-                i += 1;
-                true
+                for (i, (key, val)) in self.iter().enumerate() {
+                    e.emit_map_elt_key(i, |e| key.encode(e));
+                    e.emit_map_elt_val(i, |e| val.encode(e));
+                }
             });
-        })
     }
 }
 
@@ -799,13 +796,10 @@ impl<
 impl<S: Encoder> Encodable<S> for TrieSet {
     fn encode(&self, s: &mut S) {
         s.emit_seq(self.len(), |s| {
-            let mut i = 0;
-            self.each(|e| {
-                s.emit_seq_elt(i, |s| e.encode(s));
-                i += 1;
-                true
-            });
-        })
+                for (i, e) in self.iter().enumerate() {
+                    s.emit_seq_elt(i, |s| e.encode(s));
+                }
+            })
     }
 }
 

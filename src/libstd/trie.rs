@@ -111,30 +111,6 @@ impl<T> TrieMap<T> {
         self.root.each_reverse(f)
     }
 
-    /// Visit all key-value pairs in order
-    #[inline]
-    pub fn each<'a>(&'a self, f: |&uint, &'a T| -> bool) -> bool {
-        self.root.each(f)
-    }
-
-    /// Visit all keys in order
-    #[inline]
-    pub fn each_key(&self, f: |&uint| -> bool) -> bool {
-        self.each(|k, _| f(k))
-    }
-
-    /// Visit all values in order
-    #[inline]
-    pub fn each_value<'a>(&'a self, f: |&'a T| -> bool) -> bool {
-        self.each(|_, v| f(v))
-    }
-
-    /// Iterate over the map and mutate the contained values
-    #[inline]
-    pub fn mutate_values(&mut self, f: |&uint, &mut T| -> bool) -> bool {
-        self.root.mutate_values(f)
-    }
-
     /// Visit all keys in reverse order
     #[inline]
     pub fn each_key_reverse(&self, f: |&uint| -> bool) -> bool {
@@ -331,10 +307,6 @@ impl TrieSet {
         self.map.remove(value)
     }
 
-    /// Visit all values in order
-    #[inline]
-    pub fn each(&self, f: |&uint| -> bool) -> bool { self.map.each_key(f) }
-
     /// Visit all values in reverse order
     #[inline]
     pub fn each_reverse(&self, f: |&uint| -> bool) -> bool {
@@ -395,35 +367,11 @@ impl<T> TrieNode<T> {
 }
 
 impl<T> TrieNode<T> {
-    fn each<'a>(&'a self, f: |&uint, &'a T| -> bool) -> bool {
-        for elt in self.children.iter() {
-            match *elt {
-                Internal(ref x) => if !x.each(|i,t| f(i,t)) { return false },
-                External(k, ref v) => if !f(&k, v) { return false },
-                Nothing => ()
-            }
-        }
-        true
-    }
-
     fn each_reverse<'a>(&'a self, f: |&uint, &'a T| -> bool) -> bool {
         for elt in self.children.rev_iter() {
             match *elt {
                 Internal(ref x) => if !x.each_reverse(|i,t| f(i,t)) { return false },
                 External(k, ref v) => if !f(&k, v) { return false },
-                Nothing => ()
-            }
-        }
-        true
-    }
-
-    fn mutate_values<'a>(&'a mut self, f: |&uint, &mut T| -> bool) -> bool {
-        for child in self.children.mut_iter() {
-            match *child {
-                Internal(ref mut x) => if !x.mutate_values(|i,t| f(i,t)) {
-                    return false
-                },
-                External(k, ref mut v) => if !f(&k, v) { return false },
                 Nothing => ()
             }
         }
@@ -692,46 +640,6 @@ mod test_map {
     }
 
     #[test]
-    fn test_each() {
-        let mut m = TrieMap::new();
-
-        assert!(m.insert(3, 6));
-        assert!(m.insert(0, 0));
-        assert!(m.insert(4, 8));
-        assert!(m.insert(2, 4));
-        assert!(m.insert(1, 2));
-
-        let mut n = 0;
-        m.each(|k, v| {
-            assert_eq!(*k, n);
-            assert_eq!(*v, n * 2);
-            n += 1;
-            true
-        });
-    }
-
-    #[test]
-    fn test_each_break() {
-        let mut m = TrieMap::new();
-
-        for x in range(uint::max_value - 10000, uint::max_value).invert() {
-            m.insert(x, x / 2);
-        }
-
-        let mut n = uint::max_value - 10000;
-        m.each(|k, v| {
-            if n == uint::max_value - 5000 { false } else {
-                assert!(n < uint::max_value - 5000);
-
-                assert_eq!(*k, n);
-                assert_eq!(*v, n / 2);
-                n += 1;
-                true
-            }
-        });
-    }
-
-    #[test]
     fn test_each_reverse() {
         let mut m = TrieMap::new();
 
@@ -943,13 +851,9 @@ mod test_set {
 
         let expected = [x, y];
 
-        let mut i = 0;
-
-        trie.each(|x| {
-            assert_eq!(expected[i], *x);
-            i += 1;
-            true
-        });
+        for (i, x) in trie.iter().enumerate() {
+            assert_eq!(expected[i], x);
+        }
     }
 
     #[test]
