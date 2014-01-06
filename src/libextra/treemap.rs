@@ -12,10 +12,10 @@
 //! trees. The only requirement for the types is that the key implements
 //! `TotalOrd`.
 
-
 use std::util::{swap, replace};
 use std::iter::{Peekable};
 use std::cmp::Ordering;
+use std::ptr;
 
 // This is implemented as an AA tree, which is a simplified variation of
 // a red-black tree where red (horizontal) nodes can only be added
@@ -135,11 +135,6 @@ impl<K: TotalOrd, V> TreeMap<K, V> {
     /// Create an empty TreeMap
     pub fn new() -> TreeMap<K, V> { TreeMap{root: None, length: 0} }
 
-    /// Iterate over the map and mutate the contained values
-    pub fn mutate_values(&mut self, f: |&K, &mut V| -> bool) -> bool {
-        mutate_values(&mut self.root, f)
-    }
-
     /// Get a lazy iterator over the key-value pairs in the map.
     /// Requires that it be frozen (immutable).
     pub fn iter<'a>(&'a self) -> TreeMapIterator<'a, K, V> {
@@ -157,61 +152,22 @@ impl<K: TotalOrd, V> TreeMap<K, V> {
         TreeMapRevIterator{iter: self.iter()}
     }
 
-    /// Get a lazy iterator that should be initialized using
-    /// `iter_traverse_left`/`iter_traverse_right`/`iter_traverse_complete`.
-    fn iter_for_traversal<'a>(&'a self) -> TreeMapIterator<'a, K, V> {
-        TreeMapIterator {
+    /// Get a lazy forward iterator over the key-value pairs in the
+    /// map, with the values being mutable.
+    pub fn mut_iter<'a>(&'a mut self) -> TreeMapMutIterator<'a, K, V> {
+        TreeMapMutIterator {
             stack: ~[],
-            node: deref(&self.root),
-            remaining_min: 0,
+            node: mut_deref(&mut self.root),
+            remaining_min: self.length,
             remaining_max: self.length
         }
     }
-
-    /// Return a lazy iterator to the first key-value pair whose key is not less than `k`
-    /// If all keys in map are less than `k` an empty iterator is returned.
-    pub fn lower_bound<'a>(&'a self, k: &K) -> TreeMapIterator<'a, K, V> {
-        let mut iter: TreeMapIterator<'a, K, V> = self.iter_for_traversal();
-        loop {
-            match iter.node {
-              Some(r) => {
-                match k.cmp(&r.key) {
-                  Less => iter_traverse_left(&mut iter),
-                  Greater => iter_traverse_right(&mut iter),
-                  Equal => {
-                    iter_traverse_complete(&mut iter);
-                    return iter;
-                  }
-                }
-              }
-              None => {
-                iter_traverse_complete(&mut iter);
-                return iter;
-              }
-            }
-        }
+    /// Get a lazy reverse iterator over the key-value pairs in the
+    /// map, with the values being mutable.
+    pub fn mut_rev_iter<'a>(&'a mut self) -> TreeMapMutRevIterator<'a, K, V> {
+        TreeMapMutRevIterator{iter: self.mut_iter()}
     }
 
-    /// Return a lazy iterator to the first key-value pair whose key is greater than `k`
-    /// If all keys in map are not greater than `k` an empty iterator is returned.
-    pub fn upper_bound<'a>(&'a self, k: &K) -> TreeMapIterator<'a, K, V> {
-        let mut iter: TreeMapIterator<'a, K, V> = self.iter_for_traversal();
-        loop {
-            match iter.node {
-              Some(r) => {
-                match k.cmp(&r.key) {
-                  Less => iter_traverse_left(&mut iter),
-                  Greater => iter_traverse_right(&mut iter),
-                  Equal => iter_traverse_right(&mut iter)
-                }
-              }
-              None => {
-                iter_traverse_complete(&mut iter);
-                return iter;
-              }
-            }
-        }
-    }
 
     /// Get a lazy iterator that consumes the treemap.
     pub fn move_iter(self) -> TreeMapMoveIterator<K, V> {
@@ -227,60 +183,103 @@ impl<K: TotalOrd, V> TreeMap<K, V> {
     }
 }
 
+// range iterators.
+
+macro_rules! bound_setup {
+    // initialiser of the iterator to manipulate
+    ($iter:expr,
+     // whether we are looking for the lower or upper bound.
+     $is_lower_bound:expr) => {
+        {
+            let mut iter = $iter;
+            loop {
+                if !iter.node.is_null() {
+                    let node_k = unsafe {&(*iter.node).key};
+                    match k.cmp(node_k) {
+                        Less => iter.traverse_left(),
+                        Greater => iter.traverse_right(),
+                        Equal => {
+                            if $is_lower_bound {
+                                iter.traverse_complete();
+                                return iter;
+                            } else {
+                                iter.traverse_right()
+                            }
+                        }
+                    }
+                } else {
+                    iter.traverse_complete();
+                    return iter;
+                }
+            }
+        }
+    }
+}
+
+
+impl<K: TotalOrd, V> TreeMap<K, V> {
+    /// Get a lazy iterator that should be initialized using
+    /// `traverse_left`/`traverse_right`/`traverse_complete`.
+    fn iter_for_traversal<'a>(&'a self) -> TreeMapIterator<'a, K, V> {
+        TreeMapIterator {
+            stack: ~[],
+            node: deref(&self.root),
+            remaining_min: 0,
+            remaining_max: self.length
+        }
+    }
+
+    /// Return a lazy iterator to the first key-value pair whose key is not less than `k`
+    /// If all keys in map are less than `k` an empty iterator is returned.
+    pub fn lower_bound<'a>(&'a self, k: &K) -> TreeMapIterator<'a, K, V> {
+        bound_setup!(self.iter_for_traversal(), true)
+    }
+
+    /// Return a lazy iterator to the first key-value pair whose key is greater than `k`
+    /// If all keys in map are not greater than `k` an empty iterator is returned.
+    pub fn upper_bound<'a>(&'a self, k: &K) -> TreeMapIterator<'a, K, V> {
+        bound_setup!(self.iter_for_traversal(), false)
+    }
+
+    /// Get a lazy iterator that should be initialized using
+    /// `traverse_left`/`traverse_right`/`traverse_complete`.
+    fn mut_iter_for_traversal<'a>(&'a mut self) -> TreeMapMutIterator<'a, K, V> {
+        TreeMapMutIterator {
+            stack: ~[],
+            node: mut_deref(&mut self.root),
+            remaining_min: 0,
+            remaining_max: self.length
+        }
+    }
+
+    /// Return a lazy value iterator to the first key-value pair (with
+    /// the value being mutable) whose key is not less than `k`.
+    ///
+    /// If all keys in map are less than `k` an empty iterator is
+    /// returned.
+    pub fn mut_lower_bound<'a>(&'a mut self, k: &K) -> TreeMapMutIterator<'a, K, V> {
+        bound_setup!(self.mut_iter_for_traversal(), true)
+    }
+
+    /// Return a lazy iterator to the first key-value pair (with the
+    /// value being mutable) whose key is greater than `k`.
+    ///
+    /// If all keys in map are not greater than `k` an empty iterator
+    /// is returned.
+    pub fn mut_upper_bound<'a>(&'a mut self, k: &K) -> TreeMapMutIterator<'a, K, V> {
+        bound_setup!(self.mut_iter_for_traversal(), false)
+    }
+}
+
 /// Lazy forward iterator over a map
 pub struct TreeMapIterator<'a, K, V> {
     priv stack: ~[&'a TreeNode<K, V>],
-    priv node: Option<&'a TreeNode<K, V>>,
+    // See the comment on TreeMapMutIterator; this is just to allow
+    // code-sharing (for this immutable-values iterator it *could* very
+    // well be Option<&'a TreeNode<K,V>>).
+    priv node: *TreeNode<K, V>,
     priv remaining_min: uint,
     priv remaining_max: uint
-}
-
-fn deref<'a, K, V>(node: &'a Option<~TreeNode<K, V>>) -> Option<&'a TreeNode<K, V>> {
-    match *node {
-        Some(ref n) => {
-            let n: &TreeNode<K, V> = *n;
-            Some(n)
-        }
-        None => None
-    }
-}
-
-impl<'a, K, V> TreeMapIterator<'a, K, V> {
-    #[inline(always)]
-    fn next_(&mut self, forward: bool) -> Option<(&'a K, &'a V)> {
-        while !self.stack.is_empty() || self.node.is_some() {
-            match self.node {
-              Some(x) => {
-                self.stack.push(x);
-                self.node = deref(if forward { &x.left } else { &x.right });
-              }
-              None => {
-                let res = self.stack.pop();
-                self.node = deref(if forward { &res.right } else { &res.left });
-                self.remaining_max -= 1;
-                if self.remaining_min > 0 {
-                    self.remaining_min -= 1;
-                }
-                return Some((&res.key, &res.value));
-              }
-            }
-        }
-        None
-    }
-}
-
-impl<'a, K, V> Iterator<(&'a K, &'a V)> for TreeMapIterator<'a, K, V> {
-    /// Advance the iterator to the next node (in order) and return a
-    /// tuple with a reference to the key and value. If there are no
-    /// more nodes, return `None`.
-    fn next(&mut self) -> Option<(&'a K, &'a V)> {
-        self.next_(true)
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
-        (self.remaining_min, Some(self.remaining_max))
-    }
 }
 
 /// Lazy backward iterator over a map
@@ -288,57 +287,201 @@ pub struct TreeMapRevIterator<'a, K, V> {
     priv iter: TreeMapIterator<'a, K, V>,
 }
 
-impl<'a, K, V> Iterator<(&'a K, &'a V)> for TreeMapRevIterator<'a, K, V> {
-    /// Advance the iterator to the next node (in order) and return a
-    /// tuple with a reference to the key and value. If there are no
-    /// more nodes, return `None`.
-    fn next(&mut self) -> Option<(&'a K, &'a V)> {
-        self.iter.next_(false)
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
-        self.iter.size_hint()
-    }
+/// Lazy forward iterator over a map that allows for the mutation of
+/// the values.
+pub struct TreeMapMutIterator<'a, K, V> {
+    priv stack: ~[&'a mut TreeNode<K, V>],
+    // Unfortunately, we require some unsafe-ness to get around the
+    // fact that we would be storing a reference *into* one of the
+    // nodes in the stack.
+    //
+    // As far as the compiler knows, this would let us invalidate the
+    // reference by assigning a new value to this node's position in
+    // its parent, which would cause this current one to be
+    // deallocated so this reference would be invalid. (i.e. the
+    // compilers complaints are 100% correct.)
+    //
+    // However, as far as you humans reading this code know (or are
+    // about to know, if you haven't read far enough down yet), we are
+    // only reading from the TreeNode.{left,right} fields. the only
+    // thing that is ever mutated is the .value field (although any
+    // actual mutation that happens is done externally, by the
+    // iterator consumer). So, don't be so concerned, rustc, we've got
+    // it under control.
+    //
+    // (This field can legitimately be null.)
+    priv node: *mut TreeNode<K, V>,
+    priv remaining_min: uint,
+    priv remaining_max: uint
 }
 
-/// iter_traverse_left, iter_traverse_right and iter_traverse_complete are used to
-/// initialize TreeMapIterator pointing to element inside tree structure.
-///
-/// They should be used in following manner:
-///   - create iterator using TreeMap::iter_for_traversal
-///   - find required node using `iter_traverse_left`/`iter_traverse_right`
-///     (current node is `TreeMapIterator::node` field)
-///   - complete initialization with `iter_traverse_complete`
-#[inline]
-fn iter_traverse_left<'a, K, V>(it: &mut TreeMapIterator<'a, K, V>) {
-    let node = it.node.unwrap();
-    it.stack.push(node);
-    it.node = deref(&node.left);
+/// Lazy backward iterator over a map
+pub struct TreeMapMutRevIterator<'a, K, V> {
+    priv iter: TreeMapMutIterator<'a, K, V>,
 }
 
-#[inline]
-fn iter_traverse_right<'a, K, V>(it: &mut TreeMapIterator<'a, K, V>) {
-    it.node = deref(&it.node.get_ref().right);
-}
 
-/// iter_traverse_left, iter_traverse_right and iter_traverse_complete are used to
-/// initialize TreeMapIterator pointing to element inside tree structure.
-///
-/// Completes traversal. Should be called before using iterator.
-/// Iteration will start from `self.node`.
-/// If `self.node` is None iteration will start from last node from which we
-/// traversed left.
-#[inline]
-fn iter_traverse_complete<'a, K, V>(it: &mut TreeMapIterator<'a, K, V>) {
-    match it.node {
-        Some(n) => {
-            it.stack.push(n);
-            it.node = None;
+// FIXME #5846 we want to be able to choose between &x and &mut x
+// (with many different `x`) below, so we need to optionally pass mut
+// as a tt, but the only thing we can do with a `tt` is pass them to
+// other macros, so this takes the `& <mutability> <operand>` token
+// sequence and forces their evalutation as an expression.
+macro_rules! addr { ($e:expr) => { $e }}
+
+macro_rules! define_iterator {
+    ($name:ident,
+     $rev_name:ident,
+     // the type of the values of the treemap in the return value of
+     // the iterator (i.e. &V or &mut V). This is non-hygienic in the
+     // name of the lifetime.
+     value_type = $value_type:ty,
+
+     // the function to go from &m Option<~TreeNode> to *m TreeNode
+     deref = $deref:ident,
+
+     // see comment on `addr!`, this is just an optional `mut`, but
+     // there's no support for 0-or-1 repeats.
+     addr_mut = $($addr_mut:tt)*
+     ) => {
+        // private methods on the forward iterator
+        impl<'a, K, V> $name<'a, K, V> {
+            #[inline(always)]
+            fn next_(&mut self, forward: bool) -> Option<(&'a K, $value_type)> {
+                while !self.stack.is_empty() || !self.node.is_null() {
+                    if !self.node.is_null() {
+                        let node = unsafe {addr!(& $($addr_mut)* *self.node)};
+                        {
+                            let next_node = if forward {
+                                addr!(& $($addr_mut)* node.left)
+                            } else {
+                                addr!(& $($addr_mut)* node.right)
+                            };
+                            self.node = $deref(next_node);
+                        }
+                        self.stack.push(node);
+                    } else {
+                        let node = self.stack.pop();
+                        let next_node = if forward {
+                            addr!(& $($addr_mut)* node.right)
+                        } else {
+                            addr!(& $($addr_mut)* node.left)
+                        };
+                        self.node = $deref(next_node);
+                        self.remaining_max -= 1;
+                        if self.remaining_min > 0 {
+                            self.remaining_min -= 1;
+                        }
+                        return Some((&node.key, addr!(& $($addr_mut)* node.value)));
+                    }
+                }
+                None
+            }
+
+            /// traverse_left, traverse_right and traverse_complete are
+            /// used to initialize TreeMapIterator/TreeMapMutIterator
+            /// pointing to element inside tree structure.
+            ///
+            /// They should be used in following manner:
+            ///   - create iterator using TreeMap::[mut_]iter_for_traversal
+            ///   - find required node using `traverse_left`/`traverse_right`
+            ///     (current node is `TreeMapIterator::node` field)
+            ///   - complete initialization with `traverse_complete`
+            ///
+            /// After this, iteration will start from `self.node`.  If
+            /// `self.node` is None iteration will start from last
+            /// node from which we traversed left.
+            #[inline]
+            fn traverse_left(&mut self) {
+                let node = unsafe {addr!(& $($addr_mut)* *self.node)};
+                self.node = $deref(addr!(& $($addr_mut)* node.left));
+                self.stack.push(node);
+            }
+
+            #[inline]
+            fn traverse_right(&mut self) {
+                let node = unsafe {addr!(& $($addr_mut)* *self.node)};
+                self.node = $deref(addr!(& $($addr_mut)* node.right));
+            }
+
+            #[inline]
+            fn traverse_complete(&mut self) {
+                if !self.node.is_null() {
+                    unsafe {
+                        self.stack.push(addr!(& $($addr_mut)* *self.node));
+                    }
+                    self.node = ptr::RawPtr::null();
+                }
+            }
         }
-        None => ()
+
+        // the forward Iterator impl.
+        impl<'a, K, V> Iterator<(&'a K, $value_type)> for $name<'a, K, V> {
+            /// Advance the iterator to the next node (in order) and return a
+            /// tuple with a reference to the key and value. If there are no
+            /// more nodes, return `None`.
+            fn next(&mut self) -> Option<(&'a K, $value_type)> {
+                self.next_(true)
+            }
+
+            #[inline]
+            fn size_hint(&self) -> (uint, Option<uint>) {
+                (self.remaining_min, Some(self.remaining_max))
+            }
+        }
+
+        // the reverse Iterator impl.
+        impl<'a, K, V> Iterator<(&'a K, $value_type)> for $rev_name<'a, K, V> {
+            fn next(&mut self) -> Option<(&'a K, $value_type)> {
+                self.iter.next_(false)
+            }
+
+            #[inline]
+            fn size_hint(&self) -> (uint, Option<uint>) {
+                self.iter.size_hint()
+            }
+        }
+    }
+} // end of define_iterator
+
+define_iterator! {
+    TreeMapIterator,
+    TreeMapRevIterator,
+    value_type = &'a V,
+    deref = deref,
+
+    // immutable, so no mut
+    addr_mut =
+}
+define_iterator! {
+    TreeMapMutIterator,
+    TreeMapMutRevIterator,
+    value_type = &'a mut V,
+    deref = mut_deref,
+
+    addr_mut = mut
+}
+
+fn deref<'a, K, V>(node: &'a Option<~TreeNode<K, V>>) -> *TreeNode<K, V> {
+    match *node {
+        Some(ref n) => {
+            let n: &TreeNode<K, V> = *n;
+            n as *TreeNode<K, V>
+        }
+        None => ptr::null()
     }
 }
+
+fn mut_deref<K, V>(x: &mut Option<~TreeNode<K, V>>) -> *mut TreeNode<K, V> {
+    match *x {
+        Some(ref mut n) => {
+            let n: &mut TreeNode<K, V> = *n;
+            n as *mut TreeNode<K, V>
+        }
+        None => ptr::mut_null()
+    }
+}
+
+
 
 /// Lazy forward iterator over a map that consumes the map while iterating
 pub struct TreeMapMoveIterator<K, V> {
@@ -676,24 +819,6 @@ impl<K: TotalOrd, V> TreeNode<K, V> {
     pub fn new(key: K, value: V) -> TreeNode<K, V> {
         TreeNode{key: key, value: value, left: None, right: None, level: 1}
     }
-}
-
-fn mutate_values<'r,
-                 K:TotalOrd,
-                 V>(
-                 node: &'r mut Option<~TreeNode<K,V>>,
-                 f: |&'r K, &'r mut V| -> bool)
-                 -> bool {
-    match *node {
-      Some(~TreeNode{key: ref key, value: ref mut value, left: ref mut left,
-                     right: ref mut right, ..}) => {
-        if !mutate_values(left,  |k,v| f(k,v)) { return false }
-        if !f(key, value) { return false }
-        if !mutate_values(right, |k,v| f(k,v)) { return false }
-      }
-      None => return false
-    }
-    true
 }
 
 // Remove left horizontal link by rotating right
@@ -1127,6 +1252,69 @@ mod test_treemap {
             assert_eq!(*v, n * 2);
             n -= 1;
         }
+    }
+
+    #[test]
+    fn test_mut_iter() {
+        let mut m = TreeMap::new();
+        for i in range(0u, 10) {
+            assert!(m.insert(i, 100 * i));
+        }
+
+        for (i, (&k, v)) in m.mut_iter().enumerate() {
+            *v += k * 10 + i; // 000 + 00 + 0, 100 + 10 + 1, ...
+        }
+
+        for (&k, &v) in m.iter() {
+            assert_eq!(v, 111 * k);
+        }
+    }
+    #[test]
+    fn test_mut_rev_iter() {
+        let mut m = TreeMap::new();
+        for i in range(0u, 10) {
+            assert!(m.insert(i, 100 * i));
+        }
+
+        for (i, (&k, v)) in m.mut_rev_iter().enumerate() {
+            *v += k * 10 + (9 - i); // 900 + 90 + (9 - 0), 800 + 80 + (9 - 1), ...
+        }
+
+        for (&k, &v) in m.iter() {
+            assert_eq!(v, 111 * k);
+        }
+    }
+
+    #[test]
+    fn test_mut_interval_iter() {
+        let mut m_lower = TreeMap::new();
+        let mut m_upper = TreeMap::new();
+        for i in range(1, 100) {
+            assert!(m_lower.insert(i * 2, i * 4));
+            assert!(m_upper.insert(i * 2, i * 4));
+        }
+
+        for i in range(1, 199) {
+            let mut lb_it = m_lower.mut_lower_bound(&i);
+            let (&k, v) = lb_it.next().unwrap();
+            let lb = i + i % 2;
+            assert_eq!(lb, k);
+            *v -= k;
+        }
+        for i in range(0, 198) {
+            let mut ub_it = m_upper.mut_upper_bound(&i);
+            let (&k, v) = ub_it.next().unwrap();
+            let ub = i + 2 - i % 2;
+            assert_eq!(ub, k);
+            *v -= k;
+        }
+
+        assert!(m_lower.mut_lower_bound(&199).next().is_none());
+
+        assert!(m_upper.mut_upper_bound(&198).next().is_none());
+
+        assert!(m_lower.iter().all(|(_, &x)| x == 0));
+        assert!(m_upper.iter().all(|(_, &x)| x == 0));
     }
 
     #[test]
