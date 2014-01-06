@@ -138,7 +138,7 @@ pub enum SyntaxExtension {
     ItemDecorator(ItemDecorator),
 
     // Token-tree expanders
-    NormalTT(@SyntaxExpanderTTTrait, Option<Span>),
+    NormalTT(~SyntaxExpanderTTTrait:'static, Option<Span>),
 
     // An IdentTT is a macro that has an
     // identifier in between the name of the
@@ -148,7 +148,7 @@ pub enum SyntaxExtension {
 
     // perhaps macro_rules! will lose its odd special identifier argument,
     // and this can go away also
-    IdentTT(@SyntaxExpanderTTItemTrait, Option<Span>),
+    IdentTT(~SyntaxExpanderTTItemTrait:'static, Option<Span>),
 }
 
 
@@ -182,20 +182,20 @@ pub fn syntax_expander_table() -> SyntaxEnv {
     // utility function to simplify creating NormalTT syntax extensions
     fn builtin_normal_tt_no_ctxt(f: SyntaxExpanderTTFunNoCtxt)
                                  -> SyntaxExtension {
-        NormalTT(@SyntaxExpanderTT{
+        NormalTT(~SyntaxExpanderTT{
             expander: SyntaxExpanderTTExpanderWithoutContext(f),
             span: None,
-        } as @SyntaxExpanderTTTrait,
+        },
         None)
     }
 
     let mut syntax_expanders = MapChain::new();
     syntax_expanders.insert(intern(&"macro_rules"),
-                            IdentTT(@SyntaxExpanderTTItem {
+                            IdentTT(~SyntaxExpanderTTItem {
                                 expander: SyntaxExpanderTTItemExpanderWithContext(
                                     ext::tt::macro_rules::add_new_extension),
                                 span: None,
-                            } as @SyntaxExpanderTTItemTrait,
+                            },
                             None));
     syntax_expanders.insert(intern(&"fmt"),
                             builtin_normal_tt_no_ctxt(

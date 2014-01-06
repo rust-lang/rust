@@ -53,13 +53,13 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
                     let extname = &pth.segments[0].identifier;
                     let extnamestr = ident_to_str(extname);
                     // leaving explicit deref here to highlight unbox op:
-                    match fld.extsbox.find(&extname.name) {
+                    let marked_after = match fld.extsbox.find(&extname.name) {
                         None => {
                             fld.cx.span_fatal(
                                 pth.span,
                                 format!("macro undefined: '{}'", extnamestr))
                         }
-                        Some(&NormalTT(expandfun, exp_span)) => {
+                        Some(&NormalTT(ref expandfun, exp_span)) => {
                             fld.cx.bt_push(ExpnInfo {
                                 call_site: e.span,
                                 callee: NameAndSpan {
@@ -79,39 +79,25 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
                             // the macro.
                             let mac_span = original_span(fld.cx);
 
-                            let expanded =
-                                match expandfun.expand(fld.cx,
-                                                       mac_span.call_site,
-                                                       marked_before,
-                                                       marked_ctxt) {
-                                    MRExpr(e) => e,
-                                    MRAny(any_macro) => any_macro.make_expr(),
-                                    _ => {
-                                        fld.cx.span_fatal(
-                                            pth.span,
-                                            format!(
-                                                "non-expr macro in expr pos: {}",
-                                                extnamestr
-                                            )
+                            let expanded = match expandfun.expand(fld.cx,
+                                                   mac_span.call_site,
+                                                   marked_before,
+                                                   marked_ctxt) {
+                                MRExpr(e) => e,
+                                MRAny(any_macro) => any_macro.make_expr(),
+                                _ => {
+                                    fld.cx.span_fatal(
+                                        pth.span,
+                                        format!(
+                                            "non-expr macro in expr pos: {}",
+                                            extnamestr
                                         )
-                                    }
-                                };
+                                    )
+                                }
+                            };
+
                             // mark after:
-                            let marked_after = mark_expr(expanded,fm);
-
-                            // Keep going, outside-in.
-                            //
-                            // XXX(pcwalton): Is it necessary to clone the
-                            // node here?
-                            let fully_expanded =
-                                fld.fold_expr(marked_after).node.clone();
-                            fld.cx.bt_pop();
-
-                            @ast::Expr {
-                                id: ast::DUMMY_NODE_ID,
-                                node: fully_expanded,
-                                span: e.span,
-                            }
+                            mark_expr(expanded,fm)
                         }
                         _ => {
                             fld.cx.span_fatal(
@@ -119,6 +105,20 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
                                 format!("'{}' is not a tt-style macro", extnamestr)
                             )
                         }
+                    };
+
+                    // Keep going, outside-in.
+                    //
+                    // XXX(pcwalton): Is it necessary to clone the
+                    // node here?
+                    let fully_expanded =
+                        fld.fold_expr(marked_after).node.clone();
+                    fld.cx.bt_pop();
+
+                    @ast::Expr {
+                        id: ast::DUMMY_NODE_ID,
+                        node: fully_expanded,
+                        span: e.span,
                     }
                 }
             }
@@ -301,7 +301,7 @@ pub fn expand_item_mac(it: @ast::item, fld: &mut MacroExpander)
         None => fld.cx.span_fatal(pth.span,
                                   format!("macro undefined: '{}!'", extnamestr)),
 
-        Some(&NormalTT(expander, span)) => {
+        Some(&NormalTT(ref expander, span)) => {
             if it.ident.name != parse::token::special_idents::invalid.name {
                 fld.cx.span_fatal(pth.span,
                                   format!("macro {}! expects no ident argument, \
@@ -321,7 +321,7 @@ pub fn expand_item_mac(it: @ast::item, fld: &mut MacroExpander)
             let marked_ctxt = new_mark(fm,ctxt);
             expander.expand(fld.cx, it.span, marked_before, marked_ctxt)
         }
-        Some(&IdentTT(expander, span)) => {
+        Some(&IdentTT(ref expander, span)) => {
             if it.ident.name == parse::token::special_idents::invalid.name {
                 fld.cx.span_fatal(pth.span,
                                   format!("macro {}! expects an ident argument",
@@ -361,10 +361,10 @@ pub fn expand_item_mac(it: @ast::item, fld: &mut MacroExpander)
                     .flat_map(|i| fld.fold_item(i).move_iter())
                     .collect()
         }
-        MRDef(ref mdef) => {
+        MRDef(MacroDef { name, ext }) => {
             // yikes... no idea how to apply the mark to this. I'm afraid
             // we're going to have to wait-and-see on this one.
-            fld.extsbox.insert(intern(mdef.name), (*mdef).ext);
+            fld.extsbox.insert(intern(name), ext);
             SmallVector::zero()
         }
     };
@@ -392,12 +392,12 @@ pub fn expand_stmt(s: &Stmt, fld: &mut MacroExpander) -> SmallVector<@Stmt> {
     }
     let extname = &pth.segments[0].identifier;
     let extnamestr = ident_to_str(extname);
-    let fully_expanded: SmallVector<@Stmt> = match fld.extsbox.find(&extname.name) {
+    let marked_after = match fld.extsbox.find(&extname.name) {
         None => {
             fld.cx.span_fatal(pth.span, format!("macro undefined: '{}'", extnamestr))
         }
 
-        Some(&NormalTT(expandfun, exp_span)) => {
+        Some(&NormalTT(ref expandfun, exp_span)) => {
             fld.cx.bt_push(ExpnInfo {
                 call_site: s.span,
                 callee: NameAndSpan {
@@ -430,18 +430,8 @@ pub fn expand_stmt(s: &Stmt, fld: &mut MacroExpander) -> SmallVector<@Stmt> {
                     pth.span,
                     format!("non-stmt macro in stmt pos: {}", extnamestr))
             };
-            let marked_after = mark_stmt(expanded,fm);
 
-            // Keep going, outside-in.
-            let fully_expanded = fld.fold_stmt(marked_after);
-            if fully_expanded.is_empty() {
-                fld.cx.span_fatal(pth.span,
-                              "macro didn't expand to a statement");
-            }
-            fld.cx.bt_pop();
-            fully_expanded.move_iter()
-                    .map(|s| @Spanned { span: s.span, node: s.node.clone() })
-                    .collect()
+            mark_stmt(expanded,fm)
         }
 
         _ => {
@@ -450,6 +440,17 @@ pub fn expand_stmt(s: &Stmt, fld: &mut MacroExpander) -> SmallVector<@Stmt> {
                                       extnamestr))
         }
     };
+
+    // Keep going, outside-in.
+    let fully_expanded = fld.fold_stmt(marked_after);
+    if fully_expanded.is_empty() {
+        fld.cx.span_fatal(pth.span,
+                      "macro didn't expand to a statement");
+    }
+    fld.cx.bt_pop();
+    let fully_expanded: SmallVector<@Stmt> = fully_expanded.move_iter()
+            .map(|s| @Spanned { span: s.span, node: s.node.clone() })
+            .collect();
 
     fully_expanded.move_iter().map(|s| {
         match s.node {
@@ -1109,10 +1110,8 @@ mod test {
     use codemap::Spanned;
     use fold;
     use parse;
-    use parse::token::{fresh_mark, gensym, intern, get_ident_interner, ident_to_str};
+    use parse::token::{fresh_mark, gensym, intern, ident_to_str};
     use parse::token;
-    use print::pprust;
-    use std;
     use util::parser_testing::{string_to_crate, string_to_crate_and_sess};
     use util::parser_testing::{string_to_pat, string_to_tts, strs_to_idents};
     use visit;
