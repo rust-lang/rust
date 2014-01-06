@@ -327,14 +327,12 @@ pub struct TreeMapMutRevIterator<'a, K, V> {
 // other macros, so this takes the `& <mutability> <operand>` token
 // sequence and forces their evalutation as an expression.
 macro_rules! addr { ($e:expr) => { $e }}
+// putting an optional mut into type signatures
+macro_rules! item { ($i:item) => { $i }}
 
 macro_rules! define_iterator {
     ($name:ident,
      $rev_name:ident,
-     // the type of the values of the treemap in the return value of
-     // the iterator (i.e. &V or &mut V). This is non-hygienic in the
-     // name of the lifetime.
-     value_type = $value_type:ty,
 
      // the function to go from &m Option<~TreeNode> to *m TreeNode
      deref = $deref:ident,
@@ -343,10 +341,11 @@ macro_rules! define_iterator {
      // there's no support for 0-or-1 repeats.
      addr_mut = $($addr_mut:tt)*
      ) => {
-        // private methods on the forward iterator
-        impl<'a, K, V> $name<'a, K, V> {
+        // private methods on the forward iterator (item!() for the
+        // addr_mut in the next_ return value)
+        item!(impl<'a, K, V> $name<'a, K, V> {
             #[inline(always)]
-            fn next_(&mut self, forward: bool) -> Option<(&'a K, $value_type)> {
+            fn next_(&mut self, forward: bool) -> Option<(&'a K, &'a $($addr_mut)* V)> {
                 while !self.stack.is_empty() || !self.node.is_null() {
                     if !self.node.is_null() {
                         let node = unsafe {addr!(& $($addr_mut)* *self.node)};
@@ -412,14 +411,14 @@ macro_rules! define_iterator {
                     self.node = ptr::RawPtr::null();
                 }
             }
-        }
+        })
 
         // the forward Iterator impl.
-        impl<'a, K, V> Iterator<(&'a K, $value_type)> for $name<'a, K, V> {
+        item!(impl<'a, K, V> Iterator<(&'a K, &'a $($addr_mut)* V)> for $name<'a, K, V> {
             /// Advance the iterator to the next node (in order) and return a
             /// tuple with a reference to the key and value. If there are no
             /// more nodes, return `None`.
-            fn next(&mut self) -> Option<(&'a K, $value_type)> {
+            fn next(&mut self) -> Option<(&'a K, &'a $($addr_mut)* V)> {
                 self.next_(true)
             }
 
@@ -427,11 +426,11 @@ macro_rules! define_iterator {
             fn size_hint(&self) -> (uint, Option<uint>) {
                 (self.remaining_min, Some(self.remaining_max))
             }
-        }
+        })
 
         // the reverse Iterator impl.
-        impl<'a, K, V> Iterator<(&'a K, $value_type)> for $rev_name<'a, K, V> {
-            fn next(&mut self) -> Option<(&'a K, $value_type)> {
+        item!(impl<'a, K, V> Iterator<(&'a K, &'a $($addr_mut)* V)> for $rev_name<'a, K, V> {
+            fn next(&mut self) -> Option<(&'a K, &'a $($addr_mut)* V)> {
                 self.iter.next_(false)
             }
 
@@ -439,14 +438,13 @@ macro_rules! define_iterator {
             fn size_hint(&self) -> (uint, Option<uint>) {
                 self.iter.size_hint()
             }
-        }
+        })
     }
 } // end of define_iterator
 
 define_iterator! {
     TreeMapIterator,
     TreeMapRevIterator,
-    value_type = &'a V,
     deref = deref,
 
     // immutable, so no mut
@@ -455,7 +453,6 @@ define_iterator! {
 define_iterator! {
     TreeMapMutIterator,
     TreeMapMutRevIterator,
-    value_type = &'a mut V,
     deref = mut_deref,
 
     addr_mut = mut
