@@ -577,6 +577,7 @@ mod tests {
     #[test] #[should_fail]
     fn test_ascii_fail_char_slice() { 'λ'.to_ascii(); }
 
+    #[test]
     fn test_opt() {
         assert_eq!(65u8.to_ascii_opt(), Some(Ascii { chr: 65u8 }));
         assert_eq!(255u8.to_ascii_opt(), None);

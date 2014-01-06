@@ -1522,6 +1522,9 @@ mod tests {
             optmulti("l")
         ];
 
+        // short and verbose should always be in the same order. if they
+        // aren't the test will fail (and in mysterious ways)
+
         let verbose = ~[
             groups::reqopt("b", "banana", "Desc", "VAL"),
             groups::optopt("a", "apple", "Desc", "VAL"),
@@ -1533,7 +1536,6 @@ mod tests {
         let sample_args = ~[~"--kiwi", ~"15", ~"--apple", ~"1", ~"k",
                             ~"-p", ~"16", ~"l", ~"35"];
 
-        // FIXME #4681: sort options here?
         assert!(getopts(sample_args, short)
             == groups::getopts(sample_args, verbose));
     }

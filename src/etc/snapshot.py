@@ -194,3 +194,41 @@ def make_snapshot(stage, triple):
     shutil.move(file0, file1)
 
     return file1
+
+def determine_curr_snapshot_info(triple):
+  i = 0
+  platform = get_platform(triple)
+
+  found_file = False
+  found_snap = False
+  hsh = None
+  date = None
+  rev = None
+
+  f = open(snapshotfile)
+  for line in f.readlines():
+    i += 1
+    parsed = parse_line(i, line)
+    if (not parsed): continue
+
+    if found_snap and parsed["type"] == "file":
+      if parsed["platform"] == platform:
+        hsh = parsed["hash"]
+        found_file = True
+        break;
+    elif parsed["type"] == "snapshot":
+      date = parsed["date"]
+      rev = parsed["rev"]
+      found_snap = True
+
+  if not found_snap:
+    raise Exception("no snapshot entries in file")
+
+  if not found_file:
+    raise Exception("no snapshot file found for platform %s, rev %s" %
+                    (platform, rev))
+
+  return (date, rev, platform, hsh)
+
+def determine_curr_snapshot(triple):
+  return full_snapshot_name(*determine_curr_snapshot_info(triple))
