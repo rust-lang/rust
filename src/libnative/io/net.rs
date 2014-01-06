@@ -275,12 +275,12 @@ impl TcpStream {
 
 impl rtio::RtioTcpStream for TcpStream {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
-        let ret = keep_going(buf, |buf, len| {
+        let ret = retry(|| {
             unsafe {
                 libc::recv(self.fd,
-                           buf as *mut libc::c_void,
-                           len as wrlen,
-                           0) as i64
+                           buf.as_ptr() as *mut libc::c_void,
+                           buf.len() as wrlen,
+                           0) as libc::c_int
             }
         });
         if ret == 0 {
