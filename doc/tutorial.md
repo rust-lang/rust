@@ -2035,28 +2035,30 @@ C++ templates.
 
 ## Traits
 
-Within a generic function the operations available on generic types
-are very limited. After all, since the function doesn't know what
-types it is operating on, it can't safely modify or query their
-values. This is where _traits_ come into play. Traits are Rust's most
-powerful tool for writing polymorphic code. Java developers will see
-them as similar to Java interfaces, and Haskellers will notice their
-similarities to type classes. Rust's traits are a form of *bounded
-polymorphism*: a trait is a way of limiting the set of possible types
-that a type parameter could refer to.
+Within a generic function -- that is, a function parameterized by a
+type parameter, say, `T` -- the operations we can do on arguments of
+type `T` are quite limited.  After all, since we don't know what type
+`T` will be instantiated with, we can't safely modify or query values
+of type `T`.  This is where _traits_ come into play. Traits are Rust's
+most powerful tool for writing polymorphic code. Java developers will
+see them as similar to Java interfaces, and Haskellers will notice
+their similarities to type classes. Rust's traits give us a way to
+express *bounded polymorphism*: by limiting the set of possible types
+that a type parameter could refer to, they expand the number of
+operations we can safely perform on arguments of that type.
 
-As motivation, let us consider copying in Rust.
-The `clone` method is not defined for all Rust types.
-One reason is user-defined destructors:
-copying a type that has a destructor
-could result in the destructor running multiple times.
-Therefore, types with destructors cannot be copied
-unless you explicitly implement `Clone` for them.
+As motivation, let us consider copying of values in Rust.  The `clone`
+method is not defined for values of every type.  One reason is
+user-defined destructors: copying a value of a type that has a
+destructor could result in the destructor running multiple times.
+Therefore, values of types that have destructors cannot be copied
+unless we explicitly implement `clone` for them.
 
 This complicates handling of generic functions.
-If you have a type parameter `T`, can you copy values of that type?
-In Rust, you can't,
-and if you try to run the following code the compiler will complain.
+If we have a function with a type parameter `T`,
+can we copy values of type `T` inside that function?
+In Rust, we can't,
+and if we try to run the following code the compiler will complain.
 
 ~~~~ {.xfail-test}
 // This does not compile
@@ -2066,11 +2068,10 @@ fn head_bad<T>(v: &[T]) -> T {
 ~~~~
 
 However, we can tell the compiler
-that the `head` function is only for copyable types:
-that is, those that implement the `Clone` trait.
-In that case,
-we can explicitly create a second copy of the value we are returning
-using the `clone` keyword:
+that the `head` function is only for copyable types.
+In Rust, copyable types are those that _implement the `Clone` trait_.  
+We can then explicitly create a second copy of the value we are returning
+by calling the `clone` method:
 
 ~~~~
 // This does
@@ -2079,12 +2080,14 @@ fn head<T: Clone>(v: &[T]) -> T {
 }
 ~~~~
 
-This says that we can call `head` on any type `T`
-as long as that type implements the `Clone` trait.
+The bounded type parameter `T: Clone` says that `head`
+can be called on an argument of type `&[T]` for any `T`,
+so long as there is an implementation of the
+`Clone` trait for `T`.
 When instantiating a generic function,
-you can only instantiate it with types
+we can only instantiate it with types
 that implement the correct trait,
-so you could not apply `head` to a type
+so we could not apply `head` to a vector whose elements are of some type
 that does not implement `Clone`.
 
 While most traits can be defined and implemented by user code,
@@ -2110,7 +2113,7 @@ have the `'static` lifetime.
 > iterations of the language, and often still are.
 
 Additionally, the `Drop` trait is used to define destructors. This
-trait defines one method called `drop`, which is automatically
+trait provides one method called `drop`, which is automatically
 called when a value of the type that implements this trait is
 destroyed, either because the value went out of scope or because the
 garbage collector reclaimed it.
@@ -2134,11 +2137,10 @@ may call it.
 
 ## Declaring and implementing traits
 
-A trait consists of a set of methods without bodies,
-or may be empty, as is the case with `Send` and `Freeze`.
+At its simplest, a trait is a set of zero or more _method signatures_.
 For example, we could declare the trait
 `Printable` for things that can be printed to the console,
-with a single method:
+with a single method signature:
 
 ~~~~
 trait Printable {
@@ -2146,17 +2148,25 @@ trait Printable {
 }
 ~~~~
 
-Traits may be implemented for specific types with [impls]. An impl
-that implements a trait includes the name of the trait at the start of
-the definition, as in the following impls of `Printable` for `int`
-and `~str`.
+We say that the `Printable` trait _provides_ a `print` method with the
+given signature.  This means that we can call `print` on an argument
+of any type that implements the `Printable` trait.
+
+Rust's built-in `Send` and `Freeze` types are examples of traits that
+don't provide any methods.
+
+Traits may be implemented for specific types with [impls]. An impl for
+a particular trait gives an implementation of the methods that
+trait provides.  For instance, the following impls of
+`Printable` for `int` and `~str` give implementations of the `print`
+method.
 
 [impls]: #methods
 
 ~~~~
 # trait Printable { fn print(&self); }
 impl Printable for int {
-    fn print(&self) { println!("{}", *self) }
+    fn print(&self) { println!("{:?}", *self) }
 }
 
 impl Printable for ~str {
@@ -2167,10 +2177,71 @@ impl Printable for ~str {
 # (~"foo").print();
 ~~~~
 
-Methods defined in an implementation of a trait may be called just like
-any other method, using dot notation, as in `1.print()`. Traits may
-themselves contain type parameters. A trait for generalized sequence
-types might look like the following:
+Methods defined in an impl for a trait may be called just like
+any other method, using dot notation, as in `1.print()`.
+
+## Default method implementations in trait definitions
+
+Sometimes, a method that a trait provides will have the same
+implementation for most or all of the types that implement that trait.
+For instance, suppose that we wanted `bool`s and `f32`s to be
+printable, and that we wanted the implementation of `print` for those
+types to be exactly as it is for `int`, above:
+
+~~~~
+# trait Printable { fn print(&self); }
+impl Printable for f32 {
+    fn print(&self) { println!("{:?}", *self) }
+}
+
+impl Printable for bool {
+    fn print(&self) { println!("{:?}", *self) }
+}
+
+# true.print();
+# 3.14159.print();
+~~~~
+
+This works fine, but we've now repeated the same definition of `print`
+in three places.  Instead of doing that, we can simply include the
+definition of `print` right in the trait definition, instead of just
+giving its signature.  That is, we can write the following:
+
+~~~~
+trait Printable {
+	// Default method implementation
+    fn print(&self) { println!("{:?}", *self) }
+}
+
+impl Printable for int {}
+
+impl Printable for ~str {
+    fn print(&self) { println(*self) }
+}
+
+impl Printable for bool {}
+
+impl Printable for f32 {}
+
+# 1.print();
+# (~"foo").print();
+# true.print();
+# 3.14159.print();
+~~~~
+
+Here, the impls of `Printable` for `int`, `bool`, and `f32` don't
+need to provide an implementation of `print`, because in the absence
+of a specific implementation, Rust just uses the _default method_
+provided in the trait definition.  Depending on the trait, default
+methods can save a great deal of boilerplate code from having to be
+written in impls.  Of course, individual impls can still override the
+default method for `print`, as is being done above in the impl for
+`~str`.
+
+## Type-parameterized traits
+
+Traits may be parameterized by type variables.  For example, a trait
+for generalized sequence types might look like the following:
 
 ~~~~
 trait Seq<T> {
@@ -3023,7 +3094,7 @@ they model most closely what people expect to shadow.
 
 ## Package ids
 
-If you use `extern mod`, per default `rustc` will look for libraries in the the library search path (which you can
+If you use `extern mod`, per default `rustc` will look for libraries in the library search path (which you can
 extend with the `-L` switch).
 
 However, Rust also ships with rustpkg, a package manager that is able to automatically download and build
