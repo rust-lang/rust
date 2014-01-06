@@ -589,4 +589,25 @@ mod test {
         //peer_name(next_test_ip6());
         socket_name(next_test_ip6());
     })
+
+    iotest!(fn partial_read() {
+        let addr = next_test_ip4();
+        let (p, c) = Chan::new();
+        do spawn {
+            let mut srv = TcpListener::bind(addr).listen();
+            c.send(());
+            let mut cl = srv.accept().unwrap();
+            cl.write([10]);
+            let mut b = [0];
+            cl.read(b);
+            c.send(());
+        }
+
+        p.recv();
+        let mut c = TcpStream::connect(addr).unwrap();
+        let mut b = [0, ..10];
+        assert_eq!(c.read(b), Some(1));
+        c.write([1]);
+        p.recv();
+    })
 }
