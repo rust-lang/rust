@@ -225,11 +225,11 @@ pub fn add_new_extension(cx: &mut ExtCtxt,
       _ => cx.span_bug(sp, "wrong-structured rhs")
     };
 
-    let exp = @MacroRulesSyntaxExpanderTTFun {
+    let exp = ~MacroRulesSyntaxExpanderTTFun {
         name: name,
         lhses: lhses,
         rhses: rhses,
-    } as @SyntaxExpanderTTTrait;
+    };
 
     return MRDef(MacroDef {
         name: ident_to_str(&name),
