@@ -284,10 +284,19 @@ impl Task {
 
     /// Returns the stack bounds for this task in (lo, hi) format. The stack
     /// bounds may not be known for all tasks, so the return value may be
-    /// `None`.
+    /// `None`. In particular, using native threads, the first thread (the one
+    /// the OS spawns) has unknown bounds.
     pub fn stack_bounds(&self) -> Option<(uint, uint)> {
         self.imp.get_ref().stack_bounds()
     }
+}
+
+pub fn stack_bounds() -> Option<(uint, uint)> {
+    //! Returns the stack bounds (lo, hi) for the running task. Is a
+    //! convenience function around Task::stack_bounds
+
+    let mut local = Local::borrow(None::<Task>);
+    local.get().stack_bounds()
 }
 
 impl Drop for Task {
