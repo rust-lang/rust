@@ -17,7 +17,11 @@ CDOCS :=
 DOCS_L10N :=
 
 BASE_DOC_OPTS := --from=markdown --standalone --toc --number-sections
-HTML_OPTS = $(BASE_DOC_OPTS) --to=html5  --section-divs --css=rust.css  --include-before-body=doc/version_info.html --include-in-header=doc/favicon.inc
+
+HTML_OPTS = $(BASE_DOC_OPTS) 	--to=html5  --section-divs --css=rust.css  \
+															--include-before-body=doc/version_info.html \
+															--include-in-header=doc/favicon.inc
+
 TEX_OPTS = $(BASE_DOC_OPTS) --to=latex
 EPUB_OPTS = $(BASE_DOC_OPTS) --to=epub
 
@@ -112,57 +116,59 @@ doc/l10n/ja/tutorial.html: doc/l10n/ja/tutorial.md doc/version_info.html doc/rus
            --include-before-body=doc/version_info.html \
            --output=$@
 
-DOCS += doc/tutorial-macros.html
-doc/tutorial-macros.html: tutorial-macros.md doc/version_info.html doc/rust.css \
+# Guides
+
+DOCS += doc/guide-macros.html
+doc/guide-macros.html: $(S)doc/guide-macros.md doc/version_info.html doc/rust.css \
 				doc/favicon.inc
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
 
-DOCS += doc/tutorial-container.html
-doc/tutorial-container.html: tutorial-container.md doc/version_info.html doc/rust.css \
+DOCS += doc/guide-container.html
+doc/guide-container.html: $(S)doc/guide-container.md doc/version_info.html doc/rust.css \
 				doc/favicon.inc
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
 
-DOCS += doc/tutorial-ffi.html
-doc/tutorial-ffi.html: tutorial-ffi.md doc/version_info.html doc/rust.css \
+DOCS += doc/guide-ffi.html
+doc/guide-ffi.html: $(S)doc/guide-ffi.md doc/version_info.html doc/rust.css \
 				doc/favicon.inc
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
 
-DOCS += doc/tutorial-testing.html
-doc/tutorial-testing.html: tutorial-testing.md doc/version_info.html doc/rust.css \
+DOCS += doc/guide-testing.html
+doc/guide-testing.html: $(S)doc/guide-testing.md doc/version_info.html doc/rust.css \
 				doc/favicon.inc
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
 
-DOCS += doc/tutorial-borrowed-ptr.html
-doc/tutorial-borrowed-ptr.html: tutorial-borrowed-ptr.md doc/version_info.html doc/rust.css \
+DOCS += doc/guide-borrowed-ptr.html
+doc/guide-borrowed-ptr.html: $(S)doc/guide-borrowed-ptr.md doc/version_info.html doc/rust.css \
 				doc/favicon.inc
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
 
-DOCS += doc/tutorial-tasks.html
-doc/tutorial-tasks.html: tutorial-tasks.md doc/version_info.html doc/rust.css \
+DOCS += doc/guide-tasks.html
+doc/guide-tasks.html: $(S)doc/guide-tasks.md doc/version_info.html doc/rust.css \
 				doc/favicon.inc
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
 
-DOCS += doc/tutorial-conditions.html
-doc/tutorial-conditions.html: tutorial-conditions.md doc/version_info.html doc/rust.css \
+DOCS += doc/guide-conditions.html
+doc/guide-conditions.html: $(S)doc/guide-conditions.md doc/version_info.html doc/rust.css \
 				doc/favicon.inc
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
 
-DOCS += doc/tutorial-rustpkg.html
-doc/tutorial-rustpkg.html: tutorial-rustpkg.md doc/version_info.html doc/rust.css \
+DOCS += doc/guide-rustpkg.html
+doc/guide-rustpkg.html: $(S)doc/guide-rustpkg.md doc/version_info.html doc/rust.css \
 				doc/favicon.inc
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
