@@ -756,7 +756,7 @@ fn get_system_tool(sess: Session, tool: &str) -> ~str {
             }
         },
         _ => tool.to_owned(),
-    } 
+    }
 }
 
 /// Perform the linkage portion of the compilation phase. This will generate all
