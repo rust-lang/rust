@@ -55,7 +55,9 @@
 
 use any::Any;
 use comm::{Chan, Port};
+use io::Writer;
 use kinds::Send;
+use logging::Logger;
 use option::{None, Some, Option};
 use result::{Result, Ok, Err};
 use rt::local::Local;
@@ -103,7 +105,10 @@ pub struct TaskOpts {
     watched: bool,
     notify_chan: Option<Chan<TaskResult>>,
     name: Option<SendStr>,
-    stack_size: Option<uint>
+    stack_size: Option<uint>,
+    logger: Option<~Logger>,
+    stdout: Option<~Writer>,
+    stderr: Option<~Writer>,
 }
 
 /**
@@ -138,22 +143,6 @@ pub fn task() -> TaskBuilder {
 }
 
 impl TaskBuilder {
-    fn consume(mut self) -> TaskBuilder {
-        let gen_body = self.gen_body.take();
-        let notify_chan = self.opts.notify_chan.take();
-        let name = self.opts.name.take();
-        TaskBuilder {
-            opts: TaskOpts {
-                watched: self.opts.watched,
-                notify_chan: notify_chan,
-                name: name,
-                stack_size: self.opts.stack_size
-            },
-            gen_body: gen_body,
-            can_not_copy: None,
-        }
-    }
-
     /// Cause the parent task to collect the child's exit status (and that of
     /// all transitively-watched grandchildren) before reporting its own.
     pub fn watched(&mut self) {
@@ -250,26 +239,12 @@ impl TaskBuilder {
      */
     pub fn spawn(mut self, f: proc()) {
         let gen_body = self.gen_body.take();
-        let notify_chan = self.opts.notify_chan.take();
-        let name = self.opts.name.take();
-        let x = self.consume();
-        let opts = TaskOpts {
-            watched: x.opts.watched,
-            notify_chan: notify_chan,
-            name: name,
-            stack_size: x.opts.stack_size
-        };
         let f = match gen_body {
-            Some(gen) => {
-                gen(f)
-            }
-            None => {
-                f
-            }
+            Some(gen) => gen(f),
+            None => f
         };
-
         let t: ~Task = Local::take();
-        t.spawn_sibling(opts, f);
+        t.spawn_sibling(self.opts, f);
     }
 
     /**
@@ -316,7 +291,10 @@ impl TaskOpts {
             watched: true,
             notify_chan: None,
             name: None,
-            stack_size: None
+            stack_size: None,
+            logger: None,
+            stdout: None,
+            stderr: None,
         }
     }
 }

@@ -32,8 +32,12 @@ use io::{Reader, Writer, io_error, IoError, OtherIoError,
          standard_error, EndOfFile};
 use libc;
 use option::{Option, Some, None};
+use prelude::drop;
 use result::{Ok, Err};
+use rt::local::Local;
 use rt::rtio::{DontClose, IoFactory, LocalIo, RtioFileStream, RtioTTY};
+use rt::task::Task;
+use util;
 
 // And so begins the tale of acquiring a uv handle to a stdio stream on all
 // platforms in all situations. Our story begins by splitting the world into two
@@ -101,6 +105,44 @@ pub fn stderr() -> StdWriter {
     src(libc::STDERR_FILENO, false, |src| StdWriter { inner: src })
 }
 
+fn reset_helper(w: ~Writer,
+                f: |&mut Task, ~Writer| -> Option<~Writer>) -> Option<~Writer> {
+    let mut t = Local::borrow(None::<Task>);
+    // Be sure to flush any pending output from the writer
+    match f(t.get(), w) {
+        Some(mut w) => {
+            drop(t);
+            w.flush();
+            Some(w)
+        }
+        None => None
+    }
+}
+
+/// Resets the task-local stdout handle to the specified writer
+///
+/// This will replace the current task's stdout handle, returning the old
+/// handle. All future calls to `print` and friends will emit their output to
+/// this specified handle.
+///
+/// Note that this does not need to be called for all new tasks; the default
+/// output handle is to the process's stdout stream.
+pub fn set_stdout(stdout: ~Writer) -> Option<~Writer> {
+    reset_helper(stdout, |t, w| util::replace(&mut t.stdout, Some(w)))
+}
+
+/// Resets the task-local stderr handle to the specified writer
+///
+/// This will replace the current task's stderr handle, returning the old
+/// handle. Currently, the stderr handle is used for printing failure messages
+/// during task failure.
+///
+/// Note that this does not need to be called for all new tasks; the default
+/// output handle is to the process's stderr stream.
+pub fn set_stderr(stderr: ~Writer) -> Option<~Writer> {
+    reset_helper(stderr, |t, w| util::replace(&mut t.stderr, Some(w)))
+}
+
 // Helper to access the local task's stdout handle
 //
 // Note that this is not a safe function to expose because you can create an
@@ -112,38 +154,49 @@ pub fn stderr() -> StdWriter {
 //      })
 //  })
 fn with_task_stdout(f: |&mut Writer|) {
-    use rt::local::Local;
-    use rt::task::Task;
+    let task: Option<~Task> = Local::try_take();
+    match task {
+        Some(mut task) => {
+            // Printing may run arbitrary code, so ensure that the task is in
+            // TLS to allow all std services. Note that this means a print while
+            // printing won't use the task's normal stdout handle, but this is
+            // necessary to ensure safety (no aliasing).
+            let mut my_stdout = task.stdout.take();
+            Local::put(task);
 
-    unsafe {
-        let task: Option<*mut Task> = Local::try_unsafe_borrow();
-        match task {
-            Some(task) => {
-                match (*task).stdout_handle {
-                    Some(ref mut handle) => f(*handle),
-                    None => {
-                        let handle = ~LineBufferedWriter::new(stdout());
-                        let mut handle = handle as ~Writer;
-                        f(handle);
-                        (*task).stdout_handle = Some(handle);
+            if my_stdout.is_none() {
+                my_stdout = Some(~LineBufferedWriter::new(stdout()) as ~Writer);
+            }
+            f(*my_stdout.get_mut_ref());
+
+            // Note that we need to be careful when putting the stdout handle
+            // back into the task. If the handle was set to `Some` while
+            // printing, then we can run aribitrary code when destroying the
+            // previous handle. This means that the local task needs to be in
+            // TLS while we do this.
+            //
+            // To protect against this, we do a little dance in which we
+            // temporarily take the task, swap the handles, put the task in TLS,
+            // and only then drop the previous handle.
+            let mut t = Local::borrow(None::<Task>);
+            let prev = util::replace(&mut t.get().stdout, my_stdout);
+            drop(t);
+            drop(prev);
+        }
+
+        None => {
+            struct Stdout;
+            impl Writer for Stdout {
+                fn write(&mut self, data: &[u8]) {
+                    unsafe {
+                        libc::write(libc::STDOUT_FILENO,
+                                    data.as_ptr() as *libc::c_void,
+                                    data.len() as libc::size_t);
                     }
                 }
             }
-
-            None => {
-                struct Stdout;
-                impl Writer for Stdout {
-                    fn write(&mut self, data: &[u8]) {
-                        unsafe {
-                            libc::write(libc::STDOUT_FILENO,
-                                        data.as_ptr() as *libc::c_void,
-                                        data.len() as libc::size_t);
-                        }
-                    }
-                }
-                let mut io = Stdout;
-                f(&mut io as &mut Writer);
-            }
+            let mut io = Stdout;
+            f(&mut io as &mut Writer);
         }
     }
 }
@@ -312,5 +365,30 @@ mod tests {
         stdin();
         stdout();
         stderr();
+    })
+
+    iotest!(fn capture_stdout() {
+        use io::comm_adapters::{PortReader, ChanWriter};
+
+        let (p, c) = Chan::new();
+        let (mut r, w) = (PortReader::new(p), ChanWriter::new(c));
+        do spawn {
+            set_stdout(~w as ~Writer);
+            println!("hello!");
+        }
+        assert_eq!(r.read_to_str(), ~"hello!\n");
+    })
+
+    iotest!(fn capture_stderr() {
+        use io::comm_adapters::{PortReader, ChanWriter};
+
+        let (p, c) = Chan::new();
+        let (mut r, w) = (PortReader::new(p), ChanWriter::new(c));
+        do spawn {
+            set_stderr(~w as ~Writer);
+            fail!("my special message");
+        }
+        let s = r.read_to_str();
+        assert!(s.contains("my special message"));
     })
 }
