@@ -157,7 +157,7 @@ pub fn relative_target_lib_path(target_triple: &str) -> Path {
     let dir = libdir();
     let mut p = Path::new(dir.as_slice());
     assert!(p.is_relative());
-    p.push("rustc");
+    p.push(rustlibdir());
     p.push(target_triple);
     p.push(dir);
     p
@@ -246,4 +246,10 @@ pub fn rust_path() -> ~[Path] {
 // On Unix should be "lib", on windows "bin"
 pub fn libdir() -> ~str {
     (env!("CFG_LIBDIR")).to_owned()
+}
+
+// The name of rustc's own place to organize libraries.
+// Used to be "rustc", now the default is "rustlib"
+pub fn rustlibdir() -> ~str {
+    (env!("CFG_RUSTLIBDIR")).to_owned()
 }
