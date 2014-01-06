@@ -61,12 +61,14 @@ use cast;
 use kinds::Send;
 use libc::{c_void, c_char, size_t};
 use option::{Some, None, Option};
+use prelude::drop;
 use result::{Err, Ok};
 use rt::local::Local;
 use rt::task::Task;
 use str::Str;
 use task::TaskResult;
 use unstable::intrinsics;
+use util;
 
 use uw = self::libunwind;
 
@@ -385,58 +387,90 @@ pub fn begin_unwind_raw(msg: *c_char, file: *c_char, line: size_t) -> ! {
 
 /// This is the entry point of unwinding for fail!() and assert!().
 pub fn begin_unwind<M: Any + Send>(msg: M, file: &'static str, line: uint) -> ! {
-    unsafe {
-        let task: *mut Task;
-        // Note that this should be the only allocation performed in this block.
-        // Currently this means that fail!() on OOM will invoke this code path,
-        // but then again we're not really ready for failing on OOM anyway. If
-        // we do start doing this, then we should propagate this allocation to
-        // be performed in the parent of this task instead of the task that's
-        // failing.
-        let msg = ~msg as ~Any;
+    // Note that this should be the only allocation performed in this block.
+    // Currently this means that fail!() on OOM will invoke this code path,
+    // but then again we're not really ready for failing on OOM anyway. If
+    // we do start doing this, then we should propagate this allocation to
+    // be performed in the parent of this task instead of the task that's
+    // failing.
+    let msg = ~msg as ~Any;
 
+    let mut task;
+    {
+        let msg_s = match msg.as_ref::<&'static str>() {
+            Some(s) => *s,
+            None => match msg.as_ref::<~str>() {
+                Some(s) => s.as_slice(),
+                None => "~Any",
+            }
+        };
+
+        // It is assumed that all reasonable rust code will have a local task at
+        // all times. This means that this `try_take` will succeed almost all of
+        // the time. There are border cases, however, when the runtime has
+        // *almost* set up the local task, but hasn't quite gotten there yet. In
+        // order to get some better diagnostics, we print on failure and
+        // immediately abort the whole process if there is no local task
+        // available.
+        let opt_task: Option<~Task> = Local::try_take();
+        task = match opt_task {
+            Some(t) => t,
+            None => {
+                rterrln!("failed at '{}', {}:{}", msg_s, file, line);
+                unsafe { intrinsics::abort() }
+            }
+        };
+
+        // See comments in io::stdio::with_task_stdout as to why we have to be
+        // careful when using an arbitrary I/O handle from the task. We
+        // essentially need to dance to make sure when a task is in TLS when
+        // running user code.
+        let name = task.name.take();
         {
-            let msg_s = match msg.as_ref::<&'static str>() {
-                Some(s) => *s,
-                None => match msg.as_ref::<~str>() {
-                    Some(s) => s.as_slice(),
-                    None => "~Any",
+            let n = name.as_ref().map(|n| n.as_slice()).unwrap_or("<unnamed>");
+
+            match task.stderr.take() {
+                Some(mut stderr) => {
+                    Local::put(task);
+                    format_args!(|args| ::fmt::writeln(stderr, args),
+                                 "task '{}' failed at '{}', {}:{}",
+                                 n, msg_s, file, line);
+                    task = Local::take();
+
+                    match util::replace(&mut task.stderr, Some(stderr)) {
+                        Some(prev) => {
+                            Local::put(task);
+                            drop(prev);
+                            task = Local::take();
+                        }
+                        None => {}
+                    }
                 }
-            };
-
-            // It is assumed that all reasonable rust code will have a local
-            // task at all times. This means that this `try_unsafe_borrow` will
-            // succeed almost all of the time. There are border cases, however,
-            // when the runtime has *almost* set up the local task, but hasn't
-            // quite gotten there yet. In order to get some better diagnostics,
-            // we print on failure and immediately abort the whole process if
-            // there is no local task available.
-            match Local::try_unsafe_borrow() {
-                Some(t) => {
-                    task = t;
-                    let n = (*task).name.as_ref()
-                                   .map(|n| n.as_slice()).unwrap_or("<unnamed>");
-
+                None => {
                     rterrln!("task '{}' failed at '{}', {}:{}", n, msg_s,
                              file, line);
                 }
-                None => {
-                    rterrln!("failed at '{}', {}:{}", msg_s, file, line);
-                    intrinsics::abort();
-                }
-            }
-
-            if (*task).unwinder.unwinding {
-                // If a task fails while it's already unwinding then we
-                // have limited options. Currently our preference is to
-                // just abort. In the future we may consider resuming
-                // unwinding or otherwise exiting the task cleanly.
-                rterrln!("task failed during unwinding (double-failure - total drag!)")
-                rterrln!("rust must abort now. so sorry.");
-                intrinsics::abort();
             }
         }
+        task.name = name;
 
+        if task.unwinder.unwinding {
+            // If a task fails while it's already unwinding then we
+            // have limited options. Currently our preference is to
+            // just abort. In the future we may consider resuming
+            // unwinding or otherwise exiting the task cleanly.
+            rterrln!("task failed during unwinding (double-failure - total drag!)")
+            rterrln!("rust must abort now. so sorry.");
+            unsafe { intrinsics::abort() }
+        }
+    }
+
+    // The unwinder won't actually use the task at all, so we put the task back
+    // into TLS right before we invoke the unwinder, but this means we need an
+    // unsafe reference back to the unwinder once it's in TLS.
+    Local::put(task);
+    unsafe {
+        let task: *mut Task = Local::unsafe_borrow();
         (*task).unwinder.begin_unwind(msg);
     }
 }
