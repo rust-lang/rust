@@ -141,40 +141,95 @@ impl<T> TrieMap<T> {
             remaining_max: self.length
         }
     }
+}
 
+// FIXME #5846 we want to be able to choose between &x and &mut x
+// (with many different `x`) below, so we need to optionally pass mut
+// as a tt, but the only thing we can do with a `tt` is pass them to
+// other macros, so this takes the `& <mutability> <operand>` token
+// sequence and forces their evalutation as an expression. (see also
+// `item!` below.)
+macro_rules! addr { ($e:expr) => { $e } }
+
+macro_rules! bound {
+    ($iterator_name:ident,
+     // the current treemap
+     self = $this:expr,
+     // the key to look for
+     key = $key:expr,
+     // are we looking at the upper bound?
+     is_upper = $upper:expr,
+
+     // method names for slicing/iterating.
+     slice_from = $slice_from:ident,
+     iter = $iter:ident,
+
+     // see the comment on `addr!`, this is just an optional mut, but
+     // there's no 0-or-1 repeats yet.
+     mutability = $($mut_:tt)*) => {
+        {
+            // # For `mut`
+            // We need an unsafe pointer here because we are borrowing
+            // mutable references to the internals of each of these
+            // mutable nodes, while still using the outer node.
+            //
+            // However, we're allowed to flaunt rustc like this because we
+            // never actually modify the "shape" of the nodes. The only
+            // place that mutation is can actually occur is of the actual
+            // values of the TrieMap (as the return value of the
+            // iterator), i.e. we can never cause a deallocation of any
+            // TrieNodes so the raw pointer is always valid.
+            //
+            // # For non-`mut`
+            // We like sharing code so much that even a little unsafe won't
+            // stop us.
+            let this = $this;
+            let mut node = addr!(& $($mut_)* this.root as * $($mut_)* TrieNode<T>);
+
+            let key = $key;
+
+            let mut idx = 0;
+            let mut it = $iterator_name {
+                stack: ~[],
+                remaining_min: 0,
+                remaining_max: this.length
+            };
+            // this addr is necessary for the `Internal` pattern.
+            addr!(loop {
+                    let children = unsafe {addr!(& $($mut_)* (*node).children)};
+                    let child_id = chunk(key, idx);
+                    match children[child_id] {
+                        Internal(ref $($mut_)* n) => {
+                            node = addr!(& $($mut_)* **n as * $($mut_)* TrieNode<T>);
+                        }
+                        External(stored, _) => {
+                            if stored < key || ($upper && stored == key) {
+                                it.stack.push(children.$slice_from(child_id + 1).$iter());
+                            } else {
+                                it.stack.push(children.$slice_from(child_id).$iter());
+                            }
+                            return it;
+                        }
+                        Nothing => {
+                            it.stack.push(children.$slice_from(child_id + 1).$iter());
+                            return it
+                        }
+                    }
+                    it.stack.push(children.$slice_from(child_id + 1).$iter());
+                    idx += 1;
+                })
+        }
+    }
+}
+
+impl<T> TrieMap<T> {
     // If `upper` is true then returns upper_bound else returns lower_bound.
     #[inline]
     fn bound<'a>(&'a self, key: uint, upper: bool) -> TrieMapIterator<'a, T> {
-        let mut node: &'a TrieNode<T> = &self.root;
-        let mut idx = 0;
-        let mut it = TrieMapIterator {
-            stack: ~[],
-            remaining_min: 0,
-            remaining_max: self.length
-        };
-        loop {
-            let children = &node.children;
-            let child_id = chunk(key, idx);
-            match children[child_id] {
-                Internal(ref n) => {
-                    node = &**n;
-                    it.stack.push(children.slice_from(child_id + 1).iter());
-                }
-                External(stored, _) => {
-                    if stored < key || (upper && stored == key) {
-                        it.stack.push(children.slice_from(child_id + 1).iter());
-                    } else {
-                        it.stack.push(children.slice_from(child_id).iter());
-                    }
-                    return it;
-                }
-                Nothing => {
-                    it.stack.push(children.slice_from(child_id + 1).iter());
-                    return it
-                }
-            }
-            idx += 1;
-        }
+        bound!(TrieMapIterator, self = self,
+               key = key, is_upper = upper,
+               slice_from = slice_from, iter = iter,
+               mutability = )
     }
 
     /// Get an iterator pointing to the first key-value pair whose key is not less than `key`.
@@ -191,47 +246,10 @@ impl<T> TrieMap<T> {
     // If `upper` is true then returns upper_bound else returns lower_bound.
     #[inline]
     fn mut_bound<'a>(&'a mut self, key: uint, upper: bool) -> TrieMapMutIterator<'a, T> {
-        // we need an unsafe pointer here because we are borrowing
-        // references to the internals of each of these
-        // nodes.
-        //
-        // However, we're allowed to flaunt rustc like this because we
-        // never actually modify the "shape" of the nodes. The only
-        // place that mutation is can actually occur is of the actual
-        // values of the TrieMap (as the return value of the
-        // iterator), i.e. we can never cause a deallocation of any
-        // TrieNodes so this pointer is always valid.
-        let mut node = &mut self.root as *mut TrieNode<T>;
-
-        let mut idx = 0;
-        let mut it = TrieMapMutIterator {
-            stack: ~[],
-            remaining_min: 0,
-            remaining_max: self.length
-        };
-        loop {
-            let children = unsafe {&mut (*node).children};
-            let child_id = chunk(key, idx);
-            match children[child_id] {
-                Internal(ref mut n) => {
-                    node = &mut **n as *mut TrieNode<T>;
-                }
-                External(stored, _) => {
-                    if stored < key || (upper && stored == key) {
-                        it.stack.push(children.mut_slice_from(child_id + 1).mut_iter());
-                    } else {
-                        it.stack.push(children.mut_slice_from(child_id).mut_iter());
-                    }
-                    return it;
-                }
-                Nothing => {
-                    it.stack.push(children.mut_slice_from(child_id + 1).mut_iter());
-                    return it
-                }
-            }
-            it.stack.push(children.mut_slice_from(child_id + 1).mut_iter());
-            idx += 1;
-        }
+        bound!(TrieMapMutIterator, self = self,
+               key = key, is_upper = upper,
+               slice_from = mut_slice_from, iter = mut_iter,
+               mutability = mut)
     }
 
     /// Get an iterator pointing to the first key-value pair whose key is not less than `key`.
@@ -464,39 +482,6 @@ pub struct TrieMapIterator<'a, T> {
     priv remaining_max: uint
 }
 
-impl<'a, T> Iterator<(uint, &'a T)> for TrieMapIterator<'a, T> {
-    fn next(&mut self) -> Option<(uint, &'a T)> {
-        while !self.stack.is_empty() {
-            match self.stack[self.stack.len() - 1].next() {
-                None => {
-                    self.stack.pop();
-                }
-                Some(ref child) => {
-                    match **child {
-                        Internal(ref node) => {
-                            self.stack.push(node.children.iter());
-                        }
-                        External(key, ref value) => {
-                            self.remaining_max -= 1;
-                            if self.remaining_min > 0 {
-                                self.remaining_min -= 1;
-                            }
-                            return Some((key, value));
-                        }
-                        Nothing => {}
-                    }
-                }
-            }
-        }
-        return None;
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
-        (self.remaining_min, Some(self.remaining_max))
-    }
-}
-
 /// Forward iterator over the key-value pairs of a map, with the
 /// values being mutable.
 pub struct TrieMapMutIterator<'a, T> {
@@ -505,38 +490,50 @@ pub struct TrieMapMutIterator<'a, T> {
     priv remaining_max: uint
 }
 
-impl<'a, T> Iterator<(uint, &'a mut T)> for TrieMapMutIterator<'a, T> {
-    fn next(&mut self) -> Option<(uint, &'a mut T)> {
-        while !self.stack.is_empty() {
-            match self.stack[self.stack.len() - 1].next() {
-                None => {
-                    self.stack.pop();
-                }
-                Some(child) => {
-                    match *child {
-                        Internal(ref mut node) => {
-                            self.stack.push(node.children.mut_iter());
-                        }
-                        External(key, ref mut value) => {
-                            self.remaining_max -= 1;
-                            if self.remaining_min > 0 {
-                                self.remaining_min -= 1;
-                            }
-                            return Some((key, value));
-                        }
-                        Nothing => {}
-                    }
-                }
-            }
-        }
-        return None;
-    }
+// FIXME #5846: see `addr!` above.
+macro_rules! item { ($i:item) => {$i}}
 
-    #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
-        (self.remaining_min, Some(self.remaining_max))
+macro_rules! iterator_impl {
+    ($name:ident,
+     iter = $iter:ident,
+     mutability = $($mut_:tt)*) => {
+        item!(impl<'a, T> Iterator<(uint, &'a $($mut_)* T)> for $name<'a, T> {
+                fn next(&mut self) -> Option<(uint, &'a $($mut_)* T)> {
+                    while !self.stack.is_empty() {
+                        match self.stack[self.stack.len() - 1].next() {
+                            None => {
+                                self.stack.pop();
+                            }
+                            Some(child) => {
+                                addr!(match *child {
+                                        Internal(ref $($mut_)* node) => {
+                                            self.stack.push(node.children.$iter());
+                                        }
+                                        External(key, ref $($mut_)* value) => {
+                                            self.remaining_max -= 1;
+                                            if self.remaining_min > 0 {
+                                                self.remaining_min -= 1;
+                                            }
+                                            return Some((key, value));
+                                        }
+                                        Nothing => {}
+                                    })
+                            }
+                        }
+                    }
+                    return None;
+                }
+
+                #[inline]
+                fn size_hint(&self) -> (uint, Option<uint>) {
+                    (self.remaining_min, Some(self.remaining_max))
+                }
+            })
     }
 }
+
+iterator_impl! { TrieMapIterator, iter = iter, mutability = }
+iterator_impl! { TrieMapMutIterator, iter = mut_iter, mutability = mut }
 
 /// Forward iterator over a set
 pub struct TrieSetIterator<'a> {
