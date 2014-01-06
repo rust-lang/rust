@@ -33,7 +33,7 @@
 # stageN - this is the system root, corresponding to, e.g. /usr
 #   bin - binaries compiled for the host
 #   lib - libraries used by the host compiler
-#     rustc - rustc's own place to organize libraries
+#     rustlib - rustc's own place to organize libraries
 #       $(target) - target-specific artifacts
 #         bin - binaries for target architectures
 #         lib - libraries for target architectures
@@ -415,6 +415,7 @@ export CFG_LLVM_ROOT
 export CFG_ENABLE_MINGW_CROSS
 export CFG_PREFIX
 export CFG_LIBDIR
+export CFG_RUSTLIBDIR
 
 ######################################################################
 # Subprograms
@@ -435,7 +436,7 @@ HBIN$(1)_H_$(3) = $$(HROOT$(1)_H_$(3))/bin
 HLIB$(1)_H_$(3) = $$(HROOT$(1)_H_$(3))/$$(CFG_LIBDIR)
 
 # Destinations of artifacts for target architectures
-TROOT$(1)_T_$(2)_H_$(3) = $$(HLIB$(1)_H_$(3))/rustc/$(2)
+TROOT$(1)_T_$(2)_H_$(3) = $$(HLIB$(1)_H_$(3))/$$(CFG_RUSTLIBDIR)/$(2)
 TBIN$(1)_T_$(2)_H_$(3) = $$(TROOT$(1)_T_$(2)_H_$(3))/bin
 TLIB$(1)_T_$(2)_H_$(3) = $$(TROOT$(1)_T_$(2)_H_$(3))/$$(CFG_LIBDIR)
 

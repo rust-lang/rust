@@ -74,7 +74,7 @@ TB$(1)$(2) = $$(TBIN$$(ISTAGE)_T_$(1)_H_$(2))
 TL$(1)$(2) = $$(TLIB$$(ISTAGE)_T_$(1)_H_$(2))
 
 # PT{R,B,L} == Prefix Target {Root, Bin, Lib}
-PTR$(1)$(2) = $$(PREFIX_LIB)/rustc/$(1)
+PTR$(1)$(2) = $$(PREFIX_LIB)/$(CFG_RUSTLIBDIR)/$(1)
 PTB$(1)$(2) = $$(PTR$(1)$(2))/bin
 PTL$(1)$(2) = $$(PTR$(1)$(2))/$(CFG_LIBDIR)
 
