@@ -58,7 +58,7 @@ pub fn main() {
                                                            [~"-c"],
                                                            [~"foo.c"],
                                                            "foo");
-            let out_p = Path::new(out_path);
+            let out_p = Path::new(out_path.unwrap());
             out_p.as_str().unwrap().to_owned()
         };
         out_path

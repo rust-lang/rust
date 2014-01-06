@@ -41,13 +41,6 @@ pub use target::{lib_name_of, lib_crate_filename, WhatToBuild, MaybeCustom, Infe
 use workcache_support::{digest_file_with_date, digest_only_date};
 use messages::error;
 
-// It would be nice to have the list of commands in just one place -- for example,
-// you could update the match in rustpkg.rc but forget to update this list. I think
-// that should be fixed.
-static COMMANDS: &'static [&'static str] =
-    &["build", "clean", "do", "info", "init", "install", "list", "prefer", "test", "uninstall",
-      "unprefer"];
-
 
 pub type ExitCode = int; // For now
 
@@ -61,10 +54,6 @@ impl ToStr for Pkg {
     fn to_str(&self) -> ~str {
         self.id.to_str()
     }
-}
-
-pub fn is_cmd(cmd: &str) -> bool {
-    COMMANDS.iter().any(|&c| c == cmd)
 }
 
 struct ListenerFn {
@@ -634,25 +623,6 @@ pub fn mk_string_lit(s: @str) -> ast::lit {
         node: ast::lit_str(s, ast::CookedStr),
         span: DUMMY_SP
     }
-}
-
-#[cfg(test)]
-mod test {
-    use super::is_cmd;
-
-    #[test]
-    fn test_is_cmd() {
-        assert!(is_cmd("build"));
-        assert!(is_cmd("clean"));
-        assert!(is_cmd("do"));
-        assert!(is_cmd("info"));
-        assert!(is_cmd("install"));
-        assert!(is_cmd("prefer"));
-        assert!(is_cmd("test"));
-        assert!(is_cmd("uninstall"));
-        assert!(is_cmd("unprefer"));
-    }
-
 }
 
 pub fn option_to_vec<T>(x: Option<T>) -> ~[T] {
