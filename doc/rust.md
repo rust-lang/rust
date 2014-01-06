@@ -3054,8 +3054,7 @@ assert!(b != "world");
 The vector type constructor represents a homogeneous array of values of a given type.
 A vector has a fixed size.
 (Operations like `vec.push` operate solely on owned vectors.)
-A vector type can be annotated with a _definite_ size,
-written with a trailing asterisk and integer literal, such as `[int * 10]`.
+A vector type can be annotated with a _definite_ size, such as `[int, ..10]`.
 Such a definite-sized vector type is a first-class type, since its size is known statically.
 A vector without such a size is said to be of _indefinite_ size,
 and is therefore not a _first-class_ type.
