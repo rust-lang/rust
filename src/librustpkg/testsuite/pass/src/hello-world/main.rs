@@ -19,5 +19,5 @@ The test runner should check that, after `rustpkg build hello-world`:
 */
 
 fn main() {
-    println(~"Hello world!");
+    println("Hello world!");
 }

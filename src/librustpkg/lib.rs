@@ -20,9 +20,8 @@ extern mod extra;
 extern mod rustc;
 extern mod syntax;
 
-use std::{os, result, run, str, task};
+use std::{os, run, str, task};
 use std::io::process;
-use std::hashmap::HashSet;
 use std::io;
 use std::io::fs;
 pub use std::path::Path;
@@ -32,9 +31,9 @@ use rustc::driver::{driver, session};
 use rustc::metadata::filesearch;
 use rustc::metadata::filesearch::rust_path;
 use rustc::util::sha2;
-use extra::{getopts};
 use syntax::{ast, diagnostic};
 use messages::{error, warn, note};
+use parse_args::{ParseResult, parse_args};
 use path_util::{build_pkg_id_in_workspace, built_test_in_workspace};
 use path_util::in_rust_path;
 use path_util::{built_executable_in_workspace, built_library_in_workspace, default_workspace};
@@ -42,15 +41,16 @@ use path_util::{target_executable_in_workspace, target_library_in_workspace, dir
 use source_control::{CheckedOutSources, is_git_dir, make_read_only};
 use workspace::{each_pkg_parent_workspace, pkg_parent_workspaces, cwd_to_workspace};
 use workspace::determine_destination;
-use context::{Context, BuildContext,
-                       RustcFlags, Trans, Link, Nothing, Pretty, Analysis, Assemble,
-                       LLVMAssemble, LLVMCompileBitcode};
+use context::{BuildContext, Trans, Nothing, Pretty, Analysis,
+              LLVMAssemble, LLVMCompileBitcode};
+use context::{Command, BuildCmd, CleanCmd, DoCmd, InfoCmd, InstallCmd, ListCmd,
+    PreferCmd, TestCmd, InitCmd, UninstallCmd, UnpreferCmd};
 use crate_id::CrateId;
 use package_source::PkgSrc;
 use target::{WhatToBuild, Everything, is_lib, is_main, is_test, is_bench};
 use target::{Main, Tests, MaybeCustom, Inferred, JustOne};
 use workcache_support::digest_only_date;
-use exit_codes::{COPY_FAILED_CODE, BAD_FLAG_CODE};
+use exit_codes::{COPY_FAILED_CODE};
 
 pub mod api;
 mod conditions;
@@ -61,6 +61,7 @@ mod installed_packages;
 mod messages;
 pub mod crate_id;
 pub mod package_source;
+mod parse_args;
 mod path_util;
 mod source_control;
 mod target;
@@ -207,7 +208,7 @@ impl<'a> PkgScript<'a> {
 }
 
 pub trait CtxMethods {
-    fn run(&self, cmd: &str, args: ~[~str]);
+    fn run(&self, cmd: Command, args: ~[~str]);
     fn do_cmd(&self, _cmd: &str, _pkgname: &str);
     /// Returns a pair of the selected package ID, and the destination workspace
     fn build_args(&self, args: ~[~str], what: &WhatToBuild) -> Option<(CrateId, Path)>;
@@ -283,13 +284,13 @@ impl CtxMethods for BuildContext {
             Some((crateid, dest_ws))
         }
     }
-    fn run(&self, cmd: &str, args: ~[~str]) {
+    fn run(&self, cmd: Command, args: ~[~str]) {
         let cwd = os::getcwd();
         match cmd {
-            "build" => {
+            BuildCmd => {
                 self.build_args(args, &WhatToBuild::new(MaybeCustom, Everything));
             }
-            "clean" => {
+            CleanCmd => {
                 if args.len() < 1 {
                     match cwd_to_workspace() {
                         None => { usage::clean(); return }
@@ -306,17 +307,17 @@ impl CtxMethods for BuildContext {
                     self.clean(&cwd, &crateid); // tjc: should use workspace, not cwd
                 }
             }
-            "do" => {
+            DoCmd => {
                 if args.len() < 2 {
                     return usage::do_cmd();
                 }
 
                 self.do_cmd(args[0].clone(), args[1].clone());
             }
-            "info" => {
+            InfoCmd => {
                 self.info();
             }
-            "install" => {
+            InstallCmd => {
                if args.len() < 1 {
                     match cwd_to_workspace() {
                         None if dir_has_crate_file(&cwd) => {
@@ -362,21 +363,21 @@ impl CtxMethods for BuildContext {
                     }
                 }
             }
-            "list" => {
+            ListCmd => {
                 println("Installed packages:");
                 installed_packages::list_installed_packages(|pkg_id| {
                     pkg_id.path.display().with_str(|s| println(s));
                     true
                 });
             }
-            "prefer" => {
+            PreferCmd => {
                 if args.len() < 1 {
                     return usage::uninstall();
                 }
 
                 self.prefer(args[0], None);
             }
-            "test" => {
+            TestCmd => {
                 // Build the test executable
                 let maybe_id_and_workspace = self.build_args(args,
                                                              &WhatToBuild::new(MaybeCustom, Tests));
@@ -390,14 +391,14 @@ impl CtxMethods for BuildContext {
                     }
                 }
             }
-            "init" => {
+            InitCmd => {
                 if args.len() != 0 {
                     return usage::init();
                 } else {
                     self.init();
                 }
             }
-            "uninstall" => {
+            UninstallCmd => {
                 if args.len() < 1 {
                     return usage::uninstall();
                 }
@@ -419,14 +420,13 @@ impl CtxMethods for BuildContext {
                     });
                 }
             }
-            "unprefer" => {
+            UnpreferCmd => {
                 if args.len() < 1 {
                     return usage::unprefer();
                 }
 
                 self.unprefer(args[0], None);
             }
-            _ => fail!("I don't know the command `{}`", cmd)
         }
     }
 
@@ -752,192 +752,43 @@ pub fn main() {
 }
 
 pub fn main_args(args: &[~str]) -> int {
-    let opts = ~[getopts::optflag("h"), getopts::optflag("help"),
-                                        getopts::optflag("no-link"),
-                                        getopts::optflag("no-trans"),
-                 // n.b. Ignores different --pretty options for now
-                                        getopts::optflag("pretty"),
-                                        getopts::optflag("parse-only"),
-                 getopts::optflag("S"), getopts::optflag("assembly"),
-                 getopts::optmulti("c"), getopts::optmulti("cfg"),
-                 getopts::optflag("v"), getopts::optflag("version"),
-                 getopts::optflag("r"), getopts::optflag("rust-path-hack"),
-                                        getopts::optopt("sysroot"),
-                                        getopts::optflag("emit-llvm"),
-                                        getopts::optopt("linker"),
-                                        getopts::optopt("link-args"),
-                                        getopts::optopt("opt-level"),
-                 getopts::optflag("O"),
-                                        getopts::optflag("save-temps"),
-                                        getopts::optopt("target"),
-                                        getopts::optopt("target-cpu"),
-                 getopts::optmulti("Z")                                   ];
-    let matches = &match getopts::getopts(args, opts) {
-        result::Ok(m) => m,
-        result::Err(f) => {
-            error(format!("{}", f.to_err_msg()));
 
-            return 1;
+    let (command, args, context, supplied_sysroot) = match parse_args(args) {
+        Ok(ParseResult {
+            command: cmd,
+            args: args,
+            context: ctx,
+            sysroot: sroot}) => (cmd, args, ctx, sroot),
+        Err(error_code) => {
+            debug!("Parsing failed. Returning error code {}", error_code);
+            return error_code
         }
     };
-    let help = matches.opt_present("h") ||
-                   matches.opt_present("help");
-    let no_link = matches.opt_present("no-link");
-    let no_trans = matches.opt_present("no-trans");
-    let supplied_sysroot = matches.opt_str("sysroot");
-    let generate_asm = matches.opt_present("S") ||
-        matches.opt_present("assembly");
-    let parse_only = matches.opt_present("parse-only");
-    let pretty = matches.opt_present("pretty");
-    let emit_llvm = matches.opt_present("emit-llvm");
+    debug!("Finished parsing commandline args {:?}", args);
+    debug!("  Using command: {:?}", command);
+    debug!("  Using args {:?}", args);
+    debug!("  Using cflags: {:?}", context.rustc_flags);
+    debug!("  Using rust_path_hack {:b}", context.use_rust_path_hack);
+    debug!("  Using cfgs: {:?}", context.cfgs);
+    debug!("  Using supplied_sysroot: {:?}", supplied_sysroot);
 
-    if matches.opt_present("v") ||
-       matches.opt_present("version") {
-        rustc::version(args[0]);
-        return 0;
-    }
-
-    let use_rust_path_hack = matches.opt_present("r") ||
-                             matches.opt_present("rust-path-hack");
-
-    let linker = matches.opt_str("linker");
-    let link_args = matches.opt_str("link-args");
-    let cfgs = matches.opt_strs("cfg") + matches.opt_strs("c");
-    let mut user_supplied_opt_level = true;
-    let opt_level = match matches.opt_str("opt-level") {
-        Some(~"0") => session::No,
-        Some(~"1") => session::Less,
-        Some(~"2") => session::Default,
-        Some(~"3") => session::Aggressive,
-        _ if matches.opt_present("O") => session::Default,
-        _ => {
-            user_supplied_opt_level = false;
-            session::No
-        }
-    };
-
-    let save_temps = matches.opt_present("save-temps");
-    let target     = matches.opt_str("target");
-    let target_cpu = matches.opt_str("target-cpu");
-    let experimental_features = {
-        let strs = matches.opt_strs("Z");
-        if matches.opt_present("Z") {
-            Some(strs)
-        }
-        else {
-            None
-        }
-    };
-
-    let mut args = matches.free.clone();
-    args.shift();
-
-    if (args.len() < 1) {
-        usage::general();
-        return 1;
-    }
-
-    let rustc_flags = RustcFlags {
-        linker: linker,
-        link_args: link_args,
-        optimization_level: opt_level,
-        compile_upto: if no_trans {
-            Trans
-        } else if no_link {
-            Link
-        } else if pretty {
-            Pretty
-        } else if parse_only {
-            Analysis
-        } else if emit_llvm && generate_asm {
-            LLVMAssemble
-        } else if generate_asm {
-            Assemble
-        } else if emit_llvm {
-            LLVMCompileBitcode
-        } else {
-            Nothing
-        },
-        save_temps: save_temps,
-        target: target,
-        target_cpu: target_cpu,
-        additional_library_paths:
-            HashSet::new(), // No way to set this from the rustpkg command line
-        experimental_features: experimental_features
-    };
-
-    let mut cmd_opt = None;
-    for a in args.iter() {
-        if util::is_cmd(*a) {
-            cmd_opt = Some(a);
-            break;
-        }
-    }
-    let cmd = match cmd_opt {
-        None => {
-            usage::general();
-            return 0;
-        }
-        Some(cmd) => {
-            let bad_option = context::flags_forbidden_for_cmd(&rustc_flags,
-                                                              cfgs,
-                                                              *cmd,
-                                                              user_supplied_opt_level);
-            if help || bad_option {
-                match *cmd {
-                    ~"build" => usage::build(),
-                    ~"clean" => usage::clean(),
-                    ~"do" => usage::do_cmd(),
-                    ~"info" => usage::info(),
-                    ~"install" => usage::install(),
-                    ~"list"    => usage::list(),
-                    ~"prefer" => usage::prefer(),
-                    ~"test" => usage::test(),
-                    ~"init" => usage::init(),
-                    ~"uninstall" => usage::uninstall(),
-                    ~"unprefer" => usage::unprefer(),
-                    _ => usage::general()
-                };
-                if bad_option {
-                    return BAD_FLAG_CODE;
-                }
-                else {
-                    return 0;
-                }
-            } else {
-                cmd
-            }
-        }
-    };
-
-    // Pop off all flags, plus the command
-    let remaining_args = args.iter().skip_while(|s| !util::is_cmd(**s));
-    // I had to add this type annotation to get the code to typecheck
-    let mut remaining_args: ~[~str] = remaining_args.map(|s| (*s).clone()).collect();
-    remaining_args.shift();
-    let sroot = match supplied_sysroot {
+    let sysroot = match supplied_sysroot {
         Some(s) => Path::new(s),
         _ => filesearch::get_or_default_sysroot()
     };
 
-    debug!("Using sysroot: {}", sroot.display());
+    debug!("Using sysroot: {}", sysroot.display());
     let ws = default_workspace();
     debug!("Will store workcache in {}", ws.display());
 
-    let rm_args = remaining_args.clone();
-    let sub_cmd = cmd.clone();
     // Wrap the rest in task::try in case of a condition failure in a task
     let result = do task::try {
         BuildContext {
-            context: Context {
-                cfgs: cfgs.clone(),
-                rustc_flags: rustc_flags.clone(),
-                use_rust_path_hack: use_rust_path_hack,
-                sysroot: sroot.clone(), // Currently, only tests override this
-            },
-            workcache_context: api::default_context(sroot.clone(),
+            context: context,
+            sysroot: sysroot.clone(), // Currently, only tests override this
+            workcache_context: api::default_context(sysroot.clone(),
                                                     default_workspace()).workcache_context
-        }.run(sub_cmd, rm_args.clone())
+        }.run(command, args.clone())
     };
     // FIXME #9262: This is using the same error code for all errors,
     // and at least one test case succeeds if rustpkg returns COPY_FAILED_CODE,

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use context::Command;
+
 pub fn general() {
     println("Usage: rustpkg [options] <cmd> [args..]
 
@@ -154,3 +156,22 @@ This will turn the current working directory into a workspace. The first
 command you run when starting off a new project.
 ");
 }
+
+pub fn usage_for_command(command: Command){
+    match command {
+        BuildCmd => build(),
+        CleanCmd => clean(),
+        DoCmd => do_cmd(),
+        InfoCmd => info(),
+        InstallCmd => install(),
+        ListCmd => list(),
+        PreferCmd => prefer(),
+        TestCmd => test(),
+        InitCmd => init(),
+        UninstallCmd => uninstall(),
+        UnpreferCmd => unprefer(),
+    };
+}
+
+
+
