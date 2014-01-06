@@ -25,6 +25,23 @@ TEX_OPTS = $(BASE_DOC_OPTS) --to=latex
 EPUB_OPTS = $(BASE_DOC_OPTS) --to=epub
 
 ######################################################################
+# Rust version
+######################################################################
+doc/version.md: $(MKFILE_DEPS) $(wildcard $(S)doc/*.*)
+	@$(call E, version-stamp: $@)
+	$(Q)echo "$(CFG_VERSION)" >$@
+
+HTML_DEPS += doc/version_info.html
+doc/version_info.html: version_info.html.template $(MKFILE_DEPS) \
+                       $(wildcard $(S)doc/*.*)
+	@$(call E, version-info: $@)
+	sed -e "s/VERSION/$(CFG_RELEASE)/; s/SHORT_HASH/$(shell echo \
+                    $(CFG_VER_HASH) | head -c 8)/;\
+                s/STAMP/$(CFG_VER_HASH)/;" $< >$@
+
+GENERATED += doc/version.md doc/version_info.html
+
+######################################################################
 # Docs, from pandoc, rustdoc (which runs pandoc), and node
 ######################################################################
 
@@ -55,7 +72,7 @@ endif
 ifneq ($(NO_DOCS),1)
 
 DOCS += doc/rust.html
-doc/rust.html: rust.md doc/version_info.html doc/full-toc.inc $(HTML_DEPS) 
+doc/rust.html: rust.md doc/full-toc.inc $(HTML_DEPS) 
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --include-in-header=doc/full-toc.inc --output=$@
@@ -73,19 +90,19 @@ doc/rust.epub: rust.md doc/version_info.html doc/rust.css
 	$(CFG_PANDOC) $(EPUB_OPTS) --output=$@
 
 DOCS += doc/rustpkg.html
-doc/rustpkg.html: rustpkg.md doc/version_info.html $(HTML_DEPS)
+doc/rustpkg.html: rustpkg.md $(HTML_DEPS)
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
 
 DOCS += doc/rustdoc.html
-doc/rustdoc.html: rustdoc.md doc/version_info.html $(HTML_DEPS)
+doc/rustdoc.html: rustdoc.md $(HTML_DEPS)
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
 
 DOCS += doc/tutorial.html
-doc/tutorial.html: tutorial.md doc/version_info.html $(HTML_DEPS)
+doc/tutorial.html: tutorial.md $(HTML_DEPS)
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
@@ -154,57 +171,49 @@ doc/complement-bugreport.html: $(S)doc/complement-bugreport.md $(HTML_DEPS)
 # Guides
 
 DOCS += doc/guide-macros.html
-doc/guide-macros.html: $(S)doc/guide-macros.md doc/version_info.html doc/rust.css \
-				doc/favicon.inc
+doc/guide-macros.html: $(S)doc/guide-macros.md $(HTML_DEPS)
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
 
 DOCS += doc/guide-container.html
-doc/guide-container.html: $(S)doc/guide-container.md doc/version_info.html doc/rust.css \
-				doc/favicon.inc
+doc/guide-container.html: $(S)doc/guide-container.md $(HTML_DEPS)
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
 
 DOCS += doc/guide-ffi.html
-doc/guide-ffi.html: $(S)doc/guide-ffi.md doc/version_info.html doc/rust.css \
-				doc/favicon.inc
+doc/guide-ffi.html: $(S)doc/guide-ffi.md $(HTML_DEPS)
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
 
 DOCS += doc/guide-testing.html
-doc/guide-testing.html: $(S)doc/guide-testing.md doc/version_info.html doc/rust.css \
-				doc/favicon.inc
+doc/guide-testing.html: $(S)doc/guide-testing.md $(HTML_DEPS)
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
 
 DOCS += doc/guide-borrowed-ptr.html
-doc/guide-borrowed-ptr.html: $(S)doc/guide-borrowed-ptr.md doc/version_info.html doc/rust.css \
-				doc/favicon.inc
+doc/guide-borrowed-ptr.html: $(S)doc/guide-borrowed-ptr.md $(HTML_DEPS)
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
 
 DOCS += doc/guide-tasks.html
-doc/guide-tasks.html: $(S)doc/guide-tasks.md doc/version_info.html doc/rust.css \
-				doc/favicon.inc
+doc/guide-tasks.html: $(S)doc/guide-tasks.md $(HTML_DEPS)
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
 
 DOCS += doc/guide-conditions.html
-doc/guide-conditions.html: $(S)doc/guide-conditions.md doc/version_info.html doc/rust.css \
-				doc/favicon.inc
+doc/guide-conditions.html: $(S)doc/guide-conditions.md $(HTML_DEPS)
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
 
 DOCS += doc/guide-rustpkg.html
-doc/guide-rustpkg.html: $(S)doc/guide-rustpkg.md doc/version_info.html doc/rust.css \
-				doc/favicon.inc
+doc/guide-rustpkg.html: $(S)doc/guide-rustpkg.md $(HTML_DEPS)
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
@@ -302,20 +311,6 @@ ifdef CFG_DISABLE_DOCS
   $(info cfg: disabling doc build (CFG_DISABLE_DOCS))
   DOCS :=
 endif
-
-
-doc/version.md: $(MKFILE_DEPS) $(wildcard $(S)doc/*.*)
-	@$(call E, version-stamp: $@)
-	$(Q)echo "$(CFG_VERSION)" >$@
-
-doc/version_info.html: version_info.html.template $(MKFILE_DEPS) \
-                       $(wildcard $(S)doc/*.*)
-	@$(call E, version-info: $@)
-	sed -e "s/VERSION/$(CFG_RELEASE)/; s/SHORT_HASH/$(shell echo \
-                    $(CFG_VER_HASH) | head -c 8)/;\
-                s/STAMP/$(CFG_VER_HASH)/;" $< >$@
-
-GENERATED += doc/version.md doc/version_info.html
 
 docs: $(DOCS)
 compiler-docs: $(CDOCS)
