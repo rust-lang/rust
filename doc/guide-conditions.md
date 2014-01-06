@@ -1,4 +1,4 @@
-% Rust Condition and Error-handling Tutorial
+% Rust Condition and Error-handling Guide
 
 # Introduction
 
@@ -12,12 +12,12 @@ The four mechanisms are:
   - Failure
   - Conditions
 
-This tutorial will lead you through use of these mechanisms
+This guide will lead you through use of these mechanisms
 in order to understand the trade-offs of each and relationships between them.
 
 # Example program
 
-This tutorial will be based around an example program
+This guide will be based around an example program
 that attempts to read lines from a file
 consisting of pairs of numbers,
 and then print them back out with slightly different formatting.
@@ -823,7 +823,7 @@ There are three other things to note in this variant of the example program:
 
 # When to use which technique
 
-This tutorial explored several techniques for handling errors.
+This guide explored several techniques for handling errors.
 Each is appropriate to different circumstances:
 
   - If an error may be extremely frequent, expected, and very likely dealt with by an immediate caller,

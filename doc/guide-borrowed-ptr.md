@@ -1,4 +1,4 @@
-% Rust Borrowed Pointers Tutorial
+% Rust Borrowed Pointers Guide
 
 # Introduction
 
