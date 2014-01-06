@@ -61,11 +61,11 @@ struct CollectItemTypesVisitor {
 }
 
 impl visit::Visitor<()> for CollectItemTypesVisitor {
-    fn visit_item(&mut self, i:@ast::item, _:()) {
+    fn visit_item(&mut self, i: &ast::item, _: ()) {
         convert(self.ccx, i);
         visit::walk_item(self, i, ());
     }
-    fn visit_foreign_item(&mut self, i:@ast::foreign_item, _:()) {
+    fn visit_foreign_item(&mut self, i: &ast::foreign_item, _: ()) {
         convert_foreign(self.ccx, i);
         visit::walk_foreign_item(self, i, ());
     }

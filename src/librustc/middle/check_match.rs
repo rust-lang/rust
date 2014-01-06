@@ -38,14 +38,14 @@ struct CheckMatchVisitor {
 }
 
 impl Visitor<()> for CheckMatchVisitor {
-    fn visit_expr(&mut self, ex:@Expr, e:()) {
-        check_expr(self, self.cx, ex, e);
+    fn visit_expr(&mut self, ex: &Expr, _: ()) {
+        check_expr(self, self.cx, ex, ());
     }
-    fn visit_local(&mut self, l:@Local, e:()) {
-        check_local(self, self.cx, l, e);
+    fn visit_local(&mut self, l: &Local, _: ()) {
+        check_local(self, self.cx, l, ());
     }
-    fn visit_fn(&mut self, fk:&fn_kind, fd:&fn_decl, b:P<Block>, s:Span, n:NodeId, e:()) {
-        check_fn(self, self.cx, fk, fd, b, s, n, e);
+    fn visit_fn(&mut self, fk: &fn_kind, fd: &fn_decl, b: &Block, s: Span, n: NodeId, _: ()) {
+        check_fn(self, self.cx, fk, fd, b, s, n, ());
     }
 }
 
@@ -65,7 +65,7 @@ pub fn check_crate(tcx: ty::ctxt,
 
 fn check_expr(v: &mut CheckMatchVisitor,
                   cx: @MatchCheckCtxt,
-                  ex: @Expr,
+                  ex: &Expr,
                   s: ()) {
     visit::walk_expr(v, ex, s);
     match ex.node {
@@ -830,7 +830,7 @@ fn default(cx: &MatchCheckCtxt, r: &[@Pat]) -> Option<~[@Pat]> {
 
 fn check_local(v: &mut CheckMatchVisitor,
                    cx: &MatchCheckCtxt,
-                   loc: @Local,
+                   loc: &Local,
                    s: ()) {
     visit::walk_local(v, loc, s);
     if is_refutable(cx, loc.pat) {
@@ -846,7 +846,7 @@ fn check_fn(v: &mut CheckMatchVisitor,
                 cx: &MatchCheckCtxt,
                 kind: &visit::fn_kind,
                 decl: &fn_decl,
-                body: P<Block>,
+                body: &Block,
                 sp: Span,
                 id: NodeId,
                 s: ()) {

@@ -40,45 +40,44 @@ struct CollectFreevarsVisitor {
 
 impl Visitor<int> for CollectFreevarsVisitor {
 
-    fn visit_item(&mut self, _:@item, _:int) {
+    fn visit_item(&mut self, _: &item, _: int) {
         // ignore_item
     }
 
-    fn visit_expr(&mut self, expr:@ast::Expr, depth:int) {
-
-            match expr.node {
-              ast::ExprFnBlock(..) | ast::ExprProc(..) => {
+    fn visit_expr(&mut self, expr: &ast::Expr, depth: int) {
+        match expr.node {
+            ast::ExprFnBlock(..) | ast::ExprProc(..) => {
                 visit::walk_expr(self, expr, depth + 1)
-              }
-              ast::ExprPath(..) | ast::ExprSelf => {
-                  let mut i = 0;
-                  let def_map = self.def_map.borrow();
-                  match def_map.get().find(&expr.id) {
+            }
+            ast::ExprPath(..) | ast::ExprSelf => {
+                let mut i = 0;
+                let def_map = self.def_map.borrow();
+                match def_map.get().find(&expr.id) {
                     None => fail!("path not found"),
                     Some(&df) => {
-                      let mut def = df;
-                      while i < depth {
-                        match def {
-                          ast::DefUpvar(_, inner, _, _) => { def = *inner; }
-                          _ => break
+                        let mut def = df;
+                        while i < depth {
+                            match def {
+                                ast::DefUpvar(_, inner, _, _) => { def = *inner; }
+                                _ => break
+                            }
+                            i += 1;
                         }
-                        i += 1;
-                      }
-                      if i == depth { // Made it to end of loop
-                        let dnum = ast_util::def_id_of_def(def).node;
-                        if !self.seen.contains_key(&dnum) {
-                            self.refs.push(@freevar_entry {
-                                def: def,
-                                span: expr.span,
-                            });
-                            self.seen.insert(dnum, ());
+                        if i == depth { // Made it to end of loop
+                            let dnum = ast_util::def_id_of_def(def).node;
+                            if !self.seen.contains_key(&dnum) {
+                                self.refs.push(@freevar_entry {
+                                    def: def,
+                                    span: expr.span,
+                                });
+                                self.seen.insert(dnum, ());
+                            }
                         }
-                      }
                     }
-                  }
-              }
-              _ => visit::walk_expr(self, expr, depth)
+                }
             }
+            _ => visit::walk_expr(self, expr, depth)
+        }
     }
 
 
@@ -89,8 +88,7 @@ impl Visitor<int> for CollectFreevarsVisitor {
 // Since we want to be able to collect upvars in some arbitrary piece
 // of the AST, we take a walker function that we invoke with a visitor
 // in order to start the search.
-fn collect_freevars(def_map: resolve::DefMap, blk: ast::P<ast::Block>)
-    -> freevar_info {
+fn collect_freevars(def_map: resolve::DefMap, blk: &ast::Block) -> freevar_info {
     let seen = HashMap::new();
     let refs = ~[];
 
@@ -114,8 +112,8 @@ struct AnnotateFreevarsVisitor {
 }
 
 impl Visitor<()> for AnnotateFreevarsVisitor {
-    fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&ast::fn_decl,
-                blk:ast::P<ast::Block>, s:Span, nid:ast::NodeId, _:()) {
+    fn visit_fn(&mut self, fk: &visit::fn_kind, fd: &ast::fn_decl,
+                blk: &ast::Block, s: Span, nid: ast::NodeId, _: ()) {
         let vars = collect_freevars(self.def_map, blk);
         self.freevars.insert(nid, vars);
         visit::walk_fn(self, fk, fd, blk, s, nid, ());

@@ -86,8 +86,8 @@ struct PkgScript<'a> {
     sess: session::Session,
     /// The config for compiling the custom build script
     cfg: ast::CrateConfig,
-    /// The crate for the custom build script
-    crate: Option<ast::Crate>,
+    /// The crate and ast_map for the custom build script
+    crate_and_map: Option<(ast::Crate, syntax::ast_map::map)>,
     /// Directory in which to store build output
     build_dir: Path
 }
@@ -117,7 +117,7 @@ impl<'a> PkgScript<'a> {
                                             @diagnostic::Emitter);
         let cfg = driver::build_configuration(sess);
         let crate = driver::phase_1_parse_input(sess, cfg.clone(), &input);
-        let crate = driver::phase_2_configure_and_expand(sess, cfg.clone(), crate);
+        let crate_and_map = driver::phase_2_configure_and_expand(sess, cfg.clone(), crate);
         let work_dir = build_pkg_id_in_workspace(id, workspace);
 
         debug!("Returning package script with id {}", id.to_str());
@@ -127,7 +127,7 @@ impl<'a> PkgScript<'a> {
             input: script,
             sess: sess,
             cfg: cfg,
-            crate: Some(crate),
+            crate_and_map: Some(crate_and_map),
             build_dir: work_dir
         }
     }
@@ -137,7 +137,8 @@ impl<'a> PkgScript<'a> {
 
         debug!("Working directory = {}", self.build_dir.display());
         // Collect together any user-defined commands in the package script
-        let crate = util::ready_crate(sess, self.crate.take_unwrap());
+        let (crate, ast_map) = self.crate_and_map.take_unwrap();
+        let crate = util::ready_crate(sess, crate);
         debug!("Building output filenames with script name {}",
                driver::source_name(&driver::file_input(self.input.clone())));
         let exe = self.build_dir.join("pkg" + util::exe_suffix());
@@ -147,6 +148,7 @@ impl<'a> PkgScript<'a> {
                                        &self.build_dir,
                                        sess,
                                        crate,
+                                       ast_map,
                                        Main);
         // Discover the output
         // FIXME (#9639): This needs to handle non-utf8 paths

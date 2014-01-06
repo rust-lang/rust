@@ -29,7 +29,7 @@ use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::visit;
 use syntax::visit::{Visitor,fn_kind};
-use syntax::ast::{P,fn_decl,Block,NodeId};
+use syntax::ast::{fn_decl,Block,NodeId};
 
 macro_rules! if_ok(
     ($inp: expr) => (
@@ -61,8 +61,8 @@ impl Clone for LoanDataFlowOperator {
 pub type LoanDataFlow = DataFlowContext<LoanDataFlowOperator>;
 
 impl Visitor<()> for BorrowckCtxt {
-    fn visit_fn(&mut self, fk:&fn_kind, fd:&fn_decl,
-                b:P<Block>, s:Span, n:NodeId, _:()) {
+    fn visit_fn(&mut self, fk: &fn_kind, fd: &fn_decl,
+                b: &Block, s: Span, n: NodeId, _: ()) {
         borrowck_fn(self, fk, fd, b, s, n);
     }
 }
@@ -116,7 +116,7 @@ pub fn check_crate(tcx: ty::ctxt,
 fn borrowck_fn(this: &mut BorrowckCtxt,
                fk: &visit::fn_kind,
                decl: &ast::fn_decl,
-               body: ast::P<ast::Block>,
+               body: &ast::Block,
                sp: Span,
                id: ast::NodeId) {
     match fk {
@@ -455,17 +455,17 @@ impl BorrowckCtxt {
         moves_map.get().contains(&id)
     }
 
-    pub fn cat_expr(&self, expr: @ast::Expr) -> mc::cmt {
+    pub fn cat_expr(&self, expr: &ast::Expr) -> mc::cmt {
         mc::cat_expr(self.tcx, self.method_map, expr)
     }
 
-    pub fn cat_expr_unadjusted(&self, expr: @ast::Expr) -> mc::cmt {
+    pub fn cat_expr_unadjusted(&self, expr: &ast::Expr) -> mc::cmt {
         mc::cat_expr_unadjusted(self.tcx, self.method_map, expr)
     }
 
     pub fn cat_expr_autoderefd(&self,
-                               expr: @ast::Expr,
-                               adj: @ty::AutoAdjustment)
+                               expr: &ast::Expr,
+                               adj: &ty::AutoAdjustment)
                                -> mc::cmt {
         match *adj {
             ty::AutoAddEnv(..) | ty::AutoObject(..) => {
@@ -504,8 +504,8 @@ impl BorrowckCtxt {
 
     pub fn cat_pattern(&self,
                        cmt: mc::cmt,
-                       pat: @ast::Pat,
-                       op: |mc::cmt, @ast::Pat|) {
+                       pat: &ast::Pat,
+                       op: |mc::cmt, &ast::Pat|) {
         let mc = self.mc_ctxt();
         mc.cat_pattern(cmt, pat, op);
     }
@@ -550,34 +550,48 @@ impl BorrowckCtxt {
         match move.kind {
             move_data::Declared => {}
 
-            move_data::MoveExpr(expr) => {
-                let expr_ty = ty::expr_ty_adjusted(self.tcx, expr);
+            move_data::MoveExpr => {
+                let items = self.tcx.items.borrow();
+                let (expr_ty, expr_span) = match items.get().find(&move.id) {
+                    Some(&ast_map::node_expr(expr)) => {
+                        (ty::expr_ty_adjusted(self.tcx, expr), expr.span)
+                    }
+                    r => self.tcx.sess.bug(format!("MoveExpr({:?}) maps to {:?}, not Expr",
+                                                   move.id, r))
+                };
                 let suggestion = move_suggestion(self.tcx, expr_ty,
                         "moved by default (use `copy` to override)");
                 self.tcx.sess.span_note(
-                    expr.span,
+                    expr_span,
                     format!("`{}` moved here because it has type `{}`, which is {}",
                          self.loan_path_to_str(moved_lp),
                          expr_ty.user_string(self.tcx), suggestion));
             }
 
-            move_data::MovePat(pat) => {
-                let pat_ty = ty::node_id_to_type(self.tcx, pat.id);
+            move_data::MovePat => {
+                let pat_ty = ty::node_id_to_type(self.tcx, move.id);
                 self.tcx.sess.span_note(
-                    pat.span,
+                    ast_map::node_span(self.tcx.items, move.id),
                     format!("`{}` moved here because it has type `{}`, \
                           which is moved by default (use `ref` to override)",
                          self.loan_path_to_str(moved_lp),
                          pat_ty.user_string(self.tcx)));
             }
 
-            move_data::Captured(expr) => {
-                let expr_ty = ty::expr_ty_adjusted(self.tcx, expr);
+            move_data::Captured => {
+                let items = self.tcx.items.borrow();
+                let (expr_ty, expr_span) = match items.get().find(&move.id) {
+                    Some(&ast_map::node_expr(expr)) => {
+                        (ty::expr_ty_adjusted(self.tcx, expr), expr.span)
+                    }
+                    r => self.tcx.sess.bug(format!("Captured({:?}) maps to {:?}, not Expr",
+                                                   move.id, r))
+                };
                 let suggestion = move_suggestion(self.tcx, expr_ty,
                         "moved by default (make a copy and \
                          capture that instead to override)");
                 self.tcx.sess.span_note(
-                    expr.span,
+                    expr_span,
                     format!("`{}` moved into closure environment here because it \
                           has type `{}`, which is {}",
                          self.loan_path_to_str(moved_lp),
@@ -757,7 +771,7 @@ impl BorrowckCtxt {
             LpVar(id) => {
                 let items = self.tcx.items.borrow();
                 match items.get().find(&id) {
-                    Some(&ast_map::node_local(ref ident)) => {
+                    Some(&ast_map::node_local(ref ident, _)) => {
                         out.push_str(token::ident_to_str(ident));
                     }
                     r => {
