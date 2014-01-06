@@ -544,28 +544,26 @@ fn insert_vtables(fcx: @FnCtxt,
     vtable_map.get().insert(callee_id, vtables);
 }
 
-pub fn location_info_for_expr(expr: @ast::Expr) -> LocationInfo {
+pub fn location_info_for_expr(expr: &ast::Expr) -> LocationInfo {
     LocationInfo {
         span: expr.span,
         id: expr.id
     }
 }
-pub fn location_info_for_item(item: @ast::item) -> LocationInfo {
+pub fn location_info_for_item(item: &ast::item) -> LocationInfo {
     LocationInfo {
         span: item.span,
         id: item.id
     }
 }
 
-pub fn early_resolve_expr(ex: @ast::Expr,
-                          fcx: @FnCtxt,
-                          is_early: bool) {
+pub fn early_resolve_expr(ex: &ast::Expr, fcx: @FnCtxt, is_early: bool) {
     debug!("vtable: early_resolve_expr() ex with id {:?} (early: {}): {}",
            ex.id, is_early, expr_to_str(ex, fcx.tcx().sess.intr()));
     let _indent = indenter();
 
     let cx = fcx.ccx;
-    let resolve_object_cast = |src: @ast::Expr, target_ty: ty::t| {
+    let resolve_object_cast = |src: &ast::Expr, target_ty: ty::t| {
       match ty::get(target_ty).sty {
           // Bounds of type's contents are not checked here, but in kind.rs.
           ty::ty_trait(target_def_id, ref target_substs, store,
@@ -753,15 +751,14 @@ pub fn early_resolve_expr(ex: @ast::Expr,
     }
 }
 
-fn resolve_expr(fcx: @FnCtxt,
-                ex: @ast::Expr) {
+fn resolve_expr(fcx: @FnCtxt, ex: &ast::Expr) {
     let mut fcx = fcx;
     early_resolve_expr(ex, fcx, false);
     visit::walk_expr(&mut fcx, ex, ());
 }
 
 pub fn resolve_impl(ccx: @CrateCtxt,
-                    impl_item: @ast::item,
+                    impl_item: &ast::item,
                     impl_generics: &ty::Generics,
                     impl_trait_ref: &ty::TraitRef) {
     let param_env = ty::construct_parameter_environment(
@@ -817,17 +814,16 @@ pub fn resolve_impl(ccx: @CrateCtxt,
 }
 
 impl visit::Visitor<()> for @FnCtxt {
-    fn visit_expr(&mut self, ex:@ast::Expr, _:()) {
+    fn visit_expr(&mut self, ex: &ast::Expr, _: ()) {
         resolve_expr(*self, ex);
     }
-    fn visit_item(&mut self, _:@ast::item, _:()) {
+    fn visit_item(&mut self, _: &ast::item, _: ()) {
         // no-op
     }
 }
 
 // Detect points where a trait-bounded type parameter is
 // instantiated, resolve the impls for the parameters.
-pub fn resolve_in_block(fcx: @FnCtxt, bl: ast::P<ast::Block>) {
-    let mut fcx = fcx;
+pub fn resolve_in_block(mut fcx: @FnCtxt, bl: &ast::Block) {
     visit::walk_block(&mut fcx, bl, ());
 }

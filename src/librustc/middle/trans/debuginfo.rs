@@ -331,7 +331,7 @@ pub fn create_captured_var_metadata(bcx: @Block,
         None => {
             cx.sess.span_bug(span, "debuginfo::create_captured_var_metadata() - NodeId not found");
         }
-        Some(ast_map::node_local(ident)) => ident,
+        Some(ast_map::node_local(ident, _)) => ident,
         Some(ast_map::node_arg(@ast::Pat { node: ast::PatIdent(_, ref path, _), .. })) => {
             ast_util::path_to_ident(path)
         }

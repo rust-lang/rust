@@ -2203,7 +2203,7 @@ pub struct TransItemVisitor {
 }
 
 impl Visitor<()> for TransItemVisitor {
-    fn visit_item(&mut self, i: @ast::item, _:()) {
+    fn visit_item(&mut self, i: &ast::item, _:()) {
         trans_item(self.ccx, i);
     }
 }

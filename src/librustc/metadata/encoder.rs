@@ -50,10 +50,17 @@ use writer = extra::ebml::writer;
 // used by astencode:
 type abbrev_map = @RefCell<HashMap<ty::t, tyencode::ty_abbrev>>;
 
+/// A borrowed version of ast::inlined_item.
+pub enum InlinedItemRef<'a> {
+    ii_item_ref(&'a ast::item),
+    ii_method_ref(ast::DefId, bool, &'a ast::method),
+    ii_foreign_ref(&'a ast::foreign_item)
+}
+
 pub type encode_inlined_item<'a> = 'a |ecx: &EncodeContext,
-                                             ebml_w: &mut writer::Encoder,
-                                             path: &[ast_map::path_elt],
-                                             ii: ast::inlined_item|;
+                                       ebml_w: &mut writer::Encoder,
+                                       path: &[ast_map::path_elt],
+                                       ii: InlinedItemRef|;
 
 pub struct EncodeParams<'a> {
     diag: @SpanHandler,
@@ -837,13 +844,13 @@ fn encode_info_for_method(ecx: &EncodeContext,
         None => ()
     }
 
-    for ast_method in ast_method_opt.iter() {
+    for &ast_method in ast_method_opt.iter() {
         let num_params = tpt.generics.type_param_defs.len();
         if num_params > 0u || is_default_impl
             || should_inline(ast_method.attrs) {
             (ecx.encode_inlined_item)(
                 ecx, ebml_w, impl_path,
-                ii_method(local_def(parent_id), false, *ast_method));
+                ii_method_ref(local_def(parent_id), false, ast_method));
         } else {
             encode_symbol(ecx, ebml_w, m.def_id.node);
         }
@@ -915,13 +922,13 @@ fn encode_extension_implementations(ecx: &EncodeContext,
 
 fn encode_info_for_item(ecx: &EncodeContext,
                         ebml_w: &mut writer::Encoder,
-                        item: @item,
+                        item: &item,
                         index: @RefCell<~[entry<i64>]>,
                         path: &[ast_map::path_elt],
                         vis: ast::visibility) {
     let tcx = ecx.tcx;
 
-    fn add_to_index(item: @item, ebml_w: &writer::Encoder,
+    fn add_to_index(item: &item, ebml_w: &writer::Encoder,
                      index: @RefCell<~[entry<i64>]>) {
         let mut index = index.borrow_mut();
         index.get().push(entry {
@@ -958,7 +965,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         }
 
         if !non_inlineable {
-            (ecx.encode_inlined_item)(ecx, ebml_w, path, ii_item(item));
+            (ecx.encode_inlined_item)(ecx, ebml_w, path, ii_item_ref(item));
         }
         encode_visibility(ebml_w, vis);
         ebml_w.end_tag();
@@ -974,7 +981,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
         encode_attributes(ebml_w, item.attrs);
         if tps_len > 0u || should_inline(item.attrs) {
-            (ecx.encode_inlined_item)(ecx, ebml_w, path, ii_item(item));
+            (ecx.encode_inlined_item)(ecx, ebml_w, path, ii_item_ref(item));
         } else {
             encode_symbol(ecx, ebml_w, item.id);
         }
@@ -1032,7 +1039,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         for v in (*enum_definition).variants.iter() {
             encode_variant_id(ebml_w, local_def(v.node.id));
         }
-        (ecx.encode_inlined_item)(ecx, ebml_w, path, ii_item(item));
+        (ecx.encode_inlined_item)(ecx, ebml_w, path, ii_item_ref(item));
         encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
 
         // Encode inherent implementations for this enumeration.
@@ -1077,7 +1084,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         needs to know*/
         encode_struct_fields(ecx, ebml_w, struct_def);
 
-        (ecx.encode_inlined_item)(ecx, ebml_w, path, ii_item(item));
+        (ecx.encode_inlined_item)(ecx, ebml_w, path, ii_item_ref(item));
 
         // Encode inherent implementations for this structure.
         encode_inherent_implementations(ecx, ebml_w, def_id);
@@ -1272,7 +1279,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
                     encode_method_sort(ebml_w, 'p');
                     (ecx.encode_inlined_item)(
                         ecx, ebml_w, path,
-                        ii_method(def_id, true, m));
+                        ii_method_ref(def_id, true, m));
                 }
             }
 
@@ -1288,7 +1295,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
 
 fn encode_info_for_foreign_item(ecx: &EncodeContext,
                                 ebml_w: &mut writer::Encoder,
-                                nitem: @foreign_item,
+                                nitem: &foreign_item,
                                 index: @RefCell<~[entry<i64>]>,
                                 path: &ast_map::path,
                                 abi: AbiSet) {
@@ -1309,7 +1316,7 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
                                &lookup_item_type(ecx.tcx,local_def(nitem.id)));
         encode_name(ecx, ebml_w, nitem.ident);
         if abi.is_intrinsic() {
-            (ecx.encode_inlined_item)(ecx, ebml_w, *path, ii_foreign(nitem));
+            (ecx.encode_inlined_item)(ecx, ebml_w, *path, ii_foreign_ref(nitem));
         } else {
             encode_symbol(ecx, ebml_w, nitem.id);
         }
@@ -1331,9 +1338,9 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
     ebml_w.end_tag();
 }
 
-fn my_visit_expr(_e:@Expr) { }
+fn my_visit_expr(_e: &Expr) { }
 
-fn my_visit_item(i: @item,
+fn my_visit_item(i: &item,
                  items: ast_map::map,
                  ebml_w: &mut writer::Encoder,
                  ecx_ptr: *int,
@@ -1352,7 +1359,7 @@ fn my_visit_item(i: @item,
     }
 }
 
-fn my_visit_foreign_item(ni: @foreign_item,
+fn my_visit_foreign_item(ni: &foreign_item,
                          items: ast_map::map,
                          ebml_w: &mut writer::Encoder,
                          ecx_ptr:*int,
@@ -1391,11 +1398,11 @@ struct EncodeVisitor<'a,'b> {
 }
 
 impl<'a,'b> visit::Visitor<()> for EncodeVisitor<'a,'b> {
-    fn visit_expr(&mut self, ex:@Expr, _:()) {
+    fn visit_expr(&mut self, ex: &Expr, _: ()) {
         visit::walk_expr(self, ex, ());
         my_visit_expr(ex);
     }
-    fn visit_item(&mut self, i:@item, _:()) {
+    fn visit_item(&mut self, i: &item, _: ()) {
         visit::walk_item(self, i, ());
         my_visit_item(i,
                       self.items,
@@ -1403,7 +1410,7 @@ impl<'a,'b> visit::Visitor<()> for EncodeVisitor<'a,'b> {
                       self.ecx_ptr,
                       self.index);
     }
-    fn visit_foreign_item(&mut self, ni:@foreign_item, _:()) {
+    fn visit_foreign_item(&mut self, ni: &foreign_item, _: ()) {
         visit::walk_foreign_item(self, ni, ());
         my_visit_foreign_item(ni,
                               self.items,
@@ -1692,7 +1699,7 @@ struct ImplVisitor<'a,'b> {
 }
 
 impl<'a,'b> Visitor<()> for ImplVisitor<'a,'b> {
-    fn visit_item(&mut self, item: @item, _: ()) {
+    fn visit_item(&mut self, item: &item, _: ()) {
         match item.node {
             item_impl(_, Some(ref trait_ref), _, _) => {
                 let def_map = self.ecx.tcx.def_map;

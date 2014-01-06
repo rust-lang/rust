@@ -242,13 +242,13 @@ struct WbCtxt {
     success: bool,
 }
 
-fn visit_stmt(s: @ast::Stmt, wbcx: &mut WbCtxt) {
+fn visit_stmt(s: &ast::Stmt, wbcx: &mut WbCtxt) {
     if !wbcx.success { return; }
     resolve_type_vars_for_node(wbcx, s.span, ty::stmt_node_id(s));
     visit::walk_stmt(wbcx, s, ());
 }
 
-fn visit_expr(e: @ast::Expr, wbcx: &mut WbCtxt) {
+fn visit_expr(e: &ast::Expr, wbcx: &mut WbCtxt) {
     if !wbcx.success {
         return;
     }
@@ -296,7 +296,7 @@ fn visit_expr(e: @ast::Expr, wbcx: &mut WbCtxt) {
     visit::walk_expr(wbcx, e, ());
 }
 
-fn visit_block(b: ast::P<ast::Block>, wbcx: &mut WbCtxt) {
+fn visit_block(b: &ast::Block, wbcx: &mut WbCtxt) {
     if !wbcx.success {
         return;
     }
@@ -319,7 +319,7 @@ fn visit_pat(p: &ast::Pat, wbcx: &mut WbCtxt) {
     visit::walk_pat(wbcx, p, ());
 }
 
-fn visit_local(l: @ast::Local, wbcx: &mut WbCtxt) {
+fn visit_local(l: &ast::Local, wbcx: &mut WbCtxt) {
     if !wbcx.success { return; }
     let var_ty = wbcx.fcx.local_ty(l.span, l.id);
     match resolve_type(wbcx.fcx.infcx(), var_ty, resolve_all | force_all) {
@@ -341,22 +341,22 @@ fn visit_local(l: @ast::Local, wbcx: &mut WbCtxt) {
     }
     visit::walk_local(wbcx, l, ());
 }
-fn visit_item(_item: @ast::item, _wbcx: &mut WbCtxt) {
+fn visit_item(_item: &ast::item, _wbcx: &mut WbCtxt) {
     // Ignore items
 }
 
 impl Visitor<()> for WbCtxt {
-    fn visit_item(&mut self, i:@ast::item, _:()) { visit_item(i, self); }
-    fn visit_stmt(&mut self, s:@ast::Stmt, _:()) { visit_stmt(s, self); }
-    fn visit_expr(&mut self, ex:@ast::Expr, _:()) { visit_expr(ex, self); }
-    fn visit_block(&mut self, b:ast::P<ast::Block>, _:()) { visit_block(b, self); }
-    fn visit_pat(&mut self, p:&ast::Pat, _:()) { visit_pat(p, self); }
-    fn visit_local(&mut self, l:@ast::Local, _:()) { visit_local(l, self); }
+    fn visit_item(&mut self, i: &ast::item, _: ()) { visit_item(i, self); }
+    fn visit_stmt(&mut self, s: &ast::Stmt, _: ()) { visit_stmt(s, self); }
+    fn visit_expr(&mut self, ex:&ast::Expr, _: ()) { visit_expr(ex, self); }
+    fn visit_block(&mut self, b: &ast::Block, _: ()) { visit_block(b, self); }
+    fn visit_pat(&mut self, p: &ast::Pat, _: ()) { visit_pat(p, self); }
+    fn visit_local(&mut self, l: &ast::Local, _: ()) { visit_local(l, self); }
     // FIXME(#10894) should continue recursing
-    fn visit_ty(&mut self, _t: &ast::Ty, _:()) {}
+    fn visit_ty(&mut self, _t: &ast::Ty, _: ()) {}
 }
 
-pub fn resolve_type_vars_in_expr(fcx: @FnCtxt, e: @ast::Expr) -> bool {
+pub fn resolve_type_vars_in_expr(fcx: @FnCtxt, e: &ast::Expr) -> bool {
     let mut wbcx = WbCtxt { fcx: fcx, success: true };
     let wbcx = &mut wbcx;
     wbcx.visit_expr(e, ());
@@ -365,7 +365,7 @@ pub fn resolve_type_vars_in_expr(fcx: @FnCtxt, e: @ast::Expr) -> bool {
 
 pub fn resolve_type_vars_in_fn(fcx: @FnCtxt,
                                decl: &ast::fn_decl,
-                               blk: ast::P<ast::Block>,
+                               blk: &ast::Block,
                                self_info: Option<SelfInfo>) -> bool {
     let mut wbcx = WbCtxt { fcx: fcx, success: true };
     let wbcx = &mut wbcx;

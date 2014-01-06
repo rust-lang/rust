@@ -33,18 +33,16 @@ pub fn gather_decl(bccx: &BorrowckCtxt,
 
 pub fn gather_move_from_expr(bccx: &BorrowckCtxt,
                              move_data: &MoveData,
-                             move_expr: @ast::Expr,
+                             move_expr: &ast::Expr,
                              cmt: mc::cmt) {
-    gather_move_from_expr_or_pat(bccx, move_data, move_expr.id,
-                                 MoveExpr(move_expr), cmt);
+    gather_move_from_expr_or_pat(bccx, move_data, move_expr.id, MoveExpr, cmt);
 }
 
 pub fn gather_move_from_pat(bccx: &BorrowckCtxt,
                             move_data: &MoveData,
-                            move_pat: @ast::Pat,
+                            move_pat: &ast::Pat,
                             cmt: mc::cmt) {
-    gather_move_from_expr_or_pat(bccx, move_data, move_pat.id,
-                                 MovePat(move_pat), cmt);
+    gather_move_from_expr_or_pat(bccx, move_data, move_pat.id, MovePat, cmt);
 }
 
 fn gather_move_from_expr_or_pat(bccx: &BorrowckCtxt,
@@ -68,7 +66,7 @@ fn gather_move_from_expr_or_pat(bccx: &BorrowckCtxt,
 
 pub fn gather_captures(bccx: &BorrowckCtxt,
                        move_data: &MoveData,
-                       closure_expr: @ast::Expr) {
+                       closure_expr: &ast::Expr) {
     let capture_map = bccx.capture_map.borrow();
     let captured_vars = capture_map.get().get(&closure_expr.id);
     for captured_var in captured_vars.iter() {
@@ -77,7 +75,7 @@ pub fn gather_captures(bccx: &BorrowckCtxt,
                 let fvar_id = ast_util::def_id_of_def(captured_var.def).node;
                 let loan_path = @LpVar(fvar_id);
                 move_data.add_move(bccx.tcx, loan_path, closure_expr.id,
-                                   Captured(closure_expr));
+                                   Captured);
             }
             moves::CapCopy | moves::CapRef => {}
         }

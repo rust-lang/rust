@@ -174,7 +174,7 @@ impl MarkSymbolVisitor {
 
 impl Visitor<()> for MarkSymbolVisitor {
 
-    fn visit_expr(&mut self, expr: @ast::Expr, _: ()) {
+    fn visit_expr(&mut self, expr: &ast::Expr, _: ()) {
         match expr.node {
             ast::ExprMethodCall(..) => {
                 self.lookup_and_handle_method(&expr.id, expr.span);
@@ -190,7 +190,7 @@ impl Visitor<()> for MarkSymbolVisitor {
         visit::walk_path(self, path, ());
     }
 
-    fn visit_item(&mut self, _item: @ast::item, _: ()) {
+    fn visit_item(&mut self, _item: &ast::item, _: ()) {
         // Do not recurse into items. These items will be added to the
         // worklist and recursed into manually if necessary.
     }
@@ -204,7 +204,7 @@ struct TraitMethodSeeder {
 }
 
 impl Visitor<()> for TraitMethodSeeder {
-    fn visit_item(&mut self, item: @ast::item, _: ()) {
+    fn visit_item(&mut self, item: &ast::item, _: ()) {
         match item.node {
             ast::item_impl(_, Some(ref _trait_ref), _, ref methods) => {
                 for method in methods.iter() {
@@ -265,7 +265,7 @@ fn find_live(tcx: ty::ctxt,
     symbol_visitor.live_symbols
 }
 
-fn should_warn(item: @ast::item) -> bool {
+fn should_warn(item: &ast::item) -> bool {
     match item.node {
         ast::item_static(..)
         | ast::item_fn(..)
@@ -335,7 +335,7 @@ impl DeadVisitor {
 }
 
 impl Visitor<()> for DeadVisitor {
-    fn visit_item(&mut self, item: @ast::item, _: ()) {
+    fn visit_item(&mut self, item: &ast::item, _: ()) {
         let ctor_id = get_struct_ctor_id(item);
         if !self.symbol_is_live(item.id, ctor_id) && should_warn(item) {
             self.warn_dead_code(item.id, item.span, &item.ident);
@@ -343,7 +343,7 @@ impl Visitor<()> for DeadVisitor {
         visit::walk_item(self, item, ());
     }
 
-    fn visit_foreign_item(&mut self, fi: @ast::foreign_item, _: ()) {
+    fn visit_foreign_item(&mut self, fi: &ast::foreign_item, _: ()) {
         if !self.symbol_is_live(fi.id, None) {
             self.warn_dead_code(fi.id, fi.span, &fi.ident);
         }
@@ -351,7 +351,7 @@ impl Visitor<()> for DeadVisitor {
     }
 
     fn visit_fn(&mut self, fk: &visit::fn_kind,
-                _: &ast::fn_decl, block: ast::P<ast::Block>,
+                _: &ast::fn_decl, block: &ast::Block,
                 span: codemap::Span, id: ast::NodeId, _: ()) {
         // Have to warn method here because methods are not ast::item
         match *fk {
@@ -367,7 +367,7 @@ impl Visitor<()> for DeadVisitor {
     }
 
     // Overwrite so that we don't warn the trait method itself.
-    fn visit_trait_method(&mut self, trait_method :&ast::trait_method, _: ()) {
+    fn visit_trait_method(&mut self, trait_method: &ast::trait_method, _: ()) {
         match *trait_method {
             ast::provided(method) => visit::walk_block(self, method.body, ()),
             ast::required(_) => ()

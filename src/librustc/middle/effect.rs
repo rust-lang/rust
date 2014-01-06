@@ -82,7 +82,7 @@ impl EffectCheckVisitor {
 
 impl Visitor<()> for EffectCheckVisitor {
     fn visit_fn(&mut self, fn_kind: &visit::fn_kind, fn_decl: &ast::fn_decl,
-                block: ast::P<ast::Block>, span: Span, node_id: ast::NodeId, _:()) {
+                block: &ast::Block, span: Span, node_id: ast::NodeId, _:()) {
 
         let (is_item_fn, is_unsafe_fn) = match *fn_kind {
             visit::fk_item_fn(_, _, purity, _) =>
@@ -104,7 +104,7 @@ impl Visitor<()> for EffectCheckVisitor {
         self.unsafe_context = old_unsafe_context
     }
 
-    fn visit_block(&mut self, block: ast::P<ast::Block>, _:()) {
+    fn visit_block(&mut self, block: &ast::Block, _:()) {
         let old_unsafe_context = self.unsafe_context;
         let is_unsafe = match block.rules {
             ast::UnsafeBlock(..) => true, ast::DefaultBlock => false
@@ -118,7 +118,7 @@ impl Visitor<()> for EffectCheckVisitor {
         self.unsafe_context = old_unsafe_context
     }
 
-    fn visit_expr(&mut self, expr: @ast::Expr, _:()) {
+    fn visit_expr(&mut self, expr: &ast::Expr, _:()) {
         match expr.node {
             ast::ExprMethodCall(callee_id, _, _, _, _, _) => {
                 let base_type = ty::node_id_to_type(self.tcx, callee_id);
