@@ -1,4 +1,4 @@
-% Containers and iterators
+% Containers and Iterators Guide
 
 # Containers
 

@@ -1,10 +1,10 @@
-% Rust Tasks and Communication Tutorial
+% Rust Tasks and Communication Guide
 
 # Introduction
 
 Rust provides safe concurrency through a combination
 of lightweight, memory-isolated tasks and message passing.
-This tutorial will describe the concurrency model in Rust, how it
+This guide will describe the concurrency model in Rust, how it
 relates to the Rust type system, and introduce
 the fundamental library abstractions for constructing concurrent programs.
 
