@@ -70,6 +70,7 @@ pub enum lint {
     unnecessary_qualification,
     while_true,
     path_statement,
+    irrefutable_match_without_binding,
     unrecognized_lint,
     non_camel_case_types,
     non_uppercase_statics,
@@ -166,6 +167,13 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
         lint: path_statement,
         desc: "path statements with no effect",
         default: warn
+     }),
+
+    ("irrefutable_match_without_binding",
+     LintSpec {
+        lint: irrefutable_match_without_binding,
+        desc: "irrefutable let or match without any bindings (equivalent to inner expression)",
+        default: allow
      }),
 
     ("unrecognized_lint",
@@ -935,6 +943,18 @@ fn check_path_statement(cx: &Context, s: &ast::Stmt) {
     }
 }
 
+fn check_irrefutable_match_without_binding(cx: &Context, sp: Span, pats: &[@ast::Pat]) {
+    // `pats` is one or more pattern-alternatives (i.e. pat1|pat2|pat3), *not* match arms
+    let mut any_bindings = false;
+    for pat in pats.iter() {
+       pat_util::pat_bindings(cx.tcx.def_map, *pat, |_,_,_,_| any_bindings = true)
+    }
+    if !any_bindings {
+        cx.span_lint(irrefutable_match_without_binding, sp,
+            "irrefutable let or match without any bindings (equivalent to inner expression)")
+    }
+}
+
 fn check_item_non_camel_case_types(cx: &Context, it: &ast::item) {
     fn is_camel_case(cx: ty::ctxt, ident: ast::Ident) -> bool {
         let ident = cx.sess.str_of(ident);
@@ -1350,6 +1370,9 @@ impl<'a> Visitor<()> for Context<'a> {
             ast::ExprParen(expr) => if self.negated_expr_id == e.id {
                 self.negated_expr_id = expr.id
             },
+            ast::ExprMatch(_, [ast::Arm { ref pats, .. }]) => {
+                check_irrefutable_match_without_binding(self, e.span, *pats)
+            },
             _ => ()
         };
 
@@ -1363,6 +1386,11 @@ impl<'a> Visitor<()> for Context<'a> {
         check_type_limits(self, e);
 
         visit::walk_expr(self, e, ());
+    }
+
+    fn visit_local(&mut self, l: @ast::Local, _: ()) {
+        check_irrefutable_match_without_binding(self, l.span, &[l.pat]);
+        visit::walk_local(self, l, ())
     }
 
     fn visit_stmt(&mut self, s: @ast::Stmt, _: ()) {
