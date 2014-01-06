@@ -33,7 +33,7 @@ use path_util::{target_executable_in_workspace, target_test_in_workspace,
                built_library_in_workspace, built_executable_in_workspace, target_build_dir,
                chmod_read_only, platform_library_name};
 use rustc::back::link::get_cc_prog;
-use rustc::metadata::filesearch::rust_path;
+use rustc::metadata::filesearch::{rust_path, libdir, rustlibdir};
 use rustc::driver::session;
 use rustc::driver::driver::{build_session, build_session_options, host_triple, optgroups};
 use syntax::diagnostic;
@@ -220,7 +220,7 @@ fn test_sysroot() -> Path {
 fn rustpkg_exec() -> Path {
     // Ugh
     let first_try = test_sysroot().join_many(
-        [~"lib", ~"rustc", host_triple(), ~"bin", ~"rustpkg"]);
+        [libdir(), rustlibdir(), host_triple(), ~"bin", ~"rustpkg"]);
     if is_executable(&first_try) {
         first_try
     }
