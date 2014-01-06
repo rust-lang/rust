@@ -164,12 +164,12 @@ fn live_node_kind_to_str(lnk: LiveNodeKind, cx: ty::ctxt) -> ~str {
 struct LivenessVisitor;
 
 impl Visitor<@IrMaps> for LivenessVisitor {
-    fn visit_fn(&mut self, fk:&fn_kind, fd:&fn_decl, b:P<Block>, s:Span, n:NodeId, e:@IrMaps) {
+    fn visit_fn(&mut self, fk: &fn_kind, fd: &fn_decl, b: &Block, s: Span, n: NodeId, e: @IrMaps) {
         visit_fn(self, fk, fd, b, s, n, e);
     }
-    fn visit_local(&mut self, l:@Local, e:@IrMaps) { visit_local(self, l, e); }
-    fn visit_expr(&mut self, ex:@Expr, e:@IrMaps) { visit_expr(self, ex, e); }
-    fn visit_arm(&mut self, a:&Arm, e:@IrMaps) { visit_arm(self, a, e); }
+    fn visit_local(&mut self, l: &Local, e: @IrMaps) { visit_local(self, l, e); }
+    fn visit_expr(&mut self, ex: &Expr, e: @IrMaps) { visit_expr(self, ex, e); }
+    fn visit_arm(&mut self, a: &Arm, e: @IrMaps) { visit_arm(self, a, e); }
 }
 
 pub fn check_crate(tcx: ty::ctxt,
@@ -364,16 +364,16 @@ impl IrMaps {
 }
 
 impl Visitor<()> for Liveness {
-    fn visit_fn(&mut self, fk:&fn_kind, fd:&fn_decl, b:P<Block>, s:Span, n:NodeId, _:()) {
+    fn visit_fn(&mut self, fk: &fn_kind, fd: &fn_decl, b: &Block, s: Span, n: NodeId, _: ()) {
         check_fn(self, fk, fd, b, s, n);
     }
-    fn visit_local(&mut self, l:@Local, _:()) {
+    fn visit_local(&mut self, l: &Local, _: ()) {
         check_local(self, l);
     }
-    fn visit_expr(&mut self, ex:@Expr, _:()) {
+    fn visit_expr(&mut self, ex: &Expr, _: ()) {
         check_expr(self, ex);
     }
-    fn visit_arm(&mut self, a:&Arm, _:()) {
+    fn visit_arm(&mut self, a: &Arm, _: ()) {
         check_arm(self, a);
     }
 }
@@ -381,7 +381,7 @@ impl Visitor<()> for Liveness {
 fn visit_fn(v: &mut LivenessVisitor,
             fk: &visit::fn_kind,
             decl: &fn_decl,
-            body: P<Block>,
+            body: &Block,
             sp: Span,
             id: NodeId,
             this: @IrMaps) {
@@ -443,7 +443,7 @@ fn visit_fn(v: &mut LivenessVisitor,
     lsets.warn_about_unused_args(decl, entry_ln);
 }
 
-fn visit_local(v: &mut LivenessVisitor, local: @Local, this: @IrMaps) {
+fn visit_local(v: &mut LivenessVisitor, local: &Local, this: @IrMaps) {
     let def_map = this.tcx.def_map;
     pat_util::pat_bindings(def_map, local.pat, |bm, p_id, sp, path| {
         debug!("adding local variable {}", p_id);
@@ -490,7 +490,7 @@ fn visit_arm(v: &mut LivenessVisitor, arm: &Arm, this: @IrMaps) {
     visit::walk_arm(v, arm, this);
 }
 
-fn visit_expr(v: &mut LivenessVisitor, expr: @Expr, this: @IrMaps) {
+fn visit_expr(v: &mut LivenessVisitor, expr: &Expr, this: @IrMaps) {
     match expr.node {
       // live nodes required for uses or definitions of variables:
       ExprPath(_) | ExprSelf => {
@@ -1472,7 +1472,7 @@ impl Liveness {
 // _______________________________________________________________________
 // Checking for error conditions
 
-fn check_local(this: &mut Liveness, local: @Local) {
+fn check_local(this: &mut Liveness, local: &Local) {
     match local.init {
       Some(_) => {
         this.warn_about_unused_or_dead_vars_in_pat(local.pat);
@@ -1508,7 +1508,7 @@ fn check_arm(this: &mut Liveness, arm: &Arm) {
     visit::walk_arm(this, arm, ());
 }
 
-fn check_expr(this: &mut Liveness, expr: @Expr) {
+fn check_expr(this: &mut Liveness, expr: &Expr) {
     match expr.node {
       ExprAssign(l, r) => {
         this.check_lvalue(l);

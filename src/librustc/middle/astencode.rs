@@ -24,14 +24,10 @@ use middle::{ty, typeck, moves};
 use middle;
 use util::ppaux::ty_to_str;
 
-use syntax::ast;
-use syntax::ast_map;
-use syntax::ast_util::inlined_item_utils;
-use syntax::ast_util;
+use syntax::{ast, ast_map, ast_util, codemap, fold};
 use syntax::codemap::Span;
-use syntax::codemap;
-use syntax::fold::*;
-use syntax::fold;
+use syntax::diagnostic::SpanHandler;
+use syntax::fold::ast_fold;
 use syntax::parse::token;
 use syntax;
 
@@ -84,24 +80,30 @@ trait tr_intern {
 pub fn encode_inlined_item(ecx: &e::EncodeContext,
                            ebml_w: &mut writer::Encoder,
                            path: &[ast_map::path_elt],
-                           ii: ast::inlined_item,
+                           ii: e::InlinedItemRef,
                            maps: Maps) {
+    let ident = match ii {
+        e::ii_item_ref(i) => i.ident,
+        e::ii_foreign_ref(i) => i.ident,
+        e::ii_method_ref(_, _, m) => m.ident,
+    };
     debug!("> Encoding inlined item: {}::{} ({})",
            ast_map::path_to_str(path, token::get_ident_interner()),
-           ecx.tcx.sess.str_of(ii.ident()),
+           ecx.tcx.sess.str_of(ident),
            ebml_w.writer.tell());
 
+    let ii = simplify_ast(ii);
     let id_range = ast_util::compute_id_range_for_inlined_item(&ii);
 
     ebml_w.start_tag(c::tag_ast as uint);
     id_range.encode(ebml_w);
-    encode_ast(ebml_w, simplify_ast(&ii));
+    encode_ast(ebml_w, ii);
     encode_side_tables_for_ii(ecx, maps, ebml_w, &ii);
     ebml_w.end_tag();
 
     debug!("< Encoded inlined fn: {}::{} ({})",
            ast_map::path_to_str(path, token::get_ident_interner()),
-           ecx.tcx.sess.str_of(ii.ident()),
+           ecx.tcx.sess.str_of(ident),
            ebml_w.writer.tell());
 }
 
@@ -130,15 +132,20 @@ pub fn decode_inlined_item(cdata: @cstore::crate_metadata,
             to_id_range: to_id_range
         };
         let raw_ii = decode_ast(ast_doc);
-        let ii = renumber_ast(xcx, raw_ii);
-        debug!("Fn named: {}", tcx.sess.str_of(ii.ident()));
+        let ii = renumber_and_map_ast(xcx,
+                                      tcx.sess.diagnostic(),
+                                      dcx.tcx.items,
+                                      path.to_owned(),
+                                      raw_ii);
+        let ident = match ii {
+            ast::ii_item(i) => i.ident,
+            ast::ii_foreign(i) => i.ident,
+            ast::ii_method(_, _, m) => m.ident,
+        };
+        debug!("Fn named: {}", tcx.sess.str_of(ident));
         debug!("< Decoded inlined fn: {}::{}",
                ast_map::path_to_str(path, token::get_ident_interner()),
-               tcx.sess.str_of(ii.ident()));
-        ast_map::map_decoded_item(tcx.sess.diagnostic(),
-                                  dcx.tcx.items,
-                                  path.to_owned(),
-                                  &ii);
+               tcx.sess.str_of(ident));
         decode_side_tables(xcx, ast_doc);
         match ii {
           ast::ii_item(i) => {
@@ -295,11 +302,9 @@ fn encode_ast(ebml_w: &mut writer::Encoder, item: ast::inlined_item) {
     ebml_w.end_tag();
 }
 
-struct NestedItemsDropper {
-    contents: (),
-}
+struct NestedItemsDropper;
 
-impl fold::ast_fold for NestedItemsDropper {
+impl ast_fold for NestedItemsDropper {
     fn fold_block(&mut self, blk: ast::P<ast::Block>) -> ast::P<ast::Block> {
         let stmts_sans_items = blk.stmts.iter().filter_map(|stmt| {
             match stmt.node {
@@ -338,18 +343,15 @@ impl fold::ast_fold for NestedItemsDropper {
 // As it happens, trans relies on the fact that we do not export
 // nested items, as otherwise it would get confused when translating
 // inlined items.
-fn simplify_ast(ii: &ast::inlined_item) -> ast::inlined_item {
-    let mut fld = NestedItemsDropper {
-        contents: (),
-    };
+fn simplify_ast(ii: e::InlinedItemRef) -> ast::inlined_item {
+    let mut fld = NestedItemsDropper;
 
-    match *ii {
-        //hack: we're not dropping items
-        ast::ii_item(i) => ast::ii_item(fld.fold_item(i)
-                                        .expect_one("expected one item")),
-        ast::ii_method(d, is_provided, m) =>
-          ast::ii_method(d, is_provided, fld.fold_method(m)),
-        ast::ii_foreign(i) => ast::ii_foreign(fld.fold_foreign_item(i))
+    match ii {
+        // HACK we're not dropping items.
+        e::ii_item_ref(i) => ast::ii_item(fold::noop_fold_item(i, &mut fld)
+                                          .expect_one("expected one item")),
+        e::ii_method_ref(d, p, m) => ast::ii_method(d, p, fold::noop_fold_method(m, &mut fld)),
+        e::ii_foreign_ref(i) => ast::ii_foreign(fold::noop_fold_foreign_item(i, &mut fld))
     }
 }
 
@@ -363,27 +365,31 @@ struct AstRenumberer {
     xcx: @ExtendedDecodeContext,
 }
 
-impl fold::ast_fold for AstRenumberer {
-    fn new_id(&mut self, id: ast::NodeId) -> ast::NodeId {
+impl ast_map::FoldOps for AstRenumberer {
+    fn new_id(&self, id: ast::NodeId) -> ast::NodeId {
         self.xcx.tr_id(id)
     }
-    fn new_span(&mut self, span: Span) -> Span {
+    fn new_span(&self, span: Span) -> Span {
         self.xcx.tr_span(span)
     }
 }
 
-fn renumber_ast(xcx: @ExtendedDecodeContext, ii: ast::inlined_item)
-    -> ast::inlined_item {
-    let mut fld = AstRenumberer {
-        xcx: xcx,
-    };
-    match ii {
-        ast::ii_item(i) => ast::ii_item(fld.fold_item(i)
-                                        .expect_one("expected one item")),
-        ast::ii_method(d, is_provided, m) =>
-          ast::ii_method(xcx.tr_def_id(d), is_provided, fld.fold_method(m)),
-        ast::ii_foreign(i) => ast::ii_foreign(fld.fold_foreign_item(i)),
-    }
+fn renumber_and_map_ast(xcx: @ExtendedDecodeContext,
+                        diag: @SpanHandler,
+                        map: ast_map::map,
+                        path: ast_map::path,
+                        ii: ast::inlined_item) -> ast::inlined_item {
+    ast_map::map_decoded_item(diag, map, path, AstRenumberer { xcx: xcx }, |fld| {
+        match ii {
+            ast::ii_item(i) => {
+                ast::ii_item(fld.fold_item(i).expect_one("expected one item"))
+            }
+            ast::ii_method(d, is_provided, m) => {
+                ast::ii_method(xcx.tr_def_id(d), is_provided, fld.fold_method(m))
+            }
+            ast::ii_foreign(i) => ast::ii_foreign(fld.fold_foreign_item(i))
+        }
+    })
 }
 
 // ______________________________________________________________________
@@ -1504,13 +1510,14 @@ fn test_more() {
 #[test]
 fn test_simplification() {
     let cx = mk_ctxt();
-    let item_in = ast::ii_item(quote_item!(cx,
+    let item = quote_item!(cx,
         fn new_int_alist<B>() -> alist<int, B> {
             fn eq_int(a: int, b: int) -> bool { a == b }
             return alist {eq_fn: eq_int, data: ~[]};
         }
-    ).unwrap());
-    let item_out = simplify_ast(&item_in);
+    ).unwrap();
+    let item_in = e::ii_item_ref(item);
+    let item_out = simplify_ast(item_in);
     let item_exp = ast::ii_item(quote_item!(cx,
         fn new_int_alist<B>() -> alist<int, B> {
             return alist {eq_fn: eq_int, data: ~[]};

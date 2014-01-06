@@ -58,18 +58,19 @@ pub struct Context {
 
 impl Visitor<()> for Context {
 
-    fn visit_expr(&mut self, ex:@Expr, _:()) {
+    fn visit_expr(&mut self, ex: &Expr, _: ()) {
         check_expr(self, ex);
     }
 
-    fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&fn_decl, b:P<Block>, s:Span, n:NodeId, _:()) {
+    fn visit_fn(&mut self, fk: &visit::fn_kind, fd: &fn_decl,
+                b: &Block, s: Span, n: NodeId, _: ()) {
         check_fn(self, fk, fd, b, s, n);
     }
 
-    fn visit_ty(&mut self, t:&Ty, _:()) {
+    fn visit_ty(&mut self, t: &Ty, _: ()) {
         check_ty(self, t);
     }
-    fn visit_item(&mut self, i:@item, _:()) {
+    fn visit_item(&mut self, i: &item, _: ()) {
         check_item(self, i);
     }
 }
@@ -115,7 +116,7 @@ fn check_struct_safe_for_destructor(cx: &mut Context,
     }
 }
 
-fn check_impl_of_trait(cx: &mut Context, it: @item, trait_ref: &trait_ref, self_type: &Ty) {
+fn check_impl_of_trait(cx: &mut Context, it: &item, trait_ref: &trait_ref, self_type: &Ty) {
     let def_map = cx.tcx.def_map.borrow();
     let ast_trait_def = def_map.get()
                                .find(&trait_ref.ref_id)
@@ -158,7 +159,7 @@ fn check_impl_of_trait(cx: &mut Context, it: @item, trait_ref: &trait_ref, self_
     }
 }
 
-fn check_item(cx: &mut Context, item: @item) {
+fn check_item(cx: &mut Context, item: &item) {
     if !attr::contains_name(item.attrs, "unsafe_destructor") {
         match item.node {
             item_impl(_, Some(ref trait_ref), self_type, _) => {
@@ -247,7 +248,7 @@ fn check_fn(
     cx: &mut Context,
     fk: &visit::fn_kind,
     decl: &fn_decl,
-    body: P<Block>,
+    body: &Block,
     sp: Span,
     fn_id: NodeId) {
 
@@ -262,7 +263,7 @@ fn check_fn(
     visit::walk_fn(cx, fk, decl, body, sp, fn_id, ());
 }
 
-pub fn check_expr(cx: &mut Context, e: @Expr) {
+pub fn check_expr(cx: &mut Context, e: &Expr) {
     debug!("kind::check_expr({})", expr_to_str(e, cx.tcx.sess.intr()));
 
     // Handle any kind bounds on type parameters

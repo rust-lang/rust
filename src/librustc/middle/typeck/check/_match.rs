@@ -26,8 +26,8 @@ use syntax::codemap::Span;
 use syntax::print::pprust;
 
 pub fn check_match(fcx: @FnCtxt,
-                   expr: @ast::Expr,
-                   discrim: @ast::Expr,
+                   expr: &ast::Expr,
+                   discrim: &ast::Expr,
                    arms: &[ast::Arm]) {
     let tcx = fcx.ccx.tcx;
 
@@ -106,7 +106,7 @@ pub struct pat_ctxt {
     map: PatIdMap,
 }
 
-pub fn check_pat_variant(pcx: &pat_ctxt, pat: @ast::Pat, path: &ast::Path,
+pub fn check_pat_variant(pcx: &pat_ctxt, pat: &ast::Pat, path: &ast::Path,
                          subpats: &Option<~[@ast::Pat]>, expected: ty::t) {
 
     // Typecheck the path.
@@ -418,7 +418,7 @@ pub fn check_struct_like_enum_variant_pat(pcx: &pat_ctxt,
 
 // Pattern checking is top-down rather than bottom-up so that bindings get
 // their types immediately.
-pub fn check_pat(pcx: &pat_ctxt, pat: @ast::Pat, expected: ty::t) {
+pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
 
@@ -662,7 +662,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: @ast::Pat, expected: ty::t) {
 // Helper function to check @, ~ and & patterns
 pub fn check_pointer_pat(pcx: &pat_ctxt,
                          pointer_kind: PointerKind,
-                         inner: @ast::Pat,
+                         inner: &ast::Pat,
                          pat_id: ast::NodeId,
                          span: Span,
                          expected: ty::t) {

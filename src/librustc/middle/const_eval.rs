@@ -296,7 +296,7 @@ impl ConstEvalVisitor {
 }
 
 impl Visitor<()> for ConstEvalVisitor {
-    fn visit_expr_post(&mut self, e:@Expr, _:()) {
+    fn visit_expr_post(&mut self, e: &Expr, _: ()) {
         self.classify(e);
     }
 }

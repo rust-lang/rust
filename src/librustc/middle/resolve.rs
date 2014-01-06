@@ -137,22 +137,22 @@ enum SelfBinding {
 }
 
 impl Visitor<()> for Resolver {
-    fn visit_item(&mut self, item:@item, _:()) {
+    fn visit_item(&mut self, item: &item, _: ()) {
         self.resolve_item(item);
     }
-    fn visit_arm(&mut self, arm:&Arm, _:()) {
+    fn visit_arm(&mut self, arm: &Arm, _: ()) {
         self.resolve_arm(arm);
     }
-    fn visit_block(&mut self, block:P<Block>, _:()) {
+    fn visit_block(&mut self, block: &Block, _: ()) {
         self.resolve_block(block);
     }
-    fn visit_expr(&mut self, expr:@Expr, _:()) {
+    fn visit_expr(&mut self, expr: &Expr, _: ()) {
         self.resolve_expr(expr);
     }
-    fn visit_local(&mut self, local:@Local, _:()) {
+    fn visit_local(&mut self, local: &Local, _: ()) {
         self.resolve_local(local);
     }
-    fn visit_ty(&mut self, ty:&Ty, _:()) {
+    fn visit_ty(&mut self, ty: &Ty, _: ()) {
         self.resolve_type(ty);
     }
 }
@@ -898,13 +898,13 @@ struct BuildReducedGraphVisitor<'a> {
 
 impl<'a> Visitor<ReducedGraphParent> for BuildReducedGraphVisitor<'a> {
 
-    fn visit_item(&mut self, item:@item, context:ReducedGraphParent) {
+    fn visit_item(&mut self, item: &item, context: ReducedGraphParent) {
         let p = self.resolver.build_reduced_graph_for_item(item, context);
         visit::walk_item(self, item, p);
     }
 
-    fn visit_foreign_item(&mut self, foreign_item: @foreign_item,
-                          context:ReducedGraphParent) {
+    fn visit_foreign_item(&mut self, foreign_item: &foreign_item,
+                          context: ReducedGraphParent) {
         self.resolver.build_reduced_graph_for_foreign_item(foreign_item,
                                                            context,
                                                            |r, c| {
@@ -913,11 +913,11 @@ impl<'a> Visitor<ReducedGraphParent> for BuildReducedGraphVisitor<'a> {
         })
     }
 
-    fn visit_view_item(&mut self, view_item:&view_item, context:ReducedGraphParent) {
+    fn visit_view_item(&mut self, view_item: &view_item, context: ReducedGraphParent) {
         self.resolver.build_reduced_graph_for_view_item(view_item, context);
     }
 
-    fn visit_block(&mut self, block:P<Block>, context:ReducedGraphParent) {
+    fn visit_block(&mut self, block: &Block, context: ReducedGraphParent) {
         let np = self.resolver.build_reduced_graph_for_block(block, context);
         visit::walk_block(self, block, np);
     }
@@ -927,7 +927,7 @@ impl<'a> Visitor<ReducedGraphParent> for BuildReducedGraphVisitor<'a> {
 struct UnusedImportCheckVisitor<'a> { resolver: &'a Resolver }
 
 impl<'a> Visitor<()> for UnusedImportCheckVisitor<'a> {
-    fn visit_view_item(&mut self, vi:&view_item, _:()) {
+    fn visit_view_item(&mut self, vi: &view_item, _: ()) {
         self.resolver.check_for_item_unused_imports(vi);
         visit::walk_view_item(self, vi, ());
     }
@@ -1141,7 +1141,7 @@ impl Resolver {
 
     /// Constructs the reduced graph for one item.
     fn build_reduced_graph_for_item(&mut self,
-                                        item: @item,
+                                        item: &item,
                                         parent: ReducedGraphParent)
                                             -> ReducedGraphParent
     {
@@ -1550,7 +1550,7 @@ impl Resolver {
 
     /// Constructs the reduced graph for one foreign item.
     fn build_reduced_graph_for_foreign_item(&mut self,
-                                            foreign_item: @foreign_item,
+                                            foreign_item: &foreign_item,
                                             parent: ReducedGraphParent,
                                             f: |&mut Resolver,
                                                 ReducedGraphParent|) {
@@ -3633,7 +3633,7 @@ impl Resolver {
         visit::walk_crate(self, crate, ());
     }
 
-    fn resolve_item(&mut self, item: @item) {
+    fn resolve_item(&mut self, item: &item) {
         debug!("(resolving item) resolving {}",
                self.session.str_of(item.ident));
 
@@ -4170,7 +4170,7 @@ impl Resolver {
         visit::walk_mod(self, module_, ());
     }
 
-    fn resolve_local(&mut self, local: @Local) {
+    fn resolve_local(&mut self, local: &Local) {
         // Resolve the type.
         self.resolve_type(local.ty);
 
@@ -4268,7 +4268,7 @@ impl Resolver {
         value_ribs.get().pop();
     }
 
-    fn resolve_block(&mut self, block: P<Block>) {
+    fn resolve_block(&mut self, block: &Block) {
         debug!("(resolving block) entering block");
         {
             let mut value_ribs = self.value_ribs.borrow_mut();
@@ -5152,7 +5152,7 @@ impl Resolver {
         }
     }
 
-    fn resolve_expr(&mut self, expr: @Expr) {
+    fn resolve_expr(&mut self, expr: &Expr) {
         // First, record candidate traits for this expression if it could
         // result in the invocation of a method call.
 
@@ -5324,8 +5324,7 @@ impl Resolver {
         }
     }
 
-    fn record_candidate_traits_for_expr_if_necessary(&mut self,
-                                                         expr: @Expr) {
+    fn record_candidate_traits_for_expr_if_necessary(&mut self, expr: &Expr) {
         match expr.node {
             ExprField(_, ident, _) => {
                 // FIXME(#6890): Even though you can't treat a method like a

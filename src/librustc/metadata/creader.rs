@@ -58,11 +58,11 @@ struct ReadCrateVisitor<'a> {
 }
 
 impl<'a> visit::Visitor<()> for ReadCrateVisitor<'a> {
-    fn visit_view_item(&mut self, a:&ast::view_item, _:()) {
+    fn visit_view_item(&mut self, a: &ast::view_item, _: ()) {
         visit_view_item(self.e, a);
         visit::walk_view_item(self, a, ());
     }
-    fn visit_item(&mut self, a:@ast::item, _:()) {
+    fn visit_item(&mut self, a: &ast::item, _: ()) {
         visit_item(self.e, a);
         visit::walk_item(self, a, ());
     }
@@ -164,7 +164,7 @@ fn visit_view_item(e: &mut Env, i: &ast::view_item) {
   }
 }
 
-fn visit_item(e: &Env, i: @ast::item) {
+fn visit_item(e: &Env, i: &ast::item) {
     match i.node {
         ast::item_foreign_mod(ref fm) => {
             if fm.abis.is_rust() || fm.abis.is_intrinsic() {

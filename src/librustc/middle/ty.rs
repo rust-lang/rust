@@ -276,7 +276,7 @@ struct ctxt_ {
 
     named_region_map: @RefCell<resolve_lifetime::NamedRegionMap>,
 
-    region_maps: @middle::region::RegionMaps,
+    region_maps: middle::region::RegionMaps,
 
     // Stores the types for various nodes in the AST.  Note that this table
     // is not guaranteed to be populated until after typeck.  See
@@ -966,7 +966,7 @@ pub fn mk_ctxt(s: session::Session,
                named_region_map: @RefCell<resolve_lifetime::NamedRegionMap>,
                amap: ast_map::map,
                freevars: freevars::freevar_map,
-               region_maps: @middle::region::RegionMaps,
+               region_maps: middle::region::RegionMaps,
                lang_items: middle::lang_items::LanguageItems)
             -> ctxt {
     @ctxt_ {

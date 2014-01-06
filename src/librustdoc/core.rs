@@ -72,11 +72,11 @@ fn get_ast_and_resolve(cpath: &Path,
         cfg.push(@dummy_spanned(ast::MetaWord(cfg_.to_managed())));
     }
 
-    let mut crate = phase_1_parse_input(sess, cfg.clone(), &input);
-    crate = phase_2_configure_and_expand(sess, cfg, crate);
+    let crate = phase_1_parse_input(sess, cfg.clone(), &input);
+    let (crate, ast_map) = phase_2_configure_and_expand(sess, cfg, crate);
     let driver::driver::CrateAnalysis {
         exported_items, ty_cx, ..
-    } = phase_3_run_analysis_passes(sess, &crate);
+    } = phase_3_run_analysis_passes(sess, &crate, ast_map);
 
     debug!("crate: {:?}", crate);
     return (DocContext { crate: crate, tycx: Some(ty_cx), sess: sess },

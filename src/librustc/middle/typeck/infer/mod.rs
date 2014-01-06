@@ -109,7 +109,8 @@ pub enum TypeOrigin {
     MethodCompatCheck(Span),
 
     // Checking that this expression can be assigned where it needs to be
-    ExprAssignable(@ast::Expr),
+    // FIXME(eddyb) #11161 is the original Expr required?
+    ExprAssignable(Span),
 
     // Relating trait refs when resolving vtables
     RelateTraitRefs(Span),
@@ -845,7 +846,7 @@ impl TypeOrigin {
     pub fn span(&self) -> Span {
         match *self {
             MethodCompatCheck(span) => span,
-            ExprAssignable(expr) => expr.span,
+            ExprAssignable(span) => span,
             Misc(span) => span,
             RelateTraitRefs(span) => span,
             RelateSelfType(span) => span,

@@ -158,23 +158,24 @@ pub struct CoherenceChecker {
 struct CoherenceCheckVisitor { cc: CoherenceChecker }
 
 impl visit::Visitor<()> for CoherenceCheckVisitor {
-    fn visit_item(&mut self, item:@item, _:()) {
+    fn visit_item(&mut self, item: &item, _: ()) {
 
-//                debug!("(checking coherence) item '{}'",
-//                       self.cc.crate_context.tcx.sess.str_of(item.ident));
+//      debug!("(checking coherence) item '{}'",
+//             self.cc.crate_context.tcx.sess.str_of(item.ident));
 
-                match item.node {
-                    item_impl(_, ref opt_trait, _, _) => {
-                        let opt_trait : ~[trait_ref] =
-                            opt_trait.iter()
-                                     .map(|x| (*x).clone())
-                                     .collect();
-                        self.cc.check_implementation(item, opt_trait);
+        match item.node {
+            item_impl(_, ref opt_trait, _, _) => {
+                match opt_trait.clone() {
+                    Some(opt_trait) => {
+                        self.cc.check_implementation(item, [opt_trait]);
                     }
-                    _ => {
-                        // Nothing to do.
-                    }
-                };
+                    None => self.cc.check_implementation(item, [])
+                }
+            }
+            _ => {
+                // Nothing to do.
+            }
+        };
 
         visit::walk_item(self, item, ());
     }
@@ -183,50 +184,50 @@ impl visit::Visitor<()> for CoherenceCheckVisitor {
 struct PrivilegedScopeVisitor { cc: CoherenceChecker }
 
 impl visit::Visitor<()> for PrivilegedScopeVisitor {
-    fn visit_item(&mut self, item:@item, _:()) {
+    fn visit_item(&mut self, item: &item, _: ()) {
 
-                match item.node {
-                    item_mod(ref module_) => {
-                        // Then visit the module items.
-                        visit::walk_mod(self, module_, ());
-                    }
-                    item_impl(_, None, ast_ty, _) => {
-                        if !self.cc.ast_type_is_defined_in_local_crate(ast_ty) {
-                            // This is an error.
-                            let session = self.cc.crate_context.tcx.sess;
-                            session.span_err(item.span,
-                                             "cannot associate methods with a type outside the \
-                                              crate the type is defined in; define and implement \
-                                              a trait or new type instead");
-                        }
-                    }
-                    item_impl(_, Some(ref trait_ref), _, _) => {
-                        // `for_ty` is `Type` in `impl Trait for Type`
-                        let for_ty =
-                            ty::node_id_to_type(self.cc.crate_context.tcx,
-                                                item.id);
-                        if !type_is_defined_in_local_crate(for_ty) {
-                            // This implementation is not in scope of its base
-                            // type. This still might be OK if the trait is
-                            // defined in the same crate.
+        match item.node {
+            item_mod(ref module_) => {
+                // Then visit the module items.
+                visit::walk_mod(self, module_, ());
+            }
+            item_impl(_, None, ast_ty, _) => {
+                if !self.cc.ast_type_is_defined_in_local_crate(ast_ty) {
+                    // This is an error.
+                    let session = self.cc.crate_context.tcx.sess;
+                    session.span_err(item.span,
+                                     "cannot associate methods with a type outside the \
+                                     crate the type is defined in; define and implement \
+                                     a trait or new type instead");
+                }
+            }
+            item_impl(_, Some(ref trait_ref), _, _) => {
+                // `for_ty` is `Type` in `impl Trait for Type`
+                let for_ty =
+                    ty::node_id_to_type(self.cc.crate_context.tcx,
+                                        item.id);
+                if !type_is_defined_in_local_crate(for_ty) {
+                    // This implementation is not in scope of its base
+                    // type. This still might be OK if the trait is
+                    // defined in the same crate.
 
-                            let trait_def_id =
-                                self.cc.trait_ref_to_trait_def_id(trait_ref);
+                    let trait_def_id =
+                        self.cc.trait_ref_to_trait_def_id(trait_ref);
 
-                            if trait_def_id.crate != LOCAL_CRATE {
-                                let session = self.cc.crate_context.tcx.sess;
-                                session.span_err(item.span,
-                                        "cannot provide an extension implementation \
-                                        where both trait and type are not defined in this crate");
-                            }
-                        }
-
-                        visit::walk_item(self, item, ());
-                    }
-                    _ => {
-                        visit::walk_item(self, item, ());
+                    if trait_def_id.crate != LOCAL_CRATE {
+                        let session = self.cc.crate_context.tcx.sess;
+                        session.span_err(item.span,
+                                "cannot provide an extension implementation \
+                                where both trait and type are not defined in this crate");
                     }
                 }
+
+                visit::walk_item(self, item, ());
+            }
+            _ => {
+                visit::walk_item(self, item, ());
+            }
+        }
     }
 }
 
@@ -257,7 +258,7 @@ impl CoherenceChecker {
     }
 
     pub fn check_implementation(&self,
-                                item: @item,
+                                item: &item,
                                 associated_traits: &[trait_ref]) {
         let tcx = self.crate_context.tcx;
         let self_type = ty::lookup_item_type(tcx, local_def(item.id));
@@ -592,7 +593,7 @@ impl CoherenceChecker {
     }
 
     // Converts an implementation in the AST to an Impl structure.
-    pub fn create_impl_from_item(&self, item: @item) -> @Impl {
+    pub fn create_impl_from_item(&self, item: &item) -> @Impl {
         let tcx = self.crate_context.tcx;
         match item.node {
             item_impl(_, ref trait_refs, _, ref ast_methods) => {

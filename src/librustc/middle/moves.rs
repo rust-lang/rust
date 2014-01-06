@@ -193,14 +193,14 @@ enum UseMode {
 }
 
 impl visit::Visitor<()> for VisitContext {
-    fn visit_fn(&mut self, fk:&visit::fn_kind, fd:&fn_decl,
-                b:P<Block>, s:Span, n:NodeId, _:()) {
+    fn visit_fn(&mut self, fk: &visit::fn_kind, fd: &fn_decl,
+                b: &Block, s: Span, n: NodeId, _: ()) {
         compute_modes_for_fn(self, fk, fd, b, s, n);
     }
-    fn visit_expr(&mut self, ex:@Expr, _:()) {
+    fn visit_expr(&mut self, ex: &Expr, _: ()) {
         compute_modes_for_expr(self, ex);
     }
-    fn visit_local(&mut self, l:@Local, _:()) {
+    fn visit_local(&mut self, l: &Local, _: ()) {
         compute_modes_for_local(self, l);
     }
     // FIXME(#10894) should continue recursing
@@ -240,7 +240,7 @@ pub fn moved_variable_node_id_from_def(def: Def) -> Option<NodeId> {
 // Expressions
 
 fn compute_modes_for_local<'a>(cx: &mut VisitContext,
-                               local: @Local) {
+                               local: &Local) {
     cx.use_pat(local.pat);
     for &init in local.init.iter() {
         cx.use_expr(init, Read);
@@ -250,7 +250,7 @@ fn compute_modes_for_local<'a>(cx: &mut VisitContext,
 fn compute_modes_for_fn(cx: &mut VisitContext,
                         fk: &visit::fn_kind,
                         decl: &fn_decl,
-                        body: P<Block>,
+                        body: &Block,
                         span: Span,
                         id: NodeId) {
     for a in decl.inputs.iter() {
@@ -260,7 +260,7 @@ fn compute_modes_for_fn(cx: &mut VisitContext,
 }
 
 fn compute_modes_for_expr(cx: &mut VisitContext,
-                          expr: @Expr)
+                          expr: &Expr)
 {
     cx.consume_expr(expr);
 }
@@ -272,7 +272,7 @@ impl VisitContext {
         }
     }
 
-    pub fn consume_expr(&mut self, expr: @Expr) {
+    pub fn consume_expr(&mut self, expr: &Expr) {
         /*!
          * Indicates that the value of `expr` will be consumed,
          * meaning either copied or moved depending on its type.
@@ -311,7 +311,7 @@ impl VisitContext {
     }
 
     pub fn use_expr(&mut self,
-                    expr: @Expr,
+                    expr: &Expr,
                     expr_mode: UseMode) {
         /*!
          * Indicates that `expr` is used with a given mode.  This will
