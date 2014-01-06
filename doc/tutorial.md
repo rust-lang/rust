@@ -2189,6 +2189,7 @@ printable, and that we wanted the implementation of `print` for those
 types to be exactly as it is for `int`, above:
 
 ~~~~
+# trait Printable { fn print(&self); }
 impl Printable for f32 {
     fn print(&self) { println!("{:?}", *self) }
 }
