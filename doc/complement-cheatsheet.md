@@ -6,41 +6,41 @@
 
 Use [`ToStr`](http://static.rust-lang.org/doc/master/std/to_str/trait.ToStr.html).
 
-```rust
+~~~
 let x: int = 42;
 let y: ~str = x.to_str();
-```
+~~~
 
 **String to int**
 
 Use [`FromStr`](http://static.rust-lang.org/doc/master/std/from_str/trait.FromStr.html), and its helper function, [`from_str`](http://static.rust-lang.org/doc/master/std/from_str/fn.from_str.html).
 
-```rust
+~~~
 let x: Option<int> = from_str("42");
 let y: int = x.unwrap();
-```
+~~~
 
 **Int to string, in non-base-10**
 
 Use [`ToStrRadix`](http://static.rust-lang.org/doc/master/std/num/trait.ToStrRadix.html).
 
-```rust
+~~~
 use std::num::ToStrRadix;
 
 let x: int = 42;
 let y: ~str = x.to_str_radix(16);
-```
+~~~
 
 **String to int, in non-base-10**
 
 Use [`FromStrRadix`](http://static.rust-lang.org/doc/master/std/num/trait.FromStrRadix.html), and its helper function, [`from_str_radix`](http://static.rust-lang.org/doc/master/std/num/fn.from_str_radix.html).
 
-```rust
+~~~
 use std::num::from_str_radix;
 
 let x: Option<int> = from_str_radix("deadbeef", 16);
 let y: int = x.unwrap();
-```
+~~~
 
 # File operations
 
@@ -48,27 +48,27 @@ let y: int = x.unwrap();
 
 Use [`File::open`](http://static.rust-lang.org/doc/master/std/io/fs/struct.File.html#method.open) to create a [`File`](http://static.rust-lang.org/doc/master/std/io/fs/struct.File.html) struct, which implements the [`Reader`](http://static.rust-lang.org/doc/master/std/io/trait.Reader.html) trait.
 
-```rust
+~~~
 use std::path::Path;
 use std::io::fs::File;
 
 let path : Path   = Path::new("Doc-FAQ-Cheatsheet.md");
 let on_error      = || fail!("open of {:?} failed", path);
 let reader : File = File::open(&path).unwrap_or_else(on_error);
-```
+~~~
 
 ## How do I iterate over the lines in a file?
 
 Use the [`lines`](http://static.rust-lang.org/doc/master/std/io/trait.Buffer.html#method.lines) method on a [`BufferedReader`](http://static.rust-lang.org/doc/master/std/io/buffered/struct.BufferedReader.html).
 
-```rust
+~~~
 use std::io::buffered::BufferedReader;
 
 let mut reader = BufferedReader::new(reader);
 for line in reader.lines() {
     print!("line: {}", line);
 }
-```
+~~~
 
 # String operations
 
@@ -76,10 +76,10 @@ for line in reader.lines() {
 
 Use the [`find_str`](http://static.rust-lang.org/doc/master/std/str/trait.StrSlice.html#tymethod.find_str) method.
 
-```rust
+~~~
 let str = "Hello, this is some random string";
 let index: Option<uint> = str.find_str("rand");
-```
+~~~
 
 # Containers
 
@@ -87,24 +87,24 @@ let index: Option<uint> = str.find_str("rand");
 
 The [`Container`](http://static.rust-lang.org/doc/master/std/container/trait.Container.html) trait provides the `len` method.
 
-```rust
+~~~
 let u: ~[u32] = ~[0, 1, 2];
 let v: &[u32] = &[0, 1, 2, 3];
 let w: [u32, .. 5] = [0, 1, 2, 3, 4];
 
 println!("u: {}, v: {}, w: {}", u.len(), v.len(), w.len()); // 3, 4, 5
-```
+~~~
 
 ## How do I iterate over a vector?
 
 Use the [`iter`](http://static.rust-lang.org/doc/master/std/vec/trait.ImmutableVector.html#tymethod.iter) method.
 
-```rust
+~~~
 let values: ~[int] = ~[1, 2, 3, 4, 5];
 for value in values.iter() {  // value: &int
     println!("{}", *value);
 }
-```
+~~~
 
 (See also [`mut_iter`](http://static.rust-lang.org/doc/master/std/vec/trait.MutableVector.html#tymethod.mut_iter) which yields `&mut int` and [`move_iter`](http://static.rust-lang.org/doc/master/std/vec/trait.OwnedVector.html#tymethod.move_iter) which yields `int` while consuming the `values` vector.)
 
@@ -112,7 +112,7 @@ for value in values.iter() {  // value: &int
 
 ## How do I store a function in a struct?
 
-```rust
+~~~
 struct Foo {
     myfunc: fn(int, uint) -> i32
 }
@@ -131,7 +131,7 @@ fn main() {
     println!("{}", (f.myfunc)(1, 2));
     println!("{}", (g.myfunc)(3, 4));
 }
-```
+~~~
 
 Note that the parenthesis surrounding `f.myfunc` are necessary: they are how Rust disambiguates field lookup and method call. The `'a` on `FooClosure` is the lifetime of the closure's environment pointer.
 
@@ -139,14 +139,14 @@ Note that the parenthesis surrounding `f.myfunc` are necessary: they are how Rus
 
 [Phantom types](http://www.haskell.org/haskellwiki/Phantom_type) are those that cannot be constructed at compile time. To express these in Rust, zero-variant `enum`s can be used:
 
-```rust
+~~~
 enum Open {}
 enum Closed {}
-```
+~~~
 
 Phantom types are useful for enforcing state at compile time. For example:
 
-```rust
+~~~
 struct Door<State>(~str);
 
 fn close(Door(name): Door<Open>) -> Door<Closed> {
@@ -159,7 +159,7 @@ fn open(Door(name): Door<Closed>) -> Door<Open> {
 
 let _ = close(Door::<Open>(~"front"));   // ok
 let _ = close(Door::<Closed>(~"front")); // error: mismatched types: expected `main::Door<main::Open>` but found `main::Door<main::Closed>`
-```
+~~~
 
 # FFI (Foreign Function Interface)
 
@@ -178,19 +178,19 @@ Note: The Rust signatures should be wrapped in an `extern "ABI" { ... }` block.
 
 You might see things like this in C APIs:
 
-```c
+~~~ {.notrust}
 typedef struct Window Window;
 Window* createWindow(int width, int height);
-```
+~~~
 
 You can use a zero-element `enum` ([phantom type](#how-do-i-express-phantom-types)) to represent the opaque object handle. The FFI would look like this:
 
-```rust
+~~~
 enum Window {}
 extern "C" {
     fn createWindow(width: c_int, height: c_int) -> *Window;
 }
-```
+~~~
 
 Using a phantom type ensures that the handles cannot be (safely) constructed in client code.
 
