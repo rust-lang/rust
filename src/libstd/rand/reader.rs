@@ -78,6 +78,8 @@ mod test {
     use super::*;
     use io::mem::MemReader;
     use cast;
+    use rand::*;
+    use prelude::*;
 
     #[test]
     fn test_reader_rng_u64() {

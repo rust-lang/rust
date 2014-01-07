@@ -442,11 +442,9 @@ static dot_dot_static: &'static [u8] = bytes!("..");
 
 #[cfg(test)]
 mod tests {
+    use prelude::*;
     use super::*;
-    use option::{Option, Some, None};
-    use iter::Iterator;
     use str;
-    use vec::Vector;
 
     macro_rules! t(
         (s: $path:expr, $exp:expr) => (
@@ -1325,6 +1323,7 @@ mod tests {
 mod bench {
     use extra::test::BenchHarness;
     use super::*;
+    use prelude::*;
 
     #[bench]
     fn join_home_dir(bh: &mut BenchHarness) {

@@ -293,10 +293,9 @@ pub fn fold_<T,E,Iter:Iterator<Result<T,E>>>(iterator: Iter) -> Result<(),E> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use prelude::*;
 
     use iter::range;
-    use to_str::ToStr;
-    use vec::ImmutableVector;
 
     pub fn op1() -> Result<int, ~str> { Ok(666) }
     pub fn op2() -> Result<int, ~str> { Err(~"sadface") }

@@ -170,6 +170,7 @@ impl<T> Drop for Rc<T> {
 
 #[cfg(test)]
 mod test_rc {
+    use prelude::*;
     use super::*;
     use cell::RefCell;
 

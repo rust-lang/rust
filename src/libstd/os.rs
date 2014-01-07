@@ -1239,16 +1239,14 @@ pub mod consts {
 
 #[cfg(test)]
 mod tests {
+    use prelude::*;
     use c_str::ToCStr;
-    use option::Some;
     use option;
     use os::{env, getcwd, getenv, make_absolute, args};
     use os::{setenv, unsetenv};
     use os;
-    use path::Path;
     use rand::Rng;
     use rand;
-    use str::StrSlice;
 
 
     #[test]

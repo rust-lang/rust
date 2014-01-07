@@ -330,16 +330,15 @@ pub fn process_output(prog: &str, args: &[~str]) -> Option<ProcessOutput> {
 
 #[cfg(test)]
 mod tests {
+    use prelude::*;
     use libc::c_int;
-    use option::{Option, None, Some};
     use os;
-    use path::Path;
     use run;
     use str;
     use task::spawn;
     use unstable::running_on_valgrind;
     use io::pipe::PipeStream;
-    use io::{Writer, Reader, io_error, FileNotFound};
+    use io::{io_error, FileNotFound};
 
     #[test]
     #[cfg(not(target_os="android"))] // FIXME(#10380)

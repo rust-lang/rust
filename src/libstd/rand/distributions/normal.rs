@@ -148,10 +148,10 @@ impl IndependentSample<f64> for LogNormal {
 
 #[cfg(test)]
 mod tests {
+    use prelude::*;
     use rand::*;
     use super::*;
-    use iter::range;
-    use option::{Some, None};
+    use rand::distributions::*;
 
     #[test]
     fn test_normal() {
@@ -188,11 +188,11 @@ mod tests {
 #[cfg(test)]
 mod bench {
     use extra::test::BenchHarness;
-    use rand::{XorShiftRng, RAND_BENCH_N};
-    use super::*;
-    use iter::range;
-    use option::{Some, None};
     use mem::size_of;
+    use prelude::*;
+    use rand::{XorShiftRng, RAND_BENCH_N};
+    use rand::distributions::*;
+    use super::*;
 
     #[bench]
     fn rand_normal(bh: &mut BenchHarness) {

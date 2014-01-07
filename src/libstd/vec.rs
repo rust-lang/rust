@@ -2970,10 +2970,10 @@ impl<A> Extendable<A> for ~[A] {
 
 #[cfg(test)]
 mod tests {
+    use prelude::*;
     use mem;
     use vec::*;
     use cmp::*;
-    use prelude::*;
     use rand::{Rng, task_rng};
 
     fn square(n: uint) -> uint { n * n }
@@ -4454,13 +4454,11 @@ mod tests {
 #[cfg(test)]
 mod bench {
     use extra::test::BenchHarness;
-    use iter::range;
-    use vec;
-    use vec::{VectorVector, MutableTotalOrdVector};
-    use option::*;
+    use mem;
+    use prelude::*;
     use ptr;
     use rand::{weak_rng, Rng};
-    use mem;
+    use vec;
 
     #[bench]
     fn iterator(bh: &mut BenchHarness) {

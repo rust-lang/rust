@@ -100,8 +100,6 @@ impl Writer for UdpStream {
 mod test {
     use super::*;
     use io::net::ip::{SocketAddr};
-    use io::*;
-    use prelude::*;
 
     iotest!(fn bind_error() {
         let mut called = false;

@@ -226,9 +226,8 @@ impl<T: Rand + 'static> Rand for @T {
 
 #[cfg(test)]
 mod tests {
+    use prelude::*;
     use rand::{Rng, task_rng, Open01, Closed01};
-    use iter::range;
-    use option::{None, Some};
 
     struct ConstantRng(u64);
     impl Rng for ConstantRng {

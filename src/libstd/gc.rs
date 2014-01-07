@@ -54,6 +54,7 @@ impl<T: DeepClone + Send + 'static> DeepClone for Gc<T> {
 
 #[cfg(test)]
 mod tests {
+    use prelude::*;
     use super::*;
     use cell::RefCell;
 

@@ -253,9 +253,9 @@ fn ziggurat<R:Rng>(
 
 #[cfg(test)]
 mod tests {
+    use prelude::*;
     use rand::*;
     use super::*;
-    use option::{Some, None};
 
     #[deriving(Eq)]
     struct ConstRand(uint);

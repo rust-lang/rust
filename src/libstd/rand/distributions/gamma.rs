@@ -310,10 +310,10 @@ impl IndependentSample<f64> for StudentT {
 
 #[cfg(test)]
 mod test {
+    use rand::distributions::*;
+    use prelude::*;
     use rand::*;
     use super::*;
-    use iter::range;
-    use option::{Some, None};
 
     #[test]
     fn test_chi_squared_one() {
@@ -371,13 +371,12 @@ mod test {
 
 #[cfg(test)]
 mod bench {
-    use super::*;
+    use extra::test::BenchHarness;
     use mem::size_of;
+    use prelude::*;
     use rand::distributions::IndependentSample;
     use rand::{StdRng, RAND_BENCH_N};
-    use extra::test::BenchHarness;
-    use iter::range;
-    use option::{Some, None};
+    use super::*;
 
 
     #[bench]
