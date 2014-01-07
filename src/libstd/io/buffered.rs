@@ -66,7 +66,8 @@ pub struct BufferedReader<R> {
     priv inner: R,
     priv buf: ~[u8],
     priv pos: uint,
-    priv cap: uint
+    priv cap: uint,
+    priv eof: bool,
 }
 
 impl<R: Reader> BufferedReader<R> {
@@ -84,7 +85,8 @@ impl<R: Reader> BufferedReader<R> {
             inner: inner,
             buf: buf,
             pos: 0,
-            cap: 0
+            cap: 0,
+            eof: false,
         }
     }
 
@@ -113,7 +115,7 @@ impl<R: Reader> Buffer for BufferedReader<R> {
                     self.pos = 0;
                     self.cap = cap;
                 }
-                None => {}
+                None => { self.eof = true; }
             }
         }
         return self.buf.slice(self.pos, self.cap);
@@ -134,14 +136,10 @@ impl<R: Reader> Reader for BufferedReader<R> {
             nread
         };
         self.pos += nread;
-        if nread == 0 && self.inner.eof() && buf.len() != 0 {
-                return None;
+        if nread == 0 && buf.len() != 0 && self.eof {
+            return None;
         }
         Some(nread)
-    }
-
-    fn eof(&mut self) -> bool {
-        self.pos == self.cap && self.inner.eof()
     }
 }
 
@@ -270,7 +268,6 @@ impl<W> InternalBufferedWriter<W> {
 
 impl<W: Reader> Reader for InternalBufferedWriter<W> {
     fn read(&mut self, buf: &mut [u8]) -> Option<uint> { self.get_mut_ref().inner.read(buf) }
-    fn eof(&mut self) -> bool { self.get_mut_ref().inner.eof() }
 }
 
 /// Wraps a Stream and buffers input and output to and from it
@@ -325,7 +322,6 @@ impl<S: Stream> Buffer for BufferedStream<S> {
 
 impl<S: Stream> Reader for BufferedStream<S> {
     fn read(&mut self, buf: &mut [u8]) -> Option<uint> { self.inner.read(buf) }
-    fn eof(&mut self) -> bool { self.inner.eof() }
 }
 
 impl<S: Stream> Writer for BufferedStream<S> {
@@ -351,10 +347,6 @@ mod test {
         fn read(&mut self, _: &mut [u8]) -> Option<uint> {
             None
         }
-
-        fn eof(&mut self) -> bool {
-            true
-        }
     }
 
     impl Writer for NullStream {
@@ -370,10 +362,6 @@ mod test {
         fn read(&mut self, _: &mut [u8]) -> Option<uint> {
             self.lengths.shift_opt()
         }
-
-        fn eof(&mut self) -> bool {
-            self.lengths.len() == 0
-        }
     }
 
     #[test]
@@ -385,24 +373,20 @@ mod test {
         let nread = reader.read(buf);
         assert_eq!(Some(2), nread);
         assert_eq!([0, 1, 0], buf);
-        assert!(!reader.eof());
 
         let mut buf = [0];
         let nread = reader.read(buf);
         assert_eq!(Some(1), nread);
         assert_eq!([2], buf);
-        assert!(!reader.eof());
 
         let mut buf = [0, 0, 0];
         let nread = reader.read(buf);
         assert_eq!(Some(1), nread);
         assert_eq!([3, 0, 0], buf);
-        assert!(!reader.eof());
 
         let nread = reader.read(buf);
         assert_eq!(Some(1), nread);
         assert_eq!([4, 0, 0], buf);
-        assert!(reader.eof());
 
         assert_eq!(None, reader.read(buf));
     }
@@ -466,13 +450,11 @@ mod test {
 
         impl io::Reader for S {
             fn read(&mut self, _: &mut [u8]) -> Option<uint> { None }
-            fn eof(&mut self) -> bool { true }
         }
 
         let mut stream = BufferedStream::new(S);
         let mut buf = [];
         stream.read(buf);
-        stream.eof();
         stream.write(buf);
         stream.flush();
     }
@@ -539,6 +521,7 @@ mod test {
         assert_eq!(reader.read(buf), Some(2));
         assert_eq!(reader.read(buf), Some(0));
         assert_eq!(reader.read(buf), Some(1));
+        assert_eq!(reader.read(buf), Some(0));
         assert_eq!(reader.read(buf), None);
     }
 

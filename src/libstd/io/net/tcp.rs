@@ -67,8 +67,6 @@ impl Reader for TcpStream {
             }
         }
     }
-
-    fn eof(&mut self) -> bool { fail!() }
 }
 
 impl Writer for TcpStream {

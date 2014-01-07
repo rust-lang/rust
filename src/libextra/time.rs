@@ -788,7 +788,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
         }
     }
 
-    if pos == len && rdr.eof() {
+    if pos == len && rdr.tell() as uint == format.len() {
         Ok(Tm {
             tm_sec: tm.tm_sec,
             tm_min: tm.tm_min,

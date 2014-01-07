@@ -124,7 +124,7 @@ impl MemReader {
 
 impl Reader for MemReader {
     fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
-        { if self.eof() { return None; } }
+        if self.pos == self.buf.len() { return None }
 
         let write_len = min(buf.len(), self.buf.len() - self.pos);
         {
@@ -138,8 +138,6 @@ impl Reader for MemReader {
 
         return Some(write_len);
     }
-
-    fn eof(&mut self) -> bool { self.pos == self.buf.len() }
 }
 
 impl Seek for MemReader {
@@ -222,7 +220,7 @@ impl<'a> BufReader<'a> {
 
 impl<'a> Reader for BufReader<'a> {
     fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
-        { if self.eof() { return None; } }
+        if self.pos == self.buf.len() { return None }
 
         let write_len = min(buf.len(), self.buf.len() - self.pos);
         {
@@ -236,8 +234,6 @@ impl<'a> Reader for BufReader<'a> {
 
         return Some(write_len);
      }
-
-    fn eof(&mut self) -> bool { self.pos == self.buf.len() }
 }
 
 impl<'a> Seek for BufReader<'a> {
@@ -369,9 +365,7 @@ mod test {
         assert_eq!(buf, [1, 2, 3, 4]);
         assert_eq!(reader.read(buf), Some(3));
         assert_eq!(buf.slice(0, 3), [5, 6, 7]);
-        assert!(reader.eof());
         assert_eq!(reader.read(buf), None);
-        assert!(reader.eof());
     }
 
     #[test]
@@ -391,9 +385,7 @@ mod test {
         assert_eq!(buf, [1, 2, 3, 4]);
         assert_eq!(reader.read(buf), Some(3));
         assert_eq!(buf.slice(0, 3), [5, 6, 7]);
-        assert!(reader.eof());
         assert_eq!(reader.read(buf), None);
-        assert!(reader.eof());
     }
 
     #[test]

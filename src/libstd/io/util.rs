@@ -36,10 +36,6 @@ impl<'a, R: Reader> Reader for LimitReader<'a, R> {
             len
         })
     }
-
-    fn eof(&mut self) -> bool {
-        self.limit == 0 || self.inner.eof()
-    }
 }
 
 /// A `Writer` which ignores bytes written to it, like /dev/null.
@@ -59,11 +55,6 @@ impl Reader for ZeroReader {
         buf.set_memory(0);
         Some(buf.len())
     }
-
-    #[inline]
-    fn eof(&mut self) -> bool {
-        false
-    }
 }
 
 /// A `Reader` which is always at EOF, like /dev/null.
@@ -73,11 +64,6 @@ impl Reader for NullReader {
     #[inline]
     fn read(&mut self, _buf: &mut [u8]) -> Option<uint> {
         None
-    }
-
-    #[inline]
-    fn eof(&mut self) -> bool {
-        true
     }
 }
 
@@ -140,10 +126,6 @@ impl<R: Reader, I: Iterator<R>> Reader for ChainedReader<I, R> {
         }
         None
     }
-
-    fn eof(&mut self) -> bool {
-        self.cur_reader.is_none()
-    }
 }
 
 /// A `Reader` which forwards input from another `Reader`, passing it along to
@@ -174,10 +156,6 @@ impl<R: Reader, W: Writer> Reader for TeeReader<R, W> {
             len
         })
     }
-
-    fn eof(&mut self) -> bool {
-        self.reader.eof()
-    }
 }
 
 /// Copies all data from a `Reader` to a `Writer`.
@@ -204,7 +182,6 @@ mod test {
             let mut r = LimitReader::new(&mut r, 4);
             assert_eq!(~[0, 1, 2], r.read_to_end());
         }
-        assert!(r.eof());
     }
 
     #[test]
@@ -238,7 +215,6 @@ mod test {
         let mut r = NullReader;
         let mut buf = ~[0];
         assert_eq!(r.read(buf), None);
-        assert!(r.eof());
     }
 
     #[test]
@@ -289,7 +265,6 @@ mod test {
         let mut r = MemReader::new(~[0, 1, 2, 3, 4]);
         let mut w = MemWriter::new();
         copy(&mut r, &mut w);
-        assert!(r.eof());
         assert_eq!(~[0, 1, 2, 3, 4], w.unwrap());
     }
 }
