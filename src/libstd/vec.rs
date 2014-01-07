@@ -1017,6 +1017,16 @@ pub trait ImmutableVector<'a, T> {
      * Fails if slice is empty.
      */
     fn pop_ref(&mut self) -> &'a T;
+
+    /// Returns true if all the elements in vector for which pred returns
+    /// true precede those for which it returns false.
+    ///
+    /// # Example
+    /// ```rust
+    /// let even = |x: &int| *x % 2 == 0;
+    /// assert!([2, 4, 6, 1, 3, 5].is_partitioned(|x| even(x)));
+    /// ```
+    fn is_partitioned(self, f: |&T| -> bool) -> bool;
 }
 
 impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
@@ -1199,6 +1209,18 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
             let s: &mut Slice<T> = cast::transmute(self);
             &*raw::pop_ptr(s)
         }
+    }
+
+    fn is_partitioned(self, f: |&T| -> bool) -> bool {
+        let mut i = 0;
+        let len = self.len();
+        while i < len && f(&self[i]) {
+            i += 1;
+        }
+        while i < len && !f(&self[i]) {
+            i += 1;
+        }
+        i == len
     }
 }
 
@@ -2302,6 +2324,54 @@ pub trait MutableVector<'a, T> {
     /// ignores move semantics. `self` and `src` must not
     /// overlap. Fails if `self` is shorter than `src`.
     unsafe fn copy_memory(self, src: &[T]);
+
+    /// Rotates the vector n places to the right by placing the first n elements at the end of the vector,
+    /// and moving the rest left to fill the gap. Operates in place. Returns the index to which
+    /// the first element of the vector was moved.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut v = [1, 2, 3, 4, 5, 6];
+    /// let i = v.rotate(2);
+    /// assert_eq!(v, [3, 4, 5, 6, 1, 2]);
+    /// assert_eq!(i, 4);
+    /// ```
+    fn rotate(self, mid: uint) -> uint;
+
+    /// Partitions the vector so that all elements satisfying `pred`
+    /// precede those that do not. The partitioning is unstable.
+    /// Returns the index of the first element not satisfying `pred`.
+    ///
+    /// Complexity O(N), where N is the length of the vector.
+    /// For stable version, see `partition_stable`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut v = [1, 2, 3, 4, 5, 6];
+    /// let is_even = |x: &int| *x % 2 == 0;
+    /// assert_eq!(v.partition(|x| is_even(x)), 3);
+    /// assert!(v.is_partitioned(is_even))
+    /// ```
+    fn partition(self, pred: |&T| -> bool) -> uint;
+
+    /// Partitions the vector so that all elements satisfying `pred`
+    /// precede those that do not. The partitioning is stable.
+    /// Returns the index of the first element not satisfying `pred`.
+    ///
+    /// Complexity O(N * log(N)), where N is the length of the vector.
+    /// If the stability is not required, consider using linear-time `partition` instead.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut v = [1, 2, 3, 4, 5, 6];
+    /// let is_even = |x: &int| *x % 2 == 0;
+    /// assert_eq!(v.partition(|x| is_even(x)), 3);
+    /// assert_eq!(v, [2, 4, 6, 1, 3, 5]);
+    /// ```
+    fn partition_stable(self, f: |&T| -> bool) -> uint;
 }
 
 impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
@@ -2442,6 +2512,64 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
         let len_src = src.len();
         assert!(self.len() >= len_src);
         ptr::copy_nonoverlapping_memory(self.as_mut_ptr(), src.as_ptr(), len_src)
+    }
+
+    fn rotate(self, mid: uint) -> uint {
+        let end = self.len();
+        if mid == 0 {
+            return end;
+        }
+        if mid == end {
+            return 0;
+        }
+        if mid > end {
+            fail!("index out of bounds: len is {} but rotating around {}", end, mid);
+        }
+        let (mut a, mut b) = (0, mid);
+
+        let mut piv = mid;
+        while a != b {
+            self.swap(a, b);
+            a += 1;
+            b += 1;
+
+            if b == end {
+                b = piv;
+            } else if a == piv {
+                piv = b;
+            }
+        }
+        end - mid
+    }
+
+    fn partition(self, f: |&T| -> bool) -> uint {
+        let (mut a, mut b) = (0, self.len());
+        while a != b {
+            if f(&self[a]) {
+                a += 1;
+            } else {
+                b -= 1;
+                self.swap(a, b);
+            }
+        }
+        a
+    }
+
+    fn partition_stable(self, f: |&T| -> bool) -> uint {
+        let len = self.len();
+        if len == 0 {
+            return 0;
+        }
+        if len == 1 {
+            if f(&self[0]) {
+                return 1;
+            }
+            return 0;
+        }
+        let mid = len / 2;
+        let a = self.mut_slice_to(mid).partition_stable(|x| f(x));
+        let b = self.mut_slice_from(mid).partition_stable(f) + mid;
+        self.mut_slice(a, b).rotate(mid-a) + a
     }
 }
 
@@ -4446,6 +4574,51 @@ mod tests {
     fn test_mut_pop_ref_empty() {
         let mut x: &mut [int] = [];
         x.mut_pop_ref();
+    }
+
+    #[test]
+    fn test_rotate() {
+        let mut v = [1, 2, 3, 4, 5, 6];
+        assert_eq!(v.rotate(0), 6);
+        assert_eq!(v.rotate(6), 0);
+        assert_eq!(v.rotate(3), 3);
+        assert_eq!(v, [4, 5, 6, 1, 2, 3]);
+        let mut v = [1, 2, 3, 4, 5, 6];
+        assert_eq!(v.rotate(2), 4);
+        assert_eq!(v, [3, 4, 5, 6, 1, 2]);
+        let mut v = [1, 2, 3, 4, 5, 6];
+        assert_eq!(v.rotate(4), 2);
+        assert_eq!(v, [5, 6, 1, 2, 3, 4]);
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_rotate_fail() {
+        let mut v = [1, 2, 3, 4, 5, 6];
+        v.rotate(10);
+    }
+
+    #[test]
+    fn test_is_partitioned() {
+        let even = |x: &int| *x % 2 == 0;
+        assert!([2, 4, 6, 1, 3, 5].is_partitioned(|x| even(x)));
+        assert!(![1, 2, 4, 6, 3, 5].is_partitioned(|x| even(x)));
+    }
+
+    #[test]
+    fn test_partion() {
+        let mut v = [1, 2, 3, 4, 5, 6];
+        let is_even = |x: &int| *x % 2 == 0;
+        assert_eq!(v.partition(|x| is_even(x)), 3);
+        assert!(v.is_partitioned(is_even))
+    }
+
+    #[test]
+    fn test_partion_stable() {
+        let mut v = [1, 2, 3, 4, 5, 6];
+        let is_even = |x: &int| *x % 2 == 0;
+        assert_eq!(v.partition_stable(|x| is_even(x)), 3);
+        assert_eq!(v, [2, 4, 6, 1, 3, 5]);
     }
 }
 
