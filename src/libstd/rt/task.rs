@@ -20,6 +20,8 @@ use cleanup;
 use clone::Clone;
 use io::Writer;
 use iter::{Iterator, Take};
+#[cfg(not(stage0))]
+use gc::collector::GarbageCollector;
 use local_data;
 use logging::Logger;
 use ops::Drop;
@@ -47,7 +49,7 @@ use unstable::finally::Finally;
 
 pub struct Task {
     heap: LocalHeap,
-    gc: GarbageCollector,
+    gc: PossibleGc,
     storage: LocalStorage,
     unwinder: Unwinder,
     death: Death,
@@ -63,7 +65,14 @@ pub struct Task {
     priv imp: Option<~Runtime>,
 }
 
-pub struct GarbageCollector;
+pub enum PossibleGc {
+    GcUninit,
+    GcBorrowed,
+    GcExists(~GarbageCollector)
+}
+
+#[cfg(stage0)]
+struct GarbageCollector;
 pub struct LocalStorage(Option<local_data::Map>);
 
 /// A handle to a blocked task. Usually this means having the ~Task pointer by
@@ -88,7 +97,7 @@ impl Task {
     pub fn new() -> Task {
         Task {
             heap: LocalHeap::new(),
-            gc: GarbageCollector,
+            gc: GcUninit,
             storage: LocalStorage(None),
             unwinder: Unwinder::new(),
             death: Death::new(),

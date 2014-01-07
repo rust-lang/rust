@@ -53,11 +53,12 @@
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://static.rust-lang.org/doc/master")];
 
-#[feature(macro_rules, globs, asm, managed_boxes, thread_local, link_args)];
+#[feature(macro_rules, globs, asm, managed_boxes, thread_local, link_args, managed)];
 
 // Don't link to std. We are std.
 #[no_std];
 
+#[warn(unknown_features)];
 #[deny(non_camel_case_types)];
 #[deny(missing_doc)];
 
@@ -122,6 +123,7 @@ pub mod owned;
 pub mod managed;
 pub mod borrow;
 pub mod rc;
+#[cfg(not(stage0))]
 pub mod gc;
 
 
