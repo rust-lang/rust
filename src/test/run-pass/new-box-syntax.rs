@@ -14,13 +14,12 @@ struct Structure {
 pub fn main() {
     let x: ~int = box(HEAP) 2;
     let y: ~int = box 2;
-    let z: Gc<int> = box(GC) 2;
-    let a: Gc<Structure> = box(GC) Structure {
+    //let z: Gc<int> = box(GC) 2;
+    /*let a: Gc<Structure> = box(GC) Structure {
         x: 10,
         y: 20,
-    };
+    };*/
     let b: ~int = box()(1 + 2);
     let c = box()(3 + 4);
-    let d = box(GC)(5 + 6);
+    //let d = box(GC)(5 + 6);
 }
-
