@@ -48,7 +48,7 @@ let y: int = x.unwrap();
 
 Use [`File::open`](http://static.rust-lang.org/doc/master/std/io/fs/struct.File.html#method.open) to create a [`File`](http://static.rust-lang.org/doc/master/std/io/fs/struct.File.html) struct, which implements the [`Reader`](http://static.rust-lang.org/doc/master/std/io/trait.Reader.html) trait.
 
-~~~
+~~~ {.xfail-test}
 use std::path::Path;
 use std::io::fs::File;
 
@@ -63,6 +63,9 @@ Use the [`lines`](http://static.rust-lang.org/doc/master/std/io/trait.Buffer.htm
 
 ~~~
 use std::io::buffered::BufferedReader;
+# use std::io::mem::MemReader;
+
+# let reader = MemReader::new(~[]);
 
 let mut reader = BufferedReader::new(reader);
 for line in reader.lines() {
@@ -149,6 +152,9 @@ Phantom types are useful for enforcing state at compile time. For example:
 ~~~
 struct Door<State>(~str);
 
+struct Open;
+struct Closed;
+
 fn close(Door(name): Door<Open>) -> Door<Closed> {
     Door::<Closed>(name)
 }
@@ -157,7 +163,12 @@ fn open(Door(name): Door<Closed>) -> Door<Open> {
     Door::<Open>(name)
 }
 
-let _ = close(Door::<Open>(~"front"));   // ok
+let _ = close(Door::<Open>(~"front"));
+~~~
+
+Attempting to close a closed door is prevented statically:
+
+~~~ {.xfail-test}
 let _ = close(Door::<Closed>(~"front")); // error: mismatched types: expected `main::Door<main::Open>` but found `main::Door<main::Closed>`
 ~~~
 
@@ -185,7 +196,7 @@ Window* createWindow(int width, int height);
 
 You can use a zero-element `enum` ([phantom type](#how-do-i-express-phantom-types)) to represent the opaque object handle. The FFI would look like this:
 
-~~~
+~~~ {.xfail-test}
 enum Window {}
 extern "C" {
     fn createWindow(width: c_int, height: c_int) -> *Window;
