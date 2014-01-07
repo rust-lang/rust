@@ -66,8 +66,6 @@ impl Reader for PipeStream {
             }
         }
     }
-
-    fn eof(&mut self) -> bool { false }
 }
 
 impl Writer for PipeStream {
