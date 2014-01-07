@@ -1333,11 +1333,10 @@ impl to_str::ToStr for Error {
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
 
     use std::io;
-    use serialize::Decodable;
+    use serialize::{Encodable, Decodable};
     use treemap::TreeMap;
 
     #[deriving(Eq, Encodable, Decodable)]
