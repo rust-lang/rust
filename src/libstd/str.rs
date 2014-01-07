@@ -901,7 +901,7 @@ pub fn utf16_chars(v: &[u16], f: |char|) {
             let mut c: u32 = (u - 0xD800_u16) as u32;
             c = c << 10;
             c |= (u2 - 0xDC00_u16) as u32;
-            c |= 0x1_0000_u32 as u32;
+            c |= 0x1_0000_u32;
             f(unsafe { cast::transmute(c) });
             i += 2u;
         }
@@ -987,7 +987,7 @@ pub mod raw {
     /// Create a Rust string from a *u8 buffer of the given length
     pub unsafe fn from_buf_len(buf: *u8, len: uint) -> ~str {
         let mut v: ~[u8] = vec::with_capacity(len);
-        ptr::copy_memory(v.as_mut_ptr(), buf as *u8, len);
+        ptr::copy_memory(v.as_mut_ptr(), buf, len);
         v.set_len(len);
 
         assert!(is_utf8(v));

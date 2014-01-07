@@ -929,8 +929,8 @@ fn calc_result(desc: &TestDesc, task_succeeded: bool) -> TestResult {
 impl ToJson for Metric {
     fn to_json(&self) -> json::Json {
         let mut map = ~TreeMap::new();
-        map.insert(~"value", json::Number(self.value as f64));
-        map.insert(~"noise", json::Number(self.noise as f64));
+        map.insert(~"value", json::Number(self.value));
+        map.insert(~"noise", json::Number(self.noise));
         json::Object(map)
     }
 }
@@ -1132,7 +1132,7 @@ impl BenchHarness {
             let loop_start = precise_time_ns();
 
             for p in samples.mut_iter() {
-                self.bench_n(n as u64, |x| f(x));
+                self.bench_n(n, |x| f(x));
                 *p = self.ns_per_iter() as f64;
             };
 
@@ -1140,7 +1140,7 @@ impl BenchHarness {
             let summ = stats::Summary::new(samples);
 
             for p in samples.mut_iter() {
-                self.bench_n(5 * n as u64, |x| f(x));
+                self.bench_n(5 * n, |x| f(x));
                 *p = self.ns_per_iter() as f64;
             };
 

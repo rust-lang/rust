@@ -76,7 +76,7 @@ pub unsafe fn closure_exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
     assert!(td.is_not_null());
 
     let total_size = get_box_size(size, (*td).align);
-    let p = malloc_raw(total_size as uint);
+    let p = malloc_raw(total_size);
 
     let alloc = p as *mut raw::Box<()>;
     (*alloc).type_desc = td;
