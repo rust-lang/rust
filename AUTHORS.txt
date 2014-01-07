@@ -225,6 +225,7 @@ Lindsey Kuper <lindsey@composition.al>
 Luca Bruno <lucab@debian.org>
 Luis de Bethencourt <luis@debethencourt.com>
 Luqman Aden <laden@csclub.uwaterloo.ca>
+lyuts <dioxinu@gmail.com>
 Magnus Auvinen <magnus.auvinen@gmail.com>
 Mahmut Bulut <mahmutbulut0@gmail.com>
 maikklein <maikklein@googlemail.com>
@@ -240,6 +241,7 @@ Martin DeMello <martindemello@gmail.com>
 Marvin Löbel <loebel.marvin@gmail.com>
 Matt Brubeck <mbrubeck@limpet.net>
 Matt Carberry <carberry.matt@gmail.com>
+Matthew Auld <matthew.auld@intel.com>
 Matthew Iselin <matthew@theiselins.net>
 Matthew McPherrin <matthew@mcpherrin.ca>
 Matthew O'Connor <thegreendragon@gmail.com>

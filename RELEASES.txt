@@ -1,7 +1,7 @@
 Version 0.9 (January 2014)
 --------------------------
 
-   * ~1600 changes, numerous bugfixes
+   * ~1800 changes, numerous bugfixes
 
    * Language
       * The `float` type has been removed. Use `f32` or `f64` instead.
@@ -22,6 +22,9 @@ Version 0.9 (January 2014)
       * `@fn`s have been removed.
       * `do` only works with procs in order to make it obvious what the cost
         of `do` is.
+      * Single-element tuple-like structs can no longer be dereferenced to
+        obtain the inner value. A more comprehensive solution for overloading
+        the dereference operator will be provided in the future.
       * The `#[link(...)]` attribute has been replaced with
         `#[crate_id = "name#vers"]`.
       * Empty `impl`s must be terminated with empty braces and may not be
@@ -32,6 +35,8 @@ Version 0.9 (January 2014)
       * `printf!` and `printfln!` (old-style formatting) removed in favor of
         `print!` and `println!`.
       * `mut` works in patterns now, as in `let (mut x, y) = (1, 2);`.
+      * The `extern mod foo (name = "bar")` syntax has been removed. Use
+        `extern mod foo = "bar"` instead.
       * New reserved keywords: `alignof`, `offsetof`, `sizeof`.
       * Macros can have attributes.
       * Macros can expand to items with attributes.
@@ -76,6 +81,7 @@ Version 0.9 (January 2014)
         variables. Currently behind the `thread_local` feature gate.
       * The `return` keyword may be used in closures.
       * Types that can be copied via a memcpy implement the `Pod` kind.
+      * The `cfg` attribute can now be used on struct fields and enum variants.
 
    * Libraries
       * std: The `option` and `result` API's have been overhauled to make them
@@ -90,9 +96,14 @@ Version 0.9 (January 2014)
       * std: The reference counted pointer type `extra::rc` moved into std.
       * std: The `Gc` type in the `gc` module will replace `@` (it is currently
         just a wrapper around it).
+      * std: The `Either` type has been removed.
       * std: `fmt::Default` can be implemented for any type to provide default
         formatting to the `format!` macro, as in `format!("{}", myfoo)`.
       * std: The `rand` API continues to be tweaked.
+      * std: The `rust_begin_unwind` function, useful for insterting breakpoints
+        on failure in gdb, is now named `rust_fail`.
+      * std: The `each_key` and `each_value` methods on `HashMap` have been
+        replaced by the `keys` and `values` iterators.
       * std: Functions dealing with type size and alignment have moved from the
         `sys` module to the `mem` module.
       * std: The `path` module was written and API changed.
