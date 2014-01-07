@@ -16,44 +16,45 @@ don't need them very often.
 "But tutorial!" you may cry. "My co-worker wrote a function that looks like
 this:
 
-```rust
+~~~rust
 fn succ(x: &int) -> int { *x + 1 }
-```
+~~~
 
 So I wrote this code to try it out:
 
-```rust
+~~~rust {.xfail-test}
 fn main() {
     let number = 5;
     let succ_number = succ(number);
     println!("{}", succ_number);
 }
-```
+~~~
 
 And now I get an error:
 
-```
+~~~ {.notrust}
 error: mismatched types: expected `&int` but found `<VI0>` (expected &-ptr but found integral variable)
-```
+~~~
 
 What gives? It needs a pointer! Therefore I have to use pointers!"
 
 Turns out, you don't. All you need is a reference. Try this on for size:
 
-```rust
+~~~rust
+# fn succ(x: &int) -> int { *x + 1 }
 fn main() {
     let number = 5;
     let succ_number = succ(&number);
     println!("{}", succ_number);
 }
-```
+~~~
 
 It's that easy! One extra little `&` there. This code will run, and print `6`.
 
 That's all you need to know. Your co-worker could have written the function
 like this:
 
-```rust
+~~~rust
 fn succ(x: int) -> int { x + 1 }
 
 fn main() {
@@ -61,7 +62,7 @@ fn main() {
     let succ_number = succ(number);
     println!("{}", succ_number);
 }
-```
+~~~
 
 No pointers even needed. Then again, this is a simple example. I assume that
 your real-world `succ` function is more complicated, and maybe your co-worker
@@ -100,7 +101,8 @@ passing things by reference, or passing things by pointer. In some langauges,
 like Java, you can't even have objects without a pointer to them. Therefore, if
 you were writing this Rust code:
 
-```rust
+~~~rust
+# fn transform(p: Point) -> Point { p }
 struct Point {
     x: int,
     y: int,
@@ -112,22 +114,27 @@ fn main() {
     println!("{:?}", p1);
 }
 
-```
+~~~
 
 I think you'd implement `transform` like this:
 
-```rust
+~~~rust
+# struct Point {
+#     x: int,
+#     y: int,
+# }
+# let p0 = Point { x: 5, y: 10};
 fn transform(p: &Point) -> Point {
     Point { x: p.x + 1, y: p.y + 1}
 }
 
 // and change this:
 let p1 = transform(&p0);
-```
+~~~
 
 This does work, but you don't need to create those references! The better way to write this is simply:
 
-```rust
+~~~rust
 struct Point {
     x: int,
     y: int,
@@ -142,7 +149,7 @@ fn main() {
     let p1 = transform(p0);
     println!("{:?}", p1);
 }
-```
+~~~
 
 But won't this be inefficent? Well, that's a complicated question, but it's
 important to know that Rust, like C and C++, store aggregate data types
@@ -175,7 +182,7 @@ trait. Therefore, unboxed traits don't make any sense, and aren't allowed.
 
 Sometimes, you need a recursive data structure. The simplest is known as a 'cons list':
 
-```rust
+~~~rust
 enum List<T> {
     Nil,
     Cons(T, ~List<T>),
@@ -185,13 +192,13 @@ fn main() {
     let list: List<int> = Cons(1, ~Cons(2, ~Cons(3, ~Nil)));
     println!("{:?}", list);
 }
-```
+~~~
 
 This prints:
 
-```
+~~~ {.notrust}
 Cons(1, ~Cons(2, ~Cons(3, ~Nil)))
-```
+~~~
 
 The inner lists _must_ be an owned pointer, becuase we can't know how many
 elements are in the list. Without knowing the length, we don't know the size,
@@ -207,7 +214,7 @@ proved that it's an issue through benchmarks.
 
 For example, this will work:
 
-```rust
+~~~rust
 struct Point {
     x: int,
     y: int,
@@ -219,12 +226,12 @@ fn main() {
         println(a.x.to_str());
     }
 }
-```
+~~~
 
 This struct is tiny, so it's fine. If `Point` were large, this would be more
 efficient:
 
-```rust
+~~~rust
 struct Point {
     x: int,
     y: int,
@@ -236,7 +243,7 @@ fn main() {
         println(a.x.to_str());
     }
 }
-```
+~~~
 
 Now it'll be copying a pointer-sized chunk of memory rather than the whole
 struct.
@@ -249,7 +256,7 @@ program is very large and complicated.
 
 For example, let's say you're using an owned pointer, and you want to do this:
 
-```rust
+~~~rust {.xfail-test}
 struct Point {
     x: int,
     y: int,
@@ -261,22 +268,22 @@ fn main() {
     println(b.x.to_str());
     println(a.x.to_str());
 }
-```
+~~~
 
 You'll get this error:
 
-```
+~~~ {.notrust}
 test.rs:10:12: 10:13 error: use of moved value: `a`
 test.rs:10     println(a.x.to_str());
                        ^
 test.rs:8:8: 8:9 note: `a` moved here because it has type `~Point`, which is moved by default (use `ref` to override)
 test.rs:8     let b = a;
                   ^
-```
+~~~
 
 As the message says, owned pointers only allow for one owner at a time. When you assign `a` to `b`, `a` becomes invalid. Change your code to this, however:
 
-```rust
+~~~rust
 struct Point {
     x: int,
     y: int,
@@ -288,14 +295,14 @@ fn main() {
     println(b.x.to_str());
     println(a.x.to_str());
 }
-```
+~~~
 
 And it works:
 
-```
+~~~ {.notrust}
 10
 10
-```
+~~~
 
 So why not just use managed pointers everywhere? There are two big drawbacks to
 managed pointers:
@@ -315,15 +322,15 @@ data they're pointing to. They're just borrowing it for a while. So in that
 sense, they're simple: just keep whatever ownership the data already has. For
 example:
 
-```rust
+~~~rust
 use std::num::sqrt;
 
 struct Point {
-    x: float,
-    y: float,
+    x: f32,
+    y: f32,
 }
 
-fn compute_distance(p1: &Point, p2: &Point) -> float {
+fn compute_distance(p1: &Point, p2: &Point) -> f32 {
     let x_d = p1.x - p2.x;
     let y_d = p1.y - p2.y;
 
@@ -336,7 +343,7 @@ fn main() {
 
     println!("{:?}", compute_distance(origin, p1));
 }
-```
+~~~
 
 This prints `5.83095189`. You can see that the `compute_distance` function
 takes in two borrowed pointers, but we give it a managed and unique pointer. Of
@@ -353,19 +360,19 @@ This theory is called 'region pointers,' and involve a concept called
 'lifetimes'. Here's the simple explanation: would you expect this code to
 compile?
 
-```rust
+~~~rust {.xfail-test}
 fn main() {
     println(x.to_str());
     let x = 5;
 }
-```
+~~~
 
 Probably not. That's becuase you know that the name `x` is valid from where
 it's declared to when it goes out of scope. In this case, that's the end of
 the `main` function. So you know this code will cause an error. We call this
 duration a 'lifetime'. Let's try a more complex example:
 
-```rust
+~~~rust
 fn main() {
     let mut x = ~5;
     if(*x < 10) {
@@ -376,13 +383,13 @@ fn main() {
     *x = *x - 1;
     println!("Oh no: {:?}", x);
 }
-```
+~~~
 
 Here, we're borrowing a pointer to `x` inside of the `if`. The compiler, however,
 is able to determine that that pointer will go out of scope without `x` being
 mutated, and therefore, lets us pass. This wouldn't work:
 
-```rust
+~~~rust {.xfail-test}
 fn main() {
     let mut x = ~5;
     if(*x < 10) {
@@ -395,18 +402,18 @@ fn main() {
     *x = *x - 1;
     println!("Oh no: {:?}", x);
 }
-```
+~~~
 
 It gives this error:
 
-```
+~~~ {.notrust}
 test.rs:5:8: 5:10 error: cannot assign to `*x` because it is borrowed
 test.rs:5         *x = *x - 1;
                   ^~
 test.rs:4:16: 4:18 note: borrow of `*x` occurs here
 test.rs:4         let y = &x;
                           ^~
-```
+~~~
 
 As you might guess, this kind of analysis is complex for a human, and therefore
 hard for a computer, too! There is an entire [tutorial devoted to borrowed
@@ -421,7 +428,7 @@ managed pointer if you were given one in the first place.
 
 What does that mean? Don't do this:
 
-```rust
+~~~rust
 fn foo(x: ~int) -> ~int {
     return ~*x;
 }
@@ -430,11 +437,11 @@ fn main() {
     let x = ~5;
     let y = foo(x);
 }
-```
+~~~
 
 Do this:
 
-```rust
+~~~rust
 fn foo(x: ~int) -> int {
     return *x;
 }
@@ -443,12 +450,12 @@ fn main() {
     let x = ~5;
     let y = ~foo(x);
 }
-```
+~~~
 
 This gives you flexibility, without sacrificing performance. For example, this will
 also work:
 
-```rust
+~~~rust
 fn foo(x: ~int) -> int {
     return *x;
 }
@@ -457,7 +464,7 @@ fn main() {
     let x = ~5;
     let y = @foo(x);
 }
-```
+~~~
 
 You may think that this gives us terrible performance: return a value and then
 immediately box it up?!?! Isn't that the worst of both worlds? Rust is smarter
