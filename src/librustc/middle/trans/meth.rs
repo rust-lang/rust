@@ -630,11 +630,8 @@ fn emit_vtable_methods(bcx: @Block,
         debug!("(making impl vtable) emitting method {} at subst {}",
                m.repr(tcx),
                substs.repr(tcx));
-        let fty = ty::subst_tps(tcx,
-                                substs,
-                                None,
-                                ty::mk_bare_fn(tcx, m.fty.clone()));
-        if m.generics.has_type_params() || ty::type_has_self(fty) {
+        if m.generics.has_type_params() ||
+           ty::type_has_self(ty::mk_bare_fn(tcx, m.fty.clone())) {
             debug!("(making impl vtable) method has self or type params: {}",
                    tcx.sess.str_of(ident));
             C_null(Type::nil().ptr_to())
