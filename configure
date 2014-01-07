@@ -397,7 +397,17 @@ valopt sysconfdir "/etc" "install system configuration files"
 valopt datadir "${CFG_PREFIX}/share" "install data"
 valopt infodir "${CFG_PREFIX}/share/info" "install additional info"
 valopt mandir "${CFG_PREFIX}/share/man" "install man pages in PATH"
-valopt libdir "${CFG_PREFIX}/lib" "install libraries"
+
+# On windows we just store the libraries in the bin directory because
+# there's no rpath
+# FIXME: Thise needs to parameterized over target triples. Do it in platform.mk
+LIBDIR_RELATIVE=lib
+if [ "$CFG_OSTYPE" = "pc-mingw32" ]
+then
+    LIBDIR_RELATIVE=bin
+fi
+
+valopt libdir "${CFG_PREFIX}/${LIBDIR_RELATIVE}" "install libraries"
 valopt rustlibdir "rustlib" "subdirectory name for rustc's libraries"
 
 # Validate Options
@@ -560,10 +570,10 @@ then
         step_msg "on OS X 10.9, forcing use of clang"
         CFG_ENABLE_CLANG=1
         putvar CFG_ENABLE_CLANG
-    else 
-        # on OS X, with xcode 5 and newer, certain developers may have 
+    else
+        # on OS X, with xcode 5 and newer, certain developers may have
         # cc, gcc and g++ point to a  mixture of clang and gcc
-        # if so, this will create very strange build errors 
+        # if so, this will create very strange build errors
         # this last stanza is to detect some such problems and save the future rust
         # contributor some time solving that issue.
         # this detection could be generalized to other OSes aside from OS X
@@ -576,8 +586,8 @@ then
         # note that for xcode 5, g++ points to clang, not clang++
         if !((chk_cc gcc clang  && chk_cc g++ clang) ||
             (chk_cc gcc gcc  &&( chk_cc g++ g++ || chk g++ gcc))) then
-            err "the gcc and g++ in your path point to different compilers. 
-Check which versions are in your path with  cc --version and g++ --version. 
+            err "the gcc and g++ in your path point to different compilers.
+Check which versions are in your path with  cc --version and g++ --version.
 To resolve this problem, either fix your PATH  or run configure with --enable-clang"
         fi
 
@@ -751,15 +761,6 @@ do
   done
 done
 
-# On windows we just store the libraries in the bin directory because
-# there's no rpath
-# FIXME: Thise needs to parameterized over target triples. Do it in platform.mk
-CFG_LIBDIR=lib
-if [ "$CFG_OSTYPE" = "pc-mingw32" ]
-then
-    CFG_LIBDIR=bin
-fi
-
 for h in $CFG_HOST
 do
     for t in $CFG_TARGET
@@ -770,21 +771,21 @@ do
             make_dir $h/stage$i/bin
 
             # host lib dir
-            make_dir $h/stage$i/$CFG_LIBDIR
+            make_dir $h/stage$i/$LIBDIR_RELATIVE
 
             # host test dir
             make_dir $h/stage$i/test
 
             # target bin dir
-            make_dir $h/stage$i/$CFG_LIBDIR/$CFG_RUSTLIBDIR/$t/bin
+            make_dir $h/stage$i/$LIBDIR_RELATIVE/$CFG_RUSTLIBDIR/$t/bin
 
             # target lib dir
-            make_dir $h/stage$i/$CFG_LIBDIR/$CFG_RUSTLIBDIR/$t/$CFG_LIBDIR
+            make_dir $h/stage$i/$LIBDIR_RELATIVE/$CFG_RUSTLIBDIR/$t/lib
         done
 
         # Fix stage0:
-        make_dir $h/stage0/$CFG_LIBDIR/rustc/$t/bin
-        make_dir $h/stage0/$CFG_LIBDIR/rustc/$t/$CFG_LIBDIR
+        make_dir $h/stage0/$LIBDIR_RELATIVE/rustc/$t/bin
+        make_dir $h/stage0/$LIBDIR_RELATIVE/rustc/$t/$LIBDIR_RELATIVE
 
     done
 
@@ -1038,6 +1039,7 @@ putvar CFG_TARGET
 putvar CFG_C_COMPILER
 putvar CFG_LIBDIR
 putvar CFG_RUSTLIBDIR
+putvar LIBDIR_RELATIVE
 putvar CFG_DISABLE_MANAGE_SUBMODULES
 putvar CFG_ANDROID_CROSS_PATH
 putvar CFG_MINGW32_CROSS_PATH
