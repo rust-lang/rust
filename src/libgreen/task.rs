@@ -118,13 +118,17 @@ impl GreenTask {
                      f: proc()) -> ~GreenTask {
         let TaskOpts {
             watched: _watched,
-            notify_chan, name, stack_size
+            notify_chan, name, stack_size,
+            stderr, stdout, logger,
         } = opts;
 
         let mut green = GreenTask::new(pool, stack_size, f);
         {
             let task = green.task.get_mut_ref();
             task.name = name;
+            task.logger = logger;
+            task.stderr = stderr;
+            task.stdout = stdout;
             match notify_chan {
                 Some(chan) => {
                     let on_exit = proc(task_result) { chan.send(task_result) };
