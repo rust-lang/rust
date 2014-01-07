@@ -20,6 +20,7 @@ use cleanup;
 use io::Writer;
 use iter::{Iterator, Take};
 use local_data;
+use logging::Logger;
 use ops::Drop;
 use option::{Option, Some, None};
 use prelude::drop;
@@ -29,7 +30,6 @@ use rt::borrowck::BorrowRecord;
 use rt::borrowck;
 use rt::local::Local;
 use rt::local_heap::LocalHeap;
-use rt::logging::StdErrLogger;
 use rt::rtio::LocalIo;
 use rt::unwind::Unwinder;
 use send_str::SendStr;
@@ -55,8 +55,9 @@ pub struct Task {
     // Dynamic borrowck debugging info
     borrow_list: Option<~[BorrowRecord]>,
 
-    logger: Option<StdErrLogger>,
-    stdout_handle: Option<~Writer>,
+    logger: Option<~Logger>,
+    stdout: Option<~Writer>,
+    stderr: Option<~Writer>,
 
     priv imp: Option<~Runtime>,
 }
@@ -94,7 +95,8 @@ impl Task {
             name: None,
             borrow_list: None,
             logger: None,
-            stdout_handle: None,
+            stdout: None,
+            stderr: None,
             imp: None,
         }
     }
@@ -123,12 +125,20 @@ impl Task {
 
             // Run the task main function, then do some cleanup.
             f.finally(|| {
-                fn flush(w: Option<~Writer>) {
-                    match w {
-                        Some(mut w) => { w.flush(); }
-                        None => {}
-                    }
+                fn close_outputs() {
+                    let mut task = Local::borrow(None::<Task>);
+                    let logger = task.get().logger.take();
+                    let stderr = task.get().stderr.take();
+                    let stdout = task.get().stdout.take();
+                    drop(task);
+                    drop(logger); // loggers are responsible for flushing
+                    match stdout { Some(mut w) => w.flush(), None => {} }
+                    match stderr { Some(mut w) => w.flush(), None => {} }
                 }
+
+                // First, flush/destroy the user stdout/logger because these
+                // destructors can run arbitrary code.
+                close_outputs();
 
                 // First, destroy task-local storage. This may run user dtors.
                 //
@@ -161,16 +171,12 @@ impl Task {
                 // Destroy remaining boxes. Also may run user dtors.
                 unsafe { cleanup::annihilate(); }
 
-                // Finally flush and destroy any output handles which the task
-                // owns. There are no boxes here, and no user destructors should
-                // run after this any more.
-                let mut task = Local::borrow(None::<Task>);
-                let stdout = task.get().stdout_handle.take();
-                let logger = task.get().logger.take();
-                drop(task);
-
-                flush(stdout);
-                drop(logger);
+                // Finally, just in case user dtors printed/logged during TLS
+                // cleanup and annihilation, re-destroy stdout and the logger.
+                // Note that these will have been initialized with a
+                // runtime-provided type which we have control over what the
+                // destructor does.
+                close_outputs();
             })
         };
 

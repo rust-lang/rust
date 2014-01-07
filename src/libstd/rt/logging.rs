@@ -8,13 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use fmt;
 use from_str::from_str;
 use libc::exit;
 use option::{Some, None, Option};
-use io;
-use io::stdio::StdWriter;
-use io::buffered::LineBufferedWriter;
 use rt::crate_map::{ModEntry, CrateMap, iter_crate_map, get_crate_map};
 use str::StrSlice;
 use vec::{ImmutableVector, MutableTotalOrdVector};
@@ -165,28 +161,6 @@ fn update_log_settings(crate_map: &CrateMap, settings: ~str) {
                   {} of them. You may have mistyped a RUST_LOG spec. \n\
                   Use RUST_LOG=::help to see the list of crates and modules.\n",
                  dirs.len(), n_matches);
-    }
-}
-
-pub trait Logger {
-    fn log(&mut self, args: &fmt::Arguments);
-}
-
-/// This logger emits output to the stderr of the process, and contains a lazily
-/// initialized event-loop driven handle to the stream.
-pub struct StdErrLogger {
-    priv handle: LineBufferedWriter<StdWriter>,
-}
-
-impl StdErrLogger {
-    pub fn new() -> StdErrLogger {
-        StdErrLogger { handle: LineBufferedWriter::new(io::stderr()) }
-    }
-}
-
-impl Logger for StdErrLogger {
-    fn log(&mut self, args: &fmt::Arguments) {
-        fmt::writeln(&mut self.handle as &mut io::Writer, args);
     }
 }
 
