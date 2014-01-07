@@ -263,6 +263,7 @@ With `extra::future`, rust has a mechanism for requesting a computation and gett
 later.
 
 The basic example below illustrates this.
+
 ~~~
 # fn make_a_sandwich() {};
 fn fib(n: u64) -> u64 {
@@ -283,6 +284,7 @@ the future needs to be mutable so that it can save the result for next time `get
 
 Here is another example showing how futures allow you to background computations. The workload will
 be distributed on the available cores.
+
 ~~~
 # use std::vec;
 fn partial_sum(start: uint) -> f64 {
@@ -317,6 +319,7 @@ acts as a reference to the shared data and only this reference is shared and clo
 
 Here is a small example showing how to use Arcs. We wish to run concurrently several computations on
 a single large vector of floats. Each task needs the full vector to perform its duty.
+
 ~~~
 # use std::vec;
 # use std::rand;
@@ -348,6 +351,7 @@ fn main() {
 The function `pnorm` performs a simple computation on the vector (it computes the sum of its items
 at the power given as argument and takes the inverse power of this value). The Arc on the vector is
 created by the line
+
 ~~~
 # use extra::arc::Arc;
 # use std::vec;
@@ -355,7 +359,9 @@ created by the line
 # let numbers = vec::from_fn(1000000, |_| rand::random::<f64>());
 let numbers_arc=Arc::new(numbers);
 ~~~
+
 and a clone of it is sent to each task
+
 ~~~
 # use extra::arc::Arc;
 # use std::vec;
@@ -365,9 +371,11 @@ and a clone of it is sent to each task
 # let (port, chan)  = Chan::new();
 chan.send(numbers_arc.clone());
 ~~~
+
 copying only the wrapper and not its contents.
 
 Each task recovers the underlying data by
+
 ~~~
 # use extra::arc::Arc;
 # use std::vec;
@@ -379,6 +387,7 @@ Each task recovers the underlying data by
 # let local_arc : Arc<~[f64]> = port.recv();
 let task_numbers = local_arc.get();
 ~~~
+
 and can use it as if it were local.
 
 The `arc` module also implements Arcs around mutable data that are not covered here.
