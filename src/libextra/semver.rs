@@ -141,10 +141,6 @@ impl cmp::Ord for Version {
     }
 }
 
-condition! {
-    bad_parse: () -> ();
-}
-
 fn take_nonempty_prefix<T:Iterator<char>>(rdr: &mut T, pred: |char| -> bool)
                         -> (~str, Option<char>) {
     let mut buf = ~"";
@@ -159,45 +155,55 @@ fn take_nonempty_prefix<T:Iterator<char>>(rdr: &mut T, pred: |char| -> bool)
             }
         }
     }
-    if buf.is_empty() {
-        bad_parse::cond.raise(())
-    }
     debug!("extracted nonempty prefix: {}", buf);
     (buf, ch)
 }
 
-fn take_num<T: Iterator<char>>(rdr: &mut T) -> (uint, Option<char>) {
+fn take_num<T: Iterator<char>>(rdr: &mut T) -> Option<(uint, Option<char>)> {
     let (s, ch) = take_nonempty_prefix(rdr, char::is_digit);
     match from_str::<uint>(s) {
-        None => { bad_parse::cond.raise(()); (0, ch) },
-        Some(i) => (i, ch)
+        None => None,
+        Some(i) => Some((i, ch))
     }
 }
 
-fn take_ident<T: Iterator<char>>(rdr: &mut T) -> (Identifier, Option<char>) {
+fn take_ident<T: Iterator<char>>(rdr: &mut T) -> Option<(Identifier, Option<char>)> {
     let (s,ch) = take_nonempty_prefix(rdr, char::is_alphanumeric);
     if s.chars().all(char::is_digit) {
         match from_str::<uint>(s) {
-            None => { bad_parse::cond.raise(()); (Numeric(0), ch) },
-            Some(i) => (Numeric(i), ch)
+            None => None,
+            Some(i) => Some((Numeric(i), ch))
         }
     } else {
-        (AlphaNumeric(s), ch)
+        Some((AlphaNumeric(s), ch))
     }
 }
 
-fn expect(ch: Option<char>, c: char) {
+fn expect(ch: Option<char>, c: char) -> Option<()> {
     if ch != Some(c) {
-        bad_parse::cond.raise(())
+        None
+    } else {
+        Some(())
     }
 }
 
-fn parse_iter<T: Iterator<char>>(rdr: &mut T) -> Version {
-    let (major, ch) = take_num(rdr);
-    expect(ch, '.');
-    let (minor, ch) = take_num(rdr);
-    expect(ch, '.');
-    let (patch, ch) = take_num(rdr);
+fn parse_iter<T: Iterator<char>>(rdr: &mut T) -> Option<Version> {
+    let maybe_vers = take_num(rdr).and_then(|(major, ch)| {
+        expect(ch, '.').and_then(|_| Some(major))
+    }).and_then(|major| {
+        take_num(rdr).and_then(|(minor, ch)| {
+            expect(ch, '.').and_then(|_| Some((major, minor)))
+        })
+    }).and_then(|(major, minor)| {
+        take_num(rdr).and_then(|(patch, ch)| {
+           Some((major, minor, patch, ch))
+        })
+    });
+
+    let (major, minor, patch, ch) = match maybe_vers {
+        Some((a, b, c, d)) => (a, b, c, d),
+        None => return None
+    };
 
     let mut pre = ~[];
     let mut build = ~[];
@@ -205,7 +211,10 @@ fn parse_iter<T: Iterator<char>>(rdr: &mut T) -> Version {
     let mut ch = ch;
     if ch == Some('-') {
         loop {
-            let (id, c) = take_ident(rdr);
+            let (id, c) = match take_ident(rdr) {
+                Some((id, c)) => (id, c),
+                None => return None
+            };
             pre.push(id);
             ch = c;
             if ch != Some('.') { break; }
@@ -214,20 +223,23 @@ fn parse_iter<T: Iterator<char>>(rdr: &mut T) -> Version {
 
     if ch == Some('+') {
         loop {
-            let (id, c) = take_ident(rdr);
+            let (id, c) = match take_ident(rdr) {
+                Some((id, c)) => (id, c),
+                None => return None
+            };
             build.push(id);
             ch = c;
             if ch != Some('.') { break; }
         }
     }
 
-    Version {
+    Some(Version {
         major: major,
         minor: minor,
         patch: patch,
         pre: pre,
         build: build,
-    }
+    })
 }
 
 
@@ -237,15 +249,17 @@ pub fn parse(s: &str) -> Option<Version> {
         return None;
     }
     let s = s.trim();
-    let mut bad = false;
-    bad_parse::cond.trap(|_| { debug!("bad"); bad = true }).inside(|| {
-        let v = parse_iter(&mut s.chars());
-        if bad || v.to_str() != s.to_owned() {
-            None
-        } else {
-            Some(v)
+    let v = parse_iter(&mut s.chars());
+    match v {
+        Some(v) => {
+            if v.to_str().equiv(&s) {
+                Some(v)
+            } else {
+                None
+            }
         }
-    })
+        None => None
+    }
 }
 
 #[test]
