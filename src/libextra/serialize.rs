@@ -413,7 +413,7 @@ impl<S:Encoder,T:Encodable<S>> Encodable<S> for Rc<T> {
     }
 }
 
-impl<D:Decoder,T:Decodable<D> + NonManaged> Decodable<D> for Rc<T> {
+impl<D:Decoder,T:Decodable<D>> Decodable<D> for Rc<T> {
     #[inline]
     fn decode(d: &mut D) -> Rc<T> {
         Rc::new(Decodable::decode(d))
