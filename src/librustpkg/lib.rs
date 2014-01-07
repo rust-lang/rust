@@ -752,7 +752,6 @@ pub fn main() {
 }
 
 pub fn main_args(args: &[~str]) -> int {
-
     let (command, args, context, supplied_sysroot) = match parse_args(args) {
         Ok(ParseResult {
             command: cmd,
