@@ -24,8 +24,6 @@
 //! detection is not guaranteed to continue in the future. Usage of this module
 //! is discouraged unless absolutely necessary.
 
-use str::Str;
-
 static RED_ZONE: uint = 20 * 1024;
 
 /// This function is invoked from rust's current __morestack function. Segmented

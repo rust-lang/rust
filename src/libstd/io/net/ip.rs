@@ -337,9 +337,8 @@ impl FromStr for SocketAddr {
 
 #[cfg(test)]
 mod test {
+    use prelude::*;
     use super::*;
-    use from_str::FromStr;
-    use option::{Option, Some, None};
 
     #[test]
     fn test_from_str_ipv4() {

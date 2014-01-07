@@ -433,8 +433,7 @@ impl<'a> SeedableRng<&'a [u64]> for Isaac64Rng {
 mod test {
     use super::*;
     use rand::{Rng, SeedableRng, OSRng};
-    use option::Some;
-    use iter::range;
+    use prelude::*;
     use vec;
 
     #[test]

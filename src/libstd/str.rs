@@ -2768,14 +2768,11 @@ impl Default for @str {
 
 #[cfg(test)]
 mod tests {
-    use container::Container;
-    use option::{None, Some, Option};
+    use iter::AdditiveIterator;
+    use prelude::*;
     use ptr;
     use str::*;
-    use vec::{Vector, ImmutableVector, CopyableVector};
-    use cmp::{TotalOrd, Less, Equal, Greater};
     use send_str::{SendStrOwned, SendStrStatic};
-    use from_str::from_str;
 
     #[test]
     fn test_eq() {

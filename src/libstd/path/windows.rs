@@ -1053,11 +1053,9 @@ fn prefix_len(p: Option<PathPrefix>) -> uint {
 
 #[cfg(test)]
 mod tests {
+    use prelude::*;
     use super::*;
     use super::parse_prefix;
-    use option::{Some,None};
-    use iter::Iterator;
-    use vec::Vector;
 
     macro_rules! t(
         (s: $path:expr, $exp:expr) => (

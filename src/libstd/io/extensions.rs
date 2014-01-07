@@ -131,10 +131,11 @@ pub fn u64_from_be_bytes(data: &[u8],
 
 #[cfg(test)]
 mod test {
-    use option::{None, Option, Some};
+    use unstable::finally::Finally;
+    use io::Decorator;
+    use prelude::*;
     use io::mem::{MemReader, MemWriter};
-    use io::{Reader, io_error, placeholder_error};
-    use vec::ImmutableVector;
+    use io::{io_error, placeholder_error};
 
     struct InitialZeroByteReader {
         count: int,
@@ -376,7 +377,7 @@ mod test {
     fn push_bytes_fail_reset_len() {
         // push_bytes unsafely sets the vector length. This is testing that
         // upon failure the length is reset correctly.
-        let mut reader = ErroringLaterReader {
+        let reader = ErroringLaterReader {
             count: 0,
         };
         // FIXME (#7049): Figure out some other way to do this.

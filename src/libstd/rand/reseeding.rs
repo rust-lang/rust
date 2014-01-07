@@ -142,11 +142,9 @@ impl Default for ReseedWithDefault {
 
 #[cfg(test)]
 mod test {
+    use prelude::*;
     use super::*;
     use rand::{SeedableRng, Rng};
-    use default::Default;
-    use iter::range;
-    use option::{None, Some};
 
     struct Counter {
         i: u32
