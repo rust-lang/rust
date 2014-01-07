@@ -89,6 +89,7 @@ pub struct Scheduler {
     /// Bookeeping for the number of tasks which are currently running around
     /// inside this pool of schedulers
     task_state: TaskState,
+    enqueued_tasks: uint,
 
     // n.b. currently destructors of an object are run in top-to-bottom in order
     //      of field declaration. Due to its nature, the pausable idle callback
@@ -164,6 +165,7 @@ impl Scheduler {
             yield_check_count: 0,
             steal_for_yield: false,
             task_state: state,
+            enqueued_tasks: 0,
         };
 
         sched.yield_check_count = reset_yield_check(&mut sched.rng);
@@ -553,16 +555,22 @@ impl Scheduler {
             None => {} // allow enqueuing before the scheduler starts
         }
 
-        // We've made work available. Notify a
-        // sleeping scheduler.
-
-        match self.sleeper_list.casual_pop() {
-            Some(handle) => {
-                let mut handle = handle;
-                handle.send(Wake)
+        // We've made work available, so we might want to notify a sleeping
+        // scheduler. Note that this notification is fairly expensive (involves
+        // doing a `write()` on a pipe), so we don't attempt to wake up a remote
+        // scheduler on *all* task enqueues. Testing has shown that 8 is the
+        // lowest value which achieves a dramatic speedup (8 threads
+        // incrementing a global counter inside of a mutex).
+        if self.enqueued_tasks % 8 == 0 {
+            match self.sleeper_list.casual_pop() {
+                Some(handle) => {
+                    let mut handle = handle;
+                    handle.send(Wake)
+                }
+                None => { (/* pass */) }
             }
-            None => { (/* pass */) }
-        };
+        }
+        self.enqueued_tasks += 1;
     }
 
     // * Core Context Switching Functions
