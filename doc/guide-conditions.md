@@ -1,4 +1,4 @@
-% Rust Condition and Error-handling Guide
+% The Rust Condition and Error-handling Guide
 
 # Introduction
 

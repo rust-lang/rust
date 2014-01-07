@@ -1,4 +1,4 @@
-% Rust Foreign Function Interface Guide
+% The Rust Foreign Function Interface Guide
 
 # Introduction
 

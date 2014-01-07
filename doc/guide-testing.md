@@ -1,4 +1,4 @@
-% Rust Testing Guide
+% The Rust Testing Guide
 
 # Quick start
 
