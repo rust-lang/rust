@@ -12,7 +12,7 @@
 
 
 use middle::ty;
-use middle::ty::{FreeRegion, Region, RegionVid};
+use middle::ty::{FreeRegion, Region, RegionVid, Vid};
 use middle::ty::{ReEmpty, ReStatic, ReInfer, ReFree, ReEarlyBound,
                  ReLateBound};
 use middle::ty::{ReScope, ReVar, ReSkolemized, BrFresh};

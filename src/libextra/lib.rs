@@ -34,8 +34,6 @@ Rust extras are part of the standard Rust distribution.
 #[deny(non_camel_case_types)];
 #[deny(missing_doc)];
 
-use std::str::{StrSlice, OwnedStr};
-
 pub use std::os;
 
 // Utility modules

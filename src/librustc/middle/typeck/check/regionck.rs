@@ -31,13 +31,14 @@ this point a bit better.
 use middle::freevars::get_freevars;
 use middle::ty::{ReScope};
 use middle::ty;
+use middle::typeck::astconv::AstConv;
 use middle::typeck::check::FnCtxt;
 use middle::typeck::check::regionmanip::relate_nested_regions;
 use middle::typeck::infer::resolve_and_force_all_but_regions;
 use middle::typeck::infer::resolve_type;
 use middle::typeck::infer;
-use util::ppaux::{ty_to_str, region_to_str};
 use middle::pat_util;
+use util::ppaux::{ty_to_str, region_to_str, Repr};
 
 use syntax::ast::{ManagedSigil, OwnedSigil, BorrowedSigil};
 use syntax::ast::{DefArg, DefBinding, DefLocal, DefSelf, DefUpvar};
@@ -833,14 +834,14 @@ pub mod guarantor {
      * but more special purpose.
      */
 
-
+    use middle::typeck::astconv::AstConv;
     use middle::typeck::check::regionck::Rcx;
     use middle::typeck::check::regionck::mk_subregion_due_to_derefence;
     use middle::typeck::infer;
     use middle::ty;
     use syntax::ast;
     use syntax::codemap::Span;
-    use util::ppaux::{ty_to_str};
+    use util::ppaux::{ty_to_str, Repr};
 
     pub fn for_addr_of(rcx: &mut Rcx, expr: &ast::Expr, base: &ast::Expr) {
         /*!

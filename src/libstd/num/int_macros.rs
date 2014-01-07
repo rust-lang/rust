@@ -445,6 +445,7 @@ mod tests {
     use int;
     use i32;
     use num;
+    use num::CheckedDiv;
     use mem;
 
     #[test]

@@ -199,11 +199,12 @@ pub mod dl {
 
 #[cfg(target_os = "win32")]
 pub mod dl {
-    use os;
     use libc;
+    use os;
+    use path::GenericPath;
     use path;
     use ptr;
-    use result::*;
+    use result::{Ok, Err, Result};
 
     pub unsafe fn open_external(filename: &path::Path) -> *libc::c_void {
         os::win32::as_utf16_p(filename.as_str().unwrap(), |raw_name| {
