@@ -41,6 +41,10 @@ use middle::typeck;
 use middle::pat_util;
 use metadata::csearch;
 use util::ppaux::{ty_to_str};
+use std::to_str::ToStr;
+
+use middle::typeck::infer;
+use middle::typeck::astconv::{ast_ty_to_ty, AstConv};
 
 use std::cmp;
 use std::hashmap::HashMap;
@@ -91,6 +95,7 @@ pub enum lint {
     unused_mut,
     unnecessary_allocation,
     dead_code,
+    unnecessary_typecast,
 
     missing_doc,
     unreachable_code,
@@ -267,6 +272,13 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
         default: warn
     }),
 
+    ("unnecessary_typecast",
+     LintSpec {
+        lint: unnecessary_typecast,
+        desc: "detects unnecessary type casts, that can be removed",
+        default: allow,
+    }),
+
     ("unused_mut",
      LintSpec {
         lint: unused_mut,
@@ -336,7 +348,6 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
         desc: "unknown features found in crate-level #[feature] directives",
         default: deny,
     }),
-
      ("unknown_crate_type",
      LintSpec {
          lint: unknown_crate_type,
@@ -568,6 +579,37 @@ fn check_while_true_expr(cx: &Context, e: &ast::Expr) {
         }
         _ => ()
     }
+}
+impl<'a> AstConv for Context<'a>{
+    fn tcx(&self) -> ty::ctxt { self.tcx }
+
+    fn get_item_ty(&self, id: ast::DefId) -> ty::ty_param_bounds_and_ty {
+        ty::lookup_item_type(self.tcx, id)
+    }
+
+    fn get_trait_def(&self, id: ast::DefId) -> @ty::TraitDef {
+        ty::lookup_trait_def(self.tcx, id)
+    }
+
+    fn ty_infer(&self, _span: Span) -> ty::t {
+        let infcx: @infer::InferCtxt = infer::new_infer_ctxt(self.tcx);
+        infcx.next_ty_var()
+    }
+}
+
+
+fn check_unused_casts(cx: &Context, e: &ast::Expr) {
+    return match e.node {
+        ast::ExprCast(expr, ty) => {
+            let infcx: @infer::InferCtxt = infer::new_infer_ctxt(cx.tcx);
+            let t_t = ast_ty_to_ty(cx, &infcx, ty);
+            if  ty::get(ty::expr_ty(cx.tcx, expr)).sty == ty::get(t_t).sty {
+                cx.span_lint(unnecessary_typecast, ty.span,
+                             "unnecessary type cast");
+            }
+        }
+        _ => ()
+    };
 }
 
 fn check_type_limits(cx: &Context, e: &ast::Expr) {
@@ -1361,6 +1403,7 @@ impl<'a> Visitor<()> for Context<'a> {
         check_heap_expr(self, e);
 
         check_type_limits(self, e);
+        check_unused_casts(self, e);
 
         visit::walk_expr(self, e, ());
     }

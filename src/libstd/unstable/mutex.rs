@@ -66,8 +66,8 @@ impl Mutex {
     /// Creates a new mutex, with the lock/condition variable pre-initialized
     pub unsafe fn new() -> Mutex {
         Mutex {
-            lock: atomics::AtomicUint::new(imp::init_lock() as uint),
-            cond: atomics::AtomicUint::new(imp::init_cond() as uint),
+            lock: atomics::AtomicUint::new(imp::init_lock()),
+            cond: atomics::AtomicUint::new(imp::init_cond()),
         }
     }
 

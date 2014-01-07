@@ -80,7 +80,7 @@ impl SmallBitv {
             self.bits |= 1<<i;
         }
         else {
-            self.bits &= !(1<<i as uint);
+            self.bits &= !(1<<i);
         }
     }
 

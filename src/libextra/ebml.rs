@@ -647,7 +647,7 @@ pub mod writer {
             let cur_pos = self.writer.tell();
             self.writer.seek(last_size_pos as i64, io::SeekSet);
             let size = (cur_pos as uint - last_size_pos - 4);
-            write_sized_vuint(self.writer, size as uint, 4u);
+            write_sized_vuint(self.writer, size, 4u);
             self.writer.seek(cur_pos as i64, io::SeekSet);
 
             debug!("End tag (size = {})", size);
