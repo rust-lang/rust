@@ -20,18 +20,14 @@ extern mod extra;
 extern mod rustc;
 extern mod syntax;
 
-use std::path::Path;
 use std::{os, task};
 
 use context::{Trans, Nothing, Pretty, Analysis, LLVMAssemble};
 use context::{LLVMCompileBitcode, BuildCmd, CleanCmd, DoCmd, InfoCmd};
 use context::{InstallCmd, ListCmd, PreferCmd, TestCmd, InitCmd, UninstallCmd};
 use context::{UnpreferCmd};
-use context::{BuildContext};
-use rustc::metadata::filesearch;
 use run_cmd::{run_cmd};
 use parse_args::{ParseResult, parse_args};
-use path_util::{default_workspace};
 use exit_codes::{COPY_FAILED_CODE};
 
 pub mod api;
@@ -84,24 +80,9 @@ pub fn main_args(args: &[~str]) -> int {
     debug!("  Using cfgs: {:?}", context.cfgs);
     debug!("  Using supplied_sysroot: {:?}", context.supplied_sysroot);
 
-    let sysroot = match context.supplied_sysroot.clone() {
-        Some(ref s) => Path::new(s.clone()),
-        _ => filesearch::get_or_default_sysroot()
-    };
-
-    debug!("Using sysroot: {}", sysroot.display());
-    let ws = default_workspace();
-    debug!("Will store workcache in {}", ws.display());
-
     // Wrap the rest in task::try in case of a condition failure in a task
     let result = do task::try {
-        let build_context = BuildContext {
-            context: context,
-            sysroot: sysroot.clone(), // Currently, only tests override this
-            workcache_context: api::default_context(sysroot.clone(),
-                                                    default_workspace()).workcache_context
-        };
-        run_cmd(command, args.clone(), &build_context);
+        run_cmd(command, args.clone(), &context);
     };
     // FIXME #9262: This is using the same error code for all errors,
     // and at least one test case succeeds if rustpkg returns COPY_FAILED_CODE,

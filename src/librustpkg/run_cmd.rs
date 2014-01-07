@@ -12,7 +12,7 @@ use std::{io, os, run};
 use std::io::fs;
 pub use std::path::Path;
 
-use context::{BuildContext};
+use context::{Context, BuildContext};
 use context::{Command, BuildCmd, CleanCmd, DoCmd, InfoCmd, InstallCmd};
 use context::{ListCmd, PreferCmd, TestCmd, InitCmd, UninstallCmd};
 use context::{UnpreferCmd};
@@ -33,12 +33,12 @@ use workspace::determine_destination;
 /// Perform actions based on parsed command line input
 pub fn run_cmd(cmd: Command,
        args: ~[~str],
-       build_context: &BuildContext ) {
+       context: &Context) {
     let cwd = os::getcwd();
     match cmd {
         BuildCmd => {
             let what = WhatToBuild::new(MaybeCustom, Everything);
-            run_build(args, &what, build_context);
+            run_build(args, &what, context);
         }
         CleanCmd => {
             if args.len() < 1 {
@@ -77,13 +77,15 @@ pub fn run_cmd(cmd: Command,
                         let pkg_src = PkgSrc::new(cwd, default_workspace(),
                                                  true, inferred_crateid);
                         let what = WhatToBuild::new(MaybeCustom, Everything);
-                        install(pkg_src, &what, build_context);
+                        let build_context = BuildContext::from_context(context);
+                        install(pkg_src, &what, &build_context);
                     }
                     None  => { usage::install(); return; }
                     Some((ws, crateid))                => {
                         let pkg_src = PkgSrc::new(ws.clone(), ws.clone(), false, crateid);
                         let what = WhatToBuild::new(MaybeCustom, Everything);
-                        install(pkg_src, &what, build_context);
+                        let build_context = BuildContext::from_context(context);
+                        install(pkg_src, &what, &build_context);
                   }
               }
             }
@@ -91,26 +93,28 @@ pub fn run_cmd(cmd: Command,
                 // The package id is presumed to be the first command-line
                 // argument
                 let crateid = CrateId::new(args[0]);
-                let workspaces = pkg_parent_workspaces(&build_context.context, &crateid);
+                let workspaces = pkg_parent_workspaces(context, &crateid);
                 debug!("package ID = {}, found it in {:?} workspaces",
                        crateid.to_str(), workspaces.len());
                 if workspaces.is_empty() {
                     let d = default_workspace();
                     let pkg_src = PkgSrc::new(d.clone(), d, false, crateid.clone());
                     let what = WhatToBuild::new(MaybeCustom, Everything);
-                    install(pkg_src, &what, build_context);
+                    let build_context = BuildContext::from_context(context);
+                    install(pkg_src, &what, &build_context);
                 }
                 else {
                     for workspace in workspaces.iter() {
                         let dest = determine_destination(os::getcwd(),
-                                                         build_context.context.use_rust_path_hack,
+                                                         context.use_rust_path_hack,
                                                          workspace);
                         let pkg_src = PkgSrc::new(workspace.clone(),
                                               dest,
-                                              build_context.context.use_rust_path_hack,
+                                              context.use_rust_path_hack,
                                               crateid.clone());
                         let what = WhatToBuild::new(MaybeCustom, Everything);
-                        install(pkg_src, &what, build_context);
+                        let build_context = BuildContext::from_context(context);
+                        install(pkg_src, &what, &build_context);
                     };
                 }
             }
@@ -131,7 +135,7 @@ pub fn run_cmd(cmd: Command,
         TestCmd => {
             // Build the test executable
             let what = WhatToBuild::new(MaybeCustom, Tests);
-            let maybe_id_and_workspace = run_build(args, &what, build_context);
+            let maybe_id_and_workspace = run_build(args, &what, context);
             match maybe_id_and_workspace {
                 Some((pkg_id, workspace)) => {
                     // Assuming it's built, run the tests
@@ -163,7 +167,7 @@ pub fn run_cmd(cmd: Command,
             else {
                 let rp = rust_path();
                 assert!(!rp.is_empty());
-                each_pkg_parent_workspace(&build_context.context, &crateid, |workspace| {
+                each_pkg_parent_workspace(context, &crateid, |workspace| {
                     path_util::uninstall_package_from(workspace, &crateid);
                     note(format!("Uninstalled package {} (was installed in {})",
                               crateid.to_str(), workspace.display()));
@@ -183,7 +187,7 @@ pub fn run_cmd(cmd: Command,
 
 fn run_build(args: ~[~str],
                   what: &WhatToBuild,
-                  build_context: &BuildContext) -> Option<(CrateId, Path)> {
+                  context: &Context) -> Option<(CrateId, Path)> {
     let cwd = os::getcwd();
 
     if args.len() < 1 {
@@ -192,7 +196,8 @@ fn run_build(args: ~[~str],
                 // FIXME (#9639): This needs to handle non-utf8 paths
                 let crateid = CrateId::new(cwd.filename_str().unwrap());
                 let mut pkg_src = PkgSrc::new(cwd, default_workspace(), true, crateid);
-                build(&mut pkg_src, what, build_context);
+                let build_context = BuildContext::from_context(context);
+                build(&mut pkg_src, what, &build_context);
                 match pkg_src {
                     PkgSrc { destination_workspace: ws,
                              id: id, .. } => {
@@ -203,7 +208,8 @@ fn run_build(args: ~[~str],
             None => { usage::build(); None }
             Some((ws, crateid)) => {
                 let mut pkg_src = PkgSrc::new(ws.clone(), ws, false, crateid);
-                build(&mut pkg_src, what, build_context);
+                let build_context = BuildContext::from_context(context);
+                build(&mut pkg_src, what, &build_context);
                 match pkg_src {
                     PkgSrc { destination_workspace: ws,
                              id: id, .. } => {
@@ -217,15 +223,16 @@ fn run_build(args: ~[~str],
         // argument
         let crateid = CrateId::new(args[0].clone());
         let mut dest_ws = default_workspace();
-        each_pkg_parent_workspace(&build_context.context, &crateid, |workspace| {
+        each_pkg_parent_workspace(context, &crateid, |workspace| {
             debug!("found pkg {} in workspace {}, trying to build",
                    crateid.to_str(), workspace.display());
             dest_ws = determine_destination(os::getcwd(),
-                                            build_context.context.use_rust_path_hack,
+                                            context.use_rust_path_hack,
                                             workspace);
             let mut pkg_src = PkgSrc::new(workspace.clone(), dest_ws.clone(),
                                           false, crateid.clone());
-            build(&mut pkg_src, what, build_context);
+            let build_context = BuildContext::from_context(context);
+            build(&mut pkg_src, what, &build_context);
             true
         });
         // n.b. If this builds multiple packages, it only returns the workspace for

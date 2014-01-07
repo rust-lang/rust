@@ -10,8 +10,11 @@
 
 // Context data structure used by rustpkg
 
+use api;
 use extra::workcache;
+use path_util::{default_workspace};
 use rustc::driver::session;
+use rustc::metadata::filesearch;
 use rustc::metadata::filesearch::rustlibdir;
 
 use std::hashmap::HashSet;
@@ -76,6 +79,25 @@ impl BuildContext {
 
     pub fn additional_library_paths(&self) -> HashSet<Path> {
         self.context.rustc_flags.additional_library_paths.clone()
+    }
+
+    pub fn from_context(context: &Context) -> BuildContext{
+
+        let sysroot = match context.supplied_sysroot.clone() {
+            Some(ref s) => Path::new(s.clone()),
+            _ => filesearch::get_or_default_sysroot()
+        };
+        debug!("Using sysroot: {}", sysroot.display());
+
+        let ws = default_workspace();
+        debug!("Will store workcache in {}", ws.display());
+
+        BuildContext {
+            context: context.clone(),
+            sysroot: sysroot.clone(),
+            workcache_context: api::default_context(sysroot.clone(),
+                                        default_workspace()).workcache_context
+        }
     }
 }
 
