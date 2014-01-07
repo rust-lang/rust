@@ -14,9 +14,7 @@
 extern mod std;
 
 use extra::semver;
-use std::{char, result, run, str};
-use extra::tempfile::TempDir;
-use path_util::rust_path;
+use std::{char, result};
 
 #[deriving(Clone)]
 pub enum Version {
@@ -93,91 +91,6 @@ pub fn parse_vers(vers: ~str) -> result::Result<semver::Version, ~str> {
     }
 }
 
-/// If `local_path` is a git repo in the RUST_PATH, and the most recent tag
-/// in that repo denotes a version, return it; otherwise, `None`
-pub fn try_getting_local_version(local_path: &Path) -> Option<Version> {
-    let rustpath = rust_path();
-    for rp in rustpath.iter() {
-        let local_path = rp.join(local_path);
-        let git_dir = local_path.join(".git");
-        if !git_dir.is_dir() {
-            continue;
-        }
-        // FIXME (#9639): This needs to handle non-utf8 paths
-        let opt_outp = run::process_output("git",
-                                   ["--git-dir=" + git_dir.as_str().unwrap(), ~"tag", ~"-l"]);
-        let outp = opt_outp.expect("Failed to exec `git`");
-
-        debug!("git --git-dir={} tag -l ~~~> {:?}", git_dir.display(), outp.status);
-
-        if !outp.status.success() {
-            continue;
-        }
-
-        let mut output = None;
-        let output_text = str::from_utf8(outp.output).unwrap();
-        for l in output_text.lines() {
-            if !l.is_whitespace() {
-                output = Some(l);
-            }
-            match output.and_then(try_parsing_version) {
-                Some(v) => return Some(v),
-                None    => ()
-            }
-        }
-    }
-    None
-}
-
-/// If `remote_path` refers to a git repo that can be downloaded,
-/// and the most recent tag in that repo denotes a version, return it;
-/// otherwise, `None`
-pub fn try_getting_version(remote_path: &Path) -> Option<Version> {
-    if is_url_like(remote_path) {
-        let tmp_dir = TempDir::new("test");
-        let tmp_dir = tmp_dir.expect("try_getting_version: couldn't create temp dir");
-        let tmp_dir = tmp_dir.path();
-        debug!("(to get version) executing \\{git clone https://{} {}\\}",
-               remote_path.display(),
-               tmp_dir.display());
-        // FIXME (#9639): This needs to handle non-utf8 paths
-        let opt_outp = run::process_output("git", [~"clone", format!("https://{}",
-                                                                     remote_path.as_str().unwrap()),
-                                                   tmp_dir.as_str().unwrap().to_owned()]);
-        let outp = opt_outp.expect("Failed to exec `git`");
-        if outp.status.success() {
-            debug!("Cloned it... ( {}, {} )",
-                   str::from_utf8(outp.output).unwrap(),
-                   str::from_utf8(outp.error).unwrap());
-            let mut output = None;
-            let git_dir = tmp_dir.join(".git");
-            debug!("(getting version, now getting tags) executing \\{git --git-dir={} tag -l\\}",
-                   git_dir.display());
-            // FIXME (#9639): This needs to handle non-utf8 paths
-            let opt_outp = run::process_output("git",
-                                               ["--git-dir=" + git_dir.as_str().unwrap(),
-                                                ~"tag", ~"-l"]);
-            let outp = opt_outp.expect("Failed to exec `git`");
-            let output_text = str::from_utf8(outp.output).unwrap();
-            debug!("Full output: ( {} ) [{:?}]", output_text, outp.status);
-            for l in output_text.lines() {
-                debug!("A line of output: {}", l);
-                if !l.is_whitespace() {
-                    output = Some(l);
-                }
-            }
-
-            output.and_then(try_parsing_version)
-        }
-        else {
-            None
-        }
-    }
-    else {
-        None
-    }
-}
-
 // Being lazy since we don't have a regexp library now
 #[deriving(Eq)]
 enum ParseState {
@@ -205,12 +118,6 @@ pub fn try_parsing_version(s: &str) -> Option<Version> {
         SawDigit => Some(ExactRevision(s.to_owned())),
         _        => None
     }
-}
-
-/// Just an approximation
-fn is_url_like(p: &Path) -> bool {
-    // check if there are more than 2 /-separated components
-    p.as_vec().split(|b| *b == '/' as u8).nth(2).is_some()
 }
 
 /// If s is of the form foo#bar, where bar is a valid version
