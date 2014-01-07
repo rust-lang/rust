@@ -1131,6 +1131,7 @@ mod test {
 
     use extra::getopts::groups::getopts;
     use syntax::attr;
+    use syntax::attr::AttrMetaMethods;
     use syntax::diagnostic;
 
     // When the user supplies --test we should implicitly supply --cfg test

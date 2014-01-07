@@ -140,7 +140,7 @@ mod imp {
 
     #[cfg(test)]
     mod tests {
-        use option::{Some, None};
+        use prelude::*;
         use super::*;
         use unstable::finally::Finally;
 
