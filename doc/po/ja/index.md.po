@@ -1,0 +1,106 @@
+# Japanese translations for Rust package
+# Copyright (C) 2014 The Rust Project Developers
+# This file is distributed under the same license as the Rust package.
+# Automatically generated, 2014.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Rust 0.9\n"
+"POT-Creation-Date: 2014-01-08 11:30+0900\n"
+"PO-Revision-Date: 2014-01-08 06:14+0900\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: ja\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#. type: Plain text
+#: doc/index.md:2
+msgid "% Rust documentation"
+msgstr ""
+
+#. type: Plain text
+#: doc/index.md:8
+msgid ""
+"<!-- Completely hide the TOC and the section numbers --> <style type=\"text/"
+"css\"> #TOC { display: none; } .header-section-number { display: none; } </"
+"style>"
+msgstr ""
+
+#. type: Plain text
+#: doc/index.md:11
+msgid ""
+"[The Rust tutorial](tutorial.html)  [The Rust reference manual](rust.html) "
+"([PDF](rust.pdf))"
+msgstr ""
+
+#. type: Plain text
+#: doc/index.md:13
+msgid "# Guides"
+msgstr ""
+
+#. type: Plain text
+#: doc/index.md:23
+msgid ""
+"[Pointers](guide-pointers.html)  [Lifetimes](guide-lifetimes.html)  "
+"[Containers and Iterators](guide-container.html)  [Tasks and Communication]"
+"(guide-tasks.html)  [Foreign Function Interface](guide-ffi.html)  [Macros]"
+"(guide-macros.html)  [Packaging](guide-rustpkg.html)  [Testing](guide-"
+"testing.html)  [Conditions](guide-conditions.html)"
+msgstr ""
+
+#. type: Plain text
+#: doc/index.md:25
+#, fuzzy
+#| msgid "## Using other crates"
+msgid "# Libraries"
+msgstr "## 他のクレートの利用"
+
+#. type: Plain text
+#: doc/index.md:28
+#, fuzzy
+#| msgid "[`std::vec`]: std/vec.html [`std::str`]: std/str.html"
+msgid "[std](std/index.html)  [extra](index.html)"
+msgstr ""
+"[`std::vec`]: std/vec.html\n"
+"[`std::str`]: std/str.html"
+
+#. type: Plain text
+#: doc/index.md:30
+msgid "# Tooling"
+msgstr ""
+
+#. type: Plain text
+#: doc/index.md:32
+msgid "[The rustpkg manual](rustpkg.html)"
+msgstr ""
+
+#. type: Plain text
+#: doc/index.md:34
+msgid "# FAQs"
+msgstr ""
+
+#. type: Plain text
+#: doc/index.md:40
+msgid ""
+"[Language FAQ](complement-lang-faq.html)  [Project FAQ](complement-project-"
+"faq.html)  [Usage FAQ](complement-usage-faq.html)  [Code cheatsheet]"
+"(complement-cheatsheet.html) - \"How do I do X?\" [HOWTO submit a bug report]"
+"(complement-bugreport.html)"
+msgstr ""
+
+#. type: Plain text
+#: doc/index.md:42
+msgid "# External resources"
+msgstr ""
+
+#. type: Plain text
+#: doc/index.md:45
+msgid ""
+"The Rust [IRC channel](http://chat.mibbit.com/?server=irc.mozilla."
+"org&channel=%23rust) - #rust on irc.mozilla.org The Rust community on "
+"[Reddit](http://reddit.com/r/rust)  The Rust [wiki](http://github.com/"
+"mozilla/rust/wiki)"
+msgstr ""

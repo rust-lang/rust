@@ -1,0 +1,879 @@
+# Japanese translations for Rust package
+# Copyright (C) 2014 The Rust Project Developers
+# This file is distributed under the same license as the Rust package.
+# Automatically generated, 2014.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Rust 0.9\n"
+"POT-Creation-Date: 2014-01-08 06:14+0900\n"
+"PO-Revision-Date: 2014-01-08 06:14+0900\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: ja\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:2
+msgid "% Language FAQ"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:4
+msgid "# General language issues"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:6
+msgid "## Safety oriented"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:12
+msgid ""
+"Memory safe: no null pointers, dangling pointers, use-before-initialize or "
+"use-after-move"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:12
+msgid ""
+"Expressive mutability control. Immutable by default, statically verified "
+"freezing for Owned types"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:12
+msgid "No shared mutable state across tasks"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:12
+msgid ""
+"Dynamic execution safety: task failure / unwinding, trapping, RAII / dtors"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:12
+msgid "Safe interior pointer types with lifetime analysis"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:14
+msgid "## Concurrency and efficiency oriented"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:21
+msgid "Lightweight tasks (coroutines) with expanding stacks"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:21
+msgid "Fast asynchronous, copyless message passing"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:21
+msgid "Optional garbage collected pointers"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:21
+msgid ""
+"All types may be explicitly allocated on the stack or interior to other types"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:21
+msgid "Static, native compilation using LLVM"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:21
+msgid "Direct and simple interface to C code"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:23
+msgid "## Practicality oriented"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:33
+#, no-wrap
+msgid ""
+"* Multi-paradigm: pure-functional, concurrent-actor, imperative-procedural, OO\n"
+" * First-class functions, cheap non-escaping closures\n"
+" * Algebraic data types (called enums) with pattern matching\n"
+" * Method implementations on any type\n"
+" * Traits, which share aspects of type classes and interfaces\n"
+"* Multi-platform. Developed on Windows, Linux, OS X\n"
+"* UTF-8 strings, assortment of machine-level types\n"
+"* Works with existing native toolchains, GDB, Valgrind, Instruments, etc\n"
+"* Rule-breaking is allowed if explicit about where and how\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:35
+msgid "## What does it look like?"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:37
+msgid ""
+"The syntax is still evolving, but here's a snippet from the hash map in "
+"core::hashmap."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:46
+#, no-wrap
+msgid ""
+"~~~\n"
+"struct LinearMap<K,V> {\n"
+"    k0: u64,\n"
+"    k1: u64,\n"
+"    resize_at: uint,\n"
+"    size: uint,\n"
+"    buckets: ~[Option<Bucket<K,V>>],\n"
+"}\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:50
+#, no-wrap
+msgid ""
+"enum SearchResult {\n"
+"    FoundEntry(uint), FoundHole(uint), TableFull\n"
+"}\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:55
+#, no-wrap
+msgid ""
+"fn linear_map_with_capacity<K:Eq + Hash,V>(capacity: uint) -> LinearMap<K,V> {\n"
+"    let r = rand::Rng();\n"
+"    linear_map_with_capacity_and_keys(r.gen_u64(), r.gen_u64(), capacity)\n"
+"}\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:57
+msgid "impl<K:Hash + IterBytes + Eq, V> LinearMap<K,V> {"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:64
+#, no-wrap
+msgid ""
+"    fn contains_key(&self, k: &K) -> bool {\n"
+"        match self.bucket_for_key(self.buckets, k) {\n"
+"            FoundEntry(_) => true,\n"
+"            TableFull | FoundHole(_) => false\n"
+"        }\n"
+"    }\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:71
+#, no-wrap
+msgid ""
+"    fn clear(&mut self) {\n"
+"        for bkt in self.buckets.mut_iter() {\n"
+"            *bkt = None;\n"
+"        }\n"
+"        self.size = 0;\n"
+"    }\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:75
+msgid "...  } ~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:77
+msgid ""
+"## Are there any big programs written in it yet? I want to read big samples."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:79
+msgid ""
+"There aren't many large programs yet. The Rust [compiler][rustc], 60,000+ "
+"lines at the time of writing, is written in Rust. As the oldest body of Rust "
+"code it has gone through many iterations of the language, and some parts are "
+"nicer to look at than others. It may not be the best code to learn from, but "
+"[borrowck] and [resolve] were written recently."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:83
+msgid ""
+"[rustc]: https://github.com/mozilla/rust/tree/master/src/librustc [resolve]: "
+"https://github.com/mozilla/rust/blob/master/src/librustc/middle/resolve.rs "
+"[borrowck]: https://github.com/mozilla/rust/blob/master/src/librustc/middle/"
+"borrowck/"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:85
+msgid ""
+"A research browser engine called [Servo][servo], currently 30,000+ lines "
+"across more than a dozen crates, will be exercising a lot of Rust's "
+"distinctive type-system and concurrency features, and integrating many "
+"native libraries."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:87
+msgid "[servo]: https://github.com/mozilla/servo"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:89
+msgid "Some examples that demonstrate different aspects of the language:"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:94
+msgid ""
+"[sprocketnes], an NES emulator with no GC, using modern Rust conventions"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:94
+msgid ""
+"The language's general-purpose [hash] function, SipHash-2-4. Bit twiddling, "
+"OO, macros"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:94
+msgid "The standard library's [HashMap], a sendable hash map in an OO style"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:94
+msgid "The extra library's [json] module. Enums and pattern matching"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:99
+msgid ""
+"[sprocketnes]: https://github.com/pcwalton/sprocketnes [hash]: https://"
+"github.com/mozilla/rust/blob/master/src/libstd/hash.rs [HashMap]: https://"
+"github.com/mozilla/rust/blob/master/src/libstd/hashmap.rs [json]: https://"
+"github.com/mozilla/rust/blob/master/src/libextra/json.rs"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:101
+msgid ""
+"You may also be interested in browsing [GitHub's Rust][github-rust] page."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:103
+msgid "[github-rust]: https://github.com/languages/Rust"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:105
+msgid "## Does it run on Windows?"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:107
+msgid ""
+"Yes. All development happens in lock-step on all 3 target platforms. Using "
+"MinGW, not Cygwin. Note that the windows implementation currently has some "
+"limitations: in particular tasks [cannot unwind on windows][unwind], and all "
+"Rust executables [require a MinGW installation at runtime][libgcc]."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:110
+#, fuzzy
+#| msgid ""
+#| "[bug-3319]: https://github.com/mozilla/rust/issues/3319 [wiki-start]: "
+#| "https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust"
+msgid ""
+"[unwind]: https://github.com/mozilla/rust/issues/908 [libgcc]: https://"
+"github.com/mozilla/rust/issues/1603"
+msgstr ""
+"[bug-3319]: https://github.com/mozilla/rust/issues/3319\n"
+"[wiki-start]: https://github.com/mozilla/rust/wiki/Note-getting-started-"
+"developing-Rust"
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:112
+msgid "## Have you seen this Google language, Go? How does Rust compare?"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:114
+msgid ""
+"Rust and Go have similar syntax and task models, but they have very "
+"different type systems. Rust is distinguished by greater type safety and "
+"memory safety guarantees, more control over memory layout, and robust "
+"generics."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:116
+msgid "Rust has several key features that aren't shared by Go:"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:121
+msgid ""
+"No shared mutable state - Shared mutable state allows data races, a large "
+"class of bad bugs. In Rust there is no sharing of mutable data, but "
+"ownership of data can be efficiently transferred between tasks."
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:121
+msgid ""
+"Minimal GC impact - By not having shared mutable data, Rust can avoid global "
+"GC, hence Rust never stops the world to collect garbage. With multiple "
+"allocation options, individual tasks can completely avoid GC."
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:121
+msgid ""
+"No null pointers - Accidentally dereferencing null pointers is a big bummer, "
+"so Rust doesn't have them."
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:121
+msgid ""
+"Type parametric code - Generics prove useful time and again, though they are "
+"inevitably complex to greater or lesser degrees."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:123
+msgid ""
+"Some of Rust's advantages come at the cost of a more intricate type system "
+"than Go's."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:125
+msgid ""
+"Go has its own strengths and in particular has a great user experience that "
+"Rust still lacks."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:127
+msgid "## I like the language but it really needs _$somefeature_."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:129
+msgid ""
+"At this point we are focusing on removing and stabilizing features rather "
+"than adding them. File a bug if you think it's important in terms of meeting "
+"the existing goals or making the language passably usable. Reductions are "
+"more interesting than additions, though."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:131
+msgid "# Specific language issues"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:133
+msgid "## Is it OO? How do I do this thing I normally do in an OO language?"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:135
+msgid ""
+"It is multi-paradigm. Not everything is shoe-horned into a single "
+"abstraction. Many things you can do in OO languages you can do in Rust, but "
+"not everything, and not always using the same abstraction you're accustomed "
+"to."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:137
+msgid "## How do you get away with \"no null pointers\"?"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:139
+msgid ""
+"Data values in the language can only be constructed through a fixed set of "
+"initializer forms. Each of those forms requires that its inputs already be "
+"initialized. A liveness analysis ensures that local variables are "
+"initialized before use."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:141
+msgid "## What is the relationship between a module and a crate?"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:149
+msgid ""
+"A crate is a top-level compilation unit that corresponds to a single "
+"loadable object."
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:149
+msgid "A module is a (possibly nested) unit of name-management inside a crate."
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:149
+msgid "A crate contains an implicit, un-named top-level module."
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:149
+msgid "Recursive definitions can span modules, but not crates."
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:149
+msgid ""
+"Crates do not have global names, only a set of non-unique metadata tags."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:149
+#, no-wrap
+msgid ""
+"* There is no global inter-crate namespace; all name management occurs within a crate.\n"
+" * Using another crate binds the root of _its_ namespace into the user's namespace.\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:151
+msgid ""
+"## Why is failure unwinding non-recoverable within a task? Why not try to "
+"\"catch exceptions\"?"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:153
+msgid ""
+"In short, because too few guarantees could be made about the dynamic "
+"environment of the catch block, as well as invariants holding in the unwound "
+"heap, to be able to safely resume; we believe that other methods of "
+"signalling and logging errors are more appropriate, with tasks playing the "
+"role of a \"hard\" isolation boundary between separate heaps."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:155
+msgid ""
+"Rust provides, instead, three predictable and well-defined options for "
+"handling any combination of the three main categories of \"catch\" logic:"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:159
+msgid "Failure _logging_ is done by the integrated logging subsystem."
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:159
+msgid ""
+"_Recovery_ after a failure is done by trapping a task failure from _outside_ "
+"the task, where other tasks are known to be unaffected."
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:159
+msgid "_Cleanup_ of resources is done by RAII-style objects with destructors."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:161
+msgid ""
+"Cleanup through RAII-style destructors is more likely to work than in catch "
+"blocks anyways, since it will be better tested (part of the non-error "
+"control paths, so executed all the time)."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:163
+msgid "## Why aren't modules type-parametric?"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:165
+msgid ""
+"We want to maintain the option to parametrize at runtime. We may make "
+"eventually change this limitation, but initially this is how type parameters "
+"were implemented."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:167
+msgid "## Why aren't values type-parametric? Why only items?"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:169
+msgid ""
+"Doing so would make type inference much more complex, and require the "
+"implementation strategy of runtime parametrization."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:171
+msgid "## Why are enumerations nominal and closed?"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:173
+msgid ""
+"We don't know if there's an obvious, easy, efficient, stock-textbook way of "
+"supporting open or structural disjoint unions. We prefer to stick to "
+"language features that have an obvious and well-explored semantics."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:175
+msgid "## Why aren't channels synchronous?"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:177
+msgid ""
+"There's a lot of debate on this topic; it's easy to find a proponent of "
+"default-sync or default-async communication, and there are good reasons for "
+"either. Our choice rests on the following arguments:"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:181
+msgid ""
+"Part of the point of isolating tasks is to decouple tasks from one another, "
+"such that assumptions in one task do not cause undue constraints (or bugs, "
+"if violated!) in another. Temporal coupling is as real as any other kind; "
+"async-by-default relaxes the default case to only _causal_ coupling."
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:181
+msgid ""
+"Default-async supports buffering and batching communication, reducing the "
+"frequency and severity of task-switching and inter-task / inter-domain "
+"synchronization."
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:181
+msgid ""
+"Default-async with transmittable channels is the lowest-level building block "
+"on which more-complex synchronization topologies and strategies can be "
+"built; it is not clear to us that the majority of cases fit the 2-party full-"
+"synchronization pattern rather than some more complex multi-party or multi-"
+"stage scenario. We did not want to force all programs to pay for wiring the "
+"former assumption into all communications."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:183
+msgid "## Why are channels half-duplex (one-way)?"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:185
+msgid ""
+"Similar to the reasoning about default-sync: it wires fewer assumptions into "
+"the implementation, that would have to be paid by all use-cases even if they "
+"actually require a more complex communication topology."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:187
+msgid "## Why are strings UTF-8 by default? Why not UCS2 or UCS4?"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:189
+msgid ""
+"The `str` type is UTF-8 because we observe more text in the wild in this "
+"encoding -- particularly in network transmissions, which are endian-agnostic "
+"-- and we think it's best that the default treatment of I/O not involve "
+"having to recode codepoints in each direction."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:191
+msgid ""
+"This does mean that indexed access to a Unicode codepoint inside a `str` "
+"value is an O(n) operation. On the one hand, this is clearly undesirable; on "
+"the other hand, this problem is full of trade-offs and we'd like to point a "
+"few important qualifications:"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:195
+msgid ""
+"Scanning a `str` for ASCII-range codepoints can still be done safely octet-"
+"at-a-time, with each indexing operation pulling out a `u8` costing only O(1) "
+"and producing a value that can be cast and compared to an ASCII-range "
+"`char`. So if you're (say) line-breaking on `'\\n'`, octet-based treatment "
+"still works. UTF8 was well-designed this way."
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:195
+msgid ""
+"Most \"character oriented\" operations on text only work under very "
+"restricted language assumptions sets such as \"ASCII-range codepoints only"
+"\". Outside ASCII-range, you tend to have to use a complex (non-constant-"
+"time) algorithm for determining linguistic-unit (glyph, word, paragraph) "
+"boundaries anyways. We recommend using an \"honest\" linguistically-aware, "
+"Unicode-approved algorithm."
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:195
+msgid ""
+"The `char` type is UCS4. If you honestly need to do a codepoint-at-a-time "
+"algorithm, it's trivial to write a `type wstr = [char]`, and unpack a `str` "
+"into it in a single pass, then work with the `wstr`. In other words: the "
+"fact that the language is not \"decoding to UCS4 by default\" shouldn't stop "
+"you from decoding (or re-encoding any other way) if you need to work with "
+"that encoding."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:197
+msgid ""
+"## Why are strings, vectors etc. built-in types rather than (say) special "
+"kinds of trait/impl?"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:199
+msgid ""
+"In each case there is one or more operator, literal constructor, overloaded "
+"use or integration with a built-in control structure that makes us think it "
+"would be awkward to phrase the type in terms of more-general type "
+"constructors. Same as, say, with numbers! But this is partly an aesthetic "
+"call, and we'd be willing to look at a worked-out proposal for eliminating "
+"or rephrasing these special cases."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:201
+msgid "## Can Rust code call C code?"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:203
+msgid ""
+"Yes. Since C code typically expects a larger stack than Rust code does, the "
+"stack may grow before the call. The Rust domain owning the task that makes "
+"the call will block for the duration of the call, so if the call is likely "
+"to be long-lasting, you should consider putting the task in its own domain "
+"(thread or process)."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:205
+msgid "## Can C code call Rust code?"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:207
+msgid ""
+"Yes. The Rust code has to be exposed via an `extern` declaration, which "
+"makes it C-ABI compatible. Its address can then be taken and passed to C "
+"code. When C calls Rust back, the callback occurs in very restricted "
+"circumstances."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:209
+msgid "## How do Rust's task stacks work?"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:211
+msgid ""
+"They start small (ideally in the hundreds of bytes) and expand dynamically "
+"by calling through special frames that allocate new stack segments. This is "
+"known as the \"spaghetti stack\" approach."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:213
+msgid ""
+"## What is the difference between a managed box pointer (`@`) and an owned "
+"box pointer (`~`)?"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:220
+msgid "Managed boxes live in the garbage collected task-local heap"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:220
+msgid "Owned boxes live in the global exchange heap"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:220
+msgid "Managed boxes may be referred to by multiple managed box references"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:220
+msgid ""
+"Owned boxes have unique ownership and there may only be a single unique "
+"pointer to a unique box at a time"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:220
+msgid "Managed boxes may not be shared between tasks"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:220
+msgid "Owned boxes may be transferred (moved) between tasks"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:222
+msgid ""
+"## What is the difference between a borrowed pointer (`&`) and managed and "
+"owned boxes?"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:228
+msgid "Borrowed pointers point to the interior of a stack _or_ heap allocation"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:228
+msgid ""
+"Borrowed pointers can only be formed when it will provably be outlived by "
+"the referent"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:228
+msgid "Borrowed pointers to managed box pointers keep the managed boxes alive"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:228
+msgid ""
+"Borrowed pointers to owned boxes prevent their ownership from being "
+"transferred"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:228
+msgid ""
+"Borrowed pointers employ region-based alias analysis to ensure correctness"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:230
+msgid "## Why aren't function signatures inferred? Why only local slots?"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:234
+msgid ""
+"Mechanically, it simplifies the inference algorithm; inference only requires "
+"looking at one function at a time."
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:234
+msgid ""
+"The same simplification goes double for human readers. A reader does not "
+"need an IDE running an inference algorithm across an entire crate to be able "
+"to guess at a function's argument types; it's always explicit and nearby."
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:234
+msgid ""
+"Parameters in Rust can be passed by reference or by value. We can't "
+"automatically infer which one the programmer means."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:236
+msgid ""
+"## Why does a type parameter need explicit trait bounds to invoke methods on "
+"it, when C++ templates do not?"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:238
+msgid ""
+"Requiring explicit bounds means that the compiler can type-check the code at "
+"the point where the type-parametric item is *defined*, rather than delaying "
+"to when its type parameters are instantiated.  You know that *any* set of "
+"type parameters fulfilling the bounds listed in the API will compile. It's "
+"an enforced minimal level of documentation, and results in very clean error "
+"messages."
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:240
+msgid ""
+"Scoping of methods is also a problem.  C++ needs [Koenig (argument "
+"dependent) lookup](http://en.wikipedia.org/wiki/Argument-"
+"dependent_name_lookup), which comes with its own host of problems. Explicit "
+"bounds avoid this issue: traits are explicitly imported and then used as "
+"bounds on type parameters, so there is a clear mapping from the method to "
+"its implementation (via the trait and the instantiated type)."
+msgstr ""
+
+#. type: Bullet: '  * '
+#: doc/complement-lang-faq.md:242
+msgid ""
+"Related to the above point: since a parameter explicitly names its trait "
+"bounds, a single type is able to implement traits whose sets of method names "
+"overlap, cleanly and unambiguously."
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-lang-faq.md:244
+msgid ""
+"There is further discussion on [this thread on the Rust mailing list]"
+"(https://mail.mozilla.org/pipermail/rust-dev/2013-September/005603.html)."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:246
+msgid "## Will Rust implement automatic semicolon insertion, like in Go?"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:247
+msgid ""
+"For simplicity, we do not plan to do so. Implementing automatic semicolon "
+"insertion for Rust would be tricky because the absence of a trailing "
+"semicolon means \"return a value\"."
+msgstr ""

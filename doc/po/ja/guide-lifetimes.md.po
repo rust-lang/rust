@@ -1,13 +1,13 @@
 # Japanese translations for Rust package
-# Copyright (C) 2013 The Rust Project Developers
+# Copyright (C) 2014 The Rust Project Developers
 # This file is distributed under the same license as the Rust package.
-# Automatically generated, 2013.
+# Automatically generated, 2014.
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: Rust 0.8\n"
-"POT-Creation-Date: 2013-07-22 23:37+0900\n"
-"PO-Revision-Date: 2013-07-28 20:32+0900\n"
+"Project-Id-Version: Rust 0.9\n"
+"POT-Creation-Date: 2014-01-08 11:30+0900\n"
+"PO-Revision-Date: 2014-01-08 11:30+0900\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
 "Language: ja\n"
@@ -17,25 +17,21 @@ msgstr ""
 "Plural-Forms: nplurals=1; plural=0;\n"
 
 #. type: Plain text
+#: doc/guide-conditions.md:4 doc/guide-ffi.md:4 doc/guide-lifetimes.md:4
+#: doc/guide-macros.md:4 doc/guide-rustpkg.md:4 doc/guide-tasks.md:4
 #: doc/rust.md:4 doc/rustpkg.md:4 doc/tutorial.md:4
-#: doc/tutorial-borrowed-ptr.md:4 doc/tutorial-ffi.md:4
-#: doc/tutorial-macros.md:4 doc/tutorial-tasks.md:4
 msgid "# Introduction"
 msgstr "# イントロダクション"
 
 #. type: Plain text
-#: doc/tutorial.md:1108 doc/tutorial-borrowed-ptr.md:72
-msgid "Now we can call `compute_distance()` in various ways:"
-msgstr ""
-"上記の `compute_distance()` 関数は、様々な方法で呼び出すことができます。"
+#: doc/guide-lifetimes.md:2
+#, fuzzy
+#| msgid "# Borrowed pointers"
+msgid "% Rust Borrowed Pointers Guide"
+msgstr "# 借用ポインタ"
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:2
-msgid "% Rust Borrowed Pointers Tutorial"
-msgstr ""
-
-#. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:14
+#: doc/guide-lifetimes.md:14
 msgid ""
 "Borrowed pointers are one of the more flexible and powerful tools available "
 "in Rust. A borrowed pointer can point anywhere: into the managed or exchange "
@@ -49,7 +45,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:18
+#: doc/guide-lifetimes.md:18
 msgid ""
 "Despite their complete safety, a borrowed pointer's representation at "
 "runtime is the same as that of an ordinary pointer in a C program. They "
@@ -57,7 +53,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:24
+#: doc/guide-lifetimes.md:24
 msgid ""
 "Although borrowed pointers have rather elaborate theoretical underpinnings "
 "(region pointers), the core concepts will be familiar to anyone who has "
@@ -66,12 +62,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:26
+#: doc/guide-lifetimes.md:26
+#, fuzzy
+#| msgid "## Tuples"
 msgid "# By example"
-msgstr ""
+msgstr "## タプル"
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:31
+#: doc/guide-lifetimes.md:31
 msgid ""
 "Borrowed pointers are called *borrowed* because they are only valid for a "
 "limited duration. Borrowed pointers never claim any kind of ownership over "
@@ -80,37 +78,64 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:33
+#: doc/guide-lifetimes.md:33
+#, fuzzy
+#| msgid "As an example, consider a simple struct type, `Point`:"
 msgid "As an example, consider a simple struct type `Point`:"
+msgstr "例として、シンプルな構造体型の `Point` について考えます。"
+
+#. type: Plain text
+#: doc/guide-lifetimes.md:37
+msgid "~~~ struct Point {x: f64, y: f64} ~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:37
-msgid "~~~ struct Point {x: float, y: float} ~~~"
-msgstr ""
-
-#. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:41
+#: doc/guide-lifetimes.md:41
+#, fuzzy
+#| msgid ""
+#| "We can use this simple definition to allocate points in many different "
+#| "ways. For example, in this code, each of these three local variables "
+#| "contains a point, but allocated in a different location:"
 msgid ""
 "We can use this simple definition to allocate points in many different ways. "
 "For example, in this code, each of these three local variables contains a "
 "point, but allocated in a different place:"
 msgstr ""
+"シンプルな定義ですが、この定義を使って `Point` 型のオブジェクトを様々な方法で"
+"割り当てることができます。例えば、このコードの3つのローカル変数は、それぞれ異"
+"なった場所に `Point` 型のオブジェクトを割り当てています。"
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:48
-#, no-wrap
+#: doc/guide-lifetimes.md:48
+#, fuzzy, no-wrap
+#| msgid "~~~ # struct Point { x: f64, y: f64 } let point = &@~Point { x: 10f, y: 20f }; println(fmt!(\"%f\", point.x)); ~~~"
 msgid ""
 "~~~\n"
-"# struct Point {x: float, y: float}\n"
+"# struct Point {x: f64, y: f64}\n"
 "let on_the_stack :  Point =  Point {x: 3.0, y: 4.0};\n"
 "let managed_box  : @Point = @Point {x: 5.0, y: 1.0};\n"
 "let owned_box    : ~Point = ~Point {x: 7.0, y: 9.0};\n"
 "~~~\n"
 msgstr ""
+"~~~\n"
+"# struct Point { x: f64, y: f64 }\n"
+"let point = &@~Point { x: 10f, y: 20f };\n"
+"println(fmt!(\"%f\", point.x));\n"
+"~~~"
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:60
+#: doc/guide-lifetimes.md:60
+#, fuzzy
+#| msgid ""
+#| "Suppose we want to write a procedure that computes the distance between "
+#| "any two points, no matter where they are stored. For example, we might "
+#| "like to compute the distance between `on_the_stack` and `managed_box`, or "
+#| "between `managed_box` and `owned_box`. One option is to define a function "
+#| "that takes two arguments of type point—that is, it takes the points by "
+#| "value. But this will cause the points to be copied when we call the "
+#| "function. For points, this is probably not so bad, but often copies are "
+#| "expensive. So we’d like to define a function that takes the points by "
+#| "pointer. We can use borrowed pointers to do this:"
 msgid ""
 "Suppose we wanted to write a procedure that computed the distance between "
 "any two points, no matter where they were stored. For example, we might like "
@@ -124,15 +149,25 @@ msgid ""
 "define a function that takes the points by pointer. We can use borrowed "
 "pointers to do this:"
 msgstr ""
+"`Point` 型のオブジェクトの割り当て先がどこであったとしても利用可能な、任意の "
+"2 点間の距離を計算する処理を書きたいとします。例えば、 `on_the_stack`, "
+"`managed_box` 間や `managed_box`, `owned_box` 間の距離を計算する処理です。 1"
+"つ目の実装方法として、2つの `Point` 型オブジェクトを引数にとる関数を定義する"
+"方法、すなわち、オブジェクトを値で受け渡す方法があります。しかし、この方法で"
+"は関数呼び出し時に `Point` オブジェクトのコピーが行われます。`Point` オブジェ"
+"クトの場合、このような実装はそれほど悪いものではないでしょうが、コピー処理の"
+"コストは高い場合もあります。したがって、`Point` オブジェクトをポインタ渡しす"
+"る関数を定義する必要があります。そのために、借用ポインタを利用することが可能"
+"です。"
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:70
+#: doc/guide-lifetimes.md:70
 #, no-wrap
 msgid ""
 "~~~\n"
-"# struct Point {x: float, y: float}\n"
-"# fn sqrt(f: float) -> float { 0f }\n"
-"fn compute_distance(p1: &Point, p2: &Point) -> float {\n"
+"# struct Point {x: f64, y: f64}\n"
+"# fn sqrt(f: f64) -> f64 { 0.0 }\n"
+"fn compute_distance(p1: &Point, p2: &Point) -> f64 {\n"
 "    let x_d = p1.x - p2.x;\n"
 "    let y_d = p1.y - p2.y;\n"
 "    sqrt(x_d * x_d + y_d * y_d)\n"
@@ -141,22 +176,35 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:82
+#: doc/guide-lifetimes.md:72 doc/tutorial.md:1393
+msgid "Now we can call `compute_distance()` in various ways:"
+msgstr ""
+"上記の `compute_distance()` 関数は、様々な方法で呼び出すことができます。"
+
+#. type: Plain text
+#: doc/guide-lifetimes.md:82
 #, no-wrap
 msgid ""
 "~~~\n"
-"# struct Point {x: float, y: float}\n"
+"# struct Point {x: f64, y: f64}\n"
 "# let on_the_stack :  Point =  Point{x: 3.0, y: 4.0};\n"
 "# let managed_box  : @Point = @Point{x: 5.0, y: 1.0};\n"
 "# let owned_box    : ~Point = ~Point{x: 7.0, y: 9.0};\n"
-"# fn compute_distance(p1: &Point, p2: &Point) -> float { 0f }\n"
+"# fn compute_distance(p1: &Point, p2: &Point) -> f64 { 0.0 }\n"
 "compute_distance(&on_the_stack, managed_box);\n"
 "compute_distance(managed_box, owned_box);\n"
 "~~~\n"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:89
+#: doc/guide-lifetimes.md:89
+#, fuzzy
+#| msgid ""
+#| "Here the `&` operator is used to take the address of the variable "
+#| "`on_the_stack`; this is because `on_the_stack` has the type `Point` (that "
+#| "is, a struct value) and we have to take its address to get a value. We "
+#| "also call this _borrowing_ the local variable `on_the_stack`, because we "
+#| "are creating an alias: that is, another route to the same data."
 msgid ""
 "Here, the `&` operator takes the address of the variable `on_the_stack`; "
 "this is because `on_the_stack` has the type `Point` (that is, a struct "
@@ -164,9 +212,22 @@ msgid ""
 "_borrowing_ the local variable `on_the_stack`, because we have created an "
 "alias: that is, another name for the same data."
 msgstr ""
+"ここで `&` 演算子は `on_the_stack` 変数のアドレスを取得するために使われていま"
+"す。これは、 `on_the_stack` の型は `Point` (つまり、構造体の値) であり、呼び"
+"出した関数から値を取得させるため、構造体のアドレスを渡す必要があるからです。"
+"値の別名 (エイリアス)、すなわち、同じデータへアクセスするための別の方法を提供"
+"するので、このような操作のことをローカル変数 `on_the_stack` の __借用__ "
+"(_borrowing_) と呼びます。"
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:95
+#: doc/guide-lifetimes.md:95
+#, fuzzy
+#| msgid ""
+#| "In the case of the boxes `managed_box` and `owned_box`, however, no "
+#| "explicit action is necessary. The compiler will automatically convert a "
+#| "box like `@point` or `~point` to a borrowed pointer like `&point`. This "
+#| "is another form of borrowing; in this case, the contents of the managed/"
+#| "owned box are being lent out."
 msgid ""
 "In contrast, we can pass the boxes `managed_box` and `owned_box` to "
 "`compute_distance` directly. The compiler automatically converts a box like "
@@ -174,9 +235,24 @@ msgid ""
 "form of borrowing: in this case, the caller lends the contents of the "
 "managed or owned box to the callee."
 msgstr ""
+"ボックスである `managed_box` と `owned_box` の場合は、特に明示的な操作を行う"
+"必要はありません。コンパイラは `@point` や `~point` のようなボックスを自動的"
+"に `&point` のような借用ポインタへと変換します。これは、別の形態の借用 "
+"(borrowing) です。この場合、マネージド/所有ボックスの内容が貸し出されていま"
+"す。"
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:105
+#: doc/guide-lifetimes.md:105
+#, fuzzy
+#| msgid ""
+#| "Whenever a value is borrowed, there are some limitations on what you can "
+#| "do with the original. For example, if the contents of a variable have "
+#| "been lent out, you cannot send that variable to another task, nor will "
+#| "you be permitted to take actions that might cause the borrowed value to "
+#| "be freed or to change its type. This rule should make intuitive sense: "
+#| "you must wait for a borrowed value to be returned (that is, for the "
+#| "borrowed pointer to go out of scope) before you can make full use of it "
+#| "again."
 msgid ""
 "Whenever a caller lends data to a callee, there are some limitations on what "
 "the caller can do with the original. For example, if the contents of a "
@@ -188,26 +264,41 @@ msgid ""
 "value that you lent it (that is, wait for the borrowed pointer to go out of "
 "scope)  before you can make full use of it again."
 msgstr ""
+"値が借用されている間、借用元の値に対して行える操作がいくらか制限されます。例"
+"えば、変数の内容が貸し出された場合、その変数を他のタスクに送信することはでき"
+"ませんし、借用された値を解放したり、型が変化させるような操作も行うことができ"
+"ません。このルールは理にかなったものでしょう。貸し出した値を最大限に活用する "
+"(make full use of it) ためには、貸し出した値の返却 (借用ポインタが存在するス"
+"コープを抜ける) を待たなければなりません。"
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:107
+#: doc/guide-lifetimes.md:107
 msgid "# Other uses for the & operator"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:109
+#: doc/guide-lifetimes.md:109
 msgid "In the previous example, the value `on_the_stack` was defined like so:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:114
+#: doc/guide-lifetimes.md:114
+#, fuzzy
+#| msgid ""
+#| "~~~ # struct Point { x: f64, y: f64 } let point = &@~Point { x: 10f, y: "
+#| "20f }; println(fmt!(\"%f\", point.x)); ~~~"
 msgid ""
-"~~~ # struct Point {x: float, y: float} let on_the_stack: Point = Point {x: "
-"3.0, y: 4.0}; ~~~"
+"~~~ # struct Point {x: f64, y: f64} let on_the_stack: Point = Point {x: 3.0, "
+"y: 4.0}; ~~~"
 msgstr ""
+"~~~\n"
+"# struct Point { x: f64, y: f64 }\n"
+"let point = &@~Point { x: 10f, y: 20f };\n"
+"println(fmt!(\"%f\", point.x));\n"
+"~~~"
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:119
+#: doc/guide-lifetimes.md:119
 msgid ""
 "This declaration means that code can only pass `Point` by value to other "
 "functions. As a consequence, we had to explicitly take the address of "
@@ -216,14 +307,23 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:124
+#: doc/guide-lifetimes.md:124
+#, fuzzy
+#| msgid ""
+#| "~~~ # struct Point { x: f64, y: f64 } let point = &@~Point { x: 10f, y: "
+#| "20f }; println(fmt!(\"%f\", point.x)); ~~~"
 msgid ""
-"~~~ # struct Point {x: float, y: float} let on_the_stack2: &Point = &Point "
-"{x: 3.0, y: 4.0}; ~~~"
+"~~~ # struct Point {x: f64, y: f64} let on_the_stack2: &Point = &Point {x: "
+"3.0, y: 4.0}; ~~~"
 msgstr ""
+"~~~\n"
+"# struct Point { x: f64, y: f64 }\n"
+"let point = &@~Point { x: 10f, y: 20f };\n"
+"println(fmt!(\"%f\", point.x));\n"
+"~~~"
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:128
+#: doc/guide-lifetimes.md:128
 msgid ""
 "Applying `&` to an rvalue (non-assignable location) is just a convenient "
 "shorthand for creating a temporary and taking its address. A more verbose "
@@ -231,19 +331,28 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:134
+#: doc/guide-lifetimes.md:134
+#, fuzzy
+#| msgid ""
+#| "~~~ # struct Point { x: f64, y: f64 } let point = &@~Point { x: 10f, y: "
+#| "20f }; println(fmt!(\"%f\", point.x)); ~~~"
 msgid ""
-"~~~ # struct Point {x: float, y: float} let tmp = Point {x: 3.0, y: 4.0}; "
-"let on_the_stack2 : &Point = &tmp; ~~~"
+"~~~ # struct Point {x: f64, y: f64} let tmp = Point {x: 3.0, y: 4.0}; let "
+"on_the_stack2 : &Point = &tmp; ~~~"
 msgstr ""
+"~~~\n"
+"# struct Point { x: f64, y: f64 }\n"
+"let point = &@~Point { x: 10f, y: 20f };\n"
+"println(fmt!(\"%f\", point.x));\n"
+"~~~"
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:136
+#: doc/guide-lifetimes.md:136
 msgid "# Taking the address of fields"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:141
+#: doc/guide-lifetimes.md:141
 msgid ""
 "As in C, the `&` operator is not limited to taking the address of local "
 "variables. It can also take the address of fields or individual array "
@@ -251,68 +360,68 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:147
+#: doc/guide-lifetimes.md:147
 msgid ""
-"~~~ struct Point {x: float, y: float} // as before struct Size {w: float, h: "
-"float} // as before struct Rectangle {origin: Point, size: Size} ~~~"
+"~~~ struct Point {x: f64, y: f64} // as before struct Size {w: f64, h: "
+"f64} // as before struct Rectangle {origin: Point, size: Size} ~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:149
+#: doc/guide-lifetimes.md:149
 msgid "Now, as before, we can define rectangles in a few different ways:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:161
+#: doc/guide-lifetimes.md:161
 #, no-wrap
 msgid ""
 "~~~\n"
-"# struct Point {x: float, y: float}\n"
-"# struct Size {w: float, h: float} // as before\n"
+"# struct Point {x: f64, y: f64}\n"
+"# struct Size {w: f64, h: f64} // as before\n"
 "# struct Rectangle {origin: Point, size: Size}\n"
-"let rect_stack   = &Rectangle {origin: Point {x: 1f, y: 2f},\n"
-"                               size: Size {w: 3f, h: 4f}};\n"
-"let rect_managed = @Rectangle {origin: Point {x: 3f, y: 4f},\n"
-"                               size: Size {w: 3f, h: 4f}};\n"
-"let rect_owned   = ~Rectangle {origin: Point {x: 5f, y: 6f},\n"
-"                               size: Size {w: 3f, h: 4f}};\n"
+"let rect_stack   = &Rectangle {origin: Point {x: 1.0, y: 2.0},\n"
+"                               size: Size {w: 3.0, h: 4.0}};\n"
+"let rect_managed = @Rectangle {origin: Point {x: 3.0, y: 4.0},\n"
+"                               size: Size {w: 3.0, h: 4.0}};\n"
+"let rect_owned   = ~Rectangle {origin: Point {x: 5.0, y: 6.0},\n"
+"                               size: Size {w: 3.0, h: 4.0}};\n"
 "~~~\n"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:164
+#: doc/guide-lifetimes.md:164
 msgid ""
 "In each case, we can extract out individual subcomponents with the `&` "
 "operator. For example, I could write:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:175
+#: doc/guide-lifetimes.md:175
 msgid ""
-"~~~ # struct Point {x: float, y: float} // as before # struct Size {w: "
-"float, h: float} // as before # struct Rectangle {origin: Point, size: Size} "
-"# let rect_stack = &Rectangle {origin: Point {x: 1f, y: 2f}, size: Size {w: "
-"3f, h: 4f}}; # let rect_managed = @Rectangle {origin: Point {x: 3f, y: 4f}, "
-"size: Size {w: 3f, h: 4f}}; # let rect_owned = ~Rectangle {origin: Point {x: "
-"5f, y: 6f}, size: Size {w: 3f, h: 4f}}; # fn compute_distance(p1: &Point, "
-"p2: &Point) -> float { 0f } compute_distance(&rect_stack.origin, "
+"~~~ # struct Point {x: f64, y: f64} // as before # struct Size {w: f64, h: "
+"f64} // as before # struct Rectangle {origin: Point, size: Size} # let "
+"rect_stack = &Rectangle {origin: Point {x: 1.0, y: 2.0}, size: Size {w: 3.0, "
+"h: 4.0}}; # let rect_managed = @Rectangle {origin: Point {x: 3.0, y: 4.0}, "
+"size: Size {w: 3.0, h: 4.0}}; # let rect_owned = ~Rectangle {origin: Point "
+"{x: 5.0, y: 6.0}, size: Size {w: 3.0, h: 4.0}}; # fn compute_distance(p1: "
+"&Point, p2: &Point) -> f64 { 0.0 } compute_distance(&rect_stack.origin, "
 "&rect_managed.origin); ~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:178
+#: doc/guide-lifetimes.md:178
 msgid ""
 "which would borrow the field `origin` from the rectangle on the stack as "
 "well as from the managed box, and then compute the distance between them."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:180
+#: doc/guide-lifetimes.md:180
 msgid "# Borrowing managed boxes and rooting"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:186
+#: doc/guide-lifetimes.md:186
 msgid ""
 "We’ve seen a few examples so far of borrowing heap boxes, both managed and "
 "owned. Up till this point, we’ve glossed over issues of safety. As stated in "
@@ -322,7 +431,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:197
+#: doc/guide-lifetimes.md:197
 msgid ""
 "The basis for the check is the notion of _lifetimes_. A lifetime is a static "
 "approximation of the span of execution during which the pointer is valid: it "
@@ -336,7 +445,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:202
+#: doc/guide-lifetimes.md:202
 msgid ""
 "When the `&` operator creates a borrowed pointer, the compiler must ensure "
 "that the pointer remains valid for its entire lifetime. Sometimes this is "
@@ -345,7 +454,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:211
+#: doc/guide-lifetimes.md:211
 #, no-wrap
 msgid ""
 "~~~\n"
@@ -359,7 +468,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:216
+#: doc/guide-lifetimes.md:216
 msgid ""
 "Here, the lifetime of the borrowed pointer `y` is simply L, the remainder of "
 "the function body. The compiler need not do any other work to prove that "
@@ -367,12 +476,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:218
+#: doc/guide-lifetimes.md:218
 msgid "The situation gets more complex when borrowing data inside heap boxes:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:227
+#: doc/guide-lifetimes.md:227
 #, no-wrap
 msgid ""
 "~~~\n"
@@ -386,7 +495,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:238
+#: doc/guide-lifetimes.md:238
 msgid ""
 "In this example, the value `x` is a heap box, and `y` is therefore a pointer "
 "into that heap box. Again the lifetime of `y` is L, the remainder of the "
@@ -400,14 +509,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:241
+#: doc/guide-lifetimes.md:241
 msgid ""
 "> ***Note:*** Our current implementation implements the garbage collector > "
 "using reference counting and cycle detection."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:247
+#: doc/guide-lifetimes.md:247
 msgid ""
 "For this reason, whenever an `&` expression borrows the interior of a "
 "managed box stored in a mutable location, the compiler inserts a temporary "
@@ -416,7 +525,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:257
+#: doc/guide-lifetimes.md:257
 #, no-wrap
 msgid ""
 "~~~\n"
@@ -431,19 +540,21 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:260
+#: doc/guide-lifetimes.md:260
 msgid ""
 "Now if `x` is reassigned, the pointer `y` will still remain valid. This "
 "process is called *rooting*."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:262
+#: doc/guide-lifetimes.md:262
+#, fuzzy
+#| msgid "## Managed boxes"
 msgid "# Borrowing owned boxes"
-msgstr ""
+msgstr "## マネージドボックス"
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:268
+#: doc/guide-lifetimes.md:268
 msgid ""
 "The previous example demonstrated *rooting*, the process by which the "
 "compiler ensures that managed boxes remain live for the duration of a "
@@ -452,7 +563,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:274
+#: doc/guide-lifetimes.md:274
 msgid ""
 "For owned boxes, therefore, the compiler will only allow a borrow *if the "
 "compiler can guarantee that the owned box will not be reassigned or moved "
@@ -462,7 +573,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:289
+#: doc/guide-lifetimes.md:289
 #, no-wrap
 msgid ""
 "~~~\n"
@@ -482,7 +593,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:295
+#: doc/guide-lifetimes.md:295
 msgid ""
 "Here, as before, the interior of the variable `x` is being borrowed and `x` "
 "is declared as mutable. However, the compiler can prove that `x` is not "
@@ -492,7 +603,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:301
+#: doc/guide-lifetimes.md:301
 msgid ""
 "It may not be clear why we are so concerned about mutating a borrowed "
 "variable. The reason is that the runtime system frees any owned box _as soon "
@@ -501,7 +612,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:310
+#: doc/guide-lifetimes.md:310
 #, no-wrap
 msgid ""
 "~~~ {.xfail-test}\n"
@@ -515,14 +626,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:313
+#: doc/guide-lifetimes.md:313
 msgid ""
 "To make this clearer, consider this diagram showing the state of memory "
 "immediately before the re-assignment of `x`:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:316 doc/tutorial-borrowed-ptr.md:330
+#: doc/guide-lifetimes.md:316 doc/guide-lifetimes.md:330
 #, no-wrap
 msgid ""
 "~~~ {.notrust}\n"
@@ -530,7 +641,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:325
+#: doc/guide-lifetimes.md:325
 #, no-wrap
 msgid ""
 "  x +----------+\n"
@@ -544,12 +655,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:327
+#: doc/guide-lifetimes.md:327
 msgid "Once the reassignment occurs, the memory will look like this:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:339
+#: doc/guide-lifetimes.md:339
 #, no-wrap
 msgid ""
 "  x +----------+          +---------+\n"
@@ -563,14 +674,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:342
+#: doc/guide-lifetimes.md:342
 msgid ""
 "Here you can see that the variable `y` still points at the old box, which "
 "has been freed."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:348
+#: doc/guide-lifetimes.md:348
 msgid ""
 "In fact, the compiler can apply the same kind of reasoning to any memory "
 "that is _(uniquely) owned by the stack frame_. So we could modify the "
@@ -579,7 +690,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:353
+#: doc/guide-lifetimes.md:353
 #, no-wrap
 msgid ""
 "~~~ {.xfail-test}\n"
@@ -589,7 +700,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:361
+#: doc/guide-lifetimes.md:361
 #, no-wrap
 msgid ""
 "    let mut x = ~S {f: ~R {g: 3}};\n"
@@ -602,7 +713,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:365
+#: doc/guide-lifetimes.md:365
 msgid ""
 "In this case, two errors are reported, one when the variable `x` is modified "
 "and another when `x.f` is modified. Either modification would invalidate the "
@@ -610,12 +721,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:367
+#: doc/guide-lifetimes.md:367
+#, fuzzy
+#| msgid "# Borrowed pointers"
 msgid "# Borrowing and enums"
-msgstr ""
+msgstr "# 借用ポインタ"
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:373
+#: doc/guide-lifetimes.md:373
 msgid ""
 "The previous example showed that the type system forbids any borrowing of "
 "owned boxes found in aliasable, mutable memory. This restriction prevents "
@@ -625,46 +738,46 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:376
+#: doc/guide-lifetimes.md:376
 msgid ""
 "As an example, let’s look at the following `shape` type that can represent "
 "both rectangles and circles:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:385
+#: doc/guide-lifetimes.md:385
 #, no-wrap
 msgid ""
 "~~~\n"
-"struct Point {x: float, y: float}; // as before\n"
-"struct Size {w: float, h: float}; // as before\n"
+"struct Point {x: f64, y: f64}; // as before\n"
+"struct Size {w: f64, h: f64}; // as before\n"
 "enum Shape {\n"
-"    Circle(Point, float),   // origin, radius\n"
+"    Circle(Point, f64),   // origin, radius\n"
 "    Rectangle(Point, Size)  // upper-left, dimensions\n"
 "}\n"
 "~~~\n"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:389
+#: doc/guide-lifetimes.md:389
 msgid ""
 "Now we might write a function to compute the area of a shape. This function "
 "takes a borrowed pointer to a shape, to avoid the need for copying."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:405
+#: doc/guide-lifetimes.md:405
 #, no-wrap
 msgid ""
 "~~~\n"
-"# struct Point {x: float, y: float}; // as before\n"
-"# struct Size {w: float, h: float}; // as before\n"
+"# struct Point {x: f64, y: f64}; // as before\n"
+"# struct Size {w: f64, h: f64}; // as before\n"
 "# enum Shape {\n"
-"#     Circle(Point, float),   // origin, radius\n"
+"#     Circle(Point, f64),   // origin, radius\n"
 "#     Rectangle(Point, Size)  // upper-left, dimensions\n"
 "# }\n"
-"# static tau: float = 6.28f;\n"
-"fn compute_area(shape: &Shape) -> float {\n"
+"# static tau: f64 = 6.28;\n"
+"fn compute_area(shape: &Shape) -> f64 {\n"
 "    match *shape {\n"
 "        Circle(_, radius) => 0.5 * tau * radius * radius,\n"
 "        Rectangle(_, ref size) => size.w * size.h\n"
@@ -674,7 +787,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:410
+#: doc/guide-lifetimes.md:410
 msgid ""
 "The first case matches against circles. Here, the pattern extracts the "
 "radius from the shape variant and the action uses it to compute the area of "
@@ -683,12 +796,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:412
+#: doc/guide-lifetimes.md:412
 msgid "[tau]: http://www.math.utah.edu/~palais/pi.html"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:418
+#: doc/guide-lifetimes.md:418
 msgid ""
 "The second match is more interesting. Here we match against a rectangle and "
 "extract its size: but rather than copy the `size` struct, we use a by-"
@@ -698,14 +811,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:421
+#: doc/guide-lifetimes.md:421
 msgid ""
 "To make this more clear, let's look at a diagram of memory layout in the "
 "case where `shape` points at a rectangle:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:424 doc/tutorial-borrowed-ptr.md:449
+#: doc/guide-lifetimes.md:424 doc/guide-lifetimes.md:449
 #, no-wrap
 msgid ""
 "~~~ {.notrust}\n"
@@ -713,21 +826,21 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:433
+#: doc/guide-lifetimes.md:433
 #, no-wrap
 msgid ""
 "+-------+         +---------------+\n"
 "| shape | ------> | rectangle(    |\n"
-"+-------+         |   {x: float,  |\n"
-"| size  | -+      |    y: float}, |\n"
-"+-------+  +----> |   {w: float,  |\n"
-"                  |    h: float}) |\n"
+"+-------+         |   {x: f64,    |\n"
+"| size  | -+      |    y: f64},   |\n"
+"+-------+  +----> |   {w: f64,    |\n"
+"                  |    h: f64})   |\n"
 "                  +---------------+\n"
 "~~~\n"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:440
+#: doc/guide-lifetimes.md:440
 msgid ""
 "Here you can see that rectangular shapes are composed of five words of "
 "memory. The first is a tag indicating which variant this enum is "
@@ -737,7 +850,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:446
+#: doc/guide-lifetimes.md:446
 msgid ""
 "Perhaps you can see where the danger lies: if the shape were somehow to be "
 "reassigned, perhaps to a circle, then although the memory used to store that "
@@ -747,29 +860,29 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:458
+#: doc/guide-lifetimes.md:458
 #, no-wrap
 msgid ""
 "+-------+         +---------------+\n"
 "| shape | ------> | circle(       |\n"
-"+-------+         |   {x: float,  |\n"
-"| size  | -+      |    y: float}, |\n"
-"+-------+  +----> |   float)      |\n"
+"+-------+         |   {x: f64,    |\n"
+"| size  | -+      |    y: f64},   |\n"
+"+-------+  +----> |   f64)        |\n"
 "                  |               |\n"
 "                  +---------------+\n"
 "~~~\n"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:463
+#: doc/guide-lifetimes.md:463
 msgid ""
-"As you can see, the `size` pointer would be pointing at a `float` instead of "
-"a struct. This is not good: dereferencing the second field of a `float` as "
-"if it were a struct with two fields would be a memory safety violation."
+"As you can see, the `size` pointer would be pointing at a `f64` instead of a "
+"struct. This is not good: dereferencing the second field of a `f64` as if it "
+"were a struct with two fields would be a memory safety violation."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:475
+#: doc/guide-lifetimes.md:475
 msgid ""
 "So, in fact, for every `ref` binding, the compiler will impose the same "
 "rules as the ones we saw for borrowing the interior of a owned box: it must "
@@ -785,12 +898,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:477
+#: doc/guide-lifetimes.md:477
+#, fuzzy
+#| msgid "# Borrowed pointers"
 msgid "# Returning borrowed pointers"
-msgstr ""
+msgstr "# 借用ポインタ"
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:483
+#: doc/guide-lifetimes.md:483
 msgid ""
 "So far, all of the examples we have looked at, use borrowed pointers in a "
 "“downward” direction. That is, a method or code block creates a borrowed "
@@ -800,22 +915,22 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:485
+#: doc/guide-lifetimes.md:485
 msgid "For example, we could write a subroutine like this:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:490
+#: doc/guide-lifetimes.md:490
 msgid ""
-"~~~ struct Point {x: float, y: float} fn get_x<'r>(p: &'r Point) -> &'r "
-"float { &p.x } ~~~"
+"~~~ struct Point {x: f64, y: f64} fn get_x<'r>(p: &'r Point) -> &'r f64 { &p."
+"x } ~~~"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:498
+#: doc/guide-lifetimes.md:498
 msgid ""
 "Here, the function `get_x()` returns a pointer into the structure it was "
-"given. The type of the parameter (`&'r Point`) and return type (`&'r float`) "
+"given. The type of the parameter (`&'r Point`) and return type (`&'r f64`) "
 "both use a new syntactic form that we have not seen so far.  Here the "
 "identifier `r` names the lifetime of the pointer explicitly. So in effect, "
 "this function declares that it takes a pointer with lifetime `r` and returns "
@@ -823,7 +938,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:504
+#: doc/guide-lifetimes.md:504
 msgid ""
 "In general, it is only possible to return borrowed pointers if they are "
 "derived from a parameter to the procedure. In that case, the pointer result "
@@ -832,7 +947,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:510
+#: doc/guide-lifetimes.md:510
 msgid ""
 "In the previous examples, function parameter types did not include a "
 "lifetime name. In those examples, the compiler simply creates a fresh name "
@@ -841,7 +956,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:518
+#: doc/guide-lifetimes.md:518
 msgid ""
 "Named lifetimes that appear in function signatures are conceptually the same "
 "as the other lifetimes we have seen before, but they are a bit abstract: "
@@ -852,7 +967,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:523
+#: doc/guide-lifetimes.md:523
 msgid ""
 "In any case, whatever the lifetime of `r` is, the pointer produced by `&p.x` "
 "always has the same lifetime as `p` itself: a pointer to a field of a struct "
@@ -861,26 +976,26 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:526
+#: doc/guide-lifetimes.md:526
 msgid ""
 "To emphasize this point, let’s look at a variation on the example, this time "
 "one that does not compile:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:533
+#: doc/guide-lifetimes.md:533
 #, no-wrap
 msgid ""
 "~~~ {.xfail-test}\n"
-"struct Point {x: float, y: float}\n"
-"fn get_x_sh(p: @Point) -> &float {\n"
+"struct Point {x: f64, y: f64}\n"
+"fn get_x_sh(p: @Point) -> &f64 {\n"
 "    &p.x // Error reported here\n"
 "}\n"
 "~~~\n"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:541
+#: doc/guide-lifetimes.md:541
 msgid ""
 "Here, the function `get_x_sh()` takes a managed box as input and returns a "
 "borrowed pointer. As before, the lifetime of the borrowed pointer that will "
@@ -892,7 +1007,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:552
+#: doc/guide-lifetimes.md:552
 msgid ""
 "Within `get_x_sh()`, we see the expression `&p.x` which takes the address of "
 "a field of a managed box. The presence of this expression implies that the "
@@ -906,7 +1021,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:559
+#: doc/guide-lifetimes.md:559
 msgid ""
 "In general, if you borrow a managed (or owned) box to create a borrowed "
 "pointer, the pointer will only be valid within the function and cannot be "
@@ -916,30 +1031,30 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:561
+#: doc/guide-lifetimes.md:561
 msgid "# Named lifetimes"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:565
+#: doc/guide-lifetimes.md:565
 msgid ""
 "Let's look at named lifetimes in more detail. Named lifetimes allow for "
 "grouping of parameters by lifetime. For example, consider this function:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:579
+#: doc/guide-lifetimes.md:579
 #, no-wrap
 msgid ""
 "~~~\n"
-"# struct Point {x: float, y: float}; // as before\n"
-"# struct Size {w: float, h: float}; // as before\n"
+"# struct Point {x: f64, y: f64}; // as before\n"
+"# struct Size {w: f64, h: f64}; // as before\n"
 "# enum Shape {\n"
-"#     Circle(Point, float),   // origin, radius\n"
+"#     Circle(Point, f64),   // origin, radius\n"
 "#     Rectangle(Point, Size)  // upper-left, dimensions\n"
 "# }\n"
-"# fn compute_area(shape: &Shape) -> float { 0f }\n"
-"fn select<'r, T>(shape: &'r Shape, threshold: float,\n"
+"# fn compute_area(shape: &Shape) -> f64 { 0.0 }\n"
+"fn select<'r, T>(shape: &'r Shape, threshold: f64,\n"
 "                 a: &'r T, b: &'r T) -> &'r T {\n"
 "    if compute_area(shape) > threshold {a} else {b}\n"
 "}\n"
@@ -947,7 +1062,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:585
+#: doc/guide-lifetimes.md:585
 msgid ""
 "This function takes three borrowed pointers and assigns each the same "
 "lifetime `r`.  In practice, this means that, in the caller, the lifetime `r` "
@@ -956,24 +1071,24 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:607
+#: doc/guide-lifetimes.md:607
 #, no-wrap
 msgid ""
 "~~~\n"
-"# struct Point {x: float, y: float}; // as before\n"
-"# struct Size {w: float, h: float}; // as before\n"
+"# struct Point {x: f64, y: f64}; // as before\n"
+"# struct Size {w: f64, h: f64}; // as before\n"
 "# enum Shape {\n"
-"#     Circle(Point, float),   // origin, radius\n"
+"#     Circle(Point, f64),   // origin, radius\n"
 "#     Rectangle(Point, Size)  // upper-left, dimensions\n"
 "# }\n"
-"# fn compute_area(shape: &Shape) -> float { 0f }\n"
-"# fn select<'r, T>(shape: &Shape, threshold: float,\n"
+"# fn compute_area(shape: &Shape) -> f64 { 0.0 }\n"
+"# fn select<'r, T>(shape: &Shape, threshold: f64,\n"
 "#                  a: &'r T, b: &'r T) -> &'r T {\n"
 "#     if compute_area(shape) > threshold {a} else {b}\n"
 "# }\n"
 "                                                     // -+ r\n"
 "fn select_based_on_unit_circle<'r, T>(               //  |-+ B\n"
-"    threshold: float, a: &'r T, b: &'r T) -> &'r T { //  | |\n"
+"    threshold: f64, a: &'r T, b: &'r T) -> &'r T { //  | |\n"
 "                                                     //  | |\n"
 "    let shape = Circle(Point {x: 0., y: 0.}, 1.);    //  | |\n"
 "    select(&shape, threshold, a, b)                  //  | |\n"
@@ -983,7 +1098,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:617
+#: doc/guide-lifetimes.md:617
 msgid ""
 "In this call to `select()`, the lifetime of the first parameter shape is B, "
 "the function body. Both of the second two parameters `a` and `b` share the "
@@ -996,7 +1111,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:622
+#: doc/guide-lifetimes.md:622
 msgid ""
 "To address this, we can modify the definition of `select()` to distinguish "
 "the lifetime of the first parameter from the lifetime of the latter two. "
@@ -1005,18 +1120,18 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:636
+#: doc/guide-lifetimes.md:636
 #, no-wrap
 msgid ""
 "~~~\n"
-"# struct Point {x: float, y: float}; // as before\n"
-"# struct Size {w: float, h: float}; // as before\n"
+"# struct Point {x: f64, y: f64}; // as before\n"
+"# struct Size {w: f64, h: f64}; // as before\n"
 "# enum Shape {\n"
-"#     Circle(Point, float),   // origin, radius\n"
+"#     Circle(Point, f64),   // origin, radius\n"
 "#     Rectangle(Point, Size)  // upper-left, dimensions\n"
 "# }\n"
-"# fn compute_area(shape: &Shape) -> float { 0f }\n"
-"fn select<'r, 'tmp, T>(shape: &'tmp Shape, threshold: float,\n"
+"# fn compute_area(shape: &Shape) -> f64 { 0.0 }\n"
+"fn select<'r, 'tmp, T>(shape: &'tmp Shape, threshold: f64,\n"
 "                       a: &'r T, b: &'r T) -> &'r T {\n"
 "    if compute_area(shape) > threshold {a} else {b}\n"
 "}\n"
@@ -1024,7 +1139,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:641
+#: doc/guide-lifetimes.md:641
 msgid ""
 "Here you can see that `shape`'s lifetime is now named `tmp`. The parameters "
 "`a`, `b`, and the return value all have the lifetime `r`.  However, since "
@@ -1033,18 +1148,18 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:655
+#: doc/guide-lifetimes.md:655
 #, no-wrap
 msgid ""
 "~~~\n"
-"# struct Point {x: float, y: float}; // as before\n"
-"# struct Size {w: float, h: float}; // as before\n"
+"# struct Point {x: f64, y: f64}; // as before\n"
+"# struct Size {w: f64, h: f64}; // as before\n"
 "# enum Shape {\n"
-"#     Circle(Point, float),   // origin, radius\n"
+"#     Circle(Point, f64),   // origin, radius\n"
 "#     Rectangle(Point, Size)  // upper-left, dimensions\n"
 "# }\n"
-"# fn compute_area(shape: &Shape) -> float { 0f }\n"
-"fn select<'r, T>(shape: &Shape, threshold: float,\n"
+"# fn compute_area(shape: &Shape) -> f64 { 0.0 }\n"
+"fn select<'r, T>(shape: &Shape, threshold: f64,\n"
 "                 a: &'r T, b: &'r T) -> &'r T {\n"
 "    if compute_area(shape) > threshold {a} else {b}\n"
 "}\n"
@@ -1052,17 +1167,19 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:657
+#: doc/guide-lifetimes.md:657
 msgid "This is equivalent to the previous definition."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:659
+#: doc/guide-lifetimes.md:659
+#, fuzzy
+#| msgid "## Conventions"
 msgid "# Conclusion"
-msgstr ""
+msgstr "## 本書の表記について"
 
 #. type: Plain text
-#: doc/tutorial-borrowed-ptr.md:663
+#: doc/guide-lifetimes.md:663
 msgid ""
 "So there you have it: a (relatively) brief tour of the borrowed pointer "
 "system. For more details, we refer to the (yet to be written) reference "
