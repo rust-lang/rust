@@ -5498,11 +5498,10 @@ impl Resolver {
 
                 // Move to the next parent.
                 match search_module.parent_link {
-                    NoParentLink => {
+                    NoParentLink | ModuleParentLink(..) => {
                         // Done.
                         break;
                     }
-                    ModuleParentLink(parent_module, _) |
                     BlockParentLink(parent_module, _) => {
                         search_module = parent_module;
                     }
