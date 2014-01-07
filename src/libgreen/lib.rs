@@ -25,9 +25,6 @@
 // NB this does *not* include globs, please keep it that way.
 #[feature(macro_rules)];
 
-// Allow check-stage0-green for now
-#[cfg(test, stage0)] extern mod green;
-
 use std::os;
 use std::rt::crate_map;
 use std::rt::rtio;
