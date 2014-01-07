@@ -753,46 +753,6 @@ fn test_crate_ids_must_be_relative_path_like() {
 }
 
 #[test]
-fn test_package_version() {
-    let local_path = "mockgithub.com/catamorphism/test_pkg_version";
-    let repo = init_git_repo(&Path::new(local_path));
-    let repo = repo.path();
-    let repo_subdir = repo.join_many(["mockgithub.com", "catamorphism", "test_pkg_version"]);
-    debug!("Writing files in: {}", repo_subdir.display());
-    fs::mkdir_recursive(&repo_subdir, io::UserRWX);
-    writeFile(&repo_subdir.join("main.rs"),
-              "fn main() { let _x = (); }");
-    writeFile(&repo_subdir.join("lib.rs"),
-              "pub fn f() { let _x = (); }");
-    writeFile(&repo_subdir.join("test.rs"),
-              "#[test] pub fn f() { (); }");
-    writeFile(&repo_subdir.join("bench.rs"),
-              "#[bench] pub fn f() { (); }");
-    add_git_tag(&repo_subdir, ~"0.4");
-
-    // It won't pick up the 0.4 version because the dir isn't in the RUST_PATH, but...
-    let temp_pkg_id = CrateId::new("mockgithub.com/catamorphism/test_pkg_version");
-    // This should look at the prefix, clone into a workspace, then build.
-    command_line_test([~"install", ~"mockgithub.com/catamorphism/test_pkg_version"],
-                      repo);
-    let ws = repo.join(".rust");
-    // we can still match on the filename to make sure it contains the 0.4 version
-    assert!(match built_library_in_workspace(&temp_pkg_id,
-                                             &ws) {
-        Some(p) => {
-            let suffix = format!("0.4{}", os::consts::DLL_SUFFIX);
-            p.as_vec().ends_with(suffix.as_bytes())
-        }
-        None    => false
-    });
-    assert!(built_executable_in_workspace(&temp_pkg_id, &ws)
-            == Some(target_build_dir(&ws).join_many(["mockgithub.com",
-                                                     "catamorphism",
-                                                     "test_pkg_version",
-                                                     "test_pkg_version"])));
-}
-
-#[test]
 fn test_package_request_version() {
     let local_path = "mockgithub.com/catamorphism/test_pkg_version";
     let repo = init_git_repo(&Path::new(local_path));
@@ -2183,9 +2143,9 @@ fn test_installed_read_only() {
               "fn main() { let _x = (); }");
     writeFile(&repo_subdir.join("lib.rs"),
               "pub fn f() { let _x = (); }");
-    add_git_tag(&repo_subdir, ~"0.1"); // this has the effect of committing the files
+    add_git_tag(&repo_subdir, ~"0.0"); // this has the effect of committing the files
     // update crateid to what will be auto-detected
-    temp_pkg_id.version = ExactRevision(~"0.1");
+    temp_pkg_id.version = ExactRevision(~"0.0");
 
     // FIXME (#9639): This needs to handle non-utf8 paths
     command_line_test([~"install", temp_pkg_id.path.as_str().unwrap().to_owned()], repo);

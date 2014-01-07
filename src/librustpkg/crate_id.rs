@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use version::{try_getting_version, try_getting_local_version,
-              Version, NoVersion, ExactRevision};
+use version::{Version, NoVersion, ExactRevision};
 use std::hash::Streaming;
 use std::hash;
 use syntax::crateid;
@@ -53,17 +52,9 @@ impl CrateId {
         let raw_crateid = raw_crateid.unwrap();
         let crateid::CrateId { path, name, version } = raw_crateid;
         let path = Path::new(path);
-        let given_version = version.map(|v| ExactRevision(v));
-
-        let version = match given_version {
-            Some(v) => v,
-            None => match try_getting_local_version(&path) {
-                Some(v) => v,
-                None => match try_getting_version(&path) {
-                    Some(v) => v,
-                    None => NoVersion
-                }
-            }
+        let version = match version {
+            Some(v) => ExactRevision(v),
+            None => NoVersion,
         };
 
         CrateId {
