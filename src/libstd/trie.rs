@@ -111,30 +111,6 @@ impl<T> TrieMap<T> {
         self.root.each_reverse(f)
     }
 
-    /// Visit all key-value pairs in order
-    #[inline]
-    pub fn each<'a>(&'a self, f: |&uint, &'a T| -> bool) -> bool {
-        self.root.each(f)
-    }
-
-    /// Visit all keys in order
-    #[inline]
-    pub fn each_key(&self, f: |&uint| -> bool) -> bool {
-        self.each(|k, _| f(k))
-    }
-
-    /// Visit all values in order
-    #[inline]
-    pub fn each_value<'a>(&'a self, f: |&'a T| -> bool) -> bool {
-        self.each(|_, v| f(v))
-    }
-
-    /// Iterate over the map and mutate the contained values
-    #[inline]
-    pub fn mutate_values(&mut self, f: |&uint, &mut T| -> bool) -> bool {
-        self.root.mutate_values(f)
-    }
-
     /// Visit all keys in reverse order
     #[inline]
     pub fn each_key_reverse(&self, f: |&uint| -> bool) -> bool {
@@ -156,39 +132,104 @@ impl<T> TrieMap<T> {
         }
     }
 
+    /// Get an iterator over the key-value pairs in the map, with the
+    /// ability to mutate the values.
+    pub fn mut_iter<'a>(&'a mut self) -> TrieMapMutIterator<'a, T> {
+        TrieMapMutIterator {
+            stack: ~[self.root.children.mut_iter()],
+            remaining_min: self.length,
+            remaining_max: self.length
+        }
+    }
+}
+
+// FIXME #5846 we want to be able to choose between &x and &mut x
+// (with many different `x`) below, so we need to optionally pass mut
+// as a tt, but the only thing we can do with a `tt` is pass them to
+// other macros, so this takes the `& <mutability> <operand>` token
+// sequence and forces their evalutation as an expression. (see also
+// `item!` below.)
+macro_rules! addr { ($e:expr) => { $e } }
+
+macro_rules! bound {
+    ($iterator_name:ident,
+     // the current treemap
+     self = $this:expr,
+     // the key to look for
+     key = $key:expr,
+     // are we looking at the upper bound?
+     is_upper = $upper:expr,
+
+     // method names for slicing/iterating.
+     slice_from = $slice_from:ident,
+     iter = $iter:ident,
+
+     // see the comment on `addr!`, this is just an optional mut, but
+     // there's no 0-or-1 repeats yet.
+     mutability = $($mut_:tt)*) => {
+        {
+            // # For `mut`
+            // We need an unsafe pointer here because we are borrowing
+            // mutable references to the internals of each of these
+            // mutable nodes, while still using the outer node.
+            //
+            // However, we're allowed to flaunt rustc like this because we
+            // never actually modify the "shape" of the nodes. The only
+            // place that mutation is can actually occur is of the actual
+            // values of the TrieMap (as the return value of the
+            // iterator), i.e. we can never cause a deallocation of any
+            // TrieNodes so the raw pointer is always valid.
+            //
+            // # For non-`mut`
+            // We like sharing code so much that even a little unsafe won't
+            // stop us.
+            let this = $this;
+            let mut node = addr!(& $($mut_)* this.root as * $($mut_)* TrieNode<T>);
+
+            let key = $key;
+
+            let mut idx = 0;
+            let mut it = $iterator_name {
+                stack: ~[],
+                remaining_min: 0,
+                remaining_max: this.length
+            };
+            // this addr is necessary for the `Internal` pattern.
+            addr!(loop {
+                    let children = unsafe {addr!(& $($mut_)* (*node).children)};
+                    let child_id = chunk(key, idx);
+                    let (slice_idx, ret) = match children[child_id] {
+                        Internal(ref $($mut_)* n) => {
+                            node = addr!(& $($mut_)* **n as * $($mut_)* TrieNode<T>);
+                            (child_id + 1, false)
+                        }
+                        External(stored, _) => {
+                            (if stored < key || ($upper && stored == key) {
+                                child_id + 1
+                            } else {
+                                child_id
+                            }, true)
+                        }
+                        Nothing => {
+                            (child_id + 1, true)
+                        }
+                    };
+                    it.stack.push(children.$slice_from(slice_idx).$iter());
+                    if ret { return it }
+                    idx += 1;
+                })
+        }
+    }
+}
+
+impl<T> TrieMap<T> {
     // If `upper` is true then returns upper_bound else returns lower_bound.
     #[inline]
     fn bound<'a>(&'a self, key: uint, upper: bool) -> TrieMapIterator<'a, T> {
-        let mut node: &'a TrieNode<T> = &self.root;
-        let mut idx = 0;
-        let mut it = TrieMapIterator {
-            stack: ~[],
-            remaining_min: 0,
-            remaining_max: self.length
-        };
-        loop {
-            let children = &node.children;
-            let child_id = chunk(key, idx);
-            match children[child_id] {
-                Internal(ref n) => {
-                    node = &**n;
-                    it.stack.push(children.slice_from(child_id + 1).iter());
-                }
-                External(stored, _) => {
-                    if stored < key || (upper && stored == key) {
-                        it.stack.push(children.slice_from(child_id + 1).iter());
-                    } else {
-                        it.stack.push(children.slice_from(child_id).iter());
-                    }
-                    return it;
-                }
-                Nothing => {
-                    it.stack.push(children.slice_from(child_id + 1).iter());
-                    return it
-                }
-            }
-            idx += 1;
-        }
+        bound!(TrieMapIterator, self = self,
+               key = key, is_upper = upper,
+               slice_from = slice_from, iter = iter,
+               mutability = )
     }
 
     /// Get an iterator pointing to the first key-value pair whose key is not less than `key`.
@@ -201,6 +242,26 @@ impl<T> TrieMap<T> {
     /// If all keys in the map are not greater than `key` an empty iterator is returned.
     pub fn upper_bound<'a>(&'a self, key: uint) -> TrieMapIterator<'a, T> {
         self.bound(key, true)
+    }
+    // If `upper` is true then returns upper_bound else returns lower_bound.
+    #[inline]
+    fn mut_bound<'a>(&'a mut self, key: uint, upper: bool) -> TrieMapMutIterator<'a, T> {
+        bound!(TrieMapMutIterator, self = self,
+               key = key, is_upper = upper,
+               slice_from = mut_slice_from, iter = mut_iter,
+               mutability = mut)
+    }
+
+    /// Get an iterator pointing to the first key-value pair whose key is not less than `key`.
+    /// If all keys in the map are less than `key` an empty iterator is returned.
+    pub fn mut_lower_bound<'a>(&'a mut self, key: uint) -> TrieMapMutIterator<'a, T> {
+        self.mut_bound(key, false)
+    }
+
+    /// Get an iterator pointing to the first key-value pair whose key is greater than `key`.
+    /// If all keys in the map are not greater than `key` an empty iterator is returned.
+    pub fn mut_upper_bound<'a>(&'a mut self, key: uint) -> TrieMapMutIterator<'a, T> {
+        self.mut_bound(key, true)
     }
 }
 
@@ -264,10 +325,6 @@ impl TrieSet {
         self.map.remove(value)
     }
 
-    /// Visit all values in order
-    #[inline]
-    pub fn each(&self, f: |&uint| -> bool) -> bool { self.map.each_key(f) }
-
     /// Visit all values in reverse order
     #[inline]
     pub fn each_reverse(&self, f: |&uint| -> bool) -> bool {
@@ -328,35 +385,11 @@ impl<T> TrieNode<T> {
 }
 
 impl<T> TrieNode<T> {
-    fn each<'a>(&'a self, f: |&uint, &'a T| -> bool) -> bool {
-        for elt in self.children.iter() {
-            match *elt {
-                Internal(ref x) => if !x.each(|i,t| f(i,t)) { return false },
-                External(k, ref v) => if !f(&k, v) { return false },
-                Nothing => ()
-            }
-        }
-        true
-    }
-
     fn each_reverse<'a>(&'a self, f: |&uint, &'a T| -> bool) -> bool {
         for elt in self.children.rev_iter() {
             match *elt {
                 Internal(ref x) => if !x.each_reverse(|i,t| f(i,t)) { return false },
                 External(k, ref v) => if !f(&k, v) { return false },
-                Nothing => ()
-            }
-        }
-        true
-    }
-
-    fn mutate_values<'a>(&'a mut self, f: |&uint, &mut T| -> bool) -> bool {
-        for child in self.children.mut_iter() {
-            match *child {
-                Internal(ref mut x) => if !x.mutate_values(|i,t| f(i,t)) {
-                    return false
-                },
-                External(k, ref mut v) => if !f(&k, v) { return false },
                 Nothing => ()
             }
         }
@@ -449,38 +482,58 @@ pub struct TrieMapIterator<'a, T> {
     priv remaining_max: uint
 }
 
-impl<'a, T> Iterator<(uint, &'a T)> for TrieMapIterator<'a, T> {
-    fn next(&mut self) -> Option<(uint, &'a T)> {
-        while !self.stack.is_empty() {
-            match self.stack[self.stack.len() - 1].next() {
-                None => {
-                    self.stack.pop();
-                }
-                Some(ref child) => {
-                    match **child {
-                        Internal(ref node) => {
-                            self.stack.push(node.children.iter());
-                        }
-                        External(key, ref value) => {
-                            self.remaining_max -= 1;
-                            if self.remaining_min > 0 {
-                                self.remaining_min -= 1;
-                            }
-                            return Some((key, value));
-                        }
-                        Nothing => {}
-                    }
-                }
-            }
-        }
-        return None;
-    }
+/// Forward iterator over the key-value pairs of a map, with the
+/// values being mutable.
+pub struct TrieMapMutIterator<'a, T> {
+    priv stack: ~[vec::VecMutIterator<'a, Child<T>>],
+    priv remaining_min: uint,
+    priv remaining_max: uint
+}
 
-    #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
-        (self.remaining_min, Some(self.remaining_max))
+// FIXME #5846: see `addr!` above.
+macro_rules! item { ($i:item) => {$i}}
+
+macro_rules! iterator_impl {
+    ($name:ident,
+     iter = $iter:ident,
+     mutability = $($mut_:tt)*) => {
+        item!(impl<'a, T> Iterator<(uint, &'a $($mut_)* T)> for $name<'a, T> {
+                fn next(&mut self) -> Option<(uint, &'a $($mut_)* T)> {
+                    while !self.stack.is_empty() {
+                        match self.stack[self.stack.len() - 1].next() {
+                            None => {
+                                self.stack.pop();
+                            }
+                            Some(child) => {
+                                addr!(match *child {
+                                        Internal(ref $($mut_)* node) => {
+                                            self.stack.push(node.children.$iter());
+                                        }
+                                        External(key, ref $($mut_)* value) => {
+                                            self.remaining_max -= 1;
+                                            if self.remaining_min > 0 {
+                                                self.remaining_min -= 1;
+                                            }
+                                            return Some((key, value));
+                                        }
+                                        Nothing => {}
+                                    })
+                            }
+                        }
+                    }
+                    return None;
+                }
+
+                #[inline]
+                fn size_hint(&self) -> (uint, Option<uint>) {
+                    (self.remaining_min, Some(self.remaining_max))
+                }
+            })
     }
 }
+
+iterator_impl! { TrieMapIterator, iter = iter, mutability = }
+iterator_impl! { TrieMapMutIterator, iter = mut_iter, mutability = mut }
 
 /// Forward iterator over a set
 pub struct TrieSetIterator<'a> {
@@ -584,46 +637,6 @@ mod test_map {
     }
 
     #[test]
-    fn test_each() {
-        let mut m = TrieMap::new();
-
-        assert!(m.insert(3, 6));
-        assert!(m.insert(0, 0));
-        assert!(m.insert(4, 8));
-        assert!(m.insert(2, 4));
-        assert!(m.insert(1, 2));
-
-        let mut n = 0;
-        m.each(|k, v| {
-            assert_eq!(*k, n);
-            assert_eq!(*v, n * 2);
-            n += 1;
-            true
-        });
-    }
-
-    #[test]
-    fn test_each_break() {
-        let mut m = TrieMap::new();
-
-        for x in range(uint::max_value - 10000, uint::max_value).invert() {
-            m.insert(x, x / 2);
-        }
-
-        let mut n = uint::max_value - 10000;
-        m.each(|k, v| {
-            if n == uint::max_value - 5000 { false } else {
-                assert!(n < uint::max_value - 5000);
-
-                assert_eq!(*k, n);
-                assert_eq!(*v, n / 2);
-                n += 1;
-                true
-            }
-        });
-    }
-
-    #[test]
     fn test_each_reverse() {
         let mut m = TrieMap::new();
 
@@ -713,6 +726,30 @@ mod test_map {
     }
 
     #[test]
+    fn test_mut_iter() {
+        let mut empty_map : TrieMap<uint> = TrieMap::new();
+        assert!(empty_map.mut_iter().next().is_none());
+
+        let first = uint::max_value - 10000;
+        let last = uint::max_value;
+
+        let mut map = TrieMap::new();
+        for x in range(first, last).invert() {
+            map.insert(x, x / 2);
+        }
+
+        let mut i = 0;
+        for (k, v) in map.mut_iter() {
+            assert_eq!(k, first + i);
+            *v -= k / 2;
+            i += 1;
+        }
+        assert_eq!(i, last - first);
+
+        assert!(map.iter().all(|(_, &v)| v == 0));
+    }
+
+    #[test]
     fn test_bound() {
         let empty_map : TrieMap<uint> = TrieMap::new();
         assert_eq!(empty_map.lower_bound(0).next(), None);
@@ -753,6 +790,102 @@ mod test_map {
             assert_eq!(ub.next(), None);
         }
     }
+
+    #[test]
+    fn test_mut_bound() {
+        let empty_map : TrieMap<uint> = TrieMap::new();
+        assert_eq!(empty_map.lower_bound(0).next(), None);
+        assert_eq!(empty_map.upper_bound(0).next(), None);
+
+        let mut m_lower = TrieMap::new();
+        let mut m_upper = TrieMap::new();
+        for i in range(0u, 100) {
+            m_lower.insert(2 * i, 4 * i);
+            m_upper.insert(2 * i, 4 * i);
+        }
+
+        for i in range(0u, 199) {
+            let mut lb_it = m_lower.mut_lower_bound(i);
+            let (k, v) = lb_it.next().unwrap();
+            let lb = i + i % 2;
+            assert_eq!(lb, k);
+            *v -= k;
+        }
+
+        for i in range(0u, 198) {
+            let mut ub_it = m_upper.mut_upper_bound(i);
+            let (k, v) = ub_it.next().unwrap();
+            let ub = i + 2 - i % 2;
+            assert_eq!(ub, k);
+            *v -= k;
+        }
+
+        assert!(m_lower.mut_lower_bound(199).next().is_none());
+        assert!(m_upper.mut_upper_bound(198).next().is_none());
+
+        assert!(m_lower.iter().all(|(_, &x)| x == 0));
+        assert!(m_upper.iter().all(|(_, &x)| x == 0));
+    }
+}
+
+#[cfg(test)]
+mod bench_map {
+    use super::*;
+    use prelude::*;
+    use rand::{weak_rng, Rng};
+    use extra::test::BenchHarness;
+
+    #[bench]
+    fn bench_iter_small(bh: &mut BenchHarness) {
+        let mut m = TrieMap::<uint>::new();
+        let mut rng = weak_rng();
+        for _ in range(0, 20) {
+            m.insert(rng.gen(), rng.gen());
+        }
+
+        bh.iter(|| for _ in m.iter() {})
+    }
+
+    #[bench]
+    fn bench_iter_large(bh: &mut BenchHarness) {
+        let mut m = TrieMap::<uint>::new();
+        let mut rng = weak_rng();
+        for _ in range(0, 1000) {
+            m.insert(rng.gen(), rng.gen());
+        }
+
+        bh.iter(|| for _ in m.iter() {})
+    }
+
+    #[bench]
+    fn bench_lower_bound(bh: &mut BenchHarness) {
+        let mut m = TrieMap::<uint>::new();
+        let mut rng = weak_rng();
+        for _ in range(0, 1000) {
+            m.insert(rng.gen(), rng.gen());
+        }
+
+        bh.iter(|| {
+                for _ in range(0, 10) {
+                    m.lower_bound(rng.gen());
+                }
+            });
+    }
+
+    #[bench]
+    fn bench_upper_bound(bh: &mut BenchHarness) {
+        let mut m = TrieMap::<uint>::new();
+        let mut rng = weak_rng();
+        for _ in range(0, 1000) {
+            m.insert(rng.gen(), rng.gen());
+        }
+
+        bh.iter(|| {
+                for _ in range(0, 10) {
+                    m.upper_bound(rng.gen());
+                }
+            });
+    }
 }
 
 #[cfg(test)]
@@ -775,13 +908,9 @@ mod test_set {
 
         let expected = [x, y];
 
-        let mut i = 0;
-
-        trie.each(|x| {
-            assert_eq!(expected[i], *x);
-            i += 1;
-            true
-        });
+        for (i, x) in trie.iter().enumerate() {
+            assert_eq!(expected[i], x);
+        }
     }
 
     #[test]
