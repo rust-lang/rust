@@ -106,6 +106,9 @@ impl Rng for OSRng {
         unsafe { cast::transmute(v) }
     }
     fn fill_bytes(&mut self, v: &mut [u8]) {
+        use container::Container;
+        use vec::MutableVector;
+
         extern {
             fn rust_win32_rand_gen(hProv: HCRYPTPROV, dwLen: DWORD,
                                    pbBuffer: *mut BYTE);

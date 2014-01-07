@@ -64,8 +64,10 @@ pub unsafe fn init(argc: int, argv: **u8) { realargs::init(argc, argv) }
 #[cfg(target_os = "freebsd")]
 mod imp {
     use cast;
+    use clone::Clone;
     #[cfg(not(test))] use libc;
     use option::{Option, Some, None};
+    use ptr::RawPtr;
     use iter::Iterator;
     #[cfg(not(test))] use str;
     use unstable::finally::Finally;

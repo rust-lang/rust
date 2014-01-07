@@ -54,7 +54,6 @@ use std::rt::task::{BlockedTask, Task};
 use std::str::raw::from_c_str;
 use std::str;
 use std::task;
-use std::unstable::finally::Finally;
 
 pub use self::async::AsyncWatcher;
 pub use self::file::{FsRequest, FileWatcher};

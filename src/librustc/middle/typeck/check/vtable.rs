@@ -12,6 +12,7 @@
 use middle::ty;
 use middle::ty::{AutoAddEnv, AutoDerefRef, AutoObject, param_ty};
 use middle::ty_fold::TypeFolder;
+use middle::typeck::astconv::AstConv;
 use middle::typeck::check::{FnCtxt, impl_self_ty};
 use middle::typeck::check::{structurally_resolved_type};
 use middle::typeck::infer::fixup_err_to_str;
@@ -23,6 +24,7 @@ use middle::typeck::{param_numbered, param_self, param_index};
 use middle::subst::Subst;
 use util::common::indenter;
 use util::ppaux;
+use util::ppaux::Repr;
 
 use std::cell::RefCell;
 use std::hashmap::HashSet;

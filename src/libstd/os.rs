@@ -81,13 +81,15 @@ pub fn getcwd() -> Path {
 
 #[cfg(windows)]
 pub mod win32 {
+    use libc::types::os::arch::extra::DWORD;
     use libc;
-    use vec;
-    use str;
     use option::{None, Option};
     use option;
     use os::TMPBUF_SZ;
-    use libc::types::os::arch::extra::DWORD;
+    use str::StrSlice;
+    use str;
+    use vec::{MutableVector, ImmutableVector, OwnedVector};
+    use vec;
 
     pub fn fill_utf16_buf_and_decode(f: |*mut u16, DWORD| -> DWORD)
         -> Option<~str> {

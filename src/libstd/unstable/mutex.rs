@@ -249,6 +249,8 @@ mod imp {
     use libc;
     use libc::{HANDLE, BOOL, LPSECURITY_ATTRIBUTES, c_void, DWORD, LPCSTR};
     use ptr;
+    use ptr::RawPtr;
+
     type LPCRITICAL_SECTION = *c_void;
     static SPIN_COUNT: DWORD = 4000;
 

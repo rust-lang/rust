@@ -16,6 +16,7 @@
 use middle::borrowck::*;
 use mc = middle::mem_categorization;
 use middle::ty;
+use util::ppaux::Repr;
 use syntax::ast;
 use syntax::codemap::Span;
 

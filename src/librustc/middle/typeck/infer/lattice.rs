@@ -35,6 +35,7 @@
 
 use middle::ty::{RegionVid, TyVar, Vid};
 use middle::ty;
+use middle::typeck::infer::{then, ToUres};
 use middle::typeck::infer::*;
 use middle::typeck::infer::combine::*;
 use middle::typeck::infer::glb::Glb;

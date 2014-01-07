@@ -204,6 +204,7 @@ use syntax::parse::token;
 use syntax::opt_vec;
 use syntax::visit;
 use syntax::visit::Visitor;
+use util::ppaux::Repr;
 
 pub fn infer_variance(tcx: ty::ctxt,
                       crate: &ast::Crate) {
