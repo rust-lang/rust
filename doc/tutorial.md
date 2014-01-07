@@ -2790,6 +2790,7 @@ For example, if we move the `animals` module above into its own file...
 mod plants;
 mod animals;
 ~~~
+
 ~~~ {.ignore}
 // src/animals.rs or src/animals/mod.rs
 mod fish;
@@ -2797,6 +2798,7 @@ mod mammals {
     mod humans;
 }
 ~~~
+
 ...then the source files of `mod animals`'s submodules can
 either be placed right next to that of its parents, or in a subdirectory if `animals` source file is:
 
@@ -2959,6 +2961,7 @@ pub fn bar() { println("Baz!"); }
 There also exist two short forms for importing multiple names at once:
 
 1. Explicit mention multiple names as the last element of an `use` path:
+
 ~~~
 use farm::{chicken, cow};
 # mod farm {
@@ -2969,6 +2972,7 @@ use farm::{chicken, cow};
 ~~~
 
 2. Import everything in a module with a wildcard:
+
 ~~~
 use farm::*;
 # mod farm {

@@ -278,6 +278,7 @@ return result + val;
 This solves the indentation problem. But if we have a lot of chained matches
 like this, we might prefer to write a single macro invocation. The input
 pattern we want is clear:
+
 ~~~~
 # macro_rules! b(
     ( $( ($e:expr) ~ ($p:pat) else $err:stmt ; )*
@@ -304,6 +305,7 @@ input patterns:
     ( binds $( $bind_res:ident ),* )
 # => (0))
 ~~~~
+
 ...and:
 
 ~~~~
