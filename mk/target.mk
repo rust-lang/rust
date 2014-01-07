@@ -193,10 +193,8 @@ endif
 $$(TBIN$(1)_T_$(2)_H_$(3))/:
 	mkdir -p $$@
 
-ifneq ($(CFG_LIBDIR),bin)
 $$(TLIB$(1)_T_$(2)_H_$(3))/:
 	mkdir -p $$@
-endif
 
 endef
 
