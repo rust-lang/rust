@@ -125,8 +125,8 @@ pub struct Datum {
     mode: DatumMode,
 }
 
-pub struct DatumBlock {
-    bcx: @Block,
+pub struct DatumBlock<'a> {
+    bcx: &'a Block<'a>,
     datum: Datum,
 }
 
@@ -163,14 +163,16 @@ pub fn immediate_rvalue(val: ValueRef, ty: ty::t) -> Datum {
     return Datum {val: val, ty: ty, mode: ByValue};
 }
 
-pub fn immediate_rvalue_bcx(bcx: @Block,
-                            val: ValueRef,
-                            ty: ty::t)
-                         -> DatumBlock {
-    return DatumBlock {bcx: bcx, datum: immediate_rvalue(val, ty)};
+pub fn immediate_rvalue_bcx<'a>(bcx: &'a Block<'a>, val: ValueRef, ty: ty::t)
+                            -> DatumBlock<'a> {
+    DatumBlock {
+        bcx: bcx,
+        datum: immediate_rvalue(val, ty),
+    }
 }
 
-pub fn scratch_datum(bcx: @Block, ty: ty::t, name: &str, zero: bool) -> Datum {
+pub fn scratch_datum(bcx: &Block, ty: ty::t, name: &str, zero: bool)
+                     -> Datum {
     /*!
      * Allocates temporary space on the stack using alloca() and
      * returns a by-ref Datum pointing to it.  If `zero` is true, the
@@ -203,11 +205,12 @@ pub fn appropriate_mode(ccx: &CrateContext, ty: ty::t) -> DatumMode {
 }
 
 impl Datum {
-    pub fn store_to(&self,
-                    bcx: @Block,
+    pub fn store_to<'a>(
+                    &self,
+                    bcx: &'a Block<'a>,
                     action: CopyAction,
                     dst: ValueRef)
-                    -> @Block {
+                    -> &'a Block<'a> {
         /*!
          *
          * Stores this value into its final home.  This moves if
@@ -221,10 +224,8 @@ impl Datum {
         }
     }
 
-    pub fn store_to_dest(&self,
-                         bcx: @Block,
-                         dest: expr::Dest)
-                         -> @Block {
+    pub fn store_to_dest<'a>(&self, bcx: &'a Block<'a>, dest: expr::Dest)
+                         -> &'a Block<'a> {
         match dest {
             expr::Ignore => {
                 return bcx;
@@ -235,31 +236,44 @@ impl Datum {
         }
     }
 
-    pub fn store_to_datum(&self,
-                          bcx: @Block,
+    pub fn store_to_datum<'a>(
+                          &self,
+                          bcx: &'a Block<'a>,
                           action: CopyAction,
                           datum: Datum)
-                          -> @Block {
+                          -> &'a Block<'a> {
         debug!("store_to_datum(self={}, action={:?}, datum={})",
                self.to_str(bcx.ccx()), action, datum.to_str(bcx.ccx()));
         assert!(datum.mode.is_by_ref());
         self.store_to(bcx, action, datum.val)
     }
 
-    pub fn move_to_datum(&self, bcx: @Block, action: CopyAction, datum: Datum)
-                         -> @Block {
+    pub fn move_to_datum<'a>(
+                         &self,
+                         bcx: &'a Block<'a>,
+                         action: CopyAction,
+                         datum: Datum)
+                         -> &'a Block<'a> {
         assert!(datum.mode.is_by_ref());
         self.move_to(bcx, action, datum.val)
     }
 
-    pub fn copy_to_datum(&self, bcx: @Block, action: CopyAction, datum: Datum)
-                         -> @Block {
+    pub fn copy_to_datum<'a>(
+                         &self,
+                         bcx: &'a Block<'a>,
+                         action: CopyAction,
+                         datum: Datum)
+                         -> &'a Block<'a> {
         assert!(datum.mode.is_by_ref());
         self.copy_to(bcx, action, datum.val)
     }
 
-    pub fn copy_to(&self, bcx: @Block, action: CopyAction, dst: ValueRef)
-                   -> @Block {
+    pub fn copy_to<'a>(
+                   &self,
+                   bcx: &'a Block<'a>,
+                   action: CopyAction,
+                   dst: ValueRef)
+                   -> &'a Block<'a> {
         /*!
          *
          * Copies the value into `dst`, which should be a pointer to a
@@ -301,11 +315,12 @@ impl Datum {
         }
     }
 
-    pub fn copy_to_no_check(&self,
-                            bcx: @Block,
+    pub fn copy_to_no_check<'a>(
+                            &self,
+                            bcx: &'a Block<'a>,
                             action: CopyAction,
                             dst: ValueRef)
-                            -> @Block {
+                            -> &'a Block<'a> {
         /*!
          *
          * A helper for `copy_to()` which does not check to see if we
@@ -333,8 +348,12 @@ impl Datum {
     // This works like copy_val, except that it deinitializes the source.
     // Since it needs to zero out the source, src also needs to be an lval.
     //
-    pub fn move_to(&self, bcx: @Block, action: CopyAction, dst: ValueRef)
-                   -> @Block {
+    pub fn move_to<'a>(
+                   &self,
+                   bcx: &'a Block<'a>,
+                   action: CopyAction,
+                   dst: ValueRef)
+                   -> &'a Block<'a> {
         let _icx = push_ctxt("move_to");
         let mut bcx = bcx;
 
@@ -363,7 +382,7 @@ impl Datum {
         return bcx;
     }
 
-    pub fn add_clean(&self, bcx: @Block) {
+    pub fn add_clean(&self, bcx: &Block) {
         /*!
          * Schedules this datum for cleanup in `bcx`.  The datum
          * must be an rvalue.
@@ -383,7 +402,7 @@ impl Datum {
         }
     }
 
-    pub fn cancel_clean(&self, bcx: @Block) {
+    pub fn cancel_clean(&self, bcx: &Block) {
         if ty::type_needs_drop(bcx.tcx(), self.ty) {
             match self.mode {
                 ByValue |
@@ -408,7 +427,7 @@ impl Datum {
              self.mode)
     }
 
-    pub fn to_value_datum(&self, bcx: @Block) -> Datum {
+    pub fn to_value_datum(&self, bcx: &Block) -> Datum {
         /*!
          *
          * Yields a by-value form of this datum.  This may involve
@@ -425,7 +444,7 @@ impl Datum {
         }
     }
 
-    pub fn to_value_llval(&self, bcx: @Block) -> ValueRef {
+    pub fn to_value_llval(&self, bcx: &Block) -> ValueRef {
         /*!
          *
          * Yields the value itself. */
@@ -446,7 +465,7 @@ impl Datum {
         }
     }
 
-    pub fn to_ref_datum(&self, bcx: @Block) -> Datum {
+    pub fn to_ref_datum(&self, bcx: &Block) -> Datum {
         /*!
          * Yields a by-ref form of this datum.  This may involve
          * creation of a temporary stack slot.  The value returned by
@@ -463,7 +482,7 @@ impl Datum {
         }
     }
 
-    pub fn to_ref_llval(&self, bcx: @Block) -> ValueRef {
+    pub fn to_ref_llval(&self, bcx: &Block) -> ValueRef {
         match self.mode {
             ByRef(_) => self.val,
             ByValue => {
@@ -496,7 +515,7 @@ impl Datum {
         appropriate_mode(ccx, self.ty)
     }
 
-    pub fn to_appropriate_llval(&self, bcx: @Block) -> ValueRef {
+    pub fn to_appropriate_llval(&self, bcx: &Block) -> ValueRef {
         /*!
          *
          * Yields an llvalue with the `appropriate_mode()`. */
@@ -507,7 +526,7 @@ impl Datum {
         }
     }
 
-    pub fn to_appropriate_datum(&self, bcx: @Block) -> Datum {
+    pub fn to_appropriate_datum(&self, bcx: &Block) -> Datum {
         /*!
          *
          * Yields a datum with the `appropriate_mode()`. */
@@ -519,7 +538,7 @@ impl Datum {
     }
 
     pub fn get_element(&self,
-                       bcx: @Block,
+                       bcx: &Block,
                        ty: ty::t,
                        source: DatumCleanup,
                        gep: |ValueRef| -> ValueRef)
@@ -532,7 +551,7 @@ impl Datum {
         }
     }
 
-    pub fn drop_val(&self, bcx: @Block) -> @Block {
+    pub fn drop_val<'a>(&self, bcx: &'a Block<'a>) -> &'a Block<'a> {
         if !ty::type_needs_drop(bcx.tcx(), self.ty) {
             return bcx;
         }
@@ -543,7 +562,7 @@ impl Datum {
         };
     }
 
-    pub fn box_body(&self, bcx: @Block) -> Datum {
+    pub fn box_body(&self, bcx: &Block) -> Datum {
         /*!
          *
          * This datum must represent an @T or ~T box.  Returns a new
@@ -576,7 +595,7 @@ impl Datum {
         }
     }
 
-    pub fn to_rptr(&self, bcx: @Block) -> Datum {
+    pub fn to_rptr(&self, bcx: &Block) -> Datum {
         //! Returns a new datum of region-pointer type containing the
         //! the same ptr as this datum (after converting to by-ref
         //! using `to_ref_llval()`).
@@ -596,13 +615,14 @@ impl Datum {
     /// expr_id: ID of deref expr.
     /// derefs: Number of times deref'd already.
     /// is_auto: If true, only deref if auto-derefable.
-    pub fn try_deref(&self,
-                     bcx: @Block,
+    pub fn try_deref<'a>(
+                     &self,
+                     bcx: &'a Block<'a>,
                      span: Span,
                      expr_id: ast::NodeId,
                      derefs: uint,
                      is_auto: bool)
-                     -> (Option<Datum>, @Block) {
+                     -> (Option<Datum>, &'a Block<'a>) {
         debug!("try_deref(expr_id={:?}, derefs={:?}, is_auto={}, self={:?})",
                expr_id, derefs, is_auto, self.to_str(bcx.ccx()));
 
@@ -629,7 +649,7 @@ impl Datum {
             }
         }
 
-        fn deref_ptr(bcx: @Block, lv: &Datum, ty: ty::t) -> Datum {
+        fn deref_ptr(bcx: &Block, lv: &Datum, ty: ty::t) -> Datum {
             Datum {
                 val: lv.to_value_llval(bcx),
                 ty: ty,
@@ -639,8 +659,12 @@ impl Datum {
     }
 
     /// expr: The deref expression.
-    pub fn deref(&self, bcx: @Block, expr: &ast::Expr, derefs: uint)
-                 -> DatumBlock {
+    pub fn deref<'a>(
+                 &self,
+                 bcx: &'a Block<'a>,
+                 expr: &ast::Expr,
+                 derefs: uint)
+                 -> DatumBlock<'a> {
         match self.try_deref(bcx, expr.span, expr.id, derefs, false) {
             (Some(lvres), bcx) => DatumBlock { bcx: bcx, datum: lvres },
             (None, _) => {
@@ -650,12 +674,13 @@ impl Datum {
         }
     }
 
-    pub fn autoderef(&self,
-                     bcx: @Block,
+    pub fn autoderef<'a>(
+                     &self,
+                     bcx: &'a Block<'a>,
                      span: Span,
                      expr_id: ast::NodeId,
                      max: uint)
-                     -> DatumBlock {
+                     -> DatumBlock<'a> {
         let _icx = push_ctxt("autoderef");
 
         debug!("autoderef(expr_id={}, max={:?}, self={:?})",
@@ -683,12 +708,13 @@ impl Datum {
         DatumBlock { bcx: bcx, datum: datum }
     }
 
-    pub fn get_vec_base_and_byte_len(&self,
-                                     mut bcx: @Block,
+    pub fn get_vec_base_and_byte_len<'a>(
+                                     &self,
+                                     mut bcx: &'a Block<'a>,
                                      span: Span,
                                      expr_id: ast::NodeId,
                                      derefs: uint)
-                                     -> (@Block, ValueRef, ValueRef) {
+                                     -> (&'a Block<'a>, ValueRef, ValueRef) {
         //! Converts a vector into the slice pair. Performs rooting
         //! and write guards checks.
 
@@ -698,7 +724,7 @@ impl Datum {
         (bcx, base, len)
     }
 
-    pub fn get_vec_base_and_byte_len_no_root(&self, bcx: @Block)
+    pub fn get_vec_base_and_byte_len_no_root(&self, bcx: &Block)
                                              -> (ValueRef, ValueRef) {
         //! Converts a vector into the slice pair. Des not root
         //! nor perform write guard checks.
@@ -707,12 +733,13 @@ impl Datum {
         tvec::get_base_and_byte_len(bcx, llval, self.ty)
     }
 
-    pub fn get_vec_base_and_len(&self,
-                                     mut bcx: @Block,
-                                     span: Span,
-                                     expr_id: ast::NodeId,
-                                     derefs: uint)
-                                     -> (@Block, ValueRef, ValueRef) {
+    pub fn get_vec_base_and_len<'a>(
+                                &self,
+                                mut bcx: &'a Block<'a>,
+                                span: Span,
+                                expr_id: ast::NodeId,
+                                derefs: uint)
+                                -> (&'a Block<'a>, ValueRef, ValueRef) {
         //! Converts a vector into the slice pair. Performs rooting
         //! and write guards checks.
 
@@ -722,8 +749,8 @@ impl Datum {
         (bcx, base, len)
     }
 
-    pub fn get_vec_base_and_len_no_root(&self, bcx: @Block)
-                                             -> (ValueRef, ValueRef) {
+    pub fn get_vec_base_and_len_no_root<'a>(&self, bcx: &'a Block<'a>)
+                                        -> (ValueRef, ValueRef) {
         //! Converts a vector into the slice pair. Des not root
         //! nor perform write guard checks.
 
@@ -731,47 +758,48 @@ impl Datum {
         tvec::get_base_and_len(bcx, llval, self.ty)
     }
 
-    pub fn root_and_write_guard(&self,
-                                bcx: @Block,
+    pub fn root_and_write_guard<'a>(
+                                &self,
+                                bcx: &'a Block<'a>,
                                 span: Span,
                                 expr_id: ast::NodeId,
                                 derefs: uint)
-                                -> @Block {
+                                -> &'a Block<'a> {
         write_guard::root_and_write_guard(self, bcx, span, expr_id, derefs)
     }
 
-    pub fn to_result(&self, bcx: @Block) -> common::Result {
+    pub fn to_result<'a>(&self, bcx: &'a Block<'a>) -> common::Result<'a> {
         rslt(bcx, self.to_appropriate_llval(bcx))
     }
 }
 
-impl DatumBlock {
-    pub fn unpack(&self, bcx: &mut @Block) -> Datum {
+impl<'a> DatumBlock<'a> {
+    pub fn unpack(&self, bcx: &mut &'a Block<'a>) -> Datum {
         *bcx = self.bcx;
         return self.datum;
     }
 
-    pub fn assert_by_ref(&self) -> DatumBlock {
+    pub fn assert_by_ref(&self) -> DatumBlock<'a> {
         assert!(self.datum.mode.is_by_ref());
         *self
     }
 
-    pub fn drop_val(&self) -> @Block {
+    pub fn drop_val(&self) -> &'a Block<'a> {
         self.datum.drop_val(self.bcx)
     }
 
-    pub fn store_to(&self,
-                    action: CopyAction,
-                    dst: ValueRef)
-                    -> @Block {
+    pub fn store_to(&self, action: CopyAction, dst: ValueRef)
+                    -> &'a Block<'a> {
         self.datum.store_to(self.bcx, action, dst)
     }
 
-    pub fn copy_to(&self, action: CopyAction, dst: ValueRef) -> @Block {
+    pub fn copy_to(&self, action: CopyAction, dst: ValueRef)
+                   -> &'a Block<'a> {
         self.datum.copy_to(self.bcx, action, dst)
     }
 
-    pub fn move_to(&self, action: CopyAction, dst: ValueRef) -> @Block {
+    pub fn move_to(&self, action: CopyAction, dst: ValueRef)
+                   -> &'a Block<'a> {
         self.datum.move_to(self.bcx, action, dst)
     }
 
@@ -779,7 +807,7 @@ impl DatumBlock {
         self.datum.to_value_llval(self.bcx)
     }
 
-    pub fn to_result(&self) -> common::Result {
+    pub fn to_result(&self) -> common::Result<'a> {
         rslt(self.bcx, self.datum.to_appropriate_llval(self.bcx))
     }
 

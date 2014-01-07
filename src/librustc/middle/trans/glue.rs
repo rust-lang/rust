@@ -41,7 +41,7 @@ use std::cell::Cell;
 use std::libc::c_uint;
 use syntax::ast;
 
-pub fn trans_free(cx: @Block, v: ValueRef) -> @Block {
+pub fn trans_free<'a>(cx: &'a Block<'a>, v: ValueRef) -> &'a Block<'a> {
     let _icx = push_ctxt("trans_free");
     callee::trans_lang_call(cx,
         langcall(cx, None, "", FreeFnLangItem),
@@ -49,7 +49,8 @@ pub fn trans_free(cx: @Block, v: ValueRef) -> @Block {
         Some(expr::Ignore)).bcx
 }
 
-pub fn trans_exchange_free(cx: @Block, v: ValueRef) -> @Block {
+pub fn trans_exchange_free<'a>(cx: &'a Block<'a>, v: ValueRef)
+                           -> &'a Block<'a> {
     let _icx = push_ctxt("trans_exchange_free");
     callee::trans_lang_call(cx,
         langcall(cx, None, "", ExchangeFreeFnLangItem),
@@ -57,7 +58,8 @@ pub fn trans_exchange_free(cx: @Block, v: ValueRef) -> @Block {
         Some(expr::Ignore)).bcx
 }
 
-pub fn take_ty(cx: @Block, v: ValueRef, t: ty::t) -> @Block {
+pub fn take_ty<'a>(cx: &'a Block<'a>, v: ValueRef, t: ty::t)
+               -> &'a Block<'a> {
     // NB: v is an *alias* of type t here, not a direct value.
     let _icx = push_ctxt("take_ty");
     if ty::type_needs_drop(cx.tcx(), t) {
@@ -66,7 +68,8 @@ pub fn take_ty(cx: @Block, v: ValueRef, t: ty::t) -> @Block {
     return cx;
 }
 
-pub fn drop_ty(cx: @Block, v: ValueRef, t: ty::t) -> @Block {
+pub fn drop_ty<'a>(cx: &'a Block<'a>, v: ValueRef, t: ty::t)
+               -> &'a Block<'a> {
     // NB: v is an *alias* of type t here, not a direct value.
     let _icx = push_ctxt("drop_ty");
     if ty::type_needs_drop(cx.tcx(), t) {
@@ -75,14 +78,16 @@ pub fn drop_ty(cx: @Block, v: ValueRef, t: ty::t) -> @Block {
     return cx;
 }
 
-pub fn drop_ty_immediate(bcx: @Block, v: ValueRef, t: ty::t) -> @Block {
+pub fn drop_ty_immediate<'a>(bcx: &'a Block<'a>, v: ValueRef, t: ty::t)
+                         -> &'a Block<'a> {
     let _icx = push_ctxt("drop_ty_immediate");
     let vp = alloca(bcx, type_of(bcx.ccx(), t), "");
     Store(bcx, v, vp);
     drop_ty(bcx, vp, t)
 }
 
-pub fn free_ty(cx: @Block, v: ValueRef, t: ty::t) -> @Block {
+pub fn free_ty<'a>(cx: &'a Block<'a>, v: ValueRef, t: ty::t)
+               -> &'a Block<'a> {
     // NB: v is an *alias* of type t here, not a direct value.
     let _icx = push_ctxt("free_ty");
     if ty::type_needs_drop(cx.tcx(), t) {
@@ -91,7 +96,8 @@ pub fn free_ty(cx: @Block, v: ValueRef, t: ty::t) -> @Block {
     return cx;
 }
 
-pub fn free_ty_immediate(bcx: @Block, v: ValueRef, t: ty::t) -> @Block {
+pub fn free_ty_immediate<'a>(bcx: &'a Block<'a>, v: ValueRef, t: ty::t)
+                         -> &'a Block<'a> {
     let _icx = push_ctxt("free_ty_immediate");
     match ty::get(t).sty {
       ty::ty_uniq(_) |
@@ -269,7 +275,7 @@ pub fn lazily_emit_tydesc_glue(ccx: @CrateContext,
 }
 
 // See [Note-arg-mode]
-pub fn call_tydesc_glue_full(bcx: @Block,
+pub fn call_tydesc_glue_full(bcx: &Block,
                              v: ValueRef,
                              tydesc: ValueRef,
                              field: uint,
@@ -328,15 +334,20 @@ pub fn call_tydesc_glue_full(bcx: @Block,
 }
 
 // See [Note-arg-mode]
-pub fn call_tydesc_glue(cx: @Block, v: ValueRef, t: ty::t, field: uint)
-    -> @Block {
+pub fn call_tydesc_glue<'a>(
+                        cx: &'a Block<'a>,
+                        v: ValueRef,
+                        t: ty::t,
+                        field: uint)
+                        -> &'a Block<'a> {
     let _icx = push_ctxt("call_tydesc_glue");
     let ti = get_tydesc(cx.ccx(), t);
     call_tydesc_glue_full(cx, v, ti.tydesc, field, Some(ti));
     return cx;
 }
 
-pub fn make_visit_glue(bcx: @Block, v: ValueRef, t: ty::t) -> @Block {
+pub fn make_visit_glue<'a>(bcx: &'a Block<'a>, v: ValueRef, t: ty::t)
+                       -> &'a Block<'a> {
     let _icx = push_ctxt("make_visit_glue");
     with_scope(bcx, None, "visitor cleanup", |bcx| {
         let mut bcx = bcx;
@@ -355,7 +366,8 @@ pub fn make_visit_glue(bcx: @Block, v: ValueRef, t: ty::t) -> @Block {
     })
 }
 
-pub fn make_free_glue(bcx: @Block, v: ValueRef, t: ty::t) -> @Block {
+pub fn make_free_glue<'a>(bcx: &'a Block<'a>, v: ValueRef, t: ty::t)
+                      -> &'a Block<'a> {
     // NB: v0 is an *alias* of type t here, not a direct value.
     let _icx = push_ctxt("make_free_glue");
     match ty::get(t).sty {
@@ -392,8 +404,14 @@ pub fn make_free_glue(bcx: @Block, v: ValueRef, t: ty::t) -> @Block {
     }
 }
 
-pub fn trans_struct_drop_flag(bcx: @Block, t: ty::t, v0: ValueRef, dtor_did: ast::DefId,
-                              class_did: ast::DefId, substs: &ty::substs) -> @Block {
+pub fn trans_struct_drop_flag<'a>(
+                              bcx: &'a Block<'a>,
+                              t: ty::t,
+                              v0: ValueRef,
+                              dtor_did: ast::DefId,
+                              class_did: ast::DefId,
+                              substs: &ty::substs)
+                              -> &'a Block<'a> {
     let repr = adt::represent_type(bcx.ccx(), t);
     let drop_flag = adt::trans_drop_flag_ptr(bcx, repr, v0);
     with_cond(bcx, IsNotNull(bcx, Load(bcx, drop_flag)), |cx| {
@@ -401,8 +419,14 @@ pub fn trans_struct_drop_flag(bcx: @Block, t: ty::t, v0: ValueRef, dtor_did: ast
     })
 }
 
-pub fn trans_struct_drop(bcx: @Block, t: ty::t, v0: ValueRef, dtor_did: ast::DefId,
-                         class_did: ast::DefId, substs: &ty::substs) -> @Block {
+pub fn trans_struct_drop<'a>(
+                         bcx: &'a Block<'a>,
+                         t: ty::t,
+                         v0: ValueRef,
+                         dtor_did: ast::DefId,
+                         class_did: ast::DefId,
+                         substs: &ty::substs)
+                         -> &'a Block<'a> {
     let repr = adt::represent_type(bcx.ccx(), t);
 
     // Find and call the actual destructor
@@ -439,7 +463,8 @@ pub fn trans_struct_drop(bcx: @Block, t: ty::t, v0: ValueRef, dtor_did: ast::Def
     })
 }
 
-pub fn make_drop_glue(bcx: @Block, v0: ValueRef, t: ty::t) -> @Block {
+pub fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t)
+                      -> &'a Block<'a> {
     // NB: v0 is an *alias* of type t here, not a direct value.
     let _icx = push_ctxt("make_drop_glue");
     let ccx = bcx.ccx();
@@ -510,10 +535,12 @@ pub fn make_drop_glue(bcx: @Block, v0: ValueRef, t: ty::t) -> @Block {
 }
 
 // box_ptr_ptr is optional, it is constructed if not supplied.
-pub fn decr_refcnt_maybe_free(bcx: @Block, box_ptr: ValueRef,
+pub fn decr_refcnt_maybe_free<'a>(
+                              bcx: &'a Block<'a>,
+                              box_ptr: ValueRef,
                               box_ptr_ptr: Option<ValueRef>,
                               t: ty::t)
-                           -> @Block {
+                              -> &'a Block<'a> {
     let _icx = push_ctxt("decr_refcnt_maybe_free");
     let ccx = bcx.ccx();
 
@@ -539,7 +566,8 @@ pub fn decr_refcnt_maybe_free(bcx: @Block, box_ptr: ValueRef,
 }
 
 
-pub fn make_take_glue(bcx: @Block, v: ValueRef, t: ty::t) -> @Block {
+pub fn make_take_glue<'a>(bcx: &'a Block<'a>, v: ValueRef, t: ty::t)
+                      -> &'a Block<'a> {
     let _icx = push_ctxt("make_take_glue");
     // NB: v is a *pointer* to type t here, not a direct value.
     match ty::get(t).sty {
@@ -580,7 +608,7 @@ pub fn make_take_glue(bcx: @Block, v: ValueRef, t: ty::t) -> @Block {
     }
 }
 
-pub fn incr_refcnt_of_boxed(cx: @Block, box_ptr: ValueRef) {
+pub fn incr_refcnt_of_boxed(cx: &Block, box_ptr: ValueRef) {
     let _icx = push_ctxt("incr_refcnt_of_boxed");
     let ccx = cx.ccx();
     let rc_ptr = GEPi(cx, box_ptr, [0u, abi::box_field_refcnt]);
@@ -644,8 +672,8 @@ pub fn declare_tydesc(ccx: &CrateContext, t: ty::t) -> @tydesc_info {
     return inf;
 }
 
-pub type glue_helper<'a> = 'a |@Block, ValueRef, ty::t|
-                                     -> @Block;
+pub type glue_helper<'a> =
+    'a |&'a Block<'a>, ValueRef, ty::t| -> &'a Block<'a>;
 
 pub fn declare_generic_glue(ccx: &CrateContext, t: ty::t, llfnty: Type,
                             name: &str) -> ValueRef {
@@ -663,7 +691,10 @@ pub fn make_generic_glue_inner(ccx: @CrateContext,
                                helper: glue_helper)
                             -> ValueRef {
     let _icx = push_ctxt("make_generic_glue_inner");
+
     let fcx = new_fn_ctxt(ccx, ~[], llfn, ty::mk_nil(), None);
+    init_function(&fcx, false, ty::mk_nil(), None, None);
+
     lib::llvm::SetLinkage(llfn, lib::llvm::InternalLinkage);
     ccx.stats.n_glues_created.set(ccx.stats.n_glues_created.get() + 1u);
     // All glue functions take values passed *by alias*; this is a
@@ -679,7 +710,7 @@ pub fn make_generic_glue_inner(ccx: @CrateContext,
     let llrawptr0 = unsafe { llvm::LLVMGetParam(llfn, rawptr0_arg as c_uint) };
     let bcx = helper(bcx, llrawptr0, t);
 
-    finish_fn(fcx, bcx);
+    finish_fn(&fcx, bcx);
 
     return llfn;
 }
