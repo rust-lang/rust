@@ -79,10 +79,10 @@ impl FileDesc {
     pub fn inner_read(&mut self, buf: &mut [u8]) -> Result<uint, IoError> {
         #[cfg(windows)] type rlen = libc::c_uint;
         #[cfg(not(windows))] type rlen = libc::size_t;
-        let ret = keep_going(buf, |buf, len| {
-            unsafe {
-                libc::read(self.fd, buf as *mut libc::c_void, len as rlen) as i64
-            }
+        let ret = retry(|| unsafe {
+            libc::read(self.fd,
+                       buf.as_ptr() as *mut libc::c_void,
+                       buf.len() as rlen) as libc::c_int
         });
         if ret == 0 {
             Err(io::standard_error(io::EndOfFile))
