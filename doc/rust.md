@@ -845,6 +845,7 @@ If a sequence of such redirections form a cycle or cannot be resolved unambiguou
 they represent a compile-time error.
 
 An example of re-exporting:
+
 ~~~~
 # fn main() { }
 mod quux {
@@ -868,6 +869,7 @@ All rules regarding accessing declared modules in `use` declarations applies to 
 and `extern mod` declarations.
 
 An example of what will and will not work for `use` items:
+
 ~~~~
 # #[allow(unused_imports)];
 use foo::extra;          // good: foo is at the root of the crate
@@ -1184,6 +1186,7 @@ a = Cat;
 ~~~~
 
 Enumeration constructors can have either named or unnamed fields:
+
 ~~~~
 enum Animal {
     Dog (~str, f64),
