@@ -53,8 +53,8 @@ fn fake_ctxt(sysroot: Path, workspace: &Path) -> BuildContext {
         context: Context {
             cfgs: ~[],
             rustc_flags: RustcFlags::default(),
-
             use_rust_path_hack: false,
+            supplied_sysroot:None
         },
         sysroot: sysroot
     }

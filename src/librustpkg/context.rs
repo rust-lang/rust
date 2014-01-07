@@ -27,6 +27,8 @@ pub struct Context {
     // FOO/src/bar-0.1 instead of FOO). The flag doesn't affect where
     // rustpkg stores build artifacts.
     use_rust_path_hack: bool,
+    // The root directory containing the Rust standard libraries
+    supplied_sysroot: Option<~str>
 }
 
 #[deriving(Clone)]

@@ -66,12 +66,11 @@ pub fn main() {
 
 pub fn main_args(args: &[~str]) -> int {
 
-    let (command, args, context, supplied_sysroot) = match parse_args(args) {
+    let (command, args, context) = match parse_args(args) {
         Ok(ParseResult {
             command: cmd,
             args: args,
-            context: ctx,
-            sysroot: sroot}) => (cmd, args, ctx, sroot),
+            context: ctx}) => (cmd, args, ctx),
         Err(error_code) => {
             debug!("Parsing failed. Returning error code {}", error_code);
             return error_code
@@ -83,10 +82,10 @@ pub fn main_args(args: &[~str]) -> int {
     debug!("  Using cflags: {:?}", context.rustc_flags);
     debug!("  Using rust_path_hack {:b}", context.use_rust_path_hack);
     debug!("  Using cfgs: {:?}", context.cfgs);
-    debug!("  Using supplied_sysroot: {:?}", supplied_sysroot);
+    debug!("  Using supplied_sysroot: {:?}", context.supplied_sysroot);
 
-    let sysroot = match supplied_sysroot {
-        Some(s) => Path::new(s),
+    let sysroot = match context.supplied_sysroot.clone() {
+        Some(ref s) => Path::new(s.clone()),
         _ => filesearch::get_or_default_sysroot()
     };
 
