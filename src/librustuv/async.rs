@@ -125,7 +125,7 @@ impl Drop for AsyncWatcher {
 
 #[cfg(test)]
 mod test_remote {
-    use std::rt::rtio::Callback;
+    use std::rt::rtio::{Callback, RemoteCallback};
     use std::rt::thread::Thread;
 
     use super::AsyncWatcher;

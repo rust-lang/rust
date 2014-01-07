@@ -522,7 +522,7 @@ static H256: [u32, ..8] = [
 
 #[cfg(test)]
 mod tests {
-    use super::{Digest, Sha256};
+    use super::{Digest, Sha256, FixedBuffer};
     use std::vec;
     use std::rand::isaac::IsaacRng;
     use std::rand::Rng;
@@ -633,7 +633,7 @@ mod tests {
 #[cfg(test)]
 mod bench {
     use extra::test::BenchHarness;
-    use super::Sha256;
+    use super::{Sha256, FixedBuffer, Digest};
 
     #[bench]
     pub fn sha256_10(bh: &mut BenchHarness) {

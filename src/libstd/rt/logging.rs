@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use container::Container;
-use fmt;
 use from_str::from_str;
 use iter::Iterator;
 use libc::exit;
