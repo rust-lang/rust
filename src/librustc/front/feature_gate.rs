@@ -40,6 +40,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("once_fns", Active),
     ("asm", Active),
     ("managed_boxes", Active),
+    ("managed", Active),
     ("non_ascii_idents", Active),
     ("thread_local", Active),
     ("link_args", Active),
@@ -151,6 +152,16 @@ impl Visitor<()> for Context {
                 }
             }
 
+            _ => {}
+        }
+        match i.node {
+            ast::ItemEnum(..) | ast::ItemStruct(..) => {
+                if attr::contains_name(i.attrs, "managed") {
+                    self.gate_feature("managed", i.span,
+                                      "the `managed` attribute doesn't have safe support \
+                                      for built-in pointers like ~ and ~[]")
+                }
+            }
             _ => {}
         }
 

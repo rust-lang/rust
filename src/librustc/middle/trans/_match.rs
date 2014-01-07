@@ -2253,4 +2253,3 @@ fn simple_identifier<'a>(pat: &'a ast::Pat) -> Option<&'a ast::Path> {
         }
     }
 }
-

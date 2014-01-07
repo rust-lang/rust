@@ -720,4 +720,3 @@ pub fn iter_vec_unboxed<'r,
     let dataptr = get_dataptr(bcx, body_ptr);
     return iter_vec_raw(bcx, dataptr, vec_ty, fill, f);
 }
-

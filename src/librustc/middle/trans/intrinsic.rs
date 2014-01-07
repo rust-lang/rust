@@ -414,9 +414,13 @@ pub fn trans_intrinsic(ccx: @CrateContext,
             let tp_ty = substs.tys[0];
             Ret(bcx, C_bool(ty::type_needs_drop(ccx.tcx, tp_ty)));
         }
-        "owns_managed" => {
+        "owns_at_managed" => {
             let tp_ty = substs.tys[0];
-            Ret(bcx, C_bool(ty::type_contents(ccx.tcx, tp_ty).owns_managed()));
+            Ret(bcx, C_bool(ty::type_contents(ccx.tcx, tp_ty).owns_at_managed()));
+        }
+        "owns_new_managed" => {
+            let tp_ty = substs.tys[0];
+            Ret(bcx, C_bool(ty::type_contents(ccx.tcx, tp_ty).owns_new_managed()));
         }
         "visit_tydesc" => {
             let td = get_param(decl, first_real_arg);

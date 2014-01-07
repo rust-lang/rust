@@ -1759,14 +1759,15 @@ def_type_content_sets!(
         // Things that are owned by the value (second and third nibbles):
         OwnsOwned                           = 0b0000__00000001__0000,
         OwnsDtor                            = 0b0000__00000010__0000,
-        OwnsManaged /* see [1] below */     = 0b0000__00000100__0000,
+        OwnsAtManaged /* see [1] below */   = 0b0000__00000100__0000,
         OwnsAffine                          = 0b0000__00001000__0000,
+        OwnsNewManaged                      = 0b0000__00010000__0000,
         OwnsAll                             = 0b0000__11111111__0000,
 
         // Things that are reachable by the value in any way (fourth nibble):
         ReachesNonsendAnnot                 = 0b0001__00000000__0000,
         ReachesBorrowed                     = 0b0010__00000000__0000,
-        // ReachesManaged /* see [1] below */  = 0b0100__00000000__0000,
+        // ReachesAtManaged /* see [1] below */ = 0b0100__00000000__0000,
         ReachesMutable                      = 0b1000__00000000__0000,
         ReachesAll                          = 0b1111__00000000__0000,
 
@@ -1802,7 +1803,7 @@ def_type_content_sets!(
         // [1] Do not set the bits TC::OwnsManaged or
         //     TC::ReachesManaged directly, instead reference
         //     TC::Managed to set them both at once.
-        Managed                             = 0b0100__00000100__0000,
+        AtManaged                             = 0b0100__00000100__0000,
 
         // All bits
         All                                 = 0b1111__11111111__1111
@@ -1840,8 +1841,12 @@ impl TypeContents {
         !self.intersects(TC::Nonsendable)
     }
 
-    pub fn owns_managed(&self) -> bool {
-        self.intersects(TC::OwnsManaged)
+    pub fn owns_at_managed(&self) -> bool {
+        self.intersects(TC::OwnsAtManaged)
+    }
+
+    pub fn owns_new_managed(&self) -> bool {
+        self.intersects(TC::OwnsNewManaged)
     }
 
     pub fn is_freezable(&self, _: ctxt) -> bool {
@@ -1887,7 +1892,7 @@ impl TypeContents {
          * Includes only those bits that still apply
          * when indirected through a managed pointer (`@`)
          */
-        TC::Managed | (
+        TC::AtManaged | (
             *self & TC::ReachesAll)
     }
 
@@ -2055,7 +2060,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             }
 
             ty_str(vstore_box) => {
-                TC::Managed
+                TC::AtManaged
             }
 
             ty_str(vstore_slice(r)) => {
@@ -2126,7 +2131,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             ty_opaque_closure_ptr(sigil) => {
                 match sigil {
                     ast::BorrowedSigil => TC::ReachesBorrowed,
-                    ast::ManagedSigil => TC::Managed,
+                    ast::ManagedSigil => TC::AtManaged,
                     ast::OwnedSigil => TC::OwnsOwned,
                 }
             }
@@ -2156,7 +2161,8 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                         -> TypeContents {
         tc |
             TC::ReachesMutable.when(has_attr(cx, did, "no_freeze")) |
-            TC::ReachesNonsendAnnot.when(has_attr(cx, did, "no_send"))
+            TC::ReachesNonsendAnnot.when(has_attr(cx, did, "no_send")) |
+            TC::OwnsNewManaged.when(has_attr(cx, did, "managed"))
     }
 
     fn borrowed_contents(region: ty::Region,
