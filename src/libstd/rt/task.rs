@@ -38,9 +38,6 @@ use sync::atomics::{AtomicUint, SeqCst};
 use task::{TaskResult, TaskOpts};
 use unstable::finally::Finally;
 
-#[cfg(stage0)]
-pub use rt::unwind::begin_unwind;
-
 // The Task struct represents all state associated with a rust
 // task. There are at this point two primary "subtypes" of task,
 // however instead of using a subtype we just have a "task_type" field
