@@ -209,7 +209,7 @@ impl Reader for StdReader {
                 io_error::cond.raise(standard_error(EndOfFile));
                 None
             }
-            Ok(amt) => Some(amt as uint),
+            Ok(amt) => Some(amt),
             Err(e) => {
                 io_error::cond.raise(e);
                 None

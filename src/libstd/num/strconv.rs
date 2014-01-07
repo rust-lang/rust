@@ -344,7 +344,7 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Float+Round+
         // round the remaining ones.
         if limit_digits && dig == digit_count {
             let ascii2value = |chr: u8| {
-                char::to_digit(chr as char, radix).unwrap() as uint
+                char::to_digit(chr as char, radix).unwrap()
             };
             let value2ascii = |val: uint| {
                 char::from_digit(val, radix).unwrap() as u8
