@@ -1423,10 +1423,8 @@ intuitive sense: you must wait for a borrowed value to be returned
 (that is, for the borrowed pointer to go out of scope) before you can
 make full use of it again.
 
-For a more in-depth explanation of borrowed pointers, read the
-[borrowed pointer tutorial][borrowtut].
-
-[borrowtut]: tutorial-borrowed-ptr.html
+For a more in-depth explanation of borrowed pointers and lifetimes, read the
+[lifetimes and borrowed pointer tutorial][lifetimes].
 
 ## Freezing
 
@@ -3269,7 +3267,8 @@ re-export a bunch of 'officially blessed' crates that get managed with `rustpkg`
 Now that you know the essentials, check out any of the additional
 guides on individual topics.
 
-* [Borrowed pointers][borrow]
+* [Pointers][pointers]
+* [Lifetimes][lifetimes]
 * [Tasks and communication][tasks]
 * [Macros][macros]
 * [The foreign function interface][ffi]
@@ -3279,9 +3278,10 @@ guides on individual topics.
 * [Documenting Rust code][rustdoc]
 * [Testing Rust code][testing]
 
-There is further documentation on the [Main Page](index.html).
+There is further documentation on the [wiki], however those tend to be even more out of date as this document.
 
-[borrow]: guide-borrowed-ptr.html
+[pointers]: guide-pointers.html
+[lifetimes]: guide-lifetimes.html
 [tasks]: guide-tasks.html
 [macros]: guide-macros.html
 [ffi]: guide-ffi.html
@@ -3290,5 +3290,6 @@ There is further documentation on the [Main Page](index.html).
 [rustpkg]: guide-rustpkg.html
 [testing]: guide-testing.html
 [rustdoc]: rustdoc.html
+[wiki]: https://github.com/mozilla/rust/wiki/Docs
 
 [wiki-packages]: https://github.com/mozilla/rust/wiki/Doc-packages,-editors,-and-other-tools
