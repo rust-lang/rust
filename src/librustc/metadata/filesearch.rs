@@ -154,12 +154,11 @@ pub fn search(filesearch: @FileSearch, pick: pick) {
 }
 
 pub fn relative_target_lib_path(target_triple: &str) -> Path {
-    let dir = libdir();
-    let mut p = Path::new(dir.as_slice());
+    let mut p = Path::new(libdir());
     assert!(p.is_relative());
     p.push(rustlibdir());
     p.push(target_triple);
-    p.push(dir);
+    p.push("lib");
     p
 }
 
@@ -245,7 +244,7 @@ pub fn rust_path() -> ~[Path] {
 // The name of the directory rustc expects libraries to be located.
 // On Unix should be "lib", on windows "bin"
 pub fn libdir() -> ~str {
-    (env!("CFG_LIBDIR")).to_owned()
+    (env!("LIBDIR_RELATIVE")).to_owned()
 }
 
 // The name of rustc's own place to organize libraries.

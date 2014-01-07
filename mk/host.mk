@@ -149,7 +149,7 @@ $$(HLIB$(2)_H_$(4))/$(CFG_LIBNATIVE_$(4)): \
 $$(HBIN$(2)_H_$(4))/:
 	mkdir -p $$@
 
-ifneq ($(CFG_LIBDIR),bin)
+ifneq ($(LIBDIR_RELATIVE),bin)
 $$(HLIB$(2)_H_$(4))/:
 	mkdir -p $$@
 endif
