@@ -17,6 +17,7 @@ use any::AnyOwnExt;
 use borrow;
 use cast;
 use cleanup;
+use clone::Clone;
 use io::Writer;
 use iter::{Iterator, Take};
 use local_data;

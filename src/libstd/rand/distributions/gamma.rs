@@ -10,10 +10,11 @@
 
 //! The Gamma and derived distributions.
 
-use rand::{Rng, Open01};
-use super::{IndependentSample, Sample, Exp};
-use super::normal::StandardNormal;
+use num::Algebraic;
 use num;
+use rand::{Rng, Open01};
+use super::normal::StandardNormal;
+use super::{IndependentSample, Sample, Exp};
 
 /// The Gamma distribution `Gamma(shape, scale)` distribution.
 ///

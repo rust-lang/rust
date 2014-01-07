@@ -21,7 +21,8 @@ use str;
 use str::Str;
 use to_bytes::IterBytes;
 use vec;
-use vec::{CopyableVector, RSplitIterator, SplitIterator, Vector, VectorVector};
+use vec::{CopyableVector, RSplitIterator, SplitIterator, Vector, VectorVector,
+          ImmutableEqVector, OwnedVector, ImmutableVector, OwnedCopyableVector};
 use super::{BytesContainer, GenericPath, GenericPathUnsafe};
 
 /// Iterator that yields successive components of a Path as &[u8]

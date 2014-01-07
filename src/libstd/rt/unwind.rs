@@ -62,6 +62,7 @@ use kinds::Send;
 use libc::{c_void, c_char, size_t};
 use option::{Some, None, Option};
 use prelude::drop;
+use ptr::RawPtr;
 use result::{Err, Ok};
 use rt::local::Local;
 use rt::task::Task;
