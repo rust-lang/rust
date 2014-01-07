@@ -19,8 +19,8 @@ HTML_DEPS :=
 
 BASE_DOC_OPTS := --from=markdown --standalone --toc --number-sections
 HTML_OPTS = $(BASE_DOC_OPTS) 	--to=html5  --section-divs --css=rust.css  \
-															--include-before-body=doc/version_info.html \
-															--include-in-header=doc/favicon.inc
+								--include-before-body=doc/version_info.html \
+								--include-in-header=doc/favicon.inc
 TEX_OPTS = $(BASE_DOC_OPTS) --to=latex
 EPUB_OPTS = $(BASE_DOC_OPTS) --to=epub
 
@@ -194,8 +194,8 @@ doc/guide-testing.html: $(S)doc/guide-testing.md $(HTML_DEPS)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
 
-DOCS += doc/guide-borrowed-ptr.html
-doc/guide-borrowed-ptr.html: $(S)doc/guide-borrowed-ptr.md $(HTML_DEPS)
+DOCS += doc/guide-lifetimes.html
+doc/guide-lifetimes.html: $(S)doc/guide-lifetimes.md $(HTML_DEPS)
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
@@ -214,6 +214,12 @@ doc/guide-conditions.html: $(S)doc/guide-conditions.md $(HTML_DEPS)
 
 DOCS += doc/guide-rustpkg.html
 doc/guide-rustpkg.html: $(S)doc/guide-rustpkg.md $(HTML_DEPS)
+	@$(call E, pandoc: $@)
+	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
+	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
+
+DOCS += doc/guide-pointers.html
+doc/guide-pointers.html: $(S)doc/guide-pointers.md $(HTML_DEPS)
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@

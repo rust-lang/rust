@@ -801,7 +801,8 @@ do
     make_dir $h/test/doc-tutorial
     make_dir $h/test/doc-guide-ffi
     make_dir $h/test/doc-guide-macros
-    make_dir $h/test/doc-guide-borrowed-ptr
+    make_dir $h/test/doc-guide-lifetimes
+    make_dir $h/test/doc-guide-pointers
     make_dir $h/test/doc-guide-container
     make_dir $h/test/doc-guide-tasks
     make_dir $h/test/doc-guide-conditions
