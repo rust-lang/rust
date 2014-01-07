@@ -34,7 +34,7 @@ use package_source::PkgSrc;
 use workspace::pkg_parent_workspaces;
 use path_util::{system_library, target_build_dir};
 use path_util::{default_workspace, built_library_in_workspace};
-use run_cmd::{run_install};
+use perform::{install};
 pub use target::{OutputType, Main, Lib, Bench, Test, JustOne, lib_name_of, lib_crate_filename};
 pub use target::{Target, Build, Install};
 use extra::treemap::TreeMap;
@@ -528,7 +528,7 @@ impl<'a> Visitor<()> for ViewItemVisitor<'a> {
                         let what = WhatToBuild::new(Inferred,
                             JustOne(Path::new(lib_crate_filename)));
                         let (outputs_disc, inputs_disc) =
-                            run_install(pkg_src, &what, self.context);
+                            install(pkg_src, &what, self.context);
                         debug!("Installed {}, returned {:?} dependencies and \
                                {:?} transitive dependencies",
                                lib_name, outputs_disc.len(), inputs_disc.len());

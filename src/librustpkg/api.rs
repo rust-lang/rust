@@ -13,7 +13,7 @@ use crate::*;
 use crate_id::*;
 use package_source::*;
 use path_util::{platform_library_name, target_build_dir};
-use run_cmd::{run_install};
+use perform::{install};
 use target::*;
 use version::Version;
 use workspace::pkg_parent_workspaces;
@@ -138,7 +138,7 @@ pub fn install_pkg(cx: &BuildContext,
     let what =  WhatToBuild{ build_type: Inferred,
                              inputs_to_discover: more_inputs,
                              sources: Everything };
-    run_install(pkg_src, &what, cx);
+    install(pkg_src, &what, cx);
 }
 
 /// Builds an arbitrary library whose short name is `output`,

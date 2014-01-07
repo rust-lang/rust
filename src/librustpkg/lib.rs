@@ -46,6 +46,7 @@ mod package_script;
 pub mod package_source;
 mod parse_args;
 mod path_util;
+mod perform;
 mod run_cmd;
 mod source_control;
 mod target;
