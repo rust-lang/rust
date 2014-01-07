@@ -10,7 +10,7 @@
 
 use std::{io, os, run};
 use std::io::fs;
-pub use std::path::Path;
+use std::path::Path;
 
 use context::{Context, BuildContext};
 use context::{Command, BuildCmd, CleanCmd, DoCmd, InfoCmd, InstallCmd};
@@ -49,8 +49,7 @@ pub fn run_cmd(cmd: Command,
                     Some((ws, crateid)) => run_clean(&ws, &crateid)
                 }
 
-            }
-            else {
+            } else {
                 // The package id is presumed to be the first command-line
                 // argument
                 let crateid = CrateId::new(args[0].clone());
@@ -67,56 +66,10 @@ pub fn run_cmd(cmd: Command,
             run_info();
         }
         InstallCmd => {
-           if args.len() < 1 {
-                match cwd_to_workspace() {
-                    None if dir_has_crate_file(&cwd) => {
-                        // FIXME (#9639): This needs to handle non-utf8 paths
-
-                        let inferred_crateid =
-                            CrateId::new(cwd.filename_str().unwrap());
-                        let pkg_src = PkgSrc::new(cwd, default_workspace(),
-                                                 true, inferred_crateid);
-                        let what = WhatToBuild::new(MaybeCustom, Everything);
-                        let build_context = BuildContext::from_context(context);
-                        install(pkg_src, &what, &build_context);
-                    }
-                    None  => { usage::install(); return; }
-                    Some((ws, crateid))                => {
-                        let pkg_src = PkgSrc::new(ws.clone(), ws.clone(), false, crateid);
-                        let what = WhatToBuild::new(MaybeCustom, Everything);
-                        let build_context = BuildContext::from_context(context);
-                        install(pkg_src, &what, &build_context);
-                  }
-              }
-            }
-            else {
-                // The package id is presumed to be the first command-line
-                // argument
-                let crateid = CrateId::new(args[0]);
-                let workspaces = pkg_parent_workspaces(context, &crateid);
-                debug!("package ID = {}, found it in {:?} workspaces",
-                       crateid.to_str(), workspaces.len());
-                if workspaces.is_empty() {
-                    let d = default_workspace();
-                    let pkg_src = PkgSrc::new(d.clone(), d, false, crateid.clone());
-                    let what = WhatToBuild::new(MaybeCustom, Everything);
-                    let build_context = BuildContext::from_context(context);
-                    install(pkg_src, &what, &build_context);
-                }
-                else {
-                    for workspace in workspaces.iter() {
-                        let dest = determine_destination(os::getcwd(),
-                                                         context.use_rust_path_hack,
-                                                         workspace);
-                        let pkg_src = PkgSrc::new(workspace.clone(),
-                                              dest,
-                                              context.use_rust_path_hack,
-                                              crateid.clone());
-                        let what = WhatToBuild::new(MaybeCustom, Everything);
-                        let build_context = BuildContext::from_context(context);
-                        install(pkg_src, &what, &build_context);
-                    };
-                }
+            if args.len() < 1 {
+                run_install(None, context);
+            } else {
+                run_install(Some(args[0]), context);
             }
         }
         ListCmd => {
@@ -157,29 +110,12 @@ pub fn run_cmd(cmd: Command,
             if args.len() < 1 {
                 return usage::uninstall();
             }
-
-            let crateid = CrateId::new(args[0]);
-            if !installed_packages::package_is_installed(&crateid) {
-                warn(format!("Package {} doesn't seem to be installed! \
-                              Doing nothing.", args[0]));
-                return;
-            }
-            else {
-                let rp = rust_path();
-                assert!(!rp.is_empty());
-                each_pkg_parent_workspace(context, &crateid, |workspace| {
-                    path_util::uninstall_package_from(workspace, &crateid);
-                    note(format!("Uninstalled package {} (was installed in {})",
-                              crateid.to_str(), workspace.display()));
-                    true
-                });
-            }
+            run_uninstall(args[0], context);
         }
         UnpreferCmd => {
             if args.len() < 1 {
                 return usage::unprefer();
-            }
-
+            };
             run_unprefer(args[0], None);
         }
     }
@@ -270,6 +206,56 @@ fn run_info() {
     fail!("info not yet implemented");
 }
 
+
+fn run_install(maybe_crateid_str: Option<~str>, context: &Context){
+    let pkg_src = match maybe_crateid_str {
+        None => match cwd_to_workspace() {
+            Some((ws, crateid))                => {
+                PkgSrc::new(ws.clone(), ws.clone(), false, crateid)
+            },
+            None if dir_has_crate_file(&os::getcwd()) => {
+                // FIXME (#9639): This needs to handle non-utf8 paths
+                let cwd = os::getcwd();
+                let crateid = CrateId::new(cwd.filename_str().unwrap());
+                PkgSrc::new(cwd, default_workspace(),true, crateid)
+            }
+            None  => {
+                usage::install();
+                return;
+            }
+        },
+        Some(crateid_str) => {
+            let crateid = CrateId::new(crateid_str);
+            let workspaces = pkg_parent_workspaces(context, &crateid);
+            debug!("package ID = {}, found it in {:?} workspaces",
+                   crateid.to_str(), workspaces.len());
+            if workspaces.is_empty() {
+                // Install default workspace
+                let d = default_workspace();
+                PkgSrc::new(d.clone(), d, false, crateid.clone())
+            } else {
+                // Install all parent workspaces, and then return early
+                let what = WhatToBuild::new(MaybeCustom, Everything);
+                let build_context = BuildContext::from_context(context);
+                for workspace in workspaces.iter() {
+                    let dest = determine_destination(os::getcwd(),
+                                                     context.use_rust_path_hack,
+                                                     workspace);
+                    let pkg_src = PkgSrc::new(workspace.clone(),
+                                              dest,
+                                              context.use_rust_path_hack,
+                                              crateid.clone());
+                    install(pkg_src, &what, &build_context);
+                }
+                return;
+            }
+        }
+    };
+    let what = WhatToBuild::new(MaybeCustom, Everything);
+    let build_context = BuildContext::from_context(context);
+    install(pkg_src, &what, &build_context);
+}
+
 fn run_prefer(_id: &str, _vers: Option<~str>)  {
     fail!("prefer not yet implemented");
 }
@@ -302,6 +288,28 @@ fn run_init() {
     fs::mkdir_recursive(&Path::new("bin"), io::UserRWX);
     fs::mkdir_recursive(&Path::new("lib"), io::UserRWX);
     fs::mkdir_recursive(&Path::new("build"), io::UserRWX);
+}
+
+fn run_uninstall(crateid_str: &str, context: &Context) {
+    let crateid = CrateId::new(crateid_str);
+    if !installed_packages::package_is_installed(&crateid) {
+        warn(format!("Package {} doesn't seem to be installed! \
+                      Doing nothing.", crateid_str));
+        return;
+    } else {
+        let rp = rust_path();
+        assert!(!rp.is_empty());
+        let workspaces = pkg_parent_workspaces(context, &crateid);
+        for workspace in workspaces.iter() {
+            path_util::uninstall_package_from(workspace, &crateid);
+            note(format!("Uninstalled package {} (was installed in {})",
+                      crateid.to_str(), workspace.display()));
+            return
+        };
+        warn!("Failed to find a parent workspace")
+        warn!("crateid_str: {}", crateid_str);
+        warn!("crate_id: {:?}", crateid);
+    }
 }
 
 fn run_unprefer(_id: &str, _vers: Option<~str>)  {
