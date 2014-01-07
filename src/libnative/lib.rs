@@ -19,9 +19,6 @@
 #[crate_type = "rlib"];
 #[crate_type = "dylib"];
 
-// Allow check-stage0-native for now
-#[cfg(stage0, test)] extern mod green;
-
 // NB this crate explicitly does *not* allow glob imports, please seriously
 //    consider whether they're needed before adding that feature here (the
 //    answer is that you don't need them)
