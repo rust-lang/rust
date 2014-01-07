@@ -7,8 +7,41 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+//
+//! The arena, a fast but limited type of allocator.
+//!
+//! Arenas are a type of allocator that destroy the objects within, all at
+//! once, once the arena itself is destroyed. They do not support deallocation
+//! of individual objects while the arena itself is still alive. The benefit
+//! of an arena is very fast allocation; just a pointer bump.
 
-// Dynamic arenas.
+#[allow(missing_doc)];
+
+use list::{List, Cons, Nil};
+use list;
+
+use std::at_vec;
+use std::cast::{transmute, transmute_mut, transmute_mut_region};
+use std::cast;
+use std::cell::{Cell, RefCell};
+use std::num;
+use std::ptr;
+use std::mem;
+use std::rt::global_heap;
+use std::uint;
+use std::unstable::intrinsics::{TyDesc, get_tydesc};
+use std::unstable::intrinsics;
+use std::util;
+
+// The way arena uses arrays is really deeply awful. The arrays are
+// allocated, and have capacities reserved, but the fill for the array
+// will always stay at 0.
+#[deriving(Clone)]
+struct Chunk {
+    data: RefCell<@[u8]>,
+    fill: Cell<uint>,
+    is_pod: Cell<bool>,
+}
 
 // Arenas are used to quickly allocate objects that share a
 // lifetime. The arena uses ~[u8] vectors as a backing store to
@@ -31,34 +64,6 @@
 // different chunks than objects without destructors. This reduces
 // overhead when initializing plain-old-data and means we don't need
 // to waste time running the destructors of POD.
-
-#[allow(missing_doc)];
-
-
-use list::{List, Cons, Nil};
-use list;
-
-use std::at_vec;
-use std::cast::{transmute, transmute_mut, transmute_mut_region};
-use std::cast;
-use std::cell::{Cell, RefCell};
-use std::num;
-use std::ptr;
-use std::mem;
-use std::uint;
-use std::unstable::intrinsics;
-use std::unstable::intrinsics::{TyDesc, get_tydesc};
-
-// The way arena uses arrays is really deeply awful. The arrays are
-// allocated, and have capacities reserved, but the fill for the array
-// will always stay at 0.
-#[deriving(Clone)]
-struct Chunk {
-    data: RefCell<@[u8]>,
-    fill: Cell<uint>,
-    is_pod: Cell<bool>,
-}
-
 #[no_freeze]
 pub struct Arena {
     // The head is separated out from the list as a unbenchmarked
@@ -110,8 +115,8 @@ impl Drop for Arena {
 }
 
 #[inline]
-fn round_up_to(base: uint, align: uint) -> uint {
-    (base + (align - 1)) & !(align - 1)
+fn round_up(base: uint, align: uint) -> uint {
+    (base.checked_add(&(align - 1))).unwrap() & !(&(align - 1))
 }
 
 // Walk down a chunk, running the destructors for any objects stored
@@ -131,7 +136,7 @@ unsafe fn destroy_chunk(chunk: &Chunk) {
 
         let after_tydesc = idx + mem::size_of::<*TyDesc>();
 
-        let start = round_up_to(after_tydesc, align);
+        let start = round_up(after_tydesc, align);
 
         //debug!("freeing object: idx = {}, size = {}, align = {}, done = {}",
         //       start, size, align, is_done);
@@ -140,7 +145,7 @@ unsafe fn destroy_chunk(chunk: &Chunk) {
         }
 
         // Find where the next tydesc lives
-        idx = round_up_to(start + size, mem::pref_align_of::<*TyDesc>());
+        idx = round_up(start + size, mem::pref_align_of::<*TyDesc>());
     }
 }
 
@@ -175,7 +180,7 @@ impl Arena {
     fn alloc_pod_inner(&mut self, n_bytes: uint, align: uint) -> *u8 {
         unsafe {
             let this = transmute_mut_region(self);
-            let start = round_up_to(this.pod_head.fill.get(), align);
+            let start = round_up(this.pod_head.fill.get(), align);
             let end = start + n_bytes;
             if end > at_vec::capacity(this.pod_head.data.get()) {
                 return this.alloc_pod_grow(n_bytes, align);
@@ -227,7 +232,7 @@ impl Arena {
 
                 tydesc_start = head.fill.get();
                 after_tydesc = head.fill.get() + mem::size_of::<*TyDesc>();
-                start = round_up_to(after_tydesc, align);
+                start = round_up(after_tydesc, align);
                 end = start + n_bytes;
             }
 
@@ -236,7 +241,7 @@ impl Arena {
             }
 
             let head = transmute_mut_region(&mut self.head);
-            head.fill.set(round_up_to(end, mem::pref_align_of::<*TyDesc>()));
+            head.fill.set(round_up(end, mem::pref_align_of::<*TyDesc>()));
 
             //debug!("idx = {}, size = {}, align = {}, fill = {}",
             //       start, n_bytes, align, head.fill);
@@ -314,3 +319,284 @@ fn test_arena_destructors_fail() {
         fail!();
     });
 }
+
+/// An arena that can hold objects of only one type.
+///
+/// Safety note: Modifying objects in the arena that have already had their
+/// `drop` destructors run can cause leaks, because the destructor will not
+/// run again for these objects.
+pub struct TypedArena<T> {
+    /// A pointer to the next object to be allocated.
+    priv ptr: *T,
+
+    /// A pointer to the end of the allocated area. When this pointer is
+    /// reached, a new chunk is allocated.
+    priv end: *T,
+
+    /// The type descriptor of the objects in the arena. This should not be
+    /// necessary, but is until generic destructors are supported.
+    priv tydesc: *TyDesc,
+
+    /// A pointer to the first arena segment.
+    priv first: Option<~TypedArenaChunk>,
+}
+
+struct TypedArenaChunk {
+    /// Pointer to the next arena segment.
+    next: Option<~TypedArenaChunk>,
+
+    /// The number of elements that this chunk can hold.
+    capacity: uint,
+
+    // Objects follow here, suitably aligned.
+}
+
+impl TypedArenaChunk {
+    #[inline]
+    fn new<T>(next: Option<~TypedArenaChunk>, capacity: uint)
+           -> ~TypedArenaChunk {
+        let mut size = mem::size_of::<TypedArenaChunk>();
+        size = round_up(size, mem::min_align_of::<T>());
+        let elem_size = mem::size_of::<T>();
+        let elems_size = elem_size.checked_mul(&capacity).unwrap();
+        size = size.checked_add(&elems_size).unwrap();
+
+        let mut chunk = unsafe {
+            let chunk = global_heap::exchange_malloc(size);
+            let mut chunk: ~TypedArenaChunk = cast::transmute(chunk);
+            intrinsics::move_val_init(&mut chunk.next, next);
+            chunk
+        };
+
+        chunk.capacity = capacity;
+        chunk
+    }
+
+    /// Destroys this arena chunk. If the type descriptor is supplied, the
+    /// drop glue is called; otherwise, drop glue is not called.
+    #[inline]
+    unsafe fn destroy(&mut self, len: uint, opt_tydesc: Option<*TyDesc>) {
+        // Destroy all the allocated objects.
+        match opt_tydesc {
+            None => {}
+            Some(tydesc) => {
+                let mut start = self.start(tydesc);
+                for _ in range(0, len) {
+                    ((*tydesc).drop_glue)(start as *i8);
+                    start = start.offset((*tydesc).size as int)
+                }
+            }
+        }
+
+        // Destroy the next chunk.
+        let next_opt = util::replace(&mut self.next, None);
+        match next_opt {
+            None => {}
+            Some(mut next) => {
+                // We assume that the next chunk is completely filled.
+                next.destroy(next.capacity, opt_tydesc)
+            }
+        }
+    }
+
+    // Returns a pointer to the first allocated object.
+    #[inline]
+    fn start(&self, tydesc: *TyDesc) -> *u8 {
+        let this: *TypedArenaChunk = self;
+        unsafe {
+            cast::transmute(round_up(this.offset(1) as uint, (*tydesc).align))
+        }
+    }
+
+    // Returns a pointer to the end of the allocated space.
+    #[inline]
+    fn end(&self, tydesc: *TyDesc) -> *u8 {
+        unsafe {
+            let size = (*tydesc).size.checked_mul(&self.capacity).unwrap();
+            self.start(tydesc).offset(size as int)
+        }
+    }
+}
+
+impl<T> TypedArena<T> {
+    /// Creates a new arena with preallocated space for 8 objects.
+    #[inline]
+    pub fn new() -> TypedArena<T> {
+        TypedArena::with_capacity(8)
+    }
+
+    /// Creates a new arena with preallocated space for the given number of
+    /// objects.
+    #[inline]
+    pub fn with_capacity(capacity: uint) -> TypedArena<T> {
+        let chunk = TypedArenaChunk::new::<T>(None, capacity);
+        let tydesc = unsafe {
+            intrinsics::get_tydesc::<T>()
+        };
+        TypedArena {
+            ptr: chunk.start(tydesc) as *T,
+            end: chunk.end(tydesc) as *T,
+            tydesc: tydesc,
+            first: Some(chunk),
+        }
+    }
+
+    /// Allocates an object into this arena.
+    #[inline]
+    pub fn alloc<'a>(&'a self, object: T) -> &'a T {
+        unsafe {
+            let this = cast::transmute_mut(self);
+            if this.ptr == this.end {
+                this.grow()
+            }
+
+            let ptr: &'a mut T = cast::transmute(this.ptr);
+            intrinsics::move_val_init(ptr, object);
+            this.ptr = this.ptr.offset(1);
+            let ptr: &'a T = ptr;
+            ptr
+        }
+    }
+
+    /// Grows the arena.
+    #[inline(never)]
+    fn grow(&mut self) {
+        let chunk = self.first.take_unwrap();
+        let new_capacity = chunk.capacity.checked_mul(&2).unwrap();
+        let chunk = TypedArenaChunk::new::<T>(Some(chunk), new_capacity);
+        self.ptr = chunk.start(self.tydesc) as *T;
+        self.end = chunk.end(self.tydesc) as *T;
+        self.first = Some(chunk)
+    }
+}
+
+#[unsafe_destructor]
+impl<T> Drop for TypedArena<T> {
+    fn drop(&mut self) {
+        // Determine how much was filled.
+        let start = self.first.get_ref().start(self.tydesc) as uint;
+        let end = self.ptr as uint;
+        let diff = (end - start) / mem::size_of::<T>();
+
+        // Pass that to the `destroy` method.
+        unsafe {
+            let opt_tydesc = if intrinsics::needs_drop::<T>() {
+                Some(self.tydesc)
+            } else {
+                None
+            };
+            self.first.get_mut_ref().destroy(diff, opt_tydesc)
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::{Arena, TypedArena};
+    use test::BenchHarness;
+
+    struct Point {
+        x: int,
+        y: int,
+        z: int,
+    }
+
+    #[test]
+    pub fn test_pod() {
+        let arena = TypedArena::new();
+        for _ in range(0, 1000000) {
+            arena.alloc(Point {
+                x: 1,
+                y: 2,
+                z: 3,
+            });
+        }
+    }
+
+    #[bench]
+    pub fn bench_pod(bh: &mut BenchHarness) {
+        let arena = TypedArena::new();
+        bh.iter(|| {
+            arena.alloc(Point {
+                x: 1,
+                y: 2,
+                z: 3,
+            });
+        })
+    }
+
+    #[bench]
+    pub fn bench_pod_nonarena(bh: &mut BenchHarness) {
+        bh.iter(|| {
+            let _ = ~Point {
+                x: 1,
+                y: 2,
+                z: 3,
+            };
+        })
+    }
+
+    #[bench]
+    pub fn bench_pod_old_arena(bh: &mut BenchHarness) {
+        let arena = Arena::new();
+        bh.iter(|| {
+            arena.alloc(|| {
+                Point {
+                    x: 1,
+                    y: 2,
+                    z: 3,
+                }
+            });
+        })
+    }
+
+    struct Nonpod {
+        string: ~str,
+        array: ~[int],
+    }
+
+    #[test]
+    pub fn test_nonpod() {
+        let arena = TypedArena::new();
+        for _ in range(0, 1000000) {
+            arena.alloc(Nonpod {
+                string: ~"hello world",
+                array: ~[ 1, 2, 3, 4, 5 ],
+            });
+        }
+    }
+
+    #[bench]
+    pub fn bench_nonpod(bh: &mut BenchHarness) {
+        let arena = TypedArena::new();
+        bh.iter(|| {
+            arena.alloc(Nonpod {
+                string: ~"hello world",
+                array: ~[ 1, 2, 3, 4, 5 ],
+            });
+        })
+    }
+
+    #[bench]
+    pub fn bench_nonpod_nonarena(bh: &mut BenchHarness) {
+        bh.iter(|| {
+            let _ = ~Nonpod {
+                string: ~"hello world",
+                array: ~[ 1, 2, 3, 4, 5 ],
+            };
+        })
+    }
+
+    #[bench]
+    pub fn bench_nonpod_old_arena(bh: &mut BenchHarness) {
+        let arena = Arena::new();
+        bh.iter(|| {
+            let _ = arena.alloc(|| Nonpod {
+                string: ~"hello world",
+                array: ~[ 1, 2, 3, 4, 5 ],
+            });
+        })
+    }
+}
+
+
