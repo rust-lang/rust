@@ -1,4 +1,4 @@
-% Rust Borrowed Pointers Guide
+% The Rust Borrowed Pointers and Lifetimes Guide
 
 # Introduction
 

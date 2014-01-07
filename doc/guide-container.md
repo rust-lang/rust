@@ -1,4 +1,4 @@
-% Containers and Iterators Guide
+% The Rust Containers and Iterators Guide
 
 # Containers
 

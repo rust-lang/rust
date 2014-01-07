@@ -1,4 +1,4 @@
-% Rust Tasks and Communication Guide
+% The Rust Tasks and Communication Guide
 
 # Introduction
 
