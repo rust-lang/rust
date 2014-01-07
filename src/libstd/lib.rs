@@ -111,6 +111,7 @@ pub mod char;
 pub mod tuple;
 
 pub mod vec;
+pub mod libvec;
 pub mod at_vec;
 pub mod str;
 
