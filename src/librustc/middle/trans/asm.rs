@@ -27,8 +27,8 @@ use middle::trans::type_::Type;
 use syntax::ast;
 
 // Take an inline assembly expression and splat it out via LLVM
-pub fn trans_inline_asm(bcx: @Block, ia: &ast::inline_asm) -> @Block {
-
+pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::inline_asm)
+                        -> &'a Block<'a> {
     let mut bcx = bcx;
     let mut constraints = ~[];
     let mut cleanups = ~[];

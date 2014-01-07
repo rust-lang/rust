@@ -38,7 +38,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                        ref_id: Option<ast::NodeId>) {
     debug!("trans_intrinsic(item.ident={})", ccx.sess.str_of(item.ident));
 
-    fn simple_llvm_intrinsic(bcx: @Block, name: &'static str, num_args: uint) {
+    fn simple_llvm_intrinsic(bcx: &Block, name: &'static str, num_args: uint) {
         assert!(num_args <= 4);
         let mut args = [0 as ValueRef, ..4];
         let first_real_arg = bcx.fcx.arg_pos(0u);
@@ -50,7 +50,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
         Ret(bcx, llcall);
     }
 
-    fn with_overflow_instrinsic(bcx: @Block, name: &'static str, t: ty::t) {
+    fn with_overflow_instrinsic(bcx: &Block, name: &'static str, t: ty::t) {
         let first_real_arg = bcx.fcx.arg_pos(0u);
         let a = get_param(bcx.fcx.llfn, first_real_arg);
         let b = get_param(bcx.fcx.llfn, first_real_arg + 1);
@@ -73,7 +73,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
         }
     }
 
-    fn volatile_load_intrinsic(bcx: @Block) {
+    fn volatile_load_intrinsic(bcx: &Block) {
         let first_real_arg = bcx.fcx.arg_pos(0u);
         let src = get_param(bcx.fcx.llfn, first_real_arg);
 
@@ -81,7 +81,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
         Ret(bcx, val);
     }
 
-    fn volatile_store_intrinsic(bcx: @Block) {
+    fn volatile_store_intrinsic(bcx: &Block) {
         let first_real_arg = bcx.fcx.arg_pos(0u);
         let dst = get_param(bcx.fcx.llfn, first_real_arg);
         let val = get_param(bcx.fcx.llfn, first_real_arg + 1);
@@ -90,7 +90,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
         RetVoid(bcx);
     }
 
-    fn copy_intrinsic(bcx: @Block, allow_overlap: bool, tp_ty: ty::t) {
+    fn copy_intrinsic(bcx: &Block, allow_overlap: bool, tp_ty: ty::t) {
         let ccx = bcx.ccx();
         let lltp_ty = type_of::type_of(ccx, tp_ty);
         let align = C_i32(machine::llalign_of_min(ccx, lltp_ty) as i32);
@@ -121,7 +121,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
         RetVoid(bcx);
     }
 
-    fn memset_intrinsic(bcx: @Block, tp_ty: ty::t) {
+    fn memset_intrinsic(bcx: &Block, tp_ty: ty::t) {
         let ccx = bcx.ccx();
         let lltp_ty = type_of::type_of(ccx, tp_ty);
         let align = C_i32(machine::llalign_of_min(ccx, lltp_ty) as i32);
@@ -143,7 +143,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
         RetVoid(bcx);
     }
 
-    fn count_zeros_intrinsic(bcx: @Block, name: &'static str) {
+    fn count_zeros_intrinsic(bcx: &Block, name: &'static str) {
         let x = get_param(bcx.fcx.llfn, bcx.fcx.arg_pos(0u));
         let y = C_i1(false);
         let llfn = bcx.ccx().intrinsics.get_copy(&name);
@@ -158,10 +158,9 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                                decl,
                                item.id,
                                output_type,
-                               true,
                                Some(substs),
-                               None,
                                Some(item.span));
+    init_function(&fcx, true, output_type, Some(substs), None);
 
     set_always_inline(fcx.llfn);
 

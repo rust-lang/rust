@@ -28,7 +28,8 @@ use syntax::ast_util;
 use syntax::codemap::Span;
 use syntax::visit::Visitor;
 
-pub fn trans_block(bcx: @Block, b: &ast::Block, dest: expr::Dest) -> @Block {
+pub fn trans_block<'a>(bcx: &'a Block<'a>, b: &ast::Block, dest: expr::Dest)
+                   -> &'a Block<'a> {
     let _icx = push_ctxt("trans_block");
     let mut bcx = bcx;
     for s in b.stmts.iter() {
@@ -45,12 +46,13 @@ pub fn trans_block(bcx: @Block, b: &ast::Block, dest: expr::Dest) -> @Block {
     return bcx;
 }
 
-pub fn trans_if(bcx: @Block,
-            cond: &ast::Expr,
-            thn: ast::P<ast::Block>,
-            els: Option<@ast::Expr>,
-            dest: expr::Dest)
-         -> @Block {
+pub fn trans_if<'a>(
+                bcx: &'a Block<'a>,
+                cond: &ast::Expr,
+                thn: ast::P<ast::Block>,
+                els: Option<@ast::Expr>,
+                dest: expr::Dest)
+                -> &'a Block<'a> {
     debug!("trans_if(bcx={}, cond={}, thn={:?}, dest={})",
            bcx.to_str(), bcx.expr_to_str(cond), thn.id,
            dest.to_str(bcx.ccx()));
@@ -137,8 +139,12 @@ pub fn trans_if(bcx: @Block,
     return next_bcx;
 
     // trans `else [ if { .. } ... | { .. } ]`
-    fn trans_if_else(else_bcx_in: @Block, elexpr: @ast::Expr,
-                     dest: expr::Dest, cleanup: bool) -> @Block {
+    fn trans_if_else<'a>(
+                     else_bcx_in: &'a Block<'a>,
+                     elexpr: @ast::Expr,
+                     dest: expr::Dest,
+                     cleanup: bool)
+                     -> &'a Block<'a> {
         let else_bcx_out = match elexpr.node {
             ast::ExprIf(_, _, _) => {
                 let elseif_blk = ast_util::block_from_expr(elexpr);
@@ -159,7 +165,10 @@ pub fn trans_if(bcx: @Block,
     }
 }
 
-pub fn join_blocks(parent_bcx: @Block, in_cxs: &[@Block]) -> @Block {
+pub fn join_blocks<'a>(
+                   parent_bcx: &'a Block<'a>,
+                   in_cxs: &[&'a Block<'a>])
+                   -> &'a Block<'a> {
     let out = sub_block(parent_bcx, "join");
     let mut reachable = false;
     for bcx in in_cxs.iter() {
@@ -174,7 +183,11 @@ pub fn join_blocks(parent_bcx: @Block, in_cxs: &[@Block]) -> @Block {
     return out;
 }
 
-pub fn trans_while(bcx: @Block, cond: &ast::Expr, body: &ast::Block) -> @Block {
+pub fn trans_while<'a>(
+                   bcx: &'a Block<'a>,
+                   cond: &ast::Expr,
+                   body: &ast::Block)
+                   -> &'a Block<'a> {
     let _icx = push_ctxt("trans_while");
     let next_bcx = sub_block(bcx, "while next");
 
@@ -213,10 +226,11 @@ pub fn trans_while(bcx: @Block, cond: &ast::Expr, body: &ast::Block) -> @Block {
     return next_bcx;
 }
 
-pub fn trans_loop(bcx:@Block,
+pub fn trans_loop<'a>(
+                  bcx: &'a Block<'a>,
                   body: &ast::Block,
                   opt_label: Option<Name>)
-               -> @Block {
+                  -> &'a Block<'a> {
     let _icx = push_ctxt("trans_loop");
     let next_bcx = sub_block(bcx, "next");
     let body_bcx_in = loop_scope_block(bcx, next_bcx, opt_label, "`loop`",
@@ -227,10 +241,11 @@ pub fn trans_loop(bcx:@Block,
     return next_bcx;
 }
 
-pub fn trans_break_cont(bcx: @Block,
+pub fn trans_break_cont<'a>(
+                        bcx: &'a Block<'a>,
                         opt_label: Option<Name>,
                         to_end: bool)
-                     -> @Block {
+                        -> &'a Block<'a> {
     let _icx = push_ctxt("trans_break_cont");
     // Locate closest loop block, outputting cleanup as we go.
     let mut unwind = bcx;
@@ -238,7 +253,7 @@ pub fn trans_break_cont(bcx: @Block,
     let mut target;
     loop {
         cur_scope = match cur_scope {
-            Some(@ScopeInfo {
+            Some(&ScopeInfo {
                 loop_break: Some(brk),
                 loop_label: l,
                 parent,
@@ -283,15 +298,18 @@ pub fn trans_break_cont(bcx: @Block,
     return bcx;
 }
 
-pub fn trans_break(bcx: @Block, label_opt: Option<Name>) -> @Block {
+pub fn trans_break<'a>(bcx: &'a Block<'a>, label_opt: Option<Name>)
+                   -> &'a Block<'a> {
     return trans_break_cont(bcx, label_opt, true);
 }
 
-pub fn trans_cont(bcx: @Block, label_opt: Option<Name>) -> @Block {
+pub fn trans_cont<'a>(bcx: &'a Block<'a>, label_opt: Option<Name>)
+                  -> &'a Block<'a> {
     return trans_break_cont(bcx, label_opt, false);
 }
 
-pub fn trans_ret(bcx: @Block, e: Option<@ast::Expr>) -> @Block {
+pub fn trans_ret<'a>(bcx: &'a Block<'a>, e: Option<@ast::Expr>)
+                 -> &'a Block<'a> {
     let _icx = push_ctxt("trans_ret");
     let mut bcx = bcx;
     let dest = match bcx.fcx.llretptr.get() {
@@ -309,10 +327,11 @@ pub fn trans_ret(bcx: @Block, e: Option<@ast::Expr>) -> @Block {
     return bcx;
 }
 
-pub fn trans_fail_expr(bcx: @Block,
+pub fn trans_fail_expr<'a>(
+                       bcx: &'a Block<'a>,
                        sp_opt: Option<Span>,
                        fail_expr: Option<@ast::Expr>)
-                    -> @Block {
+                       -> &'a Block<'a> {
     let _icx = push_ctxt("trans_fail_expr");
     let mut bcx = bcx;
     match fail_expr {
@@ -337,19 +356,21 @@ pub fn trans_fail_expr(bcx: @Block,
     }
 }
 
-pub fn trans_fail(bcx: @Block,
+pub fn trans_fail<'a>(
+                  bcx: &'a Block<'a>,
                   sp_opt: Option<Span>,
                   fail_str: @str)
-               -> @Block {
+                  -> &'a Block<'a> {
     let _icx = push_ctxt("trans_fail");
     let V_fail_str = C_cstr(bcx.ccx(), fail_str);
     return trans_fail_value(bcx, sp_opt, V_fail_str);
 }
 
-fn trans_fail_value(bcx: @Block,
+fn trans_fail_value<'a>(
+                    bcx: &'a Block<'a>,
                     sp_opt: Option<Span>,
                     V_fail_str: ValueRef)
-                 -> @Block {
+                    -> &'a Block<'a> {
     let _icx = push_ctxt("trans_fail_value");
     let ccx = bcx.ccx();
     let (V_filename, V_line) = match sp_opt {
@@ -372,8 +393,12 @@ fn trans_fail_value(bcx: @Block,
     return bcx;
 }
 
-pub fn trans_fail_bounds_check(bcx: @Block, sp: Span,
-                               index: ValueRef, len: ValueRef) -> @Block {
+pub fn trans_fail_bounds_check<'a>(
+                               bcx: &'a Block<'a>,
+                               sp: Span,
+                               index: ValueRef,
+                               len: ValueRef)
+                               -> &'a Block<'a> {
     let _icx = push_ctxt("trans_fail_bounds_check");
     let (filename, line) = filename_and_line_num_from_span(bcx, sp);
     let args = ~[filename, line, index, len];
