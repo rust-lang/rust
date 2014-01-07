@@ -122,7 +122,11 @@ use mem::size_of;
 use uint;
 use unstable::finally::Finally;
 use unstable::intrinsics;
-use unstable::intrinsics::{get_tydesc, owns_managed};
+use unstable::intrinsics::get_tydesc;
+#[cfg(stage0)] // SNAP a5fa1d9
+use owns_at_managed = unstable::intrinsics::owns_managed;
+#[cfg(not(stage0))]
+use unstable::intrinsics::owns_at_managed;
 use unstable::raw::{Box, Repr, Slice, Vec};
 use util;
 
@@ -180,7 +184,7 @@ pub fn from_elem<T:Clone>(n_elts: uint, t: T) -> ~[T] {
 #[inline]
 pub fn with_capacity<T>(capacity: uint) -> ~[T] {
     unsafe {
-        if owns_managed::<T>() {
+        if owns_at_managed::<T>() {
             let mut vec = ~[];
             vec.reserve(capacity);
             vec
@@ -1486,7 +1490,7 @@ impl<T> OwnedVector<T> for ~[T] {
         if self.capacity() < n {
             unsafe {
                 let td = get_tydesc::<T>();
-                if owns_managed::<T>() {
+                if owns_at_managed::<T>() {
                     let ptr: *mut *mut Box<Vec<()>> = cast::transmute(self);
                     ::at_vec::raw::reserve_raw(td, ptr, n);
                 } else {
@@ -1522,7 +1526,7 @@ impl<T> OwnedVector<T> for ~[T] {
     #[inline]
     fn capacity(&self) -> uint {
         unsafe {
-            if owns_managed::<T>() {
+            if owns_at_managed::<T>() {
                 let repr: **Box<Vec<()>> = cast::transmute(self);
                 (**repr).data.alloc / mem::nonzero_size_of::<T>()
             } else {
@@ -1545,7 +1549,7 @@ impl<T> OwnedVector<T> for ~[T] {
     #[inline]
     fn push(&mut self, t: T) {
         unsafe {
-            if owns_managed::<T>() {
+            if owns_at_managed::<T>() {
                 let repr: **Box<Vec<()>> = cast::transmute(&mut *self);
                 let fill = (**repr).data.fill;
                 if (**repr).data.alloc <= fill {
@@ -1567,7 +1571,7 @@ impl<T> OwnedVector<T> for ~[T] {
         // This doesn't bother to make sure we have space.
         #[inline] // really pretty please
         unsafe fn push_fast<T>(this: &mut ~[T], t: T) {
-            if owns_managed::<T>() {
+            if owns_at_managed::<T>() {
                 let repr: **mut Box<Vec<u8>> = cast::transmute(this);
                 let fill = (**repr).data.fill;
                 (**repr).data.fill += mem::nonzero_size_of::<T>();
@@ -1747,7 +1751,7 @@ impl<T> OwnedVector<T> for ~[T] {
     }
     #[inline]
     unsafe fn set_len(&mut self, new_len: uint) {
-        if owns_managed::<T>() {
+        if owns_at_managed::<T>() {
             let repr: **mut Box<Vec<()>> = cast::transmute(self);
             (**repr).data.fill = new_len * mem::nonzero_size_of::<T>();
         } else {
@@ -2934,7 +2938,7 @@ impl<T> Drop for MoveIterator<T> {
         // destroy the remaining elements
         for _x in *self {}
         unsafe {
-            if owns_managed::<T>() {
+            if owns_at_managed::<T>() {
                 local_free(self.allocation as *u8 as *c_char)
             } else {
                 exchange_free(self.allocation as *u8 as *c_char)

@@ -65,7 +65,7 @@ pub fn get_alloc(bcx: &Block, vptr: ValueRef) -> ValueRef {
 }
 
 pub fn get_bodyptr(bcx: &Block, vptr: ValueRef, t: ty::t) -> ValueRef {
-    if ty::type_contents(bcx.tcx(), t).owns_managed() {
+    if ty::type_contents(bcx.tcx(), t).owns_at_managed() {
         GEPi(bcx, vptr, [0u, abi::box_field_body])
     } else {
         vptr
@@ -687,4 +687,3 @@ pub fn iter_vec_unboxed<'r,
     let dataptr = get_dataptr(bcx, body_ptr);
     return iter_vec_raw(bcx, dataptr, vec_ty, fill, f);
 }
-

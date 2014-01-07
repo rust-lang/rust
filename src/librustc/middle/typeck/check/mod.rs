@@ -4115,7 +4115,7 @@ pub fn check_intrinsic_type(ccx: @CrateCtxt, it: &ast::ForeignItem) {
                ty::mk_nil())
             }
             "needs_drop" => (1u, ~[], ty::mk_bool()),
-            "owns_managed" => (1u, ~[], ty::mk_bool()),
+            "owns_at_managed" | "owns_new_managed" => (1u, ~[], ty::mk_bool()),
             "atomic_xchg"     | "atomic_xadd"     | "atomic_xsub"     |
             "atomic_xchg_acq" | "atomic_xadd_acq" | "atomic_xsub_acq" |
             "atomic_xchg_rel" | "atomic_xadd_rel" | "atomic_xsub_rel" => {
@@ -4370,4 +4370,3 @@ pub fn check_intrinsic_type(ccx: @CrateCtxt, it: &ast::ForeignItem) {
                      ppaux::ty_to_str(ccx.tcx, fty)));
     }
 }
-
