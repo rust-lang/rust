@@ -3222,7 +3222,8 @@ impl Parser {
         fn check_expected_item(p: &mut Parser, found_attrs: bool) {
             // If we have attributes then we should have an item
             if found_attrs {
-                p.span_err(p.last_span, "expected item after attributes");
+                p.span_err(p.last_span, "expected item after attributes; \
+                           attributes must come before items");
             }
         }
 
@@ -3382,7 +3383,8 @@ impl Parser {
             match self.token {
                 token::SEMI => {
                     if !attributes_box.is_empty() {
-                        self.span_err(self.last_span, "expected item after attributes");
+                        self.span_err(self.last_span, "expected item after attribute \
+                                      attributes must come before items");
                         attributes_box = ~[];
                     }
                     self.bump(); // empty
@@ -3460,7 +3462,8 @@ impl Parser {
         }
 
         if !attributes_box.is_empty() {
-            self.span_err(self.last_span, "expected item after attributes");
+            self.span_err(self.last_span, "expected item after attributes; attributes must come \
+                          before items");
         }
 
         let hi = self.span.hi;
@@ -4156,16 +4159,24 @@ impl Parser {
                                  the module");
               }
               _ => {
-                  let token_str = self.this_token_to_str();
-                  self.fatal(format!("expected item but found `{}`",
-                                     token_str))
+                  let msg;
+                  match self.token {
+                      token::SEMI => {
+                          msg = format!("inner attributes must come \
+                                             before other contents")
+                      },
+                      _ => msg = format!("expected item but found `{}`",
+                                              self.this_token_to_str())
+                  }
+                  self.fatal(msg);
               }
             }
         }
 
         if first && attrs_remaining_len > 0u {
             // We parsed attributes for the first item but didn't find it
-            self.span_err(self.last_span, "expected item after attributes");
+            self.span_err(self.last_span, "expected item after attributes; \
+                          attributes must come before items");
         }
 
         ast::_mod { view_items: view_items, items: items }
@@ -4371,7 +4382,7 @@ impl Parser {
         } = self.parse_foreign_items(first_item_attrs, true);
         if (! attrs_remaining.is_empty()) {
             self.span_err(self.last_span,
-                          "expected item after attributes");
+                          "expected item after attributes; attributes must come before items");
         }
         assert!(self.token == token::RBRACE);
         ast::foreign_mod {
