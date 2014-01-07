@@ -1,0 +1,1 @@
+#[crate_type = "rlib"];

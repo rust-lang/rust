@@ -192,7 +192,7 @@ pub enum EntryFnType {
     EntryNone,
 }
 
-#[deriving(Eq, Clone)]
+#[deriving(Eq, Clone, TotalOrd, TotalEq)]
 pub enum OutputStyle {
     OutputExecutable,
     OutputDylib,
@@ -461,6 +461,8 @@ pub fn collect_outputs(session: &Session,
     if base.len() == 0 {
         base.push(OutputExecutable);
     }
+    base.sort();
+    base.dedup();
     return base;
 }
 
