@@ -416,6 +416,7 @@ export CFG_ENABLE_MINGW_CROSS
 export CFG_PREFIX
 export CFG_LIBDIR
 export CFG_RUSTLIBDIR
+export LIBDIR_RELATIVE
 
 ######################################################################
 # Subprograms
@@ -433,12 +434,12 @@ define SREQ
 # Destinations of artifacts for the host compiler
 HROOT$(1)_H_$(3) = $(3)/stage$(1)
 HBIN$(1)_H_$(3) = $$(HROOT$(1)_H_$(3))/bin
-HLIB$(1)_H_$(3) = $$(HROOT$(1)_H_$(3))/$$(CFG_LIBDIR)
+HLIB$(1)_H_$(3) = $$(HROOT$(1)_H_$(3))/$$(LIBDIR_RELATIVE)
 
 # Destinations of artifacts for target architectures
 TROOT$(1)_T_$(2)_H_$(3) = $$(HLIB$(1)_H_$(3))/$$(CFG_RUSTLIBDIR)/$(2)
 TBIN$(1)_T_$(2)_H_$(3) = $$(TROOT$(1)_T_$(2)_H_$(3))/bin
-TLIB$(1)_T_$(2)_H_$(3) = $$(TROOT$(1)_T_$(2)_H_$(3))/$$(CFG_LIBDIR)
+TLIB$(1)_T_$(2)_H_$(3) = $$(TROOT$(1)_T_$(2)_H_$(3))/lib
 
 # The name of the standard and extra libraries used by rustc
 HSTDLIB_DEFAULT$(1)_H_$(3) = \
