@@ -20,7 +20,7 @@ use extra::arc::Arc;
 use extra::arc::RWArc;
 use extra::tempfile::TempDir;
 use extra::workcache;
-use extra::workcache::{Database, Logger};
+use extra::workcache::{Database};
 use extra::treemap::TreeMap;
 use extra::getopts::groups::getopts;
 use std::run::ProcessOutput;
@@ -46,7 +46,6 @@ use exit_codes::{BAD_FLAG_CODE, COPY_FAILED_CODE};
 fn fake_ctxt(sysroot: Path, workspace: &Path) -> BuildContext {
     let context = workcache::Context::new(
         RWArc::new(Database::new(workspace.join("rustpkg_db.json"))),
-        RWArc::new(Logger::new()),
         Arc::new(TreeMap::new()));
     BuildContext {
         workcache_context: context,

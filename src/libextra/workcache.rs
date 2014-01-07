@@ -209,28 +209,11 @@ impl Drop for Database {
     }
 }
 
-pub struct Logger {
-    // FIXME #4432: Fill in
-    priv a: ()
-}
-
-impl Logger {
-
-    pub fn new() -> Logger {
-        Logger { a: () }
-    }
-
-    pub fn info(&self, i: &str) {
-        info!("workcache: {}", i);
-    }
-}
-
 pub type FreshnessMap = TreeMap<~str,extern fn(&str,&str)->bool>;
 
 #[deriving(Clone)]
 pub struct Context {
     db: RWArc<Database>,
-    priv logger: RWArc<Logger>,
     priv cfg: Arc<json::Object>,
     /// Map from kinds (source, exe, url, etc.) to a freshness function.
     /// The freshness function takes a name (e.g. file path) and value
@@ -275,18 +258,15 @@ fn json_decode<T:Decodable<json::Decoder>>(s: &str) -> T {
 impl Context {
 
     pub fn new(db: RWArc<Database>,
-               lg: RWArc<Logger>,
                cfg: Arc<json::Object>) -> Context {
-        Context::new_with_freshness(db, lg, cfg, Arc::new(TreeMap::new()))
+        Context::new_with_freshness(db, cfg, Arc::new(TreeMap::new()))
     }
 
     pub fn new_with_freshness(db: RWArc<Database>,
-                              lg: RWArc<Logger>,
                               cfg: Arc<json::Object>,
                               freshness: Arc<FreshnessMap>) -> Context {
         Context {
             db: db,
-            logger: lg,
             cfg: cfg,
             freshness: freshness
         }
@@ -378,15 +358,11 @@ impl<'a> Prep<'a> {
             None => fail!("missing freshness-function for '{}'", kind),
             Some(f) => (*f)(name, val)
         };
-        self.ctxt.logger.write(|lg| {
-            if fresh {
-                lg.info(format!("{} {}:{} is fresh",
-                             cat, kind, name));
-            } else {
-                lg.info(format!("{} {}:{} is not fresh",
-                             cat, kind, name))
-            }
-        });
+        if fresh {
+            info!("{} {}:{} is fresh", cat, kind, name);
+        } else {
+            info!("{} {}:{} is not fresh", cat, kind, name);
+        }
         fresh
     }
 
@@ -509,7 +485,6 @@ fn test() {
     let db_path = make_path(~"db.json");
 
     let cx = Context::new(RWArc::new(Database::new(db_path)),
-                          RWArc::new(Logger::new()),
                           Arc::new(TreeMap::new()));
 
     let s = cx.with_prep("test1", |prep| {
