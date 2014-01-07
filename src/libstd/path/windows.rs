@@ -13,14 +13,16 @@
 use ascii::AsciiCast;
 use c_str::{CString, ToCStr};
 use cast;
+use clone::Clone;
+use container::Container;
 use cmp::Eq;
 use from_str::FromStr;
 use iter::{AdditiveIterator, DoubleEndedIterator, Extendable, Invert, Iterator, Map};
 use option::{Option, Some, None};
 use str;
-use str::{CharSplitIterator, OwnedStr, Str, StrVector};
+use str::{CharSplitIterator, OwnedStr, Str, StrVector, StrSlice};
 use to_bytes::IterBytes;
-use vec::Vector;
+use vec::{Vector, OwnedVector, ImmutableVector};
 use super::{contains_nul, BytesContainer, GenericPath, GenericPathUnsafe};
 
 /// Iterator that yields successive components of a Path as &str

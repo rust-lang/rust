@@ -16,6 +16,7 @@
 use iter::Iterator;
 use option::Option;
 use io::Reader;
+use vec::OwnedVector;
 
 /// An iterator that reads a single byte on each iteration,
 /// until `.read_byte()` returns `None`.

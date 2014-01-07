@@ -10,6 +10,7 @@
 
 //! The exponential distribution.
 
+use num::Exponential;
 use rand::{Rng, Rand};
 use rand::distributions::{ziggurat, ziggurat_tables, Sample, IndependentSample};
 

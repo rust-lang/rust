@@ -611,6 +611,7 @@ impl<'a, T> RandomAccessIterator<&'a [T]> for ChunkIter<'a, T> {
 pub mod traits {
     use super::*;
 
+    use container::Container;
     use clone::Clone;
     use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Equiv};
     use iter::order;
@@ -2520,7 +2521,7 @@ pub unsafe fn from_buf<T>(ptr: *T, elts: uint) -> ~[T] {
 pub mod raw {
     use cast;
     use ptr;
-    use vec::{with_capacity, MutableVector};
+    use vec::{with_capacity, MutableVector, OwnedVector};
     use unstable::raw::Slice;
 
     /**
@@ -2599,8 +2600,9 @@ pub mod raw {
 /// Operations on `[u8]`.
 pub mod bytes {
     use container::Container;
-    use vec::MutableVector;
+    use vec::{MutableVector, OwnedVector, ImmutableVector};
     use ptr;
+    use ptr::RawPtr;
 
     /// A trait for operations on mutable `[u8]`s.
     pub trait MutableByteVector {

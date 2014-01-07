@@ -10,9 +10,11 @@
 
 use container::Container;
 use from_str::FromStr;
+use iter::Iterator;
 use option::{Option, None, Some};
+use str::StrSlice;
 use to_str::ToStr;
-use vec::{MutableCloneableVector, ImmutableVector};
+use vec::{MutableCloneableVector, ImmutableVector, MutableVector};
 
 pub type Port = u16;
 

@@ -21,7 +21,7 @@ use str;
 use vec::{CopyableVector, ImmutableVector, MutableVector};
 use vec::OwnedVector;
 use num::{NumCast, Zero, One, cast, pow_with_uint, Integer};
-use num::{Round, Float, FPNaN, FPInfinite};
+use num::{Round, Float, FPNaN, FPInfinite, ToPrimitive};
 
 pub enum ExponentFormat {
     ExpNone,
