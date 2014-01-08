@@ -100,7 +100,7 @@ impl PkgSrc {
             // automatically-checked-out sources go.
             let mut result = source_workspace.join("src");
             result.push(&id.path.dir_path());
-            result.push(format!("{}-{}", id.short_name, id.version.to_str()));
+            result.push(id.short_name_with_version());
             to_try.push(result);
             let mut result = source_workspace.join("src");
             result.push(&id.path);
@@ -108,7 +108,7 @@ impl PkgSrc {
 
             let mut result = build_dir.join("src");
             result.push(&id.path.dir_path());
-            result.push(format!("{}-{}", id.short_name, id.version.to_str()));
+            result.push(id.short_name_with_version());
             to_try.push(result.clone());
             output_names.push(result);
             let mut other_result = build_dir.join("src");
@@ -287,7 +287,7 @@ impl PkgSrc {
                 // FIXME (#9639): This needs to handle non-utf8 paths
                 let url = format!("https://{}", crateid.path.as_str().unwrap());
                 debug!("Fetching package: git clone {} {} [version={}]",
-                        url, clone_target.display(), crateid.version.to_str());
+                        url, clone_target.display(), crateid.get_version());
 
                 let mut failed = false;
 

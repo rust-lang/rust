@@ -14,7 +14,7 @@
 
 pub use crate_id::CrateId;
 pub use target::{OutputType, Main, Lib, Test, Bench, Target, Build, Install};
-pub use version::{Version, ExactRevision, NoVersion, split_version, split_version_general,
+pub use version::{Version, split_version, split_version_general,
     try_parsing_version};
 pub use rustc::metadata::filesearch::rust_path;
 use rustc::metadata::filesearch::{libdir, relative_target_lib_path};
@@ -85,7 +85,7 @@ pub fn workspace_contains_crate_id_(crateid: &CrateId, workspace: &Path,
                         None => false,
                         Some((ref might_match, ref vers)) => {
                             *might_match == crateid.short_name
-                                && (crateid.version == *vers || crateid.version == NoVersion)
+                                && (crateid.version == *vers || crateid.version == None)
                         }
                     }
                 })
@@ -188,7 +188,7 @@ pub fn installed_library_in_workspace(pkg_path: &Path, workspace: &Path) -> Opti
                                                  Install,
                                                  workspace,
                                                  libdir(),
-                                                 &NoVersion)
+                                                 &None)
     }
 }
 
@@ -261,7 +261,8 @@ fn library_in(short_name: &str, version: &Version, dir_to_search: &Path) -> Opti
                 Some(i) => {
                     debug!("Maybe {} is a version", f_name.slice(i + 1, f_name.len()));
                     match try_parsing_version(f_name.slice(i + 1, f_name.len())) {
-                        Some(ref found_vers) if version == found_vers => {
+                        Some(ref found_vers) if version == &Some(found_vers.to_owned()) ||
+                                                version == &None => {
                             match f_name.slice(0, i).rfind('-') {
                                 Some(j) => {
                                     let lib_prefix = match p_path.extension_str() {
@@ -276,7 +277,6 @@ fn library_in(short_name: &str, version: &Version, dir_to_search: &Path) -> Opti
                                 }
                                 None => break
                             }
-
                        }
                        _ => { f_name = f_name.slice(0, i); }
                  }
@@ -306,13 +306,13 @@ fn split_crate_id<'a>(crate_id: &'a str) -> (&'a str, Version) {
     match split_version(crate_id) {
         Some((name, vers)) =>
             match vers {
-                ExactRevision(ref v) => match v.find('-') {
-                    Some(pos) => (name, ExactRevision(v.slice(0, pos).to_owned())),
-                    None => (name, ExactRevision(v.to_owned()))
+                Some(ref v) => match v.find('-') {
+                    Some(pos) => (name, Some(v.slice(0, pos).to_owned())),
+                    None => (name, Some(v.to_owned()))
                 },
                 _ => (name, vers)
             },
-        None => (crate_id, NoVersion)
+        None => (crate_id, None)
     }
 }
 
@@ -393,8 +393,7 @@ pub fn build_pkg_id_in_workspace(crateid: &CrateId, workspace: &Path) -> Path {
 /// given whether we're building a library and whether we're building tests
 pub fn mk_output_path(what: OutputType, where: Target,
                       pkg_id: &CrateId, workspace: Path) -> Path {
-    let short_name_with_version = format!("{}-{}", pkg_id.short_name,
-                                          pkg_id.version.to_str());
+    let short_name_with_version = pkg_id.short_name_with_version();
     // Not local_path.dir_path()! For package foo/bar/blat/, we want
     // the executable blat-0.5 to live under blat/
     let dir = match where {
@@ -487,7 +486,7 @@ pub fn versionize(p: &Path, v: &Version) -> Path {
     let q = p.filename().expect("path is a directory");
     let mut q = q.to_owned();
     q.push('-' as u8);
-    let vs = v.to_str();
+    let vs = match v { &Some(ref s) => s.to_owned(), &None => ~"0.0" };
     q.push_all(vs.as_bytes());
     p.with_filename(q)
 }

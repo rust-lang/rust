@@ -163,7 +163,6 @@ impl<'a> PkgScript<'a> {
         exe.as_str().unwrap().to_owned()
     }
 
-
     /// Run the contents of this package script, where <what>
     /// is the command to pass to it (e.g., "build", "clean", "install")
     /// Returns a pair of an exit code and list of configs (obtained by
@@ -243,7 +242,7 @@ impl CtxMethods for BuildContext {
 
         if args.len() < 1 {
             match cwd_to_workspace() {
-                None  if dir_has_crate_file(&cwd) => {
+                None if dir_has_crate_file(&cwd) => {
                     // FIXME (#9639): This needs to handle non-utf8 paths
                     let crateid = CrateId::new(cwd.filename_str().unwrap());
                     let mut pkg_src = PkgSrc::new(cwd, default_workspace(), true, crateid);
@@ -289,6 +288,7 @@ impl CtxMethods for BuildContext {
             Some((crateid, dest_ws))
         }
     }
+
     fn run(&self, cmd: Command, args: ~[~str]) {
         let cwd = os::getcwd();
         match cmd {
