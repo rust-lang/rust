@@ -11,8 +11,8 @@
 extern mod extra;
 
 use std::iter::range_step;
-use extra::arena::Arena;
 use extra::future::Future;
+use extra::arena::TypedArena;
 
 enum Tree<'a> {
     Nil,
@@ -26,14 +26,15 @@ fn item_check(t: &Tree) -> int {
     }
 }
 
-fn bottom_up_tree<'r>(arena: &'r Arena, item: int, depth: int) -> &'r Tree<'r> {
+fn bottom_up_tree<'r>(arena: &'r TypedArena<Tree<'r>>, item: int, depth: int)
+                  -> &'r Tree<'r> {
     if depth > 0 {
-        arena.alloc(|| {
-            Node(bottom_up_tree(arena, 2 * item - 1, depth - 1),
-                 bottom_up_tree(arena, 2 * item, depth - 1),
-                 item)
-        })
-    } else {arena.alloc(|| Nil)}
+        arena.alloc(Node(bottom_up_tree(arena, 2 * item - 1, depth - 1),
+                         bottom_up_tree(arena, 2 * item, depth - 1),
+                         item))
+    } else {
+        arena.alloc(Nil)
+    }
 }
 
 fn main() {
@@ -49,7 +50,7 @@ fn main() {
     let max_depth = if min_depth + 2 > n {min_depth + 2} else {n};
 
     {
-        let arena = Arena::new();
+        let arena = TypedArena::new();
         let depth = max_depth + 1;
         let tree = bottom_up_tree(&arena, 0, depth);
 
@@ -57,7 +58,7 @@ fn main() {
                  depth, item_check(tree));
     }
 
-    let long_lived_arena = Arena::new();
+    let long_lived_arena = TypedArena::new();
     let long_lived_tree = bottom_up_tree(&long_lived_arena, 0, max_depth);
 
     let mut messages = range_step(min_depth, max_depth + 1, 2).map(|depth| {
@@ -66,7 +67,7 @@ fn main() {
             do Future::spawn {
                 let mut chk = 0;
                 for i in range(1, iterations + 1) {
-                    let arena = Arena::new();
+                    let arena = TypedArena::new();
                     let a = bottom_up_tree(&arena, i, depth);
                     let b = bottom_up_tree(&arena, -i, depth);
                     chk += item_check(a) + item_check(b);
