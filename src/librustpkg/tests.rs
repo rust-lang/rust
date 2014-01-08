@@ -10,6 +10,7 @@
 
 // rustpkg unit tests
 
+use CtxMethods;
 use context::{BuildContext, Context, RustcFlags};
 use std::{os, run, str, task};
 use std::io;

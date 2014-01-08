@@ -71,7 +71,7 @@ use middle::ty::{vstore_slice, vstore_box, vstore_uniq};
 use middle::ty::{mt};
 use middle::ty;
 use middle::typeck::infer::{CoerceResult, resolve_type, Coercion};
-use middle::typeck::infer::combine::CombineFields;
+use middle::typeck::infer::combine::{CombineFields, Combine};
 use middle::typeck::infer::sub::Sub;
 use middle::typeck::infer::to_str::InferStr;
 use middle::typeck::infer::resolve::try_resolve_tvar_shallow;

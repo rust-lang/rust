@@ -10,6 +10,7 @@
 
 //! A wrapper around any Reader to treat it as an RNG.
 
+use container::Container;
 use option::{Some, None};
 use io::Reader;
 
@@ -77,6 +78,8 @@ mod test {
     use super::*;
     use io::mem::MemReader;
     use cast;
+    use rand::*;
+    use prelude::*;
 
     #[test]
     fn test_reader_rng_u64() {

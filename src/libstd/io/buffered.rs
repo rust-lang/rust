@@ -318,9 +318,10 @@ impl<S: Stream> Decorator<S> for BufferedStream<S> {
 
 #[cfg(test)]
 mod test {
+    use io::Decorator;
+    use io;
     use prelude::*;
     use super::*;
-    use io;
     use super::super::mem::{MemReader, MemWriter};
     use Harness = extra::test::BenchHarness;
 

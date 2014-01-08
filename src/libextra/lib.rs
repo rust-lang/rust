@@ -34,10 +34,6 @@ Rust extras are part of the standard Rust distribution.
 #[deny(non_camel_case_types)];
 #[deny(missing_doc)];
 
-use std::str::{StrSlice, OwnedStr};
-
-pub use std::os;
-
 // Utility modules
 
 pub mod c_vec;
@@ -108,12 +104,4 @@ pub mod serialize;
 pub mod extra {
     pub use serialize;
     pub use test;
-
-    // For bootstrapping.
-    pub use std::clone;
-    pub use std::condition;
-    pub use std::cmp;
-    pub use std::unstable;
-    pub use std::str;
-    pub use std::os;
 }

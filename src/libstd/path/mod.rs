@@ -687,6 +687,7 @@ fn from_utf8_with_replacement(mut v: &[u8]) -> ~str {
 }
 #[cfg(test)]
 mod tests {
+    use prelude::*;
     use super::{GenericPath, PosixPath, WindowsPath};
     use c_str::ToCStr;
 

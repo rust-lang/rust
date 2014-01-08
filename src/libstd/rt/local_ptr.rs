@@ -19,6 +19,7 @@
 
 use cast;
 use ops::Drop;
+use ptr::RawPtr;
 
 #[cfg(windows)]               // mingw-w32 doesn't like thread_local things
 #[cfg(target_os = "android")] // see #10686
@@ -79,6 +80,7 @@ pub unsafe fn borrow<T>() -> Borrowed<T> {
 pub mod compiled {
     use cast;
     use option::{Option, Some, None};
+    use ptr::RawPtr;
     #[cfg(not(test))] use libc::c_void;
 
     #[cfg(test)]
@@ -177,6 +179,7 @@ pub mod native {
     use libc::c_void;
     use option::{Option, Some, None};
     use ptr;
+    use ptr::RawPtr;
     use tls = rt::thread_local_storage;
 
     static mut RT_TLS_KEY: tls::Key = -1;

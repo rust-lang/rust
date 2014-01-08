@@ -11,18 +11,21 @@
 //! The local, garbage collected heap
 
 use cast;
+use iter::Iterator;
 use libc::{c_void, uintptr_t};
 use libc;
 use mem;
 use ops::Drop;
 use option::{Option, None, Some};
 use ptr;
+use ptr::RawPtr;
 use rt::env;
 use rt::global_heap;
 use rt::local::Local;
 use rt::task::Task;
 use unstable::intrinsics::TyDesc;
 use unstable::raw;
+use vec::ImmutableVector;
 
 // This has no meaning with out rtdebug also turned on.
 #[cfg(rtdebug)]

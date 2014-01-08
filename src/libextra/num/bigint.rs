@@ -1434,6 +1434,7 @@ impl BigInt {
 #[cfg(test)]
 mod biguint_tests {
     use super::*;
+    use super::RandBigInt;
 
     use std::cmp::{Less, Equal, Greater};
     use std::i64;
@@ -2090,6 +2091,7 @@ mod biguint_tests {
 #[cfg(test)]
 mod bigint_tests {
     use super::*;
+    use super::RandBigInt;
 
     use std::cmp::{Less, Equal, Greater};
     use std::i64;

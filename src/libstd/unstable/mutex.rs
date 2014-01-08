@@ -167,6 +167,7 @@ mod imp {
     use libc::c_void;
     use libc;
     use ptr;
+    use ptr::RawPtr;
 
     type pthread_mutex_t = libc::c_void;
     type pthread_mutexattr_t = libc::c_void;
@@ -248,6 +249,8 @@ mod imp {
     use libc;
     use libc::{HANDLE, BOOL, LPSECURITY_ATTRIBUTES, c_void, DWORD, LPCSTR};
     use ptr;
+    use ptr::RawPtr;
+
     type LPCRITICAL_SECTION = *c_void;
     static SPIN_COUNT: DWORD = 4000;
 

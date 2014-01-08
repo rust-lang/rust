@@ -20,11 +20,14 @@ that do not need to record state.
 
 */
 
-use iter::range;
+use container::Container;
+use iter::{range, Iterator};
 use option::{Some, None};
 use num;
+use num::CheckedAdd;
 use rand::{Rng, Rand};
 use clone::Clone;
+use vec::MutableVector;
 
 pub use self::range::Range;
 pub use self::gamma::{Gamma, ChiSquared, FisherF, StudentT};
@@ -250,9 +253,9 @@ fn ziggurat<R:Rng>(
 
 #[cfg(test)]
 mod tests {
+    use prelude::*;
     use rand::*;
     use super::*;
-    use option::{Some, None};
 
     #[deriving(Eq)]
     struct ConstRand(uint);

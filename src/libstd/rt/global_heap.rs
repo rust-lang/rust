@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use libc::{c_void, c_char, size_t, uintptr_t, free, malloc, realloc};
+use ptr::RawPtr;
 use unstable::intrinsics::TyDesc;
 use unstable::raw;
 use mem::size_of;

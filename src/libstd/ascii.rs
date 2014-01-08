@@ -478,10 +478,10 @@ static ASCII_UPPER_MAP: &'static [u8] = &[
 
 #[cfg(test)]
 mod tests {
+    use prelude::*;
     use super::*;
     use str::from_char;
     use char::from_u32;
-    use option::{Some, None};
 
     macro_rules! v2ascii (
         ( [$($e:expr),*]) => ( [$(Ascii{chr:$e}),*]);

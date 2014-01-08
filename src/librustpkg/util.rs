@@ -28,6 +28,7 @@ use syntax::visit::Visitor;
 use syntax::util::small_vector::SmallVector;
 use rustc::back::link::output_type_exe;
 use rustc::back::link;
+use CtxMethods;
 use context::{in_target, StopBefore, Link, Assemble, BuildContext};
 use crate_id::CrateId;
 use package_source::PkgSrc;

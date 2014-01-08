@@ -12,8 +12,9 @@
 
 use rand::{Rng, SeedableRng, OSRng};
 use iter::{Iterator, range, range_step, Repeat};
+use num::Times;
 use option::{None, Some};
-use vec::raw;
+use vec::{raw, MutableVector, ImmutableVector};
 use mem;
 
 static RAND_SIZE_LEN: u32 = 8;
@@ -432,8 +433,7 @@ impl<'a> SeedableRng<&'a [u64]> for Isaac64Rng {
 mod test {
     use super::*;
     use rand::{Rng, SeedableRng, OSRng};
-    use option::Some;
-    use iter::range;
+    use prelude::*;
     use vec;
 
     #[test]

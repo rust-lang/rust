@@ -62,6 +62,7 @@ use kinds::Send;
 use libc::{c_void, c_char, size_t};
 use option::{Some, None, Option};
 use prelude::drop;
+use ptr::RawPtr;
 use result::{Err, Ok};
 use rt::local::Local;
 use rt::task::Task;
@@ -76,6 +77,7 @@ mod libunwind {
     //! Unwind library interface
 
     #[allow(non_camel_case_types)];
+    #[allow(dead_code)] // these are just bindings
 
     use libc::{uintptr_t, uint64_t};
 
@@ -261,7 +263,8 @@ fn rust_exception_class() -> uw::_Unwind_Exception_Class {
 //   This is achieved by overriding the return value in search phase to always
 //   say "catch!".
 
-#[cfg(not(target_arch = "arm"))]
+#[cfg(not(target_arch = "arm"), not(test))]
+#[doc(hidden)]
 pub mod eabi {
     use uw = super::libunwind;
     use libc::c_int;
@@ -277,8 +280,6 @@ pub mod eabi {
 
     #[lang="eh_personality"]
     #[no_mangle] // so we can reference it by name from middle/trans/base.rs
-    #[doc(hidden)]
-    #[cfg(not(test))]
     pub extern "C" fn rust_eh_personality(
         version: c_int,
         actions: uw::_Unwind_Action,
@@ -294,8 +295,6 @@ pub mod eabi {
     }
 
     #[no_mangle] // referenced from rust_try.ll
-    #[doc(hidden)]
-    #[cfg(not(test))]
     pub extern "C" fn rust_eh_personality_catch(
         version: c_int,
         actions: uw::_Unwind_Action,
@@ -318,7 +317,7 @@ pub mod eabi {
 
 // ARM EHABI uses a slightly different personality routine signature,
 // but otherwise works the same.
-#[cfg(target_arch = "arm")]
+#[cfg(target_arch = "arm", not(test))]
 pub mod eabi {
     use uw = super::libunwind;
     use libc::c_int;
@@ -332,8 +331,6 @@ pub mod eabi {
 
     #[lang="eh_personality"]
     #[no_mangle] // so we can reference it by name from middle/trans/base.rs
-    #[doc(hidden)]
-    #[cfg(not(test))]
     pub extern "C" fn rust_eh_personality(
         state: uw::_Unwind_State,
         ue_header: *uw::_Unwind_Exception,
@@ -346,8 +343,6 @@ pub mod eabi {
     }
 
     #[no_mangle] // referenced from rust_try.ll
-    #[doc(hidden)]
-    #[cfg(not(test))]
     pub extern "C" fn rust_eh_personality_catch(
         state: uw::_Unwind_State,
         ue_header: *uw::_Unwind_Exception,

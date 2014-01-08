@@ -10,10 +10,11 @@
 
 //! The Gamma and derived distributions.
 
-use rand::{Rng, Open01};
-use super::{IndependentSample, Sample, Exp};
-use super::normal::StandardNormal;
+use num::Algebraic;
 use num;
+use rand::{Rng, Open01};
+use super::normal::StandardNormal;
+use super::{IndependentSample, Sample, Exp};
 
 /// The Gamma distribution `Gamma(shape, scale)` distribution.
 ///
@@ -309,10 +310,10 @@ impl IndependentSample<f64> for StudentT {
 
 #[cfg(test)]
 mod test {
+    use rand::distributions::*;
+    use prelude::*;
     use rand::*;
     use super::*;
-    use iter::range;
-    use option::{Some, None};
 
     #[test]
     fn test_chi_squared_one() {
@@ -370,13 +371,12 @@ mod test {
 
 #[cfg(test)]
 mod bench {
-    use super::*;
+    use extra::test::BenchHarness;
     use mem::size_of;
+    use prelude::*;
     use rand::distributions::IndependentSample;
     use rand::{StdRng, RAND_BENCH_N};
-    use extra::test::BenchHarness;
-    use iter::range;
-    use option::{Some, None};
+    use super::*;
 
 
     #[bench]

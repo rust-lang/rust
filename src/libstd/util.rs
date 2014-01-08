@@ -78,10 +78,7 @@ impl Void {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    use clone::Clone;
-    use ops::Drop;
-    use option::{None, Some};
+    use prelude::*;
     use mem::size_of;
 
     #[test]

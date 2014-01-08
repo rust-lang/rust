@@ -324,6 +324,7 @@ mod tests {
     use super::*;
 
     use num;
+    use num::CheckedDiv;
     use mem;
     use u16;
 
