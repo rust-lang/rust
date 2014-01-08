@@ -155,6 +155,7 @@ fn external_path(w: &mut io::Writer, p: &clean::Path, print_all: bool,
                 clean::TypeEnum => "enum",
                 clean::TypeFunction => "fn",
                 clean::TypeTrait => "trait",
+                clean::TypePrimitive => "primitive",
             }))
         })
 }

@@ -31,14 +31,14 @@ uint_module!(uint, int, ::int::bits)
 #[lang = "uint_impl"]
 /// The `uint` primitive type is an architecture-sized unsigned integer.
 ///
-/// The size of a `uint` is equivalent to the size of a `pointer` on the
+/// The size of a `uint` is equivalent to the size of a pointer on the
 /// particular architecture in question.
 impl uint {
     ///
     /// A convenience form for basic repetition. Given a uint `x`,
     /// `x.times(|| { ... })` executes the given block x times.
     ///
-    /// Equivalent to `for uint::range(0, x) |_| { ... }`.
+    /// Equivalent to `for _ in range(0, x) { ... }`.
     ///
     /// Not defined on all integer types to permit unambiguous
     /// use with integer literals of inferred integer-type as

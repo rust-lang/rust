@@ -88,7 +88,7 @@ pub fn get_base_type(inference_context: @InferCtxt,
 
         ty_bot |
         ty_str(..) | ty_vec(..) | ty_bare_fn(..) | ty_closure(..) | ty_tup(..) |
-        ty_infer(..) | ty_param(..) | ty_self(..) | ty_type | ty_opaque_box |
+        ty_infer(..) | ty_param(..) | ty_self(..) | ty_type |
         ty_opaque_closure_ptr(..) | ty_unboxed_vec(..) | ty_err | ty_box(_) |
         ty_uniq(_) | ty_ptr(_) | ty_rptr(_, _) => {
             debug!("(getting base type) no base type; found {:?}",
@@ -147,40 +147,40 @@ pub fn get_base_type_def_id(inference_context: @InferCtxt,
                 ty_char => { if li.char_impl() != Some(did) { return None } }
                 ty_nil => { if li.nil_impl() != Some(did) { return None } }
                 ty_bool => { if li.bool_impl() != Some(did) { return None } }
-                ty_float(ast::ty_f32) => {
+                ty_float(ast::TyF32) => {
                     if li.f32_impl() != Some(did) { return None }
                 }
-                ty_float(ast::ty_f64) => {
+                ty_float(ast::TyF64) => {
                     if li.f64_impl() != Some(did) { return None }
                 }
-                ty_uint(ast::ty_u) => {
+                ty_uint(ast::TyU) => {
                     if li.uint_impl() != Some(did) { return None }
                 }
-                ty_int(ast::ty_i) => {
+                ty_int(ast::TyI) => {
                     if li.int_impl() != Some(did) { return None }
                 }
-                ty_int(ast::ty_i8) => {
+                ty_int(ast::TyI8) => {
                     if li.i8_impl() != Some(did) { return None }
                 }
-                ty_int(ast::ty_i16) => {
+                ty_int(ast::TyI16) => {
                     if li.i16_impl() != Some(did) { return None }
                 }
-                ty_int(ast::ty_i32) => {
+                ty_int(ast::TyI32) => {
                     if li.i32_impl() != Some(did) { return None }
                 }
-                ty_int(ast::ty_i64) => {
+                ty_int(ast::TyI64) => {
                     if li.i64_impl() != Some(did) { return None }
                 }
-                ty_uint(ast::ty_u8) => {
+                ty_uint(ast::TyU8) => {
                     if li.u8_impl() != Some(did) { return None }
                 }
-                ty_uint(ast::ty_u16) => {
+                ty_uint(ast::TyU16) => {
                     if li.u16_impl() != Some(did) { return None }
                 }
-                ty_uint(ast::ty_u32) => {
+                ty_uint(ast::TyU32) => {
                     if li.u32_impl() != Some(did) { return None }
                 }
-                ty_uint(ast::ty_u64) => {
+                ty_uint(ast::TyU64) => {
                     if li.u64_impl() != Some(did) { return None }
                 }
 
@@ -635,12 +635,12 @@ impl CoherenceChecker {
                             Some(_) => false,
                         }
                     }
-                    DefPrimTy(ast::ty_str) => false,
+                    DefPrimTy(ast::TyStr) => false,
                     DefPrimTy(..) => true,
                     _ => false
                 }
             }
-            ast::ty_nil => true,
+            ast::TyNil => true,
             _ => false
         }
     }

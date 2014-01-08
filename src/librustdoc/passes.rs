@@ -112,6 +112,9 @@ impl<'a> fold::DocFolder for Stripper<'a> {
 
             // impls/tymethods have no control over privacy
             clean::ImplItem(..) | clean::TyMethodItem(..) => {}
+
+            // primitives never get stripped
+            clean::PrimitiveType(..) => {}
         }
 
         let fastreturn = match i.inner {

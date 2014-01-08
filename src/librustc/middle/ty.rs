@@ -5017,7 +5017,7 @@ impl substs {
     }
 }
 
-/// Register a primitive type as having it's lang-item implementation in this
+/// Register a primitive type as having its lang-item implementation in this
 /// crate. This method will create a DefId if one doesn't already exist for it.
 pub fn add_local_prim_did(tcx: ctxt, t: t) -> ast::DefId {
     let mut map = tcx.prim_dids.borrow_mut();
@@ -5032,7 +5032,7 @@ pub fn add_local_prim_did(tcx: ctxt, t: t) -> ast::DefId {
 }
 
 /// Fetch the DefId of the lang-item implementation of a primitive type. This
-/// may not succeed (as the local crate or linked crates may not provided an
+/// may not succeed (as the local crate or linked crates may not provide an
 /// implementation).
 pub fn maybe_prim_did(tcx: ctxt, t: t) -> Option<ast::DefId> {
     let map = tcx.prim_dids.borrow();

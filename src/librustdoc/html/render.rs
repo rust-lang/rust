@@ -568,7 +568,8 @@ impl DocFolder for Cache {
             clean::StructItem(..) | clean::EnumItem(..) |
             clean::TypedefItem(..) | clean::TraitItem(..) |
             clean::FunctionItem(..) | clean::ModuleItem(..) |
-            clean::ForeignFunctionItem(..) | clean::VariantItem(..) => {
+            clean::ForeignFunctionItem(..) | clean::VariantItem(..) |
+            clean::PrimitiveType(..) => {
                 self.paths.insert(item.id, (self.stack.clone(), shortty(&item)));
             }
             _ => {}
@@ -596,25 +597,22 @@ impl DocFolder for Cache {
             Some(item) => {
                 match item {
                     clean::Item{ attrs, inner: clean::ImplItem(i), .. } => {
+                        // extract relevant documentation for this impl
+                        let dox = match attrs.move_iter().find(|a| {
+                            match *a {
+                                clean::NameValue(~"doc", _) => true,
+                                _ => false
+                            }
+                        }) {
+                            Some(clean::NameValue(_, dox)) => Some(dox),
+                            Some(..) | None => None,
+                        };
                         match i.for_ {
                             clean::ResolvedPath { id, .. } => {
                                 let v = self.impls.find_or_insert_with(id, |_| {
                                     ~[]
                                 });
-                                // extract relevant documentation for this impl
-                                match attrs.move_iter().find(|a| {
-                                    match *a {
-                                        clean::NameValue(~"doc", _) => true,
-                                        _ => false
-                                    }
-                                }) {
-                                    Some(clean::NameValue(_, dox)) => {
-                                        v.push((i, Some(dox)));
-                                    }
-                                    Some(..) | None => {
-                                        v.push((i, None));
-                                    }
-                                }
+                                v.push((i, dox));
                             }
                             _ => {}
                         }
@@ -789,6 +787,7 @@ fn shortty(item: &clean::Item) -> &'static str {
         clean::VariantItem(..)         => "variant",
         clean::ForeignFunctionItem(..) => "ffi",
         clean::ForeignStaticItem(..)   => "ffs",
+        clean::PrimitiveType(..)       => "primitive",
     }
 }
 
@@ -813,6 +812,10 @@ impl<'a> fmt::Default for Item<'a> {
             }
             None => {}
         }
+        let primitive = match it.item.inner {
+            clean::PrimitiveType(..) => true,
+            _ => false,
+        };
 
         if it.cx.include_sources {
             let mut path = ~[];
@@ -841,17 +844,20 @@ impl<'a> fmt::Default for Item<'a> {
             clean::TraitItem(..) => write!(fmt.buf, "Trait "),
             clean::StructItem(..) => write!(fmt.buf, "Struct "),
             clean::EnumItem(..) => write!(fmt.buf, "Enum "),
+            clean::PrimitiveType(..) => write!(fmt.buf, "Primitive Type "),
             _ => {}
         }
-        let cur = it.cx.current.as_slice();
-        let amt = if it.ismodule() { cur.len() - 1 } else { cur.len() };
-        for (i, component) in cur.iter().enumerate().take(amt) {
-            let mut trail = ~"";
-            for _ in range(0, cur.len() - i - 1) {
-                trail.push_str("../");
+        if !primitive {
+            let cur = it.cx.current.as_slice();
+            let amt = if it.ismodule() { cur.len() - 1 } else { cur.len() };
+            for (i, component) in cur.iter().enumerate().take(amt) {
+                let mut trail = ~"";
+                for _ in range(0, cur.len() - i - 1) {
+                    trail.push_str("../");
+                }
+                write!(fmt.buf, "<a href='{}index.html'>{}</a>::",
+                       trail, component.as_slice());
             }
-            write!(fmt.buf, "<a href='{}index.html'>{}</a>::",
-                   trail, component.as_slice());
         }
         write!(fmt.buf, "<a class='{}' href=''>{}</a></h1>",
                shortty(it.item), it.item.name.get_ref().as_slice());
@@ -865,6 +871,7 @@ impl<'a> fmt::Default for Item<'a> {
             clean::StructItem(ref s) => item_struct(fmt.buf, it.item, s),
             clean::EnumItem(ref e) => item_enum(fmt.buf, it.item, e),
             clean::TypedefItem(ref t) => item_typedef(fmt.buf, it.item, t),
+            clean::PrimitiveType(p) => item_primitive(fmt.buf, it.item, p),
             _ => {}
         }
     }
@@ -930,6 +937,8 @@ fn item_module(w: &mut Writer, cx: &Context,
             }
             (&clean::ViewItemItem(..), _) => Less,
             (_, &clean::ViewItemItem(..)) => Greater,
+            (&clean::PrimitiveType(..), _) => Less,
+            (_, &clean::PrimitiveType(..)) => Greater,
             (&clean::ModuleItem(..), _) => Less,
             (_, &clean::ModuleItem(..)) => Greater,
             (&clean::StructItem(..), _) => Less,
@@ -982,6 +991,7 @@ fn item_module(w: &mut Writer, cx: &Context,
                 clean::VariantItem(..)         => "Variants",
                 clean::ForeignFunctionItem(..) => "Foreign Functions",
                 clean::ForeignStaticItem(..)   => "Foreign Statics",
+                clean::PrimitiveType(..)       => "Primitive Types",
             });
         }
 
@@ -1573,4 +1583,9 @@ impl<'a> fmt::Default for Source<'a> {
         write!(fmt.buf, "{}", Escape(s.as_slice()));
         write!(fmt.buf, "</pre>");
     }
+}
+
+fn item_primitive(w: &mut Writer, it: &clean::Item, _p: ast::PrimTy) {
+    document(w, it);
+    render_methods(w, it);
 }
