@@ -135,7 +135,7 @@ impl Visitor<()> for Context {
 
     fn visit_item(&mut self, i: &ast::Item, _:()) {
         for attr in i.attrs.iter() {
-            if "thread_local" == attr.name() {
+            if attr.name().equiv(&("thread_local")) {
                 self.gate_feature("thread_local", i.span,
                                   "`#[thread_local]` is an experimental feature, and does not \
                                   currently handle destructors. There is no corresponding \
@@ -258,7 +258,9 @@ pub fn check_crate(sess: Session, crate: &ast::Crate) {
     };
 
     for attr in crate.attrs.iter() {
-        if "feature" != attr.name() { continue }
+        if !attr.name().equiv(&("feature")) {
+            continue
+        }
 
         match attr.meta_item_list() {
             None => {
@@ -268,14 +270,16 @@ pub fn check_crate(sess: Session, crate: &ast::Crate) {
             Some(list) => {
                 for &mi in list.iter() {
                     let name = match mi.node {
-                        ast::MetaWord(word) => word,
+                        ast::MetaWord(ref word) => (*word).clone(),
                         _ => {
-                            sess.span_err(mi.span, "malformed feature, expected \
-                                                    just one word");
+                            sess.span_err(mi.span,
+                                          "malformed feature, expected just \
+                                           one word");
                             continue
                         }
                     };
-                    match KNOWN_FEATURES.iter().find(|& &(n, _)| n == name) {
+                    match KNOWN_FEATURES.iter()
+                                        .find(|& &(n, _)| name.equiv(&n)) {
                         Some(&(name, Active)) => { cx.features.push(name); }
                         Some(&(_, Removed)) => {
                             sess.span_err(mi.span, "feature has been removed");

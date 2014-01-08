@@ -44,6 +44,7 @@ use syntax::codemap;
 use syntax::diagnostic;
 use syntax::ext::base::CrateLoader;
 use syntax::parse;
+use syntax::parse::token::InternedString;
 use syntax::parse::token;
 use syntax::print::{pp, pprust};
 use syntax;
@@ -90,22 +91,23 @@ pub fn default_configuration(sess: Session) ->
     };
 
     let fam = match sess.targ_cfg.os {
-        abi::OsWin32 => @"windows",
-        _ => @"unix"
+        abi::OsWin32 => InternedString::new("windows"),
+        _ => InternedString::new("unix")
     };
 
     let mk = attr::mk_name_value_item_str;
     return ~[ // Target bindings.
-         attr::mk_word_item(fam),
-         mk(@"target_os", tos),
-         mk(@"target_family", fam),
-         mk(@"target_arch", arch),
-         mk(@"target_endian", end),
-         mk(@"target_word_size", wordsz),
+         attr::mk_word_item(fam.clone()),
+         mk(InternedString::new("target_os"), tos),
+         mk(InternedString::new("target_family"), fam.get().to_managed()),
+         mk(InternedString::new("target_arch"), arch),
+         mk(InternedString::new("target_endian"), end),
+         mk(InternedString::new("target_word_size"), wordsz),
     ];
 }
 
-pub fn append_configuration(cfg: &mut ast::CrateConfig, name: @str) {
+pub fn append_configuration(cfg: &mut ast::CrateConfig,
+                            name: InternedString) {
     if !cfg.iter().any(|mi| mi.name() == name) {
         cfg.push(attr::mk_word_item(name))
     }
@@ -118,9 +120,15 @@ pub fn build_configuration(sess: Session) ->
     let default_cfg = default_configuration(sess);
     let mut user_cfg = sess.opts.cfg.clone();
     // If the user wants a test runner, then add the test cfg
-    if sess.opts.test { append_configuration(&mut user_cfg, @"test") }
+    if sess.opts.test {
+        append_configuration(&mut user_cfg, InternedString::new("test"))
+    }
     // If the user requested GC, then add the GC cfg
-    append_configuration(&mut user_cfg, if sess.opts.gc { @"gc" } else { @"nogc" });
+    append_configuration(&mut user_cfg, if sess.opts.gc {
+        InternedString::new("gc")
+    } else {
+        InternedString::new("nogc")
+    });
     return vec::append(user_cfg, default_cfg);
 }
 

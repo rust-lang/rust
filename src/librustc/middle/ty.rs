@@ -4155,7 +4155,7 @@ pub fn each_attr(tcx: ctxt, did: DefId, f: |@MetaItem| -> bool) -> bool {
 pub fn has_attr(tcx: ctxt, did: DefId, attr: &str) -> bool {
     let mut found = false;
     each_attr(tcx, did, |item| {
-        if attr == item.name() {
+        if item.name().equiv(&attr) {
             found = true;
             false
         } else {

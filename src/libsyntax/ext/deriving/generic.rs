@@ -184,6 +184,7 @@ use ext::build::AstBuilder;
 use codemap;
 use codemap::Span;
 use opt_vec;
+use parse::token::InternedString;
 
 use std::vec;
 
@@ -396,7 +397,7 @@ impl<'a> TraitDef<'a> {
         let doc_attr = cx.attribute(
             self.span,
             cx.meta_name_value(self.span,
-                               @"doc",
+                               InternedString::new("doc"),
                                ast::LitStr(@"Automatically derived.", ast::CookedStr)));
         cx.item(
             self.span,
@@ -567,7 +568,14 @@ impl<'a> MethodDef<'a> {
         let body_block = trait_.cx.block_expr(body);
 
         let attrs = if self.inline {
-            ~[trait_.cx.attribute(trait_.span, trait_.cx.meta_word(trait_.span, @"inline"))]
+            ~[
+                trait_.cx
+                      .attribute(trait_.span,
+                                 trait_.cx
+                                       .meta_word(trait_.span,
+                                                  InternedString::new(
+                                                      "inline")))
+            ]
         } else {
             ~[]
         };

@@ -34,18 +34,17 @@
 //! Context itself, span_lint should be used instead of add_lint.
 
 use driver::session;
+use metadata::csearch;
 use middle::dead::DEAD_CODE_LINT_STR;
+use middle::pat_util;
 use middle::privacy;
 use middle::trans::adt; // for `adt::is_ffi_safe`
 use middle::ty;
-use middle::typeck;
-use middle::pat_util;
-use metadata::csearch;
-use util::ppaux::{ty_to_str};
-use std::to_str::ToStr;
-
-use middle::typeck::infer;
 use middle::typeck::astconv::{ast_ty_to_ty, AstConv};
+use middle::typeck::infer;
+use middle::typeck;
+use std::to_str::ToStr;
+use util::ppaux::{ty_to_str};
 
 use std::cmp;
 use std::hashmap::HashMap;
@@ -59,13 +58,14 @@ use std::u64;
 use std::u8;
 use extra::smallintmap::SmallIntMap;
 use syntax::ast_map;
-use syntax::attr;
-use syntax::attr::{AttrMetaMethods, AttributeMethods};
-use syntax::codemap::Span;
-use syntax::parse::token;
-use syntax::{ast, ast_util, visit};
 use syntax::ast_util::IdVisitingOperation;
+use syntax::attr::{AttrMetaMethods, AttributeMethods};
+use syntax::attr;
+use syntax::codemap::Span;
+use syntax::parse::token::InternedString;
+use syntax::parse::token;
 use syntax::visit::Visitor;
+use syntax::{ast, ast_util, visit};
 
 #[deriving(Clone, Eq, Ord, TotalEq, TotalOrd)]
 pub enum Lint {
@@ -540,10 +540,16 @@ impl<'a> Context<'a> {
         });
 
         let old_is_doc_hidden = self.is_doc_hidden;
-        self.is_doc_hidden = self.is_doc_hidden ||
-            attrs.iter().any(|attr| ("doc" == attr.name() && match attr.meta_item_list()
-                                     { None => false,
-                                       Some(l) => attr::contains_name(l, "hidden") }));
+        self.is_doc_hidden =
+            self.is_doc_hidden ||
+            attrs.iter()
+                 .any(|attr| {
+                     attr.name().equiv(&("doc")) &&
+                     match attr.meta_item_list() {
+                         None => false,
+                         Some(l) => attr::contains_name(l, "hidden")
+                     }
+                 });
 
         f(self);
 
@@ -569,12 +575,12 @@ impl<'a> Context<'a> {
 // Return true if that's the case. Otherwise return false.
 pub fn each_lint(sess: session::Session,
                  attrs: &[ast::Attribute],
-                 f: |@ast::MetaItem, level, @str| -> bool)
+                 f: |@ast::MetaItem, level, InternedString| -> bool)
                  -> bool {
     let xs = [allow, warn, deny, forbid];
     for &level in xs.iter() {
         let level_name = level_to_str(level);
-        for attr in attrs.iter().filter(|m| level_name == m.name()) {
+        for attr in attrs.iter().filter(|m| m.name().equiv(&level_name)) {
             let meta = attr.node.value;
             let metas = match meta.node {
                 ast::MetaList(_, ref metas) => metas,
@@ -585,8 +591,8 @@ pub fn each_lint(sess: session::Session,
             };
             for meta in metas.iter() {
                 match meta.node {
-                    ast::MetaWord(lintname) => {
-                        if !f(*meta, level, lintname) {
+                    ast::MetaWord(ref lintname) => {
+                        if !f(*meta, level, (*lintname).clone()) {
                             return false;
                         }
                     }
@@ -1314,7 +1320,7 @@ fn check_missing_doc_attrs(cx: &Context,
 
     let has_doc = attrs.iter().any(|a| {
         match a.node.value.node {
-            ast::MetaNameValue(ref name, _) if "doc" == *name => true,
+            ast::MetaNameValue(ref name, _) if name.equiv(&("doc")) => true,
             _ => false
         }
     });

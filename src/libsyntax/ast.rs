@@ -14,7 +14,8 @@ use codemap::{Span, Spanned, DUMMY_SP};
 use abi::AbiSet;
 use ast_util;
 use opt_vec::OptVec;
-use parse::token::{interner_get, str_to_ident, special_idents};
+use parse::token::{InternedString, interner_get, special_idents};
+use parse::token::{str_to_ident};
 
 use std::cell::RefCell;
 use std::hashmap::HashMap;
@@ -295,9 +296,9 @@ pub type MetaItem = Spanned<MetaItem_>;
 
 #[deriving(Clone, Encodable, Decodable, IterBytes)]
 pub enum MetaItem_ {
-    MetaWord(@str),
-    MetaList(@str, ~[@MetaItem]),
-    MetaNameValue(@str, Lit),
+    MetaWord(InternedString),
+    MetaList(InternedString, ~[@MetaItem]),
+    MetaNameValue(InternedString, Lit),
 }
 
 // can't be derived because the MetaList requires an unordered comparison

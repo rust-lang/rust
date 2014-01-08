@@ -157,7 +157,7 @@ impl ParserAttr for Parser {
     fn parse_meta_item(&mut self) -> @ast::MetaItem {
         let lo = self.span.lo;
         let ident = self.parse_ident();
-        let name = self.id_to_str(ident);
+        let name = self.id_to_interned_str(ident);
         match self.token {
             token::EQ => {
                 self.bump();

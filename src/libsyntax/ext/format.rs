@@ -14,9 +14,10 @@ use codemap::{Span, respan};
 use ext::base::*;
 use ext::base;
 use ext::build::AstBuilder;
-use rsparse = parse;
-use parse::token;
 use opt_vec;
+use parse::token::InternedString;
+use parse::token;
+use rsparse = parse;
 use std::fmt::parse;
 use std::hashmap::{HashMap, HashSet};
 use std::vec;
@@ -333,13 +334,18 @@ impl<'a> Context<'a> {
     fn static_attrs(&self) -> ~[ast::Attribute] {
         // Flag statics as `address_insignificant` so LLVM can merge duplicate
         // globals as much as possible (which we're generating a whole lot of).
-        let unnamed = self.ecx.meta_word(self.fmtsp, @"address_insignificant");
+        let unnamed = self.ecx
+                          .meta_word(self.fmtsp,
+                                     InternedString::new(
+                                         "address_insignificant"));
         let unnamed = self.ecx.attribute(self.fmtsp, unnamed);
 
         // Do not warn format string as dead code
-        let dead_code = self.ecx.meta_word(self.fmtsp, @"dead_code");
+        let dead_code = self.ecx.meta_word(self.fmtsp,
+                                           InternedString::new("dead_code"));
         let allow_dead_code = self.ecx.meta_list(self.fmtsp,
-                                                 @"allow", ~[dead_code]);
+                                                 InternedString::new("allow"),
+                                                 ~[dead_code]);
         let allow_dead_code = self.ecx.attribute(self.fmtsp, allow_dead_code);
         return ~[unnamed, allow_dead_code];
     }

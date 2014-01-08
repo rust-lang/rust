@@ -15,8 +15,10 @@ use parse::token;
 use util::interner::StrInterner;
 use util::interner;
 
+use extra::serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::cast;
 use std::char;
+use std::fmt;
 use std::local_data;
 
 #[allow(non_camel_case_types)]
@@ -525,6 +527,90 @@ pub fn get_ident_interner() -> @IdentInterner {
     }
 }
 
+/// Represents a string stored in the task-local interner. Because the
+/// interner lives for the life of the task, this can be safely treated as an
+/// immortal string, as long as it never crosses between tasks.
+///
+/// XXX(pcwalton): You must be careful about what you do in the destructors of
+/// objects stored in TLS, because they may run after the interner is
+/// destroyed. In particular, they must not access string contents. This can
+/// be fixed in the future by just leaking all strings until task death
+/// somehow.
+#[no_send]
+#[deriving(Clone, Eq, IterBytes, TotalEq, TotalOrd)]
+pub struct InternedString {
+    priv string: @str,
+}
+
+#[unsafe_destructor]
+impl Drop for InternedString {
+    fn drop(&mut self) {
+        // No-op just to make this not implicitly copyable.
+    }
+}
+
+impl InternedString {
+    #[inline]
+    pub fn new(string: &'static str) -> InternedString {
+        InternedString {
+            string: string.to_managed(),
+        }
+    }
+
+    // NB: Do not make this public. We are trying to remove `@str`.
+    #[inline]
+    fn new_from_at_str(string: @str) -> InternedString {
+        InternedString {
+            string: string,
+        }
+    }
+
+    #[inline]
+    pub fn get<'a>(&'a self) -> &'a str {
+        self.string.as_slice()
+    }
+}
+
+impl fmt::Default for InternedString {
+    fn fmt(obj: &InternedString, f: &mut fmt::Formatter) {
+        write!(f.buf, "{}", obj.string);
+    }
+}
+
+impl<'a> Equiv<&'a str> for InternedString {
+    fn equiv(&self, other: & &'a str) -> bool {
+        (*other) == self.string.as_slice()
+    }
+}
+
+impl<D:Decoder> Decodable<D> for InternedString {
+    fn decode(d: &mut D) -> InternedString {
+        let interner = get_ident_interner();
+        get_ident(interner.intern(d.read_str()))
+    }
+}
+
+impl<E:Encoder> Encodable<E> for InternedString {
+    fn encode(&self, e: &mut E) {
+        e.emit_str(self.string)
+    }
+}
+
+/// Returns the string contents of an identifier, using the task-local
+/// interner.
+#[inline]
+pub fn get_ident(idx: Name) -> InternedString {
+    let interner = get_ident_interner();
+    InternedString::new_from_at_str(interner.get(idx))
+}
+
+/// Interns and returns the string contents of an identifier, using the
+/// task-local interner.
+#[inline]
+pub fn intern_and_get_ident(s: &str) -> InternedString {
+    get_ident(intern(s))
+}
+
 /* for when we don't care about the contents; doesn't interact with TLD or
    serialization */
 pub fn mk_fake_ident_interner() -> @IdentInterner {
@@ -532,6 +618,7 @@ pub fn mk_fake_ident_interner() -> @IdentInterner {
 }
 
 // maps a string to its interned representation
+#[inline]
 pub fn intern(str : &str) -> Name {
     let interner = get_ident_interner();
     interner.intern(str)
