@@ -27,6 +27,8 @@
 [extra](extra/index.html)  
 [green](green/index.html)  
 [native](native/index.html)  
+[syntax](syntax/index.html)  
+[rustc](rustc/index.html)  
 
 # Tooling
 
