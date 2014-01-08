@@ -42,9 +42,17 @@ impl PtrMap {
         }
     }
 
-    /// Register an allocation starting at `ptr` running for `length` bytes
-    pub fn insert_alloc(&mut self, ptr: uint, length: uint, scan: bool) {
-        let descr = PtrDescr { high: ptr + length, reachable: false, scan: scan, finaliser: None };
+    /// Register an allocation starting at `ptr` running for `length`
+    /// bytes. `scan` indicates if the allocation should be scanned,
+    /// and `finaliser` is the "destructor" to run on the region.
+    pub fn insert_alloc(&mut self, ptr: uint, length: uint, scan: bool,
+                        finaliser: Option<fn(*mut ())>) {
+        let descr = PtrDescr {
+            high: ptr + length,
+            reachable: false,
+            scan: scan,
+            finaliser: finaliser
+        };
         self.map.insert(ptr, descr);
     }
 

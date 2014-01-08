@@ -12,7 +12,7 @@ use container::Container;
 use gc::collector::ptr_map::PtrMap;
 use iter::Iterator;
 use libc;
-use option::{Some, None};
+use option::{Some, None, Option};
 use ops::Drop;
 use ptr::RawPtr;
 use vec::{MutableVector, OwnedVector, ImmutableVector};
@@ -38,7 +38,8 @@ static DEFAULT_ALLOCS_PER_COLLECTION_MASK: uint = (1 << 10) - 1;
 /// For a collection, it scans the roots and the stack to find any
 /// bitpatterns that look like GC'd pointers that we know about, and
 /// then scans each of these to record all the reachable
-/// objects. After doing so, any unreachable objects are freed.
+/// objects. After doing so, any unreachable objects have their
+/// finalisers run and are freed.
 ///
 /// Currently, this just calls `malloc` and `free` for every
 /// allocation. It could (and should) be reusing allocations.
@@ -71,7 +72,8 @@ pub struct GarbageCollector {
     priv gc_allocs_per_collection_mask: uint
 }
 
-unsafe fn alloc_inner(ptrs: &mut PtrMap, size: uint, scan: bool) -> *mut u8 {
+unsafe fn alloc_inner(ptrs: &mut PtrMap, size: uint, scan: bool,
+                      finaliser: Option<fn(*mut ())>) -> *mut u8 {
     let ptr = if scan {
         libc::calloc(size as libc::size_t, 1)
     } else {
@@ -83,7 +85,7 @@ unsafe fn alloc_inner(ptrs: &mut PtrMap, size: uint, scan: bool) -> *mut u8 {
     if ptr.is_null() {
         intrinsics::abort();
     }
-    ptrs.insert_alloc(ptr as uint, size, scan);
+    ptrs.insert_alloc(ptr as uint, size, scan, finaliser);
     ptr as *mut u8
 }
 
@@ -106,24 +108,33 @@ impl GarbageCollector {
 
     /// Allocate `size` bytes of memory such that they are scanned for
     /// other GC'd pointers (for use by types like `Gc<Gc<int>>`).
-    pub unsafe fn alloc_gc(&mut self, size: uint) -> *mut u8 {
+    ///
+    /// `finaliser` is passed the start of the allocation at some
+    /// unspecified pointer after the allocation has become
+    /// unreachable.
+    pub unsafe fn alloc_gc(&mut self, size: uint, finaliser: Option<fn(*mut ())>) -> *mut u8 {
         self.gc_allocs += 1;
-        alloc_inner(&mut self.gc_ptrs, size, true)
+        alloc_inner(&mut self.gc_ptrs, size, true, finaliser)
     }
 
     /// Allocate `size` bytes of memory such that they are not scanned
     /// for other GC'd pointers; this should be used for types like
     /// `Gc<int>`, or (in theory) `Gc<~Gc<int>>` (note the
     /// indirection).
-    pub unsafe fn alloc_gc_no_scan(&mut self, size: uint) -> *mut u8 {
+    ///
+    /// `finaliser` is passed the start of the allocation at some
+    /// unspecified pointer after the allocation has become
+    /// unreachable.
+    pub unsafe fn alloc_gc_no_scan(&mut self, size: uint,
+                                   finaliser: Option<fn(*mut ())>) -> *mut u8 {
         self.gc_allocs += 1;
-        alloc_inner(&mut self.gc_ptrs, size, false)
+        alloc_inner(&mut self.gc_ptrs, size, false, finaliser)
     }
 
     /// Register the block of memory [`start`, `end`) for scanning for
     /// GC'd pointers.
     pub unsafe fn register_root(&mut self, start: *(), end: *()) {
-        self.roots.insert_alloc(start as uint, end as uint - start as uint, true)
+        self.roots.insert_alloc(start as uint, end as uint - start as uint, true, None)
     }
     /// Stop scanning the root starting at `start` for GC'd pointers.
     pub unsafe fn unregister_root(&mut self, start: *()) {
