@@ -2123,6 +2123,12 @@ pub mod consts {
         pub mod posix01 {
             use libc::types::os::arch::c95::c_int;
 
+            pub static F_DUPFD : c_int = 0;
+            pub static F_GETFD : c_int = 1;
+            pub static F_SETFD : c_int = 2;
+            pub static F_GETFL : c_int = 3;
+            pub static F_SETFL : c_int = 4;
+
             pub static SIGTRAP : c_int = 5;
 
             pub static GLOB_ERR      : c_int = 1 << 0;
@@ -3449,7 +3455,7 @@ pub mod funcs {
                 pub fn open(path: *c_char, oflag: c_int, mode: c_int)
                             -> c_int;
                 pub fn creat(path: *c_char, mode: mode_t) -> c_int;
-                pub fn fcntl(fd: c_int, cmd: c_int) -> c_int;
+                pub fn fcntl(fd: c_int, cmd: c_int, opt: c_int) -> c_int;
             }
         }
 
