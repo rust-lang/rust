@@ -435,7 +435,7 @@ pub fn collect_outputs(session: &Session,
     }
     let mut base = session.opts.outputs.clone();
     let mut iter = attrs.iter().filter_map(|a| {
-        if "crate_type" == a.name() {
+        if a.name().equiv(&("crate_type")) {
             match a.value_str() {
                 Some(n) if "rlib" == n => Some(OutputRlib),
                 Some(n) if "dylib" == n => Some(OutputDylib),

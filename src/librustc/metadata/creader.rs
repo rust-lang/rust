@@ -124,7 +124,7 @@ struct Env {
 fn visit_crate(e: &Env, c: &ast::Crate) {
     let cstore = e.sess.cstore;
 
-    for a in c.attrs.iter().filter(|m| "link_args" == m.name()) {
+    for a in c.attrs.iter().filter(|m| m.name().equiv(&("link_args"))) {
         match a.value_str() {
           Some(ref linkarg) => {
             cstore.add_used_link_args(*linkarg);
@@ -206,7 +206,11 @@ fn visit_item(e: &Env, i: &ast::Item) {
             // First, add all of the custom link_args attributes
             let cstore = e.sess.cstore;
             let link_args = i.attrs.iter()
-                .filter_map(|at| if "link_args" == at.name() {Some(at)} else {None})
+                .filter_map(|at| if at.name().equiv(&("link_args")) {
+                    Some(at)
+                } else {
+                    None
+                })
                 .to_owned_vec();
             for m in link_args.iter() {
                 match m.value_str() {
@@ -220,13 +224,17 @@ fn visit_item(e: &Env, i: &ast::Item) {
             // Next, process all of the #[link(..)]-style arguments
             let cstore = e.sess.cstore;
             let link_args = i.attrs.iter()
-                .filter_map(|at| if "link" == at.name() {Some(at)} else {None})
+                .filter_map(|at| if at.name().equiv(&("link")) {
+                    Some(at)
+                } else {
+                    None
+                })
                 .to_owned_vec();
             for m in link_args.iter() {
                 match m.meta_item_list() {
                     Some(items) => {
                         let kind = items.iter().find(|k| {
-                            "kind" == k.name()
+                            k.name().equiv(&("kind"))
                         }).and_then(|a| a.value_str());
                         let kind = match kind {
                             Some(k) => {
@@ -249,7 +257,7 @@ fn visit_item(e: &Env, i: &ast::Item) {
                             None => cstore::NativeUnknown
                         };
                         let n = items.iter().find(|n| {
-                            "name" == n.name()
+                            n.name().equiv(&("name"))
                         }).and_then(|a| a.value_str());
                         let n = match n {
                             Some(n) => n,

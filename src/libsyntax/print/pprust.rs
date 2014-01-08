@@ -1930,14 +1930,14 @@ pub fn print_generics(s: &mut State, generics: &ast::Generics) {
 pub fn print_meta_item(s: &mut State, item: &ast::MetaItem) {
     ibox(s, indent_unit);
     match item.node {
-      ast::MetaWord(name) => word(&mut s.s, name),
-      ast::MetaNameValue(name, value) => {
-        word_space(s, name);
+      ast::MetaWord(ref name) => word(&mut s.s, name.get()),
+      ast::MetaNameValue(ref name, value) => {
+        word_space(s, name.get());
         word_space(s, "=");
         print_literal(s, &value);
       }
-      ast::MetaList(name, ref items) => {
-        word(&mut s.s, name);
+      ast::MetaList(ref name, ref items) => {
+        word(&mut s.s, name.get());
         popen(s);
         commasep(s,
                  Consistent,

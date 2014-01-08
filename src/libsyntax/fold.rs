@@ -321,15 +321,12 @@ fn fold_meta_item_<T: Folder>(mi: @MetaItem, fld: &mut T) -> @MetaItem {
     @Spanned {
         node:
             match mi.node {
-                MetaWord(id) => MetaWord(id),
-                MetaList(id, ref mis) => {
+                MetaWord(ref id) => MetaWord((*id).clone()),
+                MetaList(ref id, ref mis) => {
                     let fold_meta_item = |x| fold_meta_item_(x, fld);
-                    MetaList(
-                        id,
-                        mis.map(|e| fold_meta_item(*e))
-                    )
+                    MetaList((*id).clone(), mis.map(|e| fold_meta_item(*e)))
                 }
-                MetaNameValue(id, s) => MetaNameValue(id, s)
+                MetaNameValue(ref id, s) => MetaNameValue((*id).clone(), s)
             },
         span: fld.new_span(mi.span) }
 }

@@ -27,6 +27,7 @@ use syntax::ext::base::ExtCtxt;
 use syntax::fold::Folder;
 use syntax::fold;
 use syntax::opt_vec;
+use syntax::parse::token::InternedString;
 use syntax::print::pprust;
 use syntax::{ast, ast_util};
 use syntax::util::small_vector::SmallVector;
@@ -132,7 +133,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
             if !cx.sess.building_library.get() {
                 @ast::Item {
                     attrs: item.attrs.iter().filter_map(|attr| {
-                        if "main" != attr.name() {
+                        if attr.name().equiv(&("main")) {
                             Some(*attr)
                         } else {
                             None
@@ -248,7 +249,7 @@ fn is_bench_fn(i: @ast::Item) -> bool {
 fn is_ignored(cx: &TestCtxt, i: @ast::Item) -> bool {
     i.attrs.iter().any(|attr| {
         // check ignore(cfg(foo, bar))
-        "ignore" == attr.name() && match attr.meta_item_list() {
+        attr.name().equiv(&("ignore")) && match attr.meta_item_list() {
             Some(ref cfgs) => attr::test_cfg(cx.config, cfgs.iter().map(|x| *x)),
             None => true
         }
@@ -330,8 +331,9 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::Item {
     let item_ = ast::ItemMod(testmod);
 
     // This attribute tells resolve to let us call unexported functions
+    let resolve_unexported_str = InternedString::new("!resolve_unexported");
     let resolve_unexported_attr =
-        attr::mk_attr(attr::mk_word_item(@"!resolve_unexported"));
+        attr::mk_attr(attr::mk_word_item(resolve_unexported_str));
 
     let item = ast::Item {
         ident: cx.sess.ident_of("__test"),

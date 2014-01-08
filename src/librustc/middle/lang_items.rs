@@ -185,7 +185,7 @@ impl LanguageItemCollector {
 pub fn extract(attrs: &[ast::Attribute]) -> Option<@str> {
     for attribute in attrs.iter() {
         match attribute.name_str_pair() {
-            Some((key, value)) if "lang" == key => {
+            Some((ref key, value)) if key.equiv(&("lang")) => {
                 return Some(value);
             }
             Some(..) | None => {}

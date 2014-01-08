@@ -228,9 +228,17 @@ pub trait AstBuilder {
 
     fn attribute(&self, sp: Span, mi: @ast::MetaItem) -> ast::Attribute;
 
-    fn meta_word(&self, sp: Span, w: @str) -> @ast::MetaItem;
-    fn meta_list(&self, sp: Span, name: @str, mis: ~[@ast::MetaItem]) -> @ast::MetaItem;
-    fn meta_name_value(&self, sp: Span, name: @str, value: ast::Lit_) -> @ast::MetaItem;
+    fn meta_word(&self, sp: Span, w: InternedString) -> @ast::MetaItem;
+    fn meta_list(&self,
+                 sp: Span,
+                 name: InternedString,
+                 mis: ~[@ast::MetaItem])
+                 -> @ast::MetaItem;
+    fn meta_name_value(&self,
+                       sp: Span,
+                       name: InternedString,
+                       value: ast::Lit_)
+                       -> @ast::MetaItem;
 
     fn view_use(&self, sp: Span,
                 vis: ast::Visibility, vp: ~[@ast::ViewPath]) -> ast::ViewItem;
@@ -866,13 +874,21 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         })
     }
 
-    fn meta_word(&self, sp: Span, w: @str) -> @ast::MetaItem {
+    fn meta_word(&self, sp: Span, w: InternedString) -> @ast::MetaItem {
         @respan(sp, ast::MetaWord(w))
     }
-    fn meta_list(&self, sp: Span, name: @str, mis: ~[@ast::MetaItem]) -> @ast::MetaItem {
+    fn meta_list(&self,
+                 sp: Span,
+                 name: InternedString,
+                 mis: ~[@ast::MetaItem])
+                 -> @ast::MetaItem {
         @respan(sp, ast::MetaList(name, mis))
     }
-    fn meta_name_value(&self, sp: Span, name: @str, value: ast::Lit_) -> @ast::MetaItem {
+    fn meta_name_value(&self,
+                       sp: Span,
+                       name: InternedString,
+                       value: ast::Lit_)
+                       -> @ast::MetaItem {
         @respan(sp, ast::MetaNameValue(name, respan(sp, value)))
     }
 

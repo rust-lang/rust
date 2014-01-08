@@ -1042,14 +1042,14 @@ fn get_meta_items(md: ebml::Doc) -> ~[@ast::MetaItem] {
     let mut items: ~[@ast::MetaItem] = ~[];
     reader::tagged_docs(md, tag_meta_item_word, |meta_item_doc| {
         let nd = reader::get_doc(meta_item_doc, tag_meta_item_name);
-        let n = nd.as_str_slice().to_managed();
+        let n = token::intern_and_get_ident(nd.as_str_slice());
         items.push(attr::mk_word_item(n));
         true
     });
     reader::tagged_docs(md, tag_meta_item_name_value, |meta_item_doc| {
         let nd = reader::get_doc(meta_item_doc, tag_meta_item_name);
         let vd = reader::get_doc(meta_item_doc, tag_meta_item_value);
-        let n = nd.as_str_slice().to_managed();
+        let n = token::intern_and_get_ident(nd.as_str_slice());
         let v = vd.as_str_slice().to_managed();
         // FIXME (#623): Should be able to decode MetaNameValue variants,
         // but currently the encoder just drops them
@@ -1058,7 +1058,7 @@ fn get_meta_items(md: ebml::Doc) -> ~[@ast::MetaItem] {
     });
     reader::tagged_docs(md, tag_meta_item_list, |meta_item_doc| {
         let nd = reader::get_doc(meta_item_doc, tag_meta_item_name);
-        let n = nd.as_str_slice().to_managed();
+        let n = token::intern_and_get_ident(nd.as_str_slice());
         let subitems = get_meta_items(meta_item_doc);
         items.push(attr::mk_list_item(n, subitems));
         true

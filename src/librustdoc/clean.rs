@@ -20,6 +20,8 @@ use syntax::ast_util;
 use syntax::attr;
 use syntax::attr::AttributeMethods;
 use syntax::codemap::Pos;
+use syntax::parse::token::InternedString;
+use syntax::parse::token;
 
 use rustc::metadata::cstore;
 use rustc::metadata::csearch;
@@ -223,9 +225,13 @@ pub enum Attribute {
 impl Clean<Attribute> for ast::MetaItem {
     fn clean(&self) -> Attribute {
         match self.node {
-            ast::MetaWord(s) => Word(s.to_owned()),
-            ast::MetaList(ref s, ref l) => List(s.to_owned(), l.clean()),
-            ast::MetaNameValue(s, ref v) => NameValue(s.to_owned(), lit_to_str(v))
+            ast::MetaWord(ref s) => Word(s.get().to_owned()),
+            ast::MetaList(ref s, ref l) => {
+                List(s.get().to_owned(), l.clean())
+            }
+            ast::MetaNameValue(ref s, ref v) => {
+                NameValue(s.get().to_owned(), lit_to_str(v))
+            }
         }
     }
 }
@@ -238,10 +244,11 @@ impl Clean<Attribute> for ast::Attribute {
 
 // This is a rough approximation that gets us what we want.
 impl<'a> attr::AttrMetaMethods for &'a Attribute {
-    fn name(&self) -> @str {
+    fn name(&self) -> InternedString {
         match **self {
-            Word(ref n) | List(ref n, _) | NameValue(ref n, _) =>
-                n.to_managed()
+            Word(ref n) | List(ref n, _) | NameValue(ref n, _) => {
+                token::intern_and_get_ident(*n)
+            }
         }
     }
 
@@ -252,7 +259,7 @@ impl<'a> attr::AttrMetaMethods for &'a Attribute {
         }
     }
     fn meta_item_list<'a>(&'a self) -> Option<&'a [@ast::MetaItem]> { None }
-    fn name_str_pair(&self) -> Option<(@str, @str)> { None }
+    fn name_str_pair(&self) -> Option<(InternedString, @str)> { None }
 }
 
 #[deriving(Clone, Encodable, Decodable)]
