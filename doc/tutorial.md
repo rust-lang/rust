@@ -1623,7 +1623,7 @@ defined in [`std::vec`] and [`std::str`].
 
 # Ownership escape hatches
 
-Ownership can cleanly describe tree-like data structures, and refercences provide non-owning pointers. However, more flexibility is often desired and Rust provides ways to escape from strict
+Ownership can cleanly describe tree-like data structures, and references provide non-owning pointers. However, more flexibility is often desired and Rust provides ways to escape from strict
 single parent ownership.
 
 The standard library provides the `std::rc::Rc` pointer type to express *shared ownership* over a
