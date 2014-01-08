@@ -19,7 +19,6 @@ use parse;
 use parse::token::{get_ident_interner};
 use print::pprust;
 
-use std::cell::RefCell;
 use std::io;
 use std::io::File;
 use std::str;
@@ -105,20 +104,14 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree])
         Ok(bytes) => bytes,
     };
     match str::from_utf8_owned_opt(bytes) {
-        Some(s) => {
-            let s = s.to_managed();
+        Some(src) => {
             // Add this input file to the code map to make it available as
             // dependency information
-            let mut files = cx.parse_sess.cm.files.borrow_mut();
-            files.get().push(@codemap::FileMap {
-                name: file.display().to_str().to_managed(),
-                substr: codemap::FssNone,
-                src: s,
-                start_pos: codemap::BytePos(0),
-                lines: RefCell::new(~[]),
-                multibyte_chars: RefCell::new(~[]),
-            });
-            base::MRExpr(cx.expr_str(sp, s))
+            let src = src.to_managed();
+            let filename = file.display().to_str().to_managed();
+            cx.parse_sess.cm.new_filemap(filename, src);
+
+            base::MRExpr(cx.expr_str(sp, src))
         }
         None => {
             cx.span_fatal(sp, format!("{} wasn't a utf-8 file", file.display()));
