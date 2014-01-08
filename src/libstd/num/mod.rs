@@ -16,7 +16,7 @@
 #[allow(missing_doc)];
 
 use clone::{Clone, DeepClone};
-use cmp::{Eq, ApproxEq, Ord};
+use cmp::{Eq, Ord};
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use ops::{Not, BitAnd, BitOr, BitXor, Shl, Shr};
 use option::{Option, Some, None};
@@ -138,60 +138,19 @@ pub trait Integer: Num
 /// A collection of rounding operations.
 pub trait Round {
     /// Return the largest integer less than or equal to a number.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// assert_approx_eq!(1.3f32.floor(), 1.0);
-    /// assert_approx_eq!((-1.3f32).floor(), -2.0);
-    /// ```
     fn floor(&self) -> Self;
 
     /// Return the smallest integer greater than or equal to a number.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// assert_approx_eq!(1.3f32.ceil(), 2.0);
-    /// assert_approx_eq!((-1.3f32).ceil(), -1.0);
-    /// ```
     fn ceil(&self) -> Self;
 
     /// Return the nearest integer to a number. Round half-way cases away from
     /// `0.0`.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// assert_approx_eq!(1.3f32.round(), 1.0);
-    /// assert_approx_eq!((-1.3f32).round(), -1.0);
-    /// assert_approx_eq!(1.5f32.round(), 2.0);
-    /// assert_approx_eq!((-1.5f32).round(), -2.0);
-    /// ```
     fn round(&self) -> Self;
 
     /// Return the integer part of a number.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// assert_approx_eq!(1.3f32.trunc(), 1.0);
-    /// assert_approx_eq!((-1.3f32).trunc(), -1.0);
-    /// assert_approx_eq!(1.5f32.trunc(), 1.0);
-    /// assert_approx_eq!((-1.5f32).trunc(), -1.0);
-    /// ```
     fn trunc(&self) -> Self;
 
     /// Return the fractional part of a number.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// assert_approx_eq!(1.3f32.fract(), 0.3);
-    /// assert_approx_eq!((-1.3f32).fract(), -0.3);
-    /// assert_approx_eq!(1.5f32.fract(), 0.5);
-    /// assert_approx_eq!((-1.5f32).fract(), -0.5);
-    /// ```
     fn fract(&self) -> Self;
 }
 
@@ -262,18 +221,7 @@ pub trait Trigonometric {
     fn atan(&self) -> Self;
 
     /// Computes the four quadrant arctangent of a number, `y`, and another
-    /// number `x`. Return value is in radians in the range [-pi, pi];
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use std::f32;
-    ///
-    /// let y = 3f32.sqrt();
-    /// let x = 1f32;
-    /// assert_approx_eq!(y.atan2(&x), f32::consts::PI / 3f32);
-    /// assert_approx_eq!((-y).atan2(&(-x)), - 2f32 * f32::consts::PI / 3f32);
-    /// ```
+    /// number `x`. Return value is in radians in the range [-pi, pi].
     fn atan2(&self, other: &Self) -> Self;
 
     /// Simultaneously computes the sine and cosine of the number, `x`. Returns
@@ -505,8 +453,7 @@ pub enum FPCategory {
 /// Primitive floating point numbers
 pub trait Float: Real
                + Signed
-               + Primitive
-               + ApproxEq<Self> {
+               + Primitive {
     // FIXME (#5527): These should be associated constants
     fn nan() -> Self;
     fn infinity() -> Self;
