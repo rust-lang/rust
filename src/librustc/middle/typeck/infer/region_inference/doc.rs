@@ -226,12 +226,12 @@ corresponds to the *actual execution of the function `add()`*, after
 all arguments have been evaluated. There is a corresponding lifetime
 `'b_call` for the execution of `inc()`. If we wanted to be precise
 about it, the lifetime of the two borrows should be `'a_call` and
-`'b_call` respectively, since the borrowed pointers that were created
+`'b_call` respectively, since the references that were created
 will not be dereferenced except during the execution itself.
 
 However, this model by itself is not sound. The reason is that
-while the two borrowed pointers that are created will never be used
-simultaneously, it is still true that the first borrowed pointer is
+while the two references that are created will never be used
+simultaneously, it is still true that the first reference is
 *created* before the second argument is evaluated, and so even though
 it will not be *dereferenced* during the evaluation of the second
 argument, it can still be *invalidated* by that evaluation. Consider
@@ -257,7 +257,7 @@ invalidating the first argument.
 So, for now, we exclude the `call` lifetimes from our model.
 Eventually I would like to include them, but we will have to make the
 borrow checker handle this situation correctly. In particular, if
-there is a borrowed pointer created whose lifetime does not enclose
+there is a reference created whose lifetime does not enclose
 the borrow expression, we must issue sufficient restrictions to ensure
 that the pointee remains valid.
 

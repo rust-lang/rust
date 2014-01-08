@@ -60,8 +60,8 @@ impl<A> Future<A> {
 
     pub fn get_ref<'a>(&'a mut self) -> &'a A {
         /*!
-        * Executes the future's closure and then returns a borrowed
-        * pointer to the result.  The borrowed pointer lasts as long as
+        * Executes the future's closure and then returns a reference
+        * to the result.  The reference lasts as long as
         * the future.
         */
         match self.state {

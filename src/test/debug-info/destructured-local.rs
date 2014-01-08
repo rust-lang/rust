@@ -175,10 +175,10 @@ fn main() {
     // managed box
     let @aa = @(34, 35);
 
-    // borrowed pointer
+    // reference
     let &bb = &(36, 37);
 
-    // contained borrowed pointer
+    // contained reference
     let (&cc, _) = (&38, 39);
 
     // unique pointer

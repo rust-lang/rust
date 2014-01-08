@@ -20,8 +20,8 @@ but not in representation (so actual subtyping is inappropriate).
 
 ## Reborrowing
 
-Note that if we are expecting a borrowed pointer, we will *reborrow*
-even if the argument provided was already a borrowed pointer.  This is
+Note that if we are expecting a reference, we will *reborrow*
+even if the argument provided was already a reference.  This is
 useful for freezing mut/const things (that is, when the expected is &T
 but you have &const T or &mut T) and also for avoiding the linearity
 of mut things (when the expected is &mut T and you have &mut T).  See
@@ -451,7 +451,7 @@ impl Coerce {
         let a_unsafe = ty::mk_ptr(self.get_ref().infcx.tcx, mt_a);
         if_ok!(self.subtype(a_unsafe, b));
 
-        // although borrowed ptrs and unsafe ptrs have the same
+        // although references and unsafe ptrs have the same
         // representation, we still register an AutoDerefRef so that
         // regionck knows that the region for `a` must be valid here
         Ok(Some(@AutoDerefRef(AutoDerefRef {

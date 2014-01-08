@@ -157,7 +157,7 @@ pub enum SubregionOrigin {
     // Invocation of closure must be within its lifetime
     InvokeClosure(Span),
 
-    // Dereference of borrowed pointer must be within its lifetime
+    // Dereference of reference must be within its lifetime
     DerefPointer(Span),
 
     // Closure bound must not outlive captured free variables
@@ -170,7 +170,7 @@ pub enum SubregionOrigin {
     // relating `'a` to `'b`
     RelateObjectBound(Span),
 
-    // Creating a pointer `b` to contents of another borrowed pointer
+    // Creating a pointer `b` to contents of another reference
     Reborrow(Span),
 
     // (&'a &'b T) where a >= b

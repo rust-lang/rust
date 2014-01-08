@@ -1,4 +1,4 @@
-% Rust Reference Manual
+% The Rust Reference Manual
 
 # Introduction
 
@@ -1215,7 +1215,7 @@ A static item must have a _constant expression_ giving its definition.
 
 Static items must be explicitly typed.
 The type may be ```bool```, ```char```, a number, or a type derived from those primitive types.
-The derived types are borrowed pointers with the `'static` lifetime,
+The derived types are references with the `'static` lifetime,
 fixed-size arrays, tuples, and structs.
 
 ~~~~
@@ -1841,7 +1841,7 @@ A complete list of the built-in language items follows:
 `owned`
   : Are uniquely owned.
 `durable`
-  : Contain borrowed pointers.
+  : Contain references.
 `drop`
   : Have finalizers.
 `add`
@@ -1898,11 +1898,11 @@ A complete list of the built-in language items follows:
 `free`
   : Free memory that was allocated on the managed heap.
 `borrow_as_imm`
-  : Create an immutable borrowed pointer to a mutable value.
+  : Create an immutable reference to a mutable value.
 `return_to_mut`
-  : Release a borrowed pointer created with `return_to_mut`
+  : Release a reference created with `return_to_mut`
 `check_not_borrowed`
-  : Fail if a value has existing borrowed pointers to it.
+  : Fail if a value has existing references to it.
 `strdup_uniq`
   : Return a new unique string
     containing a copy of the contents of a unique string.
@@ -2199,7 +2199,7 @@ When an lvalue is evaluated in an _lvalue context_, it denotes a memory location
 when evaluated in an _rvalue context_, it denotes the value held _in_ that memory location.
 
 When an rvalue is used in lvalue context, a temporary un-named lvalue is created and used instead.
-A temporary's lifetime equals the largest lifetime of any borrowed pointer that points to it.
+A temporary's lifetime equals the largest lifetime of any reference that points to it.
 
 #### Moved and copied types
 
@@ -2403,8 +2403,8 @@ before the expression they apply to.
   :  [Boxing](#pointer-types) operators. Allocate a box to hold the value they are applied to,
      and store the value in it. `@` creates a managed box, whereas `~` creates an owned box.
 `&`
-  : Borrow operator. Returns a borrowed pointer, pointing to its operand.
-    The operand of a borrowed pointer is statically proven to outlive the resulting pointer.
+  : Borrow operator. Returns a reference, pointing to its operand.
+    The operand of a borrow is statically proven to outlive the resulting pointer.
     If the borrow-checker cannot prove this, it is a compilation error.
 
 ### Binary operator expressions
@@ -2894,9 +2894,9 @@ match x {
 Patterns that bind variables
 default to binding to a copy or move of the matched value
 (depending on the matched value's type).
-This can be changed to bind to a borrowed pointer by
+This can be changed to bind to a reference by
 using the ```ref``` keyword,
-or to a mutable borrowed pointer using ```ref mut```.
+or to a mutable reference using ```ref mut```.
 
 A pattern that's just an identifier,
 like `Nil` in the previous answer,
@@ -3172,18 +3172,18 @@ Owning pointers (`~`)
     it involves allocating a new owned box and copying the contents of the old box into the new box.
     Releasing an owning pointer immediately releases its corresponding owned box.
 
-Borrowed pointers (`&`)
+References (`&`)
   : These point to memory _owned by some other value_.
-    Borrowed pointers arise by (automatic) conversion from owning pointers, managed pointers,
+    References arise by (automatic) conversion from owning pointers, managed pointers,
     or by applying the borrowing operator `&` to some other value,
     including [lvalues, rvalues or temporaries](#lvalues-rvalues-and-temporaries).
-    Borrowed pointers are written `&content`, or in some cases `&'f content` for some lifetime-variable `f`,
-    for example `&int` means a borrowed pointer to an integer.
-    Copying a borrowed pointer is a "shallow" operation:
+    References are written `&content`, or in some cases `&'f content` for some lifetime-variable `f`,
+    for example `&int` means a reference to an integer.
+    Copying a reference is a "shallow" operation:
     it involves only copying the pointer itself.
-    Releasing a borrowed pointer typically has no effect on the value it points to,
+    Releasing a reference typically has no effect on the value it points to,
     with the exception of temporary values,
-    which are released when the last borrowed pointer to them is released.
+    which are released when the last reference to them is released.
 
 Raw pointers (`*`)
   : Raw pointers are pointers without safety or liveness guarantees.
@@ -3338,7 +3338,7 @@ The kinds are:
     This kind includes scalars and immutable references,
     as well as structural types containing other `Pod` types.
 `'static`
-  : Types of this kind do not contain any borrowed pointers;
+  : Types of this kind do not contain any references;
     this can be a useful guarantee for code
     that breaks borrowing assumptions
     using [`unsafe` operations](#unsafe-functions).
@@ -3417,14 +3417,14 @@ frame they are allocated within.
 ### Memory ownership
 
 A task owns all memory it can *safely* reach through local variables,
-as well as managed, owning and borrowed pointers.
+as well as managed, owned boxes and references.
 
 When a task sends a value that has the `Send` trait to another task,
 it loses ownership of the value sent and can no longer refer to it.
 This is statically guaranteed by the combined use of "move semantics",
 and the compiler-checked _meaning_ of the `Send` trait:
 it is only instantiated for (transitively) sendable kinds of data constructor and pointers,
-never including managed or borrowed pointers.
+never including managed boxes or references.
 
 When a stack frame is exited, its local allocations are all released, and its
 references to boxes (both managed and owned) are dropped.
@@ -3569,7 +3569,7 @@ These include:
   - simple locks and semaphores
 
 When such facilities carry values, the values are restricted to the [`Send` type-kind](#type-kinds).
-Restricting communication interfaces to this kind ensures that no borrowed or managed pointers move between tasks.
+Restricting communication interfaces to this kind ensures that no references or managed pointers move between tasks.
 Thus access to an entire data structure can be mediated through its owning "root" value;
 no further locking or copying is required to avoid data races within the substructure of such a value.
 

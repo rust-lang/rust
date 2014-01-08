@@ -12,7 +12,7 @@
 # Guides
 
 [Pointers](guide-pointers.html)  
-[Lifetimes](guide-lifetimes.html)  
+[References and Lifetimes](guide-lifetimes.html)  
 [Containers and Iterators](guide-container.html)  
 [Tasks and Communication](guide-tasks.html)  
 [Foreign Function Interface](guide-ffi.html)  
@@ -24,7 +24,11 @@
 # Libraries
 
 [std](std/index.html)  
-[extra](index.html)  
+[extra](extra/index.html)  
+[green](green/index.html)  
+[native](native/index.html)  
+[syntax](syntax/index.html)  
+[rustc](rustc/index.html)  
 
 # Tooling
 

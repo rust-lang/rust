@@ -3,7 +3,7 @@
 Rust's pointers are one of its more unique and compelling features. Pointers
 are also one of the more confusing topics for newcomers to Rust. They can also
 be confusing for people coming from other languages that support pointers, such
-as C++. This tutorial will help you understand this important topic.
+as C++. This guide will help you understand this important topic.
 
 # You don't actually need pointers
 
@@ -13,8 +13,7 @@ that emphasizes safety. Pointers, as the joke goes, are very pointy: it's easy
 to accidentally stab yourself. Therefore, Rust is made in a way such that you
 don't need them very often.
 
-"But tutorial!" you may cry. "My co-worker wrote a function that looks like
-this:
+"But guide!" you may cry. "My co-worker wrote a function that looks like this:
 
 ~~~rust
 fn succ(x: &int) -> int { *x + 1 }
@@ -22,7 +21,7 @@ fn succ(x: &int) -> int { *x + 1 }
 
 So I wrote this code to try it out:
 
-~~~rust {.xfail-test}
+~~~rust{.xfail-test}
 fn main() {
     let number = 5;
     let succ_number = succ(number);
@@ -74,7 +73,7 @@ However.
 Here are the use-cases for pointers. I've prefixed them with the name of the
 pointer that satisfies that use-case:
 
-1. Owned: ~Trait must be a pointer, becuase you don't know the size of the
+1. Owned: ~Trait must be a pointer, because you don't know the size of the
 object, so indirection is mandatory.
 2. Owned: You need a recursive data structure. These can be infinite sized, so
 indirection is mandatory.
@@ -86,18 +85,18 @@ common, such as C++, please read "A note..." below.
 or impossible. This is only often useful when a program is very large or very
 complicated. Using a managed pointer will activate Rust's garbage collection
 mechanism.
-5: Borrowed: You're writing a function, and you need a pointer, but you don't
-care about its ownership. If you make the argument a borrowed pointer, callers
+5. Reference: You're writing a function, and you need a pointer, but you don't
+care about its ownership. If you make the argument a reference, callers
 can send in whatever kind they want.
 
-Five exceptions. That's it. Otherwise, you shouldn't need them. Be skeptical
+Five exceptions. That's it. Otherwise, you shouldn't need them. Be sceptical
 of pointers in Rust: use them for a deliberate purpose, not just to make the
 compiler happy.
 
 ## A note for those proficient in pointers
 
 If you're coming to Rust from a language like C or C++, you may be used to
-passing things by reference, or passing things by pointer. In some langauges,
+passing things by reference, or passing things by pointer. In some languages,
 like Java, you can't even have objects without a pointer to them. Therefore, if
 you were writing this Rust code:
 
@@ -151,7 +150,7 @@ fn main() {
 }
 ~~~
 
-But won't this be inefficent? Well, that's a complicated question, but it's
+But won't this be inefficient? Well, that's a complicated question, but it's
 important to know that Rust, like C and C++, store aggregate data types
 'unboxed,' whereas languages like Java and Ruby store these types as 'boxed.'
 For smaller structs, this way will be more efficient. For larger ones, it may
@@ -174,7 +173,7 @@ These two properties make for three use cases.
 
 ## References to Traits
 
-Traits must be referenced through a pointer, becuase the struct that implements
+Traits must be referenced through a pointer, because the struct that implements
 the trait may be a different size than a different struct that implements the
 trait. Therefore, unboxed traits don't make any sense, and aren't allowed.
 
@@ -200,7 +199,7 @@ This prints:
 Cons(1, ~Cons(2, ~Cons(3, ~Nil)))
 ~~~
 
-The inner lists _must_ be an owned pointer, becuase we can't know how many
+The inner lists _must_ be an owned pointer, because we can't know how many
 elements are in the list. Without knowing the length, we don't know the size,
 and therefore require the indirection that pointers offer.
 
@@ -250,13 +249,19 @@ struct.
 
 # Managed Pointers
 
+> **Note**: the `@` form of managed pointers is deprecated and behind a
+> feature gate (it requires a `#[feature(managed_pointers)];` attribute on
+> the crate root; remember the semicolon!). There are replacements, currently 
+> there is `std::rc::Rc` and `std::gc::Gc` for shared ownership via reference
+> counting and garbage collection respectively.
+
 Managed pointers, notated by an `@`, are used when having a single owner for
 some data isn't convenient or possible. This generally happens when your
 program is very large and complicated.
 
 For example, let's say you're using an owned pointer, and you want to do this:
 
-~~~rust {.xfail-test}
+~~~rust{.xfail-test}
 struct Point {
     x: int,
     y: int,
@@ -310,14 +315,14 @@ managed pointers:
 1. They activate Rust's garbage collector. Other pointer types don't share this
 drawback.
 2. You cannot pass this data to another task. Shared ownership across
-concurrency boundaries is the source of endless pain in other langauges, so
+concurrency boundaries is the source of endless pain in other languages, so
 Rust does not let you do this.
 
-# Borrowed Pointers
+# References
 
-Borrowed pointers are the third major kind of pointer Rust supports. They are
+References are the third major kind of pointer Rust supports. They are
 simultaneously the simplest and the most complicated kind. Let me explain:
-they're called 'borrowed' pointers because they claim no ownership over the
+references are considered 'borrowed' because they claim no ownership over the
 data they're pointing to. They're just borrowing it for a while. So in that
 sense, they're simple: just keep whatever ownership the data already has. For
 example:
@@ -346,13 +351,13 @@ fn main() {
 ~~~
 
 This prints `5.83095189`. You can see that the `compute_distance` function
-takes in two borrowed pointers, but we give it a managed and unique pointer. Of
+takes in two references, but we give it a managed and unique pointer. Of
 course, if this were a real program, we wouldn't have any of these pointers,
 they're just there to demonstrate the concepts.
 
-So how is this hard? Well, because we're igorning ownership, the compiler needs
+So how is this hard? Well, because we're ignoring ownership, the compiler needs
 to take great care to make sure that everything is safe. Despite their complete
-safety, a borrowed pointer's representation at runtime is the same as that of
+safety, a reference's representation at runtime is the same as that of
 an ordinary pointer in a C program. They introduce zero overhead. The compiler
 does all safety checks at compile time. 
 
@@ -360,14 +365,14 @@ This theory is called 'region pointers,' and involve a concept called
 'lifetimes'. Here's the simple explanation: would you expect this code to
 compile?
 
-~~~rust {.xfail-test}
+~~~rust{.xfail-test}
 fn main() {
     println(x.to_str());
     let x = 5;
 }
 ~~~
 
-Probably not. That's becuase you know that the name `x` is valid from where
+Probably not. That's because you know that the name `x` is valid from where
 it's declared to when it goes out of scope. In this case, that's the end of
 the `main` function. So you know this code will cause an error. We call this
 duration a 'lifetime'. Let's try a more complex example:
@@ -375,12 +380,12 @@ duration a 'lifetime'. Let's try a more complex example:
 ~~~rust
 fn main() {
     let mut x = ~5;
-    if(*x < 10) {
+    if *x < 10 {
         let y = &x;
         println!("Oh no: {:?}", y);
         return;
     }
-    *x = *x - 1;
+    *x -= 1;
     println!("Oh no: {:?}", x);
 }
 ~~~
@@ -389,17 +394,17 @@ Here, we're borrowing a pointer to `x` inside of the `if`. The compiler, however
 is able to determine that that pointer will go out of scope without `x` being
 mutated, and therefore, lets us pass. This wouldn't work:
 
-~~~rust {.xfail-test}
+~~~rust{.xfail-test}
 fn main() {
     let mut x = ~5;
-    if(*x < 10) {
+    if *x < 10 {
         let y = &x;
-        *x = *x - 1;
+        *x -= 1;
 
         println!("Oh no: {:?}", y);
         return;
     }
-    *x = *x - 1;
+    *x -= 1;
     println!("Oh no: {:?}", x);
 }
 ~~~
@@ -408,7 +413,7 @@ It gives this error:
 
 ~~~ {.notrust}
 test.rs:5:8: 5:10 error: cannot assign to `*x` because it is borrowed
-test.rs:5         *x = *x - 1;
+test.rs:5         *x -= 1;
                   ^~
 test.rs:4:16: 4:18 note: borrow of `*x` occurs here
 test.rs:4         let y = &x;
@@ -416,13 +421,13 @@ test.rs:4         let y = &x;
 ~~~
 
 As you might guess, this kind of analysis is complex for a human, and therefore
-hard for a computer, too! There is an entire [tutorial devoted to borrowed
-pointers and lifetimes](tutorial-lifetimes.html) that goes into lifetimes in
+hard for a computer, too! There is an entire [guide devoted to references
+and lifetimes](guide-lifetimes.html) that goes into lifetimes in
 great detail, so if you want the full details, check that out.
 
 # Returning Pointers
 
-We've talked a lot about funtions that accept various kinds of pointers, but
+We've talked a lot about functions that accept various kinds of pointers, but
 what about returning them? Here's the rule of thumb: only return a unique or
 managed pointer if you were given one in the first place.
 
@@ -469,8 +474,9 @@ fn main() {
 You may think that this gives us terrible performance: return a value and then
 immediately box it up?!?! Isn't that the worst of both worlds? Rust is smarter
 than that. There is no copy in this code. `main` allocates enough room for the
-`@int`, passes it into `foo` as `x`, and then `foo` writes the value into the
-new box. This writes the return value directly into the allocated box.
+`@int`, passes a pointer to that memory into `foo` as `x`, and then `foo` writes 
+the value straight into that pointer. This writes the return value directly into
+the allocated box.
 
 This is important enough that it bears repeating: pointers are not for optimizing
 returning values from your code. Allow the caller to choose how they want to
@@ -479,4 +485,4 @@ use your output.
 
 # Related Resources
 
-* [Lifetimes tutorial](tutorial-lifetimes.html)
+* [Lifetimes guide](guide-lifetimes.html)

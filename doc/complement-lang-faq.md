@@ -218,13 +218,13 @@ They start small (ideally in the hundreds of bytes) and expand dynamically by ca
 * Managed boxes may not be shared between tasks
 * Owned boxes may be transferred (moved) between tasks
 
-## What is the difference between a borrowed pointer (`&`) and managed and owned boxes?
+## What is the difference between a reference (`&`) and managed and owned boxes?
 
-* Borrowed pointers point to the interior of a stack _or_ heap allocation
-* Borrowed pointers can only be formed when it will provably be outlived by the referent
-* Borrowed pointers to managed box pointers keep the managed boxes alive
-* Borrowed pointers to owned boxes prevent their ownership from being transferred
-* Borrowed pointers employ region-based alias analysis to ensure correctness
+* References point to the interior of a stack _or_ heap allocation
+* References can only be formed when it will provably be outlived by the referent
+* References to managed box pointers keep the managed boxes alive
+* References to owned boxes prevent their ownership from being transferred
+* References employ region-based alias analysis to ensure correctness
 
 ## Why aren't function signatures inferred? Why only local slots?
 

@@ -1341,11 +1341,12 @@ let mut y = ~5; // mutable
 *y += 2; // the * operator is needed to access the contained value
 ~~~~
 
-# Borrowed pointers
+# References
 
-Rust's borrowed pointers are a general purpose reference type. In contrast with
+In contrast with
 owned boxes, where the holder of an owned box is the owner of the pointed-to
-memory, borrowed pointers never imply ownership. A pointer can be borrowed to
+memory, references never imply ownership - they are "borrowed".
+A reference can be borrowed to
 any object, and the compiler verifies that it cannot outlive the lifetime of
 the object.
 
@@ -1377,7 +1378,7 @@ to define a function that takes two arguments of type point—that is,
 it takes the points by value. But this will cause the points to be
 copied when we call the function. For points, this is probably not so
 bad, but often copies are expensive. So we’d like to define a function
-that takes the points by pointer. We can use borrowed pointers to do this:
+that takes the points by pointer. We can use references to do this:
 
 ~~~
 # struct Point { x: f64, y: f64 }
@@ -1410,7 +1411,7 @@ route to the same data.
 
 In the case of the boxes `managed_box` and `owned_box`, however, no
 explicit action is necessary. The compiler will automatically convert
-a box like `@point` or `~point` to a borrowed pointer like
+a box like `@point` or `~point` to a reference like
 `&point`. This is another form of borrowing; in this case, the
 contents of the managed/owned box are being lent out.
 
@@ -1420,11 +1421,11 @@ have been lent out, you cannot send that variable to another task, nor
 will you be permitted to take actions that might cause the borrowed
 value to be freed or to change its type. This rule should make
 intuitive sense: you must wait for a borrowed value to be returned
-(that is, for the borrowed pointer to go out of scope) before you can
+(that is, for the reference to go out of scope) before you can
 make full use of it again.
 
-For a more in-depth explanation of borrowed pointers and lifetimes, read the
-[lifetimes and borrowed pointer tutorial][lifetimes].
+For a more in-depth explanation of references and lifetimes, read the
+[references and lifetimes guide][lifetimes].
 
 ## Freezing
 
@@ -1622,8 +1623,7 @@ defined in [`std::vec`] and [`std::str`].
 
 # Ownership escape hatches
 
-Ownership can cleanly describe tree-like data structures, and borrowed pointers provide non-owning
-references. However, more flexibility is often desired and Rust provides ways to escape from strict
+Ownership can cleanly describe tree-like data structures, and references provide non-owning pointers. However, more flexibility is often desired and Rust provides ways to escape from strict
 single parent ownership.
 
 The standard library provides the `std::rc::Rc` pointer type to express *shared ownership* over a
@@ -1880,7 +1880,7 @@ A caller must in turn have a compatible pointer type to call the method.
 #     Rectangle(Point, Point)
 # }
 impl Shape {
-    fn draw_borrowed(&self) { ... }
+    fn draw_reference(&self) { ... }
     fn draw_managed(@self) { ... }
     fn draw_owned(~self) { ... }
     fn draw_value(self) { ... }
@@ -1890,13 +1890,13 @@ let s = Circle(Point { x: 1.0, y: 2.0 }, 3.0);
 
 (@s).draw_managed();
 (~s).draw_owned();
-(&s).draw_borrowed();
+(&s).draw_reference();
 s.draw_value();
 ~~~
 
-Methods typically take a borrowed pointer self type,
+Methods typically take a reference self type,
 so the compiler will go to great lengths to convert a callee
-to a borrowed pointer.
+to a reference.
 
 ~~~
 # fn draw_circle(p: Point, f: f64) { }
@@ -1907,27 +1907,27 @@ to a borrowed pointer.
 #     Rectangle(Point, Point)
 # }
 # impl Shape {
-#    fn draw_borrowed(&self) { ... }
+#    fn draw_reference(&self) { ... }
 #    fn draw_managed(@self) { ... }
 #    fn draw_owned(~self) { ... }
 #    fn draw_value(self) { ... }
 # }
 # let s = Circle(Point { x: 1.0, y: 2.0 }, 3.0);
 // As with typical function arguments, managed and owned pointers
-// are automatically converted to borrowed pointers
+// are automatically converted to references
 
-(@s).draw_borrowed();
-(~s).draw_borrowed();
+(@s).draw_reference();
+(~s).draw_reference();
 
 // Unlike typical function arguments, the self value will
 // automatically be referenced ...
-s.draw_borrowed();
+s.draw_reference();
 
 // ... and dereferenced
-(& &s).draw_borrowed();
+(& &s).draw_reference();
 
 // ... and dereferenced and borrowed
-(&@~s).draw_borrowed();
+(&@~s).draw_reference();
 ~~~
 
 Implementations may also define standalone (sometimes called "static")
@@ -2095,7 +2095,7 @@ and may not be overridden:
 
 * `Send` - Sendable types.
 Types are sendable
-unless they contain managed boxes, managed closures, or borrowed pointers.
+unless they contain managed boxes, managed closures, or references.
 
 * `Freeze` - Constant (immutable) types.
 These are types that do not contain anything intrinsically mutable.
@@ -2104,7 +2104,7 @@ Intrinsically mutable values include `Cell` in the standard library.
 * `'static` - Non-borrowed types.
 These are types that do not contain any data whose lifetime is bound to
 a particular stack frame. These are types that do not contain any
-borrowed pointers, or types where the only contained borrowed pointers
+references, or types where the only contained references
 have the `'static` lifetime.
 
 > ***Note:*** These two traits were referred to as 'kinds' in earlier
@@ -2439,7 +2439,7 @@ order to be packaged up in a trait object of that storage class.
 
 * The contents of owned traits (`~Trait`) must fulfill the `Send` bound.
 * The contents of managed traits (`@Trait`) must fulfill the `'static` bound.
-* The contents of borrowed traits (`&Trait`) are not constrained by any bound.
+* The contents of reference traits (`&Trait`) are not constrained by any bound.
 
 Consequently, the trait objects themselves automatically fulfill their
 respective kind bounds. However, this default behavior can be overridden by
