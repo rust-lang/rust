@@ -117,6 +117,9 @@ pub mod libvec;
 pub mod at_vec;
 pub mod str;
 
+#[cfg(not(stage0))]
+pub mod uniq;
+
 pub mod ascii;
 pub mod send_str;
 
