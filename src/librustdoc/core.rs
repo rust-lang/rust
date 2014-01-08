@@ -34,6 +34,7 @@ pub struct DocContext {
 
 pub struct CrateAnalysis {
     exported_items: privacy::ExportedItems,
+    public_items: privacy::PublicItems,
 }
 
 /// Parses, resolves, and typechecks the given crate
@@ -75,12 +76,15 @@ fn get_ast_and_resolve(cpath: &Path,
     let crate = phase_1_parse_input(sess, cfg.clone(), &input);
     let (crate, ast_map) = phase_2_configure_and_expand(sess, cfg, crate);
     let driver::driver::CrateAnalysis {
-        exported_items, ty_cx, ..
+        exported_items, public_items, ty_cx, ..
     } = phase_3_run_analysis_passes(sess, &crate, ast_map);
 
     debug!("crate: {:?}", crate);
     return (DocContext { crate: crate, tycx: Some(ty_cx), sess: sess },
-            CrateAnalysis { exported_items: exported_items });
+            CrateAnalysis {
+                exported_items: exported_items,
+                public_items: public_items,
+            });
 }
 
 pub fn run_core (libs: HashSet<Path>, cfgs: ~[~str], path: &Path) -> (clean::Crate, CrateAnalysis) {
@@ -88,8 +92,11 @@ pub fn run_core (libs: HashSet<Path>, cfgs: ~[~str], path: &Path) -> (clean::Cra
     let ctxt = @ctxt;
     local_data::set(super::ctxtkey, ctxt);
 
-    let mut v = RustdocVisitor::new();
-    v.visit(&ctxt.crate);
+    let crate = {
+        let mut v = RustdocVisitor::new(ctxt, Some(&analysis));
+        v.visit(&ctxt.crate);
+        v.clean()
+    };
 
-    (v.clean(), analysis)
+    (crate, analysis)
 }
