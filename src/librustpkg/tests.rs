@@ -25,8 +25,7 @@ use extra::treemap::TreeMap;
 use extra::getopts::groups::getopts;
 use std::run::ProcessOutput;
 use installed_packages::list_installed_packages;
-use crate_id::{CrateId};
-use version::{ExactRevision, NoVersion, Version};
+use crate_id::CrateId;
 use path_util::{target_executable_in_workspace, target_test_in_workspace,
                target_bench_in_workspace, make_dir_rwx,
                library_in_workspace, installed_library_in_workspace,
@@ -63,7 +62,7 @@ fn fake_pkg() -> CrateId {
     CrateId {
         path: Path::new(sn.as_slice()),
         short_name: sn,
-        version: NoVersion
+        version: None
     }
 }
 
@@ -71,7 +70,7 @@ fn git_repo_pkg() -> CrateId {
     CrateId {
         path: Path::new("mockgithub.com/catamorphism/test-pkg"),
         short_name: ~"test-pkg",
-        version: NoVersion
+        version: None
     }
 }
 
@@ -88,28 +87,24 @@ fn mk_emptier_workspace(tag: &str) -> TempDir {
     workspace
 }
 
-fn mk_empty_workspace(short_name: &Path, version: &Version, tag: &str) -> TempDir {
+fn mk_empty_workspace(crate_id: &CrateId, tag: &str) -> TempDir {
     let workspace_dir = TempDir::new(tag).expect("couldn't create temp dir");
-    mk_workspace(workspace_dir.path(), short_name, version);
+    mk_workspace(workspace_dir.path(), crate_id);
     workspace_dir
 }
 
-fn mk_workspace(workspace: &Path, short_name: &Path, version: &Version) -> Path {
+fn mk_workspace(workspace: &Path, crate_id: &CrateId) -> Path {
     // include version number in directory name
     // FIXME (#9639): This needs to handle non-utf8 paths
-    let package_dir = workspace.join_many([~"src", format!("{}-{}",
-                                           short_name.as_str().unwrap(), version.to_str())]);
+    let package_dir = workspace.join_many([~"src", crate_id.short_name_with_version()]);
     fs::mkdir_recursive(&package_dir, io::UserRWX);
     package_dir
 }
 
-fn mk_temp_workspace(short_name: &Path, version: &Version) -> (TempDir, Path) {
-    let workspace_dir = mk_empty_workspace(short_name, version, "temp_workspace");
+fn mk_temp_workspace(crate_id: &CrateId) -> (TempDir, Path) {
+    let workspace_dir = mk_empty_workspace(crate_id, "temp_workspace");
     // FIXME (#9639): This needs to handle non-utf8 paths
-    let package_dir = workspace_dir.path().join_many([~"src",
-                                                      format!("{}-{}",
-                                                              short_name.as_str().unwrap(),
-                                                              version.to_str())]);
+    let package_dir = workspace_dir.path().join_many([~"src", crate_id.short_name_with_version()]);
 
     debug!("Created {} and does it exist? {:?}", package_dir.display(),
            package_dir.is_dir());
@@ -294,7 +289,7 @@ fn command_line_test_with_env(args: &[~str], cwd: &Path, env: Option<~[(~str, ~s
 }
 
 fn create_local_package(crateid: &CrateId) -> TempDir {
-    let (workspace, parent_dir) = mk_temp_workspace(&crateid.path, &crateid.version);
+    let (workspace, parent_dir) = mk_temp_workspace(crateid);
     debug!("Created empty package dir for {}, returning {}", crateid.to_str(),
            parent_dir.display());
     workspace
@@ -348,11 +343,11 @@ fn create_local_package_with_custom_build_hook(crateid: &CrateId,
 
 }
 
-fn assert_lib_exists(repo: &Path, pkg_path: &Path, v: Version) {
+fn assert_lib_exists(repo: &Path, pkg_path: &Path, v: Option<~str>) {
     assert!(lib_exists(repo, pkg_path, v));
 }
 
-fn lib_exists(repo: &Path, pkg_path: &Path, _v: Version) -> bool { // ??? version?
+fn lib_exists(repo: &Path, pkg_path: &Path, _v: Option<~str>) -> bool { // ??? version?
     debug!("assert_lib_exists: repo = {}, pkg_path = {}", repo.display(), pkg_path.display());
     let lib = installed_library_in_workspace(pkg_path, repo);
     debug!("assert_lib_exists: checking whether {:?} exists", lib);
@@ -475,7 +470,7 @@ fn lib_output_file_name(workspace: &Path, short_name: &str) -> Path {
                          Build,
                          workspace,
                          "build",
-                         &NoVersion).expect("lib_output_file_name")
+                         &None).expect("lib_output_file_name")
 }
 
 #[cfg(target_os = "linux")]
@@ -567,7 +562,7 @@ fn test_install_valid() {
     let sysroot = test_sysroot();
     debug!("sysroot = {}", sysroot.display());
     let temp_pkg_id = fake_pkg();
-    let (temp_workspace, _pkg_dir) = mk_temp_workspace(&temp_pkg_id.path, &NoVersion);
+    let (temp_workspace, _pkg_dir) = mk_temp_workspace(&temp_pkg_id);
     let temp_workspace = temp_workspace.path();
     let ctxt = fake_ctxt(sysroot, temp_workspace);
     debug!("temp_workspace = {}", temp_workspace.display());
@@ -624,8 +619,7 @@ fn test_install_invalid() {
 #[test]
 fn test_install_valid_external() {
     let temp_pkg_id = CrateId::new("foo");
-    let (tempdir, _) = mk_temp_workspace(&temp_pkg_id.path,
-                                         &temp_pkg_id.version);
+    let (tempdir, _) = mk_temp_workspace(&temp_pkg_id);
     let temp_workspace = tempdir.path();
     command_line_test([~"install", ~"foo"], temp_workspace);
 
@@ -821,7 +815,7 @@ fn rustpkg_library_target() {
 
     add_git_tag(&package_dir, ~"1.0");
     command_line_test([~"install", ~"foo"], foo_repo);
-    assert_lib_exists(&foo_repo.join(".rust"), &Path::new("foo"), ExactRevision(~"1.0"));
+    assert_lib_exists(&foo_repo.join(".rust"), &Path::new("foo"), Some(~"1.0"));
 }
 
 #[test]
@@ -844,7 +838,7 @@ fn package_script_with_default_build() {
     debug!("package_script_with_default_build: {}", source.display());
     fs::copy(&source, &dir.join_many(["src", "fancy-lib-0.0", "pkg.rs"]));
     command_line_test([~"install", ~"fancy-lib"], dir);
-    assert_lib_exists(dir, &Path::new("fancy-lib"), NoVersion);
+    assert_lib_exists(dir, &Path::new("fancy-lib"), None);
     assert!(target_build_dir(dir).join_many([~"fancy-lib", ~"generated.rs"]).exists());
     let generated_path = target_build_dir(dir).join_many([~"fancy-lib", ~"generated.rs"]);
     debug!("generated path = {}", generated_path.display());
@@ -875,7 +869,7 @@ fn rustpkg_install_no_arg() {
               "fn main() { let _x = (); }");
     debug!("install_no_arg: dir = {}", package_dir.display());
     command_line_test([~"install"], &package_dir);
-    assert_lib_exists(&tmp, &Path::new("foo"), NoVersion);
+    assert_lib_exists(&tmp, &Path::new("foo"), None);
 }
 
 #[test]
@@ -898,7 +892,7 @@ fn rustpkg_clean_no_arg() {
 #[test]
 fn rust_path_test() {
     let dir_for_path = TempDir::new("more_rust").expect("rust_path_test failed");
-    let dir = mk_workspace(dir_for_path.path(), &Path::new("foo"), &NoVersion);
+    let dir = mk_workspace(dir_for_path.path(), &CrateId::new("foo"));
     debug!("dir = {}", dir.display());
     writeFile(&dir.join("main.rs"), "fn main() { let _x = (); }");
 
@@ -1322,8 +1316,9 @@ fn multiple_workspaces() {
 // Copy the exact same package into directory B and install it
 // Set the RUST_PATH to A:B
 // Make a third package that uses foo, make sure we can build/install it
-    let (a_loc, _pkg_dir) = mk_temp_workspace(&Path::new("foo"), &NoVersion);
-    let (b_loc, _pkg_dir) = mk_temp_workspace(&Path::new("foo"), &NoVersion);
+    let p_id = CrateId::new("foo");
+    let (a_loc, _pkg_dir) = mk_temp_workspace(&p_id);
+    let (b_loc, _pkg_dir) = mk_temp_workspace(&p_id);
     let (a_loc, b_loc) = (a_loc.path(), b_loc.path());
     debug!("Trying to install foo in {}", a_loc.display());
     command_line_test([~"install", ~"foo"], a_loc);
@@ -1348,7 +1343,7 @@ fn rust_path_hack_test(hack_flag: bool) {
    let p_id = CrateId::new("foo");
    let workspace = create_local_package(&p_id);
    let workspace = workspace.path();
-   let dest_workspace = mk_empty_workspace(&Path::new("bar"), &NoVersion, "dest_workspace");
+   let dest_workspace = mk_empty_workspace(&CrateId::new("bar"), "dest_workspace");
    let dest_workspace = dest_workspace.path();
    let foo_path = workspace.join_many(["src", "foo-0.0"]);
    let rust_path = Some(~[(~"RUST_PATH",
@@ -1357,11 +1352,11 @@ fn rust_path_hack_test(hack_flag: bool) {
                foo_path.as_str().unwrap()))]);
    command_line_test_with_env(~[~"install"] + if hack_flag { ~[~"--rust-path-hack"] } else { ~[] } +
                                ~[~"foo"], dest_workspace, rust_path);
-   assert_lib_exists(dest_workspace, &Path::new("foo"), NoVersion);
+   assert_lib_exists(dest_workspace, &Path::new("foo"), None);
    assert_executable_exists(dest_workspace, "foo");
    assert_built_library_exists(dest_workspace, "foo");
    assert_built_executable_exists(dest_workspace, "foo");
-   assert!(!lib_exists(workspace, &Path::new("foo"), NoVersion));
+   assert!(!lib_exists(workspace, &Path::new("foo"), None));
    assert!(!executable_exists(workspace, "foo"));
    assert!(!built_library_exists(workspace, "foo"));
    assert!(!built_executable_exists(workspace, "foo"));
@@ -1396,15 +1391,15 @@ fn rust_path_hack_cwd() {
    fs::mkdir_recursive(&cwd, io::UserRWX);
    writeFile(&cwd.join("lib.rs"), "pub fn f() { }");
 
-   let dest_workspace = mk_empty_workspace(&Path::new("bar"), &NoVersion, "dest_workspace");
+   let dest_workspace = mk_empty_workspace(&CrateId::new("bar"), "dest_workspace");
    let dest_workspace = dest_workspace.path();
    // FIXME (#9639): This needs to handle non-utf8 paths
    let rust_path = Some(~[(~"RUST_PATH", dest_workspace.as_str().unwrap().to_owned())]);
    command_line_test_with_env([~"install", ~"--rust-path-hack", ~"foo"], &cwd, rust_path);
    debug!("Checking that foo exists in {}", dest_workspace.display());
-   assert_lib_exists(dest_workspace, &Path::new("foo"), NoVersion);
+   assert_lib_exists(dest_workspace, &Path::new("foo"), None);
    assert_built_library_exists(dest_workspace, "foo");
-   assert!(!lib_exists(&cwd, &Path::new("foo"), NoVersion));
+   assert!(!lib_exists(&cwd, &Path::new("foo"), None));
    assert!(!built_library_exists(&cwd, "foo"));
 }
 
@@ -1417,15 +1412,15 @@ fn rust_path_hack_multi_path() {
    writeFile(&subdir.join("lib.rs"), "pub fn f() { }");
    let name = ~"foo/bar/quux";
 
-   let dest_workspace = mk_empty_workspace(&Path::new("bar"), &NoVersion, "dest_workspace");
+   let dest_workspace = mk_empty_workspace(&CrateId::new("bar"), "dest_workspace");
    let dest_workspace = dest_workspace.path();
    // FIXME (#9639): This needs to handle non-utf8 paths
    let rust_path = Some(~[(~"RUST_PATH", dest_workspace.as_str().unwrap().to_owned())]);
    command_line_test_with_env([~"install", ~"--rust-path-hack", name.clone()], &subdir, rust_path);
    debug!("Checking that {} exists in {}", name, dest_workspace.display());
-   assert_lib_exists(dest_workspace, &Path::new("quux"), NoVersion);
+   assert_lib_exists(dest_workspace, &Path::new("quux"), None);
    assert_built_library_exists(dest_workspace, name);
-   assert!(!lib_exists(&subdir, &Path::new("quux"), NoVersion));
+   assert!(!lib_exists(&subdir, &Path::new("quux"), None));
    assert!(!built_library_exists(&subdir, name));
 }
 
@@ -1438,15 +1433,15 @@ fn rust_path_hack_install_no_arg() {
    assert!(make_dir_rwx(&source_dir));
    writeFile(&source_dir.join("lib.rs"), "pub fn f() { }");
 
-   let dest_workspace = mk_empty_workspace(&Path::new("bar"), &NoVersion, "dest_workspace");
+   let dest_workspace = mk_empty_workspace(&CrateId::new("bar"), "dest_workspace");
    let dest_workspace = dest_workspace.path();
    // FIXME (#9639): This needs to handle non-utf8 paths
    let rust_path = Some(~[(~"RUST_PATH", dest_workspace.as_str().unwrap().to_owned())]);
    command_line_test_with_env([~"install", ~"--rust-path-hack"], &source_dir, rust_path);
    debug!("Checking that foo exists in {}", dest_workspace.display());
-   assert_lib_exists(dest_workspace, &Path::new("foo"), NoVersion);
+   assert_lib_exists(dest_workspace, &Path::new("foo"), None);
    assert_built_library_exists(dest_workspace, "foo");
-   assert!(!lib_exists(&source_dir, &Path::new("foo"), NoVersion));
+   assert!(!lib_exists(&source_dir, &Path::new("foo"), None));
    assert!(!built_library_exists(cwd, "foo"));
 }
 
@@ -1458,7 +1453,7 @@ fn rust_path_hack_build_no_arg() {
    assert!(make_dir_rwx(&source_dir));
    writeFile(&source_dir.join("lib.rs"), "pub fn f() { }");
 
-   let dest_workspace = mk_empty_workspace(&Path::new("bar"), &NoVersion, "dest_workspace");
+   let dest_workspace = mk_empty_workspace(&CrateId::new("bar"), "dest_workspace");
    let dest_workspace = dest_workspace.path();
    // FIXME (#9639): This needs to handle non-utf8 paths
    let rust_path = Some(~[(~"RUST_PATH", dest_workspace.as_str().unwrap().to_owned())]);
@@ -1496,7 +1491,7 @@ fn rust_path_hack_build_with_dependency() {
 fn rust_path_install_target() {
     let dir_for_path = TempDir::new(
         "source_workspace").expect("rust_path_install_target failed");
-    let mut dir = mk_workspace(dir_for_path.path(), &Path::new("foo"), &NoVersion);
+    let mut dir = mk_workspace(dir_for_path.path(), &CrateId::new("foo"));
     debug!("dir = {}", dir.display());
     writeFile(&dir.join("main.rs"), "fn main() { let _x = (); }");
     let dir_to_install_to = TempDir::new(
@@ -1608,7 +1603,7 @@ fn notrans_flag_fail() {
                           workspace, None, BAD_FLAG_CODE);
         assert!(!built_executable_exists(workspace, "foo"));
         assert!(!object_file_exists(workspace, "foo"));
-        assert!(!lib_exists(workspace, &Path::new("foo"), NoVersion));
+        assert!(!lib_exists(workspace, &Path::new("foo"), None));
     }
 }
 
@@ -1880,9 +1875,9 @@ fn test_recursive_deps() {
     command_line_test_with_env([~"install", ~"a"],
                                a_workspace,
                                environment);
-    assert_lib_exists(a_workspace, &Path::new("a"), NoVersion);
-    assert_lib_exists(b_workspace, &Path::new("b"), NoVersion);
-    assert_lib_exists(b_workspace, &Path::new("c"), NoVersion);
+    assert_lib_exists(a_workspace, &Path::new("a"), None);
+    assert_lib_exists(b_workspace, &Path::new("b"), None);
+    assert_lib_exists(b_workspace, &Path::new("c"), None);
 }
 
 #[test]
@@ -1890,7 +1885,7 @@ fn test_install_to_rust_path() {
     let p_id = CrateId::new("foo");
     let second_workspace = create_local_package(&p_id);
     let second_workspace = second_workspace.path();
-    let first_workspace = mk_empty_workspace(&Path::new("p"), &NoVersion, "dest");
+    let first_workspace = mk_empty_workspace(&CrateId::new("p"), "dest");
     let first_workspace = first_workspace.path();
     // FIXME (#9639): This needs to handle non-utf8 paths
     let rust_path = Some(~[(~"RUST_PATH",
@@ -1937,7 +1932,7 @@ fn test_target_specific_install_dir() {
                        ~"foo"],
                       workspace);
     assert!(workspace.join_many([~"lib", host_triple()]).is_dir());
-    assert_lib_exists(workspace, &Path::new("foo"), NoVersion);
+    assert_lib_exists(workspace, &Path::new("foo"), None);
     assert!(fs::readdir(&workspace.join("lib")).len() == 1);
     assert!(workspace.join("bin").is_dir());
     assert_executable_exists(workspace, "foo");
@@ -1965,7 +1960,7 @@ fn install_after_build() {
     command_line_test([~"build", ~"b"], workspace);
     command_line_test([~"install", ~"b"], workspace);
     assert_executable_exists(workspace, b_id.short_name);
-    assert_lib_exists(workspace, &b_id.path, NoVersion);
+    assert_lib_exists(workspace, &b_id.path, None);
 }
 
 #[test]
@@ -1977,7 +1972,7 @@ fn reinstall() {
     // and make sure executable was re-installed
     command_line_test([~"install", ~"b"], workspace);
     assert_executable_exists(workspace, b.short_name);
-    assert_lib_exists(workspace, &b.path, NoVersion);
+    assert_lib_exists(workspace, &b.path, None);
     remove_executable_file(&b, workspace);
     command_line_test([~"install", ~"b"], workspace);
     assert_executable_exists(workspace, b.short_name);
@@ -2013,7 +2008,7 @@ fn correct_package_name_with_rust_path_hack() {
     let bar_id = CrateId::new("bar");
     let foo_workspace = create_local_package(&foo_id);
     let foo_workspace = foo_workspace.path();
-    let dest_workspace = mk_empty_workspace(&Path::new("bar"), &NoVersion, "dest_workspace");
+    let dest_workspace = mk_empty_workspace(&CrateId::new("bar"), "dest_workspace");
     let dest_workspace = dest_workspace.path();
 
     writeFile(&dest_workspace.join_many(["src", "bar-0.0", "main.rs"]),
@@ -2145,7 +2140,7 @@ fn test_installed_read_only() {
               "pub fn f() { let _x = (); }");
     add_git_tag(&repo_subdir, ~"0.0"); // this has the effect of committing the files
     // update crateid to what will be auto-detected
-    temp_pkg_id.version = ExactRevision(~"0.0");
+    temp_pkg_id.version = Some(~"0.0");
 
     // FIXME (#9639): This needs to handle non-utf8 paths
     command_line_test([~"install", temp_pkg_id.path.as_str().unwrap().to_owned()], repo);
@@ -2202,7 +2197,7 @@ fn test_installed_local_changes() {
                                                   "test-pkg-0.0"]);
     debug!("---- git clone {} {}", repo_subdir.display(), target_dir.display());
 
-    let c_res = safe_git_clone(&repo_subdir, &NoVersion, &target_dir);
+    let c_res = safe_git_clone(&repo_subdir, &None, &target_dir);
 
     match c_res {
         DirToUse(_) => fail!("test_installed_local_changes failed"),

@@ -15,7 +15,6 @@ use crate_id::*;
 use package_source::*;
 use path_util::{platform_library_name, target_build_dir};
 use target::*;
-use version::Version;
 use workspace::pkg_parent_workspaces;
 use workcache_support::*;
 pub use path_util::default_workspace;
@@ -79,13 +78,13 @@ pub fn new_workcache_context(p: &Path) -> workcache::Context {
     workcache::Context::new_with_freshness(db, cfg, Arc::new(freshness))
 }
 
-pub fn build_lib(sysroot: Path, root: Path, name: ~str, version: Version,
+pub fn build_lib(sysroot: Path, root: Path, name: ~str, version: Option<~str>,
                  lib: Path) {
     build_lib_with_cfgs(sysroot, root, name, version, lib, ~[])
 }
 
 pub fn build_lib_with_cfgs(sysroot: Path, root: Path, name: ~str,
-                           version: Version, lib: Path, cfgs: ~[~str]) {
+                           version: Option<~str>, lib: Path, cfgs: ~[~str]) {
     let cx = default_context(sysroot, root.clone());
     let pkg_src = PkgSrc {
         source_workspace: root.clone(),
@@ -102,13 +101,13 @@ pub fn build_lib_with_cfgs(sysroot: Path, root: Path, name: ~str,
     pkg_src.build(&cx, cfgs, []);
 }
 
-pub fn build_exe(sysroot: Path, root: Path, name: ~str, version: Version,
+pub fn build_exe(sysroot: Path, root: Path, name: ~str, version: Option<~str>,
                  main: Path) {
     build_exe_with_cfgs(sysroot, root, name, version, main, ~[])
 }
 
 pub fn build_exe_with_cfgs(sysroot: Path, root: Path, name: ~str,
-                           version: Version, main: Path, cfgs: ~[~str]) {
+                           version: Option<~str>, main: Path, cfgs: ~[~str]) {
     let cx = default_context(sysroot, root.clone());
     let pkg_src = PkgSrc {
         source_workspace: root.clone(),
@@ -129,7 +128,7 @@ pub fn build_exe_with_cfgs(sysroot: Path, root: Path, name: ~str,
 pub fn install_pkg(cx: &BuildContext,
                    workspace: Path,
                    name: ~str,
-                   version: Version,
+                   version: Option<~str>,
                    // For now, these inputs are assumed to be inputs to each of the crates
                    more_inputs: ~[(~str, Path)]) { // pairs of Kind and Path
     let crateid = CrateId{ version: version, ..CrateId::new(name)};

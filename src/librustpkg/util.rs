@@ -315,7 +315,7 @@ pub fn compile_input(context: &BuildContext,
             attr::mk_name_value_item_str(@"crate_id",
                                          format!("{}\\#{}",
                                                  pkg_id.path.as_str().unwrap(),
-                                                 pkg_id.version.to_str()).to_managed());
+                                                 pkg_id.get_version()).to_managed());
 
         debug!("crateid attr: {:?}", crateid_attr);
         crate.attrs.push(attr::mk_attr(crateid_attr));
