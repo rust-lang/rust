@@ -33,7 +33,7 @@ use syntax::visit::Visitor;
 //  send: Things that can be sent on channels or included in spawned closures.
 //  freeze: Things thare are deeply immutable. They are guaranteed never to
 //    change, and can be safely shared without copying between tasks.
-//  'static: Things that do not contain borrowed pointers.
+//  'static: Things that do not contain references.
 //
 // Send includes scalar types as well as classes and unique types containing
 // only sendable types.
@@ -487,12 +487,11 @@ pub fn check_durable(tcx: ty::ctxt, ty: ty::t, sp: Span) -> bool {
     if !ty::type_is_static(tcx, ty) {
         match ty::get(ty).sty {
           ty::ty_param(..) => {
-            tcx.sess.span_err(sp, "value may contain borrowed \
-                                   pointers; add `'static` bound");
+            tcx.sess.span_err(sp, "value may contain references; \
+                                   add `'static` bound");
           }
           _ => {
-            tcx.sess.span_err(sp, "value may contain borrowed \
-                                   pointers");
+            tcx.sess.span_err(sp, "value may contain references");
           }
         }
         false
@@ -502,10 +501,10 @@ pub fn check_durable(tcx: ty::ctxt, ty: ty::t, sp: Span) -> bool {
 }
 
 /// This is rather subtle.  When we are casting a value to a instantiated
-/// trait like `a as trait<'r>`, regionck already ensures that any borrowed
-/// pointers that appear in the type of `a` are bounded by `'r` (ed.: rem
+/// trait like `a as trait<'r>`, regionck already ensures that any references
+/// that appear in the type of `a` are bounded by `'r` (ed.: rem
 /// FIXME(#5723)).  However, it is possible that there are *type parameters*
-/// in the type of `a`, and those *type parameters* may have borrowed pointers
+/// in the type of `a`, and those *type parameters* may have references
 /// within them.  We have to guarantee that the regions which appear in those
 /// type parameters are not obscured.
 ///
@@ -513,17 +512,17 @@ pub fn check_durable(tcx: ty::ctxt, ty: ty::t, sp: Span) -> bool {
 ///
 /// (1) The trait instance cannot escape the current fn.  This is
 /// guaranteed if the region bound `&r` is some scope within the fn
-/// itself.  This case is safe because whatever borrowed pointers are
+/// itself.  This case is safe because whatever references are
 /// found within the type parameter, they must enclose the fn body
 /// itself.
 ///
 /// (2) The type parameter appears in the type of the trait.  For
 /// example, if the type parameter is `T` and the trait type is
-/// `deque<T>`, then whatever borrowed ptrs may appear in `T` also
+/// `deque<T>`, then whatever references may appear in `T` also
 /// appear in `deque<T>`.
 ///
 /// (3) The type parameter is sendable (and therefore does not contain
-/// borrowed ptrs).
+/// references).
 ///
 /// FIXME(#5723)---This code should probably move into regionck.
 pub fn check_cast_for_escaping_regions(
@@ -573,7 +572,7 @@ pub fn check_cast_for_escaping_regions(
             // if !target_regions.iter().any(|t_r| is_subregion_of(cx, *t_r, r)) {
             //     cx.tcx.sess.span_err(
             //         source_span,
-            //         format!("source contains borrowed pointer with lifetime \
+            //         format!("source contains reference with lifetime \
             //               not found in the target type `{}`",
             //              ty_to_str(cx.tcx, target_ty)));
             //     note_and_explain_region(

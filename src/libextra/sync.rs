@@ -431,7 +431,7 @@ struct RWLockInner {
     // (or reader/downgrader) race.
     // By the way, if we didn't care about the assert in the read unlock path,
     // we could instead store the mode flag in write_downgrade's stack frame,
-    // and have the downgrade tokens store a borrowed pointer to it.
+    // and have the downgrade tokens store a reference to it.
     read_mode:  bool,
     // The only way the count flag is ever accessed is with xadd. Since it is
     // a read-modify-write operation, multiple xadds on different cores will

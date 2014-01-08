@@ -1752,7 +1752,7 @@ fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
  * think of them as kind of an "anti-kind".  They track the kinds of values
  * and thinks that are contained in types.  Having a larger contents for
  * a type tends to rule that type *out* from various kinds.  For example,
- * a type that contains a borrowed pointer is not sendable.
+ * a type that contains a reference is not sendable.
  *
  * The reason we compute type contents and not kinds is that it is
  * easier for me (nmatsakis) to think about what is contained within
@@ -2188,7 +2188,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                          mutbl: ast::Mutability)
                          -> TypeContents {
         /*!
-         * Type contents due to containing a borrowed pointer
+         * Type contents due to containing a reference
          * with the region `region` and borrow kind `bk`
          */
 

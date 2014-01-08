@@ -662,7 +662,7 @@ impl<'a> GatherLoanCtxt<'a> {
         //!         &mut v.counter
         //!     }
         //!
-        //! In this case, the borrowed pointer (`'a`) outlives the
+        //! In this case, the reference (`'a`) outlives the
         //! variable `v` that hosts it. Note that this doesn't come up
         //! with immutable `&` pointers, because borrows of such pointers
         //! do not require restrictions and hence do not cause a loan.

@@ -719,7 +719,7 @@ impl BorrowckCtxt {
             err_out_of_scope(super_scope, sub_scope) => {
                 note_and_explain_region(
                     self.tcx,
-                    "borrowed pointer must be valid for ",
+                    "reference must be valid for ",
                     sub_scope,
                     "...");
                 note_and_explain_region(

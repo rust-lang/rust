@@ -10,7 +10,7 @@
 
 // xfail-test #5723
 
-// Test that you cannot escape a borrowed pointer
+// Test that you cannot escape a reference
 // into a trait.
 
 struct ctxt { v: uint }
@@ -29,7 +29,7 @@ fn make_gc() -> @get_ctxt  {
     let ctxt = ctxt { v: 22u };
     let hc = has_ctxt { c: &ctxt };
     return @hc as @get_ctxt;
-    //^~ ERROR source contains borrowed pointer
+    //^~ ERROR source contains reference
 }
 
 fn main() {
