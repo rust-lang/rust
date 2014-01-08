@@ -300,8 +300,8 @@ impl DeadVisitor {
     fn symbol_is_live(&mut self, id: ast::NodeId,
                       ctor_id: Option<ast::NodeId>) -> bool {
         if self.live_symbols.contains(&id)
-           || ctor_id.map_default(false,
-                                  |ctor| self.live_symbols.contains(&ctor)) {
+           || ctor_id.map_or(false,
+                             |ctor| self.live_symbols.contains(&ctor)) {
             return true;
         }
         // If it's a type whose methods are live, then it's live, too.

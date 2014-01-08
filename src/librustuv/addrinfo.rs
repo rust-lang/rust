@@ -72,7 +72,7 @@ impl GetAddrInfoRequest {
                 ai_next: null(),
             }
         });
-        let hint_ptr = hint.as_ref().map_default(null(), |x| x as *uvll::addrinfo);
+        let hint_ptr = hint.as_ref().map_or(null(), |x| x as *uvll::addrinfo);
         let mut req = Request::new(uvll::UV_GETADDRINFO);
 
         return match unsafe {

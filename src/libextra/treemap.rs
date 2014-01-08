@@ -820,7 +820,7 @@ impl<K: TotalOrd, V> TreeNode<K, V> {
 
 // Remove left horizontal link by rotating right
 fn skew<K: TotalOrd, V>(node: &mut ~TreeNode<K, V>) {
-    if node.left.as_ref().map_default(false, |x| x.level == node.level) {
+    if node.left.as_ref().map_or(false, |x| x.level == node.level) {
         let mut save = node.left.take_unwrap();
         swap(&mut node.left, &mut save.right); // save.right now None
         swap(node, &mut save);
@@ -831,8 +831,8 @@ fn skew<K: TotalOrd, V>(node: &mut ~TreeNode<K, V>) {
 // Remove dual horizontal link by rotating left and increasing level of
 // the parent
 fn split<K: TotalOrd, V>(node: &mut ~TreeNode<K, V>) {
-    if node.right.as_ref().map_default(false,
-      |x| x.right.as_ref().map_default(false, |y| y.level == node.level)) {
+    if node.right.as_ref().map_or(false,
+      |x| x.right.as_ref().map_or(false, |y| y.level == node.level)) {
         let mut save = node.right.take_unwrap();
         swap(&mut node.right, &mut save.left); // save.left now None
         save.level += 1;
@@ -938,8 +938,8 @@ fn remove<K: TotalOrd, V>(node: &mut Option<~TreeNode<K, V>>,
         };
 
         if rebalance {
-            let left_level = save.left.as_ref().map_default(0, |x| x.level);
-            let right_level = save.right.as_ref().map_default(0, |x| x.level);
+            let left_level = save.left.as_ref().map_or(0, |x| x.level);
+            let right_level = save.right.as_ref().map_or(0, |x| x.level);
 
             // re-balance, if necessary
             if left_level < save.level - 1 || right_level < save.level - 1 {
