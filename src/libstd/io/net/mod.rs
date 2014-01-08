@@ -14,5 +14,8 @@ pub mod addrinfo;
 pub mod tcp;
 pub mod udp;
 pub mod ip;
+// Windows does not support Raw sockets
+#[cfg(unix)]
+pub mod raw;
 #[cfg(unix)]
 pub mod unix;
