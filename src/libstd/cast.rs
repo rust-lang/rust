@@ -64,7 +64,7 @@ pub unsafe fn transmute<L, G>(thing: L) -> G {
 #[inline]
 pub unsafe fn transmute_mut<'a,T>(ptr: &'a T) -> &'a mut T { transmute(ptr) }
 
-/// Coerce a borrowed pointer to have an arbitrary associated region.
+/// Coerce a reference to have an arbitrary associated region.
 #[inline]
 pub unsafe fn transmute_region<'a,'b,T>(ptr: &'a T) -> &'b T {
     transmute(ptr)
@@ -82,7 +82,7 @@ pub unsafe fn transmute_immut_unsafe<T,P:RawPtr<T>>(ptr: P) -> *T {
     transmute(ptr)
 }
 
-/// Coerce a borrowed mutable pointer to have an arbitrary associated region.
+/// Coerce a mutable reference to have an arbitrary associated region.
 #[inline]
 pub unsafe fn transmute_mut_region<'a,'b,T>(ptr: &'a mut T) -> &'b mut T {
     transmute(ptr)

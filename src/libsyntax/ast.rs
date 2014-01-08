@@ -371,7 +371,7 @@ pub enum Pat_ {
     PatTup(~[@Pat]),
     PatBox(@Pat),
     PatUniq(@Pat),
-    PatRegion(@Pat), // borrowed pointer pattern
+    PatRegion(@Pat), // reference pattern
     PatLit(@Expr),
     PatRange(@Expr, @Expr),
     // [a, b, ..i, y, z] is represented as
