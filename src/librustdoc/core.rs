@@ -15,6 +15,7 @@ use rustc::middle::privacy;
 
 use syntax::ast;
 use syntax::diagnostic;
+use syntax::parse::token;
 use syntax::parse;
 use syntax;
 
@@ -71,7 +72,8 @@ fn get_ast_and_resolve(cpath: &Path,
 
     let mut cfg = build_configuration(sess);
     for cfg_ in cfgs.move_iter() {
-        cfg.push(@dummy_spanned(ast::MetaWord(cfg_.to_managed())));
+        let cfg_ = token::intern_and_get_ident(cfg_);
+        cfg.push(@dummy_spanned(ast::MetaWord(cfg_)));
     }
 
     let crate = phase_1_parse_input(sess, cfg.clone(), &input);

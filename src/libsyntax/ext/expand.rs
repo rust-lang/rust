@@ -221,12 +221,12 @@ pub fn expand_mod_items(module_: &ast::Mod, fld: &mut MacroExpander) -> ast::Mod
         item.attrs.rev_iter().fold(~[*item], |items, attr| {
             let mname = attr.name();
 
-            match fld.extsbox.find(&intern(mname)) {
+            match fld.extsbox.find(&intern(mname.get())) {
               Some(&ItemDecorator(dec_fn)) => {
                   fld.cx.bt_push(ExpnInfo {
                       call_site: attr.span,
                       callee: NameAndSpan {
-                          name: mname,
+                          name: mname.get().to_managed(),
                           format: MacroAttribute,
                           span: None
                       }

@@ -14,6 +14,7 @@
 
 use ast::Name;
 
+use std::cast;
 use std::cell::RefCell;
 use std::cmp::Equiv;
 use std::hashmap::HashMap;
@@ -149,6 +150,16 @@ impl StrInterner {
     pub fn get(&self, idx: Name) -> @str {
         let vect = self.vect.borrow();
         vect.get()[idx]
+    }
+
+    /// Returns this string with lifetime tied to the interner. Since
+    /// strings may never be removed from the interner, this is safe.
+    pub fn get_ref<'a>(&'a self, idx: Name) -> &'a str {
+        let vect = self.vect.borrow();
+        let s: &str = vect.get()[idx];
+        unsafe {
+            cast::transmute(s)
+        }
     }
 
     pub fn len(&self) -> uint {

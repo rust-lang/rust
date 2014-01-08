@@ -71,10 +71,10 @@ use parse::common::{seq_sep_trailing_disallowed, seq_sep_trailing_allowed};
 use parse::lexer::Reader;
 use parse::lexer::TokenAndSpan;
 use parse::obsolete::*;
-use parse::token::{can_begin_expr, get_ident_interner, ident_to_str, is_ident};
-use parse::token::{is_ident_or_path};
-use parse::token::{is_plain_ident, INTERPOLATED, keywords, special_idents};
-use parse::token::{token_to_binop};
+use parse::token::{INTERPOLATED, InternedString, can_begin_expr, get_ident};
+use parse::token::{get_ident_interner, ident_to_str, is_ident};
+use parse::token::{is_ident_or_path, is_plain_ident, keywords};
+use parse::token::{special_idents, token_to_binop};
 use parse::token;
 use parse::{new_sub_parser_from_file, ParseSess};
 use opt_vec;
@@ -804,6 +804,10 @@ impl Parser {
 
     pub fn id_to_str(&mut self, id: Ident) -> @str {
         get_ident_interner().get(id.name)
+    }
+
+    pub fn id_to_interned_str(&mut self, id: Ident) -> InternedString {
+        get_ident(id.name)
     }
 
     // Is the current token one of the keywords that signals a bare function

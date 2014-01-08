@@ -30,6 +30,7 @@ use syntax::ext::base::{ExtCtxt, MacroCrate};
 use syntax::{ast, attr, codemap, diagnostic, fold, visit};
 use syntax::attr::AttrMetaMethods;
 use syntax::fold::Folder;
+use syntax::parse::token::InternedString;
 use syntax::visit::Visitor;
 use syntax::util::small_vector::SmallVector;
 use syntax::crateid::CrateId;
@@ -77,7 +78,7 @@ fn fold_mod(m: &ast::Mod, fold: &mut CrateSetup) -> ast::Mod {
     fn strip_main(item: @ast::Item) -> @ast::Item {
         @ast::Item {
             attrs: item.attrs.iter().filter_map(|attr| {
-                if "main" != attr.name() {
+                if !attr.name().equiv(&("main")) {
                     Some(*attr)
                 } else {
                     None
@@ -101,13 +102,15 @@ fn fold_item(item: @ast::Item, fold: &mut CrateSetup)
     let mut had_pkg_do = false;
 
     for attr in item.attrs.iter() {
-        if "pkg_do" == attr.name() {
+        if attr.name().equiv(&("pkg_do")) {
             had_pkg_do = true;
             match attr.node.value.node {
                 ast::MetaList(_, ref mis) => {
                     for mi in mis.iter() {
                         match mi.node {
-                            ast::MetaWord(cmd) => cmds.push(cmd.to_owned()),
+                            ast::MetaWord(ref cmd) => {
+                                cmds.push(cmd.get().to_owned())
+                            }
                             _ => {}
                         };
                     }
@@ -314,7 +317,8 @@ pub fn compile_input(context: &BuildContext,
     if !attr::contains_name(crate.attrs, "crate_id") {
         // FIXME (#9639): This needs to handle non-utf8 paths
         let crateid_attr =
-            attr::mk_name_value_item_str(@"crate_id", crate_id.to_str().to_managed());
+            attr::mk_name_value_item_str(InternedString::new("crate_id"),
+                                         crate_id.to_str().to_managed());
 
         debug!("crateid attr: {:?}", crateid_attr);
         crate.attrs.push(attr::mk_attr(crateid_attr));
