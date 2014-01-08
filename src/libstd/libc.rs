@@ -2648,12 +2648,14 @@ pub mod consts {
             pub static AF_INET6: c_int = 28;
             pub static SOCK_STREAM: c_int = 1;
             pub static SOCK_DGRAM: c_int = 2;
+            pub static SOCK_RAW: c_int = 3;
             pub static IPPROTO_TCP: c_int = 6;
             pub static IPPROTO_IP: c_int = 0;
             pub static IPPROTO_IPV6: c_int = 41;
             pub static IP_MULTICAST_TTL: c_int = 10;
             pub static IP_MULTICAST_LOOP: c_int = 11;
             pub static IP_TTL: c_int = 4;
+            pub static IP_HDRINCL: c_int = 2;
             pub static IP_ADD_MEMBERSHIP: c_int = 12;
             pub static IP_DROP_MEMBERSHIP: c_int = 13;
             pub static IPV6_ADD_MEMBERSHIP: c_int = 12;
@@ -2669,6 +2671,7 @@ pub mod consts {
             use libc::types::os::arch::c95::c_int;
 
             pub static O_SYNC : c_int = 128;
+            pub static O_NONBLOCK : c_int = 4;
             pub static CTL_KERN: c_int = 1;
             pub static KERN_PROC: c_int = 14;
             pub static KERN_PROC_PATHNAME: c_int = 12;
@@ -3023,12 +3026,14 @@ pub mod consts {
             pub static AF_INET6: c_int = 30;
             pub static SOCK_STREAM: c_int = 1;
             pub static SOCK_DGRAM: c_int = 2;
+            pub static SOCK_RAW: c_int = 3;
             pub static IPPROTO_TCP: c_int = 6;
             pub static IPPROTO_IP: c_int = 0;
             pub static IPPROTO_IPV6: c_int = 41;
             pub static IP_MULTICAST_TTL: c_int = 10;
             pub static IP_MULTICAST_LOOP: c_int = 11;
             pub static IP_TTL: c_int = 4;
+            pub static IP_HDRINCL: c_int = 2;
             pub static IP_ADD_MEMBERSHIP: c_int = 12;
             pub static IP_DROP_MEMBERSHIP: c_int = 13;
             pub static IPV6_ADD_MEMBERSHIP: c_int = 12;
