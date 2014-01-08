@@ -322,7 +322,7 @@ mod test {
     use io;
     use prelude::*;
     use super::*;
-    use super::super::mem::{MemReader, MemWriter};
+    use super::super::mem::{MemReader, MemWriter, BufReader};
     use Harness = extra::test::BenchHarness;
 
     /// A type, free to create, primarily intended for benchmarking creation of wrappers that, just
@@ -526,6 +526,12 @@ mod test {
         assert_eq!(reader.read(buf), None);
     }
 
+    #[test]
+    fn read_char_buffered() {
+        let buf = [195u8, 159u8];
+        let mut reader = BufferedReader::with_capacity(1, BufReader::new(buf));
+        assert_eq!(reader.read_char(), Some('ß'));
+    }
 
     #[bench]
     fn bench_buffered_reader(bh: &mut Harness) {
