@@ -20,13 +20,17 @@ collector is task-local so `Gc<T>` is not sendable.
 #[allow(experimental)];
 
 use kinds::Freeze;
+use container::Container;
 use clone::{Clone, DeepClone};
+use iter::Iterator;
 use mem;
 use option::{Some, None};
 use ptr;
+use ptr::RawPtr;
 use rt::local;
 use rt::task::{Task, GcUninit, GcExists, GcBorrowed};
 use util::replace;
+use vec::ImmutableVector;
 
 use unstable::intrinsics::{owns_new_managed, move_val_init, needs_drop};
 
@@ -35,6 +39,76 @@ pub mod collector;
 fn pointer_run_dtor<T>(p: *mut ()) {
     unsafe {
         ptr::read_ptr(p as *T);
+    }
+}
+
+/// Possibly register the changes to the GC roots described by the
+/// arguments.
+///
+/// - `removals` contains the beginning of memory regions that were
+///   (possibly) previously registered as GC roots. These pointers do
+///   not have to have previously been registered nor do they even
+///   have to be valid pointers.
+/// - `additions` contains the beginning and length of memory regions
+///   to register as new GC roots (including ones that are already
+///   registered but now have a different length)
+///
+/// The elements of `removals` are removed before `additions` are
+/// added.
+///
+/// The registration only occurs if `T` actually does have the
+/// possibility to contain `Gc<T>` (determined statically). Pointers
+/// passed in `additions` should be removed as roots just before they
+/// are deallocated or otherwise become invalid.
+#[inline]
+pub unsafe fn register_root_changes<T>(removals: &[*T],
+                                       additions: &[(*T, uint)]) {
+    if owns_new_managed::<T>() {
+        register_root_changes_always::<T>(removals, additions)
+    }
+}
+
+/// Unconditionally perform the registration and unregistration of GC
+/// roots, ignoring type information.
+///
+/// See the conditional but otherwise identical
+/// `register_root_changes` for description.
+pub unsafe fn register_root_changes_always<T>(removals: &[*T],
+                                              additions: &[(*T, uint)]) {
+    let gc = {
+        let mut task = local::Local::borrow(None::<Task>);
+        replace(&mut task.get().gc, GcBorrowed)
+    };
+    let mut gc = match gc {
+        // first GC interaction in this task, so create a new
+        // collector
+        GcUninit => {
+            if additions.len() != 0 {
+                // we need to add some roots, and we need a GC for
+                // that.
+                ~collector::GarbageCollector::new()
+            } else {
+                // we are only removing things, and if the GC doesn't
+                // exist, the pointers are already not registered as
+                // roots.
+                return
+            }
+        }
+        GcExists(gc) => gc,
+        GcBorrowed => fail!("register_root: Gc already borrowed.")
+    };
+
+    for ptr in removals.iter() {
+        gc.unregister_root(*ptr as *());
+    }
+    for &(ptr, length) in additions.iter() {
+        let end = ptr.offset(length as int);
+        gc.register_root(ptr as *(), end as *());
+    }
+
+    {
+        let mut task = local::Local::borrow(None::<Task>);
+        task.get().gc = GcExists(gc);
     }
 }
 
@@ -81,7 +155,6 @@ impl<T: 'static> Gc<T> {
             // e.g. Gc<Vec<Gc<T>>> will fail/crash when collected.
             gc = replace(&mut task.gc, GcBorrowed);
         }
-
 
         let mut gc = match gc {
             // first GC allocation in this task, so create a new
