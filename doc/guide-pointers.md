@@ -3,7 +3,7 @@
 Rust's pointers are one of its more unique and compelling features. Pointers
 are also one of the more confusing topics for newcomers to Rust. They can also
 be confusing for people coming from other languages that support pointers, such
-as C++. This tutorial will help you understand this important topic.
+as C++. This guide will help you understand this important topic.
 
 # You don't actually need pointers
 
@@ -13,8 +13,7 @@ that emphasizes safety. Pointers, as the joke goes, are very pointy: it's easy
 to accidentally stab yourself. Therefore, Rust is made in a way such that you
 don't need them very often.
 
-"But tutorial!" you may cry. "My co-worker wrote a function that looks like
-this:
+"But guide!" you may cry. "My co-worker wrote a function that looks like this:
 
 ~~~rust
 fn succ(x: &int) -> int { *x + 1 }
@@ -250,6 +249,12 @@ struct.
 
 # Managed Pointers
 
+> **Note**: the `@` form of managed pointers is deprecated and behind a
+> feature gate (it requires a `#[feature(managed_pointers)];` attribute on
+> the crate root; remember the semicolon!). There are replacements, currently 
+> there is `std::rc::Rc` and `std::gc::Gc` for shared ownership via reference
+> counting and garbage collection respectively.
+
 Managed pointers, notated by an `@`, are used when having a single owner for
 some data isn't convenient or possible. This generally happens when your
 program is very large and complicated.
@@ -375,12 +380,12 @@ duration a 'lifetime'. Let's try a more complex example:
 ~~~rust
 fn main() {
     let mut x = ~5;
-    if(*x < 10) {
+    if *x < 10 {
         let y = &x;
         println!("Oh no: {:?}", y);
         return;
     }
-    *x = *x - 1;
+    *x -= 1;
     println!("Oh no: {:?}", x);
 }
 ~~~
@@ -392,14 +397,14 @@ mutated, and therefore, lets us pass. This wouldn't work:
 ~~~rust {.xfail-test}
 fn main() {
     let mut x = ~5;
-    if(*x < 10) {
+    if *x < 10 {
         let y = &x;
-        *x = *x - 1;
+        *x -= 1;
 
         println!("Oh no: {:?}", y);
         return;
     }
-    *x = *x - 1;
+    *x -= 1;
     println!("Oh no: {:?}", x);
 }
 ~~~
@@ -408,7 +413,7 @@ It gives this error:
 
 ~~~ {.notrust}
 test.rs:5:8: 5:10 error: cannot assign to `*x` because it is borrowed
-test.rs:5         *x = *x - 1;
+test.rs:5         *x -= 1;
                   ^~
 test.rs:4:16: 4:18 note: borrow of `*x` occurs here
 test.rs:4         let y = &x;
@@ -416,8 +421,8 @@ test.rs:4         let y = &x;
 ~~~
 
 As you might guess, this kind of analysis is complex for a human, and therefore
-hard for a computer, too! There is an entire [tutorial devoted to borrowed
-pointers and lifetimes](tutorial-lifetimes.html) that goes into lifetimes in
+hard for a computer, too! There is an entire [guide devoted to borrowed
+pointers and lifetimes](guide-lifetimes.html) that goes into lifetimes in
 great detail, so if you want the full details, check that out.
 
 # Returning Pointers
@@ -469,8 +474,9 @@ fn main() {
 You may think that this gives us terrible performance: return a value and then
 immediately box it up?!?! Isn't that the worst of both worlds? Rust is smarter
 than that. There is no copy in this code. `main` allocates enough room for the
-`@int`, passes it into `foo` as `x`, and then `foo` writes the value into the
-new box. This writes the return value directly into the allocated box.
+`@int`, passes a pointer to that memory into `foo` as `x`, and then `foo` writes 
+the value straight into that pointer. This writes the return value directly into
+the allocated box.
 
 This is important enough that it bears repeating: pointers are not for optimizing
 returning values from your code. Allow the caller to choose how they want to
@@ -479,4 +485,4 @@ use your output.
 
 # Related Resources
 
-* [Lifetimes tutorial](tutorial-lifetimes.html)
+* [Lifetimes guide](guide-lifetimes.html)
