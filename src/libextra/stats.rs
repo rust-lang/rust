@@ -432,7 +432,6 @@ pub fn freq_count<T: Iterator<U>, U: Eq+Hash>(mut iter: T) -> hashmap::HashMap<U
 
 #[cfg(test)]
 mod tests {
-
     use stats::Stats;
     use stats::Summary;
     use stats::write_5_number_summary;
@@ -1018,6 +1017,7 @@ mod tests {
 mod bench {
     use extra::test::BenchHarness;
     use std::vec;
+    use stats::Stats;
 
     #[bench]
     fn sum_three_items(bh: &mut BenchHarness) {

@@ -81,13 +81,15 @@ pub fn getcwd() -> Path {
 
 #[cfg(windows)]
 pub mod win32 {
+    use libc::types::os::arch::extra::DWORD;
     use libc;
-    use vec;
-    use str;
     use option::{None, Option};
     use option;
     use os::TMPBUF_SZ;
-    use libc::types::os::arch::extra::DWORD;
+    use str::StrSlice;
+    use str;
+    use vec::{MutableVector, ImmutableVector, OwnedVector};
+    use vec;
 
     pub fn fill_utf16_buf_and_decode(f: |*mut u16, DWORD| -> DWORD)
         -> Option<~str> {
@@ -1237,16 +1239,14 @@ pub mod consts {
 
 #[cfg(test)]
 mod tests {
+    use prelude::*;
     use c_str::ToCStr;
-    use option::Some;
     use option;
     use os::{env, getcwd, getenv, make_absolute, args};
     use os::{setenv, unsetenv};
     use os;
-    use path::Path;
     use rand::Rng;
     use rand;
-    use str::StrSlice;
 
 
     #[test]

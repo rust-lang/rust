@@ -83,6 +83,7 @@ obtained the type `Foo`, we would never match this method.
 use middle::resolve;
 use middle::ty::*;
 use middle::ty;
+use middle::typeck::astconv::AstConv;
 use middle::typeck::check::{FnCtxt, impl_self_ty};
 use middle::typeck::check::{structurally_resolved_type};
 use middle::typeck::check::vtable;

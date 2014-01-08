@@ -193,6 +193,7 @@ pub fn copy<R: Reader, W: Writer>(r: &mut R, w: &mut W) {
 
 #[cfg(test)]
 mod test {
+    use io::Decorator;
     use io::mem::{MemReader, MemWriter};
     use super::*;
     use prelude::*;

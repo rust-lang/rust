@@ -5408,8 +5408,7 @@ impl Resolver {
         }
     }
 
-    fn search_for_traits_containing_method(&mut self, name: Ident)
-                                               -> ~[DefId] {
+    fn search_for_traits_containing_method(&mut self, name: Ident) -> ~[DefId] {
         debug!("(searching for traits containing method) looking for '{}'",
                self.session.str_of(name));
 
@@ -5438,71 +5437,41 @@ impl Resolver {
                 self.populate_module_if_necessary(search_module);
 
                 let children = search_module.children.borrow();
-                for (_, &child_name_bindings) in children.get().iter() {
-                    match child_name_bindings.def_for_namespace(TypeNS) {
-                        Some(def) => {
-                            match def {
-                                DefTrait(trait_def_id) => {
-                                    if candidate_traits.contains(&trait_def_id) {
-                                        self.add_trait_info(
-                                            &mut found_traits,
-                                            trait_def_id, name);
-                                    }
-                                }
-                                _ => {
-                                    // Continue.
-                                }
-                            }
-                        }
-                        None => {
-                            // Continue.
-                        }
+                for (_, &child_names) in children.get().iter() {
+                    let def = match child_names.def_for_namespace(TypeNS) {
+                        Some(def) => def,
+                        None => continue
+                    };
+                    let trait_def_id = match def {
+                        DefTrait(trait_def_id) => trait_def_id,
+                        _ => continue,
+                    };
+                    if candidate_traits.contains(&trait_def_id) {
+                        self.add_trait_info(&mut found_traits, trait_def_id,
+                                            name);
                     }
                 }
 
                 // Look for imports.
                 let import_resolutions = search_module.import_resolutions
                                                       .borrow();
-                for (_, &import_resolution) in import_resolutions.get()
-                                                                 .iter() {
-                    match import_resolution.target_for_namespace(TypeNS) {
-                        None => {
-                            // Continue.
-                        }
-                        Some(target) => {
-                            match target.bindings.def_for_namespace(TypeNS) {
-                                Some(def) => {
-                                    match def {
-                                        DefTrait(trait_def_id) => {
-                                            if candidate_traits.contains(&trait_def_id) {
-                                                self.add_trait_info(
-                                                    &mut found_traits,
-                                                    trait_def_id, name);
-                                                self.used_imports.insert(
-                                                    import_resolution.type_id
-                                                                     .get());
-                                            }
-                                        }
-                                        _ => {
-                                            // Continue.
-                                        }
-                                    }
-                                }
-                                None => {
-                                    // Continue.
-                                }
-                            }
-                        }
+                for (_, &import) in import_resolutions.get().iter() {
+                    let target = match import.target_for_namespace(TypeNS) {
+                        None => continue,
+                        Some(target) => target,
+                    };
+                    let did = match target.bindings.def_for_namespace(TypeNS) {
+                        Some(DefTrait(trait_def_id)) => trait_def_id,
+                        Some(..) | None => continue,
+                    };
+                    if candidate_traits.contains(&did) {
+                        self.add_trait_info(&mut found_traits, did, name);
+                        self.used_imports.insert(import.type_id.get());
                     }
                 }
 
-                // Move to the next parent.
                 match search_module.parent_link {
-                    NoParentLink => {
-                        // Done.
-                        break;
-                    }
-                    ModuleParentLink(parent_module, _) |
+                    NoParentLink | ModuleParentLink(..) => break,
                     BlockParentLink(parent_module, _) => {
                         search_module = parent_module;
                     }

@@ -57,6 +57,7 @@ use middle::ty;
 use middle::typeck::rscope;
 use middle::typeck::rscope::{RegionScope};
 use middle::typeck::lookup_def_tcx;
+use util::ppaux::Repr;
 
 use std::vec;
 use syntax::abi::AbiSet;

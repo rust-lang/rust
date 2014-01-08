@@ -10,9 +10,11 @@
 
 use container::Container;
 use from_str::FromStr;
+use iter::Iterator;
 use option::{Option, None, Some};
+use str::StrSlice;
 use to_str::ToStr;
-use vec::{MutableCloneableVector, ImmutableVector};
+use vec::{MutableCloneableVector, ImmutableVector, MutableVector};
 
 pub type Port = u16;
 
@@ -335,9 +337,8 @@ impl FromStr for SocketAddr {
 
 #[cfg(test)]
 mod test {
+    use prelude::*;
     use super::*;
-    use from_str::FromStr;
-    use option::{Option, Some, None};
 
     #[test]
     fn test_from_str_ipv4() {

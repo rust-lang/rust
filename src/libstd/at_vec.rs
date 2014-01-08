@@ -169,6 +169,7 @@ pub mod raw {
     use at_vec::capacity;
     use cast;
     use cast::{transmute, transmute_copy};
+    use container::Container;
     use option::None;
     use ptr;
     use mem;

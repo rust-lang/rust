@@ -51,6 +51,7 @@ use middle::ty::{FloatVar, FnSig, IntVar, TyVar};
 use middle::ty::{IntType, UintType, substs};
 use middle::ty::{BuiltinBounds};
 use middle::ty;
+use middle::typeck::infer::{then, ToUres};
 use middle::typeck::infer::glb::Glb;
 use middle::typeck::infer::lub::Lub;
 use middle::typeck::infer::sub::Sub;
@@ -59,6 +60,7 @@ use middle::typeck::infer::unify::InferCtxtMethods;
 use middle::typeck::infer::{InferCtxt, cres, ures};
 use middle::typeck::infer::{TypeTrace};
 use util::common::indent;
+use util::ppaux::Repr;
 
 use std::result;
 use syntax::ast::{Onceness, purity};

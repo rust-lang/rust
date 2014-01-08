@@ -107,8 +107,8 @@ use middle::typeck::no_params;
 use middle::typeck::{require_same_types, method_map, vtable_map};
 use middle::lang_items::TypeIdLangItem;
 use util::common::{block_query, indenter, loop_query};
-use util::ppaux::UserString;
 use util::ppaux;
+use util::ppaux::{UserString, Repr};
 
 use std::cell::{Cell, RefCell};
 use std::hashmap::HashMap;

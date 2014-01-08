@@ -404,10 +404,11 @@ impl<A> Extendable<A> for RingBuf<A> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use container::Deque;
+    use extra::test;
     use std::clone::Clone;
     use std::cmp::Eq;
-    use extra::test;
+    use super::RingBuf;
 
     #[test]
     fn test_simple() {

@@ -1109,6 +1109,7 @@ mod test {
     use codemap;
     use codemap::Spanned;
     use fold;
+    use fold::*;
     use parse;
     use parse::token::{fresh_mark, gensym, intern, ident_to_str};
     use parse::token;

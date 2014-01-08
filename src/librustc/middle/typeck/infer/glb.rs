@@ -12,6 +12,7 @@
 use middle::ty::{BuiltinBounds};
 use middle::ty::RegionVid;
 use middle::ty;
+use middle::typeck::infer::then;
 use middle::typeck::infer::combine::*;
 use middle::typeck::infer::lattice::*;
 use middle::typeck::infer::lub::Lub;

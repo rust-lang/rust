@@ -58,14 +58,9 @@ Several modules in `core` are clients of `rt`:
 #[allow(missing_doc)];
 
 use any::Any;
-use clone::Clone;
-use container::Container;
-use iter::Iterator;
 use option::Option;
-use ptr::RawPtr;
 use result::Result;
 use task::TaskOpts;
-use vec::{OwnedVector, MutableVector, ImmutableVector};
 
 use self::task::{Task, BlockedTask};
 

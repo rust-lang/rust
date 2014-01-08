@@ -104,8 +104,9 @@ impl<T, A: Acceptor<T>> Acceptor<T> for Option<A> {
 
 #[cfg(test)]
 mod test {
-    use option::*;
+    use prelude::*;
     use super::super::mem::*;
+    use io::Decorator;
     use super::super::{PreviousIoError, io_error};
 
     #[test]

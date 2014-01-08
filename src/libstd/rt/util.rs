@@ -11,11 +11,13 @@
 use container::Container;
 use fmt;
 use from_str::FromStr;
+use iter::Iterator;
 use libc;
 use option::{Some, None, Option};
 use os;
 use str::StrSlice;
 use unstable::running_on_valgrind;
+use vec::ImmutableVector;
 
 // Indicates whether we should perform expensive sanity checks, including rtassert!
 // XXX: Once the runtime matures remove the `true` below to turn off rtassert, etc.

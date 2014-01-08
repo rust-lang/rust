@@ -11,8 +11,9 @@
 //! A wrapper around another RNG that reseeds it after it
 //! generates a certain number of random bytes.
 
-use rand::{Rng, SeedableRng};
+use container::Container;
 use default::Default;
+use rand::{Rng, SeedableRng};
 
 /// How many bytes of entropy the underling RNG is allowed to generate
 /// before it is reseeded.
@@ -141,11 +142,9 @@ impl Default for ReseedWithDefault {
 
 #[cfg(test)]
 mod test {
+    use prelude::*;
     use super::*;
     use rand::{SeedableRng, Rng};
-    use default::Default;
-    use iter::range;
-    use option::{None, Some};
 
     struct Counter {
         i: u32

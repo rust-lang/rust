@@ -377,10 +377,10 @@ pub unsafe fn from_c_multistring(buf: *libc::c_char,
 
 #[cfg(test)]
 mod tests {
+    use prelude::*;
     use super::*;
     use libc;
     use ptr;
-    use option::{Some, None};
 
     #[test]
     fn test_str_multistring_parsing() {
@@ -568,11 +568,10 @@ mod tests {
 
 #[cfg(test)]
 mod bench {
-    use iter::range;
-    use libc;
-    use option::Some;
-    use ptr;
     use extra::test::BenchHarness;
+    use libc;
+    use prelude::*;
+    use ptr;
 
     #[inline]
     fn check(s: &str, c_str: *libc::c_char) {

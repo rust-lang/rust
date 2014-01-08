@@ -163,12 +163,11 @@ float_impl! { f64 }
 
 #[cfg(test)]
 mod tests {
+    use prelude::*;
     use super::*;
     use rand::*;
+    use rand::distributions::*;
     use num::Bounded;
-    use iter::range;
-    use option::{Some, None};
-    use vec::ImmutableVector;
 
     #[should_fail]
     #[test]
