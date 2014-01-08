@@ -779,7 +779,7 @@ fn namespace_error_to_str(ns: NamespaceError) -> &'static str {
 }
 
 fn Resolver(session: Session,
-            lang_items: LanguageItems,
+            lang_items: @LanguageItems,
             crate_span: Span) -> Resolver {
     let graph_root = @NameBindings();
 
@@ -837,7 +837,7 @@ fn Resolver(session: Session,
 /// The main resolver class.
 struct Resolver {
     session: @Session,
-    lang_items: LanguageItems,
+    lang_items: @LanguageItems,
 
     intr: @IdentInterner,
 
@@ -5656,7 +5656,7 @@ pub struct CrateMap {
 
 /// Entry point to crate resolution.
 pub fn resolve_crate(session: Session,
-                     lang_items: LanguageItems,
+                     lang_items: @LanguageItems,
                      crate: &Crate)
                   -> CrateMap {
     let mut resolver = Resolver(session, lang_items, crate.span);
