@@ -789,10 +789,10 @@ fn constrain_regions_in_type(
 pub mod guarantor {
     /*!
      * The routines in this module are aiming to deal with the case
-     * where a the contents of a borrowed pointer are re-borrowed.
-     * Imagine you have a borrowed pointer `b` with lifetime L1 and
+     * where a the contents of a reference are re-borrowed.
+     * Imagine you have a reference `b` with lifetime L1 and
      * you have an expression `&*b`.  The result of this borrow will
-     * be another borrowed pointer with lifetime L2 (which is an
+     * be another reference with lifetime L2 (which is an
      * inference variable).  The borrow checker is going to enforce
      * the constraint that L2 < L1, because otherwise you are
      * re-borrowing data for a lifetime larger than the original loan.
@@ -815,15 +815,15 @@ pub mod guarantor {
      * a borrow.
      *
      * The key point here is that when you are borrowing a value that
-     * is "guaranteed" by a borrowed pointer, you must link the
-     * lifetime of that borrowed pointer (L1, here) to the lifetime of
+     * is "guaranteed" by a reference, you must link the
+     * lifetime of that reference (L1, here) to the lifetime of
      * the borrow itself (L2).  What do I mean by "guaranteed" by a
-     * borrowed pointer? I mean any data that is reached by first
-     * dereferencing a borrowed pointer and then either traversing
+     * reference? I mean any data that is reached by first
+     * dereferencing a reference and then either traversing
      * interior offsets or owned pointers.  We say that the guarantor
-     * of such data it the region of the borrowed pointer that was
+     * of such data it the region of the reference that was
      * traversed.  This is essentially the same as the ownership
-     * relation, except that a borrowed pointer never owns its
+     * relation, except that a reference never owns its
      * contents.
      *
      * NB: I really wanted to use the `mem_categorization` code here
@@ -953,7 +953,7 @@ pub mod guarantor {
         guarantor: Option<ty::Region>) {
         /*!
          *
-         * Links the lifetime of the borrowed pointer resulting from a borrow
+         * Links the lifetime of the reference resulting from a borrow
          * to the lifetime of its guarantor (if any).
          */
 
@@ -1134,7 +1134,7 @@ pub mod guarantor {
                     Some(ty::AutoBorrowFn(r)) |
                     Some(ty::AutoBorrowObj(r, _)) => {
                         // If there is an autoref, then the result of this
-                        // expression will be some sort of borrowed pointer.
+                        // expression will be some sort of reference.
                         expr_ct.cat.guarantor = None;
                         expr_ct.cat.pointer = BorrowedPointer(r);
                         debug!("autoref, cat={:?}", expr_ct.cat);

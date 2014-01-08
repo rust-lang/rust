@@ -51,7 +51,7 @@ struct AsciiArt {
     priv lines: ~[~[char]],
 
     // This struct can be quite large so we'll disable copying: developers need
-    // to either pass these structs around via borrowed pointers or move them.
+    // to either pass these structs around via references or move them.
 }
 
 impl Drop for AsciiArt {

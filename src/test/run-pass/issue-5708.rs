@@ -9,12 +9,12 @@
 // except according to those terms.
 
 /*
-# ICE when returning struct with borrowed pointer to trait
+# ICE when returning struct with reference to trait
 
-A function which takes a borrowed pointer to a trait and returns a
-struct with that borrowed pointer results in an ICE.
+A function which takes a reference to a trait and returns a
+struct with that reference results in an ICE.
 
-This does not occur with concrete types, only with borrowed pointers
+This does not occur with concrete types, only with references
 to traits.
 */
 

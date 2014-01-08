@@ -1,22 +1,22 @@
-% Rust Borrowed Pointers Guide
+% The Rust References and Lifetimes Guide
 
 # Introduction
 
-Borrowed pointers are one of the more flexible and powerful tools available in
-Rust. A borrowed pointer can point anywhere: into the managed or exchange
+References are one of the more flexible and powerful tools available in
+Rust. A reference can point anywhere: into the managed or exchange
 heap, into the stack, and even into the interior of another data structure. A
-borrowed pointer is as flexible as a C pointer or C++ reference. However,
+reference is as flexible as a C pointer or C++ reference. However,
 unlike C and C++ compilers, the Rust compiler includes special static checks
-that ensure that programs use borrowed pointers safely. Another advantage of
-borrowed pointers is that they are invisible to the garbage collector, so
-working with borrowed pointers helps reduce the overhead of automatic memory
+that ensure that programs use references safely. Another advantage of
+references is that they are invisible to the garbage collector, so
+working with references helps reduce the overhead of automatic memory
 management.
 
-Despite their complete safety, a borrowed pointer's representation at runtime
+Despite their complete safety, a reference's representation at runtime
 is the same as that of an ordinary pointer in a C program. They introduce zero
 overhead. The compiler does all safety checks at compile time.
 
-Although borrowed pointers have rather elaborate theoretical
+Although references have rather elaborate theoretical
 underpinnings (region pointers), the core concepts will be familiar to
 anyone who has worked with C or C++. Therefore, the best way to explain
 how they are used—and their limitations—is probably just to work
@@ -24,8 +24,8 @@ through several examples.
 
 # By example
 
-Borrowed pointers are called *borrowed* because they are only valid for
-a limited duration. Borrowed pointers never claim any kind of ownership
+References, sometimes known as *borrowed pointers*, are only valid for
+a limited duration. References never claim any kind of ownership
 over the data that they point to: instead, they are used for cases
 where you would like to use data for a short time.
 
@@ -55,7 +55,7 @@ define it this way, calling the function will cause the points to be
 copied. For points, this is probably not so bad, but often copies are
 expensive. Worse, if the data type contains mutable fields, copying can change
 the semantics of your program in unexpected ways. So we'd like to define a
-function that takes the points by pointer. We can use borrowed pointers to do
+function that takes the points by pointer. We can use references to do
 this:
 
 ~~~
@@ -89,7 +89,7 @@ name for the same data.
 
 In contrast, we can pass the boxes `managed_box` and `owned_box` to
 `compute_distance` directly. The compiler automatically converts a box like
-`@Point` or `~Point` to a borrowed pointer like `&Point`. This is another form
+`@Point` or `~Point` to a reference like `&Point`. This is another form
 of borrowing: in this case, the caller lends the contents of the managed or
 owned box to the callee.
 
@@ -100,7 +100,7 @@ addition, the compiler will reject any code that might cause the borrowed
 value to be freed or overwrite its component fields with values of different
 types (I'll get into what kinds of actions those are shortly). This rule
 should make intuitive sense: you must wait for a borrower to return the value
-that you lent it (that is, wait for the borrowed pointer to go out of scope)
+that you lent it (that is, wait for the reference to go out of scope)
 before you can make full use of it again.
 
 # Other uses for the & operator
@@ -114,7 +114,7 @@ let on_the_stack: Point = Point {x: 3.0, y: 4.0};
 
 This declaration means that code can only pass `Point` by value to other
 functions. As a consequence, we had to explicitly take the address of
-`on_the_stack` to get a borrowed pointer. Sometimes however it is more
+`on_the_stack` to get a reference. Sometimes however it is more
 convenient to move the & operator into the definition of `on_the_stack`:
 
 ~~~
@@ -180,7 +180,7 @@ as well as from the managed box, and then compute the distance between them.
 
 We’ve seen a few examples so far of borrowing heap boxes, both managed
 and owned. Up till this point, we’ve glossed over issues of
-safety. As stated in the introduction, at runtime a borrowed pointer
+safety. As stated in the introduction, at runtime a reference
 is simply a pointer, nothing more. Therefore, avoiding C's problems
 with dangling pointers requires a compile-time safety check.
 
@@ -195,7 +195,7 @@ broader scope than the pointer itself), the compiler reports an
 error. We'll be discussing lifetimes more in the examples to come, and
 a more thorough introduction is also available.
 
-When the `&` operator creates a borrowed pointer, the compiler must
+When the `&` operator creates a reference, the compiler must
 ensure that the pointer remains valid for its entire
 lifetime. Sometimes this is relatively easy, such as when taking the
 address of a local variable or a field that is stored on the stack:
@@ -209,7 +209,7 @@ fn example1() {
 }                      // -+
 ~~~
 
-Here, the lifetime of the borrowed pointer `y` is simply L, the
+Here, the lifetime of the reference `y` is simply L, the
 remainder of the function body. The compiler need not do any other
 work to prove that code will not free `x.f`. This is true even if the
 code mutates `x`.
@@ -384,7 +384,7 @@ enum Shape {
 ~~~
 
 Now we might write a function to compute the area of a shape. This
-function takes a borrowed pointer to a shape, to avoid the need for
+function takes a reference to a shape, to avoid the need for
 copying.
 
 ~~~
@@ -466,19 +466,19 @@ same rules as the ones we saw for borrowing the interior of a owned
 box: it must be able to guarantee that the `enum` will not be
 overwritten for the duration of the borrow.  In fact, the compiler
 would accept the example we gave earlier. The example is safe because
-the shape pointer has type `&Shape`, which means "borrowed pointer to
+the shape pointer has type `&Shape`, which means "reference to
 immutable memory containing a `shape`". If, however, the type of that
 pointer were `&mut Shape`, then the ref binding would be ill-typed.
 Just as with owned boxes, the compiler will permit `ref` bindings
 into data owned by the stack frame even if the data are mutable,
 but otherwise it requires that the data reside in immutable memory.
 
-# Returning borrowed pointers
+# Returning references
 
-So far, all of the examples we have looked at, use borrowed pointers in a
+So far, all of the examples we have looked at, use references in a
 “downward” direction. That is, a method or code block creates a
-borrowed pointer, then uses it within the same scope. It is also
-possible to return borrowed pointers as the result of a function, but
+reference, then uses it within the same scope. It is also
+possible to return references as the result of a function, but
 as we'll see, doing so requires some explicit annotation.
 
 For example, we could write a subroutine like this:
@@ -496,7 +496,7 @@ explicitly. So in effect, this function declares that it takes a
 pointer with lifetime `r` and returns a pointer with that same
 lifetime.
 
-In general, it is only possible to return borrowed pointers if they
+In general, it is only possible to return references if they
 are derived from a parameter to the procedure. In that case, the
 pointer result will always have the same lifetime as one of the
 parameters; named lifetimes indicate which parameter that
@@ -532,10 +532,10 @@ fn get_x_sh(p: @Point) -> &f64 {
 ~~~
 
 Here, the function `get_x_sh()` takes a managed box as input and
-returns a borrowed pointer. As before, the lifetime of the borrowed
-pointer that will be returned is a parameter (specified by the
-caller). That means that `get_x_sh()` promises to return a borrowed
-pointer that is valid for as long as the caller would like: this is
+returns a reference. As before, the lifetime of the reference
+that will be returned is a parameter (specified by the
+caller). That means that `get_x_sh()` promises to return a reference
+that is valid for as long as the caller would like: this is
 subtly different from the first example, which promised to return a
 pointer that was valid for as long as its pointer argument was valid.
 
@@ -551,10 +551,10 @@ valid at all once it returns, as the parameter `p` may or may not be
 live in the caller. Therefore, the compiler will report an error here.
 
 In general, if you borrow a managed (or owned) box to create a
-borrowed pointer, the pointer will only be valid within the function
-and cannot be returned. This is why the typical way to return borrowed
-pointers is to take borrowed pointers as input (the only other case in
-which it can be legal to return a borrowed pointer is if the pointer
+reference, it will only be valid within the function
+and cannot be returned. This is why the typical way to return references
+is to take references as input (the only other case in
+which it can be legal to return a reference is if it
 points at a static constant).
 
 # Named lifetimes
@@ -577,7 +577,7 @@ fn select<'r, T>(shape: &'r Shape, threshold: f64,
 }
 ~~~
 
-This function takes three borrowed pointers and assigns each the same
+This function takes three references and assigns each the same
 lifetime `r`.  In practice, this means that, in the caller, the
 lifetime `r` will be the *intersection of the lifetime of the three
 region parameters*. This may be overly conservative, as in this
@@ -657,7 +657,7 @@ This is equivalent to the previous definition.
 
 # Conclusion
 
-So there you have it: a (relatively) brief tour of the borrowed pointer
+So there you have it: a (relatively) brief tour of the lifetime
 system. For more details, we refer to the (yet to be written) reference
-document on borrowed pointers, which will explain the full notation
+document on references, which will explain the full notation
 and give more examples.

@@ -18,7 +18,7 @@
 //! `std` includes modules corresponding to each of the integer types,
 //! each of the floating point types, the `bool` type, tuples, characters,
 //! strings (`str`), vectors (`vec`), managed boxes (`managed`), owned
-//! boxes (`owned`), and unsafe and borrowed pointers (`ptr`, `borrowed`).
+//! boxes (`owned`), and unsafe pointers and references (`ptr`, `borrowed`).
 //! Additionally, `std` provides pervasive types (`option` and `result`),
 //! task creation and communication primitives (`task`, `comm`), platform
 //! abstractions (`os` and `path`), basic I/O abstractions (`io`), common

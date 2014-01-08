@@ -1,4 +1,4 @@
-% Rust Packaging Guide
+% The Rust Packaging Guide
 
 # Introduction
 

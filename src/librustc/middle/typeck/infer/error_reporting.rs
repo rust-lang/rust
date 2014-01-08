@@ -226,11 +226,11 @@ impl ErrorReporting for InferCtxt {
             infer::Reborrow(span) => {
                 self.tcx.sess.span_err(
                     span,
-                    "lifetime of borrowed pointer outlines \
+                    "lifetime of reference outlines \
                      lifetime of borrowed content...");
                 note_and_explain_region(
                     self.tcx,
-                    "...the borrowed pointer is valid for ",
+                    "...the reference is valid for ",
                     sub,
                     "...");
                 note_and_explain_region(
@@ -351,7 +351,7 @@ impl ErrorReporting for InferCtxt {
             infer::AddrOf(span) => {
                 self.tcx.sess.span_err(
                     span,
-                    "borrowed pointer is not valid \
+                    "reference is not valid \
                      at the time of borrow");
                 note_and_explain_region(
                     self.tcx,
@@ -362,7 +362,7 @@ impl ErrorReporting for InferCtxt {
             infer::AutoBorrow(span) => {
                 self.tcx.sess.span_err(
                     span,
-                    "automatically borrowed pointer is not valid \
+                    "automatically reference is not valid \
                      at the time of borrow");
                 note_and_explain_region(
                     self.tcx,
@@ -532,7 +532,7 @@ impl ErrorReportingHelpers for InferCtxt {
             infer::Reborrow(span) => {
                 self.tcx.sess.span_note(
                     span,
-                    "...so that borrowed pointer does not outlive \
+                    "...so that reference does not outlive \
                     borrowed content");
             }
             infer::InfStackClosure(span) => {
@@ -586,13 +586,13 @@ impl ErrorReportingHelpers for InferCtxt {
             infer::AddrOf(span) => {
                 self.tcx.sess.span_note(
                     span,
-                    "...so that borrowed pointer is valid \
+                    "...so that reference is valid \
                      at the time of borrow");
             }
             infer::AutoBorrow(span) => {
                 self.tcx.sess.span_note(
                     span,
-                    "...so that automatically borrowed pointer is valid \
+                    "...so that automatically reference is valid \
                      at the time of borrow");
             }
             infer::BindingTypeIsNotValidAtDecl(span) => {

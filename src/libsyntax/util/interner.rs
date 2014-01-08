@@ -83,7 +83,7 @@ impl<T:Eq + IterBytes + Hash + Freeze + Clone + 'static> Interner<T> {
 }
 
 // A StrInterner differs from Interner<String> in that it accepts
-// borrowed pointers rather than @ ones, resulting in less allocation.
+// references rather than @ ones, resulting in less allocation.
 pub struct StrInterner {
     priv map: @RefCell<HashMap<@str, Name>>,
     priv vect: @RefCell<~[@str]>,

@@ -1,10 +1,10 @@
-% Rust Testing Guide
+% The Rust Testing Guide
 
 # Quick start
 
 To create test functions, add a `#[test]` attribute like this:
 
-```rust
+~~~
 fn return_two() -> int {
     2
 }
@@ -14,17 +14,17 @@ fn return_two_test() {
     let x = return_two();
     assert!(x == 2);
 }
-```
+~~~
 
 To run these tests, use `rustc --test`:
 
-```
+~~~ {.notrust}
 $ rustc --test foo.rs; ./foo
 running 1 test
 test return_two_test ... ok
 
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured
-```
+~~~
 
 `rustc foo.rs` will *not* compile the tests, since `#[test]` implies
 `#[cfg(test)]`. The `--test` flag to `rustc` implies `--cfg test`.
@@ -35,12 +35,12 @@ test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured
 Rust has built in support for simple unit testing. Functions can be
 marked as unit tests using the 'test' attribute.
 
-```rust
+~~~
 #[test]
 fn return_none_if_empty() {
     // ... test code ...
 }
-```
+~~~
 
 A test function's signature must have no arguments and no return
 value. To run the tests in a crate, it must be compiled with the
@@ -54,7 +54,7 @@ then the test fails.
 When compiling a crate with the '--test' flag '--cfg test' is also
 implied, so that tests can be conditionally compiled.
 
-```rust
+~~~
 #[cfg(test)]
 mod tests {
     #[test]
@@ -62,7 +62,7 @@ mod tests {
       // ... test code ...
     }
 }
-```
+~~~
 
 Additionally #[test] items behave as if they also have the
 #[cfg(test)] attribute, and will not be compiled when the --test flag
@@ -79,14 +79,14 @@ Tests that are intended to fail can be annotated with the
 task to fail then the test will be counted as successful; otherwise it
 will be counted as a failure. For example:
 
-```rust
+~~~
 #[test]
 #[should_fail]
 fn test_out_of_bounds_failure() {
     let v: [int] = [];
     v[0];
 }
-```
+~~~
 
 A test runner built with the '--test' flag supports a limited set of
 arguments to control which tests are run: the first free argument
@@ -126,7 +126,7 @@ amount.
 
 For example:
 
-```rust
+~~~
 extern mod extra;
 use std::vec;
 
@@ -141,7 +141,7 @@ fn initialise_a_vector(b: &mut extra::test::BenchHarness) {
     b.iter(|| {vec::from_elem(1024, 0u64);} );
     b.bytes = 1024 * 8;
 }
-```
+~~~
 
 The benchmark runner will calibrate measurement of the benchmark
 function to run the `iter` block "enough" times to get a reliable
@@ -168,7 +168,7 @@ test-runner. Benchmarks are compiled-in but not executed by default.
 
 ### Typical test run
 
-```
+~~~ {.notrust}
 > mytests
 
 running 30 tests
@@ -178,11 +178,11 @@ running driver::tests::mytest2 ... ignored
 running driver::tests::mytest30 ... ok
 
 result: ok. 28 passed; 0 failed; 2 ignored
-```
+~~~ {.notrust}
 
 ### Test run with failures
 
-```
+~~~ {.notrust}
 > mytests
 
 running 30 tests
@@ -192,11 +192,11 @@ running driver::tests::mytest2 ... ignored
 running driver::tests::mytest30 ... FAILED
 
 result: FAILED. 27 passed; 1 failed; 2 ignored
-```
+~~~
 
 ### Running ignored tests
 
-```
+~~~ {.notrust}
 > mytests --ignored
 
 running 2 tests
@@ -204,11 +204,11 @@ running driver::tests::mytest2 ... failed
 running driver::tests::mytest10 ... ok
 
 result: FAILED. 1 passed; 1 failed; 0 ignored
-```
+~~~
 
 ### Running a subset of tests
 
-```
+~~~ {.notrust}
 > mytests mytest1
 
 running 11 tests
@@ -218,11 +218,11 @@ running driver::tests::mytest10 ... ignored
 running driver::tests::mytest19 ... ok
 
 result: ok. 11 passed; 0 failed; 1 ignored
-```
+~~~
 
 ### Running benchmarks
 
-```
+~~~ {.notrust}
 > mytests --bench
 
 running 2 tests
@@ -230,7 +230,7 @@ test bench_sum_1024_ints ... bench: 709 ns/iter (+/- 82)
 test initialise_a_vector ... bench: 424 ns/iter (+/- 99) = 19320 MB/s
 
 test result: ok. 0 passed; 0 failed; 0 ignored; 2 measured
-```
+~~~
 
 ## Saving and ratcheting metrics
 

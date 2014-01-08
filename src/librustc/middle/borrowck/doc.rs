@@ -44,7 +44,7 @@ referent).
 It then uses the dataflow module to propagate which of those borrows
 may be in scope at each point in the procedure. A loan is considered
 to come into scope at the expression that caused it and to go out of
-scope when the lifetime of the resulting borrowed pointer expires.
+scope when the lifetime of the resulting reference expires.
 
 Once the in-scope loans are known for each point in the program, the
 borrow checker walks the IR again in a second pass called
@@ -146,14 +146,14 @@ result of the borrow `&mut (*x).f` in the example above:
 
 The loan states that the expression `(*x).f` has been loaned as
 mutable for the lifetime `'a`. Because the loan is mutable, that means
-that the value `(*x).f` may be mutated via the newly created borrowed
-pointer (and *only* via that pointer). This is reflected in the
+that the value `(*x).f` may be mutated via the newly created reference
+(and *only* via that pointer). This is reflected in the
 restrictions `RS` that accompany the loan.
 
 The first restriction `((*x).f, [MUTATE, CLAIM, FREEZE])` states that
 the lender may not mutate nor freeze `(*x).f`. Mutation is illegal
-because `(*x).f` is only supposed to be mutated via the new borrowed
-pointer, not by mutating the original path `(*x).f`. Freezing is
+because `(*x).f` is only supposed to be mutated via the new reference,
+not by mutating the original path `(*x).f`. Freezing is
 illegal because the path now has an `&mut` alias; so even if we the
 lender were to consider `(*x).f` to be immutable, it might be mutated
 via this alias. Both of these restrictions are temporary. They will be
@@ -164,8 +164,8 @@ The second restriction on `*x` is interesting because it does not
 apply to the path that was lent (`(*x).f`) but rather to a prefix of
 the borrowed path. This is due to the rules of inherited mutability:
 if the user were to assign to (or freeze) `*x`, they would indirectly
-overwrite (or freeze) `(*x).f`, and thus invalidate the borrowed
-pointer that was created. In general it holds that when a path is
+overwrite (or freeze) `(*x).f`, and thus invalidate the reference
+that was created. In general it holds that when a path is
 lent, restrictions are issued for all the owning prefixes of that
 path. In this case, the path `*x` owns the path `(*x).f` and,
 because `x` is an owned pointer, the path `x` owns the path `*x`.
@@ -241,7 +241,7 @@ lvalue `LV` being borrowed and the mutability `MQ` and lifetime `LT`
 of the resulting pointer. Given those, `gather_loans` applies three
 validity tests:
 
-1. `MUTABILITY(LV, MQ)`: The mutability of the borrowed pointer is
+1. `MUTABILITY(LV, MQ)`: The mutability of the reference is
 compatible with the mutability of `LV` (i.e., not borrowing immutable
 data as mutable).
 
@@ -380,9 +380,9 @@ of its owner:
       TYPE(LV) = ~Ty
       LIFETIME(LV, LT, MQ)
 
-### Checking lifetime for derefs of borrowed pointers
+### Checking lifetime for derefs of references
 
-Borrowed pointers have a lifetime `LT'` associated with them.  The
+References have a lifetime `LT'` associated with them.  The
 data they point at has been guaranteed to be valid for at least this
 lifetime. Therefore, the borrow is valid so long as the lifetime `LT`
 of the borrow is shorter than the lifetime `LT'` of the pointer
@@ -412,7 +412,7 @@ value is not mutated or moved. Note that lvalues are either
 (ultimately) owned by a local variable, in which case we can check
 whether that local variable is ever moved in its scope, or they are
 owned by the referent of an (immutable, due to condition 2) managed or
-borrowed pointer, in which case moves are not permitted because the
+references, in which case moves are not permitted because the
 location is aliasable.
 
 If the conditions of `L-Deref-Managed-Imm-User-Root` are not met, then

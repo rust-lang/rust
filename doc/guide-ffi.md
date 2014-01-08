@@ -1,4 +1,4 @@
-% Rust Foreign Function Interface Guide
+% The Rust Foreign Function Interface Guide
 
 # Introduction
 
@@ -417,7 +417,7 @@ However, there are currently no guarantees about the layout of an `enum`.
 
 Rust's owned and managed boxes use non-nullable pointers as handles which point to the contained
 object. However, they should not be manually created because they are managed by internal
-allocators. Borrowed pointers can safely be assumed to be non-nullable pointers directly to the
+allocators. References can safely be assumed to be non-nullable pointers directly to the
 type. However, breaking the borrow checking or mutability rules is not guaranteed to be safe, so
 prefer using raw pointers (`*`) if that's needed because the compiler can't make as many assumptions
 about them.
