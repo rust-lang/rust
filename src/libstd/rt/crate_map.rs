@@ -10,7 +10,9 @@
 
 use container::MutableSet;
 use hashmap::HashSet;
+use iter::Iterator;
 use option::{Some, None, Option};
+use ptr::RawPtr;
 use vec::ImmutableVector;
 use rt::rtio::EventLoop;
 

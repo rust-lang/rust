@@ -457,6 +457,7 @@ pub fn collect<T, Iter: Iterator<Option<T>>, V: FromIterator<T>>(iter: Iter) -> 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use prelude::*;
 
     use iter::range;
     use str::StrSlice;

@@ -977,11 +977,13 @@ static TAG_CONT_U8: u8 = 128u8;
 /// Unsafe operations
 pub mod raw {
     use cast;
+    use container::Container;
     use libc;
     use ptr;
-    use str::{is_utf8, OwnedStr};
+    use ptr::RawPtr;
+    use str::{is_utf8, OwnedStr, StrSlice};
     use vec;
-    use vec::MutableVector;
+    use vec::{MutableVector, ImmutableVector, OwnedVector};
     use unstable::raw::Slice;
 
     /// Create a Rust string from a *u8 buffer of the given length
@@ -1137,10 +1139,12 @@ Section: Trait implementations
 #[cfg(not(test))]
 #[allow(missing_doc)]
 pub mod traits {
-    use ops::Add;
+    use container::Container;
     use cmp::{TotalOrd, Ordering, Less, Equal, Greater, Eq, Ord, Equiv, TotalEq};
-    use super::{Str, eq_slice};
+    use iter::Iterator;
+    use ops::Add;
     use option::{Some, None};
+    use str::{Str, StrSlice, OwnedStr, eq_slice};
 
     impl<'a> Add<&'a str,~str> for &'a str {
         #[inline]
@@ -2764,14 +2768,11 @@ impl Default for @str {
 
 #[cfg(test)]
 mod tests {
-    use container::Container;
-    use option::{None, Some, Option};
+    use iter::AdditiveIterator;
+    use prelude::*;
     use ptr;
     use str::*;
-    use vec::{Vector, ImmutableVector, CopyableVector};
-    use cmp::{TotalOrd, Less, Equal, Greater};
     use send_str::{SendStrOwned, SendStrStatic};
-    use from_str::from_str;
 
     #[test]
     fn test_eq() {

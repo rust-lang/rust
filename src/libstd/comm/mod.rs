@@ -238,7 +238,7 @@ use rt::local::Local;
 use rt::task::{Task, BlockedTask};
 use rt::thread::Thread;
 use sync::atomics::{AtomicInt, AtomicBool, SeqCst, Relaxed};
-use vec::{ImmutableVector, OwnedVector};
+use vec::OwnedVector;
 
 use spsc = sync::spsc_queue;
 use mpsc = sync::mpsc_queue;

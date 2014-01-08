@@ -9,6 +9,8 @@
 // except according to those terms.
 
 use c_str::{ToCStr, CString};
+use container::Container;
+use iter::Iterator;
 use libc::{c_char, size_t};
 use option::{Option, None, Some};
 use ptr::RawPtr;
@@ -19,7 +21,7 @@ use str::OwnedStr;
 use str;
 use uint;
 use unstable::raw;
-use vec::ImmutableVector;
+use vec::{ImmutableVector, OwnedVector};
 
 pub static FROZEN_BIT: uint = 1 << (uint::bits - 1);
 pub static MUT_BIT: uint = 1 << (uint::bits - 2);

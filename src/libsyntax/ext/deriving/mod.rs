@@ -21,7 +21,6 @@ library.
 use ast::{enum_def, Ident, item, Generics, struct_def};
 use ast::{MetaItem, MetaList, MetaNameValue, MetaWord};
 use ext::base::ExtCtxt;
-use ext::build::AstBuilder;
 use codemap::Span;
 
 pub mod clone;

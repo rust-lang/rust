@@ -45,7 +45,6 @@ use syntax::codemap;
 use syntax::codemap::Span;
 use util::common::indent;
 use util::ppaux::{bound_region_to_str, ty_to_str, trait_ref_to_str, Repr};
-use util::ppaux::{UserString};
 
 pub mod doc;
 pub mod macros;

@@ -17,6 +17,7 @@ use std::ptr;
 use std::rt::rtio;
 use std::rt::task::BlockedTask;
 use std::str;
+use std::unstable::finally::Finally;
 use std::vec;
 
 use homing::{HomingIO, HomeHandle};

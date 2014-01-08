@@ -100,8 +100,8 @@ fn lookup(hostname: Option<&str>, servname: Option<&str>, hint: Option<Hint>)
 
 #[cfg(test)]
 mod test {
-    use option::Some;
     use io::net::ip::Ipv4Addr;
+    use prelude::*;
     use super::*;
 
     #[test]

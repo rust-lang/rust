@@ -42,6 +42,7 @@ use middle::typeck::astconv;
 use middle::typeck::rscope::*;
 use middle::typeck::{CrateCtxt, lookup_def_tcx, no_params, write_ty_to_tcx};
 use util::ppaux;
+use util::ppaux::Repr;
 
 use std::vec;
 use syntax::abi::AbiSet;

@@ -10,6 +10,7 @@
 
 //! The exponential distribution.
 
+use num::Exponential;
 use rand::{Rng, Rand};
 use rand::distributions::{ziggurat, ziggurat_tables, Sample, IndependentSample};
 
@@ -90,10 +91,10 @@ impl IndependentSample<f64> for Exp {
 
 #[cfg(test)]
 mod test {
+    use rand::distributions::*;
+    use prelude::*;
     use rand::*;
     use super::*;
-    use iter::range;
-    use option::{Some, None};
 
     #[test]
     fn test_exp() {
@@ -119,11 +120,11 @@ mod test {
 #[cfg(test)]
 mod bench {
     use extra::test::BenchHarness;
+    use mem::size_of;
+    use prelude::*;
     use rand::{XorShiftRng, RAND_BENCH_N};
     use super::*;
-    use iter::range;
-    use option::{Some, None};
-    use mem::size_of;
+    use rand::distributions::*;
 
     #[bench]
     fn rand_exp(bh: &mut BenchHarness) {

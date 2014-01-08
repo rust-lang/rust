@@ -34,6 +34,7 @@ use middle::typeck::infer::combine::Combine;
 use middle::typeck::infer::InferCtxt;
 use middle::typeck::infer::{new_infer_ctxt, resolve_ivar, resolve_type};
 use middle::typeck::infer;
+use util::ppaux::Repr;
 use syntax::ast::{Crate, DefId, DefStruct, DefTy};
 use syntax::ast::{item, item_enum, item_impl, item_mod, item_struct};
 use syntax::ast::{LOCAL_CRATE, trait_ref, ty_path};

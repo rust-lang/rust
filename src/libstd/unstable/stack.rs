@@ -36,9 +36,10 @@ static RED_ZONE: uint = 20 * 1024;
                   //   irrelevant for documentation purposes.
 #[cfg(not(test))] // in testing, use the original libstd's version
 pub extern "C" fn rust_stack_exhausted() {
-    use rt::task::Task;
     use option::None;
     use rt::local::Local;
+    use rt::task::Task;
+    use str::Str;
     use unstable::intrinsics;
 
     unsafe {

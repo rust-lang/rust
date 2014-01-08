@@ -656,8 +656,7 @@ pub struct Closed01<F>(F);
 
 #[cfg(test)]
 mod test {
-    use iter::{Iterator, range};
-    use option::{Option, Some};
+    use prelude::*;
     use vec;
     use super::*;
 
@@ -845,11 +844,10 @@ static RAND_BENCH_N: u64 = 100;
 
 #[cfg(test)]
 mod bench {
+    use prelude::*;
     use extra::test::BenchHarness;
     use rand::{XorShiftRng, StdRng, IsaacRng, Isaac64Rng, Rng, RAND_BENCH_N};
     use mem::size_of;
-    use iter::range;
-    use option::{Some, None};
 
     #[bench]
     fn rand_xorshift(bh: &mut BenchHarness) {
