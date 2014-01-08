@@ -23,7 +23,6 @@ use std::local_data;
 use std::io;
 use std::io::File;
 use std::io::mem::MemWriter;
-use std::io::Decorator;
 use std::str;
 use extra::getopts;
 use extra::getopts::groups;
@@ -322,7 +321,7 @@ fn json_output(crate: clean::Crate, res: ~[plugins::PluginJson], dst: Path) {
             let mut encoder = json::Encoder::new(&mut w as &mut io::Writer);
             crate.encode(&mut encoder);
         }
-        str::from_utf8_owned(w.inner())
+        str::from_utf8_owned(w.unwrap())
     };
     let crate_json = match json::from_str(crate_json_str) {
         Ok(j) => j,

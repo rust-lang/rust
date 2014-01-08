@@ -32,7 +32,6 @@ use std::cell::RefCell;
 use std::char;
 use std::str;
 use std::io;
-use std::io::Decorator;
 use std::io::mem::MemWriter;
 
 // The &mut ps is stored here to prevent recursive type.
@@ -2322,7 +2321,7 @@ pub fn print_string(s: &mut ps, st: &str, style: ast::StrStyle) {
 // downcasts.
 unsafe fn get_mem_writer(writer: &mut ~io::Writer) -> ~str {
     let (_, wr): (uint, ~MemWriter) = cast::transmute_copy(writer);
-    let result = str::from_utf8_owned(wr.inner_ref().to_owned());
+    let result = str::from_utf8_owned(wr.get_ref().to_owned());
     cast::forget(wr);
     result
 }

@@ -620,11 +620,10 @@ pub fn write_repr<T>(writer: &mut io::Writer, object: &T) {
 pub fn repr_to_str<T>(t: &T) -> ~str {
     use str;
     use io;
-    use io::Decorator;
 
     let mut result = io::mem::MemWriter::new();
     write_repr(&mut result as &mut io::Writer, t);
-    str::from_utf8_owned(result.inner())
+    str::from_utf8_owned(result.unwrap())
 }
 
 #[cfg(test)]
@@ -635,14 +634,13 @@ fn test_repr() {
     use prelude::*;
     use str;
     use str::Str;
-    use io::Decorator;
     use util::swap;
     use char::is_alphabetic;
 
     fn exact_test<T>(t: &T, e:&str) {
         let mut m = io::mem::MemWriter::new();
         write_repr(&mut m as &mut io::Writer, t);
-        let s = str::from_utf8_owned(m.inner());
+        let s = str::from_utf8_owned(m.unwrap());
         assert_eq!(s.as_slice(), e);
     }
 

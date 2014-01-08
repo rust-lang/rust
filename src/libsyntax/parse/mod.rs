@@ -338,7 +338,6 @@ mod test {
     use extra::serialize::Encodable;
     use extra;
     use std::io;
-    use std::io::Decorator;
     use std::io::mem::MemWriter;
     use std::str;
     use codemap::{Span, BytePos, Spanned};
@@ -356,7 +355,7 @@ mod test {
         let mut writer = MemWriter::new();
         let mut encoder = extra::json::Encoder::new(&mut writer as &mut io::Writer);
         val.encode(&mut encoder);
-        str::from_utf8_owned(writer.inner())
+        str::from_utf8_owned(writer.unwrap())
     }
 
     // produce a codemap::span
