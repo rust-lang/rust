@@ -38,8 +38,8 @@ Use [`FromStrRadix`](http://static.rust-lang.org/doc/master/std/num/trait.FromSt
 ~~~
 use std::num::from_str_radix;
 
-let x: Option<int> = from_str_radix("deadbeef", 16);
-let y: int = x.unwrap();
+let x: Option<i64> = from_str_radix("deadbeef", 16);
+let y: i64 = x.unwrap();
 ~~~
 
 # File operations
@@ -211,4 +211,4 @@ For small examples, have full type annotations, as much as is reasonable, to kee
 
 Similar documents for other programming languages:
 
-  * [http://pleac.sourceforge.net/](http://pleac.sourceforge.net)  
+  * [http://pleac.sourceforge.net/](http://pleac.sourceforge.net)
