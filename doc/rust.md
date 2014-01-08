@@ -1,4 +1,4 @@
-% Rust Reference Manual
+% The Rust Reference Manual
 
 # Introduction
 
