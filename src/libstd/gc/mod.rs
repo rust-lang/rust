@@ -23,13 +23,20 @@ use kinds::Freeze;
 use clone::{Clone, DeepClone};
 use mem;
 use option::{Some, None};
+use ptr;
 use rt::local;
 use rt::task::{Task, GcUninit, GcExists, GcBorrowed};
 use util::replace;
 
-use unstable::intrinsics::{owns_new_managed, move_val_init};
+use unstable::intrinsics::{owns_new_managed, move_val_init, needs_drop};
 
 pub mod collector;
+
+fn pointer_run_dtor<T>(p: *mut ()) {
+    unsafe {
+        ptr::read_ptr(p as *T);
+    }
+}
 
 /// Immutable garbage-collected pointer type.
 ///
@@ -89,6 +96,12 @@ impl<T: 'static> Gc<T> {
         unsafe {
             gc.occasional_collection(stack_top);
 
+            let finaliser = if needs_drop::<T>() {
+                Some(pointer_run_dtor::<T>)
+            } else {
+                None
+            };
+
             // if we don't contain anything that contains has a
             // #[managed] pointer unboxed, then we don't don't need to
             // scan, because there can never be a GC reference inside.
@@ -96,9 +109,9 @@ impl<T: 'static> Gc<T> {
             // but it shouldn't (~, or equivalent) should root the Gc
             // itself.
             ptr = if owns_new_managed::<T>() {
-                gc.alloc_gc(size)
+                gc.alloc_gc(size, finaliser)
             } else {
-                gc.alloc_gc_no_scan(size)
+                gc.alloc_gc_no_scan(size, finaliser)
             } as *mut T;
 
             move_val_init(&mut *ptr, value);
@@ -217,7 +230,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // no finalisation of GC'd objects
     fn test_destructor() {
         let x = Gc::new(~5);
         unsafe {

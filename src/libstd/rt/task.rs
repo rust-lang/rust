@@ -40,6 +40,7 @@ use sync::arc::UnsafeArc;
 use sync::atomics::{AtomicUint, SeqCst};
 use task::{TaskResult, TaskOpts};
 use unstable::finally::Finally;
+use util::replace;
 
 // The Task struct represents all state associated with a rust
 // task. There are at this point two primary "subtypes" of task,
@@ -175,11 +176,14 @@ impl Task {
                     let LocalStorage(ref mut optmap) = task.storage;
                     optmap.take()
                 };
+                let gc = replace(&mut task.get().gc, GcUninit);
                 drop(task);
                 drop(storage_map);
 
                 // Destroy remaining boxes. Also may run user dtors.
                 unsafe { cleanup::annihilate(); }
+                // kill any remaining GC references.
+                drop(gc);
 
                 // Finally, just in case user dtors printed/logged during TLS
                 // cleanup and annihilation, re-destroy stdout and the logger.
