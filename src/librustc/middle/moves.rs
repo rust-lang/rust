@@ -612,7 +612,7 @@ impl VisitContext {
         self.use_receiver(receiver_expr);
 
         // for overloaded operatrs, we are always passing in a
-        // borrowed pointer, so it's always read mode:
+        // reference, so it's always read mode:
         for arg_expr in arg_exprs.iter() {
             self.use_expr(*arg_expr, Read);
         }

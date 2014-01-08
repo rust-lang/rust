@@ -86,8 +86,8 @@ common, such as C++, please read "A note..." below.
 or impossible. This is only often useful when a program is very large or very
 complicated. Using a managed pointer will activate Rust's garbage collection
 mechanism.
-5: Borrowed: You're writing a function, and you need a pointer, but you don't
-care about its ownership. If you make the argument a borrowed pointer, callers
+5: Reference: You're writing a function, and you need a pointer, but you don't
+care about its ownership. If you make the argument a reference, callers
 can send in whatever kind they want.
 
 Five exceptions. That's it. Otherwise, you shouldn't need them. Be skeptical
@@ -313,11 +313,11 @@ drawback.
 concurrency boundaries is the source of endless pain in other langauges, so
 Rust does not let you do this.
 
-# Borrowed Pointers
+# References
 
-Borrowed pointers are the third major kind of pointer Rust supports. They are
+References are the third major kind of pointer Rust supports. They are
 simultaneously the simplest and the most complicated kind. Let me explain:
-they're called 'borrowed' pointers because they claim no ownership over the
+references are considered 'borrowed' because they claim no ownership over the
 data they're pointing to. They're just borrowing it for a while. So in that
 sense, they're simple: just keep whatever ownership the data already has. For
 example:
@@ -346,13 +346,13 @@ fn main() {
 ~~~
 
 This prints `5.83095189`. You can see that the `compute_distance` function
-takes in two borrowed pointers, but we give it a managed and unique pointer. Of
+takes in two references, but we give it a managed and unique pointer. Of
 course, if this were a real program, we wouldn't have any of these pointers,
 they're just there to demonstrate the concepts.
 
 So how is this hard? Well, because we're igorning ownership, the compiler needs
 to take great care to make sure that everything is safe. Despite their complete
-safety, a borrowed pointer's representation at runtime is the same as that of
+safety, a reference's representation at runtime is the same as that of
 an ordinary pointer in a C program. They introduce zero overhead. The compiler
 does all safety checks at compile time. 
 
@@ -416,8 +416,8 @@ test.rs:4         let y = &x;
 ~~~
 
 As you might guess, this kind of analysis is complex for a human, and therefore
-hard for a computer, too! There is an entire [tutorial devoted to borrowed
-pointers and lifetimes](tutorial-lifetimes.html) that goes into lifetimes in
+hard for a computer, too! There is an entire [guide devoted to references
+and lifetimes](guide-lifetimes.html) that goes into lifetimes in
 great detail, so if you want the full details, check that out.
 
 # Returning Pointers

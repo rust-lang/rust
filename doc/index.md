@@ -12,7 +12,7 @@
 # Guides
 
 [Pointers](guide-pointers.html)  
-[Lifetimes](guide-lifetimes.html)  
+[References and Lifetimes](guide-lifetimes.html)  
 [Containers and Iterators](guide-container.html)  
 [Tasks and Communication](guide-tasks.html)  
 [Foreign Function Interface](guide-ffi.html)  
