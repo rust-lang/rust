@@ -1292,3 +1292,19 @@ pub fn get_exported_macros(cdata: Cmd) -> ~[@ast::Item] {
     });
     result
 }
+
+pub fn prim_dids(cdata: Cmd, tcx: ty::ctxt) -> ~[(ty::t, ast::DefId)] {
+    let dids = reader::get_doc(reader::Doc(cdata.data()), tag_prim_dids);
+    let mut result = ~[];
+    reader::tagged_docs(dids, tag_prim_did, |did_doc| {
+        let ty_doc = reader::get_doc(did_doc, tag_prim_did_ty);
+        let id_doc = reader::get_doc(did_doc, tag_prim_did_did);
+        let did = ast::DefId {
+            node: reader::doc_as_u32(id_doc),
+            crate: cdata.cnum,
+        };
+        result.push((doc_type(ty_doc, tcx, cdata), did));
+        true
+    });
+    return result;
+}

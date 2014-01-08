@@ -255,9 +255,25 @@ lets_do_this! {
 
     TypeIdLangItem,                  "type_id",                 type_id;
 
-    EhPersonalityLangItem,           "eh_personality",          eh_personality_fn;
-
     ManagedHeapLangItem,             "managed_heap",            managed_heap;
     ExchangeHeapLangItem,            "exchange_heap",           exchange_heap;
     GcLangItem,                      "gc",                      gc;
+
+    EhPersonalityLangItem,           "eh_personality",          eh_personality_fn;
+
+    CharImplLangItem,                "char_impl",               char_impl;
+    IntImplLangItem,                 "int_impl",                int_impl;
+    I8ImplLangItem,                  "i8_impl",                 i8_impl;
+    I16ImplLangItem,                 "i16_impl",                i16_impl;
+    I32ImplLangItem,                 "i32_impl",                i32_impl;
+    I64ImplLangItem,                 "i64_impl",                i64_impl;
+    UintImplLangItem,                "uint_impl",               uint_impl;
+    U8ImplLangItem,                  "u8_impl",                 u8_impl;
+    U16ImplLangItem,                 "u16_impl",                u16_impl;
+    U32ImplLangItem,                 "u32_impl",                u32_impl;
+    U64ImplLangItem,                 "u64_impl",                u64_impl;
+    BoolImplLangItem,                "bool_impl",               bool_impl;
+    NilImplLangItem,                 "nil_impl",                nil_impl;
+    F32ImplLangItem,                 "f32_impl",                f32_impl;
+    F64ImplLangItem,                 "f64_impl",                f64_impl;
 }
