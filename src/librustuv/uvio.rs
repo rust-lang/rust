@@ -37,7 +37,7 @@ use file::{FsRequest, FileWatcher};
 use queue::QueuePool;
 use homing::HomeHandle;
 use idle::IdleWatcher;
-use net::{TcpWatcher, TcpListener, UdpWatcher};
+use net::{RawSocketWatcher, TcpWatcher, TcpListener, UdpWatcher};
 use pipe::{PipeWatcher, PipeListener};
 use process::Process;
 use signal::SignalWatcher;
@@ -174,6 +174,14 @@ impl IoFactory for UvIoFactory {
                           hint: Option<ai::Hint>) -> Result<~[ai::Info], IoError> {
         let r = GetAddrInfoRequest::run(&self.loop_, host, servname, hint);
         r.map_err(uv_error_to_io_error)
+    }
+
+    fn raw_socket_new(&mut self, domain: rtio::CommDomain, protocol: rtio::Protocol,
+                      includeIpHeader: bool) -> Result<~rtio::RtioRawSocket, IoError> {
+        match RawSocketWatcher::new(self, domain, protocol, includeIpHeader) {
+            Ok(r) => Ok(~r as ~rtio::RtioRawSocket),
+            Err(e) => Err(e),
+        }
     }
 
     fn fs_from_raw_fd(&mut self, fd: c_int,

@@ -190,6 +190,10 @@ impl rtio::IoFactory for IoFactory {
                           _hint: Option<ai::Hint>) -> IoResult<~[ai::Info]> {
         Err(unimpl())
     }
+    fn raw_socket_new(&mut self, _domain: rtio::CommDomain, _protocol: rtio::Protocol,
+                      _includeIpHeader: bool) -> IoResult<~rtio::RtioRawSocket> {
+        Err(unimpl())
+    }
 
     // filesystem operations
     fn fs_from_raw_fd(&mut self, fd: c_int,

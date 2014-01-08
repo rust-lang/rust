@@ -633,6 +633,227 @@ impl Drop for UdpWatcher {
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// Raw socket implementation
+////////////////////////////////////////////////////////////////////////////////
+
+pub struct RawSocketWatcher {
+    handle: *uvll::uv_poll_t,
+    socket: uvll::uv_os_socket,
+    home: HomeHandle,
+}
+
+impl RawSocketWatcher {
+    pub fn new(io: &mut UvIoFactory, domain: rtio::CommDomain, protocol: rtio::Protocol, includeIpHeader: bool)
+        -> Result<RawSocketWatcher, IoError>
+    {
+        let socket = unsafe { libc::socket(domain, libc::SOCK_RAW, protocol) };
+        if socket == -1 {
+            return Err(uv_error_to_io_error(UvError(errno() as i32)));
+        }
+        if includeIpHeader {
+            let one: c_int = 1;
+            let proto = if domain == libc::AF_INET { libc::IPPROTO_IP } else { libc::IPPROTO_IPV6 };
+            let res = unsafe { libc::setsockopt(socket, proto, libc::IP_HDRINCL, (&one as *c_int) as *c_void, intrinsics::size_of::<c_int>() as u32) };
+            if res == -1 {
+                return Err(uv_error_to_io_error(UvError(errno() as i32)));
+            }
+        }
+        // Make socket non-blocking
+        let flags = unsafe { libc::fcntl(socket, libc::F_GETFL, 0) };
+        if (flags == -1) {
+            return Err(uv_error_to_io_error(UvError(errno() as i32)));
+        }
+        if unsafe { libc::fcntl(socket, libc::F_SETFL, flags | libc::O_NONBLOCK) } == -1 {
+            return Err(uv_error_to_io_error(UvError(errno() as i32)));
+        }
+        let raw = RawSocketWatcher {
+            handle: unsafe { uvll::malloc_handle(uvll::UV_POLL) },
+            home: io.make_handle(),
+            socket: socket,
+        };
+
+        assert_eq!(unsafe {
+            uvll::uv_poll_init_socket(io.uv_loop(), raw.handle, socket)
+        }, 0);
+        return Ok(raw);
+    }
+}
+
+impl UvHandle<uvll::uv_poll_t> for RawSocketWatcher {
+    fn uv_handle(&self) -> *uvll::uv_poll_t { self.handle }
+}
+
+impl Drop for RawSocketWatcher {
+    fn drop(&mut self) {
+        let _m = self.fire_homing_missile();
+        self.close();
+    }
+}
+
+impl HomingIO for RawSocketWatcher {
+    fn home<'r>(&'r mut self) -> &'r mut HomeHandle { &mut self.home }
+}
+
+impl rtio::RtioRawSocket for RawSocketWatcher {
+    fn recvfrom(&mut self, buf: &mut [u8])
+        -> Result<(uint, SocketAddr), IoError>
+    {
+        let max: c_int = Bounded::max_value();
+        assert!(buf.len() <= (max as uint));
+        struct Ctx {
+            task: Option<BlockedTask>,
+            buf: Option<Buf>,
+            result: Option<(ssize_t, Option<SocketAddr>)>,
+            socket: Option<uvll::uv_os_socket>,
+        }
+        let _m = self.fire_homing_missile();
+        let a = match unsafe {
+            uvll::uv_poll_start(self.handle, uvll::UV_READABLE as c_int, recv_cb)
+        } {
+            0 => {
+                let mut cx = Ctx {
+                    task: None,
+                    buf: Some(slice_to_uv_buf(buf)),
+                    result: None,
+                    socket: Some(self.socket),
+                };
+                wait_until_woken_after(&mut cx.task, || {
+                    unsafe { uvll::set_data_for_uv_handle(self.handle, &cx) }
+                });
+                match cx.result.take_unwrap() {
+                    (n, _) if n < 0 =>
+                        Err(uv_error_to_io_error(UvError(n as c_int))),
+                    (n, addr) => Ok((n as uint, addr.unwrap()))
+                }
+            }
+            n => Err(uv_error_to_io_error(UvError(n)))
+        };
+        return a;
+
+        extern fn recv_cb(handle: *uvll::uv_poll_t, status: c_int, events: c_int) {
+            assert!((events & (uvll::UV_READABLE as c_int)) != 0);
+            let cx: &mut Ctx = unsafe {
+                cast::transmute(uvll::get_data_for_uv_handle(handle))
+            };
+
+            if status < 0 {
+                cx.result = Some((status as ssize_t, None));
+                return;
+            }
+
+            unsafe {
+                assert_eq!(uvll::uv_poll_stop(handle), 0)
+            }
+
+            let mut caddr = unsafe { intrinsics::init::<libc::sockaddr_storage>() };
+            let mut caddrlen = unsafe { intrinsics::size_of::<libc::sockaddr_storage>() } as libc::socklen_t;
+            let len = match (cx.socket, cx.buf) {
+                        (Some(sock), Some(buf)) => unsafe {
+                                                    libc::recvfrom(sock,
+                                                                   buf.base as *mut c_void,
+                                                                   buf.len,
+                                                                   0,
+                                                                   (&mut caddr as *mut libc::sockaddr_storage) as *mut libc::sockaddr,
+                                                                   &mut caddrlen)
+                                                   },
+                        _                       => -1
+                      };
+            if len == -1 {
+                cx.result = Some((errno() as ssize_t, None));
+                return;
+            }
+            let addr = Some(sockaddr_to_socket_addr((&caddr as *libc::sockaddr_storage) as *uvll::sockaddr));
+            cx.result = Some((len as ssize_t, addr));
+
+            wakeup(&mut cx.task);
+        }
+    }
+
+    fn sendto(&mut self, buf: &[u8], dst: IpAddr)
+        -> Result<ssize_t, IoError>
+    {
+        struct Ctx {
+            task: Option<BlockedTask>,
+            buf: Option<Buf>,
+            result: Option<ssize_t>,
+            socket: Option<uvll::uv_os_socket>,
+            addr: IpAddr,
+        }
+        let _m = self.fire_homing_missile();
+
+        let a = match unsafe {
+            uvll::uv_poll_start(self.handle, uvll::UV_WRITABLE as c_int, send_cb)
+        } {
+            0 => {
+                let mut cx = Ctx {
+                    task: None,
+                    buf: Some(slice_to_uv_buf(buf)),
+                    result: None,
+                    socket: Some(self.socket),
+                    addr: dst
+                };
+                wait_until_woken_after(&mut cx.task, || {
+                    unsafe { uvll::set_data_for_uv_handle(self.handle, &cx) }
+                });
+                match cx.result.take_unwrap() {
+                    n if n < 0 =>
+                        Err(uv_error_to_io_error(UvError(n as c_int))),
+                    n => Ok(n)
+                }
+            }
+            n => Err(uv_error_to_io_error(UvError(n)))
+        };
+        return a;
+
+        extern fn send_cb(handle: *uvll::uv_poll_t, status: c_int, events: c_int) {
+            assert!((events & (uvll::UV_WRITABLE as c_int)) != 0);
+            let cx: &mut Ctx = unsafe {
+                cast::transmute(uvll::get_data_for_uv_handle(handle))
+            };
+            if status < 0 {
+                cx.result = Some(status as ssize_t);
+                return;
+            }
+
+            unsafe {
+                assert_eq!(uvll::uv_poll_stop(handle), 0)
+            }
+
+            let len = match (cx.socket, cx.buf) {
+                        (Some(sock), Some(buf)) => socket_addr_as_sockaddr(SocketAddr{ ip: cx.addr, port: 0 }, |addr| {
+                                                        unsafe {
+                                                            if match cx.addr { Ipv4Addr(..) => true, Ipv6Addr(..) => false } {
+                                                                libc::sendto(sock,
+                                                                    buf.base as *c_void,
+                                                                    buf.len,
+                                                                    0,
+                                                                    addr as *libc::sockaddr,
+                                                                    intrinsics::size_of::<libc::sockaddr_in>() as libc::socklen_t)
+                                                            } else {
+                                                                libc::sendto(sock,
+                                                                    buf.base as *c_void,
+                                                                    buf.len,
+                                                                    0,
+                                                                    addr as *libc::sockaddr,
+                                                                    intrinsics::size_of::<libc::sockaddr_in6>() as libc::socklen_t)
+                                                                }
+                                                        }
+                                                    }),
+                        _                       => -1
+                      };
+
+            cx.result = if len < 0 {
+                            Some(errno() as ssize_t)
+                        } else {
+                            Some(len)
+                        };
+
+            wakeup(&mut cx.task);
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use std::rt::rtio::{RtioTcpStream, RtioTcpListener, RtioTcpAcceptor,
