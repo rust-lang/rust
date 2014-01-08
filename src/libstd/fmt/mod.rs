@@ -471,7 +471,7 @@ will look like `"\\{"`.
 use prelude::*;
 
 use cast;
-use char::Char;
+#[cfg(stage0)] use char::Char;
 use io::MemWriter;
 use io;
 use str;

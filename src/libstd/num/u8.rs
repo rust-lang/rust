@@ -25,6 +25,12 @@ use unstable::intrinsics;
 
 uint_module!(u8, i8, 8)
 
+#[cfg(not(stage0), not(test))]
+#[lang = "u8_impl"]
+/// The `u8` primitive is an unsigned 8-bit integer type.
+impl u8 {
+}
+
 impl CheckedAdd for u8 {
     #[inline]
     fn checked_add(&self, v: &u8) -> Option<u8> {

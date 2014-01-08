@@ -147,6 +147,7 @@ pub trait Unsigned: Num {}
 /// ten.times(|| { accum += 1; })
 /// ```
 ///
+#[cfg(stage0)]
 pub trait Times {
     fn times(&self, it: ||);
 }

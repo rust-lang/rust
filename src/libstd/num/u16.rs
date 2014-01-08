@@ -25,6 +25,12 @@ use unstable::intrinsics;
 
 uint_module!(u16, i16, 16)
 
+#[cfg(not(stage0), not(test))]
+#[lang = "u16_impl"]
+/// The `u16` primitive is an unsigned 8-bit integer type.
+impl u16 {
+}
+
 impl CheckedAdd for u16 {
     #[inline]
     fn checked_add(&self, v: &u16) -> Option<u16> {

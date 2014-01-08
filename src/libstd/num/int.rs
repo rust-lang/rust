@@ -25,6 +25,15 @@ use unstable::intrinsics;
 #[cfg(target_word_size = "32")] int_module!(int, 32)
 #[cfg(target_word_size = "64")] int_module!(int, 64)
 
+#[cfg(not(stage0), not(test))]
+#[lang = "int_impl"]
+/// The `int` primitive type is an architecture-sized signed integer.
+///
+/// The size of a `int` is equivalent to the size of a `pointer` on the
+/// particular architecture in question.
+impl int {
+}
+
 #[cfg(target_word_size = "32")]
 impl Bitwise for int {
     /// Counts the number of bits set. Wraps LLVM's `ctpop` intrinsic.

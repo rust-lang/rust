@@ -289,7 +289,7 @@ Out of scope
 #[allow(missing_doc)];
 
 use cast;
-use char::Char;
+#[cfg(stage0)] use char::Char;
 use condition::Guard;
 use container::Container;
 use int;

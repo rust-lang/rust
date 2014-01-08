@@ -27,6 +27,12 @@ use unstable::intrinsics;
 
 uint_module!(u64, i64, 64)
 
+#[cfg(not(stage0), not(test))]
+#[lang = "u64_impl"]
+/// The `u64` primitive is an unsigned 64-bit integer type.
+impl u64 {
+}
+
 impl CheckedAdd for u64 {
     #[inline]
     fn checked_add(&self, v: &u64) -> Option<u64> {
