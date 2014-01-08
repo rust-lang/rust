@@ -72,13 +72,6 @@ totaleq_impl!(uint)
 
 totaleq_impl!(char)
 
-/// Trait for testing approximate equality
-pub trait ApproxEq<Eps> {
-    fn approx_epsilon() -> Eps;
-    fn approx_eq(&self, other: &Self) -> bool;
-    fn approx_eq_eps(&self, other: &Self, approx_epsilon: &Eps) -> bool;
-}
-
 #[deriving(Clone, Eq)]
 pub enum Ordering { Less = -1, Equal = 0, Greater = 1 }
 

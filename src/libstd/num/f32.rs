@@ -167,22 +167,6 @@ impl Eq for f32 {
 }
 
 #[cfg(not(test))]
-impl ApproxEq<f32> for f32 {
-    #[inline]
-    fn approx_epsilon() -> f32 { 1.0e-6 }
-
-    #[inline]
-    fn approx_eq(&self, other: &f32) -> bool {
-        self.approx_eq_eps(other, &1.0e-6)
-    }
-
-    #[inline]
-    fn approx_eq_eps(&self, other: &f32, approx_epsilon: &f32) -> bool {
-        (*self - *other).abs() < *approx_epsilon
-    }
-}
-
-#[cfg(not(test))]
 impl Ord for f32 {
     #[inline]
     fn lt(&self, other: &f32) -> bool { (*self) < (*other) }
@@ -1193,15 +1177,6 @@ mod tests {
         assert!(NEG_INFINITY.is_negative());
         assert!((1f32/NEG_INFINITY).is_negative());
         assert!(!NAN.is_negative());
-    }
-
-    #[test]
-    fn test_approx_eq() {
-        assert!(1.0f32.approx_eq(&1f32));
-        assert!(0.9999999f32.approx_eq(&1f32));
-        assert!(1.000001f32.approx_eq_eps(&1f32, &1.0e-5));
-        assert!(1.0000001f32.approx_eq_eps(&1f32, &1.0e-6));
-        assert!(!1.0000001f32.approx_eq_eps(&1f32, &1.0e-7));
     }
 
     #[test]
