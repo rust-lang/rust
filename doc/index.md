@@ -24,7 +24,7 @@
 # Libraries
 
 [std](std/index.html)  
-[extra](index.html)  
+[extra](extra/index.html)  
 
 # Tooling
 
