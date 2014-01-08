@@ -23,6 +23,7 @@ use ptr::{read_ptr, RawPtr};
 use num::CheckedMul;
 use option::{Option, Some, None};
 use iter::{Iterator, DoubleEndedIterator};
+use gc;
 
 pub struct Vec<T> {
     priv len: uint,
@@ -41,11 +42,13 @@ impl<T> Vec<T> {
             Vec::new()
         } else {
             let size = capacity.checked_mul(&size_of::<T>()).expect("out of mem");
-            let ptr = unsafe { malloc(size as size_t) };
-            if ptr.is_null() {
-                fail!("null pointer")
+            unsafe {
+                let ptr = malloc(size as size_t);
+                if ptr.is_null() { fail!("null pointer") }
+
+                gc::register_root_changes([], [(ptr as *T, capacity)]);
+                Vec { len: 0, cap: capacity, ptr: ptr as *mut T }
             }
-            Vec { len: 0, cap: capacity, ptr: ptr as *mut T }
         }
     }
 }
@@ -69,9 +72,10 @@ impl<T> Vec<T> {
             self.cap = capacity;
             unsafe {
                 let ptr = realloc(self.ptr as *mut c_void, size as size_t) as *mut T;
-                if ptr.is_null() {
-                    fail!("null pointer")
-                }
+                if ptr.is_null() { fail!("null pointer") }
+
+                gc::register_root_changes([self.ptr as *T],
+                                          [(ptr as *T, capacity)]);
                 self.ptr = ptr;
             }
         }
@@ -81,12 +85,16 @@ impl<T> Vec<T> {
     pub fn shrink_to_fit(&mut self) {
         unsafe {
             if self.len == 0 {
+                gc::register_root_changes([self.ptr as *T], []);
                 free(self.ptr as *c_void);
                 self.cap = 0;
                 self.ptr = 0 as *mut T;
             } else {
-                self.ptr = realloc(self.ptr as *mut c_void,
-                                   (self.len * size_of::<T>()) as size_t) as *mut T;
+                let ptr = realloc(self.ptr as *mut c_void,
+                                  (self.len * size_of::<T>()) as size_t) as *mut T;
+                if ptr.is_null() { fail!("null pointer") }
+                gc::register_root_changes([self.ptr as *T], [(ptr as *T, self.len)]);
+
                 self.cap = self.len;
             }
         }
@@ -112,7 +120,10 @@ impl<T> Vec<T> {
             let size = old_size * 2;
             if old_size > size { fail!("out of mem") }
             unsafe {
-                self.ptr = realloc(self.ptr as *mut c_void, size as size_t) as *mut T;
+                let ptr = realloc(self.ptr as *mut c_void, size as size_t) as *mut T;
+                gc::register_root_changes([self.ptr as *T],
+                                          [(ptr as *T, self.cap)]);
+                self.ptr = ptr;
             }
         }
 
@@ -153,6 +164,7 @@ impl<T> Drop for Vec<T> {
             for x in self.as_slice().iter() {
                 read_ptr(x as *T);
             }
+            gc::register_root_changes([self.ptr as *T], []);
             free(self.ptr as *c_void)
         }
     }
@@ -189,6 +201,7 @@ impl<T> Drop for MoveIterator<T> {
         // destroy the remaining elements
         for _x in *self {}
         unsafe {
+            gc::register_root_changes([self.allocation as *T], []);
             free(self.allocation as *c_void)
         }
     }
