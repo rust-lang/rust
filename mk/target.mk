@@ -56,7 +56,11 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/$(CFG_RUNTIME_$(2)): \
 
 # SNAP a5fa1d9 remove this after the stage0 snapshot from rules below
 ifeq ($(1),0)
+ifeq ($(3),$$(findstring $(3),$$(NON_BUILD_HOST)))
+LFLAGS_$(1)_$(2)_$(3) :=
+else
 LFLAGS_$(1)_$(2)_$(3) := -L $$(TLIB$(1)_T_$(2)_H_$(3))
+endif
 else
 LFLAGS_$(1)_$(2)_$(3) :=
 endif
