@@ -34,6 +34,12 @@ pub struct PtrDescr {
     scan: bool
 }
 
+impl PtrDescr {
+    fn is_used(&self) -> bool {
+        self.high != 0
+    }
+}
+
 impl PtrMap {
     /// Create a new PtrMap.
     pub fn new() -> PtrMap {
@@ -56,6 +62,29 @@ impl PtrMap {
         self.map.insert(ptr, descr);
     }
 
+    /// Attempt to reuse the allocation starting at `ptr`. Returns
+    /// `true` if it was successfully registered, otherwise `false`
+    /// (attempting to reuse an live allocation, or an allocation that
+    /// wasn't found).
+    pub fn reuse_alloc(&mut self,
+                       ptr: uint, length: uint, scan: bool,
+                       finaliser: Option<fn(*mut ())>) -> bool {
+        match self.map.find_mut(&ptr) {
+            Some(descr) => {
+                if descr.is_used() {
+                    warn!("attempting to reuse a used allocation")
+                    false // don't overwrite
+                } else {
+                    descr.high = ptr + length;
+                    descr.finaliser = finaliser;
+                    descr.scan = scan;
+                    true
+                }
+            }
+            None => false
+        }
+    }
+
     /// Mark every registered allocation as unreachable.
     pub fn mark_all_unreachable(&mut self) {
         for (_, d) in self.map.mut_iter() {
@@ -70,7 +99,7 @@ impl PtrMap {
     pub fn mark_reachable_scan_info(&mut self, ptr: uint) -> Option<(uint, bool)> {
         match self.map.find_mut(&ptr) {
             Some(descr) => {
-                if !descr.reachable {
+                if descr.is_used() && !descr.reachable {
                     descr.reachable = true;
                     Some((descr.high, descr.scan))
                 } else {
@@ -82,12 +111,24 @@ impl PtrMap {
     }
 
     /// Find the unreachable pointers in the map, returing `[(low,
-    /// finaliser)]`.
-    pub fn find_unreachable(&mut self) -> ~[(uint, Option<fn(*mut ())>)] {
+    /// size, finaliser)]`.
+    pub fn find_unreachable(&mut self) -> ~[(uint, uint, Option<fn(*mut ())>)] {
         self.map.iter()
-            .filter_map(|(low, descr)|
-                        if !descr.reachable {Some((low, descr.finaliser))} else {None})
-            .collect()
+            .filter_map(|(low, descr)| {
+                if descr.is_used() && !descr.reachable {
+                    Some((low, descr.high - low, descr.finaliser))
+                } else {
+                    None
+                }
+            }).collect()
+    }
+
+    /// Mark an allocation as unused.
+    pub fn mark_unused(&mut self, ptr: uint) {
+        match self.map.find_mut(&ptr) {
+            Some(descr) => descr.high = 0,
+            None => {}
+        }
     }
 
     /// Deregister the allocation starting at `ptr`.
