@@ -26,7 +26,7 @@ Supported features (fairly exhaustive):
   requires an explicit `Eq` bound at the
   moment. (`TraitDef.additional_bounds`)
 
-Unsupported: FIXME #6257: calling methods on borrowed pointer fields,
+Unsupported: FIXME #6257: calling methods on reference fields,
 e.g. deriving TotalEq/TotalOrd/Clone don't work on `struct A(&int)`,
 because of how the auto-dereferencing happens.
 

@@ -71,7 +71,7 @@ traits from other modules. Some notable examples:
 ## Iteration
 
 The method `iter()` returns an iteration value for a vector or a vector slice.
-The iterator yields borrowed pointers to the vector's elements, so if the element
+The iterator yields references to the vector's elements, so if the element
 type of the vector is `int`, the element type of the iterator is `&int`.
 
 ```rust

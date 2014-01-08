@@ -146,7 +146,7 @@ pub fn relate_free_regions(
      * for each function just before we check the body of that
      * function, looking for types where you have a borrowed
      * pointer to other borrowed data (e.g., `&'a &'b [uint]`.
-     * We do not allow borrowed pointers to outlive the things they
+     * We do not allow references to outlive the things they
      * point at, so we can assume that `'a <= 'b`.
      *
      * Tests: `src/test/compile-fail/regions-free-region-ordering-*.rs`

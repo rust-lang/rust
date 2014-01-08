@@ -59,7 +59,7 @@ impl<T> Clone for @T {
 }
 
 impl<'a, T> Clone for &'a T {
-    /// Return a shallow copy of the borrowed pointer.
+    /// Return a shallow copy of the reference.
     #[inline]
     fn clone(&self) -> &'a T { *self }
 }

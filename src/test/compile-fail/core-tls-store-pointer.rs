@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Testing that we can't store a borrowed pointer it task-local storage
+// Testing that we can't store a reference it task-local storage
 
 use std::local_data;
 

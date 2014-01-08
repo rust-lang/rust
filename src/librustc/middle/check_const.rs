@@ -192,7 +192,7 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
           ExprAddrOf(..) => {
                 sess.span_err(
                     e.span,
-                    "borrowed pointers in constants may only refer to \
+                    "references in constants may only refer to \
                      immutable values");
           },
           ExprVstore(_, ExprVstoreUniq) |

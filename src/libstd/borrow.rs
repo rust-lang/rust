@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Borrowed pointer utilities
+//! Utilities for references
 
 #[cfg(not(test))]
 use prelude::*;

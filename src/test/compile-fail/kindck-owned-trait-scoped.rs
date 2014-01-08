@@ -23,8 +23,8 @@ impl<T:Clone> foo for T {
 }
 
 fn to_foo<T:Clone>(t: T) {
-    // This version is ok because, although T may contain borrowed
-    // pointers, it never escapes the fn body.  We know this because
+    // This version is ok because, although T may contain references
+    // it never escapes the fn body.  We know this because
     // the type of foo includes a region which will be resolved to
     // the fn body itself.
     let v = &3;
@@ -34,15 +34,15 @@ fn to_foo<T:Clone>(t: T) {
 }
 
 fn to_foo_2<T:Clone>(t: T) -> @foo {
-    // Not OK---T may contain borrowed ptrs and it is going to escape
+    // Not OK---T may contain references and it is going to escape
     // as part of the returned foo value
     struct F<T> { f: T }
-    @F {f:t} as @foo //~ ERROR value may contain borrowed pointers; add `'static` bound
+    @F {f:t} as @foo //~ ERROR value may contain references; add `'static` bound
 }
 
 fn to_foo_3<T:Clone + 'static>(t: T) -> @foo {
     // OK---T may escape as part of the returned foo value, but it is
-    // owned and hence does not contain borrowed ptrs
+    // owned and hence does not contain references
     struct F<T> { f: T }
     @F {f:t} as @foo
 }
