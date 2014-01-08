@@ -12,15 +12,21 @@ use container::Container;
 use gc::collector::ptr_map::PtrMap;
 use iter::Iterator;
 use libc;
+use num::BitCount;
 use option::{Some, None, Option};
 use ops::Drop;
+use ptr;
 use ptr::RawPtr;
 use vec::{MutableVector, OwnedVector, ImmutableVector};
-use unstable::intrinsics;
+use uint;
 
 mod ptr_map;
 
 static DEFAULT_ALLOCS_PER_COLLECTION_MASK: uint = (1 << 10) - 1;
+
+static ALLOC_CACHE_MIN_LOG: uint = 3;
+static ALLOC_CACHE_MAX_LOG: uint = 20;
+
 
 /// A thread local (almost) conservative garbage collector.
 ///
@@ -66,27 +72,33 @@ pub struct GarbageCollector {
     priv gc_ptrs: PtrMap,
     /// number of GC-able allocations performed.
     priv gc_allocs: uint,
+    /// cached allocations, of sizes 8, 16, 32, 64, ... 1 << 20 (1 MB)
+    /// (inclusive, with 8 at index 0). Anything smaller gets rounded
+    /// to 8, anything larger is uncached.
+    priv alloc_cache: [~[uint], .. ALLOC_CACHE_MAX_LOG - ALLOC_CACHE_MIN_LOG + 1],
     /// the number of allocations to do before collection (in mask
     /// form, i.e. we are detecting `gc_allocs % (1 << n) == 0` for
     /// some n).
     priv gc_allocs_per_collection_mask: uint
 }
 
-unsafe fn alloc_inner(ptrs: &mut PtrMap, size: uint, scan: bool,
-                      finaliser: Option<fn(*mut ())>) -> *mut u8 {
-    let ptr = if scan {
-        libc::calloc(size as libc::size_t, 1)
-    } else {
-        // no need to clear if we're not going to be scanning it
-        // anyway.
-        libc::malloc(size as libc::size_t)
-    };
 
-    if ptr.is_null() {
-        intrinsics::abort();
+fn compute_log_rounded_up_size(size: uint) -> uint {
+    if size <= (1 << ALLOC_CACHE_MIN_LOG) {
+        // round up to the minimum
+        ALLOC_CACHE_MIN_LOG
+    } else {
+        // for powers of two 1 << n, this gives n + 1, otherwise,
+        // for a number like `0b101` it gives 3, which is exactly
+        // what we want.
+        let raw = uint::bits - size.leading_zeros();
+        // power of two
+        if size & (size - 1) == 0 {
+            raw - 1
+        } else {
+            raw
+        }
     }
-    ptrs.insert_alloc(ptr as uint, size, scan, finaliser);
-    ptr as *mut u8
 }
 
 impl GarbageCollector {
@@ -94,6 +106,11 @@ impl GarbageCollector {
         GarbageCollector {
             roots: PtrMap::new(),
             gc_ptrs: PtrMap::new(),
+            // :( ... at least the compiler will tell us when we have
+            // the wrong number.
+            alloc_cache: [~[], ~[], ~[], ~[], ~[], ~[],
+                          ~[], ~[], ~[], ~[], ~[], ~[],
+                          ~[], ~[], ~[], ~[], ~[], ~[]],
             gc_allocs: 0,
             gc_allocs_per_collection_mask: DEFAULT_ALLOCS_PER_COLLECTION_MASK
         }
@@ -106,6 +123,49 @@ impl GarbageCollector {
         }
     }
 
+    unsafe fn alloc_inner(&mut self, size: uint, scan: bool,
+                          finaliser: Option<fn(*mut ())>) -> *mut u8 {
+        let log_next_power_of_two = compute_log_rounded_up_size(size);
+
+        // it's always larger than 3
+        let alloc_size = if log_next_power_of_two <= ALLOC_CACHE_MAX_LOG {
+            match self.alloc_cache[log_next_power_of_two - ALLOC_CACHE_MIN_LOG].pop_opt() {
+                Some(ptr) => {
+                    // attempt to reuse the metadata we have for that
+                    // allocation already.
+                    let success = self.gc_ptrs.reuse_alloc(ptr, size, scan, finaliser);
+                    if success {
+                        debug!("using cache for allocation of size {}", size);
+                        if scan {
+                            // clear memory that we may need to be scanning
+                            ptr::set_memory(ptr as *mut u8, 0, size);
+                        }
+                        return ptr as *mut u8;
+                    }
+                }
+                None => {}
+            }
+            // otherwise, just allocate as per usual.
+            1 << log_next_power_of_two
+        } else {
+            // huge allocations allocate exactly what they want.
+            size
+        };
+
+        let ptr = if scan {
+            libc::calloc(alloc_size as libc::size_t, 1)
+        } else {
+            libc::malloc(alloc_size as libc::size_t)
+        };
+        if ptr.is_null() {
+            fail!("GC failed to allocate.")
+        }
+
+        self.gc_ptrs.insert_alloc(ptr as uint, size, scan, finaliser);
+
+        ptr as *mut u8
+    }
+
     /// Allocate `size` bytes of memory such that they are scanned for
     /// other GC'd pointers (for use by types like `Gc<Gc<int>>`).
     ///
@@ -114,7 +174,7 @@ impl GarbageCollector {
     /// unreachable.
     pub unsafe fn alloc_gc(&mut self, size: uint, finaliser: Option<fn(*mut ())>) -> *mut u8 {
         self.gc_allocs += 1;
-        alloc_inner(&mut self.gc_ptrs, size, true, finaliser)
+        self.alloc_inner(size, true, finaliser)
     }
 
     /// Allocate `size` bytes of memory such that they are not scanned
@@ -128,7 +188,7 @@ impl GarbageCollector {
     pub unsafe fn alloc_gc_no_scan(&mut self, size: uint,
                                    finaliser: Option<fn(*mut ())>) -> *mut u8 {
         self.gc_allocs += 1;
-        alloc_inner(&mut self.gc_ptrs, size, false, finaliser)
+        self.alloc_inner(size, false, finaliser)
     }
 
     /// Register the block of memory [`start`, `end`) for scanning for
@@ -186,19 +246,27 @@ impl GarbageCollector {
 
         // Step 3. sweep all the unreachable ones for deallocation.
         let unreachable = gc_ptrs.find_unreachable();
-        for &(ptr, finaliser) in unreachable.iter() {
-            debug!("freeing {:x}", ptr);
-
+        for &(ptr, size, finaliser) in unreachable.iter() {
             match finaliser {
                 Some(f) => f(ptr as *mut ()),
                 None => {}
             }
-            gc_ptrs.remove(ptr);
-            libc::free(ptr as *libc::c_void);
+
+            let log_rounded = compute_log_rounded_up_size(size);
+            // a "small" allocation so we cache it.
+            if log_rounded <= ALLOC_CACHE_MAX_LOG {
+                gc_ptrs.mark_unused(ptr);
+                self.alloc_cache[log_rounded - ALLOC_CACHE_MIN_LOG].push(ptr);
+            } else {
+                // a big one, so whatever, the OS can have its memory
+                // back.
+                gc_ptrs.remove(ptr);
+                libc::free(ptr as *libc::c_void);
+            }
         }
 
         info!("GC scan: {} dead, {} live, {} scanned: took <unsupported> ms",
-               unreachable.len(), gc_ptrs.len(), count);
+              unreachable.len(), gc_ptrs.len(), count);
     }
 }
 
@@ -210,7 +278,7 @@ impl Drop for GarbageCollector {
                 Some(f) => f(ptr as *mut ()),
                 None => {}
             }
-            unsafe {libc::free(ptr as *libc::c_void)}
+            unsafe {libc::free(ptr as *libc::c_void);}
         }
     }
 }
