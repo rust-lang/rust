@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[no_uv];
+
+extern mod native;
+
 #[cfg(rustpkg)]
 extern mod this = "rustpkg";
 
@@ -17,4 +21,9 @@ extern mod this = "rustdoc";
 #[cfg(rustc)]
 extern mod this = "rustc";
 
-fn main() { this::main() }
+#[start]
+fn main(argc: int, argv: **u8) -> int {
+    do native::start(argc, argv) {
+        this::main()
+    }
+}

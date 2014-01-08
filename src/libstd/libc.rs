@@ -4027,6 +4027,8 @@ pub mod funcs {
         pub mod msvcrt {
             use libc::types::os::arch::c95::{c_int, c_long};
 
+            pub static ERROR_INVALID_FUNCTION: c_int = 1;
+
             #[nolink]
             extern {
                 #[link_name = "_commit"]
