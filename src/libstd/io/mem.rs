@@ -36,6 +36,16 @@ impl MemWriter {
     pub fn with_capacity(n: uint) -> MemWriter {
         MemWriter { buf: vec::with_capacity(n), pos: 0 }
     }
+
+    /// Acquires an immutable reference to the underlying buffer of this
+    /// `MemWriter`.
+    ///
+    /// No method is exposed for acquiring a mutable reference to the buffer
+    /// because it could corrupt the state of this `MemWriter`.
+    pub fn get_ref<'a>(&'a self) -> &'a [u8] { self.buf.as_slice() }
+
+    /// Unwraps this `MemWriter`, returning the underlying buffer
+    pub fn unwrap(self) -> ~[u8] { self.buf }
 }
 
 impl Writer for MemWriter {
@@ -85,12 +95,6 @@ impl Seek for MemWriter {
     }
 }
 
-impl Decorator<~[u8]> for MemWriter {
-    fn inner(self) -> ~[u8] { self.buf }
-    fn inner_ref<'a>(&'a self) -> &'a ~[u8] { &self.buf }
-    fn inner_mut_ref<'a>(&'a mut self) -> &'a mut ~[u8] { &mut self.buf }
-}
-
 /// Reads from an owned byte vector
 pub struct MemReader {
     priv buf: ~[u8],
@@ -98,12 +102,24 @@ pub struct MemReader {
 }
 
 impl MemReader {
+    /// Creates a new `MemReader` which will read the buffer given. The buffer
+    /// can be re-acquired through `unwrap`
     pub fn new(buf: ~[u8]) -> MemReader {
         MemReader {
             buf: buf,
             pos: 0
         }
     }
+
+    /// Acquires an immutable reference to the underlying buffer of this
+    /// `MemReader`.
+    ///
+    /// No method is exposed for acquiring a mutable reference to the buffer
+    /// because it could corrupt the state of this `MemReader`.
+    pub fn get_ref<'a>(&'a self) -> &'a [u8] { self.buf.as_slice() }
+
+    /// Unwraps this `MemReader`, returning the underlying buffer
+    pub fn unwrap(self) -> ~[u8] { self.buf }
 }
 
 impl Reader for MemReader {
@@ -135,13 +151,6 @@ impl Buffer for MemReader {
     fn fill<'a>(&'a mut self) -> &'a [u8] { self.buf.slice_from(self.pos) }
     fn consume(&mut self, amt: uint) { self.pos += amt; }
 }
-
-impl Decorator<~[u8]> for MemReader {
-    fn inner(self) -> ~[u8] { self.buf }
-    fn inner_ref<'a>(&'a self) -> &'a ~[u8] { &self.buf }
-    fn inner_mut_ref<'a>(&'a mut self) -> &'a mut ~[u8] { &mut self.buf }
-}
-
 
 /// Writes to a fixed-size byte slice
 ///
@@ -247,7 +256,7 @@ impl<'a> Buffer for BufReader<'a> {
 pub fn with_mem_writer(writeFn: |&mut MemWriter|) -> ~[u8] {
     let mut writer = MemWriter::new();
     writeFn(&mut writer);
-    writer.inner()
+    writer.unwrap()
 }
 
 #[cfg(test)]
@@ -265,24 +274,24 @@ mod test {
         writer.write([1, 2, 3]);
         writer.write([4, 5, 6, 7]);
         assert_eq!(writer.tell(), 8);
-        assert_eq!(*writer.inner_ref(), ~[0, 1, 2, 3, 4, 5, 6, 7]);
+        assert_eq!(writer.get_ref(), [0, 1, 2, 3, 4, 5, 6, 7]);
 
         writer.seek(0, SeekSet);
         assert_eq!(writer.tell(), 0);
         writer.write([3, 4]);
-        assert_eq!(*writer.inner_ref(), ~[3, 4, 2, 3, 4, 5, 6, 7]);
+        assert_eq!(writer.get_ref(), [3, 4, 2, 3, 4, 5, 6, 7]);
 
         writer.seek(1, SeekCur);
         writer.write([0, 1]);
-        assert_eq!(*writer.inner_ref(), ~[3, 4, 2, 0, 1, 5, 6, 7]);
+        assert_eq!(writer.get_ref(), [3, 4, 2, 0, 1, 5, 6, 7]);
 
         writer.seek(-1, SeekEnd);
         writer.write([1, 2]);
-        assert_eq!(*writer.inner_ref(), ~[3, 4, 2, 0, 1, 5, 6, 1, 2]);
+        assert_eq!(writer.get_ref(), [3, 4, 2, 0, 1, 5, 6, 1, 2]);
 
         writer.seek(1, SeekEnd);
         writer.write([1]);
-        assert_eq!(*writer.inner_ref(), ~[3, 4, 2, 0, 1, 5, 6, 1, 2, 0, 1]);
+        assert_eq!(writer.get_ref(), [3, 4, 2, 0, 1, 5, 6, 1, 2, 0, 1]);
     }
 
     #[test]
@@ -415,7 +424,7 @@ mod test {
         writer.write_str("testing");
         writer.write_line("testing");
         writer.write_str("testing");
-        let mut r = BufReader::new(*writer.inner_ref());
+        let mut r = BufReader::new(writer.get_ref());
         assert_eq!(r.read_to_str(), ~"testingtesting\ntesting");
     }
 
@@ -425,7 +434,7 @@ mod test {
         writer.write_char('a');
         writer.write_char('\n');
         writer.write_char('ệ');
-        let mut r = BufReader::new(*writer.inner_ref());
+        let mut r = BufReader::new(writer.get_ref());
         assert_eq!(r.read_to_str(), ~"a\nệ");
     }
 

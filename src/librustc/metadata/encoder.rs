@@ -25,7 +25,6 @@ use std::cast;
 use std::cell::{Cell, RefCell};
 use std::hashmap::{HashMap, HashSet};
 use std::io::mem::MemWriter;
-use std::io::{Writer, Seek, Decorator};
 use std::str;
 use std::vec;
 
@@ -1807,7 +1806,7 @@ pub static metadata_encoding_version : &'static [u8] =
 pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
     let mut wr = MemWriter::new();
     encode_metadata_inner(&mut wr, parms, crate);
-    wr.inner()
+    wr.unwrap()
 }
 
 fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, crate: &Crate) {
@@ -1900,7 +1899,7 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, crate: &Crate)
     ecx.stats.total_bytes.set(ebml_w.writer.tell());
 
     if (tcx.sess.meta_stats()) {
-        for e in ebml_w.writer.inner_ref().iter() {
+        for e in ebml_w.writer.get_ref().iter() {
             if *e == 0 {
                 ecx.stats.zero_bytes.set(ecx.stats.zero_bytes.get() + 1);
             }
@@ -1930,5 +1929,5 @@ pub fn encoded_ty(tcx: ty::ctxt, t: ty::t) -> ~str {
         abbrevs: tyencode::ac_no_abbrevs};
     let mut wr = MemWriter::new();
     tyencode::enc_ty(&mut wr, cx, t);
-    str::from_utf8_owned(wr.inner_ref().to_owned())
+    str::from_utf8_owned(wr.get_ref().to_owned())
 }

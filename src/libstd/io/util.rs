@@ -193,7 +193,6 @@ pub fn copy<R: Reader, W: Writer>(r: &mut R, w: &mut W) {
 
 #[cfg(test)]
 mod test {
-    use io::Decorator;
     use io::mem::{MemReader, MemWriter};
     use super::*;
     use prelude::*;
@@ -282,7 +281,7 @@ mod test {
                                    MemWriter::new());
         assert_eq!(~[0, 1, 2], r.read_to_end());
         let (_, w) = r.unwrap();
-        assert_eq!(~[0, 1, 2], w.inner());
+        assert_eq!(~[0, 1, 2], w.unwrap());
     }
 
     #[test]
@@ -291,6 +290,6 @@ mod test {
         let mut w = MemWriter::new();
         copy(&mut r, &mut w);
         assert!(r.eof());
-        assert_eq!(~[0, 1, 2, 3, 4], w.inner());
+        assert_eq!(~[0, 1, 2, 3, 4], w.unwrap());
     }
 }

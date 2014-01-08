@@ -470,7 +470,6 @@ use prelude::*;
 
 use cast;
 use char::Char;
-use io::Decorator;
 use io::mem::MemWriter;
 use io;
 use str;
@@ -692,7 +691,7 @@ pub fn format(args: &Arguments) -> ~str {
 pub unsafe fn format_unsafe(fmt: &[rt::Piece], args: &[Argument]) -> ~str {
     let mut output = MemWriter::new();
     write_unsafe(&mut output as &mut io::Writer, fmt, args);
-    return str::from_utf8_owned(output.inner());
+    return str::from_utf8_owned(output.unwrap());
 }
 
 impl<'a> Formatter<'a> {
