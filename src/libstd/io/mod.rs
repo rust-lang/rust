@@ -1212,9 +1212,15 @@ pub trait Buffer: Reader {
         };
         if width == 0 { return None } // not uf8
         let mut buf = [0, ..4];
-        match self.read(buf.mut_slice_to(width)) {
-            Some(n) if n == width => {}
-            Some(..) | None => return None // read error
+        {
+            let mut start = 0;
+            loop {
+                match self.read(buf.mut_slice(start, width)) {
+                    Some(n) if n == width - start => break,
+                    Some(n) if n < width - start => { start += n; }
+                    Some(..) | None => return None // read error
+                }
+            }
         }
         match str::from_utf8_opt(buf.slice_to(width)) {
             Some(s) => Some(s.char_at(0)),
