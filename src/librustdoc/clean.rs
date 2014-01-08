@@ -72,7 +72,7 @@ pub struct Crate {
     externs: HashMap<ast::CrateNum, ExternalCrate>,
 }
 
-impl Clean<Crate> for visit_ast::RustdocVisitor {
+impl<'a> Clean<Crate> for visit_ast::RustdocVisitor<'a> {
     fn clean(&self) -> Crate {
         use syntax::attr::find_crateid;
         let cx = local_data::get(super::ctxtkey, |x| *x.unwrap());
