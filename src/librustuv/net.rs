@@ -661,7 +661,7 @@ impl RawSocketWatcher {
         }
         // Make socket non-blocking
         let flags = unsafe { libc::fcntl(socket, libc::F_GETFL, 0) };
-        if (flags == -1) {
+        if flags == -1 {
             return Err(uv_error_to_io_error(UvError(errno() as i32)));
         }
         if unsafe { libc::fcntl(socket, libc::F_SETFL, flags | libc::O_NONBLOCK) } == -1 {
