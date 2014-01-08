@@ -384,7 +384,7 @@ fn executable_exists(repo: &Path, short_name: &str) -> bool {
 fn test_executable_exists(repo: &Path, short_name: &str) -> bool {
     debug!("test_executable_exists: repo = {}, short_name = {}", repo.display(), short_name);
     let exec = built_test_in_workspace(&CrateId::new(short_name), repo);
-    exec.map_default(false, |exec| exec.exists() && is_rwx(&exec))
+    exec.map_or(false, |exec| exec.exists() && is_rwx(&exec))
 }
 
 fn remove_executable_file(p: &CrateId, workspace: &Path) {
@@ -600,8 +600,8 @@ fn test_install_valid() {
 
     let lib = installed_library_in_workspace(&temp_pkg_id.path, temp_workspace);
     debug!("lib = {:?}", lib);
-    assert!(lib.as_ref().map_default(false, |l| l.exists()));
-    assert!(lib.as_ref().map_default(false, |l| is_rwx(l)));
+    assert!(lib.as_ref().map_or(false, |l| l.exists()));
+    assert!(lib.as_ref().map_or(false, |l| is_rwx(l)));
 
     // And that the test and bench executables aren't installed
     assert!(!target_test_in_workspace(&temp_pkg_id, temp_workspace).exists());
@@ -652,8 +652,8 @@ fn test_install_valid_external() {
 
     let lib = installed_library_in_workspace(&temp_pkg_id.path, temp_workspace);
     debug!("lib = {:?}", lib);
-    assert!(lib.as_ref().map_default(false, |l| l.exists()));
-    assert!(lib.as_ref().map_default(false, |l| is_rwx(l)));
+    assert!(lib.as_ref().map_or(false, |l| l.exists()));
+    assert!(lib.as_ref().map_or(false, |l| is_rwx(l)));
 
     // And that the test and bench executables aren't installed
     assert!(!target_test_in_workspace(&temp_pkg_id, temp_workspace).exists());
@@ -947,7 +947,7 @@ fn rustpkg_clean_no_arg() {
     assert_built_executable_exists(&tmp, "foo");
     command_line_test([~"clean"], &package_dir);
     let res = built_executable_in_workspace(&CrateId::new("foo"), &tmp);
-    assert!(!res.as_ref().map_default(false, |m| m.exists()));
+    assert!(!res.as_ref().map_or(false, |m| m.exists()));
 }
 
 #[test]

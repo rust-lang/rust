@@ -402,7 +402,7 @@ impl Parser {
         fn tokens_to_str(tokens: &[token::Token]) -> ~str {
             let mut i = tokens.iter();
             // This might be a sign we need a connect method on Iterator.
-            let b = i.next().map_default(~"", |t| Parser::token_to_str(t));
+            let b = i.next().map_or(~"", |t| Parser::token_to_str(t));
             i.fold(b, |b,a| b + "`, `" + Parser::token_to_str(a))
         }
         if edible.contains(&self.token) {
@@ -467,7 +467,7 @@ impl Parser {
     pub fn commit_stmt(&mut self, s: @Stmt, edible: &[token::Token], inedible: &[token::Token]) {
         debug!("commit_stmt {:?}", s);
         let _s = s; // unused, but future checks might want to inspect `s`.
-        if self.last_token.as_ref().map_default(false, |t| is_ident_or_path(*t)) {
+        if self.last_token.as_ref().map_or(false, |t| is_ident_or_path(*t)) {
             let expected = vec::append(edible.to_owned(), inedible);
             self.check_for_erroneous_unit_struct_expecting(expected);
         }

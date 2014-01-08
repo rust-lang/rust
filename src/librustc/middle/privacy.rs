@@ -256,7 +256,7 @@ impl<'a> Visitor<()> for EmbargoVisitor<'a> {
                     _ => true,
                 };
                 let tr = ty::impl_trait_ref(self.tcx, local_def(item.id));
-                let public_trait = tr.map_default(false, |tr| {
+                let public_trait = tr.map_or(false, |tr| {
                     !is_local(tr.def_id) ||
                      self.exported_items.contains(&tr.def_id.node)
                 });
