@@ -35,6 +35,11 @@ type Context<'a> = (&'a method_map, &'a resolve::ExportMap2);
 /// A set of AST nodes exported by the crate.
 pub type ExportedItems = HashSet<ast::NodeId>;
 
+/// A set of AST nodes that are fully public in the crate. This map is used for
+/// documentation purposes (reexporting a private struct inlines the doc,
+/// reexporting a public struct doesn't inline the doc).
+pub type PublicItems = HashSet<ast::NodeId>;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// The parent visitor, used to determine what's the parent of what (node-wise)
 ////////////////////////////////////////////////////////////////////////////////
@@ -165,6 +170,12 @@ struct EmbargoVisitor<'a> {
     // means that the destination of the reexport is exported, and hence the
     // destination must also be exported.
     reexports: HashSet<ast::NodeId>,
+
+    // These two fields are closely related to one another in that they are only
+    // used for generation of the 'PublicItems' set, not for privacy checking at
+    // all
+    public_items: PublicItems,
+    prev_public: bool,
 }
 
 impl<'a> EmbargoVisitor<'a> {
@@ -186,7 +197,13 @@ impl<'a> EmbargoVisitor<'a> {
 
 impl<'a> Visitor<()> for EmbargoVisitor<'a> {
     fn visit_item(&mut self, item: &ast::item, _: ()) {
-        let orig_all_pub = self.prev_exported;
+        let orig_all_pub = self.prev_public;
+        self.prev_public = orig_all_pub && item.vis == ast::public;
+        if self.prev_public {
+            self.public_items.insert(item.id);
+        }
+
+        let orig_all_exported = self.prev_exported;
         match item.node {
             // impls/extern blocks do not break the "public chain" because they
             // cannot have visibility qualifiers on them anyway
@@ -202,7 +219,7 @@ impl<'a> Visitor<()> for EmbargoVisitor<'a> {
             // `pub` is explicitly listed.
             _ => {
                 self.prev_exported =
-                    (orig_all_pub && item.vis == ast::public) ||
+                    (orig_all_exported && item.vis == ast::public) ||
                      self.reexports.contains(&item.id);
             }
         }
@@ -304,7 +321,8 @@ impl<'a> Visitor<()> for EmbargoVisitor<'a> {
 
         visit::walk_item(self, item, ());
 
-        self.prev_exported = orig_all_pub;
+        self.prev_exported = orig_all_exported;
+        self.prev_public = orig_all_pub;
     }
 
     fn visit_foreign_item(&mut self, a: &ast::foreign_item, _: ()) {
@@ -1002,7 +1020,7 @@ pub fn check_crate(tcx: ty::ctxt,
                    exp_map2: &resolve::ExportMap2,
                    external_exports: resolve::ExternalExports,
                    last_private_map: resolve::LastPrivateMap,
-                   crate: &ast::Crate) -> ExportedItems {
+                   crate: &ast::Crate) -> (ExportedItems, PublicItems) {
     // Figure out who everyone's parent is
     let mut visitor = ParentVisitor {
         parents: HashMap::new(),
@@ -1038,9 +1056,11 @@ pub fn check_crate(tcx: ty::ctxt,
     let mut visitor = EmbargoVisitor {
         tcx: tcx,
         exported_items: HashSet::new(),
+        public_items: HashSet::new(),
         reexports: HashSet::new(),
         exp_map2: exp_map2,
         prev_exported: true,
+        prev_public: true,
     };
     loop {
         let before = visitor.exported_items.len();
@@ -1050,5 +1070,6 @@ pub fn check_crate(tcx: ty::ctxt,
         }
     }
 
-    return visitor.exported_items;
+    let EmbargoVisitor { exported_items, public_items, .. } = visitor;
+    return (exported_items, public_items);
 }
