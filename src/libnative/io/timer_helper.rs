@@ -33,7 +33,7 @@ use task;
 // only torn down after everything else has exited. This means that these
 // variables are read-only during use (after initialization) and both of which
 // are safe to use concurrently.
-static mut HELPER_CHAN: *mut SharedChan<Req> = 0 as *mut SharedChan<Req>;
+static mut HELPER_CHAN: *mut Chan<Req> = 0 as *mut Chan<Req>;
 static mut HELPER_SIGNAL: imp::signal = 0 as imp::signal;
 
 pub fn boot(helper: fn(imp::signal, Port<Req>)) {
@@ -43,7 +43,9 @@ pub fn boot(helper: fn(imp::signal, Port<Req>)) {
     unsafe {
         LOCK.lock();
         if !INITIALIZED {
-            let (msgp, msgc) = SharedChan::new();
+            let (msgp, msgc) = Chan::new();
+            // promote this to a shared channel
+            drop(msgc.clone());
             HELPER_CHAN = cast::transmute(~msgc);
             let (receive, send) = imp::new();
             HELPER_SIGNAL = send;
@@ -84,8 +86,8 @@ fn shutdown() {
     // Clean up after ther helper thread
     unsafe {
         imp::close(HELPER_SIGNAL);
-        let _chan: ~SharedChan<Req> = cast::transmute(HELPER_CHAN);
-        HELPER_CHAN = 0 as *mut SharedChan<Req>;
+        let _chan: ~Chan<Req> = cast::transmute(HELPER_CHAN);
+        HELPER_CHAN = 0 as *mut Chan<Req>;
         HELPER_SIGNAL = 0 as imp::signal;
     }
 }

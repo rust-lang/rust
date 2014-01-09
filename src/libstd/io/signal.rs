@@ -21,7 +21,7 @@ definitions for a number of signals.
 
 use clone::Clone;
 use result::{Ok, Err};
-use comm::{Port, SharedChan};
+use comm::{Port, Chan};
 use container::{Map, MutableMap};
 use hashmap;
 use io;
@@ -81,7 +81,7 @@ pub struct Listener {
     priv handles: hashmap::HashMap<Signum, ~RtioSignal>,
     /// chan is where all the handles send signums, which are received by
     /// the clients from port.
-    priv chan: SharedChan<Signum>,
+    priv chan: Chan<Signum>,
 
     /// Clients of Listener can `recv()` from this port. This is exposed to
     /// allow selection over this port as well as manipulation of the port
@@ -93,7 +93,7 @@ impl Listener {
     /// Creates a new listener for signals. Once created, signals are bound via
     /// the `register` method (otherwise nothing will ever be received)
     pub fn new() -> Listener {
-        let (port, chan) = SharedChan::new();
+        let (port, chan) = Chan::new();
         Listener {
             chan: chan,
             port: port,

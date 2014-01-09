@@ -194,14 +194,16 @@ impl<T: Send> Queue<T> {
         }
     }
 
-    /// Tests whether this queue is empty or not. Remember that there can only
-    /// be one tester/popper, and also keep in mind that the answer returned
-    /// from this is likely to change if it is `false`.
-    pub fn is_empty(&self) -> bool {
+    /// Attempts to peek at the head of the queue, returning `None` if the queue
+    /// has no data currently
+    pub fn peek<'a>(&'a mut self) -> Option<&'a mut T> {
+        // This is essentially the same as above with all the popping bits
+        // stripped out.
         unsafe {
             let tail = self.tail;
             let next = (*tail).next.load(Acquire);
-            return next.is_null();
+            if next.is_null() { return None }
+            return (*next).value.as_mut();
         }
     }
 }
@@ -223,8 +225,9 @@ impl<T: Send> Drop for Queue<T> {
 #[cfg(test)]
 mod test {
     use prelude::*;
-    use super::Queue;
     use native;
+    use super::Queue;
+    use sync::arc::UnsafeArc;
 
     #[test]
     fn smoke() {
@@ -272,7 +275,6 @@ mod test {
             let (a, b) = UnsafeArc::new2(Queue::new(bound));
             let (port, chan) = Chan::new();
             native::task::spawn(proc() {
-                let mut c = c;
                 for _ in range(0, 100000) {
                     loop {
                         match unsafe { (*b.get()).pop() } {

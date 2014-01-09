@@ -65,7 +65,6 @@ use rt::task::Task;
 use str::{Str, SendStr, IntoMaybeOwned};
 
 #[cfg(test)] use any::{AnyOwnExt, AnyRefExt};
-#[cfg(test)] use comm::SharedChan;
 #[cfg(test)] use ptr;
 #[cfg(test)] use result;
 
@@ -474,9 +473,9 @@ fn test_try_fail() {
 fn test_spawn_sched() {
     use clone::Clone;
 
-    let (po, ch) = SharedChan::new();
+    let (po, ch) = Chan::new();
 
-    fn f(i: int, ch: SharedChan<()>) {
+    fn f(i: int, ch: Chan<()>) {
         let ch = ch.clone();
         spawn(proc() {
             if i == 0 {
