@@ -502,26 +502,6 @@ pub trait Reader {
     /// Is it actually possible for 0 bytes to be read successfully?
     fn read(&mut self, buf: &mut [u8]) -> Option<uint>;
 
-    /// Return whether the Reader has reached the end of the stream.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use std::io;
-    /// # let _g = ::std::io::ignore_io_error();
-    /// let mut reader = io::stdin();
-    ///
-    /// let mut bytes = [0, .. 10];
-    /// reader.read(bytes);
-    ///
-    /// if reader.eof() { println("stdin() had at most 10 bytes of data."); }
-    /// ```
-    ///
-    /// # Failure
-    ///
-    /// Returns `true` on failure.
-    fn eof(&mut self) -> bool;
-
     // Convenient helper methods based on the above methods
 
     /// Reads a single byte. Returns `None` on EOF.
@@ -864,12 +844,10 @@ pub trait Reader {
 
 impl Reader for ~Reader {
     fn read(&mut self, buf: &mut [u8]) -> Option<uint> { self.read(buf) }
-    fn eof(&mut self) -> bool { self.eof() }
 }
 
 impl<'a> Reader for &'a mut Reader {
     fn read(&mut self, buf: &mut [u8]) -> Option<uint> { self.read(buf) }
-    fn eof(&mut self) -> bool { self.eof() }
 }
 
 fn extend_sign(val: u64, nbytes: uint) -> i64 {

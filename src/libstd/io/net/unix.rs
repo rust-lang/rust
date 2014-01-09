@@ -67,7 +67,6 @@ impl UnixStream {
 
 impl Reader for UnixStream {
     fn read(&mut self, buf: &mut [u8]) -> Option<uint> { self.obj.read(buf) }
-    fn eof(&mut self) -> bool { self.obj.eof() }
 }
 
 impl Writer for UnixStream {
