@@ -86,8 +86,6 @@ impl Reader for UdpStream {
             }
         })
     }
-
-    fn eof(&mut self) -> bool { fail!() }
 }
 
 impl Writer for UdpStream {
