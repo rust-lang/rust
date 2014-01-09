@@ -598,9 +598,9 @@ pub enum Type {
     FixedVector(~Type, ~str),
     String,
     Bool,
-    /// aka ty_nil
+    /// aka TyNil
     Unit,
-    /// aka ty_bot
+    /// aka TyBot
     Bottom,
     Unique(~Type),
     Managed(~Type),
@@ -624,22 +624,22 @@ impl Clean<Type> for ast::Ty {
         let codemap = local_data::get(super::ctxtkey, |x| *x.unwrap()).sess.codemap;
         debug!("span corresponds to `{}`", codemap.span_to_str(self.span));
         match self.node {
-            ty_nil => Unit,
-            ty_ptr(ref m) => RawPointer(m.mutbl.clean(), ~m.ty.clean()),
-            ty_rptr(ref l, ref m) =>
+            TyNil => Unit,
+            TyPtr(ref m) => RawPointer(m.mutbl.clean(), ~m.ty.clean()),
+            TyRptr(ref l, ref m) =>
                 BorrowedRef {lifetime: l.clean(), mutability: m.mutbl.clean(),
                              type_: ~m.ty.clean()},
-            ty_box(ty) => Managed(~ty.clean()),
-            ty_uniq(ty) => Unique(~ty.clean()),
-            ty_vec(ty) => Vector(~ty.clean()),
-            ty_fixed_length_vec(ty, ref e) => FixedVector(~ty.clean(),
-                                                          e.span.to_src()),
-            ty_tup(ref tys) => Tuple(tys.iter().map(|x| x.clean()).collect()),
-            ty_path(ref p, ref tpbs, id) =>
+            TyBox(ty) => Managed(~ty.clean()),
+            TyUniq(ty) => Unique(~ty.clean()),
+            TyVec(ty) => Vector(~ty.clean()),
+            TyFixedLengthVec(ty, ref e) => FixedVector(~ty.clean(),
+                                                       e.span.to_src()),
+            TyTup(ref tys) => Tuple(tys.iter().map(|x| x.clean()).collect()),
+            TyPath(ref p, ref tpbs, id) =>
                 resolve_type(p.clean(), tpbs.clean(), id),
-            ty_closure(ref c) => Closure(~c.clean()),
-            ty_bare_fn(ref barefn) => BareFunction(~barefn.clean()),
-            ty_bot => Bottom,
+            TyClosure(ref c) => Closure(~c.clean()),
+            TyBareFn(ref barefn) => BareFunction(~barefn.clean()),
+            TyBot => Bottom,
             ref x => fail!("Unimplemented type {:?}", x),
         }
     }
@@ -1204,9 +1204,8 @@ fn resolve_type(path: Path, tpbs: Option<~[TyParamBound]>,
         let fqn = csearch::get_item_path(tycx, def_id);
         let fqn = fqn.move_iter().map(|i| {
             match i {
-                ast_map::path_mod(id) |
-                ast_map::path_name(id) |
-                ast_map::path_pretty_name(id, _) => id.clean()
+                ast_map::PathMod(id) | ast_map::PathName(id) |
+                ast_map::PathPrettyName(id, _) => id.clean()
             }
         }).to_owned_vec();
         ExternalPath{ path: path, typarams: tpbs, fqn: fqn, kind: kind,

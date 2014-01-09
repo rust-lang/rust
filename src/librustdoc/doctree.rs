@@ -39,7 +39,7 @@ impl Module {
         Module {
             name       : name,
             id: 0,
-            vis: ast::private,
+            vis: ast::Private,
             where: syntax::codemap::DUMMY_SP,
             attrs      : ~[],
             structs    : ~[],

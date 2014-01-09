@@ -121,36 +121,36 @@ impl<'a> RustdocVisitor<'a> {
         om
     }
 
-    pub fn visit_view_item(&mut self, item: &ast::view_item, om: &mut Module) {
-        if item.vis != ast::public {
+    pub fn visit_view_item(&mut self, item: &ast::ViewItem, om: &mut Module) {
+        if item.vis != ast::Public {
             return om.view_items.push(item.clone());
         }
         let item = match item.node {
-            ast::view_item_use(ref paths) => {
+            ast::ViewItemUse(ref paths) => {
                 // rustc no longer supports "use foo, bar;"
                 assert_eq!(paths.len(), 1);
                 match self.visit_view_path(paths[0], om) {
                     None => return,
                     Some(path) => {
-                        ast::view_item {
-                            node: ast::view_item_use(~[path]),
+                        ast::ViewItem {
+                            node: ast::ViewItemUse(~[path]),
                             .. item.clone()
                         }
                     }
                 }
             }
-            ast::view_item_extern_mod(..) => item.clone()
+            ast::ViewItemExternMod(..) => item.clone()
         };
         om.view_items.push(item);
     }
 
-    fn visit_view_path(&mut self, path: @ast::view_path,
-                       om: &mut Module) -> Option<@ast::view_path> {
+    fn visit_view_path(&mut self, path: @ast::ViewPath,
+                       om: &mut Module) -> Option<@ast::ViewPath> {
         match path.node {
-            ast::view_path_simple(_, _, id) => {
+            ast::ViewPathSimple(_, _, id) => {
                 if self.resolve_id(id, false, om) { return None }
             }
-            ast::view_path_list(ref p, ref paths, ref b) => {
+            ast::ViewPathList(ref p, ref paths, ref b) => {
                 let mut mine = ~[];
                 for path in paths.iter() {
                     if !self.resolve_id(path.node.id, false, om) {
@@ -160,13 +160,13 @@ impl<'a> RustdocVisitor<'a> {
 
                 if mine.len() == 0 { return None }
                 return Some(@::syntax::codemap::Spanned {
-                    node: ast::view_path_list(p.clone(), mine, b.clone()),
+                    node: ast::ViewPathList(p.clone(), mine, b.clone()),
                     span: path.span,
                 })
             }
 
             // these are feature gated anyway
-            ast::view_path_glob(_, id) => {
+            ast::ViewPathGlob(_, id) => {
                 if self.resolve_id(id, true, om) { return None }
             }
         }
