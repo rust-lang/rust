@@ -13,10 +13,13 @@ use std::io::IoError;
 use std::io::net::ip::{Ipv4Addr, Ipv6Addr, SocketAddr, IpAddr};
 use std::libc::{size_t, ssize_t, c_int, c_void, c_uint, c_char};
 use std::libc;
+use std::num::Bounded;
+use std::os::errno;
 use std::ptr;
 use std::rt::rtio;
 use std::rt::task::BlockedTask;
 use std::str;
+use std::unstable::intrinsics;
 use std::unstable::finally::Finally;
 use std::vec;
 
