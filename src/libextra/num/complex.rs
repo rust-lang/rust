@@ -11,7 +11,6 @@
 
 //! Complex numbers.
 
-
 use std::num::{Zero,One,ToStrRadix};
 
 // FIXME #1284: handle complex NaN & infinity etc. This
@@ -78,7 +77,7 @@ impl<T: Clone + Num> Cmplx<T> {
     }
 }
 
-impl<T: Clone + Algebraic + Num> Cmplx<T> {
+impl<T: Clone + Real> Cmplx<T> {
     /// Calculate |self|
     #[inline]
     pub fn norm(&self) -> T {
@@ -86,7 +85,7 @@ impl<T: Clone + Algebraic + Num> Cmplx<T> {
     }
 }
 
-impl<T: Clone + Trigonometric + Algebraic + Num> Cmplx<T> {
+impl<T: Clone + Real> Cmplx<T> {
     /// Calculate the principal Arg of self.
     #[inline]
     pub fn arg(&self) -> T {

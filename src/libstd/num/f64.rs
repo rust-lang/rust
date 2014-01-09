@@ -18,7 +18,7 @@ use cmath::c_double_utils;
 use default::Default;
 use libc::{c_double, c_int};
 use num::{FPCategory, FPNaN, FPInfinite , FPZero, FPSubnormal, FPNormal};
-use num::{Zero, One, strconv};
+use num::{Zero, One, RealExt, strconv};
 use num;
 use to_str;
 use unstable::intrinsics;
@@ -349,146 +349,6 @@ impl Round for f64 {
     fn fract(&self) -> f64 { *self - self.trunc() }
 }
 
-impl Fractional for f64 {
-    /// The reciprocal (multiplicative inverse) of the number
-    #[inline]
-    fn recip(&self) -> f64 { 1.0 / *self }
-}
-
-impl Algebraic for f64 {
-    #[inline]
-    fn pow(&self, n: &f64) -> f64 { pow(*self, *n) }
-
-    #[inline]
-    fn sqrt(&self) -> f64 { sqrt(*self) }
-
-    #[inline]
-    fn rsqrt(&self) -> f64 { self.sqrt().recip() }
-
-    #[inline]
-    fn cbrt(&self) -> f64 { cbrt(*self) }
-
-    #[inline]
-    fn hypot(&self, other: &f64) -> f64 { hypot(*self, *other) }
-}
-
-impl Trigonometric for f64 {
-    #[inline]
-    fn sin(&self) -> f64 { sin(*self) }
-
-    #[inline]
-    fn cos(&self) -> f64 { cos(*self) }
-
-    #[inline]
-    fn tan(&self) -> f64 { tan(*self) }
-
-    #[inline]
-    fn asin(&self) -> f64 { asin(*self) }
-
-    #[inline]
-    fn acos(&self) -> f64 { acos(*self) }
-
-    #[inline]
-    fn atan(&self) -> f64 { atan(*self) }
-
-    #[inline]
-    fn atan2(&self, other: &f64) -> f64 { atan2(*self, *other) }
-
-    /// Simultaneously computes the sine and cosine of the number
-    #[inline]
-    fn sin_cos(&self) -> (f64, f64) {
-        (self.sin(), self.cos())
-    }
-}
-
-impl Exponential for f64 {
-    /// Returns the exponential of the number
-    #[inline]
-    fn exp(&self) -> f64 { exp(*self) }
-
-    /// Returns 2 raised to the power of the number
-    #[inline]
-    fn exp2(&self) -> f64 { exp2(*self) }
-
-    /// Returns the natural logarithm of the number
-    #[inline]
-    fn ln(&self) -> f64 { ln(*self) }
-
-    /// Returns the logarithm of the number with respect to an arbitrary base
-    #[inline]
-    fn log(&self, base: &f64) -> f64 { self.ln() / base.ln() }
-
-    /// Returns the base 2 logarithm of the number
-    #[inline]
-    fn log2(&self) -> f64 { log2(*self) }
-
-    /// Returns the base 10 logarithm of the number
-    #[inline]
-    fn log10(&self) -> f64 { log10(*self) }
-}
-
-impl Hyperbolic for f64 {
-    #[inline]
-    fn sinh(&self) -> f64 { sinh(*self) }
-
-    #[inline]
-    fn cosh(&self) -> f64 { cosh(*self) }
-
-    #[inline]
-    fn tanh(&self) -> f64 { tanh(*self) }
-
-    ///
-    /// Inverse hyperbolic sine
-    ///
-    /// # Returns
-    ///
-    /// - on success, the inverse hyperbolic sine of `self` will be returned
-    /// - `self` if `self` is `0.0`, `-0.0`, `INFINITY`, or `NEG_INFINITY`
-    /// - `NAN` if `self` is `NAN`
-    ///
-    #[inline]
-    fn asinh(&self) -> f64 {
-        match *self {
-            NEG_INFINITY => NEG_INFINITY,
-            x => (x + ((x * x) + 1.0).sqrt()).ln(),
-        }
-    }
-
-    ///
-    /// Inverse hyperbolic cosine
-    ///
-    /// # Returns
-    ///
-    /// - on success, the inverse hyperbolic cosine of `self` will be returned
-    /// - `INFINITY` if `self` is `INFINITY`
-    /// - `NAN` if `self` is `NAN` or `self < 1.0` (including `NEG_INFINITY`)
-    ///
-    #[inline]
-    fn acosh(&self) -> f64 {
-        match *self {
-            x if x < 1.0 => Float::nan(),
-            x => (x + ((x * x) - 1.0).sqrt()).ln(),
-        }
-    }
-
-    ///
-    /// Inverse hyperbolic tangent
-    ///
-    /// # Returns
-    ///
-    /// - on success, the inverse hyperbolic tangent of `self` will be returned
-    /// - `self` if `self` is `0.0` or `-0.0`
-    /// - `INFINITY` if `self` is `1.0`
-    /// - `NEG_INFINITY` if `self` is `-1.0`
-    /// - `NAN` if the `self` is `NAN` or outside the domain of `-1.0 <= self <= 1.0`
-    ///   (including `INFINITY` and `NEG_INFINITY`)
-    ///
-    #[inline]
-    fn atanh(&self) -> f64 {
-        0.5 * ((2.0 * *self) / (1.0 - *self)).ln_1p()
-    }
-}
-
 impl Real for f64 {
     /// Archimedes' constant
     #[inline]
@@ -557,6 +417,136 @@ impl Real for f64 {
     /// ln(10.0)
     #[inline]
     fn ln_10() -> f64 { 2.30258509299404568401799145468436421 }
+
+    /// The reciprocal (multiplicative inverse) of the number
+    #[inline]
+    fn recip(&self) -> f64 { 1.0 / *self }
+
+    #[inline]
+    fn pow(&self, n: &f64) -> f64 { pow(*self, *n) }
+
+    #[inline]
+    fn sqrt(&self) -> f64 { sqrt(*self) }
+
+    #[inline]
+    fn rsqrt(&self) -> f64 { self.sqrt().recip() }
+
+    #[inline]
+    fn cbrt(&self) -> f64 { cbrt(*self) }
+
+    #[inline]
+    fn hypot(&self, other: &f64) -> f64 { hypot(*self, *other) }
+
+    #[inline]
+    fn sin(&self) -> f64 { sin(*self) }
+
+    #[inline]
+    fn cos(&self) -> f64 { cos(*self) }
+
+    #[inline]
+    fn tan(&self) -> f64 { tan(*self) }
+
+    #[inline]
+    fn asin(&self) -> f64 { asin(*self) }
+
+    #[inline]
+    fn acos(&self) -> f64 { acos(*self) }
+
+    #[inline]
+    fn atan(&self) -> f64 { atan(*self) }
+
+    #[inline]
+    fn atan2(&self, other: &f64) -> f64 { atan2(*self, *other) }
+
+    /// Simultaneously computes the sine and cosine of the number
+    #[inline]
+    fn sin_cos(&self) -> (f64, f64) {
+        (self.sin(), self.cos())
+    }
+
+    /// Returns the exponential of the number
+    #[inline]
+    fn exp(&self) -> f64 { exp(*self) }
+
+    /// Returns 2 raised to the power of the number
+    #[inline]
+    fn exp2(&self) -> f64 { exp2(*self) }
+
+    /// Returns the natural logarithm of the number
+    #[inline]
+    fn ln(&self) -> f64 { ln(*self) }
+
+    /// Returns the logarithm of the number with respect to an arbitrary base
+    #[inline]
+    fn log(&self, base: &f64) -> f64 { self.ln() / base.ln() }
+
+    /// Returns the base 2 logarithm of the number
+    #[inline]
+    fn log2(&self) -> f64 { log2(*self) }
+
+    /// Returns the base 10 logarithm of the number
+    #[inline]
+    fn log10(&self) -> f64 { log10(*self) }
+
+    #[inline]
+    fn sinh(&self) -> f64 { sinh(*self) }
+
+    #[inline]
+    fn cosh(&self) -> f64 { cosh(*self) }
+
+    #[inline]
+    fn tanh(&self) -> f64 { tanh(*self) }
+
+    ///
+    /// Inverse hyperbolic sine
+    ///
+    /// # Returns
+    ///
+    /// - on success, the inverse hyperbolic sine of `self` will be returned
+    /// - `self` if `self` is `0.0`, `-0.0`, `INFINITY`, or `NEG_INFINITY`
+    /// - `NAN` if `self` is `NAN`
+    ///
+    #[inline]
+    fn asinh(&self) -> f64 {
+        match *self {
+            NEG_INFINITY => NEG_INFINITY,
+            x => (x + ((x * x) + 1.0).sqrt()).ln(),
+        }
+    }
+
+    ///
+    /// Inverse hyperbolic cosine
+    ///
+    /// # Returns
+    ///
+    /// - on success, the inverse hyperbolic cosine of `self` will be returned
+    /// - `INFINITY` if `self` is `INFINITY`
+    /// - `NAN` if `self` is `NAN` or `self < 1.0` (including `NEG_INFINITY`)
+    ///
+    #[inline]
+    fn acosh(&self) -> f64 {
+        match *self {
+            x if x < 1.0 => Float::nan(),
+            x => (x + ((x * x) - 1.0).sqrt()).ln(),
+        }
+    }
+
+    ///
+    /// Inverse hyperbolic tangent
+    ///
+    /// # Returns
+    ///
+    /// - on success, the inverse hyperbolic tangent of `self` will be returned
+    /// - `self` if `self` is `0.0` or `-0.0`
+    /// - `INFINITY` if `self` is `1.0`
+    /// - `NEG_INFINITY` if `self` is `-1.0`
+    /// - `NAN` if the `self` is `NAN` or outside the domain of `-1.0 <= self <= 1.0`
+    ///   (including `INFINITY` and `NEG_INFINITY`)
+    ///
+    #[inline]
+    fn atanh(&self) -> f64 {
+        0.5 * ((2.0 * *self) / (1.0 - *self)).ln_1p()
+    }
 
     /// Converts to degrees, assuming the number is in radians
     #[inline]
