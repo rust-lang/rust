@@ -10,7 +10,7 @@
 
 //! The normal and derived distributions.
 
-use num::Exponential;
+use num::Real;
 use rand::{Rng, Rand, Open01};
 use rand::distributions::{ziggurat, ziggurat_tables, Sample, IndependentSample};
 
