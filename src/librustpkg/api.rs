@@ -14,6 +14,7 @@ use crate::*;
 use crate_id::*;
 use package_source::*;
 use path_util::{platform_library_name, target_build_dir};
+use perform::{install};
 use target::*;
 use version::Version;
 use workspace::pkg_parent_workspaces;
@@ -50,6 +51,7 @@ pub fn new_default_context(c: workcache::Context, p: Path) -> BuildContext {
             cfgs: ~[],
             rustc_flags: RustcFlags::default(),
             use_rust_path_hack: false,
+            supplied_sysroot: None
         },
         sysroot: p,
         workcache_context: c
@@ -134,10 +136,11 @@ pub fn install_pkg(cx: &BuildContext,
                    // For now, these inputs are assumed to be inputs to each of the crates
                    more_inputs: ~[(~str, Path)]) { // pairs of Kind and Path
     let crateid = CrateId{ version: version, ..CrateId::new(name)};
-    cx.install(PkgSrc::new(workspace.clone(), workspace, false, crateid),
-               &WhatToBuild{ build_type: Inferred,
+    let pkg_src = PkgSrc::new(workspace.clone(), workspace, false, crateid);
+    let what =  WhatToBuild{ build_type: Inferred,
                              inputs_to_discover: more_inputs,
-                             sources: Everything });
+                             sources: Everything };
+    install(pkg_src, &what, cx);
 }
 
 /// Builds an arbitrary library whose short name is `output`,

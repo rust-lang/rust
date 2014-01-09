@@ -23,10 +23,11 @@ use extra::workcache;
 use extra::workcache::{Database, Logger};
 use extra::treemap::TreeMap;
 use extra::getopts::groups::getopts;
+use perform::{install};
 use std::run::ProcessOutput;
 use installed_packages::list_installed_packages;
 use crate_id::{CrateId};
-use version::{ExactRevision, NoVersion, Version, Tagged};
+use version::{ExactRevision, NoVersion, Version};
 use path_util::{target_executable_in_workspace, target_test_in_workspace,
                target_bench_in_workspace, make_dir_rwx,
                library_in_workspace, installed_library_in_workspace,
@@ -35,7 +36,6 @@ use path_util::{target_executable_in_workspace, target_test_in_workspace,
                chmod_read_only, platform_library_name};
 use rustc::back::link::get_cc_prog;
 use rustc::metadata::filesearch::{rust_path, libdir, rustlibdir};
-use rustc::driver::session;
 use rustc::driver::driver::{build_session, build_session_options, host_triple, optgroups};
 use syntax::diagnostic;
 use target::*;
@@ -53,8 +53,8 @@ fn fake_ctxt(sysroot: Path, workspace: &Path) -> BuildContext {
         context: Context {
             cfgs: ~[],
             rustc_flags: RustcFlags::default(),
-
             use_rust_path_hack: false,
+            supplied_sysroot:None
         },
         sysroot: sysroot
     }
@@ -74,14 +74,6 @@ fn git_repo_pkg() -> CrateId {
         path: Path::new("mockgithub.com/catamorphism/test-pkg"),
         short_name: ~"test-pkg",
         version: NoVersion
-    }
-}
-
-fn git_repo_pkg_with_tag(a_tag: ~str) -> CrateId {
-    CrateId {
-        path: Path::new("mockgithub.com/catamorphism/test-pkg"),
-        short_name: ~"test-pkg",
-        version: Tagged(a_tag)
     }
 }
 
@@ -488,12 +480,6 @@ fn lib_output_file_name(workspace: &Path, short_name: &str) -> Path {
                          &NoVersion).expect("lib_output_file_name")
 }
 
-fn output_file_name(workspace: &Path, short_name: ~str) -> Path {
-    target_build_dir(workspace).join(short_name.as_slice())
-                               .join(format!("{}{}", short_name,
-                                             os::consts::EXE_SUFFIX))
-}
-
 #[cfg(target_os = "linux")]
 fn touch_source_file(workspace: &Path, crateid: &CrateId) {
     use conditions::bad_path::cond;
@@ -592,7 +578,7 @@ fn test_install_valid() {
                           temp_workspace.clone(),
                           false,
                           temp_pkg_id.clone());
-    ctxt.install(src, &WhatToBuild::new(MaybeCustom, Everything));
+    install(src, &WhatToBuild::new(MaybeCustom, Everything), &ctxt);
     // Check that all files exist
     let exec = target_executable_in_workspace(&temp_pkg_id, temp_workspace);
     debug!("exec = {}", exec.display());
@@ -631,7 +617,7 @@ fn test_install_invalid() {
                                   temp_workspace.clone(),
                                   false,
                                   crateid.clone());
-        ctxt.install(pkg_src, &WhatToBuild::new(MaybeCustom, Everything));
+        install(pkg_src, &WhatToBuild::new(MaybeCustom, Everything),&ctxt);
     };
     assert!(result.unwrap_err()
             .to_str().contains("supplied path for package dir does not exist"));

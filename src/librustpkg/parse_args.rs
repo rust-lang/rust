@@ -29,8 +29,6 @@ pub struct ParseResult {
     args: ~[~str],
     // Parsed command line flags
     context: Context,
-    // Path to system root
-    sysroot: Option<~str>
 }
 
 /// Parses command line arguments of rustpkg.
@@ -179,12 +177,12 @@ pub fn parse_args(args: &[~str]) -> Result<ParseResult, int> {
         rustc_flags: rustc_flags,
         cfgs: cfgs,
         use_rust_path_hack: use_rust_path_hack,
+        supplied_sysroot:  supplied_sysroot
     };
     Ok(ParseResult {
         command:  command,
         args: remaining_args,
-        context: context,
-        sysroot: supplied_sysroot
+        context: context
     })
 }
 
