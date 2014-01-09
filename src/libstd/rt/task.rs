@@ -292,6 +292,12 @@ impl Task {
     pub fn stack_bounds(&self) -> (uint, uint) {
         self.imp.get_ref().stack_bounds()
     }
+
+    /// Returns whether it is legal for this task to block the OS thread that it
+    /// is running on.
+    pub fn can_block(&self) -> bool {
+        self.imp.get_ref().can_block()
+    }
 }
 
 impl Drop for Task {

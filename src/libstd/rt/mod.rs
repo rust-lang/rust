@@ -156,6 +156,7 @@ pub trait Runtime {
     fn local_io<'a>(&'a mut self) -> Option<rtio::LocalIo<'a>>;
     /// The (low, high) edges of the current stack.
     fn stack_bounds(&self) -> (uint, uint); // (lo, hi)
+    fn can_block(&self) -> bool;
 
     // XXX: This is a serious code smell and this should not exist at all.
     fn wrap(~self) -> ~Any;
