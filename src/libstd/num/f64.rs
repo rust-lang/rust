@@ -190,22 +190,6 @@ impl Eq for f64 {
 }
 
 #[cfg(not(test))]
-impl ApproxEq<f64> for f64 {
-    #[inline]
-    fn approx_epsilon() -> f64 { 1.0e-6 }
-
-    #[inline]
-    fn approx_eq(&self, other: &f64) -> bool {
-        self.approx_eq_eps(other, &1.0e-6)
-    }
-
-    #[inline]
-    fn approx_eq_eps(&self, other: &f64, approx_epsilon: &f64) -> bool {
-        (*self - *other).abs() < *approx_epsilon
-    }
-}
-
-#[cfg(not(test))]
 impl Ord for f64 {
     #[inline]
     fn lt(&self, other: &f64) -> bool { (*self) < (*other) }
@@ -1244,15 +1228,6 @@ mod tests {
         assert!(NEG_INFINITY.is_negative());
         assert!((1f64/NEG_INFINITY).is_negative());
         assert!(!NAN.is_negative());
-    }
-
-    #[test]
-    fn test_approx_eq() {
-        assert!(1.0f64.approx_eq(&1f64));
-        assert!(0.9999999f64.approx_eq(&1f64));
-        assert!(1.000001f64.approx_eq_eps(&1f64, &1.0e-5));
-        assert!(1.0000001f64.approx_eq_eps(&1f64, &1.0e-6));
-        assert!(!1.0000001f64.approx_eq_eps(&1f64, &1.0e-7));
     }
 
     #[test]
