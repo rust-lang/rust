@@ -17,7 +17,7 @@ use option::{Some, None, Option};
 use ops::Drop;
 use ptr;
 use ptr::RawPtr;
-use vec::{MutableVector, OwnedVector, ImmutableVector};
+use vec::{OwnedVector, ImmutableVector};
 use uint;
 
 mod ptr_map;
@@ -211,25 +211,27 @@ impl GarbageCollector {
 
         let GarbageCollector { ref mut roots, ref mut gc_ptrs, .. } = *self;
 
-        // Step 1.
-        gc_ptrs.mark_all_unreachable();
+        // Step 1. mark any reachable pointers
 
-        // Step 2. mark any reachable pointers
+        // every pointer is considered reachable on this exact line
+        // (new allocations are reachable by default)
+        gc_ptrs.toggle_reachability();
+        // and now everything is considered unreachable.
 
         // the list of pointers that are reachable and scannable, but
         // haven't actually been scanned yet.
         let mut grey_list = ~[];
 
-        // Step 2.1: search for GC'd pointers in any registered roots.
+        // Step 1.1: search for GC'd pointers in any registered roots.
         for (low, descr) in roots.iter() {
             mark_words_between(gc_ptrs, &mut grey_list,
                                low as *uint, descr.high as *uint)
         }
 
-        // Step 2.2: search for them on the stack.
+        // Step 1.2: search for them on the stack.
         mark_words_between(gc_ptrs, &mut grey_list, stack_end, stack_top as *uint);
 
-        // Step 2.3: search for GC references inside other reachable
+        // Step 1.3: search for GC references inside other reachable
         // GC references.
         let mut count = 0;
         loop {
@@ -244,7 +246,7 @@ impl GarbageCollector {
             }
         }
 
-        // Step 3. sweep all the unreachable ones for deallocation.
+        // Step 2. sweep all the unreachable ones for deallocation.
         let unreachable = gc_ptrs.find_unreachable();
         for &(ptr, size, finaliser) in unreachable.iter() {
             match finaliser {
