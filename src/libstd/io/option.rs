@@ -48,16 +48,6 @@ impl<R: Reader> Reader for Option<R> {
             }
         }
     }
-
-    fn eof(&mut self) -> bool {
-        match *self {
-            Some(ref mut reader) => reader.eof(),
-            None => {
-                io_error::cond.raise(prev_io_error());
-                true
-            }
-        }
-    }
 }
 
 impl<S: Seek> Seek for Option<S> {
@@ -145,7 +135,6 @@ mod test {
         let mut buf = [0, 0];
         reader.read(buf);
         assert_eq!(buf, [0, 1]);
-        assert!(!reader.eof());
     }
 
     #[test]
@@ -159,15 +148,6 @@ mod test {
             called = true;
         }).inside(|| {
             reader.read(buf);
-        });
-        assert!(called);
-
-        let mut called = false;
-        io_error::cond.trap(|err| {
-            assert_eq!(err.kind, PreviousIoError);
-            called = true;
-        }).inside(|| {
-            assert!(reader.eof());
         });
         assert!(called);
     }

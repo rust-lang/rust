@@ -205,6 +205,14 @@ impl File {
     pub fn truncate(&mut self, size: i64) {
         self.fd.truncate(size).map_err(|e| io_error::cond.raise(e));
     }
+
+    /// Tests whether this stream has reached EOF.
+    ///
+    /// If true, then this file will no longer continue to return data via
+    /// `read`.
+    pub fn eof(&self) -> bool {
+        self.last_nread == 0
+    }
 }
 
 /// Unlink a file from the underlying filesystem.
@@ -597,8 +605,6 @@ impl Reader for File {
             }
         }
     }
-
-    fn eof(&mut self) -> bool { self.last_nread == 0 }
 }
 
 impl Writer for File {

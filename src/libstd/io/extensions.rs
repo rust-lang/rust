@@ -150,9 +150,6 @@ mod test {
                 Some(1)
             }
         }
-        fn eof(&mut self) -> bool {
-            false
-        }
     }
 
     struct EofReader;
@@ -160,9 +157,6 @@ mod test {
     impl Reader for EofReader {
         fn read(&mut self, _: &mut [u8]) -> Option<uint> {
             None
-        }
-        fn eof(&mut self) -> bool {
-            false
         }
     }
 
@@ -172,9 +166,6 @@ mod test {
         fn read(&mut self, _: &mut [u8]) -> Option<uint> {
             io_error::cond.raise(placeholder_error());
             None
-        }
-        fn eof(&mut self) -> bool {
-            false
         }
     }
 
@@ -195,9 +186,6 @@ mod test {
                 Some(2)
             }
         }
-        fn eof(&mut self) -> bool {
-            false
-        }
     }
 
     struct ErroringLaterReader {
@@ -214,9 +202,6 @@ mod test {
                 io_error::cond.raise(placeholder_error());
                 None
             }
-        }
-        fn eof(&mut self) -> bool {
-            false
         }
     }
 
@@ -239,9 +224,6 @@ mod test {
             } else {
                 None
             }
-        }
-        fn eof(&mut self) -> bool {
-            false
         }
     }
 
