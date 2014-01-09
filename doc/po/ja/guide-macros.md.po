@@ -1,13 +1,13 @@
 # Japanese translations for Rust package
-# Copyright (C) 2013 The Rust Project Developers
+# Copyright (C) 2014 The Rust Project Developers
 # This file is distributed under the same license as the Rust package.
-# Automatically generated, 2013.
+# Automatically generated, 2014.
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: Rust 0.8\n"
-"POT-Creation-Date: 2013-07-28 20:32+0900\n"
-"PO-Revision-Date: 2013-07-28 20:32+0900\n"
+"Project-Id-Version: Rust 0.9\n"
+"POT-Creation-Date: 2014-01-08 06:14+0900\n"
+"PO-Revision-Date: 2014-01-08 06:14+0900\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
 "Language: ja\n"
@@ -17,24 +17,19 @@ msgstr ""
 "Plural-Forms: nplurals=1; plural=0;\n"
 
 #. type: Plain text
+#: doc/guide-borrowed-ptr.md:4 doc/guide-conditions.md:4 doc/guide-ffi.md:4
+#: doc/guide-macros.md:4 doc/guide-rustpkg.md:4 doc/guide-tasks.md:4
 #: doc/rust.md:4 doc/rustpkg.md:4 doc/tutorial.md:4
-#: doc/tutorial-borrowed-ptr.md:4 doc/tutorial-ffi.md:4
-#: doc/tutorial-macros.md:4 doc/tutorial-tasks.md:4
 msgid "# Introduction"
 msgstr "# イントロダクション"
 
 #. type: Plain text
-#: doc/rust.md:2136 doc/rust.md:2223 doc/tutorial-macros.md:323
-msgid "~~~~"
+#: doc/guide-macros.md:2
+msgid "% Rust Macros Guide"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:2
-msgid "% Rust Macros Tutorial"
-msgstr ""
-
-#. type: Plain text
-#: doc/tutorial-macros.md:12
+#: doc/guide-macros.md:12
 msgid ""
 "Functions are the primary tool that programmers can use to build "
 "abstractions.  Sometimes, however, programmers want to abstract over compile-"
@@ -45,7 +40,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:30
+#: doc/guide-macros.md:30
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -68,7 +63,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:38
+#: doc/guide-macros.md:38
 msgid ""
 "This code could become tiresome if repeated many times.  However, no "
 "function can capture its functionality to make it possible to abstract the "
@@ -79,7 +74,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:59
+#: doc/guide-macros.md:59
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -105,7 +100,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:65
+#: doc/guide-macros.md:65
 msgid ""
 "Macros are defined in pattern-matching style: in the above example, the text "
 "`($inp:expr $sp:ident)` that appears on the left-hand side of the `=>` is "
@@ -115,12 +110,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:67
+#: doc/guide-macros.md:67
+#, fuzzy
+#| msgid "## Do syntax"
 msgid "# Invocation syntax"
-msgstr ""
+msgstr "## do 構文"
 
 #. type: Plain text
-#: doc/tutorial-macros.md:71
+#: doc/guide-macros.md:71
 msgid ""
 "The macro invocation syntax specifies the syntax for the arguments to the "
 "macro. It appears on the left-hand side of the `=>` in a macro definition. "
@@ -128,17 +125,17 @@ msgid ""
 msgstr ""
 
 #. type: Bullet: '1. '
-#: doc/tutorial-macros.md:76
+#: doc/guide-macros.md:76
 msgid "It must be surrounded by parentheses."
 msgstr ""
 
 #. type: Bullet: '2. '
-#: doc/tutorial-macros.md:76
+#: doc/guide-macros.md:76
 msgid "`$` has special meaning (described below)."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:76
+#: doc/guide-macros.md:76
 #, no-wrap
 msgid ""
 "3. The `()`s, `[]`s, and `{}`s it contains must balance. For example, `([)` is\n"
@@ -146,12 +143,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:78
+#: doc/guide-macros.md:78
 msgid "Otherwise, the invocation syntax is free-form."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:83
+#: doc/guide-macros.md:83
 #, no-wrap
 msgid ""
 "To take as an argument a fragment of Rust code, write `$` followed by a name\n"
@@ -161,59 +158,61 @@ msgid ""
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/tutorial-macros.md:92
+#: doc/guide-macros.md:92
 msgid ""
 "`ident` (an identifier, referring to a variable or item. Examples: `f`, `x`, "
 "`foo`.)"
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/tutorial-macros.md:92
+#: doc/guide-macros.md:92
 msgid ""
 "`expr` (an expression. Examples: `2 + 2`; `if true then { 1 } else { 2 }`; "
 "`f(42)`.)"
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/tutorial-macros.md:92
+#: doc/guide-macros.md:92
 msgid "`ty` (a type. Examples: `int`, `~[(char, ~str)]`, `&T`.)"
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/tutorial-macros.md:92
+#: doc/guide-macros.md:92
 msgid ""
 "`pat` (a pattern, usually appearing in a `match` or on the left-hand side of "
 "a declaration. Examples: `Some(t)`; `(17, 'a')`; `_`.)"
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/tutorial-macros.md:92
+#: doc/guide-macros.md:92
 msgid ""
 "`block` (a sequence of actions. Example: `{ log(error, \"hi\"); return 12; }"
 "`)"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:95
+#: doc/guide-macros.md:95
 msgid ""
 "The parser interprets any token that's not preceded by a `$` literally. "
 "Rust's usual rules of tokenization apply,"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:98
+#: doc/guide-macros.md:98
 msgid ""
 "So `($x:ident -> (($e:expr)))`, though excessively fancy, would designate a "
 "macro that could be invoked like: `my_macro!(i->(( 2+2 )))`."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:100
+#: doc/guide-macros.md:100
+#, fuzzy
+#| msgid "# Introduction"
 msgid "## Invocation location"
-msgstr ""
+msgstr "# イントロダクション"
 
 #. type: Plain text
-#: doc/tutorial-macros.md:105
+#: doc/guide-macros.md:105
 msgid ""
 "A macro invocation may take the place of (and therefore expand to)  an "
 "expression, an item, or a statement.  The Rust parser will parse the macro "
@@ -222,7 +221,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:112
+#: doc/guide-macros.md:112
 msgid ""
 "At expansion time, the output of the macro will be parsed as whichever of "
 "the three nonterminals it stands in for. This means that a single macro "
@@ -233,12 +232,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:115
+#: doc/guide-macros.md:115
 msgid "# Transcription syntax"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:119
+#: doc/guide-macros.md:119
 msgid ""
 "The right-hand side of the `=>` follows the same rules as the left-hand "
 "side, except that a `$` need only be followed by the name of the syntactic "
@@ -247,7 +246,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:126
+#: doc/guide-macros.md:126
 msgid ""
 "The right-hand side must be enclosed by delimiters, which the transcriber "
 "ignores.  Therefore `() => ((1,2,3))` is a macro that expands to a tuple "
@@ -258,7 +257,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:133
+#: doc/guide-macros.md:133
 msgid ""
 "Except for permissibility of `$name` (and `$(...)*`, discussed below), the "
 "right-hand side of a macro definition is ordinary Rust syntax. In "
@@ -269,12 +268,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:135
+#: doc/guide-macros.md:135
+#, fuzzy
+#| msgid "# Introduction"
 msgid "## Interpolation location"
-msgstr ""
+msgstr "# イントロダクション"
 
 #. type: Plain text
-#: doc/tutorial-macros.md:139
+#: doc/guide-macros.md:139
 msgid ""
 "The interpolation `$argument_name` may appear in any location consistent "
 "with its fragment specifier (i.e., if it is specified as `ident`, it may be "
@@ -282,17 +283,19 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:141
+#: doc/guide-macros.md:141
 msgid "# Multiplicity"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:143
+#: doc/guide-macros.md:143
+#, fuzzy
+#| msgid "# Introduction"
 msgid "## Invocation"
-msgstr ""
+msgstr "# イントロダクション"
 
 #. type: Plain text
-#: doc/tutorial-macros.md:150
+#: doc/guide-macros.md:150
 msgid ""
 "Going back to the motivating example, recall that `early_return` expanded "
 "into a `match` that would `return` if the `match`'s scrutinee matched the "
@@ -303,7 +306,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:156
+#: doc/guide-macros.md:156
 msgid ""
 "The syntax `$(...)*` on the left-hand side of the `=>` in a macro definition "
 "accepts zero or more occurrences of its contents. It works much like the `*` "
@@ -313,7 +316,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:179
+#: doc/guide-macros.md:179
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -341,12 +344,14 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:181
+#: doc/guide-macros.md:181
+#, fuzzy
+#| msgid "## Traits"
 msgid "### Transcription"
-msgstr ""
+msgstr "## トレイト"
 
 #. type: Plain text
-#: doc/tutorial-macros.md:191
+#: doc/guide-macros.md:191
 msgid ""
 "As the above example demonstrates, `$(...)*` is also valid on the right-hand "
 "side of a macro definition. The behavior of `*` in transcription, especially "
@@ -360,19 +365,21 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:193
+#: doc/guide-macros.md:193
+#, fuzzy
+#| msgid "## Pattern matching"
 msgid "## Parsing limitations"
-msgstr ""
+msgstr "## パターンマッチ"
 
 #. type: Plain text
-#: doc/tutorial-macros.md:197
+#: doc/guide-macros.md:197
 msgid ""
 "For technical reasons, there are two limitations to the treatment of syntax "
 "fragments by the macro parser:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:210
+#: doc/guide-macros.md:210
 #, no-wrap
 msgid ""
 "1. The parser will always parse as much as possible of a Rust syntactic\n"
@@ -390,27 +397,31 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:212
+#: doc/guide-macros.md:212
+#, fuzzy
+#| msgid "## Pattern matching"
 msgid "# Macro argument pattern matching"
-msgstr ""
+msgstr "## パターンマッチ"
 
 #. type: Plain text
-#: doc/tutorial-macros.md:214
+#: doc/guide-macros.md:214
+#, fuzzy
+#| msgid "## Conventions"
+msgid "## Motivation"
+msgstr "## 本書の表記について"
+
+#. type: Plain text
+#: doc/guide-macros.md:216
 msgid "Now consider code like the following:"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:216
-msgid "## Motivation"
-msgstr ""
-
-#. type: Plain text
-#: doc/tutorial-macros.md:236
+#: doc/guide-macros.md:236
 #, no-wrap
 msgid ""
 "~~~~\n"
 "# enum t1 { good_1(t2, uint), bad_1 };\n"
-"# pub struct t2 { body: t3 }\n"
+"# struct t2 { body: t3 }\n"
 "# enum t3 { good_2(uint), bad_2};\n"
 "# fn f(x: t1) -> uint {\n"
 "match x {\n"
@@ -430,7 +441,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:241
+#: doc/guide-macros.md:241
 msgid ""
 "All the complicated stuff is deeply indented, and the error-handling code is "
 "separated from matches that fail. We'd like to write a macro that performs a "
@@ -439,7 +450,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:263
+#: doc/guide-macros.md:263
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -466,11 +477,11 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:277
+#: doc/guide-macros.md:277
 #, no-wrap
 msgid ""
 "# enum t1 { good_1(t2, uint), bad_1 };\n"
-"# pub struct t2 { body: t3 }\n"
+"# struct t2 { body: t3 }\n"
 "# enum t3 { good_2(uint), bad_2};\n"
 "# fn f(x: t1) -> uint {\n"
 "biased_match!((x)       ~ (good_1(g1, val)) else { return 0 };\n"
@@ -485,12 +496,17 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:288
+#: doc/guide-macros.md:281
+msgid ""
+"This solves the indentation problem. But if we have a lot of chained matches "
+"like this, we might prefer to write a single macro invocation. The input "
+"pattern we want is clear:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-macros.md:289
 #, no-wrap
 msgid ""
-"This solves the indentation problem. But if we have a lot of chained matches\n"
-"like this, we might prefer to write a single macro invocation. The input\n"
-"pattern we want is clear:\n"
 "~~~~\n"
 "# macro_rules! b(\n"
 "    ( $( ($e:expr) ~ ($p:pat) else $err:stmt ; )*\n"
@@ -501,19 +517,19 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:291
+#: doc/guide-macros.md:292
 msgid ""
 "However, it's not possible to directly expand to nested match statements. "
 "But there is a solution."
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:293
+#: doc/guide-macros.md:294
 msgid "## The recursive approach to macro writing"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:297
+#: doc/guide-macros.md:298
 msgid ""
 "A macro may accept multiple different input grammars. The first one to "
 "successfully match the actual argument to a macro invocation is the one that "
@@ -521,7 +537,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:301
+#: doc/guide-macros.md:302
 msgid ""
 "In the case of the example above, we want to write a recursive macro to "
 "process the semicolon-terminated lines, one-by-one. So, we want the "
@@ -529,7 +545,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:308
+#: doc/guide-macros.md:308
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -537,11 +553,15 @@ msgid ""
 "    ( binds $( $bind_res:ident ),* )\n"
 "# => (0))\n"
 "~~~~\n"
-"...and:\n"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:317
+#: doc/guide-macros.md:310
+msgid "...and:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-macros.md:319
 #, no-wrap
 msgid ""
 "~~~~\n"
@@ -555,7 +575,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:321
+#: doc/guide-macros.md:323
 msgid ""
 "The resulting macro looks like this. Note that the separation into "
 "`biased_match!` and `biased_match_rec!` occurs only because we have an outer "
@@ -563,7 +583,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:342
+#: doc/guide-macros.md:325 doc/rust.md:2567
+msgid "~~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-macros.md:344
 #, no-wrap
 msgid ""
 "macro_rules! biased_match_rec (\n"
@@ -587,7 +612,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:364
+#: doc/guide-macros.md:366
 #, no-wrap
 msgid ""
 "// Wrap the whole thing in a `let`.\n"
@@ -614,11 +639,11 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:378
+#: doc/guide-macros.md:380
 #, no-wrap
 msgid ""
 "# enum t1 { good_1(t2, uint), bad_1 };\n"
-"# pub struct t2 { body: t3 }\n"
+"# struct t2 { body: t3 }\n"
 "# enum t3 { good_2(uint), bad_2};\n"
 "# fn f(x: t1) -> uint {\n"
 "biased_match!(\n"
@@ -632,7 +657,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:382
+#: doc/guide-macros.md:384
 msgid ""
 "This technique applies to many cases where transcribing a result all at once "
 "is not possible.  The resulting code resembles ordinary functional "
@@ -641,7 +666,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:390
+#: doc/guide-macros.md:392
 msgid ""
 "The first difference is important, but also easy to forget: the "
 "transcription (right-hand) side of a `macro_rules!` rule is literal syntax, "
@@ -654,7 +679,7 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:398
+#: doc/guide-macros.md:400
 msgid ""
 "The second, related, difference is that the evaluation order of macros feels "
 "\"backwards\" compared to ordinary programming. Given an invocation `m1!(m2!"
@@ -666,12 +691,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:400
+#: doc/guide-macros.md:402
 msgid "# A final note"
 msgstr ""
 
 #. type: Plain text
-#: doc/tutorial-macros.md:407
+#: doc/guide-macros.md:409
 msgid ""
 "Macros, as currently implemented, are not for the faint of heart. Even "
 "ordinary syntax errors can be more difficult to debug when they occur inside "

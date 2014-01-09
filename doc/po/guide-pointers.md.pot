@@ -1,0 +1,885 @@
+# SOME DESCRIPTIVE TITLE
+# Copyright (C) YEAR The Rust Project Developers
+# This file is distributed under the same license as the Rust package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: Rust 0.9\n"
+"POT-Creation-Date: 2014-01-08 11:30+0900\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#. type: Plain text
+#: doc/guide-pointers.md:2
+msgid "% The Rust Pointer Guide"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:7
+msgid ""
+"Rust's pointers are one of its more unique and compelling features. Pointers "
+"are also one of the more confusing topics for newcomers to Rust. They can "
+"also be confusing for people coming from other languages that support "
+"pointers, such as C++. This tutorial will help you understand this important "
+"topic."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:9
+msgid "# You don't actually need pointers"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:15
+msgid ""
+"I have good news for you: you probably don't need to care about pointers, "
+"especially as you're getting started. Think of it this way: Rust is a "
+"language that emphasizes safety. Pointers, as the joke goes, are very "
+"pointy: it's easy to accidentally stab yourself. Therefore, Rust is made in "
+"a way such that you don't need them very often."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:18
+msgid ""
+"\"But tutorial!\" you may cry. \"My co-worker wrote a function that looks "
+"like this:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:22
+msgid "~~~rust fn succ(x: &int) -> int { *x + 1 } ~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:24
+msgid "So I wrote this code to try it out:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:32
+#, no-wrap
+msgid ""
+"~~~rust {.xfail-test}\n"
+"fn main() {\n"
+"    let number = 5;\n"
+"    let succ_number = succ(number);\n"
+"    println!(\"{}\", succ_number);\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:34
+msgid "And now I get an error:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:38
+msgid ""
+"~~~ {.notrust} error: mismatched types: expected `&int` but found `<VI0>` "
+"(expected &-ptr but found integral variable)  ~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:40
+msgid "What gives? It needs a pointer! Therefore I have to use pointers!\""
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:42
+msgid ""
+"Turns out, you don't. All you need is a reference. Try this on for size:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:51
+#, no-wrap
+msgid ""
+"~~~rust\n"
+"# fn succ(x: &int) -> int { *x + 1 }\n"
+"fn main() {\n"
+"    let number = 5;\n"
+"    let succ_number = succ(&number);\n"
+"    println!(\"{}\", succ_number);\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:53
+msgid ""
+"It's that easy! One extra little `&` there. This code will run, and print "
+"`6`."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:56
+msgid ""
+"That's all you need to know. Your co-worker could have written the function "
+"like this:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:59
+msgid "~~~rust fn succ(x: int) -> int { x + 1 }"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:66
+#, no-wrap
+msgid ""
+"fn main() {\n"
+"    let number = 5;\n"
+"    let succ_number = succ(number);\n"
+"    println!(\"{}\", succ_number);\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:71
+msgid ""
+"No pointers even needed. Then again, this is a simple example. I assume that "
+"your real-world `succ` function is more complicated, and maybe your co-"
+"worker had a good reason for `x` to be a pointer of some kind. In that case, "
+"references are your best friend. Don't worry about it, life is too short."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:73
+msgid "However."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:76
+msgid ""
+"Here are the use-cases for pointers. I've prefixed them with the name of the "
+"pointer that satisfies that use-case:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:92
+#, no-wrap
+msgid ""
+"1. Owned: ~Trait must be a pointer, becuase you don't know the size of the\n"
+"object, so indirection is mandatory.\n"
+"2. Owned: You need a recursive data structure. These can be infinite sized, so\n"
+"indirection is mandatory.\n"
+"3. Owned: A very, very, very rare situation in which you have a *huge* chunk of\n"
+"data that you wish to pass to many methods. Passing a pointer will make this\n"
+"more efficient. If you're coming from another language where this technique is\n"
+"common, such as C++, please read \"A note...\" below.\n"
+"4. Managed: Having only a single owner to a piece of data would be inconvenient\n"
+"or impossible. This is only often useful when a program is very large or very\n"
+"complicated. Using a managed pointer will activate Rust's garbage collection\n"
+"mechanism.\n"
+"5: Borrowed: You're writing a function, and you need a pointer, but you don't\n"
+"care about its ownership. If you make the argument a borrowed pointer, callers\n"
+"can send in whatever kind they want.\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:96
+msgid ""
+"Five exceptions. That's it. Otherwise, you shouldn't need them. Be skeptical "
+"of pointers in Rust: use them for a deliberate purpose, not just to make the "
+"compiler happy."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:98
+msgid "## A note for those proficient in pointers"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:103
+msgid ""
+"If you're coming to Rust from a language like C or C++, you may be used to "
+"passing things by reference, or passing things by pointer. In some "
+"langauges, like Java, you can't even have objects without a pointer to them. "
+"Therefore, if you were writing this Rust code:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:110
+#, no-wrap
+msgid ""
+"~~~rust\n"
+"# fn transform(p: Point) -> Point { p }\n"
+"struct Point {\n"
+"    x: int,\n"
+"    y: int,\n"
+"}\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:116
+#, no-wrap
+msgid ""
+"fn main() {\n"
+"    let p0 = Point { x: 5, y: 10};\n"
+"    let p1 = transform(p0);\n"
+"    println!(\"{:?}\", p1);\n"
+"}\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:118 doc/tutorial.md:2822
+msgid "~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:120
+msgid "I think you'd implement `transform` like this:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:130
+#, no-wrap
+msgid ""
+"~~~rust\n"
+"# struct Point {\n"
+"#     x: int,\n"
+"#     y: int,\n"
+"# }\n"
+"# let p0 = Point { x: 5, y: 10};\n"
+"fn transform(p: &Point) -> Point {\n"
+"    Point { x: p.x + 1, y: p.y + 1}\n"
+"}\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:134
+msgid "// and change this: let p1 = transform(&p0); ~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:136
+msgid ""
+"This does work, but you don't need to create those references! The better "
+"way to write this is simply:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:142 doc/guide-pointers.md:222
+#: doc/guide-pointers.md:239 doc/guide-pointers.md:291
+#, no-wrap
+msgid ""
+"~~~rust\n"
+"struct Point {\n"
+"    x: int,\n"
+"    y: int,\n"
+"}\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:146
+#, no-wrap
+msgid ""
+"fn transform(p: Point) -> Point {\n"
+"    Point { x: p.x + 1, y: p.y + 1}\n"
+"}\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:153
+#, no-wrap
+msgid ""
+"fn main() {\n"
+"    let p0 = Point { x: 5, y: 10};\n"
+"    let p1 = transform(p0);\n"
+"    println!(\"{:?}\", p1);\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:161
+msgid ""
+"But won't this be inefficent? Well, that's a complicated question, but it's "
+"important to know that Rust, like C and C++, store aggregate data types "
+"'unboxed,' whereas languages like Java and Ruby store these types as "
+"'boxed.' For smaller structs, this way will be more efficient. For larger "
+"ones, it may be less so. But don't reach for that pointer until you must! "
+"Make sure that the struct is large enough by performing some tests before "
+"you add in the complexity of pointers."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:163
+msgid "# Owned Pointers"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:166
+msgid ""
+"Owned pointers are the conceptually simplest kind of pointer in Rust. A "
+"rough approximation of owned pointers follows:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:172
+#, no-wrap
+msgid ""
+"1. Only one owned pointer may exist to a particular place in memory. It may be\n"
+"borrowed from that owner, however.\n"
+"2. The Rust compiler uses static analysis to determine where the pointer is in\n"
+"scope, and handles allocating and de-allocating that memory. Owned pointers are\n"
+"not garbage collected.\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:174
+msgid "These two properties make for three use cases."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:176
+msgid "## References to Traits"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:180
+msgid ""
+"Traits must be referenced through a pointer, becuase the struct that "
+"implements the trait may be a different size than a different struct that "
+"implements the trait. Therefore, unboxed traits don't make any sense, and "
+"aren't allowed."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:182
+msgid "## Recursive Data Structures"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:184
+msgid ""
+"Sometimes, you need a recursive data structure. The simplest is known as a "
+"'cons list':"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:190
+#, no-wrap
+msgid ""
+"~~~rust\n"
+"enum List<T> {\n"
+"    Nil,\n"
+"    Cons(T, ~List<T>),\n"
+"}\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:196
+#, no-wrap
+msgid ""
+"fn main() {\n"
+"    let list: List<int> = Cons(1, ~Cons(2, ~Cons(3, ~Nil)));\n"
+"    println!(\"{:?}\", list);\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:198
+msgid "This prints:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:202
+msgid "~~~ {.notrust} Cons(1, ~Cons(2, ~Cons(3, ~Nil)))  ~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:206
+msgid ""
+"The inner lists _must_ be an owned pointer, becuase we can't know how many "
+"elements are in the list. Without knowing the length, we don't know the "
+"size, and therefore require the indirection that pointers offer."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:208
+msgid "## Efficiency"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:214
+msgid ""
+"This should almost never be a concern, but because creating an owned pointer "
+"boxes its value, it therefore makes referring to the value the size of the "
+"box.  This may make passing an owned pointer to a function less expensive "
+"than passing the value itself. Don't worry yourself with this case until "
+"you've proved that it's an issue through benchmarks."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:216
+msgid "For example, this will work:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:230
+#, no-wrap
+msgid ""
+"fn main() {\n"
+"    let a = Point { x: 10, y: 20 };\n"
+"    do spawn {\n"
+"        println(a.x.to_str());\n"
+"    }\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:233
+msgid ""
+"This struct is tiny, so it's fine. If `Point` were large, this would be more "
+"efficient:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:247
+#, no-wrap
+msgid ""
+"fn main() {\n"
+"    let a = ~Point { x: 10, y: 20 };\n"
+"    do spawn {\n"
+"        println(a.x.to_str());\n"
+"    }\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:250
+msgid ""
+"Now it'll be copying a pointer-sized chunk of memory rather than the whole "
+"struct."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:252
+msgid "# Managed Pointers"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:256
+msgid ""
+"Managed pointers, notated by an `@`, are used when having a single owner for "
+"some data isn't convenient or possible. This generally happens when your "
+"program is very large and complicated."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:258
+msgid ""
+"For example, let's say you're using an owned pointer, and you want to do "
+"this:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:264
+#, no-wrap
+msgid ""
+"~~~rust {.xfail-test}\n"
+"struct Point {\n"
+"    x: int,\n"
+"    y: int,\n"
+"}\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:272
+#, no-wrap
+msgid ""
+"fn main() {\n"
+"    let a = ~Point { x: 10, y: 20 };\n"
+"    let b = a;\n"
+"    println(b.x.to_str());\n"
+"    println(a.x.to_str());\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:274
+msgid "You'll get this error:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:283
+#, no-wrap
+msgid ""
+"~~~ {.notrust}\n"
+"test.rs:10:12: 10:13 error: use of moved value: `a`\n"
+"test.rs:10     println(a.x.to_str());\n"
+"                       ^\n"
+"test.rs:8:8: 8:9 note: `a` moved here because it has type `~Point`, which is moved by default (use `ref` to override)\n"
+"test.rs:8     let b = a;\n"
+"                  ^\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:285
+msgid ""
+"As the message says, owned pointers only allow for one owner at a time. When "
+"you assign `a` to `b`, `a` becomes invalid. Change your code to this, "
+"however:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:299
+#, no-wrap
+msgid ""
+"fn main() {\n"
+"    let a = @Point { x: 10, y: 20 };\n"
+"    let b = a;\n"
+"    println(b.x.to_str());\n"
+"    println(a.x.to_str());\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:301
+msgid "And it works:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:306
+msgid "~~~ {.notrust} 10 10 ~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:309
+msgid ""
+"So why not just use managed pointers everywhere? There are two big drawbacks "
+"to managed pointers:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:315
+#, no-wrap
+msgid ""
+"1. They activate Rust's garbage collector. Other pointer types don't share this\n"
+"drawback.\n"
+"2. You cannot pass this data to another task. Shared ownership across\n"
+"concurrency boundaries is the source of endless pain in other langauges, so\n"
+"Rust does not let you do this.\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:317
+msgid "# Borrowed Pointers"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:324
+msgid ""
+"Borrowed pointers are the third major kind of pointer Rust supports. They "
+"are simultaneously the simplest and the most complicated kind. Let me "
+"explain: they're called 'borrowed' pointers because they claim no ownership "
+"over the data they're pointing to. They're just borrowing it for a while. So "
+"in that sense, they're simple: just keep whatever ownership the data already "
+"has. For example:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:327
+msgid "~~~rust use std::num::sqrt;"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:332
+#, no-wrap
+msgid ""
+"struct Point {\n"
+"    x: f32,\n"
+"    y: f32,\n"
+"}\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:336
+#, no-wrap
+msgid ""
+"fn compute_distance(p1: &Point, p2: &Point) -> f32 {\n"
+"    let x_d = p1.x - p2.x;\n"
+"    let y_d = p1.y - p2.y;\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:339
+#, no-wrap
+msgid ""
+"    sqrt(x_d * x_d + y_d * y_d)\n"
+"}\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:343
+#, no-wrap
+msgid ""
+"fn main() {\n"
+"    let origin = @Point { x: 0.0, y: 0.0 };\n"
+"    let p1     = ~Point { x: 5.0, y: 3.0 };\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:347
+#, no-wrap
+msgid ""
+"    println!(\"{:?}\", compute_distance(origin, p1));\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:352
+msgid ""
+"This prints `5.83095189`. You can see that the `compute_distance` function "
+"takes in two borrowed pointers, but we give it a managed and unique pointer. "
+"Of course, if this were a real program, we wouldn't have any of these "
+"pointers, they're just there to demonstrate the concepts."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:358
+msgid ""
+"So how is this hard? Well, because we're igorning ownership, the compiler "
+"needs to take great care to make sure that everything is safe. Despite their "
+"complete safety, a borrowed pointer's representation at runtime is the same "
+"as that of an ordinary pointer in a C program. They introduce zero overhead. "
+"The compiler does all safety checks at compile time."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:362
+msgid ""
+"This theory is called 'region pointers,' and involve a concept called "
+"'lifetimes'. Here's the simple explanation: would you expect this code to "
+"compile?"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:369
+#, no-wrap
+msgid ""
+"~~~rust {.xfail-test}\n"
+"fn main() {\n"
+"    println(x.to_str());\n"
+"    let x = 5;\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:374
+msgid ""
+"Probably not. That's becuase you know that the name `x` is valid from where "
+"it's declared to when it goes out of scope. In this case, that's the end of "
+"the `main` function. So you know this code will cause an error. We call this "
+"duration a 'lifetime'. Let's try a more complex example:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:387
+#, no-wrap
+msgid ""
+"~~~rust\n"
+"fn main() {\n"
+"    let mut x = ~5;\n"
+"    if(*x < 10) {\n"
+"        let y = &x;\n"
+"        println!(\"Oh no: {:?}\", y);\n"
+"        return;\n"
+"    }\n"
+"    *x = *x - 1;\n"
+"    println!(\"Oh no: {:?}\", x);\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:391
+msgid ""
+"Here, we're borrowing a pointer to `x` inside of the `if`. The compiler, "
+"however, is able to determine that that pointer will go out of scope without "
+"`x` being mutated, and therefore, lets us pass. This wouldn't work:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:398
+#, no-wrap
+msgid ""
+"~~~rust {.xfail-test}\n"
+"fn main() {\n"
+"    let mut x = ~5;\n"
+"    if(*x < 10) {\n"
+"        let y = &x;\n"
+"        *x = *x - 1;\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:406
+#, no-wrap
+msgid ""
+"        println!(\"Oh no: {:?}\", y);\n"
+"        return;\n"
+"    }\n"
+"    *x = *x - 1;\n"
+"    println!(\"Oh no: {:?}\", x);\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:408
+msgid "It gives this error:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:417
+#, no-wrap
+msgid ""
+"~~~ {.notrust}\n"
+"test.rs:5:8: 5:10 error: cannot assign to `*x` because it is borrowed\n"
+"test.rs:5         *x = *x - 1;\n"
+"                  ^~\n"
+"test.rs:4:16: 4:18 note: borrow of `*x` occurs here\n"
+"test.rs:4         let y = &x;\n"
+"                          ^~\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:422
+msgid ""
+"As you might guess, this kind of analysis is complex for a human, and "
+"therefore hard for a computer, too! There is an entire [tutorial devoted to "
+"borrowed pointers and lifetimes](tutorial-lifetimes.html) that goes into "
+"lifetimes in great detail, so if you want the full details, check that out."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:424
+msgid "# Returning Pointers"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:428
+msgid ""
+"We've talked a lot about funtions that accept various kinds of pointers, but "
+"what about returning them? Here's the rule of thumb: only return a unique or "
+"managed pointer if you were given one in the first place."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:430
+msgid "What does that mean? Don't do this:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:435
+#, no-wrap
+msgid ""
+"~~~rust\n"
+"fn foo(x: ~int) -> ~int {\n"
+"    return ~*x;\n"
+"}\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:441
+#, no-wrap
+msgid ""
+"fn main() {\n"
+"    let x = ~5;\n"
+"    let y = foo(x);\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:443
+msgid "Do this:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:448 doc/guide-pointers.md:462
+#, no-wrap
+msgid ""
+"~~~rust\n"
+"fn foo(x: ~int) -> int {\n"
+"    return *x;\n"
+"}\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:454
+#, no-wrap
+msgid ""
+"fn main() {\n"
+"    let x = ~5;\n"
+"    let y = ~foo(x);\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:457
+msgid ""
+"This gives you flexibility, without sacrificing performance. For example, "
+"this will also work:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:468
+#, no-wrap
+msgid ""
+"fn main() {\n"
+"    let x = ~5;\n"
+"    let y = @foo(x);\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:474
+msgid ""
+"You may think that this gives us terrible performance: return a value and "
+"then immediately box it up?!?! Isn't that the worst of both worlds? Rust is "
+"smarter than that. There is no copy in this code. `main` allocates enough "
+"room for the `@int`, passes it into `foo` as `x`, and then `foo` writes the "
+"value into the new box. This writes the return value directly into the "
+"allocated box."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:478
+msgid ""
+"This is important enough that it bears repeating: pointers are not for "
+"optimizing returning values from your code. Allow the caller to choose how "
+"they want to use your output."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-pointers.md:481
+msgid "# Related Resources"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/guide-pointers.md:482
+msgid "[Lifetimes tutorial](tutorial-lifetimes.html)"
+msgstr ""

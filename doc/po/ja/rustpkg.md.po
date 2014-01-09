@@ -6,7 +6,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Rust 0.8\n"
-"POT-Creation-Date: 2013-07-30 07:07+0900\n"
+"POT-Creation-Date: 2014-01-08 06:14+0900\n"
 "PO-Revision-Date: 2013-07-28 20:32+0900\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -17,9 +17,9 @@ msgstr ""
 "Plural-Forms: nplurals=1; plural=0;\n"
 
 #. type: Plain text
+#: doc/guide-borrowed-ptr.md:4 doc/guide-conditions.md:4 doc/guide-ffi.md:4
+#: doc/guide-macros.md:4 doc/guide-rustpkg.md:4 doc/guide-tasks.md:4
 #: doc/rust.md:4 doc/rustpkg.md:4 doc/tutorial.md:4
-#: doc/tutorial-borrowed-ptr.md:4 doc/tutorial-ffi.md:4
-#: doc/tutorial-macros.md:4 doc/tutorial-tasks.md:4
 msgid "# Introduction"
 msgstr "# イントロダクション"
 
@@ -130,23 +130,21 @@ msgid ""
 "     rustpkg will install libraries for bar to `foo/lib/x86_64-apple-darwin/`.\n"
 "     The libraries will have names of the form `foo/lib/x86_64-apple-darwin/libbar-[hash].dylib`,\n"
 "     where [hash] is a hash of the package ID.\n"
-"* 'bin/': `rustpkg install` installs executable binaries into a target-specific subdirectory of this directory.\n"
+"* 'bin/': `rustpkg install` installs executable binaries into this directory.\n"
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:63
+#: doc/rustpkg.md:61
 #, no-wrap
 msgid ""
-"     For example, on a 64-bit machine running Mac OS X,\n"
-"     if `foo` is a workspace, containing the package `bar`,\n"
-"     rustpkg will install executables for `bar` to\n"
-"     `foo/bin/x86_64-apple-darwin/`.\n"
-"     The executables will have names of the form `foo/bin/x86_64-apple-darwin/bar`.\n"
+"     For example, rustpkg will install executables for `bar` to\n"
+"     `foo/bin`.\n"
+"     The executables will have names of the form `foo/bin/bar`.\n"
 "* 'build/': `rustpkg build` stores temporary build artifacts in a target-specific subdirectory of this directory.\n"
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:67
+#: doc/rustpkg.md:65
 #, no-wrap
 msgid ""
 "     For example, on a 64-bit machine running Mac OS X,\n"
@@ -155,12 +153,12 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:69
+#: doc/rustpkg.md:67
 msgid "# Package identifiers"
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:87
+#: doc/rustpkg.md:85
 msgid ""
 "A package identifier identifies a package uniquely.  A package can be stored "
 "in a workspace on the local file system, or on a remote Web server, in which "
@@ -181,47 +179,64 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:89
+#: doc/rustpkg.md:91
+msgid ""
+"A package identifier can name a subdirectory of another package.  For "
+"example, if `foo` is a workspace, and `foo/src/bar/lib.rs` exists, as well "
+"as `foo/src/bar/extras/baz/lib.rs`, then both `bar` and `bar/extras/baz` are "
+"valid package identifiers in the workspace `foo`."
+msgstr ""
+
+#. type: Plain text
+#: doc/rustpkg.md:95
+msgid ""
+"Because rustpkg uses generic source file names as the main inputs, you will "
+"need to specify the package identifier in them using the `crate_id` "
+"attribute on the crate."
+msgstr ""
+
+#. type: Plain text
+#: doc/rustpkg.md:97
 msgid "## Source files"
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:91
+#: doc/rustpkg.md:99
 msgid ""
 "rustpkg searches for four different fixed filenames in order to determine "
 "the crates to build:"
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rustpkg.md:96
+#: doc/rustpkg.md:104
 msgid "`main.rs`: Assumed to be a main entry point for building an executable."
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rustpkg.md:96
+#: doc/rustpkg.md:104
 msgid "`lib.rs`: Assumed to be a library crate."
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rustpkg.md:96
+#: doc/rustpkg.md:104
 msgid ""
 "`test.rs`: Assumed to contain tests declared with the `#[test]` attribute."
 msgstr ""
 
 #. type: Bullet: '* '
-#: doc/rustpkg.md:96
+#: doc/rustpkg.md:104
 msgid ""
 "`bench.rs`: Assumed to contain benchmarks declared with the `#[bench]` "
 "attribute."
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:98
+#: doc/rustpkg.md:106
 msgid "## Versions"
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:105
+#: doc/rustpkg.md:113
 msgid ""
 "`rustpkg` packages do not need to declare their versions with an attribute "
 "inside one of the source files, because `rustpkg` infers it from the version "
@@ -232,12 +247,17 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:107
+#: doc/rustpkg.md:115
+msgid "> **Note:** A future version of rustpkg will support semantic versions."
+msgstr ""
+
+#. type: Plain text
+#: doc/rustpkg.md:117
 msgid "# Dependencies"
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:111
+#: doc/rustpkg.md:121
 msgid ""
 "rustpkg infers dependencies from `extern mod` directives.  Thus, there "
 "should be no need to pass a `-L` flag to rustpkg to tell it where to find a "
@@ -246,20 +266,20 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:113
+#: doc/rustpkg.md:123
 msgid "# Custom build scripts"
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:117
+#: doc/rustpkg.md:127
 msgid ""
-"A file called `pkg.rs` at the root level in a workspace is called a *package "
-"script*.  If a package script exists, rustpkg executes it to build the "
-"package rather than inferring crates as described previously."
+"A file called `pkg.rs` at the root level in a package directory is called a "
+"*package script*.  If a package script exists, rustpkg executes it to build "
+"the package rather than inferring crates as described previously."
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:121
+#: doc/rustpkg.md:131
 msgid ""
 "Inside `pkg.rs`, it's possible to call back into rustpkg to finish up the "
 "build.  `rustpkg::api` contains functions to build, install, or clean "
@@ -268,55 +288,63 @@ msgid ""
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:123
+#: doc/rustpkg.md:133
 msgid "# Command reference"
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:125
+#: doc/rustpkg.md:135
 msgid "## build"
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:131
+#: doc/rustpkg.md:144
 msgid ""
 "`rustpkg build foo` searches for a package with ID `foo` and builds it in "
 "any workspace(s) where it finds one.  Supposing such packages are found in "
 "workspaces X, Y, and Z, the command leaves behind files in `X`'s, `Y`'s, and "
-"`Z`'s `build` directories, but not in their `lib` or `bin` directories."
+"`Z`'s `build` directories, but not in their `lib` or `bin` directories.  "
+"(The exception is when rustpkg fetches a package `foo`'s sources from a "
+"remote repository.  In that case, it stores both the sources *and* the build "
+"artifacts for `foo` in the workspace that `foo` will install to (see "
+"##install below))."
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:133
+#: doc/rustpkg.md:146
 msgid "## clean"
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:135
+#: doc/rustpkg.md:148
 msgid "`rustpkg clean foo` deletes the contents of `foo`'s `build` directory."
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:137
+#: doc/rustpkg.md:150
 msgid "## install"
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:141
+#: doc/rustpkg.md:160
 msgid ""
 "`rustpkg install foo` builds the libraries and/or executables that are "
-"targets for `foo`, and then installs them either into `foo`'s `lib` and "
-"`bin` directories, or into the `lib` and `bin` subdirectories of the first "
-"entry in `RUST_PATH`."
+"targets for `foo`.  If `RUST_PATH` is declared as an environment variable, "
+"then rustpkg installs the libraries and executables into the `lib` and `bin` "
+"subdirectories of the first entry in `RUST_PATH`.  Otherwise, if the current "
+"working directory CWD is a workspace, it installs them into CWD's `lib` and "
+"`bin` subdirectories.  Otherwise, if the current working directory is CWD, "
+"it installs them into the .rust/lib and .rust/bin subdirectories of CWD "
+"(creating them if necessary)."
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:143
+#: doc/rustpkg.md:162
 msgid "## test"
 msgstr ""
 
 #. type: Plain text
-#: doc/rustpkg.md:145
+#: doc/rustpkg.md:164
 msgid ""
 "`rustpkg test foo` builds `foo`'s `test.rs` file if necessary, then runs the "
 "resulting test executable."
