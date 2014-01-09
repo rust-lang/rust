@@ -31,7 +31,7 @@
 
 use clone::Clone;
 use kinds::Send;
-use num::{Exponential,Algebraic,Round};
+use num::{Real, Round};
 use option::{Option, Some, None};
 use sync::arc::UnsafeArc;
 use sync::atomics::{AtomicUint,Relaxed,Release,Acquire};
