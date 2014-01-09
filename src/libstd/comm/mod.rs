@@ -227,7 +227,6 @@
 
 use cast;
 use clone::Clone;
-use container::Container;
 use int;
 use iter::Iterator;
 use kinds::Send;
@@ -295,7 +294,7 @@ pub struct PortIterator<'a, T> {
 /// task
 #[no_freeze] // can't share chans in an arc
 pub struct Chan<T> {
-    priv inner: UnsafeArc<SingleInner<T>>,
+    priv inner: UnsafeArc<Stream<T>>,
 }
 
 /// The sending-half of Rust's channel type. This half can be shared among many
@@ -303,7 +302,7 @@ pub struct Chan<T> {
 #[no_freeze] // technically this implementation is shareable, but it shouldn't
              // be required to be shareable in an arc
 pub struct SharedChan<T> {
-    priv inner: UnsafeArc<SharedInner<T>>,
+    priv inner: UnsafeArc<Shared<T>>,
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -311,16 +310,16 @@ pub struct SharedChan<T> {
 ///////////////////////////////////////////////////////////////////////////////
 
 enum PortInner<T> {
-    Single(UnsafeArc<SingleInner<T>>),
-    Shared(UnsafeArc<SharedInner<T>>),
+    SingleInner(UnsafeArc<Stream<T>>),
+    SharedInner(UnsafeArc<Shared<T>>),
 }
 
-struct SingleInner<T> {
+struct Stream<T> {
     queue: spsc::Queue<T>,
     packet: Packet,
 }
 
-struct SharedInner<T> {
+struct Shared<T> {
     queue: mpsc::Queue<T>,
     packet: Packet,
 }
@@ -339,6 +338,11 @@ struct Packet {
     select_next: *mut Packet,
     select_prev: *mut Packet,
     recv_cnt: int,
+
+    // See the discussion in Port::drop and the channel send methods for what
+    // these are used for
+    go_home: AtomicBool,
+    sender_drain: AtomicInt,
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -351,8 +355,8 @@ static RESCHED_FREQ: int = 200;
 impl<T: Send> PortInner<T> {
     fn packet<'a>(&'a mut self) -> &'a mut Packet {
         match *self {
-            Single(ref arc) => unsafe { &mut (*arc.get()).packet },
-            Shared(ref arc) => unsafe { &mut (*arc.get()).packet },
+            SingleInner(ref arc) => unsafe { &mut (*arc.get()).packet },
+            SharedInner(ref arc) => unsafe { &mut (*arc.get()).packet },
         }
     }
 }
@@ -370,6 +374,9 @@ impl Packet {
             select_next: 0 as *mut Packet,
             select_prev: 0 as *mut Packet,
             recv_cnt: 0,
+
+            go_home: AtomicBool::new(false),
+            sender_drain: AtomicInt::new(0),
         }
     }
 
@@ -530,11 +537,11 @@ impl<T: Send> Chan<T> {
     pub fn new() -> (Port<T>, Chan<T>) {
         // arbitrary 128 size cache -- this is just a max cache size, not a
         // maximum buffer size
-        let (a, b) = UnsafeArc::new2(SingleInner {
+        let (a, b) = UnsafeArc::new2(Stream {
             queue: spsc::Queue::new(128),
             packet: Packet::new(),
         });
-        (Port { inner: Single(a) }, Chan { inner: b })
+        (Port { inner: SingleInner(a) }, Chan { inner: b })
     }
 
     /// Sends a value along this channel to be received by the corresponding
@@ -584,14 +591,35 @@ impl<T: Send> Chan<T> {
     fn try(&self, t: T, can_resched: bool) -> bool {
         unsafe {
             let inner = self.inner.get();
+
+            // See the discussion in Port::drop for what's going on here
+            if (*inner).packet.go_home.load(Relaxed) { return false }
+
             (*inner).queue.push(t);
             match (*inner).packet.increment() {
                 // As described above, -1 == wakeup
                 -1 => { (*inner).packet.wakeup(can_resched); true }
                 // Also as above, SPSC queues must be >= -2
                 -2 => true,
-                // We succeeded if we sent data
-                DISCONNECTED => (*inner).queue.is_empty(),
+
+                DISCONNECTED => {
+                    // After the go_home check, the port could have been
+                    // dropped, so we need to be sure to drain the queue here
+                    // (we own the queue now that the port is gone). Note that
+                    // it is only possible for there to be one item in the queue
+                    // because the port ensures that there is 0 data in the
+                    // queue when it flags disconnected, and we could have only
+                    // pushed on one more item
+                    let first = (*inner).queue.pop();
+                    let second = (*inner).queue.pop();
+                    assert!(second.is_none());
+
+                    match first {
+                        Some(..) => false, // we failed to send the data
+                        None => true,      // we successfully sent data
+                    }
+                }
+
                 // In order to prevent starvation of other tasks in situations
                 // where a task sends repeatedly without ever receiving, we
                 // occassionally yield instead of doing a send immediately.
@@ -626,11 +654,11 @@ impl<T: Send> SharedChan<T> {
     /// same time. All data sent on any channel will become available on the
     /// provided port as well.
     pub fn new() -> (Port<T>, SharedChan<T>) {
-        let (a, b) = UnsafeArc::new2(SharedInner {
+        let (a, b) = UnsafeArc::new2(Shared {
             queue: mpsc::Queue::new(),
             packet: Packet::new(),
         });
-        (Port { inner: Shared(a) }, SharedChan { inner: b })
+        (Port { inner: SharedInner(a) }, SharedChan { inner: b })
     }
 
     /// Equivalent method to `send` on the `Chan` type (using the same
@@ -645,6 +673,10 @@ impl<T: Send> SharedChan<T> {
     /// semantics)
     pub fn try_send(&self, t: T) -> bool {
         unsafe {
+            let inner = self.inner.get();
+            // See Port::drop for what's going on
+            if (*inner).packet.go_home.load(Relaxed) { return false }
+
             // Note that the multiple sender case is a little tricker
             // semantically than the single sender case. The logic for
             // incrementing is "add and if disconnected store disconnected".
@@ -670,15 +702,49 @@ impl<T: Send> SharedChan<T> {
             // preflight check serves as the definitive "this will never be
             // received". Once we get beyond this check, we have permanently
             // entered the realm of "this may be received"
-            let inner = self.inner.get();
             if (*inner).packet.cnt.load(Relaxed) < DISCONNECTED + 1024 {
                 return false
             }
 
             (*inner).queue.push(t);
             match (*inner).packet.increment() {
-                DISCONNECTED => {} // oh well, we tried
                 -1 => { (*inner).packet.wakeup(true); }
+
+                // In this case, we have possibly failed to send our data, and
+                // we need to consider re-popping the data in order to fully
+                // destroy it. We must arbitrate among the multiple senders,
+                // however, because the queues that we're using are
+                // single-consumer queues. In order to do this, all exiting
+                // pushers will use an atomic count in order to count those
+                // flowing through. Pushers who see 0 are required to drain as
+                // much as possible, and then can only exit when they are the
+                // only pusher (otherwise they must try again).
+                n if n < DISCONNECTED + 1024 => {
+                    if (*inner).packet.sender_drain.fetch_add(1, SeqCst) == 0 {
+                        loop {
+                            // drain the queue
+                            loop {
+                                match (*inner).queue.pop() {
+                                    mpsc::Data(..) => {}
+                                    mpsc::Empty => break,
+                                    mpsc::Inconsistent => Thread::yield_now(),
+                                }
+                            }
+                            // maybe we're done, if we're not the last ones
+                            // here, then we need to go try again.
+                            if (*inner).packet.sender_drain.compare_and_swap(
+                                    1, 0, SeqCst) == 1 {
+                                break
+                            }
+                        }
+
+                        // At this point, there may still be data on the queue,
+                        // but only if the count hasn't been incremented and
+                        // some other sender hasn't finished pushing data just
+                        // yet.
+                    }
+                }
+
                 n => {
                     if n > 0 && n % RESCHED_FREQ == 0 {
                         let task: ~Task = Local::take();
@@ -763,8 +829,8 @@ impl<T: Send> Port<T> {
         }
 
         let ret = match this.inner {
-            Single(ref mut arc) => unsafe { (*arc.get()).queue.pop() },
-            Shared(ref mut arc) => match unsafe { (*arc.get()).queue.pop() } {
+            SingleInner(ref mut arc) => unsafe { (*arc.get()).queue.pop() },
+            SharedInner(ref mut arc) => match unsafe { (*arc.get()).queue.pop() } {
                 mpsc::Data(t) => Some(t),
                 mpsc::Empty => None,
 
@@ -868,10 +934,69 @@ impl<'a, T: Send> Iterator<T> for PortIterator<'a, T> {
 #[unsafe_destructor]
 impl<T: Send> Drop for Port<T> {
     fn drop(&mut self) {
-        // All we need to do is store that we're disconnected. If the channel
-        // half has already disconnected, then we'll just deallocate everything
-        // when the shared packet is deallocated.
-        self.inner.packet().cnt.store(DISCONNECTED, SeqCst);
+        // Dropping a port seems like a fairly trivial thing. In theory all we
+        // need to do is flag that we're disconnected and then everything else
+        // can take over (we don't have anyone to wake up).
+        //
+        // The catch for Ports is that we want to drop the entire contents of
+        // the queue. There are multiple reasons for having this property, the
+        // largest of which is that if another port is waiting in this channel
+        // (but not received yet), then waiting on that port will cause a
+        // deadlock.
+        //
+        // So if we accept that we must now destroy the entire contents of the
+        // queue, this code may make a bit more sense. The tricky part is that
+        // we can't let any in-flight sends go un-dropped, we have to make sure
+        // *everything* is dropped and nothing new will come onto the channel.
+
+        // The first thing we do is set a flag saying that we're done for. All
+        // sends are gated on this flag, so we're immediately guaranteed that
+        // there are a bounded number of active sends that we'll have to deal
+        // with.
+        self.inner.packet().go_home.store(true, Relaxed);
+
+        // Now that we're guaranteed to deal with a bounded number of senders,
+        // we need to drain the queue. This draining process happens atomically
+        // with respect to the "count" of the channel. If the count is nonzero
+        // (with steals taken into account), then there must be data on the
+        // channel. In this case we drain everything and then try again. We will
+        // continue to fail while active senders send data while we're dropping
+        // data, but eventually we're guaranteed to break out of this loop
+        // (because there is a bounded number of senders).
+        let mut steals = self.inner.packet().steals;
+        while {
+            let cnt = self.inner.packet().cnt.compare_and_swap(
+                            steals, DISCONNECTED, SeqCst);
+            cnt != DISCONNECTED && cnt != steals
+        } {
+            match self.inner {
+                SingleInner(ref mut arc) => {
+                    loop {
+                        match unsafe { (*arc.get()).queue.pop() } {
+                            Some(..) => { steals += 1; }
+                            None => break
+                        }
+                    }
+                }
+                SharedInner(ref mut arc) => {
+                    // See the discussion in 'try_recv_inc' for why we yield
+                    // control of this thread.
+                    loop {
+                        match unsafe { (*arc.get()).queue.pop() } {
+                            mpsc::Data(..) => { steals += 1; }
+                            mpsc::Empty => break,
+                            mpsc::Inconsistent => Thread::yield_now(),
+                        }
+                    }
+                }
+            }
+        }
+
+        // At this point in time, we have gated all future senders from sending,
+        // and we have flagged the channel as being disconnected. The senders
+        // still have some responsibility, however, because some sends may not
+        // complete until after we flag the disconnection. There are more
+        // details in the sending methods that see DISCONNECTED
     }
 }
 
@@ -1321,5 +1446,25 @@ mod test {
         chan.try_send(2);
         drop(chan);
         assert_eq!(count_port.recv(), 4);
+    })
+
+    test!(fn pending_dropped() {
+        let (a, b) = Chan::new();
+        let (c, d) = Chan::<()>::new();
+        b.send(d);
+        drop(a);
+        c.recv();
+    } #[should_fail])
+
+    test!(fn pending_dropped_stress() {
+        let (a, b) = Chan::new();
+        let (c, d) = Chan::new();
+        do spawn {
+            while b.try_send(~3) { continue }
+            d.send(());
+        }
+        a.recv();
+        drop(a);
+        c.recv();
     })
 }
