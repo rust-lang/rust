@@ -4925,6 +4925,7 @@ impl Parser {
           token::EQ => {
             // x = foo::bar
             self.bump();
+            let path_lo = self.span.lo;
             path = ~[self.parse_ident()];
             while self.token == token::MOD_SEP {
                 self.bump();
@@ -4932,7 +4933,7 @@ impl Parser {
                 path.push(id);
             }
             let path = ast::Path {
-                span: mk_sp(lo, self.span.hi),
+                span: mk_sp(path_lo, self.span.hi),
                 global: false,
                 segments: path.move_iter().map(|identifier| {
                     ast::PathSegment {
