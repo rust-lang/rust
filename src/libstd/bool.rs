@@ -54,7 +54,7 @@ use num::FromPrimitive;
 ///
 /// ```
 /// std::bool::all_values(|x: bool| {
-///     println(x.to_str());
+///     println!("{}", x);
 /// })
 /// ```
 #[inline]

@@ -2,15 +2,15 @@
 
 pub fn main() {
     let v: ~[int] = ~[ 1, ..5 ];
-    println(v[0].to_str());
-    println(v[1].to_str());
-    println(v[2].to_str());
-    println(v[3].to_str());
-    println(v[4].to_str());
+    println!("{}", v[0]);
+    println!("{}", v[1]);
+    println!("{}", v[2]);
+    println!("{}", v[3]);
+    println!("{}", v[4]);
     let v: @[int] = @[ 2, ..5 ];
-    println(v[0].to_str());
-    println(v[1].to_str());
-    println(v[2].to_str());
-    println(v[3].to_str());
-    println(v[4].to_str());
+    println!("{}", v[0]);
+    println!("{}", v[1]);
+    println!("{}", v[2]);
+    println!("{}", v[3]);
+    println!("{}", v[4]);
 }

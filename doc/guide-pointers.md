@@ -222,7 +222,7 @@ struct Point {
 fn main() {
     let a = Point { x: 10, y: 20 };
     do spawn {
-        println(a.x.to_str());
+        println!("{}", a.x);
     }
 }
 ~~~
@@ -239,7 +239,7 @@ struct Point {
 fn main() {
     let a = ~Point { x: 10, y: 20 };
     do spawn {
-        println(a.x.to_str());
+        println!("{}", a.x);
     }
 }
 ~~~
@@ -270,18 +270,22 @@ struct Point {
 fn main() {
     let a = ~Point { x: 10, y: 20 };
     let b = a;
-    println(b.x.to_str());
-    println(a.x.to_str());
+    println!("{}", b.x);
+    println!("{}", a.x);
 }
 ~~~
 
 You'll get this error:
 
 ~~~ {.notrust}
-test.rs:10:12: 10:13 error: use of moved value: `a`
-test.rs:10     println(a.x.to_str());
-                       ^
-test.rs:8:8: 8:9 note: `a` moved here because it has type `~Point`, which is moved by default (use `ref` to override)
+test.rs:10:20: 10:21 error: use of moved value: `a`
+test.rs:10     println!("{}", a.x);
+                              ^
+note: in expansion of format_args!
+<std-macros>:158:27: 158:81 note: expansion site
+<std-macros>:157:5: 159:6 note: in expansion of println!
+test.rs:10:5: 10:25 note: expansion site
+test.rs:8:9: 8:10 note: `a` moved here because it has type `~Point`, which is moved by default (use `ref` to override)
 test.rs:8     let b = a;
                   ^
 ~~~
@@ -297,8 +301,8 @@ struct Point {
 fn main() {
     let a = @Point { x: 10, y: 20 };
     let b = a;
-    println(b.x.to_str());
-    println(a.x.to_str());
+    println!("{}", b.x);
+    println!("{}", a.x);
 }
 ~~~
 
@@ -367,7 +371,7 @@ compile?
 
 ~~~rust{.xfail-test}
 fn main() {
-    println(x.to_str());
+    println!("{}", x);
     let x = 5;
 }
 ~~~

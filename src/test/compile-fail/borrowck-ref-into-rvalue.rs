@@ -16,5 +16,5 @@ fn main() {
         },
         None => { fail!() }
     }
-    println(*msg);
+    println!("{}", *msg);
 }

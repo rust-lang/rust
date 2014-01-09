@@ -11,7 +11,7 @@
 use context::Command;
 
 pub fn general() {
-    println("Usage: rustpkg [options] <cmd> [args..]
+    println!("Usage: rustpkg [options] <cmd> [args..]
 
 Where <cmd> is one of:
     build, clean, do, info, install, list, prefer, test, uninstall, unprefer
@@ -24,7 +24,7 @@ Options:
 }
 
 pub fn build() {
-    println("rustpkg build [options..] [package-ID]
+    println!("rustpkg build [options..] [package-ID]
 
 Build the given package ID if specified. With no package ID argument,
 build the package in the current directory. In that case, the current
@@ -50,21 +50,21 @@ Options:
 }
 
 pub fn clean() {
-    println("rustpkg clean
+    println!("rustpkg clean
 
 Remove all build files in the work cache for the package in the current
 directory.");
 }
 
 pub fn do_cmd() {
-    println("rustpkg do <cmd>
+    println!(r"rustpkg do <cmd>
 
 Runs a command in the package script. You can listen to a command
-by tagging a function with the attribute `#[pkg_do(cmd)]`.");
+by tagging a function with the attribute `\#[pkg_do(cmd)]`.");
 }
 
 pub fn info() {
-    println("rustpkg [options..] info
+    println!("rustpkg [options..] info
 
 Probe the package script in the current directory for information.
 
@@ -73,13 +73,13 @@ Options:
 }
 
 pub fn list() {
-    println("rustpkg list
+    println!("rustpkg list
 
 List all installed packages.");
 }
 
 pub fn install() {
-    println("rustpkg install [options..] [package-ID]
+    println!(r"rustpkg install [options..] [package-ID]
 
 Install the given package ID if specified. With no package ID
 argument, install the package in the current directory.
@@ -89,7 +89,7 @@ In that case, the current directory must be a direct child of a
 Examples:
     rustpkg install
     rustpkg install github.com/mozilla/servo
-    rustpkg install github.com/mozilla/servo#0.1.2
+    rustpkg install github.com/mozilla/servo\#0.1.2
 
 Options:
     -c, --cfg      Pass a cfg flag to the package script
@@ -105,14 +105,14 @@ Options:
 }
 
 pub fn uninstall() {
-    println("rustpkg uninstall <id|name>[@version]
+    println!("rustpkg uninstall <id|name>[@version]
 
 Remove a package by id or name and optionally version. If the package(s)
 is/are depended on by another package then they cannot be removed.");
 }
 
 pub fn prefer() {
-    println("rustpkg [options..] prefer <id|name>[@version]
+    println!("rustpkg [options..] prefer <id|name>[@version]
 
 By default all binaries are given a unique name so that multiple versions can
 coexist. The prefer command will symlink the uniquely named binary to
@@ -130,7 +130,7 @@ Example:
 }
 
 pub fn unprefer() {
-    println("rustpkg [options..] unprefer <id|name>[@version]
+    println!("rustpkg [options..] unprefer <id|name>[@version]
 
 Remove all symlinks from the store to the binary directory for a package
 name and optionally version. If version is not supplied, the latest version
@@ -139,7 +139,7 @@ information.");
 }
 
 pub fn test() {
-    println("rustpkg [options..] test
+    println!("rustpkg [options..] test
 
 Build all test crates in the current directory with the test flag.
 Then, run all the resulting test executables, redirecting the output
@@ -150,7 +150,7 @@ Options:
 }
 
 pub fn init() {
-    println("rustpkg init
+    println!("rustpkg init
 
 This will turn the current working directory into a workspace. The first
 command you run when starting off a new project.

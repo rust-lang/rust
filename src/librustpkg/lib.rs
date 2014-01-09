@@ -364,9 +364,9 @@ impl CtxMethods for BuildContext {
                 }
             }
             ListCmd => {
-                println("Installed packages:");
+                println!("Installed packages:");
                 installed_packages::list_installed_packages(|pkg_id| {
-                    pkg_id.path.display().with_str(|s| println(s));
+                    pkg_id.path.display().with_str(|s| println!("{}", s));
                     true
                 });
             }
@@ -747,7 +747,7 @@ impl CtxMethods for BuildContext {
 }
 
 pub fn main() {
-    println("WARNING: The Rust package manager is experimental and may be unstable");
+    println!("WARNING: The Rust package manager is experimental and may be unstable");
     os::set_exit_status(main_args(os::args()));
 }
 

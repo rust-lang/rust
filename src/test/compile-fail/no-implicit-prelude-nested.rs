@@ -25,8 +25,7 @@ mod foo {
         impl Writer for Test {} //~ ERROR: attempt to implement a nonexistent trait
 
         fn foo() {
-            print("foo"); //~ ERROR: unresolved name
-            println("bar"); //~ ERROR: unresolved name
+            drop(2) //~ ERROR: unresolved name
         }
     }
 
@@ -38,8 +37,7 @@ mod foo {
     impl Writer for Test {} //~ ERROR: attempt to implement a nonexistent trait
 
     fn foo() {
-        print("foo"); //~ ERROR: unresolved name
-        println("bar"); //~ ERROR: unresolved name
+        drop(2) //~ ERROR: unresolved name
     }
 }
 
@@ -54,8 +52,7 @@ fn qux() {
         impl Writer for Test {} //~ ERROR: attempt to implement a nonexistent trait
 
         fn foo() {
-            print("foo"); //~ ERROR: unresolved name
-            println("bar"); //~ ERROR: unresolved name
+            drop(2) //~ ERROR: unresolved name
         }
     }
 }
@@ -63,6 +60,5 @@ fn qux() {
 
 fn main() {
     // these should work fine
-    print("foo");
-    println("bar");
+    drop(2)
 }

@@ -10,6 +10,8 @@
 
 #[feature(managed_boxes)];
 
+use std::io::println;
+
 trait Trait<T> {
     fn f(&self, x: T);
 }
@@ -21,7 +23,7 @@ struct Struct {
 
 impl Trait<&'static str> for Struct {
     fn f(&self, x: &'static str) {
-        println(~"Hi, " + x + ~"!");
+        println!("Hi, {}!", x);
     }
 }
 

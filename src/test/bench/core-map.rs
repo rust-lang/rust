@@ -27,7 +27,7 @@ fn timed(label: &str, f: ||) {
 }
 
 fn ascending<M: MutableMap<uint, uint>>(map: &mut M, n_keys: uint) {
-    println(" Ascending integers:");
+    println!(" Ascending integers:");
 
     timed("insert", || {
         for i in range(0u, n_keys) {
@@ -49,7 +49,7 @@ fn ascending<M: MutableMap<uint, uint>>(map: &mut M, n_keys: uint) {
 }
 
 fn descending<M: MutableMap<uint, uint>>(map: &mut M, n_keys: uint) {
-    println(" Descending integers:");
+    println!(" Descending integers:");
 
     timed("insert", || {
         for i in range(0, n_keys).invert() {
@@ -115,7 +115,8 @@ fn main() {
 
     println!("{} keys", n_keys);
 
-    println("\nTreeMap:");
+    // FIXME: #9970
+    println!("{}", "\nTreeMap:");
 
     {
         let mut map: TreeMap<uint,uint> = TreeMap::new();
@@ -128,12 +129,13 @@ fn main() {
     }
 
     {
-        println(" Random integers:");
+        println!(" Random integers:");
         let mut map: TreeMap<uint,uint> = TreeMap::new();
         vector(&mut map, n_keys, rand);
     }
 
-    println("\nHashMap:");
+    // FIXME: #9970
+    println!("{}", "\nHashMap:");
 
     {
         let mut map: HashMap<uint,uint> = HashMap::new();
@@ -146,12 +148,13 @@ fn main() {
     }
 
     {
-        println(" Random integers:");
+        println!(" Random integers:");
         let mut map: HashMap<uint,uint> = HashMap::new();
         vector(&mut map, n_keys, rand);
     }
 
-    println("\nTrieMap:");
+    // FIXME: #9970
+    println!("{}", "\nTrieMap:");
 
     {
         let mut map: TrieMap<uint> = TrieMap::new();
@@ -164,7 +167,7 @@ fn main() {
     }
 
     {
-        println(" Random integers:");
+        println!(" Random integers:");
         let mut map: TrieMap<uint> = TrieMap::new();
         vector(&mut map, n_keys, rand);
     }

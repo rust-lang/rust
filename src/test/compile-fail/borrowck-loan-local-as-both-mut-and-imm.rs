@@ -22,7 +22,7 @@ enum Either<T, U> { Left(T), Right(U) }
 
     fn g() {
         let mut x: Either<int,f64> = Left(3);
-        println(f(&mut x, &x).to_str()); //~ ERROR cannot borrow
+        println!("{}", f(&mut x, &x)); //~ ERROR cannot borrow
     }
 
     fn h() {

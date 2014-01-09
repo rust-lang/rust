@@ -35,17 +35,17 @@
 //! use std::os;
 //!
 //! fn do_work(inp: &str, out: Option<~str>) {
-//!     println(inp);
-//!     println(match out {
-//!         Some(x) => x,
-//!         None => ~"No Output"
-//!     });
+//!     println!("{}", inp);
+//!     match out {
+//!         Some(x) => println!("{}", x),
+//!         None => println!("No Output"),
+//!     }
 //! }
 //!
 //! fn print_usage(program: &str, _opts: &[Opt]) {
 //!     println!("Usage: {} [options]", program);
-//!     println("-o\t\tOutput");
-//!     println("-h --help\tUsage");
+//!     println!("-o\t\tOutput");
+//!     println!("-h --help\tUsage");
 //! }
 //!
 //! fn main() {

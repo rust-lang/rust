@@ -3367,7 +3367,7 @@ pub fn trans_crate(sess: session::Session,
     // Translate the metadata.
     let metadata = write_metadata(ccx, &crate);
     if ccx.sess.trans_stats() {
-        println("--- trans stats ---");
+        println!("--- trans stats ---");
         println!("n_static_tydescs: {}", ccx.stats.n_static_tydescs.get());
         println!("n_glues_created: {}", ccx.stats.n_glues_created.get());
         println!("n_null_glues: {}", ccx.stats.n_null_glues.get());
@@ -3377,7 +3377,7 @@ pub fn trans_crate(sess: session::Session,
         println!("n_monos: {}", ccx.stats.n_monos.get());
         println!("n_inlines: {}", ccx.stats.n_inlines.get());
         println!("n_closures: {}", ccx.stats.n_closures.get());
-        println("fn stats:");
+        println!("fn stats:");
         {
             let mut fn_stats = ccx.stats.fn_stats.borrow_mut();
             fn_stats.get().sort_by(|&(_, _, insns_a), &(_, _, insns_b)| {

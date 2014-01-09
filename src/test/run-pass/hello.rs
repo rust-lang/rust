@@ -9,5 +9,5 @@
 // except according to those terms.
 
 pub fn main() {
-    println("hello, world");
+    println!("hello, world");
 }
