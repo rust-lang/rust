@@ -132,7 +132,6 @@ pub fn u64_from_be_bytes(data: &[u8],
 #[cfg(test)]
 mod test {
     use unstable::finally::Finally;
-    use io::Decorator;
     use prelude::*;
     use io::mem::{MemReader, MemWriter};
     use io::{io_error, placeholder_error};
@@ -419,7 +418,7 @@ mod test {
             writer.write_le_u64(*i);
         }
 
-        let mut reader = MemReader::new(writer.inner());
+        let mut reader = MemReader::new(writer.unwrap());
         for i in uints.iter() {
             assert!(reader.read_le_u64() == *i);
         }
@@ -435,7 +434,7 @@ mod test {
             writer.write_be_u64(*i);
         }
 
-        let mut reader = MemReader::new(writer.inner());
+        let mut reader = MemReader::new(writer.unwrap());
         for i in uints.iter() {
             assert!(reader.read_be_u64() == *i);
         }
@@ -450,7 +449,7 @@ mod test {
             writer.write_be_i32(*i);
         }
 
-        let mut reader = MemReader::new(writer.inner());
+        let mut reader = MemReader::new(writer.unwrap());
         for i in ints.iter() {
             // this tests that the sign extension is working
             // (comparing the values as i32 would not test this)
@@ -466,7 +465,7 @@ mod test {
         let mut writer = MemWriter::new();
         writer.write(buf);
 
-        let mut reader = MemReader::new(writer.inner());
+        let mut reader = MemReader::new(writer.unwrap());
         let f = reader.read_be_f32();
         assert!(f == 8.1250);
     }
@@ -479,7 +478,7 @@ mod test {
         writer.write_be_f32(f);
         writer.write_le_f32(f);
 
-        let mut reader = MemReader::new(writer.inner());
+        let mut reader = MemReader::new(writer.unwrap());
         assert!(reader.read_be_f32() == 8.1250);
         assert!(reader.read_le_f32() == 8.1250);
     }

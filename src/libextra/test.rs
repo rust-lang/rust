@@ -673,7 +673,6 @@ pub fn run_tests_console(opts: &TestOpts,
 
 #[test]
 fn should_sort_failures_before_printing_them() {
-    use std::io::Decorator;
     use std::io::mem::MemWriter;
     use std::str;
 
@@ -705,7 +704,7 @@ fn should_sort_failures_before_printing_them() {
 
     st.write_failures();
     let s = match st.out {
-        Raw(ref m) => str::from_utf8(*m.inner_ref()),
+        Raw(ref m) => str::from_utf8(m.get_ref()),
         Pretty(_) => unreachable!()
     };
 
