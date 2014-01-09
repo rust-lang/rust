@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-use syntax::fold::ast_fold;
+use syntax::fold::Folder;
 use syntax::{ast, fold, attr};
 use syntax::codemap;
 
@@ -24,18 +24,17 @@ pub fn strip_unconfigured_items(crate: ast::Crate) -> ast::Crate {
     strip_items(crate, |attrs| in_cfg(config, attrs))
 }
 
-impl<'a> fold::ast_fold for Context<'a> {
-    fn fold_mod(&mut self, module: &ast::_mod) -> ast::_mod {
+impl<'a> fold::Folder for Context<'a> {
+    fn fold_mod(&mut self, module: &ast::Mod) -> ast::Mod {
         fold_mod(self, module)
     }
     fn fold_block(&mut self, block: ast::P<ast::Block>) -> ast::P<ast::Block> {
         fold_block(self, block)
     }
-    fn fold_foreign_mod(&mut self, foreign_module: &ast::foreign_mod)
-                        -> ast::foreign_mod {
-        fold_foreign_mod(self, foreign_module)
+    fn fold_foreign_mod(&mut self, foreign_mod: &ast::ForeignMod) -> ast::ForeignMod {
+        fold_foreign_mod(self, foreign_mod)
     }
-    fn fold_item_underscore(&mut self, item: &ast::item_) -> ast::item_ {
+    fn fold_item_underscore(&mut self, item: &ast::Item_) -> ast::Item_ {
         fold_item_underscore(self, item)
     }
 }
@@ -49,8 +48,8 @@ pub fn strip_items(crate: ast::Crate,
     ctxt.fold_crate(crate)
 }
 
-fn filter_view_item<'r>(cx: &Context, view_item: &'r ast::view_item)
-                        -> Option<&'r ast::view_item> {
+fn filter_view_item<'r>(cx: &Context, view_item: &'r ast::ViewItem)
+                        -> Option<&'r ast::ViewItem> {
     if view_item_in_cfg(cx, view_item) {
         Some(view_item)
     } else {
@@ -58,7 +57,7 @@ fn filter_view_item<'r>(cx: &Context, view_item: &'r ast::view_item)
     }
 }
 
-fn fold_mod(cx: &mut Context, m: &ast::_mod) -> ast::_mod {
+fn fold_mod(cx: &mut Context, m: &ast::Mod) -> ast::Mod {
     let filtered_items = m.items.iter()
             .filter(|&a| item_in_cfg(cx, *a))
             .flat_map(|&x| cx.fold_item(x).move_iter())
@@ -66,14 +65,14 @@ fn fold_mod(cx: &mut Context, m: &ast::_mod) -> ast::_mod {
     let filtered_view_items = m.view_items.iter().filter_map(|a| {
         filter_view_item(cx, a).map(|x| cx.fold_view_item(x))
     }).collect();
-    ast::_mod {
+    ast::Mod {
         view_items: filtered_view_items,
         items: filtered_items
     }
 }
 
-fn filter_foreign_item(cx: &Context, item: @ast::foreign_item)
-                       -> Option<@ast::foreign_item> {
+fn filter_foreign_item(cx: &Context, item: @ast::ForeignItem)
+                       -> Option<@ast::ForeignItem> {
     if foreign_item_in_cfg(cx, item) {
         Some(item)
     } else {
@@ -81,7 +80,7 @@ fn filter_foreign_item(cx: &Context, item: @ast::foreign_item)
     }
 }
 
-fn fold_foreign_mod(cx: &mut Context, nm: &ast::foreign_mod) -> ast::foreign_mod {
+fn fold_foreign_mod(cx: &mut Context, nm: &ast::ForeignMod) -> ast::ForeignMod {
     let filtered_items = nm.items
                            .iter()
                            .filter_map(|a| filter_foreign_item(cx, *a))
@@ -89,41 +88,41 @@ fn fold_foreign_mod(cx: &mut Context, nm: &ast::foreign_mod) -> ast::foreign_mod
     let filtered_view_items = nm.view_items.iter().filter_map(|a| {
         filter_view_item(cx, a).map(|x| cx.fold_view_item(x))
     }).collect();
-    ast::foreign_mod {
+    ast::ForeignMod {
         abis: nm.abis,
         view_items: filtered_view_items,
         items: filtered_items
     }
 }
 
-fn fold_item_underscore(cx: &mut Context, item: &ast::item_) -> ast::item_ {
+fn fold_item_underscore(cx: &mut Context, item: &ast::Item_) -> ast::Item_ {
     let item = match *item {
-        ast::item_impl(ref a, ref b, c, ref methods) => {
+        ast::ItemImpl(ref a, ref b, c, ref methods) => {
             let methods = methods.iter().filter(|m| method_in_cfg(cx, **m))
                 .map(|x| *x).collect();
-            ast::item_impl((*a).clone(), (*b).clone(), c, methods)
+            ast::ItemImpl((*a).clone(), (*b).clone(), c, methods)
         }
-        ast::item_trait(ref a, ref b, ref methods) => {
+        ast::ItemTrait(ref a, ref b, ref methods) => {
             let methods = methods.iter()
                                  .filter(|m| trait_method_in_cfg(cx, *m) )
                                  .map(|x| (*x).clone())
                                  .collect();
-            ast::item_trait((*a).clone(), (*b).clone(), methods)
+            ast::ItemTrait((*a).clone(), (*b).clone(), methods)
         }
-        ast::item_struct(def, ref generics) => {
-            ast::item_struct(fold_struct(cx, def), generics.clone())
+        ast::ItemStruct(def, ref generics) => {
+            ast::ItemStruct(fold_struct(cx, def), generics.clone())
         }
-        ast::item_enum(ref def, ref generics) => {
+        ast::ItemEnum(ref def, ref generics) => {
             let mut variants = def.variants.iter().map(|c| c.clone()).filter(|m| {
                 (cx.in_cfg)(m.node.attrs)
             }).map(|v| {
                 match v.node.kind {
-                    ast::tuple_variant_kind(..) => v,
-                    ast::struct_variant_kind(def) => {
+                    ast::TupleVariantKind(..) => v,
+                    ast::StructVariantKind(def) => {
                         let def = fold_struct(cx, def);
                         @codemap::Spanned {
-                            node: ast::variant_ {
-                                kind: ast::struct_variant_kind(def),
+                            node: ast::Variant_ {
+                                kind: ast::StructVariantKind(def),
                                 ..v.node.clone()
                             },
                             ..*v
@@ -131,7 +130,7 @@ fn fold_item_underscore(cx: &mut Context, item: &ast::item_) -> ast::item_ {
                     }
                 }
             });
-            ast::item_enum(ast::enum_def {
+            ast::ItemEnum(ast::EnumDef {
                 variants: variants.collect(),
             }, generics.clone())
         }
@@ -141,11 +140,11 @@ fn fold_item_underscore(cx: &mut Context, item: &ast::item_) -> ast::item_ {
     fold::noop_fold_item_underscore(&item, cx)
 }
 
-fn fold_struct(cx: &Context, def: &ast::struct_def) -> @ast::struct_def {
+fn fold_struct(cx: &Context, def: &ast::StructDef) -> @ast::StructDef {
     let mut fields = def.fields.iter().map(|c| c.clone()).filter(|m| {
         (cx.in_cfg)(m.node.attrs)
     });
-    @ast::struct_def {
+    @ast::StructDef {
         fields: fields.collect(),
         ctor_id: def.ctor_id,
     }
@@ -183,26 +182,26 @@ fn fold_block(cx: &mut Context, b: ast::P<ast::Block>) -> ast::P<ast::Block> {
     })
 }
 
-fn item_in_cfg(cx: &Context, item: @ast::item) -> bool {
+fn item_in_cfg(cx: &Context, item: &ast::Item) -> bool {
     return (cx.in_cfg)(item.attrs);
 }
 
-fn foreign_item_in_cfg(cx: &Context, item: @ast::foreign_item) -> bool {
+fn foreign_item_in_cfg(cx: &Context, item: &ast::ForeignItem) -> bool {
     return (cx.in_cfg)(item.attrs);
 }
 
-fn view_item_in_cfg(cx: &Context, item: &ast::view_item) -> bool {
+fn view_item_in_cfg(cx: &Context, item: &ast::ViewItem) -> bool {
     return (cx.in_cfg)(item.attrs);
 }
 
-fn method_in_cfg(cx: &Context, meth: @ast::method) -> bool {
+fn method_in_cfg(cx: &Context, meth: &ast::Method) -> bool {
     return (cx.in_cfg)(meth.attrs);
 }
 
-fn trait_method_in_cfg(cx: &Context, meth: &ast::trait_method) -> bool {
+fn trait_method_in_cfg(cx: &Context, meth: &ast::TraitMethod) -> bool {
     match *meth {
-        ast::required(ref meth) => (cx.in_cfg)(meth.attrs),
-        ast::provided(@ref meth) => (cx.in_cfg)(meth.attrs)
+        ast::Required(ref meth) => (cx.in_cfg)(meth.attrs),
+        ast::Provided(@ref meth) => (cx.in_cfg)(meth.attrs)
     }
 }
 

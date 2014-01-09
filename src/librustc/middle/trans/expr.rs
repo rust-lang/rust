@@ -152,7 +152,7 @@ use std::hashmap::HashMap;
 use std::vec;
 use syntax::print::pprust::{expr_to_str};
 use syntax::ast;
-use syntax::ast_map::path_mod;
+use syntax::ast_map::PathMod;
 use syntax::codemap;
 
 // Destinations
@@ -748,7 +748,7 @@ fn trans_rvalue_dps_unadjusted<'a>(
                 args.iter().enumerate().map(|(i, arg)| (i, *arg)).collect();
             return trans_adt(bcx, repr, 0, numbered_fields, None, dest);
         }
-        ast::ExprLit(@codemap::Spanned {node: ast::lit_str(s, _), ..}) => {
+        ast::ExprLit(@codemap::Spanned {node: ast::LitStr(s, _), ..}) => {
             return tvec::trans_lit_str(bcx, expr, s, dest);
         }
         ast::ExprVstore(contents, ast::ExprVstoreSlice) |
@@ -1392,7 +1392,7 @@ fn trans_adt<'a>(
 fn trans_immediate_lit<'a>(
                        bcx: &'a Block<'a>,
                        expr: &ast::Expr,
-                       lit: ast::lit)
+                       lit: ast::Lit)
                        -> DatumBlock<'a> {
     // must not be a string constant, that is a RvalueDpsExpr
     let _icx = push_ctxt("trans_immediate_lit");
@@ -1916,10 +1916,10 @@ pub fn trans_log_level<'a>(bcx: &'a Block<'a>) -> DatumBlock<'a> {
                 None => ccx.link_meta.crateid.name.to_managed(),
             };
         };
-        let mut modpath = ~[path_mod(ccx.sess.ident_of(srccrate))];
+        let mut modpath = ~[PathMod(ccx.sess.ident_of(srccrate))];
         for e in bcx.fcx.path.iter() {
             match *e {
-                path_mod(_) => { modpath.push(*e) }
+                PathMod(_) => { modpath.push(*e) }
                 _ => {}
             }
         }

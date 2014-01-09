@@ -343,12 +343,12 @@ fn visit_local(l: &ast::Local, wbcx: &mut WbCtxt) {
     }
     visit::walk_local(wbcx, l, ());
 }
-fn visit_item(_item: &ast::item, _wbcx: &mut WbCtxt) {
+fn visit_item(_item: &ast::Item, _wbcx: &mut WbCtxt) {
     // Ignore items
 }
 
 impl Visitor<()> for WbCtxt {
-    fn visit_item(&mut self, i: &ast::item, _: ()) { visit_item(i, self); }
+    fn visit_item(&mut self, i: &ast::Item, _: ()) { visit_item(i, self); }
     fn visit_stmt(&mut self, s: &ast::Stmt, _: ()) { visit_stmt(s, self); }
     fn visit_expr(&mut self, ex:&ast::Expr, _: ()) { visit_expr(ex, self); }
     fn visit_block(&mut self, b: &ast::Block, _: ()) { visit_block(b, self); }
@@ -366,7 +366,7 @@ pub fn resolve_type_vars_in_expr(fcx: @FnCtxt, e: &ast::Expr) -> bool {
 }
 
 pub fn resolve_type_vars_in_fn(fcx: @FnCtxt,
-                               decl: &ast::fn_decl,
+                               decl: &ast::FnDecl,
                                blk: &ast::Block,
                                self_info: Option<SelfInfo>) -> bool {
     let mut wbcx = WbCtxt { fcx: fcx, success: true };

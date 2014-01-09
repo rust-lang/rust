@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use ast;
-use ast::{MetaItem, item, Expr};
+use ast::{MetaItem, Item, Expr};
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
@@ -19,7 +19,7 @@ use std::cmp::{Ordering, Equal, Less, Greater};
 pub fn expand_deriving_totalord(cx: &ExtCtxt,
                                 span: Span,
                                 mitem: @MetaItem,
-                                in_items: ~[@item]) -> ~[@item] {
+                                in_items: ~[@Item]) -> ~[@Item] {
     let trait_def = TraitDef {
         cx: cx, span: span,
 

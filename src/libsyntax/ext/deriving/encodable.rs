@@ -75,7 +75,7 @@ would yield functions like:
     }
 */
 
-use ast::{MetaItem, item, Expr, MutImmutable, MutMutable};
+use ast::{MetaItem, Item, Expr, MutImmutable, MutMutable};
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
@@ -84,7 +84,7 @@ use ext::deriving::generic::*;
 pub fn expand_deriving_encodable(cx: &ExtCtxt,
                                  span: Span,
                                  mitem: @MetaItem,
-                                 in_items: ~[@item]) -> ~[@item] {
+                                 in_items: ~[@Item]) -> ~[@Item] {
     let trait_def = TraitDef {
         cx: cx, span: span,
 

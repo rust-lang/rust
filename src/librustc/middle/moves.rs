@@ -193,7 +193,7 @@ enum UseMode {
 }
 
 impl visit::Visitor<()> for VisitContext {
-    fn visit_fn(&mut self, fk: &visit::fn_kind, fd: &fn_decl,
+    fn visit_fn(&mut self, fk: &visit::FnKind, fd: &FnDecl,
                 b: &Block, s: Span, n: NodeId, _: ()) {
         compute_modes_for_fn(self, fk, fd, b, s, n);
     }
@@ -248,8 +248,8 @@ fn compute_modes_for_local<'a>(cx: &mut VisitContext,
 }
 
 fn compute_modes_for_fn(cx: &mut VisitContext,
-                        fk: &visit::fn_kind,
-                        decl: &fn_decl,
+                        fk: &visit::FnKind,
+                        decl: &FnDecl,
                         body: &Block,
                         span: Span,
                         id: NodeId) {

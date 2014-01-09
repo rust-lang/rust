@@ -88,7 +88,7 @@ struct PkgScript<'a> {
     /// The config for compiling the custom build script
     cfg: ast::CrateConfig,
     /// The crate and ast_map for the custom build script
-    crate_and_map: Option<(ast::Crate, syntax::ast_map::map)>,
+    crate_and_map: Option<(ast::Crate, syntax::ast_map::Map)>,
     /// Directory in which to store build output
     build_dir: Path
 }

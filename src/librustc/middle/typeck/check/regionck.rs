@@ -175,7 +175,7 @@ impl Visitor<()> for Rcx {
     // hierarchy, and in particular the relationships between free
     // regions, until regionck, as described in #3238.
 
-    fn visit_item(&mut self, i: &ast::item, _: ()) { visit_item(self, i); }
+    fn visit_item(&mut self, i: &ast::Item, _: ()) { visit_item(self, i); }
 
     fn visit_expr(&mut self, ex: &ast::Expr, _: ()) { visit_expr(self, ex); }
 
@@ -188,7 +188,7 @@ impl Visitor<()> for Rcx {
     fn visit_block(&mut self, b: &ast::Block, _: ()) { visit_block(self, b); }
 }
 
-fn visit_item(_rcx: &mut Rcx, _item: &ast::item) {
+fn visit_item(_rcx: &mut Rcx, _item: &ast::Item) {
     // Ignore items
 }
 

@@ -25,7 +25,7 @@ use syntax::ast::*;
 use syntax::ast_util::{unguarded_pat, walk_pat};
 use syntax::codemap::{Span, DUMMY_SP, Spanned};
 use syntax::visit;
-use syntax::visit::{Visitor,fn_kind};
+use syntax::visit::{Visitor, FnKind};
 
 struct MatchCheckCtxt {
     tcx: ty::ctxt,
@@ -44,7 +44,7 @@ impl Visitor<()> for CheckMatchVisitor {
     fn visit_local(&mut self, l: &Local, _: ()) {
         check_local(self, self.cx, l, ());
     }
-    fn visit_fn(&mut self, fk: &fn_kind, fd: &fn_decl, b: &Block, s: Span, n: NodeId, _: ()) {
+    fn visit_fn(&mut self, fk: &FnKind, fd: &FnDecl, b: &Block, s: Span, n: NodeId, _: ()) {
         check_fn(self, self.cx, fk, fd, b, s, n, ());
     }
 }
@@ -843,8 +843,8 @@ fn check_local(v: &mut CheckMatchVisitor,
 
 fn check_fn(v: &mut CheckMatchVisitor,
                 cx: &MatchCheckCtxt,
-                kind: &visit::fn_kind,
-                decl: &fn_decl,
+                kind: &FnKind,
+                decl: &FnDecl,
                 body: &Block,
                 sp: Span,
                 id: NodeId,
@@ -879,7 +879,7 @@ fn is_refutable(cx: &MatchCheckCtxt, pat: &Pat) -> bool {
         is_refutable(cx, sub)
       }
       PatWild | PatWildMulti | PatIdent(_, _, None) => { false }
-      PatLit(@Expr {node: ExprLit(@Spanned { node: lit_nil, ..}), ..}) => {
+      PatLit(@Expr {node: ExprLit(@Spanned { node: LitNil, ..}), ..}) => {
         // "()"
         false
       }

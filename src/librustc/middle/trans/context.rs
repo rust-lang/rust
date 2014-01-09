@@ -62,7 +62,7 @@ pub struct CrateContext {
      // came from)
      external_srcs: RefCell<HashMap<ast::NodeId, ast::DefId>>,
      // A set of static items which cannot be inlined into other crates. This
-     // will pevent in ii_item() structures from being encoded into the metadata
+     // will pevent in IIItem() structures from being encoded into the metadata
      // that is generated
      non_inlineable_statics: RefCell<HashSet<ast::NodeId>>,
      // Cache instances of monomorphized functions

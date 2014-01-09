@@ -105,7 +105,7 @@ impl Env {
         };
 
         fn search_mod(self: &Env,
-                      m: &ast::_mod,
+                      m: &ast::Mod,
                       idx: uint,
                       names: &[~str]) -> Option<ast::node_id> {
             assert!(idx < names.len());
@@ -118,7 +118,7 @@ impl Env {
         }
 
         fn search(self: &Env,
-                  it: @ast::item,
+                  it: @ast::Item,
                   idx: uint,
                   names: &[~str]) -> Option<ast::node_id> {
             if idx == names.len() {
@@ -126,18 +126,18 @@ impl Env {
             }
 
             return match it.node {
-                ast::item_const(..) | ast::item_fn(..) |
-                ast::item_foreign_mod(..) | ast::item_ty(..) => {
+                ast::ItemConst(..) | ast::ItemFn(..) |
+                ast::ItemForeignMod(..) | ast::ItemTy(..) => {
                     None
                 }
 
-                ast::item_enum(..) | ast::item_struct(..) |
-                ast::item_trait(..) | ast::item_impl(..) |
-                ast::item_mac(..) => {
+                ast::ItemEnum(..) | ast::ItemStruct(..) |
+                ast::ItemTrait(..) | ast::ItemImpl(..) |
+                ast::ItemMac(..) => {
                     None
                 }
 
-                ast::item_mod(ref m) => {
+                ast::ItemMod(ref m) => {
                     search_mod(self, m, idx, names)
                 }
             };
@@ -185,7 +185,7 @@ impl Env {
         let inputs = input_tys.map(|t| {mode: ast::expl(ast::by_copy),
                                         ty: *t});
         ty::mk_fn(self.tcx, FnTyBase {
-            meta: FnMeta {purity: ast::impure_fn,
+            meta: FnMeta {purity: ast::ImpureFn,
                           proto: ast::ProtoBare,
                           onceness: ast::Many,
                           region: ty::ReStatic,

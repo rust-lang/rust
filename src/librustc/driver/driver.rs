@@ -164,7 +164,7 @@ pub fn phase_1_parse_input(sess: Session, cfg: ast::CrateConfig, input: &input)
 pub fn phase_2_configure_and_expand(sess: Session,
                                     cfg: ast::CrateConfig,
                                     mut crate: ast::Crate)
-                                    -> (ast::Crate, syntax::ast_map::map) {
+                                    -> (ast::Crate, syntax::ast_map::Map) {
     let time_passes = sess.time_passes();
 
     sess.building_library.set(session::building_library(sess.opts, &crate));
@@ -220,7 +220,7 @@ pub struct CrateAnalysis {
 /// structures carrying the results of the analysis.
 pub fn phase_3_run_analysis_passes(sess: Session,
                                    crate: &ast::Crate,
-                                   ast_map: syntax::ast_map::map) -> CrateAnalysis {
+                                   ast_map: syntax::ast_map::Map) -> CrateAnalysis {
 
     let time_passes = sess.time_passes();
 
@@ -515,29 +515,29 @@ struct IdentifiedAnnotation {
     contents: (),
 }
 
-impl pprust::pp_ann for IdentifiedAnnotation {
-    fn pre(&self, node: pprust::ann_node) {
+impl pprust::PpAnn for IdentifiedAnnotation {
+    fn pre(&self, node: pprust::AnnNode) {
         match node {
-            pprust::node_expr(s, _) => pprust::popen(s),
+            pprust::NodeExpr(s, _) => pprust::popen(s),
             _ => ()
         }
     }
-    fn post(&self, node: pprust::ann_node) {
+    fn post(&self, node: pprust::AnnNode) {
         match node {
-            pprust::node_item(s, item) => {
+            pprust::NodeItem(s, item) => {
                 pp::space(&mut s.s);
                 pprust::synth_comment(s, item.id.to_str());
             }
-            pprust::node_block(s, blk) => {
+            pprust::NodeBlock(s, blk) => {
                 pp::space(&mut s.s);
                 pprust::synth_comment(s, ~"block " + blk.id.to_str());
             }
-            pprust::node_expr(s, expr) => {
+            pprust::NodeExpr(s, expr) => {
                 pp::space(&mut s.s);
                 pprust::synth_comment(s, expr.id.to_str());
                 pprust::pclose(s);
             }
-            pprust::node_pat(s, pat) => {
+            pprust::NodePat(s, pat) => {
                 pp::space(&mut s.s);
                 pprust::synth_comment(s, ~"pat " + pat.id.to_str());
             }
@@ -549,17 +549,17 @@ struct TypedAnnotation {
     analysis: CrateAnalysis,
 }
 
-impl pprust::pp_ann for TypedAnnotation {
-    fn pre(&self, node: pprust::ann_node) {
+impl pprust::PpAnn for TypedAnnotation {
+    fn pre(&self, node: pprust::AnnNode) {
         match node {
-            pprust::node_expr(s, _) => pprust::popen(s),
+            pprust::NodeExpr(s, _) => pprust::popen(s),
             _ => ()
         }
     }
-    fn post(&self, node: pprust::ann_node) {
+    fn post(&self, node: pprust::AnnNode) {
         let tcx = self.analysis.ty_cx;
         match node {
-            pprust::node_expr(s, expr) => {
+            pprust::NodeExpr(s, expr) => {
                 pp::space(&mut s.s);
                 pp::word(&mut s.s, "as");
                 pp::space(&mut s.s);
@@ -589,16 +589,16 @@ pub fn pretty_print_input(sess: Session,
         PpmIdentified | PpmExpandedIdentified => {
             @IdentifiedAnnotation {
                 contents: (),
-            } as @pprust::pp_ann
+            } as @pprust::PpAnn
         }
         PpmTyped => {
             let ast_map = ast_map.expect("--pretty=typed missing ast_map");
             let analysis = phase_3_run_analysis_passes(sess, &crate, ast_map);
             @TypedAnnotation {
                 analysis: analysis
-            } as @pprust::pp_ann
+            } as @pprust::PpAnn
         }
-        _ => @pprust::no_ann::new() as @pprust::pp_ann,
+        _ => @pprust::NoAnn as @pprust::PpAnn,
     };
 
     let src = sess.codemap.get_filemap(source_name(input)).src;
@@ -662,10 +662,10 @@ pub fn build_target_config(sopts: @session::options,
                           "unknown architecture: " + sopts.target_triple)
     };
     let (int_type, uint_type) = match arch {
-      abi::X86 => (ast::ty_i32, ast::ty_u32),
-      abi::X86_64 => (ast::ty_i64, ast::ty_u64),
-      abi::Arm => (ast::ty_i32, ast::ty_u32),
-      abi::Mips => (ast::ty_i32, ast::ty_u32)
+      abi::X86 => (ast::TyI32, ast::TyU32),
+      abi::X86_64 => (ast::TyI64, ast::TyU64),
+      abi::Arm => (ast::TyI32, ast::TyU32),
+      abi::Mips => (ast::TyI32, ast::TyU32)
     };
     let target_triple = sopts.target_triple.clone();
     let target_strs = match arch {
@@ -1116,7 +1116,7 @@ pub fn build_output_filenames(input: &input,
 }
 
 pub fn early_error(emitter: &diagnostic::Emitter, msg: &str) -> ! {
-    emitter.emit(None, msg, diagnostic::fatal);
+    emitter.emit(None, msg, diagnostic::Fatal);
     fail!();
 }
 

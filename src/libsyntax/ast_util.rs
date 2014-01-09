@@ -151,46 +151,46 @@ pub fn is_path(e: @Expr) -> bool {
     return match e.node { ExprPath(_) => true, _ => false };
 }
 
-pub fn int_ty_to_str(t: int_ty) -> ~str {
+pub fn int_ty_to_str(t: IntTy) -> ~str {
     match t {
-      ty_i => ~"",
-      ty_i8 => ~"i8",
-      ty_i16 => ~"i16",
-      ty_i32 => ~"i32",
-      ty_i64 => ~"i64"
+        TyI => ~"",
+        TyI8 => ~"i8",
+        TyI16 => ~"i16",
+        TyI32 => ~"i32",
+        TyI64 => ~"i64"
     }
 }
 
-pub fn int_ty_max(t: int_ty) -> u64 {
+pub fn int_ty_max(t: IntTy) -> u64 {
     match t {
-      ty_i8 => 0x80u64,
-      ty_i16 => 0x8000u64,
-      ty_i | ty_i32 => 0x80000000u64, // actually ni about ty_i
-      ty_i64 => 0x8000000000000000u64
+        TyI8 => 0x80u64,
+        TyI16 => 0x8000u64,
+        TyI | TyI32 => 0x80000000u64, // actually ni about TyI
+        TyI64 => 0x8000000000000000u64
     }
 }
 
-pub fn uint_ty_to_str(t: uint_ty) -> ~str {
+pub fn uint_ty_to_str(t: UintTy) -> ~str {
     match t {
-      ty_u => ~"u",
-      ty_u8 => ~"u8",
-      ty_u16 => ~"u16",
-      ty_u32 => ~"u32",
-      ty_u64 => ~"u64"
+        TyU => ~"u",
+        TyU8 => ~"u8",
+        TyU16 => ~"u16",
+        TyU32 => ~"u32",
+        TyU64 => ~"u64"
     }
 }
 
-pub fn uint_ty_max(t: uint_ty) -> u64 {
+pub fn uint_ty_max(t: UintTy) -> u64 {
     match t {
-      ty_u8 => 0xffu64,
-      ty_u16 => 0xffffu64,
-      ty_u | ty_u32 => 0xffffffffu64, // actually ni about ty_u
-      ty_u64 => 0xffffffffffffffffu64
+        TyU8 => 0xffu64,
+        TyU16 => 0xffffu64,
+        TyU | TyU32 => 0xffffffffu64, // actually ni about TyU
+        TyU64 => 0xffffffffffffffffu64
     }
 }
 
-pub fn float_ty_to_str(t: float_ty) -> ~str {
-    match t { ty_f32 => ~"f32", ty_f64 => ~"f64" }
+pub fn float_ty_to_str(t: FloatTy) -> ~str {
+    match t { TyF32 => ~"f32", TyF64 => ~"f64" }
 }
 
 pub fn is_call_expr(e: @Expr) -> bool {
@@ -243,21 +243,21 @@ pub fn unguarded_pat(a: &Arm) -> Option<~[@Pat]> {
     }
 }
 
-pub fn public_methods(ms: ~[@method]) -> ~[@method] {
+pub fn public_methods(ms: ~[@Method]) -> ~[@Method] {
     ms.move_iter().filter(|m| {
         match m.vis {
-            public => true,
+            Public => true,
             _   => false
         }
     }).collect()
 }
 
-// extract a TypeMethod from a trait_method. if the trait_method is
+// extract a TypeMethod from a TraitMethod. if the TraitMethod is
 // a default, pull out the useful fields to make a TypeMethod
-pub fn trait_method_to_ty_method(method: &trait_method) -> TypeMethod {
+pub fn trait_method_to_ty_method(method: &TraitMethod) -> TypeMethod {
     match *method {
-        required(ref m) => (*m).clone(),
-        provided(ref m) => {
+        Required(ref m) => (*m).clone(),
+        Provided(ref m) => {
             TypeMethod {
                 ident: m.ident,
                 attrs: m.attrs.clone(),
@@ -272,23 +272,23 @@ pub fn trait_method_to_ty_method(method: &trait_method) -> TypeMethod {
     }
 }
 
-pub fn split_trait_methods(trait_methods: &[trait_method])
-    -> (~[TypeMethod], ~[@method]) {
+pub fn split_trait_methods(trait_methods: &[TraitMethod])
+    -> (~[TypeMethod], ~[@Method]) {
     let mut reqd = ~[];
     let mut provd = ~[];
     for trt_method in trait_methods.iter() {
         match *trt_method {
-          required(ref tm) => reqd.push((*tm).clone()),
-          provided(m) => provd.push(m)
+            Required(ref tm) => reqd.push((*tm).clone()),
+            Provided(m) => provd.push(m)
         }
     };
     (reqd, provd)
 }
 
-pub fn struct_field_visibility(field: ast::struct_field) -> visibility {
+pub fn struct_field_visibility(field: ast::StructField) -> Visibility {
     match field.node.kind {
-        ast::named_field(_, visibility) => visibility,
-        ast::unnamed_field => ast::public
+        ast::NamedField(_, visibility) => visibility,
+        ast::UnnamedField => ast::Public
     }
 }
 
@@ -332,14 +332,14 @@ pub fn empty_generics() -> Generics {
 // Enumerating the IDs which appear in an AST
 
 #[deriving(Encodable, Decodable)]
-pub struct id_range {
+pub struct IdRange {
     min: NodeId,
     max: NodeId,
 }
 
-impl id_range {
-    pub fn max() -> id_range {
-        id_range {
+impl IdRange {
+    pub fn max() -> IdRange {
+        IdRange {
             min: u32::max_value,
             max: u32::min_value,
         }
@@ -378,7 +378,7 @@ impl<'a, O: IdVisitingOperation> IdVisitor<'a, O> {
 
 impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
     fn visit_mod(&mut self,
-                 module: &_mod,
+                 module: &Mod,
                  _: Span,
                  node_id: NodeId,
                  env: ()) {
@@ -386,19 +386,19 @@ impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
         visit::walk_mod(self, module, env)
     }
 
-    fn visit_view_item(&mut self, view_item: &view_item, env: ()) {
+    fn visit_view_item(&mut self, view_item: &ViewItem, env: ()) {
         match view_item.node {
-            view_item_extern_mod(_, _, node_id) => {
+            ViewItemExternMod(_, _, node_id) => {
                 self.operation.visit_id(node_id)
             }
-            view_item_use(ref view_paths) => {
+            ViewItemUse(ref view_paths) => {
                 for view_path in view_paths.iter() {
                     match view_path.node {
-                        view_path_simple(_, _, node_id) |
-                        view_path_glob(_, node_id) => {
+                        ViewPathSimple(_, _, node_id) |
+                        ViewPathGlob(_, node_id) => {
                             self.operation.visit_id(node_id)
                         }
-                        view_path_list(_, ref paths, node_id) => {
+                        ViewPathList(_, ref paths, node_id) => {
                             self.operation.visit_id(node_id);
                             for path in paths.iter() {
                                 self.operation.visit_id(path.node.id)
@@ -411,12 +411,12 @@ impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
         visit::walk_view_item(self, view_item, env)
     }
 
-    fn visit_foreign_item(&mut self, foreign_item: &foreign_item, env: ()) {
+    fn visit_foreign_item(&mut self, foreign_item: &ForeignItem, env: ()) {
         self.operation.visit_id(foreign_item.id);
         visit::walk_foreign_item(self, foreign_item, env)
     }
 
-    fn visit_item(&mut self, item: &item, env: ()) {
+    fn visit_item(&mut self, item: &Item, env: ()) {
         if !self.pass_through_items {
             if self.visited_outermost {
                 return
@@ -427,7 +427,7 @@ impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
 
         self.operation.visit_id(item.id);
         match item.node {
-            item_enum(ref enum_definition, _) => {
+            ItemEnum(ref enum_definition, _) => {
                 for variant in enum_definition.variants.iter() {
                     self.operation.visit_id(variant.node.id)
                 }
@@ -475,7 +475,7 @@ impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
     fn visit_ty(&mut self, typ: &Ty, env: ()) {
         self.operation.visit_id(typ.id);
         match typ.node {
-            ty_path(_, _, id) => self.operation.visit_id(id),
+            TyPath(_, _, id) => self.operation.visit_id(id),
             _ => {}
         }
         visit::walk_ty(self, typ, env)
@@ -487,16 +487,16 @@ impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
     }
 
     fn visit_fn(&mut self,
-                function_kind: &visit::fn_kind,
-                function_declaration: &fn_decl,
+                function_kind: &visit::FnKind,
+                function_declaration: &FnDecl,
                 block: &Block,
                 span: Span,
                 node_id: NodeId,
                 env: ()) {
         if !self.pass_through_items {
             match *function_kind {
-                visit::fk_method(..) if self.visited_outermost => return,
-                visit::fk_method(..) => self.visited_outermost = true,
+                visit::FkMethod(..) if self.visited_outermost => return,
+                visit::FkMethod(..) => self.visited_outermost = true,
                 _ => {}
             }
         }
@@ -504,14 +504,14 @@ impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
         self.operation.visit_id(node_id);
 
         match *function_kind {
-            visit::fk_item_fn(_, generics, _, _) => {
+            visit::FkItemFn(_, generics, _, _) => {
                 self.visit_generics_helper(generics)
             }
-            visit::fk_method(_, generics, method) => {
+            visit::FkMethod(_, generics, method) => {
                 self.operation.visit_id(method.self_id);
                 self.visit_generics_helper(generics)
             }
-            visit::fk_fn_block => {}
+            visit::FkFnBlock => {}
         }
 
         for argument in function_declaration.inputs.iter() {
@@ -528,19 +528,19 @@ impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
 
         if !self.pass_through_items {
             match *function_kind {
-                visit::fk_method(..) => self.visited_outermost = false,
+                visit::FkMethod(..) => self.visited_outermost = false,
                 _ => {}
             }
         }
     }
 
-    fn visit_struct_field(&mut self, struct_field: &struct_field, env: ()) {
+    fn visit_struct_field(&mut self, struct_field: &StructField, env: ()) {
         self.operation.visit_id(struct_field.node.id);
         visit::walk_struct_field(self, struct_field, env)
     }
 
     fn visit_struct_def(&mut self,
-                        struct_def: &struct_def,
+                        struct_def: &StructDef,
                         ident: ast::Ident,
                         generics: &ast::Generics,
                         id: NodeId,
@@ -550,16 +550,16 @@ impl<'a, O: IdVisitingOperation> Visitor<()> for IdVisitor<'a, O> {
         visit::walk_struct_def(self, struct_def, ident, generics, id, ());
     }
 
-    fn visit_trait_method(&mut self, tm: &ast::trait_method, _: ()) {
+    fn visit_trait_method(&mut self, tm: &ast::TraitMethod, _: ()) {
         match *tm {
-            ast::required(ref m) => self.operation.visit_id(m.id),
-            ast::provided(ref m) => self.operation.visit_id(m.id),
+            ast::Required(ref m) => self.operation.visit_id(m.id),
+            ast::Provided(ref m) => self.operation.visit_id(m.id),
         }
         visit::walk_trait_method(self, tm, ());
     }
 }
 
-pub fn visit_ids_for_inlined_item<O: IdVisitingOperation>(item: &inlined_item,
+pub fn visit_ids_for_inlined_item<O: IdVisitingOperation>(item: &InlinedItem,
                                                           operation: &O) {
     let mut id_visitor = IdVisitor {
         operation: operation,
@@ -568,14 +568,14 @@ pub fn visit_ids_for_inlined_item<O: IdVisitingOperation>(item: &inlined_item,
     };
 
     match *item {
-        ii_item(i) => id_visitor.visit_item(i, ()),
-        ii_foreign(i) => id_visitor.visit_foreign_item(i, ()),
-        ii_method(_, _, m) => visit::walk_method_helper(&mut id_visitor, m, ()),
+        IIItem(i) => id_visitor.visit_item(i, ()),
+        IIForeign(i) => id_visitor.visit_foreign_item(i, ()),
+        IIMethod(_, _, m) => visit::walk_method_helper(&mut id_visitor, m, ()),
     }
 }
 
 struct IdRangeComputingVisitor {
-    result: Cell<id_range>,
+    result: Cell<IdRange>,
 }
 
 impl IdVisitingOperation for IdRangeComputingVisitor {
@@ -586,18 +586,18 @@ impl IdVisitingOperation for IdRangeComputingVisitor {
     }
 }
 
-pub fn compute_id_range_for_inlined_item(item: &inlined_item) -> id_range {
+pub fn compute_id_range_for_inlined_item(item: &InlinedItem) -> IdRange {
     let visitor = IdRangeComputingVisitor {
-        result: Cell::new(id_range::max())
+        result: Cell::new(IdRange::max())
     };
     visit_ids_for_inlined_item(item, &visitor);
     visitor.result.get()
 }
 
-pub fn is_item_impl(item: @ast::item) -> bool {
+pub fn is_item_impl(item: @ast::Item) -> bool {
     match item.node {
-       item_impl(..) => true,
-       _            => false
+        ItemImpl(..) => true,
+        _            => false
     }
 }
 
@@ -630,21 +630,21 @@ pub fn walk_pat(pat: &Pat, it: |&Pat| -> bool) -> bool {
 }
 
 pub trait EachViewItem {
-    fn each_view_item(&self, f: |&ast::view_item| -> bool) -> bool;
+    fn each_view_item(&self, f: |&ast::ViewItem| -> bool) -> bool;
 }
 
 struct EachViewItemData<'a> {
-    callback: 'a |&ast::view_item| -> bool,
+    callback: 'a |&ast::ViewItem| -> bool,
 }
 
 impl<'a> Visitor<()> for EachViewItemData<'a> {
-    fn visit_view_item(&mut self, view_item: &ast::view_item, _: ()) {
+    fn visit_view_item(&mut self, view_item: &ast::ViewItem, _: ()) {
         let _ = (self.callback)(view_item);
     }
 }
 
 impl EachViewItem for ast::Crate {
-    fn each_view_item(&self, f: |&ast::view_item| -> bool) -> bool {
+    fn each_view_item(&self, f: |&ast::ViewItem| -> bool) -> bool {
         let mut visit = EachViewItemData {
             callback: f,
         };
@@ -653,17 +653,16 @@ impl EachViewItem for ast::Crate {
     }
 }
 
-pub fn view_path_id(p: &view_path) -> NodeId {
+pub fn view_path_id(p: &ViewPath) -> NodeId {
     match p.node {
-      view_path_simple(_, _, id) |
-      view_path_glob(_, id) |
-      view_path_list(_, _, id) => id
+        ViewPathSimple(_, _, id) | ViewPathGlob(_, id)
+        | ViewPathList(_, _, id) => id
     }
 }
 
 /// Returns true if the given struct def is tuple-like; i.e. that its fields
 /// are unnamed.
-pub fn struct_def_is_tuple_like(struct_def: &ast::struct_def) -> bool {
+pub fn struct_def_is_tuple_like(struct_def: &ast::StructDef) -> bool {
     struct_def.ctor_id.is_some()
 }
 

@@ -380,7 +380,7 @@ struct Context<'a> {
     method_map: typeck::method_map,
     // Items exported by the crate; used by the missing_doc lint.
     exported_items: &'a privacy::ExportedItems,
-    // The id of the current `ast::struct_def` being walked.
+    // The id of the current `ast::StructDef` being walked.
     cur_struct_def_id: ast::NodeId,
     // Whether some ancestor of the current node was marked
     // #[doc(hidden)].
@@ -569,7 +569,7 @@ fn check_while_true_expr(cx: &Context, e: &ast::Expr) {
         ast::ExprWhile(cond, _) => {
             match cond.node {
                 ast::ExprLit(@codemap::Spanned {
-                    node: ast::lit_bool(true), ..}) =>
+                    node: ast::LitBool(true), ..}) =>
                 {
                     cx.span_lint(while_true, e.span,
                                  "denote infinite loops with loop { ... }");
@@ -623,14 +623,14 @@ fn check_type_limits(cx: &Context, e: &ast::Expr) {
         ast::ExprLit(lit) => {
             match ty::get(ty::expr_ty(cx.tcx, e)).sty {
                 ty::ty_int(t) => {
-                    let int_type = if t == ast::ty_i {
+                    let int_type = if t == ast::TyI {
                         cx.tcx.sess.targ_cfg.int_type
                     } else { t };
                     let (min, max) = int_ty_range(int_type);
                     let mut lit_val: i64 = match lit.node {
-                        ast::lit_int(v, _) => v,
-                        ast::lit_uint(v, _) => v as i64,
-                        ast::lit_int_unsuffixed(v) => v,
+                        ast::LitInt(v, _) => v,
+                        ast::LitUint(v, _) => v as i64,
+                        ast::LitIntUnsuffixed(v) => v,
                         _ => fail!()
                     };
                     if cx.negated_expr_id == e.id {
@@ -642,14 +642,14 @@ fn check_type_limits(cx: &Context, e: &ast::Expr) {
                     }
                 },
                 ty::ty_uint(t) => {
-                    let uint_type = if t == ast::ty_u {
+                    let uint_type = if t == ast::TyU {
                         cx.tcx.sess.targ_cfg.uint_type
                     } else { t };
                     let (min, max) = uint_ty_range(uint_type);
                     let lit_val: u64 = match lit.node {
-                        ast::lit_int(v, _) => v as u64,
-                        ast::lit_uint(v, _) => v,
-                        ast::lit_int_unsuffixed(v) => v as u64,
+                        ast::LitInt(v, _) => v as u64,
+                        ast::LitUint(v, _) => v,
+                        ast::LitIntUnsuffixed(v) => v as u64,
                         _ => fail!()
                     };
                     if  lit_val < min || lit_val > max {
@@ -688,23 +688,23 @@ fn check_type_limits(cx: &Context, e: &ast::Expr) {
 
     // for int & uint, be conservative with the warnings, so that the
     // warnings are consistent between 32- and 64-bit platforms
-    fn int_ty_range(int_ty: ast::int_ty) -> (i64, i64) {
+    fn int_ty_range(int_ty: ast::IntTy) -> (i64, i64) {
         match int_ty {
-            ast::ty_i =>    (i64::min_value,        i64::max_value),
-            ast::ty_i8 =>   (i8::min_value  as i64, i8::max_value  as i64),
-            ast::ty_i16 =>  (i16::min_value as i64, i16::max_value as i64),
-            ast::ty_i32 =>  (i32::min_value as i64, i32::max_value as i64),
-            ast::ty_i64 =>  (i64::min_value,        i64::max_value)
+            ast::TyI =>    (i64::min_value,        i64::max_value),
+            ast::TyI8 =>   (i8::min_value  as i64, i8::max_value  as i64),
+            ast::TyI16 =>  (i16::min_value as i64, i16::max_value as i64),
+            ast::TyI32 =>  (i32::min_value as i64, i32::max_value as i64),
+            ast::TyI64 =>  (i64::min_value,        i64::max_value)
         }
     }
 
-    fn uint_ty_range(uint_ty: ast::uint_ty) -> (u64, u64) {
+    fn uint_ty_range(uint_ty: ast::UintTy) -> (u64, u64) {
         match uint_ty {
-            ast::ty_u =>   (u64::min_value,         u64::max_value),
-            ast::ty_u8 =>  (u8::min_value   as u64, u8::max_value   as u64),
-            ast::ty_u16 => (u16::min_value  as u64, u16::max_value  as u64),
-            ast::ty_u32 => (u32::min_value  as u64, u32::max_value  as u64),
-            ast::ty_u64 => (u64::min_value,         u64::max_value)
+            ast::TyU =>   (u64::min_value,         u64::max_value),
+            ast::TyU8 =>  (u8::min_value   as u64, u8::max_value   as u64),
+            ast::TyU16 => (u16::min_value  as u64, u16::max_value  as u64),
+            ast::TyU32 => (u32::min_value  as u64, u32::max_value  as u64),
+            ast::TyU64 => (u64::min_value,         u64::max_value)
         }
     }
 
@@ -723,9 +723,9 @@ fn check_type_limits(cx: &Context, e: &ast::Expr) {
                 let (min, max) = int_ty_range(int_ty);
                 let lit_val: i64 = match lit.node {
                     ast::ExprLit(li) => match li.node {
-                        ast::lit_int(v, _) => v,
-                        ast::lit_uint(v, _) => v as i64,
-                        ast::lit_int_unsuffixed(v) => v,
+                        ast::LitInt(v, _) => v,
+                        ast::LitUint(v, _) => v as i64,
+                        ast::LitIntUnsuffixed(v) => v,
                         _ => return true
                     },
                     _ => fail!()
@@ -736,9 +736,9 @@ fn check_type_limits(cx: &Context, e: &ast::Expr) {
                 let (min, max): (u64, u64) = uint_ty_range(uint_ty);
                 let lit_val: u64 = match lit.node {
                     ast::ExprLit(li) => match li.node {
-                        ast::lit_int(v, _) => v as u64,
-                        ast::lit_uint(v, _) => v,
-                        ast::lit_int_unsuffixed(v) => v as u64,
+                        ast::LitInt(v, _) => v as u64,
+                        ast::LitUint(v, _) => v,
+                        ast::LitIntUnsuffixed(v) => v as u64,
                         _ => return true
                     },
                     _ => fail!()
@@ -758,18 +758,18 @@ fn check_type_limits(cx: &Context, e: &ast::Expr) {
     }
 }
 
-fn check_item_ctypes(cx: &Context, it: &ast::item) {
+fn check_item_ctypes(cx: &Context, it: &ast::Item) {
     fn check_ty(cx: &Context, ty: &ast::Ty) {
         match ty.node {
-            ast::ty_path(_, _, id) => {
+            ast::TyPath(_, _, id) => {
                 let def_map = cx.tcx.def_map.borrow();
                 match def_map.get().get_copy(&id) {
-                    ast::DefPrimTy(ast::ty_int(ast::ty_i)) => {
+                    ast::DefPrimTy(ast::TyInt(ast::TyI)) => {
                         cx.span_lint(ctypes, ty.span,
                                 "found rust type `int` in foreign module, while \
                                 libc::c_int or libc::c_long should be used");
                     }
-                    ast::DefPrimTy(ast::ty_uint(ast::ty_u)) => {
+                    ast::DefPrimTy(ast::TyUint(ast::TyU)) => {
                         cx.span_lint(ctypes, ty.span,
                                 "found rust type `uint` in foreign module, while \
                                 libc::c_uint or libc::c_ulong should be used");
@@ -785,12 +785,12 @@ fn check_item_ctypes(cx: &Context, it: &ast::item) {
                     _ => ()
                 }
             }
-            ast::ty_ptr(ref mt) => { check_ty(cx, mt.ty) }
-            _ => ()
+            ast::TyPtr(ref mt) => { check_ty(cx, mt.ty) }
+            _ => {}
         }
     }
 
-    fn check_foreign_fn(cx: &Context, decl: &ast::fn_decl) {
+    fn check_foreign_fn(cx: &Context, decl: &ast::FnDecl) {
         for input in decl.inputs.iter() {
             check_ty(cx, input.ty);
         }
@@ -798,13 +798,11 @@ fn check_item_ctypes(cx: &Context, it: &ast::item) {
     }
 
     match it.node {
-      ast::item_foreign_mod(ref nmod) if !nmod.abis.is_intrinsic() => {
+      ast::ItemForeignMod(ref nmod) if !nmod.abis.is_intrinsic() => {
         for ni in nmod.items.iter() {
             match ni.node {
-                ast::foreign_item_fn(decl, _) => {
-                    check_foreign_fn(cx, decl);
-                }
-                ast::foreign_item_static(t, _) => { check_ty(cx, t); }
+                ast::ForeignItemFn(decl, _) => check_foreign_fn(cx, decl),
+                ast::ForeignItemStatic(t, _) => check_ty(cx, t)
             }
         }
       }
@@ -854,12 +852,12 @@ fn check_heap_type(cx: &Context, span: Span, ty: ty::t) {
     }
 }
 
-fn check_heap_item(cx: &Context, it: &ast::item) {
+fn check_heap_item(cx: &Context, it: &ast::Item) {
     match it.node {
-        ast::item_fn(..) |
-        ast::item_ty(..) |
-        ast::item_enum(..) |
-        ast::item_struct(..) => check_heap_type(cx, it.span,
+        ast::ItemFn(..) |
+        ast::ItemTy(..) |
+        ast::ItemEnum(..) |
+        ast::ItemStruct(..) => check_heap_type(cx, it.span,
                                                ty::node_id_to_type(cx.tcx,
                                                                    it.id)),
         _ => ()
@@ -867,7 +865,7 @@ fn check_heap_item(cx: &Context, it: &ast::item) {
 
     // If it's a struct, we also have to check the fields' types
     match it.node {
-        ast::item_struct(struct_def, _) => {
+        ast::ItemStruct(struct_def, _) => {
             for struct_field in struct_def.fields.iter() {
                 check_heap_type(cx, struct_field.span,
                                 ty::node_id_to_type(cx.tcx,
@@ -977,7 +975,7 @@ fn check_path_statement(cx: &Context, s: &ast::Stmt) {
     }
 }
 
-fn check_item_non_camel_case_types(cx: &Context, it: &ast::item) {
+fn check_item_non_camel_case_types(cx: &Context, it: &ast::Item) {
     fn is_camel_case(cx: ty::ctxt, ident: ast::Ident) -> bool {
         let ident = cx.sess.str_of(ident);
         assert!(!ident.is_empty());
@@ -999,13 +997,13 @@ fn check_item_non_camel_case_types(cx: &Context, it: &ast::item) {
     }
 
     match it.node {
-        ast::item_ty(..) | ast::item_struct(..) => {
+        ast::ItemTy(..) | ast::ItemStruct(..) => {
             check_case(cx, "type", it.ident, it.span)
         }
-        ast::item_trait(..) => {
+        ast::ItemTrait(..) => {
             check_case(cx, "trait", it.ident, it.span)
         }
-        ast::item_enum(ref enum_definition, _) => {
+        ast::ItemEnum(ref enum_definition, _) => {
             check_case(cx, "type", it.ident, it.span);
             for variant in enum_definition.variants.iter() {
                 check_case(cx, "variant", variant.node.name, variant.span);
@@ -1015,10 +1013,10 @@ fn check_item_non_camel_case_types(cx: &Context, it: &ast::item) {
     }
 }
 
-fn check_item_non_uppercase_statics(cx: &Context, it: &ast::item) {
+fn check_item_non_uppercase_statics(cx: &Context, it: &ast::Item) {
     match it.node {
         // only check static constants
-        ast::item_static(_, ast::MutImmutable, _) => {
+        ast::ItemStatic(_, ast::MutImmutable, _) => {
             let s = cx.tcx.sess.str_of(it.ident);
             // check for lowercase letters rather than non-uppercase
             // ones (some scripts don't have a concept of
@@ -1112,7 +1110,7 @@ fn check_unnecessary_allocation(cx: &Context, e: &ast::Expr) {
         ast::ExprVstore(e2, ast::ExprVstoreUniq) |
         ast::ExprVstore(e2, ast::ExprVstoreBox) => {
             match e2.node {
-                ast::ExprLit(@codemap::Spanned{node: ast::lit_str(..), ..}) |
+                ast::ExprLit(@codemap::Spanned{node: ast::LitStr(..), ..}) |
                 ast::ExprVec(..) => VectorAllocation,
                 _ => return
             }
@@ -1182,19 +1180,19 @@ fn check_missing_doc_attrs(cx: &Context,
     }
 }
 
-fn check_missing_doc_item(cx: &Context, it: &ast::item) {
+fn check_missing_doc_item(cx: &Context, it: &ast::Item) {
     let desc = match it.node {
-        ast::item_fn(..) => "a function",
-        ast::item_mod(..) => "a module",
-        ast::item_enum(..) => "an enum",
-        ast::item_struct(..) => "a struct",
-        ast::item_trait(..) => "a trait",
+        ast::ItemFn(..) => "a function",
+        ast::ItemMod(..) => "a module",
+        ast::ItemEnum(..) => "an enum",
+        ast::ItemStruct(..) => "a struct",
+        ast::ItemTrait(..) => "a trait",
         _ => return
     };
     check_missing_doc_attrs(cx, Some(it.id), it.attrs, it.span, desc);
 }
 
-fn check_missing_doc_method(cx: &Context, m: &ast::method) {
+fn check_missing_doc_method(cx: &Context, m: &ast::Method) {
     let did = ast::DefId {
         crate: ast::LOCAL_CRATE,
         node: m.id
@@ -1231,16 +1229,16 @@ fn check_missing_doc_ty_method(cx: &Context, tm: &ast::TypeMethod) {
     check_missing_doc_attrs(cx, Some(tm.id), tm.attrs, tm.span, "a type method");
 }
 
-fn check_missing_doc_struct_field(cx: &Context, sf: &ast::struct_field) {
+fn check_missing_doc_struct_field(cx: &Context, sf: &ast::StructField) {
     match sf.node.kind {
-        ast::named_field(_, vis) if vis != ast::private =>
+        ast::NamedField(_, vis) if vis != ast::Private =>
             check_missing_doc_attrs(cx, Some(cx.cur_struct_def_id), sf.node.attrs,
                                     sf.span, "a struct field"),
         _ => {}
     }
 }
 
-fn check_missing_doc_variant(cx: &Context, v: &ast::variant) {
+fn check_missing_doc_variant(cx: &Context, v: &ast::Variant) {
     check_missing_doc_attrs(cx, Some(v.node.id), v.node.attrs, v.span, "a variant");
 }
 
@@ -1345,7 +1343,7 @@ fn check_stability(cx: &Context, e: &ast::Expr) {
 }
 
 impl<'a> Visitor<()> for Context<'a> {
-    fn visit_item(&mut self, it: &ast::item, _: ()) {
+    fn visit_item(&mut self, it: &ast::Item, _: ()) {
         self.with_lint_attrs(it.attrs, |cx| {
             check_item_ctypes(cx, it);
             check_item_non_camel_case_types(cx, it);
@@ -1360,14 +1358,14 @@ impl<'a> Visitor<()> for Context<'a> {
         })
     }
 
-    fn visit_foreign_item(&mut self, it: &ast::foreign_item, _: ()) {
+    fn visit_foreign_item(&mut self, it: &ast::ForeignItem, _: ()) {
         self.with_lint_attrs(it.attrs, |cx| {
             check_attrs_usage(cx, it.attrs);
             visit::walk_foreign_item(cx, it, ());
         })
     }
 
-    fn visit_view_item(&mut self, i: &ast::view_item, _: ()) {
+    fn visit_view_item(&mut self, i: &ast::ViewItem, _: ()) {
         self.with_lint_attrs(i.attrs, |cx| {
             check_attrs_usage(cx, i.attrs);
             visit::walk_view_item(cx, i, ());
@@ -1414,14 +1412,14 @@ impl<'a> Visitor<()> for Context<'a> {
         visit::walk_stmt(self, s, ());
     }
 
-    fn visit_fn(&mut self, fk: &visit::fn_kind, decl: &ast::fn_decl,
+    fn visit_fn(&mut self, fk: &visit::FnKind, decl: &ast::FnDecl,
                 body: &ast::Block, span: Span, id: ast::NodeId, _: ()) {
         let recurse = |this: &mut Context| {
             visit::walk_fn(this, fk, decl, body, span, id, ());
         };
 
         match *fk {
-            visit::fk_method(_, _, m) => {
+            visit::FkMethod(_, _, m) => {
                 self.with_lint_attrs(m.attrs, |cx| {
                     check_missing_doc_method(cx, m);
                     check_attrs_usage(cx, m.attrs);
@@ -1447,7 +1445,7 @@ impl<'a> Visitor<()> for Context<'a> {
     }
 
     fn visit_struct_def(&mut self,
-                        s: &ast::struct_def,
+                        s: &ast::StructDef,
                         i: ast::Ident,
                         g: &ast::Generics,
                         id: ast::NodeId,
@@ -1458,7 +1456,7 @@ impl<'a> Visitor<()> for Context<'a> {
         self.cur_struct_def_id = old_id;
     }
 
-    fn visit_struct_field(&mut self, s: &ast::struct_field, _: ()) {
+    fn visit_struct_field(&mut self, s: &ast::StructField, _: ()) {
         self.with_lint_attrs(s.node.attrs, |cx| {
             check_missing_doc_struct_field(cx, s);
             check_attrs_usage(cx, s.node.attrs);
@@ -1467,7 +1465,7 @@ impl<'a> Visitor<()> for Context<'a> {
         })
     }
 
-    fn visit_variant(&mut self, v: &ast::variant, g: &ast::Generics, _: ()) {
+    fn visit_variant(&mut self, v: &ast::Variant, g: &ast::Generics, _: ()) {
         self.with_lint_attrs(v.node.attrs, |cx| {
             check_missing_doc_variant(cx, v);
             check_attrs_usage(cx, v.node.attrs);

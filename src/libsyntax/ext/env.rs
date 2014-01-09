@@ -22,7 +22,7 @@ use ext::build::AstBuilder;
 
 use std::os;
 
-pub fn expand_option_env(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree])
+pub fn expand_option_env(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     -> base::MacResult {
     let var = get_single_str_from_tts(cx, sp, tts, "option_env!");
 
@@ -33,7 +33,7 @@ pub fn expand_option_env(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree])
     MRExpr(e)
 }
 
-pub fn expand_env(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree])
+pub fn expand_env(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     -> base::MacResult {
     let exprs = get_exprs_from_tts(cx, sp, tts);
 

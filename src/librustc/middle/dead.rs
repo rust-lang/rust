@@ -27,7 +27,7 @@ use syntax::visit::Visitor;
 use syntax::visit;
 
 // Any local node that may call something in its body block should be
-// explored. For example, if it's a live node_item that is a
+// explored. For example, if it's a live NodeItem that is a
 // function, then we should explore its block to check for codes that
 // may need to be marked as live.
 fn should_explore(tcx: ty::ctxt, def_id: ast::DefId) -> bool {
@@ -37,10 +37,10 @@ fn should_explore(tcx: ty::ctxt, def_id: ast::DefId) -> bool {
 
     let items = tcx.items.borrow();
     match items.get().find(&def_id.node) {
-        Some(&ast_map::node_item(..))
-        | Some(&ast_map::node_method(..))
-        | Some(&ast_map::node_foreign_item(..))
-        | Some(&ast_map::node_trait_method(..)) => true,
+        Some(&ast_map::NodeItem(..))
+        | Some(&ast_map::NodeMethod(..))
+        | Some(&ast_map::NodeForeignItem(..))
+        | Some(&ast_map::NodeTraitMethod(..)) => true,
         _ => false
     }
 }
@@ -144,27 +144,27 @@ impl MarkSymbolVisitor {
         }
     }
 
-    fn visit_node(&mut self, node: &ast_map::ast_node) {
+    fn visit_node(&mut self, node: &ast_map::Node) {
         match *node {
-            ast_map::node_item(item, _) => {
+            ast_map::NodeItem(item, _) => {
                 match item.node {
-                    ast::item_fn(..)
-                    | ast::item_ty(..)
-                    | ast::item_enum(..)
-                    | ast::item_struct(..)
-                    | ast::item_static(..) => {
+                    ast::ItemFn(..)
+                    | ast::ItemTy(..)
+                    | ast::ItemEnum(..)
+                    | ast::ItemStruct(..)
+                    | ast::ItemStatic(..) => {
                         visit::walk_item(self, item, ());
                     }
                     _ => ()
                 }
             }
-            ast_map::node_trait_method(trait_method, _, _) => {
+            ast_map::NodeTraitMethod(trait_method, _, _) => {
                 visit::walk_trait_method(self, trait_method, ());
             }
-            ast_map::node_method(method, _, _) => {
+            ast_map::NodeMethod(method, _, _) => {
                 visit::walk_block(self, method.body, ());
             }
-            ast_map::node_foreign_item(foreign_item, _, _, _) => {
+            ast_map::NodeForeignItem(foreign_item, _, _, _) => {
                 visit::walk_foreign_item(self, foreign_item, ());
             }
             _ => ()
@@ -190,7 +190,7 @@ impl Visitor<()> for MarkSymbolVisitor {
         visit::walk_path(self, path, ());
     }
 
-    fn visit_item(&mut self, _item: &ast::item, _: ()) {
+    fn visit_item(&mut self, _item: &ast::Item, _: ()) {
         // Do not recurse into items. These items will be added to the
         // worklist and recursed into manually if necessary.
     }
@@ -204,14 +204,14 @@ struct TraitMethodSeeder {
 }
 
 impl Visitor<()> for TraitMethodSeeder {
-    fn visit_item(&mut self, item: &ast::item, _: ()) {
+    fn visit_item(&mut self, item: &ast::Item, _: ()) {
         match item.node {
-            ast::item_impl(_, Some(ref _trait_ref), _, ref methods) => {
+            ast::ItemImpl(_, Some(ref _trait_ref), _, ref methods) => {
                 for method in methods.iter() {
                     self.worklist.push(method.id);
                 }
             }
-            ast::item_mod(..) | ast::item_fn(..) => {
+            ast::ItemMod(..) | ast::ItemFn(..) => {
                 visit::walk_item(self, item, ());
             }
             _ => ()
@@ -265,19 +265,19 @@ fn find_live(tcx: ty::ctxt,
     symbol_visitor.live_symbols
 }
 
-fn should_warn(item: &ast::item) -> bool {
+fn should_warn(item: &ast::Item) -> bool {
     match item.node {
-        ast::item_static(..)
-        | ast::item_fn(..)
-        | ast::item_enum(..)
-        | ast::item_struct(..) => true,
+        ast::ItemStatic(..)
+        | ast::ItemFn(..)
+        | ast::ItemEnum(..)
+        | ast::ItemStruct(..) => true,
         _ => false
     }
 }
 
-fn get_struct_ctor_id(item: &ast::item) -> Option<ast::NodeId> {
+fn get_struct_ctor_id(item: &ast::Item) -> Option<ast::NodeId> {
     match item.node {
-        ast::item_struct(struct_def, _) => struct_def.ctor_id,
+        ast::ItemStruct(struct_def, _) => struct_def.ctor_id,
         _ => None
     }
 }
@@ -335,7 +335,7 @@ impl DeadVisitor {
 }
 
 impl Visitor<()> for DeadVisitor {
-    fn visit_item(&mut self, item: &ast::item, _: ()) {
+    fn visit_item(&mut self, item: &ast::Item, _: ()) {
         let ctor_id = get_struct_ctor_id(item);
         if !self.symbol_is_live(item.id, ctor_id) && should_warn(item) {
             self.warn_dead_code(item.id, item.span, &item.ident);
@@ -343,19 +343,19 @@ impl Visitor<()> for DeadVisitor {
         visit::walk_item(self, item, ());
     }
 
-    fn visit_foreign_item(&mut self, fi: &ast::foreign_item, _: ()) {
+    fn visit_foreign_item(&mut self, fi: &ast::ForeignItem, _: ()) {
         if !self.symbol_is_live(fi.id, None) {
             self.warn_dead_code(fi.id, fi.span, &fi.ident);
         }
         visit::walk_foreign_item(self, fi, ());
     }
 
-    fn visit_fn(&mut self, fk: &visit::fn_kind,
-                _: &ast::fn_decl, block: &ast::Block,
+    fn visit_fn(&mut self, fk: &visit::FnKind,
+                _: &ast::FnDecl, block: &ast::Block,
                 span: codemap::Span, id: ast::NodeId, _: ()) {
-        // Have to warn method here because methods are not ast::item
+        // Have to warn method here because methods are not ast::Item
         match *fk {
-            visit::fk_method(..) => {
+            visit::FkMethod(..) => {
                 let ident = visit::name_of_fn(fk);
                 if !self.symbol_is_live(id, None) {
                     self.warn_dead_code(id, span, &ident);
@@ -367,10 +367,10 @@ impl Visitor<()> for DeadVisitor {
     }
 
     // Overwrite so that we don't warn the trait method itself.
-    fn visit_trait_method(&mut self, trait_method: &ast::trait_method, _: ()) {
+    fn visit_trait_method(&mut self, trait_method: &ast::TraitMethod, _: ()) {
         match *trait_method {
-            ast::provided(method) => visit::walk_block(self, method.body, ()),
-            ast::required(_) => ()
+            ast::Provided(method) => visit::walk_block(self, method.body, ()),
+            ast::Required(_) => ()
         }
     }
 }

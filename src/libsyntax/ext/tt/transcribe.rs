@@ -9,11 +9,11 @@
 // except according to those terms.
 
 use ast;
-use ast::{token_tree, tt_delim, tt_tok, tt_seq, tt_nonterminal,Ident};
+use ast::{TokenTree, TTDelim, TTTok, TTSeq, TTNonterminal, Ident};
 use codemap::{Span, DUMMY_SP};
 use diagnostic::SpanHandler;
-use ext::tt::macro_parser::{named_match, matched_seq, matched_nonterminal};
-use parse::token::{EOF, INTERPOLATED, IDENT, Token, nt_ident};
+use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
+use parse::token::{EOF, INTERPOLATED, IDENT, Token, NtIdent};
 use parse::token::{ident_to_str};
 use parse::lexer::TokenAndSpan;
 
@@ -21,9 +21,9 @@ use std::cell::{Cell, RefCell};
 use std::hashmap::HashMap;
 use std::option;
 
-///an unzipping of `token_tree`s
+///an unzipping of `TokenTree`s
 struct TtFrame {
-    forest: @~[ast::token_tree],
+    forest: @~[ast::TokenTree],
     idx: Cell<uint>,
     dotdotdoted: bool,
     sep: Option<Token>,
@@ -35,7 +35,7 @@ pub struct TtReader {
     // the unzipped tree:
     priv stack: RefCell<@TtFrame>,
     /* for MBE-style macro transcription */
-    priv interpolations: RefCell<HashMap<Ident, @named_match>>,
+    priv interpolations: RefCell<HashMap<Ident, @NamedMatch>>,
     priv repeat_idx: RefCell<~[uint]>,
     priv repeat_len: RefCell<~[uint]>,
     /* cached: */
@@ -44,11 +44,11 @@ pub struct TtReader {
 }
 
 /** This can do Macro-By-Example transcription. On the other hand, if
- *  `src` contains no `tt_seq`s and `tt_nonterminal`s, `interp` can (and
+ *  `src` contains no `TTSeq`s and `TTNonterminal`s, `interp` can (and
  *  should) be none. */
 pub fn new_tt_reader(sp_diag: @SpanHandler,
-                     interp: Option<HashMap<Ident,@named_match>>,
-                     src: ~[ast::token_tree])
+                     interp: Option<HashMap<Ident, @NamedMatch>>,
+                     src: ~[ast::TokenTree])
                      -> @TtReader {
     let r = @TtReader {
         sp_diag: sp_diag,
@@ -99,22 +99,22 @@ pub fn dup_tt_reader(r: @TtReader) -> @TtReader {
 }
 
 
-fn lookup_cur_matched_by_matched(r: &TtReader, start: @named_match)
-                                 -> @named_match {
-    fn red(ad: @named_match, idx: &uint) -> @named_match {
+fn lookup_cur_matched_by_matched(r: &TtReader, start: @NamedMatch)
+                                 -> @NamedMatch {
+    fn red(ad: @NamedMatch, idx: &uint) -> @NamedMatch {
         match *ad {
-          matched_nonterminal(_) => {
-            // end of the line; duplicate henceforth
-            ad
-          }
-          matched_seq(ref ads, _) => ads[*idx]
+            MatchedNonterminal(_) => {
+                // end of the line; duplicate henceforth
+                ad
+            }
+            MatchedSeq(ref ads, _) => ads[*idx]
         }
     }
     let repeat_idx = r.repeat_idx.borrow();
     repeat_idx.get().iter().fold(start, red)
 }
 
-fn lookup_cur_matched(r: &TtReader, name: Ident) -> @named_match {
+fn lookup_cur_matched(r: &TtReader, name: Ident) -> @NamedMatch {
     let matched_opt = {
         let interpolations = r.interpolations.borrow();
         interpolations.get().find_copy(&name)
@@ -130,43 +130,43 @@ fn lookup_cur_matched(r: &TtReader, name: Ident) -> @named_match {
 }
 
 #[deriving(Clone)]
-enum lis {
-    lis_unconstrained,
-    lis_constraint(uint, Ident),
-    lis_contradiction(~str),
+enum LockstepIterSize {
+    LisUnconstrained,
+    LisConstraint(uint, Ident),
+    LisContradiction(~str),
 }
 
-fn lockstep_iter_size(t: &token_tree, r: &TtReader) -> lis {
-    fn lis_merge(lhs: lis, rhs: lis) -> lis {
-        match lhs {
-          lis_unconstrained => rhs.clone(),
-          lis_contradiction(_) => lhs.clone(),
-          lis_constraint(l_len, ref l_id) => match rhs {
-            lis_unconstrained => lhs.clone(),
-            lis_contradiction(_) => rhs.clone(),
-            lis_constraint(r_len, _) if l_len == r_len => lhs.clone(),
-            lis_constraint(r_len, ref r_id) => {
+fn lis_merge(lhs: LockstepIterSize, rhs: LockstepIterSize) -> LockstepIterSize {
+    match lhs {
+        LisUnconstrained => rhs.clone(),
+        LisContradiction(_) => lhs.clone(),
+        LisConstraint(l_len, ref l_id) => match rhs {
+            LisUnconstrained => lhs.clone(),
+            LisContradiction(_) => rhs.clone(),
+            LisConstraint(r_len, _) if l_len == r_len => lhs.clone(),
+            LisConstraint(r_len, ref r_id) => {
                 let l_n = ident_to_str(l_id);
                 let r_n = ident_to_str(r_id);
-                lis_contradiction(format!("Inconsistent lockstep iteration: \
-                                           '{}' has {} items, but '{}' has {}",
-                                           l_n, l_len, r_n, r_len))
+                LisContradiction(format!("Inconsistent lockstep iteration: \
+                                          '{}' has {} items, but '{}' has {}",
+                                          l_n, l_len, r_n, r_len))
             }
-          }
         }
     }
+}
+
+fn lockstep_iter_size(t: &TokenTree, r: &TtReader) -> LockstepIterSize {
     match *t {
-      tt_delim(ref tts) | tt_seq(_, ref tts, _, _) => {
-        tts.iter().fold(lis_unconstrained, |lis, tt| {
-            let lis2 = lockstep_iter_size(tt, r);
-            lis_merge(lis, lis2)
-        })
-      }
-      tt_tok(..) => lis_unconstrained,
-      tt_nonterminal(_, name) => match *lookup_cur_matched(r, name) {
-        matched_nonterminal(_) => lis_unconstrained,
-        matched_seq(ref ads, _) => lis_constraint(ads.len(), name)
-      }
+        TTDelim(ref tts) | TTSeq(_, ref tts, _, _) => {
+            tts.iter().fold(LisUnconstrained, |lis, tt| {
+                lis_merge(lis, lockstep_iter_size(tt, r))
+            })
+        }
+        TTTok(..) => LisUnconstrained,
+        TTNonterminal(_, name) => match *lookup_cur_matched(r, name) {
+            MatchedNonterminal(_) => LisUnconstrained,
+            MatchedSeq(ref ads, _) => LisConstraint(ads.len(), name)
+        }
     }
 }
 
@@ -228,11 +228,11 @@ pub fn tt_next_token(r: &TtReader) -> TokenAndSpan {
             }
         }
     }
-    loop { /* because it's easiest, this handles `tt_delim` not starting
-    with a `tt_tok`, even though it won't happen */
+    loop { /* because it's easiest, this handles `TTDelim` not starting
+    with a `TTTok`, even though it won't happen */
         // XXX(pcwalton): Bad copy.
         match r.stack.get().forest[r.stack.get().idx.get()].clone() {
-          tt_delim(tts) => {
+          TTDelim(tts) => {
             r.stack.set(@TtFrame {
                 forest: tts,
                 idx: Cell::new(0u),
@@ -242,28 +242,28 @@ pub fn tt_next_token(r: &TtReader) -> TokenAndSpan {
             });
             // if this could be 0-length, we'd need to potentially recur here
           }
-          tt_tok(sp, tok) => {
+          TTTok(sp, tok) => {
             r.cur_span.set(sp);
             r.cur_tok.set(tok);
             r.stack.get().idx.set(r.stack.get().idx.get() + 1u);
             return ret_val;
           }
-          tt_seq(sp, tts, sep, zerok) => {
+          TTSeq(sp, tts, sep, zerok) => {
             // XXX(pcwalton): Bad copy.
-            let t = tt_seq(sp, tts, sep.clone(), zerok);
+            let t = TTSeq(sp, tts, sep.clone(), zerok);
             match lockstep_iter_size(&t, r) {
-              lis_unconstrained => {
+              LisUnconstrained => {
                 r.sp_diag.span_fatal(
                     sp, /* blame macro writer */
                       "attempted to repeat an expression \
                        containing no syntax \
                        variables matched as repeating at this depth");
                   }
-                  lis_contradiction(ref msg) => {
+                  LisContradiction(ref msg) => {
                       /* FIXME #2887 blame macro invoker instead*/
                       r.sp_diag.span_fatal(sp, (*msg));
                   }
-                  lis_constraint(len, _) => {
+                  LisConstraint(len, _) => {
                     if len == 0 {
                       if !zerok {
                         r.sp_diag.span_fatal(sp, /* FIXME #2887 blame invoker
@@ -293,25 +293,25 @@ pub fn tt_next_token(r: &TtReader) -> TokenAndSpan {
             }
           }
           // FIXME #2887: think about span stuff here
-          tt_nonterminal(sp, ident) => {
+          TTNonterminal(sp, ident) => {
             match *lookup_cur_matched(r, ident) {
               /* sidestep the interpolation tricks for ident because
               (a) idents can be in lots of places, so it'd be a pain
               (b) we actually can, since it's a token. */
-              matched_nonterminal(nt_ident(~sn,b)) => {
+              MatchedNonterminal(NtIdent(~sn,b)) => {
                 r.cur_span.set(sp);
                 r.cur_tok.set(IDENT(sn,b));
                 r.stack.get().idx.set(r.stack.get().idx.get() + 1u);
                 return ret_val;
               }
-              matched_nonterminal(ref other_whole_nt) => {
+              MatchedNonterminal(ref other_whole_nt) => {
                 // XXX(pcwalton): Bad copy.
                 r.cur_span.set(sp);
                 r.cur_tok.set(INTERPOLATED((*other_whole_nt).clone()));
                 r.stack.get().idx.set(r.stack.get().idx.get() + 1u);
                 return ret_val;
               }
-              matched_seq(..) => {
+              MatchedSeq(..) => {
                 r.sp_diag.span_fatal(
                     r.cur_span.get(), /* blame the macro writer */
                     format!("variable '{}' is still repeating at this depth",

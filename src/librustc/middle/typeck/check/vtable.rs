@@ -552,7 +552,7 @@ pub fn location_info_for_expr(expr: &ast::Expr) -> LocationInfo {
         id: expr.id
     }
 }
-pub fn location_info_for_item(item: &ast::item) -> LocationInfo {
+pub fn location_info_for_item(item: &ast::Item) -> LocationInfo {
     LocationInfo {
         span: item.span,
         id: item.id
@@ -760,7 +760,7 @@ fn resolve_expr(fcx: @FnCtxt, ex: &ast::Expr) {
 }
 
 pub fn resolve_impl(ccx: @CrateCtxt,
-                    impl_item: &ast::item,
+                    impl_item: &ast::Item,
                     impl_generics: &ty::Generics,
                     impl_trait_ref: &ty::TraitRef) {
     let param_env = ty::construct_parameter_environment(
@@ -819,7 +819,7 @@ impl visit::Visitor<()> for @FnCtxt {
     fn visit_expr(&mut self, ex: &ast::Expr, _: ()) {
         resolve_expr(*self, ex);
     }
-    fn visit_item(&mut self, _: &ast::item, _: ()) {
+    fn visit_item(&mut self, _: &ast::Item, _: ()) {
         // no-op
     }
 }

@@ -62,7 +62,7 @@ impl Visitor<()> for Context {
         check_expr(self, ex);
     }
 
-    fn visit_fn(&mut self, fk: &visit::fn_kind, fd: &fn_decl,
+    fn visit_fn(&mut self, fk: &visit::FnKind, fd: &FnDecl,
                 b: &Block, s: Span, n: NodeId, _: ()) {
         check_fn(self, fk, fd, b, s, n);
     }
@@ -70,7 +70,7 @@ impl Visitor<()> for Context {
     fn visit_ty(&mut self, t: &Ty, _: ()) {
         check_ty(self, t);
     }
-    fn visit_item(&mut self, i: &item, _: ()) {
+    fn visit_item(&mut self, i: &Item, _: ()) {
         check_item(self, i);
     }
 }
@@ -116,7 +116,7 @@ fn check_struct_safe_for_destructor(cx: &mut Context,
     }
 }
 
-fn check_impl_of_trait(cx: &mut Context, it: &item, trait_ref: &trait_ref, self_type: &Ty) {
+fn check_impl_of_trait(cx: &mut Context, it: &Item, trait_ref: &TraitRef, self_type: &Ty) {
     let def_map = cx.tcx.def_map.borrow();
     let ast_trait_def = def_map.get()
                                .find(&trait_ref.ref_id)
@@ -145,7 +145,7 @@ fn check_impl_of_trait(cx: &mut Context, it: &item, trait_ref: &trait_ref, self_
     // If this is a destructor, check kinds.
     if cx.tcx.lang_items.drop_trait() == Some(trait_def_id) {
         match self_type.node {
-            ty_path(_, ref bounds, path_node_id) => {
+            TyPath(_, ref bounds, path_node_id) => {
                 assert!(bounds.is_none());
                 let struct_def = def_map.get().get_copy(&path_node_id);
                 let struct_did = ast_util::def_id_of_def(struct_def);
@@ -159,10 +159,10 @@ fn check_impl_of_trait(cx: &mut Context, it: &item, trait_ref: &trait_ref, self_
     }
 }
 
-fn check_item(cx: &mut Context, item: &item) {
+fn check_item(cx: &mut Context, item: &Item) {
     if !attr::contains_name(item.attrs, "unsafe_destructor") {
         match item.node {
-            item_impl(_, Some(ref trait_ref), self_type, _) => {
+            ItemImpl(_, Some(ref trait_ref), self_type, _) => {
                 check_impl_of_trait(cx, item, trait_ref, self_type);
             }
             _ => {}
@@ -246,8 +246,8 @@ fn with_appropriate_checker(cx: &Context,
 // to the copy/move kind bounds. Then recursively check the function body.
 fn check_fn(
     cx: &mut Context,
-    fk: &visit::fn_kind,
-    decl: &fn_decl,
+    fk: &visit::FnKind,
+    decl: &FnDecl,
     body: &Block,
     sp: Span,
     fn_id: NodeId) {
@@ -353,20 +353,20 @@ fn check_trait_cast(cx: &mut Context, source_ty: ty::t, target_ty: ty::t, span: 
 
 fn check_ty(cx: &mut Context, aty: &Ty) {
     match aty.node {
-      ty_path(_, _, id) => {
-          let node_type_substs = cx.tcx.node_type_substs.borrow();
-          let r = node_type_substs.get().find(&id);
-          for ts in r.iter() {
-              let def_map = cx.tcx.def_map.borrow();
-              let did = ast_util::def_id_of_def(def_map.get().get_copy(&id));
-              let type_param_defs =
-                  ty::lookup_item_type(cx.tcx, did).generics.type_param_defs;
-              for (&ty, type_param_def) in ts.iter().zip(type_param_defs.iter()) {
-                  check_typaram_bounds(cx, aty.id, aty.span, ty, type_param_def)
-              }
-          }
-      }
-      _ => {}
+        TyPath(_, _, id) => {
+            let node_type_substs = cx.tcx.node_type_substs.borrow();
+            let r = node_type_substs.get().find(&id);
+            for ts in r.iter() {
+                let def_map = cx.tcx.def_map.borrow();
+                let did = ast_util::def_id_of_def(def_map.get().get_copy(&id));
+                let type_param_defs =
+                    ty::lookup_item_type(cx.tcx, did).generics.type_param_defs;
+                for (&ty, type_param_def) in ts.iter().zip(type_param_defs.iter()) {
+                    check_typaram_bounds(cx, aty.id, aty.span, ty, type_param_def)
+                }
+            }
+        }
+        _ => {}
     }
     visit::walk_ty(cx, aty, ());
 }

@@ -18,7 +18,7 @@ use metadata::loader;
 use std::cell::RefCell;
 use std::hashmap::HashMap;
 use syntax::ast;
-use syntax::parse::token::ident_interner;
+use syntax::parse::token::IdentInterner;
 
 // A map from external crate numbers (as decoded from some crate file) to
 // local crate numbers (as generated during this session). Each external
@@ -66,14 +66,14 @@ pub struct CStore {
     priv used_crate_sources: RefCell<~[CrateSource]>,
     priv used_libraries: RefCell<~[(~str, NativeLibaryKind)]>,
     priv used_link_args: RefCell<~[~str]>,
-    intr: @ident_interner
+    intr: @IdentInterner
 }
 
 // Map from NodeId's of local extern mod statements to crate numbers
 type extern_mod_crate_map = HashMap<ast::NodeId, ast::CrateNum>;
 
 impl CStore {
-    pub fn new(intr: @ident_interner) -> CStore {
+    pub fn new(intr: @IdentInterner) -> CStore {
         CStore {
             metas: RefCell::new(HashMap::new()),
             extern_mod_crate_map: RefCell::new(HashMap::new()),

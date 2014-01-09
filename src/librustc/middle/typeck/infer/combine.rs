@@ -63,7 +63,7 @@ use util::common::indent;
 use util::ppaux::Repr;
 
 use std::result;
-use syntax::ast::{Onceness, purity};
+use syntax::ast::{Onceness, Purity};
 use syntax::ast;
 use syntax::opt_vec;
 use syntax::abi::AbiSet;
@@ -245,7 +245,7 @@ pub trait Combine {
         }
     }
 
-    fn purities(&self, a: purity, b: purity) -> cres<purity>;
+    fn purities(&self, a: Purity, b: Purity) -> cres<Purity>;
 
     fn abis(&self, a: AbiSet, b: AbiSet) -> cres<AbiSet> {
         if a == b {
@@ -591,7 +591,7 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
         this: &C,
         vid_is_expected: bool,
         vid: ty::FloatVid,
-        val: ast::float_ty) -> cres<ty::t>
+        val: ast::FloatTy) -> cres<ty::t>
     {
         if_ok!(this.infcx().simple_var_t(vid_is_expected, vid, val));
         Ok(ty::mk_mach_float(val))

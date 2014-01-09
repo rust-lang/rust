@@ -25,13 +25,13 @@ use std::util;
 
 pub use ext::tt::transcribe::{TtReader, new_tt_reader};
 
-pub trait reader {
+pub trait Reader {
     fn is_eof(@self) -> bool;
     fn next_token(@self) -> TokenAndSpan;
     fn fatal(@self, ~str) -> !;
     fn span_diag(@self) -> @SpanHandler;
     fn peek(@self) -> TokenAndSpan;
-    fn dup(@self) -> @reader;
+    fn dup(@self) -> @Reader;
 }
 
 #[deriving(Clone, Eq)]
@@ -104,7 +104,7 @@ fn dup_string_reader(r: @StringReader) -> @StringReader {
     }
 }
 
-impl reader for StringReader {
+impl Reader for StringReader {
     fn is_eof(@self) -> bool { is_eof(self) }
     // return the next token. EFFECT: advances the string_reader.
     fn next_token(@self) -> TokenAndSpan {
@@ -129,10 +129,10 @@ impl reader for StringReader {
             sp: self.peek_span.get(),
         }
     }
-    fn dup(@self) -> @reader { dup_string_reader(self) as @reader }
+    fn dup(@self) -> @Reader { dup_string_reader(self) as @Reader }
 }
 
-impl reader for TtReader {
+impl Reader for TtReader {
     fn is_eof(@self) -> bool {
         let cur_tok = self.cur_tok.borrow();
         *cur_tok.get() == token::EOF
@@ -152,7 +152,7 @@ impl reader for TtReader {
             sp: self.cur_span.get(),
         }
     }
-    fn dup(@self) -> @reader { dup_tt_reader(self) as @reader }
+    fn dup(@self) -> @Reader { dup_tt_reader(self) as @Reader }
 }
 
 // report a lexical error spanning [`from_pos`, `to_pos`)
@@ -486,35 +486,35 @@ fn scan_number(c: char, rdr: @StringReader) -> token::Token {
     c = rdr.curr.get();
     nextch(rdr);
     if c == 'u' || c == 'i' {
-        enum Result { Signed(ast::int_ty), Unsigned(ast::uint_ty) }
+        enum Result { Signed(ast::IntTy), Unsigned(ast::UintTy) }
         let signed = c == 'i';
         let mut tp = {
-            if signed { Signed(ast::ty_i) }
-            else { Unsigned(ast::ty_u) }
+            if signed { Signed(ast::TyI) }
+            else { Unsigned(ast::TyU) }
         };
         bump(rdr);
         c = rdr.curr.get();
         if c == '8' {
             bump(rdr);
-            tp = if signed { Signed(ast::ty_i8) }
-                      else { Unsigned(ast::ty_u8) };
+            tp = if signed { Signed(ast::TyI8) }
+                      else { Unsigned(ast::TyU8) };
         }
         n = nextch(rdr);
         if c == '1' && n == '6' {
             bump(rdr);
             bump(rdr);
-            tp = if signed { Signed(ast::ty_i16) }
-                      else { Unsigned(ast::ty_u16) };
+            tp = if signed { Signed(ast::TyI16) }
+                      else { Unsigned(ast::TyU16) };
         } else if c == '3' && n == '2' {
             bump(rdr);
             bump(rdr);
-            tp = if signed { Signed(ast::ty_i32) }
-                      else { Unsigned(ast::ty_u32) };
+            tp = if signed { Signed(ast::TyI32) }
+                      else { Unsigned(ast::TyU32) };
         } else if c == '6' && n == '4' {
             bump(rdr);
             bump(rdr);
-            tp = if signed { Signed(ast::ty_i64) }
-                      else { Unsigned(ast::ty_u64) };
+            tp = if signed { Signed(ast::TyI64) }
+                      else { Unsigned(ast::TyU64) };
         }
         if num_str.len() == 0u {
             fatal_span(rdr, start_bpos, rdr.last_pos.get(),
@@ -566,13 +566,11 @@ fn scan_number(c: char, rdr: @StringReader) -> token::Token {
         if c == '3' && n == '2' {
             bump(rdr);
             bump(rdr);
-            return token::LIT_FLOAT(str_to_ident(num_str),
-                                 ast::ty_f32);
+            return token::LIT_FLOAT(str_to_ident(num_str), ast::TyF32);
         } else if c == '6' && n == '4' {
             bump(rdr);
             bump(rdr);
-            return token::LIT_FLOAT(str_to_ident(num_str),
-                                 ast::ty_f64);
+            return token::LIT_FLOAT(str_to_ident(num_str), ast::TyF64);
             /* FIXME (#2252): if this is out of range for either a
             32-bit or 64-bit float, it won't be noticed till the
             back-end.  */
@@ -665,7 +663,7 @@ fn next_token_inner(rdr: @StringReader) -> token::Token {
     if is_dec_digit(c) {
         return scan_number(c, rdr);
     }
-    fn binop(rdr: @StringReader, op: token::binop) -> token::Token {
+    fn binop(rdr: @StringReader, op: token::BinOp) -> token::Token {
         bump(rdr);
         if rdr.curr.get() == '=' {
             bump(rdr);
