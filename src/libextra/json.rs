@@ -21,7 +21,6 @@ use std::cast::transmute;
 use std::f64;
 use std::hashmap::HashMap;
 use std::io;
-use std::io::Decorator;
 use std::io::mem::MemWriter;
 use std::num;
 use std::str;
@@ -464,7 +463,7 @@ impl Json{
     pub fn to_pretty_str(&self) -> ~str {
         let mut s = MemWriter::new();
         self.to_pretty_writer(&mut s as &mut io::Writer);
-        str::from_utf8_owned(s.inner())
+        str::from_utf8_owned(s.unwrap())
     }
 }
 
@@ -1321,7 +1320,7 @@ impl to_str::ToStr for Json {
     fn to_str(&self) -> ~str {
         let mut s = MemWriter::new();
         self.to_writer(&mut s as &mut io::Writer);
-        str::from_utf8_owned(s.inner())
+        str::from_utf8_owned(s.unwrap())
     }
 }
 
@@ -1508,12 +1507,11 @@ mod tests {
 
     fn with_str_writer(f: |&mut io::Writer|) -> ~str {
         use std::io::mem::MemWriter;
-        use std::io::Decorator;
         use std::str;
 
         let mut m = MemWriter::new();
         f(&mut m as &mut io::Writer);
-        str::from_utf8_owned(m.inner())
+        str::from_utf8_owned(m.unwrap())
     }
 
     #[test]

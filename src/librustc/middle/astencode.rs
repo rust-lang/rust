@@ -1465,7 +1465,6 @@ fn mk_ctxt() -> @fake_ext_ctxt {
 
 #[cfg(test)]
 fn roundtrip(in_item: Option<@ast::item>) {
-    use std::io::Decorator;
     use std::io::mem::MemWriter;
 
     let in_item = in_item.unwrap();
@@ -1474,7 +1473,7 @@ fn roundtrip(in_item: Option<@ast::item>) {
         let mut ebml_w = writer::Encoder(&mut wr);
         encode_item_ast(&mut ebml_w, in_item);
     }
-    let ebml_doc = reader::Doc(wr.inner_ref().as_slice());
+    let ebml_doc = reader::Doc(wr.get_ref());
     let out_item = decode_item_ast(ebml_doc);
 
     assert_eq!(in_item, out_item);

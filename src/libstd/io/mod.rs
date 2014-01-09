@@ -113,7 +113,6 @@ Some examples of obvious things you might want to do
 * Writer - An I/O sink, writes bytes from a buffer
 * Stream - Typical I/O sources like files and sockets are both Readers and Writers,
   and are collectively referred to a `streams`.
-* Decorator - A Reader or Writer that composes with others to add additional capabilities
   such as encoding or decoding
 
 # Blocking and synchrony
@@ -1296,32 +1295,6 @@ impl<'a, T, A: Acceptor<T>> Iterator<Option<T>> for IncomingIterator<'a, A> {
     fn next(&mut self) -> Option<Option<T>> {
         Some(self.inc.accept())
     }
-}
-
-/// Common trait for decorator types.
-///
-/// Provides accessors to get the inner, 'decorated' values. The I/O library
-/// uses decorators to add functionality like compression and encryption to I/O
-/// streams.
-///
-/// # XXX
-///
-/// Is this worth having a trait for? May be overkill
-pub trait Decorator<T> {
-    /// Destroy the decorator and extract the decorated value
-    ///
-    /// # XXX
-    ///
-    /// Because this takes `self' one could never 'undecorate' a Reader/Writer
-    /// that has been boxed. Is that ok? This feature is mostly useful for
-    /// extracting the buffer from MemWriter
-    fn inner(self) -> T;
-
-    /// Take an immutable reference to the decorated value
-    fn inner_ref<'a>(&'a self) -> &'a T;
-
-    /// Take a mutable reference to the decorated value
-    fn inner_mut_ref<'a>(&'a mut self) -> &'a mut T;
 }
 
 pub fn standard_error(kind: IoErrorKind) -> IoError {

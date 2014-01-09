@@ -522,7 +522,6 @@ mod test {
     use std::str;
     use std::rand;
     use std::num::Zero;
-    use std::io::Decorator;
     use std::io::mem::MemWriter;
 
     #[test]
@@ -798,7 +797,7 @@ mod test {
         let u = Uuid::new_v4();
         let mut wr = MemWriter::new();
         u.encode(&mut ebml::writer::Encoder(&mut wr));
-        let doc = ebml::reader::Doc(wr.inner_ref().as_slice());
+        let doc = ebml::reader::Doc(wr.get_ref());
         let u2 = Decodable::decode(&mut ebml::reader::Decoder(doc));
         assert_eq!(u, u2);
     }

@@ -13,7 +13,6 @@
 use std::cell::RefCell;
 use std::hashmap::HashMap;
 use std::io;
-use std::io::{Decorator, Writer, Seek};
 use std::io::mem::MemWriter;
 use std::str;
 use std::fmt;
@@ -73,7 +72,7 @@ pub fn enc_ty(w: &mut MemWriter, cx: @ctxt, t: ty::t) {
             None => {
                 let wr = &mut MemWriter::new();
                 enc_sty(wr, cx, &ty::get(t).sty);
-                let s = str::from_utf8(*wr.inner_ref()).to_managed();
+                let s = str::from_utf8(wr.get_ref()).to_managed();
                 let mut short_names_cache = cx.tcx
                                               .short_names_cache
                                               .borrow_mut();

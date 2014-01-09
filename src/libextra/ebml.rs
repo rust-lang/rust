@@ -935,7 +935,6 @@ mod tests {
     use serialize::Encodable;
     use serialize;
 
-    use std::io::Decorator;
     use std::io::mem::MemWriter;
     use std::option::{None, Option, Some};
 
@@ -948,7 +947,7 @@ mod tests {
                 let mut ebml_w = writer::Encoder(&mut wr);
                 v.encode(&mut ebml_w);
             }
-            let ebml_doc = reader::Doc(*wr.inner_ref());
+            let ebml_doc = reader::Doc(wr.get_ref());
             let mut deser = reader::Decoder(ebml_doc);
             let v1 = serialize::Decodable::decode(&mut deser);
             debug!("v1 == {:?}", v1);

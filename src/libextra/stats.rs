@@ -991,10 +991,9 @@ mod tests {
     fn test_boxplot_nonpositive() {
         fn t(s: &Summary, expected: ~str) {
             use std::io::mem::MemWriter;
-            use std::io::Decorator;
             let mut m = MemWriter::new();
             write_boxplot(&mut m as &mut io::Writer, s, 30);
-            let out = str::from_utf8_owned(m.inner());
+            let out = str::from_utf8_owned(m.unwrap());
             assert_eq!(out, expected);
         }
 
