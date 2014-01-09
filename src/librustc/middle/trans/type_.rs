@@ -117,30 +117,30 @@ impl Type {
         Type::f64()
     }
 
-    pub fn int_from_ty(ctx: &CrateContext, t: ast::int_ty) -> Type {
+    pub fn int_from_ty(ctx: &CrateContext, t: ast::IntTy) -> Type {
         match t {
-            ast::ty_i => ctx.int_type,
-            ast::ty_i8 => Type::i8(),
-            ast::ty_i16 => Type::i16(),
-            ast::ty_i32 => Type::i32(),
-            ast::ty_i64 => Type::i64()
+            ast::TyI => ctx.int_type,
+            ast::TyI8 => Type::i8(),
+            ast::TyI16 => Type::i16(),
+            ast::TyI32 => Type::i32(),
+            ast::TyI64 => Type::i64()
         }
     }
 
-    pub fn uint_from_ty(ctx: &CrateContext, t: ast::uint_ty) -> Type {
+    pub fn uint_from_ty(ctx: &CrateContext, t: ast::UintTy) -> Type {
         match t {
-            ast::ty_u => ctx.int_type,
-            ast::ty_u8 => Type::i8(),
-            ast::ty_u16 => Type::i16(),
-            ast::ty_u32 => Type::i32(),
-            ast::ty_u64 => Type::i64()
+            ast::TyU => ctx.int_type,
+            ast::TyU8 => Type::i8(),
+            ast::TyU16 => Type::i16(),
+            ast::TyU32 => Type::i32(),
+            ast::TyU64 => Type::i64()
         }
     }
 
-    pub fn float_from_ty(t: ast::float_ty) -> Type {
+    pub fn float_from_ty(t: ast::FloatTy) -> Type {
         match t {
-            ast::ty_f32 => Type::f32(),
-            ast::ty_f64 => Type::f64()
+            ast::TyF32 => Type::f32(),
+            ast::TyF64 => Type::f64()
         }
     }
 

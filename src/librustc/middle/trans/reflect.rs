@@ -29,7 +29,7 @@ use std::option::{Some,None};
 use std::vec;
 use syntax::ast::DefId;
 use syntax::ast;
-use syntax::ast_map::path_name;
+use syntax::ast_map::PathName;
 use syntax::parse::token::special_idents;
 
 use middle::trans::type_::Type;
@@ -158,18 +158,18 @@ impl<'a> Reflector<'a> {
           ty::ty_nil => self.leaf("nil"),
           ty::ty_bool => self.leaf("bool"),
           ty::ty_char => self.leaf("char"),
-          ty::ty_int(ast::ty_i) => self.leaf("int"),
-          ty::ty_int(ast::ty_i8) => self.leaf("i8"),
-          ty::ty_int(ast::ty_i16) => self.leaf("i16"),
-          ty::ty_int(ast::ty_i32) => self.leaf("i32"),
-          ty::ty_int(ast::ty_i64) => self.leaf("i64"),
-          ty::ty_uint(ast::ty_u) => self.leaf("uint"),
-          ty::ty_uint(ast::ty_u8) => self.leaf("u8"),
-          ty::ty_uint(ast::ty_u16) => self.leaf("u16"),
-          ty::ty_uint(ast::ty_u32) => self.leaf("u32"),
-          ty::ty_uint(ast::ty_u64) => self.leaf("u64"),
-          ty::ty_float(ast::ty_f32) => self.leaf("f32"),
-          ty::ty_float(ast::ty_f64) => self.leaf("f64"),
+          ty::ty_int(ast::TyI) => self.leaf("int"),
+          ty::ty_int(ast::TyI8) => self.leaf("i8"),
+          ty::ty_int(ast::TyI16) => self.leaf("i16"),
+          ty::ty_int(ast::TyI32) => self.leaf("i32"),
+          ty::ty_int(ast::TyI64) => self.leaf("i64"),
+          ty::ty_uint(ast::TyU) => self.leaf("uint"),
+          ty::ty_uint(ast::TyU8) => self.leaf("u8"),
+          ty::ty_uint(ast::TyU16) => self.leaf("u16"),
+          ty::ty_uint(ast::TyU32) => self.leaf("u32"),
+          ty::ty_uint(ast::TyU64) => self.leaf("u64"),
+          ty::ty_float(ast::TyF32) => self.leaf("f32"),
+          ty::ty_float(ast::TyF64) => self.leaf("f64"),
 
           ty::ty_unboxed_vec(ref mt) => {
               let values = self.c_mt(mt);
@@ -290,7 +290,7 @@ impl<'a> Reflector<'a> {
                                                            mutbl: ast::MutImmutable });
 
             let make_get_disr = || {
-                let sub_path = bcx.fcx.path + &[path_name(special_idents::anon)];
+                let sub_path = bcx.fcx.path + &[PathName(special_idents::anon)];
                 let sym = mangle_internal_name_by_path_and_seq(ccx,
                                                                sub_path,
                                                                "get_disr");
@@ -416,10 +416,10 @@ pub fn ast_sigil_constant(sigil: ast::Sigil) -> uint {
     }
 }
 
-pub fn ast_purity_constant(purity: ast::purity) -> uint {
+pub fn ast_purity_constant(purity: ast::Purity) -> uint {
     match purity {
-        ast::unsafe_fn => 1u,
-        ast::impure_fn => 2u,
-        ast::extern_fn => 3u
+        ast::UnsafeFn => 1u,
+        ast::ImpureFn => 2u,
+        ast::ExternFn => 3u
     }
 }

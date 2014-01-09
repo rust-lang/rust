@@ -18,7 +18,7 @@ library.
 
 */
 
-use ast::{enum_def, Ident, item, Generics, struct_def};
+use ast::{EnumDef, Ident, Item, Generics, StructDef};
 use ast::{MetaItem, MetaList, MetaNameValue, MetaWord};
 use ext::base::ExtCtxt;
 use codemap::Span;
@@ -47,22 +47,22 @@ pub mod generic;
 
 pub type ExpandDerivingStructDefFn<'a> = 'a |&ExtCtxt,
                                                    Span,
-                                                   x: &struct_def,
+                                                   x: &StructDef,
                                                    Ident,
                                                    y: &Generics|
-                                                   -> @item;
+                                                   -> @Item;
 pub type ExpandDerivingEnumDefFn<'a> = 'a |&ExtCtxt,
                                                  Span,
-                                                 x: &enum_def,
+                                                 x: &EnumDef,
                                                  Ident,
                                                  y: &Generics|
-                                                 -> @item;
+                                                 -> @Item;
 
 pub fn expand_meta_deriving(cx: &ExtCtxt,
                             _span: Span,
                             mitem: @MetaItem,
-                            in_items: ~[@item])
-                         -> ~[@item] {
+                            in_items: ~[@Item])
+                         -> ~[@Item] {
     match mitem.node {
         MetaNameValue(_, ref l) => {
             cx.span_err(l.span, "unexpected value in `deriving`");

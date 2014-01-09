@@ -152,7 +152,7 @@ pub struct method_map_entry {
     self_mode: ty::SelfMode,
 
     // the type of explicit self on the method
-    explicit_self: ast::explicit_self_,
+    explicit_self: ast::ExplicitSelf_,
 
     // method details being invoked
     origin: method_origin,
@@ -352,9 +352,9 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
         ty::ty_bare_fn(..) => {
             let items = tcx.items.borrow();
             match items.get().find(&main_id) {
-                Some(&ast_map::node_item(it,_)) => {
+                Some(&ast_map::NodeItem(it,_)) => {
                     match it.node {
-                        ast::item_fn(_, _, _, ref ps, _)
+                        ast::ItemFn(_, _, _, ref ps, _)
                         if ps.is_parameterized() => {
                             tcx.sess.span_err(
                                 main_span,
@@ -367,7 +367,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                 _ => ()
             }
             let se_ty = ty::mk_bare_fn(tcx, ty::BareFnTy {
-                purity: ast::impure_fn,
+                purity: ast::ImpureFn,
                 abis: abi::AbiSet::Rust(),
                 sig: ty::FnSig {
                     binder_id: main_id,
@@ -398,9 +398,9 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
         ty::ty_bare_fn(_) => {
             let items = tcx.items.borrow();
             match items.get().find(&start_id) {
-                Some(&ast_map::node_item(it,_)) => {
+                Some(&ast_map::NodeItem(it,_)) => {
                     match it.node {
-                        ast::item_fn(_,_,_,ref ps,_)
+                        ast::ItemFn(_,_,_,ref ps,_)
                         if ps.is_parameterized() => {
                             tcx.sess.span_err(
                                 start_span,
@@ -414,7 +414,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
             }
 
             let se_ty = ty::mk_bare_fn(tcx, ty::BareFnTy {
-                purity: ast::impure_fn,
+                purity: ast::ImpureFn,
                 abis: abi::AbiSet::Rust(),
                 sig: ty::FnSig {
                     binder_id: start_id,

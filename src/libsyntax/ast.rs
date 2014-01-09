@@ -197,7 +197,7 @@ pub static DUMMY_NODE_ID: NodeId = -1;
 // detects Copy, Send, Send, and Freeze.
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum TyParamBound {
-    TraitTyParamBound(trait_ref),
+    TraitTyParamBound(TraitRef),
     RegionTyParamBound
 }
 
@@ -234,8 +234,8 @@ pub enum MethodProvenance {
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum Def {
-    DefFn(DefId, purity),
-    DefStaticMethod(/* method */ DefId, MethodProvenance, purity),
+    DefFn(DefId, Purity),
+    DefStaticMethod(/* method */ DefId, MethodProvenance, Purity),
     DefSelf(NodeId, bool /* is_mutbl */),
     DefSelfTy(/* trait id */ NodeId),
     DefMod(DefId),
@@ -246,7 +246,7 @@ pub enum Def {
     DefVariant(DefId /* enum */, DefId /* variant */, bool /* is_structure */),
     DefTy(DefId),
     DefTrait(DefId),
-    DefPrimTy(prim_ty),
+    DefPrimTy(PrimTy),
     DefTyParam(DefId, uint),
     DefBinding(NodeId, BindingMode),
     DefUse(DefId),
@@ -256,13 +256,13 @@ pub enum Def {
               NodeId), // id for the block/body of the closure expr
 
     /// Note that if it's a tuple struct's definition, the node id of the DefId
-    /// may either refer to the item definition's id or the struct_def.ctor_id.
+    /// may either refer to the item definition's id or the StructDef.ctor_id.
     ///
     /// The cases that I have encountered so far are (this is not exhaustive):
     /// - If it's a ty_path referring to some tuple struct, then DefMap maps
     ///   it to a def whose id is the item definition's id.
     /// - If it's an ExprPath referring to some tuple struct, then DefMap maps
-    ///   it to a def whose id is the struct_def.ctor_id.
+    ///   it to a def whose id is the StructDef.ctor_id.
     DefStruct(DefId),
     DefTyParamBinder(NodeId), /* struct, impl or trait with ty params */
     DefRegion(NodeId),
@@ -284,7 +284,7 @@ pub type CrateConfig = ~[@MetaItem];
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct Crate {
-    module: _mod,
+    module: Mod,
     attrs: ~[Attribute],
     config: CrateConfig,
     span: Span,
@@ -296,7 +296,7 @@ pub type MetaItem = Spanned<MetaItem_>;
 pub enum MetaItem_ {
     MetaWord(@str),
     MetaList(@str, ~[@MetaItem]),
-    MetaNameValue(@str, lit),
+    MetaNameValue(@str, Lit),
 }
 
 // can't be derived because the MetaList requires an unordered comparison
@@ -326,7 +326,7 @@ impl Eq for MetaItem_ {
 
 #[deriving(Clone, Eq, Encodable, Decodable,IterBytes)]
 pub struct Block {
-    view_items: ~[view_item],
+    view_items: ~[ViewItem],
     stmts: ~[@Stmt],
     expr: Option<@Expr>,
     id: NodeId,
@@ -464,7 +464,7 @@ pub enum Stmt_ {
     StmtSemi(@Expr, NodeId),
 
     // bool: is there a trailing sem-colon?
-    StmtMac(mac, bool),
+    StmtMac(Mac, bool),
 }
 
 // FIXME (pending discussion of #1697, #2178...): local should really be
@@ -486,7 +486,7 @@ pub enum Decl_ {
     // a local (let) binding:
     DeclLocal(@Local),
     // an item binding:
-    DeclItem(@item),
+    DeclItem(@Item),
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
@@ -553,7 +553,7 @@ pub enum Expr_ {
     ExprTup(~[@Expr]),
     ExprBinary(NodeId, BinOp, @Expr, @Expr),
     ExprUnary(NodeId, UnOp, @Expr),
-    ExprLit(@lit),
+    ExprLit(@Lit),
     ExprCast(@Expr, P<Ty>),
     ExprIf(@Expr, P<Block>, Option<@Expr>),
     ExprWhile(@Expr, P<Block>),
@@ -563,8 +563,8 @@ pub enum Expr_ {
     // FIXME #6993: change to Option<Name>
     ExprLoop(P<Block>, Option<Ident>),
     ExprMatch(@Expr, ~[Arm]),
-    ExprFnBlock(P<fn_decl>, P<Block>),
-    ExprProc(P<fn_decl>, P<Block>),
+    ExprFnBlock(P<FnDecl>, P<Block>),
+    ExprProc(P<FnDecl>, P<Block>),
     ExprDoBody(@Expr),
     ExprBlock(P<Block>),
 
@@ -588,9 +588,9 @@ pub enum Expr_ {
     /// Gets the log level for the enclosing module
     ExprLogLevel,
 
-    ExprInlineAsm(inline_asm),
+    ExprInlineAsm(InlineAsm),
 
-    ExprMac(mac),
+    ExprMac(Mac),
 
     // A struct literal expression.
     ExprStruct(Path, ~[Field], Option<@Expr> /* base */),
@@ -610,31 +610,38 @@ pub enum Expr_ {
 // If the syntax extension is an MBE macro, it will attempt to match its
 // LHS "matchers" against the provided token tree, and if it finds a
 // match, will transcribe the RHS token tree, splicing in any captured
-// macro_parser::matched_nonterminals into the tt_nonterminals it finds.
+// macro_parser::matched_nonterminals into the TTNonterminals it finds.
 //
-// The RHS of an MBE macro is the only place a tt_nonterminal or tt_seq
+// The RHS of an MBE macro is the only place a TTNonterminal or TTSeq
 // makes any real sense. You could write them elsewhere but nothing
 // else knows what to do with them, so you'll probably get a syntax
 // error.
 //
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 #[doc="For macro invocations; parsing is delegated to the macro"]
-pub enum token_tree {
+pub enum TokenTree {
     // a single token
-    tt_tok(Span, ::parse::token::Token),
+    TTTok(Span, ::parse::token::Token),
     // a delimited sequence (the delimiters appear as the first
     // and last elements of the vector)
-    tt_delim(@~[token_tree]),
+    TTDelim(@~[TokenTree]),
 
     // These only make sense for right-hand-sides of MBE macros:
 
-    // a kleene-style repetition sequence with a span, a tt_forest,
+    // a kleene-style repetition sequence with a span, a TTForest,
     // an optional separator, and a boolean where true indicates
     // zero or more (..), and false indicates one or more (+).
-    tt_seq(Span, @~[token_tree], Option<::parse::token::Token>, bool),
+    TTSeq(Span, @~[TokenTree], Option<::parse::token::Token>, bool),
 
     // a syntactic variable that will be filled in by macro expansion.
-    tt_nonterminal(Span, Ident)
+    TTNonterminal(Span, Ident)
+}
+
+// NOTE remove after next snapshot
+// Required for ext::quote macros.
+#[cfg(stage0)]
+pub fn tt_tok(span: Span, tok: ::parse::token::Token) -> TokenTree {
+    TTTok(span, tok)
 }
 
 //
@@ -646,15 +653,15 @@ pub enum token_tree {
 // token-trees, and are thus primarily used by the macro-defining extension
 // itself.
 //
-// match_tok
-// ---------
+// MatchTok
+// --------
 //
 //     A matcher that matches a single token, denoted by the token itself. So
 //     long as there's no $ involved.
 //
 //
-// match_seq
-// ---------
+// MatchSeq
+// --------
 //
 //     A matcher that matches a sequence of sub-matchers, denoted various
 //     possible ways:
@@ -665,7 +672,7 @@ pub enum token_tree {
 //             $(A B C);*  zero or more semi-separated 'A B C' seqs
 //
 //
-// match_nonterminal
+// MatchNonterminal
 // -----------------
 //
 //     A matcher that matches one of a few interesting named rust
@@ -682,35 +689,35 @@ pub enum token_tree {
 //
 // As a final, horrifying aside, note that macro-by-example's input is
 // also matched by one of these matchers. Holy self-referential! It is matched
-// by an match_seq, specifically this one:
+// by an MatchSeq, specifically this one:
 //
 //                   $( $lhs:matchers => $rhs:tt );+
 //
 // If you understand that, you have closed to loop and understand the whole
 // macro system. Congratulations.
 //
-pub type matcher = Spanned<matcher_>;
+pub type Matcher = Spanned<Matcher_>;
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub enum matcher_ {
+pub enum Matcher_ {
     // match one token
-    match_tok(::parse::token::Token),
+    MatchTok(::parse::token::Token),
     // match repetitions of a sequence: body, separator, zero ok?,
     // lo, hi position-in-match-array used:
-    match_seq(~[matcher], Option<::parse::token::Token>, bool, uint, uint),
+    MatchSeq(~[Matcher], Option<::parse::token::Token>, bool, uint, uint),
     // parse a Rust NT: name to bind, name of NT, position in match array:
-    match_nonterminal(Ident, Ident, uint)
+    MatchNonterminal(Ident, Ident, uint)
 }
 
-pub type mac = Spanned<mac_>;
+pub type Mac = Spanned<Mac_>;
 
 // represents a macro invocation. The Path indicates which macro
 // is being invoked, and the vector of token-trees contains the source
 // of the macro invocation.
 // There's only one flavor, now, so this could presumably be simplified.
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub enum mac_ {
-    mac_invoc_tt(Path,~[token_tree],SyntaxContext),   // new macro-invocation
+pub enum Mac_ {
+    MacInvocTT(Path, ~[TokenTree], SyntaxContext),   // new macro-invocation
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
@@ -719,26 +726,26 @@ pub enum StrStyle {
     RawStr(uint)
 }
 
-pub type lit = Spanned<lit_>;
+pub type Lit = Spanned<Lit_>;
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub enum lit_ {
-    lit_str(@str, StrStyle),
-    lit_binary(@[u8]),
-    lit_char(u32),
-    lit_int(i64, int_ty),
-    lit_uint(u64, uint_ty),
-    lit_int_unsuffixed(i64),
-    lit_float(@str, float_ty),
-    lit_float_unsuffixed(@str),
-    lit_nil,
-    lit_bool(bool),
+pub enum Lit_ {
+    LitStr(@str, StrStyle),
+    LitBinary(@[u8]),
+    LitChar(u32),
+    LitInt(i64, IntTy),
+    LitUint(u64, UintTy),
+    LitIntUnsuffixed(i64),
+    LitFloat(@str, FloatTy),
+    LitFloatUnsuffixed(@str),
+    LitNil,
+    LitBool(bool),
 }
 
 // NB: If you change this, you'll probably want to change the corresponding
 // type structure in middle/ty.rs as well.
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub struct mt {
+pub struct MutTy {
     ty: P<Ty>,
     mutbl: Mutability,
 }
@@ -746,7 +753,7 @@ pub struct mt {
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
 pub struct TypeField {
     ident: Ident,
-    mt: mt,
+    mt: MutTy,
     span: Span,
 }
 
@@ -754,10 +761,10 @@ pub struct TypeField {
 pub struct TypeMethod {
     ident: Ident,
     attrs: ~[Attribute],
-    purity: purity,
-    decl: P<fn_decl>,
+    purity: Purity,
+    decl: P<FnDecl>,
     generics: Generics,
-    explicit_self: explicit_self,
+    explicit_self: ExplicitSelf,
     id: NodeId,
     span: Span,
 }
@@ -766,48 +773,48 @@ pub struct TypeMethod {
 // implementation, just a signature) or provided (meaning it has a default
 // implementation).
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub enum trait_method {
-    required(TypeMethod),
-    provided(@method),
+pub enum TraitMethod {
+    Required(TypeMethod),
+    Provided(@Method),
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub enum int_ty {
-    ty_i,
-    ty_i8,
-    ty_i16,
-    ty_i32,
-    ty_i64,
+pub enum IntTy {
+    TyI,
+    TyI8,
+    TyI16,
+    TyI32,
+    TyI64,
 }
 
-impl ToStr for int_ty {
+impl ToStr for IntTy {
     fn to_str(&self) -> ~str {
         ::ast_util::int_ty_to_str(*self)
     }
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub enum uint_ty {
-    ty_u,
-    ty_u8,
-    ty_u16,
-    ty_u32,
-    ty_u64,
+pub enum UintTy {
+    TyU,
+    TyU8,
+    TyU16,
+    TyU32,
+    TyU64,
 }
 
-impl ToStr for uint_ty {
+impl ToStr for UintTy {
     fn to_str(&self) -> ~str {
         ::ast_util::uint_ty_to_str(*self)
     }
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub enum float_ty {
-    ty_f32,
-    ty_f64,
+pub enum FloatTy {
+    TyF32,
+    TyF64,
 }
 
-impl ToStr for float_ty {
+impl ToStr for FloatTy {
     fn to_str(&self) -> ~str {
         ::ast_util::float_ty_to_str(*self)
     }
@@ -817,19 +824,19 @@ impl ToStr for float_ty {
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct Ty {
     id: NodeId,
-    node: ty_,
+    node: Ty_,
     span: Span,
 }
 
 // Not represented directly in the AST, referred to by name through a ty_path.
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub enum prim_ty {
-    ty_int(int_ty),
-    ty_uint(uint_ty),
-    ty_float(float_ty),
-    ty_str,
-    ty_bool,
-    ty_char
+pub enum PrimTy {
+    TyInt(IntTy),
+    TyUint(UintTy),
+    TyFloat(FloatTy),
+    TyStr,
+    TyBool,
+    TyChar
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
@@ -848,13 +855,13 @@ impl ToStr for Onceness {
 }
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
-pub struct TyClosure {
+pub struct ClosureTy {
     sigil: Sigil,
     region: Option<Lifetime>,
     lifetimes: OptVec<Lifetime>,
-    purity: purity,
+    purity: Purity,
     onceness: Onceness,
-    decl: P<fn_decl>,
+    decl: P<FnDecl>,
     // Optional optvec distinguishes between "fn()" and "fn:()" so we can
     // implement issue #7264. None means "fn()", which means infer a default
     // bound based on pointer sigil during typeck. Some(Empty) means "fn:()",
@@ -863,42 +870,42 @@ pub struct TyClosure {
 }
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
-pub struct TyBareFn {
-    purity: purity,
+pub struct BareFnTy {
+    purity: Purity,
     abis: AbiSet,
     lifetimes: OptVec<Lifetime>,
-    decl: P<fn_decl>
+    decl: P<FnDecl>
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub enum ty_ {
-    ty_nil,
-    ty_bot, /* bottom type */
-    ty_box(P<Ty>),
-    ty_uniq(P<Ty>),
-    ty_vec(P<Ty>),
-    ty_fixed_length_vec(P<Ty>, @Expr),
-    ty_ptr(mt),
-    ty_rptr(Option<Lifetime>, mt),
-    ty_closure(@TyClosure),
-    ty_bare_fn(@TyBareFn),
-    ty_tup(~[P<Ty>]),
-    ty_path(Path, Option<OptVec<TyParamBound>>, NodeId), // for #7264; see above
-    ty_typeof(@Expr),
+pub enum Ty_ {
+    TyNil,
+    TyBot, /* bottom type */
+    TyBox(P<Ty>),
+    TyUniq(P<Ty>),
+    TyVec(P<Ty>),
+    TyFixedLengthVec(P<Ty>, @Expr),
+    TyPtr(MutTy),
+    TyRptr(Option<Lifetime>, MutTy),
+    TyClosure(@ClosureTy),
+    TyBareFn(@BareFnTy),
+    TyTup(~[P<Ty>]),
+    TyPath(Path, Option<OptVec<TyParamBound>>, NodeId), // for #7264; see above
+    TyTypeof(@Expr),
     // ty_infer means the type should be inferred instead of it having been
     // specified. This should only appear at the "top level" of a type and not
     // nested in one.
-    ty_infer,
+    TyInfer,
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub enum asm_dialect {
-    asm_att,
-    asm_intel
+pub enum AsmDialect {
+    AsmAtt,
+    AsmIntel
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub struct inline_asm {
+pub struct InlineAsm {
     asm: @str,
     asm_str_style: StrStyle,
     clobbers: @str,
@@ -906,159 +913,159 @@ pub struct inline_asm {
     outputs: ~[(@str, @Expr)],
     volatile: bool,
     alignstack: bool,
-    dialect: asm_dialect
+    dialect: AsmDialect
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub struct arg {
+pub struct Arg {
     ty: P<Ty>,
     pat: @Pat,
     id: NodeId,
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub struct fn_decl {
-    inputs: ~[arg],
+pub struct FnDecl {
+    inputs: ~[Arg],
     output: P<Ty>,
-    cf: ret_style,
+    cf: RetStyle,
     variadic: bool
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub enum purity {
-    unsafe_fn, // declared with "unsafe fn"
-    impure_fn, // declared with "fn"
-    extern_fn, // declared with "extern fn"
+pub enum Purity {
+    UnsafeFn, // declared with "unsafe fn"
+    ImpureFn, // declared with "fn"
+    ExternFn, // declared with "extern fn"
 }
 
-impl ToStr for purity {
+impl ToStr for Purity {
     fn to_str(&self) -> ~str {
         match *self {
-            impure_fn => ~"impure",
-            unsafe_fn => ~"unsafe",
-            extern_fn => ~"extern"
+            ImpureFn => ~"impure",
+            UnsafeFn => ~"unsafe",
+            ExternFn => ~"extern"
         }
     }
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub enum ret_style {
-    noreturn, // functions with return type _|_ that always
+pub enum RetStyle {
+    NoReturn, // functions with return type _|_ that always
               // raise an error or exit (i.e. never return to the caller)
-    return_val, // everything else
+    Return, // everything else
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub enum explicit_self_ {
-    sty_static,                                // no self
-    sty_value(Mutability),                     // `self`
-    sty_region(Option<Lifetime>, Mutability),  // `&'lt self`
-    sty_box(Mutability),                       // `@self`
-    sty_uniq(Mutability)                       // `~self`
+pub enum ExplicitSelf_ {
+    SelfStatic,                                // no self
+    SelfValue(Mutability),                     // `self`
+    SelfRegion(Option<Lifetime>, Mutability),  // `&'lt self`
+    SelfBox(Mutability),                       // `@self`
+    SelfUniq(Mutability)                       // `~self`
 }
 
-pub type explicit_self = Spanned<explicit_self_>;
+pub type ExplicitSelf = Spanned<ExplicitSelf_>;
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
-pub struct method {
+pub struct Method {
     ident: Ident,
     attrs: ~[Attribute],
     generics: Generics,
-    explicit_self: explicit_self,
-    purity: purity,
-    decl: P<fn_decl>,
+    explicit_self: ExplicitSelf,
+    purity: Purity,
+    decl: P<FnDecl>,
     body: P<Block>,
     id: NodeId,
     span: Span,
     self_id: NodeId,
-    vis: visibility,
+    vis: Visibility,
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub struct _mod {
-    view_items: ~[view_item],
-    items: ~[@item],
+pub struct Mod {
+    view_items: ~[ViewItem],
+    items: ~[@Item],
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable,IterBytes)]
-pub struct foreign_mod {
+pub struct ForeignMod {
     abis: AbiSet,
-    view_items: ~[view_item],
-    items: ~[@foreign_item],
+    view_items: ~[ViewItem],
+    items: ~[@ForeignItem],
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub struct variant_arg {
+pub struct VariantArg {
     ty: P<Ty>,
     id: NodeId,
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub enum variant_kind {
-    tuple_variant_kind(~[variant_arg]),
-    struct_variant_kind(@struct_def),
+pub enum VariantKind {
+    TupleVariantKind(~[VariantArg]),
+    StructVariantKind(@StructDef),
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub struct enum_def {
-    variants: ~[P<variant>],
+pub struct EnumDef {
+    variants: ~[P<Variant>],
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub struct variant_ {
+pub struct Variant_ {
     name: Ident,
     attrs: ~[Attribute],
-    kind: variant_kind,
+    kind: VariantKind,
     id: NodeId,
     disr_expr: Option<@Expr>,
-    vis: visibility,
+    vis: Visibility,
 }
 
-pub type variant = Spanned<variant_>;
+pub type Variant = Spanned<Variant_>;
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub struct path_list_ident_ {
+pub struct PathListIdent_ {
     name: Ident,
     id: NodeId,
 }
 
-pub type path_list_ident = Spanned<path_list_ident_>;
+pub type PathListIdent = Spanned<PathListIdent_>;
 
-pub type view_path = Spanned<view_path_>;
+pub type ViewPath = Spanned<ViewPath_>;
 
 #[deriving(Eq, Encodable, Decodable, IterBytes)]
-pub enum view_path_ {
+pub enum ViewPath_ {
 
     // quux = foo::bar::baz
     //
     // or just
     //
     // foo::bar::baz  (with 'baz =' implicitly on the left)
-    view_path_simple(Ident, Path, NodeId),
+    ViewPathSimple(Ident, Path, NodeId),
 
     // foo::bar::*
-    view_path_glob(Path, NodeId),
+    ViewPathGlob(Path, NodeId),
 
     // foo::bar::{a,b,c}
-    view_path_list(Path, ~[path_list_ident], NodeId)
+    ViewPathList(Path, ~[PathListIdent], NodeId)
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub struct view_item {
-    node: view_item_,
+pub struct ViewItem {
+    node: ViewItem_,
     attrs: ~[Attribute],
-    vis: visibility,
+    vis: Visibility,
     span: Span,
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub enum view_item_ {
+pub enum ViewItem_ {
     // ident: name used to refer to this crate in the code
     // optional @str: if present, this is a location (containing
     // arbitrary characters) from which to fetch the crate sources
     // For example, extern mod whatever = "github.com/mozilla/rust"
-    view_item_extern_mod(Ident, Option<(@str, StrStyle)>, NodeId),
-    view_item_use(~[@view_path]),
+    ViewItemExternMod(Ident, Option<(@str, StrStyle)>, NodeId),
+    ViewItemUse(~[@ViewPath]),
 }
 
 // Meta-data associated with an item
@@ -1082,53 +1089,53 @@ pub struct Attribute_ {
 }
 
 /*
-  trait_refs appear in impls.
-  resolve maps each trait_ref's ref_id to its defining trait; that's all
+  TraitRef's appear in impls.
+  resolve maps each TraitRef's ref_id to its defining trait; that's all
   that the ref_id is for. The impl_id maps to the "self type" of this impl.
-  If this impl is an item_impl, the impl_id is redundant (it could be the
+  If this impl is an ItemImpl, the impl_id is redundant (it could be the
   same as the impl's node id).
  */
 #[deriving(Clone, Eq, Encodable, Decodable,IterBytes)]
-pub struct trait_ref {
+pub struct TraitRef {
     path: Path,
     ref_id: NodeId,
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable,IterBytes)]
-pub enum visibility {
-    public,
-    private,
-    inherited,
+pub enum Visibility {
+    Public,
+    Private,
+    Inherited,
 }
 
-impl visibility {
-    pub fn inherit_from(&self, parent_visibility: visibility) -> visibility {
+impl Visibility {
+    pub fn inherit_from(&self, parent_visibility: Visibility) -> Visibility {
         match self {
-            &inherited => parent_visibility,
-            &public | &private => *self
+            &Inherited => parent_visibility,
+            &Public | &Private => *self
         }
     }
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable,IterBytes)]
-pub struct struct_field_ {
-    kind: struct_field_kind,
+pub struct StructField_ {
+    kind: StructFieldKind,
     id: NodeId,
     ty: P<Ty>,
     attrs: ~[Attribute],
 }
 
-pub type struct_field = Spanned<struct_field_>;
+pub type StructField = Spanned<StructField_>;
 
 #[deriving(Clone, Eq, Encodable, Decodable,IterBytes)]
-pub enum struct_field_kind {
-    named_field(Ident, visibility),
-    unnamed_field   // element of a tuple-like struct
+pub enum StructFieldKind {
+    NamedField(Ident, Visibility),
+    UnnamedField // element of a tuple-like struct
 }
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
-pub struct struct_def {
-    fields: ~[struct_field], /* fields, not including ctor */
+pub struct StructDef {
+    fields: ~[StructField], /* fields, not including ctor */
     /* ID of the constructor. This is only used for tuple- or enum-like
      * structs. */
     ctor_id: Option<NodeId>
@@ -1139,57 +1146,57 @@ pub struct struct_def {
   we just use dummy names for anon items.
  */
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub struct item {
+pub struct Item {
     ident: Ident,
     attrs: ~[Attribute],
     id: NodeId,
-    node: item_,
-    vis: visibility,
+    node: Item_,
+    vis: Visibility,
     span: Span,
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
-pub enum item_ {
-    item_static(P<Ty>, Mutability, @Expr),
-    item_fn(P<fn_decl>, purity, AbiSet, Generics, P<Block>),
-    item_mod(_mod),
-    item_foreign_mod(foreign_mod),
-    item_ty(P<Ty>, Generics),
-    item_enum(enum_def, Generics),
-    item_struct(@struct_def, Generics),
-    item_trait(Generics, ~[trait_ref], ~[trait_method]),
-    item_impl(Generics,
-              Option<trait_ref>, // (optional) trait this impl implements
-              P<Ty>, // self
-              ~[@method]),
+pub enum Item_ {
+    ItemStatic(P<Ty>, Mutability, @Expr),
+    ItemFn(P<FnDecl>, Purity, AbiSet, Generics, P<Block>),
+    ItemMod(Mod),
+    ItemForeignMod(ForeignMod),
+    ItemTy(P<Ty>, Generics),
+    ItemEnum(EnumDef, Generics),
+    ItemStruct(@StructDef, Generics),
+    ItemTrait(Generics, ~[TraitRef], ~[TraitMethod]),
+    ItemImpl(Generics,
+             Option<TraitRef>, // (optional) trait this impl implements
+             P<Ty>, // self
+             ~[@Method]),
     // a macro invocation (which includes macro definition)
-    item_mac(mac),
+    ItemMac(Mac),
 }
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
-pub struct foreign_item {
+pub struct ForeignItem {
     ident: Ident,
     attrs: ~[Attribute],
-    node: foreign_item_,
+    node: ForeignItem_,
     id: NodeId,
     span: Span,
-    vis: visibility,
+    vis: Visibility,
 }
 
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
-pub enum foreign_item_ {
-    foreign_item_fn(P<fn_decl>, Generics),
-    foreign_item_static(P<Ty>, /* is_mutbl */ bool),
+pub enum ForeignItem_ {
+    ForeignItemFn(P<FnDecl>, Generics),
+    ForeignItemStatic(P<Ty>, /* is_mutbl */ bool),
 }
 
 // The data we save and restore about an inlined item or method.  This is not
 // part of the AST that we parse from a file, but it becomes part of the tree
 // that we trans.
 #[deriving(Eq, Encodable, Decodable,IterBytes)]
-pub enum inlined_item {
-    ii_item(@item),
-    ii_method(DefId /* impl id */, bool /* is provided */, @method),
-    ii_foreign(@foreign_item),
+pub enum InlinedItem {
+    IIItem(@Item),
+    IIMethod(DefId /* impl id */, bool /* is provided */, @Method),
+    IIForeign(@ForeignItem),
 }
 
 #[cfg(test)]
@@ -1200,7 +1207,7 @@ mod test {
 
     // Assert that the AST remains Freeze (#10693).
     #[test] fn ast_is_freeze() {
-        is_freeze::<item>();
+        is_freeze::<Item>();
     }
 }
 
@@ -1292,7 +1299,7 @@ mod test {
         let e : crate =
             spanned{
             node: crate_{
-                module: _mod {view_items: ~[], items: ~[]},
+                module: Mod {view_items: ~[], items: ~[]},
                 attrs: ~[],
                 config: ~[]
             },

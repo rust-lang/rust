@@ -74,13 +74,13 @@ pub fn explain_region_and_span(cx: ctxt, region: ty::Region)
       ReScope(node_id) => {
         let items = cx.items.borrow();
         match items.get().find(&node_id) {
-          Some(&ast_map::node_block(ref blk)) => {
+          Some(&ast_map::NodeBlock(ref blk)) => {
             explain_span(cx, "block", blk.span)
           }
-          Some(&ast_map::node_callee_scope(expr)) => {
+          Some(&ast_map::NodeCalleeScope(expr)) => {
               explain_span(cx, "callee", expr.span)
           }
-          Some(&ast_map::node_expr(expr)) => {
+          Some(&ast_map::NodeExpr(expr)) => {
             match expr.node {
               ast::ExprCall(..) => explain_span(cx, "call", expr.span),
               ast::ExprMethodCall(..) => {
@@ -90,11 +90,11 @@ pub fn explain_region_and_span(cx: ctxt, region: ty::Region)
               _ => explain_span(cx, "expression", expr.span)
             }
           }
-          Some(&ast_map::node_stmt(stmt)) => {
+          Some(&ast_map::NodeStmt(stmt)) => {
               explain_span(cx, "statement", stmt.span)
           }
-          Some(&ast_map::node_item(it, _)) if (match it.node {
-                ast::item_fn(..) => true, _ => false}) => {
+          Some(&ast_map::NodeItem(it, _)) if (match it.node {
+                ast::ItemFn(..) => true, _ => false}) => {
               explain_span(cx, "function body", it.span)
           }
           Some(_) | None => {
@@ -116,12 +116,12 @@ pub fn explain_region_and_span(cx: ctxt, region: ty::Region)
 
         let items = cx.items.borrow();
         match items.get().find(&fr.scope_id) {
-          Some(&ast_map::node_block(ref blk)) => {
+          Some(&ast_map::NodeBlock(ref blk)) => {
             let (msg, opt_span) = explain_span(cx, "block", blk.span);
             (format!("{} {}", prefix, msg), opt_span)
           }
-          Some(&ast_map::node_item(it, _)) if match it.node {
-                ast::item_impl(..) => true, _ => false} => {
+          Some(&ast_map::NodeItem(it, _)) if match it.node {
+                ast::ItemImpl(..) => true, _ => false} => {
             let (msg, opt_span) = explain_span(cx, "impl", it.span);
             (format!("{} {}", prefix, msg), opt_span)
           }
@@ -176,11 +176,11 @@ pub fn bound_region_to_str(cx: ctxt,
 pub fn ReScope_id_to_str(cx: ctxt, node_id: ast::NodeId) -> ~str {
     let items = cx.items.borrow();
     match items.get().find(&node_id) {
-      Some(&ast_map::node_block(ref blk)) => {
+      Some(&ast_map::NodeBlock(ref blk)) => {
         format!("<block at {}>",
              cx.sess.codemap.span_to_str(blk.span))
       }
-      Some(&ast_map::node_expr(expr)) => {
+      Some(&ast_map::NodeExpr(expr)) => {
         match expr.node {
           ast::ExprCall(..) => {
             format!("<call at {}>",
@@ -314,7 +314,7 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
         ty_to_str(cx, input)
     }
     fn bare_fn_to_str(cx: ctxt,
-                      purity: ast::purity,
+                      purity: ast::Purity,
                       abis: AbiSet,
                       ident: Option<ast::Ident>,
                       sig: &ty::FnSig)
@@ -326,7 +326,7 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
         };
 
         match purity {
-            ast::impure_fn => {}
+            ast::ImpureFn => {}
             _ => {
                 s.push_str(purity.to_str());
                 s.push_char(' ');
@@ -368,7 +368,7 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
         }
 
         match cty.purity {
-            ast::impure_fn => {}
+            ast::ImpureFn => {}
             _ => {
                 s.push_str(cty.purity.to_str());
                 s.push_char(' ');
@@ -449,9 +449,9 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       ty_bot => ~"!",
       ty_bool => ~"bool",
       ty_char => ~"char",
-      ty_int(ast::ty_i) => ~"int",
+      ty_int(ast::TyI) => ~"int",
       ty_int(t) => ast_util::int_ty_to_str(t),
-      ty_uint(ast::ty_u) => ~"uint",
+      ty_uint(ast::TyU) => ~"uint",
       ty_uint(t) => ast_util::uint_ty_to_str(t),
       ty_float(t) => ast_util::float_ty_to_str(t),
       ty_box(typ) => ~"@" + ty_to_str(cx, typ),
@@ -665,7 +665,7 @@ impl Repr for ast::Expr {
     }
 }
 
-impl Repr for ast::item {
+impl Repr for ast::Item {
     fn repr(&self, tcx: ctxt) -> ~str {
         format!("item({})",
                 ast_map::node_id_to_str(tcx.items,
@@ -746,12 +746,12 @@ impl Repr for ast::DefId {
             {
                 let items = tcx.items.borrow();
                 match items.get().find(&self.node) {
-                    Some(&ast_map::node_item(..)) |
-                    Some(&ast_map::node_foreign_item(..)) |
-                    Some(&ast_map::node_method(..)) |
-                    Some(&ast_map::node_trait_method(..)) |
-                    Some(&ast_map::node_variant(..)) |
-                    Some(&ast_map::node_struct_ctor(..)) => {
+                    Some(&ast_map::NodeItem(..)) |
+                    Some(&ast_map::NodeForeignItem(..)) |
+                    Some(&ast_map::NodeMethod(..)) |
+                    Some(&ast_map::NodeTraitMethod(..)) |
+                    Some(&ast_map::NodeVariant(..)) |
+                    Some(&ast_map::NodeStructCtor(..)) => {
                         return format!("{:?}:{}",
                                        *self,
                                        ty::item_path_str(tcx, *self));
@@ -815,13 +815,13 @@ impl Repr for ast::Ident {
     }
 }
 
-impl Repr for ast::explicit_self_ {
+impl Repr for ast::ExplicitSelf_ {
     fn repr(&self, _tcx: ctxt) -> ~str {
         format!("{:?}", *self)
     }
 }
 
-impl Repr for ast::visibility {
+impl Repr for ast::Visibility {
     fn repr(&self, _tcx: ctxt) -> ~str {
         format!("{:?}", *self)
     }
@@ -911,12 +911,12 @@ impl Repr for ty::vstore {
     }
 }
 
-impl Repr for ast_map::path_elt {
+impl Repr for ast_map::PathElem {
     fn repr(&self, tcx: ctxt) -> ~str {
         match *self {
-            ast_map::path_mod(id) => id.repr(tcx),
-            ast_map::path_name(id) => id.repr(tcx),
-            ast_map::path_pretty_name(id, _) => id.repr(tcx),
+            ast_map::PathMod(id) => id.repr(tcx),
+            ast_map::PathName(id) => id.repr(tcx),
+            ast_map::PathPrettyName(id, _) => id.repr(tcx),
         }
     }
 }

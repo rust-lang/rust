@@ -28,21 +28,21 @@ use html::render::{cache_key, current_location_key};
 
 /// Helper to render an optional visibility with a space after it (if the
 /// visibility is preset)
-pub struct VisSpace(Option<ast::visibility>);
+pub struct VisSpace(Option<ast::Visibility>);
 /// Similarly to VisSpace, this structure is used to render a purity with a
 /// space after it.
-pub struct PuritySpace(ast::purity);
+pub struct PuritySpace(ast::Purity);
 /// Wrapper struct for properly emitting a method declaration.
 pub struct Method<'a>(&'a clean::SelfTy, &'a clean::FnDecl);
 
 impl VisSpace {
-    pub fn get(&self) -> Option<ast::visibility> {
+    pub fn get(&self) -> Option<ast::Visibility> {
         let VisSpace(v) = *self; v
     }
 }
 
 impl PuritySpace {
-    pub fn get(&self) -> ast::purity {
+    pub fn get(&self) -> ast::Purity {
         let PuritySpace(v) = *self; v
     }
 }
@@ -290,21 +290,21 @@ impl fmt::Default for clean::Type {
             clean::Self(..) => f.buf.write("Self".as_bytes()),
             clean::Primitive(prim) => {
                 let s = match prim {
-                    ast::ty_int(ast::ty_i) => "int",
-                    ast::ty_int(ast::ty_i8) => "i8",
-                    ast::ty_int(ast::ty_i16) => "i16",
-                    ast::ty_int(ast::ty_i32) => "i32",
-                    ast::ty_int(ast::ty_i64) => "i64",
-                    ast::ty_uint(ast::ty_u) => "uint",
-                    ast::ty_uint(ast::ty_u8) => "u8",
-                    ast::ty_uint(ast::ty_u16) => "u16",
-                    ast::ty_uint(ast::ty_u32) => "u32",
-                    ast::ty_uint(ast::ty_u64) => "u64",
-                    ast::ty_float(ast::ty_f32) => "f32",
-                    ast::ty_float(ast::ty_f64) => "f64",
-                    ast::ty_str => "str",
-                    ast::ty_bool => "bool",
-                    ast::ty_char => "char",
+                    ast::TyInt(ast::TyI) => "int",
+                    ast::TyInt(ast::TyI8) => "i8",
+                    ast::TyInt(ast::TyI16) => "i16",
+                    ast::TyInt(ast::TyI32) => "i32",
+                    ast::TyInt(ast::TyI64) => "i64",
+                    ast::TyUint(ast::TyU) => "uint",
+                    ast::TyUint(ast::TyU8) => "u8",
+                    ast::TyUint(ast::TyU16) => "u16",
+                    ast::TyUint(ast::TyU32) => "u32",
+                    ast::TyUint(ast::TyU64) => "u64",
+                    ast::TyFloat(ast::TyF32) => "f32",
+                    ast::TyFloat(ast::TyF64) => "f64",
+                    ast::TyStr => "str",
+                    ast::TyBool => "bool",
+                    ast::TyChar => "char",
                 };
                 f.buf.write(s.as_bytes());
             }
@@ -437,9 +437,9 @@ impl<'a> fmt::Default for Method<'a> {
 impl fmt::Default for VisSpace {
     fn fmt(v: &VisSpace, f: &mut fmt::Formatter) {
         match v.get() {
-            Some(ast::public) => { write!(f.buf, "pub "); }
-            Some(ast::private) => { write!(f.buf, "priv "); }
-            Some(ast::inherited) | None => {}
+            Some(ast::Public) => { write!(f.buf, "pub "); }
+            Some(ast::Private) => { write!(f.buf, "priv "); }
+            Some(ast::Inherited) | None => {}
         }
     }
 }
@@ -447,9 +447,9 @@ impl fmt::Default for VisSpace {
 impl fmt::Default for PuritySpace {
     fn fmt(p: &PuritySpace, f: &mut fmt::Formatter) {
         match p.get() {
-            ast::unsafe_fn => write!(f.buf, "unsafe "),
-            ast::extern_fn => write!(f.buf, "extern "),
-            ast::impure_fn => {}
+            ast::UnsafeFn => write!(f.buf, "unsafe "),
+            ast::ExternFn => write!(f.buf, "extern "),
+            ast::ImpureFn => {}
         }
     }
 }

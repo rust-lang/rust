@@ -16,7 +16,7 @@ use parse::parser::Parser;
 use parse::token::INTERPOLATED;
 
 // a parser that can parse attributes.
-pub trait parser_attr {
+pub trait ParserAttr {
     fn parse_outer_attributes(&mut self) -> ~[ast::Attribute];
     fn parse_attribute(&mut self, permit_inner: bool) -> ast::Attribute;
     fn parse_inner_attrs_and_next(&mut self)
@@ -26,7 +26,7 @@ pub trait parser_attr {
     fn parse_optional_meta(&mut self) -> ~[@ast::MetaItem];
 }
 
-impl parser_attr for Parser {
+impl ParserAttr for Parser {
     // Parse attributes that appear before an item
     fn parse_outer_attributes(&mut self) -> ~[ast::Attribute] {
         let mut attrs: ~[ast::Attribute] = ~[];
@@ -34,7 +34,7 @@ impl parser_attr for Parser {
             debug!("parse_outer_attributes: self.token={:?}",
                    self.token);
             match self.token {
-              token::INTERPOLATED(token::nt_attr(..)) => {
+              token::INTERPOLATED(token::NtAttr(..)) => {
                 attrs.push(self.parse_attribute(false));
               }
               token::POUND => {
@@ -69,7 +69,7 @@ impl parser_attr for Parser {
         debug!("parse_attributes: permit_inner={:?} self.token={:?}",
                permit_inner, self.token);
         let (span, value) = match self.token {
-            INTERPOLATED(token::nt_attr(attr)) => {
+            INTERPOLATED(token::NtAttr(attr)) => {
                 assert!(attr.node.style == ast::AttrOuter);
                 self.bump();
                 (attr.span, attr.node.value)
@@ -121,7 +121,7 @@ impl parser_attr for Parser {
         let mut next_outer_attrs: ~[ast::Attribute] = ~[];
         loop {
             let attr = match self.token {
-                token::INTERPOLATED(token::nt_attr(..)) => {
+                token::INTERPOLATED(token::NtAttr(..)) => {
                     self.parse_attribute(true)
                 }
                 token::POUND => {
@@ -165,7 +165,7 @@ impl parser_attr for Parser {
                 // FIXME #623 Non-string meta items are not serialized correctly;
                 // just forbid them for now
                 match lit.node {
-                    ast::lit_str(..) => (),
+                    ast::LitStr(..) => {}
                     _ => {
                         self.span_err(
                             lit.span,

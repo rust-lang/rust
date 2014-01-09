@@ -24,7 +24,7 @@ use syntax::attr::AttrMetaMethods;
 use syntax::codemap::{Span, DUMMY_SP};
 use syntax::diagnostic::SpanHandler;
 use syntax::parse::token;
-use syntax::parse::token::ident_interner;
+use syntax::parse::token::IdentInterner;
 use syntax::crateid::CrateId;
 use syntax::visit;
 
@@ -33,7 +33,7 @@ use syntax::visit;
 pub fn read_crates(sess: Session,
                    crate: &ast::Crate,
                    os: loader::Os,
-                   intr: @ident_interner) {
+                   intr: @IdentInterner) {
     let mut e = Env {
         sess: sess,
         os: os,
@@ -58,11 +58,11 @@ struct ReadCrateVisitor<'a> {
 }
 
 impl<'a> visit::Visitor<()> for ReadCrateVisitor<'a> {
-    fn visit_view_item(&mut self, a: &ast::view_item, _: ()) {
+    fn visit_view_item(&mut self, a: &ast::ViewItem, _: ()) {
         visit_view_item(self.e, a);
         visit::walk_view_item(self, a, ());
     }
-    fn visit_item(&mut self, a: &ast::item, _: ()) {
+    fn visit_item(&mut self, a: &ast::Item, _: ()) {
         visit_item(self.e, a);
         visit::walk_item(self, a, ());
     }
@@ -114,7 +114,7 @@ struct Env {
     os: loader::Os,
     crate_cache: @RefCell<~[cache_entry]>,
     next_crate_num: ast::CrateNum,
-    intr: @ident_interner
+    intr: @IdentInterner
 }
 
 fn visit_crate(e: &Env, c: &ast::Crate) {
@@ -130,9 +130,9 @@ fn visit_crate(e: &Env, c: &ast::Crate) {
     }
 }
 
-fn visit_view_item(e: &mut Env, i: &ast::view_item) {
+fn visit_view_item(e: &mut Env, i: &ast::ViewItem) {
     match i.node {
-      ast::view_item_extern_mod(ident, path_opt, id) => {
+      ast::ViewItemExternMod(ident, path_opt, id) => {
           let ident = token::ident_to_str(&ident);
           debug!("resolving extern mod stmt. ident: {:?} path_opt: {:?}",
                  ident, path_opt);
@@ -164,9 +164,9 @@ fn visit_view_item(e: &mut Env, i: &ast::view_item) {
   }
 }
 
-fn visit_item(e: &Env, i: &ast::item) {
+fn visit_item(e: &Env, i: &ast::Item) {
     match i.node {
-        ast::item_foreign_mod(ref fm) => {
+        ast::ItemForeignMod(ref fm) => {
             if fm.abis.is_rust() || fm.abis.is_intrinsic() {
                 return;
             }

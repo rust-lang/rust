@@ -28,8 +28,8 @@ use syntax::ast_map;
 use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::visit;
-use syntax::visit::{Visitor,fn_kind};
-use syntax::ast::{fn_decl,Block,NodeId};
+use syntax::visit::{Visitor, FnKind};
+use syntax::ast::{FnDecl, Block, NodeId};
 
 macro_rules! if_ok(
     ($inp: expr) => (
@@ -61,7 +61,7 @@ impl Clone for LoanDataFlowOperator {
 pub type LoanDataFlow = DataFlowContext<LoanDataFlowOperator>;
 
 impl Visitor<()> for BorrowckCtxt {
-    fn visit_fn(&mut self, fk: &fn_kind, fd: &fn_decl,
+    fn visit_fn(&mut self, fk: &FnKind, fd: &FnDecl,
                 b: &Block, s: Span, n: NodeId, _: ()) {
         borrowck_fn(self, fk, fd, b, s, n);
     }
@@ -114,18 +114,17 @@ pub fn check_crate(tcx: ty::ctxt,
 }
 
 fn borrowck_fn(this: &mut BorrowckCtxt,
-               fk: &visit::fn_kind,
-               decl: &ast::fn_decl,
+               fk: &FnKind,
+               decl: &ast::FnDecl,
                body: &ast::Block,
                sp: Span,
                id: ast::NodeId) {
     match fk {
-        &visit::fk_fn_block(..) => {
+        &visit::FkFnBlock(..) => {
             // Closures are checked as part of their containing fn item.
         }
 
-        &visit::fk_item_fn(..) |
-        &visit::fk_method(..) => {
+        &visit::FkItemFn(..) | &visit::FkMethod(..) => {
             debug!("borrowck_fn(id={:?})", id);
 
             // Check the body of fn items.
@@ -553,7 +552,7 @@ impl BorrowckCtxt {
             move_data::MoveExpr => {
                 let items = self.tcx.items.borrow();
                 let (expr_ty, expr_span) = match items.get().find(&move.id) {
-                    Some(&ast_map::node_expr(expr)) => {
+                    Some(&ast_map::NodeExpr(expr)) => {
                         (ty::expr_ty_adjusted(self.tcx, expr), expr.span)
                     }
                     r => self.tcx.sess.bug(format!("MoveExpr({:?}) maps to {:?}, not Expr",
@@ -581,7 +580,7 @@ impl BorrowckCtxt {
             move_data::Captured => {
                 let items = self.tcx.items.borrow();
                 let (expr_ty, expr_span) = match items.get().find(&move.id) {
-                    Some(&ast_map::node_expr(expr)) => {
+                    Some(&ast_map::NodeExpr(expr)) => {
                         (ty::expr_ty_adjusted(self.tcx, expr), expr.span)
                     }
                     r => self.tcx.sess.bug(format!("Captured({:?}) maps to {:?}, not Expr",
@@ -771,7 +770,7 @@ impl BorrowckCtxt {
             LpVar(id) => {
                 let items = self.tcx.items.borrow();
                 match items.get().find(&id) {
-                    Some(&ast_map::node_local(ref ident, _)) => {
+                    Some(&ast_map::NodeLocal(ref ident, _)) => {
                         out.push_str(token::ident_to_str(ident));
                     }
                     r => {

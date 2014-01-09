@@ -23,9 +23,9 @@ use attr;
 use attr::*;
 use parse;
 use parse::token;
-use parse::attr::parser_attr;
+use parse::attr::ParserAttr;
 
-pub fn expand_cfg(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree]) -> base::MacResult {
+pub fn expand_cfg(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree]) -> base::MacResult {
     let mut p = parse::new_parser_from_tts(cx.parse_sess(),
                                            cx.cfg(),
                                            tts.to_owned());

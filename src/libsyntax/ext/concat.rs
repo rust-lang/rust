@@ -17,7 +17,7 @@ use ext::build::AstBuilder;
 
 pub fn expand_syntax_ext(cx: &mut base::ExtCtxt,
                          sp: codemap::Span,
-                         tts: &[ast::token_tree]) -> base::MacResult {
+                         tts: &[ast::TokenTree]) -> base::MacResult {
     let es = base::get_exprs_from_tts(cx, sp, tts);
     let mut accumulator = ~"";
     for e in es.move_iter() {
@@ -25,26 +25,24 @@ pub fn expand_syntax_ext(cx: &mut base::ExtCtxt,
         match e.node {
             ast::ExprLit(lit) => {
                 match lit.node {
-                    ast::lit_str(s, _) |
-                    ast::lit_float(s, _) |
-                    ast::lit_float_unsuffixed(s) => {
+                    ast::LitStr(s, _) | ast::LitFloat(s, _)
+                    | ast::LitFloatUnsuffixed(s) => {
                         accumulator.push_str(s);
                     }
-                    ast::lit_char(c) => {
+                    ast::LitChar(c) => {
                         accumulator.push_char(char::from_u32(c).unwrap());
                     }
-                    ast::lit_int(i, _) |
-                    ast::lit_int_unsuffixed(i) => {
+                    ast::LitInt(i, _) | ast::LitIntUnsuffixed(i) => {
                         accumulator.push_str(format!("{}", i));
                     }
-                    ast::lit_uint(u, _) => {
+                    ast::LitUint(u, _) => {
                         accumulator.push_str(format!("{}", u));
                     }
-                    ast::lit_nil => {}
-                    ast::lit_bool(b) => {
+                    ast::LitNil => {}
+                    ast::LitBool(b) => {
                         accumulator.push_str(format!("{}", b));
                     }
-                    ast::lit_binary(..) => {
+                    ast::LitBinary(..) => {
                         cx.span_err(e.span, "cannot concatenate a binary literal");
                     }
                 }

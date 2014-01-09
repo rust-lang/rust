@@ -23,7 +23,7 @@ use syntax::attr;
 use syntax::codemap::{DUMMY_SP, Span, ExpnInfo, NameAndSpan, MacroAttribute};
 use syntax::codemap;
 use syntax::ext::base::ExtCtxt;
-use syntax::fold::ast_fold;
+use syntax::fold::Folder;
 use syntax::fold;
 use syntax::opt_vec;
 use syntax::print::pprust;
@@ -67,7 +67,7 @@ struct TestHarnessGenerator {
     cx: TestCtxt,
 }
 
-impl fold::ast_fold for TestHarnessGenerator {
+impl fold::Folder for TestHarnessGenerator {
     fn fold_crate(&mut self, c: ast::Crate) -> ast::Crate {
         let folded = fold::noop_fold_crate(c, self);
 
@@ -79,7 +79,7 @@ impl fold::ast_fold for TestHarnessGenerator {
         }
     }
 
-    fn fold_item(&mut self, i: @ast::item) -> SmallVector<@ast::item> {
+    fn fold_item(&mut self, i: @ast::Item) -> SmallVector<@ast::Item> {
         {
             let mut path = self.cx.path.borrow_mut();
             path.get().push(i.ident);
@@ -89,8 +89,8 @@ impl fold::ast_fold for TestHarnessGenerator {
 
         if is_test_fn(&self.cx, i) || is_bench_fn(i) {
             match i.node {
-                ast::item_fn(_, purity, _, _, _)
-                    if purity == ast::unsafe_fn => {
+                ast::ItemFn(_, purity, _, _, _)
+                    if purity == ast::UnsafeFn => {
                     let sess = self.cx.sess;
                     sess.span_fatal(i.span,
                                     "unsafe functions cannot be used for \
@@ -123,13 +123,13 @@ impl fold::ast_fold for TestHarnessGenerator {
         res
     }
 
-    fn fold_mod(&mut self, m: &ast::_mod) -> ast::_mod {
+    fn fold_mod(&mut self, m: &ast::Mod) -> ast::Mod {
         // Remove any #[main] from the AST so it doesn't clash with
         // the one we're going to add. Only if compiling an executable.
 
-        fn nomain(cx: &TestCtxt, item: @ast::item) -> @ast::item {
+        fn nomain(cx: &TestCtxt, item: @ast::Item) -> @ast::Item {
             if !cx.sess.building_library.get() {
-                @ast::item {
+                @ast::Item {
                     attrs: item.attrs.iter().filter_map(|attr| {
                         if "main" != attr.name() {
                             Some(*attr)
@@ -144,7 +144,7 @@ impl fold::ast_fold for TestHarnessGenerator {
             }
         }
 
-        let mod_nomain = ast::_mod {
+        let mod_nomain = ast::Mod {
             view_items: m.view_items.clone(),
             items: m.items.iter().map(|i| nomain(&self.cx, *i)).collect(),
         };
@@ -190,14 +190,14 @@ fn strip_test_functions(crate: ast::Crate) -> ast::Crate {
     })
 }
 
-fn is_test_fn(cx: &TestCtxt, i: @ast::item) -> bool {
+fn is_test_fn(cx: &TestCtxt, i: @ast::Item) -> bool {
     let has_test_attr = attr::contains_name(i.attrs, "test");
 
-    fn has_test_signature(i: @ast::item) -> bool {
+    fn has_test_signature(i: @ast::Item) -> bool {
         match &i.node {
-          &ast::item_fn(ref decl, _, _, ref generics, _) => {
+          &ast::ItemFn(ref decl, _, _, ref generics, _) => {
             let no_output = match decl.output.node {
-                ast::ty_nil => true,
+                ast::TyNil => true,
                 _ => false
             };
             decl.inputs.is_empty()
@@ -219,15 +219,15 @@ fn is_test_fn(cx: &TestCtxt, i: @ast::item) -> bool {
     return has_test_attr && has_test_signature(i);
 }
 
-fn is_bench_fn(i: @ast::item) -> bool {
+fn is_bench_fn(i: @ast::Item) -> bool {
     let has_bench_attr = attr::contains_name(i.attrs, "bench");
 
-    fn has_test_signature(i: @ast::item) -> bool {
+    fn has_test_signature(i: @ast::Item) -> bool {
         match i.node {
-            ast::item_fn(ref decl, _, _, ref generics, _) => {
+            ast::ItemFn(ref decl, _, _, ref generics, _) => {
                 let input_cnt = decl.inputs.len();
                 let no_output = match decl.output.node {
-                    ast::ty_nil => true,
+                    ast::TyNil => true,
                     _ => false
                 };
                 let tparm_cnt = generics.ty_params.len();
@@ -243,7 +243,7 @@ fn is_bench_fn(i: @ast::item) -> bool {
     return has_bench_attr && has_test_signature(i);
 }
 
-fn is_ignored(cx: &TestCtxt, i: @ast::item) -> bool {
+fn is_ignored(cx: &TestCtxt, i: @ast::Item) -> bool {
     i.attrs.iter().any(|attr| {
         // check ignore(cfg(foo, bar))
         "ignore" == attr.name() && match attr.meta_item_list() {
@@ -253,13 +253,13 @@ fn is_ignored(cx: &TestCtxt, i: @ast::item) -> bool {
     })
 }
 
-fn should_fail(i: @ast::item) -> bool {
+fn should_fail(i: @ast::Item) -> bool {
     attr::contains_name(i.attrs, "should_fail")
 }
 
-fn add_test_module(cx: &TestCtxt, m: &ast::_mod) -> ast::_mod {
+fn add_test_module(cx: &TestCtxt, m: &ast::Mod) -> ast::Mod {
     let testmod = mk_test_module(cx);
-    ast::_mod {
+    ast::Mod {
         items: vec::append_one(m.items.clone(), testmod),
         ..(*m).clone()
     }
@@ -284,28 +284,28 @@ mod __test {
 
 */
 
-fn mk_std(cx: &TestCtxt) -> ast::view_item {
+fn mk_std(cx: &TestCtxt) -> ast::ViewItem {
     let id_extra = cx.sess.ident_of("extra");
     let vi = if cx.is_extra {
-        ast::view_item_use(
-            ~[@nospan(ast::view_path_simple(id_extra,
-                                            path_node(~[id_extra]),
-                                            ast::DUMMY_NODE_ID))])
+        ast::ViewItemUse(
+            ~[@nospan(ast::ViewPathSimple(id_extra,
+                                          path_node(~[id_extra]),
+                                          ast::DUMMY_NODE_ID))])
     } else {
-        ast::view_item_extern_mod(id_extra,
-                                  Some((format!("extra\\#{}", VERSION).to_managed(),
-                                        ast::CookedStr)),
-                                  ast::DUMMY_NODE_ID)
+        ast::ViewItemExternMod(id_extra,
+                               Some((format!("extra\\#{}", VERSION).to_managed(),
+                                    ast::CookedStr)),
+                               ast::DUMMY_NODE_ID)
     };
-    ast::view_item {
+    ast::ViewItem {
         node: vi,
         attrs: ~[],
-        vis: ast::public,
+        vis: ast::Public,
         span: DUMMY_SP
     }
 }
 
-fn mk_test_module(cx: &TestCtxt) -> @ast::item {
+fn mk_test_module(cx: &TestCtxt) -> @ast::Item {
 
     // Link to extra
     let view_items = ~[mk_std(cx)];
@@ -322,22 +322,22 @@ fn mk_test_module(cx: &TestCtxt) -> @ast::item {
         }
     )).unwrap();
 
-    let testmod = ast::_mod {
+    let testmod = ast::Mod {
         view_items: view_items,
         items: ~[mainfn, tests],
     };
-    let item_ = ast::item_mod(testmod);
+    let item_ = ast::ItemMod(testmod);
 
     // This attribute tells resolve to let us call unexported functions
     let resolve_unexported_attr =
         attr::mk_attr(attr::mk_word_item(@"!resolve_unexported"));
 
-    let item = ast::item {
+    let item = ast::Item {
         ident: cx.sess.ident_of("__test"),
         attrs: ~[resolve_unexported_attr],
         id: ast::DUMMY_NODE_ID,
         node: item_,
-        vis: ast::public,
+        vis: ast::Public,
         span: DUMMY_SP,
      };
 
@@ -375,7 +375,7 @@ fn path_node_global(ids: ~[ast::Ident]) -> ast::Path {
     }
 }
 
-fn mk_tests(cx: &TestCtxt) -> @ast::item {
+fn mk_tests(cx: &TestCtxt) -> @ast::Item {
     // The vector of test_descs for this crate
     let test_descs = mk_test_descs(cx);
 
@@ -422,8 +422,8 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> @ast::Expr {
 
     debug!("encoding {}", ast_util::path_name_i(path));
 
-    let name_lit: ast::lit =
-        nospan(ast::lit_str(ast_util::path_name_i(path).to_managed(), ast::CookedStr));
+    let name_lit: ast::Lit =
+        nospan(ast::LitStr(ast_util::path_name_i(path).to_managed(), ast::CookedStr));
 
     let name_expr = @ast::Expr {
           id: ast::DUMMY_NODE_ID,

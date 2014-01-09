@@ -28,6 +28,8 @@ This API is completely unstable and subject to change.
 
 #[feature(macro_rules, globs, managed_boxes)];
 
+#[deny(non_camel_case_types)];
+
 extern mod extra;
 
 pub mod util {

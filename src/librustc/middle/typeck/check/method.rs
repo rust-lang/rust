@@ -100,8 +100,8 @@ use std::cell::RefCell;
 use std::hashmap::HashSet;
 use std::result;
 use std::vec;
-use syntax::ast::{DefId, sty_value, sty_region, sty_box};
-use syntax::ast::{sty_uniq, sty_static, NodeId};
+use syntax::ast::{DefId, SelfValue, SelfRegion, SelfBox};
+use syntax::ast::{SelfUniq, SelfStatic, NodeId};
 use syntax::ast::{MutMutable, MutImmutable};
 use syntax::ast;
 use syntax::ast_map;
@@ -505,7 +505,7 @@ impl<'a> LookupContext<'a> {
 
             let trait_methods = ty::trait_methods(tcx, bound_trait_ref.def_id);
             match trait_methods.iter().position(|m| {
-                m.explicit_self != ast::sty_static &&
+                m.explicit_self != ast::SelfStatic &&
                 m.ident.name == self.m_name })
             {
                 Some(pos) => {
@@ -944,7 +944,7 @@ impl<'a> LookupContext<'a> {
         self.enforce_drop_trait_limitations(candidate);
 
         // static methods should never have gotten this far:
-        assert!(candidate.method_ty.explicit_self != sty_static);
+        assert!(candidate.method_ty.explicit_self != SelfStatic);
 
         let transformed_self_ty = match candidate.origin {
             method_object(..) => {
@@ -1078,27 +1078,27 @@ impl<'a> LookupContext<'a> {
                                  self_ty: None,
                                  tps: rcvr_substs.tps.clone()};
         match method_ty.explicit_self {
-            ast::sty_static => {
+            ast::SelfStatic => {
                 self.bug(~"static method for object type receiver");
             }
-            ast::sty_value(_) => {
+            ast::SelfValue(_) => {
                 ty::mk_err() // error reported in `enforce_object_limitations()`
             }
-            ast::sty_region(..) | ast::sty_box(..) | ast::sty_uniq(..) => {
+            ast::SelfRegion(..) | ast::SelfBox(..) | ast::SelfUniq(..) => {
                 let transformed_self_ty =
                     method_ty.transformed_self_ty.clone().unwrap();
                 match ty::get(transformed_self_ty).sty {
-                    ty::ty_rptr(r, mt) => { // must be sty_region
+                    ty::ty_rptr(r, mt) => { // must be SelfRegion
                         ty::mk_trait(self.tcx(), trait_def_id,
                                      substs, RegionTraitStore(r), mt.mutbl,
                                      ty::EmptyBuiltinBounds())
                     }
-                    ty::ty_box(_) => { // must be sty_box
+                    ty::ty_box(_) => { // must be SelfBox
                         ty::mk_trait(self.tcx(), trait_def_id,
                                      substs, BoxTraitStore, ast::MutImmutable,
                                      ty::EmptyBuiltinBounds())
                     }
-                    ty::ty_uniq(mt) => { // must be sty_uniq
+                    ty::ty_uniq(mt) => { // must be SelfUniq
                         ty::mk_trait(self.tcx(), trait_def_id,
                                      substs, UniqTraitStore, mt.mutbl,
                                      ty::EmptyBuiltinBounds())
@@ -1133,21 +1133,21 @@ impl<'a> LookupContext<'a> {
         }
 
         match candidate.method_ty.explicit_self {
-            ast::sty_static => { // reason (a) above
+            ast::SelfStatic => { // reason (a) above
                 self.tcx().sess.span_err(
                     self.expr.span,
                     "cannot call a method without a receiver \
                      through an object");
             }
 
-            ast::sty_value(_) => { // reason (a) above
+            ast::SelfValue(_) => { // reason (a) above
                 self.tcx().sess.span_err(
                     self.expr.span,
                     "cannot call a method with a by-value receiver \
                      through an object");
             }
 
-            ast::sty_region(..) | ast::sty_box(..) | ast::sty_uniq(..) => {}
+            ast::SelfRegion(..) | ast::SelfBox(..) | ast::SelfUniq(..) => {}
         }
 
         if ty::type_has_self(method_fty) { // reason (a) above
@@ -1196,16 +1196,16 @@ impl<'a> LookupContext<'a> {
                self.ty_to_str(rcvr_ty), self.cand_to_str(candidate));
 
         return match candidate.method_ty.explicit_self {
-            sty_static => {
+            SelfStatic => {
                 debug!("(is relevant?) explicit self is static");
                 false
             }
 
-            sty_value(_) => {
+            SelfValue(_) => {
                 rcvr_matches_ty(self.fcx, rcvr_ty, candidate)
             }
 
-            sty_region(_, m) => {
+            SelfRegion(_, m) => {
                 debug!("(is relevant?) explicit self is a region");
                 match ty::get(rcvr_ty).sty {
                     ty::ty_rptr(_, mt) => {
@@ -1222,7 +1222,7 @@ impl<'a> LookupContext<'a> {
                 }
             }
 
-            sty_box(m) => {
+            SelfBox(m) => {
                 debug!("(is relevant?) explicit self is a box");
                 match ty::get(rcvr_ty).sty {
                     ty::ty_box(typ) => {
@@ -1238,7 +1238,7 @@ impl<'a> LookupContext<'a> {
                 }
             }
 
-            sty_uniq(_) => {
+            SelfUniq(_) => {
                 debug!("(is relevant?) explicit self is a unique pointer");
                 match ty::get(rcvr_ty).sty {
                     ty::ty_uniq(mt) => {
@@ -1312,10 +1312,9 @@ impl<'a> LookupContext<'a> {
             {
                 let items = self.tcx().items.borrow();
                 match items.get().find(&did.node) {
-                  Some(&ast_map::node_method(m, _, _))
-                  | Some(&ast_map::node_trait_method(@ast::provided(m),
-                                                     _,
-                                                     _)) => {
+                  Some(&ast_map::NodeMethod(m, _, _))
+                  | Some(&ast_map::NodeTraitMethod(@ast::Provided(m),
+                                                   _, _)) => {
                       m.span
                   }
                   _ => fail!("report_static_candidate: bad item {:?}", did)
@@ -1376,9 +1375,9 @@ impl<'a> LookupContext<'a> {
     }
 }
 
-pub fn get_mode_from_explicit_self(explicit_self: ast::explicit_self_) -> SelfMode {
+pub fn get_mode_from_explicit_self(explicit_self: ast::ExplicitSelf_) -> SelfMode {
     match explicit_self {
-        sty_value(_) => ty::ByRef,
+        SelfValue(_) => ty::ByRef,
         _ => ty::ByCopy,
     }
 }

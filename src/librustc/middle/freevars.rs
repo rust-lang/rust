@@ -20,7 +20,6 @@ use syntax::codemap::Span;
 use syntax::{ast, ast_util};
 use syntax::visit;
 use syntax::visit::Visitor;
-use syntax::ast::{item};
 
 // A vector of defs representing the free variables referred to in a function.
 // (The def_upvar will already have been stripped).
@@ -40,7 +39,7 @@ struct CollectFreevarsVisitor {
 
 impl Visitor<int> for CollectFreevarsVisitor {
 
-    fn visit_item(&mut self, _: &item, _: int) {
+    fn visit_item(&mut self, _: &ast::Item, _: int) {
         // ignore_item
     }
 
@@ -112,7 +111,7 @@ struct AnnotateFreevarsVisitor {
 }
 
 impl Visitor<()> for AnnotateFreevarsVisitor {
-    fn visit_fn(&mut self, fk: &visit::fn_kind, fd: &ast::fn_decl,
+    fn visit_fn(&mut self, fk: &visit::FnKind, fd: &ast::FnDecl,
                 blk: &ast::Block, s: Span, nid: ast::NodeId, _: ()) {
         let vars = collect_freevars(self.def_map, blk);
         self.freevars.insert(nid, vars);

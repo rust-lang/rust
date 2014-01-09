@@ -66,7 +66,7 @@ impl AttrMetaMethods for MetaItem {
         match self.node {
             MetaNameValue(_, ref v) => {
                 match v.node {
-                    ast::lit_str(s, _) => Some(s),
+                    ast::LitStr(s, _) => Some(s),
                     _ => None,
                 }
             },
@@ -126,11 +126,11 @@ impl AttributeMethods for Attribute {
 /* Constructors */
 
 pub fn mk_name_value_item_str(name: @str, value: @str) -> @MetaItem {
-    let value_lit = dummy_spanned(ast::lit_str(value, ast::CookedStr));
+    let value_lit = dummy_spanned(ast::LitStr(value, ast::CookedStr));
     mk_name_value_item(name, value_lit)
 }
 
-pub fn mk_name_value_item(name: @str, value: ast::lit) -> @MetaItem {
+pub fn mk_name_value_item(name: @str, value: ast::Lit) -> @MetaItem {
     @dummy_spanned(MetaNameValue(name, value))
 }
 
@@ -152,7 +152,7 @@ pub fn mk_attr(item: @MetaItem) -> Attribute {
 
 pub fn mk_sugared_doc_attr(text: @str, lo: BytePos, hi: BytePos) -> Attribute {
     let style = doc_comment_style(text);
-    let lit = spanned(lo, hi, ast::lit_str(text, ast::CookedStr));
+    let lit = spanned(lo, hi, ast::LitStr(text, ast::CookedStr));
     let attr = Attribute_ {
         style: style,
         value: @spanned(lo, hi, MetaNameValue(@"doc", lit)),
@@ -423,16 +423,16 @@ pub fn find_repr_attr(diagnostic: @SpanHandler, attr: @ast::MetaItem, acc: ReprA
 
 fn int_type_of_word(s: &str) -> Option<IntType> {
     match s {
-        "i8" => Some(SignedInt(ast::ty_i8)),
-        "u8" => Some(UnsignedInt(ast::ty_u8)),
-        "i16" => Some(SignedInt(ast::ty_i16)),
-        "u16" => Some(UnsignedInt(ast::ty_u16)),
-        "i32" => Some(SignedInt(ast::ty_i32)),
-        "u32" => Some(UnsignedInt(ast::ty_u32)),
-        "i64" => Some(SignedInt(ast::ty_i64)),
-        "u64" => Some(UnsignedInt(ast::ty_u64)),
-        "int" => Some(SignedInt(ast::ty_i)),
-        "uint" => Some(UnsignedInt(ast::ty_u)),
+        "i8" => Some(SignedInt(ast::TyI8)),
+        "u8" => Some(UnsignedInt(ast::TyU8)),
+        "i16" => Some(SignedInt(ast::TyI16)),
+        "u16" => Some(UnsignedInt(ast::TyU16)),
+        "i32" => Some(SignedInt(ast::TyI32)),
+        "u32" => Some(UnsignedInt(ast::TyU32)),
+        "i64" => Some(SignedInt(ast::TyI64)),
+        "u64" => Some(UnsignedInt(ast::TyU64)),
+        "int" => Some(SignedInt(ast::TyI)),
+        "uint" => Some(UnsignedInt(ast::TyU)),
         _ => None
     }
 }
@@ -456,8 +456,8 @@ impl ReprAttr {
 
 #[deriving(Eq)]
 pub enum IntType {
-    SignedInt(ast::int_ty),
-    UnsignedInt(ast::uint_ty)
+    SignedInt(ast::IntTy),
+    UnsignedInt(ast::UintTy)
 }
 
 impl IntType {
@@ -470,10 +470,10 @@ impl IntType {
     }
     fn is_ffi_safe(self) -> bool {
         match self {
-            SignedInt(ast::ty_i8) | UnsignedInt(ast::ty_u8) |
-            SignedInt(ast::ty_i16) | UnsignedInt(ast::ty_u16) |
-            SignedInt(ast::ty_i32) | UnsignedInt(ast::ty_u32) |
-            SignedInt(ast::ty_i64) | UnsignedInt(ast::ty_u64) => true,
+            SignedInt(ast::TyI8) | UnsignedInt(ast::TyU8) |
+            SignedInt(ast::TyI16) | UnsignedInt(ast::TyU16) |
+            SignedInt(ast::TyI32) | UnsignedInt(ast::TyU32) |
+            SignedInt(ast::TyI64) | UnsignedInt(ast::TyU64) => true,
             _ => false
         }
     }
