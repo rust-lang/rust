@@ -111,7 +111,7 @@ pub struct Struct {
  * these, for places in trans where the `ty::t` isn't directly
  * available.
  */
-pub fn represent_node(bcx: @Block, node: ast::NodeId) -> @Repr {
+pub fn represent_node(bcx: &Block, node: ast::NodeId) -> @Repr {
     represent_type(bcx.ccx(), node_id_type(bcx, node))
 }
 
@@ -463,7 +463,7 @@ fn struct_llfields(cx: &CrateContext, st: &Struct, sizing: bool) -> ~[Type] {
  *
  * This should ideally be less tightly tied to `_match`.
  */
-pub fn trans_switch(bcx: @Block, r: &Repr, scrutinee: ValueRef)
+pub fn trans_switch(bcx: &Block, r: &Repr, scrutinee: ValueRef)
     -> (_match::branch_kind, Option<ValueRef>) {
     match *r {
         CEnum(..) | General(..) => {
@@ -481,7 +481,7 @@ pub fn trans_switch(bcx: @Block, r: &Repr, scrutinee: ValueRef)
 
 
 /// Obtain the actual discriminant of a value.
-pub fn trans_get_discr(bcx: @Block, r: &Repr, scrutinee: ValueRef, cast_to: Option<Type>)
+pub fn trans_get_discr(bcx: &Block, r: &Repr, scrutinee: ValueRef, cast_to: Option<Type>)
     -> ValueRef {
     let signed;
     let val;
@@ -510,7 +510,7 @@ pub fn trans_get_discr(bcx: @Block, r: &Repr, scrutinee: ValueRef, cast_to: Opti
     }
 }
 
-fn nullable_bitdiscr(bcx: @Block, nonnull: &Struct, nndiscr: Disr, ptrfield: uint,
+fn nullable_bitdiscr(bcx: &Block, nonnull: &Struct, nndiscr: Disr, ptrfield: uint,
                      scrutinee: ValueRef) -> ValueRef {
     let cmp = if nndiscr == 0 { IntEQ } else { IntNE };
     let llptr = Load(bcx, GEPi(bcx, scrutinee, [0, ptrfield]));
@@ -519,7 +519,7 @@ fn nullable_bitdiscr(bcx: @Block, nonnull: &Struct, nndiscr: Disr, ptrfield: uin
 }
 
 /// Helper for cases where the discriminant is simply loaded.
-fn load_discr(bcx: @Block, ity: IntType, ptr: ValueRef, min: Disr, max: Disr)
+fn load_discr(bcx: &Block, ity: IntType, ptr: ValueRef, min: Disr, max: Disr)
     -> ValueRef {
     let llty = ll_inttype(bcx.ccx(), ity);
     assert_eq!(val_ty(ptr), llty.ptr_to());
@@ -547,7 +547,8 @@ fn load_discr(bcx: @Block, ity: IntType, ptr: ValueRef, min: Disr, max: Disr)
  *
  * This should ideally be less tightly tied to `_match`.
  */
-pub fn trans_case(bcx: @Block, r: &Repr, discr: Disr) -> _match::opt_result {
+pub fn trans_case<'a>(bcx: &'a Block<'a>, r: &Repr, discr: Disr)
+                  -> _match::opt_result<'a> {
     match *r {
         CEnum(ity, _, _) => {
             _match::single_result(rslt(bcx, C_integral(ll_inttype(bcx.ccx(), ity),
@@ -572,7 +573,7 @@ pub fn trans_case(bcx: @Block, r: &Repr, discr: Disr) -> _match::opt_result {
  * representation.  The fields, if any, should then be initialized via
  * `trans_field_ptr`.
  */
-pub fn trans_start_init(bcx: @Block, r: &Repr, val: ValueRef, discr: Disr) {
+pub fn trans_start_init(bcx: &Block, r: &Repr, val: ValueRef, discr: Disr) {
     match *r {
         CEnum(ity, min, max) => {
             assert_discr_in_range(ity, min, max, discr);
@@ -628,7 +629,7 @@ pub fn num_args(r: &Repr, discr: Disr) -> uint {
 }
 
 /// Access a field, at a point when the value's case is known.
-pub fn trans_field_ptr(bcx: @Block, r: &Repr, val: ValueRef, discr: Disr,
+pub fn trans_field_ptr(bcx: &Block, r: &Repr, val: ValueRef, discr: Disr,
                        ix: uint) -> ValueRef {
     // Note: if this ever needs to generate conditionals (e.g., if we
     // decide to do some kind of cdr-coding-like non-unique repr
@@ -661,7 +662,7 @@ pub fn trans_field_ptr(bcx: @Block, r: &Repr, val: ValueRef, discr: Disr,
     }
 }
 
-fn struct_field_ptr(bcx: @Block, st: &Struct, val: ValueRef, ix: uint,
+fn struct_field_ptr(bcx: &Block, st: &Struct, val: ValueRef, ix: uint,
               needs_cast: bool) -> ValueRef {
     let ccx = bcx.ccx();
 
@@ -677,7 +678,7 @@ fn struct_field_ptr(bcx: @Block, st: &Struct, val: ValueRef, ix: uint,
 }
 
 /// Access the struct drop flag, if present.
-pub fn trans_drop_flag_ptr(bcx: @Block, r: &Repr, val: ValueRef) -> ValueRef {
+pub fn trans_drop_flag_ptr(bcx: &Block, r: &Repr, val: ValueRef) -> ValueRef {
     match *r {
         Univariant(ref st, true) => GEPi(bcx, val, [0, st.fields.len() - 1]),
         _ => bcx.ccx().sess.bug("tried to get drop flag of non-droppable type")
