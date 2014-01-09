@@ -13,10 +13,11 @@
 // XXX: Not sure how this should be structured
 // XXX: Iteration should probably be considered separately
 
+use container::Container;
 use iter::Iterator;
 use option::Option;
 use io::Reader;
-use vec::OwnedVector;
+use vec::{OwnedVector, ImmutableVector};
 
 /// An iterator that reads a single byte on each iteration,
 /// until `.read_byte()` returns `None`.
@@ -117,16 +118,23 @@ pub fn u64_from_be_bytes(data: &[u8],
                          start: uint,
                          size: uint)
                       -> u64 {
-    let mut sz = size;
-    assert!((sz <= 8u));
-    let mut val = 0_u64;
-    let mut pos = start;
-    while sz > 0u {
-        sz -= 1u;
-        val += (data[pos] as u64) << ((sz * 8u) as u64);
-        pos += 1u;
+    use ptr::{copy_nonoverlapping_memory, offset, mut_offset};
+    use unstable::intrinsics::from_be64;
+    use vec::MutableVector;
+
+    assert!(size <= 8u);
+
+    if data.len() - start < size {
+        fail!("index out of bounds");
     }
-    return val;
+
+    let mut buf = [0u8, ..8];
+    unsafe {
+        let ptr = offset(data.as_ptr(), start as int);
+        let out = buf.as_mut_ptr();
+        copy_nonoverlapping_memory(mut_offset(out, (8 - size) as int), ptr, size);
+        from_be64(*(out as *i64)) as u64
+    }
 }
 
 #[cfg(test)]
