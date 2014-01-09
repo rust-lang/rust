@@ -68,13 +68,14 @@ use util::ppaux::{Repr, ty_to_str};
 use util::sha2::Sha256;
 use middle::trans::type_::Type;
 
+use extra::arena::TypedArena;
+use extra::time;
 use std::c_str::ToCStr;
 use std::cell::{Cell, RefCell};
 use std::hashmap::HashMap;
 use std::libc::c_uint;
 use std::vec;
 use std::local_data;
-use extra::time;
 use syntax::ast::Name;
 use syntax::ast_map::{path, path_elt_to_str, path_name, path_pretty_name};
 use syntax::ast_util::{local_def, is_local};
@@ -307,9 +308,8 @@ pub fn get_extern_const(externs: &mut ExternMap, llmod: ModuleRef,
 // known.
 //
 // The runtime equivalent is box_body() in "rust_internal.h".
-pub fn opaque_box_body(bcx: @Block,
-                       body_t: ty::t,
-                       boxptr: ValueRef) -> ValueRef {
+pub fn opaque_box_body(bcx: &Block, body_t: ty::t, boxptr: ValueRef)
+                       -> ValueRef {
     let _icx = push_ctxt("opaque_box_body");
     let ccx = bcx.ccx();
     let ty = type_of(ccx, body_t);
@@ -320,14 +320,16 @@ pub fn opaque_box_body(bcx: @Block,
 
 // malloc_raw_dyn: allocates a box to contain a given type, but with a
 // potentially dynamic size.
-pub fn malloc_raw_dyn(bcx: @Block,
+pub fn malloc_raw_dyn<'a>(
+                      bcx: &'a Block,
                       t: ty::t,
                       heap: heap,
-                      size: ValueRef) -> Result {
+                      size: ValueRef)
+                      -> Result<'a> {
     let _icx = push_ctxt("malloc_raw");
     let ccx = bcx.ccx();
 
-    fn require_alloc_fn(bcx: @Block, t: ty::t, it: LangItem) -> ast::DefId {
+    fn require_alloc_fn(bcx: &Block, t: ty::t, it: LangItem) -> ast::DefId {
         let li = &bcx.tcx().lang_items;
         match li.require(it) {
             Ok(id) => id,
@@ -387,22 +389,27 @@ pub fn malloc_raw_dyn(bcx: @Block,
 // malloc_raw: expects an unboxed type and returns a pointer to
 // enough space for a box of that type.  This includes a rust_opaque_box
 // header.
-pub fn malloc_raw(bcx: @Block, t: ty::t, heap: heap) -> Result {
+pub fn malloc_raw<'a>(bcx: &'a Block<'a>, t: ty::t, heap: heap)
+                  -> Result<'a> {
     let ty = type_of(bcx.ccx(), t);
     let size = llsize_of(bcx.ccx(), ty);
     malloc_raw_dyn(bcx, t, heap, size)
 }
 
-pub struct MallocResult {
-    bcx: @Block,
+pub struct MallocResult<'a> {
+    bcx: &'a Block<'a>,
     smart_ptr: ValueRef,
     body: ValueRef
 }
 
 // malloc_general_dyn: usefully wraps malloc_raw_dyn; allocates a smart
 // pointer, and pulls out the body
-pub fn malloc_general_dyn(bcx: @Block, t: ty::t, heap: heap, size: ValueRef)
-    -> MallocResult {
+pub fn malloc_general_dyn<'a>(
+                          bcx: &'a Block<'a>,
+                          t: ty::t,
+                          heap: heap,
+                          size: ValueRef)
+                          -> MallocResult<'a> {
     assert!(heap != heap_exchange);
     let _icx = push_ctxt("malloc_general");
     let Result {bcx: bcx, val: llbox} = malloc_raw_dyn(bcx, t, heap, size);
@@ -415,13 +422,14 @@ pub fn malloc_general_dyn(bcx: @Block, t: ty::t, heap: heap, size: ValueRef)
     }
 }
 
-pub fn malloc_general(bcx: @Block, t: ty::t, heap: heap) -> MallocResult {
+pub fn malloc_general<'a>(bcx: &'a Block, t: ty::t, heap: heap)
+                      -> MallocResult<'a> {
     let ty = type_of(bcx.ccx(), t);
     assert!(heap != heap_exchange);
     malloc_general_dyn(bcx, t, heap, llsize_of(bcx.ccx(), ty))
 }
 
-pub fn heap_for_unique(bcx: @Block, t: ty::t) -> heap {
+pub fn heap_for_unique(bcx: &Block, t: ty::t) -> heap {
     if ty::type_contents(bcx.tcx(), t).owns_managed() {
         heap_managed_unique
     } else {
@@ -429,7 +437,7 @@ pub fn heap_for_unique(bcx: @Block, t: ty::t) -> heap {
     }
 }
 
-pub fn maybe_set_managed_unique_rc(bcx: @Block, bx: ValueRef, heap: heap) {
+pub fn maybe_set_managed_unique_rc(bcx: &Block, bx: ValueRef, heap: heap) {
     assert!(heap != heap_exchange);
     if heap == heap_managed_unique {
         // In cases where we are looking at a unique-typed allocation in the
@@ -597,12 +605,13 @@ pub fn maybe_name_value(cx: &CrateContext, v: ValueRef, s: &str) {
 pub enum scalar_type { nil_type, signed_int, unsigned_int, floating_point, }
 
 // NB: This produces an i1, not a Rust bool (i8).
-pub fn compare_scalar_types(cx: @Block,
+pub fn compare_scalar_types<'a>(
+                            cx: &'a Block<'a>,
                             lhs: ValueRef,
                             rhs: ValueRef,
                             t: ty::t,
                             op: ast::BinOp)
-                         -> Result {
+                            -> Result<'a> {
     let f = |a| compare_scalar_values(cx, lhs, rhs, a, op);
 
     match ty::get(t).sty {
@@ -629,14 +638,15 @@ pub fn compare_scalar_types(cx: @Block,
 
 
 // A helper function to do the actual comparison of scalar values.
-pub fn compare_scalar_values(cx: @Block,
+pub fn compare_scalar_values<'a>(
+                             cx: &'a Block<'a>,
                              lhs: ValueRef,
                              rhs: ValueRef,
                              nt: scalar_type,
                              op: ast::BinOp)
-                          -> ValueRef {
+                             -> ValueRef {
     let _icx = push_ctxt("compare_scalar_values");
-    fn die(cx: @Block) -> ! {
+    fn die(cx: &Block) -> ! {
         cx.tcx().sess.bug("compare_scalar_values: must be a\
                            comparison operator");
     }
@@ -690,25 +700,41 @@ pub fn compare_scalar_values(cx: @Block,
     }
 }
 
-pub type val_and_ty_fn<'a> = 'a |@Block, ValueRef, ty::t|
-                                       -> @Block;
+pub type val_and_ty_fn<'r,'b> =
+    'r |&'b Block<'b>, ValueRef, ty::t| -> &'b Block<'b>;
 
-pub fn load_inbounds(cx: @Block, p: ValueRef, idxs: &[uint]) -> ValueRef {
+pub fn load_inbounds<'a>(cx: &'a Block<'a>, p: ValueRef, idxs: &[uint])
+                     -> ValueRef {
     return Load(cx, GEPi(cx, p, idxs));
 }
 
-pub fn store_inbounds(cx: @Block, v: ValueRef, p: ValueRef, idxs: &[uint]) {
+pub fn store_inbounds<'a>(
+                      cx: &'a Block<'a>,
+                      v: ValueRef,
+                      p: ValueRef,
+                      idxs: &[uint]) {
     Store(cx, v, GEPi(cx, p, idxs));
 }
 
 // Iterates through the elements of a structural type.
-pub fn iter_structural_ty(cx: @Block, av: ValueRef, t: ty::t,
-                          f: val_and_ty_fn) -> @Block {
+pub fn iter_structural_ty<'r,
+                          'b>(
+                          cx: &'b Block<'b>,
+                          av: ValueRef,
+                          t: ty::t,
+                          f: val_and_ty_fn<'r,'b>)
+                          -> &'b Block<'b> {
     let _icx = push_ctxt("iter_structural_ty");
 
-    fn iter_variant(cx: @Block, repr: &adt::Repr, av: ValueRef,
+    fn iter_variant<'r,
+                    'b>(
+                    cx: &'b Block<'b>,
+                    repr: &adt::Repr,
+                    av: ValueRef,
                     variant: @ty::VariantInfo,
-                    tps: &[ty::t], f: val_and_ty_fn) -> @Block {
+                    tps: &[ty::t],
+                    f: val_and_ty_fn<'r,'b>)
+                    -> &'b Block<'b> {
         let _icx = push_ctxt("iter_variant");
         let tcx = cx.tcx();
         let mut cx = cx;
@@ -794,8 +820,12 @@ pub fn iter_structural_ty(cx: @Block, av: ValueRef, t: ty::t,
     return cx;
 }
 
-pub fn cast_shift_expr_rhs(cx: @Block, op: ast::BinOp,
-                           lhs: ValueRef, rhs: ValueRef) -> ValueRef {
+pub fn cast_shift_expr_rhs<'a>(
+                           cx: &'a Block<'a>,
+                           op: ast::BinOp,
+                           lhs: ValueRef,
+                           rhs: ValueRef)
+                           -> ValueRef {
     cast_shift_rhs(op, lhs, rhs,
                    |a,b| Trunc(cx, a, b),
                    |a,b| ZExt(cx, a, b))
@@ -836,8 +866,13 @@ pub fn cast_shift_rhs(op: ast::BinOp,
     }
 }
 
-pub fn fail_if_zero(cx: @Block, span: Span, divrem: ast::BinOp,
-                    rhs: ValueRef, rhs_t: ty::t) -> @Block {
+pub fn fail_if_zero<'a>(
+                    cx: &'a Block<'a>,
+                    span: Span,
+                    divrem: ast::BinOp,
+                    rhs: ValueRef,
+                    rhs_t: ty::t)
+                    -> &'a Block<'a> {
     let text = if divrem == ast::BiDiv {
         @"attempted to divide by zero"
     } else {
@@ -895,12 +930,13 @@ pub fn trans_external_path(ccx: &CrateContext, did: ast::DefId, t: ty::t) -> Val
     }
 }
 
-pub fn invoke(bcx: @Block,
+pub fn invoke<'a>(
+              bcx: &'a Block<'a>,
               llfn: ValueRef,
               llargs: ~[ValueRef],
               attributes: &[(uint, lib::llvm::Attribute)],
               call_info: Option<NodeInfo>)
-           -> (ValueRef, @Block) {
+              -> (ValueRef, &'a Block<'a>) {
     let _icx = push_ctxt("invoke_");
     if bcx.unreachable.get() {
         return (C_null(Type::i8()), bcx);
@@ -954,7 +990,7 @@ pub fn invoke(bcx: @Block,
     }
 }
 
-pub fn need_invoke(bcx: @Block) -> bool {
+pub fn need_invoke(bcx: &Block) -> bool {
     if bcx.ccx().sess.no_landing_pads() {
         return false;
     }
@@ -997,7 +1033,7 @@ pub fn need_invoke(bcx: @Block) -> bool {
     }
 }
 
-pub fn have_cached_lpad(bcx: @Block) -> bool {
+pub fn have_cached_lpad(bcx: &Block) -> bool {
     let mut res = false;
     in_lpad_scope_cx(bcx, |inf| {
         match inf.landing_pad.get() {
@@ -1008,7 +1044,7 @@ pub fn have_cached_lpad(bcx: @Block) -> bool {
     return res;
 }
 
-pub fn in_lpad_scope_cx(bcx: @Block, f: |si: &ScopeInfo|) {
+pub fn in_lpad_scope_cx<'a>(bcx: &'a Block<'a>, f: |si: &'a ScopeInfo<'a>|) {
     let mut bcx = bcx;
     let mut cur_scope = bcx.scope.get();
     loop {
@@ -1028,7 +1064,7 @@ pub fn in_lpad_scope_cx(bcx: @Block, f: |si: &ScopeInfo|) {
     }
 }
 
-pub fn get_landing_pad(bcx: @Block) -> BasicBlockRef {
+pub fn get_landing_pad<'a>(bcx: &'a Block<'a>) -> BasicBlockRef {
     let _icx = push_ctxt("get_landing_pad");
 
     let mut cached = None;
@@ -1074,7 +1110,8 @@ pub fn get_landing_pad(bcx: @Block) -> BasicBlockRef {
     return pad_bcx.llbb;
 }
 
-pub fn find_bcx_for_scope(bcx: @Block, scope_id: ast::NodeId) -> @Block {
+pub fn find_bcx_for_scope<'a>(bcx: &'a Block<'a>, scope_id: ast::NodeId)
+                          -> &'a Block<'a> {
     let mut bcx_sid = bcx;
     let mut cur_scope = bcx_sid.scope.get();
     loop {
@@ -1103,7 +1140,7 @@ pub fn find_bcx_for_scope(bcx: @Block, scope_id: ast::NodeId) -> @Block {
 }
 
 
-pub fn do_spill(bcx: @Block, v: ValueRef, t: ty::t) -> ValueRef {
+pub fn do_spill(bcx: &Block, v: ValueRef, t: ty::t) -> ValueRef {
     if ty::type_is_bot(t) {
         return C_null(Type::i8p());
     }
@@ -1114,31 +1151,32 @@ pub fn do_spill(bcx: @Block, v: ValueRef, t: ty::t) -> ValueRef {
 
 // Since this function does *not* root, it is the caller's responsibility to
 // ensure that the referent is pointed to by a root.
-pub fn do_spill_noroot(cx: @Block, v: ValueRef) -> ValueRef {
+pub fn do_spill_noroot(cx: &Block, v: ValueRef) -> ValueRef {
     let llptr = alloca(cx, val_ty(v), "");
     Store(cx, v, llptr);
     return llptr;
 }
 
-pub fn spill_if_immediate(cx: @Block, v: ValueRef, t: ty::t) -> ValueRef {
+pub fn spill_if_immediate(cx: &Block, v: ValueRef, t: ty::t) -> ValueRef {
     let _icx = push_ctxt("spill_if_immediate");
     if type_is_immediate(cx.ccx(), t) { return do_spill(cx, v, t); }
     return v;
 }
 
-pub fn load_if_immediate(cx: @Block, v: ValueRef, t: ty::t) -> ValueRef {
+pub fn load_if_immediate(cx: &Block, v: ValueRef, t: ty::t) -> ValueRef {
     let _icx = push_ctxt("load_if_immediate");
     if type_is_immediate(cx.ccx(), t) { return Load(cx, v); }
     return v;
 }
 
-pub fn ignore_lhs(_bcx: @Block, local: &ast::Local) -> bool {
+pub fn ignore_lhs(_bcx: &Block, local: &ast::Local) -> bool {
     match local.pat.node {
         ast::PatWild => true, _ => false
     }
 }
 
-pub fn init_local(bcx: @Block, local: &ast::Local) -> @Block {
+pub fn init_local<'a>(bcx: &'a Block<'a>, local: &ast::Local)
+                  -> &'a Block<'a> {
 
     debug!("init_local(bcx={}, local.id={:?})",
            bcx.to_str(), local.id);
@@ -1159,7 +1197,7 @@ pub fn init_local(bcx: @Block, local: &ast::Local) -> @Block {
     _match::store_local(bcx, local.pat, local.init)
 }
 
-pub fn trans_stmt(cx: @Block, s: &ast::Stmt) -> @Block {
+pub fn trans_stmt<'a>(cx: &'a Block<'a>, s: &ast::Stmt) -> &'a Block<'a> {
     let _icx = push_ctxt("trans_stmt");
     debug!("trans_stmt({})", stmt_to_str(s, cx.tcx().sess.intr()));
 
@@ -1192,22 +1230,19 @@ pub fn trans_stmt(cx: @Block, s: &ast::Stmt) -> @Block {
 
 // You probably don't want to use this one. See the
 // next three functions instead.
-pub fn new_block(cx: @FunctionContext,
-                 parent: Option<@Block>,
-                 scope: Option<@ScopeInfo>,
+pub fn new_block<'a>(
+                 cx: &'a FunctionContext<'a>,
+                 parent: Option<&'a Block<'a>>,
+                 scope: Option<&'a ScopeInfo<'a>>,
                  is_lpad: bool,
                  name: &str,
                  opt_node_info: Option<NodeInfo>)
-              -> @Block {
+                 -> &'a Block<'a> {
     unsafe {
         let llbb = name.with_c_str(|buf| {
             llvm::LLVMAppendBasicBlockInContext(cx.ccx.llcx, cx.llfn, buf)
         });
-        let bcx = @Block::new(llbb,
-                                  parent,
-                                  is_lpad,
-                                  opt_node_info,
-                                  cx);
+        let bcx = Block::new(llbb, parent, is_lpad, opt_node_info, cx);
         bcx.scope.set(scope);
         for cx in parent.iter() {
             if cx.unreachable.get() {
@@ -1219,10 +1254,12 @@ pub fn new_block(cx: @FunctionContext,
     }
 }
 
-pub fn simple_block_scope(parent: Option<@ScopeInfo>,
+pub fn simple_block_scope<'a>(
+                          fcx: &'a FunctionContext<'a>,
+                          parent: Option<&'a ScopeInfo<'a>>,
                           node_info: Option<NodeInfo>)
-                          -> @ScopeInfo {
-    @ScopeInfo {
+                          -> &'a ScopeInfo<'a> {
+    fcx.scope_info_arena.alloc(ScopeInfo {
         parent: parent,
         loop_break: None,
         loop_label: None,
@@ -1230,51 +1267,74 @@ pub fn simple_block_scope(parent: Option<@ScopeInfo>,
         cleanup_paths: RefCell::new(~[]),
         landing_pad: Cell::new(None),
         node_info: node_info,
-    }
+    })
 }
 
 // Use this when you're at the top block of a function or the like.
-pub fn top_scope_block(fcx: @FunctionContext, opt_node_info: Option<NodeInfo>)
-                    -> @Block {
-    return new_block(fcx, None, Some(simple_block_scope(None, opt_node_info)), false,
-                  "function top level", opt_node_info);
+pub fn top_scope_block<'a>(
+                       fcx: &'a FunctionContext<'a>,
+                       opt_node_info: Option<NodeInfo>)
+                       -> &'a Block<'a> {
+    new_block(fcx,
+              None,
+              Some(simple_block_scope(fcx, None, opt_node_info)),
+              false,
+              "function top level",
+              opt_node_info)
 }
 
-pub fn scope_block(bcx: @Block,
+pub fn scope_block<'a>(
+                   bcx: &'a Block<'a>,
                    opt_node_info: Option<NodeInfo>,
-                   n: &str) -> @Block {
-    return new_block(bcx.fcx, Some(bcx), Some(simple_block_scope(None, opt_node_info)), bcx.is_lpad,
-                  n, opt_node_info);
+                   n: &str)
+                   -> &'a Block<'a> {
+    new_block(bcx.fcx,
+              Some(bcx),
+              Some(simple_block_scope(bcx.fcx, None, opt_node_info)),
+              bcx.is_lpad,
+              n,
+              opt_node_info)
 }
 
-pub fn loop_scope_block(bcx: @Block,
-                        loop_break: @Block,
+pub fn loop_scope_block<'a>(
+                        bcx: &'a Block<'a>,
+                        loop_break: &'a Block<'a>,
                         loop_label: Option<Name>,
                         n: &str,
-                        opt_node_info: Option<NodeInfo>) -> @Block {
-    return new_block(bcx.fcx, Some(bcx), Some(@ScopeInfo {
-        parent: None,
-        loop_break: Some(loop_break),
-        loop_label: loop_label,
-        cleanups: RefCell::new(~[]),
-        cleanup_paths: RefCell::new(~[]),
-        landing_pad: Cell::new(None),
-        node_info: opt_node_info,
-    }), bcx.is_lpad, n, opt_node_info);
+                        opt_node_info: Option<NodeInfo>)
+                        -> &'a Block<'a> {
+    new_block(bcx.fcx,
+              Some(bcx),
+              Some(bcx.fcx.scope_info_arena.alloc(ScopeInfo {
+                parent: None,
+                loop_break: Some(loop_break),
+                loop_label: loop_label,
+                cleanups: RefCell::new(~[]),
+                cleanup_paths: RefCell::new(~[]),
+                landing_pad: Cell::new(None),
+                node_info: opt_node_info,
+              })),
+              bcx.is_lpad,
+              n,
+              opt_node_info)
 }
 
 // Use this when creating a block for the inside of a landing pad.
-pub fn lpad_block(bcx: @Block, n: &str) -> @Block {
+pub fn lpad_block<'a>(bcx: &'a Block<'a>, n: &str) -> &'a Block<'a> {
     new_block(bcx.fcx, Some(bcx), None, true, n, None)
 }
 
 // Use this when you're making a general CFG BB within a scope.
-pub fn sub_block(bcx: @Block, n: &str) -> @Block {
+pub fn sub_block<'a>(bcx: &'a Block<'a>, n: &str) -> &'a Block<'a> {
     new_block(bcx.fcx, Some(bcx), None, bcx.is_lpad, n, None)
 }
 
-pub fn raw_block(fcx: @FunctionContext, is_lpad: bool, llbb: BasicBlockRef) -> @Block {
-    @Block::new(llbb, None, is_lpad, None, fcx)
+pub fn raw_block<'a>(
+                 fcx: &'a FunctionContext<'a>,
+                 is_lpad: bool,
+                 llbb: BasicBlockRef)
+                 -> &'a Block<'a> {
+    Block::new(llbb, None, is_lpad, None, fcx)
 }
 
 
@@ -1285,14 +1345,16 @@ pub fn raw_block(fcx: @FunctionContext, is_lpad: bool, llbb: BasicBlockRef) -> @
 // need to make sure those variables go out of scope when the block ends.  We
 // do that by running a 'cleanup' function for each variable.
 // trans_block_cleanups runs all the cleanup functions for the block.
-pub fn trans_block_cleanups(bcx: @Block, cleanups: ~[cleanup]) -> @Block {
+pub fn trans_block_cleanups<'a>(bcx: &'a Block<'a>, cleanups: ~[cleanup])
+                            -> &'a Block<'a> {
     trans_block_cleanups_(bcx, cleanups, false)
 }
 
-pub fn trans_block_cleanups_(bcx: @Block,
+pub fn trans_block_cleanups_<'a>(
+                             bcx: &'a Block<'a>,
                              cleanups: &[cleanup],
-                             /* cleanup_cx: block, */
-                             is_lpad: bool) -> @Block {
+                             is_lpad: bool)
+                             -> &'a Block<'a> {
     let _icx = push_ctxt("trans_block_cleanups");
     // NB: Don't short-circuit even if this block is unreachable because
     // GC-based cleanup needs to the see that the roots are live.
@@ -1318,7 +1380,8 @@ pub fn trans_block_cleanups_(bcx: @Block,
 // In the last argument, Some(block) mean jump to this block, and none means
 // this is a landing pad and leaving should be accomplished with a resume
 // instruction.
-pub fn cleanup_and_leave(bcx: @Block,
+pub fn cleanup_and_leave<'a>(
+                         bcx: &'a Block<'a>,
                          upto: Option<BasicBlockRef>,
                          leave: Option<BasicBlockRef>) {
     let _icx = push_ctxt("cleanup_and_leave");
@@ -1398,7 +1461,8 @@ pub fn cleanup_and_leave(bcx: @Block,
     }
 }
 
-pub fn cleanup_block(bcx: @Block, upto: Option<BasicBlockRef>) -> @Block{
+pub fn cleanup_block<'a>(bcx: &'a Block<'a>, upto: Option<BasicBlockRef>)
+                     -> &'a Block<'a> {
     let _icx = push_ctxt("cleanup_block");
     let mut cur = bcx;
     let mut bcx = bcx;
@@ -1431,12 +1495,16 @@ pub fn cleanup_block(bcx: @Block, upto: Option<BasicBlockRef>) -> @Block{
     bcx
 }
 
-pub fn cleanup_and_Br(bcx: @Block, upto: @Block, target: BasicBlockRef) {
+pub fn cleanup_and_Br<'a>(
+                      bcx: &'a Block<'a>,
+                      upto: &'a Block<'a>,
+                      target: BasicBlockRef) {
     let _icx = push_ctxt("cleanup_and_Br");
     cleanup_and_leave(bcx, Some(upto.llbb), Some(target));
 }
 
-pub fn leave_block(bcx: @Block, out_of: @Block) -> @Block {
+pub fn leave_block<'a>(bcx: &'a Block<'a>, out_of: &'a Block<'a>)
+                   -> &'a Block<'a> {
     let _icx = push_ctxt("leave_block");
     let next_cx = sub_block(block_parent(out_of), "next");
     if bcx.unreachable.get() {
@@ -1446,18 +1514,19 @@ pub fn leave_block(bcx: @Block, out_of: @Block) -> @Block {
     next_cx
 }
 
-pub fn with_scope(bcx: @Block,
+pub fn with_scope<'a>(
+                  bcx: &'a Block<'a>,
                   opt_node_info: Option<NodeInfo>,
                   name: &str,
-                  f: |@Block| -> @Block)
-                  -> @Block {
+                  f: |&'a Block<'a>| -> &'a Block<'a>)
+                  -> &'a Block<'a> {
     let _icx = push_ctxt("with_scope");
 
     debug!("with_scope(bcx={}, opt_node_info={:?}, name={})",
            bcx.to_str(), opt_node_info, name);
     let _indenter = indenter();
 
-    let scope = simple_block_scope(bcx.scope.get(), opt_node_info);
+    let scope = simple_block_scope(bcx.fcx, bcx.scope.get(), opt_node_info);
     bcx.scope.set(Some(scope));
     let ret = f(bcx);
     let ret = trans_block_cleanups_(ret, scope.cleanups.get(), false);
@@ -1465,14 +1534,15 @@ pub fn with_scope(bcx: @Block,
     ret
 }
 
-pub fn with_scope_result(bcx: @Block,
+pub fn with_scope_result<'a>(
+                         bcx: &'a Block<'a>,
                          opt_node_info: Option<NodeInfo>,
                          _name: &str,
-                         f: |@Block| -> Result)
-                         -> Result {
+                         f: |&'a Block<'a>| -> Result<'a>)
+                         -> Result<'a> {
     let _icx = push_ctxt("with_scope_result");
 
-    let scope = simple_block_scope(bcx.scope.get(), opt_node_info);
+    let scope = simple_block_scope(bcx.fcx, bcx.scope.get(), opt_node_info);
     bcx.scope.set(Some(scope));
     let Result { bcx: out_bcx, val } = f(bcx);
     let out_bcx = trans_block_cleanups_(out_bcx, scope.cleanups.get(), false);
@@ -1481,11 +1551,12 @@ pub fn with_scope_result(bcx: @Block,
     rslt(out_bcx, val)
 }
 
-pub fn with_scope_datumblock(bcx: @Block,
+pub fn with_scope_datumblock<'a>(
+                             bcx: &'a Block<'a>,
                              opt_node_info: Option<NodeInfo>,
                              name: &str,
-                             f: |@Block| -> datum::DatumBlock)
-                             -> datum::DatumBlock {
+                             f: |&'a Block| -> datum::DatumBlock<'a>)
+                             -> datum::DatumBlock<'a> {
     use middle::trans::datum::DatumBlock;
 
     let _icx = push_ctxt("with_scope_result");
@@ -1509,10 +1580,11 @@ pub fn block_locals(b: &ast::Block, it: |@ast::Local|) {
     }
 }
 
-pub fn with_cond(bcx: @Block,
+pub fn with_cond<'a>(
+                 bcx: &'a Block<'a>,
                  val: ValueRef,
-                 f: |@Block| -> @Block)
-                 -> @Block {
+                 f: |&'a Block<'a>| -> &'a Block<'a>)
+                 -> &'a Block<'a> {
     let _icx = push_ctxt("with_cond");
     let next_cx = base::sub_block(bcx, "next");
     let cond_cx = base::sub_block(bcx, "cond");
@@ -1524,7 +1596,7 @@ pub fn with_cond(bcx: @Block,
     next_cx
 }
 
-pub fn call_memcpy(cx: @Block, dst: ValueRef, src: ValueRef, n_bytes: ValueRef, align: u32) {
+pub fn call_memcpy(cx: &Block, dst: ValueRef, src: ValueRef, n_bytes: ValueRef, align: u32) {
     let _icx = push_ctxt("call_memcpy");
     let ccx = cx.ccx();
     let key = match ccx.sess.targ_cfg.arch {
@@ -1540,7 +1612,7 @@ pub fn call_memcpy(cx: @Block, dst: ValueRef, src: ValueRef, n_bytes: ValueRef, 
     Call(cx, memcpy, [dst_ptr, src_ptr, size, align, volatile], []);
 }
 
-pub fn memcpy_ty(bcx: @Block, dst: ValueRef, src: ValueRef, t: ty::t) {
+pub fn memcpy_ty(bcx: &Block, dst: ValueRef, src: ValueRef, t: ty::t) {
     let _icx = push_ctxt("memcpy_ty");
     let ccx = bcx.ccx();
     if ty::type_is_structural(t) {
@@ -1553,7 +1625,7 @@ pub fn memcpy_ty(bcx: @Block, dst: ValueRef, src: ValueRef, t: ty::t) {
     }
 }
 
-pub fn zero_mem(cx: @Block, llptr: ValueRef, t: ty::t) {
+pub fn zero_mem(cx: &Block, llptr: ValueRef, t: ty::t) {
     if cx.unreachable.get() { return; }
     let _icx = push_ctxt("zero_mem");
     let bcx = cx;
@@ -1585,7 +1657,7 @@ pub fn memzero(b: &Builder, llptr: ValueRef, ty: Type) {
     b.call(llintrinsicfn, [llptr, llzeroval, size, align, volatile], []);
 }
 
-pub fn alloc_ty(bcx: @Block, t: ty::t, name: &str) -> ValueRef {
+pub fn alloc_ty(bcx: &Block, t: ty::t, name: &str) -> ValueRef {
     let _icx = push_ctxt("alloc_ty");
     let ccx = bcx.ccx();
     let ty = type_of::type_of(ccx, t);
@@ -1594,11 +1666,11 @@ pub fn alloc_ty(bcx: @Block, t: ty::t, name: &str) -> ValueRef {
     return val;
 }
 
-pub fn alloca(cx: @Block, ty: Type, name: &str) -> ValueRef {
+pub fn alloca(cx: &Block, ty: Type, name: &str) -> ValueRef {
     alloca_maybe_zeroed(cx, ty, name, false)
 }
 
-pub fn alloca_maybe_zeroed(cx: @Block, ty: Type, name: &str, zero: bool) -> ValueRef {
+pub fn alloca_maybe_zeroed(cx: &Block, ty: Type, name: &str, zero: bool) -> ValueRef {
     let _icx = push_ctxt("alloca");
     if cx.unreachable.get() {
         unsafe {
@@ -1615,7 +1687,7 @@ pub fn alloca_maybe_zeroed(cx: @Block, ty: Type, name: &str, zero: bool) -> Valu
     p
 }
 
-pub fn arrayalloca(cx: @Block, ty: Type, v: ValueRef) -> ValueRef {
+pub fn arrayalloca(cx: &Block, ty: Type, v: ValueRef) -> ValueRef {
     let _icx = push_ctxt("arrayalloca");
     if cx.unreachable.get() {
         unsafe {
@@ -1650,7 +1722,8 @@ pub fn mk_return_basic_block(llfn: ValueRef) -> BasicBlockRef {
 
 // Creates and returns space for, or returns the argument representing, the
 // slot where the return value of the function must go.
-pub fn make_return_pointer(fcx: @FunctionContext, output_type: ty::t) -> ValueRef {
+pub fn make_return_pointer(fcx: &FunctionContext, output_type: ty::t)
+                           -> ValueRef {
     unsafe {
         if type_of::return_uses_outptr(fcx.ccx, output_type) {
             llvm::LLVMGetParam(fcx.llfn, 0)
@@ -1668,16 +1741,17 @@ pub fn make_return_pointer(fcx: @FunctionContext, output_type: ty::t) -> ValueRe
 //  - create_llargs_for_fn_args.
 //  - new_fn_ctxt
 //  - trans_args
+//
+// Be warned! You must call `init_function` before doing anything with the
+// returned function context.
 pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
                         path: path,
                         llfndecl: ValueRef,
                         id: ast::NodeId,
                         output_type: ty::t,
-                        skip_retptr: bool,
                         param_substs: Option<@param_substs>,
-                        opt_node_info: Option<NodeInfo>,
                         sp: Option<Span>)
-                     -> @FunctionContext {
+                        -> FunctionContext {
     for p in param_substs.iter() { p.validate(); }
 
     debug!("new_fn_ctxt_w_id(path={}, id={:?}, \
@@ -1695,7 +1769,7 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
     let uses_outptr = type_of::return_uses_outptr(ccx, substd_output_type);
     let debug_context = debuginfo::create_function_debug_context(ccx, id, param_substs, llfndecl);
 
-    let fcx = @FunctionContext {
+    let fcx = FunctionContext {
           llfn: llfndecl,
           llenv: unsafe {
               Cell::new(llvm::LLVMGetUndef(Type::i8p().to_ref()))
@@ -1714,6 +1788,8 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
           param_substs: param_substs,
           span: sp,
           path: path,
+          block_arena: TypedArena::new(),
+          scope_info_arena: TypedArena::new(),
           ccx: ccx,
           debug_context: debug_context,
     };
@@ -1721,6 +1797,17 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
           llvm::LLVMGetParam(llfndecl, fcx.env_arg_pos() as c_uint)
     });
 
+    fcx
+}
+
+/// Performs setup on a newly created function, creating the entry scope block
+/// and allocating space for the return pointer.
+pub fn init_function<'a>(
+                     fcx: &'a FunctionContext<'a>,
+                     skip_retptr: bool,
+                     output_type: ty::t,
+                     param_substs: Option<@param_substs>,
+                     opt_node_info: Option<NodeInfo>) {
     unsafe {
         let entry_bcx = top_scope_block(fcx, opt_node_info);
         Load(entry_bcx, C_null(Type::i8p()));
@@ -1730,10 +1817,20 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
                 llvm::LLVMGetFirstInstruction(entry_bcx.llbb)));
     }
 
-    if !ty::type_is_voidish(ccx.tcx, substd_output_type) {
+    let substd_output_type = match param_substs {
+        None => output_type,
+        Some(substs) => {
+            ty::subst_tps(fcx.ccx.tcx,
+                          substs.tys,
+                          substs.self_ty,
+                          output_type)
+        }
+    };
+
+    if !ty::type_is_voidish(fcx.ccx.tcx, substd_output_type) {
         // If the function returns nil/bot, there is no real return
         // value, so do not set `llretptr`.
-        if !skip_retptr || uses_outptr {
+        if !skip_retptr || fcx.caller_expects_out_pointer {
             // Otherwise, we normally allocate the llretptr, unless we
             // have been instructed to skip it for immediate return
             // values.
@@ -1741,7 +1838,6 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
                                                       substd_output_type)));
         }
     }
-    fcx
 }
 
 pub fn new_fn_ctxt(ccx: @CrateContext,
@@ -1749,8 +1845,10 @@ pub fn new_fn_ctxt(ccx: @CrateContext,
                    llfndecl: ValueRef,
                    output_type: ty::t,
                    sp: Option<Span>)
-                -> @FunctionContext {
-    new_fn_ctxt_w_id(ccx, path, llfndecl, -1, output_type, false, None, None, sp)
+                   -> FunctionContext {
+    // FIXME(#11385): Do not call `init_function` here; it will typecheck
+    // but segfault.
+    new_fn_ctxt_w_id(ccx, path, llfndecl, -1, output_type, None, sp)
 }
 
 // NB: must keep 4 fns in sync:
@@ -1767,10 +1865,10 @@ pub fn new_fn_ctxt(ccx: @CrateContext,
 // spaces that have been created for them (by code in the llallocas field of
 // the function's fn_ctxt).  create_llargs_for_fn_args populates the llargs
 // field of the fn_ctxt with
-pub fn create_llargs_for_fn_args(cx: @FunctionContext,
+pub fn create_llargs_for_fn_args(cx: &FunctionContext,
                                  self_arg: self_arg,
                                  args: &[ast::arg])
-                              -> ~[ValueRef] {
+                                 -> ~[ValueRef] {
     let _icx = push_ctxt("create_llargs_for_fn_args");
 
     match self_arg {
@@ -1791,11 +1889,13 @@ pub fn create_llargs_for_fn_args(cx: @FunctionContext,
     })
 }
 
-pub fn copy_args_to_allocas(fcx: @FunctionContext,
-                            bcx: @Block,
+pub fn copy_args_to_allocas<'a>(
+                            fcx: &FunctionContext<'a>,
+                            bcx: &'a Block<'a>,
                             args: &[ast::arg],
                             raw_llargs: &[ValueRef],
-                            arg_tys: &[ty::t]) -> @Block {
+                            arg_tys: &[ty::t])
+                            -> &'a Block<'a> {
     debug!("copy_args_to_allocas: raw_llargs={} arg_tys={}",
            raw_llargs.llrepr(fcx.ccx),
            arg_tys.repr(fcx.ccx.tcx));
@@ -1855,7 +1955,7 @@ pub fn copy_args_to_allocas(fcx: @FunctionContext,
 
 // Ties up the llstaticallocas -> llloadenv -> lltop edges,
 // and builds the return block.
-pub fn finish_fn(fcx: @FunctionContext, last_bcx: @Block) {
+pub fn finish_fn(fcx: &FunctionContext, last_bcx: &Block) {
     let _icx = push_ctxt("finish_fn");
 
     let ret_cx = match fcx.llreturn.get() {
@@ -1873,7 +1973,7 @@ pub fn finish_fn(fcx: @FunctionContext, last_bcx: @Block) {
 }
 
 // Builds the return block for a function.
-pub fn build_return_block(fcx: &FunctionContext, ret_cx: @Block) {
+pub fn build_return_block(fcx: &FunctionContext, ret_cx: &Block) {
     // Return the value if this function immediate; otherwise, return void.
     if fcx.llretptr.get().is_none() || fcx.caller_expects_out_pointer {
         return RetVoid(ret_cx);
@@ -1916,7 +2016,7 @@ pub fn trans_closure(ccx: @CrateContext,
                      id: ast::NodeId,
                      _attributes: &[ast::Attribute],
                      output_type: ty::t,
-                     maybe_load_env: |@FunctionContext|) {
+                     maybe_load_env: |&FunctionContext|) {
     ccx.stats.n_closures.set(ccx.stats.n_closures.get() + 1);
 
     let _icx = push_ctxt("trans_closure");
@@ -1930,10 +2030,9 @@ pub fn trans_closure(ccx: @CrateContext,
                                llfndecl,
                                id,
                                output_type,
-                               false,
                                param_substs,
-                               body.info(),
                                Some(body.span));
+    init_function(&fcx, false, output_type, param_substs, body.info());
 
     // Create the first basic block in the function and keep a handle on it to
     //  pass to finish_fn later.
@@ -1943,16 +2042,16 @@ pub fn trans_closure(ccx: @CrateContext,
 
     // Set up arguments to the function.
     let arg_tys = ty::ty_fn_args(node_id_type(bcx, id));
-    let raw_llargs = create_llargs_for_fn_args(fcx, self_arg, decl.inputs);
+    let raw_llargs = create_llargs_for_fn_args(&fcx, self_arg, decl.inputs);
 
-    bcx = copy_args_to_allocas(fcx, bcx, decl.inputs, raw_llargs, arg_tys);
+    bcx = copy_args_to_allocas(&fcx, bcx, decl.inputs, raw_llargs, arg_tys);
 
-    maybe_load_env(fcx);
+    maybe_load_env(&fcx);
 
     // Up until here, IR instructions for this function have explicitly not been annotated with
     // source code location, so we don't step into call setup code. From here on, source location
     // emitting should be enabled.
-    debuginfo::start_emitting_source_locations(fcx);
+    debuginfo::start_emitting_source_locations(&fcx);
 
     // This call to trans_block is the place where we bridge between
     // translation calls that don't have a return value (trans_crate,
@@ -1980,7 +2079,7 @@ pub fn trans_closure(ccx: @CrateContext,
     }
 
     // Insert the mandatory first few basic blocks before lltop.
-    finish_fn(fcx, bcx);
+    finish_fn(&fcx, bcx);
 }
 
 // trans_fn: creates an LLVM function corresponding to a source language
@@ -2015,10 +2114,9 @@ pub fn trans_fn(ccx: @CrateContext,
                   |_fcx| { });
 }
 
-fn insert_synthetic_type_entries(bcx: @Block,
+fn insert_synthetic_type_entries(bcx: &Block,
                                  fn_args: &[ast::arg],
-                                 arg_tys: &[ty::t])
-{
+                                 arg_tys: &[ty::t]) {
     /*!
      * For tuple-like structs and enum-variants, we generate
      * synthetic AST nodes for the arguments.  These have no types
@@ -2143,19 +2241,18 @@ pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
                                llfndecl,
                                ctor_id,
                                result_ty,
-                               false,
                                param_substs,
-                               None,
                                None);
+    init_function(&fcx, false, result_ty, param_substs, None);
 
     let arg_tys = ty::ty_fn_args(ctor_ty);
 
-    let raw_llargs = create_llargs_for_fn_args(fcx, no_self, fn_args);
+    let raw_llargs = create_llargs_for_fn_args(&fcx, no_self, fn_args);
 
     let bcx = fcx.entry_bcx.get().unwrap();
 
     insert_synthetic_type_entries(bcx, fn_args, arg_tys);
-    let bcx = copy_args_to_allocas(fcx, bcx, fn_args, raw_llargs, arg_tys);
+    let bcx = copy_args_to_allocas(&fcx, bcx, fn_args, raw_llargs, arg_tys);
 
     let repr = adt::represent_type(ccx, result_ty);
     adt::trans_start_init(bcx, repr, fcx.llretptr.get().unwrap(), disr);
@@ -2172,7 +2269,7 @@ pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
         let arg_ty = arg_tys[i];
         memcpy_ty(bcx, lldestptr, llarg, arg_ty);
     }
-    finish_fn(fcx, bcx);
+    finish_fn(&fcx, bcx);
 }
 
 pub fn trans_enum_def(ccx: @CrateContext, enum_definition: &ast::enum_def,
@@ -2471,7 +2568,9 @@ pub fn create_entry_wrapper(ccx: @CrateContext,
     }
 }
 
-pub fn fill_fn_pair(bcx: @Block, pair: ValueRef, llfn: ValueRef,
+pub fn fill_fn_pair(bcx: &Block,
+                    pair: ValueRef,
+                    llfn: ValueRef,
                     llenvptr: ValueRef) {
     let ccx = bcx.ccx();
     let code_cell = GEPi(bcx, pair, [0u, abi::fn_field_code]);
@@ -2798,7 +2897,7 @@ pub fn register_method(ccx: @CrateContext,
     llfn
 }
 
-pub fn vp2i(cx: @Block, v: ValueRef) -> ValueRef {
+pub fn vp2i(cx: &Block, v: ValueRef) -> ValueRef {
     let ccx = cx.ccx();
     return PtrToInt(cx, v, ccx.int_type);
 }
@@ -2966,7 +3065,7 @@ pub fn declare_dbg_intrinsics(llmod: ModuleRef, intrinsics: &mut HashMap<&'stati
          "llvm.dbg.value",   [Type::metadata(), Type::i64(), Type::metadata()], Type::void());
 }
 
-pub fn trap(bcx: @Block) {
+pub fn trap(bcx: &Block) {
     match bcx.ccx().intrinsics.find_equiv(& &"llvm.trap") {
       Some(&x) => { Call(bcx, x, [], []); },
       _ => bcx.sess().bug("unbound llvm.trap in trap")

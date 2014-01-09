@@ -22,11 +22,13 @@ use middle::trans::datum::*;
 use syntax::codemap::Span;
 use syntax::ast;
 
-pub fn root_and_write_guard(datum: &Datum,
-                            bcx: @Block,
+pub fn root_and_write_guard<'a>(
+                            datum: &Datum,
+                            bcx: &'a Block<'a>,
                             span: Span,
                             expr_id: ast::NodeId,
-                            derefs: uint) -> @Block {
+                            derefs: uint)
+                            -> &'a Block<'a> {
     let key = root_map_key { id: expr_id, derefs: derefs };
     debug!("write_guard::root_and_write_guard(key={:?})", key);
 
@@ -41,11 +43,13 @@ pub fn root_and_write_guard(datum: &Datum,
     }
 }
 
-fn root(datum: &Datum,
-        bcx: @Block,
+fn root<'a>(
+        datum: &Datum,
+        bcx: &'a Block<'a>,
         _: Span,
         root_key: root_map_key,
-        root_info: RootInfo) -> @Block {
+        root_info: RootInfo)
+        -> &'a Block<'a> {
     //! In some cases, borrowck will decide that an @T/@[]/@str
     //! value must be rooted for the program to be safe.  In that
     //! case, we will call this function, which will stash a copy

@@ -138,10 +138,12 @@ pub fn trans_method(ccx: @CrateContext,
              []);
 }
 
-pub fn trans_self_arg(bcx: @Block,
+pub fn trans_self_arg<'a>(
+                      bcx: &'a Block<'a>,
                       base: &ast::Expr,
                       temp_cleanups: &mut ~[ValueRef],
-                      mentry: typeck::method_map_entry) -> Result {
+                      mentry: typeck::method_map_entry)
+                      -> Result<'a> {
     let _icx = push_ctxt("impl::trans_self_arg");
 
     // self is passed as an opaque box in the environment slot
@@ -154,11 +156,12 @@ pub fn trans_self_arg(bcx: @Block,
                    DontAutorefArg)
 }
 
-pub fn trans_method_callee(bcx: @Block,
+pub fn trans_method_callee<'a>(
+                           bcx: &'a Block<'a>,
                            callee_id: ast::NodeId,
                            this: &ast::Expr,
                            mentry: typeck::method_map_entry)
-                           -> Callee {
+                           -> Callee<'a> {
     let _icx = push_ctxt("impl::trans_method_callee");
 
     debug!("trans_method_callee(callee_id={:?}, this={}, mentry={})",
@@ -212,11 +215,11 @@ pub fn trans_method_callee(bcx: @Block,
     }
 }
 
-pub fn trans_static_method_callee(bcx: @Block,
+pub fn trans_static_method_callee(bcx: &Block,
                                   method_id: ast::DefId,
                                   trait_id: ast::DefId,
                                   callee_id: ast::NodeId)
-                               -> FnData {
+                                  -> FnData {
     let _icx = push_ctxt("impl::trans_static_method_callee");
     let ccx = bcx.ccx();
 
@@ -322,14 +325,15 @@ pub fn method_with_name(ccx: &CrateContext,
     meth.def_id
 }
 
-pub fn trans_monomorphized_callee(bcx: @Block,
+pub fn trans_monomorphized_callee<'a>(
+                                  bcx: &'a Block<'a>,
                                   callee_id: ast::NodeId,
                                   base: &ast::Expr,
                                   mentry: typeck::method_map_entry,
                                   trait_id: ast::DefId,
                                   n_method: uint,
                                   vtbl: typeck::vtable_origin)
-                                  -> Callee {
+                                  -> Callee<'a> {
     let _icx = push_ctxt("impl::trans_monomorphized_callee");
     return match vtbl {
       typeck::vtable_static(impl_did, ref rcvr_substs, rcvr_origins) => {
@@ -379,7 +383,7 @@ pub fn trans_monomorphized_callee(bcx: @Block,
 
 }
 
-pub fn combine_impl_and_methods_tps(bcx: @Block,
+pub fn combine_impl_and_methods_tps(bcx: &Block,
                                     mth_did: ast::DefId,
                                     callee_id: ast::NodeId,
                                     rcvr_substs: &[ty::t],
@@ -428,11 +432,12 @@ pub fn combine_impl_and_methods_tps(bcx: @Block,
     return (ty_substs, vtables);
 }
 
-pub fn trans_trait_callee(bcx: @Block,
+pub fn trans_trait_callee<'a>(
+                          bcx: &'a Block<'a>,
                           callee_id: ast::NodeId,
                           n_method: uint,
                           self_expr: &ast::Expr)
-                          -> Callee {
+                          -> Callee<'a> {
     /*!
      * Create a method callee where the method is coming from a trait
      * object (e.g., @Trait type).  In this case, we must pull the fn
@@ -470,12 +475,13 @@ pub fn trans_trait_callee(bcx: @Block,
                                   Some(self_scratch.val))
 }
 
-pub fn trans_trait_callee_from_llval(bcx: @Block,
+pub fn trans_trait_callee_from_llval<'a>(
+                                     bcx: &'a Block<'a>,
                                      callee_ty: ty::t,
                                      n_method: uint,
                                      llpair: ValueRef,
                                      temp_cleanup: Option<ValueRef>)
-                                  -> Callee {
+                                     -> Callee<'a> {
     /*!
      * Same as `trans_trait_callee()` above, except that it is given
      * a by-ref pointer to the object pair.
@@ -541,7 +547,7 @@ pub fn vtable_id(ccx: @CrateContext,
 
 /// Creates a returns a dynamic vtable for the given type and vtable origin.
 /// This is used only for objects.
-pub fn get_vtable(bcx: @Block,
+pub fn get_vtable(bcx: &Block,
                   self_ty: ty::t,
                   origins: typeck::vtable_param_res)
                   -> ValueRef {
@@ -604,7 +610,7 @@ pub fn make_vtable(ccx: &CrateContext,
     }
 }
 
-fn emit_vtable_methods(bcx: @Block,
+fn emit_vtable_methods(bcx: &Block,
                        impl_id: ast::DefId,
                        substs: &[ty::t],
                        vtables: typeck::vtable_res)
@@ -642,13 +648,14 @@ fn emit_vtable_methods(bcx: @Block,
     })
 }
 
-pub fn trans_trait_cast(bcx: @Block,
+pub fn trans_trait_cast<'a>(
+                        bcx: &'a Block<'a>,
                         val: &ast::Expr,
                         id: ast::NodeId,
                         dest: expr::Dest,
                         _store: ty::TraitStore,
                         do_adjustments: bool)
-                     -> @Block {
+                        -> &'a Block<'a> {
     let mut bcx = bcx;
     let _icx = push_ctxt("impl::trans_cast");
 
