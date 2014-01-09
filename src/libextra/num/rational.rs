@@ -105,6 +105,12 @@ impl<T: Clone + Integer + Ord>
         ret.reduce();
         ret
     }
+
+    /// Return the reciprocal
+    #[inline]
+    pub fn recip(&self) -> Ratio<T> {
+        Ratio::new_raw(self.denom.clone(), self.numer.clone())
+    }
 }
 
 impl Ratio<BigInt> {
@@ -285,13 +291,6 @@ impl<T: Clone + Integer + Ord>
 
     fn fract(&self) -> Ratio<T> {
         Ratio::new_raw(self.numer % self.denom, self.denom.clone())
-    }
-}
-
-impl<T: Clone + Integer + Ord> Fractional for Ratio<T> {
-    #[inline]
-    fn recip(&self) -> Ratio<T> {
-        Ratio::new_raw(self.denom.clone(), self.numer.clone())
     }
 }
 
