@@ -107,8 +107,8 @@ pub fn llvm_calling_convention(ccx: &CrateContext,
 
 pub fn register_foreign_item_fn(ccx: @CrateContext,
                                 abis: AbiSet,
-                                path: &ast_map::path,
-                                foreign_item: @ast::foreign_item) -> ValueRef {
+                                path: &ast_map::Path,
+                                foreign_item: @ast::ForeignItem) -> ValueRef {
     /*!
      * Registers a foreign function found in a library.
      * Just adds a LLVM global.
@@ -352,15 +352,15 @@ pub fn trans_native_call<'a>(
 }
 
 pub fn trans_foreign_mod(ccx: @CrateContext,
-                         foreign_mod: &ast::foreign_mod) {
+                         foreign_mod: &ast::ForeignMod) {
     let _icx = push_ctxt("foreign::trans_foreign_mod");
     for &foreign_item in foreign_mod.items.iter() {
         match foreign_item.node {
-            ast::foreign_item_fn(..) => {
+            ast::ForeignItemFn(..) => {
                 let items = ccx.tcx.items.borrow();
                 let (abis, mut path) =
                     match items.get().get_copy(&foreign_item.id) {
-                        ast_map::node_foreign_item(_, abis, _, path) => {
+                        ast_map::NodeForeignItem(_, abis, _, path) => {
                             (abis, (*path).clone())
                         }
                         _ => {
@@ -369,7 +369,7 @@ pub fn trans_foreign_mod(ccx: @CrateContext,
                         }
                     };
                 if !(abis.is_rust() || abis.is_intrinsic()) {
-                    path.push(ast_map::path_name(foreign_item.ident));
+                    path.push(ast_map::PathName(foreign_item.ident));
                     register_foreign_item_fn(ccx, abis, &path, foreign_item);
                 }
             }
@@ -437,8 +437,8 @@ pub fn register_rust_fn_with_foreign_abi(ccx: @CrateContext,
 }
 
 pub fn trans_rust_fn_with_foreign_abi(ccx: @CrateContext,
-                                      path: &ast_map::path,
-                                      decl: &ast::fn_decl,
+                                      path: &ast_map::Path,
+                                      decl: &ast::FnDecl,
                                       body: &ast::Block,
                                       attrs: &[ast::Attribute],
                                       llwrapfn: ValueRef,
@@ -455,8 +455,8 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: @CrateContext,
     }
 
     fn build_rust_fn(ccx: @CrateContext,
-                     path: &ast_map::path,
-                     decl: &ast::fn_decl,
+                     path: &ast_map::Path,
+                     decl: &ast::FnDecl,
                      body: &ast::Block,
                      attrs: &[ast::Attribute],
                      id: ast::NodeId)
@@ -465,7 +465,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: @CrateContext,
         let tcx = ccx.tcx;
         let t = ty::node_id_to_type(tcx, id);
         let ps = link::mangle_internal_name_by_path(
-            ccx, vec::append_one((*path).clone(), ast_map::path_name(
+            ccx, vec::append_one((*path).clone(), ast_map::PathName(
                 special_idents::clownshoe_abi
             )));
 
@@ -748,7 +748,7 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: @CrateContext,
 // This code is kind of a confused mess and needs to be reworked given
 // the massive simplifications that have occurred.
 
-pub fn link_name(ccx: &CrateContext, i: @ast::foreign_item) -> @str {
+pub fn link_name(ccx: &CrateContext, i: @ast::ForeignItem) -> @str {
      match attr::first_attr_value_str_by_name(i.attrs, "link_name") {
         None => ccx.sess.str_of(i.ident),
         Some(ln) => ln,

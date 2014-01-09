@@ -17,20 +17,20 @@ use parse::token::{get_ident_interner};
 
 pub fn expand_syntax_ext(cx: &mut ExtCtxt,
                          sp: codemap::Span,
-                         tt: &[ast::token_tree])
+                         tt: &[ast::TokenTree])
                       -> base::MacResult {
 
     cx.print_backtrace();
     println(
         print::pprust::tt_to_str(
-            &ast::tt_delim(@tt.to_owned()),
+            &ast::TTDelim(@tt.to_owned()),
             get_ident_interner()));
 
     //trivial expression
     MRExpr(@ast::Expr {
         id: ast::DUMMY_NODE_ID,
         node: ast::ExprLit(@codemap::Spanned {
-            node: ast::lit_nil,
+            node: ast::LitNil,
             span: sp
         }),
         span: sp,

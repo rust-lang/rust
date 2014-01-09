@@ -24,7 +24,7 @@ pub trait Emitter {
     fn emit(&self,
             cmsp: Option<(&codemap::CodeMap, Span)>,
             msg: &str,
-            lvl: level);
+            lvl: Level);
 }
 
 // a span-handler is like a handler but also
@@ -37,18 +37,18 @@ pub struct SpanHandler {
 
 impl SpanHandler {
     pub fn span_fatal(@self, sp: Span, msg: &str) -> ! {
-        self.handler.emit(Some((&*self.cm, sp)), msg, fatal);
+        self.handler.emit(Some((&*self.cm, sp)), msg, Fatal);
         fail!();
     }
     pub fn span_err(@self, sp: Span, msg: &str) {
-        self.handler.emit(Some((&*self.cm, sp)), msg, error);
+        self.handler.emit(Some((&*self.cm, sp)), msg, Error);
         self.handler.bump_err_count();
     }
     pub fn span_warn(@self, sp: Span, msg: &str) {
-        self.handler.emit(Some((&*self.cm, sp)), msg, warning);
+        self.handler.emit(Some((&*self.cm, sp)), msg, Warning);
     }
     pub fn span_note(@self, sp: Span, msg: &str) {
-        self.handler.emit(Some((&*self.cm, sp)), msg, note);
+        self.handler.emit(Some((&*self.cm, sp)), msg, Note);
     }
     pub fn span_bug(@self, sp: Span, msg: &str) -> ! {
         self.span_fatal(sp, ice_msg(msg));
@@ -71,11 +71,11 @@ pub struct Handler {
 
 impl Handler {
     pub fn fatal(@self, msg: &str) -> ! {
-        self.emit.emit(None, msg, fatal);
+        self.emit.emit(None, msg, Fatal);
         fail!();
     }
     pub fn err(@self, msg: &str) {
-        self.emit.emit(None, msg, error);
+        self.emit.emit(None, msg, Error);
         self.bump_err_count();
     }
     pub fn bump_err_count(@self) {
@@ -100,10 +100,10 @@ impl Handler {
         self.fatal(s);
     }
     pub fn warn(@self, msg: &str) {
-        self.emit.emit(None, msg, warning);
+        self.emit.emit(None, msg, Warning);
     }
     pub fn note(@self, msg: &str) {
-        self.emit.emit(None, msg, note);
+        self.emit.emit(None, msg, Note);
     }
     pub fn bug(@self, msg: &str) -> ! {
         self.fatal(ice_msg(msg));
@@ -114,7 +114,7 @@ impl Handler {
     pub fn emit(@self,
             cmsp: Option<(&codemap::CodeMap, Span)>,
             msg: &str,
-            lvl: level) {
+            lvl: Level) {
         self.emit.emit(cmsp, msg, lvl);
     }
 }
@@ -145,28 +145,30 @@ pub fn mk_handler(emitter: Option<@Emitter>) -> @Handler {
 }
 
 #[deriving(Eq)]
-pub enum level {
-    fatal,
-    error,
-    warning,
-    note,
+pub enum Level {
+    Fatal,
+    Error,
+    Warning,
+    Note,
 }
 
-fn diagnosticstr(lvl: level) -> ~str {
-    match lvl {
-        fatal => ~"error",
-        error => ~"error",
-        warning => ~"warning",
-        note => ~"note"
+impl ToStr for Level {
+    fn to_str(&self) -> ~str {
+        match *self {
+            Fatal | Error => ~"error",
+            Warning => ~"warning",
+            Note => ~"note"
+        }
     }
 }
 
-fn diagnosticcolor(lvl: level) -> term::color::Color {
-    match lvl {
-        fatal => term::color::BRIGHT_RED,
-        error => term::color::BRIGHT_RED,
-        warning => term::color::BRIGHT_YELLOW,
-        note => term::color::BRIGHT_GREEN
+impl Level {
+    fn color(self) -> term::color::Color {
+        match self {
+            Fatal | Error => term::color::BRIGHT_RED,
+            Warning => term::color::BRIGHT_YELLOW,
+            Note => term::color::BRIGHT_GREEN
+        }
     }
 }
 
@@ -212,15 +214,15 @@ fn print_maybe_styled(msg: &str, color: term::attr::Attr) {
     }
 }
 
-fn print_diagnostic(topic: &str, lvl: level, msg: &str) {
+fn print_diagnostic(topic: &str, lvl: Level, msg: &str) {
     let mut stderr = io::stderr();
 
     if !topic.is_empty() {
         write!(&mut stderr as &mut io::Writer, "{} ", topic);
     }
 
-    print_maybe_styled(format!("{}: ", diagnosticstr(lvl)),
-                            term::attr::ForegroundColor(diagnosticcolor(lvl)));
+    print_maybe_styled(format!("{}: ", lvl.to_str()),
+                       term::attr::ForegroundColor(lvl.color()));
     print_maybe_styled(format!("{}\n", msg), term::attr::Bold);
 }
 
@@ -230,7 +232,7 @@ impl Emitter for DefaultEmitter {
     fn emit(&self,
             cmsp: Option<(&codemap::CodeMap, Span)>,
             msg: &str,
-            lvl: level) {
+            lvl: Level) {
         match cmsp {
             Some((cm, sp)) => {
                 let sp = cm.adjust_span(sp);
@@ -247,7 +249,7 @@ impl Emitter for DefaultEmitter {
 
 fn highlight_lines(cm: &codemap::CodeMap,
                    sp: Span,
-                   lvl: level,
+                   lvl: Level,
                    lines: &codemap::FileLines) {
     let fm = lines.file;
     let mut err = io::stderr();
@@ -308,7 +310,7 @@ fn highlight_lines(cm: &codemap::CodeMap,
             let num_squigglies = hi.col.to_uint()-lo.col.to_uint()-1u;
             num_squigglies.times(|| s.push_char('~'));
         }
-        print_maybe_styled(s + "\n", term::attr::ForegroundColor(diagnosticcolor(lvl)));
+        print_maybe_styled(s + "\n", term::attr::ForegroundColor(lvl.color()));
     }
 }
 
@@ -319,10 +321,10 @@ fn print_macro_backtrace(cm: &codemap::CodeMap, sp: Span) {
             codemap::MacroAttribute => ("#[", "]"),
             codemap::MacroBang => ("", "!")
         };
-        print_diagnostic(ss, note,
+        print_diagnostic(ss, Note,
                          format!("in expansion of {}{}{}", pre, ei.callee.name, post));
         let ss = cm.span_to_str(ei.call_site);
-        print_diagnostic(ss, note, "expansion site");
+        print_diagnostic(ss, Note, "expansion site");
         print_macro_backtrace(cm, ei.call_site);
     }
 }

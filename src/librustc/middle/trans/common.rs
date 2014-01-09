@@ -39,7 +39,7 @@ use std::hashmap::HashMap;
 use std::libc::{c_uint, c_longlong, c_ulonglong, c_char};
 use std::vec;
 use syntax::ast::{Name, Ident};
-use syntax::ast_map::{path, path_elt, path_pretty_name};
+use syntax::ast_map::{Path, PathElem, PathPrettyName};
 use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::{ast, ast_map};
@@ -79,10 +79,10 @@ pub fn type_is_immediate(ccx: &CrateContext, ty: ty::t) -> bool {
     }
 }
 
-pub fn gensym_name(name: &str) -> (Ident, path_elt) {
+pub fn gensym_name(name: &str) -> (Ident, PathElem) {
     let name = token::gensym(name);
     let ident = Ident::new(name);
-    (ident, path_pretty_name(ident, name as u64))
+    (ident, PathPrettyName(ident, name as u64))
 }
 
 pub struct tydesc_info {
@@ -257,7 +257,7 @@ pub struct FunctionContext<'a> {
     // The source span and nesting context where this function comes from, for
     // error reporting and symbol generation.
     span: Option<Span>,
-    path: path,
+    path: Path,
 
     // The arena that blocks are allocated from.
     block_arena: TypedArena<Block<'a>>,
@@ -1078,13 +1078,13 @@ pub fn align_to(cx: &Block, off: ValueRef, align: ValueRef) -> ValueRef {
     return build::And(cx, bumped, build::Not(cx, mask));
 }
 
-pub fn path_str(sess: session::Session, p: &[path_elt]) -> ~str {
+pub fn path_str(sess: session::Session, p: &[PathElem]) -> ~str {
     let mut r = ~"";
     let mut first = true;
     for e in p.iter() {
         match *e {
-            ast_map::path_name(s) | ast_map::path_mod(s) |
-            ast_map::path_pretty_name(s, _) => {
+            ast_map::PathName(s) | ast_map::PathMod(s) |
+            ast_map::PathPrettyName(s, _) => {
                 if first {
                     first = false
                 } else {

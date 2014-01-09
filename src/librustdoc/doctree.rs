@@ -28,10 +28,10 @@ pub struct Module {
     typedefs: ~[Typedef],
     statics: ~[Static],
     traits: ~[Trait],
-    vis: ast::visibility,
+    vis: ast::Visibility,
     impls: ~[Impl],
-    foreigns: ~[ast::foreign_mod],
-    view_items: ~[ast::view_item],
+    foreigns: ~[ast::ForeignMod],
+    view_items: ~[ast::ViewItem],
 }
 
 impl Module {
@@ -39,7 +39,7 @@ impl Module {
         Module {
             name       : name,
             id: 0,
-            vis: ast::private,
+            vis: ast::Private,
             where: syntax::codemap::DUMMY_SP,
             attrs      : ~[],
             structs    : ~[],
@@ -70,22 +70,22 @@ pub enum StructType {
 
 pub enum TypeBound {
     RegionBound,
-    TraitBound(ast::trait_ref)
+    TraitBound(ast::TraitRef)
 }
 
 pub struct Struct {
-    vis: ast::visibility,
+    vis: ast::Visibility,
     id: NodeId,
     struct_type: StructType,
     name: Ident,
     generics: ast::Generics,
     attrs: ~[ast::Attribute],
-    fields: ~[ast::struct_field],
+    fields: ~[ast::StructField],
     where: Span,
 }
 
 pub struct Enum {
-    vis: ast::visibility,
+    vis: ast::Visibility,
     variants: ~[Variant],
     generics: ast::Generics,
     attrs: ~[ast::Attribute],
@@ -97,19 +97,19 @@ pub struct Enum {
 pub struct Variant {
     name: Ident,
     attrs: ~[ast::Attribute],
-    kind: ast::variant_kind,
+    kind: ast::VariantKind,
     id: ast::NodeId,
-    vis: ast::visibility,
+    vis: ast::Visibility,
     where: Span,
 }
 
 pub struct Function {
-    decl: ast::fn_decl,
+    decl: ast::FnDecl,
     attrs: ~[ast::Attribute],
     id: NodeId,
     name: Ident,
-    vis: ast::visibility,
-    purity: ast::purity,
+    vis: ast::Visibility,
+    purity: ast::Purity,
     where: Span,
     generics: ast::Generics,
 }
@@ -121,7 +121,7 @@ pub struct Typedef {
     id: ast::NodeId,
     attrs: ~[ast::Attribute],
     where: Span,
-    vis: ast::visibility,
+    vis: ast::Visibility,
 }
 
 pub struct Static {
@@ -130,34 +130,34 @@ pub struct Static {
     expr: @ast::Expr,
     name: Ident,
     attrs: ~[ast::Attribute],
-    vis: ast::visibility,
+    vis: ast::Visibility,
     id: ast::NodeId,
     where: Span,
 }
 
 pub struct Trait {
     name: Ident,
-    methods: ~[ast::trait_method], //should be TraitMethod
+    methods: ~[ast::TraitMethod], //should be TraitMethod
     generics: ast::Generics,
-    parents: ~[ast::trait_ref],
+    parents: ~[ast::TraitRef],
     attrs: ~[ast::Attribute],
     id: ast::NodeId,
     where: Span,
-    vis: ast::visibility,
+    vis: ast::Visibility,
 }
 
 pub struct Impl {
     generics: ast::Generics,
-    trait_: Option<ast::trait_ref>,
+    trait_: Option<ast::TraitRef>,
     for_: ast::P<ast::Ty>,
-    methods: ~[@ast::method],
+    methods: ~[@ast::Method],
     attrs: ~[ast::Attribute],
     where: Span,
-    vis: ast::visibility,
+    vis: ast::Visibility,
     id: ast::NodeId,
 }
 
-pub fn struct_type_from_def(sd: &ast::struct_def) -> StructType {
+pub fn struct_type_from_def(sd: &ast::StructDef) -> StructType {
     if sd.ctor_id.is_some() {
         // We are in a tuple-struct
         match sd.fields.len() {

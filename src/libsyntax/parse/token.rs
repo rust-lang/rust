@@ -19,8 +19,9 @@ use std::cast;
 use std::char;
 use std::local_data;
 
+#[allow(non_camel_case_types)]
 #[deriving(Clone, Encodable, Decodable, Eq, IterBytes)]
-pub enum binop {
+pub enum BinOp {
     PLUS,
     MINUS,
     STAR,
@@ -33,6 +34,7 @@ pub enum binop {
     SHR,
 }
 
+#[allow(non_camel_case_types)]
 #[deriving(Clone, Encodable, Decodable, Eq, IterBytes)]
 pub enum Token {
     /* Expression-operator symbols. */
@@ -47,8 +49,8 @@ pub enum Token {
     OROR,
     NOT,
     TILDE,
-    BINOP(binop),
-    BINOPEQ(binop),
+    BINOP(BinOp),
+    BINOPEQ(BinOp),
 
     /* Structural symbols */
     AT,
@@ -74,10 +76,10 @@ pub enum Token {
 
     /* Literals */
     LIT_CHAR(u32),
-    LIT_INT(i64, ast::int_ty),
-    LIT_UINT(u64, ast::uint_ty),
+    LIT_INT(i64, ast::IntTy),
+    LIT_UINT(u64, ast::UintTy),
     LIT_INT_UNSUFFIXED(i64),
-    LIT_FLOAT(ast::Ident, ast::float_ty),
+    LIT_FLOAT(ast::Ident, ast::FloatTy),
     LIT_FLOAT_UNSUFFIXED(ast::Ident),
     LIT_STR(ast::Ident),
     LIT_STR_RAW(ast::Ident, uint), /* raw str delimited by n hash symbols */
@@ -91,7 +93,7 @@ pub enum Token {
     LIFETIME(ast::Ident),
 
     /* For interpolation */
-    INTERPOLATED(nonterminal),
+    INTERPOLATED(Nonterminal),
 
     DOC_COMMENT(ast::Ident),
     EOF,
@@ -99,21 +101,21 @@ pub enum Token {
 
 #[deriving(Clone, Encodable, Decodable, Eq, IterBytes)]
 /// For interpolation during macro expansion.
-pub enum nonterminal {
-    nt_item(@ast::item),
-    nt_block(P<ast::Block>),
-    nt_stmt(@ast::Stmt),
-    nt_pat( @ast::Pat),
-    nt_expr(@ast::Expr),
-    nt_ty(  P<ast::Ty>),
-    nt_ident(~ast::Ident, bool),
-    nt_attr(@ast::Attribute),   // #[foo]
-    nt_path(~ast::Path),
-    nt_tt(  @ast::token_tree), //needs @ed to break a circularity
-    nt_matchers(~[ast::matcher])
+pub enum Nonterminal {
+    NtItem(@ast::Item),
+    NtBlock(P<ast::Block>),
+    NtStmt(@ast::Stmt),
+    NtPat( @ast::Pat),
+    NtExpr(@ast::Expr),
+    NtTy(  P<ast::Ty>),
+    NtIdent(~ast::Ident, bool),
+    NtAttr(@ast::Attribute), // #[foo]
+    NtPath(~ast::Path),
+    NtTT(  @ast::TokenTree), // needs @ed to break a circularity
+    NtMatchers(~[ast::Matcher])
 }
 
-pub fn binop_to_str(o: binop) -> ~str {
+pub fn binop_to_str(o: BinOp) -> ~str {
     match o {
       PLUS => ~"+",
       MINUS => ~"-",
@@ -128,7 +130,7 @@ pub fn binop_to_str(o: binop) -> ~str {
     }
 }
 
-pub fn to_str(input: @ident_interner, t: &Token) -> ~str {
+pub fn to_str(input: @IdentInterner, t: &Token) -> ~str {
     match *t {
       EQ => ~"=",
       LT => ~"<",
@@ -212,22 +214,22 @@ pub fn to_str(input: @ident_interner, t: &Token) -> ~str {
       EOF => ~"<eof>",
       INTERPOLATED(ref nt) => {
         match nt {
-            &nt_expr(e) => ::print::pprust::expr_to_str(e, input),
-            &nt_attr(e) => ::print::pprust::attribute_to_str(e, input),
+            &NtExpr(e) => ::print::pprust::expr_to_str(e, input),
+            &NtAttr(e) => ::print::pprust::attribute_to_str(e, input),
             _ => {
                 ~"an interpolated " +
                     match (*nt) {
-                      nt_item(..) => ~"item",
-                      nt_block(..) => ~"block",
-                      nt_stmt(..) => ~"statement",
-                      nt_pat(..) => ~"pattern",
-                      nt_attr(..) => fail!("should have been handled"),
-                      nt_expr(..) => fail!("should have been handled above"),
-                      nt_ty(..) => ~"type",
-                      nt_ident(..) => ~"identifier",
-                      nt_path(..) => ~"path",
-                      nt_tt(..) => ~"tt",
-                      nt_matchers(..) => ~"matcher sequence"
+                        NtItem(..) => ~"item",
+                        NtBlock(..) => ~"block",
+                        NtStmt(..) => ~"statement",
+                        NtPat(..) => ~"pattern",
+                        NtAttr(..) => fail!("should have been handled"),
+                        NtExpr(..) => fail!("should have been handled above"),
+                        NtTy(..) => ~"type",
+                        NtIdent(..) => ~"identifier",
+                        NtPath(..) => ~"path",
+                        NtTT(..) => ~"tt",
+                        NtMatchers(..) => ~"matcher sequence"
                     }
             }
         }
@@ -260,10 +262,10 @@ pub fn can_begin_expr(t: &Token) -> bool {
       BINOP(OR) => true, // in lambda syntax
       OROR => true, // in lambda syntax
       MOD_SEP => true,
-      INTERPOLATED(nt_expr(..))
-      | INTERPOLATED(nt_ident(..))
-      | INTERPOLATED(nt_block(..))
-      | INTERPOLATED(nt_path(..)) => true,
+      INTERPOLATED(NtExpr(..))
+      | INTERPOLATED(NtIdent(..))
+      | INTERPOLATED(NtBlock(..))
+      | INTERPOLATED(NtPath(..)) => true,
       _ => false
     }
 }
@@ -303,7 +305,7 @@ pub fn is_ident(t: &Token) -> bool {
 
 pub fn is_ident_or_path(t: &Token) -> bool {
     match *t {
-      IDENT(_, _) | INTERPOLATED(nt_path(..)) => true,
+      IDENT(_, _) | INTERPOLATED(NtPath(..)) => true,
       _ => false
     }
 }
@@ -381,7 +383,7 @@ macro_rules! declare_special_idents_and_keywords {(
         }
     }
 
-    fn mk_fresh_ident_interner() -> @ident_interner {
+    fn mk_fresh_ident_interner() -> @IdentInterner {
         // The indices here must correspond to the numbers in
         // special_idents, in Keyword to_ident(), and in static
         // constants below.
@@ -508,12 +510,12 @@ pub fn token_to_binop(tok: &Token) -> Option<ast::BinOp> {
 }
 
 // looks like we can get rid of this completely...
-pub type ident_interner = StrInterner;
+pub type IdentInterner = StrInterner;
 
 // if an interner exists in TLS, return it. Otherwise, prepare a
 // fresh one.
-pub fn get_ident_interner() -> @ident_interner {
-    local_data_key!(key: @@::parse::token::ident_interner)
+pub fn get_ident_interner() -> @IdentInterner {
+    local_data_key!(key: @@::parse::token::IdentInterner)
     match local_data::get(key, |k| k.map(|k| *k)) {
         Some(interner) => *interner,
         None => {
@@ -526,7 +528,7 @@ pub fn get_ident_interner() -> @ident_interner {
 
 /* for when we don't care about the contents; doesn't interact with TLD or
    serialization */
-pub fn mk_fake_ident_interner() -> @ident_interner {
+pub fn mk_fake_ident_interner() -> @IdentInterner {
     @interner::StrInterner::new()
 }
 

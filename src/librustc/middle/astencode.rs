@@ -27,7 +27,7 @@ use util::ppaux::ty_to_str;
 use syntax::{ast, ast_map, ast_util, codemap, fold};
 use syntax::codemap::Span;
 use syntax::diagnostic::SpanHandler;
-use syntax::fold::ast_fold;
+use syntax::fold::Folder;
 use syntax::parse::token;
 use syntax;
 
@@ -62,8 +62,8 @@ struct DecodeContext {
 
 struct ExtendedDecodeContext {
     dcx: @DecodeContext,
-    from_id_range: ast_util::id_range,
-    to_id_range: ast_util::id_range
+    from_id_range: ast_util::IdRange,
+    to_id_range: ast_util::IdRange
 }
 
 trait tr {
@@ -79,13 +79,13 @@ trait tr_intern {
 
 pub fn encode_inlined_item(ecx: &e::EncodeContext,
                            ebml_w: &mut writer::Encoder,
-                           path: &[ast_map::path_elt],
+                           path: &[ast_map::PathElem],
                            ii: e::InlinedItemRef,
                            maps: Maps) {
     let ident = match ii {
-        e::ii_item_ref(i) => i.ident,
-        e::ii_foreign_ref(i) => i.ident,
-        e::ii_method_ref(_, _, m) => m.ident,
+        e::IIItemRef(i) => i.ident,
+        e::IIForeignRef(i) => i.ident,
+        e::IIMethodRef(_, _, m) => m.ident,
     };
     debug!("> Encoding inlined item: {}::{} ({})",
            ast_map::path_to_str(path, token::get_ident_interner()),
@@ -110,9 +110,9 @@ pub fn encode_inlined_item(ecx: &e::EncodeContext,
 pub fn decode_inlined_item(cdata: @cstore::crate_metadata,
                            tcx: ty::ctxt,
                            maps: Maps,
-                           path: &[ast_map::path_elt],
+                           path: &[ast_map::PathElem],
                            par_doc: ebml::Doc)
-                        -> Option<ast::inlined_item> {
+                        -> Option<ast::InlinedItem> {
     let dcx = @DecodeContext {
         cdata: cdata,
         tcx: tcx,
@@ -138,9 +138,9 @@ pub fn decode_inlined_item(cdata: @cstore::crate_metadata,
                                       path.to_owned(),
                                       raw_ii);
         let ident = match ii {
-            ast::ii_item(i) => i.ident,
-            ast::ii_foreign(i) => i.ident,
-            ast::ii_method(_, _, m) => m.ident,
+            ast::IIItem(i) => i.ident,
+            ast::IIForeign(i) => i.ident,
+            ast::IIMethod(_, _, m) => m.ident,
         };
         debug!("Fn named: {}", tcx.sess.str_of(ident));
         debug!("< Decoded inlined fn: {}::{}",
@@ -148,7 +148,7 @@ pub fn decode_inlined_item(cdata: @cstore::crate_metadata,
                tcx.sess.str_of(ident));
         decode_side_tables(xcx, ast_doc);
         match ii {
-          ast::ii_item(i) => {
+          ast::IIItem(i) => {
             debug!(">>> DECODED ITEM >>>\n{}\n<<< DECODED ITEM <<<",
                    syntax::print::pprust::item_to_str(i, tcx.sess.intr()));
           }
@@ -163,13 +163,13 @@ pub fn decode_inlined_item(cdata: @cstore::crate_metadata,
 // Enumerating the IDs which appear in an AST
 
 fn reserve_id_range(sess: Session,
-                    from_id_range: ast_util::id_range) -> ast_util::id_range {
+                    from_id_range: ast_util::IdRange) -> ast_util::IdRange {
     // Handle the case of an empty range:
     if from_id_range.empty() { return from_id_range; }
     let cnt = from_id_range.max - from_id_range.min;
     let to_id_min = sess.reserve_node_ids(cnt);
     let to_id_max = to_id_min + cnt;
-    ast_util::id_range { min: to_id_min, max: to_id_max }
+    ast_util::IdRange { min: to_id_min, max: to_id_max }
 }
 
 impl ExtendedDecodeContext {
@@ -296,7 +296,7 @@ impl<D:serialize::Decoder> def_id_decoder_helpers for D {
 // We also have to adjust the spans: for now we just insert a dummy span,
 // but eventually we should add entries to the local codemap as required.
 
-fn encode_ast(ebml_w: &mut writer::Encoder, item: ast::inlined_item) {
+fn encode_ast(ebml_w: &mut writer::Encoder, item: ast::InlinedItem) {
     ebml_w.start_tag(c::tag_tree as uint);
     item.encode(ebml_w);
     ebml_w.end_tag();
@@ -304,7 +304,7 @@ fn encode_ast(ebml_w: &mut writer::Encoder, item: ast::inlined_item) {
 
 struct NestedItemsDropper;
 
-impl ast_fold for NestedItemsDropper {
+impl Folder for NestedItemsDropper {
     fn fold_block(&mut self, blk: ast::P<ast::Block>) -> ast::P<ast::Block> {
         let stmts_sans_items = blk.stmts.iter().filter_map(|stmt| {
             match stmt.node {
@@ -343,19 +343,19 @@ impl ast_fold for NestedItemsDropper {
 // As it happens, trans relies on the fact that we do not export
 // nested items, as otherwise it would get confused when translating
 // inlined items.
-fn simplify_ast(ii: e::InlinedItemRef) -> ast::inlined_item {
+fn simplify_ast(ii: e::InlinedItemRef) -> ast::InlinedItem {
     let mut fld = NestedItemsDropper;
 
     match ii {
         // HACK we're not dropping items.
-        e::ii_item_ref(i) => ast::ii_item(fold::noop_fold_item(i, &mut fld)
-                                          .expect_one("expected one item")),
-        e::ii_method_ref(d, p, m) => ast::ii_method(d, p, fold::noop_fold_method(m, &mut fld)),
-        e::ii_foreign_ref(i) => ast::ii_foreign(fold::noop_fold_foreign_item(i, &mut fld))
+        e::IIItemRef(i) => ast::IIItem(fold::noop_fold_item(i, &mut fld)
+                                       .expect_one("expected one item")),
+        e::IIMethodRef(d, p, m) => ast::IIMethod(d, p, fold::noop_fold_method(m, &mut fld)),
+        e::IIForeignRef(i) => ast::IIForeign(fold::noop_fold_foreign_item(i, &mut fld))
     }
 }
 
-fn decode_ast(par_doc: ebml::Doc) -> ast::inlined_item {
+fn decode_ast(par_doc: ebml::Doc) -> ast::InlinedItem {
     let chi_doc = par_doc.get(c::tag_tree as uint);
     let mut d = reader::Decoder(chi_doc);
     Decodable::decode(&mut d)
@@ -376,18 +376,18 @@ impl ast_map::FoldOps for AstRenumberer {
 
 fn renumber_and_map_ast(xcx: @ExtendedDecodeContext,
                         diag: @SpanHandler,
-                        map: ast_map::map,
-                        path: ast_map::path,
-                        ii: ast::inlined_item) -> ast::inlined_item {
+                        map: ast_map::Map,
+                        path: ast_map::Path,
+                        ii: ast::InlinedItem) -> ast::InlinedItem {
     ast_map::map_decoded_item(diag, map, path, AstRenumberer { xcx: xcx }, |fld| {
         match ii {
-            ast::ii_item(i) => {
-                ast::ii_item(fld.fold_item(i).expect_one("expected one item"))
+            ast::IIItem(i) => {
+                ast::IIItem(fld.fold_item(i).expect_one("expected one item"))
             }
-            ast::ii_method(d, is_provided, m) => {
-                ast::ii_method(xcx.tr_def_id(d), is_provided, fld.fold_method(m))
+            ast::IIMethod(d, is_provided, m) => {
+                ast::IIMethod(xcx.tr_def_id(d), is_provided, fld.fold_method(m))
             }
-            ast::ii_foreign(i) => ast::ii_foreign(fld.fold_foreign_item(i))
+            ast::IIForeign(i) => ast::IIForeign(fld.fold_foreign_item(i))
         }
     })
 }
@@ -595,7 +595,7 @@ impl<'a> read_method_map_entry_helper for reader::Decoder<'a> {
                 explicit_self: this.read_struct_field("explicit_self",
                                                       2,
                                                       |this| {
-                    let explicit_self: ast::explicit_self_ = Decodable::decode(this);
+                    let explicit_self: ast::ExplicitSelf_ = Decodable::decode(this);
                     explicit_self
                 }),
                 origin: this.read_struct_field("origin", 1, |this| {
@@ -921,7 +921,7 @@ impl<'a,'b> ast_util::IdVisitingOperation for
 fn encode_side_tables_for_ii(ecx: &e::EncodeContext,
                              maps: Maps,
                              ebml_w: &mut writer::Encoder,
-                             ii: &ast::inlined_item) {
+                             ii: &ast::InlinedItem) {
     ebml_w.start_tag(c::tag_table as uint);
     let mut new_ebml_w = unsafe {
         ebml_w.unsafe_clone()
@@ -1418,14 +1418,14 @@ fn decode_side_tables(xcx: @ExtendedDecodeContext,
 // Testing of astencode_gen
 
 #[cfg(test)]
-fn encode_item_ast(ebml_w: &mut writer::Encoder, item: @ast::item) {
+fn encode_item_ast(ebml_w: &mut writer::Encoder, item: @ast::Item) {
     ebml_w.start_tag(c::tag_tree as uint);
     (*item).encode(ebml_w);
     ebml_w.end_tag();
 }
 
 #[cfg(test)]
-fn decode_item_ast(par_doc: ebml::Doc) -> @ast::item {
+fn decode_item_ast(par_doc: ebml::Doc) -> @ast::Item {
     let chi_doc = par_doc.get(c::tag_tree as uint);
     let mut d = reader::Decoder(chi_doc);
     @Decodable::decode(&mut d)
@@ -1464,7 +1464,7 @@ fn mk_ctxt() -> @fake_ext_ctxt {
 }
 
 #[cfg(test)]
-fn roundtrip(in_item: Option<@ast::item>) {
+fn roundtrip(in_item: Option<@ast::Item>) {
     use std::io::mem::MemWriter;
 
     let in_item = in_item.unwrap();
@@ -1515,15 +1515,15 @@ fn test_simplification() {
             return alist {eq_fn: eq_int, data: ~[]};
         }
     ).unwrap();
-    let item_in = e::ii_item_ref(item);
+    let item_in = e::IIItemRef(item);
     let item_out = simplify_ast(item_in);
-    let item_exp = ast::ii_item(quote_item!(cx,
+    let item_exp = ast::IIItem(quote_item!(cx,
         fn new_int_alist<B>() -> alist<int, B> {
             return alist {eq_fn: eq_int, data: ~[]};
         }
     ).unwrap());
     match (item_out, item_exp) {
-      (ast::ii_item(item_out), ast::ii_item(item_exp)) => {
+      (ast::IIItem(item_out), ast::IIItem(item_exp)) => {
         assert!(pprust::item_to_str(item_out,
                                     token::get_ident_interner())
                      == pprust::item_to_str(item_exp,

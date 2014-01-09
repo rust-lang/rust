@@ -26,7 +26,7 @@ use util::ppaux::ty_to_str;
 
 use std::vec;
 use syntax::ast;
-use syntax::ast_map::path_name;
+use syntax::ast_map::PathName;
 use syntax::ast_util;
 use syntax::parse::token::special_idents;
 
@@ -358,7 +358,7 @@ pub fn load_environment(fcx: &FunctionContext,
 pub fn trans_expr_fn<'a>(
                      bcx: &'a Block<'a>,
                      sigil: ast::Sigil,
-                     decl: &ast::fn_decl,
+                     decl: &ast::FnDecl,
                      body: &ast::Block,
                      outer_id: ast::NodeId,
                      user_id: ast::NodeId,
@@ -400,7 +400,7 @@ pub fn trans_expr_fn<'a>(
     };
 
     let sub_path = vec::append_one(bcx.fcx.path.clone(),
-                                   path_name(special_idents::anon));
+                                   PathName(special_idents::anon));
     // XXX: Bad copy.
     let s = mangle_internal_name_by_path_and_seq(ccx,
                                                  sub_path.clone(),

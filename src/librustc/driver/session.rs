@@ -19,7 +19,7 @@ use middle::lint;
 
 use syntax::attr::AttrMetaMethods;
 use syntax::ast::NodeId;
-use syntax::ast::{int_ty, uint_ty};
+use syntax::ast::{IntTy, UintTy};
 use syntax::codemap::Span;
 use syntax::diagnostic;
 use syntax::parse::ParseSess;
@@ -35,8 +35,8 @@ pub struct config {
     os: abi::Os,
     arch: abi::Architecture,
     target_strs: target_strs::t,
-    int_type: int_ty,
-    uint_type: uint_ty,
+    int_type: IntTy,
+    uint_type: UintTy,
 }
 
 pub static verbose:                 uint = 1 <<  0;
@@ -368,7 +368,7 @@ impl Session_ {
     }
 
     // pointless function, now...
-    pub fn intr(&self) -> @syntax::parse::token::ident_interner {
+    pub fn intr(&self) -> @syntax::parse::token::IdentInterner {
         token::get_ident_interner()
     }
 }

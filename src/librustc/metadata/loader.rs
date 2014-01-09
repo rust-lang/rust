@@ -20,7 +20,7 @@ use metadata::filesearch::{FileMatches, FileDoesntMatch};
 use metadata::filesearch;
 use syntax::codemap::Span;
 use syntax::diagnostic::SpanHandler;
-use syntax::parse::token::ident_interner;
+use syntax::parse::token::IdentInterner;
 use syntax::crateid::CrateId;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
@@ -52,7 +52,7 @@ pub struct Context {
     version: @str,
     hash: @str,
     os: Os,
-    intr: @ident_interner
+    intr: @IdentInterner
 }
 
 pub struct Library {
@@ -376,7 +376,7 @@ pub fn read_meta_section_name(os: Os) -> &'static str {
 }
 
 // A diagnostic function for dumping crate metadata to an output stream
-pub fn list_file_metadata(intr: @ident_interner,
+pub fn list_file_metadata(intr: @IdentInterner,
                           os: Os,
                           path: &Path,
                           out: &mut io::Writer) {

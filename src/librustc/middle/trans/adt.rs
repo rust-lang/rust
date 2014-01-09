@@ -303,11 +303,11 @@ fn range_to_inttype(cx: &CrateContext, hint: Hint, bounds: &IntBounds) -> IntTyp
     debug!("range_to_inttype: {:?} {:?}", hint, bounds);
     // Lists of sizes to try.  u64 is always allowed as a fallback.
     static choose_shortest: &'static[IntType] = &[
-        attr::UnsignedInt(ast::ty_u8), attr::SignedInt(ast::ty_i8),
-        attr::UnsignedInt(ast::ty_u16), attr::SignedInt(ast::ty_i16),
-        attr::UnsignedInt(ast::ty_u32), attr::SignedInt(ast::ty_i32)];
+        attr::UnsignedInt(ast::TyU8), attr::SignedInt(ast::TyI8),
+        attr::UnsignedInt(ast::TyU16), attr::SignedInt(ast::TyI16),
+        attr::UnsignedInt(ast::TyU32), attr::SignedInt(ast::TyI32)];
     static at_least_32: &'static[IntType] = &[
-        attr::UnsignedInt(ast::ty_u32), attr::SignedInt(ast::ty_i32)];
+        attr::UnsignedInt(ast::TyU32), attr::SignedInt(ast::TyI32)];
 
     let attempts;
     match hint {
@@ -336,7 +336,7 @@ fn range_to_inttype(cx: &CrateContext, hint: Hint, bounds: &IntBounds) -> IntTyp
             return ity;
         }
     }
-    return attr::UnsignedInt(ast::ty_u64);
+    return attr::UnsignedInt(ast::TyU64);
 }
 
 pub fn ll_inttype(cx: &CrateContext, ity: IntType) -> Type {

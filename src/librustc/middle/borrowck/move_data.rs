@@ -566,7 +566,7 @@ impl FlowedMoveData {
     pub fn new(move_data: MoveData,
                tcx: ty::ctxt,
                method_map: typeck::method_map,
-               id_range: ast_util::id_range,
+               id_range: ast_util::IdRange,
                body: &ast::Block)
                -> FlowedMoveData {
         let mut dfcx_moves = {

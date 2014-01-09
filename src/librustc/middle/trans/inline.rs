@@ -19,7 +19,7 @@ use util::ppaux::ty_to_str;
 
 use std::vec;
 use syntax::ast;
-use syntax::ast_map::path_name;
+use syntax::ast_map::PathName;
 use syntax::ast_util::local_def;
 use syntax::attr;
 
@@ -56,7 +56,7 @@ pub fn maybe_instantiate_inline(ccx: @CrateContext, fn_id: ast::DefId)
             external.get().insert(fn_id, None);
             fn_id
         }
-        csearch::found(ast::ii_item(item)) => {
+        csearch::found(ast::IIItem(item)) => {
             {
                 let mut external = ccx.external.borrow_mut();
                 let mut external_srcs = ccx.external_srcs.borrow_mut();
@@ -76,7 +76,7 @@ pub fn maybe_instantiate_inline(ccx: @CrateContext, fn_id: ast::DefId)
             // however, so we use the available_externally linkage which llvm
             // provides
             match item.node {
-                ast::item_static(..) => {
+                ast::ItemStatic(..) => {
                     let g = get_item_val(ccx, item.id);
                     // see the comment in get_item_val() as to why this check is
                     // performed here.
@@ -90,7 +90,7 @@ pub fn maybe_instantiate_inline(ccx: @CrateContext, fn_id: ast::DefId)
 
             local_def(item.id)
         }
-        csearch::found(ast::ii_foreign(item)) => {
+        csearch::found(ast::IIForeign(item)) => {
             {
                 let mut external = ccx.external.borrow_mut();
                 let mut external_srcs = ccx.external_srcs.borrow_mut();
@@ -99,7 +99,7 @@ pub fn maybe_instantiate_inline(ccx: @CrateContext, fn_id: ast::DefId)
             }
             local_def(item.id)
         }
-        csearch::found_parent(parent_id, ast::ii_item(item)) => {
+        csearch::found_parent(parent_id, ast::IIItem(item)) => {
             {
                 let mut external = ccx.external.borrow_mut();
                 let mut external_srcs = ccx.external_srcs.borrow_mut();
@@ -109,7 +109,7 @@ pub fn maybe_instantiate_inline(ccx: @CrateContext, fn_id: ast::DefId)
 
           let mut my_id = 0;
           match item.node {
-            ast::item_enum(_, _) => {
+            ast::ItemEnum(_, _) => {
               let vs_here = ty::enum_variants(ccx.tcx, local_def(item.id));
               let vs_there = ty::enum_variants(ccx.tcx, parent_id);
               for (here, there) in vs_here.iter().zip(vs_there.iter()) {
@@ -118,7 +118,7 @@ pub fn maybe_instantiate_inline(ccx: @CrateContext, fn_id: ast::DefId)
                   external.get().insert(there.id, Some(here.id.node));
               }
             }
-            ast::item_struct(ref struct_def, _) => {
+            ast::ItemStruct(ref struct_def, _) => {
               match struct_def.ctor_id {
                 None => {}
                 Some(ctor_id) => {
@@ -138,7 +138,7 @@ pub fn maybe_instantiate_inline(ccx: @CrateContext, fn_id: ast::DefId)
             ccx.sess.bug("maybe_get_item_ast returned a found_parent \
              with a non-item parent");
         }
-        csearch::found(ast::ii_method(impl_did, is_provided, mth)) => {
+        csearch::found(ast::IIMethod(impl_did, is_provided, mth)) => {
             {
                 let mut external = ccx.external.borrow_mut();
                 let mut external_srcs = ccx.external_srcs.borrow_mut();
@@ -159,18 +159,17 @@ pub fn maybe_instantiate_inline(ccx: @CrateContext, fn_id: ast::DefId)
 
           if num_type_params == 0 {
               let llfn = get_item_val(ccx, mth.id);
-              let path = vec::append(
-                  ty::item_path(ccx.tcx, impl_did),
-                  [path_name(mth.ident)]);
+              let path = vec::append_one(
+                  ty::item_path(ccx.tcx, impl_did), PathName(mth.ident));
               let self_kind = match mth.explicit_self.node {
-                  ast::sty_static => no_self,
+                  ast::SelfStatic => no_self,
                   _ => {
                       let self_ty = ty::node_id_to_type(ccx.tcx,
                                                         mth.self_id);
                       debug!("calling inline trans_fn with self_ty {}",
                              ty_to_str(ccx.tcx, self_ty));
                       match mth.explicit_self.node {
-                          ast::sty_value(_) => impl_self(self_ty, ty::ByRef),
+                          ast::SelfValue(_) => impl_self(self_ty, ty::ByRef),
                           _ => impl_self(self_ty, ty::ByCopy),
                       }
                   }

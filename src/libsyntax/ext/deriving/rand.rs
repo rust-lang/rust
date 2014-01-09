@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use ast;
-use ast::{MetaItem, item, Expr, Ident};
+use ast::{MetaItem, Item, Expr, Ident};
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::{AstBuilder};
@@ -19,8 +19,8 @@ use opt_vec;
 pub fn expand_deriving_rand(cx: &ExtCtxt,
                             span: Span,
                             mitem: @MetaItem,
-                            in_items: ~[@item])
-    -> ~[@item] {
+                            in_items: ~[@Item])
+    -> ~[@Item] {
     let trait_def = TraitDef {
         cx: cx, span: span,
 

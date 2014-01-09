@@ -29,8 +29,8 @@ use std::cell::RefCell;
 use std::hashmap::{HashMap, HashSet};
 use syntax::codemap::Span;
 use syntax::{ast, visit};
-use syntax::visit::{Visitor,fn_kind};
-use syntax::ast::{Block,item,fn_decl,NodeId,Arm,Pat,Stmt,Expr,Local};
+use syntax::visit::{Visitor, FnKind};
+use syntax::ast::{Block, Item, FnDecl, NodeId, Arm, Pat, Stmt, Expr, Local};
 
 /**
 The region maps encode information about region relationships.
@@ -425,7 +425,7 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor,
 }
 
 fn resolve_item(visitor: &mut RegionResolutionVisitor,
-                item: &ast::item,
+                item: &ast::Item,
                 cx: Context) {
     // Items create a new outer block scope as far as we're concerned.
     let new_cx = Context {var_parent: None, parent: None, ..cx};
@@ -433,8 +433,8 @@ fn resolve_item(visitor: &mut RegionResolutionVisitor,
 }
 
 fn resolve_fn(visitor: &mut RegionResolutionVisitor,
-              fk: &visit::fn_kind,
-              decl: &ast::fn_decl,
+              fk: &FnKind,
+              decl: &ast::FnDecl,
               body: &ast::Block,
               sp: Span,
               id: ast::NodeId,
@@ -453,7 +453,7 @@ fn resolve_fn(visitor: &mut RegionResolutionVisitor,
                            var_parent: Some(body.id),
                            ..cx};
     match *fk {
-        visit::fk_method(_, _, method) => {
+        visit::FkMethod(_, _, method) => {
             visitor.region_maps.record_parent(method.self_id, body.id);
         }
         _ => {}
@@ -463,13 +463,10 @@ fn resolve_fn(visitor: &mut RegionResolutionVisitor,
     // The body of the fn itself is either a root scope (top-level fn)
     // or it continues with the inherited scope (closures).
     let body_cx = match *fk {
-        visit::fk_item_fn(..) |
-        visit::fk_method(..) => {
+        visit::FkItemFn(..) | visit::FkMethod(..) => {
             Context {parent: None, var_parent: None, ..cx}
         }
-        visit::fk_fn_block(..) => {
-            cx
-        }
+        visit::FkFnBlock(..) => cx
     };
     visitor.visit_block(body, body_cx);
 }
@@ -480,11 +477,11 @@ impl Visitor<Context> for RegionResolutionVisitor {
         resolve_block(self, b, cx);
     }
 
-    fn visit_item(&mut self, i: &item, cx: Context) {
+    fn visit_item(&mut self, i: &Item, cx: Context) {
         resolve_item(self, i, cx);
     }
 
-    fn visit_fn(&mut self, fk: &fn_kind, fd: &fn_decl,
+    fn visit_fn(&mut self, fk: &FnKind, fd: &FnDecl,
                 b: &Block, s: Span, n: NodeId, cx: Context) {
         resolve_fn(self, fk, fd, b, s, n, cx);
     }

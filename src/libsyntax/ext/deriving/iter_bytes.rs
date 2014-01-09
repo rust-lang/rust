@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{MetaItem, item, Expr, BiAnd};
+use ast::{MetaItem, Item, Expr, BiAnd};
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
@@ -18,7 +18,7 @@ use ext::deriving::generic::*;
 pub fn expand_deriving_iter_bytes(cx: &ExtCtxt,
                                   span: Span,
                                   mitem: @MetaItem,
-                                  in_items: ~[@item]) -> ~[@item] {
+                                  in_items: ~[@Item]) -> ~[@Item] {
     let trait_def = TraitDef {
         cx: cx, span: span,
 
