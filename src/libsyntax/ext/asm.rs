@@ -37,7 +37,7 @@ fn next_state(s: State) -> Option<State> {
     }
 }
 
-pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree])
+pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                -> base::MacResult {
     let mut p = parse::new_parser_from_tts(cx.parse_sess(),
                                            cx.cfg(),
@@ -50,7 +50,7 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree])
     let mut cons = ~"";
     let mut volatile = false;
     let mut alignstack = false;
-    let mut dialect = ast::asm_att;
+    let mut dialect = ast::AsmAtt;
 
     let mut state = Asm;
 
@@ -139,7 +139,7 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree])
                 } else if "alignstack" == option {
                     alignstack = true;
                 } else if "intel" == option {
-                    dialect = ast::asm_intel;
+                    dialect = ast::AsmIntel;
                 }
 
                 if p.token == token::COMMA {
@@ -187,7 +187,7 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree])
 
     MRExpr(@ast::Expr {
         id: ast::DUMMY_NODE_ID,
-        node: ast::ExprInlineAsm(ast::inline_asm {
+        node: ast::ExprInlineAsm(ast::InlineAsm {
             asm: asm,
             asm_str_style: asm_str_style.unwrap(),
             clobbers: cons.to_managed(),

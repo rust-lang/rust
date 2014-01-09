@@ -363,8 +363,8 @@ impl diagnostic::Emitter for RustcEmitter {
     fn emit(&self,
             cmsp: Option<(&codemap::CodeMap, codemap::Span)>,
             msg: &str,
-            lvl: diagnostic::level) {
-        if lvl == diagnostic::fatal {
+            lvl: diagnostic::Level) {
+        if lvl == diagnostic::Fatal {
             let this = unsafe { cast::transmute_mut(self) };
             this.ch_capture.send(fatal)
         }
@@ -434,7 +434,7 @@ pub fn monitor(f: proc(@diagnostic::Emitter)) {
                 diagnostic::DefaultEmitter.emit(
                     None,
                     diagnostic::ice_msg("unexpected failure"),
-                    diagnostic::error);
+                    diagnostic::Error);
 
                 let xs = [
                     ~"the compiler hit an unexpected failure path. \
@@ -446,7 +446,7 @@ pub fn monitor(f: proc(@diagnostic::Emitter)) {
                 for note in xs.iter() {
                     diagnostic::DefaultEmitter.emit(None,
                                                     *note,
-                                                    diagnostic::note)
+                                                    diagnostic::Note)
                 }
             }
             // Fail so the process returns a failure code

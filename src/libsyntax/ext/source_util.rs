@@ -28,7 +28,7 @@ use std::str;
 // a given file into the current one.
 
 /* line!(): expands to the current line number */
-pub fn expand_line(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree])
+pub fn expand_line(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     -> base::MacResult {
     base::check_zero_tts(cx, sp, tts, "line!");
 
@@ -39,7 +39,7 @@ pub fn expand_line(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree])
 }
 
 /* col!(): expands to the current column number */
-pub fn expand_col(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree])
+pub fn expand_col(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     -> base::MacResult {
     base::check_zero_tts(cx, sp, tts, "col!");
 
@@ -51,7 +51,7 @@ pub fn expand_col(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree])
 /* file!(): expands to the current filename */
 /* The filemap (`loc.file`) contains a bunch more information we could spit
  * out if we wanted. */
-pub fn expand_file(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree])
+pub fn expand_file(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     -> base::MacResult {
     base::check_zero_tts(cx, sp, tts, "file!");
 
@@ -61,13 +61,13 @@ pub fn expand_file(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree])
     base::MRExpr(cx.expr_str(topmost.call_site, filename))
 }
 
-pub fn expand_stringify(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree])
+pub fn expand_stringify(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     -> base::MacResult {
     let s = pprust::tts_to_str(tts, get_ident_interner());
     base::MRExpr(cx.expr_str(sp, s.to_managed()))
 }
 
-pub fn expand_mod(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree])
+pub fn expand_mod(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     -> base::MacResult {
     base::check_zero_tts(cx, sp, tts, "module_path!");
     base::MRExpr(cx.expr_str(sp,
@@ -77,7 +77,7 @@ pub fn expand_mod(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree])
 // include! : parse the given file as an expr
 // This is generally a bad idea because it's going to behave
 // unhygienically.
-pub fn expand_include(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree])
+pub fn expand_include(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     -> base::MacResult {
     let file = get_single_str_from_tts(cx, sp, tts, "include!");
     // The file will be added to the code map by the parser
@@ -92,7 +92,7 @@ pub fn expand_include(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree])
 }
 
 // include_str! : read the given file, insert it as a literal string expr
-pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree])
+pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     -> base::MacResult {
     let file = get_single_str_from_tts(cx, sp, tts, "include_str!");
     let file = res_rel_file(cx, sp, &Path::new(file));
@@ -119,7 +119,7 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree])
     }
 }
 
-pub fn expand_include_bin(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree])
+pub fn expand_include_bin(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         -> base::MacResult
 {
     use std::at_vec;
@@ -133,7 +133,7 @@ pub fn expand_include_bin(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree])
         }
         Ok(bytes) => {
             let bytes = at_vec::to_managed_move(bytes);
-            base::MRExpr(cx.expr_lit(sp, ast::lit_binary(bytes)))
+            base::MRExpr(cx.expr_lit(sp, ast::LitBinary(bytes)))
         }
     }
 }

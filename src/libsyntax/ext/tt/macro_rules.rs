@@ -8,21 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{Ident, matcher_, matcher, match_tok, match_nonterminal, match_seq};
-use ast::{tt_delim};
+use ast::{Ident, Matcher_, Matcher, MatchTok, MatchNonterminal, MatchSeq};
+use ast::{TTDelim};
 use ast;
 use codemap::{Span, Spanned, DUMMY_SP};
 use ext::base::{AnyMacro, ExtCtxt, MacResult, MRAny, MRDef, MacroDef};
 use ext::base::{NormalTT, SyntaxExpanderTTTrait};
 use ext::base;
-use ext::tt::macro_parser::{error};
-use ext::tt::macro_parser::{named_match, matched_seq, matched_nonterminal};
-use ext::tt::macro_parser::{parse, parse_or_else, success, failure};
-use parse::lexer::{new_tt_reader, reader};
+use ext::tt::macro_parser::{Success, Error, Failure};
+use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
+use ext::tt::macro_parser::{parse, parse_or_else};
+use parse::lexer::{new_tt_reader, Reader};
 use parse::parser::Parser;
-use parse::attr::parser_attr;
+use parse::attr::ParserAttr;
 use parse::token::{get_ident_interner, special_idents, gensym_ident, ident_to_str};
-use parse::token::{FAT_ARROW, SEMI, nt_matchers, nt_tt, EOF};
+use parse::token::{FAT_ARROW, SEMI, NtMatchers, NtTT, EOF};
 use print;
 use std::cell::RefCell;
 use util::small_vector::SmallVector;
@@ -63,7 +63,7 @@ impl AnyMacro for ParserAnyMacro {
         self.ensure_complete_parse(true);
         ret
     }
-    fn make_items(&self) -> SmallVector<@ast::item> {
+    fn make_items(&self) -> SmallVector<@ast::Item> {
         let mut ret = SmallVector::zero();
         loop {
             let mut parser = self.parser.borrow_mut();
@@ -89,15 +89,15 @@ impl AnyMacro for ParserAnyMacro {
 
 struct MacroRulesSyntaxExpanderTTFun {
     name: Ident,
-    lhses: @~[@named_match],
-    rhses: @~[@named_match],
+    lhses: @~[@NamedMatch],
+    rhses: @~[@NamedMatch],
 }
 
 impl SyntaxExpanderTTTrait for MacroRulesSyntaxExpanderTTFun {
     fn expand(&self,
               cx: &mut ExtCtxt,
               sp: Span,
-              arg: &[ast::token_tree],
+              arg: &[ast::TokenTree],
               _: ast::SyntaxContext)
               -> MacResult {
         generic_extension(cx, sp, self.name, arg, *self.lhses, *self.rhses)
@@ -108,16 +108,15 @@ impl SyntaxExpanderTTTrait for MacroRulesSyntaxExpanderTTFun {
 fn generic_extension(cx: &ExtCtxt,
                      sp: Span,
                      name: Ident,
-                     arg: &[ast::token_tree],
-                     lhses: &[@named_match],
-                     rhses: &[@named_match])
+                     arg: &[ast::TokenTree],
+                     lhses: &[@NamedMatch],
+                     rhses: &[@NamedMatch])
                      -> MacResult {
     if cx.trace_macros() {
         println!("{}! \\{ {} \\}",
                   cx.str_of(name),
-                  print::pprust::tt_to_str(
-                      &ast::tt_delim(@arg.to_owned()),
-                      get_ident_interner()));
+                  print::pprust::tt_to_str(&TTDelim(@arg.to_owned()),
+                                           get_ident_interner()));
     }
 
     // Which arm's failure should we report? (the one furthest along)
@@ -128,17 +127,17 @@ fn generic_extension(cx: &ExtCtxt,
 
     for (i, lhs) in lhses.iter().enumerate() { // try each arm's matchers
         match *lhs {
-          @matched_nonterminal(nt_matchers(ref mtcs)) => {
+          @MatchedNonterminal(NtMatchers(ref mtcs)) => {
             // `none` is because we're not interpolating
-            let arg_rdr = new_tt_reader(s_d, None, arg.to_owned()) as @reader;
+            let arg_rdr = new_tt_reader(s_d, None, arg.to_owned()) as @Reader;
             match parse(cx.parse_sess(), cx.cfg(), arg_rdr, *mtcs) {
-              success(named_matches) => {
+              Success(named_matches) => {
                 let rhs = match rhses[i] {
                     // okay, what's your transcriber?
-                    @matched_nonterminal(nt_tt(@ref tt)) => {
+                    @MatchedNonterminal(NtTT(@ref tt)) => {
                         match (*tt) {
                             // cut off delimiters; don't parse 'em
-                            tt_delim(ref tts) => {
+                            TTDelim(ref tts) => {
                                 (*tts).slice(1u,(*tts).len()-1u).to_owned()
                             }
                             _ => cx.span_fatal(
@@ -150,18 +149,18 @@ fn generic_extension(cx: &ExtCtxt,
                 // rhs has holes ( `$id` and `$(...)` that need filled)
                 let trncbr = new_tt_reader(s_d, Some(named_matches),
                                            rhs);
-                let p = Parser(cx.parse_sess(), cx.cfg(), trncbr as @reader);
+                let p = Parser(cx.parse_sess(), cx.cfg(), trncbr as @Reader);
                 // Let the context choose how to interpret the result.
                 // Weird, but useful for X-macros.
                 return MRAny(@ParserAnyMacro {
                     parser: RefCell::new(p),
                 } as @AnyMacro)
               }
-              failure(sp, ref msg) => if sp.lo >= best_fail_spot.lo {
+              Failure(sp, ref msg) => if sp.lo >= best_fail_spot.lo {
                 best_fail_spot = sp;
                 best_fail_msg = (*msg).clone();
               },
-              error(sp, ref msg) => cx.span_fatal(sp, (*msg))
+              Error(sp, ref msg) => cx.span_fatal(sp, (*msg))
             }
           }
           _ => cx.bug("non-matcher found in parsed lhses")
@@ -176,11 +175,11 @@ fn generic_extension(cx: &ExtCtxt,
 pub fn add_new_extension(cx: &mut ExtCtxt,
                          sp: Span,
                          name: Ident,
-                         arg: ~[ast::token_tree],
+                         arg: ~[ast::TokenTree],
                          _: ast::SyntaxContext)
                          -> base::MacResult {
     // these spans won't matter, anyways
-    fn ms(m: matcher_) -> matcher {
+    fn ms(m: Matcher_) -> Matcher {
         Spanned {
             node: m.clone(),
             span: DUMMY_SP
@@ -195,14 +194,14 @@ pub fn add_new_extension(cx: &mut ExtCtxt,
     // $( $lhs:mtcs => $rhs:tt );+
     // ...quasiquoting this would be nice.
     let argument_gram = ~[
-        ms(match_seq(~[
-            ms(match_nonterminal(lhs_nm, special_idents::matchers, 0u)),
-            ms(match_tok(FAT_ARROW)),
-            ms(match_nonterminal(rhs_nm, special_idents::tt, 1u)),
+        ms(MatchSeq(~[
+            ms(MatchNonterminal(lhs_nm, special_idents::matchers, 0u)),
+            ms(MatchTok(FAT_ARROW)),
+            ms(MatchNonterminal(rhs_nm, special_idents::tt, 1u)),
         ], Some(SEMI), false, 0u, 2u)),
         //to phase into semicolon-termination instead of
         //semicolon-separation
-        ms(match_seq(~[ms(match_tok(SEMI))], None, true, 2u, 2u))];
+        ms(MatchSeq(~[ms(MatchTok(SEMI))], None, true, 2u, 2u))];
 
 
     // Parse the macro_rules! invocation (`none` is for no interpolations):
@@ -211,18 +210,18 @@ pub fn add_new_extension(cx: &mut ExtCtxt,
                                    arg.clone());
     let argument_map = parse_or_else(cx.parse_sess(),
                                      cx.cfg(),
-                                     arg_reader as @reader,
+                                     arg_reader as @Reader,
                                      argument_gram);
 
     // Extract the arguments:
     let lhses = match *argument_map.get(&lhs_nm) {
-        @matched_seq(ref s, _) => /* FIXME (#2543) */ @(*s).clone(),
+        @MatchedSeq(ref s, _) => /* FIXME (#2543) */ @(*s).clone(),
         _ => cx.span_bug(sp, "wrong-structured lhs")
     };
 
     let rhses = match *argument_map.get(&rhs_nm) {
-      @matched_seq(ref s, _) => /* FIXME (#2543) */ @(*s).clone(),
-      _ => cx.span_bug(sp, "wrong-structured rhs")
+        @MatchedSeq(ref s, _) => /* FIXME (#2543) */ @(*s).clone(),
+        _ => cx.span_bug(sp, "wrong-structured rhs")
     };
 
     let exp = ~MacroRulesSyntaxExpanderTTFun {

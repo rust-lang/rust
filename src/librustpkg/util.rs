@@ -23,7 +23,7 @@ use syntax::codemap::{DUMMY_SP, Spanned};
 use syntax::ext::base::ExtCtxt;
 use syntax::{ast, attr, codemap, diagnostic, fold, visit};
 use syntax::attr::AttrMetaMethods;
-use syntax::fold::ast_fold;
+use syntax::fold::Folder;
 use syntax::visit::Visitor;
 use syntax::util::small_vector::SmallVector;
 use rustc::back::link::output_type_exe;
@@ -70,9 +70,9 @@ struct ReadyCtx {
     fns: ~[ListenerFn]
 }
 
-fn fold_mod(m: &ast::_mod, fold: &mut CrateSetup) -> ast::_mod {
-    fn strip_main(item: @ast::item) -> @ast::item {
-        @ast::item {
+fn fold_mod(m: &ast::Mod, fold: &mut CrateSetup) -> ast::Mod {
+    fn strip_main(item: @ast::Item) -> @ast::Item {
+        @ast::Item {
             attrs: item.attrs.iter().filter_map(|attr| {
                 if "main" != attr.name() {
                     Some(*attr)
@@ -84,14 +84,14 @@ fn fold_mod(m: &ast::_mod, fold: &mut CrateSetup) -> ast::_mod {
         }
     }
 
-    fold::noop_fold_mod(&ast::_mod {
+    fold::noop_fold_mod(&ast::Mod {
         items: m.items.map(|item| strip_main(*item)),
         .. (*m).clone()
     }, fold)
 }
 
-fn fold_item(item: @ast::item, fold: &mut CrateSetup)
-             -> SmallVector<@ast::item> {
+fn fold_item(item: @ast::Item, fold: &mut CrateSetup)
+             -> SmallVector<@ast::Item> {
     fold.ctx.path.push(item.ident);
 
     let mut cmds = ~[];
@@ -133,11 +133,11 @@ struct CrateSetup<'a> {
     ctx: &'a mut ReadyCtx,
 }
 
-impl<'a> fold::ast_fold for CrateSetup<'a> {
-    fn fold_item(&mut self, item: @ast::item) -> SmallVector<@ast::item> {
+impl<'a> fold::Folder for CrateSetup<'a> {
+    fn fold_item(&mut self, item: @ast::Item) -> SmallVector<@ast::Item> {
         fold_item(item, self)
     }
-    fn fold_mod(&mut self, module: &ast::_mod) -> ast::_mod {
+    fn fold_mod(&mut self, module: &ast::Mod) -> ast::Mod {
         fold_mod(module, self)
     }
 }
@@ -350,7 +350,7 @@ pub fn compile_crate_from_input(input: &Path,
 // Returns None if one of the flags that suppresses compilation output was
 // given
                                 crate: ast::Crate,
-                                ast_map: syntax::ast_map::map,
+                                ast_map: syntax::ast_map::Map,
                                 what: OutputType) -> Option<Path> {
     debug!("Calling build_output_filenames with {}, building library? {:?}",
            out_dir.display(), sess.building_library);
@@ -447,12 +447,12 @@ struct ViewItemVisitor<'a> {
 }
 
 impl<'a> Visitor<()> for ViewItemVisitor<'a> {
-    fn visit_view_item(&mut self, vi: &ast::view_item, env: ()) {
+    fn visit_view_item(&mut self, vi: &ast::ViewItem, env: ()) {
         use conditions::nonexistent_package::cond;
 
         match vi.node {
             // ignore metadata, I guess
-            ast::view_item_extern_mod(lib_ident, path_opt, _) => {
+            ast::ViewItemExternMod(lib_ident, path_opt, _) => {
                 let lib_name = match path_opt {
                     Some((p, _)) => p,
                     None => self.sess.str_of(lib_ident)
@@ -619,9 +619,9 @@ pub fn find_and_install_dependencies(context: &BuildContext,
     visit::walk_crate(&mut visitor, c, ())
 }
 
-pub fn mk_string_lit(s: @str) -> ast::lit {
+pub fn mk_string_lit(s: @str) -> ast::Lit {
     Spanned {
-        node: ast::lit_str(s, ast::CookedStr),
+        node: ast::LitStr(s, ast::CookedStr),
         span: DUMMY_SP
     }
 }

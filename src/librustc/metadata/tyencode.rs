@@ -249,26 +249,26 @@ fn enc_sty(w: &mut MemWriter, cx: @ctxt, st: &ty::sty) {
         ty::ty_char => mywrite!(w, "c"),
         ty::ty_int(t) => {
             match t {
-                ty_i => mywrite!(w, "i"),
-                ty_i8 => mywrite!(w, "MB"),
-                ty_i16 => mywrite!(w, "MW"),
-                ty_i32 => mywrite!(w, "ML"),
-                ty_i64 => mywrite!(w, "MD")
+                TyI => mywrite!(w, "i"),
+                TyI8 => mywrite!(w, "MB"),
+                TyI16 => mywrite!(w, "MW"),
+                TyI32 => mywrite!(w, "ML"),
+                TyI64 => mywrite!(w, "MD")
             }
         }
         ty::ty_uint(t) => {
             match t {
-                ty_u => mywrite!(w, "u"),
-                ty_u8 => mywrite!(w, "Mb"),
-                ty_u16 => mywrite!(w, "Mw"),
-                ty_u32 => mywrite!(w, "Ml"),
-                ty_u64 => mywrite!(w, "Md")
+                TyU => mywrite!(w, "u"),
+                TyU8 => mywrite!(w, "Mb"),
+                TyU16 => mywrite!(w, "Mw"),
+                TyU32 => mywrite!(w, "Ml"),
+                TyU64 => mywrite!(w, "Md")
             }
         }
         ty::ty_float(t) => {
             match t {
-                ty_f32 => mywrite!(w, "Mf"),
-                ty_f64 => mywrite!(w, "MF"),
+                TyF32 => mywrite!(w, "Mf"),
+                TyF64 => mywrite!(w, "MF"),
             }
         }
         ty::ty_enum(def, ref substs) => {
@@ -349,11 +349,11 @@ fn enc_sigil(w: &mut MemWriter, sigil: Sigil) {
     }
 }
 
-fn enc_purity(w: &mut MemWriter, p: purity) {
+fn enc_purity(w: &mut MemWriter, p: Purity) {
     match p {
-        impure_fn => mywrite!(w, "i"),
-        unsafe_fn => mywrite!(w, "u"),
-        extern_fn => mywrite!(w, "c")
+        ImpureFn => mywrite!(w, "i"),
+        UnsafeFn => mywrite!(w, "u"),
+        ExternFn => mywrite!(w, "c")
     }
 }
 

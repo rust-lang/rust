@@ -122,7 +122,7 @@ use syntax::codemap::Span;
 use syntax::parse::token::special_idents;
 use syntax::print::pprust::{expr_to_str, block_to_str};
 use syntax::{visit, ast_util};
-use syntax::visit::{Visitor,fn_kind};
+use syntax::visit::{Visitor, FnKind};
 
 #[deriving(Eq)]
 struct Variable(uint);
@@ -164,7 +164,7 @@ fn live_node_kind_to_str(lnk: LiveNodeKind, cx: ty::ctxt) -> ~str {
 struct LivenessVisitor;
 
 impl Visitor<@IrMaps> for LivenessVisitor {
-    fn visit_fn(&mut self, fk: &fn_kind, fd: &fn_decl, b: &Block, s: Span, n: NodeId, e: @IrMaps) {
+    fn visit_fn(&mut self, fk: &FnKind, fd: &FnDecl, b: &Block, s: Span, n: NodeId, e: @IrMaps) {
         visit_fn(self, fk, fd, b, s, n, e);
     }
     fn visit_local(&mut self, l: &Local, e: @IrMaps) { visit_local(self, l, e); }
@@ -364,7 +364,7 @@ impl IrMaps {
 }
 
 impl Visitor<()> for Liveness {
-    fn visit_fn(&mut self, fk: &fn_kind, fd: &fn_decl, b: &Block, s: Span, n: NodeId, _: ()) {
+    fn visit_fn(&mut self, fk: &FnKind, fd: &FnDecl, b: &Block, s: Span, n: NodeId, _: ()) {
         check_fn(self, fk, fd, b, s, n);
     }
     fn visit_local(&mut self, l: &Local, _: ()) {
@@ -379,8 +379,8 @@ impl Visitor<()> for Liveness {
 }
 
 fn visit_fn(v: &mut LivenessVisitor,
-            fk: &visit::fn_kind,
-            decl: &fn_decl,
+            fk: &FnKind,
+            decl: &FnDecl,
             body: &Block,
             sp: Span,
             id: NodeId,
@@ -407,16 +407,16 @@ fn visit_fn(v: &mut LivenessVisitor,
 
     // Add `this`, whether explicit or implicit.
     match *fk {
-        visit::fk_method(_, _, method) => {
+        visit::FkMethod(_, _, method) => {
             match method.explicit_self.node {
-                sty_value(_) | sty_region(..) | sty_box(_) | sty_uniq(_) => {
+                SelfValue(_) | SelfRegion(..) | SelfBox(_) | SelfUniq(_) => {
                     fn_maps.add_variable(Arg(method.self_id,
                                              special_idents::self_));
                 }
-                sty_static => {}
+                SelfStatic => {}
             }
         }
-        visit::fk_item_fn(..) | visit::fk_fn_block(..) => {}
+        visit::FkItemFn(..) | visit::FkFnBlock(..) => {}
     }
 
     // gather up the various local variables, significant expressions,
@@ -932,7 +932,7 @@ impl Liveness {
 
     // _______________________________________________________________________
 
-    pub fn compute(&self, decl: &fn_decl, body: &Block) -> LiveNode {
+    pub fn compute(&self, decl: &FnDecl, body: &Block) -> LiveNode {
         // if there is a `break` or `again` at the top level, then it's
         // effectively a return---this only occurs in `for` loops,
         // where the body is really a closure.
@@ -957,7 +957,7 @@ impl Liveness {
         entry_ln
     }
 
-    pub fn propagate_through_fn_block(&self, _: &fn_decl, blk: &Block)
+    pub fn propagate_through_fn_block(&self, _: &FnDecl, blk: &Block)
                                       -> LiveNode {
         // the fallthrough exit is only for those cases where we do not
         // explicitly return:
@@ -1554,8 +1554,8 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
 }
 
 fn check_fn(_v: &Liveness,
-            _fk: &visit::fn_kind,
-            _decl: &fn_decl,
+            _fk: &FnKind,
+            _decl: &FnDecl,
             _body: &Block,
             _sp: Span,
             _id: NodeId) {
@@ -1573,7 +1573,7 @@ impl Liveness {
     pub fn check_ret(&self,
                      id: NodeId,
                      sp: Span,
-                     _fk: &visit::fn_kind,
+                     _fk: &FnKind,
                      entry_ln: LiveNode) {
         if self.live_on_entry(entry_ln, self.s.no_ret_var).is_some() {
             // if no_ret_var is live, then we fall off the end of the
@@ -1665,7 +1665,7 @@ impl Liveness {
         if name.len() == 0 || name[0] == ('_' as u8) { None } else { Some(name) }
     }
 
-    pub fn warn_about_unused_args(&self, decl: &fn_decl, entry_ln: LiveNode) {
+    pub fn warn_about_unused_args(&self, decl: &FnDecl, entry_ln: LiveNode) {
         for arg in decl.inputs.iter() {
             pat_util::pat_bindings(self.tcx.def_map,
                                    arg.pat,

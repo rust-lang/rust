@@ -48,7 +48,7 @@ struct Context<'a> {
     // Collection of the compiled `rt::Piece` structures
     pieces: ~[@ast::Expr],
     name_positions: HashMap<@str, uint>,
-    method_statics: ~[@ast::item],
+    method_statics: ~[@ast::Item],
 
     // Updated as arguments are consumed or methods are entered
     nest_level: uint,
@@ -58,7 +58,7 @@ struct Context<'a> {
 impl<'a> Context<'a> {
     /// Parses the arguments from the given list of tokens, returning None if
     /// there's a parse error so we can continue parsing other format! expressions.
-    fn parse_args(&mut self, sp: Span, tts: &[ast::token_tree])
+    fn parse_args(&mut self, sp: Span, tts: &[ast::TokenTree])
                   -> (@ast::Expr, Option<@ast::Expr>) {
         let mut p = rsparse::new_parser_from_tts(self.ecx.parse_sess(),
                                                  self.ecx.cfg(),
@@ -476,7 +476,7 @@ impl<'a> Context<'a> {
                 opt_vec::with(life),
                 ~[]
             ), None);
-            let st = ast::item_static(ty, ast::MutImmutable, method);
+            let st = ast::ItemStatic(ty, ast::MutImmutable, method);
             let static_name = self.ecx.ident_of(format!("__STATIC_METHOD_{}",
                                                      self.method_statics.len()));
             let item = self.ecx.item(sp, static_name, self.static_attrs(), st);
@@ -490,7 +490,7 @@ impl<'a> Context<'a> {
                                           ~[self.ecx.expr_str(sp, s.to_managed())])
             }
             parse::CurrentArgument => {
-                let nil = self.ecx.expr_lit(sp, ast::lit_nil);
+                let nil = self.ecx.expr_lit(sp, ast::LitNil);
                 self.ecx.expr_call_global(sp, rtpath("CurrentArgument"), ~[nil])
             }
             parse::Argument(ref arg) => {
@@ -522,7 +522,7 @@ impl<'a> Context<'a> {
 
                 // Translate the format
                 let fill = match arg.format.fill { Some(c) => c, None => ' ' };
-                let fill = self.ecx.expr_lit(sp, ast::lit_char(fill as u32));
+                let fill = self.ecx.expr_lit(sp, ast::LitChar(fill as u32));
                 let align = match arg.format.align {
                     parse::AlignLeft => {
                         self.ecx.path_global(sp, parsepath("AlignLeft"))
@@ -595,12 +595,12 @@ impl<'a> Context<'a> {
                     self.ecx.lifetime(self.fmtsp, self.ecx.ident_of("static"))),
                 ~[]
             ), None);
-        let ty = ast::ty_fixed_length_vec(
+        let ty = ast::TyFixedLengthVec(
             piece_ty,
             self.ecx.expr_uint(self.fmtsp, self.pieces.len())
         );
         let ty = self.ecx.ty(self.fmtsp, ty);
-        let st = ast::item_static(ty, ast::MutImmutable, fmt);
+        let st = ast::ItemStatic(ty, ast::MutImmutable, fmt);
         let static_name = self.ecx.ident_of("__STATIC_FMTSTR");
         let item = self.ecx.item(self.fmtsp, static_name,
                                  self.static_attrs(), st);
@@ -726,7 +726,7 @@ impl<'a> Context<'a> {
 }
 
 pub fn expand_args(ecx: &mut ExtCtxt, sp: Span,
-                   tts: &[ast::token_tree]) -> base::MacResult {
+                   tts: &[ast::TokenTree]) -> base::MacResult {
     let mut cx = Context {
         ecx: ecx,
         args: ~[],

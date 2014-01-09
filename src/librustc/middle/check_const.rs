@@ -23,14 +23,14 @@ use syntax::visit;
 
 struct CheckCrateVisitor {
     sess: Session,
-    ast_map: ast_map::map,
+    ast_map: ast_map::Map,
     def_map: resolve::DefMap,
     method_map: typeck::method_map,
     tcx: ty::ctxt,
 }
 
 impl Visitor<bool> for CheckCrateVisitor {
-    fn visit_item(&mut self, i: &item, env: bool) {
+    fn visit_item(&mut self, i: &Item, env: bool) {
         check_item(self, self.sess, self.ast_map, self.def_map, i, env);
     }
     fn visit_pat(&mut self, p: &Pat, env: bool) {
@@ -44,7 +44,7 @@ impl Visitor<bool> for CheckCrateVisitor {
 
 pub fn check_crate(sess: Session,
                    crate: &Crate,
-                   ast_map: ast_map::map,
+                   ast_map: ast_map::Map,
                    def_map: resolve::DefMap,
                    method_map: typeck::method_map,
                    tcx: ty::ctxt) {
@@ -61,23 +61,23 @@ pub fn check_crate(sess: Session,
 
 pub fn check_item(v: &mut CheckCrateVisitor,
                   sess: Session,
-                  ast_map: ast_map::map,
+                  ast_map: ast_map::Map,
                   def_map: resolve::DefMap,
-                  it: &item,
+                  it: &Item,
                   _is_const: bool) {
     match it.node {
-      item_static(_, _, ex) => {
-        v.visit_expr(ex, true);
-        check_item_recursion(sess, ast_map, def_map, it);
-      }
-      item_enum(ref enum_definition, _) => {
-        for var in (*enum_definition).variants.iter() {
-            for ex in var.node.disr_expr.iter() {
-                v.visit_expr(*ex, true);
+        ItemStatic(_, _, ex) => {
+            v.visit_expr(ex, true);
+            check_item_recursion(sess, ast_map, def_map, it);
+        }
+        ItemEnum(ref enum_definition, _) => {
+            for var in (*enum_definition).variants.iter() {
+                for ex in var.node.disr_expr.iter() {
+                    v.visit_expr(*ex, true);
+                }
             }
         }
-      }
-      _ => visit::walk_item(v, it, false)
+        _ => visit::walk_item(v, it, false)
     }
 }
 
@@ -86,7 +86,7 @@ pub fn check_pat(v: &mut CheckCrateVisitor, p: &Pat, _is_const: bool) {
         match e.node {
             ExprVstore(
                 @Expr { node: ExprLit(@codemap::Spanned {
-                    node: lit_str(..),
+                    node: LitStr(..),
                     ..}),
                        .. },
                 ExprVstoreUniq
@@ -120,7 +120,7 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
                           "cannot do allocations in constant expressions");
             return;
           }
-          ExprLit(@codemap::Spanned {node: lit_str(..), ..}) => { }
+          ExprLit(@codemap::Spanned {node: LitStr(..), ..}) => { }
           ExprBinary(..) | ExprUnary(..) => {
             let method_map = method_map.borrow();
             if method_map.get().contains_key(&e.id) {
@@ -211,9 +211,9 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
 }
 
 struct CheckItemRecursionVisitor<'a> {
-    root_it: &'a item,
+    root_it: &'a Item,
     sess: Session,
-    ast_map: ast_map::map,
+    ast_map: ast_map::Map,
     def_map: resolve::DefMap,
     idstack: ~[NodeId]
 }
@@ -221,9 +221,9 @@ struct CheckItemRecursionVisitor<'a> {
 // Make sure a const item doesn't recursively refer to itself
 // FIXME: Should use the dependency graph when it's available (#1356)
 pub fn check_item_recursion(sess: Session,
-                            ast_map: ast_map::map,
+                            ast_map: ast_map::Map,
                             def_map: resolve::DefMap,
-                            it: &item) {
+                            it: &Item) {
 
     let mut visitor = CheckItemRecursionVisitor {
         root_it: it,
@@ -236,7 +236,7 @@ pub fn check_item_recursion(sess: Session,
 }
 
 impl<'a> Visitor<()> for CheckItemRecursionVisitor<'a> {
-    fn visit_item(&mut self, it: &item, _: ()) {
+    fn visit_item(&mut self, it: &Item, _: ()) {
         if self.idstack.iter().any(|x| x == &(it.id)) {
             self.sess.span_fatal(self.root_it.span, "recursive constant");
         }
@@ -254,7 +254,7 @@ impl<'a> Visitor<()> for CheckItemRecursionVisitor<'a> {
                             ast_util::is_local(def_id) => {
                         let ast_map = self.ast_map.borrow();
                         match ast_map.get().get_copy(&def_id.node) {
-                            ast_map::node_item(it, _) => {
+                            ast_map::NodeItem(it, _) => {
                                 self.visit_item(it, ());
                             }
                             _ => fail!("const not bound to an item")

@@ -35,44 +35,44 @@ use std::libc::c_uint;
 use std::vec;
 use syntax::{ast, ast_util, ast_map};
 
-pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: ast::lit)
+pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: ast::Lit)
     -> ValueRef {
     let _icx = push_ctxt("trans_lit");
     match lit.node {
-      ast::lit_char(i) => C_integral(Type::char(), i as u64, false),
-      ast::lit_int(i, t) => C_integral(Type::int_from_ty(cx, t), i as u64, true),
-      ast::lit_uint(u, t) => C_integral(Type::uint_from_ty(cx, t), u, false),
-      ast::lit_int_unsuffixed(i) => {
-        let lit_int_ty = ty::node_id_to_type(cx.tcx, e.id);
-        match ty::get(lit_int_ty).sty {
-          ty::ty_int(t) => {
-            C_integral(Type::int_from_ty(cx, t), i as u64, true)
-          }
-          ty::ty_uint(t) => {
-            C_integral(Type::uint_from_ty(cx, t), i as u64, false)
-          }
-          _ => cx.sess.span_bug(lit.span,
-                   format!("integer literal has type {} (expected int or uint)",
-                        ty_to_str(cx.tcx, lit_int_ty)))
+        ast::LitChar(i) => C_integral(Type::char(), i as u64, false),
+        ast::LitInt(i, t) => C_integral(Type::int_from_ty(cx, t), i as u64, true),
+        ast::LitUint(u, t) => C_integral(Type::uint_from_ty(cx, t), u, false),
+        ast::LitIntUnsuffixed(i) => {
+            let lit_int_ty = ty::node_id_to_type(cx.tcx, e.id);
+            match ty::get(lit_int_ty).sty {
+                ty::ty_int(t) => {
+                    C_integral(Type::int_from_ty(cx, t), i as u64, true)
+                }
+                ty::ty_uint(t) => {
+                    C_integral(Type::uint_from_ty(cx, t), i as u64, false)
+                }
+                _ => cx.sess.span_bug(lit.span,
+                        format!("integer literal has type {} (expected int or uint)",
+                                ty_to_str(cx.tcx, lit_int_ty)))
+            }
         }
-      }
-      ast::lit_float(fs, t) => C_floating(fs, Type::float_from_ty(t)),
-      ast::lit_float_unsuffixed(fs) => {
-        let lit_float_ty = ty::node_id_to_type(cx.tcx, e.id);
-        match ty::get(lit_float_ty).sty {
-          ty::ty_float(t) => {
-            C_floating(fs, Type::float_from_ty(t))
-          }
-          _ => {
-            cx.sess.span_bug(lit.span,
-                             "floating point literal doesn't have the right type");
-          }
+        ast::LitFloat(fs, t) => C_floating(fs, Type::float_from_ty(t)),
+        ast::LitFloatUnsuffixed(fs) => {
+            let lit_float_ty = ty::node_id_to_type(cx.tcx, e.id);
+            match ty::get(lit_float_ty).sty {
+                ty::ty_float(t) => {
+                    C_floating(fs, Type::float_from_ty(t))
+                }
+                _ => {
+                    cx.sess.span_bug(lit.span,
+                        "floating point literal doesn't have the right type");
+                }
+            }
         }
-      }
-      ast::lit_bool(b) => C_bool(b),
-      ast::lit_nil => C_nil(),
-      ast::lit_str(s, _) => C_estr_slice(cx, s),
-      ast::lit_binary(data) => C_binary_slice(cx, data),
+        ast::LitBool(b) => C_bool(b),
+        ast::LitNil => C_nil(),
+        ast::LitStr(s, _) => C_estr_slice(cx, s),
+        ast::LitBinary(data) => C_binary_slice(cx, data),
     }
 }
 
@@ -172,8 +172,8 @@ pub fn get_const_val(cx: @CrateContext,
         };
 
         match opt_item {
-            ast_map::node_item(@ast::item {
-                node: ast::item_static(_, ast::MutImmutable, _), ..
+            ast_map::NodeItem(@ast::Item {
+                node: ast::ItemStatic(_, ast::MutImmutable, _), ..
             }, _) => {
                 trans_const(cx, ast::MutImmutable, def_id.node);
             }
@@ -551,8 +551,8 @@ fn const_expr_unadjusted(cx: @CrateContext,
             match sub.node {
               ast::ExprLit(ref lit) => {
                 match lit.node {
-                  ast::lit_str(..) => { const_expr(cx, sub) }
-                  _ => { cx.sess.span_bug(e.span, "bad const-slice lit") }
+                    ast::LitStr(..) => { const_expr(cx, sub) }
+                    _ => { cx.sess.span_bug(e.span, "bad const-slice lit") }
                 }
               }
               ast::ExprVec(ref es, ast::MutImmutable) => {

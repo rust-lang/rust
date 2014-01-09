@@ -25,9 +25,9 @@ use std::hashmap::HashMap;
 //
 //    MacResult, NormalTT, IdentTT
 //
-// also note that ast::mac used to have a bunch of extraneous cases and
+// also note that ast::Mac used to have a bunch of extraneous cases and
 // is now probably a redundant AST node, can be merged with
-// ast::mac_invoc_tt.
+// ast::MacInvocTT.
 
 pub struct MacroDef {
     name: @str,
@@ -35,7 +35,7 @@ pub struct MacroDef {
 }
 
 pub type ItemDecorator =
-    fn(&ExtCtxt, Span, @ast::MetaItem, ~[@ast::item]) -> ~[@ast::item];
+    fn(&ExtCtxt, Span, @ast::MetaItem, ~[@ast::Item]) -> ~[@ast::Item];
 
 pub struct SyntaxExpanderTT {
     expander: SyntaxExpanderTTExpander,
@@ -46,13 +46,13 @@ pub trait SyntaxExpanderTTTrait {
     fn expand(&self,
               ecx: &mut ExtCtxt,
               span: Span,
-              token_tree: &[ast::token_tree],
+              token_tree: &[ast::TokenTree],
               context: ast::SyntaxContext)
               -> MacResult;
 }
 
 pub type SyntaxExpanderTTFunNoCtxt =
-    fn(ecx: &mut ExtCtxt, span: codemap::Span, token_tree: &[ast::token_tree])
+    fn(ecx: &mut ExtCtxt, span: codemap::Span, token_tree: &[ast::TokenTree])
        -> MacResult;
 
 enum SyntaxExpanderTTExpander {
@@ -63,7 +63,7 @@ impl SyntaxExpanderTTTrait for SyntaxExpanderTT {
     fn expand(&self,
               ecx: &mut ExtCtxt,
               span: Span,
-              token_tree: &[ast::token_tree],
+              token_tree: &[ast::TokenTree],
               _: ast::SyntaxContext)
               -> MacResult {
         match self.expander {
@@ -89,7 +89,7 @@ pub trait SyntaxExpanderTTItemTrait {
               cx: &mut ExtCtxt,
               sp: Span,
               ident: ast::Ident,
-              token_tree: ~[ast::token_tree],
+              token_tree: ~[ast::TokenTree],
               context: ast::SyntaxContext)
               -> MacResult;
 }
@@ -99,7 +99,7 @@ impl SyntaxExpanderTTItemTrait for SyntaxExpanderTTItem {
               cx: &mut ExtCtxt,
               sp: Span,
               ident: ast::Ident,
-              token_tree: ~[ast::token_tree],
+              token_tree: ~[ast::TokenTree],
               context: ast::SyntaxContext)
               -> MacResult {
         match self.expander {
@@ -114,21 +114,21 @@ impl SyntaxExpanderTTItemTrait for SyntaxExpanderTTItem {
 }
 
 pub type SyntaxExpanderTTItemFun =
-    fn(&mut ExtCtxt, Span, ast::Ident, ~[ast::token_tree], ast::SyntaxContext)
+    fn(&mut ExtCtxt, Span, ast::Ident, ~[ast::TokenTree], ast::SyntaxContext)
        -> MacResult;
 
 pub type SyntaxExpanderTTItemFunNoCtxt =
-    fn(&mut ExtCtxt, Span, ast::Ident, ~[ast::token_tree]) -> MacResult;
+    fn(&mut ExtCtxt, Span, ast::Ident, ~[ast::TokenTree]) -> MacResult;
 
 pub trait AnyMacro {
     fn make_expr(&self) -> @ast::Expr;
-    fn make_items(&self) -> SmallVector<@ast::item>;
+    fn make_items(&self) -> SmallVector<@ast::Item>;
     fn make_stmt(&self) -> @ast::Stmt;
 }
 
 pub enum MacResult {
     MRExpr(@ast::Expr),
-    MRItem(@ast::item),
+    MRItem(@ast::Item),
     MRAny(@AnyMacro),
     MRDef(MacroDef),
 }
@@ -393,15 +393,15 @@ impl ExtCtxt {
 
 pub fn expr_to_str(cx: &ExtCtxt, expr: @ast::Expr, err_msg: &str) -> (@str, ast::StrStyle) {
     match expr.node {
-      ast::ExprLit(l) => match l.node {
-        ast::lit_str(s, style) => (s, style),
-        _ => cx.span_fatal(l.span, err_msg)
-      },
-      _ => cx.span_fatal(expr.span, err_msg)
+        ast::ExprLit(l) => match l.node {
+            ast::LitStr(s, style) => (s, style),
+            _ => cx.span_fatal(l.span, err_msg)
+        },
+        _ => cx.span_fatal(expr.span, err_msg)
     }
 }
 
-pub fn check_zero_tts(cx: &ExtCtxt, sp: Span, tts: &[ast::token_tree],
+pub fn check_zero_tts(cx: &ExtCtxt, sp: Span, tts: &[ast::TokenTree],
                       name: &str) {
     if tts.len() != 0 {
         cx.span_fatal(sp, format!("{} takes no arguments", name));
@@ -410,7 +410,7 @@ pub fn check_zero_tts(cx: &ExtCtxt, sp: Span, tts: &[ast::token_tree],
 
 pub fn get_single_str_from_tts(cx: &ExtCtxt,
                                sp: Span,
-                               tts: &[ast::token_tree],
+                               tts: &[ast::TokenTree],
                                name: &str)
                                -> @str {
     if tts.len() != 1 {
@@ -418,15 +418,15 @@ pub fn get_single_str_from_tts(cx: &ExtCtxt,
     }
 
     match tts[0] {
-        ast::tt_tok(_, token::LIT_STR(ident))
-        | ast::tt_tok(_, token::LIT_STR_RAW(ident, _)) => cx.str_of(ident),
+        ast::TTTok(_, token::LIT_STR(ident))
+        | ast::TTTok(_, token::LIT_STR_RAW(ident, _)) => cx.str_of(ident),
         _ => cx.span_fatal(sp, format!("{} requires a string.", name)),
     }
 }
 
 pub fn get_exprs_from_tts(cx: &ExtCtxt,
                           sp: Span,
-                          tts: &[ast::token_tree]) -> ~[@ast::Expr] {
+                          tts: &[ast::TokenTree]) -> ~[@ast::Expr] {
     let mut p = parse::new_parser_from_tts(cx.parse_sess(),
                                            cx.cfg(),
                                            tts.to_owned());

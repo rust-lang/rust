@@ -42,13 +42,12 @@ impl<'a> RustdocVisitor<'a> {
         self.attrs = crate.attrs.clone();
 
         self.module = self.visit_mod_contents(crate.span, crate.attrs.clone(),
-                                              ast::public, ast::CRATE_NODE_ID,
+                                              ast::Public, ast::CRATE_NODE_ID,
                                               &crate.module, None);
     }
 
-    pub fn visit_struct_def(&mut self, item: &ast::item, sd: @ast::struct_def,
-
-                        generics: &ast::Generics) -> Struct {
+    pub fn visit_struct_def(&mut self, item: &ast::Item, sd: @ast::StructDef,
+                            generics: &ast::Generics) -> Struct {
         debug!("Visiting struct");
         let struct_type = struct_type_from_def(sd);
         Struct {
@@ -63,8 +62,8 @@ impl<'a> RustdocVisitor<'a> {
         }
     }
 
-    pub fn visit_enum_def(&mut self, it: &ast::item, def: &ast::enum_def,
-                      params: &ast::Generics) -> Enum {
+    pub fn visit_enum_def(&mut self, it: &ast::Item, def: &ast::EnumDef,
+                          params: &ast::Generics) -> Enum {
         debug!("Visiting enum");
         let mut vars: ~[Variant] = ~[];
         for x in def.variants.iter() {
@@ -88,8 +87,8 @@ impl<'a> RustdocVisitor<'a> {
         }
     }
 
-    pub fn visit_fn(&mut self, item: &ast::item, fd: &ast::fn_decl,
-                    purity: &ast::purity, _abi: &AbiSet,
+    pub fn visit_fn(&mut self, item: &ast::Item, fd: &ast::FnDecl,
+                    purity: &ast::Purity, _abi: &AbiSet,
                     gen: &ast::Generics) -> Function {
         debug!("Visiting fn");
         Function {
@@ -105,8 +104,8 @@ impl<'a> RustdocVisitor<'a> {
     }
 
     pub fn visit_mod_contents(&mut self, span: Span, attrs: ~[ast::Attribute],
-                              vis: ast::visibility, id: ast::NodeId,
-                              m: &ast::_mod,
+                              vis: ast::Visibility, id: ast::NodeId,
+                              m: &ast::Mod,
                               name: Option<ast::Ident>) -> Module {
         let mut om = Module::new(name);
         for item in m.view_items.iter() {
@@ -122,36 +121,36 @@ impl<'a> RustdocVisitor<'a> {
         om
     }
 
-    pub fn visit_view_item(&mut self, item: &ast::view_item, om: &mut Module) {
-        if item.vis != ast::public {
+    pub fn visit_view_item(&mut self, item: &ast::ViewItem, om: &mut Module) {
+        if item.vis != ast::Public {
             return om.view_items.push(item.clone());
         }
         let item = match item.node {
-            ast::view_item_use(ref paths) => {
+            ast::ViewItemUse(ref paths) => {
                 // rustc no longer supports "use foo, bar;"
                 assert_eq!(paths.len(), 1);
                 match self.visit_view_path(paths[0], om) {
                     None => return,
                     Some(path) => {
-                        ast::view_item {
-                            node: ast::view_item_use(~[path]),
+                        ast::ViewItem {
+                            node: ast::ViewItemUse(~[path]),
                             .. item.clone()
                         }
                     }
                 }
             }
-            ast::view_item_extern_mod(..) => item.clone()
+            ast::ViewItemExternMod(..) => item.clone()
         };
         om.view_items.push(item);
     }
 
-    fn visit_view_path(&mut self, path: @ast::view_path,
-                       om: &mut Module) -> Option<@ast::view_path> {
+    fn visit_view_path(&mut self, path: @ast::ViewPath,
+                       om: &mut Module) -> Option<@ast::ViewPath> {
         match path.node {
-            ast::view_path_simple(_, _, id) => {
+            ast::ViewPathSimple(_, _, id) => {
                 if self.resolve_id(id, false, om) { return None }
             }
-            ast::view_path_list(ref p, ref paths, ref b) => {
+            ast::ViewPathList(ref p, ref paths, ref b) => {
                 let mut mine = ~[];
                 for path in paths.iter() {
                     if !self.resolve_id(path.node.id, false, om) {
@@ -161,13 +160,13 @@ impl<'a> RustdocVisitor<'a> {
 
                 if mine.len() == 0 { return None }
                 return Some(@::syntax::codemap::Spanned {
-                    node: ast::view_path_list(p.clone(), mine, b.clone()),
+                    node: ast::ViewPathList(p.clone(), mine, b.clone()),
                     span: path.span,
                 })
             }
 
             // these are feature gated anyway
-            ast::view_path_glob(_, id) => {
+            ast::ViewPathGlob(_, id) => {
                 if self.resolve_id(id, true, om) { return None }
             }
         }
@@ -194,10 +193,10 @@ impl<'a> RustdocVisitor<'a> {
             *items.get().get(&def.node)
         };
         match item {
-            ast_map::node_item(it, _) => {
+            ast_map::NodeItem(it, _) => {
                 if glob {
                     match it.node {
-                        ast::item_mod(ref m) => {
+                        ast::ItemMod(ref m) => {
                             for vi in m.view_items.iter() {
                                 self.visit_view_item(vi, om);
                             }
@@ -216,21 +215,21 @@ impl<'a> RustdocVisitor<'a> {
         }
     }
 
-    pub fn visit_item(&mut self, item: &ast::item, om: &mut Module) {
+    pub fn visit_item(&mut self, item: &ast::Item, om: &mut Module) {
         debug!("Visiting item {:?}", item);
         match item.node {
-            ast::item_mod(ref m) => {
+            ast::ItemMod(ref m) => {
                 om.mods.push(self.visit_mod_contents(item.span, item.attrs.clone(),
                                                 item.vis, item.id, m,
                                                 Some(item.ident)));
             },
-            ast::item_enum(ref ed, ref gen) =>
+            ast::ItemEnum(ref ed, ref gen) =>
                 om.enums.push(self.visit_enum_def(item, ed, gen)),
-            ast::item_struct(sd, ref gen) =>
+            ast::ItemStruct(sd, ref gen) =>
                 om.structs.push(self.visit_struct_def(item, sd, gen)),
-            ast::item_fn(fd, ref pur, ref abi, ref gen, _) =>
+            ast::ItemFn(fd, ref pur, ref abi, ref gen, _) =>
                 om.fns.push(self.visit_fn(item, fd, pur, abi, gen)),
-            ast::item_ty(ty, ref gen) => {
+            ast::ItemTy(ty, ref gen) => {
                 let t = Typedef {
                     ty: ty,
                     gen: gen.clone(),
@@ -242,7 +241,7 @@ impl<'a> RustdocVisitor<'a> {
                 };
                 om.typedefs.push(t);
             },
-            ast::item_static(ty, ref mut_, ref exp) => {
+            ast::ItemStatic(ty, ref mut_, ref exp) => {
                 let s = Static {
                     type_: ty,
                     mutability: mut_.clone(),
@@ -255,7 +254,7 @@ impl<'a> RustdocVisitor<'a> {
                 };
                 om.statics.push(s);
             },
-            ast::item_trait(ref gen, ref tr, ref met) => {
+            ast::ItemTrait(ref gen, ref tr, ref met) => {
                 let t = Trait {
                     name: item.ident,
                     methods: met.clone(),
@@ -268,7 +267,7 @@ impl<'a> RustdocVisitor<'a> {
                 };
                 om.traits.push(t);
             },
-            ast::item_impl(ref gen, ref tr, ty, ref meths) => {
+            ast::ItemImpl(ref gen, ref tr, ty, ref meths) => {
                 let i = Impl {
                     generics: gen.clone(),
                     trait_: tr.clone(),
@@ -281,7 +280,7 @@ impl<'a> RustdocVisitor<'a> {
                 };
                 om.impls.push(i);
             },
-            ast::item_foreign_mod(ref fm) => {
+            ast::ItemForeignMod(ref fm) => {
                 om.foreigns.push(fm.clone());
             }
             _ => (),

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{MetaItem, item, Expr};
+use ast::{MetaItem, Item, Expr};
 use ast;
 use codemap::Span;
 use ext::base::ExtCtxt;
@@ -18,7 +18,7 @@ use ext::deriving::generic::*;
 pub fn expand_deriving_from_primitive(cx: &ExtCtxt,
                                       span: Span,
                                       mitem: @MetaItem,
-                                      in_items: ~[@item]) -> ~[@item] {
+                                      in_items: ~[@Item]) -> ~[@Item] {
     let trait_def = TraitDef {
         cx: cx, span: span,
 
@@ -85,7 +85,7 @@ fn cs_from(name: &str, cx: &ExtCtxt, span: Span, substr: &Substructure) -> @Expr
 
             for variant in enum_def.variants.iter() {
                 match variant.node.kind {
-                    ast::tuple_variant_kind(ref args) => {
+                    ast::TupleVariantKind(ref args) => {
                         if !args.is_empty() {
                             cx.span_err(span, "`FromPrimitive` cannot be derived for \
                                                enum variants with arguments");
@@ -110,7 +110,7 @@ fn cs_from(name: &str, cx: &ExtCtxt, span: Span, substr: &Substructure) -> @Expr
 
                         arms.push(arm);
                     }
-                    ast::struct_variant_kind(_) => {
+                    ast::StructVariantKind(_) => {
                         cx.span_err(span, "`FromPrimitive` cannot be derived for enums \
                                            with struct variants");
                         return cx.expr_fail(span, @"");

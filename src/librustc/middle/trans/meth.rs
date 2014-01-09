@@ -34,11 +34,9 @@ use middle::trans::type_::Type;
 
 use std::c_str::ToCStr;
 use std::vec;
-use syntax::ast_map::{path, path_mod, path_name, path_pretty_name};
-use syntax::ast_util;
-use syntax::{ast, ast_map};
+use syntax::ast_map::{Path, PathMod, PathName, PathPrettyName};
 use syntax::parse::token;
-use syntax::visit;
+use syntax::{ast, ast_map, ast_util, visit};
 
 /**
 The main "translation" pass for methods.  Generates code
@@ -47,9 +45,9 @@ be generated once they are invoked with specific type parameters,
 see `trans::base::lval_static_fn()` or `trans::base::monomorphic_fn()`.
 */
 pub fn trans_impl(ccx: @CrateContext,
-                  path: path,
+                  path: Path,
                   name: ast::Ident,
-                  methods: &[@ast::method],
+                  methods: &[@ast::Method],
                   generics: &ast::Generics,
                   id: ast::NodeId) {
     let _icx = push_ctxt("impl::trans_impl");
@@ -67,12 +65,12 @@ pub fn trans_impl(ccx: @CrateContext,
         }
         return;
     }
-    let sub_path = vec::append_one(path, path_name(name));
+    let sub_path = vec::append_one(path, PathName(name));
     for method in methods.iter() {
         if method.generics.ty_params.len() == 0u {
             let llfn = get_item_val(ccx, method.id);
             let path = vec::append_one(sub_path.clone(),
-                                       path_name(method.ident));
+                                       PathName(method.ident));
 
             trans_method(ccx,
                          path,
@@ -98,13 +96,13 @@ pub fn trans_impl(ccx: @CrateContext,
 ///
 /// XXX(pcwalton) Can we take `path` by reference?
 pub fn trans_method(ccx: @CrateContext,
-                    path: path,
-                    method: &ast::method,
+                    path: Path,
+                    method: &ast::Method,
                     param_substs: Option<@param_substs>,
                     llfn: ValueRef) {
     // figure out how self is being passed
     let self_arg = match method.explicit_self.node {
-      ast::sty_static => {
+      ast::SelfStatic => {
         no_self
       }
       _ => {
@@ -120,7 +118,7 @@ pub fn trans_method(ccx: @CrateContext,
         debug!("calling trans_fn with self_ty {}",
                self_ty.repr(ccx.tcx));
         match method.explicit_self.node {
-          ast::sty_value(_) => impl_self(self_ty, ty::ByRef),
+          ast::SelfValue(_) => impl_self(self_ty, ty::ByRef),
           _ => impl_self(self_ty, ty::ByCopy),
         }
       }
@@ -252,7 +250,7 @@ pub fn trans_static_method_callee(bcx: &Block,
         {
             let items = bcx.tcx().items.borrow();
             match items.get().get_copy(&method_id.node) {
-                ast_map::node_trait_method(trait_method, _, _) => {
+                ast_map::NodeTraitMethod(trait_method, _, _) => {
                     ast_util::trait_method_to_ty_method(trait_method).ident
                 }
                 _ => fail!("callee is not a trait method")
@@ -261,8 +259,8 @@ pub fn trans_static_method_callee(bcx: &Block,
     } else {
         let path = csearch::get_item_path(bcx.tcx(), method_id);
         match path[path.len()-1] {
-            path_pretty_name(s, _) | path_name(s) => { s }
-            path_mod(_) => { fail!("path doesn't have a name?") }
+            PathPrettyName(s, _) | PathName(s) => { s }
+            PathMod(_) => { fail!("path doesn't have a name?") }
         }
     };
     debug!("trans_static_method_callee: method_id={:?}, callee_id={:?}, \

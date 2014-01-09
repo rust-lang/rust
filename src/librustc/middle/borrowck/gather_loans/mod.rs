@@ -28,12 +28,12 @@ use util::ppaux::{Repr};
 
 use std::cell::RefCell;
 use syntax::ast;
-use syntax::ast_util::id_range;
+use syntax::ast_util::IdRange;
 use syntax::codemap::Span;
 use syntax::print::pprust;
 use syntax::visit;
-use syntax::visit::{Visitor, fn_kind};
-use syntax::ast::{Expr, fn_decl, Block, NodeId, Stmt, Pat, Local};
+use syntax::visit::{Visitor, FnKind};
+use syntax::ast::{Expr, FnDecl, Block, NodeId, Stmt, Pat, Local};
 
 mod lifetime;
 mod restrictions;
@@ -67,7 +67,7 @@ mod gather_moves;
 /// because it would have to be rooted for a region greater than `root_ub`.
 struct GatherLoanCtxt<'a> {
     bccx: &'a BorrowckCtxt,
-    id_range: id_range,
+    id_range: IdRange,
     move_data: move_data::MoveData,
     all_loans: @RefCell<~[Loan]>,
     item_ub: ast::NodeId,
@@ -81,7 +81,7 @@ impl<'a> visit::Visitor<()> for GatherLoanCtxt<'a> {
     fn visit_block(&mut self, b: &Block, _: ()) {
         gather_loans_in_block(self, b);
     }
-    fn visit_fn(&mut self, fk: &fn_kind, fd: &fn_decl, b: &Block,
+    fn visit_fn(&mut self, fk: &FnKind, fd: &FnDecl, b: &Block,
                 s: Span, n: NodeId, _: ()) {
         gather_loans_in_fn(self, fk, fd, b, s, n);
     }
@@ -98,16 +98,14 @@ impl<'a> visit::Visitor<()> for GatherLoanCtxt<'a> {
     // #7740: Do not visit items here, not even fn items nor methods
     // of impl items; the outer loop in borrowck/mod will visit them
     // for us in turn.  Thus override visit_item's walk with a no-op.
-    fn visit_item(&mut self, _: &ast::item, _: ()) { }
+    fn visit_item(&mut self, _: &ast::Item, _: ()) { }
 }
 
-pub fn gather_loans(bccx: &BorrowckCtxt,
-                    decl: &ast::fn_decl,
-                    body: &ast::Block)
-                    -> (id_range, @RefCell<~[Loan]>, move_data::MoveData) {
+pub fn gather_loans(bccx: &BorrowckCtxt, decl: &ast::FnDecl, body: &ast::Block)
+                    -> (IdRange, @RefCell<~[Loan]>, move_data::MoveData) {
     let mut glcx = GatherLoanCtxt {
         bccx: bccx,
-        id_range: id_range::max(),
+        id_range: IdRange::max(),
         all_loans: @RefCell::new(~[]),
         item_ub: body.id,
         repeating_ids: ~[body.id],
@@ -129,19 +127,16 @@ fn add_pat_to_id_range(this: &mut GatherLoanCtxt,
     visit::walk_pat(this, p, ());
 }
 
-fn gather_loans_in_fn(this: &mut GatherLoanCtxt,
-                      fk: &fn_kind,
-                      decl: &ast::fn_decl,
-                      body: &ast::Block,
-                      sp: Span,
-                      id: ast::NodeId) {
+fn gather_loans_in_fn(this: &mut GatherLoanCtxt, fk: &FnKind,
+                      decl: &ast::FnDecl, body: &ast::Block,
+                      sp: Span, id: ast::NodeId) {
     match fk {
-        &visit::fk_item_fn(..) | &visit::fk_method(..) => {
+        &visit::FkItemFn(..) | &visit::FkMethod(..) => {
             fail!("cannot occur, due to visit_item override");
         }
 
         // Visit closures as part of the containing item.
-        &visit::fk_fn_block(..) => {
+        &visit::FkFnBlock(..) => {
             this.push_repeating_id(body.id);
             visit::walk_fn(this, fk, decl, body, sp, id, ());
             this.pop_repeating_id(body.id);
@@ -677,7 +672,7 @@ impl<'a> GatherLoanCtxt<'a> {
     }
 
     fn gather_fn_arg_patterns(&mut self,
-                              decl: &ast::fn_decl,
+                              decl: &ast::FnDecl,
                               body: &ast::Block) {
         /*!
          * Walks the patterns for fn arguments, checking that they

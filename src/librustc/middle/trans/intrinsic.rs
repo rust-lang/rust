@@ -31,8 +31,8 @@ use middle::trans::type_::Type;
 
 pub fn trans_intrinsic(ccx: @CrateContext,
                        decl: ValueRef,
-                       item: &ast::foreign_item,
-                       path: ast_map::path,
+                       item: &ast::ForeignItem,
+                       path: ast_map::Path,
                        substs: @param_substs,
                        _attributes: &[ast::Attribute],
                        ref_id: Option<ast::NodeId>) {
@@ -348,7 +348,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                 let sp = {
                     let items = ccx.tcx.items.borrow();
                     match items.get().get_copy(&ref_id.unwrap()) {
-                        ast_map::node_expr(e) => e.span,
+                        ast_map::NodeExpr(e) => e.span,
                         _ => fail!("transmute has non-expr arg"),
                     }
                 };

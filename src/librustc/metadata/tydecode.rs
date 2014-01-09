@@ -302,16 +302,16 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
       'u' => return ty::mk_uint(),
       'M' => {
         match next(st) {
-          'b' => return ty::mk_mach_uint(ast::ty_u8),
-          'w' => return ty::mk_mach_uint(ast::ty_u16),
-          'l' => return ty::mk_mach_uint(ast::ty_u32),
-          'd' => return ty::mk_mach_uint(ast::ty_u64),
-          'B' => return ty::mk_mach_int(ast::ty_i8),
-          'W' => return ty::mk_mach_int(ast::ty_i16),
-          'L' => return ty::mk_mach_int(ast::ty_i32),
-          'D' => return ty::mk_mach_int(ast::ty_i64),
-          'f' => return ty::mk_mach_float(ast::ty_f32),
-          'F' => return ty::mk_mach_float(ast::ty_f64),
+          'b' => return ty::mk_mach_uint(ast::TyU8),
+          'w' => return ty::mk_mach_uint(ast::TyU16),
+          'l' => return ty::mk_mach_uint(ast::TyU32),
+          'd' => return ty::mk_mach_uint(ast::TyU64),
+          'B' => return ty::mk_mach_int(ast::TyI8),
+          'W' => return ty::mk_mach_int(ast::TyI16),
+          'L' => return ty::mk_mach_int(ast::TyI32),
+          'D' => return ty::mk_mach_int(ast::TyI64),
+          'f' => return ty::mk_mach_float(ast::TyF32),
+          'F' => return ty::mk_mach_float(ast::TyF64),
           _ => fail!("parse_ty: bad numeric type")
         }
       }
@@ -463,12 +463,12 @@ fn parse_hex(st: &mut PState) -> uint {
     };
 }
 
-fn parse_purity(c: char) -> purity {
+fn parse_purity(c: char) -> Purity {
     match c {
-      'u' => unsafe_fn,
-      'i' => impure_fn,
-      'c' => extern_fn,
-      _ => fail!("parse_purity: bad purity {}", c)
+        'u' => UnsafeFn,
+        'i' => ImpureFn,
+        'c' => ExternFn,
+        _ => fail!("parse_purity: bad purity {}", c)
     }
 }
 

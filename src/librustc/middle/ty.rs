@@ -76,8 +76,8 @@ pub struct Method {
     generics: ty::Generics,
     transformed_self_ty: Option<ty::t>,
     fty: BareFnTy,
-    explicit_self: ast::explicit_self_,
-    vis: ast::visibility,
+    explicit_self: ast::ExplicitSelf_,
+    vis: ast::Visibility,
     def_id: ast::DefId,
     container: MethodContainer,
 
@@ -90,14 +90,14 @@ impl Method {
                generics: ty::Generics,
                transformed_self_ty: Option<ty::t>,
                fty: BareFnTy,
-               explicit_self: ast::explicit_self_,
-               vis: ast::visibility,
+               explicit_self: ast::ExplicitSelf_,
+               vis: ast::Visibility,
                def_id: ast::DefId,
                container: MethodContainer,
                provided_source: Option<ast::DefId>)
                -> Method {
         // Check the invariants.
-        if explicit_self == ast::sty_static {
+        if explicit_self == ast::SelfStatic {
             assert!(transformed_self_ty.is_none());
         } else {
             assert!(transformed_self_ty.is_some());
@@ -162,7 +162,7 @@ pub enum SelfMode {
 pub struct field_ty {
     name: Name,
     id: DefId,
-    vis: ast::visibility,
+    vis: ast::Visibility,
 }
 
 // Contains information needed to resolve types and (in the future) look up
@@ -305,7 +305,7 @@ struct ctxt_ {
 
     /// Despite its name, `items` does not only map NodeId to an item but
     /// also to expr/stmt/local/arg/etc
-    items: ast_map::map,
+    items: ast_map::Map,
     intrinsic_defs: RefCell<HashMap<ast::DefId, t>>,
     freevars: RefCell<freevars::freevar_map>,
     tcache: type_cache,
@@ -435,14 +435,14 @@ pub fn type_id(t: t) -> uint { get(t).id }
 
 #[deriving(Clone, Eq, IterBytes)]
 pub struct BareFnTy {
-    purity: ast::purity,
+    purity: ast::Purity,
     abis: AbiSet,
     sig: FnSig
 }
 
 #[deriving(Clone, Eq, IterBytes)]
 pub struct ClosureTy {
-    purity: ast::purity,
+    purity: ast::Purity,
     sigil: ast::Sigil,
     onceness: ast::Onceness,
     region: Region,
@@ -596,18 +596,18 @@ mod primitives {
     def_prim_ty!(TY_NIL,    super::ty_nil,                  0)
     def_prim_ty!(TY_BOOL,   super::ty_bool,                 1)
     def_prim_ty!(TY_CHAR,   super::ty_char,                 2)
-    def_prim_ty!(TY_INT,    super::ty_int(ast::ty_i),       3)
-    def_prim_ty!(TY_I8,     super::ty_int(ast::ty_i8),      4)
-    def_prim_ty!(TY_I16,    super::ty_int(ast::ty_i16),     5)
-    def_prim_ty!(TY_I32,    super::ty_int(ast::ty_i32),     6)
-    def_prim_ty!(TY_I64,    super::ty_int(ast::ty_i64),     7)
-    def_prim_ty!(TY_UINT,   super::ty_uint(ast::ty_u),      8)
-    def_prim_ty!(TY_U8,     super::ty_uint(ast::ty_u8),     9)
-    def_prim_ty!(TY_U16,    super::ty_uint(ast::ty_u16),    10)
-    def_prim_ty!(TY_U32,    super::ty_uint(ast::ty_u32),    11)
-    def_prim_ty!(TY_U64,    super::ty_uint(ast::ty_u64),    12)
-    def_prim_ty!(TY_F32,    super::ty_float(ast::ty_f32),   14)
-    def_prim_ty!(TY_F64,    super::ty_float(ast::ty_f64),   15)
+    def_prim_ty!(TY_INT,    super::ty_int(ast::TyI),        3)
+    def_prim_ty!(TY_I8,     super::ty_int(ast::TyI8),       4)
+    def_prim_ty!(TY_I16,    super::ty_int(ast::TyI16),      5)
+    def_prim_ty!(TY_I32,    super::ty_int(ast::TyI32),      6)
+    def_prim_ty!(TY_I64,    super::ty_int(ast::TyI64),      7)
+    def_prim_ty!(TY_UINT,   super::ty_uint(ast::TyU),       8)
+    def_prim_ty!(TY_U8,     super::ty_uint(ast::TyU8),      9)
+    def_prim_ty!(TY_U16,    super::ty_uint(ast::TyU16),     10)
+    def_prim_ty!(TY_U32,    super::ty_uint(ast::TyU32),     11)
+    def_prim_ty!(TY_U64,    super::ty_uint(ast::TyU64),     12)
+    def_prim_ty!(TY_F32,    super::ty_float(ast::TyF32),    14)
+    def_prim_ty!(TY_F64,    super::ty_float(ast::TyF64),    15)
 
     pub static TY_BOT: t_box_ = t_box_ {
         sty: super::ty_bot,
@@ -632,9 +632,9 @@ pub enum sty {
     ty_bot,
     ty_bool,
     ty_char,
-    ty_int(ast::int_ty),
-    ty_uint(ast::uint_ty),
-    ty_float(ast::float_ty),
+    ty_int(ast::IntTy),
+    ty_uint(ast::UintTy),
+    ty_float(ast::FloatTy),
     ty_estr(vstore),
     ty_enum(DefId, substs),
     ty_box(t),
@@ -672,8 +672,8 @@ pub struct TraitRef {
 
 #[deriving(Clone, Eq)]
 pub enum IntVarValue {
-    IntType(ast::int_ty),
-    UintType(ast::uint_ty),
+    IntType(ast::IntTy),
+    UintType(ast::UintTy),
 }
 
 #[deriving(Clone, ToStr)]
@@ -694,7 +694,7 @@ pub struct expected_found<T> {
 #[deriving(Clone, ToStr)]
 pub enum type_err {
     terr_mismatch,
-    terr_purity_mismatch(expected_found<purity>),
+    terr_purity_mismatch(expected_found<Purity>),
     terr_onceness_mismatch(expected_found<Onceness>),
     terr_abi_mismatch(expected_found<AbiSet>),
     terr_mutability,
@@ -720,7 +720,7 @@ pub enum type_err {
     terr_sorts(expected_found<t>),
     terr_integer_as_char,
     terr_int_mismatch(expected_found<IntVarValue>),
-    terr_float_mismatch(expected_found<ast::float_ty>),
+    terr_float_mismatch(expected_found<ast::FloatTy>),
     terr_traits(expected_found<ast::DefId>),
     terr_builtin_bounds(expected_found<BuiltinBounds>),
     terr_variadic_mismatch(expected_found<bool>)
@@ -964,7 +964,7 @@ pub type node_type_table = RefCell<HashMap<uint,t>>;
 pub fn mk_ctxt(s: session::Session,
                dm: resolve::DefMap,
                named_region_map: @RefCell<resolve_lifetime::NamedRegionMap>,
-               amap: ast_map::map,
+               amap: ast_map::Map,
                freevars: freevars::freevar_map,
                region_maps: middle::region::RegionMaps,
                lang_items: middle::lang_items::LanguageItems)
@@ -1204,30 +1204,30 @@ pub fn mk_u32() -> t { mk_prim_t(&primitives::TY_U32) }
 #[inline]
 pub fn mk_u64() -> t { mk_prim_t(&primitives::TY_U64) }
 
-pub fn mk_mach_int(tm: ast::int_ty) -> t {
+pub fn mk_mach_int(tm: ast::IntTy) -> t {
     match tm {
-        ast::ty_i    => mk_int(),
-        ast::ty_i8   => mk_i8(),
-        ast::ty_i16  => mk_i16(),
-        ast::ty_i32  => mk_i32(),
-        ast::ty_i64  => mk_i64(),
+        ast::TyI    => mk_int(),
+        ast::TyI8   => mk_i8(),
+        ast::TyI16  => mk_i16(),
+        ast::TyI32  => mk_i32(),
+        ast::TyI64  => mk_i64(),
     }
 }
 
-pub fn mk_mach_uint(tm: ast::uint_ty) -> t {
+pub fn mk_mach_uint(tm: ast::UintTy) -> t {
     match tm {
-        ast::ty_u    => mk_uint(),
-        ast::ty_u8   => mk_u8(),
-        ast::ty_u16  => mk_u16(),
-        ast::ty_u32  => mk_u32(),
-        ast::ty_u64  => mk_u64(),
+        ast::TyU    => mk_uint(),
+        ast::TyU8   => mk_u8(),
+        ast::TyU16  => mk_u16(),
+        ast::TyU32  => mk_u32(),
+        ast::TyU64  => mk_u64(),
     }
 }
 
-pub fn mk_mach_float(tm: ast::float_ty) -> t {
+pub fn mk_mach_float(tm: ast::FloatTy) -> t {
     match tm {
-        ast::ty_f32  => mk_f32(),
-        ast::ty_f64  => mk_f64(),
+        ast::TyF32  => mk_f32(),
+        ast::TyF64  => mk_f64(),
     }
 }
 
@@ -1306,7 +1306,7 @@ pub fn mk_ctor_fn(cx: ctxt,
     let input_args = input_tys.map(|t| *t);
     mk_bare_fn(cx,
                BareFnTy {
-                   purity: ast::impure_fn,
+                   purity: ast::ImpureFn,
                    abis: AbiSet::Rust(),
                    sig: FnSig {
                     binder_id: binder_id,
@@ -1550,7 +1550,7 @@ pub fn type_is_str(ty: t) -> bool {
 
 pub fn sequence_element_type(cx: ctxt, ty: t) -> t {
     match get(ty).sty {
-      ty_estr(_) => return mk_mach_uint(ast::ty_u8),
+      ty_estr(_) => return mk_mach_uint(ast::TyU8),
       ty_evec(mt, _) | ty_unboxed_vec(mt) => return mt.ty,
       _ => cx.sess.bug("sequence_element_type called on non-sequence value"),
     }
@@ -2497,7 +2497,7 @@ pub fn type_is_signed(ty: t) -> bool {
 
 pub fn type_is_machine(ty: t) -> bool {
     match get(ty).sty {
-        ty_int(ast::ty_i) | ty_uint(ast::ty_u) => false,
+        ty_int(ast::TyI) | ty_uint(ast::TyU) => false,
         ty_int(..) | ty_uint(..) | ty_float(..) => true,
         _ => false
     }
@@ -2735,7 +2735,7 @@ pub fn ty_closure_sigil(fty: t) -> Sigil {
     }
 }
 
-pub fn ty_fn_purity(fty: t) -> ast::purity {
+pub fn ty_fn_purity(fty: t) -> ast::Purity {
     match get(fty).sty {
         ty_bare_fn(ref f) => f.purity,
         ty_closure(ref f) => f.purity,
@@ -3184,7 +3184,7 @@ pub fn expr_kind(tcx: ctxt,
         ast::ExprDoBody(..) |
         ast::ExprBlock(..) |
         ast::ExprRepeat(..) |
-        ast::ExprLit(@codemap::Spanned {node: lit_str(..), ..}) |
+        ast::ExprLit(@codemap::Spanned {node: LitStr(..), ..}) |
         ast::ExprVstore(_, ast::ExprVstoreSlice) |
         ast::ExprVstore(_, ast::ExprVstoreMutSlice) |
         ast::ExprVec(..) => {
@@ -3232,7 +3232,7 @@ pub fn expr_kind(tcx: ctxt,
         ast::ExprForLoop(..) => fail!("non-desugared expr_for_loop"),
 
         ast::ExprLogLevel |
-        ast::ExprLit(_) | // Note: lit_str is carved out above
+        ast::ExprLit(_) | // Note: LitStr is carved out above
         ast::ExprUnary(..) |
         ast::ExprAddrOf(..) |
         ast::ExprBinary(..) |
@@ -3551,8 +3551,8 @@ pub fn provided_trait_methods(cx: ctxt, id: ast::DefId) -> ~[@Method] {
         {
             let items = cx.items.borrow();
             match items.get().find(&id.node) {
-                Some(&ast_map::node_item(@ast::item {
-                            node: item_trait(_, _, ref ms),
+                Some(&ast_map::NodeItem(@ast::Item {
+                            node: ItemTrait(_, _, ref ms),
                             ..
                         }, _)) =>
                     match ast_util::split_trait_methods(*ms) {
@@ -3673,8 +3673,8 @@ pub fn impl_trait_ref(cx: ctxt, id: ast::DefId) -> Option<@TraitRef> {
         {
             let items = cx.items.borrow();
             match items.get().find(&id.node) {
-                Some(&ast_map::node_item(@ast::item {
-                     node: ast::item_impl(_, ref opt_trait, _, _),
+                Some(&ast_map::NodeItem(@ast::Item {
+                     node: ast::ItemImpl(_, ref opt_trait, _, _),
                      ..},
                      _)) => {
                     match opt_trait {
@@ -3694,7 +3694,7 @@ pub fn impl_trait_ref(cx: ctxt, id: ast::DefId) -> Option<@TraitRef> {
     return ret;
 }
 
-pub fn trait_ref_to_def_id(tcx: ctxt, tr: &ast::trait_ref) -> ast::DefId {
+pub fn trait_ref_to_def_id(tcx: ctxt, tr: &ast::TraitRef) -> ast::DefId {
     let def_map = tcx.def_map.borrow();
     let def = def_map.get()
                      .find(&tr.ref_id)
@@ -3732,7 +3732,7 @@ pub struct VariantInfo {
     name: ast::Ident,
     id: ast::DefId,
     disr_val: Disr,
-    vis: visibility
+    vis: Visibility
 }
 
 impl VariantInfo {
@@ -3741,12 +3741,12 @@ impl VariantInfo {
     ///
     /// Does not do any caching of the value in the type context.
     pub fn from_ast_variant(cx: ctxt,
-                            ast_variant: &ast::variant,
+                            ast_variant: &ast::Variant,
                             discriminant: Disr) -> VariantInfo {
         let ctor_ty = node_id_to_type(cx, ast_variant.node.id);
 
         match ast_variant.node.kind {
-            ast::tuple_variant_kind(ref args) => {
+            ast::TupleVariantKind(ref args) => {
                 let arg_tys = if args.len() > 0 { ty_fn_args(ctor_ty).map(|a| *a) } else { ~[] };
 
                 return VariantInfo {
@@ -3759,17 +3759,17 @@ impl VariantInfo {
                     vis: ast_variant.node.vis
                 };
             },
-            ast::struct_variant_kind(ref struct_def) => {
+            ast::StructVariantKind(ref struct_def) => {
 
-                let fields: &[struct_field] = struct_def.fields;
+                let fields: &[StructField] = struct_def.fields;
 
                 assert!(fields.len() > 0);
 
                 let arg_tys = ty_fn_args(ctor_ty).map(|a| *a);
                 let arg_names = fields.map(|field| {
                     match field.node.kind {
-                        named_field(ident, _) => ident,
-                        unnamed_field => cx.sess.bug(
+                        NamedField(ident, _) => ident,
+                        UnnamedField => cx.sess.bug(
                             "enum_variants: all fields in struct must have a name")
                     }
                 });
@@ -3853,7 +3853,7 @@ pub fn has_dtor(cx: ctxt, struct_id: DefId) -> bool {
     ty_dtor(cx, struct_id).is_present()
 }
 
-pub fn item_path(cx: ctxt, id: ast::DefId) -> ast_map::path {
+pub fn item_path(cx: ctxt, id: ast::DefId) -> ast_map::Path {
     if id.crate != ast::LOCAL_CRATE {
         return csearch::get_item_path(cx, id)
     }
@@ -3865,45 +3865,43 @@ pub fn item_path(cx: ctxt, id: ast::DefId) -> ast_map::path {
     // match *node {
     let items = cx.items.borrow();
     match *items.get().get(&id.node) {
-      ast_map::node_item(item, path) => {
-        let item_elt = match item.node {
-          item_mod(_) | item_foreign_mod(_) => {
-            ast_map::path_mod(item.ident)
-          }
-          _ => {
-            ast_map::path_name(item.ident)
-          }
-        };
-        vec::append_one((*path).clone(), item_elt)
-      }
+        ast_map::NodeItem(item, path) => {
+            let item_elt = match item.node {
+                ItemMod(_) | ItemForeignMod(_) => {
+                    ast_map::PathMod(item.ident)
+                }
+                _ => ast_map::PathName(item.ident)
+            };
+            vec::append_one((*path).clone(), item_elt)
+        }
 
-      ast_map::node_foreign_item(nitem, _, _, path) => {
-        vec::append_one((*path).clone(),
-                        ast_map::path_name(nitem.ident))
-      }
+        ast_map::NodeForeignItem(nitem, _, _, path) => {
+            vec::append_one((*path).clone(),
+                            ast_map::PathName(nitem.ident))
+        }
 
-      ast_map::node_method(method, _, path) => {
-        vec::append_one((*path).clone(),
-                        ast_map::path_name(method.ident))
-      }
-      ast_map::node_trait_method(trait_method, _, path) => {
-        let method = ast_util::trait_method_to_ty_method(&*trait_method);
-        vec::append_one((*path).clone(),
-                        ast_map::path_name(method.ident))
-      }
+        ast_map::NodeMethod(method, _, path) => {
+            vec::append_one((*path).clone(),
+                            ast_map::PathName(method.ident))
+        }
+        ast_map::NodeTraitMethod(trait_method, _, path) => {
+            let method = ast_util::trait_method_to_ty_method(&*trait_method);
+            vec::append_one((*path).clone(),
+                            ast_map::PathName(method.ident))
+        }
 
-      ast_map::node_variant(ref variant, _, path) => {
-        vec::append_one(path.init().to_owned(),
-                        ast_map::path_name((*variant).node.name))
-      }
+        ast_map::NodeVariant(ref variant, _, path) => {
+            vec::append_one(path.init().to_owned(),
+                            ast_map::PathName((*variant).node.name))
+        }
 
-      ast_map::node_struct_ctor(_, item, path) => {
-        vec::append_one((*path).clone(), ast_map::path_name(item.ident))
-      }
+        ast_map::NodeStructCtor(_, item, path) => {
+            vec::append_one((*path).clone(), ast_map::PathName(item.ident))
+        }
 
-      ref node => {
-        cx.sess.bug(format!("cannot find item_path for node {:?}", node));
-      }
+        ref node => {
+            cx.sess.bug(format!("cannot find item_path for node {:?}", node));
+        }
     }
 }
 
@@ -3938,8 +3936,8 @@ pub fn enum_variants(cx: ctxt, id: ast::DefId) -> @~[@VariantInfo] {
         {
             let items = cx.items.borrow();
             match items.get().get_copy(&id.node) {
-              ast_map::node_item(@ast::item {
-                        node: ast::item_enum(ref enum_definition, _),
+              ast_map::NodeItem(@ast::Item {
+                        node: ast::ItemEnum(ref enum_definition, _),
                         ..
                     }, _) => {
                 let mut last_discriminant: Option<Disr> = None;
@@ -4045,7 +4043,7 @@ pub fn each_attr(tcx: ctxt, did: DefId, f: |@MetaItem| -> bool) -> bool {
         {
             let items = tcx.items.borrow();
             match items.get().find(&did.node) {
-                Some(&ast_map::node_item(@ast::item {
+                Some(&ast_map::NodeItem(@ast::Item {
                     attrs: ref attrs,
                     ..
                 }, _)) =>
@@ -4131,17 +4129,17 @@ pub fn lookup_struct_fields(cx: ctxt, did: ast::DefId) -> ~[field_ty] {
       {
           let items = cx.items.borrow();
           match items.get().find(&did.node) {
-           Some(&ast_map::node_item(i,_)) => {
+           Some(&ast_map::NodeItem(i,_)) => {
              match i.node {
-                ast::item_struct(struct_def, _) => {
+                ast::ItemStruct(struct_def, _) => {
                    struct_field_tys(struct_def.fields)
                 }
                 _ => cx.sess.bug("struct ID bound to non-struct")
              }
            }
-           Some(&ast_map::node_variant(ref variant, _, _)) => {
+           Some(&ast_map::NodeVariant(ref variant, _, _)) => {
               match (*variant).node.kind {
-                ast::struct_variant_kind(struct_def) => {
+                ast::StructVariantKind(struct_def) => {
                   struct_field_tys(struct_def.fields)
                 }
                 _ => {
@@ -4175,22 +4173,22 @@ pub fn lookup_struct_field(cx: ctxt,
     }
 }
 
-fn struct_field_tys(fields: &[struct_field]) -> ~[field_ty] {
+fn struct_field_tys(fields: &[StructField]) -> ~[field_ty] {
     fields.map(|field| {
         match field.node.kind {
-            named_field(ident, visibility) => {
+            NamedField(ident, visibility) => {
                 field_ty {
                     name: ident.name,
                     id: ast_util::local_def(field.node.id),
                     vis: visibility,
                 }
             }
-            unnamed_field => {
+            UnnamedField => {
                 field_ty {
                     name:
                         syntax::parse::token::special_idents::unnamed_field.name,
                     id: ast_util::local_def(field.node.id),
-                    vis: ast::public,
+                    vis: ast::Public,
                 }
             }
         }
@@ -4417,15 +4415,15 @@ pub fn eval_repeat_count<T: ExprTyProvider>(tcx: &T, count_expr: &ast::Expr) -> 
 }
 
 // Determine what purity to check a nested function under
-pub fn determine_inherited_purity(parent: (ast::purity, ast::NodeId),
-                                  child: (ast::purity, ast::NodeId),
+pub fn determine_inherited_purity(parent: (ast::Purity, ast::NodeId),
+                                  child: (ast::Purity, ast::NodeId),
                                   child_sigil: ast::Sigil)
-                                    -> (ast::purity, ast::NodeId) {
+                                    -> (ast::Purity, ast::NodeId) {
     // If the closure is a stack closure and hasn't had some non-standard
     // purity inferred for it, then check it under its parent's purity.
     // Otherwise, use its own
     match child_sigil {
-        ast::BorrowedSigil if child.first() == ast::impure_fn => parent,
+        ast::BorrowedSigil if child.first() == ast::ImpureFn => parent,
         _ => child
     }
 }
@@ -4674,9 +4672,9 @@ pub fn trait_id_of_impl(tcx: ctxt,
         None => return None
     };
     match node {
-        &ast_map::node_item(item, _) => {
+        &ast_map::NodeItem(item, _) => {
             match item.node {
-                ast::item_impl(_, Some(ref trait_ref), _, _) => {
+                ast::ItemImpl(_, Some(ref trait_ref), _, _) => {
                     Some(node_id_to_trait_ref(tcx, trait_ref.ref_id).def_id)
                 }
                 _ => None
