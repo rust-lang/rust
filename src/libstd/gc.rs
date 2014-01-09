@@ -18,10 +18,10 @@ collector is task-local so `Gc<T>` is not sendable.
 
 use kinds::Send;
 use clone::{Clone, DeepClone};
+use managed;
 
 /// Immutable garbage-collected pointer type
 #[no_send]
-#[deriving(Clone)]
 pub struct Gc<T> {
     priv ptr: @T
 }
@@ -32,13 +32,25 @@ impl<T: 'static> Gc<T> {
     pub fn new(value: T) -> Gc<T> {
         Gc { ptr: @value }
     }
-}
 
-impl<T: 'static> Gc<T> {
     /// Borrow the value contained in the garbage-collected box
     #[inline]
     pub fn borrow<'r>(&'r self) -> &'r T {
         &*self.ptr
+    }
+
+    /// Determine if two garbage-collected boxes point to the same object
+    #[inline]
+    pub fn ptr_eq(&self, other: &Gc<T>) -> bool {
+        managed::ptr_eq(self.ptr, other.ptr)
+    }
+}
+
+impl<T> Clone for Gc<T> {
+    /// Clone the pointer only
+    #[inline]
+    fn clone(&self) -> Gc<T> {
+        Gc{ ptr: self.ptr }
     }
 }
 
@@ -90,6 +102,16 @@ mod tests {
         let y = x.clone();
         assert_eq!(*x.borrow(), 5);
         assert_eq!(*y.borrow(), 5);
+    }
+
+    #[test]
+    fn test_ptr_eq() {
+        let x = Gc::new(5);
+        let y = x.clone();
+        let z = Gc::new(7);
+        assert!(x.ptr_eq(&x));
+        assert!(x.ptr_eq(&y));
+        assert!(!x.ptr_eq(&z));
     }
 
     #[test]
