@@ -330,8 +330,8 @@ pub fn create_captured_var_metadata(bcx: &Block,
         None => {
             cx.sess.span_bug(span, "debuginfo::create_captured_var_metadata() - NodeId not found");
         }
-        Some(ast_map::node_local(ident, _)) => ident,
-        Some(ast_map::node_arg(@ast::Pat { node: ast::PatIdent(_, ref path, _), .. })) => {
+        Some(ast_map::NodeLocal(ident, _)) => ident,
+        Some(ast_map::NodeArg(@ast::Pat { node: ast::PatIdent(_, ref path, _), .. })) => {
             ast_util::path_to_ident(path)
         }
         _ => {
@@ -429,12 +429,12 @@ pub fn create_self_argument_metadata(bcx: &Block,
         items.get().get_copy(&bcx.fcx.id)
     };
     let span = match fnitem {
-        ast_map::node_method(@ast::method { explicit_self: explicit_self, .. }, _, _) => {
+        ast_map::NodeMethod(@ast::Method { explicit_self: explicit_self, .. }, _, _) => {
             explicit_self.span
         }
-        ast_map::node_trait_method(
-            @ast::provided(
-                @ast::method {
+        ast_map::NodeTraitMethod(
+            @ast::Provided(
+                @ast::Method {
                     explicit_self: explicit_self,
                     ..
                 }),
@@ -494,7 +494,7 @@ pub fn create_self_argument_metadata(bcx: &Block,
 /// Creates debug information for the given function argument.
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_argument_metadata(bcx: &Block, arg: &ast::arg) {
+pub fn create_argument_metadata(bcx: &Block, arg: &ast::Arg) {
     if fn_should_be_ignored(bcx.fcx) {
         return;
     }
@@ -618,9 +618,9 @@ pub fn create_function_debug_context(cx: &CrateContext,
         items.get().get_copy(&fn_ast_id)
     };
     let (ident, fn_decl, generics, top_level_block, span, has_path) = match fnitem {
-        ast_map::node_item(ref item, _) => {
+        ast_map::NodeItem(ref item, _) => {
             match item.node {
-                ast::item_fn(fn_decl, _, _, ref generics, top_level_block) => {
+                ast::ItemFn(fn_decl, _, _, ref generics, top_level_block) => {
                     (item.ident, fn_decl, generics, top_level_block, item.span, true)
                 }
                 _ => {
@@ -629,8 +629,8 @@ pub fn create_function_debug_context(cx: &CrateContext,
                 }
             }
         }
-        ast_map::node_method(
-            @ast::method {
+        ast_map::NodeMethod(
+            @ast::Method {
                 decl: fn_decl,
                 ident: ident,
                 generics: ref generics,
@@ -642,7 +642,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
             _) => {
             (ident, fn_decl, generics, top_level_block, span, true)
         }
-        ast_map::node_expr(ref expr) => {
+        ast_map::NodeExpr(ref expr) => {
             match expr.node {
                 ast::ExprFnBlock(fn_decl, top_level_block) |
                 ast::ExprProc(fn_decl, top_level_block) => {
@@ -661,9 +661,9 @@ pub fn create_function_debug_context(cx: &CrateContext,
                         "create_function_debug_context: expected an expr_fn_block here")
             }
         }
-        ast_map::node_trait_method(
-            @ast::provided(
-                @ast::method {
+        ast_map::NodeTraitMethod(
+            @ast::Provided(
+                @ast::Method {
                     decl: fn_decl,
                     ident: ident,
                     generics: ref generics,
@@ -675,11 +675,8 @@ pub fn create_function_debug_context(cx: &CrateContext,
             _) => {
             (ident, fn_decl, generics, top_level_block, span, true)
         }
-        ast_map::node_foreign_item(@ast::foreign_item { .. }, _, _, _) |
-        ast_map::node_variant(..) |
-        ast_map::node_struct_ctor(..) => {
-            return FunctionWithoutDebugInfo;
-        }
+        ast_map::NodeForeignItem(..) | ast_map::NodeVariant(..)
+        | ast_map::NodeStructCtor(..) => { return FunctionWithoutDebugInfo; }
         _ => cx.sess.bug(format!("create_function_debug_context: \
                                   unexpected sort of node: {:?}", fnitem))
     };
@@ -705,7 +702,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
                                                       file_metadata,
                                                       &mut function_name);
 
-    // There is no ast_map::path for ast::ExprFnBlock-type functions. For now, just don't put them
+    // There is no ast_map::Path for ast::ExprFnBlock-type functions. For now, just don't put them
     // into a namespace. In the future this could be improved somehow (storing a path in the
     // ast_map, or construct a path using the enclosing function).
     let (linkage_name, containing_scope) = if has_path {
@@ -779,7 +776,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
 
     fn get_function_signature(cx: &CrateContext,
                               fn_ast_id: ast::NodeId,
-                              fn_decl: &ast::fn_decl,
+                              fn_decl: &ast::FnDecl,
                               param_substs: Option<@param_substs>,
                               error_span: Span) -> DIArray {
         if !cx.sess.opts.extra_debuginfo {
@@ -790,7 +787,7 @@ pub fn create_function_debug_context(cx: &CrateContext,
 
         // Return type -- llvm::DIBuilder wants this at index 0
         match fn_decl.output.node {
-            ast::ty_nil => {
+            ast::TyNil => {
                 signature.push(ptr::null());
             }
             _ => {
@@ -1118,22 +1115,22 @@ fn basic_type_metadata(cx: &CrateContext, t: ty::t) -> DIType {
         ty::ty_bool => (~"bool", DW_ATE_boolean),
         ty::ty_char => (~"char", DW_ATE_unsigned_char),
         ty::ty_int(int_ty) => match int_ty {
-            ast::ty_i => (~"int", DW_ATE_signed),
-            ast::ty_i8 => (~"i8", DW_ATE_signed),
-            ast::ty_i16 => (~"i16", DW_ATE_signed),
-            ast::ty_i32 => (~"i32", DW_ATE_signed),
-            ast::ty_i64 => (~"i64", DW_ATE_signed)
+            ast::TyI => (~"int", DW_ATE_signed),
+            ast::TyI8 => (~"i8", DW_ATE_signed),
+            ast::TyI16 => (~"i16", DW_ATE_signed),
+            ast::TyI32 => (~"i32", DW_ATE_signed),
+            ast::TyI64 => (~"i64", DW_ATE_signed)
         },
         ty::ty_uint(uint_ty) => match uint_ty {
-            ast::ty_u => (~"uint", DW_ATE_unsigned),
-            ast::ty_u8 => (~"u8", DW_ATE_unsigned),
-            ast::ty_u16 => (~"u16", DW_ATE_unsigned),
-            ast::ty_u32 => (~"u32", DW_ATE_unsigned),
-            ast::ty_u64 => (~"u64", DW_ATE_unsigned)
+            ast::TyU => (~"uint", DW_ATE_unsigned),
+            ast::TyU8 => (~"u8", DW_ATE_unsigned),
+            ast::TyU16 => (~"u16", DW_ATE_unsigned),
+            ast::TyU32 => (~"u32", DW_ATE_unsigned),
+            ast::TyU64 => (~"u64", DW_ATE_unsigned)
         },
         ty::ty_float(float_ty) => match float_ty {
-            ast::ty_f32 => (~"f32", DW_ATE_float),
-            ast::ty_f64 => (~"f64", DW_ATE_float)
+            ast::TyF32 => (~"f32", DW_ATE_float),
+            ast::TyF64 => (~"f64", DW_ATE_float)
         },
         _ => cx.sess.bug("debuginfo::basic_type_metadata - t is invalid type")
     };
@@ -1422,7 +1419,7 @@ fn describe_enum_variant(cx: &CrateContext,
         {
             let items = cx.tcx.items.borrow();
             match items.get().find(&variant_info.id.node) {
-                Some(&ast_map::node_variant(ref variant, _, _)) => variant.span,
+                Some(&ast_map::NodeVariant(ref variant, _, _)) => variant.span,
                 ref node => {
                     cx.sess.span_warn(span,
                         format!("debuginfo::enum_metadata()::\
@@ -2311,7 +2308,7 @@ fn get_namespace_and_span_for_item(cx: &CrateContext,
         {
             let items = cx.tcx.items.borrow();
             let definition_span = match items.get().find(&def_id.node) {
-                Some(&ast_map::node_item(@ast::item { span, .. }, _)) => span,
+                Some(&ast_map::NodeItem(@ast::Item { span, .. }, _)) => span,
                 ref node => {
                     cx.sess.span_warn(warning_span,
                         format!("debuginfo::\
@@ -2704,7 +2701,7 @@ fn populate_scope_map(cx: &CrateContext,
                                scope_stack,
                                scope_map,
                                |cx, scope_stack, scope_map| {
-                    for &ast::arg { pat: pattern, .. } in decl.inputs.iter() {
+                    for &ast::Arg { pat: pattern, .. } in decl.inputs.iter() {
                         walk_pattern(cx, pattern, scope_stack, scope_map);
                     }
 
@@ -2783,9 +2780,9 @@ fn populate_scope_map(cx: &CrateContext,
                 }
             }
 
-            ast::ExprInlineAsm(ast::inline_asm { inputs: ref inputs,
-                                                 outputs: ref outputs,
-                                                 .. }) => {
+            ast::ExprInlineAsm(ast::InlineAsm { inputs: ref inputs,
+                                                outputs: ref outputs,
+                                                .. }) => {
                 // inputs, outputs: ~[(@str, @expr)]
                 for &(_, @ref exp) in inputs.iter() {
                     walk_expr(cx, exp, scope_stack, scope_map);
@@ -2852,7 +2849,7 @@ fn namespace_for_item(cx: &CrateContext,
         if def_id.crate == ast::LOCAL_CRATE {
             // prepend crate name if not already present
             let crate_namespace_ident = token::str_to_ident(cx.link_meta.crateid.name);
-            item_path.insert(0, ast_map::path_mod(crate_namespace_ident));
+            item_path.insert(0, ast_map::PathMod(crate_namespace_ident));
         }
 
         item_path

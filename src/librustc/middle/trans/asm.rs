@@ -27,7 +27,7 @@ use middle::trans::type_::Type;
 use syntax::ast;
 
 // Take an inline assembly expression and splat it out via LLVM
-pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::inline_asm)
+pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
                         -> &'a Block<'a> {
     let mut bcx = bcx;
     let mut constraints = ~[];
@@ -98,8 +98,8 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::inline_asm)
     };
 
     let dialect = match ia.dialect {
-        ast::asm_att   => lib::llvm::AD_ATT,
-        ast::asm_intel => lib::llvm::AD_Intel
+        ast::AsmAtt   => lib::llvm::AD_ATT,
+        ast::AsmIntel => lib::llvm::AD_Intel
     };
 
     let r = ia.asm.with_c_str(|a| {

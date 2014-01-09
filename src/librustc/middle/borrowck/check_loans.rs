@@ -51,7 +51,7 @@ impl<'a> Visitor<()> for CheckLoanCtxt<'a> {
     fn visit_pat(&mut self, p: &ast::Pat, _: ()) {
         check_loans_in_pat(self, p);
     }
-    fn visit_fn(&mut self, fk: &visit::fn_kind, fd: &ast::fn_decl,
+    fn visit_fn(&mut self, fk: &visit::FnKind, fd: &ast::FnDecl,
                 b: &ast::Block, s: Span, n: ast::NodeId, _: ()) {
         check_loans_in_fn(self, fk, fd, b, s, n);
     }
@@ -682,19 +682,18 @@ impl<'a> CheckLoanCtxt<'a> {
 }
 
 fn check_loans_in_fn<'a>(this: &mut CheckLoanCtxt<'a>,
-                         fk: &visit::fn_kind,
-                         decl: &ast::fn_decl,
+                         fk: &visit::FnKind,
+                         decl: &ast::FnDecl,
                          body: &ast::Block,
                          sp: Span,
                          id: ast::NodeId) {
     match *fk {
-        visit::fk_item_fn(..) |
-        visit::fk_method(..) => {
+        visit::FkItemFn(..) | visit::FkMethod(..) => {
             // Don't process nested items.
             return;
         }
 
-        visit::fk_fn_block(..) => {
+        visit::FkFnBlock(..) => {
             check_captured_variables(this, id, sp);
         }
     }

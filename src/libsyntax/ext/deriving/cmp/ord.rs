@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use ast;
-use ast::{MetaItem, item, Expr};
+use ast::{MetaItem, Item, Expr};
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
@@ -18,7 +18,7 @@ use ext::deriving::generic::*;
 pub fn expand_deriving_ord(cx: &ExtCtxt,
                            span: Span,
                            mitem: @MetaItem,
-                           in_items: ~[@item]) -> ~[@item] {
+                           in_items: ~[@Item]) -> ~[@Item] {
     macro_rules! md (
         ($name:expr, $op:expr, $equal:expr) => {
             MethodDef {

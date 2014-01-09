@@ -32,6 +32,7 @@ pub enum Abi {
     RustIntrinsic,
 }
 
+#[allow(non_camel_case_types)]
 #[deriving(Eq)]
 pub enum Architecture {
     // NB. You cannot change the ordering of these

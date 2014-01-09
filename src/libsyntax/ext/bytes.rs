@@ -18,7 +18,7 @@ use ext::build::AstBuilder;
 
 use std::char;
 
-pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree]) -> base::MacResult {
+pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree]) -> base::MacResult {
     // Gather all argument expressions
     let exprs = get_exprs_from_tts(cx, sp, tts);
     let mut bytes = ~[];
@@ -28,14 +28,14 @@ pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree]) ->
             // expression is a literal
             ast::ExprLit(lit) => match lit.node {
                 // string literal, push each byte to vector expression
-                ast::lit_str(s, _) => {
+                ast::LitStr(s, _) => {
                     for byte in s.bytes() {
                         bytes.push(cx.expr_u8(expr.span, byte));
                     }
                 }
 
                 // u8 literal, push to vector expression
-                ast::lit_uint(v, ast::ty_u8) => {
+                ast::LitUint(v, ast::TyU8) => {
                     if v > 0xFF {
                         cx.span_err(expr.span, "Too large u8 literal in bytes!")
                     } else {
@@ -44,7 +44,7 @@ pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree]) ->
                 }
 
                 // integer literal, push to vector expression
-                ast::lit_int_unsuffixed(v) => {
+                ast::LitIntUnsuffixed(v) => {
                     if v > 0xFF {
                         cx.span_err(expr.span, "Too large integer literal in bytes!")
                     } else if v < 0 {
@@ -55,7 +55,7 @@ pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree]) ->
                 }
 
                 // char literal, push to vector expression
-                ast::lit_char(v) => {
+                ast::LitChar(v) => {
                     if char::from_u32(v).unwrap().is_ascii() {
                         bytes.push(cx.expr_u8(expr.span, v as u8));
                     } else {

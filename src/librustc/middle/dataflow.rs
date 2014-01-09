@@ -24,7 +24,7 @@ use std::vec;
 use std::hashmap::HashMap;
 use syntax::ast;
 use syntax::ast_util;
-use syntax::ast_util::id_range;
+use syntax::ast_util::IdRange;
 use syntax::print::{pp, pprust};
 use middle::ty;
 use middle::typeck;
@@ -87,13 +87,13 @@ struct LoopScope<'a> {
     break_bits: ~[uint]
 }
 
-impl<O:DataFlowOperator> pprust::pp_ann for DataFlowContext<O> {
-    fn pre(&self, node: pprust::ann_node) {
+impl<O:DataFlowOperator> pprust::PpAnn for DataFlowContext<O> {
+    fn pre(&self, node: pprust::AnnNode) {
         let (ps, id) = match node {
-            pprust::node_expr(ps, expr) => (ps, expr.id),
-            pprust::node_block(ps, blk) => (ps, blk.id),
-            pprust::node_item(ps, _) => (ps, 0),
-            pprust::node_pat(ps, pat) => (ps, pat.id)
+            pprust::NodeExpr(ps, expr) => (ps, expr.id),
+            pprust::NodeBlock(ps, blk) => (ps, blk.id),
+            pprust::NodeItem(ps, _) => (ps, 0),
+            pprust::NodePat(ps, pat) => (ps, pat.id)
         };
 
         if self.nodeid_to_bitset.contains_key(&id) {
@@ -127,7 +127,7 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
     pub fn new(tcx: ty::ctxt,
                method_map: typeck::method_map,
                oper: O,
-               id_range: id_range,
+               id_range: IdRange,
                bits_per_id: uint) -> DataFlowContext<O> {
         let words_per_id = (bits_per_id + uint::bits - 1) / uint::bits;
 
@@ -353,9 +353,8 @@ impl<O:DataFlowOperator+Clone+'static> DataFlowContext<O> {
     }
 
     fn pretty_print_to(@self, wr: ~io::Writer, blk: &ast::Block) {
-        let mut ps = pprust::rust_printer_annotated(wr,
-                                                    self.tcx.sess.intr(),
-                                                    self as @pprust::pp_ann);
+        let mut ps = pprust::rust_printer_annotated(wr, self.tcx.sess.intr(),
+                                                    self as @pprust::PpAnn);
         pprust::cbox(&mut ps, pprust::indent_unit);
         pprust::ibox(&mut ps, 0u);
         pprust::print_block(&mut ps, blk);

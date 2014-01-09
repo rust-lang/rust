@@ -1149,7 +1149,7 @@ fn item_trait(w: &mut Writer, it: &clean::Item, t: &clean::Trait) {
 }
 
 fn render_method(w: &mut Writer, meth: &clean::Item, withlink: bool) {
-    fn fun(w: &mut Writer, it: &clean::Item, purity: ast::purity,
+    fn fun(w: &mut Writer, it: &clean::Item, purity: ast::Purity,
            g: &clean::Generics, selfty: &clean::SelfTy, d: &clean::FnDecl,
            withlink: bool) {
         write!(w, "{}fn {withlink, select,
@@ -1158,7 +1158,7 @@ fn render_method(w: &mut Writer, meth: &clean::Item, withlink: bool) {
                             other{<span class='fnname'>{name}</span>}
                         }{generics}{decl}",
                match purity {
-                   ast::unsafe_fn => "unsafe ",
+                   ast::UnsafeFn => "unsafe ",
                    _ => "",
                },
                ty = shortty(it),

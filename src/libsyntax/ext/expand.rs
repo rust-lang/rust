@@ -9,9 +9,9 @@
 // except according to those terms.
 
 use ast::{P, Block, Crate, DeclLocal, ExprMac, SyntaxContext};
-use ast::{Local, Ident, mac_invoc_tt};
-use ast::{item_mac, Mrk, Stmt, StmtDecl, StmtMac, StmtExpr, StmtSemi};
-use ast::{token_tree};
+use ast::{Local, Ident, MacInvocTT};
+use ast::{ItemMac, Mrk, Stmt, StmtDecl, StmtMac, StmtExpr, StmtSemi};
+use ast::{TokenTree};
 use ast;
 use ast_util::{mtwt_outer_mark, new_rename, new_mark};
 use ext::build::AstBuilder;
@@ -43,7 +43,7 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
                 // for the other three macro invocation chunks of code
                 // in this file.
                 // Token-tree macros:
-                mac_invoc_tt(ref pth, ref tts, ctxt) => {
+                MacInvocTT(ref pth, ref tts, ctxt) => {
                     if (pth.segments.len() > 1u) {
                         fld.cx.span_fatal(
                             pth.span,
@@ -210,7 +210,7 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
 //
 // NB: there is some redundancy between this and expand_item, below, and
 // they might benefit from some amount of semantic and language-UI merger.
-pub fn expand_mod_items(module_: &ast::_mod, fld: &mut MacroExpander) -> ast::_mod {
+pub fn expand_mod_items(module_: &ast::Mod, fld: &mut MacroExpander) -> ast::Mod {
     // Fold the contents first:
     let module_ = noop_fold_mod(module_, fld);
 
@@ -240,7 +240,7 @@ pub fn expand_mod_items(module_: &ast::_mod, fld: &mut MacroExpander) -> ast::_m
         })
     });
 
-    ast::_mod {
+    ast::Mod {
         items: new_items,
         ..module_
     }
@@ -258,11 +258,11 @@ macro_rules! with_exts_frame (
 )
 
 // When we enter a module, record it, for the sake of `module!`
-pub fn expand_item(it: @ast::item, fld: &mut MacroExpander)
-                   -> SmallVector<@ast::item> {
+pub fn expand_item(it: @ast::Item, fld: &mut MacroExpander)
+                   -> SmallVector<@ast::Item> {
     match it.node {
-        ast::item_mac(..) => expand_item_mac(it, fld),
-        ast::item_mod(_) | ast::item_foreign_mod(_) => {
+        ast::ItemMac(..) => expand_item_mac(it, fld),
+        ast::ItemMod(_) | ast::ItemForeignMod(_) => {
             fld.cx.mod_push(it.ident);
             let macro_escape = contains_macro_escape(it.attrs);
             let result = with_exts_frame!(fld.extsbox,
@@ -282,11 +282,11 @@ pub fn contains_macro_escape(attrs: &[ast::Attribute]) -> bool {
 
 // Support for item-position macro invocations, exactly the same
 // logic as for expression-position macro invocations.
-pub fn expand_item_mac(it: @ast::item, fld: &mut MacroExpander)
-                       -> SmallVector<@ast::item> {
+pub fn expand_item_mac(it: @ast::Item, fld: &mut MacroExpander)
+                       -> SmallVector<@ast::Item> {
     let (pth, tts, ctxt) = match it.node {
-        item_mac(codemap::Spanned {
-            node: mac_invoc_tt(ref pth, ref tts, ctxt),
+        ItemMac(codemap::Spanned {
+            node: MacInvocTT(ref pth, ref tts, ctxt),
             ..
         }) => {
             (pth, (*tts).clone(), ctxt)
@@ -379,7 +379,7 @@ pub fn expand_stmt(s: &Stmt, fld: &mut MacroExpander) -> SmallVector<@Stmt> {
     let (pth, tts, semi, ctxt) = match s.node {
         StmtMac(ref mac, semi) => {
             match mac.node {
-                mac_invoc_tt(ref pth, ref tts, ctxt) => {
+                MacInvocTT(ref pth, ref tts, ctxt) => {
                     (pth, (*tts).clone(), semi, ctxt)
                 }
             }
@@ -631,7 +631,7 @@ struct IdentRenamer<'a> {
     renames: &'a mut RenameList,
 }
 
-impl<'a> ast_fold for IdentRenamer<'a> {
+impl<'a> Folder for IdentRenamer<'a> {
     fn fold_ident(&mut self, id: ast::Ident) -> ast::Ident {
         let new_ctxt = self.renames.iter().fold(id.ctxt, |ctxt, &(from, to)| {
             new_rename(from, to, ctxt)
@@ -837,15 +837,15 @@ pub fn std_macros() -> @str {
 }
 
 struct Injector {
-    sm: @ast::item,
+    sm: @ast::Item,
 }
 
-impl ast_fold for Injector {
-    fn fold_mod(&mut self, module: &ast::_mod) -> ast::_mod {
+impl Folder for Injector {
+    fn fold_mod(&mut self, module: &ast::Mod) -> ast::Mod {
         // Just inject the standard macros at the start of the first module
         // in the crate: that is, at the start of the crate file itself.
         let items = vec::append(~[ self.sm ], module.items);
-        ast::_mod {
+        ast::Mod {
             items: items,
             ..(*module).clone() // FIXME #2543: Bad copy.
         }
@@ -878,16 +878,16 @@ pub struct MacroExpander<'a> {
     cx: &'a mut ExtCtxt,
 }
 
-impl<'a> ast_fold for MacroExpander<'a> {
+impl<'a> Folder for MacroExpander<'a> {
     fn fold_expr(&mut self, expr: @ast::Expr) -> @ast::Expr {
         expand_expr(expr, self)
     }
 
-    fn fold_mod(&mut self, module: &ast::_mod) -> ast::_mod {
+    fn fold_mod(&mut self, module: &ast::Mod) -> ast::Mod {
         expand_mod_items(module, self)
     }
 
-    fn fold_item(&mut self, item: @ast::item) -> SmallVector<@ast::item> {
+    fn fold_item(&mut self, item: @ast::Item) -> SmallVector<@ast::Item> {
         expand_item(item, self)
     }
 
@@ -968,7 +968,7 @@ pub struct ContextWrapper {
     context_function: @CtxtFn,
 }
 
-impl ast_fold for ContextWrapper {
+impl Folder for ContextWrapper {
     fn fold_ident(&mut self, id: ast::Ident) -> ast::Ident {
         let ast::Ident {
             name,
@@ -979,12 +979,12 @@ impl ast_fold for ContextWrapper {
             ctxt: self.context_function.f(ctxt),
         }
     }
-    fn fold_mac(&mut self, m: &ast::mac) -> ast::mac {
+    fn fold_mac(&mut self, m: &ast::Mac) -> ast::Mac {
         let macro = match m.node {
-            mac_invoc_tt(ref path, ref tts, ctxt) => {
-                mac_invoc_tt(self.fold_path(path),
-                             fold_tts(*tts, self),
-                             self.context_function.f(ctxt))
+            MacInvocTT(ref path, ref tts, ctxt) => {
+                MacInvocTT(self.fold_path(path),
+                           fold_tts(*tts, self),
+                           self.context_function.f(ctxt))
             }
         };
         Spanned {
@@ -995,7 +995,7 @@ impl ast_fold for ContextWrapper {
 }
 
 // given a function from ctxts to ctxts, produce
-// an ast_fold that applies that function to all ctxts:
+// a Folder that applies that function to all ctxts:
 pub fn fun_to_ctxt_folder<T : 'static + CtxtFn>(cf: @T) -> ContextWrapper {
     ContextWrapper {
         context_function: cf as @CtxtFn,
@@ -1012,7 +1012,7 @@ pub fn new_rename_folder(from: ast::Ident, to: ast::Name) -> ContextWrapper {
 }
 
 // apply a given mark to the given token trees. Used prior to expansion of a macro.
-fn mark_tts(tts : &[token_tree], m : Mrk) -> ~[token_tree] {
+fn mark_tts(tts : &[TokenTree], m : Mrk) -> ~[TokenTree] {
     fold_tts(tts, &mut new_mark_folder(m))
 }
 
@@ -1028,7 +1028,7 @@ fn mark_stmt(expr : &ast::Stmt, m : Mrk) -> @ast::Stmt {
 }
 
 // apply a given mark to the given item. Used following the expansion of a macro.
-fn mark_item(expr : @ast::item, m : Mrk) -> SmallVector<@ast::item> {
+fn mark_item(expr : @ast::Item, m : Mrk) -> SmallVector<@ast::Item> {
     new_mark_folder(m).fold_item(expr)
 }
 
@@ -1041,8 +1041,8 @@ pub fn replace_ctxts(expr : @ast::Expr, ctxt : SyntaxContext) -> @ast::Expr {
 // take the mark from the given ctxt (that has a mark at the outside),
 // and apply it to everything in the token trees, thereby cancelling
 // that mark.
-pub fn mtwt_cancel_outer_mark(tts: &[ast::token_tree], ctxt: ast::SyntaxContext)
-    -> ~[ast::token_tree] {
+pub fn mtwt_cancel_outer_mark(tts: &[ast::TokenTree], ctxt: ast::SyntaxContext)
+    -> ~[ast::TokenTree] {
     let outer_mark = mtwt_outer_mark(ctxt);
     mark_tts(tts,outer_mark)
 }
@@ -1221,14 +1221,14 @@ mod test {
         assert_eq!(marked_once.len(),1);
         let marked_once_ctxt =
             match marked_once[0] {
-                ast::tt_tok(_,token::IDENT(id,_)) => id.ctxt,
+                ast::TTTok(_,token::IDENT(id,_)) => id.ctxt,
                 _ => fail!(format!("unexpected shape for marked tts: {:?}",marked_once[0]))
             };
         assert_eq!(mtwt_marksof(marked_once_ctxt,invalid_name),~[fm]);
         let remarked = mtwt_cancel_outer_mark(marked_once,marked_once_ctxt);
         assert_eq!(remarked.len(),1);
         match remarked[0] {
-            ast::tt_tok(_,token::IDENT(id,_)) =>
+            ast::TTTok(_,token::IDENT(id,_)) =>
             assert_eq!(mtwt_marksof(id.ctxt,invalid_name),~[]),
             _ => fail!(format!("unexpected shape for marked tts: {:?}",remarked[0]))
         }
@@ -1315,11 +1315,11 @@ mod test {
     // in principle, you might want to control this boolean on a per-varref basis,
     // but that would make things even harder to understand, and might not be
     // necessary for thorough testing.
-    type renaming_test = (&'static str, ~[~[uint]], bool);
+    type RenamingTest = (&'static str, ~[~[uint]], bool);
 
     #[test]
     fn automatic_renaming () {
-        let tests : ~[renaming_test] =
+        let tests : ~[RenamingTest] =
             ~[// b & c should get new names throughout, in the expr too:
                 ("fn a() -> int { let b = 13; let c = b; b+c }",
                  ~[~[0,1],~[2]], false),
@@ -1363,7 +1363,7 @@ mod test {
     }
 
     // run one of the renaming tests
-    fn run_renaming_test(t : &renaming_test, test_idx: uint) {
+    fn run_renaming_test(t: &RenamingTest, test_idx: uint) {
         let invalid_name = token::special_idents::invalid.name;
         let (teststr, bound_connections, bound_ident_check) = match *t {
             (ref str,ref conns, bic) => (str.to_managed(), conns.clone(), bic)

@@ -89,7 +89,7 @@ pub struct InferCtxt {
 
     // Map from floating variable to the kind of float it represents
     float_var_bindings: RefCell<ValsAndBindings<ty::FloatVid,
-                                                Option<ast::float_ty>>>,
+                                                Option<ast::FloatTy>>>,
     float_var_counter: Cell<uint>,
 
     // For region variables.

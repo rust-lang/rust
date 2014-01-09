@@ -267,7 +267,7 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
 
       ty::ty_evec(ref mt, ty::vstore_slice(_)) => {
           let p_ty = type_of(cx, mt.ty).ptr_to();
-          let u_ty = Type::uint_from_ty(cx, ast::ty_u);
+          let u_ty = Type::uint_from_ty(cx, ast::TyU);
           Type::struct_([p_ty, u_ty], false)
       }
 

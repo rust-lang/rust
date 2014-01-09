@@ -17,7 +17,7 @@ Obsolete syntax that becomes too hard to parse can be
 removed.
 */
 
-use ast::{Expr, ExprLit, lit_nil};
+use ast::{Expr, ExprLit, LitNil};
 use codemap::{Span, respan};
 use parse::parser::Parser;
 use parse::token;
@@ -158,7 +158,7 @@ impl ParserObsoleteMethods for Parser {
     // a placeholder expression
     fn obsolete_expr(&mut self, sp: Span, kind: ObsoleteSyntax) -> @Expr {
         self.obsolete(sp, kind);
-        self.mk_expr(sp.lo, sp.hi, ExprLit(@respan(sp, lit_nil)))
+        self.mk_expr(sp.lo, sp.hi, ExprLit(@respan(sp, LitNil)))
     }
 
     fn report(&mut self,

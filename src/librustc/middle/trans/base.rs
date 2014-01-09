@@ -77,7 +77,7 @@ use std::libc::c_uint;
 use std::vec;
 use std::local_data;
 use syntax::ast::Name;
-use syntax::ast_map::{path, path_elt_to_str, path_name, path_pretty_name};
+use syntax::ast_map::{PathName, PathPrettyName, path_elem_to_str};
 use syntax::ast_util::{local_def, is_local};
 use syntax::attr;
 use syntax::codemap::Span;
@@ -1745,7 +1745,7 @@ pub fn make_return_pointer(fcx: &FunctionContext, output_type: ty::t)
 // Be warned! You must call `init_function` before doing anything with the
 // returned function context.
 pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
-                        path: path,
+                        path: ast_map::Path,
                         llfndecl: ValueRef,
                         id: ast::NodeId,
                         output_type: ty::t,
@@ -1841,7 +1841,7 @@ pub fn init_function<'a>(
 }
 
 pub fn new_fn_ctxt(ccx: @CrateContext,
-                   path: path,
+                   path: ast_map::Path,
                    llfndecl: ValueRef,
                    output_type: ty::t,
                    sp: Option<Span>)
@@ -1867,7 +1867,7 @@ pub fn new_fn_ctxt(ccx: @CrateContext,
 // field of the fn_ctxt with
 pub fn create_llargs_for_fn_args(cx: &FunctionContext,
                                  self_arg: self_arg,
-                                 args: &[ast::arg])
+                                 args: &[ast::Arg])
                                  -> ~[ValueRef] {
     let _icx = push_ctxt("create_llargs_for_fn_args");
 
@@ -1892,7 +1892,7 @@ pub fn create_llargs_for_fn_args(cx: &FunctionContext,
 pub fn copy_args_to_allocas<'a>(
                             fcx: &FunctionContext<'a>,
                             bcx: &'a Block<'a>,
-                            args: &[ast::arg],
+                            args: &[ast::Arg],
                             raw_llargs: &[ValueRef],
                             arg_tys: &[ty::t])
                             -> &'a Block<'a> {
@@ -2007,8 +2007,8 @@ pub enum self_arg { impl_self(ty::t, ty::SelfMode), no_self, }
 // If the function closes over its environment a closure will be
 // returned.
 pub fn trans_closure(ccx: @CrateContext,
-                     path: path,
-                     decl: &ast::fn_decl,
+                     path: ast_map::Path,
+                     decl: &ast::FnDecl,
                      body: &ast::Block,
                      llfndecl: ValueRef,
                      self_arg: self_arg,
@@ -2085,8 +2085,8 @@ pub fn trans_closure(ccx: @CrateContext,
 // trans_fn: creates an LLVM function corresponding to a source language
 // function.
 pub fn trans_fn(ccx: @CrateContext,
-                path: path,
-                decl: &ast::fn_decl,
+                path: ast_map::Path,
+                decl: &ast::FnDecl,
                 body: &ast::Block,
                 llfndecl: ValueRef,
                 self_arg: self_arg,
@@ -2115,7 +2115,7 @@ pub fn trans_fn(ccx: @CrateContext,
 }
 
 fn insert_synthetic_type_entries(bcx: &Block,
-                                 fn_args: &[ast::arg],
+                                 fn_args: &[ast::Arg],
                                  arg_tys: &[ty::t]) {
     /*!
      * For tuple-like structs and enum-variants, we generate
@@ -2144,8 +2144,8 @@ fn insert_synthetic_type_entries(bcx: &Block,
 
 pub fn trans_enum_variant(ccx: @CrateContext,
                           _enum_id: ast::NodeId,
-                          variant: &ast::variant,
-                          args: &[ast::variant_arg],
+                          variant: &ast::Variant,
+                          args: &[ast::VariantArg],
                           disr: ty::Disr,
                           param_substs: Option<@param_substs>,
                           llfndecl: ValueRef) {
@@ -2161,7 +2161,7 @@ pub fn trans_enum_variant(ccx: @CrateContext,
 }
 
 pub fn trans_tuple_struct(ccx: @CrateContext,
-                          fields: &[ast::struct_field],
+                          fields: &[ast::StructField],
                           ctor_id: ast::NodeId,
                           param_substs: Option<@param_substs>,
                           llfndecl: ValueRef) {
@@ -2181,12 +2181,12 @@ trait IdAndTy {
     fn ty(&self) -> ast::P<ast::Ty>;
 }
 
-impl IdAndTy for ast::variant_arg {
+impl IdAndTy for ast::VariantArg {
     fn id(&self) -> ast::NodeId { self.id }
     fn ty(&self) -> ast::P<ast::Ty> { self.ty }
 }
 
-impl IdAndTy for ast::struct_field {
+impl IdAndTy for ast::StructField {
     fn id(&self) -> ast::NodeId { self.node.id }
     fn ty(&self) -> ast::P<ast::Ty> { self.node.ty }
 }
@@ -2201,7 +2201,7 @@ pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
 {
     // Translate variant arguments to function arguments.
     let fn_args = args.map(|varg| {
-        ast::arg {
+        ast::Arg {
             ty: varg.ty(),
             pat: ast_util::ident_to_pat(
                 ccx.tcx.sess.next_node_id(),
@@ -2272,7 +2272,7 @@ pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
     finish_fn(&fcx, bcx);
 }
 
-pub fn trans_enum_def(ccx: @CrateContext, enum_definition: &ast::enum_def,
+pub fn trans_enum_def(ccx: @CrateContext, enum_definition: &ast::EnumDef,
                       id: ast::NodeId, vi: @~[@ty::VariantInfo],
                       i: &mut uint) {
     for &variant in enum_definition.variants.iter() {
@@ -2280,15 +2280,15 @@ pub fn trans_enum_def(ccx: @CrateContext, enum_definition: &ast::enum_def,
         *i += 1;
 
         match variant.node.kind {
-            ast::tuple_variant_kind(ref args) if args.len() > 0 => {
+            ast::TupleVariantKind(ref args) if args.len() > 0 => {
                 let llfn = get_item_val(ccx, variant.node.id);
                 trans_enum_variant(ccx, id, variant, *args,
                                    disr_val, None, llfn);
             }
-            ast::tuple_variant_kind(_) => {
+            ast::TupleVariantKind(_) => {
                 // Nothing to do.
             }
-            ast::struct_variant_kind(struct_def) => {
+            ast::StructVariantKind(struct_def) => {
                 trans_struct_def(ccx, struct_def);
             }
         }
@@ -2300,29 +2300,28 @@ pub struct TransItemVisitor {
 }
 
 impl Visitor<()> for TransItemVisitor {
-    fn visit_item(&mut self, i: &ast::item, _:()) {
+    fn visit_item(&mut self, i: &ast::Item, _:()) {
         trans_item(self.ccx, i);
     }
 }
 
-pub fn trans_item(ccx: @CrateContext, item: &ast::item) {
+pub fn trans_item(ccx: @CrateContext, item: &ast::Item) {
     let _icx = push_ctxt("trans_item");
     let path = {
         let items = ccx.tcx.items.borrow();
         match items.get().get_copy(&item.id) {
-            ast_map::node_item(_, p) => p,
+            ast_map::NodeItem(_, p) => p,
             // tjc: ?
             _ => fail!("trans_item"),
         }
     };
     match item.node {
-      ast::item_fn(decl, purity, _abis, ref generics, body) => {
-        if purity == ast::extern_fn  {
+      ast::ItemFn(decl, purity, _abis, ref generics, body) => {
+        if purity == ast::ExternFn  {
             let llfndecl = get_item_val(ccx, item.id);
             foreign::trans_rust_fn_with_foreign_abi(
                 ccx,
-                &vec::append((*path).clone(),
-                             [path_name(item.ident)]),
+                &vec::append_one((*path).clone(), PathName(item.ident)),
                 decl,
                 body,
                 item.attrs,
@@ -2331,7 +2330,7 @@ pub fn trans_item(ccx: @CrateContext, item: &ast::item) {
         } else if !generics.is_type_parameterized() {
             let llfndecl = get_item_val(ccx, item.id);
             trans_fn(ccx,
-                     vec::append((*path).clone(), [path_name(item.ident)]),
+                     vec::append_one((*path).clone(), PathName(item.ident)),
                      decl,
                      body,
                      llfndecl,
@@ -2346,7 +2345,7 @@ pub fn trans_item(ccx: @CrateContext, item: &ast::item) {
             v.visit_block(body, ());
         }
       }
-      ast::item_impl(ref generics, _, _, ref ms) => {
+      ast::ItemImpl(ref generics, _, _, ref ms) => {
         meth::trans_impl(ccx,
                          (*path).clone(),
                          item.ident,
@@ -2354,17 +2353,17 @@ pub fn trans_item(ccx: @CrateContext, item: &ast::item) {
                          generics,
                          item.id);
       }
-      ast::item_mod(ref m) => {
+      ast::ItemMod(ref m) => {
         trans_mod(ccx, m);
       }
-      ast::item_enum(ref enum_definition, ref generics) => {
+      ast::ItemEnum(ref enum_definition, ref generics) => {
         if !generics.is_type_parameterized() {
             let vi = ty::enum_variants(ccx.tcx, local_def(item.id));
             let mut i = 0;
             trans_enum_def(ccx, enum_definition, item.id, vi, &mut i);
         }
       }
-      ast::item_static(_, m, expr) => {
+      ast::ItemStatic(_, m, expr) => {
           consts::trans_const(ccx, m, item.id);
           // Do static_assert checking. It can't really be done much earlier
           // because we need to get the value of the bool out of LLVM
@@ -2384,15 +2383,15 @@ pub fn trans_item(ccx: @CrateContext, item: &ast::item) {
               }
           }
       },
-      ast::item_foreign_mod(ref foreign_mod) => {
+      ast::ItemForeignMod(ref foreign_mod) => {
         foreign::trans_foreign_mod(ccx, foreign_mod);
       }
-      ast::item_struct(struct_def, ref generics) => {
+      ast::ItemStruct(struct_def, ref generics) => {
         if !generics.is_type_parameterized() {
             trans_struct_def(ccx, struct_def);
         }
       }
-      ast::item_trait(..) => {
+      ast::ItemTrait(..) => {
         // Inside of this trait definition, we won't be actually translating any
         // functions, but the trait still needs to be walked. Otherwise default
         // methods with items will not get translated and will cause ICE's when
@@ -2404,7 +2403,7 @@ pub fn trans_item(ccx: @CrateContext, item: &ast::item) {
     }
 }
 
-pub fn trans_struct_def(ccx: @CrateContext, struct_def: @ast::struct_def) {
+pub fn trans_struct_def(ccx: @CrateContext, struct_def: @ast::StructDef) {
     // If this is a tuple-like struct, translate the constructor.
     match struct_def.ctor_id {
         // We only need to translate a constructor if there are fields;
@@ -2423,7 +2422,7 @@ pub fn trans_struct_def(ccx: @CrateContext, struct_def: @ast::struct_def) {
 // separate modules in the compiled program.  That's because modules exist
 // only as a convenience for humans working with the code, to organize names
 // and control visibility.
-pub fn trans_mod(ccx: @CrateContext, m: &ast::_mod) {
+pub fn trans_mod(ccx: @CrateContext, m: &ast::Mod) {
     let _icx = push_ctxt("trans_mod");
     for item in m.items.iter() {
         trans_item(ccx, *item);
@@ -2580,18 +2579,19 @@ pub fn fill_fn_pair(bcx: &Block,
     Store(bcx, llenvblobptr, env_cell);
 }
 
-pub fn item_path(ccx: &CrateContext, id: &ast::NodeId) -> path {
+pub fn item_path(ccx: &CrateContext, id: &ast::NodeId) -> ast_map::Path {
     ty::item_path(ccx.tcx, ast_util::local_def(*id))
 }
 
-fn exported_name(ccx: &CrateContext, path: path, ty: ty::t, attrs: &[ast::Attribute]) -> ~str {
+fn exported_name(ccx: &CrateContext, path: ast_map::Path,
+                 ty: ty::t, attrs: &[ast::Attribute]) -> ~str {
     match attr::first_attr_value_str_by_name(attrs, "export_name") {
         // Use provided name
         Some(name) => name.to_owned(),
 
         // Don't mangle
         _ if attr::contains_name(attrs, "no_mangle")
-            => path_elt_to_str(*path.last(), token::get_ident_interner()),
+            => path_elem_to_str(*path.last(), token::get_ident_interner()),
 
         // Usual name mangling
         _ => mangle_exported_name(ccx, path, ty)
@@ -2615,15 +2615,15 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
                 items.get().get_copy(&id)
             };
             let val = match item {
-                ast_map::node_item(i, pth) => {
+                ast_map::NodeItem(i, pth) => {
 
-                    let elt = path_pretty_name(i.ident, id as u64);
+                    let elt = PathPrettyName(i.ident, id as u64);
                     let my_path = vec::append_one((*pth).clone(), elt);
                     let ty = ty::node_id_to_type(ccx.tcx, i.id);
                     let sym = exported_name(ccx, my_path, ty, i.attrs);
 
                     let v = match i.node {
-                        ast::item_static(_, _, expr) => {
+                        ast::ItemStatic(_, _, expr) => {
                             // If this static came from an external crate, then
                             // we need to get the symbol from csearch instead of
                             // using the current crate's name/version
@@ -2720,8 +2720,8 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
                             }
                         }
 
-                        ast::item_fn(_, purity, _, _, _) => {
-                            let llfn = if purity != ast::extern_fn {
+                        ast::ItemFn(_, purity, _, _, _) => {
+                            let llfn = if purity != ast::ExternFn {
                                 register_fn(ccx, i.span, sym, i.id, ty)
                             } else {
                                 foreign::register_rust_fn_with_foreign_abi(ccx,
@@ -2748,33 +2748,33 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
                     v
                 }
 
-                ast_map::node_trait_method(trait_method, _, pth) => {
-                    debug!("get_item_val(): processing a node_trait_method");
+                ast_map::NodeTraitMethod(trait_method, _, pth) => {
+                    debug!("get_item_val(): processing a NodeTraitMethod");
                     match *trait_method {
-                        ast::required(_) => {
+                        ast::Required(_) => {
                             ccx.sess.bug("unexpected variant: required trait method in \
                                          get_item_val()");
                         }
-                        ast::provided(m) => {
+                        ast::Provided(m) => {
                             register_method(ccx, id, pth, m)
                         }
                     }
                 }
 
-                ast_map::node_method(m, _, pth) => {
+                ast_map::NodeMethod(m, _, pth) => {
                     register_method(ccx, id, pth, m)
                 }
 
-                ast_map::node_foreign_item(ni, abis, _, pth) => {
+                ast_map::NodeForeignItem(ni, abis, _, pth) => {
                     let ty = ty::node_id_to_type(ccx.tcx, ni.id);
                     foreign = true;
 
                     match ni.node {
-                        ast::foreign_item_fn(..) => {
-                            let path = vec::append((*pth).clone(), [path_name(ni.ident)]);
+                        ast::ForeignItemFn(..) => {
+                            let path = vec::append_one((*pth).clone(), PathName(ni.ident));
                             foreign::register_foreign_item_fn(ccx, abis, &path, ni)
                         }
-                        ast::foreign_item_static(..) => {
+                        ast::ForeignItemStatic(..) => {
                             // Treat the crate map static specially in order to
                             // a weak-linkage-like functionality where it's
                             // dynamically resolved at runtime. If we're
@@ -2813,25 +2813,25 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
                     }
                 }
 
-                ast_map::node_variant(ref v, enm, pth) => {
+                ast_map::NodeVariant(ref v, enm, pth) => {
                     let llfn;
                     match v.node.kind {
-                        ast::tuple_variant_kind(ref args) => {
+                        ast::TupleVariantKind(ref args) => {
                             assert!(args.len() != 0u);
                             let pth = vec::append((*pth).clone(),
-                                                  [path_name(enm.ident),
-                                                   path_name((*v).node.name)]);
+                                                  [PathName(enm.ident),
+                                                   PathName((*v).node.name)]);
                             let ty = ty::node_id_to_type(ccx.tcx, id);
                             let sym = exported_name(ccx, pth, ty, enm.attrs);
 
                             llfn = match enm.node {
-                                ast::item_enum(_, _) => {
+                                ast::ItemEnum(_, _) => {
                                     register_fn(ccx, (*v).span, sym, id, ty)
                                 }
-                                _ => fail!("node_variant, shouldn't happen")
+                                _ => fail!("NodeVariant, shouldn't happen")
                             };
                         }
-                        ast::struct_variant_kind(_) => {
+                        ast::StructVariantKind(_) => {
                             fail!("struct variant kind unexpected in get_item_val")
                         }
                     }
@@ -2839,7 +2839,7 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
                     llfn
                 }
 
-                ast_map::node_struct_ctor(struct_def, struct_item, struct_path) => {
+                ast_map::NodeStructCtor(struct_def, struct_item, struct_path) => {
                     // Only register the constructor if this is a tuple-like struct.
                     match struct_def.ctor_id {
                         None => {
@@ -2883,12 +2883,12 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
 
 pub fn register_method(ccx: @CrateContext,
                        id: ast::NodeId,
-                       path: @ast_map::path,
-                       m: @ast::method) -> ValueRef {
+                       path: @ast_map::Path,
+                       m: @ast::Method) -> ValueRef {
     let mty = ty::node_id_to_type(ccx.tcx, id);
 
     let mut path = (*path).clone();
-    path.push(path_pretty_name(m.ident, token::gensym("meth") as u64));
+    path.push(PathPrettyName(m.ident, token::gensym("meth") as u64));
 
     let sym = exported_name(ccx, path, mty, m.attrs);
 
@@ -3138,7 +3138,7 @@ pub fn create_module_map(ccx: &CrateContext) -> (ValueRef, uint) {
 
 pub fn symname(sess: session::Session, name: &str,
                hash: &str, vers: &str) -> ~str {
-    let elt = path_name(sess.ident_of(name));
+    let elt = PathName(sess.ident_of(name));
     link::exported_name(sess, ~[elt], hash, vers)
 }
 

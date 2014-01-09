@@ -100,12 +100,12 @@ impl Visitor<()> for Context {
         }
     }
 
-    fn visit_view_item(&mut self, i: &ast::view_item, _: ()) {
+    fn visit_view_item(&mut self, i: &ast::ViewItem, _: ()) {
         match i.node {
-            ast::view_item_use(ref paths) => {
+            ast::ViewItemUse(ref paths) => {
                 for path in paths.iter() {
                     match path.node {
-                        ast::view_path_glob(..) => {
+                        ast::ViewPathGlob(..) => {
                             self.gate_feature("globs", path.span,
                                               "glob import statements are \
                                                experimental and possibly buggy");
@@ -119,7 +119,7 @@ impl Visitor<()> for Context {
         visit::walk_view_item(self, i, ())
     }
 
-    fn visit_item(&mut self, i: &ast::item, _:()) {
+    fn visit_item(&mut self, i: &ast::Item, _:()) {
         for attr in i.attrs.iter() {
             if "thread_local" == attr.name() {
                 self.gate_feature("thread_local", i.span,
@@ -129,10 +129,10 @@ impl Visitor<()> for Context {
             }
         }
         match i.node {
-            ast::item_enum(ref def, _) => {
+            ast::ItemEnum(ref def, _) => {
                 for variant in def.variants.iter() {
                     match variant.node.kind {
-                        ast::struct_variant_kind(..) => {
+                        ast::StructVariantKind(..) => {
                             self.gate_feature("struct_variant", variant.span,
                                               "enum struct variants are \
                                                experimental and possibly buggy");
@@ -142,7 +142,7 @@ impl Visitor<()> for Context {
                 }
             }
 
-            ast::item_foreign_mod(..) => {
+            ast::ItemForeignMod(..) => {
                 if attr::contains_name(i.attrs, "link_args") {
                     self.gate_feature("link_args", i.span,
                                       "the `link_args` attribute is not portable \
@@ -157,8 +157,8 @@ impl Visitor<()> for Context {
         visit::walk_item(self, i, ());
     }
 
-    fn visit_mac(&mut self, macro: &ast::mac, _: ()) {
-        let ast::mac_invoc_tt(ref path, _, _) = macro.node;
+    fn visit_mac(&mut self, macro: &ast::Mac, _: ()) {
+        let ast::MacInvocTT(ref path, _, _) = macro.node;
 
         if path.segments.last().identifier == self.sess.ident_of("macro_rules") {
             self.gate_feature("macro_rules", path.span, "macro definitions are \
@@ -173,14 +173,14 @@ impl Visitor<()> for Context {
 
     fn visit_ty(&mut self, t: &ast::Ty, _: ()) {
         match t.node {
-            ast::ty_closure(closure) if closure.onceness == ast::Once &&
+            ast::TyClosure(closure) if closure.onceness == ast::Once &&
                     closure.sigil != ast::OwnedSigil => {
                 self.gate_feature("once_fns", t.span,
                                   "once functions are \
                                    experimental and likely to be removed");
 
             },
-            ast::ty_box(_) => { self.gate_box(t.span); }
+            ast::TyBox(_) => { self.gate_box(t.span); }
             _ => {}
         }
 

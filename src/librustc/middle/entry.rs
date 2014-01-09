@@ -11,7 +11,7 @@
 
 use driver::session;
 use driver::session::Session;
-use syntax::ast::{Crate, NodeId, item, item_fn};
+use syntax::ast::{Crate, NodeId, Item, ItemFn};
 use syntax::ast_map;
 use syntax::attr;
 use syntax::codemap::Span;
@@ -22,7 +22,7 @@ use syntax::visit::Visitor;
 struct EntryContext {
     session: Session,
 
-    ast_map: ast_map::map,
+    ast_map: ast_map::Map,
 
     // The top-level function called 'main'
     main_fn: Option<(NodeId, Span)>,
@@ -39,12 +39,12 @@ struct EntryContext {
 }
 
 impl Visitor<()> for EntryContext {
-    fn visit_item(&mut self, item: &item, _:()) {
+    fn visit_item(&mut self, item: &Item, _:()) {
         find_item(item, self);
     }
 }
 
-pub fn find_entry_point(session: Session, crate: &Crate, ast_map: ast_map::map) {
+pub fn find_entry_point(session: Session, crate: &Crate, ast_map: ast_map::Map) {
     if session.building_library.get() {
         // No need to find a main function
         return;
@@ -70,14 +70,14 @@ pub fn find_entry_point(session: Session, crate: &Crate, ast_map: ast_map::map) 
     configure_main(&mut ctxt);
 }
 
-fn find_item(item: &item, ctxt: &mut EntryContext) {
+fn find_item(item: &Item, ctxt: &mut EntryContext) {
     match item.node {
-        item_fn(..) => {
+        ItemFn(..) => {
             if item.ident.name == special_idents::main.name {
                 {
                     let ast_map = ctxt.ast_map.borrow();
                     match ast_map.get().find(&item.id) {
-                        Some(&ast_map::node_item(_, path)) => {
+                        Some(&ast_map::NodeItem(_, path)) => {
                             if path.len() == 0 {
                                 // This is a top-level function so can be 'main'
                                 if ctxt.main_fn.is_none() {

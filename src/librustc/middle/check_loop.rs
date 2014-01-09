@@ -29,7 +29,7 @@ pub fn check_crate(tcx: ty::ctxt, crate: &ast::Crate) {
 }
 
 impl Visitor<Context> for CheckLoopVisitor {
-    fn visit_item(&mut self, i: &ast::item, _cx: Context) {
+    fn visit_item(&mut self, i: &ast::Item, _cx: Context) {
         visit::walk_item(self, i, Normal);
     }
 

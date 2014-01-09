@@ -22,9 +22,9 @@ use middle::typeck::infer::{cres, InferCtxt};
 use middle::typeck::infer::fold_regions_in_sig;
 use middle::typeck::infer::{TypeTrace, Subtype};
 use std::hashmap::HashMap;
-use syntax::ast::{Many, Once, extern_fn, impure_fn, NodeId};
-use syntax::ast::{unsafe_fn};
-use syntax::ast::{Onceness, purity};
+use syntax::ast::{Many, Once, NodeId};
+use syntax::ast::{ExternFn, ImpureFn, UnsafeFn};
+use syntax::ast::{Onceness, Purity};
 use util::ppaux::mt_to_str;
 
 pub struct Lub(CombineFields);  // least-upper-bound: common supertype
@@ -79,11 +79,11 @@ impl Combine for Lub {
         Glb(*self.get_ref()).tys(a, b)
     }
 
-    fn purities(&self, a: purity, b: purity) -> cres<purity> {
+    fn purities(&self, a: Purity, b: Purity) -> cres<Purity> {
         match (a, b) {
-          (unsafe_fn, _) | (_, unsafe_fn) => Ok(unsafe_fn),
-          (impure_fn, _) | (_, impure_fn) => Ok(impure_fn),
-          (extern_fn, extern_fn) => Ok(extern_fn),
+          (UnsafeFn, _) | (_, UnsafeFn) => Ok(UnsafeFn),
+          (ImpureFn, _) | (_, ImpureFn) => Ok(ImpureFn),
+          (ExternFn, ExternFn) => Ok(ExternFn),
         }
     }
 
