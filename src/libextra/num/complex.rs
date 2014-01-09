@@ -268,7 +268,7 @@ mod test {
     #[test]
     fn test_arg() {
         fn test(c: Complex64, arg: f64) {
-            assert!(c.arg().approx_eq(&arg))
+            assert!((c.arg() - arg).abs() < 1.0e-6)
         }
         test(_1_0i, 0.0);
         test(_1_1i, 0.25 * Real::pi());

@@ -85,6 +85,7 @@ pub mod prelude;
 
 /* Primitive types */
 
+#[path = "num/float_macros.rs"] mod float_macros;
 #[path = "num/int_macros.rs"]   mod int_macros;
 #[path = "num/uint_macros.rs"]  mod uint_macros;
 
