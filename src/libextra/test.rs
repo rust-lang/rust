@@ -767,7 +767,7 @@ fn run_tests(opts: &TestOpts,
     remaining.reverse();
     let mut pending = 0;
 
-    let (p, ch) = SharedChan::new();
+    let (p, ch) = Chan::new();
 
     while pending > 0 || !remaining.is_empty() {
         while pending < concurrency && !remaining.is_empty() {
@@ -878,7 +878,7 @@ pub fn filter_tests(
 
 pub fn run_test(force_ignore: bool,
                 test: TestDescAndFn,
-                monitor_ch: SharedChan<MonitorMsg>) {
+                monitor_ch: Chan<MonitorMsg>) {
 
     let TestDescAndFn {desc, testfn} = test;
 
@@ -888,7 +888,7 @@ pub fn run_test(force_ignore: bool,
     }
 
     fn run_test_inner(desc: TestDesc,
-                      monitor_ch: SharedChan<MonitorMsg>,
+                      monitor_ch: Chan<MonitorMsg>,
                       testfn: proc()) {
         spawn(proc() {
             let mut task = task::task();
@@ -1260,7 +1260,7 @@ mod tests {
             },
             testfn: DynTestFn(proc() f()),
         };
-        let (p, ch) = SharedChan::new();
+        let (p, ch) = Chan::new();
         run_test(false, desc, ch);
         let (_, res) = p.recv();
         assert!(res != TrOk);
@@ -1277,7 +1277,7 @@ mod tests {
             },
             testfn: DynTestFn(proc() f()),
         };
-        let (p, ch) = SharedChan::new();
+        let (p, ch) = Chan::new();
         run_test(false, desc, ch);
         let (_, res) = p.recv();
         assert_eq!(res, TrIgnored);
@@ -1294,7 +1294,7 @@ mod tests {
             },
             testfn: DynTestFn(proc() f()),
         };
-        let (p, ch) = SharedChan::new();
+        let (p, ch) = Chan::new();
         run_test(false, desc, ch);
         let (_, res) = p.recv();
         assert_eq!(res, TrOk);
@@ -1311,7 +1311,7 @@ mod tests {
             },
             testfn: DynTestFn(proc() f()),
         };
-        let (p, ch) = SharedChan::new();
+        let (p, ch) = Chan::new();
         run_test(false, desc, ch);
         let (_, res) = p.recv();
         assert_eq!(res, TrFailed);

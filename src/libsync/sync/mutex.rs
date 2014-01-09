@@ -531,7 +531,7 @@ mod test {
             }
         }
 
-        let (p, c) = SharedChan::new();
+        let (p, c) = Chan::new();
         for _ in range(0, N) {
             let c2 = c.clone();
             native::task::spawn(proc() { inc(); c2.send(()); });

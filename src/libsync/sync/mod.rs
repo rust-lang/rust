@@ -764,7 +764,7 @@ mod tests {
     use std::cast;
     use std::result;
     use std::task;
-    use std::comm::{SharedChan, Empty};
+    use std::comm::Empty;
 
     /************************************************************************
      * Semaphore tests
@@ -1393,7 +1393,7 @@ mod tests {
     #[test]
     fn test_barrier() {
         let barrier = Barrier::new(10);
-        let (port, chan) = SharedChan::new();
+        let (port, chan) = Chan::new();
 
         for _ in range(0, 9) {
             let c = barrier.clone();

@@ -15,7 +15,7 @@ pub fn main() { test00(); }
 fn test00() {
     let mut r: int = 0;
     let mut sum: int = 0;
-    let (p, ch) = SharedChan::new();
+    let (p, ch) = Chan::new();
     let mut c0 = ch.clone();
     let mut c1 = ch.clone();
     let mut c2 = ch.clone();

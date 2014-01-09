@@ -10,12 +10,12 @@
 
 use std::task;
 
-fn child(c: &SharedChan<~uint>, i: uint) {
+fn child(c: &Chan<~uint>, i: uint) {
     c.send(~i);
 }
 
 pub fn main() {
-    let (p, ch) = SharedChan::new();
+    let (p, ch) = Chan::new();
     let n = 100u;
     let mut expected = 0u;
     for i in range(0u, n) {

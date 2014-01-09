@@ -16,7 +16,7 @@ use std::task;
 
 pub fn main() { info!("===== WITHOUT THREADS ====="); test00(); }
 
-fn test00_start(ch: &SharedChan<int>, message: int, count: int) {
+fn test00_start(ch: &Chan<int>, message: int, count: int) {
     info!("Starting test00_start");
     let mut i: int = 0;
     while i < count {
@@ -33,7 +33,7 @@ fn test00() {
 
     info!("Creating tasks");
 
-    let (po, ch) = SharedChan::new();
+    let (po, ch) = Chan::new();
 
     let mut i: int = 0;
 

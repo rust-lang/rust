@@ -33,7 +33,7 @@
 // Creates in the background 'num_tasks' tasks, all blocked forever.
 // Doesn't return until all such tasks are ready, but doesn't block forever itself.
 
-use std::comm::{stream, SharedChan};
+use std::comm::{stream, Chan};
 use std::os;
 use std::result;
 use std::task;
@@ -41,7 +41,7 @@ use std::uint;
 
 fn grandchild_group(num_tasks: uint) {
     let (po, ch) = stream();
-    let ch = SharedChan::new(ch);
+    let ch = Chan::new(ch);
 
     for _ in range(0, num_tasks) {
         let ch = ch.clone();

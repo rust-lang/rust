@@ -156,14 +156,15 @@ impl<T: Send> Drop for Queue<T> {
 mod tests {
     use prelude::*;
 
-    use super::{Queue, Data, Empty, Inconsistent};
     use native;
+    use super::{Queue, Data, Empty, Inconsistent};
+    use sync::arc::UnsafeArc;
 
     #[test]
     fn test_full() {
         let mut q = Queue::new();
-        p.push(~1);
-        p.push(~2);
+        q.push(~1);
+        q.push(~2);
     }
 
     #[test]
@@ -171,11 +172,11 @@ mod tests {
         let nthreads = 8u;
         let nmsgs = 1000u;
         let mut q = Queue::new();
-        match c.pop() {
+        match q.pop() {
             Empty => {}
             Inconsistent | Data(..) => fail!()
         }
-        let (port, chan) = SharedChan::new();
+        let (port, chan) = Chan::new();
         let q = UnsafeArc::new(q);
 
         for _ in range(0, nthreads) {
