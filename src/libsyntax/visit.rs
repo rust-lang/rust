@@ -223,12 +223,13 @@ pub fn walk_item<E: Clone, V: Visitor<E>>(visitor: &mut V, item: &Item, env: E) 
             walk_enum_def(visitor, enum_definition, type_parameters, env)
         }
         ItemImpl(ref type_parameters,
-                  ref trait_references,
-                  typ,
-                  ref methods) => {
+                 ref trait_reference,
+                 typ,
+                 ref methods) => {
             visitor.visit_generics(type_parameters, env.clone());
-            for trait_reference in trait_references.iter() {
-                walk_trait_ref(visitor, trait_reference, env.clone())
+            match *trait_reference {
+                Some(ref trait_reference) => walk_trait_ref(visitor, trait_reference, env.clone()),
+                None => ()
             }
             visitor.visit_ty(typ, env.clone());
             for method in methods.iter() {
