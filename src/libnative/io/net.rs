@@ -643,21 +643,15 @@ impl rtio::RtioRawSocket for RawSocket {
         let (sockaddr, _) = addr_to_sockaddr(ip::SocketAddr { ip: dst, port: 0 });
         let addr = (&sockaddr as *libc::sockaddr_storage) as *libc::sockaddr;
         let len = unsafe {
-                        if match dst { ip::Ipv4Addr(..) => true, ip::Ipv6Addr(..) => false } {
-                            libc::sendto(self.fd,
-                                buf.as_ptr() as *libc::c_void,
-                                buf.len() as u64,
-                                0,
-                                addr,
-                                intrinsics::size_of::<libc::sockaddr_in>() as libc::socklen_t)
-                        } else {
-                            libc::sendto(self.fd,
-                                buf.as_ptr() as *libc::c_void,
-                                buf.len() as u64,
-                                0,
-                                addr,
-                                intrinsics::size_of::<libc::sockaddr_in6>() as libc::socklen_t)
-                        }
+                        libc::sendto(self.fd,
+                                     buf.as_ptr() as *libc::c_void,
+                                     buf.len() as u64,
+                                     0,
+                                     addr,
+                                     match dst {
+                                         ip::Ipv4Addr(..) => intrinsics::size_of::<libc::sockaddr_in>(),
+                                         ip::Ipv6Addr(..) => intrinsics::size_of::<libc::sockaddr_in6>()
+                                     } as libc::socklen_t)
                   };
 
         return if len < 0 {
