@@ -29,7 +29,8 @@ use std::os;
 use std::rt::rtio;
 use std::rt::rtio::{RtioTcpStream, RtioTcpListener, RtioUdpSocket,
                     RtioUnixListener, RtioPipe, RtioFileStream, RtioProcess,
-                    RtioSignal, RtioTTY, CloseBehavior, RtioTimer};
+                    RtioSignal, RtioTTY, CloseBehavior, RtioTimer,
+                    RtioRawSocket};
 use std::io;
 use std::io::IoError;
 use std::io::net::ip::SocketAddr;
@@ -190,9 +191,9 @@ impl rtio::IoFactory for IoFactory {
                           _hint: Option<ai::Hint>) -> IoResult<~[ai::Info]> {
         Err(unimpl())
     }
-    fn raw_socket_new(&mut self, _domain: rtio::CommDomain, _protocol: rtio::Protocol,
-                      _includeIpHeader: bool) -> IoResult<~rtio::RtioRawSocket> {
-        Err(unimpl())
+    fn raw_socket_new(&mut self, domain: rtio::CommDomain, protocol: rtio::Protocol,
+                      includeIpHeader: bool) -> IoResult<~rtio::RtioRawSocket> {
+        net::RawSocket::new(domain, protocol, includeIpHeader).map(|r| ~r as ~RtioRawSocket)
     }
 
     // filesystem operations

@@ -584,3 +584,91 @@ impl rtio::RtioUdpSocket for UdpSocket {
 impl Drop for UdpSocket {
     fn drop(&mut self) { unsafe { close(self.fd) } }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// Raw socket
+////////////////////////////////////////////////////////////////////////////////
+
+pub struct RawSocket {
+    priv fd: sock_t,
+}
+
+impl RawSocket {
+    pub fn new(domain: rtio::CommDomain, protocol: rtio::Protocol, includeIpHeader: bool)
+        -> IoResult<RawSocket>
+    {
+        let socket = unsafe { libc::socket(domain, libc::SOCK_RAW, protocol) };
+        if socket == -1 {
+            return Err(super::last_error());
+        }
+        if includeIpHeader {
+            let one: libc::c_int = 1;
+            let proto = if domain == libc::AF_INET { libc::IPPROTO_IP } else { libc::IPPROTO_IPV6 };
+            let res = unsafe { libc::setsockopt(socket, proto, libc::IP_HDRINCL, (&one as *libc::c_int) as *libc::c_void, intrinsics::size_of::<libc::c_int>() as u32) };
+            if res == -1 {
+                return Err(super::last_error());
+            }
+        }
+        return Ok(RawSocket { fd: socket });
+    }
+}
+
+impl rtio::RtioRawSocket for RawSocket {
+    fn recvfrom(&mut self, buf: &mut [u8])
+        -> IoResult<(uint, ip::SocketAddr)>
+    {
+        let max: libc::c_int = Bounded::max_value();
+        assert!(buf.len() <= (max as uint));
+
+        let mut caddr = unsafe { intrinsics::init::<libc::sockaddr_storage>() };
+        let mut caddrlen = unsafe { intrinsics::size_of::<libc::sockaddr_storage>() } as libc::socklen_t;
+        let len = unsafe { libc::recvfrom(self.fd,
+                                          buf.as_ptr() as *mut libc::c_void,
+                                          buf.len() as u64,
+                                          0,
+                                          (&mut caddr as *mut libc::sockaddr_storage) as *mut libc::sockaddr,
+                                          &mut caddrlen) };
+        if len == -1 {
+            return Err(super::last_error());
+        }
+
+        return sockaddr_to_addr(&caddr, caddrlen as uint).and_then(|addr| {
+            Ok((len as uint, addr))
+        });
+    }
+
+    fn sendto(&mut self, buf: &[u8], dst: ip::IpAddr)
+        -> IoResult<libc::ssize_t>
+    {
+        let (sockaddr, _) = addr_to_sockaddr(ip::SocketAddr { ip: dst, port: 0 });
+        let addr = (&sockaddr as *libc::sockaddr_storage) as *libc::sockaddr;
+        let len = unsafe {
+                        if match dst { ip::Ipv4Addr(..) => true, ip::Ipv6Addr(..) => false } {
+                            libc::sendto(self.fd,
+                                buf.as_ptr() as *libc::c_void,
+                                buf.len() as u64,
+                                0,
+                                addr,
+                                intrinsics::size_of::<libc::sockaddr_in>() as libc::socklen_t)
+                        } else {
+                            libc::sendto(self.fd,
+                                buf.as_ptr() as *libc::c_void,
+                                buf.len() as u64,
+                                0,
+                                addr,
+                                intrinsics::size_of::<libc::sockaddr_in6>() as libc::socklen_t)
+                        }
+                  };
+
+        return if len < 0 {
+            Err(super::last_error())
+        } else {
+            Ok(len)
+        };
+    }
+}
+
+impl Drop for RawSocket {
+    fn drop(&mut self) { unsafe { close(self.fd) } }
+}
+
