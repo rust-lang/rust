@@ -10,7 +10,7 @@
 
 //! The Gamma and derived distributions.
 
-use num::Algebraic;
+use num::Real;
 use num;
 use rand::{Rng, Open01};
 use super::normal::StandardNormal;
