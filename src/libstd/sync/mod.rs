@@ -15,9 +15,14 @@
 //! and/or blocking at all, but rather provide the necessary tools to build
 //! other types of concurrent primitives.
 
+pub use self::mutex::{Mutex, StaticMutex, Guard, MUTEX_INIT};
+
 pub mod arc;
 pub mod atomics;
 pub mod deque;
 pub mod mpmc_bounded_queue;
 pub mod mpsc_queue;
 pub mod spsc_queue;
+
+mod mpsc_intrusive;
+mod mutex;
