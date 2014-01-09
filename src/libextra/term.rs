@@ -13,8 +13,6 @@
 #[allow(missing_doc)];
 
 
-use std::io::{Decorator, Writer};
-
 use std::os;
 use terminfo::*;
 use terminfo::searcher::open;
@@ -234,20 +232,12 @@ impl<T: Writer> Terminal<T> {
             color-8
         } else { color }
     }
-}
 
-impl<T: Writer> Decorator<T> for Terminal<T> {
-    fn inner(self) -> T {
-        self.out
-    }
+    pub fn unwrap(self) -> T { self.out }
 
-    fn inner_ref<'a>(&'a self) -> &'a T {
-        &self.out
-    }
+    pub fn get_ref<'a>(&'a self) -> &'a T { &self.out }
 
-    fn inner_mut_ref<'a>(&'a mut self) -> &'a mut T {
-        &mut self.out
-    }
+    pub fn get_mut<'a>(&'a mut self) -> &'a mut T { &mut self.out }
 }
 
 impl<T: Writer> Writer for Terminal<T> {

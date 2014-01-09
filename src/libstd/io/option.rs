@@ -106,7 +106,6 @@ impl<T, A: Acceptor<T>> Acceptor<T> for Option<A> {
 mod test {
     use prelude::*;
     use super::super::mem::*;
-    use io::Decorator;
     use super::super::{PreviousIoError, io_error};
 
     #[test]
@@ -114,7 +113,7 @@ mod test {
         let mut writer: Option<MemWriter> = Some(MemWriter::new());
         writer.write([0, 1, 2]);
         writer.flush();
-        assert_eq!(writer.unwrap().inner(), ~[0, 1, 2]);
+        assert_eq!(writer.unwrap().unwrap(), ~[0, 1, 2]);
     }
 
     #[test]
