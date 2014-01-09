@@ -393,7 +393,7 @@ fn query_from_str(rawquery: &str) -> Query {
  * use extra::url;
  *
  * let query = ~[(~"title", ~"The Village"), (~"north", ~"52.91"), (~"west", ~"4.10")];
- * println(url::query_to_str(&query));  // title=The%20Village&north=52.91&west=4.10
+ * println!("{}", url::query_to_str(&query));  // title=The%20Village&north=52.91&west=4.10
  * ```
  */
 pub fn query_to_str(query: &Query) -> ~str {

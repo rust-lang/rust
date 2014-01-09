@@ -64,7 +64,7 @@ fn fannkuch_redux(n: i32) -> i32 {
             // Use incremental change to generate another permutation.
             loop {
                 if r == n {
-                    println(checksum.to_str());
+                    println!("{}", checksum);
                     return max_flips_count;
                 }
 

@@ -1317,7 +1317,7 @@ pub trait OwnedVector<T> {
     /// let v = ~[~"a", ~"b"];
     /// for s in v.move_iter() {
     ///   // s has type ~str, not &~str
-    ///   println(s);
+    ///   println!("{}", s);
     /// }
     /// ```
     fn move_iter(self) -> MoveIterator<T>;

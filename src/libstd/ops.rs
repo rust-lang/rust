@@ -47,8 +47,8 @@
  *     }
  * }
  * fn main() {
- *     println(format!("{:?}", Point {x: 1, y: 0} + Point {x: 2, y: 3}));
- *     println(format!("{:?}", Point {x: 1, y: 0} - Point {x: 2, y: 3}));
+ *     println!("{:?}", Point {x: 1, y: 0} + Point {x: 2, y: 3});
+ *     println!("{:?}", Point {x: 1, y: 0} - Point {x: 2, y: 3});
  * }
  * ```
  *
@@ -72,7 +72,7 @@
  *
  * impl Drop for HasDrop {
  *   fn drop(&mut self) {
- *       println("Dropping!");
+ *       println!("Dropping!");
  *   }
  * }
  *
@@ -100,7 +100,7 @@ pub trait Drop {
  *
  * impl Add<Foo, Foo> for Foo {
  *     fn add(&self, _rhs: &Foo) -> Foo {
- *       println("Adding!");
+ *       println!("Adding!");
  *       *self
  *   }
  * }
@@ -129,7 +129,7 @@ pub trait Add<RHS,Result> {
  *
  * impl Sub<Foo, Foo> for Foo {
  *     fn sub(&self, _rhs: &Foo) -> Foo {
- *         println("Subtracting!");
+ *         println!("Subtracting!");
  *         *self
  *     }
  * }
@@ -158,7 +158,7 @@ pub trait Sub<RHS,Result> {
  *
  * impl Mul<Foo, Foo> for Foo {
  *     fn mul(&self, _rhs: &Foo) -> Foo {
- *         println("Multiplying!");
+ *         println!("Multiplying!");
  *         *self
  *     }
  * }
@@ -187,7 +187,7 @@ pub trait Mul<RHS,Result> {
  *
  * impl Div<Foo, Foo> for Foo {
  *     fn div(&self, _rhs: &Foo) -> Foo {
- *         println("Dividing!");
+ *         println!("Dividing!");
  *         *self
  *     }
  * }
@@ -216,7 +216,7 @@ pub trait Div<RHS,Result> {
  *
  * impl Rem<Foo, Foo> for Foo {
  *     fn rem(&self, _rhs: &Foo) -> Foo {
- *         println("Remainder-ing!");
+ *         println!("Remainder-ing!");
  *         *self
  *     }
  * }
@@ -245,7 +245,7 @@ pub trait Rem<RHS,Result> {
  *
  * impl Neg<Foo> for Foo {
  *     fn neg(&self) -> Foo {
- *         println("Negating!");
+ *         println!("Negating!");
  *         *self
  *     }
  * }
@@ -274,7 +274,7 @@ pub trait Neg<Result> {
  *
  * impl Not<Foo> for Foo {
  *     fn not(&self) -> Foo {
- *         println("Not-ing!");
+ *         println!("Not-ing!");
  *         *self
  *     }
  * }
@@ -303,7 +303,7 @@ pub trait Not<Result> {
  *
  * impl BitAnd<Foo, Foo> for Foo {
  *     fn bitand(&self, _rhs: &Foo) -> Foo {
- *         println("Bitwise And-ing!");
+ *         println!("Bitwise And-ing!");
  *         *self
  *     }
  * }
@@ -332,7 +332,7 @@ pub trait BitAnd<RHS,Result> {
  *
  * impl BitOr<Foo, Foo> for Foo {
  *     fn bitor(&self, _rhs: &Foo) -> Foo {
- *         println("Bitwise Or-ing!");
+ *         println!("Bitwise Or-ing!");
  *         *self
  *     }
  * }
@@ -361,7 +361,7 @@ pub trait BitOr<RHS,Result> {
  *
  * impl BitXor<Foo, Foo> for Foo {
  *     fn bitxor(&self, _rhs: &Foo) -> Foo {
- *         println("Bitwise Xor-ing!");
+ *         println!("Bitwise Xor-ing!");
  *         *self
  *     }
  * }
@@ -390,7 +390,7 @@ pub trait BitXor<RHS,Result> {
  *
  * impl Shl<Foo, Foo> for Foo {
  *     fn shl(&self, _rhs: &Foo) -> Foo {
- *         println("Shifting left!");
+ *         println!("Shifting left!");
  *         *self
  *     }
  * }
@@ -419,7 +419,7 @@ pub trait Shl<RHS,Result> {
  *
  * impl Shr<Foo, Foo> for Foo {
  *     fn shr(&self, _rhs: &Foo) -> Foo {
- *         println("Shifting right!");
+ *         println!("Shifting right!");
  *         *self
  *     }
  * }
@@ -449,7 +449,7 @@ pub trait Shr<RHS,Result> {
  *
  * impl Index<Foo, Foo> for Foo {
  *     fn index(&self, _rhs: &Foo) -> Foo {
- *         println("Indexing!");
+ *         println!("Indexing!");
  *         *self
  *     }
  * }

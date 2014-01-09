@@ -78,7 +78,7 @@ fn main() {
         }).to_owned_vec();
 
     for message in messages.mut_iter() {
-        println(*message.get_ref());
+        println!("{}", *message.get_ref());
     }
 
     println!("long lived tree of depth {}\t check: {}",

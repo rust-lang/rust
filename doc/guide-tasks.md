@@ -72,15 +72,15 @@ closure in the new task.
 # use std::task::spawn;
 
 // Print something profound in a different task using a named function
-fn print_message() { println("I am running in a different task!"); }
+fn print_message() { println!("I am running in a different task!"); }
 spawn(print_message);
 
 // Print something more profound in a different task using a lambda expression
-spawn(proc() println("I am also running in a different task!") );
+spawn(proc() println!("I am also running in a different task!") );
 
 // The canonical way to spawn is using `do` notation
 do spawn {
-    println("I too am running in a different task!");
+    println!("I too am running in a different task!");
 }
 ~~~~
 

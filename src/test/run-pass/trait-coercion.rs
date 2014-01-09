@@ -21,7 +21,7 @@ struct Struct {
 
 impl Trait for Struct {
     fn f(&self) {
-        println("Hi!");
+        println!("Hi!");
     }
 }
 

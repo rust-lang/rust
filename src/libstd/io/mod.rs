@@ -32,7 +32,7 @@ Some examples of obvious things you might want to do
     # let _g = ::std::io::ignore_io_error();
     let mut stdin = BufferedReader::new(stdin());
     for line in stdin.lines() {
-        print(line);
+        print!("{}", line);
     }
     ```
 
@@ -67,7 +67,7 @@ Some examples of obvious things you might want to do
     let path = Path::new("message.txt");
     let mut file = BufferedReader::new(File::open(&path));
     for line in file.lines() {
-        print(line);
+        print!("{}", line);
     }
     ```
 
@@ -204,7 +204,7 @@ io_error::cond.trap(|e: IoError| {
 });
 
 if error.is_some() {
-    println("failed to write my diary");
+    println!("failed to write my diary");
 }
 # ::std::io::fs::unlink(&Path::new("diary.txt"));
 ```

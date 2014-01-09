@@ -275,7 +275,7 @@ fn main() {
 
     };
     if result.is_err() {
-            println("parsing failed");
+            println!("parsing failed");
     }
 }
 

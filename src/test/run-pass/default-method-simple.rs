@@ -11,7 +11,7 @@
 
 trait Foo {
     fn f(&self) {
-        println("Hello!");
+        println!("Hello!");
         self.g();
     }
     fn g(&self);
@@ -23,7 +23,7 @@ struct A {
 
 impl Foo for A {
     fn g(&self) {
-        println("Goodbye!");
+        println!("Goodbye!");
     }
 }
 

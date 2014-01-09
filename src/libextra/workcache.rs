@@ -536,5 +536,5 @@ fn test() {
         }
     });
 
-    println(s);
+    println!("{}", s);
 }

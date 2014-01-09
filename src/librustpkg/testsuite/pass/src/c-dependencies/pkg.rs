@@ -36,7 +36,7 @@ pub fn main() {
     }
 
     if args[2] != ~"install" {
-        println(format!("Warning: I don't know how to {}", args[2]));
+        println!("Warning: I don't know how to {}", args[2]);
         return;
     }
 

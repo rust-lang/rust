@@ -18,7 +18,7 @@ fn main() {
         f(&s, |hellothere| {
             match hellothere.x {
                 ~Foo(_) => {}
-                ~Bar(x) => println(x.to_str()), //~ ERROR cannot move out
+                ~Bar(x) => println!("{}", x.to_str()), //~ ERROR cannot move out
                 ~Baz => {}
             }
         })
