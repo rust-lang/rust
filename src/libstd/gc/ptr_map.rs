@@ -19,6 +19,10 @@ pub struct PtrMap {
     // a map from the start of each allocation to a descriptor
     // containing information about it.
     priv map: TrieMap<PtrDescr>,
+    // The state of `reachable` that represents whether an allocations
+    // is reachable, i.e. descr.reachable_flag == this.reachable_state
+    // implies the pointer is reachable.
+    priv reachable_state: bool,
 }
 
 /// This representation could be optimised.
@@ -27,8 +31,9 @@ pub struct PtrDescr {
     high: uint,
     // the finaliser to run
     finaliser: Option<fn(*mut ())>,
-    // whether this allocation is reachable
-    reachable: bool,
+    // whether this allocation is reachable (see
+    // PtrMap.reachable_state)
+    reachable_flag: bool,
     // whether this allocation should be scanned (i.e. whether it
     // contains rooted references to GC pointers)
     scan: bool
@@ -44,7 +49,8 @@ impl PtrMap {
     /// Create a new PtrMap.
     pub fn new() -> PtrMap {
         PtrMap {
-            map: TrieMap::new()
+            map: TrieMap::new(),
+            reachable_state: true
         }
     }
 
@@ -55,7 +61,7 @@ impl PtrMap {
                         finaliser: Option<fn(*mut ())>) {
         let descr = PtrDescr {
             high: ptr + length,
-            reachable: false,
+            reachable_flag: self.reachable_state,
             scan: scan,
             finaliser: finaliser
         };
@@ -78,17 +84,11 @@ impl PtrMap {
                     descr.high = ptr + length;
                     descr.finaliser = finaliser;
                     descr.scan = scan;
+                    descr.reachable_flag = self.reachable_state;
                     true
                 }
             }
             None => false
-        }
-    }
-
-    /// Mark every registered allocation as unreachable.
-    pub fn mark_all_unreachable(&mut self) {
-        for (_, d) in self.map.mut_iter() {
-            d.reachable = false;
         }
     }
 
@@ -99,8 +99,8 @@ impl PtrMap {
     pub fn mark_reachable_scan_info(&mut self, ptr: uint) -> Option<(uint, bool)> {
         match self.map.find_mut(&ptr) {
             Some(descr) => {
-                if descr.is_used() && !descr.reachable {
-                    descr.reachable = true;
+                if descr.is_used() && descr.reachable_flag != self.reachable_state {
+                    descr.reachable_flag = self.reachable_state;
                     Some((descr.high, descr.scan))
                 } else {
                     None
@@ -115,7 +115,7 @@ impl PtrMap {
     pub fn find_unreachable(&mut self) -> ~[(uint, uint, Option<fn(*mut ())>)] {
         self.map.iter()
             .filter_map(|(low, descr)| {
-                if descr.is_used() && !descr.reachable {
+                if descr.is_used() && descr.reachable_flag != self.reachable_state {
                     Some((low, descr.high - low, descr.finaliser))
                 } else {
                     None
@@ -129,6 +129,13 @@ impl PtrMap {
             Some(descr) => descr.high = 0,
             None => {}
         }
+    }
+
+    /// After a collection this will flip an internal bit so that
+    /// everything is considered unreachable at the start of the next
+    /// collection.
+    pub fn toggle_reachability(&mut self) {
+        self.reachable_state = !self.reachable_state;
     }
 
     /// Deregister the allocation starting at `ptr`.
