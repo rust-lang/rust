@@ -127,7 +127,7 @@ mod test {
     }
 
     fn mk(v: uint) -> (~IdleWatcher, Chan) {
-        let rc = Rc::from_send(RefCell::new((None, 0)));
+        let rc = Rc::new(RefCell::new((None, 0)));
         let cb = ~MyCallback(rc.clone(), v);
         let cb = cb as ~Callback:;
         let cb = unsafe { cast::transmute(cb) };

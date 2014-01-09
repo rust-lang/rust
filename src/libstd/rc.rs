@@ -172,8 +172,49 @@ impl<T> Clone for Weak<T> {
 
 #[cfg(test)]
 mod tests {
+    use prelude::*;
     use super::*;
-    use prelude::drop;
+    use cell::RefCell;
+
+    #[test]
+    fn test_clone() {
+        let x = Rc::new(RefCell::new(5));
+        let y = x.clone();
+        x.borrow().with_mut(|inner| {
+            *inner = 20;
+        });
+        assert_eq!(y.borrow().with(|v| *v), 20);
+    }
+
+    #[test]
+    fn test_deep_clone() {
+        let x = Rc::new(RefCell::new(5));
+        let y = x.deep_clone();
+        x.borrow().with_mut(|inner| {
+            *inner = 20;
+        });
+        assert_eq!(y.borrow().with(|v| *v), 5);
+    }
+
+    #[test]
+    fn test_simple() {
+        let x = Rc::new(5);
+        assert_eq!(*x.borrow(), 5);
+    }
+
+    #[test]
+    fn test_simple_clone() {
+        let x = Rc::new(5);
+        let y = x.clone();
+        assert_eq!(*x.borrow(), 5);
+        assert_eq!(*y.borrow(), 5);
+    }
+
+    #[test]
+    fn test_destructor() {
+        let x = Rc::new(~5);
+        assert_eq!(**x.borrow(), 5);
+    }
 
     #[test]
     fn test_live() {
