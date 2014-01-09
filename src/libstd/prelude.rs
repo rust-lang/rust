@@ -50,7 +50,7 @@ pub use bool::Bool;
 pub use c_str::ToCStr;
 pub use char::Char;
 pub use clone::{Clone, DeepClone};
-pub use cmp::{Eq, ApproxEq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater, Equiv};
+pub use cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater, Equiv};
 pub use container::{Container, Mutable, Map, MutableMap, Set, MutableSet};
 pub use default::Default;
 pub use from_str::FromStr;

@@ -48,8 +48,7 @@ value. To run the tests in a crate, it must be compiled with the
 the resulting executable will run all the tests in the crate. A test
 is considered successful if its function returns; if the task running
 the test fails, through a call to `fail!`, a failed `check` or
-`assert`, or some other (`assert_eq`, `assert_approx_eq`, ...) means,
-then the test fails.
+`assert`, or some other (`assert_eq`, ...) means, then the test fails.
 
 When compiling a crate with the '--test' flag '--cfg test' is also
 implied, so that tests can be conditionally compiled.
