@@ -15,7 +15,7 @@
 use middle::ty;
 use middle::typeck;
 use middle::privacy;
-use middle::lint::dead_code;
+use middle::lint::DeadCode;
 
 use std::hashmap::HashSet;
 use syntax::ast;
@@ -328,7 +328,7 @@ impl DeadVisitor {
 
     fn warn_dead_code(&mut self, id: ast::NodeId,
                       span: codemap::Span, ident: &ast::Ident) {
-        self.tcx.sess.add_lint(dead_code, id, span,
+        self.tcx.sess.add_lint(DeadCode, id, span,
                                format!("code is never used: `{}`",
                                        token::ident_to_str(ident)));
     }

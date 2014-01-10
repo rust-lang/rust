@@ -13,7 +13,7 @@ use driver::session::Session;
 use metadata::csearch;
 use metadata::decoder::{DefLike, DlDef, DlField, DlImpl};
 use middle::lang_items::LanguageItems;
-use middle::lint::{unnecessary_qualification, unused_imports};
+use middle::lint::{UnnecessaryQualification, UnusedImports};
 use middle::pat_util::pat_bindings;
 
 use syntax::ast::*;
@@ -4735,7 +4735,7 @@ impl Resolver {
             let def = self.resolve_module_relative_path(path, namespace);
             match (def, unqualified_def) {
                 (Some((d, _)), Some((ud, _))) if d == ud => {
-                    self.session.add_lint(unnecessary_qualification,
+                    self.session.add_lint(UnnecessaryQualification,
                                           id,
                                           path.span,
                                           ~"unnecessary qualification");
@@ -5557,7 +5557,7 @@ impl Resolver {
                     match p.node {
                         ViewPathSimple(_, _, id) | ViewPathGlob(_, id) => {
                             if !self.used_imports.contains(&id) {
-                                self.session.add_lint(unused_imports,
+                                self.session.add_lint(UnusedImports,
                                                       id, p.span,
                                                       ~"unused import");
                             }
@@ -5566,7 +5566,7 @@ impl Resolver {
                         ViewPathList(_, ref list, _) => {
                             for i in list.iter() {
                                 if !self.used_imports.contains(&i.node.id) {
-                                    self.session.add_lint(unused_imports,
+                                    self.session.add_lint(UnusedImports,
                                                           i.node.id, i.span,
                                                           ~"unused import");
                                 }
