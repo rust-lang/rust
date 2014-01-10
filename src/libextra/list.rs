@@ -55,7 +55,7 @@ pub struct LinkedListMoveIterator<T> {
 }
 
 impl<T: Clone> Index<uint, T> for LinkedList<T>{
-    /**
+    /*!
      Allows the use of the [] operator on a list to access a copy of the element stored there
 
      #Note
@@ -105,7 +105,7 @@ impl<T: Eq+Clone> FromIterator<T> for ~LinkedList<T> {
         let mut e = iter.next();
 
         // For some reason, I can't use "for e in iter"
-        while e.is_some(){
+        while e.is_some() {
             list.append(e.unwrap());
             e = iter.next();
         }
