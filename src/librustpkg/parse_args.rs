@@ -36,7 +36,8 @@ pub struct ParseResult {
 /// Parses command line arguments of rustpkg.
 /// Returns a triplet (command, remaining_args, context)
 pub fn parse_args(args: &[~str]) -> Result<ParseResult, int> {
-    let opts = ~[ getopts::optflag("no-link"),
+    let opts = ~[getopts::optflag("h"), getopts::optflag("help"),
+                                        getopts::optflag("no-link"),
                                         getopts::optflag("no-trans"),
                  // n.b. Ignores different --pretty options for now
                                         getopts::optflag("pretty"),
