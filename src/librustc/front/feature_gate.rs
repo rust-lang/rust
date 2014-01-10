@@ -233,7 +233,7 @@ pub fn check_crate(sess: Session, crate: &ast::Crate) {
                                                      directive not necessary");
                         }
                         None => {
-                            sess.add_lint(lint::unknown_features,
+                            sess.add_lint(lint::UnknownFeatures,
                                           ast::CRATE_NODE_ID,
                                           mi.span,
                                           ~"unknown feature");

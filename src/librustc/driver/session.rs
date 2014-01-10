@@ -145,7 +145,7 @@ pub struct options {
     llvm_args: ~[~str],
     debuginfo: bool,
     extra_debuginfo: bool,
-    lint_opts: ~[(lint::lint, lint::level)],
+    lint_opts: ~[(lint::Lint, lint::level)],
     save_temps: bool,
     output_type: back::link::OutputType,
     // This is mutable for rustpkg, which updates search paths based on the
@@ -214,7 +214,7 @@ pub struct Session_ {
     building_library: Cell<bool>,
     working_dir: Path,
     lints: RefCell<HashMap<ast::NodeId,
-                           ~[(lint::lint, codemap::Span, ~str)]>>,
+                           ~[(lint::Lint, codemap::Span, ~str)]>>,
     node_id: Cell<ast::NodeId>,
     outputs: @RefCell<~[OutputStyle]>,
 }
@@ -268,7 +268,7 @@ impl Session_ {
         self.span_diagnostic.handler().unimpl(msg)
     }
     pub fn add_lint(&self,
-                    lint: lint::lint,
+                    lint: lint::Lint,
                     id: ast::NodeId,
                     sp: Span,
                     msg: ~str) {
@@ -443,12 +443,12 @@ pub fn collect_outputs(session: &Session,
                 Some(n) if "staticlib" == n => Some(OutputStaticlib),
                 Some(n) if "bin" == n => Some(OutputExecutable),
                 Some(_) => {
-                    session.add_lint(lint::unknown_crate_type, ast::CRATE_NODE_ID,
+                    session.add_lint(lint::UnknownCrateType, ast::CRATE_NODE_ID,
                                      a.span, ~"invalid `crate_type` value");
                     None
                 }
                 _ => {
-                    session.add_lint(lint::unknown_crate_type, ast::CRATE_NODE_ID,
+                    session.add_lint(lint::UnknownCrateType, ast::CRATE_NODE_ID,
                                     a.span, ~"`crate_type` requires a value");
                     None
                 }
