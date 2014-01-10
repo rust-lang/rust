@@ -1,11 +1,11 @@
 [submodule "src/llvm"]
 	path = src/llvm
-	url = https://github.com/luqmana/llvm.git
+	url = https://github.com/rust-lang/llvm.git
 	branch = master
 [submodule "src/libuv"]
 	path = src/libuv
-	url = https://github.com/alexcrichton/libuv.git
+	url = https://github.com/rust-lang/libuv.git
 	branch = master
 [submodule "src/gyp"]
 	path = src/gyp
-	url = https://github.com/alexcrichton/gyp.git
+	url = https://github.com/rust-lang/gyp.git
