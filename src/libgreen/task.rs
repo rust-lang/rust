@@ -376,7 +376,7 @@ impl Runtime for GreenTask {
         }
     }
 
-    fn reawaken(mut ~self, to_wake: ~Task, can_resched: bool) {
+    fn reawaken(mut ~self, to_wake: ~Task) {
         self.put_task(to_wake);
         assert!(self.sched.is_none());
 
@@ -409,15 +409,10 @@ impl Runtime for GreenTask {
         match running_task.maybe_take_runtime::<GreenTask>() {
             Some(mut running_green_task) => {
                 running_green_task.put_task(running_task);
-                let mut sched = running_green_task.sched.take_unwrap();
+                let sched = running_green_task.sched.take_unwrap();
 
                 if sched.pool_id == self.pool_id {
-                    if can_resched {
-                        sched.run_task(running_green_task, self);
-                    } else {
-                        sched.enqueue_task(self);
-                        running_green_task.put_with_sched(sched);
-                    }
+                    sched.run_task(running_green_task, self);
                 } else {
                     self.reawaken_remotely();
 

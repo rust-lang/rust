@@ -101,14 +101,14 @@ impl<T: Send> Queue<T> {
         let mut tail = if !tail.is_null() {tail} else {
             cast::transmute(&self.stub)
         };
-        let mut next = (*tail).next(atomics::Relaxed);
+        let mut next = (*tail).next(atomics::Acquire);
         if tail as uint == &self.stub as *DummyNode as uint {
             if next.is_null() {
                 return None;
             }
             self.tail = next;
             tail = next;
-            next = (*next).next(atomics::Relaxed);
+            next = (*next).next(atomics::Acquire);
         }
         if !next.is_null() {
             self.tail = next;
@@ -120,7 +120,7 @@ impl<T: Send> Queue<T> {
         }
         let stub = cast::transmute(&self.stub);
         self.push(stub);
-        next = (*tail).next(atomics::Relaxed);
+        next = (*tail).next(atomics::Acquire);
         if !next.is_null() {
             self.tail = next;
             return Some(tail);

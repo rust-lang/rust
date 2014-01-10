@@ -376,7 +376,7 @@ impl StaticMutex {
                     0 => {}
                     n => {
                         let t = unsafe { BlockedTask::cast_from_uint(n) };
-                        t.wake().map(|t| t.reawaken(true));
+                        t.wake().map(|t| t.reawaken());
                     }
                 }
             }
@@ -489,17 +489,17 @@ mod test {
 
         let (p, c) = SharedChan::new();
         for _ in range(0, N) {
-            let c = c.clone();
-            do native::task::spawn { inc(); c.send(()); }
-            let c = c.clone();
-            do spawn { inc(); c.send(()); }
+            let c2 = c.clone();
+            do native::task::spawn { inc(); c2.send(()); }
+            let c2 = c.clone();
+            do spawn { inc(); c2.send(()); }
         }
 
         drop(c);
         for _ in range(0, 2 * N) {
             p.recv();
         }
-        assert_eq!(unsafe {CNT}, M * N);
+        assert_eq!(unsafe {CNT}, M * N * 2);
         unsafe {
             m.destroy();
         }
