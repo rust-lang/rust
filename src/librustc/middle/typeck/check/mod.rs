@@ -213,11 +213,13 @@ impl PurityState {
     }
 }
 
-/// Whether `check_binop` allows overloaded operators to be invoked.
+/// Whether `check_binop` is part of an assignment or not.
+/// Used to know wether we allow user overloads and to print
+/// better messages on error.
 #[deriving(Eq)]
-enum AllowOverloadedOperatorsFlag {
-    AllowOverloadedOperators,
-    DontAllowOverloadedOperators,
+enum IsBinopAssignment{
+    SimpleBinop,
+    BinopAssignment,
 }
 
 #[deriving(Clone)]
@@ -2086,7 +2088,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                    rhs: @ast::Expr,
                    // Used only in the error case
                    expected_result: Option<ty::t>,
-                   allow_overloaded_operators: AllowOverloadedOperatorsFlag
+                   is_binop_assignment: IsBinopAssignment
                   ) {
         let tcx = fcx.ccx.tcx;
 
@@ -2136,9 +2138,9 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
 
         }
 
-        // Check for overloaded operators if allowed.
+        // Check for overloaded operators if not an assignment.
         let result_t;
-        if allow_overloaded_operators == AllowOverloadedOperators {
+        if is_binop_assignment == SimpleBinop {
             result_t = check_user_binop(fcx,
                                         callee_id,
                                         expr,
@@ -2150,13 +2152,14 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
         } else {
             fcx.type_error_message(expr.span,
                                    |actual| {
-                                        format!("binary operation {} cannot be \
-                                              applied to type `{}`",
-                                             ast_util::binop_to_str(op),
-                                             actual)
+                                        format!("binary assignment operation \
+                                                {}= cannot be applied to type `{}`",
+                                                ast_util::binop_to_str(op),
+                                                actual)
                                    },
                                    lhs_t,
                                    None);
+            check_expr(fcx, rhs);
             result_t = ty::mk_err();
         }
 
@@ -2760,7 +2763,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                     lhs,
                     rhs,
                     expected,
-                    AllowOverloadedOperators);
+                    SimpleBinop);
 
         let lhs_ty = fcx.expr_ty(lhs);
         let rhs_ty = fcx.expr_ty(rhs);
@@ -2781,7 +2784,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                     lhs,
                     rhs,
                     expected,
-                    DontAllowOverloadedOperators);
+                    BinopAssignment);
 
         let lhs_t = fcx.expr_ty(lhs);
         let result_t = fcx.expr_ty(expr);
