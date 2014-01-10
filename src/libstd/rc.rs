@@ -14,19 +14,27 @@ The `Rc` type provides shared ownership of an immutable value. Destruction is de
 will occur as soon as the last owner is gone. It is marked as non-sendable because it avoids the
 overhead of atomic reference counting.
 
+The `downgrade` method can be used to create a non-owning `Weak` pointer to the box. A `Weak`
+pointer can be upgraded to an `Rc` pointer, but will return `None` if the value has already been
+freed.
+
+For example, a tree with parent pointers can be represented by putting the nodes behind `Strong`
+pointers, and then storing the parent pointers as `Weak` pointers.
+
 */
 
-use ptr::RawPtr;
-use unstable::intrinsics::transmute;
+use cast::transmute;
 use ops::Drop;
-use kinds::{Freeze, Send};
+use cmp::{Eq, Ord};
 use clone::{Clone, DeepClone};
-use cell::RefCell;
-use cmp::{Eq, TotalEq, Ord, TotalOrd, Ordering};
+use rt::global_heap::exchange_free;
+use ptr::read_ptr;
+use option::{Option, Some, None};
 
 struct RcBox<T> {
     value: T,
-    count: uint
+    strong: uint,
+    weak: uint
 }
 
 /// Immutable reference counted pointer type
@@ -36,121 +44,28 @@ pub struct Rc<T> {
     priv ptr: *mut RcBox<T>
 }
 
-impl<T: Freeze> Rc<T> {
-    /// Construct a new reference-counted box from a `Freeze` value
-    #[inline]
+impl<T> Rc<T> {
+    /// Construct a new reference-counted box
     pub fn new(value: T) -> Rc<T> {
         unsafe {
-            Rc::new_unchecked(value)
-        }
-    }
-}
-
-impl<T: Send> Rc<T> {
-    /// Construct a new reference-counted box from a `Send` value
-    #[inline]
-    pub fn from_send(value: T) -> Rc<T> {
-        unsafe {
-            Rc::new_unchecked(value)
-        }
-    }
-}
-
-impl<T: Freeze> Rc<RefCell<T>> {
-    /// Construct a new reference-counted box from a `RefCell`-wrapped `Freeze` value
-    #[inline]
-    pub fn from_mut(value: RefCell<T>) -> Rc<RefCell<T>> {
-        unsafe {
-            Rc::new_unchecked(value)
+            Rc { ptr: transmute(~RcBox { value: value, strong: 1, weak: 0 }) }
         }
     }
 }
 
 impl<T> Rc<T> {
-    /// Unsafety construct a new reference-counted box from any value.
-    ///
-    /// It is possible to create cycles, which will leak, and may interact
-    /// poorly with managed pointers.
-    #[inline]
-    pub unsafe fn new_unchecked(value: T) -> Rc<T> {
-        Rc{ptr: transmute(~RcBox{value: value, count: 1})}
-    }
-
     /// Borrow the value contained in the reference-counted box
-    #[inline]
-    pub fn borrow<'r>(&'r self) -> &'r T {
+    #[inline(always)]
+    pub fn borrow<'a>(&'a self) -> &'a T {
         unsafe { &(*self.ptr).value }
     }
 
-    /// Determine if two reference-counted pointers point to the same object
-    #[inline]
-    pub fn ptr_eq(&self, other: &Rc<T>) -> bool {
-        self.ptr == other.ptr
-    }
-}
-
-impl<T: Eq> Eq for Rc<T> {
-    #[inline]
-    fn eq(&self, other: &Rc<T>) -> bool {
-        unsafe { (*self.ptr).value == (*other.ptr).value }
-    }
-
-    #[inline]
-    fn ne(&self, other: &Rc<T>) -> bool {
-        unsafe { (*self.ptr).value != (*other.ptr).value }
-    }
-}
-
-impl<T: TotalEq> TotalEq for Rc<T> {
-    #[inline]
-    fn equals(&self, other: &Rc<T>) -> bool {
-        unsafe { (*self.ptr).value.equals(&(*other.ptr).value) }
-    }
-}
-
-impl<T: Ord> Ord for Rc<T> {
-    #[inline]
-    fn lt(&self, other: &Rc<T>) -> bool {
-        unsafe { (*self.ptr).value < (*other.ptr).value }
-    }
-
-    #[inline]
-    fn le(&self, other: &Rc<T>) -> bool {
-        unsafe { (*self.ptr).value <= (*other.ptr).value }
-    }
-
-    #[inline]
-    fn ge(&self, other: &Rc<T>) -> bool {
-        unsafe { (*self.ptr).value >= (*other.ptr).value }
-    }
-
-    #[inline]
-    fn gt(&self, other: &Rc<T>) -> bool {
-        unsafe { (*self.ptr).value > (*other.ptr).value }
-    }
-}
-
-impl<T: TotalOrd> TotalOrd for Rc<T> {
-    #[inline]
-    fn cmp(&self, other: &Rc<T>) -> Ordering {
-        unsafe { (*self.ptr).value.cmp(&(*other.ptr).value) }
-    }
-}
-
-impl<T> Clone for Rc<T> {
-    #[inline]
-    fn clone(&self) -> Rc<T> {
+    /// Downgrade the reference-counted pointer to a weak reference
+    pub fn downgrade(&self) -> Weak<T> {
         unsafe {
-            (*self.ptr).count += 1;
-            Rc{ptr: self.ptr}
+            (*self.ptr).weak += 1;
+            Weak { ptr: self.ptr }
         }
-    }
-}
-
-impl<T: DeepClone> DeepClone for Rc<T> {
-    #[inline]
-    fn deep_clone(&self) -> Rc<T> {
-        unsafe { Rc::new_unchecked(self.borrow().deep_clone()) }
     }
 }
 
@@ -158,25 +73,112 @@ impl<T: DeepClone> DeepClone for Rc<T> {
 impl<T> Drop for Rc<T> {
     fn drop(&mut self) {
         unsafe {
-            if self.ptr.is_not_null() {
-                (*self.ptr).count -= 1;
-                if (*self.ptr).count == 0 {
-                    let _: ~RcBox<T> = transmute(self.ptr);
+            if self.ptr != 0 as *mut RcBox<T> {
+                (*self.ptr).strong -= 1;
+                if (*self.ptr).strong == 0 {
+                    read_ptr(self.borrow()); // destroy the contained object
+                    if (*self.ptr).weak == 0 {
+                        exchange_free(self.ptr as *mut u8 as *i8)
+                    }
                 }
             }
         }
     }
 }
 
+impl<T> Clone for Rc<T> {
+    #[inline]
+    fn clone(&self) -> Rc<T> {
+        unsafe {
+            (*self.ptr).strong += 1;
+            Rc { ptr: self.ptr }
+        }
+    }
+}
+
+impl<T: DeepClone> DeepClone for Rc<T> {
+    #[inline]
+    fn deep_clone(&self) -> Rc<T> {
+        Rc::new(self.borrow().deep_clone())
+    }
+}
+
+impl<T: Eq> Eq for Rc<T> {
+    #[inline(always)]
+    fn eq(&self, other: &Rc<T>) -> bool { *self.borrow() == *other.borrow() }
+
+    #[inline(always)]
+    fn ne(&self, other: &Rc<T>) -> bool { *self.borrow() != *other.borrow() }
+}
+
+impl<T: Ord> Ord for Rc<T> {
+    #[inline(always)]
+    fn lt(&self, other: &Rc<T>) -> bool { *self.borrow() < *other.borrow() }
+
+    #[inline(always)]
+    fn le(&self, other: &Rc<T>) -> bool { *self.borrow() <= *other.borrow() }
+
+    #[inline(always)]
+    fn gt(&self, other: &Rc<T>) -> bool { *self.borrow() > *other.borrow() }
+
+    #[inline(always)]
+    fn ge(&self, other: &Rc<T>) -> bool { *self.borrow() >= *other.borrow() }
+}
+
+/// Weak reference to a reference-counted box
+#[unsafe_no_drop_flag]
+#[no_send]
+pub struct Weak<T> {
+    priv ptr: *mut RcBox<T>
+}
+
+impl<T> Weak<T> {
+    /// Upgrade a weak reference to a strong reference
+    pub fn upgrade(&self) -> Option<Rc<T>> {
+        unsafe {
+            if (*self.ptr).strong == 0 {
+                None
+            } else {
+                (*self.ptr).strong += 1;
+                Some(Rc { ptr: self.ptr })
+            }
+        }
+    }
+}
+
+#[unsafe_destructor]
+impl<T> Drop for Weak<T> {
+    fn drop(&mut self) {
+        unsafe {
+            if self.ptr != 0 as *mut RcBox<T> {
+                (*self.ptr).weak -= 1;
+                if (*self.ptr).weak == 0 && (*self.ptr).strong == 0 {
+                    exchange_free(self.ptr as *mut u8 as *i8)
+                }
+            }
+        }
+    }
+}
+
+impl<T> Clone for Weak<T> {
+    #[inline]
+    fn clone(&self) -> Weak<T> {
+        unsafe {
+            (*self.ptr).weak += 1;
+            Weak { ptr: self.ptr }
+        }
+    }
+}
+
 #[cfg(test)]
-mod test_rc {
+mod tests {
     use prelude::*;
     use super::*;
     use cell::RefCell;
 
     #[test]
     fn test_clone() {
-        let x = Rc::from_send(RefCell::new(5));
+        let x = Rc::new(RefCell::new(5));
         let y = x.clone();
         x.borrow().with_mut(|inner| {
             *inner = 20;
@@ -186,7 +188,7 @@ mod test_rc {
 
     #[test]
     fn test_deep_clone() {
-        let x = Rc::from_send(RefCell::new(5));
+        let x = Rc::new(RefCell::new(5));
         let y = x.deep_clone();
         x.borrow().with_mut(|inner| {
             *inner = 20;
@@ -210,13 +212,22 @@ mod test_rc {
 
     #[test]
     fn test_destructor() {
-        let x = Rc::from_send(~5);
+        let x = Rc::new(~5);
         assert_eq!(**x.borrow(), 5);
     }
 
     #[test]
-    fn test_from_mut() {
-        let a = 10;
-        let _x = Rc::from_mut(RefCell::new(&a));
+    fn test_live() {
+        let x = Rc::new(5);
+        let y = x.downgrade();
+        assert!(y.upgrade().is_some());
+    }
+
+    #[test]
+    fn test_dead() {
+        let x = Rc::new(5);
+        let y = x.downgrade();
+        drop(x);
+        assert!(y.upgrade().is_none());
     }
 }

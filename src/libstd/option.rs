@@ -509,7 +509,7 @@ mod tests {
             }
         }
 
-        let i = Rc::from_send(RefCell::new(0));
+        let i = Rc::new(RefCell::new(0));
         {
             let x = R(i.clone());
             let opt = Some(x);
