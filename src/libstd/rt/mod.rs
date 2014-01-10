@@ -154,7 +154,8 @@ pub trait Runtime {
     // you're in.
     fn spawn_sibling(~self, cur_task: ~Task, opts: TaskOpts, f: proc());
     fn local_io<'a>(&'a mut self) -> Option<rtio::LocalIo<'a>>;
-    fn stack_bounds(&self) -> Option<(uint, uint)>; // (lo, hi)
+    /// The (low, high) edges of the current stack.
+    fn stack_bounds(&self) -> (uint, uint); // (lo, hi)
 
     // XXX: This is a serious code smell and this should not exist at all.
     fn wrap(~self) -> ~Any;

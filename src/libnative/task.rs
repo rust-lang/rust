@@ -30,9 +30,11 @@ use task;
 use bookeeping;
 
 /// Creates a new Task which is ready to execute as a 1:1 task.
-pub fn new() -> ~Task {
+pub fn new(stack_bounds: (uint, uint)) -> ~Task {
     let mut task = ~Task::new();
-    task.put_runtime(ops() as ~rt::Runtime);
+    let mut ops = ops();
+    ops.stack_bounds = stack_bounds;
+    task.put_runtime(ops as ~rt::Runtime);
     return task;
 }
 
@@ -41,7 +43,8 @@ fn ops() -> ~Ops {
         lock: unsafe { Mutex::new() },
         awoken: false,
         io: io::IoFactory::new(),
-        stack_bounds: None,
+        // these *should* get overwritten
+        stack_bounds: (0, 0),
     }
 }
 
@@ -95,7 +98,7 @@ pub fn spawn_opts(opts: TaskOpts, f: proc()) {
             stack::record_stack_bounds(my_stack - stack + 1024, my_stack);
         }
         let mut ops = ops;
-        ops.stack_bounds = Some((my_stack - stack + 1024, my_stack));
+        ops.stack_bounds = (my_stack - stack + 1024, my_stack);
 
         let mut f = Some(f);
         let mut task = task;
@@ -115,7 +118,7 @@ struct Ops {
     // This field holds the known bounds of the stack in (lo, hi) form. Not all
     // native tasks necessarily know their precise bounds, hence this is
     // optional.
-    stack_bounds: Option<(uint, uint)>,
+    stack_bounds: (uint, uint),
 }
 
 impl rt::Runtime for Ops {
@@ -137,7 +140,7 @@ impl rt::Runtime for Ops {
         self as ~Any
     }
 
-    fn stack_bounds(&self) -> Option<(uint, uint)> { self.stack_bounds }
+    fn stack_bounds(&self) -> (uint, uint) { self.stack_bounds }
 
     // This function gets a little interesting. There are a few safety and
     // ownership violations going on here, but this is all done in the name of
