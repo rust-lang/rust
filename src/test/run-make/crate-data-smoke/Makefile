@@ -1,7 +1,7 @@
 -include ../tools.mk
 
 all:
-	[ `$(RUSTC) --crate-id crate.rs` = "foo#0.9" ]
+	[ `$(RUSTC) --crate-id crate.rs` = "foo#0.10-pre" ]
 	[ `$(RUSTC) --crate-name crate.rs` = "foo" ]
 	[ `$(RUSTC) --crate-file-name crate.rs` = "foo" ]
 	[ `$(RUSTC) --crate-file-name --lib --test crate.rs` = "foo" ]
