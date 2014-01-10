@@ -80,7 +80,7 @@ type parameter).
 use middle::const_eval;
 use middle::lang_items::{ExchangeHeapLangItem, GcLangItem};
 use middle::lang_items::{ManagedHeapLangItem};
-use middle::lint::unreachable_code;
+use middle::lint::UnreachableCode;
 use middle::pat_util::pat_id_map;
 use middle::pat_util;
 use middle::subst::Subst;
@@ -3491,7 +3491,7 @@ pub fn check_block_with_expected(fcx: @FnCtxt,
                   }
                   _ => false
                 } {
-                fcx.ccx.tcx.sess.add_lint(unreachable_code, s_id, s.span,
+                fcx.ccx.tcx.sess.add_lint(UnreachableCode, s_id, s.span,
                                           ~"unreachable statement");
                 warned = true;
             }
@@ -3513,7 +3513,7 @@ pub fn check_block_with_expected(fcx: @FnCtxt,
             },
           Some(e) => {
             if any_bot && !warned {
-                fcx.ccx.tcx.sess.add_lint(unreachable_code, e.id, e.span,
+                fcx.ccx.tcx.sess.add_lint(UnreachableCode, e.id, e.span,
                                           ~"unreachable expression");
             }
             check_expr_with_opt_hint(fcx, e, expected);
