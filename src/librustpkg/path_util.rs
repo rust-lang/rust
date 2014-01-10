@@ -12,9 +12,8 @@
 
 #[allow(dead_code)];
 
-pub use crate_id::CrateId;
 pub use target::{OutputType, Main, Lib, Test, Bench, Target, Build, Install};
-pub use version::{Version, split_version, split_version_general, try_parsing_version};
+pub use version::{Version, split_version_general};
 pub use rustc::metadata::filesearch::rust_path;
 
 use std::libc;
@@ -22,6 +21,9 @@ use std::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
 use std::os;
 use std::io;
 use std::io::fs;
+use extra::hex::ToHex;
+use syntax::crateid::CrateId;
+use rustc::util::sha2::{Digest, Sha256};
 use rustc::metadata::filesearch::{libdir, relative_target_lib_path};
 use rustc::driver::driver::host_triple;
 use messages::*;
@@ -77,13 +79,13 @@ pub fn workspace_contains_crate_id_(crateid: &CrateId, workspace: &Path,
     let mut found = None;
     for p in fs::walk_dir(&src_dir) {
         if p.is_dir() {
-            if p == src_dir.join(&crateid.path) || {
+            if p == src_dir.join(crateid.path.as_slice()) || {
                 let pf = p.filename_str();
                 pf.iter().any(|&g| {
                     match split_version_general(g, '-') {
                         None => false,
                         Some((ref might_match, ref vers)) => {
-                            *might_match == crateid.short_name
+                            *might_match == crateid.name
                                 && (crateid.version == *vers || crateid.version == None)
                         }
                     }
@@ -178,33 +180,39 @@ pub fn built_library_in_workspace(crateid: &CrateId, workspace: &Path) -> Option
 /// Does the actual searching stuff
 pub fn installed_library_in_workspace(crate_id: &CrateId, workspace: &Path) -> Option<Path> {
     // This could break once we're handling multiple versions better -- I should add a test for it
-    // FIXME (#9639): This needs to handle non-utf8 paths
-    match crate_id.path.filename_str() {
+    let path = Path::new(crate_id.path.as_slice());
+    match path.filename_str() {
         None => None,
         Some(_short_name) => library_in_workspace(crate_id, Install, workspace)
     }
 }
 
 /// `workspace` is used to figure out the directory to search.
-/// `short_name` is taken as the link name of the library.
+/// `name` is taken as the link name of the library.
 pub fn library_in_workspace(crate_id: &CrateId, where: Target, workspace: &Path) -> Option<Path> {
     debug!("library_in_workspace: checking whether a library named {} exists",
-           crate_id.short_name);
+           crate_id.name);
 
     let dir_to_search = match where {
-        Build => target_build_dir(workspace).join(&crate_id.path),
+        Build => target_build_dir(workspace).join(crate_id.path.as_slice()),
         Install => target_lib_dir(workspace)
     };
 
     library_in(crate_id, &dir_to_search)
 }
 
-pub fn system_library(sysroot: &Path, crate_id: &str) -> Option<Path> {
-    library_in(&CrateId::new(crate_id), &sysroot.join(relative_target_lib_path(host_triple())))
+pub fn system_library(sysroot: &Path, crate_id: &CrateId) -> Option<Path> {
+    library_in(crate_id, &sysroot.join(relative_target_lib_path(host_triple())))
 }
 
 fn library_in(crate_id: &CrateId, dir_to_search: &Path) -> Option<Path> {
-    let lib_name = crate_id.to_lib_name();
+    let mut hasher = Sha256::new();
+    hasher.reset();
+    hasher.input_str(crate_id.to_str());
+    let hash = hasher.result_bytes().to_hex();
+    let hash = hash.slice_chars(0, 8);
+
+    let lib_name = format!("{}-{}-{}", crate_id.name, hash, crate_id.version_or_default());
     let filenames = [
         format!("{}{}.{}", "lib", lib_name, "rlib"),
         format!("{}{}{}", os::consts::DLL_PREFIX, lib_name, os::consts::DLL_SUFFIX),
@@ -219,7 +227,7 @@ fn library_in(crate_id: &CrateId, dir_to_search: &Path) -> Option<Path> {
         }
     }
     debug!("warning: library_in_workspace didn't find a library in {} for {}",
-           dir_to_search.display(), crate_id.short_name);
+           dir_to_search.display(), crate_id.to_str());
     return None;
 }
 
@@ -271,7 +279,7 @@ fn target_file_in_workspace(crateid: &CrateId, workspace: &Path,
     // Artifacts in the build directory live in a package-ID-specific subdirectory,
     // but installed ones don't.
     let result = match (where, what) {
-                (Build, _)      => target_build_dir(workspace).join(&crateid.path),
+                (Build, _)      => target_build_dir(workspace).join(crateid.path.as_slice()),
                 (Install, Lib)  => target_lib_dir(workspace),
                 (Install, _)    => target_bin_dir(workspace)
     };
@@ -287,7 +295,7 @@ fn target_file_in_workspace(crateid: &CrateId, workspace: &Path,
 /// Creates it if it doesn't exist.
 pub fn build_pkg_id_in_workspace(crateid: &CrateId, workspace: &Path) -> Path {
     let mut result = target_build_dir(workspace);
-    result.push(&crateid.path);
+    result.push(crateid.path.as_slice());
     debug!("Creating build dir {} for package id {}", result.display(),
            crateid.to_str());
     fs::mkdir_recursive(&result, io::UserRWX);
@@ -297,24 +305,24 @@ pub fn build_pkg_id_in_workspace(crateid: &CrateId, workspace: &Path) -> Path {
 /// Return the output file for a given directory name,
 /// given whether we're building a library and whether we're building tests
 pub fn mk_output_path(what: OutputType, where: Target,
-                      pkg_id: &CrateId, workspace: Path) -> Path {
-    let short_name_with_version = pkg_id.short_name_with_version();
+                      crate_id: &CrateId, workspace: Path) -> Path {
+    let short_name_with_version = crate_id.short_name_with_version();
     // Not local_path.dir_path()! For package foo/bar/blat/, we want
     // the executable blat-0.5 to live under blat/
     let dir = match where {
         // If we're installing, it just goes under <workspace>...
         Install => workspace,
         // and if we're just building, it goes in a package-specific subdir
-        Build => workspace.join(&pkg_id.path)
+        Build => workspace.join(crate_id.path.as_slice())
     };
-    debug!("[{:?}:{:?}] mk_output_path: short_name = {}, path = {}", what, where,
-           if what == Lib { short_name_with_version.clone() } else { pkg_id.short_name.clone() },
+    debug!("[{:?}:{:?}] mk_output_path: name = {}, path = {}", what, where,
+           if what == Lib { short_name_with_version.clone() } else { crate_id.name.clone() },
            dir.display());
     let mut output_path = match what {
         // this code is duplicated from elsewhere; fix this
         Lib => dir.join(os::dll_filename(short_name_with_version)),
         // executable names *aren't* versioned
-        _ => dir.join(format!("{}{}{}", pkg_id.short_name,
+        _ => dir.join(format!("{}{}{}", crate_id.name,
                            match what {
                                Test => "test",
                                Bench => "bench",
@@ -361,11 +369,12 @@ fn dir_has_file(dir: &Path, file: &str) -> bool {
 
 pub fn find_dir_using_rust_path_hack(p: &CrateId) -> Option<Path> {
     let rp = rust_path();
+    let path = Path::new(p.path.as_slice());
     for dir in rp.iter() {
         // Require that the parent directory match the package ID
         // Note that this only matches if the package ID being searched for
         // has a name that's a single component
-        if dir.ends_with_path(&p.path) || dir.ends_with_path(&versionize(&p.path, &p.version)) {
+        if dir.ends_with_path(&path) || dir.ends_with_path(&versionize(p.path, &p.version)) {
             debug!("In find_dir_using_rust_path_hack: checking dir {}", dir.display());
             if dir_has_crate_file(dir) {
                 debug!("Did find id {} in dir {}", p.to_str(), dir.display());
@@ -387,7 +396,8 @@ pub fn user_set_rust_path() -> bool {
 }
 
 /// Append the version string onto the end of the path's filename
-pub fn versionize(p: &Path, v: &Version) -> Path {
+pub fn versionize(p: &str, v: &Version) -> Path {
+    let p = Path::new(p);
     let q = p.filename().expect("path is a directory");
     let mut q = q.to_owned();
     q.push('-' as u8);
