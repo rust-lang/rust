@@ -68,43 +68,43 @@ use syntax::ast_util::IdVisitingOperation;
 use syntax::visit::Visitor;
 
 #[deriving(Clone, Eq, Ord, TotalEq, TotalOrd)]
-pub enum lint {
-    ctypes,
-    unused_imports,
-    unnecessary_qualification,
-    while_true,
-    path_statement,
-    unrecognized_lint,
-    non_camel_case_types,
-    non_uppercase_statics,
-    non_uppercase_pattern_statics,
-    type_limits,
-    type_overflow,
-    unused_unsafe,
-    unsafe_block,
-    attribute_usage,
-    unknown_features,
-    unknown_crate_type,
+pub enum Lint {
+    CTypes,
+    UnusedImports,
+    UnnecessaryQualification,
+    WhileTrue,
+    PathStatement,
+    UnrecognizedLint,
+    NonCamelCaseTypes,
+    NonUppercaseStatics,
+    NonUppercasePatternStatics,
+    TypeLimits,
+    TypeOverflow,
+    UnusedUnsafe,
+    UnsafeBlock,
+    AttributeUsage,
+    UnknownFeatures,
+    UnknownCrateType,
 
-    managed_heap_memory,
-    owned_heap_memory,
-    heap_memory,
+    ManagedHeapMemory,
+    OwnedHeapMemory,
+    HeapMemory,
 
-    unused_variable,
-    dead_assignment,
-    unused_mut,
-    unnecessary_allocation,
-    dead_code,
-    unnecessary_typecast,
+    UnusedVariable,
+    DeadAssignment,
+    UnusedMut,
+    UnnecessaryAllocation,
+    DeadCode,
+    UnnecessaryTypecast,
 
-    missing_doc,
-    unreachable_code,
+    MissingDoc,
+    UnreachableCode,
 
-    deprecated,
-    experimental,
-    unstable,
+    Deprecated,
+    Experimental,
+    Unstable,
 
-    warnings,
+    Warnings,
 }
 
 pub fn level_to_str(lv: level) -> &'static str {
@@ -124,7 +124,7 @@ pub enum level {
 #[deriving(Clone, Eq, Ord, TotalEq, TotalOrd)]
 pub struct LintSpec {
     default: level,
-    lint: lint,
+    lint: Lint,
     desc: &'static str,
 }
 
@@ -140,98 +140,98 @@ enum LintSource {
 static lint_table: &'static [(&'static str, LintSpec)] = &[
     ("ctypes",
      LintSpec {
-        lint: ctypes,
+        lint: CTypes,
         desc: "proper use of std::libc types in foreign modules",
         default: warn
      }),
 
     ("unused_imports",
      LintSpec {
-        lint: unused_imports,
+        lint: UnusedImports,
         desc: "imports that are never used",
         default: warn
      }),
 
     ("unnecessary_qualification",
      LintSpec {
-        lint: unnecessary_qualification,
+        lint: UnnecessaryQualification,
         desc: "detects unnecessarily qualified names",
         default: allow
      }),
 
     ("while_true",
      LintSpec {
-        lint: while_true,
+        lint: WhileTrue,
         desc: "suggest using loop { } instead of while(true) { }",
         default: warn
      }),
 
     ("path_statement",
      LintSpec {
-        lint: path_statement,
+        lint: PathStatement,
         desc: "path statements with no effect",
         default: warn
      }),
 
     ("unrecognized_lint",
      LintSpec {
-        lint: unrecognized_lint,
+        lint: UnrecognizedLint,
         desc: "unrecognized lint attribute",
         default: warn
      }),
 
     ("non_camel_case_types",
      LintSpec {
-        lint: non_camel_case_types,
+        lint: NonCamelCaseTypes,
         desc: "types, variants and traits should have camel case names",
         default: allow
      }),
 
     ("non_uppercase_statics",
      LintSpec {
-         lint: non_uppercase_statics,
+         lint: NonUppercaseStatics,
          desc: "static constants should have uppercase identifiers",
          default: allow
      }),
 
     ("non_uppercase_pattern_statics",
      LintSpec {
-         lint: non_uppercase_pattern_statics,
+         lint: NonUppercasePatternStatics,
          desc: "static constants in match patterns should be all caps",
          default: warn
      }),
 
     ("managed_heap_memory",
      LintSpec {
-        lint: managed_heap_memory,
+        lint: ManagedHeapMemory,
         desc: "use of managed (@ type) heap memory",
         default: allow
      }),
 
     ("owned_heap_memory",
      LintSpec {
-        lint: owned_heap_memory,
+        lint: OwnedHeapMemory,
         desc: "use of owned (~ type) heap memory",
         default: allow
      }),
 
     ("heap_memory",
      LintSpec {
-        lint: heap_memory,
+        lint: HeapMemory,
         desc: "use of any (~ type or @ type) heap memory",
         default: allow
      }),
 
     ("type_limits",
      LintSpec {
-        lint: type_limits,
+        lint: TypeLimits,
         desc: "comparisons made useless by limits of the types involved",
         default: warn
      }),
 
     ("type_overflow",
      LintSpec {
-        lint: type_overflow,
+        lint: TypeOverflow,
         desc: "literal out of range for its type",
         default: warn
      }),
@@ -239,118 +239,118 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
 
     ("unused_unsafe",
      LintSpec {
-        lint: unused_unsafe,
+        lint: UnusedUnsafe,
         desc: "unnecessary use of an `unsafe` block",
         default: warn
     }),
 
     ("unsafe_block",
      LintSpec {
-        lint: unsafe_block,
+        lint: UnsafeBlock,
         desc: "usage of an `unsafe` block",
         default: allow
     }),
 
     ("attribute_usage",
      LintSpec {
-        lint: attribute_usage,
+        lint: AttributeUsage,
         desc: "detects bad use of attributes",
         default: warn
     }),
 
     ("unused_variable",
      LintSpec {
-        lint: unused_variable,
+        lint: UnusedVariable,
         desc: "detect variables which are not used in any way",
         default: warn
     }),
 
     ("dead_assignment",
      LintSpec {
-        lint: dead_assignment,
+        lint: DeadAssignment,
         desc: "detect assignments that will never be read",
         default: warn
     }),
 
     ("unnecessary_typecast",
      LintSpec {
-        lint: unnecessary_typecast,
+        lint: UnnecessaryTypecast,
         desc: "detects unnecessary type casts, that can be removed",
         default: allow,
     }),
 
     ("unused_mut",
      LintSpec {
-        lint: unused_mut,
+        lint: UnusedMut,
         desc: "detect mut variables which don't need to be mutable",
         default: warn
     }),
 
     ("unnecessary_allocation",
      LintSpec {
-        lint: unnecessary_allocation,
+        lint: UnnecessaryAllocation,
         desc: "detects unnecessary allocations that can be eliminated",
         default: warn
     }),
 
     ("dead_code",
      LintSpec {
-        lint: dead_code,
+        lint: DeadCode,
         desc: "detect piece of code that will never be used",
         default: warn
     }),
 
     ("missing_doc",
      LintSpec {
-        lint: missing_doc,
+        lint: MissingDoc,
         desc: "detects missing documentation for public members",
         default: allow
     }),
 
     ("unreachable_code",
      LintSpec {
-        lint: unreachable_code,
+        lint: UnreachableCode,
         desc: "detects unreachable code",
         default: warn
     }),
 
     ("deprecated",
      LintSpec {
-        lint: deprecated,
+        lint: Deprecated,
         desc: "detects use of #[deprecated] items",
         default: warn
     }),
 
     ("experimental",
      LintSpec {
-        lint: experimental,
+        lint: Experimental,
         desc: "detects use of #[experimental] items",
         default: warn
     }),
 
     ("unstable",
      LintSpec {
-        lint: unstable,
+        lint: Unstable,
         desc: "detects use of #[unstable] items (incl. items with no stability attribute)",
         default: allow
     }),
 
     ("warnings",
      LintSpec {
-        lint: warnings,
+        lint: Warnings,
         desc: "mass-change the level for lints which produce warnings",
         default: warn
     }),
 
     ("unknown_features",
      LintSpec {
-        lint: unknown_features,
+        lint: UnknownFeatures,
         desc: "unknown features found in crate-level #[feature] directives",
         default: deny,
     }),
      ("unknown_crate_type",
      LintSpec {
-         lint: unknown_crate_type,
+         lint: UnknownCrateType,
          desc: "unknown crate type found in #[crate_type] directive",
          default: deny,
      }),
@@ -389,28 +389,28 @@ struct Context<'a> {
     // When recursing into an attributed node of the ast which modifies lint
     // levels, this stack keeps track of the previous lint levels of whatever
     // was modified.
-    lint_stack: ~[(lint, level, LintSource)],
+    lint_stack: ~[(Lint, level, LintSource)],
 
     // id of the last visited negated expression
     negated_expr_id: ast::NodeId
 }
 
 impl<'a> Context<'a> {
-    fn get_level(&self, lint: lint) -> level {
+    fn get_level(&self, lint: Lint) -> level {
         match self.cur.find(&(lint as uint)) {
           Some(&(lvl, _)) => lvl,
           None => allow
         }
     }
 
-    fn get_source(&self, lint: lint) -> LintSource {
+    fn get_source(&self, lint: Lint) -> LintSource {
         match self.cur.find(&(lint as uint)) {
           Some(&(_, src)) => src,
           None => Default
         }
     }
 
-    fn set_level(&mut self, lint: lint, level: level, src: LintSource) {
+    fn set_level(&mut self, lint: Lint, level: level, src: LintSource) {
         if level == allow {
             self.cur.remove(&(lint as uint));
         } else {
@@ -418,7 +418,7 @@ impl<'a> Context<'a> {
         }
     }
 
-    fn lint_to_str(&self, lint: lint) -> &'static str {
+    fn lint_to_str(&self, lint: Lint) -> &'static str {
         for (k, v) in self.dict.iter() {
             if v.lint == lint {
                 return *k;
@@ -427,10 +427,10 @@ impl<'a> Context<'a> {
         fail!("unregistered lint {:?}", lint);
     }
 
-    fn span_lint(&self, lint: lint, span: Span, msg: &str) {
+    fn span_lint(&self, lint: Lint, span: Span, msg: &str) {
         let (level, src) = match self.cur.find(&(lint as uint)) {
             None => { return }
-            Some(&(warn, src)) => (self.get_level(warnings), src),
+            Some(&(warn, src)) => (self.get_level(Warnings), src),
             Some(&pair) => pair,
         };
         if level == allow { return }
@@ -481,7 +481,7 @@ impl<'a> Context<'a> {
             match self.dict.find_equiv(&lintname) {
                 None => {
                     self.span_lint(
-                        unrecognized_lint,
+                        UnrecognizedLint,
                         meta.span,
                         format!("unknown `{}` attribute: `{}`",
                         level_to_str(level), lintname));
@@ -571,7 +571,7 @@ fn check_while_true_expr(cx: &Context, e: &ast::Expr) {
                 ast::ExprLit(@codemap::Spanned {
                     node: ast::LitBool(true), ..}) =>
                 {
-                    cx.span_lint(while_true, e.span,
+                    cx.span_lint(WhileTrue, e.span,
                                  "denote infinite loops with loop { ... }");
                 }
                 _ => ()
@@ -604,7 +604,7 @@ fn check_unused_casts(cx: &Context, e: &ast::Expr) {
             let infcx: @infer::InferCtxt = infer::new_infer_ctxt(cx.tcx);
             let t_t = ast_ty_to_ty(cx, &infcx, ty);
             if  ty::get(ty::expr_ty(cx.tcx, expr)).sty == ty::get(t_t).sty {
-                cx.span_lint(unnecessary_typecast, ty.span,
+                cx.span_lint(UnnecessaryTypecast, ty.span,
                              "unnecessary type cast");
             }
         }
@@ -616,7 +616,7 @@ fn check_type_limits(cx: &Context, e: &ast::Expr) {
     return match e.node {
         ast::ExprBinary(_, binop, l, r) => {
             if is_comparison(binop) && !check_limits(cx.tcx, binop, l, r) {
-                cx.span_lint(type_limits, e.span,
+                cx.span_lint(TypeLimits, e.span,
                              "comparison is useless due to type limits");
             }
         },
@@ -637,7 +637,7 @@ fn check_type_limits(cx: &Context, e: &ast::Expr) {
                         lit_val *= -1;
                     }
                     if  lit_val < min || lit_val > max {
-                        cx.span_lint(type_overflow, e.span,
+                        cx.span_lint(TypeOverflow, e.span,
                                      "literal out of range for its type");
                     }
                 },
@@ -653,7 +653,7 @@ fn check_type_limits(cx: &Context, e: &ast::Expr) {
                         _ => fail!()
                     };
                     if  lit_val < min || lit_val > max {
-                        cx.span_lint(type_overflow, e.span,
+                        cx.span_lint(TypeOverflow, e.span,
                                      "literal out of range for its type");
                     }
                 },
@@ -765,18 +765,18 @@ fn check_item_ctypes(cx: &Context, it: &ast::Item) {
                 let def_map = cx.tcx.def_map.borrow();
                 match def_map.get().get_copy(&id) {
                     ast::DefPrimTy(ast::TyInt(ast::TyI)) => {
-                        cx.span_lint(ctypes, ty.span,
+                        cx.span_lint(CTypes, ty.span,
                                 "found rust type `int` in foreign module, while \
                                 libc::c_int or libc::c_long should be used");
                     }
                     ast::DefPrimTy(ast::TyUint(ast::TyU)) => {
-                        cx.span_lint(ctypes, ty.span,
+                        cx.span_lint(CTypes, ty.span,
                                 "found rust type `uint` in foreign module, while \
                                 libc::c_uint or libc::c_ulong should be used");
                     }
                     ast::DefTy(def_id) => {
                         if !adt::is_ffi_safe(cx.tcx, def_id) {
-                            cx.span_lint(ctypes, ty.span,
+                            cx.span_lint(CTypes, ty.span,
                                          "found enum type without foreign-function-safe \
                                           representation annotation in foreign module");
                             // hmm... this message could be more helpful
@@ -811,7 +811,7 @@ fn check_item_ctypes(cx: &Context, it: &ast::Item) {
 }
 
 fn check_heap_type(cx: &Context, span: Span, ty: ty::t) {
-    let xs = [managed_heap_memory, owned_heap_memory, heap_memory];
+    let xs = [ManagedHeapMemory, OwnedHeapMemory, HeapMemory];
     for &lint in xs.iter() {
         if cx.get_level(lint) == allow { continue }
 
@@ -838,13 +838,13 @@ fn check_heap_type(cx: &Context, span: Span, ty: ty::t) {
             t
         });
 
-        if n_uniq > 0 && lint != managed_heap_memory {
+        if n_uniq > 0 && lint != ManagedHeapMemory {
             let s = ty_to_str(cx.tcx, ty);
             let m = format!("type uses owned (~ type) pointers: {}", s);
             cx.span_lint(lint, span, m);
         }
 
-        if n_box > 0 && lint != owned_heap_memory {
+        if n_box > 0 && lint != OwnedHeapMemory {
             let s = ty_to_str(cx.tcx, ty);
             let m = format!("type uses managed (@ type) pointers: {}", s);
             cx.span_lint(lint, span, m);
@@ -918,7 +918,7 @@ fn check_crate_attrs_usage(cx: &Context, attrs: &[ast::Attribute]) {
         let name = attr.node.value.name();
         let mut iter = crate_attrs.iter().chain(other_attrs.iter());
         if !iter.any(|other_attr| { name.equiv(other_attr) }) {
-            cx.span_lint(attribute_usage, attr.span, "unknown crate attribute");
+            cx.span_lint(AttributeUsage, attr.span, "unknown crate attribute");
         }
         if name.equiv(& &"link") {
             cx.tcx.sess.span_err(attr.span,
@@ -941,21 +941,21 @@ fn check_attrs_usage(cx: &Context, attrs: &[ast::Attribute]) {
                                        add semicolon at end",
                     ast::AttrInner => "crate-level attribute should be in the root module",
                 };
-                cx.span_lint(attribute_usage, attr.span, msg);
+                cx.span_lint(AttributeUsage, attr.span, msg);
                 return;
             }
         }
 
         for &(obs_attr, obs_alter) in obsolete_attrs.iter() {
             if name.equiv(&obs_attr) {
-                cx.span_lint(attribute_usage, attr.span,
+                cx.span_lint(AttributeUsage, attr.span,
                              format!("obsolete attribute: {:s}", obs_alter));
                 return;
             }
         }
 
         if !other_attrs.iter().any(|other_attr| { name.equiv(other_attr) }) {
-            cx.span_lint(attribute_usage, attr.span, "unknown attribute");
+            cx.span_lint(AttributeUsage, attr.span, "unknown attribute");
         }
     }
 }
@@ -968,7 +968,7 @@ fn check_heap_expr(cx: &Context, e: &ast::Expr) {
 fn check_path_statement(cx: &Context, s: &ast::Stmt) {
     match s.node {
         ast::StmtSemi(@ast::Expr { node: ast::ExprPath(_), .. }, _) => {
-            cx.span_lint(path_statement, s.span,
+            cx.span_lint(PathStatement, s.span,
                          "path statement with no effect");
         }
         _ => ()
@@ -990,7 +990,7 @@ fn check_item_non_camel_case_types(cx: &Context, it: &ast::Item) {
     fn check_case(cx: &Context, sort: &str, ident: ast::Ident, span: Span) {
         if !is_camel_case(cx.tcx, ident) {
             cx.span_lint(
-                non_camel_case_types, span,
+                NonCamelCaseTypes, span,
                 format!("{} `{}` should have a camel case identifier",
                     sort, cx.tcx.sess.str_of(ident)));
         }
@@ -1022,7 +1022,7 @@ fn check_item_non_uppercase_statics(cx: &Context, it: &ast::Item) {
             // ones (some scripts don't have a concept of
             // upper/lowercase)
             if s.chars().any(|c| c.is_lowercase()) {
-                cx.span_lint(non_uppercase_statics, it.span,
+                cx.span_lint(NonUppercaseStatics, it.span,
                              "static constant should have an uppercase identifier");
             }
         }
@@ -1039,7 +1039,7 @@ fn check_pat_non_uppercase_statics(cx: &Context, p: &ast::Pat) {
             let ident = path.segments.last().identifier;
             let s = cx.tcx.sess.str_of(ident);
             if s.chars().any(|c| c.is_lowercase()) {
-                cx.span_lint(non_uppercase_pattern_statics, path.span,
+                cx.span_lint(NonUppercasePatternStatics, path.span,
                              "static constant in pattern should be all caps");
             }
         }
@@ -1054,7 +1054,7 @@ fn check_unused_unsafe(cx: &Context, e: &ast::Expr) {
             let used_unsafe = cx.tcx.used_unsafe.borrow();
             if blk.rules == ast::UnsafeBlock(ast::UserProvided) &&
                 !used_unsafe.get().contains(&blk.id) {
-                cx.span_lint(unused_unsafe, blk.span,
+                cx.span_lint(UnusedUnsafe, blk.span,
                              "unnecessary `unsafe` block");
             }
         }
@@ -1066,7 +1066,7 @@ fn check_unsafe_block(cx: &Context, e: &ast::Expr) {
     match e.node {
         // Don't warn about generated blocks, that'll just pollute the output.
         ast::ExprBlock(ref blk) if blk.rules == ast::UnsafeBlock(ast::UserProvided) => {
-            cx.span_lint(unsafe_block, blk.span, "usage of an `unsafe` block");
+            cx.span_lint(UnsafeBlock, blk.span, "usage of an `unsafe` block");
         }
         _ => ()
     }
@@ -1090,7 +1090,7 @@ fn check_unused_mut_pat(cx: &Context, p: &ast::Pat) {
 
             let used_mut_nodes = cx.tcx.used_mut_nodes.borrow();
             if !initial_underscore && !used_mut_nodes.get().contains(&p.id) {
-                cx.span_lint(unused_mut, p.span,
+                cx.span_lint(UnusedMut, p.span,
                              "variable does not need to be mutable");
             }
         }
@@ -1122,7 +1122,7 @@ fn check_unnecessary_allocation(cx: &Context, e: &ast::Expr) {
     };
 
     let report = |msg| {
-        cx.span_lint(unnecessary_allocation, e.span, msg);
+        cx.span_lint(UnnecessaryAllocation, e.span, msg);
     };
 
     let adjustment = {
@@ -1175,7 +1175,7 @@ fn check_missing_doc_attrs(cx: &Context,
         }
     });
     if !has_doc {
-        cx.span_lint(missing_doc, sp,
+        cx.span_lint(MissingDoc, sp,
                      format!("missing documentation for {}", desc));
     }
 }
@@ -1322,13 +1322,13 @@ fn check_stability(cx: &Context, e: &ast::Expr) {
 
     let (lint, label) = match stability {
         // no stability attributes == Unstable
-        None => (unstable, "unmarked"),
+        None => (Unstable, "unmarked"),
         Some(attr::Stability { level: attr::Unstable, .. }) =>
-                (unstable, "unstable"),
+                (Unstable, "unstable"),
         Some(attr::Stability { level: attr::Experimental, .. }) =>
-                (experimental, "experimental"),
+                (Experimental, "experimental"),
         Some(attr::Stability { level: attr::Deprecated, .. }) =>
-                (deprecated, "deprecated"),
+                (Deprecated, "deprecated"),
         _ => return
     };
 

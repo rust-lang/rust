@@ -103,7 +103,7 @@
  */
 
 
-use middle::lint::{unused_variable, dead_assignment};
+use middle::lint::{UnusedVariable, DeadAssignment};
 use middle::pat_util;
 use middle::ty;
 use middle::typeck;
@@ -1705,11 +1705,11 @@ impl Liveness {
                 };
 
                 if is_assigned {
-                    self.tcx.sess.add_lint(unused_variable, id, sp,
+                    self.tcx.sess.add_lint(UnusedVariable, id, sp,
                         format!("variable `{}` is assigned to, \
                                   but never used", *name));
                 } else {
-                    self.tcx.sess.add_lint(unused_variable, id, sp,
+                    self.tcx.sess.add_lint(UnusedVariable, id, sp,
                         format!("unused variable: `{}`", *name));
                 }
             }
@@ -1727,7 +1727,7 @@ impl Liveness {
         if self.live_on_exit(ln, var).is_none() {
             let r = self.should_warn(var);
             for name in r.iter() {
-                self.tcx.sess.add_lint(dead_assignment, id, sp,
+                self.tcx.sess.add_lint(DeadAssignment, id, sp,
                     format!("value assigned to `{}` is never read", *name));
             }
         }
