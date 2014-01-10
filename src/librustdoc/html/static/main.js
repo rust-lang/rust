@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -11,7 +11,7 @@
 /*jslint browser: true, es5: true */
 /*globals $: true, searchIndex: true, rootPath: true, allPaths: true */
 
-(function () {
+(function() {
     "use strict";
     var resizeTimeout, interval;
 
@@ -21,9 +21,9 @@
         if (resizeTimeout) {
             clearTimeout(resizeTimeout);
         }
-        resizeTimeout = setTimeout(function () {
+        resizeTimeout = setTimeout(function() {
             var contentWidth = $('.content').width();
-            $('.docblock.short').width(function () {
+            $('.docblock.short').width(function() {
                 return contentWidth - 40 - $(this).prev().width();
             }).addClass('nowrap');
         }, 150);
@@ -50,7 +50,7 @@
     highlightSourceLines();
     $(window).on('hashchange', highlightSourceLines);
 
-    $(document).on('keyup', function (e) {
+    $(document).on('keyup', function(e) {
         if (document.activeElement.tagName === 'INPUT') {
             return;
         }
@@ -71,13 +71,13 @@
             e.preventDefault();
             $('.search-input').focus();
         }
-    }).on('click', function (e) {
+    }).on('click', function(e) {
         if (!$(e.target).closest('#help').length) {
             $('#help').addClass('hidden');
         }
     });
 
-    $('.version-selector').on('change', function () {
+    $('.version-selector').on('change', function() {
         var i, match,
             url = document.location.href,
             stripped = '',
@@ -102,13 +102,29 @@
         // clear cached values from the search bar
         $(".search-input")[0].value = '';
 
+        /**
+         * Executes the query and builds an index of results
+         * @param  {[Object]} query     [The user query]
+         * @param  {[type]} max         [The maximum results returned]
+         * @param  {[type]} searchWords [The list of search words to query against]
+         * @return {[type]}             [A search index of results]
+         */
         function execQuery(query, max, searchWords) {
             var valLower = query.query.toLowerCase(),
                 val = valLower,
                 typeFilter = query.type,
                 results = [],
                 aa = 0,
-                bb = 0;
+                bb = 0,
+                split = valLower.split("::");
+
+            //remove empty keywords
+            for (var j = 0; j < split.length; j++) {
+                split[j].toLowerCase();
+                if (split[j] === "") {
+                    split.splice(j, 1);
+                }
+            }
 
             // quoted values mean literal search
             bb = searchWords.length;
@@ -128,31 +144,41 @@
             } else {
                 // gather matching search results up to a certain maximum
                 val = val.replace(/\_/g, "");
-                for (aa = 0; aa < bb; aa += 1) {
-                    if (searchWords[aa].indexOf(val) > -1 || searchWords[aa].replace(/_/g, "").indexOf(val) > -1) {
-                        // filter type: ... queries
-                        if (!typeFilter || typeFilter === searchIndex[aa].ty) {
-                            results.push([aa, searchWords[aa].replace(/_/g, "").indexOf(val)]);
+                for (var i = 0; i < split.length; i++) {
+                    for (aa = 0; aa < bb; aa += 1) {
+                        if (searchWords[aa].indexOf(split[i]) > -1 || searchWords[aa].indexOf(val) > -1 || searchWords[aa].replace(/_/g, "").indexOf(val) > -1) {
+                            // filter type: ... queries
+                            if (!typeFilter || typeFilter === searchIndex[aa].ty) {
+                                results.push([aa, searchWords[aa].replace(/_/g, "").indexOf(val)]);
+                            }
                         }
-                    }
-                    if (results.length === max) {
-                        break;
+                        if (results.length === max) {
+                            break;
+                        }
                     }
                 }
             }
+
             bb = results.length;
             for (aa = 0; aa < bb; aa += 1) {
                 results[aa].push(searchIndex[results[aa][0]].ty);
-            }
-            for (aa = 0; aa < bb; aa += 1) {
                 results[aa].push(searchIndex[results[aa][0]].path);
+                results[aa].push(searchIndex[results[aa][0]].name);
+                results[aa].push(searchIndex[results[aa][0]].parent);
             }
-
             // if there are no results then return to default and fail
             if (results.length === 0) {
                 return [];
             }
 
+            results.forEach(function(item) {
+                for (var i = 0; i < split.length; i++) {
+                    if (item[3].indexOf(split[i]) === -1) {
+                        item = null;
+                        break;
+                    }
+                }
+            });
             // sort by exact match
             results.sort(function search_complete_sort0(aaa, bbb) {
                 if (searchWords[aaa[0]] === valLower && searchWords[bbb[0]] !== valLower) {
@@ -203,8 +229,56 @@
                     results[aa][0] = -1;
                 }
             }
+            for (var i = 0; i < results.length; i++) {
+                var result = results[i],
+                    name = result[4].toLowerCase(),
+                    path = result[3].toLowerCase(),
+                    parent = allPaths[result[5]];
 
+                var valid = validateResult(name, path, split, parent);
+                if (!valid) {
+                    result[0] = -1;
+                }
+            }
             return results;
+        }
+
+        /**
+         * Validate performs the following boolean logic. For example: "File::open" will give
+         * IF A PARENT EXISTS => ("file" && "open") exists in (name || path || parent)
+         * OR => ("file" && "open") exists in (name || path )
+         *
+         * This could be written functionally, but I wanted to minimise functions on stack.
+         * @param  {[string]} name   [The name of the result]
+         * @param  {[string]} path   [The path of the result]
+         * @param  {[string]} keys   [The keys to be used (["file", "open"])]
+         * @param  {[object]} parent [The parent of the result]
+         * @return {[boolean]}       [Whether the result is valid or not]
+         */
+        function validateResult(name, path, keys, parent) {
+            //initially valid
+            var validate = true;
+            //if there is a parent, then validate against parent
+            if (parent !== undefined) {
+                for (var i = 0; i < keys.length; i++) {
+                    // if previous keys are valid and current key is in the path, name or parent
+                    if ((validate) && (name.toLowerCase().indexOf(keys[i]) > -1 || path.toLowerCase().indexOf(keys[i]) > -1 || parent.name.toLowerCase().indexOf(keys[i]) > -1)) {
+                        validate = true;
+                    } else {
+                        validate = false;
+                    }
+                }
+            } else {
+                for (var i = 0; i < keys.length; i++) {
+                    // if previous keys are valid and current key is in the path, name
+                    if ((validate) && (name.toLowerCase().indexOf(keys[i]) > -1 || path.toLowerCase().indexOf(keys[i]) > -1)) {
+                        validate = true;
+                    } else {
+                        validate = false;
+                    }
+                }
+            }
+            return validate;
         }
 
         function getQuery() {
@@ -226,7 +300,7 @@
         function initSearchNav() {
             var hoverTimeout, $results = $('.search-results .result');
 
-            $results.on('click', function () {
+            $results.on('click', function() {
                 var dst = $(this).find('a')[0];
                 console.log(window.location.pathname, dst.pathname);
                 if (window.location.pathname == dst.pathname) {
@@ -234,17 +308,17 @@
                     $('#main').removeClass('hidden');
                 }
                 document.location.href = dst.href;
-            }).on('mouseover', function () {
+            }).on('mouseover', function() {
                 var $el = $(this);
                 clearTimeout(hoverTimeout);
-                hoverTimeout = setTimeout(function () {
+                hoverTimeout = setTimeout(function() {
                     $results.removeClass('highlighted');
                     $el.addClass('highlighted');
                 }, 20);
             });
 
             $(document).off('keypress.searchnav');
-            $(document).on('keypress.searchnav', function (e) {
+            $(document).on('keypress.searchnav', function(e) {
                 var $active = $results.filter('.highlighted');
 
                 if (e.keyCode === 38) { // up
@@ -282,7 +356,7 @@
             if (results.length > 0) {
                 shown = [];
 
-                results.forEach(function (item) {
+                results.forEach(function(item) {
                     var name, type;
 
                     if (shown.indexOf(item) !== -1) {
@@ -298,55 +372,57 @@
                     if (type === 'mod') {
                         output += item.path +
                             '::<a href="' + rootPath +
-                                            item.path.replace(/::/g, '/') + '/' +
-                                            name + '/index.html" class="' +
-                                            type + '">' + name + '</a>';
+                            item.path.replace(/::/g, '/') + '/' +
+                            name + '/index.html" class="' +
+                            type + '">' + name + '</a>';
                     } else if (type === 'static' || type === 'reexport') {
                         output += item.path +
                             '::<a href="' + rootPath +
-                                            item.path.replace(/::/g, '/') +
-                                            '/index.html" class="' + type +
-                                            '">' + name + '</a>';
+                            item.path.replace(/::/g, '/') +
+                            '/index.html" class="' + type +
+                            '">' + name + '</a>';
                     } else if (item.parent !== undefined) {
                         var myparent = allPaths[item.parent];
                         var anchor = '#' + type + '.' + name;
                         output += item.path + '::' + myparent.name +
                             '::<a href="' + rootPath +
-                                            item.path.replace(/::/g, '/') +
-                                            '/' + myparent.type +
-                                            '.' + myparent.name +
-                                            '.html' + anchor +
-                                            '" class="' + type +
-                                            '">' + name + '</a>';
+                            item.path.replace(/::/g, '/') +
+                            '/' + myparent.type +
+                            '.' + myparent.name +
+                            '.html' + anchor +
+                            '" class="' + type +
+                            '">' + name + '</a>';
                     } else {
                         output += item.path +
                             '::<a href="' + rootPath +
-                                            item.path.replace(/::/g, '/') +
-                                            '/' + type +
-                                            '.' + name +
-                                            '.html" class="' + type +
-                                            '">' + name + '</a>';
+                            item.path.replace(/::/g, '/') +
+                            '/' + type +
+                            '.' + name +
+                            '.html" class="' + type +
+                            '">' + name + '</a>';
                     }
 
                     output += '</td><td><span class="desc">' + item.desc +
-                                    '</span></td></tr>';
+                        '</span></td></tr>';
                 });
             } else {
                 output += 'No results :( <a href="https://duckduckgo.com/?q=' +
-                            encodeURIComponent('rust ' + query.query) +
-                            '">Try on DuckDuckGo?</a>';
+                    encodeURIComponent('rust ' + query.query) +
+                    '">Try on DuckDuckGo?</a>';
             }
 
             output += "</p>";
             $('#main.content').addClass('hidden');
             $('#search.content').removeClass('hidden').html(output);
             $('#search .desc').width($('#search').width() - 40 -
-                    $('#search td:first-child').first().width());
+                $('#search td:first-child').first().width());
             initSearchNav();
         }
 
         function search(e) {
-            var query, filterdata = [], obj, i, len,
+            var query,
+                filterdata = [],
+                obj, i, len,
                 results = [],
                 maxResults = 200,
                 resultIndex;
@@ -464,7 +540,7 @@
         function startSearch() {
             var keyUpTimeout;
             $('.do-search').on('click', search);
-            $('.search-input').on('keyup', function () {
+            $('.search-input').on('keyup', function() {
                 clearTimeout(keyUpTimeout);
                 keyUpTimeout = setTimeout(search, 100);
             });
