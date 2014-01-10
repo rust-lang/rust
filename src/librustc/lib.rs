@@ -58,6 +58,12 @@ use syntax::diagnostic::Emitter;
 use syntax::diagnostic;
 use syntax::parse;
 
+// Define the diagnostic macros
+pub mod diag_macros;
+// The index of all diagnostic codes used by this crate. This must be defined
+// lexically before any diagnostics are used.
+pub mod diag_index;
+
 pub mod middle {
     pub mod trans;
     pub mod ty;
@@ -405,3 +411,7 @@ pub fn main_args(args: &[~str]) -> int {
     monitor(proc() run_compiler(owned_args));
     0
 }
+
+// The database of extended diagnostic descriptions. Must come lexically
+// after all uses of diagnostics. See `diag_macros` for why.
+pub mod diag_db;
