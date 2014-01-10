@@ -135,7 +135,7 @@ struct CrateSetup<'a> {
     ctx: &'a mut ReadyCtx<'a>,
 }
 
-impl<'a> fold::Folder for CrateSetup<'a> {
+impl<'a> Folder for CrateSetup<'a> {
     fn fold_item(&mut self, item: @ast::Item) -> SmallVector<@ast::Item> {
         fold_item(item, self)
     }
@@ -162,7 +162,7 @@ pub fn ready_crate(sess: session::Session,
 
 pub fn compile_input(context: &BuildContext,
                      exec: &mut workcache::Exec,
-                     pkg_id: &CrateId,
+                     crate_id: &CrateId,
                      in_file: &Path,
                      workspace: &Path,
                      deps: &mut DepMap,
@@ -177,7 +177,7 @@ pub fn compile_input(context: &BuildContext,
     // not sure if we should support anything else
 
     let mut out_dir = target_build_dir(workspace);
-    out_dir.push(&pkg_id.path);
+    out_dir.push(&crate_id.path);
     // Make the output directory if it doesn't exist already
     fs::mkdir_recursive(&out_dir, io::UserRWX);
 
@@ -276,7 +276,7 @@ pub fn compile_input(context: &BuildContext,
     let (mut crate, ast_map) = {
         let installer = CrateInstaller {
             context: context,
-            parent: pkg_id,
+            parent: crate_id,
             parent_crate: in_file,
             sess: sess,
             exec: exec,
@@ -312,10 +312,7 @@ pub fn compile_input(context: &BuildContext,
     if !attr::contains_name(crate.attrs, "crate_id") {
         // FIXME (#9639): This needs to handle non-utf8 paths
         let crateid_attr =
-            attr::mk_name_value_item_str(@"crate_id",
-                                         format!("{}\\#{}",
-                                                 pkg_id.path.as_str().unwrap(),
-                                                 pkg_id.get_version()).to_managed());
+            attr::mk_name_value_item_str(@"crate_id", crate_id.to_crate_id_str().to_managed());
 
         debug!("crateid attr: {:?}", crateid_attr);
         crate.attrs.push(attr::mk_attr(crateid_attr));
@@ -333,7 +330,7 @@ pub fn compile_input(context: &BuildContext,
                                           what);
     // Discover the output
     let discovered_output = if what == Lib  {
-        built_library_in_workspace(pkg_id, workspace) // Huh???
+        built_library_in_workspace(crate_id, workspace) // Huh???
     }
     else {
         result
@@ -435,7 +432,7 @@ pub fn exe_suffix() -> ~str { ~"" }
 // Called by build_crates
 pub fn compile_crate(ctxt: &BuildContext,
                      exec: &mut workcache::Exec,
-                     pkg_id: &CrateId,
+                     crate_id: &CrateId,
                      crate: &Path,
                      workspace: &Path,
                      deps: &mut DepMap,
@@ -444,11 +441,11 @@ pub fn compile_crate(ctxt: &BuildContext,
                      opt: session::OptLevel,
                      what: OutputType) -> Option<Path> {
     debug!("compile_crate: crate={}, workspace={}", crate.display(), workspace.display());
-    debug!("compile_crate: short_name = {}, flags =...", pkg_id.to_str());
+    debug!("compile_crate: short_name = {}, flags =...", crate_id.to_str());
     for fl in flags.iter() {
         debug!("+++ {}", *fl);
     }
-    compile_input(ctxt, exec, pkg_id, crate, workspace, deps, flags, cfgs, opt, what)
+    compile_input(ctxt, exec, crate_id, crate, workspace, deps, flags, cfgs, opt, what)
 }
 
 struct CrateInstaller<'a> {
@@ -497,10 +494,10 @@ impl<'a> CrateInstaller<'a> {
                         debug!("Trying to install library {}, rebuilding it",
                                lib_name.to_str());
                         // Try to install it
-                        let pkg_id = CrateId::new(lib_name);
+                        let crate_id = CrateId::new(lib_name);
                         // Find all the workspaces in the RUST_PATH that contain this package.
                         let workspaces = pkg_parent_workspaces(&self.context.context,
-                                                               &pkg_id);
+                                                               &crate_id);
                         // Three cases:
                         // (a) `workspaces` is empty. That means there's no local source
                         // for this package. In that case, we pass the default workspace
@@ -530,7 +527,7 @@ impl<'a> CrateInstaller<'a> {
                                  error(format!("Package {} depends on {}, but I don't know \
                                                how to find it",
                                                self.parent.path.display(),
-                                               pkg_id.path.display()));
+                                               crate_id.path.display()));
                                  fail!()
                         }).inside(|| {
                             PkgSrc::new(source_workspace.clone(),
@@ -538,7 +535,7 @@ impl<'a> CrateInstaller<'a> {
                                         // Use the rust_path_hack to search for dependencies iff
                                         // we were already using it
                                         self.context.context.use_rust_path_hack,
-                                        pkg_id.clone())
+                                        crate_id.clone())
                         });
                         let (outputs_disc, inputs_disc) =
                             self.context.install(
