@@ -406,14 +406,14 @@ impl<S:Encoder,T:Encodable<S>> Encodable<S> for @T {
     }
 }
 
-impl<S:Encoder,T:Encodable<S> + Freeze> Encodable<S> for Rc<T> {
+impl<S:Encoder,T:Encodable<S>> Encodable<S> for Rc<T> {
     #[inline]
     fn encode(&self, s: &mut S) {
         self.borrow().encode(s)
     }
 }
 
-impl<D:Decoder,T:Decodable<D> + Freeze> Decodable<D> for Rc<T> {
+impl<D:Decoder,T:Decodable<D>> Decodable<D> for Rc<T> {
     #[inline]
     fn decode(d: &mut D) -> Rc<T> {
         Rc::new(Decodable::decode(d))
