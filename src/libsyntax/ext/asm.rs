@@ -17,6 +17,7 @@ use codemap::Span;
 use ext::base;
 use ext::base::*;
 use parse;
+use parse::token::InternedString;
 use parse::token;
 
 enum State {
@@ -43,7 +44,7 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                                            cx.cfg(),
                                            tts.to_owned());
 
-    let mut asm = @"";
+    let mut asm = InternedString::new("");
     let mut asm_str_style = None;
     let mut outputs = ~[];
     let mut inputs = ~[];
@@ -191,7 +192,7 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     MRExpr(@ast::Expr {
         id: ast::DUMMY_NODE_ID,
         node: ast::ExprInlineAsm(ast::InlineAsm {
-            asm: asm,
+            asm: asm.get().to_managed(),
             asm_str_style: asm_str_style.unwrap(),
             clobbers: cons.to_managed(),
             inputs: inputs,

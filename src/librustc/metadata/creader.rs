@@ -27,8 +27,8 @@ use syntax::attr::AttrMetaMethods;
 use syntax::codemap::{Span, DUMMY_SP};
 use syntax::diagnostic::SpanHandler;
 use syntax::ext::base::{CrateLoader, MacroCrate};
+use syntax::parse::token::{IdentInterner, InternedString};
 use syntax::parse::token;
-use syntax::parse::token::IdentInterner;
 use syntax::crateid::CrateId;
 use syntax::visit;
 
@@ -126,10 +126,8 @@ fn visit_crate(e: &Env, c: &ast::Crate) {
 
     for a in c.attrs.iter().filter(|m| m.name().equiv(&("link_args"))) {
         match a.value_str() {
-          Some(ref linkarg) => {
-            cstore.add_used_link_args(*linkarg);
-          }
-          None => {/* fallthrough */ }
+          Some(ref linkarg) => cstore.add_used_link_args(linkarg.get()),
+          None => { /* fallthrough */ }
         }
     }
 }
@@ -214,9 +212,7 @@ fn visit_item(e: &Env, i: &ast::Item) {
                 .to_owned_vec();
             for m in link_args.iter() {
                 match m.value_str() {
-                    Some(linkarg) => {
-                        cstore.add_used_link_args(linkarg);
-                    }
+                    Some(linkarg) => cstore.add_used_link_args(linkarg.get()),
                     None => { /* fallthrough */ }
                 }
             }
@@ -238,12 +234,12 @@ fn visit_item(e: &Env, i: &ast::Item) {
                         }).and_then(|a| a.value_str());
                         let kind = match kind {
                             Some(k) => {
-                                if "static" == k {
+                                if k.equiv(&("static")) {
                                     cstore::NativeStatic
                                 } else if e.sess.targ_cfg.os == abi::OsMacos &&
-                                          "framework" == k {
+                                          k.equiv(&("framework")) {
                                     cstore::NativeFramework
-                                } else if "framework" == k {
+                                } else if k.equiv(&("framework")) {
                                     e.sess.span_err(m.span,
                                         "native frameworks are only available \
                                          on OSX targets");
@@ -265,13 +261,13 @@ fn visit_item(e: &Env, i: &ast::Item) {
                                 e.sess.span_err(m.span,
                                     "#[link(...)] specified without \
                                      `name = \"foo\"`");
-                                @"foo"
+                                InternedString::new("foo")
                             }
                         };
-                        if n.is_empty() {
+                        if n.get().is_empty() {
                             e.sess.span_err(m.span, "#[link(name = \"\")] given with empty name");
                         } else {
-                            cstore.add_used_library(n.to_owned(), kind);
+                            cstore.add_used_library(n.get().to_owned(), kind);
                         }
                     }
                     None => {}

@@ -31,6 +31,7 @@ use middle::ty;
 use util::ppaux::ty_to_str;
 
 use syntax::ast;
+use syntax::parse::token::InternedString;
 
 // Boxed vector types are in some sense currently a "shorthand" for a box
 // containing an unboxed vector. This expands a boxed vector type into such an
@@ -232,7 +233,10 @@ pub fn trans_slice_vstore<'a>(
         ast::ExprLit(lit) => {
             match lit.node {
                 ast::LitStr(s, _) => {
-                    return trans_lit_str(bcx, content_expr, s, dest);
+                    return trans_lit_str(bcx,
+                                         content_expr,
+                                         (*s).clone(),
+                                         dest)
                 }
                 _ => {}
             }
@@ -284,7 +288,7 @@ pub fn trans_slice_vstore<'a>(
 pub fn trans_lit_str<'a>(
                      bcx: &'a Block<'a>,
                      lit_expr: &ast::Expr,
-                     str_lit: @str,
+                     str_lit: InternedString,
                      dest: Dest)
                      -> &'a Block<'a> {
     /*!
@@ -301,7 +305,7 @@ pub fn trans_lit_str<'a>(
         Ignore => bcx,
         SaveIn(lldest) => {
             unsafe {
-                let bytes = str_lit.len();
+                let bytes = str_lit.get().len();
                 let llbytes = C_uint(bcx.ccx(), bytes);
                 let llcstr = C_cstr(bcx.ccx(), str_lit);
                 let llcstr = llvm::LLVMConstPointerCast(llcstr, Type::i8p().to_ref());
@@ -337,11 +341,15 @@ pub fn trans_uniq_or_managed_vstore<'a>(bcx: &'a Block<'a>,
                 ast::ExprLit(lit) => {
                     match lit.node {
                         ast::LitStr(s, _) => {
-                            let llptrval = C_cstr(bcx.ccx(), s);
-                            let llptrval = PointerCast(bcx, llptrval, Type::i8p());
+                            let llptrval = C_cstr(bcx.ccx(), (*s).clone());
+                            let llptrval = PointerCast(bcx,
+                                                       llptrval,
+                                                       Type::i8p());
                             let llsizeval = C_uint(bcx.ccx(), s.len());
                             let typ = ty::mk_str(bcx.tcx(), ty::vstore_uniq);
-                            let lldestval = rvalue_scratch_datum(bcx, typ, "");
+                            let lldestval = rvalue_scratch_datum(bcx,
+                                                                 typ,
+                                                                 "");
                             let alloc_fn = langcall(bcx,
                                                     Some(lit.span),
                                                     "",
@@ -405,15 +413,13 @@ pub fn write_content<'a>(
     match content_expr.node {
         ast::ExprLit(lit) => {
             match lit.node {
-                ast::LitStr(s, _) => {
+                ast::LitStr(ref s, _) => {
                     match dest {
-                        Ignore => {
-                            return bcx;
-                        }
+                        Ignore => return bcx,
                         SaveIn(lldest) => {
-                            let bytes = s.len();
+                            let bytes = s.get().len();
                             let llbytes = C_uint(bcx.ccx(), bytes);
-                            let llcstr = C_cstr(bcx.ccx(), s);
+                            let llcstr = C_cstr(bcx.ccx(), (*s).clone());
                             base::call_memcpy(bcx,
                                               lldest,
                                               llcstr,
@@ -516,7 +522,7 @@ pub fn elements_required(bcx: &Block, content_expr: &ast::Expr) -> uint {
     match content_expr.node {
         ast::ExprLit(lit) => {
             match lit.node {
-                ast::LitStr(s, _) => s.len(),
+                ast::LitStr(ref s, _) => s.get().len(),
                 _ => {
                     bcx.tcx().sess.span_bug(content_expr.span,
                                             "Unexpected evec content")

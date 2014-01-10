@@ -252,14 +252,16 @@ impl<'a> attr::AttrMetaMethods for &'a Attribute {
         }
     }
 
-    fn value_str(&self) -> Option<@str> {
+    fn value_str(&self) -> Option<InternedString> {
         match **self {
-            NameValue(_, ref v) => Some(v.to_managed()),
+            NameValue(_, ref v) => Some(token::intern_and_get_ident(*v)),
             _ => None,
         }
     }
     fn meta_item_list<'a>(&'a self) -> Option<&'a [@ast::MetaItem]> { None }
-    fn name_str_pair(&self) -> Option<(InternedString, @str)> { None }
+    fn name_str_pair(&self) -> Option<(InternedString, InternedString)> {
+        None
+    }
 }
 
 #[deriving(Clone, Encodable, Decodable)]
@@ -1144,7 +1146,7 @@ impl ToSource for syntax::codemap::Span {
 
 fn lit_to_str(lit: &ast::Lit) -> ~str {
     match lit.node {
-        ast::LitStr(st, _) => st.to_owned(),
+        ast::LitStr(ref st, _) => st.get().to_owned(),
         ast::LitBinary(data) => format!("{:?}", data.as_slice()),
         ast::LitChar(c) => ~"'" + std::char::from_u32(c).unwrap().to_str() + "'",
         ast::LitInt(i, _t) => i.to_str(),

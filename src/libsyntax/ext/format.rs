@@ -416,7 +416,7 @@ impl<'a> Context<'a> {
                         let result = arm.result.iter().map(|p| {
                             self.trans_piece(p)
                         }).collect();
-                        let s = arm.selector.to_managed();
+                        let s = token::intern_and_get_ident(arm.selector);
                         let selector = self.ecx.expr_str(sp, s);
                         self.ecx.expr_struct(sp, p, ~[
                             self.ecx.field_imm(sp,
@@ -492,8 +492,12 @@ impl<'a> Context<'a> {
 
         match *piece {
             parse::String(s) => {
-                self.ecx.expr_call_global(sp, rtpath("String"),
-                                          ~[self.ecx.expr_str(sp, s.to_managed())])
+                let s = token::intern_and_get_ident(s);
+                self.ecx.expr_call_global(sp,
+                                          rtpath("String"),
+                                          ~[
+                    self.ecx.expr_str(sp, s)
+                ])
             }
             parse::CurrentArgument => {
                 let nil = self.ecx.expr_lit(sp, ast::LitNil);
@@ -763,8 +767,9 @@ pub fn expand_args(ecx: &mut ExtCtxt, sp: Span,
     // Be sure to recursively expand macros just in case the format string uses
     // a macro to build the format expression.
     let expr = cx.ecx.expand_expr(efmt);
-    let fmt = match expr_to_str(cx.ecx, expr,
-                                     "format argument must be a string literal.") {
+    let fmt = match expr_to_str(cx.ecx,
+                                expr,
+                                "format argument must be a string literal.") {
         Some((fmt, _)) => fmt,
         None => return MacResult::dummy_expr()
     };
@@ -776,7 +781,7 @@ pub fn expand_args(ecx: &mut ExtCtxt, sp: Span,
             cx.ecx.span_err(efmt.span, m);
         }
     }).inside(|| {
-        for piece in parse::Parser::new(fmt) {
+        for piece in parse::Parser::new(fmt.get()) {
             if !err {
                 cx.verify_piece(&piece);
                 let piece = cx.trans_piece(&piece);

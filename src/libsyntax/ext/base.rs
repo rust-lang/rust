@@ -16,7 +16,7 @@ use ext;
 use ext::expand;
 use parse;
 use parse::token;
-use parse::token::{ident_to_str, intern, str_to_ident};
+use parse::token::{InternedString, ident_to_str, intern, str_to_ident};
 use util::small_vector::SmallVector;
 
 use std::hashmap::HashMap;
@@ -407,11 +407,11 @@ impl<'a> ExtCtxt<'a> {
 /// Extract a string literal from `expr`, emitting `err_msg` if `expr`
 /// is not a string literal. This does not stop compilation on error,
 /// merely emits a non-fatal error and returns None.
-pub fn expr_to_str(cx: &ExtCtxt, expr: @ast::Expr,
-                   err_msg: &str) -> Option<(@str, ast::StrStyle)> {
+pub fn expr_to_str(cx: &ExtCtxt, expr: @ast::Expr, err_msg: &str)
+                   -> Option<(InternedString, ast::StrStyle)> {
     match expr.node {
         ast::ExprLit(l) => match l.node {
-            ast::LitStr(s, style) => return Some((s, style)),
+            ast::LitStr(s, style) => return Some(((*s).clone(), style)),
             _ => cx.span_err(l.span, err_msg)
         },
         _ => cx.span_err(expr.span, err_msg)
@@ -424,7 +424,9 @@ pub fn expr_to_str(cx: &ExtCtxt, expr: @ast::Expr,
 /// compilation should call
 /// `cx.parse_sess.span_diagnostic.abort_if_errors()` (this should be
 /// done as rarely as possible).
-pub fn check_zero_tts(cx: &ExtCtxt, sp: Span, tts: &[ast::TokenTree],
+pub fn check_zero_tts(cx: &ExtCtxt,
+                      sp: Span,
+                      tts: &[ast::TokenTree],
                       name: &str) {
     if tts.len() != 0 {
         cx.span_err(sp, format!("{} takes no arguments", name));

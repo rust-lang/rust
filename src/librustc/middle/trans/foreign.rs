@@ -31,7 +31,8 @@ use std::vec;
 use syntax::abi::{Cdecl, Aapcs, C, AbiSet, Win64};
 use syntax::abi::{RustIntrinsic, Rust, Stdcall, Fastcall, System};
 use syntax::codemap::Span;
-use syntax::parse::token::special_idents;
+use syntax::parse::token::{InternedString, special_idents};
+use syntax::parse::token;
 use syntax::{ast};
 use syntax::{attr, ast_map};
 use util::ppaux::{Repr, UserString};
@@ -135,7 +136,7 @@ pub fn register_foreign_item_fn(ccx: @CrateContext,
     };
 
     // Register the function as a C extern fn
-    let lname = link_name(ccx, foreign_item);
+    let lname = link_name(foreign_item);
     let tys = foreign_types_for_id(ccx, foreign_item.id);
 
     // Make sure the calling convention is right for variadic functions
@@ -150,8 +151,12 @@ pub fn register_foreign_item_fn(ccx: @CrateContext,
     let llfn;
     {
         let mut externs = ccx.externs.borrow_mut();
-        llfn = base::get_extern_fn(externs.get(), ccx.llmod, lname,
-                                   cc, llfn_ty, tys.fn_sig.output);
+        llfn = base::get_extern_fn(externs.get(),
+                                   ccx.llmod,
+                                   lname.get(),
+                                   cc,
+                                   llfn_ty,
+                                   tys.fn_sig.output);
     };
     add_argument_attributes(&tys, llfn);
 
@@ -372,9 +377,9 @@ pub fn trans_foreign_mod(ccx: @CrateContext,
             _ => ()
         }
 
-        let lname = link_name(ccx, foreign_item);
+        let lname = link_name(foreign_item);
         let mut item_symbols = ccx.item_symbols.borrow_mut();
-        item_symbols.get().insert(foreign_item.id, lname.to_owned());
+        item_symbols.get().insert(foreign_item.id, lname.get().to_owned());
     }
 }
 
@@ -726,10 +731,10 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: @CrateContext,
 // This code is kind of a confused mess and needs to be reworked given
 // the massive simplifications that have occurred.
 
-pub fn link_name(ccx: &CrateContext, i: @ast::ForeignItem) -> @str {
+pub fn link_name(i: @ast::ForeignItem) -> InternedString {
      match attr::first_attr_value_str_by_name(i.attrs, "link_name") {
-        None => ccx.sess.str_of(i.ident),
-        Some(ln) => ln,
+        None => token::get_ident(i.ident.name),
+        Some(ln) => ln.clone(),
     }
 }
 
