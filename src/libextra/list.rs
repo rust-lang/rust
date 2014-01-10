@@ -10,10 +10,8 @@
 
 /*! 
  * This is a straight-forward implementation of a linked-list.
- * The implementation in extra uses @pointers, and doesn't use the iterator trait,
- * this implementation should hopefully be better.
  *
- * This implementation also uses no raw pointers, and no unsafe code.
+ * This implementation also uses raw pointers, and no unsafe code.
  */
 
 #[crate_id = "linked_list"];
