@@ -730,7 +730,6 @@ pub fn trans_const(ccx: &CrateContext, r: &Repr, discr: Disr,
             if discr == nndiscr {
                 C_struct(build_const_struct(ccx, nonnull, vals), false)
             } else {
-                assert_eq!(vals.len(), 0);
                 let vals = nonnull.fields.iter().enumerate().map(|(i, &ty)| {
                     let llty = type_of::sizing_type_of(ccx, ty);
                     if i == ptrfield { C_null(llty) } else { C_undef(llty) }
