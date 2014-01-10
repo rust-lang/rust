@@ -13,10 +13,11 @@
 // XXX: Not sure how this should be structured
 // XXX: Iteration should probably be considered separately
 
+use container::Container;
 use iter::Iterator;
 use option::Option;
 use io::Reader;
-use vec::OwnedVector;
+use vec::{OwnedVector, ImmutableVector};
 
 /// An iterator that reads a single byte on each iteration,
 /// until `.read_byte()` returns `None`.
@@ -117,16 +118,23 @@ pub fn u64_from_be_bytes(data: &[u8],
                          start: uint,
                          size: uint)
                       -> u64 {
-    let mut sz = size;
-    assert!((sz <= 8u));
-    let mut val = 0_u64;
-    let mut pos = start;
-    while sz > 0u {
-        sz -= 1u;
-        val += (data[pos] as u64) << ((sz * 8u) as u64);
-        pos += 1u;
+    use ptr::{copy_nonoverlapping_memory, offset, mut_offset};
+    use unstable::intrinsics::from_be64;
+    use vec::MutableVector;
+
+    assert!(size <= 8u);
+
+    if data.len() - start < size {
+        fail!("index out of bounds");
     }
-    return val;
+
+    let mut buf = [0u8, ..8];
+    unsafe {
+        let ptr = offset(data.as_ptr(), start as int);
+        let out = buf.as_mut_ptr();
+        copy_nonoverlapping_memory(mut_offset(out, (8 - size) as int), ptr, size);
+        from_be64(*(out as *i64)) as u64
+    }
 }
 
 #[cfg(test)]
@@ -465,4 +473,86 @@ mod test {
         assert!(reader.read_le_f32() == 8.1250);
     }
 
+    #[test]
+    fn test_u64_from_be_bytes() {
+        use super::u64_from_be_bytes;
+
+        let buf = [0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09];
+
+        // Aligned access
+        assert_eq!(u64_from_be_bytes(buf, 0, 0), 0);
+        assert_eq!(u64_from_be_bytes(buf, 0, 1), 0x01);
+        assert_eq!(u64_from_be_bytes(buf, 0, 2), 0x0102);
+        assert_eq!(u64_from_be_bytes(buf, 0, 3), 0x010203);
+        assert_eq!(u64_from_be_bytes(buf, 0, 4), 0x01020304);
+        assert_eq!(u64_from_be_bytes(buf, 0, 5), 0x0102030405);
+        assert_eq!(u64_from_be_bytes(buf, 0, 6), 0x010203040506);
+        assert_eq!(u64_from_be_bytes(buf, 0, 7), 0x01020304050607);
+        assert_eq!(u64_from_be_bytes(buf, 0, 8), 0x0102030405060708);
+
+        // Unaligned access
+        assert_eq!(u64_from_be_bytes(buf, 1, 0), 0);
+        assert_eq!(u64_from_be_bytes(buf, 1, 1), 0x02);
+        assert_eq!(u64_from_be_bytes(buf, 1, 2), 0x0203);
+        assert_eq!(u64_from_be_bytes(buf, 1, 3), 0x020304);
+        assert_eq!(u64_from_be_bytes(buf, 1, 4), 0x02030405);
+        assert_eq!(u64_from_be_bytes(buf, 1, 5), 0x0203040506);
+        assert_eq!(u64_from_be_bytes(buf, 1, 6), 0x020304050607);
+        assert_eq!(u64_from_be_bytes(buf, 1, 7), 0x02030405060708);
+        assert_eq!(u64_from_be_bytes(buf, 1, 8), 0x0203040506070809);
+    }
+}
+
+#[cfg(test)]
+mod bench {
+    use extra::test::BenchHarness;
+    use container::Container;
+
+    macro_rules! u64_from_be_bytes_bench_impl(
+        ($size:expr, $stride:expr, $start_index:expr) =>
+        ({
+            use vec;
+            use super::u64_from_be_bytes;
+
+            let data = vec::from_fn($stride*100+$start_index, |i| i as u8);
+            let mut sum = 0u64;
+            bh.iter(|| {
+                let mut i = $start_index;
+                while (i < data.len()) {
+                    sum += u64_from_be_bytes(data, i, $size);
+                    i += $stride;
+                }
+            });
+        })
+    )
+
+    #[bench]
+    fn u64_from_be_bytes_4_aligned(bh: &mut BenchHarness) {
+        u64_from_be_bytes_bench_impl!(4, 4, 0);
+    }
+
+    #[bench]
+    fn u64_from_be_bytes_4_unaligned(bh: &mut BenchHarness) {
+        u64_from_be_bytes_bench_impl!(4, 4, 1);
+    }
+
+    #[bench]
+    fn u64_from_be_bytes_7_aligned(bh: &mut BenchHarness) {
+        u64_from_be_bytes_bench_impl!(7, 8, 0);
+    }
+
+    #[bench]
+    fn u64_from_be_bytes_7_unaligned(bh: &mut BenchHarness) {
+        u64_from_be_bytes_bench_impl!(7, 8, 1);
+    }
+
+    #[bench]
+    fn u64_from_be_bytes_8_aligned(bh: &mut BenchHarness) {
+        u64_from_be_bytes_bench_impl!(8, 8, 0);
+    }
+
+    #[bench]
+    fn u64_from_be_bytes_8_unaligned(bh: &mut BenchHarness) {
+        u64_from_be_bytes_bench_impl!(8, 8, 1);
+    }
 }
