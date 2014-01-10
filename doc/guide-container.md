@@ -130,7 +130,7 @@ A typical mutable container will implement at least `iter()`, `mut_iter()` and
 ### Freezing
 
 Unlike most other languages with external iterators, Rust has no *iterator
-invalidation*. As long an iterator is still in scope, the compiler will prevent
+invalidation*. As long as an iterator is still in scope, the compiler will prevent
 modification of the container through another handle.
 
 ~~~
