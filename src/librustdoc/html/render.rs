@@ -461,7 +461,7 @@ impl DocFolder for Cache {
         let orig_privmod = match item.inner {
             clean::ModuleItem(..) => {
                 let prev = self.privmod;
-                self.privmod = prev || item.visibility != Some(ast::public);
+                self.privmod = prev || item.visibility != Some(ast::Public);
                 prev
             }
             _ => self.privmod,
@@ -628,7 +628,7 @@ impl DocFolder for Cache {
                                   visibility, .. }
                             if (m.items.len() == 0 &&
                                 item.doc_value().is_none()) ||
-                               visibility != Some(ast::public) => None,
+                               visibility != Some(ast::Public) => None,
 
                     i => Some(i),
                 }
@@ -1203,7 +1203,7 @@ fn item_struct(w: &mut Writer, it: &clean::Item, s: &clean::Struct) {
 
     document(w, it);
     match s.struct_type {
-        doctree::Plain => {
+        doctree::Plain if s.fields.len() > 0 => {
             write!(w, "<h2 class='fields'>Fields</h2>\n<table>");
             for field in s.fields.iter() {
                 write!(w, "<tr><td id='structfield.{name}'>\
