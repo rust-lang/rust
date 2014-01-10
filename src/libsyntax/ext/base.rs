@@ -259,6 +259,12 @@ pub fn syntax_expander_table() -> SyntaxEnv {
     syntax_expanders.insert(intern(&"trace_macros"),
                             builtin_normal_expander(
                                     ext::trace_macros::expand_trace_macros));
+    syntax_expanders.insert(intern(&"__tt_map_insert"),
+                            builtin_normal_expander(
+                                    ext::tt_map::insert_expr));
+    syntax_expanders.insert(intern(&"__tt_map_get_expr"),
+                            builtin_normal_expander(
+                                    ext::tt_map::get_expr));
     syntax_expanders
 }
 
@@ -283,7 +289,9 @@ pub struct ExtCtxt<'a> {
     loader: &'a mut CrateLoader,
 
     mod_path: ~[ast::Ident],
-    trace_mac: bool
+    trace_mac: bool,
+    // State for the hacky __tt_map_* extensions
+    tt_maps: HashMap<ast::Name, HashMap<ast::Name, ast::TokenTree>>,
 }
 
 impl<'a> ExtCtxt<'a> {
@@ -295,7 +303,8 @@ impl<'a> ExtCtxt<'a> {
             backtrace: None,
             loader: loader,
             mod_path: ~[],
-            trace_mac: false
+            trace_mac: false,
+            tt_maps: HashMap::new()
         }
     }
 
