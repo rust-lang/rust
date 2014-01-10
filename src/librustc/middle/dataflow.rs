@@ -720,6 +720,11 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
                 self.walk_expr(e, in_out, loop_scopes);
             }
 
+            ast::ExprBox(s, e) => {
+                self.walk_expr(s, in_out, loop_scopes);
+                self.walk_expr(e, in_out, loop_scopes);
+            }
+
             ast::ExprInlineAsm(ref inline_asm) => {
                 for &(_, expr) in inline_asm.inputs.iter() {
                     self.walk_expr(expr, in_out, loop_scopes);

@@ -2613,6 +2613,11 @@ fn populate_scope_map(cx: &CrateContext,
             ast::ExprField(@ref sub_exp, _, _) |
             ast::ExprParen(@ref sub_exp)       => walk_expr(cx, sub_exp, scope_stack, scope_map),
 
+            ast::ExprBox(@ref place, @ref sub_expr) => {
+                walk_expr(cx, place, scope_stack, scope_map);
+                walk_expr(cx, sub_expr, scope_stack, scope_map);
+            }
+
             ast::ExprRet(exp_opt) => match exp_opt {
                 Some(@ref sub_exp) => walk_expr(cx, sub_exp, scope_stack, scope_map),
                 None => ()

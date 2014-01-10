@@ -394,6 +394,10 @@ impl CFGBuilder {
                 self.straightline(expr, pred, [l, r])
             }
 
+            ast::ExprBox(p, e) => {
+                self.straightline(expr, pred, [p, e])
+            }
+
             ast::ExprAddrOf(_, e) |
             ast::ExprDoBody(e) |
             ast::ExprCast(e, _) |
