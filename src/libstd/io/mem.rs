@@ -111,6 +111,11 @@ impl MemReader {
         }
     }
 
+    /// Tests whether this reader has read all bytes in its buffer.
+    ///
+    /// If `true`, then this will no longer return bytes from `read`.
+    pub fn eof(&self) -> bool { self.pos == self.buf.len() }
+
     /// Acquires an immutable reference to the underlying buffer of this
     /// `MemReader`.
     ///
@@ -124,7 +129,7 @@ impl MemReader {
 
 impl Reader for MemReader {
     fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
-        if self.pos == self.buf.len() { return None }
+        if self.eof() { return None }
 
         let write_len = min(buf.len(), self.buf.len() - self.pos);
         {
@@ -216,11 +221,16 @@ impl<'a> BufReader<'a> {
             pos: 0
         }
     }
+
+    /// Tests whether this reader has read all bytes in its buffer.
+    ///
+    /// If `true`, then this will no longer return bytes from `read`.
+    pub fn eof(&self) -> bool { self.pos == self.buf.len() }
 }
 
 impl<'a> Reader for BufReader<'a> {
     fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
-        if self.pos == self.buf.len() { return None }
+        if self.eof() { return None }
 
         let write_len = min(buf.len(), self.buf.len() - self.pos);
         {
