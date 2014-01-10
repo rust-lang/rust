@@ -11,7 +11,6 @@
 use CtxMethods;
 use context::*;
 use crate::*;
-use crate_id::*;
 use package_source::*;
 use path_util::{platform_library_name, target_build_dir};
 use target::*;
@@ -26,6 +25,7 @@ use extra::arc::{Arc,RWArc};
 use extra::workcache;
 use extra::workcache::{Database, FreshnessMap};
 use extra::treemap::TreeMap;
+use syntax::crateid::CrateId;
 
 // A little sad -- duplicated from rustc::back::*
 #[cfg(target_arch = "arm")]
@@ -78,20 +78,19 @@ pub fn new_workcache_context(p: &Path) -> workcache::Context {
     workcache::Context::new_with_freshness(db, cfg, Arc::new(freshness))
 }
 
-pub fn build_lib(sysroot: Path, root: Path, name: ~str, version: Option<~str>,
-                 lib: Path) {
-    build_lib_with_cfgs(sysroot, root, name, version, lib, ~[])
+pub fn build_lib(sysroot: Path, root: Path, name: ~str, lib: Path) {
+    build_lib_with_cfgs(sysroot, root, name, lib, ~[])
 }
 
-pub fn build_lib_with_cfgs(sysroot: Path, root: Path, name: ~str,
-                           version: Option<~str>, lib: Path, cfgs: ~[~str]) {
+pub fn build_lib_with_cfgs(sysroot: Path, root: Path, name: ~str, lib: Path, cfgs: ~[~str]) {
     let cx = default_context(sysroot, root.clone());
+    let crate_id: CrateId = from_str(name).expect("valid crate id");
     let pkg_src = PkgSrc {
         source_workspace: root.clone(),
         build_in_destination: false,
         destination_workspace: root.clone(),
         start_dir: root.join_many(["src", name.as_slice()]),
-        id: CrateId{ version: version, ..CrateId::new(name)},
+        id: crate_id,
         // n.b. This assumes the package only has one crate
         libs: ~[mk_crate(lib)],
         mains: ~[],
@@ -101,20 +100,19 @@ pub fn build_lib_with_cfgs(sysroot: Path, root: Path, name: ~str,
     pkg_src.build(&cx, cfgs, []);
 }
 
-pub fn build_exe(sysroot: Path, root: Path, name: ~str, version: Option<~str>,
-                 main: Path) {
-    build_exe_with_cfgs(sysroot, root, name, version, main, ~[])
+pub fn build_exe(sysroot: Path, root: Path, name: ~str, main: Path) {
+    build_exe_with_cfgs(sysroot, root, name, main, ~[])
 }
 
-pub fn build_exe_with_cfgs(sysroot: Path, root: Path, name: ~str,
-                           version: Option<~str>, main: Path, cfgs: ~[~str]) {
+pub fn build_exe_with_cfgs(sysroot: Path, root: Path, name: ~str, main: Path, cfgs: ~[~str]) {
     let cx = default_context(sysroot, root.clone());
+    let crate_id: CrateId = from_str(name).expect("valid crate id");
     let pkg_src = PkgSrc {
         source_workspace: root.clone(),
         build_in_destination: false,
         destination_workspace: root.clone(),
         start_dir: root.join_many(["src", name.as_slice()]),
-        id: CrateId{ version: version, ..CrateId::new(name)},
+        id: crate_id,
         libs: ~[],
         // n.b. This assumes the package only has one crate
         mains: ~[mk_crate(main)],
@@ -128,11 +126,10 @@ pub fn build_exe_with_cfgs(sysroot: Path, root: Path, name: ~str,
 pub fn install_pkg(cx: &BuildContext,
                    workspace: Path,
                    name: ~str,
-                   version: Option<~str>,
                    // For now, these inputs are assumed to be inputs to each of the crates
                    more_inputs: ~[(~str, Path)]) { // pairs of Kind and Path
-    let crateid = CrateId{ version: version, ..CrateId::new(name)};
-    cx.install(PkgSrc::new(workspace.clone(), workspace, false, crateid),
+    let crate_id: CrateId = from_str(name).expect("valid crate id");
+    cx.install(PkgSrc::new(workspace.clone(), workspace, false, crate_id),
                &WhatToBuild{ build_type: Inferred,
                              inputs_to_discover: more_inputs,
                              sources: Everything });
@@ -156,10 +153,10 @@ pub fn build_library_in_workspace(exec: &mut workcache::Exec,
     let out_name = workspace_build_dir.join_many([package_name.to_str(),
                                                   platform_library_name(output)]);
     // make paths absolute
-    let crateid = CrateId::new(package_name);
+    let crateid: CrateId = from_str(package_name).expect("valid crate id");
     let absolute_paths = paths.map(|s| {
             let whatever = workspace.join_many([~"src",
-                                crateid.to_str(),
+                                crateid.short_name_with_version(),
                                 s.to_owned()]);
             whatever.as_str().unwrap().to_owned()
         });
@@ -189,7 +186,7 @@ pub fn my_workspace(context: &Context, package_name: &str) -> Path {
     use bad_pkg_id     = conditions::bad_pkg_id::cond;
 
     // (this assumes no particular version is requested)
-    let crateid = CrateId::new(package_name);
+    let crateid = from_str(package_name).expect("valid crate id");
     let workspaces = pkg_parent_workspaces(context, &crateid);
     if workspaces.is_empty() {
         bad_pkg_id.raise((Path::new(package_name), package_name.to_owned()));

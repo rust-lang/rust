@@ -10,6 +10,10 @@
 
 #[allow(dead_code)];
 
+pub use target::{OutputType, Main, Lib, Bench, Test, JustOne, lib_name_of, lib_crate_filename};
+pub use target::{Target, Build, Install};
+pub use target::{lib_name_of, lib_crate_filename, WhatToBuild, MaybeCustom, Inferred};
+
 use std::cell::RefCell;
 use std::libc;
 use std::os;
@@ -17,7 +21,7 @@ use std::io;
 use std::io::fs;
 use extra::workcache;
 use rustc::metadata::creader::Loader;
-use rustc::driver::{driver, session};
+use extra::treemap::TreeMap;
 use extra::getopts::groups::getopts;
 use syntax;
 use syntax::codemap::{DUMMY_SP, Spanned};
@@ -28,19 +32,16 @@ use syntax::attr::AttrMetaMethods;
 use syntax::fold::Folder;
 use syntax::visit::Visitor;
 use syntax::util::small_vector::SmallVector;
+use syntax::crateid::CrateId;
 use rustc::back::link::OutputTypeExe;
 use rustc::back::link;
+use rustc::driver::{driver, session};
 use CtxMethods;
 use context::{in_target, StopBefore, Link, Assemble, BuildContext};
-use crate_id::CrateId;
 use package_source::PkgSrc;
 use workspace::pkg_parent_workspaces;
 use path_util::{system_library, target_build_dir};
 use path_util::{default_workspace, built_library_in_workspace};
-pub use target::{OutputType, Main, Lib, Bench, Test, JustOne, lib_name_of, lib_crate_filename};
-pub use target::{Target, Build, Install};
-use extra::treemap::TreeMap;
-pub use target::{lib_name_of, lib_crate_filename, WhatToBuild, MaybeCustom, Inferred};
 use workcache_support::{digest_file_with_date, digest_only_date};
 use messages::error;
 
@@ -177,11 +178,11 @@ pub fn compile_input(context: &BuildContext,
     // not sure if we should support anything else
 
     let mut out_dir = target_build_dir(workspace);
-    out_dir.push(&crate_id.path);
+    out_dir.push(crate_id.path.as_slice());
     // Make the output directory if it doesn't exist already
     fs::mkdir_recursive(&out_dir, io::UserRWX);
 
-    let binary = os::args()[0].to_owned();
+    let binary = os::args()[0];
 
     debug!("flags: {}", flags.connect(" "));
     debug!("cfgs: {}", cfgs.connect(" "));
@@ -312,7 +313,7 @@ pub fn compile_input(context: &BuildContext,
     if !attr::contains_name(crate.attrs, "crate_id") {
         // FIXME (#9639): This needs to handle non-utf8 paths
         let crateid_attr =
-            attr::mk_name_value_item_str(@"crate_id", crate_id.to_crate_id_str().to_managed());
+            attr::mk_name_value_item_str(@"crate_id", crate_id.to_str().to_managed());
 
         debug!("crateid attr: {:?}", crateid_attr);
         crate.attrs.push(attr::mk_attr(crateid_attr));
@@ -441,7 +442,7 @@ pub fn compile_crate(ctxt: &BuildContext,
                      opt: session::OptLevel,
                      what: OutputType) -> Option<Path> {
     debug!("compile_crate: crate={}, workspace={}", crate.display(), workspace.display());
-    debug!("compile_crate: short_name = {}, flags =...", crate_id.to_str());
+    debug!("compile_crate: name = {}, flags =...", crate_id.to_str());
     for fl in flags.iter() {
         debug!("+++ {}", *fl);
     }
@@ -470,8 +471,9 @@ impl<'a> CrateInstaller<'a> {
                     None => self.sess.str_of(lib_ident)
                 };
                 debug!("Finding and installing... {}", lib_name);
+                let crate_id: CrateId = from_str(lib_name).expect("valid crate id");
                 // Check standard Rust library path first
-                let whatever = system_library(&self.context.sysroot_to_use(), lib_name);
+                let whatever = system_library(&self.context.sysroot_to_use(), &crate_id);
                 debug!("system library returned {:?}", whatever);
                 match whatever {
                     Some(ref installed_path) => {
@@ -491,10 +493,8 @@ impl<'a> CrateInstaller<'a> {
                     }
                     None => {
                         // FIXME #8711: need to parse version out of path_opt
-                        debug!("Trying to install library {}, rebuilding it",
-                               lib_name.to_str());
+                        debug!("Trying to install library {}, rebuilding it", crate_id.to_str());
                         // Try to install it
-                        let crate_id = CrateId::new(lib_name);
                         // Find all the workspaces in the RUST_PATH that contain this package.
                         let workspaces = pkg_parent_workspaces(&self.context.context,
                                                                &crate_id);
@@ -526,8 +526,8 @@ impl<'a> CrateInstaller<'a> {
                                  // Nonexistent package? Then print a better error
                                  error(format!("Package {} depends on {}, but I don't know \
                                                how to find it",
-                                               self.parent.path.display(),
-                                               crate_id.path.display()));
+                                               self.parent.path,
+                                               crate_id.path));
                                  fail!()
                         }).inside(|| {
                             PkgSrc::new(source_workspace.clone(),
