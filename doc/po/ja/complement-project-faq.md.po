@@ -1,0 +1,290 @@
+# Japanese translations for Rust package
+# Copyright (C) 2014 The Rust Project Developers
+# This file is distributed under the same license as the Rust package.
+# Automatically generated, 2014.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Rust 0.9\n"
+"POT-Creation-Date: 2014-01-10 12:20+0900\n"
+"PO-Revision-Date: 2014-01-10 12:20+0900\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: ja\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#. type: Plain text
+#: doc/complement-project-faq.md:2
+msgid "% Project FAQ"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-project-faq.md:4
+msgid "# What is this project's goal, in one sentence?"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-project-faq.md:6
+msgid ""
+"To design and implement a safe, concurrent, practical, static systems "
+"language."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-project-faq.md:8
+msgid "# Why are you doing this?"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-project-faq.md:10
+msgid ""
+"Existing languages at this level of abstraction and efficiency are "
+"unsatisfactory. In particular:"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-project-faq.md:14
+msgid "Too little attention paid to safety."
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-project-faq.md:14
+msgid "Poor concurrency support."
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-project-faq.md:14
+msgid "Lack of practical affordances, too dogmatic about paradigm."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-project-faq.md:16
+msgid "# What are some non-goals?"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-project-faq.md:23
+msgid ""
+"To employ any particularly cutting-edge technologies. Old, established "
+"techniques are better."
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-project-faq.md:23
+msgid ""
+"To prize expressiveness, minimalism or elegance above other goals. These are "
+"desirable but subordinate goals."
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-project-faq.md:23
+msgid ""
+"To cover the \"systems language\" part all the way down to \"writing an OS "
+"kernel\"."
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-project-faq.md:23
+msgid ""
+"To cover the complete feature-set of C++, or any other language. It should "
+"provide majority-case features."
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-project-faq.md:23
+msgid ""
+"To be 100% static, 100% safe, 100% reflective, or too dogmatic in any other "
+"sense. Trade-offs exist."
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-project-faq.md:23
+msgid ""
+"To run on \"every possible platform\". It must eventually work without "
+"unnecessary compromises on widely-used hardware and software platforms."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-project-faq.md:25
+msgid "# Is any part of this thing production-ready?"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-project-faq.md:27
+msgid ""
+"No. Feel free to play around, but don't expect completeness or stability "
+"yet. Expect incompleteness and breakage."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-project-faq.md:29
+msgid "What exists presently is:"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-project-faq.md:36
+msgid "A self-hosted (written in Rust) compiler, which uses LLVM as a backend."
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-project-faq.md:36
+msgid "A runtime library."
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-project-faq.md:36
+#, fuzzy
+#| msgid "## The standard library"
+msgid "An evolving standard library."
+msgstr "## 標準ライブラリ"
+
+#. type: Bullet: '* '
+#: doc/complement-project-faq.md:36
+msgid "Documentation for the language and libraries."
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-project-faq.md:36
+msgid "Incomplete tools for packaging and documentation."
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-project-faq.md:36
+msgid "A test suite covering the compiler and libraries."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-project-faq.md:38
+msgid "# Is this a completely Mozilla-planned and orchestrated thing?"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-project-faq.md:40
+msgid ""
+"No. It started as a part-time side project in 2006 and remained so for over "
+"3 years. Mozilla got involved in 2009 once the language was mature enough to "
+"run some basic tests and demonstrate the idea."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-project-faq.md:42
+msgid "# Why did you do so much work in private?"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-project-faq.md:45
+msgid ""
+"A certain amount of shyness. Language work is somewhat political and flame-"
+"inducing."
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-project-faq.md:45
+msgid ""
+"Languages designed by committee have a poor track record. Design coherence "
+"is important. There were a lot of details to work out and the initial "
+"developer (Graydon) had this full time job thing eating up most days."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-project-faq.md:47
+msgid "# Why publish it now?"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-project-faq.md:50
+msgid ""
+"The design is stable enough. All the major pieces have reached non-"
+"imaginary, initial implementation status. It seems to hold together ok."
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-project-faq.md:50
+msgid ""
+"Languages solely implemented and supported by one person _also_ have a poor "
+"track record. To survive it'll need help."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-project-faq.md:52
+msgid "# What will Mozilla use Rust for?"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-project-faq.md:54
+msgid ""
+"Mozilla intends to use Rust as a platform for prototyping experimental "
+"browser architectures. Specifically, the hope is to develop a browser that "
+"is more amenable to parallelization than existing ones, while also being "
+"less prone to common C++ coding errors. The name of that project is _[Servo]"
+"(http://github.com/mozilla/servo)_."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-project-faq.md:56
+msgid ""
+"# Are you going to use this to suddenly rewrite the browser and change "
+"everything? Is the Mozilla Corporation trying to force the community to use "
+"a new language?"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-project-faq.md:58
+msgid ""
+"No. This is a research project. The point is to explore ideas. There is no "
+"plan to incorporate any Rust-based technology into Firefox."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-project-faq.md:60
+msgid ""
+"# Why GitHub rather than the normal Mozilla setup (Mercurial / Bugzilla / "
+"Tinderbox)?"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-project-faq.md:64
+msgid ""
+"This is a fresh codebase and has no existing ties to Mozilla infrastructure; "
+"there is no particular advantage to (re)using any of the above "
+"infrastructure, it would all have to be upgraded and adapted to our needs."
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-project-faq.md:64
+msgid ""
+"Git has been progressing rapidly in the years since Mozilla picked Mercurial "
+"for its main development needs, and appears to be both more widely known and "
+"more accessible at this point."
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-project-faq.md:64
+msgid ""
+"This reduces the administrative requirements for contributing to merely "
+"establishing a paper trail via a contributor agreement. There is no need for "
+"vouching, granting commit access to Mozilla facilities, or setting up "
+"Mozilla user accounts."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-project-faq.md:66
+msgid "# Why a BSD-style license rather than MPL or tri-license?"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-project-faq.md:68
+msgid "Partly due to preference of the original developer (Graydon)."
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/complement-project-faq.md:68
+msgid ""
+"Partly due to the fact that languages tend to have a wider audience and more "
+"diverse set of possible embeddings and end-uses than focused, coherent "
+"products such as web browsers. We'd like to appeal to as many of those "
+"potential contributors as possible."
+msgstr ""

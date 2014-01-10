@@ -1,0 +1,118 @@
+# Japanese translations for Rust package
+# Copyright (C) 2014 The Rust Project Developers
+# This file is distributed under the same license as the Rust package.
+# Automatically generated, 2014.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Rust 0.9\n"
+"POT-Creation-Date: 2014-01-10 12:20+0900\n"
+"PO-Revision-Date: 2014-01-10 12:20+0900\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: ja\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#. type: Plain text
+#: doc/complement-bugreport.md:2
+msgid "% HOWTO submit a RUST bug report"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-bugreport.md:4
+msgid "# I think I found a bug in the compiler!"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-bugreport.md:9
+#, no-wrap
+msgid ""
+"   If you see this message: ''error: internal compiler error: unexpected failure'',\n"
+"then you have definitely found a bug in the compiler. It's also possible that\n"
+"your code is not well-typed, but if you saw this message, it's still a bug in\n"
+"error reporting.\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-bugreport.md:13
+#, no-wrap
+msgid ""
+"   If you see a message about an LLVM assertion failure, then you have also\n"
+"definitely found a bug in the compiler. In both of these cases, it's not your\n"
+"fault and you should report a bug!\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-bugreport.md:18
+#, no-wrap
+msgid ""
+"   If you see a compiler error message that you think is meant for users to see,\n"
+"but it confuses you, *that's a bug too*. If it wasn't clear to you, then it's\n"
+"an error message we want to improve, so please report it so that we can try\n"
+"to make it better.\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-bugreport.md:20
+msgid ""
+"# I don't want to waste the Rust devs' time! How do I know the bug I found "
+"isn't a bug that already exists in the issue tracker?"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-bugreport.md:25
+#, no-wrap
+msgid ""
+"   If you don't have much time, then don't worry about that. Just submit the bug.\n"
+"If it's a duplicate, somebody will notice that and close it. No one will laugh\n"
+"at you, we promise (and if someone did, they would be violating the Rust\n"
+"[code of conduct](https://github.com/mozilla/rust/wiki/Note-development-policy code of conduct)).\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-bugreport.md:33
+#, no-wrap
+msgid ""
+"   If you have more time, it's very helpful if you can type the text of the error\n"
+"message you got [into the issue tracker search box](https://github.com/mozilla/rust/issues)\n"
+"to see if there's an existing bug that resembles your problem. If there is,\n"
+"and it's an open bug, you can comment on that issue and say you ran into it too.\n"
+"This will encourage devs to fix it. But again, don't let this stop you from\n"
+"submitting a bug. We'd rather have to do the work of closing duplicates than\n"
+"miss out on valid bug reports.\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-bugreport.md:35
+msgid "# What information should I include in a bug report?"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-bugreport.md:41
+#, no-wrap
+msgid ""
+"    It's helpful to include your specific OS (for example: Mac OS X 10.8.3,\n"
+"Windows 7, Ubuntu 12.0.4) and your hardware architecture (for example: i686, x86_64).\n"
+"It's also helpful to copy/paste the output of re-running the erroneous rustc\n"
+"commmand with the `-v` flag. Finally, if you can run the offending command under gdb,\n"
+"pasting a stack trace can be useful; to do so, you will need to set a breakpoint on `rust_begin_unwind`.\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-bugreport.md:43
+msgid "# I submitted a bug, but nobody has commented on it! I'm sad."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-bugreport.md:48
+#, no-wrap
+msgid ""
+"   This is sad, but does happen sometimes, since we're short-staffed. If you\n"
+"submit a bug and you haven't received a comment on it within 3 business days,\n"
+"it's entirely reasonable to either ask on the #rust IRC channel,\n"
+"or post on the [rust-dev mailing list](https://mail.mozilla.org/listinfo/rust-dev)\n"
+"to ask what the status of the bug is.\n"
+msgstr ""

@@ -1,0 +1,518 @@
+# Japanese translations for Rust package
+# Copyright (C) 2014 The Rust Project Developers
+# This file is distributed under the same license as the Rust package.
+# Automatically generated, 2014.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Rust 0.9\n"
+"POT-Creation-Date: 2014-01-10 12:20+0900\n"
+"PO-Revision-Date: 2014-01-10 12:20+0900\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: ja\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:2
+msgid "% Rust Cheatsheet"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:4
+msgid "# How do I convert *X* to *Y*?"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:6
+#, no-wrap
+msgid "**Int to string**\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:8
+msgid ""
+"Use [`ToStr`](http://static.rust-lang.org/doc/master/std/to_str/trait.ToStr."
+"html)."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:13
+#, fuzzy
+#| msgid ""
+#| "~~~~ let x: f64 = 4.0; let y: uint = x as uint; assert!(y == 4u); ~~~~"
+msgid "~~~ let x: int = 42; let y: ~str = x.to_str(); ~~~"
+msgstr ""
+"~~~~\n"
+"let x: f64 = 4.0;\n"
+"let y: uint = x as uint;\n"
+"assert!(y == 4u);\n"
+"~~~~"
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:15
+#, no-wrap
+msgid "**String to int**\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:17
+msgid ""
+"Use [`FromStr`](http://static.rust-lang.org/doc/master/std/from_str/trait."
+"FromStr.html), and its helper function, [`from_str`](http://static.rust-lang."
+"org/doc/master/std/from_str/fn.from_str.html)."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:22
+msgid "~~~ let x: Option<int> = from_str(\"42\"); let y: int = x.unwrap(); ~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:24
+#, no-wrap
+msgid "**Int to string, in non-base-10**\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:26
+msgid ""
+"Use [`ToStrRadix`](http://static.rust-lang.org/doc/master/std/num/trait."
+"ToStrRadix.html)."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:29
+#, fuzzy
+#| msgid "~~~~ use std::task::spawn;"
+msgid "~~~ use std::num::ToStrRadix;"
+msgstr ""
+"~~~~\n"
+"use std::task::spawn;"
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:33
+msgid "let x: int = 42; let y: ~str = x.to_str_radix(16); ~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:35
+#, no-wrap
+msgid "**String to int, in non-base-10**\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:37
+msgid ""
+"Use [`FromStrRadix`](http://static.rust-lang.org/doc/master/std/num/trait."
+"FromStrRadix.html), and its helper function, [`from_str_radix`](http://"
+"static.rust-lang.org/doc/master/std/num/fn.from_str_radix.html)."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:40
+#, fuzzy
+#| msgid "~~~~ use std::task::spawn;"
+msgid "~~~ use std::num::from_str_radix;"
+msgstr ""
+"~~~~\n"
+"use std::task::spawn;"
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:44
+msgid ""
+"let x: Option<i64> = from_str_radix(\"deadbeef\", 16); let y: i64 = x."
+"unwrap(); ~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:46
+#, fuzzy
+#| msgid "## Operators"
+msgid "# File operations"
+msgstr "## 演算子"
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:48
+msgid "## How do I read from a file?"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:50
+msgid ""
+"Use [`File::open`](http://static.rust-lang.org/doc/master/std/io/fs/struct."
+"File.html#method.open) to create a [`File`](http://static.rust-lang.org/doc/"
+"master/std/io/fs/struct.File.html) struct, which implements the [`Reader`]"
+"(http://static.rust-lang.org/doc/master/std/io/trait.Reader.html) trait."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:54
+msgid "~~~ {.xfail-test} use std::path::Path; use std::io::fs::File;"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:59
+#, no-wrap
+msgid ""
+"let path : Path   = Path::new(\"Doc-FAQ-Cheatsheet.md\");\n"
+"let on_error      = || fail!(\"open of {:?} failed\", path);\n"
+"let reader : File = File::open(&path).unwrap_or_else(on_error);\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:61
+msgid "## How do I iterate over the lines in a file?"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:63
+msgid ""
+"Use the [`lines`](http://static.rust-lang.org/doc/master/std/io/trait.Buffer."
+"html#method.lines) method on a [`BufferedReader`](http://static.rust-lang."
+"org/doc/master/std/io/buffered/struct.BufferedReader.html)."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:67
+msgid ""
+"~~~ use std::io::buffered::BufferedReader; # use std::io::mem::MemReader;"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:69
+msgid "# let reader = MemReader::new(~[]);"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:75
+#, no-wrap
+msgid ""
+"let mut reader = BufferedReader::new(reader);\n"
+"for line in reader.lines() {\n"
+"    print!(\"line: {}\", line);\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:77
+#, fuzzy
+#| msgid "## Using other crates"
+msgid "# String operations"
+msgstr "## 他のクレートの利用"
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:79
+msgid "## How do I search for a substring?"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:81
+msgid ""
+"Use the [`find_str`](http://static.rust-lang.org/doc/master/std/str/trait."
+"StrSlice.html#tymethod.find_str) method."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:86
+msgid ""
+"~~~ let str = \"Hello, this is some random string\"; let index: Option<uint> "
+"= str.find_str(\"rand\"); ~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:88 doc/guide-container.md:4
+#, fuzzy
+#| msgid "## Conventions"
+msgid "# Containers"
+msgstr "## 本書の表記について"
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:90
+msgid "## How do I get the length of a vector?"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:92
+msgid ""
+"The [`Container`](http://static.rust-lang.org/doc/master/std/container/trait."
+"Container.html) trait provides the `len` method."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:97
+msgid ""
+"~~~ let u: ~[u32] = ~[0, 1, 2]; let v: &[u32] = &[0, 1, 2, 3]; let w: "
+"[u32, .. 5] = [0, 1, 2, 3, 4];"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:100
+msgid ""
+"println!(\"u: {}, v: {}, w: {}\", u.len(), v.len(), w.len()); // 3, 4, 5 ~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:102
+msgid "## How do I iterate over a vector?"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:104
+msgid ""
+"Use the [`iter`](http://static.rust-lang.org/doc/master/std/vec/trait."
+"ImmutableVector.html#tymethod.iter) method."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:111
+#, no-wrap
+msgid ""
+"~~~\n"
+"let values: ~[int] = ~[1, 2, 3, 4, 5];\n"
+"for value in values.iter() {  // value: &int\n"
+"    println!(\"{}\", *value);\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:113
+msgid ""
+"(See also [`mut_iter`](http://static.rust-lang.org/doc/master/std/vec/trait."
+"MutableVector.html#tymethod.mut_iter) which yields `&mut int` and "
+"[`move_iter`](http://static.rust-lang.org/doc/master/std/vec/trait."
+"OwnedVector.html#tymethod.move_iter) which yields `int` while consuming the "
+"`values` vector.)"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:115 doc/rust.md:2970
+msgid "# Type system"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:117
+msgid "## How do I store a function in a struct?"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:122
+#, no-wrap
+msgid ""
+"~~~\n"
+"struct Foo {\n"
+"    myfunc: fn(int, uint) -> i32\n"
+"}\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:126
+#, no-wrap
+msgid ""
+"struct FooClosure<'a> {\n"
+"    myfunc: 'a |int, uint| -> i32\n"
+"}\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:130
+#, no-wrap
+msgid ""
+"fn a(a: int, b: uint) -> i32 {\n"
+"    (a as uint + b) as i32\n"
+"}\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:138
+#, no-wrap
+msgid ""
+"fn main() {\n"
+"    let f = Foo { myfunc: a };\n"
+"    let g = FooClosure { myfunc: |a, b|  { (a - b as int) as i32 } };\n"
+"    println!(\"{}\", (f.myfunc)(1, 2));\n"
+"    println!(\"{}\", (g.myfunc)(3, 4));\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:140
+msgid ""
+"Note that the parenthesis surrounding `f.myfunc` are necessary: they are how "
+"Rust disambiguates field lookup and method call. The `'a` on `FooClosure` is "
+"the lifetime of the closure's environment pointer."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:142
+msgid "## How do I express phantom types?"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:144
+msgid ""
+"[Phantom types](http://www.haskell.org/haskellwiki/Phantom_type) are those "
+"that cannot be constructed at compile time. To express these in Rust, zero-"
+"variant `enum`s can be used:"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:149
+msgid "~~~ enum Open {} enum Closed {} ~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:151
+msgid ""
+"Phantom types are useful for enforcing state at compile time. For example:"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:154
+msgid "~~~ struct Door<State>(~str);"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:157
+msgid "struct Open; struct Closed;"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:161
+#, no-wrap
+msgid ""
+"fn close(Door(name): Door<Open>) -> Door<Closed> {\n"
+"    Door::<Closed>(name)\n"
+"}\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:165
+#, no-wrap
+msgid ""
+"fn open(Door(name): Door<Closed>) -> Door<Open> {\n"
+"    Door::<Open>(name)\n"
+"}\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:168
+msgid "let _ = close(Door::<Open>(~\"front\")); ~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:170
+msgid "Attempting to close a closed door is prevented statically:"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:174
+msgid ""
+"~~~ {.xfail-test} let _ = close(Door::<Closed>(~\"front\")); // error: "
+"mismatched types: expected `main::Door<main::Open>` but found `main::"
+"Door<main::Closed>` ~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:176
+#, fuzzy
+#| msgid "[The foreign function interface][ffi]"
+msgid "# FFI (Foreign Function Interface)"
+msgstr "[他言語間インターフェース (foreign function inferface)][ffi]"
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:178
+msgid "## C function signature conversions"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:185
+#, no-wrap
+msgid ""
+"Description            C signature                                    Equivalent Rust signature\n"
+"---------------------- ---------------------------------------------- ------------------------------------------\n"
+"no parameters          `void foo(void);`                              `fn foo();`\n"
+"return value           `int foo(void);`                               `fn foo() -> c_int;`\n"
+"function parameters    `void foo(int x, int y);`                      `fn foo(x: int, y: int);`\n"
+"in-out pointers        `void foo(const int* in_ptr, int* out_ptr);`   `fn foo(in_ptr: *c_int, out_ptr: *mut c_int);`\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:187
+msgid ""
+"Note: The Rust signatures should be wrapped in an `extern \"ABI\" { ... }` "
+"block."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:189
+msgid "### Representing opaque handles"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:191
+msgid "You might see things like this in C APIs:"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:196
+msgid ""
+"~~~ {.notrust} typedef struct Window Window; Window* createWindow(int width, "
+"int height); ~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:198
+msgid ""
+"You can use a zero-element `enum` ([phantom type](#how-do-i-express-phantom-"
+"types)) to represent the opaque object handle. The FFI would look like this:"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:205
+#, no-wrap
+msgid ""
+"~~~ {.xfail-test}\n"
+"enum Window {}\n"
+"extern \"C\" {\n"
+"    fn createWindow(width: c_int, height: c_int) -> *Window;\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:207
+msgid ""
+"Using a phantom type ensures that the handles cannot be (safely) constructed "
+"in client code."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:209
+msgid "# Contributing to this page"
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:211
+msgid ""
+"For small examples, have full type annotations, as much as is reasonable, to "
+"keep it clear what, exactly, everything is doing. Try to link to the API "
+"docs, as well."
+msgstr ""
+
+#. type: Plain text
+#: doc/complement-cheatsheet.md:213
+msgid "Similar documents for other programming languages:"
+msgstr ""
+
+#. type: Bullet: '  * '
+#: doc/complement-cheatsheet.md:214
+msgid "[http://pleac.sourceforge.net/](http://pleac.sourceforge.net)"
+msgstr ""
