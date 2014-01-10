@@ -230,7 +230,7 @@ impl rt::Runtime for Ops {
 
     // See the comments on `deschedule` for why the task is forgotten here, and
     // why it's valid to do so.
-    fn reawaken(mut ~self, mut to_wake: ~Task, _can_resched: bool) {
+    fn reawaken(mut ~self, mut to_wake: ~Task) {
         unsafe {
             let me = &mut *self as *mut Ops;
             to_wake.put_runtime(self as ~rt::Runtime);

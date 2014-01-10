@@ -148,7 +148,7 @@ pub trait Runtime {
     fn maybe_yield(~self, cur_task: ~Task);
     fn deschedule(~self, times: uint, cur_task: ~Task,
                   f: |BlockedTask| -> Result<(), BlockedTask>);
-    fn reawaken(~self, to_wake: ~Task, can_resched: bool);
+    fn reawaken(~self, to_wake: ~Task);
 
     // Miscellaneous calls which are very different depending on what context
     // you're in.
