@@ -289,7 +289,7 @@ impl Task {
     /// Returns the stack bounds for this task in (lo, hi) format. The stack
     /// bounds may not be known for all tasks, so the return value may be
     /// `None`.
-    pub fn stack_bounds(&self) -> Option<(uint, uint)> {
+    pub fn stack_bounds(&self) -> (uint, uint) {
         self.imp.get_ref().stack_bounds()
     }
 }
