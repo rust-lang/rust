@@ -22,6 +22,7 @@ use libc;
 use ops::Drop;
 use option::{Option, Some, None};
 use uint;
+use os;
 
 type StartFn = extern "C" fn(*libc::c_void) -> imp::rust_thread_return;
 
@@ -75,7 +76,7 @@ impl Thread<()> {
     /// Performs the same functionality as `start`, but specifies an explicit
     /// stack size for the new thread.
     pub fn start_stack<T: Send>(stack: uint, main: proc() -> T) -> Thread<T> {
-
+        let stack = os::align_to_page(stack);
         // We need the address of the packet to fill in to be stable so when
         // `main` fills it in it's still valid, so allocate an extra ~ box to do
         // so.
@@ -106,6 +107,7 @@ impl Thread<()> {
     /// Performs the same functionality as `spawn`, but explicitly specifies a
     /// stack size for the new thread.
     pub fn spawn_stack(stack: uint, main: proc()) {
+        let stack = os::align_to_page(stack);
         unsafe {
             let handle = imp::create(stack, ~main);
             imp::detach(handle);
@@ -149,11 +151,13 @@ mod imp {
     use libc::types::os::arch::extra::{LPSECURITY_ATTRIBUTES, SIZE_T, BOOL,
                                        LPVOID, DWORD, LPDWORD, HANDLE};
     use ptr;
+    use os;
 
     pub type rust_thread = HANDLE;
     pub type rust_thread_return = DWORD;
 
     pub unsafe fn create(stack: uint, p: ~proc()) -> rust_thread {
+        let stack = os::align_to_page(stack);
         let arg: *mut libc::c_void = cast::transmute(p);
         CreateThread(ptr::mut_null(), stack as libc::size_t, super::thread_start,
                      arg, 0, ptr::mut_null())
@@ -193,12 +197,14 @@ mod imp {
     use libc::consts::os::posix01::PTHREAD_CREATE_JOINABLE;
     use libc;
     use ptr;
+    use os;
     use unstable::intrinsics;
 
     pub type rust_thread = libc::pthread_t;
     pub type rust_thread_return = *libc::c_void;
 
     pub unsafe fn create(stack: uint, p: ~proc()) -> rust_thread {
+        let stack = os::align_to_page(stack);
         let mut native: libc::pthread_t = intrinsics::uninit();
         let mut attr: libc::pthread_attr_t = intrinsics::uninit();
         assert_eq!(pthread_attr_init(&mut attr), 0);
