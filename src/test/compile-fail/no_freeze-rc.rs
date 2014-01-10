@@ -14,6 +14,6 @@ use std::cell::RefCell;
 fn bar<T: Freeze>(_: T) {}
 
 fn main() {
-    let x = Rc::from_send(RefCell::new(5));
+    let x = Rc::new(RefCell::new(5));
     bar(x); //~ ERROR instantiating a type parameter with an incompatible type `std::rc::Rc<std::cell::RefCell<int>>`, which does not fulfill `Freeze`
 }

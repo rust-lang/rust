@@ -37,7 +37,7 @@ struct A
 fn main()
 {
     let a = A {v: ~B{v: None} as ~Foo}; //~ ERROR cannot pack type `~B`, which does not fulfill `Send`
-    let v = Rc::from_send(RefCell::new(a));
+    let v = Rc::new(RefCell::new(a));
     let w = v.clone();
     let b = v.borrow();
     let mut b = b.borrow_mut();
