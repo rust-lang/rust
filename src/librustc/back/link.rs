@@ -45,13 +45,13 @@ use syntax::attr::AttrMetaMethods;
 use syntax::crateid::CrateId;
 
 #[deriving(Clone, Eq)]
-pub enum output_type {
-    output_type_none,
-    output_type_bitcode,
-    output_type_assembly,
-    output_type_llvm_assembly,
-    output_type_object,
-    output_type_exe,
+pub enum OutputType {
+    OutputTypeNone,
+    OutputTypeBitcode,
+    OutputTypeAssembly,
+    OutputTypeLlvmAssembly,
+    OutputTypeObject,
+    OutputTypeExe,
 }
 
 pub fn llvm_err(sess: Session, msg: ~str) -> ! {
@@ -86,10 +86,10 @@ pub fn WriteOutputFile(
 pub mod write {
 
     use back::lto;
-    use back::link::{WriteOutputFile, output_type};
-    use back::link::{output_type_assembly, output_type_bitcode};
-    use back::link::{output_type_exe, output_type_llvm_assembly};
-    use back::link::{output_type_object};
+    use back::link::{WriteOutputFile, OutputType};
+    use back::link::{OutputTypeAssembly, OutputTypeBitcode};
+    use back::link::{OutputTypeExe, OutputTypeLlvmAssembly};
+    use back::link::{OutputTypeObject};
     use driver::driver::CrateTranslation;
     use driver::session::Session;
     use driver::session;
@@ -107,7 +107,7 @@ pub mod write {
 
     pub fn run_passes(sess: Session,
                       trans: &CrateTranslation,
-                      output_type: output_type,
+                      output_type: OutputType,
                       output: &Path) {
         let llmod = trans.module;
         let llcx = trans.context;
@@ -225,20 +225,20 @@ pub mod write {
 
             time(sess.time_passes(), "codegen passes", (), |()| {
                 match output_type {
-                    output_type_none => {}
-                    output_type_bitcode => {
+                    OutputTypeNone => {}
+                    OutputTypeBitcode => {
                         output.with_c_str(|buf| {
                             llvm::LLVMWriteBitcodeToFile(llmod, buf);
                         })
                     }
-                    output_type_llvm_assembly => {
+                    OutputTypeLlvmAssembly => {
                         output.with_c_str(|output| {
                             with_codegen(tm, llmod, |cpm| {
                                 llvm::LLVMRustPrintModule(cpm, llmod, output);
                             })
                         })
                     }
-                    output_type_assembly => {
+                    OutputTypeAssembly => {
                         with_codegen(tm, llmod, |cpm| {
                             WriteOutputFile(sess, tm, cpm, llmod, output,
                                             lib::llvm::AssemblyFile);
@@ -248,7 +248,7 @@ pub mod write {
                         // could be invoked specially with output_type_assembly,
                         // so in this case we still want the metadata object
                         // file.
-                        if sess.opts.output_type != output_type_assembly {
+                        if sess.opts.output_type != OutputTypeAssembly {
                             with_codegen(tm, trans.metadata_module, |cpm| {
                                 let out = output.with_extension("metadata.o");
                                 WriteOutputFile(sess, tm, cpm,
@@ -257,7 +257,7 @@ pub mod write {
                             })
                         }
                     }
-                    output_type_exe | output_type_object => {
+                    OutputTypeExe | OutputTypeObject => {
                         with_codegen(tm, llmod, |cpm| {
                             WriteOutputFile(sess, tm, cpm, llmod, output,
                                             lib::llvm::ObjectFile);

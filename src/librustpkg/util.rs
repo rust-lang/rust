@@ -26,7 +26,7 @@ use syntax::attr::AttrMetaMethods;
 use syntax::fold::Folder;
 use syntax::visit::Visitor;
 use syntax::util::small_vector::SmallVector;
-use rustc::back::link::output_type_exe;
+use rustc::back::link::OutputTypeExe;
 use rustc::back::link;
 use CtxMethods;
 use context::{in_target, StopBefore, Link, Assemble, BuildContext};
@@ -219,12 +219,12 @@ pub fn compile_input(context: &BuildContext,
     debug!("sysroot_to_use = {}", sysroot_to_use.display());
 
     let output_type = match context.compile_upto() {
-        Assemble => link::output_type_assembly,
-        Link     => link::output_type_object,
-        Pretty | Trans | Analysis => link::output_type_none,
-        LLVMAssemble => link::output_type_llvm_assembly,
-        LLVMCompileBitcode => link::output_type_bitcode,
-        Nothing => link::output_type_exe
+        Assemble => link::OutputTypeAssembly,
+        Link     => link::OutputTypeObject,
+        Pretty | Trans | Analysis => link::OutputTypeNone,
+        LLVMAssemble => link::OutputTypeLlvmAssembly,
+        LLVMCompileBitcode => link::OutputTypeBitcode,
+        Nothing => link::OutputTypeExe
     };
 
     debug!("Output type = {:?}", output_type);

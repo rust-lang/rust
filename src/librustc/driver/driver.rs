@@ -362,7 +362,7 @@ pub fn phase_5_run_llvm_passes(sess: Session,
                                outputs: &OutputFilenames) {
 
     if sess.no_integrated_as() {
-        let output_type = link::output_type_assembly;
+        let output_type = link::OutputTypeAssembly;
         let asm_filename = outputs.obj_filename.with_extension("s");
 
         time(sess.time_passes(), "LLVM passes", (), |_|
@@ -424,7 +424,7 @@ pub fn stop_after_phase_2(sess: Session) -> bool {
 }
 
 pub fn stop_after_phase_5(sess: Session) -> bool {
-    if sess.opts.output_type != link::output_type_exe {
+    if sess.opts.output_type != link::OutputTypeExe {
         debug!("not building executable, returning early from compile_input");
         return true;
     }
@@ -765,17 +765,17 @@ pub fn build_session_options(binary: ~str,
 
     let output_type =
         if parse_only || no_trans {
-            link::output_type_none
+            link::OutputTypeNone
         } else if matches.opt_present("S") &&
                   matches.opt_present("emit-llvm") {
-            link::output_type_llvm_assembly
+            link::OutputTypeLlvmAssembly
         } else if matches.opt_present("S") {
-            link::output_type_assembly
+            link::OutputTypeAssembly
         } else if matches.opt_present("c") {
-            link::output_type_object
+            link::OutputTypeObject
         } else if matches.opt_present("emit-llvm") {
-            link::output_type_bitcode
-        } else { link::output_type_exe };
+            link::OutputTypeBitcode
+        } else { link::OutputTypeExe };
     let sysroot_opt = matches.opt_str("sysroot").map(|m| @Path::new(m));
     let target = matches.opt_str("target").unwrap_or(host_triple());
     let target_cpu = matches.opt_str("target-cpu").unwrap_or(~"generic");
@@ -1039,15 +1039,15 @@ pub fn build_output_filenames(input: &input,
     let obj_path;
     let out_path;
     let sopts = sess.opts;
-    let stop_after_codegen = sopts.output_type != link::output_type_exe;
+    let stop_after_codegen = sopts.output_type != link::OutputTypeExe;
 
     let obj_suffix = match sopts.output_type {
-        link::output_type_none => ~"none",
-        link::output_type_bitcode => ~"bc",
-        link::output_type_assembly => ~"s",
-        link::output_type_llvm_assembly => ~"ll",
+        link::OutputTypeNone => ~"none",
+        link::OutputTypeBitcode => ~"bc",
+        link::OutputTypeAssembly => ~"s",
+        link::OutputTypeLlvmAssembly => ~"ll",
         // Object and exe output both use the '.o' extension here
-        link::output_type_object | link::output_type_exe => ~"o"
+        link::OutputTypeObject | link::OutputTypeExe => ~"o"
     };
 
     match *ofile {
