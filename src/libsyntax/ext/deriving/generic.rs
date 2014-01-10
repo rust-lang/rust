@@ -185,6 +185,7 @@ use codemap;
 use codemap::Span;
 use opt_vec;
 use parse::token::InternedString;
+use parse::token;
 
 use std::vec;
 
@@ -398,7 +399,9 @@ impl<'a> TraitDef<'a> {
             self.span,
             cx.meta_name_value(self.span,
                                InternedString::new("doc"),
-                               ast::LitStr(@"Automatically derived.", ast::CookedStr)));
+                               ast::LitStr(token::intern_and_get_ident(
+                                       "Automatically derived."),
+                                       ast::CookedStr)));
         cx.item(
             self.span,
             ::parse::token::special_idents::clownshoes_extensions,

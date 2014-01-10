@@ -543,9 +543,7 @@ fn trans_datum_unadjusted<'a>(bcx: &'a Block<'a>,
             let heap = heap_exchange;
             return trans_boxed_expr(bcx, box_ty, contents, contents_ty, heap)
         }
-        ast::ExprLit(lit) => {
-            trans_immediate_lit(bcx, expr, *lit)
-        }
+        ast::ExprLit(lit) => trans_immediate_lit(bcx, expr, (*lit).clone()),
         ast::ExprBinary(_, op, lhs, rhs) => {
             // if overloaded, would be RvalueDpsExpr
             {
@@ -836,8 +834,8 @@ fn trans_rvalue_dps_unadjusted<'a>(bcx: &'a Block<'a>,
         }
         ast::ExprLit(lit) => {
             match lit.node {
-                ast::LitStr(s, _) => {
-                    tvec::trans_lit_str(bcx, expr, s, dest)
+                ast::LitStr(ref s, _) => {
+                    tvec::trans_lit_str(bcx, expr, (*s).clone(), dest)
                 }
                 _ => {
                     bcx.tcx()

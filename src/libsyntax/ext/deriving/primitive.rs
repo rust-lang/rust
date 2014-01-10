@@ -14,6 +14,7 @@ use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
+use parse::token::InternedString;
 
 pub fn expand_deriving_from_primitive(cx: &ExtCtxt,
                                       span: Span,
@@ -73,13 +74,13 @@ fn cs_from(name: &str, cx: &ExtCtxt, trait_span: Span, substr: &Substructure) ->
     match *substr.fields {
         StaticStruct(..) => {
             cx.span_err(trait_span, "`FromPrimitive` cannot be derived for structs");
-            return cx.expr_fail(trait_span, @"");
+            return cx.expr_fail(trait_span, InternedString::new(""));
         }
         StaticEnum(enum_def, _) => {
             if enum_def.variants.is_empty() {
                 cx.span_err(trait_span,
                             "`FromPrimitive` cannot be derived for enums with no variants");
-                return cx.expr_fail(trait_span, @"");
+                return cx.expr_fail(trait_span, InternedString::new(""));
             }
 
             let mut arms = ~[];
@@ -91,7 +92,8 @@ fn cs_from(name: &str, cx: &ExtCtxt, trait_span: Span, substr: &Substructure) ->
                             cx.span_err(trait_span,
                                         "`FromPrimitive` cannot be derived for \
                                         enum variants with arguments");
-                            return cx.expr_fail(trait_span, @"");
+                            return cx.expr_fail(trait_span,
+                                                InternedString::new(""));
                         }
                         let span = variant.span;
 
@@ -117,7 +119,8 @@ fn cs_from(name: &str, cx: &ExtCtxt, trait_span: Span, substr: &Substructure) ->
                         cx.span_err(trait_span,
                                     "`FromPrimitive` cannot be derived for enums \
                                     with struct variants");
-                        return cx.expr_fail(trait_span, @"");
+                        return cx.expr_fail(trait_span,
+                                            InternedString::new(""));
                     }
                 }
             }

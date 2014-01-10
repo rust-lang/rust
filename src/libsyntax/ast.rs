@@ -722,7 +722,7 @@ pub type Lit = Spanned<Lit_>;
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum Lit_ {
-    LitStr(@str, StrStyle),
+    LitStr(InternedString, StrStyle),
     LitBinary(@[u8]),
     LitChar(u32),
     LitInt(i64, IntTy),

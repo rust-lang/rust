@@ -45,6 +45,7 @@ use extra::arc::Arc;
 use extra::json::ToJson;
 use syntax::ast;
 use syntax::attr;
+use syntax::parse::token::InternedString;
 
 use clean;
 use doctree;
@@ -803,12 +804,13 @@ impl<'a> Item<'a> {
 impl<'a> fmt::Default for Item<'a> {
     fn fmt(it: &Item<'a>, fmt: &mut fmt::Formatter) {
         match attr::find_stability(it.item.attrs.iter()) {
-            Some(stability) => {
+            Some(ref stability) => {
                 write!(fmt.buf,
                        "<a class='stability {lvl}' title='{reason}'>{lvl}</a>",
                        lvl = stability.level.to_str(),
                        reason = match stability.text {
-                           Some(s) => s, None => @"",
+                           Some(ref s) => (*s).clone(),
+                           None => InternedString::new(""),
                        });
             }
             None => {}

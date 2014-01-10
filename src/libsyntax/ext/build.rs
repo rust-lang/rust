@@ -19,6 +19,7 @@ use fold::Folder;
 use opt_vec;
 use opt_vec::OptVec;
 use parse::token::special_idents;
+use parse::token;
 
 pub struct Field {
     ident: ast::Ident,
@@ -134,13 +135,13 @@ pub trait AstBuilder {
     fn expr_vec(&self, sp: Span, exprs: ~[@ast::Expr]) -> @ast::Expr;
     fn expr_vec_uniq(&self, sp: Span, exprs: ~[@ast::Expr]) -> @ast::Expr;
     fn expr_vec_slice(&self, sp: Span, exprs: ~[@ast::Expr]) -> @ast::Expr;
-    fn expr_str(&self, sp: Span, s: @str) -> @ast::Expr;
-    fn expr_str_uniq(&self, sp: Span, s: @str) -> @ast::Expr;
+    fn expr_str(&self, sp: Span, s: InternedString) -> @ast::Expr;
+    fn expr_str_uniq(&self, sp: Span, s: InternedString) -> @ast::Expr;
 
     fn expr_some(&self, sp: Span, expr: @ast::Expr) -> @ast::Expr;
     fn expr_none(&self, sp: Span) -> @ast::Expr;
 
-    fn expr_fail(&self, span: Span, msg: @str) -> @ast::Expr;
+    fn expr_fail(&self, span: Span, msg: InternedString) -> @ast::Expr;
     fn expr_unreachable(&self, span: Span) -> @ast::Expr;
 
     fn pat(&self, span: Span, pat: ast::Pat_) -> @ast::Pat;
@@ -589,10 +590,10 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     fn expr_vec_slice(&self, sp: Span, exprs: ~[@ast::Expr]) -> @ast::Expr {
         self.expr_vstore(sp, self.expr_vec(sp, exprs), ast::ExprVstoreSlice)
     }
-    fn expr_str(&self, sp: Span, s: @str) -> @ast::Expr {
+    fn expr_str(&self, sp: Span, s: InternedString) -> @ast::Expr {
         self.expr_lit(sp, ast::LitStr(s, ast::CookedStr))
     }
-    fn expr_str_uniq(&self, sp: Span, s: @str) -> @ast::Expr {
+    fn expr_str_uniq(&self, sp: Span, s: InternedString) -> @ast::Expr {
         self.expr_vstore(sp, self.expr_str(sp, s), ast::ExprVstoreUniq)
     }
 
@@ -620,7 +621,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.expr_path(none)
     }
 
-    fn expr_fail(&self, span: Span, msg: @str) -> @ast::Expr {
+    fn expr_fail(&self, span: Span, msg: InternedString) -> @ast::Expr {
         let loc = self.codemap().lookup_char_pos(span.lo);
         self.expr_call_global(
             span,
@@ -631,13 +632,16 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             ],
             ~[
                 self.expr_str(span, msg),
-                self.expr_str(span, loc.file.name),
+                self.expr_str(span,
+                              token::intern_and_get_ident(loc.file.name)),
                 self.expr_uint(span, loc.line),
             ])
     }
 
     fn expr_unreachable(&self, span: Span) -> @ast::Expr {
-        self.expr_fail(span, @"internal error: entered unreachable code")
+        self.expr_fail(span,
+                       InternedString::new(
+                           "internal error: entered unreachable code"))
     }
 
 

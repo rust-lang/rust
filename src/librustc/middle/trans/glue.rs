@@ -15,31 +15,32 @@
 
 use back::abi;
 use back::link::*;
-use lib;
 use lib::llvm::{llvm, ValueRef, True};
+use lib;
 use middle::lang_items::{FreeFnLangItem, ExchangeFreeFnLangItem};
 use middle::trans::adt;
 use middle::trans::base::*;
+use middle::trans::build::*;
 use middle::trans::callee;
 use middle::trans::cleanup;
 use middle::trans::cleanup::CleanupMethods;
 use middle::trans::common::*;
-use middle::trans::build::*;
+use middle::trans::datum::immediate_rvalue;
 use middle::trans::expr;
 use middle::trans::machine::*;
 use middle::trans::reflect;
 use middle::trans::tvec;
+use middle::trans::type_::Type;
 use middle::trans::type_of::type_of;
 use middle::ty;
-use util::ppaux;
 use util::ppaux::ty_to_short_str;
-
-use middle::trans::type_::Type;
+use util::ppaux;
 
 use std::c_str::ToCStr;
 use std::cell::Cell;
 use std::libc::c_uint;
 use syntax::ast;
+use syntax::parse::token;
 
 pub fn trans_free<'a>(cx: &'a Block<'a>, v: ValueRef) -> &'a Block<'a> {
     let _icx = push_ctxt("trans_free");
@@ -479,7 +480,8 @@ pub fn declare_tydesc(ccx: &CrateContext, t: ty::t) -> @tydesc_info {
         }
     });
 
-    let ty_name = C_str_slice(ccx, ppaux::ty_to_str(ccx.tcx, t).to_managed());
+    let ty_name = token::intern_and_get_ident(ppaux::ty_to_str(ccx.tcx, t));
+    let ty_name = C_estr_slice(ccx, ty_name);
 
     let inf = @tydesc_info {
         ty: t,

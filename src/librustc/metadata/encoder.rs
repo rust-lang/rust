@@ -1513,15 +1513,15 @@ fn encode_meta_item(ebml_w: &mut writer::Encoder, mi: @MetaItem) {
         ebml_w.end_tag();
         ebml_w.end_tag();
       }
-      MetaNameValue(ref name, value) => {
+      MetaNameValue(ref name, ref value) => {
         match value.node {
-          LitStr(value, _) => {
+          LitStr(ref value, _) => {
             ebml_w.start_tag(tag_meta_item_name_value);
             ebml_w.start_tag(tag_meta_item_name);
             ebml_w.writer.write(name.get().as_bytes());
             ebml_w.end_tag();
             ebml_w.start_tag(tag_meta_item_value);
-            ebml_w.writer.write(value.as_bytes());
+            ebml_w.writer.write(value.get().as_bytes());
             ebml_w.end_tag();
             ebml_w.end_tag();
           }
@@ -1563,7 +1563,7 @@ fn synthesize_crate_attrs(ecx: &EncodeContext,
         attr::mk_attr(
             attr::mk_name_value_item_str(
                 InternedString::new("crate_id"),
-                ecx.link_meta.crateid.to_str().to_managed()))
+                token::intern_and_get_ident(ecx.link_meta.crateid.to_str())))
     }
 
     let mut attrs = ~[];

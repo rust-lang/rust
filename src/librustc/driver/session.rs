@@ -417,7 +417,12 @@ pub fn building_library(options: &Options, crate: &ast::Crate) -> bool {
         }
     }
     match syntax::attr::first_attr_value_str_by_name(crate.attrs, "crate_type") {
-        Some(s) => "lib" == s || "rlib" == s || "dylib" == s || "staticlib" == s,
+        Some(s) => {
+            s.equiv(&("lib")) ||
+            s.equiv(&("rlib")) ||
+            s.equiv(&("dylib")) ||
+            s.equiv(&("staticlib"))
+        }
         _ => false
     }
 }
@@ -437,14 +442,20 @@ pub fn collect_outputs(session: &Session,
     let mut iter = attrs.iter().filter_map(|a| {
         if a.name().equiv(&("crate_type")) {
             match a.value_str() {
-                Some(n) if "rlib" == n => Some(OutputRlib),
-                Some(n) if "dylib" == n => Some(OutputDylib),
-                Some(n) if "lib" == n => Some(default_lib_output()),
-                Some(n) if "staticlib" == n => Some(OutputStaticlib),
-                Some(n) if "bin" == n => Some(OutputExecutable),
+                Some(ref n) if n.equiv(&("rlib")) => Some(OutputRlib),
+                Some(ref n) if n.equiv(&("dylib")) => Some(OutputDylib),
+                Some(ref n) if n.equiv(&("lib")) => {
+                    Some(default_lib_output())
+                }
+                Some(ref n) if n.equiv(&("staticlib")) => {
+                    Some(OutputStaticlib)
+                }
+                Some(ref n) if n.equiv(&("bin")) => Some(OutputExecutable),
                 Some(_) => {
-                    session.add_lint(lint::UnknownCrateType, ast::CRATE_NODE_ID,
-                                     a.span, ~"invalid `crate_type` value");
+                    session.add_lint(lint::UnknownCrateType,
+                                     ast::CRATE_NODE_ID,
+                                     a.span,
+                                     ~"invalid `crate_type` value");
                     None
                 }
                 _ => {
