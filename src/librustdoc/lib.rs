@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -109,7 +109,13 @@ pub fn usage(argv0: &str) {
 }
 
 pub fn main_args(args: &[~str]) -> int {
-    let matches = groups::getopts(args.tail(), opts()).unwrap();
+    let matches = match groups::getopts(args.tail(), opts()) {
+        Ok(m) => m,
+        Err(err) => {
+            println(err.to_err_msg());
+            return 1;
+        }
+    };
     if matches.opt_present("h") || matches.opt_present("help") {
         usage(args[0]);
         return 0;
