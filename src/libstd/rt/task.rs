@@ -27,6 +27,7 @@ use logging::Logger;
 use ops::Drop;
 use option::{Option, Some, None};
 use prelude::drop;
+use ptr;
 use result::{Result, Ok, Err};
 use rt::Runtime;
 use rt::borrowck::BorrowRecord;
@@ -68,7 +69,8 @@ pub struct Task {
 
 pub enum PossibleGc {
     GcUninit,
-    GcBorrowed,
+    // nullable
+    GcBorrowed(*mut GarbageCollector),
     GcExists(~GarbageCollector)
 }
 
@@ -176,7 +178,13 @@ impl Task {
                     let LocalStorage(ref mut optmap) = task.storage;
                     optmap.take()
                 };
-                let gc = replace(&mut task.get().gc, GcUninit);
+
+                // use the null to inform any finalisers that call
+                // back into the GC that we're collecting everything,
+                // and so they don't need to/can't do anything with
+                // it.
+                let gc = replace(&mut task.get().gc, GcBorrowed(ptr::mut_null()));
+
                 drop(task);
                 drop(storage_map);
 

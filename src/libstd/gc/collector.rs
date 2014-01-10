@@ -276,6 +276,7 @@ impl Drop for GarbageCollector {
     fn drop(&mut self) {
         // free all the pointers we're controlling.
         for (ptr, descr) in self.gc_ptrs.iter() {
+            // unused pointers have their finalisers cleared.
             match descr.finaliser {
                 Some(f) => f(ptr as *mut ()),
                 None => {}

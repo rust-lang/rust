@@ -34,6 +34,8 @@ use vec::ImmutableVector;
 
 use unstable::intrinsics::{owns_new_managed, move_val_init, needs_drop};
 
+use gc::collector::GarbageCollector;
+
 pub mod collector;
 
 fn pointer_run_dtor<T>(p: *mut ()) {
@@ -75,18 +77,22 @@ pub unsafe fn register_root_changes<T>(removals: &[*T],
 /// `register_root_changes` for description.
 pub unsafe fn register_root_changes_always<T>(removals: &[*T],
                                               additions: &[(*T, uint)]) {
-    let gc = {
+    let mut gc = {
         let mut task = local::Local::borrow(None::<Task>);
-        replace(&mut task.get().gc, GcBorrowed)
+
+        // we don't execute any external code inside here and
+        // everything is task local, so Uninit is fine (because
+        // nothing else will read it)
+        replace(&mut task.get().gc, GcUninit)
     };
-    let mut gc = match gc {
+    match gc {
         // first GC interaction in this task, so create a new
         // collector
         GcUninit => {
             if additions.len() != 0 {
                 // we need to add some roots, and we need a GC for
                 // that.
-                ~collector::GarbageCollector::new()
+                gc = GcExists(~GarbageCollector::new())
             } else {
                 // we are only removing things, and if the GC doesn't
                 // exist, the pointers are already not registered as
@@ -94,22 +100,38 @@ pub unsafe fn register_root_changes_always<T>(removals: &[*T],
                 return
             }
         }
-        GcExists(gc) => gc,
-        GcBorrowed => fail!("register_root: Gc already borrowed.")
-    };
-
-    for ptr in removals.iter() {
-        gc.unregister_root(*ptr as *());
+        // the task is cleaning up, so registering root changes would
+        // be pointless.
+        GcBorrowed(ptr) if ptr.is_null() => return,
+        _ => {}
     }
-    for &(ptr, length) in additions.iter() {
-        let end = ptr.offset(length as int);
-        gc.register_root(ptr as *(), end as *());
-    }
-
     {
-        let mut task = local::Local::borrow(None::<Task>);
-        task.get().gc = GcExists(gc);
+        let gc_ref = match gc {
+            GcUninit => unreachable!(),
+            GcExists(ref mut gc) => &mut **gc,
+            // you might wonder why we can do this safely. We hit this
+            // code path when a collection runs a finaliser that
+            // wishes to change any roots (usually deregistering a
+            // root). Finalisers run after all the scanning, and we
+            // don't touch the root information data structure while
+            // running them, so we're fine to modify it.
+            //
+            // (if `unsafe_gc` is null we'd've already returned from
+            // the check above)
+            GcBorrowed(unsafe_gc) => &mut *unsafe_gc
+        };
+
+        for ptr in removals.iter() {
+            gc_ref.unregister_root(*ptr as *());
+        }
+        for &(ptr, length) in additions.iter() {
+            let end = ptr.offset(length as int);
+            gc_ref.register_root(ptr as *(), end as *());
+        }
     }
+
+    let mut task = local::Local::borrow(None::<Task>);
+    task.get().gc = gc;
 }
 
 /// Immutable garbage-collected pointer type.
@@ -137,7 +159,7 @@ impl<T: 'static> Gc<T> {
     #[experimental="not rooted by built-in pointer and vector types"]
     pub fn new(value: T) -> Gc<T> {
         let stack_top;
-        let gc;
+        let mut gc;
         {
             // we need the task-local GC, and some upper bound on the
             // top of the stack. The borrow is scoped so that we can
@@ -150,18 +172,28 @@ impl<T: 'static> Gc<T> {
                 (_, t) => stack_top = t,
             }
 
-            // mark the GC as borrowed: unfortunately this means that
-            // we can't use an GC functions any finalisers,
-            // e.g. Gc<Vec<Gc<T>>> will fail/crash when collected.
-            gc = replace(&mut task.gc, GcBorrowed);
+            // some contortions to put a *mut GC reference back into
+            // the task if we're OK to go (i.e. not borrowed already)
+            // but we may need to construct a new GC and failure is
+            // not possible (task is borrowed) so... options.
+            gc = match replace(&mut task.gc, GcUninit) {
+                // we can't Gc::new while a collection is going on.
+                GcBorrowed(_) => None,
+                GcExists(gc) => Some(gc),
+                GcUninit => Some(~GarbageCollector::new())
+            };
+            match gc {
+                // `gc` is behind a ~ pointer, so it doesn't move and
+                // this raw pointer will be valid until task death.
+                Some(ref mut gc) => { task.gc = GcBorrowed(&mut **gc as *mut GarbageCollector) }
+                None => {}
+            }
         }
 
         let mut gc = match gc {
-            // first GC allocation in this task, so create a new
-            // collector
-            GcUninit => ~collector::GarbageCollector::new(),
-            GcExists(gc) => gc,
-            GcBorrowed => fail!("Gc::new: Gc already borrowed.")
+            // the task is unborrowed, so now we can fail!
+            None => fail!("Gc::new: Gc already borrowed."),
+            Some(gc) => gc,
         };
 
         let size = mem::size_of::<T>();

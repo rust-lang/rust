@@ -126,7 +126,7 @@ impl PtrMap {
     /// Mark an allocation as unused.
     pub fn mark_unused(&mut self, ptr: uint) {
         match self.map.find_mut(&ptr) {
-            Some(descr) => descr.high = 0,
+            Some(descr) => { descr.high = 0; descr.finaliser = None }
             None => {}
         }
     }
