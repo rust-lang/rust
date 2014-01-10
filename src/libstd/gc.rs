@@ -21,6 +21,14 @@ use clone::{Clone, DeepClone};
 use managed;
 
 /// Immutable garbage-collected pointer type
+#[lang="gc"]
+#[cfg(not(test))]
+#[no_send]
+pub struct Gc<T> {
+    priv ptr: @T
+}
+
+#[cfg(test)]
 #[no_send]
 pub struct Gc<T> {
     priv ptr: @T
@@ -53,6 +61,16 @@ impl<T> Clone for Gc<T> {
         Gc{ ptr: self.ptr }
     }
 }
+
+/// An value that represents the task-local managed heap.
+///
+/// Use this like `let foo = box(GC) Bar::new(...);`
+#[lang="managed_heap"]
+#[cfg(not(test))]
+pub static GC: () = ();
+
+#[cfg(test)]
+pub static GC: () = ();
 
 /// The `Send` bound restricts this to acyclic graphs where it is well-defined.
 ///

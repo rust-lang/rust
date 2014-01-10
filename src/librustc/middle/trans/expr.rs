@@ -619,6 +619,14 @@ fn trans_rvalue_datum_unadjusted<'a>(bcx: &'a Block<'a>, expr: &ast::Expr)
             return tvec::trans_uniq_or_managed_vstore(bcx, heap,
                                                       expr, contents);
         }
+        ast::ExprBox(_, contents) => {
+            // Special case for `~T`. (The other case, for GC, is handled in
+            // `trans_rvalue_dps_unadjusted`.)
+            let box_ty = expr_ty(bcx, expr);
+            let contents_ty = expr_ty(bcx, contents);
+            let heap = heap_for_unique(bcx, contents_ty);
+            return trans_boxed_expr(bcx, box_ty, contents, contents_ty, heap)
+        }
         ast::ExprLit(lit) => {
             return trans_immediate_lit(bcx, expr, *lit);
         }
@@ -827,6 +835,11 @@ fn trans_rvalue_dps_unadjusted<'a>(
         }
         ast::ExprAssignOp(callee_id, op, dst, src) => {
             return trans_assign_op(bcx, expr, callee_id, op, dst, src);
+        }
+        ast::ExprBox(_, contents) => {
+            // Special case for `Gc<T>` for now. The other case, for unique
+            // pointers, is handled in `trans_rvalue_datum_unadjusted`.
+            return trans_gc(bcx, expr, contents, dest)
         }
         _ => {
             bcx.tcx().sess.span_bug(
@@ -1463,35 +1476,35 @@ fn trans_unary_datum<'a>(
                             trans_unary_datum()")
         }
     };
+}
 
-    fn trans_boxed_expr<'a>(
-                        bcx: &'a Block<'a>,
-                        box_ty: ty::t,
-                        contents: &ast::Expr,
-                        contents_ty: ty::t,
-                        heap: heap)
-                        -> DatumBlock<'a> {
-        let _icx = push_ctxt("trans_boxed_expr");
-        if heap == heap_exchange {
-            let llty = type_of::type_of(bcx.ccx(), contents_ty);
-            let size = llsize_of(bcx.ccx(), llty);
-            let Result { bcx: bcx, val: val } = malloc_raw_dyn(bcx, contents_ty,
-                                                               heap_exchange, size);
-            add_clean_free(bcx, val, heap_exchange);
-            let bcx = trans_into(bcx, contents, SaveIn(val));
-            revoke_clean(bcx, val);
-            return immediate_rvalue_bcx(bcx, val, box_ty);
-        } else {
-            let base::MallocResult {
-                bcx,
-                smart_ptr: bx,
-                body
-            } = base::malloc_general(bcx, contents_ty, heap);
-            add_clean_free(bcx, bx, heap);
-            let bcx = trans_into(bcx, contents, SaveIn(body));
-            revoke_clean(bcx, bx);
-            return immediate_rvalue_bcx(bcx, bx, box_ty);
-        }
+fn trans_boxed_expr<'a>(
+                    bcx: &'a Block<'a>,
+                    box_ty: ty::t,
+                    contents: &ast::Expr,
+                    contents_ty: ty::t,
+                    heap: heap)
+                    -> DatumBlock<'a> {
+    let _icx = push_ctxt("trans_boxed_expr");
+    if heap == heap_exchange {
+        let llty = type_of::type_of(bcx.ccx(), contents_ty);
+        let size = llsize_of(bcx.ccx(), llty);
+        let Result { bcx: bcx, val: val } = malloc_raw_dyn(bcx, contents_ty,
+                                                           heap_exchange, size);
+        add_clean_free(bcx, val, heap_exchange);
+        let bcx = trans_into(bcx, contents, SaveIn(val));
+        revoke_clean(bcx, val);
+        return immediate_rvalue_bcx(bcx, val, box_ty);
+    } else {
+        let base::MallocResult {
+            bcx,
+            smart_ptr: bx,
+            body
+        } = base::malloc_general(bcx, contents_ty, heap);
+        add_clean_free(bcx, bx, heap);
+        let bcx = trans_into(bcx, contents, SaveIn(body));
+        revoke_clean(bcx, bx);
+        return immediate_rvalue_bcx(bcx, bx, box_ty);
     }
 }
 
@@ -1505,6 +1518,42 @@ fn trans_addr_of<'a>(
     let sub_datum = unpack_datum!(bcx, trans_to_datum(bcx, subexpr));
     let llval = sub_datum.to_ref_llval(bcx);
     return immediate_rvalue_bcx(bcx, llval, expr_ty(bcx, expr));
+}
+
+pub fn trans_gc<'a>(
+                mut bcx: &'a Block<'a>,
+                expr: &ast::Expr,
+                contents: &ast::Expr,
+                dest: Dest)
+                -> &'a Block<'a> {
+    let contents_ty = expr_ty(bcx, contents);
+    let box_ty = ty::mk_box(bcx.tcx(), contents_ty);
+    let expr_ty = expr_ty(bcx, expr);
+
+    let addr = match dest {
+        Ignore => {
+            return trans_boxed_expr(bcx,
+                                    box_ty,
+                                    contents,
+                                    contents_ty,
+                                    heap_managed).bcx
+        }
+        SaveIn(addr) => addr,
+    };
+
+    let repr = adt::represent_type(bcx.ccx(), expr_ty);
+    adt::trans_start_init(bcx, repr, addr, 0);
+    let field_dest = adt::trans_field_ptr(bcx, repr, addr, 0, 0);
+    let contents_datum_block = trans_boxed_expr(bcx,
+                                                box_ty,
+                                                contents,
+                                                contents_ty,
+                                                heap_managed);
+    bcx = contents_datum_block.bcx;
+    bcx = contents_datum_block.datum.move_to(bcx, INIT, field_dest);
+
+    // Next, wrap it up in the struct.
+    bcx
 }
 
 // Important to get types for both lhs and rhs, because one might be _|_

@@ -207,7 +207,7 @@ pub fn collect_language_items(crate: &ast::Crate,
 }
 
 lets_do_this! {
-    There are 37 lang items.
+    There are 40 lang items.
 
 //  ID, Variant name,                    Name,                      Method name;
     0,  FreezeTraitLangItem,             "freeze",                  freeze_trait;
@@ -256,5 +256,9 @@ lets_do_this! {
     35, TypeIdLangItem,                  "type_id",                 type_id;
 
     36, EhPersonalityLangItem,           "eh_personality",          eh_personality_fn;
+
+    37, ManagedHeapLangItem,             "managed_heap",            managed_heap;
+    38, ExchangeHeapLangItem,            "exchange_heap",           exchange_heap;
+    39, GcLangItem,                      "gc",                      gc;
 }
 

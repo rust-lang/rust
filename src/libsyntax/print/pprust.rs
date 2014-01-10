@@ -1148,6 +1148,13 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) {
             print_expr_vstore(s, v);
             print_expr(s, e);
         },
+        ast::ExprBox(p, e) => {
+            word(&mut s.s, "box");
+            word(&mut s.s, "(");
+            print_expr(s, p);
+            word_space(s, ")");
+            print_expr(s, e);
+        }
       ast::ExprVec(ref exprs, mutbl) => {
         ibox(s, indent_unit);
         word(&mut s.s, "[");

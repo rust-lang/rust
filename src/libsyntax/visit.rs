@@ -614,6 +614,10 @@ pub fn walk_expr<E: Clone, V: Visitor<E>>(visitor: &mut V, expression: &Expr, en
         ExprVstore(subexpression, _) => {
             visitor.visit_expr(subexpression, env.clone())
         }
+        ExprBox(place, subexpression) => {
+            visitor.visit_expr(place, env.clone());
+            visitor.visit_expr(subexpression, env.clone())
+        }
         ExprVec(ref subexpressions, _) => {
             walk_exprs(visitor, *subexpressions, env.clone())
         }
