@@ -23,7 +23,7 @@ use ast::{BlockCheckMode, UnBox};
 use ast::{Crate, CrateConfig, Decl, DeclItem};
 use ast::{DeclLocal, DefaultBlock, UnDeref, BiDiv, EMPTY_CTXT, EnumDef, ExplicitSelf};
 use ast::{Expr, Expr_, ExprAddrOf, ExprMatch, ExprAgain};
-use ast::{ExprAssign, ExprAssignOp, ExprBinary, ExprBlock};
+use ast::{ExprAssign, ExprAssignOp, ExprBinary, ExprBlock, ExprBox};
 use ast::{ExprBreak, ExprCall, ExprCast, ExprDoBody};
 use ast::{ExprField, ExprFnBlock, ExprIf, ExprIndex};
 use ast::{ExprLit, ExprLogLevel, ExprLoop, ExprMac};
@@ -2321,6 +2321,20 @@ impl Parser {
           token::IDENT(_, _) if self.is_keyword(keywords::Box) => {
             self.bump();
 
+            // Check for a place: `box(PLACE) EXPR`.
+            if self.eat(&token::LPAREN) {
+                // Support `box() EXPR` as the default.
+                if !self.eat(&token::RPAREN) {
+                    let place = self.parse_expr();
+                    self.expect(&token::RPAREN);
+                    let subexpression = self.parse_prefix_expr();
+                    hi = subexpression.span.hi;
+                    ex = ExprBox(place, subexpression);
+                    return self.mk_expr(lo, hi, ex);
+                }
+            }
+
+            // Otherwise, we use the unique pointer default.
             let subexpression = self.parse_prefix_expr();
             hi = subexpression.span.hi;
             // HACK: turn `box [...]` into a boxed-evec

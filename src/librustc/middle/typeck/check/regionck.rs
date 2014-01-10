@@ -1048,6 +1048,7 @@ pub mod guarantor {
             ast::ExprAddrOf(..) |
             ast::ExprBinary(..) |
             ast::ExprVstore(..) |
+            ast::ExprBox(..) |
             ast::ExprBreak(..) |
             ast::ExprAgain(..) |
             ast::ExprRet(..) |
