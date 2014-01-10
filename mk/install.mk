@@ -194,7 +194,7 @@ uninstall:
         ; \
         do rm -f $$i ; \
         done
-	$(Q)rm -Rf $(PHL)/rustc
+	$(Q)rm -Rf $(PHL)/$(CFG_RUSTLIBDIR)
 	$(Q)rm -f $(CFG_MANDIR)/man1/rustc.1
 	$(Q)rm -f $(CFG_MANDIR)/man1/rustdoc.1
 	$(Q)rm -f $(CFG_MANDIR)/man1/rusti.1
