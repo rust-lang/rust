@@ -359,13 +359,13 @@ impl<T:Eq + Clone> LinkedList<T> {
      ```rust
      use linked_list::LinkedList;
      let mut list = LinkedList::from_vec([1,2,3,4,5]);
-     assert!(list.mov_iter().fold(0, |a,~b| a+b) == 15);
+     assert!(list.move_iter().fold(0, |a,~b| a+b) == 15);
      ```
 
      You can therefore 
 
     */
-    pub fn mov_iter(mut ~self) -> LinkedListMoveIterator<T> {
+    pub fn move_iter(mut ~self) -> LinkedListMoveIterator<T> {
         LinkedListMoveIterator{current:self}
     }
 }
@@ -390,7 +390,7 @@ impl<'a, T: Clone> Iterator<&'a T> for LinkedListRefIterator<'a, T>{
 
 impl<T: Eq+Clone> Iterator<~T> for LinkedListMoveIterator<T>{ 
     fn next(&mut self) -> Option<~T> {
-        let empty_iter = LinkedList::<T>::new().mov_iter();
+        let empty_iter = LinkedList::<T>::new().move_iter();
         let old = ~util::replace(self, empty_iter);
 
         match old.current {
@@ -466,18 +466,18 @@ mod test_linked_list{
     }
 
     #[test]
-    fn test_mov_iter(){
+    fn test_move_iter(){
         let vec = ~[1,2,3,4,5];
         let mut test_vec = ~[];
         let mut list = LinkedList::from_vec(vec);
 
-        for ~i in list.mov_iter(){
+        for ~i in list.move_iter(){
            test_vec.push(i);
         }
         assert!(vec == test_vec);
 
         list = LinkedList::from_vec(vec);
-        assert!(list.mov_iter().fold(0, |a, ~b| a+b) == 15);
+        assert!(list.move_iter().fold(0, |a, ~b| a+b) == 15);
     }
 
     #[test]
