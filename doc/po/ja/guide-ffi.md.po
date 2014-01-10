@@ -1,0 +1,842 @@
+# Japanese translations for Rust package
+# Copyright (C) 2014 The Rust Project Developers
+# This file is distributed under the same license as the Rust package.
+# Automatically generated, 2014.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Rust 0.9\n"
+"POT-Creation-Date: 2014-01-10 12:20+0900\n"
+"PO-Revision-Date: 2014-01-10 12:20+0900\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: ja\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#. type: Plain text
+#: doc/guide-conditions.md:4 doc/guide-ffi.md:4 doc/guide-lifetimes.md:4
+#: doc/guide-macros.md:4 doc/guide-rustpkg.md:4 doc/guide-tasks.md:4
+#: doc/rust.md:4 doc/rustpkg.md:4 doc/tutorial.md:4
+msgid "# Introduction"
+msgstr "# イントロダクション"
+
+#. type: Plain text
+#: doc/guide-ffi.md:2
+#, fuzzy
+#| msgid "[The foreign function interface][ffi]"
+msgid "% The Rust Foreign Function Interface Guide"
+msgstr "[他言語間インターフェース (foreign function inferface)][ffi]"
+
+#. type: Plain text
+#: doc/guide-ffi.md:10
+msgid ""
+"This guide will use the [snappy](https://code.google.com/p/snappy/)  "
+"compression/decompression library as an introduction to writing bindings for "
+"foreign code. Rust is currently unable to call directly into a C++ library, "
+"but snappy includes a C interface (documented in [`snappy-c.h`](https://code."
+"google.com/p/snappy/source/browse/trunk/snappy-c.h))."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:13
+msgid ""
+"The following is a minimal example of calling a foreign function which will "
+"compile if snappy is installed:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:16
+msgid "~~~~ {.xfail-test} use std::libc::size_t;"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:21
+#, no-wrap
+msgid ""
+"#[link(name = \"snappy\")]\n"
+"extern {\n"
+"    fn snappy_max_compressed_length(source_length: size_t) -> size_t;\n"
+"}\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:27
+#, no-wrap
+msgid ""
+"fn main() {\n"
+"    let x = unsafe { snappy_max_compressed_length(100) };\n"
+"    println!(\"max compressed length of a 100 byte buffer: {}\", x);\n"
+"}\n"
+"~~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:32
+msgid ""
+"The `extern` block is a list of function signatures in a foreign library, in "
+"this case with the platform's C ABI. The `#[link(...)]` attribute is used to "
+"instruct the linker to link against the snappy library so the symbols are "
+"resolved."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:39
+msgid ""
+"Foreign functions are assumed to be unsafe so calls to them need to be "
+"wrapped with `unsafe {}` as a promise to the compiler that everything "
+"contained within truly is safe. C libraries often expose interfaces that "
+"aren't thread-safe, and almost any function that takes a pointer argument "
+"isn't valid for all possible inputs since the pointer could be dangling, and "
+"raw pointers fall outside of Rust's safe memory model."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:43
+msgid ""
+"When declaring the argument types to a foreign function, the Rust compiler "
+"can not check if the declaration is correct, so specifying it correctly is "
+"part of keeping the binding correct at runtime."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:45
+msgid "The `extern` block can be extended to cover the entire snappy API:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:48
+msgid "~~~~ {.xfail-test} use std::libc::{c_int, size_t};"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:67
+#, no-wrap
+msgid ""
+"#[link(name = \"snappy\")]\n"
+"extern {\n"
+"    fn snappy_compress(input: *u8,\n"
+"                       input_length: size_t,\n"
+"                       compressed: *mut u8,\n"
+"                       compressed_length: *mut size_t) -> c_int;\n"
+"    fn snappy_uncompress(compressed: *u8,\n"
+"                         compressed_length: size_t,\n"
+"                         uncompressed: *mut u8,\n"
+"                         uncompressed_length: *mut size_t) -> c_int;\n"
+"    fn snappy_max_compressed_length(source_length: size_t) -> size_t;\n"
+"    fn snappy_uncompressed_length(compressed: *u8,\n"
+"                                  compressed_length: size_t,\n"
+"                                  result: *mut size_t) -> c_int;\n"
+"    fn snappy_validate_compressed_buffer(compressed: *u8,\n"
+"                                         compressed_length: size_t) -> c_int;\n"
+"}\n"
+"~~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:69
+msgid "# Creating a safe interface"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:73
+msgid ""
+"The raw C API needs to be wrapped to provide memory safety and make use of "
+"higher-level concepts like vectors. A library can choose to expose only the "
+"safe, high-level interface and hide the unsafe internal details."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:78
+msgid ""
+"Wrapping the functions which expect buffers involves using the `vec::raw` "
+"module to manipulate Rust vectors as pointers to memory. Rust's vectors are "
+"guaranteed to be a contiguous block of memory. The length is number of "
+"elements currently contained, and the capacity is the total size in elements "
+"of the allocated memory. The length is less than or equal to the capacity."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:86
+#, no-wrap
+msgid ""
+"~~~~ {.xfail-test}\n"
+"pub fn validate_compressed_buffer(src: &[u8]) -> bool {\n"
+"    unsafe {\n"
+"        snappy_validate_compressed_buffer(src.as_ptr(), src.len() as size_t) == 0\n"
+"    }\n"
+"}\n"
+"~~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:90
+msgid ""
+"The `validate_compressed_buffer` wrapper above makes use of an `unsafe` "
+"block, but it makes the guarantee that calling it is safe for all inputs by "
+"leaving off `unsafe` from the function signature."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:93
+msgid ""
+"The `snappy_compress` and `snappy_uncompress` functions are more complex, "
+"since a buffer has to be allocated to hold the output too."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:98
+msgid ""
+"The `snappy_max_compressed_length` function can be used to allocate a vector "
+"with the maximum required capacity to hold the compressed output. The vector "
+"can then be passed to the `snappy_compress` function as an output parameter. "
+"An output parameter is also passed to retrieve the true length after "
+"compression for setting the length."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:104
+#, no-wrap
+msgid ""
+"~~~~ {.xfail-test}\n"
+"pub fn compress(src: &[u8]) -> ~[u8] {\n"
+"    unsafe {\n"
+"        let srclen = src.len() as size_t;\n"
+"        let psrc = src.as_ptr();\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:108
+#, no-wrap
+msgid ""
+"        let mut dstlen = snappy_max_compressed_length(srclen);\n"
+"        let mut dst = vec::with_capacity(dstlen as uint);\n"
+"        let pdst = dst.as_mut_ptr();\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:115
+#, no-wrap
+msgid ""
+"        snappy_compress(psrc, srclen, pdst, &mut dstlen);\n"
+"        dst.set_len(dstlen as uint);\n"
+"        dst\n"
+"    }\n"
+"}\n"
+"~~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:118
+msgid ""
+"Decompression is similar, because snappy stores the uncompressed size as "
+"part of the compression format and `snappy_uncompressed_length` will "
+"retrieve the exact buffer size required."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:124
+#, no-wrap
+msgid ""
+"~~~~ {.xfail-test}\n"
+"pub fn uncompress(src: &[u8]) -> Option<~[u8]> {\n"
+"    unsafe {\n"
+"        let srclen = src.len() as size_t;\n"
+"        let psrc = src.as_ptr();\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:127
+#, no-wrap
+msgid ""
+"        let mut dstlen: size_t = 0;\n"
+"        snappy_uncompressed_length(psrc, srclen, &mut dstlen);\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:130
+#, no-wrap
+msgid ""
+"        let mut dst = vec::with_capacity(dstlen as uint);\n"
+"        let pdst = dst.as_mut_ptr();\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:140
+#, no-wrap
+msgid ""
+"        if snappy_uncompress(psrc, srclen, pdst, &mut dstlen) == 0 {\n"
+"            dst.set_len(dstlen as uint);\n"
+"            Some(dst)\n"
+"        } else {\n"
+"            None // SNAPPY_INVALID_INPUT\n"
+"        }\n"
+"    }\n"
+"}\n"
+"~~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:143
+msgid ""
+"For reference, the examples used here are also available as an [library on "
+"GitHub](https://github.com/thestinger/rust-snappy)."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:145
+msgid "# Stack management"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:152
+msgid ""
+"Rust tasks by default run on a \"large stack\". This is actually implemented "
+"as a reserving a large segment of the address space and then lazily mapping "
+"in pages as they are needed. When calling an external C function, the code "
+"is invoked on the same stack as the rust stack. This means that there is no "
+"extra stack-switching mechanism in place because it is assumed that the "
+"large stack for the rust task is plenty for the C function to have."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:159
+msgid ""
+"A planned future improvement (net yet implemented at the time of this "
+"writing)  is to have a guard page at the end of every rust stack. No rust "
+"function will hit this guard page (due to Rust's usage of LLVM's "
+"`__morestack`). The intention for this unmapped page is to prevent infinite "
+"recursion in C from overflowing onto other rust stacks. If the guard page is "
+"hit, then the process will be terminated with a message saying that the "
+"guard page was hit."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:166
+msgid ""
+"For normal external function usage, this all means that there shouldn't be "
+"any need for any extra effort on a user's perspective. The C stack naturally "
+"interleaves with the rust stack, and it's \"large enough\" for both to "
+"interoperate. If, however, it is determined that a larger stack is "
+"necessary, there are appropriate functions in the task spawning API to "
+"control the size of the stack of the task which is spawned."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:168 doc/tutorial.md:875
+msgid "# Destructors"
+msgstr "# デストラクタ"
+
+#. type: Plain text
+#: doc/guide-ffi.md:172
+msgid ""
+"Foreign libraries often hand off ownership of resources to the calling "
+"code.  When this occurs, we must use Rust's destructors to provide safety "
+"and guarantee the release of these resources (especially in the case of "
+"failure)."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:175
+msgid ""
+"As an example, we give a reimplementation of owned boxes by wrapping "
+"`malloc` and `free`:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:181
+msgid ""
+"~~~~ use std::cast; use std::libc::{c_void, size_t, malloc, free}; use std::"
+"ptr; use std::unstable::intrinsics;"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:188
+#, no-wrap
+msgid ""
+"// Define a wrapper around the handle returned by the foreign code.\n"
+"// Unique<T> has the same semantics as ~T\n"
+"pub struct Unique<T> {\n"
+"    // It contains a single raw, mutable pointer to the object in question.\n"
+"    priv ptr: *mut T\n"
+"}\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:206
+#, no-wrap
+msgid ""
+"// Implement methods for creating and using the values in the box.\n"
+"// NB: For simplicity and correctness, we require that T has kind Send\n"
+"// (owned boxes relax this restriction, and can contain managed (GC) boxes).\n"
+"// This is because, as implemented, the garbage collector would not know\n"
+"// about any shared boxes stored in the malloc'd region of memory.\n"
+"impl<T: Send> Unique<T> {\n"
+"    pub fn new(value: T) -> Unique<T> {\n"
+"        unsafe {\n"
+"            let ptr = malloc(std::mem::size_of::<T>() as size_t) as *mut T;\n"
+"            assert!(!ptr::is_null(ptr));\n"
+"            // `*ptr` is uninitialized, and `*ptr = value` would attempt to destroy it\n"
+"            // move_val_init moves a value into this memory without\n"
+"            // attempting to drop the original value.\n"
+"            intrinsics::move_val_init(&mut *ptr, value);\n"
+"            Unique{ptr: ptr}\n"
+"        }\n"
+"    }\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:211
+#, no-wrap
+msgid ""
+"    // the 'r lifetime results in the same semantics as `&*x` with ~T\n"
+"    pub fn borrow<'r>(&'r self) -> &'r T {\n"
+"        unsafe { cast::copy_lifetime(self, &*self.ptr) }\n"
+"    }\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:217
+#, no-wrap
+msgid ""
+"    // the 'r lifetime results in the same semantics as `&mut *x` with ~T\n"
+"    pub fn borrow_mut<'r>(&'r mut self) -> &'r mut T {\n"
+"        unsafe { cast::copy_mut_lifetime(self, &mut *self.ptr) }\n"
+"    }\n"
+"}\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:237
+#, no-wrap
+msgid ""
+"// The key ingredient for safety, we associate a destructor with\n"
+"// Unique<T>, making the struct manage the raw pointer: when the\n"
+"// struct goes out of scope, it will automatically free the raw pointer.\n"
+"// NB: This is an unsafe destructor, because rustc will not normally\n"
+"// allow destructors to be associated with parametrized types, due to\n"
+"// bad interaction with managed boxes. (With the Send restriction,\n"
+"// we don't have this problem.)\n"
+"#[unsafe_destructor]\n"
+"impl<T: Send> Drop for Unique<T> {\n"
+"    fn drop(&mut self) {\n"
+"        unsafe {\n"
+"            let x = intrinsics::uninit(); // dummy value to swap in\n"
+"            // We need to move the object out of the box, so that\n"
+"            // the destructor is called (at the end of this scope.)\n"
+"            ptr::replace_ptr(self.ptr, x);\n"
+"            free(self.ptr as *c_void)\n"
+"        }\n"
+"    }\n"
+"}\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:244
+#, no-wrap
+msgid ""
+"// A comparison between the built-in ~ and this reimplementation\n"
+"fn main() {\n"
+"    {\n"
+"        let mut x = ~5;\n"
+"        *x = 10;\n"
+"    } // `x` is freed here\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:251
+#, no-wrap
+msgid ""
+"    {\n"
+"        let mut y = Unique::new(5);\n"
+"        *y.borrow_mut() = 10;\n"
+"    } // `y` is freed here\n"
+"}\n"
+"~~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:253
+msgid "# Linking"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:257
+msgid ""
+"The `link` attribute on `extern` blocks provides the basic building block "
+"for instructing rustc how it will link to native libraries. There are two "
+"accepted forms of the link attribute today:"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/guide-ffi.md:260
+msgid "`#[link(name = \"foo\")]`"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/guide-ffi.md:260
+msgid "`#[link(name = \"foo\", kind = \"bar\")]`"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:265
+msgid ""
+"In both of these cases, `foo` is the name of the native library that we're "
+"linking to, and in the second case `bar` is the type of native library that "
+"the compiler is linking to. There are currently three known types of native "
+"libraries:"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/guide-ffi.md:269
+msgid "Dynamic - `#[link(name = \"readline\")]"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/guide-ffi.md:269
+msgid "Static - `#[link(name = \"my_build_dependency\", kind = \"static\")]"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/guide-ffi.md:269
+msgid "Frameworks - `#[link(name = \"CoreFoundation\", kind = \"framework\")]"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:271
+msgid "Note that frameworks are only available on OSX targets."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:277
+msgid ""
+"The different `kind` values are meant to differentiate how the native "
+"library participates in linkage. From a linkage perspective, the rust "
+"compiler creates two flavors of artifacts: partial (rlib/staticlib) and "
+"final (dylib/binary).  Native dynamic libraries and frameworks are "
+"propagated to the final artifact boundary, while static libraries are not "
+"propagated at all."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:279
+msgid "A few examples of how this model can be used are:"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/guide-ffi.md:285
+msgid ""
+"A native build dependency. Sometimes some C/C++ glue is needed when writing "
+"some rust code, but distribution of the C/C++ code in a library format is "
+"just a burden. In this case, the code will be archived into `libfoo.a` and "
+"then the rust crate would declare a dependency via `#[link(name = \"foo\", "
+"kind = \"static\")]`."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:289
+#, no-wrap
+msgid ""
+"  Regardless of the flavor of output for the crate, the native static library\n"
+"  will be included in the output, meaning that distribution of the native static\n"
+"  library is not necessary.\n"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/guide-ffi.md:296
+msgid ""
+"A normal dynamic dependency. Common system libraries (like `readline`) are "
+"available on a large number of systems, and often a static copy of these "
+"libraries cannot be found. When this dependency is included in a rust crate, "
+"partial targets (like rlibs) will not link to the library, but when the rlib "
+"is included in a final target (like a binary), the native library will be "
+"linked in."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:298
+msgid "On OSX, frameworks behave with the same semantics as a dynamic library."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:300
+msgid "## The `link_args` attribute"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:305
+msgid ""
+"There is one other way to tell rustc how to customize linking, and that is "
+"via the `link_args` attribute. This attribute is applied to `extern` blocks "
+"and specifies raw flags which need to get passed to the linker when "
+"producing an artifact. An example usage would be:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:310
+msgid "~~~ {.xfail-test} #[link_args = \"-foo -bar -baz\"] extern {} ~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:317
+msgid ""
+"Note that this feature is currently hidden behind the `feature(link_args)` "
+"gate because this is not a sanctioned way of performing linking. Right now "
+"rustc shells out to the system linker, so it makes sense to provide extra "
+"command line arguments, but this will not always be the case. In the future "
+"rustc may use LLVM directly to link native libraries in which case "
+"`link_args` will have no meaning."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:320
+msgid ""
+"It is highly recommended to *not* use this attribute, and rather use the "
+"more formal `#[link(...)]` attribute on `extern` blocks instead."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:322
+msgid "# Unsafe blocks"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:326
+msgid ""
+"Some operations, like dereferencing unsafe pointers or calling functions "
+"that have been marked unsafe are only allowed inside unsafe blocks. Unsafe "
+"blocks isolate unsafety and are a promise to the compiler that the unsafety "
+"does not leak out of the block."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:329
+msgid ""
+"Unsafe functions, on the other hand, advertise it to the world. An unsafe "
+"function is written like this:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:333
+#, fuzzy
+#| msgid "~~~~ let square = |x: int| -> uint { (x * x) as uint }; ~~~~"
+msgid "~~~~ unsafe fn kaboom(ptr: *int) -> int { *ptr } ~~~~"
+msgstr ""
+"~~~~\n"
+"let square = |x: int| -> uint { (x * x) as uint };\n"
+"~~~~~~~~\n"
+
+#. type: Plain text
+#: doc/guide-ffi.md:335
+msgid ""
+"This function can only be called from an `unsafe` block or another `unsafe` "
+"function."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:337
+msgid "# Accessing foreign globals"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:341
+msgid ""
+"Foreign APIs often export a global variable which could do something like "
+"track global state. In order to access these variables, you declare them in "
+"`extern` blocks with the `static` keyword:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:344
+msgid "~~~{.xfail-test} use std::libc;"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:349
+#, no-wrap
+msgid ""
+"#[link(name = \"readline\")]\n"
+"extern {\n"
+"    static rl_readline_version: libc::c_int;\n"
+"}\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:355
+#, no-wrap
+msgid ""
+"fn main() {\n"
+"    println!(\"You have readline version {} installed.\",\n"
+"             rl_readline_version as int);\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:359
+msgid ""
+"Alternatively, you may need to alter global state provided by a foreign "
+"interface. To do this, statics can be declared with `mut` so rust can mutate "
+"them."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:363
+msgid "~~~{.xfail-test} use std::libc; use std::ptr;"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:368
+#, no-wrap
+msgid ""
+"#[link(name = \"readline\")]\n"
+"extern {\n"
+"    static mut rl_prompt: *libc::c_char;\n"
+"}\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:377
+#, no-wrap
+msgid ""
+"fn main() {\n"
+"    do \"[my-awesome-shell] $\".as_c_str |buf| {\n"
+"        unsafe { rl_prompt = buf; }\n"
+"        // get a line, process it\n"
+"        unsafe { rl_prompt = ptr::null(); }\n"
+"    }\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:379
+msgid "# Foreign calling conventions"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:383
+msgid ""
+"Most foreign code exposes a C ABI, and Rust uses the platform's C calling "
+"convention by default when calling foreign functions. Some foreign "
+"functions, most notably the Windows API, use other calling conventions. Rust "
+"provides a way to tell the compiler which convention to use:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:391
+#, no-wrap
+msgid ""
+"~~~~\n"
+"#[cfg(target_os = \"win32\", target_arch = \"x86\")]\n"
+"#[link_name = \"kernel32\"]\n"
+"extern \"stdcall\" {\n"
+"    fn SetEnvironmentVariableA(n: *u8, v: *u8) -> std::libc::c_int;\n"
+"}\n"
+"~~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:394
+msgid ""
+"This applies to the entire `extern` block. The list of supported ABI "
+"constraints are:"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/guide-ffi.md:403
+msgid "`stdcall`"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/guide-ffi.md:403
+msgid "`aapcs`"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/guide-ffi.md:403
+msgid "`cdecl`"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/guide-ffi.md:403
+msgid "`fastcall`"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/guide-ffi.md:403
+msgid "`Rust`"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/guide-ffi.md:403
+msgid "`rust-intrinsic`"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/guide-ffi.md:403
+msgid "`system`"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/guide-ffi.md:403
+msgid "`C`"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:411
+msgid ""
+"Most of the abis in this list are self-explanatory, but the `system` abi may "
+"seem a little odd. This constraint selects whatever the appropriate ABI is "
+"for interoperating with the target's libraries. For example, on win32 with a "
+"x86 architecture, this means that the abi used would be `stdcall`. On "
+"x86_64, however, windows uses the `C` calling convention, so `C` would be "
+"used. This means that in our previous example, we could have used `extern "
+"\"system\" { ... }` to define a block for all windows systems, not just x86 "
+"ones."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:413
+msgid "# Interoperability with foreign code"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:417
+msgid ""
+"Rust guarantees that the layout of a `struct` is compatible with the "
+"platform's representation in C.  A `#[packed]` attribute is available, which "
+"will lay out the struct members without padding.  However, there are "
+"currently no guarantees about the layout of an `enum`."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:424
+msgid ""
+"Rust's owned and managed boxes use non-nullable pointers as handles which "
+"point to the contained object. However, they should not be manually created "
+"because they are managed by internal allocators. References can safely be "
+"assumed to be non-nullable pointers directly to the type. However, breaking "
+"the borrow checking or mutability rules is not guaranteed to be safe, so "
+"prefer using raw pointers (`*`) if that's needed because the compiler can't "
+"make as many assumptions about them."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:428
+msgid ""
+"Vectors and strings share the same basic memory layout, and utilities are "
+"available in the `vec` and `str` modules for working with C APIs. However, "
+"strings are not terminated with `\\0`. If you need a NUL-terminated string "
+"for interoperability with C, you should use the `c_str::to_c_str` function."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-ffi.md:430
+msgid ""
+"The standard library includes type aliases and function definitions for the "
+"C standard library in the `libc` module, and Rust links against `libc` and "
+"`libm` by default."
+msgstr ""

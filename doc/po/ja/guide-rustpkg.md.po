@@ -1,0 +1,527 @@
+# Japanese translations for Rust package
+# Copyright (C) 2014 The Rust Project Developers
+# This file is distributed under the same license as the Rust package.
+# Automatically generated, 2014.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Rust 0.9\n"
+"POT-Creation-Date: 2014-01-10 12:20+0900\n"
+"PO-Revision-Date: 2014-01-10 12:20+0900\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: ja\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#. type: Plain text
+#: doc/guide-conditions.md:4 doc/guide-ffi.md:4 doc/guide-lifetimes.md:4
+#: doc/guide-macros.md:4 doc/guide-rustpkg.md:4 doc/guide-tasks.md:4
+#: doc/rust.md:4 doc/rustpkg.md:4 doc/tutorial.md:4
+msgid "# Introduction"
+msgstr "# イントロダクション"
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:2
+#, fuzzy
+#| msgid "% The Rust Language Tutorial"
+msgid "% The Rust Packaging Guide"
+msgstr "% Rust 言語チュートリアル"
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:9
+msgid ""
+"Sharing is caring. Rust comes with a tool, `rustpkg`, which allows you to "
+"package up your Rust code and share it with other people. This guide will "
+"get you started on all of the concepts and commands you need to give the "
+"gift of Rust code to someone else."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:11
+msgid "# Installing External Packages"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:14
+msgid ""
+"First, let's try to use an external package somehow. I've made a sample "
+"package called `hello` to demonstrate how to do so.  Here's how `hello` is "
+"used:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:17
+msgid "~~~~ extern mod hello;"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:22
+#, no-wrap
+msgid ""
+"fn main() {\n"
+"    hello::world();\n"
+"}\n"
+"~~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:24
+msgid "Easy! But if you try to compile this, you'll get an error:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:31
+#, no-wrap
+msgid ""
+"~~~~ {.notrust}\n"
+"$ rustc main.rs \n"
+"main.rs:1:0: 1:17 error: can't find crate for `hello`\n"
+"main.rs:1 extern mod hello;\n"
+"          ^~~~~~~~~~~~~~~~~\n"
+"~~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:35
+msgid ""
+"This makes sense, as we haven't gotten it from anywhere yet! Luckily for us, "
+"`rustpkg` has an easy way to fetch others' code: the `install` command. It's "
+"used like this:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:39
+msgid "~~~ {.notrust} $ rustpkg install PKG_ID ~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:47
+msgid ""
+"This will install a package named `PKG_ID` into your current Rust "
+"environment.  I called it `PKG_ID` in this example because `rustpkg` calls "
+"this a 'package identifier.' When using it with an external package like "
+"this, it's often a URI fragment.  You see, Rust has no central authority for "
+"packages. You can build your own `hello` library if you want, and that's "
+"fine. We'd both host them in different places and different projects would "
+"rely on whichever version they preferred."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:49
+msgid "To install the `hello` library, simply run this in your terminal:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:53
+msgid "~~~ {.notrust} $ rustpkg install github.com/steveklabnik/hello ~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:55
+msgid "You should see a message that looks like this:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:59
+msgid ""
+"~~~ {.notrust} note: Installed package github.com/steveklabnik/hello-0.1 to /"
+"some/path/.rust ~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:61
+msgid "Now, compiling our example should work:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:67
+msgid "~~~ {.notrust} $ rustc main.rs $ ./main Hello, world.  ~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:69
+msgid "Simple! That's all it takes."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:71
+msgid "# Workspaces"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:76
+msgid ""
+"Before we can talk about how to make packages of your own, you have to "
+"understand the big concept with `rustpkg`: workspaces. A 'workspace' is "
+"simply a directory that has certain sub-directories that `rustpkg` expects. "
+"Different Rust projects will go into different workspaces."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:79
+msgid ""
+"A workspace consists of any directory that has the following directories:"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/guide-rustpkg.md:84
+msgid "`src`: The directory where all the source code goes."
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/guide-rustpkg.md:84
+msgid "`build`: This directory contains all of the build output."
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/guide-rustpkg.md:84
+msgid ""
+"`lib`: The directory where any libraries distributed with the package go."
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/guide-rustpkg.md:84
+msgid "`bin`: This directory holds any binaries distributed with the package."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:86
+msgid "There are also default file names you'll want to follow as well:"
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/guide-rustpkg.md:89
+msgid "`main.rs`: A file that's going to become an executable."
+msgstr ""
+
+#. type: Bullet: '* '
+#: doc/guide-rustpkg.md:89
+msgid "`lib.rs`: A file that's going to become a library."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:91
+msgid "# Building your own Package"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:96
+msgid ""
+"Now that you've got workspaces down, let's build your own copy of `hello`. "
+"Go to wherever you keep your personal projects, and let's make all of the "
+"directories we'll need. I'll refer to this personal project directory as `~/"
+"src` for the rest of this guide."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:98
+msgid "## Creating our workspace"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:104
+msgid "~~~ {.notrust} $ cd ~/src $ mkdir -p hello/src/hello $ cd hello ~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:106
+msgid "Easy enough! Let's do one or two more things that are nice to do:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:111
+msgid "~~~ {.notrust} $ git init .  $ cat > README.md # hello"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:113
+msgid "A simple package for Rust."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:115
+#, fuzzy
+#| msgid "# Introduction"
+msgid "## Installation"
+msgstr "# イントロダクション"
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:126
+msgid ""
+"``` $ rustpkg install github.com/YOUR_USERNAME/hello ``` ^D $ cat > ."
+"gitignore .rust build ^D $ git commit -am \"Initial commit.\" ~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:129
+msgid ""
+"If you're not familliar with the `cat >` idiom, it will make files with the "
+"text you type inside. Control-D (`^D`) ends the text for the file."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:138
+msgid ""
+"Anyway, we've got a README and a `.gitignore`. Let's talk about that `."
+"gitignore` for a minute: we are ignoring two directories, `build` and `."
+"rust`. `build`, as we discussed earlier, is for build artifacts, and we "
+"don't want to check those into a repository. `.rust` is a directory that "
+"`rustpkg` uses to keep track of its own settings, as well as the source code "
+"of any other external packages that this workspace uses. This is where that "
+"`rustpkg install` puts all of its files. Those are also not to go into our "
+"repository, so we ignore it all as well."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:140
+msgid "Next, let's add a source file:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:144
+msgid "~~~ #[desc = \"A hello world Rust package.\"]; #[license = \"MIT\"];"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:149
+#, no-wrap
+msgid ""
+"pub fn world() {\n"
+"    println(\"Hello, world.\");\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:151
+msgid ""
+"Put this into `src/hello/lib.rs`. Let's talk about each of these attributes:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:153
+msgid "## Crate attributes for packages"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:156
+msgid ""
+"`license` is equally simple: the license we want this code to have. I chose "
+"MIT here, but you should pick whatever license makes the most sense for you."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:159
+msgid ""
+"`desc` is a description of the package and what it does. This should just be "
+"a sentence or two."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:161
+msgid "## Building your package"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:163
+msgid "Building your package is simple:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:167
+msgid "~~~ {.notrust} $ rustpkg build hello ~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:170
+msgid ""
+"This will compile `src/hello/lib.rs` into a library. After this process "
+"completes, you'll want to check out `build`:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:175
+msgid ""
+"~~~ {.notrust} $ ls build/x86_64-unknown-linux-gnu/hello/ libhello-"
+"ed8619dad9ce7d58-0.1.0.so ~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:178
+msgid ""
+"This directory naming structure is called a 'build triple,' and is because "
+"I'm on 64 bit Linux. Yours may differ based on platform."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:182
+msgid ""
+"You'll also notice that `src/hello/lib.rs` turned into `libhello-"
+"ed8619dad9ce7d58-0.1.0.so`. This is a simple combination of the library "
+"name, a hash of its content, and the version."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:184
+msgid "Now that your library builds, you'll want to commit:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:189
+msgid ""
+"~~~ {.notrust} $ git add src $ git commit -m \"Adding source code.\" ~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:191
+msgid "If you're using GitHub, after creating the project, do this:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:196
+msgid ""
+"~~~ {.notrust} $ git remote add origin git@github.com:YOUR_USERNAME/hello."
+"git $ git push origin -u master ~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:198
+msgid "Now you can install and use it! Go anywhere else in your filesystem:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:205
+msgid ""
+"~~~ {.notrust} $ cd ~/src/foo $ rustpkg install github.com/YOUR_USERNAME/"
+"hello WARNING: The Rust package manager is experimental and may be unstable "
+"note: Installed package github.com/YOUR_USERNAME/hello-0.1 to /home/"
+"yourusername/src/hello/.rust ~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:207
+msgid "That's it!"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:209
+#, fuzzy
+#| msgid "## Using other crates"
+msgid "# Testing your Package"
+msgstr "## 他のクレートの利用"
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:212
+msgid ""
+"Testing your package is simple as well. First, let's change `src/hello/lib."
+"rs` to contain a function that can be sensibly tested:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:216
+msgid ""
+"~~~ #[desc = \"A Rust package for determining whether unsigned integers are "
+"even.\"]; #[license = \"MIT\"];"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:221
+#, no-wrap
+msgid ""
+"pub fn is_even(i: uint) -> bool {\n"
+"    i % 2 == 0\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:224
+msgid ""
+"Once you've edited `lib.rs`, you can create a second crate file, `src/hello/"
+"test.rs`, to put tests in:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:229
+msgid "~~~ #[license = \"MIT\"]; extern mod hello; use hello::is_even;"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:237
+#, no-wrap
+msgid ""
+"#[test]\n"
+"fn test_is_even() {\n"
+"    assert!(is_even(0));\n"
+"    assert!(!is_even(1));\n"
+"    assert!(is_even(2));\n"
+"}\n"
+"~~~\n"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:241
+msgid ""
+"Note that you have to import the crate you just created in `lib.rs` with the "
+"`extern mod hello` directive. That's because you're putting the tests in a "
+"different crate from the main library that you created."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:244
+msgid ""
+"Now, you can use the `rustpkg test` command to build this test crate (and "
+"anything else it depends on) and run the tests, all in one step:"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:249
+msgid ""
+"~~~ {.notrust} $ rustpkg test hello WARNING: The Rust package manager is "
+"experimental and may be unstable note: Installed package hello-0.1 to /Users/"
+"tjc/.rust"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:252
+msgid "running 1 test test test_is_even ... ok"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:255 doc/guide-testing.md:28
+msgid "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured ~~~"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:257
+msgid "# More resources"
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:261
+msgid ""
+"There's a lot more going on with `rustpkg`, this is just to get you "
+"started.  Check out [the rustpkg manual](rustpkg.html) for the full details "
+"on how to customize `rustpkg`."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:267
+msgid ""
+"A tag was created on GitHub specifically for `rustpkg`-related issues. You "
+"can [see all the Issues for rustpkg here](https://github.com/mozilla/rust/"
+"issues?direction=desc&labels=A-pkg&sort=created&state=open), with bugs as "
+"well as new feature plans. `rustpkg` is still under development, and so may "
+"be a bit flaky at the moment."
+msgstr ""
+
+#. type: Plain text
+#: doc/guide-rustpkg.md:270
+msgid ""
+"You may also want to check out [this blog post](http://tim.dreamwidth."
+"org/1820526.html), which contains some of the early design decisions and "
+"justifications."
+msgstr ""
