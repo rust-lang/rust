@@ -287,7 +287,7 @@ impl PkgSrc {
                 // FIXME (#9639): This needs to handle non-utf8 paths
                 let url = format!("https://{}", crateid.path.as_str().unwrap());
                 debug!("Fetching package: git clone {} {} [version={}]",
-                        url, clone_target.display(), crateid.get_version());
+                        url, clone_target.display(), crateid.version_or_default());
 
                 let mut failed = false;
 
