@@ -91,6 +91,7 @@ pub mod ext {
     pub mod concat_idents;
     pub mod log_syntax;
     pub mod source_util;
+    pub mod tt_map;
 
     pub mod trace_macros;
 }
