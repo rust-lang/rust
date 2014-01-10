@@ -134,6 +134,35 @@ pub unsafe fn register_root_changes_always<T>(removals: &[*T],
     task.get().gc = gc;
 }
 
+/// Manually set how often the garbage collector runs.
+///
+/// The GC will run every `1 << log_frequency` allocations (or as
+/// close as possible, if `1 << log_frequency` is larger than a `uint`
+/// can hold).
+///
+/// The GC can be effectively paused by passing a large value (like
+/// 64) for `log_frequency`.
+pub fn set_collection_frequency(log_frequency: uint) {
+    let mut task_ = local::Local::borrow(None::<Task>);
+    let task = task_.get();
+    match task.gc {
+        GcUninit => {
+            let mut gc = ~GarbageCollector::new();
+            gc.set_allocs_per_collection(log_frequency);
+            task.gc = GcExists(gc);
+        }
+        GcExists(ref mut gc) => gc.set_allocs_per_collection(log_frequency),
+        GcBorrowed(ptr) => {
+            if !ptr.is_null() {
+                // no-one ever takes any references to the variable
+                // this is setting, so setting it through this pointer
+                // is fine.
+                unsafe { (*ptr).set_allocs_per_collection(log_frequency) }
+            }
+        }
+    }
+}
+
 /// Immutable garbage-collected pointer type.
 ///
 /// # Warning

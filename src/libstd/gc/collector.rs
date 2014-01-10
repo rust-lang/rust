@@ -116,6 +116,16 @@ impl GarbageCollector {
         }
     }
 
+    pub fn set_allocs_per_collection(&mut self, shift: uint) {
+        let mask = if shift >= uint::bits {
+            !0
+        } else {
+            (1 << shift) - 1
+        };
+
+        self.gc_allocs_per_collection_mask = mask
+    }
+
     /// Run a garbage collection if we're due for one.
     pub unsafe fn occasional_collection(&mut self, stack_top: uint) {
         if self.gc_allocs & self.gc_allocs_per_collection_mask == 0 {
