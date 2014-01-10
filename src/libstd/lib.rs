@@ -43,6 +43,7 @@
 //!
 //!     use std::prelude::*;
 
+// NOTE: Upgrade to 0.10-pre after snapshot
 #[crate_id = "std#0.9"];
 #[comment = "The Rust standard library"];
 #[license = "MIT/ASL2"];

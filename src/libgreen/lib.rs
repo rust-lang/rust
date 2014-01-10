@@ -17,6 +17,7 @@
 //! This can be optionally linked in to rust programs in order to provide M:N
 //! functionality inside of 1:1 programs.
 
+// NOTE: Change to 0.10-pre after snapshot
 #[crate_id = "green#0.9"];
 #[license = "MIT/ASL2"];
 #[crate_type = "rlib"];
