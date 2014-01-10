@@ -42,7 +42,7 @@ pub struct LinkedListIterator<'a, T> {
 /// Gives access to all the Iterator goodness (fold, map, ...) for free.
 ///
 /// See the Iterator doc page for precise description of all the usable methods.
-pub struct LinkedListRefIterator<'a, T> {
+pub struct LinkedListCopyIterator<'a, T> {
     current: &'a LinkedList<T>
 }
 
@@ -324,11 +324,11 @@ impl<T:Eq + Clone> LinkedList<T> {
      ```rust
      use linked_list::LinkedList;
      let list = LinkedList::from_vec([1,2,3,4,5]);
-     assert!(list.iter().fold(0, |a,b| a+b) == 15);
+     assert!(list.copy_iter().fold(0, |a,b| a+b) == 15);
      ```
     */
-    pub fn iter<'a>(&'a self) -> LinkedListIterator<'a, T> {
-        LinkedListIterator{current:self}
+    pub fn copy_iter<'a>(&'a self) -> LinkedListCopyIterator<'a, T> {
+        LinkedListCopyIterator{current:self}
     }
 
     /**
@@ -340,11 +340,11 @@ impl<T:Eq + Clone> LinkedList<T> {
      ```rust
      use linked_list::LinkedList;
      let list = LinkedList::from_vec([1,2,3,4,5]);
-     assert!(list.ref_iter().fold(0, |a,&b| a+b) == 15);
+     assert!(list.iter().fold(0, |a,&b| a+b) == 15);
      ```
     */
-    pub fn ref_iter<'a>(&'a self) -> LinkedListRefIterator<'a, T> {
-        LinkedListRefIterator{current:self}
+    pub fn iter<'a>(&'a self) -> LinkedListIterator<'a, T> {
+        LinkedListIterator{current:self}
     }
 
     /**
@@ -368,7 +368,7 @@ impl<T:Eq + Clone> LinkedList<T> {
     }
 }
 
-impl<'a, T: Clone> Iterator<T> for LinkedListIterator<'a, T>{ 
+impl<'a, T: Clone> Iterator<T> for LinkedListCopyIterator<'a, T>{ 
     fn next(&mut self) -> Option<T> {
         match self.current {
             &Cell(ref x, ref xs) => {self.current = &**xs; Some((*x).clone())},
@@ -377,7 +377,7 @@ impl<'a, T: Clone> Iterator<T> for LinkedListIterator<'a, T>{
     } 
 }
 
-impl<'a, T: Clone> Iterator<&'a T> for LinkedListRefIterator<'a, T>{ 
+impl<'a, T: Clone> Iterator<&'a T> for LinkedListIterator<'a, T>{ 
     fn next(&mut self) -> Option<&'a T> {
         match self.current {
             &Cell(ref x, ref xs) => {self.current = &**xs; Some(x)},
@@ -438,29 +438,29 @@ mod test_linked_list{
     }
 
     #[test]
+    fn test_copy_iter(){
+        let vec = ~[1,2,3,4,5];
+        let mut test_vec = ~[];
+        let list = LinkedList::from_vec(vec);
+        for i in list.copy_iter(){
+           test_vec.push(i);
+        }
+
+        assert!(vec == test_vec);
+        assert!(list.copy_iter().fold(0, |a, b| a+b) == 15);
+    }
+
+    #[test]
     fn test_iter(){
         let vec = ~[1,2,3,4,5];
         let mut test_vec = ~[];
         let list = LinkedList::from_vec(vec);
-        for i in list.iter(){
+        for &i in list.iter(){
            test_vec.push(i);
         }
 
         assert!(vec == test_vec);
-        assert!(list.iter().fold(0, |a, b| a+b) == 15);
-    }
-
-    #[test]
-    fn test_ref_iter(){
-        let vec = ~[1,2,3,4,5];
-        let mut test_vec = ~[];
-        let list = LinkedList::from_vec(vec);
-        for &i in list.ref_iter(){
-           test_vec.push(i);
-        }
-
-        assert!(vec == test_vec);
-        assert!(list.ref_iter().fold(0, |a, &b| a+b) == 15);
+        assert!(list.iter().fold(0, |a, &b| a+b) == 15);
     }
 
     #[test]
@@ -529,7 +529,7 @@ mod test_linked_list{
     #[test]
     fn test_from_iterator(){
         let list = LinkedList::from_vec([1,2,3,4,5]);
-        let list2: ~LinkedList<int> = list.iter().collect();
+        let list2: ~LinkedList<int> = list.iter().map(|x| x.clone()).collect();
         assert!(list == list2);
     }
 }
