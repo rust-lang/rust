@@ -17,16 +17,15 @@ use metadata::filesearch;
 use metadata;
 use middle::lint;
 
+use syntax;
+use syntax::abi;
+use syntax::ast;
 use syntax::attr::AttrMetaMethods;
-use syntax::ast::NodeId;
-use syntax::ast::{IntTy, UintTy};
 use syntax::codemap::Span;
+use syntax::codemap;
 use syntax::diagnostic;
 use syntax::parse::ParseSess;
-use syntax::{ast, codemap};
-use syntax::abi;
 use syntax::parse::token;
-use syntax;
 
 use std::cell::{Cell, RefCell};
 use std::hashmap::{HashMap,HashSet};
@@ -35,8 +34,8 @@ pub struct config {
     os: abi::Os,
     arch: abi::Architecture,
     target_strs: target_strs::t,
-    int_type: IntTy,
-    uint_type: UintTy,
+    int_type: ast::IntTy,
+    uint_type: ast::UintTy,
 }
 
 pub static verbose:                 uint = 1 <<  0;
@@ -210,6 +209,7 @@ pub struct Session_ {
     entry_fn: RefCell<Option<(NodeId, codemap::Span)>>,
     entry_type: Cell<Option<EntryFnType>>,
     span_diagnostic: @diagnostic::SpanHandler,
+    boot_fn: Cell<Option<ast::DefId>>,
     filesearch: @filesearch::FileSearch,
     building_library: Cell<bool>,
     working_dir: Path,

@@ -877,7 +877,7 @@ fn check_heap_item(cx: &Context, it: &ast::Item) {
 }
 
 static crate_attrs: &'static [&'static str] = &[
-    "crate_type", "feature", "no_uv", "no_main", "no_std", "crate_id",
+    "crate_type", "feature", "no_uv", "no_main", "no_std", "crate_id", "no_boot",
     "desc", "comment", "license", "copyright", // not used in rustc now
 ];
 
@@ -906,7 +906,7 @@ static other_attrs: &'static [&'static str] = &[
 
     // fn-level
     "test", "bench", "should_fail", "ignore", "inline", "lang", "main", "start",
-    "no_split_stack", "cold",
+    "no_split_stack", "cold", "boot",
 
     // internal attribute: bypass privacy inside items
     "!resolve_unexported",

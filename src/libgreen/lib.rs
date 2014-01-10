@@ -56,8 +56,18 @@ pub mod sleeper_list;
 pub mod stack;
 pub mod task;
 
+#[boot]
+#[cfg(not(stage0))]
+pub fn boot(main: fn()) {
+    simple::task().run(|| {
+        do run {
+            main();
+        };
+    });
+}
+
 #[lang = "start"]
-#[cfg(not(test))]
+#[cfg(not(test), stage0)]
 pub fn lang_start(main: *u8, argc: int, argv: **u8) -> int {
     use std::cast;
     do start(argc, argv) {

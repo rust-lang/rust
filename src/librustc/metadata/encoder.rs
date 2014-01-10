@@ -79,6 +79,7 @@ struct Stats {
     dep_bytes: Cell<u64>,
     lang_item_bytes: Cell<u64>,
     native_lib_bytes: Cell<u64>,
+    boot_fn_bytes: Cell<u64>,
     impl_bytes: Cell<u64>,
     misc_bytes: Cell<u64>,
     item_bytes: Cell<u64>,
@@ -1692,6 +1693,17 @@ fn encode_native_libraries(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
     ebml_w.end_tag();
 }
 
+fn encode_boot_fn(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
+    match *ecx.tcx.sess.boot_fn {
+        Some(did) => {
+            ebml_w.start_tag(tag_boot_fn);
+            encode_def_id(ebml_w, did);
+            ebml_w.end_tag();
+        }
+        None => {}
+    };
+}
+
 struct ImplVisitor<'a,'b> {
     ecx: &'a EncodeContext<'a>,
     ebml_w: &'a mut writer::Encoder<'b>,
@@ -1816,6 +1828,7 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, crate: &Crate)
         dep_bytes: Cell::new(0),
         lang_item_bytes: Cell::new(0),
         native_lib_bytes: Cell::new(0),
+        boot_fn_bytes: Cell::new(0),
         impl_bytes: Cell::new(0),
         misc_bytes: Cell::new(0),
         item_bytes: Cell::new(0),
@@ -1874,6 +1887,11 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, crate: &Crate)
     encode_native_libraries(&ecx, &mut ebml_w);
     ecx.stats.native_lib_bytes.set(ebml_w.writer.tell() - i);
 
+    // Encode the native libraries used
+    i = wr.tell();
+    encode_boot_fn(&ecx, &mut ebml_w);
+    ecx.stats.boot_fn_bytes = wr.tell() - i;
+
     // Encode the def IDs of impls, for coherence checking.
     i = ebml_w.writer.tell();
     encode_impls(&ecx, crate, &mut ebml_w);
@@ -1911,6 +1929,7 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, crate: &Crate)
         println!("       dep bytes: {}", ecx.stats.dep_bytes.get());
         println!(" lang item bytes: {}", ecx.stats.lang_item_bytes.get());
         println!("    native bytes: {}", ecx.stats.native_lib_bytes.get());
+        println!("   boot fn bytes: {}", ecx.stats.boot_fn_bytes.get());
         println!("      impl bytes: {}", ecx.stats.impl_bytes.get());
         println!("      misc bytes: {}", ecx.stats.misc_bytes.get());
         println!("      item bytes: {}", ecx.stats.item_bytes.get());

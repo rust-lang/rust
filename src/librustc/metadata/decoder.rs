@@ -1275,3 +1275,9 @@ pub fn get_native_libraries(cdata: Cmd) -> ~[(cstore::NativeLibaryKind, ~str)] {
     });
     return result;
 }
+
+pub fn get_boot_fn(cdata: Cmd) -> Option<ast::DefId> {
+    reader::maybe_get_doc(reader::Doc(cdata.data()), tag_boot_fn).map(|doc| {
+        item_def_id(doc, cdata)
+    })
+}

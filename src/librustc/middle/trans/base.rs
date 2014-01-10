@@ -2429,7 +2429,7 @@ pub fn trans_mod(ccx: @CrateContext, m: &ast::Mod) {
     }
 }
 
-fn finish_register_fn(ccx: @CrateContext, sp: Span, sym: ~str, node_id: ast::NodeId,
+fn finish_register_fn(ccx: @CrateContext, sym: ~str, node_id: ast::NodeId,
                       llfn: ValueRef) {
     {
         let mut item_symbols = ccx.item_symbols.borrow_mut();
@@ -2442,14 +2442,9 @@ fn finish_register_fn(ccx: @CrateContext, sp: Span, sym: ~str, node_id: ast::Nod
             lib::llvm::SetLinkage(llfn, lib::llvm::InternalLinkage);
         }
     }
-
-    if is_entry_fn(&ccx.sess, node_id) && !ccx.sess.building_library.get() {
-        create_entry_wrapper(ccx, sp, llfn);
-    }
 }
 
 pub fn register_fn(ccx: @CrateContext,
-                   sp: Span,
                    sym: ~str,
                    node_id: ast::NodeId,
                    node_type: ty::t)
@@ -2463,13 +2458,12 @@ pub fn register_fn(ccx: @CrateContext,
     };
 
     let llfn = decl_rust_fn(ccx, f.sig.inputs, f.sig.output, sym);
-    finish_register_fn(ccx, sp, sym, node_id, llfn);
+    finish_register_fn(ccx, sym, node_id, llfn);
     llfn
 }
 
 // only use this for foreign function ABIs and glue, use `register_fn` for Rust functions
 pub fn register_fn_llvmty(ccx: @CrateContext,
-                          sp: Span,
                           sym: ~str,
                           node_id: ast::NodeId,
                           cc: lib::llvm::CallConv,
@@ -2480,34 +2474,35 @@ pub fn register_fn_llvmty(ccx: @CrateContext,
            ast_map::path_to_str(item_path(ccx, &node_id), token::get_ident_interner()));
 
     let llfn = decl_fn(ccx.llmod, sym, cc, fn_ty);
-    finish_register_fn(ccx, sp, sym, node_id, llfn);
+    finish_register_fn(ccx, sym, node_id, llfn);
     llfn
-}
-
-pub fn is_entry_fn(sess: &Session, node_id: ast::NodeId) -> bool {
-    match sess.entry_fn.get() {
-        Some((entry_id, _)) => node_id == entry_id,
-        None => false
-    }
 }
 
 // Create a _rust_main(args: ~[str]) function which will be called from the
 // runtime rust_start function
-pub fn create_entry_wrapper(ccx: @CrateContext,
-                           _sp: Span,
-                           main_llfn: ValueRef) {
-    let et = ccx.sess.entry_type.get().unwrap();
-    match et {
-        session::EntryMain => {
-            create_entry_fn(ccx, main_llfn, true);
-        }
-        session::EntryStart => create_entry_fn(ccx, main_llfn, false),
+pub fn create_entry_wrapper(ccx: @CrateContext) {
+    if *ccx.sess.building_library { return }
+
+    let main_llfn = ccx.sess.entry_fn.map(|(id, _)| get_item_val(ccx, id));
+    let main_llfn = main_llfn.expect("needs main function in trans");
+    match ccx.sess.entry_type.expect("need entry calculation in trans") {
         session::EntryNone => {}    // Do nothing.
+        session::EntryMain => {
+            let did = ccx.sess.boot_fn.expect("need boot function in trans");
+            let boot_llfn = if ast_util::is_local(did) {
+                get_item_val(ccx, did.node)
+            } else {
+                let boot_fn_type = csearch::get_type(ccx.tcx, did).ty;
+                trans_external_path(ccx, did, boot_fn_type)
+            };
+            create_entry_fn(ccx, main_llfn, Some(boot_llfn));
+        }
+        session::EntryStart => create_entry_fn(ccx, main_llfn, None),
     }
 
     fn create_entry_fn(ccx: @CrateContext,
                        rust_main: ValueRef,
-                       use_start_lang_item: bool) {
+                       rust_boot: Option<ValueRef>) {
         let llfty = Type::func([ccx.int_type, Type::i8().ptr_to().ptr_to()],
                                &ccx.int_type);
 
@@ -2521,47 +2516,53 @@ pub fn create_entry_wrapper(ccx: @CrateContext,
         unsafe {
             llvm::LLVMPositionBuilderAtEnd(bld, llbb);
 
-            let (start_fn, args) = if use_start_lang_item {
-                let start_def_id = match ccx.tcx.lang_items.require(StartFnLangItem) {
-                    Ok(id) => id,
-                    Err(s) => { ccx.tcx.sess.fatal(s); }
-                };
-                let start_fn = if start_def_id.crate == ast::LOCAL_CRATE {
-                    get_item_val(ccx, start_def_id.node)
-                } else {
-                    let start_fn_type = csearch::get_type(ccx.tcx,
-                                                          start_def_id).ty;
-                    trans_external_path(ccx, start_def_id, start_fn_type)
-                };
-
-                let args = {
-                    let opaque_rust_main = "rust_main".with_c_str(|buf| {
-                        llvm::LLVMBuildPointerCast(bld, rust_main, Type::i8p().to_ref(), buf)
-                    });
-
-                    ~[
+            let (start_fn, args) = match rust_boot {
+                Some(rust_boot) => {
+                    let start = ccx.tcx.lang_items.require(StartFnLangItem);
+                    let start_def_id = match start {
+                        Ok(id) => id,
+                        Err(s) => { ccx.tcx.sess.fatal(s); }
+                    };
+                    let start_fn = if start_def_id.crate == ast::LOCAL_CRATE {
+                        get_item_val(ccx, start_def_id.node)
+                    } else {
+                        let start_fn_type = csearch::get_type(ccx.tcx,
+                                                              start_def_id).ty;
+                        trans_external_path(ccx, start_def_id, start_fn_type)
+                    };
+                    let args = {
+                        let opaque_rust_main = "rust_main".with_c_str(|buf| {
+                            llvm::LLVMBuildPointerCast(bld, rust_main,
+                                                       Type::i8p().to_ref(), buf)
+                        });
+                        let opaque_rust_boot = "rust_boot".with_c_str(|buf| {
+                            llvm::LLVMBuildPointerCast(bld, rust_boot,
+                                                       Type::i8p().to_ref(), buf)
+                        });
+                        ~[
+                            C_null(Type::opaque_box(ccx).ptr_to()),
+                            opaque_rust_main,
+                            opaque_rust_boot,
+                            llvm::LLVMGetParam(llfn, 0),
+                            llvm::LLVMGetParam(llfn, 1)
+                         ]
+                    };
+                    (start_fn, args)
+                }
+                None => {
+                    debug!("using user-defined start fn");
+                    let args = ~[
                         C_null(Type::opaque_box(ccx).ptr_to()),
-                        opaque_rust_main,
-                        llvm::LLVMGetParam(llfn, 0),
-                        llvm::LLVMGetParam(llfn, 1)
-                     ]
-                };
-                (start_fn, args)
-            } else {
-                debug!("using user-defined start fn");
-                let args = ~[
-                    C_null(Type::opaque_box(ccx).ptr_to()),
-                    llvm::LLVMGetParam(llfn, 0 as c_uint),
-                    llvm::LLVMGetParam(llfn, 1 as c_uint)
-                ];
+                        llvm::LLVMGetParam(llfn, 0 as c_uint),
+                        llvm::LLVMGetParam(llfn, 1 as c_uint)
+                    ];
 
-                (rust_main, args)
+                    (rust_main, args)
+                }
             };
-
             let result = llvm::LLVMBuildCall(bld, start_fn,
                                              args.as_ptr(), args.len() as c_uint,
                                              noname());
-
             llvm::LLVMBuildRet(bld, result);
         }
     }
@@ -2722,10 +2723,9 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
 
                         ast::ItemFn(_, purity, _, _, _) => {
                             let llfn = if purity != ast::ExternFn {
-                                register_fn(ccx, i.span, sym, i.id, ty)
+                                register_fn(ccx, sym, i.id, ty)
                             } else {
                                 foreign::register_rust_fn_with_foreign_abi(ccx,
-                                                                           i.span,
                                                                            sym,
                                                                            i.id)
                             };
@@ -2826,7 +2826,7 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
 
                             llfn = match enm.node {
                                 ast::ItemEnum(_, _) => {
-                                    register_fn(ccx, (*v).span, sym, id, ty)
+                                    register_fn(ccx, sym, id, ty)
                                 }
                                 _ => fail!("NodeVariant, shouldn't happen")
                             };
@@ -2850,8 +2850,7 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
                             let ty = ty::node_id_to_type(ccx.tcx, ctor_id);
                             let sym = exported_name(ccx, (*struct_path).clone(), ty,
                                                     struct_item.attrs);
-                            let llfn = register_fn(ccx, struct_item.span,
-                                                   sym, ctor_id, ty);
+                            let llfn = register_fn(ccx, sym, ctor_id, ty);
                             set_inline_hint(llfn);
                             llfn
                         }
@@ -2892,7 +2891,7 @@ pub fn register_method(ccx: @CrateContext,
 
     let sym = exported_name(ccx, path, mty, m.attrs);
 
-    let llfn = register_fn(ccx, m.span, sym, id, mty);
+    let llfn = register_fn(ccx, sym, id, mty);
     set_llvm_fn_attrs(m.attrs, llfn);
     llfn
 }
@@ -3338,6 +3337,7 @@ pub fn trans_crate(sess: session::Session,
         trans_mod(ccx, &crate.module);
     }
 
+    create_entry_wrapper(ccx);
     decl_gc_metadata(ccx, llmod_id);
     fill_crate_map(ccx, ccx.crate_map);
 

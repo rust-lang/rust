@@ -30,7 +30,6 @@ use std::libc::c_uint;
 use std::vec;
 use syntax::abi::{Cdecl, Aapcs, C, AbiSet, Win64};
 use syntax::abi::{RustIntrinsic, Rust, Stdcall, Fastcall, System};
-use syntax::codemap::Span;
 use syntax::parse::token::special_idents;
 use syntax::{ast};
 use syntax::{attr, ast_map};
@@ -408,7 +407,6 @@ pub fn trans_foreign_mod(ccx: @CrateContext,
 // correct code in the first place, but this is much simpler.
 
 pub fn register_rust_fn_with_foreign_abi(ccx: @CrateContext,
-                                         sp: Span,
                                          sym: ~str,
                                          node_id: ast::NodeId)
                                          -> ValueRef {
@@ -425,7 +423,6 @@ pub fn register_rust_fn_with_foreign_abi(ccx: @CrateContext,
         _ => lib::llvm::CCallConv
     };
     let llfn = base::register_fn_llvmty(ccx,
-                                        sp,
                                         sym,
                                         node_id,
                                         cconv,
