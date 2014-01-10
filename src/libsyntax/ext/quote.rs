@@ -31,6 +31,7 @@ use parse;
 pub mod rt {
     use ast;
     use ext::base::ExtCtxt;
+    use parse::token;
     use parse;
     use print::pprust;
 
@@ -118,7 +119,8 @@ pub mod rt {
 
     impl<'a> ToSource for &'a str {
         fn to_source(&self) -> @str {
-            let lit = dummy_spanned(ast::LitStr(self.to_managed(), ast::CookedStr));
+            let lit = dummy_spanned(ast::LitStr(
+                    token::intern_and_get_ident(*self), ast::CookedStr));
             pprust::lit_to_str(&lit).to_managed()
         }
     }
@@ -349,7 +351,7 @@ fn id_ext(str: &str) -> ast::Ident {
 
 // Lift an ident to the expr that evaluates to that ident.
 fn mk_ident(cx: &ExtCtxt, sp: Span, ident: ast::Ident) -> @ast::Expr {
-    let e_str = cx.expr_str(sp, cx.str_of(ident));
+    let e_str = cx.expr_str(sp, token::get_ident(ident.name));
     cx.expr_method_call(sp,
                         cx.expr_ident(sp, id_ext("ext_cx")),
                         id_ext("ident_of"),

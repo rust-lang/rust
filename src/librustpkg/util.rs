@@ -31,6 +31,7 @@ use syntax::{ast, attr, codemap, diagnostic, fold, visit};
 use syntax::attr::AttrMetaMethods;
 use syntax::fold::Folder;
 use syntax::parse::token::InternedString;
+use syntax::parse::token;
 use syntax::visit::Visitor;
 use syntax::util::small_vector::SmallVector;
 use syntax::crateid::CrateId;
@@ -317,8 +318,9 @@ pub fn compile_input(context: &BuildContext,
     if !attr::contains_name(crate.attrs, "crate_id") {
         // FIXME (#9639): This needs to handle non-utf8 paths
         let crateid_attr =
-            attr::mk_name_value_item_str(InternedString::new("crate_id"),
-                                         crate_id.to_str().to_managed());
+            attr::mk_name_value_item_str(
+                InternedString::new("crate_id"),
+                token::intern_and_get_ident(crate_id.to_str()));
 
         debug!("crateid attr: {:?}", crateid_attr);
         crate.attrs.push(attr::mk_attr(crateid_attr));
@@ -646,7 +648,7 @@ pub fn find_and_install_dependencies(installer: &mut CrateInstaller,
     visit::walk_crate(installer, c, ())
 }
 
-pub fn mk_string_lit(s: @str) -> ast::Lit {
+pub fn mk_string_lit(s: InternedString) -> ast::Lit {
     Spanned {
         node: ast::LitStr(s, ast::CookedStr),
         span: DUMMY_SP

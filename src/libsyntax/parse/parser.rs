@@ -345,7 +345,7 @@ pub struct Parser {
     /// extra detail when the same error is seen twice
     obsolete_set: HashSet<ObsoleteSyntax>,
     /// Used to determine the path to externally loaded source files
-    mod_path_stack: ~[@str],
+    mod_path_stack: ~[InternedString],
     /// Stack of spans of open delimiters. Used for error message.
     open_braces: ~[Span],
     /* do not copy the parser; its state is tied to outside state */
@@ -1408,8 +1408,12 @@ impl Parser {
             token::LIT_FLOAT(s, ft) => LitFloat(self.id_to_str(s), ft),
             token::LIT_FLOAT_UNSUFFIXED(s) =>
                 LitFloatUnsuffixed(self.id_to_str(s)),
-            token::LIT_STR(s) => LitStr(self.id_to_str(s), ast::CookedStr),
-            token::LIT_STR_RAW(s, n) => LitStr(self.id_to_str(s), ast::RawStr(n)),
+            token::LIT_STR(s) => {
+                LitStr(self.id_to_interned_str(s), ast::CookedStr)
+            }
+            token::LIT_STR_RAW(s, n) => {
+                LitStr(self.id_to_interned_str(s), ast::RawStr(n))
+            }
             token::LPAREN => { self.expect(&token::RPAREN); LitNil },
             _ => { self.unexpected_last(tok); }
         }
@@ -4146,11 +4150,11 @@ impl Parser {
     }
 
     fn push_mod_path(&mut self, id: Ident, attrs: &[Attribute]) {
-        let default_path = token::interner_get(id.name);
+        let default_path = self.id_to_interned_str(id);
         let file_path = match ::attr::first_attr_value_str_by_name(attrs,
                                                                    "path") {
             Some(d) => d,
-            None => default_path
+            None => default_path,
         };
         self.mod_path_stack.push(file_path)
     }

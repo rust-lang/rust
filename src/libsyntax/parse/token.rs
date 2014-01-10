@@ -20,6 +20,7 @@ use std::cast;
 use std::char;
 use std::fmt;
 use std::local_data;
+use std::path::BytesContainer;
 
 #[allow(non_camel_case_types)]
 #[deriving(Clone, Encodable, Decodable, Eq, IterBytes)]
@@ -537,7 +538,7 @@ pub fn get_ident_interner() -> @IdentInterner {
 /// be fixed in the future by just leaking all strings until task death
 /// somehow.
 #[no_send]
-#[deriving(Clone, Eq, IterBytes, TotalEq, TotalOrd)]
+#[deriving(Clone, Eq, IterBytes, Ord, TotalEq, TotalOrd)]
 pub struct InternedString {
     priv string: @str,
 }
@@ -568,6 +569,17 @@ impl InternedString {
     #[inline]
     pub fn get<'a>(&'a self) -> &'a str {
         self.string.as_slice()
+    }
+}
+
+impl BytesContainer for InternedString {
+    fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
+        // XXX(pcwalton): This is a workaround for the incorrect signature of
+        // `BytesContainer`, which is itself a workaround for the lack of DST.
+        unsafe {
+            let this = self.get();
+            cast::transmute(this.container_as_bytes())
+        }
     }
 }
 

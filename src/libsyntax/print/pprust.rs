@@ -897,7 +897,7 @@ pub fn print_attribute(s: &mut State, attr: &ast::Attribute) {
     maybe_print_comment(s, attr.span.lo);
     if attr.node.is_sugared_doc {
         let comment = attr.value_str().unwrap();
-        word(&mut s.s, comment);
+        word(&mut s.s, comment.get());
     } else {
         word(&mut s.s, "#[");
         print_meta_item(s, attr.meta());
@@ -1931,10 +1931,10 @@ pub fn print_meta_item(s: &mut State, item: &ast::MetaItem) {
     ibox(s, indent_unit);
     match item.node {
       ast::MetaWord(ref name) => word(&mut s.s, name.get()),
-      ast::MetaNameValue(ref name, value) => {
+      ast::MetaNameValue(ref name, ref value) => {
         word_space(s, name.get());
         word_space(s, "=");
-        print_literal(s, &value);
+        print_literal(s, value);
       }
       ast::MetaList(ref name, ref items) => {
         word(&mut s.s, name.get());
@@ -2172,7 +2172,7 @@ pub fn print_literal(s: &mut State, lit: &ast::Lit) {
       _ => ()
     }
     match lit.node {
-      ast::LitStr(st, style) => print_string(s, st, style),
+      ast::LitStr(ref st, style) => print_string(s, st.get(), style),
       ast::LitChar(ch) => {
           let mut res = ~"'";
           char::from_u32(ch).unwrap().escape_default(|c| res.push_char(c));

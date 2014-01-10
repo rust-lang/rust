@@ -1050,7 +1050,7 @@ fn get_meta_items(md: ebml::Doc) -> ~[@ast::MetaItem] {
         let nd = reader::get_doc(meta_item_doc, tag_meta_item_name);
         let vd = reader::get_doc(meta_item_doc, tag_meta_item_value);
         let n = token::intern_and_get_ident(nd.as_str_slice());
-        let v = vd.as_str_slice().to_managed();
+        let v = token::intern_and_get_ident(vd.as_str_slice());
         // FIXME (#623): Should be able to decode MetaNameValue variants,
         // but currently the encoder just drops them
         items.push(attr::mk_name_value_item_str(n, v));

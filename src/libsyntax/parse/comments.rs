@@ -54,7 +54,6 @@ pub fn doc_comment_style(comment: &str) -> ast::AttrStyle {
 }
 
 pub fn strip_doc_comment_decoration(comment: &str) -> ~str {
-
     /// remove whitespace-only lines from the start/end of lines
     fn vertical_trim(lines: ~[~str]) -> ~[~str] {
         let mut i = 0u;

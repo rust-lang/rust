@@ -74,20 +74,20 @@ pub fn source_name(input: &Input) -> @str {
 pub fn default_configuration(sess: Session) ->
    ast::CrateConfig {
     let tos = match sess.targ_cfg.os {
-        abi::OsWin32 =>   @"win32",
-        abi::OsMacos =>   @"macos",
-        abi::OsLinux =>   @"linux",
-        abi::OsAndroid => @"android",
-        abi::OsFreebsd => @"freebsd"
+        abi::OsWin32 =>   InternedString::new("win32"),
+        abi::OsMacos =>   InternedString::new("macos"),
+        abi::OsLinux =>   InternedString::new("linux"),
+        abi::OsAndroid => InternedString::new("android"),
+        abi::OsFreebsd => InternedString::new("freebsd"),
     };
 
     // ARM is bi-endian, however using NDK seems to default
     // to little-endian unless a flag is provided.
     let (end,arch,wordsz) = match sess.targ_cfg.arch {
-        abi::X86 =>    (@"little", @"x86",    @"32"),
-        abi::X86_64 => (@"little", @"x86_64", @"64"),
-        abi::Arm =>    (@"little", @"arm",    @"32"),
-        abi::Mips =>   (@"big",    @"mips",   @"32")
+        abi::X86 =>    ("little", "x86",    "32"),
+        abi::X86_64 => ("little", "x86_64", "64"),
+        abi::Arm =>    ("little", "arm",    "32"),
+        abi::Mips =>   ("big",    "mips",   "32")
     };
 
     let fam = match sess.targ_cfg.os {
@@ -99,10 +99,11 @@ pub fn default_configuration(sess: Session) ->
     return ~[ // Target bindings.
          attr::mk_word_item(fam.clone()),
          mk(InternedString::new("target_os"), tos),
-         mk(InternedString::new("target_family"), fam.get().to_managed()),
-         mk(InternedString::new("target_arch"), arch),
-         mk(InternedString::new("target_endian"), end),
-         mk(InternedString::new("target_word_size"), wordsz),
+         mk(InternedString::new("target_family"), fam),
+         mk(InternedString::new("target_arch"), InternedString::new(arch)),
+         mk(InternedString::new("target_endian"), InternedString::new(end)),
+         mk(InternedString::new("target_word_size"),
+            InternedString::new(wordsz)),
     ];
 }
 

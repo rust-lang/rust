@@ -19,12 +19,12 @@ use middle::resolve;
 use middle::trans::adt;
 use middle::trans::base;
 use middle::trans::builder::Builder;
-use middle::trans::debuginfo;
 use middle::trans::common::{C_i32, C_null};
-use middle::ty;
-
+use middle::trans::common::{mono_id,ExternMap,tydesc_info,BuilderRef_res,Stats};
+use middle::trans::base::{decl_crate_map};
+use middle::trans::debuginfo;
 use middle::trans::type_::Type;
-
+use middle::ty;
 use util::sha2::Sha256;
 
 use std::cell::{Cell, RefCell};
@@ -33,10 +33,7 @@ use std::hashmap::{HashMap, HashSet};
 use std::local_data;
 use std::libc::c_uint;
 use syntax::ast;
-
-use middle::trans::common::{mono_id,ExternMap,tydesc_info,BuilderRef_res,Stats};
-
-use middle::trans::base::{decl_crate_map};
+use syntax::parse::token::InternedString;
 
 pub struct CrateContext {
      sess: session::Session,
@@ -71,7 +68,7 @@ pub struct CrateContext {
      // Cache generated vtables
      vtables: RefCell<HashMap<(ty::t, mono_id), ValueRef>>,
      // Cache of constant strings,
-     const_cstr_cache: RefCell<HashMap<@str, ValueRef>>,
+     const_cstr_cache: RefCell<HashMap<InternedString, ValueRef>>,
 
      // Reverse-direction for const ptrs cast from globals.
      // Key is an int, cast from a ValueRef holding a *T,

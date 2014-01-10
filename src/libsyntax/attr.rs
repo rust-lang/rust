@@ -17,6 +17,7 @@ use codemap::BytePos;
 use diagnostic::SpanHandler;
 use parse::comments::{doc_comment_style, strip_doc_comment_decoration};
 use parse::token::InternedString;
+use parse::token;
 use crateid::CrateId;
 
 use std::hashmap::HashSet;
@@ -34,7 +35,7 @@ pub trait AttrMetaMethods {
      * Gets the string value if self is a MetaNameValue variant
      * containing a string, otherwise None.
      */
-    fn value_str(&self) -> Option<@str>;
+    fn value_str(&self) -> Option<InternedString>;
     /// Gets a list of inner meta items from a list MetaItem type.
     fn meta_item_list<'a>(&'a self) -> Option<&'a [@MetaItem]>;
 
@@ -42,16 +43,18 @@ pub trait AttrMetaMethods {
      * If the meta item is a name-value type with a string value then returns
      * a tuple containing the name and string value, otherwise `None`
      */
-    fn name_str_pair(&self) -> Option<(InternedString, @str)>;
+    fn name_str_pair(&self) -> Option<(InternedString,InternedString)>;
 }
 
 impl AttrMetaMethods for Attribute {
     fn name(&self) -> InternedString { self.meta().name() }
-    fn value_str(&self) -> Option<@str> { self.meta().value_str() }
+    fn value_str(&self) -> Option<InternedString> {
+        self.meta().value_str()
+    }
     fn meta_item_list<'a>(&'a self) -> Option<&'a [@MetaItem]> {
         self.node.value.meta_item_list()
     }
-    fn name_str_pair(&self) -> Option<(InternedString, @str)> {
+    fn name_str_pair(&self) -> Option<(InternedString,InternedString)> {
         self.meta().name_str_pair()
     }
 }
@@ -65,11 +68,11 @@ impl AttrMetaMethods for MetaItem {
         }
     }
 
-    fn value_str(&self) -> Option<@str> {
+    fn value_str(&self) -> Option<InternedString> {
         match self.node {
             MetaNameValue(_, ref v) => {
                 match v.node {
-                    ast::LitStr(s, _) => Some(s),
+                    ast::LitStr(ref s, _) => Some((*s).clone()),
                     _ => None,
                 }
             },
@@ -84,7 +87,7 @@ impl AttrMetaMethods for MetaItem {
         }
     }
 
-    fn name_str_pair(&self) -> Option<(InternedString, @str)> {
+    fn name_str_pair(&self) -> Option<(InternedString,InternedString)> {
         self.value_str().map(|s| (self.name(), s))
     }
 }
@@ -92,11 +95,11 @@ impl AttrMetaMethods for MetaItem {
 // Annoying, but required to get test_cfg to work
 impl AttrMetaMethods for @MetaItem {
     fn name(&self) -> InternedString { (**self).name() }
-    fn value_str(&self) -> Option<@str> { (**self).value_str() }
+    fn value_str(&self) -> Option<InternedString> { (**self).value_str() }
     fn meta_item_list<'a>(&'a self) -> Option<&'a [@MetaItem]> {
         (**self).meta_item_list()
     }
-    fn name_str_pair(&self) -> Option<(InternedString, @str)> {
+    fn name_str_pair(&self) -> Option<(InternedString,InternedString)> {
         (**self).name_str_pair()
     }
 }
@@ -119,8 +122,10 @@ impl AttributeMethods for Attribute {
     fn desugar_doc(&self) -> Attribute {
         if self.node.is_sugared_doc {
             let comment = self.value_str().unwrap();
-            let meta = mk_name_value_item_str(InternedString::new("doc"),
-                                              strip_doc_comment_decoration(comment).to_managed());
+            let meta = mk_name_value_item_str(
+                InternedString::new("doc"),
+                token::intern_and_get_ident(strip_doc_comment_decoration(
+                        comment.get())));
             mk_attr(meta)
         } else {
             *self
@@ -130,7 +135,7 @@ impl AttributeMethods for Attribute {
 
 /* Constructors */
 
-pub fn mk_name_value_item_str(name: InternedString, value: @str)
+pub fn mk_name_value_item_str(name: InternedString, value: InternedString)
                               -> @MetaItem {
     let value_lit = dummy_spanned(ast::LitStr(value, ast::CookedStr));
     mk_name_value_item(name, value_lit)
@@ -157,8 +162,9 @@ pub fn mk_attr(item: @MetaItem) -> Attribute {
     })
 }
 
-pub fn mk_sugared_doc_attr(text: @str, lo: BytePos, hi: BytePos) -> Attribute {
-    let style = doc_comment_style(text);
+pub fn mk_sugared_doc_attr(text: InternedString, lo: BytePos, hi: BytePos)
+                           -> Attribute {
+    let style = doc_comment_style(text.get());
     let lit = spanned(lo, hi, ast::LitStr(text, ast::CookedStr));
     let attr = Attribute_ {
         style: style,
@@ -191,14 +197,14 @@ pub fn contains_name<AM: AttrMetaMethods>(metas: &[AM], name: &str) -> bool {
 }
 
 pub fn first_attr_value_str_by_name(attrs: &[Attribute], name: &str)
-                                 -> Option<@str> {
+                                 -> Option<InternedString> {
     attrs.iter()
         .find(|at| at.name().equiv(&name))
         .and_then(|at| at.value_str())
 }
 
 pub fn last_meta_item_value_str_by_name(items: &[@MetaItem], name: &str)
-                                     -> Option<@str> {
+                                     -> Option<InternedString> {
     items.rev_iter()
          .find(|mi| mi.name().equiv(&name))
          .and_then(|i| i.value_str())
@@ -247,7 +253,7 @@ pub fn find_linkage_metas(attrs: &[Attribute]) -> ~[@MetaItem] {
 pub fn find_crateid(attrs: &[Attribute]) -> Option<CrateId> {
     match first_attr_value_str_by_name(attrs, "crate_id") {
         None => None,
-        Some(id) => from_str::<CrateId>(id),
+        Some(id) => from_str::<CrateId>(id.get()),
     }
 }
 
@@ -331,7 +337,7 @@ pub fn test_cfg<AM: AttrMetaMethods, It: Iterator<AM>>
 /// Represents the #[deprecated="foo"] (etc) attributes.
 pub struct Stability {
     level: StabilityLevel,
-    text: Option<@str>
+    text: Option<InternedString>
 }
 
 /// The available stability levels.
@@ -346,7 +352,8 @@ pub enum StabilityLevel {
 }
 
 /// Find the first stability attribute. `None` if none exists.
-pub fn find_stability<AM: AttrMetaMethods, It: Iterator<AM>>(mut metas: It) -> Option<Stability> {
+pub fn find_stability<AM: AttrMetaMethods, It: Iterator<AM>>(mut metas: It)
+                      -> Option<Stability> {
     for m in metas {
         let level = match m.name().get() {
             "deprecated" => Deprecated,

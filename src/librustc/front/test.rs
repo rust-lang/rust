@@ -28,6 +28,7 @@ use syntax::fold::Folder;
 use syntax::fold;
 use syntax::opt_vec;
 use syntax::parse::token::InternedString;
+use syntax::parse::token;
 use syntax::print::pprust;
 use syntax::{ast, ast_util};
 use syntax::util::small_vector::SmallVector;
@@ -426,7 +427,8 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> @ast::Expr {
     debug!("encoding {}", ast_util::path_name_i(path));
 
     let name_lit: ast::Lit =
-        nospan(ast::LitStr(ast_util::path_name_i(path).to_managed(), ast::CookedStr));
+        nospan(ast::LitStr(token::intern_and_get_ident(
+                    ast_util::path_name_i(path)), ast::CookedStr));
 
     let name_expr = @ast::Expr {
           id: ast::DUMMY_NODE_ID,
