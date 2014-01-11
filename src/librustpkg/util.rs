@@ -16,7 +16,7 @@ use std::os;
 use std::io;
 use std::io::fs;
 use extra::workcache;
-use install;
+use run_args::install;
 use rustc::driver::{driver, session};
 use extra::getopts::groups::getopts;
 use syntax;

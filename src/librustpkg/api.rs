@@ -11,7 +11,7 @@
 use context::*;
 use crate::*;
 use crate_id::*;
-use install;
+use run_args::install;
 use package_source::*;
 use path_util::{platform_library_name, target_build_dir};
 use target::*;

@@ -23,7 +23,7 @@ use extra::workcache::{Database, Logger};
 use extra::treemap::TreeMap;
 use extra::getopts::groups::getopts;
 use std::run::ProcessOutput;
-use install;
+use run_args::install;
 use installed_packages::list_installed_packages;
 use crate_id::{CrateId};
 use version::{ExactRevision, NoVersion, Version, Tagged};
