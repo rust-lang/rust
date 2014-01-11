@@ -79,6 +79,7 @@ src/.DS_Store
 /doc/native
 /doc/rustc
 /doc/syntax
+/doc/rustuv
 /nd/
 /llvm/
 version.md
