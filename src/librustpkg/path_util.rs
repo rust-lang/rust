@@ -17,7 +17,7 @@ pub use target::{OutputType, Main, Lib, Test, Bench, Target, Build, Install};
 pub use version::{Version, ExactRevision, NoVersion, split_version, split_version_general,
     try_parsing_version};
 pub use rustc::metadata::filesearch::rust_path;
-use rustc::metadata::filesearch::libdir;
+use rustc::metadata::filesearch::{libdir, relative_target_lib_path};
 use rustc::driver::driver::host_triple;
 
 use std::libc;
@@ -213,10 +213,9 @@ pub fn library_in_workspace(path: &Path, short_name: &str, where: Target,
     library_in(short_name, version, &dir_to_search)
 }
 
-// rustc doesn't use target-specific subdirectories
 pub fn system_library(sysroot: &Path, crate_id: &str) -> Option<Path> {
     let (lib_name, version) = split_crate_id(crate_id);
-    library_in(lib_name, &version, &sysroot.join(libdir()))
+    library_in(lib_name, &version, &sysroot.join(relative_target_lib_path(host_triple())))
 }
 
 fn library_in(short_name: &str, version: &Version, dir_to_search: &Path) -> Option<Path> {
