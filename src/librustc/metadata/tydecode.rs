@@ -410,7 +410,6 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
         let inner = parse_ty(st, |x,y| conv(x,y));
         inner
       }
-      'B' => ty::mk_opaque_box(st.tcx),
       'a' => {
           assert_eq!(next(st), '[');
           let did = parse_def(st, NominalType, |x,y| conv(x,y));

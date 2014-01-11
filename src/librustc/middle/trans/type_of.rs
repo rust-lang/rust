@@ -44,6 +44,7 @@ pub fn type_of_explicit_args(ccx: &CrateContext,
 }
 
 pub fn type_of_rust_fn(cx: &CrateContext,
+                       self_ty: Option<ty::t>,
                        inputs: &[ty::t],
                        output: ty::t) -> Type {
     let mut atys: ~[Type] = ~[];
@@ -57,7 +58,11 @@ pub fn type_of_rust_fn(cx: &CrateContext,
     }
 
     // Arg 1: Environment
-    atys.push(Type::opaque_box(cx).ptr_to());
+    let env = match self_ty {
+        Some(t) => type_of_explicit_arg(cx, t),
+        None => Type::opaque_box(cx).ptr_to()
+    };
+    atys.push(env);
 
     // ... then explicit args.
     atys.push_all(type_of_explicit_args(cx, inputs));
@@ -71,14 +76,14 @@ pub fn type_of_rust_fn(cx: &CrateContext,
 }
 
 // Given a function type and a count of ty params, construct an llvm type
-pub fn type_of_fn_from_ty(cx: &CrateContext, fty: ty::t) -> Type {
+pub fn type_of_fn_from_ty(cx: &CrateContext, self_ty: Option<ty::t>, fty: ty::t) -> Type {
     return match ty::get(fty).sty {
         ty::ty_closure(ref f) => {
-            type_of_rust_fn(cx, f.sig.inputs, f.sig.output)
+            type_of_rust_fn(cx, None, f.sig.inputs, f.sig.output)
         }
         ty::ty_bare_fn(ref f) => {
             if f.abis.is_rust() || f.abis.is_intrinsic() {
-                type_of_rust_fn(cx, f.sig.inputs, f.sig.output)
+                type_of_rust_fn(cx, self_ty, f.sig.inputs, f.sig.output)
             } else {
                 foreign::lltype_for_foreign_fn(cx, fty)
             }
@@ -122,7 +127,6 @@ pub fn sizing_type_of(cx: &CrateContext, t: ty::t) -> Type {
         ty::ty_vec(_, ty::vstore_uniq) |
         ty::ty_vec(_, ty::vstore_box) |
         ty::ty_box(..) |
-        ty::ty_opaque_box |
         ty::ty_uniq(..) |
         ty::ty_ptr(..) |
         ty::ty_rptr(..) |
@@ -240,7 +244,6 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
           let ty = type_of(cx, typ);
           Type::smart_ptr(cx, &ty).ptr_to()
       }
-      ty::ty_opaque_box => Type::opaque_box(cx).ptr_to(),
       ty::ty_uniq(ref mt) => {
           let ty = type_of(cx, mt.ty);
           if ty::type_contents(cx.tcx, mt.ty).owns_managed() {
@@ -285,10 +288,10 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
       }
 
       ty::ty_bare_fn(_) => {
-          type_of_fn_from_ty(cx, t).ptr_to()
+          type_of_fn_from_ty(cx, None, t).ptr_to()
       }
       ty::ty_closure(_) => {
-          let ty = type_of_fn_from_ty(cx, t);
+          let ty = type_of_fn_from_ty(cx, None, t);
           Type::func_pair(cx, &ty)
       }
       ty::ty_trait(_, _, store, _, _) => Type::opaque_trait(cx, store),

@@ -148,9 +148,6 @@ pub struct method_map_entry {
     // (FIXME #3446)
     self_ty: ty::t,
 
-    // the mode of `self`
-    self_mode: ty::SelfMode,
-
     // the type of explicit self on the method
     explicit_self: ast::ExplicitSelf_,
 

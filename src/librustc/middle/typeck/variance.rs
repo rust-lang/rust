@@ -693,8 +693,7 @@ impl<'a> ConstraintContext<'a> {
             }
 
             ty::ty_infer(..) | ty::ty_err | ty::ty_type |
-            ty::ty_opaque_box | ty::ty_opaque_closure_ptr(..) |
-            ty::ty_unboxed_vec(..) => {
+            ty::ty_opaque_closure_ptr(..) | ty::ty_unboxed_vec(..) => {
                 self.tcx().sess.bug(
                     format!("Unexpected type encountered in \
                             variance inference: {}",

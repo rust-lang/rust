@@ -20,7 +20,6 @@ use middle::trans::callee;
 use middle::trans::common::*;
 use middle::trans::expr::*;
 use middle::trans::type_of::*;
-use middle::ty;
 
 use middle::trans::type_::Type;
 
@@ -56,7 +55,6 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
         unpack_result!(bcx, {
             callee::trans_arg_expr(bcx,
                                    expr_ty(bcx, input),
-                                   ty::ByCopy,
                                    input,
                                    &mut cleanups,
                                    callee::DontAutorefArg)
