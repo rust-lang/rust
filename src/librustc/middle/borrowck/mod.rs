@@ -510,9 +510,7 @@ impl BorrowckCtxt {
     }
 
     pub fn report(&self, err: BckError) {
-        self.span_err(
-            err.span,
-            self.bckerr_to_str(err));
+        self.raise_bck_err(err);
         self.note_and_explain_bckerr(err);
     }
 
@@ -529,20 +527,18 @@ impl BorrowckCtxt {
 
         match move.kind {
             move_data::Declared => {
-                self.tcx.sess.span_err(
-                    use_span,
-                    format!("{} of possibly uninitialized value: `{}`",
-                         verb,
-                         self.loan_path_to_str(lp)));
+                span_err!(self.tcx.sess, use_span, A0006,
+                          "{} of possibly uninitialized value: `{}`",
+                          verb,
+                          self.loan_path_to_str(lp));
             }
             _ => {
                 let partially = if lp == moved_lp {""} else {"partially "};
-                self.tcx.sess.span_err(
-                    use_span,
-                    format!("{} of {}moved value: `{}`",
-                         verb,
-                         partially,
-                         self.loan_path_to_str(lp)));
+                span_err!(self.tcx.sess, use_span, A0007,
+                          "{} of {}moved value: `{}`",
+                          verb,
+                          partially,
+                          self.loan_path_to_str(lp));
             }
         }
 
@@ -616,43 +612,46 @@ impl BorrowckCtxt {
                                                 lp: &LoanPath,
                                                 assign:
                                                 &move_data::Assignment) {
-        self.tcx.sess.span_err(
-            span,
-            format!("re-assignment of immutable variable `{}`",
-                 self.loan_path_to_str(lp)));
+        span_err!(self.tcx.sess, span, A0008,
+                  "re-assignment of immutable variable `{}`",
+                  self.loan_path_to_str(lp));
         self.tcx.sess.span_note(
             assign.span,
             format!("prior assignment occurs here"));
     }
 
-    pub fn span_err(&self, s: Span, m: &str) {
-        self.tcx.sess.span_err(s, m);
+    pub fn span_err_with_diagnostic_code(&self, s: Span, c: &str, m: &str) {
+        self.tcx.sess.span_err_with_diagnostic_code(s, c, m);
     }
 
     pub fn span_note(&self, s: Span, m: &str) {
         self.tcx.sess.span_note(s, m);
     }
 
-    pub fn bckerr_to_str(&self, err: BckError) -> ~str {
+    pub fn raise_bck_err(&self, err: BckError) {
         match err.code {
             err_mutbl(lk) => {
-                format!("cannot borrow {} {} as {}",
-                     err.cmt.mutbl.to_user_str(),
-                     self.cmt_to_str(err.cmt),
-                     self.mut_to_str(lk))
+                span_err!(self.tcx.sess, err.span, A0001,
+                          "cannot borrow {} {} as {}",
+                          err.cmt.mutbl.to_user_str(),
+                          self.cmt_to_str(err.cmt),
+                          self.mut_to_str(lk));
             }
             err_out_of_root_scope(..) => {
-                format!("cannot root managed value long enough")
+                span_err!(self.tcx.sess, err.span, A0002,
+                          "cannot root managed value long enough");
             }
             err_out_of_scope(..) => {
-                format!("borrowed value does not live long enough")
+                span_err!(self.tcx.sess, err.span, A0003,
+                          "borrowed value does not live long enough");
             }
             err_freeze_aliasable_const => {
                 // Means that the user borrowed a ~T or enum value
                 // residing in &const or @const pointer.  Terrible
                 // error message, but then &const and @const are
                 // supposed to be going away.
-                format!("unsafe borrow of aliasable, const value")
+                span_err!(self.tcx.sess, err.span, A0004,
+                          "unsafe borrow of aliasable, const value");
             }
             err_borrowed_pointer_too_short(..) => {
                 let descr = match opt_loan_path(err.cmt) {
@@ -660,9 +659,10 @@ impl BorrowckCtxt {
                     None => self.cmt_to_str(err.cmt),
                 };
 
-                format!("lifetime of {} is too short to guarantee \
-                        its contents can be safely reborrowed",
-                        descr)
+                span_err!(self.tcx.sess, err.span, A0005,
+                          "lifetime of {} is too short to guarantee \
+                          its contents can be safely reborrowed",
+                          descr);
             }
         }
     }
@@ -678,21 +678,18 @@ impl BorrowckCtxt {
 
         match cause {
             mc::AliasableOther => {
-                self.tcx.sess.span_err(
-                    span,
-                    format!("{} in an aliasable location", prefix));
+                span_err!(self.tcx.sess, span, A0009,
+                          "{} in an aliasable location", prefix);
             }
             mc::AliasableManaged => {
-                self.tcx.sess.span_err(span, format!("{} in a `@` pointer",
-                                                     prefix))
+                span_err!(self.tcx.sess, span, A0010,
+                          "{} in a `@` pointer", prefix);
             }
             mc::AliasableBorrowed(m) => {
-                self.tcx.sess.span_err(
-                    span,
-                    format!("{} in a `&{}` pointer; \
-                          try an `&mut` instead",
-                         prefix,
-                         self.mut_to_keyword(m)));
+                span_err!(self.tcx.sess, span, A0011,
+                          "{} in a `&{}` pointer; try an `&mut` instead",
+                          prefix,
+                          self.mut_to_keyword(m));
             }
         }
     }
