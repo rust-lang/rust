@@ -351,9 +351,9 @@ pub fn parse(sess: @ParseSess,
                 }
                 return Success(nameize(sess, ms, v));
             } else if eof_eis.len() > 1u {
-                return Error(sp, ~"Ambiguity: multiple successful parses");
+                return Error(sp, ~"ambiguity: multiple successful parses");
             } else {
-                return Failure(sp, ~"Unexpected end of macro invocation");
+                return Failure(sp, ~"unexpected end of macro invocation");
             }
         } else {
             if (bb_eis.len() > 0u && next_eis.len() > 0u)
@@ -367,12 +367,12 @@ pub fn parse(sess: @ParseSess,
                       _ => fail!()
                     } }).connect(" or ");
                 return Error(sp, format!(
-                    "Local ambiguity: multiple parsing options: \
+                    "local ambiguity: multiple parsing options: \
                      built-in NTs {} or {} other options.",
                     nts, next_eis.len()));
             } else if (bb_eis.len() == 0u && next_eis.len() == 0u) {
-                return Failure(sp, ~"No rules expected the token: "
-                            + to_str(get_ident_interner(), &tok));
+                return Failure(sp, format!("no rules expected the token `{}`",
+                            to_str(get_ident_interner(), &tok)));
             } else if (next_eis.len() > 0u) {
                 /* Now process the next token */
                 while(next_eis.len() > 0u) {
