@@ -1768,13 +1768,13 @@ def_type_content_sets!(
         OwnsDtor                            = 0b0000__00000010__0000,
         OwnsAtManaged /* see [1] below */   = 0b0000__00000100__0000,
         OwnsAffine                          = 0b0000__00001000__0000,
-        OwnsNewManaged                      = 0b0000__00010000__0000,
         OwnsAll                             = 0b0000__11111111__0000,
 
         // Things that are reachable by the value in any way (fourth nibble):
         ReachesNonsendAnnot                 = 0b0001__00000000__0000,
         ReachesBorrowed                     = 0b0010__00000000__0000,
         // ReachesAtManaged /* see [1] below */ = 0b0100__00000000__0000,
+        ReachesNewManaged                   = 0b0100__00000000__0000,
         ReachesMutable                      = 0b1000__00000000__0000,
         ReachesAll                          = 0b1111__00000000__0000,
 
@@ -1852,8 +1852,8 @@ impl TypeContents {
         self.intersects(TC::OwnsAtManaged)
     }
 
-    pub fn owns_new_managed(&self) -> bool {
-        self.intersects(TC::OwnsNewManaged)
+    pub fn reaches_new_managed(&self) -> bool {
+        self.intersects(TC::ReachesNewManaged)
     }
 
     pub fn is_freezable(&self, _: ctxt) -> bool {
@@ -2169,7 +2169,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
         tc |
             TC::ReachesMutable.when(has_attr(cx, did, "no_freeze")) |
             TC::ReachesNonsendAnnot.when(has_attr(cx, did, "no_send")) |
-            TC::OwnsNewManaged.when(has_attr(cx, did, "managed"))
+            TC::ReachesNewManaged.when(has_attr(cx, did, "managed"))
     }
 
     fn borrowed_contents(region: ty::Region,
