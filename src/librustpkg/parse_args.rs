@@ -36,7 +36,8 @@ pub struct ParseResult {
 /// Parses command line arguments of rustpkg.
 /// Returns a triplet (command, remaining_args, context)
 pub fn parse_args(args: &[~str]) -> Result<ParseResult, int> {
-    let opts = ~[ getopts::optflag("no-link"),
+    let opts = ~[getopts::optflag("h"), getopts::optflag("help"),
+                                        getopts::optflag("no-link"),
                                         getopts::optflag("no-trans"),
                  // n.b. Ignores different --pretty options for now
                                         getopts::optflag("pretty"),
@@ -62,11 +63,11 @@ pub fn parse_args(args: &[~str]) -> Result<ParseResult, int> {
             return Err(1);
         }
     };
+    let help = matches.opt_present("h") || matches.opt_present("help");
     let no_link = matches.opt_present("no-link");
     let no_trans = matches.opt_present("no-trans");
     let supplied_sysroot = matches.opt_str("sysroot");
-    let generate_asm = matches.opt_present("S") ||
-        matches.opt_present("assembly");
+    let generate_asm = matches.opt_present("S") || matches.opt_present("assembly");
     let parse_only = matches.opt_present("parse-only");
     let pretty = matches.opt_present("pretty");
     let emit_llvm = matches.opt_present("emit-llvm");
@@ -155,10 +156,13 @@ pub fn parse_args(args: &[~str]) -> Result<ParseResult, int> {
         }
         Some(cmd) => {
             let bad_option = flags_forbidden_for_cmd(&rustc_flags,
-                                                              cfgs,
-                                                              cmd,
-                                                              user_supplied_opt_level);
-            if bad_option {
+                                                     cfgs,
+                                                     cmd,
+                                                     user_supplied_opt_level);
+            if help {
+                usage::usage_for_command(cmd);
+                return Err(0);
+            } else if bad_option {
                 usage::usage_for_command(cmd);
                 debug!("Bad  option, returning BAD_FLAG_CODE");
                 return Err(BAD_FLAG_CODE);
