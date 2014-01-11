@@ -184,8 +184,8 @@ pub fn nameize(p_s: @ParseSess, ms: &[Matcher], res: &[@NamedMatch])
           } => {
             if ret_val.contains_key(bind_name) {
                 let string = token::get_ident(bind_name.name);
-                p_s.span_diagnostic
-                   .span_fatal(sp, "duplicated bind name: " + string.get())
+                span_fatal!(p_s.span_diagnostic, sp, B0017,
+                            "duplicated bind name: {}", string.get())
             }
             ret_val.insert(*bind_name, res[idx]);
           }
@@ -200,18 +200,6 @@ pub enum ParseResult {
     Success(HashMap<Ident, @NamedMatch>),
     Failure(codemap::Span, ~str),
     Error(codemap::Span, ~str)
-}
-
-pub fn parse_or_else<R: Reader>(sess: @ParseSess,
-                                cfg: ast::CrateConfig,
-                                rdr: R,
-                                ms: ~[Matcher])
-                                -> HashMap<Ident, @NamedMatch> {
-    match parse(sess, cfg, rdr, ms) {
-        Success(m) => m,
-        Failure(sp, str) => sess.span_diagnostic.span_fatal(sp, str),
-        Error(sp, str) => sess.span_diagnostic.span_fatal(sp, str)
-    }
 }
 
 // perform a token equality check, ignoring syntax context (that is, an unhygienic comparison)
@@ -415,7 +403,7 @@ pub fn parse_nt(p: &mut Parser, name: &str) -> Nonterminal {
     match name {
       "item" => match p.parse_item(~[]) {
         Some(i) => token::NtItem(i),
-        None => p.fatal("expected an item keyword")
+        None => alert_fatal!(p, C0079, "expected an item keyword")
       },
       "block" => token::NtBlock(p.parse_block()),
       "stmt" => token::NtStmt(p.parse_stmt(~[])),
@@ -427,7 +415,7 @@ pub fn parse_nt(p: &mut Parser, name: &str) -> Nonterminal {
         token::IDENT(sn,b) => { p.bump(); token::NtIdent(~sn,b) }
         _ => {
             let token_str = token::to_str(get_ident_interner(), &p.token);
-            p.fatal(~"expected ident, found " + token_str)
+            alert_fatal!(p, C0080, "expected ident, found {}", token_str)
         }
       },
       "path" => {
@@ -441,6 +429,6 @@ pub fn parse_nt(p: &mut Parser, name: &str) -> Nonterminal {
         res
       }
       "matchers" => token::NtMatchers(p.parse_matchers()),
-      _ => p.fatal(~"unsupported builtin nonterminal parser: " + name)
+      _ => alert_fatal!(p, C0081, "unsupported builtin nonterminal parser: {}", name)
     }
 }

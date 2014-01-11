@@ -24,7 +24,7 @@ pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             match *e {
                 ast::TTTok(_, token::COMMA) => (),
                 _ => {
-                    cx.span_err(sp, "concat_idents! expecting comma.");
+                    span_err!(cx, sp, B0094, "concat_idents! expecting comma.");
                     return MacResult::dummy_expr();
                 }
             }
@@ -35,7 +35,7 @@ pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                     res_str.push_str(interned_str.get())
                 }
                 _ => {
-                    cx.span_err(sp, "concat_idents! requires ident args.");
+                    span_err!(cx, sp, B0095, "concat_idents! requires ident args.");
                     return MacResult::dummy_expr();
                 }
             }

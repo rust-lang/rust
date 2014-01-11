@@ -297,7 +297,7 @@ pub fn run_compiler(args: &[~str]) {
             let crateid = match attr::find_crateid(attrs) {
                 Some(crateid) => crateid,
                 None => {
-                    sess.fatal("No crate_id and --crate-id or \
+                    alert_fatal!(sess, A0048, "No crate_id and --crate-id or \
                                 --crate-name requested")
                 }
             };

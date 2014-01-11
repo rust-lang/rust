@@ -54,14 +54,15 @@ pub enum OutputType {
 }
 
 pub fn llvm_err(sess: Session, msg: ~str) -> ! {
-    unsafe {
+    let msg = unsafe {
         let cstr = llvm::LLVMRustGetLastError();
         if cstr == ptr::null() {
-            sess.fatal(msg);
+            msg
         } else {
-            sess.fatal(msg + ": " + str::raw::from_c_str(cstr));
+            format!("{}: {}", msg, str::raw::from_c_str(cstr))
         }
-    }
+    };
+    alert_fatal!(sess, A0052, "LLVM error: {}", msg);
 }
 
 pub fn WriteOutputFile(
@@ -189,7 +190,7 @@ pub mod write {
             for pass in sess.opts.custom_passes.iter() {
                 pass.with_c_str(|s| {
                     if !llvm::LLVMRustAddPass(mpm, s) {
-                        sess.warn(format!("unknown pass {}, ignoring", *pass));
+                        alert_warn!(sess, A0335, "unknown pass {}, ignoring", *pass);
                     }
                 })
             }
@@ -334,14 +335,14 @@ pub mod write {
         match run::process_output(cc, args) {
             Ok(prog) => {
                 if !prog.status.success() {
-                    sess.err(format!("linking with `{}` failed: {}", cc, prog.status));
+                    alert_err!(sess, A0346, "linking with `{}` failed: {}", cc, prog.status);
                     sess.note(format!("{} arguments: '{}'", cc, args.connect("' '")));
                     sess.note(str::from_utf8_owned(prog.error + prog.output).unwrap());
                     sess.abort_if_errors();
                 }
             },
             Err(e) => {
-                sess.err(format!("could not exec the linker `{}`: {}", cc, e));
+                alert_err!(sess, A0347, "could not exec the linker `{}`: {}", cc, e);
                 sess.abort_if_errors();
             }
         }
@@ -782,8 +783,8 @@ fn get_system_tool(sess: Session, tool: &str) -> ~str {
                 format!("{}/bin/arm-linux-androideabi-{}", *path, tool_str)
             }
             None => {
-                sess.fatal(format!("need Android NDK path for the '{}' tool \
-                                    (--android-cross-path)", tool))
+                alert_fatal!(sess, A0053, "need Android NDK path for the '{}' tool \
+                                    (--android-cross-path)", tool)
             }
         },
         _ => tool.to_owned(),
@@ -794,7 +795,7 @@ fn remove(sess: Session, path: &Path) {
     match fs::unlink(path) {
         Ok(..) => {}
         Err(e) => {
-            sess.err(format!("failed to remove {}: {}", path.display(), e));
+            alert_err!(sess, A0356, "failed to remove {}: {}", path.display(), e);
         }
     }
 }
@@ -876,12 +877,14 @@ fn link_binary_output(sess: Session,
     let obj_is_writeable = is_writeable(&obj_filename);
     let out_is_writeable = is_writeable(&out_filename);
     if !out_is_writeable {
-        sess.fatal(format!("output file {} is not writeable -- check its permissions.",
-                           out_filename.display()));
+        alert_fatal!(sess, A0054,
+                     "output file {} is not writeable -- check its permissions.",
+                     out_filename.display());
     }
     else if !obj_is_writeable {
-        sess.fatal(format!("object file {} is not writeable -- check its permissions.",
-                           obj_filename.display()));
+        alert_fatal!(sess, A0055,
+                     "object file {} is not writeable -- check its permissions.",
+                           obj_filename.display());
     }
 
     match crate_type {
@@ -957,8 +960,8 @@ fn link_rlib(sess: Session,
             match fs::File::create(&metadata).write(trans.metadata) {
                 Ok(..) => {}
                 Err(e) => {
-                    sess.err(format!("failed to write {}: {}",
-                                     metadata.display(), e));
+                    alert_err!(sess, A0348, "failed to write {}: {}",
+                                     metadata.display(), e);
                     sess.abort_if_errors();
                 }
             }
@@ -1009,7 +1012,7 @@ fn link_staticlib(sess: Session, obj_filename: &Path, out_filename: &Path) {
         let name = sess.cstore.get_crate_data(cnum).name.clone();
         let p = match *path {
             Some(ref p) => p.clone(), None => {
-                sess.err(format!("could not find rlib for: `{}`", name));
+                alert_err!(sess, A0349, "could not find rlib for: `{}`", name);
                 continue
             }
         };
@@ -1021,7 +1024,7 @@ fn link_staticlib(sess: Session, obj_filename: &Path, out_filename: &Path) {
                 cstore::NativeUnknown => "library",
                 cstore::NativeFramework => "framework",
             };
-            sess.warn(format!("unlinked native {}: {}", name, *lib));
+            alert_warn!(sess, A0336, "unlinked native {}: {}", name, *lib);
         }
     }
 }
@@ -1052,14 +1055,14 @@ fn link_natively(sess: Session, dylib: bool, obj_filename: &Path,
     match prog {
         Ok(prog) => {
             if !prog.status.success() {
-                sess.err(format!("linking with `{}` failed: {}", cc_prog, prog.status));
+                alert_err!(sess, A0350, "linking with `{}` failed: {}", cc_prog, prog.status);
                 sess.note(format!("{} arguments: '{}'", cc_prog, cc_args.connect("' '")));
                 sess.note(str::from_utf8_owned(prog.error + prog.output).unwrap());
                 sess.abort_if_errors();
             }
         },
         Err(e) => {
-            sess.err(format!("could not exec the linker `{}`: {}", cc_prog, e));
+            alert_err!(sess, A0351, "could not exec the linker `{}`: {}", cc_prog, e);
             sess.abort_if_errors();
         }
     }
@@ -1073,7 +1076,7 @@ fn link_natively(sess: Session, dylib: bool, obj_filename: &Path,
                                   [out_filename.as_str().unwrap().to_owned()]) {
             Ok(..) => {}
             Err(e) => {
-                sess.err(format!("failed to run dsymutil: {}", e));
+                alert_err!(sess, A0352, "failed to run dsymutil: {}", e);
                 sess.abort_if_errors();
             }
         }
@@ -1273,10 +1276,10 @@ fn add_upstream_rust_crates(args: &mut ~[~str], sess: Session,
                         match fs::copy(&cratepath, &dst) {
                             Ok(..) => {}
                             Err(e) => {
-                                sess.err(format!("failed to copy {} to {}: {}",
+                                alert_err!(sess, A0353, "failed to copy {} to {}: {}",
                                                  cratepath.display(),
                                                  dst.display(),
-                                                 e));
+                                                 e);
                                 sess.abort_if_errors();
                             }
                         }
@@ -1313,8 +1316,8 @@ fn add_upstream_rust_crates(args: &mut ~[~str], sess: Session,
         let cratepath = match *path {
             Some(ref p) => p.clone(),
             None => {
-                sess.err(format!("could not find dynamic library for: `{}`",
-                                 sess.cstore.get_crate_data(cnum).name));
+                alert_err!(sess, A0354, "could not find dynamic library for: `{}`",
+                                 sess.cstore.get_crate_data(cnum).name);
                 return
             }
         };

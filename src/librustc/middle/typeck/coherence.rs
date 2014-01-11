@@ -68,9 +68,9 @@ fn get_base_type(inference_context: &InferCtxt,
             resolved_type = resulting_type;
         }
         _ => {
-            inference_context.tcx.sess.span_fatal(span,
-                                                  "the type of this value must be known in order \
-                                                   to determine the base type");
+            span_fatal!(inference_context.tcx.sess, span, A0047,
+                        "the type of this value must be known in order \
+                        to determine the base type");
         }
     }
 
@@ -190,7 +190,7 @@ impl<'a> visit::Visitor<()> for PrivilegedScopeVisitor<'a> {
                 if !self.cc.ast_type_is_defined_in_local_crate(ast_ty) {
                     // This is an error.
                     let session = self.cc.crate_context.tcx.sess;
-                    session.span_err(item.span,
+                    span_err!(session, item.span, A0104,
                                      "cannot associate methods with a type outside the \
                                      crate the type is defined in; define and implement \
                                      a trait or new type instead");
@@ -211,7 +211,7 @@ impl<'a> visit::Visitor<()> for PrivilegedScopeVisitor<'a> {
 
                     if trait_def_id.crate != LOCAL_CRATE {
                         let session = self.cc.crate_context.tcx.sess;
-                        session.span_err(item.span,
+                        span_err!(session, item.span, A0105,
                                 "cannot provide an extension implementation \
                                 where both trait and type are not defined in this crate");
                     }
@@ -276,7 +276,7 @@ impl CoherenceChecker {
                                        self_type.ty) {
                 None => {
                     let session = self.crate_context.tcx.sess;
-                    session.span_err(item.span,
+                    span_err!(session, item.span, A0106,
                                      "no base type found for inherent implementation; \
                                       implement a trait or new type instead");
                 }
@@ -448,11 +448,11 @@ impl CoherenceChecker {
 
                     if self.polytypes_unify(polytype_a.clone(), polytype_b) {
                         let session = self.crate_context.tcx.sess;
-                        session.span_err(
-                            self.span_of_impl(implementation_a),
-                            format!("conflicting implementations for trait `{}`",
+                        span_err!(session,
+                            self.span_of_impl(implementation_a), A0107,
+                            "conflicting implementations for trait `{}`",
                                  ty::item_path_str(self.crate_context.tcx,
-                                                   trait_def_id)));
+                                                   trait_def_id));
                         if implementation_b.did.crate == LOCAL_CRATE {
                             session.span_note(self.span_of_impl(implementation_b),
                                               "note conflicting implementation here");
@@ -748,7 +748,7 @@ impl CoherenceChecker {
                         {
                             match tcx.items.find(impl_info.did.node) {
                                 Some(ast_map::NodeItem(item, _)) => {
-                                    tcx.sess.span_err((*item).span,
+                                    span_err!(tcx.sess, (*item).span, A0108,
                                                       "the Drop trait may \
                                                        only be implemented \
                                                        on structures");

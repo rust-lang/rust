@@ -227,8 +227,10 @@ pub fn file_to_filemap(sess: @ParseSess, path: &Path, spanopt: Option<Span>)
     -> @FileMap {
     let err = |msg: &str| {
         match spanopt {
-            Some(sp) => sess.span_diagnostic.span_fatal(sp, msg),
-            None => sess.span_diagnostic.handler().fatal(msg),
+            Some(sp) => span_fatal!(sess.span_diagnostic, sp, C0012,
+                                    "error creating file map: {}", msg),
+            None => alert_fatal!(sess.span_diagnostic.handler(), C0086,
+                                 "error creating file map: {}", msg),
         }
     };
     let bytes = match File::open(path).read_to_end() {

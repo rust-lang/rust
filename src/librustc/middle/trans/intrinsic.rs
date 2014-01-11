@@ -227,7 +227,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                 "acq"     => lib::llvm::Acquire,
                 "rel"     => lib::llvm::Release,
                 "acqrel"  => lib::llvm::AcquireRelease,
-                _ => ccx.sess.fatal("unknown ordering in atomic intrinsic")
+                _ => alert_fatal!(ccx.sess, A0058, "unknown ordering in atomic intrinsic")
             }
         };
 
@@ -268,7 +268,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                     "min"   => lib::llvm::Min,
                     "umax"  => lib::llvm::UMax,
                     "umin"  => lib::llvm::UMin,
-                    _ => ccx.sess.fatal("unknown atomic operation")
+                    _ => alert_fatal!(ccx.sess, A0059, "unknown atomic operation")
                 };
 
                 let old = AtomicRMW(bcx, atom_op, get_param(decl, first_real_arg),
@@ -389,8 +389,8 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                     }
                 };
                 let pluralize = |n| if 1 == n { "" } else { "s" };
-                ccx.sess.span_fatal(sp,
-                                    format!("transmute called on types with \
+                span_fatal!(ccx.sess, sp, A0026,
+                            "transmute called on types with \
                                           different sizes: {} ({} bit{}) to \
                                           {} ({} bit{})",
                                          ty_to_str(ccx.tcx, in_type),
@@ -398,7 +398,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                                          pluralize(in_type_size),
                                          ty_to_str(ccx.tcx, out_type),
                                          out_type_size,
-                                         pluralize(out_type_size)));
+                                         pluralize(out_type_size));
             }
 
             if !return_type_is_void(ccx, out_type) {

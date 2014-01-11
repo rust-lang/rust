@@ -85,9 +85,9 @@ fn check_expr(v: &mut CheckMatchVisitor,
        if (*arms).is_empty() {
            if !type_is_empty(cx.tcx, pat_ty) {
                // We know the type is inhabited, so this must be wrong
-               cx.tcx.sess.span_err(ex.span, format!("non-exhaustive patterns: \
+               span_err!(cx.tcx.sess, ex.span, A0288, "non-exhaustive patterns: \
                             type {} is non-empty",
-                            ty_to_str(cx.tcx, pat_ty)));
+                            ty_to_str(cx.tcx, pat_ty));
            }
            // If the type *is* empty, it's vacuously exhaustive
            return;
@@ -104,7 +104,7 @@ fn check_expr(v: &mut CheckMatchVisitor,
        }
        let arms = arms.iter().filter_map(unguarded_pat).collect::<~[~[@Pat]]>().concat_vec();
        if arms.is_empty() {
-           cx.tcx.sess.span_err(ex.span, "non-exhaustive patterns");
+           span_err!(cx.tcx.sess, ex.span, A0289, "non-exhaustive patterns");
        } else {
            check_exhaustive(cx, ex.span, arms);
        }
@@ -139,8 +139,9 @@ fn check_arms(cx: &MatchCheckCtxt, arms: &[Arm]) {
 
             walk_pat(*pat, |p| {
                 if pat_matches_nan(p) {
-                    cx.tcx.sess.span_warn(p.span, "unmatchable NaN in pattern, \
-                                                   use the is_nan method in a guard instead");
+                    span_warn!(cx.tcx.sess, p.span, A0333,
+                               "unmatchable NaN in pattern, \
+                               use the is_nan method in a guard instead");
                 }
                 true
             });
@@ -148,7 +149,7 @@ fn check_arms(cx: &MatchCheckCtxt, arms: &[Arm]) {
             let v = ~[*pat];
             match is_useful(cx, &seen, v) {
               not_useful => {
-                cx.tcx.sess.span_err(pat.span, "unreachable pattern");
+                span_err!(cx.tcx.sess, pat.span, A0290, "unreachable pattern");
               }
               _ => ()
             }
@@ -205,11 +206,12 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, pats: ~[@Pat]) {
             }
         }
     };
-    let msg = ~"non-exhaustive patterns" + match ext {
+    let more_info = match ext {
         Some(ref s) => format!(": {} not covered",  *s),
         None => ~""
     };
-    cx.tcx.sess.span_err(sp, msg);
+    span_err!(cx.tcx.sess, sp, A0291,
+              "non-exhaustive patterns{}", more_info);
 }
 
 type matrix = ~[~[@Pat]];
@@ -587,7 +589,7 @@ fn specialize(cx: &MatchCheckCtxt,
                                 match compare_const_vals(&e_v, v) {
                                     Some(val1) => (val1 == 0),
                                     None => {
-                                        cx.tcx.sess.span_err(pat_span,
+                                        span_err!(cx.tcx.sess, pat_span, A0292,
                                             "mismatched types between arms");
                                         false
                                     }
@@ -601,7 +603,7 @@ fn specialize(cx: &MatchCheckCtxt,
                                         (val1 >= 0 && val2 <= 0)
                                     }
                                     _ => {
-                                        cx.tcx.sess.span_err(pat_span,
+                                        span_err!(cx.tcx.sess, pat_span, A0293,
                                             "mismatched types between ranges");
                                         false
                                     }
@@ -641,7 +643,7 @@ fn specialize(cx: &MatchCheckCtxt,
                                 match compare_const_vals(&e_v, v) {
                                     Some(val1) => (val1 == 0),
                                     None => {
-                                        cx.tcx.sess.span_err(pat_span,
+                                        span_err!(cx.tcx.sess, pat_span, A0294,
                                             "mismatched types between arms");
                                         false
                                     }
@@ -652,7 +654,7 @@ fn specialize(cx: &MatchCheckCtxt,
                                 match (m1, m2) {
                                     (Some(val1), Some(val2)) => (val1 >= 0 && val2 <= 0),
                                     _ => {
-                                        cx.tcx.sess.span_err(pat_span,
+                                        span_err!(cx.tcx.sess, pat_span, A0295,
                                             "mismatched types between ranges");
                                         false
                                     }
@@ -750,7 +752,7 @@ fn specialize(cx: &MatchCheckCtxt,
                         match compare_const_vals(&e_v, v) {
                             Some(val1) => val1 == 0,
                             None => {
-                                cx.tcx.sess.span_err(pat_span,
+                                span_err!(cx.tcx.sess, pat_span, A0296,
                                     "mismatched types between arms");
                                 false
                             }
@@ -762,7 +764,7 @@ fn specialize(cx: &MatchCheckCtxt,
                         match (m1, m2) {
                             (Some(val1), Some(val2)) => (val1 >= 0 && val2 <= 0),
                             _ => {
-                                cx.tcx.sess.span_err(pat_span,
+                                span_err!(cx.tcx.sess, pat_span, A0297,
                                     "mismatched types between ranges");
                                 false
                             }
@@ -791,7 +793,7 @@ fn specialize(cx: &MatchCheckCtxt,
                     },
                     (Some(_), Some(_)) => None,
                     _ => {
-                        cx.tcx.sess.span_err(pat_span,
+                        span_err!(cx.tcx.sess, pat_span, A0298,
                             "mismatched types between ranges");
                         None
                     }
@@ -838,7 +840,7 @@ fn check_local(v: &mut CheckMatchVisitor,
                    s: ()) {
     visit::walk_local(v, loc, s);
     if is_refutable(cx, loc.pat) {
-        cx.tcx.sess.span_err(loc.pat.span,
+        span_err!(cx.tcx.sess, loc.pat.span, A0299,
                              "refutable pattern in local binding");
     }
 
@@ -857,7 +859,7 @@ fn check_fn(v: &mut CheckMatchVisitor,
     visit::walk_fn(v, kind, decl, body, sp, id, s);
     for input in decl.inputs.iter() {
         if is_refutable(cx, input.pat) {
-            cx.tcx.sess.span_err(input.pat.span,
+            span_err!(cx.tcx.sess, input.pat.span, A0300,
                                  "refutable pattern in function argument");
         }
     }
@@ -939,16 +941,16 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
 
         // x @ Foo(..) is legal, but x @ Foo(y) isn't.
         if sub.map_or(false, |p| pat_contains_bindings(def_map, p)) {
-            tcx.sess.span_err(
-                p.span,
+            span_err!(tcx.sess,
+                p.span, A0301,
                 "cannot bind by-move with sub-bindings");
         } else if has_guard {
-            tcx.sess.span_err(
-                p.span,
+            span_err!(tcx.sess,
+                p.span, A0302,
                 "cannot bind by-move into a pattern guard");
         } else if by_ref_span.is_some() {
-            tcx.sess.span_err(
-                p.span,
+            span_err!(tcx.sess,
+                p.span, A0303,
                 "cannot bind by-move and by-ref \
                  in the same pattern");
             tcx.sess.span_note(

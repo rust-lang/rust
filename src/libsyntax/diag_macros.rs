@@ -37,6 +37,12 @@ macro_rules! reg_diag (
     }
 )
 
+macro_rules! all_diag {
+    ($($name: tt),+) => {
+        $(reg_diag!($name))+
+    }
+}
+
 #[cfg(not(stage0))]
 macro_rules! reg_diag_msg (
     ($name: tt, $msg: tt) => { {
@@ -59,23 +65,13 @@ macro_rules! report_diag (
     ($f: expr, $name: tt, $msg: expr, $($arg: expr), *) => { {
         reg_diag_msg!($name, $msg);
         let msg: &str = format!($msg, $($arg), *);
-        $f(stringify!($name), msg);
+        let f: |&str, &str| -> () = $f;
+        f(stringify!($name), msg);
     } };
     ($f: expr, $name: tt, $msg: expr) => { {
         reg_diag_msg!($name, $msg);
-        $f(stringify!($name), $msg);
-    } }
-)
-
-macro_rules! report_diag_sp (
-    ($f: expr, $sp: expr, $name: tt, $msg: expr, $($arg: expr), *) => { {
-        reg_diag_msg!($name, $msg);
-        let msg: &str = format!($msg, $($arg), *);
-        $f(sp, stringify!($name), msg);
-    } };
-    ($f: expr, $sp: expr, $name: tt, $msg: expr) => { {
-        reg_diag_msg!($name, $msg);
-        $f(sp, stringify!($name), $msg);
+        let f: |&str, &str| -> () = $f;
+        f(stringify!($name), $msg);
     } }
 )
 
@@ -86,25 +82,27 @@ macro_rules! report_diag_sp (
 ///
 /// This must be called (lexically) before a `desc_diag` on the same diagnostic code.
 macro_rules! alert_fatal (
-    ($sess: expr, $name: tt, $msg: expr, $($arg: expr), *) => (
+    ($sess: expr, $name: tt, $msg: expr, $($arg: expr), *) => ( {
         report_diag!(|c, m| $sess.fatal_with_diagnostic_code(c, m),
                      $name, $msg, $($arg), *);
-    );
-    ($sess: expr, $name: tt, $msg: expr) => (
+        fail!()
+    } );
+    ($sess: expr, $name: tt, $msg: expr) => ( {
         report_diag!(|c, m| $sess.fatal_with_diagnostic_code(c, m),
                      $name, $msg);
-    )
+        fail!()
+    } )
 )
 
 /// Raise a diagnostic at the 'error' level
 macro_rules! alert_err (
     ($sess: expr, $name: tt, $msg: expr, $($arg: expr), *) => (
         report_diag!(|c, m| $sess.err_with_diagnostic_code(c, m),
-                     $name, $msg, $($arg), *);
+                     $name, $msg, $($arg), *)
     );
     ($sess: expr, $name: tt, $msg: expr) => (
         report_diag!(|c, m| $sess.err_with_diagnostic_code(c, m),
-                     $name, $msg);
+                     $name, $msg)
     )
 )
 
@@ -112,35 +110,37 @@ macro_rules! alert_err (
 macro_rules! alert_warn (
     ($sess: expr, $name: tt, $msg: expr, $($arg: expr), *) => (
         report_diag!(|c, m| $sess.warn_with_diagnostic_code(c, m),
-                     $name, $msg, $($arg), *);
+                     $name, $msg, $($arg), *)
     );
     ($sess: expr, $name: tt, $msg: expr) => (
         report_diag!(|c, m| $sess.warn_with_diagnostic_code(c, m),
-                     $name, $msg);
+                     $name, $msg)
     )
 )
 
 /// Raise a diagnostic at the 'fatal' level
 macro_rules! span_fatal (
-    ($sess: expr, $sp: expr, $name: tt, $msg: expr, $($arg: expr), *) => (
+    ($sess: expr, $sp: expr, $name: tt, $msg: expr, $($arg: expr), *) => ( {
         report_diag!(|c, m| $sess.span_fatal_with_diagnostic_code($sp, c, m),
                      $name, $msg, $($arg), *);
-    );
-    ($sess: expr, $sp: expr, $name: tt, $msg: expr) => (
+        fail!()
+    } );
+    ($sess: expr, $sp: expr, $name: tt, $msg: expr) => ( {
         report_diag!(|c, m| $sess.span_fatal_with_diagnostic_code($sp, c, m),
                      $name, $msg);
-    )
+        fail!()
+    } )
 )
 
 /// Raise a diagnostic at the 'error' level
 macro_rules! span_err (
     ($sess: expr, $sp: expr, $name: tt, $msg: expr, $($arg: expr), *) => (
         report_diag!(|c, m| $sess.span_err_with_diagnostic_code($sp, c, m),
-                     $name, $msg, $($arg), *);
+                     $name, $msg, $($arg), *)
     );
     ($sess: expr, $sp: expr, $name: tt, $msg: expr) => (
         report_diag!(|c, m| $sess.span_err_with_diagnostic_code($sp, c, m),
-                     $name, $msg);
+                     $name, $msg)
     )
 )
 
@@ -148,11 +148,11 @@ macro_rules! span_err (
 macro_rules! span_warn (
     ($sess: expr, $sp: expr, $name: tt, $msg: expr, $($arg: expr), *) => (
         report_diag!(|c, m| $sess.span_warn_with_diagnostic_code($sp, c, m),
-                     $name, $msg, $($arg), *);
+                     $name, $msg, $($arg), *)
     );
     ($sess: expr, $sp: expr, $name: tt, $msg: expr) => (
         report_diag!(|c, m| $sess.span_warn_with_diagnostic_code($sp, c, m),
-                     $name, $msg);
+                     $name, $msg)
     )
 )
 

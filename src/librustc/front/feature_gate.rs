@@ -80,7 +80,7 @@ struct Context {
 impl Context {
     fn gate_feature(&self, feature: &str, span: Span, explain: &str) {
         if !self.has_feature(feature) {
-            self.sess.span_err(span, explain);
+            span_err!(self.sess, span, A0318, "{}", explain);
             self.sess.span_note(span, format!("add \\#[feature({})] to the \
                                                   crate attributes to enable",
                                                  feature));
@@ -283,7 +283,7 @@ pub fn check_crate(sess: Session, crate: &ast::Crate) {
 
         match attr.meta_item_list() {
             None => {
-                sess.span_err(attr.span, "malformed feature attribute, \
+                span_err!(sess, attr.span, A0319, "malformed feature attribute, \
                                           expected #[feature(...)]");
             }
             Some(list) => {
@@ -291,7 +291,7 @@ pub fn check_crate(sess: Session, crate: &ast::Crate) {
                     let name = match mi.node {
                         ast::MetaWord(ref word) => (*word).clone(),
                         _ => {
-                            sess.span_err(mi.span,
+                            span_err!(sess, mi.span, A0320,
                                           "malformed feature, expected just \
                                            one word");
                             continue
@@ -301,10 +301,10 @@ pub fn check_crate(sess: Session, crate: &ast::Crate) {
                                         .find(|& &(n, _)| name.equiv(&n)) {
                         Some(&(name, Active)) => { cx.features.push(name); }
                         Some(&(_, Removed)) => {
-                            sess.span_err(mi.span, "feature has been removed");
+                            span_err!(sess, mi.span, A0321, "feature has been removed");
                         }
                         Some(&(_, Accepted)) => {
-                            sess.span_warn(mi.span, "feature has added to rust, \
+                            span_warn!(sess, mi.span, A0330, "feature has added to rust, \
                                                      directive not necessary");
                         }
                         None => {

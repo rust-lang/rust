@@ -430,7 +430,7 @@ pub fn ensure_supertraits(ccx: &CrateCtxt,
             if ty_trait_refs.iter().any(|other_trait| other_trait.def_id == trait_ref.def_id) {
                 // This means a trait inherited from the same supertrait more
                 // than once.
-                tcx.sess.span_err(sp, "duplicate supertrait in trait declaration");
+                span_err!(tcx.sess, sp, A0234, "duplicate supertrait in trait declaration");
                 break;
             } else {
                 ty_trait_refs.push(trait_ref);
@@ -543,10 +543,10 @@ pub fn ensure_no_ty_param_bounds(ccx: &CrateCtxt,
                                  thing: &'static str) {
     for ty_param in generics.ty_params.iter() {
         if ty_param.bounds.len() > 0 {
-            ccx.tcx.sess.span_err(
-                span,
-                format!("trait bounds are not allowed in {} definitions",
-                     thing));
+            span_err!(ccx.tcx.sess,
+                span, A0235,
+                "trait bounds are not allowed in {} definitions",
+                     thing);
         }
     }
 }
@@ -603,7 +603,7 @@ pub fn convert(ccx: &CrateCtxt, it: &ast::Item) {
 
             // Prevent the builtin kind traits from being manually implemented.
             if tcx.lang_items.to_builtin_kind(trait_ref.def_id).is_some() {
-                tcx.sess.span_err(it.span,
+                span_err!(tcx.sess, it.span, A0236,
                     "cannot provide an explicit implementation \
                      for a builtin kind");
             }
@@ -755,11 +755,11 @@ pub fn instantiate_trait_ref(ccx: &CrateCtxt,
             return trait_ref;
         }
         _ => {
-            ccx.tcx.sess.span_fatal(
-                ast_trait_ref.path.span,
-                format!("{} is not a trait",
+            span_fatal!(ccx.tcx.sess,
+                ast_trait_ref.path.span, A0031,
+                "{} is not a trait",
                     path_to_str(&ast_trait_ref.path,
-                                ccx.tcx.sess.intr())));
+                                ccx.tcx.sess.intr()));
         }
     }
 }

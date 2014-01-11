@@ -85,7 +85,8 @@ fn zero_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
             }
         }
         StaticEnum(..) => {
-            cx.span_err(trait_span, "`Zero` cannot be derived for enums, only structs");
+            span_err!(cx, trait_span, B0045,
+                      "`Zero` cannot be derived for enums, only structs");
             // let compilation continue
             cx.expr_uint(trait_span, 0)
         }

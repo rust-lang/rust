@@ -114,7 +114,7 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
         match e.node {
           ExprUnary(_, UnDeref, _) => { }
           ExprUnary(_, UnBox, _) | ExprUnary(_, UnUniq, _) => {
-            sess.span_err(e.span,
+            span_err!(sess, e.span, A0237,
                           "cannot do allocations in constant expressions");
             return;
           }
@@ -122,7 +122,7 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
           ExprBinary(..) | ExprUnary(..) => {
             let method_map = method_map.borrow();
             if method_map.get().contains_key(&e.id) {
-                sess.span_err(e.span, "user-defined operators are not \
+                span_err!(sess, e.span, A0238, "user-defined operators are not \
                                        allowed in constant expressions");
             }
           }
@@ -130,9 +130,10 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
           ExprCast(_, _) => {
             let ety = ty::expr_ty(tcx, e);
             if !ty::type_is_numeric(ety) && !ty::type_is_unsafe_ptr(ety) {
-                sess.span_err(e.span, ~"can not cast to `" +
-                              ppaux::ty_to_str(tcx, ety) +
-                              "` in a constant expression");
+                span_err!(sess, e.span, A0239,
+                          "can not cast to `{}` in a constant expression",
+                          ppaux::ty_to_str(tcx, ety));
+
             }
           }
           ExprPath(ref pth) => {
@@ -141,8 +142,8 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
             // foo::<bar> in a const. Currently that is only done on
             // a path in trans::callee that only works in block contexts.
             if !pth.segments.iter().all(|segment| segment.types.is_empty()) {
-                sess.span_err(
-                    e.span, "paths in constants may only refer to \
+                span_err!(sess,
+                    e.span, A0240, "paths in constants may only refer to \
                              items without type parameters");
             }
             let def_map = def_map.borrow();
@@ -154,8 +155,8 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
 
               Some(&def) => {
                 debug!("(checking const) found bad def: {:?}", def);
-                sess.span_err(
-                    e.span,
+                span_err!(sess,
+                    e.span, A0241,
                     "paths in constants may only refer to \
                      constants or functions");
               }
@@ -170,8 +171,8 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
                 Some(&DefStruct(..)) => {}    // OK.
                 Some(&DefVariant(..)) => {}    // OK.
                 _ => {
-                    sess.span_err(
-                        e.span,
+                    span_err!(sess,
+                        e.span, A0242,
                         "function calls in constants are limited to \
                          struct and enum constructors");
                 }
@@ -187,17 +188,18 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
           ExprRepeat(..) |
           ExprStruct(..) => { }
           ExprAddrOf(..) => {
-                sess.span_err(
-                    e.span,
+                span_err!(sess,
+                    e.span, A0243,
                     "references in constants may only refer to \
                      immutable values");
           },
           ExprVstore(_, ExprVstoreUniq) => {
-              sess.span_err(e.span, "cannot allocate vectors in constant expressions")
+              span_err!(sess, e.span, A0244,
+                        "cannot allocate vectors in constant expressions")
           },
 
           _ => {
-            sess.span_err(e.span,
+            span_err!(sess, e.span, A0245,
                           "constant contains unimplemented expression type");
             return;
           }
@@ -234,7 +236,7 @@ pub fn check_item_recursion(sess: Session,
 impl<'a> Visitor<()> for CheckItemRecursionVisitor<'a> {
     fn visit_item(&mut self, it: &Item, _: ()) {
         if self.idstack.iter().any(|x| x == &(it.id)) {
-            self.sess.span_fatal(self.root_it.span, "recursive constant");
+            span_fatal!(self.sess, self.root_it.span, A0030, "recursive constant");
         }
         self.idstack.push(it.id);
         visit::walk_item(self, it, ());

@@ -479,7 +479,7 @@ fn write_out_deps(sess: Session,
         (true, None) => match *input {
             FileInput(..) => outputs.with_extension("d"),
             StrInput(..) => {
-                sess.warn("can not write --dep-info without a filename \
+                alert_warn!(sess, A0338, "can not write --dep-info without a filename \
                            when compiling stdin.");
                 return Ok(());
             },
@@ -983,7 +983,7 @@ pub fn parse_pretty(sess: Session, name: &str) -> PpMode {
       &"expanded,identified" => PpmExpandedIdentified,
       &"identified" => PpmIdentified,
       _ => {
-        sess.fatal("argument to `pretty` must be one of `normal`, \
+        alert_fatal!(sess, A0056, "argument to `pretty` must be one of `normal`, \
                     `expanded`, `typed`, `identified`, \
                     or `expanded,identified`");
       }
@@ -1142,14 +1142,14 @@ pub fn build_output_filenames(input: &Input,
 
         Some(ref out_file) => {
             let ofile = if sess.opts.output_types.len() > 1 {
-                sess.warn("ignoring specified output filename because multiple \
+                alert_warn!(sess, A0341, "ignoring specified output filename because multiple \
                            outputs were requested");
                 None
             } else {
                 Some(out_file.clone())
             };
             if *odir != None {
-                sess.warn("ignoring --out-dir flag due to -o flag.");
+                alert_warn!(sess, A0337, "ignoring --out-dir flag due to -o flag.");
             }
             OutputFilenames {
                 out_directory: out_file.dir_path(),

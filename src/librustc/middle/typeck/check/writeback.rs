@@ -40,11 +40,10 @@ fn resolve_type_vars_in_type(fcx: @FnCtxt, sp: Span, typ: ty::t)
         Ok(new_type) => return Some(new_type),
         Err(e) => {
             if !fcx.ccx.tcx.sess.has_errors() {
-                fcx.ccx.tcx.sess.span_err(
-                    sp,
-                    format!("cannot determine a type \
+                span_err!(fcx.ccx.tcx.sess, sp, A0219,
+                    "cannot determine a type \
                           for this expression: {}",
-                         infer::fixup_err_to_str(e)))
+                         infer::fixup_err_to_str(e))
             }
             return None;
         }
@@ -138,11 +137,10 @@ fn resolve_type_vars_for_node(wbcx: &mut WbCtxt, sp: Span, id: ast::NodeId)
                                          resolve_all | force_all) {
                         Err(e) => {
                             // This should not, I think, happen:
-                            tcx.sess.span_err(
-                                sp,
-                                format!("cannot resolve bound for closure: \
+                            span_err!(tcx.sess, sp, A0220,
+                                "cannot resolve bound for closure: \
                                          {}",
-                                        infer::fixup_err_to_str(e)));
+                                        infer::fixup_err_to_str(e));
                         }
                         Ok(r1) => {
                             // FIXME(eddyb) #2190 Allow only statically resolved
@@ -155,7 +153,7 @@ fn resolve_type_vars_for_node(wbcx: &mut WbCtxt, sp: Span, id: ast::NodeId)
                                     Some(&ast::DefStaticMethod(..)) |
                                     Some(&ast::DefVariant(..)) |
                                     Some(&ast::DefStruct(_)) => {}
-                                    _ => tcx.sess.span_err(sp,
+                                    _ => span_err!(tcx.sess, sp, A0221,
                                             "cannot coerce non-statically resolved bare fn")
                                 }
                             }
@@ -179,11 +177,10 @@ fn resolve_type_vars_for_node(wbcx: &mut WbCtxt, sp: Span, id: ast::NodeId)
                             Ok(r1) => r1,
                             Err(e) => {
                                 // This should not, I think, happen.
-                                tcx.sess.span_err(
-                                    sp,
-                                    format!("cannot resolve scope of borrow: \
+                                span_err!(tcx.sess, sp, A0222,
+                                    "cannot resolve scope of borrow: \
                                              {}",
-                                             infer::fixup_err_to_str(e)));
+                                             infer::fixup_err_to_str(e));
                                 r
                             }
                         }
@@ -353,11 +350,10 @@ fn visit_local(l: &ast::Local, wbcx: &mut WbCtxt) {
             write_ty_to_tcx(wbcx.fcx.ccx.tcx, l.id, lty);
         }
         Err(e) => {
-            wbcx.fcx.ccx.tcx.sess.span_err(
-                l.span,
-                format!("cannot determine a type \
+            span_err!(wbcx.fcx.ccx.tcx.sess, l.span, A0223,
+                "cannot determine a type \
                       for this local variable: {}",
-                     infer::fixup_err_to_str(e)));
+                     infer::fixup_err_to_str(e));
             wbcx.success = false;
         }
     }

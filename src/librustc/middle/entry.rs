@@ -82,8 +82,8 @@ fn find_item(item: &Item, ctxt: &mut EntryContext) {
                                 if ctxt.main_fn.is_none() {
                                     ctxt.main_fn = Some((item.id, item.span));
                                 } else {
-                                    ctxt.session.span_err(
-                                        item.span,
+                                    span_err!(ctxt.session,
+                                        item.span, A0270,
                                         "multiple 'main' functions");
                                 }
                             } else {
@@ -100,8 +100,8 @@ fn find_item(item: &Item, ctxt: &mut EntryContext) {
                 if ctxt.attr_main_fn.is_none() {
                     ctxt.attr_main_fn = Some((item.id, item.span));
                 } else {
-                    ctxt.session.span_err(
-                        item.span,
+                    span_err!(ctxt.session,
+                        item.span, A0271,
                         "multiple 'main' functions");
                 }
             }
@@ -110,8 +110,8 @@ fn find_item(item: &Item, ctxt: &mut EntryContext) {
                 if ctxt.start_fn.is_none() {
                     ctxt.start_fn = Some((item.id, item.span));
                 } else {
-                    ctxt.session.span_err(
-                        item.span,
+                    span_err!(ctxt.session,
+                        item.span, A0272,
                         "multiple 'start' functions");
                 }
             }
@@ -135,7 +135,7 @@ fn configure_main(this: &mut EntryContext) {
     } else {
         if !this.session.building_library.get() {
             // No main function
-            this.session.err("main function not found");
+            alert_err!(this.session, A0343, "main function not found");
             if !this.non_main_fns.is_empty() {
                 // There were some functions named 'main' though. Try to give the user a hint.
                 this.session.note("the main function must be defined at the crate level \

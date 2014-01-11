@@ -125,13 +125,13 @@ pub fn register_foreign_item_fn(ccx: @CrateContext,
     let cc = match llvm_calling_convention(ccx, abis) {
         Some(cc) => cc,
         None => {
-            ccx.sess.span_fatal(foreign_item.span,
-                format!("ABI `{}` has no suitable ABI \
-                      for target architecture \
-                      in module {}",
-                     abis.user_string(ccx.tcx),
-                     ast_map::path_to_str(*path,
-                                          ccx.sess.intr())));
+            span_fatal!(ccx.sess, foreign_item.span, A0025,
+                        "ABI `{}` has no suitable ABI \
+                        for target architecture \
+                        in module {}",
+                        abis.user_string(ccx.tcx),
+                        ast_map::path_to_str(*path,
+                                             ccx.sess.intr()));
         }
     };
 
@@ -285,10 +285,10 @@ pub fn trans_native_call<'a>(
         Some(cc) => cc,
         None => {
             // FIXME(#8357) We really ought to report a span here
-            ccx.sess.fatal(
-                format!("ABI string `{}` has no suitable ABI \
+            alert_fatal!(ccx.sess, A0057,
+                "ABI string `{}` has no suitable ABI \
                         for target architecture",
-                        fn_abis.user_string(ccx.tcx)));
+                        fn_abis.user_string(ccx.tcx));
         }
     };
 

@@ -141,7 +141,7 @@ impl<'a> Context<'a> {
             parse::String(..) => {}
             parse::CurrentArgument => {
                 if self.nest_level == 0 {
-                    self.ecx.span_err(self.fmtsp,
+                    span_err!(self.ecx, self.fmtsp, B0077,
                                       "`#` reference used with nothing to \
                                        reference back to");
                 }
@@ -204,8 +204,9 @@ impl<'a> Context<'a> {
 
     fn check_positional_ok(&mut self) -> bool {
         if self.nest_level != 0 {
-            self.ecx.span_err(self.fmtsp, "cannot use implicit positional \
-                                           arguments nested inside methods");
+            span_err!(self.ecx, self.fmtsp, B0078,
+                      "cannot use implicit positional \
+                      arguments nested inside methods");
             false
         } else {
             true
@@ -222,14 +223,14 @@ impl<'a> Context<'a> {
                     if !seen_cases.insert(arm.selector) {
                         match arm.selector {
                             parse::Keyword(name) => {
-                                self.ecx.span_err(self.fmtsp,
-                                                  format!("duplicate selector \
-                                                           `{:?}`", name));
+                                span_err!(self.ecx, self.fmtsp, B0079,
+                                          "duplicate selector \
+                                          `{:?}`", name);
                             }
                             parse::Literal(idx) => {
-                                self.ecx.span_err(self.fmtsp,
-                                                  format!("duplicate selector \
-                                                           `={}`", idx));
+                                span_err!(self.ecx, self.fmtsp, B0080,
+                                          "duplicate selector \
+                                          `={}`", idx);
                             }
                         }
                     }
@@ -242,11 +243,11 @@ impl<'a> Context<'a> {
                 let mut seen_cases = HashSet::new();
                 for arm in arms.iter() {
                     if !seen_cases.insert(arm.selector) {
-                        self.ecx.span_err(self.fmtsp,
-                                          format!("duplicate selector `{}`",
-                                               arm.selector));
+                        span_err!(self.ecx, self.fmtsp, B0081,
+                                  "duplicate selector `{}`",
+                                  arm.selector);
                     } else if arm.selector == "" {
-                        self.ecx.span_err(self.fmtsp,
+                        span_err!(self.ecx, self.fmtsp, B0082,
                                           "empty selector in `select`");
                     }
                     self.verify_pieces(arm.result);
@@ -261,9 +262,9 @@ impl<'a> Context<'a> {
         match arg {
             Exact(arg) => {
                 if arg < 0 || self.args.len() <= arg {
-                    let msg = format!("invalid reference to argument `{}` (there \
-                                    are {} arguments)", arg, self.args.len());
-                    self.ecx.span_err(self.fmtsp, msg);
+                    span_err!(self.ecx, self.fmtsp, B0083,
+                              "invalid reference to argument `{}` (there \
+                              are {} arguments)", arg, self.args.len());
                     return;
                 }
                 {
@@ -282,8 +283,8 @@ impl<'a> Context<'a> {
                 let span = match self.names.find(&name) {
                     Some(e) => e.span,
                     None => {
-                        let msg = format!("there is no argument named `{}`", name);
-                        self.ecx.span_err(self.fmtsp, msg);
+                        span_err!(self.ecx, self.fmtsp, B0084,
+                                  "there is no argument named `{}`", name);
                         return;
                     }
                 };
@@ -322,26 +323,26 @@ impl<'a> Context<'a> {
         }
         match (cur, ty) {
             (&Known(ref cur), &Known(ref ty)) => {
-                self.ecx.span_err(sp,
-                                  format!("argument redeclared with type `{}` when \
+                span_err!(self.ecx, sp, B0085,
+                                  "argument redeclared with type `{}` when \
                                            it was previously `{}`",
                                           *ty,
-                                          *cur));
+                                          *cur);
             }
             (&Known(ref cur), _) => {
-                self.ecx.span_err(sp,
-                                  format!("argument used to format with `{}` was \
+                span_err!(self.ecx, sp, B0086,
+                                  "argument used to format with `{}` was \
                                            attempted to not be used for formatting",
-                                           *cur));
+                                           *cur);
             }
             (_, &Known(ref ty)) => {
-                self.ecx.span_err(sp,
-                                  format!("argument previously used as a format \
+                span_err!(self.ecx, sp, B0087,
+                                  "argument previously used as a format \
                                            argument attempted to be used as `{}`",
-                                           *ty));
+                                           *ty);
             }
             (_, _) => {
-                self.ecx.span_err(sp, "argument declared with multiple formats");
+                span_err!(self.ecx, sp, B0088, "argument declared with multiple formats");
             }
         }
     }
@@ -726,8 +727,9 @@ impl<'a> Context<'a> {
                     "x" => "secret_lower_hex",
                     "X" => "secret_upper_hex",
                     _ => {
-                        self.ecx.span_err(sp, format!("unknown format trait `{}`",
-                                                      *tyname));
+                        span_err!(self.ecx, sp, B0089,
+                                          "unknown format trait `{}`",
+                                                  *tyname);
                         "dummy"
                     }
                 }
@@ -827,12 +829,12 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
     // Make sure that all arguments were used and all arguments have types.
     for (i, ty) in cx.arg_types.iter().enumerate() {
         if ty.is_none() {
-            cx.ecx.span_err(cx.args[i].span, "argument never used");
+            span_err!(cx.ecx, cx.args[i].span, B0092, "argument never used");
         }
     }
     for (name, e) in cx.names.iter() {
         if !cx.name_types.contains_key(name) {
-            cx.ecx.span_err(e.span, "named argument never used");
+            span_err!(cx.ecx, e.span, B0093, "named argument never used");
         }
     }
 

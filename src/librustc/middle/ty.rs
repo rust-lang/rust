@@ -3382,12 +3382,13 @@ pub fn occurs_check(tcx: ctxt, sp: Span, vid: TyVid, rt: t) {
             // Maybe this should be span_err -- however, there's an
             // assertion later on that the type doesn't contain
             // variables, so in this case we have to be sure to die.
-            tcx.sess.span_fatal
-                (sp, ~"type inference failed because I \
-                     could not find a type\n that's both of the form "
-                 + ::util::ppaux::ty_to_str(tcx, mk_var(tcx, vid)) +
-                 " and of the form " + ::util::ppaux::ty_to_str(tcx, rt) +
-                 " - such a type would have to be infinitely large.");
+            span_fatal!(tcx.sess, sp, A0342,
+                        "type inference failed because I \
+                        could not find a type\n that's both of the form {} \"
+                        and of the form {} \"
+                        - such a type would have to be infinitely large.",
+                        ::util::ppaux::ty_to_str(tcx, mk_var(tcx, vid)),
+                        ::util::ppaux::ty_to_str(tcx, rt));
     }
 }
 
@@ -4029,17 +4030,15 @@ pub fn enum_variants(cx: ctxt, id: ast::DefId) -> @~[@VariantInfo] {
                                         discriminant = val as Disr
                                     }
                                     Ok(_) => {
-                                        cx.sess
-                                          .span_err(e.span,
+                                        span_err!(cx.sess, e.span, A0262,
                                                     "expected signed integer \
                                                      constant");
                                     }
                                     Err(ref err) => {
-                                        cx.sess
-                                          .span_err(e.span,
-                                                    format!("expected \
+                                        span_err!(cx.sess, e.span, A0263,
+                                                    "expected \
                                                              constant: {}",
-                                                            (*err)));
+                                                            (*err));
                                     }
                                 },
                                 None => {}
@@ -4459,7 +4458,7 @@ pub fn eval_repeat_count<T: ExprTyProvider>(tcx: &T, count_expr: &ast::Expr) -> 
     match const_eval::eval_const_expr_partial(tcx, count_expr) {
       Ok(ref const_val) => match *const_val {
         const_eval::const_int(count) => if count < 0 {
-            tcx.ty_ctxt().sess.span_err(count_expr.span,
+            span_err!(tcx.ty_ctxt().sess, count_expr.span, A0264,
                                         "expected positive integer for \
                                          repeat count but found negative integer");
             return 0;
@@ -4468,32 +4467,32 @@ pub fn eval_repeat_count<T: ExprTyProvider>(tcx: &T, count_expr: &ast::Expr) -> 
         },
         const_eval::const_uint(count) => return count as uint,
         const_eval::const_float(count) => {
-            tcx.ty_ctxt().sess.span_err(count_expr.span,
+            span_err!(tcx.ty_ctxt().sess, count_expr.span, A0265,
                                         "expected positive integer for \
                                          repeat count but found float");
             return count as uint;
         }
         const_eval::const_str(_) => {
-            tcx.ty_ctxt().sess.span_err(count_expr.span,
+            span_err!(tcx.ty_ctxt().sess, count_expr.span, A0266,
                                         "expected positive integer for \
                                          repeat count but found string");
             return 0;
         }
         const_eval::const_bool(_) => {
-            tcx.ty_ctxt().sess.span_err(count_expr.span,
+            span_err!(tcx.ty_ctxt().sess, count_expr.span, A0267,
                                         "expected positive integer for \
                                          repeat count but found boolean");
             return 0;
         }
         const_eval::const_binary(_) => {
-            tcx.ty_ctxt().sess.span_err(count_expr.span,
+            span_err!(tcx.ty_ctxt().sess, count_expr.span, A0268,
                                         "expected positive integer for \
                                          repeat count but found binary array");
             return 0;
         }
       },
       Err(..) => {
-        tcx.ty_ctxt().sess.span_err(count_expr.span,
+        span_err!(tcx.ty_ctxt().sess, count_expr.span, A0269,
                                     "expected constant integer for repeat count \
                                      but found variable");
         return 0;

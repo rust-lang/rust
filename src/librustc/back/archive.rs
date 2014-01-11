@@ -55,8 +55,8 @@ fn run_ar(sess: Session, args: &str, cwd: Option<&Path>,
         Ok(mut prog) => {
             let o = prog.finish_with_output();
             if !o.status.success() {
-                sess.err(format!("{} {} failed with: {}", ar, args.connect(" "),
-                                 o.status));
+                alert_err!(sess, A0344, "{} {} failed with: {}", ar, args.connect(" "),
+                                 o.status);
                 sess.note(format!("stdout ---\n{}", str::from_utf8(o.output).unwrap()));
                 sess.note(format!("stderr ---\n{}", str::from_utf8(o.error).unwrap()));
                 sess.abort_if_errors();
@@ -64,7 +64,7 @@ fn run_ar(sess: Session, args: &str, cwd: Option<&Path>,
             o
         },
         Err(e) => {
-            sess.err(format!("could not exec `{}`: {}", ar, e));
+            alert_err!(sess, A0345, "could not exec `{}`: {}", ar, e);
             sess.abort_if_errors();
             fail!("rustc::back::archive::run_ar() should not reach this point");
         }
@@ -206,8 +206,8 @@ impl Archive {
                 if test.exists() { return test }
             }
         }
-        self.sess.fatal(format!("could not find native static library `{}`, \
-                                 perhaps an -L flag is missing?", name));
+        alert_fatal!(self.sess, A0051, "could not find native static library `{}`, \
+                                 perhaps an -L flag is missing?", name);
     }
 }
 

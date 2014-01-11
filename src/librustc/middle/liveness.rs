@@ -1576,8 +1576,8 @@ impl Liveness {
                 // for nil return types, it is ok to not return a value expl.
             } else if ty::type_is_bot(t_ret) {
                 // for bot return types, not ok.  Function should fail.
-                self.tcx.sess.span_err(
-                    sp, "some control paths may return");
+                span_err!(self.tcx.sess,
+                    sp, A0304, "some control paths may return");
             } else {
                 let ends_with_stmt = match body.expr {
                     None if body.stmts.len() > 0 =>
@@ -1600,8 +1600,8 @@ impl Liveness {
                     self.tcx.sess.span_note(
                         span_semicolon, "consider removing this semicolon:");
                 }
-                self.tcx.sess.span_err(
-                    sp, "not all control paths return a value");
+                span_err!(self.tcx.sess,
+                    sp, A0314, "not all control paths return a value");
            }
         }
     }
@@ -1656,14 +1656,14 @@ impl Liveness {
         let name = self.ir.variable_name(var);
         match lnk {
           FreeVarNode(span) => {
-            self.tcx.sess.span_err(
-                span,
-                format!("capture of {}: `{}`", msg, name));
+            span_err!(self.tcx.sess,
+                span, A0305,
+                "capture of {}: `{}`", msg, name);
           }
           ExprNode(span) => {
-            self.tcx.sess.span_err(
-                span,
-                format!("use of {}: `{}`", msg, name));
+            span_err!(self.tcx.sess,
+                span, A0306,
+                "use of {}: `{}`", msg, name);
           }
           ExitNode | VarDefNode(_) => {
             self.tcx.sess.span_bug(

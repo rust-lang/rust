@@ -44,7 +44,7 @@ pub struct SpanHandler {
 }
 
 impl SpanHandler {
-    pub fn span_fatal(&self, sp: Span, msg: &str) -> ! {
+    pub fn span_fatal_without_diagnostic_code(&self, sp: Span, msg: &str) -> ! {
         self.handler.emit(Some((&*self.cm, sp)), msg, Fatal);
         fail!(FatalError);
     }
@@ -52,7 +52,7 @@ impl SpanHandler {
         self.handler.emit_with_code(Some((&*self.cm, sp)), code, msg, Fatal);
         fail!();
     }
-    pub fn span_err(&self, sp: Span, msg: &str) {
+    pub fn span_err_without_diagnostic_code(&self, sp: Span, msg: &str) {
         self.handler.emit(Some((&*self.cm, sp)), msg, Error);
         self.handler.bump_err_count();
     }
@@ -60,7 +60,7 @@ impl SpanHandler {
         self.handler.emit_with_code(Some((&*self.cm, sp)), code, msg, Error);
         self.handler.bump_err_count();
     }
-    pub fn span_warn(&self, sp: Span, msg: &str) {
+    pub fn span_warn_without_diagnostic_code(&self, sp: Span, msg: &str) {
         self.handler.emit(Some((&*self.cm, sp)), msg, Warning);
     }
     pub fn span_warn_with_diagnostic_code(&self, sp: Span, code: &str, msg: &str) {
@@ -73,7 +73,7 @@ impl SpanHandler {
         self.handler.custom_emit(&*self.cm, sp, msg, Note);
     }
     pub fn span_bug(&self, sp: Span, msg: &str) -> ! {
-        self.span_fatal(sp, ice_msg(msg));
+        self.span_fatal_without_diagnostic_code(sp, ice_msg(msg));
     }
     pub fn span_unimpl(&self, sp: Span, msg: &str) -> ! {
         self.span_bug(sp, ~"unimplemented " + msg);
@@ -92,7 +92,7 @@ pub struct Handler {
 }
 
 impl Handler {
-    pub fn fatal(&self, msg: &str) -> ! {
+    pub fn fatal_without_diagnostic_code(&self, msg: &str) -> ! {
         self.emit(None, msg, Fatal);
         fail!(FatalError);
     }
@@ -100,7 +100,7 @@ impl Handler {
         self.emit_with_code(None, code, msg, Fatal);
         fail!(FatalError);
     }
-    pub fn err(&self, msg: &str) {
+    pub fn err_without_diagnostic_code(&self, msg: &str) {
         self.emit(None, msg, Error);
         self.bump_err_count();
     }
@@ -127,9 +127,9 @@ impl Handler {
                      self.err_count.get());
           }
         }
-        self.fatal(s);
+        self.fatal_without_diagnostic_code(s);
     }
-    pub fn warn(&self, msg: &str) {
+    pub fn warn_without_diagnostic_code(&self, msg: &str) {
         self.emit(None, msg, Warning);
     }
     pub fn warn_with_diagnostic_code(&self, code: &str, msg: &str) {
@@ -139,7 +139,7 @@ impl Handler {
         self.emit(None, msg, Note);
     }
     pub fn bug(&self, msg: &str) -> ! {
-        self.fatal(ice_msg(msg));
+        self.fatal_without_diagnostic_code(ice_msg(msg));
     }
     pub fn unimpl(&self, msg: &str) -> ! {
         self.bug(~"unimplemented " + msg);

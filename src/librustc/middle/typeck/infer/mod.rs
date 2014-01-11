@@ -754,11 +754,11 @@ impl InferCtxt {
         });
         if !resolved_expected.map_or(false, |e| { ty::type_is_error(e) }) {
             match resolved_expected {
-                None => self.tcx.sess.span_err(sp,
-                            format!("{}{}", mk_msg(None, actual_ty), error_str)),
+                None => span_err!(self.tcx.sess, sp, A0122,
+                            "{}{}", mk_msg(None, actual_ty), error_str),
                 Some(e) => {
-                    self.tcx.sess.span_err(sp,
-                        format!("{}{}", mk_msg(Some(self.ty_to_str(e)), actual_ty), error_str));
+                    span_err!(self.tcx.sess, sp, A0123,
+                        "{}{}", mk_msg(Some(self.ty_to_str(e)), actual_ty), error_str);
                 }
             }
             for err in err.iter() {

@@ -455,10 +455,10 @@ impl VisitContext {
 
                     if consume_with {
                         if has_dtor(self.tcx, with_ty) {
-                            self.tcx.sess.span_err(with_expr.span,
-                                                   format!("cannot move out of type `{}`, \
+                            span_err!(self.tcx.sess, with_expr.span, A0287,
+                                                   "cannot move out of type `{}`, \
                                                          which defines the `Drop` trait",
-                                                        with_ty.user_string(self.tcx)));
+                                                        with_ty.user_string(self.tcx));
                         }
                         self.consume_expr(*with_expr);
                     } else {

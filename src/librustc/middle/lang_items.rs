@@ -149,8 +149,9 @@ impl LanguageItemCollector {
         // Check for duplicates.
         match self.items.items[item_index] {
             Some(original_def_id) if original_def_id != item_def_id => {
-                self.session.err(format!("duplicate entry for `{}`",
-                                      LanguageItems::item_name(item_index)));
+                alert_err!(self.session, A0103,
+                           "duplicate entry for `{}`",
+                           LanguageItems::item_name(item_index));
             }
             Some(_) | None => {
                 // OK.

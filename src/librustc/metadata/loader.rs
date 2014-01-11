@@ -71,9 +71,9 @@ impl Context {
         match self.find_library_crate() {
             Some(t) => t,
             None => {
-                self.sess.span_fatal(self.span,
-                                     format!("can't find crate for `{}`",
-                                             self.ident));
+                span_fatal!(self.sess, self.span, A0021,
+                            "can't find crate for `{}`",
+                            self.ident);
             }
         }
     }
@@ -148,8 +148,8 @@ impl Context {
             0 => None,
             1 => Some(matches[0]),
             _ => {
-                self.sess.span_err(self.span,
-                    format!("multiple matching crates for `{}`", crate_name));
+                span_err!(self.sess, self.span, A0326,
+                    "multiple matching crates for `{}`", crate_name);
                 self.sess.note("candidates:");
                 for lib in matches.iter() {
                     match lib.dylib {

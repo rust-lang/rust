@@ -279,7 +279,7 @@ fn read_block_comment(rdr: &StringReader,
         while level > 0 {
             debug!("=== block comment level {}", level);
             if is_eof(rdr) {
-                rdr.fatal(~"unterminated block comment");
+                alert_fatal!(rdr, C0075, "unterminated block comment");
             }
             if rdr.curr_is('\n') {
                 trim_whitespace_prefix_and_push_line(&mut lines, curr_line,

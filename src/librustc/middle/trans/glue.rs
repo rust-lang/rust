@@ -212,7 +212,7 @@ fn make_visit_glue<'a>(bcx: &'a Block<'a>, v: ValueRef, t: ty::t)
                                                                  ty::ReStatic) {
         Ok(pair) => pair,
         Err(s) => {
-            bcx.tcx().sess.fatal(s);
+            alert_fatal!(bcx.tcx().sess, A0061, "error making visit glue: {}", s);
         }
     };
     let v = PointerCast(bcx, v, type_of(bcx.ccx(), object_ty).ptr_to());

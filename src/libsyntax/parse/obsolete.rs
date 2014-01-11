@@ -176,7 +176,7 @@ impl ParserObsoleteMethods for Parser {
               kind: ObsoleteSyntax,
               kind_str: &str,
               desc: &str) {
-        self.span_err(sp, format!("obsolete syntax: {}", kind_str));
+        span_err!(self, sp, C0016, "obsolete syntax: {}", kind_str);
 
         if !self.obsolete_set.contains(&kind) {
             self.sess.span_diagnostic.handler().note(format!("{}", desc));

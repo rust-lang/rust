@@ -95,11 +95,17 @@ impl<'a> TypeFolder for SubstFolder<'a> {
                                               root.repr(self.tcx)),
                         None => ~""
                     };
-                    let m = format!("missing type param `{}`{}",
-                                    t.repr(self.tcx), root_msg);
                     match self.span {
-                        Some(span) => self.tcx.sess.span_err(span, m),
-                        None => self.tcx.sess.err(m)
+                        Some(span) => {
+                            span_err!(self.tcx.sess, span, A0307,
+                                      "missing type param `{}`{}",
+                                      t.repr(self.tcx), root_msg);
+                        }
+                        None => {
+                            alert_err!(self.tcx.sess, A0308,
+                                       "missing type param `{}`{}",
+                                       t.repr(self.tcx), root_msg);
+                        }
                     }
                     ty::mk_err()
                 }
@@ -113,10 +119,17 @@ impl<'a> TypeFolder for SubstFolder<'a> {
                                                   root.repr(self.tcx)),
                             None => ~""
                         };
-                        let m = format!("missing `Self` type param{}", root_msg);
                         match self.span {
-                            Some(span) => self.tcx.sess.span_err(span, m),
-                            None => self.tcx.sess.err(m)
+                            Some(span) => {
+                                span_err!(self.tcx.sess, span, A0309,
+                                          "missing `Self` type param{}",
+                                          root_msg);
+                            }
+                            None => {
+                                alert_err!(self.tcx.sess, A0310,
+                                           "missing `Self` type param{}",
+                                           root_msg);
+                            }
                         }
                         ty::mk_err()
                     }

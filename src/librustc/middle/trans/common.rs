@@ -383,7 +383,7 @@ impl<'a> FunctionContext<'a> {
 pub fn warn_not_to_commit(ccx: &mut CrateContext, msg: &str) {
     if !ccx.do_not_commit_warning_issued.get() {
         ccx.do_not_commit_warning_issued.set(true);
-        ccx.sess.warn(msg.to_str() + " -- do not commit like this!");
+        alert_warn!(ccx.sess, A0340, "do not commit like this! ({})", msg);
     }
 }
 
@@ -992,8 +992,14 @@ pub fn langcall(bcx: &Block,
         Err(s) => {
             let msg = format!("{} {}", msg, s);
             match span {
-                Some(span) => { bcx.tcx().sess.span_fatal(span, msg); }
-                None => { bcx.tcx().sess.fatal(msg); }
+                Some(span) => {
+                    span_fatal!(bcx.tcx().sess, span, A0023,
+                                "lang item call: {}", msg);
+                }
+                None => {
+                    alert_fatal!(bcx.tcx().sess, A0024,
+                                 "lang item calL: {}", msg);
+                }
             }
         }
     }

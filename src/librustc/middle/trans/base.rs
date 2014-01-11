@@ -343,8 +343,8 @@ pub fn malloc_raw_dyn<'a>(
         match li.require(it) {
             Ok(id) => id,
             Err(s) => {
-                bcx.tcx().sess.fatal(format!("allocation of `{}` {}",
-                                          bcx.ty_to_str(t), s));
+                alert_fatal!(bcx.tcx().sess, A0060, "allocation of `{}` {}",
+                                          bcx.ty_to_str(t), s);
             }
         }
     }
@@ -1746,7 +1746,7 @@ pub fn trans_item(ccx: @CrateContext, item: &ast::Item) {
           // because we need to get the value of the bool out of LLVM
           if attr::contains_name(item.attrs, "static_assert") {
               if m == ast::MutMutable {
-                  ccx.sess.span_fatal(expr.span,
+                  span_fatal!(ccx.sess, expr.span, A0027,
                                       "cannot have static_assert on a mutable \
                                        static");
               }
@@ -1755,7 +1755,7 @@ pub fn trans_item(ccx: @CrateContext, item: &ast::Item) {
               let v = const_values.get().get_copy(&item.id);
               unsafe {
                   if !(llvm::LLVMConstIntGetZExtValue(v) != 0) {
-                      ccx.sess.span_fatal(expr.span, "static assertion failed");
+                      span_fatal!(ccx.sess, expr.span, A0028, "static assertion failed");
                   }
               }
           }
@@ -1901,7 +1901,9 @@ pub fn create_entry_wrapper(ccx: @CrateContext,
             let (start_fn, args) = if use_start_lang_item {
                 let start_def_id = match ccx.tcx.lang_items.require(StartFnLangItem) {
                     Ok(id) => id,
-                    Err(s) => { ccx.tcx.sess.fatal(s); }
+                    Err(s) => {
+                        alert_fatal!(ccx.tcx.sess, A0207, "missing start lang item: {}", s);
+                    }
                 };
                 let start_fn = if start_def_id.crate == ast::LOCAL_CRATE {
                     get_item_val(ccx, start_def_id.node)

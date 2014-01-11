@@ -231,10 +231,9 @@ impl<'a> CheckLoanCtxt<'a> {
             match (new_loan.mutbl, old_loan.mutbl) {
                 (_, MutableMutability) => {
                     let var = self.bccx.loan_path_to_str(new_loan.loan_path);
-                    self.bccx.span_err(
-                        new_loan.span,
-                        format!("cannot borrow `{}` because it is already \
-                                 borrowed as mutable", var));
+                    span_err!(self.bccx, new_loan.span, A0012,
+                              "cannot borrow `{}` because it is already \
+                              borrowed as mutable", var);
                     self.bccx.span_note(
                         old_loan.span,
                         format!("previous borrow of `{0}` as mutable occurs \
@@ -244,13 +243,12 @@ impl<'a> CheckLoanCtxt<'a> {
                 }
 
                 (_, mutability) => {
-                    self.bccx.span_err(
-                        new_loan.span,
-                        format!("cannot borrow `{}` as {} because \
+                    span_err!(self.bccx, new_loan.span, A0013,
+                              "cannot borrow `{}` as {} because \
                               it is already borrowed as {}",
-                             self.bccx.loan_path_to_str(new_loan.loan_path),
-                             self.bccx.mut_to_str(new_loan.mutbl),
-                             self.bccx.mut_to_str(old_loan.mutbl)));
+                              self.bccx.loan_path_to_str(new_loan.loan_path),
+                              self.bccx.mut_to_str(new_loan.mutbl),
+                              self.bccx.mut_to_str(old_loan.mutbl));
 
                     let var = self.bccx.loan_path_to_str(new_loan.loan_path);
                     let mut note = format!("previous borrow of `{}` occurs \
@@ -349,11 +347,10 @@ impl<'a> CheckLoanCtxt<'a> {
         }
 
         // Otherwise, just a plain error.
-        self.bccx.span_err(
-            expr.span,
-            format!("cannot assign to {} {}",
-                 cmt.mutbl.to_user_str(),
-                 self.bccx.cmt_to_str(cmt)));
+        span_err!(self.bccx, expr.span, A0014,
+                  "cannot assign to {} {}",
+                  cmt.mutbl.to_user_str(),
+                  self.bccx.cmt_to_str(cmt));
         return;
 
         fn mark_variable_as_used_mut(this: &CheckLoanCtxt,
@@ -590,10 +587,9 @@ impl<'a> CheckLoanCtxt<'a> {
                                    expr: &ast::Expr,
                                    loan_path: &LoanPath,
                                    loan: &Loan) {
-        self.bccx.span_err(
-            expr.span,
-            format!("cannot assign to `{}` because it is borrowed",
-                 self.bccx.loan_path_to_str(loan_path)));
+        span_err!(self.bccx, expr.span, A0015,
+                  "cannot assign to `{}` because it is borrowed",
+                  self.bccx.loan_path_to_str(loan_path));
         self.bccx.span_note(
             loan.span,
             format!("borrow of `{}` occurs here",
@@ -618,11 +614,10 @@ impl<'a> CheckLoanCtxt<'a> {
             match self.analyze_move_out_from(id, move_path) {
                 MoveOk => {}
                 MoveWhileBorrowed(loan_path, loan_span) => {
-                    self.bccx.span_err(
-                        span,
-                        format!("cannot move out of `{}` \
+                    span_err!(self.bccx, span, A0016,
+                              "cannot move out of `{}` \
                               because it is borrowed",
-                             self.bccx.loan_path_to_str(move_path)));
+                              self.bccx.loan_path_to_str(move_path));
                     self.bccx.span_note(
                         loan_span,
                         format!("borrow of `{}` occurs here",
@@ -727,11 +722,10 @@ fn check_loans_in_fn<'a>(this: &mut CheckLoanCtxt<'a>,
             match move_err {
                 MoveOk => {}
                 MoveWhileBorrowed(loan_path, loan_span) => {
-                    this.bccx.span_err(
-                        cap_var.span,
-                        format!("cannot move `{}` into closure \
+                    span_err!(this.bccx, cap_var.span, A0017,
+                              "cannot move `{}` into closure \
                               because it is borrowed",
-                             this.bccx.loan_path_to_str(move_path)));
+                              this.bccx.loan_path_to_str(move_path));
                     this.bccx.span_note(
                         loan_span,
                         format!("borrow of `{}` occurs here",

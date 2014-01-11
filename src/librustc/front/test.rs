@@ -95,7 +95,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
                 ast::ItemFn(_, purity, _, _, _)
                     if purity == ast::UnsafeFn => {
                     let sess = self.cx.sess;
-                    sess.span_fatal(i.span,
+                    span_fatal!(sess, i.span, A0020,
                                     "unsafe functions cannot be used for \
                                      tests");
                 }
@@ -214,8 +214,8 @@ fn is_test_fn(cx: &TestCtxt, i: @ast::Item) -> bool {
 
     if has_test_attr && !has_test_signature(i) {
         let sess = cx.sess;
-        sess.span_err(
-            i.span,
+        span_err!(sess,
+            i.span, A0317,
             "functions used as tests must have signature fn() -> ()."
         );
     }

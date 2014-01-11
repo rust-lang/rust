@@ -259,7 +259,7 @@ pub fn lookup_def_tcx(tcx: ty::ctxt, sp: Span, id: ast::NodeId) -> ast::Def {
     match def_map.get().find(&id) {
         Some(&x) => x,
         _ => {
-            tcx.sess.span_fatal(sp, "internal error looking up a definition")
+            span_fatal!(tcx.sess, sp, A0037, "internal error looking up a definition")
         }
     }
 }
@@ -298,8 +298,9 @@ pub fn require_same_types(tcx: ty::ctxt,
     match result {
         Ok(_) => true,
         Err(ref terr) => {
-            tcx.sess.span_err(span, msg() + ": " +
-                              ty::type_err_to_str(tcx, terr));
+            span_err!(tcx.sess, span, A0119,
+                      "same types required: {}: {}",
+                      msg(), ty::type_err_to_str(tcx, terr));
             ty::note_and_explain_type_err(tcx, terr);
             false
         }
@@ -342,8 +343,8 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                     match it.node {
                         ast::ItemFn(_, _, _, ref ps, _)
                         if ps.is_parameterized() => {
-                            tcx.sess.span_err(
-                                main_span,
+                            span_err!(tcx.sess,
+                                main_span, A0120,
                                 "main function is not allowed to have type parameters");
                             return;
                         }
@@ -387,8 +388,8 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
                     match it.node {
                         ast::ItemFn(_,_,_,ref ps,_)
                         if ps.is_parameterized() => {
-                            tcx.sess.span_err(
-                                start_span,
+                            span_err!(tcx.sess,
+                                start_span, A0121,
                                 "start function is not allowed to have type parameters");
                             return;
                         }

@@ -72,7 +72,8 @@ fn rand_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
         }
         StaticEnum(_, ref variants) => {
             if variants.is_empty() {
-                cx.span_err(trait_span, "`Rand` cannot be derived for enums with no variants");
+                span_err!(cx, trait_span, B0025,
+                          "`Rand` cannot be derived for enums with no variants");
                 // let compilation continue
                 return cx.expr_uint(trait_span, 0);
             }

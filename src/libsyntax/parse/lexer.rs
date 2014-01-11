@@ -26,7 +26,7 @@ pub use ext::tt::transcribe::{TtReader, new_tt_reader};
 pub trait Reader {
     fn is_eof(&self) -> bool;
     fn next_token(&self) -> TokenAndSpan;
-    fn fatal(&self, ~str) -> !;
+    fn fatal_with_diagnostic_code(&self, code: &str, msg: &str) -> !;
     fn span_diag(&self) -> @SpanHandler;
     fn peek(&self) -> TokenAndSpan;
     fn dup(&self) -> ~Reader:;
@@ -119,8 +119,8 @@ impl Reader for StringReader {
         string_advance_token(self);
         ret_val
     }
-    fn fatal(&self, m: ~str) -> ! {
-        self.span_diagnostic.span_fatal(self.peek_span.get(), m)
+    fn fatal_with_diagnostic_code(&self, code: &str, msg: &str) -> ! {
+        self.span_diagnostic.span_fatal_with_diagnostic_code(self.peek_span.get(), code, msg)
     }
     fn span_diag(&self) -> @SpanHandler { self.span_diagnostic }
     fn peek(&self) -> TokenAndSpan {
@@ -143,8 +143,8 @@ impl Reader for TtReader {
         debug!("TtReader: r={:?}", r);
         return r;
     }
-    fn fatal(&self, m: ~str) -> ! {
-        self.sp_diag.span_fatal(self.cur_span.get(), m);
+    fn fatal_with_diagnostic_code(&self, code: &str, msg: &str) -> ! {
+        self.sp_diag.span_fatal_with_diagnostic_code(self.cur_span.get(), code, msg);
     }
     fn span_diag(&self) -> @SpanHandler { self.sp_diag }
     fn peek(&self) -> TokenAndSpan {
@@ -163,7 +163,7 @@ fn fatal_span(rdr: &StringReader,
               m: ~str)
            -> ! {
     rdr.peek_span.set(codemap::mk_sp(from_pos, to_pos));
-    rdr.fatal(m);
+    alert_fatal!(rdr, C0074, "lexical error: {}", m);
 }
 
 // report a lexical error spanning [`from_pos`, `to_pos`), appending an

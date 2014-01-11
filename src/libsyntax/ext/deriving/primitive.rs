@@ -72,12 +72,12 @@ fn cs_from(name: &str, cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure
 
     match *substr.fields {
         StaticStruct(..) => {
-            cx.span_err(trait_span, "`FromPrimitive` cannot be derived for structs");
+            span_err!(cx, trait_span, B0049, "`FromPrimitive` cannot be derived for structs");
             return cx.expr_fail(trait_span, InternedString::new(""));
         }
         StaticEnum(enum_def, _) => {
             if enum_def.variants.is_empty() {
-                cx.span_err(trait_span,
+                span_err!(cx, trait_span, B0050,
                             "`FromPrimitive` cannot be derived for enums with no variants");
                 return cx.expr_fail(trait_span, InternedString::new(""));
             }
@@ -88,7 +88,7 @@ fn cs_from(name: &str, cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure
                 match variant.node.kind {
                     ast::TupleVariantKind(ref args) => {
                         if !args.is_empty() {
-                            cx.span_err(trait_span,
+                            span_err!(cx, trait_span, B0051,
                                         "`FromPrimitive` cannot be derived for \
                                         enum variants with arguments");
                             return cx.expr_fail(trait_span,
@@ -115,7 +115,7 @@ fn cs_from(name: &str, cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure
                         arms.push(arm);
                     }
                     ast::StructVariantKind(_) => {
-                        cx.span_err(trait_span,
+                        span_err!(cx, trait_span, B0052,
                                     "`FromPrimitive` cannot be derived for enums \
                                     with struct variants");
                         return cx.expr_fail(trait_span,
