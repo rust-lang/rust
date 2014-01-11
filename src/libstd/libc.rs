@@ -1160,6 +1160,7 @@ pub mod types {
             }
         }
 
+        #[cfg(target_arch = "arm")]
         #[cfg(target_arch = "x86")]
         pub mod arch {
             pub mod c95 {
