@@ -59,6 +59,7 @@ use syntax::diagnostic;
 use syntax::parse;
 
 // Define the diagnostic macros
+#[path = "../libsyntax/diag_macros.rs"]
 pub mod diag_macros;
 // The index of all diagnostic codes used by this crate. This must be defined
 // lexically before any diagnostics are used.
