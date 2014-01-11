@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use CtxMethods;
 use context::*;
 use crate::*;
 use crate_id::*;
+use install;
 use package_source::*;
 use path_util::{platform_library_name, target_build_dir};
 use target::*;
@@ -133,7 +133,7 @@ pub fn install_pkg(cx: &BuildContext,
                    // For now, these inputs are assumed to be inputs to each of the crates
                    more_inputs: ~[(~str, Path)]) { // pairs of Kind and Path
     let crateid = CrateId{ version: version, ..CrateId::new(name)};
-    cx.install(PkgSrc::new(workspace.clone(), workspace, false, crateid),
+    install(cx, PkgSrc::new(workspace.clone(), workspace, false, crateid),
                &WhatToBuild{ build_type: Inferred,
                              inputs_to_discover: more_inputs,
                              sources: Everything });
