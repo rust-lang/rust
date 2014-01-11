@@ -295,7 +295,7 @@ impl<'a> Reflector<'a> {
                                                                sub_path,
                                                                "get_disr");
 
-                let llfdecl = decl_internal_rust_fn(ccx, [opaqueptrty], ty::mk_u64(), sym);
+                let llfdecl = decl_internal_rust_fn(ccx, None, [opaqueptrty], ty::mk_u64(), sym);
                 let fcx = new_fn_ctxt(ccx,
                                       ~[],
                                       llfdecl,
@@ -362,7 +362,6 @@ impl<'a> Reflector<'a> {
           }
           ty::ty_self(..) => self.leaf("self"),
           ty::ty_type => self.leaf("type"),
-          ty::ty_opaque_box => self.leaf("opaque_box"),
           ty::ty_opaque_closure_ptr(ck) => {
               let ckval = ast_sigil_constant(ck);
               let extra = ~[self.c_uint(ckval)];

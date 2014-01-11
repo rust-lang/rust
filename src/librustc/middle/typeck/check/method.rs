@@ -791,7 +791,7 @@ impl<'a> LookupContext<'a> {
             ty_err => None,
 
             ty_opaque_closure_ptr(_) | ty_unboxed_vec(_) |
-            ty_opaque_box | ty_type | ty_infer(TyVar(_)) => {
+            ty_type | ty_infer(TyVar(_)) => {
                 self.bug(format!("Unexpected type: {}",
                               self.ty_to_str(self_ty)));
             }
@@ -1020,8 +1020,6 @@ impl<'a> LookupContext<'a> {
         });
         debug!("after replacing bound regions, fty={}", self.ty_to_str(fty));
 
-        let self_mode = get_mode_from_explicit_self(candidate.method_ty.explicit_self);
-
         // before we only checked whether self_ty could be a subtype
         // of rcvr_ty; now we actually make it so (this may cause
         // variables to unify etc).  Since we checked beforehand, and
@@ -1041,7 +1039,6 @@ impl<'a> LookupContext<'a> {
         self.fcx.write_substs(self.callee_id, all_substs);
         method_map_entry {
             self_ty: transformed_self_ty,
-            self_mode: self_mode,
             explicit_self: candidate.method_ty.explicit_self,
             origin: candidate.origin,
         }
@@ -1372,13 +1369,6 @@ impl<'a> LookupContext<'a> {
 
     fn bug(&self, s: ~str) -> ! {
         self.tcx().sess.span_bug(self.self_expr.span, s)
-    }
-}
-
-pub fn get_mode_from_explicit_self(explicit_self: ast::ExplicitSelf_) -> SelfMode {
-    match explicit_self {
-        SelfValue(_) => ty::ByRef,
-        _ => ty::ByCopy,
     }
 }
 

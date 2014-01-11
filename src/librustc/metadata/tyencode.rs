@@ -331,7 +331,6 @@ fn enc_sty(w: &mut MemWriter, cx: @ctxt, st: &ty::sty) {
             mywrite!(w, "C&");
             enc_sigil(w, p);
         }
-        ty::ty_opaque_box => mywrite!(w, "B"),
         ty::ty_struct(def, ref substs) => {
             mywrite!(w, "a[{}|", (cx.ds)(def));
             enc_substs(w, cx, substs);

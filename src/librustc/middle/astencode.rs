@@ -578,9 +578,6 @@ fn encode_method_map_entry(ecx: &e::EncodeContext,
         ebml_w.emit_struct_field("origin", 1u, |ebml_w| {
             mme.origin.encode(ebml_w);
         });
-        ebml_w.emit_struct_field("self_mode", 3, |ebml_w| {
-            mme.self_mode.encode(ebml_w);
-        });
     })
 }
 
@@ -602,11 +599,7 @@ impl<'a> read_method_map_entry_helper for reader::Decoder<'a> {
                     let method_origin: method_origin =
                         Decodable::decode(this);
                     method_origin.tr(xcx)
-                }),
-                self_mode: this.read_struct_field("self_mode", 3, |this| {
-                    let self_mode: ty::SelfMode = Decodable::decode(this);
-                    self_mode
-                }),
+                })
             }
         })
     }

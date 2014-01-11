@@ -405,7 +405,7 @@ pub fn trans_expr_fn<'a>(
     let s = mangle_internal_name_by_path_and_seq(ccx,
                                                  sub_path.clone(),
                                                  "expr_fn");
-    let llfn = decl_internal_rust_fn(ccx, f.sig.inputs, f.sig.output, s);
+    let llfn = decl_internal_rust_fn(ccx, None, f.sig.inputs, f.sig.output, s);
 
     // set an inline hint for all closures
     set_inline_hint(llfn);
@@ -423,9 +423,10 @@ pub fn trans_expr_fn<'a>(
                           decl,
                           body,
                           llfn,
-                          no_self,
+                          None,
                           bcx.fcx.param_substs,
                           user_id,
+                          None,
                           [],
                           ty::ty_fn_ret(fty),
                           |fcx| load_environment(fcx, cdata_ty, cap_vars, sigil));

@@ -113,6 +113,7 @@ pub enum CopyAction {
     DROP_EXISTING
 }
 
+#[deriving(Clone)]
 pub struct Datum {
     /// The llvm value.  This is either a pointer to the Rust value or
     /// the value itself, depending on `mode` below.
@@ -130,7 +131,7 @@ pub struct DatumBlock<'a> {
     datum: Datum,
 }
 
-#[deriving(Eq, IterBytes)]
+#[deriving(Clone, Eq, IterBytes)]
 pub enum DatumMode {
     /// `val` is a pointer to the actual value (and thus has type *T).
     /// The argument indicates how to cancel cleanup of this datum if
@@ -153,7 +154,7 @@ impl DatumMode {
 }
 
 /// See `Datum cleanup styles` section at the head of this module.
-#[deriving(Eq, IterBytes)]
+#[deriving(Clone, Eq, IterBytes)]
 pub enum DatumCleanup {
     RevokeClean,
     ZeroMem
@@ -396,8 +397,7 @@ impl Datum {
                 add_clean_temp_mem(bcx, self.val, self.ty);
             }
             ByRef(ZeroMem) => {
-                bcx.tcx().sess.bug(
-                    format!("Cannot add clean to a 'zero-mem' datum"));
+                add_clean(bcx, self.val, self.ty)
             }
         }
     }
@@ -413,7 +413,6 @@ impl Datum {
                     // Lvalues which potentially need to be dropped
                     // must be passed by ref, so that we can zero them
                     // out.
-                    assert!(self.mode.is_by_ref());
                     zero_mem(bcx, self.val, self.ty);
                 }
             }

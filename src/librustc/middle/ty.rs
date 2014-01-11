@@ -151,14 +151,6 @@ pub enum TraitStore {
     RegionTraitStore(Region),   // &Trait
 }
 
-// XXX: This should probably go away at some point. Maybe after destructors
-// do?
-#[deriving(Clone, Eq, Encodable, Decodable)]
-pub enum SelfMode {
-    ByCopy,
-    ByRef,
-}
-
 pub struct field_ty {
     name: Name,
     id: DefId,
@@ -659,8 +651,7 @@ pub enum sty {
 
     // "Fake" types, used for trans purposes
     ty_type, // type_desc*
-    ty_opaque_box, // used by monomorphizer to represent any @ box
-    ty_opaque_closure_ptr(Sigil), // ptr to env for ||, @fn, ~fn
+    ty_opaque_closure_ptr(Sigil), // ptr to env for || and proc
     ty_unboxed_vec(mt),
 }
 
@@ -1078,8 +1069,7 @@ pub fn mk_t(cx: ctxt, st: sty) -> t {
         flags |= get(mt.ty).flags;
       }
       &ty_nil | &ty_bool | &ty_char | &ty_int(_) | &ty_float(_) | &ty_uint(_) |
-      &ty_str(_) | &ty_type | &ty_opaque_closure_ptr(_) |
-      &ty_opaque_box => (),
+      &ty_str(_) | &ty_type | &ty_opaque_closure_ptr(_) => {}
       // You might think that we could just return ty_err for
       // any type containing ty_err as a component, and get
       // rid of the has_ty_err flag -- likewise for ty_bot (with
@@ -1354,8 +1344,6 @@ pub fn mk_opaque_closure_ptr(cx: ctxt, sigil: ast::Sigil) -> t {
     mk_t(cx, ty_opaque_closure_ptr(sigil))
 }
 
-pub fn mk_opaque_box(cx: ctxt) -> t { mk_t(cx, ty_opaque_box) }
-
 pub fn walk_ty(ty: t, f: |t|) {
     maybe_walk_ty(ty, |t| { f(t); true });
 }
@@ -1366,12 +1354,9 @@ pub fn maybe_walk_ty(ty: t, f: |t| -> bool) {
     }
     match get(ty).sty {
       ty_nil | ty_bot | ty_bool | ty_char | ty_int(_) | ty_uint(_) | ty_float(_) |
-      ty_str(_) | ty_type | ty_opaque_box | ty_self(_) |
-      ty_opaque_closure_ptr(_) | ty_infer(_) | ty_param(_) | ty_err => {
-      }
-      ty_box(ref ty) => {
-        maybe_walk_ty(*ty, f);
-      }
+      ty_str(_) | ty_type | ty_self(_) |
+      ty_opaque_closure_ptr(_) | ty_infer(_) | ty_param(_) | ty_err => {}
+      ty_box(ref ty) => maybe_walk_ty(*ty, f),
       ty_vec(ref tm, _) | ty_unboxed_vec(ref tm) | ty_ptr(ref tm) |
       ty_rptr(_, ref tm) | ty_uniq(ref tm) => {
         maybe_walk_ty(tm.ty, f);
@@ -1592,8 +1577,7 @@ pub fn type_is_box(ty: t) -> bool {
 
 pub fn type_is_boxed(ty: t) -> bool {
     match get(ty).sty {
-      ty_box(_) | ty_opaque_box |
-      ty_vec(_, vstore_box) | ty_str(vstore_box) => true,
+      ty_box(_) | ty_vec(_, vstore_box) | ty_str(vstore_box) => true,
       _ => false
     }
 }
@@ -1699,7 +1683,7 @@ fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
     maybe_walk_ty(ty, |ty| {
         let old_encountered_box = encountered_box;
         let result = match get(ty).sty {
-          ty_box(_) | ty_opaque_box => {
+          ty_box(_) => {
             encountered_box = true;
             true
           }
@@ -2145,8 +2129,6 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 // times.
                 TC::All
             }
-
-            ty_opaque_box => TC::Managed,
             ty_unboxed_vec(mt) => TC::InteriorUnsized | tc_mt(cx, mt, cache),
             ty_opaque_closure_ptr(sigil) => {
                 match sigil {
@@ -2332,7 +2314,6 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
             ty_param(_) |
             ty_self(_) |
             ty_type |
-            ty_opaque_box |
             ty_opaque_closure_ptr(_) |
             ty_vec(_, _) |
             ty_unboxed_vec(_) => {
@@ -2515,7 +2496,7 @@ pub fn type_is_pod(cx: ctxt, ty: t) -> bool {
       ty_box(_) | ty_uniq(_) | ty_closure(_) |
       ty_str(vstore_uniq) | ty_str(vstore_box) |
       ty_vec(_, vstore_uniq) | ty_vec(_, vstore_box) |
-      ty_trait(_, _, _, _, _) | ty_rptr(_,_) | ty_opaque_box => result = false,
+      ty_trait(_, _, _, _, _) | ty_rptr(_,_) => result = false,
       // Structural types
       ty_enum(did, ref substs) => {
         let variants = enum_variants(cx, did);
@@ -3345,7 +3326,7 @@ pub fn ty_sort_str(cx: ctxt, t: t) -> ~str {
     match get(t).sty {
       ty_nil | ty_bot | ty_bool | ty_char | ty_int(_) |
       ty_uint(_) | ty_float(_) | ty_str(_) |
-      ty_type | ty_opaque_box | ty_opaque_closure_ptr(_) => {
+      ty_type | ty_opaque_closure_ptr(_) => {
         ::util::ppaux::ty_to_str(cx, t)
       }
 
@@ -4890,13 +4871,12 @@ pub fn hash_crate_independent(tcx: ctxt, t: t, local_hash: @str) -> u64 {
             ty_infer(_) => unreachable!(),
             ty_err => hash.input([23]),
             ty_type => hash.input([24]),
-            ty_opaque_box => hash.input([25]),
             ty_opaque_closure_ptr(s) => {
-                hash.input([26]);
+                hash.input([25]);
                 iter(&mut hash, &s);
             }
             ty_unboxed_vec(m) => {
-                hash.input([27]);
+                hash.input([26]);
                 mt(&mut hash, m);
             }
         }
