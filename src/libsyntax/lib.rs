@@ -32,6 +32,12 @@ This API is completely unstable and subject to change.
 
 extern mod extra;
 
+// Define the diagnostic macros
+pub mod diag_macros;
+// The index of all diagnostic codes used by this crate. This must be defined
+// lexically before any diagnostics are used.
+pub mod diag_index;
+
 pub mod util {
     pub mod interner;
     #[cfg(test)]
@@ -95,3 +101,7 @@ pub mod ext {
 
     pub mod trace_macros;
 }
+
+// The database of extended diagnostic descriptions. Must come lexically
+// after all uses of diagnostics. See `diag_macros` for why.
+pub mod diag_db;

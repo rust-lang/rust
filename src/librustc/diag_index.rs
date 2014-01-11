@@ -14,6 +14,5 @@
 //! diagnostic code just go to the end of the file and add a new
 //! line with a code that is one greater than the previous.
 
-#[cfg(not(stage0))];
-
 reg_diag!(A0000)
+reg_diag!(A0001)

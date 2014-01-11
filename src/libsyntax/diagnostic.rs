@@ -40,12 +40,23 @@ impl SpanHandler {
         self.handler.emit(Some((&*self.cm, sp)), msg, Fatal);
         fail!();
     }
+    pub fn span_fatal_with_diagnostic_code(@self, sp: Span, code: &str, msg: &str) -> ! {
+        self.handler.emit_with_code(Some((&*self.cm, sp)), code, msg, Fatal);
+        fail!();
+    }
     pub fn span_err(@self, sp: Span, msg: &str) {
         self.handler.emit(Some((&*self.cm, sp)), msg, Error);
         self.handler.bump_err_count();
     }
+    pub fn span_err_with_diagnostic_code(@self, sp: Span, code: &str, msg: &str) {
+        self.handler.emit_with_code(Some((&*self.cm, sp)), code, msg, Error);
+        self.handler.bump_err_count();
+    }
     pub fn span_warn(@self, sp: Span, msg: &str) {
         self.handler.emit(Some((&*self.cm, sp)), msg, Warning);
+    }
+    pub fn span_warn_with_diagnostic_code(@self, sp: Span, code: &str, msg: &str) {
+        self.handler.emit_with_code(Some((&*self.cm, sp)), code, msg, Warning);
     }
     pub fn span_note(@self, sp: Span, msg: &str) {
         self.handler.emit(Some((&*self.cm, sp)), msg, Note);
@@ -71,11 +82,19 @@ pub struct Handler {
 
 impl Handler {
     pub fn fatal(@self, msg: &str) -> ! {
-        self.emit.emit(None, msg, Fatal);
+        self.emit(None, msg, Fatal);
+        fail!();
+    }
+    pub fn fatal_with_diagnostic_code(@self, code: &str, msg: &str) -> ! {
+        self.emit_with_code(None, code, msg, Fatal);
         fail!();
     }
     pub fn err(@self, msg: &str) {
-        self.emit.emit(None, msg, Error);
+        self.emit(None, msg, Error);
+        self.bump_err_count();
+    }
+    pub fn err_with_diagnostic_code(@self, code: &str, msg: &str) {
+        self.emit_with_code(None, code, msg, Error);
         self.bump_err_count();
     }
     pub fn bump_err_count(@self) {
@@ -100,10 +119,13 @@ impl Handler {
         self.fatal(s);
     }
     pub fn warn(@self, msg: &str) {
-        self.emit.emit(None, msg, Warning);
+        self.emit(None, msg, Warning);
+    }
+    pub fn warn_with_diagnostic_code(@self, code: &str, msg: &str) {
+        self.emit_with_code(None, code, msg, Warning);
     }
     pub fn note(@self, msg: &str) {
-        self.emit.emit(None, msg, Note);
+        self.emit(None, msg, Note);
     }
     pub fn bug(@self, msg: &str) -> ! {
         self.fatal(ice_msg(msg));
@@ -115,6 +137,11 @@ impl Handler {
             cmsp: Option<(&codemap::CodeMap, Span)>,
             msg: &str,
             lvl: Level) {
+        self.emit.emit(cmsp, msg, lvl);
+    }
+    pub fn emit_with_code(@self, cmsp: Option<(&codemap::CodeMap, Span)>,
+                          code: &str, msg: &str, lvl: Level) {
+        let msg = format!("{}: {}", code, msg);
         self.emit.emit(cmsp, msg, lvl);
     }
 }

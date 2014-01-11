@@ -58,6 +58,7 @@ use syntax::diagnostic;
 use syntax::parse;
 
 // Define the diagnostic macros
+#[path = "../libsyntax/diag_macros.rs"]
 pub mod diag_macros;
 // The index of all diagnostic codes used by this crate. This must be defined
 // lexically before any diagnostics are used.
@@ -220,12 +221,6 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
 
     if args.is_empty() { usage(binary); return; }
 
-    let new_diag_test = if args[0] == ~"new-diag-test" {
-        args.shift(); true
-    } else {
-        false
-    };
-
     let matches =
         &match getopts::groups::getopts(args, d::optgroups()) {
           Ok(m) => m,
@@ -282,18 +277,6 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
 
     let sopts = d::build_session_options(binary, matches, demitter);
     let sess = d::build_session(sopts, demitter);
-    if new_diag_test {
-        #[cfg(not(stage0))]
-        fn foo(sess: session::Session) {
-            let diagdb = ::diag_db::load();
-            alert_error!(sess, A0000, "This is a {} of the new diagnostic system", "test");
-            let (_name, _msg, desc) = diagdb[0];
-            println!("{}", desc);
-            fail!();
-        }
-        #[cfg(stage0)] fn foo(_: session::Session) { }
-        foo(sess)
-    }
     let odir = matches.opt_str("out-dir").map(|o| Path::new(o));
     let ofile = matches.opt_str("o").map(|o| Path::new(o));
     let cfg = d::build_configuration(sess);
