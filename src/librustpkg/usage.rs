@@ -16,6 +16,9 @@ pub fn general() {
 Where <cmd> is one of:
     build, clean, do, info, install, list, prefer, test, uninstall, unprefer
 
+For more help on a given command, you can run:
+    rustpkg help <cmd>
+
 Options:
 
     -h, --help                  Display this message
@@ -162,6 +165,7 @@ pub fn usage_for_command(command: Command){
         BuildCmd => build(),
         CleanCmd => clean(),
         DoCmd => do_cmd(),
+        HelpCmd => general(),
         InfoCmd => info(),
         InstallCmd => install(),
         ListCmd => list(),
