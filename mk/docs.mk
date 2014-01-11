@@ -308,6 +308,7 @@ $(eval $(call libdoc,std,$(STDLIB_CRATE),$(CFG_BUILD)))
 $(eval $(call libdoc,extra,$(EXTRALIB_CRATE),$(CFG_BUILD)))
 $(eval $(call libdoc,native,$(LIBNATIVE_CRATE),$(CFG_BUILD)))
 $(eval $(call libdoc,green,$(LIBGREEN_CRATE),$(CFG_BUILD)))
+$(eval $(call libdoc,rustuv,$(LIBRUSTUV_CRATE),$(CFG_BUILD)))
 
 $(eval $(call compiledoc,rustc,$(COMPILER_CRATE),$(CFG_BUILD)))
 $(eval $(call compiledoc,syntax,$(LIBSYNTAX_CRATE),$(CFG_BUILD)))

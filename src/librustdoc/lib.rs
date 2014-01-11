@@ -83,6 +83,7 @@ pub fn opts() -> ~[groups::OptGroup] {
     use extra::getopts::groups::*;
     ~[
         optflag("h", "help", "show this help message"),
+        optflag("", "version", "print rustdoc's version"),
         optopt("r", "input-format", "the input type of the specified file",
                "[rust|json]"),
         optopt("w", "output-format", "the output type to write",
@@ -118,6 +119,9 @@ pub fn main_args(args: &[~str]) -> int {
     };
     if matches.opt_present("h") || matches.opt_present("help") {
         usage(args[0]);
+        return 0;
+    } else if matches.opt_present("version") {
+        rustc::version(args[0]);
         return 0;
     }
 
