@@ -24,6 +24,7 @@ use num::CheckedMul;
 use option::{Option, Some, None};
 use iter::{Iterator, DoubleEndedIterator};
 use gc;
+use gc::Trace;
 
 pub struct Vec<T> {
     priv len: uint,
@@ -31,7 +32,15 @@ pub struct Vec<T> {
     priv ptr: *mut T
 }
 
-impl<T> Vec<T> {
+pub fn trace<T: Trace>(ptr: *(), length: uint, tracer: &mut gc::GcTracer) {
+    debug!("libvec::trace: {} {}", ptr, length);
+    let v: &[T] = unsafe {transmute(raw::Slice { data: ptr as *T, len: length })};
+    for t in v.iter() {
+        t.trace(tracer)
+    }
+}
+
+impl<T: Trace> Vec<T> {
     #[inline(always)]
     pub fn new() -> Vec<T> {
         Vec { len: 0, cap: 0, ptr: 0 as *mut T }
@@ -46,7 +55,7 @@ impl<T> Vec<T> {
                 let ptr = malloc(size as size_t);
                 if ptr.is_null() { fail!("null pointer") }
 
-                gc::register_root_changes([], [(ptr as *T, capacity)]);
+                gc::register_root_changes([], [(ptr as *T, 0, trace::<T>)]);
                 Vec { len: 0, cap: capacity, ptr: ptr as *mut T }
             }
         }
@@ -60,7 +69,7 @@ impl<T> Container for Vec<T> {
     }
 }
 
-impl<T> Vec<T> {
+impl<T: Trace> Vec<T> {
     #[inline(always)]
     pub fn capacity(&self) -> uint {
         self.cap
@@ -75,7 +84,7 @@ impl<T> Vec<T> {
                 if ptr.is_null() { fail!("null pointer") }
 
                 gc::register_root_changes([self.ptr as *T],
-                                          [(ptr as *T, capacity)]);
+                                          [(ptr as *T, self.len, trace::<T>)]);
                 self.ptr = ptr;
             }
         }
@@ -93,20 +102,9 @@ impl<T> Vec<T> {
                 let ptr = realloc(self.ptr as *mut c_void,
                                   (self.len * size_of::<T>()) as size_t) as *mut T;
                 if ptr.is_null() { fail!("null pointer") }
-                gc::register_root_changes([self.ptr as *T], [(ptr as *T, self.len)]);
+                gc::register_root_changes([self.ptr as *T], [(ptr as *T, self.len, trace::<T>)]);
 
                 self.cap = self.len;
-            }
-        }
-    }
-
-    pub fn pop(&mut self) -> Option<T> {
-        if self.len == 0 {
-            None
-        } else {
-            unsafe {
-                self.len -= 1;
-                Some(read_ptr(self.as_slice().unsafe_ref(self.len())))
             }
         }
     }
@@ -122,7 +120,7 @@ impl<T> Vec<T> {
             unsafe {
                 let ptr = realloc(self.ptr as *mut c_void, size as size_t) as *mut T;
                 gc::register_root_changes([self.ptr as *T],
-                                          [(ptr as *T, self.cap)]);
+                                          [(ptr as *T, self.len, trace::<T>)]);
                 self.ptr = ptr;
             }
         }
@@ -131,6 +129,21 @@ impl<T> Vec<T> {
             let end = self.ptr.offset(self.len as int) as *mut T;
             move_val_init(&mut *end, value);
             self.len += 1;
+            gc::update_metadata(self.ptr as *T, self.len);
+        }
+    }
+}
+
+impl<T> Vec<T> {
+    pub fn pop(&mut self) -> Option<T> {
+        if self.len == 0 {
+            None
+        } else {
+            unsafe {
+                self.len -= 1;
+                gc::update_metadata(self.ptr as *T, self.len);
+                Some(read_ptr(self.as_slice().unsafe_ref(self.len())))
+            }
         }
     }
 
@@ -166,6 +179,16 @@ impl<T> Drop for Vec<T> {
             }
             gc::register_root_changes([self.ptr as *T], []);
             free(self.ptr as *c_void)
+        }
+    }
+}
+
+impl<T: Trace> Trace for Vec<T> {
+    fn trace(&self, tracer: &mut gc::GcTracer) {
+        if tracer.pointer_first_trace(self.ptr as *()) {
+            for val in self.as_slice().iter() {
+                val.trace(tracer);
+            }
         }
     }
 }

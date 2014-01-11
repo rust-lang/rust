@@ -8,17 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use container::Container;
 use gc::collector::ptr_map::PtrMap;
 use iter::Iterator;
 use libc;
 use num::BitCount;
 use option::{Some, None, Option};
 use ops::Drop;
-use ptr;
 use ptr::RawPtr;
 use vec::{OwnedVector, ImmutableVector};
 use uint;
+
+use gc::GcTracer;
 
 mod ptr_map;
 
@@ -27,44 +27,32 @@ static DEFAULT_ALLOCS_PER_COLLECTION_MASK: uint = (1 << 10) - 1;
 static ALLOC_CACHE_MIN_LOG: uint = 3;
 static ALLOC_CACHE_MAX_LOG: uint = 20;
 
+pub type TracingFunc = fn(*(), uint, &mut GcTracer);
 
-/// A thread local (almost) conservative garbage collector.
-///
-/// This makes no effort to check global variables, or even
-/// thread-local ones.
+
+/// A thread local garbage collector, precise on the head,
+/// conservative on the stack, neither generational nor incremental.
 ///
 /// # Design
 ///
-/// This is a very crude mark-and-sweep conservative[1]
-/// non-generational garbage collector. It stores two sets of
-/// pointers, the GC'd pointers themselves, and regions of memory that
-/// are roots for GC'd objects (that is, the regions that could
-/// possibly contain references to GC'd pointers).
+/// Currently stores two sets of known pointers:
 ///
-/// For a collection, it scans the roots and the stack to find any
-/// bitpatterns that look like GC'd pointers that we know about, and
-/// then scans each of these to record all the reachable
-/// objects. After doing so, any unreachable objects have their
-/// finalisers run and are freed.
+/// - managed pointers (i.e. allocations entirely under the control of
+///   this GC), and
+/// - "roots", which are any other pointers/datastructures/memory
+///   regions that have registered themselves as possibly containing
+///   GC'd pointers (the registration includes a tracing function
+///   pointer with which to find these GC'd pointers)
 ///
-/// Currently, this just calls `malloc` and `free` for every
-/// allocation. It could (and should) be reusing allocations.
+/// A conservative stack-scan is performed where any bitpatterns that
+/// look like pointers from either of the two sets above are taken to
+/// be actual references and a tracing is initiated from there.
 ///
-/// Also, this only counts pointers to the start of GC'd memory
-/// regions as valid. This is fine for a simple type like `Gc<T>`,
-/// since the only way to get a pointer actually pointing inside the
-/// contents requires a `.borrow()`, which freezes the `Gc<T>`
-/// reference that was borrowed. This `Gc<T>` reference is
-/// presumably[2] in a root (or some other place that is scanned) and
-/// points at the start of the allocation, so the subpointer will
-/// always be valid. (Yay for lifetimes & borrowing.)
+/// Any managed pointers that were not visited in this search are
+/// considered dead and deallocated.
 ///
-/// [1]: it has some smarts, the user can indicate that an allocation
-/// should not be scanned, so that allocations that can never
-/// contain a GC pointer are ignored.
-///
-/// [2]: If the `Gc<T>` reference is reachable but not being scanned
-/// then the user already has a problem.
+/// Allocations and deallocations are performed directly with malloc
+/// and free, with caching of small allocations.
 pub struct GarbageCollector {
     /// Non-garbage-collectable roots
     priv roots: PtrMap,
@@ -81,7 +69,6 @@ pub struct GarbageCollector {
     /// some n).
     priv gc_allocs_per_collection_mask: uint
 }
-
 
 fn compute_log_rounded_up_size(size: uint) -> uint {
     if size <= (1 << ALLOC_CACHE_MIN_LOG) {
@@ -133,23 +120,27 @@ impl GarbageCollector {
         }
     }
 
-    unsafe fn alloc_inner(&mut self, size: uint, scan: bool,
-                          finaliser: Option<fn(*mut ())>) -> *mut u8 {
+    /// Allocate `size` bytes of memory such that they are scanned for
+    /// other GC'd pointers (for use by types like `Gc<Gc<int>>`).
+    ///
+    /// `finaliser` is passed the start of the allocation at some
+    /// unspecified pointer after the allocation has become
+    /// unreachable.
+    pub unsafe fn alloc(&mut self, size: uint,
+                        tracer: Option<TracingFunc>,
+                        finaliser: Option<fn(*mut ())>) -> *mut u8 {
+        self.gc_allocs += 1;
         let log_next_power_of_two = compute_log_rounded_up_size(size);
 
-        // it's always larger than 3
+        // it's always larger than ALLOC_CACHE_MIN_LOG
         let alloc_size = if log_next_power_of_two <= ALLOC_CACHE_MAX_LOG {
             match self.alloc_cache[log_next_power_of_two - ALLOC_CACHE_MIN_LOG].pop_opt() {
                 Some(ptr) => {
                     // attempt to reuse the metadata we have for that
                     // allocation already.
-                    let success = self.gc_ptrs.reuse_alloc(ptr, size, scan, finaliser);
+                    let success = self.gc_ptrs.reuse_alloc(ptr, size, tracer, finaliser);
                     if success {
                         debug!("using cache for allocation of size {}", size);
-                        if scan {
-                            // clear memory that we may need to be scanning
-                            ptr::set_memory(ptr as *mut u8, 0, size);
-                        }
                         return ptr as *mut u8;
                     }
                 }
@@ -162,103 +153,93 @@ impl GarbageCollector {
             size
         };
 
-        let ptr = if scan {
-            libc::calloc(alloc_size as libc::size_t, 1)
-        } else {
-            libc::malloc(alloc_size as libc::size_t)
-        };
+        let ptr = libc::malloc(alloc_size as libc::size_t);
         if ptr.is_null() {
             fail!("GC failed to allocate.")
         }
 
-        self.gc_ptrs.insert_alloc(ptr as uint, size, scan, finaliser);
+        self.gc_ptrs.insert_alloc(ptr as uint, size, tracer, finaliser);
 
         ptr as *mut u8
     }
 
-    /// Allocate `size` bytes of memory such that they are scanned for
-    /// other GC'd pointers (for use by types like `Gc<Gc<int>>`).
-    ///
-    /// `finaliser` is passed the start of the allocation at some
-    /// unspecified pointer after the allocation has become
-    /// unreachable.
-    pub unsafe fn alloc_gc(&mut self, size: uint, finaliser: Option<fn(*mut ())>) -> *mut u8 {
-        self.gc_allocs += 1;
-        self.alloc_inner(size, true, finaliser)
+    /// Register the block of memory [`start`, `end`) for tracing when
+    /// a word matching `start` pointer is seen during a conservative
+    /// scan. On such a scan, `tracer` is called, passing in the
+    /// pointer and `metadata` (which can be arbitrary).
+    pub unsafe fn nongc_register(&mut self, start: *(), metadata: uint, tracer: TracingFunc) {
+        self.roots.insert_alloc(start as uint, metadata, Some(tracer), None)
     }
 
-    /// Allocate `size` bytes of memory such that they are not scanned
-    /// for other GC'd pointers; this should be used for types like
-    /// `Gc<int>`, or (in theory) `Gc<~Gc<int>>` (note the
-    /// indirection).
-    ///
-    /// `finaliser` is passed the start of the allocation at some
-    /// unspecified pointer after the allocation has become
-    /// unreachable.
-    pub unsafe fn alloc_gc_no_scan(&mut self, size: uint,
-                                   finaliser: Option<fn(*mut ())>) -> *mut u8 {
-        self.gc_allocs += 1;
-        self.alloc_inner(size, false, finaliser)
+    /// Update the metadata word associated with `start`.
+    pub unsafe fn nongc_update_metadata(&mut self, start: *(), metadata: uint) -> bool {
+        self.roots.update_metadata(start as uint, metadata)
     }
 
-    /// Register the block of memory [`start`, `end`) for scanning for
-    /// GC'd pointers.
-    pub unsafe fn register_root(&mut self, start: *(), end: *()) {
-        self.roots.insert_alloc(start as uint, end as uint - start as uint, true, None)
-    }
-    /// Stop scanning the root starting at `start` for GC'd pointers.
-    pub unsafe fn unregister_root(&mut self, start: *()) {
+    /// Stop considering the root starting at `start` for tracing.
+    pub unsafe fn nongc_unregister(&mut self, start: *()) {
         self.roots.remove(start as uint);
+    }
+
+    /// Check if this is the first time that the non-GC'd pointer
+    /// `start` has been traced in this iteration.
+    pub fn nongc_first_trace(&mut self, start: *()) -> bool {
+        debug!("nongc_first_trace: checking {}", start);
+        self.roots.mark_reachable_scan_info(start as uint).is_some()
+    }
+
+    /// Check if this is the first time that the GC'd pointer `start`
+    /// has been traced in this iteration.
+    pub fn gc_first_trace(&mut self, start: *()) -> bool {
+        debug!("gc_first_trace: checking {}", start);
+        self.gc_ptrs.mark_reachable_scan_info(start as uint).is_some()
+    }
+
+    /// Run a conservative scan of the words from `start` to `end`.
+    pub unsafe fn conservative_scan(&mut self, mut start: *uint, end: *uint) {
+        while start < end {
+            let ptr = *start;
+            let trace_info = match self.gc_ptrs.mark_reachable_scan_info(ptr) {
+                i @ Some(_) => i,
+                None => self.roots.mark_reachable_scan_info(ptr)
+            };
+            match trace_info {
+                Some((metadata, Some(tracer))) => {
+                    tracer(ptr as *(), metadata, &mut GcTracer { gc: self })
+                }
+                // don't need no tracing (either not a pointer we
+                // recognise, or one without a registered tracer)
+                _ => {}
+            }
+
+            start = start.offset(1);
+        }
     }
 
     /// Collect garbage. An upper bound on the position of any GC'd
     /// pointers on the stack should be passed as `stack_top`.
     pub unsafe fn collect(&mut self, stack_top: uint) {
+        debug!("collecting");
         clear_registers(0, 0, 0, 0, 0, 0);
 
         let stack: uint = 1;
         let stack_end = &stack as *uint;
 
-        let GarbageCollector { ref mut roots, ref mut gc_ptrs, .. } = *self;
-
         // Step 1. mark any reachable pointers
 
         // every pointer is considered reachable on this exact line
         // (new allocations are reachable by default)
-        gc_ptrs.toggle_reachability();
+        self.gc_ptrs.toggle_reachability();
+        self.roots.inefficient_mark_all_unreachable();
         // and now everything is considered unreachable.
 
-        // the list of pointers that are reachable and scannable, but
-        // haven't actually been scanned yet.
-        let mut grey_list = ~[];
+        self.conservative_scan(stack_end, stack_top as *uint);
 
-        // Step 1.1: search for GC'd pointers in any registered roots.
-        for (low, descr) in roots.iter() {
-            mark_words_between(gc_ptrs, &mut grey_list,
-                               low as *uint, descr.high as *uint)
-        }
-
-        // Step 1.2: search for them on the stack.
-        mark_words_between(gc_ptrs, &mut grey_list, stack_end, stack_top as *uint);
-
-        // Step 1.3: search for GC references inside other reachable
-        // GC references.
-        let mut count = 0;
-        loop {
-            match grey_list.pop_opt() {
-                Some((low, high)) => {
-                    count += 1;
-                    mark_words_between(gc_ptrs, &mut grey_list,
-                                       low as *uint, high as *uint);
-                }
-                // everything scanned
-                None => break
-            }
-        }
 
         // Step 2. sweep all the unreachable ones for deallocation.
-        let unreachable = gc_ptrs.find_unreachable();
+        let unreachable = self.gc_ptrs.find_unreachable();
         for &(ptr, size, finaliser) in unreachable.iter() {
+            debug!("unreachable: 0x{:x}", ptr);
             match finaliser {
                 Some(f) => f(ptr as *mut ()),
                 None => {}
@@ -267,18 +248,15 @@ impl GarbageCollector {
             let log_rounded = compute_log_rounded_up_size(size);
             // a "small" allocation so we cache it.
             if log_rounded <= ALLOC_CACHE_MAX_LOG {
-                gc_ptrs.mark_unused(ptr);
+                self.gc_ptrs.mark_unused(ptr);
                 self.alloc_cache[log_rounded - ALLOC_CACHE_MIN_LOG].push(ptr);
             } else {
                 // a big one, so whatever, the OS can have its memory
                 // back.
-                gc_ptrs.remove(ptr);
+                self.gc_ptrs.remove(ptr);
                 libc::free(ptr as *libc::c_void);
             }
         }
-
-        info!("GC scan: {} dead, {} live, {} scanned: took <unsupported> ms",
-              unreachable.len(), gc_ptrs.len(), count);
     }
 }
 
@@ -293,26 +271,6 @@ impl Drop for GarbageCollector {
             }
             unsafe {libc::free(ptr as *libc::c_void);}
         }
-    }
-}
-
-/// Scan the words from `low` to `high`, conservatively registering
-/// any GC pointer bit patterns found.
-unsafe fn mark_words_between(gc_ptrs: &mut PtrMap, grey_list: &mut ~[(uint, uint)],
-                             mut low: *uint, high: *uint) {
-    debug!("scanning from {} to {}", low, high);
-    while low < high {
-        match gc_ptrs.mark_reachable_scan_info(*low) {
-            Some((top, scan)) => {
-                debug!("found {:x} at {:x}", *low, low as uint);
-                if scan {
-                    grey_list.push((*low, top));
-                }
-            }
-            None => {}
-        }
-
-        low = low.offset(1);
     }
 }
 
