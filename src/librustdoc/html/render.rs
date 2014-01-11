@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -319,7 +319,7 @@ fn mkdir(path: &Path) {
         fail!()
     }).inside(|| {
         if !path.is_dir() {
-            fs::mkdir(path, io::UserRWX);
+            fs::mkdir(path, io::USER_RWX);
         }
     })
 }

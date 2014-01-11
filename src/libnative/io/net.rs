@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -23,7 +23,10 @@ use super::file::keep_going;
 // sockaddr and misc bindings
 ////////////////////////////////////////////////////////////////////////////////
 
+#[allow(non_camel_case_types)]
 #[cfg(windows)] pub type sock_t = libc::SOCKET;
+
+#[allow(non_camel_case_types)]
 #[cfg(unix)]    pub type sock_t = super::file::fd_t;
 
 pub fn htons(u: u16) -> u16 {
@@ -270,8 +273,8 @@ impl TcpStream {
     }
 }
 
-#[cfg(windows)] type wrlen = libc::c_int;
-#[cfg(not(windows))] type wrlen = libc::size_t;
+#[cfg(windows)] type WrLen = libc::c_int;
+#[cfg(not(windows))] type WrLen = libc::size_t;
 
 impl rtio::RtioTcpStream for TcpStream {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
@@ -279,7 +282,7 @@ impl rtio::RtioTcpStream for TcpStream {
             unsafe {
                 libc::recv(self.fd,
                            buf.as_ptr() as *mut libc::c_void,
-                           buf.len() as wrlen,
+                           buf.len() as WrLen,
                            0) as libc::c_int
             }
         });
@@ -296,7 +299,7 @@ impl rtio::RtioTcpStream for TcpStream {
             unsafe {
                 libc::send(self.fd,
                            buf as *mut libc::c_void,
-                           len as wrlen,
+                           len as WrLen,
                            0) as i64
             }
         });
@@ -487,7 +490,10 @@ impl rtio::RtioSocket for UdpSocket {
     }
 }
 
+#[allow(non_camel_case_types)]
 #[cfg(windows)] type msglen_t = libc::c_int;
+
+#[allow(non_camel_case_types)]
 #[cfg(unix)]    type msglen_t = libc::size_t;
 
 impl rtio::RtioUdpSocket for UdpSocket {

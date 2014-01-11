@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(non_uppercase_statics)];
+
 use ast;
 use ast::{P, Name, Mrk};
 use ast_util;
@@ -18,6 +20,7 @@ use util::interner;
 use std::cast;
 use std::char;
 use std::local_data;
+
 
 #[allow(non_camel_case_types)]
 #[deriving(Clone, Encodable, Decodable, Eq, IterBytes)]

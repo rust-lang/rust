@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -694,7 +694,7 @@ impl CtxMethods for BuildContext {
 
                 for exec in subex.iter() {
                     debug!("Copying: {} -> {}", exec.display(), sub_target_ex.display());
-                    fs::mkdir_recursive(&sub_target_ex.dir_path(), io::UserRWX);
+                    fs::mkdir_recursive(&sub_target_ex.dir_path(), io::USER_RWX);
                     fs::copy(exec, &sub_target_ex);
                     // FIXME (#9639): This needs to handle non-utf8 paths
                     exe_thing.discover_output("binary",
@@ -707,7 +707,7 @@ impl CtxMethods for BuildContext {
                         .clone().expect(format!("I built {} but apparently \
                                              didn't install it!", lib.display()));
                     target_lib.set_filename(lib.filename().expect("weird target lib"));
-                    fs::mkdir_recursive(&target_lib.dir_path(), io::UserRWX);
+                    fs::mkdir_recursive(&target_lib.dir_path(), io::USER_RWX);
                     fs::copy(lib, &target_lib);
                     debug!("3. discovering output {}", target_lib.display());
                     exe_thing.discover_output("binary",
@@ -748,10 +748,10 @@ impl CtxMethods for BuildContext {
     }
 
     fn init(&self) {
-        fs::mkdir_recursive(&Path::new("src"), io::UserRWX);
-        fs::mkdir_recursive(&Path::new("bin"), io::UserRWX);
-        fs::mkdir_recursive(&Path::new("lib"), io::UserRWX);
-        fs::mkdir_recursive(&Path::new("build"), io::UserRWX);
+        fs::mkdir_recursive(&Path::new("src"), io::USER_RWX);
+        fs::mkdir_recursive(&Path::new("bin"), io::USER_RWX);
+        fs::mkdir_recursive(&Path::new("lib"), io::USER_RWX);
+        fs::mkdir_recursive(&Path::new("build"), io::USER_RWX);
     }
 
     fn uninstall(&self, _id: &str, _vers: Option<~str>)  {

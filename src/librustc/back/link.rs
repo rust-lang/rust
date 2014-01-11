@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -790,7 +790,7 @@ fn is_writeable(p: &Path) -> bool {
 
     match io::result(|| p.stat()) {
         Err(..) => true,
-        Ok(m) => m.perm & io::UserWrite == io::UserWrite
+        Ok(m) => m.perm & io::USER_WRITE == io::USER_WRITE
     }
 }
 

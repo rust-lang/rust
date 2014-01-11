@@ -154,7 +154,7 @@ impl ToStr for ParseError {
 }
 
 // Length of each hyphenated group in hex digits
-static UuidGroupLens: [uint, ..5] = [8u, 4u, 4u, 4u, 12u];
+static UUID_GROUP_LENS: [uint, ..5] = [8u, 4u, 4u, 4u, 12u];
 
 /// UUID support
 impl Uuid {
@@ -395,7 +395,7 @@ impl Uuid {
             5 => {
                 // Ensure each group length matches the expected
                 for (i, (&gl, &expected)) in
-                    group_lens.iter().zip(UuidGroupLens.iter()).enumerate() {
+                    group_lens.iter().zip(UUID_GROUP_LENS.iter()).enumerate() {
                     if gl != expected {
                         return Err(ErrorInvalidGroupLength(i, gl, expected))
                     }

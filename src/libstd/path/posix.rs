@@ -45,19 +45,19 @@ pub struct Path {
 }
 
 /// The standard path separator character
-pub static sep: char = '/';
-static sep_byte: u8 = sep as u8;
+pub static SEP: char = '/';
+static SEP_BYTE: u8 = SEP as u8;
 
 /// Returns whether the given byte is a path separator
 #[inline]
 pub fn is_sep_byte(u: &u8) -> bool {
-    *u as char == sep
+    *u as char == SEP
 }
 
 /// Returns whether the given char is a path separator
 #[inline]
 pub fn is_sep(c: char) -> bool {
-    c == sep
+    c == SEP
 }
 
 impl Eq for Path {
@@ -115,7 +115,7 @@ impl GenericPathUnsafe for Path {
     unsafe fn new_unchecked<T: BytesContainer>(path: T) -> Path {
         let path = Path::normalize(path.container_as_bytes());
         assert!(!path.is_empty());
-        let idx = path.rposition_elem(&sep_byte);
+        let idx = path.rposition_elem(&SEP_BYTE);
         Path{ repr: path, sepidx: idx }
     }
 
@@ -124,8 +124,8 @@ impl GenericPathUnsafe for Path {
         match self.sepidx {
             None if bytes!("..") == self.repr => {
                 let mut v = vec::with_capacity(3 + filename.len());
-                v.push_all(dot_dot_static);
-                v.push(sep_byte);
+                v.push_all(DOT_DOT_STATIC);
+                v.push(SEP_BYTE);
                 v.push_all(filename);
                 self.repr = Path::normalize(v);
             }
@@ -135,7 +135,7 @@ impl GenericPathUnsafe for Path {
             Some(idx) if self.repr.slice_from(idx+1) == bytes!("..") => {
                 let mut v = vec::with_capacity(self.repr.len() + 1 + filename.len());
                 v.push_all(self.repr);
-                v.push(sep_byte);
+                v.push(SEP_BYTE);
                 v.push_all(filename);
                 self.repr = Path::normalize(v);
             }
@@ -146,22 +146,22 @@ impl GenericPathUnsafe for Path {
                 self.repr = Path::normalize(v);
             }
         }
-        self.sepidx = self.repr.rposition_elem(&sep_byte);
+        self.sepidx = self.repr.rposition_elem(&SEP_BYTE);
     }
 
     unsafe fn push_unchecked<T: BytesContainer>(&mut self, path: T) {
         let path = path.container_as_bytes();
         if !path.is_empty() {
-            if path[0] == sep_byte {
+            if path[0] == SEP_BYTE {
                 self.repr = Path::normalize(path);
             }  else {
                 let mut v = vec::with_capacity(self.repr.len() + path.len() + 1);
                 v.push_all(self.repr);
-                v.push(sep_byte);
+                v.push(SEP_BYTE);
                 v.push_all(path);
                 self.repr = Path::normalize(v);
             }
-            self.sepidx = self.repr.rposition_elem(&sep_byte);
+            self.sepidx = self.repr.rposition_elem(&SEP_BYTE);
         }
     }
 }
@@ -179,7 +179,7 @@ impl GenericPath for Path {
     fn dirname<'a>(&'a self) -> &'a [u8] {
         match self.sepidx {
             None if bytes!("..") == self.repr => self.repr.as_slice(),
-            None => dot_static,
+            None => DOT_STATIC,
             Some(0) => self.repr.slice_to(1),
             Some(idx) if self.repr.slice_from(idx+1) == bytes!("..") => self.repr.as_slice(),
             Some(idx) => self.repr.slice_to(idx)
@@ -211,7 +211,7 @@ impl GenericPath for Path {
                 } else {
                     self.repr.truncate(idx);
                 }
-                self.sepidx = self.repr.rposition_elem(&sep_byte);
+                self.sepidx = self.repr.rposition_elem(&SEP_BYTE);
                 true
             }
         }
@@ -227,7 +227,7 @@ impl GenericPath for Path {
 
     #[inline]
     fn is_absolute(&self) -> bool {
-        self.repr[0] == sep_byte
+        self.repr[0] == SEP_BYTE
     }
 
     fn is_ancestor_of(&self, other: &Path) -> bool {
@@ -276,14 +276,14 @@ impl GenericPath for Path {
                         comps.extend(&mut ita);
                         break;
                     }
-                    (None, _) => comps.push(dot_dot_static),
+                    (None, _) => comps.push(DOT_DOT_STATIC),
                     (Some(a), Some(b)) if comps.is_empty() && a == b => (),
                     (Some(a), Some(b)) if b == bytes!(".") => comps.push(a),
                     (Some(_), Some(b)) if b == bytes!("..") => return None,
                     (Some(a), Some(_)) => {
-                        comps.push(dot_dot_static);
+                        comps.push(DOT_DOT_STATIC);
                         for _ in itb {
-                            comps.push(dot_dot_static);
+                            comps.push(DOT_DOT_STATIC);
                         }
                         comps.push(a);
                         comps.extend(&mut ita);
@@ -291,7 +291,7 @@ impl GenericPath for Path {
                     }
                 }
             }
-            Some(Path::new(comps.connect_vec(&sep_byte)))
+            Some(Path::new(comps.connect_vec(&SEP_BYTE)))
         }
     }
 
@@ -333,14 +333,14 @@ impl Path {
     fn normalize<V: Vector<u8>+CopyableVector<u8>>(v: V) -> ~[u8] {
         // borrowck is being very picky
         let val = {
-            let is_abs = !v.as_slice().is_empty() && v.as_slice()[0] == sep_byte;
+            let is_abs = !v.as_slice().is_empty() && v.as_slice()[0] == SEP_BYTE;
             let v_ = if is_abs { v.as_slice().slice_from(1) } else { v.as_slice() };
             let comps = normalize_helper(v_, is_abs);
             match comps {
                 None => None,
                 Some(comps) => {
                     if is_abs && comps.is_empty() {
-                        Some(~[sep_byte])
+                        Some(~[SEP_BYTE])
                     } else {
                         let n = if is_abs { comps.len() } else { comps.len() - 1} +
                                 comps.iter().map(|v| v.len()).sum();
@@ -353,7 +353,7 @@ impl Path {
                             }
                         }
                         for comp in it {
-                            v.push(sep_byte);
+                            v.push(SEP_BYTE);
                             v.push_all(comp);
                         }
                         Some(v)
@@ -371,8 +371,8 @@ impl Path {
     /// Does not distinguish between absolute and relative paths, e.g.
     /// /a/b/c and a/b/c yield the same set of components.
     /// A path of "/" yields no components. A path of "." yields one component.
-    pub fn components<'a>(&'a self) -> Components<'a> {
-        let v = if self.repr[0] == sep_byte {
+    pub fn components<'a>(&'a self) -> ComponentIter<'a> {
+        let v = if self.repr[0] == SEP_BYTE {
             self.repr.slice_from(1)
         } else { self.repr.as_slice() };
         let mut ret = v.split(is_sep_byte);
@@ -385,8 +385,8 @@ impl Path {
 
     /// Returns an iterator that yields each component of the path in reverse.
     /// See components() for details.
-    pub fn rev_components<'a>(&'a self) -> RevComponents<'a> {
-        let v = if self.repr[0] == sep_byte {
+    pub fn rev_components<'a>(&'a self) -> RevComponentIter<'a> {
+        let v = if self.repr[0] == SEP_BYTE {
             self.repr.slice_from(1)
         } else { self.repr.as_slice() };
         let mut ret = v.rsplit(is_sep_byte);
@@ -423,7 +423,7 @@ fn normalize_helper<'a>(v: &'a [u8], is_abs: bool) -> Option<~[&'a [u8]]> {
         else if comp == bytes!(".") { changed = true }
         else if comp == bytes!("..") {
             if is_abs && comps.is_empty() { changed = true }
-            else if comps.len() == n_up { comps.push(dot_dot_static); n_up += 1 }
+            else if comps.len() == n_up { comps.push(DOT_DOT_STATIC); n_up += 1 }
             else { comps.pop(); changed = true }
         } else { comps.push(comp) }
     }
@@ -432,7 +432,7 @@ fn normalize_helper<'a>(v: &'a [u8], is_abs: bool) -> Option<~[&'a [u8]]> {
             if v == bytes!(".") {
                 return None;
             }
-            comps.push(dot_static);
+            comps.push(DOT_STATIC);
         }
         Some(comps)
     } else {
@@ -440,8 +440,8 @@ fn normalize_helper<'a>(v: &'a [u8], is_abs: bool) -> Option<~[&'a [u8]]> {
     }
 }
 
-static dot_static: &'static [u8] = bytes!(".");
-static dot_dot_static: &'static [u8] = bytes!("..");
+static DOT_STATIC: &'static [u8] = bytes!(".");
+static DOT_DOT_STATIC: &'static [u8] = bytes!("..");
 
 #[cfg(test)]
 mod tests {

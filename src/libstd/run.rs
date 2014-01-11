@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -263,7 +263,7 @@ impl Process {
      * TerminateProcess(..) will be called.
      */
     pub fn destroy(&mut self) {
-        self.inner.signal(io::process::PleaseExitSignal);
+        self.inner.signal(io::process::PLEASE_EXIT_SIGNAL);
         self.finish();
     }
 
@@ -275,7 +275,7 @@ impl Process {
      * TerminateProcess(..) will be called.
      */
     pub fn force_destroy(&mut self) {
-        self.inner.signal(io::process::MustDieSignal);
+        self.inner.signal(io::process::MUST_DIE_SIGNAL);
         self.finish();
     }
 }

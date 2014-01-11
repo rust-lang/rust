@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -355,7 +355,7 @@ impl<O:DataFlowOperator+Clone+'static> DataFlowContext<O> {
     fn pretty_print_to(@self, wr: ~io::Writer, blk: &ast::Block) {
         let mut ps = pprust::rust_printer_annotated(wr, self.tcx.sess.intr(),
                                                     self as @pprust::PpAnn);
-        pprust::cbox(&mut ps, pprust::indent_unit);
+        pprust::cbox(&mut ps, pprust::INDENT_UNIT);
         pprust::ibox(&mut ps, 0u);
         pprust::print_block(&mut ps, blk);
         pp::eof(&mut ps.s);

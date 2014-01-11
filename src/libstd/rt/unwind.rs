@@ -123,15 +123,15 @@ mod libunwind {
     pub type _Unwind_Word = uintptr_t;
 
     #[cfg(not(target_arch = "arm"))]
-    pub static unwinder_private_data_size: int = 2;
+    pub static UNWINDER_PRIVATE_DATA_SIZE: int = 2;
 
     #[cfg(target_arch = "arm")]
-    pub static unwinder_private_data_size: int = 20;
+    pub static UNWINDER_PRIVATE_DATA_SIZE: int = 20;
 
     pub struct _Unwind_Exception {
         exception_class: _Unwind_Exception_Class,
         exception_cleanup: _Unwind_Exception_Cleanup_Fn,
-        private: [_Unwind_Word, ..unwinder_private_data_size],
+        private: [_Unwind_Word, ..UNWINDER_PRIVATE_DATA_SIZE],
     }
 
     pub enum _Unwind_Context {}
@@ -212,7 +212,7 @@ impl Unwinder {
                 let exception = ~uw::_Unwind_Exception {
                     exception_class: rust_exception_class(),
                     exception_cleanup: exception_cleanup,
-                    private: [0, ..uw::unwinder_private_data_size],
+                    private: [0, ..uw::UNWINDER_PRIVATE_DATA_SIZE],
                 };
                 let error = uw::_Unwind_RaiseException(cast::transmute(exception));
                 rtabort!("Could not unwind stack, error = {}", error as int)

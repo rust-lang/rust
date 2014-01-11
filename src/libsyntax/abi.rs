@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -15,7 +15,7 @@ pub enum Os { OsWin32, OsMacos, OsLinux, OsAndroid, OsFreebsd, }
 
 #[deriving(Eq)]
 pub enum Abi {
-    // NB: This ordering MUST match the AbiDatas array below.
+    // NB: This ordering MUST match the ABI_DATAS array below.
     // (This is ensured by the test indices_are_correct().)
 
     // Single platform ABIs come first (`for_arch()` relies on this)
@@ -36,7 +36,7 @@ pub enum Abi {
 #[deriving(Eq)]
 pub enum Architecture {
     // NB. You cannot change the ordering of these
-    // constants without adjusting IntelBits below.
+    // constants without adjusting INTEL_BITS below.
     // (This is ensured by the test indices_are_correct().)
     X86,
     X86_64,
@@ -44,8 +44,8 @@ pub enum Architecture {
     Mips
 }
 
-static IntelBits: u32 = (1 << (X86 as uint)) | (1 << (X86_64 as uint));
-static ArmBits: u32 = (1 << (Arm as uint));
+static INTEL_BITS: u32 = (1 << (X86 as uint)) | (1 << (X86_64 as uint));
+static ARM_BITS: u32 = (1 << (Arm as uint));
 
 struct AbiData {
     abi: Abi,
@@ -69,12 +69,12 @@ pub struct AbiSet {
     priv bits: u32   // each bit represents one of the abis below
 }
 
-static AbiDatas: &'static [AbiData] = &[
+static ABI_DATAS: &'static [AbiData] = &[
     // Platform-specific ABIs
-    AbiData {abi: Cdecl, name: "cdecl", abi_arch: Archs(IntelBits)},
-    AbiData {abi: Stdcall, name: "stdcall", abi_arch: Archs(IntelBits)},
-    AbiData {abi: Fastcall, name:"fastcall", abi_arch: Archs(IntelBits)},
-    AbiData {abi: Aapcs, name: "aapcs", abi_arch: Archs(ArmBits)},
+    AbiData {abi: Cdecl, name: "cdecl", abi_arch: Archs(INTEL_BITS)},
+    AbiData {abi: Stdcall, name: "stdcall", abi_arch: Archs(INTEL_BITS)},
+    AbiData {abi: Fastcall, name:"fastcall", abi_arch: Archs(INTEL_BITS)},
+    AbiData {abi: Aapcs, name: "aapcs", abi_arch: Archs(ARM_BITS)},
     AbiData {abi: Win64, name: "win64",
              abi_arch: Archs(1 << (X86_64 as uint))},
 
@@ -94,7 +94,7 @@ fn each_abi(op: |abi: Abi| -> bool) -> bool {
      * Iterates through each of the defined ABIs.
      */
 
-    AbiDatas.iter().advance(|abi_data| op(abi_data.abi))
+    ABI_DATAS.iter().advance(|abi_data| op(abi_data.abi))
 }
 
 pub fn lookup(name: &str) -> Option<Abi> {
@@ -117,7 +117,7 @@ pub fn lookup(name: &str) -> Option<Abi> {
 }
 
 pub fn all_names() -> ~[&'static str] {
-    AbiDatas.map(|d| d.name)
+    ABI_DATAS.map(|d| d.name)
 }
 
 impl Abi {
@@ -128,7 +128,7 @@ impl Abi {
 
     #[inline]
     pub fn data(&self) -> &'static AbiData {
-        &AbiDatas[self.index()]
+        &ABI_DATAS[self.index()]
     }
 
     pub fn name(&self) -> &'static str {
@@ -403,16 +403,16 @@ fn abi_to_str_rust() {
 
 #[test]
 fn indices_are_correct() {
-    for (i, abi_data) in AbiDatas.iter().enumerate() {
+    for (i, abi_data) in ABI_DATAS.iter().enumerate() {
         assert_eq!(i, abi_data.abi.index());
     }
 
     let bits = 1 << (X86 as u32);
     let bits = bits | 1 << (X86_64 as u32);
-    assert_eq!(IntelBits, bits);
+    assert_eq!(INTEL_BITS, bits);
 
     let bits = 1 << (Arm as u32);
-    assert_eq!(ArmBits, bits);
+    assert_eq!(ARM_BITS, bits);
 }
 
 #[cfg(test)]

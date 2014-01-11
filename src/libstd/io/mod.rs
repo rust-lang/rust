@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -1390,31 +1390,31 @@ pub struct UnstableFileStat {
 pub type FilePermission = u32;
 
 // Each permission bit
-pub static UserRead: FilePermission     = 0x100;
-pub static UserWrite: FilePermission    = 0x080;
-pub static UserExecute: FilePermission  = 0x040;
-pub static GroupRead: FilePermission    = 0x020;
-pub static GroupWrite: FilePermission   = 0x010;
-pub static GroupExecute: FilePermission = 0x008;
-pub static OtherRead: FilePermission    = 0x004;
-pub static OtherWrite: FilePermission   = 0x002;
-pub static OtherExecute: FilePermission = 0x001;
+pub static USER_READ: FilePermission     = 0x100;
+pub static USER_WRITE: FilePermission    = 0x080;
+pub static USER_EXECUTE: FilePermission  = 0x040;
+pub static GROUP_READ: FilePermission    = 0x020;
+pub static GROUP_WRITE: FilePermission   = 0x010;
+pub static GROUP_EXECUTE: FilePermission = 0x008;
+pub static OTHER_READ: FilePermission    = 0x004;
+pub static OTHER_WRITE: FilePermission   = 0x002;
+pub static OTHER_EXECUTE: FilePermission = 0x001;
 
 // Common combinations of these bits
-pub static UserRWX: FilePermission  = UserRead | UserWrite | UserExecute;
-pub static GroupRWX: FilePermission = GroupRead | GroupWrite | GroupExecute;
-pub static OtherRWX: FilePermission = OtherRead | OtherWrite | OtherExecute;
+pub static USER_RWX: FilePermission   = USER_READ | USER_WRITE | USER_EXECUTE;
+pub static GROUP_RWX: FilePermission  = GROUP_READ | GROUP_WRITE | GROUP_EXECUTE;
+pub static OTHER_RWX: FilePermission  = OTHER_READ | OTHER_WRITE | OTHER_EXECUTE;
 
 /// A set of permissions for user owned files, this is equivalent to 0644 on
 /// unix-like systems.
-pub static UserFile: FilePermission = UserRead | UserWrite | GroupRead | OtherRead;
+pub static USER_FILE: FilePermission =  USER_READ | USER_WRITE | GROUP_READ | OTHER_READ;
 /// A set of permissions for user owned directories, this is equivalent to 0755
 /// on unix-like systems.
-pub static UserDir: FilePermission = UserRWX | GroupRead | GroupExecute |
-                                     OtherRead | OtherExecute;
+pub static USER_DIR: FilePermission = USER_RWX | GROUP_READ | GROUP_EXECUTE |
+                                     OTHER_READ | OTHER_EXECUTE;
 /// A set of permissions for user owned executables, this is equivalent to 0755
 /// on unix-like systems.
-pub static UserExec: FilePermission = UserDir;
+pub static USER_EXEC: FilePermission = USER_DIR;
 
 /// A mask for all possible permission bits
-pub static AllPermissions: FilePermission = 0x1ff;
+pub static ALL_PERMISSIONS: FilePermission = 0x1ff;

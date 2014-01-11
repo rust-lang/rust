@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -22,7 +22,7 @@ use std::io;
 pub fn main() {
     fn mk_file(path: &str, directory: bool) {
         if directory {
-            io::fs::mkdir(&Path::new(path), io::UserRWX);
+            io::fs::mkdir(&Path::new(path), io::USER_RWX);
         } else {
             io::File::create(&Path::new(path));
         }

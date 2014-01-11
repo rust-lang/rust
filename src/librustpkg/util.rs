@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -179,7 +179,7 @@ pub fn compile_input(context: &BuildContext,
     let mut out_dir = target_build_dir(workspace);
     out_dir.push(&pkg_id.path);
     // Make the output directory if it doesn't exist already
-    fs::mkdir_recursive(&out_dir, io::UserRWX);
+    fs::mkdir_recursive(&out_dir, io::USER_RWX);
 
     let binary = os::args()[0].to_owned();
 
@@ -255,7 +255,7 @@ pub fn compile_input(context: &BuildContext,
                 assert!(p.is_dir())
             }
             else {
-                fs::mkdir_recursive(p, io::UserRWX);
+                fs::mkdir_recursive(p, io::USER_RWX);
             }
         }
     }

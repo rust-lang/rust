@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -60,7 +60,7 @@ use ast::{ViewItem_, ViewItemExternMod, ViewItemUse};
 use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
 use ast::Visibility;
 use ast;
-use ast_util::{as_prec, lit_is_str, operator_prec};
+use ast_util::{AS_PREC, lit_is_str, operator_prec};
 use ast_util;
 use codemap::{Span, BytePos, Spanned, spanned, mk_sp};
 use codemap;
@@ -2392,7 +2392,7 @@ impl Parser {
                 }
             }
             None => {
-                if as_prec > min_prec && self.eat_keyword(keywords::As) {
+                if AS_PREC > min_prec && self.eat_keyword(keywords::As) {
                     let rhs = self.parse_ty(true);
                     let _as = self.mk_expr(lhs.span.lo,
                                            rhs.span.hi,
