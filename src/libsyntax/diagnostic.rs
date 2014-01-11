@@ -18,7 +18,7 @@ use std::local_data;
 use extra::term;
 
 static BUG_REPORT_URL: &'static str =
-    "https://github.com/mozilla/rust/wiki/HOWTO-submit-a-Rust-bug-report";
+    "http://static.rust-lang.org/doc/master/complement-bugreport.html";
 
 pub trait Emitter {
     fn emit(&self,
