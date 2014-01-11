@@ -15,33 +15,45 @@ use option::{Option, Some, None};
 use trie::{TrieMap, TrieMapIterator};
 use vec::ImmutableVector;
 
+use gc::collector::TracingFunc;
+
 pub struct PtrMap {
     // a map from the start of each allocation to a descriptor
     // containing information about it.
-    priv map: TrieMap<PtrDescr>,
-    // The state of `reachable` that represents whether an allocations
-    // is reachable, i.e. descr.reachable_flag == this.reachable_state
-    // implies the pointer is reachable.
-    priv reachable_state: bool,
+    priv map: TrieMap<~PtrDescr>,
+    // The state of the REACHABLE bit of `PtrDescr.flags` that
+    // represents whether an allocations is reachable.
+    priv reachable_state: Flag,
 }
+
+type Flag = u8;
+static REACHABLE: Flag = 0b0000_0001;
+static USED: Flag      = 0b0000_0010;
 
 /// This representation could be optimised.
 pub struct PtrDescr {
-    // the top edge of the allocation.
-    high: uint,
+    // arbitrary data associated with this pointer.
+    metadata: uint,
+    // the function to use to perform tracing on this allocation
+    tracer: Option<TracingFunc>,
     // the finaliser to run
     finaliser: Option<fn(*mut ())>,
-    // whether this allocation is reachable (see
-    // PtrMap.reachable_state)
-    reachable_flag: bool,
-    // whether this allocation should be scanned (i.e. whether it
-    // contains rooted references to GC pointers)
-    scan: bool
+    // tiny properties about this allocation.
+    flags: Flag,
 }
 
 impl PtrDescr {
     fn is_used(&self) -> bool {
-        self.high != 0
+        self.flags & USED == USED
+    }
+    fn is_used_and_unreachable(&self, map_reachable_state: Flag) -> bool {
+        let unreachable = !(self.flags & REACHABLE == map_reachable_state);
+        self.is_used() & unreachable
+    }
+
+    fn set_reachable(&mut self, reachability: Flag) {
+        // filter out the reachable bit and then set it explicitly
+        self.flags = (self.flags & !REACHABLE) | (reachability & REACHABLE);
     }
 }
 
@@ -50,20 +62,23 @@ impl PtrMap {
     pub fn new() -> PtrMap {
         PtrMap {
             map: TrieMap::new(),
-            reachable_state: true
+            reachable_state: REACHABLE
         }
     }
 
-    /// Register an allocation starting at `ptr` running for `length`
-    /// bytes. `scan` indicates if the allocation should be scanned,
-    /// and `finaliser` is the "destructor" to run on the region.
-    pub fn insert_alloc(&mut self, ptr: uint, length: uint, scan: bool,
+    /// Register an allocation starting at `ptr`, with an arbitrary
+    /// piece of information `metadata`, a function to trace `tracer`
+    /// and the destructor `finaliser`.
+    pub fn insert_alloc(&mut self,
+                        ptr: uint,
+                        metadata: uint,
+                        tracer: Option<TracingFunc>,
                         finaliser: Option<fn(*mut ())>) {
-        let descr = PtrDescr {
-            high: ptr + length,
-            reachable_flag: self.reachable_state,
-            scan: scan,
-            finaliser: finaliser
+        let descr = ~PtrDescr {
+            flags: self.reachable_state | USED,
+            tracer: tracer,
+            finaliser: finaliser,
+            metadata: metadata
         };
         self.map.insert(ptr, descr);
     }
@@ -73,7 +88,9 @@ impl PtrMap {
     /// (attempting to reuse an live allocation, or an allocation that
     /// wasn't found).
     pub fn reuse_alloc(&mut self,
-                       ptr: uint, length: uint, scan: bool,
+                       ptr: uint,
+                       metadata: uint,
+                       tracer: Option<TracingFunc>,
                        finaliser: Option<fn(*mut ())>) -> bool {
         match self.map.find_mut(&ptr) {
             Some(descr) => {
@@ -81,10 +98,10 @@ impl PtrMap {
                     warn!("attempting to reuse a used allocation")
                     false // don't overwrite
                 } else {
-                    descr.high = ptr + length;
                     descr.finaliser = finaliser;
-                    descr.scan = scan;
-                    descr.reachable_flag = self.reachable_state;
+                    descr.metadata = metadata;
+                    descr.tracer = tracer;
+                    descr.flags = self.reachable_state | USED;
                     true
                 }
             }
@@ -96,12 +113,13 @@ impl PtrMap {
     /// currently marked as unreachable, mark it as reachable and
     /// retrieve the high end & whether it requires scanning;
     /// otherwise, return None.
-    pub fn mark_reachable_scan_info(&mut self, ptr: uint) -> Option<(uint, bool)> {
+    pub fn mark_reachable_scan_info(&mut self, ptr: uint) -> Option<(uint, Option<TracingFunc>)> {
         match self.map.find_mut(&ptr) {
             Some(descr) => {
-                if descr.is_used() && descr.reachable_flag != self.reachable_state {
-                    descr.reachable_flag = self.reachable_state;
-                    Some((descr.high, descr.scan))
+                if descr.is_used_and_unreachable(self.reachable_state) {
+                    // mark it reachable
+                    descr.set_reachable(self.reachable_state);
+                    Some((descr.metadata, descr.tracer))
                 } else {
                     None
                 }
@@ -110,13 +128,21 @@ impl PtrMap {
         }
     }
 
+    /// Set the word of metadata associated with `ptr` to `metadata`.
+    pub fn update_metadata<'a>(&'a mut self, ptr: uint, metadata: uint) -> bool {
+        match self.map.find_mut(&ptr) {
+            Some(ref mut descr) if descr.is_used() => { descr.metadata = metadata; true }
+            _ => false
+        }
+    }
+
     /// Find the unreachable pointers in the map, returing `[(low,
-    /// size, finaliser)]`.
+    /// metadata, finaliser)]`.
     pub fn find_unreachable(&mut self) -> ~[(uint, uint, Option<fn(*mut ())>)] {
         self.map.iter()
             .filter_map(|(low, descr)| {
-                if descr.is_used() && descr.reachable_flag != self.reachable_state {
-                    Some((low, descr.high - low, descr.finaliser))
+                if descr.is_used_and_unreachable(self.reachable_state) {
+                    Some((low, descr.metadata, descr.finaliser))
                 } else {
                     None
                 }
@@ -126,7 +152,7 @@ impl PtrMap {
     /// Mark an allocation as unused.
     pub fn mark_unused(&mut self, ptr: uint) {
         match self.map.find_mut(&ptr) {
-            Some(descr) => { descr.high = 0; descr.finaliser = None }
+            Some(descr) => { descr.finaliser = None; descr.flags &= !USED; }
             None => {}
         }
     }
@@ -135,7 +161,17 @@ impl PtrMap {
     /// everything is considered unreachable at the start of the next
     /// collection.
     pub fn toggle_reachability(&mut self) {
-        self.reachable_state = !self.reachable_state;
+        self.reachable_state ^= REACHABLE;
+    }
+
+    /// Manually mark every pointer as unreachable. Prefer
+    /// `toggle_reachability` when you have the guarantee that all the
+    /// pointers in the map are currently considered reachable.
+    pub fn inefficient_mark_all_unreachable(&mut self) {
+        for (_, descr) in self.map.mut_iter() {
+            // invert to mark as unreachable
+            descr.set_reachable(self.reachable_state ^ REACHABLE)
+        }
     }
 
     /// Deregister the allocation starting at `ptr`.
@@ -143,11 +179,12 @@ impl PtrMap {
         self.map.remove(&ptr);
     }
 
-    /// Iterate over `(low, &'a PtrDescr)`.
-    pub fn iter<'a>(&'a self) -> TrieMapIterator<'a, PtrDescr> {
+    /// Iterate over `(low, &'a ~PtrDescr)`.
+    pub fn iter<'a>(&'a self) -> TrieMapIterator<'a, ~PtrDescr> {
         self.map.iter()
     }
 
     /// The number of pointers registered.
+    #[allow(dead_code)]
     pub fn len(&self) -> uint { self.map.len() }
 }

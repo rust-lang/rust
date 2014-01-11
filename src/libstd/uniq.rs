@@ -12,21 +12,28 @@
 use ops::Drop;
 use libc::{malloc, free, size_t, c_void};
 use gc;
+use gc::Trace;
 use mem;
 use ptr;
 use ptr::RawPtr;
 use unstable::intrinsics::move_val_init;
+
+fn trace<T: Trace>(ptr: *(), _: uint, tracer: &mut gc::GcTracer) {
+    unsafe {
+        (*(ptr as *T)).trace(tracer)
+    }
+}
 
 #[unsafe_no_drop_flag]
 pub struct Uniq<T> {
     priv ptr: *mut T
 }
 
-impl<T> Uniq<T> {
+impl<T: Trace> Uniq<T> {
     pub fn new(value: T) -> Uniq<T> {
         unsafe {
             let ptr = malloc(mem::size_of::<T>() as size_t) as *mut T;
-            gc::register_root_changes([], [(ptr as *T, 1)]);
+            gc::register_root_changes([], [(ptr as *T, 0, trace::<T>)]);
             move_val_init(&mut *ptr, value);
             Uniq { ptr: ptr }
         }
@@ -60,6 +67,16 @@ impl<T> Drop for Uniq<T> {
             unsafe {
                 ptr::read_ptr(self.ptr as *T);
                 drop_no_inner_dtor(self)
+            }
+        }
+    }
+}
+
+impl<T: Trace> Trace for Uniq<T> {
+    fn trace(&self, tracer: &mut gc::GcTracer) {
+        if tracer.pointer_first_trace(self.ptr as *()) {
+            unsafe {
+                (*self.ptr).trace(tracer)
             }
         }
     }
