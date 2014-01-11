@@ -16,6 +16,7 @@ use std::os;
 use std::io;
 use std::io::fs;
 use extra::workcache;
+use install;
 use rustc::driver::{driver, session};
 use extra::getopts::groups::getopts;
 use syntax;
@@ -28,7 +29,6 @@ use syntax::visit::Visitor;
 use syntax::util::small_vector::SmallVector;
 use rustc::back::link::OutputTypeExe;
 use rustc::back::link;
-use CtxMethods;
 use context::{in_target, StopBefore, Link, Assemble, BuildContext};
 use crate_id::CrateId;
 use package_source::PkgSrc;
@@ -526,7 +526,7 @@ impl<'a> Visitor<()> for ViewItemVisitor<'a> {
                                         pkg_id.clone())
                         });
                         let (outputs_disc, inputs_disc) =
-                            self.context.install(
+                            install(self.context,
                                 pkg_src,
                                 &WhatToBuild::new(Inferred,
                                                   JustOne(Path::new(lib_crate_filename))));
