@@ -25,7 +25,6 @@ pub mod build;
 pub mod builder;
 pub mod base;
 pub mod _match;
-pub mod uniq;
 pub mod closure;
 pub mod tvec;
 pub mod meth;

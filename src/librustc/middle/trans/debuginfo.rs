@@ -133,6 +133,7 @@ use middle::trans::adt;
 use middle::trans::base;
 use middle::trans::build;
 use middle::trans::common::*;
+use middle::trans::datum;
 use middle::trans::machine;
 use middle::trans::type_of;
 use middle::trans::type_::Type;
@@ -280,12 +281,11 @@ pub fn create_local_var_metadata(bcx: &Block, local: &ast::Local) {
 
     pat_util::pat_bindings(def_map, local.pat, |_, node_id, span, path_ref| {
         let var_ident = ast_util::path_to_ident(path_ref);
-        let var_type = node_id_type(bcx, node_id);
 
-        let llptr = {
+        let datum = {
             let lllocals = bcx.fcx.lllocals.borrow();
             match lllocals.get().find_copy(&node_id) {
-                Some(v) => v,
+                Some(datum) => datum,
                 None => {
                     bcx.tcx().sess.span_bug(span,
                         format!("No entry in lllocals table for {:?}",
@@ -298,9 +298,9 @@ pub fn create_local_var_metadata(bcx: &Block, local: &ast::Local) {
 
         declare_local(bcx,
                       var_ident,
-                      var_type,
+                      datum.ty,
                       scope_metadata,
-                      DirectVariable { alloca: llptr },
+                      DirectVariable { alloca: datum.val },
                       LocalVariable,
                       span);
     })
@@ -382,33 +382,19 @@ pub fn create_captured_var_metadata(bcx: &Block,
 pub fn create_match_binding_metadata(bcx: &Block,
                                      variable_ident: ast::Ident,
                                      node_id: ast::NodeId,
-                                     variable_type: ty::t,
-                                     span: Span) {
+                                     span: Span,
+                                     datum: datum::Datum) {
     if fn_should_be_ignored(bcx.fcx) {
         return;
     }
-
-    let llptr = {
-        let lllocals = bcx.fcx.lllocals.borrow();
-        match lllocals.get().find_copy(&node_id) {
-            Some(v) => v,
-            None => {
-                bcx.tcx()
-                   .sess
-                   .span_bug(span,
-                             format!("No entry in lllocals table for {:?}",
-                                     node_id));
-            }
-        }
-    };
 
     let scope_metadata = scope_metadata(bcx.fcx, node_id, span);
 
     declare_local(bcx,
                   variable_ident,
-                  variable_type,
+                  datum.ty,
                   scope_metadata,
-                  DirectVariable { alloca: llptr },
+                  DirectVariable { alloca: datum.val },
                   LocalVariable,
                   span);
 }
@@ -506,7 +492,7 @@ pub fn create_argument_metadata(bcx: &Block, arg: &ast::Arg) {
     let scope_metadata = bcx.fcx.debug_context.get_ref(cx, arg.pat.span).fn_metadata;
 
     pat_util::pat_bindings(def_map, arg.pat, |_, node_id, span, path_ref| {
-        let llptr = {
+        let llarg = {
             let llargs = bcx.fcx.llargs.borrow();
             match llargs.get().find_copy(&node_id) {
                 Some(v) => v,
@@ -518,12 +504,11 @@ pub fn create_argument_metadata(bcx: &Block, arg: &ast::Arg) {
             }
         };
 
-        if unsafe { llvm::LLVMIsAAllocaInst(llptr) } == ptr::null() {
+        if unsafe { llvm::LLVMIsAAllocaInst(llarg.val) } == ptr::null() {
             cx.sess.span_bug(span, "debuginfo::create_argument_metadata() - \
                                     Referenced variable location is not an alloca!");
         }
 
-        let argument_type = node_id_type(bcx, node_id);
         let argument_ident = ast_util::path_to_ident(path_ref);
 
         let argument_index = {
@@ -535,9 +520,9 @@ pub fn create_argument_metadata(bcx: &Block, arg: &ast::Arg) {
 
         declare_local(bcx,
                       argument_ident,
-                      argument_type,
+                      llarg.ty,
                       scope_metadata,
-                      DirectVariable { alloca: llptr },
+                      DirectVariable { alloca: llarg.val },
                       ArgumentVariable(argument_index),
                       span);
     })
@@ -2115,7 +2100,7 @@ fn type_metadata(cx: &CrateContext,
         ty::ty_float(_) => {
             basic_type_metadata(cx, t)
         },
-        ty::ty_estr(ref vstore) => {
+        ty::ty_str(ref vstore) => {
             let i8_t = ty::mk_i8();
             match *vstore {
                 ty::vstore_fixed(len) => {
@@ -2140,7 +2125,7 @@ fn type_metadata(cx: &CrateContext,
         ty::ty_box(typ) => {
             create_pointer_to_box_metadata(cx, t, typ)
         },
-        ty::ty_evec(ref mt, ref vstore) => {
+        ty::ty_vec(ref mt, ref vstore) => {
             match *vstore {
                 ty::vstore_fixed(len) => {
                     fixed_vec_metadata(cx, mt.ty, len, usage_site_span)
@@ -2185,9 +2170,6 @@ fn type_metadata(cx: &CrateContext,
         },
         ty::ty_tup(ref elements) => {
             prepare_tuple_metadata(cx, t, *elements, usage_site_span).finalize(cx)
-        },
-        ty::ty_opaque_box => {
-            create_pointer_to_box_metadata(cx, t, ty::mk_nil())
         }
         _ => cx.sess.bug(format!("debuginfo: unexpected type in type_metadata: {:?}", sty))
     };

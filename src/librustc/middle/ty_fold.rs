@@ -152,9 +152,8 @@ pub fn super_fold_sty<T:TypeFolder>(this: &mut T,
         ty::ty_unboxed_vec(ref tm) => {
             ty::ty_unboxed_vec(this.fold_mt(tm))
         }
-        ty::ty_evec(ref tm, vst) => {
-            ty::ty_evec(this.fold_mt(tm),
-                        this.fold_vstore(vst))
+        ty::ty_vec(ref tm, vst) => {
+            ty::ty_vec(this.fold_mt(tm), this.fold_vstore(vst))
         }
         ty::ty_enum(tid, ref substs) => {
             ty::ty_enum(tid, this.fold_substs(substs))
@@ -184,14 +183,14 @@ pub fn super_fold_sty<T:TypeFolder>(this: &mut T,
             ty::ty_struct(did,
                           this.fold_substs(substs))
         }
-        ty::ty_estr(vst) => {
-            ty::ty_estr(this.fold_vstore(vst))
+        ty::ty_str(vst) => {
+            ty::ty_str(this.fold_vstore(vst))
         }
         ty::ty_nil | ty::ty_bot | ty::ty_bool | ty::ty_char |
         ty::ty_int(_) | ty::ty_uint(_) |
         ty::ty_float(_) | ty::ty_type |
         ty::ty_opaque_closure_ptr(_) |
-        ty::ty_err | ty::ty_opaque_box | ty::ty_infer(_) |
+        ty::ty_err | ty::ty_infer(_) |
         ty::ty_param(..) | ty::ty_self(_) => {
             (*sty).clone()
         }

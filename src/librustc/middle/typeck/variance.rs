@@ -625,11 +625,11 @@ impl<'a> ConstraintContext<'a> {
                 self.add_constraints_from_mt(mt, variance);
             }
 
-            ty::ty_estr(vstore) => {
+            ty::ty_str(vstore) => {
                 self.add_constraints_from_vstore(vstore, variance);
             }
 
-            ty::ty_evec(ref mt, vstore) => {
+            ty::ty_vec(ref mt, vstore) => {
                 self.add_constraints_from_vstore(vstore, variance);
                 self.add_constraints_from_mt(mt, variance);
             }
@@ -693,8 +693,7 @@ impl<'a> ConstraintContext<'a> {
             }
 
             ty::ty_infer(..) | ty::ty_err | ty::ty_type |
-            ty::ty_opaque_box | ty::ty_opaque_closure_ptr(..) |
-            ty::ty_unboxed_vec(..) => {
+            ty::ty_opaque_closure_ptr(..) | ty::ty_unboxed_vec(..) => {
                 self.tcx().sess.bug(
                     format!("Unexpected type encountered in \
                             variance inference: {}",

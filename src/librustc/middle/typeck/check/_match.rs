@@ -602,7 +602,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
         let (elt_type, region_var) = match *structure_of(fcx,
                                                          pat.span,
                                                          expected) {
-          ty::ty_evec(mt, vstore) => {
+          ty::ty_vec(mt, vstore) => {
             let region_var = match vstore {
                 ty::vstore_slice(r) => r,
                 ty::vstore_box | ty::vstore_uniq | ty::vstore_fixed(_) => {
@@ -643,7 +643,7 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
         }
         match slice {
             Some(slice_pat) => {
-                let slice_ty = ty::mk_evec(tcx,
+                let slice_ty = ty::mk_vec(tcx,
                     ty::mt {ty: elt_type.ty, mutbl: elt_type.mutbl},
                     ty::vstore_slice(region_var)
                 );

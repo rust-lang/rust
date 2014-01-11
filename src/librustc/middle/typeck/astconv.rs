@@ -293,8 +293,8 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
         ty::mt {ty: ast_ty_to_ty(this, rscope, mt.ty), mutbl: mt.mutbl}
     }
 
-    // Handle @, ~, and & being able to mean estrs and evecs.
-    // If a_seq_ty is a str or a vec, make it an estr/evec.
+    // Handle @, ~, and & being able to mean strs and vecs.
+    // If a_seq_ty is a str or a vec, make it an str/vec.
     // Also handle first-class trait types.
     fn mk_pointer<AC:AstConv,
                   RS:RegionScope>(
@@ -314,7 +314,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                     mt = ty::mt { ty: mt.ty, mutbl: a_seq_ty.mutbl };
                 }
                 debug!("&[]: vst={:?}", vst);
-                return ty::mk_evec(tcx, mt, vst);
+                return ty::mk_vec(tcx, mt, vst);
             }
             ast::TyPath(ref path, ref bounds, id) => {
                 // Note that the "bounds must be empty if path is not a trait"
@@ -324,7 +324,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                 match def_map.get().find(&id) {
                     Some(&ast::DefPrimTy(ast::TyStr)) if a_seq_ty.mutbl == ast::MutImmutable => {
                         check_path_args(tcx, path, NO_TPS | NO_REGIONS);
-                        return ty::mk_estr(tcx, vst);
+                        return ty::mk_str(tcx, vst);
                     }
                     Some(&ast::DefTrait(trait_def_id)) => {
                         let result = ast_path_to_trait_ref(
@@ -415,7 +415,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
       ast::TyVec(ty) => {
         tcx.sess.span_err(ast_ty.span, "bare `[]` is not a type");
         // return /something/ so they can at least get more errors
-        ty::mk_evec(tcx, ast_ty_to_mt(this, rscope, ty), ty::vstore_uniq)
+        ty::mk_vec(tcx, ast_ty_to_mt(this, rscope, ty), ty::vstore_uniq)
       }
       ast::TyPtr(ref mt) => {
         ty::mk_ptr(tcx, ast_mt_to_mt(this, rscope, mt))
@@ -519,7 +519,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
                 tcx.sess.span_err(ast_ty.span,
                                   "bare `str` is not a type");
                 // return /something/ so they can at least get more errors
-                ty::mk_estr(tcx, ty::vstore_uniq)
+                ty::mk_str(tcx, ty::vstore_uniq)
               }
             }
           }
@@ -552,11 +552,11 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
           Ok(ref r) => {
             match *r {
               const_eval::const_int(i) =>
-                ty::mk_evec(tcx, ast_ty_to_mt(this, rscope, ty),
-                            ty::vstore_fixed(i as uint)),
+                ty::mk_vec(tcx, ast_ty_to_mt(this, rscope, ty),
+                           ty::vstore_fixed(i as uint)),
               const_eval::const_uint(i) =>
-                ty::mk_evec(tcx, ast_ty_to_mt(this, rscope, ty),
-                            ty::vstore_fixed(i as uint)),
+                ty::mk_vec(tcx, ast_ty_to_mt(this, rscope, ty),
+                           ty::vstore_fixed(i as uint)),
               _ => {
                 tcx.sess.span_fatal(
                     ast_ty.span, "expected constant expr for vector length");
