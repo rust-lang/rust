@@ -382,7 +382,7 @@ extern "rust-intrinsic" {
 
     /// Returns `true` if a type contains a type marked with #[managed]
     #[cfg(not(stage0))]
-    pub fn owns_new_managed<T>() -> bool;
+    pub fn reaches_new_managed<T>() -> bool;
 
     pub fn visit_tydesc(td: *TyDesc, tv: &mut TyVisitor);
 

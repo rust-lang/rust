@@ -32,7 +32,7 @@ use rt::task::{Task, GcUninit, GcExists, GcBorrowed};
 use util::replace;
 use vec::ImmutableVector;
 
-use unstable::intrinsics::{owns_new_managed, move_val_init, needs_drop};
+use unstable::intrinsics::{reaches_new_managed, move_val_init, needs_drop};
 
 use gc::collector::GarbageCollector;
 
@@ -65,7 +65,7 @@ fn pointer_run_dtor<T>(p: *mut ()) {
 #[inline]
 pub unsafe fn register_root_changes<T>(removals: &[*T],
                                        additions: &[(*T, uint)]) {
-    if owns_new_managed::<T>() {
+    if reaches_new_managed::<T>() {
         register_root_changes_always::<T>(removals, additions)
     }
 }
@@ -213,7 +213,7 @@ impl<T: 'static> Gc<T> {
             // FIXME: we currently count ~Gc<int> as owning managed,
             // but it shouldn't (~, or equivalent) should root the Gc
             // itself.
-            ptr = if owns_new_managed::<T>() {
+            ptr = if reaches_new_managed::<T>() {
                 gc.alloc_gc(size, finaliser)
             } else {
                 gc.alloc_gc_no_scan(size, finaliser)
