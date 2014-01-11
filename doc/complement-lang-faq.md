@@ -236,7 +236,7 @@ They start small (ideally in the hundreds of bytes) and expand dynamically by ca
 
 * Requiring explicit bounds means that the compiler can type-check the code at the point where the type-parametric item is *defined*, rather than delaying to when its type parameters are instantiated.  You know that *any* set of type parameters fulfilling the bounds listed in the API will compile. It's an enforced minimal level of documentation, and results in very clean error messages.
 
-* Scoping of methods is also a problem.  C++ needs [Koenig (argument dependent) lookup](http://en.wikipedia.org/wiki/Argument-dependent_name_lookup), which comes with its own host of problems. Explicit bounds avoid this issue: traits are explicitly imported and then used as bounds on type parameters, so there is a clear mapping from the method to its implementation (via the trait and the instantiated type).  
+* Scoping of methods is also a problem.  C++ needs [Koenig (argument dependent) lookup](http://en.wikipedia.org/wiki/Argument-dependent_name_lookup), which comes with its own host of problems. Explicit bounds avoid this issue: traits are explicitly imported and then used as bounds on type parameters, so there is a clear mapping from the method to its implementation (via the trait and the instantiated type).
 
   * Related to the above point: since a parameter explicitly names its trait bounds, a single type is able to implement traits whose sets of method names overlap, cleanly and unambiguously.
 
