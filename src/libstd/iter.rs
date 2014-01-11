@@ -402,7 +402,7 @@ pub trait Iterator<A> {
     ///             .filter(|&x| x % 2 == 0)
     ///             .inspect(|&x| debug!("{} made it through", x))
     ///             .sum();
-    /// println(sum.to_str());
+    /// println!("{}", sum);
     /// ```
     #[inline]
     fn inspect<'r>(self, f: 'r |&A|) -> Inspect<'r, A, Self> {

@@ -983,7 +983,7 @@ mod test {
     #[test] fn t1 () {
         let Env {string_reader} =
             setup(@"/* my source file */ \
-                    fn main() { io::println(~\"zebra\"); }\n");
+                    fn main() { println!(\"zebra\"); }\n");
         let id = str_to_ident("fn");
         let tok1 = string_reader.next_token();
         let tok2 = TokenAndSpan{

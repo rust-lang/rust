@@ -15,7 +15,7 @@ struct S<T> {
 #[unsafe_destructor]
 impl<T> ::std::ops::Drop for S<T> {
     fn drop(&mut self) {
-        println("bye");
+        println!("bye");
     }
 }
 

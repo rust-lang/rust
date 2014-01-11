@@ -111,7 +111,7 @@ priv fn cmd_to_str(cmd: ~[~str]) -> ~str {
 
 fn query(cmd: ~[~str], sb: TcpSocketBuf) -> Result {
   let cmd = cmd_to_str(cmd);
-  //io::println(cmd);
+  //println!("{}", cmd);
   sb.write_str(cmd);
   let res = parse_response(@sb as @io::Reader);
   res

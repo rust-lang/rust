@@ -14,7 +14,7 @@ struct Foo {
 
 impl Drop for Foo {
     fn drop(&mut self) {
-        println("bye");
+        println!("bye");
     }
 }
 

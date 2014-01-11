@@ -12,13 +12,14 @@
 
 macro_rules! print_hd_tl (
     ($field_hd:ident, $($field_tl:ident),+) => ({
-        print(stringify!($field)); //~ ERROR unknown macro variable
-        print("::[");
+        print!("{}", stringify!($field)); //~ ERROR unknown macro variable
+        print!("::[");
         $(
-            print(stringify!($field_tl));
-            print(", ");
+            print!("{}", stringify!($field_tl));
+            print!(", ");
         )+
-        print("]\n");
+        // FIXME: #9970
+        print!("{}", "]\n");
     })
 )
 

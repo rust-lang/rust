@@ -1905,7 +1905,7 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, crate: &Crate)
             }
         }
 
-        println("metadata stats:");
+        println!("metadata stats:");
         println!("    inline bytes: {}", ecx.stats.inline_bytes.get());
         println!(" attribute bytes: {}", ecx.stats.attr_bytes.get());
         println!("       dep bytes: {}", ecx.stats.dep_bytes.get());

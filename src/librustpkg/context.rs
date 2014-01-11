@@ -269,43 +269,43 @@ pub fn flags_forbidden_for_cmd(flags: &RustcFlags,
     };
 
     if flags.linker.is_some() && cmd != BuildCmd && cmd != InstallCmd {
-        println("The --linker option can only be used with the build or install commands.");
+        println!("The --linker option can only be used with the build or install commands.");
         return true;
     }
     if flags.link_args.is_some() && cmd != BuildCmd && cmd != InstallCmd {
-        println("The --link-args option can only be used with the build or install commands.");
+        println!("The --link-args option can only be used with the build or install commands.");
         return true;
     }
 
     if !cfgs.is_empty() && cmd != BuildCmd && cmd != InstallCmd && cmd != TestCmd {
-        println("The --cfg option can only be used with the build, test, or install commands.");
+        println!("The --cfg option can only be used with the build, test, or install commands.");
         return true;
     }
 
     if user_supplied_opt_level && cmd != BuildCmd && cmd != InstallCmd {
-        println("The -O and --opt-level options can only be used with the build \
+        println!("The -O and --opt-level options can only be used with the build \
                     or install commands.");
         return true;
     }
 
     if flags.save_temps  && cmd != BuildCmd && cmd != InstallCmd {
-        println("The --save-temps option can only be used with the build \
+        println!("The --save-temps option can only be used with the build \
                     or install commands.");
         return true;
     }
 
     if flags.target.is_some()  && cmd != BuildCmd && cmd != InstallCmd {
-        println("The --target option can only be used with the build \
+        println!("The --target option can only be used with the build \
                     or install commands.");
         return true;
     }
     if flags.target_cpu.is_some()  && cmd != BuildCmd && cmd != InstallCmd {
-        println("The --target-cpu option can only be used with the build \
+        println!("The --target-cpu option can only be used with the build \
                     or install commands.");
         return true;
     }
     if flags.experimental_features.is_some() && cmd != BuildCmd && cmd != InstallCmd {
-        println("The -Z option can only be used with the build or install commands.");
+        println!("The -Z option can only be used with the build or install commands.");
         return true;
     }
 

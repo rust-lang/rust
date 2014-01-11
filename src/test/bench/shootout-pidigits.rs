@@ -80,7 +80,7 @@ fn pidigits(n: int) {
 
     let m = n % 10;
     if m != 0 {
-        for _ in range(m, 10) {print(" ");}
+        for _ in range(m, 10) { print!(" "); }
         print!("\t:{}\n", n);
     }
 }

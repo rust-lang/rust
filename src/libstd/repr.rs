@@ -634,6 +634,7 @@ fn test_repr() {
     use prelude::*;
     use str;
     use str::Str;
+    use io::stdio::println;
     use util::swap;
     use char::is_alphabetic;
 

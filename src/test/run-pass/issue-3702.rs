@@ -16,7 +16,7 @@ pub fn main() {
   }
 
   fn to_string(t: @Text) {
-    println(t.to_str());
+    println!("{}", t.to_str());
   }
 
 }

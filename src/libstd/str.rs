@@ -1591,8 +1591,8 @@ pub trait StrSlice<'a> {
     /// assert_eq!(d.len(), 23);
     ///
     /// // the two strings *look* the same
-    /// println(c);
-    /// println(d);
+    /// println!("{}", c);
+    /// println!("{}", d);
     /// ```
     fn char_len(&self) -> uint;
 

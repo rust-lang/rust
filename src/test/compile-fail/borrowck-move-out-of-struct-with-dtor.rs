@@ -1,6 +1,6 @@
 struct S {f:~str}
 impl Drop for S {
-    fn drop(&mut self) { println(self.f); }
+    fn drop(&mut self) { println!("{}", self.f); }
 }
 
 fn move_in_match() {

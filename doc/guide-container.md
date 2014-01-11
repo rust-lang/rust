@@ -218,12 +218,12 @@ let xs = [2u, 3, 5, 7, 11, 13, 17];
 
 // print out all the elements in the vector
 for x in xs.iter() {
-    println(x.to_str())
+    println!("{}", *x)
 }
 
 // print out all but the first 3 elements in the vector
 for x in xs.iter().skip(3) {
-    println(x.to_str())
+    println!("{}", *x)
 }
 ~~~
 

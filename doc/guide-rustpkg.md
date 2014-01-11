@@ -143,7 +143,7 @@ Next, let's add a source file:
 #[license = "MIT"];
 
 pub fn world() {
-    println("Hello, world.");
+    println!("Hello, world.");
 }
 ~~~
 
