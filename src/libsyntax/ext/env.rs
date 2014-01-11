@@ -43,7 +43,7 @@ pub fn expand_env(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 
     let (var, _var_str_style) = expr_to_str(cx, exprs[0], "expected string literal");
     let msg = match exprs.len() {
-        1 => format!("Environment variable {} not defined", var).to_managed(),
+        1 => format!("environment variable `{}` not defined", var).to_managed(),
         2 => {
             let (s, _style) = expr_to_str(cx, exprs[1], "expected string literal");
             s
