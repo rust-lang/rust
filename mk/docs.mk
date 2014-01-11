@@ -72,7 +72,7 @@ endif
 ifneq ($(NO_DOCS),1)
 
 DOCS += doc/rust.html
-doc/rust.html: rust.md doc/full-toc.inc $(HTML_DEPS) 
+doc/rust.html: rust.md doc/full-toc.inc $(HTML_DEPS)
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --include-in-header=doc/full-toc.inc --output=$@
@@ -220,6 +220,12 @@ doc/guide-rustpkg.html: $(S)doc/guide-rustpkg.md $(HTML_DEPS)
 
 DOCS += doc/guide-pointers.html
 doc/guide-pointers.html: $(S)doc/guide-pointers.md $(HTML_DEPS)
+	@$(call E, pandoc: $@)
+	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
+	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
+
+DOCS += doc/guide-runtime.html
+doc/guide-runtime.html: $(S)doc/guide-runtime.md $(HTML_DEPS)
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
