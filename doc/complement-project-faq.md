@@ -15,7 +15,7 @@ Existing languages at this level of abstraction and efficiency are unsatisfactor
 # What are some non-goals?
 
 * To employ any particularly cutting-edge technologies. Old, established techniques are better.
-* To prize expressiveness, minimalism or elegance above other goals. These are desirable but subordinate goals. 
+* To prize expressiveness, minimalism or elegance above other goals. These are desirable but subordinate goals.
 * To cover the "systems language" part all the way down to "writing an OS kernel".
 * To cover the complete feature-set of C++, or any other language. It should provide majority-case features.
 * To be 100% static, 100% safe, 100% reflective, or too dogmatic in any other sense. Trade-offs exist.
