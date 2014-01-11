@@ -22,7 +22,7 @@ TEST_CRATES = $(TEST_TARGET_CRATES) $(TEST_HOST_CRATES)
 # Markdown files under doc/ that should have their code extracted and run
 DOC_TEST_NAMES = tutorial guide-ffi guide-macros guide-lifetimes \
                  guide-tasks guide-conditions guide-container guide-pointers \
-                 complement-cheatsheet \
+                 complement-cheatsheet guide-runtime \
                  rust
 
 ######################################################################
