@@ -163,7 +163,8 @@ impl Context {
 pub fn in_target(sysroot: &Path) -> bool {
     debug!("Checking whether {} is in target", sysroot.display());
     let mut p = sysroot.dir_path();
-    p.set_filename(rustlibdir());
+    p.pop();
+    p.push(rustlibdir());
     p.is_dir()
 }
 
