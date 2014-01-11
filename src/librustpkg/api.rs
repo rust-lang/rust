@@ -25,7 +25,7 @@ pub use source_control::{safe_git_clone, git_clone_url};
 use std::run;
 use extra::arc::{Arc,RWArc};
 use extra::workcache;
-use extra::workcache::{Database, Logger, FreshnessMap};
+use extra::workcache::{Database, FreshnessMap};
 use extra::treemap::TreeMap;
 
 // A little sad -- duplicated from rustc::back::*
@@ -70,14 +70,13 @@ pub fn new_workcache_context(p: &Path) -> workcache::Context {
     let db_file = p.join("rustpkg_db.json"); // ??? probably wrong
     debug!("Workcache database file: {}", db_file.display());
     let db = RWArc::new(Database::new(db_file));
-    let lg = RWArc::new(Logger::new());
     let cfg = Arc::new(TreeMap::new());
     let mut freshness: FreshnessMap = TreeMap::new();
     // Set up freshness functions for every type of dependency rustpkg
     // knows about
     freshness.insert(~"file", file_is_fresh);
     freshness.insert(~"binary", binary_is_fresh);
-    workcache::Context::new_with_freshness(db, lg, cfg, Arc::new(freshness))
+    workcache::Context::new_with_freshness(db, cfg, Arc::new(freshness))
 }
 
 pub fn build_lib(sysroot: Path, root: Path, name: ~str, version: Version,
