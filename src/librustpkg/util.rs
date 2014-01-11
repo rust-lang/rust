@@ -459,7 +459,7 @@ impl<'a> Visitor<()> for ViewItemVisitor<'a> {
                 };
                 debug!("Finding and installing... {}", lib_name);
                 // Check standard Rust library path first
-                let whatever = system_library(&self.context.sysroot(), lib_name);
+                let whatever = system_library(&self.context.sysroot_to_use(), lib_name);
                 debug!("system library returned {:?}", whatever);
                 match whatever {
                     Some(ref installed_path) => {
