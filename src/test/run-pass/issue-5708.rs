@@ -24,7 +24,7 @@ trait Inner {
 }
 
 impl Inner for int {
-    fn print(&self) { print(format!("Inner: {}\n", *self)); }
+    fn print(&self) { print!("Inner: {}\n", *self); }
 }
 
 struct Outer<'a> {

@@ -123,7 +123,7 @@ impl Results {
 }
 
 fn write_header(header: &str) {
-    println(header);
+    println!("{}", header);
 }
 
 fn write_row(label: &str, value: f64) {

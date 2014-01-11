@@ -53,5 +53,5 @@ pub fn path_div() -> ~str { ~";" }
 
 pub fn logv(config: &config, s: ~str) {
     debug!("{}", s);
-    if config.verbose { println(s); }
+    if config.verbose { println!("{}", s); }
 }

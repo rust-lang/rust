@@ -17,5 +17,5 @@ impl S {
 
 fn main() {
     let x = S { x: 1 };
-    println(x.foo().to_str());
+    println!("{}", x.foo());
 }

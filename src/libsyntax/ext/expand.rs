@@ -1283,7 +1283,7 @@ mod test {
 
     //fn expand_and_resolve(crate_str: @str) -> ast::crate {
         //let expanded_ast = expand_crate_str(crate_str);
-        // println(format!("expanded: {:?}\n",expanded_ast));
+        // println!("expanded: {:?}\n",expanded_ast);
         //mtwt_resolve_crate(expanded_ast)
     //}
     //fn expand_and_resolve_and_pretty_print (crate_str : @str) -> ~str {
@@ -1396,7 +1396,7 @@ mod test {
                     let varref_marks = mtwt_marksof(varref.segments[0].identifier.ctxt,
                                                     invalid_name);
                     if (!(varref_name==binding_name)){
-                        println("uh oh, should match but doesn't:");
+                        println!("uh oh, should match but doesn't:");
                         println!("varref: {:?}",varref);
                         println!("binding: {:?}", bindings[binding_idx]);
                         ast_util::display_sctable(get_sctable());
@@ -1458,7 +1458,7 @@ foo_module!()
                                           && (@"xx" == (ident_to_str(&p.segments[0].identifier)))
                                      }).enumerate() {
             if (mtwt_resolve(v.segments[0].identifier) != resolved_binding) {
-                println("uh oh, xx binding didn't match xx varref:");
+                println!("uh oh, xx binding didn't match xx varref:");
                 println!("this is xx varref \\# {:?}",idx);
                 println!("binding: {:?}",cxbind);
                 println!("resolves to: {:?}",resolved_binding);
@@ -1466,7 +1466,7 @@ foo_module!()
                 println!("resolves to: {:?}",
                          mtwt_resolve(v.segments[0].identifier));
                 let table = get_sctable();
-                println("SC table:");
+                println!("SC table:");
 
                 {
                     let table = table.table.borrow();

@@ -11,5 +11,5 @@
 fn main() {
     let x = ~"Hello!";
     let _y = x;
-    println(x); //~ ERROR use of moved value
+    println!("{}", x); //~ ERROR use of moved value
 }

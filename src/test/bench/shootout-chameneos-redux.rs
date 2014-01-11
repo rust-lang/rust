@@ -20,8 +20,8 @@ fn print_complements() {
     let all = [Blue, Red, Yellow];
     for aa in all.iter() {
         for bb in all.iter() {
-            println(show_color(*aa) + " + " + show_color(*bb) +
-                    " -> " + show_color(transform(*aa, *bb)));
+            println!("{} + {} -> {}", show_color(*aa), show_color(*bb),
+                show_color(transform(*aa, *bb)));
         }
     }
 }
@@ -187,15 +187,15 @@ fn rendezvous(nn: uint, set: ~[color]) {
     }
 
     // print each color in the set
-    println(show_color_list(set));
+    println!("{}", show_color_list(set));
 
     // print each creature's stats
     for rep in report.iter() {
-        println(*rep);
+        println!("{}", *rep);
     }
 
     // print the total number of creatures met
-    println(show_number(creatures_met));
+    println!("{}", show_number(creatures_met));
 }
 
 fn main() {
@@ -211,10 +211,10 @@ fn main() {
     let nn = from_str::<uint>(args[1]).unwrap();
 
     print_complements();
-    println("");
+    println!("");
 
     rendezvous(nn, ~[Blue, Red, Yellow]);
-    println("");
+    println!("");
 
     rendezvous(nn,
         ~[Blue, Red, Yellow, Red, Yellow, Blue, Red, Yellow, Red, Blue]);

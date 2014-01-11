@@ -24,8 +24,8 @@ impl<'self> Serializable<str> for &'self str {
 }
 
 fn main() {
-    println("hello");
+    println!("hello");
     let x = ~"foo";
     let y = x;
-    println(y);
+    println!("{}", y);
 }

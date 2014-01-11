@@ -2668,7 +2668,7 @@ An example:
 let mut i = 0;
 
 while i < 10 {
-    println("hello\n");
+    println!("hello");
     i = i + 1;
 }
 ~~~~
@@ -3267,7 +3267,7 @@ impl Printable for int {
 }
 
 fn print(a: @Printable) {
-   println(a.to_string());
+   println!("{}", a.to_string());
 }
 
 fn main() {

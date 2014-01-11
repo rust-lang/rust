@@ -162,7 +162,7 @@ fn assignment(mut a: u64, b: u64, c: f64) {
 
 #[no_split_stack]
 fn function_call(x: u64, y: u64, z: f64) {
-    print("Hi!")
+    std::io::stdio::print("Hi!")
 }
 
 #[no_split_stack]

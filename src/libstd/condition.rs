@@ -51,8 +51,8 @@ my_error::cond.trap(|raised_int| {
     // condition, then the above handler will be invoked (so long as there's no
     // other nested handler).
 
-    println(my_error::cond.raise(3)); // prints "three"
-    println(my_error::cond.raise(4)); // prints "oh well"
+    println!("{}", my_error::cond.raise(3)); // prints "three"
+    println!("{}", my_error::cond.raise(4)); // prints "oh well"
 
 })
 

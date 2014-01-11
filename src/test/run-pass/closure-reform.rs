@@ -2,9 +2,10 @@
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 
 use std::cast;
+use std::io::stdio::println;
 
 fn call_it(f: proc(~str) -> ~str) {
-    println(f(~"Fred"))
+    println!("{}", f(~"Fred"))
 }
 
 fn call_a_thunk(f: ||) {
@@ -57,9 +58,9 @@ pub fn main() {
 
     // Closures
 
-    call_a_thunk(|| println("Hello world!"));
+    call_a_thunk(|| println!("Hello world!"));
 
-    call_this(|s| println(s));
+    call_this(|s| println!("{}", s));
 
     call_that(|x, y| *x + *y);
 

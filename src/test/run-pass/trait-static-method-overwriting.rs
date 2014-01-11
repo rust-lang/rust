@@ -21,7 +21,7 @@ mod base {
 
     impl ::base::HasNew<Foo> for Foo {
         fn new() -> Foo {
-            println("Foo");
+            println!("Foo");
             Foo { dummy: () }
         }
     }
@@ -32,7 +32,7 @@ mod base {
 
     impl ::base::HasNew<Bar> for Bar {
         fn new() -> Bar {
-            println("Bar");
+            println!("Bar");
             Bar { dummy: () }
         }
     }

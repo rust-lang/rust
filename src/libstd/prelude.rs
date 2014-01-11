@@ -40,7 +40,6 @@ pub use result::{Result, Ok, Err};
 // Reexported functions
 pub use from_str::from_str;
 pub use iter::range;
-pub use io::stdio::{print, println};
 
 // Reexported types and traits
 
