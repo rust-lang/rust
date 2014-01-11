@@ -872,7 +872,10 @@ impl Repr for LoanPath {
     fn repr(&self, tcx: ty::ctxt) -> ~str {
         match self {
             &LpVar(id) => {
-                format!("$({:?})", id)
+                format!("$({})",
+                        ast_map::node_id_to_str(tcx.items,
+                                                id,
+                                                token::get_ident_interner()))
             }
 
             &LpExtend(lp, _, LpDeref(_)) => {
