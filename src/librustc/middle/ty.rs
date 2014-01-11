@@ -151,14 +151,6 @@ pub enum TraitStore {
     RegionTraitStore(Region),   // &Trait
 }
 
-// XXX: This should probably go away at some point. Maybe after destructors
-// do?
-#[deriving(Clone, Eq, Encodable, Decodable)]
-pub enum SelfMode {
-    ByCopy,
-    ByRef,
-}
-
 pub struct field_ty {
     name: Name,
     id: DefId,
@@ -635,11 +627,11 @@ pub enum sty {
     ty_int(ast::IntTy),
     ty_uint(ast::UintTy),
     ty_float(ast::FloatTy),
-    ty_estr(vstore),
+    ty_str(vstore),
     ty_enum(DefId, substs),
     ty_box(t),
     ty_uniq(mt),
-    ty_evec(mt, vstore),
+    ty_vec(mt, vstore),
     ty_ptr(mt),
     ty_rptr(Region, mt),
     ty_bare_fn(BareFnTy),
@@ -659,8 +651,7 @@ pub enum sty {
 
     // "Fake" types, used for trans purposes
     ty_type, // type_desc*
-    ty_opaque_box, // used by monomorphizer to represent any @ box
-    ty_opaque_closure_ptr(Sigil), // ptr to env for ||, @fn, ~fn
+    ty_opaque_closure_ptr(Sigil), // ptr to env for || and proc
     ty_unboxed_vec(mt),
 }
 
@@ -1070,16 +1061,15 @@ pub fn mk_t(cx: ctxt, st: sty) -> t {
         return f;
     }
     match &st {
-      &ty_estr(vstore_slice(r)) => {
+      &ty_str(vstore_slice(r)) => {
         flags |= rflags(r);
       }
-      &ty_evec(ref mt, vstore_slice(r)) => {
+      &ty_vec(ref mt, vstore_slice(r)) => {
         flags |= rflags(r);
         flags |= get(mt.ty).flags;
       }
       &ty_nil | &ty_bool | &ty_char | &ty_int(_) | &ty_float(_) | &ty_uint(_) |
-      &ty_estr(_) | &ty_type | &ty_opaque_closure_ptr(_) |
-      &ty_opaque_box => (),
+      &ty_str(_) | &ty_type | &ty_opaque_closure_ptr(_) => {}
       // You might think that we could just return ty_err for
       // any type containing ty_err as a component, and get
       // rid of the has_ty_err flag -- likewise for ty_bot (with
@@ -1103,7 +1093,7 @@ pub fn mk_t(cx: ctxt, st: sty) -> t {
           }
       }
       &ty_box(ref tt) => flags |= get(*tt).flags,
-      &ty_uniq(ref m) | &ty_evec(ref m, _) | &ty_ptr(ref m) |
+      &ty_uniq(ref m) | &ty_vec(ref m, _) | &ty_ptr(ref m) |
       &ty_unboxed_vec(ref m) => {
         flags |= get(m.ty).flags;
       }
@@ -1234,8 +1224,8 @@ pub fn mk_mach_float(tm: ast::FloatTy) -> t {
 #[inline]
 pub fn mk_char() -> t { mk_prim_t(&primitives::TY_CHAR) }
 
-pub fn mk_estr(cx: ctxt, t: vstore) -> t {
-    mk_t(cx, ty_estr(t))
+pub fn mk_str(cx: ctxt, t: vstore) -> t {
+    mk_t(cx, ty_str(t))
 }
 
 pub fn mk_enum(cx: ctxt, did: ast::DefId, substs: substs) -> t {
@@ -1278,8 +1268,8 @@ pub fn mk_nil_ptr(cx: ctxt) -> t {
     mk_ptr(cx, mt {ty: mk_nil(), mutbl: ast::MutImmutable})
 }
 
-pub fn mk_evec(cx: ctxt, tm: mt, t: vstore) -> t {
-    mk_t(cx, ty_evec(tm, t))
+pub fn mk_vec(cx: ctxt, tm: mt, t: vstore) -> t {
+    mk_t(cx, ty_vec(tm, t))
 }
 
 pub fn mk_unboxed_vec(cx: ctxt, tm: mt) -> t {
@@ -1354,8 +1344,6 @@ pub fn mk_opaque_closure_ptr(cx: ctxt, sigil: ast::Sigil) -> t {
     mk_t(cx, ty_opaque_closure_ptr(sigil))
 }
 
-pub fn mk_opaque_box(cx: ctxt) -> t { mk_t(cx, ty_opaque_box) }
-
 pub fn walk_ty(ty: t, f: |t|) {
     maybe_walk_ty(ty, |t| { f(t); true });
 }
@@ -1366,13 +1354,10 @@ pub fn maybe_walk_ty(ty: t, f: |t| -> bool) {
     }
     match get(ty).sty {
       ty_nil | ty_bot | ty_bool | ty_char | ty_int(_) | ty_uint(_) | ty_float(_) |
-      ty_estr(_) | ty_type | ty_opaque_box | ty_self(_) |
-      ty_opaque_closure_ptr(_) | ty_infer(_) | ty_param(_) | ty_err => {
-      }
-      ty_box(ref ty) => {
-        maybe_walk_ty(*ty, f);
-      }
-      ty_evec(ref tm, _) | ty_unboxed_vec(ref tm) | ty_ptr(ref tm) |
+      ty_str(_) | ty_type | ty_self(_) |
+      ty_opaque_closure_ptr(_) | ty_infer(_) | ty_param(_) | ty_err => {}
+      ty_box(ref ty) => maybe_walk_ty(*ty, f),
+      ty_vec(ref tm, _) | ty_unboxed_vec(ref tm) | ty_ptr(ref tm) |
       ty_rptr(_, ref tm) | ty_uniq(ref tm) => {
         maybe_walk_ty(tm.ty, f);
       }
@@ -1520,8 +1505,8 @@ pub fn type_is_self(ty: t) -> bool {
 pub fn type_is_structural(ty: t) -> bool {
     match get(ty).sty {
       ty_struct(..) | ty_tup(_) | ty_enum(..) | ty_closure(_) | ty_trait(..) |
-      ty_evec(_, vstore_fixed(_)) | ty_estr(vstore_fixed(_)) |
-      ty_evec(_, vstore_slice(_)) | ty_estr(vstore_slice(_))
+      ty_vec(_, vstore_fixed(_)) | ty_str(vstore_fixed(_)) |
+      ty_vec(_, vstore_slice(_)) | ty_str(vstore_slice(_))
       => true,
       _ => false
     }
@@ -1529,7 +1514,7 @@ pub fn type_is_structural(ty: t) -> bool {
 
 pub fn type_is_sequence(ty: t) -> bool {
     match get(ty).sty {
-      ty_estr(_) | ty_evec(_, _) => true,
+      ty_str(_) | ty_vec(_, _) => true,
       _ => false
     }
 }
@@ -1543,15 +1528,15 @@ pub fn type_is_simd(cx: ctxt, ty: t) -> bool {
 
 pub fn type_is_str(ty: t) -> bool {
     match get(ty).sty {
-      ty_estr(_) => true,
+      ty_str(_) => true,
       _ => false
     }
 }
 
 pub fn sequence_element_type(cx: ctxt, ty: t) -> t {
     match get(ty).sty {
-      ty_estr(_) => return mk_mach_uint(ast::TyU8),
-      ty_evec(mt, _) | ty_unboxed_vec(mt) => return mt.ty,
+      ty_str(_) => return mk_mach_uint(ast::TyU8),
+      ty_vec(mt, _) | ty_unboxed_vec(mt) => return mt.ty,
       _ => cx.sess.bug("sequence_element_type called on non-sequence value"),
     }
 }
@@ -1592,8 +1577,7 @@ pub fn type_is_box(ty: t) -> bool {
 
 pub fn type_is_boxed(ty: t) -> bool {
     match get(ty).sty {
-      ty_box(_) | ty_opaque_box |
-      ty_evec(_, vstore_box) | ty_estr(vstore_box) => true,
+      ty_box(_) | ty_vec(_, vstore_box) | ty_str(vstore_box) => true,
       _ => false
     }
 }
@@ -1607,7 +1591,7 @@ pub fn type_is_region_ptr(ty: t) -> bool {
 
 pub fn type_is_slice(ty: t) -> bool {
     match get(ty).sty {
-      ty_evec(_, vstore_slice(_)) | ty_estr(vstore_slice(_)) => true,
+      ty_vec(_, vstore_slice(_)) | ty_str(vstore_slice(_)) => true,
       _ => return false
     }
 }
@@ -1628,8 +1612,8 @@ pub fn type_is_unsafe_ptr(ty: t) -> bool {
 
 pub fn type_is_vec(ty: t) -> bool {
     return match get(ty).sty {
-          ty_evec(_, _) | ty_unboxed_vec(_) => true,
-          ty_estr(_) => true,
+          ty_vec(_, _) | ty_unboxed_vec(_) => true,
+          ty_str(_) => true,
           _ => false
         };
 }
@@ -1637,8 +1621,8 @@ pub fn type_is_vec(ty: t) -> bool {
 pub fn type_is_unique(ty: t) -> bool {
     match get(ty).sty {
         ty_uniq(_) |
-        ty_evec(_, vstore_uniq) |
-        ty_estr(vstore_uniq) |
+        ty_vec(_, vstore_uniq) |
+        ty_str(vstore_uniq) |
         ty_opaque_closure_ptr(ast::OwnedSigil) => true,
         _ => return false
     }
@@ -1699,7 +1683,7 @@ fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
     maybe_walk_ty(ty, |ty| {
         let old_encountered_box = encountered_box;
         let result = match get(ty).sty {
-          ty_box(_) | ty_opaque_box => {
+          ty_box(_) => {
             encountered_box = true;
             true
           }
@@ -1719,10 +1703,10 @@ fn type_needs_unwind_cleanup_(cx: ctxt, ty: t,
             !needs_unwind_cleanup
           }
           ty_uniq(_) |
-          ty_estr(vstore_uniq) |
-          ty_estr(vstore_box) |
-          ty_evec(_, vstore_uniq) |
-          ty_evec(_, vstore_box)
+          ty_str(vstore_uniq) |
+          ty_str(vstore_box) |
+          ty_vec(_, vstore_uniq) |
+          ty_vec(_, vstore_box)
           => {
             // Once we're inside a box, the annihilator will find
             // it and destroy it.
@@ -2031,7 +2015,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 TC::None
             }
 
-            ty_estr(vstore_uniq) => {
+            ty_str(vstore_uniq) => {
                 TC::OwnsOwned
             }
 
@@ -2060,32 +2044,32 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 tc_mt(cx, mt, cache).owned_pointer()
             }
 
-            ty_evec(mt, vstore_uniq) => {
+            ty_vec(mt, vstore_uniq) => {
                 tc_mt(cx, mt, cache).owned_pointer()
             }
 
-            ty_evec(mt, vstore_box) => {
+            ty_vec(mt, vstore_box) => {
                 tc_mt(cx, mt, cache).managed_pointer()
             }
 
-            ty_evec(ref mt, vstore_slice(r)) => {
+            ty_vec(ref mt, vstore_slice(r)) => {
                 tc_ty(cx, mt.ty, cache).reference(
                     borrowed_contents(r, mt.mutbl))
             }
 
-            ty_evec(mt, vstore_fixed(_)) => {
+            ty_vec(mt, vstore_fixed(_)) => {
                 tc_mt(cx, mt, cache)
             }
 
-            ty_estr(vstore_box) => {
+            ty_str(vstore_box) => {
                 TC::Managed
             }
 
-            ty_estr(vstore_slice(r)) => {
+            ty_str(vstore_slice(r)) => {
                 borrowed_contents(r, ast::MutImmutable)
             }
 
-            ty_estr(vstore_fixed(_)) => {
+            ty_str(vstore_fixed(_)) => {
                 TC::None
             }
 
@@ -2145,8 +2129,6 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 // times.
                 TC::All
             }
-
-            ty_opaque_box => TC::Managed,
             ty_unboxed_vec(mt) => TC::InteriorUnsized | tc_mt(cx, mt, cache),
             ty_opaque_closure_ptr(sigil) => {
                 match sigil {
@@ -2324,7 +2306,7 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
             ty_int(_) |
             ty_uint(_) |
             ty_float(_) |
-            ty_estr(_) |
+            ty_str(_) |
             ty_bare_fn(_) |
             ty_closure(_) |
             ty_infer(_) |
@@ -2332,9 +2314,8 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
             ty_param(_) |
             ty_self(_) |
             ty_type |
-            ty_opaque_box |
             ty_opaque_closure_ptr(_) |
-            ty_evec(_, _) |
+            ty_vec(_, _) |
             ty_unboxed_vec(_) => {
                 false
             }
@@ -2431,7 +2412,7 @@ pub fn type_structurally_contains(cx: ctxt, ty: t, test: |x: &sty| -> bool)
         }
         return false;
       }
-      ty_evec(ref mt, vstore_fixed(_)) => {
+      ty_vec(ref mt, vstore_fixed(_)) => {
         return type_structurally_contains(cx, mt.ty, test);
       }
       _ => return false
@@ -2442,8 +2423,8 @@ pub fn type_structurally_contains_uniques(cx: ctxt, ty: t) -> bool {
     return type_structurally_contains(cx, ty, |sty| {
         match *sty {
           ty_uniq(_) |
-          ty_evec(_, vstore_uniq) |
-          ty_estr(vstore_uniq) => true,
+          ty_vec(_, vstore_uniq) |
+          ty_str(vstore_uniq) => true,
           _ => false,
         }
     });
@@ -2513,9 +2494,9 @@ pub fn type_is_pod(cx: ctxt, ty: t) -> bool {
       ty_type | ty_ptr(_) | ty_bare_fn(_) => result = true,
       // Boxed types
       ty_box(_) | ty_uniq(_) | ty_closure(_) |
-      ty_estr(vstore_uniq) | ty_estr(vstore_box) |
-      ty_evec(_, vstore_uniq) | ty_evec(_, vstore_box) |
-      ty_trait(_, _, _, _, _) | ty_rptr(_,_) | ty_opaque_box => result = false,
+      ty_str(vstore_uniq) | ty_str(vstore_box) |
+      ty_vec(_, vstore_uniq) | ty_vec(_, vstore_box) |
+      ty_trait(_, _, _, _, _) | ty_rptr(_,_) => result = false,
       // Structural types
       ty_enum(did, ref substs) => {
         let variants = enum_variants(cx, did);
@@ -2532,8 +2513,8 @@ pub fn type_is_pod(cx: ctxt, ty: t) -> bool {
       ty_tup(ref elts) => {
         for elt in elts.iter() { if !type_is_pod(cx, *elt) { result = false; } }
       }
-      ty_estr(vstore_fixed(_)) => result = true,
-      ty_evec(ref mt, vstore_fixed(_)) | ty_unboxed_vec(ref mt) => {
+      ty_str(vstore_fixed(_)) => result = true,
+      ty_vec(ref mt, vstore_fixed(_)) | ty_unboxed_vec(ref mt) => {
         result = type_is_pod(cx, mt.ty);
       }
       ty_param(_) => result = false,
@@ -2547,7 +2528,7 @@ pub fn type_is_pod(cx: ctxt, ty: t) -> bool {
         });
       }
 
-      ty_estr(vstore_slice(..)) | ty_evec(_, vstore_slice(..)) => {
+      ty_str(vstore_slice(..)) | ty_vec(_, vstore_slice(..)) => {
         result = false;
       }
 
@@ -2652,8 +2633,8 @@ pub fn index(t: t) -> Option<mt> {
 
 pub fn index_sty(sty: &sty) -> Option<mt> {
     match *sty {
-      ty_evec(mt, _) => Some(mt),
-      ty_estr(_) => Some(mt {ty: mk_u8(), mutbl: ast::MutImmutable}),
+      ty_vec(mt, _) => Some(mt),
+      ty_str(_) => Some(mt {ty: mk_u8(), mutbl: ast::MutImmutable}),
       _ => None
     }
 }
@@ -2765,8 +2746,8 @@ pub fn is_fn_ty(fty: t) -> bool {
 
 pub fn ty_vstore(ty: t) -> vstore {
     match get(ty).sty {
-        ty_evec(_, vstore) => vstore,
-        ty_estr(vstore) => vstore,
+        ty_vec(_, vstore) => vstore,
+        ty_str(vstore) => vstore,
         ref s => fail!("ty_vstore() called on invalid sty: {:?}", s)
     }
 }
@@ -2776,8 +2757,8 @@ pub fn ty_region(tcx: ctxt,
                  ty: t) -> Region {
     match get(ty).sty {
         ty_rptr(r, _) => r,
-        ty_evec(_, vstore_slice(r)) => r,
-        ty_estr(vstore_slice(r)) => r,
+        ty_vec(_, vstore_slice(r)) => r,
+        ty_str(vstore_slice(r)) => r,
         ref s => {
             tcx.sess.span_bug(
                 span,
@@ -2962,12 +2943,12 @@ pub fn adjust_ty(cx: ctxt,
                   r: Region, m: ast::Mutability,
                   ty: ty::t) -> ty::t {
         match get(ty).sty {
-            ty_evec(mt, _) => {
-                ty::mk_evec(cx, mt {ty: mt.ty, mutbl: m}, vstore_slice(r))
+            ty_vec(mt, _) => {
+                ty::mk_vec(cx, mt {ty: mt.ty, mutbl: m}, vstore_slice(r))
             }
 
-            ty_estr(_) => {
-                ty::mk_estr(cx, vstore_slice(r))
+            ty_str(_) => {
+                ty::mk_str(cx, vstore_slice(r))
             }
 
             ref s => {
@@ -3344,15 +3325,15 @@ pub fn occurs_check(tcx: ctxt, sp: Span, vid: TyVid, rt: t) {
 pub fn ty_sort_str(cx: ctxt, t: t) -> ~str {
     match get(t).sty {
       ty_nil | ty_bot | ty_bool | ty_char | ty_int(_) |
-      ty_uint(_) | ty_float(_) | ty_estr(_) |
-      ty_type | ty_opaque_box | ty_opaque_closure_ptr(_) => {
+      ty_uint(_) | ty_float(_) | ty_str(_) |
+      ty_type | ty_opaque_closure_ptr(_) => {
         ::util::ppaux::ty_to_str(cx, t)
       }
 
       ty_enum(id, _) => format!("enum {}", item_path_str(cx, id)),
       ty_box(_) => ~"@-ptr",
       ty_uniq(_) => ~"~-ptr",
-      ty_evec(_, _) => ~"vector",
+      ty_vec(_, _) => ~"vector",
       ty_unboxed_vec(_) => ~"unboxed vector",
       ty_ptr(_) => ~"*-ptr",
       ty_rptr(_, _) => ~"&-ptr",
@@ -4814,7 +4795,7 @@ pub fn hash_crate_independent(tcx: ctxt, t: t, local_hash: @str) -> u64 {
                 hash.input([6]);
                 iter(&mut hash, &f);
             }
-            ty_estr(v) => {
+            ty_str(v) => {
                 hash.input([7]);
                 vstore(&mut hash, v);
             }
@@ -4829,7 +4810,7 @@ pub fn hash_crate_independent(tcx: ctxt, t: t, local_hash: @str) -> u64 {
                 hash.input([10]);
                 mt(&mut hash, m);
             }
-            ty_evec(m, v) => {
+            ty_vec(m, v) => {
                 hash.input([11]);
                 mt(&mut hash, m);
                 vstore(&mut hash, v);
@@ -4890,13 +4871,12 @@ pub fn hash_crate_independent(tcx: ctxt, t: t, local_hash: @str) -> u64 {
             ty_infer(_) => unreachable!(),
             ty_err => hash.input([23]),
             ty_type => hash.input([24]),
-            ty_opaque_box => hash.input([25]),
             ty_opaque_closure_ptr(s) => {
-                hash.input([26]);
+                hash.input([25]);
                 iter(&mut hash, &s);
             }
             ty_unboxed_vec(m) => {
-                hash.input([27]);
+                hash.input([26]);
                 mt(&mut hash, m);
             }
         }

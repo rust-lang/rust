@@ -17,8 +17,8 @@ use middle::ty::{mt, t, param_ty};
 use middle::ty::{ReFree, ReScope, ReInfer, ReStatic, Region,
                  ReEmpty};
 use middle::ty::{ty_bool, ty_char, ty_bot, ty_box, ty_struct, ty_enum};
-use middle::ty::{ty_err, ty_estr, ty_evec, ty_float, ty_bare_fn, ty_closure};
-use middle::ty::{ty_nil, ty_opaque_box, ty_opaque_closure_ptr, ty_param};
+use middle::ty::{ty_err, ty_str, ty_vec, ty_float, ty_bare_fn, ty_closure};
+use middle::ty::{ty_nil, ty_opaque_closure_ptr, ty_param};
 use middle::ty::{ty_ptr, ty_rptr, ty_self, ty_tup, ty_type, ty_uniq};
 use middle::ty::{ty_trait, ty_int};
 use middle::ty::{ty_uint, ty_unboxed_vec, ty_infer};
@@ -501,11 +501,10 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
         format!("{}{}{}{}{}", trait_store_to_str(cx, s), mutability_to_str(mutbl), ty,
                            bound_sep, bound_str)
       }
-      ty_evec(ref mt, vs) => {
+      ty_vec(ref mt, vs) => {
         vstore_ty_to_str(cx, mt, vs)
       }
-      ty_estr(vs) => format!("{}{}", vstore_to_str(cx, vs), "str"),
-      ty_opaque_box => ~"@?",
+      ty_str(vs) => format!("{}{}", vstore_to_str(cx, vs), "str"),
       ty_opaque_closure_ptr(ast::BorrowedSigil) => ~"&closure",
       ty_opaque_closure_ptr(ast::ManagedSigil) => ~"@closure",
       ty_opaque_closure_ptr(ast::OwnedSigil) => ~"~closure",

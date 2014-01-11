@@ -677,8 +677,8 @@ fn constrain_index(rcx: &mut Rcx,
 
     let r_index_expr = ty::ReScope(index_expr.id);
     match ty::get(indexed_ty).sty {
-        ty::ty_estr(ty::vstore_slice(r_ptr)) |
-        ty::ty_evec(_, ty::vstore_slice(r_ptr)) => {
+        ty::ty_str(ty::vstore_slice(r_ptr)) |
+        ty::ty_vec(_, ty::vstore_slice(r_ptr)) => {
             rcx.fcx.mk_subr(true, infer::IndexSlice(index_expr.span),
                             r_index_expr, r_ptr);
         }
@@ -1215,22 +1215,22 @@ pub mod guarantor {
     fn pointer_categorize(ty: ty::t) -> PointerCategorization {
         match ty::get(ty).sty {
             ty::ty_rptr(r, _) |
-            ty::ty_evec(_, ty::vstore_slice(r)) |
+            ty::ty_vec(_, ty::vstore_slice(r)) |
             ty::ty_trait(_, _, ty::RegionTraitStore(r), _, _) |
-            ty::ty_estr(ty::vstore_slice(r)) => {
+            ty::ty_str(ty::vstore_slice(r)) => {
                 BorrowedPointer(r)
             }
             ty::ty_uniq(..) |
-            ty::ty_estr(ty::vstore_uniq) |
+            ty::ty_str(ty::vstore_uniq) |
             ty::ty_trait(_, _, ty::UniqTraitStore, _, _) |
-            ty::ty_evec(_, ty::vstore_uniq) => {
+            ty::ty_vec(_, ty::vstore_uniq) => {
                 OwnedPointer
             }
             ty::ty_box(..) |
             ty::ty_ptr(..) |
-            ty::ty_evec(_, ty::vstore_box) |
+            ty::ty_vec(_, ty::vstore_box) |
             ty::ty_trait(_, _, ty::BoxTraitStore, _, _) |
-            ty::ty_estr(ty::vstore_box) => {
+            ty::ty_str(ty::vstore_box) => {
                 OtherPointer
             }
             ty::ty_closure(ref closure_ty) => {

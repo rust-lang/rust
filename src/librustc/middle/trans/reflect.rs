@@ -60,7 +60,7 @@ impl<'a> Reflector<'a> {
         // will kick us off fast isel. (Issue #4352.)
         let bcx = self.bcx;
         let str_vstore = ty::vstore_slice(ty::ReStatic);
-        let str_ty = ty::mk_estr(bcx.tcx(), str_vstore);
+        let str_ty = ty::mk_str(bcx.tcx(), str_vstore);
         let scratch = scratch_datum(bcx, str_ty, "", false);
         let len = C_uint(bcx.ccx(), s.len());
         let c_str = PointerCast(bcx, C_cstr(bcx.ccx(), s), Type::i8p());
@@ -176,11 +176,11 @@ impl<'a> Reflector<'a> {
               self.visit("vec", values)
           }
 
-          ty::ty_estr(vst) => {
+          ty::ty_str(vst) => {
               let (name, extra) = self.vstore_name_and_extra(t, vst);
               self.visit(~"estr_" + name, extra)
           }
-          ty::ty_evec(ref mt, vst) => {
+          ty::ty_vec(ref mt, vst) => {
               let (name, extra) = self.vstore_name_and_extra(t, vst);
               let extra = extra + self.c_mt(mt);
               if "uniq" == name && ty::type_contents(bcx.tcx(), t).owns_managed() {
@@ -295,7 +295,7 @@ impl<'a> Reflector<'a> {
                                                                sub_path,
                                                                "get_disr");
 
-                let llfdecl = decl_internal_rust_fn(ccx, [opaqueptrty], ty::mk_u64(), sym);
+                let llfdecl = decl_internal_rust_fn(ccx, None, [opaqueptrty], ty::mk_u64(), sym);
                 let fcx = new_fn_ctxt(ccx,
                                       ~[],
                                       llfdecl,
@@ -362,7 +362,6 @@ impl<'a> Reflector<'a> {
           }
           ty::ty_self(..) => self.leaf("self"),
           ty::ty_type => self.leaf("type"),
-          ty::ty_opaque_box => self.leaf("opaque_box"),
           ty::ty_opaque_closure_ptr(ck) => {
               let ckval = ast_sigil_constant(ck);
               let extra = ~[self.c_uint(ckval)];

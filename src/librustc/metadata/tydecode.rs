@@ -354,11 +354,11 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
       'V' => {
         let mt = parse_mt(st, |x,y| conv(x,y));
         let v = parse_vstore(st, |x,y| conv(x,y));
-        return ty::mk_evec(st.tcx, mt, v);
+        return ty::mk_vec(st.tcx, mt, v);
       }
       'v' => {
         let v = parse_vstore(st, |x,y| conv(x,y));
-        return ty::mk_estr(st.tcx, v);
+        return ty::mk_str(st.tcx, v);
       }
       'T' => {
         assert_eq!(next(st), '[');
@@ -410,7 +410,6 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
         let inner = parse_ty(st, |x,y| conv(x,y));
         inner
       }
-      'B' => ty::mk_opaque_box(st.tcx),
       'a' => {
           assert_eq!(next(st), '[');
           let did = parse_def(st, NominalType, |x,y| conv(x,y));

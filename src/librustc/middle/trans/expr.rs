@@ -287,9 +287,9 @@ pub fn trans_to_datum<'a>(bcx: &'a Block<'a>, expr: &ast::Expr)
 
         // this type may have a different region/mutability than the
         // real one, but it will have the same runtime representation
-        let slice_ty = ty::mk_evec(tcx,
-                                   ty::mt { ty: unit_ty, mutbl: ast::MutImmutable },
-                                   ty::vstore_slice(ty::ReStatic));
+        let slice_ty = ty::mk_vec(tcx,
+                                  ty::mt { ty: unit_ty, mutbl: ast::MutImmutable },
+                                  ty::vstore_slice(ty::ReStatic));
 
         let scratch = scratch_datum(bcx, slice_ty, "__adjust", false);
 
@@ -1172,7 +1172,7 @@ pub fn trans_local_var(bcx: &Block, def: ast::Def) -> Datum {
             take_local(bcx, lllocals.get(), nid)
         }
         ast::DefSelf(nid, _) => {
-            let self_info: ValSelfData = match bcx.fcx.llself.get() {
+            let self_info = match bcx.fcx.llself.get() {
                 Some(self_info) => self_info,
                 None => {
                     bcx.sess().bug(format!(
@@ -1181,14 +1181,10 @@ pub fn trans_local_var(bcx: &Block, def: ast::Def) -> Datum {
                 }
             };
 
-            debug!("def_self() reference, self_info.t={}",
-                   self_info.t.repr(bcx.tcx()));
+            debug!("def_self() reference, self_info.ty={}",
+                   self_info.ty.repr(bcx.tcx()));
 
-            Datum {
-                val: self_info.v,
-                ty: self_info.t,
-                mode: ByRef(ZeroMem)
-            }
+            self_info
         }
         _ => {
             bcx.sess().unimpl(format!(
@@ -1197,24 +1193,18 @@ pub fn trans_local_var(bcx: &Block, def: ast::Def) -> Datum {
     };
 
     fn take_local(bcx: &Block,
-                  table: &HashMap<ast::NodeId, ValueRef>,
-                  nid: ast::NodeId)
-                  -> Datum {
-        let v = match table.find(&nid) {
+                  table: &HashMap<ast::NodeId, Datum>,
+                  nid: ast::NodeId) -> Datum {
+        let datum = match table.find(&nid) {
             Some(&v) => v,
             None => {
                 bcx.sess().bug(format!(
-                    "trans_local_var: no llval for local/arg {:?} found", nid));
+                    "trans_local_var: no datum for local/arg {:?} found", nid));
             }
         };
-        let ty = node_id_type(bcx, nid);
         debug!("take_local(nid={:?}, v={}, ty={})",
-               nid, bcx.val_to_str(v), bcx.ty_to_str(ty));
-        Datum {
-            val: v,
-            ty: ty,
-            mode: ByRef(ZeroMem)
-        }
+               nid, bcx.val_to_str(datum.val), bcx.ty_to_str(datum.ty));
+        datum
     }
 }
 

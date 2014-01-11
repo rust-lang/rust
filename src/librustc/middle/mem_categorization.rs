@@ -157,14 +157,14 @@ pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
     match ty::get(t).sty {
         ty::ty_uniq(_) |
         ty::ty_trait(_, _, ty::UniqTraitStore, _, _) |
-        ty::ty_evec(_, ty::vstore_uniq) |
-        ty::ty_estr(ty::vstore_uniq) |
+        ty::ty_vec(_, ty::vstore_uniq) |
+        ty::ty_str(ty::vstore_uniq) |
         ty::ty_closure(ty::ClosureTy {sigil: ast::OwnedSigil, ..}) => {
             Some(deref_ptr(uniq_ptr))
         }
 
         ty::ty_rptr(r, mt) |
-        ty::ty_evec(mt, ty::vstore_slice(r)) => {
+        ty::ty_vec(mt, ty::vstore_slice(r)) => {
             Some(deref_ptr(region_ptr(mt.mutbl, r)))
         }
 
@@ -172,16 +172,16 @@ pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
             Some(deref_ptr(region_ptr(m, r)))
         }
 
-        ty::ty_estr(ty::vstore_slice(r)) |
+        ty::ty_str(ty::vstore_slice(r)) |
         ty::ty_closure(ty::ClosureTy {sigil: ast::BorrowedSigil,
                                       region: r, ..}) => {
             Some(deref_ptr(region_ptr(ast::MutImmutable, r)))
         }
 
         ty::ty_box(_) |
-        ty::ty_evec(_, ty::vstore_box) |
+        ty::ty_vec(_, ty::vstore_box) |
         ty::ty_trait(_, _, ty::BoxTraitStore, _, _) |
-        ty::ty_estr(ty::vstore_box) => {
+        ty::ty_str(ty::vstore_box) => {
             Some(deref_ptr(gc_ptr))
         }
 
@@ -194,8 +194,8 @@ pub fn opt_deref_kind(t: ty::t) -> Option<deref_kind> {
             Some(deref_interior(InteriorField(PositionalField(0))))
         }
 
-        ty::ty_evec(_, ty::vstore_fixed(_)) |
-        ty::ty_estr(ty::vstore_fixed(_)) => {
+        ty::ty_vec(_, ty::vstore_fixed(_)) |
+        ty::ty_str(ty::vstore_fixed(_)) => {
             Some(deref_interior(InteriorElement(element_kind(t))))
         }
 
@@ -1247,8 +1247,8 @@ impl Repr for InteriorKind {
 
 fn element_kind(t: ty::t) -> ElementKind {
     match ty::get(t).sty {
-        ty::ty_evec(..) => VecElement,
-        ty::ty_estr(..) => StrElement,
+        ty::ty_vec(..) => VecElement,
+        ty::ty_str(..) => StrElement,
         _ => OtherElement
     }
 }
