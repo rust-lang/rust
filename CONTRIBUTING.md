@@ -2,7 +2,7 @@
 
 If you're just reporting a bug, please see:
 
-https://github.com/mozilla/rust/wiki/HOWTO-submit-a-Rust-bug-report
+http://static.rust-lang.org/doc/master/complement-bugreport.html
 
 ## Pull request procedure
 
