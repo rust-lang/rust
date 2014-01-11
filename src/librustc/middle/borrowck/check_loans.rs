@@ -24,8 +24,10 @@ use middle::moves;
 use middle::ty;
 use syntax::ast::{MutImmutable, MutMutable};
 use syntax::ast;
+use syntax::ast_map;
 use syntax::ast_util;
 use syntax::codemap::Span;
+use syntax::parse::token;
 use syntax::visit::Visitor;
 use syntax::visit;
 use util::ppaux::Repr;
@@ -77,6 +79,7 @@ pub fn check_loans(bccx: &BorrowckCtxt,
     clcx.visit_block(body, ());
 }
 
+#[deriving(Eq)]
 enum MoveError {
     MoveOk,
     MoveWhileBorrowed(/*loan*/@LoanPath, /*loan*/Span)
@@ -125,6 +128,9 @@ impl<'a> CheckLoanCtxt<'a> {
         //! given `loan_path`
 
         self.each_in_scope_loan(scope_id, |loan| {
+            debug!("each_in_scope_restriction found loan: {:?}",
+                   loan.repr(self.tcx()));
+
             let mut ret = true;
             for restr in loan.restrictions.iter() {
                 if restr.loan_path == loan_path {
@@ -647,22 +653,34 @@ impl<'a> CheckLoanCtxt<'a> {
 
     pub fn analyze_move_out_from(&self,
                                  expr_id: ast::NodeId,
-                                 move_path: @LoanPath) -> MoveError {
+                                 mut move_path: @LoanPath)
+                                 -> MoveError {
         debug!("analyze_move_out_from(expr_id={:?}, move_path={})",
-               expr_id, move_path.repr(self.tcx()));
+               ast_map::node_id_to_str(self.tcx().items,
+                                       expr_id,
+                                       token::get_ident_interner()),
+               move_path.repr(self.tcx()));
 
-        // FIXME(#4384) inadequare if/when we permit `move a.b`
+        // We must check every element of a move path. See
+        // `borrowck-move-subcomponent.rs` for a test case.
+        loop {
+            // check for a conflicting loan:
+            let mut ret = MoveOk;
+            self.each_in_scope_restriction(expr_id, move_path, |loan, _| {
+                // Any restriction prevents moves.
+                ret = MoveWhileBorrowed(loan.loan_path, loan.span);
+                false
+            });
 
-        let mut ret = MoveOk;
+            if ret != MoveOk {
+                return ret
+            }
 
-        // check for a conflicting loan:
-        self.each_in_scope_restriction(expr_id, move_path, |loan, _| {
-            // Any restriction prevents moves.
-            ret = MoveWhileBorrowed(loan.loan_path, loan.span);
-            false
-        });
-
-        ret
+            match *move_path {
+                LpVar(_) => return MoveOk,
+                LpExtend(subpath, _, _) => move_path = subpath,
+            }
+        }
     }
 
     pub fn check_call(&self,
