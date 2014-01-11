@@ -60,8 +60,7 @@ pub struct FnData {
 pub struct MethodData {
     llfn: ValueRef,
     llself: ValueRef,
-    temp_cleanup: Option<ValueRef>,
-    self_mode: ty::SelfMode,
+    temp_cleanup: Option<ValueRef>
 }
 
 pub enum CalleeData {
@@ -398,7 +397,7 @@ pub fn trans_fn_ref_with_vtables(
             let ref_ty = common::node_id_type(bcx, ref_id);
 
             val = PointerCast(
-                bcx, val, type_of::type_of_fn_from_ty(ccx, ref_ty).ptr_to());
+                bcx, val, type_of::type_of_fn_from_ty(ccx, None, ref_ty).ptr_to());
         }
         return FnData {llfn: val};
     }
@@ -437,7 +436,7 @@ pub fn trans_fn_ref_with_vtables(
     // This can occur on either a crate-local or crate-external
     // reference. It also occurs when testing libcore and in some
     // other weird situations. Annoying.
-    let llty = type_of::type_of_fn_from_ty(ccx, fn_tpt.ty);
+    let llty = type_of::type_of_fn_from_ty(ccx, None, fn_tpt.ty);
     let llptrty = llty.ptr_to();
     if val_ty(val) != llptrty {
         val = BitCast(bcx, val, llptrty);
@@ -496,10 +495,7 @@ pub fn trans_method_call<'a>(
                            call_ex.repr(in_cx.tcx()),
                            origin.repr(in_cx.tcx()));
 
-                    meth::trans_method_callee(cx,
-                                              callee_id,
-                                              rcvr,
-                                              origin)
+                    meth::trans_method_callee(cx, callee_id, rcvr, origin)
                 }
                 None => {
                     cx.tcx().sess.span_bug(call_ex.span, "method call expr wasn't in method map")
@@ -704,7 +700,7 @@ pub fn trans_call_inner<'a>(
             match ty::get(ret_ty).sty {
                 // `~` pointer return values never alias because ownership is transferred
                 ty::ty_uniq(..) |
-                ty::ty_evec(_, ty::vstore_uniq) => {
+                ty::ty_vec(_, ty::vstore_uniq) => {
                     attrs.push((0, NoAliasAttribute));
                 }
                 _ => ()
@@ -799,7 +795,6 @@ pub fn trans_args<'a>(
             let arg_val = unpack_result!(bcx, {
                 trans_arg_expr(bcx,
                                arg_ty,
-                               ty::ByCopy,
                                *arg_expr,
                                &mut temp_cleanups,
                                autoref_arg)
@@ -832,7 +827,6 @@ pub enum AutorefArg {
 pub fn trans_arg_expr<'a>(
                       bcx: &'a Block<'a>,
                       formal_arg_ty: ty::t,
-                      self_mode: ty::SelfMode,
                       arg_expr: &ast::Expr,
                       temp_cleanups: &mut ~[ValueRef],
                       autoref_arg: AutorefArg)
@@ -840,9 +834,8 @@ pub fn trans_arg_expr<'a>(
     let _icx = push_ctxt("trans_arg_expr");
     let ccx = bcx.ccx();
 
-    debug!("trans_arg_expr(formal_arg_ty=({}), self_mode={:?}, arg_expr={})",
+    debug!("trans_arg_expr(formal_arg_ty=({}), arg_expr={})",
            formal_arg_ty.repr(bcx.tcx()),
-           self_mode,
            arg_expr.repr(bcx.tcx()));
 
     // translate the arg expr to a datum
@@ -888,16 +881,8 @@ pub fn trans_arg_expr<'a>(
                     arg_datum
                 };
 
-                val = match self_mode {
-                    ty::ByRef => {
-                        debug!("by ref arg with type {}", bcx.ty_to_str(arg_datum.ty));
-                        arg_datum.to_ref_llval(bcx)
-                    }
-                    ty::ByCopy => {
-                        debug!("by copy arg with type {}", bcx.ty_to_str(arg_datum.ty));
-                        arg_datum.to_appropriate_llval(bcx)
-                    }
-                }
+                debug!("by copy arg with type {}", bcx.ty_to_str(arg_datum.ty));
+                val = arg_datum.to_appropriate_llval(bcx);
             }
         }
 

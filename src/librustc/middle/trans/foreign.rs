@@ -489,16 +489,17 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: @CrateContext,
                id,
                t.repr(tcx));
 
-        let llfndecl = base::decl_internal_rust_fn(ccx, f.sig.inputs, f.sig.output, ps);
+        let llfndecl = base::decl_internal_rust_fn(ccx, None, f.sig.inputs, f.sig.output, ps);
         base::set_llvm_fn_attrs(attrs, llfndecl);
         base::trans_fn(ccx,
                        (*path).clone(),
                        decl,
                        body,
                        llfndecl,
-                       base::no_self,
+                       None,
                        None,
                        id,
+                       None,
                        []);
         return llfndecl;
     }

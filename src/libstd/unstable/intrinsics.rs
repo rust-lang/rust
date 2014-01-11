@@ -47,9 +47,9 @@ pub use realstd::unstable::intrinsics::{TyDesc, Opaque, TyVisitor, TypeId};
 
 pub type GlueFn = extern "Rust" fn(*i8);
 
-// NB: this has to be kept in sync with `type_desc` in `rt`
+// NOTE remove after next snapshot
 #[lang="ty_desc"]
-#[cfg(not(test))]
+#[cfg(not(test), stage0)]
 pub struct TyDesc {
     // sizeof(T)
     size: uint,
@@ -65,6 +65,35 @@ pub struct TyDesc {
 
     // Called by drop glue when a value of type `T` can be freed
     free_glue: GlueFn,
+
+    // Called by reflection visitor to visit a value of type `T`
+    visit_glue: GlueFn,
+
+    // If T represents a box pointer (`@U` or `~U`), then
+    // `borrow_offset` is the amount that the pointer must be adjusted
+    // to find the payload.  This is always derivable from the type
+    // `U`, but in the case of `@Trait` or `~Trait` objects, the type
+    // `U` is unknown.
+    borrow_offset: uint,
+
+    // Name corresponding to the type
+    name: &'static str
+}
+
+#[lang="ty_desc"]
+#[cfg(not(test), not(stage0))]
+pub struct TyDesc {
+    // sizeof(T)
+    size: uint,
+
+    // alignof(T)
+    align: uint,
+
+    // Called on a copy of a value of type `T` *after* memcpy
+    take_glue: GlueFn,
+
+    // Called when a value of type `T` is no longer needed
+    drop_glue: GlueFn,
 
     // Called by reflection visitor to visit a value of type `T`
     visit_glue: GlueFn,

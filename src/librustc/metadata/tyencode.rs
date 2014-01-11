@@ -299,12 +299,12 @@ fn enc_sty(w: &mut MemWriter, cx: @ctxt, st: &ty::sty) {
             enc_region(w, cx, r);
             enc_mt(w, cx, mt);
         }
-        ty::ty_evec(mt, v) => {
+        ty::ty_vec(mt, v) => {
             mywrite!(w, "V");
             enc_mt(w, cx, mt);
             enc_vstore(w, cx, v);
         }
-        ty::ty_estr(v) => {
+        ty::ty_str(v) => {
             mywrite!(w, "v");
             enc_vstore(w, cx, v);
         }
@@ -331,7 +331,6 @@ fn enc_sty(w: &mut MemWriter, cx: @ctxt, st: &ty::sty) {
             mywrite!(w, "C&");
             enc_sigil(w, p);
         }
-        ty::ty_opaque_box => mywrite!(w, "B"),
         ty::ty_struct(def, ref substs) => {
             mywrite!(w, "a[{}|", (cx.ds)(def));
             enc_substs(w, cx, substs);

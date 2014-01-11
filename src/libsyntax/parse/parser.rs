@@ -2276,7 +2276,7 @@ impl Parser {
                 let m = self.parse_mutability();
                 let e = self.parse_prefix_expr();
                 hi = e.span.hi;
-                // HACK: turn &[...] into a &-evec
+                // HACK: turn &[...] into a &-vec
                 ex = match e.node {
                   ExprVec(..) | ExprLit(@codemap::Spanned {
                     node: LitStr(..), span: _
@@ -2297,7 +2297,7 @@ impl Parser {
             self.bump();
             let e = self.parse_prefix_expr();
             hi = e.span.hi;
-            // HACK: turn @[...] into a @-evec
+            // HACK: turn @[...] into a @-vec
             ex = match e.node {
               ExprVec(..) |
               ExprLit(@codemap::Spanned { node: LitStr(..), span: _}) |
@@ -2310,7 +2310,7 @@ impl Parser {
 
             let e = self.parse_prefix_expr();
             hi = e.span.hi;
-            // HACK: turn ~[...] into a ~-evec
+            // HACK: turn ~[...] into a ~-vec
             ex = match e.node {
               ExprVec(..) |
               ExprLit(@codemap::Spanned { node: LitStr(..), span: _}) |
@@ -2337,7 +2337,7 @@ impl Parser {
             // Otherwise, we use the unique pointer default.
             let subexpression = self.parse_prefix_expr();
             hi = subexpression.span.hi;
-            // HACK: turn `box [...]` into a boxed-evec
+            // HACK: turn `box [...]` into a boxed-vec
             ex = match subexpression.node {
                 ExprVec(..) |
                 ExprLit(@codemap::Spanned {

@@ -1078,7 +1078,7 @@ fn extract_vec_elems<'a>(
         let slice_begin = tvec::pointer_add_byte(bcx, base, slice_byte_offset);
         let slice_len_offset = C_uint(bcx.ccx(), elem_count - 1u);
         let slice_len = Sub(bcx, len, slice_len_offset);
-        let slice_ty = ty::mk_evec(bcx.tcx(),
+        let slice_ty = ty::mk_vec(bcx.tcx(),
             ty::mt {ty: vt.unit_ty, mutbl: ast::MutImmutable},
             ty::vstore_slice(ty::ReStatic)
         );
@@ -1312,7 +1312,7 @@ fn compare_values<'a>(
     }
 
     match ty::get(rhs_t).sty {
-        ty::ty_estr(ty::vstore_uniq) => {
+        ty::ty_str(ty::vstore_uniq) => {
             let scratch_lhs = alloca(cx, val_ty(lhs), "__lhs");
             Store(cx, lhs, scratch_lhs);
             let scratch_rhs = alloca(cx, val_ty(rhs), "__rhs");
@@ -1326,7 +1326,7 @@ fn compare_values<'a>(
                 val: bool_to_i1(result.bcx, result.val)
             }
         }
-        ty::ty_estr(_) => {
+        ty::ty_str(_) => {
             let did = langcall(cx, None,
                                format!("comparison of `{}`", cx.ty_to_str(rhs_t)),
                                StrEqFnLangItem);
@@ -1392,37 +1392,41 @@ fn insert_lllocals<'a>(
         let llval = match binding_info.trmode {
             // By value bindings: use the stack slot that we
             // copied/moved the value into
-            TrByValue(lldest) => {
-                if add_cleans {
-                    add_clean(bcx, lldest, binding_info.ty);
-                }
-
-                lldest
-            }
-
+            TrByValue(lldest) => lldest,
             // By ref binding: use the ptr into the matched value
-            TrByRef => {
-                binding_info.llmatch
-            }
+            TrByRef => binding_info.llmatch
         };
+
+        let datum = Datum {
+            val: llval,
+            ty: binding_info.ty,
+            mode: ByRef(ZeroMem)
+        };
+
+        if add_cleans {
+            match binding_info.trmode {
+                TrByValue(_) => datum.add_clean(bcx),
+                _ => {}
+            }
+        }
 
         {
             debug!("binding {:?} to {}",
                    binding_info.id,
                    bcx.val_to_str(llval));
             let mut llmap = bcx.fcx.lllocals.borrow_mut();
-            llmap.get().insert(binding_info.id, llval);
+            llmap.get().insert(binding_info.id, datum);
         }
 
         if bcx.sess().opts.extra_debuginfo {
             debuginfo::create_match_binding_metadata(bcx,
                                                      ident,
                                                      binding_info.id,
-                                                     binding_info.ty,
-                                                     binding_info.span);
+                                                     binding_info.span,
+                                                     datum);
         }
     }
-    return bcx;
+    bcx
 }
 
 fn compile_guard<'r,
@@ -2032,8 +2036,7 @@ pub fn store_local<'a>(
                 Some(path) => {
                     return mk_binding_alloca(
                         bcx, pat.id, path, BindLocal,
-                        |bcx, _, llval| expr::trans_into(bcx, init_expr,
-                                                         expr::SaveIn(llval)));
+                        |bcx, datum| expr::trans_into(bcx, init_expr, expr::SaveIn(datum.val)));
                 }
 
                 None => {}
@@ -2067,13 +2070,13 @@ pub fn store_local<'a>(
         pat_bindings(tcx.def_map, pat, |_, p_id, _, path| {
             bcx = mk_binding_alloca(
                 bcx, p_id, path, BindLocal,
-                |bcx, var_ty, llval| { zero_mem(bcx, llval, var_ty); bcx });
+                |bcx, datum| { datum.cancel_clean(bcx); bcx });
         });
         bcx
     }
 }
 
-pub fn store_arg<'a>(mut bcx: &'a Block<'a>, pat: @ast::Pat, llval: ValueRef)
+pub fn store_arg<'a>(mut bcx: &'a Block<'a>, pat: @ast::Pat, arg: Datum)
                  -> &'a Block<'a> {
     /*!
      * Generates code for argument patterns like `fn foo(<pat>: T)`.
@@ -2093,13 +2096,12 @@ pub fn store_arg<'a>(mut bcx: &'a Block<'a>, pat: @ast::Pat, llval: ValueRef)
     // Note that we cannot do it before for fear of a fn like
     //    fn getaddr(~ref x: ~uint) -> *uint {....}
     // (From test `run-pass/func-arg-ref-pattern.rs`)
-    let arg_ty = node_id_type(bcx, pat.id);
-    add_clean(bcx, llval, arg_ty);
+    arg.add_clean(bcx);
 
     // Debug information (the llvm.dbg.declare intrinsic to be precise) always expects to get an
     // alloca, which only is the case on the general path, so lets disable the optimized path when
     // debug info is enabled.
-    let arg_is_alloca = unsafe { llvm::LLVMIsAAllocaInst(llval) != ptr::null() };
+    let arg_is_alloca = unsafe { llvm::LLVMIsAAllocaInst(arg.val) != ptr::null() };
 
     let fast_path = (arg_is_alloca || !bcx.ccx().sess.opts.extra_debuginfo)
                     && simple_identifier(pat).is_some();
@@ -2109,37 +2111,42 @@ pub fn store_arg<'a>(mut bcx: &'a Block<'a>, pat: @ast::Pat, llval: ValueRef)
         // `llval` wholesale as the pointer for `x`, avoiding the
         // general logic which may copy out of `llval`.
         let mut llargs = bcx.fcx.llargs.borrow_mut();
-        llargs.get().insert(pat.id, llval);
+        llargs.get().insert(pat.id, arg);
     } else {
         // General path. Copy out the values that are used in the
         // pattern.
-        bcx = bind_irrefutable_pat(bcx, pat, llval, BindArgument);
+        let llptr = arg.to_ref_llval(bcx);
+        bcx = bind_irrefutable_pat(bcx, pat, llptr, BindArgument);
     }
 
     return bcx;
 }
 
 fn mk_binding_alloca<'a>(
-                     mut bcx: &'a Block<'a>,
+                     bcx: &'a Block<'a>,
                      p_id: ast::NodeId,
                      path: &ast::Path,
                      binding_mode: IrrefutablePatternBindingMode,
-                     populate: |&'a Block<'a>,
-                                ty::t,
-                                ValueRef|
-                                -> &'a Block<'a>)
+                     populate: |&'a Block<'a>, Datum| -> &'a Block<'a>)
                      -> &'a Block<'a> {
     let var_ty = node_id_type(bcx, p_id);
     let ident = ast_util::path_to_ident(path);
     let llval = alloc_ty(bcx, var_ty, bcx.ident(ident));
-    bcx = populate(bcx, var_ty, llval);
-    let mut llmap = match binding_mode {
-        BindLocal => bcx.fcx.lllocals.borrow_mut(),
-        BindArgument => bcx.fcx.llargs.borrow_mut(),
+    let datum = Datum {
+        val: llval,
+        ty: var_ty,
+        mode: ByRef(ZeroMem)
     };
-    llmap.get().insert(p_id, llval);
-    add_clean(bcx, llval, var_ty);
-    return bcx;
+    {
+        let mut llmap = match binding_mode {
+            BindLocal => bcx.fcx.lllocals.borrow_mut(),
+            BindArgument => bcx.fcx.llargs.borrow_mut()
+        };
+        llmap.get().insert(p_id, datum);
+    }
+    let bcx = populate(bcx, datum);
+    datum.add_clean(bcx);
+    bcx
 }
 
 fn bind_irrefutable_pat<'a>(
@@ -2179,7 +2186,7 @@ fn bind_irrefutable_pat<'a>(
 
     let _indenter = indenter();
 
-    let _icx = push_ctxt("alt::bind_irrefutable_pat");
+    let _icx = push_ctxt("match::bind_irrefutable_pat");
     let mut bcx = bcx;
     let tcx = bcx.tcx();
     let ccx = bcx.ccx();
@@ -2191,21 +2198,23 @@ fn bind_irrefutable_pat<'a>(
                 // map.
                 bcx = mk_binding_alloca(
                     bcx, pat.id, path, binding_mode,
-                    |bcx, variable_ty, llvariable_val| {
+                    |bcx, var_datum| {
                         match pat_binding_mode {
                             ast::BindByValue(_) => {
                                 // By value binding: move the value that `val`
                                 // points at into the binding's stack slot.
-                                let datum = Datum {val: val,
-                                                   ty: variable_ty,
-                                                   mode: ByRef(ZeroMem)};
-                                datum.store_to(bcx, INIT, llvariable_val)
+                                let datum = Datum {
+                                    val: val,
+                                    ty: var_datum.ty,
+                                    mode: ByRef(ZeroMem)
+                                };
+                                datum.store_to(bcx, INIT, var_datum.val)
                             }
 
                             ast::BindByRef(_) => {
                                 // By ref binding: the value of the variable
                                 // is the pointer `val` itself.
-                                Store(bcx, val, llvariable_val);
+                                Store(bcx, val, var_datum.val);
                                 bcx
                             }
                         }

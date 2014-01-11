@@ -71,7 +71,7 @@ pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: ast::Lit)
         }
         ast::LitBool(b) => C_bool(b),
         ast::LitNil => C_nil(),
-        ast::LitStr(s, _) => C_estr_slice(cx, s),
+        ast::LitStr(s, _) => C_str_slice(cx, s),
         ast::LitBinary(data) => C_binary_slice(cx, data),
     }
 }
@@ -241,7 +241,7 @@ pub fn const_expr(cx: @CrateContext, e: &ast::Expr) -> (ValueRef, bool) {
                             assert_eq!(abi::slice_elt_len, 1);
 
                             match ty::get(ty).sty {
-                                ty::ty_evec(_, ty::vstore_fixed(len)) => {
+                                ty::ty_vec(_, ty::vstore_fixed(len)) => {
                                     llconst = C_struct([llptr, C_uint(cx, len)], false);
                                 }
                                 _ => {}
@@ -419,7 +419,7 @@ fn const_expr_unadjusted(cx: @CrateContext,
                                         "index is not an integer-constant expression")
               };
               let (arr, len) = match ty::get(bt).sty {
-                  ty::ty_evec(_, vstore) | ty::ty_estr(vstore) =>
+                  ty::ty_vec(_, vstore) | ty::ty_str(vstore) =>
                       match vstore {
                       ty::vstore_fixed(u) =>
                           (bv, C_uint(cx, u)),
@@ -437,7 +437,7 @@ fn const_expr_unadjusted(cx: @CrateContext,
 
               let len = llvm::LLVMConstIntGetZExtValue(len) as u64;
               let len = match ty::get(bt).sty {
-                  ty::ty_estr(..) => {assert!(len > 0); len - 1},
+                  ty::ty_str(..) => {assert!(len > 0); len - 1},
                   _ => len
               };
               if iv >= len {

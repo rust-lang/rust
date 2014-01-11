@@ -1386,10 +1386,10 @@ pub fn check_lit(fcx: @FnCtxt, lit: &ast::Lit) -> ty::t {
     let tcx = fcx.ccx.tcx;
 
     match lit.node {
-        ast::LitStr(..) => ty::mk_estr(tcx, ty::vstore_slice(ty::ReStatic)),
+        ast::LitStr(..) => ty::mk_str(tcx, ty::vstore_slice(ty::ReStatic)),
         ast::LitBinary(..) => {
-            ty::mk_evec(tcx, ty::mt{ ty: ty::mk_u8(), mutbl: ast::MutImmutable },
-                        ty::vstore_slice(ty::ReStatic))
+            ty::mk_vec(tcx, ty::mt{ ty: ty::mk_u8(), mutbl: ast::MutImmutable },
+                       ty::vstore_slice(ty::ReStatic))
         }
         ast::LitChar(_) => ty::mk_char(),
         ast::LitInt(_, t) => ty::mk_mach_int(t),
@@ -2629,7 +2629,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
         let typ = match ev.node {
           ast::ExprLit(@codemap::Spanned { node: ast::LitStr(..), .. }) => {
             let tt = ast_expr_vstore_to_vstore(fcx, ev, vst);
-            ty::mk_estr(tcx, tt)
+            ty::mk_str(tcx, tt)
           }
           ast::ExprVec(ref args, mutbl) => {
             let tt = ast_expr_vstore_to_vstore(fcx, ev, vst);
@@ -2655,7 +2655,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
             } else if any_bot {
                 ty::mk_bot()
             } else {
-                ty::mk_evec(tcx, ty::mt {ty: t, mutbl: mutability}, tt)
+                ty::mk_vec(tcx, ty::mt {ty: t, mutbl: mutability}, tt)
             }
           }
           ast::ExprRepeat(element, count_expr, mutbl) => {
@@ -2674,7 +2674,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
             } else if ty::type_is_bot(arg_t) {
                 ty::mk_bot()
             } else {
-                ty::mk_evec(tcx, ty::mt {ty: t, mutbl: mutability}, tt)
+                ty::mk_vec(tcx, ty::mt {ty: t, mutbl: mutability}, tt)
             }
           }
           _ =>
@@ -3166,7 +3166,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
 
                         fn is_vec(t: ty::t) -> bool {
                             match ty::get(t).sty {
-                                ty::ty_evec(_,_) => true,
+                                ty::ty_vec(..) => true,
                                 _ => false
                             }
                         }
@@ -3223,8 +3223,8 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
         for e in args.iter() {
             check_expr_has_type(fcx, *e, t);
         }
-        let typ = ty::mk_evec(tcx, ty::mt {ty: t, mutbl: mutbl},
-                              ty::vstore_fixed(args.len()));
+        let typ = ty::mk_vec(tcx, ty::mt {ty: t, mutbl: mutbl},
+                             ty::vstore_fixed(args.len()));
         fcx.write_ty(id, typ);
       }
       ast::ExprRepeat(element, count_expr, mutbl) => {
@@ -3240,8 +3240,8 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
             fcx.write_bot(id);
         }
         else {
-            let t = ty::mk_evec(tcx, ty::mt {ty: t, mutbl: mutbl},
-                                ty::vstore_fixed(count));
+            let t = ty::mk_vec(tcx, ty::mt {ty: t, mutbl: mutbl},
+                               ty::vstore_fixed(count));
             fcx.write_ty(id, t);
         }
       }

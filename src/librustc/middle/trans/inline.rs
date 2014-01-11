@@ -11,8 +11,7 @@
 use lib::llvm::{AvailableExternallyLinkage, SetLinkage};
 use metadata::csearch;
 use middle::astencode;
-use middle::trans::base::{push_ctxt, impl_self, no_self};
-use middle::trans::base::{trans_item, get_item_val, trans_fn};
+use middle::trans::base::{push_ctxt, trans_item, get_item_val, trans_fn};
 use middle::trans::common::*;
 use middle::ty;
 use util::ppaux::ty_to_str;
@@ -162,16 +161,13 @@ pub fn maybe_instantiate_inline(ccx: @CrateContext, fn_id: ast::DefId)
               let path = vec::append_one(
                   ty::item_path(ccx.tcx, impl_did), PathName(mth.ident));
               let self_kind = match mth.explicit_self.node {
-                  ast::SelfStatic => no_self,
+                  ast::SelfStatic => None,
                   _ => {
                       let self_ty = ty::node_id_to_type(ccx.tcx,
                                                         mth.self_id);
                       debug!("calling inline trans_fn with self_ty {}",
                              ty_to_str(ccx.tcx, self_ty));
-                      match mth.explicit_self.node {
-                          ast::SelfValue(_) => impl_self(self_ty, ty::ByRef),
-                          _ => impl_self(self_ty, ty::ByCopy),
-                      }
+                      Some(self_ty)
                   }
               };
               trans_fn(ccx,
@@ -182,6 +178,7 @@ pub fn maybe_instantiate_inline(ccx: @CrateContext, fn_id: ast::DefId)
                        self_kind,
                        None,
                        mth.id,
+                       Some(&*mth),
                        []);
           }
           local_def(mth.id)

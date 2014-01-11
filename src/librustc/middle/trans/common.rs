@@ -94,7 +94,6 @@ pub struct tydesc_info {
     name: ValueRef,
     take_glue: Cell<Option<ValueRef>>,
     drop_glue: Cell<Option<ValueRef>>,
-    free_glue: Cell<Option<ValueRef>>,
     visit_glue: Cell<Option<ValueRef>>,
 }
 
@@ -159,13 +158,6 @@ pub fn BuilderRef_res(B: BuilderRef) -> BuilderRef_res {
 
 pub type ExternMap = HashMap<~str, ValueRef>;
 
-// Types used for llself.
-pub struct ValSelfData {
-    v: ValueRef,
-    t: ty::t,
-    is_copy: bool,
-}
-
 // Here `self_ty` is the real type of the self parameter to this method. It
 // will only be set in the case of default methods.
 pub struct param_substs {
@@ -228,7 +220,7 @@ pub struct FunctionContext<'a> {
     // NB: This is the type of the self *variable*, not the self *type*. The
     // self type is set only for default methods, while the self variable is
     // set for all methods.
-    llself: Cell<Option<ValSelfData>>,
+    llself: Cell<Option<datum::Datum>>,
     // The a value alloca'd for calls to upcalls.rust_personality. Used when
     // outputting the resume instruction.
     personality: Cell<Option<ValueRef>>,
@@ -239,10 +231,10 @@ pub struct FunctionContext<'a> {
     caller_expects_out_pointer: bool,
 
     // Maps arguments to allocas created for them in llallocas.
-    llargs: RefCell<HashMap<ast::NodeId, ValueRef>>,
+    llargs: RefCell<HashMap<ast::NodeId, datum::Datum>>,
     // Maps the def_ids for local variables to the allocas created for
     // them in llallocas.
-    lllocals: RefCell<HashMap<ast::NodeId, ValueRef>>,
+    lllocals: RefCell<HashMap<ast::NodeId, datum::Datum>>,
     // Same as above, but for closure upvars
     llupvars: RefCell<HashMap<ast::NodeId, ValueRef>>,
 
@@ -343,28 +335,14 @@ pub trait CleanupFunction {
 }
 
 /// A cleanup function that calls the "drop glue" (destructor function) on
-/// a typed value.
-pub struct TypeDroppingCleanupFunction {
-    val: ValueRef,
-    t: ty::t,
+/// a datum.
+struct DatumDroppingCleanupFunction {
+    datum: datum::Datum
 }
 
-impl CleanupFunction for TypeDroppingCleanupFunction {
+impl CleanupFunction for DatumDroppingCleanupFunction {
     fn clean<'a>(&self, block: &'a Block<'a>) -> &'a Block<'a> {
-        glue::drop_ty(block, self.val, self.t)
-    }
-}
-
-/// A cleanup function that calls the "drop glue" (destructor function) on
-/// an immediate typed value.
-pub struct ImmediateTypeDroppingCleanupFunction {
-    val: ValueRef,
-    t: ty::t,
-}
-
-impl CleanupFunction for ImmediateTypeDroppingCleanupFunction {
-    fn clean<'a>(&self, block: &'a Block<'a>) -> &'a Block<'a> {
-        glue::drop_ty_immediate(block, self.val, self.t)
+        self.datum.drop_val(block)
     }
 }
 
@@ -391,16 +369,16 @@ impl CleanupFunction for ExchangeHeapFreeingCleanupFunction {
 }
 
 pub enum cleanup {
-    clean(@CleanupFunction, cleantype),
-    clean_temp(ValueRef, @CleanupFunction, cleantype),
+    Clean(@CleanupFunction, cleantype),
+    CleanTemp(ValueRef, @CleanupFunction, cleantype),
 }
 
 // Can't use deriving(Clone) because of the managed closure.
 impl Clone for cleanup {
     fn clone(&self) -> cleanup {
         match *self {
-            clean(f, ct) => clean(f, ct),
-            clean_temp(v, f, ct) => clean_temp(v, f, ct),
+            Clean(f, ct) => Clean(f, ct),
+            CleanTemp(v, f, ct) => CleanTemp(v, f, ct),
         }
     }
 }
@@ -439,20 +417,21 @@ pub fn cleanup_type(cx: ty::ctxt, ty: ty::t) -> cleantype {
     }
 }
 
-pub fn add_clean(bcx: &Block, val: ValueRef, t: ty::t) {
-    if !ty::type_needs_drop(bcx.tcx(), t) {
-        return
-    }
+pub fn add_clean(bcx: &Block, val: ValueRef, ty: ty::t) {
+    if !ty::type_needs_drop(bcx.tcx(), ty) { return; }
 
-    debug!("add_clean({}, {}, {})", bcx.to_str(), bcx.val_to_str(val), t.repr(bcx.tcx()));
+    debug!("add_clean({}, {}, {})", bcx.to_str(), bcx.val_to_str(val), ty.repr(bcx.tcx()));
 
-    let cleanup_type = cleanup_type(bcx.tcx(), t);
+    let cleanup_type = cleanup_type(bcx.tcx(), ty);
     in_scope_cx(bcx, None, |scope_info| {
         {
             let mut cleanups = scope_info.cleanups.borrow_mut();
-            cleanups.get().push(clean(@TypeDroppingCleanupFunction {
-                val: val,
-                t: t,
+            cleanups.get().push(Clean(@DatumDroppingCleanupFunction {
+                datum: datum::Datum {
+                    val: val,
+                    ty: ty,
+                    mode: datum::ByRef(datum::ZeroMem)
+                }
             } as @CleanupFunction,
             cleanup_type));
         }
@@ -460,21 +439,24 @@ pub fn add_clean(bcx: &Block, val: ValueRef, t: ty::t) {
     })
 }
 
-pub fn add_clean_temp_immediate(cx: &Block, val: ValueRef, ty: ty::t) {
-    if !ty::type_needs_drop(cx.tcx(), ty) { return; }
+pub fn add_clean_temp_immediate(bcx: &Block, val: ValueRef, ty: ty::t) {
+    if !ty::type_needs_drop(bcx.tcx(), ty) { return; }
+
     debug!("add_clean_temp_immediate({}, {}, {})",
-           cx.to_str(), cx.val_to_str(val),
-           ty.repr(cx.tcx()));
-    let cleanup_type = cleanup_type(cx.tcx(), ty);
-    in_scope_cx(cx, None, |scope_info| {
+           bcx.to_str(), bcx.val_to_str(val),
+           ty.repr(bcx.tcx()));
+    let cleanup_type = cleanup_type(bcx.tcx(), ty);
+    in_scope_cx(bcx, None, |scope_info| {
         {
             let mut cleanups = scope_info.cleanups.borrow_mut();
-            cleanups.get().push(clean_temp(val,
-                @ImmediateTypeDroppingCleanupFunction {
+            cleanups.get().push(CleanTemp(val, @DatumDroppingCleanupFunction {
+                datum: datum::Datum {
                     val: val,
-                    t: ty,
-                } as @CleanupFunction,
-                cleanup_type));
+                    ty: ty,
+                    mode: datum::ByValue
+                }
+            } as @CleanupFunction,
+            cleanup_type));
         }
         grow_scope_clean(scope_info);
     })
@@ -501,12 +483,14 @@ pub fn add_clean_temp_mem_in_scope_(bcx: &Block, scope_id: Option<ast::NodeId>,
     in_scope_cx(bcx, scope_id, |scope_info| {
         {
             let mut cleanups = scope_info.cleanups.borrow_mut();
-            cleanups.get().push(clean_temp(val,
-                @TypeDroppingCleanupFunction {
+            cleanups.get().push(CleanTemp(val, @DatumDroppingCleanupFunction {
+                datum: datum::Datum {
                     val: val,
-                    t: t,
-                } as @CleanupFunction,
-                cleanup_type));
+                    ty: t,
+                    mode: datum::ByRef(datum::RevokeClean)
+                }
+            } as @CleanupFunction,
+            cleanup_type));
         }
         grow_scope_clean(scope_info);
     })
@@ -528,7 +512,7 @@ pub fn add_clean_free(cx: &Block, ptr: ValueRef, heap: heap) {
     in_scope_cx(cx, None, |scope_info| {
         {
             let mut cleanups = scope_info.cleanups.borrow_mut();
-            cleanups.get().push(clean_temp(ptr,
+            cleanups.get().push(CleanTemp(ptr,
                                            free_fn,
                                            normal_exit_and_unwind));
         }
@@ -544,22 +528,26 @@ pub fn revoke_clean(cx: &Block, val: ValueRef) {
     in_scope_cx(cx, None, |scope_info| {
         let cleanup_pos = {
             let mut cleanups = scope_info.cleanups.borrow_mut();
+            debug!("revoke_clean({}, {}) revoking {:?} from {:?}",
+                   cx.to_str(), cx.val_to_str(val), val, cleanups.get());
             cleanups.get().iter().position(|cu| {
                 match *cu {
-                    clean_temp(v, _, _) if v == val => true,
+                    CleanTemp(v, _, _) if v == val => true,
                     _ => false
                 }
             })
         };
-        for i in cleanup_pos.iter() {
+        debug!("revoke_clean({}, {}) revoking {:?}",
+               cx.to_str(), cx.val_to_str(val), cleanup_pos);
+        for &i in cleanup_pos.iter() {
             let new_cleanups = {
                 let cleanups = scope_info.cleanups.borrow();
-                vec::append(cleanups.get().slice(0u, *i).to_owned(),
-                            cleanups.get().slice(*i + 1u, cleanups.get()
-                                                                  .len()))
+                vec::append(cleanups.get().slice(0u, i).to_owned(),
+                            cleanups.get().slice(i + 1u, cleanups.get()
+                                                                 .len()))
             };
             scope_info.cleanups.set(new_cleanups);
-            shrink_scope_clean(scope_info, *i);
+            shrink_scope_clean(scope_info, i);
         }
     })
 }
@@ -768,16 +756,16 @@ pub fn in_scope_cx<'a>(
             Some(inf) => match scope_id {
                 Some(wanted) => match inf.node_info {
                     Some(NodeInfo { id: actual, .. }) if wanted == actual => {
-                        debug!("in_scope_cx: selected cur={} (cx={})",
-                               cur.to_str(), cx.to_str());
+                        debug!("in_scope_cx: selected cur={} (cx={}) info={:?}",
+                               cur.to_str(), cx.to_str(), inf.node_info);
                         f(inf);
                         return;
                     },
                     _ => inf.parent,
                 },
                 None => {
-                    debug!("in_scope_cx: selected cur={} (cx={})",
-                           cur.to_str(), cx.to_str());
+                    debug!("in_scope_cx: selected cur={} (cx={}) info={:?}",
+                           cur.to_str(), cx.to_str(), inf.node_info);
                     f(inf);
                     return;
                 }
@@ -906,7 +894,7 @@ pub fn C_cstr(cx: &CrateContext, s: @str) -> ValueRef {
 
 // NB: Do not use `do_spill_noroot` to make this into a constant string, or
 // you will be kicked off fast isel. See issue #4352 for an example of this.
-pub fn C_estr_slice(cx: &CrateContext, s: @str) -> ValueRef {
+pub fn C_str_slice(cx: &CrateContext, s: @str) -> ValueRef {
     unsafe {
         let len = s.len();
         let cs = llvm::LLVMConstPointerCast(C_cstr(cx, s), Type::i8p().to_ref());
@@ -1043,10 +1031,9 @@ pub enum MonoDataClass {
 pub fn mono_data_classify(t: ty::t) -> MonoDataClass {
     match ty::get(t).sty {
         ty::ty_float(_) => MonoFloat,
-        ty::ty_rptr(..) | ty::ty_uniq(..) |
-        ty::ty_box(..) | ty::ty_opaque_box(..) |
-        ty::ty_estr(ty::vstore_uniq) | ty::ty_evec(_, ty::vstore_uniq) |
-        ty::ty_estr(ty::vstore_box) | ty::ty_evec(_, ty::vstore_box) |
+        ty::ty_rptr(..) | ty::ty_uniq(..) | ty::ty_box(..) |
+        ty::ty_str(ty::vstore_uniq) | ty::ty_vec(_, ty::vstore_uniq) |
+        ty::ty_str(ty::vstore_box) | ty::ty_vec(_, ty::vstore_box) |
         ty::ty_bare_fn(..) => MonoNonNull,
         // Is that everything?  Would closures or slices qualify?
         _ => MonoBits
