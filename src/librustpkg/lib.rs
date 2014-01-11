@@ -43,7 +43,7 @@ use workspace::{each_pkg_parent_workspace, pkg_parent_workspaces, cwd_to_workspa
 use workspace::determine_destination;
 use context::{BuildContext, Trans, Nothing, Pretty, Analysis,
               LLVMAssemble, LLVMCompileBitcode};
-use context::{Command, BuildCmd, CleanCmd, DoCmd, InfoCmd, InstallCmd, ListCmd,
+use context::{Command, BuildCmd, CleanCmd, DoCmd, HelpCmd, InfoCmd, InstallCmd, ListCmd,
     PreferCmd, TestCmd, InitCmd, UninstallCmd, UnpreferCmd};
 use crate_id::CrateId;
 use package_source::PkgSrc;
@@ -314,6 +314,18 @@ impl CtxMethods for BuildContext {
 
                 self.do_cmd(args[0].clone(), args[1].clone());
             }
+            HelpCmd => {
+                if args.len() != 1 {
+                    return usage::general();
+                }
+                match FromStr::from_str(args[0]) {
+                    Some(help_cmd) => usage::usage_for_command(help_cmd),
+                    None => {
+                        usage::general();
+                        error(format!("{} is not a recognized command", args[0]))
+                    }
+                }
+            }
             InfoCmd => {
                 self.info();
             }
@@ -372,7 +384,7 @@ impl CtxMethods for BuildContext {
             }
             PreferCmd => {
                 if args.len() < 1 {
-                    return usage::uninstall();
+                    return usage::prefer();
                 }
 
                 self.prefer(args[0], None);
