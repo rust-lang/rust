@@ -22,7 +22,7 @@ struct foo {
 impl Drop for foo {
     fn drop(&mut self) {
         unsafe {
-            println("Goodbye, World!");
+            println!("Goodbye, World!");
             self.x.set(self.x.get() + 1);
         }
     }

@@ -160,7 +160,7 @@ Additional help:
 }
 
 pub fn describe_warnings() {
-    println("
+    println!("
 Available lint options:
     -W <foo>           Warn about <foo>
     -A <foo>           Allow <foo>
@@ -181,7 +181,7 @@ Available lint options:
     fn padded(max: uint, s: &str) -> ~str {
         " ".repeat(max - s.len()) + s
     }
-    println("\nAvailable lint checks:\n");
+    println!("{}", "\nAvailable lint checks:\n"); // FIXME: #9970
     println!("    {}  {:7.7s}  {}",
              padded(max_key, "name"), "default", "meaning");
     println!("    {}  {:7.7s}  {}\n",
@@ -193,11 +193,11 @@ Available lint options:
                  lint::level_to_str(spec.default),
                  spec.desc);
     }
-    println("");
+    println!("");
 }
 
 pub fn describe_debug_flags() {
-    println("\nAvailable debug options:\n");
+    println!("{}", "\nAvailable debug options:\n"); // FIXME: #9970
     let r = session::debugging_opts_map();
     for tuple in r.iter() {
         match *tuple {
@@ -312,10 +312,10 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
                 }
             };
             if crate_id {
-                println(crateid.to_str());
+                println!("{}", crateid.to_str());
             }
             if crate_name {
-                println(crateid.name);
+                println!("{}", crateid.name);
             }
         }
 

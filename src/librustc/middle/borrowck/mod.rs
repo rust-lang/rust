@@ -93,7 +93,7 @@ pub fn check_crate(tcx: ty::ctxt,
     visit::walk_crate(bccx, crate, ());
 
     if tcx.sess.borrowck_stats() {
-        println("--- borrowck stats ---");
+        println!("--- borrowck stats ---");
         println!("paths requiring guarantees: {}",
                  bccx.stats.guaranteed_paths.get());
         println!("paths requiring loans     : {}",

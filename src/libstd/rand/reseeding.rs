@@ -118,7 +118,7 @@ impl<S, R: SeedableRng<S>, Rsdr: Reseeder<R>>
 ///     let mut rng = ReseedingRng::new(rand::StdRng::new(), 10, rsdr);
 ///
 ///     // this will repeat, because it gets reseeded very regularly.
-///     println(rng.gen_ascii_str(100));
+///     println!("{}", rng.gen_ascii_str(100));
 /// }
 ///
 /// ```

@@ -15,7 +15,7 @@ pub fn main() {
     match &[(~5,~7)] {
         ps => {
            let (ref y, _) = ps[0];
-           println(fmt!("1. y = %d", **y));
+           println!("1. y = {}", **y);
            assert!(**y == 5);
         }
     }
@@ -24,8 +24,8 @@ pub fn main() {
     match Some(&[(~5,)]) {
         Some(ps) => {
            let (ref y,) = ps[0];
-           println(fmt!("2. y = %d", **y));
-           if **y != 5 { println("sadness"); }
+           println!("2. y = {}", **y);
+           if **y != 5 { println!("sadness"); }
         }
         None => ()
     }
@@ -34,7 +34,7 @@ pub fn main() {
     match Some(&[(~5,~7)]) {
         Some(ps) => {
            let (ref y, ref z) = ps[0];
-           println(fmt!("3. y = %d z = %d", **y, **z));
+           println!("3. y = {} z = {}", **y, **z);
            assert!(**y == 5);
         }
         None => ()

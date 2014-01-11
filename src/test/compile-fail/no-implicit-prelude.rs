@@ -24,6 +24,5 @@ impl ToStr for Test {} //~ ERROR: attempt to implement a nonexistent trait
 impl Writer for Test {} //~ ERROR: attempt to implement a nonexistent trait
 
 fn main() {
-    print("foo"); //~ ERROR: unresolved name
-    println("bar"); //~ ERROR: unresolved name
+    drop(2) //~ ERROR: unresolved name
 }

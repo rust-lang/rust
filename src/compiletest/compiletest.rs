@@ -84,8 +84,8 @@ pub fn parse_config(args: ~[~str]) -> config {
     let args_ = args.tail();
     if args[1] == ~"-h" || args[1] == ~"--help" {
         let message = format!("Usage: {} [OPTIONS] [TESTNAME...]", argv0);
-        println(getopts::groups::usage(message, groups));
-        println("");
+        println!("{}", getopts::groups::usage(message, groups));
+        println!("");
         fail!()
     }
 
@@ -97,8 +97,8 @@ pub fn parse_config(args: ~[~str]) -> config {
 
     if matches.opt_present("h") || matches.opt_present("help") {
         let message = format!("Usage: {} [OPTIONS]  [TESTNAME...]", argv0);
-        println(getopts::groups::usage(message, groups));
-        println("");
+        println!("{}", getopts::groups::usage(message, groups));
+        println!("");
         fail!()
     }
 
@@ -219,8 +219,8 @@ pub fn run_tests(config: &config) {
     if config.target == ~"arm-linux-androideabi" {
         match config.mode{
             mode_debug_info => {
-                println("arm-linux-androideabi debug-info \
-                        test uses tcp 5039 port. please reserve it");
+                println!("arm-linux-androideabi debug-info \
+                         test uses tcp 5039 port. please reserve it");
                 //arm-linux-androideabi debug-info test uses remote debugger
                 //so, we test 1 task at once
                 os::setenv("RUST_TEST_TASKS","1");

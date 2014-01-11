@@ -7,7 +7,7 @@ struct B<'a> { b: int, pa: &'a A }
 
     impl IDummy for A {
         fn do_nothing(&self) {
-            println("A::do_nothing() is called");
+            println!("A::do_nothing() is called");
         }
     }
 

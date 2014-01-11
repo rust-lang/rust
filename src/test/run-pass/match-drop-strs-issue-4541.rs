@@ -22,5 +22,5 @@ fn parse_args() -> ~str {
 }
 
 pub fn main() {
-    println(parse_args());
+    println!("{}", parse_args());
 }

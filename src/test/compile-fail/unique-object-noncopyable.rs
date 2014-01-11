@@ -22,7 +22,7 @@ impl Drop for Bar {
 
 impl Foo for Bar {
     fn f(&self) {
-        println("hi");
+        println!("hi");
     }
 }
 

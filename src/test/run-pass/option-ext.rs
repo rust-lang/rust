@@ -13,6 +13,6 @@ pub fn main() {
     let f = thing.find_str("{{");
 
     if f.is_none() {
-        println("None!");
+        println!("None!");
     }
 }

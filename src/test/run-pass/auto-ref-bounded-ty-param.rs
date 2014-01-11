@@ -28,7 +28,7 @@ impl<T:Baz> Foo for T {
 
 impl Baz for Bar {
     fn g(&self) {
-        println(self.x.to_str());
+        println!("{}", self.x);
     }
 }
 

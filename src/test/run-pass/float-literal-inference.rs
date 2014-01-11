@@ -14,9 +14,9 @@ struct S {
 
 pub fn main() {
     let x: f32 = 4.0;
-    println(x.to_str());
+    println!("{}", x);
     let y: f64 = 64.0;
-    println(y.to_str());
+    println!("{}", y);
     let z = S { z: 1.0 };
-    println(z.z.to_str());
+    println!("{}", z.z);
 }

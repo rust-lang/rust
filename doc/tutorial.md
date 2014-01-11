@@ -130,7 +130,7 @@ we have a file `hello.rs` containing this program:
 
 ~~~~
 fn main() {
-    println("hello?");
+    println!("hello?");
 }
 ~~~~
 
@@ -140,12 +140,12 @@ Windows) which, upon running, will likely do exactly what you expect.
 
 The Rust compiler tries to provide useful information when it encounters an
 error. If you introduce an error into the program (for example, by changing
-`println` to some nonexistent function), and then compile it, you'll see
+`println!` to some nonexistent macro), and then compile it, you'll see
 an error message like this:
 
 ~~~~ {.notrust}
-hello.rs:2:4: 2:16 error: unresolved name: print_with_unicorns
-hello.rs:2     print_with_unicorns("hello?");
+hello.rs:2:5: 2:24 error: macro undefined: 'print_with_unicorns'
+hello.rs:2     print_with_unicorns!("hello?");
                ^~~~~~~~~~~~~~~~~~~
 ~~~~
 
@@ -424,11 +424,11 @@ compulsory, an `if` can have an optional `else` clause, and multiple
 
 ~~~~
 if false {
-    println("that's odd");
+    println!("that's odd");
 } else if true {
-    println("right");
+    println!("right");
 } else {
-    println("neither true nor false");
+    println!("neither true nor false");
 }
 ~~~~
 
@@ -456,10 +456,10 @@ executes its corresponding arm.
 ~~~~
 # let my_number = 1;
 match my_number {
-  0     => println("zero"),
-  1 | 2 => println("one or two"),
-  3..10 => println("three to ten"),
-  _     => println("something else")
+  0     => println!("zero"),
+  1 | 2 => println!("one or two"),
+  3..10 => println!("three to ten"),
+  _     => println!("something else")
 }
 ~~~~
 
@@ -484,8 +484,8 @@ commas are optional.
 ~~~
 # let my_number = 1;
 match my_number {
-  0 => { println("zero") }
-  _ => { println("something else") }
+  0 => { println!("zero") }
+  _ => { println!("something else") }
 }
 ~~~
 
@@ -563,7 +563,7 @@ let mut x = 5u;
 loop {
     x += x - 3;
     if x % 5 == 0 { break; }
-    println(x.to_str());
+    println!("{}", x);
 }
 ~~~~
 
@@ -613,8 +613,8 @@ origin.y += 1.0; // ERROR: assigning to immutable field
 # struct Point { x: f64, y: f64 }
 # let mypoint = Point { x: 0.0, y: 0.0 };
 match mypoint {
-    Point { x: 0.0, y: yy } => { println(yy.to_str());                     }
-    Point { x: xx,  y: yy } => { println(xx.to_str() + " " + yy.to_str()); }
+    Point { x: 0.0, y: yy } => println!("{}", yy),
+    Point { x: xx,  y: yy } => println!("{} {}", xx, yy),
 }
 ~~~~
 
@@ -629,7 +629,7 @@ reuses the field name as the binding name.
 # struct Point { x: f64, y: f64 }
 # let mypoint = Point { x: 0.0, y: 0.0 };
 match mypoint {
-    Point { x, .. } => { println(x.to_str()) }
+    Point { x, .. } => println!("{}", x),
 }
 ~~~
 
@@ -1777,7 +1777,7 @@ structure.
 ~~~~
 # fn call_it(op: proc(v: int)) { }
 call_it(proc(n) {
-    println(n.to_str());
+    println!("{}", n);
 });
 ~~~~
 
@@ -1787,7 +1787,7 @@ call for these functions.
 ~~~~
 # fn call_it(op: proc(v: int)) { }
 do call_it() |n| {
-    println(n.to_str());
+    println!("{}", n);
 }
 ~~~~
 
@@ -2124,7 +2124,7 @@ struct TimeBomb {
 impl Drop for TimeBomb {
     fn drop(&mut self) {
         for _ in range(0, self.explosivity) {
-            println("blam!");
+            println!("blam!");
         }
     }
 }
@@ -2168,7 +2168,7 @@ impl Printable for int {
 }
 
 impl Printable for ~str {
-    fn print(&self) { println(*self) }
+    fn print(&self) { println!("{}", *self) }
 }
 
 # 1.print();
@@ -2214,7 +2214,7 @@ trait Printable {
 impl Printable for int {}
 
 impl Printable for ~str {
-    fn print(&self) { println(*self) }
+    fn print(&self) { println!("{}", *self) }
 }
 
 impl Printable for bool {}
@@ -2561,7 +2561,7 @@ For example, for a simple hello world program your crate only consists of this c
 ~~~~
 // main.rs
 fn main() {
-    println("Hello world!");
+    println!("Hello world!");
 }
 ~~~~
 
@@ -2583,18 +2583,18 @@ All modules in a crate below the crate root are declared with the `mod` keyword:
 mod farm {
     // This is the body of module 'farm' declared in the crate root.
 
-    fn chicken() { println("cluck cluck"); }
-    fn cow() { println("mooo"); }
+    fn chicken() { println!("cluck cluck"); }
+    fn cow() { println!("mooo"); }
 
     mod barn {
         // Body of module 'barn'
 
-        fn hay() { println("..."); }
+        fn hay() { println!("..."); }
     }
 }
 
 fn main() {
-    println("Hello farm!");
+    println!("Hello farm!");
 }
 ~~~~
 
@@ -2611,12 +2611,12 @@ One way to do it is to simply fully qualifying it:
 
 ~~~~ {.xfail-test}
 mod farm {
-    fn chicken() { println("cluck cluck"); }
+    fn chicken() { println!("cluck cluck"); }
     // ...
 }
 
 fn main() {
-    println("Hello chicken!");
+    println!("Hello chicken!");
 
     ::farm::chicken(); // Won't compile yet, see further down
 }
@@ -2639,13 +2639,13 @@ _public_ with `pub`:
 
 ~~~~
 mod farm {
-    pub fn chicken() { println("cluck cluck"); }
-    pub fn cow() { println("mooo"); }
+    pub fn chicken() { println!("cluck cluck"); }
+    pub fn cow() { println!("mooo"); }
     // ...
 }
 
 fn main() {
-    println("Hello chicken!");
+    println!("Hello chicken!");
     ::farm::chicken(); // This compiles now
 }
 ~~~~
@@ -2725,18 +2725,18 @@ So, if we want to move the content of `mod farm` into it's own file, it would lo
 mod farm; // Compiler will look for 'farm.rs' and 'farm/mod.rs'
 
 fn main() {
-    println("Hello farm!");
+    println!("Hello farm!");
     ::farm::cow();
 }
 ~~~~
 
 ~~~~
 // farm.rs - contains body of module 'farm' in the crate root
-pub fn chicken() { println("cluck cluck"); }
-pub fn cow() { println("mooo"); }
+pub fn chicken() { println!("cluck cluck"); }
+pub fn cow() { println!("mooo"); }
 
 pub mod barn {
-    pub fn hay() { println("..."); }
+    pub fn hay() { println!("..."); }
 }
 # fn main() { }
 ~~~~
@@ -2843,7 +2843,7 @@ without the `::` prefix. For example, this imports `cow` into the local scope:
 
 ~~~
 use farm::cow;
-# mod farm { pub fn cow() { println("I'm a hidden ninja cow!") } }
+# mod farm { pub fn cow() { println!("I'm a hidden ninja cow!") } }
 # fn main() { cow() }
 ~~~
 
@@ -2861,7 +2861,7 @@ while adding a `self::` prefix will start in the current module:
 
 ~~~
 # mod workaround {
-# pub fn some_parent_item(){ println("...") }
+# pub fn some_parent_item(){ println!("...") }
 # mod foo {
 use super::some_parent_item;
 use self::some_child_module::some_item;
@@ -2883,8 +2883,8 @@ scope with corresponding `use` statements.
 # // XXX: Allow unused import in doc test
 use farm::cow;
 // ...
-# mod farm { pub fn cow() { println("Hidden ninja cow is hidden.") } }
-fn cow() { println("Mooo!") }
+# mod farm { pub fn cow() { println!("Hidden ninja cow is hidden.") } }
+fn cow() { println!("Mooo!") }
 
 fn main() {
     cow() // resolves to the locally defined cow() function
@@ -2902,7 +2902,7 @@ even if they refer to things inside them:
 ~~~
 use farm::cow;
 mod farm {
-    pub fn cow() { println("Moooooo?") }
+    pub fn cow() { println!("Moooooo?") }
 }
 
 fn main() { cow() }
@@ -2916,16 +2916,16 @@ use farm::cow;
 use farm::barn;
 
 mod farm {
-    pub fn chicken() { println("cluck cluck"); }
-    pub fn cow() { println("mooo"); }
+    pub fn chicken() { println!("cluck cluck"); }
+    pub fn cow() { println!("mooo"); }
 
     pub mod barn {
-        pub fn hay() { println("..."); }
+        pub fn hay() { println!("..."); }
     }
 }
 
 fn main() {
-    println("Hello farm!");
+    println!("Hello farm!");
 
     // Can now refer to those names directly:
     chicken();
@@ -2952,7 +2952,7 @@ pub fn foo() { bar(); }
 
 ~~~
 // c.rs
-pub fn bar() { println("Baz!"); }
+pub fn bar() { println!("Baz!"); }
 # fn main() {}
 ~~~
 
@@ -2963,8 +2963,8 @@ There also exist two short forms for importing multiple names at once:
 ~~~
 use farm::{chicken, cow};
 # mod farm {
-#     pub fn cow() { println("Did I already mention how hidden and ninja I am?") }
-#     pub fn chicken() { println("I'm Bat-chicken, guardian of the hidden tutorial code.") }
+#     pub fn cow() { println!("Did I already mention how hidden and ninja I am?") }
+#     pub fn chicken() { println!("I'm Bat-chicken, guardian of the hidden tutorial code.") }
 # }
 # fn main() { cow(); chicken() }
 ~~~
@@ -2974,8 +2974,8 @@ use farm::{chicken, cow};
 ~~~
 use farm::*;
 # mod farm {
-#     pub fn cow() { println("Bat-chicken? What a stupid name!") }
-#     pub fn chicken() { println("Says the 'hidden ninja' cow.") }
+#     pub fn cow() { println!("Bat-chicken? What a stupid name!") }
+#     pub fn chicken() { println!("Says the 'hidden ninja' cow.") }
 # }
 # fn main() { cow(); chicken() }
 ~~~
@@ -2988,7 +2988,7 @@ However, that's not all. You can also rename an item while you're bringing it in
 
 ~~~
 use egg_layer = farm::chicken;
-# mod farm { pub fn chicken() { println("Laying eggs is fun!")  } }
+# mod farm { pub fn chicken() { println!("Laying eggs is fun!")  } }
 // ...
 
 fn main() {
@@ -3010,11 +3010,11 @@ For that, you write `pub use`:
 mod farm {
     pub use self::barn::hay;
 
-    pub fn chicken() { println("cluck cluck"); }
-    pub fn cow() { println("mooo"); }
+    pub fn chicken() { println!("cluck cluck"); }
+    pub fn cow() { println!("mooo"); }
 
     mod barn {
-        pub fn hay() { println("..."); }
+        pub fn hay() { println!("..."); }
     }
 }
 
@@ -3082,7 +3082,7 @@ use farm::dog;
 use extra::rational::Ratio;
 
 mod farm {
-    pub fn dog() { println("woof"); }
+    pub fn dog() { println!("woof"); }
 }
 
 fn main() {
@@ -3180,7 +3180,7 @@ pub fn explore() -> &'static str { "world" }
 ~~~~ {.xfail-test}
 // main.rs
 extern mod world;
-fn main() { println("hello " + world::explore()); }
+fn main() { println!("hello {}", world::explore()); }
 ~~~~
 
 Now compile and run like this (adjust to your platform if necessary):
@@ -3200,7 +3200,7 @@ a hash representing the crates package ID.
 ## The standard library and the prelude
 
 While reading the examples in this tutorial, you might have asked yourself where all
-those magical predefined items like `println()` are coming from.
+those magical predefined items like `range` are coming from.
 
 The truth is, there's nothing magical about them: They are all defined normally
 in the `std` library, which is a crate that ships with Rust.
@@ -3219,19 +3219,24 @@ use std::prelude::*;
 
 The role of the `prelude` module is to re-export common definitions from `std`.
 
-This allows you to use common types and functions like `Option<T>` or `println`
+This allows you to use common types and functions like `Option<T>` or `range`
 without needing to import them. And if you need something from `std` that's not in the prelude,
 you just have to import it with an `use` statement.
 
-For example, it re-exports `println` which is defined in `std::io::stdio::println`:
+For example, it re-exports `range` which is defined in `std::iter::range`:
 
 ~~~
-use puts = std::io::stdio::println;
+use iter_range = std::iter::range;
 
 fn main() {
-    println("println is imported per default.");
-    puts("Doesn't hinder you from importing it under a different name yourself.");
-    ::std::io::stdio::println("Or from not using the automatic import.");
+    // range is imported by default
+    for _ in range(0, 10) {}
+
+    // Doesn't hinder you from importing it under a different name yourself
+    for _ in iter_range(0, 10) {}
+
+    // Or from not using the automatic import.
+    for _ in ::std::iter::range(0, 10) {}
 }
 ~~~
 

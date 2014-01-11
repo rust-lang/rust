@@ -68,7 +68,7 @@ pub enum Signum {
 /// do spawn {
 ///     loop {
 ///         match listener.port.recv() {
-///             Interrupt => println("Got Interrupt'ed"),
+///             Interrupt => println!("Got Interrupt'ed"),
 ///             _ => (),
 ///         }
 ///     }

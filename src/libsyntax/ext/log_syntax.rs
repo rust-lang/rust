@@ -21,7 +21,7 @@ pub fn expand_syntax_ext(cx: &mut ExtCtxt,
                       -> base::MacResult {
 
     cx.print_backtrace();
-    println(
+    println!("{}",
         print::pprust::tt_to_str(
             &ast::TTDelim(@tt.to_owned()),
             get_ident_interner()));

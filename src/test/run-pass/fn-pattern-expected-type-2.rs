@@ -11,7 +11,7 @@
 pub fn main() {
     let v : &[(int,int)] = &[ (1, 2), (3, 4), (5, 6) ];
     for &(x, y) in v.iter() {
-        println(y.to_str());
-        println(x.to_str());
+        println!("{}", y);
+        println!("{}", x);
     }
 }

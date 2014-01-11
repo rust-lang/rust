@@ -35,5 +35,5 @@ pub fn main() {
         element: S,
         next: None
     };
-    println(ls.element);
+    println!("{}", ls.element);
 }

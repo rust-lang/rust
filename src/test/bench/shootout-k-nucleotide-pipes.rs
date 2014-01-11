@@ -223,6 +223,6 @@ fn main() {
 
    // now fetch and print result messages
    for (ii, _sz) in sizes.iter().enumerate() {
-       println(from_child[ii].recv());
+       println!("{}", from_child[ii].recv());
    }
 }

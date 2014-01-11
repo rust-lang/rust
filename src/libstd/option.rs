@@ -26,7 +26,7 @@
 //!
 //! // Take a reference to the contained string
 //! match msg {
-//!     Some(ref m) => io::println(*m),
+//!     Some(ref m) => println!("{}", *m),
 //!     None => ()
 //! }
 //!
