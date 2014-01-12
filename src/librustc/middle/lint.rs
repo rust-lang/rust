@@ -34,6 +34,7 @@
 //! Context itself, span_lint should be used instead of add_lint.
 
 use driver::session;
+use middle::dead::DEAD_CODE_LINT_STR;
 use middle::privacy;
 use middle::trans::adt; // for `adt::is_ffi_safe`
 use middle::ty;
@@ -293,7 +294,7 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
         default: warn
     }),
 
-    ("dead_code",
+    (DEAD_CODE_LINT_STR,
      LintSpec {
         lint: DeadCode,
         desc: "detect piece of code that will never be used",
@@ -531,6 +532,8 @@ impl<'a> Context<'a> {
     }
 }
 
+// Check that every lint from the list of attributes satisfies `f`.
+// Return true if that's the case. Otherwise return false.
 pub fn each_lint(sess: session::Session,
                  attrs: &[ast::Attribute],
                  f: |@ast::MetaItem, level, @str| -> bool)
@@ -562,6 +565,25 @@ pub fn each_lint(sess: session::Session,
         }
     }
     true
+}
+
+// Check from a list of attributes if it contains the appropriate
+// `#[level(lintname)]` attribute (e.g. `#[allow(dead_code)]).
+pub fn contains_lint(attrs: &[ast::Attribute],
+                    level: level, lintname: &'static str) -> bool {
+    let level_name = level_to_str(level);
+    for attr in attrs.iter().filter(|m| level_name == m.name()) {
+        if attr.meta_item_list().is_none() {
+            continue
+        }
+        let list = attr.meta_item_list().unwrap();
+        for meta_item in list.iter() {
+            if lintname == meta_item.name() {
+                return true;
+            }
+        }
+    }
+    false
 }
 
 fn check_while_true_expr(cx: &Context, e: &ast::Expr) {

@@ -12,19 +12,22 @@
 // closely. The idea is that all reachable symbols are live, codes called
 // from live codes are live, and everything else is dead.
 
+use middle::lint::{allow, contains_lint, DeadCode};
+use middle::privacy;
 use middle::ty;
 use middle::typeck;
-use middle::privacy;
-use middle::lint::DeadCode;
 
 use std::hashmap::HashSet;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::{local_def, def_id_of_def, is_local};
+use syntax::attr;
 use syntax::codemap;
 use syntax::parse::token;
 use syntax::visit::Visitor;
 use syntax::visit;
+
+pub static DEAD_CODE_LINT_STR: &'static str = "dead_code";
 
 // Any local node that may call something in its body block should be
 // explored. For example, if it's a live NodeItem that is a
@@ -196,26 +199,57 @@ impl Visitor<()> for MarkSymbolVisitor {
     }
 }
 
-// This visitor is used to mark the implemented methods of a trait. Since we
-// can not be sure if such methods are live or dead, we simply mark them
-// as live.
-struct TraitMethodSeeder {
+fn has_allow_dead_code_or_lang_attr(attrs: &[ast::Attribute]) -> bool {
+    contains_lint(attrs, allow, DEAD_CODE_LINT_STR)
+    || attr::contains_name(attrs, "lang")
+}
+
+// This visitor seeds items that
+//   1) We want to explicitly consider as live:
+//     * Item annotated with #[allow(dead_code)]
+//         - This is done so that if we want to suppress warnings for a
+//           group of dead functions, we only have to annotate the "root".
+//           For example, if both `f` and `g` are dead and `f` calls `g`,
+//           then annotating `f` with `#[allow(dead_code)]` will suppress
+//           warning for both `f` and `g`.
+//     * Item annotated with #[lang=".."]
+//         - This is because lang items are always callable from elsewhere.
+//   or
+//   2) We are not sure to be live or not
+//     * Implementation of a trait method
+struct LifeSeeder {
     worklist: ~[ast::NodeId],
 }
 
-impl Visitor<()> for TraitMethodSeeder {
+impl Visitor<()> for LifeSeeder {
     fn visit_item(&mut self, item: &ast::Item, _: ()) {
+        if has_allow_dead_code_or_lang_attr(item.attrs) {
+            self.worklist.push(item.id);
+        }
         match item.node {
             ast::ItemImpl(_, Some(ref _trait_ref), _, ref methods) => {
                 for method in methods.iter() {
                     self.worklist.push(method.id);
                 }
             }
-            ast::ItemMod(..) | ast::ItemFn(..) => {
-                visit::walk_item(self, item, ());
+            _ => ()
+        }
+        visit::walk_item(self, item, ());
+    }
+
+    fn visit_fn(&mut self, fk: &visit::FnKind,
+                _: &ast::FnDecl, block: &ast::Block,
+                _: codemap::Span, id: ast::NodeId, _: ()) {
+        // Check for method here because methods are not ast::Item
+        match *fk {
+            visit::FkMethod(_, _, method) => {
+                if has_allow_dead_code_or_lang_attr(method.attrs) {
+                    self.worklist.push(id);
+                }
             }
             _ => ()
         }
+        visit::walk_block(self, block, ());
     }
 }
 
@@ -244,12 +278,12 @@ fn create_and_seed_worklist(tcx: ty::ctxt,
     }
 
     // Seed implemeneted trait methods
-    let mut trait_method_seeder = TraitMethodSeeder {
+    let mut life_seeder = LifeSeeder {
         worklist: worklist
     };
-    visit::walk_crate(&mut trait_method_seeder, crate, ());
+    visit::walk_crate(&mut life_seeder, crate, ());
 
-    return trait_method_seeder.worklist;
+    return life_seeder.worklist;
 }
 
 fn find_live(tcx: ty::ctxt,
