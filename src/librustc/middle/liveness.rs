@@ -409,7 +409,7 @@ fn visit_fn(v: &mut LivenessVisitor,
     match *fk {
         visit::FkMethod(_, _, method) => {
             match method.explicit_self.node {
-                SelfValue(_) | SelfRegion(..) | SelfBox(_) | SelfUniq(_) => {
+                SelfValue(_) | SelfRegion(..) | SelfBox | SelfUniq(_) => {
                     fn_maps.add_variable(Arg(method.self_id,
                                              special_idents::self_));
                 }

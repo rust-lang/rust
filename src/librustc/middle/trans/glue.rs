@@ -108,22 +108,26 @@ fn simplified_glue_type(tcx: ty::ctxt, field: uint, t: ty::t) -> ty::t {
     }
 
     if field == abi::tydesc_field_take_glue && ty::type_is_boxed(t) {
-        return ty::mk_imm_box(tcx, ty::mk_nil());
+        return ty::mk_box(tcx, ty::mk_nil());
     }
 
     if field == abi::tydesc_field_drop_glue {
         match ty::get(t).sty {
             ty::ty_box(typ)
                 if !ty::type_needs_drop(tcx, typ) =>
-            return ty::mk_imm_box(tcx, ty::mk_nil()),
+            return ty::mk_box(tcx, ty::mk_nil()),
 
             ty::ty_vec(mt, ty::vstore_box)
                 if !ty::type_needs_drop(tcx, mt.ty) =>
-            return ty::mk_imm_box(tcx, ty::mk_nil()),
+            return ty::mk_box(tcx, ty::mk_nil()),
 
-            ty::ty_uniq(mt) | ty::ty_vec(mt, ty::vstore_uniq)
+            ty::ty_uniq(typ)
+                if !ty::type_needs_drop(tcx, typ) =>
+            return ty::mk_uniq(tcx, ty::mk_nil()),
+
+            ty::ty_vec(mt, ty::vstore_uniq)
                 if !ty::type_needs_drop(tcx, mt.ty) =>
-            return ty::mk_imm_uniq(tcx, ty::mk_nil()),
+            return ty::mk_uniq(tcx, ty::mk_nil()),
 
             _ => {}
         }

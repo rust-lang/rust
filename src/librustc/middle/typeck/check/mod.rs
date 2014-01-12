@@ -1334,7 +1334,7 @@ pub fn do_autoderef(fcx: @FnCtxt, sp: Span, t: ty::t) -> (ty::t, uint) {
 
         // Some extra checks to detect weird cycles and so forth:
         match *sty {
-            ty::ty_box(inner) => {
+            ty::ty_box(inner) | ty::ty_uniq(inner) => {
                 match ty::get(t1).sty {
                     ty::ty_infer(ty::TyVar(v1)) => {
                         ty::occurs_check(fcx.ccx.tcx, sp, v1,
@@ -1343,7 +1343,7 @@ pub fn do_autoderef(fcx: @FnCtxt, sp: Span, t: ty::t) -> (ty::t, uint) {
                     _ => ()
                 }
             }
-            ty::ty_uniq(inner) | ty::ty_rptr(_, inner) => {
+            ty::ty_rptr(_, inner) => {
                 match ty::get(t1).sty {
                     ty::ty_infer(ty::TyVar(v1)) => {
                         ty::occurs_check(fcx.ccx.tcx, sp, v1,
@@ -2697,10 +2697,8 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                   let def_id = ast_util::def_id_of_def(definition);
                   match tcx.lang_items.items[ExchangeHeapLangItem as uint] {
                       Some(item_def_id) if def_id == item_def_id => {
-                          fcx.write_ty(id, ty::mk_uniq(tcx, ty::mt {
-                              ty: fcx.expr_ty(subexpr),
-                              mutbl: ast::MutImmutable,
-                          }));
+                          fcx.write_ty(id, ty::mk_uniq(tcx,
+                                                       fcx.expr_ty(subexpr)));
                           checked = true
                       }
                       Some(_) | None => {}
@@ -2806,13 +2804,12 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
       ast::ExprUnary(callee_id, unop, oprnd) => {
         let exp_inner = unpack_expected(fcx, expected, |sty| {
             match unop {
-              ast::UnBox | ast::UnUniq => match *sty {
-                ty::ty_box(ty) => Some(ty),
-                ty::ty_uniq(ref mt) => Some(mt.ty),
-                _ => None
-              },
-              ast::UnNot | ast::UnNeg => expected,
-              ast::UnDeref => None
+                ast::UnBox | ast::UnUniq => match *sty {
+                    ty::ty_box(ty) | ty::ty_uniq(ty) => Some(ty),
+                    _ => None
+                },
+                ast::UnNot | ast::UnNeg => expected,
+                ast::UnDeref => None
             }
         });
         check_expr_with_opt_hint(fcx, oprnd, exp_inner);
@@ -2824,9 +2821,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                     oprnd_t = ty::mk_box(tcx, oprnd_t)
                 }
                 ast::UnUniq => {
-                    oprnd_t = ty::mk_uniq(tcx,
-                                          ty::mt {ty: oprnd_t,
-                                                  mutbl: ast::MutImmutable});
+                    oprnd_t = ty::mk_uniq(tcx, oprnd_t);
                 }
                 ast::UnDeref => {
                     let sty = structure_of(fcx, expr.span, oprnd_t);

@@ -582,14 +582,14 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: @FnCtxt, is_early: bool) {
               let ty = structurally_resolved_type(fcx, ex.span,
                                                   fcx.expr_ty(src));
               match (&ty::get(ty).sty, store) {
-                  (&ty::ty_box(..), ty::BoxTraitStore)
+                  (&ty::ty_box(..), ty::BoxTraitStore) |
+                  (&ty::ty_uniq(..), ty::UniqTraitStore)
                     if !mutability_allowed(ast::MutImmutable,
                                            target_mutbl) => {
                       fcx.tcx().sess.span_err(ex.span,
                                               format!("types differ in mutability"));
                   }
 
-                  (&ty::ty_uniq(mt), ty::UniqTraitStore) |
                   (&ty::ty_rptr(_, mt), ty::RegionTraitStore(..))
                     if !mutability_allowed(mt.mutbl, target_mutbl) => {
                       fcx.tcx().sess.span_err(ex.span,
@@ -600,8 +600,8 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: @FnCtxt, is_early: bool) {
                   (&ty::ty_uniq(..), ty::UniqTraitStore) |
                   (&ty::ty_rptr(..), ty::RegionTraitStore(..)) => {
                     let typ = match (&ty::get(ty).sty) {
-                        &ty::ty_box(typ) => typ,
-                        &ty::ty_uniq(mt) | &ty::ty_rptr(_, mt) => mt.ty,
+                        &ty::ty_box(typ) | &ty::ty_uniq(typ) => typ,
+                        &ty::ty_rptr(_, mt) => mt.ty,
                         _ => fail!("shouldn't get here"),
                     };
 

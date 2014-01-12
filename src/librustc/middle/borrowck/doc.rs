@@ -248,7 +248,7 @@ data as mutable).
 2. `LIFETIME(LV, LT, MQ)`: The lifetime of the borrow does not exceed
 the lifetime of the value being borrowed. This pass is also
 responsible for inserting root annotations to keep managed values
-alive and for dynamically freezing `@mut` boxes.
+alive.
 
 3. `RESTRICTIONS(LV, LT, ACTIONS) = RS`: This pass checks and computes the
 restrictions to maintain memory safety. These are the restrictions
@@ -308,22 +308,17 @@ be borrowed if MQ is immutable or const:
 
 ### Checking mutability of mutable pointer types
 
-`&mut T` and `@mut T` can be frozen, so it is acceptable to borrow
-them as either imm or mut:
+`&mut T` can be frozen, so it is acceptable to borrow it as either imm or mut:
 
     MUTABILITY(*LV, MQ)                 // M-Deref-Borrowed-Mut
       TYPE(LV) = &mut Ty
 
-    MUTABILITY(*LV, MQ)                 // M-Deref-Managed-Mut
-      TYPE(LV) = @mut Ty
-
 ## Checking lifetime
 
-These rules aim to ensure that no data is borrowed for a scope that
-exceeds its lifetime. In addition, these rules manage the rooting and
-dynamic freezing of `@` and `@mut` values. These two computations wind
-up being intimately related. Formally, we define a predicate
-`LIFETIME(LV, LT, MQ)`, which states that "the lvalue `LV` can be
+These rules aim to ensure that no data is borrowed for a scope that exceeds
+its lifetime. In addition, these rules manage the rooting of `@` values.
+These two computations wind up being intimately related. Formally, we define
+a predicate `LIFETIME(LV, LT, MQ)`, which states that "the lvalue `LV` can be
 safely borrowed for the lifetime `LT` with mutability `MQ`". The Rust
 code corresponding to this predicate is the module
 `middle::borrowck::gather_loans::lifetime`.
@@ -352,7 +347,7 @@ The scope of a managed referent is also the scope of the pointer.  This
 is a conservative approximation, since there may be other aliases fo
 that same managed box that would cause it to live longer:
 
-      SCOPE(*LV) = SCOPE(LV) if LV has type @T or @mut T
+      SCOPE(*LV) = SCOPE(LV) if LV has type @T
 
 The scope of a borrowed referent is the scope associated with the
 pointer.  This is a conservative approximation, since the data that
@@ -440,29 +435,6 @@ Here I have written `ROOT LV at *LV FOR LT` to indicate that the code
 makes a note in a side-table that the box `LV` must be rooted into the
 stack when `*LV` is evaluated, and that this root can be released when
 the scope `LT` exits.
-
-### Checking lifetime for derefs of managed, mutable pointers
-
-Loans of the contents of mutable managed pointers are simpler in some
-ways that loans of immutable managed pointers, because we can never
-rely on the user to root them (since the contents are, after all,
-mutable). This means that the burden always falls to the compiler, so
-there is only one rule:
-
-    LIFETIME(*LV, LT, MQ)              // L-Deref-Managed-Mut-Compiler-Root
-      TYPE(LV) = @mut Ty
-      LT <= innermost enclosing loop/func
-      ROOT LV at *LV for LT
-      LOCK LV at *LV as MQ for LT
-
-Note that there is an additional clause this time `LOCK LV at *LV as
-MQ for LT`.  This clause states that in addition to rooting `LV`, the
-compiler should also "lock" the box dynamically, meaning that we
-register that the box has been borrowed as mutable or immutable,
-depending on `MQ`. This lock will fail if the box has already been
-borrowed and either the old loan or the new loan is a mutable loan
-(multiple immutable loans are okay). The lock is released as we exit
-the scope `LT`.
 
 ## Computing the restrictions
 
@@ -834,15 +806,6 @@ would suggest that an `&mut` referent found in an `&const` location be
 prohibited from both freezes and claims. This would avoid the need to
 prevent `const` borrows of the base pointer when the referent is
 borrowed.
-
-### Restrictions for loans of mutable managed referents
-
-With `@mut` referents, we don't make any static guarantees.  But as a
-convenience, we still register a restriction against `*LV`, because
-that way if we *can* find a simple static error, we will:
-
-    RESTRICTIONS(*LV, LT, ACTIONS) = [*LV, ACTIONS]   // R-Deref-Managed-Borrowed
-      TYPE(LV) = @mut Ty
 
 # Moves and initialization
 
