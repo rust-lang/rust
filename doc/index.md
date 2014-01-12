@@ -29,6 +29,8 @@
 [The M:N runtime library, `libgreen`](green/index.html)
 [The 1:1 runtime library, `libnative`](native/index.html)
 
+[The Rust packaging library, `librustpkg`](rustpkg/index.html)
+
 [The Rust parser, `libsyntax`](syntax/index.html)
 [The Rust compiler, `librustc`](rustc/index.html)
 
