@@ -1215,7 +1215,7 @@ A static item must have a _constant expression_ giving its definition.
 
 Static items must be explicitly typed.
 The type may be ```bool```, ```char```, a number, or a type derived from those primitive types.
-The derived types are references with the `'static` lifetime,
+The derived types are references with the `static` lifetime,
 fixed-size arrays, tuples, and structs.
 
 ~~~~
@@ -1730,14 +1730,17 @@ names are effectively reserved. Some significant attributes include:
 
 * The `doc` attribute, for documenting code in-place.
 * The `cfg` attribute, for conditional-compilation by build-configuration.
-* The `lang` attribute, for custom definitions of traits and functions that are known to the Rust compiler (see [Language items](#language-items)).
-* The `link` attribute, for describing linkage metadata for a extern blocks.
 * The `crate_id` attribute, for describing the package ID of a crate.
+* The `lang` attribute, for custom definitions of traits and functions that are
+  known to the Rust compiler (see [Language items](#language-items)).
+* The `link` attribute, for describing linkage metadata for a extern blocks.
 * The `test` attribute, for marking functions as unit tests.
 * The `allow`, `warn`, `forbid`, and `deny` attributes, for
   controlling lint checks (see [Lint check attributes](#lint-check-attributes)).
 * The `deriving` attribute, for automatically generating
   implementations of certain traits.
+* The `inline` attribute, for expanding functions at caller location (see
+  [Inline attributes](#inline-attributes)).
 * The `static_assert` attribute, for asserting that a static bool is true at compiletime
 * The `thread_local` attribute, for defining a `static mut` as a thread-local. Note that this is
   only a low-level building block, and is not local to a *task*, nor does it provide safety.
@@ -1909,6 +1912,25 @@ A complete list of the built-in language items follows:
 
 > **Note:** This list is likely to become out of date. We should auto-generate it
 > from `librustc/middle/lang_items.rs`.
+
+### Inline attributes
+
+The inline attribute is used to suggest to the compiler to perform an inline
+expansion and place a copy of the function in the caller rather than generating
+code to call the function where it is defined.
+
+The compiler automatically inlines functions based on internal heuristics.
+Incorrectly inlining functions can actually making the program slower, so it
+should be used with care.
+
+`#[inline]` and `#[inline(always)]` always causes the function to be serialized
+into crate metadata to allow cross-crate inlining.
+
+There are three different types of inline attributes:
+
+* `#[inline]` hints the compiler to perform an inline expansion.
+* `#[inline(always)]` asks the compiler to always perform an inline expansion.
+* `#[inline(never)]` asks the compiler to never perform an inline expansion.
 
 ### Deriving
 
@@ -3223,12 +3245,12 @@ The type of a closure mapping an input of type `A` to an output of type `B` is `
 An example of creating and calling a closure:
 
 ```rust
-let captured_var = 10; 
+let captured_var = 10;
 
-let closure_no_args = || println!("captured_var={}", captured_var); 
+let closure_no_args = || println!("captured_var={}", captured_var);
 
 let closure_args = |arg: int| -> int {
-  println!("captured_var={}, arg={}", captured_var, arg); 
+  println!("captured_var={}, arg={}", captured_var, arg);
   arg // Note lack of semicolon after 'arg'
 };
 
