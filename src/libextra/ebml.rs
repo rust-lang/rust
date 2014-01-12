@@ -90,7 +90,7 @@ pub mod reader {
 
     // ebml reading
 
-    struct Res {
+    pub struct Res {
         val: uint,
         next: uint
     }
