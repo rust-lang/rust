@@ -270,7 +270,7 @@ Containers can provide conversion from iterators through `collect` by
 implementing the `FromIterator` trait. For example, the implementation for
 vectors is as follows:
 
-~~~ {.xfail-test}
+~~~ {.ignore}
 impl<A> FromIterator<A> for ~[A] {
     pub fn from_iterator<T: Iterator<A>>(iterator: &mut T) -> ~[A] {
         let (lower, _) = iterator.size_hint();
@@ -288,7 +288,7 @@ impl<A> FromIterator<A> for ~[A] {
 The `Iterator` trait provides a `size_hint` default method, returning a lower
 bound and optionally on upper bound on the length of the iterator:
 
-~~~ {.xfail-test}
+~~~ {.ignore}
 fn size_hint(&self) -> (uint, Option<uint>) { (0, None) }
 ~~~
 

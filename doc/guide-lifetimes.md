@@ -299,7 +299,7 @@ _as soon as its owning reference changes or goes out of
 scope_. Therefore, a program like this is illegal (and would be
 rejected by the compiler):
 
-~~~ {.xfail-test}
+~~~ {.ignore}
 fn example3() -> int {
     let mut x = ~X {f: 3};
     let y = &x.f;
@@ -346,7 +346,7 @@ modify the previous example to introduce additional owned pointers
 and structs, and the compiler will still be able to detect possible
 mutations:
 
-~~~ {.xfail-test}
+~~~ {.ignore}
 fn example3() -> int {
     struct R { g: int }
     struct S { f: ~R }
@@ -524,7 +524,7 @@ the compiler accepts the function `get_x()`.
 To emphasize this point, let’s look at a variation on the example, this
 time one that does not compile:
 
-~~~ {.xfail-test}
+~~~ {.ignore}
 struct Point {x: f64, y: f64}
 fn get_x_sh(p: @Point) -> &f64 {
     &p.x // Error reported here

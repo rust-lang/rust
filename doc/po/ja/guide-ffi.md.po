@@ -34,7 +34,7 @@ msgstr "[他言語間インターフェース (foreign function inferface)][ffi]
 #: doc/guide-ffi.md:16
 #, fuzzy
 #| msgid "~~~~ use std::task::spawn;"
-msgid "~~~~ {.xfail-test} use std::libc::size_t;"
+msgid "~~~~ {.ignore} use std::libc::size_t;"
 msgstr ""
 "~~~~\n"
 "use std::task::spawn;"
@@ -43,7 +43,7 @@ msgstr ""
 #: doc/guide-ffi.md:48
 #, fuzzy
 #| msgid "~~~~ use std::task::spawn;"
-msgid "~~~~ {.xfail-test} use std::libc::{c_int, size_t};"
+msgid "~~~~ {.ignore} use std::libc::{c_int, size_t};"
 msgstr ""
 "~~~~\n"
 "use std::task::spawn;"
@@ -67,7 +67,7 @@ msgstr ""
 #: doc/guide-ffi.md:344
 #, fuzzy
 #| msgid "~~~~ use std::task::spawn;"
-msgid "~~~{.xfail-test} use std::libc;"
+msgid "~~~{.ignore} use std::libc;"
 msgstr ""
 "~~~~\n"
 "use std::task::spawn;"
@@ -76,7 +76,7 @@ msgstr ""
 #: doc/guide-ffi.md:363
 #, fuzzy
 #| msgid "~~~~ use std::task::spawn;"
-msgid "~~~{.xfail-test} use std::libc; use std::ptr;"
+msgid "~~~{.ignore} use std::libc; use std::ptr;"
 msgstr ""
 "~~~~\n"
 "use std::task::spawn;"

@@ -112,7 +112,7 @@ msgstr "## 演算子"
 #: doc/complement-cheatsheet.md:54
 #, fuzzy
 #| msgid "~~~~ use std::task::spawn;"
-msgid "~~~ {.xfail-test} use std::path::Path; use std::io::fs::File;"
+msgid "~~~ {.ignore} use std::path::Path; use std::io::fs::File;"
 msgstr ""
 "~~~~\n"
 "use std::task::spawn;"
