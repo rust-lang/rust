@@ -1429,7 +1429,7 @@ For a more in-depth explanation of references and lifetimes, read the
 
 ## Freezing
 
-Lending an immutable pointer to an object freezes it and prevents mutation.
+Lending a mutable pointer to an object freezes it and prevents mutation.
 `Freeze` objects have freezing enforced statically at compile-time. An example
 of a non-`Freeze` type is [`RefCell<T>`][refcell].
 
