@@ -411,7 +411,7 @@ impl Real for f64 {
     fn recip(&self) -> f64 { 1.0 / *self }
 
     #[inline]
-    fn pow(&self, n: &f64) -> f64 { pow(*self, *n) }
+    fn powf(&self, n: &f64) -> f64 { pow(*self, *n) }
 
     #[inline]
     fn sqrt(&self) -> f64 { sqrt(*self) }
@@ -1269,7 +1269,7 @@ mod tests {
     fn test_integer_decode() {
         assert_eq!(3.14159265359f64.integer_decode(), (7074237752028906u64, -51i16, 1i8));
         assert_eq!((-8573.5918555f64).integer_decode(), (4713381968463931u64, -39i16, -1i8));
-        assert_eq!(2f64.pow(&100.0).integer_decode(), (4503599627370496u64, 48i16, 1i8));
+        assert_eq!(2f64.powf(&100.0).integer_decode(), (4503599627370496u64, 48i16, 1i8));
         assert_eq!(0f64.integer_decode(), (0u64, -1075i16, 1i8));
         assert_eq!((-0f64).integer_decode(), (0u64, -1075i16, -1i8));
         assert_eq!(INFINITY.integer_decode(), (4503599627370496u64, 972i16, 1i8));

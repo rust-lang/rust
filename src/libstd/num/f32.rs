@@ -409,7 +409,7 @@ impl Real for f32 {
     fn recip(&self) -> f32 { 1.0 / *self }
 
     #[inline]
-    fn pow(&self, n: &f32) -> f32 { pow(*self, *n) }
+    fn powf(&self, n: &f32) -> f32 { pow(*self, *n) }
 
     #[inline]
     fn sqrt(&self) -> f32 { sqrt(*self) }
@@ -1265,7 +1265,7 @@ mod tests {
     fn test_integer_decode() {
         assert_eq!(3.14159265359f32.integer_decode(), (13176795u64, -22i16, 1i8));
         assert_eq!((-8573.5918555f32).integer_decode(), (8779358u64, -10i16, -1i8));
-        assert_eq!(2f32.pow(&100.0).integer_decode(), (8388608u64, 77i16, 1i8));
+        assert_eq!(2f32.powf(&100.0).integer_decode(), (8388608u64, 77i16, 1i8));
         assert_eq!(0f32.integer_decode(), (0u64, -150i16, 1i8));
         assert_eq!((-0f32).integer_decode(), (0u64, -150i16, -1i8));
         assert_eq!(INFINITY.integer_decode(), (8388608u64, 105i16, 1i8));
