@@ -2131,7 +2131,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
             fcx.write_error(expr.id);
             fcx.write_error(rhs.id);
             fcx.type_error_message(expr.span, |actual| {
-                format!("binary operation {} cannot be applied \
+                format!("binary operation `{}` cannot be applied \
                       to type `{}`",
                      ast_util::binop_to_str(op), actual)},
                                    lhs_t, None)
@@ -2153,7 +2153,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
             fcx.type_error_message(expr.span,
                                    |actual| {
                                         format!("binary assignment operation \
-                                                {}= cannot be applied to type `{}`",
+                                                `{}=` cannot be applied to type `{}`",
                                                 ast_util::binop_to_str(op),
                                                 actual)
                                    },
@@ -2182,7 +2182,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
             Some(ref name) => {
                 let if_op_unbound = || {
                     fcx.type_error_message(ex.span, |actual| {
-                        format!("binary operation {} cannot be applied \
+                        format!("binary operation `{}` cannot be applied \
                               to type `{}`",
                              ast_util::binop_to_str(op), actual)},
                             lhs_resolved_t, None)
@@ -2850,7 +2850,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                                 _ => {
                                     fcx.type_error_message(expr.span,
                                         |actual| {
-                                            format!("type {} cannot be dereferenced", actual)
+                                            format!("type `{}` cannot be dereferenced", actual)
                                     }, oprnd_t, None);
                                 }
                             }

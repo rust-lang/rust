@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:|| cannot be applied to type `f32`
+// error-pattern:`||` cannot be applied to type `f32`
 
 fn main() { let x = 1.0_f32 || 2.0_f32; }
