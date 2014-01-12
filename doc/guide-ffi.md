@@ -251,9 +251,8 @@ fn main() {
 
 # Callbacks from C code to Rust functions
 
-Some external libraries require the usage of callbacks. 
-E.g. because they start background threads and use callbacks to signal events
-like the availability of new data.
+Some external libraries require the usage of callbacks to report back their
+current state or intermediate data to the caller.
 It is possible to pass functions defined in Rust to an external library.
 The requirement for this is that the callback function is marked as `extern`
 with the correct calling convention to make it callable from C code.
@@ -265,24 +264,25 @@ A basic example is:
 
 Rust code:
 ~~~~
-extern "C" fn callback(a:i32) {
+extern fn callback(a:i32) {
     println!("I'm called from C with value {0}", a);
 }
 
 #[link(name = "extlib")]
 extern {
    fn register_callback(cb: extern "C" fn(i32)) -> i32;
+   fn trigger_callback();
 }
 
 fn main() {
     unsafe {
         register_callback(callback);
+        trigger_callback(); // Triggers the callback
     }
-    ... // Do sth. and wait for callbacks
 }
 ~~~~
 
-C-Code:
+C code:
 ~~~~
 typedef void (*rust_callback)(int32_t);
 rust_callback cb;
@@ -292,15 +292,14 @@ int32_t register_callback(rust_callback callback) {
     return 1;
 }
 
-void thread() {
-  // do sth
+void trigger_callback() {
   cb(7); // Will call callback(7) in Rust
 }
 ~~~~
 
-Keep in mind that `callback()` will be called from a C thread and not from
-a Rust thread or even your main thread. Therefore each data access is
-especially unsafe and synchronization mechanisms must be used.
+In this example will Rust's `main()` will call `do_callback()` in C,
+which would call back to `callback()` in Rust.
+
 
 ## Targetting callbacks to Rust objects
 
@@ -314,115 +313,78 @@ C library. The C library can then include the pointer to the Rust object in
 the notification. This will provide a unsafe possibility to access the 
 referenced Rust object in callback.
 
-If this mechanism is used it is absolutely necessary that no more callbacks
-are performed  by C library after the respective Rust object get's
-destroyed. This can be achieved by unregistering the callback it the object's
-destructor and designing the library in a way that guarantees that no
-callback will be performed after unregistration.
-
-## Sychronzing callbacks with channels
-
-As already explained accessing data of a Rust object in a callback is unsafe
-without synchronisation. Channels in Rust provide a mechanism
-which can be used to forward events into Rust tasks. The idea is to create a
-channel where the writing end (`Chan`) is used exclusively from the C callback
-to queue events. The reading end (`Port`) is used in the Rust task which owns
-the wrapper object.
-
-Depending on the type of data in the event you might want to convert callback
-data from C into a more suitable Rust structure before sending it into the
-channel. E.g. it makes sense to convert C strings (`char*`) into Rust strings.
-You could also use Rust enumerations to differentiate between multiple types
-of events and their data.
-
-Putting this together a wrapper for a library that uses a background thread
-that sends events could look like:
-
 Rust code:
 ~~~~
 
+struct RustObject {
+    a: i32,
+    // other members
+}
+
+extern fn callback(target: *RustObject, a:i32) {
+    println!("I'm called from C with value {0}", a);
+    (*target).a = a; // Update the value in RustObject with the value received from the callback
+}
+
 #[link(name = "extlib")]
 extern {
-   fn init(target: *ExtLibWrapper, cb: extern "C" fn(*ExtLibWrapper, EventData));
-   fn unregister();
+   fn register_callback(target: *RustObject, cb: extern "C" fn(*RustObject, i32)) -> i32;
+   fn trigger_callback();
 }
 
-struct EventData {
-    ... // Contains data that describes the event
-}
-
-pub struct ExtLibWrapper {
-    // Channel is used privately
-    priv chan: comm::Chan<EventData>,
-    
-    // The port is used by the Rust task to receive notifications
-    port: comm::Port<EventData>
-}
-
-impl ExtLibWrapper {
-    pub fn new() -> ~ EventData {
-        let (p,c):(Port<EventData>,Chan<EventData>) 
-                = comm::Chan::new();
-
-        let wrapper = ~ExtLibWrapper{chan:c, port:p};
-
-        unsafe {
-            let wrapper_addr:*ExtLibWrapper = ptr::to_unsafe_ptr(wrapper);
-            init(wrapper_addr, callback);
-        }
-    }
-}
-
-impl Drop for ExtLibWrapper {
-    fn drop(&mut self) {
-        // Unregister to avoid further callbacks
-        unsafe { unregister(); }
-    }
-}
-
-extern "C" fn callback(target: *ExtLibWrapper, data: EventData) {
-    unsafe  {
-        (*target).chan.send(data); // Forward the event data through channel
+fn main() {
+    // Create the object that will be referenced in the callback
+    let rust_object = ~RustObject{a: 5, ...};
+     
+    unsafe {
+        // Gets a raw pointer to the object
+        let target_addr:*RustObject = ptr::to_unsafe_ptr(rust_object);
+        register_callback(target_addr, callback);
+        trigger_callback(); // Triggers the callback
     }
 }
 ~~~~
 
-C-Code:
+C code:
 ~~~~
-typedef void (*rust_callback)(void* target, EventData data);
-void* rust_target;
+typedef void (*rust_callback)(int32_t);
+void* cb_target;
 rust_callback cb;
-mutex mtx; // Example mutex
 
-void init(void* target, rust_callback callback) {
-    rust_target = target;
+int32_t register_callback(void* callback_target, rust_callback callback) {
+    cb_target = callback_target;
     cb = callback;
+    return 1;
 }
 
-void background_thread() {
-    // do sth
-  
-    // Lock the mutex to guarantee that callback is not performed after Rust
-    // object is destroyed
-    mutex_lock(mtx); 
-    if (rust_target != 0) cb(rust_target, event_data);
-    mutex_unlock(mtx);
-  
-    // do sth
-}
-
-void unregister() {
-    mutex_lock(mtx);
-    rust_target = 0;
-    mutex_unlock(mtx);
+void trigger_callback() {
+  cb(cb_target, 7); // Will call callback(&rustObject, 7) in Rust
 }
 ~~~~
 
-Remark: This example will not work correctly if more than a single 
-`ExtLibWrapper` object is created. If this is required additional handles
-have to be introduced which identify each object. E.g. `ExtLibWrapper` would
-have to store the member of the associated C object as member and pass it
-on each function call.
+## Asynchronous callbacks
+
+In the already given examples the callbacks are invoked as a direct reaction
+to a function call to the external C library.
+The control over the current thread switched from Rust to C to Rust for the
+execution of the callback, but in the end the callback is executed on the
+same thread (and Rust task) that lead called the function which triggered
+the callback.
+
+Things get more complicated when the external library spawns it's own threads
+and invokes callbacks from there.
+In these cases access to Rust data structures inside he callbacks is
+especially unsafe and proper synchronization mechanisms must be used.
+Besides classical synchronization mechanisms like mutexes one possibility in
+Rust is to use channels (in `std::comm`) to forward data from the C thread
+that invoked the callback into a Rust task.
+
+If an asychronous callback targets a special object in the Rust address space
+it is also absolutely necessary that no more callbacks are performed by the 
+C library after the respective Rust object get's destroyed. 
+This can be achieved by unregistering the callback it the object's
+destructor and designing the library in a way that guarantees that no
+callback will be performed after unregistration.
 
 # Linking
 
