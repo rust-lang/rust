@@ -904,6 +904,7 @@ mod test {
     use util::parser_testing::{string_to_pat, strs_to_idents};
     use visit;
     use visit::Visitor;
+    use diag_db;
 
     // a visitor that extracts the paths
     // from a given thingy and puts them in a mutable
@@ -964,7 +965,7 @@ mod test {
     #[test] fn macros_cant_escape_fns_test () {
         let src = ~"fn bogus() {macro_rules! z (() => (3+4))}\
                     fn inty() -> int { z!() }";
-        let sess = parse::new_parse_sess();
+        let sess = parse::new_parse_sess(diag_db::load());
         let crate_ast = parse::parse_crate_from_source_str(
             ~"<test>",
             src,
@@ -979,7 +980,7 @@ mod test {
     #[test] fn macros_cant_escape_mods_test () {
         let src = ~"mod foo {macro_rules! z (() => (3+4))}\
                     fn inty() -> int { z!() }";
-        let sess = parse::new_parse_sess();
+        let sess = parse::new_parse_sess(diag_db::load());
         let crate_ast = parse::parse_crate_from_source_str(
             ~"<test>",
             src,
@@ -993,7 +994,7 @@ mod test {
     #[test] fn macros_can_escape_flattened_mods_test () {
         let src = ~"#[macro_escape] mod foo {macro_rules! z (() => (3+4))}\
                     fn inty() -> int { z!() }";
-        let sess = parse::new_parse_sess();
+        let sess = parse::new_parse_sess(diag_db::load());
         let crate_ast = parse::parse_crate_from_source_str(
             ~"<test>",
             src,

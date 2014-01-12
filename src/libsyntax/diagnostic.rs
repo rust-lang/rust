@@ -10,6 +10,7 @@
 
 use codemap::{Pos, Span};
 use codemap;
+use diag_db::DiagnosticDb;
 
 use std::cell::Cell;
 use std::io;
@@ -25,7 +26,7 @@ static MAX_LINES: uint = 6u;
 
 pub trait Emitter {
     fn emit(&self, cmsp: Option<(&codemap::CodeMap, Span)>,
-            msg: &str, lvl: Level);
+            msg: &str, lvl: Level, code: Option<&str>);
     fn custom_emit(&self, cm: &codemap::CodeMap,
                    sp: Span, msg: &str, lvl: Level);
 }
@@ -89,15 +90,20 @@ impl SpanHandler {
 pub struct Handler {
     err_count: Cell<uint>,
     emit: DefaultEmitter,
+    diag_db: DiagnosticDb,
+    /// Indicates that we've emitted a diagnostic with extended info
+    saw_extended_info: Cell<bool>,
 }
 
 impl Handler {
     pub fn fatal_without_diagnostic_code(&self, msg: &str) -> ! {
         self.emit(None, msg, Fatal);
+        self.emit_extended_info_explainer();
         fail!(FatalError);
     }
     pub fn fatal_with_diagnostic_code(&self, code: &str, msg: &str) -> ! {
         self.emit_with_code(None, code, msg, Fatal);
+        self.emit_extended_info_explainer();
         fail!(FatalError);
     }
     pub fn err_without_diagnostic_code(&self, msg: &str) {
@@ -145,10 +151,10 @@ impl Handler {
         self.bug(~"unimplemented " + msg);
     }
     pub fn emit(&self,
-                cmsp: Option<(&codemap::CodeMap, Span)>,
-                msg: &str,
-                lvl: Level) {
-        self.emit.emit(cmsp, msg, lvl);
+            cmsp: Option<(&codemap::CodeMap, Span)>,
+            msg: &str,
+            lvl: Level) {
+        self.emit.emit(cmsp, msg, lvl, None);
     }
     pub fn custom_emit(&self, cm: &codemap::CodeMap,
                        sp: Span, msg: &str, lvl: Level) {
@@ -156,8 +162,29 @@ impl Handler {
     }
     pub fn emit_with_code(&self, cmsp: Option<(&codemap::CodeMap, Span)>,
                           code: &str, msg: &str, lvl: Level) {
-        let msg = format!("{}: {}", code, msg);
-        self.emit.emit(cmsp, msg, lvl);
+        if !self.have_extended_info_for_code(code) {
+            self.emit.emit(cmsp, msg, lvl, Some(code));
+        } else {
+            // Indicate with a '*' that there is extra info to be had
+            // with this error code.
+            let code = format!("{}*", code);
+            let code: &str = code;
+            self.emit.emit(cmsp, msg, lvl, Some(code));
+        }
+    }
+
+    fn have_extended_info_for_code(&self, code: &str) -> bool {
+        self.diag_db.get_info(code).is_some()
+    }
+
+    fn emit_extended_info_explainer(&self) {
+        if self.saw_extended_info.get() {
+            self.note(
+                "some of these errors have extended explanations (see `rustc --explain help`)")
+        } else {
+            self.note(
+                "none of these errors have extended explanations (see `rustc --explain help`)")
+        }
     }
 }
 
@@ -174,10 +201,12 @@ pub fn mk_span_handler(handler: @Handler, cm: @codemap::CodeMap)
     }
 }
 
-pub fn mk_handler() -> @Handler {
+pub fn mk_handler(db: DiagnosticDb) -> @Handler {
     @Handler {
         err_count: Cell::new(0),
         emit: DefaultEmitter,
+        diag_db: db,
+        saw_extended_info: Cell::new(false)
     }
 }
 
@@ -254,7 +283,7 @@ fn print_maybe_styled(msg: &str, color: term::attr::Attr) -> io::IoResult<()> {
     }
 }
 
-fn print_diagnostic(topic: &str, lvl: Level, msg: &str) -> io::IoResult<()> {
+fn print_diagnostic(topic: &str, lvl: Level, msg: &str, code: Option<&str>) -> io::IoResult<()> {
     if !topic.is_empty() {
         let mut stderr = io::stderr();
         if_ok!(write!(&mut stderr as &mut io::Writer, "{} ", topic));
@@ -262,7 +291,18 @@ fn print_diagnostic(topic: &str, lvl: Level, msg: &str) -> io::IoResult<()> {
 
     if_ok!(print_maybe_styled(format!("{}: ", lvl.to_str()),
                               term::attr::ForegroundColor(lvl.color())));
-    if_ok!(print_maybe_styled(format!("{}\n", msg), term::attr::Bold));
+    if_ok!(print_maybe_styled(format!("{}", msg), term::attr::Bold));
+    match code {
+        Some(code) => {
+            let style = term::attr::ForegroundColor(term::color::BRIGHT_MAGENTA);
+            if_ok!(print_maybe_styled(format!(" [{}]", code), style));
+        }
+        None => ()
+    }
+    {
+        let mut stderr = io::stderr();
+        if_ok!(write!(&mut stderr as &mut io::Writer, "\n"));
+    }
     Ok(())
 }
 
@@ -272,10 +312,11 @@ impl Emitter for DefaultEmitter {
     fn emit(&self,
             cmsp: Option<(&codemap::CodeMap, Span)>,
             msg: &str,
-            lvl: Level) {
+            lvl: Level,
+            code: Option<&str>) {
         let error = match cmsp {
-            Some((cm, sp)) => emit(cm, sp, msg, lvl, false),
-            None => print_diagnostic("", lvl, msg),
+            Some((cm, sp)) => emit(cm, sp, msg, lvl, code, false),
+            None => print_diagnostic("", lvl, msg, code),
         };
 
         match error {
@@ -286,7 +327,7 @@ impl Emitter for DefaultEmitter {
 
     fn custom_emit(&self, cm: &codemap::CodeMap,
                    sp: Span, msg: &str, lvl: Level) {
-        match emit(cm, sp, msg, lvl, true) {
+        match emit(cm, sp, msg, lvl, None, true) {
             Ok(()) => {}
             Err(e) => fail!("failed to print diagnostics: {}", e),
         }
@@ -294,7 +335,7 @@ impl Emitter for DefaultEmitter {
 }
 
 fn emit(cm: &codemap::CodeMap, sp: Span,
-        msg: &str, lvl: Level, custom: bool) -> io::IoResult<()> {
+        msg: &str, lvl: Level, code: Option<&str>, custom: bool) -> io::IoResult<()> {
     let ss = cm.span_to_str(sp);
     let lines = cm.span_to_lines(sp);
     if custom {
@@ -303,10 +344,10 @@ fn emit(cm: &codemap::CodeMap, sp: Span,
         // the span)
         let span_end = Span { lo: sp.hi, hi: sp.hi, expn_info: sp.expn_info};
         let ses = cm.span_to_str(span_end);
-        if_ok!(print_diagnostic(ses, lvl, msg));
+        if_ok!(print_diagnostic(ses, lvl, msg, code));
         if_ok!(custom_highlight_lines(cm, sp, lvl, lines));
     } else {
-        if_ok!(print_diagnostic(ss, lvl, msg));
+        if_ok!(print_diagnostic(ss, lvl, msg, code));
         if_ok!(highlight_lines(cm, sp, lvl, lines));
     }
     print_macro_backtrace(cm, sp)
@@ -427,9 +468,9 @@ fn print_macro_backtrace(cm: &codemap::CodeMap, sp: Span) -> io::IoResult<()> {
         };
         if_ok!(print_diagnostic(ss, Note,
                                 format!("in expansion of {}{}{}", pre,
-                                        ei.callee.name, post)));
+                                        ei.callee.name, post), None));
         let ss = cm.span_to_str(ei.call_site);
-        if_ok!(print_diagnostic(ss, Note, "expansion site"));
+        if_ok!(print_diagnostic(ss, Note, "expansion site", None));
         if_ok!(print_macro_backtrace(cm, ei.call_site));
     }
     Ok(())

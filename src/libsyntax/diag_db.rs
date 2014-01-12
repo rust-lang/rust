@@ -17,7 +17,12 @@
 use std::cell::RefCell;
 use std::hashmap::HashMap;
 
-pub fn load() -> ~[RawInfo] {
+/// Load the database of extended diagnostic descriptions
+pub fn load() -> DiagnosticDb {
+    DiagnosticDb::new(~[load_raw])
+}
+
+pub fn load_raw() -> ~[RawInfo] {
     ~[include!("diag_db.md")]
 }
 
@@ -93,6 +98,36 @@ impl DiagnosticInfo {
     pub fn format(&self) -> ~str {
         format!("\\# {}: {}\n\n{}", self.code, self.msg, self.desc.trim())
     }
+}
+
+/// Print extended information about a single diagnostic code to the console.
+/// Returns false if the DB contains no information about the code.
+pub fn explain_diagnostic(db: &DiagnosticDb, code: &str) -> bool {
+    match db.get_info(code) {
+        Some(info) => {
+            println!("\n{}\n", info.format())
+            true
+        }
+        None => false
+    }
+}
+
+pub fn explain_diag_help() {
+    println!("\nRust includes extended documentation about some compiler errors\n\
+             that explain in greater depth what the errors means, present examples,\n\
+             and suggestions for how to fix them.\n\
+             \n\
+             Each Rust error message has a corresponding code. When emitted by\n\
+             rustc the code will be included in square brackets, like `[A0001]`. If\n\
+             the error has additional documentation the code will be appended with\n\
+             an asterisk, as in `[A0002*]`.\n\
+             \n\
+             To view the extended documentation, run `rustc --explain A0002`, replacing\n\
+             'A0002' with your error code.\n\
+             \n\
+             The extent and quality of extended error documentation depends on user\n\
+             contributions. To learn how to improve Rust's error documentation visit\n\
+             http://github.com/mozilla/rust/wiki/Note-extended-diagnostics.\n");
 }
 
 #[cfg(test)]

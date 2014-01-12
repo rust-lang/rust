@@ -11,6 +11,7 @@
 
 use back::link;
 use back::{arm, x86, x86_64, mips};
+use diag_db;
 use driver::session::{Aggressive, CrateTypeExecutable};
 use driver::session::{Session, Session_, No, Less, Default};
 use driver::session;
@@ -140,7 +141,7 @@ pub fn build_configuration(sess: Session) ->
 fn parse_cfgspecs(cfgspecs: ~[~str])
                   -> ast::CrateConfig {
     cfgspecs.move_iter().map(|s| {
-        let sess = parse::new_parse_sess();
+        let sess = parse::new_parse_sess(diag_db::load());
         parse::parse_meta_from_source_str("cfgspec".to_str(), s, ~[], sess)
     }).collect::<ast::CrateConfig>()
 }
@@ -925,7 +926,7 @@ pub fn build_session(sopts: @session::Options,
                      -> Session {
     let codemap = @codemap::CodeMap::new();
     let diagnostic_handler =
-        diagnostic::mk_handler();
+        diagnostic::mk_handler(diag_db::load());
     let span_diagnostic_handler =
         diagnostic::mk_span_handler(diagnostic_handler, codemap);
 
@@ -1032,6 +1033,8 @@ pub fn optgroups() -> ~[getopts::OptGroup] {
                           in <dir>", "DIR"),
   optflag("", "parse-only",
                         "Parse only; do not compile, assemble, or link"),
+  optopt("", "explain",
+         "Provide a detailed explanation of an error message", "ERRCODE"),
   optflagopt("", "pretty",
                         "Pretty-print the input instead of compiling;
                           valid types are: normal (un-annotated source),
@@ -1161,7 +1164,7 @@ pub fn build_output_filenames(input: &Input,
 }
 
 pub fn early_error(msg: &str) -> ! {
-    diagnostic::DefaultEmitter.emit(None, msg, diagnostic::Fatal);
+    diagnostic::DefaultEmitter.emit(None, msg, diagnostic::Fatal, None);
     fail!(diagnostic::FatalError);
 }
 
