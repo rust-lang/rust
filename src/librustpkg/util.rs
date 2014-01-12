@@ -185,10 +185,6 @@ pub fn compile_input(context: &BuildContext,
     let csysroot = context.sysroot();
     debug!("compile_input's sysroot = {}", csysroot.display());
 
-    let crate_type = match what {
-        Lib => session::OutputDylib,
-        Test | Bench | Main => session::OutputExecutable,
-    };
     let matches = getopts(debug_flags()
                           + match what {
                               Lib => ~[~"--lib"],
@@ -230,7 +226,6 @@ pub fn compile_input(context: &BuildContext,
     debug!("Output type = {:?}", output_type);
 
     let options = @session::options {
-        outputs: ~[crate_type],
         optimize: opt,
         test: what == Test || what == Bench,
         maybe_sysroot: Some(sysroot_to_use),
