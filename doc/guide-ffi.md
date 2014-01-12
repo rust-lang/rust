@@ -329,6 +329,12 @@ channel where the writing end (`Chan`) is used exclusively from the C callback
 to queue events. The reading end (`Port`) is used in the Rust task which owns
 the wrapper object.
 
+Depending on the type of data in the event you might want to convert callback
+data from C into a more suitable Rust structure before sending it into the
+channel. E.g. it makes sense to convert C strings (`char*`) into Rust strings.
+You could also use Rust enumerations to differentiate between multiple types
+of events and their data.
+
 Putting this together a wrapper for a library that uses a background thread
 that sends events could look like:
 
