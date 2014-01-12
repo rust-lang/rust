@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:* cannot be applied to type `bool`
+// error-pattern:`*` cannot be applied to type `bool`
 
 fn main() { let x = true * false; }
