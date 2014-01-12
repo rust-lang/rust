@@ -56,6 +56,7 @@ use syntax::codemap;
 use syntax::diagnostic::Emitter;
 use syntax::diagnostic;
 use syntax::parse;
+use syntax::diag_db::{DiagnosticDb, explain_diagnostic};
 
 // Define the diagnostic macros
 #[path = "../libsyntax/diag_macros.rs"]
@@ -234,6 +235,17 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
         return;
     }
 
+    match matches.opt_str("explain") {
+        Some(code) => {
+            if !explain_diagnostic(&load_diag_db(), code) {
+                d::early_error(demitter,
+                               format!("no extended information about code {}", code));
+            }
+            return;
+        }
+        None => ()
+    }
+
     // Display the available lint options if "-W help" or only "-W" is given.
     let lint_flags = vec::append(matches.opt_strs("W"),
                                  matches.opt_strs("warn"));
@@ -341,6 +353,11 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
     }
 
     d::compile_input(sess, cfg, &input, &odir, &ofile);
+}
+
+/// Load the database of extended diagnostic descriptions
+fn load_diag_db() -> DiagnosticDb {
+    DiagnosticDb::new(~[diag_db::load, syntax::diag_db::load])
 }
 
 fn parse_crate_attrs(sess: session::Session,

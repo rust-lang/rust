@@ -983,6 +983,8 @@ pub fn optgroups() -> ~[getopts::groups::OptGroup] {
                           in <dir>", "DIR"),
   optflag("", "parse-only",
                         "Parse only; do not compile, assemble, or link"),
+  optopt("", "explain",
+         "Provide a detailed explanation of an error message", "ERRCODE"),
   optflagopt("", "pretty",
                         "Pretty-print the input instead of compiling;
                           valid types are: normal (un-annotated source),

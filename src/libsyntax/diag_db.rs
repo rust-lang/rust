@@ -95,6 +95,18 @@ impl DiagnosticInfo {
     }
 }
 
+/// Print extended information about a single diagnostic code to the console.
+/// Returns false if the DB contains no information about the code.
+pub fn explain_diagnostic(db: &DiagnosticDb, code: &str) -> bool {
+    match db.get_info(code) {
+        Some(info) => {
+            println!("\n{}\n", info.format())
+            true
+        }
+        None => false
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
