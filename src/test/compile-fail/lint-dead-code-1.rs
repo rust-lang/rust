@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[no_std];
 #[allow(unused_variable)];
 #[deny(dead_code)];
 
@@ -85,3 +86,13 @@ fn foo() { //~ ERROR: code is never used
 fn bar() { //~ ERROR: code is never used
     foo();
 }
+
+// Code with #[allow(dead_code)] should be marked live (and thus anything it
+// calls is marked live)
+#[allow(dead_code)]
+fn g() { h(); }
+fn h() {}
+
+// Similarly, lang items are live
+#[lang="fail_"]
+fn fail(_: *u8, _: *u8, _: uint) -> ! { loop {} }
