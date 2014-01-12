@@ -939,6 +939,54 @@ mod tests {
     use std::option::{None, Option, Some};
 
     #[test]
+    fn test_vuint_at() {
+        let data = [
+            0x80,
+            0xff,
+            0x40, 0x00,
+            0x7f, 0xff,
+            0x20, 0x00, 0x00,
+            0x3f, 0xff, 0xff,
+            0x10, 0x00, 0x00, 0x00,
+            0x1f, 0xff, 0xff, 0xff
+        ];
+
+        let mut res: reader::Res;
+
+        // Class A
+        res = reader::vuint_at(data, 0);
+        assert_eq!(res.val, 0);
+        assert_eq!(res.next, 1);
+        res = reader::vuint_at(data, res.next);
+        assert_eq!(res.val, (1 << 7) - 1);
+        assert_eq!(res.next, 2);
+
+        // Class B
+        res = reader::vuint_at(data, res.next);
+        assert_eq!(res.val, 0);
+        assert_eq!(res.next, 4);
+        res = reader::vuint_at(data, res.next);
+        assert_eq!(res.val, (1 << 14) - 1);
+        assert_eq!(res.next, 6);
+
+        // Class C
+        res = reader::vuint_at(data, res.next);
+        assert_eq!(res.val, 0);
+        assert_eq!(res.next, 9);
+        res = reader::vuint_at(data, res.next);
+        assert_eq!(res.val, (1 << 21) - 1);
+        assert_eq!(res.next, 12);
+
+        // Class D
+        res = reader::vuint_at(data, res.next);
+        assert_eq!(res.val, 0);
+        assert_eq!(res.next, 16);
+        res = reader::vuint_at(data, res.next);
+        assert_eq!(res.val, (1 << 28) - 1);
+        assert_eq!(res.next, 20);
+    }
+
+    #[test]
     fn test_option_int() {
         fn test_v(v: Option<int>) {
             debug!("v == {:?}", v);
