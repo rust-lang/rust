@@ -261,21 +261,21 @@ fn library_in(short_name: &str, version: &Version, dir_to_search: &Path) -> Opti
                 Some(i) => {
                     debug!("Maybe {} is a version", f_name.slice(i + 1, f_name.len()));
                     match try_parsing_version(f_name.slice(i + 1, f_name.len())) {
-                       Some(ref found_vers) if version == found_vers => {
-                           match f_name.slice(0, i).rfind('-') {
-                               Some(j) => {
+                        Some(ref found_vers) if version == found_vers => {
+                            match f_name.slice(0, i).rfind('-') {
+                                Some(j) => {
                                     let lib_prefix = match p_path.extension_str() {
                                         Some(ref s) if dll_filetype == *s => &dll_prefix,
                                         _ => &rlib_prefix,
                                     };
                                     debug!("Maybe {} equals {}", f_name.slice(0, j), *lib_prefix);
                                     if f_name.slice(0, j) == *lib_prefix {
-                                       result_filename = Some(p_path.clone());
-                                   }
-                                   break;
-                               }
-                               None => break
-                           }
+                                        result_filename = Some(p_path.clone());
+                                    }
+                                    break;
+                                }
+                                None => break
+                            }
 
                        }
                        _ => { f_name = f_name.slice(0, i); }
