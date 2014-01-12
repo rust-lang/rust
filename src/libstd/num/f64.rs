@@ -18,7 +18,7 @@ use cmath::c_double_utils;
 use default::Default;
 use libc::{c_double, c_int};
 use num::{FPCategory, FPNaN, FPInfinite , FPZero, FPSubnormal, FPNormal};
-use num::{Zero, One, RealExt, strconv};
+use num::{Zero, One, strconv};
 use num;
 use to_str;
 use unstable::intrinsics;
@@ -558,36 +558,6 @@ impl Real for f64 {
         let value: f64 = Real::pi();
         *self * (value / 180.0)
     }
-}
-
-impl RealExt for f64 {
-    #[inline]
-    fn lgamma(&self) -> (int, f64) {
-        let mut sign = 0;
-        let result = lgamma(*self, &mut sign);
-        (sign as int, result)
-    }
-
-    #[inline]
-    fn tgamma(&self) -> f64 { tgamma(*self) }
-
-    #[inline]
-    fn j0(&self) -> f64 { j0(*self) }
-
-    #[inline]
-    fn j1(&self) -> f64 { j1(*self) }
-
-    #[inline]
-    fn jn(&self, n: int) -> f64 { jn(n as c_int, *self) }
-
-    #[inline]
-    fn y0(&self) -> f64 { y0(*self) }
-
-    #[inline]
-    fn y1(&self) -> f64 { y1(*self) }
-
-    #[inline]
-    fn yn(&self, n: int) -> f64 { yn(n as c_int, *self) }
 }
 
 impl Bounded for f64 {
