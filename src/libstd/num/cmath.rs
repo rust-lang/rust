@@ -9,20 +9,19 @@
 // except according to those terms.
 
 #[allow(missing_doc)];
-#[allow(non_uppercase_statics)];
 #[allow(dead_code)];
 
 //! Bindings for the C math library (for basic mathematic functions)
 
-// function names are almost identical to C's libmath, a few have been
+// Function names are almost identical to C's libmath, a few have been
 // renamed, grep for "rename:"
 
-pub mod c_double_utils {
+pub mod c_double {
     use libc::{c_double, c_int};
 
     #[link_name = "m"]
     extern {
-        // Alpabetically sorted by link_name
+        // Alphabetically sorted by link_name
 
         pub fn acos(n: c_double) -> c_double;
         pub fn asin(n: c_double) -> c_double;
@@ -79,8 +78,8 @@ pub mod c_double_utils {
         pub fn ilog_radix(n: c_double) -> c_int;
         pub fn modf(n: c_double, iptr: &mut c_double) -> c_double;
         pub fn pow(n: c_double, e: c_double) -> c_double;
-    // FIXME (#1379): enable when rounding modes become available
-    //    fn rint(n: c_double) -> c_double;
+        // FIXME (#1379): enable when rounding modes become available
+        //    fn rint(n: c_double) -> c_double;
         pub fn round(n: c_double) -> c_double;
         // rename: for consistency with logradix
         #[link_name="scalbn"]
@@ -105,12 +104,12 @@ pub mod c_double_utils {
     }
 }
 
-pub mod c_float_utils {
+pub mod c_float {
     use libc::{c_float, c_int};
 
     #[link_name = "m"]
     extern {
-        // Alpabetically sorted by link_name
+        // Alphabetically sorted by link_name
 
         #[link_name="acosf"]
         pub fn acos(n: c_float) -> c_float;
@@ -185,8 +184,8 @@ pub mod c_float_utils {
         pub fn modf(n: c_float, iptr: &mut c_float) -> c_float;
         #[link_name="powf"]
         pub fn pow(n: c_float, e: c_float) -> c_float;
-    // FIXME (#1379): enable when rounding modes become available
-    //    #[link_name="rintf"] fn rint(n: c_float) -> c_float;
+        // FIXME (#1379): enable when rounding modes become available
+        //    #[link_name="rintf"] fn rint(n: c_float) -> c_float;
         #[link_name="roundf"]
         pub fn round(n: c_float) -> c_float;
         #[link_name="scalbnf"]
@@ -207,101 +206,3 @@ pub mod c_float_utils {
         pub fn trunc(n: c_float) -> c_float;
     }
 }
-
-// PORT check these by running src/etc/machconsts.c for your architecture
-
-// FIXME obtain machine float/math constants automatically (Issue #1986)
-
-pub mod c_float_targ_consts {
-    pub static radix: uint = 2u;
-    pub static mantissa_digits: uint = 24u;
-    pub static digits: uint = 6u;
-    pub static min_exp: uint = -125u;
-    pub static max_exp: uint = 128u;
-    pub static min_10_exp: int = -37;
-    pub static max_10_exp: int = 38;
-    // FIXME (#1433): this is wrong, replace with hexadecimal (%a) staticants
-    // below.
-    pub static min_value: f32 = 1.175494e-38_f32;
-    pub static max_value: f32 = 3.402823e+38_f32;
-    pub static epsilon: f32 = 0.000000_f32;
-}
-
-pub mod c_double_targ_consts {
-    pub static radix: uint = 2u;
-    pub static mantissa_digits: uint = 53u;
-    pub static digits: uint = 15u;
-    pub static min_exp: uint = -1021u;
-    pub static max_exp: uint = 1024u;
-    pub static min_10_exp: int = -307;
-    pub static max_10_exp: int = 308;
-    // FIXME (#1433): this is wrong, replace with hexadecimal (%a) staticants
-    // below.
-    pub static min_value: f64 = 2.225074e-308_f64;
-    pub static max_value: f64 = 1.797693e+308_f64;
-    pub static epsilon: f64 = 2.220446e-16_f64;
-}
-
-/*
-
-FIXME use these once they can be parsed (see Issue #1433)
-
-pub mod c_float_math_consts {
-    pub static pi: c_float = 0x1.921fb6p+1_f32;
-    pub static div_1_pi: c_float = 0x1.45f306p-2_f32;
-    pub static div_2_pi: c_float = 0x1.45f306p-1_f32;
-    pub static div_pi_2: c_float = 0x1.921fb6p+0_f32;
-    pub static div_pi_4: c_float = 0x1.921fb6p-1_f32;
-    pub static div_2_sqrtpi: c_float = 0x1.20dd76p+0_f32;
-    pub static e: c_float = 0x1.5bf0a8p+1_f32;
-    pub static log2_e: c_float = 0x1.715476p+0_f32;
-    pub static log10_e: c_float = 0x1.bcb7b2p-2_f32;
-    pub static ln_2: c_float = 0x1.62e43p-1_f32;
-    pub static ln_10: c_float = 0x1.26bb1cp+1_f32;
-    pub static sqrt2: c_float = 0x1.6a09e6p+0_f32;
-    pub static div_1_sqrt2: c_float = 0x1.6a09e6p-1_f32;
-}
-
-pub mod c_double_math_consts {
-    pub static pi: c_double = 0x1.921fb54442d18p+1_f64;
-    pub static div_1_pi: c_double = 0x1.45f306dc9c883p-2_f64;
-    pub static div_2_pi: c_double = 0x1.45f306dc9c883p-1_f64;
-    pub static div_pi_2: c_double = 0x1.921fb54442d18p+0_f64;
-    pub static div_pi_4: c_double = 0x1.921fb54442d18p-1_f64;
-    pub static div_2_sqrtpi: c_double = 0x1.20dd750429b6dp+0_f64;
-    pub static e: c_double = 0x1.5bf0a8b145769p+1_f64;
-    pub static log2_e: c_double = 0x1.71547652b82fep+0_f64;
-    pub static log10_e: c_double = 0x1.bcb7b1526e50ep-2_f64;
-    pub static ln_2: c_double = 0x1.62e42fefa39efp-1_f64;
-    pub static ln_10: c_double = 0x1.26bb1bbb55516p+1_f64;
-    pub static sqrt2: c_double = 0x1.6a09e667f3bcdp+0_f64;
-    pub static div_1_sqrt2: c_double = 0x1.6a09e667f3bcdp-1_f64;
-}
-
-pub mod c_float_targ_consts {
-    pub static radix: uint = 2u;
-    pub static mantissa_digits: uint = 24u;
-    pub static digits: uint = 6u;
-    pub static min_exp: int = -125;
-    pub static max_exp: int = 128;
-    pub static min_10_exp: int = -37;
-    pub static max_10_exp: int = 38;
-    pub static min_value: c_float = 0x1p-126_f32;
-    pub static max_value: c_float = 0x1.fffffep+127_f32;
-    pub static epsilon: c_float = 0x1p-23_f32;
-}
-
-pub mod c_double_targ_consts {
-    pub static radix: uint = 2u;
-    pub static mantissa_digits: uint = 53u;
-    pub static digits: uint = 15u;
-    pub static min_exp: int = -1021;
-    pub static max_exp: int = 1024;
-    pub static min_10_exp: int = -307;
-    pub static max_10_exp: int = 308;
-    pub static min_value: c_double = 0x1p-1022_f64;
-    pub static max_value: c_double = 0x1.fffffffffffffp+1023_f64;
-    pub static epsilon: c_double = 0x1p-52_f64;
-}
-
-*/
