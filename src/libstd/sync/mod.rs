@@ -25,6 +25,5 @@ pub mod mpmc_bounded_queue;
 pub mod mpsc_queue;
 pub mod spsc_queue;
 
-mod mpsc_intrusive;
 mod mutex;
 mod one;

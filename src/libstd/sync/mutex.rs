@@ -100,17 +100,28 @@
 // non-goal of these mutexes to be completely fair to everyone, so this has been
 // deemed acceptable.
 //
+// ## Mutexes, take 3
+//
+// The idea in take 2 of having the Mutex reduce to a native mutex for native
+// tasks was awesome.
+//
+// However, the implementation in take 2 used thread_yield()
+// to cover races due to the lack of a necessary additional lock.
+//
+// So, the implementation was rewritten to add an internal lock, queue_lock, which
+// allows a more robust implementation.
+//
+// In this version, native threads will queue up if any thread is queued, making
+// the implementation fair even when green and native threads are mixed
+//
 // This is the high-level implementation of the mutexes, but the nitty gritty
 // details can be found in the code below.
 
-use cast;
 use ops::Drop;
 use option::{Option, Some, None};
-use q = sync::mpsc_intrusive;
 use result::{Err, Ok};
 use rt::local::Local;
 use rt::task::{BlockedTask, Task};
-use rt::thread::Thread;
 use sync::atomics;
 use unstable::mutex;
 
@@ -170,12 +181,18 @@ pub struct Mutex {
 pub struct StaticMutex {
     /// The OS mutex (pthreads/windows equivalent) that we're wrapping.
     priv lock: mutex::Mutex,
+    priv owner: atomics::AtomicUint,
+    priv queue_nonempty: atomics::AtomicBool,
+
+    priv queue_lock: mutex::Mutex,
     /// Internal queue that all green threads will be blocked on.
-    priv q: q::Queue<atomics::AtomicUint>,
-    /// Dubious flag about whether this mutex is held or not. You might be
-    /// thinking "this is impossible to manage atomically," and you would be
-    /// correct! Keep on reading!
-    priv held: atomics::AtomicBool,
+    priv queue: *mut Node,
+    priv queue_tail: *mut *mut Node,
+}
+
+struct Node {
+    task: Option<BlockedTask>,
+    next: *mut Node,
 }
 
 /// An RAII implementation of a "scoped lock" of a mutex. When this structure is
@@ -188,199 +205,172 @@ pub struct Guard<'a> {
 /// other mutex constants.
 pub static MUTEX_INIT: StaticMutex = StaticMutex {
     lock: mutex::MUTEX_INIT,
-    held: atomics::INIT_ATOMIC_BOOL,
-    q: q::Queue {
-        head: atomics::INIT_ATOMIC_UINT,
-        tail: 0 as *mut q::Node<atomics::AtomicUint>,
-        stub: q::DummyNode {
-            next: atomics::INIT_ATOMIC_UINT,
-        }
-    }
+    owner: atomics::INIT_ATOMIC_UINT,
+    queue_nonempty: atomics::INIT_ATOMIC_BOOL,
+
+    queue_lock: mutex::MUTEX_INIT,
+    queue: 0 as *mut Node,
+    queue_tail: 0 as *mut *mut Node,
 };
+
+// set this to false to remove green task support and speed up mutexes
+// XXX: this should probably be a static mut in a central location
+static support_nonblocking_tasks: bool = true;
 
 impl StaticMutex {
     /// Attempts to grab this lock, see `Mutex::try_lock`
     pub fn try_lock<'a>(&'a mut self) -> Option<Guard<'a>> {
-        if unsafe { self.lock.trylock() } {
-            self.held.store(true, atomics::Relaxed); // see below
+        let queue_nonempty = self.queue_nonempty.load(atomics::Acquire);
+        if !queue_nonempty && unsafe { self.lock.trylock() } {
             Some(Guard{ lock: self })
         } else {
             None
         }
+        // XXX: should we check if we are the owner and fail! here?
     }
 
     /// Acquires this lock, see `Mutex::lock`
     pub fn lock<'a>(&'a mut self) -> Guard<'a> {
-        // Remember that an explicit goal of these mutexes is to be "just as
-        // fast" as pthreads. Note that at some point our implementation
-        // requires an answer to the question "can we block" and implies a hit
-        // to OS TLS. In attempt to avoid this hit and to maintain efficiency in
-        // the uncontended case (very important) we start off by hitting a
-        // trylock on the OS mutex. If we succeed, then we're lucky!
-        if unsafe { self.lock.trylock() } {
-            self.held.store(true, atomics::Relaxed); // see below
-            return Guard{ lock: self }
-        }
+        let t: *mut Task = unsafe {Local::unsafe_borrow()};
+        let ourselves: uint = t as uint;
 
-        let t: ~Task = Local::take();
-        if t.can_block() {
-            // Tasks which can block are super easy. These tasks just accept the
-            // TLS hit we just made, and then call the blocking `lock()`
-            // function. Turns out the TLS hit is essentially 0 on contention.
-            Local::put(t);
-            unsafe { self.lock.lock(); }
-            self.held.store(true, atomics::Relaxed); // see below
+        let (queue_nonempty, can_block) = if support_nonblocking_tasks {
+            (self.queue_nonempty.load(atomics::Acquire), unsafe {(*t).can_block()})
         } else {
-            // And here's where we come to the "fun part" of this
-            // implementation. Contention with a green task is fairly difficult
-            // to resolve. The goal here is to push ourselves onto the internal
-            // queue, but still be able to "cancel" our enqueue in case the lock
-            // was dropped while we were doing our business.
-            //
-            // The pseudocode for this is:
-            //
-            //      let mut node = ...;
-            //      push(node)
-            //      if trylock() {
-            //          wakeup(pop())
-            //      } else {
-            //          node.sleep()
-            //      }
-            //
-            // And the pseudocode for the wakeup protocol is:
-            //
-            //      match pop() {
-            //          Some(node) => node.wakeup(),
-            //          None => lock.unlock()
-            //      }
-            //
-            // Note that a contended green thread does *not* re-acquire the
-            // mutex because ownership was silently transferred to it. You'll
-            // note a fairly large race condition here, which is that whenever
-            // the OS mutex is unlocked, "just before" it's unlocked a green
-            // thread can fly in and block itself. This turns out to be a
-            // fundamental problem with any sort of attempt to arbitrate among
-            // the unlocker and a locking green thread.
-            //
-            // One possible solution for this is to attempt to re-acquire the
-            // lock during the unlock procedure. This is less than ideal,
-            // however, because it means that the memory of a mutex must be
-            // guaranteed to be valid until *all unlocks* have returned. That's
-            // normally the job of the mutex itself, so it can be seen that
-            // touching a mutex again after it has been unlocked is an unwise
-            // decision.
-            //
-            // Another alternative solution (and the one implemented) is more
-            // distasteful, but functional. You'll notice that the struct
-            // definition has a `held` flag, which is impossible to maintain
-            // atomically. For our usage, the flag is set to `true` immediately
-            // after a mutex is acquired and set to `false` at the *beginning*
-            // of an unlock.
-            //
-            // By doing this, we're essentially instructing green threads to
-            // "please spin" while another thread is in the middle of performing
-            // the unlock procedure. Again, this is distasteful, but within the
-            // constraints that we're working in I found it difficult to think
-            // of other courses of action.
-            let mut node = q::Node::new(atomics::AtomicUint::new(0));
-            t.deschedule(1, |task| unsafe {
-                self.q.push(&mut node);
-                let mut stolen = false;
-                // Spinloop attempting to grab a mutex while someone's unlocking
-                // the mutex. While it's not held and we fail the trylock, the
-                // best thing we can do is hope that our yield will run the
-                // unlocker before us (note that bounded waiting is shattered
-                // here for green threads).
-                while !self.held.load(atomics::Relaxed) {
-                    if self.lock.trylock() {
-                        self.held.store(true, atomics::Relaxed);
-                        stolen = true;
-                        break
+            (false, true)
+        };
+
+        // if any task is queued, we must always queue too, even if native, to preserve fairness
+        if !queue_nonempty && can_block {
+            if self.owner.load(atomics::Relaxed) == ourselves {
+                if !unsafe { self.lock.trylock() } {
+                    // ABA-safe because the trylock is an acquire barrier
+                    if self.owner.load(atomics::Relaxed) == ourselves {
+                        fail!("attempted to lock mutex already owned by the current task");
                     } else {
-                        Thread::yield_now();
+                        unsafe { self.lock.lock(); }
                     }
                 }
+            } else {
+                unsafe { self.lock.lock(); }
+            }
+        } else if !queue_nonempty && unsafe { self.lock.trylock() } {
+            // nice, we are already done
+        } else {
+            // we need to take queue_lock and redo all checks there
+            unsafe {self.queue_lock.lock();}
 
-                // If we managed to steal the lock, then we need to wake up a
-                // thread. Note that we may not have acquired the mutex for
-                // ourselves (we're not guaranteed to be the head of the queue).
-                // The good news is that we *are* guaranteed to have a non-empty
-                // queue. This is because if we acquired the mutex no one could
-                // have transferred it to us (hence our own node must still be
-                // on the queue).
-                //
-                // The queue itself can return `None` from a pop when there's
-                // data on the queue (a known limitation of the queue), so here
-                // you'll find the second spin loop (which is in theory even
-                // rarer than the one above).
-                //
-                // If we popped ourselves, then we just unblock. If it's someone
-                // else, we block ourselves (nonatomically b/c we hold the lock)
-                // and then wake up the true owner.
-                //
-                // Note that the blocking procedure on a node requires a little
-                // dance of some atomic swaps just for normal atomicity with
-                // someone popping our node and waking us up. A sentinel value
-                // of `1` is used for "cancel the sleep".
-                if stolen {
-                    let locker;
-                    loop {
-                        match self.q.pop() {
-                            Some(t) => { locker = t; break }
-                            None => Thread::yield_now()
-                        }
-                    }
+            let queue_nonempty = self.queue_nonempty.load(atomics::Relaxed);
+            if !queue_nonempty {
+                self.queue_nonempty.store(true, atomics::Relaxed);
 
-                    if locker == &mut node as *mut q::Node<atomics::AtomicUint> {
-                        Err(task)
-                    } else {
-                        node.data.store(task.cast_to_uint(), atomics::Relaxed);
-                        match (*locker).data.swap(1, atomics::SeqCst) {
-                            0 => Ok(()),
-                            n => Err(BlockedTask::cast_from_uint(n))
-                        }
-                    }
+                // we must ensure that either the unlocker sees the queue_nonempty store
+                // or that we succeed in the trylock
+                // it seems SeqCst is required for that
+                atomics::fence(atomics::SeqCst);
+            }
+
+            // None => we have the lock, continue
+            // Some(Ok(()) => queue up and go to sleep
+            // Some(Err(task)) => queue up and steal task
+            let mut decision = if unsafe {self.lock.trylock()} {
+                if !queue_nonempty {
+                    // we unexpectedly got the lock with no one queued up
+                    // this is executed rarely, since we already tried this at the beginning
+                    self.queue_nonempty.store(false, atomics::Relaxed);
+                    None
                 } else {
-                    let n = task.cast_to_uint();
-                    match node.data.swap(n, atomics::SeqCst) {
-                        0 => Ok(()),
-                        1 => Err(BlockedTask::cast_from_uint(n)),
-                        _ => unreachable!(),
-                    }
-                }
-            });
-            assert!(self.held.load(atomics::Relaxed));
-        }
+                    // the trylock succeeded and the queue is non-empty
+                    // we need to queue and wake up the next task ourselves
 
+                    let node = self.queue;
+                    self.queue = unsafe {(*node).next};
+                    if self.queue == 0 as *mut Node {
+                        self.queue_tail = 0 as *mut *mut Node;
+                    }
+                    let stolen_task = unsafe {(*node).task.take().unwrap().wake().unwrap()};
+
+                    // we can only steal tasks if both are green
+                    // XXX: deschedule is implemented horribly and should handle this stuff itself
+                    Some(if !can_block && !stolen_task.can_block() {
+                        Err(BlockedTask::block(stolen_task))
+                    } else {
+                        stolen_task.reawaken();
+                        Ok(())
+                    })
+                }
+            } else {
+                // the trylock failed, so something must have the lock but not queue_lock
+                //     this only happens when somebody is holding the Mutex
+                //     hence, he is going to run unlock()
+                //     and since queue_nonempty is true, he is going to wake up a task
+                //     thus, we can happily go to sleep after the recursion check
+
+                // ABA-safe because the trylock attempt is an acquire barrier
+                if self.owner.load(atomics::Relaxed) == ourselves {
+                    unsafe {self.queue_lock.unlock();}
+                    fail!("attempted to lock mutex already owned by the current task");
+                }
+
+                Some(Ok(()))
+            };
+
+            if decision.is_none() {
+                unsafe {self.queue_lock.unlock();}
+            } else {
+                let mut our_node = Node {task: None, next: 0 as *mut Node};
+                if self.queue_tail == 0 as *mut *mut Node {
+                    self.queue = &mut our_node as *mut Node;
+                } else {
+                    unsafe {*self.queue_tail = &mut our_node as *mut Node}
+                }
+                self.queue_tail = &mut our_node.next as *mut *mut Node;
+
+                let t: ~Task = Local::take();
+                t.deschedule(1, |task| {
+                    our_node.task = Some(task);
+
+                    unsafe {self.queue_lock.unlock();}
+
+                    decision.take().unwrap()
+                });
+            }
+        }
+        self.owner.store(ourselves, atomics::Relaxed);
         Guard { lock: self }
     }
 
     fn unlock(&mut self) {
-        // As documented above, we *initially* flag our mutex as unlocked in
-        // order to allow green threads just starting to block to realize that
-        // they shouldn't completely block.
-        assert!(self.held.load(atomics::Relaxed));
-        self.held.store(false, atomics::Relaxed);
+        self.owner.store(0, atomics::Relaxed);
 
-        // Remember that the queues we are using may return None when there is
-        // indeed data on the queue. In this case, we can just safely ignore it.
-        // The reason for this ignorance is that a value of `None` with data on
-        // the queue means that the "head popper" hasn't finished yet. We've
-        // already flagged our mutex as acquire-able, so the "head popper" will
-        // see this and attempt to grab the mutex (or someone else will steal it
-        // and this whole process will begin anew).
-        match unsafe { self.q.pop() } {
-            Some(t) => {
-                self.held.store(true, atomics::Relaxed);
-                match unsafe { (*t).data.swap(1, atomics::SeqCst) } {
-                    0 => {}
-                    n => {
-                        let t = unsafe { BlockedTask::cast_from_uint(n) };
-                        t.wake().map(|t| t.reawaken());
+        if support_nonblocking_tasks {
+            unsafe {self.lock.unlock();}
+
+            atomics::fence(atomics::SeqCst);
+
+            if self.queue_nonempty.load(atomics::Relaxed) {
+                unsafe {self.queue_lock.lock();}
+                let node = self.queue;
+
+                let task = if node != 0 as *mut Node && unsafe {self.lock.trylock()} {
+                    let next = unsafe {(*node).next};
+                    if next == 0 as *mut Node {
+                        self.queue_tail = 0 as *mut *mut Node;
+                        self.queue_nonempty.store(false, atomics::Relaxed);
                     }
+                    self.queue = next;
+                    unsafe {(*node).task.take()}
+                } else {
+                    None
+                };
+                unsafe {self.queue_lock.unlock();}
+                match task {
+                    Some(task) => {task.wake().map(|t| t.reawaken());},
+                    None => {}
                 }
             }
-            None => unsafe { self.lock.unlock() }
+        } else {
+            unsafe {self.lock.unlock();}
         }
     }
 
@@ -404,9 +394,12 @@ impl Mutex {
     pub fn new() -> Mutex {
         Mutex {
             lock: StaticMutex {
-                held: atomics::AtomicBool::new(false),
-                q: q::Queue::new(),
                 lock: unsafe { mutex::Mutex::new() },
+                owner: atomics::AtomicUint::new(0),
+                queue_nonempty: atomics::AtomicBool::new(false),
+                queue_lock: unsafe { mutex::Mutex::new() },
+                queue: 0 as *mut Node,
+                queue_tail: 0 as *mut *mut Node
             }
         }
     }
@@ -514,7 +507,9 @@ mod test {
     #[test] #[should_fail]
     fn double_lock() {
         static mut m: StaticMutex = MUTEX_INIT;
-        let _g = m.lock();
-        m.lock();
+        unsafe {
+            let _g = m.lock();
+            m.lock();
+        }
     }
 }
