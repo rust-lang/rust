@@ -13,7 +13,7 @@
 fn foo(f: ||) { f() }
 
 fn main() {
-    ~"" || 42; //~ ERROR binary operation || cannot be applied to type
-    foo || {}; //~ ERROR binary operation || cannot be applied to type
+    ~"" || 42; //~ ERROR binary operation `||` cannot be applied to type
+    foo || {}; //~ ERROR binary operation `||` cannot be applied to type
     //~^ NOTE did you forget the `do` keyword for the call?
 }

@@ -3439,13 +3439,13 @@ pub fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
                  bound_region_ptr_to_str(cx, br))
         }
         terr_vstores_differ(k, ref values) => {
-            format!("{} storage differs: expected {} but found {}",
+            format!("{} storage differs: expected `{}` but found `{}`",
                  terr_vstore_kind_to_str(k),
                  vstore_to_str(cx, (*values).expected),
                  vstore_to_str(cx, (*values).found))
         }
         terr_trait_stores_differ(_, ref values) => {
-            format!("trait storage differs: expected {} but found {}",
+            format!("trait storage differs: expected `{}` but found `{}`",
                  trait_store_to_str(cx, (*values).expected),
                  trait_store_to_str(cx, (*values).found))
         }
@@ -3459,7 +3459,7 @@ pub fn type_err_to_str(cx: ctxt, err: &type_err) -> ~str {
                  ty_sort_str(cx, values.found))
         }
         terr_traits(values) => {
-            format!("expected trait {} but found trait {}",
+            format!("expected trait `{}` but found trait `{}`",
                  item_path_str(cx, values.expected),
                  item_path_str(cx, values.found))
         }
