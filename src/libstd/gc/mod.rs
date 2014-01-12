@@ -411,6 +411,7 @@ macro_rules! no_gc {
 }
 
 no_gc! {
+    bool,
     int, i8, i16, i32, i64,
     uint, u8, u16, u32, u64,
     f32, f64,

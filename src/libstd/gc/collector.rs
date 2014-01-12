@@ -11,6 +11,7 @@
 use gc::collector::ptr_map::PtrMap;
 use iter::Iterator;
 use libc;
+use local_data;
 use num::BitCount;
 use option::{Some, None, Option};
 use ops::Drop;
@@ -234,6 +235,13 @@ impl GarbageCollector {
         // and now everything is considered unreachable.
 
         self.conservative_scan(stack_end, stack_top as *uint);
+
+        // conservatively search task-local storage; this could
+        // possibly use the tydesc to be precise.
+        local_data::each_unborrowed_value(|ptr, tydesc| {
+                let end = (ptr as *u8).offset((*tydesc).size as int);
+                self.conservative_scan(ptr as *uint, end as *uint)
+            });
 
 
         // Step 2. sweep all the unreachable ones for deallocation.

@@ -44,6 +44,7 @@ use cast;
 use libc;
 use prelude::*;
 use rt::task::{Task, LocalStorage};
+use unstable::intrinsics::TyDesc;
 use util;
 
 /**
@@ -130,6 +131,24 @@ impl LoanState {
 
 fn key_to_key_value<T: 'static>(key: Key<T>) -> *libc::c_void {
     unsafe { cast::transmute(key) }
+}
+
+/// Unsafely iterate over pointers and type descriptors of the values
+/// in task-local storage that don't have an outstanding loan.
+#[experimental="interface requires tuning"]
+pub unsafe fn each_unborrowed_value(f: |*libc::c_void, *TyDesc|) {
+    let map = get_local_map();
+
+    for value in map.iter() {
+        match *value {
+            None => {}
+            Some((_, ref value, NoLoan)) => {
+                let &(tydesc, ptr): &(**TyDesc, *libc::c_void) = cast::transmute(value);
+                f(ptr, *tydesc)
+            }
+            Some(_) => {}
+        }
+    }
 }
 
 /// Removes a task-local value from task-local storage. This will return
