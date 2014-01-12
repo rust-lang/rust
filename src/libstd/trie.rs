@@ -111,18 +111,6 @@ impl<T> TrieMap<T> {
         self.root.each_reverse(f)
     }
 
-    /// Visit all keys in reverse order
-    #[inline]
-    pub fn each_key_reverse(&self, f: |&uint| -> bool) -> bool {
-        self.each_reverse(|k, _| f(k))
-    }
-
-    /// Visit all values in reverse order
-    #[inline]
-    pub fn each_value_reverse(&self, f: |&T| -> bool) -> bool {
-        self.each_reverse(|_, v| f(v))
-    }
-
     /// Get an iterator over the key-value pairs in the map
     pub fn iter<'a>(&'a self) -> TrieMapIterator<'a, T> {
         TrieMapIterator {
@@ -328,7 +316,7 @@ impl TrieSet {
     /// Visit all values in reverse order
     #[inline]
     pub fn each_reverse(&self, f: |&uint| -> bool) -> bool {
-        self.map.each_key_reverse(f)
+        self.map.each_reverse(|k, _| f(k))
     }
 
     /// Get an iterator over the values in the set
