@@ -105,13 +105,34 @@ impl<T> TrieMap<T> {
         TrieMap{root: TrieNode::new(), length: 0}
     }
 
-    /// Visit all key-value pairs in reverse order
+    /// Visit all key-value pairs.
+    ///
+    /// See also `.iter` for a more composable external iterator,
+    /// although this internal iterator is 1.5 to 2 times faster.
     #[inline]
-    pub fn each_reverse<'a>(&'a self, f: |&uint, &'a T| -> bool) -> bool {
+    pub fn each<'a>(&'a self, f: |&'a uint, &'a T| -> bool) -> bool {
+        self.root.each(f)
+    }
+
+    /// Visit all key-value pairs, allowing mutation of the values.
+    ///
+    /// See also `.mut_iter` for a more composable external iterator,
+    /// although this internal iterator is 1.5 to 2 times faster.
+    #[inline]
+    pub fn each_mut<'a>(&'a mut self, f: |&'a uint, &'a mut T| -> bool) -> bool {
+        self.root.each_mut(f)
+    }
+
+    /// Visit all key-value pairs in reverse order.
+    #[inline]
+    pub fn each_reverse<'a>(&'a self, f: |&'a uint, &'a T| -> bool) -> bool {
         self.root.each_reverse(f)
     }
 
-    /// Get an iterator over the key-value pairs in the map
+    /// Get an iterator over the key-value pairs in the map.
+    ///
+    /// See also `.each` for a faster internal iterator, although this
+    /// external iterator is more composable.
     pub fn iter<'a>(&'a self) -> TrieMapIterator<'a, T> {
         TrieMapIterator {
             stack: ~[self.root.children.iter()],
@@ -122,6 +143,9 @@ impl<T> TrieMap<T> {
 
     /// Get an iterator over the key-value pairs in the map, with the
     /// ability to mutate the values.
+    ///
+    /// See also `.each_mut` for a faster internal iterator, although
+    /// this external iterator is more composable.
     pub fn mut_iter<'a>(&'a mut self) -> TrieMapMutIterator<'a, T> {
         TrieMapMutIterator {
             stack: ~[self.root.children.mut_iter()],
@@ -313,13 +337,25 @@ impl TrieSet {
         self.map.remove(value)
     }
 
-    /// Visit all values in reverse order
+    /// Visit all values in order.
+    ///
+    /// See also `.iter` for a more composable external iterator,,
+    /// although this internal iterator is 1.5 to 2 times faster.
     #[inline]
-    pub fn each_reverse(&self, f: |&uint| -> bool) -> bool {
+    pub fn each<'a>(&'a self, f: |&'a uint| -> bool) -> bool {
+        self.map.each(|k, _| f(k))
+    }
+
+    /// Visit all values in reverse order.
+    #[inline]
+    pub fn each_reverse<'a>(&'a self, f: |&'a uint| -> bool) -> bool {
         self.map.each_reverse(|k, _| f(k))
     }
 
-    /// Get an iterator over the values in the set
+    /// Get an iterator over the values in the set.
+    ///
+    /// See also `.each` for a faster internal iterator, although this
+    /// external iterator is more composable.
     #[inline]
     pub fn iter<'a>(&'a self) -> TrieSetIterator<'a> {
         TrieSetIterator{iter: self.map.iter()}
@@ -372,18 +408,50 @@ impl<T> TrieNode<T> {
     }
 }
 
-impl<T> TrieNode<T> {
-    fn each_reverse<'a>(&'a self, f: |&uint, &'a T| -> bool) -> bool {
-        for elt in self.children.rev_iter() {
-            match *elt {
-                Internal(ref x) => if !x.each_reverse(|i,t| f(i,t)) { return false },
-                External(k, ref v) => if !f(&k, v) { return false },
-                Nothing => ()
-            }
-        }
-        true
+// FIXME #5846: see `addr!` above.
+macro_rules! item { ($i:item) => {$i}}
+
+
+// The requirement for these to exist is very unfortunate: the
+// external iterators are significantly slower.
+//
+// At the time of writing (on huonw's laptop):
+//
+//     bench_each_large          ... bench:     30907 ns/iter (+/- 3503)
+//     bench_iter_large          ... bench:     43187 ns/iter (+/- 3082)
+//
+//     bench_each_small          ... bench:       333 ns/iter (+/- 170)
+//     bench_iter_small          ... bench:       618 ns/iter (+/- 288)
+macro_rules! internal_iter {
+    (fn $method:ident,
+     vec_iter = $iter:ident,
+     mut = $($mut_:ident)*) => {
+        // hack to be able to write both `ref x` and `ref mut x` in
+        // the patterns/function declarations below.
+        item!(
+            impl<T> TrieNode<T> {
+                fn $method<'a>(&'a $($mut_)* self,
+                               f: |&'a uint, &'a $($mut_)* T| -> bool) -> bool {
+                    for elt in self.children.$iter() {
+                        match *elt {
+                            Internal(ref $($mut_)* x) => {
+                                if !x.$method(|k, v| f(k, v)) { return false }
+                            }
+                            External(ref k, ref $($mut_)* v) => {
+                                if !f(k, v) { return false }
+                            }
+                            Nothing => {}
+                        }
+                    }
+
+                    true
+                }
+            })
     }
 }
+internal_iter! { fn each, vec_iter = iter, mut = }
+internal_iter! { fn each_mut, vec_iter = mut_iter, mut = mut }
+internal_iter! { fn each_reverse, vec_iter = rev_iter, mut = }
 
 // if this was done via a trait, the key could be generic
 #[inline]
@@ -477,9 +545,6 @@ pub struct TrieMapMutIterator<'a, T> {
     priv remaining_min: uint,
     priv remaining_max: uint
 }
-
-// FIXME #5846: see `addr!` above.
-macro_rules! item { ($i:item) => {$i}}
 
 macro_rules! iterator_impl {
     ($name:ident,
@@ -622,6 +687,78 @@ mod test_map {
             assert!(!trie.insert(x, x + 1));
             check_integrity(&trie.root);
         }
+    }
+
+    #[test]
+    fn test_each() {
+        let mut m = TrieMap::new();
+
+        assert!(m.insert(3, 6));
+        assert!(m.insert(0, 0));
+        assert!(m.insert(4, 8));
+        assert!(m.insert(2, 4));
+        assert!(m.insert(1, 2));
+
+        let mut n = 0;
+        m.each(|k, v| {
+            assert_eq!(*k, n);
+            assert_eq!(*v, n * 2);
+            n += 1;
+            true
+        });
+        assert_eq!(n, 5);
+    }
+
+    #[test]
+    fn test_each_break() {
+        let mut m = TrieMap::new();
+        assert!(m.insert(0, 0));
+        assert!(m.insert(1, 1));
+
+        m.each(|k, v| {
+                if *k == 0 {
+                    false // break
+                } else {
+                    fail!("didn't break")
+                }
+            });
+    }
+
+    #[test]
+    fn test_each_mut() {
+        let mut m = TrieMap::new();
+
+        assert!(m.insert(3, 6));
+        assert!(m.insert(0, 0));
+        assert!(m.insert(4, 8));
+        assert!(m.insert(2, 4));
+        assert!(m.insert(1, 2));
+
+        let mut n = 0;
+        m.each_mut(|k, v| {
+            assert_eq!(*k, n);
+            *v -= n * 2;
+            n += 1;
+            true
+        });
+        assert!(m.iter().all(|(_, v)| *v == 0));
+        assert_eq!(n, 5);
+    }
+
+    #[test]
+    fn test_each_mut_break() {
+        let mut m = TrieMap::new();
+        assert!(m.insert(0, 0));
+        assert!(m.insert(1, 1));
+
+        m.each_mut(|k, v| {
+                *v += 1;
+                // break on the first one
+                !(*k == 0)
+            });
+        // only the first value was incremented, so both values should
+        // be 1.
+        assert!(m.iter().all(|(_, v)| *v == 1));
     }
 
     #[test]
@@ -844,6 +981,29 @@ mod bench_map {
 
         bh.iter(|| for _ in m.iter() {})
     }
+
+    #[bench]
+    fn bench_each_small(bh: &mut BenchHarness) {
+        let mut m = TrieMap::<uint>::new();
+        let mut rng = weak_rng();
+        for _ in range(0, 20) {
+            m.insert(rng.gen(), rng.gen());
+        }
+
+        bh.iter(|| { m.each(|_, _| true); })
+    }
+
+    #[bench]
+    fn bench_each_large(bh: &mut BenchHarness) {
+        let mut m = TrieMap::<uint>::new();
+        let mut rng = weak_rng();
+        for _ in range(0, 1000) {
+            m.insert(rng.gen(), rng.gen());
+        }
+
+        bh.iter(|| { m.each(|_, _| true); })
+    }
+
 
     #[bench]
     fn bench_lower_bound(bh: &mut BenchHarness) {
