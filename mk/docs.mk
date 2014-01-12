@@ -289,7 +289,8 @@ RUSTDOC = $(HBIN2_H_$(CFG_BUILD))/rustdoc$(X_$(CFG_BUILD))
 #
 # Passes --cfg stage2 to rustdoc because it uses the stage2 librustc.
 define libdoc
-doc/$(1)/index.html: $$(RUSTDOC) $$(TLIB2_T_$(3)_H_$(3))/$(CFG_STDLIB_$(3))
+doc/$(1)/index.html: $$(RUSTDOC) $$(TLIB2_T_$(3)_H_$(3))/$(CFG_STDLIB_$(3)) \
+		$(foreach name,$(4),$$(TLIB2_T_$(3)_H_$(3))/$$(CFG_$(name)_$(3)))
 	@$$(call E, rustdoc: $$@)
 	$(Q)$(RUSTDOC) --cfg stage2 $(2)
 
@@ -309,6 +310,7 @@ $(eval $(call libdoc,extra,$(EXTRALIB_CRATE),$(CFG_BUILD)))
 $(eval $(call libdoc,native,$(LIBNATIVE_CRATE),$(CFG_BUILD)))
 $(eval $(call libdoc,green,$(LIBGREEN_CRATE),$(CFG_BUILD)))
 $(eval $(call libdoc,rustuv,$(LIBRUSTUV_CRATE),$(CFG_BUILD)))
+$(eval $(call libdoc,rustpkg,$(RUSTPKG_LIB),$(CFG_BUILD),EXTRALIB LIBRUSTC))
 
 $(eval $(call compiledoc,rustc,$(COMPILER_CRATE),$(CFG_BUILD)))
 $(eval $(call compiledoc,syntax,$(LIBSYNTAX_CRATE),$(CFG_BUILD)))
