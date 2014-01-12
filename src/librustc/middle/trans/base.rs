@@ -357,20 +357,18 @@ pub fn malloc_raw_dyn<'a>(
         rslt(r.bcx, PointerCast(r.bcx, r.val, llty_value.ptr_to()))
     } else {
         // we treat ~fn, @fn and @[] as @ here, which isn't ideal
-        let (mk_fn, langcall) = match heap {
+        let langcall = match heap {
             heap_managed | heap_managed_unique => {
-                (ty::mk_imm_box,
-                 require_alloc_fn(bcx, t, MallocFnLangItem))
+                require_alloc_fn(bcx, t, MallocFnLangItem)
             }
             heap_exchange_closure => {
-                (ty::mk_imm_box,
-                 require_alloc_fn(bcx, t, ClosureExchangeMallocFnLangItem))
+                require_alloc_fn(bcx, t, ClosureExchangeMallocFnLangItem)
             }
             _ => fail!("heap_exchange already handled")
         };
 
         // Grab the TypeRef type of box_ptr_ty.
-        let box_ptr_ty = mk_fn(bcx.tcx(), t);
+        let box_ptr_ty = ty::mk_box(bcx.tcx(), t);
         let llty = type_of(ccx, box_ptr_ty);
 
         // Get the tydesc for the body:

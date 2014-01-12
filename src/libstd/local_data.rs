@@ -187,8 +187,7 @@ pub fn get<T: 'static, U>(key: Key<T>, f: |Option<&T>| -> U) -> U {
 /// if the key provided is not present in TLS currently.
 ///
 /// It is considered a runtime error to attempt to get a value which is already
-/// on loan via this or the `get` methods. This is similar to how it's a runtime
-/// error to take two mutable loans on an `@mut` box.
+/// on loan via this or the `get` methods.
 pub fn get_mut<T: 'static, U>(key: Key<T>, f: |Option<&mut T>| -> U) -> U {
     get_with(key, MutLoan, |x| {
         match x {

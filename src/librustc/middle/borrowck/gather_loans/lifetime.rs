@@ -137,7 +137,7 @@ impl<'a> GuaranteeLifetimeContext<'a> {
                 //
                 // As a second example, consider *this* scenario:
                 //
-                //    let x = @mut @Some(3);
+                //    let x = @@Some(3);
                 //    match x { @@Some(y) {...} @@None {...} }
                 //
                 // Here again, `x` need only be rooted in the `some` arm.
@@ -156,7 +156,7 @@ impl<'a> GuaranteeLifetimeContext<'a> {
                 // with a second basic block.  However, the naive approach
                 // also yielded suboptimal results for patterns like:
                 //
-                //    let x = @mut @...;
+                //    let x = @@...;
                 //    match x { @@some_variant(y) | @@some_other_variant(y) =>
                 //
                 // The reason is that we would root the value once for

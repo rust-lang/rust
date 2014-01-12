@@ -1837,11 +1837,8 @@ impl<T:Eq> OwnedEqVector<T> for ~[T] {
     fn dedup(&mut self) {
         unsafe {
             // Although we have a mutable reference to `self`, we cannot make
-            // *arbitrary* changes. There exists the possibility that this
-            // vector is contained with an `@mut` box and hence is still
-            // readable by the outside world during the `Eq` comparisons.
-            // Moreover, those comparisons could fail, so we must ensure
-            // that the vector is in a valid state at all time.
+            // *arbitrary* changes. The `Eq` comparisons could fail, so we
+            // must ensure that the vector is in a valid state at all time.
             //
             // The way that we handle this is by using swaps; we iterate
             // over all the elements, swapping as we go so that at the end

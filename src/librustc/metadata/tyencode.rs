@@ -292,7 +292,7 @@ fn enc_sty(w: &mut MemWriter, cx: @ctxt, st: &ty::sty) {
             mywrite!(w, "]");
         }
         ty::ty_box(typ) => { mywrite!(w, "@"); enc_ty(w, cx, typ); }
-        ty::ty_uniq(mt) => { mywrite!(w, "~"); enc_mt(w, cx, mt); }
+        ty::ty_uniq(typ) => { mywrite!(w, "~"); enc_ty(w, cx, typ); }
         ty::ty_ptr(mt) => { mywrite!(w, "*"); enc_mt(w, cx, mt); }
         ty::ty_rptr(r, mt) => {
             mywrite!(w, "&");

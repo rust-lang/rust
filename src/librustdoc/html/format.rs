@@ -405,8 +405,7 @@ impl<'a> fmt::Default for Method<'a> {
             clean::SelfStatic => {},
             clean::SelfValue => args.push_str("self"),
             clean::SelfOwned => args.push_str("~self"),
-            clean::SelfManaged(clean::Mutable) => args.push_str("@mut self"),
-            clean::SelfManaged(clean::Immutable) => args.push_str("@self"),
+            clean::SelfManaged => args.push_str("@self"),
             clean::SelfBorrowed(Some(ref lt), clean::Immutable) => {
                 args.push_str(format!("&amp;{} self", *lt));
             }

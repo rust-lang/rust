@@ -343,7 +343,7 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
         return ty::mk_self(st.tcx, did);
       }
       '@' => return ty::mk_box(st.tcx, parse_ty(st, |x,y| conv(x,y))),
-      '~' => return ty::mk_uniq(st.tcx, parse_mt(st, |x,y| conv(x,y))),
+      '~' => return ty::mk_uniq(st.tcx, parse_ty(st, |x,y| conv(x,y))),
       '*' => return ty::mk_ptr(st.tcx, parse_mt(st, |x,y| conv(x,y))),
       '&' => {
         let r = parse_region(st, |x,y| conv(x,y));
