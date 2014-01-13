@@ -10,7 +10,7 @@
 
 // rustpkg - a package manager and build system for Rust
 
-#[crate_id = "rustpkg#0.9"];
+#[crate_id = "rustpkg#0.10-pre"];
 #[license = "MIT/ASL2"];
 #[crate_type = "dylib"];
 
