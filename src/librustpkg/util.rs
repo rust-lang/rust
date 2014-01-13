@@ -171,7 +171,7 @@ pub fn compile_input(context: &BuildContext,
                      opt: session::OptLevel,
                      what: OutputType) -> Option<Path> {
     assert!(in_file.components().nth(1).is_some());
-    let input = driver::file_input(in_file.clone());
+    let input = driver::FileInput(in_file.clone());
     debug!("compile_input: {} / {:?}", in_file.display(), what);
     // tjc: by default, use the package ID name as the link name
     // not sure if we should support anything else
@@ -228,7 +228,7 @@ pub fn compile_input(context: &BuildContext,
 
     debug!("Output type = {:?}", output_type);
 
-    let options = @session::options {
+    let options = @session::Options {
         optimize: opt,
         test: what == Test || what == Bench,
         maybe_sysroot: Some(sysroot_to_use),
@@ -373,7 +373,7 @@ pub fn compile_crate_from_input(input: &Path,
 
     // bad copy
     debug!("out_dir = {}", out_dir.display());
-    let file_input = driver::file_input(input.clone());
+    let file_input = driver::FileInput(input.clone());
     let mut outputs = driver::build_output_filenames(&file_input,
                                                      &Some(out_dir.clone()), &None,
                                                      crate.attrs, sess);

@@ -31,7 +31,7 @@ use syntax;
 use std::cell::{Cell, RefCell};
 use std::hashmap::{HashMap,HashSet};
 
-pub struct config {
+pub struct Config {
     os: abi::Os,
     arch: abi::Architecture,
     target_strs: target_strs::t,
@@ -134,7 +134,7 @@ pub enum OptLevel {
 }
 
 #[deriving(Clone)]
-pub struct options {
+pub struct Options {
     // The crate config requested for the session, which may be combined
     // with additional crate configurations during the compile process
     outputs: ~[OutputStyle],
@@ -176,11 +176,6 @@ pub struct options {
     print_metas: (bool, bool, bool),
 }
 
-pub struct crate_metadata {
-    name: ~str,
-    data: ~[u8]
-}
-
 // The type of entry function, so
 // users can have their own entry
 // functions that don't start a
@@ -201,8 +196,8 @@ pub enum OutputStyle {
 }
 
 pub struct Session_ {
-    targ_cfg: @config,
-    opts: @options,
+    targ_cfg: @Config,
+    opts: @Options,
     cstore: @metadata::cstore::CStore,
     parse_sess: @ParseSess,
     codemap: @codemap::CodeMap,
@@ -375,8 +370,8 @@ impl Session_ {
 }
 
 /// Some reasonable defaults
-pub fn basic_options() -> @options {
-    @options {
+pub fn basic_options() -> @Options {
+    @Options {
         outputs: ~[],
         gc: false,
         optimize: No,
@@ -413,7 +408,7 @@ pub fn expect<T:Clone>(sess: Session, opt: Option<T>, msg: || -> ~str) -> T {
     diagnostic::expect(sess.diagnostic(), opt, msg)
 }
 
-pub fn building_library(options: &options, crate: &ast::Crate) -> bool {
+pub fn building_library(options: &Options, crate: &ast::Crate) -> bool {
     if options.test { return false }
     for output in options.outputs.iter() {
         match *output {
