@@ -14,16 +14,15 @@
 
 use prelude::*;
 
-use cmath::c_double_utils;
+use cmath;
 use default::Default;
 use libc::{c_double, c_int};
 use num::{FPCategory, FPNaN, FPInfinite , FPZero, FPSubnormal, FPNormal};
-use num::{Zero, One, RealExt, strconv};
+use num::{Zero, One, strconv};
 use num;
 use to_str;
 use unstable::intrinsics;
 
-pub use cmath::c_double_targ_consts::*;
 pub use cmp::{min, max};
 
 macro_rules! delegate(
@@ -64,8 +63,8 @@ delegate!(
     fn sqrt(n: f64) -> f64 = intrinsics::sqrtf64,
 
     // LLVM 3.3 required to use intrinsics for these four
-    fn ceil(n: c_double) -> c_double = c_double_utils::ceil,
-    fn trunc(n: c_double) -> c_double = c_double_utils::trunc,
+    fn ceil(n: c_double) -> c_double = cmath::c_double::ceil,
+    fn trunc(n: c_double) -> c_double = cmath::c_double::trunc,
     /*
     fn ceil(n: f64) -> f64 = intrinsics::ceilf64,
     fn trunc(n: f64) -> f64 = intrinsics::truncf64,
@@ -74,44 +73,33 @@ delegate!(
     */
 
     // cmath
-    fn acos(n: c_double) -> c_double = c_double_utils::acos,
-    fn asin(n: c_double) -> c_double = c_double_utils::asin,
-    fn atan(n: c_double) -> c_double = c_double_utils::atan,
-    fn atan2(a: c_double, b: c_double) -> c_double = c_double_utils::atan2,
-    fn cbrt(n: c_double) -> c_double = c_double_utils::cbrt,
-    fn copysign(x: c_double, y: c_double) -> c_double = c_double_utils::copysign,
-    fn cosh(n: c_double) -> c_double = c_double_utils::cosh,
-    // fn erf(n: c_double) -> c_double = c_double_utils::erf,
-    // fn erfc(n: c_double) -> c_double = c_double_utils::erfc,
-    fn exp_m1(n: c_double) -> c_double = c_double_utils::exp_m1,
-    fn abs_sub(a: c_double, b: c_double) -> c_double = c_double_utils::abs_sub,
-    fn next_after(x: c_double, y: c_double) -> c_double = c_double_utils::next_after,
-    fn frexp(n: c_double, value: &mut c_int) -> c_double = c_double_utils::frexp,
-    fn hypot(x: c_double, y: c_double) -> c_double = c_double_utils::hypot,
-    fn ldexp(x: c_double, n: c_int) -> c_double = c_double_utils::ldexp,
-    fn lgamma(n: c_double, sign: &mut c_int) -> c_double = c_double_utils::lgamma,
-    // fn log_radix(n: c_double) -> c_double = c_double_utils::log_radix,
-    fn ln_1p(n: c_double) -> c_double = c_double_utils::ln_1p,
-    // fn ilog_radix(n: c_double) -> c_int = c_double_utils::ilog_radix,
-    // fn modf(n: c_double, iptr: &mut c_double) -> c_double = c_double_utils::modf,
-    fn round(n: c_double) -> c_double = c_double_utils::round,
-    // fn ldexp_radix(n: c_double, i: c_int) -> c_double = c_double_utils::ldexp_radix,
-    fn sinh(n: c_double) -> c_double = c_double_utils::sinh,
-    fn tan(n: c_double) -> c_double = c_double_utils::tan,
-    fn tanh(n: c_double) -> c_double = c_double_utils::tanh,
-    fn tgamma(n: c_double) -> c_double = c_double_utils::tgamma,
-    fn j0(n: c_double) -> c_double = c_double_utils::j0,
-    fn j1(n: c_double) -> c_double = c_double_utils::j1,
-    fn jn(i: c_int, n: c_double) -> c_double = c_double_utils::jn,
-    fn y0(n: c_double) -> c_double = c_double_utils::y0,
-    fn y1(n: c_double) -> c_double = c_double_utils::y1,
-    fn yn(i: c_int, n: c_double) -> c_double = c_double_utils::yn
+    fn acos(n: c_double) -> c_double = cmath::c_double::acos,
+    fn asin(n: c_double) -> c_double = cmath::c_double::asin,
+    fn atan(n: c_double) -> c_double = cmath::c_double::atan,
+    fn atan2(a: c_double, b: c_double) -> c_double = cmath::c_double::atan2,
+    fn cbrt(n: c_double) -> c_double = cmath::c_double::cbrt,
+    fn copysign(x: c_double, y: c_double) -> c_double = cmath::c_double::copysign,
+    fn cosh(n: c_double) -> c_double = cmath::c_double::cosh,
+    // fn erf(n: c_double) -> c_double = cmath::c_double::erf,
+    // fn erfc(n: c_double) -> c_double = cmath::c_double::erfc,
+    fn exp_m1(n: c_double) -> c_double = cmath::c_double::exp_m1,
+    fn abs_sub(a: c_double, b: c_double) -> c_double = cmath::c_double::abs_sub,
+    fn next_after(x: c_double, y: c_double) -> c_double = cmath::c_double::next_after,
+    fn frexp(n: c_double, value: &mut c_int) -> c_double = cmath::c_double::frexp,
+    fn hypot(x: c_double, y: c_double) -> c_double = cmath::c_double::hypot,
+    fn ldexp(x: c_double, n: c_int) -> c_double = cmath::c_double::ldexp,
+    // fn log_radix(n: c_double) -> c_double = cmath::c_double::log_radix,
+    fn ln_1p(n: c_double) -> c_double = cmath::c_double::ln_1p,
+    // fn ilog_radix(n: c_double) -> c_int = cmath::c_double::ilog_radix,
+    // fn modf(n: c_double, iptr: &mut c_double) -> c_double = cmath::c_double::modf,
+    fn round(n: c_double) -> c_double = cmath::c_double::round,
+    // fn ldexp_radix(n: c_double, i: c_int) -> c_double = cmath::c_double::ldexp_radix,
+    fn sinh(n: c_double) -> c_double = cmath::c_double::sinh,
+    fn tan(n: c_double) -> c_double = cmath::c_double::tan,
+    fn tanh(n: c_double) -> c_double = cmath::c_double::tanh
 )
 
 // FIXME (#1433): obtain these in a different way
-
-// These are not defined inside consts:: for consistency with
-// the integer types
 
 pub static RADIX: uint = 2u;
 
@@ -558,36 +546,6 @@ impl Real for f64 {
         let value: f64 = Real::pi();
         *self * (value / 180.0)
     }
-}
-
-impl RealExt for f64 {
-    #[inline]
-    fn lgamma(&self) -> (int, f64) {
-        let mut sign = 0;
-        let result = lgamma(*self, &mut sign);
-        (sign as int, result)
-    }
-
-    #[inline]
-    fn tgamma(&self) -> f64 { tgamma(*self) }
-
-    #[inline]
-    fn j0(&self) -> f64 { j0(*self) }
-
-    #[inline]
-    fn j1(&self) -> f64 { j1(*self) }
-
-    #[inline]
-    fn jn(&self, n: int) -> f64 { jn(n as c_int, *self) }
-
-    #[inline]
-    fn y0(&self) -> f64 { y0(*self) }
-
-    #[inline]
-    fn y1(&self) -> f64 { y1(*self) }
-
-    #[inline]
-    fn yn(&self, n: int) -> f64 { yn(n as c_int, *self) }
 }
 
 impl Bounded for f64 {
