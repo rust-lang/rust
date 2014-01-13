@@ -481,7 +481,7 @@ pub fn declare_tydesc(ccx: &CrateContext, t: ty::t) -> @tydesc_info {
     });
 
     let ty_name = token::intern_and_get_ident(ppaux::ty_to_str(ccx.tcx, t));
-    let ty_name = C_estr_slice(ccx, ty_name);
+    let ty_name = C_str_slice(ccx, ty_name);
 
     let inf = @tydesc_info {
         ty: t,
