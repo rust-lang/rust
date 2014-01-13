@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[feature(managed_boxes)];
-
 enum t { a, b, }
 
 fn main() {
@@ -18,8 +16,8 @@ fn main() {
     match true { //~ ERROR non-exhaustive patterns
       true => {}
     }
-    match @Some(10) { //~ ERROR non-exhaustive patterns
-      @None => {}
+    match Some(10) { //~ ERROR non-exhaustive patterns
+      None => {}
     }
     match (2, 3, 4) { //~ ERROR non-exhaustive patterns
       (_, _, 4) => {}

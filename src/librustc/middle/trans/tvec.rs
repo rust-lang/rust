@@ -30,7 +30,6 @@ use util::common::indenter;
 use util::ppaux::ty_to_str;
 
 use syntax::ast;
-use syntax::codemap;
 
 // Boxed vector types are in some sense currently a "shorthand" for a box
 // containing an unboxed vector. This expands a boxed vector type into such an
@@ -223,8 +222,13 @@ pub fn trans_slice_vstore<'a>(
 
     // Handle the &"..." case:
     match content_expr.node {
-        ast::ExprLit(@codemap::Spanned {node: ast::LitStr(s, _), span: _}) => {
-            return trans_lit_str(bcx, content_expr, s, dest);
+        ast::ExprLit(lit) => {
+            match lit.node {
+                ast::LitStr(s, _) => {
+                    return trans_lit_str(bcx, content_expr, s, dest);
+                }
+                _ => {}
+            }
         }
         _ => {}
     }
@@ -317,25 +321,30 @@ pub fn trans_uniq_or_managed_vstore<'a>(
     match heap {
         heap_exchange => {
             match content_expr.node {
-                ast::ExprLit(@codemap::Spanned {
-                    node: ast::LitStr(s, _), span
-                }) => {
-                    let llptrval = C_cstr(bcx.ccx(), s);
-                    let llptrval = PointerCast(bcx, llptrval, Type::i8p());
-                    let llsizeval = C_uint(bcx.ccx(), s.len());
-                    let typ = ty::mk_str(bcx.tcx(), ty::vstore_uniq);
-                    let lldestval = scratch_datum(bcx, typ, "", false);
-                    let alloc_fn = langcall(bcx, Some(span), "",
-                                            StrDupUniqFnLangItem);
-                    let bcx = callee::trans_lang_call(
-                        bcx,
-                        alloc_fn,
-                        [ llptrval, llsizeval ],
-                        Some(expr::SaveIn(lldestval.to_ref_llval(bcx)))).bcx;
-                    return DatumBlock {
-                        bcx: bcx,
-                        datum: lldestval
-                    };
+                ast::ExprLit(lit) => {
+                    match lit.node {
+                        ast::LitStr(s, _) => {
+                            let llptrval = C_cstr(bcx.ccx(), s);
+                            let llptrval = PointerCast(bcx, llptrval, Type::i8p());
+                            let llsizeval = C_uint(bcx.ccx(), s.len());
+                            let typ = ty::mk_str(bcx.tcx(), ty::vstore_uniq);
+                            let lldestval = scratch_datum(bcx, typ, "", false);
+                            let alloc_fn = langcall(bcx,
+                                                    Some(lit.span),
+                                                    "",
+                                                    StrDupUniqFnLangItem);
+                            let bcx = callee::trans_lang_call(
+                                bcx,
+                                alloc_fn,
+                                [ llptrval, llsizeval ],
+                                Some(expr::SaveIn(lldestval.to_ref_llval(bcx)))).bcx;
+                            return DatumBlock {
+                                bcx: bcx,
+                                datum: lldestval
+                            };
+                        }
+                        _ => {}
+                    }
                 }
                 _ => {}
             }
@@ -380,17 +389,29 @@ pub fn write_content<'a>(
     let _indenter = indenter();
 
     match content_expr.node {
-        ast::ExprLit(@codemap::Spanned { node: ast::LitStr(s, _), .. }) => {
-            match dest {
-                Ignore => {
-                    return bcx;
+        ast::ExprLit(lit) => {
+            match lit.node {
+                ast::LitStr(s, _) => {
+                    match dest {
+                        Ignore => {
+                            return bcx;
+                        }
+                        SaveIn(lldest) => {
+                            let bytes = s.len();
+                            let llbytes = C_uint(bcx.ccx(), bytes);
+                            let llcstr = C_cstr(bcx.ccx(), s);
+                            base::call_memcpy(bcx,
+                                              lldest,
+                                              llcstr,
+                                              llbytes,
+                                              1);
+                            return bcx;
+                        }
+                    }
                 }
-                SaveIn(lldest) => {
-                    let bytes = s.len();
-                    let llbytes = C_uint(bcx.ccx(), bytes);
-                    let llcstr = C_cstr(bcx.ccx(), s);
-                    base::call_memcpy(bcx, lldest, llcstr, llbytes, 1);
-                    return bcx;
+                _ => {
+                    bcx.tcx().sess.span_bug(content_expr.span,
+                                            "Unexpected evec content");
                 }
             }
         }
@@ -477,8 +498,14 @@ pub fn elements_required(bcx: &Block, content_expr: &ast::Expr) -> uint {
     //! Figure out the number of elements we need to store this content
 
     match content_expr.node {
-        ast::ExprLit(@codemap::Spanned { node: ast::LitStr(s, _), .. }) => {
-            s.len()
+        ast::ExprLit(lit) => {
+            match lit.node {
+                ast::LitStr(s, _) => s.len(),
+                _ => {
+                    bcx.tcx().sess.span_bug(content_expr.span,
+                                            "Unexpected evec content")
+                }
+            }
         },
         ast::ExprVec(ref es, _) => es.len(),
         ast::ExprRepeat(_, count_expr, _) => {

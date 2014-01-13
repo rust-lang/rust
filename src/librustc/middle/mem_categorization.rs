@@ -341,36 +341,39 @@ impl mem_categorization_ctxt {
                 self.cat_expr_unadjusted(expr)
             }
 
-            Some(&@ty::AutoObject(..)) => {
-                // Implicity casts a concrete object to trait object
-                // Result is an rvalue
-                let expr_ty = ty::expr_ty_adjusted(self.tcx, expr);
-                self.cat_rvalue_node(expr, expr_ty)
-            }
+            Some(adjustment) => {
+                match **adjustment {
+                    ty::AutoObject(..) => {
+                        // Implicity casts a concrete object to trait object
+                        // Result is an rvalue
+                        let expr_ty = ty::expr_ty_adjusted(self.tcx, expr);
+                        self.cat_rvalue_node(expr, expr_ty)
+                    }
 
-            Some(&@ty::AutoAddEnv(..)) => {
-                // Convert a bare fn to a closure by adding NULL env.
-                // Result is an rvalue.
-                let expr_ty = ty::expr_ty_adjusted(self.tcx, expr);
-                self.cat_rvalue_node(expr, expr_ty)
-            }
+                    ty::AutoAddEnv(..) => {
+                        // Convert a bare fn to a closure by adding NULL env.
+                        // Result is an rvalue.
+                        let expr_ty = ty::expr_ty_adjusted(self.tcx, expr);
+                        self.cat_rvalue_node(expr, expr_ty)
+                    }
 
-            Some(
-                &@ty::AutoDerefRef(
-                    ty::AutoDerefRef {
-                        autoref: Some(_), ..})) => {
-                // Equivalent to &*expr or something similar.
-                // Result is an rvalue.
-                let expr_ty = ty::expr_ty_adjusted(self.tcx, expr);
-                self.cat_rvalue_node(expr, expr_ty)
-            }
+                    ty::AutoDerefRef(ty::AutoDerefRef {
+                        autoref: Some(_),
+                    ..}) => {
+                        // Equivalent to &*expr or something similar.
+                        // Result is an rvalue.
+                        let expr_ty = ty::expr_ty_adjusted(self.tcx, expr);
+                        self.cat_rvalue_node(expr, expr_ty)
+                    }
 
-            Some(
-                &@ty::AutoDerefRef(
-                    ty::AutoDerefRef {
-                        autoref: None, autoderefs: autoderefs})) => {
-                // Equivalent to *expr or something similar.
-                self.cat_expr_autoderefd(expr, autoderefs)
+                    ty::AutoDerefRef(ty::AutoDerefRef {
+                            autoref: None,
+                            autoderefs: autoderefs
+                    }) => {
+                        // Equivalent to *expr or something similar.
+                        self.cat_expr_autoderefd(expr, autoderefs)
+                    }
+                }
             }
         }
     }
@@ -973,8 +976,7 @@ impl mem_categorization_ctxt {
             }
           }
 
-          ast::PatBox(subpat) | ast::PatUniq(subpat) |
-          ast::PatRegion(subpat) => {
+          ast::PatUniq(subpat) | ast::PatRegion(subpat) => {
             // @p1, ~p1
             let subcmt = self.cat_deref(pat, cmt, 0);
             self.cat_pattern(subcmt, subpat, op);

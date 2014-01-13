@@ -16,7 +16,6 @@ use middle::typeck;
 use util::ppaux;
 
 use syntax::ast::*;
-use syntax::codemap;
 use syntax::{ast_util, ast_map};
 use syntax::visit::Visitor;
 use syntax::visit;
@@ -84,14 +83,13 @@ pub fn check_item(v: &mut CheckCrateVisitor,
 pub fn check_pat(v: &mut CheckCrateVisitor, p: &Pat, _is_const: bool) {
     fn is_str(e: @Expr) -> bool {
         match e.node {
-            ExprVstore(
-                @Expr { node: ExprLit(@codemap::Spanned {
-                    node: LitStr(..),
-                    ..}),
-                       .. },
-                ExprVstoreUniq
-            ) => true,
-            _ => false
+            ExprVstore(expr, ExprVstoreUniq) => {
+                match expr.node {
+                    ExprLit(lit) => ast_util::lit_is_str(lit),
+                    _ => false,
+                }
+            }
+            _ => false,
         }
     }
     match p.node {
@@ -120,7 +118,7 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
                           "cannot do allocations in constant expressions");
             return;
           }
-          ExprLit(@codemap::Spanned {node: LitStr(..), ..}) => { }
+          ExprLit(lit) if ast_util::lit_is_str(lit) => {}
           ExprBinary(..) | ExprUnary(..) => {
             let method_map = method_map.borrow();
             if method_map.get().contains_key(&e.id) {
