@@ -255,9 +255,9 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
         let ifile = matches.free[0].as_slice();
         if "-" == ifile {
             let src = str::from_utf8_owned(io::stdin().read_to_end());
-            d::str_input(src.to_managed())
+            d::StrInput(src.to_managed())
         } else {
-            d::file_input(Path::new(ifile))
+            d::FileInput(Path::new(ifile))
         }
       }
       _ => d::early_error(demitter, "multiple input filenames provided")
@@ -281,12 +281,12 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
     let ls = matches.opt_present("ls");
     if ls {
         match input {
-          d::file_input(ref ifile) => {
+          d::FileInput(ref ifile) => {
             let mut stdout = io::stdout();
             d::list_metadata(sess, &(*ifile),
                                   &mut stdout as &mut io::Writer);
           }
-          d::str_input(_) => {
+          d::StrInput(_) => {
             d::early_error(demitter, "can not list metadata for stdin");
           }
         }
@@ -332,12 +332,12 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
 }
 
 fn parse_crate_attrs(sess: session::Session,
-                     input: &d::input) -> ~[ast::Attribute] {
+                     input: &d::Input) -> ~[ast::Attribute] {
     match *input {
-        d::file_input(ref ifile) => {
+        d::FileInput(ref ifile) => {
             parse::parse_crate_attrs_from_file(ifile, ~[], sess.parse_sess)
         }
-        d::str_input(src) => {
+        d::StrInput(src) => {
             parse::parse_crate_attrs_from_source_str(
                 d::anon_src(), src, ~[], sess.parse_sess)
         }
