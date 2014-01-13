@@ -44,7 +44,8 @@ pub enum ObsoleteSyntax {
     ObsoleteBoxedClosure,
     ObsoleteClosureType,
     ObsoleteMultipleImport,
-    ObsoleteExternModAttributesInParens
+    ObsoleteExternModAttributesInParens,
+    ObsoleteManagedPattern,
 }
 
 impl to_bytes::IterBytes for ObsoleteSyntax {
@@ -148,7 +149,12 @@ impl ParserObsoleteMethods for Parser {
                 "`extern mod` with linkage attribute list",
                 "use `extern mod foo = \"bar\";` instead of \
                 `extern mod foo (name = \"bar\")`"
-            )
+            ),
+            ObsoleteManagedPattern => (
+                "managed pointer pattern",
+                "use a nested `match` expression instead of a managed box \
+                 pattern"
+            ),
         };
 
         self.report(sp, kind, kind_str, desc);

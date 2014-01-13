@@ -40,7 +40,7 @@ use ast::{LitBool, LitFloat, LitFloatUnsuffixed, LitInt, LitChar};
 use ast::{LitIntUnsuffixed, LitNil, LitStr, LitUint, Local};
 use ast::{MutImmutable, MutMutable, Mac_, MacInvocTT, Matcher, MatchNonterminal};
 use ast::{MatchSeq, MatchTok, Method, MutTy, BiMul, Mutability};
-use ast::{NamedField, UnNeg, NoReturn, UnNot, P, Pat, PatBox, PatEnum};
+use ast::{NamedField, UnNeg, NoReturn, UnNot, P, Pat, PatEnum};
 use ast::{PatIdent, PatLit, PatRange, PatRegion, PatStruct};
 use ast::{PatTup, PatUniq, PatWild, PatWildMulti, Private};
 use ast::{BiRem, Required};
@@ -60,7 +60,7 @@ use ast::{ViewItem_, ViewItemExternMod, ViewItemUse};
 use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
 use ast::Visibility;
 use ast;
-use ast_util::{as_prec, operator_prec};
+use ast_util::{as_prec, lit_is_str, operator_prec};
 use ast_util;
 use codemap::{Span, BytePos, Spanned, spanned, mk_sp};
 use codemap;
@@ -2278,10 +2278,10 @@ impl Parser {
                 hi = e.span.hi;
                 // HACK: turn &[...] into a &-vec
                 ex = match e.node {
-                  ExprVec(..) | ExprLit(@codemap::Spanned {
-                    node: LitStr(..), span: _
-                  })
-                  if m == MutImmutable => {
+                  ExprVec(..) if m == MutImmutable => {
+                    ExprVstore(e, ExprVstoreSlice)
+                  }
+                  ExprLit(lit) if lit_is_str(lit) && m == MutImmutable => {
                     ExprVstore(e, ExprVstoreSlice)
                   }
                   ExprVec(..) if m == MutMutable => {
@@ -2300,8 +2300,8 @@ impl Parser {
             // HACK: turn @[...] into a @-vec
             ex = match e.node {
               ExprVec(..) |
-              ExprLit(@codemap::Spanned { node: LitStr(..), span: _}) |
               ExprRepeat(..) => ExprVstore(e, ExprVstoreBox),
+              ExprLit(lit) if lit_is_str(lit) => ExprVstore(e, ExprVstoreBox),
               _ => self.mk_unary(UnBox, e)
             };
           }
@@ -2312,9 +2312,10 @@ impl Parser {
             hi = e.span.hi;
             // HACK: turn ~[...] into a ~-vec
             ex = match e.node {
-              ExprVec(..) |
-              ExprLit(@codemap::Spanned { node: LitStr(..), span: _}) |
-              ExprRepeat(..) => ExprVstore(e, ExprVstoreUniq),
+              ExprVec(..) | ExprRepeat(..) => ExprVstore(e, ExprVstoreUniq),
+              ExprLit(lit) if lit_is_str(lit) => {
+                  ExprVstore(e, ExprVstoreUniq)
+              }
               _ => self.mk_unary(UnUniq, e)
             };
           }
@@ -2339,12 +2340,12 @@ impl Parser {
             hi = subexpression.span.hi;
             // HACK: turn `box [...]` into a boxed-vec
             ex = match subexpression.node {
-                ExprVec(..) |
-                ExprLit(@codemap::Spanned {
-                    node: LitStr(..),
-                    span: _
-                }) |
-                ExprRepeat(..) => ExprVstore(subexpression, ExprVstoreUniq),
+                ExprVec(..) | ExprRepeat(..) => {
+                    ExprVstore(subexpression, ExprVstoreUniq)
+                }
+                ExprLit(lit) if lit_is_str(lit) => {
+                    ExprVstore(subexpression, ExprVstoreUniq)
+                }
                 _ => self.mk_unary(UnUniq, subexpression)
             };
           }
@@ -2769,8 +2770,8 @@ impl Parser {
                     })
                 } else {
                     let subpat = self.parse_pat();
-                    match subpat {
-                        @ast::Pat { id, node: PatWild, span } => {
+                    match *subpat {
+                        ast::Pat { id, node: PatWild, span } => {
                             self.obsolete(self.span, ObsoleteVecDotDotWildcard);
                             slice = Some(@ast::Pat {
                                 id: id,
@@ -2778,10 +2779,10 @@ impl Parser {
                                 span: span
                             })
                         },
-                        @ast::Pat { node: PatIdent(_, _, _), .. } => {
+                        ast::Pat { node: PatIdent(_, _, _), .. } => {
                             slice = Some(subpat);
                         }
-                        @ast::Pat { span, .. } => self.span_fatal(
+                        ast::Pat { span, .. } => self.span_fatal(
                             span, "expected an identifier or nothing"
                         )
                     }
@@ -2891,19 +2892,26 @@ impl Parser {
             hi = sub.span.hi;
             // HACK: parse @"..." as a literal of a vstore @str
             pat = match sub.node {
-              PatLit(e@@Expr {
-                node: ExprLit(@codemap::Spanned {
-                    node: LitStr(..),
-                    span: _}), ..
-              }) => {
-                let vst = @Expr {
-                    id: ast::DUMMY_NODE_ID,
-                    node: ExprVstore(e, ExprVstoreBox),
-                    span: mk_sp(lo, hi),
-                };
-                PatLit(vst)
+              PatLit(e) => {
+                  match e.node {
+                      ExprLit(lit) if lit_is_str(lit) => {
+                        let vst = @Expr {
+                            id: ast::DUMMY_NODE_ID,
+                            node: ExprVstore(e, ExprVstoreBox),
+                            span: mk_sp(lo, hi),
+                        };
+                        PatLit(vst)
+                      }
+                      _ => {
+                        self.obsolete(self.span, ObsoleteManagedPattern);
+                        PatUniq(sub)
+                      }
+                  }
               }
-              _ => PatBox(sub)
+              _ => {
+                self.obsolete(self.span, ObsoleteManagedPattern);
+                PatUniq(sub)
+              }
             };
             hi = self.last_span.hi;
             return @ast::Pat {
@@ -2919,19 +2927,20 @@ impl Parser {
             hi = sub.span.hi;
             // HACK: parse ~"..." as a literal of a vstore ~str
             pat = match sub.node {
-              PatLit(e@@Expr {
-                node: ExprLit(@codemap::Spanned {
-                    node: LitStr(..),
-                    span: _}), ..
-              }) => {
-                let vst = @Expr {
-                    id: ast::DUMMY_NODE_ID,
-                    node: ExprVstore(e, ExprVstoreUniq),
-                    span: mk_sp(lo, hi),
-                };
-                PatLit(vst)
-              }
-              _ => PatUniq(sub)
+                PatLit(e) => {
+                    match e.node {
+                        ExprLit(lit) if lit_is_str(lit) => {
+                            let vst = @Expr {
+                                id: ast::DUMMY_NODE_ID,
+                                node: ExprVstore(e, ExprVstoreUniq),
+                                span: mk_sp(lo, hi),
+                            };
+                            PatLit(vst)
+                        }
+                        _ => PatUniq(sub)
+                    }
+                }
+                _ => PatUniq(sub)
             };
             hi = self.last_span.hi;
             return @ast::Pat {
@@ -2948,18 +2957,20 @@ impl Parser {
               hi = sub.span.hi;
               // HACK: parse &"..." as a literal of a borrowed str
               pat = match sub.node {
-                  PatLit(e@@Expr {
-                      node: ExprLit(@codemap::Spanned{ node: LitStr(..), .. }),
-                      ..
-                  }) => {
-                      let vst = @Expr {
-                          id: ast::DUMMY_NODE_ID,
-                          node: ExprVstore(e, ExprVstoreSlice),
-                          span: mk_sp(lo, hi)
-                      };
-                      PatLit(vst)
+                  PatLit(e) => {
+                      match e.node {
+                        ExprLit(lit) if lit_is_str(lit) => {
+                          let vst = @Expr {
+                              id: ast::DUMMY_NODE_ID,
+                              node: ExprVstore(e, ExprVstoreSlice),
+                              span: mk_sp(lo, hi)
+                          };
+                          PatLit(vst)
+                        }
+                        _ => PatRegion(sub),
+                      }
                   }
-              _ => PatRegion(sub)
+                  _ => PatRegion(sub),
             };
             hi = self.last_span.hi;
             return @ast::Pat {

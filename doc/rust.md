@@ -2865,19 +2865,19 @@ In a pattern whose head expression has an `enum` type, a placeholder (`_`) stand
 variant. For example:
 
 ~~~~
-enum List<X> { Nil, Cons(X, @List<X>) }
+enum List<X> { Nil, Cons(X, ~List<X>) }
 
-let x: List<int> = Cons(10, @Cons(11, @Nil));
+let x: List<int> = Cons(10, ~Cons(11, ~Nil));
 
 match x {
-    Cons(_, @Nil) => fail!("singleton list"),
+    Cons(_, ~Nil) => fail!("singleton list"),
     Cons(..)      => return,
     Nil           => fail!("empty list")
 }
 ~~~~
 
 The first pattern matches lists constructed by applying `Cons` to any head value, and a
-tail value of `@Nil`. The second pattern matches _any_ list constructed with `Cons`,
+tail value of `~Nil`. The second pattern matches _any_ list constructed with `Cons`,
 ignoring the values of its arguments. The difference between `_` and `*` is that the pattern `C(_)` is only type-correct if
 `C` has exactly one argument, while the pattern `C(..)` is type-correct for any enum variant `C`, regardless of how many arguments `C` has.
 
@@ -2893,12 +2893,12 @@ An example of an `match` expression:
 # fn process_pair(a: int, b: int) { }
 # fn process_ten() { }
 
-enum List<X> { Nil, Cons(X, @List<X>) }
+enum List<X> { Nil, Cons(X, ~List<X>) }
 
-let x: List<int> = Cons(10, @Cons(11, @Nil));
+let x: List<int> = Cons(10, ~Cons(11, ~Nil));
 
 match x {
-    Cons(a, @Cons(b, _)) => {
+    Cons(a, ~Cons(b, _)) => {
         process_pair(a,b);
     }
     Cons(10, _) => {

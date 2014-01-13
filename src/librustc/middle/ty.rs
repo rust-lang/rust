@@ -38,12 +38,11 @@ use std::to_bytes;
 use std::to_str::ToStr;
 use std::vec;
 use syntax::ast::*;
-use syntax::ast_util::is_local;
+use syntax::ast_util::{is_local, lit_is_str};
 use syntax::ast_util;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
-use syntax::codemap;
 use syntax::parse::token;
 use syntax::{ast, ast_map};
 use syntax::opt_vec::OptVec;
@@ -2864,78 +2863,101 @@ pub fn adjust_ty(cx: ctxt,
     return match adjustment {
         None => unadjusted_ty,
 
-        Some(@AutoAddEnv(r, s)) => {
-            match ty::get(unadjusted_ty).sty {
-                ty::ty_bare_fn(ref b) => {
-                    ty::mk_closure(
-                        cx,
-                        ty::ClosureTy {purity: b.purity,
-                                       sigil: s,
-                                       onceness: ast::Many,
-                                       region: r,
-                                       bounds: ty::AllBuiltinBounds(),
-                                       sig: b.sig.clone()})
-                }
-                ref b => {
-                    cx.sess.bug(
-                        format!("add_env adjustment on non-bare-fn: {:?}", b));
-                }
-            }
-        }
-
-        Some(@AutoDerefRef(ref adj)) => {
-            let mut adjusted_ty = unadjusted_ty;
-
-            if (!ty::type_is_error(adjusted_ty)) {
-                for i in range(0, adj.autoderefs) {
-                    match ty::deref(adjusted_ty, true) {
-                        Some(mt) => { adjusted_ty = mt.ty; }
-                        None => {
-                            cx.sess.span_bug(
-                                span,
-                                format!("The {}th autoderef failed: {}",
-                                     i, ty_to_str(cx,
-                                                  adjusted_ty)));
+        Some(adjustment) => {
+            match *adjustment {
+                AutoAddEnv(r, s) => {
+                    match ty::get(unadjusted_ty).sty {
+                        ty::ty_bare_fn(ref b) => {
+                            ty::mk_closure(
+                                cx,
+                                ty::ClosureTy {purity: b.purity,
+                                               sigil: s,
+                                               onceness: ast::Many,
+                                               region: r,
+                                               bounds: ty::AllBuiltinBounds(),
+                                               sig: b.sig.clone()})
+                        }
+                        ref b => {
+                            cx.sess.bug(
+                                format!("add_env adjustment on non-bare-fn: \
+                                         {:?}",
+                                        b));
                         }
                     }
                 }
-            }
 
-            match adj.autoref {
-                None => adjusted_ty,
-                Some(ref autoref) => {
-                    match *autoref {
-                        AutoPtr(r, m) => {
-                            mk_rptr(cx, r, mt {ty: adjusted_ty, mutbl: m})
+                AutoDerefRef(ref adj) => {
+                    let mut adjusted_ty = unadjusted_ty;
+
+                    if (!ty::type_is_error(adjusted_ty)) {
+                        for i in range(0, adj.autoderefs) {
+                            match ty::deref(adjusted_ty, true) {
+                                Some(mt) => { adjusted_ty = mt.ty; }
+                                None => {
+                                    cx.sess.span_bug(
+                                        span,
+                                        format!("The {}th autoderef failed: \
+                                                {}",
+                                                i,
+                                                ty_to_str(cx, adjusted_ty)));
+                                }
+                            }
                         }
+                    }
 
-                        AutoBorrowVec(r, m) => {
-                            borrow_vec(cx, span, r, m, adjusted_ty)
-                        }
+                    match adj.autoref {
+                        None => adjusted_ty,
+                        Some(ref autoref) => {
+                            match *autoref {
+                                AutoPtr(r, m) => {
+                                    mk_rptr(cx, r, mt {
+                                        ty: adjusted_ty,
+                                        mutbl: m
+                                    })
+                                }
 
-                        AutoBorrowVecRef(r, m) => {
-                            adjusted_ty = borrow_vec(cx, span, r, m, adjusted_ty);
-                            mk_rptr(cx, r, mt {ty: adjusted_ty, mutbl: ast::MutImmutable})
-                        }
+                                AutoBorrowVec(r, m) => {
+                                    borrow_vec(cx, span, r, m, adjusted_ty)
+                                }
 
-                        AutoBorrowFn(r) => {
-                            borrow_fn(cx, span, r, adjusted_ty)
-                        }
+                                AutoBorrowVecRef(r, m) => {
+                                    adjusted_ty = borrow_vec(cx,
+                                                             span,
+                                                             r,
+                                                             m,
+                                                             adjusted_ty);
+                                    mk_rptr(cx, r, mt {
+                                        ty: adjusted_ty,
+                                        mutbl: ast::MutImmutable
+                                    })
+                                }
 
-                        AutoUnsafe(m) => {
-                            mk_ptr(cx, mt {ty: adjusted_ty, mutbl: m})
-                        }
+                                AutoBorrowFn(r) => {
+                                    borrow_fn(cx, span, r, adjusted_ty)
+                                }
 
-                        AutoBorrowObj(r, m) => {
-                            borrow_obj(cx, span, r, m, adjusted_ty)
+                                AutoUnsafe(m) => {
+                                    mk_ptr(cx, mt {ty: adjusted_ty, mutbl: m})
+                                }
+
+                                AutoBorrowObj(r, m) => {
+                                    borrow_obj(cx, span, r, m, adjusted_ty)
+                                }
+                            }
                         }
                     }
                 }
-            }
-        }
 
-        Some(@AutoObject(ref sigil, ref region, m, b, def_id, ref substs)) => {
-            trait_adjustment_to_ty(cx, sigil, region, def_id, substs, m, b)
+                AutoObject(ref sigil, ref region, m, b, def_id, ref substs) => {
+                    trait_adjustment_to_ty(cx,
+                                           sigil,
+                                           region,
+                                           def_id,
+                                           substs,
+                                           m,
+                                           b)
+                }
+            }
         }
     };
 
@@ -3165,10 +3187,13 @@ pub fn expr_kind(tcx: ctxt,
         ast::ExprDoBody(..) |
         ast::ExprBlock(..) |
         ast::ExprRepeat(..) |
-        ast::ExprLit(@codemap::Spanned {node: LitStr(..), ..}) |
         ast::ExprVstore(_, ast::ExprVstoreSlice) |
         ast::ExprVstore(_, ast::ExprVstoreMutSlice) |
         ast::ExprVec(..) => {
+            RvalueDpsExpr
+        }
+
+        ast::ExprLit(lit) if lit_is_str(lit) => {
             RvalueDpsExpr
         }
 
@@ -3546,15 +3571,24 @@ pub fn provided_trait_methods(cx: ctxt, id: ast::DefId) -> ~[@Method] {
         {
             let items = cx.items.borrow();
             match items.get().find(&id.node) {
-                Some(&ast_map::NodeItem(@ast::Item {
-                            node: ItemTrait(_, _, ref ms),
-                            ..
-                        }, _)) =>
-                    match ast_util::split_trait_methods(*ms) {
-                       (_, p) => p.map(|m| method(cx, ast_util::local_def(m.id)))
-                    },
-                _ => cx.sess.bug(format!("provided_trait_methods: {:?} is not a trait",
-                                      id))
+                Some(&ast_map::NodeItem(item, _)) => {
+                    match item.node {
+                        ItemTrait(_, _, ref ms) => {
+                            let (_, p) = ast_util::split_trait_methods(*ms);
+                            p.map(|m| method(cx, ast_util::local_def(m.id)))
+                        }
+                        _ => {
+                            cx.sess.bug(format!("provided_trait_methods: \
+                                                 {:?} is not a trait",
+                                                id))
+                        }
+                    }
+                }
+                _ => {
+                    cx.sess.bug(format!("provided_trait_methods: {:?} is not \
+                                         a trait",
+                                        id))
+                }
             }
         }
     } else {
@@ -3668,13 +3702,18 @@ pub fn impl_trait_ref(cx: ctxt, id: ast::DefId) -> Option<@TraitRef> {
         {
             let items = cx.items.borrow();
             match items.get().find(&id.node) {
-                Some(&ast_map::NodeItem(@ast::Item {
-                     node: ast::ItemImpl(_, ref opt_trait, _, _),
-                     ..},
-                     _)) => {
-                    match opt_trait {
-                        &Some(ref t) => Some(ty::node_id_to_trait_ref(cx, t.ref_id)),
-                        &None => None
+                Some(&ast_map::NodeItem(item, _)) => {
+                    match item.node {
+                        ast::ItemImpl(_, ref opt_trait, _, _) => {
+                            match opt_trait {
+                                &Some(ref t) => {
+                                    Some(ty::node_id_to_trait_ref(cx,
+                                                                  t.ref_id))
+                                }
+                                &None => None
+                            }
+                        }
+                        _ => None
                     }
                 }
                 _ => None
@@ -3931,37 +3970,55 @@ pub fn enum_variants(cx: ctxt, id: ast::DefId) -> @~[@VariantInfo] {
         {
             let items = cx.items.borrow();
             match items.get().get_copy(&id.node) {
-              ast_map::NodeItem(@ast::Item {
-                        node: ast::ItemEnum(ref enum_definition, _),
-                        ..
-                    }, _) => {
-                let mut last_discriminant: Option<Disr> = None;
-                @enum_definition.variants.iter().map(|&variant| {
+              ast_map::NodeItem(item, _) => {
+                  match item.node {
+                    ast::ItemEnum(ref enum_definition, _) => {
+                        let mut last_discriminant: Option<Disr> = None;
+                        @enum_definition.variants.iter().map(|&variant| {
 
-                    let mut discriminant = match last_discriminant {
-                        Some(val) => val + 1,
-                        None => INITIAL_DISCRIMINANT_VALUE
-                    };
+                            let mut discriminant = match last_discriminant {
+                                Some(val) => val + 1,
+                                None => INITIAL_DISCRIMINANT_VALUE
+                            };
 
-                    match variant.node.disr_expr {
-                        Some(e) => match const_eval::eval_const_expr_partial(&cx, e) {
-                            Ok(const_eval::const_int(val)) => discriminant = val as Disr,
-                            Ok(const_eval::const_uint(val)) => discriminant = val as Disr,
-                            Ok(_) => {
-                                cx.sess.span_err(e.span, "expected signed integer constant");
-                            }
-                            Err(ref err) => {
-                                cx.sess.span_err(e.span, format!("expected constant: {}", (*err)));
-                            }
-                        },
-                        None => {}
-                    };
+                            match variant.node.disr_expr {
+                                Some(e) => match const_eval::eval_const_expr_partial(&cx, e) {
+                                    Ok(const_eval::const_int(val)) => {
+                                        discriminant = val as Disr
+                                    }
+                                    Ok(const_eval::const_uint(val)) => {
+                                        discriminant = val as Disr
+                                    }
+                                    Ok(_) => {
+                                        cx.sess
+                                          .span_err(e.span,
+                                                    "expected signed integer \
+                                                     constant");
+                                    }
+                                    Err(ref err) => {
+                                        cx.sess
+                                          .span_err(e.span,
+                                                    format!("expected \
+                                                             constant: {}",
+                                                            (*err)));
+                                    }
+                                },
+                                None => {}
+                            };
 
-                    let variant_info = @VariantInfo::from_ast_variant(cx, variant, discriminant);
-                    last_discriminant = Some(discriminant);
-                    variant_info
+                            let variant_info =
+                                @VariantInfo::from_ast_variant(cx,
+                                                               variant,
+                                                               discriminant);
+                            last_discriminant = Some(discriminant);
+                            variant_info
 
-                }).collect()
+                        }).collect()
+                    }
+                    _ => {
+                        cx.sess.bug("enum_variants: id not bound to an enum")
+                    }
+                  }
               }
               _ => cx.sess.bug("enum_variants: id not bound to an enum")
             }
@@ -4038,11 +4095,9 @@ pub fn each_attr(tcx: ctxt, did: DefId, f: |@MetaItem| -> bool) -> bool {
         {
             let items = tcx.items.borrow();
             match items.get().find(&did.node) {
-                Some(&ast_map::NodeItem(@ast::Item {
-                    attrs: ref attrs,
-                    ..
-                }, _)) =>
-                    attrs.iter().advance(|attr| f(attr.node.value)),
+                Some(&ast_map::NodeItem(item, _)) => {
+                    item.attrs.iter().advance(|attr| f(attr.node.value))
+                }
                 _ => tcx.sess.bug(format!("has_attr: {:?} is not an item",
                                           did))
             }

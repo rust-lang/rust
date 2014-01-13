@@ -1309,10 +1309,15 @@ impl<'a> LookupContext<'a> {
             {
                 let items = self.tcx().items.borrow();
                 match items.get().find(&did.node) {
-                  Some(&ast_map::NodeMethod(m, _, _))
-                  | Some(&ast_map::NodeTraitMethod(@ast::Provided(m),
-                                                   _, _)) => {
-                      m.span
+                  Some(&ast_map::NodeMethod(m, _, _)) => m.span,
+                  Some(&ast_map::NodeTraitMethod(trait_method, _, _)) => {
+                      match *trait_method {
+                          ast::Provided(m) => m.span,
+                          _ => {
+                              fail!("report_static_candidate, bad item {:?}",
+                                    did)
+                          }
+                      }
                   }
                   _ => fail!("report_static_candidate: bad item {:?}", did)
                 }

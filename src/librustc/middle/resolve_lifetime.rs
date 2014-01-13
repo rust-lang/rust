@@ -102,10 +102,16 @@ impl<'a> Visitor<&'a ScopeChain<'a>> for LifetimeContext {
     fn visit_ty(&mut self, ty: &ast::Ty,
                 scope: &'a ScopeChain<'a>) {
         match ty.node {
-            ast::TyClosure(@ast::ClosureTy { lifetimes: ref lifetimes, .. }) |
-            ast::TyBareFn(@ast::BareFnTy { lifetimes: ref lifetimes, .. }) => {
-                let scope1 = FnScope(ty.id, lifetimes, scope);
-                self.check_lifetime_names(lifetimes);
+            ast::TyClosure(closure) => {
+                let scope1 = FnScope(ty.id, &closure.lifetimes, scope);
+                self.check_lifetime_names(&closure.lifetimes);
+                debug!("pushing fn scope id={} due to type", ty.id);
+                visit::walk_ty(self, ty, &scope1);
+                debug!("popping fn scope id={} due to type", ty.id);
+            }
+            ast::TyBareFn(bare_fn) => {
+                let scope1 = FnScope(ty.id, &bare_fn.lifetimes, scope);
+                self.check_lifetime_names(&bare_fn.lifetimes);
                 debug!("pushing fn scope id={} due to type", ty.id);
                 visit::walk_ty(self, ty, &scope1);
                 debug!("popping fn scope id={} due to type", ty.id);

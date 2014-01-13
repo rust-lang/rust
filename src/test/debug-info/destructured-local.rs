@@ -125,7 +125,6 @@
 // debugger:print *nn
 // check:$43 = 56
 
-#[feature(managed_boxes)];
 #[allow(unused_variable)];
 
 struct Struct {
@@ -172,8 +171,8 @@ fn main() {
     let ((u, v), ((w, (x, Struct { a: y, b: z})), Struct { a: ae, b: oe }), ue) =
         ((25, 26), ((27, (28, Struct { a: 29, b: 30})), Struct { a: 31, b: 32 }), 33);
 
-    // managed box
-    let @aa = @(34, 35);
+    // reference
+    let &aa = &(34, 35);
 
     // reference
     let &bb = &(36, 37);

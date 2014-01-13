@@ -183,59 +183,63 @@ pub fn get_enum_variant_types(ccx: &CrateCtxt,
     }
 }
 
-pub fn ensure_trait_methods(ccx: &CrateCtxt,
-                            trait_id: ast::NodeId)
-{
+pub fn ensure_trait_methods(ccx: &CrateCtxt, trait_id: ast::NodeId) {
     let tcx = ccx.tcx;
     let items = tcx.items.borrow();
     match items.get().get_copy(&trait_id) {
-        ast_map::NodeItem(@ast::Item {
-            node: ast::ItemTrait(ref generics, _, ref ms),
-            ..
-        }, _) => {
-            let trait_ty_generics =
-                ty_generics(ccx, generics, 0);
+        ast_map::NodeItem(item, _) => {
+            match item.node {
+                ast::ItemTrait(ref generics, _, ref ms) => {
+                    let trait_ty_generics = ty_generics(ccx, generics, 0);
 
-            // For each method, construct a suitable ty::Method and
-            // store it into the `tcx.methods` table:
-            for m in ms.iter() {
-                let ty_method = @match m {
-                    &ast::Required(ref m) => {
-                        ty_method_of_trait_method(
-                            ccx, trait_id, &trait_ty_generics,
-                            &m.id, &m.ident, &m.explicit_self,
-                            &m.generics, &m.purity, m.decl)
+                    // For each method, construct a suitable ty::Method and
+                    // store it into the `tcx.methods` table:
+                    for m in ms.iter() {
+                        let ty_method = @match m {
+                            &ast::Required(ref m) => {
+                                ty_method_of_trait_method(
+                                    ccx, trait_id, &trait_ty_generics,
+                                    &m.id, &m.ident, &m.explicit_self,
+                                    &m.generics, &m.purity, m.decl)
+                            }
+
+                            &ast::Provided(ref m) => {
+                                ty_method_of_trait_method(
+                                    ccx, trait_id, &trait_ty_generics,
+                                    &m.id, &m.ident, &m.explicit_self,
+                                    &m.generics, &m.purity, m.decl)
+                            }
+                        };
+
+                        if ty_method.explicit_self == ast::SelfStatic {
+                            make_static_method_ty(ccx, trait_id, ty_method,
+                                                  &trait_ty_generics);
+                        }
+
+                        let mut methods = tcx.methods.borrow_mut();
+                        methods.get().insert(ty_method.def_id, ty_method);
                     }
 
-                    &ast::Provided(ref m) => {
-                        ty_method_of_trait_method(
-                            ccx, trait_id, &trait_ty_generics,
-                            &m.id, &m.ident, &m.explicit_self,
-                            &m.generics, &m.purity, m.decl)
-                    }
-                };
+                    // Add an entry mapping
+                    let method_def_ids = @ms.map(|m| {
+                        match m {
+                            &ast::Required(ref ty_method) => {
+                                local_def(ty_method.id)
+                            }
+                            &ast::Provided(ref method) => {
+                                local_def(method.id)
+                            }
+                        }
+                    });
 
-                if ty_method.explicit_self == ast::SelfStatic {
-                    make_static_method_ty(ccx, trait_id, ty_method,
-                                          &trait_ty_generics);
+                    let trait_def_id = local_def(trait_id);
+                    let mut trait_method_def_ids = tcx.trait_method_def_ids
+                                                      .borrow_mut();
+                    trait_method_def_ids.get().insert(trait_def_id,
+                                                      method_def_ids);
                 }
-
-                let mut methods = tcx.methods.borrow_mut();
-                methods.get().insert(ty_method.def_id, ty_method);
+                _ => {} // Ignore things that aren't traits.
             }
-
-            // Add an entry mapping
-            let method_def_ids = @ms.map(|m| {
-                match m {
-                    &ast::Required(ref ty_method) => local_def(ty_method.id),
-                    &ast::Provided(ref method) => local_def(method.id)
-                }
-            });
-
-            let trait_def_id = local_def(trait_id);
-            let mut trait_method_def_ids = tcx.trait_method_def_ids
-                                              .borrow_mut();
-            trait_method_def_ids.get().insert(trait_def_id, method_def_ids);
         }
         _ => { /* Ignore things that aren't traits */ }
     }

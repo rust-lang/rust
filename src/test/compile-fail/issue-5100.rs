@@ -21,10 +21,6 @@ fn main() {
     }
 
     match (true, false) {
-        @(true, false) => () //~ ERROR mismatched types: expected `(bool,bool)` but found an @-box pattern
-    }
-
-    match (true, false) {
         ~(true, false) => () //~ ERROR mismatched types: expected `(bool,bool)` but found a ~-box pattern
     }
 

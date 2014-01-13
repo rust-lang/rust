@@ -115,17 +115,21 @@ pub fn monomorphic_fn(ccx: @CrateContext,
         // Foreign externs don't have to be monomorphized.
         return (get_item_val(ccx, fn_id.node), true);
       }
-      ast_map::NodeTraitMethod(@ast::Provided(m), _, pt) => {
-        // If this is a static provided method, indicate that
-        // and stash the number of params on the method.
-        if m.explicit_self.node == ast::SelfStatic {
-            is_static_provided = Some(m.generics.ty_params.len());
-        }
+      ast_map::NodeTraitMethod(method, _, pt) => {
+          match *method {
+              ast::Provided(m) => {
+                // If this is a static provided method, indicate that
+                // and stash the number of params on the method.
+                if m.explicit_self.node == ast::SelfStatic {
+                    is_static_provided = Some(m.generics.ty_params.len());
+                }
 
-        (pt, m.ident, m.span)
-      }
-      ast_map::NodeTraitMethod(@ast::Required(_), _, _) => {
-        ccx.tcx.sess.bug("Can't monomorphize a required trait method")
+                (pt, m.ident, m.span)
+              }
+              ast::Required(_) => {
+                ccx.tcx.sess.bug("Can't monomorphize a required trait method")
+              }
+          }
       }
       ast_map::NodeExpr(..) => {
         ccx.tcx.sess.bug("Can't monomorphize an expr")
@@ -218,26 +222,30 @@ pub fn monomorphic_fn(ccx: @CrateContext,
     };
 
     let lldecl = match map_node {
-      ast_map::NodeItem(i@@ast::Item {
+      ast_map::NodeItem(i, _) => {
+          match *i {
+            ast::Item {
                 node: ast::ItemFn(decl, _, _, _, body),
                 ..
-            }, _) => {
-        let d = mk_lldecl(None);
-        set_llvm_fn_attrs(i.attrs, d);
-        trans_fn(ccx,
-                 pt,
-                 decl,
-                 body,
-                 d,
-                 None,
-                 Some(psubsts),
-                 fn_id.node,
-                 None,
-                 []);
-        d
-      }
-      ast_map::NodeItem(..) => {
-          ccx.tcx.sess.bug("Can't monomorphize this kind of item")
+            } => {
+                let d = mk_lldecl(None);
+                set_llvm_fn_attrs(i.attrs, d);
+                trans_fn(ccx,
+                         pt,
+                         decl,
+                         body,
+                         d,
+                         None,
+                         Some(psubsts),
+                         fn_id.node,
+                         None,
+                         []);
+                d
+            }
+            _ => {
+              ccx.tcx.sess.bug("Can't monomorphize this kind of item")
+            }
+          }
       }
       ast_map::NodeForeignItem(i, _, _, _) => {
           let d = mk_lldecl(None);
@@ -272,12 +280,24 @@ pub fn monomorphic_fn(ccx: @CrateContext,
             d
         })
       }
-      ast_map::NodeTraitMethod(@ast::Provided(mth), _, pt) => {
-        meth::trans_method(ccx, (*pt).clone(), mth, Some(psubsts), |self_ty| {
-            let d = mk_lldecl(self_ty);
-            set_llvm_fn_attrs(mth.attrs, d);
-            d
-        })
+      ast_map::NodeTraitMethod(method, _, pt) => {
+          match *method {
+              ast::Provided(mth) => {
+                meth::trans_method(ccx,
+                                   (*pt).clone(),
+                                   mth,
+                                   Some(psubsts),
+                                   |self_ty| {
+                    let d = mk_lldecl(self_ty);
+                    set_llvm_fn_attrs(mth.attrs, d);
+                    d
+                })
+              }
+              _ => {
+                ccx.tcx.sess.bug(format!("Can't monomorphize a {:?}",
+                                         map_node))
+              }
+          }
       }
       ast_map::NodeStructCtor(struct_def, _, _) => {
         let d = mk_lldecl(None);
@@ -294,7 +314,6 @@ pub fn monomorphic_fn(ccx: @CrateContext,
       // Ugh -- but this ensures any new variants won't be forgotten
       ast_map::NodeExpr(..) |
       ast_map::NodeStmt(..) |
-      ast_map::NodeTraitMethod(..) |
       ast_map::NodeArg(..) |
       ast_map::NodeBlock(..) |
       ast_map::NodeCalleeScope(..) |
