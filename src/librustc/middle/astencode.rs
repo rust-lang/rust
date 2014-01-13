@@ -308,15 +308,13 @@ impl Folder for NestedItemsDropper {
     fn fold_block(&mut self, blk: ast::P<ast::Block>) -> ast::P<ast::Block> {
         let stmts_sans_items = blk.stmts.iter().filter_map(|stmt| {
             match stmt.node {
-                ast::StmtExpr(_, _) | ast::StmtSemi(_, _) |
-                ast::StmtDecl(@codemap::Spanned {
-                    node: ast::DeclLocal(_),
-                    span: _
-                }, _) => Some(*stmt),
-                ast::StmtDecl(@codemap::Spanned {
-                    node: ast::DeclItem(_),
-                    span: _
-                }, _) => None,
+                ast::StmtExpr(_, _) | ast::StmtSemi(_, _) => Some(*stmt),
+                ast::StmtDecl(decl, _) => {
+                    match decl.node {
+                        ast::DeclLocal(_) => Some(*stmt),
+                        ast::DeclItem(_) => None,
+                    }
+                }
                 ast::StmtMac(..) => fail!("unexpanded macro in astencode")
             }
         }).collect();

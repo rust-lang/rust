@@ -369,7 +369,6 @@ pub enum Pat_ {
                                        * we don't bind the fields to names */
     PatStruct(Path, ~[FieldPat], bool),
     PatTup(~[@Pat]),
-    PatBox(@Pat),
     PatUniq(@Pat),
     PatRegion(@Pat), // reference pattern
     PatLit(@Expr),

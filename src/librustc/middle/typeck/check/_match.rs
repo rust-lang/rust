@@ -585,9 +585,6 @@ pub fn check_pat(pcx: &pat_ctxt, pat: &ast::Pat, expected: ty::t) {
             }
         }
       }
-      ast::PatBox(inner) => {
-          check_pointer_pat(pcx, Managed, inner, pat.id, pat.span, expected);
-      }
       ast::PatUniq(inner) => {
           check_pointer_pat(pcx, Send, inner, pat.id, pat.span, expected);
       }
@@ -672,9 +669,6 @@ pub fn check_pointer_pat(pcx: &pat_ctxt,
         fcx.write_ty(pat_id, expected);
     };
     match *structure_of(fcx, span, expected) {
-        ty::ty_box(e_inner) if pointer_kind == Managed => {
-            check_inner(e_inner);
-        }
         ty::ty_uniq(e_inner) if pointer_kind == Send => {
             check_inner(e_inner.ty);
         }
@@ -692,7 +686,6 @@ pub fn check_pointer_pat(pcx: &pat_ctxt,
                              e, actual)})},
                 Some(expected),
                 format!("{} pattern", match pointer_kind {
-                    Managed => "an @-box",
                     Send => "a ~-box",
                     Borrowed => "an &-pointer"
                 }),
@@ -703,5 +696,5 @@ pub fn check_pointer_pat(pcx: &pat_ctxt,
 }
 
 #[deriving(Eq)]
-enum PointerKind { Managed, Send, Borrowed }
+enum PointerKind { Send, Borrowed }
 

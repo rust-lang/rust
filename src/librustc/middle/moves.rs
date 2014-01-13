@@ -328,10 +328,16 @@ impl VisitContext {
         let comp_mode = {
             let adjustments = self.tcx.adjustments.borrow();
             match adjustments.get().find(&expr.id) {
-                Some(&@ty::AutoDerefRef(
-                    ty::AutoDerefRef {
-                        autoref: Some(_), ..})) => Read,
-                _ => expr_mode
+                Some(adjustment) => {
+                    match **adjustment {
+                        ty::AutoDerefRef(ty::AutoDerefRef {
+                            autoref: Some(_),
+                            ..
+                        }) => Read,
+                        _ => expr_mode,
+                    }
+                }
+                _ => expr_mode,
             }
         };
 

@@ -100,7 +100,7 @@ impl<T:Subst> Subst for OptVec<T> {
 impl<T:Subst + 'static> Subst for @T {
     fn subst(&self, tcx: ty::ctxt, substs: &ty::substs) -> @T {
         match self {
-            &@ref t => @t.subst(tcx, substs)
+            t => @(**t).subst(tcx, substs)
         }
     }
 }

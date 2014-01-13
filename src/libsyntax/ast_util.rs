@@ -614,7 +614,7 @@ pub fn walk_pat(pat: &Pat, it: |&Pat| -> bool) -> bool {
         PatEnum(_, Some(ref s)) | PatTup(ref s) => {
             s.iter().advance(|&p| walk_pat(p, |p| it(p)))
         }
-        PatBox(s) | PatUniq(s) | PatRegion(s) => {
+        PatUniq(s) | PatRegion(s) => {
             walk_pat(s, it)
         }
         PatVec(ref before, ref slice, ref after) => {
@@ -944,6 +944,15 @@ pub fn segments_name_eq(a : &[ast::PathSegment], b : &[ast::PathSegment]) -> boo
         true
     }
 }
+
+// Returns true if this literal is a string and false otherwise.
+pub fn lit_is_str(lit: @Lit) -> bool {
+    match lit.node {
+        LitStr(..) => true,
+        _ => false,
+    }
+}
+
 
 #[cfg(test)]
 mod test {

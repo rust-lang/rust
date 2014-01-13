@@ -62,7 +62,6 @@ use syntax::ast_map;
 use syntax::attr;
 use syntax::attr::{AttrMetaMethods, AttributeMethods};
 use syntax::codemap::Span;
-use syntax::codemap;
 use syntax::parse::token;
 use syntax::{ast, ast_util, visit};
 use syntax::ast_util::IdVisitingOperation;
@@ -590,11 +589,16 @@ fn check_while_true_expr(cx: &Context, e: &ast::Expr) {
     match e.node {
         ast::ExprWhile(cond, _) => {
             match cond.node {
-                ast::ExprLit(@codemap::Spanned {
-                    node: ast::LitBool(true), ..}) =>
-                {
-                    cx.span_lint(WhileTrue, e.span,
-                                 "denote infinite loops with loop { ... }");
+                ast::ExprLit(lit) => {
+                    match lit.node {
+                        ast::LitBool(true) => {
+                            cx.span_lint(WhileTrue,
+                                         e.span,
+                                         "denote infinite loops with loop \
+                                          { ... }");
+                        }
+                        _ => {}
+                    }
                 }
                 _ => ()
             }
@@ -989,9 +993,15 @@ fn check_heap_expr(cx: &Context, e: &ast::Expr) {
 
 fn check_path_statement(cx: &Context, s: &ast::Stmt) {
     match s.node {
-        ast::StmtSemi(@ast::Expr { node: ast::ExprPath(_), .. }, _) => {
-            cx.span_lint(PathStatement, s.span,
-                         "path statement with no effect");
+        ast::StmtSemi(expr, _) => {
+            match expr.node {
+                ast::ExprPath(_) => {
+                    cx.span_lint(PathStatement,
+                                 s.span,
+                                 "path statement with no effect");
+                }
+                _ => {}
+            }
         }
         _ => ()
     }
@@ -1132,7 +1142,9 @@ fn check_unnecessary_allocation(cx: &Context, e: &ast::Expr) {
         ast::ExprVstore(e2, ast::ExprVstoreUniq) |
         ast::ExprVstore(e2, ast::ExprVstoreBox) => {
             match e2.node {
-                ast::ExprLit(@codemap::Spanned{node: ast::LitStr(..), ..}) |
+                ast::ExprLit(lit) if ast_util::lit_is_str(lit) => {
+                    VectorAllocation
+                }
                 ast::ExprVec(..) => VectorAllocation,
                 _ => return
             }
@@ -1152,18 +1164,27 @@ fn check_unnecessary_allocation(cx: &Context, e: &ast::Expr) {
         adjustments.get().find_copy(&e.id)
     };
     match adjustment {
-        Some(@ty::AutoDerefRef(ty::AutoDerefRef { autoref, .. })) => {
-            match (allocation, autoref) {
-                (VectorAllocation, Some(ty::AutoBorrowVec(..))) => {
-                    report("unnecessary allocation, the sigil can be removed");
+        Some(adjustment) => {
+            match *adjustment {
+                ty::AutoDerefRef(ty::AutoDerefRef { autoref, .. }) => {
+                    match (allocation, autoref) {
+                        (VectorAllocation, Some(ty::AutoBorrowVec(..))) => {
+                            report("unnecessary allocation, the sigil can be \
+                                    removed");
+                        }
+                        (BoxAllocation,
+                         Some(ty::AutoPtr(_, ast::MutImmutable))) => {
+                            report("unnecessary allocation, use & instead");
+                        }
+                        (BoxAllocation,
+                         Some(ty::AutoPtr(_, ast::MutMutable))) => {
+                            report("unnecessary allocation, use &mut \
+                                    instead");
+                        }
+                        _ => ()
+                    }
                 }
-                (BoxAllocation, Some(ty::AutoPtr(_, ast::MutImmutable))) => {
-                    report("unnecessary allocation, use & instead");
-                }
-                (BoxAllocation, Some(ty::AutoPtr(_, ast::MutMutable))) => {
-                    report("unnecessary allocation, use &mut instead");
-                }
-                _ => ()
+                _ => {}
             }
         }
 

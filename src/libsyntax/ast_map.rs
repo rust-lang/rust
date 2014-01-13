@@ -507,8 +507,12 @@ pub fn node_span(items: Map, id: ast::NodeId) -> Span {
     match items.get().find(&id) {
         Some(&NodeItem(item, _)) => item.span,
         Some(&NodeForeignItem(foreign_item, _, _, _)) => foreign_item.span,
-        Some(&NodeTraitMethod(@Required(ref type_method), _, _)) => type_method.span,
-        Some(&NodeTraitMethod(@Provided(ref method), _, _)) => method.span,
+        Some(&NodeTraitMethod(trait_method, _, _)) => {
+            match *trait_method {
+                Required(ref type_method) => type_method.span,
+                Provided(ref method) => method.span,
+            }
+        }
         Some(&NodeMethod(method, _, _)) => method.span,
         Some(&NodeVariant(variant, _, _)) => variant.span,
         Some(&NodeExpr(expr)) => expr.span,

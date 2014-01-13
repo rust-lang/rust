@@ -126,15 +126,15 @@ fn generic_extension(cx: &ExtCtxt,
     let s_d = cx.parse_sess().span_diagnostic;
 
     for (i, lhs) in lhses.iter().enumerate() { // try each arm's matchers
-        match *lhs {
-          @MatchedNonterminal(NtMatchers(ref mtcs)) => {
+        match **lhs {
+          MatchedNonterminal(NtMatchers(ref mtcs)) => {
             // `none` is because we're not interpolating
             let arg_rdr = new_tt_reader(s_d, None, arg.to_owned()) as @Reader;
             match parse(cx.parse_sess(), cx.cfg(), arg_rdr, *mtcs) {
               Success(named_matches) => {
-                let rhs = match rhses[i] {
+                let rhs = match *rhses[i] {
                     // okay, what's your transcriber?
-                    @MatchedNonterminal(NtTT(@ref tt)) => {
+                    MatchedNonterminal(NtTT(tt)) => {
                         match (*tt) {
                             // cut off delimiters; don't parse 'em
                             TTDelim(ref tts) => {
@@ -214,13 +214,13 @@ pub fn add_new_extension(cx: &mut ExtCtxt,
                                      argument_gram);
 
     // Extract the arguments:
-    let lhses = match *argument_map.get(&lhs_nm) {
-        @MatchedSeq(ref s, _) => /* FIXME (#2543) */ @(*s).clone(),
+    let lhses = match **argument_map.get(&lhs_nm) {
+        MatchedSeq(ref s, _) => /* FIXME (#2543) */ @(*s).clone(),
         _ => cx.span_bug(sp, "wrong-structured lhs")
     };
 
-    let rhses = match *argument_map.get(&rhs_nm) {
-        @MatchedSeq(ref s, _) => /* FIXME (#2543) */ @(*s).clone(),
+    let rhses = match **argument_map.get(&rhs_nm) {
+        MatchedSeq(ref s, _) => /* FIXME (#2543) */ @(*s).clone(),
         _ => cx.span_bug(sp, "wrong-structured rhs")
     };
 
