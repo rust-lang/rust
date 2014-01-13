@@ -1,4 +1,4 @@
-#[crate_id = "foo#0.9"];
+#[crate_id = "foo#0.10-pre"];
 
 // Querying about the crate metadata should *not* parse the entire crate, it
 // only needs the crate attributes (which are guaranteed to be at the top) be
