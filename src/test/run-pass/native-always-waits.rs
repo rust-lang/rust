@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // xfail-fast
+// xfail-android (FIXME #11419)
 
 extern mod native;
 
