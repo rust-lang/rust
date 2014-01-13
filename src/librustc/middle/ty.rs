@@ -810,7 +810,7 @@ impl Vid for TyVid {
 }
 
 impl ToStr for TyVid {
-    fn to_str(&self) -> ~str { format!("<V{}>", self.to_uint()) }
+    fn to_str(&self) -> ~str { format!("<generic \\#{}>", self.to_uint()) }
 }
 
 impl Vid for IntVid {
@@ -818,7 +818,7 @@ impl Vid for IntVid {
 }
 
 impl ToStr for IntVid {
-    fn to_str(&self) -> ~str { format!("<VI{}>", self.to_uint()) }
+    fn to_str(&self) -> ~str { format!("<generic integer \\#{}>", self.to_uint()) }
 }
 
 impl Vid for FloatVid {
@@ -826,7 +826,7 @@ impl Vid for FloatVid {
 }
 
 impl ToStr for FloatVid {
-    fn to_str(&self) -> ~str { format!("<VF{}>", self.to_uint()) }
+    fn to_str(&self) -> ~str { format!("<generic float \\#{}>", self.to_uint()) }
 }
 
 impl Vid for RegionVid {

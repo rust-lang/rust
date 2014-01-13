@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Regression test for issue #4968
+struct Foo<T,U>(T);
 
-static A: (int,int) = (4,2);
 fn main() {
-    match 42 { A => () } //~ ERROR mismatched types: expected `<generic integer #0>` but found `(int,int)` (expected integral variable but found tuple)
+    match Foo(1.1) {
+        1 => {}
+        //~^ ERROR expected `Foo<<generic float #0>,<generic #2>>` but found `<generic integer #0>`
+    }
+
 }
