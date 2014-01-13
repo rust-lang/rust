@@ -439,7 +439,7 @@ fn visit_fn(v: &mut LivenessVisitor,
 
     // check for various error conditions
     lsets.visit_block(body, ());
-    lsets.check_ret(id, sp, fk, entry_ln);
+    lsets.check_ret(id, sp, fk, entry_ln, body);
     lsets.warn_about_unused_args(decl, entry_ln);
 }
 
@@ -1575,7 +1575,8 @@ impl Liveness {
                      id: NodeId,
                      sp: Span,
                      _fk: &FnKind,
-                     entry_ln: LiveNode) {
+                     entry_ln: LiveNode,
+                     body: &Block) {
         if self.live_on_entry(entry_ln, self.s.no_ret_var).is_some() {
             // if no_ret_var is live, then we fall off the end of the
             // function without any kind of return expression:
@@ -1588,9 +1589,30 @@ impl Liveness {
                 self.tcx.sess.span_err(
                     sp, "some control paths may return");
             } else {
+                let ends_with_stmt = match body.expr {
+                    None if body.stmts.len() > 0 =>
+                        match body.stmts.last().node {
+                            StmtSemi(e, _) => {
+                                let t_stmt = ty::expr_ty(self.tcx, e);
+                                ty::get(t_stmt).sty == ty::get(t_ret).sty
+                            },
+                            _ => false
+                        },
+                    _ => false
+                };
+                if ends_with_stmt {
+                    let last_stmt = body.stmts.last();
+                    let span_semicolon = Span {
+                        lo: last_stmt.span.hi,
+                        hi: last_stmt.span.hi,
+                        expn_info: last_stmt.span.expn_info
+                    };
+                    self.tcx.sess.span_note(
+                        span_semicolon, "consider removing this semicolon:");
+                }
                 self.tcx.sess.span_err(
                     sp, "not all control paths return a value");
-            }
+           }
         }
     }
 
