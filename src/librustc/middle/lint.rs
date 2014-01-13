@@ -609,15 +609,17 @@ pub fn each_lint(sess: session::Session,
 // Check from a list of attributes if it contains the appropriate
 // `#[level(lintname)]` attribute (e.g. `#[allow(dead_code)]).
 pub fn contains_lint(attrs: &[ast::Attribute],
-                    level: level, lintname: &'static str) -> bool {
+                     level: level,
+                     lintname: &'static str)
+                     -> bool {
     let level_name = level_to_str(level);
-    for attr in attrs.iter().filter(|m| level_name == m.name()) {
+    for attr in attrs.iter().filter(|m| m.name().equiv(&level_name)) {
         if attr.meta_item_list().is_none() {
             continue
         }
         let list = attr.meta_item_list().unwrap();
         for meta_item in list.iter() {
-            if lintname == meta_item.name() {
+            if meta_item.name().equiv(&lintname) {
                 return true;
             }
         }
