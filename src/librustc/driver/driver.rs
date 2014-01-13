@@ -914,7 +914,7 @@ pub fn build_session_(sopts: @session::Options,
     let p_s = parse::new_parse_sess_special_handler(span_diagnostic_handler,
                                                     cm);
     let cstore = @CStore::new(token::get_ident_interner());
-    let filesearch = filesearch::mk_filesearch(
+    let filesearch = @filesearch::FileSearch::new(
         &sopts.maybe_sysroot,
         sopts.target_triple,
         sopts.addl_lib_search_paths);
