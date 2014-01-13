@@ -34,6 +34,7 @@ via `close` and `delete` methods.
 
 */
 
+// NOTE: Change to 0.10-pre after snapshot
 #[crate_id = "rustuv#0.9"];
 #[license = "MIT/ASL2"];
 #[crate_type = "rlib"];
