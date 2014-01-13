@@ -549,6 +549,7 @@ impl<'a, T> Iterator<&'a T> for TreeSetRevIterator<'a, T> {
 /// A implementation of the `Set` trait on top of the `TreeMap` container. The
 /// only requirement is that the type of the elements contained ascribes to the
 /// `TotalOrd` trait.
+#[deriving(Clone)]
 pub struct TreeSet<T> {
     priv map: TreeMap<T, ()>
 }
@@ -1586,6 +1587,16 @@ mod test_set {
             assert_eq!(*x, n);
             n -= 1;
         }
+    }
+
+    #[test]
+    fn test_clone_eq() {
+      let mut m = TreeSet::new();
+
+      m.insert(1);
+      m.insert(2);
+
+      assert!(m.clone() == m);
     }
 
     fn check(a: &[int],
