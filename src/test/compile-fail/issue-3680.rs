@@ -10,6 +10,6 @@
 
 fn main() {
     match None {
-        Err(_) => () //~ ERROR mismatched types: expected `std::option::Option<<V1>>` but found `std::result::Result<<V2>,<V3>>`
+        Err(_) => () //~ ERROR mismatched types: expected `std::option::Option<<generic #1>>` but found `std::result::Result<<generic #2>,<generic #3>>`
     }
 }
