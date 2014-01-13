@@ -14,6 +14,14 @@
 //! diag_db.md file and can be loaded at runtime with the `load`
 //! function.
 
-pub fn load() -> ~[(&'static str, &'static str, &'static str)] {
+use syntax::diag_db::DiagnosticDb;
+
+/// Load the database of extended diagnostic descriptions
+pub fn load() -> DiagnosticDb {
+    DiagnosticDb::new(~[load_raw, ::syntax::diag_db::load_raw])
+}
+
+pub fn load_raw() -> ~[(&'static str, &'static str, &'static str)] {
     ~[include!("diag_db.md")]
 }
+

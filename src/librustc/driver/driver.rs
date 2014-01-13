@@ -11,6 +11,7 @@
 
 use back::link;
 use back::{arm, x86, x86_64, mips};
+use diag_db;
 use driver::session::{Aggressive, OutputExecutable};
 use driver::session::{Session, Session_, No, Less, Default};
 use driver::session;
@@ -126,7 +127,7 @@ pub fn build_configuration(sess: Session) ->
 fn parse_cfgspecs(cfgspecs: ~[~str], demitter: @diagnostic::Emitter)
                   -> ast::CrateConfig {
     cfgspecs.move_iter().map(|s| {
-        let sess = parse::new_parse_sess(Some(demitter));
+        let sess = parse::new_parse_sess(Some(demitter), diag_db::load());
         parse::parse_meta_from_source_str(@"cfgspec", s.to_managed(), ~[], sess)
     }).collect::<ast::CrateConfig>()
 }
@@ -884,7 +885,7 @@ pub fn build_session(sopts: @session::options, demitter: @diagnostic::Emitter)
                      -> Session {
     let codemap = @codemap::CodeMap::new();
     let diagnostic_handler =
-        diagnostic::mk_handler(Some(demitter));
+        diagnostic::mk_handler(Some(demitter), diag_db::load());
     let span_diagnostic_handler =
         diagnostic::mk_span_handler(diagnostic_handler, codemap);
     build_session_(sopts, codemap, demitter, span_diagnostic_handler)

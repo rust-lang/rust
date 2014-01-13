@@ -10,6 +10,7 @@
 
 use codemap::{Pos, Span};
 use codemap;
+use diag_db::DiagnosticDb;
 
 use std::cell::Cell;
 use std::io;
@@ -78,15 +79,20 @@ impl SpanHandler {
 pub struct Handler {
     err_count: Cell<uint>,
     emit: @Emitter,
+    diag_db: DiagnosticDb,
+    /// Indicates that we've emitted a diagnostic with extended info
+    saw_extended_info: Cell<bool>,
 }
 
 impl Handler {
     pub fn fatal(@self, msg: &str) -> ! {
         self.emit(None, msg, Fatal);
+        self.emit_extended_info_explainer();
         fail!();
     }
     pub fn fatal_with_diagnostic_code(@self, code: &str, msg: &str) -> ! {
         self.emit_with_code(None, code, msg, Fatal);
+        self.emit_extended_info_explainer();
         fail!();
     }
     pub fn err(@self, msg: &str) {
@@ -141,8 +147,31 @@ impl Handler {
     }
     pub fn emit_with_code(@self, cmsp: Option<(&codemap::CodeMap, Span)>,
                           code: &str, msg: &str, lvl: Level) {
-        let msg = format!("{}: {}", code, msg);
+        let msg = if self.have_extended_info_for_code(code) {
+            self.saw_extended_info.set(true);
+            format!("{} [{}*]", msg, code)
+        } else {
+            format!("{} [{}]", msg, code)
+        };
         self.emit.emit(cmsp, msg, lvl);
+    }
+
+    fn have_extended_info_for_code(@self, code: &str) -> bool {
+        self.diag_db.get_info(code).is_some()
+    }
+
+    fn emit_extended_info_explainer(@self) {
+        if self.saw_extended_info.get() {
+            self.note(
+                "some of these errors have extended documentation (indicated by the asterisk \
+                next to the error code). Use `rustc --explain [code]` to get addional \
+                information.");
+        } else {
+            self.note(
+                "none of these errors have extended documentation (indicated by the asterisk \
+                next to the error code). Use 'rustc --explain help` to learn how to contribute \
+                documentation for Rust errors.");
+        }
     }
 }
 
@@ -159,7 +188,7 @@ pub fn mk_span_handler(handler: @Handler, cm: @codemap::CodeMap)
     }
 }
 
-pub fn mk_handler(emitter: Option<@Emitter>) -> @Handler {
+pub fn mk_handler(emitter: Option<@Emitter>, db: DiagnosticDb) -> @Handler {
     let emit: @Emitter = match emitter {
         Some(e) => e,
         None => @DefaultEmitter as @Emitter
@@ -168,6 +197,8 @@ pub fn mk_handler(emitter: Option<@Emitter>) -> @Handler {
     @Handler {
         err_count: Cell::new(0),
         emit: emit,
+        diag_db: db,
+        saw_extended_info: Cell::new(false)
     }
 }
 

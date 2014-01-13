@@ -20,6 +20,7 @@ use extra::getopts;
 use extra::test;
 use rustc::driver::driver;
 use rustc::driver::session;
+use rustc::diag_db;
 use syntax::diagnostic;
 use syntax::parse;
 
@@ -32,7 +33,7 @@ use passes;
 use visit_ast::RustdocVisitor;
 
 pub fn run(input: &str, matches: &getopts::Matches) -> int {
-    let parsesess = parse::new_parse_sess(None);
+    let parsesess = parse::new_parse_sess(None, diag_db::load());
     let input = driver::file_input(Path::new(input));
     let libs = matches.opt_strs("L").map(|s| Path::new(s.as_slice()));
     let libs = @RefCell::new(libs.move_iter().collect());
@@ -46,7 +47,7 @@ pub fn run(input: &str, matches: &getopts::Matches) -> int {
     };
 
 
-    let diagnostic_handler = diagnostic::mk_handler(None);
+    let diagnostic_handler = diagnostic::mk_handler(None, diag_db::load());
     let span_diagnostic_handler =
         diagnostic::mk_span_handler(diagnostic_handler, parsesess.cm);
 
@@ -94,7 +95,7 @@ pub fn run(input: &str, matches: &getopts::Matches) -> int {
 
 fn runtest(test: &str, cratename: &str, libs: HashSet<Path>) {
     let test = maketest(test, cratename);
-    let parsesess = parse::new_parse_sess(None);
+    let parsesess = parse::new_parse_sess(None, diag_db::load());
     let input = driver::str_input(test);
 
     let sessopts = @session::options {
@@ -106,7 +107,7 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>) {
         .. (*session::basic_options()).clone()
     };
 
-    let diagnostic_handler = diagnostic::mk_handler(None);
+    let diagnostic_handler = diagnostic::mk_handler(None, diag_db::load());
     let span_diagnostic_handler =
         diagnostic::mk_span_handler(diagnostic_handler, parsesess.cm);
 
