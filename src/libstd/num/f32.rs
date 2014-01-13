@@ -13,7 +13,7 @@
 
 use prelude::*;
 
-use cmath::c_float_utils;
+use cmath;
 use default::Default;
 use libc::{c_float, c_int};
 use num::{FPCategory, FPNaN, FPInfinite , FPZero, FPSubnormal, FPNormal};
@@ -21,8 +21,6 @@ use num::{Zero, One, strconv};
 use num;
 use to_str;
 use unstable::intrinsics;
-
-pub use cmath::c_float_targ_consts::*;
 
 macro_rules! delegate(
     (
@@ -62,8 +60,8 @@ delegate!(
     fn sqrt(n: f32) -> f32 = intrinsics::sqrtf32,
 
     // LLVM 3.3 required to use intrinsics for these four
-    fn ceil(n: c_float) -> c_float = c_float_utils::ceil,
-    fn trunc(n: c_float) -> c_float = c_float_utils::trunc,
+    fn ceil(n: c_float) -> c_float = cmath::c_float::ceil,
+    fn trunc(n: c_float) -> c_float = cmath::c_float::trunc,
     /*
     fn ceil(n: f32) -> f32 = intrinsics::ceilf32,
     fn trunc(n: f32) -> f32 = intrinsics::truncf32,
@@ -72,47 +70,53 @@ delegate!(
     */
 
     // cmath
-    fn acos(n: c_float) -> c_float = c_float_utils::acos,
-    fn asin(n: c_float) -> c_float = c_float_utils::asin,
-    fn atan(n: c_float) -> c_float = c_float_utils::atan,
-    fn atan2(a: c_float, b: c_float) -> c_float = c_float_utils::atan2,
-    fn cbrt(n: c_float) -> c_float = c_float_utils::cbrt,
-    fn copysign(x: c_float, y: c_float) -> c_float = c_float_utils::copysign,
-    fn cosh(n: c_float) -> c_float = c_float_utils::cosh,
-    // fn erf(n: c_float) -> c_float = c_float_utils::erf,
-    // fn erfc(n: c_float) -> c_float = c_float_utils::erfc,
-    fn exp_m1(n: c_float) -> c_float = c_float_utils::exp_m1,
-    fn abs_sub(a: c_float, b: c_float) -> c_float = c_float_utils::abs_sub,
-    fn next_after(x: c_float, y: c_float) -> c_float = c_float_utils::next_after,
-    fn frexp(n: c_float, value: &mut c_int) -> c_float = c_float_utils::frexp,
-    fn hypot(x: c_float, y: c_float) -> c_float = c_float_utils::hypot,
-    fn ldexp(x: c_float, n: c_int) -> c_float = c_float_utils::ldexp,
-    // fn lgamma(n: c_float, sign: &mut c_int) -> c_float = c_float_utils::lgamma,
-    // fn log_radix(n: c_float) -> c_float = c_float_utils::log_radix,
-    fn ln_1p(n: c_float) -> c_float = c_float_utils::ln_1p,
-    // fn ilog_radix(n: c_float) -> c_int = c_float_utils::ilog_radix,
-    // fn modf(n: c_float, iptr: &mut c_float) -> c_float = c_float_utils::modf,
-    fn round(n: c_float) -> c_float = c_float_utils::round,
-    // fn ldexp_radix(n: c_float, i: c_int) -> c_float = c_float_utils::ldexp_radix,
-    fn sinh(n: c_float) -> c_float = c_float_utils::sinh,
-    fn tan(n: c_float) -> c_float = c_float_utils::tan,
-    fn tanh(n: c_float) -> c_float = c_float_utils::tanh
-    // fn tgamma(n: c_float) -> c_float = c_float_utils::tgamma
+    fn acos(n: c_float) -> c_float = cmath::c_float::acos,
+    fn asin(n: c_float) -> c_float = cmath::c_float::asin,
+    fn atan(n: c_float) -> c_float = cmath::c_float::atan,
+    fn atan2(a: c_float, b: c_float) -> c_float = cmath::c_float::atan2,
+    fn cbrt(n: c_float) -> c_float = cmath::c_float::cbrt,
+    fn copysign(x: c_float, y: c_float) -> c_float = cmath::c_float::copysign,
+    fn cosh(n: c_float) -> c_float = cmath::c_float::cosh,
+    // fn erf(n: c_float) -> c_float = cmath::c_float::erf,
+    // fn erfc(n: c_float) -> c_float = cmath::c_float::erfc,
+    fn exp_m1(n: c_float) -> c_float = cmath::c_float::exp_m1,
+    fn abs_sub(a: c_float, b: c_float) -> c_float = cmath::c_float::abs_sub,
+    fn next_after(x: c_float, y: c_float) -> c_float = cmath::c_float::next_after,
+    fn frexp(n: c_float, value: &mut c_int) -> c_float = cmath::c_float::frexp,
+    fn hypot(x: c_float, y: c_float) -> c_float = cmath::c_float::hypot,
+    fn ldexp(x: c_float, n: c_int) -> c_float = cmath::c_float::ldexp,
+    // fn log_radix(n: c_float) -> c_float = cmath::c_float::log_radix,
+    fn ln_1p(n: c_float) -> c_float = cmath::c_float::ln_1p,
+    // fn ilog_radix(n: c_float) -> c_int = cmath::c_float::ilog_radix,
+    // fn modf(n: c_float, iptr: &mut c_float) -> c_float = cmath::c_float::modf,
+    fn round(n: c_float) -> c_float = cmath::c_float::round,
+    // fn ldexp_radix(n: c_float, i: c_int) -> c_float = cmath::c_float::ldexp_radix,
+    fn sinh(n: c_float) -> c_float = cmath::c_float::sinh,
+    fn tan(n: c_float) -> c_float = cmath::c_float::tan,
+    fn tanh(n: c_float) -> c_float = cmath::c_float::tanh
 )
 
-// These are not defined inside consts:: for consistency with
-// the integer types
+pub static RADIX: uint = 2u;
+
+pub static MANTISSA_DIGITS: uint = 53u;
+pub static DIGITS: uint = 15u;
+
+pub static EPSILON: f64 = 2.220446e-16_f64;
+
+// FIXME (#1433): this is wrong, replace with hexadecimal (%a) statics
+// below.
+pub static MIN_VALUE: f64 = 2.225074e-308_f64;
+pub static MAX_VALUE: f64 = 1.797693e+308_f64;
+
+pub static MIN_EXP: uint = -1021u;
+pub static MAX_EXP: uint = 1024u;
+
+pub static MIN_10_EXP: int = -307;
+pub static MAX_10_EXP: int = 308;
 
 pub static NAN: f32 = 0.0_f32/0.0_f32;
-
 pub static INFINITY: f32 = 1.0_f32/0.0_f32;
-
 pub static NEG_INFINITY: f32 = -1.0_f32/0.0_f32;
-
-// FIXME (#1999): replace the predicates below with llvm intrinsics or
-// calls to the libmath macros in the rust runtime for performance.
-
-// FIXME (#1999): add is_normal, is_subnormal, and fpclassify.
 
 /* Module: consts */
 pub mod consts {

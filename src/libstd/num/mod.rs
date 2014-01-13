@@ -324,24 +324,6 @@ pub trait Real: Signed
 /// Inverse hyperbolic tangent function.
 #[inline(always)] pub fn atanh<T: Real>(value: T) -> T { value.atanh() }
 
-/// Methods that are harder to implement and not commonly used.
-pub trait RealExt: Real {
-    // FIXME (#5527): usages of `int` should be replaced with an associated
-    // integer type once these are implemented
-
-    // Gamma functions
-    fn lgamma(&self) -> (int, Self);
-    fn tgamma(&self) -> Self;
-
-    // Bessel functions
-    fn j0(&self) -> Self;
-    fn j1(&self) -> Self;
-    fn jn(&self, n: int) -> Self;
-    fn y0(&self) -> Self;
-    fn y1(&self) -> Self;
-    fn yn(&self, n: int) -> Self;
-}
-
 /// Collects the bitwise operators under one trait.
 pub trait Bitwise: Not<Self>
                  + BitAnd<Self,Self>
