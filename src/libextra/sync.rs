@@ -19,12 +19,13 @@
 
 
 use std::borrow;
-use std::unstable::sync::Exclusive;
+use std::cast;
 use std::sync::arc::UnsafeArc;
 use std::sync::atomics;
+use std::sync;
 use std::unstable::finally::Finally;
-use std::util;
 use std::util::NonCopyable;
+use std::util;
 
 /****************************************************************************
  * Internals
@@ -52,7 +53,7 @@ impl WaitQueue {
             Some(ch) => {
                 // Send a wakeup signal. If the waiter was killed, its port will
                 // have closed. Keep trying until we get a live task.
-                if ch.try_send_deferred(()) {
+                if ch.try_send(()) {
                     true
                 } else {
                     self.signal()
@@ -68,7 +69,7 @@ impl WaitQueue {
             match self.head.try_recv() {
                 None => break,
                 Some(ch) => {
-                    if ch.try_send_deferred(()) {
+                    if ch.try_send(()) {
                         count += 1;
                     }
                 }
@@ -79,36 +80,44 @@ impl WaitQueue {
 
     fn wait_end(&self) -> WaitEnd {
         let (wait_end, signal_end) = Chan::new();
-        assert!(self.tail.try_send_deferred(signal_end));
+        assert!(self.tail.try_send(signal_end));
         wait_end
     }
 }
 
 // The building-block used to make semaphores, mutexes, and rwlocks.
-#[doc(hidden)]
 struct SemInner<Q> {
+    lock: sync::Mutex,
     count: int,
-    waiters:   WaitQueue,
+    waiters: WaitQueue,
     // Can be either unit or another waitqueue. Some sems shouldn't come with
     // a condition variable attached, others should.
-    blocked:   Q
+    blocked: Q
 }
 
-#[doc(hidden)]
-struct Sem<Q>(Exclusive<SemInner<Q>>);
+struct Sem<Q>(UnsafeArc<SemInner<Q>>);
 
-#[doc(hidden)]
 impl<Q:Send> Sem<Q> {
     fn new(count: int, q: Q) -> Sem<Q> {
-        Sem(Exclusive::new(SemInner {
-            count: count, waiters: WaitQueue::new(), blocked: q }))
+        Sem(UnsafeArc::new(SemInner {
+            count: count,
+            waiters: WaitQueue::new(),
+            blocked: q,
+            lock: sync::Mutex::new(),
+        }))
+    }
+
+    unsafe fn with(&self, f: |&mut SemInner<Q>|) {
+        let Sem(ref arc) = *self;
+        let state = arc.get();
+        let _g = (*state).lock.lock();
+        f(cast::transmute(state));
     }
 
     pub fn acquire(&self) {
         unsafe {
             let mut waiter_nobe = None;
-            let Sem(ref lock) = *self;
-            lock.with(|state| {
+            self.with(|state| {
                 state.count -= 1;
                 if state.count < 0 {
                     // Create waiter nobe, enqueue ourself, and tell
@@ -127,8 +136,7 @@ impl<Q:Send> Sem<Q> {
 
     pub fn release(&self) {
         unsafe {
-            let Sem(ref lock) = *self;
-            lock.with(|state| {
+            self.with(|state| {
                 state.count += 1;
                 if state.count <= 0 {
                     state.waiters.signal();
@@ -208,8 +216,7 @@ impl<'a> Condvar<'a> {
         let mut out_of_bounds = None;
         // Release lock, 'atomically' enqueuing ourselves in so doing.
         unsafe {
-            let Sem(ref queue) = *self.sem;
-            queue.with(|state| {
+            self.sem.with(|state| {
                 if condvar_id < state.blocked.len() {
                     // Drop the lock.
                     state.count += 1;
@@ -251,8 +258,7 @@ impl<'a> Condvar<'a> {
         unsafe {
             let mut out_of_bounds = None;
             let mut result = false;
-            let Sem(ref lock) = *self.sem;
-            lock.with(|state| {
+            self.sem.with(|state| {
                 if condvar_id < state.blocked.len() {
                     result = state.blocked[condvar_id].signal();
                 } else {
@@ -274,8 +280,7 @@ impl<'a> Condvar<'a> {
         let mut out_of_bounds = None;
         let mut queue = None;
         unsafe {
-            let Sem(ref lock) = *self.sem;
-            lock.with(|state| {
+            self.sem.with(|state| {
                 if condvar_id < state.blocked.len() {
                     // To avoid :broadcast_heavy, we make a new waitqueue,
                     // swap it out with the old one, and broadcast on the
