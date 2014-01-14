@@ -806,7 +806,7 @@ impl<T> Container for ~[T] {
     /// Returns the length of a vector
     #[inline]
     fn len(&self) -> uint {
-        self.repr().len
+        self.as_slice().len()
     }
 }
 
