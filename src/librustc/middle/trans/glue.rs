@@ -596,7 +596,7 @@ fn declare_generic_glue(ccx: &CrateContext, t: ty::t, llfnty: Type,
     let fn_nm = mangle_internal_name_by_type_and_seq(ccx, t, (~"glue_" + name)).to_managed();
     debug!("{} is for type {}", fn_nm, ppaux::ty_to_str(ccx.tcx, t));
     note_unique_llvm_symbol(ccx, fn_nm);
-    let llfn = decl_cdecl_fn(ccx.llmod, fn_nm, llfnty);
+    let llfn = decl_cdecl_fn(ccx.llmod, fn_nm, llfnty, ty::mk_nil());
     return llfn;
 }
 
