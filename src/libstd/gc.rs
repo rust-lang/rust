@@ -16,6 +16,8 @@ collector is task-local so `Gc<T>` is not sendable.
 
 */
 
+#[allow(experimental)];
+
 use kinds::Send;
 use clone::{Clone, DeepClone};
 use managed;
@@ -24,6 +26,9 @@ use managed;
 #[lang="gc"]
 #[cfg(not(test))]
 #[no_send]
+#[experimental = "Gc is currently based on reference-counting and will not collect cycles until \
+                  task annihilation. For now, cycles need to be broken manually by using `Rc<T>` \
+                  with a non-owning `Weak<T>` pointer. A tracing garbage collector is planned."]
 pub struct Gc<T> {
     priv ptr: @T
 }
