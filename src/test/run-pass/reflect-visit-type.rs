@@ -70,7 +70,6 @@ impl TyVisitor for MyVisitor {
 
     fn visit_box(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
     fn visit_uniq(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
-    fn visit_uniq_managed(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
     fn visit_ptr(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
     fn visit_rptr(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
 
@@ -80,12 +79,6 @@ impl TyVisitor for MyVisitor {
     fn visit_evec_uniq(&mut self, _mtbl: uint, inner: *TyDesc) -> bool {
         self.types.push(~"[");
         unsafe { visit_tydesc(inner, &mut *self as &mut TyVisitor); }
-        self.types.push(~"]");
-        true
-    }
-    fn visit_evec_uniq_managed(&mut self, _mtbl: uint, inner: *TyDesc) -> bool {
-        self.types.push(~"[");
-        unsafe { visit_tydesc(inner, &mut *self as &mut TyVisitor) };
         self.types.push(~"]");
         true
     }
