@@ -1365,7 +1365,7 @@ impl<'a, A, T: Iterator<A>> Peekable<A, T> {
 
     /// Check whether peekable iterator is empty or not.
     #[inline]
-    pub fn empty(&mut self) -> bool {
+    pub fn is_empty(&mut self) -> bool {
         self.peek().is_some()
     }
 }
@@ -2930,11 +2930,11 @@ mod tests {
         assert_eq!(ys, [5, 4, 3, 2, 1]);
     }
 
-    fn test_peekable_empty() {
+    fn test_peekable_is_empty() {
         let a = [1];
         let mut it = a.iter().peekable();
-        assert!( !it.empty() );
+        assert!( !it.is_empty() );
         it.next();
-        assert!( it.empty() );
+        assert!( it.is_empty() );
     }
 }
