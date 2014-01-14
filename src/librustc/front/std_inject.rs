@@ -21,6 +21,9 @@ use syntax::fold;
 use syntax::opt_vec;
 use syntax::util::small_vector::SmallVector;
 
+// NOTE: upgrade to 0.10-pre after the next snapshot
+pub static VERSION: &'static str = "0.9";
+
 pub fn maybe_inject_libstd_ref(sess: Session, crate: ast::Crate)
                                -> ast::Crate {
     if use_std(&crate) {
@@ -53,11 +56,21 @@ struct StandardLibraryInjector {
     sess: Session,
 }
 
+pub fn with_version(crate: &str) -> Option<(@str, ast::StrStyle)> {
+    match option_env!("CFG_DISABLE_INJECT_STD_VERSION") {
+        Some("1") => None,
+        _ => {
+            Some((format!("{}\\#{}", crate, VERSION).to_managed(),
+                  ast::CookedStr))
+        }
+    }
+}
+
 impl fold::Folder for StandardLibraryInjector {
     fn fold_crate(&mut self, crate: ast::Crate) -> ast::Crate {
         let mut vis = ~[ast::ViewItem {
             node: ast::ViewItemExternMod(self.sess.ident_of("std"),
-                                         None,
+                                         with_version("std"),
                                          ast::DUMMY_NODE_ID),
             attrs: ~[],
             vis: ast::Private,
@@ -67,7 +80,7 @@ impl fold::Folder for StandardLibraryInjector {
         if use_uv(&crate) && !self.sess.building_library.get() {
             vis.push(ast::ViewItem {
                 node: ast::ViewItemExternMod(self.sess.ident_of("green"),
-                                             None,
+                                             with_version("green"),
                                              ast::DUMMY_NODE_ID),
                 attrs: ~[],
                 vis: ast::Private,
@@ -75,7 +88,7 @@ impl fold::Folder for StandardLibraryInjector {
             });
             vis.push(ast::ViewItem {
                 node: ast::ViewItemExternMod(self.sess.ident_of("rustuv"),
-                                             None,
+                                             with_version("rustuv"),
                                              ast::DUMMY_NODE_ID),
                 attrs: ~[],
                 vis: ast::Private,

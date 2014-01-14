@@ -20,7 +20,8 @@ Rust extras are part of the standard Rust distribution.
 
 */
 
-#[crate_id = "extra#0.10-pre"];
+// NOTE: upgrade to 0.10-pre after the next snapshot
+#[crate_id = "extra#0.9"];
 #[comment = "Rust extras"];
 #[license = "MIT/ASL2"];
 #[crate_type = "rlib"];
