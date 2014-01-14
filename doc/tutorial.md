@@ -2700,7 +2700,7 @@ manual.
 
 ## Files and modules
 
-One important aspect about Rusts module system is that source files are not important:
+One important aspect about Rust's module system is that source files are not important:
 You define a module hierarchy, populate it with all your definitions, define visibility,
 maybe put in a `fn main()`, and that's it: No need to think about source files.
 
@@ -2834,7 +2834,7 @@ mod classified;
 ## Importing names into the local scope
 
 Always referring to definitions in other modules with their global
-path gets old really fast, so Rust has a way to import
+path gets odd really fast, so Rust has a way to import
 them into the local scope of your module: `use`-statements.
 
 They work like this: At the beginning of any module body, `fn` body, or any other block
