@@ -177,32 +177,57 @@ impl<'a> Drop for StatRecorder<'a> {
 }
 
 // only use this for foreign function ABIs and glue, use `decl_rust_fn` for Rust functions
-pub fn decl_fn(llmod: ModuleRef, name: &str, cc: lib::llvm::CallConv, ty: Type) -> ValueRef {
+fn decl_fn(llmod: ModuleRef, name: &str, cc: lib::llvm::CallConv,
+           ty: Type, output: ty::t) -> ValueRef {
     let llfn: ValueRef = name.with_c_str(|buf| {
         unsafe {
             llvm::LLVMGetOrInsertFunction(llmod, buf, ty.to_ref())
         }
     });
 
+    match ty::get(output).sty {
+        // functions returning bottom may unwind, but can never return normally
+        ty::ty_bot => {
+            unsafe {
+                llvm::LLVMAddFunctionAttr(llfn, lib::llvm::NoReturnAttribute as c_uint)
+            }
+        }
+        // `~` pointer return values never alias because ownership is transferred
+        // FIXME #6750 ~Trait cannot be directly marked as
+        // noalias because the actual object pointer is nested.
+        ty::ty_uniq(..) | // ty::ty_trait(_, _, ty::UniqTraitStore, _, _) |
+        ty::ty_vec(_, ty::vstore_uniq) | ty::ty_str(ty::vstore_uniq) => {
+            unsafe {
+                llvm::LLVMAddReturnAttribute(llfn, lib::llvm::NoAliasAttribute as c_uint);
+            }
+        }
+        _ => {}
+    }
+
     lib::llvm::SetFunctionCallConv(llfn, cc);
     // Function addresses in Rust are never significant, allowing functions to be merged.
     lib::llvm::SetUnnamedAddr(llfn, true);
-    return llfn;
+
+    llfn
 }
 
 // only use this for foreign function ABIs and glue, use `decl_rust_fn` for Rust functions
-pub fn decl_cdecl_fn(llmod: ModuleRef, name: &str, ty: Type) -> ValueRef {
-    return decl_fn(llmod, name, lib::llvm::CCallConv, ty);
+pub fn decl_cdecl_fn(llmod: ModuleRef,
+                     name: &str,
+                     ty: Type,
+                     output: ty::t) -> ValueRef {
+    decl_fn(llmod, name, lib::llvm::CCallConv, ty, output)
 }
 
 // only use this for foreign function ABIs and glue, use `get_extern_rust_fn` for Rust functions
-pub fn get_extern_fn(externs: &mut ExternMap, llmod: ModuleRef, name: &str,
-                     cc: lib::llvm::CallConv, ty: Type) -> ValueRef {
+pub fn get_extern_fn(externs: &mut ExternMap, llmod: ModuleRef,
+                     name: &str, cc: lib::llvm::CallConv,
+                     ty: Type, output: ty::t) -> ValueRef {
     match externs.find_equiv(&name) {
         Some(n) => return *n,
-        None => ()
+        None => {}
     }
-    let f = decl_fn(llmod, name, cc, ty);
+    let f = decl_fn(llmod, name, cc, ty, output);
     externs.insert(name.to_owned(), f);
     f
 }
@@ -233,24 +258,7 @@ fn decl_rust_fn(ccx: &CrateContext,
                 output: ty::t,
                 name: &str) -> ValueRef {
     let llfty = type_of_rust_fn(ccx, self_ty, inputs, output);
-    let llfn = decl_cdecl_fn(ccx.llmod, name, llfty);
-
-    match ty::get(output).sty {
-        // functions returning bottom may unwind, but can never return normally
-        ty::ty_bot => {
-            unsafe {
-                llvm::LLVMAddFunctionAttr(llfn, lib::llvm::NoReturnAttribute as c_uint)
-            }
-        }
-        // `~` pointer return values never alias because ownership is transferred
-        ty::ty_uniq(..) |
-        ty::ty_vec(_, ty::vstore_uniq) => {
-            unsafe {
-                llvm::LLVMAddReturnAttribute(llfn, lib::llvm::NoAliasAttribute as c_uint);
-            }
-        }
-        _ => ()
-    }
+    let llfn = decl_cdecl_fn(ccx.llmod, name, llfty, output);
 
     let uses_outptr = type_of::return_uses_outptr(ccx, output);
     let offset = if uses_outptr { 2 } else { 1 };
@@ -259,8 +267,10 @@ fn decl_rust_fn(ccx: &CrateContext,
         let llarg = unsafe { llvm::LLVMGetParam(llfn, (offset + i) as c_uint) };
         match ty::get(arg_ty).sty {
             // `~` pointer parameters never alias because ownership is transferred
-            ty::ty_uniq(..) |
-            ty::ty_vec(_, ty::vstore_uniq) |
+            // FIXME #6750 ~Trait cannot be directly marked as
+            // noalias because the actual object pointer is nested.
+            ty::ty_uniq(..) | // ty::ty_trait(_, _, ty::UniqTraitStore, _, _) |
+            ty::ty_vec(_, ty::vstore_uniq) | ty::ty_str(ty::vstore_uniq) |
             ty::ty_closure(ty::ClosureTy {sigil: ast::OwnedSigil, ..}) => {
                 unsafe {
                     llvm::LLVMAddAttribute(llarg, lib::llvm::NoAliasAttribute as c_uint);
@@ -582,11 +592,8 @@ pub fn get_res_dtor(ccx: @CrateContext,
 
         {
             let mut externs = ccx.externs.borrow_mut();
-            get_extern_fn(externs.get(),
-                          ccx.llmod,
-                          name,
-                          lib::llvm::CCallConv,
-                          llty)
+            get_extern_fn(externs.get(), ccx.llmod, name,
+                          lib::llvm::CCallConv, llty, ty::mk_nil())
         }
     }
 }
@@ -917,7 +924,8 @@ pub fn trans_external_path(ccx: &CrateContext, did: ast::DefId, t: ty::t) -> Val
                     let cconv = c.unwrap_or(lib::llvm::CCallConv);
                     let llty = type_of_fn_from_ty(ccx, None, t);
                     let mut externs = ccx.externs.borrow_mut();
-                    get_extern_fn(externs.get(), ccx.llmod, name, cconv, llty)
+                    get_extern_fn(externs.get(), ccx.llmod, name,
+                                  cconv, llty, fn_ty.sig.output)
                 }
             }
         }
@@ -2533,13 +2541,13 @@ pub fn register_fn_llvmty(ccx: @CrateContext,
                           sym: ~str,
                           node_id: ast::NodeId,
                           cc: lib::llvm::CallConv,
-                          fn_ty: Type)
-                          -> ValueRef {
+                          fn_ty: Type,
+                          output: ty::t) -> ValueRef {
     debug!("register_fn_fuller creating fn for item {} with path {}",
            node_id,
            ast_map::path_to_str(item_path(ccx, &node_id), token::get_ident_interner()));
 
-    let llfn = decl_fn(ccx.llmod, sym, cc, fn_ty);
+    let llfn = decl_fn(ccx.llmod, sym, cc, fn_ty, output);
     finish_register_fn(ccx, sp, sym, node_id, llfn);
     llfn
 }
@@ -2571,7 +2579,7 @@ pub fn create_entry_wrapper(ccx: @CrateContext,
         let llfty = Type::func([ccx.int_type, Type::i8().ptr_to().ptr_to()],
                                &ccx.int_type);
 
-        let llfn = decl_cdecl_fn(ccx.llmod, "main", llfty);
+        let llfn = decl_cdecl_fn(ccx.llmod, "main", llfty, ty::mk_nil());
         let llbb = "top".with_c_str(|buf| {
             unsafe {
                 llvm::LLVMAppendBasicBlockInContext(ccx.llcx, llfn, buf)
@@ -2975,7 +2983,8 @@ pub fn p2i(ccx: &CrateContext, v: ValueRef) -> ValueRef {
 macro_rules! ifn (
     ($intrinsics:ident, $name:expr, $args:expr, $ret:expr) => ({
         let name = $name;
-        let f = decl_cdecl_fn(llmod, name, Type::func($args, &$ret));
+        // HACK(eddyb) dummy output type, shouln't affect anything.
+        let f = decl_cdecl_fn(llmod, name, Type::func($args, &$ret), ty::mk_nil());
         $intrinsics.insert(name, f);
     })
 )
