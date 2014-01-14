@@ -142,8 +142,6 @@ at INTERPOLATED tokens */
 macro_rules! maybe_whole_expr (
     ($p:expr) => (
         {
-            // This horrible convolution is brought to you by
-            // @mut, have a terrible day
             let mut maybe_path = match ($p).token {
                 INTERPOLATED(token::NtPath(ref pt)) => Some((**pt).clone()),
                 _ => None,
@@ -3647,20 +3645,14 @@ impl Parser {
     // that may have a self type.
     fn parse_fn_decl_with_self(&mut self, parse_arg_fn: |&mut Parser| -> Arg)
                                -> (ExplicitSelf, P<FnDecl>) {
-        fn maybe_parse_explicit_self(cnstr: |v: Mutability| ->
-                                        ast::ExplicitSelf_,
+        fn maybe_parse_explicit_self(explicit_self: ast::ExplicitSelf_,
                                      p: &mut Parser)
                                      -> ast::ExplicitSelf_ {
             // We need to make sure it isn't a type
-            if p.look_ahead(1, |t| token::is_keyword(keywords::Self, t)) ||
-                ((p.look_ahead(1, |t| token::is_keyword(keywords::Const, t)) ||
-                  p.look_ahead(1, |t| token::is_keyword(keywords::Mut, t))) &&
-                 p.look_ahead(2, |t| token::is_keyword(keywords::Self, t))) {
-
+            if p.look_ahead(1, |t| token::is_keyword(keywords::Self, t)) {
                 p.bump();
-                let mutability = p.parse_mutability();
                 p.expect_self_ident();
-                cnstr(mutability)
+                explicit_self
             } else {
                 SelfStatic
             }
@@ -3719,55 +3711,47 @@ impl Parser {
         // backwards compatible.
         let lo = self.span.lo;
         let explicit_self = match self.token {
-          token::BINOP(token::AND) => {
-            maybe_parse_borrowed_explicit_self(self)
-          }
-          token::AT => {
-            maybe_parse_explicit_self(SelfBox, self)
-          }
-          token::TILDE => {
-            maybe_parse_explicit_self(|mutability| {
-                if mutability != MutImmutable {
-                    self.span_err(self.last_span,
-                                  "mutability declaration not allowed here");
-                }
-                SelfUniq(MutImmutable)
-            }, self)
-          }
-          token::IDENT(..) if self.is_self_ident() => {
-            self.bump();
-            SelfValue(MutImmutable)
-          }
-          token::BINOP(token::STAR) => {
-            // Possibly "*self" or "*mut self" -- not supported. Try to avoid
-            // emitting cryptic "unexpected token" errors.
-            self.bump();
-            let mutability = if Parser::token_is_mutability(&self.token) {
-                self.parse_mutability()
-            } else { MutImmutable };
-            if self.is_self_ident() {
-                self.span_err(self.span, "cannot pass self by unsafe pointer");
-                self.bump();
+            token::BINOP(token::AND) => {
+                maybe_parse_borrowed_explicit_self(self)
             }
-            SelfValue(mutability)
-          }
-          _ if Parser::token_is_mutability(&self.token) &&
-               self.look_ahead(1, |t| token::is_keyword(keywords::Self, t)) => {
-            let mutability = self.parse_mutability();
-            self.expect_self_ident();
-            SelfValue(mutability)
-          }
-          _ if Parser::token_is_mutability(&self.token) &&
-               self.look_ahead(1, |t| *t == token::TILDE) &&
-               self.look_ahead(2, |t| token::is_keyword(keywords::Self, t)) => {
-            let mutability = self.parse_mutability();
-            self.bump();
-            self.expect_self_ident();
-            SelfUniq(mutability)
-          }
-          _ => {
-            SelfStatic
-          }
+            token::AT => {
+                maybe_parse_explicit_self(SelfBox, self)
+            }
+            token::TILDE => {
+                maybe_parse_explicit_self(SelfUniq(MutImmutable), self)
+            }
+            token::IDENT(..) if self.is_self_ident() => {
+                self.bump();
+                SelfValue(MutImmutable)
+            }
+            token::BINOP(token::STAR) => {
+                // Possibly "*self" or "*mut self" -- not supported. Try to avoid
+                // emitting cryptic "unexpected token" errors.
+                self.bump();
+                let mutability = if Parser::token_is_mutability(&self.token) {
+                    self.parse_mutability()
+                } else { MutImmutable };
+                if self.is_self_ident() {
+                    self.span_err(self.span, "cannot pass self by unsafe pointer");
+                    self.bump();
+                }
+                SelfValue(mutability)
+            }
+            _ if Parser::token_is_mutability(&self.token) &&
+                    self.look_ahead(1, |t| token::is_keyword(keywords::Self, t)) => {
+                let mutability = self.parse_mutability();
+                self.expect_self_ident();
+                SelfValue(mutability)
+            }
+            _ if Parser::token_is_mutability(&self.token) &&
+                    self.look_ahead(1, |t| *t == token::TILDE) &&
+                    self.look_ahead(2, |t| token::is_keyword(keywords::Self, t)) => {
+                let mutability = self.parse_mutability();
+                self.bump();
+                self.expect_self_ident();
+                SelfUniq(mutability)
+            }
+            _ => SelfStatic
         };
 
         // If we parsed a self type, expect a comma before the argument list.

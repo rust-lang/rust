@@ -782,7 +782,7 @@ fn get_explicit_self(item: ebml::Doc) -> ast::ExplicitSelf_ {
     match explicit_self_kind as char {
         's' => ast::SelfStatic,
         'v' => ast::SelfValue(get_mutability(string[1])),
-        '@' => ast::SelfBox(get_mutability(string[1])),
+        '@' => ast::SelfBox,
         '~' => ast::SelfUniq(get_mutability(string[1])),
         // FIXME(#4846) expl. region
         '&' => ast::SelfRegion(None, get_mutability(string[1])),

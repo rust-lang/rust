@@ -131,11 +131,6 @@ impl EnvValue {
     }
 }
 
-pub fn mk_tuplified_uniq_cbox_ty(tcx: ty::ctxt, cdata_ty: ty::t) -> ty::t {
-    let cbox_ty = tuplify_box_ty(tcx, cdata_ty);
-    return ty::mk_imm_uniq(tcx, cbox_ty);
-}
-
 // Given a closure ty, emits a corresponding tuple ty
 pub fn mk_closure_tys(tcx: ty::ctxt,
                       bound_values: &[EnvValue])

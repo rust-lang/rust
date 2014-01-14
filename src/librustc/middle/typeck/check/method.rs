@@ -623,9 +623,9 @@ impl<'a> LookupContext<'a> {
          * consuming the original pointer.
          *
          * You might think that this would be a natural byproduct of
-         * the auto-deref/auto-ref process.  This is true for `@mut T`
-         * but not for an `&mut T` receiver.  With `@mut T`, we would
-         * begin by testing for methods with a self type `@mut T`,
+         * the auto-deref/auto-ref process.  This is true for `~T`
+         * but not for an `&mut T` receiver.  With `~T`, we would
+         * begin by testing for methods with a self type `~T`,
          * then autoderef to `T`, then autoref to `&mut T`.  But with
          * an `&mut T` receiver the process begins with `&mut T`, only
          * without any autoadjustments.
@@ -1057,15 +1057,15 @@ impl<'a> LookupContext<'a> {
          *
          *     trait Foo {
          *         fn r_method<'a>(&'a self);
-         *         fn m_method(@mut self);
+         *         fn u_method(~self);
          *     }
          *
          * Now, assuming that `r_method` is being called, we want the
-         * result to be `&'a Foo`. Assuming that `m_method` is being
-         * called, we want the result to be `@mut Foo`. Of course,
+         * result to be `&'a Foo`. Assuming that `u_method` is being
+         * called, we want the result to be `~Foo`. Of course,
          * this transformation has already been done as part of
-         * `method_ty.transformed_self_ty`, but there the
-         * type is expressed in terms of `Self` (i.e., `&'a Self`, `@mut Self`).
+         * `method_ty.transformed_self_ty`, but there the type
+         * is expressed in terms of `Self` (i.e., `&'a Self`, `~Self`).
          * Because objects are not standalone types, we can't just substitute
          * `s/Self/Foo/`, so we must instead perform this kind of hokey
          * match below.
@@ -1081,7 +1081,7 @@ impl<'a> LookupContext<'a> {
             ast::SelfValue(_) => {
                 ty::mk_err() // error reported in `enforce_object_limitations()`
             }
-            ast::SelfRegion(..) | ast::SelfBox(..) | ast::SelfUniq(..) => {
+            ast::SelfRegion(..) | ast::SelfBox | ast::SelfUniq(..) => {
                 let transformed_self_ty =
                     method_ty.transformed_self_ty.clone().unwrap();
                 match ty::get(transformed_self_ty).sty {
@@ -1095,9 +1095,9 @@ impl<'a> LookupContext<'a> {
                                      substs, BoxTraitStore, ast::MutImmutable,
                                      ty::EmptyBuiltinBounds())
                     }
-                    ty::ty_uniq(mt) => { // must be SelfUniq
+                    ty::ty_uniq(_) => { // must be SelfUniq
                         ty::mk_trait(self.tcx(), trait_def_id,
-                                     substs, UniqTraitStore, mt.mutbl,
+                                     substs, UniqTraitStore, ast::MutImmutable,
                                      ty::EmptyBuiltinBounds())
                     }
                     _ => {
@@ -1144,7 +1144,7 @@ impl<'a> LookupContext<'a> {
                      through an object");
             }
 
-            ast::SelfRegion(..) | ast::SelfBox(..) | ast::SelfUniq(..) => {}
+            ast::SelfRegion(..) | ast::SelfBox | ast::SelfUniq(..) => {}
         }
 
         if ty::type_has_self(method_fty) { // reason (a) above
@@ -1219,15 +1219,14 @@ impl<'a> LookupContext<'a> {
                 }
             }
 
-            SelfBox(m) => {
+            SelfBox => {
                 debug!("(is relevant?) explicit self is a box");
                 match ty::get(rcvr_ty).sty {
                     ty::ty_box(typ) => {
                         rcvr_matches_ty(self.fcx, typ, candidate)
                     }
 
-                    ty::ty_trait(self_did, _, BoxTraitStore, self_m, _) => {
-                        mutability_matches(self_m, m) &&
+                    ty::ty_trait(self_did, _, BoxTraitStore, ast::MutImmutable, _) => {
                         rcvr_matches_object(self_did, candidate)
                     }
 
@@ -1238,8 +1237,8 @@ impl<'a> LookupContext<'a> {
             SelfUniq(_) => {
                 debug!("(is relevant?) explicit self is a unique pointer");
                 match ty::get(rcvr_ty).sty {
-                    ty::ty_uniq(mt) => {
-                        rcvr_matches_ty(self.fcx, mt.ty, candidate)
+                    ty::ty_uniq(typ) => {
+                        rcvr_matches_ty(self.fcx, typ, candidate)
                     }
 
                     ty::ty_trait(self_did, _, UniqTraitStore, _, _) => {

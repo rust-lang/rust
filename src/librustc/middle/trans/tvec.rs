@@ -39,14 +39,14 @@ pub fn expand_boxed_vec_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
     let unit_ty = ty::sequence_element_type(tcx, t);
     let unboxed_vec_ty = ty::mk_mut_unboxed_vec(tcx, unit_ty);
     match ty::get(t).sty {
-      ty::ty_str(ty::vstore_uniq) | ty::ty_vec(_, ty::vstore_uniq) => {
-        ty::mk_imm_uniq(tcx, unboxed_vec_ty)
-      }
-      ty::ty_str(ty::vstore_box) | ty::ty_vec(_, ty::vstore_box) => {
-        ty::mk_imm_box(tcx, unboxed_vec_ty)
-      }
-      _ => tcx.sess.bug("non boxed-vec type \
-                         in tvec::expand_boxed_vec_ty")
+        ty::ty_str(ty::vstore_uniq) | ty::ty_vec(_, ty::vstore_uniq) => {
+            ty::mk_uniq(tcx, unboxed_vec_ty)
+        }
+        ty::ty_str(ty::vstore_box) | ty::ty_vec(_, ty::vstore_box) => {
+            ty::mk_box(tcx, unboxed_vec_ty)
+        }
+        _ => tcx.sess.bug("non boxed-vec type \
+                           in tvec::expand_boxed_vec_ty")
     }
 }
 

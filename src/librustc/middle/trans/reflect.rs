@@ -176,6 +176,7 @@ impl<'a> Reflector<'a> {
               self.visit("vec", values)
           }
 
+          // Should rename to str_*/vec_*.
           ty::ty_str(vst) => {
               let (name, extra) = self.vstore_name_and_extra(t, vst);
               self.visit(~"estr_" + name, extra)
@@ -189,6 +190,7 @@ impl<'a> Reflector<'a> {
                   self.visit(~"evec_" + name, extra)
               }
           }
+          // Should remove mt from box and uniq.
           ty::ty_box(typ) => {
               let extra = self.c_mt(&ty::mt {
                   ty: typ,
@@ -196,8 +198,11 @@ impl<'a> Reflector<'a> {
               });
               self.visit("box", extra)
           }
-          ty::ty_uniq(ref mt) => {
-              let extra = self.c_mt(mt);
+          ty::ty_uniq(typ) => {
+              let extra = self.c_mt(&ty::mt {
+                  ty: typ,
+                  mutbl: ast::MutImmutable,
+              });
               if ty::type_contents(bcx.tcx(), t).owns_managed() {
                   self.visit("uniq_managed", extra)
               } else {

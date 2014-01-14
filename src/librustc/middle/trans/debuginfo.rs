@@ -2164,12 +2164,15 @@ fn type_metadata(cx: &CrateContext,
                 }
             }
         },
-        ty::ty_uniq(ref mt) if ty::type_contents(cx.tcx, mt.ty).owns_managed() => {
-            create_pointer_to_box_metadata(cx, t, mt.ty)
-        },
-        ty::ty_uniq(ref mt)    |
-        ty::ty_ptr(ref mt)     |
-        ty::ty_rptr(_, ref mt) => {
+        ty::ty_uniq(typ) => {
+            if ty::type_contents(cx.tcx, typ).owns_managed() {
+                create_pointer_to_box_metadata(cx, t, typ)
+            } else {
+                let pointee = type_metadata(cx, typ, usage_site_span);
+                pointer_type_metadata(cx, t, pointee)
+            }
+        }
+        ty::ty_ptr(ref mt) | ty::ty_rptr(_, ref mt) => {
             let pointee = type_metadata(cx, mt.ty, usage_site_span);
             pointer_type_metadata(cx, t, pointee)
         },
@@ -2193,7 +2196,7 @@ fn type_metadata(cx: &CrateContext,
 
     let mut created_types = debug_context(cx).created_types.borrow_mut();
     created_types.get().insert(cache_id, type_metadata);
-    return type_metadata;
+    type_metadata
 }
 
 #[deriving(Eq)]

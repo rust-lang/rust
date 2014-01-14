@@ -410,7 +410,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
       ast::TyUniq(ty) => {
         let mt = ast::MutTy { ty: ty, mutbl: ast::MutImmutable };
         mk_pointer(this, rscope, &mt, ty::vstore_uniq,
-                   |tmt| ty::mk_uniq(tcx, tmt))
+                   |tmt| ty::mk_uniq(tcx, tmt.ty))
       }
       ast::TyVec(ty) => {
         tcx.sess.span_err(ast_ty.span, "bare `[]` is not a type");
@@ -691,13 +691,11 @@ fn ty_of_method_or_bare_fn<AC:AstConv>(
                                  ty::mt {ty: self_info.untransformed_self_ty,
                                          mutbl: mutability}))
             }
-            ast::SelfBox(_) => {
+            ast::SelfBox => {
                 Some(ty::mk_box(this.tcx(), self_info.untransformed_self_ty))
             }
             ast::SelfUniq(_) => {
-                Some(ty::mk_uniq(this.tcx(),
-                                 ty::mt {ty: self_info.untransformed_self_ty,
-                                         mutbl: ast::MutImmutable}))
+                Some(ty::mk_uniq(this.tcx(), self_info.untransformed_self_ty))
             }
         }
     }

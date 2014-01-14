@@ -670,7 +670,7 @@ pub fn check_pointer_pat(pcx: &pat_ctxt,
     };
     match *structure_of(fcx, span, expected) {
         ty::ty_uniq(e_inner) if pointer_kind == Send => {
-            check_inner(e_inner.ty);
+            check_inner(e_inner);
         }
         ty::ty_rptr(_, e_inner) if pointer_kind == Borrowed => {
             check_inner(e_inner.ty);
