@@ -194,8 +194,19 @@ pub mod types {
             This type is only useful as a pointer target. Do not use it as a
             return type for FFI functions which have the `void` return type in
             C. Use the unit type `()` or omit the return type instead.
+
+            For LLVM to recognize the void pointer type and by extension
+            functions like malloc(), we need to have it represented as i8* in
+            LLVM bitcode. The enum used here ensures this and prevents misuse
+            of the "raw" type by only having private variants.. We need two
+            variants, because the compiler complains about the repr attribute
+            otherwise.
             */
-            pub enum c_void {}
+            #[repr(u8)]
+            pub enum c_void {
+                priv variant1,
+                priv variant2
+            }
             pub enum FILE {}
             pub enum fpos_t {}
         }
