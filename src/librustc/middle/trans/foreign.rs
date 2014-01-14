@@ -150,11 +150,8 @@ pub fn register_foreign_item_fn(ccx: @CrateContext,
     let llfn;
     {
         let mut externs = ccx.externs.borrow_mut();
-        llfn = base::get_extern_fn(externs.get(),
-                                   ccx.llmod,
-                                   lname,
-                                   cc,
-                                   llfn_ty);
+        llfn = base::get_extern_fn(externs.get(), ccx.llmod, lname,
+                                   cc, llfn_ty, tys.fn_sig.output);
     };
     add_argument_attributes(&tys, llfn);
 
@@ -417,19 +414,14 @@ pub fn register_rust_fn_with_foreign_abi(ccx: @CrateContext,
     let tys = foreign_types_for_id(ccx, node_id);
     let llfn_ty = lltype_for_fn_from_foreign_types(&tys);
     let t = ty::node_id_to_type(ccx.tcx, node_id);
-    let cconv = match ty::get(t).sty {
+    let (cconv, output) = match ty::get(t).sty {
         ty::ty_bare_fn(ref fn_ty) => {
             let c = llvm_calling_convention(ccx, fn_ty.abis);
-            c.unwrap_or(lib::llvm::CCallConv)
+            (c.unwrap_or(lib::llvm::CCallConv), fn_ty.sig.output)
         }
-        _ => lib::llvm::CCallConv
+        _ => fail!("expected bare fn in register_rust_fn_with_foreign_abi")
     };
-    let llfn = base::register_fn_llvmty(ccx,
-                                        sp,
-                                        sym,
-                                        node_id,
-                                        cconv,
-                                        llfn_ty);
+    let llfn = base::register_fn_llvmty(ccx, sp, sym, node_id, cconv, llfn_ty, output);
     add_argument_attributes(&tys, llfn);
     debug!("register_rust_fn_with_foreign_abi(node_id={:?}, llfn_ty={}, llfn={})",
            node_id, ccx.tn.type_to_str(llfn_ty), ccx.tn.val_to_str(llfn));

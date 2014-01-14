@@ -431,9 +431,10 @@ pub fn trans_intrinsic(ccx: @CrateContext,
             // native function. There should be a general in-language
             // way to do this
             let llfty = type_of_rust_fn(bcx.ccx(), None, [], ty::mk_nil());
-            let morestack_addr = decl_cdecl_fn(
-                bcx.ccx().llmod, "__morestack", llfty);
-            let morestack_addr = PointerCast(bcx, morestack_addr, Type::nil().ptr_to());
+            let morestack_addr = decl_cdecl_fn(bcx.ccx().llmod, "__morestack",
+                                               llfty, ty::mk_nil());
+            let morestack_addr = PointerCast(bcx, morestack_addr,
+                                             Type::nil().ptr_to());
             Ret(bcx, morestack_addr);
         }
         "offset" => {
