@@ -1195,123 +1195,32 @@ pub enum InlinedItem {
 
 #[cfg(test)]
 mod test {
+    use extra;
+    use codemap::*;
     use super::*;
 
     fn is_freeze<T: Freeze>() {}
 
     // Assert that the AST remains Freeze (#10693).
-    #[test] fn ast_is_freeze() {
+    #[test]
+    fn ast_is_freeze() {
         is_freeze::<Item>();
-    }
-}
-
-/* hold off on tests ... they appear in a later merge.
-#[cfg(test)]
-mod test {
-    use std::option::{None, Option, Some};
-    use std::uint;
-    use extra;
-    use codemap::*;
-    use super::*;
-
-
-    #[test] fn xorpush_test () {
-        let mut s = ~[];
-        xorPush(&mut s,14);
-        assert_eq!(s,~[14]);
-        xorPush(&mut s,14);
-        assert_eq!(s,~[]);
-        xorPush(&mut s,14);
-        assert_eq!(s,~[14]);
-        xorPush(&mut s,15);
-        assert_eq!(s,~[14,15]);
-        xorPush (&mut s,16);
-        assert_eq! (s,~[14,15,16]);
-        xorPush (&mut s,16);
-        assert_eq! (s,~[14,15]);
-        xorPush (&mut s,15);
-        assert_eq! (s,~[14]);
-    }
-
-    #[test] fn test_marksof () {
-        let stopname = uints_to_name(&~[12,14,78]);
-        assert_eq!(s,~[]);
-        xorPush(&mut s,14);
-        assert_eq!(s,~[14]);
-        xorPush(&mut s,15);
-        assert_eq!(s,~[14,15]);
-        xorPush (&mut s,16);
-        assert_eq! (s,~[14,15,16]);
-        xorPush (&mut s,16);
-        assert_eq! (s,~[14,15]);
-        xorPush (&mut s,15);
-        assert_eq! (s,~[14]);
-    }
-
-    #[test] fn test_marksof () {
-        let stopname = uints_to_name(&~[12,14,78]);
-        let name1 = uints_to_name(&~[4,9,7]);
-        assert_eq!(marksof (MT,stopname),~[]);
-        assert_eq! (marksof (Mark (4,@Mark(98,@MT)),stopname),~[4,98]);
-        // does xoring work?
-        assert_eq! (marksof (Mark (5, @Mark (5, @Mark (16,@MT))),stopname),
-                     ~[16]);
-        // does nested xoring work?
-        assert_eq! (marksof (Mark (5,
-                                    @Mark (10,
-                                           @Mark (10,
-                                                  @Mark (5,
-                                                         @Mark (16,@MT))))),
-                              stopname),
-                     ~[16]);
-        // stop has no effect on marks
-        assert_eq! (marksof (Mark (9, @Mark (14, @Mark (12, @MT))),stopname),
-                     ~[9,14,12]);
-        // rename where stop doesn't match:
-        assert_eq! (marksof (Mark (9, @Rename
-                                    (name1,
-                                     @Mark (4, @MT),
-                                     uints_to_name(&~[100,101,102]),
-                                     @Mark (14, @MT))),
-                              stopname),
-                     ~[9,14]);
-        // rename where stop does match
-        ;
-        assert_eq! (marksof (Mark(9, @Rename (name1,
-                                               @Mark (4, @MT),
-                                               stopname,
-                                               @Mark (14, @MT))),
-                              stopname),
-                     ~[9]);
     }
 
     // are ASTs encodable?
-    #[test] fn check_asts_encodable() {
-        let bogus_span = span {lo:BytePos(10),
-                               hi:BytePos(20),
-                               expn_info:None};
-        let e : crate =
-            spanned{
-            node: crate_{
-                module: Mod {view_items: ~[], items: ~[]},
-                attrs: ~[],
-                config: ~[]
+    #[test]
+    fn check_asts_encodable() {
+        let e = Crate {
+            module: Mod {view_items: ~[], items: ~[]},
+            attrs: ~[],
+            config: ~[],
+            span: Span {
+                lo: BytePos(10),
+                hi: BytePos(20),
+                expn_info: None,
             },
-            span: bogus_span};
+        };
         // doesn't matter which encoder we use....
         let _f = (@e as @extra::serialize::Encodable<extra::json::Encoder>);
     }
-
-
 }
-
-*/
-//
-// Local Variables:
-// mode: rust
-// fill-column: 78;
-// indent-tabs-mode: nil
-// c-basic-offset: 4
-// buffer-file-coding-system: utf-8-unix
-// End:
-//
