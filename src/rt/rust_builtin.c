@@ -437,26 +437,6 @@ rust_win32_rand_release() {
 
 #endif
 
-#if defined(__WIN32__)
-
-int
-rust_crit_section_size() { return sizeof(CRITICAL_SECTION); }
-int
-rust_pthread_mutex_t_size() { return 0; }
-int
-rust_pthread_cond_t_size() { return 0; }
-
-#else
-
-int
-rust_crit_section_size() { return 0; }
-int
-rust_pthread_mutex_t_size() { return sizeof(pthread_mutex_t); }
-int
-rust_pthread_cond_t_size() { return sizeof(pthread_cond_t); }
-
-#endif
-
 //
 // Local Variables:
 // mode: C++

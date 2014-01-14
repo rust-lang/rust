@@ -138,7 +138,7 @@ extern fn timer_cb(handle: *uvll::uv_timer_t, status: c_int) {
 
     match timer.action.take_unwrap() {
         WakeTask(task) => {
-            task.wake().map(|t| t.reawaken(true));
+            task.wake().map(|t| t.reawaken());
         }
         SendOnce(chan) => { chan.try_send(()); }
         SendMany(chan, id) => {
