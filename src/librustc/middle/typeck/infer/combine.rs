@@ -521,8 +521,8 @@ pub fn super_tys<C:Combine>(this: &C, a: ty::t, b: ty::t) -> cres<ty::t> {
         this.tys(a_inner, b_inner).and_then(|typ| Ok(ty::mk_box(tcx, typ)))
       }
 
-      (&ty::ty_uniq(ref a_mt), &ty::ty_uniq(ref b_mt)) => {
-        this.mts(a_mt, b_mt).and_then(|mt| Ok(ty::mk_uniq(tcx, mt)))
+      (&ty::ty_uniq(a_inner), &ty::ty_uniq(b_inner)) => {
+        this.tys(a_inner, b_inner).and_then(|typ| Ok(ty::mk_uniq(tcx, typ)))
       }
 
       (&ty::ty_ptr(ref a_mt), &ty::ty_ptr(ref b_mt)) => {

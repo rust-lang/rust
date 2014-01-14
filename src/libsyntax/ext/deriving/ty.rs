@@ -251,7 +251,7 @@ pub fn get_explicit_self(cx: &ExtCtxt, span: Span, self_ptr: &Option<PtrTy>)
                 span,
                 match *ptr {
                     Send => ast::SelfUniq(ast::MutImmutable),
-                    Managed => ast::SelfBox(ast::MutImmutable),
+                    Managed => ast::SelfBox,
                     Borrowed(ref lt, mutbl) => {
                         let lt = lt.map(|s| cx.lifetime(span, cx.ident_of(s)));
                         ast::SelfRegion(lt, mutbl)

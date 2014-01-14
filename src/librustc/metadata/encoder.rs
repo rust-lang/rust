@@ -687,9 +687,8 @@ fn encode_explicit_self(ebml_w: &mut writer::Encoder, explicit_self: ast::Explic
             ebml_w.writer.write(&[ '&' as u8 ]);
             encode_mutability(ebml_w, m);
         }
-        SelfBox(m) => {
+        SelfBox => {
             ebml_w.writer.write(&[ '@' as u8 ]);
-            encode_mutability(ebml_w, m);
         }
         SelfUniq(m) => {
             ebml_w.writer.write(&[ '~' as u8 ]);

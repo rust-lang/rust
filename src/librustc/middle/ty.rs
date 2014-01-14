@@ -629,7 +629,7 @@ pub enum sty {
     ty_str(vstore),
     ty_enum(DefId, substs),
     ty_box(t),
-    ty_uniq(mt),
+    ty_uniq(t),
     ty_vec(mt, vstore),
     ty_ptr(mt),
     ty_rptr(Region, mt),
@@ -1091,8 +1091,10 @@ pub fn mk_t(cx: ctxt, st: sty) -> t {
               _ => {}
           }
       }
-      &ty_box(ref tt) => flags |= get(*tt).flags,
-      &ty_uniq(ref m) | &ty_vec(ref m, _) | &ty_ptr(ref m) |
+      &ty_box(tt) | &ty_uniq(tt) => {
+        flags |= get(tt).flags
+      }
+      &ty_vec(ref m, _) | &ty_ptr(ref m) |
       &ty_unboxed_vec(ref m) => {
         flags |= get(m.ty).flags;
       }
@@ -1234,15 +1236,7 @@ pub fn mk_enum(cx: ctxt, did: ast::DefId, substs: substs) -> t {
 
 pub fn mk_box(cx: ctxt, ty: t) -> t { mk_t(cx, ty_box(ty)) }
 
-pub fn mk_imm_box(cx: ctxt, ty: t) -> t {
-    mk_box(cx, ty)
-}
-
-pub fn mk_uniq(cx: ctxt, tm: mt) -> t { mk_t(cx, ty_uniq(tm)) }
-
-pub fn mk_imm_uniq(cx: ctxt, ty: t) -> t {
-    mk_uniq(cx, mt {ty: ty, mutbl: ast::MutImmutable})
-}
+pub fn mk_uniq(cx: ctxt, ty: t) -> t { mk_t(cx, ty_uniq(ty)) }
 
 pub fn mk_ptr(cx: ctxt, tm: mt) -> t { mk_t(cx, ty_ptr(tm)) }
 
@@ -1355,9 +1349,9 @@ pub fn maybe_walk_ty(ty: t, f: |t| -> bool) {
       ty_nil | ty_bot | ty_bool | ty_char | ty_int(_) | ty_uint(_) | ty_float(_) |
       ty_str(_) | ty_type | ty_self(_) |
       ty_opaque_closure_ptr(_) | ty_infer(_) | ty_param(_) | ty_err => {}
-      ty_box(ref ty) => maybe_walk_ty(*ty, f),
+      ty_box(ty) | ty_uniq(ty) => maybe_walk_ty(ty, f),
       ty_vec(ref tm, _) | ty_unboxed_vec(ref tm) | ty_ptr(ref tm) |
-      ty_rptr(_, ref tm) | ty_uniq(ref tm) => {
+      ty_rptr(_, ref tm) => {
         maybe_walk_ty(tm.ty, f);
       }
       ty_enum(_, ref substs) | ty_struct(_, ref substs) |
@@ -2026,6 +2020,10 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 tc_ty(cx, typ, cache).managed_pointer()
             }
 
+            ty_uniq(typ) => {
+                tc_ty(cx, typ, cache).owned_pointer()
+            }
+
             ty_trait(_, _, store, mutbl, bounds) => {
                 object_contents(cx, store, mutbl, bounds)
             }
@@ -2037,10 +2035,6 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             ty_rptr(r, ref mt) => {
                 tc_ty(cx, mt.ty, cache).reference(
                     borrowed_contents(r, mt.mutbl))
-            }
-
-            ty_uniq(mt) => {
-                tc_mt(cx, mt, cache).owned_pointer()
             }
 
             ty_vec(mt, vstore_uniq) => {
@@ -2318,10 +2312,9 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
             ty_unboxed_vec(_) => {
                 false
             }
-            ty_box(typ) => {
+            ty_box(typ) | ty_uniq(typ) => {
                 type_requires(cx, seen, r_ty, typ)
             }
-            ty_uniq(ref mt) |
             ty_rptr(_, ref mt) => {
                 type_requires(cx, seen, r_ty, mt.ty)
             }
@@ -2596,22 +2589,22 @@ pub fn deref(t: t, explicit: bool) -> Option<mt> {
 
 pub fn deref_sty(sty: &sty, explicit: bool) -> Option<mt> {
     match *sty {
-      ty_box(typ) => {
-        Some(mt {
-          ty: typ,
-          mutbl: ast::MutImmutable,
-        })
-      }
+        ty_box(typ) | ty_uniq(typ) => {
+            Some(mt {
+                ty: typ,
+                mutbl: ast::MutImmutable,
+            })
+        }
 
-      ty_rptr(_, mt) | ty_uniq(mt) => {
-        Some(mt)
-      }
+        ty_rptr(_, mt) => {
+            Some(mt)
+        }
 
-      ty_ptr(mt) if explicit => {
-        Some(mt)
-      }
+        ty_ptr(mt) if explicit => {
+            Some(mt)
+        }
 
-      _ => None
+        _ => None
     }
 }
 
@@ -4861,9 +4854,8 @@ pub fn hash_crate_independent(tcx: ctxt, t: t, local_hash: @str) -> u64 {
             ty_box(_) => {
                 hash.input([9]);
             }
-            ty_uniq(m) => {
+            ty_uniq(_) => {
                 hash.input([10]);
-                mt(&mut hash, m);
             }
             ty_vec(m, v) => {
                 hash.input([11]);

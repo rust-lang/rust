@@ -143,8 +143,8 @@ pub fn super_fold_sty<T:TypeFolder>(this: &mut T,
         ty::ty_box(typ) => {
             ty::ty_box(this.fold_ty(typ))
         }
-        ty::ty_uniq(ref tm) => {
-            ty::ty_uniq(this.fold_mt(tm))
+        ty::ty_uniq(typ) => {
+            ty::ty_uniq(this.fold_ty(typ))
         }
         ty::ty_ptr(ref tm) => {
             ty::ty_ptr(this.fold_mt(tm))

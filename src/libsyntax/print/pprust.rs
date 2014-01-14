@@ -1770,8 +1770,8 @@ pub fn print_explicit_self(s: &mut State, explicit_self: ast::ExplicitSelf_) -> 
             print_mutability(s, m);
             word(&mut s.s, "self");
         }
-        ast::SelfBox(m) => {
-            word(&mut s.s, "@"); print_mutability(s, m); word(&mut s.s, "self");
+        ast::SelfBox => {
+            word(&mut s.s, "@self");
         }
     }
     return true;
