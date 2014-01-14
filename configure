@@ -401,13 +401,13 @@ valopt mandir "${CFG_PREFIX}/share/man" "install man pages in PATH"
 # On windows we just store the libraries in the bin directory because
 # there's no rpath
 # FIXME: Thise needs to parameterized over target triples. Do it in platform.mk
-LIBDIR_RELATIVE=lib
+CFG_LIBDIR_RELATIVE=lib
 if [ "$CFG_OSTYPE" = "pc-mingw32" ]
 then
-    LIBDIR_RELATIVE=bin
+    CFG_LIBDIR_RELATIVE=bin
 fi
 
-valopt libdir "${CFG_PREFIX}/${LIBDIR_RELATIVE}" "install libraries"
+valopt libdir "${CFG_PREFIX}/${CFG_LIBDIR_RELATIVE}" "install libraries"
 valopt rustlibdir "rustlib" "subdirectory name for rustc's libraries"
 
 # Validate Options
@@ -771,16 +771,16 @@ do
             make_dir $h/stage$i/bin
 
             # host lib dir
-            make_dir $h/stage$i/$LIBDIR_RELATIVE
+            make_dir $h/stage$i/$CFG_LIBDIR_RELATIVE
 
             # host test dir
             make_dir $h/stage$i/test
 
             # target bin dir
-            make_dir $h/stage$i/$LIBDIR_RELATIVE/$CFG_RUSTLIBDIR/$t/bin
+            make_dir $h/stage$i/$CFG_LIBDIR_RELATIVE/$CFG_RUSTLIBDIR/$t/bin
 
             # target lib dir
-            make_dir $h/stage$i/$LIBDIR_RELATIVE/$CFG_RUSTLIBDIR/$t/lib
+            make_dir $h/stage$i/$CFG_LIBDIR_RELATIVE/$CFG_RUSTLIBDIR/$t/lib
         done
     done
 
@@ -1037,7 +1037,7 @@ putvar CFG_TARGET
 putvar CFG_C_COMPILER
 putvar CFG_LIBDIR
 putvar CFG_RUSTLIBDIR
-putvar LIBDIR_RELATIVE
+putvar CFG_LIBDIR_RELATIVE
 putvar CFG_DISABLE_MANAGE_SUBMODULES
 putvar CFG_ANDROID_CROSS_PATH
 putvar CFG_MINGW32_CROSS_PATH

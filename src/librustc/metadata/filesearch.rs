@@ -244,7 +244,7 @@ pub fn rust_path() -> ~[Path] {
 // The name of the directory rustc expects libraries to be located.
 // On Unix should be "lib", on windows "bin"
 pub fn libdir() -> ~str {
-    (env!("LIBDIR_RELATIVE")).to_owned()
+    (env!("CFG_LIBDIR_RELATIVE")).to_owned()
 }
 
 // The name of rustc's own place to organize libraries.
