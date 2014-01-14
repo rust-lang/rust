@@ -90,7 +90,6 @@ pub struct tydesc_info {
     tydesc: ValueRef,
     size: ValueRef,
     align: ValueRef,
-    borrow_offset: ValueRef,
     name: ValueRef,
     take_glue: Cell<Option<ValueRef>>,
     drop_glue: Cell<Option<ValueRef>>,
