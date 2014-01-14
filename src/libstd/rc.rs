@@ -27,7 +27,6 @@ use cast::transmute;
 use ops::Drop;
 use cmp::{Eq, Ord};
 use clone::{Clone, DeepClone};
-use rt::global_heap::exchange_free;
 use ptr::read_ptr;
 use option::{Option, Some, None};
 
@@ -57,30 +56,38 @@ impl<T> Rc<T> {
     /// Borrow the value contained in the reference-counted box
     #[inline(always)]
     pub fn borrow<'a>(&'a self) -> &'a T {
-        unsafe { &(*self.ptr).value }
+        &self.inner().value
     }
 
     /// Downgrade the reference-counted pointer to a weak reference
     pub fn downgrade(&self) -> Weak<T> {
-        unsafe {
-            (*self.ptr).weak += 1;
-            Weak { ptr: self.ptr }
-        }
+        self.inner().weak += 1;
+        Weak { ptr: self.ptr }
+    }
+
+    fn inner<'a>(&'a self) -> &'a mut RcBox<T> {
+        // Note that we need the indrection of &~RcBox<T> because we can't
+        // transmute *RcBox to &RcBox (the actual pointer layout is different if
+        // T contains managed pointers at this time)
+        let ptr: &mut ~RcBox<T> = unsafe { transmute(&self.ptr) };
+        &mut **ptr
     }
 }
 
 #[unsafe_destructor]
 impl<T> Drop for Rc<T> {
     fn drop(&mut self) {
-        unsafe {
-            if self.ptr != 0 as *mut RcBox<T> {
-                (*self.ptr).strong -= 1;
-                if (*self.ptr).strong == 0 {
-                    read_ptr(self.borrow()); // destroy the contained object
-                    if (*self.ptr).weak == 0 {
-                        exchange_free(self.ptr as *mut u8 as *i8)
-                    }
-                }
+        if self.ptr == 0 as *mut RcBox<T> { return }
+
+        let inner = self.inner();
+        inner.strong -= 1;
+        if inner.strong == 0 {
+            // If we've run out of strong pointers, we need to be sure to run
+            // the destructor *now*, but we can't free the value just yet (weak
+            // pointers may still be active).
+            unsafe { read_ptr(&inner.value); } // destroy the contained object
+            if inner.weak == 0 {
+                free(self.ptr);
             }
         }
     }
@@ -89,10 +96,8 @@ impl<T> Drop for Rc<T> {
 impl<T> Clone for Rc<T> {
     #[inline]
     fn clone(&self) -> Rc<T> {
-        unsafe {
-            (*self.ptr).strong += 1;
-            Rc { ptr: self.ptr }
-        }
+        self.inner().strong += 1;
+        Rc { ptr: self.ptr }
     }
 }
 
@@ -135,27 +140,30 @@ pub struct Weak<T> {
 impl<T> Weak<T> {
     /// Upgrade a weak reference to a strong reference
     pub fn upgrade(&self) -> Option<Rc<T>> {
-        unsafe {
-            if (*self.ptr).strong == 0 {
-                None
-            } else {
-                (*self.ptr).strong += 1;
-                Some(Rc { ptr: self.ptr })
-            }
+        if self.inner().strong == 0 {
+            None
+        } else {
+            self.inner().strong += 1;
+            Some(Rc { ptr: self.ptr })
         }
+    }
+
+    fn inner<'a>(&'a self) -> &'a mut RcBox<T> {
+        // see above version
+        let ptr: &mut ~RcBox<T> = unsafe { transmute(&self.ptr) };
+        &mut **ptr
     }
 }
 
 #[unsafe_destructor]
 impl<T> Drop for Weak<T> {
     fn drop(&mut self) {
-        unsafe {
-            if self.ptr != 0 as *mut RcBox<T> {
-                (*self.ptr).weak -= 1;
-                if (*self.ptr).weak == 0 && (*self.ptr).strong == 0 {
-                    exchange_free(self.ptr as *mut u8 as *i8)
-                }
-            }
+        if self.ptr as uint == 0 { return }
+
+        let inner = self.inner();
+        inner.weak -= 1;
+        if inner.weak == 0 && inner.strong == 0 {
+            free(self.ptr);
         }
     }
 }
@@ -163,11 +171,23 @@ impl<T> Drop for Weak<T> {
 impl<T> Clone for Weak<T> {
     #[inline]
     fn clone(&self) -> Weak<T> {
-        unsafe {
-            (*self.ptr).weak += 1;
-            Weak { ptr: self.ptr }
-        }
+        self.inner().weak += 1;
+        Weak { ptr: self.ptr }
     }
+}
+
+// We need to be very careful when dropping this inner box pointer. We don't
+// necessarily know the right free function to call because it's different
+// depending on whether T contains managed pointers or not. The other sticky
+// part is that we can't run the destructor for T because it's already been run.
+//
+// To get around this, we transmute the pointer to an owned pointer with a type
+// that has size 0. This preserves the managed-ness of the type along with
+// preventing any destructors from being run. Note that this assumes that the GC
+// doesn't need to know the real size of the pointer (it's just malloc right
+// now), so this works for now but may need to change in the future.
+fn free<T>(ptr: *mut RcBox<T>) {
+    let _: ~RcBox<[T, ..0]> = unsafe { transmute(ptr) };
 }
 
 #[cfg(test)]
@@ -229,5 +249,13 @@ mod tests {
         let y = x.downgrade();
         drop(x);
         assert!(y.upgrade().is_none());
+    }
+
+    #[test]
+    fn gc_inside() {
+        // see issue #11532
+        use {cell, gc};
+        let a = Rc::new(cell::RefCell::new(gc::Gc::new(1)));
+        assert!(a.borrow().try_borrow_mut().is_some());
     }
 }
