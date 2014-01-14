@@ -370,13 +370,13 @@ mod test {
             count: 0,
         };
         // FIXME (#7049): Figure out some other way to do this.
-        //let buf = @mut ~[8, 9];
+        //let buf = RefCell::new(~[8, 9]);
         (|| {
-            //reader.push_bytes(&mut *buf, 4);
+            //reader.push_bytes(buf.borrow_mut().get(), 4);
         }).finally(|| {
             // NB: Using rtassert here to trigger abort on failure since this is a should_fail test
             // FIXME: #7049 This fails because buf is still borrowed
-            //rtassert!(*buf == ~[8, 9, 10]);
+            //rtassert!(buf.borrow().get() == ~[8, 9, 10]);
         })
     }
 

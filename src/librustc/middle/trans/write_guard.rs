@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Logic relating to rooting and write guards for managed values
-//! (`@` and `@mut`). This code is primarily for use by datum;
+//! Logic relating to rooting and write guards for managed values.
+//! This code is primarily for use by datum;
 //! it exists in its own module both to keep datum.rs bite-sized
 //! and for each in debugging (e.g., so you can use
 //! `RUST_LOG=rustc::middle::trans::write_guard`).

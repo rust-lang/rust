@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -11,5 +11,6 @@
 struct S;
 
 impl S {
-    fn f(~mut self) {} //~ ERROR mutability declaration not allowed here
+    fn f(~mut self) {} //~ ERROR found `self` in ident position
+    //~^ ERROR expected `:` but found `)`
 }

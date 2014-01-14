@@ -319,7 +319,7 @@ pub trait Folder {
 
     fn fold_explicit_self_(&mut self, es: &ExplicitSelf_) -> ExplicitSelf_ {
         match *es {
-            SelfStatic | SelfValue(_) | SelfUniq(_) | SelfBox(_) => {
+            SelfStatic | SelfValue(_) | SelfUniq(_) | SelfBox => {
                 *es
             }
             SelfRegion(ref lifetime, m) => {

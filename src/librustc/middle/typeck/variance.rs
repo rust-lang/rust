@@ -634,11 +634,10 @@ impl<'a> ConstraintContext<'a> {
                 self.add_constraints_from_mt(mt, variance);
             }
 
-            ty::ty_box(typ) => {
+            ty::ty_uniq(typ) | ty::ty_box(typ) => {
                 self.add_constraints_from_ty(typ, variance);
             }
 
-            ty::ty_uniq(ref mt) |
             ty::ty_ptr(ref mt) => {
                 self.add_constraints_from_mt(mt, variance);
             }

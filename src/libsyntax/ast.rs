@@ -959,10 +959,10 @@ pub enum RetStyle {
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum ExplicitSelf_ {
     SelfStatic,                                // no self
-    SelfValue(Mutability),                     // `self`
-    SelfRegion(Option<Lifetime>, Mutability),  // `&'lt self`
-    SelfBox(Mutability),                       // `@self`
-    SelfUniq(Mutability)                       // `~self`
+    SelfValue(Mutability),                     // `self`, `mut self`
+    SelfRegion(Option<Lifetime>, Mutability),  // `&'lt self`, `&'lt mut self`
+    SelfBox,                                   // `@self`
+    SelfUniq(Mutability)                       // `~self`, `mut ~self`
 }
 
 pub type ExplicitSelf = Spanned<ExplicitSelf_>;
