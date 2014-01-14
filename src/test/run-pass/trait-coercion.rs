@@ -10,6 +10,8 @@
 
 #[feature(managed_boxes)];
 
+use std::io;
+
 trait Trait {
     fn f(&self);
 }
@@ -29,6 +31,10 @@ fn f(x: @Trait) {
     x.f();
 }
 
+fn foo(mut a: ~Writer) {
+    a.write(bytes!("Hello\n"));
+}
+
 pub fn main() {
     let a = Struct { x: 1, y: 2 };
     let b: @Trait = @a;
@@ -38,5 +44,8 @@ pub fn main() {
     let d: &Trait = &a;
     d.f();
     f(@a);
+
+    let out = io::stdout();
+    foo(~out);
 }
 

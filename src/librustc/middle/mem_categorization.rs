@@ -345,9 +345,12 @@ impl mem_categorization_ctxt {
                 match **adjustment {
                     ty::AutoObject(..) => {
                         // Implicity casts a concrete object to trait object
-                        // Result is an rvalue
+                        // so just patch up the type
                         let expr_ty = ty::expr_ty_adjusted(self.tcx, expr);
-                        self.cat_rvalue_node(expr, expr_ty)
+                        @cmt_ {
+                            ty: expr_ty,
+                            ..*self.cat_expr_unadjusted(expr)
+                        }
                     }
 
                     ty::AutoAddEnv(..) => {
