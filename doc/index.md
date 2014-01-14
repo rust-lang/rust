@@ -20,6 +20,7 @@
 [Packaging](guide-rustpkg.html)  
 [Testing](guide-testing.html)  
 [Conditions](guide-conditions.html)
+[Rust's Runtime](guide-runtime.html)
 
 # Libraries
 
