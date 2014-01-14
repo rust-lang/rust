@@ -1,0 +1,75 @@
+# Japanese translations for Rust package
+# Copyright (C) 2014 The Rust Project Developers
+# This file is distributed under the same license as the Rust package.
+# Automatically generated, 2014.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Rust 0.10-pre\n"
+"POT-Creation-Date: 2014-01-13 12:01+0900\n"
+"PO-Revision-Date: 2014-01-13 12:01+0900\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: ja\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#. type: Plain text
+#: doc/guide-testing.md:2
+#, fuzzy
+#| msgid "% The Rust Language Tutorial"
+msgid "% The Rust Testing Guide"
+msgstr "% Rust 言語チュートリアル"
+
+#. type: Plain text
+#: doc/guide-testing.md:4
+#, fuzzy
+#| msgid "# Getting started"
+msgid "# Quick start"
+msgstr "# はじめに"
+
+#. type: Plain text
+#: doc/guide-testing.md:127 doc/tutorial.md:776
+#, fuzzy
+#| msgid "## A minimal example"
+msgid "For example:"
+msgstr "## 最小限の例"
+
+#. type: Plain text
+#: doc/guide-testing.md:131
+#, fuzzy
+#| msgid "~~~~ use std::task::spawn;"
+msgid "~~~ extern mod extra; use std::vec;"
+msgstr ""
+"~~~~\n"
+"use std::task::spawn;"
+
+#. type: Plain text
+#: doc/guide-testing.md:167
+#, fuzzy
+#| msgid "## Tuples"
+msgid "## Examples"
+msgstr "## タプル"
+
+#. type: Plain text
+#: doc/guide-testing.md:169
+#, fuzzy
+#| msgid "## Tuple structs"
+msgid "### Typical test run"
+msgstr "## タプル構造体"
+
+#. type: Plain text
+#: doc/guide-testing.md:197
+#, fuzzy
+#| msgid "# Dereferencing pointers"
+msgid "### Running ignored tests"
+msgstr "# ポインタのデリファレンス"
+
+#. type: Plain text
+#: doc/guide-testing.md:235
+#, fuzzy
+#| msgid "## Declaring and implementing traits"
+msgid "## Saving and ratcheting metrics"
+msgstr "## トレイトの宣言と実装"

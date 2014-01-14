@@ -1,0 +1,47 @@
+# Japanese translations for Rust package
+# Copyright (C) 2014 The Rust Project Developers
+# This file is distributed under the same license as the Rust package.
+# Automatically generated, 2014.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Rust 0.10-pre\n"
+"POT-Creation-Date: 2014-01-13 12:01+0900\n"
+"PO-Revision-Date: 2014-01-13 12:01+0900\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: ja\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:83
+#, fuzzy
+#| msgid ""
+#| "[bug-3319]: https://github.com/mozilla/rust/issues/3319 [wiki-start]: "
+#| "https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust"
+msgid ""
+"[rustc]: https://github.com/mozilla/rust/tree/master/src/librustc [resolve]: "
+"https://github.com/mozilla/rust/blob/master/src/librustc/middle/resolve.rs "
+"[borrowck]: https://github.com/mozilla/rust/blob/master/src/librustc/middle/"
+"borrowck/"
+msgstr ""
+"[bug-3319]: https://github.com/mozilla/rust/issues/3319\n"
+"[wiki-start]: https://github.com/mozilla/rust/wiki/Note-getting-started-"
+"developing-Rust"
+
+#. type: Plain text
+#: doc/complement-lang-faq.md:110
+#, fuzzy
+#| msgid ""
+#| "[bug-3319]: https://github.com/mozilla/rust/issues/3319 [wiki-start]: "
+#| "https://github.com/mozilla/rust/wiki/Note-getting-started-developing-Rust"
+msgid ""
+"[unwind]: https://github.com/mozilla/rust/issues/908 [libgcc]: https://"
+"github.com/mozilla/rust/issues/1603"
+msgstr ""
+"[bug-3319]: https://github.com/mozilla/rust/issues/3319\n"
+"[wiki-start]: https://github.com/mozilla/rust/wiki/Note-getting-started-"
+"developing-Rust"
