@@ -136,6 +136,7 @@ mod test {
     use io::*;
     use prelude::*;
 
+    // FIXME #11530 this fails on android because tests are run as root
     iotest!(fn bind_error() {
         let mut called = false;
         io_error::cond.trap(|e| {
@@ -147,7 +148,7 @@ mod test {
             assert!(listener.is_none());
         });
         assert!(called);
-    } #[ignore(cfg(windows))])
+    } #[ignore(cfg(windows))] #[ignore(cfg(target_os = "android"))])
 
     iotest!(fn connect_error() {
         let mut called = false;

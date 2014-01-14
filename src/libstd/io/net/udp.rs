@@ -99,6 +99,7 @@ mod test {
     use super::*;
     use io::net::ip::{SocketAddr};
 
+    // FIXME #11530 this fails on android because tests are run as root
     iotest!(fn bind_error() {
         let mut called = false;
         io_error::cond.trap(|e| {
@@ -110,7 +111,7 @@ mod test {
             assert!(socket.is_none());
         });
         assert!(called);
-    } #[ignore(cfg(windows))])
+    } #[ignore(cfg(windows))] #[ignore(cfg(target_os = "android"))])
 
     iotest!(fn socket_smoke_test_ip4() {
         let server_ip = next_test_ip4();
