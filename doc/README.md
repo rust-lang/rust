@@ -47,12 +47,15 @@ http://kramdown.rubyforge.org/quickref.html
 
 # Notes for translators
 
+Notice: The procedure described below is a work in progress. We are working on
+translation system but the procedure contains some manual operations for now.
+
 To start the translation for a new language, see po4a.conf at first.
 
 To generate .pot and .po files, do something like:
 
 ~~~~
-po4a --copyright-holders="The Rust Project Developers" \
+po4a --copyright-holder="The Rust Project Developers" \
     --package-name="Rust" \
     --package-version="0.10-pre" \
     -M UTF-8 -L UTF-8 \
@@ -71,13 +74,13 @@ change:
 
 ~~~~
 for f in doc/po/**/*.po; do
-    msgattrib --untranslated $f -o $f.strip
+    msgattrib --translated $f -o $f.strip
     if [ -e $f.strip ]; then
        mv $f.strip $f
     else
        rm $f
     fi
 done
-~~~~ 
+~~~~
 
 This removes untranslated entries from .po files to save disk space.
