@@ -1587,7 +1587,7 @@ fn compile_submatch_continue<'r,
         let pat_ty = node_id_type(bcx, pat_id);
         let llbox = Load(bcx, val);
         let unboxed = match ty::get(pat_ty).sty {
-            ty::ty_uniq(..) if !ty::type_contents(bcx.tcx(), pat_ty).owns_managed() => llbox,
+            ty::ty_uniq(..) if !ty::type_contents(bcx.tcx(), pat_ty).owns_at_managed() => llbox,
             _ => GEPi(bcx, llbox, [0u, abi::box_field_body])
         };
         compile_submatch(bcx, enter_uniq(bcx, dm, m, col, val),
@@ -2234,8 +2234,10 @@ fn bind_irrefutable_pat<'a>(
             let pat_ty = node_id_type(bcx, pat.id);
             let llbox = Load(bcx, val);
             let unboxed = match ty::get(pat_ty).sty {
-                ty::ty_uniq(..) if !ty::type_contents(bcx.tcx(), pat_ty).owns_managed() => llbox,
-                    _ => GEPi(bcx, llbox, [0u, abi::box_field_body])
+                ty::ty_uniq(..) if !ty::type_contents(bcx.tcx(), pat_ty).owns_at_managed() => {
+                    llbox
+                }
+                _ => GEPi(bcx, llbox, [0u, abi::box_field_body])
             };
             bcx = bind_irrefutable_pat(bcx, inner, unboxed, binding_mode);
         }
@@ -2263,4 +2265,3 @@ fn simple_identifier<'a>(pat: &'a ast::Pat) -> Option<&'a ast::Path> {
         }
     }
 }
-

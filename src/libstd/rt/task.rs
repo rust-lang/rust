@@ -20,11 +20,14 @@ use cleanup;
 use clone::Clone;
 use io::Writer;
 use iter::{Iterator, Take};
+#[cfg(not(stage0))]
+use gc::collector::GarbageCollector;
 use local_data;
 use logging::Logger;
 use ops::Drop;
 use option::{Option, Some, None};
 use prelude::drop;
+use ptr;
 use result::{Result, Ok, Err};
 use rt::Runtime;
 use rt::borrowck::BorrowRecord;
@@ -38,6 +41,7 @@ use sync::arc::UnsafeArc;
 use sync::atomics::{AtomicUint, SeqCst};
 use task::{TaskResult, TaskOpts};
 use unstable::finally::Finally;
+use util::replace;
 
 // The Task struct represents all state associated with a rust
 // task. There are at this point two primary "subtypes" of task,
@@ -47,7 +51,7 @@ use unstable::finally::Finally;
 
 pub struct Task {
     heap: LocalHeap,
-    gc: GarbageCollector,
+    gc: PossibleGc,
     storage: LocalStorage,
     unwinder: Unwinder,
     death: Death,
@@ -63,7 +67,15 @@ pub struct Task {
     priv imp: Option<~Runtime>,
 }
 
-pub struct GarbageCollector;
+pub enum PossibleGc {
+    GcUninit,
+    // nullable
+    GcBorrowed(*mut GarbageCollector),
+    GcExists(~GarbageCollector)
+}
+
+#[cfg(stage0)]
+struct GarbageCollector;
 pub struct LocalStorage(Option<local_data::Map>);
 
 /// A handle to a blocked task. Usually this means having the ~Task pointer by
@@ -88,7 +100,7 @@ impl Task {
     pub fn new() -> Task {
         Task {
             heap: LocalHeap::new(),
-            gc: GarbageCollector,
+            gc: GcUninit,
             storage: LocalStorage(None),
             unwinder: Unwinder::new(),
             death: Death::new(),
@@ -166,11 +178,20 @@ impl Task {
                     let LocalStorage(ref mut optmap) = task.storage;
                     optmap.take()
                 };
+
+                // use the null to inform any finalisers that call
+                // back into the GC that we're collecting everything,
+                // and so they don't need to/can't do anything with
+                // it.
+                let gc = replace(&mut task.get().gc, GcBorrowed(ptr::mut_null()));
+
                 drop(task);
                 drop(storage_map);
 
                 // Destroy remaining boxes. Also may run user dtors.
                 unsafe { cleanup::annihilate(); }
+                // kill any remaining GC references.
+                drop(gc);
 
                 // Finally, just in case user dtors printed/logged during TLS
                 // cleanup and annihilation, re-destroy stdout and the logger.

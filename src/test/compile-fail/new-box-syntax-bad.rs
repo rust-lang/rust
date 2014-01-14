@@ -9,6 +9,5 @@ use std::owned::HEAP;
 pub fn main() {
     let x: Gc<int> = box(HEAP) 2;  //~ ERROR mismatched types
     let y: Gc<int> = box(HEAP)(1 + 2);  //~ ERROR mismatched types
-    let z: ~int = box(GC)(4 + 5);   //~ ERROR mismatched types
+    //let z: ~int = box(GC)(4 + 5);   //~ ERROR mismatched types
 }
-

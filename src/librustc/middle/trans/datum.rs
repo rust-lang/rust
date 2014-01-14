@@ -582,7 +582,7 @@ impl Datum {
             }
         };
 
-        if !header && !ty::type_contents(bcx.tcx(), content_ty).owns_managed() {
+        if !header && !ty::type_contents(bcx.tcx(), content_ty).owns_at_managed() {
             let ptr = self.to_value_llval(bcx);
             let ty = type_of::type_of(bcx.ccx(), content_ty);
             let body = PointerCast(bcx, ptr, ty.ptr_to());

@@ -378,7 +378,16 @@ extern "rust-intrinsic" {
     pub fn needs_drop<T>() -> bool;
 
     /// Returns `true` if a type is managed (will be allocated on the local heap)
+    #[cfg(stage0)] // SNAP a5fa1d9
     pub fn owns_managed<T>() -> bool;
+
+    /// Returns `true` if a type is @-managed (will be allocated on the local heap)
+    #[cfg(not(stage0))]
+    pub fn owns_at_managed<T>() -> bool;
+
+    /// Returns `true` if a type contains a type marked with #[managed]
+    #[cfg(not(stage0))]
+    pub fn reaches_new_managed<T>() -> bool;
 
     pub fn visit_tydesc(td: *TyDesc, tv: &mut TyVisitor);
 

@@ -246,7 +246,7 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
       }
       ty::ty_uniq(ref mt) => {
           let ty = type_of(cx, mt.ty);
-          if ty::type_contents(cx.tcx, mt.ty).owns_managed() {
+          if ty::type_contents(cx.tcx, mt.ty).owns_at_managed() {
               Type::unique(cx, &ty).ptr_to()
           } else {
               ty.ptr_to()
@@ -255,7 +255,7 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
       ty::ty_vec(ref mt, ty::vstore_uniq) => {
           let ty = type_of(cx, mt.ty);
           let ty = Type::vec(cx.sess.targ_cfg.arch, &ty);
-          if ty::type_contents(cx.tcx, mt.ty).owns_managed() {
+          if ty::type_contents(cx.tcx, mt.ty).owns_at_managed() {
               Type::unique(cx, &ty).ptr_to()
           } else {
               ty.ptr_to()

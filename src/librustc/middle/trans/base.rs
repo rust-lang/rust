@@ -434,7 +434,7 @@ pub fn malloc_general<'a>(bcx: &'a Block, t: ty::t, heap: heap)
 }
 
 pub fn heap_for_unique(bcx: &Block, t: ty::t) -> heap {
-    if ty::type_contents(bcx.tcx(), t).owns_managed() {
+    if ty::type_contents(bcx.tcx(), t).owns_at_managed() {
         heap_managed_unique
     } else {
         heap_exchange
