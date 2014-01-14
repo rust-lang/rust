@@ -316,7 +316,6 @@ pub fn warn_not_to_commit(ccx: &CrateContext, msg: &str) {
 #[deriving(Eq)]
 pub enum heap {
     heap_managed,
-    heap_managed_unique,
     heap_exchange,
     heap_exchange_closure
 }
@@ -498,7 +497,7 @@ pub fn add_clean_temp_mem_in_scope_(bcx: &Block, scope_id: Option<ast::NodeId>,
 
 pub fn add_clean_free(cx: &Block, ptr: ValueRef, heap: heap) {
     let free_fn = match heap {
-        heap_managed | heap_managed_unique => {
+        heap_managed => {
             @GCHeapFreeingCleanupFunction {
                 ptr: ptr,
             } as @CleanupFunction

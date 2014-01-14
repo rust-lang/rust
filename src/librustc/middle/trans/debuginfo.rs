@@ -2147,10 +2147,6 @@ fn type_metadata(cx: &CrateContext,
                 ty::vstore_fixed(len) => {
                     fixed_vec_metadata(cx, mt.ty, len, usage_site_span)
                 }
-                ty::vstore_uniq if ty::type_contents(cx.tcx, mt.ty).owns_managed() => {
-                    let boxed_vec_metadata = boxed_vec_metadata(cx, mt.ty, usage_site_span);
-                    pointer_type_metadata(cx, t, boxed_vec_metadata)
-                }
                 ty::vstore_uniq => {
                     let vec_metadata = vec_metadata(cx, mt.ty, usage_site_span);
                     pointer_type_metadata(cx, t, vec_metadata)
@@ -2165,12 +2161,8 @@ fn type_metadata(cx: &CrateContext,
             }
         },
         ty::ty_uniq(typ) => {
-            if ty::type_contents(cx.tcx, typ).owns_managed() {
-                create_pointer_to_box_metadata(cx, t, typ)
-            } else {
-                let pointee = type_metadata(cx, typ, usage_site_span);
-                pointer_type_metadata(cx, t, pointee)
-            }
+            let pointee = type_metadata(cx, typ, usage_site_span);
+            pointer_type_metadata(cx, t, pointee)
         }
         ty::ty_ptr(ref mt) | ty::ty_rptr(_, ref mt) => {
             let pointee = type_metadata(cx, mt.ty, usage_site_span);

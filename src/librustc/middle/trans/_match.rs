@@ -1584,14 +1584,9 @@ fn compile_submatch_continue<'r,
     }
 
     if any_uniq_pat(m, col) {
-        let pat_ty = node_id_type(bcx, pat_id);
         let llbox = Load(bcx, val);
-        let unboxed = match ty::get(pat_ty).sty {
-            ty::ty_uniq(..) if !ty::type_contents(bcx.tcx(), pat_ty).owns_managed() => llbox,
-            _ => GEPi(bcx, llbox, [0u, abi::box_field_body])
-        };
         compile_submatch(bcx, enter_uniq(bcx, dm, m, col, val),
-                         vec::append(~[unboxed], vals_left), chk);
+                         vec::append(~[llbox], vals_left), chk);
         return;
     }
 
@@ -2231,13 +2226,8 @@ fn bind_irrefutable_pat<'a>(
             }
         }
         ast::PatUniq(inner) => {
-            let pat_ty = node_id_type(bcx, pat.id);
             let llbox = Load(bcx, val);
-            let unboxed = match ty::get(pat_ty).sty {
-                ty::ty_uniq(..) if !ty::type_contents(bcx.tcx(), pat_ty).owns_managed() => llbox,
-                    _ => GEPi(bcx, llbox, [0u, abi::box_field_body])
-            };
-            bcx = bind_irrefutable_pat(bcx, inner, unboxed, binding_mode);
+            bcx = bind_irrefutable_pat(bcx, inner, llbox, binding_mode);
         }
         ast::PatRegion(inner) => {
             let loaded_val = Load(bcx, val);

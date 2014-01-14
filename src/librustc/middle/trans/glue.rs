@@ -303,11 +303,7 @@ pub fn make_free_glue<'a>(bcx: &'a Block<'a>, v: ValueRef, t: ty::t)
         with_cond(bcx, not_null, |bcx| {
             let body_datum = box_datum.box_body(bcx);
             let bcx = drop_ty(bcx, body_datum.to_ref_llval(bcx), body_datum.ty);
-            if ty::type_contents(bcx.tcx(), t).owns_managed() {
-                trans_free(bcx, box_datum.val)
-            } else {
-                trans_exchange_free(bcx, box_datum.val)
-            }
+            trans_exchange_free(bcx, box_datum.val)
         })
       }
       ty::ty_vec(_, ty::vstore_uniq) | ty::ty_str(ty::vstore_uniq) |
@@ -552,7 +548,6 @@ pub fn declare_tydesc(ccx: &CrateContext, t: ty::t) -> @tydesc_info {
 
     let has_header = match ty::get(t).sty {
         ty::ty_box(..) => true,
-        ty::ty_uniq(..) => ty::type_contents(ccx.tcx, t).owns_managed(),
         _ => false
     };
 
