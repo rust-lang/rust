@@ -2067,7 +2067,7 @@ fn head_bad<T>(v: &[T]) -> T {
 
 However, we can tell the compiler
 that the `head` function is only for copyable types.
-In Rust, copyable types are those that _implement the `Clone` trait_.  
+In Rust, copyable types are those that _implement the `Clone` trait_.
 We can then explicitly create a second copy of the value we are returning
 by calling the `clone` method:
 
@@ -3282,6 +3282,7 @@ guides on individual topics.
 * [Packaging up Rust code][rustpkg]
 * [Documenting Rust code][rustdoc]
 * [Testing Rust code][testing]
+* [The Rust Runtime][runtime]
 
 There is further documentation on the [wiki], however those tend to be even more out of date as this document.
 
@@ -3294,6 +3295,7 @@ There is further documentation on the [wiki], however those tend to be even more
 [conditions]: guide-conditions.html
 [rustpkg]: guide-rustpkg.html
 [testing]: guide-testing.html
+[runtime]: guide-runtime.html
 [rustdoc]: rustdoc.html
 [wiki]: https://github.com/mozilla/rust/wiki/Docs
 
