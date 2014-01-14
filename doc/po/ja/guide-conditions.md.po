@@ -1,0 +1,73 @@
+# Japanese translations for Rust package
+# Copyright (C) 2014 The Rust Project Developers
+# This file is distributed under the same license as the Rust package.
+# Automatically generated, 2014.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Rust 0.10-pre\n"
+"POT-Creation-Date: 2014-01-13 12:01+0900\n"
+"PO-Revision-Date: 2014-01-13 12:01+0900\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: ja\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#. type: Plain text
+#: doc/guide-conditions.md:2
+#, fuzzy
+#| msgid "% The Rust Language Tutorial"
+msgid "% The Rust Condition and Error-handling Guide"
+msgstr "% Rust 言語チュートリアル"
+
+#. type: Plain text
+#: doc/guide-conditions.md:4 doc/guide-ffi.md:4 doc/guide-lifetimes.md:4
+#: doc/guide-macros.md:4 doc/guide-rustpkg.md:4 doc/guide-tasks.md:4
+#: doc/rust.md:4 doc/rustpkg.md:4 doc/tutorial.md:4
+msgid "# Introduction"
+msgstr "# イントロダクション"
+
+#. type: Bullet: '  - '
+#: doc/guide-conditions.md:14
+#, fuzzy
+#| msgid "# Functions"
+msgid "Options"
+msgstr "# 関数"
+
+#. type: Bullet: '  - '
+#: doc/guide-conditions.md:14
+#, fuzzy
+#| msgid "## Conditionals"
+msgid "Conditions"
+msgstr "## 条件式"
+
+#. type: Plain text
+#: doc/guide-conditions.md:19
+#, fuzzy
+#| msgid "## Tuples"
+msgid "# Example program"
+msgstr "## タプル"
+
+#. type: Plain text
+#: doc/guide-conditions.md:112
+#, fuzzy
+#| msgid "# Functions"
+msgid "# Options"
+msgstr "# 関数"
+
+#. type: Plain text
+#: doc/guide-conditions.md:318
+#, fuzzy
+#| msgid "## Conditionals"
+msgid "# Conditions"
+msgstr "## 条件式"
+
+#. type: Plain text
+#: doc/guide-conditions.md:415
+#, fuzzy
+#| msgid "## Traits"
+msgid "# Trapping a condition"
+msgstr "## トレイト"

@@ -1,0 +1,292 @@
+# Japanese translations for Rust package
+# Copyright (C) 2014 The Rust Project Developers
+# This file is distributed under the same license as the Rust package.
+# Automatically generated, 2014.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Rust 0.10-pre\n"
+"POT-Creation-Date: 2014-01-13 12:01+0900\n"
+"PO-Revision-Date: 2014-01-13 12:01+0900\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: ja\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#. type: Plain text
+#: doc/guide-pointers.md:2
+#, fuzzy
+#| msgid "% The Rust Language Tutorial"
+msgid "% The Rust Pointer Guide"
+msgstr "% Rust 言語チュートリアル"
+
+#. type: Plain text
+#: doc/guide-pointers.md:21
+#, fuzzy
+#| msgid "~~~~ let square = |x: int| -> uint { (x * x) as uint }; ~~~~"
+msgid "~~~rust fn succ(x: &int) -> int { *x + 1 } ~~~"
+msgstr ""
+"~~~~\n"
+"let square = |x: int| -> uint { (x * x) as uint };\n"
+"~~~~~~~~\n"
+
+#. type: Plain text
+#: doc/guide-pointers.md:58
+#, fuzzy
+#| msgid "~~~~ let square = |x: int| -> uint { (x * x) as uint }; ~~~~"
+msgid "~~~rust fn succ(x: int) -> int { x + 1 }"
+msgstr ""
+"~~~~\n"
+"let square = |x: int| -> uint { (x * x) as uint };\n"
+"~~~~~~~~\n"
+
+#. type: Plain text
+#: doc/guide-pointers.md:115
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.xfail-test} # struct Point { x: f64, y: f64 } let mut mypoint = Point { x: 1.0, y: 1.0 }; let origin = Point { x: 0.0, y: 0.0 };"
+msgid ""
+"fn main() {\n"
+"    let p0 = Point { x: 5, y: 10};\n"
+"    let p1 = transform(p0);\n"
+"    println!(\"{:?}\", p1);\n"
+"}\n"
+msgstr ""
+"~~~~ {.xfail-test}\n"
+"# struct Point { x: f64, y: f64 }\n"
+"let mut mypoint = Point { x: 1.0, y: 1.0 };\n"
+"let origin = Point { x: 0.0, y: 0.0 };"
+
+#. type: Plain text
+#: doc/guide-pointers.md:129
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.xfail-test} # struct Point { x: f64, y: f64 } let mut mypoint = Point { x: 1.0, y: 1.0 }; let origin = Point { x: 0.0, y: 0.0 };"
+msgid ""
+"~~~rust\n"
+"# struct Point {\n"
+"#     x: int,\n"
+"#     y: int,\n"
+"# }\n"
+"# let p0 = Point { x: 5, y: 10};\n"
+"fn transform(p: &Point) -> Point {\n"
+"    Point { x: p.x + 1, y: p.y + 1}\n"
+"}\n"
+msgstr ""
+"~~~~ {.xfail-test}\n"
+"# struct Point { x: f64, y: f64 }\n"
+"let mut mypoint = Point { x: 1.0, y: 1.0 };\n"
+"let origin = Point { x: 0.0, y: 0.0 };"
+
+#. type: Plain text
+#: doc/guide-pointers.md:145
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.xfail-test} # struct Point { x: f64, y: f64 } let mut mypoint = Point { x: 1.0, y: 1.0 }; let origin = Point { x: 0.0, y: 0.0 };"
+msgid ""
+"fn transform(p: Point) -> Point {\n"
+"    Point { x: p.x + 1, y: p.y + 1}\n"
+"}\n"
+msgstr ""
+"~~~~ {.xfail-test}\n"
+"# struct Point { x: f64, y: f64 }\n"
+"let mut mypoint = Point { x: 1.0, y: 1.0 };\n"
+"let origin = Point { x: 0.0, y: 0.0 };"
+
+#. type: Plain text
+#: doc/guide-pointers.md:152
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.xfail-test} # struct Point { x: f64, y: f64 } let mut mypoint = Point { x: 1.0, y: 1.0 }; let origin = Point { x: 0.0, y: 0.0 };"
+msgid ""
+"fn main() {\n"
+"    let p0 = Point { x: 5, y: 10};\n"
+"    let p1 = transform(p0);\n"
+"    println!(\"{:?}\", p1);\n"
+"}\n"
+"~~~\n"
+msgstr ""
+"~~~~ {.xfail-test}\n"
+"# struct Point { x: f64, y: f64 }\n"
+"let mut mypoint = Point { x: 1.0, y: 1.0 };\n"
+"let origin = Point { x: 0.0, y: 0.0 };"
+
+#. type: Plain text
+#: doc/guide-pointers.md:162
+#, fuzzy
+#| msgid "# Borrowed pointers"
+msgid "# Owned Pointers"
+msgstr "# 借用ポインタ"
+
+#. type: Plain text
+#: doc/guide-pointers.md:175
+#, fuzzy
+msgid "## References to Traits"
+msgstr "# ポインタのデリファレンス"
+
+#. type: Plain text
+#: doc/guide-pointers.md:181
+#, fuzzy
+#| msgid "# Data structures"
+msgid "## Recursive Data Structures"
+msgstr "# データ構造"
+
+#. type: Plain text
+#: doc/guide-pointers.md:229
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.xfail-test} # struct Point { x: f64, y: f64 } let mut mypoint = Point { x: 1.0, y: 1.0 }; let origin = Point { x: 0.0, y: 0.0 };"
+msgid ""
+"fn main() {\n"
+"    let a = Point { x: 10, y: 20 };\n"
+"    do spawn {\n"
+"        println!(\"{}\", a.x);\n"
+"    }\n"
+"}\n"
+"~~~\n"
+msgstr ""
+"~~~~ {.xfail-test}\n"
+"# struct Point { x: f64, y: f64 }\n"
+"let mut mypoint = Point { x: 1.0, y: 1.0 };\n"
+"let origin = Point { x: 0.0, y: 0.0 };"
+
+#. type: Plain text
+#: doc/guide-pointers.md:246
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.xfail-test} # struct Point { x: f64, y: f64 } let mut mypoint = Point { x: 1.0, y: 1.0 }; let origin = Point { x: 0.0, y: 0.0 };"
+msgid ""
+"fn main() {\n"
+"    let a = ~Point { x: 10, y: 20 };\n"
+"    do spawn {\n"
+"        println!(\"{}\", a.x);\n"
+"    }\n"
+"}\n"
+"~~~\n"
+msgstr ""
+"~~~~ {.xfail-test}\n"
+"# struct Point { x: f64, y: f64 }\n"
+"let mut mypoint = Point { x: 1.0, y: 1.0 };\n"
+"let origin = Point { x: 0.0, y: 0.0 };"
+
+#. type: Plain text
+#: doc/guide-pointers.md:251
+#, fuzzy
+#| msgid "## Managed boxes"
+msgid "# Managed Pointers"
+msgstr "## マネージドボックス"
+
+#. type: Plain text
+#: doc/guide-pointers.md:277
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.xfail-test} # struct Point { x: f64, y: f64 } let mut mypoint = Point { x: 1.0, y: 1.0 }; let origin = Point { x: 0.0, y: 0.0 };"
+msgid ""
+"fn main() {\n"
+"    let a = ~Point { x: 10, y: 20 };\n"
+"    let b = a;\n"
+"    println!(\"{}\", b.x);\n"
+"    println!(\"{}\", a.x);\n"
+"}\n"
+"~~~\n"
+msgstr ""
+"~~~~ {.xfail-test}\n"
+"# struct Point { x: f64, y: f64 }\n"
+"let mut mypoint = Point { x: 1.0, y: 1.0 };\n"
+"let origin = Point { x: 0.0, y: 0.0 };"
+
+#. type: Plain text
+#: doc/guide-pointers.md:308
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.xfail-test} # struct Point { x: f64, y: f64 } let mut mypoint = Point { x: 1.0, y: 1.0 }; let origin = Point { x: 0.0, y: 0.0 };"
+msgid ""
+"fn main() {\n"
+"    let a = @Point { x: 10, y: 20 };\n"
+"    let b = a;\n"
+"    println!(\"{}\", b.x);\n"
+"    println!(\"{}\", a.x);\n"
+"}\n"
+"~~~\n"
+msgstr ""
+"~~~~ {.xfail-test}\n"
+"# struct Point { x: f64, y: f64 }\n"
+"let mut mypoint = Point { x: 1.0, y: 1.0 };\n"
+"let origin = Point { x: 0.0, y: 0.0 };"
+
+#. type: Plain text
+#: doc/guide-pointers.md:326 doc/tutorial.md:1345
+#, fuzzy
+msgid "# References"
+msgstr "# ポインタのデリファレンス"
+
+#. type: Plain text
+#: doc/guide-pointers.md:336
+#, fuzzy
+#| msgid "~~~~ use std::task::spawn;"
+msgid "~~~rust use std::num::sqrt;"
+msgstr ""
+"~~~~\n"
+"use std::task::spawn;"
+
+#. type: Plain text
+#: doc/guide-pointers.md:352
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.xfail-test} # struct Point { x: f64, y: f64 } let mut mypoint = Point { x: 1.0, y: 1.0 }; let origin = Point { x: 0.0, y: 0.0 };"
+msgid ""
+"fn main() {\n"
+"    let origin = @Point { x: 0.0, y: 0.0 };\n"
+"    let p1     = ~Point { x: 5.0, y: 3.0 };\n"
+msgstr ""
+"~~~~ {.xfail-test}\n"
+"# struct Point { x: f64, y: f64 }\n"
+"let mut mypoint = Point { x: 1.0, y: 1.0 };\n"
+"let origin = Point { x: 0.0, y: 0.0 };"
+
+#. type: Plain text
+#: doc/guide-pointers.md:378
+#, fuzzy, no-wrap
+#| msgid "~~~~ {.xfail-test} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
+msgid ""
+"~~~rust{.xfail-test}\n"
+"fn main() {\n"
+"    println!(\"{}\", x);\n"
+"    let x = 5;\n"
+"}\n"
+"~~~\n"
+msgstr ""
+"~~~~ {.xfail-test}\n"
+"// main.rs\n"
+"extern mod world;\n"
+"fn main() { println(~\"hello \" + world::explore()); }\n"
+"~~~~"
+
+#. type: Plain text
+#: doc/guide-pointers.md:433
+#, fuzzy
+#| msgid "# Dereferencing pointers"
+msgid "# Returning Pointers"
+msgstr "# ポインタのデリファレンス"
+
+#. type: Plain text
+#: doc/guide-pointers.md:444
+#, fuzzy, no-wrap
+#| msgid "~~~~ let square = |x: int| -> uint { (x * x) as uint }; ~~~~"
+msgid ""
+"~~~rust\n"
+"fn foo(x: ~int) -> ~int {\n"
+"    return ~*x;\n"
+"}\n"
+msgstr ""
+"~~~~\n"
+"let square = |x: int| -> uint { (x * x) as uint };\n"
+"~~~~~~~~\n"
+
+#. type: Plain text
+#: doc/guide-pointers.md:457 doc/guide-pointers.md:471
+#, fuzzy, no-wrap
+#| msgid "~~~~ let square = |x: int| -> uint { (x * x) as uint }; ~~~~"
+msgid ""
+"~~~rust\n"
+"fn foo(x: ~int) -> int {\n"
+"    return *x;\n"
+"}\n"
+msgstr ""
+"~~~~\n"
+"let square = |x: int| -> uint { (x * x) as uint };\n"
+"~~~~~~~~\n"
