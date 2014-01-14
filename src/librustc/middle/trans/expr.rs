@@ -229,19 +229,12 @@ pub fn trans_to_datum<'a>(bcx: &'a Block<'a>, expr: &ast::Expr)
                 }
             };
         }
-        AutoObject(ref sigil, ref region, _, _, _, _) => {
+        AutoObject(..) => {
 
             let adjusted_ty = ty::expr_ty_adjusted(bcx.tcx(), expr);
             let scratch = scratch_datum(bcx, adjusted_ty, "__adjust", false);
 
-            let trait_store = match *sigil {
-                ast::BorrowedSigil => ty::RegionTraitStore(region.expect("expected valid region")),
-                ast::OwnedSigil => ty::UniqTraitStore,
-                ast::ManagedSigil => ty::BoxTraitStore
-            };
-
-            bcx = meth::trans_trait_cast(bcx, expr, expr.id, SaveIn(scratch.val),
-                                         trait_store, false /* no adjustments */);
+            bcx = meth::trans_trait_cast(bcx, expr, expr.id, SaveIn(scratch.val), Some(datum));
 
             datum = scratch.to_appropriate_datum(bcx);
             datum.add_clean(bcx);
@@ -834,9 +827,9 @@ fn trans_rvalue_dps_unadjusted<'a>(
         }
         ast::ExprCast(val, _) => {
             match ty::get(node_id_type(bcx, expr.id)).sty {
-                ty::ty_trait(_, _, store, _, _) => {
+                ty::ty_trait(..) => {
                     return meth::trans_trait_cast(bcx, val, expr.id,
-                                                  dest, store, true /* adjustments */);
+                                                  dest, None);
                 }
                 _ => {
                     bcx.tcx().sess.span_bug(expr.span,
