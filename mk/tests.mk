@@ -103,13 +103,13 @@ endif
 ifdef CFG_WINDOWSY_$(1)
   CFG_TESTLIB_$(1)=$$(CFG_BUILD_DIR)$$(2)/$$(strip \
    $$(if $$(findstring stage0,$$(1)), \
-       stage0/$$(LIBDIR_RELATIVE), \
+       stage0/$$(CFG_LIBDIR_RELATIVE), \
       $$(if $$(findstring stage1,$$(1)), \
-           stage1/$$(LIBDIR_RELATIVE), \
+           stage1/$$(CFG_LIBDIR_RELATIVE), \
           $$(if $$(findstring stage2,$$(1)), \
-               stage2/$$(LIBDIR_RELATIVE), \
+               stage2/$$(CFG_LIBDIR_RELATIVE), \
                $$(if $$(findstring stage3,$$(1)), \
-                    stage3/$$(LIBDIR_RELATIVE), \
+                    stage3/$$(CFG_LIBDIR_RELATIVE), \
                )))))/$$(CFG_RUSTLIBDIR)/$$(CFG_BUILD)/lib
   CFG_RUN_TEST_$(1)=$$(call CFG_RUN_$(1),$$(call CFG_TESTLIB_$(1),$$(1),$$(3)),$$(1))
 endif
