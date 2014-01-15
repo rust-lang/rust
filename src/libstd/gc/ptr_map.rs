@@ -136,25 +136,21 @@ impl PtrMap {
         }
     }
 
-    /// Find the unreachable pointers in the map, returing `[(low,
-    /// metadata, finaliser)]`.
-    pub fn find_unreachable(&mut self) -> ~[(uint, uint, Option<fn(*mut ())>)] {
-        self.map.iter()
-            .filter_map(|(low, descr)| {
-                if descr.is_used_and_unreachable(self.reachable_state) {
-                    Some((low, descr.metadata, descr.finaliser))
-                } else {
-                    None
-                }
-            }).collect()
-    }
-
-    /// Mark an allocation as unused.
-    pub fn mark_unused(&mut self, ptr: uint) {
-        match self.map.find_mut(&ptr) {
-            Some(descr) => { descr.finaliser = None; descr.flags &= !USED; }
-            None => {}
+    /// Find the unreachable pointers in the map, iterating over
+    /// `(low, descriptor)`. This marks each of these pointers as
+    /// unused (and clears their destructors) after calling `f`.
+    #[inline]
+    pub fn each_unreachable(&mut self, f: |uint, &PtrDescr| -> bool) -> bool {
+        for (low, descr) in self.map.mut_iter() {
+            if descr.is_used_and_unreachable(self.reachable_state) {
+                let cont = f(low, *descr);
+                // mark as unused
+                descr.finaliser = None;
+                descr.flags &= !USED;
+                if !cont { return false; }
+            }
         }
+        return true;
     }
 
     /// After a collection this will flip an internal bit so that

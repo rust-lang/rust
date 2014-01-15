@@ -233,27 +233,40 @@ impl GarbageCollector {
                 self.conservative_scan(ptr as *uint, end as *uint)
             });
 
-
         // Step 2. sweep all the unreachable ones for deallocation.
-        let unreachable = self.gc_ptrs.find_unreachable();
-        for &(ptr, size, finaliser) in unreachable.iter() {
-            debug!("unreachable: 0x{:x}", ptr);
-            match finaliser {
-                Some(f) => f(ptr as *mut ()),
-                None => {}
-            }
+        let mut bytes_collected = 0u;
+        let mut large_allocs = ~[];
+        self.gc_ptrs.each_unreachable(|ptr, descr| {
+                debug!("unreachable: 0x{:x}", ptr);
+                match descr.finaliser {
+                    Some(f) => f(ptr as *mut ()),
+                    None => {}
+                }
 
-            let log_rounded = compute_log_rounded_up_size(size);
-            // a "small" allocation so we cache it.
-            if log_rounded <= ALLOC_CACHE_MAX_LOG {
-                self.gc_ptrs.mark_unused(ptr);
-                self.alloc_cache[log_rounded - ALLOC_CACHE_MIN_LOG].push(ptr);
-            } else {
-                // a big one, so whatever, the OS can have its memory
-                // back.
-                self.gc_ptrs.remove(ptr);
-                libc::free(ptr as *libc::c_void);
-            }
+                // GC'd pointers use the metadata to store the size
+                let log_rounded = compute_log_rounded_up_size(descr.metadata);
+                // a "small" allocation so we cache it.
+                if log_rounded <= ALLOC_CACHE_MAX_LOG {
+                    // the each_unreachable driver marks this as
+                    // unused internally.
+                    self.alloc_cache[log_rounded - ALLOC_CACHE_MIN_LOG].push(ptr);
+
+                    let actual_size = 1 << log_rounded;
+                    bytes_collected += actual_size;
+                } else {
+                    large_allocs.push(ptr);
+
+                    bytes_collected += descr.metadata;
+                }
+
+                true
+            });
+        // have to do these removals outside that loop
+        for &ptr in large_allocs.iter() {
+            // a big one, so whatever, the OS can have its memory
+            // back.
+            self.gc_ptrs.remove(ptr);
+            libc::free(ptr as *libc::c_void);
         }
     }
 }
