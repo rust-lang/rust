@@ -68,6 +68,7 @@ pub fn append<T:Clone>(lhs: @[T], rhs: &[T]) -> @[T] {
 
 
 /// Apply a function to each element of a vector and return the results
+#[inline]
 pub fn map<T, U>(v: &[T], f: |x: &T| -> U) -> @[U] {
     build(Some(v.len()), |push| {
         for elem in v.iter() {
@@ -82,6 +83,7 @@ pub fn map<T, U>(v: &[T], f: |x: &T| -> U) -> @[U] {
  * Creates an immutable vector of size `n_elts` and initializes the elements
  * to the value returned by the function `op`.
  */
+#[inline]
 pub fn from_fn<T>(n_elts: uint, op: |uint| -> T) -> @[T] {
     build(Some(n_elts), |push| {
         let mut i: uint = 0u;
@@ -95,6 +97,7 @@ pub fn from_fn<T>(n_elts: uint, op: |uint| -> T) -> @[T] {
  * Creates an immutable vector of size `n_elts` and initializes the elements
  * to the value `t`.
  */
+#[inline]
 pub fn from_elem<T:Clone>(n_elts: uint, t: T) -> @[T] {
     build(Some(n_elts), |push| {
         let mut i: uint = 0u;
@@ -109,6 +112,7 @@ pub fn from_elem<T:Clone>(n_elts: uint, t: T) -> @[T] {
  * Creates and initializes an immutable managed vector by moving all the
  * elements from an owned vector.
  */
+#[inline]
 pub fn to_managed_move<T>(v: ~[T]) -> @[T] {
     let mut av = @[];
     unsafe {
@@ -124,6 +128,7 @@ pub fn to_managed_move<T>(v: ~[T]) -> @[T] {
  * Creates and initializes an immutable managed vector by copying all the
  * elements of a slice.
  */
+#[inline]
 pub fn to_managed<T:Clone>(v: &[T]) -> @[T] {
     from_fn(v.len(), |i| v[i].clone())
 }
@@ -135,6 +140,7 @@ impl<T> Clone for @[T] {
 }
 
 impl<A> FromIterator<A> for @[A] {
+    #[inline]
     fn from_iterator<T: Iterator<A>>(iterator: &mut T) -> @[A] {
         let (lower, _) = iterator.size_hint();
         build(Some(lower), |push| {
@@ -216,6 +222,7 @@ pub mod raw {
         move_val_init(&mut(*p), initval);
     }
 
+    #[inline]
     unsafe fn push_slow<T>(v: &mut @[T], initval: T) {
         reserve_at_least(v, v.len() + 1u);
         push_fast(v, initval);
@@ -232,6 +239,7 @@ pub mod raw {
      * * v - A vector
      * * n - The number of elements to reserve space for
      */
+    #[inline]
     pub unsafe fn reserve<T>(v: &mut @[T], n: uint) {
         // Only make the (slow) call into the runtime if we have to
         if capacity(*v) < n {
@@ -243,6 +251,7 @@ pub mod raw {
 
     // Implementation detail. Shouldn't be public
     #[allow(missing_doc)]
+    #[inline]
     pub fn reserve_raw(ty: *TyDesc, ptr: *mut *mut Box<Vec<()>>, n: uint) {
         // check for `uint` overflow
         unsafe {
@@ -257,6 +266,7 @@ pub mod raw {
             }
         }
 
+        #[inline]
         fn local_realloc(ptr: *(), size: uint) -> *() {
             use rt::local::Local;
             use rt::task::Task;
@@ -281,6 +291,7 @@ pub mod raw {
      * * v - A vector
      * * n - The number of elements to reserve space for
      */
+    #[inline]
     pub unsafe fn reserve_at_least<T>(v: &mut @[T], n: uint) {
         reserve(v, uint::next_power_of_two(n));
     }

@@ -141,6 +141,7 @@ memory and partly incapable of presentation to others.",
     abort();
 
     fn abort() -> ! {
-        unsafe { libc::abort() }
+        use std::unstable::intrinsics;
+        unsafe { intrinsics::abort() }
     }
 }
