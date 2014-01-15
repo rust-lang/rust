@@ -418,6 +418,7 @@ export CFG_PREFIX
 export CFG_LIBDIR
 export CFG_RUSTLIBDIR
 export CFG_LIBDIR_RELATIVE
+export CFG_DISABLE_INJECT_STD_VERSION
 
 ######################################################################
 # Subprograms
