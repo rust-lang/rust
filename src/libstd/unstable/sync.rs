@@ -13,14 +13,15 @@ use kinds::Send;
 use ops::Drop;
 use option::{Option,Some,None};
 use sync::arc::UnsafeArc;
-use unstable::mutex::Mutex;
+use unstable::mutex::{Mutex, Cond};
 
 pub struct LittleLock {
     priv l: Mutex,
+    priv c: Cond,
 }
 
 pub struct LittleGuard<'a> {
-    priv l: &'a mut Mutex,
+    priv l: &'a LittleLock,
 }
 
 impl Drop for LittleLock {
@@ -32,36 +33,36 @@ impl Drop for LittleLock {
 #[unsafe_destructor]
 impl<'a> Drop for LittleGuard<'a> {
     fn drop(&mut self) {
-        unsafe { self.l.unlock(); }
+        unsafe { self.l.l.unlock(); }
     }
 }
 
 impl LittleLock {
     pub fn new() -> LittleLock {
-        unsafe { LittleLock { l: Mutex::new() } }
+        unsafe { LittleLock { l: Mutex::new(), c: Cond::new() } }
     }
 
-    pub unsafe fn lock<'a>(&'a mut self) -> LittleGuard<'a> {
+    pub unsafe fn lock<'a>(&'a self) -> LittleGuard<'a> {
         self.l.lock();
-        LittleGuard { l: &mut self.l }
+        LittleGuard { l: self }
     }
 
-    pub unsafe fn try_lock<'a>(&'a mut self) -> Option<LittleGuard<'a>> {
+    pub unsafe fn try_lock<'a>(&'a self) -> Option<LittleGuard<'a>> {
         if self.l.trylock() {
-            Some(LittleGuard { l: &mut self.l })
+            Some(LittleGuard { l: self })
         } else {
             None
         }
     }
 
-    pub unsafe fn signal(&mut self) {
-        self.l.signal();
+    pub unsafe fn signal(&self) {
+        self.c.signal();
     }
 }
 
 impl<'a> LittleGuard<'a> {
-    pub unsafe fn wait(&mut self) {
-        self.l.wait();
+    pub unsafe fn wait(&self) {
+        self.l.c.wait(&self.l.l);
     }
 }
 
@@ -144,7 +145,7 @@ impl<T:Send> Exclusive<T> {
     #[inline]
     pub unsafe fn hold_and_wait(&self, f: |x: &T| -> bool) {
         let rec = self.x.get();
-        let mut l = (*rec).lock.lock();
+        let l = (*rec).lock.lock();
         if (*rec).failed {
             fail!("Poisoned Exclusive::new - another task failed inside!");
         }

@@ -311,7 +311,7 @@ pub mod write {
     }
 
     unsafe fn configure_llvm(sess: Session) {
-        use std::unstable::mutex::{Once, ONCE_INIT};
+        use std::sync::{Once, ONCE_INIT};
         static mut INIT: Once = ONCE_INIT;
 
         // Copy what clan does by turning on loop vectorization at O2 and

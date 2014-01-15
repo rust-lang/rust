@@ -233,6 +233,8 @@ extern "rust-intrinsic" {
 
     pub fn atomic_load_relaxed(src: &int) -> int;
 
+    /// XXX: these are ALL wrong, because they can't take &mut, since that implies no aliasing
+
     /// Atomic store, sequentially consistent.
     pub fn atomic_store(dst: &mut int, val: int);
     /// Atomic store, release ordering.
