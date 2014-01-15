@@ -14,9 +14,6 @@ use ptr::to_unsafe_ptr;
 
 #[cfg(not(test))] use cmp::*;
 
-pub static RC_MANAGED_UNIQUE : uint = (-2) as uint;
-pub static RC_IMMORTAL : uint = 0x77777777;
-
 /// Returns the refcount of a shared box (as just before calling this)
 #[inline]
 pub fn refcount<T>(t: @T) -> uint {
