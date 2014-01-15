@@ -308,7 +308,7 @@ impl Integer for $T {
 
     /// Returns `true` if the number is divisible by `2`
     #[inline]
-    fn is_even(&self) -> bool { self.is_multiple_of(&2) }
+    fn is_even(&self) -> bool { self & 1 == 0 }
 
     /// Returns `true` if the number is not divisible by `2`
     #[inline]
