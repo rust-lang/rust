@@ -35,7 +35,8 @@ use rt::rtio::LocalIo;
 use rt::unwind::Unwinder;
 use send_str::SendStr;
 use sync::arc::UnsafeArc;
-use sync::atomics::{AtomicUint, SeqCst};
+use sync::atomics;
+use sync::atomics::{AtomicUint, SeqCst, Relaxed};
 use task::{TaskResult, TaskOpts};
 use unstable::finally::Finally;
 
@@ -84,8 +85,31 @@ pub struct BlockedTaskIterator {
     priv inner: UnsafeArc<AtomicUint>,
 }
 
+
+static mut TASK_COUNT: atomics::AtomicUint = atomics::INIT_ATOMIC_UINT;
+
+// this limit is due to the Mutex implementation
+// it cannot be triggered unless the user specifies a non-default stack size < 64KB
+// (the program will run out of virtual address space before it hits the task limit)
+//
+// it can be lifted if desired by changing Mutex to use double-uint atomics
+//
+// currently the limit is due to the fact that we need to store two integers counting
+// tasks in a single AtomicUint
+//
+// we subtract 2 and not 1, because in addition to tasks having a Task structure, there
+// might be up to one C thread without a task structure holding the mutex, because we
+// don't require a Task structure to call try_lock
+#[cfg(target_word_size = "32")] static TASK_LIMIT: uint = (1 << 16) - 2;
+#[cfg(target_word_size = "64")] static TASK_LIMIT: uint = (1 << 32) - 2;
+
 impl Task {
     pub fn new() -> Task {
+        if (unsafe { TASK_COUNT.fetch_add(1, atomics::Relaxed) } >= TASK_LIMIT {
+            unsafe { TASK_COUNT.fetch_sub(1, atomics::Relaxed) };
+            fail!("tried to create more than {} tasks, which is the task limit", TASK_LIMIT)
+        }
+
         Task {
             heap: LocalHeap::new(),
             gc: GarbageCollector,
@@ -302,6 +326,8 @@ impl Task {
 
 impl Drop for Task {
     fn drop(&mut self) {
+        unsafe { TASK_COUNT.fetch_sub(1, atomics::Relaxed) };
+
         rtdebug!("called drop for a task: {}", borrow::to_uint(self));
         rtassert!(self.destroyed);
     }
