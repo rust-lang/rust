@@ -303,11 +303,7 @@ pub fn make_free_glue<'a>(bcx: &'a Block<'a>, v: ValueRef, t: ty::t)
         with_cond(bcx, not_null, |bcx| {
             let body_datum = box_datum.box_body(bcx);
             let bcx = drop_ty(bcx, body_datum.to_ref_llval(bcx), body_datum.ty);
-            if ty::type_contents(bcx.tcx(), t).owns_managed() {
-                trans_free(bcx, box_datum.val)
-            } else {
-                trans_exchange_free(bcx, box_datum.val)
-            }
+            trans_exchange_free(bcx, box_datum.val)
         })
       }
       ty::ty_vec(_, ty::vstore_uniq) | ty::ty_str(ty::vstore_uniq) |
@@ -550,18 +546,6 @@ pub fn declare_tydesc(ccx: &CrateContext, t: ty::t) -> @tydesc_info {
                  ppaux::ty_to_str(ccx.tcx, t));
     }
 
-    let has_header = match ty::get(t).sty {
-        ty::ty_box(..) => true,
-        ty::ty_uniq(..) => ty::type_contents(ccx.tcx, t).owns_managed(),
-        _ => false
-    };
-
-    let borrow_offset = if has_header {
-        ccx.offsetof_gep(llty, [0u, abi::box_field_body])
-    } else {
-        C_uint(ccx, 0)
-    };
-
     let llsize = llsize_of(ccx, llty);
     let llalign = llalign_of(ccx, llty);
     let name = mangle_internal_name_by_type_and_seq(ccx, t, "tydesc").to_managed();
@@ -580,7 +564,6 @@ pub fn declare_tydesc(ccx: &CrateContext, t: ty::t) -> @tydesc_info {
         tydesc: gvar,
         size: llsize,
         align: llalign,
-        borrow_offset: borrow_offset,
         name: ty_name,
         take_glue: Cell::new(None),
         drop_glue: Cell::new(None),
@@ -690,15 +673,12 @@ pub fn emit_tydescs(ccx: &CrateContext) {
               }
             };
 
-        debug!("ti.borrow_offset: {}", ccx.tn.val_to_str(ti.borrow_offset));
-
         let tydesc = C_named_struct(ccx.tydesc_type,
                                     [ti.size, // size
                                      ti.align, // align
                                      take_glue, // take_glue
                                      drop_glue, // drop_glue
                                      visit_glue, // visit_glue
-                                     ti.borrow_offset, // borrow_offset
                                      ti.name]); // name
 
         unsafe {

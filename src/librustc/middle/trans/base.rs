@@ -368,7 +368,7 @@ pub fn malloc_raw_dyn<'a>(
     } else {
         // we treat ~fn, @fn and @[] as @ here, which isn't ideal
         let langcall = match heap {
-            heap_managed | heap_managed_unique => {
+            heap_managed => {
                 require_alloc_fn(bcx, t, MallocFnLangItem)
             }
             heap_exchange_closure => {
@@ -392,9 +392,7 @@ pub fn malloc_raw_dyn<'a>(
             langcall,
             [tydesc, size],
             None);
-        let r = rslt(r.bcx, PointerCast(r.bcx, r.val, llty));
-        maybe_set_managed_unique_rc(r.bcx, r.val, heap);
-        r
+        rslt(r.bcx, PointerCast(r.bcx, r.val, llty))
     }
 }
 
@@ -439,27 +437,6 @@ pub fn malloc_general<'a>(bcx: &'a Block, t: ty::t, heap: heap)
     let ty = type_of(bcx.ccx(), t);
     assert!(heap != heap_exchange);
     malloc_general_dyn(bcx, t, heap, llsize_of(bcx.ccx(), ty))
-}
-
-pub fn heap_for_unique(bcx: &Block, t: ty::t) -> heap {
-    if ty::type_contents(bcx.tcx(), t).owns_managed() {
-        heap_managed_unique
-    } else {
-        heap_exchange
-    }
-}
-
-pub fn maybe_set_managed_unique_rc(bcx: &Block, bx: ValueRef, heap: heap) {
-    assert!(heap != heap_exchange);
-    if heap == heap_managed_unique {
-        // In cases where we are looking at a unique-typed allocation in the
-        // managed heap (thus have refcount 1 from the managed allocator),
-        // such as a ~(@foo) or such. These need to have their refcount forced
-        // to -2 so the annihilator ignores them.
-        let rc = GEPi(bcx, bx, [0u, abi::box_field_refcnt]);
-        let rc_val = C_int(bcx.ccx(), -2);
-        Store(bcx, rc_val, rc);
-    }
 }
 
 // Type descriptor and type glue stuff

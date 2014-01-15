@@ -245,21 +245,11 @@ pub fn type_of(cx: &CrateContext, t: ty::t) -> Type {
           Type::smart_ptr(cx, &ty).ptr_to()
       }
       ty::ty_uniq(typ) => {
-          let ty = type_of(cx, typ);
-          if ty::type_contents(cx.tcx, typ).owns_managed() {
-              Type::unique(cx, &ty).ptr_to()
-          } else {
-              ty.ptr_to()
-          }
+          type_of(cx, typ).ptr_to()
       }
       ty::ty_vec(ref mt, ty::vstore_uniq) => {
           let ty = type_of(cx, mt.ty);
-          let ty = Type::vec(cx.sess.targ_cfg.arch, &ty);
-          if ty::type_contents(cx.tcx, mt.ty).owns_managed() {
-              Type::unique(cx, &ty).ptr_to()
-          } else {
-              ty.ptr_to()
-          }
+          Type::vec(cx.sess.targ_cfg.arch, &ty).ptr_to()
       }
       ty::ty_unboxed_vec(ref mt) => {
           let ty = type_of(cx, mt.ty);

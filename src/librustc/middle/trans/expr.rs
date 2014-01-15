@@ -398,29 +398,7 @@ pub fn trans_to_datum<'a>(bcx: &'a Block<'a>, expr: &ast::Expr)
                                                      autoderefs));
                 derefd_datum.to_rptr(bcx).to_value_llval(bcx)
             }
-            ty::UniqTraitStore(..) => {
-                // For a ~T box, there may or may not be a header,
-                // depending on whether the type T references managed
-                // boxes. However, since we do not *know* the type T
-                // for objects, this presents a hurdle. Our solution is
-                // to load the "borrow offset" from the type descriptor;
-                // this value will either be 0 or sizeof(BoxHeader), depending
-                // on the type T.
-                let llopaque =
-                    PointerCast(bcx, source_data, Type::opaque().ptr_to());
-                let lltydesc_ptr_ptr =
-                    PointerCast(bcx, vtable,
-                                bcx.ccx().tydesc_type.ptr_to().ptr_to());
-                let lltydesc_ptr =
-                    Load(bcx, lltydesc_ptr_ptr);
-                let borrow_offset_ptr =
-                    GEPi(bcx, lltydesc_ptr,
-                         [0, abi::tydesc_field_borrow_offset]);
-                let borrow_offset =
-                    Load(bcx, borrow_offset_ptr);
-                InBoundsGEP(bcx, llopaque, [borrow_offset])
-            }
-            ty::RegionTraitStore(..) => {
+            ty::UniqTraitStore(..) | ty::RegionTraitStore(..) => {
                 source_data
             }
         };
@@ -608,8 +586,7 @@ fn trans_rvalue_datum_unadjusted<'a>(bcx: &'a Block<'a>, expr: &ast::Expr)
                                                       expr, contents);
         }
         ast::ExprVstore(contents, ast::ExprVstoreUniq) => {
-            let heap = heap_for_unique(bcx, expr_ty(bcx, contents));
-            return tvec::trans_uniq_or_managed_vstore(bcx, heap,
+            return tvec::trans_uniq_or_managed_vstore(bcx, heap_exchange,
                                                       expr, contents);
         }
         ast::ExprBox(_, contents) => {
@@ -617,7 +594,7 @@ fn trans_rvalue_datum_unadjusted<'a>(bcx: &'a Block<'a>, expr: &ast::Expr)
             // `trans_rvalue_dps_unadjusted`.)
             let box_ty = expr_ty(bcx, expr);
             let contents_ty = expr_ty(bcx, contents);
-            let heap = heap_for_unique(bcx, contents_ty);
+            let heap = heap_exchange;
             return trans_boxed_expr(bcx, box_ty, contents, contents_ty, heap)
         }
         ast::ExprLit(lit) => {
@@ -1461,8 +1438,7 @@ fn trans_unary_datum<'a>(
             trans_boxed_expr(bcx, un_ty, sub_expr, sub_ty, heap_managed)
         }
         ast::UnUniq => {
-            let heap  = heap_for_unique(bcx, un_ty);
-            trans_boxed_expr(bcx, un_ty, sub_expr, sub_ty, heap)
+            trans_boxed_expr(bcx, un_ty, sub_expr, sub_ty, heap_exchange)
         }
         ast::UnDeref => {
             bcx.sess().bug("deref expressions should have been \
