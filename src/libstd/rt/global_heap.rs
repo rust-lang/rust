@@ -10,13 +10,9 @@
 
 use libc::{c_void, c_char, size_t, uintptr_t, free, malloc, realloc};
 use ptr::RawPtr;
-use unstable::intrinsics::TyDesc;
+use unstable::intrinsics::{TyDesc, abort};
 use unstable::raw;
 use mem::size_of;
-
-extern {
-    fn abort();
-}
 
 #[inline]
 pub fn get_box_size(body_size: uint, body_align: uint) -> uint {
@@ -34,6 +30,7 @@ fn align_to(size: uint, align: uint) -> uint {
 }
 
 /// A wrapper around libc::malloc, aborting on out-of-memory
+#[inline]
 pub unsafe fn malloc_raw(size: uint) -> *c_void {
     let p = malloc(size as size_t);
     if p.is_null() {
@@ -44,6 +41,7 @@ pub unsafe fn malloc_raw(size: uint) -> *c_void {
 }
 
 /// A wrapper around libc::realloc, aborting on out-of-memory
+#[inline]
 pub unsafe fn realloc_raw(ptr: *mut c_void, size: uint) -> *mut c_void {
     let p = realloc(ptr, size as size_t);
     if p.is_null() {
@@ -94,6 +92,7 @@ pub unsafe fn exchange_free_(ptr: *c_char) {
     exchange_free(ptr)
 }
 
+#[inline]
 pub unsafe fn exchange_free(ptr: *c_char) {
     free(ptr as *c_void);
 }
