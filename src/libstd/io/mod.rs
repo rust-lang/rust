@@ -1058,7 +1058,7 @@ impl<T: Reader + Writer> Stream for T {}
 /// Raises the same conditions as the `read` method except for `EndOfFile`
 /// which is swallowed.
 /// Iteration yields `None` if the condition is handled.
-struct LineIterator<'r, T> {
+pub struct LineIterator<'r, T> {
     priv buffer: &'r mut T,
 }
 
