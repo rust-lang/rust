@@ -30,7 +30,7 @@ static MINIMUM_COLLECTION: uint = 65536;
 static ALLOC_CACHE_MIN_LOG: uint = 3;
 static ALLOC_CACHE_MAX_LOG: uint = 20;
 
-pub type TracingFunc = fn(*(), uint, &mut GcTracer);
+pub type TracingFunc = unsafe fn(*(), uint, &mut GcTracer);
 
 
 /// A thread local garbage collector, precise on the head,

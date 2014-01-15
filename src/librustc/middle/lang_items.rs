@@ -207,7 +207,7 @@ pub fn collect_language_items(crate: &ast::Crate,
 }
 
 lets_do_this! {
-    There are 40 lang items.
+    There are 42 lang items.
 
 //  ID, Variant name,                    Name,                      Method name;
     0,  FreezeTraitLangItem,             "freeze",                  freeze_trait;
@@ -260,5 +260,7 @@ lets_do_this! {
     37, ManagedHeapLangItem,             "managed_heap",            managed_heap;
     38, ExchangeHeapLangItem,            "exchange_heap",           exchange_heap;
     39, GcLangItem,                      "gc",                      gc;
-}
 
+    40, ManagedPointerNote,              "managed_pointer_note",    managed_pointer_note;
+    41, ManagedPointerUnnote,            "managed_pointer_unnote",  managed_pointer_unnote;
+}

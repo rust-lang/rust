@@ -37,7 +37,7 @@ use metadata::{csearch, encoder};
 use middle::astencode;
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
 use middle::lang_items::{MallocFnLangItem, ClosureExchangeMallocFnLangItem};
-use middle::lang_items::{EhPersonalityLangItem};
+use middle::lang_items::{EhPersonalityLangItem, ManagedPointerNote};
 use middle::trans::_match;
 use middle::trans::adt;
 use middle::trans::base;
@@ -354,9 +354,19 @@ pub fn malloc_raw_dyn<'a>(
         }
     }
 
+    fn require_gc_fn(bcx: &Block, t: ty::t) -> ast::DefId {
+        let li = &bcx.tcx().lang_items;
+        match li.require(ManagedPointerNote) {
+            Ok(id) => id,
+            Err(s) => {
+                bcx.tcx().sess.fatal(format!("allocation of `{}` {}",
+                                             bcx.ty_to_str(t), s));
+            }
+        }
+    }
+
     if heap == heap_exchange {
         let llty_value = type_of::type_of(ccx, t);
-
 
         // Allocate space:
         let r = callee::trans_lang_call(
@@ -364,7 +374,17 @@ pub fn malloc_raw_dyn<'a>(
             require_alloc_fn(bcx, t, ExchangeMallocFnLangItem),
             [size],
             None);
-        rslt(r.bcx, PointerCast(r.bcx, r.val, llty_value.ptr_to()))
+
+        if ty::type_contents(bcx.tcx(), t).reaches_new_managed() {
+            let s = callee::trans_lang_call(
+                r.bcx,
+                require_gc_fn(r.bcx, t),
+                [r.val, size],
+                None);
+            rslt(s.bcx, PointerCast(s.bcx, r.val, llty_value.ptr_to()))
+        } else {
+            rslt(r.bcx, PointerCast(r.bcx, r.val, llty_value.ptr_to()))
+        }
     } else {
         // we treat ~fn, @fn and @[] as @ here, which isn't ideal
         let langcall = match heap {

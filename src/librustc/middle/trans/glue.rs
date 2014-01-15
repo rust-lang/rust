@@ -17,7 +17,7 @@ use back::abi;
 use back::link::*;
 use lib;
 use lib::llvm::{llvm, ValueRef, True};
-use middle::lang_items::{FreeFnLangItem, ExchangeFreeFnLangItem};
+use middle::lang_items::{FreeFnLangItem, ExchangeFreeFnLangItem, ManagedPointerUnnote};
 use middle::trans::adt;
 use middle::trans::base::*;
 use middle::trans::callee;
@@ -111,7 +111,7 @@ fn simplified_glue_type(tcx: ty::ctxt, field: uint, t: ty::t) -> ty::t {
         return ty::mk_box(tcx, ty::mk_nil());
     }
 
-    if field == abi::tydesc_field_drop_glue {
+    if field == abi::tydesc_field_drop_glue && !ty::type_contents(tcx, t).reaches_new_managed() {
         match ty::get(t).sty {
             ty::ty_box(typ)
                 if !ty::type_needs_drop(tcx, typ) =>
@@ -302,7 +302,15 @@ pub fn make_free_glue<'a>(bcx: &'a Block<'a>, v: ValueRef, t: ty::t)
         let not_null = IsNotNull(bcx, box_datum.val);
         with_cond(bcx, not_null, |bcx| {
             let body_datum = box_datum.box_body(bcx);
-            let bcx = drop_ty(bcx, body_datum.to_ref_llval(bcx), body_datum.ty);
+            let mut bcx = drop_ty(bcx, body_datum.to_ref_llval(bcx), body_datum.ty);
+
+            if ty::type_contents(bcx.tcx(), t).reaches_new_managed() {
+                bcx = callee::trans_lang_call(bcx,
+                                              langcall(bcx, None, bcx.ty_to_str(t),
+                                                       ManagedPointerUnnote),
+                                              [PointerCast(bcx, box_datum.val, Type::i8p())],
+                                              None).bcx;
+            }
             trans_exchange_free(bcx, box_datum.val)
         })
       }

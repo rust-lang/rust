@@ -140,6 +140,22 @@ pub unsafe fn register_root_changes_always<T>(removals: &[*T],
     task.get().gc = gc;
 }
 
+
+#[lang="managed_pointer_note"]
+pub fn managed_pointer_note(x: *u8, size: uint) {
+    unsafe {
+        register_root_changes_always([],
+                                     [(x, size, conservative_scan_tracer)])
+    }
+}
+#[lang="managed_pointer_unnote"]
+pub fn managed_pointer_unnote(x: *u8) {
+    unsafe {
+        register_root_changes_always([x], []);
+    }
+}
+
+
 pub unsafe fn update_metadata<T>(ptr: *T, metadata: uint) {
     if reaches_new_managed::<T>() {
         update_metadata_always(ptr as *(), metadata)
@@ -330,6 +346,12 @@ impl<T: DeepClone + 'static + Trace> DeepClone for Gc<T> {
     fn deep_clone(&self) -> Gc<T> {
         Gc::new(unsafe {self.borrow_write_barrier().deep_clone()})
     }
+}
+
+pub unsafe fn conservative_scan_tracer(ptr: *(), size: uint, tracer: &mut GcTracer) {
+    let end = (ptr as *u8).offset(size as int) as *uint;
+
+    tracer.conservative_scan(ptr as *uint, end);
 }
 
 /// Stores the appropriate tools for interacting with the garbage

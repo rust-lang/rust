@@ -130,6 +130,25 @@ use unstable::raw::{Repr, Slice, Vec};
 use unstable::raw::Box;
 use util;
 
+#[cfg(not(stage0))]
+fn pointer_change<T>(delete: Option<*()>, add: Option<(*(), uint)>) {
+    use unstable::intrinsics::reaches_new_managed;
+    use gc::{conservative_scan_tracer, register_root_changes_always};
+
+    unsafe {
+        if reaches_new_managed::<T>() {
+            let delete = match delete { Some(p) => &[p], None => &[] };
+            let add = match add {
+                // XXX: this shouldn't be conservative
+                Some((p, size)) => &[(p, size, conservative_scan_tracer)],
+                None => &[]
+            };
+
+            register_root_changes_always(delete, add)
+        }
+    }
+}
+
 /**
  * Creates and initializes an owned vector.
  *
@@ -216,6 +235,8 @@ pub fn with_capacity<T>(capacity: uint) -> ~[T] {
         let ptr = malloc_raw(size) as *mut Vec<()>;
         (*ptr).alloc = alloc;
         (*ptr).fill = 0;
+        pointer_change::<T>(None, Some((ptr as *(), alloc)));
+
         cast::transmute(ptr)
     }
 }
@@ -1538,9 +1559,12 @@ impl<T> OwnedVector<T> for ~[T] {
                 if alloc / mem::nonzero_size_of::<T>() != n || size < alloc {
                     fail!("vector size is too large: {}", n);
                 }
+                let old = *ptr;
                 *ptr = realloc_raw(*ptr as *mut c_void, size)
                        as *mut Vec<()>;
                 (**ptr).alloc = alloc;
+
+                pointer_change::<T>(Some(old as *()), Some((*ptr as *(), alloc)));
             }
         }
     }
@@ -3032,6 +3056,7 @@ impl<T> Drop for MoveIterator<T> {
         // destroy the remaining elements
         for _x in *self {}
         unsafe {
+            pointer_change::<T>(Some(self.allocation as *()), None);
             exchange_free(self.allocation as *u8 as *c_char)
         }
     }
