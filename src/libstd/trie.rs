@@ -12,7 +12,7 @@
 
 use prelude::*;
 use uint;
-use util::{swap, replace};
+use util::replace;
 use vec;
 
 // FIXME: #5244: need to manually update the TrieNode constructor
@@ -415,39 +415,41 @@ fn find_mut<'r, T>(child: &'r mut Child<T>, key: uint, idx: uint) -> Option<&'r 
 
 fn insert<T>(count: &mut uint, child: &mut Child<T>, key: uint, value: T,
              idx: uint) -> Option<T> {
-    let mut tmp = Nothing;
-    let ret;
-    swap(&mut tmp, child);
+    // we branch twice to avoid having to do the `replace` when we
+    // don't need to; this is much faster, especially for keys that
+    // have long shared prefixes.
+    match *child {
+        Nothing => {
+            *count += 1;
+            *child = External(key, value);
+            return None;
+        }
+        Internal(ref mut x) => {
+            return insert(&mut x.count, &mut x.children[chunk(key, idx)], key, value, idx + 1);
+        }
+        External(stored_key, ref mut stored_value) if stored_key == key => {
+            // swap in the new value and return the old.
+            return Some(replace(stored_value, value));
+        }
+        _ => {}
+    }
 
-    *child = match tmp {
-      External(stored_key, stored_value) => {
-          if stored_key == key {
-              ret = Some(stored_value);
-              External(stored_key, value)
-          } else {
-              // conflict - split the node
-              let mut new = ~TrieNode::new();
-              insert(&mut new.count,
-                     &mut new.children[chunk(stored_key, idx)],
-                     stored_key, stored_value, idx + 1);
-              ret = insert(&mut new.count, &mut new.children[chunk(key, idx)],
-                           key, value, idx + 1);
-              Internal(new)
-          }
-      }
-      Internal(x) => {
-        let mut x = x;
-        ret = insert(&mut x.count, &mut x.children[chunk(key, idx)], key,
-                     value, idx + 1);
-        Internal(x)
-      }
-      Nothing => {
-        *count += 1;
-        ret = None;
-        External(key, value)
-      }
-    };
-    return ret;
+    // conflict, an external node with differing keys: we have to
+    // split the node, so we need the old value by value; hence we
+    // have to move out of `child`.
+    match replace(child, Nothing) {
+        External(stored_key, stored_value) => {
+            let mut new = ~TrieNode::new();
+            insert(&mut new.count,
+                   &mut new.children[chunk(stored_key, idx)],
+                   stored_key, stored_value, idx + 1);
+            let ret = insert(&mut new.count, &mut new.children[chunk(key, idx)],
+                         key, value, idx + 1);
+            *child = Internal(new);
+            return ret;
+        }
+        _ => unreachable!()
+    }
 }
 
 fn remove<T>(count: &mut uint, child: &mut Child<T>, key: uint,
@@ -885,6 +887,54 @@ mod bench_map {
                     m.upper_bound(rng.gen());
                 }
             });
+    }
+
+    #[bench]
+    fn bench_insert_large(bh: &mut BenchHarness) {
+        let mut m = TrieMap::<[uint, .. 10]>::new();
+        let mut rng = weak_rng();
+
+        bh.iter(|| {
+                for _ in range(0, 1000) {
+                    m.insert(rng.gen(), [1, .. 10]);
+                }
+            })
+    }
+    #[bench]
+    fn bench_insert_large_low_bits(bh: &mut BenchHarness) {
+        let mut m = TrieMap::<[uint, .. 10]>::new();
+        let mut rng = weak_rng();
+
+        bh.iter(|| {
+                for _ in range(0, 1000) {
+                    // only have the last few bits set.
+                    m.insert(rng.gen::<uint>() & 0xff_ff, [1, .. 10]);
+                }
+            })
+    }
+
+    #[bench]
+    fn bench_insert_small(bh: &mut BenchHarness) {
+        let mut m = TrieMap::<()>::new();
+        let mut rng = weak_rng();
+
+        bh.iter(|| {
+                for _ in range(0, 1000) {
+                    m.insert(rng.gen(), ());
+                }
+            })
+    }
+    #[bench]
+    fn bench_insert_small_low_bits(bh: &mut BenchHarness) {
+        let mut m = TrieMap::<()>::new();
+        let mut rng = weak_rng();
+
+        bh.iter(|| {
+                for _ in range(0, 1000) {
+                    // only have the last few bits set.
+                    m.insert(rng.gen::<uint>() & 0xff_ff, ());
+                }
+            })
     }
 }
 
