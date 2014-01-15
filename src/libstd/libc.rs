@@ -159,7 +159,7 @@ pub use libc::funcs::c95::stdio::{fread, freopen, fseek, fsetpos, ftell};
 pub use libc::funcs::c95::stdio::{fwrite, perror, puts, remove, rewind};
 pub use libc::funcs::c95::stdio::{setbuf, setvbuf, tmpfile, ungetc};
 
-pub use libc::funcs::c95::stdlib::{abort, abs, atof, atoi, calloc, exit};
+pub use libc::funcs::c95::stdlib::{abs, atof, atoi, calloc, exit};
 pub use libc::funcs::c95::stdlib::{free, getenv, labs, malloc, rand};
 pub use libc::funcs::c95::stdlib::{realloc, srand, strtod, strtol};
 pub use libc::funcs::c95::stdlib::{strtoul, system};
@@ -3226,7 +3226,6 @@ pub mod funcs {
                 pub fn malloc(size: size_t) -> *c_void;
                 pub fn realloc(p: *mut c_void, size: size_t) -> *mut c_void;
                 pub fn free(p: *c_void);
-                pub fn abort() -> !;
                 pub fn exit(status: c_int) -> !;
                 // Omitted: atexit.
                 pub fn system(s: *c_char) -> c_int;

@@ -48,6 +48,7 @@ pub struct LocalHeap {
 }
 
 impl LocalHeap {
+    #[inline]
     pub fn new() -> LocalHeap {
         let region = MemoryRegion {
             allocations: ~[],
@@ -60,6 +61,7 @@ impl LocalHeap {
         }
     }
 
+    #[inline]
     pub fn alloc(&mut self, td: *TyDesc, size: uint) -> *mut Box {
         let total_size = global_heap::get_box_size(size, unsafe { (*td).align });
         let alloc = self.memory_region.malloc(total_size);
@@ -80,6 +82,7 @@ impl LocalHeap {
         return alloc;
     }
 
+    #[inline]
     pub fn realloc(&mut self, ptr: *mut Box, size: uint) -> *mut Box {
         // Make sure that we can't use `mybox` outside of this scope
         let total_size = size + mem::size_of::<Box>();
@@ -100,6 +103,7 @@ impl LocalHeap {
         return new_box;
     }
 
+    #[inline]
     pub fn free(&mut self, alloc: *mut Box) {
         {
             // Make sure that we can't use `mybox` outside of this scope
@@ -196,6 +200,7 @@ impl AllocHeader {
 }
 
 impl MemoryRegion {
+    #[inline]
     fn malloc(&mut self, size: uint) -> *mut Box {
         let total_size = size + AllocHeader::size();
         let alloc: *AllocHeader = unsafe {
@@ -210,6 +215,7 @@ impl MemoryRegion {
         return alloc.as_box();
     }
 
+    #[inline]
     fn realloc(&mut self, alloc: *mut Box, size: uint) -> *mut Box {
         rtassert!(!alloc.is_null());
         let orig_alloc = AllocHeader::from(alloc);
@@ -228,6 +234,7 @@ impl MemoryRegion {
         return alloc.as_box();
     }
 
+    #[inline]
     fn free(&mut self, alloc: *mut Box) {
         rtassert!(!alloc.is_null());
         let alloc = AllocHeader::from(alloc);
@@ -249,6 +256,7 @@ impl MemoryRegion {
         }
     }
     #[cfg(not(rtdebug))]
+    #[inline]
     fn claim(&mut self, _alloc: &mut AllocHeader) {}
 
     #[cfg(rtdebug)]
@@ -260,6 +268,7 @@ impl MemoryRegion {
         }
     }
     #[cfg(not(rtdebug))]
+    #[inline]
     fn release(&mut self, _alloc: &AllocHeader) {}
 
     #[cfg(rtdebug)]
@@ -271,6 +280,7 @@ impl MemoryRegion {
         }
     }
     #[cfg(not(rtdebug))]
+    #[inline]
     fn update(&mut self, _alloc: &mut AllocHeader, _orig: *AllocHeader) {}
 }
 
@@ -283,6 +293,7 @@ impl Drop for MemoryRegion {
     }
 }
 
+#[inline]
 pub unsafe fn local_malloc(td: *libc::c_char, size: libc::uintptr_t) -> *libc::c_char {
     // XXX: Unsafe borrow for speed. Lame.
     let task: Option<*mut Task> = Local::try_unsafe_borrow();
@@ -295,6 +306,7 @@ pub unsafe fn local_malloc(td: *libc::c_char, size: libc::uintptr_t) -> *libc::c
 }
 
 // A little compatibility function
+#[inline]
 pub unsafe fn local_free(ptr: *libc::c_char) {
     // XXX: Unsafe borrow for speed. Lame.
     let task_ptr: Option<*mut Task> = Local::try_unsafe_borrow();
