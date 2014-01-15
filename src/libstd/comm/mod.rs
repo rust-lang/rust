@@ -251,6 +251,7 @@ macro_rules! test (
             #[allow(unused_imports)];
 
             use native;
+            use comm::*;
             use prelude::*;
             use super::*;
             use super::super::*;
@@ -321,6 +322,20 @@ pub struct Chan<T> {
              // be required to be shareable in an arc
 pub struct SharedChan<T> {
     priv queue: mpsc::Producer<T, Packet>,
+}
+
+/// This enumeration is the list of the possible reasons that try_recv could not
+/// return data when called.
+#[deriving(Eq, Clone)]
+pub enum TryRecvResult<T> {
+    /// This channel is currently empty, but the sender(s) have not yet
+    /// disconnected, so data may yet become available.
+    Empty,
+    /// This channel's sending half has become disconnected, and there will
+    /// never be any more data received on this channel
+    Disconnected,
+    /// The channel had some data and we successfully popped it
+    Data(T),
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -739,11 +754,11 @@ impl<T: Send> Port<T> {
     /// block on a port.
     ///
     /// This function cannot fail.
-    pub fn try_recv(&self) -> Option<T> {
+    pub fn try_recv(&self) -> TryRecvResult<T> {
         self.try_recv_inc(true)
     }
 
-    fn try_recv_inc(&self, increment: bool) -> Option<T> {
+    fn try_recv_inc(&self, increment: bool) -> TryRecvResult<T> {
         // This is a "best effort" situation, so if a queue is inconsistent just
         // don't worry about it.
         let this = unsafe { cast::transmute_mut(self) };
@@ -807,7 +822,35 @@ impl<T: Send> Port<T> {
         if increment && ret.is_some() {
             unsafe { (*this.queue.packet()).steals += 1; }
         }
-        return ret;
+        match ret {
+            Some(t) => Data(t),
+            None => {
+                // It's possible that between the time that we saw the queue was
+                // empty and here the other side disconnected. It's also
+                // possible for us to see the disconnection here while there is
+                // data in the queue. It's pretty backwards-thinking to return
+                // Disconnected when there's actually data on the queue, so if
+                // we see a disconnected state be sure to check again to be 100%
+                // sure that there's no data in the queue.
+                let cnt = unsafe { (*this.queue.packet()).cnt.load(Relaxed) };
+                if cnt != DISCONNECTED { return Empty }
+
+                let ret = match this.queue {
+                    SPSC(ref mut queue) => queue.pop(),
+                    MPSC(ref mut queue) => match queue.pop() {
+                        mpsc::Data(t) => Some(t),
+                        mpsc::Empty => None,
+                        mpsc::Inconsistent => {
+                            fail!("inconsistent with no senders?!");
+                        }
+                    }
+                };
+                match ret {
+                    Some(data) => Data(data),
+                    None => Disconnected,
+                }
+            }
+        }
     }
 
     /// Attempt to wait for a value on this port, but does not fail if the
@@ -824,7 +867,11 @@ impl<T: Send> Port<T> {
     /// the value found on the port is returned.
     pub fn recv_opt(&self) -> Option<T> {
         // optimistic preflight check (scheduling is expensive)
-        match self.try_recv() { None => {}, data => return data }
+        match self.try_recv() {
+            Empty => {},
+            Disconnected => return None,
+            Data(t) => return Some(t),
+        }
 
         let packet;
         let this;
@@ -843,12 +890,11 @@ impl<T: Send> Port<T> {
             });
         }
 
-        let data = self.try_recv_inc(false);
-        if data.is_none() &&
-           unsafe { (*packet).cnt.load(SeqCst) } != DISCONNECTED {
-            fail!("bug: woke up too soon {}", unsafe { (*packet).cnt.load(SeqCst) });
+        match self.try_recv_inc(false) {
+            Data(t) => Some(t),
+            Empty => fail!("bug: woke up too soon"),
+            Disconnected => None,
         }
-        return data;
     }
 
     /// Returns an iterator which will block waiting for messages, but never
@@ -1005,7 +1051,10 @@ mod test {
             for _ in range(0, AMT * NTHREADS) {
                 assert_eq!(p.recv(), 1);
             }
-            assert_eq!(p.try_recv(), None);
+            match p.try_recv() {
+                Data(..) => fail!(),
+                _ => {}
+            }
             c1.send(());
         }
 
@@ -1129,7 +1178,7 @@ mod test {
     test!(fn oneshot_single_thread_try_recv_open() {
         let (port, chan) = Chan::<int>::new();
         chan.send(10);
-        assert!(port.try_recv() == Some(10));
+        assert!(port.recv_opt() == Some(10));
     })
 
     test!(fn oneshot_single_thread_try_recv_closed() {
@@ -1140,21 +1189,21 @@ mod test {
 
     test!(fn oneshot_single_thread_peek_data() {
         let (port, chan) = Chan::<int>::new();
-        assert!(port.try_recv().is_none());
+        assert_eq!(port.try_recv(), Empty)
         chan.send(10);
-        assert!(port.try_recv().is_some());
+        assert_eq!(port.try_recv(), Data(10));
     })
 
     test!(fn oneshot_single_thread_peek_close() {
         let (port, chan) = Chan::<int>::new();
         { let _c = chan; }
-        assert!(port.try_recv().is_none());
-        assert!(port.try_recv().is_none());
+        assert_eq!(port.try_recv(), Disconnected);
+        assert_eq!(port.try_recv(), Disconnected);
     })
 
     test!(fn oneshot_single_thread_peek_open() {
         let (port, _) = Chan::<int>::new();
-        assert!(port.try_recv().is_none());
+        assert_eq!(port.try_recv(), Empty);
     })
 
     test!(fn oneshot_multi_task_recv_then_send() {
@@ -1320,5 +1369,28 @@ mod test {
         chan.try_send(2);
         drop(chan);
         assert_eq!(count_port.recv(), 4);
+    })
+
+    test!(fn try_recv_states() {
+        let (p, c) = Chan::<int>::new();
+        let (p1, c1) = Chan::<()>::new();
+        let (p2, c2) = Chan::<()>::new();
+        do spawn {
+            p1.recv();
+            c.send(1);
+            c2.send(());
+            p1.recv();
+            drop(c);
+            c2.send(());
+        }
+
+        assert_eq!(p.try_recv(), Empty);
+        c1.send(());
+        p2.recv();
+        assert_eq!(p.try_recv(), Data(1));
+        assert_eq!(p.try_recv(), Empty);
+        c1.send(());
+        p2.recv();
+        assert_eq!(p.try_recv(), Disconnected);
     })
 }
