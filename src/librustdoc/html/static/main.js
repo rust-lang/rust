@@ -171,14 +171,6 @@
                 return [];
             }
 
-            results.forEach(function(item) {
-                for (var i = 0; i < split.length; i++) {
-                    if (item[3].indexOf(split[i]) === -1) {
-                        item = null;
-                        break;
-                    }
-                }
-            });
             // sort by exact match
             results.sort(function search_complete_sort0(aaa, bbb) {
                 if (searchWords[aaa[0]] === valLower && searchWords[bbb[0]] !== valLower) {
