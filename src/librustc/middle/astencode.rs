@@ -1456,7 +1456,7 @@ fn mk_ctxt() -> @fake_ext_ctxt {
 
 #[cfg(test)]
 fn roundtrip(in_item: Option<@ast::Item>) {
-    use std::io::mem::MemWriter;
+    use std::io::MemWriter;
 
     let in_item = in_item.unwrap();
     let mut wr = MemWriter::new();

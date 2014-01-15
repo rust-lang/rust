@@ -9,18 +9,28 @@
 // except according to those terms.
 
 //! Readers and Writers for in-memory buffers
-//!
-//! # XXX
-//!
-//! * Should probably have something like this for strings.
-//! * Should they implement Closable? Would take extra state.
+
 use cmp::max;
 use cmp::min;
-use prelude::*;
-use super::*;
+use container::Container;
+use option::{Option, Some, None};
+use super::{Reader, Writer, Seek, Buffer, IoError, SeekStyle, io_error,
+            OtherIoError};
 use vec;
+use vec::{Vector, ImmutableVector, MutableVector, OwnedCopyableVector};
 
 /// Writes to an owned, growable byte vector
+///
+/// # Example
+///
+/// ```rust
+/// use std::io::MemWriter;
+///
+/// let mut w = MemWriter::new();
+/// w.write([0, 1, 2]);
+///
+/// assert_eq!(w.unwrap(), ~[0, 1, 2]);
+/// ```
 pub struct MemWriter {
     priv buf: ~[u8],
     priv pos: uint,
@@ -96,6 +106,16 @@ impl Seek for MemWriter {
 }
 
 /// Reads from an owned byte vector
+///
+/// # Example
+///
+/// ```rust
+/// use std::io::MemReader;
+///
+/// let mut r = MemReader::new(~[0, 1, 2]);
+///
+/// assert_eq!(r.read_to_end(), ~[0, 1, 2]);
+/// ```
 pub struct MemReader {
     priv buf: ~[u8],
     priv pos: uint
@@ -159,6 +179,19 @@ impl Buffer for MemReader {
 ///
 /// If a write will not fit in the buffer, it raises the `io_error`
 /// condition and does not write any data.
+///
+/// # Example
+///
+/// ```rust
+/// use std::io::BufWriter;
+///
+/// let mut buf = [0, ..4];
+/// {
+///     let mut w = BufWriter::new(buf);
+///     w.write([0, 1, 2]);
+/// }
+/// assert_eq!(buf, [0, 1, 2, 0]);
+/// ```
 pub struct BufWriter<'a> {
     priv buf: &'a mut [u8],
     priv pos: uint
@@ -209,12 +242,24 @@ impl<'a> Seek for BufWriter<'a> {
 
 
 /// Reads from a fixed-size byte slice
+///
+/// # Example
+///
+/// ```rust
+/// use std::io::BufReader;
+///
+/// let mut buf = [0, 1, 2, 3];
+/// let mut r = BufReader::new(buf);
+///
+/// assert_eq!(r.read_to_end(), ~[0, 1, 2, 3]);
+/// ```
 pub struct BufReader<'a> {
     priv buf: &'a [u8],
     priv pos: uint
 }
 
 impl<'a> BufReader<'a> {
+    /// Creates a new buffered reader which will read the specified buffer
     pub fn new<'a>(buf: &'a [u8]) -> BufReader<'a> {
         BufReader {
             buf: buf,
@@ -255,14 +300,6 @@ impl<'a> Seek for BufReader<'a> {
 impl<'a> Buffer for BufReader<'a> {
     fn fill<'a>(&'a mut self) -> &'a [u8] { self.buf.slice_from(self.pos) }
     fn consume(&mut self, amt: uint) { self.pos += amt; }
-}
-
-///Calls a function with a MemWriter and returns
-///the writer's stored vector.
-pub fn with_mem_writer(writeFn: |&mut MemWriter|) -> ~[u8] {
-    let mut writer = MemWriter::new();
-    writeFn(&mut writer);
-    writer.unwrap()
 }
 
 #[cfg(test)]
@@ -396,12 +433,6 @@ mod test {
         assert_eq!(reader.read(buf), Some(3));
         assert_eq!(buf.slice(0, 3), [5, 6, 7]);
         assert_eq!(reader.read(buf), None);
-    }
-
-    #[test]
-    fn test_with_mem_writer() {
-        let buf = with_mem_writer(|wr| wr.write([1,2,3,4,5,6,7]));
-        assert_eq!(buf, ~[1,2,3,4,5,6,7]);
     }
 
     #[test]

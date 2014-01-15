@@ -26,7 +26,7 @@ Some examples of obvious things you might want to do
 * Read lines from stdin
 
     ```rust
-    use std::io::buffered::BufferedReader;
+    use std::io::BufferedReader;
     use std::io::stdin;
 
     # let _g = ::std::io::ignore_io_error();
@@ -60,7 +60,7 @@ Some examples of obvious things you might want to do
 * Iterate over the lines of a file
 
     ```rust
-    use std::io::buffered::BufferedReader;
+    use std::io::BufferedReader;
     use std::io::File;
 
     # let _g = ::std::io::ignore_io_error();
@@ -74,7 +74,7 @@ Some examples of obvious things you might want to do
 * Pull the lines of a file into a vector of strings
 
     ```rust
-    use std::io::buffered::BufferedReader;
+    use std::io::BufferedReader;
     use std::io::File;
 
     # let _g = ::std::io::ignore_io_error();
@@ -321,6 +321,11 @@ pub use self::net::udp::UdpStream;
 pub use self::pipe::PipeStream;
 pub use self::process::Process;
 
+pub use self::mem::{MemReader, BufReader, MemWriter, BufWriter};
+pub use self::buffered::{BufferedReader, BufferedWriter, BufferedStream,
+                         LineBufferedWriter};
+pub use self::comm_adapters::{PortReader, ChanWriter};
+
 /// Various utility functions useful for writing I/O tests
 pub mod test;
 
@@ -337,16 +342,13 @@ pub mod process;
 pub mod net;
 
 /// Readers and Writers for memory buffers and strings.
-pub mod mem;
+mod mem;
 
 /// Non-blocking access to stdin, stdout, stderr
 pub mod stdio;
 
 /// Implementations for Option
 mod option;
-
-/// Basic stream compression. XXX: Belongs with other flate code
-pub mod flate;
 
 /// Extension traits
 pub mod extensions;
@@ -355,7 +357,7 @@ pub mod extensions;
 pub mod timer;
 
 /// Buffered I/O wrappers
-pub mod buffered;
+mod buffered;
 
 /// Signal handling
 pub mod signal;
@@ -364,9 +366,11 @@ pub mod signal;
 pub mod util;
 
 /// Adapatation of Chan/Port types to a Writer/Reader type.
-pub mod comm_adapters;
+mod comm_adapters;
 
 /// The default buffer size for various I/O operations
+// libuv recommends 64k buffers to maximize throughput
+// https://groups.google.com/forum/#!topic/libuv/oQO1HJAIDdA
 static DEFAULT_BUF_SIZE: uint = 1024 * 64;
 
 /// The type passed to I/O condition handlers to indicate error
@@ -1098,11 +1102,10 @@ pub trait Buffer: Reader {
     /// # Example
     ///
     /// ```rust
-    /// use std::io::buffered::BufferedReader;
-    /// use std::io;
+    /// use std::io::{BufferedReader, stdin};
     /// # let _g = ::std::io::ignore_io_error();
     ///
-    /// let mut reader = BufferedReader::new(io::stdin());
+    /// let mut reader = BufferedReader::new(stdin());
     ///
     /// let input = reader.read_line().unwrap_or(~"nothing");
     /// ```

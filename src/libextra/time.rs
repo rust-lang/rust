@@ -10,8 +10,7 @@
 
 #[allow(missing_doc)];
 
-use std::io::Reader;
-use std::io::mem::BufReader;
+use std::io::BufReader;
 use std::libc;
 use std::num;
 use std::str;
