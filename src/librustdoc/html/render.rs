@@ -276,7 +276,8 @@ pub fn run(mut crate: clean::Crate, dst: Path) {
         write!(w, "var allPaths = \\{");
         for (i, (&id, &(ref fqp, short))) in cache.paths.iter().enumerate() {
             if i > 0 { write!(w, ","); }
-            write!(w, "'{}':\\{type:'{}',name:'{}'\\}", id, short, *fqp.last());
+            write!(w, "'{}':\\{type:'{}',name:'{}'\\}",
+                   id, short, *fqp.last());
         }
         write!(w, "\\};");
         w.flush();

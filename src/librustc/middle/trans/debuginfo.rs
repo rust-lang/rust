@@ -133,7 +133,7 @@ use middle::trans::adt;
 use middle::trans::base;
 use middle::trans::build;
 use middle::trans::common::*;
-use middle::trans::datum;
+use middle::trans::datum::{Datum, Lvalue};
 use middle::trans::machine;
 use middle::trans::type_of;
 use middle::trans::type_::Type;
@@ -396,7 +396,7 @@ pub fn create_match_binding_metadata(bcx: &Block,
                                      variable_ident: ast::Ident,
                                      node_id: ast::NodeId,
                                      span: Span,
-                                     datum: datum::Datum) {
+                                     datum: Datum<Lvalue>) {
     if fn_should_be_ignored(bcx.fcx) {
         return;
     }

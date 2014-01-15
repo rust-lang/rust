@@ -168,7 +168,7 @@ pub fn from_elem<T:Clone>(n_elts: uint, t: T) -> ~[T] {
         let mut v = with_capacity(n_elts);
         let p = v.as_mut_ptr();
         let mut i = 0u;
-        (|| {
+        (|| { // FIXME what if we fail in the middle of this loop?
             while i < n_elts {
                 intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i as int)), t.clone());
                 i += 1u;
@@ -237,6 +237,25 @@ pub fn build<A>(size: Option<uint>, builder: |push: |v: A||) -> ~[A] {
     let mut vec = with_capacity(size.unwrap_or(4));
     builder(|x| vec.push(x));
     vec
+}
+
+/**
+ * Converts a pointer to A into a slice of length 1 (without copying).
+ */
+pub fn ref_slice<'a, A>(s: &'a A) -> &'a [A] {
+    unsafe {
+        cast::transmute(Slice { data: s, len: 1 })
+    }
+}
+
+/**
+ * Converts a pointer to A into a slice of length 1 (without copying).
+ */
+pub fn mut_ref_slice<'a, A>(s: &'a mut A) -> &'a mut [A] {
+    unsafe {
+        let ptr: *A = cast::transmute(s);
+        cast::transmute(Slice { data: ptr, len: 1 })
+    }
 }
 
 /// An iterator over the slices of a vector separated by elements that
@@ -2175,6 +2194,9 @@ pub trait MutableVector<'a, T> {
     /// Returns an iterator that allows modifying each value
     fn mut_iter(self) -> VecMutIterator<'a, T>;
 
+    /// Returns a mutable pointer to the last item in the vector.
+    fn mut_last(self) -> &'a mut T;
+
     /// Returns a reversed iterator that allows modifying each value
     fn mut_rev_iter(self) -> MutRevIterator<'a, T>;
 
@@ -2435,6 +2457,13 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
                                lifetime: None}
             }
         }
+    }
+
+    #[inline]
+    fn mut_last(self) -> &'a mut T {
+        let len = self.len();
+        if len == 0 { fail!("mut_last: empty vector") }
+        &mut self[len - 1]
     }
 
     #[inline]

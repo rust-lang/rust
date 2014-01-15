@@ -17,6 +17,15 @@ impl Counter {
         Counter {value: v}
     }
 
+    fn inc<'a>(&'a mut self) -> &'a mut Counter {
+        self.value += 1;
+        self
+    }
+
+    fn get(&self) -> uint {
+        self.value
+    }
+
     fn get_and_inc(&mut self) -> uint {
         let v = self.value;
         self.value += 1;
@@ -27,4 +36,7 @@ impl Counter {
 pub fn main() {
     let v = Counter::new(22).get_and_inc();
     assert_eq!(v, 22);
+
+    let v = Counter::new(22).inc().inc().get();
+    assert_eq!(v, 24);;
 }

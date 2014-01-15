@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+pub mod doc;
 pub mod macros;
 pub mod inline;
 pub mod monomorphize;
@@ -44,3 +45,4 @@ pub mod type_;
 pub mod value;
 pub mod basic_block;
 pub mod llrepr;
+pub mod cleanup;

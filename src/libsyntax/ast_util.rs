@@ -567,11 +567,7 @@ pub fn visit_ids_for_inlined_item<O: IdVisitingOperation>(item: &InlinedItem,
         visited_outermost: false,
     };
 
-    match *item {
-        IIItem(i) => id_visitor.visit_item(i, ()),
-        IIForeign(i) => id_visitor.visit_foreign_item(i, ()),
-        IIMethod(_, _, m) => visit::walk_method_helper(&mut id_visitor, m, ()),
-    }
+    visit::walk_inlined_item(&mut id_visitor, item, ());
 }
 
 struct IdRangeComputingVisitor {

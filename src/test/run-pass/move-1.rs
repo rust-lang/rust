@@ -15,6 +15,7 @@ struct Triple { x: int, y: int, z: int }
 fn test(x: bool, foo: @Triple) -> int {
     let bar = foo;
     let mut y: @Triple;
+    y = bar;
     if x { y = bar; } else { y = @Triple{x: 4, y: 5, z: 6}; }
     return y.y;
 }

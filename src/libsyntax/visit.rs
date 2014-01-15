@@ -121,6 +121,17 @@ pub trait Visitor<E: Clone> {
     }
 }
 
+pub fn walk_inlined_item<E: Clone, V: Visitor<E>>(visitor: &mut V,
+                                                  item: &ast::InlinedItem,
+                                                  env: E) {
+    match *item {
+        IIItem(i) => visitor.visit_item(i, env),
+        IIForeign(i) => visitor.visit_foreign_item(i, env),
+        IIMethod(_, _, m) => walk_method_helper(visitor, m, env),
+    }
+}
+
+
 pub fn walk_crate<E: Clone, V: Visitor<E>>(visitor: &mut V, crate: &Crate, env: E) {
     visitor.visit_mod(&crate.module, crate.span, CRATE_NODE_ID, env)
 }

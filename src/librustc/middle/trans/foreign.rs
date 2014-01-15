@@ -290,12 +290,12 @@ pub fn trans_native_call<'a>(
     // A function pointer is called without the declaration available, so we have to apply
     // any attributes with ABI implications directly to the call instruction. Right now, the
     // only attribute we need to worry about is `sret`.
-    let attrs;
-    if fn_type.ret_ty.is_indirect() {
-        attrs = &[(1, StructRetAttribute)];
+    let sret_attr = [(1, StructRetAttribute)];
+    let attrs = if fn_type.ret_ty.is_indirect() {
+        sret_attr.as_slice()
     } else {
-        attrs = &[];
-    }
+        &[]
+    };
     let llforeign_retval = CallWithConv(bcx, llfn, llargs_foreign, cc, attrs);
 
     // If the function we just called does not use an outpointer,
@@ -491,7 +491,6 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: @CrateContext,
                        None,
                        None,
                        id,
-                       None,
                        []);
         return llfndecl;
     }
