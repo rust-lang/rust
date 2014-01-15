@@ -39,30 +39,6 @@ static OS_DEFAULT_STACK_ESTIMATE: uint = 1 << 20;
 #[cfg(unix, not(android))]
 static OS_DEFAULT_STACK_ESTIMATE: uint = 2 * (1 << 20);
 
-
-// XXX: this should not exist here
-#[cfg(stage0, nativestart)]
-#[lang = "start"]
-pub fn lang_start(main: *u8, argc: int, argv: **u8) -> int {
-    use std::cast;
-    use std::task;
-
-    do start(argc, argv) {
-        // Instead of invoking main directly on this thread, invoke it on
-        // another spawned thread that we are guaranteed to know the size of the
-        // stack of. Currently, we do not have a method of figuring out the size
-        // of the main thread's stack, so for stack overflow detection to work
-        // we must spawn the task in a subtask which we know the stack size of.
-        let main: extern "Rust" fn() = unsafe { cast::transmute(main) };
-        let mut task = task::task();
-        task.name("<main>");
-        match do task.try { main() } {
-            Ok(()) => { os::set_exit_status(0); }
-            Err(..) => { os::set_exit_status(rt::DEFAULT_ERROR_CODE); }
-        }
-    }
-}
-
 /// Executes the given procedure after initializing the runtime with the given
 /// argc/argv.
 ///
