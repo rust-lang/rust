@@ -12,7 +12,7 @@
 
 
 use ast;
-use codemap::{Span, CodeMap, FileMap, FileSubstr};
+use codemap::{Span, CodeMap, FileMap};
 use codemap;
 use diagnostic::{SpanHandler, mk_span_handler, mk_handler, Emitter};
 use parse::attr::ParserAttr;
@@ -180,27 +180,6 @@ pub fn parse_tts_from_source_str(
     maybe_aborted(p.parse_all_token_trees(),p)
 }
 
-// given a function and parsing information (source str,
-// filename, crate cfg, and sess), create a parser,
-// apply the function, and check that the parser
-// consumed all of the input before returning the function's
-// result.
-pub fn parse_from_source_str<T>(
-                             f: |&mut Parser| -> T,
-                             name: @str,
-                             ss: codemap::FileSubstr,
-                             source: @str,
-                             cfg: ast::CrateConfig,
-                             sess: @ParseSess)
-                             -> T {
-    let mut p = new_parser_from_source_substr(sess, cfg, name, ss, source);
-    let r = f(&mut p);
-    if !p.reader.is_eof() {
-        p.reader.fatal(~"expected end-of-string");
-    }
-    maybe_aborted(r,p)
-}
-
 // Create a new parser from a source string
 pub fn new_parser_from_source_str(sess: @ParseSess,
                                   cfg: ast::CrateConfig,
@@ -208,17 +187,6 @@ pub fn new_parser_from_source_str(sess: @ParseSess,
                                   source: @str)
                                -> Parser {
     filemap_to_parser(sess,string_to_filemap(sess,source,name),cfg)
-}
-
-// Create a new parser from a source string where the origin
-// is specified as a substring of another file.
-pub fn new_parser_from_source_substr(sess: @ParseSess,
-                                  cfg: ast::CrateConfig,
-                                  name: @str,
-                                  ss: codemap::FileSubstr,
-                                  source: @str)
-                               -> Parser {
-    filemap_to_parser(sess,substring_to_filemap(sess,source,name,ss),cfg)
 }
 
 /// Create a new parser, handling errors as appropriate
@@ -295,13 +263,6 @@ pub fn file_to_filemap(sess: @ParseSess, path: &Path, spanopt: Option<Span>)
 pub fn string_to_filemap(sess: @ParseSess, source: @str, path: @str)
     -> @FileMap {
     sess.cm.new_filemap(path, source)
-}
-
-// given a session and a string and a path and a FileSubStr, add
-// the string to the CodeMap and return the new FileMap
-pub fn substring_to_filemap(sess: @ParseSess, source: @str, path: @str,
-                           filesubstr: FileSubstr) -> @FileMap {
-    sess.cm.new_filemap_w_substr(path,filesubstr,source)
 }
 
 // given a filemap, produce a sequence of token-trees

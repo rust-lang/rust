@@ -191,15 +191,6 @@ pub struct FileLines
     lines: ~[uint]
 }
 
-// represents the origin of a file:
-pub enum FileSubstr {
-    // indicates that this is a normal standalone file:
-    FssNone,
-    // indicates that this "file" is actually a substring
-    // of another file that appears earlier in the codemap
-    FssInternal(Span),
-}
-
 /// Identifies an offset of a multi-byte character in a FileMap
 pub struct MultiByteChar {
     /// The absolute offset of the character in the CodeMap
@@ -214,8 +205,6 @@ pub struct FileMap {
     /// originate from files has names between angle brackets by convention,
     /// e.g. `<anon>`
     name: FileName,
-    /// Extra information used by qquote
-    substr: FileSubstr,
     /// The complete source code
     src: @str,
     /// The start position of this source in the CodeMap
@@ -278,16 +267,7 @@ impl CodeMap {
         }
     }
 
-    /// Add a new FileMap to the CodeMap and return it
     pub fn new_filemap(&self, filename: FileName, src: @str) -> @FileMap {
-        return self.new_filemap_w_substr(filename, FssNone, src);
-    }
-
-    pub fn new_filemap_w_substr(&self,
-                                filename: FileName,
-                                substr: FileSubstr,
-                                src: @str)
-                                -> @FileMap {
         let mut files = self.files.borrow_mut();
         let start_pos = if files.get().len() == 0 {
             0
@@ -298,7 +278,8 @@ impl CodeMap {
         };
 
         let filemap = @FileMap {
-            name: filename, substr: substr, src: src,
+            name: filename,
+            src: src,
             start_pos: Pos::from_uint(start_pos),
             lines: RefCell::new(~[]),
             multibyte_chars: RefCell::new(~[]),
@@ -322,31 +303,16 @@ impl CodeMap {
 
     pub fn lookup_char_pos_adj(&self, pos: BytePos) -> LocWithOpt {
         let loc = self.lookup_char_pos(pos);
-        match (loc.file.substr) {
-            FssNone =>
-            LocWithOpt {
-                filename: loc.file.name,
-                line: loc.line,
-                col: loc.col,
-                file: Some(loc.file)},
-            FssInternal(sp) =>
-            self.lookup_char_pos_adj(
-                sp.lo + (pos - loc.file.start_pos)),
+        LocWithOpt {
+            filename: loc.file.name,
+            line: loc.line,
+            col: loc.col,
+            file: Some(loc.file)
         }
     }
 
     pub fn adjust_span(&self, sp: Span) -> Span {
-        let line = self.lookup_line(sp.lo);
-        match (line.fm.substr) {
-            FssNone => sp,
-            FssInternal(s) => {
-                self.adjust_span(Span {
-                    lo: s.lo + (sp.lo - line.fm.start_pos),
-                    hi: s.lo + (sp.hi - line.fm.start_pos),
-                    expn_info: sp.expn_info
-                })
-            }
-        }
+        sp
     }
 
     pub fn span_to_str(&self, sp: Span) -> ~str {
