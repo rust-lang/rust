@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use cmp;
 use gc::collector::ptr_map::PtrMap;
 use iter::Iterator;
 use libc;
@@ -23,7 +24,8 @@ use gc::GcTracer;
 
 mod ptr_map;
 
-static DEFAULT_ALLOCS_PER_COLLECTION_MASK: uint = (1 << 10) - 1;
+static DEFAULT_INVERSE_LOAD_FACTOR: f32 = 2.0;
+static MINIMUM_COLLECTION: uint = 65536;
 
 static ALLOC_CACHE_MIN_LOG: uint = 3;
 static ALLOC_CACHE_MAX_LOG: uint = 20;
@@ -59,16 +61,29 @@ pub struct GarbageCollector {
     priv roots: PtrMap,
     /// Garbage-collectable pointers.
     priv gc_ptrs: PtrMap,
-    /// number of GC-able allocations performed.
-    priv gc_allocs: uint,
     /// cached allocations, of sizes 8, 16, 32, 64, ... 1 << 20 (1 MB)
     /// (inclusive, with 8 at index 0). Anything smaller gets rounded
     /// to 8, anything larger is uncached.
     priv alloc_cache: [~[uint], .. ALLOC_CACHE_MAX_LOG - ALLOC_CACHE_MIN_LOG + 1],
-    /// the number of allocations to do before collection (in mask
-    /// form, i.e. we are detecting `gc_allocs % (1 << n) == 0` for
-    /// some n).
-    priv gc_allocs_per_collection_mask: uint
+
+    /// The ratio between (heap size for tracing/"marking") and the
+    /// number of bytes to allocate ("cons") per collection.
+    priv inverse_load_factor: f32,
+
+    /// The number of bytes we should allocate before collecting.
+    priv bytes_for_next_gc: uint,
+    /// The number of bytes allocated since the last collection.
+    priv bytes_since_last_gc: uint,
+
+    // the byte size of live allocations, that is, GC pointers
+    // considered reachable.
+    priv live_heap_bytes: uint,
+    // the total number of bytes that have been "allocated" by
+    // `.alloc` (including the allocations reused from the cache).
+    priv total_heap_bytes: uint,
+
+    /// number of GC-able allocations performed.
+    priv gc_allocs: uint,
 }
 
 fn compute_log_rounded_up_size(size: uint) -> uint {
@@ -99,14 +114,22 @@ impl GarbageCollector {
             alloc_cache: [~[], ~[], ~[], ~[], ~[], ~[],
                           ~[], ~[], ~[], ~[], ~[], ~[],
                           ~[], ~[], ~[], ~[], ~[], ~[]],
-            gc_allocs: 0,
-            gc_allocs_per_collection_mask: DEFAULT_ALLOCS_PER_COLLECTION_MASK
+
+            inverse_load_factor: DEFAULT_INVERSE_LOAD_FACTOR,
+
+            bytes_for_next_gc: MINIMUM_COLLECTION,
+            bytes_since_last_gc: 0,
+
+            live_heap_bytes: 0,
+            total_heap_bytes: 0,
+
+            gc_allocs: 0
         }
     }
 
     /// Run a garbage collection if we're due for one.
     pub unsafe fn occasional_collection(&mut self, stack_top: uint) {
-        if self.gc_allocs & self.gc_allocs_per_collection_mask == 0 {
+        if self.bytes_since_last_gc >= self.bytes_for_next_gc {
             self.collect(stack_top)
         }
     }
@@ -121,6 +144,7 @@ impl GarbageCollector {
                         tracer: Option<TracingFunc>,
                         finaliser: Option<fn(*mut ())>) -> *mut u8 {
         self.gc_allocs += 1;
+
         let log_next_power_of_two = compute_log_rounded_up_size(size);
 
         // it's always larger than ALLOC_CACHE_MIN_LOG
@@ -131,6 +155,11 @@ impl GarbageCollector {
                     // allocation already.
                     let success = self.gc_ptrs.reuse_alloc(ptr, size, tracer, finaliser);
                     if success {
+                        let alloc_size = 1 << log_next_power_of_two;
+                        self.bytes_since_last_gc += alloc_size;
+                        self.total_heap_bytes += alloc_size;
+                        self.live_heap_bytes += alloc_size;
+
                         debug!("using cache for allocation of size {}", size);
                         return ptr as *mut u8;
                     }
@@ -144,6 +173,10 @@ impl GarbageCollector {
             size
         };
 
+        self.bytes_since_last_gc += alloc_size;
+        self.total_heap_bytes += alloc_size;
+        self.live_heap_bytes += alloc_size;
+
         let ptr = libc::malloc(alloc_size as libc::size_t);
         if ptr.is_null() {
             fail!("GC failed to allocate.")
@@ -152,6 +185,14 @@ impl GarbageCollector {
         self.gc_ptrs.insert_alloc(ptr as uint, size, tracer, finaliser);
 
         ptr as *mut u8
+    }
+
+    pub fn set_inverse_load_factor(&mut self, new_factor: f32) {
+        if !(new_factor > 1.0) {
+            fail!("GarbageCollector requires an inverse load factor > 1, not {}", new_factor)
+        }
+
+        self.inverse_load_factor = new_factor;
     }
 
     /// Register the block of memory [`start`, `end`) for tracing when
@@ -252,10 +293,12 @@ impl GarbageCollector {
                     self.alloc_cache[log_rounded - ALLOC_CACHE_MIN_LOG].push(ptr);
 
                     let actual_size = 1 << log_rounded;
+                    self.live_heap_bytes -= actual_size;
                     bytes_collected += actual_size;
                 } else {
                     large_allocs.push(ptr);
 
+                    self.live_heap_bytes -= descr.metadata;
                     bytes_collected += descr.metadata;
                 }
 
@@ -268,6 +311,13 @@ impl GarbageCollector {
             self.gc_ptrs.remove(ptr);
             libc::free(ptr as *libc::c_void);
         }
+
+        self.bytes_since_last_gc = 0;
+        self.bytes_for_next_gc = cmp::max(MINIMUM_COLLECTION,
+                                          (self.live_heap_bytes as f32 *
+                                           (self.inverse_load_factor - 1.0)) as uint);
+        info!("Collection: collected {}, leaving {} bytes. next GC in {} bytes.",
+              bytes_collected, self.live_heap_bytes, self.bytes_for_next_gc);
     }
 }
 
