@@ -315,8 +315,6 @@ impl Integer for $T {
     fn is_odd(&self) -> bool { !self.is_even() }
 }
 
-impl Bitwise for $T {}
-
 #[cfg(not(test))]
 impl BitOr<$T,$T> for $T {
     #[inline]
@@ -446,6 +444,7 @@ mod tests {
     use i32;
     use num;
     use num::CheckedDiv;
+    use num::Bitwise;
     use mem;
 
     #[test]

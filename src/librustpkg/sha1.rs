@@ -445,6 +445,7 @@ impl Digest for Sha1 {
 
 #[cfg(test)]
 mod tests {
+    use std::num::Bounded;
     use std::rand::{IsaacRng, Rng};
     use std::vec;
     use extra::hex::FromHex;
