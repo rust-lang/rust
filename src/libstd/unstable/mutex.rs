@@ -498,7 +498,7 @@ mod test {
     #[test]
     fn destroy_immediately() {
         unsafe {
-            let mut m = Mutex::empty();
+            let mut m = Mutex::new();
             m.destroy();
         }
     }
