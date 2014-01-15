@@ -201,7 +201,7 @@ pub fn init() {
     }
 
     unsafe {
-        use std::unstable::mutex::{Once, ONCE_INIT};
+        use std::sync::{Once, ONCE_INIT};
         static mut INIT: Once = ONCE_INIT;
         INIT.doit(|| {
             let mut data: WSADATA = intrinsics::init();

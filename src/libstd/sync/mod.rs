@@ -16,6 +16,7 @@
 //! other types of concurrent primitives.
 
 pub use self::mutex::{Mutex, StaticMutex, Guard, MUTEX_INIT};
+pub use self::one::{Once, ONCE_INIT};
 
 pub mod arc;
 pub mod atomics;
@@ -26,3 +27,4 @@ pub mod spsc_queue;
 
 mod mpsc_intrusive;
 mod mutex;
+mod one;
