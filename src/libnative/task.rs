@@ -22,7 +22,7 @@ use std::rt::task::{Task, BlockedTask};
 use std::rt::thread::Thread;
 use std::rt;
 use std::task::TaskOpts;
-use std::unstable::mutex::Mutex;
+use std::unstable::mutex::{Mutex, Cond};
 use std::unstable::stack;
 
 use io;
@@ -41,6 +41,7 @@ pub fn new(stack_bounds: (uint, uint)) -> ~Task {
 fn ops() -> ~Ops {
     ~Ops {
         lock: unsafe { Mutex::new() },
+        cond: unsafe { Cond::new() },
         awoken: false,
         io: io::IoFactory::new(),
         // these *should* get overwritten
@@ -112,6 +113,7 @@ pub fn spawn_opts(opts: TaskOpts, f: proc()) {
 // structure is allocated once per task.
 struct Ops {
     lock: Mutex,       // native synchronization
+    cond: Cond,
     awoken: bool,      // used to prevent spurious wakeups
     io: io::IoFactory, // local I/O factory
 
@@ -196,7 +198,7 @@ impl rt::Runtime for Ops {
                 match f(task) {
                     Ok(()) => {
                         while !(*me).awoken {
-                            (*me).lock.wait();
+                            (*me).cond.wait(&(*me).lock);
                         }
                     }
                     Err(task) => { cast::forget(task.wake()); }
@@ -216,7 +218,7 @@ impl rt::Runtime for Ops {
                     }
                 });
                 while success && !(*me).awoken {
-                    (*me).lock.wait();
+                    (*me).cond.wait(&(*me).lock);
                 }
                 (*me).lock.unlock();
             }
@@ -237,7 +239,7 @@ impl rt::Runtime for Ops {
             cast::forget(to_wake);
             (*me).lock.lock();
             (*me).awoken = true;
-            (*me).lock.signal();
+            (*me).cond.signal();
             (*me).lock.unlock();
         }
     }

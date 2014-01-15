@@ -17,10 +17,11 @@
 //! The green counterpart for this is bookeeping on sched pools.
 
 use std::sync::atomics;
-use std::unstable::mutex::{Mutex, MUTEX_INIT};
+use std::unstable::mutex::{Cond, COND_INIT, Mutex, MUTEX_INIT};
 
 static mut TASK_COUNT: atomics::AtomicUint = atomics::INIT_ATOMIC_UINT;
 static mut TASK_LOCK: Mutex = MUTEX_INIT;
+static mut TASK_COND: Cond = COND_INIT;
 
 pub fn increment() {
     unsafe { TASK_COUNT.fetch_add(1, atomics::SeqCst); }
@@ -30,7 +31,7 @@ pub fn decrement() {
     unsafe {
         if TASK_COUNT.fetch_sub(1, atomics::SeqCst) == 1 {
             TASK_LOCK.lock();
-            TASK_LOCK.signal();
+            TASK_COND.signal();
             TASK_LOCK.unlock();
         }
     }
@@ -42,7 +43,7 @@ pub fn wait_for_other_tasks() {
     unsafe {
         TASK_LOCK.lock();
         while TASK_COUNT.load(atomics::SeqCst) > 0 {
-            TASK_LOCK.wait();
+            TASK_COND.wait(&TASK_LOCK);
         }
         TASK_LOCK.unlock();
     }

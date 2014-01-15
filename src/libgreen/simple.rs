@@ -39,7 +39,7 @@ impl Runtime for SimpleTask {
         // See libnative/task.rs for what's going on here with the `awoken`
         // field and the while loop around wait()
         unsafe {
-            let mut guard = (*me).lock.lock();
+            let guard = (*me).lock.lock();
             (*me).awoken = false;
             match f(task) {
                 Ok(()) => {
