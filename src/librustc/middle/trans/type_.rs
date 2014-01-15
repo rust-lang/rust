@@ -220,7 +220,6 @@ impl Type {
                      glue_fn_ty, // take
                      glue_fn_ty, // drop
                      glue_fn_ty, // visit
-                     int_ty, // borrow_offset
                      Type::struct_([Type::i8p(), Type::int(arch)], false)]; // name
         tydesc.set_struct_body(elems, false);
 
@@ -269,10 +268,6 @@ impl Type {
         Type::smart_ptr(ctx, &Type::opaque())
     }
 
-    pub fn unique(ctx: &CrateContext, ty: &Type) -> Type {
-        Type::smart_ptr(ctx, ty)
-    }
-
     pub fn opaque_cbox_ptr(cx: &CrateContext) -> Type {
         Type::opaque_box(cx).ptr_to()
     }
@@ -281,7 +276,7 @@ impl Type {
         let tydesc_ptr = ctx.tydesc_type.ptr_to();
         let box_ty = match store {
             ty::BoxTraitStore => Type::opaque_box(ctx),
-            ty::UniqTraitStore => Type::unique(ctx, &Type::i8()),
+            ty::UniqTraitStore => Type::i8(),
             ty::RegionTraitStore(..) => Type::i8()
         };
         Type::struct_([tydesc_ptr, box_ty.ptr_to()], false)

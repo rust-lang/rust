@@ -64,7 +64,14 @@ pub fn get_alloc(bcx: &Block, vptr: ValueRef) -> ValueRef {
 }
 
 pub fn get_bodyptr(bcx: &Block, vptr: ValueRef, t: ty::t) -> ValueRef {
-    if ty::type_contents(bcx.tcx(), t).owns_managed() {
+    let vt = vec_types(bcx, t);
+
+    let managed = match ty::get(vt.vec_ty).sty {
+      ty::ty_str(ty::vstore_box) | ty::ty_vec(_, ty::vstore_box) => true,
+      _ => false
+    };
+
+    if managed {
         GEPi(bcx, vptr, [0u, abi::box_field_body])
     } else {
         vptr
@@ -106,7 +113,6 @@ pub fn alloc_raw<'a>(
             base::malloc_general_dyn(bcx, vecbodyty, heap, vecsize);
         Store(bcx, fill, GEPi(bcx, body, [0u, abi::vec_elt_fill]));
         Store(bcx, alloc, GEPi(bcx, body, [0u, abi::vec_elt_alloc]));
-        base::maybe_set_managed_unique_rc(bcx, bx, heap);
         return rslt(bcx, bx);
     }
 }
@@ -117,7 +123,7 @@ pub fn alloc_uniq_raw<'a>(
                       fill: ValueRef,
                       alloc: ValueRef)
                       -> Result<'a> {
-    alloc_raw(bcx, unit_ty, fill, alloc, base::heap_for_unique(bcx, unit_ty))
+    alloc_raw(bcx, unit_ty, fill, alloc, heap_exchange)
 }
 
 pub fn alloc_vec<'a>(
@@ -350,7 +356,7 @@ pub fn trans_uniq_or_managed_vstore<'a>(
             }
         }
         heap_exchange_closure => fail!("vectors use exchange_alloc"),
-        heap_managed | heap_managed_unique => {}
+        heap_managed => {}
     }
 
     let vt = vec_types_from_expr(bcx, vstore_expr);

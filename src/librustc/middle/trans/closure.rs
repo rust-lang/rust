@@ -150,14 +150,6 @@ pub fn mk_closure_tys(tcx: ty::ctxt,
     return cdata_ty;
 }
 
-fn heap_for_unique_closure(bcx: &Block, t: ty::t) -> heap {
-    if ty::type_contents(bcx.tcx(), t).owns_managed() {
-        heap_managed_unique
-    } else {
-        heap_exchange_closure
-    }
-}
-
 pub fn allocate_cbox<'a>(
                      bcx: &'a Block<'a>,
                      sigil: ast::Sigil,
@@ -173,7 +165,7 @@ pub fn allocate_cbox<'a>(
             tcx.sess.bug("trying to trans allocation of @fn")
         }
         ast::OwnedSigil => {
-            malloc_raw(bcx, cdata_ty, heap_for_unique_closure(bcx, cdata_ty))
+            malloc_raw(bcx, cdata_ty, heap_exchange_closure)
         }
         ast::BorrowedSigil => {
             let cbox_ty = tuplify_box_ty(tcx, cdata_ty);
