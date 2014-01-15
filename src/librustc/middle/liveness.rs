@@ -794,8 +794,9 @@ impl Liveness {
     }
 
     pub fn ln_str(&self, ln: LiveNode) -> ~str {
-        str::from_utf8_owned(io::mem::with_mem_writer(|wr| {
-            let wr = wr as &mut io::Writer;
+        let mut wr = io::MemWriter::new();
+        {
+            let wr = &mut wr as &mut io::Writer;
             {
                 let lnks = self.ir.lnks.try_borrow();
                 write!(wr,
@@ -823,7 +824,8 @@ impl Liveness {
                     write!(wr, "  precedes (successors borrowed)]");
                 }
             }
-        }))
+        }
+        str::from_utf8_owned(wr.unwrap())
     }
 
     pub fn init_empty(&self, ln: LiveNode, succ_ln: LiveNode) {

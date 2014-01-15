@@ -21,7 +21,7 @@ use std::cast::transmute;
 use std::f64;
 use std::hashmap::HashMap;
 use std::io;
-use std::io::mem::MemWriter;
+use std::io::MemWriter;
 use std::num;
 use std::str;
 use std::to_str;
@@ -1506,7 +1506,7 @@ mod tests {
     }
 
     fn with_str_writer(f: |&mut io::Writer|) -> ~str {
-        use std::io::mem::MemWriter;
+        use std::io::MemWriter;
         use std::str;
 
         let mut m = MemWriter::new();

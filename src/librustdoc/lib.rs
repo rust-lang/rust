@@ -21,8 +21,7 @@ extern mod extra;
 
 use std::local_data;
 use std::io;
-use std::io::File;
-use std::io::mem::MemWriter;
+use std::io::{File, MemWriter};
 use std::str;
 use extra::getopts;
 use extra::getopts::groups;

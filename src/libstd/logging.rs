@@ -96,7 +96,7 @@ start, print out all modules registered for logging, and then exit.
 */
 
 use fmt;
-use io::buffered::LineBufferedWriter;
+use io::LineBufferedWriter;
 use io;
 use io::Writer;
 use ops::Drop;

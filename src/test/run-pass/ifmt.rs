@@ -14,9 +14,8 @@
 #[deny(warnings)];
 
 use std::fmt;
-use std::io::mem::MemWriter;
+use std::io::MemWriter;
 use std::io;
-use std::io::Writer;
 use std::str;
 
 struct A;

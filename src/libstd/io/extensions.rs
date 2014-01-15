@@ -141,7 +141,7 @@ pub fn u64_from_be_bytes(data: &[u8],
 mod test {
     use unstable::finally::Finally;
     use prelude::*;
-    use io::mem::{MemReader, MemWriter};
+    use io::{MemReader, MemWriter};
     use io::{io_error, placeholder_error};
 
     struct InitialZeroByteReader {

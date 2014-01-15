@@ -25,9 +25,9 @@ use rand::Rng;
 ///
 /// ```rust
 /// use std::rand::{reader, Rng};
-/// use std::io::mem;
+/// use std::io::MemReader;
 ///
-/// let mut rng = reader::ReaderRng::new(mem::MemReader::new(~[1,2,3,4,5,6,7,8]));
+/// let mut rng = reader::ReaderRng::new(MemReader::new(~[1,2,3,4,5,6,7,8]));
 /// println!("{:x}", rng.gen::<uint>());
 /// ```
 pub struct ReaderRng<R> {
@@ -76,7 +76,7 @@ impl<R: Reader> Rng for ReaderRng<R> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use io::mem::MemReader;
+    use io::MemReader;
     use cast;
     use rand::*;
     use prelude::*;

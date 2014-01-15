@@ -34,7 +34,7 @@ fn test_ebml<'a, A:
     Encodable<EBWriter::Encoder> +
     Decodable<EBReader::Decoder<'a>>
 >(a1: &A) {
-    let mut wr = std::io::mem::MemWriter::new();
+    let mut wr = std::io::MemWriter::new();
     let mut ebml_w = EBWriter::Encoder(&mut wr);
     a1.encode(&mut ebml_w);
     let bytes = wr.get_ref();

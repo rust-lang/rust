@@ -582,7 +582,7 @@ pub mod writer {
     use std::clone::Clone;
     use std::io;
     use std::io::{Writer, Seek};
-    use std::io::mem::MemWriter;
+    use std::io::MemWriter;
     use std::io::extensions::u64_to_be_bytes;
 
     // ebml writing
@@ -935,7 +935,7 @@ mod tests {
     use serialize::Encodable;
     use serialize;
 
-    use std::io::mem::MemWriter;
+    use std::io::MemWriter;
     use std::option::{None, Option, Some};
 
     #[test]
