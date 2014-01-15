@@ -7,7 +7,7 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-use std::vec::MoveIterator;
+use std::vec;
 use std::util;
 
 /// A vector type optimized for cases where the size is almost always 0 or 1
@@ -80,7 +80,7 @@ impl<T> SmallVector<T> {
         }
     }
 
-    pub fn move_iter(self) -> SmallVectorMoveIterator<T> {
+    pub fn move_iter(self) -> MoveItems<T> {
         match self {
             Zero => ZeroIterator,
             One(v) => OneIterator(v),
@@ -89,13 +89,13 @@ impl<T> SmallVector<T> {
     }
 }
 
-pub enum SmallVectorMoveIterator<T> {
+pub enum MoveItems<T> {
     priv ZeroIterator,
     priv OneIterator(T),
-    priv ManyIterator(MoveIterator<T>),
+    priv ManyIterator(vec::MoveItems<T>),
 }
 
-impl<T> Iterator<T> for SmallVectorMoveIterator<T> {
+impl<T> Iterator<T> for MoveItems<T> {
     fn next(&mut self) -> Option<T> {
         match *self {
             ZeroIterator => None,

@@ -79,7 +79,7 @@ pub struct Death {
     on_exit: Option<proc(TaskResult)>,
 }
 
-pub struct BlockedTaskIterator {
+pub struct BlockedTasks {
     priv inner: UnsafeArc<AtomicUint>,
 }
 
@@ -300,7 +300,7 @@ impl Drop for Task {
     }
 }
 
-impl Iterator<BlockedTask> for BlockedTaskIterator {
+impl Iterator<BlockedTask> for BlockedTasks {
     fn next(&mut self) -> Option<BlockedTask> {
         Some(Shared(self.inner.clone()))
     }
@@ -331,7 +331,7 @@ impl BlockedTask {
     }
 
     /// Converts one blocked task handle to a list of many handles to the same.
-    pub fn make_selectable(self, num_handles: uint) -> Take<BlockedTaskIterator>
+    pub fn make_selectable(self, num_handles: uint) -> Take<BlockedTasks>
     {
         let arc = match self {
             Owned(task) => {
@@ -340,7 +340,7 @@ impl BlockedTask {
             }
             Shared(arc) => arc.clone(),
         };
-        BlockedTaskIterator{ inner: arc }.take(num_handles)
+        BlockedTasks{ inner: arc }.take(num_handles)
     }
 
     /// Convert to an unsafe uint value. Useful for storing in a pipe's state

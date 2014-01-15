@@ -497,7 +497,7 @@ pub struct Formatter<'a> {
 
     /// Output buffer.
     buf: &'a mut io::Writer,
-    priv curarg: vec::VecIterator<'a, Argument<'a>>,
+    priv curarg: vec::Items<'a, Argument<'a>>,
     priv args: &'a [Argument<'a>],
 }
 

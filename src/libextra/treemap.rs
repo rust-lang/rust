@@ -137,8 +137,8 @@ impl<K: TotalOrd, V> TreeMap<K, V> {
 
     /// Get a lazy iterator over the key-value pairs in the map.
     /// Requires that it be frozen (immutable).
-    pub fn iter<'a>(&'a self) -> TreeMapIterator<'a, K, V> {
-        TreeMapIterator {
+    pub fn iter<'a>(&'a self) -> Entries<'a, K, V> {
+        Entries {
             stack: ~[],
             node: deref(&self.root),
             remaining_min: self.length,
@@ -148,14 +148,14 @@ impl<K: TotalOrd, V> TreeMap<K, V> {
 
     /// Get a lazy reverse iterator over the key-value pairs in the map.
     /// Requires that it be frozen (immutable).
-    pub fn rev_iter<'a>(&'a self) -> TreeMapRevIterator<'a, K, V> {
-        TreeMapRevIterator{iter: self.iter()}
+    pub fn rev_iter<'a>(&'a self) -> RevEntries<'a, K, V> {
+        RevEntries{iter: self.iter()}
     }
 
     /// Get a lazy forward iterator over the key-value pairs in the
     /// map, with the values being mutable.
-    pub fn mut_iter<'a>(&'a mut self) -> TreeMapMutIterator<'a, K, V> {
-        TreeMapMutIterator {
+    pub fn mut_iter<'a>(&'a mut self) -> MutEntries<'a, K, V> {
+        MutEntries {
             stack: ~[],
             node: mut_deref(&mut self.root),
             remaining_min: self.length,
@@ -164,19 +164,19 @@ impl<K: TotalOrd, V> TreeMap<K, V> {
     }
     /// Get a lazy reverse iterator over the key-value pairs in the
     /// map, with the values being mutable.
-    pub fn mut_rev_iter<'a>(&'a mut self) -> TreeMapMutRevIterator<'a, K, V> {
-        TreeMapMutRevIterator{iter: self.mut_iter()}
+    pub fn mut_rev_iter<'a>(&'a mut self) -> RevMutEntries<'a, K, V> {
+        RevMutEntries{iter: self.mut_iter()}
     }
 
 
     /// Get a lazy iterator that consumes the treemap.
-    pub fn move_iter(self) -> TreeMapMoveIterator<K, V> {
+    pub fn move_iter(self) -> MoveEntries<K, V> {
         let TreeMap { root: root, length: length } = self;
         let stk = match root {
             None => ~[],
             Some(~tn) => ~[tn]
         };
-        TreeMapMoveIterator {
+        MoveEntries {
             stack: stk,
             remaining: length
         }
@@ -220,8 +220,8 @@ macro_rules! bound_setup {
 impl<K: TotalOrd, V> TreeMap<K, V> {
     /// Get a lazy iterator that should be initialized using
     /// `traverse_left`/`traverse_right`/`traverse_complete`.
-    fn iter_for_traversal<'a>(&'a self) -> TreeMapIterator<'a, K, V> {
-        TreeMapIterator {
+    fn iter_for_traversal<'a>(&'a self) -> Entries<'a, K, V> {
+        Entries {
             stack: ~[],
             node: deref(&self.root),
             remaining_min: 0,
@@ -231,20 +231,20 @@ impl<K: TotalOrd, V> TreeMap<K, V> {
 
     /// Return a lazy iterator to the first key-value pair whose key is not less than `k`
     /// If all keys in map are less than `k` an empty iterator is returned.
-    pub fn lower_bound<'a>(&'a self, k: &K) -> TreeMapIterator<'a, K, V> {
+    pub fn lower_bound<'a>(&'a self, k: &K) -> Entries<'a, K, V> {
         bound_setup!(self.iter_for_traversal(), true)
     }
 
     /// Return a lazy iterator to the first key-value pair whose key is greater than `k`
     /// If all keys in map are not greater than `k` an empty iterator is returned.
-    pub fn upper_bound<'a>(&'a self, k: &K) -> TreeMapIterator<'a, K, V> {
+    pub fn upper_bound<'a>(&'a self, k: &K) -> Entries<'a, K, V> {
         bound_setup!(self.iter_for_traversal(), false)
     }
 
     /// Get a lazy iterator that should be initialized using
     /// `traverse_left`/`traverse_right`/`traverse_complete`.
-    fn mut_iter_for_traversal<'a>(&'a mut self) -> TreeMapMutIterator<'a, K, V> {
-        TreeMapMutIterator {
+    fn mut_iter_for_traversal<'a>(&'a mut self) -> MutEntries<'a, K, V> {
+        MutEntries {
             stack: ~[],
             node: mut_deref(&mut self.root),
             remaining_min: 0,
@@ -257,7 +257,7 @@ impl<K: TotalOrd, V> TreeMap<K, V> {
     ///
     /// If all keys in map are less than `k` an empty iterator is
     /// returned.
-    pub fn mut_lower_bound<'a>(&'a mut self, k: &K) -> TreeMapMutIterator<'a, K, V> {
+    pub fn mut_lower_bound<'a>(&'a mut self, k: &K) -> MutEntries<'a, K, V> {
         bound_setup!(self.mut_iter_for_traversal(), true)
     }
 
@@ -266,15 +266,15 @@ impl<K: TotalOrd, V> TreeMap<K, V> {
     ///
     /// If all keys in map are not greater than `k` an empty iterator
     /// is returned.
-    pub fn mut_upper_bound<'a>(&'a mut self, k: &K) -> TreeMapMutIterator<'a, K, V> {
+    pub fn mut_upper_bound<'a>(&'a mut self, k: &K) -> MutEntries<'a, K, V> {
         bound_setup!(self.mut_iter_for_traversal(), false)
     }
 }
 
 /// Lazy forward iterator over a map
-pub struct TreeMapIterator<'a, K, V> {
+pub struct Entries<'a, K, V> {
     priv stack: ~[&'a TreeNode<K, V>],
-    // See the comment on TreeMapMutIterator; this is just to allow
+    // See the comment on MutEntries; this is just to allow
     // code-sharing (for this immutable-values iterator it *could* very
     // well be Option<&'a TreeNode<K,V>>).
     priv node: *TreeNode<K, V>,
@@ -283,13 +283,13 @@ pub struct TreeMapIterator<'a, K, V> {
 }
 
 /// Lazy backward iterator over a map
-pub struct TreeMapRevIterator<'a, K, V> {
-    priv iter: TreeMapIterator<'a, K, V>,
+pub struct RevEntries<'a, K, V> {
+    priv iter: Entries<'a, K, V>,
 }
 
 /// Lazy forward iterator over a map that allows for the mutation of
 /// the values.
-pub struct TreeMapMutIterator<'a, K, V> {
+pub struct MutEntries<'a, K, V> {
     priv stack: ~[&'a mut TreeNode<K, V>],
     // Unfortunately, we require some unsafe-ness to get around the
     // fact that we would be storing a reference *into* one of the
@@ -316,8 +316,8 @@ pub struct TreeMapMutIterator<'a, K, V> {
 }
 
 /// Lazy backward iterator over a map
-pub struct TreeMapMutRevIterator<'a, K, V> {
-    priv iter: TreeMapMutIterator<'a, K, V>,
+pub struct RevMutEntries<'a, K, V> {
+    priv iter: MutEntries<'a, K, V>,
 }
 
 
@@ -377,13 +377,13 @@ macro_rules! define_iterator {
             }
 
             /// traverse_left, traverse_right and traverse_complete are
-            /// used to initialize TreeMapIterator/TreeMapMutIterator
+            /// used to initialize Entries/MutEntries
             /// pointing to element inside tree structure.
             ///
             /// They should be used in following manner:
             ///   - create iterator using TreeMap::[mut_]iter_for_traversal
             ///   - find required node using `traverse_left`/`traverse_right`
-            ///     (current node is `TreeMapIterator::node` field)
+            ///     (current node is `Entries::node` field)
             ///   - complete initialization with `traverse_complete`
             ///
             /// After this, iteration will start from `self.node`.  If
@@ -443,16 +443,16 @@ macro_rules! define_iterator {
 } // end of define_iterator
 
 define_iterator! {
-    TreeMapIterator,
-    TreeMapRevIterator,
+    Entries,
+    RevEntries,
     deref = deref,
 
     // immutable, so no mut
     addr_mut =
 }
 define_iterator! {
-    TreeMapMutIterator,
-    TreeMapMutRevIterator,
+    MutEntries,
+    RevMutEntries,
     deref = mut_deref,
 
     addr_mut = mut
@@ -481,12 +481,12 @@ fn mut_deref<K, V>(x: &mut Option<~TreeNode<K, V>>) -> *mut TreeNode<K, V> {
 
 
 /// Lazy forward iterator over a map that consumes the map while iterating
-pub struct TreeMapMoveIterator<K, V> {
+pub struct MoveEntries<K, V> {
     priv stack: ~[TreeNode<K, V>],
     priv remaining: uint
 }
 
-impl<K, V> Iterator<(K, V)> for TreeMapMoveIterator<K,V> {
+impl<K, V> Iterator<(K, V)> for MoveEntries<K,V> {
     #[inline]
     fn next(&mut self) -> Option<(K, V)> {
         while !self.stack.is_empty() {
@@ -530,7 +530,7 @@ impl<K, V> Iterator<(K, V)> for TreeMapMoveIterator<K,V> {
 
 }
 
-impl<'a, T> Iterator<&'a T> for TreeSetIterator<'a, T> {
+impl<'a, T> Iterator<&'a T> for SetItems<'a, T> {
     /// Advance the iterator to the next node (in order). If there are no more nodes, return `None`.
     #[inline]
     fn next(&mut self) -> Option<&'a T> {
@@ -538,7 +538,7 @@ impl<'a, T> Iterator<&'a T> for TreeSetIterator<'a, T> {
     }
 }
 
-impl<'a, T> Iterator<&'a T> for TreeSetRevIterator<'a, T> {
+impl<'a, T> Iterator<&'a T> for RevSetItems<'a, T> {
     /// Advance the iterator to the next node (in order). If there are no more nodes, return `None`.
     #[inline]
     fn next(&mut self) -> Option<&'a T> {
@@ -653,86 +653,86 @@ impl<T: TotalOrd> TreeSet<T> {
     /// Get a lazy iterator over the values in the set.
     /// Requires that it be frozen (immutable).
     #[inline]
-    pub fn iter<'a>(&'a self) -> TreeSetIterator<'a, T> {
-        TreeSetIterator{iter: self.map.iter()}
+    pub fn iter<'a>(&'a self) -> SetItems<'a, T> {
+        SetItems{iter: self.map.iter()}
     }
 
     /// Get a lazy iterator over the values in the set.
     /// Requires that it be frozen (immutable).
     #[inline]
-    pub fn rev_iter<'a>(&'a self) -> TreeSetRevIterator<'a, T> {
-        TreeSetRevIterator{iter: self.map.rev_iter()}
+    pub fn rev_iter<'a>(&'a self) -> RevSetItems<'a, T> {
+        RevSetItems{iter: self.map.rev_iter()}
     }
 
     /// Get a lazy iterator pointing to the first value not less than `v` (greater or equal).
     /// If all elements in the set are less than `v` empty iterator is returned.
     #[inline]
-    pub fn lower_bound<'a>(&'a self, v: &T) -> TreeSetIterator<'a, T> {
-        TreeSetIterator{iter: self.map.lower_bound(v)}
+    pub fn lower_bound<'a>(&'a self, v: &T) -> SetItems<'a, T> {
+        SetItems{iter: self.map.lower_bound(v)}
     }
 
     /// Get a lazy iterator pointing to the first value greater than `v`.
     /// If all elements in the set are not greater than `v` empty iterator is returned.
     #[inline]
-    pub fn upper_bound<'a>(&'a self, v: &T) -> TreeSetIterator<'a, T> {
-        TreeSetIterator{iter: self.map.upper_bound(v)}
+    pub fn upper_bound<'a>(&'a self, v: &T) -> SetItems<'a, T> {
+        SetItems{iter: self.map.upper_bound(v)}
     }
 
     /// Visit the values (in-order) representing the difference
-    pub fn difference<'a>(&'a self, other: &'a TreeSet<T>) -> Difference<'a, T> {
-        Difference{a: self.iter().peekable(), b: other.iter().peekable()}
+    pub fn difference<'a>(&'a self, other: &'a TreeSet<T>) -> DifferenceItems<'a, T> {
+        DifferenceItems{a: self.iter().peekable(), b: other.iter().peekable()}
     }
 
     /// Visit the values (in-order) representing the symmetric difference
     pub fn symmetric_difference<'a>(&'a self, other: &'a TreeSet<T>)
-        -> SymDifference<'a, T> {
-        SymDifference{a: self.iter().peekable(), b: other.iter().peekable()}
+        -> SymDifferenceItems<'a, T> {
+        SymDifferenceItems{a: self.iter().peekable(), b: other.iter().peekable()}
     }
 
     /// Visit the values (in-order) representing the intersection
     pub fn intersection<'a>(&'a self, other: &'a TreeSet<T>)
-        -> Intersection<'a, T> {
-        Intersection{a: self.iter().peekable(), b: other.iter().peekable()}
+        -> IntersectionItems<'a, T> {
+        IntersectionItems{a: self.iter().peekable(), b: other.iter().peekable()}
     }
 
     /// Visit the values (in-order) representing the union
-    pub fn union<'a>(&'a self, other: &'a TreeSet<T>) -> Union<'a, T> {
-        Union{a: self.iter().peekable(), b: other.iter().peekable()}
+    pub fn union<'a>(&'a self, other: &'a TreeSet<T>) -> UnionItems<'a, T> {
+        UnionItems{a: self.iter().peekable(), b: other.iter().peekable()}
     }
 }
 
 /// Lazy forward iterator over a set
-pub struct TreeSetIterator<'a, T> {
-    priv iter: TreeMapIterator<'a, T, ()>
+pub struct SetItems<'a, T> {
+    priv iter: Entries<'a, T, ()>
 }
 
 /// Lazy backward iterator over a set
-pub struct TreeSetRevIterator<'a, T> {
-    priv iter: TreeMapRevIterator<'a, T, ()>
+pub struct RevSetItems<'a, T> {
+    priv iter: RevEntries<'a, T, ()>
 }
 
 /// Lazy iterator producing elements in the set difference (in-order)
-pub struct Difference<'a, T> {
-    priv a: Peekable<&'a T, TreeSetIterator<'a, T>>,
-    priv b: Peekable<&'a T, TreeSetIterator<'a, T>>,
+pub struct DifferenceItems<'a, T> {
+    priv a: Peekable<&'a T, SetItems<'a, T>>,
+    priv b: Peekable<&'a T, SetItems<'a, T>>,
 }
 
 /// Lazy iterator producing elements in the set symmetric difference (in-order)
-pub struct SymDifference<'a, T> {
-    priv a: Peekable<&'a T, TreeSetIterator<'a, T>>,
-    priv b: Peekable<&'a T, TreeSetIterator<'a, T>>,
+pub struct SymDifferenceItems<'a, T> {
+    priv a: Peekable<&'a T, SetItems<'a, T>>,
+    priv b: Peekable<&'a T, SetItems<'a, T>>,
 }
 
 /// Lazy iterator producing elements in the set intersection (in-order)
-pub struct Intersection<'a, T> {
-    priv a: Peekable<&'a T, TreeSetIterator<'a, T>>,
-    priv b: Peekable<&'a T, TreeSetIterator<'a, T>>,
+pub struct IntersectionItems<'a, T> {
+    priv a: Peekable<&'a T, SetItems<'a, T>>,
+    priv b: Peekable<&'a T, SetItems<'a, T>>,
 }
 
 /// Lazy iterator producing elements in the set intersection (in-order)
-pub struct Union<'a, T> {
-    priv a: Peekable<&'a T, TreeSetIterator<'a, T>>,
-    priv b: Peekable<&'a T, TreeSetIterator<'a, T>>,
+pub struct UnionItems<'a, T> {
+    priv a: Peekable<&'a T, SetItems<'a, T>>,
+    priv b: Peekable<&'a T, SetItems<'a, T>>,
 }
 
 /// Compare `x` and `y`, but return `short` if x is None and `long` if y is None
@@ -745,7 +745,7 @@ fn cmp_opt<T: TotalOrd>(x: Option<&T>, y: Option<&T>,
     }
 }
 
-impl<'a, T: TotalOrd> Iterator<&'a T> for Difference<'a, T> {
+impl<'a, T: TotalOrd> Iterator<&'a T> for DifferenceItems<'a, T> {
     fn next(&mut self) -> Option<&'a T> {
         loop {
             match cmp_opt(self.a.peek(), self.b.peek(), Less, Less) {
@@ -757,7 +757,7 @@ impl<'a, T: TotalOrd> Iterator<&'a T> for Difference<'a, T> {
     }
 }
 
-impl<'a, T: TotalOrd> Iterator<&'a T> for SymDifference<'a, T> {
+impl<'a, T: TotalOrd> Iterator<&'a T> for SymDifferenceItems<'a, T> {
     fn next(&mut self) -> Option<&'a T> {
         loop {
             match cmp_opt(self.a.peek(), self.b.peek(), Greater, Less) {
@@ -769,7 +769,7 @@ impl<'a, T: TotalOrd> Iterator<&'a T> for SymDifference<'a, T> {
     }
 }
 
-impl<'a, T: TotalOrd> Iterator<&'a T> for Intersection<'a, T> {
+impl<'a, T: TotalOrd> Iterator<&'a T> for IntersectionItems<'a, T> {
     fn next(&mut self) -> Option<&'a T> {
         loop {
             let o_cmp = match (self.a.peek(), self.b.peek()) {
@@ -787,7 +787,7 @@ impl<'a, T: TotalOrd> Iterator<&'a T> for Intersection<'a, T> {
     }
 }
 
-impl<'a, T: TotalOrd> Iterator<&'a T> for Union<'a, T> {
+impl<'a, T: TotalOrd> Iterator<&'a T> for UnionItems<'a, T> {
     fn next(&mut self) -> Option<&'a T> {
         loop {
             match cmp_opt(self.a.peek(), self.b.peek(), Greater, Less) {

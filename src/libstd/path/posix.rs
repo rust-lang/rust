@@ -21,21 +21,21 @@ use str;
 use str::Str;
 use to_bytes::IterBytes;
 use vec;
-use vec::{CopyableVector, RSplitIterator, SplitIterator, Vector, VectorVector,
+use vec::{CopyableVector, RevSplits, Splits, Vector, VectorVector,
           ImmutableEqVector, OwnedVector, ImmutableVector, OwnedCopyableVector};
 use super::{BytesContainer, GenericPath, GenericPathUnsafe};
 
 /// Iterator that yields successive components of a Path as &[u8]
-pub type ComponentIter<'a> = SplitIterator<'a, u8>;
+pub type Components<'a> = Splits<'a, u8>;
 /// Iterator that yields components of a Path in reverse as &[u8]
-pub type RevComponentIter<'a> = RSplitIterator<'a, u8>;
+pub type RevComponents<'a> = RevSplits<'a, u8>;
 
 /// Iterator that yields successive components of a Path as Option<&str>
-pub type StrComponentIter<'a> = Map<'a, &'a [u8], Option<&'a str>,
-                                       ComponentIter<'a>>;
+pub type StrComponents<'a> = Map<'a, &'a [u8], Option<&'a str>,
+                                       Components<'a>>;
 /// Iterator that yields components of a Path in reverse as Option<&str>
-pub type RevStrComponentIter<'a> = Map<'a, &'a [u8], Option<&'a str>,
-                                          RevComponentIter<'a>>;
+pub type RevStrComponents<'a> = Map<'a, &'a [u8], Option<&'a str>,
+                                          RevComponents<'a>>;
 
 /// Represents a POSIX file path
 #[deriving(Clone, DeepClone)]
@@ -371,7 +371,7 @@ impl Path {
     /// Does not distinguish between absolute and relative paths, e.g.
     /// /a/b/c and a/b/c yield the same set of components.
     /// A path of "/" yields no components. A path of "." yields one component.
-    pub fn components<'a>(&'a self) -> ComponentIter<'a> {
+    pub fn components<'a>(&'a self) -> Components<'a> {
         let v = if self.repr[0] == sep_byte {
             self.repr.slice_from(1)
         } else { self.repr.as_slice() };
@@ -385,7 +385,7 @@ impl Path {
 
     /// Returns an iterator that yields each component of the path in reverse.
     /// See components() for details.
-    pub fn rev_components<'a>(&'a self) -> RevComponentIter<'a> {
+    pub fn rev_components<'a>(&'a self) -> RevComponents<'a> {
         let v = if self.repr[0] == sep_byte {
             self.repr.slice_from(1)
         } else { self.repr.as_slice() };
@@ -399,13 +399,13 @@ impl Path {
 
     /// Returns an iterator that yields each component of the path as Option<&str>.
     /// See components() for details.
-    pub fn str_components<'a>(&'a self) -> StrComponentIter<'a> {
+    pub fn str_components<'a>(&'a self) -> StrComponents<'a> {
         self.components().map(str::from_utf8_opt)
     }
 
     /// Returns an iterator that yields each component of the path in reverse as Option<&str>.
     /// See components() for details.
-    pub fn rev_str_components<'a>(&'a self) -> RevStrComponentIter<'a> {
+    pub fn rev_str_components<'a>(&'a self) -> RevStrComponents<'a> {
         self.rev_components().map(str::from_utf8_opt)
     }
 }
