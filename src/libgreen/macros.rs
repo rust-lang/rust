@@ -13,7 +13,6 @@
 #[macro_escape];
 
 use std::fmt;
-use std::libc;
 
 // Indicates whether we should perform expensive sanity checks, including rtassert!
 // XXX: Once the runtime matures remove the `true` below to turn off rtassert, etc.
@@ -124,6 +123,7 @@ memory and partly incapable of presentation to others.",
     abort();
 
     fn abort() -> ! {
-        unsafe { libc::abort() }
+        use std::unstable::intrinsics;
+        unsafe { intrinsics::abort() }
     }
 }

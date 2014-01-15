@@ -280,7 +280,8 @@ fn get_with<T:'static,
 }
 
 fn abort() -> ! {
-    unsafe { libc::abort() }
+    use std::unstable::intrinsics;
+    unsafe { intrinsics::abort() }
 }
 
 /// Inserts a value into task local storage. If the key is already present in

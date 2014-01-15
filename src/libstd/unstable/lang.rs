@@ -29,6 +29,7 @@ pub fn fail_bounds_check(file: *c_char, line: size_t, index: size_t, len: size_t
 }
 
 #[lang="malloc"]
+#[inline]
 pub unsafe fn local_malloc(td: *c_char, size: uintptr_t) -> *c_char {
     ::rt::local_heap::local_malloc(td, size)
 }
@@ -37,6 +38,7 @@ pub unsafe fn local_malloc(td: *c_char, size: uintptr_t) -> *c_char {
 // inside a landing pad may corrupt the state of the exception handler. If a
 // problem occurs, call exit instead.
 #[lang="free"]
+#[inline]
 pub unsafe fn local_free(ptr: *c_char) {
     ::rt::local_heap::local_free(ptr);
 }
