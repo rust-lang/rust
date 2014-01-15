@@ -123,7 +123,7 @@ mod test {
         let port1 = timer.oneshot(10000);
         let port = timer.oneshot(1);
         port.recv();
-        assert_eq!(port1.try_recv(), None);
+        assert!(port1.recv_opt().is_none());
     }
 
     #[test]
@@ -131,8 +131,7 @@ mod test {
         let mut timer = Timer::new().unwrap();
         let port = timer.oneshot(100000000000);
         timer.sleep(1); // this should invalidate the port
-
-        assert_eq!(port.try_recv(), None);
+        assert!(port.recv_opt().is_none());
     }
 
     #[test]
