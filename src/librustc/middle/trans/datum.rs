@@ -570,11 +570,6 @@ impl Datum {
         let (content_ty, header) = match ty::get(self.ty).sty {
             ty::ty_box(typ) => (typ, true),
             ty::ty_uniq(typ) => (typ, false),
-            ty::ty_vec(_, ty::vstore_uniq) | ty::ty_str(ty::vstore_uniq) => {
-                let unit_ty = ty::sequence_element_type(bcx.tcx(), self.ty);
-                let unboxed_vec_ty = ty::mk_mut_unboxed_vec(bcx.tcx(), unit_ty);
-                (unboxed_vec_ty, true)
-            }
             _ => {
                 bcx.tcx().sess.bug(format!(
                     "box_body() invoked on non-box type {}",
@@ -582,7 +577,7 @@ impl Datum {
             }
         };
 
-        if !header && !ty::type_contents(bcx.tcx(), content_ty).owns_managed() {
+        if !header {
             let ptr = self.to_value_llval(bcx);
             let ty = type_of::type_of(bcx.ccx(), content_ty);
             let body = PointerCast(bcx, ptr, ty.ptr_to());

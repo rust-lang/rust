@@ -116,14 +116,18 @@ use ptr::to_unsafe_ptr;
 use ptr;
 use ptr::RawPtr;
 use rt::global_heap::{malloc_raw, realloc_raw, exchange_free};
+#[cfg(stage0)]
 use rt::local_heap::local_free;
 use mem;
 use mem::size_of;
 use uint;
 use unstable::finally::Finally;
 use unstable::intrinsics;
+#[cfg(stage0)]
 use unstable::intrinsics::{get_tydesc, owns_managed};
-use unstable::raw::{Box, Repr, Slice, Vec};
+use unstable::raw::{Repr, Slice, Vec};
+#[cfg(stage0)]
+use unstable::raw::Box;
 use util;
 
 /**
@@ -178,6 +182,7 @@ pub fn from_elem<T:Clone>(n_elts: uint, t: T) -> ~[T] {
 
 /// Creates a new vector with a capacity of `capacity`
 #[inline]
+#[cfg(stage0)]
 pub fn with_capacity<T>(capacity: uint) -> ~[T] {
     unsafe {
         if owns_managed::<T>() {
@@ -195,6 +200,23 @@ pub fn with_capacity<T>(capacity: uint) -> ~[T] {
             (*ptr).fill = 0;
             cast::transmute(ptr)
         }
+    }
+}
+
+/// Creates a new vector with a capacity of `capacity`
+#[inline]
+#[cfg(not(stage0))]
+pub fn with_capacity<T>(capacity: uint) -> ~[T] {
+    unsafe {
+        let alloc = capacity * mem::nonzero_size_of::<T>();
+        let size = alloc + mem::size_of::<Vec<()>>();
+        if alloc / mem::nonzero_size_of::<T>() != capacity || size < alloc {
+            fail!("vector size is too large: {}", capacity);
+        }
+        let ptr = malloc_raw(size) as *mut Vec<()>;
+        (*ptr).alloc = alloc;
+        (*ptr).fill = 0;
+        cast::transmute(ptr)
     }
 }
 
@@ -784,7 +806,7 @@ impl<T> Container for ~[T] {
     /// Returns the length of a vector
     #[inline]
     fn len(&self) -> uint {
-        self.repr().len
+        self.as_slice().len()
     }
 }
 
@@ -1481,6 +1503,7 @@ impl<T> OwnedVector<T> for ~[T] {
         self.move_iter().invert()
     }
 
+    #[cfg(stage0)]
     fn reserve(&mut self, n: uint) {
         // Only make the (slow) call into the runtime if we have to
         if self.capacity() < n {
@@ -1504,6 +1527,24 @@ impl<T> OwnedVector<T> for ~[T] {
         }
     }
 
+    #[cfg(not(stage0))]
+    fn reserve(&mut self, n: uint) {
+        // Only make the (slow) call into the runtime if we have to
+        if self.capacity() < n {
+            unsafe {
+                let ptr: *mut *mut Vec<()> = cast::transmute(self);
+                let alloc = n * mem::nonzero_size_of::<T>();
+                let size = alloc + mem::size_of::<Vec<()>>();
+                if alloc / mem::nonzero_size_of::<T>() != n || size < alloc {
+                    fail!("vector size is too large: {}", n);
+                }
+                *ptr = realloc_raw(*ptr as *mut c_void, size)
+                       as *mut Vec<()>;
+                (**ptr).alloc = alloc;
+            }
+        }
+    }
+
     #[inline]
     fn reserve_at_least(&mut self, n: uint) {
         self.reserve(uint::next_power_of_two_opt(n).unwrap_or(n));
@@ -1520,6 +1561,7 @@ impl<T> OwnedVector<T> for ~[T] {
     }
 
     #[inline]
+    #[cfg(stage0)]
     fn capacity(&self) -> uint {
         unsafe {
             if owns_managed::<T>() {
@@ -1529,6 +1571,15 @@ impl<T> OwnedVector<T> for ~[T] {
                 let repr: **Vec<()> = cast::transmute(self);
                 (**repr).alloc / mem::nonzero_size_of::<T>()
             }
+        }
+    }
+
+    #[inline]
+    #[cfg(not(stage0))]
+    fn capacity(&self) -> uint {
+        unsafe {
+            let repr: **Vec<()> = cast::transmute(self);
+            (**repr).alloc / mem::nonzero_size_of::<T>()
         }
     }
 
@@ -1543,6 +1594,7 @@ impl<T> OwnedVector<T> for ~[T] {
     }
 
     #[inline]
+    #[cfg(stage0)]
     fn push(&mut self, t: T) {
         unsafe {
             if owns_managed::<T>() {
@@ -1583,7 +1635,31 @@ impl<T> OwnedVector<T> for ~[T] {
                 intrinsics::move_val_init(&mut(*p), t);
             }
         }
+    }
 
+    #[inline]
+    #[cfg(not(stage0))]
+    fn push(&mut self, t: T) {
+        unsafe {
+            let repr: **Vec<()> = cast::transmute(&mut *self);
+            let fill = (**repr).fill;
+            if (**repr).alloc <= fill {
+                self.reserve_additional(1);
+            }
+
+            push_fast(self, t);
+        }
+
+        // This doesn't bother to make sure we have space.
+        #[inline] // really pretty please
+        unsafe fn push_fast<T>(this: &mut ~[T], t: T) {
+            let repr: **mut Vec<u8> = cast::transmute(this);
+            let fill = (**repr).fill;
+            (**repr).fill += mem::nonzero_size_of::<T>();
+            let p = to_unsafe_ptr(&((**repr).data));
+            let p = ptr::offset(p, fill as int) as *mut T;
+            intrinsics::move_val_init(&mut(*p), t);
+        }
     }
 
     #[inline]
@@ -1746,6 +1822,7 @@ impl<T> OwnedVector<T> for ~[T] {
         }
     }
     #[inline]
+    #[cfg(stage0)]
     unsafe fn set_len(&mut self, new_len: uint) {
         if owns_managed::<T>() {
             let repr: **mut Box<Vec<()>> = cast::transmute(self);
@@ -1754,6 +1831,13 @@ impl<T> OwnedVector<T> for ~[T] {
             let repr: **mut Vec<()> = cast::transmute(self);
             (**repr).fill = new_len * mem::nonzero_size_of::<T>();
         }
+    }
+
+    #[inline]
+    #[cfg(not(stage0))]
+    unsafe fn set_len(&mut self, new_len: uint) {
+        let repr: **mut Vec<()> = cast::transmute(self);
+        (**repr).fill = new_len * mem::nonzero_size_of::<T>();
     }
 }
 
@@ -2926,6 +3010,7 @@ impl<T> DoubleEndedIterator<T> for MoveIterator<T> {
 }
 
 #[unsafe_destructor]
+#[cfg(stage0)]
 impl<T> Drop for MoveIterator<T> {
     fn drop(&mut self) {
         // destroy the remaining elements
@@ -2936,6 +3021,18 @@ impl<T> Drop for MoveIterator<T> {
             } else {
                 exchange_free(self.allocation as *u8 as *c_char)
             }
+        }
+    }
+}
+
+#[unsafe_destructor]
+#[cfg(not(stage0))]
+impl<T> Drop for MoveIterator<T> {
+    fn drop(&mut self) {
+        // destroy the remaining elements
+        for _x in *self {}
+        unsafe {
+            exchange_free(self.allocation as *u8 as *c_char)
         }
     }
 }

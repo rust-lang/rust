@@ -230,4 +230,12 @@ mod tests {
         drop(x);
         assert!(y.upgrade().is_none());
     }
+
+    #[test]
+    fn gc_inside() {
+        // see issue #11532
+        use gc::Gc;
+        let a = Rc::new(RefCell::new(Gc::new(1)));
+        assert!(a.borrow().try_borrow_mut().is_some());
+    }
 }

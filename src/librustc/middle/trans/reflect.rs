@@ -184,11 +184,7 @@ impl<'a> Reflector<'a> {
           ty::ty_vec(ref mt, vst) => {
               let (name, extra) = self.vstore_name_and_extra(t, vst);
               let extra = extra + self.c_mt(mt);
-              if "uniq" == name && ty::type_contents(bcx.tcx(), t).owns_managed() {
-                  self.visit("evec_uniq_managed", extra)
-              } else {
-                  self.visit(~"evec_" + name, extra)
-              }
+              self.visit(~"evec_" + name, extra)
           }
           // Should remove mt from box and uniq.
           ty::ty_box(typ) => {
@@ -203,11 +199,7 @@ impl<'a> Reflector<'a> {
                   ty: typ,
                   mutbl: ast::MutImmutable,
               });
-              if ty::type_contents(bcx.tcx(), t).owns_managed() {
-                  self.visit("uniq_managed", extra)
-              } else {
-                  self.visit("uniq", extra)
-              }
+              self.visit("uniq", extra)
           }
           ty::ty_ptr(ref mt) => {
               let extra = self.c_mt(mt);
