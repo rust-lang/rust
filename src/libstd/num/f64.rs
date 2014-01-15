@@ -18,7 +18,7 @@ use cmath;
 use default::Default;
 use libc::{c_double, c_int};
 use num::{FPCategory, FPNaN, FPInfinite , FPZero, FPSubnormal, FPNormal};
-use num::{Zero, One, strconv};
+use num::{Zero, One, Bounded, strconv};
 use num;
 use to_str;
 use unstable::intrinsics;

@@ -176,8 +176,6 @@ impl Integer for $T {
     fn is_odd(&self) -> bool { !self.is_even() }
 }
 
-impl Bitwise for $T {}
-
 #[cfg(not(test))]
 impl BitOr<$T,$T> for $T {
     #[inline]
@@ -298,7 +296,7 @@ impl Primitive for $T {
     fn is_signed(_: Option<$T>) -> bool { false }
 }
 
-impl BitCount for $T {
+impl Bitwise for $T {
     /// Counts the number of bits set. Wraps LLVM's `ctpop` intrinsic.
     #[inline]
     fn population_count(&self) -> $T {
@@ -325,6 +323,7 @@ mod tests {
 
     use num;
     use num::CheckedDiv;
+    use num::Bitwise;
     use mem;
     use u16;
 

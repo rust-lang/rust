@@ -523,6 +523,7 @@ static H256: [u32, ..8] = [
 #[cfg(test)]
 mod tests {
     use super::{Digest, Sha256, FixedBuffer};
+    use std::num::Bounded;
     use std::vec;
     use std::rand::isaac::IsaacRng;
     use std::rand::Rng;
