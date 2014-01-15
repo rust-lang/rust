@@ -18,8 +18,10 @@ use lib;
 use middle::trans::build::*;
 use middle::trans::callee;
 use middle::trans::common::*;
-use middle::trans::expr::*;
-use middle::trans::type_of::*;
+use middle::trans::cleanup;
+use middle::trans::cleanup::CleanupMethods;
+use middle::trans::expr;
+use middle::trans::type_of;
 
 use middle::trans::type_::Type;
 
@@ -28,25 +30,22 @@ use syntax::ast;
 // Take an inline assembly expression and splat it out via LLVM
 pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
                         -> &'a Block<'a> {
+    let fcx = bcx.fcx;
     let mut bcx = bcx;
     let mut constraints = ~[];
-    let mut cleanups = ~[];
     let mut output_types = ~[];
+
+    let temp_scope = fcx.push_custom_cleanup_scope();
 
     // Prepare the output operands
     let outputs = ia.outputs.map(|&(c, out)| {
         constraints.push(c);
 
-        let out_datum = unpack_datum!(bcx, trans_to_datum(bcx, out));
-        output_types.push(type_of(bcx.ccx(), out_datum.ty));
+        let out_datum = unpack_datum!(bcx, expr::trans(bcx, out));
+        output_types.push(type_of::type_of(bcx.ccx(), out_datum.ty));
         out_datum.val
 
     });
-
-    for c in cleanups.iter() {
-        revoke_clean(bcx, *c);
-    }
-    cleanups.clear();
 
     // Now the input operands
     let inputs = ia.inputs.map(|&(c, input)| {
@@ -56,14 +55,13 @@ pub fn trans_inline_asm<'a>(bcx: &'a Block<'a>, ia: &ast::InlineAsm)
             callee::trans_arg_expr(bcx,
                                    expr_ty(bcx, input),
                                    input,
-                                   &mut cleanups,
+                                   cleanup::CustomScope(temp_scope),
                                    callee::DontAutorefArg)
         })
     });
 
-    for c in cleanups.iter() {
-        revoke_clean(bcx, *c);
-    }
+    // no failure occurred preparing operands, no need to cleanup
+    fcx.pop_custom_cleanup_scope(temp_scope);
 
     let mut constraints = constraints.connect(",");
 

@@ -16,7 +16,7 @@ use middle::moves;
 use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::common::*;
-use middle::trans::datum::{Datum, INIT};
+use middle::trans::datum::{Datum, Lvalue};
 use middle::trans::debuginfo;
 use middle::trans::expr;
 use middle::trans::glue;
@@ -112,7 +112,7 @@ pub enum EnvAction {
 
 pub struct EnvValue {
     action: EnvAction,
-    datum: Datum
+    datum: Datum<Lvalue>
 }
 
 impl EnvAction {
@@ -219,7 +219,7 @@ pub fn store_environment<'a>(
 
     // Copy expr values into boxed bindings.
     let mut bcx = bcx;
-    for (i, bv) in bound_values.iter().enumerate() {
+    for (i, bv) in bound_values.move_iter().enumerate() {
         debug!("Copy {} into closure", bv.to_str(ccx));
 
         if ccx.sess.asm_comments() {
@@ -230,17 +230,13 @@ pub fn store_environment<'a>(
         let bound_data = GEPi(bcx, llbox, [0u, abi::box_field_body, i]);
 
         match bv.action {
-            EnvCopy => {
-                bcx = bv.datum.copy_to(bcx, INIT, bound_data);
-            }
-            EnvMove => {
-                bcx = bv.datum.move_to(bcx, INIT, bound_data);
+            EnvCopy | EnvMove => {
+                bcx = bv.datum.store_to(bcx, bound_data);
             }
             EnvRef => {
-                Store(bcx, bv.datum.to_ref_llval(bcx), bound_data);
+                Store(bcx, bv.datum.to_llref(), bound_data);
             }
         }
-
     }
 
     ClosureResult { llbox: llbox, cdata_ty: cdata_ty, bcx: bcx }
@@ -413,7 +409,6 @@ pub fn trans_expr_fn<'a>(
                           None,
                           bcx.fcx.param_substs,
                           user_id,
-                          None,
                           [],
                           ty::ty_fn_ret(fty),
                           |fcx| load_environment(fcx, cdata_ty, cap_vars, sigil));

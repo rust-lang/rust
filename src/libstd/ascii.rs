@@ -521,7 +521,8 @@ mod tests {
 
     #[test]
     fn test_ascii_vec() {
-        assert_eq!((&[40u8, 32u8, 59u8]).to_ascii(), v2ascii!([40, 32, 59]));
+        let test = &[40u8, 32u8, 59u8];
+        assert_eq!(test.to_ascii(), v2ascii!([40, 32, 59]));
         assert_eq!("( ;".to_ascii(),                 v2ascii!([40, 32, 59]));
         // FIXME: #5475 borrowchk error, owned vectors do not live long enough
         // if chained-from directly
@@ -587,14 +588,18 @@ mod tests {
 
         assert_eq!("zoä华".to_ascii_opt(), None);
 
-        assert_eq!((&[127u8, 128u8, 255u8]).to_ascii_opt(), None);
+        let test1 = &[127u8, 128u8, 255u8];
+        assert_eq!((test1).to_ascii_opt(), None);
 
         let v = [40u8, 32u8, 59u8];
-        assert_eq!(v.to_ascii_opt(), Some(v2ascii!(&[40, 32, 59])));
+        let v2 = v2ascii!(&[40, 32, 59]);
+        assert_eq!(v.to_ascii_opt(), Some(v2));
         let v = [127u8, 128u8, 255u8];
         assert_eq!(v.to_ascii_opt(), None);
 
-        assert_eq!("( ;".to_ascii_opt(), Some(v2ascii!(&[40, 32, 59])));
+        let v = "( ;";
+        let v2 = v2ascii!(&[40, 32, 59]);
+        assert_eq!(v.to_ascii_opt(), Some(v2));
         assert_eq!("zoä华".to_ascii_opt(), None);
 
         assert_eq!((~[40u8, 32u8, 59u8]).into_ascii_opt(), Some(v2ascii!(~[40, 32, 59])));

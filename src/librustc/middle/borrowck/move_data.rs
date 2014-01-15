@@ -471,7 +471,7 @@ impl MoveData {
             for path in paths.get().iter() {
                 match *path.loan_path {
                     LpVar(id) => {
-                        let kill_id = tcx.region_maps.encl_scope(id);
+                        let kill_id = tcx.region_maps.var_scope(id);
                         let path = {
                             let path_map = self.path_map.borrow();
                             *path_map.get().get(&path.loan_path)
@@ -490,7 +490,7 @@ impl MoveData {
                     var_assignments.get().iter().enumerate() {
                 match *self.path_loan_path(assignment.path) {
                     LpVar(id) => {
-                        let kill_id = tcx.region_maps.encl_scope(id);
+                        let kill_id = tcx.region_maps.var_scope(id);
                         dfcx_assign.add_kill(kill_id, assignment_index);
                     }
                     LpExtend(..) => {

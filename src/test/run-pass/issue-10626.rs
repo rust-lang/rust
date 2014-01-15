@@ -30,10 +30,10 @@ pub fn main () {
 
     let config = process::ProcessConfig {
         program : args[0].as_slice(),
-        args : [~"child"],
+        args : &[~"child"],
         env : None,
         cwd : None,
-        io : []
+        io : &[]
     };
 
     let mut p = process::Process::new(config).unwrap();

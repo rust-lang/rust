@@ -673,6 +673,14 @@ impl Repr for ast::Item {
     }
 }
 
+impl Repr for ast::Stmt {
+    fn repr(&self, tcx: ctxt) -> ~str {
+        format!("stmt({}: {})",
+                ast_util::stmt_id(self),
+                pprust::stmt_to_str(self, tcx.sess.intr()))
+    }
+}
+
 impl Repr for ast::Pat {
     fn repr(&self, tcx: ctxt) -> ~str {
         format!("pat({}: {})",
