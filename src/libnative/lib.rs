@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -29,7 +29,7 @@
 use std::os;
 use std::rt;
 
-mod bookeeping;
+mod bookkeeping;
 pub mod io;
 pub mod task;
 
@@ -75,6 +75,6 @@ pub fn start(argc: int, argv: **u8, main: proc()) -> int {
 /// number of arguments.
 pub fn run(main: proc()) -> int {
     main();
-    bookeeping::wait_for_other_tasks();
+    bookkeeping::wait_for_other_tasks();
     os::get_exit_status()
 }
