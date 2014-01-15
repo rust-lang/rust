@@ -91,16 +91,11 @@ fn compute_log_rounded_up_size(size: uint) -> uint {
         // round up to the minimum
         ALLOC_CACHE_MIN_LOG
     } else {
-        // for powers of two 1 << n, this gives n + 1, otherwise,
-        // for a number like `0b101` it gives 3, which is exactly
-        // what we want.
-        let raw = uint::bits - size.leading_zeros();
-        // power of two
-        if size & (size - 1) == 0 {
-            raw - 1
-        } else {
-            raw
-        }
+        // This will never underflow, and will always preserve the
+        // highest bit, except in the case of powers of two; where it
+        // will increase the number of leading zeros by 1, which is
+        // exactly what we want (otherwise we'd round 16 up to 32).
+        uint::bits - (size - 1).leading_zeros()
     }
 }
 
