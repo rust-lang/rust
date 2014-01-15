@@ -1011,7 +1011,7 @@ pub fn optgroups() -> ~[getopts::groups::OptGroup] {
                           for details)", "FEATURE"),
   optopt("", "android-cross-path",
          "The path to the Android NDK", "PATH"),
-  optflagopt("W", "warn",
+  optmulti("W", "warn",
                         "Set lint warnings", "OPT"),
   optmulti("A", "allow",
                         "Set lint allowed", "OPT"),
