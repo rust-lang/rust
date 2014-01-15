@@ -144,6 +144,8 @@ impl rt::Runtime for Ops {
 
     fn stack_bounds(&self) -> (uint, uint) { self.stack_bounds }
 
+    fn can_block(&self) -> bool { true }
+
     // This function gets a little interesting. There are a few safety and
     // ownership violations going on here, but this is all done in the name of
     // shared state. Additionally, all of the violations are protected with a

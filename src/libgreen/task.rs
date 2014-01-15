@@ -457,6 +457,8 @@ impl Runtime for GreenTask {
          c.current_stack_segment.end() as uint)
     }
 
+    fn can_block(&self) -> bool { false }
+
     fn wrap(~self) -> ~Any { self as ~Any }
 }
 
