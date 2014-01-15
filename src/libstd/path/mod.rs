@@ -93,29 +93,29 @@ pub use Path = self::windows::Path;
 
 /// Typedef for the platform-native component iterator
 #[cfg(unix)]
-pub use ComponentIter = self::posix::ComponentIter;
+pub use Components = self::posix::Components;
 /// Typedef for the platform-native reverse component iterator
 #[cfg(unix)]
-pub use RevComponentIter = self::posix::RevComponentIter;
+pub use RevComponents = self::posix::RevComponents;
 /// Typedef for the platform-native component iterator
 #[cfg(windows)]
-pub use ComponentIter = self::windows::ComponentIter;
+pub use Components = self::windows::Components;
 /// Typedef for the platform-native reverse component iterator
 #[cfg(windows)]
-pub use RevComponentIter = self::windows::RevComponentIter;
+pub use RevComponents = self::windows::RevComponents;
 
 /// Typedef for the platform-native str component iterator
 #[cfg(unix)]
-pub use StrComponentIter = self::posix::StrComponentIter;
+pub use StrComponents = self::posix::StrComponents;
 /// Typedef for the platform-native reverse str component iterator
 #[cfg(unix)]
-pub use RevStrComponentIter = self::posix::RevStrComponentIter;
+pub use RevStrComponents = self::posix::RevStrComponents;
 /// Typedef for the platform-native str component iterator
 #[cfg(windows)]
-pub use StrComponentIter = self::windows::StrComponentIter;
+pub use StrComponents = self::windows::StrComponents;
 /// Typedef for the platform-native reverse str component iterator
 #[cfg(windows)]
-pub use RevStrComponentIter = self::windows::RevStrComponentIter;
+pub use RevStrComponents = self::windows::RevStrComponents;
 
 /// Typedef for the platform-native separator char func
 #[cfg(unix)]

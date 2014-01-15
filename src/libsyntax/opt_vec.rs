@@ -15,7 +15,7 @@
  * other useful things like `push()` and `len()`.
  */
 
-use std::vec::{VecIterator};
+use std::vec;
 
 #[deriving(Clone, Encodable, Decodable, IterBytes)]
 pub enum OptVec<T> {
@@ -112,10 +112,10 @@ impl<T> OptVec<T> {
     }
 
     #[inline]
-    pub fn iter<'r>(&'r self) -> OptVecIterator<'r, T> {
+    pub fn iter<'r>(&'r self) -> Items<'r, T> {
         match *self {
-            Empty => OptVecIterator{iter: None},
-            Vec(ref v) => OptVecIterator{iter: Some(v.iter())}
+            Empty => Items{iter: None},
+            Vec(ref v) => Items{iter: Some(v.iter())}
         }
     }
 
@@ -173,11 +173,11 @@ impl<T> Default for OptVec<T> {
     fn default() -> OptVec<T> { Empty }
 }
 
-pub struct OptVecIterator<'a, T> {
-    priv iter: Option<VecIterator<'a, T>>
+pub struct Items<'a, T> {
+    priv iter: Option<vec::Items<'a, T>>
 }
 
-impl<'a, T> Iterator<&'a T> for OptVecIterator<'a, T> {
+impl<'a, T> Iterator<&'a T> for Items<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<&'a T> {
         match self.iter {
@@ -195,7 +195,7 @@ impl<'a, T> Iterator<&'a T> for OptVecIterator<'a, T> {
     }
 }
 
-impl<'a, T> DoubleEndedIterator<&'a T> for OptVecIterator<'a, T> {
+impl<'a, T> DoubleEndedIterator<&'a T> for Items<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a T> {
         match self.iter {

@@ -56,7 +56,7 @@ impl LanguageItems {
         }
     }
 
-    pub fn items<'a>(&'a self) -> Enumerate<vec::VecIterator<'a, Option<ast::DefId>>> {
+    pub fn items<'a>(&'a self) -> Enumerate<vec::Items<'a, Option<ast::DefId>>> {
         self.items.iter().enumerate()
     }
 
