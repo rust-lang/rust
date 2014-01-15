@@ -886,6 +886,54 @@ mod bench_map {
                 }
             });
     }
+
+    #[bench]
+    fn bench_insert_large(bh: &mut BenchHarness) {
+        let mut m = TrieMap::<[uint, .. 10]>::new();
+        let mut rng = weak_rng();
+
+        bh.iter(|| {
+                for _ in range(0, 1000) {
+                    m.insert(rng.gen(), [1, .. 10]);
+                }
+            })
+    }
+    #[bench]
+    fn bench_insert_large_low_bits(bh: &mut BenchHarness) {
+        let mut m = TrieMap::<[uint, .. 10]>::new();
+        let mut rng = weak_rng();
+
+        bh.iter(|| {
+                for _ in range(0, 1000) {
+                    // only have the last few bits set.
+                    m.insert(rng.gen::<uint>() & 0xff_ff, [1, .. 10]);
+                }
+            })
+    }
+
+    #[bench]
+    fn bench_insert_small(bh: &mut BenchHarness) {
+        let mut m = TrieMap::<()>::new();
+        let mut rng = weak_rng();
+
+        bh.iter(|| {
+                for _ in range(0, 1000) {
+                    m.insert(rng.gen(), ());
+                }
+            })
+    }
+    #[bench]
+    fn bench_insert_small_low_bits(bh: &mut BenchHarness) {
+        let mut m = TrieMap::<()>::new();
+        let mut rng = weak_rng();
+
+        bh.iter(|| {
+                for _ in range(0, 1000) {
+                    // only have the last few bits set.
+                    m.insert(rng.gen::<uint>() & 0xff_ff, ());
+                }
+            })
+    }
 }
 
 #[cfg(test)]
