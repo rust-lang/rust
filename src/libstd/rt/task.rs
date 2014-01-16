@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -39,12 +39,11 @@ use sync::atomics::{AtomicUint, SeqCst};
 use task::{TaskResult, TaskOpts};
 use unstable::finally::Finally;
 
-// The Task struct represents all state associated with a rust
-// task. There are at this point two primary "subtypes" of task,
-// however instead of using a subtype we just have a "task_type" field
-// in the struct. This contains a pointer to another struct that holds
-// the type-specific state.
-
+/// The Task struct represents all state associated with a rust
+/// task. There are at this point two primary "subtypes" of task,
+/// however instead of using a subtype we just have a "task_type" field
+/// in the struct. This contains a pointer to another struct that holds
+/// the type-specific state.
 pub struct Task {
     heap: LocalHeap,
     gc: GarbageCollector,
