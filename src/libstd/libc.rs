@@ -269,6 +269,7 @@ pub mod types {
             pub mod bsd44 {
                 use libc::types::os::arch::c95::{c_char, c_int, c_uint};
 
+                pub static sun_len:uint = 108;
                 pub type socklen_t = u32;
                 pub type sa_family_t = u16;
                 pub type in_port_t = u16;
@@ -318,6 +319,10 @@ pub mod types {
                     ai_addr: *sockaddr,
                     ai_canonname: *c_char,
                     ai_next: *addrinfo
+                }
+                pub struct sockaddr_un {
+                    sun_family: sa_family_t,
+                    sun_path: [c_char, ..108]
                 }
             }
         }
@@ -636,6 +641,7 @@ pub mod types {
             pub mod bsd44 {
                 use libc::types::os::arch::c95::{c_char, c_int, c_uint};
 
+                pub static sun_len:uint = 104;
                 pub type socklen_t = u32;
                 pub type sa_family_t = u8;
                 pub type in_port_t = u16;
@@ -690,6 +696,11 @@ pub mod types {
                     ai_canonname: *c_char,
                     ai_addr: *sockaddr,
                     ai_next: *addrinfo
+                }
+                pub struct sockaddr_un {
+                    sun_len: u8,
+                    sun_family: sa_family_t,
+                    sun_path: [c_char, ..104]
                 }
             }
         }
@@ -833,6 +844,7 @@ pub mod types {
             pub mod bsd44 {
                 use libc::types::os::arch::c95::{c_char, c_int, c_uint, size_t};
 
+                pub static sun_len:uint = 108;
                 pub type SOCKET = c_uint;
                 pub type socklen_t = c_int;
                 pub type sa_family_t = u16;
@@ -883,6 +895,10 @@ pub mod types {
                     ai_canonname: *c_char,
                     ai_addr: *sockaddr,
                     ai_next: *addrinfo
+                }
+                pub struct sockaddr_un {
+                    sun_family: sa_family_t,
+                    sun_path: [c_char, ..108]
                 }
             }
         }
@@ -1197,6 +1213,7 @@ pub mod types {
             pub mod bsd44 {
                 use libc::types::os::arch::c95::{c_char, c_int, c_uint};
 
+                pub static sun_len:uint = 104;
                 pub type socklen_t = c_int;
                 pub type sa_family_t = u8;
                 pub type in_port_t = u16;
@@ -1251,6 +1268,11 @@ pub mod types {
                     ai_canonname: *c_char,
                     ai_addr: *sockaddr,
                     ai_next: *addrinfo
+                }
+                pub struct sockaddr_un {
+                    sun_len: u8,
+                    sun_family: sa_family_t,
+                    sun_path: [c_char, ..104]
                 }
             }
         }
@@ -2310,6 +2332,7 @@ pub mod consts {
             pub static MADV_UNMERGEABLE : c_int = 13;
             pub static MADV_HWPOISON : c_int = 100;
 
+            pub static AF_UNIX: c_int = 1;
             pub static AF_INET: c_int = 2;
             pub static AF_INET6: c_int = 10;
             pub static SOCK_STREAM: c_int = 1;
@@ -3137,6 +3160,7 @@ pub mod consts {
             pub static MINCORE_REFERENCED_OTHER : c_int = 0x8;
             pub static MINCORE_MODIFIED_OTHER : c_int = 0x10;
 
+            pub static AF_UNIX: c_int = 1;
             pub static AF_INET: c_int = 2;
             pub static AF_INET6: c_int = 30;
             pub static SOCK_STREAM: c_int = 1;
