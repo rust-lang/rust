@@ -53,7 +53,25 @@ impl<'a> ToHex for &'a [u8] {
 pub trait FromHex {
     /// Converts the value of `self`, interpreted as hexadecimal encoded data,
     /// into an owned vector of bytes, returning the vector.
-    fn from_hex(&self) -> Result<~[u8], ~str>;
+    fn from_hex(&self) -> Result<~[u8], FromHexError>;
+}
+
+/// Errors that can occur when decoding a hex encoded string
+pub enum FromHexError {
+    /// The input contained a character not part of the hex format
+    InvalidHexCharacter(char, uint),
+    /// The input had a invalid length
+    InvalidHexLength,
+}
+
+impl ToStr for FromHexError {
+    fn to_str(&self) -> ~str {
+        match *self {
+            InvalidHexCharacter(ch, idx) =>
+                format!("Invalid character '{}' at position {}", ch, idx),
+            InvalidHexLength => ~"Invalid input length",
+        }
+    }
 }
 
 impl<'a> FromHex for &'a str {
@@ -83,7 +101,7 @@ impl<'a> FromHex for &'a str {
      * }
      * ```
      */
-    fn from_hex(&self) -> Result<~[u8], ~str> {
+    fn from_hex(&self) -> Result<~[u8], FromHexError> {
         // This may be an overestimate if there is any whitespace
         let mut b = vec::with_capacity(self.len() / 2);
         let mut modulus = 0;
@@ -100,8 +118,7 @@ impl<'a> FromHex for &'a str {
                     buf >>= 4;
                     continue
                 }
-                _ => return Err(format!("Invalid character '{}' at position {}",
-                                        self.char_at(idx), idx))
+                _ => return Err(InvalidHexCharacter(self.char_at(idx), idx)),
             }
 
             modulus += 1;
@@ -113,7 +130,7 @@ impl<'a> FromHex for &'a str {
 
         match modulus {
             0 => Ok(b),
-            _ => Err(~"Invalid input length")
+            _ => Err(InvalidHexLength),
         }
     }
 }
