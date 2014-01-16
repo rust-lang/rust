@@ -250,7 +250,7 @@ pub mod rt {
 
         fn parse_item(&self, s: ~str) -> @ast::Item {
             let res = parse::parse_item_from_source_str(
-                @"<quote expansion>",
+                "<quote expansion>".to_str(),
                 s,
                 self.cfg(),
                 self.parse_sess());
@@ -264,28 +264,25 @@ pub mod rt {
         }
 
         fn parse_stmt(&self, s: ~str) -> @ast::Stmt {
-            parse::parse_stmt_from_source_str(
-                @"<quote expansion>",
-                s,
-                self.cfg(),
-                ~[],
-                self.parse_sess())
+            parse::parse_stmt_from_source_str("<quote expansion>".to_str(),
+                                              s,
+                                              self.cfg(),
+                                              ~[],
+                                              self.parse_sess())
         }
 
         fn parse_expr(&self, s: ~str) -> @ast::Expr {
-            parse::parse_expr_from_source_str(
-                @"<quote expansion>",
-                s,
-                self.cfg(),
-                self.parse_sess())
+            parse::parse_expr_from_source_str("<quote expansion>".to_str(),
+                                              s,
+                                              self.cfg(),
+                                              self.parse_sess())
         }
 
         fn parse_tts(&self, s: ~str) -> ~[ast::TokenTree] {
-            parse::parse_tts_from_source_str(
-                @"<quote expansion>",
-                s,
-                self.cfg(),
-                self.parse_sess())
+            parse::parse_tts_from_source_str("<quote expansion>".to_str(),
+                                             s,
+                                             self.cfg(),
+                                             self.parse_sess())
         }
     }
 

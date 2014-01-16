@@ -931,7 +931,7 @@ fn declare_local(bcx: &Block,
                  span: Span) {
     let cx: &CrateContext = bcx.ccx();
 
-    let filename = span_start(cx, span).file.name;
+    let filename = span_start(cx, span).file.name.clone();
     let file_metadata = file_metadata(cx, filename);
 
     let name: &str = token::ident_to_str(&variable_ident);
@@ -1165,7 +1165,7 @@ fn prepare_struct_metadata(cx: &CrateContext,
 
     let (containing_scope, definition_span) = get_namespace_and_span_for_item(cx, def_id, span);
 
-    let file_name = span_start(cx, definition_span).file.name;
+    let file_name = span_start(cx, definition_span).file.name.clone();
     let file_metadata = file_metadata(cx, file_name);
 
     let struct_metadata_stub = create_struct_stub(cx,
@@ -2006,7 +2006,7 @@ fn trait_metadata(cx: &CrateContext,
     let (containing_scope, definition_span) =
         get_namespace_and_span_for_item(cx, def_id, usage_site_span);
 
-    let file_name = span_start(cx, definition_span).file.name;
+    let file_name = span_start(cx, definition_span).file.name.clone();
     let file_metadata = file_metadata(cx, file_name);
 
     let trait_llvm_type = type_of::type_of(cx, trait_type);
