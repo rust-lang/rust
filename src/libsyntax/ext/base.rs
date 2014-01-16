@@ -439,13 +439,15 @@ pub fn get_single_str_from_tts(cx: &ExtCtxt,
                                sp: Span,
                                tts: &[ast::TokenTree],
                                name: &str)
-                               -> Option<@str> {
+                               -> Option<~str> {
     if tts.len() != 1 {
         cx.span_err(sp, format!("{} takes 1 argument.", name));
     } else {
         match tts[0] {
             ast::TTTok(_, token::LIT_STR(ident))
-                | ast::TTTok(_, token::LIT_STR_RAW(ident, _)) => return Some(cx.str_of(ident)),
+            | ast::TTTok(_, token::LIT_STR_RAW(ident, _)) => {
+                return Some(cx.str_of(ident).to_str())
+            }
             _ => cx.span_err(sp, format!("{} requires a string.", name)),
         }
     }
