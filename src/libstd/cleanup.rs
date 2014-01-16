@@ -17,6 +17,8 @@ use unstable::raw;
 
 type DropGlue<'a> = 'a |**TyDesc, *c_void|;
 
+static RC_IMMORTAL : uint = 0x77777777;
+
 /*
  * Box annihilation
  *
@@ -25,24 +27,21 @@ type DropGlue<'a> = 'a |**TyDesc, *c_void|;
 
 struct AnnihilateStats {
     n_total_boxes: uint,
-    n_unique_boxes: uint,
     n_bytes_freed: uint
 }
 
 unsafe fn each_live_alloc(read_next_before: bool,
-                          f: |alloc: *mut raw::Box<()>, uniq: bool| -> bool)
+                          f: |alloc: *mut raw::Box<()>| -> bool)
                           -> bool {
     //! Walks the internal list of allocations
 
-    use managed;
     use rt::local_heap;
 
     let mut alloc = local_heap::live_allocs();
     while alloc != ptr::mut_null() {
         let next_before = (*alloc).next;
-        let uniq = (*alloc).ref_count == managed::RC_MANAGED_UNIQUE;
 
-        if !f(alloc, uniq) {
+        if !f(alloc) {
             return false;
         }
 
@@ -70,11 +69,9 @@ fn debug_mem() -> bool {
 pub unsafe fn annihilate() {
     use rt::local_heap::local_free;
     use mem;
-    use managed;
 
     let mut stats = AnnihilateStats {
         n_total_boxes: 0,
-        n_unique_boxes: 0,
         n_bytes_freed: 0
     };
 
@@ -82,13 +79,9 @@ pub unsafe fn annihilate() {
     //
     // In this pass, nothing gets freed, so it does not matter whether
     // we read the next field before or after the callback.
-    each_live_alloc(true, |alloc, uniq| {
+    each_live_alloc(true, |alloc| {
         stats.n_total_boxes += 1;
-        if uniq {
-            stats.n_unique_boxes += 1;
-        } else {
-            (*alloc).ref_count = managed::RC_IMMORTAL;
-        }
+        (*alloc).ref_count = RC_IMMORTAL;
         true
     });
 
@@ -97,12 +90,10 @@ pub unsafe fn annihilate() {
     // In this pass, unique-managed boxes may get freed, but not
     // managed boxes, so we must read the `next` field *after* the
     // callback, as the original value may have been freed.
-    each_live_alloc(false, |alloc, uniq| {
-        if !uniq {
-            let tydesc = (*alloc).type_desc;
-            let data = &(*alloc).data as *();
-            ((*tydesc).drop_glue)(data as *i8);
-        }
+    each_live_alloc(false, |alloc| {
+        let tydesc = (*alloc).type_desc;
+        let data = &(*alloc).data as *();
+        ((*tydesc).drop_glue)(data as *i8);
         true
     });
 
@@ -112,13 +103,11 @@ pub unsafe fn annihilate() {
     // unique-managed boxes, though I think that none of those are
     // left), so we must read the `next` field before, since it will
     // not be valid after.
-    each_live_alloc(true, |alloc, uniq| {
-        if !uniq {
-            stats.n_bytes_freed +=
-                (*((*alloc).type_desc)).size
-                + mem::size_of::<raw::Box<()>>();
-            local_free(alloc as *i8);
-        }
+    each_live_alloc(true, |alloc| {
+        stats.n_bytes_freed +=
+            (*((*alloc).type_desc)).size
+            + mem::size_of::<raw::Box<()>>();
+        local_free(alloc as *i8);
         true
     });
 
@@ -126,8 +115,7 @@ pub unsafe fn annihilate() {
         // We do logging here w/o allocation.
         debug!("annihilator stats:\n  \
                        total boxes: {}\n  \
-                      unique boxes: {}\n  \
                        bytes freed: {}",
-                stats.n_total_boxes, stats.n_unique_boxes, stats.n_bytes_freed);
+                stats.n_total_boxes, stats.n_bytes_freed);
     }
 }

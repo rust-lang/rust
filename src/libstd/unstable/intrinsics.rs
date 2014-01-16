@@ -47,41 +47,8 @@ pub use realstd::unstable::intrinsics::{TyDesc, Opaque, TyVisitor, TypeId};
 
 pub type GlueFn = extern "Rust" fn(*i8);
 
-// NOTE remove after next snapshot
 #[lang="ty_desc"]
-#[cfg(not(test), stage0)]
-pub struct TyDesc {
-    // sizeof(T)
-    size: uint,
-
-    // alignof(T)
-    align: uint,
-
-    // Called on a copy of a value of type `T` *after* memcpy
-    take_glue: GlueFn,
-
-    // Called when a value of type `T` is no longer needed
-    drop_glue: GlueFn,
-
-    // Called by drop glue when a value of type `T` can be freed
-    free_glue: GlueFn,
-
-    // Called by reflection visitor to visit a value of type `T`
-    visit_glue: GlueFn,
-
-    // If T represents a box pointer (`@U` or `~U`), then
-    // `borrow_offset` is the amount that the pointer must be adjusted
-    // to find the payload.  This is always derivable from the type
-    // `U`, but in the case of `@Trait` or `~Trait` objects, the type
-    // `U` is unknown.
-    borrow_offset: uint,
-
-    // Name corresponding to the type
-    name: &'static str
-}
-
-#[lang="ty_desc"]
-#[cfg(not(test), not(stage0))]
+#[cfg(not(test))]
 pub struct TyDesc {
     // sizeof(T)
     size: uint,
@@ -139,8 +106,6 @@ pub trait TyVisitor {
 
     fn visit_box(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
     fn visit_uniq(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
-    #[cfg(stage0)]
-    fn visit_uniq_managed(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
     fn visit_ptr(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
     fn visit_rptr(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
 
@@ -148,8 +113,6 @@ pub trait TyVisitor {
     fn visit_unboxed_vec(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
     fn visit_evec_box(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
     fn visit_evec_uniq(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
-    #[cfg(stage0)]
-    fn visit_evec_uniq_managed(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
     fn visit_evec_slice(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
     fn visit_evec_fixed(&mut self, n: uint, sz: uint, align: uint,
                         mtbl: uint, inner: *TyDesc) -> bool;
