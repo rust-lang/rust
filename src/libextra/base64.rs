@@ -154,7 +154,25 @@ impl<'a> ToBase64 for &'a [u8] {
 pub trait FromBase64 {
     /// Converts the value of `self`, interpreted as base64 encoded data, into
     /// an owned vector of bytes, returning the vector.
-    fn from_base64(&self) -> Result<~[u8], ~str>;
+    fn from_base64(&self) -> Result<~[u8], FromBase64Error>;
+}
+
+/// Errors that can occur when decoding a base64 encoded string
+pub enum FromBase64Error {
+    /// The input contained a character not part of the base64 format
+    InvalidBase64Character(char, uint),
+    /// The input had an invalid length
+    InvalidBase64Length,
+}
+
+impl ToStr for FromBase64Error {
+    fn to_str(&self) -> ~str {
+        match *self {
+            InvalidBase64Character(ch, idx) =>
+                format!("Invalid character '{}' at position {}", ch, idx),
+            InvalidBase64Length => ~"Invalid length",
+        }
+    }
 }
 
 impl<'a> FromBase64 for &'a str {
@@ -188,7 +206,7 @@ impl<'a> FromBase64 for &'a str {
      * }
      * ```
      */
-    fn from_base64(&self) -> Result<~[u8], ~str> {
+    fn from_base64(&self) -> Result<~[u8], FromBase64Error> {
         let mut r = ~[];
         let mut buf: u32 = 0;
         let mut modulus = 0;
@@ -205,8 +223,7 @@ impl<'a> FromBase64 for &'a str {
                 '/'|'_' => buf |= 0x3F,
                 '\r'|'\n' => continue,
                 '=' => break,
-                _ => return Err(format!("Invalid character '{}' at position {}",
-                                     self.char_at(idx), idx))
+                _ => return Err(InvalidBase64Character(self.char_at(idx), idx)),
             }
 
             buf <<= 6;
@@ -221,8 +238,7 @@ impl<'a> FromBase64 for &'a str {
 
         for (idx, byte) in it {
             if (byte as char) != '=' {
-                return Err(format!("Invalid character '{}' at position {}",
-                                self.char_at(idx), idx));
+                return Err(InvalidBase64Character(self.char_at(idx), idx));
             }
         }
 
@@ -235,7 +251,7 @@ impl<'a> FromBase64 for &'a str {
                 r.push((buf >> 8 ) as u8);
             }
             0 => (),
-            _ => return Err(~"Invalid Base64 length")
+            _ => return Err(InvalidBase64Length),
         }
 
         Ok(r)
