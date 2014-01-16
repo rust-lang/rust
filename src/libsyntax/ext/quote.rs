@@ -648,7 +648,7 @@ fn expand_wrapper(cx: &ExtCtxt,
                   sp: Span,
                   cx_expr: @ast::Expr,
                   expr: @ast::Expr) -> @ast::Expr {
-    let uses = ~[ cx.view_use_glob(sp, ast::Public,
+    let uses = ~[ cx.view_use_glob(sp, ast::Inherited,
                                    ids_ext(~[~"syntax",
                                              ~"ext",
                                              ~"quote",

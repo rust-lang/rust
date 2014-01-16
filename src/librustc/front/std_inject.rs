@@ -73,7 +73,7 @@ impl fold::Folder for StandardLibraryInjector {
                                          with_version("std"),
                                          ast::DUMMY_NODE_ID),
             attrs: ~[],
-            vis: ast::Private,
+            vis: ast::Inherited,
             span: DUMMY_SP
         }];
 
@@ -83,7 +83,7 @@ impl fold::Folder for StandardLibraryInjector {
                                              with_version("green"),
                                              ast::DUMMY_NODE_ID),
                 attrs: ~[],
-                vis: ast::Private,
+                vis: ast::Inherited,
                 span: DUMMY_SP
             });
             vis.push(ast::ViewItem {
@@ -91,7 +91,7 @@ impl fold::Folder for StandardLibraryInjector {
                                              with_version("rustuv"),
                                              ast::DUMMY_NODE_ID),
                 attrs: ~[],
-                vis: ast::Private,
+                vis: ast::Inherited,
                 span: DUMMY_SP
             });
         }
@@ -147,7 +147,7 @@ impl fold::Folder for StandardLibraryInjector {
         let vi2 = ast::ViewItem {
             node: ast::ViewItemUse(~[vp]),
             attrs: ~[],
-            vis: ast::Private,
+            vis: ast::Inherited,
             span: DUMMY_SP,
         };
 
