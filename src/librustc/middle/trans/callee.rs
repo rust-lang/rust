@@ -623,7 +623,6 @@ pub fn trans_call_inner<'a>(
     // scope will ever execute.
     let fcx = bcx.fcx;
     let ccx = fcx.ccx;
-    let tcx = ccx.tcx;
     let arg_cleanup_scope = fcx.push_custom_cleanup_scope();
 
     let callee = get_callee(bcx, cleanup::CustomScope(arg_cleanup_scope));
@@ -668,12 +667,11 @@ pub fn trans_call_inner<'a>(
         }
         Some(expr::SaveIn(dst)) => Some(dst),
         Some(expr::Ignore) => {
-            if !ty::type_is_voidish(tcx, ret_ty) {
+            if !type_is_voidish(ccx, ret_ty) {
                 Some(alloc_ty(bcx, ret_ty, "__llret"))
             } else {
-                unsafe {
-                    Some(llvm::LLVMGetUndef(Type::nil().ptr_to().to_ref()))
-                }
+                let llty = type_of::type_of(ccx, ret_ty);
+                Some(C_undef(llty.ptr_to()))
             }
         }
     };
@@ -738,7 +736,7 @@ pub fn trans_call_inner<'a>(
         match opt_llretslot {
             Some(llretslot) => {
                 if !type_of::return_uses_outptr(bcx.ccx(), ret_ty) &&
-                    !ty::type_is_voidish(bcx.tcx(), ret_ty)
+                    !type_is_voidish(bcx.ccx(), ret_ty)
                 {
                     Store(bcx, llret, llretslot);
                 }
