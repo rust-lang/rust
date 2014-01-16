@@ -728,8 +728,8 @@ pub enum Lit_ {
     LitInt(i64, IntTy),
     LitUint(u64, UintTy),
     LitIntUnsuffixed(i64),
-    LitFloat(@str, FloatTy),
-    LitFloatUnsuffixed(@str),
+    LitFloat(InternedString, FloatTy),
+    LitFloatUnsuffixed(InternedString),
     LitNil,
     LitBool(bool),
 }

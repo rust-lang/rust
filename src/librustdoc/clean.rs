@@ -1152,8 +1152,8 @@ fn lit_to_str(lit: &ast::Lit) -> ~str {
         ast::LitInt(i, _t) => i.to_str(),
         ast::LitUint(u, _t) => u.to_str(),
         ast::LitIntUnsuffixed(i) => i.to_str(),
-        ast::LitFloat(f, _t) => f.to_str(),
-        ast::LitFloatUnsuffixed(f) => f.to_str(),
+        ast::LitFloat(ref f, _t) => f.get().to_str(),
+        ast::LitFloatUnsuffixed(ref f) => f.get().to_str(),
         ast::LitBool(b) => b.to_str(),
         ast::LitNil => ~"",
     }
