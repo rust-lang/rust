@@ -347,7 +347,7 @@ pub struct Literal {
 // probably not a good thing.
 pub fn gather_comments_and_literals(span_diagnostic:
                                         @diagnostic::SpanHandler,
-                                    path: @str,
+                                    path: ~str,
                                     srdr: &mut io::Reader)
                                  -> (~[Comment], ~[Literal]) {
     let src = str::from_utf8_owned(srdr.read_to_end()).unwrap();

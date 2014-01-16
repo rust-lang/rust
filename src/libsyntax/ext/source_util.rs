@@ -114,7 +114,7 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         Some(src) => {
             // Add this input file to the code map to make it available as
             // dependency information
-            let filename = file.display().to_str().to_managed();
+            let filename = file.display().to_str();
             let interned = token::intern_and_get_ident(src);
             cx.parse_sess.cm.new_filemap(filename, src);
 
