@@ -615,7 +615,7 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor,
     // A, but the inner rvalues `a()` and `b()` have an extended lifetime
     // due to rule C.
     //
-    // FIXME -- Note that `[]` patterns work more smoothly post-DST.
+    // FIXME(#6308) -- Note that `[]` patterns work more smoothly post-DST.
 
     match local.init {
         Some(expr) => {
@@ -778,7 +778,7 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor,
                 ast::ExprField(ref subexpr, _, _) |
                 ast::ExprIndex(_, ref subexpr, _) |
                 ast::ExprParen(ref subexpr) => {
-                    let subexpr: &'a @Expr = subexpr; // FIXME
+                    let subexpr: &'a @Expr = subexpr; // FIXME(#11586)
                     expr = &**subexpr;
                 }
                 _ => {

@@ -168,7 +168,7 @@ pub fn from_elem<T:Clone>(n_elts: uint, t: T) -> ~[T] {
         let mut v = with_capacity(n_elts);
         let p = v.as_mut_ptr();
         let mut i = 0u;
-        (|| { // FIXME what if we fail in the middle of this loop?
+        (|| {
             while i < n_elts {
                 intrinsics::move_val_init(&mut(*ptr::mut_offset(p, i as int)), t.clone());
                 i += 1u;
