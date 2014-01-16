@@ -114,11 +114,11 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         Some(src) => {
             // Add this input file to the code map to make it available as
             // dependency information
-            let src = src.to_managed();
             let filename = file.display().to_str().to_managed();
+            let interned = token::intern_and_get_ident(src);
             cx.parse_sess.cm.new_filemap(filename, src);
 
-            base::MRExpr(cx.expr_str(sp, token::intern_and_get_ident(src)))
+            base::MRExpr(cx.expr_str(sp, interned))
         }
         None => {
             cx.span_err(sp, format!("{} wasn't a utf-8 file", file.display()));

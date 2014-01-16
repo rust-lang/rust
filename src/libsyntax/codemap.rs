@@ -206,7 +206,7 @@ pub struct FileMap {
     /// e.g. `<anon>`
     name: FileName,
     /// The complete source code
-    src: @str,
+    src: ~str,
     /// The start position of this source in the CodeMap
     start_pos: BytePos,
     /// Locations of lines beginnings in the source code
@@ -267,7 +267,7 @@ impl CodeMap {
         }
     }
 
-    pub fn new_filemap(&self, filename: FileName, src: @str) -> @FileMap {
+    pub fn new_filemap(&self, filename: FileName, src: ~str) -> @FileMap {
         let mut files = self.files.borrow_mut();
         let start_pos = match files.get().last() {
             None => 0,

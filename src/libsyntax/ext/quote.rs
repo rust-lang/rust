@@ -203,7 +203,7 @@ pub mod rt {
         ($t:ty) => (
             impl ToTokens for $t {
                 fn to_tokens(&self, cx: &ExtCtxt) -> ~[TokenTree] {
-                    cx.parse_tts(self.to_source().to_managed())
+                    cx.parse_tts(self.to_source())
                 }
             }
         )
@@ -213,7 +213,7 @@ pub mod rt {
         ($t:ty) => (
             impl<'a> ToTokens for $t {
                 fn to_tokens(&self, cx: &ExtCtxt) -> ~[TokenTree] {
-                    cx.parse_tts(self.to_source().to_managed())
+                    cx.parse_tts(self.to_source())
                 }
             }
         )
@@ -240,15 +240,15 @@ pub mod rt {
     impl_to_tokens!(u64)
 
     pub trait ExtParseUtils {
-        fn parse_item(&self, s: @str) -> @ast::Item;
-        fn parse_expr(&self, s: @str) -> @ast::Expr;
-        fn parse_stmt(&self, s: @str) -> @ast::Stmt;
-        fn parse_tts(&self, s: @str) -> ~[ast::TokenTree];
+        fn parse_item(&self, s: ~str) -> @ast::Item;
+        fn parse_expr(&self, s: ~str) -> @ast::Expr;
+        fn parse_stmt(&self, s: ~str) -> @ast::Stmt;
+        fn parse_tts(&self, s: ~str) -> ~[ast::TokenTree];
     }
 
     impl<'a> ExtParseUtils for ExtCtxt<'a> {
 
-        fn parse_item(&self, s: @str) -> @ast::Item {
+        fn parse_item(&self, s: ~str) -> @ast::Item {
             let res = parse::parse_item_from_source_str(
                 @"<quote expansion>",
                 s,
@@ -257,13 +257,13 @@ pub mod rt {
             match res {
                 Some(ast) => ast,
                 None => {
-                    error!("Parse error with ```\n{}\n```", s);
+                    error!("Parse error");
                     fail!()
                 }
             }
         }
 
-        fn parse_stmt(&self, s: @str) -> @ast::Stmt {
+        fn parse_stmt(&self, s: ~str) -> @ast::Stmt {
             parse::parse_stmt_from_source_str(
                 @"<quote expansion>",
                 s,
@@ -272,7 +272,7 @@ pub mod rt {
                 self.parse_sess())
         }
 
-        fn parse_expr(&self, s: @str) -> @ast::Expr {
+        fn parse_expr(&self, s: ~str) -> @ast::Expr {
             parse::parse_expr_from_source_str(
                 @"<quote expansion>",
                 s,
@@ -280,7 +280,7 @@ pub mod rt {
                 self.parse_sess())
         }
 
-        fn parse_tts(&self, s: @str) -> ~[ast::TokenTree] {
+        fn parse_tts(&self, s: ~str) -> ~[ast::TokenTree] {
             parse::parse_tts_from_source_str(
                 @"<quote expansion>",
                 s,
