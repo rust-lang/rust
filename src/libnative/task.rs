@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -27,7 +27,7 @@ use std::unstable::stack;
 
 use io;
 use task;
-use bookeeping;
+use bookkeeping;
 
 /// Creates a new Task which is ready to execute as a 1:1 task.
 pub fn new(stack_bounds: (uint, uint)) -> ~Task {
@@ -82,7 +82,7 @@ pub fn spawn_opts(opts: TaskOpts, f: proc()) {
     // Note that this increment must happen *before* the spawn in order to
     // guarantee that if this task exits it will always end up waiting for the
     // spawned task to exit.
-    bookeeping::increment();
+    bookkeeping::increment();
 
     // Spawning a new OS thread guarantees that __morestack will never get
     // triggered, but we must manually set up the actual stack bounds once this
@@ -104,7 +104,7 @@ pub fn spawn_opts(opts: TaskOpts, f: proc()) {
         let mut task = task;
         task.put_runtime(ops as ~rt::Runtime);
         task.run(|| { f.take_unwrap()() });
-        bookeeping::decrement();
+        bookkeeping::decrement();
     })
 }
 
