@@ -138,7 +138,7 @@ fn parse_cfgspecs(cfgspecs: ~[~str], demitter: @diagnostic::Emitter)
                   -> ast::CrateConfig {
     cfgspecs.move_iter().map(|s| {
         let sess = parse::new_parse_sess(Some(demitter));
-        parse::parse_meta_from_source_str(@"cfgspec", s.to_managed(), ~[], sess)
+        parse::parse_meta_from_source_str(@"cfgspec", s, ~[], sess)
     }).collect::<ast::CrateConfig>()
 }
 
@@ -146,8 +146,7 @@ pub enum Input {
     /// Load source from file
     FileInput(Path),
     /// The string is the source
-    // FIXME (#2319): Don't really want to box the source string
-    StrInput(@str)
+    StrInput(~str)
 }
 
 pub fn phase_1_parse_input(sess: Session, cfg: ast::CrateConfig, input: &Input)
@@ -157,9 +156,11 @@ pub fn phase_1_parse_input(sess: Session, cfg: ast::CrateConfig, input: &Input)
             FileInput(ref file) => {
                 parse::parse_crate_from_file(&(*file), cfg.clone(), sess.parse_sess)
             }
-            StrInput(src) => {
-                parse::parse_crate_from_source_str(
-                    anon_src(), src, cfg.clone(), sess.parse_sess)
+            StrInput(ref src) => {
+                parse::parse_crate_from_source_str(anon_src(),
+                                                   (*src).clone(),
+                                                   cfg.clone(),
+                                                   sess.parse_sess)
             }
         }
     })
@@ -624,7 +625,7 @@ pub fn pretty_print_input(sess: Session,
         _ => @pprust::NoAnn as @pprust::PpAnn,
     };
 
-    let src = sess.codemap.get_filemap(source_name(input)).src;
+    let src = &sess.codemap.get_filemap(source_name(input)).src;
     let mut rdr = MemReader::new(src.as_bytes().to_owned());
     let stdout = io::stdout();
     pprust::print_crate(sess.codemap,

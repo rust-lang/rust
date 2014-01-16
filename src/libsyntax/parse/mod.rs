@@ -89,12 +89,11 @@ pub fn parse_crate_attrs_from_file(
     return inner;
 }
 
-pub fn parse_crate_from_source_str(
-    name: @str,
-    source: @str,
-    cfg: ast::CrateConfig,
-    sess: @ParseSess
-) -> ast::Crate {
+pub fn parse_crate_from_source_str(name: @str,
+                                   source: ~str,
+                                   cfg: ast::CrateConfig,
+                                   sess: @ParseSess)
+                                   -> ast::Crate {
     let mut p = new_parser_from_source_str(sess,
                                            /*bad*/ cfg.clone(),
                                            name,
@@ -102,12 +101,11 @@ pub fn parse_crate_from_source_str(
     maybe_aborted(p.parse_crate_mod(),p)
 }
 
-pub fn parse_crate_attrs_from_source_str(
-    name: @str,
-    source: @str,
-    cfg: ast::CrateConfig,
-    sess: @ParseSess
-) -> ~[ast::Attribute] {
+pub fn parse_crate_attrs_from_source_str(name: @str,
+                                         source: ~str,
+                                         cfg: ast::CrateConfig,
+                                         sess: @ParseSess)
+                                         -> ~[ast::Attribute] {
     let mut p = new_parser_from_source_str(sess,
                                            /*bad*/ cfg.clone(),
                                            name,
@@ -116,44 +114,40 @@ pub fn parse_crate_attrs_from_source_str(
     return inner;
 }
 
-pub fn parse_expr_from_source_str(
-    name: @str,
-    source: @str,
-    cfg: ast::CrateConfig,
-    sess: @ParseSess
-) -> @ast::Expr {
+pub fn parse_expr_from_source_str(name: @str,
+                                  source: ~str,
+                                  cfg: ast::CrateConfig,
+                                  sess: @ParseSess)
+                                  -> @ast::Expr {
     let mut p = new_parser_from_source_str(sess, cfg, name, source);
     maybe_aborted(p.parse_expr(), p)
 }
 
-pub fn parse_item_from_source_str(
-    name: @str,
-    source: @str,
-    cfg: ast::CrateConfig,
-    sess: @ParseSess
-) -> Option<@ast::Item> {
+pub fn parse_item_from_source_str(name: @str,
+                                  source: ~str,
+                                  cfg: ast::CrateConfig,
+                                  sess: @ParseSess)
+                                  -> Option<@ast::Item> {
     let mut p = new_parser_from_source_str(sess, cfg, name, source);
     let attrs = p.parse_outer_attributes();
     maybe_aborted(p.parse_item(attrs),p)
 }
 
-pub fn parse_meta_from_source_str(
-    name: @str,
-    source: @str,
-    cfg: ast::CrateConfig,
-    sess: @ParseSess
-) -> @ast::MetaItem {
+pub fn parse_meta_from_source_str(name: @str,
+                                  source: ~str,
+                                  cfg: ast::CrateConfig,
+                                  sess: @ParseSess)
+                                  -> @ast::MetaItem {
     let mut p = new_parser_from_source_str(sess, cfg, name, source);
     maybe_aborted(p.parse_meta_item(),p)
 }
 
-pub fn parse_stmt_from_source_str(
-    name: @str,
-    source: @str,
-    cfg: ast::CrateConfig,
-    attrs: ~[ast::Attribute],
-    sess: @ParseSess
-) -> @ast::Stmt {
+pub fn parse_stmt_from_source_str(name: @str,
+                                  source: ~str,
+                                  cfg: ast::CrateConfig,
+                                  attrs: ~[ast::Attribute],
+                                  sess: @ParseSess)
+                                  -> @ast::Stmt {
     let mut p = new_parser_from_source_str(
         sess,
         cfg,
@@ -163,12 +157,11 @@ pub fn parse_stmt_from_source_str(
     maybe_aborted(p.parse_stmt(attrs),p)
 }
 
-pub fn parse_tts_from_source_str(
-    name: @str,
-    source: @str,
-    cfg: ast::CrateConfig,
-    sess: @ParseSess
-) -> ~[ast::TokenTree] {
+pub fn parse_tts_from_source_str(name: @str,
+                                 source: ~str,
+                                 cfg: ast::CrateConfig,
+                                 sess: @ParseSess)
+                                 -> ~[ast::TokenTree] {
     let mut p = new_parser_from_source_str(
         sess,
         cfg,
@@ -184,8 +177,8 @@ pub fn parse_tts_from_source_str(
 pub fn new_parser_from_source_str(sess: @ParseSess,
                                   cfg: ast::CrateConfig,
                                   name: @str,
-                                  source: @str)
-                               -> Parser {
+                                  source: ~str)
+                                  -> Parser {
     filemap_to_parser(sess,string_to_filemap(sess,source,name),cfg)
 }
 
@@ -248,7 +241,8 @@ pub fn file_to_filemap(sess: @ParseSess, path: &Path, spanopt: Option<Span>)
     };
     match str::from_utf8_owned(bytes) {
         Some(s) => {
-            return string_to_filemap(sess, s.to_managed(),
+            return string_to_filemap(sess,
+                                     s,
                                      path.as_str().unwrap().to_managed());
         }
         None => {
@@ -260,7 +254,7 @@ pub fn file_to_filemap(sess: @ParseSess, path: &Path, spanopt: Option<Span>)
 
 // given a session and a string, add the string to
 // the session's codemap and return the new filemap
-pub fn string_to_filemap(sess: @ParseSess, source: @str, path: @str)
+pub fn string_to_filemap(sess: @ParseSess, source: ~str, path: @str)
     -> @FileMap {
     sess.cm.new_filemap(path, source)
 }
