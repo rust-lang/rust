@@ -52,12 +52,14 @@ impl UnixStream {
     ///
     /// # Example
     ///
+    ///```rust
     ///     use std::io::net::unix::UnixStream;
+    ///     use std::path::posix::Path;
     ///
-    ///     let server = Path("path/to/my/socket");
+    ///     let server = Path::new("path/to/my/socket");
     ///     let mut stream = UnixStream::connect(&server);
     ///     stream.write([1, 2, 3]);
-    ///
+    ///```
     pub fn connect<P: ToCStr>(path: &P) -> Option<UnixStream> {
         LocalIo::maybe_raise(|io| {
             io.unix_connect(&path.to_c_str()).map(UnixStream::new)
@@ -91,6 +93,7 @@ impl UnixListener {
     ///
     /// # Example
     ///
+    ///```rust
     ///     use std::io::net::unix::UnixListener;
     ///
     ///     let server = Path("path/to/my/socket");
@@ -99,7 +102,7 @@ impl UnixListener {
     ///         let mut client = client;
     ///         client.write([1, 2, 3, 4]);
     ///     }
-    ///
+    ///```
     pub fn bind<P: ToCStr>(path: &P) -> Option<UnixListener> {
         LocalIo::maybe_raise(|io| {
             io.unix_bind(&path.to_c_str()).map(|s| UnixListener { obj: s })
