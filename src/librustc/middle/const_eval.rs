@@ -515,9 +515,9 @@ pub fn lit_to_const(lit: &Lit) -> const_val {
         LitInt(n, _) => const_int(n),
         LitUint(n, _) => const_uint(n),
         LitIntUnsuffixed(n) => const_int(n),
-        LitFloat(n, _) => const_float(from_str::<f64>(n).unwrap() as f64),
-        LitFloatUnsuffixed(n) =>
-            const_float(from_str::<f64>(n).unwrap() as f64),
+        LitFloat(ref n, _) | LitFloatUnsuffixed(ref n) => {
+            const_float(from_str::<f64>(n.get()).unwrap() as f64)
+        }
         LitNil => const_int(0i64),
         LitBool(b) => const_bool(b)
     }

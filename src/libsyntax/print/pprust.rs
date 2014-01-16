@@ -2202,10 +2202,10 @@ pub fn print_literal(s: &mut State, lit: &ast::Lit) {
             word(&mut s.s, (i as u64).to_str_radix(10u));
         }
       }
-      ast::LitFloat(f, t) => {
-        word(&mut s.s, f.to_owned() + ast_util::float_ty_to_str(t));
+      ast::LitFloat(ref f, t) => {
+        word(&mut s.s, f.get() + ast_util::float_ty_to_str(t));
       }
-      ast::LitFloatUnsuffixed(f) => word(&mut s.s, f),
+      ast::LitFloatUnsuffixed(ref f) => word(&mut s.s, f.get()),
       ast::LitNil => word(&mut s.s, "()"),
       ast::LitBool(val) => {
         if val { word(&mut s.s, "true"); } else { word(&mut s.s, "false"); }

@@ -1405,9 +1405,12 @@ impl Parser {
             token::LIT_INT(i, it) => LitInt(i, it),
             token::LIT_UINT(u, ut) => LitUint(u, ut),
             token::LIT_INT_UNSUFFIXED(i) => LitIntUnsuffixed(i),
-            token::LIT_FLOAT(s, ft) => LitFloat(self.id_to_str(s), ft),
-            token::LIT_FLOAT_UNSUFFIXED(s) =>
-                LitFloatUnsuffixed(self.id_to_str(s)),
+            token::LIT_FLOAT(s, ft) => {
+                LitFloat(self.id_to_interned_str(s), ft)
+            }
+            token::LIT_FLOAT_UNSUFFIXED(s) => {
+                LitFloatUnsuffixed(self.id_to_interned_str(s))
+            }
             token::LIT_STR(s) => {
                 LitStr(self.id_to_interned_str(s), ast::CookedStr)
             }
