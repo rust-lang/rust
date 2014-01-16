@@ -410,7 +410,7 @@ impl Coerce {
         debug!("coerce_from_bare_fn(a={}, b={})",
                a.inf_str(self.get_ref().infcx), b.inf_str(self.get_ref().infcx));
 
-        if !fn_ty_a.abis.is_rust() {
+        if !fn_ty_a.abis.is_rust() || fn_ty_a.purity != ast::ImpureFn {
             return self.subtype(a, b);
         }
 
