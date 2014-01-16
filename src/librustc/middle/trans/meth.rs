@@ -440,39 +440,31 @@ pub fn trans_trait_callee<'a>(
     let _icx = push_ctxt("impl::trans_trait_callee");
     let mut bcx = bcx;
 
-    // make a local copy for trait if needed
-    let self_ty = expr_ty_adjusted(bcx, self_expr);
-    let self_scratch = match ty::get(self_ty).sty {
-        ty::ty_trait(_, _, ty::RegionTraitStore(..), _, _) => {
-            unpack_datum!(bcx, expr::trans(bcx, self_expr))
-        }
-        _ => {
-            // Arrange a temporary cleanup for the object in case something
-            // should go wrong before the method is actually *invoked*.
-            let datum = unpack_datum!(
-                bcx,
-                lvalue_scratch_datum(
-                    bcx, self_ty, "__trait_callee", false, arg_cleanup_scope, (),
-                    |(), bcx, llval| expr::trans_into(bcx, self_expr,
-                                                      expr::SaveIn(llval))));
-            datum.to_expr_datum()
-        }
-    };
+    // Translate self_datum and take ownership of the value by
+    // converting to an rvalue.
+    let self_datum = unpack_datum!(
+        bcx, expr::trans(bcx, self_expr));
+    let self_datum = unpack_datum!(
+        bcx, self_datum.to_rvalue_datum(bcx, "trait_callee"));
+
+    // Convert to by-ref since `trans_trait_callee_from_llval` wants it
+    // that way.
+    let self_datum = unpack_datum!(
+        bcx, self_datum.to_ref_datum(bcx));
+
+    // Arrange cleanup in case something should go wrong before the
+    // actual call occurs.
+    let llval = self_datum.add_clean(bcx.fcx, arg_cleanup_scope);
 
     let callee_ty = node_id_type(bcx, callee_id);
-    assert!(self_scratch.kind.is_by_ref()); // FIXME why special case above??
-    trans_trait_callee_from_llval(bcx,
-                                  callee_ty,
-                                  n_method,
-                                  self_scratch.val)
+    trans_trait_callee_from_llval(bcx, callee_ty, n_method, llval)
 }
 
-pub fn trans_trait_callee_from_llval<'a>(
-                                     bcx: &'a Block<'a>,
-                                     callee_ty: ty::t,
-                                     n_method: uint,
-                                     llpair: ValueRef)
-                                  -> Callee<'a> {
+pub fn trans_trait_callee_from_llval<'a>(bcx: &'a Block<'a>,
+                                         callee_ty: ty::t,
+                                         n_method: uint,
+                                         llpair: ValueRef)
+                                         -> Callee<'a> {
     /*!
      * Same as `trans_trait_callee()` above, except that it is given
      * a by-ref pointer to the object pair.
@@ -641,8 +633,8 @@ pub fn trans_trait_cast<'a>(bcx: &'a Block<'a>,
     /*!
      * Generates the code to convert from a pointer (`~T`, `&T`, etc)
      * into an object (`~Trait`, `&Trait`, etc). This means creating a
-     * pair where the first word is the pointer and the second word is
-     * an appropriate vtable.
+     * pair where the first word is the vtable and the second word is
+     * the pointer.
      */
 
     let mut bcx = bcx;
