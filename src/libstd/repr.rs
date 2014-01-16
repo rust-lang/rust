@@ -310,15 +310,6 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
         })
     }
 
-    #[cfg(stage0)]
-    fn visit_uniq_managed(&mut self, _mtbl: uint, inner: *TyDesc) -> bool {
-        self.writer.write(['~' as u8]);
-        self.get::<&raw::Box<()>>(|this, b| {
-            let p = ptr::to_unsafe_ptr(&b.data) as *c_void;
-            this.visit_ptr_inner(p, inner);
-        })
-    }
-
     fn visit_ptr(&mut self, mtbl: uint, _inner: *TyDesc) -> bool {
         self.get::<*c_void>(|this, p| {
             write!(this.writer, "({} as *", *p);
@@ -356,14 +347,6 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
         self.get::<&raw::Vec<()>>(|this, b| {
             this.writer.write(['~' as u8]);
             this.write_unboxed_vec_repr(mtbl, *b, inner);
-        })
-    }
-
-    #[cfg(stage0)]
-    fn visit_evec_uniq_managed(&mut self, mtbl: uint, inner: *TyDesc) -> bool {
-        self.get::<&raw::Box<raw::Vec<()>>>(|this, b| {
-            this.writer.write(['~' as u8]);
-            this.write_unboxed_vec_repr(mtbl, &b.data, inner);
         })
     }
 
