@@ -638,13 +638,6 @@ pub enum TokenTree {
     TTNonterminal(Span, Ident)
 }
 
-// NOTE remove after next snapshot
-// Required for ext::quote macros.
-#[cfg(stage0)]
-pub fn tt_tok(span: Span, tok: ::parse::token::Token) -> TokenTree {
-    TTTok(span, tok)
-}
-
 //
 // Matchers are nodes defined-by and recognized-by the main rust parser and
 // language, but they're only ever found inside syntax-extension invocations;
