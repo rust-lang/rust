@@ -29,11 +29,10 @@ pub fn expand_syntax_ext(cx: &mut base::ExtCtxt,
         match e.node {
             ast::ExprLit(lit) => {
                 match lit.node {
-                    ast::LitStr(ref s, _) => {
+                    ast::LitStr(ref s, _) |
+                    ast::LitFloat(ref s, _) |
+                    ast::LitFloatUnsuffixed(ref s) => {
                         accumulator.push_str(s.get());
-                    }
-                    ast::LitFloat(s, _) | ast::LitFloatUnsuffixed(s) => {
-                        accumulator.push_str(s);
                     }
                     ast::LitChar(c) => {
                         accumulator.push_char(char::from_u32(c).unwrap());
