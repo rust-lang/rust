@@ -317,7 +317,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
         "uninit" => {
             // Do nothing, this is effectively a no-op
             let retty = substs.tys[0];
-            if type_is_immediate(ccx, retty) && !ty::type_is_nil(retty) {
+            if type_is_immediate(ccx, retty) && !type_is_voidish(ccx, retty) {
                 unsafe {
                     Ret(bcx, lib::llvm::llvm::LLVMGetUndef(type_of(ccx, retty).to_ref()));
                 }
