@@ -89,7 +89,7 @@ pub fn parse_crate_attrs_from_file(
     return inner;
 }
 
-pub fn parse_crate_from_source_str(name: @str,
+pub fn parse_crate_from_source_str(name: ~str,
                                    source: ~str,
                                    cfg: ast::CrateConfig,
                                    sess: @ParseSess)
@@ -101,7 +101,7 @@ pub fn parse_crate_from_source_str(name: @str,
     maybe_aborted(p.parse_crate_mod(),p)
 }
 
-pub fn parse_crate_attrs_from_source_str(name: @str,
+pub fn parse_crate_attrs_from_source_str(name: ~str,
                                          source: ~str,
                                          cfg: ast::CrateConfig,
                                          sess: @ParseSess)
@@ -114,7 +114,7 @@ pub fn parse_crate_attrs_from_source_str(name: @str,
     return inner;
 }
 
-pub fn parse_expr_from_source_str(name: @str,
+pub fn parse_expr_from_source_str(name: ~str,
                                   source: ~str,
                                   cfg: ast::CrateConfig,
                                   sess: @ParseSess)
@@ -123,7 +123,7 @@ pub fn parse_expr_from_source_str(name: @str,
     maybe_aborted(p.parse_expr(), p)
 }
 
-pub fn parse_item_from_source_str(name: @str,
+pub fn parse_item_from_source_str(name: ~str,
                                   source: ~str,
                                   cfg: ast::CrateConfig,
                                   sess: @ParseSess)
@@ -133,7 +133,7 @@ pub fn parse_item_from_source_str(name: @str,
     maybe_aborted(p.parse_item(attrs),p)
 }
 
-pub fn parse_meta_from_source_str(name: @str,
+pub fn parse_meta_from_source_str(name: ~str,
                                   source: ~str,
                                   cfg: ast::CrateConfig,
                                   sess: @ParseSess)
@@ -142,7 +142,7 @@ pub fn parse_meta_from_source_str(name: @str,
     maybe_aborted(p.parse_meta_item(),p)
 }
 
-pub fn parse_stmt_from_source_str(name: @str,
+pub fn parse_stmt_from_source_str(name: ~str,
                                   source: ~str,
                                   cfg: ast::CrateConfig,
                                   attrs: ~[ast::Attribute],
@@ -157,7 +157,7 @@ pub fn parse_stmt_from_source_str(name: @str,
     maybe_aborted(p.parse_stmt(attrs),p)
 }
 
-pub fn parse_tts_from_source_str(name: @str,
+pub fn parse_tts_from_source_str(name: ~str,
                                  source: ~str,
                                  cfg: ast::CrateConfig,
                                  sess: @ParseSess)
@@ -176,7 +176,7 @@ pub fn parse_tts_from_source_str(name: @str,
 // Create a new parser from a source string
 pub fn new_parser_from_source_str(sess: @ParseSess,
                                   cfg: ast::CrateConfig,
-                                  name: @str,
+                                  name: ~str,
                                   source: ~str)
                                   -> Parser {
     filemap_to_parser(sess,string_to_filemap(sess,source,name),cfg)
@@ -241,21 +241,17 @@ pub fn file_to_filemap(sess: @ParseSess, path: &Path, spanopt: Option<Span>)
     };
     match str::from_utf8_owned(bytes) {
         Some(s) => {
-            return string_to_filemap(sess,
-                                     s,
-                                     path.as_str().unwrap().to_managed());
+            return string_to_filemap(sess, s, path.as_str().unwrap().to_str())
         }
-        None => {
-            err(format!("{} is not UTF-8 encoded", path.display()))
-        }
+        None => err(format!("{} is not UTF-8 encoded", path.display())),
     }
     unreachable!()
 }
 
 // given a session and a string, add the string to
 // the session's codemap and return the new filemap
-pub fn string_to_filemap(sess: @ParseSess, source: ~str, path: @str)
-    -> @FileMap {
+pub fn string_to_filemap(sess: @ParseSess, source: ~str, path: ~str)
+                         -> @FileMap {
     sess.cm.new_filemap(path, source)
 }
 

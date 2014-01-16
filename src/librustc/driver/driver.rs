@@ -61,12 +61,14 @@ pub enum PpMode {
  * The name used for source code that doesn't originate in a file
  * (e.g. source from stdin or a string)
  */
-pub fn anon_src() -> @str { @"<anon>" }
+pub fn anon_src() -> ~str {
+    "<anon>".to_str()
+}
 
-pub fn source_name(input: &Input) -> @str {
+pub fn source_name(input: &Input) -> ~str {
     match *input {
       // FIXME (#9639): This needs to handle non-utf8 paths
-      FileInput(ref ifile) => ifile.as_str().unwrap().to_managed(),
+      FileInput(ref ifile) => ifile.as_str().unwrap().to_str(),
       StrInput(_) => anon_src()
     }
 }
@@ -138,7 +140,7 @@ fn parse_cfgspecs(cfgspecs: ~[~str], demitter: @diagnostic::Emitter)
                   -> ast::CrateConfig {
     cfgspecs.move_iter().map(|s| {
         let sess = parse::new_parse_sess(Some(demitter));
-        parse::parse_meta_from_source_str(@"cfgspec", s, ~[], sess)
+        parse::parse_meta_from_source_str("cfgspec".to_str(), s, ~[], sess)
     }).collect::<ast::CrateConfig>()
 }
 
@@ -484,13 +486,13 @@ fn write_out_deps(sess: Session, input: &Input, outputs: &OutputFilenames, crate
 
     // Build a list of files used to compile the output and
     // write Makefile-compatible dependency rules
-    let files: ~[@str] = {
+    let files: ~[~str] = {
         let files = sess.codemap.files.borrow();
         files.get()
              .iter()
              .filter_map(|fmap| {
                  if fmap.is_real_file() {
-                     Some(fmap.name)
+                     Some(fmap.name.clone())
                  } else {
                      None
                  }

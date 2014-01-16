@@ -183,7 +183,7 @@ pub struct ExpnInfo {
     callee: NameAndSpan
 }
 
-pub type FileName = @str;
+pub type FileName = ~str;
 
 pub struct FileLines
 {
@@ -301,7 +301,7 @@ impl CodeMap {
     pub fn lookup_char_pos_adj(&self, pos: BytePos) -> LocWithOpt {
         let loc = self.lookup_char_pos(pos);
         LocWithOpt {
-            filename: loc.file.name,
+            filename: loc.file.name.to_str(),
             line: loc.line,
             col: loc.col,
             file: Some(loc.file)
@@ -324,7 +324,7 @@ impl CodeMap {
 
     pub fn span_to_filename(&self, sp: Span) -> FileName {
         let lo = self.lookup_char_pos(sp.lo);
-        lo.file.name
+        lo.file.name.to_str()
     }
 
     pub fn span_to_lines(&self, sp: Span) -> @FileLines {
