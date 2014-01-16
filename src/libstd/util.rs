@@ -134,7 +134,7 @@ mod tests {
     }
 }
 
-/// Completely miscellaneous language-constracuct benchmarks.
+/// Completely miscellaneous language-construct benchmarks.
 #[cfg(test)]
 mod bench {
 
