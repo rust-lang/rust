@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! 1:1 Task bookeeping
+//! 1:1 Task bookkeeping
 //!
 //! This module keeps track of the number of running 1:1 tasks so that entry
 //! points with libnative know when it's possible to exit the program (once all
 //! tasks have exited).
 //!
-//! The green counterpart for this is bookeeping on sched pools.
+//! The green counterpart for this is bookkeeping on sched pools.
 
 use std::sync::atomics;
 use std::unstable::mutex::{Mutex, MUTEX_INIT};
