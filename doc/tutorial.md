@@ -1025,6 +1025,11 @@ box, while the owner holds onto a pointer to it:
     list -> | Cons | 1 | ~ | -> | Cons | 2 | ~ | -> | Cons | 3 | ~ | -> | Nil          |
             +--------------+    +--------------+    +--------------+    +--------------+
 
+> Note: the above diagram shows the logical contents of the enum. The actual
+> memory layout of the enum may vary. For example, for the `List` enum shown
+> above, Rust guarantees that there will be no enum tag field in the actual
+> structure. See the language reference for more details.
+
 An owned box is a common example of a type with a destructor. The allocated
 memory is cleaned up when the box is destroyed.
 
