@@ -553,7 +553,6 @@ pub fn get_base_and_byte_len(bcx: &Block,
 
     match vstore {
         ty::vstore_fixed(n) => {
-            assert!(!type_is_immediate(bcx.ccx(), vt.vec_ty));
             let base = GEPi(bcx, llval, [0u, 0u]);
             let len = Mul(bcx, C_uint(ccx, n), vt.llunit_size);
             (base, len)
@@ -596,7 +595,6 @@ pub fn get_base_and_len(bcx: &Block,
 
     match vstore {
         ty::vstore_fixed(n) => {
-            assert!(!type_is_immediate(bcx.ccx(), vt.vec_ty));
             let base = GEPi(bcx, llval, [0u, 0u]);
             (base, C_uint(ccx, n))
         }

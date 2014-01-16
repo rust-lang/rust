@@ -64,7 +64,7 @@ pub fn type_is_immediate(ccx: &CrateContext, ty: ty::t) -> bool {
     let tcx = ccx.tcx;
     let simple = ty::type_is_scalar(ty) || ty::type_is_boxed(ty) ||
         ty::type_is_unique(ty) || ty::type_is_region_ptr(ty) ||
-        type_is_newtype_immediate(ccx, ty) ||
+        type_is_newtype_immediate(ccx, ty) || ty::type_is_bot(ty) ||
         ty::type_is_simd(tcx, ty);
     if simple {
         return true;
@@ -75,7 +75,7 @@ pub fn type_is_immediate(ccx: &CrateContext, ty: ty::t) -> bool {
             let llty = sizing_type_of(ccx, ty);
             llsize_of_alloc(ccx, llty) <= llsize_of_alloc(ccx, ccx.int_type)
         }
-        _ => false
+        _ => type_is_voidish(ccx, ty)
     }
 }
 
