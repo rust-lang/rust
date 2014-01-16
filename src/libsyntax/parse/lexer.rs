@@ -966,6 +966,7 @@ mod test {
 
     use codemap::{BytePos, CodeMap, Span};
     use diagnostic;
+    use diag_db;
     use parse::token;
     use parse::token::{str_to_ident};
 
@@ -979,7 +980,7 @@ mod test {
         let cm = CodeMap::new();
         let fm = cm.new_filemap(@"zebra.rs", teststr);
         let span_handler =
-            diagnostic::mk_span_handler(diagnostic::mk_handler(None),@cm);
+            diagnostic::mk_span_handler(diagnostic::mk_handler(None, diag_db::load()),@cm);
         Env {
             string_reader: new_string_reader(span_handler,fm)
         }

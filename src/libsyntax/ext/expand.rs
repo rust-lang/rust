@@ -1083,6 +1083,7 @@ mod test {
     use util::parser_testing::{string_to_pat, string_to_tts, strs_to_idents};
     use visit;
     use visit::Visitor;
+    use diag_db;
 
     // a visitor that extracts the paths
     // from a given thingy and puts them in a mutable
@@ -1122,7 +1123,7 @@ mod test {
     // make sure that fail! is present
     #[test] fn fail_exists_test () {
         let src = @"fn main() { fail!(\"something appropriately gloomy\");}";
-        let sess = parse::new_parse_sess(None);
+        let sess = parse::new_parse_sess(None, diag_db::load());
         let crate_ast = parse::parse_crate_from_source_str(
             @"<test>",
             src,
@@ -1140,7 +1141,7 @@ mod test {
     #[test] fn macros_cant_escape_fns_test () {
         let src = @"fn bogus() {macro_rules! z (() => (3+4))}\
                     fn inty() -> int { z!() }";
-        let sess = parse::new_parse_sess(None);
+        let sess = parse::new_parse_sess(None, diag_db::load());
         let crate_ast = parse::parse_crate_from_source_str(
             @"<test>",
             src,
@@ -1154,7 +1155,7 @@ mod test {
     #[test] fn macros_cant_escape_mods_test () {
         let src = @"mod foo {macro_rules! z (() => (3+4))}\
                     fn inty() -> int { z!() }";
-        let sess = parse::new_parse_sess(None);
+        let sess = parse::new_parse_sess(None, diag_db::load());
         let crate_ast = parse::parse_crate_from_source_str(
             @"<test>",
             src,
@@ -1167,7 +1168,7 @@ mod test {
     #[test] fn macros_can_escape_flattened_mods_test () {
         let src = @"#[macro_escape] mod foo {macro_rules! z (() => (3+4))}\
                     fn inty() -> int { z!() }";
-        let sess = parse::new_parse_sess(None);
+        let sess = parse::new_parse_sess(None, diag_db::load());
         let crate_ast = parse::parse_crate_from_source_str(
             @"<test>",
             src,
@@ -1178,7 +1179,7 @@ mod test {
 
     #[test] fn std_macros_must_parse () {
         let src = super::std_macros();
-        let sess = parse::new_parse_sess(None);
+        let sess = parse::new_parse_sess(None, diag_db::load());
         let cfg = ~[];
         let item_ast = parse::parse_item_from_source_str(
             @"<test>",

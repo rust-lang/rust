@@ -56,6 +56,14 @@ use syntax::codemap;
 use syntax::diagnostic::Emitter;
 use syntax::diagnostic;
 use syntax::parse;
+use syntax::diag_db::{explain_diagnostic, explain_diag_help};
+
+// Define the diagnostic macros
+#[path = "../libsyntax/diag_macros.rs"]
+pub mod diag_macros;
+// The index of all diagnostic codes used by this crate. This must be defined
+// lexically before any diagnostics are used.
+pub mod diag_index;
 
 pub mod middle {
     pub mod trans;
@@ -225,6 +233,21 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
     if matches.opt_present("h") || matches.opt_present("help") {
         usage(binary);
         return;
+    }
+
+    match matches.opt_str("explain") {
+        Some(ref code) if code == &~"help" => {
+            explain_diag_help();
+            return;
+        },
+        Some(code) => {
+            if !explain_diagnostic(&diag_db::load(), code) {
+                d::early_error(demitter,
+                               format!("no extended information about code {}", code));
+            }
+            return;
+        }
+        None => ()
     }
 
     // Display the available lint options if "-W help" or only "-W" is given.
@@ -464,3 +487,7 @@ pub fn main_args(args: &[~str]) -> int {
     monitor(proc(demitter) run_compiler(owned_args, demitter));
     0
 }
+
+// The database of extended diagnostic descriptions. Must come lexically
+// after all uses of diagnostics. See `diag_macros` for why.
+pub mod diag_db;

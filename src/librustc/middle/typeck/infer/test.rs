@@ -16,6 +16,7 @@ Note: This module is only compiled when doing unit testing.
 
 */
 
+use diag_db;
 use driver::diagnostic;
 use driver::driver::{optgroups, build_session_options, build_session};
 use driver::driver::{str_input, build_configuration};
@@ -61,7 +62,7 @@ fn setup_env(test_name: &str, source_string: &str) -> Env {
     let region_map = HashMap();
     let lang_items = LanguageItems::new();
 
-    let parse_sess = parse::new_parse_sess(None);
+    let parse_sess = parse::new_parse_sess(None, diag_db::load());
     let crate = parse_crate_from_source_str(
         test_name.to_str(), @source_string.to_str(),
         cfg, parse_sess);

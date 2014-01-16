@@ -17,6 +17,7 @@ use codemap;
 use diagnostic::{SpanHandler, mk_span_handler, mk_handler, Emitter};
 use parse::attr::ParserAttr;
 use parse::parser::Parser;
+use diag_db::DiagnosticDb;
 
 use std::cell::RefCell;
 use std::io;
@@ -46,11 +47,11 @@ pub struct ParseSess {
     included_mod_stack: RefCell<~[Path]>,
 }
 
-pub fn new_parse_sess(demitter: Option<@Emitter>) -> @ParseSess {
+pub fn new_parse_sess(demitter: Option<@Emitter>, db: DiagnosticDb) -> @ParseSess {
     let cm = @CodeMap::new();
     @ParseSess {
         cm: cm,
-        span_diagnostic: mk_span_handler(mk_handler(demitter), cm),
+        span_diagnostic: mk_span_handler(mk_handler(demitter, db), cm),
         included_mod_stack: RefCell::new(~[]),
     }
 }

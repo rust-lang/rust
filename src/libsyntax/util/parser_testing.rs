@@ -14,11 +14,12 @@ use parse::{ParseSess,string_to_filemap,filemap_to_tts};
 use parse::{new_parser_from_source_str};
 use parse::parser::Parser;
 use parse::token;
+use diag_db;
 
 // map a string to tts, using a made-up filename: return both the TokenTree's
 // and the ParseSess
 pub fn string_to_tts_and_sess (source_str : @str) -> (~[ast::TokenTree], @ParseSess) {
-    let ps = new_parse_sess(None);
+    let ps = new_parse_sess(None, diag_db::load());
     (filemap_to_tts(ps,string_to_filemap(ps,source_str,@"bogofile")),ps)
 }
 
@@ -29,7 +30,7 @@ pub fn string_to_tts(source_str : @str) -> ~[ast::TokenTree] {
 }
 
 pub fn string_to_parser_and_sess(source_str: @str) -> (Parser,@ParseSess) {
-    let ps = new_parse_sess(None);
+    let ps = new_parse_sess(None, diag_db::load());
     (new_parser_from_source_str(ps,~[],@"bogofile",source_str),ps)
 }
 
