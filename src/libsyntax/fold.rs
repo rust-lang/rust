@@ -814,8 +814,12 @@ pub fn noop_fold_expr<T: Folder>(e: @Expr, folder: &mut T) -> @Expr {
         }
         ExprInlineAsm(ref a) => {
             ExprInlineAsm(InlineAsm {
-                inputs: a.inputs.map(|&(c, input)| (c, folder.fold_expr(input))),
-                outputs: a.outputs.map(|&(c, out)| (c, folder.fold_expr(out))),
+                inputs: a.inputs.map(|&(ref c, input)| {
+                    ((*c).clone(), folder.fold_expr(input))
+                }),
+                outputs: a.outputs.map(|&(ref c, out)| {
+                    ((*c).clone(), folder.fold_expr(out))
+                }),
                 .. (*a).clone()
             })
         }

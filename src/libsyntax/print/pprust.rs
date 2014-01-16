@@ -1466,25 +1466,25 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) {
             word(&mut s.s, "asm!");
         }
         popen(s);
-        print_string(s, a.asm, a.asm_str_style);
+        print_string(s, a.asm.get(), a.asm_str_style);
         word_space(s, ":");
-        for &(co, o) in a.outputs.iter() {
-            print_string(s, co, ast::CookedStr);
+        for &(ref co, o) in a.outputs.iter() {
+            print_string(s, co.get(), ast::CookedStr);
             popen(s);
             print_expr(s, o);
             pclose(s);
             word_space(s, ",");
         }
         word_space(s, ":");
-        for &(co, o) in a.inputs.iter() {
-            print_string(s, co, ast::CookedStr);
+        for &(ref co, o) in a.inputs.iter() {
+            print_string(s, co.get(), ast::CookedStr);
             popen(s);
             print_expr(s, o);
             pclose(s);
             word_space(s, ",");
         }
         word_space(s, ":");
-        print_string(s, a.clobbers, ast::CookedStr);
+        print_string(s, a.clobbers.get(), ast::CookedStr);
         pclose(s);
       }
       ast::ExprMac(ref m) => print_mac(s, m),
@@ -1998,7 +1998,7 @@ pub fn print_view_item(s: &mut State, item: &ast::ViewItem) {
                 space(&mut s.s);
                 word(&mut s.s, "=");
                 space(&mut s.s);
-                print_string(s, *p, style);
+                print_string(s, p.get(), style);
             }
         }
 

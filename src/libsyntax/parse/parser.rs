@@ -5136,17 +5136,20 @@ impl Parser {
         }
     }
 
-    pub fn parse_optional_str(&mut self) -> Option<(@str, ast::StrStyle)> {
+    pub fn parse_optional_str(&mut self)
+                              -> Option<(InternedString, ast::StrStyle)> {
         let (s, style) = match self.token {
-            token::LIT_STR(s) => (s, ast::CookedStr),
-            token::LIT_STR_RAW(s, n) => (s, ast::RawStr(n)),
+            token::LIT_STR(s) => (self.id_to_interned_str(s), ast::CookedStr),
+            token::LIT_STR_RAW(s, n) => {
+                (self.id_to_interned_str(s), ast::RawStr(n))
+            }
             _ => return None
         };
         self.bump();
-        Some((ident_to_str(&s), style))
+        Some((s, style))
     }
 
-    pub fn parse_str(&mut self) -> (@str, StrStyle) {
+    pub fn parse_str(&mut self) -> (InternedString, StrStyle) {
         match self.parse_optional_str() {
             Some(s) => { s }
             _ =>  self.fatal("expected string literal")

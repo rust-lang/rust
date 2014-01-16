@@ -898,11 +898,11 @@ pub enum AsmDialect {
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub struct InlineAsm {
-    asm: @str,
+    asm: InternedString,
     asm_str_style: StrStyle,
-    clobbers: @str,
-    inputs: ~[(@str, @Expr)],
-    outputs: ~[(@str, @Expr)],
+    clobbers: InternedString,
+    inputs: ~[(InternedString, @Expr)],
+    outputs: ~[(InternedString, @Expr)],
     volatile: bool,
     alignstack: bool,
     dialect: AsmDialect
@@ -1075,7 +1075,7 @@ pub enum ViewItem_ {
     // optional @str: if present, this is a location (containing
     // arbitrary characters) from which to fetch the crate sources
     // For example, extern mod whatever = "github.com/mozilla/rust"
-    ViewItemExternMod(Ident, Option<(@str, StrStyle)>, NodeId),
+    ViewItemExternMod(Ident, Option<(InternedString,StrStyle)>, NodeId),
     ViewItemUse(~[@ViewPath]),
 }
 

@@ -168,8 +168,8 @@ fn extract_crate_info(i: &ast::ViewItem) -> Option<CrateInfo> {
             debug!("resolving extern mod stmt. ident: {:?} path_opt: {:?}",
                    ident, path_opt);
             let (name, version) = match path_opt {
-                Some((path_str, _)) => {
-                    let crateid: Option<CrateId> = from_str(path_str);
+                Some((ref path_str, _)) => {
+                    let crateid: Option<CrateId> = from_str(path_str.get());
                     match crateid {
                         None => (@"", @""),
                         Some(crateid) => {
