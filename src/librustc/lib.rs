@@ -227,14 +227,9 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
         return;
     }
 
-    // Display the available lint options if "-W help" or only "-W" is given.
     let lint_flags = vec::append(matches.opt_strs("W"),
                                  matches.opt_strs("warn"));
-
-    let show_lint_options = lint_flags.iter().any(|x| x == &~"help") ||
-        (matches.opt_present("W") && lint_flags.is_empty());
-
-    if show_lint_options {
+    if lint_flags.iter().any(|x| x == &~"help") {
         describe_warnings();
         return;
     }
