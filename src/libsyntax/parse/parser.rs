@@ -2023,7 +2023,7 @@ impl Parser {
                     seq_sep_trailing_disallowed(token::COMMA),
                     |p| p.parse_expr()
                 );
-                hi = self.span.hi;
+                hi = self.last_span.hi;
 
                 let nd = self.mk_call(e, es, NoSugar);
                 e = self.mk_expr(lo, hi, nd);
@@ -2033,7 +2033,7 @@ impl Parser {
               token::LBRACKET => {
                 self.bump();
                 let ix = self.parse_expr();
-                hi = ix.span.hi;
+                hi = self.span.hi;
                 self.commit_expr_expecting(ix, token::RBRACKET);
                 let index = self.mk_index(e, ix);
                 e = self.mk_expr(lo, hi, index)
