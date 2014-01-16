@@ -13,6 +13,8 @@
 //! This module defines a container which uses an efficient bit mask
 //! representation to hold C-like enum variants.
 
+use std::num::Bitwise;
+
 #[deriving(Clone, Eq, IterBytes, ToStr, Encodable, Decodable)]
 /// A specialized Set implementation to use enum types.
 pub struct EnumSet<E> {

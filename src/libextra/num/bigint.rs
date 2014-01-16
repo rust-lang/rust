@@ -22,7 +22,7 @@ A `BigInt` is a combination of `BigUint` and `Sign`.
 use std::cmp::{Eq, Ord, TotalEq, TotalOrd, Ordering, Less, Equal, Greater};
 use std::num;
 use std::num::{Zero, One, ToStrRadix, FromStrRadix, Orderable};
-use std::num::{ToPrimitive, FromPrimitive};
+use std::num::{Bitwise, ToPrimitive, FromPrimitive};
 use std::rand::Rng;
 use std::str;
 use std::uint;
