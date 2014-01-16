@@ -282,20 +282,20 @@ pub fn trans_native_call<'a>(
             // FIXME(#8357) We really ought to report a span here
             ccx.sess.fatal(
                 format!("ABI string `{}` has no suitable ABI \
-                      for target architecture",
-                     fn_abis.user_string(ccx.tcx)));
+                        for target architecture",
+                        fn_abis.user_string(ccx.tcx)));
         }
     };
 
     // A function pointer is called without the declaration available, so we have to apply
     // any attributes with ABI implications directly to the call instruction. Right now, the
     // only attribute we need to worry about is `sret`.
-    let sret_attr = [(1, StructRetAttribute)];
-    let attrs = if fn_type.ret_ty.is_indirect() {
-        sret_attr.as_slice()
+    let sret_attr = if fn_type.ret_ty.is_indirect() {
+        Some((1, StructRetAttribute))
     } else {
-        &[]
+        None
     };
+    let attrs = sret_attr.as_slice();
     let llforeign_retval = CallWithConv(bcx, llfn, llargs_foreign, cc, attrs);
 
     // If the function we just called does not use an outpointer,
