@@ -98,12 +98,31 @@ pub mod write {
     use lib;
     use syntax::abi;
     use util::common::time;
+    use syntax::abi;
 
     use std::c_str::ToCStr;
     use std::libc::{c_uint, c_int};
     use std::path::Path;
     use std::run;
     use std::str;
+
+    // On android, we by default compile for armv7 processors. This enables
+    // things like double word CAS instructions (rather than emulating them)
+    // which are *far* more efficient. This is obviously undesirable in some
+    // cases, so if any sort of target feature is specified we don't append v7
+    // to the feature list.
+    fn target_feature<'a>(sess: &'a Session) -> &'a str {
+        match sess.targ_cfg.os {
+            abi::OsAndroid => {
+                if "" == sess.opts.target_feature {
+                    "+v7"
+                } else {
+                    sess.opts.target_feature.as_slice()
+                }
+            }
+            _ => sess.opts.target_feature.as_slice()
+        }
+    }
 
     pub fn run_passes(sess: Session,
                       trans: &CrateTranslation,
@@ -136,7 +155,7 @@ pub mod write {
 
             let tm = sess.targ_cfg.target_strs.target_triple.with_c_str(|T| {
                 sess.opts.target_cpu.with_c_str(|CPU| {
-                    sess.opts.target_feature.with_c_str(|Features| {
+                    target_feature(&sess).with_c_str(|Features| {
                         llvm::LLVMRustCreateTargetMachine(
                             T, CPU, Features,
                             lib::llvm::CodeModelDefault,
