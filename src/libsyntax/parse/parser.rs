@@ -531,10 +531,11 @@ impl Parser {
     // otherwise, eat it.
     pub fn expect_keyword(&mut self, kw: keywords::Keyword) {
         if !self.eat_keyword(kw) {
-            let id_str = self.id_to_str(kw.to_ident()).to_str();
+            let id_ident = kw.to_ident();
+            let id_interned_str = token::get_ident(id_ident.name);
             let token_str = self.this_token_to_str();
             self.fatal(format!("expected `{}`, found `{}`",
-                               id_str,
+                               id_interned_str.get(),
                                token_str))
         }
     }
@@ -800,10 +801,6 @@ impl Parser {
     }
     pub fn abort_if_errors(&mut self) {
         self.sess.span_diagnostic.handler().abort_if_errors();
-    }
-
-    pub fn id_to_str(&mut self, id: Ident) -> @str {
-        get_ident_interner().get(id.name)
     }
 
     pub fn id_to_interned_str(&mut self, id: Ident) -> InternedString {
@@ -3440,7 +3437,9 @@ impl Parser {
         loop {
             match self.token {
                 token::LIFETIME(lifetime) => {
-                    if "static" == self.id_to_str(lifetime) {
+                    let lifetime_interned_string =
+                        token::get_ident(lifetime.name);
+                    if lifetime_interned_string.equiv(&("static")) {
                         result.push(RegionTyParamBound);
                     } else {
                         self.span_err(self.span,
@@ -4877,7 +4876,6 @@ impl Parser {
 
         let first_ident = self.parse_ident();
         let mut path = ~[first_ident];
-        debug!("parsed view path: {}", self.id_to_str(first_ident));
         match self.token {
           token::EQ => {
             // x = foo::bar
