@@ -266,6 +266,11 @@ pub trait RtioPipe {
     fn write(&mut self, buf: &[u8]) -> Result<(), IoError>;
 }
 
+pub trait RtioDatagramPipe : RtioPipe {
+    fn recvfrom(&mut self, buf: &mut [u8]) -> Result<(uint, CString), IoError>;
+    fn sendto(&mut self, buf: &[u8], dst: &CString) -> Result<(), IoError>;
+}
+
 pub trait RtioUnixListener {
     fn listen(~self) -> Result<~RtioUnixAcceptor, IoError>;
 }

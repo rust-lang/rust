@@ -181,10 +181,10 @@ impl rtio::IoFactory for IoFactory {
         net::UdpSocket::bind(addr).map(|u| ~u as ~RtioUdpSocket)
     }
     fn unix_bind(&mut self, _path: &CString) -> IoResult<~RtioUnixListener> {
-        Err(unimpl())
+        net::UnixListener::bind(_path).map(|s| ~s as ~RtioUnixListener)
     }
     fn unix_connect(&mut self, _path: &CString) -> IoResult<~RtioPipe> {
-        Err(unimpl())
+        net::UnixStream::connect(_path, libc::SOCK_STREAM).map(|s| ~s as ~RtioPipe)
     }
     fn get_host_addresses(&mut self, _host: Option<&str>, _servname: Option<&str>,
                           _hint: Option<ai::Hint>) -> IoResult<~[ai::Info]> {
