@@ -127,9 +127,9 @@ mod test {
         // Rendezvous streams should be able to handle any number of messages being sent
         let (port, chan) = rendezvous();
         do spawn {
-            1000000.times(|| { chan.send(()) })
+            10000.times(|| { chan.send(()) })
         }
-        1000000.times(|| { port.recv() })
+        10000.times(|| { port.recv() })
     }
 
     #[test]
