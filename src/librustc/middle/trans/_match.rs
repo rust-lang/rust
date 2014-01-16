@@ -2092,8 +2092,6 @@ fn bind_irrefutable_pat<'a>(
      * - pat: the irrefutable pattern being matched.
      * - val: the value being matched -- must be an lvalue (by ref, with cleanup)
      * - binding_mode: is this for an argument or a local variable?
-     *
-     * FIXME: convert `val` to `Datum<Lvalue>` for more type safety
      */
 
     debug!("bind_irrefutable_pat(bcx={}, pat={}, binding_mode={:?})",
