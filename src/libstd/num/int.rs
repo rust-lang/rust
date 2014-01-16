@@ -15,7 +15,7 @@
 use prelude::*;
 
 use default::Default;
-use num::{BitCount, CheckedAdd, CheckedSub, CheckedMul};
+use num::{Bitwise, Bounded, CheckedAdd, CheckedSub, CheckedMul};
 use num::{CheckedDiv, Zero, One, strconv};
 use num::{ToStrRadix, FromStrRadix};
 use option::{Option, Some, None};
@@ -26,7 +26,7 @@ use unstable::intrinsics;
 #[cfg(target_word_size = "64")] int_module!(int, 64)
 
 #[cfg(target_word_size = "32")]
-impl BitCount for int {
+impl Bitwise for int {
     /// Counts the number of bits set. Wraps LLVM's `ctpop` intrinsic.
     #[inline]
     fn population_count(&self) -> int { (*self as i32).population_count() as int }
@@ -41,7 +41,7 @@ impl BitCount for int {
 }
 
 #[cfg(target_word_size = "64")]
-impl BitCount for int {
+impl Bitwise for int {
     /// Counts the number of bits set. Wraps LLVM's `ctpop` intrinsic.
     #[inline]
     fn population_count(&self) -> int { (*self as i64).population_count() as int }

@@ -15,7 +15,7 @@
 use prelude::*;
 
 use default::Default;
-use num::{BitCount, CheckedAdd, CheckedSub, CheckedMul};
+use num::{Bitwise, Bounded, CheckedAdd, CheckedSub, CheckedMul};
 use num::{CheckedDiv, Zero, One, strconv};
 use num::{ToStrRadix, FromStrRadix};
 use option::{Option, Some, None};
@@ -24,7 +24,7 @@ use unstable::intrinsics;
 
 int_module!(i16, 16)
 
-impl BitCount for i16 {
+impl Bitwise for i16 {
     /// Counts the number of bits set. Wraps LLVM's `ctpop` intrinsic.
     #[inline]
     fn population_count(&self) -> i16 { unsafe { intrinsics::ctpop16(*self) } }

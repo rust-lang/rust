@@ -16,7 +16,7 @@ use prelude::*;
 
 use default::Default;
 use mem;
-use num::BitCount;
+use num::{Bitwise, Bounded};
 use num::{CheckedAdd, CheckedSub, CheckedMul};
 use num::{CheckedDiv, Zero, One, strconv};
 use num::{ToStrRadix, FromStrRadix};

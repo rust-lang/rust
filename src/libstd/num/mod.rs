@@ -324,21 +324,27 @@ pub trait Real: Signed
 /// Inverse hyperbolic tangent function.
 #[inline(always)] pub fn atanh<T: Real>(value: T) -> T { value.atanh() }
 
-/// Collects the bitwise operators under one trait.
-pub trait Bitwise: Not<Self>
+pub trait Bounded {
+    // FIXME (#5527): These should be associated constants
+    fn min_value() -> Self;
+    fn max_value() -> Self;
+}
+
+/// Numbers with a fixed binary representation.
+pub trait Bitwise: Bounded
+                 + Not<Self>
                  + BitAnd<Self,Self>
                  + BitOr<Self,Self>
                  + BitXor<Self,Self>
                  + Shl<Self,Self>
-                 + Shr<Self,Self> {}
-
-/// A trait for common counting operations on bits.
-pub trait BitCount {
+                 + Shr<Self,Self> {
     /// Returns the number of bits set in the number.
     ///
     /// # Example
     ///
     /// ```rust
+    /// use std::num::Bitwise;
+    ///
     /// let n = 0b0101000u16;
     /// assert_eq!(n.population_count(), 2);
     /// ```
@@ -348,6 +354,8 @@ pub trait BitCount {
     /// # Example
     ///
     /// ```rust
+    /// use std::num::Bitwise;
+    ///
     /// let n = 0b0101000u16;
     /// assert_eq!(n.leading_zeros(), 10);
     /// ```
@@ -357,16 +365,12 @@ pub trait BitCount {
     /// # Example
     ///
     /// ```rust
+    /// use std::num::Bitwise;
+    ///
     /// let n = 0b0101000u16;
     /// assert_eq!(n.trailing_zeros(), 3);
     /// ```
     fn trailing_zeros(&self) -> Self;
-}
-
-pub trait Bounded {
-    // FIXME (#5527): These should be associated constants
-    fn min_value() -> Self;
-    fn max_value() -> Self;
 }
 
 /// Specifies the available operations common to all of Rust's core numeric primitives.
@@ -394,8 +398,7 @@ pub trait Primitive: Clone
 /// A collection of traits relevant to primitive signed and unsigned integers
 pub trait Int: Integer
              + Primitive
-             + Bitwise
-             + BitCount {}
+             + Bitwise {}
 
 /// Used for representing the classification of floating point numbers
 #[deriving(Eq)]
