@@ -198,7 +198,7 @@ pub fn trans_native_call<'a>(
         _ => ccx.sess.bug("trans_native_call called on non-function type")
     };
     let llsig = foreign_signature(ccx, &fn_sig, passed_arg_tys);
-    let ret_def = !ty::type_is_voidish(bcx.tcx(), fn_sig.output);
+    let ret_def = !type_is_voidish(bcx.ccx(), fn_sig.output);
     let fn_type = cabi::compute_abi_info(ccx,
                                          llsig.llarg_tys,
                                          llsig.llret_ty,
@@ -778,7 +778,7 @@ fn foreign_types_for_fn_ty(ccx: &CrateContext,
         _ => ccx.sess.bug("foreign_types_for_fn_ty called on non-function type")
     };
     let llsig = foreign_signature(ccx, &fn_sig, fn_sig.inputs);
-    let ret_def = !ty::type_is_voidish(ccx.tcx, fn_sig.output);
+    let ret_def = !type_is_voidish(ccx, fn_sig.output);
     let fn_ty = cabi::compute_abi_info(ccx,
                                        llsig.llarg_tys,
                                        llsig.llret_ty,

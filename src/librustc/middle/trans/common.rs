@@ -79,6 +79,15 @@ pub fn type_is_immediate(ccx: &CrateContext, ty: ty::t) -> bool {
     }
 }
 
+pub fn type_is_voidish(ccx: &CrateContext, ty: ty::t) -> bool {
+    //! Identify types like `()`, bottom, or empty structs, which
+    //! contain no information at all.
+    use middle::trans::machine::llsize_of_alloc;
+    use middle::trans::type_of::sizing_type_of;
+    let llty = sizing_type_of(ccx, ty);
+    llsize_of_alloc(ccx, llty) == 0
+}
+
 pub fn gensym_name(name: &str) -> (Ident, PathElem) {
     let name = token::gensym(name);
     let ident = Ident::new(name);

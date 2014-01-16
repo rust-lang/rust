@@ -474,7 +474,7 @@ fn trans_unadjusted<'a>(bcx: &'a Block<'a>,
 
         ty::RvalueDpsExpr => {
             let ty = expr_ty(bcx, expr);
-            if ty::type_is_voidish(bcx.tcx(), ty) {
+            if type_is_voidish(bcx.ccx(), ty) {
                 bcx = trans_rvalue_dps_unadjusted(bcx, expr, Ignore);
                 nil(bcx, ty)
             } else {
@@ -500,7 +500,8 @@ fn trans_unadjusted<'a>(bcx: &'a Block<'a>,
     };
 
     fn nil<'a>(bcx: &'a Block<'a>, ty: ty::t) -> DatumBlock<'a, Expr> {
-        let datum = immediate_rvalue(C_nil(), ty);
+        let llval = C_undef(type_of::type_of(bcx.ccx(), ty));
+        let datum = immediate_rvalue(llval, ty);
         DatumBlock(bcx, datum.to_expr_datum())
     }
 }

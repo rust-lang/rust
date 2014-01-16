@@ -1320,7 +1320,7 @@ pub fn init_function<'a>(
         }
     };
 
-    if !ty::type_is_voidish(fcx.ccx.tcx, substd_output_type) {
+    if !type_is_voidish(fcx.ccx, substd_output_type) {
         // If the function returns nil/bot, there is no real return
         // value, so do not set `llretptr`.
         if !skip_retptr || fcx.caller_expects_out_pointer {
@@ -1539,7 +1539,7 @@ pub fn trans_closure(ccx: @CrateContext,
     // translation calls that don't have a return value (trans_crate,
     // trans_mod, trans_item, et cetera) and those that do
     // (trans_block, trans_expr, et cetera).
-    if body.expr.is_none() || ty::type_is_voidish(bcx.tcx(), block_ty) {
+    if body.expr.is_none() || type_is_voidish(bcx.ccx(), block_ty) {
         bcx = controlflow::trans_block(bcx, body, expr::Ignore);
     } else {
         let dest = expr::SaveIn(fcx.llretptr.get().unwrap());
@@ -1679,15 +1679,17 @@ fn trans_enum_variant_or_tuple_like_struct(ccx: @CrateContext,
 
     let bcx = fcx.entry_bcx.get().unwrap();
 
-    let repr = adt::represent_type(ccx, result_ty);
-    adt::trans_start_init(bcx, repr, fcx.llretptr.get().unwrap(), disr);
-    for (i, arg_datum) in arg_datums.move_iter().enumerate() {
-        let lldestptr = adt::trans_field_ptr(bcx,
-                                             repr,
-                                             fcx.llretptr.get().unwrap(),
-                                             disr,
-                                             i);
-        arg_datum.store_to(bcx, lldestptr);
+    if !type_is_voidish(fcx.ccx, result_ty) {
+        let repr = adt::represent_type(ccx, result_ty);
+        adt::trans_start_init(bcx, repr, fcx.llretptr.get().unwrap(), disr);
+        for (i, arg_datum) in arg_datums.move_iter().enumerate() {
+            let lldestptr = adt::trans_field_ptr(bcx,
+                                                 repr,
+                                                 fcx.llretptr.get().unwrap(),
+                                                 disr,
+                                                 i);
+            arg_datum.store_to(bcx, lldestptr);
+        }
     }
 
     finish_fn(&fcx, bcx);
