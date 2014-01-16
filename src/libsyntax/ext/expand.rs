@@ -1047,7 +1047,7 @@ mod test {
             ~[], sess);
         // should fail:
         let mut loader = ErrLoader;
-        expand_crate(sess,&mut loader,~[],crate_ast);
+        expand_crate(sess, &mut loader, ~[], crate_ast);
     }
 
     #[test] fn test_contains_flatten (){
