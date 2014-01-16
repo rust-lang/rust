@@ -261,8 +261,13 @@ impl GenericPathUnsafe for Path {
             let mut s = str::with_capacity(me.repr.len() + 1 + pathlen);
             s.push_str(me.repr);
             let plen = me.prefix_len();
-            if !(me.repr.len() > plen && me.repr[me.repr.len()-1] == sep as u8) {
-                s.push_char(sep);
+            // if me is "C:" we don't want to add a path separator
+            match me.prefix {
+                Some(DiskPrefix) if me.repr.len() == plen => (),
+                _ if !(me.repr.len() > plen && me.repr[me.repr.len()-1] == sep as u8) => {
+                    s.push_char(sep);
+                }
+                _ => ()
             }
             match path_ {
                 None => s.push_str(path),
@@ -1549,6 +1554,8 @@ mod tests {
         t!(s: "C:a\\b\\c", "C:d", "C:a\\b\\c\\d");
         t!(s: "C:a\\b", "..\\..\\..\\c", "C:..\\c");
         t!(s: "C:\\a\\b", "..\\..\\..\\c", "C:\\c");
+        t!(s: "C:", r"a\b\c", r"C:a\b\c");
+        t!(s: "C:", r"..\a", r"C:..\a");
         t!(s: "\\\\server\\share\\foo", "bar", "\\\\server\\share\\foo\\bar");
         t!(s: "\\\\server\\share\\foo", "..\\..\\bar", "\\\\server\\share\\bar");
         t!(s: "\\\\server\\share\\foo", "C:baz", "C:baz");
