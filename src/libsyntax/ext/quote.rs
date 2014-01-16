@@ -243,7 +243,7 @@ pub mod rt {
         fn parse_tts(&self, s: @str) -> ~[ast::TokenTree];
     }
 
-    impl ExtParseUtils for ExtCtxt {
+    impl<'a> ExtParseUtils for ExtCtxt<'a> {
 
         fn parse_item(&self, s: @str) -> @ast::Item {
             let res = parse::parse_item_from_source_str(

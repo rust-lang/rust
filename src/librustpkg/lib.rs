@@ -28,6 +28,7 @@ pub use std::path::Path;
 
 use extra::workcache;
 use rustc::driver::{driver, session};
+use rustc::metadata::creader::Loader;
 use rustc::metadata::filesearch;
 use rustc::metadata::filesearch::rust_path;
 use rustc::util::sha2;
@@ -118,7 +119,11 @@ impl<'a> PkgScript<'a> {
                                             @diagnostic::Emitter);
         let cfg = driver::build_configuration(sess);
         let crate = driver::phase_1_parse_input(sess, cfg.clone(), &input);
-        let crate_and_map = driver::phase_2_configure_and_expand(sess, cfg.clone(), crate);
+        let loader = &mut Loader::new(sess);
+        let crate_and_map = driver::phase_2_configure_and_expand(sess,
+                                                         cfg.clone(),
+                                                         loader,
+                                                         crate);
         let work_dir = build_pkg_id_in_workspace(id, workspace);
 
         debug!("Returning package script with id {}", id.to_str());

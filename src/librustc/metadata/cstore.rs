@@ -53,7 +53,7 @@ pub enum NativeLibaryKind {
 
 // Where a crate came from on the local filesystem. One of these two options
 // must be non-None.
-#[deriving(Eq)]
+#[deriving(Eq, Clone)]
 pub struct CrateSource {
     dylib: Option<Path>,
     rlib: Option<Path>,
@@ -121,6 +121,21 @@ impl CStore {
         if !used_crate_sources.get().contains(&src) {
             used_crate_sources.get().push(src);
         }
+    }
+
+    pub fn get_used_crate_source(&self, cnum: ast::CrateNum)
+                                     -> Option<CrateSource> {
+        let mut used_crate_sources = self.used_crate_sources.borrow_mut();
+        used_crate_sources.get().iter().find(|source| source.cnum == cnum)
+            .map(|source| source.clone())
+    }
+
+    pub fn reset(&self) {
+        self.metas.with_mut(|s| s.clear());
+        self.extern_mod_crate_map.with_mut(|s| s.clear());
+        self.used_crate_sources.with_mut(|s| s.clear());
+        self.used_libraries.with_mut(|s| s.clear());
+        self.used_link_args.with_mut(|s| s.clear());
     }
 
     pub fn get_used_crates(&self, prefer: LinkagePreference)

@@ -90,10 +90,14 @@ pub fn is_test_ignored(config: &config, testfile: &Path) -> bool {
     fn xfail_target(config: &config) -> ~str {
         ~"xfail-" + util::get_os(config.target)
     }
+    fn xfail_stage(config: &config) -> ~str {
+        ~"xfail-" + config.stage_id.split('-').next().unwrap()
+    }
 
     let val = iter_header(testfile, |ln| {
         if parse_name_directive(ln, "xfail-test") { false }
         else if parse_name_directive(ln, xfail_target(config)) { false }
+        else if parse_name_directive(ln, xfail_stage(config)) { false }
         else if config.mode == common::mode_pretty &&
             parse_name_directive(ln, "xfail-pretty") { false }
         else { true }

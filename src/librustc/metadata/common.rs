@@ -204,6 +204,10 @@ pub static tag_native_libraries_lib: uint = 0x104;
 pub static tag_native_libraries_name: uint = 0x105;
 pub static tag_native_libraries_kind: uint = 0x106;
 
+pub static tag_macro_registrar_fn: uint = 0x110;
+pub static tag_exported_macros: uint = 0x111;
+pub static tag_macro_def: uint = 0x112;
+
 #[deriving(Clone)]
 pub struct LinkMeta {
     crateid: CrateId,
