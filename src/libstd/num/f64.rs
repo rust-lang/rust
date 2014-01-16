@@ -720,7 +720,7 @@ impl Float for f64 {
 #[inline]
 pub fn to_str(num: f64) -> ~str {
     let (r, _) = strconv::float_to_str_common(
-        num, 10u, true, strconv::SignNeg, strconv::DigAll);
+        num, 10u, true, strconv::SignNeg, strconv::DigAll, strconv::ExpNone, false);
     r
 }
 
@@ -734,7 +734,7 @@ pub fn to_str(num: f64) -> ~str {
 #[inline]
 pub fn to_str_hex(num: f64) -> ~str {
     let (r, _) = strconv::float_to_str_common(
-        num, 16u, true, strconv::SignNeg, strconv::DigAll);
+        num, 16u, true, strconv::SignNeg, strconv::DigAll, strconv::ExpNone, false);
     r
 }
 
@@ -750,7 +750,7 @@ pub fn to_str_hex(num: f64) -> ~str {
 #[inline]
 pub fn to_str_radix_special(num: f64, rdx: uint) -> (~str, bool) {
     strconv::float_to_str_common(num, rdx, true,
-                           strconv::SignNeg, strconv::DigAll)
+                           strconv::SignNeg, strconv::DigAll, strconv::ExpNone, false)
 }
 
 ///
@@ -765,7 +765,7 @@ pub fn to_str_radix_special(num: f64, rdx: uint) -> (~str, bool) {
 #[inline]
 pub fn to_str_exact(num: f64, dig: uint) -> ~str {
     let (r, _) = strconv::float_to_str_common(
-        num, 10u, true, strconv::SignNeg, strconv::DigExact(dig));
+        num, 10u, true, strconv::SignNeg, strconv::DigExact(dig), strconv::ExpNone, false);
     r
 }
 
@@ -781,7 +781,7 @@ pub fn to_str_exact(num: f64, dig: uint) -> ~str {
 #[inline]
 pub fn to_str_digits(num: f64, dig: uint) -> ~str {
     let (r, _) = strconv::float_to_str_common(
-        num, 10u, true, strconv::SignNeg, strconv::DigMax(dig));
+        num, 10u, true, strconv::SignNeg, strconv::DigMax(dig), strconv::ExpNone, false);
     r
 }
 
@@ -806,7 +806,7 @@ impl num::ToStrRadix for f64 {
     #[inline]
     fn to_str_radix(&self, rdx: uint) -> ~str {
         let (r, special) = strconv::float_to_str_common(
-            *self, rdx, true, strconv::SignNeg, strconv::DigAll);
+            *self, rdx, true, strconv::SignNeg, strconv::DigAll, strconv::ExpNone, false);
         if special { fail!("number has a special value, \
                              try to_str_radix_special() if those are expected") }
         r
