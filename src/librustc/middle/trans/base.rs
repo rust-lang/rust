@@ -2660,7 +2660,7 @@ pub fn trans_crate(sess: session::Session,
                    output: &Path) -> CrateTranslation {
     // Before we touch LLVM, make sure that multithreading is enabled.
     unsafe {
-        use std::unstable::mutex::{Once, ONCE_INIT};
+        use extra::sync::one::{Once, ONCE_INIT};
         static mut INIT: Once = ONCE_INIT;
         static mut POISONED: bool = false;
         INIT.doit(|| {
