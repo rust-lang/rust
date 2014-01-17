@@ -554,16 +554,7 @@ impl Bounded for f32 {
     fn max_value() -> f32 { 3.40282347e+38 }
 }
 
-impl Primitive for f32 {
-    #[inline]
-    fn bits(_: Option<f32>) -> uint { 32 }
-
-    #[inline]
-    fn bytes(_: Option<f32>) -> uint { Primitive::bits(Some(0f32)) / 8 }
-
-    #[inline]
-    fn is_signed(_: Option<f32>) -> bool { true }
-}
+impl Primitive for f32 {}
 
 impl Float for f32 {
     #[inline]
@@ -1171,13 +1162,6 @@ mod tests {
         assert!(NEG_INFINITY.is_negative());
         assert!((1f32/NEG_INFINITY).is_negative());
         assert!(!NAN.is_negative());
-    }
-
-    #[test]
-    fn test_primitive() {
-        let none: Option<f32> = None;
-        assert_eq!(Primitive::bits(none), mem::size_of::<f32>() * 8);
-        assert_eq!(Primitive::bytes(none), mem::size_of::<f32>());
     }
 
     #[test]
