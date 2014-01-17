@@ -2211,12 +2211,9 @@ dereferences (`*expr`), [indexing expressions](#index-expressions)
 (`expr[expr]`), and [field references](#field-expressions) (`expr.f`).
 All other expressions are rvalues.
 
-The left operand of an [assignment](#assignment-expressions),
-[binary move](#binary-move-expressions) or
+The left operand of an [assignment](#assignment-expressions) or
 [compound-assignment](#compound-assignment-expressions) expression is an lvalue context,
-as is the single operand of a unary [borrow](#unary-operator-expressions),
-or [move](#unary-move-expressions) expression,
-and _both_ operands of a [swap](#swap-expressions) expression.
+as is the single operand of a unary [borrow](#unary-operator-expressions).
 All other expression contexts are rvalue contexts.
 
 When an lvalue is evaluated in an _lvalue context_, it denotes a memory location;
@@ -2229,9 +2226,8 @@ A temporary's lifetime equals the largest lifetime of any reference that points 
 
 When a [local variable](#memory-slots) is used
 as an [rvalue](#lvalues-rvalues-and-temporaries)
-the variable will either be [moved](#move-expressions) or copied,
-depending on its type.
-For types that contain [owning pointers](#owning-pointers)
+the variable will either be moved or copied, depending on its type.
+For types that contain [owning pointers](#pointer-types)
 or values that implement the special trait `Drop`,
 the variable is moved.
 All other types are copied.
@@ -3144,19 +3140,20 @@ A `struct` *type* is a heterogeneous product of other types, called the *fields*
 the *record* types of the ML family,
 or the *structure* types of the Lisp family.]
 
-New instances of a `struct` can be constructed with a [struct expression](#struct-expressions).
+New instances of a `struct` can be constructed with a [struct expression](#structure-expressions).
 
 The memory order of fields in a `struct` is given by the item defining it.
 Fields may be given in any order in a corresponding struct *expression*;
 the resulting `struct` value will always be laid out in memory in the order specified by the corresponding *item*.
 
-The fields of a `struct` may be qualified by [visibility modifiers](#visibility-modifiers),
+The fields of a `struct` may be qualified by [visibility modifiers](#re-exporting-and-visibility),
 to restrict access to implementation-private data in a structure.
 
 A _tuple struct_ type is just like a structure type, except that the fields are anonymous.
 
 A _unit-like struct_ type is like a structure type, except that it has no fields.
-The one value constructed by the associated [structure expression](#structure-expression) is the only value that inhabits such a type.
+The one value constructed by the associated [structure expression](#structure-expressions)
+is the only value that inhabits such a type.
 
 ### Enumerated types
 
@@ -3827,7 +3824,7 @@ over the output format of a Rust crate.
 ### Logging system
 
 The runtime contains a system for directing [logging
-expressions](#log-expressions) to a logging console and/or internal logging
+expressions](#logging-expressions) to a logging console and/or internal logging
 buffers. Logging can be enabled per module.
 
 Logging output is enabled by setting the `RUST_LOG` environment
