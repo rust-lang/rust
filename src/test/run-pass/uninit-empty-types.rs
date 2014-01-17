@@ -16,7 +16,7 @@ use std::unstable::intrinsics;
 #[deriving(Clone)]
 struct Foo;
 
-fn main() {
+pub fn main() {
     unsafe {
         let _x: Foo = intrinsics::uninit();
         let _x: [Foo, ..2] = intrinsics::uninit();
