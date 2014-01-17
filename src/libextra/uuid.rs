@@ -522,7 +522,7 @@ mod test {
     use std::str;
     use std::rand;
     use std::num::Zero;
-    use std::io::mem::MemWriter;
+    use std::io::MemWriter;
 
     #[test]
     fn test_new_nil() {

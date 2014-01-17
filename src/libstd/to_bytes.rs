@@ -359,15 +359,14 @@ pub trait ToBytes {
 
 impl<A:IterBytes> ToBytes for A {
     fn to_bytes(&self, lsb0: bool) -> ~[u8] {
-        use io::mem;
         use io::Writer;
 
-        mem::with_mem_writer(|wr| {
-            self.iter_bytes(lsb0, |bytes| {
-                wr.write(bytes);
-                true
-            });
-        })
+        let mut m = ::io::MemWriter::new();
+        self.iter_bytes(lsb0, |bytes| {
+            m.write(bytes);
+            true
+        });
+        m.unwrap()
     }
 }
 

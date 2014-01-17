@@ -28,9 +28,8 @@ out.write(bytes!("Hello, world!"));
 
 use container::Container;
 use fmt;
-use io::buffered::LineBufferedWriter;
 use io::{Reader, Writer, io_error, IoError, OtherIoError,
-         standard_error, EndOfFile};
+         standard_error, EndOfFile, LineBufferedWriter};
 use libc;
 use option::{Option, Some, None};
 use prelude::drop;

@@ -46,12 +46,11 @@ An example program that does this task reads like this:
 ~~~~
 # #[allow(unused_imports)];
 # extern mod extra;
-use std::io::buffered::BufferedReader;
-use std::io::File;
+use std::io::{BufferedReader, File};
 # mod BufferedReader {
 #     use std::io::File;
-#     use std::io::mem::MemReader;
-#     use std::io::buffered::BufferedReader;
+#     use std::io::MemReader;
+#     use std::io::BufferedReader;
 #     static s : &'static [u8] = bytes!("1 2\n\
 #                                        34 56\n\
 #                                        789 123\n\
@@ -245,13 +244,12 @@ and trapping its exit status using `task::try`:
 ~~~~
 # #[allow(unused_imports)];
 # extern mod extra;
-use std::io::buffered::BufferedReader;
-use std::io::File;
+use std::io::{BufferedReader, File};
 use std::task;
 # mod BufferedReader {
 #     use std::io::File;
-#     use std::io::mem::MemReader;
-#     use std::io::buffered::BufferedReader;
+#     use std::io::MemReader;
+#     use std::io::BufferedReader;
 #     static s : &'static [u8] = bytes!("1 2\n\
 #                                        34 56\n\
 #                                        789 123\n\
@@ -350,12 +348,11 @@ but similarly clear as the version that used `fail!` in the logic where the erro
 ~~~~
 # #[allow(unused_imports)];
 # extern mod extra;
-use std::io::buffered::BufferedReader;
-use std::io::File;
+use std::io::{BufferedReader, File};
 # mod BufferedReader {
 #     use std::io::File;
-#     use std::io::mem::MemReader;
-#     use std::io::buffered::BufferedReader;
+#     use std::io::MemReader;
+#     use std::io::BufferedReader;
 #     static s : &'static [u8] = bytes!("1 2\n\
 #                                        34 56\n\
 #                                        789 123\n\
@@ -420,12 +417,11 @@ and replaces bad input lines with the pair `(-1,-1)`:
 ~~~~
 # #[allow(unused_imports)];
 # extern mod extra;
-use std::io::buffered::BufferedReader;
-use std::io::File;
+use std::io::{BufferedReader, File};
 # mod BufferedReader {
 #     use std::io::File;
-#     use std::io::mem::MemReader;
-#     use std::io::buffered::BufferedReader;
+#     use std::io::MemReader;
+#     use std::io::BufferedReader;
 #     static s : &'static [u8] = bytes!("1 2\n\
 #                                        34 56\n\
 #                                        789 123\n\
@@ -496,12 +492,11 @@ Changing the condition's return type from `(int,int)` to `Option<(int,int)>` wil
 ~~~~
 # #[allow(unused_imports)];
 # extern mod extra;
-use std::io::buffered::BufferedReader;
-use std::io::File;
+use std::io::{BufferedReader, File};
 # mod BufferedReader {
 #     use std::io::File;
-#     use std::io::mem::MemReader;
-#     use std::io::buffered::BufferedReader;
+#     use std::io::MemReader;
+#     use std::io::BufferedReader;
 #     static s : &'static [u8] = bytes!("1 2\n\
 #                                        34 56\n\
 #                                        789 123\n\
@@ -582,12 +577,11 @@ This can be encoded in the handler API by introducing a helper type: `enum Malfo
 ~~~~
 # #[allow(unused_imports)];
 # extern mod extra;
-use std::io::buffered::BufferedReader;
 use std::io::File;
 # mod BufferedReader {
 #     use std::io::File;
-#     use std::io::mem::MemReader;
-#     use std::io::buffered::BufferedReader;
+#     use std::io::MemReader;
+#     use std::io::BufferedReader;
 #     static s : &'static [u8] = bytes!("1 2\n\
 #                                        34 56\n\
 #                                        789 123\n\
@@ -707,12 +701,11 @@ a second condition and a helper function will suffice:
 ~~~~
 # #[allow(unused_imports)];
 # extern mod extra;
-use std::io::buffered::BufferedReader;
-use std::io::File;
+use std::io::{BufferedReader, File};
 # mod BufferedReader {
 #     use std::io::File;
-#     use std::io::mem::MemReader;
-#     use std::io::buffered::BufferedReader;
+#     use std::io::MemReader;
+#     use std::io::BufferedReader;
 #     static s : &'static [u8] = bytes!("1 2\n\
 #                                        34 56\n\
 #                                        789 123\n\

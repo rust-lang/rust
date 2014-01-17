@@ -15,8 +15,7 @@
  */
 
 use std::io;
-use std::io::buffered::BufferedWriter;
-use std::io::File;
+use std::io::{BufferedWriter, File};
 use std::num::min;
 use std::os;
 

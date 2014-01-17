@@ -9,59 +9,37 @@
 // except according to those terms.
 
 //! Buffering wrappers for I/O traits
-//!
-//! It can be excessively inefficient to work directly with a `Reader` or
-//! `Writer`. Every call to `read` or `write` on `TcpStream` results in a
-//! system call, for example. This module provides structures that wrap
-//! `Readers`, `Writers`, and `Streams` and buffer input and output to them.
-//!
-//! # Examples
-//!
-//! ```
-//! let tcp_stream = TcpStream::connect(addr);
-//! let reader = BufferedReader::new(tcp_stream);
-//!
-//! let mut buf: ~[u8] = vec::from_elem(100, 0u8);
-//! match reader.read(buf.as_slice()) {
-//!     Some(nread) => println!("Read {} bytes", nread),
-//!     None => println!("At the end of the stream!")
-//! }
-//! ```
-//!
-//! ```
-//! let tcp_stream = TcpStream::connect(addr);
-//! let writer = BufferedWriter::new(tcp_stream);
-//!
-//! writer.write("hello, world".as_bytes());
-//! writer.flush();
-//! ```
-//!
-//! ```
-//! let tcp_stream = TcpStream::connect(addr);
-//! let stream = BufferedStream::new(tcp_stream);
-//!
-//! stream.write("hello, world".as_bytes());
-//! stream.flush();
-//!
-//! let mut buf = vec::from_elem(100, 0u8);
-//! match stream.read(buf.as_slice()) {
-//!     Some(nread) => println!("Read {} bytes", nread),
-//!     None => println!("At the end of the stream!")
-//! }
-//! ```
-//!
 
-use prelude::*;
-
+use container::Container;
+use io::{Reader, Writer, Stream, Buffer, DEFAULT_BUF_SIZE};
+use iter::ExactSize;
 use num;
+use option::{Option, Some, None};
+use vec::{OwnedVector, ImmutableVector, MutableVector};
 use vec;
-use super::Stream;
-
-// libuv recommends 64k buffers to maximize throughput
-// https://groups.google.com/forum/#!topic/libuv/oQO1HJAIDdA
-static DEFAULT_CAPACITY: uint = 64 * 1024;
 
 /// Wraps a Reader and buffers input from it
+///
+/// It can be excessively inefficient to work directly with a `Reader` or
+/// `Writer`. Every call to `read` or `write` on `TcpStream` results in a
+/// system call, for example. This module provides structures that wrap
+/// `Readers`, `Writers`, and `Streams` and buffer input and output to them.
+///
+/// # Example
+///
+/// ```rust
+/// use std::io::{BufferedReader, File};
+///
+/// # let _g = ::std::io::ignore_io_error();
+/// let file = File::open(&Path::new("message.txt"));
+/// let mut reader = BufferedReader::new(file);
+///
+/// let mut buf = [0, ..100];
+/// match reader.read(buf) {
+///     Some(nread) => println!("Read {} bytes", nread),
+///     None => println!("At the end of the file!")
+/// }
+/// ```
 pub struct BufferedReader<R> {
     priv inner: R,
     priv buf: ~[u8],
@@ -92,7 +70,7 @@ impl<R: Reader> BufferedReader<R> {
 
     /// Creates a new `BufferedReader` with a default buffer capacity
     pub fn new(inner: R) -> BufferedReader<R> {
-        BufferedReader::with_capacity(DEFAULT_CAPACITY, inner)
+        BufferedReader::with_capacity(DEFAULT_BUF_SIZE, inner)
     }
 
     /// Gets a reference to the underlying reader.
@@ -146,6 +124,19 @@ impl<R: Reader> Reader for BufferedReader<R> {
 /// Wraps a Writer and buffers output to it
 ///
 /// Note that `BufferedWriter` will NOT flush its buffer when dropped.
+///
+/// # Example
+///
+/// ```rust
+/// use std::io::{BufferedWriter, File};
+///
+/// # let _g = ::std::io::ignore_io_error();
+/// let file = File::open(&Path::new("message.txt"));
+/// let mut writer = BufferedWriter::new(file);
+///
+/// writer.write_str("hello, world");
+/// writer.flush();
+/// ```
 pub struct BufferedWriter<W> {
     priv inner: W,
     priv buf: ~[u8],
@@ -167,7 +158,7 @@ impl<W: Writer> BufferedWriter<W> {
 
     /// Creates a new `BufferedWriter` with a default buffer capacity
     pub fn new(inner: W) -> BufferedWriter<W> {
-        BufferedWriter::with_capacity(DEFAULT_CAPACITY, inner)
+        BufferedWriter::with_capacity(DEFAULT_BUF_SIZE, inner)
     }
 
     fn flush_buf(&mut self) {
@@ -273,6 +264,25 @@ impl<W: Reader> Reader for InternalBufferedWriter<W> {
 /// Wraps a Stream and buffers input and output to and from it
 ///
 /// Note that `BufferedStream` will NOT flush its output buffer when dropped.
+///
+/// # Example
+///
+/// ```rust
+/// use std::io::{BufferedStream, File};
+///
+/// # let _g = ::std::io::ignore_io_error();
+/// let file = File::open(&Path::new("message.txt"));
+/// let mut stream = BufferedStream::new(file);
+///
+/// stream.write("hello, world".as_bytes());
+/// stream.flush();
+///
+/// let mut buf = [0, ..100];
+/// match stream.read(buf) {
+///     Some(nread) => println!("Read {} bytes", nread),
+///     None => println!("At the end of the stream!")
+/// }
+/// ```
 pub struct BufferedStream<S> {
     priv inner: BufferedReader<InternalBufferedWriter<S>>
 }
@@ -292,7 +302,7 @@ impl<S: Stream> BufferedStream<S> {
     /// Creates a new buffered stream with the default reader/writer buffer
     /// capacities.
     pub fn new(inner: S) -> BufferedStream<S> {
-        BufferedStream::with_capacities(DEFAULT_CAPACITY, DEFAULT_CAPACITY,
+        BufferedStream::with_capacities(DEFAULT_BUF_SIZE, DEFAULT_BUF_SIZE,
                                         inner)
     }
 
@@ -337,9 +347,9 @@ mod test {
     use super::super::mem::{MemReader, MemWriter, BufReader};
     use Harness = extra::test::BenchHarness;
 
-    /// A type, free to create, primarily intended for benchmarking creation of wrappers that, just
-    /// for construction, don't need a Reader/Writer that does anything useful. Is equivalent to
-    /// `/dev/null` in semantics.
+    /// A type, free to create, primarily intended for benchmarking creation of
+    /// wrappers that, just for construction, don't need a Reader/Writer that
+    /// does anything useful. Is equivalent to `/dev/null` in semantics.
     #[deriving(Clone,Eq,Ord)]
     pub struct NullStream;
 

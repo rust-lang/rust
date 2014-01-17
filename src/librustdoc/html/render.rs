@@ -36,10 +36,8 @@
 use std::fmt;
 use std::hashmap::{HashMap, HashSet};
 use std::local_data;
-use std::io::buffered::BufferedWriter;
 use std::io;
-use std::io::fs;
-use std::io::File;
+use std::io::{fs, File, BufferedWriter};
 use std::str;
 use std::vec;
 

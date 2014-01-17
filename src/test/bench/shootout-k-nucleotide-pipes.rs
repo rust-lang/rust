@@ -145,10 +145,7 @@ fn make_sequence_processor(sz: uint,
 
 // given a FASTA file on stdin, process sequence THREE
 fn main() {
-    use std::io::Reader;
-    use std::io::stdio;
-    use std::io::mem::MemReader;
-    use std::io::buffered::BufferedReader;
+    use std::io::{stdio, MemReader, BufferedReader};
 
     let rdr = if os::getenv("RUST_BENCH").is_some() {
         let foo = include_bin!("shootout-k-nucleotide.data");
