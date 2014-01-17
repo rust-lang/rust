@@ -687,6 +687,8 @@ impl<'a> Context<'a> {
                     "b" => "Bool",
                     "c" => "Char",
                     "d" | "i" => "Signed",
+                    "e" => "LowerExp",
+                    "E" => "UpperExp",
                     "f" => "Float",
                     "o" => "Octal",
                     "p" => "Pointer",
