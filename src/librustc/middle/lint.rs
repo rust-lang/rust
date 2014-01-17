@@ -924,15 +924,16 @@ static other_attrs: &'static [&'static str] = &[
     "allow", "deny", "forbid", "warn", // lint options
     "deprecated", "experimental", "unstable", "stable", "locked", "frozen", //item stability
     "crate_map", "cfg", "doc", "export_name", "link_section", "no_freeze",
-    "no_mangle", "no_send", "static_assert", "unsafe_no_drop_flag",
-    "packed", "simd", "repr", "deriving", "unsafe_destructor", "link",
+    "no_mangle", "no_send", "static_assert", "unsafe_no_drop_flag", "packed",
+    "simd", "repr", "deriving", "unsafe_destructor", "link", "phase",
+    "macro_export",
 
     //mod-level
     "path", "link_name", "link_args", "nolink", "macro_escape", "no_implicit_prelude",
 
     // fn-level
     "test", "bench", "should_fail", "ignore", "inline", "lang", "main", "start",
-    "no_split_stack", "cold",
+    "no_split_stack", "cold", "macro_registrar",
 
     // internal attribute: bypass privacy inside items
     "!resolve_unexported",

@@ -63,20 +63,7 @@ pub trait Folder {
     }
 
     fn fold_view_item(&mut self, vi: &ViewItem) -> ViewItem {
-        let inner_view_item = match vi.node {
-            ViewItemExternMod(ref ident, string, node_id) => {
-                ViewItemExternMod(ident.clone(), string, self.new_id(node_id))
-            }
-            ViewItemUse(ref view_paths) => {
-                ViewItemUse(self.fold_view_paths(*view_paths))
-            }
-        };
-        ViewItem {
-            node: inner_view_item,
-            attrs: vi.attrs.map(|a| fold_attribute_(*a, self)),
-            vis: vi.vis,
-            span: self.new_span(vi.span),
-        }
+        noop_fold_view_item(vi, self)
     }
 
     fn fold_foreign_item(&mut self, ni: @ForeignItem) -> @ForeignItem {
@@ -506,6 +493,28 @@ fn fold_variant_arg_<T: Folder>(va: &VariantArg, folder: &mut T) -> VariantArg {
     ast::VariantArg {
         ty: folder.fold_ty(va.ty),
         id: folder.new_id(va.id)
+    }
+}
+
+pub fn noop_fold_view_item<T: Folder>(vi: &ViewItem, folder: &mut T)
+                                       -> ViewItem{
+    let inner_view_item = match vi.node {
+        ViewItemExternMod(ref ident,
+                             string,
+                             node_id) => {
+            ViewItemExternMod(ident.clone(),
+                                 string,
+                                 folder.new_id(node_id))
+        }
+        ViewItemUse(ref view_paths) => {
+            ViewItemUse(folder.fold_view_paths(*view_paths))
+        }
+    };
+    ViewItem {
+        node: inner_view_item,
+        attrs: vi.attrs.map(|a| fold_attribute_(*a, folder)),
+        vis: vi.vis,
+        span: folder.new_span(vi.span),
     }
 }
 
