@@ -443,9 +443,9 @@ impl Packet {
 
     // This function must have had at least an acquire fence before it to be
     // properly called.
-    fn wakeup(&mut self, can_resched: bool) {
+    fn wakeup(&mut self) {
         match self.to_wake.take_unwrap().wake() {
-            Some(task) => task.reawaken(can_resched),
+            Some(task) => task.reawaken(),
             None => {}
         }
         self.selecting.store(false, Relaxed);
@@ -519,7 +519,7 @@ impl Packet {
         match self.channels.fetch_sub(1, SeqCst) {
             1 => {
                 match self.cnt.swap(DISCONNECTED, SeqCst) {
-                    -1 => { self.wakeup(true); }
+                    -1 => { self.wakeup(); }
                     DISCONNECTED => {}
                     n => { assert!(n >= 0); }
                 }
@@ -595,20 +595,14 @@ impl<T: Send> Chan<T> {
     ///
     /// Like `send`, this method will never block. If the failure of send cannot
     /// be tolerated, then this method should be used instead.
-    pub fn try_send(&self, t: T) -> bool { self.try(t, true) }
-
-    /// This function will not stick around for very long. The purpose of this
-    /// function is to guarantee that no rescheduling is performed.
-    pub fn try_send_deferred(&self, t: T) -> bool { self.try(t, false) }
-
-    fn try(&self, t: T, can_resched: bool) -> bool {
+    pub fn try_send(&self, t: T) -> bool {
         unsafe {
             let this = cast::transmute_mut(self);
             this.queue.push(t);
             let packet = this.queue.packet();
             match (*packet).increment() {
                 // As described above, -1 == wakeup
-                -1 => { (*packet).wakeup(can_resched); true }
+                -1 => { (*packet).wakeup(); true }
                 // Also as above, SPSC queues must be >= -2
                 -2 => true,
                 // We succeeded if we sent data
@@ -623,7 +617,7 @@ impl<T: Send> Chan<T> {
                 // the TLS overhead can be a bit much.
                 n => {
                     assert!(n >= 0);
-                    if can_resched && n > 0 && n % RESCHED_FREQ == 0 {
+                    if n > 0 && n % RESCHED_FREQ == 0 {
                         let task: ~Task = Local::take();
                         task.maybe_yield();
                     }
@@ -700,7 +694,7 @@ impl<T: Send> SharedChan<T> {
 
             match (*packet).increment() {
                 DISCONNECTED => {} // oh well, we tried
-                -1 => { (*packet).wakeup(true); }
+                -1 => { (*packet).wakeup(); }
                 n => {
                     if n > 0 && n % RESCHED_FREQ == 0 {
                         let task: ~Task = Local::take();

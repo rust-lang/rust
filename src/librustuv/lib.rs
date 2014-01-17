@@ -208,7 +208,7 @@ fn wait_until_woken_after(slot: *mut Option<BlockedTask>, f: ||) {
 
 fn wakeup(slot: &mut Option<BlockedTask>) {
     assert!(slot.is_some());
-    let _ = slot.take_unwrap().wake().map(|t| t.reawaken(true));
+    let _ = slot.take_unwrap().wake().map(|t| t.reawaken());
 }
 
 pub struct Request {
