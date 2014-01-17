@@ -474,7 +474,7 @@ impl<T: Writer> ConsoleTestState<T> {
         match self.log_out {
             None => (),
             Some(ref mut o) => {
-                let s = format!("{} {}", match *result {
+                let s = format!("{} {}\n", match *result {
                         TrOk => ~"ok",
                         TrFailed => ~"failed",
                         TrIgnored => ~"ignored",
