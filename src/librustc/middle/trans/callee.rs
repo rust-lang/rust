@@ -667,7 +667,7 @@ pub fn trans_call_inner<'a>(
         }
         Some(expr::SaveIn(dst)) => Some(dst),
         Some(expr::Ignore) => {
-            if !type_is_voidish(ccx, ret_ty) {
+            if !type_is_zero_size(ccx, ret_ty) {
                 Some(alloc_ty(bcx, ret_ty, "__llret"))
             } else {
                 let llty = type_of::type_of(ccx, ret_ty);
@@ -736,7 +736,7 @@ pub fn trans_call_inner<'a>(
         match opt_llretslot {
             Some(llretslot) => {
                 if !type_of::return_uses_outptr(bcx.ccx(), ret_ty) &&
-                    !type_is_voidish(bcx.ccx(), ret_ty)
+                    !type_is_zero_size(bcx.ccx(), ret_ty)
                 {
                     Store(bcx, llret, llretslot);
                 }

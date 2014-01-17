@@ -317,7 +317,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
         "uninit" => {
             // Do nothing, this is effectively a no-op
             let retty = substs.tys[0];
-            if type_is_immediate(ccx, retty) && !type_is_voidish(ccx, retty) {
+            if type_is_immediate(ccx, retty) && !return_type_is_void(ccx, retty) {
                 unsafe {
                     Ret(bcx, lib::llvm::llvm::LLVMGetUndef(type_of(ccx, retty).to_ref()));
                 }
@@ -356,7 +356,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                                          pluralize(out_type_size)));
             }
 
-            if !type_is_voidish(ccx, out_type) {
+            if !return_type_is_void(ccx, out_type) {
                 let llsrcval = get_param(decl, first_real_arg);
                 if type_is_immediate(ccx, in_type) {
                     match fcx.llretptr.get() {

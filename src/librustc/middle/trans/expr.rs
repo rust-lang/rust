@@ -474,7 +474,7 @@ fn trans_unadjusted<'a>(bcx: &'a Block<'a>,
 
         ty::RvalueDpsExpr => {
             let ty = expr_ty(bcx, expr);
-            if type_is_voidish(bcx.ccx(), ty) {
+            if type_is_zero_size(bcx.ccx(), ty) {
                 bcx = trans_rvalue_dps_unadjusted(bcx, expr, Ignore);
                 nil(bcx, ty)
             } else {

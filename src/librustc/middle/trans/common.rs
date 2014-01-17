@@ -75,17 +75,31 @@ pub fn type_is_immediate(ccx: &CrateContext, ty: ty::t) -> bool {
             let llty = sizing_type_of(ccx, ty);
             llsize_of_alloc(ccx, llty) <= llsize_of_alloc(ccx, ccx.int_type)
         }
-        _ => type_is_voidish(ccx, ty)
+        _ => type_is_zero_size(ccx, ty)
     }
 }
 
-pub fn type_is_voidish(ccx: &CrateContext, ty: ty::t) -> bool {
-    //! Identify types like `()`, bottom, or empty structs, which
-    //! contain no information at all.
+pub fn type_is_zero_size(ccx: &CrateContext, ty: ty::t) -> bool {
+    /*!
+     * Identify types which have size zero at runtime.
+     */
+
     use middle::trans::machine::llsize_of_alloc;
     use middle::trans::type_of::sizing_type_of;
     let llty = sizing_type_of(ccx, ty);
     llsize_of_alloc(ccx, llty) == 0
+}
+
+pub fn return_type_is_void(ccx: &CrateContext, ty: ty::t) -> bool {
+    /*!
+     * Identifies types which we declare to be equivalent to `void`
+     * in C for the purpose of function return types. These are
+     * `()`, bot, and uninhabited enums. Note that all such types
+     * are also zero-size, but not all zero-size types use a `void`
+     * return type (in order to aid with C ABI compatibility).
+     */
+
+    ty::type_is_nil(ty) || ty::type_is_bot(ty) || ty::type_is_empty(ccx.tcx, ty)
 }
 
 pub fn gensym_name(name: &str) -> (Ident, PathElem) {
