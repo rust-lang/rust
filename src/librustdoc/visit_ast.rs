@@ -188,10 +188,7 @@ impl<'a> RustdocVisitor<'a> {
         };
         if analysis.public_items.contains(&def.node) { return false }
 
-        let item = {
-            let items = self.cx.tycx.unwrap().items.borrow();
-            *items.get().get(&def.node)
-        };
+        let item = self.cx.tycx.unwrap().items.get(def.node);
         match item {
             ast_map::NodeItem(it, _) => {
                 if glob {

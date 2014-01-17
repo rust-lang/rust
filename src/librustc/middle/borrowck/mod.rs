@@ -550,9 +550,8 @@ impl BorrowckCtxt {
             move_data::Declared => {}
 
             move_data::MoveExpr => {
-                let items = self.tcx.items.borrow();
-                let (expr_ty, expr_span) = match items.get().find(&move.id) {
-                    Some(&ast_map::NodeExpr(expr)) => {
+                let (expr_ty, expr_span) = match self.tcx.items.find(move.id) {
+                    Some(ast_map::NodeExpr(expr)) => {
                         (ty::expr_ty_adjusted(self.tcx, expr), expr.span)
                     }
                     r => self.tcx.sess.bug(format!("MoveExpr({:?}) maps to {:?}, not Expr",
@@ -578,9 +577,8 @@ impl BorrowckCtxt {
             }
 
             move_data::Captured => {
-                let items = self.tcx.items.borrow();
-                let (expr_ty, expr_span) = match items.get().find(&move.id) {
-                    Some(&ast_map::NodeExpr(expr)) => {
+                let (expr_ty, expr_span) = match self.tcx.items.find(move.id) {
+                    Some(ast_map::NodeExpr(expr)) => {
                         (ty::expr_ty_adjusted(self.tcx, expr), expr.span)
                     }
                     r => self.tcx.sess.bug(format!("Captured({:?}) maps to {:?}, not Expr",
@@ -768,9 +766,8 @@ impl BorrowckCtxt {
                                    out: &mut ~str) {
         match *loan_path {
             LpVar(id) => {
-                let items = self.tcx.items.borrow();
-                match items.get().find(&id) {
-                    Some(&ast_map::NodeLocal(ref ident, _)) => {
+                match self.tcx.items.find(id) {
+                    Some(ast_map::NodeLocal(ref ident, _)) => {
                         out.push_str(token::ident_to_str(ident));
                     }
                     r => {

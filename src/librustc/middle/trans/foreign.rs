@@ -354,9 +354,8 @@ pub fn trans_foreign_mod(ccx: @CrateContext,
     for &foreign_item in foreign_mod.items.iter() {
         match foreign_item.node {
             ast::ForeignItemFn(..) => {
-                let items = ccx.tcx.items.borrow();
                 let (abis, mut path) =
-                    match items.get().get_copy(&foreign_item.id) {
+                    match ccx.tcx.items.get(foreign_item.id) {
                         ast_map::NodeForeignItem(_, abis, _, path) => {
                             (abis, (*path).clone())
                         }

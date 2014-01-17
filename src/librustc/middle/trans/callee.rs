@@ -365,13 +365,12 @@ pub fn trans_fn_ref_with_vtables(
         must_monomorphise = true;
     } else if def_id.crate == ast::LOCAL_CRATE {
         {
-            let items = ccx.tcx.items.borrow();
             let map_node = session::expect(
                 ccx.sess,
-                items.get().find(&def_id.node),
+                ccx.tcx.items.find(def_id.node),
                 || format!("local item should be in ast map"));
 
-            match *map_node {
+            match map_node {
                 ast_map::NodeForeignItem(_, abis, _, _) => {
                     must_monomorphise = abis.is_intrinsic()
                 }

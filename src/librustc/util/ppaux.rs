@@ -72,15 +72,14 @@ pub fn explain_region_and_span(cx: ctxt, region: ty::Region)
                             -> (~str, Option<Span>) {
     return match region {
       ReScope(node_id) => {
-        let items = cx.items.borrow();
-        match items.get().find(&node_id) {
-          Some(&ast_map::NodeBlock(ref blk)) => {
+        match cx.items.find(node_id) {
+          Some(ast_map::NodeBlock(ref blk)) => {
             explain_span(cx, "block", blk.span)
           }
-          Some(&ast_map::NodeCalleeScope(expr)) => {
+          Some(ast_map::NodeCalleeScope(expr)) => {
               explain_span(cx, "callee", expr.span)
           }
-          Some(&ast_map::NodeExpr(expr)) => {
+          Some(ast_map::NodeExpr(expr)) => {
             match expr.node {
               ast::ExprCall(..) => explain_span(cx, "call", expr.span),
               ast::ExprMethodCall(..) => {
@@ -90,10 +89,10 @@ pub fn explain_region_and_span(cx: ctxt, region: ty::Region)
               _ => explain_span(cx, "expression", expr.span)
             }
           }
-          Some(&ast_map::NodeStmt(stmt)) => {
+          Some(ast_map::NodeStmt(stmt)) => {
               explain_span(cx, "statement", stmt.span)
           }
-          Some(&ast_map::NodeItem(it, _)) if (match it.node {
+          Some(ast_map::NodeItem(it, _)) if (match it.node {
                 ast::ItemFn(..) => true, _ => false}) => {
               explain_span(cx, "function body", it.span)
           }
@@ -114,13 +113,12 @@ pub fn explain_region_and_span(cx: ctxt, region: ty::Region)
                     bound_region_ptr_to_str(cx, fr.bound_region))
         };
 
-        let items = cx.items.borrow();
-        match items.get().find(&fr.scope_id) {
-          Some(&ast_map::NodeBlock(ref blk)) => {
+        match cx.items.find(fr.scope_id) {
+          Some(ast_map::NodeBlock(ref blk)) => {
             let (msg, opt_span) = explain_span(cx, "block", blk.span);
             (format!("{} {}", prefix, msg), opt_span)
           }
-          Some(&ast_map::NodeItem(it, _)) if match it.node {
+          Some(ast_map::NodeItem(it, _)) if match it.node {
                 ast::ItemImpl(..) => true, _ => false} => {
             let (msg, opt_span) = explain_span(cx, "impl", it.span);
             (format!("{} {}", prefix, msg), opt_span)
@@ -174,13 +172,12 @@ pub fn bound_region_to_str(cx: ctxt,
 }
 
 pub fn ReScope_id_to_str(cx: ctxt, node_id: ast::NodeId) -> ~str {
-    let items = cx.items.borrow();
-    match items.get().find(&node_id) {
-      Some(&ast_map::NodeBlock(ref blk)) => {
+    match cx.items.find(node_id) {
+      Some(ast_map::NodeBlock(ref blk)) => {
         format!("<block at {}>",
              cx.sess.codemap.span_to_str(blk.span))
       }
-      Some(&ast_map::NodeExpr(expr)) => {
+      Some(ast_map::NodeExpr(expr)) => {
         match expr.node {
           ast::ExprCall(..) => {
             format!("<call at {}>",
@@ -751,14 +748,13 @@ impl Repr for ast::DefId {
         // and otherwise fallback to just printing the crate/node pair
         if self.crate == ast::LOCAL_CRATE {
             {
-                let items = tcx.items.borrow();
-                match items.get().find(&self.node) {
-                    Some(&ast_map::NodeItem(..)) |
-                    Some(&ast_map::NodeForeignItem(..)) |
-                    Some(&ast_map::NodeMethod(..)) |
-                    Some(&ast_map::NodeTraitMethod(..)) |
-                    Some(&ast_map::NodeVariant(..)) |
-                    Some(&ast_map::NodeStructCtor(..)) => {
+                match tcx.items.find(self.node) {
+                    Some(ast_map::NodeItem(..)) |
+                    Some(ast_map::NodeForeignItem(..)) |
+                    Some(ast_map::NodeMethod(..)) |
+                    Some(ast_map::NodeTraitMethod(..)) |
+                    Some(ast_map::NodeVariant(..)) |
+                    Some(ast_map::NodeStructCtor(..)) => {
                         return format!("{:?}:{}",
                                        *self,
                                        ty::item_path_str(tcx, *self));

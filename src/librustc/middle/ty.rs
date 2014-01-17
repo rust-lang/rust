@@ -3557,9 +3557,8 @@ pub fn provided_source(cx: ctxt, id: ast::DefId) -> Option<ast::DefId> {
 pub fn provided_trait_methods(cx: ctxt, id: ast::DefId) -> ~[@Method] {
     if is_local(id) {
         {
-            let items = cx.items.borrow();
-            match items.get().find(&id.node) {
-                Some(&ast_map::NodeItem(item, _)) => {
+            match cx.items.find(id.node) {
+                Some(ast_map::NodeItem(item, _)) => {
                     match item.node {
                         ItemTrait(_, _, ref ms) => {
                             let (_, p) = ast_util::split_trait_methods(*ms);
@@ -3688,9 +3687,8 @@ pub fn impl_trait_ref(cx: ctxt, id: ast::DefId) -> Option<@TraitRef> {
     let ret = if id.crate == ast::LOCAL_CRATE {
         debug!("(impl_trait_ref) searching for trait impl {:?}", id);
         {
-            let items = cx.items.borrow();
-            match items.get().find(&id.node) {
-                Some(&ast_map::NodeItem(item, _)) => {
+            match cx.items.find(id.node) {
+                Some(ast_map::NodeItem(item, _)) => {
                     match item.node {
                         ast::ItemImpl(_, ref opt_trait, _, _) => {
                             match opt_trait {
@@ -3885,8 +3883,7 @@ pub fn item_path(cx: ctxt, id: ast::DefId) -> ast_map::Path {
     //                each variant.
     // let node = cx.items.get(&id.node);
     // match *node {
-    let items = cx.items.borrow();
-    match *items.get().get(&id.node) {
+    match cx.items.get(id.node) {
         ast_map::NodeItem(item, path) => {
             let item_elt = match item.node {
                 ItemMod(_) | ItemForeignMod(_) => {
@@ -3956,8 +3953,7 @@ pub fn enum_variants(cx: ctxt, id: ast::DefId) -> @~[@VariantInfo] {
           expr, since check_enum_variants also updates the enum_var_cache
          */
         {
-            let items = cx.items.borrow();
-            match items.get().get_copy(&id.node) {
+            match cx.items.get(id.node) {
               ast_map::NodeItem(item, _) => {
                   match item.node {
                     ast::ItemEnum(ref enum_definition, _) => {
@@ -4081,9 +4077,8 @@ pub fn lookup_trait_def(cx: ctxt, did: ast::DefId) -> @ty::TraitDef {
 pub fn each_attr(tcx: ctxt, did: DefId, f: |@MetaItem| -> bool) -> bool {
     if is_local(did) {
         {
-            let items = tcx.items.borrow();
-            match items.get().find(&did.node) {
-                Some(&ast_map::NodeItem(item, _)) => {
+            match tcx.items.find(did.node) {
+                Some(ast_map::NodeItem(item, _)) => {
                     item.attrs.iter().advance(|attr| f(attr.node.value))
                 }
                 _ => tcx.sess.bug(format!("has_attr: {:?} is not an item",
@@ -4165,9 +4160,8 @@ pub fn lookup_field_type(tcx: ctxt,
 pub fn lookup_struct_fields(cx: ctxt, did: ast::DefId) -> ~[field_ty] {
   if did.crate == ast::LOCAL_CRATE {
       {
-          let items = cx.items.borrow();
-          match items.get().find(&did.node) {
-           Some(&ast_map::NodeItem(i,_)) => {
+          match cx.items.find(did.node) {
+           Some(ast_map::NodeItem(i,_)) => {
              match i.node {
                 ast::ItemStruct(struct_def, _) => {
                    struct_field_tys(struct_def.fields)
@@ -4175,7 +4169,7 @@ pub fn lookup_struct_fields(cx: ctxt, did: ast::DefId) -> ~[field_ty] {
                 _ => cx.sess.bug("struct ID bound to non-struct")
              }
            }
-           Some(&ast_map::NodeVariant(ref variant, _, _)) => {
+           Some(ast_map::NodeVariant(ref variant, _, _)) => {
               match (*variant).node.kind {
                 ast::StructVariantKind(struct_def) => {
                   struct_field_tys(struct_def.fields)
@@ -4704,13 +4698,12 @@ pub fn populate_implementations_for_trait_if_necessary(
 /// If it implements no trait, return `None`.
 pub fn trait_id_of_impl(tcx: ctxt,
                         def_id: ast::DefId) -> Option<ast::DefId> {
-    let items = tcx.items.borrow();
-    let node = match items.get().find(&def_id.node) {
+    let node = match tcx.items.find(def_id.node) {
         Some(node) => node,
         None => return None
     };
     match node {
-        &ast_map::NodeItem(item, _) => {
+        ast_map::NodeItem(item, _) => {
             match item.node {
                 ast::ItemImpl(_, Some(ref trait_ref), _, _) => {
                     Some(node_id_to_trait_ref(tcx, trait_ref.ref_id).def_id)
