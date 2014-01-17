@@ -1166,7 +1166,7 @@ fn add_local_native_libraries(args: &mut ~[~str], sess: Session) {
 fn add_upstream_rust_crates(args: &mut ~[~str], sess: Session,
                             dylib: bool, tmpdir: &Path) {
     // Converts a library file-stem into a cc -l argument
-    fn unlib(config: @session::config, stem: &str) -> ~str {
+    fn unlib(config: @session::Config, stem: &str) -> ~str {
         if stem.starts_with("lib") &&
             config.os != abi::OsWin32 {
             stem.slice(3, stem.len()).to_owned()

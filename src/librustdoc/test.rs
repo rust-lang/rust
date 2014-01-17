@@ -34,11 +34,11 @@ use visit_ast::RustdocVisitor;
 
 pub fn run(input: &str, matches: &getopts::Matches) -> int {
     let parsesess = parse::new_parse_sess(None);
-    let input = driver::file_input(Path::new(input));
+    let input = driver::FileInput(Path::new(input));
     let libs = matches.opt_strs("L").map(|s| Path::new(s.as_slice()));
     let libs = @RefCell::new(libs.move_iter().collect());
 
-    let sessopts = @session::options {
+    let sessopts = @session::Options {
         binary: ~"rustdoc",
         maybe_sysroot: Some(@os::self_exe_path().unwrap().dir_path()),
         addl_lib_search_paths: libs,
@@ -97,9 +97,9 @@ pub fn run(input: &str, matches: &getopts::Matches) -> int {
 fn runtest(test: &str, cratename: &str, libs: HashSet<Path>) {
     let test = maketest(test, cratename);
     let parsesess = parse::new_parse_sess(None);
-    let input = driver::str_input(test);
+    let input = driver::StrInput(test);
 
-    let sessopts = @session::options {
+    let sessopts = @session::Options {
         binary: ~"rustdoctest",
         maybe_sysroot: Some(@os::self_exe_path().unwrap().dir_path()),
         addl_lib_search_paths: @RefCell::new(libs),
