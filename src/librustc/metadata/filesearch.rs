@@ -25,132 +25,117 @@ pub enum FileMatch { FileMatches, FileDoesntMatch }
 /// a file found in that directory.
 pub type pick<'a> = 'a |path: &Path| -> FileMatch;
 
-pub fn pick_file(file: Path, path: &Path) -> Option<Path> {
-    if path.filename() == Some(file.as_vec()) {
-        Some(path.clone())
-    } else {
-        None
-    }
+pub struct FileSearch {
+    sysroot: @Path,
+    addl_lib_search_paths: @RefCell<HashSet<Path>>,
+    target_triple: ~str
 }
 
-pub trait FileSearch {
-    fn sysroot(&self) -> @Path;
-    fn for_each_lib_search_path(&self, f: |&Path| -> FileMatch);
-    fn get_target_lib_path(&self) -> Path;
-    fn get_target_lib_file_path(&self, file: &Path) -> Path;
-}
+impl FileSearch {
+    pub fn for_each_lib_search_path(&self, f: |&Path| -> FileMatch) {
+        let mut visited_dirs = HashSet::new();
+        let mut found = false;
 
-pub fn mk_filesearch(maybe_sysroot: &Option<@Path>,
-                     target_triple: &str,
-                     addl_lib_search_paths: @RefCell<HashSet<Path>>)
-                  -> @FileSearch {
-    struct FileSearchImpl {
-        sysroot: @Path,
-        addl_lib_search_paths: @RefCell<HashSet<Path>>,
-        target_triple: ~str
-    }
-    impl FileSearch for FileSearchImpl {
-        fn sysroot(&self) -> @Path { self.sysroot }
-
-        fn for_each_lib_search_path(&self, f: |&Path| -> FileMatch) {
-            let mut visited_dirs = HashSet::new();
-            let mut found = false;
-
-            let addl_lib_search_paths = self.addl_lib_search_paths.borrow();
-            debug!("filesearch: searching additional lib search paths [{:?}]",
-                   addl_lib_search_paths.get().len());
-            for path in addl_lib_search_paths.get().iter() {
-                match f(path) {
-                    FileMatches => found = true,
-                    FileDoesntMatch => ()
-                }
-                visited_dirs.insert(path.as_vec().to_owned());
+        let addl_lib_search_paths = self.addl_lib_search_paths.borrow();
+        debug!("filesearch: searching additional lib search paths [{:?}]",
+               addl_lib_search_paths.get().len());
+        for path in addl_lib_search_paths.get().iter() {
+            match f(path) {
+                FileMatches => found = true,
+                FileDoesntMatch => ()
             }
+            visited_dirs.insert(path.as_vec().to_owned());
+        }
 
-            debug!("filesearch: searching target lib path");
-            let tlib_path = make_target_lib_path(self.sysroot,
-                                        self.target_triple);
-            if !visited_dirs.contains_equiv(&tlib_path.as_vec()) {
-                match f(&tlib_path) {
-                    FileMatches => found = true,
-                    FileDoesntMatch => ()
-                }
+        debug!("filesearch: searching target lib path");
+        let tlib_path = make_target_lib_path(self.sysroot,
+                                    self.target_triple);
+        if !visited_dirs.contains_equiv(&tlib_path.as_vec()) {
+            match f(&tlib_path) {
+                FileMatches => found = true,
+                FileDoesntMatch => ()
             }
-            visited_dirs.insert(tlib_path.as_vec().to_owned());
-            // Try RUST_PATH
-            if !found {
-                let rustpath = rust_path();
-                for path in rustpath.iter() {
-                    let tlib_path = make_rustpkg_target_lib_path(path, self.target_triple);
-                    debug!("is {} in visited_dirs? {:?}", tlib_path.display(),
-                            visited_dirs.contains_equiv(&tlib_path.as_vec().to_owned()));
+        }
+        visited_dirs.insert(tlib_path.as_vec().to_owned());
+        // Try RUST_PATH
+        if !found {
+            let rustpath = rust_path();
+            for path in rustpath.iter() {
+                let tlib_path = make_rustpkg_target_lib_path(path, self.target_triple);
+                debug!("is {} in visited_dirs? {:?}", tlib_path.display(),
+                        visited_dirs.contains_equiv(&tlib_path.as_vec().to_owned()));
 
-                    if !visited_dirs.contains_equiv(&tlib_path.as_vec()) {
-                        visited_dirs.insert(tlib_path.as_vec().to_owned());
-                        // Don't keep searching the RUST_PATH if one match turns up --
-                        // if we did, we'd get a "multiple matching crates" error
-                        match f(&tlib_path) {
-                           FileMatches => {
-                               break;
-                           }
-                           FileDoesntMatch => ()
-                        }
+                if !visited_dirs.contains_equiv(&tlib_path.as_vec()) {
+                    visited_dirs.insert(tlib_path.as_vec().to_owned());
+                    // Don't keep searching the RUST_PATH if one match turns up --
+                    // if we did, we'd get a "multiple matching crates" error
+                    match f(&tlib_path) {
+                       FileMatches => {
+                           break;
+                       }
+                       FileDoesntMatch => ()
                     }
                 }
             }
         }
-        fn get_target_lib_path(&self) -> Path {
-            make_target_lib_path(self.sysroot, self.target_triple)
-        }
-        fn get_target_lib_file_path(&self, file: &Path) -> Path {
-            let mut p = self.get_target_lib_path();
-            p.push(file);
-            p
-        }
     }
 
-    let sysroot = get_sysroot(maybe_sysroot);
-    debug!("using sysroot = {}", sysroot.display());
-    @FileSearchImpl {
-        sysroot: sysroot,
-        addl_lib_search_paths: addl_lib_search_paths,
-        target_triple: target_triple.to_owned()
-    } as @FileSearch
-}
+    pub fn get_target_lib_path(&self) -> Path {
+        make_target_lib_path(self.sysroot, self.target_triple)
+    }
 
-pub fn search(filesearch: @FileSearch, pick: pick) {
-    filesearch.for_each_lib_search_path(|lib_search_path| {
-        debug!("searching {}", lib_search_path.display());
-        match io::result(|| fs::readdir(lib_search_path)) {
-            Ok(files) => {
-                let mut rslt = FileDoesntMatch;
-                let is_rlib = |p: & &Path| {
-                    p.extension_str() == Some("rlib")
-                };
-                // Reading metadata out of rlibs is faster, and if we find both
-                // an rlib and a dylib we only read one of the files of
-                // metadata, so in the name of speed, bring all rlib files to
-                // the front of the search list.
-                let files1 = files.iter().filter(|p| is_rlib(p));
-                let files2 = files.iter().filter(|p| !is_rlib(p));
-                for path in files1.chain(files2) {
-                    debug!("testing {}", path.display());
-                    let maybe_picked = pick(path);
-                    match maybe_picked {
-                        FileMatches => {
-                            debug!("picked {}", path.display());
-                            rslt = FileMatches;
-                        }
-                        FileDoesntMatch => {
-                            debug!("rejected {}", path.display());
+    pub fn get_target_lib_file_path(&self, file: &Path) -> Path {
+        let mut p = self.get_target_lib_path();
+        p.push(file);
+        p
+    }
+
+    pub fn search(&self, pick: pick) {
+        self.for_each_lib_search_path(|lib_search_path| {
+            debug!("searching {}", lib_search_path.display());
+            match io::result(|| fs::readdir(lib_search_path)) {
+                Ok(files) => {
+                    let mut rslt = FileDoesntMatch;
+                    let is_rlib = |p: & &Path| {
+                        p.extension_str() == Some("rlib")
+                    };
+                    // Reading metadata out of rlibs is faster, and if we find both
+                    // an rlib and a dylib we only read one of the files of
+                    // metadata, so in the name of speed, bring all rlib files to
+                    // the front of the search list.
+                    let files1 = files.iter().filter(|p| is_rlib(p));
+                    let files2 = files.iter().filter(|p| !is_rlib(p));
+                    for path in files1.chain(files2) {
+                        debug!("testing {}", path.display());
+                        let maybe_picked = pick(path);
+                        match maybe_picked {
+                            FileMatches => {
+                                debug!("picked {}", path.display());
+                                rslt = FileMatches;
+                            }
+                            FileDoesntMatch => {
+                                debug!("rejected {}", path.display());
+                            }
                         }
                     }
+                    rslt
                 }
-                rslt
+                Err(..) => FileDoesntMatch,
             }
-            Err(..) => FileDoesntMatch,
+        });
+    }
+
+    pub fn new(maybe_sysroot: &Option<@Path>,
+               target_triple: &str,
+               addl_lib_search_paths: @RefCell<HashSet<Path>>) -> FileSearch {
+        let sysroot = get_sysroot(maybe_sysroot);
+        debug!("using sysroot = {}", sysroot.display());
+        FileSearch{
+            sysroot: sysroot,
+            addl_lib_search_paths: addl_lib_search_paths,
+            target_triple: target_triple.to_owned()
         }
-    });
+    }
 }
 
 pub fn relative_target_lib_path(target_triple: &str) -> Path {
