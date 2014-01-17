@@ -629,6 +629,25 @@ pub fn num_args(r: &Repr, discr: Disr) -> uint {
 }
 
 /// Access a field, at a point when the value's case is known.
+pub fn deref_ty(ccx: &CrateContext, r: &Repr) -> ty::t {
+    match *r {
+        CEnum(..) => {
+            ccx.sess.bug("deref of c-like enum")
+        }
+        Univariant(ref st, _) => {
+            st.fields[0]
+        }
+        General(_, ref cases) => {
+            assert!(cases.len() == 1);
+            cases[0].fields[0]
+        }
+        NullablePointer{ .. } => {
+            ccx.sess.bug("deref of nullable ptr")
+        }
+    }
+}
+
+/// Access a field, at a point when the value's case is known.
 pub fn trans_field_ptr(bcx: &Block, r: &Repr, val: ValueRef, discr: Disr,
                        ix: uint) -> ValueRef {
     // Note: if this ever needs to generate conditionals (e.g., if we

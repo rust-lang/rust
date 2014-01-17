@@ -178,7 +178,6 @@ pub fn maybe_instantiate_inline(ccx: @CrateContext, fn_id: ast::DefId)
                        self_kind,
                        None,
                        mth.id,
-                       Some(&*mth),
                        []);
           }
           local_def(mth.id)

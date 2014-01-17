@@ -181,7 +181,7 @@ mod tests {
         let io = ~[];
         let args = ProcessConfig {
             program: "/bin/sh",
-            args: [~"-c", ~"true"],
+            args: &[~"-c", ~"true"],
             env: None,
             cwd: None,
             io: io,
@@ -198,7 +198,7 @@ mod tests {
         let io = ~[];
         let args = ProcessConfig {
             program: "if-this-is-a-binary-then-the-world-has-ended",
-            args: [],
+            args: &[],
             env: None,
             cwd: None,
             io: io,
@@ -215,7 +215,7 @@ mod tests {
         let io = ~[];
         let args = ProcessConfig {
             program: "/bin/sh",
-            args: [~"-c", ~"exit 1"],
+            args: &[~"-c", ~"exit 1"],
             env: None,
             cwd: None,
             io: io,
@@ -231,7 +231,7 @@ mod tests {
         let io = ~[];
         let args = ProcessConfig {
             program: "/bin/sh",
-            args: [~"-c", ~"kill -1 $$"],
+            args: &[~"-c", ~"kill -1 $$"],
             env: None,
             cwd: None,
             io: io,
@@ -274,7 +274,7 @@ mod tests {
         let io = ~[Ignored, CreatePipe(false, true)];
         let args = ProcessConfig {
             program: "/bin/sh",
-            args: [~"-c", ~"echo foobar"],
+            args: &[~"-c", ~"echo foobar"],
             env: None,
             cwd: None,
             io: io,
@@ -289,7 +289,7 @@ mod tests {
         let cwd = Some("/");
         let args = ProcessConfig {
             program: "/bin/sh",
-            args: [~"-c", ~"pwd"],
+            args: &[~"-c", ~"pwd"],
             env: None,
             cwd: cwd,
             io: io,
@@ -304,7 +304,7 @@ mod tests {
                    CreatePipe(false, true)];
         let args = ProcessConfig {
             program: "/bin/sh",
-            args: [~"-c", ~"read line; echo $line"],
+            args: &[~"-c", ~"read line; echo $line"],
             env: None,
             cwd: None,
             io: io,

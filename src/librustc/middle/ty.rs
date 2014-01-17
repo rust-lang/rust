@@ -1455,11 +1455,6 @@ pub fn subst(cx: ctxt,
 
 // Type utilities
 
-pub fn type_is_voidish(tcx: ctxt, ty: t) -> bool {
-    //! "nil" and "bot" are void types in that they represent 0 bits of information
-    type_is_nil(ty) || type_is_bot(ty) || type_is_empty(tcx, ty)
-}
-
 pub fn type_is_nil(ty: t) -> bool { get(ty).sty == ty_nil }
 
 pub fn type_is_bot(ty: t) -> bool {

@@ -55,21 +55,26 @@ pub struct Rcx {
     repeating_scope: ast::NodeId,
 }
 
-fn encl_region_of_def(fcx: @FnCtxt, def: ast::Def) -> ty::Region {
+fn region_of_def(fcx: @FnCtxt, def: ast::Def) -> ty::Region {
+    /*!
+     * Returns the validity region of `def` -- that is, how long
+     * is `def` valid?
+     */
+
     let tcx = fcx.tcx();
     match def {
         DefLocal(node_id, _) | DefArg(node_id, _) |
         DefSelf(node_id, _) | DefBinding(node_id, _) => {
-            tcx.region_maps.encl_region(node_id)
+            tcx.region_maps.var_region(node_id)
         }
         DefUpvar(_, subdef, closure_id, body_id) => {
             match ty::ty_closure_sigil(fcx.node_ty(closure_id)) {
-                BorrowedSigil => encl_region_of_def(fcx, *subdef),
+                BorrowedSigil => region_of_def(fcx, *subdef),
                 ManagedSigil | OwnedSigil => ReScope(body_id)
             }
         }
         _ => {
-            tcx.sess.bug(format!("unexpected def in encl_region_of_def: {:?}",
+            tcx.sess.bug(format!("unexpected def in region_of_def: {:?}",
                               def))
         }
     }
@@ -193,7 +198,6 @@ fn visit_item(_rcx: &mut Rcx, _item: &ast::Item) {
 }
 
 fn visit_block(rcx: &mut Rcx, b: &ast::Block) {
-    rcx.fcx.tcx().region_maps.record_cleanup_scope(b.id);
     visit::walk_block(rcx, b, ());
 }
 
@@ -209,6 +213,7 @@ fn visit_arm(rcx: &mut Rcx, arm: &ast::Arm) {
 fn visit_local(rcx: &mut Rcx, l: &ast::Local) {
     // see above
     constrain_bindings_in_pat(l.pat, rcx);
+    guarantor::for_local(rcx, l);
     visit::walk_local(rcx, l, ());
 }
 
@@ -239,9 +244,9 @@ fn constrain_bindings_in_pat(pat: &ast::Pat, rcx: &mut Rcx) {
         // that the lifetime of any regions that appear in a
         // variable's type enclose at least the variable's scope.
 
-        let encl_region = tcx.region_maps.encl_region(id);
+        let var_region = tcx.region_maps.var_region(id);
         constrain_regions_in_type_of_node(
-            rcx, id, encl_region,
+            rcx, id, var_region,
             infer::BindingTypeIsNotValidAtDecl(span));
     })
 }
@@ -254,55 +259,6 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
         let method_map = rcx.fcx.inh.method_map;
         method_map.get().contains_key(&expr.id)
     };
-
-    // Record cleanup scopes, which are used by borrowck to decide the
-    // maximum lifetime of a temporary rvalue.  These were derived by
-    // examining where trans creates block scopes, not because this
-    // reflects some principled decision around temporary lifetimes.
-    // Ordinarily this would seem like something that should be setup
-    // in region, but we need to know which uses of operators are
-    // overloaded.  See #3511.
-    let tcx = rcx.fcx.tcx();
-    match expr.node {
-        // You'd think that x += y where `+=` is overloaded would be a
-        // cleanup scope. You'd be... kind of right. In fact the
-        // handling of `+=` and friends in trans for overloaded
-        // operators is a hopeless mess and I can't figure out how to
-        // represent it. - ndm
-        //
-        // ast::expr_assign_op(..) |
-
-        ast::ExprIndex(..) |
-        ast::ExprBinary(..) |
-        ast::ExprUnary(..) if has_method_map => {
-            tcx.region_maps.record_cleanup_scope(expr.id);
-        }
-        ast::ExprBinary(_, ast::BiAnd, lhs, rhs) |
-        ast::ExprBinary(_, ast::BiOr, lhs, rhs) => {
-            tcx.region_maps.record_cleanup_scope(lhs.id);
-            tcx.region_maps.record_cleanup_scope(rhs.id);
-        }
-        ast::ExprCall(..) |
-        ast::ExprMethodCall(..) => {
-            tcx.region_maps.record_cleanup_scope(expr.id);
-        }
-        ast::ExprMatch(_, ref arms) => {
-            tcx.region_maps.record_cleanup_scope(expr.id);
-            for arm in arms.iter() {
-                for guard in arm.guard.iter() {
-                    tcx.region_maps.record_cleanup_scope(guard.id);
-                }
-            }
-        }
-        ast::ExprLoop(ref body, _) => {
-            tcx.region_maps.record_cleanup_scope(body.id);
-        }
-        ast::ExprWhile(cond, ref body) => {
-            tcx.region_maps.record_cleanup_scope(cond.id);
-            tcx.region_maps.record_cleanup_scope(body.id);
-        }
-        _ => {}
-    }
 
     // Check any autoderefs or autorefs that appear.
     {
@@ -701,10 +657,10 @@ fn constrain_free_variables(rcx: &mut Rcx,
     for freevar in get_freevars(tcx, expr.id).iter() {
         debug!("freevar def is {:?}", freevar.def);
         let def = freevar.def;
-        let en_region = encl_region_of_def(rcx.fcx, def);
-        debug!("en_region = {}", en_region.repr(tcx));
+        let def_region = region_of_def(rcx.fcx, def);
+        debug!("def_region = {}", def_region.repr(tcx));
         rcx.fcx.mk_subr(true, infer::FreeVariable(freevar.span),
-                        region, en_region);
+                        region, def_region);
     }
 }
 
@@ -871,6 +827,30 @@ pub mod guarantor {
                 link_ref_bindings_in_pat(rcx, *pat, discr_guarantor);
             }
         }
+    }
+
+    pub fn for_local(rcx: &mut Rcx, local: &ast::Local) {
+        /*!
+         * Link the lifetimes of any ref bindings in a let
+         * pattern to the lifetimes in the initializer.
+         *
+         * For example, given something like this:
+         *
+         *    let &Foo(ref x) = ...;
+         *
+         * this would ensure that the lifetime 'a of the
+         * region pointer being matched must be >= the lifetime
+         * of the ref binding.
+         */
+
+        debug!("regionck::for_match()");
+        let init_expr = match local.init {
+            None => { return; }
+            Some(e) => e
+        };
+        let init_guarantor = guarantor(rcx, init_expr);
+        debug!("init_guarantor={}", init_guarantor.repr(rcx.tcx()));
+        link_ref_bindings_in_pat(rcx, local.pat, init_guarantor);
     }
 
     pub fn for_autoref(rcx: &mut Rcx,

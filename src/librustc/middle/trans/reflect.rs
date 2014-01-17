@@ -61,7 +61,7 @@ impl<'a> Reflector<'a> {
         let bcx = self.bcx;
         let str_vstore = ty::vstore_slice(ty::ReStatic);
         let str_ty = ty::mk_str(bcx.tcx(), str_vstore);
-        let scratch = scratch_datum(bcx, str_ty, "", false);
+        let scratch = rvalue_scratch_datum(bcx, str_ty, "");
         let len = C_uint(bcx.ccx(), s.len());
         let c_str = PointerCast(bcx, C_cstr(bcx.ccx(), s), Type::i8p());
         Store(bcx, c_str, GEPi(bcx, scratch.val, [ 0, 0 ]));
@@ -90,6 +90,7 @@ impl<'a> Reflector<'a> {
     }
 
     pub fn visit(&mut self, ty_name: &str, args: &[ValueRef]) {
+        let fcx = self.bcx.fcx;
         let tcx = self.bcx.tcx();
         let mth_idx = ty::method_idx(
             tcx.sess.ident_of(~"visit_" + ty_name),
@@ -106,14 +107,13 @@ impl<'a> Reflector<'a> {
         let bool_ty = ty::mk_bool();
         let result = unpack_result!(bcx, callee::trans_call_inner(
             self.bcx, None, mth_ty, bool_ty,
-            |bcx| meth::trans_trait_callee_from_llval(bcx,
-                                                      mth_ty,
-                                                      mth_idx,
-                                                      v,
-                                                      None),
+            |bcx, _| meth::trans_trait_callee_from_llval(bcx,
+                                                         mth_ty,
+                                                         mth_idx,
+                                                         v),
             ArgVals(args), None, DontAutorefArg));
         let result = bool_to_i1(bcx, result);
-        let next_bcx = sub_block(bcx, "next");
+        let next_bcx = fcx.new_temp_block("next");
         CondBr(bcx, result, next_bcx.llbb, self.final_bcx.llbb);
         self.bcx = next_bcx
     }
@@ -298,7 +298,7 @@ impl<'a> Reflector<'a> {
                                       llfdecl,
                                       ty::mk_u64(),
                                       None);
-                init_function(&fcx, false, ty::mk_u64(), None, None);
+                init_function(&fcx, false, ty::mk_u64(), None);
 
                 let arg = unsafe {
                     //
@@ -308,13 +308,13 @@ impl<'a> Reflector<'a> {
                     //
                     llvm::LLVMGetParam(llfdecl, fcx.arg_pos(0u) as c_uint)
                 };
-                let mut bcx = fcx.entry_bcx.get().unwrap();
+                let bcx = fcx.entry_bcx.get().unwrap();
                 let arg = BitCast(bcx, arg, llptrty);
                 let ret = adt::trans_get_discr(bcx, repr, arg, Some(Type::i64()));
                 Store(bcx, ret, fcx.llretptr.get().unwrap());
                 match fcx.llreturn.get() {
-                    Some(llreturn) => cleanup_and_Br(bcx, bcx, llreturn),
-                    None => bcx = cleanup_block(bcx, Some(bcx.llbb))
+                    Some(llreturn) => Br(bcx, llreturn),
+                    None => {}
                 };
                 finish_fn(&fcx, bcx);
                 llfdecl
@@ -389,7 +389,8 @@ pub fn emit_calls_to_trait_visit_ty<'a>(
                                     visitor_val: ValueRef,
                                     visitor_trait_id: DefId)
                                     -> &'a Block<'a> {
-    let final = sub_block(bcx, "final");
+    let fcx = bcx.fcx;
+    let final = fcx.new_temp_block("final");
     let tydesc_ty = ty::get_tydesc_ty(bcx.ccx().tcx).unwrap();
     let tydesc_ty = type_of(bcx.ccx(), tydesc_ty);
     let mut r = Reflector {

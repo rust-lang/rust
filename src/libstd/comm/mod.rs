@@ -1202,7 +1202,7 @@ mod test {
     })
 
     test!(fn oneshot_single_thread_peek_open() {
-        let (port, _) = Chan::<int>::new();
+        let (port, _chan) = Chan::<int>::new();
         assert_eq!(port.try_recv(), Empty);
     })
 

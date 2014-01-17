@@ -662,8 +662,9 @@ impl<'a> GatherLoanCtxt<'a> {
         //! with immutable `&` pointers, because borrows of such pointers
         //! do not require restrictions and hence do not cause a loan.
 
-        let lexical_scope = self.bccx.tcx.region_maps.encl_scope(lp.node_id());
-        if self.bccx.tcx.region_maps.is_subscope_of(lexical_scope, loan_scope) {
+        let rm = &self.bccx.tcx.region_maps;
+        let lexical_scope = rm.var_scope(lp.node_id());
+        if rm.is_subscope_of(lexical_scope, loan_scope) {
             lexical_scope
         } else {
             assert!(self.bccx.tcx.region_maps.is_subscope_of(loan_scope, lexical_scope));
@@ -688,7 +689,7 @@ impl<'a> GatherLoanCtxt<'a> {
             let arg_cmt = mc_ctxt.cat_rvalue(
                 arg.id,
                 arg.pat.span,
-                body.id, // Arguments live only as long as the fn body.
+                ty::ReScope(body.id), // Args live only as long as the fn body.
                 arg_ty);
 
             self.gather_pat(arg_cmt, arg.pat, None);

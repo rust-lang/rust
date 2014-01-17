@@ -3983,8 +3983,31 @@ pub fn ast_expr_vstore_to_vstore(fcx: @FnCtxt,
         ast::ExprVstoreUniq => ty::vstore_uniq,
         ast::ExprVstoreBox => ty::vstore_box,
         ast::ExprVstoreSlice | ast::ExprVstoreMutSlice => {
-            let r = fcx.infcx().next_region_var(infer::AddrOfSlice(e.span));
-            ty::vstore_slice(r)
+            match e.node {
+                ast::ExprLit(..) |
+                ast::ExprVec([], _) => {
+                    // string literals and *empty slices* live in static memory
+                    ty::vstore_slice(ty::ReStatic)
+                }
+                ast::ExprRepeat(..) |
+                ast::ExprVec(..) => {
+                    // vector literals are temporaries on the stack
+                    match fcx.tcx().region_maps.temporary_scope(e.id) {
+                        Some(scope) => {
+                            let r = ty::ReScope(scope);
+                            ty::vstore_slice(r)
+                        }
+                        None => {
+                            // this slice occurs in a static somewhere
+                            ty::vstore_slice(ty::ReStatic)
+                        }
+                    }
+                }
+                _ => {
+                    fcx.ccx.tcx.sess.span_bug(
+                        e.span, format!("vstore with unexpected contents"))
+                }
+            }
         }
     }
 }
@@ -4103,7 +4126,7 @@ pub fn check_intrinsic_type(ccx: @CrateCtxt, it: &ast::ForeignItem) {
             "uninit" => (1u, ~[], param(ccx, 0u)),
             "forget" => (1u, ~[ param(ccx, 0) ], ty::mk_nil()),
             "transmute" => (2, ~[ param(ccx, 0) ], param(ccx, 1)),
-            "move_val" | "move_val_init" => {
+            "move_val_init" => {
                 (1u,
                  ~[
                     ty::mk_mut_rptr(tcx, ty::ReLateBound(it.id, ty::BrAnon(0)), param(ccx, 0)),
