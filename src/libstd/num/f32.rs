@@ -783,6 +783,40 @@ pub fn to_str_digits(num: f32, dig: uint) -> ~str {
     r
 }
 
+///
+/// Converts a float to a string using the exponential notation with exactly the number of
+/// provided digits after the decimal point in the significand
+///
+/// # Arguments
+///
+/// * num - The float value
+/// * digits - The number of digits after the decimal point
+/// * upper - Use `E` instead of `e` for the exponent sign
+///
+#[inline]
+pub fn to_str_exp_exact(num: f32, dig: uint, upper: bool) -> ~str {
+    let (r, _) = strconv::float_to_str_common(
+        num, 10u, true, strconv::SignNeg, strconv::DigExact(dig), strconv::ExpDec, upper);
+    r
+}
+
+///
+/// Converts a float to a string using the exponential notation with the maximum number of
+/// digits after the decimal point in the significand
+///
+/// # Arguments
+///
+/// * num - The float value
+/// * digits - The number of digits after the decimal point
+/// * upper - Use `E` instead of `e` for the exponent sign
+///
+#[inline]
+pub fn to_str_exp_digits(num: f32, dig: uint, upper: bool) -> ~str {
+    let (r, _) = strconv::float_to_str_common(
+        num, 10u, true, strconv::SignNeg, strconv::DigMax(dig), strconv::ExpDec, upper);
+    r
+}
+
 impl to_str::ToStr for f32 {
     #[inline]
     fn to_str(&self) -> ~str { to_str_digits(*self, 8) }
