@@ -3035,9 +3035,8 @@ impl Resolver {
                     Some(type_def) => {
                         match type_def.module_def {
                             None => {
-                                error!("!!! (resolving module in lexical \
-                                        scope) module wasn't actually a \
-                                        module!");
+                                debug!("(resolving module in lexical scope) \
+                                        module definition not found");
                                 return Failed;
                             }
                             Some(module_def) => {
@@ -3046,8 +3045,8 @@ impl Resolver {
                         }
                     }
                     None => {
-                        error!("!!! (resolving module in lexical scope) module
-                                wasn't actually a module!");
+                        debug!("(resolving module in lexical scope) \
+                                type defintion not found");
                         return Failed;
                     }
                 }
