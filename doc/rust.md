@@ -2890,8 +2890,9 @@ match x {
 
 The first pattern matches lists constructed by applying `Cons` to any head value, and a
 tail value of `~Nil`. The second pattern matches _any_ list constructed with `Cons`,
-ignoring the values of its arguments. The difference between `_` and `*` is that the pattern `C(_)` is only type-correct if
-`C` has exactly one argument, while the pattern `C(..)` is type-correct for any enum variant `C`, regardless of how many arguments `C` has.
+ignoring the values of its arguments. The difference between `_` and `*` is that the pattern
+`C(_)` is only type-correct if `C` has exactly one argument, while the pattern `C(..)` is
+type-correct for any enum variant `C`, regardless of how many arguments `C` has.
 
 A `match` behaves differently depending on whether or not the head expression
 is an [lvalue or an rvalue](#lvalues-rvalues-and-temporaries).
@@ -2904,11 +2905,11 @@ variables in the arm's block, and control enters the block.
 
 When the head expression is an lvalue, the match does not allocate a
 temporary location (however, a by-value binding may copy or move from
-the lvalue).  When possible, it is preferable to match on lvalues, as the
+the lvalue). When possible, it is preferable to match on lvalues, as the
 lifetime of these matches inherits the lifetime of the lvalue, rather
 than being restricted to the inside of the match.
 
-An example of an `match` expression:
+An example of a `match` expression:
 
 ~~~~
 # fn process_pair(a: int, b: int) { }
@@ -2938,28 +2939,31 @@ Patterns that bind variables
 default to binding to a copy or move of the matched value
 (depending on the matched value's type).
 This can be changed to bind to a reference by
-using the ```ref``` keyword,
-or to a mutable reference using ```ref mut```.
+using the `ref` keyword,
+or to a mutable reference using `ref mut`.
 
-Patterns can also dereference pointers by using the ``&``,
-``~`` or ``@`` symbols, as appropriate.  For example, these two matches
-on ``x: &int`` are equivalent:
+Patterns can also dereference pointers by using the `&`,
+`~` or `@` symbols, as appropriate. For example, these two matches
+on `x: &int` are equivalent:
 
 ~~~~
-match *x { 0 => "zero", _ => "some" }
-match x { &0 => "zero", _ => "some" }
+# let x = &3;
+let y = match *x { 0 => "zero", _ => "some" };
+let z = match x { &0 => "zero", _ => "some" };
+
+assert_eq!(y, z);
 ~~~~
 
-A pattern that's just an identifier,
-like `Nil` in the previous answer,
-could either refer to an enum variant that's in scope,
-or bind a new variable.
-The compiler resolves this ambiguity by forbidding variable bindings that occur in ```match``` patterns from shadowing names of variants that are in scope.
-For example, wherever ```List``` is in scope,
-a ```match``` pattern would not be able to bind ```Nil``` as a new name.
-The compiler interprets a variable pattern `x` as a binding _only_ if there is no variant named `x` in scope.
-A convention you can use to avoid conflicts is simply to name variants with upper-case letters,
-and local variables with lower-case letters.
+A pattern that's just an identifier, like `Nil` in the previous answer,
+could either refer to an enum variant that's in scope, or bind a new variable.
+The compiler resolves this ambiguity by forbidding variable bindings that occur
+in `match` patterns from shadowing names of variants that are in scope.
+For example, wherever `List` is in scope,
+a `match` pattern would not be able to bind `Nil` as a new name.
+The compiler interprets a variable pattern `x` as a binding _only_ if there is
+no variant named `x` in scope.
+A convention you can use to avoid conflicts is simply to name variants with
+upper-case letters, and local variables with lower-case letters.
 
 Multiple match patterns may be joined with the `|` operator.
 A range of values may be specified with `..`.
