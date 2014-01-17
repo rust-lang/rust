@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -183,9 +183,6 @@ fn with_appropriate_checker(cx: &Context,
         // moved in or copied in.
         let id = ast_util::def_id_of_def(fv.def).node;
         let var_t = ty::node_id_to_type(cx.tcx, id);
-
-        // check that only immutable variables are implicitly copied in
-        check_imm_free_var(cx, fv.def, fv.span);
 
         check_freevar_bounds(cx, fv.span, var_t, bounds, None);
     }
@@ -445,23 +442,6 @@ pub fn check_trait_cast_bounds(cx: &Context, sp: Span, ty: ty::t,
                  ty_to_str(cx.tcx, ty), missing.user_string(cx.tcx),
                  bounds.user_string(cx.tcx)));
     });
-}
-
-fn check_imm_free_var(cx: &Context, def: Def, sp: Span) {
-    match def {
-        DefLocal(_, BindByValue(MutMutable)) => {
-            cx.tcx.sess.span_err(
-                sp,
-                "mutable variables cannot be implicitly captured");
-        }
-        DefLocal(..) | DefArg(..) | DefBinding(..) => { /* ok */ }
-        DefUpvar(_, def1, _, _) => { check_imm_free_var(cx, *def1, sp); }
-        _ => {
-            cx.tcx.sess.span_bug(
-                sp,
-                format!("unknown def for free variable: {:?}", def));
-        }
-    }
 }
 
 fn check_copy(cx: &Context, ty: ty::t, sp: Span, reason: &str) {
