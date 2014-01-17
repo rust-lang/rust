@@ -67,8 +67,7 @@ macro_rules! end_of_block(
             println!("end_of_block({})", stringify!({let $pat = $expr;}));
 
             {
-                // Destructor here does not run until exit from the block,
-                // because value is assigned to.
+                // Destructor here does not run until exit from the block.
                 let $pat = $expr;
                 check_flags(0);
             }
@@ -83,8 +82,8 @@ macro_rules! end_of_stmt(
             println!("end_of_stmt({})", stringify!($expr));
 
             {
-                // Destructor here does not run until exit from the block,
-                // because value is assigned to.
+                // Destructor here run after `let` statement
+                // terminates.
                 let $pat = $expr;
                 check_flags(1);
             }
