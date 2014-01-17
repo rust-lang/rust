@@ -86,6 +86,9 @@ pub struct config {
     // Target system to be tested
     target: ~str,
 
+    // Host triple for the compiler being invoked
+    host: ~str,
+
     // Extra parameter to run adb on arm-linux-androideabi
     adb_path: ~str,
 
