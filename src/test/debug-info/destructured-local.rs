@@ -196,13 +196,13 @@ fn main() {
     let Unit(ii) = Unit(51);
 
     // univariant enum with ref      binding
-    let Unit(ref jj) = Unit(52);
+    let &Unit(ref jj) = &Unit(52);
 
     // tuple struct
-    let TupleStruct(kk, ll) = TupleStruct(53.0, 54);
+    let &TupleStruct(kk, ll) = &TupleStruct(53.0, 54);
 
     // tuple struct with ref binding
-    let TupleStruct(mm, ref nn) = TupleStruct(55.0, 56);
+    let &TupleStruct(mm, ref nn) = &TupleStruct(55.0, 56);
 
     zzz();
 }

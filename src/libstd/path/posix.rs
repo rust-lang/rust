@@ -237,7 +237,10 @@ impl GenericPath for Path {
             let mut ita = self.components();
             let mut itb = other.components();
             if bytes!(".") == self.repr {
-                return itb.next() != Some(bytes!(".."));
+                return match itb.next() {
+                    None => true,
+                    Some(b) => b != bytes!("..")
+                };
             }
             loop {
                 match (ita.next(), itb.next()) {
@@ -463,7 +466,10 @@ mod tests {
 
     macro_rules! b(
         ($($arg:expr),+) => (
-            bytes!($($arg),+)
+            {
+                static the_bytes: &'static [u8] = bytes!($($arg),+);
+                the_bytes
+            }
         )
     )
 
@@ -689,7 +695,8 @@ mod tests {
             );
             (v: $path:expr, $op:ident, $exp:expr) => (
                 {
-                    let path = Path::new($path);
+                    let arg = $path;
+                    let path = Path::new(arg);
                     assert_eq!(path.$op(), $exp);
                 }
             );

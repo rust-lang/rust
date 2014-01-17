@@ -198,7 +198,7 @@ pub fn trans_native_call<'a>(
         _ => ccx.sess.bug("trans_native_call called on non-function type")
     };
     let llsig = foreign_signature(ccx, &fn_sig, passed_arg_tys);
-    let ret_def = !ty::type_is_voidish(bcx.tcx(), fn_sig.output);
+    let ret_def = !return_type_is_void(bcx.ccx(), fn_sig.output);
     let fn_type = cabi::compute_abi_info(ccx,
                                          llsig.llarg_tys,
                                          llsig.llret_ty,
@@ -282,20 +282,20 @@ pub fn trans_native_call<'a>(
             // FIXME(#8357) We really ought to report a span here
             ccx.sess.fatal(
                 format!("ABI string `{}` has no suitable ABI \
-                      for target architecture",
-                     fn_abis.user_string(ccx.tcx)));
+                        for target architecture",
+                        fn_abis.user_string(ccx.tcx)));
         }
     };
 
     // A function pointer is called without the declaration available, so we have to apply
     // any attributes with ABI implications directly to the call instruction. Right now, the
     // only attribute we need to worry about is `sret`.
-    let attrs;
-    if fn_type.ret_ty.is_indirect() {
-        attrs = &[(1, StructRetAttribute)];
+    let sret_attr = if fn_type.ret_ty.is_indirect() {
+        Some((1, StructRetAttribute))
     } else {
-        attrs = &[];
-    }
+        None
+    };
+    let attrs = sret_attr.as_slice();
     let llforeign_retval = CallWithConv(bcx, llfn, llargs_foreign, cc, attrs);
 
     // If the function we just called does not use an outpointer,
@@ -491,7 +491,6 @@ pub fn trans_rust_fn_with_foreign_abi(ccx: @CrateContext,
                        None,
                        None,
                        id,
-                       None,
                        []);
         return llfndecl;
     }
@@ -779,7 +778,7 @@ fn foreign_types_for_fn_ty(ccx: &CrateContext,
         _ => ccx.sess.bug("foreign_types_for_fn_ty called on non-function type")
     };
     let llsig = foreign_signature(ccx, &fn_sig, fn_sig.inputs);
-    let ret_def = !ty::type_is_voidish(ccx.tcx, fn_sig.output);
+    let ret_def = !return_type_is_void(ccx, fn_sig.output);
     let fn_ty = cabi::compute_abi_info(ccx,
                                        llsig.llarg_tys,
                                        llsig.llret_ty,

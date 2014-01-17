@@ -24,6 +24,7 @@ use std::cast;
 use std::libc::{c_uint, c_ulonglong, c_char};
 
 pub fn terminate(cx: &Block, _: &str) {
+    debug!("terminate({})", cx.to_str());
     cx.terminated.set(true);
 }
 
@@ -315,10 +316,14 @@ pub fn ArrayMalloc(cx: &Block, Ty: Type, Val: ValueRef) -> ValueRef {
 pub fn Alloca(cx: &Block, Ty: Type, name: &str) -> ValueRef {
     unsafe {
         if cx.unreachable.get() { return llvm::LLVMGetUndef(Ty.ptr_to().to_ref()); }
-        let b = cx.fcx.ccx.builder();
-        b.position_before(cx.fcx.alloca_insert_pt.get().unwrap());
-        b.alloca(Ty, name)
+        AllocaFcx(cx.fcx, Ty, name)
     }
+}
+
+pub fn AllocaFcx(fcx: &FunctionContext, Ty: Type, name: &str) -> ValueRef {
+    let b = fcx.ccx.builder();
+    b.position_before(fcx.alloca_insert_pt.get().unwrap());
+    b.alloca(Ty, name)
 }
 
 pub fn ArrayAlloca(cx: &Block, Ty: Type, Val: ValueRef) -> ValueRef {

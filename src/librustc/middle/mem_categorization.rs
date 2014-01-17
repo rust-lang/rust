@@ -60,7 +60,7 @@ use syntax::parse::token;
 
 #[deriving(Eq)]
 pub enum categorization {
-    cat_rvalue(ast::NodeId),           // temporary val, argument is its scope
+    cat_rvalue(ty::Region),            // temporary val, argument is its scope
     cat_static_item,
     cat_copied_upvar(CopiedUpvar),     // upvar copied into @fn or ~fn env
     cat_stack_upvar(cmt),              // by ref upvar from ||
@@ -585,21 +585,26 @@ impl mem_categorization_ctxt {
     pub fn cat_rvalue_node<N:ast_node>(&self,
                                        node: &N,
                                        expr_ty: ty::t) -> cmt {
-        self.cat_rvalue(node.id(),
-                        node.span(),
-                        self.tcx.region_maps.cleanup_scope(node.id()),
-                        expr_ty)
+        match self.tcx.region_maps.temporary_scope(node.id()) {
+            Some(scope) => {
+                self.cat_rvalue(node.id(), node.span(),
+                                ty::ReScope(scope), expr_ty)
+            }
+            None => {
+                self.cat_rvalue(node.id(), node.span(), ty::ReStatic, expr_ty)
+            }
+        }
     }
 
     pub fn cat_rvalue(&self,
                       cmt_id: ast::NodeId,
                       span: Span,
-                      cleanup_scope_id: ast::NodeId,
+                      temp_scope: ty::Region,
                       expr_ty: ty::t) -> cmt {
         @cmt_ {
             id:cmt_id,
             span:span,
-            cat:cat_rvalue(cleanup_scope_id),
+            cat:cat_rvalue(temp_scope),
             mutbl:McDeclared,
             ty:expr_ty
         }

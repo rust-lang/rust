@@ -238,7 +238,6 @@ pub fn monomorphic_fn(ccx: @CrateContext,
                          None,
                          Some(psubsts),
                          fn_id.node,
-                         None,
                          []);
                 d
             }

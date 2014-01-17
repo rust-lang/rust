@@ -138,15 +138,16 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
 
             // to:
             //
-            // {
-            //   let _i = &mut <src_expr>;
-            //   ['<ident>:] loop {
-            //       match i.next() {
+            //   match &mut <src_expr> {
+            //     i => {
+            //       ['<ident>:] loop {
+            //         match i.next() {
             //           None => break,
             //           Some(<src_pat>) => <src_loop_block>
+            //         }
             //       }
+            //     }
             //   }
-            // }
 
             let local_ident = token::gensym_ident("i");
             let next_ident = fld.cx.ident_of("next");
@@ -154,10 +155,6 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
 
             let local_path = fld.cx.path_ident(span, local_ident);
             let some_path = fld.cx.path_ident(span, fld.cx.ident_of("Some"));
-
-            // `let i = &mut <src_expr>`
-            let iter_decl_stmt = fld.cx.stmt_let(span, false, local_ident,
-                                                 fld.cx.expr_mut_addr_of(span, src_expr));
 
             // `None => break ['<ident>];`
             let none_arm = {
@@ -186,16 +183,13 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
                                         ast::ExprLoop(fld.cx.block_expr(match_expr),
                                                       opt_ident));
 
-            // `{ let ... ;  loop { ... } }`
-            let block = fld.cx.block(span,
-                                     ~[iter_decl_stmt],
-                                     Some(loop_expr));
+            // `i => loop { ... }`
 
-            @ast::Expr {
-                id: ast::DUMMY_NODE_ID,
-                node: ast::ExprBlock(block),
-                span: span,
-            }
+            // `match &mut <src_expr> { i => loop { ... } }`
+            let discrim = fld.cx.expr_mut_addr_of(span, src_expr);
+            let i_pattern = fld.cx.pat_ident(span, local_ident);
+            let arm = fld.cx.arm(span, ~[i_pattern], loop_expr);
+            fld.cx.expr_match(span, discrim, ~[arm])
         }
 
         _ => noop_fold_expr(e, fld)

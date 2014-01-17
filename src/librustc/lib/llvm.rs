@@ -1698,6 +1698,7 @@ pub mod llvm {
 
         pub fn LLVMDICompositeTypeSetTypeArray(CompositeType: ValueRef, TypeArray: ValueRef);
         pub fn LLVMTypeToString(Type: TypeRef) -> *c_char;
+        pub fn LLVMValueToString(value_ref: ValueRef) -> *c_char;
 
         pub fn LLVMIsAArgument(value_ref: ValueRef) -> ValueRef;
 
@@ -1847,8 +1848,10 @@ impl TypeNames {
 
     pub fn val_to_str(&self, val: ValueRef) -> ~str {
         unsafe {
-            let ty = Type::from_ref(llvm::LLVMTypeOf(val));
-            self.type_to_str(ty)
+            let s = llvm::LLVMValueToString(val);
+            let ret = from_c_str(s);
+            free(s as *c_void);
+            ret
         }
     }
 }

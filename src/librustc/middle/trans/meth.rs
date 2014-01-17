@@ -18,6 +18,7 @@ use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::callee::*;
 use middle::trans::callee;
+use middle::trans::cleanup;
 use middle::trans::common::*;
 use middle::trans::datum::*;
 use middle::trans::expr::{SaveIn, Ignore};
@@ -132,7 +133,6 @@ pub fn trans_method(ccx: @CrateContext,
              self_ty,
              param_substs,
              method.id,
-             Some(method),
              []);
     llfn
 }
@@ -141,7 +141,8 @@ pub fn trans_method_callee<'a>(
                            bcx: &'a Block<'a>,
                            callee_id: ast::NodeId,
                            this: &ast::Expr,
-                           mentry: typeck::method_map_entry)
+                           mentry: typeck::method_map_entry,
+                           arg_cleanup_scope: cleanup::ScopeId)
                            -> Callee<'a> {
     let _icx = push_ctxt("impl::trans_method_callee");
 
@@ -153,9 +154,8 @@ pub fn trans_method_callee<'a>(
     match mentry.origin {
         typeck::method_static(did) => {
             let self_ty = monomorphize_type(bcx, mentry.self_ty);
-            let mut temp_cleanups = ~[];
             let Result {bcx, val} = trans_arg_expr(bcx, self_ty, this,
-                                                   &mut temp_cleanups,
+                                                   arg_cleanup_scope,
                                                    DontAutorefArg);
             // HACK should not need the pointer cast, eventually trans_fn_ref
             // should return a function type with the right type for self.
@@ -168,7 +168,6 @@ pub fn trans_method_callee<'a>(
                 data: Method(MethodData {
                     llfn: llfn_val,
                     llself: val,
-                    temp_cleanup: temp_cleanups.head_opt().map(|v| *v)
                 })
             }
         }
@@ -186,7 +185,8 @@ pub fn trans_method_callee<'a>(
 
                     let vtbl = find_vtable(bcx.tcx(), substs, p, b);
                     trans_monomorphized_callee(bcx, callee_id, this, mentry,
-                                               trait_id, off, vtbl)
+                                               trait_id, off, vtbl,
+                                               arg_cleanup_scope)
                 }
                 // how to get rid of this?
                 None => fail!("trans_method_callee: missing param_substs")
@@ -197,7 +197,8 @@ pub fn trans_method_callee<'a>(
             trans_trait_callee(bcx,
                                callee_id,
                                mt.real_index,
-                               this)
+                               this,
+                               arg_cleanup_scope)
         }
     }
 }
@@ -319,7 +320,8 @@ pub fn trans_monomorphized_callee<'a>(
                                   mentry: typeck::method_map_entry,
                                   trait_id: ast::DefId,
                                   n_method: uint,
-                                  vtbl: typeck::vtable_origin)
+                                  vtbl: typeck::vtable_origin,
+                                  arg_cleanup_scope: cleanup::ScopeId)
                                   -> Callee<'a> {
     let _icx = push_ctxt("impl::trans_monomorphized_callee");
     return match vtbl {
@@ -330,9 +332,8 @@ pub fn trans_monomorphized_callee<'a>(
 
           // obtain the `self` value:
           let self_ty = monomorphize_type(bcx, mentry.self_ty);
-          let mut temp_cleanups = ~[];
           let Result {bcx, val} = trans_arg_expr(bcx, self_ty, base,
-                                                 &mut temp_cleanups,
+                                                 arg_cleanup_scope,
                                                  DontAutorefArg);
 
           // create a concatenated set of substitutions which includes
@@ -361,7 +362,6 @@ pub fn trans_monomorphized_callee<'a>(
               data: Method(MethodData {
                   llfn: llfn_val,
                   llself: val,
-                  temp_cleanup: temp_cleanups.head_opt().map(|v| *v)
               })
           }
       }
@@ -425,7 +425,8 @@ pub fn trans_trait_callee<'a>(
                           bcx: &'a Block<'a>,
                           callee_id: ast::NodeId,
                           n_method: uint,
-                          self_expr: &ast::Expr)
+                          self_expr: &ast::Expr,
+                          arg_cleanup_scope: cleanup::ScopeId)
                           -> Callee<'a> {
     /*!
      * Create a method callee where the method is coming from a trait
@@ -439,38 +440,31 @@ pub fn trans_trait_callee<'a>(
     let _icx = push_ctxt("impl::trans_trait_callee");
     let mut bcx = bcx;
 
-    // make a local copy for trait if needed
-    let self_ty = expr_ty_adjusted(bcx, self_expr);
-    let self_scratch = match ty::get(self_ty).sty {
-        ty::ty_trait(_, _, ty::RegionTraitStore(..), _, _) => {
-            unpack_datum!(bcx, expr::trans_to_datum(bcx, self_expr))
-        }
-        _ => {
-            let d = scratch_datum(bcx, self_ty, "__trait_callee", false);
-            bcx = expr::trans_into(bcx, self_expr, expr::SaveIn(d.val));
-            // Arrange a temporary cleanup for the object in case something
-            // should go wrong before the method is actually *invoked*.
-            d.add_clean(bcx);
-            d
-        }
-    };
+    // Translate self_datum and take ownership of the value by
+    // converting to an rvalue.
+    let self_datum = unpack_datum!(
+        bcx, expr::trans(bcx, self_expr));
+    let self_datum = unpack_datum!(
+        bcx, self_datum.to_rvalue_datum(bcx, "trait_callee"));
 
+    // Convert to by-ref since `trans_trait_callee_from_llval` wants it
+    // that way.
+    let self_datum = unpack_datum!(
+        bcx, self_datum.to_ref_datum(bcx));
+
+    // Arrange cleanup in case something should go wrong before the
+    // actual call occurs.
+    let llval = self_datum.add_clean(bcx.fcx, arg_cleanup_scope);
 
     let callee_ty = node_id_type(bcx, callee_id);
-    trans_trait_callee_from_llval(bcx,
-                                  callee_ty,
-                                  n_method,
-                                  self_scratch.val,
-                                  Some(self_scratch.val))
+    trans_trait_callee_from_llval(bcx, callee_ty, n_method, llval)
 }
 
-pub fn trans_trait_callee_from_llval<'a>(
-                                     bcx: &'a Block<'a>,
-                                     callee_ty: ty::t,
-                                     n_method: uint,
-                                     llpair: ValueRef,
-                                     temp_cleanup: Option<ValueRef>)
-                                     -> Callee<'a> {
+pub fn trans_trait_callee_from_llval<'a>(bcx: &'a Block<'a>,
+                                         callee_ty: ty::t,
+                                         n_method: uint,
+                                         llpair: ValueRef)
+                                         -> Callee<'a> {
     /*!
      * Same as `trans_trait_callee()` above, except that it is given
      * a by-ref pointer to the object pair.
@@ -501,7 +495,6 @@ pub fn trans_trait_callee_from_llval<'a>(
         data: Method(MethodData {
             llfn: mptr,
             llself: llself,
-            temp_cleanup: temp_cleanup
         })
     };
 }
@@ -632,41 +625,38 @@ fn emit_vtable_methods(bcx: &Block,
     })
 }
 
-pub fn trans_trait_cast<'a>(
-                        bcx: &'a Block<'a>,
-                        val: &ast::Expr,
-                        id: ast::NodeId,
-                        dest: expr::Dest,
-                        obj: Option<Datum>)
-                        -> &'a Block<'a> {
+pub fn trans_trait_cast<'a>(bcx: &'a Block<'a>,
+                            datum: Datum<Expr>,
+                            id: ast::NodeId,
+                            dest: expr::Dest)
+                            -> &'a Block<'a> {
+    /*!
+     * Generates the code to convert from a pointer (`~T`, `&T`, etc)
+     * into an object (`~Trait`, `&Trait`, etc). This means creating a
+     * pair where the first word is the vtable and the second word is
+     * the pointer.
+     */
+
     let mut bcx = bcx;
     let _icx = push_ctxt("impl::trans_cast");
 
     let lldest = match dest {
         Ignore => {
-            return expr::trans_into(bcx, val, Ignore);
+            return datum.clean(bcx, "trait_cast", id);
         }
         SaveIn(dest) => dest
     };
 
     let ccx = bcx.ccx();
-    let v_ty = expr_ty(bcx, val);
+    let v_ty = datum.ty;
+    let llbox_ty = type_of(bcx.ccx(), datum.ty);
 
+    // Store the pointer into the first half of pair.
     let mut llboxdest = GEPi(bcx, lldest, [0u, abi::trt_field_box]);
-    // Just store the pointer into the pair. (Region/borrowed
-    // and boxed trait objects are represented as pairs, and
-    // have no type descriptor field.)
-    llboxdest = PointerCast(bcx,
-                            llboxdest,
-                            type_of(bcx.ccx(), v_ty).ptr_to());
-    bcx = match obj {
-        Some(datum) => {
-            datum.store_to_dest(bcx, SaveIn(llboxdest))
-        }
-        None => expr::trans_into(bcx, val, SaveIn(llboxdest))
-    };
+    llboxdest = PointerCast(bcx, llboxdest, llbox_ty.ptr_to());
+    bcx = datum.store_to(bcx, llboxdest);
 
-    // Store the vtable into the pair or triple.
+    // Store the vtable into the second half of pair.
     // This is structured a bit funny because of dynamic borrow failures.
     let origins = {
         let res = {
@@ -677,9 +667,9 @@ pub fn trans_trait_cast<'a>(
         res[0]
     };
     let vtable = get_vtable(bcx, v_ty, origins);
-    Store(bcx, vtable, PointerCast(bcx,
-                                   GEPi(bcx, lldest, [0u, abi::trt_field_vtable]),
-                                   val_ty(vtable).ptr_to()));
+    let llvtabledest = GEPi(bcx, lldest, [0u, abi::trt_field_vtable]);
+    let llvtabledest = PointerCast(bcx, llvtabledest, val_ty(vtable).ptr_to());
+    Store(bcx, vtable, llvtabledest);
 
     bcx
 }

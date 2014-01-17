@@ -292,12 +292,6 @@ extern "rust-intrinsic" {
     /// elements.
     pub fn size_of<T>() -> uint;
 
-    /// Move a value to a memory location containing a value.
-    ///
-    /// Drop glue is run on the destination, which must contain a
-    /// valid Rust value.
-    pub fn move_val<T>(dst: &mut T, src: T);
-
     /// Move a value to an uninitialized memory location.
     ///
     /// Drop glue is not run on the destination.

@@ -20,8 +20,9 @@ use lib;
 use middle::lang_items::LangItem;
 use middle::trans::base;
 use middle::trans::build;
+use middle::trans::cleanup;
 use middle::trans::datum;
-use middle::trans::glue;
+use middle::trans::datum::{Datum, Lvalue};
 use middle::trans::debuginfo;
 use middle::trans::type_::Type;
 use middle::ty::substs;
@@ -37,8 +38,7 @@ use std::cast;
 use std::cell::{Cell, RefCell};
 use std::hashmap::HashMap;
 use std::libc::{c_uint, c_longlong, c_ulonglong, c_char};
-use std::vec;
-use syntax::ast::{Name, Ident};
+use syntax::ast::{Ident};
 use syntax::ast_map::{Path, PathElem, PathPrettyName};
 use syntax::codemap::Span;
 use syntax::parse::token;
@@ -64,7 +64,7 @@ pub fn type_is_immediate(ccx: &CrateContext, ty: ty::t) -> bool {
     let tcx = ccx.tcx;
     let simple = ty::type_is_scalar(ty) || ty::type_is_boxed(ty) ||
         ty::type_is_unique(ty) || ty::type_is_region_ptr(ty) ||
-        type_is_newtype_immediate(ccx, ty) ||
+        type_is_newtype_immediate(ccx, ty) || ty::type_is_bot(ty) ||
         ty::type_is_simd(tcx, ty);
     if simple {
         return true;
@@ -75,8 +75,31 @@ pub fn type_is_immediate(ccx: &CrateContext, ty: ty::t) -> bool {
             let llty = sizing_type_of(ccx, ty);
             llsize_of_alloc(ccx, llty) <= llsize_of_alloc(ccx, ccx.int_type)
         }
-        _ => false
+        _ => type_is_zero_size(ccx, ty)
     }
+}
+
+pub fn type_is_zero_size(ccx: &CrateContext, ty: ty::t) -> bool {
+    /*!
+     * Identify types which have size zero at runtime.
+     */
+
+    use middle::trans::machine::llsize_of_alloc;
+    use middle::trans::type_of::sizing_type_of;
+    let llty = sizing_type_of(ccx, ty);
+    llsize_of_alloc(ccx, llty) == 0
+}
+
+pub fn return_type_is_void(ccx: &CrateContext, ty: ty::t) -> bool {
+    /*!
+     * Identifies types which we declare to be equivalent to `void`
+     * in C for the purpose of function return types. These are
+     * `()`, bot, and uninhabited enums. Note that all such types
+     * are also zero-size, but not all zero-size types use a `void`
+     * return type (in order to aid with C ABI compatibility).
+     */
+
+    ty::type_is_nil(ty) || ty::type_is_bot(ty) || ty::type_is_empty(ccx.tcx, ty)
 }
 
 pub fn gensym_name(name: &str) -> (Ident, PathElem) {
@@ -121,6 +144,15 @@ pub struct tydesc_info {
  * some helper task such as bringing a task to life, allocating memory, etc.
  *
  */
+
+pub struct NodeInfo {
+    id: ast::NodeId,
+    span: Span,
+}
+
+pub fn expr_info(expr: &ast::Expr) -> NodeInfo {
+    NodeInfo { id: expr.id, span: expr.span }
+}
 
 pub struct Stats {
     n_static_tydescs: Cell<uint>,
@@ -185,6 +217,10 @@ impl Repr for param_substs {
     }
 }
 
+// work around bizarre resolve errors
+type RvalueDatum = datum::Datum<datum::Rvalue>;
+type LvalueDatum = datum::Datum<datum::Lvalue>;
+
 // Function context.  Every LLVM function we create will have one of
 // these.
 pub struct FunctionContext<'a> {
@@ -213,13 +249,15 @@ pub struct FunctionContext<'a> {
     // allocas, so that LLVM will coalesce them into a single alloca call.
     alloca_insert_pt: Cell<Option<ValueRef>>,
     llreturn: Cell<Option<BasicBlockRef>>,
+
     // The 'self' value currently in use in this function, if there
     // is one.
     //
     // NB: This is the type of the self *variable*, not the self *type*. The
     // self type is set only for default methods, while the self variable is
     // set for all methods.
-    llself: Cell<Option<datum::Datum>>,
+    llself: Cell<Option<LvalueDatum>>,
+
     // The a value alloca'd for calls to upcalls.rust_personality. Used when
     // outputting the resume instruction.
     personality: Cell<Option<ValueRef>>,
@@ -230,10 +268,12 @@ pub struct FunctionContext<'a> {
     caller_expects_out_pointer: bool,
 
     // Maps arguments to allocas created for them in llallocas.
-    llargs: RefCell<HashMap<ast::NodeId, datum::Datum>>,
+    llargs: RefCell<HashMap<ast::NodeId, LvalueDatum>>,
+
     // Maps the def_ids for local variables to the allocas created for
     // them in llallocas.
-    lllocals: RefCell<HashMap<ast::NodeId, datum::Datum>>,
+    lllocals: RefCell<HashMap<ast::NodeId, LvalueDatum>>,
+
     // Same as above, but for closure upvars
     llupvars: RefCell<HashMap<ast::NodeId, ValueRef>>,
 
@@ -253,14 +293,14 @@ pub struct FunctionContext<'a> {
     // The arena that blocks are allocated from.
     block_arena: TypedArena<Block<'a>>,
 
-    // The arena that scope info is allocated from.
-    scope_info_arena: TypedArena<ScopeInfo<'a>>,
-
     // This function's enclosing crate context.
     ccx: @CrateContext,
 
     // Used and maintained by the debuginfo module.
     debug_context: debuginfo::FunctionDebugContext,
+
+    // Cleanup scopes.
+    scopes: RefCell<~[cleanup::CleanupScope<'a>]>,
 }
 
 impl<'a> FunctionContext<'a> {
@@ -302,9 +342,55 @@ impl<'a> FunctionContext<'a> {
 
         self.llreturn.get().unwrap()
     }
+
+    pub fn new_block(&'a self,
+                     is_lpad: bool,
+                     name: &str,
+                     opt_node_id: Option<ast::NodeId>)
+                     -> &'a Block<'a> {
+        unsafe {
+            let llbb = name.with_c_str(|buf| {
+                    llvm::LLVMAppendBasicBlockInContext(self.ccx.llcx,
+                                                        self.llfn,
+                                                        buf)
+                });
+            Block::new(llbb, is_lpad, opt_node_id, self)
+        }
+    }
+
+    pub fn new_id_block(&'a self,
+                        name: &str,
+                        node_id: ast::NodeId)
+                        -> &'a Block<'a> {
+        self.new_block(false, name, Some(node_id))
+    }
+
+    pub fn new_temp_block(&'a self,
+                          name: &str)
+                          -> &'a Block<'a> {
+        self.new_block(false, name, None)
+    }
+
+    pub fn join_blocks(&'a self,
+                       id: ast::NodeId,
+                       in_cxs: &[&'a Block<'a>])
+                       -> &'a Block<'a> {
+        let out = self.new_id_block("join", id);
+        let mut reachable = false;
+        for bcx in in_cxs.iter() {
+            if !bcx.unreachable.get() {
+                build::Br(*bcx, out.llbb);
+                reachable = true;
+            }
+        }
+        if !reachable {
+            build::Unreachable(out);
+        }
+        return out;
+    }
 }
 
-pub fn warn_not_to_commit(ccx: &CrateContext, msg: &str) {
+pub fn warn_not_to_commit(ccx: &mut CrateContext, msg: &str) {
     if !ccx.do_not_commit_warning_issued.get() {
         ccx.do_not_commit_warning_issued.set(true);
         ccx.sess.warn(msg.to_str() + " -- do not commit like this!");
@@ -317,300 +403,6 @@ pub enum heap {
     heap_managed,
     heap_exchange,
     heap_exchange_closure
-}
-
-#[deriving(Clone, Eq)]
-pub enum cleantype {
-    normal_exit_only,
-    normal_exit_and_unwind
-}
-
-// Cleanup functions
-
-/// A cleanup function: a built-in destructor.
-pub trait CleanupFunction {
-    fn clean<'a>(&self, block: &'a Block<'a>) -> &'a Block<'a>;
-}
-
-/// A cleanup function that calls the "drop glue" (destructor function) on
-/// a datum.
-struct DatumDroppingCleanupFunction {
-    datum: datum::Datum
-}
-
-impl CleanupFunction for DatumDroppingCleanupFunction {
-    fn clean<'a>(&self, block: &'a Block<'a>) -> &'a Block<'a> {
-        self.datum.drop_val(block)
-    }
-}
-
-/// A cleanup function that frees some memory in the garbage-collected heap.
-pub struct GCHeapFreeingCleanupFunction {
-    ptr: ValueRef,
-}
-
-impl CleanupFunction for GCHeapFreeingCleanupFunction {
-    fn clean<'a>(&self, bcx: &'a Block<'a>) -> &'a Block<'a> {
-        glue::trans_free(bcx, self.ptr)
-    }
-}
-
-/// A cleanup function that frees some memory in the exchange heap.
-pub struct ExchangeHeapFreeingCleanupFunction {
-    ptr: ValueRef,
-}
-
-impl CleanupFunction for ExchangeHeapFreeingCleanupFunction {
-    fn clean<'a>(&self, bcx: &'a Block) -> &'a Block<'a> {
-        glue::trans_exchange_free(bcx, self.ptr)
-    }
-}
-
-pub enum cleanup {
-    Clean(@CleanupFunction, cleantype),
-    CleanTemp(ValueRef, @CleanupFunction, cleantype),
-}
-
-// Can't use deriving(Clone) because of the managed closure.
-impl Clone for cleanup {
-    fn clone(&self) -> cleanup {
-        match *self {
-            Clean(f, ct) => Clean(f, ct),
-            CleanTemp(v, f, ct) => CleanTemp(v, f, ct),
-        }
-    }
-}
-
-// Used to remember and reuse existing cleanup paths
-// target: none means the path ends in an resume instruction
-#[deriving(Clone)]
-pub struct cleanup_path {
-    target: Option<BasicBlockRef>,
-    size: uint,
-    dest: BasicBlockRef
-}
-
-pub fn shrink_scope_clean(scope_info: &ScopeInfo, size: uint) {
-    scope_info.landing_pad.set(None);
-    let new_cleanup_paths = {
-        let cleanup_paths = scope_info.cleanup_paths.borrow();
-        cleanup_paths.get()
-                     .iter()
-                     .take_while(|&cu| cu.size <= size)
-                     .map(|&x| x)
-                     .collect()
-    };
-    scope_info.cleanup_paths.set(new_cleanup_paths)
-}
-
-pub fn grow_scope_clean(scope_info: &ScopeInfo) {
-    scope_info.landing_pad.set(None);
-}
-
-pub fn cleanup_type(cx: ty::ctxt, ty: ty::t) -> cleantype {
-    if ty::type_needs_unwind_cleanup(cx, ty) {
-        normal_exit_and_unwind
-    } else {
-        normal_exit_only
-    }
-}
-
-pub fn add_clean(bcx: &Block, val: ValueRef, ty: ty::t) {
-    if !ty::type_needs_drop(bcx.tcx(), ty) { return; }
-
-    debug!("add_clean({}, {}, {})", bcx.to_str(), bcx.val_to_str(val), ty.repr(bcx.tcx()));
-
-    let cleanup_type = cleanup_type(bcx.tcx(), ty);
-    in_scope_cx(bcx, None, |scope_info| {
-        {
-            let mut cleanups = scope_info.cleanups.borrow_mut();
-            cleanups.get().push(Clean(@DatumDroppingCleanupFunction {
-                datum: datum::Datum {
-                    val: val,
-                    ty: ty,
-                    mode: datum::ByRef(datum::ZeroMem)
-                }
-            } as @CleanupFunction,
-            cleanup_type));
-        }
-        grow_scope_clean(scope_info);
-    })
-}
-
-pub fn add_clean_temp_immediate(bcx: &Block, val: ValueRef, ty: ty::t) {
-    if !ty::type_needs_drop(bcx.tcx(), ty) { return; }
-
-    debug!("add_clean_temp_immediate({}, {}, {})",
-           bcx.to_str(), bcx.val_to_str(val),
-           ty.repr(bcx.tcx()));
-    let cleanup_type = cleanup_type(bcx.tcx(), ty);
-    in_scope_cx(bcx, None, |scope_info| {
-        {
-            let mut cleanups = scope_info.cleanups.borrow_mut();
-            cleanups.get().push(CleanTemp(val, @DatumDroppingCleanupFunction {
-                datum: datum::Datum {
-                    val: val,
-                    ty: ty,
-                    mode: datum::ByValue
-                }
-            } as @CleanupFunction,
-            cleanup_type));
-        }
-        grow_scope_clean(scope_info);
-    })
-}
-
-pub fn add_clean_temp_mem(bcx: &Block, val: ValueRef, t: ty::t) {
-    add_clean_temp_mem_in_scope_(bcx, None, val, t);
-}
-
-pub fn add_clean_temp_mem_in_scope(bcx: &Block,
-                                   scope_id: ast::NodeId,
-                                   val: ValueRef,
-                                   t: ty::t) {
-    add_clean_temp_mem_in_scope_(bcx, Some(scope_id), val, t);
-}
-
-pub fn add_clean_temp_mem_in_scope_(bcx: &Block, scope_id: Option<ast::NodeId>,
-                                    val: ValueRef, t: ty::t) {
-    if !ty::type_needs_drop(bcx.tcx(), t) { return; }
-    debug!("add_clean_temp_mem({}, {}, {})",
-           bcx.to_str(), bcx.val_to_str(val),
-           t.repr(bcx.tcx()));
-    let cleanup_type = cleanup_type(bcx.tcx(), t);
-    in_scope_cx(bcx, scope_id, |scope_info| {
-        {
-            let mut cleanups = scope_info.cleanups.borrow_mut();
-            cleanups.get().push(CleanTemp(val, @DatumDroppingCleanupFunction {
-                datum: datum::Datum {
-                    val: val,
-                    ty: t,
-                    mode: datum::ByRef(datum::RevokeClean)
-                }
-            } as @CleanupFunction,
-            cleanup_type));
-        }
-        grow_scope_clean(scope_info);
-    })
-}
-
-pub fn add_clean_free(cx: &Block, ptr: ValueRef, heap: heap) {
-    let free_fn = match heap {
-        heap_managed => {
-            @GCHeapFreeingCleanupFunction {
-                ptr: ptr,
-            } as @CleanupFunction
-        }
-        heap_exchange | heap_exchange_closure => {
-            @ExchangeHeapFreeingCleanupFunction {
-                ptr: ptr,
-            } as @CleanupFunction
-        }
-    };
-    in_scope_cx(cx, None, |scope_info| {
-        {
-            let mut cleanups = scope_info.cleanups.borrow_mut();
-            cleanups.get().push(CleanTemp(ptr,
-                                           free_fn,
-                                           normal_exit_and_unwind));
-        }
-        grow_scope_clean(scope_info);
-    })
-}
-
-// Note that this only works for temporaries. We should, at some point, move
-// to a system where we can also cancel the cleanup on local variables, but
-// this will be more involved. For now, we simply zero out the local, and the
-// drop glue checks whether it is zero.
-pub fn revoke_clean(cx: &Block, val: ValueRef) {
-    in_scope_cx(cx, None, |scope_info| {
-        let cleanup_pos = {
-            let mut cleanups = scope_info.cleanups.borrow_mut();
-            debug!("revoke_clean({}, {}) revoking {:?} from {:?}",
-                   cx.to_str(), cx.val_to_str(val), val, cleanups.get());
-            cleanups.get().iter().position(|cu| {
-                match *cu {
-                    CleanTemp(v, _, _) if v == val => true,
-                    _ => false
-                }
-            })
-        };
-        debug!("revoke_clean({}, {}) revoking {:?}",
-               cx.to_str(), cx.val_to_str(val), cleanup_pos);
-        for &i in cleanup_pos.iter() {
-            let new_cleanups = {
-                let cleanups = scope_info.cleanups.borrow();
-                vec::append(cleanups.get().slice(0u, i).to_owned(),
-                            cleanups.get().slice(i + 1u, cleanups.get()
-                                                                 .len()))
-            };
-            scope_info.cleanups.set(new_cleanups);
-            shrink_scope_clean(scope_info, i);
-        }
-    })
-}
-
-pub fn block_cleanups(bcx: &Block) -> ~[cleanup] {
-    match bcx.scope.get() {
-       None  => ~[],
-       Some(inf) => inf.cleanups.get(),
-    }
-}
-
-pub struct ScopeInfo<'a> {
-    parent: Option<&'a ScopeInfo<'a>>,
-    loop_break: Option<&'a Block<'a>>,
-    loop_label: Option<Name>,
-    // A list of functions that must be run at when leaving this
-    // block, cleaning up any variables that were introduced in the
-    // block.
-    cleanups: RefCell<~[cleanup]>,
-    // Existing cleanup paths that may be reused, indexed by destination and
-    // cleared when the set of cleanups changes.
-    cleanup_paths: RefCell<~[cleanup_path]>,
-    // Unwinding landing pad. Also cleared when cleanups change.
-    landing_pad: Cell<Option<BasicBlockRef>>,
-    // info about the AST node this scope originated from, if any
-    node_info: Option<NodeInfo>,
-}
-
-impl<'a> ScopeInfo<'a> {
-    pub fn empty_cleanups(&self) -> bool {
-        let cleanups = self.cleanups.borrow();
-        cleanups.get().is_empty()
-    }
-}
-
-pub trait get_node_info {
-    fn info(&self) -> Option<NodeInfo>;
-}
-
-impl get_node_info for ast::Expr {
-    fn info(&self) -> Option<NodeInfo> {
-        Some(NodeInfo {id: self.id,
-                       callee_id: self.get_callee_id(),
-                       span: self.span})
-    }
-}
-
-impl get_node_info for ast::Block {
-    fn info(&self) -> Option<NodeInfo> {
-        Some(NodeInfo {id: self.id,
-                       callee_id: None,
-                       span: self.span})
-    }
-}
-
-impl get_node_info for Option<@ast::Expr> {
-    fn info(&self) -> Option<NodeInfo> {
-        self.as_ref().and_then(|s| s.info())
-    }
-}
-
-pub struct NodeInfo {
-    id: ast::NodeId,
-    callee_id: Option<ast::NodeId>,
-    span: Span
 }
 
 // Basic block context.  We create a block context for each basic block
@@ -627,13 +419,14 @@ pub struct Block<'a> {
     llbb: BasicBlockRef,
     terminated: Cell<bool>,
     unreachable: Cell<bool>,
-    parent: Option<&'a Block<'a>>,
-    // The current scope within this basic block
-    scope: RefCell<Option<&'a ScopeInfo<'a>>>,
+
     // Is this block part of a landing pad?
     is_lpad: bool,
-    // info about the AST node this block originated from, if any
-    node_info: Option<NodeInfo>,
+
+    // AST node-id associated with this block, if any. Used for
+    // debugging purposes only.
+    opt_node_id: Option<ast::NodeId>,
+
     // The function context for the function to which this block is
     // attached.
     fcx: &'a FunctionContext<'a>,
@@ -642,20 +435,17 @@ pub struct Block<'a> {
 impl<'a> Block<'a> {
     pub fn new<'a>(
                llbb: BasicBlockRef,
-               parent: Option<&'a Block<'a>>,
                is_lpad: bool,
-               node_info: Option<NodeInfo>,
+               opt_node_id: Option<ast::NodeId>,
                fcx: &'a FunctionContext<'a>)
                -> &'a Block<'a> {
         fcx.block_arena.alloc(Block {
             llbb: llbb,
             terminated: Cell::new(false),
             unreachable: Cell::new(false),
-            parent: parent,
-            scope: RefCell::new(None),
             is_lpad: is_lpad,
-            node_info: node_info,
-            fcx: fcx,
+            opt_node_id: opt_node_id,
+            fcx: fcx
         })
     }
 
@@ -709,12 +499,8 @@ impl<'a> Block<'a> {
     }
 
     pub fn to_str(&self) -> ~str {
-        unsafe {
-            match self.node_info {
-                Some(node_info) => format!("[block {}]", node_info.id),
-                None => format!("[block {}]", transmute::<&Block, *Block>(self)),
-            }
-        }
+        let blk: *Block = self;
+        format!("[block {}]", blk)
     }
 }
 
@@ -742,48 +528,6 @@ pub fn val_ty(v: ValueRef) -> Type {
         Type::from_ref(llvm::LLVMTypeOf(v))
     }
 }
-
-pub fn in_scope_cx<'a>(
-                   cx: &'a Block<'a>,
-                   scope_id: Option<ast::NodeId>,
-                   f: |si: &'a ScopeInfo<'a>|) {
-    let mut cur = cx;
-    let mut cur_scope = cur.scope.get();
-    loop {
-        cur_scope = match cur_scope {
-            Some(inf) => match scope_id {
-                Some(wanted) => match inf.node_info {
-                    Some(NodeInfo { id: actual, .. }) if wanted == actual => {
-                        debug!("in_scope_cx: selected cur={} (cx={}) info={:?}",
-                               cur.to_str(), cx.to_str(), inf.node_info);
-                        f(inf);
-                        return;
-                    },
-                    _ => inf.parent,
-                },
-                None => {
-                    debug!("in_scope_cx: selected cur={} (cx={}) info={:?}",
-                           cur.to_str(), cx.to_str(), inf.node_info);
-                    f(inf);
-                    return;
-                }
-            },
-            None => {
-                cur = block_parent(cur);
-                cur.scope.get()
-            }
-        }
-    }
-}
-
-pub fn block_parent<'a>(cx: &'a Block<'a>) -> &'a Block<'a> {
-    match cx.parent {
-      Some(b) => b,
-      None    => cx.sess().bug(format!("block_parent called on root block {:?}",
-                                   cx))
-    }
-}
-
 
 // Let T be the content of a box @T.  tuplify_box_ty(t) returns the
 // representation of @T as a tuple (i.e., the ty::t version of what T_box()
@@ -1012,7 +756,7 @@ pub enum mono_param_id {
     mono_repr(uint /* size */,
               uint /* align */,
               MonoDataClass,
-              datum::DatumMode),
+              datum::RvalueMode),
 }
 
 #[deriving(Eq,IterBytes)]

@@ -42,12 +42,31 @@ impl<T> OptVec<T> {
                 v.push(t);
                 return;
             }
-            Empty => {}
+            Empty => {
+                *self = Vec(~[t]);
+            }
         }
+    }
 
-        // FIXME(#5074): flow insensitive means we can't move
-        // assignment inside `match`
-        *self = Vec(~[t]);
+    pub fn pop(&mut self) -> T {
+        match *self {
+            Vec(ref mut v) => v.pop(),
+            Empty => fail!("pop from empty opt_vec")
+        }
+    }
+
+    pub fn last<'a>(&'a self) -> &'a T {
+        match *self {
+            Vec(ref v) => v.last(),
+            Empty => fail!("last on empty opt_vec")
+        }
+    }
+
+    pub fn mut_last<'a>(&'a mut self) -> &'a mut T {
+        match *self {
+            Vec(ref mut v) => v.mut_last(),
+            Empty => fail!("mut_last on empty opt_vec")
+        }
     }
 
     pub fn map<U>(&self, op: |&T| -> U) -> OptVec<U> {
@@ -79,6 +98,16 @@ impl<T> OptVec<T> {
         match *self {
             Empty => 0,
             Vec(ref v) => v.len()
+        }
+    }
+
+    pub fn swap_remove(&mut self, index: uint) {
+        match *self {
+            Empty => { fail!("Index out of bounds"); }
+            Vec(ref mut v) => {
+                assert!(index < v.len());
+                v.swap_remove(index);
+            }
         }
     }
 
@@ -162,6 +191,16 @@ impl<'a, T> Iterator<&'a T> for OptVecIterator<'a, T> {
         match self.iter {
             Some(ref x) => x.size_hint(),
             None => (0, Some(0))
+        }
+    }
+}
+
+impl<'a, T> DoubleEndedIterator<&'a T> for OptVecIterator<'a, T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<&'a T> {
+        match self.iter {
+            Some(ref mut x) => x.next_back(),
+            None => None
         }
     }
 }

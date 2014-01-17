@@ -522,6 +522,17 @@ extern "C" char *LLVMTypeToString(LLVMTypeRef Type) {
     return strdup(os.str().data());
 }
 
+extern "C" char *LLVMValueToString(LLVMValueRef Value) {
+    std::string s;
+    llvm::raw_string_ostream os(s);
+    os << "(";
+    unwrap<llvm::Value>(Value)->getType()->print(os);
+    os << ":";
+    unwrap<llvm::Value>(Value)->print(os);
+    os << ")";
+    return strdup(os.str().data());
+}
+
 extern "C" bool
 LLVMRustLinkInExternalBitcode(LLVMModuleRef dst, char *bc, size_t len) {
     Module *Dst = unwrap(dst);
