@@ -70,7 +70,7 @@ fn shift_push() {
 }
 
 fn read_line() {
-    use std::io::buffered::BufferedReader;
+    use std::io::BufferedReader;
 
     let mut path = Path::new(env!("CFG_SRC_DIR"));
     path.push("src/test/bench/shootout-k-nucleotide.data");

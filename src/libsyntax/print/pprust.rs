@@ -32,7 +32,7 @@ use std::cell::RefCell;
 use std::char;
 use std::str;
 use std::io;
-use std::io::mem::MemWriter;
+use std::io::MemWriter;
 
 // The &mut State is stored here to prevent recursive type.
 pub enum AnnNode<'a,'b> {

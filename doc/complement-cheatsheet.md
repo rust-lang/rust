@@ -62,8 +62,8 @@ let reader : File = File::open(&path).unwrap_or_else(on_error);
 Use the [`lines`](http://static.rust-lang.org/doc/master/std/io/trait.Buffer.html#method.lines) method on a [`BufferedReader`](http://static.rust-lang.org/doc/master/std/io/buffered/struct.BufferedReader.html).
 
 ~~~
-use std::io::buffered::BufferedReader;
-# use std::io::mem::MemReader;
+use std::io::BufferedReader;
+# use std::io::MemReader;
 
 # let reader = MemReader::new(~[]);
 

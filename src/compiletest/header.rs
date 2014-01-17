@@ -107,8 +107,7 @@ pub fn is_test_ignored(config: &config, testfile: &Path) -> bool {
 }
 
 fn iter_header(testfile: &Path, it: |&str| -> bool) -> bool {
-    use std::io::buffered::BufferedReader;
-    use std::io::File;
+    use std::io::{BufferedReader, File};
 
     let mut rdr = BufferedReader::new(File::open(testfile).unwrap());
     for ln in rdr.lines() {

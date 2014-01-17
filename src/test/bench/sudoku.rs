@@ -16,7 +16,7 @@ extern mod extra;
 
 use std::io;
 use std::io::stdio::StdReader;
-use std::io::buffered::BufferedReader;
+use std::io::BufferedReader;
 use std::os;
 use std::unstable::intrinsics::cttz16;
 use std::vec;

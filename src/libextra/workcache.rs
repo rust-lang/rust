@@ -17,8 +17,7 @@ use arc::{Arc,RWArc};
 use treemap::TreeMap;
 use std::str;
 use std::io;
-use std::io::File;
-use std::io::mem::MemWriter;
+use std::io::{File, MemWriter};
 
 /**
 *
