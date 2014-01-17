@@ -570,14 +570,13 @@ impl CoherenceChecker {
 
                         // Make sure that this type precisely names a nominal
                         // type.
-                        let items = self.crate_context.tcx.items.borrow();
-                        match items.get().find(&def_id.node) {
+                        match self.crate_context.tcx.items.find(def_id.node) {
                             None => {
                                 self.crate_context.tcx.sess.span_bug(
                                     original_type.span,
                                     "resolve didn't resolve this type?!");
                             }
-                            Some(&NodeItem(item, _)) => {
+                            Some(NodeItem(item, _)) => {
                                 match item.node {
                                     ItemStruct(..) | ItemEnum(..) => true,
                                     _ => false,
@@ -628,9 +627,8 @@ impl CoherenceChecker {
 
     pub fn span_of_impl(&self, implementation: @Impl) -> Span {
         assert_eq!(implementation.did.crate, LOCAL_CRATE);
-        let items = self.crate_context.tcx.items.borrow();
-        match items.get().find(&implementation.did.node) {
-            Some(&NodeItem(item, _)) => {
+        match self.crate_context.tcx.items.find(implementation.did.node) {
+            Some(NodeItem(item, _)) => {
                 return item.span;
             }
             _ => {
@@ -734,9 +732,8 @@ impl CoherenceChecker {
                     // Destructors only work on nominal types.
                     if impl_info.did.crate == ast::LOCAL_CRATE {
                         {
-                            let items = tcx.items.borrow();
-                            match items.get().find(&impl_info.did.node) {
-                                Some(&ast_map::NodeItem(item, _)) => {
+                            match tcx.items.find(impl_info.did.node) {
+                                Some(ast_map::NodeItem(item, _)) => {
                                     tcx.sess.span_err((*item).span,
                                                       "the Drop trait may \
                                                        only be implemented \

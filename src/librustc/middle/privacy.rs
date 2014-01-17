@@ -431,8 +431,7 @@ impl<'a> PrivacyVisitor<'a> {
         let mut closest_private_id = did.node;
         loop {
             debug!("privacy - examining {}", self.nodestr(closest_private_id));
-            let items = self.tcx.items.borrow();
-            let vis = match items.get().find(&closest_private_id) {
+            let vis = match self.tcx.items.find(closest_private_id) {
                 // If this item is a method, then we know for sure that it's an
                 // actual method and not a static method. The reason for this is
                 // that these cases are only hit in the ExprMethodCall
@@ -449,22 +448,22 @@ impl<'a> PrivacyVisitor<'a> {
                 // invocation.
                 // FIXME(#10573) is this the right behavior? Why not consider
                 //               where the method was defined?
-                Some(&ast_map::NodeMethod(ref m, imp, _)) => {
+                Some(ast_map::NodeMethod(ref m, imp, _)) => {
                     match ty::impl_trait_ref(self.tcx, imp) {
                         Some(..) => return Allowable,
                         _ if m.vis == ast::Public => return Allowable,
                         _ => m.vis
                     }
                 }
-                Some(&ast_map::NodeTraitMethod(..)) => {
+                Some(ast_map::NodeTraitMethod(..)) => {
                     return Allowable;
                 }
 
                 // This is not a method call, extract the visibility as one
                 // would normally look at it
-                Some(&ast_map::NodeItem(it, _)) => it.vis,
-                Some(&ast_map::NodeForeignItem(_, _, v, _)) => v,
-                Some(&ast_map::NodeVariant(ref v, _, _)) => {
+                Some(ast_map::NodeItem(it, _)) => it.vis,
+                Some(ast_map::NodeForeignItem(_, _, v, _)) => v,
+                Some(ast_map::NodeVariant(ref v, _, _)) => {
                     // sadly enum variants still inherit visibility, so only
                     // break out of this is explicitly private
                     if v.node.vis == ast::Private { break }
@@ -538,9 +537,8 @@ impl<'a> PrivacyVisitor<'a> {
                     self.tcx.sess.span_err(span, format!("{} is inaccessible",
                                                          msg));
                 }
-                let items = self.tcx.items.borrow();
-                match items.get().find(&id) {
-                    Some(&ast_map::NodeItem(item, _)) => {
+                match self.tcx.items.find(id) {
+                    Some(ast_map::NodeItem(item, _)) => {
                         let desc = match item.node {
                             ast::ItemMod(..) => "module",
                             ast::ItemTrait(..) => "trait",

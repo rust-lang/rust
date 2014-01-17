@@ -21,8 +21,9 @@ use parse::token::special_idents;
 use print::pprust;
 use util::small_vector::SmallVector;
 
+use std::logging;
 use std::cell::RefCell;
-use std::hashmap::HashMap;
+use extra::smallintmap::SmallIntMap;
 
 #[deriving(Clone, Eq)]
 pub enum PathElem {
@@ -193,7 +194,36 @@ impl Node {
     }
 }
 
-pub type Map = @RefCell<HashMap<NodeId, Node>>;
+pub struct Map {
+    /// NodeIds are sequential integers from 0, so we can be
+    /// super-compact by storing them in a vector. Not everything with
+    /// a NodeId is in the map, but empirically the occupancy is about
+    /// 75-80%, so there's not too much overhead (certainly less than
+    /// a hashmap, since they (at the time of writing) have a maximum
+    /// of 75% occupancy). (The additional overhead of the Option<>
+    /// inside the SmallIntMap could be removed by adding an extra
+    /// empty variant to Node and storing a vector here, but that was
+    /// found to not make much difference.)
+    ///
+    /// Also, indexing is pretty quick when you've got a vector and
+    /// plain old integers.
+    priv map: @RefCell<SmallIntMap<Node>>
+}
+
+impl Map {
+    /// Retrieve the Node corresponding to `id`, failing if it cannot
+    /// be found.
+    pub fn get(&self, id: ast::NodeId) -> Node {
+        let map = self.map.borrow();
+        *map.get().get(&(id as uint))
+    }
+    /// Retrieve the Node corresponding to `id`, returning None if
+    /// cannot be found.
+    pub fn find(&self, id: ast::NodeId) -> Option<Node> {
+        let map = self.map.borrow();
+        map.get().find(&(id as uint)).map(|&n| n)
+    }
+}
 
 pub trait FoldOps {
     fn new_id(&self, id: ast::NodeId) -> ast::NodeId {
@@ -213,8 +243,8 @@ pub struct Ctx<F> {
 
 impl<F> Ctx<F> {
     fn insert(&self, id: ast::NodeId, node: Node) {
-        let mut map = self.map.borrow_mut();
-        map.get().insert(id, node);
+        let mut map = self.map.map.borrow_mut();
+        map.get().insert(id as uint, node);
     }
 
     fn map_self(&self, m: @Method) {
@@ -375,12 +405,27 @@ impl<F: FoldOps> Folder for Ctx<F> {
 pub fn map_crate<F: 'static + FoldOps>(diag: @SpanHandler, c: Crate,
                                        fold_ops: F) -> (Crate, Map) {
     let mut cx = Ctx {
-        map: @RefCell::new(HashMap::new()),
+        map: Map { map: @RefCell::new(SmallIntMap::new()) },
         path: ~[],
         diag: diag,
         fold_ops: fold_ops
     };
-    (cx.fold_crate(c), cx.map)
+    let crate = cx.fold_crate(c);
+
+    if log_enabled!(logging::DEBUG) {
+        let map = cx.map.map.borrow();
+        // this only makes sense for ordered stores; note the
+        // enumerate to count the number of entries.
+        let (entries_less_1, (largest_id, _)) =
+            map.get().iter().enumerate().last().expect("AST map was empty after folding?");
+
+        let entries = entries_less_1 + 1;
+        let vector_length = largest_id + 1;
+        debug!("The AST map has {} entries with a maximum of {}: occupancy {:.1}%",
+              entries, vector_length, (entries as f64 / vector_length as f64) * 100.);
+    }
+
+    (crate, cx.map)
 }
 
 // Used for items loaded from external crate that are being inlined into this
@@ -430,12 +475,11 @@ pub fn map_decoded_item<F: 'static + FoldOps>(diag: @SpanHandler,
 }
 
 pub fn node_id_to_str(map: Map, id: NodeId, itr: @IdentInterner) -> ~str {
-    let map = map.borrow();
-    match map.get().find(&id) {
+    match map.find(id) {
       None => {
         format!("unknown node (id={})", id)
       }
-      Some(&NodeItem(item, path)) => {
+      Some(NodeItem(item, path)) => {
         let path_str = path_ident_to_str(path, item.ident, itr);
         let item_str = match item.node {
             ItemStatic(..) => ~"static",
@@ -451,43 +495,43 @@ pub fn node_id_to_str(map: Map, id: NodeId, itr: @IdentInterner) -> ~str {
         };
         format!("{} {} (id={})", item_str, path_str, id)
       }
-      Some(&NodeForeignItem(item, abi, _, path)) => {
+      Some(NodeForeignItem(item, abi, _, path)) => {
         format!("foreign item {} with abi {:?} (id={})",
              path_ident_to_str(path, item.ident, itr), abi, id)
       }
-      Some(&NodeMethod(m, _, path)) => {
+      Some(NodeMethod(m, _, path)) => {
         format!("method {} in {} (id={})",
              itr.get(m.ident.name), path_to_str(*path, itr), id)
       }
-      Some(&NodeTraitMethod(ref tm, _, path)) => {
+      Some(NodeTraitMethod(ref tm, _, path)) => {
         let m = ast_util::trait_method_to_ty_method(&**tm);
         format!("method {} in {} (id={})",
              itr.get(m.ident.name), path_to_str(*path, itr), id)
       }
-      Some(&NodeVariant(ref variant, _, path)) => {
+      Some(NodeVariant(ref variant, _, path)) => {
         format!("variant {} in {} (id={})",
              itr.get(variant.node.name.name), path_to_str(*path, itr), id)
       }
-      Some(&NodeExpr(expr)) => {
+      Some(NodeExpr(expr)) => {
         format!("expr {} (id={})", pprust::expr_to_str(expr, itr), id)
       }
-      Some(&NodeCalleeScope(expr)) => {
+      Some(NodeCalleeScope(expr)) => {
         format!("callee_scope {} (id={})", pprust::expr_to_str(expr, itr), id)
       }
-      Some(&NodeStmt(stmt)) => {
+      Some(NodeStmt(stmt)) => {
         format!("stmt {} (id={})",
              pprust::stmt_to_str(stmt, itr), id)
       }
-      Some(&NodeArg(pat)) => {
+      Some(NodeArg(pat)) => {
         format!("arg {} (id={})", pprust::pat_to_str(pat, itr), id)
       }
-      Some(&NodeLocal(ident, _)) => {
+      Some(NodeLocal(ident, _)) => {
         format!("local (id={}, name={})", id, itr.get(ident.name))
       }
-      Some(&NodeBlock(block)) => {
+      Some(NodeBlock(block)) => {
         format!("block {} (id={})", pprust::block_to_str(block, itr), id)
       }
-      Some(&NodeStructCtor(_, _, path)) => {
+      Some(NodeStructCtor(_, _, path)) => {
         format!("struct_ctor {} (id={})", path_to_str(*path, itr), id)
       }
     }
@@ -495,36 +539,34 @@ pub fn node_id_to_str(map: Map, id: NodeId, itr: @IdentInterner) -> ~str {
 
 pub fn node_item_query<Result>(items: Map, id: NodeId, query: |@Item| -> Result, error_msg: ~str)
                        -> Result {
-    let items = items.borrow();
-    match items.get().find(&id) {
-        Some(&NodeItem(it, _)) => query(it),
+    match items.find(id) {
+        Some(NodeItem(it, _)) => query(it),
         _ => fail!("{}", error_msg)
     }
 }
 
 pub fn node_span(items: Map, id: ast::NodeId) -> Span {
-    let items = items.borrow();
-    match items.get().find(&id) {
-        Some(&NodeItem(item, _)) => item.span,
-        Some(&NodeForeignItem(foreign_item, _, _, _)) => foreign_item.span,
-        Some(&NodeTraitMethod(trait_method, _, _)) => {
+    match items.find(id) {
+        Some(NodeItem(item, _)) => item.span,
+        Some(NodeForeignItem(foreign_item, _, _, _)) => foreign_item.span,
+        Some(NodeTraitMethod(trait_method, _, _)) => {
             match *trait_method {
                 Required(ref type_method) => type_method.span,
                 Provided(ref method) => method.span,
             }
         }
-        Some(&NodeMethod(method, _, _)) => method.span,
-        Some(&NodeVariant(variant, _, _)) => variant.span,
-        Some(&NodeExpr(expr)) => expr.span,
-        Some(&NodeStmt(stmt)) => stmt.span,
-        Some(&NodeArg(pat)) => pat.span,
-        Some(&NodeLocal(_, pat)) => match pat {
+        Some(NodeMethod(method, _, _)) => method.span,
+        Some(NodeVariant(variant, _, _)) => variant.span,
+        Some(NodeExpr(expr)) => expr.span,
+        Some(NodeStmt(stmt)) => stmt.span,
+        Some(NodeArg(pat)) => pat.span,
+        Some(NodeLocal(_, pat)) => match pat {
             Some(pat) => pat.span,
             None => fail!("node_span: cannot get span from NodeLocal (likely `self`)")
         },
-        Some(&NodeBlock(block)) => block.span,
-        Some(&NodeStructCtor(_, item, _)) => item.span,
-        Some(&NodeCalleeScope(expr)) => expr.span,
+        Some(NodeBlock(block)) => block.span,
+        Some(NodeStructCtor(_, item, _)) => item.span,
+        Some(NodeCalleeScope(expr)) => expr.span,
         None => fail!("node_span: could not find id {}", id),
     }
 }
