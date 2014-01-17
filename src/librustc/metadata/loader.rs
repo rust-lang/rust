@@ -17,7 +17,6 @@ use metadata::cstore::{MetadataBlob, MetadataVec, MetadataArchive};
 use metadata::decoder;
 use metadata::encoder;
 use metadata::filesearch::{FileMatches, FileDoesntMatch};
-use metadata::filesearch;
 use syntax::codemap::Span;
 use syntax::diagnostic::SpanHandler;
 use syntax::parse::token::IdentInterner;
@@ -89,7 +88,7 @@ impl Context {
         let rlib_prefix = format!("lib{}-", crate_name);
 
         let mut matches = ~[];
-        filesearch::search(filesearch, |path| {
+        filesearch.search(|path| {
             match path.filename_str() {
                 None => FileDoesntMatch,
                 Some(file) => {

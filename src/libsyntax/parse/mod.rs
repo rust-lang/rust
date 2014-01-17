@@ -418,7 +418,7 @@ mod test {
 
     #[test] fn string_to_tts_1 () {
         let tts = string_to_tts(@"fn a (b : int) { b; }");
-        assert_eq!(to_json_str(@tts),
+        assert_eq!(to_json_str(&tts),
         ~"[\
     {\
         \"variant\":\"TTTok\",\

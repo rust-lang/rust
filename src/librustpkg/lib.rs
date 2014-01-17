@@ -107,13 +107,13 @@ impl<'a> PkgScript<'a> {
         // Build the rustc session data structures to pass
         // to the compiler
         debug!("pkgscript parse: {}", sysroot.display());
-        let options = @session::options {
+        let options = @session::Options {
             binary: binary,
             maybe_sysroot: Some(@sysroot),
             outputs: ~[session::OutputExecutable],
             .. (*session::basic_options()).clone()
         };
-        let input = driver::file_input(script.clone());
+        let input = driver::FileInput(script.clone());
         let sess = driver::build_session(options,
                                          @diagnostic::DefaultEmitter as
                                             @diagnostic::Emitter);
@@ -146,7 +146,7 @@ impl<'a> PkgScript<'a> {
         let (crate, ast_map) = self.crate_and_map.take_unwrap();
         let crate = util::ready_crate(sess, crate);
         debug!("Building output filenames with script name {}",
-               driver::source_name(&driver::file_input(self.input.clone())));
+               driver::source_name(&driver::FileInput(self.input.clone())));
         let exe = self.build_dir.join("pkg" + util::exe_suffix());
         util::compile_crate_from_input(&self.input,
                                        exec,

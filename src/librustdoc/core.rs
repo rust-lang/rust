@@ -42,15 +42,15 @@ pub struct CrateAnalysis {
 fn get_ast_and_resolve(cpath: &Path,
                        libs: HashSet<Path>, cfgs: ~[~str]) -> (DocContext, CrateAnalysis) {
     use syntax::codemap::dummy_spanned;
-    use rustc::driver::driver::{file_input, build_configuration,
+    use rustc::driver::driver::{FileInput, build_configuration,
                                 phase_1_parse_input,
                                 phase_2_configure_and_expand,
                                 phase_3_run_analysis_passes};
 
     let parsesess = parse::new_parse_sess(None);
-    let input = file_input(cpath.clone());
+    let input = FileInput(cpath.clone());
 
-    let sessopts = @driver::session::options {
+    let sessopts = @driver::session::Options {
         binary: ~"rustdoc",
         maybe_sysroot: Some(@os::self_exe_path().unwrap().dir_path()),
         addl_lib_search_paths: @RefCell::new(libs),

@@ -872,9 +872,11 @@ pub fn marksof(ctxt: SyntaxContext, stopname: Name, table: &SCTable) -> ~[Mrk] {
             table.get()[loopvar]
         };
         match table_entry {
-            EmptyCtxt => {return result;},
-            Mark(mark,tl) => {
-                xorPush(&mut result,mark);
+            EmptyCtxt => {
+                return result;
+            },
+            Mark(mark, tl) => {
+                xorPush(&mut result, mark);
                 loopvar = tl;
             },
             Rename(_,name,tl) => {
@@ -980,20 +982,20 @@ mod test {
 
     #[test] fn xorpush_test () {
         let mut s = ~[];
-        xorPush(&mut s,14);
-        assert_eq!(s.clone(),~[14]);
-        xorPush(&mut s,14);
-        assert_eq!(s.clone(),~[]);
-        xorPush(&mut s,14);
-        assert_eq!(s.clone(),~[14]);
-        xorPush(&mut s,15);
-        assert_eq!(s.clone(),~[14,15]);
-        xorPush (&mut s,16);
-        assert_eq!(s.clone(),~[14,15,16]);
-        xorPush (&mut s,16);
-        assert_eq!(s.clone(),~[14,15]);
-        xorPush (&mut s,15);
-        assert_eq!(s.clone(),~[14]);
+        xorPush(&mut s, 14);
+        assert_eq!(s.clone(), ~[14]);
+        xorPush(&mut s, 14);
+        assert_eq!(s.clone(), ~[]);
+        xorPush(&mut s, 14);
+        assert_eq!(s.clone(), ~[14]);
+        xorPush(&mut s, 15);
+        assert_eq!(s.clone(), ~[14, 15]);
+        xorPush(&mut s, 16);
+        assert_eq!(s.clone(), ~[14, 15, 16]);
+        xorPush(&mut s, 16);
+        assert_eq!(s.clone(), ~[14, 15]);
+        xorPush(&mut s, 15);
+        assert_eq!(s.clone(), ~[14]);
     }
 
     fn id(n: Name, s: SyntaxContext) -> Ident {
