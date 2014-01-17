@@ -637,6 +637,7 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor,
          *
          *     P& = ref X
          *        | StructName { ..., P&, ... }
+         *        | VariantName(..., P&, ...)
          *        | [ ..., P&, ... ]
          *        | ( ..., P&, ... )
          *        | ~P&
@@ -656,6 +657,7 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor,
                 pats3.iter().any(|&p| is_binding_pat(p))
             }
 
+            ast::PatEnum(_, Some(ref subpats)) |
             ast::PatTup(ref subpats) => {
                 subpats.iter().any(|&p| is_binding_pat(p))
             }
