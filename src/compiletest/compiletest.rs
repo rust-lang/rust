@@ -73,6 +73,7 @@ pub fn parse_config(args: ~[~str]) -> config {
                  "percent change in metrics to consider noise", "N"),
           optflag("", "jit", "run tests under the JIT"),
           optopt("", "target", "the target to build for", "TARGET"),
+          optopt("", "host", "the host to build for", "HOST"),
           optopt("", "adb-path", "path to the android debugger", "PATH"),
           optopt("", "adb-test-dir", "path to tests for the android debugger", "PATH"),
           optopt("", "test-shard", "run shard A, of B shards, worth of the testsuite", "A.B"),
@@ -134,6 +135,7 @@ pub fn parse_config(args: ~[~str]) -> config {
         rustcflags: matches.opt_str("rustcflags"),
         jit: matches.opt_present("jit"),
         target: opt_str2(matches.opt_str("target")).to_str(),
+        host: opt_str2(matches.opt_str("host")).to_str(),
         adb_path: opt_str2(matches.opt_str("adb-path")).to_str(),
         adb_test_dir:
             opt_str2(matches.opt_str("adb-test-dir")).to_str(),
@@ -167,6 +169,7 @@ pub fn log_config(config: &config) {
     logv(c, format!("rustcflags: {}", opt_str(&config.rustcflags)));
     logv(c, format!("jit: {}", config.jit));
     logv(c, format!("target: {}", config.target));
+    logv(c, format!("host: {}", config.host));
     logv(c, format!("adb_path: {}", config.adb_path));
     logv(c, format!("adb_test_dir: {}", config.adb_test_dir));
     logv(c, format!("adb_device_status: {}", config.adb_device_status));

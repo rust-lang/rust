@@ -691,8 +691,9 @@ fn compose_and_run_compiler(
 
     for rel_ab in props.aux_builds.iter() {
         let abs_ab = config.aux_base.join(rel_ab.as_slice());
+        let aux_props = load_props(&abs_ab);
         let aux_args =
-            make_compile_args(config, props, ~[~"--lib"] + extra_link_args,
+            make_compile_args(config, &aux_props, ~[~"--lib"] + extra_link_args,
                               |a,b| make_lib_name(a, b, testfile), &abs_ab);
         let auxres = compose_and_run(config, &abs_ab, aux_args, ~[],
                                      config.compile_lib_path, None);
@@ -738,10 +739,16 @@ fn make_compile_args(config: &config,
                      testfile: &Path)
                      -> ProcArgs {
     let xform_file = xform(config, testfile);
+    let target = if props.force_host {
+        config.host.as_slice()
+    } else {
+        config.target.as_slice()
+    };
     // FIXME (#9639): This needs to handle non-utf8 paths
     let mut args = ~[testfile.as_str().unwrap().to_owned(),
                      ~"-o", xform_file.as_str().unwrap().to_owned(),
-                     ~"-L", config.build_base.as_str().unwrap().to_owned()]
+                     ~"-L", config.build_base.as_str().unwrap().to_owned(),
+                     ~"--target=" + target]
         + extras;
     args.push_all_move(split_maybe_args(&config.rustcflags));
     args.push_all_move(split_maybe_args(&props.compile_flags));
