@@ -806,7 +806,9 @@ path_glob : ident [ "::" path_glob ] ?
 
 A _use declaration_ creates one or more local name bindings synonymous
 with some other [path](#paths).
-Usually a `use` declaration is used to shorten the path required to refer to a module item.
+Usually a `use` declaration is used to shorten the path required to refer to a
+module item. These declarations may appear at the top of [modules](#modules) and
+[blocks](#blocks).
 
 *Note*: Unlike in many languages,
 `use` declarations in Rust do *not* declare linkage dependency with external crates.
@@ -2318,13 +2320,23 @@ let base = Point3d {x: 1, y: 2, z: 3};
 Point3d {y: 0, z: 10, .. base};
 ~~~~
 
-### Record expressions
+### Block expressions
 
 ~~~~ {.ebnf .gram}
-rec_expr : '{' ident ':' expr
-               [ ',' ident ':' expr ] *
-               [ ".." expr ] '}'
+block_expr : '{' [ view_item ] *
+                 [ stmt ';' | item ] *
+                 [ expr ] '}'
 ~~~~
+
+A _block expression_ is similar to a module in terms of the declarations that
+are possible. Each block conceptually introduces a new namespace scope. View
+items can bring new names into scopes and declared items are in scope for only
+the block itself.
+
+A block will execute each statement sequentially, and then execute the
+expression (if given). If the final expression is omitted, the type and return
+value of the block are `()`, but if it is provided, the type and return value
+of the block are that of the expression itself.
 
 ### Method-call expressions
 
