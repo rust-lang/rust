@@ -1750,32 +1750,32 @@ macro_rules! def_type_content_sets(
 
 def_type_content_sets!(
     mod TC {
-        None                                = 0b0000__00000000__0000,
+        None                                = 0b00000000__00000000__0000,
 
         // Things that are interior to the value (first nibble):
-        InteriorUnsized                     = 0b0000__00000000__0001,
-        // InteriorAll                         = 0b0000__00000000__1111,
+        InteriorUnsized                     = 0b00000000__00000000__0001,
+        // InteriorAll                         = 0b000000000__00000000__1111,
 
         // Things that are owned by the value (second and third nibbles):
-        OwnsOwned                           = 0b0000__00000001__0000,
-        OwnsDtor                            = 0b0000__00000010__0000,
-        OwnsAtManaged /* see [1] below */   = 0b0000__00000100__0000,
-        OwnsAffine                          = 0b0000__00001000__0000,
-        OwnsAll                             = 0b0000__11111111__0000,
+        OwnsOwned                           = 0b00000000__00000001__0000,
+        OwnsDtor                            = 0b00000000__00000010__0000,
+        OwnsAtManaged /* see [1] below */   = 0b00000000__00000100__0000,
+        OwnsAffine                          = 0b00000000__00001000__0000,
+        OwnsAll                             = 0b00000000__11111111__0000,
 
-        // Things that are reachable by the value in any way (fourth nibble):
-        ReachesNonsendAnnot                 = 0b0001__00000000__0000,
-        ReachesBorrowed                     = 0b0010__00000000__0000,
-        // ReachesAtManaged /* see [1] below */ = 0b0100__00000000__0000,
-        ReachesNewManaged                   = 0b0100__00000000__0000,
-        ReachesMutable                      = 0b1000__00000000__0000,
-        ReachesAll                          = 0b1111__00000000__0000,
+        // Things that are reachable by the value in any way :
+        ReachesNonsendAnnot                 = 0b00000001__00000000__0000,
+        ReachesBorrowed                     = 0b00000010__00000000__0000,
+        // ReachesAtManaged /* see [1] below */ = 0b00000100__00000000__0000,
+        ReachesMutable                      = 0b00001000__00000000__0000,
+        ReachesNewManaged                   = 0b00010000__00000000__0000,
+        ReachesAll                          = 0b11111111__00000000__0000,
 
         // Things that cause values to *move* rather than *copy*
-        Moves                               = 0b0000__00001011__0000,
+        Moves                               = 0b00000000__00001011__0000,
 
         // Things that mean drop glue is necessary
-        NeedsDrop                           = 0b0000__00000111__0000,
+        NeedsDrop                           = 0b00000000__00000111__0000,
 
         // Things that prevent values from being sent
         //
@@ -1784,29 +1784,29 @@ def_type_content_sets!(
         //       both ReachesManaged and OwnsManaged so that when
         //       a parameter has a bound T:Send, we are able to deduce
         //       that it neither reaches nor owns a managed pointer.
-        Nonsendable                         = 0b0111__00000100__0000,
+        Nonsendable                         = 0b00010111__00000100__0000,
 
         // Things that prevent values from being considered freezable
-        Nonfreezable                        = 0b1000__00000000__0000,
+        Nonfreezable                        = 0b00001000__00000000__0000,
 
         // Things that prevent values from being considered 'static
-        Nonstatic                           = 0b0010__00000000__0000,
+        Nonstatic                           = 0b00000010__00000000__0000,
 
         // Things that prevent values from being considered sized
-        Nonsized                            = 0b0000__00000000__0001,
+        Nonsized                            = 0b00000000__00000000__0001,
 
         // Things that make values considered not POD (same as `Moves`)
-        Nonpod                              = 0b0000__00001111__0000,
+        Nonpod                              = 0b00000000__00001111__0000,
 
         // Bits to set when a managed value is encountered
         //
         // [1] Do not set the bits TC::OwnsManaged or
         //     TC::ReachesManaged directly, instead reference
         //     TC::Managed to set them both at once.
-        AtManaged                             = 0b0100__00000100__0000,
+        AtManaged                           = 0b00000100__00000100__0000,
 
         // All bits
-        All                                 = 0b1111__11111111__1111
+        All                                 = 0b11111111__11111111__1111
     }
 )
 
