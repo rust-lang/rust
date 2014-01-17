@@ -406,7 +406,8 @@ mod test {
 
     #[test]
     fn test_read_char() {
-        let mut r = BufReader::new(bytes!("Việt"));
+        let b = bytes!("Việt");
+        let mut r = BufReader::new(b);
         assert_eq!(r.read_char(), Some('V'));
         assert_eq!(r.read_char(), Some('i'));
         assert_eq!(r.read_char(), Some('ệ'));
@@ -416,7 +417,8 @@ mod test {
 
     #[test]
     fn test_read_bad_char() {
-        let mut r = BufReader::new(bytes!(0x80));
+        let b = bytes!(0x80);
+        let mut r = BufReader::new(b);
         assert_eq!(r.read_char(), None);
     }
 

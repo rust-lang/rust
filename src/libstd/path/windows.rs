@@ -1079,7 +1079,10 @@ mod tests {
 
     macro_rules! b(
         ($($arg:expr),+) => (
-            bytes!($($arg),+)
+            {
+                static the_bytes: &'static [u8] = bytes!($($arg),+);
+                the_bytes
+            }
         )
     )
 
@@ -1377,20 +1380,23 @@ mod tests {
         macro_rules! t(
             (s: $path:expr, $op:ident, $exp:expr) => (
                 {
-                    let path = Path::new($path);
+                    let path = $path;
+                    let path = Path::new(path);
                     assert_eq!(path.$op(), Some($exp));
                 }
             );
             (s: $path:expr, $op:ident, $exp:expr, opt) => (
                 {
-                    let path = Path::new($path);
+                    let path = $path;
+                    let path = Path::new(path);
                     let left = path.$op();
                     assert_eq!(left, $exp);
                 }
             );
             (v: $path:expr, $op:ident, $exp:expr) => (
                 {
-                    let path = Path::new($path);
+                    let path = $path;
+                    let path = Path::new(path);
                     assert_eq!(path.$op(), $exp);
                 }
             )

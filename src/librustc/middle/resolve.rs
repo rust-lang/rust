@@ -2439,7 +2439,7 @@ impl Resolver {
         match type_result {
             BoundResult(target_module, name_bindings) => {
                 debug!("(resolving single import) found type target: {:?}",
-                        name_bindings.type_def.get().unwrap().type_def);
+                       {name_bindings.type_def.get().unwrap().type_def});
                 import_resolution.type_target.set(
                     Some(Target::new(target_module, name_bindings)));
                 import_resolution.type_id.set(directive.id);

@@ -16,19 +16,17 @@
 
 
 use middle::borrowck::{RootInfo, root_map_key};
-use middle::trans::base::*;
+use middle::trans::cleanup;
 use middle::trans::common::*;
 use middle::trans::datum::*;
 use syntax::codemap::Span;
 use syntax::ast;
 
-pub fn root_and_write_guard<'a>(
-                            datum: &Datum,
-                            bcx: &'a Block<'a>,
-                            span: Span,
-                            expr_id: ast::NodeId,
-                            derefs: uint)
-                            -> &'a Block<'a> {
+pub fn root_and_write_guard<'a, K:KindOps>(datum: &Datum<K>,
+                                           bcx: &'a Block<'a>,
+                                           span: Span,
+                                           expr_id: ast::NodeId,
+                                           derefs: uint) -> &'a Block<'a> {
     let key = root_map_key { id: expr_id, derefs: derefs };
     debug!("write_guard::root_and_write_guard(key={:?})", key);
 
@@ -43,13 +41,11 @@ pub fn root_and_write_guard<'a>(
     }
 }
 
-fn root<'a>(
-        datum: &Datum,
-        bcx: &'a Block<'a>,
-        _: Span,
-        root_key: root_map_key,
-        root_info: RootInfo)
-        -> &'a Block<'a> {
+fn root<'a, K:KindOps>(datum: &Datum<K>,
+                       bcx: &'a Block<'a>,
+                       _span: Span,
+                       root_key: root_map_key,
+                       root_info: RootInfo) -> &'a Block<'a> {
     //! In some cases, borrowck will decide that an @T/@[]/@str
     //! value must be rooted for the program to be safe.  In that
     //! case, we will call this function, which will stash a copy
@@ -58,17 +54,12 @@ fn root<'a>(
     debug!("write_guard::root(root_key={:?}, root_info={:?}, datum={:?})",
            root_key, root_info, datum.to_str(bcx.ccx()));
 
-    // First, root the datum. Note that we must zero this value,
+    // Root the datum. Note that we must zero this value,
     // because sometimes we root on one path but not another.
     // See e.g. #4904.
-    let scratch = scratch_datum(bcx, datum.ty, "__write_guard", true);
-    datum.copy_to_datum(bcx, INIT, scratch);
-    let cleanup_bcx = find_bcx_for_scope(bcx, root_info.scope);
-    add_clean_temp_mem_in_scope(cleanup_bcx,
-                                root_info.scope,
-                                scratch.val,
-                                scratch.ty);
-
-    bcx
+    lvalue_scratch_datum(
+        bcx, datum.ty, "__write_guard", true,
+        cleanup::AstScope(root_info.scope), (),
+        |(), bcx, llval| datum.shallow_copy_and_take(bcx, llval)).bcx
 }
 

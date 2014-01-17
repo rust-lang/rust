@@ -27,6 +27,8 @@ use middle::trans::base;
 use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::callee;
+use middle::trans::cleanup;
+use middle::trans::cleanup::CleanupMethods;
 use middle::trans::common;
 use middle::trans::common::*;
 use middle::trans::datum::*;
@@ -60,11 +62,10 @@ pub struct FnData {
 pub struct MethodData {
     llfn: ValueRef,
     llself: ValueRef,
-    temp_cleanup: Option<ValueRef>
 }
 
 pub enum CalleeData {
-    Closure(Datum),
+    Closure(Datum<Lvalue>),
     Fn(FnData),
     Method(MethodData)
 }
@@ -74,7 +75,7 @@ pub struct Callee<'a> {
     data: CalleeData
 }
 
-pub fn trans<'a>(bcx: &'a Block<'a>, expr: &ast::Expr) -> Callee<'a> {
+fn trans<'a>(bcx: &'a Block<'a>, expr: &ast::Expr) -> Callee<'a> {
     let _icx = push_ctxt("trans_callee");
     debug!("callee::trans(expr={})", expr.repr(bcx.tcx()));
 
@@ -90,13 +91,15 @@ pub fn trans<'a>(bcx: &'a Block<'a>, expr: &ast::Expr) -> Callee<'a> {
     return datum_callee(bcx, expr);
 
     fn datum_callee<'a>(bcx: &'a Block<'a>, expr: &ast::Expr) -> Callee<'a> {
-        let DatumBlock {bcx, datum} = expr::trans_to_datum(bcx, expr);
+        let DatumBlock {bcx: mut bcx, datum} = expr::trans(bcx, expr);
         match ty::get(datum.ty).sty {
             ty::ty_bare_fn(..) => {
-                let llval = datum.to_appropriate_llval(bcx);
+                let llval = datum.to_llscalarish(bcx);
                 return Callee {bcx: bcx, data: Fn(FnData {llfn: llval})};
             }
             ty::ty_closure(..) => {
+                let datum = unpack_datum!(
+                    bcx, datum.to_lvalue_datum(bcx, "callee", expr.id));
                 return Callee {bcx: bcx, data: Closure(datum)};
             }
             _ => {
@@ -458,10 +461,10 @@ pub fn trans_call<'a>(
                   -> &'a Block<'a> {
     let _icx = push_ctxt("trans_call");
     trans_call_inner(in_cx,
-                     call_ex.info(),
+                     Some(common::expr_info(call_ex)),
                      expr_ty(in_cx, f),
                      node_id_type(in_cx, id),
-                     |cx| trans(cx, f),
+                     |cx, _| trans(cx, f),
                      args,
                      Some(dest),
                      DontAutorefArg).bcx
@@ -481,10 +484,10 @@ pub fn trans_method_call<'a>(
            rcvr.repr(in_cx.tcx()));
     trans_call_inner(
         in_cx,
-        call_ex.info(),
+        Some(common::expr_info(call_ex)),
         node_id_type(in_cx, callee_id),
         expr_ty(in_cx, call_ex),
-        |cx| {
+        |cx, arg_cleanup_scope| {
             let origin_opt = {
                 let mut method_map = cx.ccx().maps.method_map.borrow_mut();
                 method_map.get().find_copy(&call_ex.id)
@@ -495,7 +498,11 @@ pub fn trans_method_call<'a>(
                            call_ex.repr(in_cx.tcx()),
                            origin.repr(in_cx.tcx()));
 
-                    meth::trans_method_callee(cx, callee_id, rcvr, origin)
+                    meth::trans_method_callee(cx,
+                                              callee_id,
+                                              rcvr,
+                                              origin,
+                                              arg_cleanup_scope)
                 }
                 None => {
                     cx.tcx().sess.span_bug(call_ex.span, "method call expr wasn't in method map")
@@ -523,7 +530,7 @@ pub fn trans_lang_call<'a>(
                              None,
                              fty,
                              rty,
-                             |bcx| {
+                             |bcx, _| {
                                 trans_fn_ref_with_vtables_to_callee(bcx,
                                                                     did,
                                                                     0,
@@ -551,8 +558,11 @@ pub fn trans_lang_call_with_type_params<'a>(
 
     let rty = ty::ty_fn_ret(fty);
     return callee::trans_call_inner(
-        bcx, None, fty, rty,
-        |bcx| {
+        bcx,
+        None,
+        fty,
+        rty,
+        |bcx, _| {
             let callee =
                 trans_fn_ref_with_vtables_to_callee(bcx, did, 0,
                                                     type_params,
@@ -577,11 +587,13 @@ pub fn trans_lang_call_with_type_params<'a>(
 }
 
 pub fn trans_call_inner<'a>(
-                        in_cx: &'a Block<'a>,
+                        bcx: &'a Block<'a>,
                         call_info: Option<NodeInfo>,
                         callee_ty: ty::t,
                         ret_ty: ty::t,
-                        get_callee: |&'a Block<'a>| -> Callee<'a>,
+                        get_callee: |bcx: &'a Block<'a>,
+                                     arg_cleanup_scope: cleanup::ScopeId|
+                                     -> Callee<'a>,
                         args: CallArgs,
                         dest: Option<expr::Dest>,
                         autoref_arg: AutorefArg)
@@ -593,171 +605,180 @@ pub fn trans_call_inner<'a>(
      * this into two functions seems like a good idea).
      *
      * In particular, for lang items, it is invoked with a dest of
-     * None, and
+     * None, and in that case the return value contains the result of
+     * the fn. The lang item must not return a structural type or else
+     * all heck breaks loose.
+     *
+     * For non-lang items, `dest` is always Some, and hence the result
+     * is written into memory somewhere. Nonetheless we return the
+     * actual return value of the function.
      */
 
+    // Introduce a temporary cleanup scope that will contain cleanups
+    // for the arguments while they are being evaluated. The purpose
+    // this cleanup is to ensure that, should a failure occur while
+    // evaluating argument N, the values for arguments 0...N-1 are all
+    // cleaned up. If no failure occurs, the values are handed off to
+    // the callee, and hence none of the cleanups in this temporary
+    // scope will ever execute.
+    let fcx = bcx.fcx;
+    let ccx = fcx.ccx;
+    let arg_cleanup_scope = fcx.push_custom_cleanup_scope();
 
-    base::with_scope_result(in_cx, call_info, "call", |cx| {
-        let callee = get_callee(cx);
-        let mut bcx = callee.bcx;
-        let ccx = cx.ccx();
+    let callee = get_callee(bcx, cleanup::CustomScope(arg_cleanup_scope));
+    let mut bcx = callee.bcx;
 
-        let (llfn, llenv) = unsafe {
-            match callee.data {
-                Fn(d) => {
-                    (d.llfn, llvm::LLVMGetUndef(Type::opaque_box(ccx).ptr_to().to_ref()))
-                }
-                Method(d) => {
-                    // Weird but true: we pass self in the *environment* slot!
-                    (d.llfn, d.llself)
-                }
-                Closure(d) => {
-                    // Closures are represented as (llfn, llclosure) pair:
-                    // load the requisite values out.
-                    let pair = d.to_ref_llval(bcx);
-                    let llfn = GEPi(bcx, pair, [0u, abi::fn_field_code]);
-                    let llfn = Load(bcx, llfn);
-                    let llenv = GEPi(bcx, pair, [0u, abi::fn_field_box]);
-                    let llenv = Load(bcx, llenv);
-                    (llfn, llenv)
-                }
+    let (llfn, llenv) = unsafe {
+        match callee.data {
+            Fn(d) => {
+                (d.llfn, llvm::LLVMGetUndef(Type::opaque_box(ccx).ptr_to().to_ref()))
             }
-        };
-
-        let abi = match ty::get(callee_ty).sty {
-            ty::ty_bare_fn(ref f) => f.abis,
-            _ => AbiSet::Rust()
-        };
-        let is_rust_fn =
-            abi.is_rust() ||
-            abi.is_intrinsic();
-
-        // Generate a location to store the result. If the user does
-        // not care about the result, just make a stack slot.
-        let opt_llretslot = match dest {
-            None => {
-                assert!(!type_of::return_uses_outptr(in_cx.ccx(), ret_ty));
-                None
+            Method(d) => {
+                // Weird but true: we pass self in the *environment* slot!
+                (d.llfn, d.llself)
             }
-            Some(expr::SaveIn(dst)) => Some(dst),
-            Some(expr::Ignore) => {
-                if !ty::type_is_voidish(in_cx.tcx(), ret_ty) {
-                    Some(alloc_ty(bcx, ret_ty, "__llret"))
-                } else {
-                    unsafe {
-                        Some(llvm::LLVMGetUndef(Type::nil().ptr_to().to_ref()))
-                    }
-                }
+            Closure(d) => {
+                // Closures are represented as (llfn, llclosure) pair:
+                // load the requisite values out.
+                let pair = d.to_llref();
+                let llfn = GEPi(bcx, pair, [0u, abi::fn_field_code]);
+                let llfn = Load(bcx, llfn);
+                let llenv = GEPi(bcx, pair, [0u, abi::fn_field_box]);
+                let llenv = Load(bcx, llenv);
+                (llfn, llenv)
             }
-        };
+        }
+    };
 
-        let mut llresult = unsafe {
-            llvm::LLVMGetUndef(Type::nil().ptr_to().to_ref())
-        };
+    let abi = match ty::get(callee_ty).sty {
+        ty::ty_bare_fn(ref f) => f.abis,
+        _ => AbiSet::Rust()
+    };
+    let is_rust_fn =
+        abi.is_rust() ||
+        abi.is_intrinsic();
 
-        // The code below invokes the function, using either the Rust
-        // conventions (if it is a rust fn) or the native conventions
-        // (otherwise).  The important part is that, when all is sad
-        // and done, either the return value of the function will have been
-        // written in opt_llretslot (if it is Some) or `llresult` will be
-        // set appropriately (otherwise).
-        if is_rust_fn {
-            let mut llargs = ~[];
-
-            // Push the out-pointer if we use an out-pointer for this
-            // return type, otherwise push "undef".
-            if type_of::return_uses_outptr(in_cx.ccx(), ret_ty) {
-                llargs.push(opt_llretslot.unwrap());
+    // Generate a location to store the result. If the user does
+    // not care about the result, just make a stack slot.
+    let opt_llretslot = match dest {
+        None => {
+            assert!(!type_of::return_uses_outptr(ccx, ret_ty));
+            None
+        }
+        Some(expr::SaveIn(dst)) => Some(dst),
+        Some(expr::Ignore) => {
+            if !type_is_zero_size(ccx, ret_ty) {
+                Some(alloc_ty(bcx, ret_ty, "__llret"))
+            } else {
+                let llty = type_of::type_of(ccx, ret_ty);
+                Some(C_undef(llty.ptr_to()))
             }
+        }
+    };
 
-            // Push the environment.
-            llargs.push(llenv);
+    let mut llresult = unsafe {
+        llvm::LLVMGetUndef(Type::nil().ptr_to().to_ref())
+    };
 
-            // Push the arguments.
-            bcx = trans_args(bcx, args, callee_ty,
-                             autoref_arg, &mut llargs);
+    // The code below invokes the function, using either the Rust
+    // conventions (if it is a rust fn) or the native conventions
+    // (otherwise).  The important part is that, when all is sad
+    // and done, either the return value of the function will have been
+    // written in opt_llretslot (if it is Some) or `llresult` will be
+    // set appropriately (otherwise).
+    if is_rust_fn {
+        let mut llargs = ~[];
 
-            // Now that the arguments have finished evaluating, we
-            // need to revoke the cleanup for the self argument
-            match callee.data {
-                Method(d) => {
-                    for &v in d.temp_cleanup.iter() {
-                        revoke_clean(bcx, v);
-                    }
-                }
-                _ => {}
-            }
+        // Push the out-pointer if we use an out-pointer for this
+        // return type, otherwise push "undef".
+        if type_of::return_uses_outptr(ccx, ret_ty) {
+            llargs.push(opt_llretslot.unwrap());
+        }
 
-            // A function pointer is called without the declaration available, so we have to apply
-            // any attributes with ABI implications directly to the call instruction. Right now, the
-            // only attribute we need to worry about is `sret`.
-            let mut attrs = ~[];
-            if type_of::return_uses_outptr(in_cx.ccx(), ret_ty) {
-                attrs.push((1, StructRetAttribute));
-            }
+        // Push the environment.
+        llargs.push(llenv);
 
-            // The `noalias` attribute on the return value is useful to a function ptr caller.
-            match ty::get(ret_ty).sty {
-                // `~` pointer return values never alias because ownership is transferred
-                ty::ty_uniq(..) |
+        // Push the arguments.
+        bcx = trans_args(bcx, args, callee_ty,
+                         autoref_arg, &mut llargs,
+                         cleanup::CustomScope(arg_cleanup_scope));
+
+        fcx.pop_custom_cleanup_scope(arg_cleanup_scope);
+
+        // A function pointer is called without the declaration
+        // available, so we have to apply any attributes with ABI
+        // implications directly to the call instruction. Right now,
+        // the only attribute we need to worry about is `sret`.
+        let mut attrs = ~[];
+        if type_of::return_uses_outptr(ccx, ret_ty) {
+            attrs.push((1, StructRetAttribute));
+        }
+
+        // The `noalias` attribute on the return value is useful to a
+        // function ptr caller.
+        match ty::get(ret_ty).sty {
+            // `~` pointer return values never alias because ownership
+            // is transferred
+            ty::ty_uniq(..) |
                 ty::ty_vec(_, ty::vstore_uniq) => {
-                    attrs.push((0, NoAliasAttribute));
+                attrs.push((0, NoAliasAttribute));
+            }
+            _ => ()
+        }
+
+        // Invoke the actual rust fn and update bcx/llresult.
+        let (llret, b) = base::invoke(bcx, llfn, llargs, attrs, call_info);
+        bcx = b;
+        llresult = llret;
+
+        // If the Rust convention for this type is return via
+        // the return value, copy it into llretslot.
+        match opt_llretslot {
+            Some(llretslot) => {
+                if !type_of::return_uses_outptr(bcx.ccx(), ret_ty) &&
+                    !type_is_zero_size(bcx.ccx(), ret_ty)
+                {
+                    Store(bcx, llret, llretslot);
                 }
-                _ => ()
             }
-
-            // Invoke the actual rust fn and update bcx/llresult.
-            let (llret, b) = base::invoke(bcx, llfn, llargs, attrs, call_info);
-            bcx = b;
-            llresult = llret;
-
-            // If the Rust convention for this type is return via
-            // the return value, copy it into llretslot.
-            match opt_llretslot {
-                Some(llretslot) => {
-                    if !type_of::return_uses_outptr(bcx.ccx(), ret_ty) &&
-                        !ty::type_is_voidish(bcx.tcx(), ret_ty)
-                    {
-                        Store(bcx, llret, llretslot);
-                    }
-                }
-                None => {}
-            }
-        } else {
-            // Lang items are the only case where dest is None, and
-            // they are always Rust fns.
-            assert!(dest.is_some());
-
-            let mut llargs = ~[];
-            bcx = trans_args(bcx, args, callee_ty,
-                             autoref_arg, &mut llargs);
-            let arg_tys = match args {
-                ArgExprs(a) => a.iter().map(|x| expr_ty(bcx, *x)).collect(),
-                ArgVals(_) => fail!("expected arg exprs.")
-            };
-            bcx = foreign::trans_native_call(bcx, callee_ty,
-                                             llfn, opt_llretslot.unwrap(), llargs, arg_tys);
+            None => {}
         }
+    } else {
+        // Lang items are the only case where dest is None, and
+        // they are always Rust fns.
+        assert!(dest.is_some());
 
-        // If the caller doesn't care about the result of this fn call,
-        // drop the temporary slot we made.
-        match dest {
-            None => {
-                assert!(!type_of::return_uses_outptr(bcx.ccx(), ret_ty));
-            }
-            Some(expr::Ignore) => {
-                // drop the value if it is not being saved.
-                bcx = glue::drop_ty(bcx, opt_llretslot.unwrap(), ret_ty);
-            }
-            Some(expr::SaveIn(_)) => { }
+        let mut llargs = ~[];
+        bcx = trans_args(bcx, args, callee_ty,
+                         autoref_arg, &mut llargs,
+                         cleanup::CustomScope(arg_cleanup_scope));
+        fcx.pop_custom_cleanup_scope(arg_cleanup_scope);
+        let arg_tys = match args {
+            ArgExprs(a) => a.iter().map(|x| expr_ty(bcx, *x)).collect(),
+            ArgVals(_) => fail!("expected arg exprs.")
+        };
+        bcx = foreign::trans_native_call(bcx, callee_ty,
+                                         llfn, opt_llretslot.unwrap(), llargs, arg_tys);
+    }
+
+    // If the caller doesn't care about the result of this fn call,
+    // drop the temporary slot we made.
+    match dest {
+        None => {
+            assert!(!type_of::return_uses_outptr(bcx.ccx(), ret_ty));
         }
-
-        if ty::type_is_bot(ret_ty) {
-            Unreachable(bcx);
+        Some(expr::Ignore) => {
+            // drop the value if it is not being saved.
+            bcx = glue::drop_ty(bcx, opt_llretslot.unwrap(), ret_ty);
         }
+        Some(expr::SaveIn(_)) => { }
+    }
 
-        rslt(bcx, llresult)
-    })
+    if ty::type_is_bot(ret_ty) {
+        Unreachable(bcx);
+    }
+
+    rslt(bcx, llresult)
 }
 
 pub enum CallArgs<'a> {
@@ -770,10 +791,11 @@ pub fn trans_args<'a>(
                   args: CallArgs,
                   fn_ty: ty::t,
                   autoref_arg: AutorefArg,
-                  llargs: &mut ~[ValueRef])
-                  -> &'a Block<'a> {
+                  llargs: &mut ~[ValueRef],
+                  arg_cleanup_scope: cleanup::ScopeId)
+                  -> &'a Block<'a>
+{
     let _icx = push_ctxt("trans_args");
-    let mut temp_cleanups = ~[];
     let arg_tys = ty::ty_fn_args(fn_ty);
     let variadic = ty::fn_is_variadic(fn_ty);
 
@@ -796,7 +818,7 @@ pub fn trans_args<'a>(
                 trans_arg_expr(bcx,
                                arg_ty,
                                *arg_expr,
-                               &mut temp_cleanups,
+                               arg_cleanup_scope,
                                autoref_arg)
             });
             llargs.push(arg_val);
@@ -807,13 +829,6 @@ pub fn trans_args<'a>(
       }
     }
 
-    // now that all arguments have been successfully built, we can revoke any
-    // temporary cleanups, as they are only needed if argument construction
-    // should fail (for example, cleanup of copy mode args).
-    for c in temp_cleanups.iter() {
-        revoke_clean(bcx, *c)
-    }
-
     bcx
 }
 
@@ -822,16 +837,15 @@ pub enum AutorefArg {
     DoAutorefArg
 }
 
-// temp_cleanups: cleanups that should run only if failure occurs before the
-// call takes place:
 pub fn trans_arg_expr<'a>(
                       bcx: &'a Block<'a>,
                       formal_arg_ty: ty::t,
                       arg_expr: &ast::Expr,
-                      temp_cleanups: &mut ~[ValueRef],
+                      arg_cleanup_scope: cleanup::ScopeId,
                       autoref_arg: AutorefArg)
                       -> Result<'a> {
     let _icx = push_ctxt("trans_arg_expr");
+    let mut bcx = bcx;
     let ccx = bcx.ccx();
 
     debug!("trans_arg_expr(formal_arg_ty=({}), arg_expr={})",
@@ -839,14 +853,13 @@ pub fn trans_arg_expr<'a>(
            arg_expr.repr(bcx.tcx()));
 
     // translate the arg expr to a datum
-    let arg_datumblock = expr::trans_to_datum(bcx, arg_expr);
-    let arg_datum = arg_datumblock.datum;
-    let bcx = arg_datumblock.bcx;
+    let arg_datum = unpack_datum!(bcx, expr::trans(bcx, arg_expr));
+    let arg_datum_ty = arg_datum.ty;
 
     debug!("   arg datum: {}", arg_datum.to_str(bcx.ccx()));
 
     let mut val;
-    if ty::type_is_bot(arg_datum.ty) {
+    if ty::type_is_bot(arg_datum_ty) {
         // For values of type _|_, we generate an
         // "undef" value, as such a value should never
         // be inspected. It's important for the value
@@ -859,34 +872,31 @@ pub fn trans_arg_expr<'a>(
         // FIXME(#3548) use the adjustments table
         match autoref_arg {
             DoAutorefArg => {
-                val = arg_datum.to_ref_llval(bcx);
+                // We will pass argument by reference
+                // We want an lvalue, so that we can pass by reference and
+                let arg_datum = unpack_datum!(
+                    bcx, arg_datum.to_lvalue_datum(bcx, "arg", arg_expr.id));
+                val = arg_datum.val;
             }
             DontAutorefArg => {
-                let need_scratch = ty::type_needs_drop(bcx.tcx(), arg_datum.ty) ||
-                    (bcx.expr_is_lval(arg_expr) &&
-                     arg_datum.appropriate_mode(bcx.ccx()).is_by_ref());
+                // Make this an rvalue, since we are going to be
+                // passing ownership.
+                let arg_datum = unpack_datum!(
+                    bcx, arg_datum.to_rvalue_datum(bcx, "arg"));
 
-                let arg_datum = if need_scratch {
-                    let scratch = scratch_datum(bcx, arg_datum.ty, "__self", false);
-                    arg_datum.store_to_datum(bcx, INIT, scratch);
+                // Now that arg_datum is owned, get it into the appropriate
+                // mode (ref vs value).
+                let arg_datum = unpack_datum!(
+                    bcx, arg_datum.to_appropriate_datum(bcx));
 
-                    // Technically, ownership of val passes to the callee.
-                    // However, we must cleanup should we fail before the
-                    // callee is actually invoked.
-                    scratch.add_clean(bcx);
-                    temp_cleanups.push(scratch.val);
-
-                    scratch
-                } else {
-                    arg_datum
-                };
-
-                debug!("by copy arg with type {}", bcx.ty_to_str(arg_datum.ty));
-                val = arg_datum.to_appropriate_llval(bcx);
+                // Technically, ownership of val passes to the callee.
+                // However, we must cleanup should we fail before the
+                // callee is actually invoked.
+                val = arg_datum.add_clean(bcx.fcx, arg_cleanup_scope);
             }
         }
 
-        if formal_arg_ty != arg_datum.ty {
+        if formal_arg_ty != arg_datum_ty {
             // this could happen due to e.g. subtyping
             let llformal_arg_ty = type_of::type_of_explicit_arg(ccx, formal_arg_ty);
             debug!("casting actual type ({}) to match formal ({})",

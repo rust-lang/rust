@@ -153,14 +153,14 @@ pub fn trans_intrinsic(ccx: @CrateContext,
 
     let output_type = ty::ty_fn_ret(ty::node_id_to_type(ccx.tcx, item.id));
 
-    let fcx = new_fn_ctxt_w_id(ccx,
-                               path,
-                               decl,
-                               item.id,
-                               output_type,
-                               Some(substs),
-                               Some(item.span));
-    init_function(&fcx, true, output_type, Some(substs), None);
+    let fcx = new_fn_ctxt_detailed(ccx,
+                                   path,
+                                   decl,
+                                   item.id,
+                                   output_type,
+                                   Some(substs),
+                                   Some(item.span));
+    init_function(&fcx, true, output_type, Some(substs));
 
     set_always_inline(fcx.llfn);
 
@@ -254,27 +254,18 @@ pub fn trans_intrinsic(ccx: @CrateContext,
             let lltp_ty = type_of::type_of(ccx, tp_ty);
             Ret(bcx, C_uint(ccx, machine::llsize_of_real(ccx, lltp_ty)));
         }
-        "move_val" => {
+        "move_val_init" => {
             // Create a datum reflecting the value being moved.
             // Use `appropriate_mode` so that the datum is by ref
             // if the value is non-immediate. Note that, with
             // intrinsics, there are no argument cleanups to
-            // concern ourselves with.
+            // concern ourselves with, so we can use an rvalue datum.
             let tp_ty = substs.tys[0];
-            let mode = appropriate_mode(ccx, tp_ty);
+            let mode = appropriate_rvalue_mode(ccx, tp_ty);
             let src = Datum {val: get_param(decl, first_real_arg + 1u),
-                             ty: tp_ty, mode: mode};
-            bcx = src.move_to(bcx, DROP_EXISTING,
-                              get_param(decl, first_real_arg));
-            RetVoid(bcx);
-        }
-        "move_val_init" => {
-            // See comments for `"move_val"`.
-            let tp_ty = substs.tys[0];
-            let mode = appropriate_mode(ccx, tp_ty);
-            let src = Datum {val: get_param(decl, first_real_arg + 1u),
-                             ty: tp_ty, mode: mode};
-            bcx = src.move_to(bcx, INIT, get_param(decl, first_real_arg));
+                             ty: tp_ty,
+                             kind: Rvalue(mode)};
+            bcx = src.store_to(bcx, get_param(decl, first_real_arg));
             RetVoid(bcx);
         }
         "min_align_of" => {
@@ -326,7 +317,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
         "uninit" => {
             // Do nothing, this is effectively a no-op
             let retty = substs.tys[0];
-            if type_is_immediate(ccx, retty) && !ty::type_is_nil(retty) {
+            if type_is_immediate(ccx, retty) && !return_type_is_void(ccx, retty) {
                 unsafe {
                     Ret(bcx, lib::llvm::llvm::LLVMGetUndef(type_of(ccx, retty).to_ref()));
                 }
@@ -365,7 +356,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                                          pluralize(out_type_size)));
             }
 
-            if !ty::type_is_voidish(ccx.tcx, out_type) {
+            if !return_type_is_void(ccx, out_type) {
                 let llsrcval = get_param(decl, first_real_arg);
                 if type_is_immediate(ccx, in_type) {
                     match fcx.llretptr.get() {

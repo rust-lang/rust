@@ -48,6 +48,7 @@ use kinds::Send;
 use str::OwnedStr;
 use to_str::ToStr;
 use util;
+use vec;
 
 /// The option type
 #[deriving(Clone, DeepClone, Eq, Ord, TotalEq, TotalOrd, ToStr)]
@@ -96,6 +97,24 @@ impl<T> Option<T> {
     #[inline]
     pub fn as_mut<'r>(&'r mut self) -> Option<&'r mut T> {
         match *self { Some(ref mut x) => Some(x), None => None }
+    }
+
+    /// Convert from `Option<T>` to `&[T]` (without copying)
+    #[inline]
+    pub fn as_slice<'r>(&'r self) -> &'r [T] {
+        match *self {
+            Some(ref x) => vec::ref_slice(x),
+            None => &[]
+        }
+    }
+
+    /// Convert from `Option<T>` to `&[T]` (without copying)
+    #[inline]
+    pub fn as_mut_slice<'r>(&'r mut self) -> &'r mut [T] {
+        match *self {
+            Some(ref mut x) => vec::mut_ref_slice(x),
+            None => &mut []
+        }
     }
 
     /////////////////////////////////////////////////////////////////////////

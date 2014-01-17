@@ -21,9 +21,10 @@ use middle::lang_items::{FreeFnLangItem, ExchangeFreeFnLangItem};
 use middle::trans::adt;
 use middle::trans::base::*;
 use middle::trans::callee;
+use middle::trans::cleanup;
+use middle::trans::cleanup::CleanupMethods;
 use middle::trans::closure;
 use middle::trans::common::*;
-use middle::trans::datum::immediate_rvalue;
 use middle::trans::build::*;
 use middle::trans::expr;
 use middle::trans::machine::*;
@@ -269,25 +270,23 @@ fn call_tydesc_glue<'a>(cx: &'a Block<'a>, v: ValueRef, t: ty::t, field: uint)
 fn make_visit_glue<'a>(bcx: &'a Block<'a>, v: ValueRef, t: ty::t)
                    -> &'a Block<'a> {
     let _icx = push_ctxt("make_visit_glue");
-    with_scope(bcx, None, "visitor cleanup", |bcx| {
-        let mut bcx = bcx;
-        let (visitor_trait, object_ty) = match ty::visitor_object_ty(bcx.tcx(),
-                                                                     ty::ReStatic) {
-            Ok(pair) => pair,
-            Err(s) => {
-                bcx.tcx().sess.fatal(s);
-            }
-        };
-        let v = PointerCast(bcx, v, type_of(bcx.ccx(), object_ty).ptr_to());
-        bcx = reflect::emit_calls_to_trait_visit_ty(bcx, t, v, visitor_trait.def_id);
-        // The visitor is a boxed object and needs to be dropped
-        add_clean(bcx, v, object_ty);
-        bcx
-    })
+    let mut bcx = bcx;
+    let (visitor_trait, object_ty) = match ty::visitor_object_ty(bcx.tcx(),
+                                                                 ty::ReStatic) {
+        Ok(pair) => pair,
+        Err(s) => {
+            bcx.tcx().sess.fatal(s);
+        }
+    };
+    let v = PointerCast(bcx, v, type_of(bcx.ccx(), object_ty).ptr_to());
+    bcx = reflect::emit_calls_to_trait_visit_ty(bcx, t, v, visitor_trait.def_id);
+    bcx
 }
 
-pub fn make_free_glue<'a>(bcx: &'a Block<'a>, v: ValueRef, t: ty::t)
-                      -> &'a Block<'a> {
+pub fn make_free_glue<'a>(bcx: &'a Block<'a>,
+                          v: ValueRef,
+                          t: ty::t)
+                          -> &'a Block<'a> {
     // NB: v0 is an *alias* of type t here, not a direct value.
     let _icx = push_ctxt("make_free_glue");
     match ty::get(t).sty {
@@ -297,14 +296,13 @@ pub fn make_free_glue<'a>(bcx: &'a Block<'a>, v: ValueRef, t: ty::t)
         let bcx = drop_ty(bcx, body, body_ty);
         trans_free(bcx, v)
       }
-      ty::ty_uniq(..) => {
-        let box_datum = immediate_rvalue(Load(bcx, v), t);
-        let not_null = IsNotNull(bcx, box_datum.val);
+      ty::ty_uniq(content_ty) => {
+        let llbox = Load(bcx, v);
+        let not_null = IsNotNull(bcx, llbox);
         with_cond(bcx, not_null, |bcx| {
-            let body_datum = box_datum.box_body(bcx);
-            let bcx = drop_ty(bcx, body_datum.to_ref_llval(bcx), body_datum.ty);
-            trans_exchange_free(bcx, box_datum.val)
-        })
+                    let bcx = drop_ty(bcx, llbox, content_ty);
+                    trans_exchange_free(bcx, llbox)
+                })
       }
       ty::ty_vec(_, ty::vstore_uniq) | ty::ty_str(ty::vstore_uniq) |
       ty::ty_vec(_, ty::vstore_box) | ty::ty_str(ty::vstore_box) => {
@@ -362,21 +360,24 @@ pub fn trans_struct_drop<'a>(
     // Be sure to put all of the fields into a scope so we can use an invoke
     // instruction to call the user destructor but still call the field
     // destructors if the user destructor fails.
-    with_scope(bcx, None, "field drops", |bcx| {
-        let self_arg = PointerCast(bcx, v0, params[0]);
-        let args = ~[self_arg];
+    let field_scope = bcx.fcx.push_custom_cleanup_scope();
 
-        // Add all the fields as a value which needs to be cleaned at the end of
-        // this scope.
-        let field_tys = ty::struct_fields(bcx.tcx(), class_did, substs);
-        for (i, fld) in field_tys.iter().enumerate() {
-            let llfld_a = adt::trans_field_ptr(bcx, repr, v0, 0, i);
-            add_clean(bcx, llfld_a, fld.mt.ty);
-        }
+    let self_arg = PointerCast(bcx, v0, params[0]);
+    let args = ~[self_arg];
 
-        let (_, bcx) = invoke(bcx, dtor_addr, args, [], None);
-        bcx
-    })
+    // Add all the fields as a value which needs to be cleaned at the end of
+    // this scope.
+    let field_tys = ty::struct_fields(bcx.tcx(), class_did, substs);
+    for (i, fld) in field_tys.iter().enumerate() {
+        let llfld_a = adt::trans_field_ptr(bcx, repr, v0, 0, i);
+        bcx.fcx.schedule_drop_mem(cleanup::CustomScope(field_scope),
+                                  llfld_a,
+                                  fld.mt.ty);
+    }
+
+    let (_, bcx) = invoke(bcx, dtor_addr, args, [], None);
+
+    bcx.fcx.pop_and_trans_custom_cleanup_scope(bcx, field_scope)
 }
 
 pub fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t)
@@ -451,11 +452,13 @@ pub fn make_drop_glue<'a>(bcx: &'a Block<'a>, v0: ValueRef, t: ty::t)
 fn decr_refcnt_maybe_free<'a>(bcx: &'a Block<'a>, box_ptr_ptr: ValueRef,
                               t: Option<ty::t>) -> &'a Block<'a> {
     let _icx = push_ctxt("decr_refcnt_maybe_free");
+    let fcx = bcx.fcx;
     let ccx = bcx.ccx();
 
-    let decr_bcx = sub_block(bcx, "decr");
-    let free_bcx = sub_block(decr_bcx, "free");
-    let next_bcx = sub_block(bcx, "next");
+    let decr_bcx = fcx.new_temp_block("decr");
+    let free_bcx = fcx.new_temp_block("free");
+    let next_bcx = fcx.new_temp_block("next");
+
     let box_ptr = Load(bcx, box_ptr_ptr);
     let llnotnull = IsNotNull(bcx, box_ptr);
     CondBr(bcx, llnotnull, decr_bcx.llbb, next_bcx.llbb);
@@ -593,7 +596,7 @@ fn make_generic_glue(ccx: @CrateContext, t: ty::t, llfn: ValueRef,
     let _s = StatRecorder::new(ccx, glue_name);
 
     let fcx = new_fn_ctxt(ccx, ~[], llfn, ty::mk_nil(), None);
-    init_function(&fcx, false, ty::mk_nil(), None, None);
+    init_function(&fcx, false, ty::mk_nil(), None);
 
     lib::llvm::SetLinkage(llfn, lib::llvm::InternalLinkage);
     ccx.stats.n_glues_created.set(ccx.stats.n_glues_created.get() + 1u);

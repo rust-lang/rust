@@ -28,10 +28,10 @@ struct Thing2<'a> {
 
 pub fn main() {
     let _t1_fixed = Thing1 {
-        baz: [],
+        baz: &[],
         bar: ~32,
     };
-    let _t1_uniq = Thing1 {
+    Thing1 {
         baz: ~[],
         bar: ~32,
     };
@@ -40,10 +40,10 @@ pub fn main() {
         bar: ~32,
     };
     let _t2_fixed = Thing2 {
-        baz: [],
+        baz: &[],
         bar: 32,
     };
-    let _t2_uniq = Thing2 {
+    Thing2 {
         baz: ~[],
         bar: 32,
     };
