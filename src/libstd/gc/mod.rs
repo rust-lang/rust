@@ -304,8 +304,8 @@ impl<T: 'static + Freeze> Gc<T> {
     /// box, and so, if that is the only reference to one, then that
     /// `Gc<T>` may be deallocated or the memory reused.
     #[inline]
-    pub unsafe fn borrow<'r>(&'r self) -> &'r T {
-        &*self.ptr
+    pub fn borrow<'r>(&'r self) -> &'r T {
+        unsafe {&*self.ptr}
     }
 }
 
@@ -315,10 +315,10 @@ impl<T: 'static> Gc<T> {
     ///
     /// See `.borrow()` for the reason for `unsafe`.
     #[inline]
-    pub unsafe fn borrow_write_barrier<'r>(&'r self) -> &'r T {
+    pub fn borrow_write_barrier<'r>(&'r self) -> &'r T {
         // a completely conservative non-generational GC needs no
         // write barriers.
-        &*self.ptr
+        unsafe {&*self.ptr}
     }
 
     /// Borrow the value contained in the garbage-collected box,
@@ -344,7 +344,7 @@ impl<T> Clone for Gc<T> {
 impl<T: DeepClone + 'static + Trace> DeepClone for Gc<T> {
     #[inline]
     fn deep_clone(&self) -> Gc<T> {
-        Gc::new(unsafe {self.borrow_write_barrier().deep_clone()})
+        Gc::new(self.borrow_write_barrier().deep_clone())
     }
 }
 
