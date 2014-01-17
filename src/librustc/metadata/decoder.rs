@@ -23,6 +23,7 @@ use metadata::tydecode::{parse_ty_data, parse_def_id,
 use middle::ty::{ImplContainer, TraitContainer};
 use middle::ty;
 use middle::typeck;
+use middle::astencode;
 use middle::astencode::vtable_decoder_helpers;
 
 use std::at_vec;
@@ -1274,4 +1275,20 @@ pub fn get_native_libraries(cdata: Cmd) -> ~[(cstore::NativeLibaryKind, ~str)] {
         true
     });
     return result;
+}
+
+pub fn get_macro_registrar_fn(cdata: Cmd) -> Option<ast::DefId> {
+    reader::maybe_get_doc(reader::Doc(cdata.data()), tag_macro_registrar_fn)
+        .map(|doc| item_def_id(doc, cdata))
+}
+
+pub fn get_exported_macros(cdata: Cmd) -> ~[@ast::Item] {
+    let macros = reader::get_doc(reader::Doc(cdata.data()),
+                                 tag_exported_macros);
+    let mut result = ~[];
+    reader::tagged_docs(macros, tag_macro_def, |macro_doc| {
+        result.push(astencode::decode_exported_macro(macro_doc));
+        true
+    });
+    result
 }

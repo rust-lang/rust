@@ -210,6 +210,7 @@ pub struct Session_ {
     entry_fn: RefCell<Option<(NodeId, codemap::Span)>>,
     entry_type: Cell<Option<EntryFnType>>,
     span_diagnostic: @diagnostic::SpanHandler,
+    macro_registrar_fn: RefCell<Option<ast::DefId>>,
     filesearch: @filesearch::FileSearch,
     building_library: Cell<bool>,
     working_dir: Path,
