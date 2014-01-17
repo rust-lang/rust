@@ -12,8 +12,7 @@
 
 #[allow(missing_doc)];
 
-use std::io::{Reader, Seek};
-use std::io::mem::BufReader;
+use std::io::BufReader;
 use std::cmp::Eq;
 use std::hashmap::HashMap;
 use std::to_bytes;

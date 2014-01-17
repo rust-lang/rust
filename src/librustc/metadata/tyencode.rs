@@ -13,7 +13,7 @@
 use std::cell::RefCell;
 use std::hashmap::HashMap;
 use std::io;
-use std::io::mem::MemWriter;
+use std::io::MemWriter;
 use std::str;
 use std::fmt;
 

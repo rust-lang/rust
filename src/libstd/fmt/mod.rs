@@ -242,7 +242,7 @@ actually invoking the `write` function defined in this module. Example usage is:
 ```rust
 use std::io;
 
-let mut w = io::mem::MemWriter::new();
+let mut w = io::MemWriter::new();
 write!(&mut w as &mut io::Writer, "Hello {}!", "world");
 ```
 
@@ -470,7 +470,7 @@ use prelude::*;
 
 use cast;
 use char::Char;
-use io::mem::MemWriter;
+use io::MemWriter;
 use io;
 use str;
 use repr;

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::io::buffered::BufferedWriter;
+use std::io::BufferedWriter;
 
 struct DummyWriter;
 impl Writer for DummyWriter {

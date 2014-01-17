@@ -16,7 +16,7 @@
 extern mod native;
 
 use std::fmt;
-use std::io::comm_adapters::{PortReader, ChanWriter};
+use std::io::{PortReader, ChanWriter};
 use std::logging::{set_logger, Logger};
 
 struct MyWriter(ChanWriter);

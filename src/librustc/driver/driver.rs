@@ -31,7 +31,7 @@ use std::cell::{Cell, RefCell};
 use std::hashmap::{HashMap,HashSet};
 use std::io;
 use std::io::fs;
-use std::io::mem::MemReader;
+use std::io::MemReader;
 use std::os;
 use std::vec;
 use extra::getopts::groups::{optopt, optmulti, optflag, optflagopt};

@@ -298,7 +298,7 @@ mod test {
     use extra::serialize::Encodable;
     use extra;
     use std::io;
-    use std::io::mem::MemWriter;
+    use std::io::MemWriter;
     use std::str;
     use codemap::{Span, BytePos, Spanned};
     use opt_vec;
