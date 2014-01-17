@@ -67,7 +67,7 @@ extern fn async_cb(handle: *uvll::uv_async_t, status: c_int) {
     loop {
         match state.consumer.pop() {
             mpsc::Data(Task(task)) => {
-                let _ = task.wake().map(|t| t.reawaken(true));
+                let _ = task.wake().map(|t| t.reawaken());
             }
             mpsc::Data(Increment) => unsafe {
                 if state.refcnt == 0 {

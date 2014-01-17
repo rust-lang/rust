@@ -250,9 +250,9 @@ impl Task {
     /// Wakes up a previously blocked task, optionally specifiying whether the
     /// current task can accept a change in scheduling. This function can only
     /// be called on tasks that were previously blocked in `deschedule`.
-    pub fn reawaken(mut ~self, can_resched: bool) {
+    pub fn reawaken(mut ~self) {
         let ops = self.imp.take_unwrap();
-        ops.reawaken(self, can_resched);
+        ops.reawaken(self);
     }
 
     /// Yields control of this task to another task. This function will
@@ -282,6 +282,12 @@ impl Task {
     /// `None`.
     pub fn stack_bounds(&self) -> (uint, uint) {
         self.imp.get_ref().stack_bounds()
+    }
+
+    /// Returns whether it is legal for this task to block the OS thread that it
+    /// is running on.
+    pub fn can_block(&self) -> bool {
+        self.imp.get_ref().can_block()
     }
 }
 
