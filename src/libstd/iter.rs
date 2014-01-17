@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -1361,6 +1361,12 @@ impl<'a, A, T: Iterator<A>> Peekable<A, T> {
             Some(ref value) => Some(value),
             None => None,
         }
+    }
+
+    /// Check whether peekable iterator is empty or not.
+    #[inline]
+    pub fn is_empty(&mut self) -> bool {
+        self.peek().is_some()
     }
 }
 
@@ -2922,5 +2928,13 @@ mod tests {
         let mut ys = [1, 2, 3, 4, 5];
         ys.mut_iter().reverse_();
         assert_eq!(ys, [5, 4, 3, 2, 1]);
+    }
+
+    fn test_peekable_is_empty() {
+        let a = [1];
+        let mut it = a.iter().peekable();
+        assert!( !it.is_empty() );
+        it.next();
+        assert!( it.is_empty() );
     }
 }
