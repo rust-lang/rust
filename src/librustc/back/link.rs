@@ -924,10 +924,13 @@ fn link_rlib(sess: Session,
                 fs::unlink(&bc);
             }
 
-            // Now that we've added files, some platforms need us to now update
-            // the symbol table in the archive (because some platforms die when
-            // adding files to the archive without symbols).
-            a.update_symbols();
+            // After adding all files to the archive, we need to update the
+            // symbol table of the archive. This currently dies on OSX (see
+            // #11162), and isn't necessary there anyway
+            match sess.targ_cfg.os {
+                abi::OsMacos => {}
+                _ => { a.update_symbols(); }
+            }
         }
 
         None => {}
