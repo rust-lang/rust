@@ -26,7 +26,7 @@ use extra::getopts::groups::getopts;
 use std::run::ProcessOutput;
 use installed_packages::list_installed_packages;
 use crate_id::{CrateId};
-use version::{ExactRevision, NoVersion, Version, Tagged};
+use version::{ExactRevision, NoVersion, Version};
 use path_util::{target_executable_in_workspace, target_test_in_workspace,
                target_bench_in_workspace, make_dir_rwx,
                library_in_workspace, installed_library_in_workspace,
@@ -35,7 +35,6 @@ use path_util::{target_executable_in_workspace, target_test_in_workspace,
                chmod_read_only, platform_library_name};
 use rustc::back::link::get_cc_prog;
 use rustc::metadata::filesearch::{rust_path, libdir, rustlibdir};
-use rustc::driver::session;
 use rustc::driver::driver::{build_session, build_session_options, host_triple, optgroups};
 use syntax::diagnostic;
 use target::*;
@@ -73,14 +72,6 @@ fn git_repo_pkg() -> CrateId {
         path: Path::new("mockgithub.com/catamorphism/test-pkg"),
         short_name: ~"test-pkg",
         version: NoVersion
-    }
-}
-
-fn git_repo_pkg_with_tag(a_tag: ~str) -> CrateId {
-    CrateId {
-        path: Path::new("mockgithub.com/catamorphism/test-pkg"),
-        short_name: ~"test-pkg",
-        version: Tagged(a_tag)
     }
 }
 
@@ -485,12 +476,6 @@ fn lib_output_file_name(workspace: &Path, short_name: &str) -> Path {
                          workspace,
                          "build",
                          &NoVersion).expect("lib_output_file_name")
-}
-
-fn output_file_name(workspace: &Path, short_name: ~str) -> Path {
-    target_build_dir(workspace).join(short_name.as_slice())
-                               .join(format!("{}{}", short_name,
-                                             os::consts::EXE_SUFFIX))
 }
 
 #[cfg(target_os = "linux")]
