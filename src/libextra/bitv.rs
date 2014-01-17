@@ -269,14 +269,23 @@ impl Bitv {
 
 impl Bitv {
     pub fn new(nbits: uint, init: bool) -> Bitv {
-        let rep = if nbits <= uint::bits {
+        let rep = if nbits < uint::bits {
+            Small(SmallBitv::new(if init {(1<<nbits)-1} else {0}))
+        } else if nbits == uint::bits {
             Small(SmallBitv::new(if init {!0} else {0}))
-        }
-        else {
-            let nelems = nbits/uint::bits +
-                         if nbits % uint::bits == 0 {0} else {1};
-            let elem = if init {!0u} else {0u};
-            let s = vec::from_elem(nelems, elem);
+        } else {
+            let exact = nbits % uint::bits == 0;
+            let nelems = nbits/uint::bits + if exact {0} else {1};
+            let s =
+                if init {
+                    if exact {
+                        vec::from_elem(nelems, !0u)
+                    } else {
+                        let mut v = vec::from_elem(nelems-1, !0u);
+                        v.push((1<<nbits % uint::bits)-1);
+                        v
+                    }
+                } else { vec::from_elem(nelems, 0u)};
             Big(BigBitv::new(s))
         };
         Bitv {rep: rep, nbits: nbits}
@@ -1327,6 +1336,20 @@ mod tests {
 
         let idxs: ~[uint] = bitv.iter().collect();
         assert_eq!(idxs, ~[0, 2, 3]);
+    }
+
+    #[test]
+    fn test_bitv_set_frombitv_init() {
+        let bools = [true, false];
+        let lengths = [10, 64, 100];
+        for &b in bools.iter() {
+            for &l in lengths.iter() {
+                let bitset = BitvSet::from_bitv(Bitv::new(l, b));
+                assert_eq!(bitset.contains(&1u), b)
+                assert_eq!(bitset.contains(&(l-1u)), b)
+                assert!(!bitset.contains(&l))
+            }
+        }
     }
 
     #[test]
