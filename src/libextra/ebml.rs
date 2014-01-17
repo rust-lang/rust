@@ -90,7 +90,7 @@ pub mod reader {
 
     // ebml reading
 
-    struct Res {
+    pub struct Res {
         val: uint,
         next: uint
     }
@@ -130,32 +130,40 @@ pub mod reader {
             return vuint_at_slow(data, start);
         }
 
+        // Lookup table for parsing EBML Element IDs as per http://ebml.sourceforge.net/specs/
+        // The Element IDs are parsed by reading a big endian u32 positioned at data[start].
+        // Using the four most significant bits of the u32 we lookup in the table below how the
+        // element ID should be derived from it.
+        //
+        // The table stores tuples (shift, mask) where shift is the number the u32 should be right
+        // shifted with and mask is the value the right shifted value should be masked with.
+        // If for example the most significant bit is set this means it's a class A ID and the u32
+        // should be right shifted with 24 and masked with 0x7f. Therefore we store (24, 0x7f) at
+        // index 0x8 - 0xF (four bit numbers where the most significant bit is set).
+        //
+        // By storing the number of shifts and masks in a table instead of checking in order if
+        // the most significant bit is set, the second most significant bit is set etc. we can
+        // replace up to three "and+branch" with a single table lookup which gives us a measured
+        // speedup of around 2x on x86_64.
+        static SHIFT_MASK_TABLE: [(u32, u32), ..16] = [
+            (0, 0x0), (0, 0x0fffffff),
+            (8, 0x1fffff), (8, 0x1fffff),
+            (16, 0x3fff), (16, 0x3fff), (16, 0x3fff), (16, 0x3fff),
+            (24, 0x7f), (24, 0x7f), (24, 0x7f), (24, 0x7f),
+            (24, 0x7f), (24, 0x7f), (24, 0x7f), (24, 0x7f)
+        ];
+
         unsafe {
             let (ptr, _): (*u8, uint) = transmute(data);
             let ptr = offset(ptr, start as int);
             let ptr: *i32 = transmute(ptr);
-            let val = from_be32(*ptr);
-            let val: u32 = transmute(val);
-            if (val & 0x80000000) != 0 {
-                Res {
-                    val: ((val >> 24) & 0x7f) as uint,
-                    next: start + 1
-                }
-            } else if (val & 0x40000000) != 0 {
-                Res {
-                    val: ((val >> 16) & 0x3fff) as uint,
-                    next: start + 2
-                }
-            } else if (val & 0x20000000) != 0 {
-                Res {
-                    val: ((val >> 8) & 0x1fffff) as uint,
-                    next: start + 3
-                }
-            } else {
-                Res {
-                    val: (val & 0x0fffffff) as uint,
-                    next: start + 4
-                }
+            let val = from_be32(*ptr) as u32;
+
+            let i = (val >> 28u) as uint;
+            let (shift, mask) = SHIFT_MASK_TABLE[i];
+            Res {
+                val: ((val >> shift) & mask) as uint,
+                next: start + (((32 - shift) >> 3) as uint)
             }
         }
     }
@@ -937,6 +945,54 @@ mod tests {
 
     use std::io::mem::MemWriter;
     use std::option::{None, Option, Some};
+
+    #[test]
+    fn test_vuint_at() {
+        let data = [
+            0x80,
+            0xff,
+            0x40, 0x00,
+            0x7f, 0xff,
+            0x20, 0x00, 0x00,
+            0x3f, 0xff, 0xff,
+            0x10, 0x00, 0x00, 0x00,
+            0x1f, 0xff, 0xff, 0xff
+        ];
+
+        let mut res: reader::Res;
+
+        // Class A
+        res = reader::vuint_at(data, 0);
+        assert_eq!(res.val, 0);
+        assert_eq!(res.next, 1);
+        res = reader::vuint_at(data, res.next);
+        assert_eq!(res.val, (1 << 7) - 1);
+        assert_eq!(res.next, 2);
+
+        // Class B
+        res = reader::vuint_at(data, res.next);
+        assert_eq!(res.val, 0);
+        assert_eq!(res.next, 4);
+        res = reader::vuint_at(data, res.next);
+        assert_eq!(res.val, (1 << 14) - 1);
+        assert_eq!(res.next, 6);
+
+        // Class C
+        res = reader::vuint_at(data, res.next);
+        assert_eq!(res.val, 0);
+        assert_eq!(res.next, 9);
+        res = reader::vuint_at(data, res.next);
+        assert_eq!(res.val, (1 << 21) - 1);
+        assert_eq!(res.next, 12);
+
+        // Class D
+        res = reader::vuint_at(data, res.next);
+        assert_eq!(res.val, 0);
+        assert_eq!(res.next, 16);
+        res = reader::vuint_at(data, res.next);
+        assert_eq!(res.val, (1 << 28) - 1);
+        assert_eq!(res.next, 20);
+    }
 
     #[test]
     fn test_option_int() {
