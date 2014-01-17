@@ -67,6 +67,9 @@ impl<'a> GuaranteeLifetimeContext<'a> {
 
     fn check(&self, cmt: mc::cmt, discr_scope: Option<ast::NodeId>) -> R {
         //! Main routine. Walks down `cmt` until we find the "guarantor".
+        debug!("guarantee_lifetime.check(cmt={}, loan_region={})",
+               cmt.repr(self.bccx.tcx),
+               self.loan_region.repr(self.bccx.tcx));
 
         match cmt.cat {
             mc::cat_rvalue(..) |

@@ -213,6 +213,7 @@ fn visit_arm(rcx: &mut Rcx, arm: &ast::Arm) {
 fn visit_local(rcx: &mut Rcx, l: &ast::Local) {
     // see above
     constrain_bindings_in_pat(l.pat, rcx);
+    guarantor::for_local(rcx, l);
     visit::walk_local(rcx, l, ());
 }
 
@@ -826,6 +827,30 @@ pub mod guarantor {
                 link_ref_bindings_in_pat(rcx, *pat, discr_guarantor);
             }
         }
+    }
+
+    pub fn for_local(rcx: &mut Rcx, local: &ast::Local) {
+        /*!
+         * Link the lifetimes of any ref bindings in a let
+         * pattern to the lifetimes in the initializer.
+         *
+         * For example, given something like this:
+         *
+         *    let &Foo(ref x) = ...;
+         *
+         * this would ensure that the lifetime 'a of the
+         * region pointer being matched must be >= the lifetime
+         * of the ref binding.
+         */
+
+        debug!("regionck::for_match()");
+        let init_expr = match local.init {
+            None => { return; }
+            Some(e) => e
+        };
+        let init_guarantor = guarantor(rcx, init_expr);
+        debug!("init_guarantor={}", init_guarantor.repr(rcx.tcx()));
+        link_ref_bindings_in_pat(rcx, local.pat, init_guarantor);
     }
 
     pub fn for_autoref(rcx: &mut Rcx,
