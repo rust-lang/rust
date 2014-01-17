@@ -101,6 +101,9 @@ delegate!(
 
 // FIXME (#1433): obtain these in a different way
 
+// FIXME(#11621): These constants should be deprecated once CTFE is implemented
+// in favour of calling their respective functions in `Bounded` and `Float`.
+
 pub static RADIX: uint = 2u;
 
 pub static MANTISSA_DIGITS: uint = 53u;
@@ -129,6 +132,10 @@ pub static NEG_INFINITY: f64 = -1.0_f64/0.0_f64;
 pub mod consts {
     // FIXME (requires Issue #1433 to fix): replace with mathematical
     // constants from cmath.
+
+    // FIXME(#11621): These constants should be deprecated once CTFE is
+    // implemented in favour of calling their respective functions in `Real`.
+
     /// Archimedes' constant
     pub static PI: f64 = 3.14159265358979323846264338327950288_f64;
 

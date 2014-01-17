@@ -13,11 +13,19 @@
 
 macro_rules! int_module (($T:ty, $bits:expr) => (
 
+// FIXME(#11621): Should be deprecated once CTFE is implemented in favour of
+// calling the `mem::size_of` function.
 pub static bits : uint = $bits;
+// FIXME(#11621): Should be deprecated once CTFE is implemented in favour of
+// calling the `mem::size_of` function.
 pub static bytes : uint = ($bits / 8);
 
+// FIXME(#11621): Should be deprecated once CTFE is implemented in favour of
+// calling the `Bounded::min_value` function.
 pub static min_value: $T = (-1 as $T) << (bits - 1);
 // FIXME(#9837): Compute min_value like this so the high bits that shouldn't exist are 0.
+// FIXME(#11621): Should be deprecated once CTFE is implemented in favour of
+// calling the `Bounded::max_value` function.
 pub static max_value: $T = !min_value;
 
 impl CheckedDiv for $T {
