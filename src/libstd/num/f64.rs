@@ -556,16 +556,7 @@ impl Bounded for f64 {
     fn max_value() -> f64 { 1.7976931348623157e+308 }
 }
 
-impl Primitive for f64 {
-    #[inline]
-    fn bits(_: Option<f64>) -> uint { 64 }
-
-    #[inline]
-    fn bytes(_: Option<f64>) -> uint { Primitive::bits(Some(0f64)) / 8 }
-
-    #[inline]
-    fn is_signed(_: Option<f64>) -> bool { true }
-}
+impl Primitive for f64 {}
 
 impl Float for f64 {
     #[inline]
@@ -1176,13 +1167,6 @@ mod tests {
         assert!(NEG_INFINITY.is_negative());
         assert!((1f64/NEG_INFINITY).is_negative());
         assert!(!NAN.is_negative());
-    }
-
-    #[test]
-    fn test_primitive() {
-        let none: Option<f64> = None;
-        assert_eq!(Primitive::bits(none), mem::size_of::<f64>() * 8);
-        assert_eq!(Primitive::bytes(none), mem::size_of::<f64>());
     }
 
     #[test]
