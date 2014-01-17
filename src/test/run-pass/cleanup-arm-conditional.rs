@@ -1,4 +1,4 @@
-// copyright 2013 the rust project developers. see the copyright
+// copyright 2014 the rust project developers. see the copyright
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/copyright.
 //
