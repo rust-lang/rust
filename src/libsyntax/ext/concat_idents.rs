@@ -23,12 +23,18 @@ pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         if i & 1 == 1 {
             match *e {
                 ast::TTTok(_, token::COMMA) => (),
-                _ => cx.span_fatal(sp, "concat_idents! expecting comma.")
+                _ => {
+                    cx.span_err(sp, "concat_idents! expecting comma.");
+                    return MacResult::dummy_expr();
+                }
             }
         } else {
             match *e {
                 ast::TTTok(_, token::IDENT(ident,_)) => res_str.push_str(cx.str_of(ident)),
-                _ => cx.span_fatal(sp, "concat_idents! requires ident args.")
+                _ => {
+                    cx.span_err(sp, "concat_idents! requires ident args.");
+                    return MacResult::dummy_expr();
+                }
             }
         }
     }
