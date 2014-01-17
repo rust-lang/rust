@@ -59,9 +59,12 @@ pub fn expand_asm(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     while continue_ {
         match state {
             Asm => {
-                let (s, style) =
-                    expr_to_str(cx, p.parse_expr(),
-                                "inline assembly must be a string literal.");
+                let (s, style) = match expr_to_str(cx, p.parse_expr(),
+                                                   "inline assembly must be a string literal.") {
+                    Some((s, st)) => (s, st),
+                    // let compilation continue
+                    None => return MacResult::dummy_expr(),
+                };
                 asm = s;
                 asm_str_style = Some(style);
             }
