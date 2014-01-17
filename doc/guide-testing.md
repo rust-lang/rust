@@ -63,8 +63,8 @@ mod tests {
 }
 ~~~
 
-Additionally #[test] items behave as if they also have the
-#[cfg(test)] attribute, and will not be compiled when the --test flag
+Additionally `#[test]` items behave as if they also have the
+`#[cfg(test)]` attribute, and will not be compiled when the --test flag
 is not used.
 
 Tests that should not be run can be annotated with the 'ignore'
