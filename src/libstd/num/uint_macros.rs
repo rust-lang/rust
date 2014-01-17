@@ -285,16 +285,7 @@ impl ToStrRadix for $T {
     }
 }
 
-impl Primitive for $T {
-    #[inline]
-    fn bits(_: Option<$T>) -> uint { bits }
-
-    #[inline]
-    fn bytes(_: Option<$T>) -> uint { bits / 8 }
-
-    #[inline]
-    fn is_signed(_: Option<$T>) -> bool { false }
-}
+impl Primitive for $T {}
 
 impl Bitwise for $T {
     /// Counts the number of bits set. Wraps LLVM's `ctpop` intrinsic.
@@ -413,13 +404,6 @@ mod tests {
     #[test]
     fn test_bitcount() {
         assert_eq!((0b010101 as $T).population_count(), 3);
-    }
-
-    #[test]
-    fn test_primitive() {
-        let none: Option<$T> = None;
-        assert_eq!(Primitive::bits(none), mem::size_of::<$T>() * 8);
-        assert_eq!(Primitive::bytes(none), mem::size_of::<$T>());
     }
 
     #[test]
