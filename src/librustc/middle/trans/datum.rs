@@ -171,7 +171,7 @@ pub fn appropriate_rvalue_mode(ccx: &CrateContext, ty: ty::t) -> RvalueMode {
      * on whether type is immediate or not.
      */
 
-    if type_is_voidish(ccx, ty) {
+    if type_is_zero_size(ccx, ty) {
         ByValue
     } else if type_is_immediate(ccx, ty) {
         ByValue
@@ -583,7 +583,7 @@ fn load<'a>(bcx: &'a Block<'a>, llptr: ValueRef, ty: ty::t) -> ValueRef {
      * what we are loading.
      */
 
-    if type_is_voidish(bcx.ccx(), ty) {
+    if type_is_zero_size(bcx.ccx(), ty) {
         C_undef(type_of::type_of(bcx.ccx(), ty))
     } else if ty::type_is_bool(ty) {
         LoadRangeAssert(bcx, llptr, 0, 2, lib::llvm::True)
@@ -638,7 +638,7 @@ impl<K:KindOps> Datum<K> {
 
         let _icx = push_ctxt("copy_to_no_check");
 
-        if type_is_voidish(bcx.ccx(), self.ty) {
+        if type_is_zero_size(bcx.ccx(), self.ty) {
             return bcx;
         }
 
