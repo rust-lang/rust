@@ -27,6 +27,11 @@ pub trait Emitter {
             lvl: Level);
 }
 
+/// This structure is used to signify that a task has failed with a fatal error
+/// from the diagnostics. You can use this with the `Any` trait to figure out
+/// how a rustc task died (if so desired).
+pub struct FatalError;
+
 // a span-handler is like a handler but also
 // accepts span information for source-location
 // reporting.
@@ -38,7 +43,7 @@ pub struct SpanHandler {
 impl SpanHandler {
     pub fn span_fatal(@self, sp: Span, msg: &str) -> ! {
         self.handler.emit(Some((&*self.cm, sp)), msg, Fatal);
-        fail!();
+        fail!(FatalError);
     }
     pub fn span_err(@self, sp: Span, msg: &str) {
         self.handler.emit(Some((&*self.cm, sp)), msg, Error);
@@ -72,7 +77,7 @@ pub struct Handler {
 impl Handler {
     pub fn fatal(@self, msg: &str) -> ! {
         self.emit.emit(None, msg, Fatal);
-        fail!();
+        fail!(FatalError);
     }
     pub fn err(@self, msg: &str) {
         self.emit.emit(None, msg, Error);

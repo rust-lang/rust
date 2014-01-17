@@ -38,13 +38,9 @@ use middle::lint;
 
 use d = driver::driver;
 
-use std::cast;
-use std::comm;
 use std::io;
-use std::io::Reader;
 use std::num;
 use std::os;
-use std::result;
 use std::str;
 use std::task;
 use std::vec;
@@ -52,7 +48,6 @@ use extra::getopts::groups;
 use extra::getopts;
 use syntax::ast;
 use syntax::attr;
-use syntax::codemap;
 use syntax::diagnostic::Emitter;
 use syntax::diagnostic;
 use syntax::parse;
@@ -125,21 +120,6 @@ pub mod lib {
     pub mod llvm;
     pub mod llvmdeps;
 }
-
-// A curious inner module that allows ::std::foo to be available in here for
-// macros.
-/*
-mod std {
-    pub use std::clone;
-    pub use std::cmp;
-    pub use std::os;
-    pub use std::str;
-    pub use std::sys;
-    pub use std::to_bytes;
-    pub use std::unstable;
-    pub use extra::serialize;
-}
-*/
 
 pub fn version(argv0: &str) {
     let vers = match option_env!("CFG_VERSION") {
@@ -344,45 +324,12 @@ fn parse_crate_attrs(sess: session::Session,
     }
 }
 
-#[deriving(Eq)]
-pub enum monitor_msg {
-    fatal,
-    done,
-}
-
-struct RustcEmitter {
-    ch_capture: comm::SharedChan<monitor_msg>
-}
-
-impl diagnostic::Emitter for RustcEmitter {
-    fn emit(&self,
-            cmsp: Option<(&codemap::CodeMap, codemap::Span)>,
-            msg: &str,
-            lvl: diagnostic::Level) {
-        if lvl == diagnostic::Fatal {
-            let this = unsafe { cast::transmute_mut(self) };
-            this.ch_capture.send(fatal)
-        }
-
-        diagnostic::DefaultEmitter.emit(cmsp, msg, lvl)
-    }
-}
-
-/*
-This is a sanity check that any failure of the compiler is performed
-through the diagnostic module and reported properly - we shouldn't be calling
-plain-old-fail on any execution path that might be taken. Since we have
-console logging off by default, hitting a plain fail statement would make the
-compiler silently exit, which would be terrible.
-
-This method wraps the compiler in a subtask and injects a function into the
-diagnostic emitter which records when we hit a fatal error. If the task
-fails without recording a fatal error then we've encountered a compiler
-bug and need to present an error.
-*/
+/// Run a procedure which will detect failures in the compiler and print nicer
+/// error messages rather than just failing the test.
+///
+/// The diagnostic emitter yielded to the procedure should be used for reporting
+/// errors of the compiler.
 pub fn monitor(f: proc(@diagnostic::Emitter)) {
-    use std::comm::*;
-
     // XXX: This is a hack for newsched since it doesn't support split stacks.
     // rustc needs a lot of stack! When optimizations are disabled, it needs
     // even *more* stack than usual as well.
@@ -391,8 +338,6 @@ pub fn monitor(f: proc(@diagnostic::Emitter)) {
     #[cfg(not(rtopt))]
     static STACK_SIZE: uint = 20000000; // 20MB
 
-    let (p, ch) = SharedChan::new();
-    let ch_capture = ch.clone();
     let mut task_builder = task::task();
     task_builder.name("rustc");
 
@@ -402,30 +347,18 @@ pub fn monitor(f: proc(@diagnostic::Emitter)) {
         task_builder.opts.stack_size = Some(STACK_SIZE);
     }
 
+    let (p, c) = Chan::new();
+    let w = io::ChanWriter::new(c);
+    let mut r = io::PortReader::new(p);
+
     match task_builder.try(proc() {
-        let ch = ch_capture.clone();
-        // The 'diagnostics emitter'. Every error, warning, etc. should
-        // go through this function.
-        let demitter = @RustcEmitter {
-            ch_capture: ch.clone(),
-        } as @diagnostic::Emitter;
-
-        struct finally {
-            ch: SharedChan<monitor_msg>,
-        }
-
-        impl Drop for finally {
-            fn drop(&mut self) { self.ch.send(done); }
-        }
-
-        let _finally = finally { ch: ch };
-
-        f(demitter);
+        io::stdio::set_stderr(~w as ~io::Writer);
+        f(@diagnostic::DefaultEmitter)
     }) {
-        result::Ok(_) => { /* fallthrough */ }
-        result::Err(_) => {
+        Ok(()) => { /* fallthrough */ }
+        Err(value) => {
             // Task failed without emitting a fatal diagnostic
-            if p.recv() == done {
+            if !value.is::<diagnostic::FatalError>() {
                 diagnostic::DefaultEmitter.emit(
                     None,
                     diagnostic::ice_msg("unexpected failure"),
@@ -434,17 +367,20 @@ pub fn monitor(f: proc(@diagnostic::Emitter)) {
                 let xs = [
                     ~"the compiler hit an unexpected failure path. \
                      this is a bug",
-                    ~"try running with RUST_LOG=rustc=1 \
-                     to get further details and report the results \
-                     to github.com/mozilla/rust/issues"
                 ];
                 for note in xs.iter() {
                     diagnostic::DefaultEmitter.emit(None,
                                                     *note,
                                                     diagnostic::Note)
                 }
+
+                println!("{}", r.read_to_str());
             }
-            // Fail so the process returns a failure code
+
+            // Fail so the process returns a failure code, but don't pollute the
+            // output with some unnecessary failure messages, we've already
+            // printed everything that we needed to.
+            io::stdio::set_stderr(~io::util::NullWriter as ~io::Writer);
             fail!();
         }
     }
