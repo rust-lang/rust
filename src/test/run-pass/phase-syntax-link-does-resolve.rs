@@ -11,6 +11,18 @@
 // aux-build:macro_crate_test.rs
 // xfail-stage1
 // xfail-fast
+// xfail-android
+// force-host
+
+// You'll note that there's lots of directives above. This is a very particular
+// test in which we're both linking to a macro crate and loading macros from it.
+// This implies that both versions are the host architecture, meaning this test
+// must also be compiled with the host arch.
+//
+// Hence, xfail-stage1 because macros are unstable around there, xfail-fast
+// because this doesn't work with that test runner, xfail-android because it
+// can't run host binaries, and force-host to make this test build as the host
+// arch.
 
 #[feature(phase)];
 
