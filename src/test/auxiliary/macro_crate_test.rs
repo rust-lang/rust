@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// force-host
+
 #[feature(globs, macro_registrar, macro_rules)];
 
 extern mod syntax;
