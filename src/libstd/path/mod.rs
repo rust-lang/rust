@@ -117,6 +117,20 @@ pub use StrComponents = self::windows::StrComponents;
 #[cfg(windows)]
 pub use RevStrComponents = self::windows::RevStrComponents;
 
+/// Alias for the platform-native separator character.
+#[cfg(unix)]
+pub use SEP = self::posix::SEP;
+/// Alias for the platform-native separator byte.
+#[cfg(windows)]
+pub use SEP = self::windows::SEP;
+
+/// Alias for the platform-native separator character.
+#[cfg(unix)]
+pub use SEP_BYTE = self::posix::SEP_BYTE;
+/// Alias for the platform-native separator byte.
+#[cfg(windows)]
+pub use SEP_BYTE = self::windows::SEP_BYTE;
+
 /// Typedef for the platform-native separator char func
 #[cfg(unix)]
 pub use is_sep = self::posix::is_sep;
