@@ -115,8 +115,8 @@ impl<T> TrieMap<T> {
     }
 
     /// Get an iterator over the key-value pairs in the map
-    pub fn iter<'a>(&'a self) -> TrieMapIterator<'a, T> {
-        let mut iter = unsafe {TrieMapIterator::new()};
+    pub fn iter<'a>(&'a self) -> Entries<'a, T> {
+        let mut iter = unsafe {Entries::new()};
         iter.stack[0] = self.root.children.iter();
         iter.length = 1;
         iter.remaining_min = self.length;
@@ -127,8 +127,8 @@ impl<T> TrieMap<T> {
 
     /// Get an iterator over the key-value pairs in the map, with the
     /// ability to mutate the values.
-    pub fn mut_iter<'a>(&'a mut self) -> TrieMapMutIterator<'a, T> {
-        let mut iter = unsafe {TrieMapMutIterator::new()};
+    pub fn mut_iter<'a>(&'a mut self) -> MutEntries<'a, T> {
+        let mut iter = unsafe {MutEntries::new()};
         iter.stack[0] = self.root.children.mut_iter();
         iter.length = 1;
         iter.remaining_min = self.length;
@@ -221,8 +221,8 @@ macro_rules! bound {
 impl<T> TrieMap<T> {
     // If `upper` is true then returns upper_bound else returns lower_bound.
     #[inline]
-    fn bound<'a>(&'a self, key: uint, upper: bool) -> TrieMapIterator<'a, T> {
-        bound!(TrieMapIterator, self = self,
+    fn bound<'a>(&'a self, key: uint, upper: bool) -> Entries<'a, T> {
+        bound!(Entries, self = self,
                key = key, is_upper = upper,
                slice_from = slice_from, iter = iter,
                mutability = )
@@ -230,19 +230,19 @@ impl<T> TrieMap<T> {
 
     /// Get an iterator pointing to the first key-value pair whose key is not less than `key`.
     /// If all keys in the map are less than `key` an empty iterator is returned.
-    pub fn lower_bound<'a>(&'a self, key: uint) -> TrieMapIterator<'a, T> {
+    pub fn lower_bound<'a>(&'a self, key: uint) -> Entries<'a, T> {
         self.bound(key, false)
     }
 
     /// Get an iterator pointing to the first key-value pair whose key is greater than `key`.
     /// If all keys in the map are not greater than `key` an empty iterator is returned.
-    pub fn upper_bound<'a>(&'a self, key: uint) -> TrieMapIterator<'a, T> {
+    pub fn upper_bound<'a>(&'a self, key: uint) -> Entries<'a, T> {
         self.bound(key, true)
     }
     // If `upper` is true then returns upper_bound else returns lower_bound.
     #[inline]
-    fn mut_bound<'a>(&'a mut self, key: uint, upper: bool) -> TrieMapMutIterator<'a, T> {
-        bound!(TrieMapMutIterator, self = self,
+    fn mut_bound<'a>(&'a mut self, key: uint, upper: bool) -> MutEntries<'a, T> {
+        bound!(MutEntries, self = self,
                key = key, is_upper = upper,
                slice_from = mut_slice_from, iter = mut_iter,
                mutability = mut)
@@ -250,13 +250,13 @@ impl<T> TrieMap<T> {
 
     /// Get an iterator pointing to the first key-value pair whose key is not less than `key`.
     /// If all keys in the map are less than `key` an empty iterator is returned.
-    pub fn mut_lower_bound<'a>(&'a mut self, key: uint) -> TrieMapMutIterator<'a, T> {
+    pub fn mut_lower_bound<'a>(&'a mut self, key: uint) -> MutEntries<'a, T> {
         self.mut_bound(key, false)
     }
 
     /// Get an iterator pointing to the first key-value pair whose key is greater than `key`.
     /// If all keys in the map are not greater than `key` an empty iterator is returned.
-    pub fn mut_upper_bound<'a>(&'a mut self, key: uint) -> TrieMapMutIterator<'a, T> {
+    pub fn mut_upper_bound<'a>(&'a mut self, key: uint) -> MutEntries<'a, T> {
         self.mut_bound(key, true)
     }
 }
@@ -329,20 +329,20 @@ impl TrieSet {
 
     /// Get an iterator over the values in the set
     #[inline]
-    pub fn iter<'a>(&'a self) -> TrieSetIterator<'a> {
-        TrieSetIterator{iter: self.map.iter()}
+    pub fn iter<'a>(&'a self) -> SetItems<'a> {
+        SetItems{iter: self.map.iter()}
     }
 
     /// Get an iterator pointing to the first value that is not less than `val`.
     /// If all values in the set are less than `val` an empty iterator is returned.
-    pub fn lower_bound<'a>(&'a self, val: uint) -> TrieSetIterator<'a> {
-        TrieSetIterator{iter: self.map.lower_bound(val)}
+    pub fn lower_bound<'a>(&'a self, val: uint) -> SetItems<'a> {
+        SetItems{iter: self.map.lower_bound(val)}
     }
 
     /// Get an iterator pointing to the first value that key is greater than `val`.
     /// If all values in the set are not greater than `val` an empty iterator is returned.
-    pub fn upper_bound<'a>(&'a self, val: uint) -> TrieSetIterator<'a> {
-        TrieSetIterator{iter: self.map.upper_bound(val)}
+    pub fn upper_bound<'a>(&'a self, val: uint) -> SetItems<'a> {
+        SetItems{iter: self.map.upper_bound(val)}
     }
 }
 
@@ -474,8 +474,8 @@ fn remove<T>(count: &mut uint, child: &mut Child<T>, key: uint,
 }
 
 /// Forward iterator over a map
-pub struct TrieMapIterator<'a, T> {
-    priv stack: [vec::VecIterator<'a, Child<T>>, .. NUM_CHUNKS],
+pub struct Entries<'a, T> {
+    priv stack: [vec::Items<'a, Child<T>>, .. NUM_CHUNKS],
     priv length: uint,
     priv remaining_min: uint,
     priv remaining_max: uint
@@ -483,8 +483,8 @@ pub struct TrieMapIterator<'a, T> {
 
 /// Forward iterator over the key-value pairs of a map, with the
 /// values being mutable.
-pub struct TrieMapMutIterator<'a, T> {
-    priv stack: [vec::VecMutIterator<'a, Child<T>>, .. NUM_CHUNKS],
+pub struct MutEntries<'a, T> {
+    priv stack: [vec::MutItems<'a, Child<T>>, .. NUM_CHUNKS],
     priv length: uint,
     priv remaining_min: uint,
     priv remaining_max: uint
@@ -601,15 +601,15 @@ macro_rules! iterator_impl {
     }
 }
 
-iterator_impl! { TrieMapIterator, iter = iter, mutability = }
-iterator_impl! { TrieMapMutIterator, iter = mut_iter, mutability = mut }
+iterator_impl! { Entries, iter = iter, mutability = }
+iterator_impl! { MutEntries, iter = mut_iter, mutability = mut }
 
 /// Forward iterator over a set
-pub struct TrieSetIterator<'a> {
-    priv iter: TrieMapIterator<'a, ()>
+pub struct SetItems<'a> {
+    priv iter: Entries<'a, ()>
 }
 
-impl<'a> Iterator<uint> for TrieSetIterator<'a> {
+impl<'a> Iterator<uint> for SetItems<'a> {
     fn next(&mut self) -> Option<uint> {
         self.iter.next().map(|(key, _)| key)
     }

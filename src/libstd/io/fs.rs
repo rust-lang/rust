@@ -508,16 +508,16 @@ pub fn readdir(path: &Path) -> ~[Path] {
 /// Returns an iterator which will recursively walk the directory structure
 /// rooted at `path`. The path given will not be iterated over, and this will
 /// perform iteration in a top-down order.
-pub fn walk_dir(path: &Path) -> WalkIterator {
-    WalkIterator { stack: readdir(path) }
+pub fn walk_dir(path: &Path) -> Directories {
+    Directories { stack: readdir(path) }
 }
 
 /// An iterator which walks over a directory
-pub struct WalkIterator {
+pub struct Directories {
     priv stack: ~[Path],
 }
 
-impl Iterator<Path> for WalkIterator {
+impl Iterator<Path> for Directories {
     fn next(&mut self) -> Option<Path> {
         match self.stack.shift_opt() {
             Some(path) => {

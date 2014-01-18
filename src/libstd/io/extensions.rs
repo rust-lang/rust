@@ -24,7 +24,7 @@ use vec::{OwnedVector, ImmutableVector};
 ///
 /// # Notes about the Iteration Protocol
 ///
-/// The `ByteIterator` may yield `None` and thus terminate
+/// The `Bytes` may yield `None` and thus terminate
 /// an iteration, but continue to yield elements if iteration
 /// is attempted again.
 ///
@@ -33,17 +33,17 @@ use vec::{OwnedVector, ImmutableVector};
 /// Raises the same conditions as the `read` method, for
 /// each call to its `.next()` method.
 /// Yields `None` if the condition is handled.
-pub struct ByteIterator<'r, T> {
+pub struct Bytes<'r, T> {
     priv reader: &'r mut T,
 }
 
-impl<'r, R: Reader> ByteIterator<'r, R> {
-    pub fn new(r: &'r mut R) -> ByteIterator<'r, R> {
-        ByteIterator { reader: r }
+impl<'r, R: Reader> Bytes<'r, R> {
+    pub fn new(r: &'r mut R) -> Bytes<'r, R> {
+        Bytes { reader: r }
     }
 }
 
-impl<'r, R: Reader> Iterator<u8> for ByteIterator<'r, R> {
+impl<'r, R: Reader> Iterator<u8> for Bytes<'r, R> {
     #[inline]
     fn next(&mut self) -> Option<u8> {
         self.reader.read_byte()

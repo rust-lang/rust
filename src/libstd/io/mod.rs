@@ -624,8 +624,8 @@ pub trait Reader {
     /// Raises the same conditions as the `read` method, for
     /// each call to its `.next()` method.
     /// Ends the iteration if the condition is handled.
-    fn bytes<'r>(&'r mut self) -> extensions::ByteIterator<'r, Self> {
-        extensions::ByteIterator::new(self)
+    fn bytes<'r>(&'r mut self) -> extensions::Bytes<'r, Self> {
+        extensions::Bytes::new(self)
     }
 
     // Byte conversion helpers
@@ -1053,7 +1053,7 @@ impl<T: Reader + Writer> Stream for T {}
 ///
 /// # Notes about the Iteration Protocol
 ///
-/// The `LineIterator` may yield `None` and thus terminate
+/// The `Lines` may yield `None` and thus terminate
 /// an iteration, but continue to yield elements if iteration
 /// is attempted again.
 ///
@@ -1062,11 +1062,11 @@ impl<T: Reader + Writer> Stream for T {}
 /// Raises the same conditions as the `read` method except for `EndOfFile`
 /// which is swallowed.
 /// Iteration yields `None` if the condition is handled.
-pub struct LineIterator<'r, T> {
+pub struct Lines<'r, T> {
     priv buffer: &'r mut T,
 }
 
-impl<'r, T: Buffer> Iterator<~str> for LineIterator<'r, T> {
+impl<'r, T: Buffer> Iterator<~str> for Lines<'r, T> {
     fn next(&mut self) -> Option<~str> {
         self.buffer.read_line()
     }
@@ -1126,8 +1126,8 @@ pub trait Buffer: Reader {
     ///
     /// Iterator raises the same conditions as the `read` method
     /// except for `EndOfFile`.
-    fn lines<'r>(&'r mut self) -> LineIterator<'r, Self> {
-        LineIterator {
+    fn lines<'r>(&'r mut self) -> Lines<'r, Self> {
+        Lines {
             buffer: self,
         }
     }
@@ -1256,8 +1256,8 @@ pub trait Acceptor<T> {
     fn accept(&mut self) -> Option<T>;
 
     /// Create an iterator over incoming connection attempts
-    fn incoming<'r>(&'r mut self) -> IncomingIterator<'r, Self> {
-        IncomingIterator { inc: self }
+    fn incoming<'r>(&'r mut self) -> IncomingConnections<'r, Self> {
+        IncomingConnections { inc: self }
     }
 }
 
@@ -1268,11 +1268,11 @@ pub trait Acceptor<T> {
 /// The Some contains another Option representing whether the connection attempt was succesful.
 /// A successful connection will be wrapped in Some.
 /// A failed connection is represented as a None and raises a condition.
-struct IncomingIterator<'a, A> {
+struct IncomingConnections<'a, A> {
     priv inc: &'a mut A,
 }
 
-impl<'a, T, A: Acceptor<T>> Iterator<Option<T>> for IncomingIterator<'a, A> {
+impl<'a, T, A: Acceptor<T>> Iterator<Option<T>> for IncomingConnections<'a, A> {
     fn next(&mut self) -> Option<Option<T>> {
         Some(self.inc.accept())
     }

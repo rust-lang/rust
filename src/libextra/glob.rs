@@ -11,7 +11,7 @@
 /*!
  * Support for matching file paths against Unix shell style patterns.
  *
- * The `glob` and `glob_with` functions, in concert with the `GlobIterator`
+ * The `glob` and `glob_with` functions, in concert with the `Paths`
  * type, allow querying the filesystem for all files that match a particular
  * pattern - just like the libc `glob` function (for an example see the `glob`
  * documentation). The methods on the `Pattern` type provide functionality
@@ -32,7 +32,7 @@ use std::path::is_sep;
  * An iterator that yields Paths from the filesystem that match a particular
  * pattern - see the `glob` function for more details.
  */
-pub struct GlobIterator {
+pub struct Paths {
     priv root: Path,
     priv dir_patterns: ~[Pattern],
     priv options: MatchOptions,
@@ -67,7 +67,7 @@ pub struct GlobIterator {
 /// /media/pictures/puppies.jpg
 /// ```
 ///
-pub fn glob(pattern: &str) -> GlobIterator {
+pub fn glob(pattern: &str) -> Paths {
     glob_with(pattern, MatchOptions::new())
 }
 
@@ -82,7 +82,7 @@ pub fn glob(pattern: &str) -> GlobIterator {
  *
  * Paths are yielded in alphabetical order, as absolute paths.
  */
-pub fn glob_with(pattern: &str, options: MatchOptions) -> GlobIterator {
+pub fn glob_with(pattern: &str, options: MatchOptions) -> Paths {
     #[cfg(windows)]
     fn check_windows_verbatim(p: &Path) -> bool { path::windows::is_verbatim(p) }
     #[cfg(not(windows))]
@@ -95,7 +95,7 @@ pub fn glob_with(pattern: &str, options: MatchOptions) -> GlobIterator {
         if check_windows_verbatim(pat_root.get_ref()) {
             // XXX: How do we want to handle verbatim paths? I'm inclined to return nothing,
             // since we can't very well find all UNC shares with a 1-letter server name.
-            return GlobIterator { root: root, dir_patterns: ~[], options: options, todo: ~[] };
+            return Paths { root: root, dir_patterns: ~[], options: options, todo: ~[] };
         }
         root.push(pat_root.get_ref());
     }
@@ -106,7 +106,7 @@ pub fn glob_with(pattern: &str, options: MatchOptions) -> GlobIterator {
 
     let todo = list_dir_sorted(&root).move_iter().map(|x|(x,0u)).to_owned_vec();
 
-    GlobIterator {
+    Paths {
         root: root,
         dir_patterns: dir_patterns,
         options: options,
@@ -114,7 +114,7 @@ pub fn glob_with(pattern: &str, options: MatchOptions) -> GlobIterator {
     }
 }
 
-impl Iterator<Path> for GlobIterator {
+impl Iterator<Path> for Paths {
 
     fn next(&mut self) -> Option<Path> {
         loop {

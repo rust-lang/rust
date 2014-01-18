@@ -214,26 +214,26 @@ impl<T> Option<T> {
 
     /// Return an iterator over the possibly contained value
     #[inline]
-    pub fn iter<'r>(&'r self) -> OptionIterator<&'r T> {
+    pub fn iter<'r>(&'r self) -> Item<&'r T> {
         match *self {
-            Some(ref x) => OptionIterator{opt: Some(x)},
-            None => OptionIterator{opt: None}
+            Some(ref x) => Item{opt: Some(x)},
+            None => Item{opt: None}
         }
     }
 
     /// Return a mutable iterator over the possibly contained value
     #[inline]
-    pub fn mut_iter<'r>(&'r mut self) -> OptionIterator<&'r mut T> {
+    pub fn mut_iter<'r>(&'r mut self) -> Item<&'r mut T> {
         match *self {
-            Some(ref mut x) => OptionIterator{opt: Some(x)},
-            None => OptionIterator{opt: None}
+            Some(ref mut x) => Item{opt: Some(x)},
+            None => Item{opt: None}
         }
     }
 
     /// Return a consuming iterator over the possibly contained value
     #[inline]
-    pub fn move_iter(self) -> OptionIterator<T> {
-        OptionIterator{opt: self}
+    pub fn move_iter(self) -> Item<T> {
+        Item{opt: self}
     }
 
     /////////////////////////////////////////////////////////////////////////
@@ -401,11 +401,11 @@ impl<T> Default for Option<T> {
 
 /// An iterator that yields either one or zero elements
 #[deriving(Clone, DeepClone)]
-pub struct OptionIterator<A> {
+pub struct Item<A> {
     priv opt: Option<A>
 }
 
-impl<A> Iterator<A> for OptionIterator<A> {
+impl<A> Iterator<A> for Item<A> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         self.opt.take()
@@ -420,14 +420,14 @@ impl<A> Iterator<A> for OptionIterator<A> {
     }
 }
 
-impl<A> DoubleEndedIterator<A> for OptionIterator<A> {
+impl<A> DoubleEndedIterator<A> for Item<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
         self.opt.take()
     }
 }
 
-impl<A> ExactSize<A> for OptionIterator<A> {}
+impl<A> ExactSize<A> for Item<A> {}
 
 /////////////////////////////////////////////////////////////////////////////
 // Free functions

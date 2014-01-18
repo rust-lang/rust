@@ -25,7 +25,7 @@ This is a big module, but for a high-level overview:
 
 ## Structs
 
-Several structs that are useful for vectors, such as `VecIterator`, which
+Several structs that are useful for vectors, such as `Items`, which
 represents iteration over a vector.
 
 ## Traits
@@ -230,14 +230,14 @@ pub fn mut_ref_slice<'a, A>(s: &'a mut A) -> &'a mut [A] {
 
 /// An iterator over the slices of a vector separated by elements that
 /// match a predicate function.
-pub struct SplitIterator<'a, T> {
+pub struct Splits<'a, T> {
     priv v: &'a [T],
     priv n: uint,
     priv pred: 'a |t: &T| -> bool,
     priv finished: bool
 }
 
-impl<'a, T> Iterator<&'a [T]> for SplitIterator<'a, T> {
+impl<'a, T> Iterator<&'a [T]> for Splits<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<&'a [T]> {
         if self.finished { return None; }
@@ -279,14 +279,14 @@ impl<'a, T> Iterator<&'a [T]> for SplitIterator<'a, T> {
 
 /// An iterator over the slices of a vector separated by elements that
 /// match a predicate function, from back to front.
-pub struct RSplitIterator<'a, T> {
+pub struct RevSplits<'a, T> {
     priv v: &'a [T],
     priv n: uint,
     priv pred: 'a |t: &T| -> bool,
     priv finished: bool
 }
 
-impl<'a, T> Iterator<&'a [T]> for RSplitIterator<'a, T> {
+impl<'a, T> Iterator<&'a [T]> for RevSplits<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<&'a [T]> {
         if self.finished { return None; }
@@ -514,12 +514,12 @@ impl<T: Clone> Iterator<~[T]> for Permutations<T> {
 /// An iterator over the (overlapping) slices of length `size` within
 /// a vector.
 #[deriving(Clone)]
-pub struct WindowIter<'a, T> {
+pub struct Windows<'a, T> {
     priv v: &'a [T],
     priv size: uint
 }
 
-impl<'a, T> Iterator<&'a [T]> for WindowIter<'a, T> {
+impl<'a, T> Iterator<&'a [T]> for Windows<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<&'a [T]> {
         if self.size > self.v.len() {
@@ -548,12 +548,12 @@ impl<'a, T> Iterator<&'a [T]> for WindowIter<'a, T> {
 /// When the vector len is not evenly divided by the chunk size,
 /// the last slice of the iteration will be the remainder.
 #[deriving(Clone)]
-pub struct ChunkIter<'a, T> {
+pub struct Chunks<'a, T> {
     priv v: &'a [T],
     priv size: uint
 }
 
-impl<'a, T> Iterator<&'a [T]> for ChunkIter<'a, T> {
+impl<'a, T> Iterator<&'a [T]> for Chunks<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<&'a [T]> {
         if self.v.len() == 0 {
@@ -579,7 +579,7 @@ impl<'a, T> Iterator<&'a [T]> for ChunkIter<'a, T> {
     }
 }
 
-impl<'a, T> DoubleEndedIterator<&'a [T]> for ChunkIter<'a, T> {
+impl<'a, T> DoubleEndedIterator<&'a [T]> for Chunks<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a [T]> {
         if self.v.len() == 0 {
@@ -595,7 +595,7 @@ impl<'a, T> DoubleEndedIterator<&'a [T]> for ChunkIter<'a, T> {
     }
 }
 
-impl<'a, T> RandomAccessIterator<&'a [T]> for ChunkIter<'a, T> {
+impl<'a, T> RandomAccessIterator<&'a [T]> for Chunks<'a, T> {
     #[inline]
     fn indexable(&self) -> uint {
         self.v.len()/self.size + if self.v.len() % self.size != 0 { 1 } else { 0 }
@@ -866,29 +866,29 @@ pub trait ImmutableVector<'a, T> {
      */
     fn slice_to(&self, end: uint) -> &'a [T];
     /// Returns an iterator over the vector
-    fn iter(self) -> VecIterator<'a, T>;
+    fn iter(self) -> Items<'a, T>;
     /// Returns a reversed iterator over a vector
-    fn rev_iter(self) -> RevIterator<'a, T>;
+    fn rev_iter(self) -> RevItems<'a, T>;
     /// Returns an iterator over the subslices of the vector which are
     /// separated by elements that match `pred`.  The matched element
     /// is not contained in the subslices.
-    fn split(self, pred: 'a |&T| -> bool) -> SplitIterator<'a, T>;
+    fn split(self, pred: 'a |&T| -> bool) -> Splits<'a, T>;
     /// Returns an iterator over the subslices of the vector which are
     /// separated by elements that match `pred`, limited to splitting
     /// at most `n` times.  The matched element is not contained in
     /// the subslices.
-    fn splitn(self, n: uint, pred: 'a |&T| -> bool) -> SplitIterator<'a, T>;
+    fn splitn(self, n: uint, pred: 'a |&T| -> bool) -> Splits<'a, T>;
     /// Returns an iterator over the subslices of the vector which are
     /// separated by elements that match `pred`. This starts at the
     /// end of the vector and works backwards.  The matched element is
     /// not contained in the subslices.
-    fn rsplit(self, pred: 'a |&T| -> bool) -> RSplitIterator<'a, T>;
+    fn rsplit(self, pred: 'a |&T| -> bool) -> RevSplits<'a, T>;
     /// Returns an iterator over the subslices of the vector which are
     /// separated by elements that match `pred` limited to splitting
     /// at most `n` times. This starts at the end of the vector and
     /// works backwards.  The matched element is not contained in the
     /// subslices.
-    fn rsplitn(self,  n: uint, pred: 'a |&T| -> bool) -> RSplitIterator<'a, T>;
+    fn rsplitn(self,  n: uint, pred: 'a |&T| -> bool) -> RevSplits<'a, T>;
 
     /**
      * Returns an iterator over all contiguous windows of length
@@ -912,7 +912,7 @@ pub trait ImmutableVector<'a, T> {
      * ```
      *
      */
-    fn windows(self, size: uint) -> WindowIter<'a, T>;
+    fn windows(self, size: uint) -> Windows<'a, T>;
     /**
      *
      * Returns an iterator over `size` elements of the vector at a
@@ -937,7 +937,7 @@ pub trait ImmutableVector<'a, T> {
      * ```
      *
      */
-    fn chunks(self, size: uint) -> ChunkIter<'a, T>;
+    fn chunks(self, size: uint) -> Chunks<'a, T>;
 
     /// Returns the element of a vector at the given index, or `None` if the
     /// index is out of bounds
@@ -1055,15 +1055,15 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
     }
 
     #[inline]
-    fn iter(self) -> VecIterator<'a, T> {
+    fn iter(self) -> Items<'a, T> {
         unsafe {
             let p = self.as_ptr();
             if mem::size_of::<T>() == 0 {
-                VecIterator{ptr: p,
+                Items{ptr: p,
                             end: (p as uint + self.len()) as *T,
                             lifetime: None}
             } else {
-                VecIterator{ptr: p,
+                Items{ptr: p,
                             end: p.offset(self.len() as int),
                             lifetime: None}
             }
@@ -1071,18 +1071,18 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
     }
 
     #[inline]
-    fn rev_iter(self) -> RevIterator<'a, T> {
+    fn rev_iter(self) -> RevItems<'a, T> {
         self.iter().invert()
     }
 
     #[inline]
-    fn split(self, pred: 'a |&T| -> bool) -> SplitIterator<'a, T> {
+    fn split(self, pred: 'a |&T| -> bool) -> Splits<'a, T> {
         self.splitn(uint::max_value, pred)
     }
 
     #[inline]
-    fn splitn(self, n: uint, pred: 'a |&T| -> bool) -> SplitIterator<'a, T> {
-        SplitIterator {
+    fn splitn(self, n: uint, pred: 'a |&T| -> bool) -> Splits<'a, T> {
+        Splits {
             v: self,
             n: n,
             pred: pred,
@@ -1091,13 +1091,13 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
     }
 
     #[inline]
-    fn rsplit(self, pred: 'a |&T| -> bool) -> RSplitIterator<'a, T> {
+    fn rsplit(self, pred: 'a |&T| -> bool) -> RevSplits<'a, T> {
         self.rsplitn(uint::max_value, pred)
     }
 
     #[inline]
-    fn rsplitn(self, n: uint, pred: 'a |&T| -> bool) -> RSplitIterator<'a, T> {
-        RSplitIterator {
+    fn rsplitn(self, n: uint, pred: 'a |&T| -> bool) -> RevSplits<'a, T> {
+        RevSplits {
             v: self,
             n: n,
             pred: pred,
@@ -1106,15 +1106,15 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
     }
 
     #[inline]
-    fn windows(self, size: uint) -> WindowIter<'a, T> {
+    fn windows(self, size: uint) -> Windows<'a, T> {
         assert!(size != 0);
-        WindowIter { v: self, size: size }
+        Windows { v: self, size: size }
     }
 
     #[inline]
-    fn chunks(self, size: uint) -> ChunkIter<'a, T> {
+    fn chunks(self, size: uint) -> Chunks<'a, T> {
         assert!(size != 0);
-        ChunkIter { v: self, size: size }
+        Chunks { v: self, size: size }
     }
 
     #[inline]
@@ -1331,10 +1331,10 @@ pub trait OwnedVector<T> {
     ///   println!("{}", s);
     /// }
     /// ```
-    fn move_iter(self) -> MoveIterator<T>;
+    fn move_iter(self) -> MoveItems<T>;
     /// Creates a consuming iterator that moves out of the vector in
     /// reverse order.
-    fn move_rev_iter(self) -> MoveRevIterator<T>;
+    fn move_rev_iter(self) -> RevMoveItems<T>;
 
     /**
      * Reserves capacity for exactly `n` elements in the given vector.
@@ -1479,16 +1479,16 @@ pub trait OwnedVector<T> {
 
 impl<T> OwnedVector<T> for ~[T] {
     #[inline]
-    fn move_iter(self) -> MoveIterator<T> {
+    fn move_iter(self) -> MoveItems<T> {
         unsafe {
             let iter = cast::transmute(self.iter());
             let ptr = cast::transmute(self);
-            MoveIterator { allocation: ptr, iter: iter }
+            MoveItems { allocation: ptr, iter: iter }
         }
     }
 
     #[inline]
-    fn move_rev_iter(self) -> MoveRevIterator<T> {
+    fn move_rev_iter(self) -> RevMoveItems<T> {
         self.move_iter().invert()
     }
 
@@ -2065,18 +2065,18 @@ pub trait MutableVector<'a, T> {
     fn mut_slice_to(self, end: uint) -> &'a mut [T];
 
     /// Returns an iterator that allows modifying each value
-    fn mut_iter(self) -> VecMutIterator<'a, T>;
+    fn mut_iter(self) -> MutItems<'a, T>;
 
     /// Returns a mutable pointer to the last item in the vector.
     fn mut_last(self) -> &'a mut T;
 
     /// Returns a reversed iterator that allows modifying each value
-    fn mut_rev_iter(self) -> MutRevIterator<'a, T>;
+    fn mut_rev_iter(self) -> RevMutItems<'a, T>;
 
     /// Returns an iterator over the mutable subslices of the vector
     /// which are separated by elements that match `pred`.  The
     /// matched element is not contained in the subslices.
-    fn mut_split(self, pred: 'a |&T| -> bool) -> MutSplitIterator<'a, T>;
+    fn mut_split(self, pred: 'a |&T| -> bool) -> MutSplits<'a, T>;
 
     /**
      * Returns an iterator over `size` elements of the vector at a time.
@@ -2088,7 +2088,7 @@ pub trait MutableVector<'a, T> {
      *
      * Fails if `size` is 0.
      */
-    fn mut_chunks(self, chunk_size: uint) -> MutChunkIter<'a, T>;
+    fn mut_chunks(self, chunk_size: uint) -> MutChunks<'a, T>;
 
     /**
      * Returns a mutable reference to the first element in this slice
@@ -2317,15 +2317,15 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
     }
 
     #[inline]
-    fn mut_iter(self) -> VecMutIterator<'a, T> {
+    fn mut_iter(self) -> MutItems<'a, T> {
         unsafe {
             let p = self.as_mut_ptr();
             if mem::size_of::<T>() == 0 {
-                VecMutIterator{ptr: p,
+                MutItems{ptr: p,
                                end: (p as uint + self.len()) as *mut T,
                                lifetime: None}
             } else {
-                VecMutIterator{ptr: p,
+                MutItems{ptr: p,
                                end: p.offset(self.len() as int),
                                lifetime: None}
             }
@@ -2340,19 +2340,19 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
     }
 
     #[inline]
-    fn mut_rev_iter(self) -> MutRevIterator<'a, T> {
+    fn mut_rev_iter(self) -> RevMutItems<'a, T> {
         self.mut_iter().invert()
     }
 
     #[inline]
-    fn mut_split(self, pred: 'a |&T| -> bool) -> MutSplitIterator<'a, T> {
-        MutSplitIterator { v: self, pred: pred, finished: false }
+    fn mut_split(self, pred: 'a |&T| -> bool) -> MutSplits<'a, T> {
+        MutSplits { v: self, pred: pred, finished: false }
     }
 
     #[inline]
-    fn mut_chunks(self, chunk_size: uint) -> MutChunkIter<'a, T> {
+    fn mut_chunks(self, chunk_size: uint) -> MutChunks<'a, T> {
         assert!(chunk_size > 0);
-        MutChunkIter { v: self, chunk_size: chunk_size }
+        MutChunks { v: self, chunk_size: chunk_size }
     }
 
     fn mut_shift_ref(&mut self) -> &'a mut T {
@@ -2735,7 +2735,7 @@ macro_rules! iterator {
     }
 }
 
-impl<'a, T> RandomAccessIterator<&'a T> for VecIterator<'a, T> {
+impl<'a, T> RandomAccessIterator<&'a T> for Items<'a, T> {
     #[inline]
     fn indexable(&self) -> uint {
         let (exact, _) = self.size_hint();
@@ -2754,28 +2754,28 @@ impl<'a, T> RandomAccessIterator<&'a T> for VecIterator<'a, T> {
     }
 }
 
-iterator!{struct VecIterator -> *T, &'a T}
-pub type RevIterator<'a, T> = Invert<VecIterator<'a, T>>;
+iterator!{struct Items -> *T, &'a T}
+pub type RevItems<'a, T> = Invert<Items<'a, T>>;
 
-impl<'a, T> ExactSize<&'a T> for VecIterator<'a, T> {}
-impl<'a, T> ExactSize<&'a mut T> for VecMutIterator<'a, T> {}
+impl<'a, T> ExactSize<&'a T> for Items<'a, T> {}
+impl<'a, T> ExactSize<&'a mut T> for MutItems<'a, T> {}
 
-impl<'a, T> Clone for VecIterator<'a, T> {
-    fn clone(&self) -> VecIterator<'a, T> { *self }
+impl<'a, T> Clone for Items<'a, T> {
+    fn clone(&self) -> Items<'a, T> { *self }
 }
 
-iterator!{struct VecMutIterator -> *mut T, &'a mut T}
-pub type MutRevIterator<'a, T> = Invert<VecMutIterator<'a, T>>;
+iterator!{struct MutItems -> *mut T, &'a mut T}
+pub type RevMutItems<'a, T> = Invert<MutItems<'a, T>>;
 
 /// An iterator over the subslices of the vector which are separated
 /// by elements that match `pred`.
-pub struct MutSplitIterator<'a, T> {
+pub struct MutSplits<'a, T> {
     priv v: &'a mut [T],
     priv pred: 'a |t: &T| -> bool,
     priv finished: bool
 }
 
-impl<'a, T> Iterator<&'a mut [T]> for MutSplitIterator<'a, T> {
+impl<'a, T> Iterator<&'a mut [T]> for MutSplits<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<&'a mut [T]> {
         if self.finished { return None; }
@@ -2810,7 +2810,7 @@ impl<'a, T> Iterator<&'a mut [T]> for MutSplitIterator<'a, T> {
     }
 }
 
-impl<'a, T> DoubleEndedIterator<&'a mut [T]> for MutSplitIterator<'a, T> {
+impl<'a, T> DoubleEndedIterator<&'a mut [T]> for MutSplits<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a mut [T]> {
         if self.finished { return None; }
@@ -2834,12 +2834,12 @@ impl<'a, T> DoubleEndedIterator<&'a mut [T]> for MutSplitIterator<'a, T> {
 /// An iterator over a vector in (non-overlapping) mutable chunks (`size`  elements at a time). When
 /// the vector len is not evenly divided by the chunk size, the last slice of the iteration will be
 /// the remainder.
-pub struct MutChunkIter<'a, T> {
+pub struct MutChunks<'a, T> {
     priv v: &'a mut [T],
     priv chunk_size: uint
 }
 
-impl<'a, T> Iterator<&'a mut [T]> for MutChunkIter<'a, T> {
+impl<'a, T> Iterator<&'a mut [T]> for MutChunks<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<&'a mut [T]> {
         if self.v.len() == 0 {
@@ -2865,7 +2865,7 @@ impl<'a, T> Iterator<&'a mut [T]> for MutChunkIter<'a, T> {
     }
 }
 
-impl<'a, T> DoubleEndedIterator<&'a mut [T]> for MutChunkIter<'a, T> {
+impl<'a, T> DoubleEndedIterator<&'a mut [T]> for MutChunks<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a mut [T]> {
         if self.v.len() == 0 {
@@ -2883,12 +2883,12 @@ impl<'a, T> DoubleEndedIterator<&'a mut [T]> for MutChunkIter<'a, T> {
 }
 
 /// An iterator that moves out of a vector.
-pub struct MoveIterator<T> {
+pub struct MoveItems<T> {
     priv allocation: *mut u8, // the block of memory allocated for the vector
-    priv iter: VecIterator<'static, T>
+    priv iter: Items<'static, T>
 }
 
-impl<T> Iterator<T> for MoveIterator<T> {
+impl<T> Iterator<T> for MoveItems<T> {
     #[inline]
     fn next(&mut self) -> Option<T> {
         unsafe {
@@ -2902,7 +2902,7 @@ impl<T> Iterator<T> for MoveIterator<T> {
     }
 }
 
-impl<T> DoubleEndedIterator<T> for MoveIterator<T> {
+impl<T> DoubleEndedIterator<T> for MoveItems<T> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
         unsafe {
@@ -2912,7 +2912,7 @@ impl<T> DoubleEndedIterator<T> for MoveIterator<T> {
 }
 
 #[unsafe_destructor]
-impl<T> Drop for MoveIterator<T> {
+impl<T> Drop for MoveItems<T> {
     fn drop(&mut self) {
         // destroy the remaining elements
         for _x in *self {}
@@ -2923,7 +2923,7 @@ impl<T> Drop for MoveIterator<T> {
 }
 
 /// An iterator that moves out of a vector in reverse order.
-pub type MoveRevIterator<T> = Invert<MoveIterator<T>>;
+pub type RevMoveItems<T> = Invert<MoveItems<T>>;
 
 impl<A> FromIterator<A> for ~[A] {
     fn from_iterator<T: Iterator<A>>(iterator: &mut T) -> ~[A] {

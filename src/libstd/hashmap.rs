@@ -528,34 +528,34 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
 
     /// An iterator visiting all keys in arbitrary order.
     /// Iterator element type is &'a K.
-    pub fn keys<'a>(&'a self) -> HashMapKeyIterator<'a, K, V> {
+    pub fn keys<'a>(&'a self) -> Keys<'a, K, V> {
         self.iter().map(|(k, _v)| k)
     }
 
     /// An iterator visiting all values in arbitrary order.
     /// Iterator element type is &'a V.
-    pub fn values<'a>(&'a self) -> HashMapValueIterator<'a, K, V> {
+    pub fn values<'a>(&'a self) -> Values<'a, K, V> {
         self.iter().map(|(_k, v)| v)
     }
 
     /// An iterator visiting all key-value pairs in arbitrary order.
     /// Iterator element type is (&'a K, &'a V).
-    pub fn iter<'a>(&'a self) -> HashMapIterator<'a, K, V> {
-        HashMapIterator { iter: self.buckets.iter() }
+    pub fn iter<'a>(&'a self) -> Entries<'a, K, V> {
+        Entries { iter: self.buckets.iter() }
     }
 
     /// An iterator visiting all key-value pairs in arbitrary order,
     /// with mutable references to the values.
     /// Iterator element type is (&'a K, &'a mut V).
-    pub fn mut_iter<'a>(&'a mut self) -> HashMapMutIterator<'a, K, V> {
-        HashMapMutIterator { iter: self.buckets.mut_iter() }
+    pub fn mut_iter<'a>(&'a mut self) -> MutEntries<'a, K, V> {
+        MutEntries { iter: self.buckets.mut_iter() }
     }
 
     /// Creates a consuming iterator, that is, one that moves each key-value
     /// pair out of the map in arbitrary order. The map cannot be used after
     /// calling this.
-    pub fn move_iter(self) -> HashMapMoveIterator<K, V> {
-        HashMapMoveIterator {iter: self.buckets.move_iter()}
+    pub fn move_iter(self) -> MoveEntries<K, V> {
+        MoveEntries {iter: self.buckets.move_iter()}
     }
 }
 
@@ -598,40 +598,40 @@ impl<K:Hash + Eq + Clone,V:Clone> Clone for HashMap<K,V> {
 
 /// HashMap iterator
 #[deriving(Clone)]
-pub struct HashMapIterator<'a, K, V> {
-    priv iter: vec::VecIterator<'a, Option<Bucket<K, V>>>,
+pub struct Entries<'a, K, V> {
+    priv iter: vec::Items<'a, Option<Bucket<K, V>>>,
 }
 
 /// HashMap mutable values iterator
-pub struct HashMapMutIterator<'a, K, V> {
-    priv iter: vec::VecMutIterator<'a, Option<Bucket<K, V>>>,
+pub struct MutEntries<'a, K, V> {
+    priv iter: vec::MutItems<'a, Option<Bucket<K, V>>>,
 }
 
 /// HashMap move iterator
-pub struct HashMapMoveIterator<K, V> {
-    priv iter: vec::MoveIterator<Option<Bucket<K, V>>>,
+pub struct MoveEntries<K, V> {
+    priv iter: vec::MoveItems<Option<Bucket<K, V>>>,
 }
 
 /// HashMap keys iterator
-pub type HashMapKeyIterator<'a, K, V> =
-    iter::Map<'static, (&'a K, &'a V), &'a K, HashMapIterator<'a, K, V>>;
+pub type Keys<'a, K, V> =
+    iter::Map<'static, (&'a K, &'a V), &'a K, Entries<'a, K, V>>;
 
 /// HashMap values iterator
-pub type HashMapValueIterator<'a, K, V> =
-    iter::Map<'static, (&'a K, &'a V), &'a V, HashMapIterator<'a, K, V>>;
+pub type Values<'a, K, V> =
+    iter::Map<'static, (&'a K, &'a V), &'a V, Entries<'a, K, V>>;
 
 /// HashSet iterator
 #[deriving(Clone)]
-pub struct HashSetIterator<'a, K> {
-    priv iter: vec::VecIterator<'a, Option<Bucket<K, ()>>>,
+pub struct SetItems<'a, K> {
+    priv iter: vec::Items<'a, Option<Bucket<K, ()>>>,
 }
 
 /// HashSet move iterator
-pub struct HashSetMoveIterator<K> {
-    priv iter: vec::MoveIterator<Option<Bucket<K, ()>>>,
+pub struct SetMoveItems<K> {
+    priv iter: vec::MoveItems<Option<Bucket<K, ()>>>,
 }
 
-impl<'a, K, V> Iterator<(&'a K, &'a V)> for HashMapIterator<'a, K, V> {
+impl<'a, K, V> Iterator<(&'a K, &'a V)> for Entries<'a, K, V> {
     #[inline]
     fn next(&mut self) -> Option<(&'a K, &'a V)> {
         for elt in self.iter {
@@ -644,7 +644,7 @@ impl<'a, K, V> Iterator<(&'a K, &'a V)> for HashMapIterator<'a, K, V> {
     }
 }
 
-impl<'a, K, V> Iterator<(&'a K, &'a mut V)> for HashMapMutIterator<'a, K, V> {
+impl<'a, K, V> Iterator<(&'a K, &'a mut V)> for MutEntries<'a, K, V> {
     #[inline]
     fn next(&mut self) -> Option<(&'a K, &'a mut V)> {
         for elt in self.iter {
@@ -657,7 +657,7 @@ impl<'a, K, V> Iterator<(&'a K, &'a mut V)> for HashMapMutIterator<'a, K, V> {
     }
 }
 
-impl<K, V> Iterator<(K, V)> for HashMapMoveIterator<K, V> {
+impl<K, V> Iterator<(K, V)> for MoveEntries<K, V> {
     #[inline]
     fn next(&mut self) -> Option<(K, V)> {
         for elt in self.iter {
@@ -670,7 +670,7 @@ impl<K, V> Iterator<(K, V)> for HashMapMoveIterator<K, V> {
     }
 }
 
-impl<'a, K> Iterator<&'a K> for HashSetIterator<'a, K> {
+impl<'a, K> Iterator<&'a K> for SetItems<'a, K> {
     #[inline]
     fn next(&mut self) -> Option<&'a K> {
         for elt in self.iter {
@@ -683,7 +683,7 @@ impl<'a, K> Iterator<&'a K> for HashSetIterator<'a, K> {
     }
 }
 
-impl<K> Iterator<K> for HashSetMoveIterator<K> {
+impl<K> Iterator<K> for SetMoveItems<K> {
     #[inline]
     fn next(&mut self) -> Option<K> {
         for elt in self.iter {
@@ -806,19 +806,19 @@ impl<T:Hash + Eq> HashSet<T> {
 
     /// An iterator visiting all elements in arbitrary order.
     /// Iterator element type is &'a T.
-    pub fn iter<'a>(&'a self) -> HashSetIterator<'a, T> {
-        HashSetIterator { iter: self.map.buckets.iter() }
+    pub fn iter<'a>(&'a self) -> SetItems<'a, T> {
+        SetItems { iter: self.map.buckets.iter() }
     }
 
     /// Creates a consuming iterator, that is, one that moves each value out
     /// of the set in arbitrary order. The set cannot be used after calling
     /// this.
-    pub fn move_iter(self) -> HashSetMoveIterator<T> {
-        HashSetMoveIterator {iter: self.map.buckets.move_iter()}
+    pub fn move_iter(self) -> SetMoveItems<T> {
+        SetMoveItems {iter: self.map.buckets.move_iter()}
     }
 
     /// Visit the values representing the difference
-    pub fn difference<'a>(&'a self, other: &'a HashSet<T>) -> SetAlgebraIter<'a, T> {
+    pub fn difference<'a>(&'a self, other: &'a HashSet<T>) -> SetAlgebraItems<'a, T> {
         Repeat::new(other)
             .zip(self.iter())
             .filter_map(|(other, elt)| {
@@ -828,13 +828,13 @@ impl<T:Hash + Eq> HashSet<T> {
 
     /// Visit the values representing the symmetric difference
     pub fn symmetric_difference<'a>(&'a self, other: &'a HashSet<T>)
-        -> Chain<SetAlgebraIter<'a, T>, SetAlgebraIter<'a, T>> {
+        -> Chain<SetAlgebraItems<'a, T>, SetAlgebraItems<'a, T>> {
         self.difference(other).chain(other.difference(self))
     }
 
     /// Visit the values representing the intersection
     pub fn intersection<'a>(&'a self, other: &'a HashSet<T>)
-        -> SetAlgebraIter<'a, T> {
+        -> SetAlgebraItems<'a, T> {
         Repeat::new(other)
             .zip(self.iter())
             .filter_map(|(other, elt)| {
@@ -844,7 +844,7 @@ impl<T:Hash + Eq> HashSet<T> {
 
     /// Visit the values representing the union
     pub fn union<'a>(&'a self, other: &'a HashSet<T>)
-        -> Chain<HashSetIterator<'a, T>, SetAlgebraIter<'a, T>> {
+        -> Chain<SetItems<'a, T>, SetAlgebraItems<'a, T>> {
         self.iter().chain(other.difference(self))
     }
 
@@ -882,9 +882,9 @@ impl<K: Eq + Hash> Default for HashSet<K> {
 // `Repeat` is used to feed the filter closure an explicit capture
 // of a reference to the other set
 /// Set operations iterator
-pub type SetAlgebraIter<'a, T> =
+pub type SetAlgebraItems<'a, T> =
     FilterMap<'static,(&'a HashSet<T>, &'a T), &'a T,
-              Zip<Repeat<&'a HashSet<T>>,HashSetIterator<'a,T>>>;
+              Zip<Repeat<&'a HashSet<T>>,SetItems<'a,T>>>;
 
 
 #[cfg(test)]
