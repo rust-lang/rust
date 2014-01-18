@@ -31,6 +31,7 @@ use util::small_vector::SmallVector;
 
 use std::vec;
 use std::unstable::dynamic_lib::DynamicLibrary;
+use std::os;
 
 pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
     match e.node {
@@ -402,8 +403,7 @@ fn load_extern_macros(crate: &ast::ViewItem, fld: &mut MacroExpander) {
         None => return
     };
     // Make sure the path contains a / or the linker will search for it.
-    // If path is already absolute this is a no-op.
-    let path = Path::new(".").join(path);
+    let path = os::make_absolute(&path);
 
     let registrar = match fld.cx.loader.get_registrar_symbol(cnum) {
         Some(registrar) => registrar,
