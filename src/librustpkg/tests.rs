@@ -26,7 +26,7 @@ use extra::getopts::groups::getopts;
 use std::run::ProcessOutput;
 use installed_packages::list_installed_packages;
 use crate_id::{CrateId};
-use version::{ExactRevision, NoVersion, Version, Tagged};
+use version::{ExactRevision, NoVersion, Version};
 use path_util::{target_executable_in_workspace, target_test_in_workspace,
                target_bench_in_workspace, make_dir_rwx,
                library_in_workspace, installed_library_in_workspace,
@@ -35,7 +35,6 @@ use path_util::{target_executable_in_workspace, target_test_in_workspace,
                chmod_read_only, platform_library_name};
 use rustc::back::link::get_cc_prog;
 use rustc::metadata::filesearch::{rust_path, libdir, rustlibdir};
-use rustc::driver::session;
 use rustc::driver::driver::{build_session, build_session_options, host_triple, optgroups};
 use syntax::diagnostic;
 use target::*;
@@ -73,14 +72,6 @@ fn git_repo_pkg() -> CrateId {
         path: Path::new("mockgithub.com/catamorphism/test-pkg"),
         short_name: ~"test-pkg",
         version: NoVersion
-    }
-}
-
-fn git_repo_pkg_with_tag(a_tag: ~str) -> CrateId {
-    CrateId {
-        path: Path::new("mockgithub.com/catamorphism/test-pkg"),
-        short_name: ~"test-pkg",
-        version: Tagged(a_tag)
     }
 }
 
@@ -487,12 +478,6 @@ fn lib_output_file_name(workspace: &Path, short_name: &str) -> Path {
                          &NoVersion).expect("lib_output_file_name")
 }
 
-fn output_file_name(workspace: &Path, short_name: ~str) -> Path {
-    target_build_dir(workspace).join(short_name.as_slice())
-                               .join(format!("{}{}", short_name,
-                                             os::consts::EXE_SUFFIX))
-}
-
 #[cfg(target_os = "linux")]
 fn touch_source_file(workspace: &Path, crateid: &CrateId) {
     use conditions::bad_path::cond;
@@ -746,8 +731,8 @@ fn test_crate_ids_must_be_relative_path_like() {
             CrateId::new("github.com/catamorphism/test-pkg").to_str());
 
     cond.trap(|(p, e)| {
-        assert!(p.filename().is_none())
-        assert!("0-length crate_id" == e);
+        assert!(p.filename().is_none());
+        assert!("bad crateid" == e);
         whatever.clone()
     }).inside(|| {
         let x = CrateId::new("");
@@ -757,7 +742,7 @@ fn test_crate_ids_must_be_relative_path_like() {
     cond.trap(|(p, e)| {
         let abs = os::make_absolute(&Path::new("foo/bar/quux"));
         assert_eq!(p, abs);
-        assert!("absolute crate_id" == e);
+        assert!("bad crateid" == e);
         whatever.clone()
     }).inside(|| {
         let zp = os::make_absolute(&Path::new("foo/bar/quux"));
@@ -1894,9 +1879,11 @@ fn crateid_pointing_to_subdir() {
     fs::mkdir_recursive(&foo_dir, io::UserRWX);
     fs::mkdir_recursive(&bar_dir, io::UserRWX);
     writeFile(&foo_dir.join("lib.rs"),
-              "#[crate_id=\"mockgithub.com/mozilla/some_repo/extras/foo\"]; pub fn f() {}");
+              "#[crate_id=\"mockgithub.com/mozilla/some_repo/extras/rust-foo#foo:0.0\"];" +
+              "pub fn f() {}");
     writeFile(&bar_dir.join("lib.rs"),
-              "#[crate_id=\"mockgithub.com/mozilla/some_repo/extras/bar\"]; pub fn g() {}");
+              "#[crate_id=\"mockgithub.com/mozilla/some_repo/extras/rust-bar#bar:0.0\"];" +
+              "pub fn g() {}");
 
     debug!("Creating a file in {}", workspace.display());
     let testpkg_dir = workspace.join_many(["src", "testpkg-0.0"]);
@@ -2318,7 +2305,7 @@ fn find_sources_in_cwd() {
     let source_dir = temp_dir.join("foo");
     fs::mkdir_recursive(&source_dir, io::UserRWX);
     writeFile(&source_dir.join("main.rs"),
-              r#"#[crate_id="foo"]; fn main() { let _x = (); }"#);
+              r#"#[crate_id="rust-foo#foo:0.0"]; fn main() { let _x = (); }"#);
     command_line_test([~"install", ~"foo"], &source_dir);
     assert_executable_exists(&source_dir.join(".rust"), "foo");
 }
