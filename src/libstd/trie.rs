@@ -11,14 +11,17 @@
 //! Ordered containers with integer keys, implemented as radix tries (`TrieSet` and `TrieMap` types)
 
 use prelude::*;
+use mem;
 use uint;
 use util::replace;
+use unstable::intrinsics::init;
 use vec;
 
 // FIXME: #5244: need to manually update the TrieNode constructor
 static SHIFT: uint = 4;
 static SIZE: uint = 1 << SHIFT;
 static MASK: uint = SIZE - 1;
+static NUM_CHUNKS: uint = uint::bits / SHIFT;
 
 enum Child<T> {
     Internal(~TrieNode<T>),
@@ -111,35 +114,27 @@ impl<T> TrieMap<T> {
         self.root.each_reverse(f)
     }
 
-    /// Visit all keys in reverse order
-    #[inline]
-    pub fn each_key_reverse(&self, f: |&uint| -> bool) -> bool {
-        self.each_reverse(|k, _| f(k))
-    }
-
-    /// Visit all values in reverse order
-    #[inline]
-    pub fn each_value_reverse(&self, f: |&T| -> bool) -> bool {
-        self.each_reverse(|_, v| f(v))
-    }
-
     /// Get an iterator over the key-value pairs in the map
     pub fn iter<'a>(&'a self) -> TrieMapIterator<'a, T> {
-        TrieMapIterator {
-            stack: ~[self.root.children.iter()],
-            remaining_min: self.length,
-            remaining_max: self.length
-        }
+        let mut iter = unsafe {TrieMapIterator::new()};
+        iter.stack[0] = self.root.children.iter();
+        iter.length = 1;
+        iter.remaining_min = self.length;
+        iter.remaining_max = self.length;
+
+        iter
     }
 
     /// Get an iterator over the key-value pairs in the map, with the
     /// ability to mutate the values.
     pub fn mut_iter<'a>(&'a mut self) -> TrieMapMutIterator<'a, T> {
-        TrieMapMutIterator {
-            stack: ~[self.root.children.mut_iter()],
-            remaining_min: self.length,
-            remaining_max: self.length
-        }
+        let mut iter = unsafe {TrieMapMutIterator::new()};
+        iter.stack[0] = self.root.children.mut_iter();
+        iter.length = 1;
+        iter.remaining_min = self.length;
+        iter.remaining_max = self.length;
+
+        iter
     }
 }
 
@@ -188,16 +183,16 @@ macro_rules! bound {
 
             let key = $key;
 
-            let mut idx = 0;
-            let mut it = $iterator_name {
-                stack: ~[],
-                remaining_min: 0,
-                remaining_max: this.length
-            };
+            let mut it = unsafe {$iterator_name::new()};
+            // everything else is zero'd, as we want.
+            it.remaining_max = this.length;
+
             // this addr is necessary for the `Internal` pattern.
             addr!(loop {
                     let children = unsafe {addr!(& $($mut_)* (*node).children)};
-                    let child_id = chunk(key, idx);
+                    // it.length is the current depth in the iterator and the
+                    // current depth through the `uint` key we've traversed.
+                    let child_id = chunk(key, it.length);
                     let (slice_idx, ret) = match children[child_id] {
                         Internal(ref $($mut_)* n) => {
                             node = addr!(& $($mut_)* **n as * $($mut_)* TrieNode<T>);
@@ -214,9 +209,10 @@ macro_rules! bound {
                             (child_id + 1, true)
                         }
                     };
-                    it.stack.push(children.$slice_from(slice_idx).$iter());
+                    // push to the stack.
+                    it.stack[it.length] = children.$slice_from(slice_idx).$iter();
+                    it.length += 1;
                     if ret { return it }
-                    idx += 1;
                 })
         }
     }
@@ -328,7 +324,7 @@ impl TrieSet {
     /// Visit all values in reverse order
     #[inline]
     pub fn each_reverse(&self, f: |&uint| -> bool) -> bool {
-        self.map.each_key_reverse(f)
+        self.map.each_reverse(|k, _| f(k))
     }
 
     /// Get an iterator over the values in the set
@@ -479,7 +475,8 @@ fn remove<T>(count: &mut uint, child: &mut Child<T>, key: uint,
 
 /// Forward iterator over a map
 pub struct TrieMapIterator<'a, T> {
-    priv stack: ~[vec::VecIterator<'a, Child<T>>],
+    priv stack: [vec::VecIterator<'a, Child<T>>, .. NUM_CHUNKS],
+    priv length: uint,
     priv remaining_min: uint,
     priv remaining_max: uint
 }
@@ -487,7 +484,8 @@ pub struct TrieMapIterator<'a, T> {
 /// Forward iterator over the key-value pairs of a map, with the
 /// values being mutable.
 pub struct TrieMapMutIterator<'a, T> {
-    priv stack: ~[vec::VecMutIterator<'a, Child<T>>],
+    priv stack: [vec::VecMutIterator<'a, Child<T>>, .. NUM_CHUNKS],
+    priv length: uint,
     priv remaining_min: uint,
     priv remaining_max: uint
 }
@@ -499,27 +497,96 @@ macro_rules! iterator_impl {
     ($name:ident,
      iter = $iter:ident,
      mutability = $($mut_:tt)*) => {
+        impl<'a, T> $name<'a, T> {
+            // Create new zero'd iterator. We have a thin gilding of safety by
+            // using init rather than uninit, so that the worst that can happen
+            // from failing to initialise correctly after calling these is a
+            // segfault.
+            #[cfg(target_word_size="32")]
+            unsafe fn new() -> $name<'a, T> {
+                $name {
+                    remaining_min: 0,
+                    remaining_max: 0,
+                    length: 0,
+                    // ick :( ... at least the compiler will tell us if we screwed up.
+                    stack: [init(), init(), init(), init(), init(), init(), init(), init()]
+                }
+            }
+
+            #[cfg(target_word_size="64")]
+            unsafe fn new() -> $name<'a, T> {
+                $name {
+                    remaining_min: 0,
+                    remaining_max: 0,
+                    length: 0,
+                    stack: [init(), init(), init(), init(), init(), init(), init(), init(),
+                            init(), init(), init(), init(), init(), init(), init(), init()]
+                }
+            }
+        }
+
         item!(impl<'a, T> Iterator<(uint, &'a $($mut_)* T)> for $name<'a, T> {
+                // you might wonder why we're not even trying to act within the
+                // rules, and are just manipulating raw pointers like there's no
+                // such thing as invalid pointers and memory unsafety. The
+                // reason is performance, without doing this we can get the
+                // bench_iter_large microbenchmark down to about 30000 ns/iter
+                // (using .unsafe_ref to index self.stack directly, 38000
+                // ns/iter with [] checked indexing), but this smashes that down
+                // to 13500 ns/iter.
+                //
+                // Fortunately, it's still safe...
+                //
+                // We have an invariant that every Internal node
+                // corresponds to one push to self.stack, and one pop,
+                // nested appropriately. self.stack has enough storage
+                // to store the maximum depth of Internal nodes in the
+                // trie (8 on 32-bit platforms, 16 on 64-bit).
                 fn next(&mut self) -> Option<(uint, &'a $($mut_)* T)> {
-                    while !self.stack.is_empty() {
-                        match self.stack[self.stack.len() - 1].next() {
-                            None => {
-                                self.stack.pop();
-                            }
-                            Some(child) => {
-                                addr!(match *child {
-                                        Internal(ref $($mut_)* node) => {
-                                            self.stack.push(node.children.$iter());
-                                        }
-                                        External(key, ref $($mut_)* value) => {
-                                            self.remaining_max -= 1;
-                                            if self.remaining_min > 0 {
-                                                self.remaining_min -= 1;
+                    let start_ptr = self.stack.as_mut_ptr();
+
+                    unsafe {
+                        // write_ptr is the next place to write to the stack.
+                        // invariant: start_ptr <= write_ptr < end of the
+                        // vector.
+                        let mut write_ptr = start_ptr.offset(self.length as int);
+                        while write_ptr != start_ptr {
+                            // indexing back one is safe, since write_ptr >
+                            // start_ptr now.
+                            match (*write_ptr.offset(-1)).next() {
+                                // exhausted this iterator (i.e. finished this
+                                // Internal node), so pop from the stack.
+                                //
+                                // don't bother clearing the memory, because the
+                                // next time we use it we'll've written to it
+                                // first.
+                                None => write_ptr = write_ptr.offset(-1),
+                                Some(child) => {
+                                    addr!(match *child {
+                                            Internal(ref $($mut_)* node) => {
+                                                // going down a level, so push
+                                                // to the stack (this is the
+                                                // write referenced above)
+                                                *write_ptr = node.children.$iter();
+                                                write_ptr = write_ptr.offset(1);
                                             }
-                                            return Some((key, value));
-                                        }
-                                        Nothing => {}
-                                    })
+                                            External(key, ref $($mut_)* value) => {
+                                                self.remaining_max -= 1;
+                                                if self.remaining_min > 0 {
+                                                    self.remaining_min -= 1;
+                                                }
+                                                // store the new length of the
+                                                // stack, based on our current
+                                                // position.
+                                                self.length = (write_ptr as uint
+                                                               - start_ptr as uint) /
+                                                    mem::size_of_val(&*write_ptr);
+
+                                                return Some((key, value));
+                                            }
+                                            Nothing => {}
+                                        })
+                                }
                             }
                         }
                     }
