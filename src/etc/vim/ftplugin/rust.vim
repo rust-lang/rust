@@ -1,7 +1,8 @@
 " Vim syntax file
 " Language:     Rust
 " Maintainer:   Chris Morgan <me@chrismorgan.info>
-" Last Change:  2013 Jul 10
+" Maintainer:   William Ting <io@williamting.com>
+" Last Change:  2014 Jan 12
 
 if exists("b:did_ftplugin")
 	finish
@@ -42,4 +43,16 @@ if exists("g:loaded_delimitMate")
 	let b:delimitMate_excluded_regions = delimitMate#Get("excluded_regions") . ',rustLifetimeCandidate,rustGenericLifetimeCandidate'
 endif
 
-let b:undo_ftplugin = "setlocal formatoptions< comments< commentstring< includeexpr< suffixesadd< | if exists('b:rust_original_delimitMate_excluded_regions') | let b:delimitMate_excluded_regions = b:rust_original_delimitMate_excluded_regions | unlet b:rust_original_delimitMate_excluded_regions | elseif exists('b:delimitMate_excluded_regions') | unlet b:delimitMate_excluded_regions | endif"
+" Bind motion commands to support hanging indents
+noremap <silent> <buffer> [[ ?{<CR>w99[{
+noremap <silent> <buffer> ]] j0?{<CR>w99[{%/{<CR>
+
+let b:undo_ftplugin = "
+			\ setlocal formatoptions< comments< commentstring< includeexpr< suffixesadd<
+			\ | if exists('b:rust_original_delimitMate_excluded_regions')
+				\ | let b:delimitMate_excluded_regions = b:rust_original_delimitMate_excluded_regions
+				\ | unlet b:rust_original_delimitMate_excluded_regions
+			\ | elseif exists('b:delimitMate_excluded_regions')
+				\ | unlet b:delimitMate_excluded_regions
+			\ | endif
+			\ | unmap <buffer> [[|unmap <buffer> ]]"
