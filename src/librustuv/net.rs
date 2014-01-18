@@ -19,6 +19,7 @@ use std::rt::task::BlockedTask;
 use std::str;
 use std::unstable::finally::Finally;
 use std::vec;
+use std::rt::global_heap::malloc_raw;
 
 use homing::{HomingIO, HomeHandle};
 use stream::StreamWatcher;
@@ -122,8 +123,7 @@ fn socket_name(sk: SocketNameKind, handle: *c_void) -> Result<SocketAddr, IoErro
         // Allocate a sockaddr_storage
         // since we don't know if it's ipv4 or ipv6
         let size = uvll::rust_sockaddr_size();
-        let name = libc::malloc(size as size_t);
-        assert!(!name.is_null());
+        let name = malloc_raw(size as uint) as *c_void;
         let mut namelen = size;
 
         let ret = match getsockname(handle, name, &mut namelen) {

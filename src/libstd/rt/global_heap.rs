@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use libc::{c_void, c_char, size_t, uintptr_t, free, malloc, realloc};
-use ptr::RawPtr;
+use ptr::{RawPtr, mut_null};
 use unstable::intrinsics::{TyDesc, abort};
 use unstable::raw;
 use mem::size_of;
@@ -31,24 +31,37 @@ fn align_to(size: uint, align: uint) -> uint {
 
 /// A wrapper around libc::malloc, aborting on out-of-memory
 #[inline]
-pub unsafe fn malloc_raw(size: uint) -> *c_void {
-    let p = malloc(size as size_t);
-    if p.is_null() {
-        // we need a non-allocating way to print an error here
-        abort();
+pub unsafe fn malloc_raw(size: uint) -> *mut c_void {
+    // `malloc(0)` may allocate, but it may also return a null pointer
+    // http://pubs.opengroup.org/onlinepubs/9699919799/functions/malloc.html
+    if size == 0 {
+        mut_null()
+    } else {
+        let p = malloc(size as size_t);
+        if p.is_null() {
+            // we need a non-allocating way to print an error here
+            abort();
+        }
+        p
     }
-    p
 }
 
 /// A wrapper around libc::realloc, aborting on out-of-memory
 #[inline]
 pub unsafe fn realloc_raw(ptr: *mut c_void, size: uint) -> *mut c_void {
-    let p = realloc(ptr, size as size_t);
-    if p.is_null() {
-        // we need a non-allocating way to print an error here
-        abort();
+    // `realloc(ptr, 0)` may allocate, but it may also return a null pointer
+    // http://pubs.opengroup.org/onlinepubs/9699919799/functions/realloc.html
+    if size == 0 {
+        free(ptr as *c_void);
+        mut_null()
+    } else {
+        let p = realloc(ptr, size as size_t);
+        if p.is_null() {
+            // we need a non-allocating way to print an error here
+            abort();
+        }
+        p
     }
-    p
 }
 
 /// The allocator for unique pointers without contained managed pointers.
