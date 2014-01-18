@@ -45,6 +45,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("link_args", Active),
     ("phase", Active),
     ("macro_registrar", Active),
+    ("log_syntax", Active),
 
     // These are used to test this portion of the compiler, they don't actually
     // mean anything
@@ -185,6 +186,11 @@ impl Visitor<()> for Context {
 
         else if path.segments.last().identifier == self.sess.ident_of("asm") {
             self.gate_feature("asm", path.span, "inline assembly is not \
+                stable enough for use and is subject to change");
+        }
+
+        else if path.segments.last().identifier == self.sess.ident_of("log_syntax") {
+            self.gate_feature("log_syntax", path.span, "`log_syntax!` is not \
                 stable enough for use and is subject to change");
         }
     }
