@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-android doesn't terminate?
+
 use std::iter::range_step;
 use std::io::{stdin, stdout, File};
 
