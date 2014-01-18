@@ -66,8 +66,9 @@ use rand::Rng;
 use rand;
 use uint;
 use util::replace;
-use vec::{ImmutableVector, MutableVector, OwnedVector};
-use vec;
+use vec::{ImmutableVector, MutableVector, OwnedVector, Items, MutItems};
+use vec_ng;
+use vec_ng::Vec;
 
 static INITIAL_CAPACITY: uint = 32u; // 2^5
 
@@ -90,7 +91,7 @@ pub struct HashMap<K,V> {
     priv k1: u64,
     priv resize_at: uint,
     priv size: uint,
-    priv buckets: ~[Option<Bucket<K, V>>],
+    priv buckets: Vec<Option<Bucket<K, V>>>
 }
 
 // We could rewrite FoundEntry to have type Option<&Bucket<K, V>>
@@ -151,7 +152,7 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
                              -> SearchResult {
         let mut ret = TableFull;
         self.bucket_sequence(hash, |i| {
-            match self.buckets[i] {
+            match self.buckets.as_slice()[i] {
                 Some(ref bkt) if bkt.hash == hash && *k == bkt.key => {
                     ret = FoundEntry(i); false
                 },
@@ -169,7 +170,7 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
                                                -> SearchResult {
         let mut ret = TableFull;
         self.bucket_sequence(hash, |i| {
-            match self.buckets[i] {
+            match self.buckets.as_slice()[i] {
                 Some(ref bkt) if bkt.hash == hash && k.equiv(&bkt.key) => {
                     ret = FoundEntry(i); false
                 },
@@ -194,7 +195,7 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
         self.resize_at = resize_at(new_capacity);
 
         let old_buckets = replace(&mut self.buckets,
-                                  vec::from_fn(new_capacity, |_| None));
+                                  Vec::from_fn(new_capacity, |_| None));
 
         self.size = 0;
         for bucket in old_buckets.move_iter() {
@@ -213,7 +214,7 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
 
     #[inline]
     fn value_for_bucket<'a>(&'a self, idx: uint) -> &'a V {
-        match self.buckets[idx] {
+        match self.buckets.as_slice()[idx] {
             Some(ref bkt) => &bkt.value,
             None => fail!("HashMap::find: internal logic error"),
         }
@@ -221,7 +222,7 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
 
     #[inline]
     fn mut_value_for_bucket<'a>(&'a mut self, idx: uint) -> &'a mut V {
-        match self.buckets[idx] {
+        match self.buckets.as_mut_slice()[idx] {
             Some(ref mut bkt) => &mut bkt.value,
             None => unreachable!()
         }
@@ -234,13 +235,12 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
         match self.bucket_for_key_with_hash(hash, &k) {
             TableFull => { fail!("Internal logic error"); }
             FoundHole(idx) => {
-                self.buckets[idx] = Some(Bucket{hash: hash, key: k,
-                                                value: v});
+                self.buckets.as_mut_slice()[idx] = Some(Bucket{hash: hash, key: k, value: v});
                 self.size += 1;
                 None
             }
             FoundEntry(idx) => {
-                match self.buckets[idx] {
+                match self.buckets.as_mut_slice()[idx] {
                     None => { fail!("insert_internal: Internal logic error") }
                     Some(ref mut b) => {
                         b.hash = hash;
@@ -273,7 +273,7 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
         };
 
         let len_buckets = self.buckets.len();
-        let bucket = self.buckets[idx].take();
+        let bucket = self.buckets.as_mut_slice()[idx].take();
 
         let value = bucket.map(|bucket| bucket.value);
 
@@ -281,8 +281,8 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
         what our new size is ahead of time before we start insertions */
         let size = self.size - 1;
         idx = self.next_bucket(idx, len_buckets);
-        while self.buckets[idx].is_some() {
-            let bucket = self.buckets[idx].take();
+        while self.buckets.as_slice()[idx].is_some() {
+            let bucket = self.buckets.as_mut_slice()[idx].take();
             self.insert_opt_bucket(bucket);
             idx = self.next_bucket(idx, len_buckets);
         }
@@ -300,7 +300,7 @@ impl<K:Hash + Eq,V> Container for HashMap<K, V> {
 impl<K:Hash + Eq,V> Mutable for HashMap<K, V> {
     /// Clear the map, removing all key-value pairs.
     fn clear(&mut self) {
-        for bkt in self.buckets.mut_iter() {
+        for bkt in self.buckets.as_mut_slice().mut_iter() {
             *bkt = None;
         }
         self.size = 0;
@@ -380,7 +380,7 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
             k0: k0, k1: k1,
             resize_at: resize_at(cap),
             size: 0,
-            buckets: vec::from_fn(cap, |_| None)
+            buckets: Vec::from_fn(cap, |_| None)
         }
     }
 
@@ -455,7 +455,7 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
             FoundEntry(idx) => { found(&k, self.mut_value_for_bucket(idx), a); idx }
             FoundHole(idx) => {
                 let v = not_found(&k, a);
-                self.buckets[idx] = Some(Bucket{hash: hash, key: k, value: v});
+                self.buckets.as_mut_slice()[idx] = Some(Bucket{hash: hash, key: k, value: v});
                 self.size += 1;
                 idx
             }
@@ -541,14 +541,14 @@ impl<K: Hash + Eq, V> HashMap<K, V> {
     /// An iterator visiting all key-value pairs in arbitrary order.
     /// Iterator element type is (&'a K, &'a V).
     pub fn iter<'a>(&'a self) -> Entries<'a, K, V> {
-        Entries { iter: self.buckets.iter() }
+        Entries { iter: self.buckets.as_slice().iter() }
     }
 
     /// An iterator visiting all key-value pairs in arbitrary order,
     /// with mutable references to the values.
     /// Iterator element type is (&'a K, &'a mut V).
     pub fn mut_iter<'a>(&'a mut self) -> MutEntries<'a, K, V> {
-        MutEntries { iter: self.buckets.mut_iter() }
+        MutEntries { iter: self.buckets.as_mut_slice().mut_iter() }
     }
 
     /// Creates a consuming iterator, that is, one that moves each key-value
@@ -599,17 +599,17 @@ impl<K:Hash + Eq + Clone,V:Clone> Clone for HashMap<K,V> {
 /// HashMap iterator
 #[deriving(Clone)]
 pub struct Entries<'a, K, V> {
-    priv iter: vec::Items<'a, Option<Bucket<K, V>>>,
+    priv iter: Items<'a, Option<Bucket<K, V>>>,
 }
 
 /// HashMap mutable values iterator
 pub struct MutEntries<'a, K, V> {
-    priv iter: vec::MutItems<'a, Option<Bucket<K, V>>>,
+    priv iter: MutItems<'a, Option<Bucket<K, V>>>,
 }
 
 /// HashMap move iterator
 pub struct MoveEntries<K, V> {
-    priv iter: vec::MoveItems<Option<Bucket<K, V>>>,
+    priv iter: vec_ng::MoveItems<Option<Bucket<K, V>>>,
 }
 
 /// HashMap keys iterator
@@ -623,12 +623,12 @@ pub type Values<'a, K, V> =
 /// HashSet iterator
 #[deriving(Clone)]
 pub struct SetItems<'a, K> {
-    priv iter: vec::Items<'a, Option<Bucket<K, ()>>>,
+    priv iter: Items<'a, Option<Bucket<K, ()>>>,
 }
 
 /// HashSet move iterator
 pub struct SetMoveItems<K> {
-    priv iter: vec::MoveItems<Option<Bucket<K, ()>>>,
+    priv iter: vec_ng::MoveItems<Option<Bucket<K, ()>>>,
 }
 
 impl<'a, K, V> Iterator<(&'a K, &'a V)> for Entries<'a, K, V> {
@@ -807,7 +807,7 @@ impl<T:Hash + Eq> HashSet<T> {
     /// An iterator visiting all elements in arbitrary order.
     /// Iterator element type is &'a T.
     pub fn iter<'a>(&'a self) -> SetItems<'a, T> {
-        SetItems { iter: self.map.buckets.iter() }
+        SetItems { iter: self.map.buckets.as_slice().iter() }
     }
 
     /// Creates a consuming iterator, that is, one that moves each value out
