@@ -2211,12 +2211,9 @@ dereferences (`*expr`), [indexing expressions](#index-expressions)
 (`expr[expr]`), and [field references](#field-expressions) (`expr.f`).
 All other expressions are rvalues.
 
-The left operand of an [assignment](#assignment-expressions),
-[binary move](#binary-move-expressions) or
+The left operand of an [assignment](#assignment-expressions) or
 [compound-assignment](#compound-assignment-expressions) expression is an lvalue context,
-as is the single operand of a unary [borrow](#unary-operator-expressions),
-or [move](#unary-move-expressions) expression,
-and _both_ operands of a [swap](#swap-expressions) expression.
+as is the single operand of a unary [borrow](#unary-operator-expressions).
 All other expression contexts are rvalue contexts.
 
 When an lvalue is evaluated in an _lvalue context_, it denotes a memory location;
@@ -2229,9 +2226,8 @@ A temporary's lifetime equals the largest lifetime of any reference that points 
 
 When a [local variable](#memory-slots) is used
 as an [rvalue](#lvalues-rvalues-and-temporaries)
-the variable will either be [moved](#move-expressions) or copied,
-depending on its type.
-For types that contain [owning pointers](#owning-pointers)
+the variable will either be moved or copied, depending on its type.
+For types that contain [owning pointers](#pointer-types)
 or values that implement the special trait `Drop`,
 the variable is moved.
 All other types are copied.
@@ -2890,16 +2886,26 @@ match x {
 
 The first pattern matches lists constructed by applying `Cons` to any head value, and a
 tail value of `~Nil`. The second pattern matches _any_ list constructed with `Cons`,
-ignoring the values of its arguments. The difference between `_` and `*` is that the pattern `C(_)` is only type-correct if
-`C` has exactly one argument, while the pattern `C(..)` is type-correct for any enum variant `C`, regardless of how many arguments `C` has.
+ignoring the values of its arguments. The difference between `_` and `*` is that the pattern
+`C(_)` is only type-correct if `C` has exactly one argument, while the pattern `C(..)` is
+type-correct for any enum variant `C`, regardless of how many arguments `C` has.
 
-To execute an `match` expression, first the head expression is evaluated, then
-its value is sequentially compared to the patterns in the arms until a match
+A `match` behaves differently depending on whether or not the head expression
+is an [lvalue or an rvalue](#lvalues-rvalues-and-temporaries).
+If the head expression is an rvalue, it is
+first evaluated into a temporary location, and the resulting value
+is sequentially compared to the patterns in the arms until a match
 is found. The first arm with a matching pattern is chosen as the branch target
 of the `match`, any variables bound by the pattern are assigned to local
 variables in the arm's block, and control enters the block.
 
-An example of an `match` expression:
+When the head expression is an lvalue, the match does not allocate a
+temporary location (however, a by-value binding may copy or move from
+the lvalue). When possible, it is preferable to match on lvalues, as the
+lifetime of these matches inherits the lifetime of the lvalue, rather
+than being restricted to the inside of the match.
+
+An example of a `match` expression:
 
 ~~~~
 # fn process_pair(a: int, b: int) { }
@@ -2929,19 +2935,31 @@ Patterns that bind variables
 default to binding to a copy or move of the matched value
 (depending on the matched value's type).
 This can be changed to bind to a reference by
-using the ```ref``` keyword,
-or to a mutable reference using ```ref mut```.
+using the `ref` keyword,
+or to a mutable reference using `ref mut`.
 
-A pattern that's just an identifier,
-like `Nil` in the previous answer,
-could either refer to an enum variant that's in scope,
-or bind a new variable.
-The compiler resolves this ambiguity by forbidding variable bindings that occur in ```match``` patterns from shadowing names of variants that are in scope.
-For example, wherever ```List``` is in scope,
-a ```match``` pattern would not be able to bind ```Nil``` as a new name.
-The compiler interprets a variable pattern `x` as a binding _only_ if there is no variant named `x` in scope.
-A convention you can use to avoid conflicts is simply to name variants with upper-case letters,
-and local variables with lower-case letters.
+Patterns can also dereference pointers by using the `&`,
+`~` or `@` symbols, as appropriate. For example, these two matches
+on `x: &int` are equivalent:
+
+~~~~
+# let x = &3;
+let y = match *x { 0 => "zero", _ => "some" };
+let z = match x { &0 => "zero", _ => "some" };
+
+assert_eq!(y, z);
+~~~~
+
+A pattern that's just an identifier, like `Nil` in the previous answer,
+could either refer to an enum variant that's in scope, or bind a new variable.
+The compiler resolves this ambiguity by forbidding variable bindings that occur
+in `match` patterns from shadowing names of variants that are in scope.
+For example, wherever `List` is in scope,
+a `match` pattern would not be able to bind `Nil` as a new name.
+The compiler interprets a variable pattern `x` as a binding _only_ if there is
+no variant named `x` in scope.
+A convention you can use to avoid conflicts is simply to name variants with
+upper-case letters, and local variables with lower-case letters.
 
 Multiple match patterns may be joined with the `|` operator.
 A range of values may be specified with `..`.
@@ -3122,19 +3140,20 @@ A `struct` *type* is a heterogeneous product of other types, called the *fields*
 the *record* types of the ML family,
 or the *structure* types of the Lisp family.]
 
-New instances of a `struct` can be constructed with a [struct expression](#struct-expressions).
+New instances of a `struct` can be constructed with a [struct expression](#structure-expressions).
 
 The memory order of fields in a `struct` is given by the item defining it.
 Fields may be given in any order in a corresponding struct *expression*;
 the resulting `struct` value will always be laid out in memory in the order specified by the corresponding *item*.
 
-The fields of a `struct` may be qualified by [visibility modifiers](#visibility-modifiers),
+The fields of a `struct` may be qualified by [visibility modifiers](#re-exporting-and-visibility),
 to restrict access to implementation-private data in a structure.
 
 A _tuple struct_ type is just like a structure type, except that the fields are anonymous.
 
 A _unit-like struct_ type is like a structure type, except that it has no fields.
-The one value constructed by the associated [structure expression](#structure-expression) is the only value that inhabits such a type.
+The one value constructed by the associated [structure expression](#structure-expressions)
+is the only value that inhabits such a type.
 
 ### Enumerated types
 
@@ -3805,7 +3824,7 @@ over the output format of a Rust crate.
 ### Logging system
 
 The runtime contains a system for directing [logging
-expressions](#log-expressions) to a logging console and/or internal logging
+expressions](#logging-expressions) to a logging console and/or internal logging
 buffers. Logging can be enabled per module.
 
 Logging output is enabled by setting the `RUST_LOG` environment

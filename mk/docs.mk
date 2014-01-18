@@ -17,16 +17,16 @@ CDOCS :=
 DOCS_L10N :=
 HTML_DEPS :=
 
-BASE_DOC_OPTS := --include-before-body=doc/version_info.html --standalone  \
-                                --toc --number-sections
-HTML_OPTS = $(BASE_DOC_OPTS) 	--to=html5  --section-divs --css=rust.css  \
-								--include-in-header=doc/favicon.inc
-TEX_OPTS = $(BASE_DOC_OPTS) --to=latex
+BASE_DOC_OPTS := --standalone --toc --number-sections
+HTML_OPTS = $(BASE_DOC_OPTS) --to=html5 --section-divs --css=rust.css \
+    --include-before-body=doc/version_info.html --include-in-header=doc/favicon.inc
+TEX_OPTS = $(BASE_DOC_OPTS) --include-before-body=doc/version.md --to=latex
 EPUB_OPTS = $(BASE_DOC_OPTS) --to=epub
 
 ######################################################################
 # Rust version
 ######################################################################
+
 doc/version.md: $(MKFILE_DEPS) $(wildcard $(S)doc/*.*)
 	@$(call E, version-stamp: $@)
 	$(Q)echo "$(CFG_VERSION)" >$@
@@ -84,7 +84,7 @@ doc/rust.tex: rust.md doc/version.md
 	$(CFG_PANDOC) $(TEX_OPTS) --output=$@
 
 DOCS += doc/rust.epub
-doc/rust.epub: rust.md doc/version_info.html doc/rust.css
+doc/rust.epub: rust.md
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(EPUB_OPTS) --output=$@
@@ -114,7 +114,7 @@ doc/tutorial.tex: tutorial.md doc/version.md
 	$(CFG_PANDOC) $(TEX_OPTS) --output=$@
 
 DOCS += doc/tutorial.epub
-doc/tutorial.epub: tutorial.md doc/version_info.html doc/rust.css
+doc/tutorial.epub: tutorial.md
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(EPUB_OPTS) --output=$@
@@ -265,6 +265,7 @@ endif # No pandoc / node
 ######################################################################
 # LLnextgen (grammar analysis from refman)
 ######################################################################
+
 ifeq ($(CFG_LLNEXTGEN),)
   $(info cfg: no llnextgen found, omitting grammar-verification)
 else
