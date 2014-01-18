@@ -92,7 +92,7 @@ fn protect_last_page(stack: &MemoryMap) -> bool {
     unsafe {
         // see above
         let last_page = stack.data as *mut c_void;
-        let old_prot: DWORD = 0;
+        let mut old_prot: DWORD = 0;
         VirtualProtect(last_page, page_size() as SIZE_T, PAGE_NOACCESS,
                        &mut old_prot as LPDWORD) != 0
     }

@@ -1475,7 +1475,7 @@ mod tests {
             MapOffset(size / 2)
         ]) {
             Ok(chunk) => chunk,
-            Err(msg) => fail!(msg.to_str())
+            Err(msg) => fail!("{}", msg)
         };
         assert!(chunk.len > 0);
 
