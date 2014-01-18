@@ -20,7 +20,7 @@ use from_str::FromStr;
 use iter::{AdditiveIterator, DoubleEndedIterator, Extendable, Invert, Iterator, Map};
 use option::{Option, Some, None};
 use str;
-use str::{CharSplitIterator, OwnedStr, Str, StrVector, StrSlice};
+use str::{CharSplits, OwnedStr, Str, StrVector, StrSlice};
 use to_bytes::IterBytes;
 use vec::{Vector, OwnedVector, ImmutableVector};
 use super::{contains_nul, BytesContainer, GenericPath, GenericPathUnsafe};
@@ -29,21 +29,21 @@ use super::{contains_nul, BytesContainer, GenericPath, GenericPathUnsafe};
 ///
 /// Each component is yielded as Option<&str> for compatibility with PosixPath, but
 /// every component in WindowsPath is guaranteed to be Some.
-pub type StrComponentIter<'a> = Map<'a, &'a str, Option<&'a str>,
-                                       CharSplitIterator<'a, char>>;
+pub type StrComponents<'a> = Map<'a, &'a str, Option<&'a str>,
+                                       CharSplits<'a, char>>;
 /// Iterator that yields components of a Path in reverse as &str
 ///
 /// Each component is yielded as Option<&str> for compatibility with PosixPath, but
 /// every component in WindowsPath is guaranteed to be Some.
-pub type RevStrComponentIter<'a> = Invert<Map<'a, &'a str, Option<&'a str>,
-                                                 CharSplitIterator<'a, char>>>;
+pub type RevStrComponents<'a> = Invert<Map<'a, &'a str, Option<&'a str>,
+                                                 CharSplits<'a, char>>>;
 
 /// Iterator that yields successive components of a Path as &[u8]
-pub type ComponentIter<'a> = Map<'a, Option<&'a str>, &'a [u8],
-                                    StrComponentIter<'a>>;
+pub type Components<'a> = Map<'a, Option<&'a str>, &'a [u8],
+                                    StrComponents<'a>>;
 /// Iterator that yields components of a Path in reverse as &[u8]
-pub type RevComponentIter<'a> = Map<'a, Option<&'a str>, &'a [u8],
-                                       RevStrComponentIter<'a>>;
+pub type RevComponents<'a> = Map<'a, Option<&'a str>, &'a [u8],
+                                       RevStrComponents<'a>>;
 
 /// Represents a Windows path
 // Notes for Windows path impl:
@@ -615,7 +615,7 @@ impl Path {
     /// \a\b\c and a\b\c.
     /// Does not distinguish between absolute and cwd-relative paths, e.g.
     /// C:\foo and C:foo.
-    pub fn str_components<'a>(&'a self) -> StrComponentIter<'a> {
+    pub fn str_components<'a>(&'a self) -> StrComponents<'a> {
         let s = match self.prefix {
             Some(_) => {
                 let plen = self.prefix_len();
@@ -632,13 +632,13 @@ impl Path {
 
     /// Returns an iterator that yields each component of the path in reverse as an Option<&str>
     /// See str_components() for details.
-    pub fn rev_str_components<'a>(&'a self) -> RevStrComponentIter<'a> {
+    pub fn rev_str_components<'a>(&'a self) -> RevStrComponents<'a> {
         self.str_components().invert()
     }
 
     /// Returns an iterator that yields each component of the path in turn as a &[u8].
     /// See str_components() for details.
-    pub fn components<'a>(&'a self) -> ComponentIter<'a> {
+    pub fn components<'a>(&'a self) -> Components<'a> {
         fn convert<'a>(x: Option<&'a str>) -> &'a [u8] {
             #[inline];
             x.unwrap().as_bytes()
@@ -648,7 +648,7 @@ impl Path {
 
     /// Returns an iterator that yields each component of the path in reverse as a &[u8].
     /// See str_components() for details.
-    pub fn rev_components<'a>(&'a self) -> RevComponentIter<'a> {
+    pub fn rev_components<'a>(&'a self) -> RevComponents<'a> {
         fn convert<'a>(x: Option<&'a str>) -> &'a [u8] {
             #[inline];
             x.unwrap().as_bytes()

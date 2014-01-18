@@ -94,7 +94,7 @@ pub struct Handle<'port, T> {
     priv port: &'port mut Port<T>,
 }
 
-struct PacketIterator { priv cur: *mut Packet }
+struct Packets { priv cur: *mut Packet }
 
 impl Select {
     /// Creates a new selection structure. This set is initially empty and
@@ -267,7 +267,7 @@ impl Select {
         (*packet).selection_id = 0;
     }
 
-    fn iter(&self) -> PacketIterator { PacketIterator { cur: self.head } }
+    fn iter(&self) -> Packets { Packets { cur: self.head } }
 }
 
 impl<'port, T: Send> Handle<'port, T> {
@@ -300,7 +300,7 @@ impl<'port, T: Send> Drop for Handle<'port, T> {
     }
 }
 
-impl Iterator<*mut Packet> for PacketIterator {
+impl Iterator<*mut Packet> for Packets {
     fn next(&mut self) -> Option<*mut Packet> {
         if self.cur.is_null() {
             None

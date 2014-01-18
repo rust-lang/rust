@@ -168,7 +168,7 @@ pub struct SelectArm<'a> {
 /// necessary there's probably lots of room for improvement performance-wise.
 pub struct Parser<'a> {
     priv input: &'a str,
-    priv cur: str::CharOffsetIterator<'a>,
+    priv cur: str::CharOffsets<'a>,
     priv depth: uint,
 }
 

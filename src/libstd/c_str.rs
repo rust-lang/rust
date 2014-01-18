@@ -171,8 +171,8 @@ impl CString {
     }
 
     /// Return a CString iterator.
-    pub fn iter<'a>(&'a self) -> CStringIterator<'a> {
-        CStringIterator {
+    pub fn iter<'a>(&'a self) -> CChars<'a> {
+        CChars {
             ptr: self.buf,
             lifetime: unsafe { cast::transmute(self.buf) },
         }
@@ -330,12 +330,12 @@ fn check_for_null(v: &[u8], buf: *mut libc::c_char) {
 /// External iterator for a CString's bytes.
 ///
 /// Use with the `std::iter` module.
-pub struct CStringIterator<'a> {
+pub struct CChars<'a> {
     priv ptr: *libc::c_char,
     priv lifetime: &'a libc::c_char, // FIXME: #5922
 }
 
-impl<'a> Iterator<libc::c_char> for CStringIterator<'a> {
+impl<'a> Iterator<libc::c_char> for CChars<'a> {
     fn next(&mut self) -> Option<libc::c_char> {
         let ch = unsafe { *self.ptr };
         if ch == 0 {

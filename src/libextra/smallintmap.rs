@@ -17,7 +17,6 @@
 
 use std::iter::{Enumerate, FilterMap, Invert};
 use std::util::replace;
-use std::vec::{VecIterator, VecMutIterator};
 use std::vec;
 
 #[allow(missing_doc)]
@@ -119,8 +118,8 @@ impl<V> SmallIntMap<V> {
 
     /// An iterator visiting all key-value pairs in ascending order by the keys.
     /// Iterator element type is (uint, &'r V)
-    pub fn iter<'r>(&'r self) -> SmallIntMapIterator<'r, V> {
-        SmallIntMapIterator {
+    pub fn iter<'r>(&'r self) -> Entries<'r, V> {
+        Entries {
             front: 0,
             back: self.v.len(),
             iter: self.v.iter()
@@ -130,8 +129,8 @@ impl<V> SmallIntMap<V> {
     /// An iterator visiting all key-value pairs in ascending order by the keys,
     /// with mutable references to the values
     /// Iterator element type is (uint, &'r mut V)
-    pub fn mut_iter<'r>(&'r mut self) -> SmallIntMapMutIterator<'r, V> {
-        SmallIntMapMutIterator {
+    pub fn mut_iter<'r>(&'r mut self) -> MutEntries<'r, V> {
+        MutEntries {
             front: 0,
             back: self.v.len(),
             iter: self.v.mut_iter()
@@ -140,21 +139,21 @@ impl<V> SmallIntMap<V> {
 
     /// An iterator visiting all key-value pairs in descending order by the keys.
     /// Iterator element type is (uint, &'r V)
-    pub fn rev_iter<'r>(&'r self) -> SmallIntMapRevIterator<'r, V> {
+    pub fn rev_iter<'r>(&'r self) -> RevEntries<'r, V> {
         self.iter().invert()
     }
 
     /// An iterator visiting all key-value pairs in descending order by the keys,
     /// with mutable references to the values
     /// Iterator element type is (uint, &'r mut V)
-    pub fn mut_rev_iter<'r>(&'r mut self) -> SmallIntMapMutRevIterator <'r, V> {
+    pub fn mut_rev_iter<'r>(&'r mut self) -> RevMutEntries <'r, V> {
         self.mut_iter().invert()
     }
 
     /// Empties the hash map, moving all values into the specified closure
     pub fn move_iter(&mut self)
         -> FilterMap<(uint, Option<V>), (uint, V),
-                Enumerate<vec::MoveIterator<Option<V>>>>
+                Enumerate<vec::MoveItems<Option<V>>>>
     {
         let values = replace(&mut self.v, ~[]);
         values.move_iter().enumerate().filter_map(|(i, v)| {
@@ -234,25 +233,25 @@ macro_rules! double_ended_iterator {
     }
 }
 
-pub struct SmallIntMapIterator<'a, T> {
+pub struct Entries<'a, T> {
     priv front: uint,
     priv back: uint,
-    priv iter: VecIterator<'a, Option<T>>
+    priv iter: vec::Items<'a, Option<T>>
 }
 
-iterator!(impl SmallIntMapIterator -> (uint, &'a T), get_ref)
-double_ended_iterator!(impl SmallIntMapIterator -> (uint, &'a T), get_ref)
-pub type SmallIntMapRevIterator<'a, T> = Invert<SmallIntMapIterator<'a, T>>;
+iterator!(impl Entries -> (uint, &'a T), get_ref)
+double_ended_iterator!(impl Entries -> (uint, &'a T), get_ref)
+pub type RevEntries<'a, T> = Invert<Entries<'a, T>>;
 
-pub struct SmallIntMapMutIterator<'a, T> {
+pub struct MutEntries<'a, T> {
     priv front: uint,
     priv back: uint,
-    priv iter: VecMutIterator<'a, Option<T>>
+    priv iter: vec::MutItems<'a, Option<T>>
 }
 
-iterator!(impl SmallIntMapMutIterator -> (uint, &'a mut T), get_mut_ref)
-double_ended_iterator!(impl SmallIntMapMutIterator -> (uint, &'a mut T), get_mut_ref)
-pub type SmallIntMapMutRevIterator<'a, T> = Invert<SmallIntMapMutIterator<'a, T>>;
+iterator!(impl MutEntries -> (uint, &'a mut T), get_mut_ref)
+double_ended_iterator!(impl MutEntries -> (uint, &'a mut T), get_mut_ref)
+pub type RevMutEntries<'a, T> = Invert<MutEntries<'a, T>>;
 
 #[cfg(test)]
 mod test_map {

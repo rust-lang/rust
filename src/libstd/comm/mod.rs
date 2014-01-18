@@ -305,7 +305,7 @@ pub struct Port<T> {
 /// An iterator over messages received on a port, this iterator will block
 /// whenever `next` is called, waiting for a new message, and `None` will be
 /// returned when the corresponding channel has hung up.
-pub struct PortIterator<'a, T> {
+pub struct Messages<'a, T> {
     priv port: &'a Port<T>
 }
 
@@ -899,12 +899,12 @@ impl<T: Send> Port<T> {
 
     /// Returns an iterator which will block waiting for messages, but never
     /// `fail!`. It will return `None` when the channel has hung up.
-    pub fn iter<'a>(&'a self) -> PortIterator<'a, T> {
-        PortIterator { port: self }
+    pub fn iter<'a>(&'a self) -> Messages<'a, T> {
+        Messages { port: self }
     }
 }
 
-impl<'a, T: Send> Iterator<T> for PortIterator<'a, T> {
+impl<'a, T: Send> Iterator<T> for Messages<'a, T> {
     fn next(&mut self) -> Option<T> { self.port.recv_opt() }
 }
 

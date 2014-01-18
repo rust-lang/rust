@@ -99,8 +99,8 @@ impl Value {
     }
 
     /// Returns an iterator for the users of this value
-    pub fn user_iter(self) -> UserIterator {
-        UserIterator {
+    pub fn user_iter(self) -> Users {
+        Users {
             next: self.get_first_use()
         }
     }
@@ -151,11 +151,11 @@ impl Use {
 }
 
 /// Iterator for the users of a value
-pub struct UserIterator {
+pub struct Users {
     priv next: Option<Use>
 }
 
-impl Iterator<Value> for UserIterator {
+impl Iterator<Value> for Users {
     fn next(&mut self) -> Option<Value> {
         let current = self.next;
 
