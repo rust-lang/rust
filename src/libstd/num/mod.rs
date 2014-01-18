@@ -1684,3 +1684,24 @@ mod tests {
         assert_pow(2u64, 50);
     }
 }
+
+
+#[cfg(test)]
+mod bench {
+    use num;
+    use vec;
+    use prelude::*;
+    use extra::test::BenchHarness;
+
+    #[bench]
+    fn bench_pow_function(b: &mut BenchHarness) {
+        let v = vec::from_fn(1024, |n| n);
+        b.iter(|| {v.iter().fold(0, |old, new| num::pow(old, *new));});
+    }
+
+    #[bench]
+    fn bench_pow_with_uint_function(b: &mut BenchHarness) {
+        let v = vec::from_fn(1024, |n| n);
+        b.iter(|| {v.iter().fold(0, |old, new| num::pow_with_uint(old, *new));});
+    }
+}
