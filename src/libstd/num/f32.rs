@@ -96,6 +96,9 @@ delegate!(
     fn tanh(n: c_float) -> c_float = cmath::c_float::tanh
 )
 
+// FIXME(#11621): These constants should be deprecated once CTFE is implemented
+// in favour of calling their respective functions in `Bounded` and `Float`.
+
 pub static RADIX: uint = 2u;
 
 pub static MANTISSA_DIGITS: uint = 53u;
@@ -122,6 +125,10 @@ pub static NEG_INFINITY: f32 = -1.0_f32/0.0_f32;
 pub mod consts {
     // FIXME (requires Issue #1433 to fix): replace with mathematical
     // staticants from cmath.
+
+    // FIXME(#11621): These constants should be deprecated once CTFE is
+    // implemented in favour of calling their respective functions in `Real`.
+
     /// Archimedes' constant
     pub static PI: f32 = 3.14159265358979323846264338327950288_f32;
 
@@ -554,16 +561,7 @@ impl Bounded for f32 {
     fn max_value() -> f32 { 3.40282347e+38 }
 }
 
-impl Primitive for f32 {
-    #[inline]
-    fn bits(_: Option<f32>) -> uint { 32 }
-
-    #[inline]
-    fn bytes(_: Option<f32>) -> uint { Primitive::bits(Some(0f32)) / 8 }
-
-    #[inline]
-    fn is_signed(_: Option<f32>) -> bool { true }
-}
+impl Primitive for f32 {}
 
 impl Float for f32 {
     #[inline]
@@ -1171,13 +1169,6 @@ mod tests {
         assert!(NEG_INFINITY.is_negative());
         assert!((1f32/NEG_INFINITY).is_negative());
         assert!(!NAN.is_negative());
-    }
-
-    #[test]
-    fn test_primitive() {
-        let none: Option<f32> = None;
-        assert_eq!(Primitive::bits(none), mem::size_of::<f32>() * 8);
-        assert_eq!(Primitive::bytes(none), mem::size_of::<f32>());
     }
 
     #[test]
