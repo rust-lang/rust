@@ -31,10 +31,10 @@
 
 use clone::Clone;
 use kinds::Send;
-use num::{Real, Round};
 use option::{Option, Some, None};
 use sync::arc::UnsafeArc;
 use sync::atomics::{AtomicUint,Relaxed,Release,Acquire};
+use uint;
 use vec;
 
 struct Node<T> {
@@ -64,7 +64,7 @@ impl<T: Send> State<T> {
                 2u
             } else {
                 // use next power of 2 as capacity
-                2f64.pow(&((capacity as f64).log2().ceil())) as uint
+                uint::next_power_of_two(capacity)
             }
         } else {
             capacity

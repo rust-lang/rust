@@ -185,9 +185,9 @@ pub trait Real: Signed
     fn recip(&self) -> Self;
 
     // Algebraic functions
-
     /// Raise a number to a power.
-    fn pow(&self, n: &Self) -> Self;
+    fn powf(&self, n: &Self) -> Self;
+
     /// Take the square root of a number.
     fn sqrt(&self) -> Self;
     /// Take the reciprocal (inverse) square root of a number, `1/sqrt(x)`.
@@ -263,6 +263,50 @@ pub trait Real: Signed
     fn to_radians(&self) -> Self;
 }
 
+/// Raises a value to the power of exp, using
+/// exponentiation by squaring.
+///
+/// # Example
+///
+/// ```rust
+/// use std::num;
+///
+/// let sixteen = num::pow(2, 4u);
+/// assert_eq!(sixteen, 16);
+/// ```
+#[inline]
+pub fn pow<T: Clone+One+Mul<T, T>>(num: T, exp: uint) -> T {
+    let one: uint = One::one();
+    let num_one: T = One::one();
+
+    if exp.is_zero() { return num_one; }
+    if exp == one { return num.clone(); }
+
+    let mut i: uint = exp;
+    let mut v: T;
+    let mut r: T = num_one;
+
+    // This if is to avoid cloning self.
+    if (i & one) == one {
+        r = r * num;
+        i = i - one;
+    }
+
+    i = i >> one;
+    v = num * num;
+
+    while !i.is_zero() {
+        if (i & one) == one {
+            r = r * v;
+            i = i - one;
+        }
+        i = i >> one;
+        v = v * v;
+    }
+
+    r
+}
+
 /// Raise a number to a power.
 ///
 /// # Example
@@ -270,10 +314,10 @@ pub trait Real: Signed
 /// ```rust
 /// use std::num;
 ///
-/// let sixteen: f64 = num::pow(2.0, 4.0);
+/// let sixteen: f64 = num::powf(2.0, 4.0);
 /// assert_eq!(sixteen, 16.0);
 /// ```
-#[inline(always)] pub fn pow<T: Real>(value: T, n: T) -> T { value.pow(&n) }
+#[inline(always)] pub fn powf<T: Real>(value: T, n: T) -> T { value.powf(&n) }
 /// Take the square root of a number.
 #[inline(always)] pub fn sqrt<T: Real>(value: T) -> T { value.sqrt() }
 /// Take the reciprocal (inverse) square root of a number, `1/sqrt(x)`.
@@ -1074,6 +1118,7 @@ pub fn test_num<T:Num + NumCast>(ten: T, two: T) {
 mod tests {
     use prelude::*;
     use super::*;
+    use num;
     use i8;
     use i16;
     use i32;
@@ -1633,5 +1678,20 @@ mod tests {
         assert_eq!(from_u64(5),    Some(Value { x: 5 }));
         assert_eq!(from_f32(5f32), Some(Value { x: 5 }));
         assert_eq!(from_f64(5f64), Some(Value { x: 5 }));
+    }
+
+    #[test]
+    fn test_pow() {
+        fn assert_pow<T: Eq+Clone+One+Mul<T, T>>(num: T, exp: uint) -> () {
+            assert_eq!(num::pow(num.clone(), exp),
+                       range(1u, exp).fold(num.clone(), |acc, _| acc * num));
+        }
+
+        assert_eq!(num::pow(3, 0), 1);
+        assert_eq!(num::pow(5, 1), 5);
+        assert_pow(-4, 2);
+        assert_pow(8, 3);
+        assert_pow(8, 5);
+        assert_pow(2u64, 50);
     }
 }
