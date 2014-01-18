@@ -17,6 +17,7 @@
 
 use clone::{Clone, DeepClone};
 use cmp::{Eq, Ord};
+use mem::size_of;
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use ops::{Not, BitAnd, BitOr, BitXor, Shl, Shr};
 use option::{Option, Some, None};
@@ -425,19 +426,7 @@ pub trait Primitive: Clone
                    + Num
                    + NumCast
                    + Orderable
-                   + Bounded
-                   + Neg<Self>
-                   + Add<Self,Self>
-                   + Sub<Self,Self>
-                   + Mul<Self,Self>
-                   + Div<Self,Self>
-                   + Rem<Self,Self> {
-    // FIXME (#5527): These should be associated constants
-    // FIXME (#8888): Removing `unused_self` requires #8888 to be fixed.
-    fn bits(unused_self: Option<Self>) -> uint;
-    fn bytes(unused_self: Option<Self>) -> uint;
-    fn is_signed(unused_self: Option<Self>) -> bool;
-}
+                   + Bounded {}
 
 /// A collection of traits relevant to primitive signed and unsigned integers
 pub trait Int: Integer
@@ -580,7 +569,7 @@ pub trait ToPrimitive {
 macro_rules! impl_to_primitive_int_to_int(
     ($SrcT:ty, $DstT:ty) => (
         {
-            if Primitive::bits(None::<$SrcT>) <= Primitive::bits(None::<$DstT>) {
+            if size_of::<$SrcT>() <= size_of::<$DstT>() {
                 Some(*self as $DstT)
             } else {
                 let n = *self as i64;
@@ -665,7 +654,7 @@ macro_rules! impl_to_primitive_uint_to_int(
 macro_rules! impl_to_primitive_uint_to_uint(
     ($SrcT:ty, $DstT:ty) => (
         {
-            if Primitive::bits(None::<$SrcT>) <= Primitive::bits(None::<$DstT>) {
+            if size_of::<$SrcT>() <= size_of::<$DstT>() {
                 Some(*self as $DstT)
             } else {
                 let zero: $SrcT = Zero::zero();
@@ -721,7 +710,7 @@ impl_to_primitive_uint!(u64)
 
 macro_rules! impl_to_primitive_float_to_float(
     ($SrcT:ty, $DstT:ty) => (
-        if Primitive::bits(None::<$SrcT>) <= Primitive::bits(None::<$DstT>) {
+        if size_of::<$SrcT>() <= size_of::<$DstT>() {
             Some(*self as $DstT)
         } else {
             let n = *self as f64;

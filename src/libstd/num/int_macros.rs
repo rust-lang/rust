@@ -13,11 +13,19 @@
 
 macro_rules! int_module (($T:ty, $bits:expr) => (
 
+// FIXME(#11621): Should be deprecated once CTFE is implemented in favour of
+// calling the `mem::size_of` function.
 pub static bits : uint = $bits;
+// FIXME(#11621): Should be deprecated once CTFE is implemented in favour of
+// calling the `mem::size_of` function.
 pub static bytes : uint = ($bits / 8);
 
+// FIXME(#11621): Should be deprecated once CTFE is implemented in favour of
+// calling the `Bounded::min_value` function.
 pub static min_value: $T = (-1 as $T) << (bits - 1);
 // FIXME(#9837): Compute min_value like this so the high bits that shouldn't exist are 0.
+// FIXME(#11621): Should be deprecated once CTFE is implemented in favour of
+// calling the `Bounded::max_value` function.
 pub static max_value: $T = !min_value;
 
 impl CheckedDiv for $T {
@@ -361,16 +369,7 @@ impl Bounded for $T {
 
 impl Int for $T {}
 
-impl Primitive for $T {
-    #[inline]
-    fn bits(_: Option<$T>) -> uint { bits }
-
-    #[inline]
-    fn bytes(_: Option<$T>) -> uint { bits / 8 }
-
-    #[inline]
-    fn is_signed(_: Option<$T>) -> bool { true }
-}
+impl Primitive for $T {}
 
 // String conversion functions and impl str -> num
 
@@ -637,13 +636,6 @@ mod tests {
     #[test]
     fn test_bitcount() {
         assert_eq!((0b010101 as $T).population_count(), 3);
-    }
-
-    #[test]
-    fn test_primitive() {
-        let none: Option<$T> = None;
-        assert_eq!(Primitive::bits(none), mem::size_of::<$T>() * 8);
-        assert_eq!(Primitive::bytes(none), mem::size_of::<$T>());
     }
 
     #[test]
