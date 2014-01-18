@@ -9,12 +9,12 @@
 // except according to those terms.
 
 use lib::llvm::{llvm, BasicBlockRef};
-use middle::trans::value::{UserIterator, Value};
+use middle::trans::value::{Users, Value};
 use std::iter::{Filter, Map};
 
 pub struct BasicBlock(BasicBlockRef);
 
-pub type PredIterator<'a> = Map<'a, Value, BasicBlock, Filter<'a, Value, UserIterator>>;
+pub type Preds<'a> = Map<'a, Value, BasicBlock, Filter<'a, Value, Users>>;
 
 /**
  * Wrapper for LLVM BasicBlockRef
@@ -30,7 +30,7 @@ impl BasicBlock {
         }
     }
 
-    pub fn pred_iter(self) -> PredIterator {
+    pub fn pred_iter(self) -> Preds {
         self.as_value().user_iter()
             .filter(|user| user.is_a_terminator_inst())
             .map(|user| user.get_parent().unwrap())
