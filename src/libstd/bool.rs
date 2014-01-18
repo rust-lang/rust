@@ -40,7 +40,6 @@ use num::FromPrimitive;
 #[cfg(not(test))] use cmp::{Eq, Ord, TotalOrd, Ordering};
 #[cfg(not(test))] use ops::{Not, BitAnd, BitOr, BitXor};
 #[cfg(not(test))] use default::Default;
-#[cfg(not(test))] use num::Zero;
 
 /////////////////////////////////////////////////////////////////////////////
 // Freestanding functions
@@ -307,12 +306,6 @@ impl Eq for bool {
 #[cfg(not(test))]
 impl Default for bool {
     fn default() -> bool { false }
-}
-
-#[cfg(not(test))]
-impl Zero for bool {
-    fn zero() -> bool { false }
-    fn is_zero(&self) -> bool { *self == false }
 }
 
 #[cfg(test)]
