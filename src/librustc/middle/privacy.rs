@@ -839,6 +839,32 @@ impl Visitor<()> for SanePrivacyVisitor {
         visit::walk_fn(self, fk, fd, b, s, n, ());
         self.in_fn = orig_in_fn;
     }
+
+    fn visit_view_item(&mut self, i: &ast::ViewItem, _: ()) {
+        match i.vis {
+            ast::Inherited => {}
+            ast::Private => {
+                self.tcx.sess.span_err(i.span, "unnecessary visibility \
+                                                qualifier");
+            }
+            ast::Public => {
+                if self.in_fn {
+                    self.tcx.sess.span_err(i.span, "unnecessary `pub`, imports \
+                                                    in functions are never \
+                                                    reachable");
+                } else {
+                    match i.node {
+                        ast::ViewItemExternMod(..) => {
+                            self.tcx.sess.span_err(i.span, "`pub` visibility \
+                                                            is not allowed");
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+        visit::walk_view_item(self, i, ());
+    }
 }
 
 impl SanePrivacyVisitor {

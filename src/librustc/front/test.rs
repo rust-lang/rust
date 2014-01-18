@@ -301,7 +301,7 @@ fn mk_std(cx: &TestCtxt) -> ast::ViewItem {
     ast::ViewItem {
         node: vi,
         attrs: ~[],
-        vis: ast::Public,
+        vis: ast::Inherited,
         span: DUMMY_SP
     }
 }
