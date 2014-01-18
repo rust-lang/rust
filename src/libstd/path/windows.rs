@@ -183,7 +183,7 @@ impl GenericPathUnsafe for Path {
             None if ".." == self.repr => {
                 let mut s = str::with_capacity(3 + filename.len());
                 s.push_str("..");
-                s.push_char(sep);
+                s.push_char(SEP);
                 s.push_str(filename);
                 self.update_normalized(s);
             }
@@ -193,7 +193,7 @@ impl GenericPathUnsafe for Path {
             Some((_,idxa,end)) if self.repr.slice(idxa,end) == ".." => {
                 let mut s = str::with_capacity(end + 1 + filename.len());
                 s.push_str(self.repr.slice_to(end));
-                s.push_char(sep);
+                s.push_char(SEP);
                 s.push_str(filename);
                 self.update_normalized(s);
             }
@@ -206,7 +206,7 @@ impl GenericPathUnsafe for Path {
             Some((idxb,_,_)) => {
                 let mut s = str::with_capacity(idxb + 1 + filename.len());
                 s.push_str(self.repr.slice_to(idxb));
-                s.push_char(sep);
+                s.push_char(SEP);
                 s.push_str(filename);
                 self.update_normalized(s);
             }
@@ -264,8 +264,8 @@ impl GenericPathUnsafe for Path {
             // if me is "C:" we don't want to add a path separator
             match me.prefix {
                 Some(DiskPrefix) if me.repr.len() == plen => (),
-                _ if !(me.repr.len() > plen && me.repr[me.repr.len()-1] == sep as u8) => {
-                    s.push_char(sep);
+                _ if !(me.repr.len() > plen && me.repr[me.repr.len()-1] == SEP_BYTE) => {
+                    s.push_char(SEP);
                 }
                 _ => ()
             }
@@ -460,7 +460,7 @@ impl GenericPath for Path {
         match self.prefix {
             Some(DiskPrefix) => {
                 let rest = self.repr.slice_from(self.prefix_len());
-                rest.len() > 0 && rest[0] == sep as u8
+                rest.len() > 0 && rest[0] == SEP_BYTE
             }
             Some(_) => true,
             None => false
@@ -501,7 +501,7 @@ impl GenericPath for Path {
 
     fn path_relative_from(&self, base: &Path) -> Option<Path> {
         fn comp_requires_verbatim(s: &str) -> bool {
-            s == "." || s == ".." || s.contains_char(sep2)
+            s == "." || s == ".." || s.contains_char(SEP2)
         }
 
         if !self.equiv_prefix(base) {
@@ -619,14 +619,14 @@ impl Path {
         let s = match self.prefix {
             Some(_) => {
                 let plen = self.prefix_len();
-                if self.repr.len() > plen && self.repr[plen] == sep as u8 {
+                if self.repr.len() > plen && self.repr[plen] == SEP_BYTE {
                     self.repr.slice_from(plen+1)
                 } else { self.repr.slice_from(plen) }
             }
-            None if self.repr[0] == sep as u8 => self.repr.slice_from(1),
+            None if self.repr[0] == SEP_BYTE => self.repr.slice_from(1),
             None => self.repr.as_slice()
         };
-        let ret = s.split_terminator(sep).map(Some);
+        let ret = s.split_terminator(SEP).map(Some);
         ret
     }
 
@@ -703,7 +703,7 @@ impl Path {
                 Some(VerbatimUNCPrefix(x, 0)) if s.len() == 8 + x => {
                     // the server component has no trailing '\'
                     let mut s = s.into_owned();
-                    s.push_char(sep);
+                    s.push_char(SEP);
                     Some(s)
                 }
                 _ => None
@@ -739,7 +739,7 @@ impl Path {
                                 if is_abs {
                                     // normalize C:/ to C:\
                                     unsafe {
-                                        str::raw::as_owned_vec(&mut s)[2] = sep as u8;
+                                        str::raw::as_owned_vec(&mut s)[2] = SEP_BYTE;
                                     }
                                 }
                                 Some(s)
@@ -761,7 +761,7 @@ impl Path {
                             }
                         }
                     } else if is_abs && comps.is_empty() {
-                        Some(str::from_char(sep))
+                        Some(str::from_char(SEP))
                     } else {
                         let prefix_ = s.slice_to(prefix_len(prefix));
                         let n = prefix_.len() +
@@ -781,7 +781,7 @@ impl Path {
                             Some(UNCPrefix(a,b)) => {
                                 s.push_str("\\\\");
                                 s.push_str(prefix_.slice(2, a+2));
-                                s.push_char(sep);
+                                s.push_char(SEP);
                                 s.push_str(prefix_.slice(3+a, 3+a+b));
                             }
                             Some(_) => s.push_str(prefix_),
@@ -795,7 +795,7 @@ impl Path {
                             }
                         }
                         for comp in it {
-                            s.push_char(sep);
+                            s.push_char(SEP);
                             s.push_str(comp);
                         }
                         Some(s)
@@ -837,7 +837,7 @@ impl Path {
 
     fn has_nonsemantic_trailing_slash(&self) -> bool {
         is_verbatim(self) && self.repr.len() > self.prefix_len()+1 &&
-            self.repr[self.repr.len()-1] == sep as u8
+            self.repr[self.repr.len()-1] == SEP_BYTE
     }
 
     fn update_normalized<S: Str>(&mut self, s: S) {
@@ -877,36 +877,41 @@ pub fn is_verbatim(path: &Path) -> bool {
 }
 
 /// The standard path separator character
-pub static sep: char = '\\';
+pub static SEP: char = '\\';
+/// The standard path separator byte
+pub static SEP_BYTE: u8 = SEP as u8;
+
 /// The alternative path separator character
-pub static sep2: char = '/';
+pub static SEP2: char = '/';
+/// The alternative path separator character
+pub static SEP2_BYTE: u8 = SEP2 as u8;
 
 /// Returns whether the given char is a path separator.
 /// Allows both the primary separator '\' and the alternative separator '/'.
 #[inline]
 pub fn is_sep(c: char) -> bool {
-    c == sep || c == sep2
+    c == SEP || c == SEP2
 }
 
 /// Returns whether the given char is a path separator.
 /// Only allows the primary separator '\'; use is_sep to allow '/'.
 #[inline]
 pub fn is_sep_verbatim(c: char) -> bool {
-    c == sep
+    c == SEP
 }
 
 /// Returns whether the given byte is a path separator.
 /// Allows both the primary separator '\' and the alternative separator '/'.
 #[inline]
 pub fn is_sep_byte(u: &u8) -> bool {
-    *u as char == sep || *u as char == sep2
+    *u == SEP_BYTE || *u == SEP2_BYTE
 }
 
 /// Returns whether the given byte is a path separator.
 /// Only allows the primary separator '\'; use is_sep_byte to allow '/'.
 #[inline]
 pub fn is_sep_byte_verbatim(u: &u8) -> bool {
-    *u as char == sep
+    *u == SEP_BYTE
 }
 
 /// Prefix types for Path
