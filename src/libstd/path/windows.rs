@@ -392,13 +392,13 @@ impl GenericPath for Path {
     #[inline]
     fn filestem_str<'a>(&'a self) -> Option<&'a str> {
         // filestem() returns a byte vector that's guaranteed valid UTF-8
-        self.filestem().map(cast::transmute)
+        self.filestem().map(|t| unsafe { cast::transmute(t) })
     }
 
     #[inline]
     fn extension_str<'a>(&'a self) -> Option<&'a str> {
         // extension() returns a byte vector that's guaranteed valid UTF-8
-        self.extension().map(cast::transmute)
+        self.extension().map(|t| unsafe { cast::transmute(t) })
     }
 
     fn dir_path(&self) -> Path {
