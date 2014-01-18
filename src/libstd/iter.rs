@@ -2872,6 +2872,12 @@ mod tests {
             }
         }
 
+        impl Mul<Foo, Foo> for Foo {
+            fn mul(&self, _: &Foo) -> Foo {
+                Foo
+            }
+        }
+
         impl num::One for Foo {
             fn one() -> Foo {
                 Foo

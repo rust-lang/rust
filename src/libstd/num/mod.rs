@@ -50,19 +50,59 @@ pub trait Orderable: Ord {
 /// Returns the number constrained within the range `mn <= self <= mx`.
 #[inline(always)] pub fn clamp<T: Orderable>(value: T, mn: T, mx: T) -> T { value.clamp(&mn, &mx) }
 
-pub trait Zero {
-    fn zero() -> Self;      // FIXME (#5527): This should be an associated constant
+/// Defines an additive identity element for `Self`.
+///
+/// # Deriving
+///
+/// This trait can be automatically be derived using `#[deriving(Zero)]`
+/// attribute. If you choose to use this, make sure that the laws outlined in
+/// the documentation for `Zero::zero` still hold.
+pub trait Zero: Add<Self, Self> {
+    /// Returns the additive identity element of `Self`, `0`.
+    ///
+    /// # Laws
+    ///
+    /// ~~~
+    /// a + 0 = a       ∀ a ∈ Self
+    /// 0 + a = a       ∀ a ∈ Self
+    /// ~~~
+    ///
+    /// # Purity
+    ///
+    /// This function should return the same result at all times regardless of
+    /// external mutable state, for example values stored in TLS or in
+    /// `static mut`s.
+    // FIXME (#5527): This should be an associated constant
+    fn zero() -> Self;
+
+    /// Returns `true` if `self` is equal to the additive identity.
     fn is_zero(&self) -> bool;
 }
 
-/// Returns `0` of appropriate type.
+/// Returns the additive identity, `0`.
 #[inline(always)] pub fn zero<T: Zero>() -> T { Zero::zero() }
 
-pub trait One {
-    fn one() -> Self;       // FIXME (#5527): This should be an associated constant
+/// Defines a multiplicative identity element for `Self`.
+pub trait One: Mul<Self, Self> {
+    /// Returns the multiplicative identity element of `Self`, `1`.
+    ///
+    /// # Laws
+    ///
+    /// ~~~
+    /// a * 1 = a       ∀ a ∈ Self
+    /// 1 * a = a       ∀ a ∈ Self
+    /// ~~~
+    ///
+    /// # Purity
+    ///
+    /// This function should return the same result at all times regardless of
+    /// external mutable state, for example values stored in TLS or in
+    /// `static mut`s.
+    // FIXME (#5527): This should be an associated constant
+    fn one() -> Self;
 }
 
-/// Returns `1` of appropriate type.
+/// Returns the multiplicative identity, `1`.
 #[inline(always)] pub fn one<T: One>() -> T { One::one() }
 
 pub trait Signed: Num
@@ -991,16 +1031,6 @@ pub trait FromStrRadix {
 /// A utility function that just calls FromStrRadix::from_str_radix.
 pub fn from_str_radix<T: FromStrRadix>(str: &str, radix: uint) -> Option<T> {
     FromStrRadix::from_str_radix(str, radix)
-}
-
-impl<T: Zero + 'static> Zero for @T {
-    fn zero() -> @T { @Zero::zero() }
-    fn is_zero(&self) -> bool { (**self).is_zero() }
-}
-
-impl<T: Zero> Zero for ~T {
-    fn zero() -> ~T { ~Zero::zero() }
-    fn is_zero(&self) -> bool { (**self).is_zero() }
 }
 
 /// Saturating math operations

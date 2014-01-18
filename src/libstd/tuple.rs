@@ -15,7 +15,6 @@
 use clone::Clone;
 #[cfg(not(test))] use cmp::*;
 #[cfg(not(test))] use default::Default;
-#[cfg(not(test))] use num::Zero;
 
 /// Method extensions to pairs where both types satisfy the `Clone` bound
 pub trait CopyableTuple<T, U> {
@@ -175,18 +174,6 @@ macro_rules! tuple_impls {
                 #[inline]
                 fn default() -> ($($T,)+) {
                     ($({ let x: $T = Default::default(); x},)+)
-                }
-            }
-
-            #[cfg(not(test))]
-            impl<$($T:Zero),+> Zero for ($($T,)+) {
-                #[inline]
-                fn zero() -> ($($T,)+) {
-                    ($({ let x: $T = Zero::zero(); x},)+)
-                }
-                #[inline]
-                fn is_zero(&self) -> bool {
-                    $(self.$get_ref_fn().is_zero())&&+
                 }
             }
         )+
