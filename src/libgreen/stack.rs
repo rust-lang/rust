@@ -9,7 +9,8 @@
 // except according to those terms.
 
 use std::rt::env::max_cached_stacks;
-use std::os::{errno, page_size, MemoryMap, MapReadable, MapWritable, MapNonStandardFlags};
+use std::os::{errno, page_size, MemoryMap, MapReadable, MapWritable,
+    MapNonStandardFlags, MapVirtual};
 #[cfg(not(windows))]
 use std::libc::{MAP_STACK, MAP_PRIVATE, MAP_ANON};
 use std::libc::{c_uint, c_int, c_void, uintptr_t};
@@ -29,6 +30,8 @@ static STACK_FLAGS: c_int = MAP_STACK | MAP_PRIVATE | MAP_ANON;
 static STACK_FLAGS: c_int = 0;
 
 impl Stack {
+    /// Allocate a new stack of `size`. If size = 0, this will fail. Use
+    /// `dummy_stack` if you want a zero-sized stack.
     pub fn new(size: uint) -> Stack {
         // Map in a stack. Eventually we might be able to handle stack allocation failure, which
         // would fail to spawn the task. But there's not many sensible things to do on OOM.
@@ -58,12 +61,21 @@ impl Stack {
         return stk;
     }
 
+    /// Create a 0-length stack which starts (and ends) at 0.
+    pub unsafe fn dummy_stack() -> Stack {
+        Stack {
+            buf: MemoryMap { data: 0 as *mut u8, len: 0, kind: MapVirtual },
+            min_size: 0,
+            valgrind_id: 0
+        }
+    }
+
     /// Point to the low end of the allocated stack
     pub fn start(&self) -> *uint {
         self.buf.data as *uint
     }
 
-    /// Point one word beyond the high end of the allocated stack
+    /// Point one uint beyond the high end of the allocated stack
     pub fn end(&self) -> *uint {
         unsafe {
             self.buf.data.offset(self.buf.len as int) as *uint
