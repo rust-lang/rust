@@ -891,6 +891,10 @@ pub enum MapError {
     /// If using `MapAddr`, the address + `min_len` was outside of the process's address space. If
     /// using `MapFd`, the target of the fd didn't have enough resources to fulfill the request.
     ErrNoMem,
+    /// A zero-length map was requested. This is invalid according to
+    /// [POSIX](http://pubs.opengroup.org/onlinepubs/9699919799/functions/mmap.html). Not all
+    /// platforms obey this, but this wrapper does.
+    ErrZeroLength,
     /// Unrecognized error. The inner value is the unrecognized errno.
     ErrUnknown(int),
     /// ## The following are win32-specific
@@ -922,6 +926,7 @@ impl fmt::Default for MapError {
             ErrUnsupProt => "Protection mode unsupported",
             ErrUnsupOffset => "Offset in virtual memory mode is unsupported",
             ErrAlreadyExists => "File mapping for specified file already exists",
+            ErrZeroLength => "Zero-length mapping not allowed",
             ErrUnknown(code) => { write!(out.buf, "Unknown error = {}", code); return },
             ErrVirtualAlloc(code) => { write!(out.buf, "VirtualAlloc failure = {}", code); return },
             ErrCreateFileMappingW(code) => {
@@ -939,10 +944,14 @@ impl fmt::Default for MapError {
 
 #[cfg(unix)]
 impl MemoryMap {
-    /// Create a new mapping with the given `options`, at least `min_len` bytes long.
+    /// Create a new mapping with the given `options`, at least `min_len` bytes long. `min_len`
+    /// must be greater than zero; see the note on `ErrZeroLength`.
     pub fn new(min_len: uint, options: &[MapOption]) -> Result<MemoryMap, MapError> {
         use libc::off_t;
 
+        if min_len == 0 {
+            return Err(ErrZeroLength)
+        }
         let mut addr: *u8 = ptr::null();
         let mut prot = 0;
         let mut flags = libc::MAP_PRIVATE;
@@ -1005,6 +1014,8 @@ impl MemoryMap {
 impl Drop for MemoryMap {
     /// Unmap the mapping. Fails the task if `munmap` fails.
     fn drop(&mut self) {
+        if self.len == 0 { /* workaround for dummy_stack */ return; }
+
         unsafe {
             match libc::munmap(self.data as *c_void, self.len as libc::size_t) {
                 0 => (),
@@ -1442,7 +1453,7 @@ mod tests {
             os::MapWritable
         ]) {
             Ok(chunk) => chunk,
-            Err(msg) => fail!(msg.to_str())
+            Err(msg) => fail!("{}", msg)
         };
         assert!(chunk.len >= 16);
 
