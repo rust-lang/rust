@@ -39,7 +39,7 @@ use os;
 use prelude::*;
 use ptr;
 use str;
-use to_str;
+use fmt;
 use unstable::finally::Finally;
 use sync::atomics::{AtomicInt, INIT_ATOMIC_INT, SeqCst};
 
@@ -904,23 +904,29 @@ pub enum MapError {
     ErrMapViewOfFile(uint)
 }
 
-impl to_str::ToStr for MapError {
-    fn to_str(&self) -> ~str {
-        match *self {
-            ErrFdNotAvail => ~"fd not available for reading or writing",
-            ErrInvalidFd => ~"Invalid fd",
-            ErrUnaligned => ~"Unaligned address, invalid flags, \
-                              negative length or unaligned offset",
-            ErrNoMapSupport=> ~"File doesn't support mapping",
-            ErrNoMem => ~"Invalid address, or not enough available memory",
-            ErrUnknown(code) => format!("Unknown error={}", code),
-            ErrUnsupProt => ~"Protection mode unsupported",
-            ErrUnsupOffset => ~"Offset in virtual memory mode is unsupported",
-            ErrAlreadyExists => ~"File mapping for specified file already exists",
-            ErrVirtualAlloc(code) => format!("VirtualAlloc failure={}", code),
-            ErrCreateFileMappingW(code) => format!("CreateFileMappingW failure={}", code),
-            ErrMapViewOfFile(code) => format!("MapViewOfFile failure={}", code)
-        }
+impl fmt::Default for MapError {
+    fn fmt(val: &MapError, out: &mut fmt::Formatter) {
+        let str = match *val {
+            ErrFdNotAvail => "fd not available for reading or writing",
+            ErrInvalidFd => "Invalid fd",
+            ErrUnaligned => "Unaligned address, invalid flags, negative length or unaligned offset",
+            ErrNoMapSupport=> "File doesn't support mapping",
+            ErrNoMem => "Invalid address, or not enough available memory",
+            ErrUnsupProt => "Protection mode unsupported",
+            ErrUnsupOffset => "Offset in virtual memory mode is unsupported",
+            ErrAlreadyExists => "File mapping for specified file already exists",
+            ErrUnknown(code) => { write!(out.buf, "Unknown error = {}", code); return },
+            ErrVirtualAlloc(code) => { write!(out.buf, "VirtualAlloc failure = {}", code); return },
+            ErrCreateFileMappingW(code) => {
+                format!("CreateFileMappingW failure = {}", code);
+                return
+            },
+            ErrMapViewOfFile(code) => {
+                write!(out.buf, "MapViewOfFile failure = {}", code);
+                return
+            }
+        };
+        write!(out.buf, "{}", str);
     }
 }
 

@@ -33,8 +33,11 @@ impl Stack {
         // Map in a stack. Eventually we might be able to handle stack allocation failure, which
         // would fail to spawn the task. But there's not many sensible things to do on OOM.
         // Failure seems fine (and is what the old stack allocation did).
-        let stack = MemoryMap::new(size, [MapReadable, MapWritable,
-                                          MapNonStandardFlags(STACK_FLAGS)]).unwrap();
+        let stack = match MemoryMap::new(size, [MapReadable, MapWritable,
+                                          MapNonStandardFlags(STACK_FLAGS)]) {
+            Ok(map) => map,
+            Err(e) => fail!("Creating memory map failed: {}", e)
+        };
 
         // Change the last page to be inaccessible. This is to provide safety; when an FFI
         // function overflows it will (hopefully) hit this guard page. It isn't guaranteed, but
@@ -90,7 +93,8 @@ fn protect_last_page(stack: &MemoryMap) -> bool {
         // see above
         let last_page = stack.data as *mut c_void;
         let old_prot: DWORD = 0;
-        VirtualProtect(last_page, page_size() as SIZE_T, PAGE_NOACCESS, &mut old_prot as *mut LPDWORD) != 0
+        VirtualProtect(last_page, page_size() as SIZE_T, PAGE_NOACCESS,
+                       &mut old_prot as *mut LPDWORD) != 0
     }
 }
 
