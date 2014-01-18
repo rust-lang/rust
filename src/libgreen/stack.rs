@@ -34,9 +34,9 @@ impl Stack {
         // would fail to spawn the task. But there's not many sensible things to do on OOM.
         // Failure seems fine (and is what the old stack allocation did).
         let stack = match MemoryMap::new(size, [MapReadable, MapWritable,
-                                          MapNonStandardFlags(STACK_FLAGS)]) {
+                                         MapNonStandardFlags(STACK_FLAGS)]) {
             Ok(map) => map,
-            Err(e) => fail!("Creating memory map failed: {}", e)
+            Err(e) => fail!("Creating memory map for stack of size {} failed: {}", size, e)
         };
 
         // Change the last page to be inaccessible. This is to provide safety; when an FFI
