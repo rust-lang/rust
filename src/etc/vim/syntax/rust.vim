@@ -3,7 +3,7 @@
 " Maintainer:   Patrick Walton <pcwalton@mozilla.com>
 " Maintainer:   Ben Blum <bblum@cs.cmu.edu>
 " Maintainer:   Chris Morgan <me@chrismorgan.info>
-" Last Change:  2013 Dec 10
+" Last Change:  2014 Jan 4
 
 if version < 600
   syntax clear
@@ -147,8 +147,8 @@ syn match     rustMacro       '#\w\(\w\)*' contains=rustAssert,rustFail
 syn match     rustSpecialError display contained /\\./
 syn match     rustSpecial     display contained /\\\([nrt0\\'"]\|x\x\{2}\|u\x\{4}\|U\x\{8}\)/
 syn match     rustStringContinuation display contained /\\\n\s*/
-syn region    rustString      start=+"+ skip=+\\\\\|\\"+ end=+"+ contains=rustSpecial,rustSpecialError,rustStringContinuation
-syn region    rustString      start='r\z(#*\)"' end='"\z1'
+syn region    rustString      start=+"+ skip=+\\\\\|\\"+ end=+"+ contains=rustSpecial,rustSpecialError,rustStringContinuation,@Spell
+syn region    rustString      start='r\z(#*\)"' end='"\z1' contains=@Spell
 
 syn region    rustAttribute   start="#\[" end="\]" contains=rustString,rustDeriving
 syn region    rustDeriving    start="deriving(" end=")" contained contains=rustTrait
@@ -179,10 +179,10 @@ syn match     rustLifetime    display "\'\%([^[:cntrl:][:space:][:punct:][:digit
 syn match   rustCharacter   /'\([^'\\]\|\\\(.\|x\x\{2}\|u\x\{4}\|U\x\{8}\)\)'/ contains=rustSpecial,rustSpecialError
 
 syn cluster rustComment contains=rustCommentLine,rustCommentLineDoc,rustCommentBlock,rustCommentBlockDoc
-syn region rustCommentLine                                    start="//"                      end="$"   contains=rustTodo
-syn region rustCommentLineDoc                                 start="//\%(//\@!\|!\)"         end="$"   contains=rustTodo
-syn region rustCommentBlock    matchgroup=rustCommentBlock    start="/\*\%(!\|\*[*/]\@!\)\@!" end="\*/" contains=rustTodo,@rustComment keepend extend
-syn region rustCommentBlockDoc matchgroup=rustCommentBlockDoc start="/\*\%(!\|\*[*/]\@!\)"    end="\*/" contains=rustTodo,@rustComment keepend extend
+syn region rustCommentLine                                    start="//"                      end="$"   contains=rustTodo,@Spell
+syn region rustCommentLineDoc                                 start="//\%(//\@!\|!\)"         end="$"   contains=rustTodo,@Spell
+syn region rustCommentBlock    matchgroup=rustCommentBlock    start="/\*\%(!\|\*[*/]\@!\)\@!" end="\*/" contains=rustTodo,@rustComment,@Spell keepend extend
+syn region rustCommentBlockDoc matchgroup=rustCommentBlockDoc start="/\*\%(!\|\*[*/]\@!\)"    end="\*/" contains=rustTodo,@rustComment,@Spell keepend extend
 " FIXME: this is a really ugly and not fully correct implementation. Most
 " importantly, a case like ``/* */*`` should have the final ``*`` not being in
 " a comment, but in practice at present it leaves comments open two levels
