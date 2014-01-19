@@ -78,6 +78,7 @@ pub enum Lint {
     NonCamelCaseTypes,
     NonUppercaseStatics,
     NonUppercasePatternStatics,
+    UnnecessaryParens,
     TypeLimits,
     TypeOverflow,
     UnusedUnsafe,
@@ -162,7 +163,7 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
     ("while_true",
      LintSpec {
         lint: WhileTrue,
-        desc: "suggest using loop { } instead of while(true) { }",
+        desc: "suggest using `loop { }` instead of `while true { }`",
         default: warn
      }),
 
@@ -199,6 +200,13 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
          lint: NonUppercasePatternStatics,
          desc: "static constants in match patterns should be all caps",
          default: warn
+     }),
+
+    ("unnecessary_parens",
+     LintSpec {
+        lint: UnnecessaryParens,
+        desc: "`if`, `match`, `while` and `return` do not need parentheses",
+        default: warn
      }),
 
     ("managed_heap_memory",
@@ -1080,6 +1088,24 @@ fn check_pat_non_uppercase_statics(cx: &Context, p: &ast::Pat) {
     }
 }
 
+fn check_unnecessary_parens(cx: &Context, e: &ast::Expr) {
+    let (value, msg) = match e.node {
+        ast::ExprIf(cond, _, _) => (cond, "`if` condition"),
+        ast::ExprWhile(cond, _) => (cond, "`while` condition"),
+        ast::ExprMatch(head, _) => (head, "`match` head expression"),
+        ast::ExprRet(Some(value)) => (value, "`return` value"),
+        _ => return
+    };
+
+    match value.node {
+        ast::ExprParen(_) => {
+            cx.span_lint(UnnecessaryParens, value.span,
+                         format!("unnecessary parentheses around {}", msg))
+        }
+        _ => {}
+    }
+}
+
 fn check_unused_unsafe(cx: &Context, e: &ast::Expr) {
     match e.node {
         // Don't warn about generated blocks, that'll just pollute the output.
@@ -1438,6 +1464,7 @@ impl<'a> Visitor<()> for Context<'a> {
 
         check_while_true_expr(self, e);
         check_stability(self, e);
+        check_unnecessary_parens(self, e);
         check_unused_unsafe(self, e);
         check_unsafe_block(self, e);
         check_unnecessary_allocation(self, e);
