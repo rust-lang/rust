@@ -120,11 +120,11 @@ pub use RevStrComponents = self::windows::RevStrComponents;
 /// Alias for the platform-native separator character.
 #[cfg(unix)]
 pub use SEP = self::posix::SEP;
-/// Alias for the platform-native separator byte.
+/// Alias for the platform-native separator character.
 #[cfg(windows)]
 pub use SEP = self::windows::SEP;
 
-/// Alias for the platform-native separator character.
+/// Alias for the platform-native separator byte.
 #[cfg(unix)]
 pub use SEP_BYTE = self::posix::SEP_BYTE;
 /// Alias for the platform-native separator byte.
