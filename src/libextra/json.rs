@@ -306,7 +306,7 @@ impl<'a> Encoder<'a> {
             let mut encoder = Encoder::new(&mut m as &mut io::Writer);
             to_encode_object.encode(&mut encoder);
         }
-        m.inner()
+        m.unwrap()
     }
 
     /// Encode the specified struct into a json str
