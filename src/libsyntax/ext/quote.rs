@@ -530,7 +530,7 @@ fn mk_tt(cx: &ExtCtxt, sp: Span, tt: &ast::TokenTree) -> ~[@ast::Stmt] {
     match *tt {
 
         ast::TTTok(sp, ref tok) => {
-            let e_sp = cx.expr_ident(sp, id_ext("sp"));
+            let e_sp = cx.expr_ident(sp, id_ext("_sp"));
             let e_tok = cx.expr_call_ident(sp,
                                            id_ext("TTTok"),
                                            ~[e_sp, mk_token(cx, sp, tok)]);
@@ -628,7 +628,7 @@ fn expand_tts(cx: &ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                                    ~[]);
 
     let stmt_let_sp = cx.stmt_let(sp, false,
-                                  id_ext("sp"),
+                                  id_ext("_sp"),
                                   e_sp);
 
     let stmt_let_tt = cx.stmt_let(sp, true,
