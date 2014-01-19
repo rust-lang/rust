@@ -2624,61 +2624,6 @@ pub fn type_is_machine(ty: t) -> bool {
     }
 }
 
-// Whether a type is Plain Old Data -- meaning it does not contain pointers
-// that the cycle collector might care about.
-pub fn type_is_pod(cx: ctxt, ty: t) -> bool {
-    let mut result = true;
-    match get(ty).sty {
-      // Scalar types
-      ty_nil | ty_bot | ty_bool | ty_char | ty_int(_) | ty_float(_) | ty_uint(_) |
-      ty_ptr(_) | ty_bare_fn(_) => result = true,
-      // Boxed types
-      ty_box(_) | ty_uniq(_) | ty_closure(_) |
-      ty_str(vstore_uniq) |
-      ty_vec(_, vstore_uniq) |
-      ty_trait(_, _, _, _, _) | ty_rptr(_,_) => result = false,
-      // Structural types
-      ty_enum(did, ref substs) => {
-        let variants = enum_variants(cx, did);
-        for variant in (*variants).iter() {
-            // FIXME(pcwalton): This is an inefficient way to do this. Don't
-            // synthesize a tuple!
-            //
-            // Perform any type parameter substitutions.
-            let tup_ty = mk_tup(cx, variant.args.clone());
-            let tup_ty = subst(cx, substs, tup_ty);
-            if !type_is_pod(cx, tup_ty) { result = false; }
-        }
-      }
-      ty_tup(ref elts) => {
-        for elt in elts.iter() { if !type_is_pod(cx, *elt) { result = false; } }
-      }
-      ty_str(vstore_fixed(_)) => result = true,
-      ty_vec(ref mt, vstore_fixed(_)) | ty_unboxed_vec(ref mt) => {
-        result = type_is_pod(cx, mt.ty);
-      }
-      ty_param(_) => result = false,
-      ty_struct(did, ref substs) => {
-        let fields = lookup_struct_fields(cx, did);
-        result = fields.iter().all(|f| {
-            let fty = ty::lookup_item_type(cx, f.id);
-            let sty = subst(cx, substs, fty.ty);
-            type_is_pod(cx, sty)
-        });
-      }
-
-      ty_str(vstore_slice(..)) | ty_vec(_, vstore_slice(..)) => {
-        result = false;
-      }
-
-      ty_infer(..) | ty_self(..) | ty_err => {
-        cx.sess.bug("non concrete type in type_is_pod");
-      }
-    }
-
-    return result;
-}
-
 pub fn type_is_enum(ty: t) -> bool {
     match get(ty).sty {
       ty_enum(_, _) => return true,
