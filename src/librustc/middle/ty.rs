@@ -2287,6 +2287,12 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
                ::util::ppaux::ty_to_str(cx, ty));
 
         let r = match get(ty).sty {
+            // fixed length vectors need special treatment compared to
+            // normal vectors, since they don't necessarily have the
+            // possibilty to have length zero.
+            ty_vec(_, vstore_fixed(0)) => false, // don't need no contents
+            ty_vec(mt, vstore_fixed(_)) => type_requires(cx, seen, r_ty, mt.ty),
+
             ty_nil |
             ty_bot |
             ty_bool |
