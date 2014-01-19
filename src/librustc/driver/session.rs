@@ -39,36 +39,51 @@ pub struct Config {
     uint_type: UintTy,
 }
 
-pub static verbose:                 uint = 1 <<  0;
-pub static time_passes:             uint = 1 <<  1;
-pub static count_llvm_insns:        uint = 1 <<  2;
-pub static time_llvm_passes:        uint = 1 <<  3;
-pub static trans_stats:             uint = 1 <<  4;
-pub static asm_comments:            uint = 1 <<  5;
-pub static no_verify:               uint = 1 <<  6;
-pub static borrowck_stats:          uint = 1 <<  7;
-pub static borrowck_note_pure:      uint = 1 <<  8;
-pub static borrowck_note_loan:      uint = 1 <<  9;
-pub static no_landing_pads:         uint = 1 << 10;
-pub static debug_llvm:              uint = 1 << 11;
-pub static count_type_sizes:        uint = 1 << 12;
-pub static meta_stats:              uint = 1 << 13;
-pub static no_opt:                  uint = 1 << 14;
-pub static gc:                      uint = 1 << 15;
-pub static debug_info:              uint = 1 << 16;
-pub static extra_debug_info:        uint = 1 << 17;
-pub static print_link_args:         uint = 1 << 18;
-pub static no_debug_borrows:        uint = 1 << 19;
-pub static lint_llvm:               uint = 1 << 20;
-pub static print_llvm_passes:       uint = 1 << 21;
-pub static no_vectorize_loops:      uint = 1 << 22;
-pub static no_vectorize_slp:        uint = 1 << 23;
-pub static no_prepopulate_passes:   uint = 1 << 24;
-pub static use_softfp:              uint = 1 << 25;
-pub static gen_crate_map:           uint = 1 << 26;
-pub static prefer_dynamic:          uint = 1 << 27;
-pub static no_integrated_as:        uint = 1 << 28;
-pub static lto:                     uint = 1 << 29;
+macro_rules! debugging_opts(
+    ([ $opt:ident ] $cnt:expr ) => (
+        pub static $opt: uint = 1 << $cnt;
+    );
+    ([ $opt:ident, $($rest:ident),* ] $cnt:expr ) => (
+        pub static $opt: uint = 1 << $cnt;
+        debugging_opts!([ $($rest),* ] $cnt + 1)
+    )
+)
+
+debugging_opts!(
+    [
+        verbose,
+        time_passes,
+        count_llvm_insns,
+        time_llvm_passes,
+        trans_stats,
+        asm_comments,
+        no_verify,
+        borrowck_stats,
+        borrowck_note_pure,
+        borrowck_note_loan,
+        no_landing_pads,
+        debug_llvm,
+        count_type_sizes,
+        meta_stats,
+        no_opt,
+        gc,
+        debug_info,
+        extra_debug_info,
+        print_link_args,
+        no_debug_borrows,
+        lint_llvm,
+        print_llvm_passes,
+        no_vectorize_loops,
+        no_vectorize_slp,
+        no_prepopulate_passes,
+        use_softfp,
+        gen_crate_map,
+        prefer_dynamic,
+        no_integrated_as,
+        lto
+    ]
+    0
+)
 
 pub fn debugging_opts_map() -> ~[(&'static str, &'static str, uint)] {
     ~[("verbose", "in general, enable more debug printouts", verbose),
