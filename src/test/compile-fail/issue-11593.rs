@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub trait Foo { fn f(&self) -> int; }
-pub trait Bar { fn g(&self) -> int; }
-pub trait Baz { fn h(&self) -> int; }
+// aux-build:private_trait_xc.rs
 
-pub trait Quux: Foo + Bar + Baz { }
+extern mod private_trait_xc;
 
-impl<T:Foo + Bar + Baz> Quux for T { }
+struct Bar;
+
+impl private_trait_xc::Foo for Bar {}
+//~^ ERROR: trait `Foo` is private
+
+fn main() {}
+

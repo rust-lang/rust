@@ -10,7 +10,7 @@
 
 #[crate_id="cci_impl_lib"];
 
-trait uint_helpers {
+pub trait uint_helpers {
     fn to(&self, v: uint, f: |uint|);
 }
 
