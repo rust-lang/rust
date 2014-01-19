@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -27,8 +27,8 @@ use io::{IoResult, retry};
 #[cfg(windows)] use std::str;
 
 pub fn keep_going(data: &[u8], f: |*u8, uint| -> i64) -> i64 {
-    #[cfg(windows)] static eintr: int = 0; // doesn't matter
-    #[cfg(not(windows))] static eintr: int = libc::EINTR as int;
+    #[cfg(windows)] static EINTR: int = 0; // doesn't matter
+    #[cfg(not(windows))] static EINTR: int = libc::EINTR as int;
 
     let origamt = data.len();
     let mut data = data.as_ptr();
@@ -37,9 +37,9 @@ pub fn keep_going(data: &[u8], f: |*u8, uint| -> i64) -> i64 {
         let mut ret;
         loop {
             ret = f(data, amt);
-            if cfg!(windows) { break } // windows has no eintr
-            // if we get an eintr, then try again
-            if ret != -1 || os::errno() as int != eintr { break }
+            if cfg!(windows) { break } // windows has no EINTR
+            // if we get an EINTR, then try again
+            if ret != -1 || os::errno() as int != EINTR { break }
         }
         if ret == 0 {
             break
@@ -53,6 +53,7 @@ pub fn keep_going(data: &[u8], f: |*u8, uint| -> i64) -> i64 {
     return (origamt - amt) as i64;
 }
 
+#[allow(non_camel_case_types)]
 pub type fd_t = libc::c_int;
 
 pub struct FileDesc {
@@ -77,12 +78,12 @@ impl FileDesc {
     //               native::io wanting to use them is forced to have all the
     //               rtio traits in scope
     pub fn inner_read(&mut self, buf: &mut [u8]) -> Result<uint, IoError> {
-        #[cfg(windows)] type rlen = libc::c_uint;
-        #[cfg(not(windows))] type rlen = libc::size_t;
+        #[cfg(windows)] type RLen = libc::c_uint;
+        #[cfg(not(windows))] type RLen = libc::size_t;
         let ret = retry(|| unsafe {
             libc::read(self.fd,
                        buf.as_ptr() as *mut libc::c_void,
-                       buf.len() as rlen) as libc::c_int
+                       buf.len() as RLen) as libc::c_int
         });
         if ret == 0 {
             Err(io::standard_error(io::EndOfFile))
@@ -93,11 +94,11 @@ impl FileDesc {
         }
     }
     pub fn inner_write(&mut self, buf: &[u8]) -> Result<(), IoError> {
-        #[cfg(windows)] type wlen = libc::c_uint;
-        #[cfg(not(windows))] type wlen = libc::size_t;
+        #[cfg(windows)] type WLen = libc::c_uint;
+        #[cfg(not(windows))] type WLen = libc::size_t;
         let ret = keep_going(buf, |buf, len| {
             unsafe {
-                libc::write(self.fd, buf as *libc::c_void, len as wlen) as i64
+                libc::write(self.fd, buf as *libc::c_void, len as WLen) as i64
             }
         });
         if ret < 0 {
@@ -782,7 +783,7 @@ fn mkstat(stat: &libc::stat, path: &CString) -> io::FileStat {
         path: Path::new(path),
         size: stat.st_size as u64,
         kind: kind,
-        perm: (stat.st_mode) as io::FilePermission & io::AllPermissions,
+        perm: (stat.st_mode) as io::FilePermission & io::ALL_PERMISSIONS,
         created: stat.st_ctime as u64,
         modified: stat.st_mtime as u64,
         accessed: stat.st_atime as u64,
@@ -831,7 +832,7 @@ fn mkstat(stat: &libc::stat, path: &CString) -> io::FileStat {
         path: Path::new(path),
         size: stat.st_size as u64,
         kind: kind,
-        perm: (stat.st_mode) as io::FilePermission & io::AllPermissions,
+        perm: (stat.st_mode) as io::FilePermission & io::ALL_PERMISSIONS,
         created: mktime(stat.st_ctime as u64, stat.st_ctime_nsec as u64),
         modified: mktime(stat.st_mtime as u64, stat.st_mtime_nsec as u64),
         accessed: mktime(stat.st_atime as u64, stat.st_atime_nsec as u64),

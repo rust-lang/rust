@@ -790,7 +790,7 @@ fn is_writeable(p: &Path) -> bool {
 
     match io::result(|| p.stat()) {
         Err(..) => true,
-        Ok(m) => m.perm & io::UserWrite == io::UserWrite
+        Ok(m) => m.perm & io::USER_WRITE == io::USER_WRITE
     }
 }
 

@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -34,7 +34,7 @@ pub fn default_workspace() -> Path {
     }
     let result = p[0];
     if !result.is_dir() {
-        fs::mkdir_recursive(&result, io::UserRWX);
+        fs::mkdir_recursive(&result, io::USER_RWX);
     }
     result
 }
@@ -49,11 +49,11 @@ pub static U_RWX: i32 = (S_IRUSR | S_IWUSR | S_IXUSR) as i32;
 /// and executable by the user. Returns true iff creation
 /// succeeded.
 pub fn make_dir_rwx(p: &Path) -> bool {
-    io::result(|| fs::mkdir(p, io::UserRWX)).is_ok()
+    io::result(|| fs::mkdir(p, io::USER_RWX)).is_ok()
 }
 
 pub fn make_dir_rwx_recursive(p: &Path) -> bool {
-    io::result(|| fs::mkdir_recursive(p, io::UserRWX)).is_ok()
+    io::result(|| fs::mkdir_recursive(p, io::USER_RWX)).is_ok()
 }
 
 // n.b. The next three functions ignore the package version right
@@ -363,7 +363,7 @@ fn target_file_in_workspace(crateid: &CrateId, workspace: &Path,
                 (Install, Lib)  => target_lib_dir(workspace),
                 (Install, _)    => target_bin_dir(workspace)
     };
-    if io::result(|| fs::mkdir_recursive(&result, io::UserRWX)).is_err() {
+    if io::result(|| fs::mkdir_recursive(&result, io::USER_RWX)).is_err() {
         cond.raise((result.clone(), format!("target_file_in_workspace couldn't \
             create the {} dir (crateid={}, workspace={}, what={:?}, where={:?}",
             subdir, crateid.to_str(), workspace.display(), what, where)));
@@ -378,7 +378,7 @@ pub fn build_pkg_id_in_workspace(crateid: &CrateId, workspace: &Path) -> Path {
     result.push(&crateid.path);
     debug!("Creating build dir {} for package id {}", result.display(),
            crateid.to_str());
-    fs::mkdir_recursive(&result, io::UserRWX);
+    fs::mkdir_recursive(&result, io::USER_RWX);
     return result;
 }
 

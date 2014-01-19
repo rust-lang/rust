@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -720,7 +720,7 @@ fn compose_and_run_compiler(
 
 fn ensure_dir(path: &Path) {
     if path.is_dir() { return; }
-    fs::mkdir(path, io::UserRWX);
+    fs::mkdir(path, io::USER_RWX);
 }
 
 fn compose_and_run(config: &config, testfile: &Path,

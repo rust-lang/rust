@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -184,14 +184,14 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
      LintSpec {
         lint: NonCamelCaseTypes,
         desc: "types, variants and traits should have camel case names",
-        default: allow
+        default: warn
      }),
 
     ("non_uppercase_statics",
      LintSpec {
          lint: NonUppercaseStatics,
          desc: "static constants should have uppercase identifiers",
-         default: allow
+         default: warn
      }),
 
     ("non_uppercase_pattern_statics",

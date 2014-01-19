@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -21,10 +21,10 @@ use fmt;
 
 // windows values don't matter as long as they're at least one of unix's
 // TERM/KILL/INT signals
-#[cfg(windows)] pub static PleaseExitSignal: int = 15;
-#[cfg(windows)] pub static MustDieSignal: int = 9;
-#[cfg(not(windows))] pub static PleaseExitSignal: int = libc::SIGTERM as int;
-#[cfg(not(windows))] pub static MustDieSignal: int = libc::SIGKILL as int;
+#[cfg(windows)] pub static PLEASE_EXIT_SIGNAL: int = 15;
+#[cfg(windows)] pub static MUST_DIE_SIGNAL: int = 9;
+#[cfg(not(windows))] pub static PLEASE_EXIT_SIGNAL: int = libc::SIGTERM as int;
+#[cfg(not(windows))] pub static MUST_DIE_SIGNAL: int = libc::SIGKILL as int;
 
 pub struct Process {
     priv handle: ~RtioProcess,

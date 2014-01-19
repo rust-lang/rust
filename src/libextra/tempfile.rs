@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -38,7 +38,7 @@ impl TempDir {
         let mut r = rand::rng();
         for _ in range(0u, 1000) {
             let p = tmpdir.join(r.gen_ascii_str(16) + suffix);
-            match io::result(|| fs::mkdir(&p, io::UserRWX)) {
+            match io::result(|| fs::mkdir(&p, io::USER_RWX)) {
                 Err(..) => {}
                 Ok(()) => return Some(TempDir { path: Some(p) })
             }

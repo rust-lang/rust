@@ -25,7 +25,7 @@ struct LogDirective {
 
 static MAX_LOG_LEVEL: u32 = 255;
 static DEFAULT_LOG_LEVEL: u32 = 1;
-static log_level_names : &'static[&'static str] = &'static["error", "warn", "info", "debug"];
+static LOG_LEVEL_NAMES : &'static[&'static str] = &'static["error", "warn", "info", "debug"];
 
 /// Parse an individual log level that is either a number or a symbolic log level
 fn parse_log_level(level: &str) -> Option<u32> {
@@ -40,7 +40,7 @@ fn parse_log_level(level: &str) -> Option<u32> {
             }
         }
         _ => {
-            let position = log_level_names.iter().position(|&name| name == level);
+            let position = LOG_LEVEL_NAMES.iter().position(|&name| name == level);
             match position {
                 Some(position) => {
                     log_level = Some(::cmp::min(MAX_LOG_LEVEL, (position + 1) as u32))

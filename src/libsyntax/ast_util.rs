@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
+#[allow(non_uppercase_statics)];
+
 use ast::*;
 use ast;
 use ast_util;
@@ -22,6 +25,7 @@ use std::hashmap::HashMap;
 use std::u32;
 use std::local_data;
 use std::num;
+
 
 pub fn path_name_i(idents: &[Ident]) -> ~str {
     // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
@@ -321,7 +325,7 @@ pub fn operator_prec(op: ast::BinOp) -> uint {
 
 /// Precedence of the `as` operator, which is a binary operator
 /// not appearing in the prior table.
-pub static as_prec: uint = 12u;
+pub static AS_PREC: uint = 12u;
 
 pub fn empty_generics() -> Generics {
     Generics {lifetimes: opt_vec::Empty,

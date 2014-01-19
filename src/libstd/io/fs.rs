@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -379,13 +379,15 @@ pub fn copy(from: &Path, to: &Path) {
 ///
 /// # Example
 ///
+/// ```rust
 ///     use std::io;
 ///     use std::io::fs;
 ///
-///     fs::chmod(&Path::new("file.txt"), io::UserFile);
-///     fs::chmod(&Path::new("file.txt"), io::UserRead | io::UserWrite);
-///     fs::chmod(&Path::new("dir"),      io::UserDir);
-///     fs::chmod(&Path::new("file.exe"), io::UserExec);
+///     fs::chmod(&Path::new("file.txt"), io::USER_FILE);
+///     fs::chmod(&Path::new("file.txt"), io::USER_READ | io::USER_WRITE);
+///     fs::chmod(&Path::new("dir"),      io::USER_DIR);
+///     fs::chmod(&Path::new("file.exe"), io::USER_EXEC);
+/// ```
 ///
 /// # Errors
 ///
@@ -737,7 +739,7 @@ mod test {
         use os;
         use rand;
         let ret = os::tmpdir().join(format!("rust-{}", rand::random::<u32>()));
-        io::fs::mkdir(&ret, io::UserRWX);
+        io::fs::mkdir(&ret, io::USER_RWX);
         TempDir(ret)
     }
 
@@ -905,7 +907,7 @@ mod test {
     iotest!(fn file_test_stat_is_correct_on_is_dir() {
         let tmpdir = tmpdir();
         let filename = &tmpdir.join("file_stat_correct_on_is_dir");
-        mkdir(filename, io::UserRWX);
+        mkdir(filename, io::USER_RWX);
         let stat_res = filename.stat();
         assert!(stat_res.kind == io::TypeDirectory);
         rmdir(filename);
@@ -914,7 +916,7 @@ mod test {
     iotest!(fn file_test_fileinfo_false_when_checking_is_file_on_a_directory() {
         let tmpdir = tmpdir();
         let dir = &tmpdir.join("fileinfo_false_on_dir");
-        mkdir(dir, io::UserRWX);
+        mkdir(dir, io::USER_RWX);
         assert!(dir.is_file() == false);
         rmdir(dir);
     })
@@ -932,7 +934,7 @@ mod test {
         let tmpdir = tmpdir();
         let dir = &tmpdir.join("before_and_after_dir");
         assert!(!dir.exists());
-        mkdir(dir, io::UserRWX);
+        mkdir(dir, io::USER_RWX);
         assert!(dir.exists());
         assert!(dir.is_dir());
         rmdir(dir);
@@ -943,7 +945,7 @@ mod test {
         use std::str;
         let tmpdir = tmpdir();
         let dir = &tmpdir.join("di_readdir");
-        mkdir(dir, io::UserRWX);
+        mkdir(dir, io::USER_RWX);
         let prefix = "foo";
         for n in range(0,3) {
             let f = dir.join(format!("{}.txt", n));
@@ -971,7 +973,7 @@ mod test {
     })
 
     iotest!(fn recursive_mkdir_slash() {
-        mkdir_recursive(&Path::new("/"), io::UserRWX);
+        mkdir_recursive(&Path::new("/"), io::USER_RWX);
     })
 
     iotest!(fn unicode_path_is_dir() {
@@ -982,7 +984,7 @@ mod test {
 
         let mut dirpath = tmpdir.path().clone();
         dirpath.push(format!("test-가一ー你好"));
-        mkdir(&dirpath, io::UserRWX);
+        mkdir(&dirpath, io::USER_RWX);
         assert!(dirpath.is_dir());
 
         let mut filepath = dirpath;
@@ -999,7 +1001,7 @@ mod test {
         let tmpdir = tmpdir();
         let unicode = tmpdir.path();
         let unicode = unicode.join(format!("test-각丁ー再见"));
-        mkdir(&unicode, io::UserRWX);
+        mkdir(&unicode, io::USER_RWX);
         assert!(unicode.exists());
         assert!(!Path::new("test/unicode-bogus-path-각丁ー再见").exists());
     })
@@ -1068,12 +1070,12 @@ mod test {
         let out = tmpdir.join("out.txt");
 
         File::create(&input);
-        chmod(&input, io::UserRead);
+        chmod(&input, io::USER_READ);
         copy(&input, &out);
-        assert!(out.stat().perm & io::UserWrite == 0);
+        assert!(out.stat().perm & io::USER_WRITE == 0);
 
-        chmod(&input, io::UserFile);
-        chmod(&out, io::UserFile);
+        chmod(&input, io::USER_FILE);
+        chmod(&out, io::USER_FILE);
     })
 
     #[cfg(not(windows))] // FIXME(#10264) operation not permitted?
@@ -1138,16 +1140,16 @@ mod test {
         let file = tmpdir.join("in.txt");
 
         File::create(&file);
-        assert!(stat(&file).perm & io::UserWrite == io::UserWrite);
-        chmod(&file, io::UserRead);
-        assert!(stat(&file).perm & io::UserWrite == 0);
+        assert!(stat(&file).perm & io::USER_WRITE == io::USER_WRITE);
+        chmod(&file, io::USER_READ);
+        assert!(stat(&file).perm & io::USER_WRITE == 0);
 
-        match io::result(|| chmod(&tmpdir.join("foo"), io::UserRWX)) {
+        match io::result(|| chmod(&tmpdir.join("foo"), io::USER_RWX)) {
             Ok(..) => fail!("wanted a failure"),
             Err(..) => {}
         }
 
-        chmod(&file, io::UserFile);
+        chmod(&file, io::USER_FILE);
     })
 
     iotest!(fn sync_doesnt_kill_anything() {

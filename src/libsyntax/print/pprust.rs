@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -92,7 +92,7 @@ pub fn rust_printer_annotated(writer: ~io::Writer,
                               ann: @PpAnn)
                               -> State {
     return State {
-        s: pp::mk_printer(writer, default_columns),
+        s: pp::mk_printer(writer, DEFAULT_COLUMNS),
         cm: None,
         intr: intr,
         comments: None,
@@ -106,9 +106,9 @@ pub fn rust_printer_annotated(writer: ~io::Writer,
     };
 }
 
-pub static indent_unit: uint = 4u;
+pub static INDENT_UNIT: uint = 4u;
 
-pub static default_columns: uint = 78u;
+pub static DEFAULT_COLUMNS: uint = 78u;
 
 // Requires you to pass an input filename and reader so that
 // it can scan the input text for comments and literals to
@@ -128,7 +128,7 @@ pub fn print_crate(cm: @CodeMap,
         input
     );
     let mut s = State {
-        s: pp::mk_printer(out, default_columns),
+        s: pp::mk_printer(out, DEFAULT_COLUMNS),
         cm: Some(cm),
         intr: intr,
         comments: Some(cmnts),
@@ -216,7 +216,7 @@ pub fn block_to_str(blk: &ast::Block, intr: @IdentInterner) -> ~str {
     let wr = ~MemWriter::new();
     let mut s = rust_printer(wr as ~io::Writer, intr);
     // containing cbox, will be closed by print-block at }
-    cbox(&mut s, indent_unit);
+    cbox(&mut s, INDENT_UNIT);
     // head-ibox, will be closed by print-block after {
     ibox(&mut s, 0u);
     print_block(&mut s, blk);
@@ -267,7 +267,7 @@ pub fn pclose(s: &mut State) { word(&mut s.s, ")"); }
 
 pub fn head(s: &mut State, w: &str) {
     // outer-box is consistent
-    cbox(s, indent_unit);
+    cbox(s, INDENT_UNIT);
     // head-box is inconsistent
     ibox(s, w.len() + 1);
     // keyword that starts the head
@@ -294,7 +294,7 @@ pub fn bclose_maybe_open (s: &mut State, span: codemap::Span,
     }
 }
 pub fn bclose(s: &mut State, span: codemap::Span) {
-    bclose_(s, span, indent_unit);
+    bclose_(s, span, INDENT_UNIT);
 }
 
 pub fn is_begin(s: &mut State) -> bool {
@@ -559,7 +559,7 @@ pub fn print_item(s: &mut State, item: &ast::Item) {
         bclose(s, item.span);
       }
       ast::ItemTy(ty, ref params) => {
-        ibox(s, indent_unit);
+        ibox(s, INDENT_UNIT);
         ibox(s, 0u);
         word_nbsp(s, visibility_qualified(item.vis, "type"));
         print_ident(s, item.ident);
@@ -641,7 +641,7 @@ pub fn print_item(s: &mut State, item: &ast::Item) {
         print_path(s, pth, false);
         word(&mut s.s, "! ");
         print_ident(s, item.ident);
-        cbox(s, indent_unit);
+        cbox(s, INDENT_UNIT);
         popen(s);
         print_tts(s, &(tts.as_slice()));
         pclose(s);
@@ -676,7 +676,7 @@ pub fn print_variants(s: &mut State,
         space_if_not_bol(s);
         maybe_print_comment(s, v.span.lo);
         print_outer_attributes(s, v.node.attrs);
-        ibox(s, indent_unit);
+        ibox(s, INDENT_UNIT);
         print_variant(s, v);
         word(&mut s.s, ",");
         end(s);
@@ -932,11 +932,11 @@ pub fn print_stmt(s: &mut State, st: &ast::Stmt) {
 }
 
 pub fn print_block(s: &mut State, blk: &ast::Block) {
-    print_possibly_embedded_block(s, blk, BlockNormal, indent_unit);
+    print_possibly_embedded_block(s, blk, BlockNormal, INDENT_UNIT);
 }
 
 pub fn print_block_unclosed(s: &mut State, blk: &ast::Block) {
-    print_possibly_embedded_block_(s, blk, BlockNormal, indent_unit, &[],
+    print_possibly_embedded_block_(s, blk, BlockNormal, INDENT_UNIT, &[],
                                  false);
 }
 
@@ -947,7 +947,7 @@ pub fn print_block_unclosed_indent(s: &mut State, blk: &ast::Block, indented: ui
 pub fn print_block_with_attrs(s: &mut State,
                               blk: &ast::Block,
                               attrs: &[ast::Attribute]) {
-    print_possibly_embedded_block_(s, blk, BlockNormal, indent_unit, attrs,
+    print_possibly_embedded_block_(s, blk, BlockNormal, INDENT_UNIT, attrs,
                                   true);
 }
 
@@ -1018,7 +1018,7 @@ pub fn print_if(s: &mut State, test: &ast::Expr, blk: &ast::Block,
             match _else.node {
               // "another else-if"
               ast::ExprIf(i, t, e) => {
-                cbox(s, indent_unit - 1u);
+                cbox(s, INDENT_UNIT - 1u);
                 ibox(s, 0u);
                 word(&mut s.s, " else if ");
                 print_expr(s, i);
@@ -1028,7 +1028,7 @@ pub fn print_if(s: &mut State, test: &ast::Expr, blk: &ast::Block,
               }
               // "final else"
               ast::ExprBlock(b) => {
-                cbox(s, indent_unit - 1u);
+                cbox(s, INDENT_UNIT - 1u);
                 ibox(s, 0u);
                 word(&mut s.s, " else ");
                 print_block(s, b);
@@ -1129,7 +1129,7 @@ pub fn print_call_post(s: &mut State,
 
 pub fn print_expr(s: &mut State, expr: &ast::Expr) {
     fn print_field(s: &mut State, field: &ast::Field) {
-        ibox(s, indent_unit);
+        ibox(s, INDENT_UNIT);
         print_ident(s, field.ident.node);
         word_space(s, ":");
         print_expr(s, field.expr);
@@ -1138,7 +1138,7 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) {
     fn get_span(field: &ast::Field) -> codemap::Span { return field.span; }
 
     maybe_print_comment(s, expr.span.lo);
-    ibox(s, indent_unit);
+    ibox(s, INDENT_UNIT);
     {
         let ann_node = NodeExpr(s, expr);
         s.ann.pre(ann_node);
@@ -1156,7 +1156,7 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) {
             print_expr(s, e);
         }
       ast::ExprVec(ref exprs, mutbl) => {
-        ibox(s, indent_unit);
+        ibox(s, INDENT_UNIT);
         word(&mut s.s, "[");
         if mutbl == ast::MutMutable {
             word(&mut s.s, "mut");
@@ -1168,7 +1168,7 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) {
       }
 
       ast::ExprRepeat(element, count, mutbl) => {
-        ibox(s, indent_unit);
+        ibox(s, INDENT_UNIT);
         word(&mut s.s, "[");
         if mutbl == ast::MutMutable {
             word(&mut s.s, "mut");
@@ -1188,7 +1188,7 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) {
         commasep_cmnt(s, Consistent, (*fields), print_field, get_span);
         match wth {
             Some(expr) => {
-                ibox(s, indent_unit);
+                ibox(s, INDENT_UNIT);
                 word(&mut s.s, ",");
                 space(&mut s.s);
                 word(&mut s.s, "..");
@@ -1287,7 +1287,7 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) {
         print_block(s, blk);
       }
       ast::ExprMatch(expr, ref arms) => {
-        cbox(s, indent_unit);
+        cbox(s, INDENT_UNIT);
         ibox(s, 4);
         word_nbsp(s, "match");
         print_expr(s, expr);
@@ -1296,7 +1296,7 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) {
         let len = arms.len();
         for (i, arm) in arms.iter().enumerate() {
             space(&mut s.s);
-            cbox(s, indent_unit);
+            cbox(s, INDENT_UNIT);
             ibox(s, 0u);
             let mut first = true;
             for p in arm.pats.iter() {
@@ -1329,7 +1329,7 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) {
                             ast::ExprBlock(blk) => {
                                 // the block will close the pattern's ibox
                                 print_block_unclosed_indent(
-                                    s, blk, indent_unit);
+                                    s, blk, INDENT_UNIT);
                             }
                             _ => {
                                 end(s); // close the ibox for the pattern
@@ -1346,10 +1346,10 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) {
                 }
             } else {
                 // the block will close the pattern's ibox
-                print_block_unclosed_indent(s, arm.body, indent_unit);
+                print_block_unclosed_indent(s, arm.body, INDENT_UNIT);
             }
         }
-        bclose_(s, expr.span, indent_unit);
+        bclose_(s, expr.span, INDENT_UNIT);
       }
       ast::ExprFnBlock(decl, body) => {
         // in do/for blocks we don't want to show an empty
@@ -1410,7 +1410,7 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) {
       }
       ast::ExprBlock(blk) => {
         // containing cbox, will be closed by print-block at }
-        cbox(s, indent_unit);
+        cbox(s, INDENT_UNIT);
         // head-box, will be closed by print-block after {
         ibox(s, 0u);
         print_block(s, blk);
@@ -1531,11 +1531,11 @@ pub fn print_decl(s: &mut State, decl: &ast::Decl) {
     match decl.node {
       ast::DeclLocal(ref loc) => {
         space_if_not_bol(s);
-        ibox(s, indent_unit);
+        ibox(s, INDENT_UNIT);
         word_nbsp(s, "let");
 
         fn print_local(s: &mut State, loc: &ast::Local) {
-            ibox(s, indent_unit);
+            ibox(s, INDENT_UNIT);
             print_local_decl(s, loc);
             end(s);
             match loc.init {
@@ -1685,7 +1685,7 @@ pub fn print_pat(s: &mut State, pat: &ast::Pat) {
         print_path(s, path, true);
         word(&mut s.s, "{");
         fn print_field(s: &mut State, f: &ast::FieldPat) {
-            cbox(s, indent_unit);
+            cbox(s, INDENT_UNIT);
             print_ident(s, f.ident);
             word_space(s, ":");
             print_pat(s, f.pat);
@@ -1922,7 +1922,7 @@ pub fn print_generics(s: &mut State, generics: &ast::Generics) {
 }
 
 pub fn print_meta_item(s: &mut State, item: &ast::MetaItem) {
-    ibox(s, indent_unit);
+    ibox(s, INDENT_UNIT);
     match item.node {
       ast::MetaWord(name) => word(&mut s.s, name),
       ast::MetaNameValue(name, value) => {
@@ -2019,7 +2019,7 @@ pub fn print_mt(s: &mut State, mt: &ast::MutTy) {
 }
 
 pub fn print_arg(s: &mut State, input: &ast::Arg) {
-    ibox(s, indent_unit);
+    ibox(s, INDENT_UNIT);
     match input.ty.node {
         ast::TyInfer => print_pat(s, input.pat),
         _ => {
@@ -2053,7 +2053,7 @@ pub fn print_ty_fn(s: &mut State,
                    opt_bounds: &Option<OptVec<ast::TyParamBound>>,
                    generics: Option<&ast::Generics>,
                    opt_explicit_self: Option<ast::ExplicitSelf_>) {
-    ibox(s, indent_unit);
+    ibox(s, INDENT_UNIT);
 
     // Duplicates the logic in `print_fn_header_info()`.  This is because that
     // function prints the sigil in the wrong place.  That should be fixed.
@@ -2120,7 +2120,7 @@ pub fn print_ty_fn(s: &mut State,
         ast::TyNil => {}
         _ => {
             space_if_not_bol(s);
-            ibox(s, indent_unit);
+            ibox(s, INDENT_UNIT);
             word_space(s, "->");
             if decl.cf == ast::NoReturn { word_nbsp(s, "!"); }
             else { print_type(s, decl.output); }
@@ -2216,7 +2216,7 @@ pub fn print_literal(s: &mut State, lit: &ast::Lit) {
         if val { word(&mut s.s, "true"); } else { word(&mut s.s, "false"); }
       }
       ast::LitBinary(arr) => {
-        ibox(s, indent_unit);
+        ibox(s, INDENT_UNIT);
         word(&mut s.s, "[");
         commasep_cmnt(s, Inconsistent, arr, |s, u| word(&mut s.s, format!("{}", *u)),
                       |_| lit.span);

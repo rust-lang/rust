@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -84,7 +84,7 @@ fn writeFile(file_path: &Path, contents: &str) {
 fn mk_emptier_workspace(tag: &str) -> TempDir {
     let workspace = TempDir::new(tag).expect("couldn't create temp dir");
     let package_dir = workspace.path().join("src");
-    fs::mkdir_recursive(&package_dir, io::UserRWX);
+    fs::mkdir_recursive(&package_dir, io::USER_RWX);
     workspace
 }
 
@@ -99,7 +99,7 @@ fn mk_workspace(workspace: &Path, short_name: &Path, version: &Version) -> Path 
     // FIXME (#9639): This needs to handle non-utf8 paths
     let package_dir = workspace.join_many([~"src", format!("{}-{}",
                                            short_name.as_str().unwrap(), version.to_str())]);
-    fs::mkdir_recursive(&package_dir, io::UserRWX);
+    fs::mkdir_recursive(&package_dir, io::USER_RWX);
     package_dir
 }
 
@@ -115,7 +115,7 @@ fn mk_temp_workspace(short_name: &Path, version: &Version) -> (TempDir, Path) {
            package_dir.is_dir());
     // Create main, lib, test, and bench files
     debug!("mk_workspace: creating {}", package_dir.display());
-    fs::mkdir_recursive(&package_dir, io::UserRWX);
+    fs::mkdir_recursive(&package_dir, io::USER_RWX);
     debug!("Created {} and does it exist? {:?}", package_dir.display(),
            package_dir.is_dir());
     // Create main, lib, test, and bench files
@@ -154,7 +154,7 @@ fn init_git_repo(p: &Path) -> TempDir {
     let tmp = TempDir::new("git_local").expect("couldn't create temp dir");
     let work_dir = tmp.path().join(p);
     let work_dir_for_opts = work_dir.clone();
-    fs::mkdir_recursive(&work_dir, io::UserRWX);
+    fs::mkdir_recursive(&work_dir, io::USER_RWX);
     debug!("Running: git init in {}", work_dir.display());
     run_git([~"init"], None, &work_dir_for_opts,
         format!("Couldn't initialize git repository in {}", work_dir.display()));
@@ -190,12 +190,12 @@ fn add_git_tag(repo: &Path, tag: ~str) {
 
 fn is_rwx(p: &Path) -> bool {
     if !p.exists() { return false }
-    p.stat().perm & io::UserRWX == io::UserRWX
+    p.stat().perm & io::USER_RWX == io::USER_RWX
 }
 
 fn is_read_only(p: &Path) -> bool {
     if !p.exists() { return false }
-    p.stat().perm & io::UserRWX == io::UserRead
+    p.stat().perm & io::USER_RWX == io::USER_READ
 }
 
 fn test_sysroot() -> Path {
@@ -305,7 +305,7 @@ fn create_local_package_in(crateid: &CrateId, pkgdir: &Path) -> Path {
     let package_dir = pkgdir.join_many([~"src", crateid.to_str()]);
 
     // Create main, lib, test, and bench files
-    fs::mkdir_recursive(&package_dir, io::UserRWX);
+    fs::mkdir_recursive(&package_dir, io::USER_RWX);
     debug!("Created {} and does it exist? {:?}", package_dir.display(),
            package_dir.is_dir());
     // Create main, lib, test, and bench files
@@ -759,7 +759,7 @@ fn test_package_version() {
     let repo = repo.path();
     let repo_subdir = repo.join_many(["mockgithub.com", "catamorphism", "test_pkg_version"]);
     debug!("Writing files in: {}", repo_subdir.display());
-    fs::mkdir_recursive(&repo_subdir, io::UserRWX);
+    fs::mkdir_recursive(&repo_subdir, io::USER_RWX);
     writeFile(&repo_subdir.join("main.rs"),
               "fn main() { let _x = (); }");
     writeFile(&repo_subdir.join("lib.rs"),
@@ -896,7 +896,7 @@ fn rustpkg_build_no_arg() {
     let tmp = TempDir::new("rustpkg_build_no_arg").expect("rustpkg_build_no_arg failed");
     let tmp = tmp.path().join(".rust");
     let package_dir = tmp.join_many(["src", "foo"]);
-    fs::mkdir_recursive(&package_dir, io::UserRWX);
+    fs::mkdir_recursive(&package_dir, io::USER_RWX);
 
     writeFile(&package_dir.join("main.rs"),
               "fn main() { let _x = (); }");
@@ -910,7 +910,7 @@ fn rustpkg_install_no_arg() {
     let tmp = TempDir::new("rustpkg_install_no_arg").expect("rustpkg_install_no_arg failed");
     let tmp = tmp.path().join(".rust");
     let package_dir = tmp.join_many(["src", "foo"]);
-    fs::mkdir_recursive(&package_dir, io::UserRWX);
+    fs::mkdir_recursive(&package_dir, io::USER_RWX);
     writeFile(&package_dir.join("lib.rs"),
               "fn main() { let _x = (); }");
     debug!("install_no_arg: dir = {}", package_dir.display());
@@ -923,7 +923,7 @@ fn rustpkg_clean_no_arg() {
     let tmp = TempDir::new("rustpkg_clean_no_arg").expect("rustpkg_clean_no_arg failed");
     let tmp = tmp.path().join(".rust");
     let package_dir = tmp.join_many(["src", "foo"]);
-    fs::mkdir_recursive(&package_dir, io::UserRWX);
+    fs::mkdir_recursive(&package_dir, io::USER_RWX);
 
     writeFile(&package_dir.join("main.rs"),
               "fn main() { let _x = (); }");
@@ -958,9 +958,9 @@ fn rust_path_test() {
 fn rust_path_contents() {
     let dir = TempDir::new("rust_path").expect("rust_path_contents failed");
     let abc = &dir.path().join_many(["A", "B", "C"]);
-    fs::mkdir_recursive(&abc.join(".rust"), io::UserRWX);
-    fs::mkdir_recursive(&abc.with_filename(".rust"), io::UserRWX);
-    fs::mkdir_recursive(&abc.dir_path().with_filename(".rust"), io::UserRWX);
+    fs::mkdir_recursive(&abc.join(".rust"), io::USER_RWX);
+    fs::mkdir_recursive(&abc.with_filename(".rust"), io::USER_RWX);
+    fs::mkdir_recursive(&abc.dir_path().with_filename(".rust"), io::USER_RWX);
     assert!(os::change_dir(abc));
 
     let p = rust_path();
@@ -1234,7 +1234,7 @@ fn test_extern_mod() {
     let lib_depend_dir = TempDir::new("foo").expect("test_extern_mod");
     let lib_depend_dir = lib_depend_dir.path();
     let aux_dir = lib_depend_dir.join_many(["src", "mockgithub.com", "catamorphism", "test_pkg"]);
-    fs::mkdir_recursive(&aux_dir, io::UserRWX);
+    fs::mkdir_recursive(&aux_dir, io::USER_RWX);
     let aux_pkg_file = aux_dir.join("lib.rs");
 
     writeFile(&aux_pkg_file, "pub mod bar { pub fn assert_true() {  assert!(true); } }\n");
@@ -1283,7 +1283,7 @@ fn test_extern_mod_simpler() {
     let lib_depend_dir = TempDir::new("foo").expect("test_extern_mod_simpler");
     let lib_depend_dir = lib_depend_dir.path();
     let aux_dir = lib_depend_dir.join_many(["src", "rust-awesomeness"]);
-    fs::mkdir_recursive(&aux_dir, io::UserRWX);
+    fs::mkdir_recursive(&aux_dir, io::USER_RWX);
     let aux_pkg_file = aux_dir.join("lib.rs");
 
     writeFile(&aux_pkg_file, "pub mod bar { pub fn assert_true() {  assert!(true); } }\n");
@@ -1433,7 +1433,7 @@ fn rust_path_hack_cwd() {
    // Same as rust_path_hack_test, but the CWD is the dir to build out of
    let cwd = TempDir::new("foo").expect("rust_path_hack_cwd");
    let cwd = cwd.path().join("foo");
-   fs::mkdir_recursive(&cwd, io::UserRWX);
+   fs::mkdir_recursive(&cwd, io::USER_RWX);
    writeFile(&cwd.join("lib.rs"), "pub fn f() { }");
 
    let dest_workspace = mk_empty_workspace(&Path::new("bar"), &NoVersion, "dest_workspace");
@@ -1453,7 +1453,7 @@ fn rust_path_hack_multi_path() {
    // Same as rust_path_hack_test, but with a more complex package ID
    let cwd = TempDir::new("pkg_files").expect("rust_path_hack_cwd");
    let subdir = cwd.path().join_many(["foo", "bar", "quux"]);
-   fs::mkdir_recursive(&subdir, io::UserRWX);
+   fs::mkdir_recursive(&subdir, io::USER_RWX);
    writeFile(&subdir.join("lib.rs"), "pub fn f() { }");
    let name = ~"foo/bar/quux";
 
@@ -1870,14 +1870,14 @@ fn crateid_pointing_to_subdir() {
     let workspace = workspace.path();
     fs::mkdir_recursive(&workspace.join_many(["src", "mockgithub.com",
                                                 "mozilla", "some_repo"]),
-                          io::UserRWX);
+                          io::USER_RWX);
 
     let foo_dir = workspace.join_many(["src", "mockgithub.com", "mozilla", "some_repo",
                                        "extras", "foo"]);
     let bar_dir = workspace.join_many(["src", "mockgithub.com", "mozilla", "some_repo",
                                        "extras", "bar"]);
-    fs::mkdir_recursive(&foo_dir, io::UserRWX);
-    fs::mkdir_recursive(&bar_dir, io::UserRWX);
+    fs::mkdir_recursive(&foo_dir, io::USER_RWX);
+    fs::mkdir_recursive(&bar_dir, io::USER_RWX);
     writeFile(&foo_dir.join("lib.rs"),
               "#[crate_id=\"mockgithub.com/mozilla/some_repo/extras/rust-foo#foo:0.0\"];" +
               "pub fn f() {}");
@@ -1887,7 +1887,7 @@ fn crateid_pointing_to_subdir() {
 
     debug!("Creating a file in {}", workspace.display());
     let testpkg_dir = workspace.join_many(["src", "testpkg-0.0"]);
-    fs::mkdir_recursive(&testpkg_dir, io::UserRWX);
+    fs::mkdir_recursive(&testpkg_dir, io::USER_RWX);
 
     writeFile(&testpkg_dir.join("main.rs"),
               "extern mod foo = \"mockgithub.com/mozilla/some_repo/extras/foo\";\n
@@ -1991,7 +1991,7 @@ fn test_dependencies_terminate() {
     let workspace = workspace.path();
     let b_dir = workspace.join_many(["src", "b-0.0"]);
     let b_subdir = b_dir.join("test");
-    fs::mkdir_recursive(&b_subdir, io::UserRWX);
+    fs::mkdir_recursive(&b_subdir, io::USER_RWX);
     writeFile(&b_subdir.join("test.rs"),
               "extern mod b; use b::f; #[test] fn g() { f() }");
     command_line_test([~"install", ~"b"], workspace);
@@ -2220,7 +2220,7 @@ fn test_installed_local_changes() {
     debug!("repo = {}", repo.display());
     let repo_subdir = repo.join_many(["mockgithub.com", "catamorphism", "test-pkg"]);
     debug!("repo_subdir = {}", repo_subdir.display());
-    fs::mkdir_recursive(&repo.join_many([".rust", "src"]), io::UserRWX);
+    fs::mkdir_recursive(&repo.join_many([".rust", "src"]), io::USER_RWX);
 
     writeFile(&repo_subdir.join("main.rs"),
               "fn main() { let _x = (); }");
@@ -2303,7 +2303,7 @@ fn find_sources_in_cwd() {
     let temp_dir = TempDir::new("sources").expect("find_sources_in_cwd failed");
     let temp_dir = temp_dir.path();
     let source_dir = temp_dir.join("foo");
-    fs::mkdir_recursive(&source_dir, io::UserRWX);
+    fs::mkdir_recursive(&source_dir, io::USER_RWX);
     writeFile(&source_dir.join("main.rs"),
               r#"#[crate_id="rust-foo#foo:0.0"]; fn main() { let _x = (); }"#);
     command_line_test([~"install", ~"foo"], &source_dir);
@@ -2442,5 +2442,5 @@ fn correct_error_dependency() {
 
 /// Returns true if p exists and is executable
 fn is_executable(p: &Path) -> bool {
-    p.exists() && p.stat().perm & io::UserExecute == io::UserExecute
+    p.exists() && p.stat().perm & io::USER_EXECUTE == io::USER_EXECUTE
 }
