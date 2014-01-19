@@ -167,7 +167,7 @@ mod imp {
     use libc::c_void;
     use libc;
     use ptr;
-    use ptr::RawPtr;
+    use rt::global_heap::malloc_raw;
 
     type pthread_mutex_t = libc::c_void;
     type pthread_mutexattr_t = libc::c_void;
@@ -175,16 +175,14 @@ mod imp {
     type pthread_condattr_t = libc::c_void;
 
     pub unsafe fn init_lock() -> uint {
-        let block = libc::malloc(rust_pthread_mutex_t_size() as libc::size_t);
-        assert!(!block.is_null());
+        let block = malloc_raw(rust_pthread_mutex_t_size() as uint) as *c_void;
         let n = pthread_mutex_init(block, ptr::null());
         assert_eq!(n, 0);
         return block as uint;
     }
 
     pub unsafe fn init_cond() -> uint {
-        let block = libc::malloc(rust_pthread_cond_t_size() as libc::size_t);
-        assert!(!block.is_null());
+        let block = malloc_raw(rust_pthread_cond_t_size() as uint) as *c_void;
         let n = pthread_cond_init(block, ptr::null());
         assert_eq!(n, 0);
         return block as uint;
@@ -249,14 +247,13 @@ mod imp {
     use libc;
     use libc::{HANDLE, BOOL, LPSECURITY_ATTRIBUTES, c_void, DWORD, LPCSTR};
     use ptr;
-    use ptr::RawPtr;
+    use rt::global_heap::malloc_raw;
 
     type LPCRITICAL_SECTION = *c_void;
     static SPIN_COUNT: DWORD = 4000;
 
     pub unsafe fn init_lock() -> uint {
-        let block = libc::malloc(rust_crit_section_size() as libc::size_t);
-        assert!(!block.is_null());
+        let block = malloc_raw(rust_crit_section_size() as uint) as *c_void;
         InitializeCriticalSectionAndSpinCount(block, SPIN_COUNT);
         return block as uint;
     }
