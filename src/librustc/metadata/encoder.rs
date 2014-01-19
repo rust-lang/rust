@@ -496,9 +496,8 @@ fn encode_reexported_static_methods(ecx: &EncodeContext,
                                     ebml_w: &mut writer::Encoder,
                                     mod_path: &[ast_map::PathElem],
                                     exp: &middle::resolve::Export2) {
-    let items = ecx.tcx.items.borrow();
-    match items.get().find(&exp.def_id.node) {
-        Some(&ast_map::NodeItem(item, path)) => {
+    match ecx.tcx.items.find(exp.def_id.node) {
+        Some(ast_map::NodeItem(item, path)) => {
             let original_name = ecx.tcx.sess.str_of(item.ident);
 
             //
@@ -1347,8 +1346,7 @@ fn my_visit_item(i: &Item,
                  ebml_w: &mut writer::Encoder,
                  ecx_ptr: *int,
                  index: @RefCell<~[entry<i64>]>) {
-    let items = items.borrow();
-    match items.get().get_copy(&i.id) {
+    match items.get(i.id) {
         ast_map::NodeItem(_, pt) => {
             let mut ebml_w = unsafe {
                 ebml_w.unsafe_clone()
@@ -1366,8 +1364,7 @@ fn my_visit_foreign_item(ni: &ForeignItem,
                          ebml_w: &mut writer::Encoder,
                          ecx_ptr:*int,
                          index: @RefCell<~[entry<i64>]>) {
-    let items = items.borrow();
-    match items.get().get_copy(&ni.id) {
+    match items.get(ni.id) {
         ast_map::NodeForeignItem(_, abi, _, pt) => {
             debug!("writing foreign item {}::{}",
                    ast_map::path_to_str(

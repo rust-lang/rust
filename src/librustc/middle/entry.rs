@@ -75,9 +75,8 @@ fn find_item(item: &Item, ctxt: &mut EntryContext) {
         ItemFn(..) => {
             if item.ident.name == special_idents::main.name {
                 {
-                    let ast_map = ctxt.ast_map.borrow();
-                    match ast_map.get().find(&item.id) {
-                        Some(&ast_map::NodeItem(_, path)) => {
+                    match ctxt.ast_map.find(item.id) {
+                        Some(ast_map::NodeItem(_, path)) => {
                             if path.len() == 0 {
                                 // This is a top-level function so can be 'main'
                                 if ctxt.main_fn.is_none() {

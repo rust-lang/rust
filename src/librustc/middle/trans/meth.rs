@@ -238,8 +238,7 @@ pub fn trans_static_method_callee(bcx: &Block,
 
     let mname = if method_id.crate == ast::LOCAL_CRATE {
         {
-            let items = bcx.tcx().items.borrow();
-            match items.get().get_copy(&method_id.node) {
+            match bcx.tcx().items.get(method_id.node) {
                 ast_map::NodeTraitMethod(trait_method, _, _) => {
                     ast_util::trait_method_to_ty_method(trait_method).ident
                 }

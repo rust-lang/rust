@@ -322,10 +322,8 @@ pub fn create_captured_var_metadata(bcx: &Block,
 
     let cx = bcx.ccx();
 
-    let ast_item = {
-        let items = cx.tcx.items.borrow();
-        items.get().find_copy(&node_id)
-    };
+    let ast_item = cx.tcx.items.find(node_id);
+
     let variable_ident = match ast_item {
         None => {
             cx.sess.span_bug(span, "debuginfo::create_captured_var_metadata() - NodeId not found");
@@ -423,10 +421,7 @@ pub fn create_self_argument_metadata(bcx: &Block,
     }
 
     // Extract the span of the self argument from the method's AST
-    let fnitem = {
-        let items = bcx.ccx().tcx.items.borrow();
-        items.get().get_copy(&bcx.fcx.id)
-    };
+    let fnitem = bcx.ccx().tcx.items.get(bcx.fcx.id);
     let span = match fnitem {
         ast_map::NodeMethod(method, _, _) => {
             method.explicit_self.span
@@ -613,10 +608,8 @@ pub fn create_function_debug_context(cx: &CrateContext,
 
     let empty_generics = ast::Generics { lifetimes: opt_vec::Empty, ty_params: opt_vec::Empty };
 
-    let fnitem = {
-        let items = cx.tcx.items.borrow();
-        items.get().get_copy(&fn_ast_id)
-    };
+    let fnitem = cx.tcx.items.get(fn_ast_id);
+
     let (ident, fn_decl, generics, top_level_block, span, has_path) = match fnitem {
         ast_map::NodeItem(ref item, _) => {
             match item.node {
@@ -1098,8 +1091,7 @@ fn scope_metadata(fcx: &FunctionContext,
     match scope_map.get().find_copy(&node_id) {
         Some(scope_metadata) => scope_metadata,
         None => {
-            let items = fcx.ccx.tcx.items.borrow();
-            let node = items.get().get_copy(&node_id);
+            let node = fcx.ccx.tcx.items.get(node_id);
 
             fcx.ccx.sess.span_bug(span,
                 format!("debuginfo: Could not find scope info for node {:?}", node));
@@ -1419,9 +1411,8 @@ fn describe_enum_variant(cx: &CrateContext,
     // Find the source code location of the variant's definition
     let variant_definition_span = if variant_info.id.crate == ast::LOCAL_CRATE {
         {
-            let items = cx.tcx.items.borrow();
-            match items.get().find(&variant_info.id.node) {
-                Some(&ast_map::NodeVariant(ref variant, _, _)) => variant.span,
+            match cx.tcx.items.find(variant_info.id.node) {
+                Some(ast_map::NodeVariant(ref variant, _, _)) => variant.span,
                 ref node => {
                     cx.sess.span_warn(span,
                         format!("debuginfo::enum_metadata()::\
@@ -2300,9 +2291,8 @@ fn get_namespace_and_span_for_item(cx: &CrateContext,
     let containing_scope = namespace_for_item(cx, def_id, warning_span).scope;
     let definition_span = if def_id.crate == ast::LOCAL_CRATE {
         {
-            let items = cx.tcx.items.borrow();
-            let definition_span = match items.get().find(&def_id.node) {
-                Some(&ast_map::NodeItem(item, _)) => item.span,
+            let definition_span = match cx.tcx.items.find(def_id.node) {
+                Some(ast_map::NodeItem(item, _)) => item.span,
                 ref node => {
                     cx.sess.span_warn(warning_span,
                         format!("debuginfo::\
