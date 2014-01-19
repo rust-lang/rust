@@ -237,9 +237,15 @@ actual:\n\
 
     fn make_typecheck_args(config: &config, props: &TestProps, testfile: &Path) -> ProcArgs {
         let aux_dir = aux_output_dir_name(config, testfile);
+        let target = if props.force_host {
+            config.host.as_slice()
+        } else {
+            config.target.as_slice()
+        };
         // FIXME (#9639): This needs to handle non-utf8 paths
         let mut args = ~[~"-",
                          ~"--no-trans", ~"--lib",
+                         ~"--target=" + target,
                          ~"-L", config.build_base.as_str().unwrap().to_owned(),
                          ~"-L",
                          aux_dir.as_str().unwrap().to_owned()];
