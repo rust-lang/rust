@@ -432,9 +432,12 @@ impl GenericPath for Path {
     }
 
     fn root_path(&self) -> Option<Path> {
-        if self.is_absolute() {
+        if self.prefix.is_some() {
             Some(Path::new(match self.prefix {
-                Some(VerbatimDiskPrefix)|Some(DiskPrefix) => {
+                Some(DiskPrefix) if self.is_absolute() => {
+                    self.repr.slice_to(self.prefix_len()+1)
+                }
+                Some(VerbatimDiskPrefix) => {
                     self.repr.slice_to(self.prefix_len()+1)
                 }
                 _ => self.repr.slice_to(self.prefix_len())
@@ -1688,7 +1691,7 @@ mod tests {
     fn test_root_path() {
         assert_eq!(Path::new("a\\b\\c").root_path(), None);
         assert_eq!(Path::new("\\a\\b\\c").root_path(), Some(Path::new("\\")));
-        assert_eq!(Path::new("C:a").root_path(), None);
+        assert_eq!(Path::new("C:a").root_path(), Some(Path::new("C:")));
         assert_eq!(Path::new("C:\\a").root_path(), Some(Path::new("C:\\")));
         assert_eq!(Path::new("\\\\a\\b\\c").root_path(), Some(Path::new("\\\\a\\b")));
         assert_eq!(Path::new("\\\\?\\a\\b").root_path(), Some(Path::new("\\\\?\\a")));
