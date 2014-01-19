@@ -1306,10 +1306,9 @@ impl<'a> LookupContext<'a> {
     fn report_static_candidate(&self, idx: uint, did: DefId) {
         let span = if did.crate == ast::LOCAL_CRATE {
             {
-                let items = self.tcx().items.borrow();
-                match items.get().find(&did.node) {
-                  Some(&ast_map::NodeMethod(m, _, _)) => m.span,
-                  Some(&ast_map::NodeTraitMethod(trait_method, _, _)) => {
+                match self.tcx().items.find(did.node) {
+                  Some(ast_map::NodeMethod(m, _, _)) => m.span,
+                  Some(ast_map::NodeTraitMethod(trait_method, _, _)) => {
                       match *trait_method {
                           ast::Provided(m) => m.span,
                           _ => {

@@ -110,10 +110,9 @@ impl AstConv for CrateCtxt {
             return csearch::get_type(self.tcx, id)
         }
 
-        let items = self.tcx.items.borrow();
-        match items.get().find(&id.node) {
-            Some(&ast_map::NodeItem(item, _)) => ty_of_item(self, item),
-            Some(&ast_map::NodeForeignItem(foreign_item, abis, _, _)) => {
+        match self.tcx.items.find(id.node) {
+            Some(ast_map::NodeItem(item, _)) => ty_of_item(self, item),
+            Some(ast_map::NodeForeignItem(foreign_item, abis, _, _)) => {
                 ty_of_foreign_item(self, foreign_item, abis)
             }
             ref x => {
@@ -185,8 +184,7 @@ pub fn get_enum_variant_types(ccx: &CrateCtxt,
 
 pub fn ensure_trait_methods(ccx: &CrateCtxt, trait_id: ast::NodeId) {
     let tcx = ccx.tcx;
-    let items = tcx.items.borrow();
-    match items.get().get_copy(&trait_id) {
+    match tcx.items.get(trait_id) {
         ast_map::NodeItem(item, _) => {
             match item.node {
                 ast::ItemTrait(ref generics, _, ref ms) => {
@@ -720,9 +718,8 @@ pub fn convert_foreign(ccx: &CrateCtxt, i: &ast::ForeignItem) {
     // map, and I regard each time that I use it as a personal and
     // moral failing, but at the moment it seems like the only
     // convenient way to extract the ABI. - ndm
-    let items = ccx.tcx.items.borrow();
-    let abis = match items.get().find(&i.id) {
-        Some(&ast_map::NodeForeignItem(_, abis, _, _)) => abis,
+    let abis = match ccx.tcx.items.find(i.id) {
+        Some(ast_map::NodeForeignItem(_, abis, _, _)) => abis,
         ref x => {
             ccx.tcx.sess.bug(format!("unexpected sort of item \
                                    in get_item_ty(): {:?}", (*x)));
@@ -774,9 +771,8 @@ fn get_trait_def(ccx: &CrateCtxt, trait_id: ast::DefId) -> @ty::TraitDef {
         return ty::lookup_trait_def(ccx.tcx, trait_id)
     }
 
-    let items = ccx.tcx.items.borrow();
-    match items.get().get(&trait_id.node) {
-        &ast_map::NodeItem(item, _) => trait_def_of_item(ccx, item),
+    match ccx.tcx.items.get(trait_id.node) {
+        ast_map::NodeItem(item, _) => trait_def_of_item(ccx, item),
         _ => ccx.tcx.sess.bug(format!("get_trait_def({}): not an item",
                                    trait_id.node))
     }

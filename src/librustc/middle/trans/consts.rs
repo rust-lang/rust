@@ -166,10 +166,7 @@ pub fn get_const_val(cx: @CrateContext,
             def_id = inline::maybe_instantiate_inline(cx, def_id);
         }
 
-        let opt_item = {
-            let items = cx.tcx.items.borrow();
-            items.get().get_copy(&def_id.node)
-        };
+        let opt_item = cx.tcx.items.get(def_id.node);
 
         match opt_item {
             ast_map::NodeItem(item, _) => {

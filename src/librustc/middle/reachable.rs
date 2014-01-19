@@ -66,9 +66,8 @@ fn method_might_be_inlined(tcx: ty::ctxt, method: &ast::Method,
     }
     if is_local(impl_src) {
         {
-            let items = tcx.items.borrow();
-            match items.get().find(&impl_src.node) {
-                Some(&ast_map::NodeItem(item, _)) => {
+            match tcx.items.find(impl_src.node) {
+                Some(ast_map::NodeItem(item, _)) => {
                     item_might_be_inlined(item)
                 }
                 Some(..) | None => {
@@ -213,21 +212,20 @@ impl ReachableContext {
         }
 
         let node_id = def_id.node;
-        let items = tcx.items.borrow();
-        match items.get().find(&node_id) {
-            Some(&ast_map::NodeItem(item, _)) => {
+        match tcx.items.find(node_id) {
+            Some(ast_map::NodeItem(item, _)) => {
                 match item.node {
                     ast::ItemFn(..) => item_might_be_inlined(item),
                     _ => false,
                 }
             }
-            Some(&ast_map::NodeTraitMethod(trait_method, _, _)) => {
+            Some(ast_map::NodeTraitMethod(trait_method, _, _)) => {
                 match *trait_method {
                     ast::Required(_) => false,
                     ast::Provided(_) => true,
                 }
             }
-            Some(&ast_map::NodeMethod(method, impl_did, _)) => {
+            Some(ast_map::NodeMethod(method, impl_did, _)) => {
                 if generics_require_inlining(&method.generics) ||
                         attributes_specify_inlining(method.attrs) {
                     true
@@ -235,8 +233,8 @@ impl ReachableContext {
                     // Check the impl. If the generics on the self type of the
                     // impl require inlining, this method does too.
                     assert!(impl_did.crate == ast::LOCAL_CRATE);
-                    match items.get().find(&impl_did.node) {
-                        Some(&ast_map::NodeItem(item, _)) => {
+                    match tcx.items.find(impl_did.node) {
+                        Some(ast_map::NodeItem(item, _)) => {
                             match item.node {
                                 ast::ItemImpl(ref generics, _, _, _) => {
                                     generics_require_inlining(generics)
@@ -294,9 +292,8 @@ impl ReachableContext {
             };
 
             scanned.insert(search_item);
-            let items = self.tcx.items.borrow();
-            match items.get().find(&search_item) {
-                Some(item) => self.propagate_node(item, search_item,
+            match self.tcx.items.find(search_item) {
+                Some(ref item) => self.propagate_node(item, search_item,
                                                   &mut visitor),
                 None if search_item == ast::CRATE_NODE_ID => {}
                 None => {

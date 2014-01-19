@@ -38,12 +38,11 @@ fn should_explore(tcx: ty::ctxt, def_id: ast::DefId) -> bool {
         return false;
     }
 
-    let items = tcx.items.borrow();
-    match items.get().find(&def_id.node) {
-        Some(&ast_map::NodeItem(..))
-        | Some(&ast_map::NodeMethod(..))
-        | Some(&ast_map::NodeForeignItem(..))
-        | Some(&ast_map::NodeTraitMethod(..)) => true,
+    match tcx.items.find(def_id.node) {
+        Some(ast_map::NodeItem(..))
+        | Some(ast_map::NodeMethod(..))
+        | Some(ast_map::NodeForeignItem(..))
+        | Some(ast_map::NodeTraitMethod(..)) => true,
         _ => false
     }
 }
@@ -136,9 +135,8 @@ impl MarkSymbolVisitor {
             }
             scanned.insert(id);
 
-            let items = self.tcx.items.borrow();
-            match items.get().find(&id) {
-                Some(node) => {
+            match self.tcx.items.find(id) {
+                Some(ref node) => {
                     self.live_symbols.insert(id);
                     self.visit_node(node);
                 }

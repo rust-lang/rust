@@ -108,10 +108,9 @@ pub fn lookup_variant_by_id(tcx: ty::ctxt,
 
     if ast_util::is_local(enum_def) {
         {
-            let items = tcx.items.borrow();
-            match items.get().find(&enum_def.node) {
+            match tcx.items.find(enum_def.node) {
                 None => None,
-                Some(&ast_map::NodeItem(it, _)) => match it.node {
+                Some(ast_map::NodeItem(it, _)) => match it.node {
                     ItemEnum(ast::EnumDef { variants: ref variants }, _) => {
                         variant_expr(*variants, variant_def.node)
                     }
@@ -161,10 +160,9 @@ pub fn lookup_const_by_id(tcx: ty::ctxt, def_id: ast::DefId)
                           -> Option<@Expr> {
     if ast_util::is_local(def_id) {
         {
-            let items = tcx.items.borrow();
-            match items.get().find(&def_id.node) {
+            match tcx.items.find(def_id.node) {
                 None => None,
-                Some(&ast_map::NodeItem(it, _)) => match it.node {
+                Some(ast_map::NodeItem(it, _)) => match it.node {
                     ItemStatic(_, ast::MutImmutable, const_expr) => {
                         Some(const_expr)
                     }
