@@ -18,7 +18,7 @@ impl A for Something {
     fn f(&self) -> int { 10 }
 }
 
-trait B<T> {
+pub trait B<T> {
     fn thing<U>(&self, x: T, y: U) -> (T, U) { (x, y) }
     fn staticthing<U>(_z: &Self, x: T, y: U) -> (T, U) { (x, y) }
 }
