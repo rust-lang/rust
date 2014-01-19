@@ -929,7 +929,7 @@ impl<T : Iterator<char>> Parser<T> {
                 return self.error(~"EOF while parsing string");
             }
 
-            if (escape) {
+            if escape {
                 match self.ch {
                   '"' => res.push_char('"'),
                   '\\' => res.push_char('\\'),
@@ -1360,7 +1360,7 @@ impl serialize::Decoder for Decoder {
 /// Test if two json values are less than one another
 impl Ord for Json {
     fn lt(&self, other: &Json) -> bool {
-        match (*self) {
+        match *self {
             Number(f0) => {
                 match *other {
                     Number(f1) => f0 < f1,

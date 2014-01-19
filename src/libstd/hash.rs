@@ -263,7 +263,7 @@ impl Streaming for SipState {
         compress!(v0, v1, v2, v3);
         compress!(v0, v1, v2, v3);
 
-        return (v0 ^ v1 ^ v2 ^ v3);
+        return v0 ^ v1 ^ v2 ^ v3;
     }
 
     fn result_bytes(&mut self) -> ~[u8] {

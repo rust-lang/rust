@@ -34,7 +34,7 @@ struct CreatureInfo {
 }
 
 fn show_color(cc: color) -> ~str {
-    match (cc) {
+    match cc {
         Red    => {~"red"}
         Yellow => {~"yellow"}
         Blue   => {~"blue"}
@@ -51,7 +51,7 @@ fn show_color_list(set: ~[color]) -> ~str {
 }
 
 fn show_digit(nn: uint) -> ~str {
-    match (nn) {
+    match nn {
         0 => {~"zero"}
         1 => {~"one"}
         2 => {~"two"}

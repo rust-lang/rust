@@ -119,7 +119,7 @@ pub fn parse_args(args: &[~str]) -> Result<ParseResult, int> {
     let mut args = matches.free.clone();
     args.shift();
 
-    if (args.len() < 1) {
+    if args.len() < 1 {
         usage::general();
         return Err(1);
     }
@@ -154,7 +154,7 @@ pub fn parse_args(args: &[~str]) -> Result<ParseResult, int> {
     };
 
     let cmd_opt = args.iter().filter_map( |s| from_str(s.clone())).next();
-    let command = match(cmd_opt){
+    let command = match cmd_opt {
         None => {
             debug!("No legal command. Returning 0");
             usage::general();
@@ -194,4 +194,3 @@ pub fn parse_args(args: &[~str]) -> Result<ParseResult, int> {
         sysroot: supplied_sysroot
     })
 }
-

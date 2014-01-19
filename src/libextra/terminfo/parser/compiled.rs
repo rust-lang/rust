@@ -178,7 +178,7 @@ pub fn parse(file: &mut io::Reader,
 
     // Check magic number
     let magic = file.read_le_u16();
-    if (magic != 0x011A) {
+    if magic != 0x011A {
         return Err(format!("invalid magic number: expected {:x} but found {:x}",
                            0x011A, magic as uint));
     }
