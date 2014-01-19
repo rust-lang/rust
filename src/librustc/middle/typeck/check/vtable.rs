@@ -599,7 +599,7 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: @FnCtxt, is_early: bool) {
                   (&ty::ty_box(..), ty::BoxTraitStore) |
                   (&ty::ty_uniq(..), ty::UniqTraitStore) |
                   (&ty::ty_rptr(..), ty::RegionTraitStore(..)) => {
-                    let typ = match (&ty::get(ty).sty) {
+                    let typ = match &ty::get(ty).sty {
                         &ty::ty_box(typ) | &ty::ty_uniq(typ) => typ,
                         &ty::ty_rptr(_, mt) => mt.ty,
                         _ => fail!("shouldn't get here"),

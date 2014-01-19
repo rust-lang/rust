@@ -889,8 +889,8 @@ impl<'a> SolveContext<'a> {
                 type_params: opt_vec::Empty,
                 region_params: opt_vec::Empty
             };
-            while (index < num_inferred &&
-                   inferred_infos[index].item_id == item_id) {
+            while index < num_inferred &&
+                  inferred_infos[index].item_id == item_id {
                 let info = &inferred_infos[index];
                 match info.kind {
                     SelfParam => {
@@ -999,4 +999,3 @@ fn glb(v1: ty::Variance, v2: ty::Variance) -> ty::Variance {
         (x, ty::Bivariant) | (ty::Bivariant, x) => x,
     }
 }
-

@@ -114,7 +114,7 @@ impl<E:CLike> Items<E> {
 
 impl<E:CLike> Iterator<E> for Items<E> {
     fn next(&mut self) -> Option<E> {
-        if (self.bits == 0) {
+        if self.bits == 0 {
             return None;
         }
 

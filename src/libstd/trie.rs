@@ -839,7 +839,7 @@ mod test_map {
             let mut ub = map.upper_bound(i);
             let next_key = i - i % step + step;
             let next_pair = (next_key, &value);
-            if (i % step == 0) {
+            if i % step == 0 {
                 assert_eq!(lb.next(), Some((i, &value)));
             } else {
                 assert_eq!(lb.next(), Some(next_pair));

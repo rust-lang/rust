@@ -1956,7 +1956,7 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, crate: &Crate)
 
     ecx.stats.total_bytes.set(ebml_w.writer.tell());
 
-    if (tcx.sess.meta_stats()) {
+    if tcx.sess.meta_stats() {
         for e in ebml_w.writer.get_ref().iter() {
             if *e == 0 {
                 ecx.stats.zero_bytes.set(ecx.stats.zero_bytes.get() + 1);

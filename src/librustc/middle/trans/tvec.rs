@@ -686,7 +686,7 @@ pub fn iter_vec_raw<'r,
     let fcx = bcx.fcx;
 
     let vt = vec_types(bcx, vec_ty);
-    if (vt.llunit_alloc_size == 0) {
+    if vt.llunit_alloc_size == 0 {
         // Special-case vectors with elements of size 0  so they don't go out of bounds (#9890)
         iter_vec_loop(bcx, data_ptr, &vt, fill, f)
     } else {
@@ -740,4 +740,3 @@ pub fn iter_vec_unboxed<'r,
     let dataptr = get_dataptr(bcx, body_ptr);
     return iter_vec_raw(bcx, dataptr, vec_ty, fill, f);
 }
-

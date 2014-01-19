@@ -518,7 +518,7 @@ mod bench {
             let mut sum = 0u64;
             bh.iter(|| {
                 let mut i = $start_index;
-                while (i < data.len()) {
+                while i < data.len() {
                     sum += u64_from_be_bytes(data, i, $size);
                     i += $stride;
                 }
