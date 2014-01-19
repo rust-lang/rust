@@ -3223,7 +3223,7 @@ pub mod funcs {
                 pub fn strtoul(s: *c_char, endp: **c_char, base: c_int)
                                -> c_ulong;
                 pub fn calloc(nobj: size_t, size: size_t) -> *c_void;
-                pub fn malloc(size: size_t) -> *c_void;
+                pub fn malloc(size: size_t) -> *mut c_void;
                 pub fn realloc(p: *mut c_void, size: size_t) -> *mut c_void;
                 pub fn free(p: *c_void);
                 pub fn exit(status: c_int) -> !;
