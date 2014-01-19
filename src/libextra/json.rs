@@ -70,7 +70,7 @@ use extra::serialize::Encodable;
 
 fn main() {
     let to_encode_object = TestStruct{data_str:~"example of string to encode"};
-    let mut m = io::mem::MemWriter::new();
+    let mut m = io::MemWriter::new();
     {
         let mut encoder = json::Encoder::new(&mut m as &mut std::io::Writer);
         to_encode_object.encode(&mut encoder);
