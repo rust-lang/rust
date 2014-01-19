@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -183,7 +183,7 @@ pub mod write {
             llvm::LLVMDisposePassManager(mpm);
 
             // Emit the bytecode if we're either saving our temporaries or
-            // emitting an rlib. Whenever an rlib is create, the bytecode is
+            // emitting an rlib. Whenever an rlib is created, the bytecode is
             // inserted into the archive in order to allow LTO against it.
             let outputs = sess.outputs.borrow();
             if sess.opts.save_temps ||
@@ -314,7 +314,7 @@ pub mod write {
         use std::unstable::mutex::{Once, ONCE_INIT};
         static mut INIT: Once = ONCE_INIT;
 
-        // Copy what clan does by turning on loop vectorization at O2 and
+        // Copy what clang does by turning on loop vectorization at O2 and
         // slp vectorization at O3
         let vectorize_loop = !sess.no_vectorize_loops() &&
                              (sess.opts.optimize == session::Default ||
@@ -347,7 +347,7 @@ pub mod write {
             // Only initialize the platforms supported by Rust here, because
             // using --llvm-root will have multiple platforms that rustllvm
             // doesn't actually link to and it's pointless to put target info
-            // into the registry that Rust can not generate machine code for.
+            // into the registry that Rust cannot generate machine code for.
             llvm::LLVMInitializeX86TargetInfo();
             llvm::LLVMInitializeX86Target();
             llvm::LLVMInitializeX86TargetMC();
@@ -381,7 +381,7 @@ pub mod write {
         let builder = llvm::LLVMPassManagerBuilderCreate();
         match opt {
             lib::llvm::CodeGenLevelNone => {
-                // Don't add lifetime intrinsics add O0
+                // Don't add lifetime intrinsics at O0
                 llvm::LLVMRustAddAlwaysInlinePass(builder, false);
             }
             lib::llvm::CodeGenLevelLess => {
@@ -591,7 +591,7 @@ pub fn mangle(sess: Session, ss: ast_map::Path,
     //
     // It turns out that on OSX you can actually have arbitrary symbols in
     // function names (at least when given to LLVM), but this is not possible
-    // when using unix's linker. Perhaps one day when we just a linker from LLVM
+    // when using unix's linker. Perhaps one day when we just use a linker from LLVM
     // we won't need to do this name mangling. The problem with name mangling is
     // that it seriously limits the available characters. For example we can't
     // have things like @T or ~[T] in symbol names when one would theoretically
@@ -894,7 +894,7 @@ fn link_rlib(sess: Session,
     //   determine the architecture of the archive in order to see whether its
     //   linkable.
     //
-    //   The algorithm for this detections is: iterate over the files in the
+    //   The algorithm for this detection is: iterate over the files in the
     //   archive. Skip magical SYMDEF names. Interpret the first file as an
     //   object file. Read architecture from the object file.
     //
@@ -941,7 +941,7 @@ fn link_rlib(sess: Session,
 // Create a static archive
 //
 // This is essentially the same thing as an rlib, but it also involves adding
-// all of the upstream crates' objects into the the archive. This will slurp in
+// all of the upstream crates' objects into the archive. This will slurp in
 // all of the native libraries of upstream dependencies as well.
 //
 // Additionally, there's no way for us to link dynamic libraries, so we warn
@@ -1058,7 +1058,7 @@ fn link_args(sess: Session,
     if sess.targ_cfg.os == abi::OsLinux {
         // GNU-style linkers will use this to omit linking to libraries which
         // don't actually fulfill any relocations, but only for libraries which
-        // follow this flag. Thus, use it before specifing libraries to link to.
+        // follow this flag. Thus, use it before specifying libraries to link to.
         args.push(~"-Wl,--as-needed");
 
         // GNU-style linkers support optimization with -O. --gc-sections
@@ -1074,7 +1074,7 @@ fn link_args(sess: Session,
     if sess.targ_cfg.os == abi::OsWin32 {
         // Make sure that we link to the dynamic libgcc, otherwise cross-module
         // DWARF stack unwinding will not work.
-        // This behavior may be overriden by --link-args "-static-libgcc"
+        // This behavior may be overridden by --link-args "-static-libgcc"
         args.push(~"-shared-libgcc");
     }
 
@@ -1124,7 +1124,7 @@ fn link_args(sess: Session,
 
 // # Native library linking
 //
-// User-supplied library search paths (-L on the cammand line) These are
+// User-supplied library search paths (-L on the command line). These are
 // the same paths used to find Rust crates, so some of them may have been
 // added already by the previous crate linking code. This only allows them
 // to be found at compile time so it is still entirely up to outside
@@ -1182,12 +1182,12 @@ fn add_upstream_rust_crates(args: &mut ~[~str], sess: Session,
     if !dylib && !sess.prefer_dynamic() {
         // With an executable, things get a little interesting. As a limitation
         // of the current implementation, we require that everything must be
-        // static, or everything must be dynamic. The reasons for this are a
+        // static or everything must be dynamic. The reasons for this are a
         // little subtle, but as with the above two cases, the goal is to
         // prevent duplicate copies of the same library showing up. For example,
         // a static immediate dependency might show up as an upstream dynamic
         // dependency and we currently have no way of knowing that. We know that
-        // all dynamic libaries require dynamic dependencies (see above), so
+        // all dynamic libraries require dynamic dependencies (see above), so
         // it's satisfactory to include either all static libraries or all
         // dynamic libraries.
         let crates = cstore.get_used_crates(cstore::RequireStatic);
@@ -1232,7 +1232,7 @@ fn add_upstream_rust_crates(args: &mut ~[~str], sess: Session,
     }
 
     // If we're performing LTO, then it should have been previously required
-    // that all upstream rust depenencies were available in an rlib format.
+    // that all upstream rust dependencies were available in an rlib format.
     assert!(!sess.lto());
 
     // This is a fallback of three different  cases of linking:
