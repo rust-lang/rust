@@ -484,6 +484,7 @@ include:
 
 * `fmt!` : format data into a string
 * `env!` : look up an environment variable's value at compile time
+* `file!`: return the path to the file being compiled
 * `stringify!` : pretty-print the Rust expression given as an argument
 * `include!` : include the Rust expression in the given file
 * `include_str!` : include the contents of the given file as a string
