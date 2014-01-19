@@ -27,8 +27,6 @@ use option::{Option, Some, None};
 use prelude::drop;
 use result::{Result, Ok, Err};
 use rt::Runtime;
-use rt::borrowck::BorrowRecord;
-use rt::borrowck;
 use rt::local::Local;
 use rt::local_heap::LocalHeap;
 use rt::rtio::LocalIo;
@@ -52,8 +50,6 @@ pub struct Task {
     death: Death,
     destroyed: bool,
     name: Option<SendStr>,
-    // Dynamic borrowck debugging info
-    borrow_list: Option<~[BorrowRecord]>,
 
     logger: Option<~Logger>,
     stdout: Option<~Writer>,
@@ -93,7 +89,6 @@ impl Task {
             death: Death::new(),
             destroyed: false,
             name: None,
-            borrow_list: None,
             logger: None,
             stdout: None,
             stderr: None,
@@ -181,9 +176,6 @@ impl Task {
         };
 
         unsafe { (*handle).unwinder.try(try_block); }
-
-        // Cleanup the dynamic borrowck debugging info
-        borrowck::clear_task_borrow_list();
 
         // Here we must unsafely borrow the task in order to not remove it from
         // TLS. When collecting failure, we may attempt to send on a channel (or
