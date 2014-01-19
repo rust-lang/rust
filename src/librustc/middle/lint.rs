@@ -1544,8 +1544,14 @@ impl<'a> Visitor<()> for Context<'a> {
         })
     }
 
-    // FIXME(#10894) should continue recursing
-    fn visit_ty(&mut self, _t: &ast::Ty, _: ()) {}
+    fn visit_ty(&mut self, t: &ast::Ty, _: ()) {
+        match t.node {
+            // FIXME(#10894) should continue recursing through fixed
+            // length vectors
+            ast::TyFixedLengthVec(ty, _) => self.visit_ty(ty, ()),
+            _ => visit::walk_ty(self, t, ())
+        }
+    }
 }
 
 impl<'a> IdVisitingOperation for Context<'a> {
