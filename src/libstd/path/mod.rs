@@ -400,7 +400,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
 
     /// Returns a Path that represents the filesystem root that `self` is rooted in.
     ///
-    /// If `self` is not absolute, or vol-relative in the case of Windows, this returns None.
+    /// If `self` is not absolute, or vol/cwd-relative in the case of Windows, this returns None.
     fn root_path(&self) -> Option<Self>;
 
     /// Pushes a path (as a byte vector or string) onto `self`.
