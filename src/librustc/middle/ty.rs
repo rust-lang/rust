@@ -2012,6 +2012,10 @@ impl TypeContents {
     pub fn inverse(&self) -> TypeContents {
         TypeContents { bits: !self.bits }
     }
+
+    pub fn has_dtor(&self) -> bool {
+        self.intersects(TC::OwnsDtor)
+    }
 }
 
 impl ops::BitOr<TypeContents,TypeContents> for TypeContents {
