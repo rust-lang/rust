@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -133,12 +133,12 @@ impl Archive {
         run_ar(self.sess, "d", None, [&self.dst, &Path::new(file)]);
     }
 
-    /// Update all symbols in the archive (runs 'ar s' over it)
+    /// Updates all symbols in the archive (runs 'ar s' over it)
     pub fn update_symbols(&mut self) {
         run_ar(self.sess, "s", None, [&self.dst]);
     }
 
-    /// List all files in an archive
+    /// Lists all files in an archive
     pub fn files(&self) -> ~[~str] {
         let output = run_ar(self.sess, "t", None, [&self.dst]);
         str::from_utf8(output.output).lines().map(|s| s.to_owned()).collect()
@@ -182,7 +182,7 @@ impl Archive {
         let (osprefix, osext) = match self.sess.targ_cfg.os {
             abi::OsWin32 => ("", "lib"), _ => ("lib", "a"),
         };
-        // On windows, static libraries sometimes show up as libfoo.a and other
+        // On Windows, static libraries sometimes show up as libfoo.a and other
         // times show up as foo.lib
         let oslibname = format!("{}{}.{}", osprefix, name, osext);
         let unixlibname = format!("lib{}.a", name);
@@ -228,7 +228,7 @@ impl ArchiveRO {
         }
     }
 
-    /// Read a file in the archive
+    /// Reads a file in the archive
     pub fn read<'a>(&'a self, file: &str) -> Option<&'a [u8]> {
         unsafe {
             let mut size = 0 as libc::size_t;
