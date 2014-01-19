@@ -33,12 +33,27 @@ use std::hashmap::HashMap;
 use std::iter::Enumerate;
 use std::vec;
 
+
+// Get the last "argument" (has to be done recursively to avoid phoney local ambiguity error)
+macro_rules! last {
+    ( $first:expr, $( $remainder:expr, )+ ) => ( last!( $( $remainder, )+ ) );
+    ( $first:expr, ) => ( $first )
+}
+
 // The actual lang items defined come at the end of this file in one handy table.
 // So you probably just want to nip down to the end.
 macro_rules! lets_do_this {
+    // secondary rule to allow us to use `$num` as both an expression
+    // and a pattern.
     (
-        There are $num_lang_items:expr lang items.
-        $( $num:pat, $variant:ident, $name:expr, $method:ident; )*
+        $( $num:tt, $variant:ident, $name:expr, $method:ident; )*
+    ) => {
+        lets_do_this!(count = 1 + last!($($num,)*),
+                      $($num, $variant, $name, $method; )*)
+    };
+
+    (
+        count = $num_lang_items:expr, $( $num:pat, $variant:ident, $name:expr, $method:ident; )*
     ) => {
 
 pub enum LangItem {
@@ -207,8 +222,6 @@ pub fn collect_language_items(crate: &ast::Crate,
 }
 
 lets_do_this! {
-    There are 40 lang items.
-
 //  ID, Variant name,                    Name,                      Method name;
     0,  FreezeTraitLangItem,             "freeze",                  freeze_trait;
     1,  SendTraitLangItem,               "send",                    send_trait;
@@ -261,4 +274,3 @@ lets_do_this! {
     38, ExchangeHeapLangItem,            "exchange_heap",           exchange_heap;
     39, GcLangItem,                      "gc",                      gc;
 }
-
