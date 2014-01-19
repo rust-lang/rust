@@ -156,7 +156,6 @@ pub mod write {
                 pass.with_c_str(|s| llvm::LLVMRustAddPass(fpm, s))
             };
             if !sess.no_verify() { assert!(addpass("verify")); }
-            if sess.lint_llvm()  { assert!(addpass("lint"));   }
 
             if !sess.no_prepopulate_passes() {
                 llvm::LLVMRustAddAnalysisPasses(tm, fpm, llmod);

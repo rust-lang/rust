@@ -59,8 +59,6 @@ debugging_opts!(
         asm_comments,
         no_verify,
         borrowck_stats,
-        borrowck_note_pure,
-        borrowck_note_loan,
         no_landing_pads,
         debug_llvm,
         count_type_sizes,
@@ -70,8 +68,6 @@ debugging_opts!(
         debug_info,
         extra_debug_info,
         print_link_args,
-        no_debug_borrows,
-        lint_llvm,
         print_llvm_passes,
         no_vectorize_loops,
         no_vectorize_slp,
@@ -96,10 +92,6 @@ pub fn debugging_opts_map() -> ~[(&'static str, &'static str, uint)] {
      ("asm-comments", "generate comments into the assembly (may change behavior)", asm_comments),
      ("no-verify", "skip LLVM verification", no_verify),
      ("borrowck-stats", "gather borrowck statistics",  borrowck_stats),
-     ("borrowck-note-pure", "note where purity is req'd",
-      borrowck_note_pure),
-     ("borrowck-note-loan", "note where loans are req'd",
-      borrowck_note_loan),
      ("no-landing-pads", "omit landing pads for unwinding",
       no_landing_pads),
      ("debug-llvm", "enable debug output from LLVM", debug_llvm),
@@ -112,12 +104,6 @@ pub fn debugging_opts_map() -> ~[(&'static str, &'static str, uint)] {
      ("extra-debug-info", "Extra debugging info (experimental)",
       extra_debug_info),
      ("debug-info", "Produce debug info (experimental)", debug_info),
-     ("no-debug-borrows",
-      "do not show where borrow checks fail",
-      no_debug_borrows),
-     ("lint-llvm",
-      "Run the LLVM lint pass on the pre-optimization IR",
-      lint_llvm),
      ("print-llvm-passes",
       "Prints the llvm optimization passes being run",
       print_llvm_passes),
@@ -329,17 +315,7 @@ impl Session_ {
     pub fn meta_stats(&self) -> bool { self.debugging_opt(meta_stats) }
     pub fn asm_comments(&self) -> bool { self.debugging_opt(asm_comments) }
     pub fn no_verify(&self) -> bool { self.debugging_opt(no_verify) }
-    pub fn lint_llvm(&self) -> bool { self.debugging_opt(lint_llvm) }
     pub fn borrowck_stats(&self) -> bool { self.debugging_opt(borrowck_stats) }
-    pub fn borrowck_note_pure(&self) -> bool {
-        self.debugging_opt(borrowck_note_pure)
-    }
-    pub fn borrowck_note_loan(&self) -> bool {
-        self.debugging_opt(borrowck_note_loan)
-    }
-    pub fn debug_borrows(&self) -> bool {
-        self.opts.optimize == No && !self.debugging_opt(no_debug_borrows)
-    }
     pub fn print_llvm_passes(&self) -> bool {
         self.debugging_opt(print_llvm_passes)
     }
