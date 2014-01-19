@@ -95,10 +95,9 @@ pub fn monomorphic_fn(ccx: @CrateContext,
     let mut is_static_provided = None;
 
     let map_node = {
-        let items = ccx.tcx.items.borrow();
         session::expect(
             ccx.sess,
-            items.get().find_copy(&fn_id.node),
+            ccx.tcx.items.find(fn_id.node),
             || format!("While monomorphizing {:?}, couldn't find it in the \
                         item map (may have attempted to monomorphize an item \
                         defined in a different crate?)", fn_id))
