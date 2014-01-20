@@ -1974,10 +1974,6 @@ Supported traits for `deriving` are:
 * `Rand`, to create a random instance of a data type.
 * `Default`, to create an empty instance of a data type.
 * `Zero`, to create an zero instance of a numeric data type.
-* `ToStr`, to convert to a string. For a type with this instance,
-  `obj.to_str()` has similar output as `format!("%?", obj)`, but it differs in that
-  each constituent field of the type must also implement `ToStr` and will have
-  `field.to_str()` invoked to build up the result.
 * `FromPrimitive`, to create an instance from a numeric primitve.
 
 ### Stability
