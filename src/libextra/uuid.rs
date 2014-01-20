@@ -57,7 +57,7 @@ Examples of string representations:
 
 use std::str;
 use std::vec;
-use std::num::{FromStrRadix, Zero};
+use std::num::FromStrRadix;
 use std::char::Char;
 use std::container::Container;
 use std::to_str::ToStr;
@@ -158,9 +158,8 @@ static UuidGroupLens: [uint, ..5] = [8u, 4u, 4u, 4u, 12u];
 
 /// UUID support
 impl Uuid {
-
     /// Returns a nil or empty UUID (containing all zeroes)
-    pub fn new_nil() -> Uuid {
+    pub fn nil() -> Uuid {
         let uuid = Uuid{ bytes: [0, .. 16] };
         uuid
     }
@@ -423,24 +422,17 @@ impl Uuid {
 
         Ok(Uuid::from_bytes(ub).unwrap())
     }
+
+    /// Tests if the UUID is nil
+    pub fn is_nil(&self) -> bool {
+        return self.bytes.iter().all(|&b| b == 0);
+    }
 }
 
 impl Default for Uuid {
     /// Returns the nil UUID, which is all zeroes
     fn default() -> Uuid {
-        Uuid::new_nil()
-    }
-}
-
-impl Zero for Uuid {
-    /// Returns the nil UUID, which is all zeroes
-    fn zero() -> Uuid {
-        Uuid::new_nil()
-    }
-
-    /// Tests if the UUID is nil or all zeroes
-    fn is_zero(&self) -> bool {
-        return self.bytes.iter().all(|&b| b == 0);
+        Uuid::nil()
     }
 }
 
@@ -521,24 +513,15 @@ mod test {
     use super::*;
     use std::str;
     use std::rand;
-    use std::num::Zero;
     use std::io::MemWriter;
 
     #[test]
-    fn test_new_nil() {
-        let nil = Uuid::new_nil();
-        let nb = nil.to_bytes();
+    fn test_nil() {
+        let nil = Uuid::nil();
+        let not_nil = Uuid::new_v4();
 
-        assert!(nb.iter().all(|&b| b == 0));
-    }
-
-    #[test]
-    fn test_zero() {
-        let uz: Uuid = Zero::zero();
-        let nz = Uuid::new_v4();
-
-        assert!(uz.is_zero());
-        assert!(! nz.is_zero());
+        assert!(nil.is_nil());
+        assert!(!not_nil.is_nil());
     }
 
     #[test]
@@ -619,7 +602,7 @@ mod test {
         assert!(Uuid::parse_string("urn:uuid:67e55044-10b1-426f-9247-bb680e5fe0c8").is_ok());
 
         // Nil
-        let nil = Uuid::new_nil();
+        let nil = Uuid::nil();
         assert!(Uuid::parse_string("00000000000000000000000000000000").unwrap()  == nil);
         assert!(Uuid::parse_string("00000000-0000-0000-0000-000000000000").unwrap() == nil);
 
