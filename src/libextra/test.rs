@@ -32,6 +32,7 @@ use std::io;
 use std::io::File;
 use std::io::Writer;
 use std::io::stdio::StdWriter;
+use std::io::LineBufferedWriter;
 use std::task;
 use std::to_str::ToStr;
 use std::f64;
@@ -339,14 +340,13 @@ pub enum TestResult {
 }
 
 enum OutputLocation<T> {
-    Pretty(term::Terminal<T>),
-    Raw(T),
+    Pretty(term::Terminal<LineBufferedWriter<T>>),
+    Raw(LineBufferedWriter<T>),
 }
 
 struct ConsoleTestState<T> {
     log_out: Option<File>,
     out: OutputLocation<T>,
-    use_color: bool,
     total: uint,
     passed: uint,
     failed: uint,
@@ -363,14 +363,13 @@ impl<T: Writer> ConsoleTestState<T> {
             Some(ref path) => File::create(path),
             None => None
         };
-        let out = match term::Terminal::new(io::stdout()) {
-            Err(_) => Raw(io::stdout()),
+        let out = match term::Terminal::new(LineBufferedWriter::new(io::stdout())) {
+            Err(_) => Raw(LineBufferedWriter::new(io::stdout())),
             Ok(t) => Pretty(t)
         };
         ConsoleTestState {
             out: out,
             log_out: log_out,
-            use_color: use_color(),
             total: 0u,
             passed: 0u,
             failed: 0u,
@@ -423,13 +422,9 @@ impl<T: Writer> ConsoleTestState<T> {
                         color: term::color::Color) {
         match self.out {
             Pretty(ref mut term) => {
-                if self.use_color {
-                    term.fg(color);
-                }
+                term.fg(color);
                 term.write(word.as_bytes());
-                if self.use_color {
-                    term.reset();
-                }
+                term.reset();
             }
             Raw(ref mut stdout) => stdout.write(word.as_bytes())
         }
@@ -442,6 +437,13 @@ impl<T: Writer> ConsoleTestState<T> {
         }
     }
 
+    pub fn flush(&mut self) {
+        match self.out {
+            Pretty(ref mut term) => term.flush(),
+            Raw(ref mut stdout) => stdout.flush()
+        }
+    }
+
     pub fn write_run_start(&mut self, len: uint) {
         self.total = len;
         let noun = if len != 1 { &"tests" } else { &"test" };
@@ -451,6 +453,7 @@ impl<T: Writer> ConsoleTestState<T> {
     pub fn write_test_start(&mut self, test: &TestDesc, align: NamePadding) {
         let name = test.padded_name(self.max_name_len, align);
         self.write_plain(format!("test {} ... ", name));
+        self.flush();
     }
 
     pub fn write_result(&mut self, result: &TestResult) {
@@ -673,7 +676,7 @@ pub fn run_tests_console(opts: &TestOpts,
 
 #[test]
 fn should_sort_failures_before_printing_them() {
-    use std::io::MemWriter;
+    use std::io::{LineBufferedWriter, MemWriter};
     use std::str;
 
     let test_a = TestDesc {
@@ -690,8 +693,7 @@ fn should_sort_failures_before_printing_them() {
 
     let mut st = ConsoleTestState {
         log_out: None,
-        out: Raw(MemWriter::new()),
-        use_color: false,
+        out: Raw(LineBufferedWriter::new(MemWriter::new())),
         total: 0u,
         passed: 0u,
         failed: 0u,
@@ -704,7 +706,7 @@ fn should_sort_failures_before_printing_them() {
 
     st.write_failures();
     let s = match st.out {
-        Raw(ref m) => str::from_utf8(m.get_ref()),
+        Raw(ref m) => str::from_utf8(m.get_ref().get_ref()),
         Pretty(_) => unreachable!()
     };
 
@@ -712,8 +714,6 @@ fn should_sort_failures_before_printing_them() {
     let bpos = s.find_str("b").unwrap();
     assert!(apos < bpos);
 }
-
-fn use_color() -> bool { return get_concurrency() == 1; }
 
 #[deriving(Clone)]
 enum TestEvent {
