@@ -206,7 +206,8 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
     }
 
     fn make_pp_args(config: &config, _testfile: &Path) -> ProcArgs {
-        let args = ~[~"-", ~"--pretty", ~"normal"];
+        let args = ~[~"-", ~"--pretty", ~"normal",
+                     ~"--target=" + config.target];
         // FIXME (#9639): This needs to handle non-utf8 paths
         return ProcArgs {prog: config.rustc_path.as_str().unwrap().to_owned(), args: args};
     }
