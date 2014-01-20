@@ -33,7 +33,8 @@ pub fn expand_trace_macros(cx: &mut ExtCtxt,
     } else if rust_parser.is_keyword(keywords::False) {
         cx.set_trace_macros(false);
     } else {
-        cx.span_fatal(sp, "trace_macros! only accepts `true` or `false`")
+        cx.span_err(sp, "trace_macros! only accepts `true` or `false`");
+        return base::MacResult::dummy_expr();
     }
 
     rust_parser.bump();

@@ -47,19 +47,24 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
                 // Token-tree macros:
                 MacInvocTT(ref pth, ref tts, ctxt) => {
                     if (pth.segments.len() > 1u) {
-                        fld.cx.span_fatal(
+                        fld.cx.span_err(
                             pth.span,
                             format!("expected macro name without module \
                                   separators"));
+                        // let compilation continue
+                        return e;
                     }
                     let extname = &pth.segments[0].identifier;
                     let extnamestr = ident_to_str(extname);
                     // leaving explicit deref here to highlight unbox op:
                     let marked_after = match fld.extsbox.find(&extname.name) {
                         None => {
-                            fld.cx.span_fatal(
+                            fld.cx.span_err(
                                 pth.span,
-                                format!("macro undefined: '{}'", extnamestr))
+                                format!("macro undefined: '{}'", extnamestr));
+
+                            // let compilation continue
+                            return e;
                         }
                         Some(&NormalTT(ref expandfun, exp_span)) => {
                             fld.cx.bt_push(ExpnInfo {
@@ -88,13 +93,14 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
                                 MRExpr(e) => e,
                                 MRAny(any_macro) => any_macro.make_expr(),
                                 _ => {
-                                    fld.cx.span_fatal(
+                                    fld.cx.span_err(
                                         pth.span,
                                         format!(
                                             "non-expr macro in expr pos: {}",
                                             extnamestr
                                         )
-                                    )
+                                    );
+                                    return e;
                                 }
                             };
 
@@ -102,10 +108,11 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
                             mark_expr(expanded,fm)
                         }
                         _ => {
-                            fld.cx.span_fatal(
+                            fld.cx.span_err(
                                 pth.span,
                                 format!("'{}' is not a tt-style macro", extnamestr)
-                            )
+                            );
+                            return e;
                         }
                     };
 
@@ -294,15 +301,20 @@ pub fn expand_item_mac(it: @ast::Item, fld: &mut MacroExpander)
     let extnamestr = ident_to_str(extname);
     let fm = fresh_mark();
     let expanded = match fld.extsbox.find(&extname.name) {
-        None => fld.cx.span_fatal(pth.span,
-                                  format!("macro undefined: '{}!'", extnamestr)),
+        None => {
+            fld.cx.span_err(pth.span,
+                            format!("macro undefined: '{}!'", extnamestr));
+            // let compilation continue
+            return SmallVector::zero();
+        }
 
         Some(&NormalTT(ref expander, span)) => {
             if it.ident.name != parse::token::special_idents::invalid.name {
-                fld.cx.span_fatal(pth.span,
-                                  format!("macro {}! expects no ident argument, \
-                                           given '{}'", extnamestr,
-                                           ident_to_str(&it.ident)));
+                fld.cx.span_err(pth.span,
+                                format!("macro {}! expects no ident argument, \
+                                        given '{}'", extnamestr,
+                                        ident_to_str(&it.ident)));
+                return SmallVector::zero();
             }
             fld.cx.bt_push(ExpnInfo {
                 call_site: it.span,
@@ -319,9 +331,9 @@ pub fn expand_item_mac(it: @ast::Item, fld: &mut MacroExpander)
         }
         Some(&IdentTT(ref expander, span)) => {
             if it.ident.name == parse::token::special_idents::invalid.name {
-                fld.cx.span_fatal(pth.span,
-                                  format!("macro {}! expects an ident argument",
-                                          extnamestr));
+                fld.cx.span_err(pth.span,
+                                format!("macro {}! expects an ident argument", extnamestr));
+                return SmallVector::zero();
             }
             fld.cx.bt_push(ExpnInfo {
                 call_site: it.span,
@@ -336,9 +348,10 @@ pub fn expand_item_mac(it: @ast::Item, fld: &mut MacroExpander)
             let marked_ctxt = new_mark(fm,ctxt);
             expander.expand(fld.cx, it.span, it.ident, marked_tts, marked_ctxt)
         }
-        _ => fld.cx.span_fatal(it.span,
-                               format!("{}! is not legal in item position",
-                                       extnamestr))
+        _ => {
+            fld.cx.span_err(it.span, format!("{}! is not legal in item position", extnamestr));
+            return SmallVector::zero();
+        }
     };
 
     let items = match expanded {
@@ -348,8 +361,8 @@ pub fn expand_item_mac(it: @ast::Item, fld: &mut MacroExpander)
                 .collect()
         }
         MRExpr(_) => {
-            fld.cx.span_fatal(pth.span, format!("expr macro in item position: {}",
-                                                extnamestr))
+            fld.cx.span_err(pth.span, format!("expr macro in item position: {}", extnamestr));
+            return SmallVector::zero();
         }
         MRAny(any_macro) => {
             any_macro.make_items().move_iter()
@@ -412,12 +425,16 @@ fn load_extern_macros(crate: &ast::ViewItem, fld: &mut MacroExpander) {
 
     let lib = match DynamicLibrary::open(Some(&path)) {
         Ok(lib) => lib,
+        // this is fatal: there are almost certainly macros we need
+        // inside this crate, so continue would spew "macro undefined"
+        // errors
         Err(err) => fld.cx.span_fatal(crate.span, err)
     };
 
     unsafe {
         let registrar: MacroCrateRegistrationFun = match lib.symbol(registrar) {
             Ok(registrar) => registrar,
+            // again fatal if we can't register macros
             Err(err) => fld.cx.span_fatal(crate.span, err)
         };
         registrar(|name, extension| {
@@ -448,14 +465,15 @@ pub fn expand_stmt(s: &Stmt, fld: &mut MacroExpander) -> SmallVector<@Stmt> {
         _ => return expand_non_macro_stmt(s, fld)
     };
     if (pth.segments.len() > 1u) {
-        fld.cx.span_fatal(pth.span,
-                          "expected macro name without module separators");
+        fld.cx.span_err(pth.span, "expected macro name without module separators");
+        return SmallVector::zero();
     }
     let extname = &pth.segments[0].identifier;
     let extnamestr = ident_to_str(extname);
     let marked_after = match fld.extsbox.find(&extname.name) {
         None => {
-            fld.cx.span_fatal(pth.span, format!("macro undefined: '{}'", extnamestr))
+            fld.cx.span_err(pth.span, format!("macro undefined: '{}'", extnamestr));
+            return SmallVector::zero();
         }
 
         Some(&NormalTT(ref expandfun, exp_span)) => {
@@ -487,26 +505,27 @@ pub fn expand_stmt(s: &Stmt, fld: &mut MacroExpander) -> SmallVector<@Stmt> {
                     }
                 }
                 MRAny(any_macro) => any_macro.make_stmt(),
-                _ => fld.cx.span_fatal(
-                    pth.span,
-                    format!("non-stmt macro in stmt pos: {}", extnamestr))
+                _ => {
+                    fld.cx.span_err(pth.span,
+                                    format!("non-stmt macro in stmt pos: {}", extnamestr));
+                    return SmallVector::zero();
+                }
             };
 
             mark_stmt(expanded,fm)
         }
 
         _ => {
-            fld.cx.span_fatal(pth.span,
-                              format!("'{}' is not a tt-style macro",
-                                      extnamestr))
+            fld.cx.span_err(pth.span, format!("'{}' is not a tt-style macro", extnamestr));
+            return SmallVector::zero();
         }
     };
 
     // Keep going, outside-in.
     let fully_expanded = fld.fold_stmt(marked_after);
     if fully_expanded.is_empty() {
-        fld.cx.span_fatal(pth.span,
-                      "macro didn't expand to a statement");
+        fld.cx.span_err(pth.span, "macro didn't expand to a statement");
+        return SmallVector::zero();
     }
     fld.cx.bt_pop();
     let fully_expanded: SmallVector<@Stmt> = fully_expanded.move_iter()

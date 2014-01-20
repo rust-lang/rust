@@ -183,8 +183,8 @@ pub fn nameize(p_s: @ParseSess, ms: &[Matcher], res: &[@NamedMatch])
                 node: MatchNonterminal(ref bind_name, _, idx), span: sp
           } => {
             if ret_val.contains_key(bind_name) {
-                p_s.span_diagnostic.span_fatal(sp, ~"Duplicated bind name: "+
-                                               ident_to_str(bind_name))
+                p_s.span_diagnostic.span_fatal(sp,
+                                               "Duplicated bind name: "+ ident_to_str(bind_name))
             }
             ret_val.insert(*bind_name, res[idx]);
           }

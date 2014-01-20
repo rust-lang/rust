@@ -73,7 +73,9 @@ fn rand_substructure(cx: &ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
         }
         StaticEnum(_, ref variants) => {
             if variants.is_empty() {
-                cx.span_fatal(span, "`Rand` cannot be derived for enums with no variants");
+                cx.span_err(span, "`Rand` cannot be derived for enums with no variants");
+                // let compilation continue
+                return cx.expr_uint(span, 0);
             }
 
             let variant_count = cx.expr_uint(span, variants.len());
