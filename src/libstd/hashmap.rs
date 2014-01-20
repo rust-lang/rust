@@ -252,7 +252,7 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
         }
     }
 
-    fn pop_internal(&mut self, hash: uint, k: &K) -> Option<V> {
+    fn pop_internal(&mut self, searchresult: SearchResult) -> Option<V> {
         // Removing from an open-addressed hashtable
         // is, well, painful.  The problem is that
         // the entry may lie on the probe path for other
@@ -267,7 +267,7 @@ impl<K:Hash + Eq,V> HashMap<K, V> {
         //
         // I found this explanation elucidating:
         // http://www.maths.lse.ac.uk/Courses/MA407/del-hash.pdf
-        let mut idx = match self.bucket_for_key_with_hash(hash, k) {
+        let mut idx = match searchresult {
             TableFull | FoundHole(_) => return None,
             FoundEntry(idx) => idx
         };
@@ -349,8 +349,17 @@ impl<K:Hash + Eq,V> MutableMap<K, V> for HashMap<K, V> {
     /// Removes a key from the map, returning the value at the key if the key
     /// was previously in the map.
     fn pop(&mut self, k: &K) -> Option<V> {
-        let hash = k.hash_keyed(self.k0, self.k1) as uint;
-        self.pop_internal(hash, k)
+        let s = self.bucket_for_key(k);
+        self.pop_internal(s)
+    }
+}
+
+impl<K:Hash + Eq,V> HashMap<K, V> {
+    /// Removes a key from the map using equivalence, returning the value 
+    /// at the key if the key was previously in the map.
+    pub fn pop_equiv<Q:Hash + Equiv<K>>(&mut self, k: &Q) -> Option<V> {
+        let s = self.bucket_for_key_equiv(k);
+        self.pop_internal(s)
     }
 }
 
@@ -966,6 +975,16 @@ mod test_map {
         m.insert(1, 2);
         assert_eq!(m.pop(&1), Some(2));
         assert_eq!(m.pop(&1), None);
+    }
+
+    #[test]
+    fn test_pop_equiv() {
+        let mut m = HashMap::new();
+        m.insert(~"key1", 1);
+        m.insert(~"key2", 2);
+        assert_eq!(m.pop("key1"), Some(1));
+        assert_eq!(m.pop("key1"), None);
+        assert_eq!(m.pop(&~"key2"), Some(2));
     }
 
     #[test]
