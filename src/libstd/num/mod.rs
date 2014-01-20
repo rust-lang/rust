@@ -993,37 +993,6 @@ pub fn from_str_radix<T: FromStrRadix>(str: &str, radix: uint) -> Option<T> {
     FromStrRadix::from_str_radix(str, radix)
 }
 
-/// Calculates a power to a given radix, optimized for uint `pow` and `radix`.
-///
-/// Returns `radix^pow` as `T`.
-///
-/// Note:
-/// Also returns `1` for `0^0`, despite that technically being an
-/// undefined number. The reason for this is twofold:
-/// - If code written to use this function cares about that special case, it's
-///   probably going to catch it before making the call.
-/// - If code written to use this function doesn't care about it, it's
-///   probably assuming that `x^0` always equals `1`.
-///
-pub fn pow_with_uint<T:NumCast+One+Zero+Div<T,T>+Mul<T,T>>(radix: uint, pow: uint) -> T {
-    let _0: T = Zero::zero();
-    let _1: T = One::one();
-
-    if pow   == 0u { return _1; }
-    if radix == 0u { return _0; }
-    let mut my_pow     = pow;
-    let mut total      = _1;
-    let mut multiplier = cast(radix).unwrap();
-    while (my_pow > 0u) {
-        if my_pow % 2u == 1u {
-            total = total * multiplier;
-        }
-        my_pow = my_pow / 2u;
-        multiplier = multiplier * multiplier;
-    }
-    total
-}
-
 impl<T: Zero + 'static> Zero for @T {
     fn zero() -> @T { @Zero::zero() }
     fn is_zero(&self) -> bool { (**self).is_zero() }
@@ -1682,5 +1651,20 @@ mod tests {
         assert_pow(8, 3);
         assert_pow(8, 5);
         assert_pow(2u64, 50);
+    }
+}
+
+
+#[cfg(test)]
+mod bench {
+    use num;
+    use vec;
+    use prelude::*;
+    use extra::test::BenchHarness;
+
+    #[bench]
+    fn bench_pow_function(b: &mut BenchHarness) {
+        let v = vec::from_fn(1024, |n| n);
+        b.iter(|| {v.iter().fold(0, |old, new| num::pow(old, *new));});
     }
 }

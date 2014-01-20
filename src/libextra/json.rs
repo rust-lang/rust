@@ -909,7 +909,7 @@ impl<T : Iterator<char>> Parser<T> {
             }
         }
 
-        let exp: f64 = num::pow_with_uint(10u, exp);
+        let exp: f64 = num::pow(10u as f64, exp);
         if neg_exp {
             res /= exp;
         } else {
