@@ -126,7 +126,7 @@ pub mod write {
               session::Default => lib::llvm::CodeGenLevelDefault,
               session::Aggressive => lib::llvm::CodeGenLevelAggressive,
             };
-            let use_softfp = sess.opts.debugging_opts & session::use_softfp != 0;
+            let use_softfp = sess.opts.debugging_opts & session::USE_SOFTFP != 0;
 
             let tm = sess.targ_cfg.target_strs.target_triple.with_c_str(|T| {
                 sess.opts.target_cpu.with_c_str(|CPU| {
@@ -987,7 +987,7 @@ fn link_natively(sess: Session, dylib: bool, obj_filename: &Path,
     let mut cc_args = sess.targ_cfg.target_strs.cc_args.clone();
     cc_args.push_all_move(link_args(sess, dylib, tmpdir.path(),
                                     obj_filename, out_filename));
-    if (sess.opts.debugging_opts & session::print_link_args) != 0 {
+    if (sess.opts.debugging_opts & session::PRINT_LINK_ARGS) != 0 {
         println!("{} link args: '{}'", cc_prog, cc_args.connect("' '"));
     }
 

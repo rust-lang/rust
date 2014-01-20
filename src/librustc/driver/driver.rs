@@ -759,22 +759,22 @@ pub fn build_session_options(binary: ~str,
         }
     }
 
-    let mut debugging_opts = 0u;
+    let mut debugging_opts = 0;
     let debug_flags = matches.opt_strs("Z");
     let debug_map = session::debugging_opts_map();
     for debug_flag in debug_flags.iter() {
-        let mut this_bit = 0u;
+        let mut this_bit = 0;
         for tuple in debug_map.iter() {
             let (name, bit) = match *tuple { (ref a, _, b) => (a, b) };
             if *name == *debug_flag { this_bit = bit; break; }
         }
-        if this_bit == 0u {
+        if this_bit == 0 {
             early_error(demitter, format!("unknown debug flag: {}", *debug_flag))
         }
         debugging_opts |= this_bit;
     }
 
-    if debugging_opts & session::debug_llvm != 0 {
+    if debugging_opts & session::DEBUG_LLVM != 0 {
         unsafe { llvm::LLVMSetDebug(1); }
     }
 
@@ -797,7 +797,7 @@ pub fn build_session_options(binary: ~str,
     let target_feature = matches.opt_str("target-feature").unwrap_or(~"");
     let save_temps = matches.opt_present("save-temps");
     let opt_level = {
-        if (debugging_opts & session::no_opt) != 0 {
+        if (debugging_opts & session::NO_OPT) != 0 {
             No
         } else if matches.opt_present("O") {
             if matches.opt_present("opt-level") {
@@ -816,9 +816,9 @@ pub fn build_session_options(binary: ~str,
             }
         } else { No }
     };
-    let gc = debugging_opts & session::gc != 0;
-    let extra_debuginfo = debugging_opts & session::extra_debug_info != 0;
-    let debuginfo = debugging_opts & session::debug_info != 0 ||
+    let gc = debugging_opts & session::GC != 0;
+    let extra_debuginfo = debugging_opts & session::EXTRA_DEBUG_INFO != 0;
+    let debuginfo = debugging_opts & session::DEBUG_INFO != 0 ||
         extra_debuginfo;
 
     let addl_lib_search_paths = matches.opt_strs("L").map(|s| {
