@@ -10,6 +10,7 @@
 
 // aux-build:macro_crate_test.rs
 // xfail-stage1
+// xfail-android
 
 #[feature(phase)];
 
