@@ -355,7 +355,7 @@ impl<K:Hash + Eq,V> MutableMap<K, V> for HashMap<K, V> {
 }
 
 impl<K:Hash + Eq,V> HashMap<K, V> {
-    /// Removes a key from the map using equivalence, returning the value 
+    /// Removes a key from the map using equivalence, returning the value
     /// at the key if the key was previously in the map.
     pub fn pop_equiv<Q:Hash + Equiv<K>>(&mut self, k: &Q) -> Option<V> {
         let s = self.bucket_for_key_equiv(k);
@@ -982,9 +982,9 @@ mod test_map {
         let mut m = HashMap::new();
         m.insert(~"key1", 1);
         m.insert(~"key2", 2);
-        assert_eq!(m.pop("key1"), Some(1));
-        assert_eq!(m.pop("key1"), None);
-        assert_eq!(m.pop(&~"key2"), Some(2));
+        assert_eq!(m.pop_equiv("key1"), Some(1));
+        assert_eq!(m.pop_equiv("key1"), None);
+        assert_eq!(m.pop_equiv(&~"key2"), Some(2));
     }
 
     #[test]
