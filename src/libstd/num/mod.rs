@@ -50,19 +50,59 @@ pub trait Orderable: Ord {
 /// Returns the number constrained within the range `mn <= self <= mx`.
 #[inline(always)] pub fn clamp<T: Orderable>(value: T, mn: T, mx: T) -> T { value.clamp(&mn, &mx) }
 
-pub trait Zero {
-    fn zero() -> Self;      // FIXME (#5527): This should be an associated constant
+/// Defines an additive identity element for `Self`.
+///
+/// # Deriving
+///
+/// This trait can be automatically be derived using `#[deriving(Zero)]`
+/// attribute. If you choose to use this, make sure that the laws outlined in
+/// the documentation for `Zero::zero` still hold.
+pub trait Zero: Add<Self, Self> {
+    /// Returns the additive identity element of `Self`, `0`.
+    ///
+    /// # Laws
+    ///
+    /// ~~~
+    /// a + 0 = a       ∀ a ∈ Self
+    /// 0 + a = a       ∀ a ∈ Self
+    /// ~~~
+    ///
+    /// # Purity
+    ///
+    /// This function should return the same result at all times regardless of
+    /// external mutable state, for example values stored in TLS or in
+    /// `static mut`s.
+    // FIXME (#5527): This should be an associated constant
+    fn zero() -> Self;
+
+    /// Returns `true` if `self` is equal to the additive identity.
     fn is_zero(&self) -> bool;
 }
 
-/// Returns `0` of appropriate type.
+/// Returns the additive identity, `0`.
 #[inline(always)] pub fn zero<T: Zero>() -> T { Zero::zero() }
 
-pub trait One {
-    fn one() -> Self;       // FIXME (#5527): This should be an associated constant
+/// Defines a multiplicative identity element for `Self`.
+pub trait One: Mul<Self, Self> {
+    /// Returns the multiplicative identity element of `Self`, `1`.
+    ///
+    /// # Laws
+    ///
+    /// ~~~
+    /// a * 1 = a       ∀ a ∈ Self
+    /// 1 * a = a       ∀ a ∈ Self
+    /// ~~~
+    ///
+    /// # Purity
+    ///
+    /// This function should return the same result at all times regardless of
+    /// external mutable state, for example values stored in TLS or in
+    /// `static mut`s.
+    // FIXME (#5527): This should be an associated constant
+    fn one() -> Self;
 }
 
-/// Returns `1` of appropriate type.
+/// Returns the multiplicative identity, `1`.
 #[inline(always)] pub fn one<T: One>() -> T { One::one() }
 
 pub trait Signed: Num
@@ -264,48 +304,29 @@ pub trait Real: Signed
     fn to_radians(&self) -> Self;
 }
 
-/// Raises a value to the power of exp, using
-/// exponentiation by squaring.
+/// Raises a value to the power of exp, using exponentiation by squaring.
 ///
 /// # Example
 ///
 /// ```rust
 /// use std::num;
 ///
-/// let sixteen = num::pow(2, 4u);
-/// assert_eq!(sixteen, 16);
+/// assert_eq!(num::pow(2, 4), 16);
 /// ```
 #[inline]
-pub fn pow<T: Clone+One+Mul<T, T>>(num: T, exp: uint) -> T {
-    let one: uint = One::one();
-    let num_one: T = One::one();
-
-    if exp.is_zero() { return num_one; }
-    if exp == one { return num.clone(); }
-
-    let mut i: uint = exp;
-    let mut v: T;
-    let mut r: T = num_one;
-
-    // This if is to avoid cloning self.
-    if (i & one) == one {
-        r = r * num;
-        i = i - one;
-    }
-
-    i = i >> one;
-    v = num * num;
-
-    while !i.is_zero() {
-        if (i & one) == one {
-            r = r * v;
-            i = i - one;
+pub fn pow<T: One + Mul<T, T>>(mut base: T, mut exp: uint) -> T {
+    if exp == 1 { base }
+    else {
+        let mut acc = one::<T>();
+        while exp > 0 {
+            if (exp & 1) == 1 {
+                acc = acc * base;
+            }
+            base = base * base;
+            exp = exp >> 1;
         }
-        i = i >> one;
-        v = v * v;
+        acc
     }
-
-    r
 }
 
 /// Raise a number to a power.
@@ -993,16 +1014,6 @@ pub fn from_str_radix<T: FromStrRadix>(str: &str, radix: uint) -> Option<T> {
     FromStrRadix::from_str_radix(str, radix)
 }
 
-impl<T: Zero + 'static> Zero for @T {
-    fn zero() -> @T { @Zero::zero() }
-    fn is_zero(&self) -> bool { (**self).is_zero() }
-}
-
-impl<T: Zero> Zero for ~T {
-    fn zero() -> ~T { ~Zero::zero() }
-    fn is_zero(&self) -> bool { (**self).is_zero() }
-}
-
 /// Saturating math operations
 pub trait Saturating {
     /// Saturating addition operator.
@@ -1640,17 +1651,24 @@ mod tests {
 
     #[test]
     fn test_pow() {
-        fn assert_pow<T: Eq+Clone+One+Mul<T, T>>(num: T, exp: uint) -> () {
-            assert_eq!(num::pow(num.clone(), exp),
-                       range(1u, exp).fold(num.clone(), |acc, _| acc * num));
+        fn naive_pow<T: One + Mul<T, T>>(base: T, exp: uint) -> T {
+            range(0, exp).fold(one::<T>(), |acc, _| acc * base)
         }
-
-        assert_eq!(num::pow(3, 0), 1);
-        assert_eq!(num::pow(5, 1), 5);
-        assert_pow(-4, 2);
-        assert_pow(8, 3);
-        assert_pow(8, 5);
-        assert_pow(2u64, 50);
+        macro_rules! assert_pow(
+            (($num:expr, $exp:expr) => $expected:expr) => {{
+                let result = pow($num, $exp);
+                assert_eq!(result, $expected);
+                assert_eq!(result, naive_pow($num, $exp));
+            }}
+        )
+        assert_pow!((3,    0 ) => 1);
+        assert_pow!((5,    1 ) => 5);
+        assert_pow!((-4,   2 ) => 16);
+        assert_pow!((0.5,  5 ) => 0.03125);
+        assert_pow!((8,    3 ) => 512);
+        assert_pow!((8.0,  5 ) => 32768.0);
+        assert_pow!((8.5,  5 ) => 44370.53125);
+        assert_pow!((2u64, 50) => 1125899906842624);
     }
 }
 

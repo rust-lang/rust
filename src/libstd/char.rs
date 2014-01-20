@@ -22,7 +22,6 @@ use str;
 
 #[cfg(not(test))] use cmp::{Eq, Ord};
 #[cfg(not(test))] use default::Default;
-#[cfg(not(test))] use num::Zero;
 
 // UTF-8 ranges and tags for encoding characters
 static TAG_CONT: uint = 128u;
@@ -447,15 +446,6 @@ impl Ord for char {
 impl Default for char {
     #[inline]
     fn default() -> char { '\x00' }
-}
-
-#[cfg(not(test))]
-impl Zero for char {
-    #[inline]
-    fn zero() -> char { '\x00' }
-
-    #[inline]
-    fn is_zero(&self) -> bool { *self == '\x00' }
 }
 
 #[test]
