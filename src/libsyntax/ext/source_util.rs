@@ -79,7 +79,10 @@ pub fn expand_mod(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 // unhygienically.
 pub fn expand_include(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     -> base::MacResult {
-    let file = get_single_str_from_tts(cx, sp, tts, "include!");
+    let file = match get_single_str_from_tts(cx, sp, tts, "include!") {
+        Some(f) => f,
+        None => return MacResult::dummy_expr(),
+    };
     // The file will be added to the code map by the parser
     let mut p =
         parse::new_sub_parser_from_file(cx.parse_sess(),
@@ -94,12 +97,15 @@ pub fn expand_include(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 // include_str! : read the given file, insert it as a literal string expr
 pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     -> base::MacResult {
-    let file = get_single_str_from_tts(cx, sp, tts, "include_str!");
+    let file = match get_single_str_from_tts(cx, sp, tts, "include_str!") {
+        Some(f) => f,
+        None => return MacResult::dummy_expr()
+    };
     let file = res_rel_file(cx, sp, &Path::new(file));
     let bytes = match io::result(|| File::open(&file).read_to_end()) {
         Err(e) => {
-            cx.span_fatal(sp, format!("couldn't read {}: {}",
-                                      file.display(), e.desc));
+            cx.span_err(sp, format!("couldn't read {}: {}", file.display(), e.desc));
+            return MacResult::dummy_expr();
         }
         Ok(bytes) => bytes,
     };
@@ -114,7 +120,8 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             base::MRExpr(cx.expr_str(sp, src))
         }
         None => {
-            cx.span_fatal(sp, format!("{} wasn't a utf-8 file", file.display()));
+            cx.span_err(sp, format!("{} wasn't a utf-8 file", file.display()));
+            return MacResult::dummy_expr();
         }
     }
 }
@@ -124,12 +131,15 @@ pub fn expand_include_bin(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 {
     use std::at_vec;
 
-    let file = get_single_str_from_tts(cx, sp, tts, "include_bin!");
+    let file = match get_single_str_from_tts(cx, sp, tts, "include_bin!") {
+        Some(f) => f,
+        None => return MacResult::dummy_expr()
+    };
     let file = res_rel_file(cx, sp, &Path::new(file));
     match io::result(|| File::open(&file).read_to_end()) {
         Err(e) => {
-            cx.span_fatal(sp, format!("couldn't read {}: {}",
-                                      file.display(), e.desc));
+            cx.span_err(sp, format!("couldn't read {}: {}", file.display(), e.desc));
+            return MacResult::dummy_expr();
         }
         Ok(bytes) => {
             let bytes = at_vec::to_managed_move(bytes);
