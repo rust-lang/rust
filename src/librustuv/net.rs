@@ -10,16 +10,14 @@
 
 use std::cast;
 use std::io::IoError;
-use std::io::net::ip::{Ipv4Addr, Ipv6Addr, SocketAddr, IpAddr};
-use std::libc::{size_t, ssize_t, c_int, c_void, c_uint, c_char};
+use std::io::net::ip;
+use std::libc::{size_t, ssize_t, c_int, c_void, c_uint};
 use std::libc;
+use std::mem;
 use std::ptr;
 use std::rt::rtio;
 use std::rt::task::BlockedTask;
-use std::str;
-use std::unstable::finally::Finally;
-use std::vec;
-use std::rt::global_heap::malloc_raw;
+use std::unstable::intrinsics;
 
 use homing::{HomingIO, HomeHandle};
 use stream::StreamWatcher;
@@ -28,82 +26,95 @@ use super::{Loop, Request, UvError, Buf, status_to_io_result,
             wait_until_woken_after, wakeup};
 use uvio::UvIoFactory;
 use uvll;
-use uvll::sockaddr;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Generic functions related to dealing with sockaddr things
 ////////////////////////////////////////////////////////////////////////////////
 
-fn socket_addr_as_sockaddr<T>(addr: SocketAddr, f: |*sockaddr| -> T) -> T {
-    let malloc = match addr.ip {
-        Ipv4Addr(..) => uvll::rust_malloc_ip4_addr,
-        Ipv6Addr(..) => uvll::rust_malloc_ip6_addr,
-    };
+pub fn htons(u: u16) -> u16 { intrinsics::to_be16(u as i16) as u16 }
+pub fn ntohs(u: u16) -> u16 { intrinsics::from_be16(u as i16) as u16 }
 
-    let ip = addr.ip.to_str();
-    let addr = ip.with_c_str(|p| unsafe { malloc(p, addr.port as c_int) });
-    (|| {
-        f(addr)
-    }).finally(|| {
-        unsafe { libc::free(addr) };
-    })
-}
-
-pub fn sockaddr_to_socket_addr(addr: *sockaddr) -> SocketAddr {
-    unsafe {
-        let ip_size = if uvll::rust_is_ipv4_sockaddr(addr) == 1 {
-            4/*groups of*/ * 3/*digits separated by*/ + 3/*periods*/
-        } else if uvll::rust_is_ipv6_sockaddr(addr) == 1 {
-            8/*groups of*/ * 4/*hex digits separated by*/ + 7 /*colons*/
-        } else {
-            fail!("unknown address?");
-        };
-        let ip_name = {
-            // apparently there's an off-by-one in libuv?
-            let ip_size = ip_size + 1;
-            let buf = vec::from_elem(ip_size + 1 /*null terminated*/, 0u8);
-            let buf_ptr = buf.as_ptr();
-            let ret = if uvll::rust_is_ipv4_sockaddr(addr) == 1 {
-                uvll::uv_ip4_name(addr, buf_ptr as *c_char, ip_size as size_t)
-            } else {
-                uvll::uv_ip6_name(addr, buf_ptr as *c_char, ip_size as size_t)
+pub fn sockaddr_to_addr(storage: &libc::sockaddr_storage,
+                        len: uint) -> ip::SocketAddr {
+    match storage.ss_family as c_int {
+        libc::AF_INET => {
+            assert!(len as uint >= mem::size_of::<libc::sockaddr_in>());
+            let storage: &libc::sockaddr_in = unsafe {
+                cast::transmute(storage)
             };
-            if ret != 0 {
-                fail!("error parsing sockaddr: {}", UvError(ret).desc());
+            let addr = storage.sin_addr.s_addr as u32;
+            let a = (addr >>  0) as u8;
+            let b = (addr >>  8) as u8;
+            let c = (addr >> 16) as u8;
+            let d = (addr >> 24) as u8;
+            ip::SocketAddr {
+                ip: ip::Ipv4Addr(a, b, c, d),
+                port: ntohs(storage.sin_port),
             }
-            buf
-        };
-        let ip_port = {
-            let port = if uvll::rust_is_ipv4_sockaddr(addr) == 1 {
-                uvll::rust_ip4_port(addr)
-            } else {
-                uvll::rust_ip6_port(addr)
+        }
+        libc::AF_INET6 => {
+            assert!(len as uint >= mem::size_of::<libc::sockaddr_in6>());
+            let storage: &libc::sockaddr_in6 = unsafe {
+                cast::transmute(storage)
             };
-            port as u16
-        };
-        let ip_str = str::from_utf8(ip_name).trim_right_chars(&'\x00');
-        let ip_addr = FromStr::from_str(ip_str).unwrap();
-
-        SocketAddr { ip: ip_addr, port: ip_port }
+            let a = ntohs(storage.sin6_addr.s6_addr[0]);
+            let b = ntohs(storage.sin6_addr.s6_addr[1]);
+            let c = ntohs(storage.sin6_addr.s6_addr[2]);
+            let d = ntohs(storage.sin6_addr.s6_addr[3]);
+            let e = ntohs(storage.sin6_addr.s6_addr[4]);
+            let f = ntohs(storage.sin6_addr.s6_addr[5]);
+            let g = ntohs(storage.sin6_addr.s6_addr[6]);
+            let h = ntohs(storage.sin6_addr.s6_addr[7]);
+            ip::SocketAddr {
+                ip: ip::Ipv6Addr(a, b, c, d, e, f, g, h),
+                port: ntohs(storage.sin6_port),
+            }
+        }
+        n => {
+            fail!("unknown family {}", n);
+        }
     }
 }
 
-#[test]
-fn test_ip4_conversion() {
-    use std::io::net::ip::{SocketAddr, Ipv4Addr};
-    let ip4 = SocketAddr { ip: Ipv4Addr(127, 0, 0, 1), port: 4824 };
-    socket_addr_as_sockaddr(ip4, |addr| {
-        assert_eq!(ip4, sockaddr_to_socket_addr(addr));
-    })
-}
-
-#[test]
-fn test_ip6_conversion() {
-    use std::io::net::ip::{SocketAddr, Ipv6Addr};
-    let ip6 = SocketAddr { ip: Ipv6Addr(0, 0, 0, 0, 0, 0, 0, 1), port: 4824 };
-    socket_addr_as_sockaddr(ip6, |addr| {
-        assert_eq!(ip6, sockaddr_to_socket_addr(addr));
-    })
+fn addr_to_sockaddr(addr: ip::SocketAddr) -> (libc::sockaddr_storage, uint) {
+    unsafe {
+        let mut storage: libc::sockaddr_storage = intrinsics::init();
+        let len = match addr.ip {
+            ip::Ipv4Addr(a, b, c, d) => {
+                let storage: &mut libc::sockaddr_in =
+                    cast::transmute(&mut storage);
+                (*storage).sin_family = libc::AF_INET as libc::sa_family_t;
+                (*storage).sin_port = htons(addr.port);
+                (*storage).sin_addr = libc::in_addr {
+                    s_addr: (d as u32 << 24) |
+                            (c as u32 << 16) |
+                            (b as u32 <<  8) |
+                            (a as u32 <<  0)
+                };
+                mem::size_of::<libc::sockaddr_in>()
+            }
+            ip::Ipv6Addr(a, b, c, d, e, f, g, h) => {
+                let storage: &mut libc::sockaddr_in6 =
+                    cast::transmute(&mut storage);
+                storage.sin6_family = libc::AF_INET6 as libc::sa_family_t;
+                storage.sin6_port = htons(addr.port);
+                storage.sin6_addr = libc::in6_addr {
+                    s6_addr: [
+                        htons(a),
+                        htons(b),
+                        htons(c),
+                        htons(d),
+                        htons(e),
+                        htons(f),
+                        htons(g),
+                        htons(h),
+                    ]
+                };
+                mem::size_of::<libc::sockaddr_in6>()
+            }
+        };
+        return (storage, len);
+    }
 }
 
 enum SocketNameKind {
@@ -112,26 +123,24 @@ enum SocketNameKind {
     Udp
 }
 
-fn socket_name(sk: SocketNameKind, handle: *c_void) -> Result<SocketAddr, IoError> {
-    unsafe {
-        let getsockname = match sk {
-            TcpPeer => uvll::uv_tcp_getpeername,
-            Tcp     => uvll::uv_tcp_getsockname,
-            Udp     => uvll::uv_udp_getsockname,
-        };
+fn socket_name(sk: SocketNameKind,
+               handle: *c_void) -> Result<ip::SocketAddr, IoError> {
+    let getsockname = match sk {
+        TcpPeer => uvll::uv_tcp_getpeername,
+        Tcp     => uvll::uv_tcp_getsockname,
+        Udp     => uvll::uv_udp_getsockname,
+    };
 
-        // Allocate a sockaddr_storage
-        // since we don't know if it's ipv4 or ipv6
-        let size = uvll::rust_sockaddr_size();
-        let name = malloc_raw(size as uint) as *c_void;
-        let mut namelen = size;
+    // Allocate a sockaddr_storage since we don't know if it's ipv4 or ipv6
+    let mut sockaddr: libc::sockaddr_storage = unsafe { intrinsics::init() };
+    let mut namelen = mem::size_of::<libc::sockaddr_storage>() as c_int;
 
-        let ret = match getsockname(handle, name, &mut namelen) {
-            0 => Ok(sockaddr_to_socket_addr(name)),
-            n => Err(uv_error_to_io_error(UvError(n)))
-        };
-        libc::free(name);
-        ret
+    let sockaddr_p = &mut sockaddr as *mut libc::sockaddr_storage;
+    match unsafe {
+        getsockname(handle, sockaddr_p as *mut libc::sockaddr, &mut namelen)
+    } {
+        0 => Ok(sockaddr_to_addr(&sockaddr, namelen as uint)),
+        n => Err(uv_error_to_io_error(UvError(n)))
     }
 }
 
@@ -177,37 +186,33 @@ impl TcpWatcher {
         }
     }
 
-    pub fn connect(io: &mut UvIoFactory, address: SocketAddr)
+    pub fn connect(io: &mut UvIoFactory, address: ip::SocketAddr)
         -> Result<TcpWatcher, UvError>
     {
         struct Ctx { status: c_int, task: Option<BlockedTask> }
 
         let tcp = TcpWatcher::new(io);
-        let ret = socket_addr_as_sockaddr(address, |addr| {
-            let mut req = Request::new(uvll::UV_CONNECT);
-            let result = unsafe {
-                uvll::uv_tcp_connect(req.handle, tcp.handle, addr,
-                                     connect_cb)
-            };
-            match result {
-                0 => {
-                    req.defuse(); // uv callback now owns this request
-                    let mut cx = Ctx { status: 0, task: None };
-                    wait_until_woken_after(&mut cx.task, || {
-                        req.set_data(&cx);
-                    });
-                    match cx.status {
-                        0 => Ok(()),
-                        n => Err(UvError(n)),
-                    }
+        let (addr, _len) = addr_to_sockaddr(address);
+        let mut req = Request::new(uvll::UV_CONNECT);
+        let result = unsafe {
+            let addr_p = &addr as *libc::sockaddr_storage;
+            uvll::uv_tcp_connect(req.handle, tcp.handle,
+                                 addr_p as *libc::sockaddr,
+                                 connect_cb)
+        };
+        return match result {
+            0 => {
+                req.defuse(); // uv callback now owns this request
+                let mut cx = Ctx { status: 0, task: None };
+                wait_until_woken_after(&mut cx.task, || {
+                    req.set_data(&cx);
+                });
+                match cx.status {
+                    0 => Ok(tcp),
+                    n => Err(UvError(n)),
                 }
-                n => Err(UvError(n))
             }
-        });
-
-        return match ret {
-            Ok(()) => Ok(tcp),
-            Err(e) => Err(e),
+            n => Err(UvError(n))
         };
 
         extern fn connect_cb(req: *uvll::uv_connect_t, status: c_int) {
@@ -225,7 +230,7 @@ impl HomingIO for TcpWatcher {
 }
 
 impl rtio::RtioSocket for TcpWatcher {
-    fn socket_name(&mut self) -> Result<SocketAddr, IoError> {
+    fn socket_name(&mut self) -> Result<ip::SocketAddr, IoError> {
         let _m = self.fire_homing_missile();
         socket_name(Tcp, self.handle)
     }
@@ -242,7 +247,7 @@ impl rtio::RtioTcpStream for TcpWatcher {
         self.stream.write(buf).map_err(uv_error_to_io_error)
     }
 
-    fn peer_name(&mut self) -> Result<SocketAddr, IoError> {
+    fn peer_name(&mut self) -> Result<ip::SocketAddr, IoError> {
         let _m = self.fire_homing_missile();
         socket_name(TcpPeer, self.handle)
     }
@@ -291,7 +296,7 @@ impl Drop for TcpWatcher {
 // TCP listeners (unbound servers)
 
 impl TcpListener {
-    pub fn bind(io: &mut UvIoFactory, address: SocketAddr)
+    pub fn bind(io: &mut UvIoFactory, address: ip::SocketAddr)
                 -> Result<~TcpListener, UvError> {
         let handle = unsafe { uvll::malloc_handle(uvll::UV_TCP) };
         assert_eq!(unsafe {
@@ -305,9 +310,11 @@ impl TcpListener {
             outgoing: chan,
             incoming: port,
         };
-        let res = socket_addr_as_sockaddr(address, |addr| unsafe {
-            uvll::uv_tcp_bind(l.handle, addr)
-        });
+        let (addr, _len) = addr_to_sockaddr(address);
+        let res = unsafe {
+            let addr_p = &addr as *libc::sockaddr_storage;
+            uvll::uv_tcp_bind(l.handle, addr_p as *libc::sockaddr)
+        };
         return match res {
             0 => Ok(l.install()),
             n => Err(UvError(n))
@@ -324,7 +331,7 @@ impl UvHandle<uvll::uv_tcp_t> for TcpListener {
 }
 
 impl rtio::RtioSocket for TcpListener {
-    fn socket_name(&mut self) -> Result<SocketAddr, IoError> {
+    fn socket_name(&mut self) -> Result<ip::SocketAddr, IoError> {
         let _m = self.fire_homing_missile();
         socket_name(Tcp, self.handle)
     }
@@ -375,7 +382,7 @@ impl HomingIO for TcpAcceptor {
 }
 
 impl rtio::RtioSocket for TcpAcceptor {
-    fn socket_name(&mut self) -> Result<SocketAddr, IoError> {
+    fn socket_name(&mut self) -> Result<ip::SocketAddr, IoError> {
         let _m = self.fire_homing_missile();
         socket_name(Tcp, self.listener.handle)
     }
@@ -411,7 +418,7 @@ pub struct UdpWatcher {
 }
 
 impl UdpWatcher {
-    pub fn bind(io: &mut UvIoFactory, address: SocketAddr)
+    pub fn bind(io: &mut UvIoFactory, address: ip::SocketAddr)
                 -> Result<UdpWatcher, UvError> {
         let udp = UdpWatcher {
             handle: unsafe { uvll::malloc_handle(uvll::UV_UDP) },
@@ -420,9 +427,11 @@ impl UdpWatcher {
         assert_eq!(unsafe {
             uvll::uv_udp_init(io.uv_loop(), udp.handle)
         }, 0);
-        let result = socket_addr_as_sockaddr(address, |addr| unsafe {
-            uvll::uv_udp_bind(udp.handle, addr, 0u32)
-        });
+        let (addr, _len) = addr_to_sockaddr(address);
+        let result = unsafe {
+            let addr_p = &addr as *libc::sockaddr_storage;
+            uvll::uv_udp_bind(udp.handle, addr_p as *libc::sockaddr, 0u32)
+        };
         return match result {
             0 => Ok(udp),
             n => Err(UvError(n)),
@@ -439,7 +448,7 @@ impl HomingIO for UdpWatcher {
 }
 
 impl rtio::RtioSocket for UdpWatcher {
-    fn socket_name(&mut self) -> Result<SocketAddr, IoError> {
+    fn socket_name(&mut self) -> Result<ip::SocketAddr, IoError> {
         let _m = self.fire_homing_missile();
         socket_name(Udp, self.handle)
     }
@@ -447,12 +456,12 @@ impl rtio::RtioSocket for UdpWatcher {
 
 impl rtio::RtioUdpSocket for UdpWatcher {
     fn recvfrom(&mut self, buf: &mut [u8])
-        -> Result<(uint, SocketAddr), IoError>
+        -> Result<(uint, ip::SocketAddr), IoError>
     {
         struct Ctx {
             task: Option<BlockedTask>,
             buf: Option<Buf>,
-            result: Option<(ssize_t, Option<SocketAddr>)>,
+            result: Option<(ssize_t, Option<ip::SocketAddr>)>,
         }
         let _m = self.fire_homing_missile();
 
@@ -489,7 +498,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
         }
 
         extern fn recv_cb(handle: *uvll::uv_udp_t, nread: ssize_t, buf: *Buf,
-                          addr: *uvll::sockaddr, _flags: c_uint) {
+                          addr: *libc::sockaddr, _flags: c_uint) {
             assert!(nread != uvll::ECANCELED as ssize_t);
             let cx: &mut Ctx = unsafe {
                 cast::transmute(uvll::get_data_for_uv_handle(handle))
@@ -513,23 +522,27 @@ impl rtio::RtioUdpSocket for UdpWatcher {
             let addr = if addr == ptr::null() {
                 None
             } else {
-                Some(sockaddr_to_socket_addr(addr))
+                let len = mem::size_of::<libc::sockaddr_storage>();
+                Some(sockaddr_to_addr(unsafe { cast::transmute(addr) }, len))
             };
             cx.result = Some((nread, addr));
             wakeup(&mut cx.task);
         }
     }
 
-    fn sendto(&mut self, buf: &[u8], dst: SocketAddr) -> Result<(), IoError> {
+    fn sendto(&mut self, buf: &[u8], dst: ip::SocketAddr) -> Result<(), IoError> {
         struct Ctx { task: Option<BlockedTask>, result: c_int }
 
         let _m = self.fire_homing_missile();
 
         let mut req = Request::new(uvll::UV_UDP_SEND);
         let buf = slice_to_uv_buf(buf);
-        let result = socket_addr_as_sockaddr(dst, |dst| unsafe {
-            uvll::uv_udp_send(req.handle, self.handle, [buf], dst, send_cb)
-        });
+        let (addr, _len) = addr_to_sockaddr(dst);
+        let result = unsafe {
+            let addr_p = &addr as *libc::sockaddr_storage;
+            uvll::uv_udp_send(req.handle, self.handle, [buf],
+                              addr_p as *libc::sockaddr, send_cb)
+        };
 
         return match result {
             0 => {
@@ -555,7 +568,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
         }
     }
 
-    fn join_multicast(&mut self, multi: IpAddr) -> Result<(), IoError> {
+    fn join_multicast(&mut self, multi: ip::IpAddr) -> Result<(), IoError> {
         let _m = self.fire_homing_missile();
         status_to_io_result(unsafe {
             multi.to_str().with_c_str(|m_addr| {
@@ -566,7 +579,7 @@ impl rtio::RtioUdpSocket for UdpWatcher {
         })
     }
 
-    fn leave_multicast(&mut self, multi: IpAddr) -> Result<(), IoError> {
+    fn leave_multicast(&mut self, multi: ip::IpAddr) -> Result<(), IoError> {
         let _m = self.fire_homing_missile();
         status_to_io_result(unsafe {
             multi.to_str().with_c_str(|m_addr| {
