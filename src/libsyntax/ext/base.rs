@@ -136,6 +136,17 @@ pub enum MacResult {
     MRAny(@AnyMacro),
     MRDef(MacroDef),
 }
+impl MacResult {
+    /// Create an empty expression MacResult; useful for satisfying
+    /// type signatures after emitting a non-fatal error (which stop
+    /// compilation well before the validity (or otherwise)) of the
+    /// expression are checked.
+    pub fn dummy_expr() -> MacResult {
+        MRExpr(@ast::Expr {
+                id: ast::DUMMY_NODE_ID, node: ast::ExprLogLevel, span: codemap::DUMMY_SP
+            })
+    }
+}
 
 pub enum SyntaxExtension {
     // #[deriving] and such
@@ -364,10 +375,27 @@ impl<'a> ExtCtxt<'a> {
             _ => self.bug("tried to pop without a push")
         }
     }
+    /// Emit `msg` attached to `sp`, and stop compilation immediately.
+    ///
+    /// `span_err` should be strongly prefered where-ever possible:
+    /// this should *only* be used when
+    /// - continuing has a high risk of flow-on errors (e.g. errors in
+    ///   declaring a macro would cause all uses of that macro to
+    ///   complain about "undefined macro"), or
+    /// - there is literally nothing else that can be done (however,
+    ///   in most cases one can construct a dummy expression/item to
+    ///   substitute; we never hit resolve/type-checking so the dummy
+    ///   value doesn't have to match anything)
     pub fn span_fatal(&self, sp: Span, msg: &str) -> ! {
         self.print_backtrace();
         self.parse_sess.span_diagnostic.span_fatal(sp, msg);
     }
+
+    /// Emit `msg` attached to `sp`, without immediately stopping
+    /// compilation.
+    ///
+    /// Compilation will be stopped in the near future (at the end of
+    /// the macro expansion phase).
     pub fn span_err(&self, sp: Span, msg: &str) {
         self.print_backtrace();
         self.parse_sess.span_diagnostic.span_err(sp, msg);
@@ -402,53 +430,69 @@ impl<'a> ExtCtxt<'a> {
     }
 }
 
-pub fn expr_to_str(cx: &ExtCtxt, expr: @ast::Expr, err_msg: &str) -> (@str, ast::StrStyle) {
+/// Extract a string literal from `expr`, emitting `err_msg` if `expr`
+/// is not a string literal. This does not stop compilation on error,
+/// merely emits a non-fatal error and returns None.
+pub fn expr_to_str(cx: &ExtCtxt, expr: @ast::Expr,
+                   err_msg: &str) -> Option<(@str, ast::StrStyle)> {
     match expr.node {
         ast::ExprLit(l) => match l.node {
-            ast::LitStr(s, style) => (s, style),
-            _ => cx.span_fatal(l.span, err_msg)
+            ast::LitStr(s, style) => return Some((s, style)),
+            _ => cx.span_err(l.span, err_msg)
         },
-        _ => cx.span_fatal(expr.span, err_msg)
+        _ => cx.span_err(expr.span, err_msg)
     }
+    None
 }
 
+/// Non-fatally assert that `tts` is empty. Note that this function
+/// returns even when `tts` is non-empty, macros that *need* to stop
+/// compilation should call
+/// `cx.parse_sess.span_diagnostic.abort_if_errors()` (this should be
+/// done as rarely as possible).
 pub fn check_zero_tts(cx: &ExtCtxt, sp: Span, tts: &[ast::TokenTree],
                       name: &str) {
     if tts.len() != 0 {
-        cx.span_fatal(sp, format!("{} takes no arguments", name));
+        cx.span_err(sp, format!("{} takes no arguments", name));
     }
 }
 
+/// Extract the string literal from the first token of `tts`. If this
+/// is not a string literal, emit an error and return None.
 pub fn get_single_str_from_tts(cx: &ExtCtxt,
                                sp: Span,
                                tts: &[ast::TokenTree],
                                name: &str)
-                               -> @str {
+                               -> Option<@str> {
     if tts.len() != 1 {
-        cx.span_fatal(sp, format!("{} takes 1 argument.", name));
+        cx.span_err(sp, format!("{} takes 1 argument.", name));
+    } else {
+        match tts[0] {
+            ast::TTTok(_, token::LIT_STR(ident))
+                | ast::TTTok(_, token::LIT_STR_RAW(ident, _)) => return Some(cx.str_of(ident)),
+            _ => cx.span_err(sp, format!("{} requires a string.", name)),
+        }
     }
-
-    match tts[0] {
-        ast::TTTok(_, token::LIT_STR(ident))
-        | ast::TTTok(_, token::LIT_STR_RAW(ident, _)) => cx.str_of(ident),
-        _ => cx.span_fatal(sp, format!("{} requires a string.", name)),
-    }
+    None
 }
 
+/// Extract comma-separated expressions from `tts`. If there is a
+/// parsing error, emit a non-fatal error and return None.
 pub fn get_exprs_from_tts(cx: &ExtCtxt,
                           sp: Span,
-                          tts: &[ast::TokenTree]) -> ~[@ast::Expr] {
+                          tts: &[ast::TokenTree]) -> Option<~[@ast::Expr]> {
     let mut p = parse::new_parser_from_tts(cx.parse_sess(),
                                            cx.cfg(),
                                            tts.to_owned());
     let mut es = ~[];
     while p.token != token::EOF {
         if es.len() != 0 && !p.eat(&token::COMMA) {
-            cx.span_fatal(sp, "expected token: `,`");
+            cx.span_err(sp, "expected token: `,`");
+            return None;
         }
         es.push(p.parse_expr());
     }
-    es
+    Some(es)
 }
 
 // in order to have some notion of scoping for macros,
