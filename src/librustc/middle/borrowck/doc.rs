@@ -179,7 +179,7 @@ checker uses a data flow propagation to compute the full set of loans
 in scope at each expression and then uses that set to decide whether
 that expression is legal.  Remember that the scope of loan is defined
 by its lifetime LT.  We sometimes say that a loan which is in-scope at
-a particular point is an "outstanding loan", aand the set of
+a particular point is an "outstanding loan", and the set of
 restrictions included in those loans as the "outstanding
 restrictions".
 
