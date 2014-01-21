@@ -661,6 +661,7 @@ static architecture_abis : &'static [(&'static str, abi::Architecture)] = &'stat
 
     ("arm",    abi::Arm),
     ("xscale", abi::Arm),
+    ("thumb",  abi::Arm),
 
     ("mips",   abi::Mips)];
 
