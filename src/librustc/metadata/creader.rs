@@ -134,7 +134,7 @@ fn visit_crate(e: &Env, c: &ast::Crate) {
 
 fn visit_view_item(e: &mut Env, i: &ast::ViewItem) {
     let should_load = i.attrs.iter().all(|attr| {
-        "phase" != attr.name() ||
+        attr.name().get() != "phase" ||
             attr.meta_item_list().map_or(false, |phases| {
                 attr::contains_name(phases, "link")
             })
@@ -163,11 +163,11 @@ struct CrateInfo {
 
 fn extract_crate_info(i: &ast::ViewItem) -> Option<CrateInfo> {
     match i.node {
-        ast::ViewItemExternMod(ident, path_opt, id) => {
-            let ident = token::ident_to_str(&ident);
+        ast::ViewItemExternMod(ref ident, ref path_opt, id) => {
+            let ident = token::ident_to_str(ident);
             debug!("resolving extern mod stmt. ident: {:?} path_opt: {:?}",
                    ident, path_opt);
-            let (name, version) = match path_opt {
+            let (name, version) = match *path_opt {
                 Some((ref path_str, _)) => {
                     let crateid: Option<CrateId> = from_str(path_str.get());
                     match crateid {

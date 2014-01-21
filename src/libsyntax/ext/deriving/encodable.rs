@@ -133,7 +133,7 @@ fn encodable_substructure(cx: &ExtCtxt, trait_span: Span,
                     ..
                 }) in fields.iter().enumerate() {
                 let name = match name {
-                    Some(id) => token::get_ident(id),
+                    Some(id) => token::get_ident(id.name),
                     None => {
                         token::intern_and_get_ident(format!("_field{}", i))
                     }
@@ -181,7 +181,7 @@ fn encodable_substructure(cx: &ExtCtxt, trait_span: Span,
 
             let blk = cx.lambda_stmts_1(trait_span, stmts, blkarg);
             let name = cx.expr_str(trait_span,
-                                   token::get_ident(variant.node.name));
+                                   token::get_ident(variant.node.name.name));
             let call = cx.expr_method_call(trait_span, blkencoder,
                                            cx.ident_of("emit_enum_variant"),
                                            ~[name,

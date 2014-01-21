@@ -16,7 +16,7 @@ use ext;
 use ext::expand;
 use parse;
 use parse::token;
-use parse::token::{InternedString, ident_to_str, intern, str_to_ident};
+use parse::token::{InternedString, intern, str_to_ident};
 use util::small_vector::SmallVector;
 
 use std::hashmap::HashMap;
@@ -396,9 +396,6 @@ impl<'a> ExtCtxt<'a> {
     pub fn set_trace_macros(&mut self, x: bool) {
         self.trace_mac = x
     }
-    pub fn str_of(&self, id: ast::Ident) -> @str {
-        ident_to_str(&id)
-    }
     pub fn ident_of(&self, st: &str) -> ast::Ident {
         str_to_ident(st)
     }
@@ -411,7 +408,7 @@ pub fn expr_to_str(cx: &ExtCtxt, expr: @ast::Expr, err_msg: &str)
                    -> Option<(InternedString, ast::StrStyle)> {
     match expr.node {
         ast::ExprLit(l) => match l.node {
-            ast::LitStr(s, style) => return Some(((*s).clone(), style)),
+            ast::LitStr(ref s, style) => return Some(((*s).clone(), style)),
             _ => cx.span_err(l.span, err_msg)
         },
         _ => cx.span_err(expr.span, err_msg)
@@ -446,7 +443,8 @@ pub fn get_single_str_from_tts(cx: &ExtCtxt,
         match tts[0] {
             ast::TTTok(_, token::LIT_STR(ident))
             | ast::TTTok(_, token::LIT_STR_RAW(ident, _)) => {
-                return Some(cx.str_of(ident).to_str())
+                let interned_str = token::get_ident(ident.name);
+                return Some(interned_str.get().to_str())
             }
             _ => cx.span_err(sp, format!("{} requires a string.", name)),
         }

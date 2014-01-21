@@ -19,6 +19,8 @@ use syntax::codemap;
 use syntax::fold::Folder;
 use syntax::fold;
 use syntax::opt_vec;
+use syntax::parse::token::InternedString;
+use syntax::parse::token;
 use syntax::util::small_vector::SmallVector;
 
 pub static VERSION: &'static str = "0.10-pre";
@@ -56,11 +58,13 @@ struct StandardLibraryInjector {
     sess: Session,
 }
 
-pub fn with_version(crate: &str) -> Option<(@str, ast::StrStyle)> {
+pub fn with_version(crate: &str) -> Option<(InternedString, ast::StrStyle)> {
     match option_env!("CFG_DISABLE_INJECT_STD_VERSION") {
         Some("1") => None,
         _ => {
-            Some((format!("{}\\#{}", crate, VERSION).to_managed(),
+            Some((token::intern_and_get_ident(format!("{}\\#{}",
+                                                      crate,
+                                                      VERSION)),
                   ast::CookedStr))
         }
     }
@@ -73,9 +77,12 @@ impl fold::Folder for StandardLibraryInjector {
                                          with_version("std"),
                                          ast::DUMMY_NODE_ID),
             attrs: ~[
-                attr::mk_attr(attr::mk_list_item(@"phase",
-                                                 ~[attr::mk_word_item(@"syntax"),
-                                                   attr::mk_word_item(@"link")]))
+                attr::mk_attr(attr::mk_list_item(
+                        InternedString::new("phase"),
+                        ~[
+                            attr::mk_word_item(InternedString::new("syntax")),
+                            attr::mk_word_item(InternedString::new("link")
+                        )]))
             ],
             vis: ast::Inherited,
             span: DUMMY_SP
