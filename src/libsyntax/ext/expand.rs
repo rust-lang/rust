@@ -46,7 +46,7 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
                 // in this file.
                 // Token-tree macros:
                 MacInvocTT(ref pth, ref tts, ctxt) => {
-                    if (pth.segments.len() > 1u) {
+                    if pth.segments.len() > 1u {
                         fld.cx.span_err(
                             pth.span,
                             format!("expected macro name without module \
@@ -464,7 +464,7 @@ pub fn expand_stmt(s: &Stmt, fld: &mut MacroExpander) -> SmallVector<@Stmt> {
         }
         _ => return expand_non_macro_stmt(s, fld)
     };
-    if (pth.segments.len() > 1u) {
+    if pth.segments.len() > 1u {
         fld.cx.span_err(pth.span, "expected macro name without module separators");
         return SmallVector::zero();
     }

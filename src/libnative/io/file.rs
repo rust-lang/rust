@@ -508,11 +508,11 @@ pub fn readdir(p: &CString) -> IoResult<~[Path]> {
 
             let dir_ptr = p.with_ref(|buf| opendir(buf));
 
-            if (dir_ptr as uint != 0) {
+            if dir_ptr as uint != 0 {
                 let mut paths = ~[];
                 debug!("os::list_dir -- opendir() SUCCESS");
                 let mut entry_ptr = readdir(dir_ptr);
-                while (entry_ptr as uint != 0) {
+                while entry_ptr as uint != 0 {
                     let cstr = CString::new(rust_list_dir_val(entry_ptr), false);
                     paths.push(Path::new(cstr));
                     entry_ptr = readdir(dir_ptr);

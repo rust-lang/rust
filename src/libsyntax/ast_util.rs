@@ -829,9 +829,9 @@ pub fn resolve_internal(id : Ident,
                             resolve_internal(Ident{name:name,ctxt:ctxt},table,resolve_table);
                         let resolvedthis =
                             resolve_internal(Ident{name:id.name,ctxt:subctxt},table,resolve_table);
-                        if ((resolvedthis == resolvedfrom)
+                        if (resolvedthis == resolvedfrom)
                             && (marksof(ctxt,resolvedthis,table)
-                                == marksof(subctxt,resolvedthis,table))) {
+                                == marksof(subctxt,resolvedthis,table)) {
                             toname
                         } else {
                             resolvedthis
@@ -878,7 +878,7 @@ pub fn marksof(ctxt: SyntaxContext, stopname: Name, table: &SCTable) -> ~[Mrk] {
             Rename(_,name,tl) => {
                 // see MTWT for details on the purpose of the stopname.
                 // short version: it prevents duplication of effort.
-                if (name == stopname) {
+                if name == stopname {
                     return result;
                 } else {
                     loopvar = tl;
@@ -903,7 +903,7 @@ pub fn mtwt_outer_mark(ctxt: SyntaxContext) -> Mrk {
 /// Push a name... unless it matches the one on top, in which
 /// case pop and discard (so two of the same marks cancel)
 pub fn xorPush(marks: &mut ~[Mrk], mark: Mrk) {
-    if ((marks.len() > 0) && (getLast(marks) == mark)) {
+    if (marks.len() > 0) && (getLast(marks) == mark) {
         marks.pop();
     } else {
         marks.push(mark);
@@ -927,7 +927,7 @@ pub fn path_name_eq(a : &ast::Path, b : &ast::Path) -> bool {
 
 // are two arrays of segments equal when compared unhygienically?
 pub fn segments_name_eq(a : &[ast::PathSegment], b : &[ast::PathSegment]) -> bool {
-    if (a.len() != b.len()) {
+    if a.len() != b.len() {
         false
     } else {
         for (idx,seg) in a.iter().enumerate() {

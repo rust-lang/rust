@@ -201,7 +201,7 @@ pub fn to_mut_unsafe_ptr<T>(thing: &mut T) -> *mut T {
 */
 pub unsafe fn array_each_with_len<T>(arr: **T, len: uint, cb: |*T|) {
     debug!("array_each_with_len: before iterate");
-    if (arr as uint == 0) {
+    if arr as uint == 0 {
         fail!("ptr::array_each_with_len failure: arr input is null pointer");
     }
     //let start_ptr = *arr;
@@ -222,7 +222,7 @@ pub unsafe fn array_each_with_len<T>(arr: **T, len: uint, cb: |*T|) {
   Dragons be here.
 */
 pub unsafe fn array_each<T>(arr: **T, cb: |*T|) {
-    if (arr as uint == 0) {
+    if arr as uint == 0 {
         fail!("ptr::array_each_with_len failure: arr input is null pointer");
     }
     let len = buf_len(arr);

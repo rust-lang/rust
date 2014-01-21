@@ -198,7 +198,7 @@ fn fatal_span_verbose(rdr: @StringReader,
 // EFFECT: advance peek_tok and peek_span to refer to the next token.
 // EFFECT: update the interner, maybe.
 fn string_advance_token(r: @StringReader) {
-    match (consume_whitespace_and_comments(r)) {
+    match consume_whitespace_and_comments(r) {
         Some(comment) => {
             r.peek_span.set(comment.sp);
             r.peek_tok.set(comment.tok);

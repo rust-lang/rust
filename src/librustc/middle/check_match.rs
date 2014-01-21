@@ -175,7 +175,7 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, pats: ~[@Pat]) {
         useful(ty, ref ctor) => {
             match ty::get(ty).sty {
                 ty::ty_bool => {
-                    match (*ctor) {
+                    match *ctor {
                         val(const_bool(true)) => Some(@"true"),
                         val(const_bool(false)) => Some(@"false"),
                         _ => None

@@ -808,7 +808,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
 /// Formats the time according to the format string.
 pub fn strftime(format: &str, tm: &Tm) -> ~str {
     fn days_in_year(year: int) -> i32 {
-        if ((year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0))) {
+        if (year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0)) {
             366    /* Days in a leap year */
         } else {
             365    /* Days in a non-leap year */
@@ -838,14 +838,14 @@ pub fn strftime(format: &str, tm: &Tm) -> ~str {
         let mut year: int = tm.tm_year as int + 1900;
         let mut days: int = iso_week_days (tm.tm_yday, tm.tm_wday);
 
-        if (days < 0) {
+        if days < 0 {
             /* This ISO week belongs to the previous year. */
             year -= 1;
             days = iso_week_days (tm.tm_yday + (days_in_year(year)), tm.tm_wday);
         } else {
             let d: int = iso_week_days (tm.tm_yday - (days_in_year(year)),
                                         tm.tm_wday);
-            if (0 <= d) {
+            if 0 <= d {
                 /* This ISO week belongs to the next year. */
                 year += 1;
                 days = d;

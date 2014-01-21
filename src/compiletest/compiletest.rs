@@ -140,14 +140,9 @@ pub fn parse_config(args: ~[~str]) -> config {
         adb_test_dir:
             opt_str2(matches.opt_str("adb-test-dir")).to_str(),
         adb_device_status:
-            if (opt_str2(matches.opt_str("target")) ==
-                ~"arm-linux-androideabi") {
-                if (opt_str2(matches.opt_str("adb-test-dir")) !=
-                    ~"(none)" &&
-                    opt_str2(matches.opt_str("adb-test-dir")) !=
-                    ~"") { true }
-                else { false }
-            } else { false },
+            "arm-linux-androideabi" == opt_str2(matches.opt_str("target")) &&
+            "(none)" != opt_str2(matches.opt_str("adb-test-dir")) &&
+            !opt_str2(matches.opt_str("adb-test-dir")).is_empty(),
         test_shard: test::opt_shard(matches.opt_str("test-shard")),
         verbose: matches.opt_present("verbose")
     }

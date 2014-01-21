@@ -140,7 +140,7 @@ pub fn matches_codepattern(a : &str, b : &str) -> bool {
 fn scan_for_non_ws_or_end(a : &str, idx: uint) -> uint {
     let mut i = idx;
     let len = a.len();
-    while ((i < len) && (is_whitespace(a.char_at(i)))) {
+    while (i < len) && (is_whitespace(a.char_at(i))) {
         i += 1;
     }
     i

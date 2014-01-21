@@ -666,7 +666,7 @@ pub fn trans_field_ptr(bcx: &Block, r: &Repr, val: ValueRef, discr: Disr,
         }
         NullablePointer{ nonnull: ref nonnull, nullfields: ref nullfields,
                          nndiscr, .. } => {
-            if (discr == nndiscr) {
+            if discr == nndiscr {
                 struct_field_ptr(bcx, nonnull, val, ix, false)
             } else {
                 // The unit-like case might have a nonzero number of unit-like fields.
@@ -783,7 +783,7 @@ fn build_const_struct(ccx: &CrateContext, st: &Struct, vals: &[ValueRef])
             /*bad*/as u64;
         let target_offset = roundup(offset, type_align);
         offset = roundup(offset, val_align);
-        if (offset != target_offset) {
+        if offset != target_offset {
             cfields.push(padding(target_offset - offset));
             offset = target_offset;
         }

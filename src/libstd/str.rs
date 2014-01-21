@@ -861,7 +861,7 @@ pub fn is_utf8(v: &[u8]) -> bool {
 pub fn is_utf16(v: &[u16]) -> bool {
     let len = v.len();
     let mut i = 0u;
-    while (i < len) {
+    while i < len {
         let u = v[i];
 
         if  u <= 0xD7FF_u16 || u >= 0xE000_u16 {
@@ -887,7 +887,7 @@ pub fn is_utf16(v: &[u16]) -> bool {
 pub fn utf16_chars(v: &[u16], f: |char|) {
     let len = v.len();
     let mut i = 0u;
-    while (i < len && v[i] != 0u16) {
+    while i < len && v[i] != 0u16 {
         let u = v[i];
 
         if  u <= 0xD7FF_u16 || u >= 0xE000_u16 {
@@ -2326,7 +2326,7 @@ impl<'a> StrSlice<'a> for &'a str {
 
     #[inline]
     fn char_range_at(&self, i: uint) -> CharRange {
-        if (self[i] < 128u8) {
+        if self[i] < 128u8 {
             return CharRange {ch: self[i] as char, next: i + 1 };
         }
 

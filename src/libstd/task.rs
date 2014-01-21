@@ -481,7 +481,7 @@ fn test_spawn_sched() {
     fn f(i: int, ch: SharedChan<()>) {
         let ch = ch.clone();
         do spawn {
-            if (i == 0) {
+            if i == 0 {
                 ch.send(());
             } else {
                 f(i - 1, ch);
