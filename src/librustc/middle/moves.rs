@@ -38,7 +38,7 @@ case, the value is read, and the container (`x`) is also read.
 In the second case, `y`, `x.b` is being assigned which has type
 `~int`.  Because this type moves by default, that will be a move
 reference.  Whenever we move from a compound expression like `x.b` (or
-`x[b]` or `*x` or `{x)[b].c`, etc), this invalidates all containing
+`x[b]` or `*x` or `{x}[b].c`, etc), this invalidates all containing
 expressions since we do not currently permit "incomplete" variables
 where part of them has been moved and part has not.  In this case,
 this means that the reference to `x` is also a move.  We'll see later,
@@ -56,7 +56,7 @@ For each binding in a match or let pattern, we also compute a read
 or move designation.  A move binding means that the value will be
 moved from the value being matched.  As a result, the expression
 being matched (aka, the 'discriminant') is either moved or read
-depending on whethe the bindings move the value they bind to out of
+depending on whether the bindings move the value they bind to out of
 the discriminant.
 
 For examples, consider this match expression:
