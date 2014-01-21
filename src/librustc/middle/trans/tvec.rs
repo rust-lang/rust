@@ -232,10 +232,10 @@ pub fn trans_slice_vstore<'a>(
     match content_expr.node {
         ast::ExprLit(lit) => {
             match lit.node {
-                ast::LitStr(s, _) => {
+                ast::LitStr(ref s, _) => {
                     return trans_lit_str(bcx,
                                          content_expr,
-                                         (*s).clone(),
+                                         s.clone(),
                                          dest)
                 }
                 _ => {}
@@ -340,12 +340,12 @@ pub fn trans_uniq_or_managed_vstore<'a>(bcx: &'a Block<'a>,
             match content_expr.node {
                 ast::ExprLit(lit) => {
                     match lit.node {
-                        ast::LitStr(s, _) => {
+                        ast::LitStr(ref s, _) => {
                             let llptrval = C_cstr(bcx.ccx(), (*s).clone());
                             let llptrval = PointerCast(bcx,
                                                        llptrval,
                                                        Type::i8p());
-                            let llsizeval = C_uint(bcx.ccx(), s.len());
+                            let llsizeval = C_uint(bcx.ccx(), s.get().len());
                             let typ = ty::mk_str(bcx.tcx(), ty::vstore_uniq);
                             let lldestval = rvalue_scratch_datum(bcx,
                                                                  typ,

@@ -122,7 +122,7 @@ impl Visitor<()> for Context {
             }
             ast::ViewItemExternMod(..) => {
                 for attr in i.attrs.iter() {
-                    if "phase" == attr.name() {
+                    if attr.name().get() == "phase"{
                         self.gate_feature("phase", attr.span,
                                           "compile time crate loading is \
                                            experimental and possibly buggy");

@@ -497,12 +497,10 @@ fn fold_variant_arg_<T: Folder>(va: &VariantArg, folder: &mut T) -> VariantArg {
 pub fn noop_fold_view_item<T: Folder>(vi: &ViewItem, folder: &mut T)
                                        -> ViewItem{
     let inner_view_item = match vi.node {
-        ViewItemExternMod(ref ident,
-                             string,
-                             node_id) => {
+        ViewItemExternMod(ref ident, ref string, node_id) => {
             ViewItemExternMod(ident.clone(),
-                                 string,
-                                 folder.new_id(node_id))
+                              (*string).clone(),
+                              folder.new_id(node_id))
         }
         ViewItemUse(ref view_paths) => {
             ViewItemUse(folder.fold_view_paths(*view_paths))

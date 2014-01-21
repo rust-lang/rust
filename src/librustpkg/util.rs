@@ -472,13 +472,14 @@ impl<'a> CrateInstaller<'a> {
 
         match vi.node {
             // ignore metadata, I guess
-            ast::ViewItemExternMod(lib_ident, path_opt, _) => {
-                let lib_name = match path_opt {
-                    Some((p, _)) => p,
-                    None => self.sess.str_of(lib_ident)
+            ast::ViewItemExternMod(ref lib_ident, ref path_opt, _) => {
+                let lib_name = match *path_opt {
+                    Some((ref p, _)) => (*p).clone(),
+                    None => token::get_ident(lib_ident.name),
                 };
                 debug!("Finding and installing... {}", lib_name);
-                let crate_id: CrateId = from_str(lib_name).expect("valid crate id");
+                let crate_id: CrateId =
+                    from_str(lib_name.get()).expect("valid crate id");
                 // Check standard Rust library path first
                 let whatever = system_library(&self.context.sysroot_to_use(), &crate_id);
                 debug!("system library returned {:?}", whatever);

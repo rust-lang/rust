@@ -61,7 +61,9 @@ fn to_str_substructure(cx: &ExtCtxt, span: Span, substr: &Substructure)
             cx.expr_str_uniq(span, token::get_ident(name.name))
         } else {
             let buf = cx.ident_of("buf");
-            let start = token::intern_and_get_ident(cx.str_of(name) + start);
+            let interned_str = token::get_ident(name.name);
+            let start =
+                token::intern_and_get_ident(interned_str.get() + start);
             let init = cx.expr_str_uniq(span, start);
             let mut stmts = ~[cx.stmt_let(span, true, buf, init)];
             let push_str = cx.ident_of("push_str");
@@ -79,7 +81,8 @@ fn to_str_substructure(cx: &ExtCtxt, span: Span, substr: &Substructure)
                 match name {
                     None => {}
                     Some(id) => {
-                        let name = cx.str_of(id) + ": ";
+                        let interned_id = token::get_ident(id.name);
+                        let name = interned_id.get() + ": ";
                         push(cx.expr_str(span,
                                          token::intern_and_get_ident(name)));
                     }

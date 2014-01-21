@@ -25,7 +25,6 @@ use middle::trans::callee;
 use middle::trans::cleanup;
 use middle::trans::cleanup::CleanupMethods;
 use middle::trans::common::*;
-use middle::trans::datum::immediate_rvalue;
 use middle::trans::expr;
 use middle::trans::machine::*;
 use middle::trans::reflect;
