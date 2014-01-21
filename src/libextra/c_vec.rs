@@ -172,7 +172,7 @@ mod tests {
             let mem = malloc_raw(n);
 
             CVec::new_with_dtor(mem as *mut u8, n,
-                proc() { libc::free(mem as *c_void); })
+                proc() { libc::free(mem as *mut c_void); })
         }
     }
 
