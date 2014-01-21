@@ -104,7 +104,7 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>) {
         maybe_sysroot: Some(@os::self_exe_path().unwrap().dir_path()),
         addl_lib_search_paths: @RefCell::new(libs),
         outputs: ~[session::OutputExecutable],
-        debugging_opts: session::prefer_dynamic,
+        debugging_opts: session::PREFER_DYNAMIC,
         .. (*session::basic_options()).clone()
     };
 
