@@ -700,7 +700,7 @@ fn compose_and_run_compiler(
         let abs_ab = config.aux_base.join(rel_ab.as_slice());
         let aux_props = load_props(&abs_ab);
         let aux_args =
-            make_compile_args(config, &aux_props, ~[~"--lib"] + extra_link_args,
+            make_compile_args(config, &aux_props, ~[~"--dylib"] + extra_link_args,
                               |a,b| make_lib_name(a, b, testfile), &abs_ab);
         let auxres = compose_and_run(config, &abs_ab, aux_args, ~[],
                                      config.compile_lib_path, None);
