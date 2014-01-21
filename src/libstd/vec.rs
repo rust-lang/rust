@@ -941,11 +941,9 @@ pub trait ImmutableVector<'a, T> {
 
     /// Returns the element of a vector at the given index, or `None` if the
     /// index is out of bounds
-    fn get_opt(&self, index: uint) -> Option<&'a T>;
-    /// Returns the first element of a vector, failing if the vector is empty.
-    fn head(&self) -> &'a T;
+    fn get(&self, index: uint) -> Option<&'a T>;
     /// Returns the first element of a vector, or `None` if it is empty
-    fn head_opt(&self) -> Option<&'a T>;
+    fn head(&self) -> Option<&'a T>;
     /// Returns all but the first element of a vector
     fn tail(&self) -> &'a [T];
     /// Returns all but the first `n' elements of a vector
@@ -954,10 +952,8 @@ pub trait ImmutableVector<'a, T> {
     fn init(&self) -> &'a [T];
     /// Returns all but the last `n' elements of a vector
     fn initn(&self, n: uint) -> &'a [T];
-    /// Returns the last element of a vector, failing if the vector is empty.
-    fn last(&self) -> &'a T;
     /// Returns the last element of a vector, or `None` if it is empty.
-    fn last_opt(&self) -> Option<&'a T>;
+    fn last(&self) -> Option<&'a T>;
     /**
      * Apply a function to each element of a vector and return a concatenation
      * of each result vector
@@ -1118,18 +1114,12 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
     }
 
     #[inline]
-    fn get_opt(&self, index: uint) -> Option<&'a T> {
+    fn get(&self, index: uint) -> Option<&'a T> {
         if index < self.len() { Some(&self[index]) } else { None }
     }
 
     #[inline]
-    fn head(&self) -> &'a T {
-        if self.len() == 0 { fail!("head: empty vector") }
-        &self[0]
-    }
-
-    #[inline]
-    fn head_opt(&self) -> Option<&'a T> {
+    fn head(&self) -> Option<&'a T> {
         if self.len() == 0 { None } else { Some(&self[0]) }
     }
 
@@ -1150,13 +1140,7 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
     }
 
     #[inline]
-    fn last(&self) -> &'a T {
-        if self.len() == 0 { fail!("last: empty vector") }
-        &self[self.len() - 1]
-    }
-
-    #[inline]
-    fn last_opt(&self) -> Option<&'a T> {
+    fn last(&self) -> Option<&'a T> {
             if self.len() == 0 { None } else { Some(&self[self.len() - 1]) }
     }
 
@@ -1397,14 +1381,10 @@ pub trait OwnedVector<T> {
     /// assert!(a == ~[~1, ~2, ~3, ~4]);
     /// ```
     fn push_all_move(&mut self, rhs: ~[T]);
-    /// Remove the last element from a vector and return it, failing if it is empty
-    fn pop(&mut self) -> T;
     /// Remove the last element from a vector and return it, or `None` if it is empty
-    fn pop_opt(&mut self) -> Option<T>;
-    /// Removes the first element from a vector and return it
-    fn shift(&mut self) -> T;
+    fn pop(&mut self) -> Option<T>;
     /// Removes the first element from a vector and return it, or `None` if it is empty
-    fn shift_opt(&mut self) -> Option<T>;
+    fn shift(&mut self) -> Option<T>;
     /// Prepend an element to the vector
     fn unshift(&mut self, x: T);
 
@@ -1419,18 +1399,14 @@ pub trait OwnedVector<T> {
     /// # Example
     /// ```rust
     /// let mut v = ~[1, 2, 3];
-    /// assert_eq!(v.remove_opt(1), Some(2));
+    /// assert_eq!(v.remove(1), Some(2));
     /// assert_eq!(v, ~[1, 3]);
     ///
-    /// assert_eq!(v.remove_opt(4), None);
+    /// assert_eq!(v.remove(4), None);
     /// // v is unchanged:
     /// assert_eq!(v, ~[1, 3]);
     /// ```
-    fn remove_opt(&mut self, i: uint) -> Option<T>;
-
-    /// Remove and return the element at position i within v, shifting
-    /// all elements after position i one position to the left.
-    fn remove(&mut self, i: uint) -> T;
+    fn remove(&mut self, i: uint) -> Option<T>;
 
     /**
      * Remove an element from anywhere in the vector and return it, replacing it
@@ -1581,7 +1557,7 @@ impl<T> OwnedVector<T> for ~[T] {
         }
     }
 
-    fn pop_opt(&mut self) -> Option<T> {
+    fn pop(&mut self) -> Option<T> {
         match self.len() {
             0  => None,
             ln => {
@@ -1596,19 +1572,11 @@ impl<T> OwnedVector<T> for ~[T] {
 
 
     #[inline]
-    fn pop(&mut self) -> T {
-        self.pop_opt().expect("pop: empty vector")
+    fn shift(&mut self) -> Option<T> {
+        self.remove(0)
     }
 
     #[inline]
-    fn shift(&mut self) -> T {
-        self.shift_opt().expect("shift: empty vector")
-    }
-
-    fn shift_opt(&mut self) -> Option<T> {
-        self.remove_opt(0)
-    }
-
     fn unshift(&mut self, x: T) {
         self.insert(0, x)
     }
@@ -1632,15 +1600,7 @@ impl<T> OwnedVector<T> for ~[T] {
         }
     }
 
-    #[inline]
-    fn remove(&mut self, i: uint) -> T {
-        match self.remove_opt(i) {
-            Some(t) => t,
-            None => fail!("remove: the len is {} but the index is {}", self.len(), i)
-        }
-    }
-
-    fn remove_opt(&mut self, i: uint) -> Option<T> {
+    fn remove(&mut self, i: uint) -> Option<T> {
         let len = self.len();
         if i < len {
             unsafe { // infallible
@@ -1668,7 +1628,7 @@ impl<T> OwnedVector<T> for ~[T] {
         if index < ln - 1 {
             self.swap(index, ln - 1);
         }
-        self.pop()
+        self.pop().unwrap()
     }
     fn truncate(&mut self, newlen: uint) {
         let oldlen = self.len();
@@ -3043,38 +3003,23 @@ mod tests {
     }
 
     #[test]
-    fn test_get_opt() {
+    fn test_get() {
         let mut a = ~[11];
-        assert_eq!(a.get_opt(1), None);
+        assert_eq!(a.get(1), None);
         a = ~[11, 12];
-        assert_eq!(a.get_opt(1).unwrap(), &12);
+        assert_eq!(a.get(1).unwrap(), &12);
         a = ~[11, 12, 13];
-        assert_eq!(a.get_opt(1).unwrap(), &12);
+        assert_eq!(a.get(1).unwrap(), &12);
     }
 
     #[test]
     fn test_head() {
-        let mut a = ~[11];
-        assert_eq!(a.head(), &11);
-        a = ~[11, 12];
-        assert_eq!(a.head(), &11);
-    }
-
-    #[test]
-    #[should_fail]
-    fn test_head_empty() {
-        let a: ~[int] = ~[];
-        a.head();
-    }
-
-    #[test]
-    fn test_head_opt() {
         let mut a = ~[];
-        assert_eq!(a.head_opt(), None);
+        assert_eq!(a.head(), None);
         a = ~[11];
-        assert_eq!(a.head_opt().unwrap(), &11);
+        assert_eq!(a.head().unwrap(), &11);
         a = ~[11, 12];
-        assert_eq!(a.head_opt().unwrap(), &11);
+        assert_eq!(a.head().unwrap(), &11);
     }
 
     #[test]
@@ -3139,27 +3084,12 @@ mod tests {
 
     #[test]
     fn test_last() {
-        let mut a = ~[11];
-        assert_eq!(a.last(), &11);
-        a = ~[11, 12];
-        assert_eq!(a.last(), &12);
-    }
-
-    #[test]
-    #[should_fail]
-    fn test_last_empty() {
-        let a: ~[int] = ~[];
-        a.last();
-    }
-
-    #[test]
-    fn test_last_opt() {
         let mut a = ~[];
-        assert_eq!(a.last_opt(), None);
+        assert_eq!(a.last(), None);
         a = ~[11];
-        assert_eq!(a.last_opt().unwrap(), &11);
+        assert_eq!(a.last().unwrap(), &11);
         a = ~[11, 12];
-        assert_eq!(a.last_opt().unwrap(), &12);
+        assert_eq!(a.last().unwrap(), &12);
     }
 
     #[test]
@@ -3214,28 +3144,16 @@ mod tests {
         assert_eq!(vec.slice_to(0), &[]);
     }
 
-    #[test]
-    fn test_pop() {
-        // Test on-heap pop.
-        let mut v = ~[1, 2, 3, 4, 5];
-        let e = v.pop();
-        assert_eq!(v.len(), 4u);
-        assert_eq!(v[0], 1);
-        assert_eq!(v[1], 2);
-        assert_eq!(v[2], 3);
-        assert_eq!(v[3], 4);
-        assert_eq!(e, 5);
-    }
 
     #[test]
-    fn test_pop_opt() {
+    fn test_pop() {
         let mut v = ~[5];
-        let e = v.pop_opt();
+        let e = v.pop();
         assert_eq!(v.len(), 0);
         assert_eq!(e, Some(5));
-        let f = v.pop_opt();
+        let f = v.pop();
         assert_eq!(f, None);
-        let g = v.pop_opt();
+        let g = v.pop();
         assert_eq!(g, None);
     }
 
@@ -3645,21 +3563,11 @@ mod tests {
     #[test]
     fn test_shift() {
         let mut x = ~[1, 2, 3];
-        assert_eq!(x.shift(), 1);
+        assert_eq!(x.shift(), Some(1));
         assert_eq!(&x, &~[2, 3]);
-        assert_eq!(x.shift(), 2);
-        assert_eq!(x.shift(), 3);
-        assert_eq!(x.len(), 0);
-    }
-
-    #[test]
-    fn test_shift_opt() {
-        let mut x = ~[1, 2, 3];
-        assert_eq!(x.shift_opt(), Some(1));
-        assert_eq!(&x, &~[2, 3]);
-        assert_eq!(x.shift_opt(), Some(2));
-        assert_eq!(x.shift_opt(), Some(3));
-        assert_eq!(x.shift_opt(), None);
+        assert_eq!(x.shift(), Some(2));
+        assert_eq!(x.shift(), Some(3));
+        assert_eq!(x.shift(), None);
         assert_eq!(x.len(), 0);
     }
 
@@ -3697,48 +3605,26 @@ mod tests {
     }
 
     #[test]
-    fn test_remove_opt() {
+    fn test_remove() {
         let mut a = ~[1,2,3,4];
 
-        assert_eq!(a.remove_opt(2), Some(3));
+        assert_eq!(a.remove(2), Some(3));
         assert_eq!(a, ~[1,2,4]);
 
-        assert_eq!(a.remove_opt(2), Some(4));
+        assert_eq!(a.remove(2), Some(4));
         assert_eq!(a, ~[1,2]);
 
-        assert_eq!(a.remove_opt(2), None);
+        assert_eq!(a.remove(2), None);
         assert_eq!(a, ~[1,2]);
 
-        assert_eq!(a.remove_opt(0), Some(1));
+        assert_eq!(a.remove(0), Some(1));
         assert_eq!(a, ~[2]);
 
-        assert_eq!(a.remove_opt(0), Some(2));
+        assert_eq!(a.remove(0), Some(2));
         assert_eq!(a, ~[]);
 
-        assert_eq!(a.remove_opt(0), None);
-        assert_eq!(a.remove_opt(10), None);
-    }
-
-    #[test]
-    fn test_remove() {
-        let mut a = ~[1, 2, 3, 4];
-        a.remove(2);
-        assert_eq!(a, ~[1, 2, 4]);
-
-        let mut a = ~[1, 2, 3];
-        a.remove(0);
-        assert_eq!(a, ~[2, 3]);
-
-        let mut a = ~[1];
-        a.remove(0);
-        assert_eq!(a, ~[]);
-    }
-
-    #[test]
-    #[should_fail]
-    fn test_remove_oob() {
-        let mut a = ~[1, 2, 3];
-        a.remove(3);
+        assert_eq!(a.remove(0), None);
+        assert_eq!(a.remove(10), None);
     }
 
     #[test]

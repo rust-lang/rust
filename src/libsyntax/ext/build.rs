@@ -253,7 +253,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                 lifetimes: OptVec<ast::Lifetime>,
                 types: ~[P<ast::Ty>])
                 -> ast::Path {
-        let last_identifier = idents.pop();
+        let last_identifier = idents.pop().unwrap();
         let mut segments: ~[ast::PathSegment] = idents.move_iter()
                                                       .map(|ident| {
             ast::PathSegment {

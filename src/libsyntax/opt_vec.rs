@@ -48,17 +48,17 @@ impl<T> OptVec<T> {
         }
     }
 
-    pub fn pop(&mut self) -> T {
+    pub fn pop(&mut self) -> Option<T> {
         match *self {
             Vec(ref mut v) => v.pop(),
-            Empty => fail!("pop from empty opt_vec")
+            Empty => None
         }
     }
 
-    pub fn last<'a>(&'a self) -> &'a T {
+    pub fn last<'a>(&'a self) -> Option<&'a T> {
         match *self {
             Vec(ref v) => v.last(),
-            Empty => fail!("last on empty opt_vec")
+            Empty => None
         }
     }
 

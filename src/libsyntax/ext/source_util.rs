@@ -109,7 +109,7 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         }
         Ok(bytes) => bytes,
     };
-    match str::from_utf8_owned_opt(bytes) {
+    match str::from_utf8_owned(bytes) {
         Some(src) => {
             // Add this input file to the code map to make it available as
             // dependency information

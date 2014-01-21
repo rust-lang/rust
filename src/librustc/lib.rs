@@ -190,7 +190,7 @@ pub fn describe_debug_flags() {
 
 pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
     let mut args = args.to_owned();
-    let binary = args.shift();
+    let binary = args.shift().unwrap();
 
     if args.is_empty() { usage(binary); return; }
 
@@ -234,7 +234,7 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
       1u => {
         let ifile = matches.free[0].as_slice();
         if "-" == ifile {
-            let src = str::from_utf8_owned(io::stdin().read_to_end());
+            let src = str::from_utf8_owned(io::stdin().read_to_end()).unwrap();
             d::StrInput(src.to_managed())
         } else {
             d::FileInput(Path::new(ifile))

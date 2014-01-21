@@ -2014,7 +2014,7 @@ fn exported_name(ccx: &CrateContext, path: ast_map::Path,
 
         // Don't mangle
         _ if attr::contains_name(attrs, "no_mangle")
-            => path_elem_to_str(*path.last(), token::get_ident_interner()),
+            => path_elem_to_str(*path.last().unwrap(), token::get_ident_interner()),
 
         // Usual name mangling
         _ => mangle_exported_name(ccx, path, ty)

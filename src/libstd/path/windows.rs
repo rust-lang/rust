@@ -129,11 +129,7 @@ impl BytesContainer for Path {
         self.into_vec()
     }
     #[inline]
-    fn container_as_str<'a>(&'a self) -> &'a str {
-        self.as_str().unwrap()
-    }
-    #[inline]
-    fn container_as_str_opt<'a>(&'a self) -> Option<&'a str> {
+    fn container_as_str<'a>(&'a self) -> Option<&'a str> {
         self.as_str()
     }
     #[inline]
@@ -146,11 +142,7 @@ impl<'a> BytesContainer for &'a Path {
         self.as_vec()
     }
     #[inline]
-    fn container_as_str<'a>(&'a self) -> &'a str {
-        self.as_str().unwrap()
-    }
-    #[inline]
-    fn container_as_str_opt<'a>(&'a self) -> Option<&'a str> {
+    fn container_as_str<'a>(&'a self) -> Option<&'a str> {
         self.as_str()
     }
     #[inline]
@@ -162,10 +154,10 @@ impl GenericPathUnsafe for Path {
     ///
     /// # Failure
     ///
-    /// Raises the `str::not_utf8` condition if not valid UTF-8.
+    /// Fails if not valid UTF-8.
     #[inline]
     unsafe fn new_unchecked<T: BytesContainer>(path: T) -> Path {
-        let (prefix, path) = Path::normalize_(path.container_as_str());
+        let (prefix, path) = Path::normalize_(path.container_as_str().unwrap());
         assert!(!path.is_empty());
         let mut ret = Path{ repr: path, prefix: prefix, sepidx: None };
         ret.update_sepidx();
@@ -176,9 +168,9 @@ impl GenericPathUnsafe for Path {
     ///
     /// # Failure
     ///
-    /// Raises the `str::not_utf8` condition if not valid UTF-8.
+    /// Fails if not valid UTF-8.
     unsafe fn set_filename_unchecked<T: BytesContainer>(&mut self, filename: T) {
-        let filename = filename.container_as_str();
+        let filename = filename.container_as_str().unwrap();
         match self.sepidx_or_prefix_len() {
             None if ".." == self.repr => {
                 let mut s = str::with_capacity(3 + filename.len());
@@ -224,7 +216,7 @@ impl GenericPathUnsafe for Path {
     /// the new path is relative to. Otherwise, the new path will be treated
     /// as if it were absolute and will replace the receiver outright.
     unsafe fn push_unchecked<T: BytesContainer>(&mut self, path: T) {
-        let path = path.container_as_str();
+        let path = path.container_as_str().unwrap();
         fn is_vol_abs(path: &str, prefix: Option<PathPrefix>) -> bool {
             // assume prefix is Some(DiskPrefix)
             let rest = path.slice_from(prefix_len(prefix));
@@ -311,7 +303,7 @@ impl GenericPathUnsafe for Path {
 impl GenericPath for Path {
     #[inline]
     fn new_opt<T: BytesContainer>(path: T) -> Option<Path> {
-        let s = path.container_as_str_opt();
+        let s = path.container_as_str();
         match s {
             None => None,
             Some(s) => {
@@ -599,7 +591,7 @@ impl Path {
     /// # Failure
     ///
     /// Raises the `null_byte` condition if the vector contains a NUL.
-    /// Raises the `str::not_utf8` condition if invalid UTF-8.
+    /// Fails if invalid UTF-8.
     #[inline]
     pub fn new<T: BytesContainer>(path: T) -> Path {
         GenericPath::new(path)
@@ -1025,7 +1017,7 @@ fn normalize_helper<'a>(s: &'a str, prefix: Option<PathPrefix>) -> (bool,Option<
             };
             if (is_abs || has_abs_prefix) && comps.is_empty() { changed = true }
             else if comps.len() == n_up { comps.push(".."); n_up += 1 }
-            else { comps.pop(); changed = true }
+            else { comps.pop().unwrap(); changed = true }
         } else { comps.push(comp) }
     }
     if !changed && !prefix_is_verbatim(prefix) {

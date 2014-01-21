@@ -57,8 +57,8 @@ fn run_ar(sess: Session, args: &str, cwd: Option<&Path>,
             if !o.status.success() {
                 sess.err(format!("{} {} failed with: {}", ar, args.connect(" "),
                                  o.status));
-                sess.note(format!("stdout ---\n{}", str::from_utf8(o.output)));
-                sess.note(format!("stderr ---\n{}", str::from_utf8(o.error)));
+                sess.note(format!("stdout ---\n{}", str::from_utf8(o.output).unwrap()));
+                sess.note(format!("stderr ---\n{}", str::from_utf8(o.error).unwrap()));
                 sess.abort_if_errors();
             }
             o
@@ -141,7 +141,7 @@ impl Archive {
     /// Lists all files in an archive
     pub fn files(&self) -> ~[~str] {
         let output = run_ar(self.sess, "t", None, [&self.dst]);
-        str::from_utf8(output.output).lines().map(|s| s.to_owned()).collect()
+        str::from_utf8(output.output).unwrap().lines().map(|s| s.to_owned()).collect()
     }
 
     fn add_archive(&mut self, archive: &Path, name: &str, skip: &[&str]) {

@@ -524,7 +524,7 @@ impl<'a> Context<'a> {
         // rollback
         self.is_doc_hidden = old_is_doc_hidden;
         pushed.times(|| {
-            let (lint, lvl, src) = self.lint_stack.pop();
+            let (lint, lvl, src) = self.lint_stack.pop().unwrap();
             self.set_level(lint, lvl, src);
         })
     }
@@ -1077,7 +1077,7 @@ fn check_pat_non_uppercase_statics(cx: &Context, p: &ast::Pat) {
     match (&p.node, def_map.get().find(&p.id)) {
         (&ast::PatIdent(_, ref path, _), Some(&ast::DefStatic(_, false))) => {
             // last identifier alone is right choice for this lint.
-            let ident = path.segments.last().identifier;
+            let ident = path.segments.last().unwrap().identifier;
             let s = cx.tcx.sess.str_of(ident);
             if s.chars().any(|c| c.is_lowercase()) {
                 cx.span_lint(NonUppercasePatternStatics, path.span,

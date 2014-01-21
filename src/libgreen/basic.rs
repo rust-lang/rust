@@ -84,7 +84,7 @@ impl BasicLoop {
             }
             RemoveRemote(i) => {
                 match self.remotes.iter().position(|&(id, _)| id == i) {
-                    Some(i) => { self.remotes.remove(i); }
+                    Some(i) => { self.remotes.remove(i).unwrap(); }
                     None => unreachable!()
                 }
             }

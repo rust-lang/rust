@@ -96,7 +96,7 @@ impl<'a> FromHex for &'a str {
      *     println!("{}", hello_str);
      *     let bytes = hello_str.from_hex().unwrap();
      *     println!("{:?}", bytes);
-     *     let result_str = str::from_utf8_owned(bytes);
+     *     let result_str = str::from_utf8_owned(bytes).unwrap();
      *     println!("{}", result_str);
      * }
      * ```

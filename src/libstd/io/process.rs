@@ -161,8 +161,11 @@ impl Drop for Process {
     fn drop(&mut self) {
         // Close all I/O before exiting to ensure that the child doesn't wait
         // forever to print some text or something similar.
-        for _ in range(0, self.io.len()) {
-            self.io.pop();
+        loop {
+            match self.io.pop() {
+                Some(_) => (),
+                None => break,
+            }
         }
 
         self.wait();
@@ -251,7 +254,7 @@ mod tests {
         loop {
             match input.read(buf) {
                 None => { break }
-                Some(n) => { ret.push_str(str::from_utf8(buf.slice_to(n))); }
+                Some(n) => { ret.push_str(str::from_utf8(buf.slice_to(n)).unwrap()); }
             }
         }
         return ret;

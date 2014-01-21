@@ -107,7 +107,7 @@ pub fn relate_nested_regions(tcx: ty::ctxt,
                     self.relate(r);
                     self.stack.push(r);
                     ty_fold::super_fold_ty(self, mt.ty);
-                    self.stack.pop();
+                    self.stack.pop().unwrap();
                 }
 
                 _ => {
