@@ -106,6 +106,8 @@ pub enum Lint {
     Unstable,
 
     Warnings,
+
+    VisibleLocalTypes
 }
 
 pub fn level_to_str(lv: level) -> &'static str {
@@ -362,6 +364,13 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
          desc: "unknown crate type found in #[crate_type] directive",
          default: deny,
      }),
+
+    ("visible_local_types",
+     LintSpec {
+        lint: VisibleLocalTypes,
+        desc: "non-exported types used in publically visible signatures",
+        default: warn
+     })
 ];
 
 /*
@@ -376,6 +385,15 @@ pub fn get_lint_dict() -> LintDict {
     return map;
 }
 
+#[deriving(Eq)]
+enum VisibleLocalTypeParent {
+    VLTNotExported,
+    VLTStructField,
+    VLTEnumVariant,
+    VLTMethod,
+    VLTFunction,
+}
+
 struct Context<'a> {
     // All known lint modes (string versions)
     dict: @LintDict,
@@ -388,6 +406,8 @@ struct Context<'a> {
     method_map: typeck::method_map,
     // Items exported by the crate; used by the missing_doc lint.
     exported_items: &'a privacy::ExportedItems,
+    // Items that are public in their modules
+    public_items: &'a privacy::PublicItems,
     // The id of the current `ast::StructDef` being walked.
     cur_struct_def_id: ast::NodeId,
     // Whether some ancestor of the current node was marked
@@ -400,7 +420,14 @@ struct Context<'a> {
     lint_stack: ~[(Lint, level, LintSource)],
 
     // id of the last visited negated expression
-    negated_expr_id: ast::NodeId
+    negated_expr_id: ast::NodeId,
+
+    // Whether the "visible type parent" is exported, see the
+    // check_visible_type_ty function.
+    visible_local_type_parent: VisibleLocalTypeParent,
+    // Whether the parent is a `impl` or `trait` that's not visible
+    // externally (in which case it's fine to use local types)
+    vlt_parent_is_local_impl_or_trait: bool
 }
 
 impl<'a> Context<'a> {
@@ -1312,6 +1339,198 @@ fn check_missing_doc_variant(cx: &Context, v: &ast::Variant) {
     check_missing_doc_attrs(cx, Some(v.node.id), v.node.attrs, v.span, "a variant");
 }
 
+
+/// Check to see if an `ast::Path` refers to any types local to this
+/// crate (or, possibly, contains in type parameters via the
+/// `check_parameters` arg). One can consider local traits to be
+/// public with `private_traits_are_public`.
+fn ty_path_contains_local_type(cx: &Context, path: &ast::Path, path_id: ast::NodeId,
+                               check_parameters: bool, private_traits_are_public: bool) -> bool {
+    let def_map = cx.tcx.def_map.borrow();
+    let def_id = match def_map.get().find_copy(&path_id) {
+        // primitives are "globals"
+        None => { debug!("not in the def_map"); return false }
+        Some(ast::DefPrimTy(..)) => { debug!("primitive"); return false }
+        Some(def) => ast_util::def_id_of_def(def),
+    };
+    let id = def_id.node;
+
+    if ast_util::is_local(def_id) &&
+        !cx.exported_items.contains(&id) {
+        match cx.tcx.items.find(id) {
+            None =>  { debug!("not an item"); return false; }
+            Some(ast_map::NodeItem(item, _)) if private_traits_are_public => {
+                debug!("checking for trait...")
+                match item.node {
+                    ast::ItemTrait(..) => { debug!("private trait"); }
+                    _ => { return true }
+                }
+            }
+            _ => return true
+        }
+    }
+
+    if check_parameters {
+        // the foo::bar::Baz part is public, so now we check the type
+        // parameters.
+        path.segments.iter().any(|segment|
+                                 segment.types.iter().any(|ty| contains_local_type(cx, *ty)))
+    } else {
+        false
+    }
+}
+
+/// Check to see if `ty` contains any reference to a local
+/// (non-exported) type.
+fn contains_local_type(cx: &Context, ty: &ast::Ty) -> bool {
+    let fn_decl = |fn_decl: &ast::FnDecl| {
+        contains_local_type(cx, fn_decl.output) ||
+            fn_decl.inputs.iter().any(|arg| contains_local_type(cx, arg.ty))
+    };
+
+    match ty.node {
+        ast::TyNil | ast::TyBot => false,
+
+        ast::TyBox(ty) |
+        ast::TyUniq(ty) |
+        ast::TyVec(ty) |
+        ast::TyFixedLengthVec(ty, _) |
+        ast::TyPtr(ast::MutTy { ty, .. }) |
+        ast::TyRptr(_, ast::MutTy { ty, .. }) => contains_local_type(cx, ty),
+
+        ast::TyTup(ref types) => types.iter().any(|t| contains_local_type(cx, *t)),
+
+        ast::TyClosure(clsr) => fn_decl(clsr.decl),
+        ast::TyBareFn(fun) => fn_decl(fun.decl),
+
+        ast::TyPath(ref p, _, id) => ty_path_contains_local_type(cx, p, id, true, false),
+
+        ast::TyInfer => cx.tcx.sess.span_bug(ty.span, "found TyInfer in lint"),
+        ast::TyTypeof(_) => cx.tcx.sess.span_bug(ty.span, "found TyTypeof in lint"),
+    }
+}
+
+/// Execute `inside` after examining the provided trait, trait ref or
+/// impl for local types, and setting the relevant fields of `cx`
+/// appropriately. These fields are restored after `inside` has
+/// finished.
+fn check_visible_type_trait_impl_bracketed<T>(cx: &mut Context,
+                                              trait_id: Option<ast::NodeId>,
+                                              trait_ref: Option<&ast::TraitRef>,
+                                              impl_ty_details: Option<&ast::Ty>,
+                                              inside: |&mut Context| -> T) -> T {
+    let old = cx.vlt_parent_is_local_impl_or_trait;
+
+    if !cx.vlt_parent_is_local_impl_or_trait {
+        // `trait <local trait>`
+        match trait_id {
+            Some(id) => cx.vlt_parent_is_local_impl_or_trait = !cx.public_items.contains(&id),
+            None => {}
+        }
+    }
+    if !cx.vlt_parent_is_local_impl_or_trait {
+        // `impl [Trait for] <local type>`
+        match impl_ty_details {
+            Some(ty) => cx.vlt_parent_is_local_impl_or_trait = contains_local_type(cx, ty),
+            None => {}
+        }
+    }
+    if !cx.vlt_parent_is_local_impl_or_trait {
+        // impl <local trait> for ...`
+        match trait_ref {
+            Some(r) => {
+                let def_id = ty::trait_ref_to_def_id(cx.tcx, r);
+                cx.vlt_parent_is_local_impl_or_trait = !cx.public_items.contains(&def_id.node);
+            }
+            None => {}
+        }
+    }
+
+    let ret = inside(cx);
+
+    cx.vlt_parent_is_local_impl_or_trait = old;
+
+    ret
+}
+
+/// Check if `id` is public, if so, set the appropriate field of `cx`
+/// to `parent_type` and then execute `inside` (restoring the old
+/// value after).
+fn check_visible_type_nodeid_bracketed<T>(cx: &mut Context,
+                                          parent_type: VisibleLocalTypeParent,
+                                          id: ast::NodeId, inside: |&mut Context| -> T) -> T {
+    let old = cx.visible_local_type_parent;
+    if cx.exported_items.contains(&id) {
+        cx.visible_local_type_parent = parent_type;
+    }
+    let ret = inside(cx);
+    cx.visible_local_type_parent = old;
+
+    ret
+}
+
+/// If `vis` indicates that this needs to be public (i.e. explicitly
+/// public or inheriting from a public thing), then set the
+/// appropriate field of `cx` to be `parent_type`, execute `inside`
+/// and restore the old value afterward.
+fn check_visible_type_vis_bracketed<T>(cx: &mut Context,
+                                       parent_type: VisibleLocalTypeParent,
+                                       vis: ast::Visibility, inside: |&mut Context| -> T) -> T {
+    let old = cx.visible_local_type_parent;
+    cx.visible_local_type_parent = match vis {
+        ast::Public => parent_type,
+        ast::Inherited if old != VLTNotExported => parent_type,
+        // no change
+        ast::Inherited | ast::Private => VLTNotExported,
+    };
+    debug!("visible local type, bracketing: {:?} -> {:?}", old, cx.visible_local_type_parent);
+
+    let ret = inside(cx);
+    cx.visible_local_type_parent = old;
+
+    ret
+}
+
+/// Explicitly cancel any checks for visible types, then execute
+/// `inside`, restoring the old value.
+fn check_visible_type_cancel_bracketed<T>(cx: &mut Context, inside: |&mut Context| -> T) -> T {
+    let old = cx.visible_local_type_parent;
+    cx.visible_local_type_parent = VLTNotExported;
+
+    let ret = inside(cx);
+
+    cx.visible_local_type_parent = old;
+
+    ret
+}
+
+fn check_visible_type_ty(cx: &Context, ty: &ast::Ty) {
+    // only need to check things that are inside visible items.
+    if cx.vlt_parent_is_local_impl_or_trait {
+        return
+    }
+
+    let place = match cx.visible_local_type_parent {
+        // avoid checking inside "private" things
+        VLTNotExported => return,
+        VLTFunction => "function signature",
+        VLTMethod => "method signature",
+        VLTEnumVariant => "enum variant",
+        VLTStructField => "struct field",
+    };
+
+    match ty.node {
+        ast::TyPath(ref p, _, path_id) => {
+            if ty_path_contains_local_type(cx, p, path_id, false, true) {
+                cx.span_lint(VisibleLocalTypes, ty.span,
+                             format!("non-exported type used in exported {}", place))
+            }
+        }
+        // no other type of Ty can can be defined in this crate.
+        _ => {}
+    }
+}
+
 /// Checks for use of items with #[deprecated], #[experimental] and
 /// #[unstable] (or none of them) attributes.
 fn check_stability(cx: &Context, e: &ast::Expr) {
@@ -1423,7 +1642,22 @@ impl<'a> Visitor<()> for Context<'a> {
 
             cx.visit_ids(|v| v.visit_item(it, ()));
 
-            visit::walk_item(cx, it, ());
+            match it.node {
+                ast::ItemStruct(..) => {
+                    check_visible_type_nodeid_bracketed(cx, VLTStructField, it.id,
+                                                        |cx| visit::walk_item(cx, it, ()))
+                }
+                ast::ItemImpl(_, ref trait_ref, self_, _) => {
+                    check_visible_type_trait_impl_bracketed(cx, None,
+                                                            trait_ref.as_ref(), Some(&*self_),
+                                                            |cx| visit::walk_item(cx, it, ()))
+                }
+                ast::ItemTrait(..) => {
+                    check_visible_type_trait_impl_bracketed(cx, Some(it.id), None, None,
+                                                            |cx| visit::walk_item(cx, it, ()))
+                }
+                _ => visit::walk_item(cx, it, ())
+            };
         })
     }
 
@@ -1473,13 +1707,13 @@ impl<'a> Visitor<()> for Context<'a> {
         check_type_limits(self, e);
         check_unused_casts(self, e);
 
-        visit::walk_expr(self, e, ());
+        check_visible_type_cancel_bracketed(self, |cx| visit::walk_expr(cx, e, ()));
     }
 
     fn visit_stmt(&mut self, s: &ast::Stmt, _: ()) {
         check_path_statement(self, s);
 
-        visit::walk_stmt(self, s, ());
+        check_visible_type_cancel_bracketed(self, |cx| visit::walk_stmt(cx, s, ()));
     }
 
     fn visit_fn(&mut self, fk: &visit::FnKind, decl: &ast::FnDecl,
@@ -1497,10 +1731,10 @@ impl<'a> Visitor<()> for Context<'a> {
                     cx.visit_ids(|v| {
                         v.visit_fn(fk, decl, body, span, id, ());
                     });
-                    recurse(cx);
+                    check_visible_type_nodeid_bracketed(cx, VLTMethod, id, |cx| recurse(cx));
                 })
             }
-            _ => recurse(self),
+            _ => check_visible_type_nodeid_bracketed(self, VLTFunction, id, recurse),
         }
     }
 
@@ -1510,7 +1744,8 @@ impl<'a> Visitor<()> for Context<'a> {
             check_missing_doc_ty_method(cx, t);
             check_attrs_usage(cx, t.attrs);
 
-            visit::walk_ty_method(cx, t, ());
+            check_visible_type_nodeid_bracketed(cx, VLTMethod, t.id,
+                                                |cx| visit::walk_ty_method(cx, t, ()));
         })
     }
 
@@ -1522,7 +1757,11 @@ impl<'a> Visitor<()> for Context<'a> {
                         _: ()) {
         let old_id = self.cur_struct_def_id;
         self.cur_struct_def_id = id;
-        visit::walk_struct_def(self, s, i, g, id, ());
+
+        check_visible_type_nodeid_bracketed(
+            self, VLTStructField, id,
+            |cx| visit::walk_struct_def(cx, s, i, g, id, ()));
+
         self.cur_struct_def_id = old_id;
     }
 
@@ -1531,7 +1770,13 @@ impl<'a> Visitor<()> for Context<'a> {
             check_missing_doc_struct_field(cx, s);
             check_attrs_usage(cx, s.node.attrs);
 
-            visit::walk_struct_field(cx, s, ());
+            match s.node.kind {
+                ast::NamedField(_, vis) => {
+                    check_visible_type_vis_bracketed(cx, VLTStructField, vis,
+                                                     |cx| visit::walk_struct_field(cx, s, ()))
+                }
+                ast::UnnamedField => visit::walk_struct_field(cx, s, ()),
+            }
         })
     }
 
@@ -1539,12 +1784,14 @@ impl<'a> Visitor<()> for Context<'a> {
         self.with_lint_attrs(v.node.attrs, |cx| {
             check_missing_doc_variant(cx, v);
             check_attrs_usage(cx, v.node.attrs);
-
-            visit::walk_variant(cx, v, g, ());
+            check_visible_type_nodeid_bracketed(cx, VLTEnumVariant, v.node.id,
+                                                |cx| visit::walk_variant(cx, v, g, ()));
         })
     }
 
     fn visit_ty(&mut self, t: &ast::Ty, _: ()) {
+        check_visible_type_ty(self, t);
+
         match t.node {
             // FIXME(#10894) should continue recursing through fixed
             // length vectors
@@ -1571,6 +1818,7 @@ impl<'a> IdVisitingOperation for Context<'a> {
 pub fn check_crate(tcx: ty::ctxt,
                    method_map: typeck::method_map,
                    exported_items: &privacy::ExportedItems,
+                   public_items: &privacy::PublicItems,
                    crate: &ast::Crate) {
     let mut cx = Context {
         dict: @get_lint_dict(),
@@ -1578,10 +1826,14 @@ pub fn check_crate(tcx: ty::ctxt,
         tcx: tcx,
         method_map: method_map,
         exported_items: exported_items,
+        public_items: public_items,
         cur_struct_def_id: -1,
         is_doc_hidden: false,
         lint_stack: ~[],
-        negated_expr_id: -1
+        negated_expr_id: -1,
+
+        visible_local_type_parent: VLTNotExported,
+        vlt_parent_is_local_impl_or_trait: false
     };
 
     // Install default lint levels, followed by the command line levels, and
