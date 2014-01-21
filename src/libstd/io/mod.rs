@@ -607,7 +607,7 @@ pub trait Reader {
     /// This function will raise all the same conditions as the `read` method,
     /// along with raising a condition if the input is not valid UTF-8.
     fn read_to_str(&mut self) -> ~str {
-        match str::from_utf8_owned_opt(self.read_to_end()) {
+        match str::from_utf8_owned(self.read_to_end()) {
             Some(s) => s,
             None => {
                 io_error::cond.raise(standard_error(InvalidInput));
@@ -1117,7 +1117,7 @@ pub trait Buffer: Reader {
     /// The task will also fail if sequence of bytes leading up to
     /// the newline character are not valid UTF-8.
     fn read_line(&mut self) -> Option<~str> {
-        self.read_until('\n' as u8).map(str::from_utf8_owned)
+        self.read_until('\n' as u8).map(|line| str::from_utf8_owned(line).unwrap())
     }
 
     /// Create an iterator that reads a line on each iteration until EOF.
@@ -1202,7 +1202,7 @@ pub trait Buffer: Reader {
                 }
             }
         }
-        match str::from_utf8_opt(buf.slice_to(width)) {
+        match str::from_utf8(buf.slice_to(width)) {
             Some(s) => Some(s.char_at(0)),
             None => None
         }

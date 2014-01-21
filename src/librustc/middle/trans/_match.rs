@@ -575,7 +575,7 @@ fn enter_default<'r,'b>(
     // non guarded matches, and thus by exhaustiveness, we know that
     // we don't need any default cases. If the check *isn't* nonexhaustive
     // (because chk is Some), then we need the defaults anyways.
-    let is_exhaustive = match matches.last_opt() {
+    let is_exhaustive = match matches.last() {
         Some(m) if m.data.arm.guard.is_some() && chk.is_infallible() => true,
         _ => false
     };
@@ -913,7 +913,7 @@ fn get_options(bcx: &Block, m: &[Match], col: uint) -> ~[Opt] {
     // to not always merge conditions.
     fn add_veclen_to_set(set: &mut ~[Opt], i: uint,
                          len: uint, vlo: VecLenOpt) {
-        match set.last_opt() {
+        match set.last() {
             // If the last condition in the list matches the one we want
             // to add, then extend its range. Otherwise, make a new
             // vec_len with a range just covering the new entry.

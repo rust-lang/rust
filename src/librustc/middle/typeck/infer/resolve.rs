@@ -242,7 +242,7 @@ impl ResolveState {
                 ty::mk_var(tcx, vid)
               }
             };
-            self.v_seen.pop();
+            self.v_seen.pop().unwrap();
             return t1;
         }
     }

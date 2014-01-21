@@ -385,7 +385,7 @@ impl Integer for BigUint {
         }
 
         let mut shift = 0;
-        let mut n = *other.data.last();
+        let mut n = *other.data.last().unwrap();
         while n < (1 << BigDigit::bits - 2) {
             n <<= 1;
             shift += 1;
@@ -434,7 +434,7 @@ impl Integer for BigUint {
             }
 
             let an = a.data.slice(a.data.len() - n, a.data.len());
-            let bn = *b.data.last();
+            let bn = *b.data.last().unwrap();
             let mut d = ~[];
             let mut carry = 0;
             for elt in an.rev_iter() {
@@ -798,7 +798,7 @@ impl BigUint {
     /// Determines the fewest bits necessary to express the `BigUint`.
     pub fn bits(&self) -> uint {
         if self.is_zero() { return 0; }
-        let zeros = self.data.last().leading_zeros();
+        let zeros = self.data.last().unwrap().leading_zeros();
         return self.data.len()*BigDigit::bits - (zeros as uint);
     }
 }

@@ -193,7 +193,7 @@ impl<'a> PkgScript<'a> {
                         Some(output) => {
                             debug!("run_custom: second pkg command did {:?}", output.status);
                             // Run the configs() function to get the configs
-                            let cfgs = str::from_utf8(output.output).words()
+                            let cfgs = str::from_utf8(output.output).unwrap().words()
                                 .map(|w| w.to_owned()).collect();
                             Some((cfgs, output.status))
                         },

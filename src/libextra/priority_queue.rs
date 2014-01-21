@@ -59,7 +59,7 @@ impl<T:Ord> PriorityQueue<T> {
 
     /// Pop the greatest item from the queue - fails if empty
     pub fn pop(&mut self) -> T {
-        let mut item = self.data.pop();
+        let mut item = self.data.pop().unwrap();
         if !self.is_empty() {
             swap(&mut item, &mut self.data[0]);
             self.siftdown(0);
@@ -234,8 +234,8 @@ mod tests {
         sorted.sort();
         let mut heap = PriorityQueue::from_vec(data);
         while !heap.is_empty() {
-            assert_eq!(heap.top(), sorted.last());
-            assert_eq!(heap.pop(), sorted.pop());
+            assert_eq!(heap.top(), sorted.last().unwrap());
+            assert_eq!(heap.pop(), sorted.pop().unwrap());
         }
     }
 

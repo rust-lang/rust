@@ -704,7 +704,7 @@ fn should_sort_failures_before_printing_them() {
 
     st.write_failures();
     let s = match st.out {
-        Raw(ref m) => str::from_utf8(m.get_ref()),
+        Raw(ref m) => str::from_utf8(m.get_ref()).unwrap(),
         Pretty(_) => unreachable!()
     };
 
@@ -753,7 +753,7 @@ fn run_tests(opts: &TestOpts,
 
     while pending > 0 || !remaining.is_empty() {
         while pending < concurrency && !remaining.is_empty() {
-            let test = remaining.pop();
+            let test = remaining.pop().unwrap();
             if concurrency == 1 {
                 // We are doing one test at a time so we can print the name
                 // of the test before we run it. Useful for debugging tests

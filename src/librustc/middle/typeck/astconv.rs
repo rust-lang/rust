@@ -170,9 +170,9 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
     // region with the current anon region binding (in other words,
     // whatever & would get replaced with).
     let expected_num_region_params = decl_generics.region_param_defs.len();
-    let supplied_num_region_params = path.segments.last().lifetimes.len();
+    let supplied_num_region_params = path.segments.last().unwrap().lifetimes.len();
     let regions = if expected_num_region_params == supplied_num_region_params {
-        path.segments.last().lifetimes.map(
+        path.segments.last().unwrap().lifetimes.map(
             |l| ast_region_to_region(this.tcx(), l))
     } else {
         let anon_regions =
@@ -373,7 +373,7 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
         }
 
         if (flags & NO_REGIONS) != 0u {
-            if !path.segments.last().lifetimes.is_empty() {
+            if !path.segments.last().unwrap().lifetimes.is_empty() {
                 tcx.sess.span_err(
                     path.span,
                     "region parameters are not allowed on this type");

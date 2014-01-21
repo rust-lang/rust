@@ -106,7 +106,7 @@ fn pretty_ty(ty: &Ty, itr: @IdentInterner, out: &mut ~str) {
         // need custom handling.
         TyNil => { out.push_str("$NIL$"); return }
         TyPath(ref path, _, _) => {
-            out.push_str(itr.get(path.segments.last().identifier.name));
+            out.push_str(itr.get(path.segments.last().unwrap().identifier.name));
             return
         }
         TyTup(ref tys) => {
@@ -139,7 +139,7 @@ pub fn impl_pretty_name(trait_ref: &Option<TraitRef>, ty: &Ty) -> PathElem {
     match *trait_ref {
         None => pretty = ~"",
         Some(ref trait_ref) => {
-            pretty = itr.get(trait_ref.path.segments.last().identifier.name).to_owned();
+            pretty = itr.get(trait_ref.path.segments.last().unwrap().identifier.name).to_owned();
             pretty.push_char('$');
         }
     };
@@ -340,7 +340,7 @@ impl<F: FoldOps> Folder for Ctx<F> {
             _ => {}
         }
 
-        self.path.pop();
+        self.path.pop().unwrap();
 
         SmallVector::one(i)
     }

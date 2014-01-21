@@ -238,8 +238,11 @@ pub fn parse(sess: @ParseSess,
         let TokenAndSpan {tok: tok, sp: sp} = rdr.peek();
 
         /* we append new items to this while we go */
-        while !cur_eis.is_empty() { /* for each Earley Item */
-            let ei = cur_eis.pop();
+        loop {
+            let ei = match cur_eis.pop() {
+                None => break, /* for each Earley Item */
+                Some(ei) => ei,
+            };
 
             let idx = ei.idx;
             let len = ei.elts.len();
@@ -347,7 +350,7 @@ pub fn parse(sess: @ParseSess,
             if eof_eis.len() == 1u {
                 let mut v = ~[];
                 for dv in eof_eis[0u].matches.mut_iter() {
-                    v.push(dv.pop());
+                    v.push(dv.pop().unwrap());
                 }
                 return Success(nameize(sess, ms, v));
             } else if eof_eis.len() > 1u {
@@ -376,13 +379,13 @@ pub fn parse(sess: @ParseSess,
             } else if next_eis.len() > 0u {
                 /* Now process the next token */
                 while next_eis.len() > 0u {
-                    cur_eis.push(next_eis.pop());
+                    cur_eis.push(next_eis.pop().unwrap());
                 }
                 rdr.next_token();
             } else /* bb_eis.len() == 1 */ {
                 let mut rust_parser = Parser(sess, cfg.clone(), rdr.dup());
 
-                let mut ei = bb_eis.pop();
+                let mut ei = bb_eis.pop().unwrap();
                 match ei.elts[ei.idx].node {
                   MatchNonterminal(_, ref name, idx) => {
                     ei.matches[idx].push(@MatchedNonterminal(

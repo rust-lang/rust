@@ -269,12 +269,9 @@ impl CodeMap {
 
     pub fn new_filemap(&self, filename: FileName, src: @str) -> @FileMap {
         let mut files = self.files.borrow_mut();
-        let start_pos = if files.get().len() == 0 {
-            0
-        } else {
-            let last_start = files.get().last().start_pos.to_uint();
-            let last_len = files.get().last().src.len();
-            last_start + last_len
+        let start_pos = match files.get().last() {
+            None => 0,
+            Some(last) => last.start_pos.to_uint() + last.src.len(),
         };
 
         let filemap = @FileMap {

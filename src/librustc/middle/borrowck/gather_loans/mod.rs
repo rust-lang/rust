@@ -339,7 +339,7 @@ impl<'a> GatherLoanCtxt<'a> {
     }
 
     pub fn pop_repeating_id(&mut self, id: ast::NodeId) {
-        let popped = self.repeating_ids.pop();
+        let popped = self.repeating_ids.pop().unwrap();
         assert_eq!(id, popped);
     }
 
@@ -445,7 +445,7 @@ impl<'a> GatherLoanCtxt<'a> {
             return;
         }
 
-        let root_ub = { *self.repeating_ids.last() }; // FIXME(#5074)
+        let root_ub = { *self.repeating_ids.last().unwrap() }; // FIXME(#5074)
 
         // Check that the lifetime of the borrow does not exceed
         // the lifetime of the data being borrowed.

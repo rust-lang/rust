@@ -396,8 +396,11 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
         let llbb = self.get_or_create_landing_pad();
 
         // Push the scopes we removed back on:
-        while !popped_scopes.is_empty() {
-            self.push_scope(popped_scopes.pop());
+        loop {
+            match popped_scopes.pop() {
+                Some(scope) => self.push_scope(scope),
+                None => break
+            }
         }
 
         assert_eq!(self.scopes_len(), orig_scopes_len);
@@ -470,12 +473,12 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
                self.scopes_len() - 1);
 
         let mut scopes = self.scopes.borrow_mut();
-        scopes.get().pop()
+        scopes.get().pop().unwrap()
     }
 
     fn top_scope<R>(&self, f: |&CleanupScope<'a>| -> R) -> R {
         let scopes = self.scopes.borrow();
-        f(scopes.get().last())
+        f(scopes.get().last().unwrap())
     }
 
     fn trans_cleanups_to_exit_scope(&self,
@@ -568,7 +571,7 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
             // and this scope is that loop, then stop popping and set
             // `prev_llbb` to the appropriate exit block from the loop.
             popped_scopes.push(self.pop_scope());
-            let scope = popped_scopes.last();
+            let scope = popped_scopes.last().unwrap();
             match label {
                 UnwindExit | ReturnExit => { }
                 LoopExit(id, exit) => {
@@ -608,7 +611,7 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
         // At this point, `popped_scopes` is empty, and so the final block
         // that we return to the user is `Cleanup(AST 24)`.
         while !popped_scopes.is_empty() {
-            let mut scope = popped_scopes.pop();
+            let mut scope = popped_scopes.pop().unwrap();
 
             if scope.cleanups.iter().any(|c| cleanup_is_suitable_for(*c, label))
             {

@@ -150,7 +150,7 @@ impl RegionVarBindings {
         debug!("RegionVarBindings: commit()");
         let mut undo_log = self.undo_log.borrow_mut();
         while undo_log.get().len() > 0 {
-            undo_log.get().pop();
+            undo_log.get().pop().unwrap();
         }
     }
 
@@ -158,14 +158,14 @@ impl RegionVarBindings {
         debug!("RegionVarBindings: rollback_to({})", snapshot);
         let mut undo_log = self.undo_log.borrow_mut();
         while undo_log.get().len() > snapshot {
-            let undo_item = undo_log.get().pop();
+            let undo_item = undo_log.get().pop().unwrap();
             debug!("undo_item={:?}", undo_item);
             match undo_item {
               Snapshot => {}
               AddVar(vid) => {
                 let mut var_origins = self.var_origins.borrow_mut();
                 assert_eq!(var_origins.get().len(), vid.to_uint() + 1);
-                var_origins.get().pop();
+                var_origins.get().pop().unwrap();
               }
               AddConstraint(ref constraint) => {
                 let mut constraints = self.constraints.borrow_mut();
@@ -1234,7 +1234,7 @@ impl RegionVarBindings {
         process_edges(self, &mut state, graph, orig_node_idx, dir);
 
         while !state.stack.is_empty() {
-            let node_idx = state.stack.pop();
+            let node_idx = state.stack.pop().unwrap();
             let classification = var_data[node_idx.to_uint()].classification;
 
             // check whether we've visited this node on some previous walk

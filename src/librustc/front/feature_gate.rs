@@ -179,17 +179,17 @@ impl Visitor<()> for Context {
     fn visit_mac(&mut self, macro: &ast::Mac, _: ()) {
         let ast::MacInvocTT(ref path, _, _) = macro.node;
 
-        if path.segments.last().identifier == self.sess.ident_of("macro_rules") {
+        if path.segments.last().unwrap().identifier == self.sess.ident_of("macro_rules") {
             self.gate_feature("macro_rules", path.span, "macro definitions are \
                 not stable enough for use and are subject to change");
         }
 
-        else if path.segments.last().identifier == self.sess.ident_of("asm") {
+        else if path.segments.last().unwrap().identifier == self.sess.ident_of("asm") {
             self.gate_feature("asm", path.span, "inline assembly is not \
                 stable enough for use and is subject to change");
         }
 
-        else if path.segments.last().identifier == self.sess.ident_of("log_syntax") {
+        else if path.segments.last().unwrap().identifier == self.sess.ident_of("log_syntax") {
             self.gate_feature("log_syntax", path.span, "`log_syntax!` is not \
                 stable enough for use and is subject to change");
         }

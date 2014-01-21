@@ -275,7 +275,7 @@ pub fn run(mut crate: clean::Crate, dst: Path) {
         for (i, (&id, &(ref fqp, short))) in cache.paths.iter().enumerate() {
             if i > 0 { write!(w, ","); }
             write!(w, "'{}':\\{type:'{}',name:'{}'\\}",
-                   id, short, *fqp.last());
+                   id, short, *fqp.last().unwrap());
         }
         write!(w, "\\};");
         w.flush();
@@ -427,7 +427,7 @@ impl<'a> SourceCollector<'a> {
                 }
             }
         }
-        let contents = str::from_utf8_owned(contents);
+        let contents = str::from_utf8_owned(contents).unwrap();
 
         // Create the intermediate directories
         let mut cur = self.dst.clone();
@@ -522,7 +522,7 @@ impl DocFolder for Cache {
                     clean::TyMethodItem(..) |
                     clean::StructFieldItem(..) |
                     clean::VariantItem(..) => {
-                        Some((Some(*self.parent_stack.last()),
+                        Some((Some(*self.parent_stack.last().unwrap()),
                               self.stack.slice_to(self.stack.len() - 1)))
 
                     }
@@ -530,7 +530,7 @@ impl DocFolder for Cache {
                         if self.parent_stack.len() == 0 {
                             None
                         } else {
-                            let last = self.parent_stack.last();
+                            let last = self.parent_stack.last().unwrap();
                             let amt = match self.paths.find(last) {
                                 Some(&(_, "trait")) => self.stack.len() - 1,
                                 Some(..) | None => self.stack.len(),
@@ -635,8 +635,8 @@ impl DocFolder for Cache {
             i => i,
         };
 
-        if pushed { self.stack.pop(); }
-        if parent_pushed { self.parent_stack.pop(); }
+        if pushed { self.stack.pop().unwrap(); }
+        if parent_pushed { self.parent_stack.pop().unwrap(); }
         self.privmod = orig_privmod;
         return ret;
     }
@@ -673,7 +673,7 @@ impl Context {
         self.dst = prev;
         let len = self.root_path.len();
         self.root_path.truncate(len - 3);
-        self.current.pop();
+        self.current.pop().unwrap();
 
         return ret;
     }
@@ -693,11 +693,13 @@ impl Context {
         local_data::set(cache_key, Arc::new(cache));
 
         let mut work = ~[(self, item)];
-        while work.len() > 0 {
-            let (mut cx, item) = work.pop();
-            cx.item(item, |cx, item| {
-                work.push((cx.clone(), item));
-            })
+        loop {
+            match work.pop() {
+                Some((mut cx, item)) => cx.item(item, |cx, item| {
+                    work.push((cx.clone(), item));
+                }),
+                None => break,
+            }
         }
     }
 
