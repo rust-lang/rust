@@ -12,7 +12,6 @@
 
 use c_str::ToCStr;
 use libc::{c_char, size_t, uintptr_t};
-use rt::borrowck;
 
 #[cold]
 #[lang="fail_"]
@@ -41,43 +40,4 @@ pub unsafe fn local_malloc(td: *c_char, size: uintptr_t) -> *c_char {
 #[inline]
 pub unsafe fn local_free(ptr: *c_char) {
     ::rt::local_heap::local_free(ptr);
-}
-
-#[lang="borrow_as_imm"]
-#[inline]
-pub unsafe fn borrow_as_imm(a: *u8, file: *c_char, line: size_t) -> uint {
-    borrowck::borrow_as_imm(a, file, line)
-}
-
-#[lang="borrow_as_mut"]
-#[inline]
-pub unsafe fn borrow_as_mut(a: *u8, file: *c_char, line: size_t) -> uint {
-    borrowck::borrow_as_mut(a, file, line)
-}
-
-#[lang="record_borrow"]
-pub unsafe fn record_borrow(a: *u8, old_ref_count: uint,
-                            file: *c_char, line: size_t) {
-    borrowck::record_borrow(a, old_ref_count, file, line)
-}
-
-#[lang="unrecord_borrow"]
-pub unsafe fn unrecord_borrow(a: *u8, old_ref_count: uint,
-                              file: *c_char, line: size_t) {
-    borrowck::unrecord_borrow(a, old_ref_count, file, line)
-}
-
-#[lang="return_to_mut"]
-#[inline]
-pub unsafe fn return_to_mut(a: *u8, orig_ref_count: uint,
-                            file: *c_char, line: size_t) {
-    borrowck::return_to_mut(a, orig_ref_count, file, line)
-}
-
-#[lang="check_not_borrowed"]
-#[inline]
-pub unsafe fn check_not_borrowed(a: *u8,
-                                 file: *c_char,
-                                 line: size_t) {
-    borrowck::check_not_borrowed(a, file, line)
 }

@@ -39,89 +39,91 @@ pub struct Config {
     uint_type: UintTy,
 }
 
-pub static verbose:                 uint = 1 <<  0;
-pub static time_passes:             uint = 1 <<  1;
-pub static count_llvm_insns:        uint = 1 <<  2;
-pub static time_llvm_passes:        uint = 1 <<  3;
-pub static trans_stats:             uint = 1 <<  4;
-pub static asm_comments:            uint = 1 <<  5;
-pub static no_verify:               uint = 1 <<  6;
-pub static borrowck_stats:          uint = 1 <<  7;
-pub static borrowck_note_pure:      uint = 1 <<  8;
-pub static borrowck_note_loan:      uint = 1 <<  9;
-pub static no_landing_pads:         uint = 1 << 10;
-pub static debug_llvm:              uint = 1 << 11;
-pub static count_type_sizes:        uint = 1 << 12;
-pub static meta_stats:              uint = 1 << 13;
-pub static no_opt:                  uint = 1 << 14;
-pub static gc:                      uint = 1 << 15;
-pub static debug_info:              uint = 1 << 16;
-pub static extra_debug_info:        uint = 1 << 17;
-pub static print_link_args:         uint = 1 << 18;
-pub static no_debug_borrows:        uint = 1 << 19;
-pub static lint_llvm:               uint = 1 << 20;
-pub static print_llvm_passes:       uint = 1 << 21;
-pub static no_vectorize_loops:      uint = 1 << 22;
-pub static no_vectorize_slp:        uint = 1 << 23;
-pub static no_prepopulate_passes:   uint = 1 << 24;
-pub static use_softfp:              uint = 1 << 25;
-pub static gen_crate_map:           uint = 1 << 26;
-pub static prefer_dynamic:          uint = 1 << 27;
-pub static no_integrated_as:        uint = 1 << 28;
-pub static lto:                     uint = 1 << 29;
+macro_rules! debugging_opts(
+    ([ $opt:ident ] $cnt:expr ) => (
+        pub static $opt: u64 = 1 << $cnt;
+    );
+    ([ $opt:ident, $($rest:ident),* ] $cnt:expr ) => (
+        pub static $opt: u64 = 1 << $cnt;
+        debugging_opts!([ $($rest),* ] $cnt + 1)
+    )
+)
 
-pub fn debugging_opts_map() -> ~[(&'static str, &'static str, uint)] {
-    ~[("verbose", "in general, enable more debug printouts", verbose),
-     ("time-passes", "measure time of each rustc pass", time_passes),
+debugging_opts!(
+    [
+        VERBOSE,
+        TIME_PASSES,
+        COUNT_LLVM_INSNS,
+        TIME_LLVM_PASSES,
+        TRANS_STATS,
+        ASM_COMMENTS,
+        NO_VERIFY,
+        BORROWCK_STATS,
+        NO_LANDING_PADS,
+        DEBUG_LLVM,
+        COUNT_TYPE_SIZES,
+        META_STATS,
+        NO_OPT,
+        GC,
+        DEBUG_INFO,
+        EXTRA_DEBUG_INFO,
+        PRINT_LINK_ARGS,
+        PRINT_LLVM_PASSES,
+        NO_VECTORIZE_LOOPS,
+        NO_VECTORIZE_SLP,
+        NO_PREPOPULATE_PASSES,
+        USE_SOFTFP,
+        GEN_CRATE_MAP,
+        PREFER_DYNAMIC,
+        NO_INTEGRATED_AS,
+        LTO
+    ]
+    0
+)
+
+pub fn debugging_opts_map() -> ~[(&'static str, &'static str, u64)] {
+    ~[("verbose", "in general, enable more debug printouts", VERBOSE),
+     ("time-passes", "measure time of each rustc pass", TIME_PASSES),
      ("count-llvm-insns", "count where LLVM \
-                           instrs originate", count_llvm_insns),
+                           instrs originate", COUNT_LLVM_INSNS),
      ("time-llvm-passes", "measure time of each LLVM pass",
-      time_llvm_passes),
-     ("trans-stats", "gather trans statistics", trans_stats),
-     ("asm-comments", "generate comments into the assembly (may change behavior)", asm_comments),
-     ("no-verify", "skip LLVM verification", no_verify),
-     ("borrowck-stats", "gather borrowck statistics",  borrowck_stats),
-     ("borrowck-note-pure", "note where purity is req'd",
-      borrowck_note_pure),
-     ("borrowck-note-loan", "note where loans are req'd",
-      borrowck_note_loan),
+      TIME_LLVM_PASSES),
+     ("trans-stats", "gather trans statistics", TRANS_STATS),
+     ("asm-comments", "generate comments into the assembly (may change behavior)",
+      ASM_COMMENTS),
+     ("no-verify", "skip LLVM verification", NO_VERIFY),
+     ("borrowck-stats", "gather borrowck statistics",  BORROWCK_STATS),
      ("no-landing-pads", "omit landing pads for unwinding",
-      no_landing_pads),
-     ("debug-llvm", "enable debug output from LLVM", debug_llvm),
+      NO_LANDING_PADS),
+     ("debug-llvm", "enable debug output from LLVM", DEBUG_LLVM),
      ("count-type-sizes", "count the sizes of aggregate types",
-      count_type_sizes),
-     ("meta-stats", "gather metadata statistics", meta_stats),
-     ("no-opt", "do not optimize, even if -O is passed", no_opt),
-     ("print-link-args", "Print the arguments passed to the linker", print_link_args),
-     ("gc", "Garbage collect shared data (experimental)", gc),
+      COUNT_TYPE_SIZES),
+     ("meta-stats", "gather metadata statistics", META_STATS),
+     ("no-opt", "do not optimize, even if -O is passed", NO_OPT),
+     ("print-link-args", "Print the arguments passed to the linker",
+      PRINT_LINK_ARGS),
+     ("gc", "Garbage collect shared data (experimental)", GC),
      ("extra-debug-info", "Extra debugging info (experimental)",
-      extra_debug_info),
-     ("debug-info", "Produce debug info (experimental)", debug_info),
-     ("no-debug-borrows",
-      "do not show where borrow checks fail",
-      no_debug_borrows),
-     ("lint-llvm",
-      "Run the LLVM lint pass on the pre-optimization IR",
-      lint_llvm),
+      EXTRA_DEBUG_INFO),
+     ("debug-info", "Produce debug info (experimental)", DEBUG_INFO),
      ("print-llvm-passes",
       "Prints the llvm optimization passes being run",
-      print_llvm_passes),
+      PRINT_LLVM_PASSES),
      ("no-prepopulate-passes",
       "Don't pre-populate the pass managers with a list of passes, only use \
         the passes from --passes",
-      no_prepopulate_passes),
+      NO_PREPOPULATE_PASSES),
      ("no-vectorize-loops",
       "Don't run the loop vectorization optimization passes",
-      no_vectorize_loops),
-     ("no-vectorize-slp",
-      "Don't run LLVM's SLP vectorization passes",
-      no_vectorize_slp),
-     ("soft-float", "Generate software floating point library calls", use_softfp),
-     ("gen-crate-map", "Force generation of a toplevel crate map", gen_crate_map),
-     ("prefer-dynamic", "Prefer dynamic linking to static linking", prefer_dynamic),
+      NO_VECTORIZE_LOOPS),
+     ("no-vectorize-slp", "Don't run LLVM's SLP vectorization passes",
+      NO_VECTORIZE_SLP),
+     ("soft-float", "Generate software floating point library calls", USE_SOFTFP),
+     ("gen-crate-map", "Force generation of a toplevel crate map", GEN_CRATE_MAP),
+     ("prefer-dynamic", "Prefer dynamic linking to static linking", PREFER_DYNAMIC),
      ("no-integrated-as",
-      "Use external assembler rather than LLVM's integrated one", no_integrated_as),
-     ("lto", "Perform LLVM link-time optimizations", lto),
+      "Use external assembler rather than LLVM's integrated one", NO_INTEGRATED_AS),
+     ("lto", "Perform LLVM link-time optimizations", LTO),
     ]
 }
 
@@ -168,7 +170,7 @@ pub struct Options {
     parse_only: bool,
     no_trans: bool,
     no_analysis: bool,
-    debugging_opts: uint,
+    debugging_opts: u64,
     android_cross_path: Option<~str>,
     /// Whether to write dependency files. It's (enabled, optional filename).
     write_dependency_info: (bool, Option<Path>),
@@ -291,66 +293,56 @@ impl Session_ {
     pub fn diagnostic(&self) -> @diagnostic::SpanHandler {
         self.span_diagnostic
     }
-    pub fn debugging_opt(&self, opt: uint) -> bool {
-        (self.opts.debugging_opts & opt) != 0u
+    pub fn debugging_opt(&self, opt: u64) -> bool {
+        (self.opts.debugging_opts & opt) != 0
     }
     // This exists to help with refactoring to eliminate impossible
     // cases later on
     pub fn impossible_case(&self, sp: Span, msg: &str) -> ! {
         self.span_bug(sp, format!("Impossible case reached: {}", msg));
     }
-    pub fn verbose(&self) -> bool { self.debugging_opt(verbose) }
-    pub fn time_passes(&self) -> bool { self.debugging_opt(time_passes) }
+    pub fn verbose(&self) -> bool { self.debugging_opt(VERBOSE) }
+    pub fn time_passes(&self) -> bool { self.debugging_opt(TIME_PASSES) }
     pub fn count_llvm_insns(&self) -> bool {
-        self.debugging_opt(count_llvm_insns)
+        self.debugging_opt(COUNT_LLVM_INSNS)
     }
     pub fn count_type_sizes(&self) -> bool {
-        self.debugging_opt(count_type_sizes)
+        self.debugging_opt(COUNT_TYPE_SIZES)
     }
     pub fn time_llvm_passes(&self) -> bool {
-        self.debugging_opt(time_llvm_passes)
+        self.debugging_opt(TIME_LLVM_PASSES)
     }
-    pub fn trans_stats(&self) -> bool { self.debugging_opt(trans_stats) }
-    pub fn meta_stats(&self) -> bool { self.debugging_opt(meta_stats) }
-    pub fn asm_comments(&self) -> bool { self.debugging_opt(asm_comments) }
-    pub fn no_verify(&self) -> bool { self.debugging_opt(no_verify) }
-    pub fn lint_llvm(&self) -> bool { self.debugging_opt(lint_llvm) }
-    pub fn borrowck_stats(&self) -> bool { self.debugging_opt(borrowck_stats) }
-    pub fn borrowck_note_pure(&self) -> bool {
-        self.debugging_opt(borrowck_note_pure)
-    }
-    pub fn borrowck_note_loan(&self) -> bool {
-        self.debugging_opt(borrowck_note_loan)
-    }
-    pub fn debug_borrows(&self) -> bool {
-        self.opts.optimize == No && !self.debugging_opt(no_debug_borrows)
-    }
+    pub fn trans_stats(&self) -> bool { self.debugging_opt(TRANS_STATS) }
+    pub fn meta_stats(&self) -> bool { self.debugging_opt(META_STATS) }
+    pub fn asm_comments(&self) -> bool { self.debugging_opt(ASM_COMMENTS) }
+    pub fn no_verify(&self) -> bool { self.debugging_opt(NO_VERIFY) }
+    pub fn borrowck_stats(&self) -> bool { self.debugging_opt(BORROWCK_STATS) }
     pub fn print_llvm_passes(&self) -> bool {
-        self.debugging_opt(print_llvm_passes)
+        self.debugging_opt(PRINT_LLVM_PASSES)
     }
     pub fn no_prepopulate_passes(&self) -> bool {
-        self.debugging_opt(no_prepopulate_passes)
+        self.debugging_opt(NO_PREPOPULATE_PASSES)
     }
     pub fn no_vectorize_loops(&self) -> bool {
-        self.debugging_opt(no_vectorize_loops)
+        self.debugging_opt(NO_VECTORIZE_LOOPS)
     }
     pub fn no_vectorize_slp(&self) -> bool {
-        self.debugging_opt(no_vectorize_slp)
+        self.debugging_opt(NO_VECTORIZE_SLP)
     }
     pub fn gen_crate_map(&self) -> bool {
-        self.debugging_opt(gen_crate_map)
+        self.debugging_opt(GEN_CRATE_MAP)
     }
     pub fn prefer_dynamic(&self) -> bool {
-        self.debugging_opt(prefer_dynamic)
+        self.debugging_opt(PREFER_DYNAMIC)
     }
     pub fn no_integrated_as(&self) -> bool {
-        self.debugging_opt(no_integrated_as)
+        self.debugging_opt(NO_INTEGRATED_AS)
     }
     pub fn lto(&self) -> bool {
-        self.debugging_opt(lto)
+        self.debugging_opt(LTO)
     }
     pub fn no_landing_pads(&self) -> bool {
-        self.debugging_opt(no_landing_pads)
+        self.debugging_opt(NO_LANDING_PADS)
     }
 
     // pointless function, now...
@@ -396,7 +388,7 @@ pub fn basic_options() -> @Options {
         parse_only: false,
         no_trans: false,
         no_analysis: false,
-        debugging_opts: 0u,
+        debugging_opts: 0,
         android_cross_path: None,
         write_dependency_info: (false, None),
         print_metas: (false, false, false),
