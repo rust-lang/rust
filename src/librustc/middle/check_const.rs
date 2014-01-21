@@ -177,11 +177,10 @@ pub fn check_expr(v: &mut CheckCrateVisitor,
                 }
             }
           }
-          ExprParen(e) => { check_expr(v, sess, def_map, method_map,
-                                        tcx, e, is_const); }
           ExprVstore(_, ExprVstoreSlice) |
           ExprVec(_, MutImmutable) |
           ExprAddrOf(MutImmutable, _) |
+          ExprParen(..) |
           ExprField(..) |
           ExprIndex(..) |
           ExprTup(..) |
