@@ -1836,7 +1836,7 @@ impl TypeNames {
         unsafe {
             let s = llvm::LLVMTypeToString(ty.to_ref());
             let ret = from_c_str(s);
-            free(s as *c_void);
+            free(s as *mut c_void);
             ret
         }
     }
@@ -1850,7 +1850,7 @@ impl TypeNames {
         unsafe {
             let s = llvm::LLVMValueToString(val);
             let ret = from_c_str(s);
-            free(s as *c_void);
+            free(s as *mut c_void);
             ret
         }
     }

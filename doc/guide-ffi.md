@@ -230,7 +230,7 @@ impl<T: Send> Drop for Unique<T> {
             // We need to move the object out of the box, so that
             // the destructor is called (at the end of this scope.)
             ptr::replace_ptr(self.ptr, x);
-            free(self.ptr as *c_void)
+            free(self.ptr as *mut c_void)
         }
     }
 }

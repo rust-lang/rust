@@ -53,7 +53,7 @@ fn deflate_bytes_internal(bytes: &[u8], flags: c_int) -> ~[u8] {
         assert!(res as int != 0);
             let out = vec::raw::from_buf_raw(res as *u8,
                                              outsz as uint);
-        libc::free(res);
+        libc::free(res as *mut c_void);
         out
     }
 }
@@ -76,7 +76,7 @@ fn inflate_bytes_internal(bytes: &[u8], flags: c_int) -> ~[u8] {
         assert!(res as int != 0);
         let out = vec::raw::from_buf_raw(res as *u8,
                                          outsz as uint);
-        libc::free(res);
+        libc::free(res as *mut c_void);
         out
     }
 }
