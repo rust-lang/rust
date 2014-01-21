@@ -249,6 +249,143 @@ fn main() {
 }
 ~~~~
 
+# Callbacks from C code to Rust functions
+
+Some external libraries require the usage of callbacks to report back their
+current state or intermediate data to the caller.
+It is possible to pass functions defined in Rust to an external library.
+The requirement for this is that the callback function is marked as `extern`
+with the correct calling convention to make it callable from C code.
+
+The callback function that can then be sent to through a registration call
+to the C library and afterwards be invoked from there.
+
+A basic example is:
+
+Rust code:
+~~~~ {.xfail-test}
+extern fn callback(a:i32) {
+    println!("I'm called from C with value {0}", a);
+}
+
+#[link(name = "extlib")]
+extern {
+   fn register_callback(cb: extern "C" fn(i32)) -> i32;
+   fn trigger_callback();
+}
+
+fn main() {
+    unsafe {
+        register_callback(callback);
+        trigger_callback(); // Triggers the callback
+    }
+}
+~~~~
+
+C code:
+~~~~ {.xfail-test}
+typedef void (*rust_callback)(int32_t);
+rust_callback cb;
+
+int32_t register_callback(rust_callback callback) {
+    cb = callback;
+    return 1;
+}
+
+void trigger_callback() {
+  cb(7); // Will call callback(7) in Rust
+}
+~~~~
+
+In this example will Rust's `main()` will call `do_callback()` in C,
+which would call back to `callback()` in Rust.
+
+
+## Targetting callbacks to Rust objects
+
+The former example showed how a global function can be called from C-Code.
+However it is often desired that the callback is targetted to a special
+Rust object. This could be the object that represents the wrapper for the
+respective C object. 
+
+This can be achieved by passing an unsafe pointer to the object down to the
+C library. The C library can then include the pointer to the Rust object in
+the notification. This will provide a unsafe possibility to access the 
+referenced Rust object in callback.
+
+Rust code:
+~~~~ {.xfail-test}
+
+struct RustObject {
+    a: i32,
+    // other members
+}
+
+extern fn callback(target: *RustObject, a:i32) {
+    println!("I'm called from C with value {0}", a);
+    (*target).a = a; // Update the value in RustObject with the value received from the callback
+}
+
+#[link(name = "extlib")]
+extern {
+   fn register_callback(target: *RustObject, cb: extern "C" fn(*RustObject, i32)) -> i32;
+   fn trigger_callback();
+}
+
+fn main() {
+    // Create the object that will be referenced in the callback
+    let rust_object = ~RustObject{a: 5, ...};
+     
+    unsafe {
+        // Gets a raw pointer to the object
+        let target_addr:*RustObject = ptr::to_unsafe_ptr(rust_object);
+        register_callback(target_addr, callback);
+        trigger_callback(); // Triggers the callback
+    }
+}
+~~~~
+
+C code:
+~~~~ {.xfail-test}
+typedef void (*rust_callback)(int32_t);
+void* cb_target;
+rust_callback cb;
+
+int32_t register_callback(void* callback_target, rust_callback callback) {
+    cb_target = callback_target;
+    cb = callback;
+    return 1;
+}
+
+void trigger_callback() {
+  cb(cb_target, 7); // Will call callback(&rustObject, 7) in Rust
+}
+~~~~
+
+## Asynchronous callbacks
+
+In the already given examples the callbacks are invoked as a direct reaction
+to a function call to the external C library.
+The control over the current thread switched from Rust to C to Rust for the
+execution of the callback, but in the end the callback is executed on the
+same thread (and Rust task) that lead called the function which triggered
+the callback.
+
+Things get more complicated when the external library spawns it's own threads
+and invokes callbacks from there.
+In these cases access to Rust data structures inside he callbacks is
+especially unsafe and proper synchronization mechanisms must be used.
+Besides classical synchronization mechanisms like mutexes one possibility in
+Rust is to use channels (in `std::comm`) to forward data from the C thread
+that invoked the callback into a Rust task.
+
+If an asychronous callback targets a special object in the Rust address space
+it is also absolutely necessary that no more callbacks are performed by the 
+C library after the respective Rust object get's destroyed. 
+This can be achieved by unregistering the callback it the object's
+destructor and designing the library in a way that guarantees that no
+callback will be performed after unregistration.
+
 # Linking
 
 The `link` attribute on `extern` blocks provides the basic building block for
