@@ -1720,6 +1720,7 @@ impl<'a, 'b> Visitor<()> for MacroDefVisitor<'a, 'b> {
             }
             _ => {}
         }
+        visit::walk_item(self, item, ());
     }
 }
 
