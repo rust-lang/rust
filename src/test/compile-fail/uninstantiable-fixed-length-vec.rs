@@ -8,15 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:macro_crate_test.rs
-// xfail-stage1
-// xfail-android
+// issue #11659, the compiler needs to know that a fixed length vector
+// always requires instantiable contents to instantiable itself
+// (unlike a ~[] vector which can have length zero).
 
-#[feature(phase)];
+// ~ to avoid infinite size.
+struct Uninstantiable { //~ ERROR cannot be instantiated without an instance of itself
+    p: ~[Uninstantiable, .. 1]
+}
 
-#[phase(syntax)]
-extern mod macro_crate_test;
+struct Instantiable { p: ~[Instantiable, .. 0] }
+
 
 fn main() {
-    assert_eq!(3, unexported_macro!()); //~ ERROR macro undefined: 'unexported_macro'
+    let _ = None::<Uninstantiable>;
+    let _ = Instantiable { p: ~([]) };
 }

@@ -940,7 +940,7 @@ pub fn invoke<'a>(
         }
     }
 
-    if bcx.fcx.needs_invoke() {
+    if need_invoke(bcx) {
         unsafe {
             debug!("invoking {} at {}", llfn, bcx.llbb);
             for &llarg in llargs.iter() {

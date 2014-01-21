@@ -1,4 +1,4 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:macro_crate_test.rs
-// xfail-stage1
+// compile-flags: -Z no-landing-pads
 // xfail-fast
-// xfail-android
 
-#[feature(phase)];
+use std::task;
 
-#[phase(syntax)]
-extern mod macro_crate_test;
+static mut HIT: bool = false;
 
-pub fn main() {
-    assert_eq!(1, make_a_1!());
-    assert_eq!(2, exported_macro!());
+struct A;
+
+impl Drop for A {
+    fn drop(&mut self) {
+        unsafe { HIT = true; }
+    }
+}
+
+fn main() {
+    do task::try::<()> {
+        let _a = A;
+        fail!();
+    };
+    assert!(unsafe { !HIT });
 }

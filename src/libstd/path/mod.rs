@@ -117,6 +117,20 @@ pub use StrComponents = self::windows::StrComponents;
 #[cfg(windows)]
 pub use RevStrComponents = self::windows::RevStrComponents;
 
+/// Alias for the platform-native separator character.
+#[cfg(unix)]
+pub use SEP = self::posix::SEP;
+/// Alias for the platform-native separator character.
+#[cfg(windows)]
+pub use SEP = self::windows::SEP;
+
+/// Alias for the platform-native separator byte.
+#[cfg(unix)]
+pub use SEP_BYTE = self::posix::SEP_BYTE;
+/// Alias for the platform-native separator byte.
+#[cfg(windows)]
+pub use SEP_BYTE = self::windows::SEP_BYTE;
+
 /// Typedef for the platform-native separator char func
 #[cfg(unix)]
 pub use is_sep = self::posix::is_sep;
@@ -386,7 +400,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
 
     /// Returns a Path that represents the filesystem root that `self` is rooted in.
     ///
-    /// If `self` is not absolute, or vol-relative in the case of Windows, this returns None.
+    /// If `self` is not absolute, or vol/cwd-relative in the case of Windows, this returns None.
     fn root_path(&self) -> Option<Self>;
 
     /// Pushes a path (as a byte vector or string) onto `self`.

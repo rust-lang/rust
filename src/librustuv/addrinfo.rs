@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use ai = std::io::net::addrinfo;
+use std::cast;
 use std::libc::c_int;
 use std::ptr::null;
 use std::rt::task::BlockedTask;
@@ -138,7 +139,8 @@ pub fn accum_addrinfo(addr: &Addrinfo) -> ~[ai::Info] {
 
         let mut addrs = ~[];
         loop {
-            let rustaddr = net::sockaddr_to_socket_addr((*addr).ai_addr);
+            let rustaddr = net::sockaddr_to_addr(cast::transmute((*addr).ai_addr),
+                                                 (*addr).ai_addrlen as uint);
 
             let mut flags = 0;
             each_ai_flag(|cval, aival| {

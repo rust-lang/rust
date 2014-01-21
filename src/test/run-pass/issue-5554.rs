@@ -10,30 +10,25 @@
 
 #[feature(macro_rules)];
 
-use std::num::Zero;
+use std::default::Default;
 
 pub struct X<T> {
-  a: T
+    a: T,
 }
 
 // reordering these bounds stops the ICE
-impl<T: Zero + Eq + Zero>
-  Zero for X<T> {
-    fn zero() -> X<T> {
-      X { a: Zero::zero() }
-    }
-    fn is_zero(&self) -> bool {
-        self.a.is_zero()
+impl<T: Default + Eq + Default> Default for X<T> {
+    fn default() -> X<T> {
+        X { a: Default::default() }
     }
 }
 
 macro_rules! constants {
-  () => {
-    let _0 : X<int> = Zero::zero();
-   }
+    () => {
+        let _ : X<int> = Default::default();
+    }
 }
 
-
 pub fn main() {
-  constants!();
+    constants!();
 }

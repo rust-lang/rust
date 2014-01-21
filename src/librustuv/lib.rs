@@ -47,7 +47,7 @@ via `close` and `delete` methods.
 use std::cast;
 use std::io;
 use std::io::IoError;
-use std::libc::{c_int, malloc};
+use std::libc::c_int;
 use std::ptr::null;
 use std::ptr;
 use std::rt::local::Local;

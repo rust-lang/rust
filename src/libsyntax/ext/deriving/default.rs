@@ -70,8 +70,9 @@ fn default_substructure(cx: &ExtCtxt, span: Span, substr: &Substructure) -> @Exp
             }
         }
         StaticEnum(..) => {
-            cx.span_fatal(span, "`Default` cannot be derived for enums, \
-                                 only structs")
+            cx.span_err(span, "`Default` cannot be derived for enums, only structs");
+            // let compilation continue
+            cx.expr_uint(span, 0)
         }
         _ => cx.bug("Non-static method in `deriving(Default)`")
     };

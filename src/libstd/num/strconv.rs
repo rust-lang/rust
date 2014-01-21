@@ -20,7 +20,8 @@ use str::{StrSlice};
 use str;
 use vec::{CopyableVector, ImmutableVector, MutableVector};
 use vec::OwnedVector;
-use num::{NumCast, Zero, One, cast, pow_with_uint, Integer};
+use num;
+use num::{NumCast, Zero, One, cast, Integer};
 use num::{Round, Float, FPNaN, FPInfinite, ToPrimitive};
 
 pub enum ExponentFormat {
@@ -648,10 +649,10 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Div<T,T>+
 
     if exp_found {
         let c = buf[i] as char;
-        let base = match (c, exponent) {
+        let base: T = match (c, exponent) {
             // c is never _ so don't need to handle specially
-            ('e', ExpDec) | ('E', ExpDec) => 10u,
-            ('p', ExpBin) | ('P', ExpBin) => 2u,
+            ('e', ExpDec) | ('E', ExpDec) => cast(10u).unwrap(),
+            ('p', ExpBin) | ('P', ExpBin) => cast(2u).unwrap(),
             _ => return None // char doesn't fit given exponent format
         };
 
@@ -664,9 +665,9 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Div<T,T>+
         match exp {
             Some(exp_pow) => {
                 multiplier = if exp_pow < 0 {
-                    _1 / pow_with_uint::<T>(base, (-exp_pow.to_int().unwrap()) as uint)
+                    _1 / num::pow(base, (-exp_pow.to_int().unwrap()) as uint)
                 } else {
-                    pow_with_uint::<T>(base, exp_pow.to_int().unwrap() as uint)
+                    num::pow(base, exp_pow.to_int().unwrap() as uint)
                 }
             }
             None => return None // invalid exponent -> invalid number

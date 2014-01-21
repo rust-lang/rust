@@ -237,8 +237,9 @@ impl<'a> FromBase64 for &'a str {
         }
 
         for (idx, byte) in it {
-            if (byte as char) != '=' {
-                return Err(InvalidBase64Character(self.char_at(idx), idx));
+            match byte as char {
+                '='|'\r'|'\n' => continue,
+                _ => return Err(InvalidBase64Character(self.char_at(idx), idx)),
             }
         }
 
@@ -310,6 +311,8 @@ mod test {
     fn test_from_base64_newlines() {
         assert_eq!("Zm9v\r\nYmFy".from_base64().unwrap(),
                    "foobar".as_bytes().to_owned());
+        assert_eq!("Zm9vYg==\r\n".from_base64().unwrap(),
+                   "foob".as_bytes().to_owned());
     }
 
     #[test]

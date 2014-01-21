@@ -206,7 +206,8 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
     }
 
     fn make_pp_args(config: &config, _testfile: &Path) -> ProcArgs {
-        let args = ~[~"-", ~"--pretty", ~"normal"];
+        let args = ~[~"-", ~"--pretty", ~"normal",
+                     ~"--target=" + config.target];
         // FIXME (#9639): This needs to handle non-utf8 paths
         return ProcArgs {prog: config.rustc_path.as_str().unwrap().to_owned(), args: args};
     }
@@ -237,9 +238,15 @@ actual:\n\
 
     fn make_typecheck_args(config: &config, props: &TestProps, testfile: &Path) -> ProcArgs {
         let aux_dir = aux_output_dir_name(config, testfile);
+        let target = if props.force_host {
+            config.host.as_slice()
+        } else {
+            config.target.as_slice()
+        };
         // FIXME (#9639): This needs to handle non-utf8 paths
         let mut args = ~[~"-",
                          ~"--no-trans", ~"--lib",
+                         ~"--target=" + target,
                          ~"-L", config.build_base.as_str().unwrap().to_owned(),
                          ~"-L",
                          aux_dir.as_str().unwrap().to_owned()];
