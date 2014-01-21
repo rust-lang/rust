@@ -318,7 +318,6 @@ pub fn Parser(sess: @ParseSess, cfg: ast::CrateConfig, rdr: @Reader)
         obsolete_set: HashSet::new(),
         mod_path_stack: ~[],
         open_braces: ~[],
-        non_copyable: util::NonCopyable
     }
 }
 
@@ -348,8 +347,6 @@ pub struct Parser {
     mod_path_stack: ~[@str],
     /// Stack of spans of open delimiters. Used for error message.
     open_braces: ~[Span],
-    /* do not copy the parser; its state is tied to outside state */
-    priv non_copyable: util::NonCopyable
 }
 
 fn is_plain_ident_or_underscore(t: &token::Token) -> bool {

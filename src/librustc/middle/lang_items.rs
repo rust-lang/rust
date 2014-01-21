@@ -215,6 +215,10 @@ lets_do_this! {
     SizedTraitLangItem,              "sized",                   sized_trait;
     PodTraitLangItem,                "pod",                     pod_trait;
 
+    NotPodLangItem,                  "not_pod",                 notpod_struct;
+    NotFreezeLangItem,               "not_freeze",              notfreeze_struct;
+    NotSend,                         "not_send",                notsend_struct;
+
     DropTraitLangItem,               "drop",                    drop_trait;
 
     AddTraitLangItem,                "add",                     add_trait;

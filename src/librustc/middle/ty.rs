@@ -2062,13 +2062,21 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
             }
 
             ty_struct(did, ref substs) => {
-                let flds = struct_fields(cx, did, substs);
-                let mut res =
-                    TypeContents::union(flds, |f| tc_mt(cx, f.mt, cache));
-                if ty::has_dtor(cx, did) {
-                    res = res | TC::OwnsDtor;
+                if Some(did) == cx.lang_items.notfreeze_struct() {
+                    TC::ReachesMutable
+                } else if Some(did) == cx.lang_items.notsend_struct() {
+                    TC::ReachesNonsendAnnot
+                } else if Some(did) == cx.lang_items.notpod_struct() {
+                    TC::OwnsOwned
+                } else {
+                    let flds = struct_fields(cx, did, substs);
+                    let mut res =
+                        TypeContents::union(flds, |f| tc_mt(cx, f.mt, cache));
+                    if ty::has_dtor(cx, did) {
+                        res = res | TC::OwnsDtor;
+                    }
+                    res
                 }
-                apply_attributes(cx, did, res)
             }
 
             ty_tup(ref tys) => {
@@ -2083,7 +2091,7 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                             tc_ty(cx, *arg_ty, cache)
                         })
                     });
-                apply_attributes(cx, did, res)
+                res
             }
 
             ty_param(p) => {
@@ -2143,15 +2151,6 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
     {
         let mc = TC::ReachesMutable.when(mt.mutbl == MutMutable);
         mc | tc_ty(cx, mt.ty, cache)
-    }
-
-    fn apply_attributes(cx: ctxt,
-                        did: ast::DefId,
-                        tc: TypeContents)
-                        -> TypeContents {
-        tc |
-            TC::ReachesMutable.when(has_attr(cx, did, "no_freeze")) |
-            TC::ReachesNonsendAnnot.when(has_attr(cx, did, "no_send"))
     }
 
     fn borrowed_contents(region: ty::Region,

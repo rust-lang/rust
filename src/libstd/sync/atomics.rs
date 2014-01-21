@@ -21,19 +21,19 @@
 
 #[allow(missing_doc)];
 
-use unstable::intrinsics;
 use cast;
-use option::{Option,Some,None};
+use kinds::NotPod;
 use libc::c_void;
 use ops::Drop;
-use util::NonCopyable;
+use option::{Option,Some,None};
+use unstable::intrinsics;
 
 /**
  * A simple atomic flag, that can be set and cleared. The most basic atomic type.
  */
 pub struct AtomicFlag {
     priv v: int,
-    priv nocopy: NonCopyable
+    priv nocopy: NotPod
 }
 
 /**
@@ -41,7 +41,7 @@ pub struct AtomicFlag {
  */
 pub struct AtomicBool {
     priv v: uint,
-    priv nocopy: NonCopyable
+    priv nocopy: NotPod
 }
 
 /**
@@ -49,7 +49,7 @@ pub struct AtomicBool {
  */
 pub struct AtomicInt {
     priv v: int,
-    priv nocopy: NonCopyable
+    priv nocopy: NotPod
 }
 
 /**
@@ -57,7 +57,7 @@ pub struct AtomicInt {
  */
 pub struct AtomicUint {
     priv v: uint,
-    priv nocopy: NonCopyable
+    priv nocopy: NotPod
 }
 
 /**
@@ -65,7 +65,7 @@ pub struct AtomicUint {
  */
 pub struct AtomicPtr<T> {
     priv p: *mut T,
-    priv nocopy: NonCopyable
+    priv nocopy: NotPod
 }
 
 /**
@@ -84,15 +84,15 @@ pub enum Ordering {
     SeqCst
 }
 
-pub static INIT_ATOMIC_FLAG : AtomicFlag = AtomicFlag { v: 0, nocopy: NonCopyable };
-pub static INIT_ATOMIC_BOOL : AtomicBool = AtomicBool { v: 0, nocopy: NonCopyable };
-pub static INIT_ATOMIC_INT  : AtomicInt  = AtomicInt  { v: 0, nocopy: NonCopyable };
-pub static INIT_ATOMIC_UINT : AtomicUint = AtomicUint { v: 0, nocopy: NonCopyable };
+pub static INIT_ATOMIC_FLAG : AtomicFlag = AtomicFlag { v: 0, nocopy: NotPod };
+pub static INIT_ATOMIC_BOOL : AtomicBool = AtomicBool { v: 0, nocopy: NotPod };
+pub static INIT_ATOMIC_INT  : AtomicInt  = AtomicInt  { v: 0, nocopy: NotPod };
+pub static INIT_ATOMIC_UINT : AtomicUint = AtomicUint { v: 0, nocopy: NotPod };
 
 impl AtomicFlag {
 
     pub fn new() -> AtomicFlag {
-        AtomicFlag { v: 0, nocopy: NonCopyable }
+        AtomicFlag { v: 0, nocopy: NotPod }
     }
 
     /**
@@ -115,7 +115,7 @@ impl AtomicFlag {
 
 impl AtomicBool {
     pub fn new(v: bool) -> AtomicBool {
-        AtomicBool { v: if v { 1 } else { 0 }, nocopy: NonCopyable }
+        AtomicBool { v: if v { 1 } else { 0 }, nocopy: NotPod }
     }
 
     #[inline]
@@ -180,7 +180,7 @@ impl AtomicBool {
 
 impl AtomicInt {
     pub fn new(v: int) -> AtomicInt {
-        AtomicInt { v:v, nocopy: NonCopyable }
+        AtomicInt { v:v, nocopy: NotPod }
     }
 
     #[inline]
@@ -218,7 +218,7 @@ impl AtomicInt {
 
 impl AtomicUint {
     pub fn new(v: uint) -> AtomicUint {
-        AtomicUint { v:v, nocopy: NonCopyable }
+        AtomicUint { v:v, nocopy: NotPod }
     }
 
     #[inline]
@@ -256,7 +256,7 @@ impl AtomicUint {
 
 impl<T> AtomicPtr<T> {
     pub fn new(p: *mut T) -> AtomicPtr<T> {
-        AtomicPtr { p:p, nocopy: NonCopyable }
+        AtomicPtr { p:p, nocopy: NotPod }
     }
 
     #[inline]

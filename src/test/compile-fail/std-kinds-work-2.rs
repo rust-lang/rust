@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::kinds::NotSend;
+use std::kinds::NotFreeze;
 
-struct Foo { a: int, ns: NotSend }
+struct Foo {
+    np: NotFreeze,
+}
 
-fn bar<T: Send>(_: T) {}
+fn foo<T: Freeze>() {}
 
 fn main() {
-    let x = Foo { a: 5, ns: NotSend };
-    bar(x); //~ ERROR instantiating a type parameter with an incompatible type `Foo`, which does not fulfill `Send`
+    foo::<Foo>(); //~ ERROR: incompatible type
 }

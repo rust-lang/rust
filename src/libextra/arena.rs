@@ -64,7 +64,6 @@ struct Chunk {
 // different chunks than objects without destructors. This reduces
 // overhead when initializing plain-old-data and means we don't need
 // to waste time running the destructors of POD.
-#[no_freeze]
 pub struct Arena {
     // The head is separated out from the list as a unbenchmarked
     // microoptimization, to avoid needing to case on the list to

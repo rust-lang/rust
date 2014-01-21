@@ -44,10 +44,11 @@
 use sync;
 use sync::{Mutex, RWLock};
 
+use std::kinds::NotFreeze;
+use std::borrow;
 use std::cast;
 use std::sync::arc::UnsafeArc;
 use std::task;
-use std::borrow;
 
 /// As sync::condvar, a mechanism for unlock-and-descheduling and signaling.
 pub struct Condvar<'a> {
@@ -151,8 +152,10 @@ impl<T:Freeze + Send> Clone for Arc<T> {
 struct MutexArcInner<T> { priv lock: Mutex, priv failed: bool, priv data: T }
 
 /// An Arc with mutable data protected by a blocking mutex.
-#[no_freeze]
-pub struct MutexArc<T> { priv x: UnsafeArc<MutexArcInner<T>> }
+pub struct MutexArc<T> {
+    priv x: UnsafeArc<MutexArcInner<T>>,
+    priv nf: NotFreeze,
+}
 
 
 impl<T:Send> Clone for MutexArc<T> {
@@ -161,7 +164,7 @@ impl<T:Send> Clone for MutexArc<T> {
     fn clone(&self) -> MutexArc<T> {
         // NB: Cloning the underlying mutex is not necessary. Its reference
         // count would be exactly the same as the shared state's.
-        MutexArc { x: self.x.clone() }
+        MutexArc { x: self.x.clone(), nf: NotFreeze }
     }
 }
 
@@ -180,7 +183,7 @@ impl<T:Send> MutexArc<T> {
             lock: Mutex::new_with_condvars(num_condvars),
             failed: false, data: user_data
         };
-        MutexArc { x: UnsafeArc::new(data) }
+        MutexArc { x: UnsafeArc::new(data), nf: NotFreeze }
     }
 
     /**
@@ -319,16 +322,16 @@ struct RWArcInner<T> { priv lock: RWLock, priv failed: bool, priv data: T }
  *
  * Unlike mutex_arcs, rw_arcs are safe, because they cannot be nested.
  */
-#[no_freeze]
 pub struct RWArc<T> {
     priv x: UnsafeArc<RWArcInner<T>>,
+    priv nf: NotFreeze,
 }
 
 impl<T:Freeze + Send> Clone for RWArc<T> {
     /// Duplicate a rwlock-protected Arc. See arc::clone for more details.
     #[inline]
     fn clone(&self) -> RWArc<T> {
-        RWArc { x: self.x.clone() }
+        RWArc { x: self.x.clone(), nf: NotFreeze }
     }
 
 }
@@ -348,7 +351,7 @@ impl<T:Freeze + Send> RWArc<T> {
             lock: RWLock::new_with_condvars(num_condvars),
             failed: false, data: user_data
         };
-        RWArc { x: UnsafeArc::new(data), }
+        RWArc { x: UnsafeArc::new(data), nf: NotFreeze }
     }
 
     /**
