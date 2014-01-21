@@ -195,7 +195,7 @@ impl Matches {
 
     fn opt_val(&self, nm: &str) -> Option<Optval> {
         let vals = self.opt_vals(nm);
-        if (vals.is_empty()) {
+        if vals.is_empty() {
             None
         } else {
             Some(vals[0].clone())
@@ -797,7 +797,7 @@ pub mod groups {
         let slice: || = || { cont = it(ss.slice(slice_start, last_end)) };
 
         // if the limit is larger than the string, lower it to save cycles
-        if (lim >= fake_i) {
+        if lim >= fake_i {
             lim = fake_i;
         }
 

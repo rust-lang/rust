@@ -532,9 +532,9 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
             if !found_flags[i] {
                 debug!("prefix={} ee.kind={} ee.msg={} line={}",
                        prefixes[i], ee.kind, ee.msg, line);
-                if (prefix_matches(line, prefixes[i]) &&
+                if prefix_matches(line, prefixes[i]) &&
                     line.contains(ee.kind) &&
-                    line.contains(ee.msg)) {
+                    line.contains(ee.msg) {
                     found_flags[i] = true;
                     was_expected = true;
                     break;

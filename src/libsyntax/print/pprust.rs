@@ -774,7 +774,7 @@ pub fn print_tt(s: &mut State, tt: &ast::TokenTree) {
         word(&mut s.s, "$(");
         for tt_elt in (*tts).iter() { print_tt(s, tt_elt); }
         word(&mut s.s, ")");
-        match (*sep) {
+        match *sep {
           Some(ref tk) => word(&mut s.s, parse::token::to_str(s.intr, tk)),
           None => ()
         }

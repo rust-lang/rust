@@ -387,7 +387,7 @@ impl CodeMap {
                 a = m;
             }
         }
-        if (a >= len) {
+        if a >= len {
             fail!("position {} does not resolve to a source location", pos.to_uint())
         }
 

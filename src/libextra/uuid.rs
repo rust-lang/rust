@@ -614,16 +614,16 @@ mod test {
 
         // Test error reporting
         let e = Uuid::parse_string("67e5504410b1426f9247bb680e5fe0c").unwrap_err();
-        assert!(match(e){ ErrorInvalidLength(n) => n==31, _ => false });
+        assert!(match e { ErrorInvalidLength(n) => n==31, _ => false });
 
         let e = Uuid::parse_string("67e550X410b1426f9247bb680e5fe0cd").unwrap_err();
-        assert!(match(e){ ErrorInvalidCharacter(c, n) => c=='X' && n==6, _ => false });
+        assert!(match e { ErrorInvalidCharacter(c, n) => c=='X' && n==6, _ => false });
 
         let e = Uuid::parse_string("67e550-4105b1426f9247bb680e5fe0c").unwrap_err();
-        assert!(match(e){ ErrorInvalidGroups(n) => n==2, _ => false });
+        assert!(match e { ErrorInvalidGroups(n) => n==2, _ => false });
 
         let e = Uuid::parse_string("F9168C5E-CEB2-4faa-B6BF1-02BF39FA1E4").unwrap_err();
-        assert!(match(e){ ErrorInvalidGroupLength(g, n, e) => g==3 && n==5 && e==4, _ => false });
+        assert!(match e { ErrorInvalidGroupLength(g, n, e) => g==3 && n==5 && e==4, _ => false });
     }
 
     #[test]

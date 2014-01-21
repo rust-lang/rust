@@ -1039,7 +1039,7 @@ impl Resolver {
                 let mut duplicate_type = NoError;
                 let ns = match duplicate_checking_mode {
                     ForbidDuplicateModules => {
-                        if (child.get_module_if_available().is_some()) {
+                        if child.get_module_if_available().is_some() {
                             duplicate_type = ModuleError;
                         }
                         Some(TypeNS)
@@ -1074,7 +1074,7 @@ impl Resolver {
                     }
                     OverwriteDuplicates => None
                 };
-                if (duplicate_type != NoError) {
+                if duplicate_type != NoError {
                     // Return an error here by looking up the namespace that
                     // had the duplicate.
                     let ns = ns.unwrap();

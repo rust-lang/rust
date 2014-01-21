@@ -3393,7 +3393,7 @@ impl Parser {
 
         let mut attributes_box = attrs_remaining;
 
-        while (self.token != token::RBRACE) {
+        while self.token != token::RBRACE {
             // parsing items even when they're not allowed lets us give
             // better error messages and recover more gracefully.
             attributes_box.push_all(self.parse_outer_attributes());
@@ -4373,7 +4373,7 @@ impl Parser {
             items: _,
             foreign_items: foreign_items
         } = self.parse_foreign_items(first_item_attrs, true);
-        if (! attrs_remaining.is_empty()) {
+        if ! attrs_remaining.is_empty() {
             self.span_err(self.last_span,
                           "expected item after attributes");
         }
@@ -4553,7 +4553,7 @@ impl Parser {
             if !self.eat(&token::COMMA) { break; }
         }
         self.expect(&token::RBRACE);
-        if (have_disr && !all_nullary) {
+        if have_disr && !all_nullary {
             self.fatal("discriminator values can only be used with a c-like \
                         enum");
         }

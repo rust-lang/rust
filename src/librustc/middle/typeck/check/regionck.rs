@@ -740,7 +740,7 @@ fn constrain_regions_in_type(
         }
     });
 
-    return (e == rcx.errors_reported);
+    return e == rcx.errors_reported;
 }
 
 pub mod guarantor {
@@ -1175,7 +1175,7 @@ pub mod guarantor {
         let mut ct = ct;
         let tcx = rcx.fcx.ccx.tcx;
 
-        if (ty::type_is_error(ct.ty)) {
+        if ty::type_is_error(ct.ty) {
             ct.cat.pointer = NotPointer;
             return ct;
         }

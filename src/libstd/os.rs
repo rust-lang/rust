@@ -103,9 +103,9 @@ pub mod win32 {
                 let k = f(buf.as_mut_ptr(), TMPBUF_SZ as DWORD);
                 if k == (0 as DWORD) {
                     done = true;
-                } else if (k == n &&
-                           libc::GetLastError() ==
-                           libc::ERROR_INSUFFICIENT_BUFFER as DWORD) {
+                } else if k == n &&
+                          libc::GetLastError() ==
+                          libc::ERROR_INSUFFICIENT_BUFFER as DWORD {
                     n *= (2 as DWORD);
                 } else {
                     done = true;
@@ -159,7 +159,7 @@ pub fn env() -> ~[(~str,~str)] {
                 FreeEnvironmentStringsA
             };
             let ch = GetEnvironmentStringsA();
-            if (ch as uint == 0) {
+            if ch as uint == 0 {
                 fail!("os::env() failure getting env string from OS: {}",
                        os::last_os_error());
             }
@@ -176,7 +176,7 @@ pub fn env() -> ~[(~str,~str)] {
                 fn rust_env_pairs() -> **libc::c_char;
             }
             let environ = rust_env_pairs();
-            if (environ as uint == 0) {
+            if environ as uint == 0 {
                 fail!("os::env() failure getting env string from OS: {}",
                        os::last_os_error());
             }

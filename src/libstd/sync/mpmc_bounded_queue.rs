@@ -101,7 +101,7 @@ impl<T: Send> State<T> {
                 } else {
                     pos = enqueue_pos;
                 }
-            } else if (diff < 0) {
+            } else if diff < 0 {
                 return false
             } else {
                 pos = self.enqueue_pos.load(Relaxed);

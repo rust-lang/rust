@@ -46,7 +46,7 @@ impl Ident {
 
 impl Eq for Ident {
     fn eq(&self, other: &Ident) -> bool {
-        if (self.ctxt == other.ctxt) {
+        if self.ctxt == other.ctxt {
             self.name == other.name
         } else {
             // IF YOU SEE ONE OF THESE FAILS: it means that you're comparing
