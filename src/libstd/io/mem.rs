@@ -24,7 +24,7 @@ use vec::{Vector, ImmutableVector, MutableVector, OwnedCopyableVector};
 /// # Example
 ///
 /// ```rust
-/// use std::io::MemWriter;
+/// use std::io::mem::MemWriter;
 ///
 /// let mut w = MemWriter::new();
 /// w.write([0, 1, 2]);
@@ -110,7 +110,7 @@ impl Seek for MemWriter {
 /// # Example
 ///
 /// ```rust
-/// use std::io::MemReader;
+/// use std::io::mem::MemReader;
 ///
 /// let mut r = MemReader::new(~[0, 1, 2]);
 ///
@@ -183,7 +183,7 @@ impl Buffer for MemReader {
 /// # Example
 ///
 /// ```rust
-/// use std::io::BufWriter;
+/// use std::io::mem::BufWriter;
 ///
 /// let mut buf = [0, ..4];
 /// {
@@ -246,7 +246,7 @@ impl<'a> Seek for BufWriter<'a> {
 /// # Example
 ///
 /// ```rust
-/// use std::io::BufReader;
+/// use std::io::mem::BufReader;
 ///
 /// let mut buf = [0, 1, 2, 3];
 /// let mut r = BufReader::new(buf);
