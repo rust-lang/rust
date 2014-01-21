@@ -14,6 +14,11 @@ use metadata::loader::meta_section_name;
 use syntax::abi;
 
 pub fn get_target_strs(target_triple: ~str, target_os: abi::Os) -> target_strs::t {
+    let cc_args = if target_triple.contains("thumb") {
+        ~[~"-mthumb"]
+    } else {
+        ~[~"-marm"]
+    };
     return target_strs::t {
         module_asm: ~"",
 
@@ -63,6 +68,6 @@ pub fn get_target_strs(target_triple: ~str, target_os: abi::Os) -> target_strs::
 
         target_triple: target_triple,
 
-        cc_args: ~[~"-marm"],
+        cc_args: cc_args,
     };
 }
