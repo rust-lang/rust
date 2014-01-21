@@ -76,21 +76,17 @@ use std::hashmap::HashMap;
 use std::libc::c_uint;
 use std::vec;
 use std::local_data;
+use syntax::abi::{X86, X86_64, Arm, Mips, Rust, RustIntrinsic, OsWin32};
 use syntax::ast_map::{PathName, PathPrettyName, path_elem_to_str};
 use syntax::ast_util::{local_def, is_local};
+use syntax::attr::AttrMetaMethods;
 use syntax::attr;
-use syntax::abi::{X86, X86_64, Arm, Mips, Rust, RustIntrinsic, OsWin32};
-use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
-use syntax::parse::token::{InternedString, special_idents};
+use syntax::parse::token::InternedString;
 use syntax::parse::token;
-use syntax::{ast, ast_util, ast_map};
-use syntax::attr::AttrMetaMethods;
-use syntax::abi::{X86, X86_64, Arm, Mips, Rust, RustIntrinsic, OsWin32};
-use syntax::visit;
 use syntax::visit::Visitor;
 use syntax::visit;
-use syntax::{ast, ast_util, codemap, ast_map};
+use syntax::{ast, ast_util, ast_map};
 
 pub use middle::trans::context::task_llcx;
 

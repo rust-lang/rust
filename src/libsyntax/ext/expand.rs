@@ -385,7 +385,7 @@ pub fn expand_view_item(vi: &ast::ViewItem,
                         fld: &mut MacroExpander)
                         -> ast::ViewItem {
     let should_load = vi.attrs.iter().any(|attr| {
-        "phase" == attr.name() &&
+        attr.name().get() == "phase" &&
             attr.meta_item_list().map_or(false, |phases| {
                 attr::contains_name(phases, "syntax")
             })
@@ -405,12 +405,12 @@ fn load_extern_macros(crate: &ast::ViewItem, fld: &mut MacroExpander) {
         ast::ViewItemExternMod(ref name, _, _) => token::ident_to_str(name),
         _ => unreachable!(),
     };
-    let name = format!("<{} macros>", crate_name).to_managed();
+    let name = format!("<{} macros>", crate_name);
 
     let exported_macros = fld.cx.loader.get_exported_macros(cnum);
     for source in exported_macros.iter() {
-        let item = parse::parse_item_from_source_str(name,
-                                                     source.to_managed(),
+        let item = parse::parse_item_from_source_str(name.clone(),
+                                                     (*source).clone(),
                                                      fld.cx.cfg(),
                                                      fld.cx.parse_sess())
                 .expect("expected a serialized item");

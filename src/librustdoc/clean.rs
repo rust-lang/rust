@@ -1039,8 +1039,13 @@ pub enum ViewItemInner {
 impl Clean<ViewItemInner> for ast::ViewItem_ {
     fn clean(&self) -> ViewItemInner {
         match self {
-            &ast::ViewItemExternMod(ref i, ref p, ref id) =>
-                ExternMod(i.clean(), p.map(|(ref x, _)| x.to_owned()), *id),
+            &ast::ViewItemExternMod(ref i, ref p, ref id) => {
+                let string = match *p {
+                    None => None,
+                    Some((ref x, _)) => Some(x.get().to_owned()),
+                };
+                ExternMod(i.clean(), string, *id)
+            }
             &ast::ViewItemUse(ref vp) => Import(vp.clean())
         }
     }

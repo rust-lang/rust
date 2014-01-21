@@ -23,6 +23,7 @@ use parse::parser::Parser;
 use parse::attr::ParserAttr;
 use parse::token::{get_ident_interner, special_idents, gensym_ident, ident_to_str};
 use parse::token::{FAT_ARROW, SEMI, NtMatchers, NtTT, EOF};
+use parse::token;
 use print;
 use std::cell::RefCell;
 use util::small_vector::SmallVector;
@@ -112,10 +113,11 @@ fn generic_extension(cx: &ExtCtxt,
                      rhses: &[@NamedMatch])
                      -> MacResult {
     if cx.trace_macros() {
+        let interned_name = token::get_ident(name.name);
         println!("{}! \\{ {} \\}",
-                  cx.str_of(name),
-                  print::pprust::tt_to_str(&TTDelim(@arg.to_owned()),
-                                           get_ident_interner()));
+                 interned_name.get(),
+                 print::pprust::tt_to_str(&TTDelim(@arg.to_owned()),
+                                          get_ident_interner()));
     }
 
     // Which arm's failure should we report? (the one furthest along)
