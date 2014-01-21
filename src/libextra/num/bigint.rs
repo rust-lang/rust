@@ -561,9 +561,9 @@ impl ToPrimitive for BigUint {
 impl FromPrimitive for BigUint {
     #[inline]
     fn from_i64(n: i64) -> Option<BigUint> {
-        if (n > 0) {
+        if n > 0 {
             FromPrimitive::from_u64(n as u64)
-        } else if (n == 0) {
+        } else if n == 0 {
             Some(Zero::zero())
         } else {
             None

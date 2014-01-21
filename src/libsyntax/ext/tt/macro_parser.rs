@@ -333,7 +333,7 @@ pub fn parse(sess: @ParseSess,
                   MatchTok(ref t) => {
                     let mut ei_t = ei.clone();
                     //if (token_name_eq(t,&tok)) {
-                    if (token::mtwt_token_eq(t,&tok)) {
+                    if token::mtwt_token_eq(t,&tok) {
                         ei_t.idx += 1;
                         next_eis.push(ei_t);
                     }
@@ -370,12 +370,12 @@ pub fn parse(sess: @ParseSess,
                     "local ambiguity: multiple parsing options: \
                      built-in NTs {} or {} other options.",
                     nts, next_eis.len()));
-            } else if (bb_eis.len() == 0u && next_eis.len() == 0u) {
+            } else if bb_eis.len() == 0u && next_eis.len() == 0u {
                 return Failure(sp, format!("no rules expected the token `{}`",
                             to_str(get_ident_interner(), &tok)));
-            } else if (next_eis.len() > 0u) {
+            } else if next_eis.len() > 0u {
                 /* Now process the next token */
-                while(next_eis.len() > 0u) {
+                while next_eis.len() > 0u {
                     cur_eis.push(next_eis.pop());
                 }
                 rdr.next_token();

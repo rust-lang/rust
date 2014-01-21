@@ -218,7 +218,7 @@ pub fn to_str(input: @IdentInterner, t: &Token) -> ~str {
             &NtAttr(e) => ::print::pprust::attribute_to_str(e, input),
             _ => {
                 ~"an interpolated " +
-                    match (*nt) {
+                    match *nt {
                         NtItem(..) => ~"item",
                         NtBlock(..) => ~"block",
                         NtStmt(..) => ~"statement",

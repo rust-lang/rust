@@ -135,7 +135,7 @@ fn generic_extension(cx: &ExtCtxt,
                 let rhs = match *rhses[i] {
                     // okay, what's your transcriber?
                     MatchedNonterminal(NtTT(tt)) => {
-                        match (*tt) {
+                        match *tt {
                             // cut off delimiters; don't parse 'em
                             TTDelim(ref tts) => {
                                 (*tts).slice(1u,(*tts).len()-1u).to_owned()

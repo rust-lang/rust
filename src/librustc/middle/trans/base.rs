@@ -2156,7 +2156,7 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
                         _ => fail!("get_item_val: weird result in table")
                     };
 
-                    match (attr::first_attr_value_str_by_name(i.attrs, "link_section")) {
+                    match attr::first_attr_value_str_by_name(i.attrs, "link_section") {
                         Some(sect) => unsafe {
                             sect.with_c_str(|buf| {
                                 llvm::LLVMSetSection(v, buf);

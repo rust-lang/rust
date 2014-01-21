@@ -37,7 +37,7 @@ fn start(n_tasks: int, token: int) {
 }
 
 fn roundtrip(id: int, n_tasks: int, p: &Port<int>, ch: &Chan<int>) {
-    while (true) {
+    loop {
         match p.recv() {
           1 => {
             println!("{}\n", id);

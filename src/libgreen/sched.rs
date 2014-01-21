@@ -1323,7 +1323,7 @@ mod test {
         fn roundtrip(id: int, n_tasks: int,
                      p: &Port<(int, Chan<()>)>,
                      ch: &Chan<(int, Chan<()>)>) {
-            while (true) {
+            loop {
                 match p.recv() {
                     (1, end_chan) => {
                         debug!("{}\n", id);

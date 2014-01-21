@@ -292,7 +292,7 @@ impl<T> Option<T> {
     #[inline(always)]
     pub fn filtered(self, f: |t: &T| -> bool) -> Option<T> {
         match self {
-            Some(x) => if(f(&x)) {Some(x)} else {None},
+            Some(x) => if f(&x) {Some(x)} else {None},
             None => None
         }
     }
@@ -605,7 +605,7 @@ mod tests {
         let mut i = 0;
         Some(10).while_some(|j| {
             i += 1;
-            if (j > 0) {
+            if j > 0 {
                 Some(j-1)
             } else {
                 None

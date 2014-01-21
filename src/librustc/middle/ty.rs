@@ -2883,7 +2883,7 @@ pub fn adjust_ty(cx: ctxt,
                 AutoDerefRef(ref adj) => {
                     let mut adjusted_ty = unadjusted_ty;
 
-                    if (!ty::type_is_error(adjusted_ty)) {
+                    if !ty::type_is_error(adjusted_ty) {
                         for i in range(0, adj.autoderefs) {
                             match ty::deref(adjusted_ty, true) {
                                 Some(mt) => { adjusted_ty = mt.ty; }
