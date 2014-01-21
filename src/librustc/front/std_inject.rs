@@ -21,8 +21,7 @@ use syntax::fold;
 use syntax::opt_vec;
 use syntax::util::small_vector::SmallVector;
 
-// NOTE: upgrade to 0.10-pre after the next snapshot
-pub static VERSION: &'static str = "0.9";
+pub static VERSION: &'static str = "0.10-pre";
 
 pub fn maybe_inject_libstd_ref(sess: Session, crate: ast::Crate)
                                -> ast::Crate {
