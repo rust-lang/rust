@@ -127,9 +127,6 @@ mod util;
 // Global command line argument storage
 pub mod args;
 
-// Support for dynamic borrowck
-pub mod borrowck;
-
 /// The default error code of the rust runtime if the main task fails instead
 /// of exiting cleanly.
 pub static DEFAULT_ERROR_CODE: int = 101;
