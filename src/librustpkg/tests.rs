@@ -353,7 +353,7 @@ fn lib_exists(repo: &Path, crate_id: &CrateId) -> bool {
     debug!("assert_lib_exists: checking whether {:?} exists", lib);
     lib.is_some() && {
         let libname = lib.get_ref();
-        libname.exists() && is_rwx(libname)
+        libname.exists()
     }
 }
 
@@ -437,7 +437,7 @@ fn built_library_exists(repo: &Path, short_name: &str) -> bool {
     let lib = built_library_in_workspace(&crate_id, repo);
     lib.is_some() && {
         let libname = lib.get_ref();
-        libname.exists() && is_rwx(libname)
+        libname.exists()
     }
 }
 
@@ -634,7 +634,6 @@ fn test_install_valid_external() {
     let lib = installed_library_in_workspace(&temp_pkg_id, temp_workspace);
     debug!("lib = {:?}", lib);
     assert!(lib.as_ref().map_or(false, |l| l.exists()));
-    assert!(lib.as_ref().map_or(false, |l| is_rwx(l)));
 
     // And that the test and bench executables aren't installed
     assert!(!target_test_in_workspace(&temp_pkg_id, temp_workspace).exists());
@@ -758,7 +757,8 @@ fn test_package_request_version() {
         Some(p) => {
             debug!("installed: {}", p.display());
             let suffix = format!("0.3{}", os::consts::DLL_SUFFIX);
-            p.as_vec().ends_with(suffix.as_bytes())
+            p.as_vec().ends_with(suffix.as_bytes()) ||
+                p.as_vec().ends_with(bytes!("0.3.rlib"))
         }
         None    => false
     });
@@ -2160,7 +2160,6 @@ fn test_installed_read_only() {
         built_library_in_workspace(&temp_pkg_id,
                                    &ws).expect("test_install_git: built lib should exist");
     assert!(built_lib.exists());
-    assert!(is_rwx(&built_lib));
 
     // Make sure sources are (a) under "build" and (b) read-only
     let temp_dir = format!("{}-{}", temp_pkg_id.path, temp_pkg_id.version_or_default());

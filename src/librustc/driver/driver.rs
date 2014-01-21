@@ -716,14 +716,16 @@ pub fn build_session_options(binary: ~str,
                              demitter: @diagnostic::Emitter)
                              -> @session::Options {
     let mut outputs = ~[];
+    if matches.opt_present("lib") {
+        outputs.push(session::default_lib_output());
+    }
     if matches.opt_present("rlib") {
         outputs.push(session::OutputRlib)
     }
     if matches.opt_present("staticlib") {
         outputs.push(session::OutputStaticlib)
     }
-    // dynamic libraries are the "compiler blesssed" default library
-    if matches.opt_present("dylib") || matches.opt_present("lib") {
+    if matches.opt_present("dylib") {
         outputs.push(session::OutputDylib)
     }
     if matches.opt_present("bin") {
