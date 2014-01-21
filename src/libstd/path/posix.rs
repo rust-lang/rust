@@ -402,13 +402,13 @@ impl Path {
     /// Returns an iterator that yields each component of the path as Option<&str>.
     /// See components() for details.
     pub fn str_components<'a>(&'a self) -> StrComponents<'a> {
-        self.components().map(str::from_utf8_opt)
+        self.components().map(str::from_utf8)
     }
 
     /// Returns an iterator that yields each component of the path in reverse as Option<&str>.
     /// See components() for details.
     pub fn rev_str_components<'a>(&'a self) -> RevStrComponents<'a> {
-        self.rev_components().map(str::from_utf8_opt)
+        self.rev_components().map(str::from_utf8)
     }
 }
 
@@ -426,7 +426,7 @@ fn normalize_helper<'a>(v: &'a [u8], is_abs: bool) -> Option<~[&'a [u8]]> {
         else if comp == bytes!("..") {
             if is_abs && comps.is_empty() { changed = true }
             else if comps.len() == n_up { comps.push(dot_dot_static); n_up += 1 }
-            else { comps.pop(); changed = true }
+            else { comps.pop().unwrap(); changed = true }
         } else { comps.push(comp) }
     }
     if changed {
@@ -691,7 +691,7 @@ mod tests {
             (s: $path:expr, $op:ident, $exp:expr, opt) => (
                 {
                     let path = Path::new($path);
-                    let left = path.$op().map(|x| str::from_utf8(x));
+                    let left = path.$op().map(|x| str::from_utf8(x).unwrap());
                     assert_eq!(left, $exp);
                 }
             );

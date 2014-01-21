@@ -159,10 +159,10 @@ fn parse_exec_env(line: &str) -> Option<(~str, ~str)> {
         let mut strs: ~[~str] = nv.splitn('=', 1).map(|s| s.to_owned()).collect();
 
         match strs.len() {
-          1u => (strs.pop(), ~""),
+          1u => (strs.pop().unwrap(), ~""),
           2u => {
-              let end = strs.pop();
-              (strs.pop(), end)
+              let end = strs.pop().unwrap();
+              (strs.pop().unwrap(), end)
           }
           n => fail!("Expected 1 or 2 strings, not {}", n)
         }

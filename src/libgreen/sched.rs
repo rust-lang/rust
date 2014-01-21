@@ -1285,8 +1285,11 @@ mod test {
                 ports.push(port);
             });
 
-            while !ports.is_empty() {
-                ports.pop().recv();
+            loop {
+                match ports.pop() {
+                    Some(port) => port.recv(),
+                    None => break,
+                }
             }
         }
     }

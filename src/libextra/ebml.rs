@@ -30,7 +30,7 @@ impl<'doc> Doc<'doc> {
     }
 
     pub fn as_str_slice<'a>(&'a self) -> &'a str {
-        str::from_utf8(self.data.slice(self.start, self.end))
+        str::from_utf8(self.data.slice(self.start, self.end)).unwrap()
     }
 
     pub fn as_str(&self) -> ~str {
@@ -651,7 +651,7 @@ pub mod writer {
         }
 
         pub fn end_tag(&mut self) {
-            let last_size_pos = self.size_positions.pop();
+            let last_size_pos = self.size_positions.pop().unwrap();
             let cur_pos = self.writer.tell();
             self.writer.seek(last_size_pos as i64, io::SeekSet);
             let size = (cur_pos as uint - last_size_pos - 4);

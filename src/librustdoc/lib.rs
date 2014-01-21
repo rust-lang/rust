@@ -330,7 +330,7 @@ fn json_output(crate: clean::Crate, res: ~[plugins::PluginJson], dst: Path) {
             let mut encoder = json::Encoder::new(&mut w as &mut io::Writer);
             crate.encode(&mut encoder);
         }
-        str::from_utf8_owned(w.unwrap())
+        str::from_utf8_owned(w.unwrap()).unwrap()
     };
     let crate_json = match json::from_str(crate_json_str) {
         Ok(j) => j,

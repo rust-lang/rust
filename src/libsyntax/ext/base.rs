@@ -356,7 +356,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn print_backtrace(&self) { }
     pub fn backtrace(&self) -> Option<@ExpnInfo> { self.backtrace }
     pub fn mod_push(&mut self, i: ast::Ident) { self.mod_path.push(i); }
-    pub fn mod_pop(&mut self) { self.mod_path.pop(); }
+    pub fn mod_pop(&mut self) { self.mod_path.pop().unwrap(); }
     pub fn mod_path(&self) -> ~[ast::Ident] { self.mod_path.clone() }
     pub fn bt_push(&mut self, ei: codemap::ExpnInfo) {
         match ei {

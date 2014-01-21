@@ -78,7 +78,7 @@ pub fn ibox(s: &mut State, u: uint) {
 pub fn end(s: &mut State) {
     {
         let mut boxes = s.boxes.borrow_mut();
-        boxes.get().pop();
+        boxes.get().pop().unwrap();
     }
     pp::end(&mut s.s);
 }
@@ -1090,11 +1090,11 @@ pub fn print_call_pre(s: &mut State,
     match sugar {
         ast::DoSugar => {
             head(s, "do");
-            Some(base_args.pop())
+            Some(base_args.pop().unwrap())
         }
         ast::ForSugar => {
             head(s, "for");
-            Some(base_args.pop())
+            Some(base_args.pop().unwrap())
         }
         ast::NoSugar => None
     }
@@ -1947,7 +1947,7 @@ pub fn print_view_path(s: &mut State, vp: &ast::ViewPath) {
     match vp.node {
       ast::ViewPathSimple(ident, ref path, _) => {
         // FIXME(#6993) can't compare identifiers directly here
-        if path.segments.last().identifier.name != ident.name {
+        if path.segments.last().unwrap().identifier.name != ident.name {
             print_ident(s, ident);
             space(&mut s.s);
             word_space(s, "=");
@@ -2316,7 +2316,7 @@ pub fn print_string(s: &mut State, st: &str, style: ast::StrStyle) {
 // downcasts.
 unsafe fn get_mem_writer(writer: &mut ~io::Writer) -> ~str {
     let (_, wr): (uint, ~MemWriter) = cast::transmute_copy(writer);
-    let result = str::from_utf8_owned(wr.get_ref().to_owned());
+    let result = str::from_utf8_owned(wr.get_ref().to_owned()).unwrap();
     cast::forget(wr);
     result
 }

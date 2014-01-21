@@ -189,7 +189,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// If the path is not representable in utf-8, this returns None.
     #[inline]
     fn as_str<'a>(&'a self) -> Option<&'a str> {
-        str::from_utf8_opt(self.as_vec())
+        str::from_utf8(self.as_vec())
     }
 
     /// Returns the path as a byte vector
@@ -220,7 +220,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// See `dirname` for details.
     #[inline]
     fn dirname_str<'a>(&'a self) -> Option<&'a str> {
-        str::from_utf8_opt(self.dirname())
+        str::from_utf8(self.dirname())
     }
     /// Returns the file component of `self`, as a byte vector.
     /// If `self` represents the root of the file hierarchy, returns None.
@@ -230,7 +230,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// See `filename` for details.
     #[inline]
     fn filename_str<'a>(&'a self) -> Option<&'a str> {
-        self.filename().and_then(str::from_utf8_opt)
+        self.filename().and_then(str::from_utf8)
     }
     /// Returns the stem of the filename of `self`, as a byte vector.
     /// The stem is the portion of the filename just before the last '.'.
@@ -252,7 +252,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// See `filestem` for details.
     #[inline]
     fn filestem_str<'a>(&'a self) -> Option<&'a str> {
-        self.filestem().and_then(str::from_utf8_opt)
+        self.filestem().and_then(str::from_utf8)
     }
     /// Returns the extension of the filename of `self`, as an optional byte vector.
     /// The extension is the portion of the filename just after the last '.'.
@@ -275,7 +275,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// See `extension` for details.
     #[inline]
     fn extension_str<'a>(&'a self) -> Option<&'a str> {
-        self.extension().and_then(str::from_utf8_opt)
+        self.extension().and_then(str::from_utf8)
     }
 
     /// Replaces the filename portion of the path with the given byte vector or string.
@@ -426,7 +426,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
         let t: Option<T> = None;
         if BytesContainer::is_str(t) {
             for p in paths.iter() {
-                self.push(p.container_as_str())
+                self.push(p.container_as_str().unwrap())
             }
         } else {
             for p in paths.iter() {
@@ -499,19 +499,10 @@ pub trait BytesContainer {
     fn container_into_owned_bytes(self) -> ~[u8] {
         self.container_as_bytes().to_owned()
     }
-    /// Returns the receiver interpreted as a utf-8 string
-    ///
-    /// # Failure
-    ///
-    /// Raises `str::null_byte` if not utf-8
-    #[inline]
-    fn container_as_str<'a>(&'a self) -> &'a str {
-        str::from_utf8(self.container_as_bytes())
-    }
     /// Returns the receiver interpreted as a utf-8 string, if possible
     #[inline]
-    fn container_as_str_opt<'a>(&'a self) -> Option<&'a str> {
-        str::from_utf8_opt(self.container_as_bytes())
+    fn container_as_str<'a>(&'a self) -> Option<&'a str> {
+        str::from_utf8(self.container_as_bytes())
     }
     /// Returns whether .container_as_str() is guaranteed to not fail
     // FIXME (#8888): Remove unused arg once ::<for T> works
@@ -589,11 +580,7 @@ impl<'a> BytesContainer for &'a str {
         self.as_bytes()
     }
     #[inline]
-    fn container_as_str<'a>(&'a self) -> &'a str {
-        *self
-    }
-    #[inline]
-    fn container_as_str_opt<'a>(&'a self) -> Option<&'a str> {
+    fn container_as_str<'a>(&'a self) -> Option<&'a str> {
         Some(*self)
     }
     #[inline]
@@ -610,11 +597,7 @@ impl BytesContainer for ~str {
         self.into_bytes()
     }
     #[inline]
-    fn container_as_str<'a>(&'a self) -> &'a str {
-        self.as_slice()
-    }
-    #[inline]
-    fn container_as_str_opt<'a>(&'a self) -> Option<&'a str> {
+    fn container_as_str<'a>(&'a self) -> Option<&'a str> {
         Some(self.as_slice())
     }
     #[inline]
@@ -627,11 +610,7 @@ impl BytesContainer for @str {
         self.as_bytes()
     }
     #[inline]
-    fn container_as_str<'a>(&'a self) -> &'a str {
-        self.as_slice()
-    }
-    #[inline]
-    fn container_as_str_opt<'a>(&'a self) -> Option<&'a str> {
+    fn container_as_str<'a>(&'a self) -> Option<&'a str> {
         Some(self.as_slice())
     }
     #[inline]

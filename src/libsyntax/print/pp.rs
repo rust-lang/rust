@@ -511,7 +511,7 @@ impl Printer {
             debug!("print End -> pop End");
             let print_stack = &mut self.print_stack;
             assert!((print_stack.len() != 0u));
-            print_stack.pop();
+            print_stack.pop().unwrap();
           }
           Break(b) => {
             let top = self.get_top();

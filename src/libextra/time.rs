@@ -1030,7 +1030,7 @@ pub fn strftime(format: &str, tm: &Tm) -> ~str {
         }
     }
 
-    str::from_utf8_owned(buf)
+    str::from_utf8_owned(buf).unwrap()
 }
 
 #[cfg(test)]

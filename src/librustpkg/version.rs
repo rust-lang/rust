@@ -115,7 +115,7 @@ pub fn try_getting_local_version(local_path: &Path) -> Option<Version> {
         }
 
         let mut output = None;
-        let output_text = str::from_utf8(outp.output);
+        let output_text = str::from_utf8(outp.output).unwrap();
         for l in output_text.lines() {
             if !l.is_whitespace() {
                 output = Some(l);
@@ -147,8 +147,8 @@ pub fn try_getting_version(remote_path: &Path) -> Option<Version> {
         let outp = opt_outp.expect("Failed to exec `git`");
         if outp.status.success() {
             debug!("Cloned it... ( {}, {} )",
-                   str::from_utf8(outp.output),
-                   str::from_utf8(outp.error));
+                   str::from_utf8(outp.output).unwrap(),
+                   str::from_utf8(outp.error).unwrap());
             let mut output = None;
             let git_dir = tmp_dir.join(".git");
             debug!("(getting version, now getting tags) executing \\{git --git-dir={} tag -l\\}",
@@ -158,7 +158,7 @@ pub fn try_getting_version(remote_path: &Path) -> Option<Version> {
                                                ["--git-dir=" + git_dir.as_str().unwrap(),
                                                 ~"tag", ~"-l"]);
             let outp = opt_outp.expect("Failed to exec `git`");
-            let output_text = str::from_utf8(outp.output);
+            let output_text = str::from_utf8(outp.output).unwrap();
             debug!("Full output: ( {} ) [{:?}]", output_text, outp.status);
             for l in output_text.lines() {
                 debug!("A line of output: {}", l);

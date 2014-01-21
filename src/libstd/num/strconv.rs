@@ -351,7 +351,7 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Float+Round+
                 char::from_digit(val, radix).unwrap() as u8
             };
 
-            let extra_digit = ascii2value(buf.pop());
+            let extra_digit = ascii2value(buf.pop().unwrap());
             if extra_digit >= radix / 2 { // -> need to round
                 let mut i: int = buf.len() as int - 1;
                 loop {
@@ -427,7 +427,7 @@ pub fn float_to_str_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Float+Round+
         sign: SignFormat, digits: SignificantDigits) -> (~str, bool) {
     let (bytes, special) = float_to_str_bytes_common(num, radix,
                                negative_zero, sign, digits);
-    (str::from_utf8_owned(bytes), special)
+    (str::from_utf8_owned(bytes).unwrap(), special)
 }
 
 // Some constants for from_str_bytes_common's input validation,

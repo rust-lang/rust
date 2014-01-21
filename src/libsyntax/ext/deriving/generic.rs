@@ -841,7 +841,7 @@ impl<'a> MethodDef<'a> {
                                                      matching,
                                                      matches_so_far,
                                                      match_count + 1);
-                matches_so_far.pop();
+                matches_so_far.pop().unwrap();
                 arms.push(cx.arm(trait_.span, ~[ pattern ], arm_expr));
 
                 if enum_def.variants.len() > 1 {
@@ -875,7 +875,7 @@ impl<'a> MethodDef<'a> {
                                                          new_matching,
                                                          matches_so_far,
                                                          match_count + 1);
-                    matches_so_far.pop();
+                    matches_so_far.pop().unwrap();
 
                     let arm = cx.arm(trait_.span, ~[ pattern ], arm_expr);
                     arms.push(arm);
@@ -920,7 +920,7 @@ enum StructType {
 // general helper methods.
 impl<'a> TraitDef<'a> {
     fn set_expn_info(&self, mut to_set: Span) -> Span {
-        let trait_name = match self.path.path.last_opt() {
+        let trait_name = match self.path.path.last() {
             None => self.cx.span_bug(self.span, "trait with empty path in generic `deriving`"),
             Some(name) => *name
         };

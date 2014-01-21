@@ -190,7 +190,8 @@ pub fn tt_next_token(r: &TtReader) -> TokenAndSpan {
         if !r.stack.get().dotdotdoted || {
                 let repeat_idx = r.repeat_idx.borrow();
                 let repeat_len = r.repeat_len.borrow();
-                *repeat_idx.get().last() == *repeat_len.get().last() - 1
+                *repeat_idx.get().last().unwrap() ==
+                *repeat_len.get().last().unwrap() - 1
             } {
 
             match r.stack.get().up {
@@ -203,8 +204,8 @@ pub fn tt_next_token(r: &TtReader) -> TokenAndSpan {
                     {
                         let mut repeat_idx = r.repeat_idx.borrow_mut();
                         let mut repeat_len = r.repeat_len.borrow_mut();
-                        repeat_idx.get().pop();
-                        repeat_len.get().pop();
+                        repeat_idx.get().pop().unwrap();
+                        repeat_len.get().pop().unwrap();
                     }
                 }
 

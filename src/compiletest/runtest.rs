@@ -154,7 +154,7 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
         match props.pp_exact { Some(_) => 1, None => 2 };
 
     let src = File::open(testfile).read_to_end();
-    let src = str::from_utf8_owned(src);
+    let src = str::from_utf8_owned(src).unwrap();
     let mut srcs = ~[src];
 
     let mut round = 0;
@@ -176,7 +176,7 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
         Some(ref file) => {
             let filepath = testfile.dir_path().join(file);
             let s = File::open(&filepath).read_to_end();
-            str::from_utf8_owned(s)
+            str::from_utf8_owned(s).unwrap()
           }
           None => { srcs[srcs.len() - 2u].clone() }
         };
@@ -308,7 +308,7 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
 
             let adb_arg = format!("export LD_LIBRARY_PATH={}; gdbserver :5039 {}/{}",
                                   config.adb_test_dir.clone(), config.adb_test_dir.clone(),
-                                  str::from_utf8(exe_file.filename().unwrap()));
+                                  str::from_utf8(exe_file.filename().unwrap()).unwrap());
 
             let mut process = procsrv::run_background("", config.adb_path,
                                                       [~"shell",adb_arg.clone()],
@@ -788,7 +788,7 @@ fn make_run_args(config: &config, _props: &TestProps, testfile: &Path) ->
     let exe_file = make_exe_name(config, testfile);
     // FIXME (#9639): This needs to handle non-utf8 paths
     args.push(exe_file.as_str().unwrap().to_owned());
-    let prog = args.shift();
+    let prog = args.shift().unwrap();
     return ProcArgs {prog: prog, args: args};
 }
 
@@ -917,7 +917,7 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
 
     // get bare program string
     let mut tvec: ~[~str] = args.prog.split('/').map(|ts| ts.to_owned()).collect();
-    let prog_short = tvec.pop();
+    let prog_short = tvec.pop().unwrap();
 
     // copy to target
     let copy_result = procsrv::run("", config.adb_path,
@@ -1100,7 +1100,7 @@ fn disassemble_extract(config: &config, _props: &TestProps,
 
 fn count_extracted_lines(p: &Path) -> uint {
     let x = File::open(&p.with_extension("ll")).read_to_end();
-    let x = str::from_utf8_owned(x);
+    let x = str::from_utf8_owned(x).unwrap();
     x.lines().len()
 }
 

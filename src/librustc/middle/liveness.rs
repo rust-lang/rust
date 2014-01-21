@@ -790,7 +790,7 @@ impl Liveness {
 
     pub fn last_loop_scope(&self) -> NodeId {
         let loop_scope = self.loop_scope.borrow();
-        *loop_scope.get().last()
+        *loop_scope.get().last().unwrap()
     }
 
     pub fn ln_str(&self, ln: LiveNode) -> ~str {
@@ -825,7 +825,7 @@ impl Liveness {
                 }
             }
         }
-        str::from_utf8_owned(wr.unwrap())
+        str::from_utf8_owned(wr.unwrap()).unwrap()
     }
 
     pub fn init_empty(&self, ln: LiveNode, succ_ln: LiveNode) {
@@ -1593,7 +1593,7 @@ impl Liveness {
             } else {
                 let ends_with_stmt = match body.expr {
                     None if body.stmts.len() > 0 =>
-                        match body.stmts.last().node {
+                        match body.stmts.last().unwrap().node {
                             StmtSemi(e, _) => {
                                 let t_stmt = ty::expr_ty(self.tcx, e);
                                 ty::get(t_stmt).sty == ty::get(t_ret).sty
@@ -1603,7 +1603,7 @@ impl Liveness {
                     _ => false
                 };
                 if ends_with_stmt {
-                    let last_stmt = body.stmts.last();
+                    let last_stmt = body.stmts.last().unwrap();
                     let span_semicolon = Span {
                         lo: last_stmt.span.hi,
                         hi: last_stmt.span.hi,

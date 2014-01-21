@@ -495,7 +495,7 @@ impl CFGBuilder {
                   label: Option<ast::Name>) -> LoopScope {
         match label {
             None => {
-                return *self.loop_scopes.last();
+                return *self.loop_scopes.last().unwrap();
             }
 
             Some(_) => {

@@ -284,7 +284,7 @@ impl ReachableContext {
                 if worklist.get().len() == 0 {
                     break
                 }
-                let search_item = worklist.get().pop();
+                let search_item = worklist.get().pop().unwrap();
                 if scanned.contains(&search_item) {
                     continue
                 }

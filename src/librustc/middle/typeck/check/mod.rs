@@ -3827,9 +3827,9 @@ pub fn instantiate_path(fcx: @FnCtxt,
     // determine the region parameters, using the value given by the user
     // (if any) and otherwise using a fresh region variable
     let num_expected_regions = tpt.generics.region_param_defs.len();
-    let num_supplied_regions = pth.segments.last().lifetimes.len();
+    let num_supplied_regions = pth.segments.last().unwrap().lifetimes.len();
     let regions = if num_expected_regions == num_supplied_regions {
-        pth.segments.last().lifetimes.map(
+        pth.segments.last().unwrap().lifetimes.map(
             |l| ast_region_to_region(fcx.tcx(), l))
     } else {
         if num_supplied_regions != 0 {
