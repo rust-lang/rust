@@ -36,6 +36,7 @@ use util::ppaux::ty_to_short_str;
 
 use middle::trans::type_::Type;
 
+use arena::TypedArena;
 use std::c_str::ToCStr;
 use std::cell::Cell;
 use std::libc::c_uint;
@@ -504,16 +505,21 @@ fn declare_generic_glue(ccx: &CrateContext, t: ty::t, llfnty: Type,
     return llfn;
 }
 
-pub type glue_helper<'a> =
-    'a |&'a Block<'a>, ValueRef, ty::t| -> &'a Block<'a>;
-
-fn make_generic_glue(ccx: @CrateContext, t: ty::t, llfn: ValueRef,
-                     helper: glue_helper, name: &str) -> ValueRef {
+fn make_generic_glue(ccx: @CrateContext,
+                     t: ty::t,
+                     llfn: ValueRef,
+                     helper: <'a> |&'a Block<'a>, ValueRef, ty::t|
+                                  -> &'a Block<'a>,
+                     name: &str)
+                     -> ValueRef {
     let _icx = push_ctxt("make_generic_glue");
     let glue_name = format!("glue {} {}", name, ty_to_short_str(ccx.tcx, t));
     let _s = StatRecorder::new(ccx, glue_name);
 
-    let fcx = new_fn_ctxt(ccx, ~[], llfn, false, ty::mk_nil(), None);
+    let arena = TypedArena::new();
+    let fcx = new_fn_ctxt(ccx, ~[], llfn, -1, false, ty::mk_nil(), None, None,
+                          &arena);
+
     init_function(&fcx, false, ty::mk_nil(), None);
 
     lib::llvm::SetLinkage(llfn, lib::llvm::InternalLinkage);
@@ -529,7 +535,6 @@ fn make_generic_glue(ccx: @CrateContext, t: ty::t, llfn: ValueRef,
     let bcx = fcx.entry_bcx.get().unwrap();
     let llrawptr0 = unsafe { llvm::LLVMGetParam(llfn, fcx.arg_pos(0) as c_uint) };
     let bcx = helper(bcx, llrawptr0, t);
-
     finish_fn(&fcx, bcx);
 
     llfn

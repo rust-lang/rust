@@ -10,6 +10,7 @@
 
 #[allow(non_uppercase_pattern_statics)];
 
+use arena::TypedArena;
 use back::abi;
 use lib::llvm::{SequentiallyConsistent, Acquire, Release, Xchg};
 use lib::llvm::{ValueRef, Pointer, Array, Struct};
@@ -194,8 +195,16 @@ pub fn trans_intrinsic(ccx: @CrateContext,
 
     let output_type = ty::ty_fn_ret(ty::node_id_to_type(ccx.tcx, item.id));
 
-    let fcx = new_fn_ctxt_detailed(ccx, path, decl, item.id, false, output_type,
-                                   Some(substs), Some(item.span));
+    let arena = TypedArena::new();
+    let fcx = new_fn_ctxt(ccx,
+                          path,
+                          decl,
+                          item.id,
+                          false,
+                          output_type,
+                          Some(substs),
+                          Some(item.span),
+                          &arena);
     init_function(&fcx, true, output_type, Some(substs));
 
     set_always_inline(fcx.llfn);
