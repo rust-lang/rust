@@ -96,9 +96,12 @@
 //
 // As you'll find out in the implementation, this approach cannot be fair to
 // native and green threads. In order to soundly drain the internal queue of
-// green threads, they *must* be favored over native threads. It was an explicit
-// non-goal of these mutexes to be completely fair to everyone, so this has been
-// deemed acceptable.
+// green threads, they *must* be favored over native threads. In order to
+// provide a little bit of fairness, green threads locking the mutex will
+// attempt to relinquish the mutex to native lockers. This should have a "ping
+// pong" kind of effect where blocking threads prioritize relinquishing to green
+// lockers and green lockers prioritize relinquishing the lock to native
+// lockers.
 //
 // This is the high-level implementation of the mutexes, but the nitty gritty
 // details can be found in the code below.
@@ -173,6 +176,13 @@ pub struct StaticMutex {
     /// thinking "this is impossible to manage atomically," and you would be
     /// correct! Keep on reading!
     priv held: atomics::AtomicBool,
+    /// Flag as to whether the current locker of the mutex was a blocking locker
+    /// or a nonblocking locker. This is used to determine who should get woken
+    /// up next.
+    priv is_blocking_locker: bool,
+    /// Speculative count of the number of threads which are blocked waiting for
+    /// the mutex.
+    priv blocking_cnt: atomics::AtomicUint,
 }
 
 /// An RAII implementation of a "scoped lock" of a mutex. When this structure is
@@ -186,6 +196,8 @@ pub struct Guard<'a> {
 pub static MUTEX_INIT: StaticMutex = StaticMutex {
     lock: mutex::MUTEX_INIT,
     held: atomics::INIT_ATOMIC_BOOL,
+    is_blocking_locker: false,
+    blocking_cnt: atomics::INIT_ATOMIC_UINT,
     q: q::Queue {
         head: atomics::INIT_ATOMIC_UINT,
         tail: 0 as *mut q::Node<uint>,
@@ -224,9 +236,16 @@ impl StaticMutex {
             // Tasks which can block are super easy. These tasks just accept the
             // TLS hit we just made, and then call the blocking `lock()`
             // function. Turns out the TLS hit is essentially 0 on contention.
+            //
+            // We keep a count of tasks blocked in 'lock' to help provide a
+            // little fairness on unlocking by having nonblocking lockers
+            // relinquish the mutex to blocking lockers.
             Local::put(t);
+            self.blocking_cnt.fetch_add(1, atomics::SeqCst);
             unsafe { self.lock.lock(); }
             self.held.store(true, atomics::SeqCst); // see below
+            self.blocking_cnt.fetch_sub(1, atomics::SeqCst);
+            self.is_blocking_locker = true;
         } else {
             // And here's where we come to the "fun part" of this
             // implementation. Contention with a green task is fairly difficult
@@ -328,12 +347,28 @@ impl StaticMutex {
                 }
             });
             assert!(self.held.load(atomics::SeqCst));
+            self.is_blocking_locker = false;
         }
 
         Guard { lock: self }
     }
 
     fn unlock(&mut self) {
+        // First, if we were *not* a blocking locker, and there are some
+        // blocking threads waiting, then we attempt to relinquish the lock to a
+        // blocking locker. This helps provide a little fairness to those who
+        // are blocking.
+        //
+        // Note that we do *not* set 'held' to false in order to prevent green
+        // threads from spinning unnecessarily. We're also guaranteed that a
+        // native thread will grab this lock and then later attempt to empty the
+        // green queue (which is why we don't check the queue).
+        if !self.is_blocking_locker &&
+           self.blocking_cnt.load(atomics::SeqCst) > 0 {
+            unsafe { self.lock.unlock() }
+            return;
+        }
+
         // As documented above, we *initially* flag our mutex as unlocked in
         // order to allow green threads just starting to block to realize that
         // they shouldn't completely block.
@@ -380,6 +415,8 @@ impl Mutex {
                 held: atomics::AtomicBool::new(false),
                 q: q::Queue::new(),
                 lock: unsafe { mutex::Mutex::new() },
+                is_blocking_locker: false,
+                blocking_cnt: atomics::AtomicUint::new(0),
             }
         }
     }
