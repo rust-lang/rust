@@ -406,9 +406,20 @@ pub fn expand_view_item(vi: &ast::ViewItem,
 fn load_extern_macros(crate: &ast::ViewItem, fld: &mut MacroExpander) {
     let MacroCrate { lib, cnum } = fld.cx.loader.load_crate(crate);
 
+    let crate_name = match crate.node {
+        ast::ViewItemExternMod(ref name, _, _) => token::ident_to_str(name),
+        _ => unreachable!(),
+    };
+    let name = format!("<{} macros>", crate_name).to_managed();
+
     let exported_macros = fld.cx.loader.get_exported_macros(cnum);
-    for &it in exported_macros.iter() {
-        expand_item_mac(it, fld);
+    for source in exported_macros.iter() {
+        let item = parse::parse_item_from_source_str(name,
+                                                     source.to_managed(),
+                                                     fld.cx.cfg(),
+                                                     fld.cx.parse_sess())
+                .expect("expected a serialized item");
+        expand_item_mac(item, fld);
     }
 
     let path = match lib {
@@ -944,7 +955,6 @@ pub fn inject_std_macros(parse_sess: @parse::ParseSess,
     let sm = match parse_item_from_source_str(@"<std-macros>",
                                               std_macros(),
                                               cfg.clone(),
-                                              ~[],
                                               parse_sess) {
         Some(item) => item,
         None => fail!("expected core macros to parse correctly")
@@ -1212,7 +1222,7 @@ mod test {
             fail!("lolwut")
         }
 
-        fn get_exported_macros(&mut self, _: ast::CrateNum) -> ~[@ast::Item] {
+        fn get_exported_macros(&mut self, _: ast::CrateNum) -> ~[~str] {
             fail!("lolwut")
         }
 
@@ -1289,7 +1299,7 @@ mod test {
         let item_ast = parse::parse_item_from_source_str(
             @"<test>",
             src,
-            cfg,~[],sess);
+            cfg,sess);
         match item_ast {
             Some(_) => (), // success
             None => fail!("expected this to parse")

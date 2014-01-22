@@ -420,7 +420,7 @@ impl CrateLoader for Loader {
         }
     }
 
-    fn get_exported_macros(&mut self, cnum: ast::CrateNum) -> ~[@ast::Item] {
+    fn get_exported_macros(&mut self, cnum: ast::CrateNum) -> ~[~str] {
         csearch::get_exported_macros(self.env.sess.cstore, cnum)
     }
 

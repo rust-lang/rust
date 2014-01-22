@@ -250,7 +250,6 @@ pub mod rt {
                 @"<quote expansion>",
                 s,
                 self.cfg(),
-                ~[],
                 self.parse_sess());
             match res {
                 Some(ast) => ast,
