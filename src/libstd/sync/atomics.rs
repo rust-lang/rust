@@ -24,7 +24,6 @@
 use unstable::intrinsics;
 use cast;
 use option::{Option,Some,None};
-use libc::c_void;
 use ops::Drop;
 use util::NonCopyable;
 
@@ -73,7 +72,7 @@ pub struct AtomicPtr<T> {
  */
 #[unsafe_no_drop_flag]
 pub struct AtomicOption<T> {
-    priv p: *mut c_void
+    priv p: *mut u8
 }
 
 pub enum Ordering {

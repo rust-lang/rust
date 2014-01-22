@@ -109,7 +109,6 @@ use cmp::{Eq, TotalOrd, Ordering, Less, Equal, Greater};
 use cmp;
 use default::Default;
 use iter::*;
-use libc::{c_char, c_void};
 use num::{Integer, CheckedAdd, Saturating};
 use option::{None, Option, Some};
 use ptr::to_unsafe_ptr;
@@ -1478,8 +1477,8 @@ impl<T> OwnedVector<T> for ~[T] {
                 if alloc / mem::nonzero_size_of::<T>() != n || size < alloc {
                     fail!("vector size is too large: {}", n);
                 }
-                *ptr = realloc_raw(*ptr as *mut c_void, size)
-                       as *mut Vec<()>;
+                *ptr = realloc_raw(*ptr as *mut u8, size)
+                                   as *mut Vec<()>;
                 (**ptr).alloc = alloc;
             }
         }
@@ -1513,7 +1512,7 @@ impl<T> OwnedVector<T> for ~[T] {
             let ptr: *mut *mut Vec<()> = cast::transmute(self);
             let alloc = (**ptr).fill;
             let size = alloc + mem::size_of::<Vec<()>>();
-            *ptr = realloc_raw(*ptr as *mut c_void, size) as *mut Vec<()>;
+            *ptr = realloc_raw(*ptr as *mut u8, size) as *mut Vec<()>;
             (**ptr).alloc = alloc;
         }
     }
@@ -2877,7 +2876,7 @@ impl<T> Drop for MoveItems<T> {
         // destroy the remaining elements
         for _x in *self {}
         unsafe {
-            exchange_free(self.allocation as *u8 as *c_char)
+            exchange_free(self.allocation as *u8)
         }
     }
 }

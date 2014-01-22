@@ -196,7 +196,7 @@ mod imp {
     use unstable::intrinsics;
 
     pub type rust_thread = libc::pthread_t;
-    pub type rust_thread_return = *libc::c_void;
+    pub type rust_thread_return = *u8;
 
     pub unsafe fn create(stack: uint, p: ~proc()) -> rust_thread {
         let mut native: libc::pthread_t = intrinsics::uninit();

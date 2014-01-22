@@ -10,12 +10,11 @@
 
 #[doc(hidden)];
 
-use libc::c_void;
 use ptr;
 use unstable::intrinsics::TyDesc;
 use unstable::raw;
 
-type DropGlue<'a> = 'a |**TyDesc, *c_void|;
+type DropGlue<'a> = 'a |**TyDesc, *u8|;
 
 static RC_IMMORTAL : uint = 0x77777777;
 
@@ -107,7 +106,7 @@ pub unsafe fn annihilate() {
         stats.n_bytes_freed +=
             (*((*alloc).type_desc)).size
             + mem::size_of::<raw::Box<()>>();
-        local_free(alloc as *i8);
+        local_free(alloc as *u8);
         true
     });
 

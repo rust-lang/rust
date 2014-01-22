@@ -44,9 +44,9 @@ use unstable::finally::Finally;
 use sync::atomics::{AtomicInt, INIT_ATOMIC_INT, SeqCst};
 
 /// Delegates to the libc close() function, returning the same return value.
-pub fn close(fd: c_int) -> c_int {
+pub fn close(fd: int) -> int {
     unsafe {
-        libc::close(fd)
+        libc::close(fd as c_int) as int
     }
 }
 
@@ -57,7 +57,7 @@ static BUF_BYTES : uint = 2048u;
 pub fn getcwd() -> Path {
     use c_str::CString;
 
-    let mut buf = [0 as libc::c_char, ..BUF_BYTES];
+    let mut buf = [0 as c_char, ..BUF_BYTES];
     unsafe {
         if libc::getcwd(buf.as_mut_ptr(), buf.len() as size_t).is_null() {
             fail!()
@@ -164,7 +164,7 @@ pub fn env() -> ~[(~str,~str)] {
                        os::last_os_error());
             }
             let mut result = ~[];
-            c_str::from_c_multistring(ch as *libc::c_char, None, |cstr| {
+            c_str::from_c_multistring(ch as *c_char, None, |cstr| {
                 result.push(cstr.as_str().unwrap().to_owned());
             });
             FreeEnvironmentStringsA(ch);
@@ -173,7 +173,7 @@ pub fn env() -> ~[(~str,~str)] {
         #[cfg(unix)]
         unsafe fn get_env_pairs() -> ~[~str] {
             extern {
-                fn rust_env_pairs() -> **libc::c_char;
+                fn rust_env_pairs() -> **c_char;
             }
             let environ = rust_env_pairs();
             if environ as uint == 0 {
@@ -306,9 +306,9 @@ pub struct Pipe {
 #[cfg(unix)]
 pub fn pipe() -> Pipe {
     unsafe {
-        let mut fds = Pipe {input: 0 as c_int,
-                            out: 0 as c_int };
-        assert_eq!(libc::pipe(&mut fds.input), (0 as c_int));
+        let mut fds = Pipe {input: 0,
+                            out: 0};
+        assert_eq!(libc::pipe(&mut fds.input), 0);
         return Pipe {input: fds.input, out: fds.out};
     }
 }
@@ -321,13 +321,13 @@ pub fn pipe() -> Pipe {
         // fully understand. Here we explicitly make the pipe non-inheritable,
         // which means to pass it to a subprocess they need to be duplicated
         // first, as in std::run.
-        let mut fds = Pipe {input: 0 as c_int,
-                    out: 0 as c_int };
+        let mut fds = Pipe {input: 0,
+                    out: 0};
         let res = libc::pipe(&mut fds.input, 1024 as ::libc::c_uint,
                              (libc::O_BINARY | libc::O_NOINHERIT) as c_int);
-        assert_eq!(res, 0 as c_int);
-        assert!((fds.input != -1 as c_int && fds.input != 0 as c_int));
-        assert!((fds.out != -1 as c_int && fds.input != 0 as c_int));
+        assert_eq!(res, 0);
+        assert!((fds.input != -1 && fds.input != 0 ));
+        assert!((fds.out != -1 && fds.input != 0));
         return Pipe {input: fds.input, out: fds.out};
     }
 }
@@ -699,7 +699,7 @@ pub fn get_exit_status() -> int {
 }
 
 #[cfg(target_os = "macos")]
-unsafe fn load_argc_and_argv(argc: c_int, argv: **c_char) -> ~[~str] {
+unsafe fn load_argc_and_argv(argc: int, argv: **c_char) -> ~[~str] {
     let mut args = ~[];
     for i in range(0u, argc as uint) {
         args.push(str::raw::from_c_str(*argv.offset(i as int)));
@@ -715,7 +715,7 @@ unsafe fn load_argc_and_argv(argc: c_int, argv: **c_char) -> ~[~str] {
 #[cfg(target_os = "macos")]
 fn real_args() -> ~[~str] {
     unsafe {
-        let (argc, argv) = (*_NSGetArgc() as c_int,
+        let (argc, argv) = (*_NSGetArgc() as int,
                             *_NSGetArgv() as **c_char);
         load_argc_and_argv(argc, argv)
     }
@@ -833,7 +833,7 @@ pub struct MemoryMap {
     /// Pointer to the memory created or modified by this map.
     data: *mut u8,
     /// Number of bytes this map applies to
-    len: size_t,
+    len: uint,
     /// Type of mapping
     kind: MemoryMapKind
 }
@@ -842,7 +842,7 @@ pub struct MemoryMap {
 pub enum MemoryMapKind {
     /// Memory-mapped file. On Windows, the inner pointer is a handle to the mapping, and
     /// corresponds to `CreateFileMapping`. Elsewhere, it is null.
-    MapFile(*c_void),
+    MapFile(*u8),
     /// Virtual memory map. Usually used to change the permissions of a given chunk of memory.
     /// Corresponds to `VirtualAlloc` on Windows.
     MapVirtual
@@ -857,7 +857,7 @@ pub enum MapOption {
     /// The memory should be executable
     MapExecutable,
     /// Create a map for a specific address range. Corresponds to `MAP_FIXED` on POSIX.
-    MapAddr(*c_void),
+    MapAddr(*u8),
     /// Create a memory mapping for a file with a given fd.
     MapFd(c_int),
     /// When using `MapFd`, the start of the map is `uint` bytes from the start of the file.
@@ -881,7 +881,7 @@ pub enum MapError {
     /// using `MapFd`, the target of the fd didn't have enough resources to fulfill the request.
     ErrNoMem,
     /// Unrecognized error. The inner value is the unrecognized errno.
-    ErrUnknown(libc::c_int),
+    ErrUnknown(int),
     /// ## The following are win32-specific
     ///
     /// Unsupported combination of protection flags (`MapReadable`/`MapWritable`/`MapExecutable`).
@@ -926,12 +926,12 @@ impl MemoryMap {
     pub fn new(min_len: uint, options: &[MapOption]) -> Result<MemoryMap, MapError> {
         use libc::off_t;
 
-        let mut addr: *c_void = ptr::null();
-        let mut prot: c_int = 0;
-        let mut flags: c_int = libc::MAP_PRIVATE;
-        let mut fd: c_int = -1;
-        let mut offset: off_t = 0;
-        let len = round_up(min_len, page_size()) as size_t;
+        let mut addr: *u8 = ptr::null();
+        let mut prot = 0;
+        let mut flags = libc::MAP_PRIVATE;
+        let mut fd = -1;
+        let mut offset = 0;
+        let len = round_up(min_len, page_size());
 
         for &o in options.iter() {
             match o {
@@ -952,7 +952,7 @@ impl MemoryMap {
         if fd == -1 { flags |= libc::MAP_ANON; }
 
         let r = unsafe {
-            libc::mmap(addr, len, prot, flags, fd, offset)
+            libc::mmap(addr as *c_void, len as size_t, prot, flags, fd, offset)
         };
         if r.equiv(&libc::MAP_FAILED) {
             Err(match errno() as c_int {
@@ -961,7 +961,7 @@ impl MemoryMap {
                 libc::EINVAL => ErrUnaligned,
                 libc::ENODEV => ErrNoMapSupport,
                 libc::ENOMEM => ErrNoMem,
-                code => ErrUnknown(code)
+                code => ErrUnknown(code as int)
             })
         } else {
             Ok(MemoryMap {
@@ -987,7 +987,7 @@ impl Drop for MemoryMap {
     /// Unmap the mapping. Fails the task if `munmap` fails.
     fn drop(&mut self) {
         unsafe {
-            match libc::munmap(self.data as *c_void, self.len) {
+            match libc::munmap(self.data as *c_void, self.len as libc::size_t) {
                 0 => (),
                 -1 => match errno() as c_int {
                     libc::EINVAL => error!("invalid addr or len"),
@@ -1011,7 +1011,7 @@ impl MemoryMap {
         let mut executable = false;
         let mut fd: c_int = -1;
         let mut offset: uint = 0;
-        let len = round_up(min_len, page_size()) as SIZE_T;
+        let len = round_up(min_len, page_size());
 
         for &o in options.iter() {
             match o {
@@ -1040,7 +1040,7 @@ impl MemoryMap {
             }
             let r = unsafe {
                 libc::VirtualAlloc(lpAddress,
-                                   len,
+                                   len as SIZE_T,
                                    libc::MEM_COMMIT | libc::MEM_RESERVE,
                                    flProtect)
             };
@@ -1085,7 +1085,7 @@ impl MemoryMap {
                     _ => Ok(MemoryMap {
                        data: r as *mut u8,
                        len: len,
-                       kind: MapFile(mapping as *c_void)
+                       kind: MapFile(mapping as *u8)
                     })
                 }
             }
@@ -1116,7 +1116,7 @@ impl Drop for MemoryMap {
             match self.kind {
                 MapVirtual => {
                     if libc::VirtualFree(self.data as *mut c_void,
-                                         self.len,
+                                         self.len as size_t,
                                          libc::MEM_RELEASE) == FALSE {
                         error!("VirtualFree failed: {}", errno());
                     }
