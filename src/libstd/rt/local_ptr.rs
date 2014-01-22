@@ -94,12 +94,63 @@ pub mod compiled {
 
     pub unsafe fn cleanup() {}
 
+    // Rationale for all of these functions being inline(never)
+    //
+    // The #[thread_local] annotation gets propagated all the way through to
+    // LLVM, meaning the global is specially treated by LLVM to lower it to an
+    // efficient sequence of instructions. This also involves dealing with fun
+    // stuff in object files and whatnot. Regardless, it turns out this causes
+    // trouble with green threads and lots of optimizations turned on. The
+    // following case study was done on linux x86_64, but I would imagine that
+    // other platforms are similar.
+    //
+    // On linux, the instruction sequence for loading the tls pointer global
+    // looks like:
+    //
+    //      mov %fs:0x0, %rax
+    //      mov -0x8(%rax), %rbx
+    //
+    // This code leads me to believe that (%fs:0x0) is a table, and then the
+    // table contains the TLS values for the process. Hence, the slot at offset
+    // -0x8 is the task TLS pointer. This leads us to the conclusion that this
+    // table is the actual thread local part of each thread. The kernel sets up
+    // the fs segment selector to point at the right region of memory for each
+    // thread.
+    //
+    // Optimizations lead me to believe that this code is lowered to these
+    // instructions in the LLVM codegen passes, because you'll see code like
+    // this when everything is optimized:
+    //
+    //      mov %fs:0x0, %r14
+    //      mov -0x8(%r14), %rbx
+    //      // do something with %rbx, the rust Task pointer
+    //
+    //      ... // <- do more things
+    //
+    //      mov -0x8(%r14), %rbx
+    //      // do something else with %rbx
+    //
+    // Note that the optimization done here is that the first load is not
+    // duplicated during the lower instructions. This means that the %fs:0x0
+    // memory location is only dereferenced once.
+    //
+    // Normally, this is actually a good thing! With green threads, however,
+    // it's very possible for the code labeled "do more things" to context
+    // switch to another thread. If this happens, then we *must* re-load %fs:0x0
+    // because it's changed (we're on a different thread). If we don't re-load
+    // the table location, then we'll be reading the original thread's TLS
+    // values, not our thread's TLS values.
+    //
+    // Hence, we never inline these functions. By never inlining, we're
+    // guaranteed that loading the table is a local decision which is forced to
+    // *always* happen.
+
     /// Give a pointer to thread-local storage.
     ///
     /// # Safety note
     ///
     /// Does not validate the pointer type.
-    #[inline]
+    #[inline(never)] // see comments above
     pub unsafe fn put<T>(sched: ~T) {
         RT_TLS_PTR = cast::transmute(sched)
     }
@@ -109,7 +160,7 @@ pub mod compiled {
     /// # Safety note
     ///
     /// Does not validate the pointer type.
-    #[inline]
+    #[inline(never)] // see comments above
     pub unsafe fn take<T>() -> ~T {
         let ptr = RT_TLS_PTR;
         rtassert!(!ptr.is_null());
@@ -124,7 +175,7 @@ pub mod compiled {
     /// # Safety note
     ///
     /// Does not validate the pointer type.
-    #[inline]
+    #[inline(never)] // see comments above
     pub unsafe fn try_take<T>() -> Option<~T> {
         let ptr = RT_TLS_PTR;
         if ptr.is_null() {
@@ -143,18 +194,20 @@ pub mod compiled {
     ///
     /// Does not validate the pointer type.
     /// Leaves the old pointer in TLS for speed.
-    #[inline]
+    #[inline(never)] // see comments above
     pub unsafe fn unsafe_take<T>() -> ~T {
         cast::transmute(RT_TLS_PTR)
     }
 
     /// Check whether there is a thread-local pointer installed.
+    #[inline(never)] // see comments above
     pub fn exists() -> bool {
         unsafe {
             RT_TLS_PTR.is_not_null()
         }
     }
 
+    #[inline(never)] // see comments above
     pub unsafe fn unsafe_borrow<T>() -> *mut T {
         if RT_TLS_PTR.is_null() {
             rtabort!("thread-local pointer is null. bogus!");
@@ -162,6 +215,7 @@ pub mod compiled {
         RT_TLS_PTR as *mut T
     }
 
+    #[inline(never)] // see comments above
     pub unsafe fn try_unsafe_borrow<T>() -> Option<*mut T> {
         if RT_TLS_PTR.is_null() {
             None
