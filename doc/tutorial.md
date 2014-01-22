@@ -3071,7 +3071,8 @@ The effect it has on your module hierarchy mirrors aspects of both `mod` and `us
   The linkage information the binary needs to use the library `foo`.
 
 - But like `use`, all `extern mod` statements that refer to the same library are interchangeable,
-  as each one really just presents an alias to an external module (the crate root of the library your linking against).
+  as each one really just presents an alias to an external module (the crate root of the library
+  you're linking against).
 
 Remember how `use`-statements have to go before local declarations because the latter shadows the former?
 Well, `extern mod` statements also have their own rules in that regard:
