@@ -29,6 +29,8 @@ This API is completely unstable and subject to change.
 
 #[feature(macro_rules, globs, struct_variant, managed_boxes)];
 
+#[allow(visible_local_types)];
+
 extern mod extra;
 extern mod syntax;
 

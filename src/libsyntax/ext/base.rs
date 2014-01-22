@@ -56,7 +56,7 @@ pub type SyntaxExpanderTTFunNoCtxt =
     fn(ecx: &mut ExtCtxt, span: codemap::Span, token_tree: &[ast::TokenTree])
        -> MacResult;
 
-enum SyntaxExpanderTTExpander {
+pub enum SyntaxExpanderTTExpander {
     SyntaxExpanderTTExpanderWithoutContext(SyntaxExpanderTTFunNoCtxt),
 }
 
@@ -75,7 +75,7 @@ impl SyntaxExpanderTTTrait for SyntaxExpanderTT {
     }
 }
 
-enum SyntaxExpanderTTItemExpander {
+pub enum SyntaxExpanderTTItemExpander {
     SyntaxExpanderTTItemExpanderWithContext(SyntaxExpanderTTItemFun),
     SyntaxExpanderTTItemExpanderWithoutContext(SyntaxExpanderTTItemFunNoCtxt),
 }

@@ -620,8 +620,8 @@ fn expand_non_macro_stmt(s: &Stmt, fld: &mut MacroExpander)
 // from a given thingy and puts them in a mutable
 // array (passed in to the traversal)
 #[deriving(Clone)]
-struct NewNameFinderContext {
-    ident_accumulator: ~[ast::Ident],
+pub struct NewNameFinderContext {
+    priv ident_accumulator: ~[ast::Ident],
 }
 
 impl Visitor<()> for NewNameFinderContext {
@@ -710,8 +710,8 @@ pub fn expand_block_elts(b: &Block, fld: &mut MacroExpander) -> P<Block> {
     })
 }
 
-struct IdentRenamer<'a> {
-    renames: &'a mut RenameList,
+pub struct IdentRenamer<'a> {
+    priv renames: &'a mut RenameList,
 }
 
 impl<'a> Folder for IdentRenamer<'a> {

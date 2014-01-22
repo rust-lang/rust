@@ -62,7 +62,7 @@ pub mod timer;
 
 mod timer_helper;
 
-type IoResult<T> = Result<T, IoError>;
+pub type IoResult<T> = Result<T, IoError>;
 
 fn unimpl() -> IoError {
     IoError {

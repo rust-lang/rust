@@ -65,6 +65,8 @@ pub use self::signal::SignalWatcher;
 pub use self::timer::TimerWatcher;
 pub use self::tty::TtyWatcher;
 
+pub use self::homing::HomeHandle;
+
 mod macros;
 
 mod queue;

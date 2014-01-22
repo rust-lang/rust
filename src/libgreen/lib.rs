@@ -166,9 +166,9 @@ pub struct SchedPool {
 /// keep track of how many tasks are currently running in the pool and then
 /// sending on a channel once the entire pool has been drained of all tasks.
 #[deriving(Clone)]
-struct TaskState {
-    cnt: UnsafeArc<AtomicUint>,
-    done: SharedChan<()>,
+pub struct TaskState {
+    priv cnt: UnsafeArc<AtomicUint>,
+    priv done: SharedChan<()>,
 }
 
 impl SchedPool {

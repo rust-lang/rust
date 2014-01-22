@@ -265,6 +265,7 @@ fn rust_exception_class() -> uw::_Unwind_Exception_Class {
 
 #[cfg(not(target_arch = "arm"), not(test))]
 #[doc(hidden)]
+#[allow(visible_local_types)]
 pub mod eabi {
     use uw = super::libunwind;
     use libc::c_int;

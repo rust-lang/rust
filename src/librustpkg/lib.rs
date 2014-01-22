@@ -15,6 +15,7 @@
 #[crate_type = "dylib"];
 
 #[feature(globs, managed_boxes)];
+#[allow(visible_local_types)];
 
 extern mod extra;
 extern mod rustc;

@@ -40,52 +40,52 @@ pub struct Scheduler {
     /// reawoken on the wrong pool of schedulers.
     pool_id: uint,
     /// There are N work queues, one per scheduler.
-    work_queue: deque::Worker<~GreenTask>,
+    priv work_queue: deque::Worker<~GreenTask>,
     /// Work queues for the other schedulers. These are created by
     /// cloning the core work queues.
-    work_queues: ~[deque::Stealer<~GreenTask>],
+    priv work_queues: ~[deque::Stealer<~GreenTask>],
     /// The queue of incoming messages from other schedulers.
     /// These are enqueued by SchedHandles after which a remote callback
     /// is triggered to handle the message.
-    message_queue: mpsc::Consumer<SchedMessage, ()>,
+    priv message_queue: mpsc::Consumer<SchedMessage, ()>,
     /// Producer used to clone sched handles from
-    message_producer: mpsc::Producer<SchedMessage, ()>,
+    priv message_producer: mpsc::Producer<SchedMessage, ()>,
     /// A shared list of sleeping schedulers. We'll use this to wake
     /// up schedulers when pushing work onto the work queue.
-    sleeper_list: SleeperList,
+    priv sleeper_list: SleeperList,
     /// Indicates that we have previously pushed a handle onto the
     /// SleeperList but have not yet received the Wake message.
     /// Being `true` does not necessarily mean that the scheduler is
     /// not active since there are multiple event sources that may
     /// wake the scheduler. It just prevents the scheduler from pushing
     /// multiple handles onto the sleeper list.
-    sleepy: bool,
+    priv sleepy: bool,
     /// A flag to indicate we've received the shutdown message and should
     /// no longer try to go to sleep, but exit instead.
-    no_sleep: bool,
+    priv no_sleep: bool,
     stack_pool: StackPool,
     /// The scheduler runs on a special task. When it is not running
     /// it is stored here instead of the work queue.
-    sched_task: Option<~GreenTask>,
+    priv sched_task: Option<~GreenTask>,
     /// An action performed after a context switch on behalf of the
     /// code running before the context switch
-    cleanup_job: Option<CleanupJob>,
+    priv cleanup_job: Option<CleanupJob>,
     /// If the scheduler shouldn't run some tasks, a friend to send
     /// them to.
-    friend_handle: Option<SchedHandle>,
+    priv friend_handle: Option<SchedHandle>,
     /// Should this scheduler run any task, or only pinned tasks?
-    run_anything: bool,
+    priv run_anything: bool,
     /// A fast XorShift rng for scheduler use
-    rng: XorShiftRng,
+    priv rng: XorShiftRng,
     /// A togglable idle callback
-    idle_callback: Option<~PausableIdleCallback>,
+    priv idle_callback: Option<~PausableIdleCallback>,
     /// A countdown that starts at a random value and is decremented
     /// every time a yield check is performed. When it hits 0 a task
     /// will yield.
-    yield_check_count: uint,
+    priv yield_check_count: uint,
     /// A flag to tell the scheduler loop it needs to do some stealing
     /// in order to introduce randomness as part of a yield
-    steal_for_yield: bool,
+    priv steal_for_yield: bool,
     /// Bookeeping for the number of tasks which are currently running around
     /// inside this pool of schedulers
     task_state: TaskState,

@@ -98,7 +98,7 @@ pub enum ExternalLocation {
 }
 
 /// Different ways an implementor of a trait can be rendered.
-enum Implementor {
+pub enum Implementor {
     /// Paths are displayed specially by omitting the `impl XX for` cruft
     PathType(clean::Type),
     /// This is the generic representation of an trait implementor, used for

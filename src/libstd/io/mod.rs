@@ -1268,7 +1268,7 @@ pub trait Acceptor<T> {
 /// The Some contains another Option representing whether the connection attempt was succesful.
 /// A successful connection will be wrapped in Some.
 /// A failed connection is represented as a None and raises a condition.
-struct IncomingConnections<'a, A> {
+pub struct IncomingConnections<'a, A> {
     priv inc: &'a mut A,
 }
 

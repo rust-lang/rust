@@ -89,6 +89,7 @@ pub struct Select {
 /// This handle is used to keep the port in the set as well as interact with the
 /// underlying port.
 pub struct Handle<'port, T> {
+    /// A unique ID for this Handle.
     id: uint,
     priv selector: &'port Select,
     priv port: &'port mut Port<T>,
