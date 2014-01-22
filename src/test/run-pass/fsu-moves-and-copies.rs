@@ -11,7 +11,7 @@
 // Issue 4691: Ensure that functional-struct-updates operates
 // correctly and moves rather than copy when appropriate.
 
-use NC = std::util::NonCopyable;
+use NC = std::kinds::NotPod;
 
 struct ncint { nc: NC, v: int }
 fn ncint(v: int) -> ncint { ncint { nc: NC, v: v } }

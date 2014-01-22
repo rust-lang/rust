@@ -64,7 +64,6 @@ use rt::local::Local;
 use rt::task::Task;
 use send_str::{SendStr, IntoSendStr};
 use str::Str;
-use util;
 
 #[cfg(test)] use any::{AnyOwnExt, AnyRefExt};
 #[cfg(test)] use comm::SharedChan;
@@ -126,7 +125,6 @@ pub struct TaskOpts {
 pub struct TaskBuilder {
     opts: TaskOpts,
     priv gen_body: Option<proc(v: proc()) -> proc()>,
-    priv can_not_copy: Option<util::NonCopyable>,
 }
 
 /**
@@ -138,7 +136,6 @@ pub fn task() -> TaskBuilder {
     TaskBuilder {
         opts: TaskOpts::new(),
         gen_body: None,
-        can_not_copy: None,
     }
 }
 

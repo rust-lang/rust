@@ -20,12 +20,12 @@
 
 use std::borrow;
 use std::comm;
-use std::unstable::sync::Exclusive;
+use std::kinds::NotPod;
 use std::sync::arc::UnsafeArc;
 use std::sync::atomics;
 use std::unstable::finally::Finally;
+use std::unstable::sync::Exclusive;
 use std::util;
-use std::util::NonCopyable;
 
 /****************************************************************************
  * Internals
@@ -179,7 +179,7 @@ pub struct Condvar<'a> {
     // See the comment in write_cond for more detail.
     priv order: ReacquireOrderLock<'a>,
     // Make sure condvars are non-copyable.
-    priv token: util::NonCopyable,
+    priv token: NotPod,
 }
 
 impl<'a> Condvar<'a> {
@@ -325,7 +325,7 @@ impl Sem<~[WaitQueue]> {
             blk(&Condvar {
                 sem: self,
                 order: Nothing,
-                token: NonCopyable
+                token: NotPod
             })
         })
     }
@@ -565,7 +565,7 @@ impl RWLock {
             (&self.order_lock).release();
             let opt_lock = Just(&self.order_lock);
             blk(&Condvar { sem: cond.sem, order: opt_lock,
-                           token: NonCopyable })
+                           token: NotPod })
         })
     }
 
@@ -600,7 +600,7 @@ impl RWLock {
         (&self.access_lock).acquire();
         (&self.order_lock).release();
         (|| {
-            blk(RWLockWriteMode { lock: self, token: NonCopyable })
+            blk(RWLockWriteMode { lock: self, token: NotPod })
         }).finally(|| {
             let writer_or_last_reader;
             // Check if we're releasing from read mode or from write mode.
@@ -653,16 +653,16 @@ impl RWLock {
                 (&self.access_lock).release();
             }
         }
-        RWLockReadMode { lock: token.lock, token: NonCopyable }
+        RWLockReadMode { lock: token.lock, token: NotPod }
     }
 }
 
 /// The "write permission" token used for rwlock.write_downgrade().
 
-pub struct RWLockWriteMode<'a> { priv lock: &'a RWLock, priv token: NonCopyable }
+pub struct RWLockWriteMode<'a> { priv lock: &'a RWLock, priv token: NotPod }
 /// The "read permission" token used for rwlock.write_downgrade().
 pub struct RWLockReadMode<'a> { priv lock: &'a RWLock,
-                                   priv token: NonCopyable }
+                                   priv token: NotPod }
 
 impl<'a> RWLockWriteMode<'a> {
     /// Access the pre-downgrade rwlock in write mode.
@@ -673,7 +673,7 @@ impl<'a> RWLockWriteMode<'a> {
         // access lock. See comment in RWLock::write_cond for why.
         blk(&Condvar { sem:        &self.lock.access_lock,
                        order: Just(&self.lock.order_lock),
-                       token: NonCopyable })
+                       token: NotPod })
     }
 }
 

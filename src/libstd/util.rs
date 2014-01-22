@@ -12,7 +12,6 @@
 
 use cast;
 use ptr;
-use prelude::*;
 use unstable::intrinsics;
 
 /// The identity function.
@@ -53,15 +52,6 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
     src
 }
 
-/// A non-copyable dummy type.
-#[deriving(Eq, TotalEq, Ord, TotalOrd)]
-#[unsafe_no_drop_flag]
-pub struct NonCopyable;
-
-impl Drop for NonCopyable {
-    fn drop(&mut self) { }
-}
-
 /// A type with no inhabitants
 pub enum Void { }
 
@@ -97,40 +87,6 @@ mod tests {
         swap(&mut x, &mut y);
         assert_eq!(x, 42);
         assert_eq!(y, 31337);
-    }
-
-    #[test]
-    fn test_replace() {
-        let mut x = Some(NonCopyable);
-        let y = replace(&mut x, None);
-        assert!(x.is_none());
-        assert!(y.is_some());
-    }
-
-    #[test]
-    fn test_noncopyable() {
-        assert_eq!(size_of::<NonCopyable>(), 0);
-
-        // verify that `#[unsafe_no_drop_flag]` works as intended on a zero-size struct
-
-        static mut did_run: bool = false;
-
-        struct Foo { five: int }
-
-        impl Drop for Foo {
-            fn drop(&mut self) {
-                assert_eq!(self.five, 5);
-                unsafe {
-                    did_run = true;
-                }
-            }
-        }
-
-        {
-            let _a = (NonCopyable, Foo { five: 5 }, NonCopyable);
-        }
-
-        unsafe { assert_eq!(did_run, true); }
     }
 }
 

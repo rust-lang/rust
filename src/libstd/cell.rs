@@ -11,14 +11,15 @@
 //! Types dealing with dynamic mutability
 
 use prelude::*;
+use kinds::NotFreeze;
 use cast;
-use util::NonCopyable;
+use kinds::NotPod;
 
 /// A mutable memory location that admits only `Pod` data.
-#[no_freeze]
 #[deriving(Clone)]
 pub struct Cell<T> {
     priv value: T,
+    priv nf: NotFreeze,
 }
 
 impl<T: ::kinds::Pod> Cell<T> {
@@ -26,6 +27,7 @@ impl<T: ::kinds::Pod> Cell<T> {
     pub fn new(value: T) -> Cell<T> {
         Cell {
             value: value,
+            nf: NotFreeze,
         }
     }
 
@@ -45,11 +47,11 @@ impl<T: ::kinds::Pod> Cell<T> {
 }
 
 /// A mutable memory location with dynamically checked borrow rules
-#[no_freeze]
 pub struct RefCell<T> {
     priv value: T,
     priv borrow: BorrowFlag,
-    priv nc: NonCopyable
+    priv nc: NotPod,
+    priv nf: NotFreeze,
 }
 
 // Values [1, MAX-1] represent the number of `Ref` active
@@ -64,7 +66,8 @@ impl<T> RefCell<T> {
         RefCell {
             value: value,
             borrow: UNUSED,
-            nc: NonCopyable
+            nc: NotPod,
+            nf: NotFreeze,
         }
     }
 

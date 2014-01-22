@@ -47,7 +47,7 @@
 use cast;
 use comm;
 use iter::Iterator;
-use kinds::Send;
+use kinds::{Send, NotFreeze, NotSend};
 use ops::Drop;
 use option::{Some, None, Option};
 use ptr::RawPtr;
@@ -77,12 +77,12 @@ macro_rules! select {
 
 /// The "port set" of the select interface. This structure is used to manage a
 /// set of ports which are being selected over.
-#[no_freeze]
-#[no_send]
 pub struct Select {
     priv head: *mut Packet,
     priv tail: *mut Packet,
     priv next_id: uint,
+    priv nf: NotFreeze,
+    priv ns: NotSend,
 }
 
 /// A handle to a port which is currently a member of a `Select` set of ports.
@@ -107,6 +107,8 @@ impl Select {
             head: 0 as *mut Packet,
             tail: 0 as *mut Packet,
             next_id: 1,
+            nf: NotFreeze,
+            ns: NotSend,
         }
     }
 
