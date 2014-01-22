@@ -328,7 +328,7 @@ pub fn at_box_body(bcx: &Block, body_t: ty::t, boxptr: ValueRef) -> ValueRef {
 // malloc_raw_dyn: allocates a box to contain a given type, but with a
 // potentially dynamic size.
 pub fn malloc_raw_dyn<'a>(
-                      bcx: &'a Block,
+                      bcx: &'a Block<'a>,
                       t: ty::t,
                       heap: heap,
                       size: ValueRef)
@@ -425,7 +425,7 @@ pub fn malloc_general_dyn<'a>(
     }
 }
 
-pub fn malloc_general<'a>(bcx: &'a Block, t: ty::t, heap: heap)
+pub fn malloc_general<'a>(bcx: &'a Block<'a>, t: ty::t, heap: heap)
                       -> MallocResult<'a> {
     let ty = type_of(bcx.ccx(), t);
     assert!(heap != heap_exchange);
@@ -1230,18 +1230,19 @@ pub fn make_return_pointer(fcx: &FunctionContext, output_type: ty::t)
 //
 // Be warned! You must call `init_function` before doing anything with the
 // returned function context.
-pub fn new_fn_ctxt_detailed(ccx: @CrateContext,
-                            path: ast_map::Path,
-                            llfndecl: ValueRef,
-                            id: ast::NodeId,
-                            has_env: bool,
-                            output_type: ty::t,
-                            param_substs: Option<@param_substs>,
-                            sp: Option<Span>)
-                            -> FunctionContext {
+pub fn new_fn_ctxt<'a>(ccx: @CrateContext,
+                       path: ast_map::Path,
+                       llfndecl: ValueRef,
+                       id: ast::NodeId,
+                       has_env: bool,
+                       output_type: ty::t,
+                       param_substs: Option<@param_substs>,
+                       sp: Option<Span>,
+                       block_arena: &'a TypedArena<Block<'a>>)
+                       -> FunctionContext<'a> {
     for p in param_substs.iter() { p.validate(); }
 
-    debug!("new_fn_ctxt_detailed(path={},
+    debug!("new_fn_ctxt(path={},
            id={:?}, \
            param_substs={})",
            path_str(ccx.sess, path),
@@ -1258,25 +1259,25 @@ pub fn new_fn_ctxt_detailed(ccx: @CrateContext,
     let debug_context = debuginfo::create_function_debug_context(ccx, id, param_substs, llfndecl);
 
     let mut fcx = FunctionContext {
-        llfn: llfndecl,
-        llenv: None,
-        llretptr: Cell::new(None),
-        entry_bcx: RefCell::new(None),
-        alloca_insert_pt: Cell::new(None),
-        llreturn: Cell::new(None),
-        personality: Cell::new(None),
-        caller_expects_out_pointer: uses_outptr,
-        llargs: RefCell::new(HashMap::new()),
-        lllocals: RefCell::new(HashMap::new()),
-        llupvars: RefCell::new(HashMap::new()),
-        id: id,
-        param_substs: param_substs,
-        span: sp,
-        path: path,
-        block_arena: TypedArena::new(),
-        ccx: ccx,
-        debug_context: debug_context,
-        scopes: RefCell::new(~[])
+          llfn: llfndecl,
+          llenv: None,
+          llretptr: Cell::new(None),
+          entry_bcx: RefCell::new(None),
+          alloca_insert_pt: Cell::new(None),
+          llreturn: Cell::new(None),
+          personality: Cell::new(None),
+          caller_expects_out_pointer: uses_outptr,
+          llargs: RefCell::new(HashMap::new()),
+          lllocals: RefCell::new(HashMap::new()),
+          llupvars: RefCell::new(HashMap::new()),
+          id: id,
+          param_substs: param_substs,
+          span: sp,
+          path: path,
+          block_arena: block_arena,
+          ccx: ccx,
+          debug_context: debug_context,
+          scopes: RefCell::new(~[])
     };
 
     if has_env {
@@ -1326,18 +1327,6 @@ pub fn init_function<'a>(
             fcx.llretptr.set(Some(make_return_pointer(fcx, substd_output_type)));
         }
     }
-}
-
-pub fn new_fn_ctxt(ccx: @CrateContext,
-                   path: ast_map::Path,
-                   llfndecl: ValueRef,
-                   has_env: bool,
-                   output_type: ty::t,
-                   sp: Option<Span>)
-                   -> FunctionContext {
-    // FIXME(#11385): Do not call `init_function` here; it will typecheck
-    // but segfault.
-    new_fn_ctxt_detailed(ccx, path, llfndecl, -1, has_env, output_type, None, sp)
 }
 
 // NB: must keep 4 fns in sync:
@@ -1411,7 +1400,8 @@ fn copy_args_to_allocas<'a>(fcx: &FunctionContext<'a>,
 
 // Ties up the llstaticallocas -> llloadenv -> lltop edges,
 // and builds the return block.
-pub fn finish_fn(fcx: &FunctionContext, last_bcx: &Block) {
+pub fn finish_fn<'a>(fcx: &'a FunctionContext<'a>,
+                     last_bcx: &'a Block<'a>) {
     let _icx = push_ctxt("finish_fn");
 
     let ret_cx = match fcx.llreturn.get() {
@@ -1469,7 +1459,7 @@ pub fn trans_closure<'a>(ccx: @CrateContext,
                          id: ast::NodeId,
                          _attributes: &[ast::Attribute],
                          output_type: ty::t,
-                         maybe_load_env: |&'a Block<'a>| -> &'a Block<'a>) {
+                         maybe_load_env: <'b> |&'b Block<'b>| -> &'b Block<'b>) {
     ccx.stats.n_closures.set(ccx.stats.n_closures.get() + 1);
 
     let _icx = push_ctxt("trans_closure");
@@ -1483,8 +1473,16 @@ pub fn trans_closure<'a>(ccx: @CrateContext,
         _ => false
     };
 
-    let fcx = new_fn_ctxt_detailed(ccx, path, llfndecl, id, has_env, output_type,
-                                   param_substs, Some(body.span));
+    let arena = TypedArena::new();
+    let fcx = new_fn_ctxt(ccx,
+                          path,
+                          llfndecl,
+                          id,
+                          has_env,
+                          output_type,
+                          param_substs,
+                          Some(body.span),
+                          &arena);
     init_function(&fcx, false, output_type, param_substs);
 
     // cleanup scope for the incoming arguments
@@ -1626,8 +1624,16 @@ fn trans_enum_variant_or_tuple_like_struct(ccx: @CrateContext,
                  ty_to_str(ccx.tcx, ctor_ty)))
     };
 
-    let fcx = new_fn_ctxt_detailed(ccx, ~[], llfndecl, ctor_id, false,
-                                   result_ty, param_substs, None);
+    let arena = TypedArena::new();
+    let fcx = new_fn_ctxt(ccx,
+                          ~[],
+                          llfndecl,
+                          ctor_id,
+                          false,
+                          result_ty,
+                          param_substs,
+                          None,
+                          &arena);
     init_function(&fcx, false, result_ty, param_substs);
 
     let arg_tys = ty::ty_fn_args(ctor_ty);

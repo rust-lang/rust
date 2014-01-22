@@ -18,6 +18,7 @@ collector is task-local so `Gc<T>` is not sendable.
 
 #[allow(experimental)];
 
+use kinds::marker;
 use kinds::Send;
 use clone::{Clone, DeepClone};
 use managed;
@@ -25,25 +26,26 @@ use managed;
 /// Immutable garbage-collected pointer type
 #[lang="gc"]
 #[cfg(not(test))]
-#[no_send]
 #[experimental = "Gc is currently based on reference-counting and will not collect cycles until \
                   task annihilation. For now, cycles need to be broken manually by using `Rc<T>` \
                   with a non-owning `Weak<T>` pointer. A tracing garbage collector is planned."]
 pub struct Gc<T> {
-    priv ptr: @T
+    priv ptr: @T,
+    priv marker: marker::NoSend,
 }
 
 #[cfg(test)]
 #[no_send]
 pub struct Gc<T> {
-    priv ptr: @T
+    priv ptr: @T,
+    priv marker: marker::NoSend,
 }
 
 impl<T: 'static> Gc<T> {
     /// Construct a new garbage-collected box
     #[inline]
     pub fn new(value: T) -> Gc<T> {
-        Gc { ptr: @value }
+        Gc { ptr: @value, marker: marker::NoSend }
     }
 
     /// Borrow the value contained in the garbage-collected box
@@ -63,7 +65,7 @@ impl<T> Clone for Gc<T> {
     /// Clone the pointer only
     #[inline]
     fn clone(&self) -> Gc<T> {
-        Gc{ ptr: self.ptr }
+        Gc{ ptr: self.ptr, marker: marker::NoSend }
     }
 }
 
