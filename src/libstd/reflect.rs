@@ -17,7 +17,6 @@ Runtime type reflection
 #[allow(missing_doc)];
 
 use unstable::intrinsics::{Disr, Opaque, TyDesc, TyVisitor};
-use libc::c_void;
 use mem;
 use unstable::raw;
 
@@ -28,7 +27,7 @@ use unstable::raw;
  * then build a MovePtrAdaptor wrapped around your struct.
  */
 pub trait MovePtr {
-    fn move_ptr(&mut self, adjustment: |*c_void| -> *c_void);
+    fn move_ptr(&mut self, adjustment: |*u8| -> *u8);
     fn push_ptr(&mut self);
     fn pop_ptr(&mut self);
 }
@@ -50,12 +49,12 @@ pub fn MovePtrAdaptor<V:TyVisitor + MovePtr>(v: V) -> MovePtrAdaptor<V> {
 impl<V:TyVisitor + MovePtr> MovePtrAdaptor<V> {
     #[inline]
     pub fn bump(&mut self, sz: uint) {
-        self.inner.move_ptr(|p| ((p as uint) + sz) as *c_void)
+        self.inner.move_ptr(|p| ((p as uint) + sz) as *u8)
     }
 
     #[inline]
     pub fn align(&mut self, a: uint) {
-        self.inner.move_ptr(|p| align(p as uint, a) as *c_void)
+        self.inner.move_ptr(|p| align(p as uint, a) as *u8)
     }
 
     #[inline]
