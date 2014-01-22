@@ -30,7 +30,7 @@
 #[allow(non_camel_case_types)]; // C types
 
 use std::libc::{size_t, c_int, c_uint, c_void, c_char, c_double};
-use std::libc::{ssize_t, sockaddr, free};
+use std::libc::{ssize_t, sockaddr, free, addrinfo};
 use std::libc;
 use std::rt::global_heap::malloc_raw;
 
@@ -248,45 +248,6 @@ pub type uv_exit_cb = extern "C" fn(handle: *uv_process_t,
 pub type uv_signal_cb = extern "C" fn(handle: *uv_signal_t,
                                       signum: c_int);
 pub type uv_fs_cb = extern "C" fn(req: *uv_fs_t);
-
-// XXX: This is a standard C type. Could probably be defined in libc
-#[cfg(target_os = "android")]
-#[cfg(target_os = "linux")]
-pub struct addrinfo {
-    ai_flags: c_int,
-    ai_family: c_int,
-    ai_socktype: c_int,
-    ai_protocol: c_int,
-    ai_addrlen: libc::socklen_t,
-    ai_addr: *sockaddr,
-    ai_canonname: *char,
-    ai_next: *addrinfo
-}
-
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "freebsd")]
-pub struct addrinfo {
-    ai_flags: c_int,
-    ai_family: c_int,
-    ai_socktype: c_int,
-    ai_protocol: c_int,
-    ai_addrlen: libc::socklen_t,
-    ai_canonname: *char,
-    ai_addr: *sockaddr,
-    ai_next: *addrinfo
-}
-
-#[cfg(windows)]
-pub struct addrinfo {
-    ai_flags: c_int,
-    ai_family: c_int,
-    ai_socktype: c_int,
-    ai_protocol: c_int,
-    ai_addrlen: size_t,
-    ai_canonname: *char,
-    ai_addr: *sockaddr,
-    ai_next: *addrinfo
-}
 
 #[cfg(unix)] pub type uv_uid_t = libc::types::os::arch::posix88::uid_t;
 #[cfg(unix)] pub type uv_gid_t = libc::types::os::arch::posix88::gid_t;

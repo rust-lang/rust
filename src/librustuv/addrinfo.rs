@@ -10,6 +10,7 @@
 
 use ai = std::io::net::addrinfo;
 use std::cast;
+use std::libc;
 use std::libc::c_int;
 use std::ptr::null;
 use std::rt::task::BlockedTask;
@@ -19,7 +20,7 @@ use super::{Loop, UvError, Request, wait_until_woken_after, wakeup};
 use uvll;
 
 struct Addrinfo {
-    handle: *uvll::addrinfo,
+    handle: *libc::addrinfo,
 }
 
 struct Ctx {
@@ -62,7 +63,7 @@ impl GetAddrInfoRequest {
             let socktype = 0;
             let protocol = 0;
 
-            uvll::addrinfo {
+            libc::addrinfo {
                 ai_flags: flags,
                 ai_family: hint.family as c_int,
                 ai_socktype: socktype,
@@ -73,7 +74,7 @@ impl GetAddrInfoRequest {
                 ai_next: null(),
             }
         });
-        let hint_ptr = hint.as_ref().map_or(null(), |x| x as *uvll::addrinfo);
+        let hint_ptr = hint.as_ref().map_or(null(), |x| x as *libc::addrinfo);
         let mut req = Request::new(uvll::UV_GETADDRINFO);
 
         return match unsafe {
@@ -100,7 +101,7 @@ impl GetAddrInfoRequest {
 
         extern fn getaddrinfo_cb(req: *uvll::uv_getaddrinfo_t,
                                  status: c_int,
-                                 res: *uvll::addrinfo) {
+                                 res: *libc::addrinfo) {
             let req = Request::wrap(req);
             assert!(status != uvll::ECANCELED);
             let cx: &mut Ctx = unsafe { req.get_data() };
