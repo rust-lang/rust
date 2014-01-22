@@ -631,6 +631,10 @@ impl BorrowckCtxt {
         self.tcx.sess.span_note(s, m);
     }
 
+    pub fn span_end_note(&self, s: Span, m: &str) {
+        self.tcx.sess.span_end_note(s, m);
+    }
+
     pub fn bckerr_to_str(&self, err: BckError) -> ~str {
         match err.code {
             err_mutbl(lk) => {

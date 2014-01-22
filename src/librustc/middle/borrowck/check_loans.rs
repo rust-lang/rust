@@ -231,34 +231,47 @@ impl<'a> CheckLoanCtxt<'a> {
             if restr.loan_path != loan2.loan_path { continue; }
 
             match (new_loan.mutbl, old_loan.mutbl) {
-                (MutableMutability, MutableMutability) => {
+                (_, MutableMutability) => {
+                    let var = self.bccx.loan_path_to_str(new_loan.loan_path);
                     self.bccx.span_err(
                         new_loan.span,
-                        format!("cannot borrow `{}` as mutable \
-                              more than once at a time",
-                             self.bccx.loan_path_to_str(new_loan.loan_path)));
+                        format!("cannot borrow `{}` because it is already \
+                                 borrowed as mutable", var));
                     self.bccx.span_note(
                         old_loan.span,
-                        format!("previous borrow of `{}` as mutable occurs here",
-                             self.bccx.loan_path_to_str(new_loan.loan_path)));
-                    return false;
+                        format!("previous borrow of `{0}` as mutable occurs \
+                                 here; the mutable borrow prevents subsequent \
+                                 moves, borrows, or modification of `{0}` \
+                                 until the borrow ends", var));
                 }
 
-                _ => {
+                (_, mutability) => {
                     self.bccx.span_err(
                         new_loan.span,
                         format!("cannot borrow `{}` as {} because \
-                              it is also borrowed as {}",
+                              it is already borrowed as {}",
                              self.bccx.loan_path_to_str(new_loan.loan_path),
                              self.bccx.mut_to_str(new_loan.mutbl),
                              self.bccx.mut_to_str(old_loan.mutbl)));
-                    self.bccx.span_note(
-                        old_loan.span,
-                        format!("previous borrow of `{}` occurs here",
-                             self.bccx.loan_path_to_str(new_loan.loan_path)));
-                    return false;
+
+                    let var = self.bccx.loan_path_to_str(new_loan.loan_path);
+                    let mut note = format!("previous borrow of `{}` occurs \
+                                            here", var);
+                    if mutability == ImmutableMutability {
+                        note.push_str(format!("; the immutable borrow prevents \
+                                               subsequent moves or mutable
+                                               borrows of `{}` until the
+                                               borrow ends", var));
+                    }
+                    self.bccx.span_note(old_loan.span, note);
                 }
             }
+
+            let old_loan_span = ast_map::node_span(self.tcx().items,
+                                                   old_loan.kill_scope);
+            self.bccx.span_end_note(old_loan_span,
+                                    "previous borrow ends here");
+            return false;
         }
 
         true

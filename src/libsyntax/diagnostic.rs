@@ -19,12 +19,16 @@ use extra::term;
 
 static BUG_REPORT_URL: &'static str =
     "http://static.rust-lang.org/doc/master/complement-bugreport.html";
+// maximum number of lines we will print for each error; arbitrary.
+static MAX_LINES: uint = 6u;
 
 pub trait Emitter {
     fn emit(&self,
             cmsp: Option<(&codemap::CodeMap, Span)>,
             msg: &str,
             lvl: Level);
+    fn custom_emit(&self, cm: &codemap::CodeMap,
+                   sp: Span, msg: &str, lvl: Level);
 }
 
 /// This structure is used to signify that a task has failed with a fatal error
@@ -54,6 +58,9 @@ impl SpanHandler {
     }
     pub fn span_note(@self, sp: Span, msg: &str) {
         self.handler.emit(Some((&*self.cm, sp)), msg, Note);
+    }
+    pub fn span_end_note(@self, sp: Span, msg: &str) {
+        self.handler.custom_emit(&*self.cm, sp, msg, Note);
     }
     pub fn span_bug(@self, sp: Span, msg: &str) -> ! {
         self.span_fatal(sp, ice_msg(msg));
@@ -121,6 +128,10 @@ impl Handler {
             msg: &str,
             lvl: Level) {
         self.emit.emit(cmsp, msg, lvl);
+    }
+    pub fn custom_emit(@self, cm: &codemap::CodeMap,
+                       sp: Span, msg: &str, lvl: Level) {
+        self.emit.custom_emit(cm, sp, msg, lvl);
     }
 }
 
@@ -239,17 +250,34 @@ impl Emitter for DefaultEmitter {
             msg: &str,
             lvl: Level) {
         match cmsp {
-            Some((cm, sp)) => {
-                let sp = cm.adjust_span(sp);
-                let ss = cm.span_to_str(sp);
-                let lines = cm.span_to_lines(sp);
-                print_diagnostic(ss, lvl, msg);
-                highlight_lines(cm, sp, lvl, lines);
-                print_macro_backtrace(cm, sp);
-            }
+            Some((cm, sp)) => emit(cm, sp, msg, lvl, false),
             None => print_diagnostic("", lvl, msg),
         }
     }
+
+    fn custom_emit(&self, cm: &codemap::CodeMap,
+                   sp: Span, msg: &str, lvl: Level) {
+        emit(cm, sp, msg, lvl, true);
+    }
+}
+
+fn emit(cm: &codemap::CodeMap, sp: Span,
+        msg: &str, lvl: Level, custom: bool) {
+    let ss = cm.span_to_str(sp);
+    let lines = cm.span_to_lines(sp);
+    if custom {
+        // we want to tell compiletest/runtest to look at the last line of the
+        // span (since `custom_highlight_lines` displays an arrow to the end of
+        // the span)
+        let span_end = Span { lo: sp.hi, hi: sp.hi, expn_info: sp.expn_info};
+        let ses = cm.span_to_str(span_end);
+        print_diagnostic(ses, lvl, msg);
+        custom_highlight_lines(cm, sp, lvl, lines);
+    } else {
+        print_diagnostic(ss, lvl, msg);
+        highlight_lines(cm, sp, lvl, lines);
+    }
+    print_macro_backtrace(cm, sp);
 }
 
 fn highlight_lines(cm: &codemap::CodeMap,
@@ -260,12 +288,10 @@ fn highlight_lines(cm: &codemap::CodeMap,
     let mut err = io::stderr();
     let err = &mut err as &mut io::Writer;
 
-    // arbitrarily only print up to six lines of the error
-    let max_lines = 6u;
     let mut elided = false;
     let mut display_lines = lines.lines.as_slice();
-    if display_lines.len() > max_lines {
-        display_lines = display_lines.slice(0u, max_lines);
+    if display_lines.len() > MAX_LINES {
+        display_lines = display_lines.slice(0u, MAX_LINES);
         elided = true;
     }
     // Print the offending lines
@@ -317,6 +343,44 @@ fn highlight_lines(cm: &codemap::CodeMap,
         }
         print_maybe_styled(s + "\n", term::attr::ForegroundColor(lvl.color()));
     }
+}
+
+// Here are the differences between this and the normal `highlight_lines`:
+// `custom_highlight_lines` will always put arrow on the last byte of the
+// span (instead of the first byte). Also, when the span is too long (more
+// than 6 lines), `custom_highlight_lines` will print the first line, then
+// dot dot dot, then last line, whereas `highlight_lines` prints the first
+// six lines.
+fn custom_highlight_lines(cm: &codemap::CodeMap,
+                          sp: Span,
+                          lvl: Level,
+                          lines: &codemap::FileLines) {
+    let fm = lines.file;
+    let mut err = io::stderr();
+    let err = &mut err as &mut io::Writer;
+
+    let lines = lines.lines.as_slice();
+    if lines.len() > MAX_LINES {
+        write!(err, "{}:{} {}\n", fm.name,
+               lines[0] + 1, fm.get_line(lines[0] as int));
+        write!(err, "...\n");
+        let last_line = lines[lines.len()-1];
+        write!(err, "{}:{} {}\n", fm.name,
+               last_line + 1, fm.get_line(last_line as int));
+    } else {
+        for line in lines.iter() {
+            write!(err, "{}:{} {}\n", fm.name,
+                   *line + 1, fm.get_line(*line as int));
+        }
+    }
+    let last_line_start = format!("{}:{} ", fm.name, lines[lines.len()-1]+1);
+    let hi = cm.lookup_char_pos(sp.hi);
+    // Span seems to use half-opened interval, so subtract 1
+    let skip = last_line_start.len() + hi.col.to_uint() - 1;
+    let mut s = ~"";
+    skip.times(|| s.push_char(' '));
+    s.push_char('^');
+    print_maybe_styled(s + "\n", term::attr::ForegroundColor(lvl.color()));
 }
 
 fn print_macro_backtrace(cm: &codemap::CodeMap, sp: Span) {
