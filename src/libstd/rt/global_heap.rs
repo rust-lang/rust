@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use libc::{c_void, c_char, size_t, uintptr_t, free, malloc, realloc};
+use libc::{c_void, size_t, free, malloc, realloc};
 use ptr::{RawPtr, mut_null};
 use unstable::intrinsics::{TyDesc, abort};
 use unstable::raw;
@@ -31,7 +31,7 @@ fn align_to(size: uint, align: uint) -> uint {
 
 /// A wrapper around libc::malloc, aborting on out-of-memory
 #[inline]
-pub unsafe fn malloc_raw(size: uint) -> *mut c_void {
+pub unsafe fn malloc_raw(size: uint) -> *mut u8 {
     // `malloc(0)` may allocate, but it may also return a null pointer
     // http://pubs.opengroup.org/onlinepubs/9699919799/functions/malloc.html
     if size == 0 {
@@ -42,25 +42,25 @@ pub unsafe fn malloc_raw(size: uint) -> *mut c_void {
             // we need a non-allocating way to print an error here
             abort();
         }
-        p
+        p as *mut u8
     }
 }
 
 /// A wrapper around libc::realloc, aborting on out-of-memory
 #[inline]
-pub unsafe fn realloc_raw(ptr: *mut c_void, size: uint) -> *mut c_void {
+pub unsafe fn realloc_raw(ptr: *mut u8, size: uint) -> *mut u8 {
     // `realloc(ptr, 0)` may allocate, but it may also return a null pointer
     // http://pubs.opengroup.org/onlinepubs/9699919799/functions/realloc.html
     if size == 0 {
         free(ptr as *c_void);
         mut_null()
     } else {
-        let p = realloc(ptr, size as size_t);
+        let p = realloc(ptr as *mut c_void, size as size_t);
         if p.is_null() {
             // we need a non-allocating way to print an error here
             abort();
         }
-        p
+        p as *mut u8
     }
 }
 
@@ -68,22 +68,22 @@ pub unsafe fn realloc_raw(ptr: *mut c_void, size: uint) -> *mut c_void {
 #[cfg(not(test))]
 #[lang="exchange_malloc"]
 #[inline]
-pub unsafe fn exchange_malloc(size: uintptr_t) -> *c_char {
-    malloc_raw(size as uint) as *c_char
+pub unsafe fn exchange_malloc(size: uint) -> *u8 {
+    malloc_raw(size) as *u8
 }
 
 // FIXME: #7496
 #[cfg(not(test))]
 #[lang="closure_exchange_malloc"]
 #[inline]
-pub unsafe fn closure_exchange_malloc_(td: *c_char, size: uintptr_t) -> *c_char {
+pub unsafe fn closure_exchange_malloc_(td: *u8, size: uint) -> *u8 {
     closure_exchange_malloc(td, size)
 }
 
 #[inline]
-pub unsafe fn closure_exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
+pub unsafe fn closure_exchange_malloc(td: *u8, size: uint) -> *u8 {
     let td = td as *TyDesc;
-    let size = size as uint;
+    let size = size;
 
     assert!(td.is_not_null());
 
@@ -93,7 +93,7 @@ pub unsafe fn closure_exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
     let alloc = p as *mut raw::Box<()>;
     (*alloc).type_desc = td;
 
-    alloc as *c_char
+    alloc as *u8
 }
 
 // NB: Calls to free CANNOT be allowed to fail, as throwing an exception from
@@ -101,12 +101,12 @@ pub unsafe fn closure_exchange_malloc(td: *c_char, size: uintptr_t) -> *c_char {
 #[cfg(not(test))]
 #[lang="exchange_free"]
 #[inline]
-pub unsafe fn exchange_free_(ptr: *c_char) {
+pub unsafe fn exchange_free_(ptr: *u8) {
     exchange_free(ptr)
 }
 
 #[inline]
-pub unsafe fn exchange_free(ptr: *c_char) {
+pub unsafe fn exchange_free(ptr: *u8) {
     free(ptr as *c_void);
 }
 
