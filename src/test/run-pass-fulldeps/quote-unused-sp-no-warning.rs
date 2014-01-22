@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // xfail-fast
+// xfail-android
 
 #[deny(unused_variable)];
 
