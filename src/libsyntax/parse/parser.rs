@@ -2021,7 +2021,7 @@ impl Parser {
                 let es = self.parse_unspanned_seq(
                     &token::LPAREN,
                     &token::RPAREN,
-                    seq_sep_trailing_disallowed(token::COMMA),
+                    seq_sep_trailing_allowed(token::COMMA),
                     |p| p.parse_expr()
                 );
                 hi = self.last_span.hi;
@@ -2994,6 +2994,7 @@ impl Parser {
                 if self.look_ahead(1, |t| *t != token::RPAREN) {
                     while self.token == token::COMMA {
                         self.bump();
+                        if self.token == token::RPAREN { break; }
                         fields.push(self.parse_pat());
                     }
                 }
@@ -3573,7 +3574,7 @@ impl Parser {
             self.parse_unspanned_seq(
                 &token::LPAREN,
                 &token::RPAREN,
-                seq_sep_trailing_disallowed(token::COMMA),
+                seq_sep_trailing_allowed(token::COMMA),
                 |p| {
                     if p.token == token::DOTDOTDOT {
                         p.bump();
