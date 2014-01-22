@@ -308,7 +308,7 @@ impl Uuid {
     }
 
     /// Return an array of 16 octets containing the UUID data
-    pub fn to_bytes<'a>(&'a self) -> &'a [u8] {
+    pub fn as_bytes<'a>(&'a self) -> &'a [u8] {
         self.bytes.as_slice()
     }
 
@@ -739,9 +739,9 @@ mod test {
     }
 
     #[test]
-    fn test_to_bytes() {
+    fn test_as_bytes() {
         let u = Uuid::new_v4();
-        let ub = u.to_bytes();
+        let ub = u.as_bytes();
 
         assert!(ub.len() == 16);
         assert!(! ub.iter().all(|&b| b == 0));
@@ -754,7 +754,7 @@ mod test {
 
         let u = Uuid::from_bytes(b_in.clone()).unwrap();
 
-        let b_out = u.to_bytes();
+        let b_out = u.as_bytes();
 
         assert!(b_in == b_out);
     }
@@ -779,7 +779,7 @@ mod test {
     fn test_rand_rand() {
         let mut rng = rand::rng();
         let u: ~Uuid = rand::Rand::rand(&mut rng);
-        let ub = u.to_bytes();
+        let ub = u.as_bytes();
 
         assert!(ub.len() == 16);
         assert!(! ub.iter().all(|&b| b == 0));
