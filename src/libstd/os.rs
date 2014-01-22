@@ -337,9 +337,9 @@ pub fn dll_filename(base: &str) -> ~str {
     format!("{}{}{}", consts::DLL_PREFIX, base, consts::DLL_SUFFIX)
 }
 
-/// Optionally returns the filesystem path to the current executable which is
+/// Optionally returns the filesystem path of the current executable which is
 /// running. If any failure occurs, None is returned.
-pub fn self_exe_path() -> Option<Path> {
+pub fn self_exe_name() -> Option<Path> {
 
     #[cfg(target_os = "freebsd")]
     fn load_self() -> Option<~[u8]> {
@@ -402,7 +402,14 @@ pub fn self_exe_path() -> Option<Path> {
         }
     }
 
-    load_self().and_then(|path| Path::new_opt(path).map(|mut p| { p.pop(); p }))
+    load_self().and_then(Path::new_opt)
+}
+
+/// Optionally returns the filesystem path to the current executable which is
+/// running. Like self_exe_name() but without the binary's name.
+/// If any failure occurs, None is returned.
+pub fn self_exe_path() -> Option<Path> {
+    self_exe_name().map(|mut p| { p.pop(); p })
 }
 
 /**
@@ -1308,6 +1315,17 @@ mod tests {
         setenv(n, s);
         debug!("{}", s.clone());
         assert_eq!(getenv(n), option::Some(s));
+    }
+
+    #[test]
+    fn test_self_exe_name() {
+        let path = os::self_exe_name();
+        assert!(path.is_some());
+        let path = path.unwrap();
+        debug!("{:?}", path.clone());
+
+        // Hard to test this function
+        assert!(path.is_absolute());
     }
 
     #[test]
