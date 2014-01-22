@@ -183,39 +183,3 @@ pub fn accum_addrinfo(addr: &Addrinfo) -> ~[ai::Info] {
         return addrs;
     }
 }
-
-// cannot give tcp/ip permission without help of apk
-#[cfg(test, not(target_os="android"))]
-mod test {
-    use std::io::net::ip::{SocketAddr, Ipv4Addr};
-    use super::super::local_loop;
-    use super::GetAddrInfoRequest;
-
-    #[test]
-    fn getaddrinfo_test() {
-        let loop_ = &mut local_loop().loop_;
-        match GetAddrInfoRequest::run(loop_, Some("localhost"), None, None) {
-            Ok(infos) => {
-                let mut found_local = false;
-                let local_addr = &SocketAddr {
-                    ip: Ipv4Addr(127, 0, 0, 1),
-                    port: 0
-                };
-                for addr in infos.iter() {
-                    found_local = found_local || addr.address == *local_addr;
-                }
-                assert!(found_local);
-            }
-            Err(e) => fail!("{:?}", e),
-        }
-    }
-
-    #[test]
-    fn issue_10663() {
-        let loop_ = &mut local_loop().loop_;
-        // Something should happen here, but this certainly shouldn't cause
-        // everything to die. The actual outcome we don't care too much about.
-        GetAddrInfoRequest::run(loop_, Some("irc.n0v4.com"), None,
-                                None);
-    }
-}
