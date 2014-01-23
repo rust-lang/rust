@@ -85,6 +85,7 @@ fn helper(input: libc::c_int, messages: Port<Req>) {
                             events.len() as libc::c_int, -1)
         } {
             0 => fail!("epoll_wait returned immediately!"),
+            -1 if os::errno() == libc::EINTR as int => { continue }
             -1 => fail!("epoll wait failed: {}", os::last_os_error()),
             n => n
         };
