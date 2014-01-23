@@ -13,7 +13,7 @@
 
 use std::cmp;
 use std::iter::RandomAccessIterator;
-use std::iter::{Flip, Enumerate, Repeat, Map, Zip};
+use std::iter::{Rev, Enumerate, Repeat, Map, Zip};
 use std::num;
 use std::ops;
 use std::uint;
@@ -428,8 +428,8 @@ impl Bitv {
     }
 
     #[inline]
-    pub fn rev_iter<'a>(&'a self) -> Flip<Bits<'a>> {
-        self.iter().flip()
+    pub fn rev_iter<'a>(&'a self) -> Rev<Bits<'a>> {
+        self.iter().rev()
     }
 
     /// Returns `true` if all bits are 0
