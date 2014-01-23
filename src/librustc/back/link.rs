@@ -1089,8 +1089,10 @@ fn link_args(sess: Session,
             args.push(~"-dynamiclib");
             args.push(~"-Wl,-dylib");
             // FIXME (#9639): This needs to handle non-utf8 paths
-            args.push(~"-Wl,-install_name,@rpath/" +
-                      out_filename.filename_str().unwrap());
+            if !sess.opts.no_rpath {
+                args.push(~"-Wl,-install_name,@rpath/" +
+                          out_filename.filename_str().unwrap());
+            }
         } else {
             args.push(~"-shared")
         }
@@ -1108,7 +1110,9 @@ fn link_args(sess: Session,
     // FIXME (#2397): At some point we want to rpath our guesses as to
     // where extern libraries might live, based on the
     // addl_lib_search_paths
-    args.push_all(rpath::get_rpath_flags(sess, out_filename));
+    if !sess.opts.no_rpath {
+        args.push_all(rpath::get_rpath_flags(sess, out_filename));
+    }
 
     // Finally add all the linker arguments provided on the command line along
     // with any #[link_args] attributes found inside the crate
