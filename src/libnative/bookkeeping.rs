@@ -45,5 +45,6 @@ pub fn wait_for_other_tasks() {
             TASK_LOCK.wait();
         }
         TASK_LOCK.unlock();
+        TASK_LOCK.destroy();
     }
 }
