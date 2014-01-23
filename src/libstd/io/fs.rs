@@ -175,7 +175,7 @@ impl File {
     ///
     /// This function will raise on the `io_error` condition on failure.
     pub fn fsync(&mut self) {
-        self.fd.fsync().map_err(|e| io_error::cond.raise(e));
+        let _ = self.fd.fsync().map_err(|e| io_error::cond.raise(e));
     }
 
     /// This function is similar to `fsync`, except that it may not synchronize
@@ -187,7 +187,7 @@ impl File {
     ///
     /// This function will raise on the `io_error` condition on failure.
     pub fn datasync(&mut self) {
-        self.fd.datasync().map_err(|e| io_error::cond.raise(e));
+        let _ = self.fd.datasync().map_err(|e| io_error::cond.raise(e));
     }
 
     /// Either truncates or extends the underlying file, updating the size of
@@ -203,7 +203,7 @@ impl File {
     ///
     /// On error, this function will raise on the `io_error` condition.
     pub fn truncate(&mut self, size: i64) {
-        self.fd.truncate(size).map_err(|e| io_error::cond.raise(e));
+        let _ = self.fd.truncate(size).map_err(|e| io_error::cond.raise(e));
     }
 
     /// Tests whether this stream has reached EOF.

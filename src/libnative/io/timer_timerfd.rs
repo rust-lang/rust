@@ -98,7 +98,7 @@ fn helper(input: libc::c_int, messages: Port<Req>) {
             if fd == input {
                 let mut buf = [0, ..1];
                 // drain the input file descriptor of its input
-                FileDesc::new(fd, false).inner_read(buf);
+                FileDesc::new(fd, false).inner_read(buf).unwrap();
                 incoming = true;
             } else {
                 let mut bits = [0, ..8];
@@ -106,7 +106,7 @@ fn helper(input: libc::c_int, messages: Port<Req>) {
                 //
                 // FIXME: should this perform a send() this number of
                 //      times?
-                FileDesc::new(fd, false).inner_read(bits);
+                FileDesc::new(fd, false).inner_read(bits).unwrap();
                 let remove = {
                     match map.find(&fd).expect("fd unregistered") {
                         &(ref c, oneshot) => !c.try_send(()) || oneshot
