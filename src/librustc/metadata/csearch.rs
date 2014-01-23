@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -211,17 +211,14 @@ pub fn get_field_type(tcx: ty::ctxt, class_id: ast::DefId,
     let cstore = tcx.cstore;
     let cdata = cstore.get_crate_data(class_id.crate);
     let all_items = reader::get_doc(reader::Doc(cdata.data()), tag_items);
-    debug!("Looking up {:?}", class_id);
     let class_doc = expect(tcx.diag,
                            decoder::maybe_find_item(class_id.node, all_items),
                            || format!("get_field_type: class ID {:?} not found",
                                    class_id) );
-    debug!("looking up {:?} : {:?}", def, class_doc);
     let the_field = expect(tcx.diag,
         decoder::maybe_find_item(def.node, class_doc),
         || format!("get_field_type: in class {:?}, field ID {:?} not found",
                  class_id, def) );
-    debug!("got field data {:?}", the_field);
     let ty = decoder::item_type(def, the_field, tcx, cdata);
     ty::ty_param_bounds_and_ty {
         generics: ty::Generics {type_param_defs: @~[],
