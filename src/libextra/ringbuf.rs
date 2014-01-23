@@ -15,7 +15,7 @@
 
 use std::num;
 use std::vec;
-use std::iter::{Flip, RandomAccessIterator};
+use std::iter::{Rev, RandomAccessIterator};
 
 use container::Deque;
 
@@ -192,8 +192,8 @@ impl<T> RingBuf<T> {
     }
 
     /// Back-to-front iterator.
-    pub fn rev_iter<'a>(&'a self) -> Flip<Items<'a, T>> {
-        self.iter().flip()
+    pub fn rev_iter<'a>(&'a self) -> Rev<Items<'a, T>> {
+        self.iter().rev()
     }
 
     /// Front-to-back iterator which returns mutable values.
@@ -223,8 +223,8 @@ impl<T> RingBuf<T> {
     }
 
     /// Back-to-front iterator which returns mutable values.
-    pub fn mut_rev_iter<'a>(&'a mut self) -> Flip<MutItems<'a, T>> {
-        self.mut_iter().flip()
+    pub fn mut_rev_iter<'a>(&'a mut self) -> Rev<MutItems<'a, T>> {
+        self.mut_iter().rev()
     }
 }
 
