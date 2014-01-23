@@ -384,7 +384,7 @@ impl<T> AtomicOption<T> {
     }
 
     #[cfg(stage0)]
-    pub fn empty() -> AtomicOption<T> { AtomicOption { p: 0 as *mut c_void } }
+    pub fn empty() -> AtomicOption<T> { AtomicOption { p: 0 as *mut u8 } }
     #[cfg(not(stage0))]
     pub fn empty() -> AtomicOption<T> { AtomicOption { p: 0 } }
 

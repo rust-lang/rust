@@ -190,29 +190,29 @@ mod imp {
 
     impl Mutex {
         pub unsafe fn new() -> Mutex {
-            let m = Mutex {
+            let mut m = Mutex {
                 lock: intrinsics::init(),
                 cond: intrinsics::init(),
             };
 
-            pthread_mutex_init(&m.lock, 0 as *libc::c_void);
-            pthread_cond_init(&m.cond, 0 as *libc::c_void);
+            pthread_mutex_init(&mut m.lock, 0 as *libc::c_void);
+            pthread_cond_init(&mut m.cond, 0 as *libc::c_void);
 
             return m;
         }
 
-        pub unsafe fn lock(&mut self) { pthread_mutex_lock(&self.lock); }
-        pub unsafe fn unlock(&mut self) { pthread_mutex_unlock(&self.lock); }
-        pub unsafe fn signal(&mut self) { pthread_cond_signal(&self.cond); }
+        pub unsafe fn lock(&mut self) { pthread_mutex_lock(&mut self.lock); }
+        pub unsafe fn unlock(&mut self) { pthread_mutex_unlock(&mut self.lock); }
+        pub unsafe fn signal(&mut self) { pthread_cond_signal(&mut self.cond); }
         pub unsafe fn wait(&mut self) {
-            pthread_cond_wait(&self.cond, &self.lock);
+            pthread_cond_wait(&mut self.cond, &mut self.lock);
         }
         pub unsafe fn trylock(&mut self) -> bool {
-            pthread_mutex_trylock(&self.lock) == 0
+            pthread_mutex_trylock(&mut self.lock) == 0
         }
         pub unsafe fn destroy(&mut self) {
-            pthread_mutex_destroy(&self.lock);
-            pthread_cond_destroy(&self.cond);
+            pthread_mutex_destroy(&mut self.lock);
+            pthread_cond_destroy(&mut self.cond);
         }
     }
 
@@ -235,6 +235,7 @@ mod imp {
 
 #[cfg(windows)]
 mod imp {
+    use rt::global_heap::malloc_raw;
     use libc::{HANDLE, BOOL, LPSECURITY_ATTRIBUTES, c_void, DWORD, LPCSTR};
     use libc;
     use ptr::RawPtr;
