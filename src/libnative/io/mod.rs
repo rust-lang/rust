@@ -46,6 +46,22 @@ pub mod file;
 pub mod process;
 pub mod net;
 
+#[cfg(target_os = "macos")]
+#[cfg(target_os = "freebsd")]
+#[path = "timer_other.rs"]
+pub mod timer;
+
+#[cfg(target_os = "linux")]
+#[cfg(target_os = "android")]
+#[path = "timer_timerfd.rs"]
+pub mod timer;
+
+#[cfg(target_os = "win32")]
+#[path = "timer_win32.rs"]
+pub mod timer;
+
+mod timer_helper;
+
 type IoResult<T> = Result<T, IoError>;
 
 fn unimpl() -> IoError {
@@ -249,7 +265,7 @@ impl rtio::IoFactory for IoFactory {
 
     // misc
     fn timer_init(&mut self) -> IoResult<~RtioTimer> {
-        Err(unimpl())
+        timer::Timer::new().map(|t| ~t as ~RtioTimer)
     }
     fn spawn(&mut self, config: ProcessConfig)
             -> IoResult<(~RtioProcess, ~[Option<~RtioPipe>])> {
