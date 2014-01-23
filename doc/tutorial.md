@@ -1096,7 +1096,7 @@ let y = x.clone();
 
 let z = x;
 
-// and now, it can no longer be used since it has been moved from
+// and now, it can no longer be used since it has been moved
 ~~~
 
 The mutability of a value may be changed by moving it to a new owner:
