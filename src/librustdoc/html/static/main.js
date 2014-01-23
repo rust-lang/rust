@@ -17,6 +17,21 @@
 
     $('.js-only').removeClass('js-only');
 
+    function getQueryStringParams() {
+        var params = {};
+        window.location.search.substring(1).split("&").
+            map(function(s) {
+                var pair = s.split("=");
+                params[decodeURIComponent(pair[0])] =
+                    typeof pair[1] === "undefined" ? null : decodeURIComponent(pair[1]);
+            });
+        return params;
+    }
+
+    function browserSupportsHistoryApi() {
+        return window.history && typeof window.history.pushState === "function";
+    }
+
     function resizeShortBlocks() {
         if (resizeTimeout) {
             clearTimeout(resizeTimeout);
@@ -97,10 +112,10 @@
     });
 
     function initSearch(searchIndex) {
-        var currentResults, index;
+        var currentResults, index, params = getQueryStringParams();
 
-        // clear cached values from the search bar
-        $(".search-input")[0].value = '';
+        // Populate search bar with query string search term when provided.
+        $(".search-input")[0].value = params.search || '';
 
         /**
          * Executes the query and builds an index of results
@@ -418,6 +433,7 @@
                 results = [],
                 maxResults = 200,
                 resultIndex;
+            var params = getQueryStringParams();
 
             query = getQuery();
             if (e) {
@@ -426,6 +442,16 @@
 
             if (!query.query || query.id === currentResults) {
                 return;
+            }
+
+            // Because searching is incremental by character, only the most recent search query
+            // is added to the browser history.
+            if (browserSupportsHistoryApi()) {
+                if (!history.state && !params.search) {
+                    history.pushState(query, "", "?search=" + encodeURIComponent(query.query));
+                } else {
+                    history.replaceState(query, "", "?search=" + encodeURIComponent(query.query));
+                }
             }
 
             resultIndex = execQuery(query, 20000, index);
@@ -536,6 +562,27 @@
                 clearTimeout(keyUpTimeout);
                 keyUpTimeout = setTimeout(search, 100);
             });
+            // Push and pop states are used to add search results to the browser history.
+            if (browserSupportsHistoryApi()) {
+                $(window).on('popstate', function(e) {
+                    var params = getQueryStringParams();
+                    // When browsing back from search results the main page visibility must be reset.
+                    if (!params.search) {
+                        $('#main.content').removeClass('hidden');
+                        $('#search.content').addClass('hidden');
+                    }
+                    // When browsing forward to search results the previous search will be repeated,
+                    // so the currentResults are cleared to ensure the search is successful.
+                    currentResults = null;
+                    // Synchronize search bar with query string state and perform the search.
+                    $('.search-input').val(params.search);
+                    // Some browsers fire 'onpopstate' for every page load (Chrome), while others fire the
+                    // event only when actually popping a state (Firefox), which is why search() is called
+                    // both here and at the end of the startSearch() function.
+                    search();
+                });
+            }
+            search();
         }
 
         index = buildIndex(searchIndex);
