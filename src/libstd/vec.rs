@@ -960,7 +960,7 @@ pub trait ImmutableVector<'a, T> {
     fn flat_map<U>(&self, f: |t: &T| -> ~[U]) -> ~[U];
     /// Returns a pointer to the element at the given index, without doing
     /// bounds checking.
-    unsafe fn unsafe_ref(&self, index: uint) -> *T;
+    unsafe fn unsafe_ref(self, index: uint) -> &'a T;
 
     /**
      * Returns an unsafe pointer to the vector's buffer
@@ -1149,8 +1149,8 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
     }
 
     #[inline]
-    unsafe fn unsafe_ref(&self, index: uint) -> *T {
-        self.repr().data.offset(index as int)
+    unsafe fn unsafe_ref(self, index: uint) -> &'a T {
+        cast::transmute(self.repr().data.offset(index as int))
     }
 
     #[inline]
@@ -2183,7 +2183,7 @@ pub trait MutableVector<'a, T> {
     fn move_from(self, src: ~[T], start: uint, end: uint) -> uint;
 
     /// Returns an unsafe mutable pointer to the element in index
-    unsafe fn unsafe_mut_ref(self, index: uint) -> *mut T;
+    unsafe fn unsafe_mut_ref(self, index: uint) -> &'a mut T;
 
     /// Return an unsafe mutable pointer to the vector's buffer.
     ///
@@ -2361,8 +2361,8 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
     }
 
     #[inline]
-    unsafe fn unsafe_mut_ref(self, index: uint) -> *mut T {
-        ptr::mut_offset(self.repr().data as *mut T, index as int)
+    unsafe fn unsafe_mut_ref(self, index: uint) -> &'a mut T {
+        cast::transmute(ptr::mut_offset(self.repr().data as *mut T, index as int))
     }
 
     #[inline]
