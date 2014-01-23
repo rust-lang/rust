@@ -25,6 +25,7 @@ instances as clients.
 use prelude::*;
 
 use c_str::ToCStr;
+use clone::Clone;
 use rt::rtio::{IoFactory, LocalIo, RtioUnixListener};
 use rt::rtio::{RtioUnixAcceptor, RtioPipe};
 use io::pipe::PipeStream;
@@ -59,6 +60,12 @@ impl UnixStream {
         LocalIo::maybe_raise(|io| {
             io.unix_connect(&path.to_c_str()).map(UnixStream::new)
         })
+    }
+}
+
+impl Clone for UnixStream {
+    fn clone(&self) -> UnixStream {
+        UnixStream { obj: self.obj.clone() }
     }
 }
 
@@ -227,5 +234,94 @@ mod tests {
         let path = next_test_unix();
         let _acceptor = UnixListener::bind(&path).listen();
         assert!(path.exists());
+    }
+
+    #[test]
+    fn unix_clone_smoke() {
+        let addr = next_test_unix();
+        let mut acceptor = UnixListener::bind(&addr).listen();
+
+        spawn(proc() {
+            let mut s = UnixStream::connect(&addr);
+            let mut buf = [0, 0];
+            assert_eq!(s.read(buf), Ok(1));
+            assert_eq!(buf[0], 1);
+            s.write([2]).unwrap();
+        });
+
+        let mut s1 = acceptor.accept().unwrap();
+        let s2 = s1.clone();
+
+        let (p1, c1) = Chan::new();
+        let (p2, c2) = Chan::new();
+        spawn(proc() {
+            let mut s2 = s2;
+            p1.recv();
+            s2.write([1]).unwrap();
+            c2.send(());
+        });
+        c1.send(());
+        let mut buf = [0, 0];
+        assert_eq!(s1.read(buf), Ok(1));
+        p2.recv();
+    }
+
+    #[test]
+    fn unix_clone_two_read() {
+        let addr = next_test_unix();
+        let mut acceptor = UnixListener::bind(&addr).listen();
+        let (p, c) = SharedChan::new();
+        let c2 = c.clone();
+
+        spawn(proc() {
+            let mut s = UnixStream::connect(&addr);
+            s.write([1]).unwrap();
+            p.recv();
+            s.write([2]).unwrap();
+            p.recv();
+        });
+
+        let mut s1 = acceptor.accept().unwrap();
+        let s2 = s1.clone();
+
+        let (p, done) = Chan::new();
+        spawn(proc() {
+            let mut s2 = s2;
+            let mut buf = [0, 0];
+            s2.read(buf).unwrap();
+            c2.send(());
+            done.send(());
+        });
+        let mut buf = [0, 0];
+        s1.read(buf).unwrap();
+        c.send(());
+
+        p.recv();
+    }
+
+    #[test]
+    fn unix_clone_two_write() {
+        let addr = next_test_unix();
+        let mut acceptor = UnixListener::bind(&addr).listen();
+
+        spawn(proc() {
+            let mut s = UnixStream::connect(&addr);
+            let mut buf = [0, 1];
+            s.read(buf).unwrap();
+            s.read(buf).unwrap();
+        });
+
+        let mut s1 = acceptor.accept().unwrap();
+        let s2 = s1.clone();
+
+        let (p, done) = Chan::new();
+        spawn(proc() {
+            let mut s2 = s2;
+            s2.write([1]).unwrap();
+            done.send(());
+        });
+        s1.write([2]).unwrap();
+
+        p.recv();
     }
 }

@@ -380,7 +380,6 @@ mod test {
 
     use super::{Mutex, MUTEX_INIT};
     use rt::thread::Thread;
-    use task;
 
     #[test]
     fn somke_lock() {

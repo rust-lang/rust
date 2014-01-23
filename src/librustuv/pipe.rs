@@ -14,7 +14,9 @@ use std::libc;
 use std::rt::rtio::{RtioPipe, RtioUnixListener, RtioUnixAcceptor};
 use std::rt::task::BlockedTask;
 
+use access::Access;
 use homing::{HomingIO, HomeHandle};
+use rc::Refcount;
 use stream::StreamWatcher;
 use super::{Loop, UvError, UvHandle, Request, uv_error_to_io_error,
             wait_until_woken_after, wakeup};
@@ -25,6 +27,11 @@ pub struct PipeWatcher {
     stream: StreamWatcher,
     home: HomeHandle,
     priv defused: bool,
+    priv refcount: Refcount,
+
+    // see comments in TcpWatcher for why these exist
+    priv write_access: Access,
+    priv read_access: Access,
 }
 
 pub struct PipeListener {
@@ -61,6 +68,9 @@ impl PipeWatcher {
             stream: StreamWatcher::new(handle),
             home: home,
             defused: false,
+            refcount: Refcount::new(),
+            read_access: Access::new(),
+            write_access: Access::new(),
         }
     }
 
@@ -118,13 +128,26 @@ impl PipeWatcher {
 
 impl RtioPipe for PipeWatcher {
     fn read(&mut self, buf: &mut [u8]) -> Result<uint, IoError> {
-        let _m = self.fire_homing_missile();
+        let m = self.fire_homing_missile();
+        let _g = self.read_access.grant(m);
         self.stream.read(buf).map_err(uv_error_to_io_error)
     }
 
     fn write(&mut self, buf: &[u8]) -> Result<(), IoError> {
-        let _m = self.fire_homing_missile();
+        let m = self.fire_homing_missile();
+        let _g = self.write_access.grant(m);
         self.stream.write(buf).map_err(uv_error_to_io_error)
+    }
+
+    fn clone(&self) -> ~RtioPipe {
+        ~PipeWatcher {
+            stream: StreamWatcher::new(self.stream.handle),
+            defused: false,
+            home: self.home.clone(),
+            refcount: self.refcount.clone(),
+            read_access: self.read_access.clone(),
+            write_access: self.write_access.clone(),
+        } as ~RtioPipe
     }
 }
 
@@ -138,8 +161,8 @@ impl UvHandle<uvll::uv_pipe_t> for PipeWatcher {
 
 impl Drop for PipeWatcher {
     fn drop(&mut self) {
-        if !self.defused {
-            let _m = self.fire_homing_missile();
+        let _m = self.fire_homing_missile();
+        if !self.defused && self.refcount.decrement() {
             self.close();
         }
     }

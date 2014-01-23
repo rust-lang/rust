@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use clone::Clone;
 use result::{Ok, Err};
 use io::net::ip::SocketAddr;
 use io::{Reader, Writer, IoResult};
@@ -38,6 +39,19 @@ impl UdpSocket {
 
     pub fn socket_name(&mut self) -> IoResult<SocketAddr> {
         self.obj.socket_name()
+    }
+}
+
+impl Clone for UdpSocket {
+    /// Creates a new handle to this UDP socket, allowing for simultaneous reads
+    /// and writes of the socket.
+    ///
+    /// The underlying UDP socket will not be closed until all handles to the
+    /// socket have been deallocated. Two concurrent reads will not receive the
+    /// same data.  Instead, the first read will receive the first packet
+    /// received, and the second read will receive the second packet.
+    fn clone(&self) -> UdpSocket {
+        UdpSocket { obj: self.obj.clone() }
     }
 }
 
@@ -249,5 +263,108 @@ mod test {
 
     iotest!(fn socket_name_ip6() {
         socket_name(next_test_ip6());
+    })
+
+    iotest!(fn udp_clone_smoke() {
+        let addr1 = next_test_ip4();
+        let addr2 = next_test_ip4();
+        let mut sock1 = UdpSocket::bind(addr1).unwrap();
+        let sock2 = UdpSocket::bind(addr2).unwrap();
+
+        spawn(proc() {
+            let mut sock2 = sock2;
+            let mut buf = [0, 0];
+            assert_eq!(sock2.recvfrom(buf), Ok((1, addr1)));
+            assert_eq!(buf[0], 1);
+            sock2.sendto([2], addr1).unwrap();
+        });
+
+        let sock3 = sock1.clone();
+
+        let (p1, c1) = Chan::new();
+        let (p2, c2) = Chan::new();
+        spawn(proc() {
+            let mut sock3 = sock3;
+            p1.recv();
+            sock3.sendto([1], addr2).unwrap();
+            c2.send(());
+        });
+        c1.send(());
+        let mut buf = [0, 0];
+        assert_eq!(sock1.recvfrom(buf), Ok((1, addr2)));
+        p2.recv();
+    })
+
+    iotest!(fn udp_clone_two_read() {
+        let addr1 = next_test_ip4();
+        let addr2 = next_test_ip4();
+        let mut sock1 = UdpSocket::bind(addr1).unwrap();
+        let sock2 = UdpSocket::bind(addr2).unwrap();
+        let (p, c) = SharedChan::new();
+        let c2 = c.clone();
+
+        spawn(proc() {
+            let mut sock2 = sock2;
+            sock2.sendto([1], addr1).unwrap();
+            p.recv();
+            sock2.sendto([2], addr1).unwrap();
+            p.recv();
+        });
+
+        let sock3 = sock1.clone();
+
+        let (p, done) = Chan::new();
+        spawn(proc() {
+            let mut sock3 = sock3;
+            let mut buf = [0, 0];
+            sock3.recvfrom(buf).unwrap();
+            c2.send(());
+            done.send(());
+        });
+        let mut buf = [0, 0];
+        sock1.recvfrom(buf).unwrap();
+        c.send(());
+
+        p.recv();
+    })
+
+    iotest!(fn udp_clone_two_write() {
+        let addr1 = next_test_ip4();
+        let addr2 = next_test_ip4();
+        let mut sock1 = UdpSocket::bind(addr1).unwrap();
+        let sock2 = UdpSocket::bind(addr2).unwrap();
+
+        let (p, c) = SharedChan::new();
+
+        spawn(proc() {
+            let mut sock2 = sock2;
+            let mut buf = [0, 1];
+
+            for _ in p.iter() {
+                match sock2.recvfrom(buf) {
+                    Ok(..) => {}
+                    Err(e) => fail!("failed receive: {}", e),
+                }
+            }
+        });
+
+        let sock3 = sock1.clone();
+
+        let (p, done) = Chan::new();
+        let c2 = c.clone();
+        spawn(proc() {
+            let mut sock3 = sock3;
+            match sock3.sendto([1], addr2) {
+                Ok(..) => c2.send(()),
+                Err(..) => {}
+            }
+            done.send(());
+        });
+        match sock1.sendto([2], addr2) {
+            Ok(..) => c.send(()),
+            Err(..) => {}
+        }
+
+        p.recv();
     })
 }
