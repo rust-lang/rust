@@ -11,12 +11,10 @@
 use ai = std::io::net::addrinfo;
 use std::c_str::CString;
 use std::cast;
-use std::io;
 use std::io::IoError;
 use std::libc;
 use std::libc::{c_char, c_int};
 use std::ptr::null;
-use std::str::raw::from_c_str;
 
 use super::net::sockaddr_to_addr;
 
@@ -55,13 +53,7 @@ impl GetAddrInfoRequest {
 
         // Error?
         if s != 0 {
-            let err_str = unsafe { from_c_str(gai_strerror(s)) };
-
-            return Err(IoError {
-                kind: io::OtherIoError,
-                desc: "unable to resolve host",
-                detail: Some(err_str),
-            });
+            return Err(get_error(s));
         }
 
         // Collect all the results we found
@@ -92,9 +84,34 @@ impl GetAddrInfoRequest {
     }
 }
 
-extern {
+extern "system" {
     fn getaddrinfo(node: *c_char, service: *c_char,
                    hints: *libc::addrinfo, res: **libc::addrinfo) -> c_int;
-    fn gai_strerror(errcode: c_int) -> *c_char;
     fn freeaddrinfo(res: *libc::addrinfo);
+    #[cfg(not(windows))]
+    fn gai_strerror(errcode: c_int) -> *c_char;
+    #[cfg(windows)]
+    fn WSAGetLastError() -> c_int;
+}
+
+#[cfg(windows)]
+fn get_error(_: c_int) -> IoError {
+    use super::translate_error;
+
+    unsafe {
+        translate_error(WSAGetLastError() as i32, true)
+    }
+}
+
+#[cfg(not(windows))]
+fn get_error(s: c_int) -> IoError {
+    use std::io;
+    use std::str::raw::from_c_str;
+
+    let err_str = unsafe { from_c_str(gai_strerror(s)) };
+    IoError {
+        kind: io::OtherIoError,
+        desc: "unable to resolve host",
+        detail: Some(err_str),
+    }
 }
