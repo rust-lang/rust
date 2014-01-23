@@ -173,49 +173,49 @@ mod imp {
     type pthread_condattr_t = libc::c_void;
 
     pub unsafe fn init_lock() -> uint {
-        let block = malloc_raw(rust_pthread_mutex_t_size() as uint) as *pthread_mutex_t;
+        let block = malloc_raw(rust_pthread_mutex_t_size() as uint) as *mut pthread_mutex_t;
         let n = pthread_mutex_init(block, ptr::null());
         assert_eq!(n, 0);
         return block as uint;
     }
 
     pub unsafe fn init_cond() -> uint {
-        let block = malloc_raw(rust_pthread_cond_t_size() as uint) as *pthread_cond_t;
+        let block = malloc_raw(rust_pthread_cond_t_size() as uint) as *mut pthread_cond_t;
         let n = pthread_cond_init(block, ptr::null());
         assert_eq!(n, 0);
         return block as uint;
     }
 
     pub unsafe fn free_lock(h: uint) {
-        let block = h as *libc::c_void;
+        let block = h as *mut libc::c_void;
         assert_eq!(pthread_mutex_destroy(block), 0);
         libc::free(block);
     }
 
     pub unsafe fn free_cond(h: uint) {
-        let block = h as *pthread_cond_t;
+        let block = h as *mut pthread_cond_t;
         assert_eq!(pthread_cond_destroy(block), 0);
         libc::free(block);
     }
 
     pub unsafe fn lock(l: uint) {
-        assert_eq!(pthread_mutex_lock(l as *pthread_mutex_t), 0);
+        assert_eq!(pthread_mutex_lock(l as *mut pthread_mutex_t), 0);
     }
 
     pub unsafe fn trylock(l: uint) -> bool {
-        pthread_mutex_trylock(l as *pthread_mutex_t) == 0
+        pthread_mutex_trylock(l as *mut pthread_mutex_t) == 0
     }
 
     pub unsafe fn unlock(l: uint) {
-        assert_eq!(pthread_mutex_unlock(l as *pthread_mutex_t), 0);
+        assert_eq!(pthread_mutex_unlock(l as *mut pthread_mutex_t), 0);
     }
 
     pub unsafe fn wait(cond: uint, m: uint) {
-        assert_eq!(pthread_cond_wait(cond as *pthread_cond_t, m as *pthread_mutex_t), 0);
+        assert_eq!(pthread_cond_wait(cond as *mut pthread_cond_t, m as *mut pthread_mutex_t), 0);
     }
 
     pub unsafe fn signal(cond: uint) {
-        assert_eq!(pthread_cond_signal(cond as *pthread_cond_t), 0);
+        assert_eq!(pthread_cond_signal(cond as *mut pthread_cond_t), 0);
     }
 
     extern {
@@ -224,19 +224,19 @@ mod imp {
     }
 
     extern {
-        fn pthread_mutex_init(lock: *pthread_mutex_t,
+        fn pthread_mutex_init(lock: *mut pthread_mutex_t,
                               attr: *pthread_mutexattr_t) -> libc::c_int;
-        fn pthread_mutex_destroy(lock: *pthread_mutex_t) -> libc::c_int;
-        fn pthread_cond_init(cond: *pthread_cond_t,
+        fn pthread_mutex_destroy(lock: *mut pthread_mutex_t) -> libc::c_int;
+        fn pthread_cond_init(cond: *mut pthread_cond_t,
                               attr: *pthread_condattr_t) -> libc::c_int;
-        fn pthread_cond_destroy(cond: *pthread_cond_t) -> libc::c_int;
-        fn pthread_mutex_lock(lock: *pthread_mutex_t) -> libc::c_int;
-        fn pthread_mutex_trylock(lock: *pthread_mutex_t) -> libc::c_int;
-        fn pthread_mutex_unlock(lock: *pthread_mutex_t) -> libc::c_int;
+        fn pthread_cond_destroy(cond: *mut pthread_cond_t) -> libc::c_int;
+        fn pthread_mutex_lock(lock: *mut pthread_mutex_t) -> libc::c_int;
+        fn pthread_mutex_trylock(lock: *mut pthread_mutex_t) -> libc::c_int;
+        fn pthread_mutex_unlock(lock: *mut pthread_mutex_t) -> libc::c_int;
 
-        fn pthread_cond_wait(cond: *pthread_cond_t,
-                             lock: *pthread_mutex_t) -> libc::c_int;
-        fn pthread_cond_signal(cond: *pthread_cond_t) -> libc::c_int;
+        fn pthread_cond_wait(cond: *mut pthread_cond_t,
+                             lock: *mut pthread_mutex_t) -> libc::c_int;
+        fn pthread_cond_signal(cond: *mut pthread_cond_t) -> libc::c_int;
     }
 }
 
@@ -263,7 +263,7 @@ mod imp {
 
     pub unsafe fn free_lock(h: uint) {
         DeleteCriticalSection(h as LPCRITICAL_SECTION);
-        libc::free(h as *c_void);
+        libc::free(h as *mut c_void);
     }
 
     pub unsafe fn free_cond(h: uint) {
