@@ -548,13 +548,13 @@ pub fn readdir(p: &CString) -> IoResult<~[Path]> {
             let p = Path::new(p);
             let star = p.join("*");
             as_utf16_p(star.as_str().unwrap(), |path_ptr| {
-                let wfd_ptr = malloc_raw(rust_list_dir_wfd_size() as uint) as *c_void;
+                let wfd_ptr = malloc_raw(rust_list_dir_wfd_size() as uint);
                 let find_handle = FindFirstFileW(path_ptr, wfd_ptr as HANDLE);
                 if find_handle as libc::c_int != INVALID_HANDLE_VALUE {
                     let mut paths = ~[];
                     let mut more_files = 1 as libc::c_int;
                     while more_files != 0 {
-                        let fp_buf = rust_list_dir_wfd_fp_buf(wfd_ptr);
+                        let fp_buf = rust_list_dir_wfd_fp_buf(wfd_ptr as *c_void);
                         if fp_buf as uint == 0 {
                             fail!("os::list_dir() failure: got null ptr from wfd");
                         }
@@ -567,7 +567,7 @@ pub fn readdir(p: &CString) -> IoResult<~[Path]> {
                         more_files = FindNextFileW(find_handle, wfd_ptr as HANDLE);
                     }
                     FindClose(find_handle);
-                    free(wfd_ptr);
+                    free(wfd_ptr as *mut c_void);
                     Ok(paths)
                 } else {
                     Err(super::last_error())
