@@ -147,6 +147,8 @@ The current mapping of types to traits is:
 * `p` ⇒ `Pointer`
 * `t` ⇒ `Binary`
 * `f` ⇒ `Float`
+* `e` ⇒ `LowerExp`
+* `E` ⇒ `UpperExp`
 * *nothing* ⇒ `Default`
 
 What this means is that any type of argument which implements the
@@ -578,6 +580,12 @@ pub trait Pointer { fn fmt(&Self, &mut Formatter); }
 /// Format trait for the `f` character
 #[allow(missing_doc)]
 pub trait Float { fn fmt(&Self, &mut Formatter); }
+/// Format trait for the `e` character
+#[allow(missing_doc)]
+pub trait LowerExp { fn fmt(&Self, &mut Formatter); }
+/// Format trait for the `E` character
+#[allow(missing_doc)]
+pub trait UpperExp { fn fmt(&Self, &mut Formatter); }
 
 /// The `write` function takes an output stream, a precompiled format string,
 /// and a list of arguments. The arguments will be formatted according to the
@@ -1081,6 +1089,28 @@ macro_rules! floating(($ty:ident) => {
             let s = match fmt.precision {
                 Some(i) => ::$ty::to_str_exact(f.abs(), i),
                 None => ::$ty::to_str_digits(f.abs(), 6)
+            };
+            fmt.pad_integral(s.as_bytes(), "", *f >= 0.0);
+        }
+    }
+
+    impl LowerExp for $ty {
+        fn fmt(f: &$ty, fmt: &mut Formatter) {
+            // XXX: this shouldn't perform an allocation
+            let s = match fmt.precision {
+                Some(i) => ::$ty::to_str_exp_exact(f.abs(), i, false),
+                None => ::$ty::to_str_exp_digits(f.abs(), 6, false)
+            };
+            fmt.pad_integral(s.as_bytes(), "", *f >= 0.0);
+        }
+    }
+
+    impl UpperExp for $ty {
+        fn fmt(f: &$ty, fmt: &mut Formatter) {
+            // XXX: this shouldn't perform an allocation
+            let s = match fmt.precision {
+                Some(i) => ::$ty::to_str_exp_exact(f.abs(), i, true),
+                None => ::$ty::to_str_exp_digits(f.abs(), 6, true)
             };
             fmt.pad_integral(s.as_bytes(), "", *f >= 0.0);
         }

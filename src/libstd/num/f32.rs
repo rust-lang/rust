@@ -285,20 +285,16 @@ impl Signed for f32 {
     #[inline]
     fn abs(&self) -> f32 { abs(*self) }
 
-    ///
     /// The positive difference of two numbers. Returns `0.0` if the number is less than or
     /// equal to `other`, otherwise the difference between`self` and `other` is returned.
-    ///
     #[inline]
     fn abs_sub(&self, other: &f32) -> f32 { abs_sub(*self, *other) }
 
-    ///
     /// # Returns
     ///
     /// - `1.0` if the number is positive, `+0.0` or `INFINITY`
     /// - `-1.0` if the number is negative, `-0.0` or `NEG_INFINITY`
     /// - `NAN` if the number is NaN
-    ///
     #[inline]
     fn signum(&self) -> f32 {
         if self.is_nan() { NAN } else { copysign(1.0, *self) }
@@ -330,14 +326,12 @@ impl Round for f32 {
     #[inline]
     fn trunc(&self) -> f32 { trunc(*self) }
 
-    ///
     /// The fractional part of the number, satisfying:
     ///
     /// ```rust
     /// let x = 1.65f32;
     /// assert!(x == x.trunc() + x.fract())
     /// ```
-    ///
     #[inline]
     fn fract(&self) -> f32 { *self - self.trunc() }
 }
@@ -490,7 +484,6 @@ impl Real for f32 {
     #[inline]
     fn tanh(&self) -> f32 { tanh(*self) }
 
-    ///
     /// Inverse hyperbolic sine
     ///
     /// # Returns
@@ -498,7 +491,6 @@ impl Real for f32 {
     /// - on success, the inverse hyperbolic sine of `self` will be returned
     /// - `self` if `self` is `0.0`, `-0.0`, `INFINITY`, or `NEG_INFINITY`
     /// - `NAN` if `self` is `NAN`
-    ///
     #[inline]
     fn asinh(&self) -> f32 {
         match *self {
@@ -507,7 +499,6 @@ impl Real for f32 {
         }
     }
 
-    ///
     /// Inverse hyperbolic cosine
     ///
     /// # Returns
@@ -515,7 +506,6 @@ impl Real for f32 {
     /// - on success, the inverse hyperbolic cosine of `self` will be returned
     /// - `INFINITY` if `self` is `INFINITY`
     /// - `NAN` if `self` is `NAN` or `self < 1.0` (including `NEG_INFINITY`)
-    ///
     #[inline]
     fn acosh(&self) -> f32 {
         match *self {
@@ -524,7 +514,6 @@ impl Real for f32 {
         }
     }
 
-    ///
     /// Inverse hyperbolic tangent
     ///
     /// # Returns
@@ -535,7 +524,6 @@ impl Real for f32 {
     /// - `NEG_INFINITY` if `self` is `-1.0`
     /// - `NAN` if the `self` is `NAN` or outside the domain of `-1.0 <= self <= 1.0`
     ///   (including `INFINITY` and `NEG_INFINITY`)
-    ///
     #[inline]
     fn atanh(&self) -> f32 {
         0.5 * ((2.0 * *self) / (1.0 - *self)).ln_1p()
@@ -643,12 +631,10 @@ impl Float for f32 {
         ldexp(x, exp as c_int)
     }
 
-    ///
     /// Breaks the number into a normalized fraction and a base-2 exponent, satisfying:
     ///
     /// - `self = x * pow(2, exp)`
     /// - `0.5 <= abs(x) < 1.0`
-    ///
     #[inline]
     fn frexp(&self) -> (f32, int) {
         let mut exp = 0;
@@ -656,25 +642,19 @@ impl Float for f32 {
         (x, exp as int)
     }
 
-    ///
     /// Returns the exponential of the number, minus `1`, in a way that is accurate
     /// even if the number is close to zero
-    ///
     #[inline]
     fn exp_m1(&self) -> f32 { exp_m1(*self) }
 
-    ///
     /// Returns the natural logarithm of the number plus `1` (`ln(1+n)`) more accurately
     /// than if the operations were performed separately
-    ///
     #[inline]
     fn ln_1p(&self) -> f32 { ln_1p(*self) }
 
-    ///
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding error. This
     /// produces a more accurate result with better performance than a separate multiplication
     /// operation followed by an add.
-    ///
     #[inline]
     fn mul_add(&self, a: f32, b: f32) -> f32 {
         mul_add(*self, a, b)
@@ -708,35 +688,30 @@ impl Float for f32 {
 // Section: String Conversions
 //
 
-///
 /// Converts a float to a string
 ///
 /// # Arguments
 ///
 /// * num - The float value
-///
 #[inline]
 pub fn to_str(num: f32) -> ~str {
     let (r, _) = strconv::float_to_str_common(
-        num, 10u, true, strconv::SignNeg, strconv::DigAll);
+        num, 10u, true, strconv::SignNeg, strconv::DigAll, strconv::ExpNone, false);
     r
 }
 
-///
 /// Converts a float to a string in hexadecimal format
 ///
 /// # Arguments
 ///
 /// * num - The float value
-///
 #[inline]
 pub fn to_str_hex(num: f32) -> ~str {
     let (r, _) = strconv::float_to_str_common(
-        num, 16u, true, strconv::SignNeg, strconv::DigAll);
+        num, 16u, true, strconv::SignNeg, strconv::DigAll, strconv::ExpNone, false);
     r
 }
 
-///
 /// Converts a float to a string in a given radix, and a flag indicating
 /// whether it's a special value
 ///
@@ -744,14 +719,12 @@ pub fn to_str_hex(num: f32) -> ~str {
 ///
 /// * num - The float value
 /// * radix - The base to use
-///
 #[inline]
 pub fn to_str_radix_special(num: f32, rdx: uint) -> (~str, bool) {
     strconv::float_to_str_common(num, rdx, true,
-                           strconv::SignNeg, strconv::DigAll)
+                           strconv::SignNeg, strconv::DigAll, strconv::ExpNone, false)
 }
 
-///
 /// Converts a float to a string with exactly the number of
 /// provided significant digits
 ///
@@ -759,15 +732,13 @@ pub fn to_str_radix_special(num: f32, rdx: uint) -> (~str, bool) {
 ///
 /// * num - The float value
 /// * digits - The number of significant digits
-///
 #[inline]
 pub fn to_str_exact(num: f32, dig: uint) -> ~str {
     let (r, _) = strconv::float_to_str_common(
-        num, 10u, true, strconv::SignNeg, strconv::DigExact(dig));
+        num, 10u, true, strconv::SignNeg, strconv::DigExact(dig), strconv::ExpNone, false);
     r
 }
 
-///
 /// Converts a float to a string with a maximum number of
 /// significant digits
 ///
@@ -775,11 +746,40 @@ pub fn to_str_exact(num: f32, dig: uint) -> ~str {
 ///
 /// * num - The float value
 /// * digits - The number of significant digits
-///
 #[inline]
 pub fn to_str_digits(num: f32, dig: uint) -> ~str {
     let (r, _) = strconv::float_to_str_common(
-        num, 10u, true, strconv::SignNeg, strconv::DigMax(dig));
+        num, 10u, true, strconv::SignNeg, strconv::DigMax(dig), strconv::ExpNone, false);
+    r
+}
+
+/// Converts a float to a string using the exponential notation with exactly the number of
+/// provided digits after the decimal point in the significand
+///
+/// # Arguments
+///
+/// * num - The float value
+/// * digits - The number of digits after the decimal point
+/// * upper - Use `E` instead of `e` for the exponent sign
+#[inline]
+pub fn to_str_exp_exact(num: f32, dig: uint, upper: bool) -> ~str {
+    let (r, _) = strconv::float_to_str_common(
+        num, 10u, true, strconv::SignNeg, strconv::DigExact(dig), strconv::ExpDec, upper);
+    r
+}
+
+/// Converts a float to a string using the exponential notation with the maximum number of
+/// digits after the decimal point in the significand
+///
+/// # Arguments
+///
+/// * num - The float value
+/// * digits - The number of digits after the decimal point
+/// * upper - Use `E` instead of `e` for the exponent sign
+#[inline]
+pub fn to_str_exp_digits(num: f32, dig: uint, upper: bool) -> ~str {
+    let (r, _) = strconv::float_to_str_common(
+        num, 10u, true, strconv::SignNeg, strconv::DigMax(dig), strconv::ExpDec, upper);
     r
 }
 
@@ -804,14 +804,13 @@ impl num::ToStrRadix for f32 {
     #[inline]
     fn to_str_radix(&self, rdx: uint) -> ~str {
         let (r, special) = strconv::float_to_str_common(
-            *self, rdx, true, strconv::SignNeg, strconv::DigAll);
+            *self, rdx, true, strconv::SignNeg, strconv::DigAll, strconv::ExpNone, false);
         if special { fail!("number has a special value, \
                             try to_str_radix_special() if those are expected") }
         r
     }
 }
 
-///
 /// Convert a string in base 16 to a float.
 /// Accepts a optional binary exponent.
 ///
@@ -837,7 +836,6 @@ impl num::ToStrRadix for f32 {
 ///
 /// `None` if the string did not represent a valid number.  Otherwise,
 /// `Some(n)` where `n` is the floating-point number represented by `[num]`.
-///
 #[inline]
 pub fn from_str_hex(num: &str) -> Option<f32> {
     strconv::from_str_common(num, 16u, true, true, true,
@@ -845,7 +843,6 @@ pub fn from_str_hex(num: &str) -> Option<f32> {
 }
 
 impl FromStr for f32 {
-    ///
     /// Convert a string in base 10 to a float.
     /// Accepts a optional decimal exponent.
     ///
@@ -871,7 +868,6 @@ impl FromStr for f32 {
     ///
     /// `None` if the string did not represent a valid number.  Otherwise,
     /// `Some(n)` where `n` is the floating-point number represented by `num`.
-    ///
     #[inline]
     fn from_str(val: &str) -> Option<f32> {
         strconv::from_str_common(val, 10u, true, true, true,
@@ -880,7 +876,6 @@ impl FromStr for f32 {
 }
 
 impl num::FromStrRadix for f32 {
-    ///
     /// Convert a string in an given base to a float.
     ///
     /// Due to possible conflicts, this function does **not** accept
@@ -898,7 +893,6 @@ impl num::FromStrRadix for f32 {
     ///
     /// `None` if the string did not represent a valid number. Otherwise,
     /// `Some(n)` where `n` is the floating-point number represented by `num`.
-    ///
     #[inline]
     fn from_str_radix(val: &str, rdx: uint) -> Option<f32> {
         strconv::from_str_common(val, rdx, true, true, false,
