@@ -1,1 +1,1 @@
-au BufRead,BufNewFile *.rs,*.rc set filetype=rust
+au BufRead,BufNewFile *.rs set filetype=rust
