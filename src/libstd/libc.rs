@@ -960,6 +960,8 @@ pub mod types {
             }
             pub mod extra {
                 use ptr;
+                use libc::consts::os::extra::{MAX_PROTOCOL_CHAIN,
+                                              WSAPROTOCOL_LEN};
                 use libc::types::common::c95::c_void;
                 use libc::types::os::arch::c95::{c_char, c_int, c_uint, size_t};
                 use libc::types::os::arch::c95::{c_long, c_ulong};
@@ -1106,6 +1108,47 @@ pub mod types {
                 }
 
                 pub type LPFILETIME = *mut FILETIME;
+
+                pub struct GUID {
+                    Data1: DWORD,
+                    Data2: DWORD,
+                    Data3: DWORD,
+                    Data4: [BYTE, ..8],
+                }
+
+                struct WSAPROTOCOLCHAIN {
+                    ChainLen: c_int,
+                    ChainEntries: [DWORD, ..MAX_PROTOCOL_CHAIN],
+                }
+
+                pub type LPWSAPROTOCOLCHAIN = *mut WSAPROTOCOLCHAIN;
+
+                pub struct WSAPROTOCOL_INFO {
+                    dwServiceFlags1: DWORD,
+                    dwServiceFlags2: DWORD,
+                    dwServiceFlags3: DWORD,
+                    dwServiceFlags4: DWORD,
+                    dwProviderFlags: DWORD,
+                    ProviderId: GUID,
+                    dwCatalogEntryId: DWORD,
+                    ProtocolChain: WSAPROTOCOLCHAIN,
+                    iVersion: c_int,
+                    iAddressFamily: c_int,
+                    iMaxSockAddr: c_int,
+                    iMinSockAddr: c_int,
+                    iSocketType: c_int,
+                    iProtocol: c_int,
+                    iProtocolMaxOffset: c_int,
+                    iNetworkByteOrder: c_int,
+                    iSecurityScheme: c_int,
+                    dwMessageSize: DWORD,
+                    dwProviderReserved: DWORD,
+                    szProtocol: [u8, ..WSAPROTOCOL_LEN+1],
+                }
+
+                pub type LPWSAPROTOCOL_INFO = *mut WSAPROTOCOL_INFO;
+
+                pub type GROUP = c_uint;
             }
         }
     }
@@ -1721,6 +1764,10 @@ pub mod consts {
             pub static FILE_BEGIN: DWORD = 0;
             pub static FILE_CURRENT: DWORD = 1;
             pub static FILE_END: DWORD = 2;
+
+            pub static MAX_PROTOCOL_CHAIN: DWORD = 7;
+            pub static WSAPROTOCOL_LEN: DWORD = 255;
+            pub static INVALID_SOCKET: DWORD = !0;
         }
         pub mod sysconf {
         }
@@ -4098,6 +4145,8 @@ pub mod funcs {
                             lpFrequency: *mut LARGE_INTEGER) -> BOOL;
                 pub fn QueryPerformanceCounter(
                             lpPerformanceCount: *mut LARGE_INTEGER) -> BOOL;
+
+                pub fn GetCurrentProcessId() -> DWORD;
             }
         }
 
