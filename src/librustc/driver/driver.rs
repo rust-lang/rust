@@ -1134,7 +1134,7 @@ pub fn build_output_filenames(input: &Input,
 
 pub fn early_error(emitter: &diagnostic::Emitter, msg: &str) -> ! {
     emitter.emit(None, msg, diagnostic::Fatal);
-    fail!();
+    fail!(diagnostic::FatalError);
 }
 
 pub fn list_metadata(sess: Session, path: &Path, out: &mut io::Writer) {
