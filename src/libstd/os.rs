@@ -39,7 +39,7 @@ use os;
 use prelude::*;
 use ptr;
 use str;
-use to_str;
+use fmt;
 use unstable::finally::Finally;
 use sync::atomics::{AtomicInt, INIT_ATOMIC_INT, SeqCst};
 
@@ -840,11 +840,11 @@ pub struct MemoryMap {
 
 /// Type of memory map
 pub enum MemoryMapKind {
-    /// Memory-mapped file. On Windows, the inner pointer is a handle to the mapping, and
-    /// corresponds to `CreateFileMapping`. Elsewhere, it is null.
-    MapFile(*u8),
     /// Virtual memory map. Usually used to change the permissions of a given chunk of memory.
     /// Corresponds to `VirtualAlloc` on Windows.
+    MapFile(*u8),
+    /// Virtual memory map. Usually used to change the permissions of a given chunk of memory, or
+    /// for allocation. Corresponds to `VirtualAlloc` on Windows.
     MapVirtual
 }
 
@@ -861,7 +861,11 @@ pub enum MapOption {
     /// Create a memory mapping for a file with a given fd.
     MapFd(c_int),
     /// When using `MapFd`, the start of the map is `uint` bytes from the start of the file.
-    MapOffset(uint)
+    MapOffset(uint),
+    /// On POSIX, this can be used to specify the default flags passed to `mmap`. By default it uses
+    /// `MAP_PRIVATE` and, if not using `MapFd`, `MAP_ANON`. This will override both of those. This
+    /// is platform-specific (the exact values used) and ignored on Windows.
+    MapNonStandardFlags(c_int),
 }
 
 /// Possible errors when creating a map.
@@ -880,6 +884,10 @@ pub enum MapError {
     /// If using `MapAddr`, the address + `min_len` was outside of the process's address space. If
     /// using `MapFd`, the target of the fd didn't have enough resources to fulfill the request.
     ErrNoMem,
+    /// A zero-length map was requested. This is invalid according to
+    /// [POSIX](http://pubs.opengroup.org/onlinepubs/9699919799/functions/mmap.html). Not all
+    /// platforms obey this, but this wrapper does.
+    ErrZeroLength,
     /// Unrecognized error. The inner value is the unrecognized errno.
     ErrUnknown(int),
     /// ## The following are win32-specific
@@ -900,37 +908,49 @@ pub enum MapError {
     ErrMapViewOfFile(uint)
 }
 
-impl to_str::ToStr for MapError {
-    fn to_str(&self) -> ~str {
-        match *self {
-            ErrFdNotAvail => ~"fd not available for reading or writing",
-            ErrInvalidFd => ~"Invalid fd",
-            ErrUnaligned => ~"Unaligned address, invalid flags, \
-                              negative length or unaligned offset",
-            ErrNoMapSupport=> ~"File doesn't support mapping",
-            ErrNoMem => ~"Invalid address, or not enough available memory",
-            ErrUnknown(code) => format!("Unknown error={}", code),
-            ErrUnsupProt => ~"Protection mode unsupported",
-            ErrUnsupOffset => ~"Offset in virtual memory mode is unsupported",
-            ErrAlreadyExists => ~"File mapping for specified file already exists",
-            ErrVirtualAlloc(code) => format!("VirtualAlloc failure={}", code),
-            ErrCreateFileMappingW(code) => format!("CreateFileMappingW failure={}", code),
-            ErrMapViewOfFile(code) => format!("MapViewOfFile failure={}", code)
-        }
+impl fmt::Default for MapError {
+    fn fmt(val: &MapError, out: &mut fmt::Formatter) {
+        let str = match *val {
+            ErrFdNotAvail => "fd not available for reading or writing",
+            ErrInvalidFd => "Invalid fd",
+            ErrUnaligned => "Unaligned address, invalid flags, negative length or unaligned offset",
+            ErrNoMapSupport=> "File doesn't support mapping",
+            ErrNoMem => "Invalid address, or not enough available memory",
+            ErrUnsupProt => "Protection mode unsupported",
+            ErrUnsupOffset => "Offset in virtual memory mode is unsupported",
+            ErrAlreadyExists => "File mapping for specified file already exists",
+            ErrZeroLength => "Zero-length mapping not allowed",
+            ErrUnknown(code) => { write!(out.buf, "Unknown error = {}", code); return },
+            ErrVirtualAlloc(code) => { write!(out.buf, "VirtualAlloc failure = {}", code); return },
+            ErrCreateFileMappingW(code) => {
+                format!("CreateFileMappingW failure = {}", code);
+                return
+            },
+            ErrMapViewOfFile(code) => {
+                write!(out.buf, "MapViewOfFile failure = {}", code);
+                return
+            }
+        };
+        write!(out.buf, "{}", str);
     }
 }
 
 #[cfg(unix)]
 impl MemoryMap {
-    /// Create a new mapping with the given `options`, at least `min_len` bytes long.
+    /// Create a new mapping with the given `options`, at least `min_len` bytes long. `min_len`
+    /// must be greater than zero; see the note on `ErrZeroLength`.
     pub fn new(min_len: uint, options: &[MapOption]) -> Result<MemoryMap, MapError> {
         use libc::off_t;
 
+        if min_len == 0 {
+            return Err(ErrZeroLength)
+        }
         let mut addr: *u8 = ptr::null();
         let mut prot = 0;
         let mut flags = libc::MAP_PRIVATE;
         let mut fd = -1;
         let mut offset = 0;
+        let mut custom_flags = false;
         let len = round_up(min_len, page_size());
 
         for &o in options.iter() {
@@ -946,10 +966,11 @@ impl MemoryMap {
                     flags |= libc::MAP_FILE;
                     fd = fd_;
                 },
-                MapOffset(offset_) => { offset = offset_ as off_t; }
+                MapOffset(offset_) => { offset = offset_ as off_t; },
+                MapNonStandardFlags(f) => { custom_flags = true; flags = f },
             }
         }
-        if fd == -1 { flags |= libc::MAP_ANON; }
+        if fd == -1 && !custom_flags { flags |= libc::MAP_ANON; }
 
         let r = unsafe {
             libc::mmap(addr as *c_void, len as size_t, prot, flags, fd, offset)
@@ -986,6 +1007,8 @@ impl MemoryMap {
 impl Drop for MemoryMap {
     /// Unmap the mapping. Fails the task if `munmap` fails.
     fn drop(&mut self) {
+        if self.len == 0 { /* workaround for dummy_stack */ return; }
+
         unsafe {
             match libc::munmap(self.data as *c_void, self.len as libc::size_t) {
                 0 => (),
@@ -1020,7 +1043,9 @@ impl MemoryMap {
                 MapExecutable => { executable = true; }
                 MapAddr(addr_) => { lpAddress = addr_ as LPVOID; },
                 MapFd(fd_) => { fd = fd_; },
-                MapOffset(offset_) => { offset = offset_; }
+                MapOffset(offset_) => { offset = offset_; },
+                MapNonStandardFlags(f) => info!("MemoryMap::new: MapNonStandardFlags used on \
+                                                Windows: {}", f),
             }
         }
 
@@ -1411,7 +1436,7 @@ mod tests {
             os::MapWritable
         ]) {
             Ok(chunk) => chunk,
-            Err(msg) => fail!(msg.to_str())
+            Err(msg) => fail!("{}", msg)
         };
         assert!(chunk.len >= 16);
 
@@ -1461,7 +1486,7 @@ mod tests {
             MapOffset(size / 2)
         ]) {
             Ok(chunk) => chunk,
-            Err(msg) => fail!(msg.to_str())
+            Err(msg) => fail!("{}", msg)
         };
         assert!(chunk.len > 0);
 
