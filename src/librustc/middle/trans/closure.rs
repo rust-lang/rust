@@ -282,23 +282,22 @@ fn build_closure<'a>(bcx0: &'a Block<'a>,
 // Given an enclosing block context, a new function context, a closure type,
 // and a list of upvars, generate code to load and populate the environment
 // with the upvars and type descriptors.
-fn load_environment(fcx: &FunctionContext, cdata_ty: ty::t,
-                    cap_vars: &[moves::CaptureVar], sigil: ast::Sigil) {
+fn load_environment<'a>(bcx: &'a Block<'a>, cdata_ty: ty::t,
+                        cap_vars: &[moves::CaptureVar],
+                        sigil: ast::Sigil) -> &'a Block<'a> {
     let _icx = push_ctxt("closure::load_environment");
 
     // Don't bother to create the block if there's nothing to load
     if cap_vars.len() == 0 {
-        return;
+        return bcx;
     }
 
-    let bcx = fcx.entry_bcx.get().unwrap();
-
     // Load a pointer to the closure data, skipping over the box header:
-    let llcdata = at_box_body(bcx, cdata_ty, fcx.llenv.unwrap());
+    let llcdata = at_box_body(bcx, cdata_ty, bcx.fcx.llenv.unwrap());
 
     // Store the pointer to closure data in an alloca for debug info because that's what the
     // llvm.dbg.declare intrinsic expects
-    let env_pointer_alloca = if fcx.ccx.sess.opts.extra_debuginfo {
+    let env_pointer_alloca = if bcx.ccx().sess.opts.extra_debuginfo {
         let alloc = alloc_ty(bcx, ty::mk_mut_ptr(bcx.tcx(), cdata_ty), "__debuginfo_env_ptr");
         Store(bcx, llcdata, alloc);
         Some(alloc)
@@ -317,7 +316,7 @@ fn load_environment(fcx: &FunctionContext, cdata_ty: ty::t,
         let def_id = ast_util::def_id_of_def(cap_var.def);
 
         {
-            let mut llupvars = fcx.llupvars.borrow_mut();
+            let mut llupvars = bcx.fcx.llupvars.borrow_mut();
             llupvars.get().insert(def_id.node, upvarptr);
         }
 
@@ -334,6 +333,8 @@ fn load_environment(fcx: &FunctionContext, cdata_ty: ty::t,
 
         i += 1u;
     }
+
+    bcx
 }
 
 fn fill_fn_pair(bcx: &Block, pair: ValueRef, llfn: ValueRef, llenvptr: ValueRef) {
@@ -405,7 +406,7 @@ pub fn trans_expr_fn<'a>(
     trans_closure(ccx, sub_path, decl, body, llfn,
                     bcx.fcx.param_substs, user_id,
                     [], ty::ty_fn_ret(fty),
-                    |fcx| load_environment(fcx, cdata_ty, cap_vars, sigil));
+                    |bcx| load_environment(bcx, cdata_ty, cap_vars, sigil));
     fill_fn_pair(bcx, dest_addr, llfn, llbox);
 
     bcx
