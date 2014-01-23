@@ -47,6 +47,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("macro_registrar", Active),
     ("log_syntax", Active),
     ("trace_macros", Active),
+    ("simd", Active),
 
     // These are used to test this portion of the compiler, they don't actually
     // mean anything
@@ -168,6 +169,13 @@ impl Visitor<()> for Context {
                     self.gate_feature("macro_registrar", i.span,
                                       "cross-crate macro exports are \
                                        experimental and possibly buggy");
+                }
+            }
+
+            ast::ItemStruct(..) => {
+                if attr::contains_name(i.attrs, "simd") {
+                    self.gate_feature("simd", i.span,
+                                      "SIMD types are experimental and possibly buggy");
                 }
             }
 
