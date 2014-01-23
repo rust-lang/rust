@@ -766,6 +766,8 @@ fn encode_info_for_struct_ctor(ecx: &EncodeContext,
     ebml_w.start_tag(tag_items_data_item);
     encode_def_id(ebml_w, local_def(ctor_id));
     encode_family(ebml_w, 'f');
+    encode_bounds_and_type(ebml_w, ecx,
+                           &lookup_item_type(ecx.tcx, local_def(ctor_id)));
     encode_name(ecx, ebml_w, name);
     encode_type(ecx, ebml_w, node_id_to_type(ecx.tcx, ctor_id));
     encode_path(ecx, ebml_w, path, ast_map::PathName(name));
