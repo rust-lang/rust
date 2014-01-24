@@ -1,5 +1,10 @@
 -include ../tools.mk
 
+# needed so that libfoo can find libcfoo
+ifeq ($(shell uname),Linux)
+export LD_LIBRARY_PATH := $(TMPDIR)
+endif
+
 # This hits an assertion in the linker on older versions of osx apparently
 ifeq ($(shell uname),Darwin)
 all:
