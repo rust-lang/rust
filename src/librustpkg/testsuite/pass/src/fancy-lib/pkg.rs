@@ -14,7 +14,7 @@ extern mod rustc;
 use std::os;
 use std::io::File;
 use rustpkg::api;
-use rustpkg::version::NoVersion;
+use rustpkg::version::None;
 
 pub fn main() {
     let args = os::args();
@@ -48,5 +48,5 @@ pub fn main() {
                 for _ in xs.iter() { assert!(true); } }".as_bytes());
 
     let context = api::default_context(sysroot, api::default_workspace());
-    api::install_pkg(&context, os::getcwd(), ~"fancy-lib", NoVersion, ~[]);
+    api::install_pkg(&context, os::getcwd(), ~"fancy-lib", None, ~[]);
 }

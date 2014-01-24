@@ -13,7 +13,7 @@ extern mod rustc;
 
 use std::{os, task};
 use rustpkg::api;
-use rustpkg::version::NoVersion;
+use rustpkg::version::None;
 use rustpkg::workcache_support::digest_file_with_date;
 use rustpkg::exit_codes::COPY_FAILED_CODE;
 
@@ -73,7 +73,7 @@ pub fn main() {
         api::install_pkg(&mut cc,
                          os::getcwd(),
                          ~"cdep",
-                         NoVersion,
+                         None,
                          ~[(~"binary", out_lib_path.clone()), (~"file", foo_c_name.clone())]);
     };
 

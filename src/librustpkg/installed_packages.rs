@@ -11,10 +11,10 @@
 // Listing installed packages
 
 use rustc::metadata::filesearch::rust_path;
-use path_util::*;
 use std::os;
 use std::io;
 use std::io::fs;
+use syntax::crateid::CrateId;
 
 pub fn list_installed_packages(f: |&CrateId| -> bool) -> bool  {
     let workspaces = rust_path();
@@ -28,7 +28,8 @@ pub fn list_installed_packages(f: |&CrateId| -> bool) -> bool  {
             match exec.filestem_str() {
                 None => (),
                 Some(exec_path) => {
-                    if !f(&CrateId::new(exec_path)) {
+                    let crate_id = from_str(exec_path).expect("valid crate id");
+                    if !f(&crate_id) {
                         return false;
                     }
                 }
@@ -50,7 +51,8 @@ pub fn list_installed_packages(f: |&CrateId| -> bool) -> bool  {
                     let rel_path = rel_p.join(basename);
                     rel_path.display().with_str(|s| {
                         debug!("Rel name: {}", s);
-                        f(&CrateId::new(s));
+                        let crate_id = from_str(s).expect("valid crate id");
+                        f(&crate_id);
                     });
                 }
                 None => ()

@@ -10,7 +10,7 @@
 
 // Useful conditions
 
-pub use crate_id::CrateId;
+pub use syntax::crateid::CrateId;
 pub use std::io::FileStat;
 pub use std::io::process::ProcessExit;
 pub use std::path::Path;

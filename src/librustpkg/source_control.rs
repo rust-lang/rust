@@ -14,7 +14,6 @@ use std::{run, str};
 use std::run::{ProcessOutput, ProcessOptions, Process};
 use std::io::fs;
 use extra::tempfile::TempDir;
-use version::*;
 use path_util::chmod_read_only;
 
 /// Attempts to clone `source`, a local git repository, into `target`, a local
@@ -22,7 +21,7 @@ use path_util::chmod_read_only;
 /// Returns `DirToUse(p)` if the clone fails, where `p` is a newly created temporary
 /// directory (that the callee may use, for example, to check out remote sources into).
 /// Returns `CheckedOutSources` if the clone succeeded.
-pub fn safe_git_clone(source: &Path, v: &Version, target: &Path) -> CloneResult {
+pub fn safe_git_clone(source: &Path, v: &Option<~str>, target: &Path) -> CloneResult {
     if source.exists() {
         debug!("{} exists locally! Cloning it into {}",
                 source.display(), target.display());
@@ -44,7 +43,7 @@ pub fn safe_git_clone(source: &Path, v: &Version, target: &Path) -> CloneResult 
             }
             else {
                 match v {
-                    &ExactRevision(ref s) => {
+                    &Some(ref s) => {
                         let git_dir = target.join(".git");
                         debug!("`Running: git --work-tree={} --git-dir={} checkout {}",
                                 *s, target.display(), git_dir.display());
@@ -65,7 +64,7 @@ pub fn safe_git_clone(source: &Path, v: &Version, target: &Path) -> CloneResult 
         } else {
             // Check that no version was specified. There's no reason to not handle the
             // case where a version was requested, but I haven't implemented it.
-            assert!(*v == NoVersion);
+            assert!(*v == None);
             let git_dir = target.join(".git");
             debug!("Running: git --work-tree={} --git-dir={} pull --no-edit {}",
                     target.display(), git_dir.display(), source.display());
@@ -106,7 +105,7 @@ pub fn make_read_only(target: &Path) {
 }
 
 /// Source can be either a URL or a local file path.
-pub fn git_clone_url(source: &str, target: &Path, v: &Version) {
+pub fn git_clone_url(source: &str, target: &Path, v: &Option<~str>) {
     use conditions::git_checkout_failed::cond;
 
     // FIXME (#9639): This needs to handle non-utf8 paths
@@ -120,7 +119,7 @@ pub fn git_clone_url(source: &str, target: &Path, v: &Version) {
     }
     else {
         match v {
-            &ExactRevision(ref s) | &Tagged(ref s) => {
+            &Some(ref s) => {
                     let opt_outp = process_output_in_cwd("git", [~"checkout", s.to_owned()],
                                                          target);
                     let outp = opt_outp.expect("Failed to exec `git`");
