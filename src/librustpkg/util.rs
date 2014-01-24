@@ -623,7 +623,7 @@ impl<'a> base::CrateLoader for CrateLoader<'a> {
         self.loader.load_crate(crate)
     }
 
-    fn get_exported_macros(&mut self, cnum: ast::CrateNum) -> ~[@ast::Item] {
+    fn get_exported_macros(&mut self, cnum: ast::CrateNum) -> ~[~str] {
         self.loader.get_exported_macros(cnum)
     }
 

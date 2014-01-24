@@ -307,7 +307,7 @@ pub fn get_macro_registrar_fn(cstore: @cstore::CStore,
 
 pub fn get_exported_macros(cstore: @cstore::CStore,
                            crate_num: ast::CrateNum)
-                           -> ~[@ast::Item] {
+                           -> ~[~str] {
     let cdata = cstore.get_crate_data(crate_num);
     decoder::get_exported_macros(cdata)
 }
