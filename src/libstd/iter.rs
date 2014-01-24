@@ -882,6 +882,15 @@ pub trait OrdIterator<A> {
     /// assert!(a.iter().min().unwrap() == &1);
     /// ```
     fn min(&mut self) -> Option<A>;
+
+    /// `minmax` consumes the entire iterator to return the mininum and maximum elements in the vector.
+    /// The return type `MinMax` is an enum of three variants.
+    /// `NoElements` is returned if the iterator `minmax` operates on is empty.
+    /// `OneElement(x)` is returned if the iterator `minmax` operates on has exactly one element;
+    /// `x` takes the value of that argument.
+    /// Otherwise, `MinMax(x, y)` is returned, where x <= y;
+    /// x == y happens if and only if the vector has more than one elements and all elements are equal.
+    fn minmax(&mut self) -> MinMax<T>;
 }
 
 impl<A: Ord, T: Iterator<A>> OrdIterator<A> for T {
@@ -904,6 +913,59 @@ impl<A: Ord, T: Iterator<A>> OrdIterator<A> for T {
             }
         })
     }
+
+    fn minmax(&mut self) -> MinMax<T> {
+        let (mut min, mut max) = match self.next() {
+            None => return NoElements,
+            Some(x) => {
+                match me.next() {
+                    None => return OneElement(x),
+                    Some(y) => if x < y {(x, y)} else {(y,x)}
+                }
+            }
+        };
+
+        let left_over;
+        loop {
+            let first = match self.next() {
+                None => {left_over = None; break;}
+                Some(x) => x
+            };
+            let second = match self.next() {
+                None => {left_over = Some(first); break;}
+                Some(x) => x
+            };
+            if first < second {
+                if first < min {min = first;}
+                if max < second {max = second;}
+            } else {
+                if second < min {min = second;}
+                if max < first {max = first;}
+            }
+        }
+
+        match left_over {
+            None => {}
+            Some(x) => {
+                if x < min {min = x;}
+                else if x > max {max = x;}
+            }
+        }
+
+        MinMax(min, max)
+    }
+}
+
+/// `MinMax` is an enum returned by `minmax`. See `OrdIterator::minmax` for more detail.
+pub enum MinMax<T> {
+    /// Empty iterator
+    NoElements,
+
+    /// Iterator with one element, so the minimum and maximum are the same
+    OneElement(T),
+
+    /// More than one element in the iterator, the first element is not larger than the second
+    MinMax(T, T)
 }
 
 /// A trait for iterators that are cloneable.
