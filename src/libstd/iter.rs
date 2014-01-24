@@ -883,14 +883,15 @@ pub trait OrdIterator<A> {
     /// ```
     fn min(&mut self) -> Option<A>;
 
-    /// `minmax` consumes the entire iterator to return the mininum and maximum elements in the vector.
+    /// `minmax` consumes the entire iterator to return
+    /// the mininum and maximum elements in the vector.
     /// The return type `MinMax` is an enum of three variants.
     /// `NoElements` is returned if the iterator `minmax` operates on is empty.
     /// `OneElement(x)` is returned if the iterator `minmax` operates on has exactly one element;
     /// `x` takes the value of that argument.
-    /// Otherwise, `MinMax(x, y)` is returned, where x <= y;
-    /// x == y happens if and only if the vector has more than one elements and all elements are equal.
-    fn minmax(&mut self) -> MinMax<T>;
+    /// Otherwise, `MinMax(x, y)` is returned, where x <= y; x == y happens if and only if
+    /// the vector has more than one element and all elements are equal.
+    fn minmax(&mut self) -> MinMax<A>;
 }
 
 impl<A: Ord, T: Iterator<A>> OrdIterator<A> for T {
@@ -914,11 +915,11 @@ impl<A: Ord, T: Iterator<A>> OrdIterator<A> for T {
         })
     }
 
-    fn minmax(&mut self) -> MinMax<T> {
+    fn minmax(&mut self) -> MinMax<A> {
         let (mut min, mut max) = match self.next() {
             None => return NoElements,
             Some(x) => {
-                match me.next() {
+                match self.next() {
                     None => return OneElement(x),
                     Some(y) => if x < y {(x, y)} else {(y,x)}
                 }
@@ -3004,5 +3005,38 @@ mod tests {
         assert!( !it.is_empty() );
         it.next();
         assert!( it.is_empty() );
+    }
+
+    #[test]
+    fn test_minmax() {
+        let v: [int, ..0] = [];
+        match v.iter().minmax() {
+            NoElements => {}
+            _ => fail!()
+        }
+
+        let v = [1i];
+        match v.iter().minmax() {
+            OneElement(x) => {assert_eq!(x, &1)}
+            _ => fail!()
+        }
+
+        let v = [1i, 2, 3, 4, 5];
+        match v.iter().minmax() {
+            MinMax(x, y) => {assert_eq!(x, &1); assert_eq!(y, &5)}
+            _ => fail!()
+        }
+
+        let v = [1i, 2, 3, 4, 5, 6];
+        match v.iter().minmax() {
+            MinMax(x, y) => {assert_eq!(x, &1); assert_eq!(y, &6)}
+            _ => fail!()
+        }
+
+        let v = [1i, 1, 1, 1];
+        match v.iter().minmax() {
+            MinMax(x, y) => {assert_eq!(x, &1); assert_eq!(y, &1)}
+            _ => fail!()
+        }
     }
 }
