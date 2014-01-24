@@ -15,7 +15,7 @@ use lib::llvm::{Opcode, IntPredicate, RealPredicate, False};
 use lib::llvm::{ValueRef, BasicBlockRef, BuilderRef, ModuleRef};
 use middle::trans::base;
 use middle::trans::common::*;
-use middle::trans::machine::llalign_of_min;
+use middle::trans::machine::llalign_of_pref;
 use middle::trans::type_::Type;
 use std::cast;
 use std::hashmap::HashMap;
@@ -461,8 +461,10 @@ impl Builder {
     pub fn atomic_load(&self, ptr: ValueRef, order: AtomicOrdering) -> ValueRef {
         self.count_insn("load.atomic");
         unsafe {
-            let align = llalign_of_min(self.ccx, self.ccx.int_type);
-            llvm::LLVMBuildAtomicLoad(self.llbuilder, ptr, noname(), order, align as c_uint)
+            let ty = Type::from_ref(llvm::LLVMTypeOf(ptr));
+            let align = llalign_of_pref(self.ccx, ty.element_type());
+            llvm::LLVMBuildAtomicLoad(self.llbuilder, ptr, noname(), order,
+                                      align as c_uint)
         }
     }
 
@@ -514,8 +516,9 @@ impl Builder {
                self.ccx.tn.val_to_str(val),
                self.ccx.tn.val_to_str(ptr));
         self.count_insn("store.atomic");
-        let align = llalign_of_min(self.ccx, self.ccx.int_type);
         unsafe {
+            let ty = Type::from_ref(llvm::LLVMTypeOf(ptr));
+            let align = llalign_of_pref(self.ccx, ty.element_type());
             llvm::LLVMBuildAtomicStore(self.llbuilder, val, ptr, order, align as c_uint);
         }
     }

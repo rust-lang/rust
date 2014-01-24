@@ -125,7 +125,7 @@ use q = sync::mpsc_intrusive;
 /// # Example
 ///
 /// ```rust
-/// use std::sync::Mutex;
+/// use extra::sync::mutex::Mutex;
 ///
 /// let mut m = Mutex::new();
 /// let guard = m.lock();
@@ -154,7 +154,7 @@ pub struct Mutex {
 /// # Example
 ///
 /// ```rust
-/// use std::sync::{StaticMutex, MUTEX_INIT};
+/// use extra::sync::mutex::{StaticMutex, MUTEX_INIT};
 ///
 /// static mut LOCK: StaticMutex = MUTEX_INIT;
 ///
@@ -199,7 +199,7 @@ impl StaticMutex {
     /// Attempts to grab this lock, see `Mutex::try_lock`
     pub fn try_lock<'a>(&'a mut self) -> Option<Guard<'a>> {
         if unsafe { self.lock.trylock() } {
-            self.held.store(true, atomics::Release); // see below
+            self.held.store(true, atomics::SeqCst); // see below
             Some(Guard{ lock: self })
         } else {
             None
@@ -215,7 +215,7 @@ impl StaticMutex {
         // the uncontended case (very important) we start off by hitting a
         // trylock on the OS mutex. If we succeed, then we're lucky!
         if unsafe { self.lock.trylock() } {
-            self.held.store(true, atomics::Release); // see below
+            self.held.store(true, atomics::SeqCst); // see below
             return Guard{ lock: self }
         }
 
@@ -226,7 +226,7 @@ impl StaticMutex {
             // function. Turns out the TLS hit is essentially 0 on contention.
             Local::put(t);
             unsafe { self.lock.lock(); }
-            self.held.store(true, atomics::Release); // see below
+            self.held.store(true, atomics::SeqCst); // see below
         } else {
             // And here's where we come to the "fun part" of this
             // implementation. Contention with a green task is fairly difficult
@@ -294,7 +294,7 @@ impl StaticMutex {
                 // here for green threads).
                 while !self.held.load(atomics::SeqCst) {
                     if unsafe { self.lock.trylock() } {
-                        self.held.store(true, atomics::Release);
+                        self.held.store(true, atomics::SeqCst);
                         stolen = true;
                         break
                     } else {
@@ -338,7 +338,7 @@ impl StaticMutex {
         // order to allow green threads just starting to block to realize that
         // they shouldn't completely block.
         assert!(self.held.load(atomics::SeqCst));
-        self.held.store(false, atomics::Release);
+        self.held.store(false, atomics::SeqCst);
 
         // Remember that the queues we are using may return None when there is
         // indeed data on the queue. In this case, we can just safely ignore it.
@@ -349,7 +349,7 @@ impl StaticMutex {
         // and this whole process will begin anew).
         match unsafe { self.q.pop() } {
             Some(t) => {
-                self.held.store(true, atomics::Release);
+                self.held.store(true, atomics::SeqCst);
                 let task = unsafe { BlockedTask::cast_from_uint((*t).data) };
                 task.wake().map(|t| t.reawaken());
             }
@@ -481,12 +481,5 @@ mod test {
     fn trylock() {
         let mut m = Mutex::new();
         assert!(m.try_lock().is_some());
-    }
-
-    #[test] #[should_fail]
-    fn double_lock() {
-        static mut m: StaticMutex = MUTEX_INIT;
-        let _g = m.lock();
-        m.lock();
     }
 }

@@ -145,7 +145,6 @@ mod imp {
     }
 
     #[cfg(target_os = "linux")]
-    #[cfg(target_os = "android")]
     mod os {
         use libc;
 
@@ -175,6 +174,20 @@ mod imp {
         pub static PTHREAD_COND_INITIALIZER: pthread_cond_t = pthread_cond_t {
             __align: 0,
             size: [0, ..__SIZEOF_PTHREAD_COND_T],
+        };
+    }
+    #[cfg(target_os = "android")]
+    mod os {
+        use libc;
+
+        pub struct pthread_mutex_t { value: libc::c_int }
+        pub struct pthread_cond_t { value: libc::c_int }
+
+        pub static PTHREAD_MUTEX_INITIALIZER: pthread_mutex_t = pthread_mutex_t {
+            value: 0,
+        };
+        pub static PTHREAD_COND_INITIALIZER: pthread_cond_t = pthread_cond_t {
+            value: 0,
         };
     }
 
@@ -238,11 +251,10 @@ mod imp {
     use rt::global_heap::malloc_raw;
     use libc::{HANDLE, BOOL, LPSECURITY_ATTRIBUTES, c_void, DWORD, LPCSTR};
     use libc;
-    use ptr::RawPtr;
     use ptr;
     use sync::atomics;
 
-    type LPCRITICAL_SECTION = *c_void;
+    type LPCRITICAL_SECTION = *mut c_void;
     static SPIN_COUNT: DWORD = 4000;
     #[cfg(target_arch = "x86")]
     static CRIT_SECTION_SIZE: uint = 24;
@@ -325,7 +337,7 @@ mod imp {
     }
 
     pub unsafe fn init_lock() -> uint {
-        let block = malloc_raw(CRIT_SECTION_SIZE as uint) as *c_void;
+        let block = malloc_raw(CRIT_SECTION_SIZE as uint) as *mut c_void;
         InitializeCriticalSectionAndSpinCount(block, SPIN_COUNT);
         return block as uint;
     }

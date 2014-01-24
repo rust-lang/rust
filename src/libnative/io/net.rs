@@ -204,17 +204,16 @@ pub fn init() {
         use std::unstable::mutex::{Mutex, MUTEX_INIT};
         static mut INITIALIZED: bool = false;
         static mut LOCK: Mutex = MUTEX_INIT;
-        unsafe {
-            LOCK.lock();
-            if !INITIALIZED {
-                let mut data: WSADATA = intrinsics::init();
-                let ret = WSAStartup(0x202,      // version 2.2
-                                     &mut data);
-                assert_eq!(ret, 0);
-                INITIALIZED = true;
-            }
-            LOCK.unlock();
+
+        LOCK.lock();
+        if !INITIALIZED {
+            let mut data: WSADATA = intrinsics::init();
+            let ret = WSAStartup(0x202,      // version 2.2
+                                 &mut data);
+            assert_eq!(ret, 0);
+            INITIALIZED = true;
         }
+        LOCK.unlock();
     }
 }
 

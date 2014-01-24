@@ -92,9 +92,9 @@ impl Once {
 
         let prev = self.cnt.fetch_add(1, atomics::SeqCst);
         if prev < 0 {
-            // Make sure we never overflow, we'll never have int::min_value
+            // Make sure we never overflow, we'll never have int::MIN
             // simultaneous calls to `doit` to make this value go back to 0
-            self.cnt.store(int::min_value, atomics::SeqCst);
+            self.cnt.store(int::MIN, atomics::SeqCst);
             return
         }
 
@@ -105,7 +105,7 @@ impl Once {
             let _guard = self.mutex.lock();
             if self.cnt.load(atomics::SeqCst) > 0 {
                 f();
-                let prev = self.cnt.swap(int::min_value, atomics::SeqCst);
+                let prev = self.cnt.swap(int::MIN, atomics::SeqCst);
                 self.lock_cnt.store(prev, atomics::SeqCst);
             }
         }
