@@ -2939,6 +2939,27 @@ This can be changed to bind to a reference by
 using the `ref` keyword,
 or to a mutable reference using `ref mut`.
 
+Subpatterns can also be bound to variables by the use of the syntax
+`variable @ pattern`.
+For example:
+
+~~~~
+enum List { Nil, Cons(uint, ~List) }
+
+fn is_sorted(list: &List) -> bool {
+    match *list {
+        Nil | Cons(_, ~Nil) => true,
+        Cons(x, ref r @ ~Cons(y, _)) => (x <= y) && is_sorted(*r)
+    }
+}
+
+fn main() {
+    let a = Cons(6, ~Cons(7, ~Cons(42, ~Nil)));
+    assert!(is_sorted(&a));
+}
+
+~~~~
+
 Patterns can also dereference pointers by using the `&`,
 `~` or `@` symbols, as appropriate. For example, these two matches
 on `x: &int` are equivalent:
