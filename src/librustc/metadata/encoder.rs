@@ -37,6 +37,7 @@ use syntax::ast_map;
 use syntax::ast_util::*;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
+use syntax::codemap;
 use syntax::diagnostic::SpanHandler;
 use syntax::parse::token::special_idents;
 use syntax::ast_util;
@@ -71,6 +72,7 @@ pub struct EncodeParams<'a> {
     cstore: @cstore::CStore,
     encode_inlined_item: encode_inlined_item<'a>,
     reachable: @RefCell<HashSet<ast::NodeId>>,
+    codemap: @codemap::CodeMap,
 }
 
 struct Stats {
@@ -101,6 +103,7 @@ pub struct EncodeContext<'a> {
     encode_inlined_item: encode_inlined_item<'a>,
     type_abbrevs: abbrev_map,
     reachable: @RefCell<HashSet<ast::NodeId>>,
+    codemap: @codemap::CodeMap,
 }
 
 pub fn reachable(ecx: &EncodeContext, id: NodeId) -> bool {
@@ -1714,8 +1717,10 @@ impl<'a, 'b> Visitor<()> for MacroDefVisitor<'a, 'b> {
     fn visit_item(&mut self, item: &Item, _: ()) {
         match item.node {
             ItemMac(..) => {
+                let def = self.ecx.codemap.span_to_snippet(item.span)
+                    .expect("Unable to find source for macro");
                 self.ebml_w.start_tag(tag_macro_def);
-                astencode::encode_exported_macro(self.ebml_w, item);
+                self.ebml_w.wr_str(def);
                 self.ebml_w.end_tag();
             }
             _ => {}
@@ -1881,6 +1886,7 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, crate: &Crate)
         link_meta,
         reachable,
         non_inlineable_statics,
+        codemap,
         ..
     } = parms;
     let type_abbrevs = @RefCell::new(HashMap::new());
@@ -1897,6 +1903,7 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, crate: &Crate)
         encode_inlined_item: encode_inlined_item,
         type_abbrevs: type_abbrevs,
         reachable: reachable,
+        codemap: codemap,
      };
 
     let mut ebml_w = writer::Encoder(wr);

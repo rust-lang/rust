@@ -23,7 +23,6 @@ use metadata::tydecode::{parse_ty_data, parse_def_id,
 use middle::ty::{ImplContainer, TraitContainer};
 use middle::ty;
 use middle::typeck;
-use middle::astencode;
 use middle::astencode::vtable_decoder_helpers;
 
 use std::at_vec;
@@ -1282,12 +1281,12 @@ pub fn get_macro_registrar_fn(cdata: Cmd) -> Option<ast::DefId> {
         .map(|doc| item_def_id(doc, cdata))
 }
 
-pub fn get_exported_macros(cdata: Cmd) -> ~[@ast::Item] {
+pub fn get_exported_macros(cdata: Cmd) -> ~[~str] {
     let macros = reader::get_doc(reader::Doc(cdata.data()),
                                  tag_exported_macros);
     let mut result = ~[];
     reader::tagged_docs(macros, tag_macro_def, |macro_doc| {
-        result.push(astencode::decode_exported_macro(macro_doc));
+        result.push(macro_doc.as_str());
         true
     });
     result
