@@ -102,7 +102,7 @@ use clone::{Clone, DeepClone};
 use container::{Container, Mutable};
 use iter::{Iterator, FromIterator, Extendable, range};
 use iter::{Filter, AdditiveIterator, Map};
-use iter::{Invert, DoubleEndedIterator, ExactSize};
+use iter::{Rev, DoubleEndedIterator, ExactSize};
 use libc;
 use num::{Saturating};
 use option::{None, Option, Some};
@@ -376,11 +376,11 @@ impl<'a> DoubleEndedIterator<(uint, char)> for CharOffsets<'a> {
 
 /// External iterator for a string's characters in reverse order.
 /// Use with the `std::iter` module.
-pub type RevChars<'a> = Invert<Chars<'a>>;
+pub type RevChars<'a> = Rev<Chars<'a>>;
 
 /// External iterator for a string's characters and their byte offsets in reverse order.
 /// Use with the `std::iter` module.
-pub type RevCharOffsets<'a> = Invert<CharOffsets<'a>>;
+pub type RevCharOffsets<'a> = Rev<CharOffsets<'a>>;
 
 /// External iterator for a string's bytes.
 /// Use with the `std::iter` module.
@@ -389,7 +389,7 @@ pub type Bytes<'a> =
 
 /// External iterator for a string's bytes in reverse order.
 /// Use with the `std::iter` module.
-pub type RevBytes<'a> = Invert<Bytes<'a>>;
+pub type RevBytes<'a> = Rev<Bytes<'a>>;
 
 /// An iterator over the substrings of a string, separated by `sep`.
 #[deriving(Clone)]
@@ -405,7 +405,7 @@ pub struct CharSplits<'a, Sep> {
 
 /// An iterator over the substrings of a string, separated by `sep`,
 /// starting from the back of the string.
-pub type RevCharSplits<'a, Sep> = Invert<CharSplits<'a, Sep>>;
+pub type RevCharSplits<'a, Sep> = Rev<CharSplits<'a, Sep>>;
 
 /// An iterator over the substrings of a string, separated by `sep`,
 /// splitting at most `count` times.
@@ -486,7 +486,7 @@ for CharSplits<'a, Sep> {
         let mut next_split = None;
 
         if self.only_ascii {
-            for (idx, byte) in self.string.bytes().enumerate().invert() {
+            for (idx, byte) in self.string.bytes().enumerate().rev() {
                 if self.sep.matches(byte as char) && byte < 128u8 {
                     next_split = Some((idx, idx + 1));
                     break;
@@ -1980,7 +1980,7 @@ impl<'a> StrSlice<'a> for &'a str {
 
     #[inline]
     fn chars_rev(&self) -> RevChars<'a> {
-        self.chars().invert()
+        self.chars().rev()
     }
 
     #[inline]
@@ -1990,7 +1990,7 @@ impl<'a> StrSlice<'a> for &'a str {
 
     #[inline]
     fn bytes_rev(&self) -> RevBytes<'a> {
-        self.bytes().invert()
+        self.bytes().rev()
     }
 
     #[inline]
@@ -2000,7 +2000,7 @@ impl<'a> StrSlice<'a> for &'a str {
 
     #[inline]
     fn char_indices_rev(&self) -> RevCharOffsets<'a> {
-        self.char_indices().invert()
+        self.char_indices().rev()
     }
 
     #[inline]
@@ -2035,7 +2035,7 @@ impl<'a> StrSlice<'a> for &'a str {
 
     #[inline]
     fn rsplit<Sep: CharEq>(&self, sep: Sep) -> RevCharSplits<'a, Sep> {
-        self.split(sep).invert()
+        self.split(sep).rev()
     }
 
     #[inline]
@@ -3789,11 +3789,11 @@ mod tests {
     fn test_rev_split_char_iterator_no_trailing() {
         let data = "\nMäry häd ä little lämb\nLittle lämb\n";
 
-        let mut split: ~[&str] = data.split('\n').invert().collect();
+        let mut split: ~[&str] = data.split('\n').rev().collect();
         split.reverse();
         assert_eq!(split, ~["", "Märy häd ä little lämb", "Little lämb", ""]);
 
-        let mut split: ~[&str] = data.split_terminator('\n').invert().collect();
+        let mut split: ~[&str] = data.split_terminator('\n').rev().collect();
         split.reverse();
         assert_eq!(split, ~["", "Märy häd ä little lämb", "Little lämb"]);
     }

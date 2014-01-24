@@ -13,7 +13,7 @@
 
 use std::cmp;
 use std::iter::RandomAccessIterator;
-use std::iter::{Invert, Enumerate, Repeat, Map, Zip};
+use std::iter::{Rev, Enumerate, Repeat, Map, Zip};
 use std::num;
 use std::ops;
 use std::uint;
@@ -387,7 +387,7 @@ impl Bitv {
         }
     }
 
-    /// Invert all bits
+    /// Flip all bits
     #[inline]
     pub fn negate(&mut self) {
         match self.rep {
@@ -428,8 +428,8 @@ impl Bitv {
     }
 
     #[inline]
-    pub fn rev_iter<'a>(&'a self) -> Invert<Bits<'a>> {
-        self.iter().invert()
+    pub fn rev_iter<'a>(&'a self) -> Rev<Bits<'a>> {
+        self.iter().rev()
     }
 
     /// Returns `true` if all bits are 0

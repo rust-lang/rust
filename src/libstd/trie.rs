@@ -728,7 +728,7 @@ mod test_map {
     fn test_each_reverse_break() {
         let mut m = TrieMap::new();
 
-        for x in range(uint::max_value - 10000, uint::max_value).invert() {
+        for x in range(uint::max_value - 10000, uint::max_value).rev() {
             m.insert(x, x / 2);
         }
 
@@ -781,7 +781,7 @@ mod test_map {
         let last = uint::max_value;
 
         let mut map = TrieMap::new();
-        for x in range(first, last).invert() {
+        for x in range(first, last).rev() {
             map.insert(x, x / 2);
         }
 
@@ -803,7 +803,7 @@ mod test_map {
         let last = uint::max_value;
 
         let mut map = TrieMap::new();
-        for x in range(first, last).invert() {
+        for x in range(first, last).rev() {
             map.insert(x, x / 2);
         }
 

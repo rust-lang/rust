@@ -203,7 +203,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
          */
 
         let scopes = self.scopes.borrow();
-        for scope in scopes.get().iter().invert() {
+        for scope in scopes.get().iter().rev() {
             match scope.kind {
                 LoopScopeKind(id, _) => {
                     return id;
@@ -325,7 +325,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
                cleanup_scope);
 
         let mut scopes = self.scopes.borrow_mut();
-        for scope in scopes.get().mut_iter().invert() {
+        for scope in scopes.get().mut_iter().rev() {
             if scope.kind.is_ast_with_id(cleanup_scope) {
                 scope.cleanups.push(cleanup);
                 scope.clear_cached_exits();
@@ -368,7 +368,7 @@ impl<'a> CleanupMethods<'a> for FunctionContext<'a> {
          */
 
         let scopes = self.scopes.borrow();
-        scopes.get().iter().invert().any(|s| s.needs_invoke())
+        scopes.get().iter().rev().any(|s| s.needs_invoke())
     }
 
     fn get_landing_pad(&self) -> BasicBlockRef {
@@ -415,7 +415,7 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
          * Returns the id of the current top-most AST scope, if any.
          */
         let scopes = self.scopes.borrow();
-        for scope in scopes.get().iter().invert() {
+        for scope in scopes.get().iter().rev() {
             match scope.kind {
                 CustomScopeKind | LoopScopeKind(..) => {}
                 AstScopeKind(i) => {
@@ -428,7 +428,7 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
 
     fn top_nonempty_cleanup_scope(&self) -> Option<uint> {
         let scopes = self.scopes.borrow();
-        scopes.get().iter().invert().position(|s| !s.cleanups.is_empty())
+        scopes.get().iter().rev().position(|s| !s.cleanups.is_empty())
     }
 
     fn is_valid_to_pop_custom_scope(&self, custom_scope: CustomScopeIndex) -> bool {
@@ -450,7 +450,7 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
 
         let mut bcx = bcx;
         if !bcx.unreachable.get() {
-            for cleanup in scope.cleanups.iter().invert() {
+            for cleanup in scope.cleanups.iter().rev() {
                 bcx = cleanup.trans(bcx);
             }
         }
@@ -619,7 +619,7 @@ impl<'a> CleanupHelperMethods<'a> for FunctionContext<'a> {
                 debug!("generating cleanups for {}", name);
                 let bcx_in = self.new_block(label.is_unwind(), name, None);
                 let mut bcx_out = bcx_in;
-                for cleanup in scope.cleanups.iter().invert() {
+                for cleanup in scope.cleanups.iter().rev() {
                     if cleanup_is_suitable_for(*cleanup, label) {
                         bcx_out = cleanup.trans(bcx_out);
                     }

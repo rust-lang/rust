@@ -336,8 +336,8 @@ The `DoubleEndedIterator` trait represents an iterator able to yield elements
 from either end of a range. It inherits from the `Iterator` trait and extends
 it with the `next_back` function.
 
-A `DoubleEndedIterator` can be flipped with the `invert` adaptor, returning
-another `DoubleEndedIterator` with `next` and `next_back` exchanged.
+A `DoubleEndedIterator` can have its direction changed with the `rev` adaptor,
+returning another `DoubleEndedIterator` with `next` and `next_back` exchanged.
 
 ~~~
 let xs = [1, 2, 3, 4, 5, 6];
@@ -347,7 +347,7 @@ println!("{:?}", it.next()); // prints `Some(&2)`
 println!("{:?}", it.next_back()); // prints `Some(&6)`
 
 // prints `5`, `4` and `3`
-for &x in it.invert() {
+for &x in it.rev() {
     println!("{}", x)
 }
 ~~~
@@ -366,7 +366,7 @@ let mut it = xs.iter().chain(ys.iter()).map(|&x| x * 2);
 println!("{:?}", it.next()); // prints `Some(2)`
 
 // prints `16`, `14`, `12`, `10`, `8`, `6`, `4`
-for x in it.invert() {
+for x in it.rev() {
     println!("{}", x);
 }
 ~~~
