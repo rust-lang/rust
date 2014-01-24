@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # xfail-license
 
+import glob
 import sys
 
 if __name__ == '__main__':
@@ -24,7 +25,8 @@ if __name__ == '__main__':
     def count(t):
         return sum(map(lambda (f, s): len(s.get(t, [])), summaries))
     logfiles = sys.argv[1:]
-    map(summarise, logfiles)
+    for files in map(glob.glob, logfiles):
+        map(summarise, files)
     ok = count('ok')
     failed = count('failed')
     ignored = count('ignored')
