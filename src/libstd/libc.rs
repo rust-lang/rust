@@ -267,7 +267,7 @@ pub mod types {
                 pub enum timezone {}
             }
             pub mod bsd44 {
-                use libc::types::os::arch::c95::c_uint;
+                use libc::types::os::arch::c95::{c_char, c_int, c_uint};
 
                 pub type socklen_t = u32;
                 pub type sa_family_t = u16;
@@ -308,6 +308,16 @@ pub mod types {
                 pub struct ip6_mreq {
                     ipv6mr_multiaddr: in6_addr,
                     ipv6mr_interface: c_uint,
+                }
+                pub struct addrinfo {
+                    ai_flags: c_int,
+                    ai_family: c_int,
+                    ai_socktype: c_int,
+                    ai_protocol: c_int,
+                    ai_addrlen: socklen_t,
+                    ai_addr: *sockaddr,
+                    ai_canonname: *c_char,
+                    ai_next: *addrinfo
                 }
             }
         }
@@ -624,7 +634,7 @@ pub mod types {
                 pub enum timezone {}
             }
             pub mod bsd44 {
-                use libc::types::os::arch::c95::c_uint;
+                use libc::types::os::arch::c95::{c_char, c_int, c_uint};
 
                 pub type socklen_t = u32;
                 pub type sa_family_t = u8;
@@ -670,6 +680,16 @@ pub mod types {
                 pub struct ip6_mreq {
                     ipv6mr_multiaddr: in6_addr,
                     ipv6mr_interface: c_uint,
+                }
+                pub struct addrinfo {
+                    ai_flags: c_int,
+                    ai_family: c_int,
+                    ai_socktype: c_int,
+                    ai_protocol: c_int,
+                    ai_addrlen: socklen_t,
+                    ai_canonname: *c_char,
+                    ai_addr: *sockaddr,
+                    ai_next: *addrinfo
                 }
             }
         }
@@ -811,7 +831,7 @@ pub mod types {
             }
 
             pub mod bsd44 {
-                use libc::types::os::arch::c95::{c_int, c_uint};
+                use libc::types::os::arch::c95::{c_char, c_int, c_uint, size_t};
 
                 pub type SOCKET = c_uint;
                 pub type socklen_t = c_int;
@@ -853,6 +873,16 @@ pub mod types {
                 pub struct ip6_mreq {
                     ipv6mr_multiaddr: in6_addr,
                     ipv6mr_interface: c_uint,
+                }
+                pub struct addrinfo {
+                    ai_flags: c_int,
+                    ai_family: c_int,
+                    ai_socktype: c_int,
+                    ai_protocol: c_int,
+                    ai_addrlen: size_t,
+                    ai_canonname: *c_char,
+                    ai_addr: *sockaddr,
+                    ai_next: *addrinfo
                 }
             }
         }
@@ -1121,7 +1151,7 @@ pub mod types {
             }
 
             pub mod bsd44 {
-                use libc::types::os::arch::c95::{c_int, c_uint};
+                use libc::types::os::arch::c95::{c_char, c_int, c_uint};
 
                 pub type socklen_t = c_int;
                 pub type sa_family_t = u8;
@@ -1167,6 +1197,16 @@ pub mod types {
                 pub struct ip6_mreq {
                     ipv6mr_multiaddr: in6_addr,
                     ipv6mr_interface: c_uint,
+                }
+                pub struct addrinfo {
+                    ai_flags: c_int,
+                    ai_family: c_int,
+                    ai_socktype: c_int,
+                    ai_protocol: c_int,
+                    ai_addrlen: socklen_t,
+                    ai_canonname: *c_char,
+                    ai_addr: *sockaddr,
+                    ai_next: *addrinfo
                 }
             }
         }
