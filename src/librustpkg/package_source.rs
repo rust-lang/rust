@@ -78,8 +78,8 @@ fn prefixes(p: &Path) -> Prefixes {
 }
 
 struct Prefixes {
-    priv components: ~[~str],
-    priv remaining: ~[~str]
+    components: ~[~str],
+    remaining: ~[~str]
 }
 
 impl Iterator<(Path, Path)> for Prefixes {

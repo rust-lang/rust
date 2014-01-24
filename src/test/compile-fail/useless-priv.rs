@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct A { pub i: int }         //~ ERROR: unnecessary `pub`
-struct B { priv i: int }        // don't warn b/c B can still be returned
+struct A { pub i: int }
+struct B { priv i: int }        //~ ERROR: unnecessary `priv`
 pub enum C { pub Variant }      //~ ERROR: unnecessary `pub`
 enum D { priv Variant2 }        //~ ERROR: unnecessary `priv`
 
