@@ -10,9 +10,6 @@
 #[macro_escape];
 
 #[macro_export]
-macro_rules! ignore (($($x:tt)*) => (()))
-
-#[macro_export]
 macro_rules! log(
     ($lvl:expr, $($arg:tt)+) => ({
         let lvl = $lvl;
