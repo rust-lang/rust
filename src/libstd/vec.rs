@@ -1067,7 +1067,7 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
 
     #[inline]
     fn rev_iter(self) -> RevItems<'a, T> {
-        self.iter().invert()
+        self.iter().rev()
     }
 
     #[inline]
@@ -1464,7 +1464,7 @@ impl<T> OwnedVector<T> for ~[T] {
 
     #[inline]
     fn move_rev_iter(self) -> RevMoveItems<T> {
-        self.move_iter().invert()
+        self.move_iter().rev()
     }
 
     fn reserve(&mut self, n: uint) {
@@ -2300,7 +2300,7 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
 
     #[inline]
     fn mut_rev_iter(self) -> RevMutItems<'a, T> {
-        self.mut_iter().invert()
+        self.mut_iter().rev()
     }
 
     #[inline]
@@ -2714,7 +2714,7 @@ impl<'a, T> RandomAccessIterator<&'a T> for Items<'a, T> {
 }
 
 iterator!{struct Items -> *T, &'a T}
-pub type RevItems<'a, T> = Invert<Items<'a, T>>;
+pub type RevItems<'a, T> = Rev<Items<'a, T>>;
 
 impl<'a, T> ExactSize<&'a T> for Items<'a, T> {}
 impl<'a, T> ExactSize<&'a mut T> for MutItems<'a, T> {}
@@ -2724,7 +2724,7 @@ impl<'a, T> Clone for Items<'a, T> {
 }
 
 iterator!{struct MutItems -> *mut T, &'a mut T}
-pub type RevMutItems<'a, T> = Invert<MutItems<'a, T>>;
+pub type RevMutItems<'a, T> = Rev<MutItems<'a, T>>;
 
 /// An iterator over the subslices of the vector which are separated
 /// by elements that match `pred`.
@@ -2882,7 +2882,7 @@ impl<T> Drop for MoveItems<T> {
 }
 
 /// An iterator that moves out of a vector in reverse order.
-pub type RevMoveItems<T> = Invert<MoveItems<T>>;
+pub type RevMoveItems<T> = Rev<MoveItems<T>>;
 
 impl<A> FromIterator<A> for ~[A] {
     fn from_iterator<T: Iterator<A>>(iterator: &mut T) -> ~[A] {
@@ -3985,7 +3985,7 @@ mod tests {
         assert_eq!(v.chunks(3).collect::<~[&[int]]>(), ~[&[1i,2,3], &[4,5]]);
         assert_eq!(v.chunks(6).collect::<~[&[int]]>(), ~[&[1i,2,3,4,5]]);
 
-        assert_eq!(v.chunks(2).invert().collect::<~[&[int]]>(), ~[&[5i], &[3,4], &[1,2]]);
+        assert_eq!(v.chunks(2).rev().collect::<~[&[int]]>(), ~[&[5i], &[3,4], &[1,2]]);
         let it = v.chunks(2);
         assert_eq!(it.indexable(), 3);
         assert_eq!(it.idx(0).unwrap(), &[1,2]);
@@ -4241,9 +4241,9 @@ mod tests {
     }
 
     #[test]
-    fn test_mut_splitator_invert() {
+    fn test_mut_splitator_rev() {
         let mut xs = [1,2,0,3,4,0,0,5,6,0];
-        for slice in xs.mut_split(|x| *x == 0).invert().take(4) {
+        for slice in xs.mut_split(|x| *x == 0).rev().take(4) {
             slice.reverse();
         }
         assert_eq!(xs, [1,2,0,4,3,0,0,6,5,0]);
@@ -4262,9 +4262,9 @@ mod tests {
     }
 
     #[test]
-    fn test_mut_chunks_invert() {
+    fn test_mut_chunks_rev() {
         let mut v = [0u8, 1, 2, 3, 4, 5, 6];
-        for (i, chunk) in v.mut_chunks(3).invert().enumerate() {
+        for (i, chunk) in v.mut_chunks(3).rev().enumerate() {
             for x in chunk.mut_iter() {
                 *x = i as u8;
             }

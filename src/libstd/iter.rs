@@ -670,21 +670,21 @@ pub trait DoubleEndedIterator<A>: Iterator<A> {
     /// Yield an element from the end of the range, returning `None` if the range is empty.
     fn next_back(&mut self) -> Option<A>;
 
-    /// Flip the direction of the iterator
+    /// Change the direction of the iterator
     ///
-    /// The inverted iterator flips the ends on an iterator that can already
+    /// The flipped iterator swaps the ends on an iterator that can already
     /// be iterated from the front and from the back.
     ///
     ///
-    /// If the iterator also implements RandomAccessIterator, the inverted
+    /// If the iterator also implements RandomAccessIterator, the flipped
     /// iterator is also random access, with the indices starting at the back
     /// of the original iterator.
     ///
-    /// Note: Random access with inverted indices still only applies to the first
+    /// Note: Random access with flipped indices still only applies to the first
     /// `uint::max_value` elements of the original iterator.
     #[inline]
-    fn invert(self) -> Invert<Self> {
-        Invert{iter: self}
+    fn rev(self) -> Rev<Self> {
+        Rev{iter: self}
     }
 }
 
@@ -759,30 +759,30 @@ pub trait ExactSize<A> : DoubleEndedIterator<A> {
 // Adaptors that may overflow in `size_hint` are not, i.e. `Chain`.
 impl<A, T: ExactSize<A>> ExactSize<(uint, A)> for Enumerate<T> {}
 impl<'a, A, T: ExactSize<A>> ExactSize<A> for Inspect<'a, A, T> {}
-impl<A, T: ExactSize<A>> ExactSize<A> for Invert<T> {}
+impl<A, T: ExactSize<A>> ExactSize<A> for Rev<T> {}
 impl<'a, A, B, T: ExactSize<A>> ExactSize<B> for Map<'a, A, B, T> {}
 impl<A, B, T: ExactSize<A>, U: ExactSize<B>> ExactSize<(A, B)> for Zip<T, U> {}
 
 /// An double-ended iterator with the direction inverted
 #[deriving(Clone)]
-pub struct Invert<T> {
+pub struct Rev<T> {
     priv iter: T
 }
 
-impl<A, T: DoubleEndedIterator<A>> Iterator<A> for Invert<T> {
+impl<A, T: DoubleEndedIterator<A>> Iterator<A> for Rev<T> {
     #[inline]
     fn next(&mut self) -> Option<A> { self.iter.next_back() }
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 
-impl<A, T: DoubleEndedIterator<A>> DoubleEndedIterator<A> for Invert<T> {
+impl<A, T: DoubleEndedIterator<A>> DoubleEndedIterator<A> for Rev<T> {
     #[inline]
     fn next_back(&mut self) -> Option<A> { self.iter.next() }
 }
 
 impl<A, T: DoubleEndedIterator<A> + RandomAccessIterator<A>> RandomAccessIterator<A>
-    for Invert<T> {
+    for Rev<T> {
     #[inline]
     fn indexable(&self) -> uint { self.iter.indexable() }
     #[inline]
@@ -2590,12 +2590,12 @@ mod tests {
     }
 
     #[test]
-    fn test_invert() {
+    fn test_rev() {
         let xs = [2, 4, 6, 8, 10, 12, 14, 16];
         let mut it = xs.iter();
         it.next();
         it.next();
-        assert_eq!(it.invert().map(|&x| x).collect::<~[int]>(), ~[16, 14, 12, 10, 8, 6]);
+        assert_eq!(it.rev().map(|&x| x).collect::<~[int]>(), ~[16, 14, 12, 10, 8, 6]);
     }
 
     #[test]
@@ -2662,7 +2662,7 @@ mod tests {
     fn test_double_ended_chain() {
         let xs = [1, 2, 3, 4, 5];
         let ys = ~[7, 9, 11];
-        let mut it = xs.iter().chain(ys.iter()).invert();
+        let mut it = xs.iter().chain(ys.iter()).rev();
         assert_eq!(it.next().unwrap(), &11)
         assert_eq!(it.next().unwrap(), &9)
         assert_eq!(it.next_back().unwrap(), &1)
@@ -2764,10 +2764,10 @@ mod tests {
     }
 
     #[test]
-    fn test_random_access_invert() {
+    fn test_random_access_rev() {
         let xs = [1, 2, 3, 4, 5];
-        check_randacc_iter(xs.iter().invert(), xs.len());
-        let mut it = xs.iter().invert();
+        check_randacc_iter(xs.iter().rev(), xs.len());
+        let mut it = xs.iter().rev();
         it.next();
         it.next_back();
         it.next();
@@ -2833,13 +2833,13 @@ mod tests {
 
     #[test]
     fn test_double_ended_range() {
-        assert_eq!(range(11i, 14).invert().collect::<~[int]>(), ~[13i, 12, 11]);
-        for _ in range(10i, 0).invert() {
+        assert_eq!(range(11i, 14).rev().collect::<~[int]>(), ~[13i, 12, 11]);
+        for _ in range(10i, 0).rev() {
             fail!("unreachable");
         }
 
-        assert_eq!(range(11u, 14).invert().collect::<~[uint]>(), ~[13u, 12, 11]);
-        for _ in range(10u, 0).invert() {
+        assert_eq!(range(11u, 14).rev().collect::<~[uint]>(), ~[13u, 12, 11]);
+        for _ in range(10u, 0).rev() {
             fail!("unreachable");
         }
     }
@@ -2886,11 +2886,11 @@ mod tests {
 
         assert_eq!(range(0i, 5).collect::<~[int]>(), ~[0i, 1, 2, 3, 4]);
         assert_eq!(range(-10i, -1).collect::<~[int]>(), ~[-10, -9, -8, -7, -6, -5, -4, -3, -2]);
-        assert_eq!(range(0i, 5).invert().collect::<~[int]>(), ~[4, 3, 2, 1, 0]);
+        assert_eq!(range(0i, 5).rev().collect::<~[int]>(), ~[4, 3, 2, 1, 0]);
         assert_eq!(range(200, -5).collect::<~[int]>(), ~[]);
-        assert_eq!(range(200, -5).invert().collect::<~[int]>(), ~[]);
+        assert_eq!(range(200, -5).rev().collect::<~[int]>(), ~[]);
         assert_eq!(range(200, 200).collect::<~[int]>(), ~[]);
-        assert_eq!(range(200, 200).invert().collect::<~[int]>(), ~[]);
+        assert_eq!(range(200, 200).rev().collect::<~[int]>(), ~[]);
 
         assert_eq!(range(0i, 100).size_hint(), (100, Some(100)));
         // this test is only meaningful when sizeof uint < sizeof u64
@@ -2902,11 +2902,11 @@ mod tests {
     #[test]
     fn test_range_inclusive() {
         assert_eq!(range_inclusive(0i, 5).collect::<~[int]>(), ~[0i, 1, 2, 3, 4, 5]);
-        assert_eq!(range_inclusive(0i, 5).invert().collect::<~[int]>(), ~[5i, 4, 3, 2, 1, 0]);
+        assert_eq!(range_inclusive(0i, 5).rev().collect::<~[int]>(), ~[5i, 4, 3, 2, 1, 0]);
         assert_eq!(range_inclusive(200, -5).collect::<~[int]>(), ~[]);
-        assert_eq!(range_inclusive(200, -5).invert().collect::<~[int]>(), ~[]);
+        assert_eq!(range_inclusive(200, -5).rev().collect::<~[int]>(), ~[]);
         assert_eq!(range_inclusive(200, 200).collect::<~[int]>(), ~[200]);
-        assert_eq!(range_inclusive(200, 200).invert().collect::<~[int]>(), ~[200]);
+        assert_eq!(range_inclusive(200, 200).rev().collect::<~[int]>(), ~[200]);
     }
 
     #[test]

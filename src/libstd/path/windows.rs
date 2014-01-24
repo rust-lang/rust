@@ -17,7 +17,7 @@ use clone::Clone;
 use container::Container;
 use cmp::Eq;
 use from_str::FromStr;
-use iter::{AdditiveIterator, DoubleEndedIterator, Extendable, Invert, Iterator, Map};
+use iter::{AdditiveIterator, DoubleEndedIterator, Extendable, Rev, Iterator, Map};
 use option::{Option, Some, None};
 use str;
 use str::{CharSplits, OwnedStr, Str, StrVector, StrSlice};
@@ -35,7 +35,7 @@ pub type StrComponents<'a> = Map<'a, &'a str, Option<&'a str>,
 ///
 /// Each component is yielded as Option<&str> for compatibility with PosixPath, but
 /// every component in WindowsPath is guaranteed to be Some.
-pub type RevStrComponents<'a> = Invert<Map<'a, &'a str, Option<&'a str>,
+pub type RevStrComponents<'a> = Rev<Map<'a, &'a str, Option<&'a str>,
                                                  CharSplits<'a, char>>>;
 
 /// Iterator that yields successive components of a Path as &[u8]
@@ -571,8 +571,8 @@ impl GenericPath for Path {
 
     fn ends_with_path(&self, child: &Path) -> bool {
         if !child.is_relative() { return false; }
-        let mut selfit = self.str_components().invert();
-        let mut childit = child.str_components().invert();
+        let mut selfit = self.str_components().rev();
+        let mut childit = child.str_components().rev();
         loop {
             match (selfit.next(), childit.next()) {
                 (Some(a), Some(b)) => if a != b { return false; },
@@ -628,7 +628,7 @@ impl Path {
     /// Returns an iterator that yields each component of the path in reverse as an Option<&str>
     /// See str_components() for details.
     pub fn rev_str_components<'a>(&'a self) -> RevStrComponents<'a> {
-        self.str_components().invert()
+        self.str_components().rev()
     }
 
     /// Returns an iterator that yields each component of the path in turn as a &[u8].

@@ -556,7 +556,7 @@ impl SyntaxEnv {
     }
 
     fn find_escape_frame<'a>(&'a mut self) -> &'a mut MapChainFrame {
-        for (i, frame) in self.chain.mut_iter().enumerate().invert() {
+        for (i, frame) in self.chain.mut_iter().enumerate().rev() {
             if !frame.info.macros_escape || i == 0 {
                 return frame
             }
@@ -565,7 +565,7 @@ impl SyntaxEnv {
     }
 
     pub fn find<'a>(&'a self, k: &Name) -> Option<&'a SyntaxExtension> {
-        for frame in self.chain.iter().invert() {
+        for frame in self.chain.iter().rev() {
             match frame.map.find(k) {
                 Some(v) => return Some(v),
                 None => {}

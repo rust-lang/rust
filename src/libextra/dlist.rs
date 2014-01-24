@@ -25,7 +25,7 @@
 use std::cast;
 use std::ptr;
 use std::util;
-use std::iter::Invert;
+use std::iter::Rev;
 use std::iter;
 
 use container::Deque;
@@ -368,8 +368,8 @@ impl<T> DList<T> {
 
     /// Provide a reverse iterator
     #[inline]
-    pub fn rev_iter<'a>(&'a self) -> Invert<Items<'a, T>> {
-        self.iter().invert()
+    pub fn rev_iter<'a>(&'a self) -> Rev<Items<'a, T>> {
+        self.iter().rev()
     }
 
     /// Provide a forward iterator with mutable references
@@ -388,8 +388,8 @@ impl<T> DList<T> {
     }
     /// Provide a reverse iterator with mutable references
     #[inline]
-    pub fn mut_rev_iter<'a>(&'a mut self) -> Invert<MutItems<'a, T>> {
-        self.mut_iter().invert()
+    pub fn mut_rev_iter<'a>(&'a mut self) -> Rev<MutItems<'a, T>> {
+        self.mut_iter().rev()
     }
 
 
@@ -401,8 +401,8 @@ impl<T> DList<T> {
 
     /// Consume the list into an iterator yielding elements by value, in reverse
     #[inline]
-    pub fn move_rev_iter(self) -> Invert<MoveItems<T>> {
-        self.move_iter().invert()
+    pub fn move_rev_iter(self) -> Rev<MoveItems<T>> {
+        self.move_iter().rev()
     }
 }
 
