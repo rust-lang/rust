@@ -250,6 +250,9 @@ impl Session_ {
     pub fn span_note(&self, sp: Span, msg: &str) {
         self.span_diagnostic.span_note(sp, msg)
     }
+    pub fn span_end_note(&self, sp: Span, msg: &str) {
+        self.span_diagnostic.span_end_note(sp, msg)
+    }
     pub fn note(&self, msg: &str) {
         self.span_diagnostic.handler().note(msg)
     }

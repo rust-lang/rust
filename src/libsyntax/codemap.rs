@@ -308,10 +308,6 @@ impl CodeMap {
         }
     }
 
-    pub fn adjust_span(&self, sp: Span) -> Span {
-        sp
-    }
-
     pub fn span_to_str(&self, sp: Span) -> ~str {
         {
             let files = self.files.borrow();
