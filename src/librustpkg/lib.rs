@@ -33,6 +33,7 @@ use rustc::metadata::filesearch;
 use rustc::metadata::filesearch::rust_path;
 use rustc::util::sha2;
 use syntax::{ast, diagnostic};
+use syntax::crateid::CrateId;
 use messages::{error, warn, note};
 use parse_args::{ParseResult, parse_args};
 use path_util::{build_pkg_id_in_workspace, built_test_in_workspace};
@@ -46,7 +47,6 @@ use context::{BuildContext, Trans, Nothing, Pretty, Analysis,
               LLVMAssemble, LLVMCompileBitcode};
 use context::{Command, BuildCmd, CleanCmd, DoCmd, HelpCmd, InfoCmd, InstallCmd, ListCmd,
     PreferCmd, TestCmd, InitCmd, UninstallCmd, UnpreferCmd};
-use crate_id::CrateId;
 use package_source::PkgSrc;
 use target::{WhatToBuild, Everything, is_lib, is_main, is_test, is_bench};
 use target::{Main, Tests, MaybeCustom, Inferred, JustOne};
@@ -60,7 +60,6 @@ mod crate;
 pub mod exit_codes;
 mod installed_packages;
 mod messages;
-pub mod crate_id;
 pub mod package_source;
 mod parse_args;
 mod path_util;
@@ -103,7 +102,7 @@ impl<'a> PkgScript<'a> {
                  workspace: &Path,
                  id: &'a CrateId) -> PkgScript<'a> {
         // Get the executable name that was invoked
-        let binary = os::args()[0].to_owned();
+        let binary = os::args()[0];
         // Build the rustc session data structures to pass
         // to the compiler
         debug!("pkgscript parse: {}", sysroot.display());
@@ -162,7 +161,6 @@ impl<'a> PkgScript<'a> {
         exec.discover_output("binary", exe.as_str().unwrap().to_owned(), digest_only_date(&exe));
         exe.as_str().unwrap().to_owned()
     }
-
 
     /// Run the contents of this package script, where <what>
     /// is the command to pass to it (e.g., "build", "clean", "install")
@@ -243,9 +241,9 @@ impl CtxMethods for BuildContext {
 
         if args.len() < 1 {
             match cwd_to_workspace() {
-                None  if dir_has_crate_file(&cwd) => {
+                None if dir_has_crate_file(&cwd) => {
                     // FIXME (#9639): This needs to handle non-utf8 paths
-                    let crateid = CrateId::new(cwd.filename_str().unwrap());
+                    let crateid = from_str(cwd.filename_str().unwrap()).expect("valid crate id");
                     let mut pkg_src = PkgSrc::new(cwd, default_workspace(), true, crateid);
                     self.build(&mut pkg_src, what);
                     match pkg_src {
@@ -270,7 +268,7 @@ impl CtxMethods for BuildContext {
         } else {
             // The package id is presumed to be the first command-line
             // argument
-            let crateid = CrateId::new(args[0].clone());
+            let crateid = from_str(args[0]).expect("valid crate id");
             let mut dest_ws = default_workspace();
             each_pkg_parent_workspace(&self.context, &crateid, |workspace| {
                 debug!("found pkg {} in workspace {}, trying to build",
@@ -289,6 +287,7 @@ impl CtxMethods for BuildContext {
             Some((crateid, dest_ws))
         }
     }
+
     fn run(&self, cmd: Command, args: ~[~str]) {
         let cwd = os::getcwd();
         match cmd {
@@ -308,7 +307,7 @@ impl CtxMethods for BuildContext {
                 else {
                     // The package id is presumed to be the first command-line
                     // argument
-                    let crateid = CrateId::new(args[0].clone());
+                    let crateid = from_str(args[0]).expect("valid crate id");
                     self.clean(&cwd, &crateid); // tjc: should use workspace, not cwd
                 }
             }
@@ -341,7 +340,7 @@ impl CtxMethods for BuildContext {
                             // FIXME (#9639): This needs to handle non-utf8 paths
 
                             let inferred_crateid =
-                                CrateId::new(cwd.filename_str().unwrap());
+                                from_str(cwd.filename_str().unwrap()).expect("valid crate id");
                             self.install(PkgSrc::new(cwd, default_workspace(),
                                                      true, inferred_crateid),
                                          &WhatToBuild::new(MaybeCustom, Everything));
@@ -357,7 +356,7 @@ impl CtxMethods for BuildContext {
                 else {
                     // The package id is presumed to be the first command-line
                     // argument
-                    let crateid = CrateId::new(args[0]);
+                    let crateid = from_str(args[0]).expect("valid crate id");
                     let workspaces = pkg_parent_workspaces(&self.context, &crateid);
                     debug!("package ID = {}, found it in {:?} workspaces",
                            crateid.to_str(), workspaces.len());
@@ -383,7 +382,7 @@ impl CtxMethods for BuildContext {
             ListCmd => {
                 println!("Installed packages:");
                 installed_packages::list_installed_packages(|pkg_id| {
-                    pkg_id.path.display().with_str(|s| println!("{}", s));
+                    println!("{}", pkg_id.path);
                     true
                 });
             }
@@ -420,7 +419,7 @@ impl CtxMethods for BuildContext {
                     return usage::uninstall();
                 }
 
-                let crateid = CrateId::new(args[0]);
+                let crateid = from_str(args[0]).expect("valid crate id");
                 if !installed_packages::package_is_installed(&crateid) {
                     warn(format!("Package {} doesn't seem to be installed! \
                                   Doing nothing.", args[0]));
@@ -458,24 +457,24 @@ impl CtxMethods for BuildContext {
         let workspace = pkg_src.source_workspace.clone();
         let crateid = pkg_src.id.clone();
 
+        let path = crateid.path.as_slice();
         debug!("build: workspace = {} (in Rust path? {:?} is git dir? {:?} \
                 crateid = {} pkgsrc start_dir = {}", workspace.display(),
-               in_rust_path(&workspace), is_git_dir(&workspace.join(&crateid.path)),
+               in_rust_path(&workspace), is_git_dir(&workspace.join(path)),
                crateid.to_str(), pkg_src.start_dir.display());
         debug!("build: what to build = {:?}", what_to_build);
 
         // If workspace isn't in the RUST_PATH, and it's a git repo,
         // then clone it into the first entry in RUST_PATH, and repeat
-        if !in_rust_path(&workspace) && is_git_dir(&workspace.join(&crateid.path)) {
+        if !in_rust_path(&workspace) && is_git_dir(&workspace.join(path)) {
             let mut out_dir = default_workspace().join("src");
-            out_dir.push(&crateid.path);
-            let git_result = source_control::safe_git_clone(&workspace.join(&crateid.path),
+            out_dir.push(path);
+            let git_result = source_control::safe_git_clone(&workspace.join(path),
                                                             &crateid.version,
                                                             &out_dir);
             match git_result {
                 CheckedOutSources => make_read_only(&out_dir),
-                // FIXME (#9639): This needs to handle non-utf8 paths
-                _ => cond.raise((crateid.path.as_str().unwrap().to_owned(), out_dir.clone()))
+                _ => cond.raise((path.to_owned(), out_dir.clone()))
             };
             let default_ws = default_workspace();
             debug!("Calling build recursively with {:?} and {:?}", default_ws.display(),
@@ -652,7 +651,8 @@ impl CtxMethods for BuildContext {
                target_exec.display(), target_lib,
                maybe_executable, maybe_library);
 
-        self.workcache_context.with_prep(id.install_tag(), |prep| {
+        let install_tag = format!("install({}-{})", id.path, id.version_or_default());
+        self.workcache_context.with_prep(install_tag, |prep| {
             for ee in maybe_executable.iter() {
                 // FIXME (#9639): This needs to handle non-utf8 paths
                 prep.declare_input("binary",

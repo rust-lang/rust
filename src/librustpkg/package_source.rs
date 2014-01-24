@@ -11,7 +11,6 @@
 extern mod extra;
 
 use target::*;
-use crate_id::CrateId;
 use std::io;
 use std::io::fs;
 use std::os;
@@ -27,7 +26,7 @@ use workcache_support;
 use workcache_support::{digest_only_date, digest_file_with_date, crate_tag};
 use extra::workcache;
 use extra::treemap::TreeMap;
-
+use syntax::crateid::CrateId;
 use rustc::driver::session;
 
 // An enumeration of the unpacked source of a package workspace.
@@ -68,12 +67,38 @@ impl ToStr for PkgSrc {
     }
 }
 condition! {
-    // #6009: should this be pub or not, when #8215 is fixed?
     build_err: (~str) -> ~str;
 }
 
-impl PkgSrc {
+fn prefixes(p: &Path) -> Prefixes {
+    Prefixes {
+        components: p.str_components().map(|x|x.unwrap().to_owned()).to_owned_vec(),
+        remaining: ~[]
+    }
+}
 
+struct Prefixes {
+    priv components: ~[~str],
+    priv remaining: ~[~str]
+}
+
+impl Iterator<(Path, Path)> for Prefixes {
+    #[inline]
+    fn next(&mut self) -> Option<(Path, Path)> {
+        if self.components.len() <= 1 {
+            None
+        }
+        else {
+            let last = self.components.pop().unwrap();
+            self.remaining.unshift(last);
+            // converting to str and then back is a little unfortunate
+            Some((Path::new(self.components.connect("/")),
+                  Path::new(self.remaining.connect("/"))))
+        }
+    }
+}
+
+impl PkgSrc {
     pub fn new(mut source_workspace: Path,
                destination_workspace: Path,
                use_rust_path_hack: bool,
@@ -98,21 +123,22 @@ impl PkgSrc {
         } else {
             // We search for sources under both src/ and build/ , because build/ is where
             // automatically-checked-out sources go.
+            let path = Path::new(id.path.as_slice());
             let mut result = source_workspace.join("src");
-            result.push(&id.path.dir_path());
-            result.push(format!("{}-{}", id.short_name, id.version.to_str()));
+            result.push(&path.dir_path());
+            result.push(id.short_name_with_version());
             to_try.push(result);
             let mut result = source_workspace.join("src");
-            result.push(&id.path);
+            result.push(&path);
             to_try.push(result);
 
             let mut result = build_dir.join("src");
-            result.push(&id.path.dir_path());
-            result.push(format!("{}-{}", id.short_name, id.version.to_str()));
+            result.push(&path.dir_path());
+            result.push(id.short_name_with_version());
             to_try.push(result.clone());
             output_names.push(result);
             let mut other_result = build_dir.join("src");
-            other_result.push(&id.path);
+            other_result.push(&path);
             to_try.push(other_result.clone());
             output_names.push(other_result);
 
@@ -132,9 +158,10 @@ impl PkgSrc {
             None => {
                 // See if any of the prefixes of this package ID form a valid package ID
                 // That is, is this a package ID that points into the middle of a workspace?
-                for (prefix, suffix) in id.prefixes() {
-                    let crate_id = CrateId::new(prefix.as_str().unwrap());
-                    let path = build_dir.join(&crate_id.path);
+                for (prefix, suffix) in prefixes(&Path::new(id.path.as_slice())) {
+                    let crate_id: Option<CrateId> = from_str(prefix.as_str().unwrap());
+                    let crate_id = crate_id.expect("valid crate id");
+                    let path = build_dir.join(crate_id.path.as_slice());
                     debug!("in loop: checking if {} is a directory", path.display());
                     if path.is_dir() {
                         let ps = PkgSrc::new(source_workspace,
@@ -163,7 +190,7 @@ impl PkgSrc {
                             }
                         }
 
-                    };
+                    }
                 }
 
                 // Ok, no prefixes work, so try fetching from git
@@ -179,11 +206,12 @@ impl PkgSrc {
                     }
                     match ok_d {
                         Some(ref d) => {
-                            if d.is_ancestor_of(&id.path)
-                                || d.is_ancestor_of(&versionize(&id.path, &id.version)) {
+                            let path = Path::new(id.path.as_slice());
+                            if d.is_ancestor_of(&path)
+                                || d.is_ancestor_of(&versionize(id.path, &id.version)) {
                                 // Strip off the package ID
                                 source_workspace = d.clone();
-                                for _ in id.path.components() {
+                                for _ in path.components() {
                                     source_workspace.pop();
                                 }
                                 // Strip off the src/ part
@@ -226,8 +254,7 @@ impl PkgSrc {
                                         exist, and couldn't interpret it as a URL fragment"))
                                 }
                             }
-                        }
-                        else {
+                        } else {
                             cond.raise((id.clone(),
                                 ~"supplied path for package dir does not \
                                 exist, and couldn't interpret it as a URL fragment"))
@@ -268,26 +295,27 @@ impl PkgSrc {
         use conditions::git_checkout_failed::cond;
 
         let cwd = os::getcwd();
+        let path = Path::new(crateid.path.as_slice());
         debug!("Checking whether {} (path = {}) exists locally. Cwd = {}, does it? {:?}",
-                crateid.to_str(), crateid.path.display(),
+                crateid.to_str(), crateid.path,
                 cwd.display(),
-                crateid.path.exists());
+                path.exists());
 
-        match safe_git_clone(&crateid.path, &crateid.version, local) {
+        match safe_git_clone(&path, &crateid.version, local) {
             CheckedOutSources => {
                 make_read_only(local);
                 Some(local.clone())
             }
             DirToUse(clone_target) => {
-                if crateid.path.components().nth(1).is_none() {
+                if path.components().nth(1).is_none() {
                     // If a non-URL, don't bother trying to fetch
                     return None;
                 }
 
                 // FIXME (#9639): This needs to handle non-utf8 paths
-                let url = format!("https://{}", crateid.path.as_str().unwrap());
+                let url = format!("https://{}", path.as_str().unwrap());
                 debug!("Fetching package: git clone {} {} [version={}]",
-                        url, clone_target.display(), crateid.version.to_str());
+                        url, clone_target.display(), crateid.version_or_default());
 
                 let mut failed = false;
 
@@ -345,7 +373,7 @@ impl PkgSrc {
         use conditions::missing_pkg_files::cond;
 
         let prefix = self.start_dir.components().len();
-        debug!("Matching against {}", self.id.short_name);
+        debug!("Matching against {}", self.id.name);
         for pth in fs::walk_dir(&self.start_dir) {
             let maybe_known_crate_set = match pth.filename_str() {
                 Some(filename) if filter(filename) => match filename {
