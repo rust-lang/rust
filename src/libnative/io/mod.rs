@@ -23,6 +23,11 @@
 
 use std::c_str::CString;
 use std::comm::SharedChan;
+use std::io;
+use std::io::IoError;
+use std::io::net::ip::SocketAddr;
+use std::io::process::ProcessConfig;
+use std::io::signal::Signum;
 use std::libc::c_int;
 use std::libc;
 use std::os;
@@ -30,11 +35,6 @@ use std::rt::rtio;
 use std::rt::rtio::{RtioTcpStream, RtioTcpListener, RtioUdpSocket,
                     RtioUnixListener, RtioPipe, RtioFileStream, RtioProcess,
                     RtioSignal, RtioTTY, CloseBehavior, RtioTimer};
-use std::io;
-use std::io::IoError;
-use std::io::net::ip::SocketAddr;
-use std::io::process::ProcessConfig;
-use std::io::signal::Signum;
 use ai = std::io::net::addrinfo;
 
 // Local re-exports
@@ -42,9 +42,10 @@ pub use self::file::FileDesc;
 pub use self::process::Process;
 
 // Native I/O implementations
+pub mod addrinfo;
 pub mod file;
-pub mod process;
 pub mod net;
+pub mod process;
 
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
@@ -202,9 +203,9 @@ impl rtio::IoFactory for IoFactory {
     fn unix_connect(&mut self, _path: &CString) -> IoResult<~RtioPipe> {
         Err(unimpl())
     }
-    fn get_host_addresses(&mut self, _host: Option<&str>, _servname: Option<&str>,
-                          _hint: Option<ai::Hint>) -> IoResult<~[ai::Info]> {
-        Err(unimpl())
+    fn get_host_addresses(&mut self, host: Option<&str>, servname: Option<&str>,
+                          hint: Option<ai::Hint>) -> IoResult<~[ai::Info]> {
+        addrinfo::GetAddrInfoRequest::run(host, servname, hint)
     }
 
     // filesystem operations

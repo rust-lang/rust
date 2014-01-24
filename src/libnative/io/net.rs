@@ -134,8 +134,8 @@ fn sockname(fd: sock_t,
     return sockaddr_to_addr(&storage, len as uint);
 }
 
-fn sockaddr_to_addr(storage: &libc::sockaddr_storage,
-                    len: uint) -> IoResult<ip::SocketAddr> {
+pub fn sockaddr_to_addr(storage: &libc::sockaddr_storage,
+                        len: uint) -> IoResult<ip::SocketAddr> {
     match storage.ss_family as libc::c_int {
         libc::AF_INET => {
             assert!(len as uint >= mem::size_of::<libc::sockaddr_in>());
