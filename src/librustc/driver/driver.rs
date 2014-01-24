@@ -734,6 +734,7 @@ pub fn build_session_options(binary: ~str,
     let parse_only = matches.opt_present("parse-only");
     let no_trans = matches.opt_present("no-trans");
     let no_analysis = matches.opt_present("no-analysis");
+    let no_rpath = matches.opt_present("no-rpath");
 
     let lint_levels = [lint::allow, lint::warn,
                        lint::deny, lint::forbid];
@@ -888,6 +889,7 @@ pub fn build_session_options(binary: ~str,
         parse_only: parse_only,
         no_trans: no_trans,
         no_analysis: no_analysis,
+        no_rpath: no_rpath,
         debugging_opts: debugging_opts,
         android_cross_path: android_cross_path,
         write_dependency_info: write_dependency_info,
@@ -995,6 +997,7 @@ pub fn optgroups() -> ~[getopts::groups::OptGroup] {
                         \"list\" will list all of the available passes", "NAMES"),
   optopt("", "llvm-args", "A list of arguments to pass to llvm, comma \
                            separated", "ARGS"),
+  optflag("", "no-rpath", "Disables setting the rpath in libs/exes"),
   optopt( "",  "out-dir",
                         "Write output to compiler-chosen filename
                           in <dir>", "DIR"),
