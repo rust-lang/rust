@@ -338,7 +338,7 @@ impl<'a> Visitor<()> for EmbargoVisitor<'a> {
             let exp_map2 = self.exp_map2.borrow();
             assert!(exp_map2.get().contains_key(&id), "wut {:?}", id);
             for export in exp_map2.get().get(&id).iter() {
-                if is_local(export.def_id) && export.reexport {
+                if is_local(export.def_id) {
                     self.reexports.insert(export.def_id.node);
                 }
             }

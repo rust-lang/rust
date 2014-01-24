@@ -55,7 +55,6 @@ pub type ExportMap2 = @RefCell<HashMap<NodeId, ~[Export2]>>;
 pub struct Export2 {
     name: @str,        // The name of the target.
     def_id: DefId,     // The definition of the target.
-    reexport: bool,     // Whether this is a reexport.
 }
 
 // This set contains all exported definitions from external crates. The set does
@@ -3364,22 +3363,19 @@ impl Resolver {
                                    exports2: &mut ~[Export2],
                                    name: Name,
                                    namebindings: @NameBindings,
-                                   ns: Namespace,
-                                   reexport: bool) {
+                                   ns: Namespace) {
         match namebindings.def_for_namespace(ns) {
             Some(d) => {
-                debug!("(computing exports) YES: {} '{}' => {:?}",
-                       if reexport { ~"reexport" } else { ~"export"},
+                debug!("(computing exports) YES: export '{}' => {:?}",
                        interner_get(name),
                        def_id_of_def(d));
                 exports2.push(Export2 {
-                    reexport: reexport,
                     name: interner_get(name),
                     def_id: def_id_of_def(d)
                 });
             }
             d_opt => {
-                debug!("(computing reexports) NO: {:?}", d_opt);
+                debug!("(computing exports) NO: {:?}", d_opt);
             }
         }
     }
@@ -3396,13 +3392,12 @@ impl Resolver {
             for &ns in xs.iter() {
                 match importresolution.target_for_namespace(ns) {
                     Some(target) => {
-                        debug!("(computing exports) maybe reexport '{}'",
+                        debug!("(computing exports) maybe export '{}'",
                                interner_get(*name));
                         self.add_exports_of_namebindings(exports2,
                                                          *name,
                                                          target.bindings,
-                                                         ns,
-                                                         true)
+                                                         ns)
                     }
                     _ => ()
                 }
