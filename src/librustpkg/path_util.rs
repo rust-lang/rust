@@ -12,19 +12,20 @@
 
 #[allow(dead_code)];
 
-pub use crate_id::CrateId;
 pub use target::{OutputType, Main, Lib, Test, Bench, Target, Build, Install};
-pub use version::{Version, ExactRevision, NoVersion, split_version, split_version_general,
-    try_parsing_version};
+pub use version::{Version, split_version_general};
 pub use rustc::metadata::filesearch::rust_path;
-use rustc::metadata::filesearch::{libdir, relative_target_lib_path};
-use rustc::driver::driver::host_triple;
 
 use std::libc;
 use std::libc::consts::os::posix88::{S_IRUSR, S_IWUSR, S_IXUSR};
 use std::os;
 use std::io;
 use std::io::fs;
+use extra::hex::ToHex;
+use syntax::crateid::CrateId;
+use rustc::util::sha2::{Digest, Sha256};
+use rustc::metadata::filesearch::{libdir, relative_target_lib_path};
+use rustc::driver::driver::host_triple;
 use messages::*;
 
 pub fn default_workspace() -> Path {
@@ -78,14 +79,14 @@ pub fn workspace_contains_crate_id_(crateid: &CrateId, workspace: &Path,
     let mut found = None;
     for p in fs::walk_dir(&src_dir) {
         if p.is_dir() {
-            if p == src_dir.join(&crateid.path) || {
+            if p == src_dir.join(crateid.path.as_slice()) || {
                 let pf = p.filename_str();
                 pf.iter().any(|&g| {
                     match split_version_general(g, '-') {
                         None => false,
                         Some((ref might_match, ref vers)) => {
-                            *might_match == crateid.short_name
-                                && (crateid.version == *vers || crateid.version == NoVersion)
+                            *might_match == crateid.name
+                                && (crateid.version == *vers || crateid.version == None)
                         }
                     }
                 })
@@ -173,150 +174,62 @@ fn output_in_workspace(crateid: &CrateId, workspace: &Path, what: OutputType) ->
 /// Figure out what the library name for <crateid> in <workspace>'s build
 /// directory is, and if the file exists, return it.
 pub fn built_library_in_workspace(crateid: &CrateId, workspace: &Path) -> Option<Path> {
-    library_in_workspace(&crateid.path, crateid.short_name, Build, workspace, "build",
-                         &crateid.version)
+    library_in_workspace(crateid, Build, workspace)
 }
 
 /// Does the actual searching stuff
-pub fn installed_library_in_workspace(pkg_path: &Path, workspace: &Path) -> Option<Path> {
+pub fn installed_library_in_workspace(crate_id: &CrateId, workspace: &Path) -> Option<Path> {
     // This could break once we're handling multiple versions better -- I should add a test for it
-    // FIXME (#9639): This needs to handle non-utf8 paths
-    match pkg_path.filename_str() {
+    let path = Path::new(crate_id.path.as_slice());
+    match path.filename_str() {
         None => None,
-        Some(short_name) => library_in_workspace(pkg_path,
-                                                 short_name,
-                                                 Install,
-                                                 workspace,
-                                                 libdir(),
-                                                 &NoVersion)
+        Some(_short_name) => library_in_workspace(crate_id, Install, workspace)
     }
 }
 
 /// `workspace` is used to figure out the directory to search.
-/// `short_name` is taken as the link name of the library.
-pub fn library_in_workspace(path: &Path, short_name: &str, where: Target,
-                        workspace: &Path, prefix: &str, version: &Version) -> Option<Path> {
+/// `name` is taken as the link name of the library.
+pub fn library_in_workspace(crate_id: &CrateId, where: Target, workspace: &Path) -> Option<Path> {
     debug!("library_in_workspace: checking whether a library named {} exists",
-           short_name);
-
-    // We don't know what the hash is, so we have to search through the directory
-    // contents
-
-    debug!("short_name = {} where = {:?} workspace = {} \
-            prefix = {}", short_name, where, workspace.display(), prefix);
+           crate_id.name);
 
     let dir_to_search = match where {
-        Build => target_build_dir(workspace).join(path),
+        Build => target_build_dir(workspace).join(crate_id.path.as_slice()),
         Install => target_lib_dir(workspace)
     };
 
-    library_in(short_name, version, &dir_to_search)
+    library_in(crate_id, &dir_to_search)
 }
 
-pub fn system_library(sysroot: &Path, crate_id: &str) -> Option<Path> {
-    let (lib_name, version) = split_crate_id(crate_id);
-    library_in(lib_name, &version, &sysroot.join(relative_target_lib_path(host_triple())))
+pub fn system_library(sysroot: &Path, crate_id: &CrateId) -> Option<Path> {
+    library_in(crate_id, &sysroot.join(relative_target_lib_path(host_triple())))
 }
 
-fn library_in(short_name: &str, version: &Version, dir_to_search: &Path) -> Option<Path> {
-    debug!("Listing directory {}", dir_to_search.display());
-    let dir_contents = {
-        let _guard = io::ignore_io_error();
-        fs::readdir(dir_to_search)
-    };
-    debug!("dir has {:?} entries", dir_contents.len());
+fn library_in(crate_id: &CrateId, dir_to_search: &Path) -> Option<Path> {
+    let mut hasher = Sha256::new();
+    hasher.reset();
+    hasher.input_str(crate_id.to_str());
+    let hash = hasher.result_bytes().to_hex();
+    let hash = hash.slice_chars(0, 8);
 
-    let dll_prefix = format!("{}{}", os::consts::DLL_PREFIX, short_name);
-    let dll_filetype = os::consts::DLL_EXTENSION;
-    let rlib_prefix = format!("{}{}", "lib", short_name);
-    let rlib_filetype = "rlib";
+    let lib_name = format!("{}-{}-{}", crate_id.name, hash, crate_id.version_or_default());
+    let filenames = [
+        format!("{}{}.{}", "lib", lib_name, "rlib"),
+        format!("{}{}{}", os::consts::DLL_PREFIX, lib_name, os::consts::DLL_SUFFIX),
+    ];
 
-    debug!("dll_prefix = {} and dll_filetype = {}", dll_prefix, dll_filetype);
-    debug!("rlib_prefix = {} and rlib_filetype = {}", rlib_prefix, rlib_filetype);
-
-    // Find a filename that matches the pattern:
-    // (lib_prefix)-hash-(version)(lib_suffix)
-    let mut libraries = dir_contents.iter().filter(|p| {
-        let extension = p.extension_str();
-        debug!("p = {}, p's extension is {:?}", p.display(), extension);
-        match extension {
-            None => false,
-            Some(ref s) => dll_filetype == *s || rlib_filetype == *s,
+    for filename in filenames.iter() {
+        debug!("filename = {}", filename.as_slice());
+        let path = dir_to_search.join(filename.as_slice());
+        if path.exists() {
+            debug!("found: {}", path.display());
+            return Some(path);
         }
-    });
-
-    let mut result_filename = None;
-    for p_path in libraries {
-        // Find a filename that matches the pattern: (lib_prefix)-hash-(version)(lib_suffix)
-        // and remember what the hash was
-        let mut f_name = match p_path.filestem_str() {
-            Some(s) => s, None => continue
-        };
-        // Already checked the filetype above
-
-         // This is complicated because library names and versions can both contain dashes
-         loop {
-            if f_name.is_empty() { break; }
-            match f_name.rfind('-') {
-                Some(i) => {
-                    debug!("Maybe {} is a version", f_name.slice(i + 1, f_name.len()));
-                    match try_parsing_version(f_name.slice(i + 1, f_name.len())) {
-                        Some(ref found_vers) if version == found_vers => {
-                            match f_name.slice(0, i).rfind('-') {
-                                Some(j) => {
-                                    let lib_prefix = match p_path.extension_str() {
-                                        Some(ref s) if dll_filetype == *s => &dll_prefix,
-                                        _ => &rlib_prefix,
-                                    };
-                                    debug!("Maybe {} equals {}", f_name.slice(0, j), *lib_prefix);
-                                    if f_name.slice(0, j) == *lib_prefix {
-                                        result_filename = Some(p_path.clone());
-                                    }
-                                    break;
-                                }
-                                None => break
-                            }
-
-                       }
-                       _ => { f_name = f_name.slice(0, i); }
-                 }
-               }
-               None => break
-         } // match
-       } // loop
-    } // for
-
-    if result_filename.is_none() {
-        debug!("warning: library_in_workspace didn't find a library in {} for {}",
-                  dir_to_search.display(), short_name);
     }
-
-    // Return the filename that matches, which we now know exists
-    // (if result_filename != None)
-    let abs_path = result_filename.map(|result_filename| {
-        let absolute_path = dir_to_search.join(&result_filename);
-        debug!("result_filename = {}", absolute_path.display());
-        absolute_path
-    });
-
-    abs_path
+    debug!("warning: library_in_workspace didn't find a library in {} for {}",
+           dir_to_search.display(), crate_id.to_str());
+    return None;
 }
-
-fn split_crate_id<'a>(crate_id: &'a str) -> (&'a str, Version) {
-    match split_version(crate_id) {
-        Some((name, vers)) =>
-            match vers {
-                ExactRevision(ref v) => match v.find('-') {
-                    Some(pos) => (name, ExactRevision(v.slice(0, pos).to_owned())),
-                    None => (name, ExactRevision(v.to_owned()))
-                },
-                _ => (name, vers)
-            },
-        None => (crate_id, NoVersion)
-    }
-}
-
-
 
 /// Returns the executable that would be installed for <crateid>
 /// in <workspace>
@@ -366,7 +279,7 @@ fn target_file_in_workspace(crateid: &CrateId, workspace: &Path,
     // Artifacts in the build directory live in a package-ID-specific subdirectory,
     // but installed ones don't.
     let result = match (where, what) {
-                (Build, _)      => target_build_dir(workspace).join(&crateid.path),
+                (Build, _)      => target_build_dir(workspace).join(crateid.path.as_slice()),
                 (Install, Lib)  => target_lib_dir(workspace),
                 (Install, _)    => target_bin_dir(workspace)
     };
@@ -382,7 +295,7 @@ fn target_file_in_workspace(crateid: &CrateId, workspace: &Path,
 /// Creates it if it doesn't exist.
 pub fn build_pkg_id_in_workspace(crateid: &CrateId, workspace: &Path) -> Path {
     let mut result = target_build_dir(workspace);
-    result.push(&crateid.path);
+    result.push(crateid.path.as_slice());
     debug!("Creating build dir {} for package id {}", result.display(),
            crateid.to_str());
     fs::mkdir_recursive(&result, io::UserRWX);
@@ -392,25 +305,24 @@ pub fn build_pkg_id_in_workspace(crateid: &CrateId, workspace: &Path) -> Path {
 /// Return the output file for a given directory name,
 /// given whether we're building a library and whether we're building tests
 pub fn mk_output_path(what: OutputType, where: Target,
-                      pkg_id: &CrateId, workspace: Path) -> Path {
-    let short_name_with_version = format!("{}-{}", pkg_id.short_name,
-                                          pkg_id.version.to_str());
+                      crate_id: &CrateId, workspace: Path) -> Path {
+    let short_name_with_version = crate_id.short_name_with_version();
     // Not local_path.dir_path()! For package foo/bar/blat/, we want
     // the executable blat-0.5 to live under blat/
     let dir = match where {
         // If we're installing, it just goes under <workspace>...
         Install => workspace,
         // and if we're just building, it goes in a package-specific subdir
-        Build => workspace.join(&pkg_id.path)
+        Build => workspace.join(crate_id.path.as_slice())
     };
-    debug!("[{:?}:{:?}] mk_output_path: short_name = {}, path = {}", what, where,
-           if what == Lib { short_name_with_version.clone() } else { pkg_id.short_name.clone() },
+    debug!("[{:?}:{:?}] mk_output_path: name = {}, path = {}", what, where,
+           if what == Lib { short_name_with_version.clone() } else { crate_id.name.clone() },
            dir.display());
     let mut output_path = match what {
         // this code is duplicated from elsewhere; fix this
         Lib => dir.join(os::dll_filename(short_name_with_version)),
         // executable names *aren't* versioned
-        _ => dir.join(format!("{}{}{}", pkg_id.short_name,
+        _ => dir.join(format!("{}{}{}", crate_id.name,
                            match what {
                                Test => "test",
                                Bench => "bench",
@@ -457,11 +369,12 @@ fn dir_has_file(dir: &Path, file: &str) -> bool {
 
 pub fn find_dir_using_rust_path_hack(p: &CrateId) -> Option<Path> {
     let rp = rust_path();
+    let path = Path::new(p.path.as_slice());
     for dir in rp.iter() {
         // Require that the parent directory match the package ID
         // Note that this only matches if the package ID being searched for
         // has a name that's a single component
-        if dir.ends_with_path(&p.path) || dir.ends_with_path(&versionize(&p.path, &p.version)) {
+        if dir.ends_with_path(&path) || dir.ends_with_path(&versionize(p.path, &p.version)) {
             debug!("In find_dir_using_rust_path_hack: checking dir {}", dir.display());
             if dir_has_crate_file(dir) {
                 debug!("Did find id {} in dir {}", p.to_str(), dir.display());
@@ -483,11 +396,12 @@ pub fn user_set_rust_path() -> bool {
 }
 
 /// Append the version string onto the end of the path's filename
-pub fn versionize(p: &Path, v: &Version) -> Path {
+pub fn versionize(p: &str, v: &Version) -> Path {
+    let p = Path::new(p);
     let q = p.filename().expect("path is a directory");
     let mut q = q.to_owned();
     q.push('-' as u8);
-    let vs = v.to_str();
+    let vs = match v { &Some(ref s) => s.to_owned(), &None => ~"0.0" };
     q.push_all(vs.as_bytes());
     p.with_filename(q)
 }
