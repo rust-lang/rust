@@ -148,7 +148,7 @@ impl<T:Freeze + Send> Clone for Arc<T> {
  ****************************************************************************/
 
 #[doc(hidden)]
-struct MutexArcInner<T> { priv lock: Mutex, priv failed: bool, priv data: T }
+struct MutexArcInner<T> { lock: Mutex, failed: bool, data: T }
 
 /// An Arc with mutable data protected by a blocking mutex.
 #[no_freeze]
@@ -312,7 +312,7 @@ impl PoisonOnFail {
  ****************************************************************************/
 
 #[doc(hidden)]
-struct RWArcInner<T> { priv lock: RWLock, priv failed: bool, priv data: T }
+struct RWArcInner<T> { lock: RWLock, failed: bool, data: T }
 /**
  * A dual-mode Arc protected by a reader-writer lock. The data can be accessed
  * mutably or immutably, and immutably-accessing tasks may run concurrently.

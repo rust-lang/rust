@@ -15,7 +15,7 @@ trait noisy {
 }
 
 struct dog {
-  priv barks: uint,
+  barks: uint,
 
   volume: int,
 }
@@ -50,7 +50,7 @@ fn dog() -> dog {
 
 #[deriving(Clone)]
 struct cat {
-  priv meows: uint,
+  meows: uint,
 
   how_hungry: int,
   name: ~str,

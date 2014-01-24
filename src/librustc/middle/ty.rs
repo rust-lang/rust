@@ -257,7 +257,7 @@ pub type ctxt = @ctxt_;
 /// The data structure to keep track of all the information that typechecker
 /// generates so that so that it can be reused and doesn't have to be redone
 /// later on.
-struct ctxt_ {
+pub struct ctxt_ {
     diag: @syntax::diagnostic::SpanHandler,
     interner: RefCell<HashMap<intern_key, ~t_box_>>,
     next_id: Cell<uint>,

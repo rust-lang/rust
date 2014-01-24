@@ -27,7 +27,7 @@ impl cmp::Eq for cat_type {
 // ok: T should be in scope when resolving the trait ref for map
 struct cat<T> {
     // Yes, you can have negative meows
-    priv meows : int,
+    meows : int,
 
     how_hungry : int,
     name : T,
