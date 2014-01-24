@@ -176,6 +176,9 @@ pub fn phase_2_configure_and_expand(sess: Session,
     time(time_passes, "gated feature checking", (), |_|
          front::feature_gate::check_crate(sess, &crate));
 
+    crate = time(time_passes, "crate injection", crate, |crate|
+                 front::std_inject::maybe_inject_crates_ref(sess, crate));
+
     // strip before expansion to allow macros to depend on
     // configuration variables e.g/ in
     //
@@ -183,10 +186,6 @@ pub fn phase_2_configure_and_expand(sess: Session,
     //   mod bar { macro_rules! baz!(() => {{}}) }
     //
     // baz! should not use this definition unless foo is enabled.
-    crate = time(time_passes, "std macros injection", crate, |crate|
-                 syntax::ext::expand::inject_std_macros(sess.parse_sess,
-                                                        cfg.clone(),
-                                                        crate));
 
     crate = time(time_passes, "configuration 1", crate, |crate|
                  front::config::strip_unconfigured_items(crate));
@@ -207,8 +206,8 @@ pub fn phase_2_configure_and_expand(sess: Session,
     crate = time(time_passes, "maybe building test harness", crate, |crate|
                  front::test::modify_for_testing(sess, crate));
 
-    crate = time(time_passes, "std injection", crate, |crate|
-                 front::std_inject::maybe_inject_libstd_ref(sess, crate));
+    crate = time(time_passes, "prelude injection", crate, |crate|
+                 front::std_inject::maybe_inject_prelude(sess, crate));
 
     time(time_passes, "assinging node ids and indexing ast", crate, |crate|
          front::assign_node_ids_and_map::assign_node_ids_and_map(sess, crate))

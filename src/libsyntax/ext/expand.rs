@@ -22,7 +22,6 @@ use codemap::{Span, Spanned, ExpnInfo, NameAndSpan, MacroBang, MacroAttribute};
 use ext::base::*;
 use fold::*;
 use parse;
-use parse::{parse_item_from_source_str};
 use parse::token;
 use parse::token::{fresh_mark, fresh_name, ident_to_str, intern};
 use visit;
@@ -754,218 +753,6 @@ pub fn new_span(cx: &ExtCtxt, sp: Span) -> Span {
     }
 }
 
-// FIXME (#2247): this is a moderately bad kludge to inject some macros into
-// the default compilation environment in that it injects strings, rather than
-// syntax elements.
-
-pub fn std_macros() -> @str {
-@r#"mod __std_macros {
-    #[macro_escape];
-    #[doc(hidden)];
-    #[allow(dead_code)];
-
-    macro_rules! ignore (($($x:tt)*) => (()))
-
-    macro_rules! log(
-        ($lvl:expr, $($arg:tt)+) => ({
-            let lvl = $lvl;
-            if lvl <= __log_level() {
-                format_args!(|args| {
-                    ::std::logging::log(lvl, args)
-                }, $($arg)+)
-            }
-        })
-    )
-    macro_rules! error( ($($arg:tt)*) => (log!(1u32, $($arg)*)) )
-    macro_rules! warn ( ($($arg:tt)*) => (log!(2u32, $($arg)*)) )
-    macro_rules! info ( ($($arg:tt)*) => (log!(3u32, $($arg)*)) )
-    macro_rules! debug( ($($arg:tt)*) => (
-        if cfg!(not(ndebug)) { log!(4u32, $($arg)*) }
-    ))
-
-    macro_rules! log_enabled(
-        ($lvl:expr) => ( {
-            let lvl = $lvl;
-            lvl <= __log_level() && (lvl != 4 || cfg!(not(ndebug)))
-        } )
-    )
-
-    macro_rules! fail(
-        () => (
-            fail!("explicit failure")
-        );
-        ($msg:expr) => (
-            ::std::rt::begin_unwind($msg, file!(), line!())
-        );
-        ($fmt:expr, $($arg:tt)*) => (
-            ::std::rt::begin_unwind(format!($fmt, $($arg)*), file!(), line!())
-        )
-    )
-
-    macro_rules! assert(
-        ($cond:expr) => {
-            if !$cond {
-                fail!("assertion failed: {:s}", stringify!($cond))
-            }
-        };
-        ($cond:expr, $msg:expr) => {
-            if !$cond {
-                fail!($msg)
-            }
-        };
-        ($cond:expr, $( $arg:expr ),+) => {
-            if !$cond {
-                fail!( $($arg),+ )
-            }
-        }
-    )
-
-    macro_rules! assert_eq (
-        ($given:expr , $expected:expr) => (
-            {
-                let given_val = &($given);
-                let expected_val = &($expected);
-                // check both directions of equality....
-                if !((*given_val == *expected_val) &&
-                     (*expected_val == *given_val)) {
-                    fail!("assertion failed: `(left == right) && (right == left)` \
-                           (left: `{:?}`, right: `{:?}`)", *given_val, *expected_val)
-                }
-            }
-        )
-    )
-
-    /// A utility macro for indicating unreachable code. It will fail if
-    /// executed. This is occasionally useful to put after loops that never
-    /// terminate normally, but instead directly return from a function.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// fn choose_weighted_item(v: &[Item]) -> Item {
-    ///     assert!(!v.is_empty());
-    ///     let mut so_far = 0u;
-    ///     for item in v.iter() {
-    ///         so_far += item.weight;
-    ///         if so_far > 100 {
-    ///             return item;
-    ///         }
-    ///     }
-    ///     // The above loop always returns, so we must hint to the
-    ///     // type checker that it isn't possible to get down here
-    ///     unreachable!();
-    /// }
-    /// ```
-    macro_rules! unreachable (() => (
-        fail!("internal error: entered unreachable code");
-    ))
-
-    macro_rules! condition (
-
-        { pub $c:ident: $input:ty -> $out:ty; } => {
-
-            pub mod $c {
-                #[allow(unused_imports)];
-                #[allow(non_uppercase_statics)];
-                #[allow(missing_doc)];
-
-                use super::*;
-
-                local_data_key!(key: @::std::condition::Handler<$input, $out>)
-
-                pub static cond :
-                    ::std::condition::Condition<$input,$out> =
-                    ::std::condition::Condition {
-                        name: stringify!($c),
-                        key: key
-                    };
-            }
-        };
-
-        { $c:ident: $input:ty -> $out:ty; } => {
-
-            mod $c {
-                #[allow(unused_imports)];
-                #[allow(non_uppercase_statics)];
-                #[allow(dead_code)];
-
-                use super::*;
-
-                local_data_key!(key: @::std::condition::Handler<$input, $out>)
-
-                pub static cond :
-                    ::std::condition::Condition<$input,$out> =
-                    ::std::condition::Condition {
-                        name: stringify!($c),
-                        key: key
-                    };
-            }
-        }
-    )
-
-    macro_rules! format(($($arg:tt)*) => (
-        format_args!(::std::fmt::format, $($arg)*)
-    ))
-    macro_rules! write(($dst:expr, $($arg:tt)*) => (
-        format_args!(|args| { ::std::fmt::write($dst, args) }, $($arg)*)
-    ))
-    macro_rules! writeln(($dst:expr, $($arg:tt)*) => (
-        format_args!(|args| { ::std::fmt::writeln($dst, args) }, $($arg)*)
-    ))
-    macro_rules! print (
-        ($($arg:tt)*) => (format_args!(::std::io::stdio::print_args, $($arg)*))
-    )
-    macro_rules! println (
-        ($($arg:tt)*) => (format_args!(::std::io::stdio::println_args, $($arg)*))
-    )
-
-    macro_rules! local_data_key (
-        ($name:ident: $ty:ty) => (
-            static $name: ::std::local_data::Key<$ty> = &::std::local_data::Key;
-        );
-        (pub $name:ident: $ty:ty) => (
-            pub static $name: ::std::local_data::Key<$ty> = &::std::local_data::Key;
-        )
-    )
-}"#
-}
-
-struct Injector {
-    sm: @ast::Item,
-}
-
-impl Folder for Injector {
-    fn fold_mod(&mut self, module: &ast::Mod) -> ast::Mod {
-        // Just inject the standard macros at the start of the first module
-        // in the crate: that is, at the start of the crate file itself.
-        let items = vec::append(~[ self.sm ], module.items);
-        ast::Mod {
-            items: items,
-            ..(*module).clone() // FIXME #2543: Bad copy.
-        }
-    }
-}
-
-// add a bunch of macros as though they were placed at the head of the
-// program (ick). This should run before cfg stripping.
-pub fn inject_std_macros(parse_sess: @parse::ParseSess,
-                         cfg: ast::CrateConfig,
-                         c: Crate)
-                         -> Crate {
-    let sm = match parse_item_from_source_str(@"<std-macros>",
-                                              std_macros(),
-                                              cfg.clone(),
-                                              parse_sess) {
-        Some(item) => item,
-        None => fail!("expected core macros to parse correctly")
-    };
-
-    let mut injector = Injector {
-        sm: sm,
-    };
-    injector.fold_crate(c)
-}
-
 pub struct MacroExpander<'a> {
     extsbox: SyntaxEnv,
     cx: &'a mut ExtCtxt<'a>,
@@ -1231,20 +1018,6 @@ mod test {
         }
     }
 
-    // make sure that fail! is present
-    #[test] fn fail_exists_test () {
-        let src = @"fn main() { fail!(\"something appropriately gloomy\");}";
-        let sess = parse::new_parse_sess(None);
-        let crate_ast = parse::parse_crate_from_source_str(
-            @"<test>",
-            src,
-            ~[],sess);
-        let crate_ast = inject_std_macros(sess, ~[], crate_ast);
-        // don't bother with striping, doesn't affect fail!.
-        let mut loader = ErrLoader;
-        expand_crate(sess,&mut loader,~[],crate_ast);
-    }
-
     // these following tests are quite fragile, in that they don't test what
     // *kind* of failure occurs.
 
@@ -1290,20 +1063,6 @@ mod test {
         // should fail:
         let mut loader = ErrLoader;
         expand_crate(sess,&mut loader,~[],crate_ast);
-    }
-
-    #[test] fn std_macros_must_parse () {
-        let src = super::std_macros();
-        let sess = parse::new_parse_sess(None);
-        let cfg = ~[];
-        let item_ast = parse::parse_item_from_source_str(
-            @"<test>",
-            src,
-            cfg,sess);
-        match item_ast {
-            Some(_) => (), // success
-            None => fail!("expected this to parse")
-        }
     }
 
     #[test] fn test_contains_flatten (){
