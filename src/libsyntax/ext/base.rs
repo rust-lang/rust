@@ -299,7 +299,7 @@ pub struct MacroCrate {
 
 pub trait CrateLoader {
     fn load_crate(&mut self, crate: &ast::ViewItem) -> MacroCrate;
-    fn get_exported_macros(&mut self, crate_num: ast::CrateNum) -> ~[@ast::Item];
+    fn get_exported_macros(&mut self, crate_num: ast::CrateNum) -> ~[~str];
     fn get_registrar_symbol(&mut self, crate_num: ast::CrateNum) -> Option<~str>;
 }
 

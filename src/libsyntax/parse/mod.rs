@@ -130,10 +130,10 @@ pub fn parse_item_from_source_str(
     name: @str,
     source: @str,
     cfg: ast::CrateConfig,
-    attrs: ~[ast::Attribute],
     sess: @ParseSess
 ) -> Option<@ast::Item> {
     let mut p = new_parser_from_source_str(sess, cfg, name, source);
+    let attrs = p.parse_outer_attributes();
     maybe_aborted(p.parse_item(attrs),p)
 }
 
