@@ -14,5 +14,5 @@ fn main() {
     let m = RefCell::new(0);
     let mut b = m.borrow_mut();
     let b1 = b.get();
-    let b2 = b.get(); //~ ERROR cannot borrow `b` as mutable more than once at a time
+    let b2 = b.get(); //~ ERROR cannot borrow `b` because it is already borrowed as mutable
 }

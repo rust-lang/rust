@@ -18,7 +18,7 @@ trait Foo {
 
 fn test(x: &mut Foo) {
     let _y = x.f1();
-    x.f2(); //~ ERROR cannot borrow `*x` as mutable more than once at a time
+    x.f2(); //~ ERROR cannot borrow `*x` because it is already borrowed as mutable
 }
 
 fn main() {}
