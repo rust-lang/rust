@@ -160,8 +160,24 @@ fn make_rustpkg_target_lib_path(dir: &Path,
 }
 
 pub fn get_or_default_sysroot() -> Path {
-    match os::self_exe_path() {
-      option::Some(p) => { let mut p = p; p.pop(); p }
+    // Follow symlinks.  If the resolved path is relative, make it absolute.
+    fn canonicalize(path: Option<Path>) -> Option<Path> {
+        path.and_then(|mut path|
+            match io::io_error::cond.trap(|_| ()).inside(|| fs::readlink(&path)) {
+                Some(canon) => {
+                    if canon.is_absolute() {
+                        Some(canon)
+                    } else {
+                        path.pop();
+                        Some(path.join(canon))
+                    }
+                },
+                None => Some(path),
+            })
+    }
+
+    match canonicalize(os::self_exe_name()) {
+      option::Some(p) => { let mut p = p; p.pop(); p.pop(); p }
       option::None => fail!("can't determine value for sysroot")
     }
 }
