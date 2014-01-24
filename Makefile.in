@@ -124,6 +124,12 @@ endif
 ifdef TRACE
   CFG_RUSTC_FLAGS += -Z trace
 endif
+ifdef DISABLE_RPATH
+# NOTE: make this CFG_RUSTC_FLAGS after stage0 snapshot
+RUSTFLAGS_STAGE1 += --no-rpath
+RUSTFLAGS_STAGE2 += --no-rpath
+RUSTFLAGS_STAGE3 += --no-rpath
+endif
 
 # The executables crated during this compilation process have no need to include
 # static copies of libstd and libextra. We also generate dynamic versions of all
@@ -541,8 +547,21 @@ CFGFLAG$(1)_T_$(2)_H_$(3) = stage1
 endif
 endif
 
+ifdef CFG_DISABLE_RPATH
+ifeq ($$(OSTYPE_$(3)),apple-darwin)
+  RPATH_VAR$(1)_T_$(2)_H_$(3) := \
+      DYLD_LIBRARY_PATH="$$$$DYLD_LIBRARY_PATH:$$(HLIB$(1)_H_$(3))"
+else
+  RPATH_VAR$(1)_T_$(2)_H_$(3) := \
+      LD_LIBRARY_PATH="$$$$LD_LIBRARY_PATH:$$(HLIB$(1)_H_$(3))"
+endif
+else
+    RPATH_VAR$(1)_T_$(2)_H_$(3) :=
+endif
+
 STAGE$(1)_T_$(2)_H_$(3) := 						\
-	$$(Q)$$(call CFG_RUN_TARG_$(3),$(1),				\
+	$$(Q)$$(RPATH_VAR$(1)_T_$(2)_H_$(3))                            \
+		$$(call CFG_RUN_TARG_$(3),$(1),				\
 		$$(CFG_VALGRIND_COMPILE$(1)) 			\
 		$$(HBIN$(1)_H_$(3))/rustc$$(X_$(3))			\
 		--cfg $$(CFGFLAG$(1)_T_$(2)_H_$(3))			\
