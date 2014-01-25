@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -131,7 +131,7 @@ impl Context {
                 // If we're going back to one of the original contexts or
                 // something that's possibly not a "normal task", then reset
                 // the stack limit to 0 to make morestack never fail
-                None => stack::record_stack_bounds(0, uint::max_value),
+                None => stack::record_stack_bounds(0, uint::MAX),
             }
             rust_swap_registers(out_regs, in_regs)
         }

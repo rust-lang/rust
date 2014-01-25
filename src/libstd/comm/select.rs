@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -182,7 +182,7 @@ impl Select {
             assert!(amt > 0);
 
             let mut ready_index = amt;
-            let mut ready_id = uint::max_value;
+            let mut ready_id = uint::MAX;
             let mut iter = self.iter().enumerate();
 
             // Acquire a number of blocking contexts, and block on each one
@@ -245,7 +245,7 @@ impl Select {
                 assert!(!(*packet).selecting.load(Relaxed));
             }
 
-            assert!(ready_id != uint::max_value);
+            assert!(ready_id != uint::MAX);
             return ready_id;
         }
     }

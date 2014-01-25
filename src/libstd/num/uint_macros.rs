@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -13,11 +13,11 @@
 
 macro_rules! uint_module (($T:ty, $T_SIGNED:ty, $bits:expr) => (
 
-pub static bits : uint = $bits;
-pub static bytes : uint = ($bits / 8);
+pub static BITS : uint = $bits;
+pub static BYTES : uint = ($bits / 8);
 
-pub static min_value: $T = 0 as $T;
-pub static max_value: $T = 0 as $T - 1 as $T;
+pub static MIN: $T = 0 as $T;
+pub static MAX: $T = 0 as $T - 1 as $T;
 
 impl CheckedDiv for $T {
     #[inline]
@@ -214,10 +214,10 @@ impl Not<$T> for $T {
 
 impl Bounded for $T {
     #[inline]
-    fn min_value() -> $T { min_value }
+    fn min_value() -> $T { MIN }
 
     #[inline]
-    fn max_value() -> $T { max_value }
+    fn max_value() -> $T { MAX }
 }
 
 impl Int for $T {}
@@ -398,7 +398,7 @@ mod tests {
         assert_eq!(0b0110 as $T, (0b1100 as $T).bitxor(&(0b1010 as $T)));
         assert_eq!(0b1110 as $T, (0b0111 as $T).shl(&(1 as $T)));
         assert_eq!(0b0111 as $T, (0b1110 as $T).shr(&(1 as $T)));
-        assert_eq!(max_value - (0b1011 as $T), (0b1011 as $T).not());
+        assert_eq!(MAX - (0b1011 as $T), (0b1011 as $T).not());
     }
 
     #[test]
