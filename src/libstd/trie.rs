@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -21,7 +21,7 @@ use vec;
 static SHIFT: uint = 4;
 static SIZE: uint = 1 << SHIFT;
 static MASK: uint = SIZE - 1;
-static NUM_CHUNKS: uint = uint::bits / SHIFT;
+static NUM_CHUNKS: uint = uint::BITS / SHIFT;
 
 enum Child<T> {
     Internal(~TrieNode<T>),
@@ -396,7 +396,7 @@ impl<T> TrieNode<T> {
 // if this was done via a trait, the key could be generic
 #[inline]
 fn chunk(n: uint, idx: uint) -> uint {
-    let sh = uint::bits - (SHIFT * (idx + 1));
+    let sh = uint::BITS - (SHIFT * (idx + 1));
     (n >> sh) & MASK
 }
 
@@ -728,14 +728,14 @@ mod test_map {
     fn test_each_reverse_break() {
         let mut m = TrieMap::new();
 
-        for x in range(uint::max_value - 10000, uint::max_value).rev() {
+        for x in range(uint::MAX - 10000, uint::MAX).rev() {
             m.insert(x, x / 2);
         }
 
-        let mut n = uint::max_value - 1;
+        let mut n = uint::MAX - 1;
         m.each_reverse(|k, v| {
-            if n == uint::max_value - 5000 { false } else {
-                assert!(n > uint::max_value - 5000);
+            if n == uint::MAX - 5000 { false } else {
+                assert!(n > uint::MAX - 5000);
 
                 assert_eq!(*k, n);
                 assert_eq!(*v, n / 2);
@@ -777,8 +777,8 @@ mod test_map {
         let empty_map : TrieMap<uint> = TrieMap::new();
         assert_eq!(empty_map.iter().next(), None);
 
-        let first = uint::max_value - 10000;
-        let last = uint::max_value;
+        let first = uint::MAX - 10000;
+        let last = uint::MAX;
 
         let mut map = TrieMap::new();
         for x in range(first, last).rev() {
@@ -799,8 +799,8 @@ mod test_map {
         let mut empty_map : TrieMap<uint> = TrieMap::new();
         assert!(empty_map.mut_iter().next().is_none());
 
-        let first = uint::max_value - 10000;
-        let last = uint::max_value;
+        let first = uint::MAX - 10000;
+        let last = uint::MAX;
 
         let mut map = TrieMap::new();
         for x in range(first, last).rev() {
@@ -1014,7 +1014,7 @@ mod test_set {
     #[test]
     fn test_sane_chunk() {
         let x = 1;
-        let y = 1 << (uint::bits - 1);
+        let y = 1 << (uint::BITS - 1);
 
         let mut trie = TrieSet::new();
 

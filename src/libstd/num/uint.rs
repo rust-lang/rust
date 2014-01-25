@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -25,7 +25,7 @@ use option::{Option, Some, None};
 use str;
 use unstable::intrinsics;
 
-uint_module!(uint, int, ::int::bits)
+uint_module!(uint, int, ::int::BITS)
 
 ///
 /// Divide two numbers, return the result, rounded up.
@@ -234,9 +234,9 @@ fn test_next_power_of_two() {
 #[test]
 fn test_overflows() {
     use uint;
-    assert!((uint::max_value > 0u));
-    assert!((uint::min_value <= 0u));
-    assert!((uint::min_value + uint::max_value + 1u == 0u));
+    assert!((uint::MAX > 0u));
+    assert!((uint::MIN <= 0u));
+    assert!((uint::MIN + uint::MAX + 1u == 0u));
 }
 
 #[test]

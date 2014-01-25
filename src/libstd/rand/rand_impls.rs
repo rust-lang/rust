@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -19,7 +19,7 @@ use uint;
 impl Rand for int {
     #[inline]
     fn rand<R: Rng>(rng: &mut R) -> int {
-        if int::bits == 32 {
+        if int::BITS == 32 {
             rng.gen::<i32>() as int
         } else {
             rng.gen::<i64>() as int
@@ -58,7 +58,7 @@ impl Rand for i64 {
 impl Rand for uint {
     #[inline]
     fn rand<R: Rng>(rng: &mut R) -> uint {
-        if uint::bits == 32 {
+        if uint::BITS == 32 {
             rng.gen::<u32>() as uint
         } else {
             rng.gen::<u64>() as uint

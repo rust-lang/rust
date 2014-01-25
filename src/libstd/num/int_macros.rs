@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -15,23 +15,23 @@ macro_rules! int_module (($T:ty, $bits:expr) => (
 
 // FIXME(#11621): Should be deprecated once CTFE is implemented in favour of
 // calling the `mem::size_of` function.
-pub static bits : uint = $bits;
+pub static BITS : uint = $bits;
 // FIXME(#11621): Should be deprecated once CTFE is implemented in favour of
 // calling the `mem::size_of` function.
-pub static bytes : uint = ($bits / 8);
+pub static BYTES : uint = ($bits / 8);
 
 // FIXME(#11621): Should be deprecated once CTFE is implemented in favour of
 // calling the `Bounded::min_value` function.
-pub static min_value: $T = (-1 as $T) << (bits - 1);
-// FIXME(#9837): Compute min_value like this so the high bits that shouldn't exist are 0.
+pub static MIN: $T = (-1 as $T) << (BITS - 1);
+// FIXME(#9837): Compute MIN like this so the high bits that shouldn't exist are 0.
 // FIXME(#11621): Should be deprecated once CTFE is implemented in favour of
 // calling the `Bounded::max_value` function.
-pub static max_value: $T = !min_value;
+pub static MAX: $T = !MIN;
 
 impl CheckedDiv for $T {
     #[inline]
     fn checked_div(&self, v: &$T) -> Option<$T> {
-        if *v == 0 || (*self == min_value && *v == -1) {
+        if *v == 0 || (*self == MIN && *v == -1) {
             None
         } else {
             Some(self / *v)
@@ -361,10 +361,10 @@ impl Not<$T> for $T {
 
 impl Bounded for $T {
     #[inline]
-    fn min_value() -> $T { min_value }
+    fn min_value() -> $T { MIN }
 
     #[inline]
-    fn max_value() -> $T { max_value }
+    fn max_value() -> $T { MAX }
 }
 
 impl Int for $T {}
@@ -757,7 +757,7 @@ mod tests {
     fn test_signed_checked_div() {
         assert_eq!(10i.checked_div(&2), Some(5));
         assert_eq!(5i.checked_div(&0), None);
-        assert_eq!(int::min_value.checked_div(&-1), None);
+        assert_eq!(int::MIN.checked_div(&-1), None);
     }
 }
 

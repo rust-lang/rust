@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -227,7 +227,7 @@ impl<T: fmt::Default, E: fmt::Default> fmt::Default for Result<T, E> {
 /// checking for overflow:
 ///
 ///     fn inc_conditionally(x: uint) -> Result<uint, &'static str> {
-///         if x == uint::max_value { return Err("overflow"); }
+///         if x == uint::MAX { return Err("overflow"); }
 ///         else { return Ok(x+1u); }
 ///     }
 ///     let v = [1u, 2, 3];

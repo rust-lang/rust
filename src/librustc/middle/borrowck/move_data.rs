@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -80,7 +80,7 @@ impl Clone for MovePathIndex {
 }
 
 static InvalidMovePathIndex: MovePathIndex =
-    MovePathIndex(uint::max_value);
+    MovePathIndex(uint::MAX);
 
 /// Index into `MoveData.moves`, used like a pointer
 #[deriving(Eq)]
@@ -93,7 +93,7 @@ impl MoveIndex {
 }
 
 static InvalidMoveIndex: MoveIndex =
-    MoveIndex(uint::max_value);
+    MoveIndex(uint::MAX);
 
 pub struct MovePath {
     /// Loan path corresponding to this move path
