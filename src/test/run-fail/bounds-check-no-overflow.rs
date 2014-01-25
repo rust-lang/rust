@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,10 +10,10 @@
 
 // error-pattern:index out of bounds: the len is 3 but the index is
 
-use std::uint::max_value;
+use std::uint;
 use std::mem::size_of;
 
 fn main() {
     let xs = [1, 2, 3];
-    xs[max_value / size_of::<int>() + 1];
+    xs[uint::MAX / size_of::<int>() + 1];
 }

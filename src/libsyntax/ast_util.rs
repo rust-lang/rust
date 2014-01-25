@@ -340,8 +340,8 @@ pub struct IdRange {
 impl IdRange {
     pub fn max() -> IdRange {
         IdRange {
-            min: u32::max_value,
-            max: u32::min_value,
+            min: u32::MAX,
+            max: u32::MIN,
         }
     }
 

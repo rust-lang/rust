@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -680,28 +680,28 @@ pub trait Reader {
     ///
     /// The number of bytes returned is system-dependant.
     fn read_le_uint(&mut self) -> uint {
-        self.read_le_uint_n(uint::bytes) as uint
+        self.read_le_uint_n(uint::BYTES) as uint
     }
 
     /// Reads a little-endian integer.
     ///
     /// The number of bytes returned is system-dependant.
     fn read_le_int(&mut self) -> int {
-        self.read_le_int_n(int::bytes) as int
+        self.read_le_int_n(int::BYTES) as int
     }
 
     /// Reads a big-endian unsigned integer.
     ///
     /// The number of bytes returned is system-dependant.
     fn read_be_uint(&mut self) -> uint {
-        self.read_be_uint_n(uint::bytes) as uint
+        self.read_be_uint_n(uint::BYTES) as uint
     }
 
     /// Reads a big-endian integer.
     ///
     /// The number of bytes returned is system-dependant.
     fn read_be_int(&mut self) -> int {
-        self.read_be_int_n(int::bytes) as int
+        self.read_be_int_n(int::BYTES) as int
     }
 
     /// Reads a big-endian `u64`.
@@ -915,22 +915,22 @@ pub trait Writer {
 
     /// Write a little-endian uint (number of bytes depends on system).
     fn write_le_uint(&mut self, n: uint) {
-        extensions::u64_to_le_bytes(n as u64, uint::bytes, |v| self.write(v))
+        extensions::u64_to_le_bytes(n as u64, uint::BYTES, |v| self.write(v))
     }
 
     /// Write a little-endian int (number of bytes depends on system).
     fn write_le_int(&mut self, n: int) {
-        extensions::u64_to_le_bytes(n as u64, int::bytes, |v| self.write(v))
+        extensions::u64_to_le_bytes(n as u64, int::BYTES, |v| self.write(v))
     }
 
     /// Write a big-endian uint (number of bytes depends on system).
     fn write_be_uint(&mut self, n: uint) {
-        extensions::u64_to_be_bytes(n as u64, uint::bytes, |v| self.write(v))
+        extensions::u64_to_be_bytes(n as u64, uint::BYTES, |v| self.write(v))
     }
 
     /// Write a big-endian int (number of bytes depends on system).
     fn write_be_int(&mut self, n: int) {
-        extensions::u64_to_be_bytes(n as u64, int::bytes, |v| self.write(v))
+        extensions::u64_to_be_bytes(n as u64, int::BYTES, |v| self.write(v))
     }
 
     /// Write a big-endian u64 (8 bytes).

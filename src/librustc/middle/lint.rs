@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -724,21 +724,21 @@ fn check_type_limits(cx: &Context, e: &ast::Expr) {
     // warnings are consistent between 32- and 64-bit platforms
     fn int_ty_range(int_ty: ast::IntTy) -> (i64, i64) {
         match int_ty {
-            ast::TyI =>    (i64::min_value,        i64::max_value),
-            ast::TyI8 =>   (i8::min_value  as i64, i8::max_value  as i64),
-            ast::TyI16 =>  (i16::min_value as i64, i16::max_value as i64),
-            ast::TyI32 =>  (i32::min_value as i64, i32::max_value as i64),
-            ast::TyI64 =>  (i64::min_value,        i64::max_value)
+            ast::TyI =>    (i64::MIN,        i64::MAX),
+            ast::TyI8 =>   (i8::MIN  as i64, i8::MAX  as i64),
+            ast::TyI16 =>  (i16::MIN as i64, i16::MAX as i64),
+            ast::TyI32 =>  (i32::MIN as i64, i32::MAX as i64),
+            ast::TyI64 =>  (i64::MIN,        i64::MAX)
         }
     }
 
     fn uint_ty_range(uint_ty: ast::UintTy) -> (u64, u64) {
         match uint_ty {
-            ast::TyU =>   (u64::min_value,         u64::max_value),
-            ast::TyU8 =>  (u8::min_value   as u64, u8::max_value   as u64),
-            ast::TyU16 => (u16::min_value  as u64, u16::max_value  as u64),
-            ast::TyU32 => (u32::min_value  as u64, u32::max_value  as u64),
-            ast::TyU64 => (u64::min_value,         u64::max_value)
+            ast::TyU =>   (u64::MIN,         u64::MAX),
+            ast::TyU8 =>  (u8::MIN   as u64, u8::MAX   as u64),
+            ast::TyU16 => (u16::MIN  as u64, u16::MAX  as u64),
+            ast::TyU32 => (u32::MIN  as u64, u32::MAX  as u64),
+            ast::TyU64 => (u64::MIN,         u64::MAX)
         }
     }
 

@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -42,7 +42,7 @@ pub struct DataFlowContext<O> {
     priv bits_per_id: uint,
 
     /// number of words we will use to store bits_per_id.
-    /// equal to bits_per_id/uint::bits rounded up.
+    /// equal to bits_per_id/uint::BITS rounded up.
     priv words_per_id: uint,
 
     // mapping from node to bitset index.
@@ -129,7 +129,7 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
                oper: O,
                id_range: IdRange,
                bits_per_id: uint) -> DataFlowContext<O> {
-        let words_per_id = (bits_per_id + uint::bits - 1) / uint::bits;
+        let words_per_id = (bits_per_id + uint::BITS - 1) / uint::BITS;
 
         debug!("DataFlowContext::new(id_range={:?}, bits_per_id={:?}, words_per_id={:?})",
                id_range, bits_per_id, words_per_id);
@@ -213,7 +213,7 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
             len
         });
         if expanded {
-            let entry = if self.oper.initial_value() { uint::max_value } else {0};
+            let entry = if self.oper.initial_value() { uint::MAX } else {0};
             self.words_per_id.times(|| {
                 self.gens.push(0);
                 self.kills.push(0);
@@ -291,13 +291,13 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
 
         for (word_index, &word) in words.iter().enumerate() {
             if word != 0 {
-                let base_index = word_index * uint::bits;
-                for offset in range(0u, uint::bits) {
+                let base_index = word_index * uint::BITS;
+                for offset in range(0u, uint::BITS) {
                     let bit = 1 << offset;
                     if (word & bit) != 0 {
                         // NB: we round up the total number of bits
                         // that we store in any given bit set so that
-                        // it is an even multiple of uint::bits.  This
+                        // it is an even multiple of uint::BITS.  This
                         // means that there may be some stray bits at
                         // the end that do not correspond to any
                         // actual value.  So before we callback, check
@@ -908,7 +908,7 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
     }
 
     fn reset(&mut self, bits: &mut [uint]) {
-        let e = if self.dfcx.oper.initial_value() {uint::max_value} else {0};
+        let e = if self.dfcx.oper.initial_value() {uint::MAX} else {0};
         for b in bits.mut_iter() { *b = e; }
     }
 
@@ -959,7 +959,7 @@ fn bits_to_str(words: &[uint]) -> ~str {
 
     for &word in words.iter() {
         let mut v = word;
-        for _ in range(0u, uint::bytes) {
+        for _ in range(0u, uint::BYTES) {
             result.push_char(sep);
             result.push_str(format!("{:02x}", v & 0xFF));
             v >>= 8;
@@ -997,8 +997,8 @@ fn bitwise(out_vec: &mut [uint], in_vec: &[uint], op: |uint, uint| -> uint)
 fn set_bit(words: &mut [uint], bit: uint) -> bool {
     debug!("set_bit: words={} bit={}",
            mut_bits_to_str(words), bit_str(bit));
-    let word = bit / uint::bits;
-    let bit_in_word = bit % uint::bits;
+    let word = bit / uint::BITS;
+    let bit_in_word = bit % uint::BITS;
     let bit_mask = 1 << bit_in_word;
     debug!("word={} bit_in_word={} bit_mask={}", word, bit_in_word, word);
     let oldv = words[word];

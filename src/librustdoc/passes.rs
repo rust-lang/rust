@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -231,7 +231,7 @@ pub fn unindent(s: &str) -> ~str {
     let lines = s.lines_any().collect::<~[&str]>();
     let mut saw_first_line = false;
     let mut saw_second_line = false;
-    let min_indent = lines.iter().fold(uint::max_value, |min_indent, line| {
+    let min_indent = lines.iter().fold(uint::MAX, |min_indent, line| {
 
         // After we see the first non-whitespace line, look at
         // the line we have. If it is not whitespace, and therefore
@@ -243,7 +243,7 @@ pub fn unindent(s: &str) -> ~str {
             !line.is_whitespace();
 
         let min_indent = if ignore_previous_indents {
-            uint::max_value
+            uint::MAX
         } else {
             min_indent
         };
