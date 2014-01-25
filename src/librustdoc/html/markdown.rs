@@ -16,7 +16,9 @@
 //! functionality through a unit-struct, `Markdown`, which has an implementation
 //! of `fmt::Default`. Example usage:
 //!
-//! ```rust
+//! ```rust,ignore
+//! use rustdoc::html::markdown::Markdown;
+//!
 //! let s = "My *markdown* _text_";
 //! let html = format!("{}", Markdown(s));
 //! // ... something using html

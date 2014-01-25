@@ -855,14 +855,16 @@ $$(TLIB2_T_$(2)_H_$(3))/$$(FT_LIB): \
 		tmp/$$(FT).rc \
 		$$(SREQ2_T_$(2)_H_$(3))
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE2_T_$(2)_H_$(3)) --lib -o $$@ $$<
+	$$(STAGE2_T_$(2)_H_$(3)) --lib -o $$@ $$< \
+	  -L "$$(RT_OUTPUT_DIR_$(2))"
 
 $(3)/test/$$(FT_DRIVER)-$(2)$$(X_$(2)): \
 		tmp/$$(FT_DRIVER).rs \
 		$$(TLIB2_T_$(2)_H_$(3))/$$(FT_LIB) \
 		$$(SREQ2_T_$(2)_H_$(3))
 	@$$(call E, compile_and_link: $$@ $$<)
-	$$(STAGE2_T_$(2)_H_$(3)) -o $$@ $$<
+	$$(STAGE2_T_$(2)_H_$(3)) -o $$@ $$< \
+	  -L "$$(RT_OUTPUT_DIR_$(2))"
 
 $(3)/test/$$(FT_DRIVER)-$(2).out: \
 		$(3)/test/$$(FT_DRIVER)-$(2)$$(X_$(2)) \
