@@ -301,6 +301,7 @@ mod imp {
     }
 }
 
+#[cfg(target_os = "android")]
 #[cfg(target_os = "freebsd")]
 mod imp {
     use std::libc;
