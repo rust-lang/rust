@@ -199,11 +199,14 @@ impl Select {
                 if (*packet).decrement() {
                     Ok(())
                 } else {
+                    // Empty to_wake first to avoid tripping an assertion in
+                    // abort_selection in the disconnected case.
+                    let task = (*packet).to_wake.take_unwrap();
                     (*packet).abort_selection(false);
                     (*packet).selecting.store(false, SeqCst);
                     ready_index = i;
                     ready_id = (*packet).selection_id;
-                    Err((*packet).to_wake.take_unwrap())
+                    Err(task)
                 }
             });
 
