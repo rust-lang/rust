@@ -597,7 +597,7 @@ example:
 # }
                                                      // -+ r
 fn select_based_on_unit_circle<'r, T>(               //  |-+ B
-    threshold: f64, a: &'r T, b: &'r T) -> &'r T { //  | |
+    threshold: f64, a: &'r T, b: &'r T) -> &'r T {   //  | |
                                                      //  | |
     let shape = Circle(Point {x: 0., y: 0.}, 1.);    //  | |
     select(&shape, threshold, a, b)                  //  | |
