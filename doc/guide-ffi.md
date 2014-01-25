@@ -303,15 +303,15 @@ which would call back to `callback()` in Rust.
 
 ## Targetting callbacks to Rust objects
 
-The former example showed how a global function can be called from C-Code.
+The former example showed how a global function can be called from C code.
 However it is often desired that the callback is targetted to a special
 Rust object. This could be the object that represents the wrapper for the
 respective C object. 
 
 This can be achieved by passing an unsafe pointer to the object down to the
 C library. The C library can then include the pointer to the Rust object in
-the notification. This will provide a unsafe possibility to access the 
-referenced Rust object in callback.
+the notification. This will allow the callback to unsafely access the
+referenced Rust object.
 
 Rust code:
 ~~~~ {.xfail-test}
@@ -364,25 +364,25 @@ void trigger_callback() {
 
 ## Asynchronous callbacks
 
-In the already given examples the callbacks are invoked as a direct reaction
+In the previously given examples the callbacks are invoked as a direct reaction
 to a function call to the external C library.
-The control over the current thread switched from Rust to C to Rust for the
+The control over the current thread is switched from Rust to C to Rust for the
 execution of the callback, but in the end the callback is executed on the
 same thread (and Rust task) that lead called the function which triggered
 the callback.
 
-Things get more complicated when the external library spawns it's own threads
+Things get more complicated when the external library spawns its own threads
 and invokes callbacks from there.
-In these cases access to Rust data structures inside he callbacks is
+In these cases access to Rust data structures inside the callbacks is
 especially unsafe and proper synchronization mechanisms must be used.
-Besides classical synchronization mechanisms like mutexes one possibility in
+Besides classical synchronization mechanisms like mutexes, one possibility in
 Rust is to use channels (in `std::comm`) to forward data from the C thread
 that invoked the callback into a Rust task.
 
 If an asychronous callback targets a special object in the Rust address space
 it is also absolutely necessary that no more callbacks are performed by the 
-C library after the respective Rust object get's destroyed. 
-This can be achieved by unregistering the callback it the object's
+C library after the respective Rust object gets destroyed. 
+This can be achieved by unregistering the callback in the object's
 destructor and designing the library in a way that guarantees that no
 callback will be performed after unregistration.
 
