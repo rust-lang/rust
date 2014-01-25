@@ -360,7 +360,7 @@ mod tests {
             trapped_io_error = true;
             assert_eq!(e.kind, FileNotFound);
         }).inside(|| -> Option<run::ProcessOutput> {
-            run::process_output("no-binary-by-this-name-should-exist", [])
+            run::process_output("/no-binary-by-this-name-should-exist", [])
         });
         assert!(trapped_io_error);
         assert!(opt_outp.is_none());
