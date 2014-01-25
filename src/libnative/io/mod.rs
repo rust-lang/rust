@@ -49,11 +49,11 @@ pub mod process;
 
 #[cfg(target_os = "macos")]
 #[cfg(target_os = "freebsd")]
+#[cfg(target_os = "android")]
 #[path = "timer_other.rs"]
 pub mod timer;
 
 #[cfg(target_os = "linux")]
-#[cfg(target_os = "android")]
 #[path = "timer_timerfd.rs"]
 pub mod timer;
 
