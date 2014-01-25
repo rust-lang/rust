@@ -35,7 +35,7 @@
 # that's per-target so you're allowed to conditionally add files based on the
 # target.
 ################################################################################
-NATIVE_LIBS := rustrt sundown uv_support morestack
+NATIVE_LIBS := rustrt sundown uv_support morestack miniz
 
 # $(1) is the target triple
 define NATIVE_LIBRARIES
@@ -49,8 +49,8 @@ NATIVE_DEPS_sundown_$(1) := sundown/src/autolink.c \
 			sundown/html/html_smartypants.c \
 			sundown/html/html.c
 NATIVE_DEPS_uv_support_$(1) := rust_uv.c
+NATIVE_DEPS_miniz_$(1) = miniz.c
 NATIVE_DEPS_rustrt_$(1) := rust_builtin.c \
-			miniz.c \
 			rust_android_dummy.c \
 			rust_test_helpers.c \
 			rust_try.ll \

@@ -30,6 +30,7 @@ This API is completely unstable and subject to change.
 #[feature(macro_rules, globs, struct_variant, managed_boxes)];
 
 extern mod extra;
+extern mod flate;
 extern mod syntax;
 
 use back::link;
