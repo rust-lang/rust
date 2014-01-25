@@ -999,14 +999,15 @@ pub trait ImmutableVector<'a, T> {
      * Equivalent to:
      *
      * ```
+     *     if self.len() == 0 { return None }
      *     let head = &self[0];
      *     *self = self.slice_from(1);
-     *     head
+     *     Some(head)
      * ```
      *
-     * Fails if slice is empty.
+     * Returns `None` if vector is empty
      */
-    fn shift_ref(&mut self) -> &'a T;
+    fn shift_ref(&mut self) -> Option<&'a T>;
 
     /**
      * Returns a mutable reference to the last element in this slice
@@ -1182,10 +1183,11 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
         self.iter().map(f).collect()
     }
 
-    fn shift_ref(&mut self) -> &'a T {
+    fn shift_ref(&mut self) -> Option<&'a T> {
+        if self.len() == 0 { return None; }
         unsafe {
             let s: &mut Slice<T> = cast::transmute(self);
-            &*raw::shift_ptr(s)
+            Some(&*raw::shift_ptr(s))
         }
     }
 
@@ -2057,14 +2059,15 @@ pub trait MutableVector<'a, T> {
      * Equivalent to:
      *
      * ```
+     *     if self.len() == 0 { return None; }
      *     let head = &mut self[0];
      *     *self = self.mut_slice_from(1);
-     *     head
+     *     Some(head)
      * ```
      *
-     * Fails if slice is empty.
+     * Returns `None` if slice is empty
      */
-    fn mut_shift_ref(&mut self) -> &'a mut T;
+    fn mut_shift_ref(&mut self) -> Option<&'a mut T>;
 
     /**
      * Returns a mutable reference to the last element in this slice
@@ -2314,10 +2317,11 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
         MutChunks { v: self, chunk_size: chunk_size }
     }
 
-    fn mut_shift_ref(&mut self) -> &'a mut T {
+    fn mut_shift_ref(&mut self) -> Option<&'a mut T> {
+        if self.len() == 0 { return None; }
         unsafe {
             let s: &mut Slice<T> = cast::transmute(self);
-            cast::transmute_mut(&*raw::shift_ptr(s))
+            Some(cast::transmute_mut(&*raw::shift_ptr(s)))
         }
     }
 
@@ -4194,17 +4198,13 @@ mod tests {
     fn test_shift_ref() {
         let mut x: &[int] = [1, 2, 3, 4, 5];
         let h = x.shift_ref();
-        assert_eq!(*h, 1);
+        assert_eq!(*h.unwrap(), 1);
         assert_eq!(x.len(), 4);
         assert_eq!(x[0], 2);
         assert_eq!(x[3], 5);
-    }
 
-    #[test]
-    #[should_fail]
-    fn test_shift_ref_empty() {
-        let mut x: &[int] = [];
-        x.shift_ref();
+        let mut y: &[int] = [];
+        assert_eq!(y.shift_ref(), None);
     }
 
     #[test]
@@ -4284,17 +4284,13 @@ mod tests {
     fn test_mut_shift_ref() {
         let mut x: &mut [int] = [1, 2, 3, 4, 5];
         let h = x.mut_shift_ref();
-        assert_eq!(*h, 1);
+        assert_eq!(*h.unwrap(), 1);
         assert_eq!(x.len(), 4);
         assert_eq!(x[0], 2);
         assert_eq!(x[3], 5);
-    }
 
-    #[test]
-    #[should_fail]
-    fn test_mut_shift_ref_empty() {
-        let mut x: &mut [int] = [];
-        x.mut_shift_ref();
+        let mut y: &mut [int] = [];
+        assert!(y.mut_shift_ref().is_none());
     }
 
     #[test]
