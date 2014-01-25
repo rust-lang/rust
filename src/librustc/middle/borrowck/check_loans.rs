@@ -520,6 +520,9 @@ impl<'a> CheckLoanCtxt<'a> {
                 None => {
                     return true;
                 }
+                Some(mc::AliasableStaticMut) => {
+                    return true;
+                }
                 Some(cause) => {
                     this.bccx.report_aliasability_violation(
                         expr.span,
