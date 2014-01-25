@@ -329,6 +329,32 @@ pub fn pow<T: One + Mul<T, T>>(mut base: T, mut exp: uint) -> T {
     }
 }
 
+/// Raises a value to the power of exp modulo d, using exponentiation by squaring.
+///
+/// # Example
+///
+/// ```rust
+/// use std::num;
+///
+/// assert_eq!(num::powm(2, 4, 3), 1);
+/// ```
+#[inline]
+pub fn powm<T: Zero + One + Mul<T, T> + Rem<T, T>>(mut base: T, mut exp: uint, d: T) -> T {
+    if d.is_zero() { fail!("modulo by zero!"); }
+    else if exp == 1 { base }
+    else {
+        let mut r: T = One::one();
+        base = base % d;
+        while exp > 0 {
+            if (exp & 1) == 1 {
+                r = (r * base) % d;
+            }
+            base = (base * base) % d;
+            exp = exp >> 1;
+        }
+        r
+    }
+}
 /// Raise a number to a power.
 ///
 /// # Example
@@ -1669,6 +1695,18 @@ mod tests {
         assert_pow!((8.0,  5 ) => 32768.0);
         assert_pow!((8.5,  5 ) => 44370.53125);
         assert_pow!((2u64, 50) => 1125899906842624);
+    }
+
+    #[test]
+    fn test_powm() {
+        assert_eq!(4, powm(3, 2, 5));
+        assert_eq!(4, powm(2, 10, 10));
+        assert_eq!(1, powm(3, 16, 2));
+        assert_eq!(2, powm(2, 3, 3));
+        assert_eq!(1, powm(2, 64, 3));
+        assert_eq!(7218, powm(1200, 3, 10001));
+        assert_eq!(1711, powm(999, 1980, 2014));
+        assert_eq!(765432099, powm(123456789, 987654, 999999999));
     }
 }
 
