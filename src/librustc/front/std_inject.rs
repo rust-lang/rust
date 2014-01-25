@@ -23,10 +23,18 @@ use syntax::util::small_vector::SmallVector;
 
 pub static VERSION: &'static str = "0.10-pre";
 
-pub fn maybe_inject_libstd_ref(sess: Session, crate: ast::Crate)
+pub fn maybe_inject_crates_ref(sess: Session, crate: ast::Crate)
                                -> ast::Crate {
     if use_std(&crate) {
-        inject_libstd_ref(sess, crate)
+        inject_crates_ref(sess, crate)
+    } else {
+        crate
+    }
+}
+
+pub fn maybe_inject_prelude(sess: Session, crate: ast::Crate) -> ast::Crate {
+    if use_std(&crate) {
+        inject_prelude(sess, crate)
     } else {
         crate
     }
@@ -42,13 +50,6 @@ fn use_uv(crate: &ast::Crate) -> bool {
 
 fn no_prelude(attrs: &[ast::Attribute]) -> bool {
     attr::contains_name(attrs, "no_implicit_prelude")
-}
-
-fn spanned<T>(x: T) -> codemap::Spanned<T> {
-    codemap::Spanned {
-        node: x,
-        span: DUMMY_SP,
-    }
 }
 
 struct StandardLibraryInjector {
@@ -71,7 +72,11 @@ impl fold::Folder for StandardLibraryInjector {
             node: ast::ViewItemExternMod(self.sess.ident_of("std"),
                                          with_version("std"),
                                          ast::DUMMY_NODE_ID),
-            attrs: ~[],
+            attrs: ~[
+                attr::mk_attr(attr::mk_list_item(@"phase",
+                                                 ~[attr::mk_word_item(@"syntax"),
+                                                   attr::mk_word_item(@"link")]))
+            ],
             vis: ast::Inherited,
             span: DUMMY_SP
         }];
@@ -96,20 +101,41 @@ impl fold::Folder for StandardLibraryInjector {
         }
 
         vis.push_all(crate.module.view_items);
-        let mut new_module = ast::Mod {
+        let new_module = ast::Mod {
             view_items: vis,
             ..crate.module.clone()
         };
 
-        if !no_prelude(crate.attrs) {
-            // only add `use std::prelude::*;` if there wasn't a
-            // `#[no_implicit_prelude];` at the crate level.
-            new_module = self.fold_mod(&new_module);
-        }
-
         ast::Crate {
             module: new_module,
             ..crate
+        }
+    }
+}
+
+fn inject_crates_ref(sess: Session, crate: ast::Crate) -> ast::Crate {
+    let mut fold = StandardLibraryInjector {
+        sess: sess,
+    };
+    fold.fold_crate(crate)
+}
+
+struct PreludeInjector {
+    sess: Session,
+}
+
+
+impl fold::Folder for PreludeInjector {
+    fn fold_crate(&mut self, crate: ast::Crate) -> ast::Crate {
+        if !no_prelude(crate.attrs) {
+            // only add `use std::prelude::*;` if there wasn't a
+            // `#[no_implicit_prelude];` at the crate level.
+            ast::Crate {
+                module: self.fold_mod(&crate.module),
+                ..crate
+            }
+        } else {
+            crate
         }
     }
 
@@ -142,7 +168,7 @@ impl fold::Folder for StandardLibraryInjector {
             ],
         };
 
-        let vp = @spanned(ast::ViewPathGlob(prelude_path, ast::DUMMY_NODE_ID));
+        let vp = @codemap::dummy_spanned(ast::ViewPathGlob(prelude_path, ast::DUMMY_NODE_ID));
         let vi2 = ast::ViewItem {
             node: ast::ViewItemUse(~[vp]),
             attrs: ~[],
@@ -161,8 +187,8 @@ impl fold::Folder for StandardLibraryInjector {
     }
 }
 
-fn inject_libstd_ref(sess: Session, crate: ast::Crate) -> ast::Crate {
-    let mut fold = StandardLibraryInjector {
+fn inject_prelude(sess: Session, crate: ast::Crate) -> ast::Crate {
+    let mut fold = PreludeInjector {
         sess: sess,
     };
     fold.fold_crate(crate)
