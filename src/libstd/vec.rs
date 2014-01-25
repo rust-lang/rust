@@ -1017,14 +1017,15 @@ pub trait ImmutableVector<'a, T> {
      * Equivalent to:
      *
      * ```
+     *     if self.len() == 0 { return None; }
      *     let tail = &self[self.len() - 1];
      *     *self = self.slice_to(self.len() - 1);
-     *     tail
+     *     Some(tail)
      * ```
      *
-     * Fails if slice is empty.
+     * Returns `None` if slice is empty.
      */
-    fn pop_ref(&mut self) -> &'a T;
+    fn pop_ref(&mut self) -> Option<&'a T>;
 }
 
 impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
@@ -1191,10 +1192,11 @@ impl<'a,T> ImmutableVector<'a, T> for &'a [T] {
         }
     }
 
-    fn pop_ref(&mut self) -> &'a T {
+    fn pop_ref(&mut self) -> Option<&'a T> {
+        if self.len() == 0 { return None; }
         unsafe {
             let s: &mut Slice<T> = cast::transmute(self);
-            &*raw::pop_ptr(s)
+            Some(&*raw::pop_ptr(s))
         }
     }
 }
@@ -2077,14 +2079,15 @@ pub trait MutableVector<'a, T> {
      * Equivalent to:
      *
      * ```
+     *     if self.len() == 0 { return None; }
      *     let tail = &mut self[self.len() - 1];
      *     *self = self.mut_slice_to(self.len() - 1);
-     *     tail
+     *     Some(tail)
      * ```
      *
-     * Fails if slice is empty.
+     * Returns `None` if slice is empty.
      */
-    fn mut_pop_ref(&mut self) -> &'a mut T;
+    fn mut_pop_ref(&mut self) -> Option<&'a mut T>;
 
     /// Swaps two elements in a vector.
     ///
@@ -2325,10 +2328,11 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
         }
     }
 
-    fn mut_pop_ref(&mut self) -> &'a mut T {
+    fn mut_pop_ref(&mut self) -> Option<&'a mut T> {
+        if self.len() == 0 { return None; }
         unsafe {
             let s: &mut Slice<T> = cast::transmute(self);
-            cast::transmute_mut(&*raw::pop_ptr(s))
+            Some(cast::transmute_mut(&*raw::pop_ptr(s)))
         }
     }
 
@@ -4211,17 +4215,13 @@ mod tests {
     fn test_pop_ref() {
         let mut x: &[int] = [1, 2, 3, 4, 5];
         let h = x.pop_ref();
-        assert_eq!(*h, 5);
+        assert_eq!(*h.unwrap(), 5);
         assert_eq!(x.len(), 4);
         assert_eq!(x[0], 1);
         assert_eq!(x[3], 4);
-    }
 
-    #[test]
-    #[should_fail]
-    fn test_pop_ref_empty() {
-        let mut x: &[int] = [];
-        x.pop_ref();
+        let mut y: &[int] = [];
+        assert!(y.pop_ref().is_none());
     }
 
     #[test]
@@ -4297,17 +4297,13 @@ mod tests {
     fn test_mut_pop_ref() {
         let mut x: &mut [int] = [1, 2, 3, 4, 5];
         let h = x.mut_pop_ref();
-        assert_eq!(*h, 5);
+        assert_eq!(*h.unwrap(), 5);
         assert_eq!(x.len(), 4);
         assert_eq!(x[0], 1);
         assert_eq!(x[3], 4);
-    }
 
-    #[test]
-    #[should_fail]
-    fn test_mut_pop_ref_empty() {
-        let mut x: &mut [int] = [];
-        x.mut_pop_ref();
+        let mut y: &mut [int] = [];
+        assert!(y.mut_pop_ref().is_none());
     }
 }
 
