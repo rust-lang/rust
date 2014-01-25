@@ -954,7 +954,7 @@ impl Parser {
                     self.expect_or();
                     let inputs = self.parse_seq_to_before_or(
                         &token::COMMA,
-                        |p| p.parse_arg_general(false));
+                        |p| p.parse_arg_general(false, false));
                     self.expect_or();
                     inputs
                 };
@@ -1021,7 +1021,7 @@ impl Parser {
             opt_vec::Empty
         };
 
-        let (inputs, variadic) = self.parse_fn_args(false, allow_variadic);
+        let (inputs, variadic) = self.parse_fn_args(false, allow_variadic, false);
         let (ret_style, ret_ty) = self.parse_ret_ty();
         let decl = P(FnDecl {
             inputs: inputs,
@@ -1054,7 +1054,7 @@ impl Parser {
             let (explicit_self, d) = p.parse_fn_decl_with_self(|p| {
                 // This is somewhat dubious; We don't want to allow argument
                 // names to be left off if there is a definition...
-                p.parse_arg_general(false)
+                p.parse_arg_general(false, false)
             });
 
             let hi = p.last_span.hi;
@@ -1336,16 +1336,19 @@ impl Parser {
 
     // This version of parse arg doesn't necessarily require
     // identifier names.
-    pub fn parse_arg_general(&mut self, require_name: bool) -> Arg {
-        let pat = if require_name || self.is_named_argument() {
-            debug!("parse_arg_general parse_pat (require_name:{:?})",
-                   require_name);
+    pub fn parse_arg_general(&mut self, require_name: bool,
+                             require_ident_patterns_only: bool) -> Arg {
+        let pat = if !require_ident_patterns_only && require_name || self.is_named_argument() {
+            debug!("parse_arg_general parse_pat (require_name:{:?})
+                    ident_patterns_only (require_ident_patterns_only:{:?}",
+                   require_name,
+                   require_ident_patterns_only);
             let pat = self.parse_pat();
 
             self.expect(&token::COLON);
             pat
         } else {
-            debug!("parse_arg_general ident_to_pat");
+            debug!("parse_arg_general ident_to_pat require_ident_patterns_only");
             ast_util::ident_to_pat(ast::DUMMY_NODE_ID,
                                    self.last_span,
                                    special_idents::invalid)
@@ -1362,7 +1365,7 @@ impl Parser {
 
     // parse a single function argument
     pub fn parse_arg(&mut self) -> Arg {
-        self.parse_arg_general(true)
+        self.parse_arg_general(true, false)
     }
 
     // parse an argument in a lambda header e.g. |arg, arg|
@@ -3567,7 +3570,8 @@ impl Parser {
         (lifetimes, opt_vec::take_vec(result))
     }
 
-    fn parse_fn_args(&mut self, named_args: bool, allow_variadic: bool)
+    fn parse_fn_args(&mut self, named_args: bool, allow_variadic: bool,
+                     require_ident_patterns_only: bool)
                      -> (~[Arg], bool) {
         let sp = self.span;
         let mut args: ~[Option<Arg>] =
@@ -3589,7 +3593,7 @@ impl Parser {
                         }
                         None
                     } else {
-                        Some(p.parse_arg_general(named_args))
+                        Some(p.parse_arg_general(named_args, require_ident_patterns_only))
                     }
                 }
             );
@@ -3615,9 +3619,12 @@ impl Parser {
     }
 
     // parse the argument list and result type of a function declaration
-    pub fn parse_fn_decl(&mut self, allow_variadic: bool) -> P<FnDecl> {
+    pub fn parse_fn_decl(&mut self, allow_variadic: bool,
+                         require_ident_patterns_only: bool) -> P<FnDecl> {
 
-        let (args, variadic) = self.parse_fn_args(true, allow_variadic);
+        let (args, variadic) = self.parse_fn_args(true,
+                                                  allow_variadic,
+                                                  require_ident_patterns_only);
         let (ret_style, ret_ty) = self.parse_ret_ty();
 
         P(FnDecl {
@@ -3882,7 +3889,7 @@ impl Parser {
     // parse an item-position function declaration.
     fn parse_item_fn(&mut self, purity: Purity, abis: AbiSet) -> ItemInfo {
         let (ident, generics) = self.parse_fn_header();
-        let decl = self.parse_fn_decl(false);
+        let decl = self.parse_fn_decl(false, false);
         let (inner_attrs, body) = self.parse_inner_attrs_and_block();
         (ident, ItemFn(decl, purity, abis, generics, body), Some(inner_attrs))
     }
@@ -4320,7 +4327,10 @@ impl Parser {
         }
 
         let (ident, generics) = self.parse_fn_header();
-        let decl = self.parse_fn_decl(true);
+        // ForeignItemFn definitions args:
+        // First arg:
+        // Second arg: require_ident_patterns_only (valid fns with ident only)
+        let decl = self.parse_fn_decl(true, true);
         let hi = self.span.hi;
         self.expect(&token::SEMI);
         @ast::ForeignItem { ident: ident,
