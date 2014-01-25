@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -1010,7 +1010,7 @@ impl RegionVarBindings {
         // idea is to report errors that derive from independent
         // regions of the graph, but not those that derive from
         // overlapping locations.
-        let mut dup_vec = vec::from_elem(self.num_vars(), uint::max_value);
+        let mut dup_vec = vec::from_elem(self.num_vars(), uint::MAX);
 
         let mut opt_graph = None;
 
@@ -1238,7 +1238,7 @@ impl RegionVarBindings {
             let classification = var_data[node_idx.to_uint()].classification;
 
             // check whether we've visited this node on some previous walk
-            if dup_vec[node_idx.to_uint()] == uint::max_value {
+            if dup_vec[node_idx.to_uint()] == uint::MAX {
                 dup_vec[node_idx.to_uint()] = orig_node_idx.to_uint();
             } else if dup_vec[node_idx.to_uint()] != orig_node_idx.to_uint() {
                 state.dup_found = true;

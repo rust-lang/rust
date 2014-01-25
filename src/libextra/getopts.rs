@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -848,7 +848,7 @@ pub mod groups {
         t("hello", 15, [~"hello"]);
         t("\nMary had a little lamb\nLittle lamb\n", 15,
             [~"Mary had a", ~"little lamb", ~"Little lamb"]);
-        t("\nMary had a little lamb\nLittle lamb\n", ::std::uint::max_value,
+        t("\nMary had a little lamb\nLittle lamb\n", ::std::uint::MAX,
             [~"Mary had a little lamb\nLittle lamb"]);
     }
 } // end groups module

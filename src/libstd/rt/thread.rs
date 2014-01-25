@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -43,7 +43,7 @@ static DEFAULT_STACK_SIZE: uint = 1024 * 1024;
 extern fn thread_start(main: *libc::c_void) -> imp::rust_thread_return {
     use unstable::stack;
     unsafe {
-        stack::record_stack_bounds(0, uint::max_value);
+        stack::record_stack_bounds(0, uint::MAX);
         let f: ~proc() = cast::transmute(main);
         (*f)();
         cast::transmute(0 as imp::rust_thread_return)
