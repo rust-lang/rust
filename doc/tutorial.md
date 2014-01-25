@@ -1545,7 +1545,7 @@ elements are mutable if the vector is mutable. Fixed-size strings do not exist.
 let numbers = [1, 2, 3];
 let more_numbers = numbers;
 
-// The type of a fixed-size vector is written as `[Type, ..length]`
+// The type of a fixed-size vector is written as [Type, ..length]
 let five_zeroes: [int, ..5] = [0, ..5];
 ~~~
 
@@ -1559,7 +1559,7 @@ let mut numbers = ~[1, 2, 3];
 numbers.push(4);
 numbers.push(5);
 
-// The type of a unique vector is written as ~[int]
+// The type of a unique vector is written as ~[Type]
 let more_numbers: ~[int] = numbers;
 
 // The original `numbers` value can no longer be used, due to move semantics.
@@ -1576,7 +1576,7 @@ the elements.
 // A slice
 let xs = &[1, 2, 3];
 
-// Slices have their type written as &[int]
+// Slices have their type written as &[Type]
 let ys: &[int] = xs;
 
 // Other vector types coerce to slices
@@ -1600,7 +1600,7 @@ let mut xs = [1, 2, 3];
 let view = xs.mut_slice(0, 2);
 view[0] = 5;
 
-// The type of a mutable slice is written as &mut [T]
+// The type of a mutable slice is written as &mut [Type]
 let ys: &mut [int] = &mut [1, 2, 3];
 ~~~
 
