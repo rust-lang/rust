@@ -2865,7 +2865,7 @@ match_pat : pat [ ".." pat ] ? [ "if" expr ] ;
 A `match` expression branches on a *pattern*. The exact form of matching that
 occurs depends on the pattern. Patterns consist of some combination of
 literals, destructured enum constructors, structures, records and tuples, variable binding
-specifications, wildcards (`*`), and placeholders (`_`). A `match` expression has a *head
+specifications, wildcards (`..`), and placeholders (`_`). A `match` expression has a *head
 expression*, which is the value to compare to the patterns. The type of the
 patterns must equal the type of the head expression.
 
@@ -2887,7 +2887,7 @@ match x {
 
 The first pattern matches lists constructed by applying `Cons` to any head value, and a
 tail value of `~Nil`. The second pattern matches _any_ list constructed with `Cons`,
-ignoring the values of its arguments. The difference between `_` and `*` is that the pattern
+ignoring the values of its arguments. The difference between `_` and `..` is that the pattern
 `C(_)` is only type-correct if `C` has exactly one argument, while the pattern `C(..)` is
 type-correct for any enum variant `C`, regardless of how many arguments `C` has.
 
@@ -2938,6 +2938,27 @@ default to binding to a copy or move of the matched value
 This can be changed to bind to a reference by
 using the `ref` keyword,
 or to a mutable reference using `ref mut`.
+
+Subpatterns can also be bound to variables by the use of the syntax
+`variable @ pattern`.
+For example:
+
+~~~~
+enum List { Nil, Cons(uint, ~List) }
+
+fn is_sorted(list: &List) -> bool {
+    match *list {
+        Nil | Cons(_, ~Nil) => true,
+        Cons(x, ref r @ ~Cons(y, _)) => (x <= y) && is_sorted(*r)
+    }
+}
+
+fn main() {
+    let a = Cons(6, ~Cons(7, ~Cons(42, ~Nil)));
+    assert!(is_sorted(&a));
+}
+
+~~~~
 
 Patterns can also dereference pointers by using the `&`,
 `~` or `@` symbols, as appropriate. For example, these two matches
