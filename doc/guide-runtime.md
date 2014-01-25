@@ -202,7 +202,7 @@ Some benefits of using libgreen are:
 
 M:N threading is built upon the concept of a pool of M OS threads (which
 libgreen refers to as schedulers), able to run N Rust tasks. This abstraction is
-encompassed in libgreen's [`SchedPool`][schedpool] type. This type allows for
+encompassed in libgreen's [`SchedPool`](green/struct.SchedPool.html) type. This type allows for
 fine-grained control over the pool of schedulers which will be used to run Rust
 tasks.
 
