@@ -504,7 +504,7 @@ mod test {
     #[test]
     pub fn test_pod() {
         let arena = TypedArena::new();
-        for _ in range(0, 1000000) {
+        for _ in range(0, 100000) {
             arena.alloc(Point {
                 x: 1,
                 y: 2,
@@ -558,7 +558,7 @@ mod test {
     #[test]
     pub fn test_nonpod() {
         let arena = TypedArena::new();
-        for _ in range(0, 1000000) {
+        for _ in range(0, 100000) {
             arena.alloc(Nonpod {
                 string: ~"hello world",
                 array: ~[ 1, 2, 3, 4, 5 ],
