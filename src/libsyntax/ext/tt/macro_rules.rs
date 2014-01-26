@@ -13,7 +13,7 @@ use ast::{TTDelim};
 use ast;
 use codemap::{Span, Spanned, DUMMY_SP};
 use ext::base::{AnyMacro, ExtCtxt, MacResult, MRAny, MRDef, MacroDef};
-use ext::base::{NormalTT, SyntaxExpanderTTTrait};
+use ext::base::{NormalTT, MacroExpander};
 use ext::base;
 use ext::tt::macro_parser::{Success, Error, Failure};
 use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
@@ -87,18 +87,17 @@ impl AnyMacro for ParserAnyMacro {
     }
 }
 
-struct MacroRulesSyntaxExpanderTTFun {
+struct MacroRulesMacroExpander {
     name: Ident,
     lhses: @~[@NamedMatch],
     rhses: @~[@NamedMatch],
 }
 
-impl SyntaxExpanderTTTrait for MacroRulesSyntaxExpanderTTFun {
+impl MacroExpander for MacroRulesMacroExpander {
     fn expand(&self,
               cx: &mut ExtCtxt,
               sp: Span,
-              arg: &[ast::TokenTree],
-              _: ast::SyntaxContext)
+              arg: &[ast::TokenTree])
               -> MacResult {
         generic_extension(cx, sp, self.name, arg, *self.lhses, *self.rhses)
     }
@@ -175,8 +174,7 @@ fn generic_extension(cx: &ExtCtxt,
 pub fn add_new_extension(cx: &mut ExtCtxt,
                          sp: Span,
                          name: Ident,
-                         arg: ~[ast::TokenTree],
-                         _: ast::SyntaxContext)
+                         arg: ~[ast::TokenTree])
                          -> base::MacResult {
     // these spans won't matter, anyways
     fn ms(m: Matcher_) -> Matcher {
@@ -224,7 +222,7 @@ pub fn add_new_extension(cx: &mut ExtCtxt,
         _ => cx.span_bug(sp, "wrong-structured rhs")
     };
 
-    let exp = ~MacroRulesSyntaxExpanderTTFun {
+    let exp = ~MacroRulesMacroExpander {
         name: name,
         lhses: lhses,
         rhses: rhses,
