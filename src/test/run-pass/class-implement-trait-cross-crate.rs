@@ -14,7 +14,7 @@ extern mod cci_class_trait;
 use cci_class_trait::animals::noisy;
 
 struct cat {
-  priv meows: uint,
+  meows: uint,
 
   how_hungry : int,
   name : ~str,

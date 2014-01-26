@@ -20,7 +20,7 @@
 
 struct Foo {
     a: int,
-    priv b: int,
+    b: int,
 }
 
 pub struct PubFoo { //~ ERROR: missing documentation
@@ -99,7 +99,7 @@ mod a {
 enum Baz {
     BazA {
         a: int,
-        priv b: int
+        b: int
     },
     BarB
 }

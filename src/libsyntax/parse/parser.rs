@@ -122,7 +122,7 @@ struct PathSegmentAndBoundSet {
 }
 
 /// A path paired with optional type bounds.
-struct PathAndBounds {
+pub struct PathAndBounds {
     path: ast::Path,
     bounds: Option<OptVec<TyParamBound>>,
 }

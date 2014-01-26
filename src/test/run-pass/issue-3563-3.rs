@@ -47,8 +47,8 @@ struct Rect {
 struct AsciiArt {
     width: uint,
     height: uint,
-    priv fill: char,
-    priv lines: ~[~[char]],
+    fill: char,
+    lines: ~[~[char]],
 
     // This struct can be quite large so we'll disable copying: developers need
     // to either pass these structs around via references or move them.
