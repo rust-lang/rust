@@ -686,6 +686,7 @@ impl<'a> RWLockReadMode<'a> {
 
 /// A barrier enables multiple tasks to synchronize the beginning
 /// of some computation.
+///
 /// ```rust
 /// use extra::sync::Barrier;
 ///
