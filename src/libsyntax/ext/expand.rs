@@ -13,7 +13,7 @@ use ast::{Local, Ident, MacInvocTT};
 use ast::{ItemMac, Mrk, Stmt, StmtDecl, StmtMac, StmtExpr, StmtSemi};
 use ast::{TokenTree};
 use ast;
-use ast_util::{mtwt_outer_mark, new_rename, new_mark};
+use ast_util::{new_rename, new_mark};
 use ext::build::AstBuilder;
 use attr;
 use attr::AttrMetaMethods;
@@ -44,7 +44,7 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
                 // for the other three macro invocation chunks of code
                 // in this file.
                 // Token-tree macros:
-                MacInvocTT(ref pth, ref tts, ctxt) => {
+                MacInvocTT(ref pth, ref tts, _) => {
                     if pth.segments.len() > 1u {
                         fld.cx.span_err(
                             pth.span,
@@ -77,7 +77,6 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
                             let fm = fresh_mark();
                             // mark before:
                             let marked_before = mark_tts(*tts,fm);
-                            let marked_ctxt = new_mark(fm, ctxt);
 
                             // The span that we pass to the expanders we want to
                             // be the root of the call stack. That's the most
@@ -87,8 +86,7 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
 
                             let expanded = match expandfun.expand(fld.cx,
                                                    mac_span.call_site,
-                                                   marked_before,
-                                                   marked_ctxt) {
+                                                   marked_before) {
                                 MRExpr(e) => e,
                                 MRAny(any_macro) => any_macro.make_expr(),
                                 _ => {
@@ -286,12 +284,12 @@ pub fn contains_macro_escape(attrs: &[ast::Attribute]) -> bool {
 // logic as for expression-position macro invocations.
 pub fn expand_item_mac(it: @ast::Item, fld: &mut MacroExpander)
                        -> SmallVector<@ast::Item> {
-    let (pth, tts, ctxt) = match it.node {
+    let (pth, tts) = match it.node {
         ItemMac(codemap::Spanned {
-            node: MacInvocTT(ref pth, ref tts, ctxt),
+            node: MacInvocTT(ref pth, ref tts, _),
             ..
         }) => {
-            (pth, (*tts).clone(), ctxt)
+            (pth, (*tts).clone())
         }
         _ => fld.cx.span_bug(it.span, "invalid item macro invocation")
     };
@@ -325,8 +323,7 @@ pub fn expand_item_mac(it: @ast::Item, fld: &mut MacroExpander)
             });
             // mark before expansion:
             let marked_before = mark_tts(tts,fm);
-            let marked_ctxt = new_mark(fm,ctxt);
-            expander.expand(fld.cx, it.span, marked_before, marked_ctxt)
+            expander.expand(fld.cx, it.span, marked_before)
         }
         Some(&IdentTT(ref expander, span)) => {
             if it.ident.name == parse::token::special_idents::invalid.name {
@@ -344,8 +341,7 @@ pub fn expand_item_mac(it: @ast::Item, fld: &mut MacroExpander)
             });
             // mark before expansion:
             let marked_tts = mark_tts(tts,fm);
-            let marked_ctxt = new_mark(fm,ctxt);
-            expander.expand(fld.cx, it.span, it.ident, marked_tts, marked_ctxt)
+            expander.expand(fld.cx, it.span, it.ident, marked_tts)
         }
         _ => {
             fld.cx.span_err(it.span, format!("{}! is not legal in item position", extnamestr));
@@ -464,11 +460,11 @@ fn load_extern_macros(crate: &ast::ViewItem, fld: &mut MacroExpander) {
 pub fn expand_stmt(s: &Stmt, fld: &mut MacroExpander) -> SmallVector<@Stmt> {
     // why the copying here and not in expand_expr?
     // looks like classic changed-in-only-one-place
-    let (pth, tts, semi, ctxt) = match s.node {
+    let (pth, tts, semi) = match s.node {
         StmtMac(ref mac, semi) => {
             match mac.node {
-                MacInvocTT(ref pth, ref tts, ctxt) => {
-                    (pth, (*tts).clone(), semi, ctxt)
+                MacInvocTT(ref pth, ref tts, _) => {
+                    (pth, (*tts).clone(), semi)
                 }
             }
         }
@@ -498,7 +494,6 @@ pub fn expand_stmt(s: &Stmt, fld: &mut MacroExpander) -> SmallVector<@Stmt> {
             let fm = fresh_mark();
             // mark before expansion:
             let marked_tts = mark_tts(tts,fm);
-            let marked_ctxt = new_mark(fm,ctxt);
 
             // See the comment in expand_expr for why we want the original span,
             // not the current mac.span.
@@ -506,8 +501,7 @@ pub fn expand_stmt(s: &Stmt, fld: &mut MacroExpander) -> SmallVector<@Stmt> {
 
             let expanded = match expandfun.expand(fld.cx,
                                                   mac_span.call_site,
-                                                  marked_tts,
-                                                  marked_ctxt) {
+                                                  marked_tts) {
                 MRExpr(e) => {
                     @codemap::Spanned {
                         node: StmtExpr(e, ast::DUMMY_NODE_ID),
@@ -923,15 +917,6 @@ pub fn replace_ctxts(expr : @ast::Expr, ctxt : SyntaxContext) -> @ast::Expr {
     fun_to_ctxt_folder(@Repainter{ctxt:ctxt}).fold_expr(expr)
 }
 
-// take the mark from the given ctxt (that has a mark at the outside),
-// and apply it to everything in the token trees, thereby cancelling
-// that mark.
-pub fn mtwt_cancel_outer_mark(tts: &[ast::TokenTree], ctxt: ast::SyntaxContext)
-    -> ~[ast::TokenTree] {
-    let outer_mark = mtwt_outer_mark(ctxt);
-    mark_tts(tts,outer_mark)
-}
-
 fn original_span(cx: &ExtCtxt) -> @codemap::ExpnInfo {
     let mut relevant_info = cx.backtrace();
     let mut einfo = relevant_info.unwrap();
@@ -1087,28 +1072,6 @@ mod test {
                 },
                 is_sugared_doc: false,
             }
-        }
-    }
-
-    #[test] fn cancel_outer_mark_test(){
-        let invalid_name = token::special_idents::invalid.name;
-        let ident_str = @"x";
-        let tts = string_to_tts(ident_str);
-        let fm = fresh_mark();
-        let marked_once = fold::fold_tts(tts,&mut new_mark_folder(fm));
-        assert_eq!(marked_once.len(),1);
-        let marked_once_ctxt =
-            match marked_once[0] {
-                ast::TTTok(_,token::IDENT(id,_)) => id.ctxt,
-                _ => fail!(format!("unexpected shape for marked tts: {:?}",marked_once[0]))
-            };
-        assert_eq!(mtwt_marksof(marked_once_ctxt,invalid_name),~[fm]);
-        let remarked = mtwt_cancel_outer_mark(marked_once,marked_once_ctxt);
-        assert_eq!(remarked.len(),1);
-        match remarked[0] {
-            ast::TTTok(_,token::IDENT(id,_)) =>
-            assert_eq!(mtwt_marksof(id.ctxt,invalid_name),~[]),
-            _ => fail!(format!("unexpected shape for marked tts: {:?}",remarked[0]))
         }
     }
 
