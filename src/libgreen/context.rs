@@ -12,9 +12,8 @@ use std::libc::c_void;
 use std::uint;
 use std::cast::{transmute, transmute_mut_unsafe,
                 transmute_region, transmute_mut_region};
+use stack::Stack;
 use std::unstable::stack;
-
-use stack::StackSegment;
 
 // FIXME #7761: Registers is boxed so that it is 16-byte aligned, for storing
 // SSE regs.  It would be marginally better not to do this. In C++ we
@@ -41,7 +40,7 @@ impl Context {
     }
 
     /// Create a new context that will resume execution by running proc()
-    pub fn new(start: proc(), stack: &mut StackSegment) -> Context {
+    pub fn new(start: proc(), stack: &mut Stack) -> Context {
         // The C-ABI function that is the task entry point
         //
         // Note that this function is a little sketchy. We're taking a
@@ -79,6 +78,7 @@ impl Context {
         // be passed to the spawn function.  Another unfortunate
         // allocation
         let start = ~start;
+
         initialize_call_frame(&mut *regs,
                               task_start_wrapper as *c_void,
                               unsafe { transmute(&*start) },
