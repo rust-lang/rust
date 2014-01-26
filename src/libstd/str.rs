@@ -620,7 +620,7 @@ enum NormalizationForm {
 /// External iterator for a string's normalization's characters.
 /// Use with the `std::iter` module.
 #[deriving(Clone)]
-struct Normalizations<'a> {
+pub struct Normalizations<'a> {
     priv kind: NormalizationForm,
     priv iter: Chars<'a>,
     priv buffer: ~[(char, u8)],
