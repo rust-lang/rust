@@ -202,7 +202,8 @@ pub struct TestOpts {
     logfile: Option<Path>
 }
 
-type OptRes = Result<TestOpts, ~str>;
+/// Result of parsing the options.
+pub type OptRes = Result<TestOpts, ~str>;
 
 fn optgroups() -> ~[getopts::groups::OptGroup] {
     ~[groups::optflag("", "ignored", "Run ignored tests"),
@@ -722,7 +723,8 @@ enum TestEvent {
     TeResult(TestDesc, TestResult),
 }
 
-type MonitorMsg = (TestDesc, TestResult);
+/// The message sent to the test monitor from the individual runners.
+pub type MonitorMsg = (TestDesc, TestResult);
 
 fn run_tests(opts: &TestOpts,
              tests: ~[TestDescAndFn],
