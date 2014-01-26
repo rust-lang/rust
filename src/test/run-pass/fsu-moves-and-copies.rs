@@ -11,14 +11,14 @@
 // Issue 4691: Ensure that functional-struct-updates operates
 // correctly and moves rather than copy when appropriate.
 
-use NC = std::util::NonCopyable;
+use NP = std::kinds::marker::NoPod;
 
-struct ncint { nc: NC, v: int }
-fn ncint(v: int) -> ncint { ncint { nc: NC, v: v } }
+struct ncint { np: NP, v: int }
+fn ncint(v: int) -> ncint { ncint { np: NP, v: v } }
 
-struct NoFoo { copied: int, noncopy: ncint, }
+struct NoFoo { copied: int, nopod: ncint, }
 impl NoFoo {
-    fn new(x:int,y:int) -> NoFoo { NoFoo { copied: x, noncopy: ncint(y) } }
+    fn new(x:int,y:int) -> NoFoo { NoFoo { copied: x, nopod: ncint(y) } }
 }
 
 struct MoveFoo { copied: int, moved: ~int, }
@@ -44,18 +44,18 @@ fn test0() {
     // (and thus it is okay that these are Drop; compare against
     // compile-fail test: borrowck-struct-update-with-dtor.rs).
 
-    // Case 1: NonCopyable
+    // Case 1: Nopodable
     let f = DropNoFoo::new(1, 2);
-    let b = DropNoFoo { inner: NoFoo { noncopy: ncint(3), ..f.inner }};
-    let c = DropNoFoo { inner: NoFoo { noncopy: ncint(4), ..f.inner }};
+    let b = DropNoFoo { inner: NoFoo { nopod: ncint(3), ..f.inner }};
+    let c = DropNoFoo { inner: NoFoo { nopod: ncint(4), ..f.inner }};
     assert_eq!(f.inner.copied,    1);
-    assert_eq!(f.inner.noncopy.v, 2);
+    assert_eq!(f.inner.nopod.v, 2);
 
     assert_eq!(b.inner.copied,    1);
-    assert_eq!(b.inner.noncopy.v, 3);
+    assert_eq!(b.inner.nopod.v, 3);
 
     assert_eq!(c.inner.copied,    1);
-    assert_eq!(c.inner.noncopy.v, 4);
+    assert_eq!(c.inner.nopod.v, 4);
 
     // Case 2: Owned
     let f = DropMoveFoo::new(5, 6);
@@ -86,12 +86,12 @@ fn test1() {
 fn test2() {
     // move non-copyable field
     let f = NoFoo::new(21, 22);
-    let b = NoFoo {noncopy: ncint(23), ..f};
+    let b = NoFoo {nopod: ncint(23), ..f};
     let c = NoFoo {copied: 24, ..f};
     assert_eq!(b.copied,    21);
-    assert_eq!(b.noncopy.v, 23);
+    assert_eq!(b.nopod.v, 23);
     assert_eq!(c.copied,    24);
-    assert_eq!(c.noncopy.v, 22);
+    assert_eq!(c.nopod.v, 22);
 }
 
 pub fn main() {
