@@ -243,7 +243,7 @@ use vec::OwnedVector;
 use spsc = sync::spsc_queue;
 use mpsc = sync::mpsc_queue;
 
-pub use self::select::Select;
+pub use self::select::{Select, Handle};
 
 macro_rules! test (
     { fn $name:ident() $b:block $($a:attr)*} => (
