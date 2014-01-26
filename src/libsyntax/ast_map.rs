@@ -86,7 +86,7 @@ pub fn path_elem_to_str(pe: PathElem, itr: @IdentInterner) -> ~str {
 /// from, even if it's hard to read (previously they would all just be
 /// listed as `__extensions__::method_name::hash`, with no indication
 /// of the type).
-// XXX: these dollar signs and the names in general are actually a
+// FIXME: these dollar signs and the names in general are actually a
 //      relic of $ being one of the very few valid symbol names on
 //      unix. These kinds of details shouldn't be exposed way up here
 //      in the ast.

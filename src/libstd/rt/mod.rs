@@ -52,7 +52,7 @@ Several modules in `core` are clients of `rt`:
 
 */
 
-// XXX: this should not be here.
+// FIXME: this should not be here.
 #[allow(missing_doc)];
 
 use any::Any;
@@ -71,7 +71,7 @@ pub use self::util::default_sched_threads;
 // Export unwinding facilities used by the failure macros
 pub use self::unwind::{begin_unwind, begin_unwind_raw};
 
-// XXX: these probably shouldn't be public...
+// FIXME: these probably shouldn't be public...
 #[doc(hidden)]
 pub mod shouldnt_be_public {
     pub use super::local_ptr::native::maybe_tls_key;
@@ -155,7 +155,7 @@ pub trait Runtime {
     /// The (low, high) edges of the current stack.
     fn stack_bounds(&self) -> (uint, uint); // (lo, hi)
 
-    // XXX: This is a serious code smell and this should not exist at all.
+    // FIXME: This is a serious code smell and this should not exist at all.
     fn wrap(~self) -> ~Any;
 }
 
@@ -165,7 +165,7 @@ pub trait Runtime {
 /// the crate's logging flags, registering GC
 /// metadata, and storing the process arguments.
 pub fn init(argc: int, argv: **u8) {
-    // XXX: Derefing these pointers is not safe.
+    // FIXME: Derefing these pointers is not safe.
     // Need to propagate the unsafety to `start`.
     unsafe {
         args::init(argc, argv);

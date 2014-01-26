@@ -283,7 +283,7 @@ pub fn const_expr(cx: @CrateContext, e: &ast::Expr) -> (ValueRef, bool) {
     let tsize = machine::llsize_of_alloc(cx, llty);
     if csize != tsize {
         unsafe {
-            // XXX these values could use some context
+            // FIXME these values could use some context
             llvm::LLVMDumpValue(llconst);
             llvm::LLVMDumpValue(C_undef(llty));
         }

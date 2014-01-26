@@ -95,7 +95,7 @@ pub fn trans_impl(ccx: @CrateContext,
 /// * `llfn`: a closure returning the LLVM ValueRef for the method
 /// * `impl_id`: the node ID of the impl this method is inside
 ///
-/// XXX(pcwalton) Can we take `path` by reference?
+/// FIXME(pcwalton) Can we take `path` by reference?
 pub fn trans_method(ccx: @CrateContext,
                     path: Path,
                     method: &ast::Method,

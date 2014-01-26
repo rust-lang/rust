@@ -780,7 +780,7 @@ impl<'a> Formatter<'a> {
                         rt::Keyword(parse::One) => value == 1,
                         rt::Keyword(parse::Two) => value == 2,
 
-                        // XXX: Few/Many should have a user-specified boundary
+                        // FIXME: Few/Many should have a user-specified boundary
                         //      One possible option would be in the function
                         //      pointer of the 'arg: Argument' struct.
                         rt::Keyword(parse::Few) => value < 8,
@@ -1085,7 +1085,7 @@ integer!(i64, u64)
 macro_rules! floating(($ty:ident) => {
     impl Float for $ty {
         fn fmt(f: &$ty, fmt: &mut Formatter) {
-            // XXX: this shouldn't perform an allocation
+            // FIXME: this shouldn't perform an allocation
             let s = match fmt.precision {
                 Some(i) => ::$ty::to_str_exact(f.abs(), i),
                 None => ::$ty::to_str_digits(f.abs(), 6)
@@ -1096,7 +1096,7 @@ macro_rules! floating(($ty:ident) => {
 
     impl LowerExp for $ty {
         fn fmt(f: &$ty, fmt: &mut Formatter) {
-            // XXX: this shouldn't perform an allocation
+            // FIXME: this shouldn't perform an allocation
             let s = match fmt.precision {
                 Some(i) => ::$ty::to_str_exp_exact(f.abs(), i, false),
                 None => ::$ty::to_str_exp_digits(f.abs(), 6, false)
@@ -1107,7 +1107,7 @@ macro_rules! floating(($ty:ident) => {
 
     impl UpperExp for $ty {
         fn fmt(f: &$ty, fmt: &mut Formatter) {
-            // XXX: this shouldn't perform an allocation
+            // FIXME: this shouldn't perform an allocation
             let s = match fmt.precision {
                 Some(i) => ::$ty::to_str_exp_exact(f.abs(), i, true),
                 None => ::$ty::to_str_exp_digits(f.abs(), 6, true)

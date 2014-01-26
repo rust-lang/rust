@@ -20,7 +20,7 @@ use unstable::running_on_valgrind;
 use vec::ImmutableVector;
 
 // Indicates whether we should perform expensive sanity checks, including rtassert!
-// XXX: Once the runtime matures remove the `true` below to turn off rtassert, etc.
+// FIXME: Once the runtime matures remove the `true` below to turn off rtassert, etc.
 pub static ENFORCE_SANITY: bool = true || !cfg!(rtopt) || cfg!(rtdebug) || cfg!(rtassert);
 
 /// Get the number of cores available

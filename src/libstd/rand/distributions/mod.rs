@@ -51,7 +51,7 @@ pub trait Sample<Support> {
 /// Since no state is recorded, each sample is (statistically)
 /// independent of all others, assuming the `Rng` used has this
 /// property.
-// XXX maybe having this separate is overkill (the only reason is to
+// FIXME maybe having this separate is overkill (the only reason is to
 // take &self rather than &mut self)? or maybe this should be the
 // trait called `Sample` and the other should be `DependentSample`.
 pub trait IndependentSample<Support>: Sample<Support> {

@@ -636,7 +636,7 @@ CFG_INFO := $(info cfg: *** compiler is in snapshot transition ***)
 CFG_INFO := $(info cfg: *** stage2 and later will not be built ***)
 CFG_INFO := $(info cfg:)
 
-#XXX This is surely busted
+#FIXME This is surely busted
 all: $(SREQ1$(CFG_BUILD)) $(GENERATED) docs
 
 else

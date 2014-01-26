@@ -179,7 +179,7 @@ pub trait AstBuilder {
             name: Ident, attrs: ~[ast::Attribute], node: ast::Item_) -> @ast::Item;
 
     fn arg(&self, span: Span, name: Ident, ty: P<ast::Ty>) -> ast::Arg;
-    // XXX unused self
+    // FIXME unused self
     fn fn_decl(&self, inputs: ~[ast::Arg], output: P<ast::Ty>) -> P<ast::FnDecl>;
 
     fn item_fn_poly(&self,
@@ -724,7 +724,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         }
     }
 
-    // XXX unused self
+    // FIXME unused self
     fn fn_decl(&self, inputs: ~[ast::Arg], output: P<ast::Ty>) -> P<ast::FnDecl> {
         P(ast::FnDecl {
             inputs: inputs,
@@ -736,7 +736,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     fn item(&self, span: Span,
             name: Ident, attrs: ~[ast::Attribute], node: ast::Item_) -> @ast::Item {
-        // XXX: Would be nice if our generated code didn't violate
+        // FIXME: Would be nice if our generated code didn't violate
         // Rust coding conventions
         @ast::Item { ident: name,
                     attrs: attrs,

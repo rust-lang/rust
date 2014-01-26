@@ -55,7 +55,7 @@ unsafe fn each_live_alloc(read_next_before: bool,
 
 #[cfg(unix)]
 fn debug_mem() -> bool {
-    // XXX: Need to port the environment struct to newsched
+    // FIXME: Need to port the environment struct to newsched
     false
 }
 

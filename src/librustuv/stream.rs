@@ -157,7 +157,7 @@ extern fn read_cb(handle: *uvll::uv_stream_t, nread: ssize_t, _buf: *Buf) {
     };
     // Stop reading so that no read callbacks are
     // triggered before the user calls `read` again.
-    // XXX: Is there a performance impact to calling
+    // FIXME: Is there a performance impact to calling
     // stop here?
     unsafe { assert_eq!(uvll::uv_read_stop(handle), 0); }
     rcx.result = nread;

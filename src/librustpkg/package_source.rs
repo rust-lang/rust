@@ -459,7 +459,7 @@ impl PkgSrc {
                                                subcfgs,
                                                opt,
                                                what);
-                    // XXX: result is an Option<Path>. The following code did not take that
+                    // FIXME: result is an Option<Path>. The following code did not take that
                     // into account. I'm not sure if the workcache really likes seeing the
                     // output as "Some(\"path\")". But I don't know what to do about it.
                     // FIXME (#9639): This needs to handle non-utf8 paths

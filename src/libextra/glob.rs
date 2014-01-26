@@ -93,7 +93,7 @@ pub fn glob_with(pattern: &str, options: MatchOptions) -> Paths {
     let pat_root = Path::new(pattern).root_path();
     if pat_root.is_some() {
         if check_windows_verbatim(pat_root.get_ref()) {
-            // XXX: How do we want to handle verbatim paths? I'm inclined to return nothing,
+            // FIXME: How do we want to handle verbatim paths? I'm inclined to return nothing,
             // since we can't very well find all UNC shares with a 1-letter server name.
             return Paths { root: root, dir_patterns: ~[], options: options, todo: ~[] };
         }
