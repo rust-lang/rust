@@ -97,7 +97,7 @@ fn translate_error(errno: i32, detail: bool) -> IoError {
 
     #[cfg(not(windows))]
     fn get_err(errno: i32) -> (io::IoErrorKind, &'static str) {
-        // XXX: this should probably be a bit more descriptive...
+        // FIXME: this should probably be a bit more descriptive...
         match errno {
             libc::EOF => (io::EndOfFile, "end of file"),
             libc::ECONNREFUSED => (io::ConnectionRefused, "connection refused"),

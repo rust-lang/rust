@@ -1237,7 +1237,7 @@ impl Parser {
                 Parser::token_is_lifetime(&self.token) {
             // CLOSURE
             //
-            // XXX(pcwalton): Eventually `token::LT` will not unambiguously
+            // FIXME(pcwalton): Eventually `token::LT` will not unambiguously
             // introduce a closure, once procs can have lifetime bounds. We
             // will need to refactor the grammar a little bit at that point.
 
@@ -3949,7 +3949,7 @@ impl Parser {
         let generics = self.parse_generics();
 
         // This is a new-style impl declaration.
-        // XXX: clownshoes
+        // FIXME: clownshoes
         let ident = special_idents::clownshoes_extensions;
 
         // Special case: if the next identifier that follows is '(', don't
@@ -4071,7 +4071,7 @@ impl Parser {
                                token_str))
         }
 
-        let _ = ast::DUMMY_NODE_ID;  // XXX: Workaround for crazy bug.
+        let _ = ast::DUMMY_NODE_ID;  // FIXME: Workaround for crazy bug.
         let new_id = ast::DUMMY_NODE_ID;
         (class_name,
          ItemStruct(@ast::StructDef {

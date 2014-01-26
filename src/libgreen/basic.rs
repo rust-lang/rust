@@ -139,7 +139,7 @@ impl EventLoop for BasicLoop {
         self.work.push(f);
     }
 
-    // XXX: Seems like a really weird requirement to have an event loop provide.
+    // FIXME: Seems like a really weird requirement to have an event loop provide.
     fn pausable_idle_callback(&mut self, cb: ~Callback) -> ~PausableIdleCallback {
         let callback = ~BasicPausable::new(self, cb);
         rtassert!(self.idle.is_none());

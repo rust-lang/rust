@@ -413,7 +413,7 @@ impl<'a> Prep<'a> {
                 let (port, chan) = Chan::new();
                 let blk = bo.take_unwrap();
 
-                // XXX: What happens if the task fails?
+                // FIXME: What happens if the task fails?
                 do spawn {
                     let mut exe = Exec {
                         discovered_inputs: WorkMap::new(),

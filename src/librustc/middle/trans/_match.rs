@@ -643,7 +643,7 @@ fn enter_opt<'r,'b>(
             }
             ast::PatEnum(_, ref subpats) => {
                 if opt_eq(tcx, &variant_opt(bcx, p.id), opt) {
-                    // XXX: Must we clone?
+                    // FIXME: Must we clone?
                     match *subpats {
                         None => Some(vec::from_elem(variant_size, dummy)),
                         _ => (*subpats).clone(),

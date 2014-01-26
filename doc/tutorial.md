@@ -2895,7 +2895,7 @@ and only if that results in no match look at items you brought in
 scope with corresponding `use` statements.
 
 ~~~ {.ignore}
-# // XXX: Allow unused import in doc test
+# // FIXME: Allow unused import in doc test
 use farm::cow;
 // ...
 # mod farm { pub fn cow() { println!("Hidden ninja cow is hidden.") } }

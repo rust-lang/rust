@@ -61,7 +61,7 @@ impl Stack {
             valgrind_id: 0
         };
 
-        // XXX: Using the FFI to call a C macro. Slow
+        // FIXME: Using the FFI to call a C macro. Slow
         stk.valgrind_id = unsafe {
             rust_valgrind_stack_register(stk.start(), stk.end())
         };
@@ -117,7 +117,7 @@ fn protect_last_page(stack: &MemoryMap) -> bool {
 impl Drop for Stack {
     fn drop(&mut self) {
         unsafe {
-            // XXX: Using the FFI to call a C macro. Slow
+            // FIXME: Using the FFI to call a C macro. Slow
             rust_valgrind_stack_deregister(self.valgrind_id);
         }
     }

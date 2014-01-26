@@ -123,7 +123,7 @@ impl Reader for StringReader {
     }
     fn span_diag(@self) -> @SpanHandler { self.span_diagnostic }
     fn peek(@self) -> TokenAndSpan {
-        // XXX(pcwalton): Bad copy!
+        // FIXME(pcwalton): Bad copy!
         TokenAndSpan {
             tok: self.peek_tok.get(),
             sp: self.peek_span.get(),

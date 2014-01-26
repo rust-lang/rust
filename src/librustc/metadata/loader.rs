@@ -187,7 +187,7 @@ impl Context {
         for lib in libs.mut_iter() {
             match lib.dylib {
                 Some(ref p) if p.filename_str() == Some(file.as_slice()) => {
-                    assert!(lib.rlib.is_none()); // XXX: legit compiler error
+                    assert!(lib.rlib.is_none()); // FIXME: legit compiler error
                     lib.rlib = Some(path.clone());
                     return true;
                 }
@@ -207,7 +207,7 @@ impl Context {
         for lib in libs.mut_iter() {
             match lib.rlib {
                 Some(ref p) if p.filename_str() == Some(file.as_slice()) => {
-                    assert!(lib.dylib.is_none()); // XXX: legit compiler error
+                    assert!(lib.dylib.is_none()); // FIXME: legit compiler error
                     lib.dylib = Some(path.clone());
                     return true;
                 }

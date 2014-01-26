@@ -50,7 +50,7 @@ pub mod move_data;
 
 pub struct LoanDataFlowOperator;
 
-/// XXX(pcwalton): Should just be #[deriving(Clone)], but that doesn't work
+/// FIXME(pcwalton): Should just be #[deriving(Clone)], but that doesn't work
 /// yet on unit structs.
 impl Clone for LoanDataFlowOperator {
     fn clone(&self) -> LoanDataFlowOperator {

@@ -596,7 +596,7 @@ define CFG_MAKE_TOOLCHAIN
   else
 
   # For the ARM and MIPS crosses, use the toolchain assembler
-  # XXX: We should be able to use the LLVM assembler
+  # FIXME: We should be able to use the LLVM assembler
   CFG_ASSEMBLE_$(1)=$$(CC_$(1)) $$(CFG_GCCISH_CFLAGS_$(1)) \
 		    $$(CFG_DEPEND_FLAGS) $$(2) -c -o $$(1)
 

@@ -330,7 +330,7 @@ fn search_for_vtable(vcx: &VtableContext,
     ty::populate_implementations_for_trait_if_necessary(tcx,
                                                         trait_ref.def_id);
 
-    // XXX: this is a bad way to do this, since we do
+    // FIXME: this is a bad way to do this, since we do
     // pointless allocations.
     let impls = {
         let trait_impls = tcx.trait_impls.borrow();
@@ -371,7 +371,7 @@ fn search_for_vtable(vcx: &VtableContext,
         // we're trying to cast to some_trait.  If not, then we try
         // the next impl.
         //
-        // XXX: document a bit more what this means
+        // FIXME: document a bit more what this means
         //
         // FIXME(#5781) this should be mk_eqty not mk_subty
         let ty::ty_param_substs_and_ty {

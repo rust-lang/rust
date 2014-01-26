@@ -22,7 +22,7 @@ mod cross_crate {
     use self::lint_stability::*;
 
     fn test() {
-        // XXX: attributes on methods are not encoded cross crate.
+        // FIXME: attributes on methods are not encoded cross crate.
         let foo = MethodTester;
 
         deprecated(); //~ ERROR use of deprecated item

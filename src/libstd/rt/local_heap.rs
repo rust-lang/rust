@@ -293,7 +293,7 @@ impl Drop for MemoryRegion {
 
 #[inline]
 pub unsafe fn local_malloc(td: *u8, size: uint) -> *u8 {
-    // XXX: Unsafe borrow for speed. Lame.
+    // FIXME: Unsafe borrow for speed. Lame.
     let task: Option<*mut Task> = Local::try_unsafe_borrow();
     match task {
         Some(task) => {
@@ -306,7 +306,7 @@ pub unsafe fn local_malloc(td: *u8, size: uint) -> *u8 {
 // A little compatibility function
 #[inline]
 pub unsafe fn local_free(ptr: *u8) {
-    // XXX: Unsafe borrow for speed. Lame.
+    // FIXME: Unsafe borrow for speed. Lame.
     let task_ptr: Option<*mut Task> = Local::try_unsafe_borrow();
     match task_ptr {
         Some(task) => {

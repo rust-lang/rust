@@ -309,7 +309,7 @@ impl CoherenceChecker {
                 // Nothing to do.
             }
             Some(base_type_def_id) => {
-                // XXX: Gather up default methods?
+                // FIXME: Gather up default methods?
                 if associated_traits.len() == 0 {
                     self.add_inherent_impl(base_type_def_id, implementation);
                 }
