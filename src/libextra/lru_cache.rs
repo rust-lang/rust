@@ -43,13 +43,13 @@ use std::to_bytes::Cb;
 use std::ptr;
 use std::cast;
 
-struct KeyRef<K> { priv k: *K }
+struct KeyRef<K> { k: *K }
 
 struct LruEntry<K, V> {
-    priv key: Option<K>,
-    priv value: Option<V>,
-    priv next: *mut LruEntry<K, V>,
-    priv prev: *mut LruEntry<K, V>,
+    key: Option<K>,
+    value: Option<V>,
+    next: *mut LruEntry<K, V>,
+    prev: *mut LruEntry<K, V>,
 }
 
 /// An LRU Cache.

@@ -126,7 +126,7 @@ pub trait HomingIO {
 /// task back to its appropriate home (if applicable). The field is used to
 /// assert that we are where we think we are.
 struct HomingMissile {
-    priv io_home: uint,
+    io_home: uint,
 }
 
 impl HomingMissile {

@@ -109,8 +109,8 @@ trait FixedBuffer {
 
 /// A FixedBuffer of 64 bytes useful for implementing Sha256 which has a 64 byte blocksize.
 struct FixedBuffer64 {
-    priv buffer: [u8, ..64],
-    priv buffer_idx: uint,
+    buffer: [u8, ..64],
+    buffer_idx: uint,
 }
 
 impl FixedBuffer64 {

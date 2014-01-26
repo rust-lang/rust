@@ -16,7 +16,7 @@ trait noisy {
 
 #[deriving(Clone)]
 struct cat {
-    priv meows : uint,
+    meows : uint,
 
     how_hungry : int,
     name : ~str,
