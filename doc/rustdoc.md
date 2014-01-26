@@ -139,9 +139,14 @@ that one can still write things like `#[deriving(Eq)]`).
 
 ~~~
 ```rust
-# // showing 'fib' in this documentation would just be tedious and detracts from
-# // what's actualy being documented.
-# fn fib(n: int) { n + 2 }
+# /!\ The three following lines are comments, which are usually stripped off by
+# the doc-generating tool.  In order to display them anyway in this particular
+# case, the character following the leading '#' is not a usual space like in
+# these first five lines but a non breakable one.
+# 
+# // showing 'fib' in this documentation would just be tedious and detracts from
+# // what's actualy being documented.
+# fn fib(n: int) { n + 2 }
 
 do spawn { fib(200); }
 ```
