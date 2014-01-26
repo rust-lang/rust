@@ -53,6 +53,7 @@ pub struct HomeHandle {
 }
 
 impl HomeHandle {
+    #[allow(visible_local_types)]
     pub fn new(id: uint, pool: &mut QueuePool) -> HomeHandle {
         HomeHandle { queue: pool.queue(), id: id }
     }

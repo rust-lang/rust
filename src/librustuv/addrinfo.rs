@@ -134,7 +134,7 @@ fn each_ai_flag(_f: |c_int, ai::Flag|) {
 }
 
 // Traverse the addrinfo linked list, producing a vector of Rust socket addresses
-pub fn accum_addrinfo(addr: &Addrinfo) -> ~[ai::Info] {
+fn accum_addrinfo(addr: &Addrinfo) -> ~[ai::Info] {
     unsafe {
         let mut addr = addr.handle;
 

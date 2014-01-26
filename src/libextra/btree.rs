@@ -22,10 +22,10 @@
 ///number of elements that a given node can contain.
 #[allow(missing_doc)]
 pub struct BTree<K, V> {
-    root: Node<K, V>,
-    len: uint,
-    lower_bound: uint,
-    upper_bound: uint
+    priv root: Node<K, V>,
+    priv len: uint,
+    priv lower_bound: uint,
+    priv upper_bound: uint
 }
 
 //We would probably want to remove the dependence on the Clone trait in the future.
@@ -47,9 +47,9 @@ impl<K: TotalOrd, V> BTree<K, V> {
 
     ///Helper function for clone: returns new BTree with supplied root node,
     ///length, and lower bound.  For use when the length is known already.
-    pub fn new_with_node_len(n: Node<K, V>,
-                             length: uint,
-                             lb: uint) -> BTree<K, V> {
+    fn new_with_node_len(n: Node<K, V>,
+                         length: uint,
+                         lb: uint) -> BTree<K, V> {
         BTree {
             root: n,
             len: length,
@@ -590,4 +590,3 @@ mod test_btree {
     }
 
 }
-

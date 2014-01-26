@@ -87,14 +87,14 @@ use std::vec;
 
 #[allow(non_camel_case_types)]
 #[deriving(Eq)]
-enum restriction {
+pub enum restriction {
     UNRESTRICTED,
     RESTRICT_STMT_EXPR,
     RESTRICT_NO_BAR_OP,
     RESTRICT_NO_BAR_OR_DOUBLEBAR_OP,
 }
 
-type ItemInfo = (Ident, Item_, Option<~[Attribute]>);
+pub type ItemInfo = (Ident, Item_, Option<~[Attribute]>);
 
 /// How to parse a path. There are four different kinds of paths, all of which
 /// are parsed somewhat differently.
@@ -116,13 +116,13 @@ pub enum PathParsingMode {
 
 /// A pair of a path segment and group of type parameter bounds. (See `ast.rs`
 /// for the definition of a path segment.)
-struct PathSegmentAndBoundSet {
+pub struct PathSegmentAndBoundSet {
     segment: ast::PathSegment,
     bound_set: Option<OptVec<TyParamBound>>,
 }
 
 /// A path paired with optional type bounds.
-struct PathAndBounds {
+pub struct PathAndBounds {
     path: ast::Path,
     bounds: Option<OptVec<TyParamBound>>,
 }

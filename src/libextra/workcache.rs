@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #[allow(missing_doc)];
+#[allow(visible_local_types)];
 
 use json;
 use json::ToJson;

@@ -111,10 +111,10 @@ pub mod logging;
 pub mod crate_map;
 
 /// The runtime needs to be able to put a pointer into thread-local storage.
-mod local_ptr;
+pub mod local_ptr;
 
 /// Bindings to pthread/windows thread-local storage.
-mod thread_local_storage;
+pub mod thread_local_storage;
 
 /// Stack unwinding
 pub mod unwind;
