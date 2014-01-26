@@ -38,91 +38,63 @@ pub struct MacroDef {
 pub type ItemDecorator =
     fn(&ExtCtxt, Span, @ast::MetaItem, ~[@ast::Item]) -> ~[@ast::Item];
 
-pub struct SyntaxExpanderTT {
-    expander: SyntaxExpanderTTExpander,
+pub struct BasicMacroExpander {
+    expander: MacroExpanderFn,
     span: Option<Span>
 }
 
-pub trait SyntaxExpanderTTTrait {
+pub trait MacroExpander {
     fn expand(&self,
               ecx: &mut ExtCtxt,
               span: Span,
-              token_tree: &[ast::TokenTree],
-              context: ast::SyntaxContext)
+              token_tree: &[ast::TokenTree])
               -> MacResult;
 }
 
-pub type SyntaxExpanderTTFunNoCtxt =
+pub type MacroExpanderFn =
     fn(ecx: &mut ExtCtxt, span: codemap::Span, token_tree: &[ast::TokenTree])
        -> MacResult;
 
-enum SyntaxExpanderTTExpander {
-    SyntaxExpanderTTExpanderWithoutContext(SyntaxExpanderTTFunNoCtxt),
-}
-
-impl SyntaxExpanderTTTrait for SyntaxExpanderTT {
+impl MacroExpander for BasicMacroExpander {
     fn expand(&self,
               ecx: &mut ExtCtxt,
               span: Span,
-              token_tree: &[ast::TokenTree],
-              _: ast::SyntaxContext)
+              token_tree: &[ast::TokenTree])
               -> MacResult {
-        match self.expander {
-            SyntaxExpanderTTExpanderWithoutContext(f) => {
-                f(ecx, span, token_tree)
-            }
-        }
+        (self.expander)(ecx, span, token_tree)
     }
 }
 
-enum SyntaxExpanderTTItemExpander {
-    SyntaxExpanderTTItemExpanderWithContext(SyntaxExpanderTTItemFun),
-    SyntaxExpanderTTItemExpanderWithoutContext(SyntaxExpanderTTItemFunNoCtxt),
-}
-
-pub struct SyntaxExpanderTTItem {
-    expander: SyntaxExpanderTTItemExpander,
+pub struct BasicIdentMacroExpander {
+    expander: IdentMacroExpanderFn,
     span: Option<Span>
 }
 
-pub trait SyntaxExpanderTTItemTrait {
+pub trait IdentMacroExpander {
     fn expand(&self,
               cx: &mut ExtCtxt,
               sp: Span,
               ident: ast::Ident,
-              token_tree: ~[ast::TokenTree],
-              context: ast::SyntaxContext)
+              token_tree: ~[ast::TokenTree])
               -> MacResult;
 }
 
-impl SyntaxExpanderTTItemTrait for SyntaxExpanderTTItem {
+impl IdentMacroExpander for BasicIdentMacroExpander {
     fn expand(&self,
               cx: &mut ExtCtxt,
               sp: Span,
               ident: ast::Ident,
-              token_tree: ~[ast::TokenTree],
-              context: ast::SyntaxContext)
+              token_tree: ~[ast::TokenTree])
               -> MacResult {
-        match self.expander {
-            SyntaxExpanderTTItemExpanderWithContext(fun) => {
-                fun(cx, sp, ident, token_tree, context)
-            }
-            SyntaxExpanderTTItemExpanderWithoutContext(fun) => {
-                fun(cx, sp, ident, token_tree)
-            }
-        }
+        (self.expander)(cx, sp, ident, token_tree)
     }
 }
 
-pub type SyntaxExpanderTTItemFun =
-    fn(&mut ExtCtxt, Span, ast::Ident, ~[ast::TokenTree], ast::SyntaxContext)
-       -> MacResult;
-
-pub type SyntaxExpanderTTItemFunNoCtxt =
+pub type IdentMacroExpanderFn =
     fn(&mut ExtCtxt, Span, ast::Ident, ~[ast::TokenTree]) -> MacResult;
 
 pub type MacroCrateRegistrationFun =
-    extern "Rust" fn(|ast::Name, SyntaxExtension|);
+    fn(|ast::Name, SyntaxExtension|);
 
 pub trait AnyMacro {
     fn make_expr(&self) -> @ast::Expr;
@@ -153,7 +125,7 @@ pub enum SyntaxExtension {
     ItemDecorator(ItemDecorator),
 
     // Token-tree expanders
-    NormalTT(~SyntaxExpanderTTTrait:'static, Option<Span>),
+    NormalTT(~MacroExpander:'static, Option<Span>),
 
     // An IdentTT is a macro that has an
     // identifier in between the name of the
@@ -163,7 +135,7 @@ pub enum SyntaxExtension {
 
     // perhaps macro_rules! will lose its odd special identifier argument,
     // and this can go away also
-    IdentTT(~SyntaxExpanderTTItemTrait:'static, Option<Span>),
+    IdentTT(~IdentMacroExpander:'static, Option<Span>),
 }
 
 pub struct BlockInfo {
@@ -192,102 +164,100 @@ pub type RenameList = ~[(ast::Ident,Name)];
 // AST nodes into full ASTs
 pub fn syntax_expander_table() -> SyntaxEnv {
     // utility function to simplify creating NormalTT syntax extensions
-    fn builtin_normal_tt_no_ctxt(f: SyntaxExpanderTTFunNoCtxt)
-                                 -> SyntaxExtension {
-        NormalTT(~SyntaxExpanderTT{
-            expander: SyntaxExpanderTTExpanderWithoutContext(f),
-            span: None,
-        },
-        None)
+    fn builtin_normal_expander(f: MacroExpanderFn) -> SyntaxExtension {
+        NormalTT(~BasicMacroExpander {
+                expander: f,
+                span: None,
+            },
+            None)
     }
 
     let mut syntax_expanders = SyntaxEnv::new();
     syntax_expanders.insert(intern(&"macro_rules"),
-                            IdentTT(~SyntaxExpanderTTItem {
-                                expander: SyntaxExpanderTTItemExpanderWithContext(
-                                    ext::tt::macro_rules::add_new_extension),
+                            IdentTT(~BasicIdentMacroExpander {
+                                expander: ext::tt::macro_rules::add_new_extension,
                                 span: None,
                             },
                             None));
     syntax_expanders.insert(intern(&"fmt"),
-                            builtin_normal_tt_no_ctxt(
+                            builtin_normal_expander(
                                 ext::fmt::expand_syntax_ext));
     syntax_expanders.insert(intern(&"format_args"),
-                            builtin_normal_tt_no_ctxt(
+                            builtin_normal_expander(
                                 ext::format::expand_args));
     syntax_expanders.insert(intern(&"env"),
-                            builtin_normal_tt_no_ctxt(
+                            builtin_normal_expander(
                                     ext::env::expand_env));
     syntax_expanders.insert(intern(&"option_env"),
-                            builtin_normal_tt_no_ctxt(
+                            builtin_normal_expander(
                                     ext::env::expand_option_env));
     syntax_expanders.insert(intern("bytes"),
-                            builtin_normal_tt_no_ctxt(
+                            builtin_normal_expander(
                                     ext::bytes::expand_syntax_ext));
     syntax_expanders.insert(intern("concat_idents"),
-                            builtin_normal_tt_no_ctxt(
+                            builtin_normal_expander(
                                     ext::concat_idents::expand_syntax_ext));
     syntax_expanders.insert(intern("concat"),
-                            builtin_normal_tt_no_ctxt(
+                            builtin_normal_expander(
                                     ext::concat::expand_syntax_ext));
     syntax_expanders.insert(intern(&"log_syntax"),
-                            builtin_normal_tt_no_ctxt(
+                            builtin_normal_expander(
                                     ext::log_syntax::expand_syntax_ext));
     syntax_expanders.insert(intern(&"deriving"),
                             ItemDecorator(ext::deriving::expand_meta_deriving));
 
     // Quasi-quoting expanders
     syntax_expanders.insert(intern(&"quote_tokens"),
-                       builtin_normal_tt_no_ctxt(
+                       builtin_normal_expander(
                             ext::quote::expand_quote_tokens));
     syntax_expanders.insert(intern(&"quote_expr"),
-                       builtin_normal_tt_no_ctxt(
+                       builtin_normal_expander(
                             ext::quote::expand_quote_expr));
     syntax_expanders.insert(intern(&"quote_ty"),
-                       builtin_normal_tt_no_ctxt(
+                       builtin_normal_expander(
                             ext::quote::expand_quote_ty));
     syntax_expanders.insert(intern(&"quote_item"),
-                       builtin_normal_tt_no_ctxt(
+                       builtin_normal_expander(
                             ext::quote::expand_quote_item));
     syntax_expanders.insert(intern(&"quote_pat"),
-                       builtin_normal_tt_no_ctxt(
+                       builtin_normal_expander(
                             ext::quote::expand_quote_pat));
     syntax_expanders.insert(intern(&"quote_stmt"),
-                       builtin_normal_tt_no_ctxt(
+                       builtin_normal_expander(
                             ext::quote::expand_quote_stmt));
 
     syntax_expanders.insert(intern(&"line"),
-                            builtin_normal_tt_no_ctxt(
+                            builtin_normal_expander(
                                     ext::source_util::expand_line));
     syntax_expanders.insert(intern(&"col"),
-                            builtin_normal_tt_no_ctxt(
+                            builtin_normal_expander(
                                     ext::source_util::expand_col));
     syntax_expanders.insert(intern(&"file"),
-                            builtin_normal_tt_no_ctxt(
+                            builtin_normal_expander(
                                     ext::source_util::expand_file));
     syntax_expanders.insert(intern(&"stringify"),
-                            builtin_normal_tt_no_ctxt(
+                            builtin_normal_expander(
                                     ext::source_util::expand_stringify));
     syntax_expanders.insert(intern(&"include"),
-                            builtin_normal_tt_no_ctxt(
+                            builtin_normal_expander(
                                     ext::source_util::expand_include));
     syntax_expanders.insert(intern(&"include_str"),
-                            builtin_normal_tt_no_ctxt(
+                            builtin_normal_expander(
                                     ext::source_util::expand_include_str));
     syntax_expanders.insert(intern(&"include_bin"),
-                            builtin_normal_tt_no_ctxt(
+                            builtin_normal_expander(
                                     ext::source_util::expand_include_bin));
     syntax_expanders.insert(intern(&"module_path"),
-                            builtin_normal_tt_no_ctxt(
+                            builtin_normal_expander(
                                     ext::source_util::expand_mod));
     syntax_expanders.insert(intern(&"asm"),
-                            builtin_normal_tt_no_ctxt(
+                            builtin_normal_expander(
                                     ext::asm::expand_asm));
     syntax_expanders.insert(intern(&"cfg"),
-                            builtin_normal_tt_no_ctxt(
+                            builtin_normal_expander(
                                     ext::cfg::expand_cfg));
     syntax_expanders.insert(intern(&"trace_macros"),
-                            builtin_normal_tt_no_ctxt(
+                            builtin_normal_expander(
                                     ext::trace_macros::expand_trace_macros));
     syntax_expanders
 }
