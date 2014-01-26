@@ -8,46 +8,113 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::vec;
-use std::libc::{c_uint, uintptr_t};
+use std::rt::env::max_cached_stacks;
+use std::os::{errno, page_size, MemoryMap, MapReadable, MapWritable,
+              MapNonStandardFlags, MapVirtual};
+use std::libc;
 
-pub struct StackSegment {
-    priv buf: ~[u8],
-    priv valgrind_id: c_uint
+/// A task's stack. The name "Stack" is a vestige of segmented stacks.
+pub struct Stack {
+    priv buf: MemoryMap,
+    priv min_size: uint,
+    priv valgrind_id: libc::c_uint,
 }
 
-impl StackSegment {
-    pub fn new(size: uint) -> StackSegment {
-        unsafe {
-            // Crate a block of uninitialized values
-            let mut stack = vec::with_capacity(size);
-            stack.set_len(size);
+// Try to use MAP_STACK on platforms that support it (it's what we're doing
+// anyway), but some platforms don't support it at all. For example, it appears
+// that there's a bug in freebsd that MAP_STACK implies MAP_FIXED (so it always
+// fails): http://lists.freebsd.org/pipermail/freebsd-bugs/2011-July/044840.html
+#[cfg(not(windows), not(target_os = "freebsd"))]
+static STACK_FLAGS: libc::c_int = libc::MAP_STACK | libc::MAP_PRIVATE |
+                                  libc::MAP_ANON;
+#[cfg(target_os = "freebsd")]
+static STACK_FLAGS: libc::c_int = libc::MAP_PRIVATE | libc::MAP_ANON;
+#[cfg(windows)]
+static STACK_FLAGS: libc::c_int = 0;
 
-            let mut stk = StackSegment {
-                buf: stack,
-                valgrind_id: 0
-            };
+impl Stack {
+    /// Allocate a new stack of `size`. If size = 0, this will fail. Use
+    /// `dummy_stack` if you want a zero-sized stack.
+    pub fn new(size: uint) -> Stack {
+        // Map in a stack. Eventually we might be able to handle stack
+        // allocation failure, which would fail to spawn the task. But there's
+        // not many sensible things to do on OOM.  Failure seems fine (and is
+        // what the old stack allocation did).
+        let stack = match MemoryMap::new(size, [MapReadable, MapWritable,
+                                         MapNonStandardFlags(STACK_FLAGS)]) {
+            Ok(map) => map,
+            Err(e) => fail!("mmap for stack of size {} failed: {}", size, e)
+        };
 
-            // XXX: Using the FFI to call a C macro. Slow
-            stk.valgrind_id = rust_valgrind_stack_register(stk.start(), stk.end());
-            return stk;
+        // Change the last page to be inaccessible. This is to provide safety;
+        // when an FFI function overflows it will (hopefully) hit this guard
+        // page. It isn't guaranteed, but that's why FFI is unsafe. buf.data is
+        // guaranteed to be aligned properly.
+        if !protect_last_page(&stack) {
+            fail!("Could not memory-protect guard page. stack={:?}, errno={}",
+                  stack, errno());
+        }
+
+        let mut stk = Stack {
+            buf: stack,
+            min_size: size,
+            valgrind_id: 0
+        };
+
+        // XXX: Using the FFI to call a C macro. Slow
+        stk.valgrind_id = unsafe {
+            rust_valgrind_stack_register(stk.start(), stk.end())
+        };
+        return stk;
+    }
+
+    /// Create a 0-length stack which starts (and ends) at 0.
+    pub unsafe fn dummy_stack() -> Stack {
+        Stack {
+            buf: MemoryMap { data: 0 as *mut u8, len: 0, kind: MapVirtual },
+            min_size: 0,
+            valgrind_id: 0
         }
     }
 
     /// Point to the low end of the allocated stack
     pub fn start(&self) -> *uint {
-        self.buf.as_ptr() as *uint
+        self.buf.data as *uint
     }
 
-    /// Point one word beyond the high end of the allocated stack
+    /// Point one uint beyond the high end of the allocated stack
     pub fn end(&self) -> *uint {
         unsafe {
-            self.buf.as_ptr().offset(self.buf.len() as int) as *uint
+            self.buf.data.offset(self.buf.len as int) as *uint
         }
     }
 }
 
-impl Drop for StackSegment {
+#[cfg(unix)]
+fn protect_last_page(stack: &MemoryMap) -> bool {
+    unsafe {
+        // This may seem backwards: the start of the segment is the last page?
+        // Yes! The stack grows from higher addresses (the end of the allocated
+        // block) to lower addresses (the start of the allocated block).
+        let last_page = stack.data as *libc::c_void;
+        libc::mprotect(last_page, page_size() as libc::size_t,
+                       libc::PROT_NONE) != -1
+    }
+}
+
+#[cfg(windows)]
+fn protect_last_page(stack: &MemoryMap) -> bool {
+    unsafe {
+        // see above
+        let last_page = stack.data as *mut libc::c_void;
+        let mut old_prot: libc::DWORD = 0;
+        libc::VirtualProtect(last_page, page_size() as libc::SIZE_T,
+                             libc::PAGE_NOACCESS,
+                             &mut old_prot as libc::LPDWORD) != 0
+    }
+}
+
+impl Drop for Stack {
     fn drop(&mut self) {
         unsafe {
             // XXX: Using the FFI to call a C macro. Slow
@@ -56,20 +123,36 @@ impl Drop for StackSegment {
     }
 }
 
-pub struct StackPool(());
+pub struct StackPool {
+    // Ideally this would be some datastructure that preserved ordering on
+    // Stack.min_size.
+    priv stacks: ~[Stack],
+}
 
 impl StackPool {
-    pub fn new() -> StackPool { StackPool(()) }
-
-    pub fn take_segment(&self, min_size: uint) -> StackSegment {
-        StackSegment::new(min_size)
+    pub fn new() -> StackPool {
+        StackPool {
+            stacks: ~[],
+        }
     }
 
-    pub fn give_segment(&self, _stack: StackSegment) {
+    pub fn take_stack(&mut self, min_size: uint) -> Stack {
+        // Ideally this would be a binary search
+        match self.stacks.iter().position(|s| s.min_size < min_size) {
+            Some(idx) => self.stacks.swap_remove(idx),
+            None      => Stack::new(min_size)
+        }
+    }
+
+    pub fn give_stack(&mut self, stack: Stack) {
+        if self.stacks.len() <= max_cached_stacks() {
+            self.stacks.push(stack)
+        }
     }
 }
 
 extern {
-    fn rust_valgrind_stack_register(start: *uintptr_t, end: *uintptr_t) -> c_uint;
-    fn rust_valgrind_stack_deregister(id: c_uint);
+    fn rust_valgrind_stack_register(start: *libc::uintptr_t,
+                                    end: *libc::uintptr_t) -> libc::c_uint;
+    fn rust_valgrind_stack_deregister(id: libc::c_uint);
 }
