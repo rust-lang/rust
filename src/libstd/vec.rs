@@ -2031,7 +2031,7 @@ pub trait MutableVector<'a, T> {
     fn mut_iter(self) -> MutItems<'a, T>;
 
     /// Returns a mutable pointer to the last item in the vector.
-    fn mut_last(self) -> &'a mut T;
+    fn mut_last(self) -> Option<&'a mut T>;
 
     /// Returns a reversed iterator that allows modifying each value
     fn mut_rev_iter(self) -> RevMutItems<'a, T>;
@@ -2298,10 +2298,10 @@ impl<'a,T> MutableVector<'a, T> for &'a mut [T] {
     }
 
     #[inline]
-    fn mut_last(self) -> &'a mut T {
+    fn mut_last(self) -> Option<&'a mut T> {
         let len = self.len();
-        if len == 0 { fail!("mut_last: empty vector") }
-        &mut self[len - 1]
+        if len == 0 { return None; }
+        Some(&mut self[len - 1])
     }
 
     #[inline]
@@ -4304,6 +4304,16 @@ mod tests {
 
         let mut y: &mut [int] = [];
         assert!(y.mut_pop_ref().is_none());
+    }
+
+    #[test]
+    fn test_mut_last() {
+        let mut x = [1, 2, 3, 4, 5];
+        let h = x.mut_last();
+        assert_eq!(*h.unwrap(), 5);
+
+        let mut y: &mut [int] = [];
+        assert!(y.mut_last().is_none());
     }
 }
 
