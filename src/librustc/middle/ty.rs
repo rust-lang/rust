@@ -2494,7 +2494,7 @@ pub fn type_is_pod(cx: ctxt, ty: t) -> bool {
       ty_enum(did, ref substs) => {
         let variants = enum_variants(cx, did);
         for variant in (*variants).iter() {
-            // XXX(pcwalton): This is an inefficient way to do this. Don't
+            // FIXME(pcwalton): This is an inefficient way to do this. Don't
             // synthesize a tuple!
             //
             // Perform any type parameter substitutions.
@@ -2655,7 +2655,7 @@ pub fn node_id_to_type(cx: ctxt, id: ast::NodeId) -> t {
     }
 }
 
-// XXX(pcwalton): Makes a copy, bleh. Probably better to not do that.
+// FIXME(pcwalton): Makes a copy, bleh. Probably better to not do that.
 pub fn node_id_to_type_params(cx: ctxt, id: ast::NodeId) -> ~[t] {
     let node_type_substs = cx.node_type_substs.borrow();
     match node_type_substs.get().find(&id) {

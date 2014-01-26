@@ -104,7 +104,7 @@ fn helper(input: libc::c_int, messages: Port<Req>) {
                 let mut bits = [0, ..8];
                 // drain the timerfd of how many times its fired
                 //
-                // XXX: should this perform a send() this number of
+                // FIXME: should this perform a send() this number of
                 //      times?
                 FileDesc::new(fd, false).inner_read(bits);
                 let remove = {

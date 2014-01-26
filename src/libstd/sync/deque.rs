@@ -45,7 +45,7 @@
 // NB: the "buffer pool" strategy is not done for speed, but rather for
 //     correctness. For more info, see the comment on `swap_buffer`
 
-// XXX: all atomic operations in this module use a SeqCst ordering. That is
+// FIXME: all atomic operations in this module use a SeqCst ordering. That is
 //      probably overkill
 
 use cast;

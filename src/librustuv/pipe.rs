@@ -179,7 +179,7 @@ impl RtioUnixListener for PipeListener {
         let mut acceptor = ~PipeAcceptor { listener: self };
 
         let _m = acceptor.fire_homing_missile();
-        // XXX: the 128 backlog should be configurable
+        // FIXME: the 128 backlog should be configurable
         match unsafe { uvll::uv_listen(acceptor.listener.pipe, 128, listen_cb) } {
             0 => Ok(acceptor as ~RtioUnixAcceptor),
             n => Err(uv_error_to_io_error(UvError(n))),

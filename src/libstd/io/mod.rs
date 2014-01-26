@@ -84,7 +84,7 @@ Some examples of obvious things you might want to do
     ```
 
 * Make an simple HTTP request
-  XXX This needs more improvement: TcpStream constructor taking &str,
+  FIXME This needs more improvement: TcpStream constructor taking &str,
   `write_str` and `write_line` methods.
 
     ```rust,should_fail
@@ -101,7 +101,7 @@ Some examples of obvious things you might want to do
 * Connect based on URL? Requires thinking about where the URL type lives
   and how to make protocol handlers extensible, e.g. the "tcp" protocol
   yields a `TcpStream`.
-  XXX this is not implemented now.
+  FIXME this is not implemented now.
 
     ```rust
     // connect("tcp://localhost:8080");
@@ -209,7 +209,7 @@ if error.is_some() {
 # ::std::io::fs::unlink(&Path::new("diary.txt"));
 ```
 
-XXX: Need better condition handling syntax
+FIXME: Need better condition handling syntax
 
 In this case the condition handler will have the opportunity to
 inspect the IoError raised by either the call to `new` or the call to
@@ -232,8 +232,8 @@ to errors similar to null pointer dereferences.
 In particular code written to ignore errors and expect conditions to be unhandled
 will start passing around null or zero objects when wrapped in a condition handler.
 
-* XXX: How should we use condition handlers that return values?
-* XXX: Should EOF raise default conditions when EOF is not an error?
+* FIXME: How should we use condition handlers that return values?
+* FIXME: Should EOF raise default conditions when EOF is not an error?
 
 # Issues with i/o scheduler affinity, work stealing, task pinning
 
@@ -263,7 +263,7 @@ Out of scope
 * Async I/O. We'll probably want it eventually
 
 
-# XXX Questions and issues
+# FIXME Questions and issues
 
 * Should default constructors take `Path` or `&str`? `Path` makes simple cases verbose.
   Overloading would be nice.
@@ -375,7 +375,7 @@ static DEFAULT_BUF_SIZE: uint = 1024 * 64;
 
 /// The type passed to I/O condition handlers to indicate error
 ///
-/// # XXX
+/// # FIXME
 ///
 /// Is something like this sufficient? It's kind of archaic
 pub struct IoError {
@@ -446,7 +446,7 @@ impl ToStr for IoErrorKind {
     }
 }
 
-// XXX: Can't put doc comments on macros
+// FIXME: Can't put doc comments on macros
 // Raised by `I/O` operations on error.
 condition! {
     pub io_error: IoError -> ();
@@ -491,9 +491,9 @@ pub trait Reader {
     /// Raises the `io_error` condition on error. If the condition
     /// is handled then no guarantee is made about the number of bytes
     /// read and the contents of `buf`. If the condition is handled
-    /// returns `None` (XXX see below).
+    /// returns `None` (FIXME see below).
     ///
-    /// # XXX
+    /// # FIXME
     ///
     /// * Should raise_default error on eof?
     /// * If the condition is handled it should still return the bytes read,
@@ -1218,7 +1218,7 @@ pub enum SeekStyle {
     SeekCur,
 }
 
-/// # XXX
+/// # FIXME
 /// * Are `u64` and `i64` the right choices?
 pub trait Seek {
     /// Return position of file cursor in the stream
@@ -1228,7 +1228,7 @@ pub trait Seek {
     ///
     /// A successful seek clears the EOF indicator.
     ///
-    /// # XXX
+    /// # FIXME
     ///
     /// * What is the behavior when seeking past the end of a stream?
     fn seek(&mut self, pos: i64, style: SeekStyle);

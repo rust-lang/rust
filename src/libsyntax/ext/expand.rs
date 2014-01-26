@@ -115,7 +115,7 @@ pub fn expand_expr(e: @ast::Expr, fld: &mut MacroExpander) -> @ast::Expr {
 
                     // Keep going, outside-in.
                     //
-                    // XXX(pcwalton): Is it necessary to clone the
+                    // FIXME(pcwalton): Is it necessary to clone the
                     // node here?
                     let fully_expanded =
                         fld.fold_expr(marked_after).node.clone();
