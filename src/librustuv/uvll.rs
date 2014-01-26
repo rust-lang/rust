@@ -361,7 +361,7 @@ fn request_sanity_check() {
     }
 }
 
-// XXX Event loops ignore SIGPIPE by default.
+// FIXME Event loops ignore SIGPIPE by default.
 pub unsafe fn loop_new() -> *c_void {
     return rust_uv_loop_new();
 }

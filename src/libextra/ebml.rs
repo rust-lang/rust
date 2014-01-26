@@ -630,7 +630,7 @@ pub mod writer {
 
     // FIXME (#2741): Provide a function to write the standard ebml header.
     impl<'a> Encoder<'a> {
-        /// XXX(pcwalton): Workaround for badness in trans. DO NOT USE ME.
+        /// FIXME(pcwalton): Workaround for badness in trans. DO NOT USE ME.
         pub unsafe fn unsafe_clone(&self) -> Encoder<'a> {
             Encoder {
                 writer: cast::transmute_copy(&self.writer),

@@ -1275,7 +1275,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
                     // If this is a static method, we've already encoded
                     // this.
                     if method_ty.explicit_self != SelfStatic {
-                        // XXX: I feel like there is something funny going on.
+                        // FIXME: I feel like there is something funny going on.
                         let tpt = ty::lookup_item_type(tcx, method_def_id);
                         encode_bounds_and_type(ebml_w, ecx, &tpt);
                     }

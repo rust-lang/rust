@@ -173,7 +173,7 @@ fn lockstep_iter_size(t: &TokenTree, r: &TtReader) -> LockstepIterSize {
 // return the next token from the TtReader.
 // EFFECT: advances the reader's token field
 pub fn tt_next_token(r: &TtReader) -> TokenAndSpan {
-    // XXX(pcwalton): Bad copy?
+    // FIXME(pcwalton): Bad copy?
     let ret_val = TokenAndSpan {
         tok: r.cur_tok.get(),
         sp: r.cur_span.get(),
@@ -231,7 +231,7 @@ pub fn tt_next_token(r: &TtReader) -> TokenAndSpan {
     }
     loop { /* because it's easiest, this handles `TTDelim` not starting
     with a `TTTok`, even though it won't happen */
-        // XXX(pcwalton): Bad copy.
+        // FIXME(pcwalton): Bad copy.
         match r.stack.get().forest[r.stack.get().idx.get()].clone() {
           TTDelim(tts) => {
             r.stack.set(@TtFrame {
@@ -250,7 +250,7 @@ pub fn tt_next_token(r: &TtReader) -> TokenAndSpan {
             return ret_val;
           }
           TTSeq(sp, tts, sep, zerok) => {
-            // XXX(pcwalton): Bad copy.
+            // FIXME(pcwalton): Bad copy.
             let t = TTSeq(sp, tts, sep.clone(), zerok);
             match lockstep_iter_size(&t, r) {
               LisUnconstrained => {
@@ -306,7 +306,7 @@ pub fn tt_next_token(r: &TtReader) -> TokenAndSpan {
                 return ret_val;
               }
               MatchedNonterminal(ref other_whole_nt) => {
-                // XXX(pcwalton): Bad copy.
+                // FIXME(pcwalton): Bad copy.
                 r.cur_span.set(sp);
                 r.cur_tok.set(INTERPOLATED((*other_whole_nt).clone()));
                 r.stack.get().idx.set(r.stack.get().idx.get() + 1u);

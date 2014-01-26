@@ -43,7 +43,7 @@ use sync::atomics::{AtomicPtr, Relaxed, AtomicUint, Acquire, Release};
 
 // Node within the linked list queue of messages to send
 struct Node<T> {
-    // XXX: this could be an uninitialized T if we're careful enough, and
+    // FIXME: this could be an uninitialized T if we're careful enough, and
     //      that would reduce memory usage (and be a bit faster).
     //      is it worth it?
     value: Option<T>,           // nullable for re-use of nodes
@@ -225,7 +225,7 @@ impl<T: Send, P: Send> State<T, P> {
         if self.cache_bound == 0 {
             self.tail_prev.store(tail, Release);
         } else {
-            // XXX: this is dubious with overflow.
+            // FIXME: this is dubious with overflow.
             let additions = self.cache_additions.load(Relaxed);
             let subtractions = self.cache_subtractions.load(Relaxed);
             let size = additions - subtractions;

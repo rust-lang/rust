@@ -584,7 +584,7 @@ mod test {
     })
 
     iotest!(fn socket_and_peer_name_ip6() {
-        // XXX: peer name is not consistent
+        // FIXME: peer name is not consistent
         //peer_name(next_test_ip6());
         socket_name(next_test_ip6());
     })

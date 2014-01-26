@@ -2311,7 +2311,7 @@ pub fn print_string(s: &mut State, st: &str, style: ast::StrStyle) {
     word(&mut s.s, st);
 }
 
-// XXX(pcwalton): A nasty function to extract the string from an `io::Writer`
+// FIXME(pcwalton): A nasty function to extract the string from an `io::Writer`
 // that we "know" to be a `MemWriter` that works around the lack of checked
 // downcasts.
 unsafe fn get_mem_writer(writer: &mut ~io::Writer) -> ~str {

@@ -61,7 +61,7 @@ pub struct Export2 {
 // not contain any entries from local crates.
 pub type ExternalExports = HashSet<DefId>;
 
-// XXX: dox
+// FIXME: dox
 pub type LastPrivateMap = HashMap<NodeId, LastPrivate>;
 
 pub enum LastPrivate {
@@ -1411,7 +1411,7 @@ impl Resolver {
                                        parent: ReducedGraphParent,
                                        parent_public: bool) {
         let ident = variant.node.name;
-        // XXX: this is unfortunate to have to do this privacy calculation
+        // FIXME: this is unfortunate to have to do this privacy calculation
         //      here. This should be living in middle::privacy, but it's
         //      necessary to keep around in some form becaues of glob imports...
         let is_public = parent_public && variant.node.vis != ast::Private;
@@ -5282,7 +5282,7 @@ impl Resolver {
                                                    `{}`",
                                                    interner_get(label))),
                     Some(DlDef(def @ DefLabel(_))) => {
-                        // XXX: is AllPublic correct?
+                        // FIXME: is AllPublic correct?
                         self.record_def(expr.id, (def, AllPublic))
                     }
                     Some(_) => {

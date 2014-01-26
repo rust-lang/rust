@@ -674,7 +674,7 @@ pub fn chown(p: &CString, uid: int, gid: int) -> IoResult<()> {
 pub fn readlink(p: &CString) -> IoResult<Path> {
     return os_readlink(p);
 
-    // XXX: I have a feeling that this reads intermediate symlinks as well.
+    // FIXME: I have a feeling that this reads intermediate symlinks as well.
     #[cfg(windows)]
     fn os_readlink(p: &CString) -> IoResult<Path> {
         let handle = unsafe {
@@ -709,7 +709,7 @@ pub fn readlink(p: &CString) -> IoResult<Path> {
         let p = p.with_ref(|p| p);
         let mut len = unsafe { libc::pathconf(p, libc::_PC_NAME_MAX) };
         if len == -1 {
-            len = 1024; // XXX: read PATH_MAX from C ffi?
+            len = 1024; // FIXME: read PATH_MAX from C ffi?
         }
         let mut buf = vec::with_capacity::<u8>(len as uint);
         match retry(|| unsafe {
@@ -877,7 +877,7 @@ pub fn stat(p: &CString) -> IoResult<io::FileStat> {
 pub fn lstat(p: &CString) -> IoResult<io::FileStat> {
     return os_lstat(p);
 
-    // XXX: windows implementation is missing
+    // FIXME: windows implementation is missing
     #[cfg(windows)]
     fn os_lstat(_p: &CString) -> IoResult<io::FileStat> {
         Err(super::unimpl())

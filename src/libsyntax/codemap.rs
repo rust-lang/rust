@@ -41,7 +41,7 @@ pub struct BytePos(u32);
 #[deriving(Eq,IterBytes, Ord)]
 pub struct CharPos(uint);
 
-// XXX: Lots of boilerplate in these impls, but so far my attempts to fix
+// FIXME: Lots of boilerplate in these impls, but so far my attempts to fix
 // have been unsuccessful
 
 impl Pos for BytePos {

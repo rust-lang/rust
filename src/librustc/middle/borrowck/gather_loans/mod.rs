@@ -416,7 +416,7 @@ impl<'a> GatherLoanCtxt<'a> {
             }
 
             ty::AutoObject(..) => {
-                // XXX: Handle @Trait to &Trait casts here?
+                // FIXME: Handle @Trait to &Trait casts here?
             }
         }
     }
