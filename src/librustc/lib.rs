@@ -330,7 +330,7 @@ fn parse_crate_attrs(sess: session::Session,
 /// The diagnostic emitter yielded to the procedure should be used for reporting
 /// errors of the compiler.
 pub fn monitor(f: proc(@diagnostic::Emitter)) {
-    // XXX: This is a hack for newsched since it doesn't support split stacks.
+    // FIXME: This is a hack for newsched since it doesn't support split stacks.
     // rustc needs a lot of stack! When optimizations are disabled, it needs
     // even *more* stack than usual as well.
     #[cfg(rtopt)]
@@ -341,7 +341,7 @@ pub fn monitor(f: proc(@diagnostic::Emitter)) {
     let mut task_builder = task::task();
     task_builder.name("rustc");
 
-    // XXX: Hacks on hacks. If the env is trying to override the stack size
+    // FIXME: Hacks on hacks. If the env is trying to override the stack size
     // then *don't* set it explicitly.
     if os::getenv("RUST_MIN_STACK").is_none() {
         task_builder.opts.stack_size = Some(STACK_SIZE);

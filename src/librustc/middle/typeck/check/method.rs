@@ -861,7 +861,7 @@ impl<'a> LookupContext<'a> {
                            rcvr_ty: ty::t,
                            candidates: &mut ~[Candidate])
                            -> Option<method_map_entry> {
-        // XXX(pcwalton): Do we need to clone here?
+        // FIXME(pcwalton): Do we need to clone here?
         let relevant_candidates: ~[Candidate] =
             candidates.iter().map(|c| (*c).clone()).
                 filter(|c| self.is_relevant(rcvr_ty, c)).collect();
@@ -1169,7 +1169,7 @@ impl<'a> LookupContext<'a> {
                 let destructors = self.tcx().destructors.borrow();
                 bad = destructors.get().contains(&method_id);
             }
-            // XXX: does this properly enforce this on everything now
+            // FIXME: does this properly enforce this on everything now
             // that self has been merged in? -sully
             method_param(method_param { trait_id: trait_id, .. }) |
             method_object(method_object { trait_id: trait_id, .. }) => {

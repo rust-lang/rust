@@ -56,7 +56,7 @@ static HOMO_SAPIENS: [AminoAcid, ..4] = [
     AminoAcid { c: 't' as u8, p: 0.3015094502008 },
 ];
 
-// XXX: Use map().
+// FIXME: Use map().
 fn sum_and_scale(a: &'static [AminoAcid]) -> ~[AminoAcid] {
     let mut result = ~[];
     let mut p = 0f32;

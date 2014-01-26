@@ -301,7 +301,7 @@ fn json_input(input: &str) -> Result<Output, ~str> {
                 }
                 None => return Err(~"malformed json"),
             };
-            // XXX: this should read from the "plugins" field, but currently
+            // FIXME: this should read from the "plugins" field, but currently
             //      Json doesn't implement decodable...
             let plugin_output = ~[];
             Ok((crate, plugin_output))

@@ -276,7 +276,7 @@ impl Arena {
     #[inline]
     pub fn alloc<'a, T>(&'a self, op: || -> T) -> &'a T {
         unsafe {
-            // XXX: Borrow check
+            // FIXME: Borrow check
             let this = transmute_mut(self);
             if intrinsics::needs_drop::<T>() {
                 this.alloc_nonpod(op)

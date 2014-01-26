@@ -323,7 +323,7 @@ impl fmt::Default for clean::Type {
                        },
                        arrow = match decl.decl.output { clean::Unit => "no", _ => "yes" },
                        ret = decl.decl.output);
-                // XXX: where are bounds and lifetimes printed?!
+                // FIXME: where are bounds and lifetimes printed?!
             }
             clean::BareFunction(ref decl) => {
                 write!(f.buf, "{}{}fn{}{}",
@@ -481,7 +481,7 @@ impl fmt::Default for clean::ViewPath {
 impl fmt::Default for clean::ImportSource {
     fn fmt(v: &clean::ImportSource, f: &mut fmt::Formatter) {
         match v.did {
-            // XXX: shouldn't be restricted to just local imports
+            // FIXME: shouldn't be restricted to just local imports
             Some(did) if ast_util::is_local(did) => {
                 resolved_path(f.buf, did.node, &v.path, true);
             }
@@ -498,7 +498,7 @@ impl fmt::Default for clean::ImportSource {
 impl fmt::Default for clean::ViewListIdent {
     fn fmt(v: &clean::ViewListIdent, f: &mut fmt::Formatter) {
         match v.source {
-            // XXX: shouldn't be limited to just local imports
+            // FIXME: shouldn't be limited to just local imports
             Some(did) if ast_util::is_local(did) => {
                 let path = clean::Path {
                     global: false,

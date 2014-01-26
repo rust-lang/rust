@@ -212,7 +212,7 @@ impl Task {
         // pretty sketchy and involves shuffling vtables of trait objects
         // around, but it gets the job done.
         //
-        // XXX: This function is a serious code smell and should be avoided at
+        // FIXME: This function is a serious code smell and should be avoided at
         //      all costs. I have yet to think of a method to avoid this
         //      function, and I would be saddened if more usage of the function
         //      crops up.

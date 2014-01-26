@@ -404,7 +404,7 @@ impl ReachableContext {
 
     // Step 3: Mark all destructors as reachable.
     //
-    // XXX(pcwalton): This is a conservative overapproximation, but fixing
+    // FIXME(pcwalton): This is a conservative overapproximation, but fixing
     // this properly would result in the necessity of computing *type*
     // reachability, which might result in a compile time loss.
     fn mark_destructors_reachable(&self) {

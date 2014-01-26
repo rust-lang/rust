@@ -2691,7 +2691,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
           let mut checked = false;
           match place.node {
               ast::ExprPath(ref path) => {
-                  // XXX(pcwalton): For now we hardcode the two permissible
+                  // FIXME(pcwalton): For now we hardcode the two permissible
                   // places: the exchange heap and the managed heap.
                   let definition = lookup_def(fcx, path.span, place.id);
                   let def_id = ast_util::def_id_of_def(definition);

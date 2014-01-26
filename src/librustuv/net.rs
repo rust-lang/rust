@@ -343,7 +343,7 @@ impl rtio::RtioTcpListener for TcpListener {
         let mut acceptor = ~TcpAcceptor { listener: self };
 
         let _m = acceptor.fire_homing_missile();
-        // XXX: the 128 backlog should be configurable
+        // FIXME: the 128 backlog should be configurable
         match unsafe { uvll::uv_listen(acceptor.listener.handle, 128, listen_cb) } {
             0 => Ok(acceptor as ~rtio::RtioTcpAcceptor),
             n => Err(uv_error_to_io_error(UvError(n))),

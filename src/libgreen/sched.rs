@@ -32,7 +32,7 @@ use task::{TypeSched, GreenTask, HomeSched, AnySched};
 /// struct. The scheduler struct acts like a baton, all scheduling
 /// actions are transfers of the baton.
 ///
-/// XXX: This creates too many callbacks to run_sched_once, resulting
+/// FIXME: This creates too many callbacks to run_sched_once, resulting
 /// in too much allocation and too many events.
 pub struct Scheduler {
     /// ID number of the pool that this scheduler is a member of. When
@@ -171,7 +171,7 @@ impl Scheduler {
         return sched;
     }
 
-    // XXX: This may eventually need to be refactored so that
+    // FIXME: This may eventually need to be refactored so that
     // the scheduler itself doesn't have to call event_loop.run.
     // That will be important for embedding the runtime into external
     // event loops.
@@ -898,7 +898,7 @@ impl CleanupJob {
     }
 }
 
-// XXX: Some hacks to put a || closure in Scheduler without borrowck
+// FIXME: Some hacks to put a || closure in Scheduler without borrowck
 // complaining
 type UnsafeTaskReceiver = raw::Closure;
 trait ClosureConverter {

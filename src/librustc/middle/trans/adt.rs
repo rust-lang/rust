@@ -805,7 +805,7 @@ fn padding(size: u64) -> ValueRef {
     C_undef(Type::array(&Type::i8(), size))
 }
 
-// XXX this utility routine should be somewhere more general
+// FIXME this utility routine should be somewhere more general
 #[inline]
 fn roundup(x: u64, a: u64) -> u64 { ((x + (a - 1)) / a) * a }
 

@@ -384,7 +384,7 @@ pub fn trans_expr_fn<'a>(
 
     let sub_path = vec::append_one(bcx.fcx.path.clone(),
                                    PathName(special_idents::anon));
-    // XXX: Bad copy.
+    // FIXME: Bad copy.
     let s = mangle_internal_name_by_path_and_seq(ccx,
                                                  sub_path.clone(),
                                                  "expr_fn");

@@ -259,7 +259,7 @@ impl Drop for Request {
     }
 }
 
-/// XXX: Loop(*handle) is buggy with destructors. Normal structs
+/// FIXME: Loop(*handle) is buggy with destructors. Normal structs
 /// with dtors may not be destructured, but tuple structs can,
 /// but the results are not correct.
 pub struct Loop {
@@ -284,7 +284,7 @@ impl Loop {
     }
 }
 
-// XXX: Need to define the error constants like EOF so they can be
+// FIXME: Need to define the error constants like EOF so they can be
 // compared to the UvError type
 
 pub struct UvError(c_int);
@@ -349,7 +349,7 @@ pub fn uv_error_to_io_error(uverr: UvError) -> IoError {
             uvll::EADDRNOTAVAIL => io::ConnectionRefused,
             err => {
                 uvdebug!("uverr.code {}", err as int);
-                // XXX: Need to map remaining uv error types
+                // FIXME: Need to map remaining uv error types
                 io::OtherIoError
             }
         };

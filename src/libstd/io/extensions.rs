@@ -10,8 +10,8 @@
 
 //! Utility mixins that apply to all Readers and Writers
 
-// XXX: Not sure how this should be structured
-// XXX: Iteration should probably be considered separately
+// FIXME: Not sure how this should be structured
+// FIXME: Iteration should probably be considered separately
 
 use container::Container;
 use iter::Iterator;

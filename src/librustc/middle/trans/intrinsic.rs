@@ -417,7 +417,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
             RetVoid(bcx);
         }
         "morestack_addr" => {
-            // XXX This is a hack to grab the address of this particular
+            // FIXME This is a hack to grab the address of this particular
             // native function. There should be a general in-language
             // way to do this
             let llfty = type_of_rust_fn(bcx.ccx(), None, [], ty::mk_nil());

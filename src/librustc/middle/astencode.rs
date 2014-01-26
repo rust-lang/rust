@@ -913,7 +913,7 @@ impl<'a,'b> ast_util::IdVisitingOperation for
         // it is mutable. But I believe it's harmless since we generate
         // balanced EBML.
         //
-        // XXX(pcwalton): Don't copy this way.
+        // FIXME(pcwalton): Don't copy this way.
         let mut new_ebml_w = unsafe {
             self.new_ebml_w.unsafe_clone()
         };
