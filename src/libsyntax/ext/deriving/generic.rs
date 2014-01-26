@@ -68,6 +68,7 @@ enum C {
     C0(int),
     C1 { x: int }
 }
+~~~
 
 The `int`s in `B` and `C0` don't have an identifier, so the
 `Option<ident>`s would be `None` for them.
