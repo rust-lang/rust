@@ -38,12 +38,12 @@ pub struct DList<T> {
 }
 
 type Link<T> = Option<~Node<T>>;
-struct Rawlink<T> { priv p: *mut T }
+struct Rawlink<T> { p: *mut T }
 
 struct Node<T> {
-    priv next: Link<T>,
-    priv prev: Rawlink<Node<T>>,
-    priv value: T,
+    next: Link<T>,
+    prev: Rawlink<Node<T>>,
+    value: T,
 }
 
 /// Double-ended DList iterator

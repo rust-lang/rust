@@ -18,8 +18,8 @@ fn iterate<'a, T>(x: T, f: 'a |&T| -> T) -> Iterate<'a, T> {
     Iterate {f: f, next: x}
 }
 struct Iterate<'a, T> {
-    priv f: 'a |&T| -> T,
-    priv next: T
+    f: 'a |&T| -> T,
+    next: T
 }
 impl<'a, T> Iterator<T> for Iterate<'a, T> {
     fn next(&mut self) -> Option<T> {
@@ -35,7 +35,7 @@ enum List<'a, T> {
     Cons(T, &'a List<'a, T>)
 }
 struct ListIterator<'a, T> {
-    priv cur: &'a List<'a, T>
+    cur: &'a List<'a, T>
 }
 impl<'a, T> List<'a, T> {
     fn iter(&'a self) -> ListIterator<'a, T> {

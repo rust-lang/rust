@@ -9,8 +9,8 @@
 // except according to those terms.
 
 struct cat<U> {
-    priv info : ~[U],
-    priv meows : uint,
+    info : ~[U],
+    meows : uint,
 
     how_hungry : int,
 }

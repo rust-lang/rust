@@ -95,7 +95,7 @@ pub struct Handle<'port, T> {
     priv port: &'port mut Port<T>,
 }
 
-struct Packets { priv cur: *mut Packet }
+struct Packets { cur: *mut Packet }
 
 impl Select {
     /// Creates a new selection structure. This set is initially empty and

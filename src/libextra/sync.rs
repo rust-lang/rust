@@ -709,8 +709,8 @@ pub struct Barrier {
 
 // The inner state of a double barrier
 struct BarrierState {
-    priv count: uint,
-    priv generation_id: uint,
+    count: uint,
+    generation_id: uint,
 }
 
 impl Barrier {

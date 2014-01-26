@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,16 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[crate_id="issue6919_3#0.1"];
-
-// part of issue-6919.rs
-
-struct C<'a> {
-    pub k: 'a ||,
+struct A {
+    a: int,
+    pub b: int,
 }
 
-fn no_op() { }
-pub static D : C<'static> = C {
-    k: no_op
-};
-
+pub struct B {
+    a: int,
+    priv b: int,
+}
