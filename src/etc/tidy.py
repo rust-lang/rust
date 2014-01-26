@@ -45,9 +45,8 @@ try:
                                 openhook=fileinput.hook_encoded("utf-8")):
 
         if fileinput.filename().find("tidy.py") == -1:
-            if line.find("FIXME") != -1:
-                if re.search("FIXME.*#\d+", line) == None:
-                    report_err("FIXME without issue number")
+            if line.find("// XXX") != -1:
+                report_err("XXX is no longer necessary, use FIXME")
             if line.find("TODO") != -1:
                 report_err("TODO is deprecated; use FIXME")
             match = re.match(r'^.*//\s*(NOTE.*)$', line)
