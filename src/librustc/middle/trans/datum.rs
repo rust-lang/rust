@@ -491,7 +491,7 @@ impl Datum<Expr> {
                     }
                     ByValue => {
                         let v = load(bcx, l.val, l.ty);
-                        l.kind.post_store(bcx, l.val, l.ty);
+                        bcx = l.kind.post_store(bcx, l.val, l.ty);
                         DatumBlock(bcx, Datum(v, l.ty, Rvalue(ByValue)))
                     }
                 }
