@@ -58,6 +58,7 @@
 use any::{Any, AnyRefExt};
 use c_str::CString;
 use cast;
+use fmt;
 use kinds::Send;
 use option::{Some, None, Option};
 use prelude::drop;
@@ -380,6 +381,17 @@ pub fn begin_unwind_raw(msg: *u8, file: *u8, line: uint) -> ! {
     let file = static_char_ptr(file);
 
     begin_unwind(msg, file, line as uint)
+}
+
+/// The entry point for unwinding with a formatted message.
+///
+/// This is designed to reduce the amount of code required at the call
+/// site as much as possible (so that `fail!()` has as low an implact
+/// on (e.g.) the inlining of other functions as possible), by moving
+/// the actual formatting into this shared place.
+#[inline(never)] #[cold]
+pub fn begin_unwind_fmt(msg: &fmt::Arguments, file: &'static str, line: uint) -> ! {
+    begin_unwind_inner(~fmt::format(msg), file, line)
 }
 
 /// This is the entry point of unwinding for fail!() and assert!().

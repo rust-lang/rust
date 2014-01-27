@@ -48,8 +48,18 @@ macro_rules! fail(
         ::std::rt::begin_unwind($msg, file!(), line!())
     );
     ($fmt:expr, $($arg:tt)*) => (
-        ::std::rt::begin_unwind(format!($fmt, $($arg)*), file!(), line!())
-    )
+        {
+            // a closure can't have return type !, so we need a full
+            // function to pass to format_args!, *and* we need the
+            // file and line numbers right here; so an inner bare fn
+            // is our only choice.
+            #[inline]
+            fn run_fmt(fmt: &::std::fmt::Arguments) -> ! {
+                ::std::rt::begin_unwind_fmt(fmt, file!(), line!())
+            }
+            format_args!(run_fmt, $fmt, $($arg)*)
+        }
+        )
 )
 
 #[macro_export]
