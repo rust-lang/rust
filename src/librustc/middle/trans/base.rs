@@ -777,9 +777,6 @@ pub fn iter_structural_ty<'r,
                       let variant_cx =
                           fcx.new_temp_block(~"enum-iter-variant-" +
                                              variant.disr_val.to_str());
-                      let variant_cx =
-                          iter_variant(variant_cx, repr, av, *variant,
-                                       substs.tps, |x,y,z| f(x,y,z));
                       match adt::trans_case(cx, repr, variant.disr_val) {
                           _match::single_result(r) => {
                               AddCase(llswitch, r.val, variant_cx.llbb)
@@ -787,6 +784,9 @@ pub fn iter_structural_ty<'r,
                           _ => ccx.sess.unimpl("value from adt::trans_case \
                                                 in iter_structural_ty")
                       }
+                      let variant_cx =
+                          iter_variant(variant_cx, repr, av, *variant,
+                                       substs.tps, |x,y,z| f(x,y,z));
                       Br(variant_cx, next_cx.llbb);
                   }
                   cx = next_cx;
@@ -1458,16 +1458,16 @@ pub fn build_return_block(fcx: &FunctionContext, ret_cx: &Block) {
 // trans_closure: Builds an LLVM function out of a source function.
 // If the function closes over its environment a closure will be
 // returned.
-pub fn trans_closure(ccx: @CrateContext,
-                     path: ast_map::Path,
-                     decl: &ast::FnDecl,
-                     body: &ast::Block,
-                     llfndecl: ValueRef,
-                     param_substs: Option<@param_substs>,
-                     id: ast::NodeId,
-                     _attributes: &[ast::Attribute],
-                     output_type: ty::t,
-                     maybe_load_env: |&FunctionContext|) {
+pub fn trans_closure<'a>(ccx: @CrateContext,
+                         path: ast_map::Path,
+                         decl: &ast::FnDecl,
+                         body: &ast::Block,
+                         llfndecl: ValueRef,
+                         param_substs: Option<@param_substs>,
+                         id: ast::NodeId,
+                         _attributes: &[ast::Attribute],
+                         output_type: ty::t,
+                         maybe_load_env: |&'a Block<'a>| -> &'a Block<'a>) {
     ccx.stats.n_closures.set(ccx.stats.n_closures.get() + 1);
 
     let _icx = push_ctxt("trans_closure");
@@ -1500,7 +1500,7 @@ pub fn trans_closure(ccx: @CrateContext,
 
     bcx = copy_args_to_allocas(&fcx, arg_scope, bcx, decl.inputs, arg_datums);
 
-    maybe_load_env(&fcx);
+    bcx = maybe_load_env(bcx);
 
     // Up until here, IR instructions for this function have explicitly not been annotated with
     // source code location, so we don't step into call setup code. From here on, source location
@@ -1558,16 +1558,8 @@ pub fn trans_fn(ccx: @CrateContext,
     debug!("trans_fn(param_substs={})", param_substs.repr(ccx.tcx));
     let _icx = push_ctxt("trans_fn");
     let output_type = ty::ty_fn_ret(ty::node_id_to_type(ccx.tcx, id));
-    trans_closure(ccx,
-                  path.clone(),
-                  decl,
-                  body,
-                  llfndecl,
-                  param_substs,
-                  id,
-                  attrs,
-                  output_type,
-                  |_fcx| { });
+    trans_closure(ccx, path.clone(), decl, body, llfndecl,
+                  param_substs, id, attrs, output_type, |bcx| bcx);
 }
 
 pub fn trans_enum_variant(ccx: @CrateContext,
