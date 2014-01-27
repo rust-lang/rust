@@ -137,8 +137,6 @@ impl TyVisitor for MyVisitor {
     fn visit_param(&mut self, _i: uint) -> bool { true }
     fn visit_self(&mut self) -> bool { true }
     fn visit_type(&mut self) -> bool { true }
-    fn visit_opaque_box(&mut self) -> bool { true }
-    fn visit_closure_ptr(&mut self, _ck: uint) -> bool { true }
 }
 
 fn visit_ty<T>(v: &mut MyVisitor) {

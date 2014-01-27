@@ -25,6 +25,7 @@ use std::ops::{BitOr, BitAnd};
 use std::result::{Result};
 use syntax::ast;
 use syntax::ast_map;
+use syntax::ast_util;
 use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::visit;
@@ -294,9 +295,7 @@ pub fn opt_loan_path(cmt: mc::cmt) -> Option<@LoanPath> {
             None
         }
 
-        mc::cat_local(id) |
-        mc::cat_arg(id) |
-        mc::cat_self(id) => {
+        mc::cat_local(id) | mc::cat_arg(id) => {
             Some(@LpVar(id))
         }
 
@@ -771,8 +770,18 @@ impl BorrowckCtxt {
         match *loan_path {
             LpVar(id) => {
                 match self.tcx.items.find(id) {
-                    Some(ast_map::NodeLocal(ref ident, _)) => {
-                        out.push_str(token::ident_to_str(ident));
+                    Some(ast_map::NodeLocal(pat)) => {
+                        match pat.node {
+                            ast::PatIdent(_, ref path, _) => {
+                                let ident = ast_util::path_to_ident(path);
+                                out.push_str(token::ident_to_str(&ident));
+                            }
+                            _ => {
+                                self.tcx.sess.bug(
+                                    format!("Loan path LpVar({:?}) maps to {:?}, not local",
+                                        id, pat));
+                            }
+                        }
                     }
                     r => {
                         self.tcx.sess.bug(

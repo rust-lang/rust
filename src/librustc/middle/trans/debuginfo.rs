@@ -130,8 +130,6 @@ use lib::llvm::llvm;
 use lib::llvm::{ModuleRef, ContextRef, ValueRef};
 use lib::llvm::debuginfo::*;
 use middle::trans::adt;
-use middle::trans::base;
-use middle::trans::build;
 use middle::trans::common::*;
 use middle::trans::datum::{Datum, Lvalue};
 use middle::trans::machine;
@@ -328,8 +326,7 @@ pub fn create_captured_var_metadata(bcx: &Block,
         None => {
             cx.sess.span_bug(span, "debuginfo::create_captured_var_metadata() - NodeId not found");
         }
-        Some(ast_map::NodeLocal(ident, _)) => ident,
-        Some(ast_map::NodeArg(pat)) => {
+        Some(ast_map::NodeLocal(pat)) | Some(ast_map::NodeArg(pat)) => {
             match pat.node {
                 ast::PatIdent(_, ref path, _) => {
                     ast_util::path_to_ident(path)
@@ -407,83 +404,6 @@ pub fn create_match_binding_metadata(bcx: &Block,
                   scope_metadata,
                   DirectVariable { alloca: datum.val },
                   LocalVariable,
-                  span);
-}
-
-/// Creates debug information for the self argument of a method.
-///
-/// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_self_argument_metadata(bcx: &Block,
-                                     type_of_self: ty::t,
-                                     llptr: ValueRef) {
-    if fn_should_be_ignored(bcx.fcx) {
-        return;
-    }
-
-    // Extract the span of the self argument from the method's AST
-    let fnitem = bcx.ccx().tcx.items.get(bcx.fcx.id);
-    let span = match fnitem {
-        ast_map::NodeMethod(method, _, _) => {
-            method.explicit_self.span
-        }
-        ast_map::NodeTraitMethod(trait_method, _, _) => {
-            match *trait_method {
-                ast::Provided(method) => method.explicit_self.span,
-                _ => {
-                    bcx.ccx()
-                       .sess
-                       .bug(format!("create_self_argument_metadata: \
-                                     unexpected sort of node: {:?}",
-                                     fnitem))
-                }
-            }
-        }
-        _ => bcx.ccx().sess.bug(
-                format!("create_self_argument_metadata: unexpected sort of node: {:?}", fnitem))
-    };
-
-    let scope_metadata = bcx.fcx.debug_context.get_ref(bcx.ccx(), span).fn_metadata;
-
-    let argument_index = {
-        let counter = &bcx.fcx.debug_context.get_ref(bcx.ccx(), span).argument_counter;
-        let argument_index = counter.get();
-        counter.set(argument_index + 1);
-        argument_index
-    };
-
-    let address_operations = &[unsafe { llvm::LLVMDIBuilderCreateOpDeref(Type::i64().to_ref()) }];
-
-    // The self argument comes in one of two forms:
-    // (1) For `&self`, `~self`, and `@self` it is an alloca containing a pointer to the data. That
-    //     is the `{&~@}self` pointer is contained by value in the alloca, and `type_of_self` will
-    //     be `{&~@}Self`
-    // (2) For by-value `self`, `llptr` will not be an alloca, but a pointer to the self-value. That
-    //     is by-value `self` is always implicitly passed by reference (sic!). So we have a couple
-    //     of problems here:
-    //     (a) There is no alloca to give to `llvm.dbg.declare` and
-    //     (b) `type_of_self` is `Self`, but `llptr` is of type `*Self`
-    //     In order to solve this problem, the else branch below creates a helper alloca which
-    //     contains a copy of `llptr`. We then describe the `self` parameter by pointing
-    //     `llvm.dbg.declare` to this helper alloca and tell it that the pointer there needs to be
-    //     dereferenced once to get to the actual data (similar to non-immediate by-value args).
-    let variable_access = if unsafe { llvm::LLVMIsAAllocaInst(llptr) } != ptr::null() {
-        DirectVariable { alloca: llptr }
-    } else {
-        // Create a helper alloca that allows us to track the self-argument properly. The alloca
-        // contains a pointer to the self-value.
-        let ptr_type = ty::mk_mut_ptr(bcx.tcx(), type_of_self);
-        let helper_alloca = base::alloc_ty(bcx, ptr_type, "__self");
-        build::Store(bcx, llptr, helper_alloca);
-
-        IndirectVariable { alloca: helper_alloca, address_operations: address_operations }
-    };
-
-    declare_local(bcx,
-                  special_idents::self_,
-                  type_of_self,
-                  scope_metadata,
-                  variable_access,
-                  ArgumentVariable(argument_index),
                   span);
 }
 
@@ -1768,7 +1688,7 @@ fn boxed_type_metadata(cx: &CrateContext,
         None                    => ~"BoxedType"
     };
 
-    let box_llvm_type = Type::smart_ptr(cx, &content_llvm_type);
+    let box_llvm_type = Type::at_box(cx, content_llvm_type);
     let member_llvm_types = box_llvm_type.field_types();
     assert!(box_layout_is_correct(cx, member_llvm_types, content_llvm_type));
 
@@ -2584,11 +2504,10 @@ fn populate_scope_map(cx: &CrateContext,
 
         match exp.node {
             ast::ExprLogLevel |
-            ast::ExprSelf     |
             ast::ExprLit(_)   |
             ast::ExprBreak(_) |
             ast::ExprAgain(_) |
-            ast::ExprPath(_)  => (),
+            ast::ExprPath(_)  => {}
 
             ast::ExprVstore(sub_exp, _)   |
             ast::ExprCast(sub_exp, _)     |
@@ -2697,8 +2616,7 @@ fn populate_scope_map(cx: &CrateContext,
                 })
             }
 
-            // ast::expr_loop_body(inner_exp) |
-            ast::ExprDoBody(inner_exp)   => {
+            ast::ExprDoBody(inner_exp) => {
                 let inner_expr_is_expr_fn_block = match *inner_exp {
                     ast::Expr { node: ast::ExprFnBlock(..), .. } => true,
                     _ => false
@@ -2720,9 +2638,8 @@ fn populate_scope_map(cx: &CrateContext,
                 }
             }
 
-            ast::ExprMethodCall(node_id, receiver_exp, _, _, ref args, _) => {
+            ast::ExprMethodCall(node_id, _, _, ref args, _) => {
                 scope_map.insert(node_id, scope_stack.last().unwrap().scope_metadata);
-                walk_expr(cx, receiver_exp, scope_stack, scope_map);
 
                 for arg_exp in args.iter() {
                     walk_expr(cx, *arg_exp, scope_stack, scope_map);

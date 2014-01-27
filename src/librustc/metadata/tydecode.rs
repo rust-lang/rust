@@ -374,10 +374,6 @@ fn parse_ty(st: &mut PState, conv: conv_did) -> ty::t {
         return ty::mk_bare_fn(st.tcx, parse_bare_fn_ty(st, |x,y| conv(x,y)));
       }
       'Y' => return ty::mk_type(st.tcx),
-      'C' => {
-        let sigil = parse_sigil(st);
-        return ty::mk_opaque_closure_ptr(st.tcx, sigil);
-      }
       '#' => {
         let pos = parse_hex(st);
         assert_eq!(next(st), ':');

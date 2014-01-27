@@ -230,7 +230,7 @@ impl<W: Writer> LineBufferedWriter<W> {
     /// Unwraps this buffer, returning the underlying writer.
     ///
     /// The internal buffer is flushed before returning the writer.
-    pub fn unwrap(mut self) -> W { self.inner.unwrap() }
+    pub fn unwrap(self) -> W { self.inner.unwrap() }
 }
 
 impl<W: Writer> Writer for LineBufferedWriter<W> {

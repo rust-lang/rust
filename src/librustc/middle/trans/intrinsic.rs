@@ -153,13 +153,8 @@ pub fn trans_intrinsic(ccx: @CrateContext,
 
     let output_type = ty::ty_fn_ret(ty::node_id_to_type(ccx.tcx, item.id));
 
-    let fcx = new_fn_ctxt_detailed(ccx,
-                                   path,
-                                   decl,
-                                   item.id,
-                                   output_type,
-                                   Some(substs),
-                                   Some(item.span));
+    let fcx = new_fn_ctxt_detailed(ccx, path, decl, item.id, false, output_type,
+                                   Some(substs), Some(item.span));
     init_function(&fcx, true, output_type, Some(substs));
 
     set_always_inline(fcx.llfn);
@@ -420,7 +415,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
             // FIXME This is a hack to grab the address of this particular
             // native function. There should be a general in-language
             // way to do this
-            let llfty = type_of_rust_fn(bcx.ccx(), None, [], ty::mk_nil());
+            let llfty = type_of_rust_fn(bcx.ccx(), false, [], ty::mk_nil());
             let morestack_addr = decl_cdecl_fn(bcx.ccx().llmod, "__morestack",
                                                llfty, ty::mk_nil());
             let morestack_addr = PointerCast(bcx, morestack_addr,

@@ -174,7 +174,7 @@ impl PipeListener {
 }
 
 impl RtioUnixListener for PipeListener {
-    fn listen(mut ~self) -> Result<~RtioUnixAcceptor, IoError> {
+    fn listen(~self) -> Result<~RtioUnixAcceptor, IoError> {
         // create the acceptor object from ourselves
         let mut acceptor = ~PipeAcceptor { listener: self };
 

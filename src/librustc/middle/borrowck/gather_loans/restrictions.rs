@@ -74,8 +74,7 @@ impl<'a> RestrictionsContext<'a> {
             }
 
             mc::cat_local(local_id) |
-            mc::cat_arg(local_id) |
-            mc::cat_self(local_id) => {
+            mc::cat_arg(local_id) => {
                 // R-Variable
                 let lp = @LpVar(local_id);
                 SafeIf(lp, ~[Restriction {loan_path: lp,

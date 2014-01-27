@@ -10,10 +10,11 @@
 
 // The Rust abstract syntax tree.
 
-use codemap::{Span, Spanned};
+use codemap::{Span, Spanned, DUMMY_SP};
 use abi::AbiSet;
+use ast_util;
 use opt_vec::OptVec;
-use parse::token::{interner_get, str_to_ident};
+use parse::token::{interner_get, str_to_ident, special_idents};
 
 use std::cell::RefCell;
 use std::hashmap::HashMap;
@@ -236,7 +237,6 @@ pub enum MethodProvenance {
 pub enum Def {
     DefFn(DefId, Purity),
     DefStaticMethod(/* method */ DefId, MethodProvenance, Purity),
-    DefSelf(NodeId, bool /* is_mutbl */),
     DefSelfTy(/* trait id */ NodeId),
     DefMod(DefId),
     DefForeignMod(DefId),
@@ -357,7 +357,7 @@ pub enum BindingMode {
 pub enum Pat_ {
     PatWild,
     PatWildMulti,
-    // A pat_ident may either be a new bound variable,
+    // A PatIdent may either be a new bound variable,
     // or a nullary enum (in which case the second field
     // is None).
     // In the nullary enum case, the parser can't determine
@@ -366,7 +366,7 @@ pub enum Pat_ {
     // set (of "pat_idents that refer to nullary enums")
     PatIdent(BindingMode, Path, Option<@Pat>),
     PatEnum(Path, Option<~[@Pat]>), /* "none" means a * pattern where
-                                       * we don't bind the fields to names */
+                                     * we don't bind the fields to names */
     PatStruct(Path, ~[FieldPat], bool),
     PatTup(~[@Pat]),
     PatUniq(@Pat),
@@ -374,7 +374,7 @@ pub enum Pat_ {
     PatLit(@Expr),
     PatRange(@Expr, @Expr),
     // [a, b, ..i, y, z] is represented as
-    // pat_vec(~[a, b], Some(i), ~[y, z])
+    // PatVec(~[a, b], Some(i), ~[y, z])
     PatVec(~[@Pat], Option<@Pat>, ~[@Pat])
 }
 
@@ -526,7 +526,7 @@ pub struct Expr {
 impl Expr {
     pub fn get_callee_id(&self) -> Option<NodeId> {
         match self.node {
-            ExprMethodCall(callee_id, _, _, _, _, _) |
+            ExprMethodCall(callee_id, _, _, _, _) |
             ExprIndex(callee_id, _, _) |
             ExprBinary(callee_id, _, _, _) |
             ExprAssignOp(callee_id, _, _, _) |
@@ -550,7 +550,7 @@ pub enum Expr_ {
     ExprBox(@Expr, @Expr),
     ExprVec(~[@Expr], Mutability),
     ExprCall(@Expr, ~[@Expr], CallSugar),
-    ExprMethodCall(NodeId, @Expr, Ident, ~[P<Ty>], ~[@Expr], CallSugar),
+    ExprMethodCall(NodeId, Ident, ~[P<Ty>], ~[@Expr], CallSugar),
     ExprTup(~[@Expr]),
     ExprBinary(NodeId, BinOp, @Expr, @Expr),
     ExprUnary(NodeId, UnOp, @Expr),
@@ -579,8 +579,6 @@ pub enum Expr_ {
     /// of a function call.
     ExprPath(Path),
 
-    /// The special identifier `self`.
-    ExprSelf,
     ExprAddrOf(Mutability, @Expr),
     ExprBreak(Option<Name>),
     ExprAgain(Option<Name>),
@@ -783,7 +781,7 @@ pub enum IntTy {
 
 impl ToStr for IntTy {
     fn to_str(&self) -> ~str {
-        ::ast_util::int_ty_to_str(*self)
+        ast_util::int_ty_to_str(*self)
     }
 }
 
@@ -798,7 +796,7 @@ pub enum UintTy {
 
 impl ToStr for UintTy {
     fn to_str(&self) -> ~str {
-        ::ast_util::uint_ty_to_str(*self)
+        ast_util::uint_ty_to_str(*self)
     }
 }
 
@@ -810,7 +808,7 @@ pub enum FloatTy {
 
 impl ToStr for FloatTy {
     fn to_str(&self) -> ~str {
-        ::ast_util::float_ty_to_str(*self)
+        ast_util::float_ty_to_str(*self)
     }
 }
 
@@ -886,7 +884,7 @@ pub enum Ty_ {
     TyTup(~[P<Ty>]),
     TyPath(Path, Option<OptVec<TyParamBound>>, NodeId), // for #7264; see above
     TyTypeof(@Expr),
-    // ty_infer means the type should be inferred instead of it having been
+    // TyInfer means the type should be inferred instead of it having been
     // specified. This should only appear at the "top level" of a type and not
     // nested in one.
     TyInfer,
@@ -915,6 +913,26 @@ pub struct Arg {
     ty: P<Ty>,
     pat: @Pat,
     id: NodeId,
+}
+
+impl Arg {
+    pub fn new_self(span: Span, mutability: Mutability) -> Arg {
+        let path = ast_util::ident_to_path(span, special_idents::self_);
+        Arg {
+            // HACK(eddyb) fake type for the self argument.
+            ty: P(Ty {
+                id: DUMMY_NODE_ID,
+                node: TyInfer,
+                span: DUMMY_SP,
+            }),
+            pat: @Pat {
+                id: DUMMY_NODE_ID,
+                node: PatIdent(BindByValue(mutability), path, None),
+                span: span
+            },
+            id: DUMMY_NODE_ID
+        }
+    }
 }
 
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
@@ -952,10 +970,10 @@ pub enum RetStyle {
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum ExplicitSelf_ {
     SelfStatic,                                // no self
-    SelfValue(Mutability),                     // `self`, `mut self`
+    SelfValue,                                 // `self`
     SelfRegion(Option<Lifetime>, Mutability),  // `&'lt self`, `&'lt mut self`
     SelfBox,                                   // `@self`
-    SelfUniq(Mutability)                       // `~self`, `mut ~self`
+    SelfUniq                                   // `~self`
 }
 
 pub type ExplicitSelf = Spanned<ExplicitSelf_>;
@@ -971,7 +989,6 @@ pub struct Method {
     body: P<Block>,
     id: NodeId,
     span: Span,
-    self_id: NodeId,
     vis: Visibility,
 }
 

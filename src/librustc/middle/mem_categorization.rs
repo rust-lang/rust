@@ -70,7 +70,6 @@ pub enum categorization {
     cat_interior(cmt, InteriorKind),   // something interior: field, tuple, etc
     cat_downcast(cmt),                 // selects a particular enum variant (..)
     cat_discr(cmt, ast::NodeId),       // match discriminant (see preserve())
-    cat_self(ast::NodeId),             // explicit `self`
 
     // (..) downcast is only required if the enum has more than one variant
 }
@@ -426,7 +425,7 @@ impl mem_categorization_ctxt {
             self.cat_index(expr, base_cmt, 0)
           }
 
-          ast::ExprPath(_) | ast::ExprSelf => {
+          ast::ExprPath(_) => {
             let def_map = self.tcx.def_map.borrow();
             let def = def_map.get().get_copy(&expr.id);
             self.cat_def(expr.id, expr.span, expr_ty, def)
@@ -499,16 +498,6 @@ impl mem_categorization_ctxt {
                 span: span,
                 cat: cat_arg(vid),
                 mutbl: m,
-                ty:expr_ty
-            }
-          }
-
-          ast::DefSelf(self_id, mutbl) => {
-            @cmt_ {
-                id:id,
-                span:span,
-                cat:cat_self(self_id),
-                mutbl: if mutbl { McDeclared } else { McImmutable },
                 ty:expr_ty
             }
           }
@@ -1032,9 +1021,6 @@ impl mem_categorization_ctxt {
           cat_local(_) => {
               ~"local variable"
           }
-          cat_self(_) => {
-              ~"self value"
-          }
           cat_arg(..) => {
               ~"argument"
           }
@@ -1129,7 +1115,6 @@ impl cmt_ {
             cat_static_item |
             cat_copied_upvar(..) |
             cat_local(..) |
-            cat_self(..) |
             cat_arg(..) |
             cat_deref(_, _, unsafe_ptr(..)) |
             cat_deref(_, _, gc_ptr) |
@@ -1165,7 +1150,6 @@ impl cmt_ {
             cat_rvalue(..) |
             cat_local(..) |
             cat_arg(_) |
-            cat_self(..) |
             cat_deref(_, _, unsafe_ptr(..)) | // of course it is aliasable, but...
             cat_deref(_, _, region_ptr(MutMutable, _)) => {
                 None
@@ -1212,7 +1196,6 @@ impl Repr for categorization {
             cat_rvalue(..) |
             cat_copied_upvar(..) |
             cat_local(..) |
-            cat_self(..) |
             cat_arg(..) => {
                 format!("{:?}", *self)
             }

@@ -18,6 +18,7 @@ use ext::quote::rt::*;
 use fold::Folder;
 use opt_vec;
 use opt_vec::OptVec;
+use parse::token::special_idents;
 
 pub struct Field {
     ident: ast::Ident,
@@ -478,7 +479,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.expr_path(self.path_ident(span, id))
     }
     fn expr_self(&self, span: Span) -> @ast::Expr {
-        self.expr(span, ast::ExprSelf)
+        self.expr_ident(span, special_idents::self_)
     }
 
     fn expr_binary(&self, sp: Span, op: ast::BinOp,
@@ -523,9 +524,9 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     fn expr_method_call(&self, span: Span,
                         expr: @ast::Expr,
                         ident: ast::Ident,
-                        args: ~[@ast::Expr]) -> @ast::Expr {
-        self.expr(span,
-                  ast::ExprMethodCall(ast::DUMMY_NODE_ID, expr, ident, ~[], args, ast::NoSugar))
+                        mut args: ~[@ast::Expr]) -> @ast::Expr {
+        args.unshift(expr);
+        self.expr(span, ast::ExprMethodCall(ast::DUMMY_NODE_ID, ident, ~[], args, ast::NoSugar))
     }
     fn expr_block(&self, b: P<ast::Block>) -> @ast::Expr {
         self.expr(b.span, ast::ExprBlock(b))

@@ -48,7 +48,7 @@ impl Visitor<int> for CollectFreevarsVisitor {
             ast::ExprFnBlock(..) | ast::ExprProc(..) => {
                 visit::walk_expr(self, expr, depth + 1)
             }
-            ast::ExprPath(..) | ast::ExprSelf => {
+            ast::ExprPath(..) => {
                 let mut i = 0;
                 let def_map = self.def_map.borrow();
                 match def_map.get().find(&expr.id) {

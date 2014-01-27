@@ -306,9 +306,7 @@ pub trait Folder {
 
     fn fold_explicit_self_(&mut self, es: &ExplicitSelf_) -> ExplicitSelf_ {
         match *es {
-            SelfStatic | SelfValue(_) | SelfUniq(_) | SelfBox => {
-                *es
-            }
+            SelfStatic | SelfValue | SelfUniq | SelfBox => *es,
             SelfRegion(ref lifetime, m) => {
                 SelfRegion(fold_opt_lifetime(lifetime, self), m)
             }
@@ -666,7 +664,6 @@ pub fn noop_fold_method<T: Folder>(m: &Method, folder: &mut T) -> @Method {
         body: folder.fold_block(m.body),
         id: folder.new_id(m.id),
         span: folder.new_span(m.span),
-        self_id: folder.new_id(m.self_id),
         vis: m.vis
     }
 }
@@ -737,10 +734,9 @@ pub fn noop_fold_expr<T: Folder>(e: @Expr, folder: &mut T) -> @Expr {
                      args.map(|&x| folder.fold_expr(x)),
                      blk)
         }
-        ExprMethodCall(callee_id, f, i, ref tps, ref args, blk) => {
+        ExprMethodCall(callee_id, i, ref tps, ref args, blk) => {
             ExprMethodCall(
                 folder.new_id(callee_id),
-                folder.fold_expr(f),
                 folder.fold_ident(i),
                 tps.map(|&x| folder.fold_ty(x)),
                 args.map(|&x| folder.fold_expr(x)),
@@ -811,7 +807,6 @@ pub fn noop_fold_expr<T: Folder>(e: @Expr, folder: &mut T) -> @Expr {
                       folder.fold_expr(er))
         }
         ExprPath(ref pth) => ExprPath(folder.fold_path(pth)),
-        ExprSelf => ExprSelf,
         ExprLogLevel => ExprLogLevel,
         ExprBreak(opt_ident) => ExprBreak(opt_ident),
         ExprAgain(opt_ident) => ExprAgain(opt_ident),
