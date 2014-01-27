@@ -873,7 +873,7 @@ pub fn run_test(force_ignore: bool,
     fn run_test_inner(desc: TestDesc,
                       monitor_ch: SharedChan<MonitorMsg>,
                       testfn: proc()) {
-        do spawn {
+        spawn(proc() {
             let mut task = task::task();
             task.name(match desc.name {
                 DynTestName(ref name) => SendStrOwned(name.clone()),
@@ -885,7 +885,7 @@ pub fn run_test(force_ignore: bool,
             let task_result = result_future.recv();
             let test_result = calc_result(&desc, task_result.is_ok());
             monitor_ch.send((desc.clone(), test_result));
-        }
+        });
     }
 
     match testfn {

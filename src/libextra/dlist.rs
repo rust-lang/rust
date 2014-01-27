@@ -971,10 +971,10 @@ mod tests {
     #[test]
     fn test_send() {
         let n = list_from([1,2,3]);
-        do spawn {
+        spawn(proc() {
             check_links(&n);
             assert_eq!(~[&1,&2,&3], n.iter().collect::<~[&int]>());
-        }
+        });
     }
 
     #[test]

@@ -18,7 +18,7 @@
  * use extra::future::Future;
  * # fn fib(n: uint) -> uint {42};
  * # fn make_a_sandwich() {};
- * let mut delayed_fib = do Future::spawn { fib(5000) };
+ * let mut delayed_fib = Future::spawn(proc() { fib(5000) });
  * make_a_sandwich();
  * println!("fib(5000) = {}", delayed_fib.get())
  * ```
@@ -112,9 +112,9 @@ impl<A:Send> Future<A> {
          * waiting for the result to be received on the port.
          */
 
-        do Future::from_fn {
+        Future::from_fn(proc() {
             port.recv()
-        }
+        })
     }
 
     pub fn spawn(blk: proc() -> A) -> Future<A> {
@@ -127,9 +127,9 @@ impl<A:Send> Future<A> {
 
         let (port, chan) = Chan::new();
 
-        do spawn {
+        spawn(proc() {
             chan.send(blk());
-        }
+        });
 
         Future::from_port(port)
     }
@@ -195,11 +195,11 @@ mod test {
     #[test]
     fn test_sendable_future() {
         let expected = "schlorf";
-        let f = do Future::spawn { expected };
-        do task::spawn {
+        let f = Future::spawn(proc() { expected });
+        task::spawn(proc() {
             let mut f = f;
             let actual = f.get();
             assert_eq!(actual, expected);
-        }
+        });
     }
 }
