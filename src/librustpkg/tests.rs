@@ -1770,11 +1770,8 @@ fn test_linker_build() {
     let matches = getopts([], optgroups());
     let options = build_session_options(~"rustpkg",
                                         matches.as_ref().unwrap(),
-                                        @diagnostic::DefaultEmitter as
-                                            @diagnostic::Emitter);
-    let sess = build_session(options,
-                             @diagnostic::DefaultEmitter as
-                                @diagnostic::Emitter);
+                                        @diagnostic::DefaultEmitter);
+    let sess = build_session(options, None, @diagnostic::DefaultEmitter);
     let test_sys = test_sysroot();
     // FIXME (#9639): This needs to handle non-utf8 paths
     let cc = get_cc_prog(sess);

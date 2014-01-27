@@ -264,6 +264,7 @@ pub fn compile_input(context: &BuildContext,
     debug!("About to build session...");
 
     let sess = driver::build_session(options,
+                                     Some(in_file.clone()),
                                      @diagnostic::DefaultEmitter as
                                         @diagnostic::Emitter);
 
