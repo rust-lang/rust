@@ -146,7 +146,7 @@ pub mod method;
 /// closures defined within the function.  For example:
 ///
 ///     fn foo() {
-///         do bar() { ... }
+///         bar(proc() { ... })
 ///     }
 ///
 /// Here, the function `foo()` and the closure passed to

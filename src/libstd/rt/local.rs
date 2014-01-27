@@ -57,17 +57,17 @@ mod test {
 
     #[test]
     fn thread_local_task_smoke_test() {
-        do run_in_bare_thread {
+        run_in_bare_thread(proc() {
             let task = ~Task::new();
             Local::put(task);
             let task: ~Task = Local::take();
             cleanup_task(task);
-        }
+        });
     }
 
     #[test]
     fn thread_local_task_two_instances() {
-        do run_in_bare_thread {
+        run_in_bare_thread(proc() {
             let task = ~Task::new();
             Local::put(task);
             let task: ~Task = Local::take();
@@ -76,13 +76,12 @@ mod test {
             Local::put(task);
             let task: ~Task = Local::take();
             cleanup_task(task);
-        }
-
+        });
     }
 
     #[test]
     fn borrow_smoke_test() {
-        do run_in_bare_thread {
+        run_in_bare_thread(proc() {
             let task = ~Task::new();
             Local::put(task);
 
@@ -91,12 +90,12 @@ mod test {
             }
             let task: ~Task = Local::take();
             cleanup_task(task);
-        }
+        });
     }
 
     #[test]
     fn borrow_with_return() {
-        do run_in_bare_thread {
+        run_in_bare_thread(proc() {
             let task = ~Task::new();
             Local::put(task);
 
@@ -106,12 +105,12 @@ mod test {
 
             let task: ~Task = Local::take();
             cleanup_task(task);
-        }
+        });
     }
 
     #[test]
     fn try_take() {
-        do run_in_bare_thread {
+        run_in_bare_thread(proc() {
             let task = ~Task::new();
             Local::put(task);
 
@@ -120,7 +119,7 @@ mod test {
             assert!(u.is_none());
 
             cleanup_task(t);
-        }
+        });
     }
 
     fn cleanup_task(mut t: ~Task) {

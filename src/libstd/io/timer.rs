@@ -204,9 +204,9 @@ mod test {
         let mut timer = Timer::new().unwrap();
         let timer_port = timer.periodic(1000);
 
-        do spawn {
+        spawn(proc() {
             timer_port.recv_opt();
-        }
+        });
 
         // when we drop the TimerWatcher we're going to destroy the channel,
         // which must wake up the task on the other end
@@ -217,9 +217,9 @@ mod test {
         let mut timer = Timer::new().unwrap();
         let timer_port = timer.periodic(1000);
 
-        do spawn {
+        spawn(proc() {
             timer_port.recv_opt();
-        }
+        });
 
         timer.oneshot(1);
     })
@@ -229,9 +229,9 @@ mod test {
         let mut timer = Timer::new().unwrap();
         let timer_port = timer.periodic(1000);
 
-        do spawn {
+        spawn(proc() {
             timer_port.recv_opt();
-        }
+        });
 
         timer.sleep(1);
     })

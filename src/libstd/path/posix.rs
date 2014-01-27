@@ -569,11 +569,11 @@ mod tests {
         use task;
 
         macro_rules! t(
-            ($name:expr => $code:block) => (
+            ($name:expr => $code:expr) => (
                 {
                     let mut t = task::task();
                     t.name($name);
-                    let res = do t.try $code;
+                    let res = t.try(proc() $code);
                     assert!(res.is_err());
                 }
             )

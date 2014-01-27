@@ -159,7 +159,7 @@ mod test {
         for _ in range(0, 20) {
             let (p, c) = Chan::new();
             chans.push(c);
-            do task::spawn {
+            task::spawn(proc() {
                 // wait until all the tasks are ready to go.
                 p.recv();
 
@@ -177,7 +177,7 @@ mod test {
                     r.fill_bytes(v);
                     task::deschedule();
                 }
-            }
+            })
         }
 
         // start all the tasks
