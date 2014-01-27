@@ -336,6 +336,14 @@ pub mod write {
         if sess.time_llvm_passes() { add("-time-passes"); }
         if sess.print_llvm_passes() { add("-debug-pass=Structure"); }
 
+        // Debuginfo generation in LLVM by default uses a higher version of
+        // dwarf than osx currently understands. We can instruct LLVM to emit an
+        // older version of dwarf, however, for OSX to understand. For more info
+        // see #11352
+        if sess.targ_cfg.os == abi::OsMacos && sess.opts.debuginfo {
+            add("-dwarf-version,2");
+        }
+
         for arg in sess.opts.llvm_args.iter() {
             add(*arg);
         }
