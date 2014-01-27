@@ -211,10 +211,10 @@ fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
     let cfgs = matches.opt_strs("cfg");
     let cr = Path::new(cratefile);
     info!("starting to run rustc");
-    let (crate, analysis) = do std::task::try {
+    let (crate, analysis) = std::task::try(proc() {
         let cr = cr;
         core::run_core(libs.move_iter().collect(), cfgs, &cr)
-    }.unwrap();
+    }).unwrap();
     info!("finished with rustc");
     local_data::set(analysiskey, analysis);
 
