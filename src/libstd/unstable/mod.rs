@@ -41,18 +41,18 @@ pub fn run_in_bare_thread(f: proc()) {
 #[test]
 fn test_run_in_bare_thread() {
     let i = 100;
-    do run_in_bare_thread {
+    run_in_bare_thread(proc() {
         assert_eq!(i, 100);
-    }
+    });
 }
 
 #[test]
 fn test_run_in_bare_thread_exchange() {
     // Does the exchange heap work without the runtime?
     let i = ~100;
-    do run_in_bare_thread {
+    run_in_bare_thread(proc() {
         assert!(i == ~100);
-    }
+    });
 }
 
 /// Dynamically inquire about whether we're running under V.

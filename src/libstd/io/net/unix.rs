@@ -147,10 +147,10 @@ mod tests {
         let path2 = path1.clone();
         let (port, chan) = Chan::new();
 
-        do spawn {
+        spawn(proc() {
             port.recv();
             client(UnixStream::connect(&path2).unwrap());
-        }
+        });
 
         let mut acceptor = UnixListener::bind(&path1).listen();
         chan.send(());
@@ -232,13 +232,13 @@ mod tests {
         let path2 = path1.clone();
         let (port, chan) = Chan::new();
 
-        do spawn {
+        spawn(proc() {
             port.recv();
             times.times(|| {
                 let mut stream = UnixStream::connect(&path2);
                 stream.write([100]);
             })
-        }
+        });
 
         let mut acceptor = UnixListener::bind(&path1).listen();
         chan.send(());
