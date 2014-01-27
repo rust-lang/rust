@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct NotEq;
+// This file was auto-generated using 'src/etc/generate-keyword-span-tests.py'
 
-#[deriving(Eq)]
-struct Foo (
-    NotEq //~ ERROR mismatched types
-        //~^ ERROR failed to find an implementation of trait std::cmp::Eq for NotEq
-        );
+#[feature(struct_variant)];
+extern mod extra;
 
-pub fn main() {}
+#[deriving(Clone)]
+struct Error;
+
+#[deriving(DeepClone,Clone)]
+struct Struct(
+    Error //~ ERROR
+);
+
+fn main() {}

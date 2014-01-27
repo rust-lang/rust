@@ -45,19 +45,20 @@ pub fn expand_deriving_iter_bytes(cx: &ExtCtxt,
     trait_def.expand(mitem, in_items)
 }
 
-fn iter_bytes_substructure(cx: &ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
+fn iter_bytes_substructure(cx: &ExtCtxt, trait_span: Span, substr: &Substructure) -> @Expr {
     let (lsb0, f)= match substr.nonself_args {
         [l, f] => (l, f),
-        _ => cx.span_bug(span, "Incorrect number of arguments in `deriving(IterBytes)`")
+        _ => cx.span_bug(trait_span, "Incorrect number of arguments in `deriving(IterBytes)`")
     };
     // Build the "explicitly borrowed" stack closure, "|_buf| f(_buf)".
     let blk_arg = cx.ident_of("_buf");
     let borrowed_f =
-        cx.lambda_expr_1(span, cx.expr_call(span, f, ~[cx.expr_ident(span, blk_arg)]),
+        cx.lambda_expr_1(trait_span,
+                         cx.expr_call(trait_span, f, ~[cx.expr_ident(trait_span, blk_arg)]),
                          blk_arg);
 
     let iter_bytes_ident = substr.method_ident;
-    let call_iterbytes = |thing_expr| {
+    let call_iterbytes = |span, thing_expr| {
         cx.expr_method_call(span,
                             thing_expr,
                             iter_bytes_ident,
@@ -74,25 +75,25 @@ fn iter_bytes_substructure(cx: &ExtCtxt, span: Span, substr: &Substructure) -> @
             // iteration function.
             let discriminant = match variant.node.disr_expr {
                 Some(d)=> d,
-                None => cx.expr_uint(span, index)
+                None => cx.expr_uint(trait_span, index)
             };
 
-            exprs.push(call_iterbytes(discriminant));
+            exprs.push(call_iterbytes(trait_span, discriminant));
 
             fields = fs;
         }
-        _ => cx.span_bug(span, "Impossible substructure in `deriving(IterBytes)`")
+        _ => cx.span_bug(trait_span, "Impossible substructure in `deriving(IterBytes)`")
     }
 
-    for &FieldInfo { self_, .. } in fields.iter() {
-        exprs.push(call_iterbytes(self_));
+    for &FieldInfo { self_, span, .. } in fields.iter() {
+        exprs.push(call_iterbytes(span, self_));
     }
 
     if exprs.len() == 0 {
-        cx.span_bug(span, "#[deriving(IterBytes)] needs at least one field");
+        cx.span_bug(trait_span, "#[deriving(IterBytes)] needs at least one field");
     }
 
     exprs.slice(1, exprs.len()).iter().fold(exprs[0], |prev, me| {
-        cx.expr_binary(span, BiAnd, prev, *me)
+        cx.expr_binary(trait_span, BiAnd, prev, *me)
     })
 }
