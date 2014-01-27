@@ -47,11 +47,15 @@ struct Node<T> {
 }
 
 /// Double-ended DList iterator
-#[deriving(Clone)]
 pub struct Items<'a, T> {
     priv head: &'a Link<T>,
     priv tail: Rawlink<Node<T>>,
     priv nelem: uint,
+}
+
+// FIXME #11820: the &'a Option<> of the Link stops clone working.
+impl<'a, T> Clone for Items<'a, T> {
+    fn clone(&self) -> Items<'a, T> { *self }
 }
 
 /// Double-ended mutable DList iterator

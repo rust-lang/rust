@@ -1009,7 +1009,8 @@ impl<'a> TraitDef<'a> {
             };
             let path = cx.path_ident(sp, cx.ident_of(format!("{}_{}", prefix, i)));
             paths.push(path.clone());
-            ident_expr.push((sp, opt_id, cx.expr_path(path)));
+            let val = cx.expr(sp, ast::ExprParen(cx.expr_deref(sp, cx.expr_path(path))));
+            ident_expr.push((sp, opt_id, val));
         }
 
         let subpats = self.create_subpatterns(paths, mutbl);
@@ -1053,7 +1054,8 @@ impl<'a> TraitDef<'a> {
                     let path = cx.path_ident(sp, cx.ident_of(format!("{}_{}", prefix, i)));
 
                     paths.push(path.clone());
-                    ident_expr.push((sp, None, cx.expr_path(path)));
+                    let val = cx.expr(sp, ast::ExprParen(cx.expr_deref(sp, cx.expr_path(path))));
+                    ident_expr.push((sp, None, val));
                 }
 
                 let subpats = self.create_subpatterns(paths, mutbl);
@@ -1128,7 +1130,7 @@ pub fn cs_same_method(f: |&ExtCtxt, Span, ~[@Expr]| -> @Expr,
                 cx.expr_method_call(field.span,
                                     field.self_,
                                     substructure.method_ident,
-                                    field.other.clone())
+                                    field.other.map(|e| cx.expr_addr_of(field.span, *e)))
             });
 
             f(cx, trait_span, called)
