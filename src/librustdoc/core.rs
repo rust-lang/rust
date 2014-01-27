@@ -64,9 +64,9 @@ fn get_ast_and_resolve(cpath: &Path,
         syntax::diagnostic::mk_span_handler(diagnostic_handler, parsesess.cm);
 
     let sess = driver::driver::build_session_(sessopts,
+                                              Some(cpath.clone()),
                                               parsesess.cm,
-                                              @diagnostic::DefaultEmitter as
-                                                @diagnostic::Emitter,
+                                              @diagnostic::DefaultEmitter,
                                               span_diagnostic_handler);
 
     let mut cfg = build_configuration(sess);

@@ -114,8 +114,8 @@ impl<'a> PkgScript<'a> {
         };
         let input = driver::FileInput(script.clone());
         let sess = driver::build_session(options,
-                                         @diagnostic::DefaultEmitter as
-                                            @diagnostic::Emitter);
+                                         Some(script.clone()),
+                                         @diagnostic::DefaultEmitter);
         let cfg = driver::build_configuration(sess);
         let crate = driver::phase_1_parse_input(sess, cfg.clone(), &input);
         let loader = &mut Loader::new(sess);
