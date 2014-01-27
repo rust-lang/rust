@@ -41,7 +41,7 @@ pub fn expand_deriving_default(cx: &ExtCtxt,
     trait_def.expand(mitem, in_items)
 }
 
-fn default_substructure(cx: &ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
+fn default_substructure(cx: &ExtCtxt, trait_span: Span, substr: &Substructure) -> @Expr {
     let default_ident = ~[
         cx.ident_of("std"),
         cx.ident_of("default"),
@@ -55,25 +55,25 @@ fn default_substructure(cx: &ExtCtxt, span: Span, substr: &Substructure) -> @Exp
             match *summary {
                 Unnamed(ref fields) => {
                     if fields.is_empty() {
-                        cx.expr_ident(span, substr.type_ident)
+                        cx.expr_ident(trait_span, substr.type_ident)
                     } else {
                         let exprs = fields.map(|sp| default_call(*sp));
-                        cx.expr_call_ident(span, substr.type_ident, exprs)
+                        cx.expr_call_ident(trait_span, substr.type_ident, exprs)
                     }
                 }
                 Named(ref fields) => {
                     let default_fields = fields.map(|&(ident, span)| {
                         cx.field_imm(span, ident, default_call(span))
                     });
-                    cx.expr_struct_ident(span, substr.type_ident, default_fields)
+                    cx.expr_struct_ident(trait_span, substr.type_ident, default_fields)
                 }
             }
         }
         StaticEnum(..) => {
-            cx.span_err(span, "`Default` cannot be derived for enums, only structs");
+            cx.span_err(trait_span, "`Default` cannot be derived for enums, only structs");
             // let compilation continue
-            cx.expr_uint(span, 0)
+            cx.expr_uint(trait_span, 0)
         }
-        _ => cx.bug("Non-static method in `deriving(Default)`")
+        _ => cx.span_bug(trait_span, "Non-static method in `deriving(Default)`")
     };
 }

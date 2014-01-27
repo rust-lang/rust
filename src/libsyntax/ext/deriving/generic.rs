@@ -68,6 +68,7 @@ enum C {
     C0(int),
     C1 { x: int }
 }
+~~~
 
 The `int`s in `B` and `C0` don't have an identifier, so the
 `Option<ident>`s would be `None` for them.
@@ -168,8 +169,9 @@ StaticStruct(<ast::StructDef of A>, Named(~[(<ident of x>, <span of x>)]))
 
 StaticStruct(<ast::StructDef of B>, Unnamed(~[<span of x>]))
 
-StaticEnum(<ast::EnumDef of C>, ~[(<ident of C0>, Unnamed(~[<span of int>])),
-                                  (<ident of C1>, Named(~[(<ident of x>, <span of x>)]))])
+StaticEnum(<ast::EnumDef of C>, ~[(<ident of C0>, <span of C0>, Unnamed(~[<span of int>])),
+                                  (<ident of C1>, <span of C1>,
+                                   Named(~[(<ident of x>, <span of x>)]))])
 ~~~
 
 */
@@ -290,7 +292,7 @@ pub enum SubstructureFields<'a> {
     /// A static method where Self is a struct.
     StaticStruct(&'a ast::StructDef, StaticFields),
     /// A static method where Self is an enum.
-    StaticEnum(&'a ast::EnumDef, ~[(Ident, StaticFields)])
+    StaticEnum(&'a ast::EnumDef, ~[(Ident, Span, StaticFields)])
 }
 
 
@@ -904,7 +906,7 @@ impl<'a> MethodDef<'a> {
                     trait_.summarise_struct(struct_def)
                 }
             };
-            (ident, summary)
+            (ident, v.span, summary)
         });
         self.call_substructure_method(trait_, type_ident,
                                       self_args, nonself_args,
