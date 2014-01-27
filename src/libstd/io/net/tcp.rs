@@ -609,4 +609,44 @@ mod test {
         c.write([1]);
         p.recv();
     })
+
+    iotest!(fn double_bind() {
+        let mut called = false;
+        io_error::cond.trap(|e| {
+            assert!(e.kind == ConnectionRefused || e.kind == OtherIoError);
+            called = true;
+        }).inside(|| {
+            let addr = next_test_ip4();
+            let listener = TcpListener::bind(addr).unwrap().listen();
+            assert!(listener.is_some());
+            let listener2 = TcpListener::bind(addr).and_then(|l|
+                                                    l.listen());
+            assert!(listener2.is_none());
+        });
+        assert!(called);
+    })
+
+    iotest!(fn fast_rebind() {
+        let addr = next_test_ip4();
+        let (port, chan) = Chan::new();
+
+        do spawn {
+            port.recv();
+            let stream = TcpStream::connect(addr);
+            // Close
+            port.recv();
+        }
+
+        {
+            let mut acceptor = TcpListener::bind(addr).listen();
+            chan.send(());
+            {
+                let stream = acceptor.accept();
+                // Close client
+                chan.send(());
+            }
+            // Close listener
+        }
+        let listener = TcpListener::bind(addr);
+    })
 }
