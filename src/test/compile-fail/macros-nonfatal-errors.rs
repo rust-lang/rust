@@ -12,6 +12,7 @@
 // immediately, so that we get more errors listed at a time.
 
 #[feature(asm)];
+#[feature(trace_macros)];
 
 #[deriving(Default, //~ ERROR
            Rand, //~ ERROR
