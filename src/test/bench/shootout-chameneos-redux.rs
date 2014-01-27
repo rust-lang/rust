@@ -152,13 +152,13 @@ fn rendezvous(nn: uint, set: ~[color]) {
             let to_rendezvous = to_rendezvous.clone();
             let to_rendezvous_log = to_rendezvous_log.clone();
             let (from_rendezvous, to_creature) = Chan::new();
-            do task::spawn {
+            task::spawn(proc() {
                 creature(ii,
                          col,
                          from_rendezvous,
                          to_rendezvous.clone(),
                          to_rendezvous_log.clone());
-            }
+            });
             to_creature
         }).collect();
 

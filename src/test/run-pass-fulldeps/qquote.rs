@@ -75,11 +75,11 @@ fn main() {
 
 fn check_pp<T>(cx: fake_ext_ctxt,
                expr: T, f: |pprust::ps, T|, expect: ~str) {
-    let s = do io::with_str_writer |wr| {
+    let s = io::with_str_writer(|wr| {
         let pp = pprust::rust_printer(wr, cx.parse_sess().interner);
         f(pp, expr);
         pp::eof(pp.s);
-    };
+    });
     stdout().write_line(s);
     if expect != ~"" {
         error!("expect: '%s', got: '%s'", expect, s);

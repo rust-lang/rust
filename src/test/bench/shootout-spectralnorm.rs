@@ -41,13 +41,13 @@ fn mult(v: RWArc<~[f64]>, out: RWArc<~[f64]>, f: fn(&~[f64], uint) -> f64) {
         let w = wait.clone();
         let v = v.clone();
         let out = out.clone();
-        do spawn {
+        spawn(proc() {
             for i in range(chk, min(len, chk + chunk)) {
                 let val = v.read(|v| f(v, i));
                 out.write(|out| out[i] = val);
             }
             let _ = w;
-        }
+        });
     }
     let _ = wait.unwrap();
 }

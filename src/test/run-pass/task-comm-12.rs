@@ -20,9 +20,9 @@ fn test00() {
     let i: int = 0;
     let mut builder = task::task();
     let mut result = builder.future_result();
-    do builder.spawn {
+    builder.spawn(proc() {
         start(i)
-    }
+    });
 
     // Sleep long enough for the task to finish.
     let mut i = 0;

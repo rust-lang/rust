@@ -18,5 +18,5 @@ fn main() {
         y = Some(x.downgrade(write_mode));
     })
     // Adding this line causes a method unification failure instead
-    // do (&option::unwrap(y)).read { }
+    // (&option::unwrap(y)).read(proc() { });
 }

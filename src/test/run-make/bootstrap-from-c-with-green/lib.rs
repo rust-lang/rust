@@ -17,9 +17,9 @@ extern mod green;
 
 #[no_mangle] // this needs to get called from C
 pub extern "C" fn foo(argc: int, argv: **u8) -> int {
-    do green::start(argc, argv) {
-        do spawn {
+    green::start(argc, argv, proc() {
+        spawn(proc() {
             println!("hello");
-        }
-    }
+        });
+    })
 }

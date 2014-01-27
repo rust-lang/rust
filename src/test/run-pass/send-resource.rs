@@ -27,12 +27,12 @@ fn test(f: int) -> test {
 pub fn main() {
     let (p, c) = Chan::new();
 
-    do task::spawn() {
+    task::spawn(proc() {
         let (pp, cc) = Chan::new();
         c.send(cc);
 
         let _r = pp.recv();
-    }
+    });
 
     p.recv().send(test(42));
 }

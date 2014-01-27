@@ -16,8 +16,8 @@ fn foo(blk: proc()) {
 
 pub fn main() {
     let (p,c) = Chan::new();
-    do foo {
+    foo(proc() {
         c.send(());
-    }
+    });
     p.recv();
 }
