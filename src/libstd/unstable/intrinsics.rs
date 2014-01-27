@@ -57,6 +57,8 @@ pub struct TyDesc {
     align: uint,
 
     // Called on a copy of a value of type `T` *after* memcpy
+    // NOTE remove after next snapshot
+    #[cfg(stage0)]
     take_glue: GlueFn,
 
     // Called when a value of type `T` is no longer needed
