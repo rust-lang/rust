@@ -454,9 +454,8 @@ fn check_imm_free_var(cx: &Context, def: Def, sp: Span) {
                 sp,
                 "mutable variables cannot be implicitly captured");
         }
-        DefLocal(..) | DefArg(..) => { /* ok */ }
+        DefLocal(..) | DefArg(..) | DefBinding(..) => { /* ok */ }
         DefUpvar(_, def1, _, _) => { check_imm_free_var(cx, *def1, sp); }
-        DefBinding(..) | DefSelf(..) => { /*ok*/ }
         _ => {
             cx.tcx.sess.span_bug(
                 sp,

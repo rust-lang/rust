@@ -337,8 +337,8 @@ fn trans_opt<'a>(bcx: &'a Block<'a>, o: &Opt) -> opt_result<'a> {
             return adt::trans_case(bcx, repr, disr_val);
         }
         range(l1, l2) => {
-            let (l1, _) = consts::const_expr(ccx, l1);
-            let (l2, _) = consts::const_expr(ccx, l2);
+            let (l1, _) = consts::const_expr(ccx, l1, true);
+            let (l2, _) = consts::const_expr(ccx, l2, true);
             return range_result(rslt(bcx, l1), rslt(bcx, l2));
         }
         vec_len(n, vec_len_eq, _) => {

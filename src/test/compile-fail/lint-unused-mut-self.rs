@@ -1,4 +1,4 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct A;
-impl A {
-    fn m(&self) {
-        fn x() {
-            self.m() //~ ERROR can't capture dynamic environment in a fn item
-            //~^ ERROR unresolved name `self`
-        }
-    }
+#[allow(dead_assignment)];
+#[allow(unused_variable)];
+#[allow(dead_code)];
+#[deny(unused_mut)];
+
+struct Foo;
+impl Foo {
+    fn foo(mut self) {} //~ ERROR: variable does not need to be mutable
+    fn bar(mut ~self) {} //~ ERROR: variable does not need to be mutable
 }
+
 fn main() {}

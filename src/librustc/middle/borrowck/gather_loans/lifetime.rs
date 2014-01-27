@@ -76,7 +76,6 @@ impl<'a> GuaranteeLifetimeContext<'a> {
             mc::cat_copied_upvar(..) |                  // L-Local
             mc::cat_local(..) |                         // L-Local
             mc::cat_arg(..) |                           // L-Local
-            mc::cat_self(..) |                          // L-Local
             mc::cat_deref(_, _, mc::region_ptr(..)) |   // L-Deref-Borrowed
             mc::cat_deref(_, _, mc::unsafe_ptr(..)) => {
                 let scope = self.scope(cmt);
@@ -261,7 +260,6 @@ impl<'a> GuaranteeLifetimeContext<'a> {
 
         match cmt.guarantor().cat {
             mc::cat_local(id) |
-            mc::cat_self(id) |
             mc::cat_arg(id) => {
                 let moved_variables_set = self.bccx
                                               .moved_variables_set
@@ -303,8 +301,7 @@ impl<'a> GuaranteeLifetimeContext<'a> {
                 ty::ReStatic
             }
             mc::cat_local(local_id) |
-            mc::cat_arg(local_id) |
-            mc::cat_self(local_id) => {
+            mc::cat_arg(local_id) => {
                 ty::ReScope(self.bccx.tcx.region_maps.var_scope(local_id))
             }
             mc::cat_deref(_, _, mc::unsafe_ptr(..)) => {

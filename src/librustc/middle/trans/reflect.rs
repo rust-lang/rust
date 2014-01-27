@@ -13,7 +13,7 @@ use lib::llvm::{ValueRef, llvm};
 use middle::trans::adt;
 use middle::trans::base::*;
 use middle::trans::build::*;
-use middle::trans::callee::{ArgVals, DontAutorefArg};
+use middle::trans::callee::ArgVals;
 use middle::trans::callee;
 use middle::trans::common::*;
 use middle::trans::datum::*;
@@ -111,7 +111,7 @@ impl<'a> Reflector<'a> {
                                                          mth_ty,
                                                          mth_idx,
                                                          v),
-            ArgVals(args), None, DontAutorefArg));
+            ArgVals(args), None));
         let result = bool_to_i1(bcx, result);
         let next_bcx = fcx.new_temp_block("next");
         CondBr(bcx, result, next_bcx.llbb, self.final_bcx.llbb);
@@ -292,12 +292,10 @@ impl<'a> Reflector<'a> {
                                                                sub_path,
                                                                "get_disr");
 
-                let llfdecl = decl_internal_rust_fn(ccx, None, [opaqueptrty], ty::mk_u64(), sym);
-                let fcx = new_fn_ctxt(ccx,
-                                      ~[],
-                                      llfdecl,
-                                      ty::mk_u64(),
-                                      None);
+                let llfdecl = decl_internal_rust_fn(ccx, false,
+                                                    [opaqueptrty],
+                                                    ty::mk_u64(), sym);
+                let fcx = new_fn_ctxt(ccx, ~[], llfdecl, false, ty::mk_u64(), None);
                 init_function(&fcx, false, ty::mk_u64(), None);
 
                 let arg = unsafe {
@@ -358,12 +356,7 @@ impl<'a> Reflector<'a> {
               self.visit("param", extra)
           }
           ty::ty_self(..) => self.leaf("self"),
-          ty::ty_type => self.leaf("type"),
-          ty::ty_opaque_closure_ptr(ck) => {
-              let ckval = ast_sigil_constant(ck);
-              let extra = ~[self.c_uint(ckval)];
-              self.visit("closure_ptr", extra)
-          }
+          ty::ty_type => self.leaf("type")
         }
     }
 

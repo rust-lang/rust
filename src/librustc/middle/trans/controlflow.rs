@@ -309,7 +309,7 @@ pub fn trans_ret<'a>(bcx: &'a Block<'a>,
         Some(x) => {
             bcx = expr::trans_into(bcx, x, dest);
         }
-        _ => ()
+        _ => {}
     }
     let cleanup_llbb = fcx.return_exit_block();
     Br(bcx, cleanup_llbb);

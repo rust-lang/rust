@@ -41,7 +41,7 @@ use middle::pat_util;
 use util::ppaux::{ty_to_str, region_to_str, Repr};
 
 use syntax::ast::{ManagedSigil, OwnedSigil, BorrowedSigil};
-use syntax::ast::{DefArg, DefBinding, DefLocal, DefSelf, DefUpvar};
+use syntax::ast::{DefArg, DefBinding, DefLocal, DefUpvar};
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::visit;
@@ -64,7 +64,7 @@ fn region_of_def(fcx: @FnCtxt, def: ast::Def) -> ty::Region {
     let tcx = fcx.tcx();
     match def {
         DefLocal(node_id, _) | DefArg(node_id, _) |
-        DefSelf(node_id, _) | DefBinding(node_id, _) => {
+        DefBinding(node_id, _) => {
             tcx.region_maps.var_region(node_id)
         }
         DefUpvar(_, subdef, closure_id, body_id) => {
@@ -316,8 +316,9 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             visit::walk_expr(rcx, expr, ());
         }
 
-        ast::ExprMethodCall(callee_id, arg0, _, _, ref args, _) => {
-            constrain_call(rcx, callee_id, expr, Some(arg0), *args, false);
+        ast::ExprMethodCall(callee_id, _, _, ref args, _) => {
+            constrain_call(rcx, callee_id, expr, Some(args[0]),
+                           args.slice_from(1), false);
 
             visit::walk_expr(rcx, expr, ());
         }
@@ -1012,12 +1013,10 @@ pub mod guarantor {
                 guarantor(rcx, e)
             }
 
-            ast::ExprPath(..) | ast::ExprSelf => {
-                // Either a variable or constant and hence resides
-                // in constant memory or on the stack frame.  Either way,
-                // not guaranteed by a region pointer.
-                None
-            }
+            // Either a variable or constant and hence resides
+            // in constant memory or on the stack frame.  Either way,
+            // not guaranteed by a region pointer.
+            ast::ExprPath(..) => None,
 
             // All of these expressions are rvalues and hence their
             // value is not guaranteed by a region pointer.

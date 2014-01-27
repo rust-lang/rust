@@ -380,15 +380,13 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt, trait_id: ast::NodeId) {
                                  m_decl: &ast::FnDecl) -> ty::Method
     {
         let trait_self_ty = ty::mk_self(this.tcx, local_def(trait_id));
-        let (transformed_self_ty, fty) =
-            astconv::ty_of_method(this, *m_id, *m_purity,
-                                  trait_self_ty, *m_explicit_self, m_decl);
+        let fty = astconv::ty_of_method(this, *m_id, *m_purity, trait_self_ty,
+                                        *m_explicit_self, m_decl);
         let num_trait_type_params = trait_generics.type_param_defs.len();
         ty::Method::new(
             *m_ident,
             // FIXME(#5121) -- distinguish early vs late lifetime params
             ty_generics(this, m_generics, num_trait_type_params),
-            transformed_self_ty,
             fty,
             m_explicit_self.node,
             // assume public, because this is only invoked on trait methods
@@ -512,10 +510,9 @@ fn convert_methods(ccx: &CrateCtxt,
                     rcvr_generics: &ast::Generics,
                     rcvr_visibility: ast::Visibility) -> ty::Method
     {
-        let (transformed_self_ty, fty) =
-            astconv::ty_of_method(ccx, m.id, m.purity,
-                                  untransformed_rcvr_ty,
-                                  m.explicit_self, m.decl);
+        let fty = astconv::ty_of_method(ccx, m.id, m.purity,
+                                        untransformed_rcvr_ty,
+                                        m.explicit_self, m.decl);
 
         // if the method specifies a visibility, use that, otherwise
         // inherit the visibility from the impl (so `foo` in `pub impl
@@ -528,7 +525,6 @@ fn convert_methods(ccx: &CrateCtxt,
             m.ident,
             // FIXME(#5121) -- distinguish early vs late lifetime params
             ty_generics(ccx, &m.generics, num_rcvr_type_params),
-            transformed_self_ty,
             fty,
             m.explicit_self.node,
             method_vis,

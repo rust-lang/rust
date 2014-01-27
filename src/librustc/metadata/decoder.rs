@@ -227,16 +227,6 @@ fn doc_method_fty(doc: ebml::Doc, tcx: ty::ctxt, cdata: Cmd) -> ty::BareFnTy {
                           |_, did| translate_def_id(cdata, did))
 }
 
-fn doc_transformed_self_ty(doc: ebml::Doc,
-                           tcx: ty::ctxt,
-                           cdata: Cmd) -> Option<ty::t>
-{
-    reader::maybe_get_doc(doc, tag_item_method_transformed_self_ty).map(|tp| {
-        parse_ty_data(tp.data, cdata.cnum, tp.start, tcx,
-                      |_, did| translate_def_id(cdata, did))
-    })
-}
-
 pub fn item_type(_item_id: ast::DefId, item: ebml::Doc,
                  tcx: ty::ctxt, cdata: Cmd) -> ty::t {
     doc_type(item, tcx, cdata)
@@ -781,9 +771,9 @@ fn get_explicit_self(item: ebml::Doc) -> ast::ExplicitSelf_ {
     let explicit_self_kind = string[0];
     match explicit_self_kind as char {
         's' => ast::SelfStatic,
-        'v' => ast::SelfValue(get_mutability(string[1])),
+        'v' => ast::SelfValue,
         '@' => ast::SelfBox,
-        '~' => ast::SelfUniq(get_mutability(string[1])),
+        '~' => ast::SelfUniq,
         // FIXME(#4846) expl. region
         '&' => ast::SelfRegion(None, get_mutability(string[1])),
         _ => fail!("unknown self type code: `{}`", explicit_self_kind as char)
@@ -847,7 +837,6 @@ pub fn get_method(intr: @IdentInterner, cdata: Cmd, id: ast::NodeId,
     let type_param_defs = item_ty_param_defs(method_doc, tcx, cdata,
                                              tag_item_method_tps);
     let rp_defs = item_region_param_defs(method_doc, tcx, cdata);
-    let transformed_self_ty = doc_transformed_self_ty(method_doc, tcx, cdata);
     let fty = doc_method_fty(method_doc, tcx, cdata);
     let vis = item_visibility(method_doc);
     let explicit_self = get_explicit_self(method_doc);
@@ -859,7 +848,6 @@ pub fn get_method(intr: @IdentInterner, cdata: Cmd, id: ast::NodeId,
             type_param_defs: type_param_defs,
             region_param_defs: rp_defs,
         },
-        transformed_self_ty,
         fty,
         explicit_self,
         vis,

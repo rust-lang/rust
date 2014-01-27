@@ -244,13 +244,13 @@ pub fn get_explicit_self(cx: &ExtCtxt, span: Span, self_ptr: &Option<PtrTy>)
     let self_path = cx.expr_self(span);
     match *self_ptr {
         None => {
-            (self_path, respan(span, ast::SelfValue(ast::MutImmutable)))
+            (self_path, respan(span, ast::SelfValue))
         }
         Some(ref ptr) => {
             let self_ty = respan(
                 span,
                 match *ptr {
-                    Send => ast::SelfUniq(ast::MutImmutable),
+                    Send => ast::SelfUniq,
                     Managed => ast::SelfBox,
                     Borrowed(ref lt, mutbl) => {
                         let lt = lt.map(|s| cx.lifetime(span, cx.ident_of(s)));
