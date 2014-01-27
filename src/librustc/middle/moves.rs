@@ -227,10 +227,9 @@ pub fn compute_moves(tcx: ty::ctxt,
 
 pub fn moved_variable_node_id_from_def(def: Def) -> Option<NodeId> {
     match def {
-      DefBinding(nid, _) |
-      DefArg(nid, _) |
-      DefLocal(nid, _) |
-      DefSelf(nid, _) => Some(nid),
+        DefBinding(nid, _) |
+        DefArg(nid, _) |
+        DefLocal(nid, _) => Some(nid),
 
       _ => None
     }
@@ -344,7 +343,7 @@ impl VisitContext {
         debug!("comp_mode = {:?}", comp_mode);
 
         match expr.node {
-            ExprPath(..) | ExprSelf => {
+            ExprPath(..) => {
                 match comp_mode {
                     Move => {
                         let def_map = self.tcx.def_map.borrow();
@@ -413,10 +412,7 @@ impl VisitContext {
                 self.use_fn_args(callee.id, *args);
             }
 
-            ExprMethodCall(callee_id, rcvr, _, _, ref args, _) => { // callee.m(args)
-                // Implicit self is equivalent to & mode, but every
-                // other kind should be + mode.
-                self.use_receiver(rcvr);
+            ExprMethodCall(callee_id, _, _, ref args, _) => { // callee.m(args)
                 self.use_fn_args(callee_id, *args);
             }
 
@@ -620,7 +616,7 @@ impl VisitContext {
             return false;
         }
 
-        self.use_receiver(receiver_expr);
+        self.use_fn_arg(receiver_expr);
 
         // for overloaded operatrs, we are always passing in a
         // reference, so it's always read mode:
@@ -673,11 +669,6 @@ impl VisitContext {
                 }
             }
         })
-    }
-
-    pub fn use_receiver(&mut self,
-                        receiver_expr: @Expr) {
-        self.use_fn_arg(receiver_expr);
     }
 
     pub fn use_fn_args(&mut self,

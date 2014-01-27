@@ -73,7 +73,6 @@ pub enum MethodContainer {
 pub struct Method {
     ident: ast::Ident,
     generics: ty::Generics,
-    transformed_self_ty: Option<ty::t>,
     fty: BareFnTy,
     explicit_self: ast::ExplicitSelf_,
     vis: ast::Visibility,
@@ -87,7 +86,6 @@ pub struct Method {
 impl Method {
     pub fn new(ident: ast::Ident,
                generics: ty::Generics,
-               transformed_self_ty: Option<ty::t>,
                fty: BareFnTy,
                explicit_self: ast::ExplicitSelf_,
                vis: ast::Visibility,
@@ -95,17 +93,9 @@ impl Method {
                container: MethodContainer,
                provided_source: Option<ast::DefId>)
                -> Method {
-        // Check the invariants.
-        if explicit_self == ast::SelfStatic {
-            assert!(transformed_self_ty.is_none());
-        } else {
-            assert!(transformed_self_ty.is_some());
-        }
-
        Method {
             ident: ident,
             generics: generics,
-            transformed_self_ty: transformed_self_ty,
             fty: fty,
             explicit_self: explicit_self,
             vis: vis,
@@ -650,7 +640,6 @@ pub enum sty {
 
     // "Fake" types, used for trans purposes
     ty_type, // type_desc*
-    ty_opaque_closure_ptr(Sigil), // ptr to env for || and proc
     ty_unboxed_vec(mt),
 }
 
@@ -1068,7 +1057,7 @@ pub fn mk_t(cx: ctxt, st: sty) -> t {
         flags |= get(mt.ty).flags;
       }
       &ty_nil | &ty_bool | &ty_char | &ty_int(_) | &ty_float(_) | &ty_uint(_) |
-      &ty_str(_) | &ty_type | &ty_opaque_closure_ptr(_) => {}
+      &ty_str(_) | &ty_type => {}
       // You might think that we could just return ty_err for
       // any type containing ty_err as a component, and get
       // rid of the has_ty_err flag -- likewise for ty_bot (with
@@ -1333,10 +1322,6 @@ pub fn mk_param(cx: ctxt, n: uint, k: DefId) -> t {
 
 pub fn mk_type(cx: ctxt) -> t { mk_t(cx, ty_type) }
 
-pub fn mk_opaque_closure_ptr(cx: ctxt, sigil: ast::Sigil) -> t {
-    mk_t(cx, ty_opaque_closure_ptr(sigil))
-}
-
 pub fn walk_ty(ty: t, f: |t|) {
     maybe_walk_ty(ty, |t| { f(t); true });
 }
@@ -1346,27 +1331,27 @@ pub fn maybe_walk_ty(ty: t, f: |t| -> bool) {
         return;
     }
     match get(ty).sty {
-      ty_nil | ty_bot | ty_bool | ty_char | ty_int(_) | ty_uint(_) | ty_float(_) |
-      ty_str(_) | ty_type | ty_self(_) |
-      ty_opaque_closure_ptr(_) | ty_infer(_) | ty_param(_) | ty_err => {}
-      ty_box(ty) | ty_uniq(ty) => maybe_walk_ty(ty, f),
-      ty_vec(ref tm, _) | ty_unboxed_vec(ref tm) | ty_ptr(ref tm) |
-      ty_rptr(_, ref tm) => {
-        maybe_walk_ty(tm.ty, f);
-      }
-      ty_enum(_, ref substs) | ty_struct(_, ref substs) |
-      ty_trait(_, ref substs, _, _, _) => {
-        for subty in (*substs).tps.iter() { maybe_walk_ty(*subty, |x| f(x)); }
-      }
-      ty_tup(ref ts) => { for tt in ts.iter() { maybe_walk_ty(*tt, |x| f(x)); } }
-      ty_bare_fn(ref ft) => {
-        for a in ft.sig.inputs.iter() { maybe_walk_ty(*a, |x| f(x)); }
-        maybe_walk_ty(ft.sig.output, f);
-      }
-      ty_closure(ref ft) => {
-        for a in ft.sig.inputs.iter() { maybe_walk_ty(*a, |x| f(x)); }
-        maybe_walk_ty(ft.sig.output, f);
-      }
+        ty_nil | ty_bot | ty_bool | ty_char | ty_int(_) | ty_uint(_) | ty_float(_) |
+        ty_str(_) | ty_type | ty_self(_) |
+        ty_infer(_) | ty_param(_) | ty_err => {}
+        ty_box(ty) | ty_uniq(ty) => maybe_walk_ty(ty, f),
+        ty_vec(ref tm, _) | ty_unboxed_vec(ref tm) | ty_ptr(ref tm) |
+        ty_rptr(_, ref tm) => {
+            maybe_walk_ty(tm.ty, f);
+        }
+        ty_enum(_, ref substs) | ty_struct(_, ref substs) |
+        ty_trait(_, ref substs, _, _, _) => {
+            for subty in (*substs).tps.iter() { maybe_walk_ty(*subty, |x| f(x)); }
+        }
+        ty_tup(ref ts) => { for tt in ts.iter() { maybe_walk_ty(*tt, |x| f(x)); } }
+        ty_bare_fn(ref ft) => {
+            for a in ft.sig.inputs.iter() { maybe_walk_ty(*a, |x| f(x)); }
+            maybe_walk_ty(ft.sig.output, f);
+        }
+        ty_closure(ref ft) => {
+            for a in ft.sig.inputs.iter() { maybe_walk_ty(*a, |x| f(x)); }
+            maybe_walk_ty(ft.sig.output, f);
+        }
     }
 }
 
@@ -1608,11 +1593,8 @@ pub fn type_is_vec(ty: t) -> bool {
 
 pub fn type_is_unique(ty: t) -> bool {
     match get(ty).sty {
-        ty_uniq(_) |
-        ty_vec(_, vstore_uniq) |
-        ty_str(vstore_uniq) |
-        ty_opaque_closure_ptr(ast::OwnedSigil) => true,
-        _ => return false
+        ty_uniq(_) | ty_vec(_, vstore_uniq) | ty_str(vstore_uniq) => true,
+        _ => false
     }
 }
 
@@ -2118,13 +2100,6 @@ pub fn type_contents(cx: ctxt, ty: t) -> TypeContents {
                 TC::All
             }
             ty_unboxed_vec(mt) => TC::InteriorUnsized | tc_mt(cx, mt, cache),
-            ty_opaque_closure_ptr(sigil) => {
-                match sigil {
-                    ast::BorrowedSigil => TC::ReachesBorrowed,
-                    ast::ManagedSigil => TC::Managed,
-                    ast::OwnedSigil => TC::OwnsOwned,
-                }
-            }
 
             ty_type => TC::None,
 
@@ -2308,7 +2283,6 @@ pub fn is_instantiable(cx: ctxt, r_ty: t) -> bool {
             ty_param(_) |
             ty_self(_) |
             ty_type |
-            ty_opaque_closure_ptr(_) |
             ty_vec(_, _) |
             ty_unboxed_vec(_) => {
                 false
@@ -2511,7 +2485,6 @@ pub fn type_is_pod(cx: ctxt, ty: t) -> bool {
         result = type_is_pod(cx, mt.ty);
       }
       ty_param(_) => result = false,
-      ty_opaque_closure_ptr(_) => result = true,
       ty_struct(did, ref substs) => {
         let fields = lookup_struct_fields(cx, did);
         result = fields.iter().all(|f| {
@@ -3139,22 +3112,37 @@ pub fn expr_kind(tcx: ctxt,
     }
 
     match expr.node {
-        ast::ExprPath(..) | ast::ExprSelf => {
+        ast::ExprPath(..) => {
             match resolve_expr(tcx, expr) {
-                ast::DefVariant(..) | ast::DefStruct(..) => RvalueDpsExpr,
+                ast::DefVariant(tid, vid, _) => {
+                    let variant_info = enum_variant_with_id(tcx, tid, vid);
+                    if variant_info.args.len() > 0u {
+                        // N-ary variant.
+                        RvalueDatumExpr
+                    } else {
+                        // Nullary variant.
+                        RvalueDpsExpr
+                    }
+                }
+
+                ast::DefStruct(_) => {
+                    match get(expr_ty(tcx, expr)).sty {
+                        ty_bare_fn(..) => RvalueDatumExpr,
+                        _ => RvalueDpsExpr
+                    }
+                }
 
                 // Fn pointers are just scalar values.
                 ast::DefFn(..) | ast::DefStaticMethod(..) => RvalueDatumExpr,
 
                 // Note: there is actually a good case to be made that
-                // def_args, particularly those of immediate type, ought to
+                // DefArg's, particularly those of immediate type, ought to
                 // considered rvalues.
                 ast::DefStatic(..) |
                 ast::DefBinding(..) |
                 ast::DefUpvar(..) |
                 ast::DefArg(..) |
-                ast::DefLocal(..) |
-                ast::DefSelf(..) => LvalueExpr,
+                ast::DefLocal(..) => LvalueExpr,
 
                 def => {
                     tcx.sess.span_bug(expr.span, format!(
@@ -3343,30 +3331,29 @@ pub fn occurs_check(tcx: ctxt, sp: Span, vid: TyVid, rt: t) {
 
 pub fn ty_sort_str(cx: ctxt, t: t) -> ~str {
     match get(t).sty {
-      ty_nil | ty_bot | ty_bool | ty_char | ty_int(_) |
-      ty_uint(_) | ty_float(_) | ty_str(_) |
-      ty_type | ty_opaque_closure_ptr(_) => {
-        ::util::ppaux::ty_to_str(cx, t)
-      }
+        ty_nil | ty_bot | ty_bool | ty_char | ty_int(_) |
+        ty_uint(_) | ty_float(_) | ty_str(_) | ty_type => {
+            ::util::ppaux::ty_to_str(cx, t)
+        }
 
-      ty_enum(id, _) => format!("enum {}", item_path_str(cx, id)),
-      ty_box(_) => ~"@-ptr",
-      ty_uniq(_) => ~"~-ptr",
-      ty_vec(_, _) => ~"vector",
-      ty_unboxed_vec(_) => ~"unboxed vector",
-      ty_ptr(_) => ~"*-ptr",
-      ty_rptr(_, _) => ~"&-ptr",
-      ty_bare_fn(_) => ~"extern fn",
-      ty_closure(_) => ~"fn",
-      ty_trait(id, _, _, _, _) => format!("trait {}", item_path_str(cx, id)),
-      ty_struct(id, _) => format!("struct {}", item_path_str(cx, id)),
-      ty_tup(_) => ~"tuple",
-      ty_infer(TyVar(_)) => ~"inferred type",
-      ty_infer(IntVar(_)) => ~"integral variable",
-      ty_infer(FloatVar(_)) => ~"floating-point variable",
-      ty_param(_) => ~"type parameter",
-      ty_self(_) => ~"self",
-      ty_err => ~"type error"
+        ty_enum(id, _) => format!("enum {}", item_path_str(cx, id)),
+        ty_box(_) => ~"@-ptr",
+        ty_uniq(_) => ~"~-ptr",
+        ty_vec(_, _) => ~"vector",
+        ty_unboxed_vec(_) => ~"unboxed vector",
+        ty_ptr(_) => ~"*-ptr",
+        ty_rptr(_, _) => ~"&-ptr",
+        ty_bare_fn(_) => ~"extern fn",
+        ty_closure(_) => ~"fn",
+        ty_trait(id, _, _, _, _) => format!("trait {}", item_path_str(cx, id)),
+        ty_struct(id, _) => format!("struct {}", item_path_str(cx, id)),
+        ty_tup(_) => ~"tuple",
+        ty_infer(TyVar(_)) => ~"inferred type",
+        ty_infer(IntVar(_)) => ~"integral variable",
+        ty_infer(FloatVar(_)) => ~"floating-point variable",
+        ty_param(_) => ~"type parameter",
+        ty_self(_) => ~"self",
+        ty_err => ~"type error"
     }
 }
 
@@ -4912,12 +4899,8 @@ pub fn hash_crate_independent(tcx: ctxt, t: t, local_hash: @str) -> u64 {
             ty_infer(_) => unreachable!(),
             ty_err => hash.input([23]),
             ty_type => hash.input([24]),
-            ty_opaque_closure_ptr(s) => {
-                hash.input([25]);
-                iter(&mut hash, &s);
-            }
             ty_unboxed_vec(m) => {
-                hash.input([26]);
+                hash.input([25]);
                 mt(&mut hash, m);
             }
         }

@@ -371,9 +371,7 @@ impl<'a> CheckLoanCtxt<'a> {
                 debug!("mark_writes_through_upvars_as_used_mut(cmt={})",
                        cmt.repr(this.tcx()));
                 match cmt.cat {
-                    mc::cat_local(id) |
-                    mc::cat_arg(id) |
-                    mc::cat_self(id) => {
+                    mc::cat_local(id) | mc::cat_arg(id) => {
                         let mut used_mut_nodes = this.tcx()
                                                      .used_mut_nodes
                                                      .borrow_mut();
@@ -459,7 +457,6 @@ impl<'a> CheckLoanCtxt<'a> {
                     mc::cat_rvalue(..) |
                     mc::cat_local(..) |
                     mc::cat_arg(_) |
-                    mc::cat_self(..) |
                     mc::cat_deref(_, _, mc::unsafe_ptr(..)) |
                     mc::cat_static_item(..) |
                     mc::cat_deref(_, _, mc::gc_ptr) |
@@ -790,7 +787,6 @@ fn check_loans_in_expr<'a>(this: &mut CheckLoanCtxt<'a>,
 
     let method_map = this.bccx.method_map.borrow();
     match expr.node {
-      ast::ExprSelf |
       ast::ExprPath(..) => {
           if !this.move_data.is_assignee(expr.id) {
               let cmt = this.bccx.cat_expr_unadjusted(expr);
@@ -808,32 +804,24 @@ fn check_loans_in_expr<'a>(this: &mut CheckLoanCtxt<'a>,
       ast::ExprCall(f, ref args, _) => {
         this.check_call(expr, Some(f), f.id, f.span, *args);
       }
-      ast::ExprMethodCall(callee_id, _, _, _, ref args, _) => {
+      ast::ExprMethodCall(callee_id, _, _, ref args, _) => {
         this.check_call(expr, None, callee_id, expr.span, *args);
       }
       ast::ExprIndex(callee_id, _, rval) |
       ast::ExprBinary(callee_id, _, _, rval)
       if method_map.get().contains_key(&expr.id) => {
-        this.check_call(expr,
-                        None,
-                        callee_id,
-                        expr.span,
-                        [rval]);
+        this.check_call(expr, None, callee_id, expr.span, [rval]);
       }
       ast::ExprUnary(callee_id, _, _) | ast::ExprIndex(callee_id, _, _)
       if method_map.get().contains_key(&expr.id) => {
-        this.check_call(expr,
-                        None,
-                        callee_id,
-                        expr.span,
-                        []);
+        this.check_call(expr, None, callee_id, expr.span, []);
       }
       ast::ExprInlineAsm(ref ia) => {
           for &(_, out) in ia.outputs.iter() {
               this.check_assignment(out);
           }
       }
-      _ => { }
+      _ => {}
     }
 }
 

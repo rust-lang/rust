@@ -682,7 +682,7 @@ impl Context {
     ///
     /// This currently isn't parallelized, but it'd be pretty easy to add
     /// parallelization to this function.
-    fn crate(mut self, mut crate: clean::Crate, cache: Cache) {
+    fn crate(self, mut crate: clean::Crate, cache: Cache) {
         let mut item = match crate.module.take() {
             Some(i) => i,
             None => return

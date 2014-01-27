@@ -551,9 +551,14 @@ impl<'a> MethodDef<'a> {
         // create the generics that aren't for Self
         let fn_generics = self.generics.to_generics(trait_.cx, trait_.span, type_ident, generics);
 
+        let self_arg = match explicit_self.node {
+            ast::SelfStatic => None,
+            _ => Some(ast::Arg::new_self(trait_.span, ast::MutImmutable))
+        };
         let args = arg_types.move_iter().map(|(name, ty)| {
             trait_.cx.arg(trait_.span, name, ty)
-        }).collect();
+        });
+        let args = self_arg.move_iter().chain(args).collect();
 
         let ret_type = self.get_ret_ty(trait_, generics, type_ident);
 
@@ -578,7 +583,6 @@ impl<'a> MethodDef<'a> {
             body: body_block,
             id: ast::DUMMY_NODE_ID,
             span: trait_.span,
-            self_id: ast::DUMMY_NODE_ID,
             vis: ast::Inherited,
         }
     }

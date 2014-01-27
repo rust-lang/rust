@@ -895,7 +895,7 @@ pub fn run_test(force_ignore: bool,
             return;
         }
         StaticBenchFn(benchfn) => {
-            let bs = ::test::bench::benchmark(benchfn);
+            let bs = ::test::bench::benchmark(|harness| benchfn(harness));
             monitor_ch.send((desc, TrBench(bs)));
             return;
         }

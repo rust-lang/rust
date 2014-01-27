@@ -24,8 +24,7 @@ use middle::ty::{ty_str, ty_vec, ty_float, ty_infer, ty_int, ty_nil};
 use middle::ty::{ty_param, ty_param_bounds_and_ty, ty_ptr};
 use middle::ty::{ty_rptr, ty_self, ty_struct, ty_trait, ty_tup};
 use middle::ty::{ty_type, ty_uint, ty_uniq, ty_bare_fn, ty_closure};
-use middle::ty::{ty_opaque_closure_ptr, ty_unboxed_vec};
-use middle::ty::{type_is_ty_var};
+use middle::ty::{ty_unboxed_vec, type_is_ty_var};
 use middle::subst::Subst;
 use middle::ty;
 use middle::ty::{Impl, Method};
@@ -84,7 +83,7 @@ pub fn get_base_type(inference_context: @InferCtxt,
         ty_nil | ty_bot | ty_bool | ty_char | ty_int(..) | ty_uint(..) | ty_float(..) |
         ty_str(..) | ty_vec(..) | ty_bare_fn(..) | ty_closure(..) | ty_tup(..) |
         ty_infer(..) | ty_param(..) | ty_self(..) | ty_type |
-        ty_opaque_closure_ptr(..) | ty_unboxed_vec(..) | ty_err | ty_box(_) |
+        ty_unboxed_vec(..) | ty_err | ty_box(_) |
         ty_uniq(_) | ty_ptr(_) | ty_rptr(_, _) => {
             debug!("(getting base type) no base type; found {:?}",
                    get(original_type).sty);
@@ -819,9 +818,6 @@ fn subst_receiver_types_in_method_ty(tcx: ty::ctxt,
 
         // method types *can* appear in the generic bounds
         method.generics.subst(tcx, &combined_substs),
-
-        // method tps cannot appear in the self_ty, so use `substs` from trait ref
-        method.transformed_self_ty.subst(tcx, &trait_ref.substs),
 
         // method types *can* appear in the fty
         method.fty.subst(tcx, &combined_substs),

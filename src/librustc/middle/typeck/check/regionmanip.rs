@@ -21,29 +21,26 @@ use util::ppaux;
 
 pub fn replace_bound_regions_in_fn_sig(
         tcx: ty::ctxt,
-        opt_self_ty: Option<ty::t>,
         fn_sig: &ty::FnSig,
         mapf: |ty::BoundRegion| -> ty::Region)
-        -> (HashMap<ty::BoundRegion,ty::Region>, Option<ty::t>, ty::FnSig) {
-    debug!("replace_bound_regions_in_fn_sig(self_ty={}, fn_sig={})",
-            opt_self_ty.repr(tcx),
-            fn_sig.repr(tcx));
+        -> (HashMap<ty::BoundRegion,ty::Region>, ty::FnSig) {
+    debug!("replace_bound_regions_in_fn_sig({})", fn_sig.repr(tcx));
 
     let mut map = HashMap::new();
-    let (fn_sig, opt_self_ty) = {
+    let fn_sig = {
         let mut f = ty_fold::RegionFolder::regions(tcx, |r| {
-                debug!("region r={}", r.to_str());
-                match r {
+            debug!("region r={}", r.to_str());
+            match r {
                 ty::ReLateBound(s, br) if s == fn_sig.binder_id => {
                     *map.find_or_insert_with(br, |_| mapf(br))
                 }
                 _ => r
-            }});
-        (ty_fold::super_fold_sig(&mut f, fn_sig),
-         ty_fold::fold_opt_ty(&mut f, opt_self_ty))
+            }
+        });
+        ty_fold::super_fold_sig(&mut f, fn_sig)
     };
     debug!("resulting map: {}", map.to_str());
-    (map, opt_self_ty, fn_sig)
+    (map, fn_sig)
 }
 
 pub fn relate_nested_regions(tcx: ty::ctxt,
@@ -135,11 +132,7 @@ pub fn relate_nested_regions(tcx: ty::ctxt,
     }
 }
 
-pub fn relate_free_regions(
-    tcx: ty::ctxt,
-    self_ty: Option<ty::t>,
-    fn_sig: &ty::FnSig)
-{
+pub fn relate_free_regions(tcx: ty::ctxt, fn_sig: &ty::FnSig) {
     /*!
      * This function populates the region map's `free_region_map`.
      * It walks over the transformed self type and argument types
@@ -157,9 +150,6 @@ pub fn relate_free_regions(
     let mut all_tys = ~[];
     for arg in fn_sig.inputs.iter() {
         all_tys.push(*arg);
-    }
-    for &t in self_ty.iter() {
-        all_tys.push(t);
     }
 
     for &t in all_tys.iter() {

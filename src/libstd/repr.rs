@@ -580,14 +580,8 @@ impl<'a> TyVisitor for ReprVisitor<'a> {
     fn visit_self(&mut self) -> bool { true }
     fn visit_type(&mut self) -> bool { true }
 
-    fn visit_opaque_box(&mut self) -> bool {
-        self.writer.write(['@' as u8]);
-        self.get::<&raw::Box<()>>(|this, b| {
-            let p = ptr::to_unsafe_ptr(&b.data) as *u8;
-            this.visit_ptr_inner(p, b.type_desc);
-        })
-    }
-
+    // NOTE remove after next snapshot
+    #[cfg(stage0)]
     fn visit_closure_ptr(&mut self, _ck: uint) -> bool { true }
 }
 

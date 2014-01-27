@@ -820,12 +820,6 @@ fn resolve_fn(visitor: &mut RegionResolutionVisitor,
     // The arguments and `self` are parented to the body of the fn.
     let decl_cx = Context {parent: Some(body.id),
                            var_parent: Some(body.id)};
-    match *fk {
-        visit::FkMethod(_, _, method) => {
-            visitor.region_maps.record_var_scope(method.self_id, body.id);
-        }
-        _ => {}
-    }
     visit::walk_fn_decl(visitor, decl, decl_cx);
 
     // The body of the fn itself is either a root scope (top-level fn)

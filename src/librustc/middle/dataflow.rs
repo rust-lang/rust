@@ -668,24 +668,21 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
             }
 
             ast::ExprCall(f, ref args, _) => {
-                self.walk_call(f.id, expr.id,
-                               f, *args, in_out, loop_scopes);
+                self.walk_expr(f, in_out, loop_scopes);
+                self.walk_call(f.id, expr.id, *args, in_out, loop_scopes);
             }
 
-            ast::ExprMethodCall(callee_id, rcvr, _, _, ref args, _) => {
-                self.walk_call(callee_id, expr.id,
-                               rcvr, *args, in_out, loop_scopes);
+            ast::ExprMethodCall(callee_id, _, _, ref args, _) => {
+                self.walk_call(callee_id, expr.id, *args, in_out, loop_scopes);
             }
 
             ast::ExprIndex(callee_id, l, r) |
             ast::ExprBinary(callee_id, _, l, r) if self.is_method_call(expr) => {
-                self.walk_call(callee_id, expr.id,
-                               l, [r], in_out, loop_scopes);
+                self.walk_call(callee_id, expr.id, [l, r], in_out, loop_scopes);
             }
 
             ast::ExprUnary(callee_id, _, e) if self.is_method_call(expr) => {
-                self.walk_call(callee_id, expr.id,
-                               e, [], in_out, loop_scopes);
+                self.walk_call(callee_id, expr.id, [e], in_out, loop_scopes);
             }
 
             ast::ExprTup(ref exprs) => {
@@ -706,9 +703,7 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
 
             ast::ExprLogLevel |
             ast::ExprLit(..) |
-            ast::ExprPath(..) |
-            ast::ExprSelf => {
-            }
+            ast::ExprPath(..) => {}
 
             ast::ExprAddrOf(_, e) |
             ast::ExprDoBody(e) |
@@ -813,11 +808,9 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
     fn walk_call(&mut self,
                  _callee_id: ast::NodeId,
                  call_id: ast::NodeId,
-                 arg0: &ast::Expr,
                  args: &[@ast::Expr],
                  in_out: &mut [uint],
                  loop_scopes: &mut ~[LoopScope]) {
-        self.walk_expr(arg0, in_out, loop_scopes);
         self.walk_exprs(args, in_out, loop_scopes);
 
         // FIXME(#6268) nested method calls

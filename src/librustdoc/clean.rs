@@ -330,6 +330,16 @@ pub struct Method {
 
 impl Clean<Item> for ast::Method {
     fn clean(&self) -> Item {
+        let inputs = match self.explicit_self.node {
+            ast::SelfStatic => self.decl.inputs.as_slice(),
+            _ => self.decl.inputs.slice_from(1)
+        };
+        let decl = FnDecl {
+            inputs: inputs.iter().map(|x| x.clean()).collect(),
+            output: (self.decl.output.clean()),
+            cf: self.decl.cf.clean(),
+            attrs: ~[]
+        };
         Item {
             name: Some(self.ident.clean()),
             attrs: self.attrs.clean(),
@@ -340,7 +350,7 @@ impl Clean<Item> for ast::Method {
                 generics: self.generics.clean(),
                 self_: self.explicit_self.clean(),
                 purity: self.purity.clone(),
-                decl: self.decl.clean(),
+                decl: decl,
             }),
         }
     }
@@ -356,6 +366,16 @@ pub struct TyMethod {
 
 impl Clean<Item> for ast::TypeMethod {
     fn clean(&self) -> Item {
+        let inputs = match self.explicit_self.node {
+            ast::SelfStatic => self.decl.inputs.as_slice(),
+            _ => self.decl.inputs.slice_from(1)
+        };
+        let decl = FnDecl {
+            inputs: inputs.iter().map(|x| x.clean()).collect(),
+            output: (self.decl.output.clean()),
+            cf: self.decl.cf.clean(),
+            attrs: ~[]
+        };
         Item {
             name: Some(self.ident.clean()),
             attrs: self.attrs.clean(),
@@ -364,7 +384,7 @@ impl Clean<Item> for ast::TypeMethod {
             visibility: None,
             inner: TyMethodItem(TyMethod {
                 purity: self.purity.clone(),
-                decl: self.decl.clean(),
+                decl: decl,
                 self_: self.explicit_self.clean(),
                 generics: self.generics.clean(),
             }),
@@ -385,8 +405,8 @@ impl Clean<SelfTy> for ast::ExplicitSelf {
     fn clean(&self) -> SelfTy {
         match self.node {
             ast::SelfStatic => SelfStatic,
-            ast::SelfValue(_) => SelfValue,
-            ast::SelfUniq(_) => SelfOwned,
+            ast::SelfValue => SelfValue,
+            ast::SelfUniq => SelfOwned,
             ast::SelfRegion(lt, mt) => SelfBorrowed(lt.clean(), mt.clean()),
             ast::SelfBox => SelfManaged,
         }
@@ -1178,7 +1198,7 @@ fn resolve_type(path: Path, tpbs: Option<~[TyParamBound]>,
 
     let (def_id, kind) = match *d {
         ast::DefFn(i, _) => (i, TypeFunction),
-        ast::DefSelf(i, _) | ast::DefSelfTy(i) => return Self(i),
+        ast::DefSelfTy(i) => return Self(i),
         ast::DefTy(i) => (i, TypeEnum),
         ast::DefTrait(i) => {
             debug!("saw DefTrait in def_to_id");

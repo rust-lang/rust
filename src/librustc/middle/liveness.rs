@@ -405,20 +405,6 @@ fn visit_fn(v: &mut LivenessVisitor,
         })
     };
 
-    // Add `this`, whether explicit or implicit.
-    match *fk {
-        visit::FkMethod(_, _, method) => {
-            match method.explicit_self.node {
-                SelfValue(_) | SelfRegion(..) | SelfBox | SelfUniq(_) => {
-                    fn_maps.add_variable(Arg(method.self_id,
-                                             special_idents::self_));
-                }
-                SelfStatic => {}
-            }
-        }
-        visit::FkItemFn(..) | visit::FkFnBlock(..) => {}
-    }
-
     // gather up the various local variables, significant expressions,
     // and so forth:
     visit::walk_fn(v, fk, decl, body, sp, id, fn_maps);
@@ -493,7 +479,7 @@ fn visit_arm(v: &mut LivenessVisitor, arm: &Arm, this: @IrMaps) {
 fn visit_expr(v: &mut LivenessVisitor, expr: &Expr, this: @IrMaps) {
     match expr.node {
       // live nodes required for uses or definitions of variables:
-      ExprPath(_) | ExprSelf => {
+      ExprPath(_) => {
         let def_map = this.tcx.def_map.borrow();
         let def = def_map.get().get_copy(&expr.id);
         debug!("expr {}: path that leads to {:?}", expr.id, def);
@@ -1050,7 +1036,7 @@ impl Liveness {
         match expr.node {
           // Interesting cases with control flow or which gen/kill
 
-          ExprPath(_) | ExprSelf => {
+          ExprPath(_) => {
               self.access_path(expr, succ, ACC_READ | ACC_USE)
           }
 
@@ -1229,14 +1215,13 @@ impl Liveness {
             self.propagate_through_expr(f, succ)
           }
 
-          ExprMethodCall(callee_id, rcvr, _, _, ref args, _) => {
+          ExprMethodCall(callee_id, _, _, ref args, _) => {
             // calling a method with bot return type means that the method
             // will fail, and hence the successors can be ignored
             let t_ret = ty::ty_fn_ret(ty::node_id_to_type(self.tcx, callee_id));
             let succ = if ty::type_is_bot(t_ret) {self.s.exit_ln}
                        else {succ};
-            let succ = self.propagate_through_exprs(*args, succ);
-            self.propagate_through_expr(rcvr, succ)
+            self.propagate_through_exprs(*args, succ)
           }
 
           ExprTup(ref exprs) => {
@@ -1549,7 +1534,7 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
       ExprAgain(..) | ExprLit(_) | ExprBlock(..) |
       ExprMac(..) | ExprAddrOf(..) | ExprStruct(..) | ExprRepeat(..) |
       ExprParen(..) | ExprFnBlock(..) | ExprProc(..) | ExprPath(..) |
-      ExprSelf(..) | ExprBox(..) => {
+      ExprBox(..) => {
         visit::walk_expr(this, expr, ());
       }
       ExprForLoop(..) => fail!("non-desugared expr_for_loop")
@@ -1694,9 +1679,13 @@ impl Liveness {
         for arg in decl.inputs.iter() {
             pat_util::pat_bindings(self.tcx.def_map,
                                    arg.pat,
-                                   |_bm, p_id, sp, _n| {
+                                   |_bm, p_id, sp, path| {
                 let var = self.variable(p_id, sp);
-                self.warn_about_unused(sp, p_id, entry_ln, var);
+                // Ignore unused self.
+                let ident = ast_util::path_to_ident(path);
+                if ident.name != special_idents::self_.name {
+                    self.warn_about_unused(sp, p_id, entry_ln, var);
+                }
             })
         }
     }
