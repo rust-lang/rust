@@ -210,9 +210,19 @@ pub static MUTEX_INIT: StaticMutex = StaticMutex {
 impl StaticMutex {
     /// Attempts to grab this lock, see `Mutex::try_lock`
     pub fn try_lock<'a>(&'a mut self) -> Option<Guard<'a>> {
+        // Turns out windows mutexes allow for recursive locking, meaning that
+        // the same thread will succeed in the trylock if it previously had the
+        // mutex. This is obviously bad for green threads, so we're forced to do
+        // a check after the trylock succeeds to whether we should have actually
+        // grabbed the lock.
         if unsafe { self.lock.trylock() } {
-            self.held.store(true, atomics::SeqCst); // see below
-            Some(Guard{ lock: self })
+            if cfg!(windows) && self.held.load(atomics::SeqCst) {
+                unsafe { self.lock.unlock(); }
+                None
+            } else {
+                self.held.store(true, atomics::SeqCst);
+                Some(Guard{ lock: self })
+            }
         } else {
             None
         }
@@ -226,9 +236,16 @@ impl StaticMutex {
         // to OS TLS. In attempt to avoid this hit and to maintain efficiency in
         // the uncontended case (very important) we start off by hitting a
         // trylock on the OS mutex. If we succeed, then we're lucky!
+        //
+        // Also, see the comment above in try_lock for why we check `self.held`
+        // after we grab the lock, but only on windows.
         if unsafe { self.lock.trylock() } {
-            self.held.store(true, atomics::SeqCst); // see below
-            return Guard{ lock: self }
+            if cfg!(windows) && self.held.load(atomics::SeqCst) {
+                unsafe { self.lock.unlock(); }
+            } else {
+                self.held.store(true, atomics::SeqCst);
+                return Guard{ lock: self }
+            }
         }
 
         let t: ~Task = Local::take();
@@ -313,6 +330,7 @@ impl StaticMutex {
                 // here for green threads).
                 while !self.held.load(atomics::SeqCst) {
                     if unsafe { self.lock.trylock() } {
+                        assert!(!self.held.load(atomics::SeqCst));
                         self.held.store(true, atomics::SeqCst);
                         stolen = true;
                         break
@@ -354,26 +372,21 @@ impl StaticMutex {
     }
 
     fn unlock(&mut self) {
-        // First, if we were *not* a blocking locker, and there are some
-        // blocking threads waiting, then we attempt to relinquish the lock to a
-        // blocking locker. This helps provide a little fairness to those who
-        // are blocking.
-        //
-        // Note that we do *not* set 'held' to false in order to prevent green
-        // threads from spinning unnecessarily. We're also guaranteed that a
-        // native thread will grab this lock and then later attempt to empty the
-        // green queue (which is why we don't check the queue).
-        if !self.is_blocking_locker &&
-           self.blocking_cnt.load(atomics::SeqCst) > 0 {
-            unsafe { self.lock.unlock() }
-            return;
-        }
-
         // As documented above, we *initially* flag our mutex as unlocked in
         // order to allow green threads just starting to block to realize that
         // they shouldn't completely block.
         assert!(self.held.load(atomics::SeqCst));
         self.held.store(false, atomics::SeqCst);
+
+        // First, if we were *not* a blocking locker, and there are some
+        // blocking threads waiting, then we attempt to relinquish the lock to a
+        // blocking locker. This helps provide a little fairness to those who
+        // are blocking.
+        if !self.is_blocking_locker &&
+           self.blocking_cnt.load(atomics::SeqCst) > 0 {
+            unsafe { self.lock.unlock() }
+            return;
+        }
 
         // Remember that the queues we are using may return None when there is
         // indeed data on the queue. In this case, we can just safely ignore it.
