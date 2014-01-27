@@ -34,7 +34,8 @@ use visit_ast::RustdocVisitor;
 
 pub fn run(input: &str, matches: &getopts::Matches) -> int {
     let parsesess = parse::new_parse_sess(None);
-    let input = driver::FileInput(Path::new(input));
+    let input_path = Path::new(input);
+    let input = driver::FileInput(input_path.clone());
     let libs = matches.opt_strs("L").map(|s| Path::new(s.as_slice()));
     let libs = @RefCell::new(libs.move_iter().collect());
 
@@ -52,9 +53,9 @@ pub fn run(input: &str, matches: &getopts::Matches) -> int {
         diagnostic::mk_span_handler(diagnostic_handler, parsesess.cm);
 
     let sess = driver::build_session_(sessopts,
+                                      Some(input_path),
                                       parsesess.cm,
-                                      @diagnostic::DefaultEmitter as
-                                            @diagnostic::Emitter,
+                                      @diagnostic::DefaultEmitter,
                                       span_diagnostic_handler);
 
     let cfg = driver::build_configuration(sess);
@@ -113,9 +114,9 @@ fn runtest(test: &str, cratename: &str, libs: HashSet<Path>) {
         diagnostic::mk_span_handler(diagnostic_handler, parsesess.cm);
 
     let sess = driver::build_session_(sessopts,
+                                      None,
                                       parsesess.cm,
-                                      @diagnostic::DefaultEmitter as
-                                            @diagnostic::Emitter,
+                                      @diagnostic::DefaultEmitter,
                                       span_diagnostic_handler);
 
     let outdir = TempDir::new("rustdoctest").expect("rustdoc needs a tempdir");

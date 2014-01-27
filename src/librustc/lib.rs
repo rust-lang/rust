@@ -230,22 +230,22 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
         version(binary);
         return;
     }
-    let input = match matches.free.len() {
+    let (input, input_file_path) = match matches.free.len() {
       0u => d::early_error(demitter, "no input filename given"),
       1u => {
         let ifile = matches.free[0].as_slice();
         if "-" == ifile {
             let src = str::from_utf8_owned(io::stdin().read_to_end()).unwrap();
-            d::StrInput(src.to_managed())
+            (d::StrInput(src.to_managed()), None)
         } else {
-            d::FileInput(Path::new(ifile))
+            (d::FileInput(Path::new(ifile)), Some(Path::new(ifile)))
         }
       }
       _ => d::early_error(demitter, "multiple input filenames provided")
     };
 
     let sopts = d::build_session_options(binary, matches, demitter);
-    let sess = d::build_session(sopts, demitter);
+    let sess = d::build_session(sopts, input_file_path, demitter);
     let odir = matches.opt_str("out-dir").map(|o| Path::new(o));
     let ofile = matches.opt_str("o").map(|o| Path::new(o));
     let cfg = d::build_configuration(sess);
