@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::cell::RefCell;
-use std::option;
 use std::os;
 use std::io;
 use std::io::fs;
@@ -160,32 +159,22 @@ fn make_rustpkg_target_lib_path(dir: &Path,
 }
 
 pub fn get_or_default_sysroot() -> Path {
-    // Follow symlinks.  If the resolved path is relative, make it absolute.
-    fn canonicalize(path: Option<Path>) -> Option<Path> {
-        path.and_then(|mut path|
-            match io::io_error::cond.trap(|_| ()).inside(|| fs::readlink(&path)) {
-                Some(canon) => {
-                    if canon.is_absolute() {
-                        Some(canon)
-                    } else {
-                        path.pop();
-                        Some(path.join(canon))
-                    }
-                },
-                None => Some(path),
-            })
-    }
-
-    match canonicalize(os::self_exe_name()) {
-      option::Some(p) => { let mut p = p; p.pop(); p.pop(); p }
-      option::None => fail!("can't determine value for sysroot")
+    // Use the realpath function order to get the true real path of `rustc`, we
+    // want to avoid dealing with symlinks.
+    match os::self_exe_path() {
+        Some(p) => {
+            let mut p = fs::realpath(&p);
+            p.pop();
+            p
+        }
+        None => fail!("can't determine value for sysroot")
     }
 }
 
 fn get_sysroot(maybe_sysroot: &Option<@Path>) -> @Path {
     match *maybe_sysroot {
-      option::Some(sr) => sr,
-      option::None => @get_or_default_sysroot()
+        Some(sr) => sr,
+        None => @get_or_default_sysroot()
     }
 }
 

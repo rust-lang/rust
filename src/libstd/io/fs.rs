@@ -54,6 +54,7 @@ use super::{SeekStyle, Read, Write, Open, IoError, Truncate,
 use rt::rtio::{RtioFileStream, IoFactory, LocalIo};
 use io;
 use option::{Some, None, Option};
+use os;
 use result::{Ok, Err};
 use path;
 use path::{Path, GenericPath};
@@ -437,6 +438,65 @@ pub fn readlink(path: &Path) -> Option<Path> {
     LocalIo::maybe_raise(|io| io.fs_readlink(&path.to_c_str()))
 }
 
+/// Returns an absolute path in the filesystem that `path` points to. The
+/// returned path does not contain any symlinks in its hierarchy.
+///
+/// # Errors
+///
+/// If this function encounters errors, it will raise the error on the
+/// `io_error` condition and the original path argument is returned.
+pub fn realpath(original: &Path) -> Path {
+    static MAX_LINKS_FOLLOWED: uint = 256;
+    let mut io = match LocalIo::borrow() {
+        Some(io) => io,
+        None => {
+            io_error::cond.raise(io::standard_error(io::IoUnavailable));
+            return original.clone()
+        }
+    };
+    let original = os::make_absolute(original);
+
+    let result = original.root_path();
+    let mut result = result.expect("make_absolute has no root_path");
+    let mut followed = 0;
+
+    for part in original.components() {
+        result.push(part);
+
+        loop {
+            if followed == MAX_LINKS_FOLLOWED {
+                io_error::cond.raise(io::IoError {
+                    kind: io::OtherIoError,
+                    desc: "too many symlinks",
+                    detail: None,
+                });
+                return original.clone();
+            }
+
+            let to_test = result.to_c_str();
+            match io.get().fs_lstat(&to_test) {
+                Err(..) => break,
+                Ok(ref stat) if stat.kind != io::TypeSymlink => break,
+                Ok(..) => {
+                    followed += 1;
+                    match io.get().fs_readlink(&to_test) {
+                        Ok(path) => {
+                            result.pop();
+                            result.push(path);
+                        }
+                        Err(e) => {
+                            io_error::cond.raise(e);
+                            return original.clone();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return result;
+}
+
 /// Create a new, empty directory at the provided path
 ///
 /// # Example
@@ -704,7 +764,7 @@ mod test {
     use str;
     use io::fs::{File, rmdir, mkdir, readdir, rmdir_recursive,
                  mkdir_recursive, copy, unlink, stat, symlink, link,
-                 readlink, chmod, lstat, change_file_times};
+                 readlink, chmod, lstat, change_file_times, realpath};
     use util;
     use path::Path;
     use io;
@@ -1252,4 +1312,46 @@ mod test {
             Err(..) => {}
         }
     }
+
+    iotest!(fn realpath_works() {
+        let tmpdir = tmpdir();
+        let tmpdir = realpath(tmpdir.path());
+        let file = tmpdir.join("test");
+        let dir = tmpdir.join("test2");
+        let link = dir.join("link");
+        let linkdir = tmpdir.join("test3");
+
+        File::create(&file);
+        mkdir(&dir, io::UserRWX);
+        symlink(&file, &link);
+        symlink(&dir, &linkdir);
+
+        assert_eq!(realpath(&tmpdir), tmpdir);
+        assert_eq!(realpath(&file), file);
+        assert_eq!(realpath(&link), file);
+        assert_eq!(realpath(&linkdir), dir);
+        assert_eq!(realpath(&linkdir.join("link")), file);
+    } #[ignore(cfg(windows))])
+
+    iotest!(fn realpath_works_tricky() {
+        let tmpdir = tmpdir();
+        let tmpdir = realpath(tmpdir.path());
+
+        let a = tmpdir.join("a");
+        let b = a.join("b");
+        let c = b.join("c");
+        let d = a.join("d");
+        let e = d.join("e");
+        let f = a.join("f");
+
+        mkdir_recursive(&b, io::UserRWX);
+        mkdir_recursive(&d, io::UserRWX);
+        File::create(&f);
+        symlink(&Path::new("../d/e"), &c);
+        symlink(&Path::new("../f"), &e);
+
+        assert_eq!(realpath(&c), f);
+        assert_eq!(realpath(&e), f);
+
+    } #[ignore(cfg(windows))])
 }
