@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// This file was auto-generated using 'src/etc/generate-keyword-span-tests.py'
+
 #[feature(struct_variant)];
+extern mod extra;
 
-struct NotEq;
+#[deriving(TotalEq)]
+struct Error;
 
-#[deriving(Eq)]
-enum Foo {
-    Bar(NotEq), //~ ERROR mismatched types
-        //~^ ERROR failed to find an implementation of trait std::cmp::Eq for NotEq
-    Baz { x: NotEq }
+#[deriving(TotalOrd,TotalEq)]
+enum Enum {
+   A {
+     x: Error //~ ERROR
+//~^ ERROR
+   }
 }
 
-pub fn main() {}
+fn main() {}

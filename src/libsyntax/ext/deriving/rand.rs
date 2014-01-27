@@ -50,7 +50,7 @@ pub fn expand_deriving_rand(cx: &ExtCtxt,
     trait_def.expand(mitem, in_items)
 }
 
-fn rand_substructure(cx: &ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
+fn rand_substructure(cx: &ExtCtxt, trait_span: Span, substr: &Substructure) -> @Expr {
     let rng = match substr.nonself_args {
         [rng] => ~[ rng ],
         _ => cx.bug("Incorrect number of arguments to `rand` in `deriving(Rand)`")
@@ -69,18 +69,18 @@ fn rand_substructure(cx: &ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
 
     return match *substr.fields {
         StaticStruct(_, ref summary) => {
-            rand_thing(cx, span, substr.type_ident, summary, rand_call)
+            rand_thing(cx, trait_span, substr.type_ident, summary, rand_call)
         }
         StaticEnum(_, ref variants) => {
             if variants.is_empty() {
-                cx.span_err(span, "`Rand` cannot be derived for enums with no variants");
+                cx.span_err(trait_span, "`Rand` cannot be derived for enums with no variants");
                 // let compilation continue
-                return cx.expr_uint(span, 0);
+                return cx.expr_uint(trait_span, 0);
             }
 
-            let variant_count = cx.expr_uint(span, variants.len());
+            let variant_count = cx.expr_uint(trait_span, variants.len());
 
-            let rand_name = cx.path_all(span,
+            let rand_name = cx.path_all(trait_span,
                                         true,
                                         rand_ident.clone(),
                                         opt_vec::Empty,
@@ -88,52 +88,48 @@ fn rand_substructure(cx: &ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
             let rand_name = cx.expr_path(rand_name);
 
             // ::std::rand::Rand::rand(rng)
-            let rv_call = cx.expr_call(span,
+            let rv_call = cx.expr_call(trait_span,
                                        rand_name,
                                        ~[ rng[0] ]);
 
             // need to specify the uint-ness of the random number
-            let uint_ty = cx.ty_ident(span, cx.ident_of("uint"));
+            let uint_ty = cx.ty_ident(trait_span, cx.ident_of("uint"));
             let value_ident = cx.ident_of("__value");
-            let let_statement = cx.stmt_let_typed(span,
+            let let_statement = cx.stmt_let_typed(trait_span,
                                                   false,
                                                   value_ident,
                                                   uint_ty,
                                                   rv_call);
 
             // rand() % variants.len()
-            let value_ref = cx.expr_ident(span, value_ident);
-            let rand_variant = cx.expr_binary(span,
+            let value_ref = cx.expr_ident(trait_span, value_ident);
+            let rand_variant = cx.expr_binary(trait_span,
                                               ast::BiRem,
                                               value_ref,
                                               variant_count);
 
-            let mut arms = variants.iter().enumerate().map(|(i, id_sum)| {
-                let i_expr = cx.expr_uint(span, i);
-                let pat = cx.pat_lit(span, i_expr);
+            let mut arms = variants.iter().enumerate().map(|(i, &(ident, v_span, ref summary))| {
+                let i_expr = cx.expr_uint(v_span, i);
+                let pat = cx.pat_lit(v_span, i_expr);
 
-                match *id_sum {
-                    (ident, ref summary) => {
-                        cx.arm(span,
-                               ~[ pat ],
-                               rand_thing(cx, span, ident, summary, |sp| rand_call(sp)))
-                    }
-                }
+                cx.arm(v_span,
+                       ~[ pat ],
+                       rand_thing(cx, v_span, ident, summary, |sp| rand_call(sp)))
             }).collect::<~[ast::Arm]>();
 
             // _ => {} at the end. Should never occur
-            arms.push(cx.arm_unreachable(span));
+            arms.push(cx.arm_unreachable(trait_span));
 
-            let match_expr = cx.expr_match(span, rand_variant, arms);
+            let match_expr = cx.expr_match(trait_span, rand_variant, arms);
 
-            let block = cx.block(span, ~[ let_statement ], Some(match_expr));
+            let block = cx.block(trait_span, ~[ let_statement ], Some(match_expr));
             cx.expr_block(block)
         }
         _ => cx.bug("Non-static method in `deriving(Rand)`")
     };
 
     fn rand_thing(cx: &ExtCtxt,
-                  span: Span,
+                  trait_span: Span,
                   ctor_ident: Ident,
                   summary: &StaticFields,
                   rand_call: |Span| -> @Expr)
@@ -141,17 +137,17 @@ fn rand_substructure(cx: &ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
         match *summary {
             Unnamed(ref fields) => {
                 if fields.is_empty() {
-                    cx.expr_ident(span, ctor_ident)
+                    cx.expr_ident(trait_span, ctor_ident)
                 } else {
                     let exprs = fields.map(|span| rand_call(*span));
-                    cx.expr_call_ident(span, ctor_ident, exprs)
+                    cx.expr_call_ident(trait_span, ctor_ident, exprs)
                 }
             }
             Named(ref fields) => {
                 let rand_fields = fields.map(|&(ident, span)| {
                     cx.field_imm(span, ident, rand_call(span))
                 });
-                cx.expr_struct_ident(span, ctor_ident, rand_fields)
+                cx.expr_struct_ident(trait_span, ctor_ident, rand_fields)
             }
         }
     }

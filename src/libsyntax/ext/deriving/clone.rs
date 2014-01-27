@@ -74,13 +74,13 @@ pub fn expand_deriving_deep_clone(cx: &ExtCtxt,
 
 fn cs_clone(
     name: &str,
-    cx: &ExtCtxt, span: Span,
+    cx: &ExtCtxt, trait_span: Span,
     substr: &Substructure) -> @Expr {
     let clone_ident = substr.method_ident;
     let ctor_ident;
     let all_fields;
-    let subcall = |field|
-        cx.expr_method_call(span, field, clone_ident, ~[]);
+    let subcall = |field: &FieldInfo|
+        cx.expr_method_call(field.span, field.self_, clone_ident, ~[]);
 
     match *substr.fields {
         Struct(ref af) => {
@@ -91,37 +91,37 @@ fn cs_clone(
             ctor_ident = variant.node.name;
             all_fields = af;
         },
-        EnumNonMatching(..) => cx.span_bug(span,
-                                          format!("Non-matching enum variants in `deriving({})`",
-                                               name)),
-        StaticEnum(..) | StaticStruct(..) => cx.span_bug(span,
-                                                       format!("Static method in `deriving({})`",
-                                                            name))
+        EnumNonMatching(..) => cx.span_bug(trait_span,
+                                           format!("Non-matching enum variants in `deriving({})`",
+                                                  name)),
+        StaticEnum(..) | StaticStruct(..) => cx.span_bug(trait_span,
+                                                         format!("Static method in `deriving({})`",
+                                                                 name))
     }
 
     match *all_fields {
         [FieldInfo { name: None, .. }, ..] => {
             // enum-like
-            let subcalls = all_fields.map(|field| subcall(field.self_));
-            cx.expr_call_ident(span, ctor_ident, subcalls)
+            let subcalls = all_fields.map(subcall);
+            cx.expr_call_ident(trait_span, ctor_ident, subcalls)
         },
         _ => {
             // struct-like
             let fields = all_fields.map(|field| {
                 let ident = match field.name {
                     Some(i) => i,
-                    None => cx.span_bug(span,
+                    None => cx.span_bug(trait_span,
                                         format!("unnamed field in normal struct in `deriving({})`",
-                                             name))
+                                                name))
                 };
-                cx.field_imm(span, ident, subcall(field.self_))
+                cx.field_imm(field.span, ident, subcall(field))
             });
 
             if fields.is_empty() {
                 // no fields, so construct like `None`
-                cx.expr_ident(span, ctor_ident)
+                cx.expr_ident(trait_span, ctor_ident)
             } else {
-                cx.expr_struct_ident(span, ctor_ident, fields)
+                cx.expr_struct_ident(trait_span, ctor_ident, fields)
             }
         }
     }
