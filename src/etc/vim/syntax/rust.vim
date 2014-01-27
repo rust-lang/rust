@@ -46,8 +46,6 @@ syn keyword   rustType        f64 i8 i16 i32 i64 str Self
 " to make it easy to update.
 
 " Core operators {{{3
-syn keyword   rustEnum        Either
-syn keyword   rustEnumVariant Left Right
 syn keyword   rustTrait       Sized
 syn keyword   rustTrait       Freeze Send
 syn keyword   rustTrait       Add Sub Mul Div Rem Neg Not
@@ -113,7 +111,6 @@ syn keyword   rustSelf        self
 syn keyword   rustBoolean     true false
 
 syn keyword   rustConstant    Some None       " option
-syn keyword   rustConstant    Left Right      " either
 syn keyword   rustConstant    Ok Err          " result
 syn keyword   rustConstant    Less Equal Greater " Ordering
 
