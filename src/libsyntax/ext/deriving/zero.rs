@@ -57,7 +57,7 @@ pub fn expand_deriving_zero(cx: &ExtCtxt,
     trait_def.expand(mitem, in_items)
 }
 
-fn zero_substructure(cx: &ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
+fn zero_substructure(cx: &ExtCtxt, trait_span: Span, substr: &Substructure) -> @Expr {
     let zero_ident = ~[
         cx.ident_of("std"),
         cx.ident_of("num"),
@@ -71,24 +71,24 @@ fn zero_substructure(cx: &ExtCtxt, span: Span, substr: &Substructure) -> @Expr {
             match *summary {
                 Unnamed(ref fields) => {
                     if fields.is_empty() {
-                        cx.expr_ident(span, substr.type_ident)
+                        cx.expr_ident(trait_span, substr.type_ident)
                     } else {
                         let exprs = fields.map(|sp| zero_call(*sp));
-                        cx.expr_call_ident(span, substr.type_ident, exprs)
+                        cx.expr_call_ident(trait_span, substr.type_ident, exprs)
                     }
                 }
                 Named(ref fields) => {
                     let zero_fields = fields.map(|&(ident, span)| {
                         cx.field_imm(span, ident, zero_call(span))
                     });
-                    cx.expr_struct_ident(span, substr.type_ident, zero_fields)
+                    cx.expr_struct_ident(trait_span, substr.type_ident, zero_fields)
                 }
             }
         }
         StaticEnum(..) => {
-            cx.span_err(span, "`Zero` cannot be derived for enums, only structs");
+            cx.span_err(trait_span, "`Zero` cannot be derived for enums, only structs");
             // let compilation continue
-            cx.expr_uint(span, 0)
+            cx.expr_uint(trait_span, 0)
         }
         _ => cx.bug("Non-static method in `deriving(Zero)`")
     };
