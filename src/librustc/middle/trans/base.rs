@@ -2670,7 +2670,7 @@ pub fn trans_crate(sess: session::Session,
     let link_meta = link::build_link_meta(sess, crate.attrs, output,
                                           &mut symbol_hasher);
 
-    // Append ".rc" to crate name as LLVM module identifier.
+    // Append ".rs" to crate name as LLVM module identifier.
     //
     // LLVM code generator emits a ".file filename" directive
     // for ELF backends. Value of the "filename" is set as the
@@ -2678,7 +2678,7 @@ pub fn trans_crate(sess: session::Session,
     // crashes if the module identifer is same as other symbols
     // such as a function name in the module.
     // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
-    let llmod_id = link_meta.crateid.name.clone() + ".rc";
+    let llmod_id = link_meta.crateid.name.clone() + ".rs";
 
     let ccx = @CrateContext::new(sess,
                                      llmod_id,

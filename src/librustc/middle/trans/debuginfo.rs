@@ -140,7 +140,7 @@ use middle::ty;
 use middle::pat_util;
 use util::ppaux;
 
-use std::c_str::ToCStr;
+use std::c_str::{CString, ToCStr};
 use std::cell::{Cell, RefCell};
 use std::hashmap::HashMap;
 use std::hashmap::HashSet;
@@ -171,7 +171,6 @@ static DW_ATE_unsigned_char: c_uint = 0x08;
 
 /// A context object for maintaining all state needed by the debuginfo module.
 pub struct CrateDebugContext {
-    priv crate_file: ~str,
     priv llcontext: ContextRef,
     priv builder: DIBuilderRef,
     priv current_debug_location: Cell<DebugLocation>,
@@ -184,13 +183,12 @@ pub struct CrateDebugContext {
 }
 
 impl CrateDebugContext {
-    pub fn new(llmod: ModuleRef, crate: ~str) -> CrateDebugContext {
+    pub fn new(llmod: ModuleRef) -> CrateDebugContext {
         debug!("CrateDebugContext::new");
         let builder = unsafe { llvm::LLVMDIBuilderCreate(llmod) };
         // DIBuilder inherits context from the module, so we'd better use the same one
         let llcontext = unsafe { llvm::LLVMGetModuleContext(llmod) };
         return CrateDebugContext {
-            crate_file: crate,
             llcontext: llcontext,
             builder: builder,
             current_debug_location: Cell::new(UnknownLocation),
@@ -849,26 +847,49 @@ fn create_DIArray(builder: DIBuilderRef, arr: &[DIDescriptor]) -> DIArray {
     };
 }
 
-fn compile_unit_metadata(cx: @CrateContext) {
-    let dcx = debug_context(cx);
-    let crate_name: &str = dcx.crate_file;
+fn compile_unit_metadata(cx: &CrateContext) {
+    let work_dir = &cx.sess.working_dir;
+    let compile_unit_name = match cx.sess.local_crate_source_file {
+        None => fallback_path(cx),
+        Some(ref abs_path) => {
+            if abs_path.is_relative() {
+                cx.sess.warn("debuginfo: Invalid path to crate's local root source file!");
+                fallback_path(cx)
+            } else {
+                match abs_path.path_relative_from(work_dir) {
+                    Some(ref p) if p.is_relative() => {
+                            // prepend "./" if necessary
+                            let dotdot = bytes!("..");
+                            let prefix = &[dotdot[0], ::std::path::SEP_BYTE];
+                            let mut path_bytes = p.as_vec().to_owned();
 
-    debug!("compile_unit_metadata: {:?}", crate_name);
+                            if path_bytes.slice_to(2) != prefix &&
+                               path_bytes.slice_to(2) != dotdot {
+                                path_bytes.insert(0, prefix[0]);
+                                path_bytes.insert(1, prefix[1]);
+                            }
 
-    // FIXME (#9639): This needs to handle non-utf8 paths
-    let work_dir = cx.sess.working_dir.as_str().unwrap();
+                            path_bytes.to_c_str()
+                        }
+                    _ => fallback_path(cx)
+                }
+            }
+        }
+    };
+
+    debug!("compile_unit_metadata: {:?}", compile_unit_name);
     let producer = format!("rustc version {}", env!("CFG_VERSION"));
 
-    crate_name.with_c_str(|crate_name| {
-        work_dir.with_c_str(|work_dir| {
+    compile_unit_name.with_ref(|compile_unit_name| {
+        work_dir.as_vec().with_c_str(|work_dir| {
             producer.with_c_str(|producer| {
                 "".with_c_str(|flags| {
                     "".with_c_str(|split_name| {
                         unsafe {
                             llvm::LLVMDIBuilderCreateCompileUnit(
-                                dcx.builder,
+                                debug_context(cx).builder,
                                 DW_LANG_RUST,
-                                crate_name,
+                                compile_unit_name,
                                 work_dir,
                                 producer,
                                 cx.sess.opts.optimize != session::No,
@@ -881,6 +902,10 @@ fn compile_unit_metadata(cx: @CrateContext) {
             })
         })
     });
+
+    fn fallback_path(cx: &CrateContext) -> CString {
+        cx.link_meta.crateid.name.to_c_str()
+    }
 }
 
 fn declare_local(bcx: &Block,
