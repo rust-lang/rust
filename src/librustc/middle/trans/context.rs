@@ -168,7 +168,7 @@ impl CrateContext {
 
             let (crate_map_name, crate_map) = decl_crate_map(sess, link_meta.clone(), llmod);
             let dbg_cx = if sess.opts.debuginfo {
-                Some(debuginfo::CrateDebugContext::new(llmod, name.to_owned()))
+                Some(debuginfo::CrateDebugContext::new(llmod))
             } else {
                 None
             };

@@ -897,35 +897,48 @@ pub fn build_session_options(binary: ~str,
     return sopts;
 }
 
-pub fn build_session(sopts: @session::Options, demitter: @diagnostic::Emitter)
+pub fn build_session(sopts: @session::Options,
+                     local_crate_source_file: Option<Path>,
+                     demitter: @diagnostic::Emitter)
                      -> Session {
     let codemap = @codemap::CodeMap::new();
     let diagnostic_handler =
         diagnostic::mk_handler(Some(demitter));
     let span_diagnostic_handler =
         diagnostic::mk_span_handler(diagnostic_handler, codemap);
-    build_session_(sopts, codemap, demitter, span_diagnostic_handler)
+
+    build_session_(sopts, local_crate_source_file, codemap, demitter, span_diagnostic_handler)
 }
 
 pub fn build_session_(sopts: @session::Options,
-                      cm: @codemap::CodeMap,
+                      local_crate_source_file: Option<Path>,
+                      codemap: @codemap::CodeMap,
                       demitter: @diagnostic::Emitter,
                       span_diagnostic_handler: @diagnostic::SpanHandler)
                       -> Session {
     let target_cfg = build_target_config(sopts, demitter);
-    let p_s = parse::new_parse_sess_special_handler(span_diagnostic_handler,
-                                                    cm);
+    let p_s = parse::new_parse_sess_special_handler(span_diagnostic_handler, codemap);
     let cstore = @CStore::new(token::get_ident_interner());
     let filesearch = @filesearch::FileSearch::new(
         &sopts.maybe_sysroot,
         sopts.target_triple,
         sopts.addl_lib_search_paths);
+
+    // Make the path absolute, if necessary
+    let local_crate_source_file = local_crate_source_file.map(|path|
+        if path.is_absolute() {
+            path.clone()
+        } else {
+            os::getcwd().join(path.clone())
+        }
+    );
+
     @Session_ {
         targ_cfg: target_cfg,
         opts: sopts,
         cstore: cstore,
         parse_sess: p_s,
-        codemap: cm,
+        codemap: codemap,
         // For a library crate, this is always none
         entry_fn: RefCell::new(None),
         entry_type: Cell::new(None),
@@ -933,6 +946,7 @@ pub fn build_session_(sopts: @session::Options,
         span_diagnostic: span_diagnostic_handler,
         filesearch: filesearch,
         building_library: Cell::new(false),
+        local_crate_source_file: local_crate_source_file,
         working_dir: os::getcwd(),
         lints: RefCell::new(HashMap::new()),
         node_id: Cell::new(1),
@@ -1164,13 +1178,8 @@ mod test {
               Ok(m) => m,
               Err(f) => fail!("test_switch_implies_cfg_test: {}", f.to_err_msg())
             };
-        let sessopts = build_session_options(
-            ~"rustc",
-            matches,
-            @diagnostic::DefaultEmitter as @diagnostic::Emitter);
-        let sess = build_session(sessopts,
-                                 @diagnostic::DefaultEmitter as
-                                    @diagnostic::Emitter);
+        let sessopts = build_session_options(~"rustc", matches, @diagnostic::DefaultEmitter);
+        let sess = build_session(sessopts, None, @diagnostic::DefaultEmitter);
         let cfg = build_configuration(sess);
         assert!((attr::contains_name(cfg, "test")));
     }
@@ -1187,13 +1196,8 @@ mod test {
                        f.to_err_msg());
               }
             };
-        let sessopts = build_session_options(
-            ~"rustc",
-            matches,
-            @diagnostic::DefaultEmitter as @diagnostic::Emitter);
-        let sess = build_session(sessopts,
-                                 @diagnostic::DefaultEmitter as
-                                    @diagnostic::Emitter);
+        let sessopts = build_session_options(~"rustc", matches, @diagnostic::DefaultEmitter);
+        let sess = build_session(sessopts, None, @diagnostic::DefaultEmitter);
         let cfg = build_configuration(sess);
         let mut test_items = cfg.iter().filter(|m| "test" == m.name());
         assert!(test_items.next().is_some());

@@ -52,7 +52,7 @@ fn setup_env(test_name: &str, source_string: &str) -> Env {
     let matches = getopts(~[~"-Z", ~"verbose"], optgroups()).get();
     let diag = diagnostic::collect(messages);
     let sessopts = build_session_options(~"rustc", &matches, diag);
-    let sess = build_session(sessopts, diag);
+    let sess = build_session(sessopts, None, diag);
     let cfg = build_configuration(sess, ~"whatever", str_input(~""));
     let dm = HashMap();
     let amap = HashMap();

@@ -211,6 +211,9 @@ pub struct Session_ {
     macro_registrar_fn: RefCell<Option<ast::DefId>>,
     filesearch: @filesearch::FileSearch,
     building_library: Cell<bool>,
+    // The name of the root source file of the crate, in the local file system. The path is always
+    // expected to be absolute. `None` means that there is no source file.
+    local_crate_source_file: Option<Path>,
     working_dir: Path,
     lints: RefCell<HashMap<ast::NodeId,
                            ~[(lint::Lint, codemap::Span, ~str)]>>,
