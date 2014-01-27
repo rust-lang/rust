@@ -176,7 +176,7 @@ implemented in user-space.
 The primary concern of an M:N runtime is that a Rust task cannot block itself in
 a syscall. If this happens, then the entire OS thread is frozen and unavailable
 for running more Rust tasks, making this a (M-1):N runtime (and you can see how
-this can reach 0/deadlock. By using asynchronous I/O under the hood (all I/O
+this can reach 0/deadlock). By using asynchronous I/O under the hood (all I/O
 still looks synchronous in terms of code), OS threads are never blocked until
 the appropriate time comes.
 
