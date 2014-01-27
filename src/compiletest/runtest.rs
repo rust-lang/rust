@@ -317,10 +317,10 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
             loop {
                 //waiting 1 second for gdbserver start
                 timer::sleep(1000);
-                let result = do task::try {
+                let result = task::try(proc() {
                     tcp::TcpStream::connect(
                         SocketAddr { ip: Ipv4Addr(127, 0, 0, 1), port: 5039 });
-                };
+                });
                 if result.is_err() {
                     continue;
                 }
