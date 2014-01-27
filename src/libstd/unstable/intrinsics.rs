@@ -323,7 +323,7 @@ extern "rust-intrinsic" {
     ///
     /// `forget` is unsafe because the caller is responsible for
     /// ensuring the argument is deallocated already.
-    pub fn forget<T>(_: T) -> ();
+    pub fn forget<T>(e: T) -> ();
     pub fn transmute<T,U>(e: T) -> U;
 
     /// Returns `true` if a type requires drop glue.

@@ -1338,14 +1338,30 @@ impl Parser {
     // identifier names.
     pub fn parse_arg_general(&mut self, require_name: bool,
                              require_ident_patterns_only: bool) -> Arg {
-        let pat = if !require_ident_patterns_only && require_name || self.is_named_argument() {
+        let pat = if require_name || self.is_named_argument() {
             debug!("parse_arg_general parse_pat (require_name:{:?})
                     ident_patterns_only (require_ident_patterns_only:{:?}",
                    require_name,
                    require_ident_patterns_only);
-            let pat = self.parse_pat();
+
+            let pat = if require_ident_patterns_only {
+                // issue #10877
+                // Only identifiers are allowed for this type of fn decl, no
+                // pattern matching or destructuring.
+                let pat_ident = PatIdent(BindByValue(MutImmutable),
+                                         self.parse_path(NoTypesAllowed).path,
+                                         None);
+                @ast::Pat {
+                    id: ast::DUMMY_NODE_ID,
+                    span: self.last_span,
+                    node: pat_ident
+                }
+            } else {
+                self.parse_pat()
+            };
 
             self.expect(&token::COLON);
+
             pat
         } else {
             debug!("parse_arg_general ident_to_pat require_ident_patterns_only");
