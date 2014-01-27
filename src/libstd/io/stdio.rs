@@ -29,7 +29,7 @@ out.write(bytes!("Hello, world!"));
 use container::Container;
 use fmt;
 use io::{Reader, Writer, io_error, IoError, OtherIoError,
-         standard_error, EndOfFile, LineBufferedWriter};
+         standard_error, EndOfFile, LineBufferedWriter, BrokenPipe};
 use libc;
 use option::{Option, Some, None};
 use prelude::drop;
@@ -353,7 +353,13 @@ impl Writer for StdWriter {
         };
         match ret {
             Ok(()) => {}
-            Err(e) => io_error::cond.raise(e)
+            Err(e) => {
+                // BrokenPipe (EPIPE) occurs when receiving process exits
+                // with error (i.e., non-zero) status
+                if e.kind != BrokenPipe {
+                   io_error::cond.raise(e)
+               }
+            }
         }
     }
 }
