@@ -301,14 +301,14 @@ mod imp {
         /// that no other thread is currently holding the lock or waiting on the
         /// condition variable contained inside.
         pub unsafe fn destroy(&mut self) {
-            let lock = self.lock.swap(0, atomics::Relaxed);
-            let cond = self.cond.swap(0, atomics::Relaxed);
+            let lock = self.lock.swap(0, atomics::SeqCst);
+            let cond = self.cond.swap(0, atomics::SeqCst);
             if lock != 0 { free_lock(lock) }
             if cond != 0 { free_cond(cond) }
         }
 
         unsafe fn getlock(&mut self) -> *mut c_void {
-            match self.lock.load(atomics::Relaxed) {
+            match self.lock.load(atomics::SeqCst) {
                 0 => {}
                 n => return n as *mut c_void
             }
@@ -318,11 +318,11 @@ mod imp {
                 _ => {}
             }
             free_lock(lock);
-            return self.lock.load(atomics::Relaxed) as *mut c_void;
+            return self.lock.load(atomics::SeqCst) as *mut c_void;
         }
 
         unsafe fn getcond(&mut self) -> *mut c_void {
-            match self.cond.load(atomics::Relaxed) {
+            match self.cond.load(atomics::SeqCst) {
                 0 => {}
                 n => return n as *mut c_void
             }
@@ -332,7 +332,7 @@ mod imp {
                 _ => {}
             }
             free_cond(cond);
-            return self.cond.load(atomics::Relaxed) as *mut c_void;
+            return self.cond.load(atomics::SeqCst) as *mut c_void;
         }
     }
 
