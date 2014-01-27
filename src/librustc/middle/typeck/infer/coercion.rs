@@ -385,48 +385,37 @@ impl Coerce {
         })))
     }
 
-    pub fn coerce_from_bare_fn(&self,
-                               a: ty::t,
-                               fn_ty_a: &ty::BareFnTy,
-                               b: ty::t)
-                               -> CoerceResult {
-        self.unpack_actual_value(b, |sty_b| {
-            self.coerce_from_bare_fn_post_unpack(a, fn_ty_a, b, sty_b)
-        })
-    }
-
-    pub fn coerce_from_bare_fn_post_unpack(&self,
-                                           a: ty::t,
-                                           fn_ty_a: &ty::BareFnTy,
-                                           b: ty::t,
-                                           sty_b: &ty::sty)
-                                           -> CoerceResult {
+    fn coerce_from_bare_fn(&self, a: ty::t, fn_ty_a: &ty::BareFnTy, b: ty::t)
+                           -> CoerceResult {
         /*!
          *
          * Attempts to coerce from a bare Rust function (`extern
-         * "rust" fn`) into a closure.
+         * "Rust" fn`) into a closure or a `proc`.
          */
 
-        debug!("coerce_from_bare_fn(a={}, b={})",
-               a.inf_str(self.get_ref().infcx), b.inf_str(self.get_ref().infcx));
+        self.unpack_actual_value(b, |sty_b| {
 
-        if !fn_ty_a.abis.is_rust() || fn_ty_a.purity != ast::ImpureFn {
-            return self.subtype(a, b);
-        }
+            debug!("coerce_from_bare_fn(a={}, b={})",
+                   a.inf_str(self.get_ref().infcx), b.inf_str(self.get_ref().infcx));
 
-        let fn_ty_b = match *sty_b {
-            ty::ty_closure(ref f) => (*f).clone(),
-            _ => return self.subtype(a, b),
-        };
+            if !fn_ty_a.abis.is_rust() || fn_ty_a.purity != ast::ImpureFn {
+                return self.subtype(a, b);
+            }
 
-        let adj = @ty::AutoAddEnv(fn_ty_b.region, fn_ty_b.sigil);
-        let a_closure = ty::mk_closure(self.get_ref().infcx.tcx,
-                                       ty::ClosureTy {
-                                            sig: fn_ty_a.sig.clone(),
-                                            ..fn_ty_b
-                                       });
-        if_ok!(self.subtype(a_closure, b));
-        Ok(Some(adj))
+            let fn_ty_b = match *sty_b {
+                ty::ty_closure(ref f) => (*f).clone(),
+                _ => return self.subtype(a, b)
+            };
+
+            let adj = @ty::AutoAddEnv(fn_ty_b.region, fn_ty_b.sigil);
+            let a_closure = ty::mk_closure(self.get_ref().infcx.tcx,
+                                           ty::ClosureTy {
+                                                sig: fn_ty_a.sig.clone(),
+                                                ..fn_ty_b
+                                           });
+            if_ok!(self.subtype(a_closure, b));
+            Ok(Some(adj))
+        })
     }
 
     pub fn coerce_unsafe_ptr(&self,

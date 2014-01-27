@@ -451,13 +451,8 @@ impl<V:TyVisitor + MovePtr> TyVisitor for MovePtrAdaptor<V> {
         true
     }
 
-    fn visit_opaque_box(&mut self) -> bool {
-        self.align_to::<@u8>();
-        if ! self.inner.visit_opaque_box() { return false; }
-        self.bump_past::<@u8>();
-        true
-    }
-
+    // NOTE remove after next snapshot
+    #[cfg(stage0)]
     fn visit_closure_ptr(&mut self, ck: uint) -> bool {
         self.align_to::<proc()>();
         if ! self.inner.visit_closure_ptr(ck) {

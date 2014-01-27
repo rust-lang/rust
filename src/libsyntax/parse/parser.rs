@@ -27,8 +27,8 @@ use ast::{ExprAssign, ExprAssignOp, ExprBinary, ExprBlock, ExprBox};
 use ast::{ExprBreak, ExprCall, ExprCast, ExprDoBody};
 use ast::{ExprField, ExprFnBlock, ExprIf, ExprIndex};
 use ast::{ExprLit, ExprLogLevel, ExprLoop, ExprMac};
-use ast::{ExprMethodCall, ExprParen, ExprPath, ExprProc, ExprRepeat};
-use ast::{ExprRet, ExprSelf, ExprStruct, ExprTup, ExprUnary};
+use ast::{ExprMethodCall, ExprParen, ExprPath, ExprProc};
+use ast::{ExprRepeat, ExprRet, ExprStruct, ExprTup, ExprUnary};
 use ast::{ExprVec, ExprVstore, ExprVstoreSlice, ExprVstoreBox};
 use ast::{ExprVstoreMutSlice, ExprWhile, ExprForLoop, ExternFn, Field, FnDecl};
 use ast::{ExprVstoreUniq, Onceness, Once, Many};
@@ -1093,7 +1093,6 @@ impl Parser {
                     body: body,
                     id: ast::DUMMY_NODE_ID,
                     span: mk_sp(lo, hi),
-                    self_id: ast::DUMMY_NODE_ID,
                     vis: vis,
                 })
               }
@@ -1687,13 +1686,9 @@ impl Parser {
         ExprCall(f, args, sugar)
     }
 
-    pub fn mk_method_call(&mut self,
-                      rcvr: @Expr,
-                      ident: Ident,
-                      tps: ~[P<Ty>],
-                      args: ~[@Expr],
+    fn mk_method_call(&mut self, ident: Ident, tps: ~[P<Ty>], args: ~[@Expr],
                       sugar: CallSugar) -> ast::Expr_ {
-        ExprMethodCall(ast::DUMMY_NODE_ID, rcvr, ident, tps, args, sugar)
+        ExprMethodCall(ast::DUMMY_NODE_ID, ident, tps, args, sugar)
     }
 
     pub fn mk_index(&mut self, expr: @Expr, idx: @Expr) -> ast::Expr_ {
@@ -1794,7 +1789,8 @@ impl Parser {
 
             return self.mk_expr(lo, body.span.hi, ExprProc(decl, fakeblock));
         } else if self.eat_keyword(keywords::Self) {
-            ex = ExprSelf;
+            let path = ast_util::ident_to_path(mk_sp(lo, hi), special_idents::self_);
+            ex = ExprPath(path);
             hi = self.span.hi;
         } else if self.eat_keyword(keywords::If) {
             return self.parse_if_expr();
@@ -1993,7 +1989,7 @@ impl Parser {
                     // expr.f() method call
                     match self.token {
                         token::LPAREN => {
-                            let es = self.parse_unspanned_seq(
+                            let mut es = self.parse_unspanned_seq(
                                 &token::LPAREN,
                                 &token::RPAREN,
                                 seq_sep_trailing_disallowed(token::COMMA),
@@ -2001,7 +1997,8 @@ impl Parser {
                             );
                             hi = self.span.hi;
 
-                            let nd = self.mk_method_call(e, i, tys, es, NoSugar);
+                            es.unshift(e);
+                            let nd = self.mk_method_call(i, tys, es, NoSugar);
                             e = self.mk_expr(lo, hi, nd);
                         }
                         _ => {
@@ -2569,16 +2566,15 @@ impl Parser {
                 let block = self.parse_lambda_block_expr();
                 let last_arg = self.mk_expr(block.span.lo, block.span.hi,
                                             ctor(block));
-                let args = vec::append((*args).clone(), [last_arg]);
+                let args = vec::append_one((*args).clone(), last_arg);
                 self.mk_expr(lo, block.span.hi, ExprCall(f, args, sugar))
             }
-            ExprMethodCall(_, f, i, ref tps, ref args, NoSugar) => {
+            ExprMethodCall(_, i, ref tps, ref args, NoSugar) => {
                 let block = self.parse_lambda_block_expr();
                 let last_arg = self.mk_expr(block.span.lo, block.span.hi,
                                             ctor(block));
-                let args = vec::append((*args).clone(), [last_arg]);
-                let method_call = self.mk_method_call(f,
-                                                      i,
+                let args = vec::append_one((*args).clone(), last_arg);
+                let method_call = self.mk_method_call(i,
                                                       (*tps).clone(),
                                                       args,
                                                       sugar);
@@ -2588,10 +2584,9 @@ impl Parser {
                 let block = self.parse_lambda_block_expr();
                 let last_arg = self.mk_expr(block.span.lo, block.span.hi,
                                             ctor(block));
-                let method_call = self.mk_method_call(f,
-                                                      i,
+                let method_call = self.mk_method_call(i,
                                                       (*tps).clone(),
-                                                      ~[last_arg],
+                                                      ~[f, last_arg],
                                                       sugar);
                 self.mk_expr(lo, block.span.hi, method_call)
             }
@@ -3712,6 +3707,7 @@ impl Parser {
         // A bit of complexity and lookahead is needed here in order to be
         // backwards compatible.
         let lo = self.span.lo;
+        let mut mutbl_self = MutImmutable;
         let explicit_self = match self.token {
             token::BINOP(token::AND) => {
                 maybe_parse_borrowed_explicit_self(self)
@@ -3720,57 +3716,60 @@ impl Parser {
                 maybe_parse_explicit_self(SelfBox, self)
             }
             token::TILDE => {
-                maybe_parse_explicit_self(SelfUniq(MutImmutable), self)
+                maybe_parse_explicit_self(SelfUniq, self)
             }
             token::IDENT(..) if self.is_self_ident() => {
                 self.bump();
-                SelfValue(MutImmutable)
+                SelfValue
             }
             token::BINOP(token::STAR) => {
                 // Possibly "*self" or "*mut self" -- not supported. Try to avoid
                 // emitting cryptic "unexpected token" errors.
                 self.bump();
-                let mutability = if Parser::token_is_mutability(&self.token) {
+                let _mutability = if Parser::token_is_mutability(&self.token) {
                     self.parse_mutability()
                 } else { MutImmutable };
                 if self.is_self_ident() {
                     self.span_err(self.span, "cannot pass self by unsafe pointer");
                     self.bump();
                 }
-                SelfValue(mutability)
+                SelfValue
             }
             _ if Parser::token_is_mutability(&self.token) &&
                     self.look_ahead(1, |t| token::is_keyword(keywords::Self, t)) => {
-                let mutability = self.parse_mutability();
+                mutbl_self = self.parse_mutability();
                 self.expect_self_ident();
-                SelfValue(mutability)
+                SelfValue
             }
             _ if Parser::token_is_mutability(&self.token) &&
                     self.look_ahead(1, |t| *t == token::TILDE) &&
                     self.look_ahead(2, |t| token::is_keyword(keywords::Self, t)) => {
-                let mutability = self.parse_mutability();
+                mutbl_self = self.parse_mutability();
                 self.bump();
                 self.expect_self_ident();
-                SelfUniq(mutability)
+                SelfUniq
             }
             _ => SelfStatic
         };
 
+        let explicit_self_sp = mk_sp(lo, self.span.hi);
+
         // If we parsed a self type, expect a comma before the argument list.
-        let fn_inputs;
-        if explicit_self != SelfStatic {
+        let fn_inputs = if explicit_self != SelfStatic {
             match self.token {
                 token::COMMA => {
                     self.bump();
                     let sep = seq_sep_trailing_disallowed(token::COMMA);
-                    fn_inputs = self.parse_seq_to_before_end(
+                    let mut fn_inputs = self.parse_seq_to_before_end(
                         &token::RPAREN,
                         sep,
                         parse_arg_fn
                     );
+                    fn_inputs.unshift(Arg::new_self(explicit_self_sp, mutbl_self));
+                    fn_inputs
                 }
                 token::RPAREN => {
-                    fn_inputs = ~[];
+                    ~[Arg::new_self(explicit_self_sp, mutbl_self)]
                 }
                 _ => {
                     let token_str = self.this_token_to_str();
@@ -3780,10 +3779,8 @@ impl Parser {
             }
         } else {
             let sep = seq_sep_trailing_disallowed(token::COMMA);
-            fn_inputs = self.parse_seq_to_before_end(&token::RPAREN,
-                                                     sep,
-                                                     parse_arg_fn);
-        }
+            self.parse_seq_to_before_end(&token::RPAREN, sep, parse_arg_fn)
+        };
 
         self.expect(&token::RPAREN);
 
@@ -3918,7 +3915,6 @@ impl Parser {
             body: body,
             id: ast::DUMMY_NODE_ID,
             span: mk_sp(lo, hi),
-            self_id: ast::DUMMY_NODE_ID,
             vis: visa,
         }
     }

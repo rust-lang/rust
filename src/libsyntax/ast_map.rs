@@ -17,7 +17,6 @@ use diagnostic::SpanHandler;
 use fold::Folder;
 use fold;
 use parse::token::{get_ident_interner, IdentInterner};
-use parse::token::special_idents;
 use print::pprust;
 use util::small_vector::SmallVector;
 
@@ -163,10 +162,7 @@ pub enum Node {
     NodeExpr(@Expr),
     NodeStmt(@Stmt),
     NodeArg(@Pat),
-    // HACK(eddyb) should always be a pattern, but `self` is not, and thus it
-    // is identified only by an ident and no span is available. In all other
-    // cases, node_span will return the proper span (required by borrowck).
-    NodeLocal(Ident, Option<@Pat>),
+    NodeLocal(@Pat),
     NodeBlock(P<Block>),
 
     /// NodeStructCtor represents a tuple struct.
@@ -246,10 +242,6 @@ impl<F> Ctx<F> {
         let mut map = self.map.map.borrow_mut();
         map.get().insert(id as uint, node);
     }
-
-    fn map_self(&self, m: @Method) {
-        self.insert(m.self_id, NodeLocal(special_idents::self_, None));
-    }
 }
 
 impl<F: FoldOps> Folder for Ctx<F> {
@@ -285,7 +277,6 @@ impl<F: FoldOps> Folder for Ctx<F> {
                 let impl_did = ast_util::local_def(i.id);
                 for &m in ms.iter() {
                     self.insert(m.id, NodeMethod(m, impl_did, p));
-                    self.map_self(m);
                 }
 
             }
@@ -332,7 +323,6 @@ impl<F: FoldOps> Folder for Ctx<F> {
                         }
                         Provided(m) => {
                             self.insert(m.id, NodeTraitMethod(@Provided(m), d_id, p));
-                            self.map_self(m);
                         }
                     }
                 }
@@ -348,9 +338,9 @@ impl<F: FoldOps> Folder for Ctx<F> {
     fn fold_pat(&mut self, pat: @Pat) -> @Pat {
         let pat = fold::noop_fold_pat(pat, self);
         match pat.node {
-            PatIdent(_, ref path, _) => {
+            PatIdent(..) => {
                 // Note: this is at least *potentially* a pattern...
-                self.insert(pat.id, NodeLocal(ast_util::path_to_ident(path), Some(pat)));
+                self.insert(pat.id, NodeLocal(pat));
             }
             _ => {}
         }
@@ -467,7 +457,6 @@ pub fn map_decoded_item<F: 'static + FoldOps>(diag: @SpanHandler,
                 NodeMethod(m, impl_did, @path)
             };
             cx.insert(m.id, entry);
-            cx.map_self(m);
         }
     }
 
@@ -525,8 +514,8 @@ pub fn node_id_to_str(map: Map, id: NodeId, itr: @IdentInterner) -> ~str {
       Some(NodeArg(pat)) => {
         format!("arg {} (id={})", pprust::pat_to_str(pat, itr), id)
       }
-      Some(NodeLocal(ident, _)) => {
-        format!("local (id={}, name={})", id, itr.get(ident.name))
+      Some(NodeLocal(pat)) => {
+        format!("local {} (id={})", pprust::pat_to_str(pat, itr), id)
       }
       Some(NodeBlock(block)) => {
         format!("block {} (id={})", pprust::block_to_str(block, itr), id)
@@ -559,11 +548,7 @@ pub fn node_span(items: Map, id: ast::NodeId) -> Span {
         Some(NodeVariant(variant, _, _)) => variant.span,
         Some(NodeExpr(expr)) => expr.span,
         Some(NodeStmt(stmt)) => stmt.span,
-        Some(NodeArg(pat)) => pat.span,
-        Some(NodeLocal(_, pat)) => match pat {
-            Some(pat) => pat.span,
-            None => fail!("node_span: cannot get span from NodeLocal (likely `self`)")
-        },
+        Some(NodeArg(pat)) | Some(NodeLocal(pat)) => pat.span,
         Some(NodeBlock(block)) => block.span,
         Some(NodeStructCtor(_, item, _)) => item.span,
         Some(NodeCalleeScope(expr)) => expr.span,

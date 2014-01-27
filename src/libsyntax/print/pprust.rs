@@ -1213,10 +1213,10 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) {
         print_expr(s, func);
         print_call_post(s, sugar, &blk, &mut base_args);
       }
-      ast::ExprMethodCall(_, func, ident, ref tys, ref args, sugar) => {
-        let mut base_args = (*args).clone();
+      ast::ExprMethodCall(_, ident, ref tys, ref args, sugar) => {
+        let mut base_args = args.slice_from(1).to_owned();
         let blk = print_call_pre(s, sugar, &mut base_args);
-        print_expr(s, func);
+        print_expr(s, args[0]);
         word(&mut s.s, ".");
         print_ident(s, ident);
         if tys.len() > 0u {
@@ -1445,7 +1445,6 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) {
         word(&mut s.s, "]");
       }
       ast::ExprPath(ref path) => print_path(s, path, true),
-      ast::ExprSelf => word(&mut s.s, "self"),
       ast::ExprBreak(opt_ident) => {
         word(&mut s.s, "break");
         space(&mut s.s);
@@ -1749,19 +1748,20 @@ pub fn print_pat(s: &mut State, pat: &ast::Pat) {
 }
 
 pub fn explicit_self_to_str(explicit_self: &ast::ExplicitSelf_, intr: @IdentInterner) -> ~str {
-    to_str(explicit_self, |a, &b| { print_explicit_self(a, b); () }, intr)
+    to_str(explicit_self, |a, &b| { print_explicit_self(a, b, ast::MutImmutable); () }, intr)
 }
 
 // Returns whether it printed anything
-pub fn print_explicit_self(s: &mut State, explicit_self: ast::ExplicitSelf_) -> bool {
+fn print_explicit_self(s: &mut State,
+                       explicit_self: ast::ExplicitSelf_,
+                       mutbl: ast::Mutability) -> bool {
+    print_mutability(s, mutbl);
     match explicit_self {
         ast::SelfStatic => { return false; }
-        ast::SelfValue(m) => {
-            print_mutability(s, m);
+        ast::SelfValue => {
             word(&mut s.s, "self");
         }
-        ast::SelfUniq(m) => {
-            print_mutability(s, m);
+        ast::SelfUniq => {
             word(&mut s.s, "~self");
         }
         ast::SelfRegion(ref lt, m) => {
@@ -1799,11 +1799,25 @@ pub fn print_fn_args(s: &mut State, decl: &ast::FnDecl,
     // self type and the args all in the same box.
     rbox(s, 0u, Inconsistent);
     let mut first = true;
-    for explicit_self in opt_explicit_self.iter() {
-        first = !print_explicit_self(s, *explicit_self);
+    for &explicit_self in opt_explicit_self.iter() {
+        let m = match explicit_self {
+            ast::SelfStatic => ast::MutImmutable,
+            _ => match decl.inputs[0].pat.node {
+                ast::PatIdent(ast::BindByValue(m), _, _) => m,
+                _ => ast::MutImmutable
+            }
+        };
+        first = !print_explicit_self(s, explicit_self, m);
     }
 
-    for arg in decl.inputs.iter() {
+    // HACK(eddyb) ignore the separately printed self argument.
+    let args = if first {
+        decl.inputs.as_slice()
+    } else {
+        decl.inputs.slice_from(1)
+    };
+
+    for arg in args.iter() {
         if first { first = false; } else { word_space(s, ","); }
         print_arg(s, arg);
     }
@@ -2090,18 +2104,7 @@ pub fn print_ty_fn(s: &mut State,
         popen(s);
     }
 
-    // It is unfortunate to duplicate the commasep logic, but we want the
-    // self type and the args all in the same box.
-    rbox(s, 0u, Inconsistent);
-    let mut first = true;
-    for explicit_self in opt_explicit_self.iter() {
-        first = !print_explicit_self(s, *explicit_self);
-    }
-    for arg in decl.inputs.iter() {
-        if first { first = false; } else { word_space(s, ","); }
-        print_arg(s, arg);
-    }
-    end(s);
+    print_fn_args(s, decl, opt_explicit_self);
 
     if opt_sigil == Some(ast::BorrowedSigil) {
         word(&mut s.s, "|");

@@ -13,7 +13,7 @@
 fn test_fn() {
     type t = 'static || -> int;
     fn ten() -> int { return 10; }
-    let rs: t = { ten };
+    let rs: t = ten;
     assert!((rs() == 10));
 }
 

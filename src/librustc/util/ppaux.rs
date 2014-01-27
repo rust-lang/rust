@@ -18,10 +18,8 @@ use middle::ty::{ReFree, ReScope, ReInfer, ReStatic, Region,
                  ReEmpty};
 use middle::ty::{ty_bool, ty_char, ty_bot, ty_box, ty_struct, ty_enum};
 use middle::ty::{ty_err, ty_str, ty_vec, ty_float, ty_bare_fn, ty_closure};
-use middle::ty::{ty_nil, ty_opaque_closure_ptr, ty_param};
-use middle::ty::{ty_ptr, ty_rptr, ty_self, ty_tup, ty_type, ty_uniq};
-use middle::ty::{ty_trait, ty_int};
-use middle::ty::{ty_uint, ty_unboxed_vec, ty_infer};
+use middle::ty::{ty_nil, ty_param, ty_ptr, ty_rptr, ty_self, ty_tup, ty_type};
+use middle::ty::{ty_uniq, ty_trait, ty_int, ty_uint, ty_unboxed_vec, ty_infer};
 use middle::ty;
 use middle::typeck;
 use syntax::abi::AbiSet;
@@ -501,10 +499,7 @@ pub fn ty_to_str(cx: ctxt, typ: t) -> ~str {
       ty_vec(ref mt, vs) => {
         vstore_ty_to_str(cx, mt, vs)
       }
-      ty_str(vs) => format!("{}{}", vstore_to_str(cx, vs), "str"),
-      ty_opaque_closure_ptr(ast::BorrowedSigil) => ~"&closure",
-      ty_opaque_closure_ptr(ast::ManagedSigil) => ~"@closure",
-      ty_opaque_closure_ptr(ast::OwnedSigil) => ~"~closure",
+      ty_str(vs) => format!("{}{}", vstore_to_str(cx, vs), "str")
     }
 }
 
@@ -800,11 +795,10 @@ impl Repr for ty::Variance {
 
 impl Repr for ty::Method {
     fn repr(&self, tcx: ctxt) -> ~str {
-        format!("method(ident: {}, generics: {}, transformed_self_ty: {}, \
-                fty: {}, explicit_self: {}, vis: {}, def_id: {})",
+        format!("method(ident: {}, generics: {}, fty: {}, \
+                explicit_self: {}, vis: {}, def_id: {})",
                 self.ident.repr(tcx),
                 self.generics.repr(tcx),
-                self.transformed_self_ty.repr(tcx),
                 self.fty.repr(tcx),
                 self.explicit_self.repr(tcx),
                 self.vis.repr(tcx),
@@ -847,12 +841,7 @@ impl Repr for ty::FnSig {
 
 impl Repr for typeck::method_map_entry {
     fn repr(&self, tcx: ctxt) -> ~str {
-        format!("method_map_entry \\{self_arg: {}, \
-              explicit_self: {}, \
-              origin: {}\\}",
-             self.self_ty.repr(tcx),
-             self.explicit_self.repr(tcx),
-             self.origin.repr(tcx))
+        format!("method_map_entry \\{origin: {}\\}", self.origin.repr(tcx))
     }
 }
 

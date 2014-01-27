@@ -436,20 +436,6 @@ impl<V:TyVisitor + movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
         if ! self.inner().visit_type() { return false; }
         true
     }
-
-    fn visit_opaque_box(&mut self) -> bool {
-        self.align_to::<@u8>();
-        if ! self.inner().visit_opaque_box() { return false; }
-        self.bump_past::<@u8>();
-        true
-    }
-
-    fn visit_closure_ptr(&mut self, ck: uint) -> bool {
-        self.align_to::<(uint,uint)>();
-        if ! self.inner().visit_closure_ptr(ck) { return false; }
-        self.bump_past::<(uint,uint)>();
-        true
-    }
 }
 
 struct my_visitor(@RefCell<Stuff>);
@@ -611,8 +597,6 @@ impl TyVisitor for my_visitor {
     fn visit_param(&mut self, _i: uint) -> bool { true }
     fn visit_self(&mut self) -> bool { true }
     fn visit_type(&mut self) -> bool { true }
-    fn visit_opaque_box(&mut self) -> bool { true }
-    fn visit_closure_ptr(&mut self, _ck: uint) -> bool { true }
 }
 
 fn get_tydesc_for<T>(_t: T) -> *TyDesc {

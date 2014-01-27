@@ -261,16 +261,6 @@ fn encode_type(ecx: &EncodeContext,
     ebml_w.end_tag();
 }
 
-fn encode_transformed_self_ty(ecx: &EncodeContext,
-                              ebml_w: &mut writer::Encoder,
-                              opt_typ: Option<ty::t>) {
-    for &typ in opt_typ.iter() {
-        ebml_w.start_tag(tag_item_method_transformed_self_ty);
-        write_type(ecx, ebml_w, typ);
-        ebml_w.end_tag();
-    }
-}
-
 fn encode_method_fty(ecx: &EncodeContext,
                      ebml_w: &mut writer::Encoder,
                      typ: &ty::BareFnTy) {
@@ -679,23 +669,13 @@ fn encode_explicit_self(ebml_w: &mut writer::Encoder, explicit_self: ast::Explic
 
     // Encode the base self type.
     match explicit_self {
-        SelfStatic => {
-            ebml_w.writer.write(&[ 's' as u8 ]);
-        }
-        SelfValue(m) => {
-            ebml_w.writer.write(&[ 'v' as u8 ]);
-            encode_mutability(ebml_w, m);
-        }
+        SelfStatic => ebml_w.writer.write(&[ 's' as u8 ]),
+        SelfValue  => ebml_w.writer.write(&[ 'v' as u8 ]),
+        SelfBox    => ebml_w.writer.write(&[ '@' as u8 ]),
+        SelfUniq   => ebml_w.writer.write(&[ '~' as u8 ]),
         SelfRegion(_, m) => {
             // FIXME(#4846) encode custom lifetime
-            ebml_w.writer.write(&[ '&' as u8 ]);
-            encode_mutability(ebml_w, m);
-        }
-        SelfBox => {
-            ebml_w.writer.write(&[ '@' as u8 ]);
-        }
-        SelfUniq(m) => {
-            ebml_w.writer.write(&[ '~' as u8 ]);
+            ebml_w.writer.write(&['&' as u8]);
             encode_mutability(ebml_w, m);
         }
     }
@@ -807,7 +787,6 @@ fn encode_method_ty_fields(ecx: &EncodeContext,
     encode_ty_type_param_defs(ebml_w, ecx,
                               method_ty.generics.type_param_defs,
                               tag_item_method_tps);
-    encode_transformed_self_ty(ecx, ebml_w, method_ty.transformed_self_ty);
     encode_method_fty(ecx, ebml_w, &method_ty.fty);
     encode_visibility(ebml_w, method_ty.vis);
     encode_explicit_self(ebml_w, method_ty.explicit_self);

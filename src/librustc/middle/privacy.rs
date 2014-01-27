@@ -688,9 +688,9 @@ impl<'a> Visitor<()> for PrivacyVisitor<'a> {
                     _ => {}
                 }
             }
-            ast::ExprMethodCall(_, base, ident, _, _, _) => {
+            ast::ExprMethodCall(_, ident, _, ref args, _) => {
                 // see above
-                let t = ty::type_autoderef(ty::expr_ty(self.tcx, base));
+                let t = ty::type_autoderef(ty::expr_ty(self.tcx, args[0]));
                 match ty::get(t).sty {
                     ty::ty_enum(_, _) | ty::ty_struct(_, _) => {
                         let method_map = self.method_map.borrow();

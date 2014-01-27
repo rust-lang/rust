@@ -25,7 +25,7 @@ use middle::ty::{TyVid, IntVid, FloatVid, RegionVid, Vid};
 use middle::ty;
 use middle::ty_fold;
 use middle::ty_fold::TypeFolder;
-use middle::typeck::check::regionmanip::{replace_bound_regions_in_fn_sig};
+use middle::typeck::check::regionmanip::replace_bound_regions_in_fn_sig;
 use middle::typeck::infer::coercion::Coerce;
 use middle::typeck::infer::combine::{Combine, CombineFields, eq_tys};
 use middle::typeck::infer::region_inference::{RegionVarBindings};
@@ -809,8 +809,8 @@ impl InferCtxt {
                                                     -> (ty::FnSig,
                                                         HashMap<ty::BoundRegion,
                                                                 ty::Region>) {
-        let (map, _, fn_sig) =
-            replace_bound_regions_in_fn_sig(self.tcx, None, fsig, |br| {
+        let (map, fn_sig) =
+            replace_bound_regions_in_fn_sig(self.tcx, fsig, |br| {
                 let rvar = self.next_region_var(
                     BoundRegionInFnType(trace.origin.span(), br));
                 debug!("Bound region {} maps to {:?}",

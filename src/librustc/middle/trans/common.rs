@@ -230,9 +230,8 @@ pub struct FunctionContext<'a> {
     // section of the executable we're generating.
     llfn: ValueRef,
 
-    // The implicit environment argument that arrives in the function we're
-    // creating.
-    llenv: Cell<ValueRef>,
+    // The environment argument in a closure.
+    llenv: Option<ValueRef>,
 
     // The place to store the return value. If the return type is immediate,
     // this is an alloca in the function. Otherwise, it's the hidden first
@@ -249,14 +248,6 @@ pub struct FunctionContext<'a> {
     // allocas, so that LLVM will coalesce them into a single alloca call.
     alloca_insert_pt: Cell<Option<ValueRef>>,
     llreturn: Cell<Option<BasicBlockRef>>,
-
-    // The 'self' value currently in use in this function, if there
-    // is one.
-    //
-    // NB: This is the type of the self *variable*, not the self *type*. The
-    // self type is set only for default methods, while the self variable is
-    // set for all methods.
-    llself: Cell<Option<LvalueDatum>>,
 
     // The a value alloca'd for calls to upcalls.rust_personality. Used when
     // outputting the resume instruction.
@@ -305,10 +296,11 @@ pub struct FunctionContext<'a> {
 
 impl<'a> FunctionContext<'a> {
     pub fn arg_pos(&self, arg: uint) -> uint {
-        if self.caller_expects_out_pointer {
-            arg + 2u
+        let arg = self.env_arg_pos() + arg;
+        if self.llenv.is_some() {
+            arg + 1
         } else {
-            arg + 1u
+            arg
         }
     }
 

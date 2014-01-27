@@ -91,6 +91,9 @@ pub struct CrateContext {
 
      impl_method_cache: RefCell<HashMap<(ast::DefId, ast::Name), ast::DefId>>,
 
+     // Cache of closure wrappers for bare fn's.
+     closure_bare_wrapper_cache: RefCell<HashMap<ValueRef, ValueRef>>,
+
      module_data: RefCell<HashMap<~str, ValueRef>>,
      lltypes: RefCell<HashMap<ty::t, Type>>,
      llsizingtypes: RefCell<HashMap<ty::t, Type>>,
@@ -201,6 +204,7 @@ impl CrateContext {
                   const_values: RefCell::new(HashMap::new()),
                   extern_const_values: RefCell::new(HashMap::new()),
                   impl_method_cache: RefCell::new(HashMap::new()),
+                  closure_bare_wrapper_cache: RefCell::new(HashMap::new()),
                   module_data: RefCell::new(HashMap::new()),
                   lltypes: RefCell::new(HashMap::new()),
                   llsizingtypes: RefCell::new(HashMap::new()),

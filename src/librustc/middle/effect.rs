@@ -120,7 +120,7 @@ impl Visitor<()> for EffectCheckVisitor {
 
     fn visit_expr(&mut self, expr: &ast::Expr, _:()) {
         match expr.node {
-            ast::ExprMethodCall(callee_id, _, _, _, _, _) => {
+            ast::ExprMethodCall(callee_id, _, _, _, _) => {
                 let base_type = ty::node_id_to_type(self.tcx, callee_id);
                 debug!("effect: method call case, base type is {}",
                        ppaux::ty_to_str(self.tcx, base_type));
