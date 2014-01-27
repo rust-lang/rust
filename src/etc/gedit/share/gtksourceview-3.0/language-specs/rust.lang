@@ -87,7 +87,6 @@
 		<keyword>f64</keyword>
 		<keyword>char</keyword>
 		<keyword>str</keyword>
-		<keyword>Either</keyword>
 		<keyword>Option</keyword>
 		<keyword>Result</keyword>
     </context>
@@ -134,8 +133,6 @@
 		<keyword>false</keyword>
 		<keyword>Some</keyword>
 		<keyword>None</keyword>
-		<keyword>Left</keyword>
-		<keyword>Right</keyword>
 		<keyword>Ok</keyword>
 		<keyword>Err</keyword>
 		<keyword>Success</keyword>
