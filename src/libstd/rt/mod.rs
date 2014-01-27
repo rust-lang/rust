@@ -146,7 +146,7 @@ pub trait Runtime {
     fn maybe_yield(~self, cur_task: ~Task);
     fn deschedule(~self, times: uint, cur_task: ~Task,
                   f: |BlockedTask| -> Result<(), BlockedTask>);
-    fn reawaken(~self, to_wake: ~Task, can_resched: bool);
+    fn reawaken(~self, to_wake: ~Task);
 
     // Miscellaneous calls which are very different depending on what context
     // you're in.
@@ -154,6 +154,7 @@ pub trait Runtime {
     fn local_io<'a>(&'a mut self) -> Option<rtio::LocalIo<'a>>;
     /// The (low, high) edges of the current stack.
     fn stack_bounds(&self) -> (uint, uint); // (lo, hi)
+    fn can_block(&self) -> bool;
 
     // FIXME: This is a serious code smell and this should not exist at all.
     fn wrap(~self) -> ~Any;

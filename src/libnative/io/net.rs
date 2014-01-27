@@ -201,14 +201,19 @@ pub fn init() {
     }
 
     unsafe {
-        use std::unstable::mutex::{Once, ONCE_INIT};
-        static mut INIT: Once = ONCE_INIT;
-        INIT.doit(|| {
+        use std::unstable::mutex::{Mutex, MUTEX_INIT};
+        static mut INITIALIZED: bool = false;
+        static mut LOCK: Mutex = MUTEX_INIT;
+
+        LOCK.lock();
+        if !INITIALIZED {
             let mut data: WSADATA = intrinsics::init();
             let ret = WSAStartup(0x202,      // version 2.2
                                  &mut data);
             assert_eq!(ret, 0);
-        });
+            INITIALIZED = true;
+        }
+        LOCK.unlock();
     }
 }
 
