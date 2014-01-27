@@ -16,19 +16,19 @@ use std::task;
 
 pub fn main() {
     let (p,c) = comm::stream();
-    do task::try || {
+    task::try(|| {
         let (p2,c2) = comm::stream();
-        do task::spawn || {
+        task::spawn(|| {
             p2.recv();
             error!("sibling fails");
             fail!();
-        }
+        });
         let (p3,c3) = comm::stream();
         c.send(c3);
         c2.send(());
         error!("child blocks");
         p3.recv();
-    };
+    });
     error!("parent tries");
     assert!(!p.recv().try_send(()));
     error!("all done!");

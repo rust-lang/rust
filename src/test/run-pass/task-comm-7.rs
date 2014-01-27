@@ -31,21 +31,21 @@ fn test00() {
     let number_of_messages: int = 10;
 
     let c = ch.clone();
-    do task::spawn || {
+    task::spawn(proc() {
         test00_start(&c, number_of_messages * 0, number_of_messages);
-    }
+    });
     let c = ch.clone();
-    do task::spawn || {
+    task::spawn(proc() {
         test00_start(&c, number_of_messages * 1, number_of_messages);
-    }
+    });
     let c = ch.clone();
-    do task::spawn || {
+    task::spawn(proc() {
         test00_start(&c, number_of_messages * 2, number_of_messages);
-    }
+    });
     let c = ch.clone();
-    do task::spawn || {
+    task::spawn(proc() {
         test00_start(&c, number_of_messages * 3, number_of_messages);
-    }
+    });
 
     let mut i: int = 0;
     while i < number_of_messages {

@@ -56,10 +56,10 @@ fn joinable(f: proc()) -> Port<bool> {
         *b = true;
     }
     let (p, c) = stream();
-    do task::spawn_unlinked {
+    task::spawn_unlinked(proc() {
         let ccc = c;
         wrapper(ccc, f)
-    }
+    });
     p
 }
 

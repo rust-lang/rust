@@ -13,9 +13,9 @@ use std::io::println;
 pub fn main() {
     let (port, chan) = Chan::new();
 
-    do spawn {
+    spawn(proc() {
         println(port.recv());
-    }
+    });
 
     chan.send("hello, world");
 }

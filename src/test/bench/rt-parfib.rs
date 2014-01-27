@@ -23,9 +23,9 @@ fn parfib(n: uint) -> uint {
     }
 
     let (port,chan) = Chan::new();
-    do spawn {
+    spawn(proc() {
         chan.send(parfib(n-1));
-    };
+    });
     let m2 = parfib(n-2);
     return (port.recv() + m2);
 }

@@ -12,8 +12,7 @@ enum Msg
 }
 
 fn foo(name: ~str, samples_chan: Chan<Msg>) {
-    do task::spawn
-    {
+    task::spawn(proc() {
         let mut samples_chan = samples_chan;
         let callback: SamplesFn = proc(buffer) {
             for i in range(0u, buffer.len()) {
@@ -21,7 +20,7 @@ fn foo(name: ~str, samples_chan: Chan<Msg>) {
             }
         };
         samples_chan.send(GetSamples(name.clone(), callback));
-    };
+    });
 }
 
 pub fn main() {}
