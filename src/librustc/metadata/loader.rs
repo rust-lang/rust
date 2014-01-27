@@ -33,7 +33,7 @@ use std::os::consts::{macos, freebsd, linux, android, win32};
 use std::ptr;
 use std::str;
 use std::vec;
-use extra::flate;
+use flate;
 
 pub enum Os {
     OsMacos,
