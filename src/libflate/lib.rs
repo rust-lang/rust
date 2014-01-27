@@ -14,6 +14,10 @@ Simple compression
 
 */
 
+#[crate_id = "flate#0.10-pre"];
+#[crate_type = "rlib"];
+#[crate_type = "dylib"];
+#[license = "MIT/ASL2"];
 #[allow(missing_doc)];
 
 use std::libc::{c_void, size_t, c_int};
@@ -23,7 +27,7 @@ use std::vec;
 pub mod rustrt {
     use std::libc::{c_int, c_void, size_t};
 
-    #[link(name = "rustrt", kind = "static")]
+    #[link(name = "miniz", kind = "static")]
     extern {
         pub fn tdefl_compress_mem_to_heap(psrc_buf: *c_void,
                                           src_buf_len: size_t,
@@ -91,7 +95,7 @@ pub fn inflate_bytes_zlib(bytes: &[u8]) -> ~[u8] {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{inflate_bytes, deflate_bytes};
     use std::rand;
     use std::rand::Rng;
 

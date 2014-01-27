@@ -37,6 +37,8 @@ li {list-style-type: none; }
 * [The Rust parser, `libsyntax`](syntax/index.html)
 * [The Rust compiler, `librustc`](rustc/index.html)
 
+* [The `flate` compression library](flate/index.html)
+
 # Tooling
 
 * [The `rustdoc` manual](rustdoc.html)
@@ -47,11 +49,11 @@ li {list-style-type: none; }
 * [Language FAQ](complement-lang-faq.html)
 * [Project FAQ](complement-project-faq.html)
 * [Usage FAQ](complement-usage-faq.html)
-* [Code cheatsheet](complement-cheatsheet.html) - "How do I do X?"  
+* [Code cheatsheet](complement-cheatsheet.html) - "How do I do X?"
 * [How to submit a bug report](complement-bugreport.html)
 
 # External resources
 
-* The Rust [IRC channel](http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust) - `#rust` on irc.mozilla.org  
+* The Rust [IRC channel](http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust) - `#rust` on irc.mozilla.org
 * The Rust community on [Reddit](http://reddit.com/r/rust)
 * The Rust [wiki](http://github.com/mozilla/rust/wiki)

@@ -14,9 +14,9 @@
 ######################################################################
 
 # The names of crates that must be tested
-TEST_TARGET_CRATES = std extra rustuv green native
-TEST_DOC_CRATES = std extra
-TEST_HOST_CRATES = rustpkg rustc rustdoc syntax
+TEST_TARGET_CRATES = $(TARGET_CRATES)
+TEST_DOC_CRATES = $(DOC_CRATES)
+TEST_HOST_CRATES = $(HOST_CRATES)
 TEST_CRATES = $(TEST_TARGET_CRATES) $(TEST_HOST_CRATES)
 
 # Markdown files under doc/ that should have their code extracted and run
@@ -341,89 +341,31 @@ define TEST_RUNNER
 # If NO_REBUILD is set then break the dependencies on extra so we can
 # test crates without rebuilding std and extra first
 ifeq ($(NO_REBUILD),)
-STDTESTDEP_$(1)_$(2)_$(3) = $$(SREQ$(1)_T_$(2)_H_$(3)) \
-                            $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_EXTRALIB_$(2)) \
-                            $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTUV_$(2)) \
-                            $$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBGREEN_$(2))
+STDTESTDEP_$(1)_$(2)_$(3)_$(4) = $$(SREQ$(1)_T_$(2)_H_$(3)) \
+                            $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.extra \
+                            $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.rustuv \
+                            $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.green
 else
-STDTESTDEP_$(1)_$(2)_$(3) =
+STDTESTDEP_$(1)_$(2)_$(3)_$(4) =
 endif
 
-$(3)/stage$(1)/test/stdtest-$(2)$$(X_$(2)):			\
-		$$(STDLIB_CRATE) $$(STDLIB_INPUTS)		\
-		$$(STDTESTDEP_$(1)_$(2)_$(3))
+$(3)/stage$(1)/test/$(4)test-$(2)$$(X_$(2)): CFG_COMPILER = $(2)
+$(3)/stage$(1)/test/$(4)test-$(2)$$(X_$(2)):				\
+		$$(CRATEFILE_$(4))					\
+		$$(CRATE_FULLDEPS_$(1)_T_$(2)_H_$(3)_$(4))		\
+		$$(STDTESTDEP_$(1)_$(2)_$(3)_$(4))
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
-
-$(3)/stage$(1)/test/extratest-$(2)$$(X_$(2)):			\
-		$$(EXTRALIB_CRATE) $$(EXTRALIB_INPUTS)		\
-		$$(STDTESTDEP_$(1)_$(2)_$(3))
-	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
-
-$(3)/stage$(1)/test/rustuvtest-$(2)$$(X_$(2)):			\
-		$$(LIBRUSTUV_CRATE) $$(LIBRUSTUV_INPUTS)	\
-		$$(STDTESTDEP_$(1)_$(2)_$(3))
-	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test \
-		-L $$(UV_SUPPORT_DIR_$(2)) \
-		-L $$(dir $$(LIBUV_LIB_$(2)))
-
-$(3)/stage$(1)/test/nativetest-$(2)$$(X_$(2)):			\
-		$$(LIBNATIVE_CRATE) $$(LIBNATIVE_INPUTS)	\
-		$$(STDTESTDEP_$(1)_$(2)_$(3))
-	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
-
-$(3)/stage$(1)/test/greentest-$(2)$$(X_$(2)):			\
-		$$(LIBGREEN_CRATE) $$(LIBGREEN_INPUTS)	\
-		$$(STDTESTDEP_$(1)_$(2)_$(3))
-	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
-
-$(3)/stage$(1)/test/syntaxtest-$(2)$$(X_$(2)):			\
-		$$(LIBSYNTAX_CRATE) $$(LIBSYNTAX_INPUTS)	\
-		$$(STDTESTDEP_$(1)_$(2)_$(3))
-	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
-
-$(3)/stage$(1)/test/rustctest-$(2)$$(X_$(2)): CFG_COMPILER = $(2)
-$(3)/stage$(1)/test/rustctest-$(2)$$(X_$(2)):					\
-		$$(COMPILER_CRATE) $$(COMPILER_INPUTS) \
-		$$(SREQ$(1)_T_$(2)_H_$(3)) \
-		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_RUSTLLVM_$(2)) \
-		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBSYNTAX_$(2))
-	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test \
-	    -L "$$(LLVM_LIBDIR_$(2))"
-
-$(3)/stage$(1)/test/rustpkgtest-$(2)$$(X_$(2)):					\
-		$$(RUSTPKG_LIB) $$(RUSTPKG_INPUTS)		\
-		$$(SREQ$(1)_T_$(2)_H_$(3)) \
-		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBSYNTAX_$(2)) \
-		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC_$(2)) \
-		$$(HBIN$(1)_H_$(3))/rustpkg$$(X_$(2)) \
-		$$(TBIN$(1)_T_$(2)_H_$(3))/rustpkg$$(X_$(2)) \
-		$$(TBIN$(1)_T_$(2)_H_$(3))/rustc$$(X_$(2))
-	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test
-
-$(3)/stage$(1)/test/rustdoctest-$(2)$$(X_$(2)):					\
-		$$(RUSTDOC_LIB) $$(RUSTDOC_INPUTS)		\
-		$$(SREQ$(1)_T_$(2)_H_$(3)) \
-		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBSYNTAX_$(2)) \
-		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(CFG_LIBRUSTC_$(2)) \
-		$$(SUNDOWN_LIB_$(2))
-	@$$(call E, compile_and_link: $$@)
-	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test \
-		-L $$(SUNDOWN_DIR_$(2))
+	$$(STAGE$(1)_T_$(2)_H_$(3)) -o $$@ $$< --test	\
+		-L "$$(RT_OUTPUT_DIR_$(2))"		\
+		-L "$$(LLVM_LIBDIR_$(2))"
 
 endef
 
 $(foreach host,$(CFG_HOST), \
  $(eval $(foreach target,$(CFG_TARGET), \
   $(eval $(foreach stage,$(STAGES), \
-   $(eval $(call TEST_RUNNER,$(stage),$(target),$(host))))))))
+   $(eval $(foreach crate,$(TEST_CRATES), \
+    $(eval $(call TEST_RUNNER,$(stage),$(target),$(host),$(crate))))))))))
 
 define DEF_TEST_CRATE_RULES
 check-stage$(1)-T-$(2)-H-$(3)-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4))
@@ -629,7 +571,7 @@ CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) :=						\
         --host $(3)                                       \
         --adb-path=$(CFG_ADB)                          \
         --adb-test-dir=$(CFG_ADB_TEST_DIR)                  \
-        --rustcflags "$(RUSTC_FLAGS_$(2)) $$(CTEST_RUSTC_FLAGS)" \
+        --rustcflags "$(RUSTC_FLAGS_$(2)) $$(CTEST_RUSTC_FLAGS) -L $$(RT_OUTPUT_DIR_$(2))" \
         $$(CTEST_TESTARGS)
 
 CTEST_DEPS_rpass_$(1)-T-$(2)-H-$(3) = $$(RPASS_TESTS)
@@ -758,20 +700,18 @@ $(foreach host,$(CFG_HOST), \
    $(foreach docname,$(DOC_TEST_NAMES), \
     $(eval $(call DEF_RUN_DOC_TEST,$(stage),$(target),$(host),$(docname)))))))
 
-CRATE_DOC_LIB-std = $(STDLIB_CRATE)
-CRATE_DOC_LIB-extra = $(EXTRALIB_CRATE)
-
 define DEF_CRATE_DOC_TEST
 
 check-stage$(1)-T-$(2)-H-$(3)-doc-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),doc-$(4))
 
 ifeq ($(2),$$(CFG_BUILD))
-$$(call TEST_OK_FILE,$(1),$(2),$(3),doc-$(4)):		\
-	        $$(TEST_SREQ$(1)_T_$(2)_H_$(3))		\
+$$(call TEST_OK_FILE,$(1),$(2),$(3),doc-$(4)):				\
+	        $$(TEST_SREQ$(1)_T_$(2)_H_$(3))				\
+		$$(CRATE_FULLDEPS_$(1)_T_$(2)_H_$(3)_$(4))		\
 		$$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3))
 	@$$(call E, run doc-$(4) [$(2)])
 	$$(Q)$$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3)) --test \
-	    $$(CRATE_DOC_LIB-$(4)) --test-args "$$(TESTARGS)" && touch $$@
+	    $$(CRATEFILE_$(4)) --test-args "$$(TESTARGS)" && touch $$@
 else
 $$(call TEST_OK_FILE,$(1),$(2),$(3),doc-$(4)):
 	touch $$@
@@ -915,14 +855,16 @@ $$(TLIB2_T_$(2)_H_$(3))/$$(FT_LIB): \
 		tmp/$$(FT).rc \
 		$$(SREQ2_T_$(2)_H_$(3))
 	@$$(call E, compile_and_link: $$@)
-	$$(STAGE2_T_$(2)_H_$(3)) --lib -o $$@ $$<
+	$$(STAGE2_T_$(2)_H_$(3)) --lib -o $$@ $$< \
+	  -L "$$(RT_OUTPUT_DIR_$(2))"
 
 $(3)/test/$$(FT_DRIVER)-$(2)$$(X_$(2)): \
 		tmp/$$(FT_DRIVER).rs \
 		$$(TLIB2_T_$(2)_H_$(3))/$$(FT_LIB) \
 		$$(SREQ2_T_$(2)_H_$(3))
 	@$$(call E, compile_and_link: $$@ $$<)
-	$$(STAGE2_T_$(2)_H_$(3)) -o $$@ $$<
+	$$(STAGE2_T_$(2)_H_$(3)) -o $$@ $$< \
+	  -L "$$(RT_OUTPUT_DIR_$(2))"
 
 $(3)/test/$$(FT_DRIVER)-$(2).out: \
 		$(3)/test/$$(FT_DRIVER)-$(2)$$(X_$(2)) \

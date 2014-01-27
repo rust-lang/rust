@@ -1,35 +1,128 @@
-# This is a procedure to define the targets for building
-# the runtime.
+# Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+# file at the top-level directory of this distribution and at
+# http://rust-lang.org/COPYRIGHT.
 #
-# Argument 1 is the target triple.
-#
-# This is not really the right place to explain this, but
-# for those of you who are not Makefile gurus, let me briefly
-# cover the $ expansion system in use here, because it
-# confused me for a while!  The variable DEF_RUNTIME_TARGETS
-# will be defined once and then expanded with different
-# values substituted for $(1) each time it is called.
-# That resulting text is then eval'd.
-#
-# For most variables, you could use a single $ sign.  The result
-# is that the substitution would occur when the CALL occurs,
-# I believe.  The problem is that the automatic variables $< and $@
-# need to be expanded-per-rule.  Therefore, for those variables at
-# least, you need $$< and $$@ in the variable text.  This way, after
-# the CALL substitution occurs, you will have $< and $@.  This text
-# will then be evaluated, and all will work as you like.
-#
-# Reader beware, this explanantion could be wrong, but it seems to
-# fit the experimental data (i.e., I was able to get the system
-# working under these assumptions).
+# Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+# http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+# <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+# option. This file may not be copied, modified, or distributed
+# except according to those terms.
 
-# when we're doing a snapshot build, we intentionally degrade as many
-# features in libuv and the runtime as possible, to ease portability.
+################################################################################
+# Native libraries built as part of the rust build process
+#
+# This portion of the rust build system is meant to keep track of native
+# dependencies and how to build them. It is currently required that all native
+# dependencies are built as static libraries, as slinging around dynamic
+# libraries isn't exactly the most fun thing to do.
+#
+# This section should need minimal modification to add new libraries. The
+# relevant variables are:
+#
+#   NATIVE_LIBS
+#	This is a list of all native libraries which are built as part of the
+#	build process. It will build all libraries into RT_OUTPUT_DIR with the
+#	appropriate name of static library as dictated by the target platform
+#
+#   NATIVE_DEPS_<lib>
+#	This is a list of files relative to the src/rt directory which are
+#	needed to build the native library. Each file will be compiled to an
+#	object file, and then all the object files will be assembled into an
+#	archive (static library). The list contains files of any extension
+#
+# If adding a new library, you should update the NATIVE_LIBS list, and then list
+# the required files below it. The list of required files is a list of files
+# that's per-target so you're allowed to conditionally add files based on the
+# target.
+################################################################################
+NATIVE_LIBS := rustrt sundown uv_support morestack miniz
 
-SNAP_DEFINES:=
-ifneq ($(strip $(findstring snap,$(MAKECMDGOALS))),)
-	SNAP_DEFINES=-DRUST_SNAPSHOT
-endif
+# $(1) is the target triple
+define NATIVE_LIBRARIES
+
+NATIVE_DEPS_sundown_$(1) := sundown/src/autolink.c \
+			sundown/src/buffer.c \
+			sundown/src/stack.c \
+			sundown/src/markdown.c \
+			sundown/html/houdini_href_e.c \
+			sundown/html/houdini_html_e.c \
+			sundown/html/html_smartypants.c \
+			sundown/html/html.c
+NATIVE_DEPS_uv_support_$(1) := rust_uv.c
+NATIVE_DEPS_miniz_$(1) = miniz.c
+NATIVE_DEPS_rustrt_$(1) := rust_builtin.c \
+			rust_android_dummy.c \
+			rust_test_helpers.c \
+			rust_try.ll \
+			arch/$$(HOST_$(1))/_context.S \
+			arch/$$(HOST_$(1))/record_sp.S
+NATIVE_DEPS_morestack_$(1) := arch/$$(HOST_$(1))/morestack.S
+
+################################################################################
+# You shouldn't find it that necessary to edit anything below this line.
+################################################################################
+
+# While we're defining the native libraries for each target, we define some
+# common rules used to build files for various targets.
+
+RT_OUTPUT_DIR_$(1) := $(1)/rt
+
+$$(RT_OUTPUT_DIR_$(1))/%.o: rt/%.ll $$(MKFILE_DEPS) $$(LLVM_CONFIG_$$(CFG_BUILD))
+	@mkdir -p $$(@D)
+	@$$(call E, compile: $$@)
+	$$(Q)$$(LLC_$$(CFG_BUILD)) $$(CFG_LLC_FLAGS_$(1)) \
+	    -filetype=obj -mtriple=$(1) -relocation-model=pic -o $$@ $$<
+
+$$(RT_OUTPUT_DIR_$(1))/%.o: rt/%.c $$(MKFILE_DEPS)
+	@mkdir -p $$(@D)
+	@$$(call E, compile: $$@)
+	$$(Q)$$(call CFG_COMPILE_C_$(1), $$@, \
+		-I $$(S)src/rt/sundown/src -I $$(S)src/rt/sundown/html \
+		-I $$(S)src/libuv/include -I $$(S)src/rt \
+                 $$(RUNTIME_CFLAGS_$(1))) $$<
+
+$$(RT_OUTPUT_DIR_$(1))/%.o: rt/%.S $$(MKFILE_DEPS) $$(LLVM_CONFIG_$$(CFG_BUILD))
+	@mkdir -p $$(@D)
+	@$$(call E, compile: $$@)
+	$$(Q)$$(call CFG_ASSEMBLE_$(1),$$@,$$<)
+endef
+
+$(foreach target,$(CFG_TARGET),$(eval $(call NATIVE_LIBRARIES,$(target))))
+
+# A macro for devining how to build third party libraries listed above (based
+# on their dependencies).
+#
+# $(1) is the target
+# $(2) is the lib name
+define THIRD_PARTY_LIB
+
+OBJS_$(2)_$(1) := $$(NATIVE_DEPS_$(2)_$(1):%=$$(RT_OUTPUT_DIR_$(1))/%)
+OBJS_$(2)_$(1) := $$(OBJS_$(2)_$(1):.c=.o)
+OBJS_$(2)_$(1) := $$(OBJS_$(2)_$(1):.cpp=.o)
+OBJS_$(2)_$(1) := $$(OBJS_$(2)_$(1):.ll=.o)
+OBJS_$(2)_$(1) := $$(OBJS_$(2)_$(1):.S=.o)
+NATIVE_$(2)_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),$(2))
+$$(RT_OUTPUT_DIR_$(1))/$$(NATIVE_$(2)_$(1)): $$(OBJS_$(2)_$(1))
+	@$$(call E, link: $$@)
+	$$(Q)$$(AR_$(1)) rcs $$@ $$^
+
+endef
+
+$(foreach target,$(CFG_TARGET),					    \
+ $(eval $(call RUNTIME_RULES,$(target))))
+$(foreach lib,$(NATIVE_LIBS),					    \
+ $(foreach target,$(CFG_TARGET),				    \
+  $(eval $(call THIRD_PARTY_LIB,$(target),$(lib)))))
+
+
+################################################################################
+# Building third-party targets with external build systems
+#
+# The only current member of this section is libuv, but long ago this used to
+# also be occupied by jemalloc. This location is meant for dependencies which
+# have external build systems. It is still assumed that the output of each of
+# these steps is a static library in the correct location.
+################################################################################
 
 define DEF_LIBUV_ARCH_VAR
   LIBUV_ARCH_$(1) = $$(subst i386,ia32,$$(subst x86_64,x64,$$(HOST_$(1))))
@@ -51,127 +144,9 @@ LIBUV_NO_LOAD = run-benchmarks.target.mk run-tests.target.mk \
 
 export PYTHONPATH := $(PYTHONPATH):$(S)src/gyp/pylib
 
-define DEF_RUNTIME_TARGETS
-
-######################################################################
-# Runtime (C++) library variables
-######################################################################
-
-# $(1) is the target triple
-# $(2) is the stage number
-
-RUNTIME_CFLAGS_$(1)_$(2) = -D_RUST_STAGE$(2)
-RUNTIME_CXXFLAGS_$(1)_$(2) = -D_RUST_STAGE$(2)
-
-# XXX: Like with --cfg stage0, pass the defines for stage1 to the stage0
-# build of non-build-triple host compilers
-ifeq ($(2),0)
-ifneq ($(strip $(CFG_BUILD)),$(strip $(1)))
-RUNTIME_CFLAGS_$(1)_$(2) = -D_RUST_STAGE1
-RUNTIME_CXXFLAGS_$(1)_$(2) = -D_RUST_STAGE1
-endif
-endif
-
-RUNTIME_CS_$(1)_$(2) := \
-              rt/rust_builtin.c \
-              rt/miniz.c \
-              rt/rust_android_dummy.c \
-              rt/rust_test_helpers.c
-
-RUNTIME_LL_$(1)_$(2) := \
-			rt/rust_try.ll
-
-# stage0 remove this after the next snapshot
-%.cpp:
-	@touch tmp/foo.o
-
-RUNTIME_S_$(1)_$(2) := rt/arch/$$(HOST_$(1))/_context.S \
-			rt/arch/$$(HOST_$(1))/record_sp.S
-
-RT_BUILD_DIR_$(1)_$(2) := $$(RT_OUTPUT_DIR_$(1))/stage$(2)
-
-RUNTIME_DEF_$(1)_$(2) := $$(RT_OUTPUT_DIR_$(1))/rustrt$$(CFG_DEF_SUFFIX_$(1))
-RUNTIME_INCS_$(1)_$(2) := -I $$(S)src/rt -I $$(S)src/rt/isaac -I $$(S)src/rt/uthash \
-                     -I $$(S)src/rt/arch/$$(HOST_$(1))
-RUNTIME_OBJS_$(1)_$(2) := \
-                     $$(RUNTIME_CS_$(1)_$(2):rt/%.c=$$(RT_BUILD_DIR_$(1)_$(2))/%.o) \
-                     $$(RUNTIME_S_$(1)_$(2):rt/%.S=$$(RT_BUILD_DIR_$(1)_$(2))/%.o) \
-                     $$(RUNTIME_LL_$(1)_$(2):rt/%.ll=$$(RT_BUILD_DIR_$(1)_$(2))/%.o)
-
-ALL_OBJ_FILES += $$(RUNTIME_OBJS_$(1)_$(2))
-
-MORESTACK_OBJS_$(1)_$(2) := $$(RT_BUILD_DIR_$(1)_$(2))/arch/$$(HOST_$(1))/morestack.o
-ALL_OBJ_FILES += $$(MORESTACK_OBJS_$(1)_$(2))
-
-$$(RT_BUILD_DIR_$(1)_$(2))/%.o: rt/%.c $$(MKFILE_DEPS)
-	@$$(call E, compile: $$@)
-	$$(Q)$$(call CFG_COMPILE_C_$(1), $$@, $$(RUNTIME_INCS_$(1)_$(2)) \
-                 $$(SNAP_DEFINES) $$(RUNTIME_CFLAGS_$(1)_$(2))) $$<
-
-$$(RT_BUILD_DIR_$(1)_$(2))/%.o: rt/%.S  $$(MKFILE_DEPS) \
-                     $$(LLVM_CONFIG_$$(CFG_BUILD))
-	@$$(call E, compile: $$@)
-	$$(Q)$$(call CFG_ASSEMBLE_$(1),$$@,$$<)
-
-$$(RT_BUILD_DIR_$(1)_$(2))/%.o: rt/%.ll  $$(MKFILE_DEPS) \
-                     $$(LLVM_CONFIG_$$(CFG_BUILD))
-	@$$(call E, compile: $$@)
-	$$(Q)$(LLC_$(CFG_BUILD)) $$(CFG_LLC_FLAGS_$(1)) -filetype=obj -mtriple=$(1) -relocation-model=pic -o $$@ $$<
-
-$$(RT_BUILD_DIR_$(1)_$(2))/arch/$$(HOST_$(1))/libmorestack.a: $$(MORESTACK_OBJS_$(1)_$(2))
-	@$$(call E, link: $$@)
-	$$(Q)$(AR_$(1)) rcs $$@ $$^
-
-$$(RT_BUILD_DIR_$(1)_$(2))/$(CFG_RUNTIME_$(1)): $$(RUNTIME_OBJS_$(1)_$(2)) $$(MKFILE_DEPS)
-	@$$(call E, link: $$@)
-	$$(Q)$(AR_$(1)) rcs $$@ $$(RUNTIME_OBJS_$(1)_$(2))
-
-# These could go in rt.mk or rustllvm.mk, they're needed for both.
-
-# This regexp has a single $$ escaped twice
-$(1)/%.bsd.def:    %.def.in $$(MKFILE_DEPS)
-	@$$(call E, def: $$@)
-	$$(Q)echo "{" > $$@
-	$$(Q)sed 's/.$$$$/&;/' $$< >> $$@
-	$$(Q)echo "};" >> $$@
-
-$(1)/%.linux.def:    %.def.in $$(MKFILE_DEPS)
-	@$$(call E, def: $$@)
-	$$(Q)echo "{" > $$@
-	$$(Q)sed 's/.$$$$/&;/' $$< >> $$@
-	$$(Q)echo "};" >> $$@
-
-$(1)/%.darwin.def:	%.def.in $$(MKFILE_DEPS)
-	@$$(call E, def: $$@)
-	$$(Q)sed 's/^./_&/' $$< > $$@
-
-$(1)/%.android.def:  %.def.in $$(MKFILE_DEPS)
-	@$$(call E, def: $$@)
-	$$(Q)echo "{" > $$@
-	$$(Q)sed 's/.$$$$/&;/' $$< >> $$@
-	$$(Q)echo "};" >> $$@
-
-$(1)/%.mingw32.def:	%.def.in $$(MKFILE_DEPS)
-	@$$(call E, def: $$@)
-	$$(Q)echo LIBRARY $$* > $$@
-	$$(Q)echo EXPORTS >> $$@
-	$$(Q)sed 's/^./    &/' $$< >> $$@
-
-endef
-
-
-######################################################################
-# Runtime third party targets (libuv, jemalloc, etc.)
-#
-# These targets do not need to be built once per stage, so these
-# rules just build them once and then we're done with them.
-######################################################################
-
 define DEF_THIRD_PARTY_TARGETS
 
 # $(1) is the target triple
-
-RT_OUTPUT_DIR_$(1) := $(1)/rt
 
 ifeq ($$(CFG_WINDOWSY_$(1)), 1)
   LIBUV_OSTYPE_$(1) := win
@@ -188,7 +163,7 @@ endif
 
 LIBUV_NAME_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),uv)
 LIBUV_DIR_$(1) := $$(RT_OUTPUT_DIR_$(1))/libuv
-LIBUV_LIB_$(1) := $$(LIBUV_DIR_$(1))/$$(LIBUV_NAME_$(1))
+LIBUV_LIB_$(1) := $$(RT_OUTPUT_DIR_$(1))/$$(LIBUV_NAME_$(1))
 
 LIBUV_MAKEFILE_$(1) := $$(CFG_BUILD_DIR)$$(RT_OUTPUT_DIR_$(1))/libuv/Makefile
 
@@ -224,7 +199,7 @@ $$(LIBUV_LIB_$(1)): $$(LIBUV_DEPS) $$(MKFILE_DEPS)
 	$$(Q)cp $$(S)src/libuv/libuv.a $$@
 else
 $$(LIBUV_LIB_$(1)): $$(LIBUV_DIR_$(1))/Release/libuv.a $$(MKFILE_DEPS)
-	$$(Q)ln -f $$< $$@
+	$$(Q)cp $$< $$@
 $$(LIBUV_DIR_$(1))/Release/libuv.a: $$(LIBUV_DEPS) $$(LIBUV_MAKEFILE_$(1)) \
 				    $$(MKFILE_DEPS)
 	$$(Q)$$(MAKE) -C $$(LIBUV_DIR_$(1)) \
@@ -237,60 +212,11 @@ $$(LIBUV_DIR_$(1))/Release/libuv.a: $$(LIBUV_DEPS) $$(LIBUV_MAKEFILE_$(1)) \
 		BUILDTYPE=Release \
 		NO_LOAD="$$(LIBUV_NO_LOAD)" \
 		V=$$(VERBOSE)
+
 endif
-
-# libuv support functionality (extra C/C++ that we need to use libuv)
-
-UV_SUPPORT_NAME_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),uv_support)
-UV_SUPPORT_DIR_$(1) := $$(RT_OUTPUT_DIR_$(1))/uv_support
-UV_SUPPORT_LIB_$(1) := $$(UV_SUPPORT_DIR_$(1))/$$(UV_SUPPORT_NAME_$(1))
-UV_SUPPORT_CS_$(1) := rt/rust_uv.c
-UV_SUPPORT_OBJS_$(1) := $$(UV_SUPPORT_CS_$(1):rt/%.c=$$(UV_SUPPORT_DIR_$(1))/%.o)
-
-$$(UV_SUPPORT_DIR_$(1))/%.o: rt/%.c
-	@$$(call E, compile: $$@)
-	@mkdir -p $$(@D)
-	$$(Q)$$(call CFG_COMPILE_C_$(1), $$@, \
-		-I $$(S)src/libuv/include \
-                 $$(RUNTIME_CFLAGS_$(1))) $$<
-
-$$(UV_SUPPORT_LIB_$(1)): $$(UV_SUPPORT_OBJS_$(1))
-	@$$(call E, link: $$@)
-	$$(Q)$$(AR_$(1)) rcs $$@ $$^
-
-# sundown markdown library (used by librustdoc)
-
-SUNDOWN_NAME_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),sundown)
-SUNDOWN_DIR_$(1) := $$(RT_OUTPUT_DIR_$(1))/sundown
-SUNDOWN_LIB_$(1) := $$(SUNDOWN_DIR_$(1))/$$(SUNDOWN_NAME_$(1))
-
-SUNDOWN_CS_$(1) := rt/sundown/src/autolink.c \
-			rt/sundown/src/buffer.c \
-			rt/sundown/src/stack.c \
-			rt/sundown/src/markdown.c \
-			rt/sundown/html/houdini_href_e.c \
-			rt/sundown/html/houdini_html_e.c \
-			rt/sundown/html/html_smartypants.c \
-			rt/sundown/html/html.c
-
-SUNDOWN_OBJS_$(1) := $$(SUNDOWN_CS_$(1):rt/%.c=$$(SUNDOWN_DIR_$(1))/%.o)
-
-$$(SUNDOWN_DIR_$(1))/%.o: rt/%.c
-	@$$(call E, compile: $$@)
-	@mkdir -p $$(@D)
-	$$(Q)$$(call CFG_COMPILE_C_$(1), $$@, \
-		-I $$(S)src/rt/sundown/src -I $$(S)src/rt/sundown/html \
-                 $$(RUNTIME_CFLAGS_$(1))) $$<
-
-$$(SUNDOWN_LIB_$(1)): $$(SUNDOWN_OBJS_$(1))
-	@$$(call E, link: $$@)
-	$$(Q)$$(AR_$(1)) rcs $$@ $$^
 
 endef
 
 # Instantiate template for all stages/targets
 $(foreach target,$(CFG_TARGET), \
      $(eval $(call DEF_THIRD_PARTY_TARGETS,$(target))))
-$(foreach stage,$(STAGES), \
-    $(foreach target,$(CFG_TARGET), \
-	 $(eval $(call DEF_RUNTIME_TARGETS,$(target),$(stage)))))

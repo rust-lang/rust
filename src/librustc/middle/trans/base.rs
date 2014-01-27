@@ -2683,7 +2683,7 @@ pub fn crate_ctxt_to_encode_parms<'r>(cx: &'r CrateContext, ie: encoder::encode_
 }
 
 pub fn write_metadata(cx: &CrateContext, crate: &ast::Crate) -> ~[u8] {
-    use extra::flate;
+    use flate;
 
     if !cx.sess.building_library.get() {
         return ~[]

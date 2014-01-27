@@ -82,7 +82,6 @@ pub mod rational;
 pub mod complex;
 pub mod stats;
 pub mod semver;
-pub mod flate;
 pub mod hex;
 pub mod uuid;
 
