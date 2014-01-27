@@ -130,11 +130,6 @@ enum NameDefinition {
     ImportNameDefinition(Def, LastPrivate) //< The name identifies an import.
 }
 
-enum SelfBinding {
-    NoSelfBinding,
-    HasSelfBinding(NodeId, ExplicitSelf)
-}
-
 impl Visitor<()> for Resolver {
     fn visit_item(&mut self, item: &Item, _: ()) {
         self.resolve_item(item);
@@ -259,12 +254,6 @@ enum ModulePrefixResult {
 }
 
 #[deriving(Eq)]
-enum AllowCapturingSelfFlag {
-    AllowCapturingSelf,         //< The "self" definition can be captured.
-    DontAllowCapturingSelf,     //< The "self" definition cannot be captured.
-}
-
-#[deriving(Eq)]
 enum NameSearchType {
     /// We're doing a name search in order to resolve a `use` directive.
     ImportSearch,
@@ -294,7 +283,6 @@ enum DuplicateCheckingMode {
 /// One local scope.
 struct Rib {
     bindings: RefCell<HashMap<Name, DefLike>>,
-    self_binding: RefCell<Option<DefLike>>,
     kind: RibKind,
 }
 
@@ -302,7 +290,6 @@ impl Rib {
     fn new(kind: RibKind) -> Rib {
         Rib {
             bindings: RefCell::new(HashMap::new()),
-            self_binding: RefCell::new(None),
             kind: kind
         }
     }
@@ -1746,8 +1733,8 @@ impl Resolver {
                       ignoring {:?}", def);
               // Ignored; handled elsewhere.
           }
-          DefSelf(..) | DefArg(..) | DefLocal(..) |
-          DefPrimTy(..) | DefTyParam(..) | DefBinding(..) |
+          DefArg(..) | DefLocal(..) | DefPrimTy(..) |
+          DefTyParam(..) | DefBinding(..) |
           DefUse(..) | DefUpvar(..) | DefRegion(..) |
           DefTyParamBinder(..) | DefLabel(..) | DefSelfTy(..) => {
             fail!("didn't expect `{:?}`", def);
@@ -3469,8 +3456,7 @@ impl Resolver {
                     ribs: &mut ~[@Rib],
                     rib_index: uint,
                     def_like: DefLike,
-                    span: Span,
-                    allow_capturing_self: AllowCapturingSelfFlag)
+                    span: Span)
                     -> Option<DefLike> {
         let mut def;
         let is_ty_param;
@@ -3484,11 +3470,6 @@ impl Resolver {
             DlDef(d @ DefTyParam(..)) => {
                 def = d;
                 is_ty_param = true;
-            }
-            DlDef(d @ DefSelf(..))
-                    if allow_capturing_self == DontAllowCapturingSelf => {
-                def = d;
-                is_ty_param = false;
             }
             _ => {
                 return Some(def_like);
@@ -3589,8 +3570,7 @@ impl Resolver {
     fn search_ribs(&mut self,
                        ribs: &mut ~[@Rib],
                        name: Name,
-                       span: Span,
-                       allow_capturing_self: AllowCapturingSelfFlag)
+                       span: Span)
                        -> Option<DefLike> {
         // FIXME #4950: This should not use a while loop.
         // FIXME #4950: Try caching?
@@ -3604,8 +3584,7 @@ impl Resolver {
             };
             match binding_opt {
                 Some(def_like) => {
-                    return self.upvarify(ribs, i, def_like, span,
-                                         allow_capturing_self);
+                    return self.upvarify(ribs, i, def_like, span);
                 }
                 None => {
                     // Continue.
@@ -3786,8 +3765,7 @@ impl Resolver {
                                          item.id,
                                          0,
                                          OpaqueFunctionRibKind),
-                                      block,
-                                      NoSelfBinding);
+                                      block);
             }
 
             ItemStatic(..) => {
@@ -3883,11 +3861,10 @@ impl Resolver {
     }
 
     fn resolve_function(&mut self,
-                            rib_kind: RibKind,
-                            optional_declaration: Option<P<FnDecl>>,
-                            type_parameters: TypeParameters,
-                            block: P<Block>,
-                            self_binding: SelfBinding) {
+                        rib_kind: RibKind,
+                        optional_declaration: Option<P<FnDecl>>,
+                        type_parameters: TypeParameters,
+                        block: P<Block>) {
         // Create a value rib for the function.
         let function_value_rib = @Rib::new(rib_kind);
         {
@@ -3911,21 +3888,6 @@ impl Resolver {
                 }
                 HasTypeParameters(ref generics, _, _, _) => {
                     this.resolve_type_parameters(&generics.ty_params);
-                }
-            }
-
-            // Add self to the rib, if necessary.
-            match self_binding {
-                NoSelfBinding => {
-                    // Nothing to do.
-                }
-                HasSelfBinding(self_node_id, explicit_self) => {
-                    let mutable = match explicit_self.node {
-                        SelfUniq(m) | SelfValue(m) if m == MutMutable => true,
-                        _ => false
-                    };
-                    let def_like = DlDef(DefSelf(self_node_id, mutable));
-                    function_value_rib.self_binding.set(Some(def_like));
                 }
             }
 
@@ -4050,26 +4012,17 @@ impl Resolver {
     // Does this really need to take a RibKind or is it always going
     // to be NormalRibKind?
     fn resolve_method(&mut self,
-                          rib_kind: RibKind,
-                          method: @Method,
-                          outer_type_parameter_count: uint) {
+                      rib_kind: RibKind,
+                      method: @Method,
+                      outer_type_parameter_count: uint) {
         let method_generics = &method.generics;
         let type_parameters =
             HasTypeParameters(method_generics,
                               method.id,
                               outer_type_parameter_count,
                               rib_kind);
-        // we only have self ty if it is a non static method
-        let self_binding = match method.explicit_self.node {
-            SelfStatic => NoSelfBinding,
-            _ => HasSelfBinding(method.self_id, method.explicit_self)
-        };
 
-        self.resolve_function(rib_kind,
-                              Some(method.decl),
-                              type_parameters,
-                              method.body,
-                              self_binding);
+        self.resolve_function(rib_kind, Some(method.decl), type_parameters, method.body);
     }
 
     fn resolve_implementation(&mut self,
@@ -4135,9 +4088,7 @@ impl Resolver {
                                              method.id,
                                              outer_type_parameter_count,
                                              NormalRibKind),
-                                          method.body,
-                                          HasSelfBinding(method.self_id),
-                                          visitor);
+                                          method.body);
 */
             }
 
@@ -4974,16 +4925,14 @@ impl Resolver {
                 let mut value_ribs = self.value_ribs.borrow_mut();
                 search_result = self.search_ribs(value_ribs.get(),
                                                  renamed,
-                                                 span,
-                                                 DontAllowCapturingSelf);
+                                                 span);
             }
             TypeNS => {
                 let name = ident.name;
                 let mut type_ribs = self.type_ribs.borrow_mut();
                 search_result = self.search_ribs(type_ribs.get(),
                                                  name,
-                                                 span,
-                                                 AllowCapturingSelf);
+                                                 span);
             }
         }
 
@@ -4999,46 +4948,6 @@ impl Resolver {
                 return None;
             }
         }
-    }
-
-    fn resolve_self_value_in_local_ribs(&mut self, span: Span)
-                                            -> Option<Def> {
-        // FIXME #4950: This should not use a while loop.
-        let mut i = {
-            let value_ribs = self.value_ribs.borrow();
-            value_ribs.get().len()
-        };
-        while i != 0 {
-            i -= 1;
-            let self_binding_opt = {
-                let value_ribs = self.value_ribs.borrow();
-                value_ribs.get()[i].self_binding.get()
-            };
-            match self_binding_opt {
-                Some(def_like) => {
-                    let mut value_ribs = self.value_ribs.borrow_mut();
-                    match self.upvarify(value_ribs.get(),
-                                        i,
-                                        def_like,
-                                        span,
-                                        DontAllowCapturingSelf) {
-                        Some(DlDef(def)) => return Some(def),
-                        _ => {
-                            if self.session.has_errors() {
-                                // May happen inside a nested fn item, cf #6642.
-                                return None;
-                            } else {
-                                self.session.span_bug(span,
-                                        "self wasn't mapped to a def?!")
-                            }
-                        }
-                    }
-                }
-                None => {}
-            }
-        }
-
-        None
     }
 
     fn resolve_item_by_identifier_in_lexical_scope(&mut self,
@@ -5224,10 +5133,8 @@ impl Resolver {
             ExprFnBlock(fn_decl, block) |
             ExprProc(fn_decl, block) => {
                 self.resolve_function(FunctionRibKind(expr.id, block.id),
-                                      Some(fn_decl),
-                                      NoTypeParameters,
-                                      block,
-                                      NoSelfBinding);
+                                      Some(fn_decl), NoTypeParameters,
+                                      block);
             }
 
             ExprStruct(ref path, _, _) => {
@@ -5274,8 +5181,7 @@ impl Resolver {
 
             ExprBreak(Some(label)) | ExprAgain(Some(label)) => {
                 let mut label_ribs = self.label_ribs.borrow_mut();
-                match self.search_ribs(label_ribs.get(), label, expr.span,
-                                       DontAllowCapturingSelf) {
+                match self.search_ribs(label_ribs.get(), label, expr.span) {
                     None =>
                         self.resolve_error(expr.span,
                                               format!("use of undeclared label \
@@ -5290,17 +5196,6 @@ impl Resolver {
                                               "label wasn't mapped to a \
                                                label def!")
                     }
-                }
-            }
-
-            ExprSelf => {
-                match self.resolve_self_value_in_local_ribs(expr.span) {
-                    None => {
-                        self.resolve_error(expr.span,
-                                              "`self` is not allowed in \
-                                               this context")
-                    }
-                    Some(def) => self.record_def(expr.id, (def, AllPublic)),
                 }
             }
 
@@ -5320,7 +5215,7 @@ impl Resolver {
                 let traits = self.search_for_traits_containing_method(ident);
                 self.trait_map.insert(expr.id, @RefCell::new(traits));
             }
-            ExprMethodCall(_, _, ident, _, _, _) => {
+            ExprMethodCall(_, ident, _, _, _) => {
                 debug!("(recording candidate traits for expr) recording \
                         traits for {}",
                        expr.id);

@@ -589,13 +589,8 @@ pub fn ast_ty_to_ty<AC:AstConv, RS:RegionScope>(
     return typ;
 }
 
-pub fn ty_of_arg<AC:AstConv,
-                 RS:RegionScope>(
-                 this: &AC,
-                 rscope: &RS,
-                 a: &ast::Arg,
-                 expected_ty: Option<ty::t>)
-                 -> ty::t {
+pub fn ty_of_arg<AC: AstConv, RS: RegionScope>(this: &AC, rscope: &RS, a: &ast::Arg,
+                                               expected_ty: Option<ty::t>) -> ty::t {
     match a.ty.node {
         ast::TyInfer if expected_ty.is_some() => expected_ty.unwrap(),
         ast::TyInfer => this.ty_infer(a.ty.span),
@@ -614,77 +609,38 @@ pub fn ty_of_method<AC:AstConv>(
     purity: ast::Purity,
     untransformed_self_ty: ty::t,
     explicit_self: ast::ExplicitSelf,
-    decl: &ast::FnDecl) -> (Option<ty::t>, ty::BareFnTy)
-{
-    let self_info = SelfInfo {
+    decl: &ast::FnDecl) -> ty::BareFnTy {
+    ty_of_method_or_bare_fn(this, id, purity, AbiSet::Rust(), Some(SelfInfo {
         untransformed_self_ty: untransformed_self_ty,
         explicit_self: explicit_self
-    };
-    let (a, b) = ty_of_method_or_bare_fn(
-        this, id, purity, AbiSet::Rust(), Some(&self_info), decl);
-    (a.unwrap(), b)
+    }), decl)
 }
 
-pub fn ty_of_bare_fn<AC:AstConv>(
-    this: &AC,
-    id: ast::NodeId,
-    purity: ast::Purity,
-    abi: AbiSet,
-    decl: &ast::FnDecl) -> ty::BareFnTy
-{
-    let (_, b) = ty_of_method_or_bare_fn(this, id, purity,
-                                         abi, None, decl);
-    b
+pub fn ty_of_bare_fn<AC:AstConv>(this: &AC, id: ast::NodeId,
+                                 purity: ast::Purity, abi: AbiSet,
+                                 decl: &ast::FnDecl) -> ty::BareFnTy {
+    ty_of_method_or_bare_fn(this, id, purity, abi, None, decl)
 }
 
-fn ty_of_method_or_bare_fn<AC:AstConv>(
-    this: &AC,
-    id: ast::NodeId,
-    purity: ast::Purity,
-    abi: AbiSet,
-    opt_self_info: Option<&SelfInfo>,
-    decl: &ast::FnDecl) -> (Option<Option<ty::t>>, ty::BareFnTy)
-{
+fn ty_of_method_or_bare_fn<AC:AstConv>(this: &AC, id: ast::NodeId,
+                                       purity: ast::Purity, abi: AbiSet,
+                                       opt_self_info: Option<SelfInfo>,
+                                       decl: &ast::FnDecl) -> ty::BareFnTy {
     debug!("ty_of_method_or_bare_fn");
 
     // new region names that appear inside of the fn decl are bound to
     // that function type
     let rb = rscope::BindingRscope::new(id);
 
-    let opt_transformed_self_ty = opt_self_info.map(|self_info| {
-        transform_self_ty(this, &rb, self_info)
-    });
-
-    let input_tys = decl.inputs.map(|a| ty_of_arg(this, &rb, a, None));
-
-    let output_ty = match decl.output.node {
-        ast::TyInfer => this.ty_infer(decl.output.span),
-        _ => ast_ty_to_ty(this, &rb, decl.output)
-    };
-
-    return (opt_transformed_self_ty,
-            ty::BareFnTy {
-                purity: purity,
-                abis: abi,
-                sig: ty::FnSig {binder_id: id,
-                                inputs: input_tys,
-                                output: output_ty,
-                                variadic: decl.variadic}
-            });
-
-    fn transform_self_ty<AC:AstConv,RS:RegionScope>(
-        this: &AC,
-        rscope: &RS,
-        self_info: &SelfInfo) -> Option<ty::t>
-    {
+    let self_ty = opt_self_info.and_then(|self_info| {
         match self_info.explicit_self.node {
             ast::SelfStatic => None,
-            ast::SelfValue(_) => {
+            ast::SelfValue => {
                 Some(self_info.untransformed_self_ty)
             }
             ast::SelfRegion(ref lifetime, mutability) => {
                 let region =
-                    opt_ast_region_to_region(this, rscope,
+                    opt_ast_region_to_region(this, &rb,
                                              self_info.explicit_self.span,
                                              lifetime);
                 Some(ty::mk_rptr(this.tcx(), region,
@@ -694,11 +650,37 @@ fn ty_of_method_or_bare_fn<AC:AstConv>(
             ast::SelfBox => {
                 Some(ty::mk_box(this.tcx(), self_info.untransformed_self_ty))
             }
-            ast::SelfUniq(_) => {
+            ast::SelfUniq => {
                 Some(ty::mk_uniq(this.tcx(), self_info.untransformed_self_ty))
             }
         }
-    }
+    });
+
+    // HACK(eddyb) replace the fake self type in the AST with the actual type.
+    let input_tys = if self_ty.is_some() {
+        decl.inputs.slice_from(1)
+    } else {
+        decl.inputs.as_slice()
+    };
+    let input_tys = input_tys.iter().map(|a| ty_of_arg(this, &rb, a, None));
+
+    let self_and_input_tys = self_ty.move_iter().chain(input_tys).collect();
+
+    let output_ty = match decl.output.node {
+        ast::TyInfer => this.ty_infer(decl.output.span),
+        _ => ast_ty_to_ty(this, &rb, decl.output)
+    };
+
+    return ty::BareFnTy {
+        purity: purity,
+        abis: abi,
+        sig: ty::FnSig {
+            binder_id: id,
+            inputs: self_and_input_tys,
+            output: output_ty,
+            variadic: decl.variadic
+        }
+    };
 }
 
 pub fn ty_of_closure<AC:AstConv,RS:RegionScope>(

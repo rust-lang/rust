@@ -51,7 +51,7 @@ pub fn trans_impl(ccx: @CrateContext,
                   methods: &[@ast::Method],
                   generics: &ast::Generics,
                   id: ast::NodeId) {
-    let _icx = push_ctxt("impl::trans_impl");
+    let _icx = push_ctxt("meth::trans_impl");
     let tcx = ccx.tcx;
 
     debug!("trans_impl(path={}, name={}, id={:?})",
@@ -73,11 +73,8 @@ pub fn trans_impl(ccx: @CrateContext,
             let path = vec::append_one(sub_path.clone(),
                                        PathName(method.ident));
 
-            trans_method(ccx,
-                         path,
-                         *method,
-                         None,
-                         |_| llfn);
+            trans_fn(ccx, path, method.decl, method.body,
+                     llfn, None, method.id, []);
         } else {
             let mut v = TransItemVisitor{ ccx: ccx };
             visit::walk_method_helper(&mut v, *method, ());
@@ -91,49 +88,15 @@ pub fn trans_impl(ccx: @CrateContext,
 /// * `path`: the path to the method
 /// * `method`: the AST node for the method
 /// * `param_substs`: if this is a generic method, the current values for
-///   type parameters and so forth, else none
-/// * `llfn`: a closure returning the LLVM ValueRef for the method
-/// * `impl_id`: the node ID of the impl this method is inside
+///   type parameters and so forth, else None
+/// * `llfn`: the LLVM ValueRef for the method
 ///
 /// FIXME(pcwalton) Can we take `path` by reference?
-pub fn trans_method(ccx: @CrateContext,
-                    path: Path,
-                    method: &ast::Method,
+pub fn trans_method(ccx: @CrateContext, path: Path, method: &ast::Method,
                     param_substs: Option<@param_substs>,
-                    llfn_with_self: |Option<ty::t>| -> ValueRef) -> ValueRef {
-    // figure out how self is being passed
-    let self_ty = match method.explicit_self.node {
-      ast::SelfStatic => None,
-      _ => {
-        // determine the (monomorphized) type that `self` maps to for
-        // this method
-        let self_ty = ty::node_id_to_type(ccx.tcx, method.self_id);
-        let self_ty = match param_substs {
-            None => self_ty,
-            Some(param_substs) => {
-                ty::subst_tps(ccx.tcx,
-                              param_substs.tys,
-                              param_substs.self_ty,
-                              self_ty)
-            }
-        };
-        debug!("calling trans_fn with self_ty {}", self_ty.repr(ccx.tcx));
-        Some(self_ty)
-      }
-    };
-
-    let llfn = llfn_with_self(self_ty);
-
-    // generate the actual code
-    trans_fn(ccx,
-             path,
-             method.decl,
-             method.body,
-             llfn,
-             self_ty,
-             param_substs,
-             method.id,
-             []);
+                    llfn: ValueRef) -> ValueRef {
+    trans_fn(ccx, path, method.decl, method.body,
+             llfn, param_substs, method.id, []);
     llfn
 }
 
@@ -144,31 +107,17 @@ pub fn trans_method_callee<'a>(
                            mentry: typeck::method_map_entry,
                            arg_cleanup_scope: cleanup::ScopeId)
                            -> Callee<'a> {
-    let _icx = push_ctxt("impl::trans_method_callee");
+    let _icx = push_ctxt("meth::trans_method_callee");
 
-    debug!("trans_method_callee(callee_id={:?}, this={}, mentry={})",
+    debug!("trans_method_callee(callee_id={:?}, mentry={})",
            callee_id,
-           bcx.expr_to_str(this),
            mentry.repr(bcx.tcx()));
 
     match mentry.origin {
         typeck::method_static(did) => {
-            let self_ty = monomorphize_type(bcx, mentry.self_ty);
-            let Result {bcx, val} = trans_arg_expr(bcx, self_ty, this,
-                                                   arg_cleanup_scope,
-                                                   DontAutorefArg);
-            // HACK should not need the pointer cast, eventually trans_fn_ref
-            // should return a function type with the right type for self.
-            let callee_fn = callee::trans_fn_ref(bcx, did, callee_id);
-            let fn_ty = node_id_type(bcx, callee_id);
-            let llfn_ty = type_of_fn_from_ty(bcx.ccx(), Some(self_ty), fn_ty).ptr_to();
-            let llfn_val = PointerCast(bcx, callee_fn.llfn, llfn_ty);
             Callee {
                 bcx: bcx,
-                data: Method(MethodData {
-                    llfn: llfn_val,
-                    llself: val,
-                })
+                data: Fn(callee::trans_fn_ref(bcx, did, callee_id))
             }
         }
         typeck::method_param(typeck::method_param {
@@ -184,9 +133,8 @@ pub fn trans_method_callee<'a>(
                         trait_id);
 
                     let vtbl = find_vtable(bcx.tcx(), substs, p, b);
-                    trans_monomorphized_callee(bcx, callee_id, this, mentry,
-                                               trait_id, off, vtbl,
-                                               arg_cleanup_scope)
+                    trans_monomorphized_callee(bcx, callee_id,
+                                               trait_id, off, vtbl)
                 }
                 // how to get rid of this?
                 None => fail!("trans_method_callee: missing param_substs")
@@ -207,8 +155,8 @@ pub fn trans_static_method_callee(bcx: &Block,
                                   method_id: ast::DefId,
                                   trait_id: ast::DefId,
                                   callee_id: ast::NodeId)
-                                  -> FnData {
-    let _icx = push_ctxt("impl::trans_static_method_callee");
+                                  -> ValueRef {
+    let _icx = push_ctxt("meth::trans_static_method_callee");
     let ccx = bcx.ccx();
 
     debug!("trans_static_method_callee(method_id={:?}, trait_id={}, \
@@ -271,16 +219,13 @@ pub fn trans_static_method_callee(bcx: &Block,
                     bcx, mth_id, callee_id,
                     *rcvr_substs, rcvr_origins);
 
-            let FnData {llfn: lval} =
-                trans_fn_ref_with_vtables(bcx,
-                                          mth_id,
-                                          callee_id,
-                                          callee_substs,
-                                          Some(callee_origins));
+            let llfn = trans_fn_ref_with_vtables(bcx, mth_id, callee_id,
+                                                 callee_substs,
+                                                 Some(callee_origins));
 
             let callee_ty = node_id_type(bcx, callee_id);
-            let llty = type_of_fn_from_ty(ccx, None, callee_ty).ptr_to();
-            FnData {llfn: PointerCast(bcx, lval, llty)}
+            let llty = type_of_fn_from_ty(ccx, callee_ty).ptr_to();
+            PointerCast(bcx, llfn, llty)
         }
         _ => {
             fail!("vtable_param left in monomorphized \
@@ -312,28 +257,18 @@ pub fn method_with_name(ccx: &CrateContext,
     meth.def_id
 }
 
-pub fn trans_monomorphized_callee<'a>(
-                                  bcx: &'a Block<'a>,
+fn trans_monomorphized_callee<'a>(bcx: &'a Block<'a>,
                                   callee_id: ast::NodeId,
-                                  base: &ast::Expr,
-                                  mentry: typeck::method_map_entry,
                                   trait_id: ast::DefId,
                                   n_method: uint,
-                                  vtbl: typeck::vtable_origin,
-                                  arg_cleanup_scope: cleanup::ScopeId)
+                                  vtbl: typeck::vtable_origin)
                                   -> Callee<'a> {
-    let _icx = push_ctxt("impl::trans_monomorphized_callee");
+    let _icx = push_ctxt("meth::trans_monomorphized_callee");
     return match vtbl {
       typeck::vtable_static(impl_did, ref rcvr_substs, rcvr_origins) => {
           let ccx = bcx.ccx();
           let mname = ty::trait_method(ccx.tcx, trait_id, n_method).ident;
           let mth_id = method_with_name(bcx.ccx(), impl_did, mname.name);
-
-          // obtain the `self` value:
-          let self_ty = monomorphize_type(bcx, mentry.self_ty);
-          let Result {bcx, val} = trans_arg_expr(bcx, self_ty, base,
-                                                 arg_cleanup_scope,
-                                                 DontAutorefArg);
 
           // create a concatenated set of substitutions which includes
           // those from the impl and those from the method:
@@ -343,26 +278,13 @@ pub fn trans_monomorphized_callee<'a>(
                   *rcvr_substs, rcvr_origins);
 
           // translate the function
-          let callee = trans_fn_ref_with_vtables(bcx,
-                                                 mth_id,
-                                                 callee_id,
-                                                 callee_substs,
-                                                 Some(callee_origins));
+          let llfn = trans_fn_ref_with_vtables(bcx,
+                                               mth_id,
+                                               callee_id,
+                                               callee_substs,
+                                               Some(callee_origins));
 
-          // create a llvalue that represents the fn ptr
-          // HACK should not need the pointer cast (add self in trans_fn_ref_with_vtables).
-          let fn_ty = node_id_type(bcx, callee_id);
-          let llfn_ty = type_of_fn_from_ty(ccx, Some(self_ty), fn_ty).ptr_to();
-          let llfn_val = PointerCast(bcx, callee.llfn, llfn_ty);
-
-          // combine the self environment with the rest
-          Callee {
-              bcx: bcx,
-              data: Method(MethodData {
-                  llfn: llfn_val,
-                  llself: val,
-              })
-          }
+          Callee { bcx: bcx, data: Fn(llfn) }
       }
       typeck::vtable_param(..) => {
           fail!("vtable_param left in monomorphized function's vtable substs");
@@ -420,8 +342,7 @@ pub fn combine_impl_and_methods_tps(bcx: &Block,
     return (ty_substs, vtables);
 }
 
-pub fn trans_trait_callee<'a>(
-                          bcx: &'a Block<'a>,
+fn trans_trait_callee<'a>(bcx: &'a Block<'a>,
                           callee_id: ast::NodeId,
                           n_method: uint,
                           self_expr: &ast::Expr,
@@ -436,7 +357,7 @@ pub fn trans_trait_callee<'a>(
      * pair.
      */
 
-    let _icx = push_ctxt("impl::trans_trait_callee");
+    let _icx = push_ctxt("meth::trans_trait_callee");
     let mut bcx = bcx;
 
     // Translate self_datum and take ownership of the value by
@@ -469,18 +390,26 @@ pub fn trans_trait_callee_from_llval<'a>(bcx: &'a Block<'a>,
      * a by-ref pointer to the object pair.
      */
 
-    let _icx = push_ctxt("impl::trans_trait_callee");
+    let _icx = push_ctxt("meth::trans_trait_callee");
     let ccx = bcx.ccx();
 
     // Load the data pointer from the object.
     debug!("(translating trait callee) loading second index from pair");
     let llboxptr = GEPi(bcx, llpair, [0u, abi::trt_field_box]);
     let llbox = Load(bcx, llboxptr);
-    let llself = PointerCast(bcx, llbox, Type::opaque_box(ccx).ptr_to());
+    let llself = PointerCast(bcx, llbox, Type::i8p());
 
     // Load the function from the vtable and cast it to the expected type.
     debug!("(translating trait callee) loading method");
-    let llcallee_ty = type_of_fn_from_ty(ccx, None, callee_ty);
+    // Replace the self type (&Self or ~Self) with an opaque pointer.
+    let llcallee_ty = match ty::get(callee_ty).sty {
+        ty::ty_bare_fn(ref f) if f.abis.is_rust() => {
+            type_of_rust_fn(ccx, true, f.sig.inputs.slice_from(1), f.sig.output)
+        }
+        _ => {
+            ccx.sess.bug("meth::trans_trait_callee given non-bare-rust-fn");
+        }
+    };
     let llvtable = Load(bcx,
                         PointerCast(bcx,
                                     GEPi(bcx, llpair,
@@ -491,7 +420,7 @@ pub fn trans_trait_callee_from_llval<'a>(bcx: &'a Block<'a>,
 
     return Callee {
         bcx: bcx,
-        data: Method(MethodData {
+        data: TraitMethod(MethodData {
             llfn: mptr,
             llself: llself,
         })
@@ -528,7 +457,7 @@ pub fn get_vtable(bcx: &Block,
                   origins: typeck::vtable_param_res)
                   -> ValueRef {
     let ccx = bcx.ccx();
-    let _icx = push_ctxt("impl::get_vtable");
+    let _icx = push_ctxt("meth::get_vtable");
 
     // Check the cache.
     let hash_id = (self_ty, vtable_id(ccx, &origins[0]));
@@ -567,7 +496,7 @@ pub fn make_vtable(ccx: &CrateContext,
                    ptrs: &[ValueRef])
                    -> ValueRef {
     unsafe {
-        let _icx = push_ctxt("impl::make_vtable");
+        let _icx = push_ctxt("meth::make_vtable");
 
         let mut components = ~[ tydesc.tydesc ];
         for &ptr in ptrs.iter() {
@@ -618,8 +547,7 @@ fn emit_vtable_methods(bcx: &Block,
                    tcx.sess.str_of(ident));
             C_null(Type::nil().ptr_to())
         } else {
-            trans_fn_ref_with_vtables(bcx, m_id, 0,
-                                      substs, Some(vtables)).llfn
+            trans_fn_ref_with_vtables(bcx, m_id, 0, substs, Some(vtables))
         }
     })
 }
@@ -637,7 +565,7 @@ pub fn trans_trait_cast<'a>(bcx: &'a Block<'a>,
      */
 
     let mut bcx = bcx;
-    let _icx = push_ctxt("impl::trans_cast");
+    let _icx = push_ctxt("meth::trans_cast");
 
     let lldest = match dest {
         Ignore => {

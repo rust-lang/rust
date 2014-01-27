@@ -14,7 +14,6 @@ use middle::astencode;
 use middle::trans::base::{push_ctxt, trans_item, get_item_val, trans_fn};
 use middle::trans::common::*;
 use middle::ty;
-use util::ppaux::ty_to_str;
 
 use std::vec;
 use syntax::ast;
@@ -160,25 +159,7 @@ pub fn maybe_instantiate_inline(ccx: @CrateContext, fn_id: ast::DefId)
               let llfn = get_item_val(ccx, mth.id);
               let path = vec::append_one(
                   ty::item_path(ccx.tcx, impl_did), PathName(mth.ident));
-              let self_kind = match mth.explicit_self.node {
-                  ast::SelfStatic => None,
-                  _ => {
-                      let self_ty = ty::node_id_to_type(ccx.tcx,
-                                                        mth.self_id);
-                      debug!("calling inline trans_fn with self_ty {}",
-                             ty_to_str(ccx.tcx, self_ty));
-                      Some(self_ty)
-                  }
-              };
-              trans_fn(ccx,
-                       path,
-                       mth.decl,
-                       mth.body,
-                       llfn,
-                       self_kind,
-                       None,
-                       mth.id,
-                       []);
+              trans_fn(ccx, path, mth.decl, mth.body, llfn, None, mth.id, []);
           }
           local_def(mth.id)
         }

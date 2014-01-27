@@ -797,6 +797,11 @@ impl Builder {
     pub fn call(&self, llfn: ValueRef, args: &[ValueRef],
                 attributes: &[(uint, lib::llvm::Attribute)]) -> ValueRef {
         self.count_insn("call");
+
+        debug!("Call {} with args ({})",
+               self.ccx.tn.val_to_str(llfn),
+               args.map(|&v| self.ccx.tn.val_to_str(v)).connect(", "));
+
         unsafe {
             let v = llvm::LLVMBuildCall(self.llbuilder, llfn, args.as_ptr(),
                                         args.len() as c_uint, noname());

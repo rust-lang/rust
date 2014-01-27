@@ -355,8 +355,8 @@ impl CFGBuilder {
                 self.call(expr, pred, func, *args)
             }
 
-            ast::ExprMethodCall(_, rcvr, _, _, ref args, _) => {
-                self.call(expr, pred, rcvr, *args)
+            ast::ExprMethodCall(_, _, _, ref args, _) => {
+                self.call(expr, pred, args[0], args.slice_from(1))
             }
 
             ast::ExprIndex(_, l, r) |
@@ -410,7 +410,6 @@ impl CFGBuilder {
             ast::ExprLogLevel |
             ast::ExprMac(..) |
             ast::ExprInlineAsm(..) |
-            ast::ExprSelf |
             ast::ExprFnBlock(..) |
             ast::ExprProc(..) |
             ast::ExprLit(..) |

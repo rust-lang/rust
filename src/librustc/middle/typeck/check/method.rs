@@ -80,6 +80,7 @@ obtained the type `Foo`, we would never match this method.
 */
 
 
+use middle::subst::Subst;
 use middle::resolve;
 use middle::ty::*;
 use middle::ty;
@@ -422,19 +423,16 @@ impl<'a> LookupContext<'a> {
             |new_trait_ref, m, method_num, _bound_num| {
             let vtable_index =
                 self.get_method_index(new_trait_ref, trait_ref, method_num);
+            let mut m = (*m).clone();
             // We need to fix up the transformed self type.
-            let transformed_self_ty =
+            m.fty.sig.inputs[0] =
                 self.construct_transformed_self_ty_for_object(
-                    did, &rcvr_substs, m);
-            let m = @Method {
-                transformed_self_ty: Some(transformed_self_ty),
-                .. (*m).clone()
-            };
+                    did, &rcvr_substs, &m);
 
             Candidate {
                 rcvr_match_condition: RcvrMatchesIfObject(did),
                 rcvr_substs: new_trait_ref.substs.clone(),
-                method_ty: m,
+                method_ty: @m,
                 origin: method_object(method_object {
                         trait_id: new_trait_ref.def_id,
                         object_trait_id: did,
@@ -790,8 +788,7 @@ impl<'a> LookupContext<'a> {
 
             ty_err => None,
 
-            ty_opaque_closure_ptr(_) | ty_unboxed_vec(_) |
-            ty_type | ty_infer(TyVar(_)) => {
+            ty_unboxed_vec(_) | ty_type | ty_infer(TyVar(_)) => {
                 self.bug(format!("Unexpected type: {}",
                               self.ty_to_str(self_ty)));
             }
@@ -932,31 +929,24 @@ impl<'a> LookupContext<'a> {
 
     fn confirm_candidate(&self, rcvr_ty: ty::t, candidate: &Candidate)
                              -> method_map_entry {
+        // This method performs two sets of substitutions, one after the other:
+        // 1. Substitute values for any type/lifetime parameters from the impl and
+        //    method declaration into the method type. This is the function type
+        //    before it is called; it may still include late bound region variables.
+        // 2. Instantiate any late bound lifetime parameters in the method itself
+        //    with fresh region variables.
+
         let tcx = self.tcx();
-        let fty = ty::mk_bare_fn(tcx, candidate.method_ty.fty.clone());
 
-        debug!("confirm_candidate(expr={}, candidate={}, fty={})",
+        debug!("confirm_candidate(expr={}, candidate={})",
                self.expr.repr(tcx),
-               self.cand_to_str(candidate),
-               self.ty_to_str(fty));
+               self.cand_to_str(candidate));
 
-        self.enforce_object_limitations(fty, candidate);
+        self.enforce_object_limitations(candidate);
         self.enforce_drop_trait_limitations(candidate);
 
         // static methods should never have gotten this far:
         assert!(candidate.method_ty.explicit_self != SelfStatic);
-
-        let transformed_self_ty = match candidate.origin {
-            method_object(..) => {
-                // For annoying reasons, we've already handled the
-                // substitution for object calls.
-                candidate.method_ty.transformed_self_ty.unwrap()
-            }
-            _ => {
-                ty::subst(tcx, &candidate.rcvr_substs,
-                          candidate.method_ty.transformed_self_ty.unwrap())
-            }
-        };
 
         // Determine the values for the type parameters of the method.
         // If they were not explicitly supplied, just construct fresh
@@ -990,29 +980,41 @@ impl<'a> LookupContext<'a> {
             self_ty: candidate.rcvr_substs.self_ty,
         };
 
+        let ref bare_fn_ty = candidate.method_ty.fty;
+
         // Compute the method type with type parameters substituted
         debug!("fty={} all_substs={}",
-               self.ty_to_str(fty),
+               bare_fn_ty.repr(tcx),
                ty::substs_to_str(tcx, &all_substs));
-        let fty = ty::subst(tcx, &all_substs, fty);
-        debug!("after subst, fty={}", self.ty_to_str(fty));
+
+        let fn_sig = &bare_fn_ty.sig;
+        let inputs = match candidate.origin {
+            method_object(..) => {
+                // For annoying reasons, we've already handled the
+                // substitution of self for object calls.
+                let args = fn_sig.inputs.slice_from(1).iter().map(|t| {
+                    t.subst(tcx, &all_substs)
+                });
+                Some(fn_sig.inputs[0]).move_iter().chain(args).collect()
+            }
+            _ => fn_sig.inputs.subst(tcx, &all_substs)
+        };
+        let fn_sig = ty::FnSig {
+            binder_id: fn_sig.binder_id,
+            inputs: inputs,
+            output: fn_sig.output.subst(tcx, &all_substs),
+            variadic: fn_sig.variadic
+        };
+
+        debug!("after subst, fty={}", fn_sig.repr(tcx));
 
         // Replace any bound regions that appear in the function
         // signature with region variables
-        let bare_fn_ty = match ty::get(fty).sty {
-            ty::ty_bare_fn(ref f) => f,
-            ref s => {
-                tcx.sess.span_bug(
-                    self.expr.span,
-                    format!("Invoking method with non-bare-fn ty: {:?}", s));
-            }
-        };
-        let (_, opt_transformed_self_ty, fn_sig) =
-            replace_bound_regions_in_fn_sig(
-                tcx, Some(transformed_self_ty), &bare_fn_ty.sig,
-                |br| self.fcx.infcx().next_region_var(
-                    infer::BoundRegionInFnCall(self.expr.span, br)));
-        let transformed_self_ty = opt_transformed_self_ty.unwrap();
+        let (_, fn_sig) = replace_bound_regions_in_fn_sig( tcx, &fn_sig, |br| {
+            self.fcx.infcx().next_region_var(
+                infer::BoundRegionInFnCall(self.expr.span, br))
+        });
+        let transformed_self_ty = fn_sig.inputs[0];
         let fty = ty::mk_bare_fn(tcx, ty::BareFnTy {
             sig: fn_sig,
             purity: bare_fn_ty.purity,
@@ -1027,7 +1029,7 @@ impl<'a> LookupContext<'a> {
         // should never fail.
         match self.fcx.mk_subty(false, infer::Misc(self.self_expr.span),
                                 rcvr_ty, transformed_self_ty) {
-            result::Ok(_) => (),
+            result::Ok(_) => {}
             result::Err(_) => {
                 self.bug(format!("{} was a subtype of {} but now is not?",
                               self.ty_to_str(rcvr_ty),
@@ -1038,9 +1040,7 @@ impl<'a> LookupContext<'a> {
         self.fcx.write_ty(self.callee_id, fty);
         self.fcx.write_substs(self.callee_id, all_substs);
         method_map_entry {
-            self_ty: transformed_self_ty,
-            explicit_self: candidate.method_ty.explicit_self,
-            origin: candidate.origin,
+            origin: candidate.origin
         }
     }
 
@@ -1064,7 +1064,7 @@ impl<'a> LookupContext<'a> {
          * result to be `&'a Foo`. Assuming that `u_method` is being
          * called, we want the result to be `~Foo`. Of course,
          * this transformation has already been done as part of
-         * `method_ty.transformed_self_ty`, but there the type
+         * `method_ty.fty.sig.inputs[0]`, but there the type
          * is expressed in terms of `Self` (i.e., `&'a Self`, `~Self`).
          * Because objects are not standalone types, we can't just substitute
          * `s/Self/Foo/`, so we must instead perform this kind of hokey
@@ -1078,12 +1078,11 @@ impl<'a> LookupContext<'a> {
             ast::SelfStatic => {
                 self.bug(~"static method for object type receiver");
             }
-            ast::SelfValue(_) => {
+            ast::SelfValue => {
                 ty::mk_err() // error reported in `enforce_object_limitations()`
             }
-            ast::SelfRegion(..) | ast::SelfBox | ast::SelfUniq(..) => {
-                let transformed_self_ty =
-                    method_ty.transformed_self_ty.clone().unwrap();
+            ast::SelfRegion(..) | ast::SelfBox | ast::SelfUniq => {
+                let transformed_self_ty = method_ty.fty.sig.inputs[0];
                 match ty::get(transformed_self_ty).sty {
                     ty::ty_rptr(r, mt) => { // must be SelfRegion
                         ty::mk_trait(self.tcx(), trait_def_id,
@@ -1110,10 +1109,7 @@ impl<'a> LookupContext<'a> {
         }
     }
 
-    fn enforce_object_limitations(&self,
-                                  method_fty: ty::t,
-                                  candidate: &Candidate)
-    {
+    fn enforce_object_limitations(&self, candidate: &Candidate) {
         /*!
          * There are some limitations to calling functions through an
          * object, because (a) the self type is not known
@@ -1137,21 +1133,38 @@ impl<'a> LookupContext<'a> {
                      through an object");
             }
 
-            ast::SelfValue(_) => { // reason (a) above
+            ast::SelfValue => { // reason (a) above
                 self.tcx().sess.span_err(
                     self.expr.span,
                     "cannot call a method with a by-value receiver \
                      through an object");
             }
 
-            ast::SelfRegion(..) | ast::SelfBox | ast::SelfUniq(..) => {}
+            ast::SelfRegion(..) | ast::SelfBox | ast::SelfUniq => {}
         }
 
-        if ty::type_has_self(method_fty) { // reason (a) above
-            self.tcx().sess.span_err(
-                self.expr.span,
-                "cannot call a method whose type contains a \
-                 self-type through an object");
+        // reason (a) above
+        let check_for_self_ty = |ty| {
+            if ty::type_has_self(ty) {
+                self.tcx().sess.span_err(
+                    self.expr.span,
+                    "cannot call a method whose type contains a \
+                     self-type through an object");
+                true
+            } else {
+                false
+            }
+        };
+        let ref sig = candidate.method_ty.fty.sig;
+        let mut found_self_ty = false;
+        for &input_ty in sig.inputs.iter() {
+            if check_for_self_ty(input_ty) {
+                found_self_ty = true;
+                break;
+            }
+        }
+        if !found_self_ty {
+            check_for_self_ty(sig.output);
         }
 
         if candidate.method_ty.generics.has_type_params() { // reason (b) above
@@ -1198,7 +1211,7 @@ impl<'a> LookupContext<'a> {
                 false
             }
 
-            SelfValue(_) => {
+            SelfValue => {
                 rcvr_matches_ty(self.fcx, rcvr_ty, candidate)
             }
 
@@ -1234,7 +1247,7 @@ impl<'a> LookupContext<'a> {
                 }
             }
 
-            SelfUniq(_) => {
+            SelfUniq => {
                 debug!("(is relevant?) explicit self is a unique pointer");
                 match ty::get(rcvr_ty).sty {
                     ty::ty_uniq(typ) => {

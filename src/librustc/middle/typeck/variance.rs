@@ -472,22 +472,6 @@ impl<'a> Visitor<()> for ConstraintContext<'a> {
             ast::ItemTrait(..) => {
                 let methods = ty::trait_methods(tcx, did);
                 for method in methods.iter() {
-                    match method.transformed_self_ty {
-                        Some(self_ty) => {
-                            // The implicit self parameter is basically
-                            // equivalent to a normal parameter declared
-                            // like:
-                            //
-                            //     self : self_ty
-                            //
-                            // where self_ty is `&Self` or `&mut Self`
-                            // or whatever.
-                            self.add_constraints_from_ty(
-                                self_ty, self.contravariant);
-                        }
-                        None => {}
-                    }
-
                     self.add_constraints_from_sig(
                         &method.fty.sig, self.covariant);
                 }
@@ -691,8 +675,8 @@ impl<'a> ConstraintContext<'a> {
                 self.add_constraints_from_sig(sig, variance);
             }
 
-            ty::ty_infer(..) | ty::ty_err | ty::ty_type |
-            ty::ty_opaque_closure_ptr(..) | ty::ty_unboxed_vec(..) => {
+            ty::ty_infer(..) | ty::ty_err |
+            ty::ty_type | ty::ty_unboxed_vec(..) => {
                 self.tcx().sess.bug(
                     format!("Unexpected type encountered in \
                             variance inference: {}",

@@ -133,8 +133,7 @@ fn check_is_legal_to_move_from(bccx: &BorrowckCtxt,
 
         mc::cat_rvalue(..) |
         mc::cat_local(..) |
-        mc::cat_arg(..) |
-        mc::cat_self(..) => {
+        mc::cat_arg(..) => {
             true
         }
 

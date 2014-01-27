@@ -435,7 +435,6 @@ impl tr for ast::Def {
             ast::DefMethod(did0.tr(xcx), did1.map(|did1| did1.tr(xcx)))
           }
           ast::DefSelfTy(nid) => { ast::DefSelfTy(xcx.tr_id(nid)) }
-          ast::DefSelf(nid, m) => { ast::DefSelf(xcx.tr_id(nid), m) }
           ast::DefMod(did) => { ast::DefMod(did.tr(xcx)) }
           ast::DefForeignMod(did) => { ast::DefForeignMod(did.tr(xcx)) }
           ast::DefStatic(did, m) => { ast::DefStatic(did.tr(xcx), m) }
@@ -579,16 +578,8 @@ trait read_method_map_entry_helper {
                              -> method_map_entry;
 }
 
-fn encode_method_map_entry(ecx: &e::EncodeContext,
-                           ebml_w: &mut writer::Encoder,
-                           mme: method_map_entry) {
+fn encode_method_map_entry(ebml_w: &mut writer::Encoder, mme: method_map_entry) {
     ebml_w.emit_struct("method_map_entry", 3, |ebml_w| {
-        ebml_w.emit_struct_field("self_ty", 0u, |ebml_w| {
-            ebml_w.emit_ty(ecx, mme.self_ty);
-        });
-        ebml_w.emit_struct_field("explicit_self", 2u, |ebml_w| {
-            mme.explicit_self.encode(ebml_w);
-        });
         ebml_w.emit_struct_field("origin", 1u, |ebml_w| {
             mme.origin.encode(ebml_w);
         });
@@ -600,15 +591,6 @@ impl<'a> read_method_map_entry_helper for reader::Decoder<'a> {
                              -> method_map_entry {
         self.read_struct("method_map_entry", 3, |this| {
             method_map_entry {
-                self_ty: this.read_struct_field("self_ty", 0u, |this| {
-                    this.read_ty(xcx)
-                }),
-                explicit_self: this.read_struct_field("explicit_self",
-                                                      2,
-                                                      |this| {
-                    let explicit_self: ast::ExplicitSelf_ = Decodable::decode(this);
-                    explicit_self
-                }),
                 origin: this.read_struct_field("origin", 1, |this| {
                     let method_origin: method_origin =
                         Decodable::decode(this);
@@ -1043,7 +1025,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
             ebml_w.tag(c::tag_table_method_map, |ebml_w| {
                 ebml_w.id(id);
                 ebml_w.tag(c::tag_table_val, |ebml_w| {
-                    encode_method_map_entry(ecx, ebml_w, *mme)
+                    encode_method_map_entry(ebml_w, *mme)
                 })
             })
         }
