@@ -51,7 +51,7 @@ pub fn expand_deriving_decodable(cx: &ExtCtxt,
     trait_def.expand(mitem, in_items)
 }
 
-fn decodable_substructure(cx: &ExtCtxt, span: Span,
+fn decodable_substructure(cx: &ExtCtxt, trait_span: Span,
                           substr: &Substructure) -> @Expr {
     let decoder = substr.nonself_args[0];
     let recurse = ~[cx.ident_of("extra"),
@@ -60,9 +60,9 @@ fn decodable_substructure(cx: &ExtCtxt, span: Span,
                     cx.ident_of("decode")];
     // throw an underscore in front to suppress unused variable warnings
     let blkarg = cx.ident_of("_d");
-    let blkdecoder = cx.expr_ident(span, blkarg);
-    let calldecode = cx.expr_call_global(span, recurse, ~[blkdecoder]);
-    let lambdadecode = cx.lambda_expr_1(span, calldecode, blkarg);
+    let blkdecoder = cx.expr_ident(trait_span, blkarg);
+    let calldecode = cx.expr_call_global(trait_span, recurse, ~[blkdecoder]);
+    let lambdadecode = cx.lambda_expr_1(trait_span, calldecode, blkarg);
 
     return match *substr.fields {
         StaticStruct(_, ref summary) => {
@@ -73,7 +73,7 @@ fn decodable_substructure(cx: &ExtCtxt, span: Span,
             let read_struct_field = cx.ident_of("read_struct_field");
 
             let result = decode_static_fields(cx,
-                                              span,
+                                              trait_span,
                                               substr.type_ident,
                                               summary,
                                               |span, name, field| {
@@ -82,10 +82,10 @@ fn decodable_substructure(cx: &ExtCtxt, span: Span,
                                       cx.expr_uint(span, field),
                                       lambdadecode])
             });
-            cx.expr_method_call(span, decoder, cx.ident_of("read_struct"),
-                                ~[cx.expr_str(span, cx.str_of(substr.type_ident)),
-                                  cx.expr_uint(span, nfields),
-                                  cx.lambda_expr_1(span, result, blkarg)])
+            cx.expr_method_call(trait_span, decoder, cx.ident_of("read_struct"),
+                                ~[cx.expr_str(trait_span, cx.str_of(substr.type_ident)),
+                                  cx.expr_uint(trait_span, nfields),
+                                  cx.lambda_expr_1(trait_span, result, blkarg)])
         }
         StaticEnum(_, ref fields) => {
             let variant = cx.ident_of("i");
@@ -94,12 +94,11 @@ fn decodable_substructure(cx: &ExtCtxt, span: Span,
             let mut variants = ~[];
             let rvariant_arg = cx.ident_of("read_enum_variant_arg");
 
-            for (i, f) in fields.iter().enumerate() {
-                let (name, parts) = match *f { (i, ref p) => (i, p) };
-                variants.push(cx.expr_str(span, cx.str_of(name)));
+            for (i, &(name, v_span, ref parts)) in fields.iter().enumerate() {
+                variants.push(cx.expr_str(v_span, cx.str_of(name)));
 
                 let decoded = decode_static_fields(cx,
-                                                   span,
+                                                   v_span,
                                                    name,
                                                    parts,
                                                    |span, _, field| {
@@ -108,22 +107,22 @@ fn decodable_substructure(cx: &ExtCtxt, span: Span,
                                           lambdadecode])
                 });
 
-                arms.push(cx.arm(span,
-                                 ~[cx.pat_lit(span, cx.expr_uint(span, i))],
+                arms.push(cx.arm(v_span,
+                                 ~[cx.pat_lit(v_span, cx.expr_uint(v_span, i))],
                                  decoded));
             }
 
-            arms.push(cx.arm_unreachable(span));
+            arms.push(cx.arm_unreachable(trait_span));
 
-            let result = cx.expr_match(span, cx.expr_ident(span, variant), arms);
-            let lambda = cx.lambda_expr(span, ~[blkarg, variant], result);
-            let variant_vec = cx.expr_vec(span, variants);
-            let result = cx.expr_method_call(span, blkdecoder,
+            let result = cx.expr_match(trait_span, cx.expr_ident(trait_span, variant), arms);
+            let lambda = cx.lambda_expr(trait_span, ~[blkarg, variant], result);
+            let variant_vec = cx.expr_vec(trait_span, variants);
+            let result = cx.expr_method_call(trait_span, blkdecoder,
                                              cx.ident_of("read_enum_variant"),
                                              ~[variant_vec, lambda]);
-            cx.expr_method_call(span, decoder, cx.ident_of("read_enum"),
-                                ~[cx.expr_str(span, cx.str_of(substr.type_ident)),
-                                  cx.lambda_expr_1(span, result, blkarg)])
+            cx.expr_method_call(trait_span, decoder, cx.ident_of("read_enum"),
+                                ~[cx.expr_str(trait_span, cx.str_of(substr.type_ident)),
+                                  cx.lambda_expr_1(trait_span, result, blkarg)])
         }
         _ => cx.bug("expected StaticEnum or StaticStruct in deriving(Decodable)")
     };
@@ -133,7 +132,7 @@ fn decodable_substructure(cx: &ExtCtxt, span: Span,
 /// - `outer_pat_ident` is the name of this enum variant/struct
 /// - `getarg` should retrieve the `uint`-th field with name `@str`.
 fn decode_static_fields(cx: &ExtCtxt,
-                        outer_span: Span,
+                        trait_span: Span,
                         outer_pat_ident: Ident,
                         fields: &StaticFields,
                         getarg: |Span, @str, uint| -> @Expr)
@@ -141,13 +140,13 @@ fn decode_static_fields(cx: &ExtCtxt,
     match *fields {
         Unnamed(ref fields) => {
             if fields.is_empty() {
-                cx.expr_ident(outer_span, outer_pat_ident)
+                cx.expr_ident(trait_span, outer_pat_ident)
             } else {
                 let fields = fields.iter().enumerate().map(|(i, &span)| {
                     getarg(span, format!("_field{}", i).to_managed(), i)
                 }).collect();
 
-                cx.expr_call_ident(outer_span, outer_pat_ident, fields)
+                cx.expr_call_ident(trait_span, outer_pat_ident, fields)
             }
         }
         Named(ref fields) => {
@@ -155,7 +154,7 @@ fn decode_static_fields(cx: &ExtCtxt,
             let fields = fields.iter().enumerate().map(|(i, &(name, span))| {
                 cx.field_imm(span, name, getarg(span, cx.str_of(name), i))
             }).collect();
-            cx.expr_struct_ident(outer_span, outer_pat_ident, fields)
+            cx.expr_struct_ident(trait_span, outer_pat_ident, fields)
         }
     }
 }
