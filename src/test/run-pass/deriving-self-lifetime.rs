@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-test FIXME #11820: & is unreliable in deriving
+
 #[deriving(Eq,Ord)]
 struct A<'a> {
     x: &'a int
