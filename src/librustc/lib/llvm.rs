@@ -1762,6 +1762,8 @@ pub mod llvm {
         pub fn LLVMRustArchiveReadSection(AR: ArchiveRef, name: *c_char,
                                           out_len: *mut size_t) -> *c_char;
         pub fn LLVMRustDestroyArchive(AR: ArchiveRef);
+
+        pub fn LLVMRustSetDLLExportStorageClass(V: ValueRef);
     }
 }
 
