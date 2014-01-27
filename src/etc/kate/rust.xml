@@ -86,7 +86,6 @@
 		<item> float </item>
 		<item> char </item>
 		<item> str </item>
-		<item> Either </item>
 		<item> Option </item>
 		<item> Result </item>
 		<item> Self </item>
@@ -131,8 +130,6 @@
 		<item> false </item>
 		<item> Some </item>
 		<item> None </item>
-		<item> Left </item>
-		<item> Right </item>
 		<item> Ok </item>
 		<item> Err </item>
 		<item> Success </item>
