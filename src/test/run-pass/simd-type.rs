@@ -1,3 +1,7 @@
+// xfail-fast feature doesn't work
+
+#[feature(simd)];
+
 #[simd]
 struct RGBA {
     r: f32,
