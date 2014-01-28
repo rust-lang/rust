@@ -752,7 +752,6 @@ pub fn noop_fold_expr<T: Folder>(e: @Expr, folder: &mut T) -> @Expr {
         ExprUnary(callee_id, binop, ohs) => {
             ExprUnary(folder.new_id(callee_id), binop, folder.fold_expr(ohs))
         }
-        ExprDoBody(f) => ExprDoBody(folder.fold_expr(f)),
         ExprLit(_) => e.node.clone(),
         ExprCast(expr, ty) => {
             ExprCast(folder.fold_expr(expr), folder.fold_ty(ty))

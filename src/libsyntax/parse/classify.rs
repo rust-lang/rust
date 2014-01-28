@@ -29,9 +29,7 @@ pub fn expr_requires_semi_to_be_stmt(e: @ast::Expr) -> bool {
       | ast::ExprWhile(..)
       | ast::ExprLoop(..)
       | ast::ExprForLoop(..)
-      | ast::ExprCall(_, _, ast::DoSugar)
       | ast::ExprCall(_, _, ast::ForSugar)
-      | ast::ExprMethodCall(_, _, _, _, ast::DoSugar)
       | ast::ExprMethodCall(_, _, _, _, ast::ForSugar) => false,
       _ => true
     }

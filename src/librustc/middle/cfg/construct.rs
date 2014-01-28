@@ -398,7 +398,6 @@ impl CFGBuilder {
             }
 
             ast::ExprAddrOf(_, e) |
-            ast::ExprDoBody(e) |
             ast::ExprCast(e, _) |
             ast::ExprUnary(_, _, e) |
             ast::ExprParen(e) |
