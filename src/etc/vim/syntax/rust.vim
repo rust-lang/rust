@@ -100,7 +100,7 @@ syn keyword rustTrait ImmutableTuple1 ImmutableTuple2 ImmutableTuple3 ImmutableT
 syn keyword rustTrait ImmutableTuple5 ImmutableTuple6 ImmutableTuple7 ImmutableTuple8
 syn keyword rustTrait ImmutableTuple9 ImmutableTuple10 ImmutableTuple11 ImmutableTuple12
 syn keyword rustTrait ImmutableEqVector ImmutableTotalOrdVector ImmutableCopyableVector
-syn keyword rustTrait OwnedVector OwnedCopyableVector OwnedEqVector MutableVector
+syn keyword rustTrait OwnedVector OwnedCloneableVector OwnedEqVector MutableVector
 syn keyword rustTrait Vector VectorVector CloneableVector ImmutableVector
 
 "syn keyword rustFunction stream

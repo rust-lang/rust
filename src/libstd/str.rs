@@ -112,7 +112,7 @@ use to_str::ToStr;
 use from_str::FromStr;
 use uint;
 use vec;
-use vec::{OwnedVector, OwnedCopyableVector, ImmutableVector, MutableVector};
+use vec::{OwnedVector, OwnedCloneableVector, ImmutableVector, MutableVector};
 use default::Default;
 use send_str::{SendStr, SendStrOwned};
 use unstable::raw::Repr;

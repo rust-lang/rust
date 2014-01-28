@@ -17,7 +17,7 @@ use option::{Option, Some, None};
 use super::{Reader, Writer, Seek, Buffer, IoError, SeekStyle, io_error,
             OtherIoError};
 use vec;
-use vec::{Vector, ImmutableVector, MutableVector, OwnedCopyableVector};
+use vec::{Vector, ImmutableVector, MutableVector, OwnedCloneableVector};
 
 /// Writes to an owned, growable byte vector
 ///

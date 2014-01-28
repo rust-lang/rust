@@ -302,7 +302,7 @@ use str::{StrSlice, OwnedStr};
 use to_str::ToStr;
 use uint;
 use unstable::finally::Finally;
-use vec::{OwnedVector, MutableVector, ImmutableVector, OwnedCopyableVector};
+use vec::{OwnedVector, MutableVector, ImmutableVector, OwnedCloneableVector};
 use vec;
 
 // Reexports

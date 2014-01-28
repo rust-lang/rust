@@ -1698,7 +1698,7 @@ impl<T> Mutable for ~[T] {
 }
 
 /// Extension methods for owned vectors containing `Clone` elements.
-pub trait OwnedCopyableVector<T:Clone> {
+pub trait OwnedCloneableVector<T:Clone> {
     /// Iterates over the slice `rhs`, copies each element, and then appends it to
     /// the vector provided `v`. The `rhs` vector is traversed in-order.
     ///
@@ -1732,7 +1732,7 @@ pub trait OwnedCopyableVector<T:Clone> {
     fn grow_set(&mut self, index: uint, initval: &T, val: T);
 }
 
-impl<T:Clone> OwnedCopyableVector<T> for ~[T] {
+impl<T:Clone> OwnedCloneableVector<T> for ~[T] {
     #[inline]
     fn push_all(&mut self, rhs: &[T]) {
         let new_len = self.len() + rhs.len();
