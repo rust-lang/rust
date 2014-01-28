@@ -391,6 +391,10 @@ pub fn begin_unwind_raw(msg: *u8, file: *u8, line: uint) -> ! {
 /// the actual formatting into this shared place.
 #[inline(never)] #[cold]
 pub fn begin_unwind_fmt(msg: &fmt::Arguments, file: &'static str, line: uint) -> ! {
+    // We do two allocations here, unfortunately. But (a) they're
+    // required with the current scheme, and (b) we don't handle
+    // failure + OOM properly anyway (see comment in begin_unwind
+    // below).
     begin_unwind_inner(~fmt::format(msg), file, line)
 }
 
