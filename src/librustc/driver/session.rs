@@ -76,7 +76,8 @@ debugging_opts!(
         GEN_CRATE_MAP,
         PREFER_DYNAMIC,
         NO_INTEGRATED_AS,
-        LTO
+        LTO,
+        NOOP_REFLECTION
     ]
     0
 )
@@ -124,6 +125,8 @@ pub fn debugging_opts_map() -> ~[(&'static str, &'static str, u64)] {
      ("no-integrated-as",
       "Use external assembler rather than LLVM's integrated one", NO_INTEGRATED_AS),
      ("lto", "Perform LLVM link-time optimizations", LTO),
+     ("noop-reflection", "Avoid generating the visit glue (stops {:?} working)",
+      NOOP_REFLECTION)
     ]
 }
 
@@ -350,6 +353,9 @@ impl Session_ {
     }
     pub fn no_landing_pads(&self) -> bool {
         self.debugging_opt(NO_LANDING_PADS)
+    }
+    pub fn noop_reflection(&self) -> bool {
+        self.debugging_opt(NOOP_REFLECTION)
     }
 
     // pointless function, now...

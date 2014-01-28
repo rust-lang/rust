@@ -241,10 +241,13 @@ fn call_tydesc_glue<'a>(cx: &'a Block<'a>, v: ValueRef, t: ty::t, field: uint)
     cx
 }
 
-fn make_visit_glue<'a>(bcx: &'a Block<'a>, v: ValueRef, t: ty::t)
+fn make_visit_glue<'a>(mut bcx: &'a Block<'a>, v: ValueRef, t: ty::t)
                    -> &'a Block<'a> {
     let _icx = push_ctxt("make_visit_glue");
-    let mut bcx = bcx;
+    if bcx.tcx().sess.noop_reflection() {
+        return bcx;
+    }
+
     let (visitor_trait, object_ty) = match ty::visitor_object_ty(bcx.tcx(),
                                                                  ty::ReStatic) {
         Ok(pair) => pair,
