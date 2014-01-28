@@ -45,7 +45,6 @@ An example program that does this task reads like this:
 
 ~~~~
 # #[allow(unused_imports)];
-# extern mod extra;
 use std::io::{BufferedReader, File};
 # mod BufferedReader {
 #     use std::io::File;
@@ -243,7 +242,6 @@ and trapping its exit status using `task::try`:
 
 ~~~~
 # #[allow(unused_imports)];
-# extern mod extra;
 use std::io::{BufferedReader, File};
 use std::task;
 # mod BufferedReader {
@@ -347,7 +345,6 @@ but similarly clear as the version that used `fail!` in the logic where the erro
 
 ~~~~
 # #[allow(unused_imports)];
-# extern mod extra;
 use std::io::{BufferedReader, File};
 # mod BufferedReader {
 #     use std::io::File;
@@ -416,7 +413,6 @@ and replaces bad input lines with the pair `(-1,-1)`:
 
 ~~~~
 # #[allow(unused_imports)];
-# extern mod extra;
 use std::io::{BufferedReader, File};
 # mod BufferedReader {
 #     use std::io::File;
@@ -491,7 +487,6 @@ Changing the condition's return type from `(int,int)` to `Option<(int,int)>` wil
 
 ~~~~
 # #[allow(unused_imports)];
-# extern mod extra;
 use std::io::{BufferedReader, File};
 # mod BufferedReader {
 #     use std::io::File;
@@ -576,8 +571,7 @@ This can be encoded in the handler API by introducing a helper type: `enum Malfo
 
 ~~~~
 # #[allow(unused_imports)];
-# extern mod extra;
-use std::io::File;
+use std::io::{BufferedReader, File};
 # mod BufferedReader {
 #     use std::io::File;
 #     use std::io::MemReader;
@@ -700,7 +694,6 @@ a second condition and a helper function will suffice:
 
 ~~~~
 # #[allow(unused_imports)];
-# extern mod extra;
 use std::io::{BufferedReader, File};
 # mod BufferedReader {
 #     use std::io::File;

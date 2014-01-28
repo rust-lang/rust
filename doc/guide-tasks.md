@@ -190,7 +190,7 @@ senders cannot use a single `Chan`, and multiple receivers cannot use a single
 `Port`.  What if our example needed to compute multiple results across a number
 of tasks? The following program is ill-typed:
 
-~~~ {.xfail-test}
+~~~ {.ignore}
 # use std::task::{spawn};
 # fn some_expensive_computation() -> int { 42 }
 let (port, chan) = Chan::new();
@@ -413,7 +413,7 @@ pattern-match on a result to check whether it's an `Ok` result with an `int`
 field (representing a successful result) or an `Err` result (representing
 termination with an error).
 
-~~~{.xfail-test .linked-failure}
+~~~{.ignore .linked-failure}
 # use std::task;
 # fn some_condition() -> bool { false }
 # fn calculate_result() -> int { 0 }
@@ -463,7 +463,7 @@ that repeatedly receives a `uint` message, converts it to a string, and sends
 the string in response.  The child terminates when it receives `0`.
 Here is the function that implements the child task:
 
-~~~{.xfail-test .linked-failure}
+~~~{.ignore .linked-failure}
 # use extra::comm::DuplexStream;
 # use std::uint;
 fn stringifier(channel: &DuplexStream<~str, uint>) {
@@ -486,7 +486,7 @@ response itself is simply the stringified version of the received value,
 
 Here is the code for the parent task:
 
-~~~{.xfail-test .linked-failure}
+~~~{.ignore .linked-failure}
 # use std::task::spawn;
 # use std::uint;
 # use extra::comm::DuplexStream;
