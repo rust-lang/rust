@@ -1547,6 +1547,7 @@ pub mod consts {
             pub static SOL_SOCKET: c_int = 0xffff;
             pub static SO_KEEPALIVE: c_int = 8;
             pub static SO_BROADCAST: c_int = 32;
+            pub static SO_REUSEADDR: c_int = 4;
         }
         pub mod extra {
             use libc::types::os::arch::c95::c_int;
@@ -2266,6 +2267,7 @@ pub mod consts {
             pub static SOL_SOCKET: c_int = 1;
             pub static SO_KEEPALIVE: c_int = 9;
             pub static SO_BROADCAST: c_int = 6;
+            pub static SO_REUSEADDR: c_int = 2;
         }
         #[cfg(target_arch = "x86")]
         #[cfg(target_arch = "x86_64")]
@@ -2707,6 +2709,7 @@ pub mod consts {
             pub static SOL_SOCKET: c_int = 0xffff;
             pub static SO_KEEPALIVE: c_int = 0x0008;
             pub static SO_BROADCAST: c_int = 0x0020;
+            pub static SO_REUSEADDR: c_int = 0x0004;
         }
         pub mod extra {
             use libc::types::os::arch::c95::c_int;
@@ -3083,6 +3086,7 @@ pub mod consts {
             pub static SOL_SOCKET: c_int = 0xffff;
             pub static SO_KEEPALIVE: c_int = 0x0008;
             pub static SO_BROADCAST: c_int = 0x0020;
+            pub static SO_REUSEADDR: c_int = 0x0004;
         }
         pub mod extra {
             use libc::types::os::arch::c95::c_int;
