@@ -11,7 +11,7 @@ snappy includes a C interface (documented in
 The following is a minimal example of calling a foreign function which will
 compile if snappy is installed:
 
-~~~~ {.xfail-test}
+~~~~ {.ignore}
 use std::libc::size_t;
 
 #[link(name = "snappy")]
@@ -43,7 +43,7 @@ keeping the binding correct at runtime.
 
 The `extern` block can be extended to cover the entire snappy API:
 
-~~~~ {.xfail-test}
+~~~~ {.ignore}
 use std::libc::{c_int, size_t};
 
 #[link(name = "snappy")]
@@ -76,7 +76,7 @@ vectors as pointers to memory. Rust's vectors are guaranteed to be a contiguous 
 length is number of elements currently contained, and the capacity is the total size in elements of
 the allocated memory. The length is less than or equal to the capacity.
 
-~~~~ {.xfail-test}
+~~~~ {.ignore}
 pub fn validate_compressed_buffer(src: &[u8]) -> bool {
     unsafe {
         snappy_validate_compressed_buffer(src.as_ptr(), src.len() as size_t) == 0
@@ -96,7 +96,7 @@ required capacity to hold the compressed output. The vector can then be passed t
 `snappy_compress` function as an output parameter. An output parameter is also passed to retrieve
 the true length after compression for setting the length.
 
-~~~~ {.xfail-test}
+~~~~ {.ignore}
 pub fn compress(src: &[u8]) -> ~[u8] {
     unsafe {
         let srclen = src.len() as size_t;
@@ -116,7 +116,7 @@ pub fn compress(src: &[u8]) -> ~[u8] {
 Decompression is similar, because snappy stores the uncompressed size as part of the compression
 format and `snappy_uncompressed_length` will retrieve the exact buffer size required.
 
-~~~~ {.xfail-test}
+~~~~ {.ignore}
 pub fn uncompress(src: &[u8]) -> Option<~[u8]> {
     unsafe {
         let srclen = src.len() as size_t;
@@ -263,7 +263,7 @@ to the C library and afterwards be invoked from there.
 A basic example is:
 
 Rust code:
-~~~~ {.xfail-test}
+~~~~ {.ignore}
 extern fn callback(a:i32) {
     println!("I'm called from C with value {0}", a);
 }
@@ -283,7 +283,7 @@ fn main() {
 ~~~~
 
 C code:
-~~~~ {.xfail-test}
+~~~~ {.ignore}
 typedef void (*rust_callback)(int32_t);
 rust_callback cb;
 
@@ -314,7 +314,7 @@ the notification. This will allow the callback to unsafely access the
 referenced Rust object.
 
 Rust code:
-~~~~ {.xfail-test}
+~~~~ {.ignore}
 
 struct RustObject {
     a: i32,
@@ -346,7 +346,7 @@ fn main() {
 ~~~~
 
 C code:
-~~~~ {.xfail-test}
+~~~~ {.ignore}
 typedef void (*rust_callback)(int32_t);
 void* cb_target;
 rust_callback cb;
@@ -440,7 +440,7 @@ the `link_args` attribute. This attribute is applied to `extern` blocks and
 specifies raw flags which need to get passed to the linker when producing an
 artifact. An example usage would be:
 
-~~~ {.xfail-test}
+~~~ {.ignore}
 #[link_args = "-foo -bar -baz"]
 extern {}
 ~~~
@@ -476,7 +476,7 @@ Foreign APIs often export a global variable which could do something like track
 global state. In order to access these variables, you declare them in `extern`
 blocks with the `static` keyword:
 
-~~~{.xfail-test}
+~~~{.ignore}
 use std::libc;
 
 #[link(name = "readline")]
@@ -494,7 +494,7 @@ Alternatively, you may need to alter global state provided by a foreign
 interface. To do this, statics can be declared with `mut` so rust can mutate
 them.
 
-~~~{.xfail-test}
+~~~{.ignore}
 use std::libc;
 use std::ptr;
 

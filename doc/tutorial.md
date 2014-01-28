@@ -607,7 +607,7 @@ With a value (say, `mypoint`) of such a type in a mutable location, you can do
 `mypoint.y += 1.0`. But in an immutable location, such an assignment to a
 struct without inherited mutability would result in a type error.
 
-~~~~ {.xfail-test}
+~~~~ {.ignore}
 # struct Point { x: f64, y: f64 }
 let mut mypoint = Point { x: 1.0, y: 1.0 };
 let origin = Point { x: 0.0, y: 0.0 };
@@ -948,7 +948,7 @@ An `enum` is a natural fit for describing a linked list, because it can express
 a `List` type as being *either* the end of the list (`Nil`) or another node
 (`Cons`). The full definition of the `Cons` variant will require some thought.
 
-~~~ {.xfail-test}
+~~~ {.ignore}
 enum List {
     Cons(...), // an incomplete definition of the next element in a List
     Nil        // the end of a List
@@ -958,7 +958,7 @@ enum List {
 The obvious approach is to define `Cons` as containing an element in the list
 along with the next `List` node. However, this will generate a compiler error.
 
-~~~ {.xfail-test}
+~~~ {.ignore}
 // error: illegal recursive enum type; wrap the inner value in a box to make it representable
 enum List {
     Cons(u32, List), // an element (`u32`) and the next node in the list
@@ -1092,7 +1092,7 @@ let z = x; // no new memory allocated, x can no longer be used
 The `clone` method is provided by the `Clone` trait, and can be derived for
 our `List` type. Traits will be explained in detail later.
 
-~~~{.xfail-test}
+~~~{.ignore}
 #[deriving(Clone)]
 enum List {
     Cons(u32, ~List),
@@ -1144,7 +1144,7 @@ ownership of a list to be passed in rather than just mutating it in-place.
 
 The obvious signature for a `List` equality comparison is the following:
 
-~~~{.xfail-test}
+~~~{.ignore}
 fn eq(xs: List, ys: List) -> bool { ... }
 ~~~
 
@@ -1152,7 +1152,7 @@ However, this will cause both lists to be moved into the function. Ownership
 isn't required to compare the lists, so the function should take *references*
 (&T) instead.
 
-~~~{.xfail-test}
+~~~{.ignore}
 fn eq(xs: &List, ys: &List) -> bool { ... }
 ~~~
 
@@ -1949,7 +1949,7 @@ Implementations may also define standalone (sometimes called "static")
 methods. The absence of a `self` parameter distinguishes such methods.
 These methods are the preferred way to define constructor functions.
 
-~~~~ {.xfail-test}
+~~~~ {.ignore}
 impl Circle {
     fn area(&self) -> f64 { ... }
     fn new(area: f64) -> Circle { ... }
@@ -2073,7 +2073,7 @@ can we copy values of type `T` inside that function?
 In Rust, we can't,
 and if we try to run the following code the compiler will complain.
 
-~~~~ {.xfail-test}
+~~~~ {.ignore}
 // This does not compile
 fn head_bad<T>(v: &[T]) -> T {
     v[0] // error: copying a non-copyable value
@@ -2521,7 +2521,7 @@ fn radius_times_area<T: Circle>(c: T) -> f64 {
 
 Likewise, supertrait methods may also be called on trait objects.
 
-~~~ {.xfail-test}
+~~~ {.ignore}
 use std::f64::consts::PI;
 # trait Shape { fn area(&self) -> f64; }
 # trait Circle : Shape { fn radius(&self) -> f64; }
@@ -2624,7 +2624,7 @@ which contains a function `hay`.
 We've now defined a nice module hierarchy. But how do we access the items in it from our `main` function?
 One way to do it is to simply fully qualifying it:
 
-~~~~ {.xfail-test}
+~~~~ {.ignore}
 mod farm {
     fn chicken() { println!("cluck cluck"); }
     // ...
@@ -3152,7 +3152,7 @@ You can also specify package ID information in a `extern mod` statement.  For
 example, these `extern mod` statements would both accept and select the
 crate define above:
 
-~~~~ {.xfail-test}
+~~~~ {.ignore}
 extern mod farm;
 extern mod farm = "farm#2.5";
 extern mod my_farm = "farm";
@@ -3193,7 +3193,7 @@ pub fn explore() -> &'static str { "world" }
 # fn main() {}
 ~~~~
 
-~~~~ {.xfail-test}
+~~~~ {.ignore}
 // main.rs
 extern mod world;
 fn main() { println!("hello {}", world::explore()); }
