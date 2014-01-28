@@ -1493,6 +1493,11 @@ pub mod llvm {
                              Dialect: c_uint)
                              -> ValueRef;
 
+        pub static LLVMRustDebugMetadataVersion: u32;
+
+        pub fn LLVMRustAddModuleFlag(M: ModuleRef,
+                                     name: *c_char,
+                                     value: u32);
 
         pub fn LLVMDIBuilderCreate(M: ModuleRef) -> DIBuilderRef;
 

@@ -149,7 +149,7 @@ use std::ptr;
 use std::sync::atomics;
 use std::vec;
 use syntax::codemap::{Span, Pos};
-use syntax::{ast, codemap, ast_util, ast_map, opt_vec};
+use syntax::{abi, ast, codemap, ast_util, ast_map, opt_vec};
 use syntax::parse::token;
 use syntax::parse::token::special_idents;
 
@@ -261,6 +261,20 @@ pub fn finalize(cx: @CrateContext) {
     unsafe {
         llvm::LLVMDIBuilderFinalize(DIB(cx));
         llvm::LLVMDIBuilderDispose(DIB(cx));
+        // Debuginfo generation in LLVM by default uses a higher
+        // version of dwarf than OS X currently understands. We can
+        // instruct LLVM to emit an older version of dwarf, however,
+        // for OS X to understand. For more info see #11352
+        // This can be overridden using --llvm-opts -dwarf-version,N.
+        if cx.sess.targ_cfg.os == abi::OsMacos {
+            "Dwarf Version".with_c_str(
+                |s| llvm::LLVMRustAddModuleFlag(cx.llmod, s, 2));
+        }
+
+        // Prevent bitcode readers from deleting the debug info.
+        "Debug Info Version".with_c_str(
+            |s| llvm::LLVMRustAddModuleFlag(cx.llmod, s,
+                                            llvm::LLVMRustDebugMetadataVersion));
     };
 }
 
