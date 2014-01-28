@@ -8,17 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// This file was auto-generated using 'src/etc/generate-keyword-span-tests.py'
+struct NoCloneOrEq;
 
-#[feature(struct_variant)];
-extern mod extra;
+#[deriving(Eq)]
+struct E {
+    x: NoCloneOrEq //~ ERROR does not implement any method in scope named `eq`
+         //~^ ERROR does not implement any method in scope named `ne`
+}
+#[deriving(Clone)]
+struct C {
+    x: NoCloneOrEq //~ ERROR does not implement any method in scope named `clone`
+}
 
-#[deriving(TotalEq)]
-struct Error;
-
-#[deriving(TotalOrd,TotalEq)]
-struct Struct(
-    Error //~ ERROR
-);
 
 fn main() {}

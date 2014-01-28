@@ -19,7 +19,6 @@ struct Error;
 #[deriving(TotalEq)]
 struct Struct(
     Error //~ ERROR
-//~^ ERROR
 );
 
 fn main() {}

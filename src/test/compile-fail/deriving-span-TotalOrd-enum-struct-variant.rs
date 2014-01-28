@@ -20,7 +20,6 @@ struct Error;
 enum Enum {
    A {
      x: Error //~ ERROR
-//~^ ERROR
    }
 }
 
