@@ -1045,7 +1045,6 @@ pub mod guarantor {
             ast::ExprMatch(..) |
             ast::ExprFnBlock(..) |
             ast::ExprProc(..) |
-            ast::ExprDoBody(..) |
             ast::ExprBlock(..) |
             ast::ExprRepeat(..) |
             ast::ExprVec(..) => {
