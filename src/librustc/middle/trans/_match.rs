@@ -399,11 +399,15 @@ struct BindingInfo {
 
 type BindingsMap = HashMap<Ident, BindingInfo>;
 
-#[deriving(Clone)]
 struct ArmData<'a,'b> {
     bodycx: &'b Block<'b>,
     arm: &'a ast::Arm,
     bindings_map: @BindingsMap
+}
+
+// FIXME #11820: method resolution is unreliable with &
+impl<'a,'b> Clone for ArmData<'a, 'b> {
+    fn clone(&self) -> ArmData<'a, 'b> { *self }
 }
 
 /**
@@ -2227,5 +2231,3 @@ fn bind_irrefutable_pat<'a>(
     }
     return bcx;
 }
-
-
