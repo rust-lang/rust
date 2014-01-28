@@ -68,7 +68,7 @@ pub use send_str::{SendStr, SendStrOwned, SendStrStatic, IntoSendStr};
 pub use str::{Str, StrVector, StrSlice, OwnedStr};
 pub use to_bytes::IterBytes;
 pub use to_str::{ToStr, IntoStr};
-pub use tuple::{CopyableTuple, ImmutableTuple};
+pub use tuple::{CloneableTuple, ImmutableTuple};
 pub use tuple::{ImmutableTuple1, ImmutableTuple2, ImmutableTuple3, ImmutableTuple4};
 pub use tuple::{ImmutableTuple5, ImmutableTuple6, ImmutableTuple7, ImmutableTuple8};
 pub use tuple::{ImmutableTuple9, ImmutableTuple10, ImmutableTuple11, ImmutableTuple12};
