@@ -15,7 +15,7 @@
 DOCS :=
 CDOCS :=
 DOCS_L10N :=
-HTML_DEPS :=
+HTML_DEPS := doc/
 
 BASE_DOC_OPTS := --standalone --toc --number-sections
 HTML_OPTS = $(BASE_DOC_OPTS) --to=html5 --section-divs --css=rust.css \
@@ -23,17 +23,19 @@ HTML_OPTS = $(BASE_DOC_OPTS) --to=html5 --section-divs --css=rust.css \
 TEX_OPTS = $(BASE_DOC_OPTS) --include-before-body=doc/version.md --to=latex
 EPUB_OPTS = $(BASE_DOC_OPTS) --to=epub
 
+D := $(S)src/doc
+
 ######################################################################
 # Rust version
 ######################################################################
 
-doc/version.md: $(MKFILE_DEPS) $(wildcard $(S)doc/*.*)
+doc/version.md: $(MKFILE_DEPS) $(wildcard $(D)/*.*) | doc/
 	@$(call E, version-stamp: $@)
 	$(Q)echo "$(CFG_VERSION)" >$@
 
 HTML_DEPS += doc/version_info.html
-doc/version_info.html: version_info.html.template $(MKFILE_DEPS) \
-                       $(wildcard $(S)doc/*.*)
+doc/version_info.html: $(D)/version_info.html.template $(MKFILE_DEPS) \
+                       $(wildcard $(D)/*.*) | doc/
 	@$(call E, version-info: $@)
 	sed -e "s/VERSION/$(CFG_RELEASE)/; s/SHORT_HASH/$(shell echo \
                     $(CFG_VER_HASH) | head -c 8)/;\
@@ -45,17 +47,20 @@ GENERATED += doc/version.md doc/version_info.html
 # Docs, from pandoc, rustdoc (which runs pandoc), and node
 ######################################################################
 
+doc/:
+	@mkdir -p $@
+
 HTML_DEPS += doc/rust.css
-doc/rust.css: rust.css
+doc/rust.css: $(D)/rust.css | doc/
 	@$(call E, cp: $@)
 	$(Q)cp -a $< $@ 2> /dev/null
 
-doc/full-toc.inc: full-toc.inc
+doc/full-toc.inc: $(D)/full-toc.inc | doc/
 	@$(call E, cp: $@)
 	$(Q)cp -a $< $@ 2> /dev/null
 
 HTML_DEPS += doc/favicon.inc
-doc/favicon.inc: favicon.inc
+doc/favicon.inc: $(D)/favicon.inc | doc/
 	@$(call E, cp: $@)
 	$(Q)cp -a $< $@ 2> /dev/null
 
@@ -72,52 +77,52 @@ endif
 ifneq ($(NO_DOCS),1)
 
 DOCS += doc/rust.html
-doc/rust.html: rust.md doc/full-toc.inc $(HTML_DEPS)
+doc/rust.html: $(D)/rust.md doc/full-toc.inc $(HTML_DEPS) | doc/
 	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
+	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --include-in-header=doc/full-toc.inc --output=$@
 
 DOCS += doc/rust.tex
-doc/rust.tex: rust.md doc/version.md
+doc/rust.tex: $(D)/rust.md doc/version.md | doc/
 	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(S)doc/prep.js $< | \
+	$(Q)$(CFG_NODE) $(D)/prep.js $< | \
 	$(CFG_PANDOC) $(TEX_OPTS) --output=$@
 
 DOCS += doc/rust.epub
-doc/rust.epub: rust.md
+doc/rust.epub: $(D)/rust.md | doc/
 	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
+	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(EPUB_OPTS) --output=$@
 
 DOCS += doc/rustdoc.html
-doc/rustdoc.html: rustdoc.md $(HTML_DEPS)
+doc/rustdoc.html: $(D)/rustdoc.md $(HTML_DEPS)
 	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
+	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
 
 DOCS += doc/tutorial.html
-doc/tutorial.html: tutorial.md $(HTML_DEPS)
+doc/tutorial.html: $(D)/tutorial.md $(HTML_DEPS)
 	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
+	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
 
 DOCS += doc/tutorial.tex
-doc/tutorial.tex: tutorial.md doc/version.md
+doc/tutorial.tex: $(D)/tutorial.md doc/version.md
 	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(S)doc/prep.js $< | \
+	$(Q)$(CFG_NODE) $(D)/prep.js $< | \
 	$(CFG_PANDOC) $(TEX_OPTS) --output=$@
 
 DOCS += doc/tutorial.epub
-doc/tutorial.epub: tutorial.md
+doc/tutorial.epub: $(D)/tutorial.md
 	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
+	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(EPUB_OPTS) --output=$@
 
 
 DOCS_L10N += doc/l10n/ja/tutorial.html
 doc/l10n/ja/tutorial.html: doc/l10n/ja/tutorial.md doc/version_info.html doc/rust.css
 	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight doc/l10n/ja/tutorial.md | \
+	$(Q)$(CFG_NODE) $(D)/prep.js --highlight doc/l10n/ja/tutorial.md | \
           $(CFG_PANDOC) --standalone --toc \
            --section-divs --number-sections \
            --from=markdown --to=html5 --css=../../rust.css \
@@ -127,95 +132,95 @@ doc/l10n/ja/tutorial.html: doc/l10n/ja/tutorial.md doc/version_info.html doc/rus
 # Complementary documentation
 #
 DOCS += doc/index.html
-doc/index.html: index.md $(HTML_DEPS)
+doc/index.html: $(D)/index.md $(HTML_DEPS)
 	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
+	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
 
 DOCS += doc/complement-lang-faq.html
-doc/complement-lang-faq.html: $(S)doc/complement-lang-faq.md doc/full-toc.inc $(HTML_DEPS)
+doc/complement-lang-faq.html: $(D)/complement-lang-faq.md doc/full-toc.inc $(HTML_DEPS)
 	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
+	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --include-in-header=doc/full-toc.inc --output=$@
 
 DOCS += doc/complement-project-faq.html
-doc/complement-project-faq.html: $(S)doc/complement-project-faq.md $(HTML_DEPS)
+doc/complement-project-faq.html: $(D)/complement-project-faq.md $(HTML_DEPS)
 	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
+	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
 
 DOCS += doc/complement-usage-faq.html
-doc/complement-usage-faq.html: $(S)doc/complement-usage-faq.md $(HTML_DEPS)
+doc/complement-usage-faq.html: $(D)/complement-usage-faq.md $(HTML_DEPS)
 	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
+	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
 
 DOCS += doc/complement-cheatsheet.html
-doc/complement-cheatsheet.html: $(S)doc/complement-cheatsheet.md doc/full-toc.inc $(HTML_DEPS)
+doc/complement-cheatsheet.html: $(D)/complement-cheatsheet.md doc/full-toc.inc $(HTML_DEPS)
 	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
+	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --include-in-header=doc/full-toc.inc --output=$@
 
 DOCS += doc/complement-bugreport.html
-doc/complement-bugreport.html: $(S)doc/complement-bugreport.md $(HTML_DEPS)
+doc/complement-bugreport.html: $(D)/complement-bugreport.md $(HTML_DEPS)
 	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
+	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
 
 # Guides
 
 DOCS += doc/guide-macros.html
-doc/guide-macros.html: $(S)doc/guide-macros.md $(HTML_DEPS)
+doc/guide-macros.html: $(D)/guide-macros.md $(HTML_DEPS)
 	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
+	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
 
 DOCS += doc/guide-container.html
-doc/guide-container.html: $(S)doc/guide-container.md $(HTML_DEPS)
+doc/guide-container.html: $(D)/guide-container.md $(HTML_DEPS)
 	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
+	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
 
 DOCS += doc/guide-ffi.html
-doc/guide-ffi.html: $(S)doc/guide-ffi.md $(HTML_DEPS)
+doc/guide-ffi.html: $(D)/guide-ffi.md $(HTML_DEPS)
 	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
+	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
 
 DOCS += doc/guide-testing.html
-doc/guide-testing.html: $(S)doc/guide-testing.md $(HTML_DEPS)
+doc/guide-testing.html: $(D)/guide-testing.md $(HTML_DEPS)
 	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
+	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
 
 DOCS += doc/guide-lifetimes.html
-doc/guide-lifetimes.html: $(S)doc/guide-lifetimes.md $(HTML_DEPS)
+doc/guide-lifetimes.html: $(D)/guide-lifetimes.md $(HTML_DEPS)
 	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
+	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
 
 DOCS += doc/guide-tasks.html
-doc/guide-tasks.html: $(S)doc/guide-tasks.md $(HTML_DEPS)
+doc/guide-tasks.html: $(D)/guide-tasks.md $(HTML_DEPS)
 	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
+	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
 
 DOCS += doc/guide-conditions.html
-doc/guide-conditions.html: $(S)doc/guide-conditions.md $(HTML_DEPS)
+doc/guide-conditions.html: $(D)/guide-conditions.md $(HTML_DEPS)
 	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
+	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
 
 DOCS += doc/guide-pointers.html
-doc/guide-pointers.html: $(S)doc/guide-pointers.md $(HTML_DEPS)
+doc/guide-pointers.html: $(D)/guide-pointers.md $(HTML_DEPS)
 	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
+	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
 
 DOCS += doc/guide-runtime.html
-doc/guide-runtime.html: $(S)doc/guide-runtime.md $(HTML_DEPS)
+doc/guide-runtime.html: $(D)/guide-runtime.md $(HTML_DEPS)
 	@$(call E, pandoc: $@)
-	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
+	$(Q)$(CFG_NODE) $(D)/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
 
   ifeq ($(CFG_PDFLATEX),)
@@ -274,8 +279,10 @@ endif
 # Rustdoc (libstd/extra)
 ######################################################################
 
-# The rustdoc executable
-RUSTDOC = $(HBIN2_H_$(CFG_BUILD))/rustdoc$(X_$(CFG_BUILD))
+# The rustdoc executable, rpath included in case --disable-rpath was provided to
+# ./configure
+RUSTDOC = $(RPATH_VAR2_T_$(CFG_BUILD)_H_$(CFG_BUILD)) \
+	  $(HBIN2_H_$(CFG_BUILD))/rustdoc$(X_$(CFG_BUILD))
 
 # The library documenting macro
 #
