@@ -348,6 +348,17 @@ impl TcpListener {
                 let (addr, len) = addr_to_sockaddr(addr);
                 let addrp = &addr as *libc::sockaddr_storage;
                 let ret = TcpListener { fd: fd };
+                // On platforms with Berkeley-derived sockets, this allows
+                // to quickly rebind a socket, without needing to wait for
+                // the OS to clean up the previous one.
+                if cfg!(unix) {
+                    match setsockopt(fd, libc::SOL_SOCKET,
+                                     libc::SO_REUSEADDR,
+                                     1 as libc::c_int) {
+                        Err(n) => { return Err(n); },
+                        Ok(..) => { }
+                    }
+                }
                 match libc::bind(fd, addrp as *libc::sockaddr,
                                  len as libc::socklen_t) {
                     -1 => Err(super::last_error()),
