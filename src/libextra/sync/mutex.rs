@@ -89,13 +89,6 @@ pub static NATIVE_BLOCKED: uint = 1 << 2;
 /// let guard = m.lock();
 /// // do some work
 /// drop(guard); // unlock the lock
-///
-/// {
-///     let _g = m.lock();
-///     // do some work in a scope
-/// }
-///
-/// // now the mutex is unlocked
 /// ```
 pub struct Mutex {
     priv lock: StaticMutex,
@@ -541,9 +534,9 @@ mod test {
         let (p, c) = SharedChan::new();
         for _ in range(0, N) {
             let c2 = c.clone();
-            do native::task::spawn { inc(); c2.send(()); }
+            native::task::spawn(proc() { inc(); c2.send(()); });
             let c2 = c.clone();
-            do spawn { inc(); c2.send(()); }
+            spawn(proc() { inc(); c2.send(()); });
         }
 
         drop(c);

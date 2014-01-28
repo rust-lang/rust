@@ -30,7 +30,7 @@ use sync::mutex::{StaticMutex, MUTEX_INIT};
 /// # Example
 ///
 /// ```rust
-/// use std::unstable::mutex::{Once, ONCE_INIT};
+/// use extra::sync::one::{Once, ONCE_INIT};
 ///
 /// static mut START: Once = ONCE_INIT;
 /// unsafe {
@@ -140,7 +140,7 @@ mod test {
         let (p, c) = SharedChan::new();
         for _ in range(0, 10) {
             let c = c.clone();
-            do spawn {
+            spawn(proc() {
                 for _ in range(0, 4) { task::deschedule() }
                 unsafe {
                     o.doit(|| {
@@ -150,7 +150,7 @@ mod test {
                     assert!(run);
                 }
                 c.send(());
-            }
+            });
         }
 
         unsafe {
