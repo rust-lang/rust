@@ -128,6 +128,9 @@ pub mod write {
             };
             let use_softfp = sess.opts.debugging_opts & session::USE_SOFTFP != 0;
 
+            // FIXME: #11906: Omitting frame pointers breaks retrieving the value of a parameter.
+            let no_fp_elim = sess.opts.debuginfo;
+
             let tm = sess.targ_cfg.target_strs.target_triple.with_c_str(|T| {
                 sess.opts.target_cpu.with_c_str(|CPU| {
                     sess.opts.target_feature.with_c_str(|Features| {
@@ -137,7 +140,8 @@ pub mod write {
                             lib::llvm::RelocPIC,
                             OptLevel,
                             true,
-                            use_softfp
+                            use_softfp,
+                            no_fp_elim
                         )
                     })
                 })
