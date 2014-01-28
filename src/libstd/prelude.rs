@@ -78,7 +78,7 @@ pub use tuple::{Tuple9, Tuple10, Tuple11, Tuple12};
 pub use vec::{ImmutableEqVector, ImmutableTotalOrdVector, ImmutableCopyableVector};
 pub use vec::{OwnedVector, OwnedCopyableVector,OwnedEqVector};
 pub use vec::{MutableVector, MutableTotalOrdVector};
-pub use vec::{Vector, VectorVector, CopyableVector, ImmutableVector};
+pub use vec::{Vector, VectorVector, CloneableVector, ImmutableVector};
 
 // Reexported runtime types
 pub use comm::{Port, Chan, SharedChan};

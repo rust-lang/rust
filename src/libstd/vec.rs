@@ -798,8 +798,8 @@ impl<T> Container for ~[T] {
     }
 }
 
-/// Extension methods for vector slices with copyable elements
-pub trait CopyableVector<T> {
+/// Extension methods for vector slices with cloneable elements
+pub trait CloneableVector<T> {
     /// Copy `self` into a new owned vector
     fn to_owned(&self) -> ~[T];
 
@@ -808,7 +808,7 @@ pub trait CopyableVector<T> {
 }
 
 /// Extension methods for vector slices
-impl<'a, T: Clone> CopyableVector<T> for &'a [T] {
+impl<'a, T: Clone> CloneableVector<T> for &'a [T] {
     /// Returns a copy of `v`.
     #[inline]
     fn to_owned(&self) -> ~[T] {
@@ -824,7 +824,7 @@ impl<'a, T: Clone> CopyableVector<T> for &'a [T] {
 }
 
 /// Extension methods for owned vectors
-impl<T: Clone> CopyableVector<T> for ~[T] {
+impl<T: Clone> CloneableVector<T> for ~[T] {
     #[inline]
     fn to_owned(&self) -> ~[T] { self.clone() }
 
@@ -833,7 +833,7 @@ impl<T: Clone> CopyableVector<T> for ~[T] {
 }
 
 /// Extension methods for managed vectors
-impl<T: Clone> CopyableVector<T> for @[T] {
+impl<T: Clone> CloneableVector<T> for @[T] {
     #[inline]
     fn to_owned(&self) -> ~[T] { self.as_slice().to_owned() }
 
