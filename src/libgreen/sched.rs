@@ -1470,7 +1470,6 @@ mod test {
                     LOCK.signal();   // wakeup waiting scheduler
                     LOCK.wait();     // wait for them to grab the lock
                     LOCK.unlock();
-                    LOCK.destroy();  // now we're guaranteed they have no locks
                 }
             })));
             drop(handle);
@@ -1478,6 +1477,6 @@ mod test {
             fin_po.recv();
             pool.shutdown();
         }
-
+        unsafe { LOCK.destroy(); }
     }
 }

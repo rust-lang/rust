@@ -96,7 +96,6 @@ pub mod write {
     use lib::llvm::llvm;
     use lib::llvm::{ModuleRef, TargetMachineRef, PassManagerRef};
     use lib;
-    use syntax::abi;
     use util::common::time;
     use syntax::abi;
 
