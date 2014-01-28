@@ -344,7 +344,8 @@ ifeq ($(NO_REBUILD),)
 STDTESTDEP_$(1)_$(2)_$(3)_$(4) = $$(SREQ$(1)_T_$(2)_H_$(3)) \
                             $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.extra \
                             $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.rustuv \
-                            $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.green
+                            $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.green \
+                            $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.native
 else
 STDTESTDEP_$(1)_$(2)_$(3)_$(4) =
 endif
