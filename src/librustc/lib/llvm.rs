@@ -1728,7 +1728,8 @@ pub mod llvm {
                                            Reloc: RelocMode,
                                            Level: CodeGenOptLevel,
                                            EnableSegstk: bool,
-                                           UseSoftFP: bool) -> TargetMachineRef;
+                                           UseSoftFP: bool,
+                                           NoFramePointerElim: bool) -> TargetMachineRef;
         pub fn LLVMRustDisposeTargetMachine(T: TargetMachineRef);
         pub fn LLVMRustAddAnalysisPasses(T: TargetMachineRef,
                                          PM: PassManagerRef,
