@@ -1,3 +1,5 @@
+#[feature(simd)];
+
 #[simd]
 struct vec4<T>(T, T, T, T); //~ ERROR SIMD vector cannot be generic
 
