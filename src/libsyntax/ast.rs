@@ -893,7 +893,7 @@ pub struct Arg {
 }
 
 impl Arg {
-    pub fn new_self(span: Span, mutability: Mutability) -> Arg {
+    pub fn new_self(span: Span, mutability: Mutability, pat: Option<P<Pat>>) -> Arg {
         let path = ast_util::ident_to_path(span, special_idents::self_);
         Arg {
             // HACK(eddyb) fake type for the self argument.
@@ -904,7 +904,7 @@ impl Arg {
             }),
             pat: @Pat {
                 id: DUMMY_NODE_ID,
-                node: PatIdent(BindByValue(mutability), path, None),
+                node: PatIdent(BindByValue(mutability), path, pat),
                 span: span
             },
             id: DUMMY_NODE_ID

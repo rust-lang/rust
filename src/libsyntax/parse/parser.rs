@@ -1058,6 +1058,17 @@ impl Parser {
                 p.parse_arg_general(false)
             });
 
+            match explicit_self.node {
+                SelfStatic => (),
+                _ => match d.inputs[0].pat.node {
+                    PatIdent(_, _, Some(_)) => {
+                        p.span_err(d.inputs[0].pat.span,
+                                   "cannot destructure self in trait methods");
+                    }
+                    _ => (),
+                }
+            }
+
             let hi = p.last_span.hi;
             match p.token {
               token::SEMI => {
@@ -3598,8 +3609,17 @@ impl Parser {
     // that may have a self type.
     fn parse_fn_decl_with_self(&mut self, parse_arg_fn: |&mut Parser| -> Arg)
                                -> (ExplicitSelf, P<FnDecl>) {
+        fn parse_self_pat(p: &mut Parser) -> Option<P<Pat>> {
+            if p.token == token::AT {
+                p.bump();
+                Some(p.parse_pat())
+            } else {
+                None
+            }
+        }
+
         fn maybe_parse_borrowed_explicit_self(this: &mut Parser)
-                                              -> ast::ExplicitSelf_ {
+                                              -> (ast::ExplicitSelf_,Option<P<Pat>>) {
             // The following things are possible to see here:
             //
             //     fn(&mut self)
@@ -3612,7 +3632,7 @@ impl Parser {
             if this.look_ahead(1, |t| token::is_keyword(keywords::Self, t)) {
                 this.bump();
                 this.expect_self_ident();
-                SelfRegion(None, MutImmutable)
+                (SelfRegion(None, MutImmutable), parse_self_pat(this))
             } else if this.look_ahead(1, |t| Parser::token_is_mutability(t)) &&
                     this.look_ahead(2,
                                     |t| token::is_keyword(keywords::Self,
@@ -3620,7 +3640,7 @@ impl Parser {
                 this.bump();
                 let mutability = this.parse_mutability();
                 this.expect_self_ident();
-                SelfRegion(None, mutability)
+                (SelfRegion(None, mutability), parse_self_pat(this))
             } else if this.look_ahead(1, |t| Parser::token_is_lifetime(t)) &&
                        this.look_ahead(2,
                                        |t| token::is_keyword(keywords::Self,
@@ -3628,7 +3648,7 @@ impl Parser {
                 this.bump();
                 let lifetime = this.parse_lifetime();
                 this.expect_self_ident();
-                SelfRegion(Some(lifetime), MutImmutable)
+                (SelfRegion(Some(lifetime), MutImmutable), parse_self_pat(this))
             } else if this.look_ahead(1, |t| Parser::token_is_lifetime(t)) &&
                       this.look_ahead(2, |t| {
                           Parser::token_is_mutability(t)
@@ -3639,9 +3659,9 @@ impl Parser {
                 let lifetime = this.parse_lifetime();
                 let mutability = this.parse_mutability();
                 this.expect_self_ident();
-                SelfRegion(Some(lifetime), mutability)
+                (SelfRegion(Some(lifetime), mutability), parse_self_pat(this))
             } else {
-                SelfStatic
+                (SelfStatic,None)
             }
         }
 
@@ -3651,7 +3671,7 @@ impl Parser {
         // backwards compatible.
         let lo = self.span.lo;
         let mut mutbl_self = MutImmutable;
-        let explicit_self = match self.token {
+        let (explicit_self,self_pat) = match self.token {
             token::BINOP(token::AND) => {
                 maybe_parse_borrowed_explicit_self(self)
             }
@@ -3660,14 +3680,14 @@ impl Parser {
                 if self.look_ahead(1, |t| token::is_keyword(keywords::Self, t)) {
                     self.bump();
                     self.expect_self_ident();
-                    SelfUniq
+                    (SelfUniq,parse_self_pat(self))
                 } else {
-                    SelfStatic
+                    (SelfStatic,None)
                 }
             }
             token::IDENT(..) if self.is_self_ident() => {
                 self.bump();
-                SelfValue
+                (SelfValue,parse_self_pat(self))
             }
             token::BINOP(token::STAR) => {
                 // Possibly "*self" or "*mut self" -- not supported. Try to avoid
@@ -3680,13 +3700,13 @@ impl Parser {
                     self.span_err(self.span, "cannot pass self by unsafe pointer");
                     self.bump();
                 }
-                SelfValue
+                (SelfValue,parse_self_pat(self))
             }
             _ if Parser::token_is_mutability(&self.token) &&
                     self.look_ahead(1, |t| token::is_keyword(keywords::Self, t)) => {
                 mutbl_self = self.parse_mutability();
                 self.expect_self_ident();
-                SelfValue
+                (SelfValue,parse_self_pat(self))
             }
             _ if Parser::token_is_mutability(&self.token) &&
                     self.look_ahead(1, |t| *t == token::TILDE) &&
@@ -3694,9 +3714,9 @@ impl Parser {
                 mutbl_self = self.parse_mutability();
                 self.bump();
                 self.expect_self_ident();
-                SelfUniq
+                (SelfUniq,parse_self_pat(self))
             }
-            _ => SelfStatic
+            _ => (SelfStatic,None)
         };
 
         let explicit_self_sp = mk_sp(lo, self.span.hi);
@@ -3712,11 +3732,11 @@ impl Parser {
                         sep,
                         parse_arg_fn
                     );
-                    fn_inputs.unshift(Arg::new_self(explicit_self_sp, mutbl_self));
+                    fn_inputs.unshift(Arg::new_self(explicit_self_sp, mutbl_self, self_pat));
                     fn_inputs
                 }
                 token::RPAREN => {
-                    ~[Arg::new_self(explicit_self_sp, mutbl_self)]
+                    ~[Arg::new_self(explicit_self_sp, mutbl_self, self_pat)]
                 }
                 _ => {
                     let token_str = self.this_token_to_str();

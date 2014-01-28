@@ -581,7 +581,7 @@ impl<'a> MethodDef<'a> {
 
         let self_arg = match explicit_self.node {
             ast::SelfStatic => None,
-            _ => Some(ast::Arg::new_self(trait_.span, ast::MutImmutable))
+            _ => Some(ast::Arg::new_self(trait_.span, ast::MutImmutable, None))
         };
         let args = {
             let args = arg_types.move_iter().map(|(name, ty)| {
