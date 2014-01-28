@@ -130,7 +130,7 @@ impl Context {
                                     FileDoesntMatch
                                 },
                                 _ => {
-                                    debug!("could not load metadata for {}",
+                                    debug!("{} does not exist, no metadata found",
                                            path.display());
                                     FileDoesntMatch
                                 }
@@ -384,7 +384,7 @@ pub fn list_file_metadata(intr: @IdentInterner,
                                                           bytes.as_slice(),
                                                           out),
       option::None => {
-        write!(out, "could not find metadata in {}.\n", path.display())
+        write!(out, "{} could not be found, no metadata exists.\n", path.display())
       }
     }
 }
