@@ -2751,52 +2751,6 @@ but must enclose it.
 
 A `loop` expression is only permitted in the body of a loop.
 
-### Do expressions
-
-~~~~ {.ebnf .gram}
-do_expr : "do" expr [ '|' ident_list '|' ] ? '{' block '}' ;
-~~~~
-
-A _do expression_ provides a more-familiar block syntax
-for invoking a function and passing it a newly-created a procedure.
-
-The optional `ident_list` and `block` provided in a `do` expression are parsed
-as though they constitute a procedure expression;
-if the `ident_list` is missing, an empty `ident_list` is implied.
-
-The procedure expression is then provided as a _trailing argument_
-to the outermost [call](#call-expressions) or
-[method call](#method-call-expressions) expression
-in the `expr` following `do`.
-If the `expr` is a [path expression](#path-expressions), it is parsed as though it is a call expression.
-If the `expr` is a [field expression](#field-expressions), it is parsed as though it is a method call expression.
-
-In this example, both calls to `f` are equivalent:
-
-~~~~
-# fn f(f: proc(int)) { }
-# fn g(i: int) { }
-
-f(proc(j) { g(j) });
-
-do f |j| {
-    g(j);
-}
-~~~~
-
-In this example, both calls to the (binary) function `k` are equivalent:
-
-~~~~
-# fn k(x:int, f: proc(int)) { }
-# fn l(i: int) { }
-
-k(3, proc(j) { l(j) });
-
-do k(3) |j| {
-   l(j);
-}
-~~~~
-
 ### For expressions
 
 ~~~~ {.ebnf .gram}
