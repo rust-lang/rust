@@ -351,7 +351,7 @@ Vincent Belliard <vincent@famillebelliard.fr>
 Vivek Galatage <vivekgalatage@gmail.com>
 Volker Mische <volker.mische@gmail.com>
 Wade Mealing <wmealing@gmail.com>
-William Ting <william.h.ting@gmail.com>
+William Ting <io@williamting.com>
 Yasuhiro Fujii <y-fujii@mimosa-pudica.net>
 Young-il Choi <duddlf.choi@samsung.com>
 Youngmin Yoo <youngmin.yoo@samsung.com>

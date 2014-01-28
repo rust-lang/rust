@@ -21,7 +21,7 @@ fn succ(x: &int) -> int { *x + 1 }
 
 So I wrote this code to try it out:
 
-~~~rust{.xfail-test}
+~~~rust{.ignore}
 fn main() {
     let number = 5;
     let succ_number = succ(number);
@@ -261,7 +261,7 @@ program is very large and complicated.
 
 For example, let's say you're using an owned pointer, and you want to do this:
 
-~~~rust{.xfail-test}
+~~~rust{.ignore}
 struct Point {
     x: int,
     y: int,
@@ -369,7 +369,7 @@ This theory is called 'region pointers,' and involve a concept called
 'lifetimes'. Here's the simple explanation: would you expect this code to
 compile?
 
-~~~rust{.xfail-test}
+~~~rust{.ignore}
 fn main() {
     println!("{}", x);
     let x = 5;
@@ -398,7 +398,7 @@ Here, we're borrowing a pointer to `x` inside of the `if`. The compiler, however
 is able to determine that that pointer will go out of scope without `x` being
 mutated, and therefore, lets us pass. This wouldn't work:
 
-~~~rust{.xfail-test}
+~~~rust{.ignore}
 fn main() {
     let mut x = ~5;
     if *x < 10 {

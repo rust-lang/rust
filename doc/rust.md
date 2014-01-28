@@ -727,7 +727,7 @@ name as the module, plus the `.rs` extension.
 When a nested submodule is loaded from an external file,
 it is loaded from a subdirectory path that mirrors the module hierarchy.
 
-~~~~ {.xfail-test}
+~~~~ {.ignore}
 // Load the `vec` module from `vec.rs`
 mod vec;
 
@@ -740,7 +740,7 @@ mod task {
 The directories and files used for loading external file modules can be influenced
 with the `path` attribute.
 
-~~~~ {.xfail-test}
+~~~~ {.ignore}
 #[path = "task_files"]
 mod task {
     // Load the `local_data` module from `task_files/tls.rs`
@@ -784,7 +784,7 @@ assumed, equal to the `ident` given in the `extern_mod_decl`.
 
 Four examples of `extern mod` declarations:
 
-~~~~ {.xfail-test}
+~~~~ {.ignore}
 extern mod pcre;
 
 extern mod extra; // equivalent to: extern mod extra = "extra";
@@ -939,7 +939,7 @@ appear in its signature. Each type parameter must be explicitly
 declared, in an angle-bracket-enclosed, comma-separated list following
 the function name.
 
-~~~~ {.xfail-test}
+~~~~ {.ignore}
 fn iter<T>(seq: &[T], f: |T|) {
     for elt in seq.iter() { f(elt); }
 }
@@ -1389,7 +1389,7 @@ fn radius_times_area<T: Circle>(c: T) -> f64 {
 
 Likewise, supertrait methods may also be called on trait objects.
 
-~~~~ {.xfail-test}
+~~~~ {.ignore}
 # trait Shape { fn area(&self) -> f64; }
 # trait Circle : Shape { fn radius(&self) -> f64; }
 # impl Shape for int { fn area(&self) -> f64 { 0.0 } }
@@ -1491,7 +1491,7 @@ By default external blocks assume that the library they are calling
 uses the standard C "cdecl" ABI.  Other ABIs may be specified using
 an `abi` string, as shown here:
 
-~~~~ {.xfail-test}
+~~~~ {.ignore}
 // Interface to the Windows API
 extern "stdcall" { }
 ~~~~
@@ -1500,7 +1500,7 @@ The `link` attribute allows the name of the library to be specified. When
 specified the compiler will attempt to link against the native library of the
 specified name.
 
-~~~~ {.xfail-test}
+~~~~ {.ignore}
 #[link(name = "crypto")]
 extern { }
 ~~~~
@@ -1704,7 +1704,7 @@ within. Attributes that are not terminated by a semi-colon apply to the next ent
 
 An example of attributes:
 
-~~~~ {.xfail-test}
+~~~~ {.ignore}
 // General metadata applied to the enclosing module or crate.
 #[license = "BSD"];
 
@@ -1768,7 +1768,7 @@ For any lint check `C`:
 The lint checks supported by the compiler can be found via `rustc -W help`,
 along with their default settings.
 
-~~~~ {.xfail-test}
+~~~~ {.ignore}
 mod m1 {
     // Missing documentation is ignored here
     #[allow(missing_doc)]
@@ -1787,7 +1787,7 @@ mod m1 {
 This example shows how one can use `allow` and `warn` to toggle
 a particular check on and off.
 
-~~~~ {.xfail-test}
+~~~~ {.ignore}
 #[warn(missing_doc)]
 mod m2{
     #[allow(missing_doc)]
@@ -1809,7 +1809,7 @@ mod m2{
 This example shows how one can use `forbid` to disallow uses
 of `allow` for that lint check.
 
-~~~~ {.xfail-test}
+~~~~ {.ignore}
 #[forbid(missing_doc)]
 mod m3 {
     // Attempting to toggle warning signals an error here
@@ -1827,7 +1827,7 @@ The definitions of these operations have to be easy for the compiler to find.
 The `lang` attribute makes it possible to declare these operations.
 For example, the `str` module in the Rust standard library defines the string equality function:
 
-~~~~ {.xfail-test}
+~~~~ {.ignore}
 #[lang="str_eq"]
 pub fn eq_slice(a: &str, b: &str) -> bool {
     // details elided
@@ -2007,7 +2007,7 @@ by default. Items with not marked with a stability are considered to
 be unstable for the purposes of the lint. One can give an optional
 string that will be displayed when the lint flags the use of an item.
 
-~~~~ {.xfail-test}
+~~~~ {.ignore}
 #[warn(unstable)];
 
 #[deprecated="replaced by `best`"]
@@ -2046,7 +2046,7 @@ considered a full-fleged language feature.
 
 For this reason, rust recognizes a special crate-level attribute of the form:
 
-~~~~ {.xfail-test}
+~~~~ {.ignore}
 #[feature(feature1, feature2, feature3)]
 ~~~~
 
@@ -2403,7 +2403,7 @@ Indices are zero-based, and may be of any integral type. Vector access
 is bounds-checked at run-time. When the check fails, it will put the
 task in a _failing state_.
 
-~~~~ {.xfail-test}
+~~~~ {.ignore}
 # use std::task;
 # do task::spawn {
 

@@ -48,7 +48,7 @@ let y: i64 = x.unwrap();
 
 Use [`File::open`](http://static.rust-lang.org/doc/master/std/io/fs/struct.File.html#method.open) to create a [`File`](http://static.rust-lang.org/doc/master/std/io/fs/struct.File.html) struct, which implements the [`Reader`](http://static.rust-lang.org/doc/master/std/io/trait.Reader.html) trait.
 
-~~~ {.xfail-test}
+~~~ {.ignore}
 use std::path::Path;
 use std::io::fs::File;
 
@@ -168,7 +168,7 @@ let _ = close(Door::<Open>(~"front"));
 
 Attempting to close a closed door is prevented statically:
 
-~~~ {.xfail-test}
+~~~ {.ignore}
 let _ = close(Door::<Closed>(~"front")); // error: mismatched types: expected `main::Door<main::Open>` but found `main::Door<main::Closed>`
 ~~~
 
@@ -196,7 +196,7 @@ Window* createWindow(int width, int height);
 
 You can use a zero-element `enum` ([phantom type](#how-do-i-express-phantom-types)) to represent the opaque object handle. The FFI would look like this:
 
-~~~ {.xfail-test}
+~~~ {.ignore}
 enum Window {}
 extern "C" {
     fn createWindow(width: c_int, height: c_int) -> *Window;

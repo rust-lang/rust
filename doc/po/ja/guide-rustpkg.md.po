@@ -40,14 +40,14 @@ msgstr "## 他のクレートの利用"
 #. type: Plain text
 #: doc/guide-rustpkg.md:22
 #, fuzzy, no-wrap
-#| msgid "~~~~ {.xfail-test} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
+#| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
 msgid ""
 "fn main() {\n"
 "    hello::world();\n"
 "}\n"
 "~~~~\n"
 msgstr ""
-"~~~~ {.xfail-test}\n"
+"~~~~ {.ignore}\n"
 "// main.rs\n"
 "extern mod world;\n"
 "fn main() { println(~\"hello \" + world::explore()); }\n"
@@ -77,14 +77,14 @@ msgstr "# イントロダクション"
 #. type: Plain text
 #: doc/guide-rustpkg.md:149
 #, fuzzy, no-wrap
-#| msgid "~~~~ {.xfail-test} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
+#| msgid "~~~~ {.ignore} // main.rs extern mod world; fn main() { println(~\"hello \" + world::explore()); } ~~~~"
 msgid ""
 "pub fn world() {\n"
 "    println!(\"Hello, world.\");\n"
 "}\n"
 "~~~\n"
 msgstr ""
-"~~~~ {.xfail-test}\n"
+"~~~~ {.ignore}\n"
 "// main.rs\n"
 "extern mod world;\n"
 "fn main() { println(~\"hello \" + world::explore()); }\n"
