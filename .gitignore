@@ -75,10 +75,12 @@ src/.DS_Store
 /doc/latex
 /doc/std
 /doc/extra
+/doc/flate
 /doc/green
 /doc/native
 /doc/rustc
 /doc/syntax
+/doc/rustdoc
 /doc/rustuv
 /doc/rustpkg
 /nd/
