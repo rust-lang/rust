@@ -72,7 +72,7 @@ use ptr::RawPtr;
 use ptr;
 use str::StrSlice;
 use str;
-use vec::{CopyableVector, ImmutableVector, MutableVector};
+use vec::{CloneableVector, ImmutableVector, MutableVector};
 use vec;
 use unstable::intrinsics;
 

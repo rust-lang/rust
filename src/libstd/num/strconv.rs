@@ -18,7 +18,7 @@ use option::{None, Option, Some};
 use char;
 use str::{StrSlice};
 use str;
-use vec::{CopyableVector, ImmutableVector, MutableVector};
+use vec::{CloneableVector, ImmutableVector, MutableVector};
 use vec::OwnedVector;
 use num;
 use num::{NumCast, Zero, One, cast, Integer};
