@@ -594,7 +594,7 @@ impl<'a> Iterator<&'a str> for StrSplits<'a> {
 // Helper functions used for Unicode normalization
 fn canonical_sort(comb: &mut [(char, u8)]) {
     use iter::range;
-    use tuple::CopyableTuple;
+    use tuple::CloneableTuple;
 
     let len = comb.len();
     for i in range(0, len) {

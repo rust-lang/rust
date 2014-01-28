@@ -92,7 +92,7 @@ syn keyword rustTrait SendStr SendStrOwned SendStrStatic IntoSendStr
 syn keyword rustTrait Str StrVector StrSlice OwnedStr
 syn keyword rustTrait IterBytes
 syn keyword rustTrait ToStr IntoStr
-syn keyword rustTrait CopyableTuple ImmutableTuple
+syn keyword rustTrait CloneableTuple ImmutableTuple
 syn keyword rustTrait Tuple1 Tuple2 Tuple3 Tuple4
 syn keyword rustTrait Tuple5 Tuple6 Tuple7 Tuple8
 syn keyword rustTrait Tuple9 Tuple10 Tuple11 Tuple12
