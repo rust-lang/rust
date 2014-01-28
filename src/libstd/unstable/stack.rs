@@ -24,7 +24,7 @@
 //! detection is not guaranteed to continue in the future. Usage of this module
 //! is discouraged unless absolutely necessary.
 
-static RED_ZONE: uint = 20 * 1024;
+pub static RED_ZONE: uint = 20 * 1024;
 
 /// This function is invoked from rust's current __morestack function. Segmented
 /// stacks are currently not enabled as segmented stacks, but rather one giant

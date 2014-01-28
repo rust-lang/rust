@@ -145,18 +145,30 @@ impl<T: Send> Drop for Thread<T> {
 #[cfg(windows)]
 mod imp {
     use cast;
+    use cmp;
     use libc;
     use libc::types::os::arch::extra::{LPSECURITY_ATTRIBUTES, SIZE_T, BOOL,
                                        LPVOID, DWORD, LPDWORD, HANDLE};
     use ptr;
+    use unstable::stack::RED_ZONE;
 
     pub type rust_thread = HANDLE;
     pub type rust_thread_return = DWORD;
 
     pub unsafe fn create(stack: uint, p: ~proc()) -> rust_thread {
         let arg: *mut libc::c_void = cast::transmute(p);
-        CreateThread(ptr::mut_null(), stack as libc::size_t, super::thread_start,
-                     arg, 0, ptr::mut_null())
+        // FIXME On UNIX, we guard against stack sizes that are too small but
+        // that's because pthreads enforces that stacks are at least
+        // PTHREAD_STACK_MIN bytes big.  Windows has no such lower limit, it's
+        // just that below a certain threshold you can't do anything useful.
+        // That threshold is application and architecture-specific, however.
+        // For now, the only requirement is that it's big enough to hold the
+        // red zone.  Round up to the next 64 kB because that's what the NT
+        // kernel does, might as well make it explicit.  With the current
+        // 20 kB red zone, that makes for a 64 kB minimum stack.
+        let stack_size = (cmp::max(stack, RED_ZONE) + 0xfffe) & (-0xfffe - 1);
+        CreateThread(ptr::mut_null(), stack_size as libc::size_t,
+                     super::thread_start, arg, 0, ptr::mut_null())
     }
 
     pub unsafe fn join(native: rust_thread) {
@@ -190,10 +202,13 @@ mod imp {
 #[cfg(unix)]
 mod imp {
     use cast;
-    use libc::consts::os::posix01::PTHREAD_CREATE_JOINABLE;
+    use cmp;
+    use libc::consts::os::posix01::{PTHREAD_CREATE_JOINABLE, PTHREAD_STACK_MIN};
     use libc;
+    use os;
     use ptr;
     use unstable::intrinsics;
+    use unstable::stack::RED_ZONE;
 
     pub type rust_thread = libc::pthread_t;
     pub type rust_thread_return = *u8;
@@ -202,10 +217,28 @@ mod imp {
         let mut native: libc::pthread_t = intrinsics::uninit();
         let mut attr: libc::pthread_attr_t = intrinsics::uninit();
         assert_eq!(pthread_attr_init(&mut attr), 0);
-        assert_eq!(pthread_attr_setstacksize(&mut attr,
-                                             stack as libc::size_t), 0);
         assert_eq!(pthread_attr_setdetachstate(&mut attr,
                                                PTHREAD_CREATE_JOINABLE), 0);
+
+        // Reserve room for the red zone, the runtime's stack of last resort.
+        let stack_size = cmp::max(stack, RED_ZONE + PTHREAD_STACK_MIN as uint);
+        match pthread_attr_setstacksize(&mut attr, stack_size as libc::size_t) {
+            0 => {
+            },
+            libc::EINVAL => {
+                // EINVAL means |stack_size| is either too small or not a
+                // multiple of the system page size.  Because it's definitely
+                // >= PTHREAD_STACK_MIN, it must be an alignment issue.
+                // Round up to the neareast page and try again.
+                let page_size = os::page_size();
+                let stack_size = (stack_size + page_size - 1) & (-(page_size - 1) - 1);
+                assert_eq!(pthread_attr_setstacksize(&mut attr, stack_size as libc::size_t), 0);
+            },
+            errno => {
+                // This cannot really happen.
+                fail!("pthread_attr_setstacksize() error: {} ({})", os::last_os_error(), errno);
+            },
+        };
 
         let arg: *libc::c_void = cast::transmute(p);
         assert_eq!(pthread_create(&mut native, &attr,
@@ -262,4 +295,10 @@ mod tests {
 
     #[test]
     fn detached() { Thread::spawn(proc () {}) }
+
+    #[test]
+    fn small_stacks() {
+        assert_eq!(42, Thread::start_stack(0, proc () 42).join());
+        assert_eq!(42, Thread::start_stack(1, proc () 42).join());
+    }
 }
