@@ -1261,7 +1261,7 @@ impl<'a, T: TotalOrd> ImmutableTotalOrdVector<T> for &'a [T] {
 }
 
 /// Extension methods for vectors containing `Clone` elements.
-pub trait ImmutableCopyableVector<T> {
+pub trait ImmutableCloneableVector<T> {
     /**
      * Partitions the vector into those that satisfies the predicate, and
      * those that do not.
@@ -1273,7 +1273,7 @@ pub trait ImmutableCopyableVector<T> {
     fn permutations(self) -> Permutations<T>;
 }
 
-impl<'a,T:Clone> ImmutableCopyableVector<T> for &'a [T] {
+impl<'a,T:Clone> ImmutableCloneableVector<T> for &'a [T] {
     #[inline]
     fn partitioned(&self, f: |&T| -> bool) -> (~[T], ~[T]) {
         let mut lefts  = ~[];
