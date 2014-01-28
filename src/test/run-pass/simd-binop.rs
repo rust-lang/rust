@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[allow(experimental)];
+
 use std::unstable::simd::{i32x4, f32x4};
 
 fn test_int(e: i32) -> i32 {
