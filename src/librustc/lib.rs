@@ -31,6 +31,7 @@ This API is completely unstable and subject to change.
 
 extern mod extra;
 extern mod flate;
+extern mod arena;
 extern mod syntax;
 
 use back::link;
