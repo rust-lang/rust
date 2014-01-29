@@ -93,16 +93,9 @@ install-target-$(1)-host-$(2):						\
 	    $$(SREQ$$(ISTAGE)_T_$(1)_H_$(2))
 	$$(Q)$$(call MK_INSTALL_DIR,$$(PTL$(1)$(2)))
 	$$(Q)$$(foreach crate,$$(TARGET_CRATES),\
-		$$(call INSTALL_LIB,$$(call CFG_LIB_GLOB_$(1),$$(crate)));
+		$$(call INSTALL_LIB,$$(call CFG_LIB_GLOB_$(1),$$(crate)));\
 		$$(call INSTALL_LIB,$$(call CFG_RLIB_GLOB,$$(crate)));)
 	$$(Q)$$(call INSTALL_LIB,libmorestack.a)
-
-install-target-$(1)-host-$(2)-prep:
-
-install-target-$(1)-host-$(2)-morestack:
-
-install-target-$(1)-host-$(2)-lib-%:
-install-target-$(1)-host-$(2)-rlib-%:
 
 endef
 
