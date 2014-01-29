@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod concurrency;
+/*!
+ * Concurrency-enabled mechanisms and primitives.
+ */
 
-use concurrency::future::Future;
+#[allow(missing_doc)];
+#[feature(globs)];
 
-fn main() {
-    let f = Future::from_value(());
-    let g = f;
-    f.unwrap(); //~ ERROR use of moved value
-}
+#[crate_id = "concurrency#0.10-pre"];
+#[crate_type = "rlib"];
+#[crate_type = "lib"];
+#[license = "MIT/ASL2"];
+
+pub mod arc;
+pub mod sync;
+pub mod comm;
+pub mod task_pool;
+pub mod future;

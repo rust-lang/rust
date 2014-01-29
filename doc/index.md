@@ -38,6 +38,7 @@ li {list-style-type: none; }
 * [The Rust compiler, `librustc`](rustc/index.html)
 
 * [The `flate` compression library](flate/index.html)
+* [The `concurrency` mechanisms and primitives library](concurrency/index.html)
 
 # Tooling
 

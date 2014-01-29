@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod extra;
-use extra::arc;
+extern mod concurrency;
+use concurrency::arc;
 fn main() {
     let x = ~arc::RWArc::new(1);
     let mut y = None;

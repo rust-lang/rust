@@ -49,13 +49,13 @@
 # automatically generated for all stage/host/target combinations.
 ################################################################################
 
-TARGET_CRATES := std extra green rustuv native flate
+TARGET_CRATES := std extra green rustuv native flate concurrency
 HOST_CRATES := syntax rustc rustdoc rustpkg
 CRATES := $(TARGET_CRATES) $(HOST_CRATES)
 TOOLS := compiletest rustpkg rustdoc rustc
 
 DEPS_std := native:rustrt
-DEPS_extra := std
+DEPS_extra := std concurrency
 DEPS_green := std
 DEPS_rustuv := std native:uv native:uv_support
 DEPS_native := std
@@ -64,6 +64,7 @@ DEPS_rustc := syntax native:rustllvm flate
 DEPS_rustdoc := rustc native:sundown
 DEPS_rustpkg := rustc
 DEPS_flate := std native:miniz
+DEPS_concurrency := std
 
 TOOL_DEPS_compiletest := extra green rustuv
 TOOL_DEPS_rustpkg := rustpkg green rustuv

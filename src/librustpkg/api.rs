@@ -21,7 +21,7 @@ pub use path_util::default_workspace;
 pub use source_control::{safe_git_clone, git_clone_url};
 
 use std::run;
-use extra::arc::{Arc,RWArc};
+use concurrency::arc::{Arc,RWArc};
 use extra::workcache;
 use extra::workcache::{Database, FreshnessMap};
 use extra::treemap::TreeMap;

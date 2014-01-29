@@ -9,9 +9,10 @@
 // except according to those terms.
 
 extern mod extra;
+extern mod concurrency;
 
 use std::iter::range_step;
-use extra::future::Future;
+use concurrency::future::Future;
 use extra::arena::TypedArena;
 
 enum Tree<'a> {

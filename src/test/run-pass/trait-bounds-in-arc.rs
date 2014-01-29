@@ -15,9 +15,9 @@
 
 // xfail-fast
 
-extern mod extra;
+extern mod concurrency;
 
-use extra::arc;
+use concurrency::arc;
 use std::task;
 
 trait Pet {

@@ -10,8 +10,8 @@
 
 // error-pattern:explicit failure
 
-extern mod extra;
-use extra::arc;
+extern mod concurrency;
+use concurrency::arc;
 
 enum e<T> { e(arc::Arc<T>) }
 

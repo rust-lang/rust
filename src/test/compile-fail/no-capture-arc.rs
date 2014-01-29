@@ -10,8 +10,8 @@
 
 // error-pattern: use of moved value
 
-extern mod extra;
-use extra::arc;
+extern mod concurrency;
+use concurrency::arc;
 
 use std::task;
 

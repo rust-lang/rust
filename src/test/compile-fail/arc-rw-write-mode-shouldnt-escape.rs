@@ -9,8 +9,8 @@
 // except according to those terms.
 
 // error-pattern: lifetime of variable does not enclose its declaration
-extern mod extra;
-use extra::arc;
+extern mod concurrency;
+use concurrency::arc;
 fn main() {
     let x = ~arc::RWArc::new(1);
     let mut y = None;

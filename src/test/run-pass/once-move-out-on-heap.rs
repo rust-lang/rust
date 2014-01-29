@@ -13,8 +13,8 @@
 // xfail-fast
 
 #[feature(once_fns)];
-extern mod extra;
-use extra::arc;
+extern mod concurrency;
+use concurrency::arc;
 
 fn foo(blk: proc()) {
     blk();
