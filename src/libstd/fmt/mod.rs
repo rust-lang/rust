@@ -149,13 +149,13 @@ The current mapping of types to traits is:
 * `f` ⇒ `Float`
 * `e` ⇒ `LowerExp`
 * `E` ⇒ `UpperExp`
-* *nothing* ⇒ `Default`
+* *nothing* ⇒ `Show`
 
 What this means is that any type of argument which implements the
 `std::fmt::Binary` trait can then be formatted with `{:t}`. Implementations are
 provided for these traits for a number of primitive types by the standard
 library as well. If no format is specified (as in `{}` or `{:6}`), then the
-format trait used is the `Default` trait. This is one of the more commonly
+format trait used is the `Show` trait. This is one of the more commonly
 implemented traits when formatting a custom type.
 
 When implementing a format trait for your own time, you will have to implement a
@@ -186,7 +186,7 @@ struct Vector2D {
     y: int,
 }
 
-impl fmt::Default for Vector2D {
+impl fmt::Show for Vector2D {
     fn fmt(obj: &Vector2D, f: &mut fmt::Formatter) {
         // The `f.buf` value is of the type `&mut io::Writer`, which is what th
         // write! macro is expecting. Note that this formatting ignores the
@@ -468,6 +468,7 @@ will look like `"\\{"`.
 
 */
 
+#[cfg(not(stage0))]
 use prelude::*;
 
 use cast;
@@ -478,6 +479,24 @@ use str;
 use repr;
 use util;
 use vec;
+
+// SNAP b6400f9 this is just because the `prelude::*` import above
+// includes default::Default, so the reexport doesn't work.
+#[cfg(stage0)]
+pub use Default = fmt::Show; // export required for `format!()` etc.
+
+#[cfg(stage0)]
+use container::Container;
+#[cfg(stage0)]
+use iter::{Iterator, range};
+#[cfg(stage0)]
+use option::{Option,Some,None};
+#[cfg(stage0)]
+use vec::ImmutableVector;
+#[cfg(stage0)]
+use str::StrSlice;
+#[cfg(stage0)]
+use num::Signed;
 
 pub mod parse;
 pub mod rt;
@@ -542,7 +561,7 @@ pub struct Arguments<'a> {
 /// to this trait. There is not an explicit way of selecting this trait to be
 /// used for formatting, it is only if no other format is specified.
 #[allow(missing_doc)]
-pub trait Default { fn fmt(&Self, &mut Formatter); }
+pub trait Show { fn fmt(&Self, &mut Formatter); }
 
 /// Format trait for the `b` character
 #[allow(missing_doc)]
@@ -1148,10 +1167,10 @@ impl<T> Pointer for *mut T {
     fn fmt(t: &*mut T, f: &mut Formatter) { Pointer::fmt(&(*t as *T), f) }
 }
 
-// Implementation of Default for various core types
+// Implementation of Show for various core types
 
 macro_rules! delegate(($ty:ty to $other:ident) => {
-    impl<'a> Default for $ty {
+    impl<'a> Show for $ty {
         fn fmt(me: &$ty, f: &mut Formatter) {
             $other::fmt(me, f)
         }
@@ -1174,10 +1193,10 @@ delegate!(char to Char)
 delegate!(f32 to Float)
 delegate!(f64 to Float)
 
-impl<T> Default for *T {
+impl<T> Show for *T {
     fn fmt(me: &*T, f: &mut Formatter) { Pointer::fmt(me, f) }
 }
-impl<T> Default for *mut T {
+impl<T> Show for *mut T {
     fn fmt(me: &*mut T, f: &mut Formatter) { Pointer::fmt(me, f) }
 }
 

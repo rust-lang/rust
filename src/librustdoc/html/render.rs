@@ -801,7 +801,7 @@ impl<'a> Item<'a> {
     }
 }
 
-impl<'a> fmt::Default for Item<'a> {
+impl<'a> fmt::Show for Item<'a> {
     fn fmt(it: &Item<'a>, fmt: &mut fmt::Formatter) {
         match attr::find_stability(it.item.attrs.iter()) {
             Some(ref stability) => {
@@ -990,7 +990,7 @@ fn item_module(w: &mut Writer, cx: &Context,
         match myitem.inner {
             clean::StaticItem(ref s) | clean::ForeignStaticItem(ref s) => {
                 struct Initializer<'a>(&'a str);
-                impl<'a> fmt::Default for Initializer<'a> {
+                impl<'a> fmt::Show for Initializer<'a> {
                     fn fmt(s: &Initializer<'a>, f: &mut fmt::Formatter) {
                         let Initializer(s) = *s;
                         if s.len() == 0 { return; }
@@ -1491,7 +1491,7 @@ fn item_typedef(w: &mut Writer, it: &clean::Item, t: &clean::Typedef) {
     document(w, it);
 }
 
-impl<'a> fmt::Default for Sidebar<'a> {
+impl<'a> fmt::Show for Sidebar<'a> {
     fn fmt(s: &Sidebar<'a>, fmt: &mut fmt::Formatter) {
         let cx = s.cx;
         let it = s.item;
@@ -1556,7 +1556,7 @@ fn build_sidebar(m: &clean::Module) -> HashMap<~str, ~[~str]> {
     return map;
 }
 
-impl<'a> fmt::Default for Source<'a> {
+impl<'a> fmt::Show for Source<'a> {
     fn fmt(s: &Source<'a>, fmt: &mut fmt::Formatter) {
         let Source(s) = *s;
         let lines = s.lines().len();

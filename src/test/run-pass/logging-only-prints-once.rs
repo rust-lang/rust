@@ -16,7 +16,7 @@ use std::fmt;
 
 struct Foo(Cell<int>);
 
-impl fmt::Default for Foo {
+impl fmt::Show for Foo {
     fn fmt(f: &Foo, _fmt: &mut fmt::Formatter) {
         let Foo(ref f) = *f;
         assert!(f.get() == 0);

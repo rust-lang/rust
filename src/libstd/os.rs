@@ -928,7 +928,7 @@ pub enum MapError {
     ErrMapViewOfFile(uint)
 }
 
-impl fmt::Default for MapError {
+impl fmt::Show for MapError {
     fn fmt(val: &MapError, out: &mut fmt::Formatter) {
         let str = match *val {
             ErrFdNotAvail => "fd not available for reading or writing",

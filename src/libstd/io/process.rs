@@ -91,7 +91,7 @@ pub enum ProcessExit {
     ExitSignal(int),
 }
 
-impl fmt::Default for ProcessExit {
+impl fmt::Show for ProcessExit {
     /// Format a ProcessExit enum, to nicely present the information.
     fn fmt(obj: &ProcessExit, f: &mut fmt::Formatter) {
         match *obj {
