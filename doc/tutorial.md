@@ -1796,48 +1796,20 @@ call_it(proc(n) {
 });
 ~~~~
 
-This is such a useful pattern that Rust has a special form of function
-call for these functions.
-
-~~~~
-# fn call_it(op: proc(v: int)) { }
-do call_it() |n| {
-    println!("{}", n);
-}
-~~~~
-
-The call is prefixed with the keyword `do` and, instead of writing the
-final procedure inside the argument list, it appears outside of the
-parentheses, where it looks more like a typical block of
-code.
-
-`do` is a convenient way to create tasks with the `task::spawn`
-function.  `spawn` has the signature `spawn(fn: proc())`. In other
-words, it is a function that takes an owned closure that takes no
-arguments.
+A practical example of this pattern is found when using the `spawn` function,
+which starts a new task.
 
 ~~~~
 use std::task::spawn;
-
-do spawn() || {
-    debug!("I'm a task, whatever");
-}
+spawn(proc() {
+    debug!("I'm a new task")
+});
 ~~~~
 
-Look at all those bars and parentheses -- that's two empty argument
-lists back to back. Since that is so unsightly, empty argument lists
-may be omitted from `do` expressions.
-
-~~~~
-use std::task::spawn;
-
-do spawn {
-   debug!("Kablam!");
-}
-~~~~
-
-If you want to see the output of `debug!` statements, you will need to turn on `debug!` logging.
-To enable `debug!` logging, set the RUST_LOG environment variable to the name of your crate, which, for a file named `foo.rs`, will be `foo` (e.g., with bash, `export RUST_LOG=foo`).
+If you want to see the output of `debug!` statements, you will need to turn on
+`debug!` logging.  To enable `debug!` logging, set the RUST_LOG environment
+variable to the name of your crate, which, for a file named `foo.rs`, will be
+`foo` (e.g., with bash, `export RUST_LOG=foo`).
 
 # Methods
 

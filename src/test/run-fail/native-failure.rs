@@ -17,7 +17,7 @@ extern mod native;
 
 #[start]
 fn start(argc: int, argv: **u8) -> int {
-    do native::start(argc, argv) {
+    native::start(argc, argv, proc() {
         fail!();
-    }
+    })
 }

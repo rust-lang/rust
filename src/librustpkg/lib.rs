@@ -799,14 +799,14 @@ pub fn main_args(args: &[~str]) -> int {
     debug!("Will store workcache in {}", ws.display());
 
     // Wrap the rest in task::try in case of a condition failure in a task
-    let result = do task::try {
+    let result = task::try(proc() {
         BuildContext {
             context: context,
             sysroot: sysroot.clone(), // Currently, only tests override this
             workcache_context: api::default_context(sysroot.clone(),
                                                     default_workspace()).workcache_context
         }.run(command, args.clone())
-    };
+    });
     // FIXME #9262: This is using the same error code for all errors,
     // and at least one test case succeeds if rustpkg returns COPY_FAILED_CODE,
     // when actually, it might set the exit code for that even if a different

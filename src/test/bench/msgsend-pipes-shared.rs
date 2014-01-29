@@ -64,17 +64,17 @@ fn run(args: &[~str]) {
         let to_child = to_child.clone();
         let mut builder = task::task();
         worker_results.push(builder.future_result());
-        do builder.spawn {
+        builder.spawn(proc() {
             for _ in range(0u, size / workers) {
                 //error!("worker {:?}: sending {:?} bytes", i, num_bytes);
                 to_child.send(bytes(num_bytes));
             }
             //error!("worker {:?} exiting", i);
-        }
+        });
     }
-    do task::spawn || {
+    task::spawn(proc() {
         server(&from_parent, &to_parent);
-    }
+    });
 
     for r in worker_results.iter() {
         r.recv();

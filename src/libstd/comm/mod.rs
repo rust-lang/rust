@@ -60,18 +60,18 @@
 //! ```rust,should_fail
 //! // Create a simple streaming channel
 //! let (port, chan) = Chan::new();
-//! do spawn {
+//! spawn(proc() {
 //!     chan.send(10);
-//! }
+//! })
 //! assert_eq!(port.recv(), 10);
 //!
 //! // Create a shared channel which can be sent along from many tasks
 //! let (port, chan) = SharedChan::new();
 //! for i in range(0, 10) {
 //!     let chan = chan.clone();
-//!     do spawn {
+//!     spawn(proc() {
 //!         chan.send(i);
-//!     }
+//!     })
 //! }
 //!
 //! for _ in range(0, 10) {
@@ -264,7 +264,7 @@ macro_rules! test (
             $($a)* #[test] fn native() {
                 use native;
                 let (p, c) = Chan::new();
-                do native::task::spawn { c.send(f()) }
+                native::task::spawn(proc() { c.send(f()) });
                 p.recv();
             }
         }
@@ -962,9 +962,9 @@ mod test {
 
     test!(fn smoke_threads() {
         let (p, c) = Chan::new();
-        do spawn {
+        spawn(proc() {
             c.send(1);
-        }
+        });
         assert_eq!(p.recv(), 1);
     })
 
@@ -990,18 +990,18 @@ mod test {
 
     test!(fn port_gone_concurrent() {
         let (p, c) = Chan::new();
-        do spawn {
+        spawn(proc() {
             p.recv();
-        }
+        });
         loop { c.send(1) }
     } #[should_fail])
 
     test!(fn port_gone_concurrent_shared() {
         let (p, c) = SharedChan::new();
         let c1 = c.clone();
-        do spawn {
+        spawn(proc() {
             p.recv();
-        }
+        });
         loop {
             c.send(1);
             c1.send(1);
@@ -1024,18 +1024,18 @@ mod test {
 
     test!(fn chan_gone_concurrent() {
         let (p, c) = Chan::new();
-        do spawn {
+        spawn(proc() {
             c.send(1);
             c.send(1);
-        }
+        });
         loop { p.recv(); }
     } #[should_fail])
 
     test!(fn stress() {
         let (p, c) = Chan::new();
-        do spawn {
+        spawn(proc() {
             for _ in range(0, 10000) { c.send(1); }
-        }
+        });
         for _ in range(0, 10000) {
             assert_eq!(p.recv(), 1);
         }
@@ -1047,7 +1047,7 @@ mod test {
         let (p, c) = SharedChan::<int>::new();
         let (p1, c1) = Chan::new();
 
-        do spawn {
+        spawn(proc() {
             for _ in range(0, AMT * NTHREADS) {
                 assert_eq!(p.recv(), 1);
             }
@@ -1056,13 +1056,13 @@ mod test {
                 _ => {}
             }
             c1.send(());
-        }
+        });
 
         for _ in range(0, NTHREADS) {
             let c = c.clone();
-            do spawn {
+            spawn(proc() {
                 for _ in range(0, AMT) { c.send(1); }
-            }
+            });
         }
         p1.recv();
     })
@@ -1073,20 +1073,20 @@ mod test {
         let (p1, c1) = Chan::new();
         let (port, chan) = SharedChan::new();
         let chan2 = chan.clone();
-        do spawn {
+        spawn(proc() {
             c1.send(());
             for _ in range(0, 40) {
                 assert_eq!(p.recv(), 1);
             }
             chan2.send(());
-        }
+        });
         p1.recv();
-        do native::task::spawn {
+        native::task::spawn(proc() {
             for _ in range(0, 40) {
                 c.send(1);
             }
             chan.send(());
-        }
+        });
         port.recv();
         port.recv();
     }
@@ -1095,12 +1095,12 @@ mod test {
     fn recv_from_outside_runtime() {
         let (p, c) = Chan::<int>::new();
         let (dp, dc) = Chan::new();
-        do native::task::spawn {
+        native::task::spawn(proc() {
             for _ in range(0, 40) {
                 assert_eq!(p.recv(), 1);
             }
             dc.send(());
-        };
+        });
         for _ in range(0, 40) {
             c.send(1);
         }
@@ -1113,16 +1113,16 @@ mod test {
         let (p2, c2) = Chan::<int>::new();
         let (port, chan) = SharedChan::new();
         let chan2 = chan.clone();
-        do native::task::spawn {
+        native::task::spawn(proc() {
             assert_eq!(p1.recv(), 1);
             c2.send(2);
             chan2.send(());
-        }
-        do native::task::spawn {
+        });
+        native::task::spawn(proc() {
             c1.send(1);
             assert_eq!(p2.recv(), 2);
             chan.send(());
-        }
+        });
         port.recv();
         port.recv();
     }
@@ -1148,11 +1148,11 @@ mod test {
 
     test!(fn oneshot_single_thread_recv_chan_close() {
         // Receiving on a closed chan will fail
-        let res = do task::try {
+        let res = task::try(proc() {
             let (port, chan) = Chan::<~int>::new();
             { let _c = chan; }
             port.recv();
-        };
+        });
         // What is our res?
         assert!(res.is_err());
     })
@@ -1208,30 +1208,30 @@ mod test {
 
     test!(fn oneshot_multi_task_recv_then_send() {
         let (port, chan) = Chan::<~int>::new();
-        do spawn {
+        spawn(proc() {
             assert!(port.recv() == ~10);
-        }
+        });
 
         chan.send(~10);
     })
 
     test!(fn oneshot_multi_task_recv_then_close() {
         let (port, chan) = Chan::<~int>::new();
-        do spawn {
+        spawn(proc() {
             let _chan = chan;
-        }
-        let res = do task::try {
+        });
+        let res = task::try(proc() {
             assert!(port.recv() == ~10);
-        };
+        });
         assert!(res.is_err());
     })
 
     test!(fn oneshot_multi_thread_close_stress() {
         stress_factor().times(|| {
             let (port, chan) = Chan::<int>::new();
-            do spawn {
+            spawn(proc() {
                 let _p = port;
-            }
+            });
             let _chan = chan;
         })
     })
@@ -1239,43 +1239,43 @@ mod test {
     test!(fn oneshot_multi_thread_send_close_stress() {
         stress_factor().times(|| {
             let (port, chan) = Chan::<int>::new();
-            do spawn {
+            spawn(proc() {
                 let _p = port;
-            }
-            do task::try {
+            });
+            task::try(proc() {
                 chan.send(1);
-            };
+            });
         })
     })
 
     test!(fn oneshot_multi_thread_recv_close_stress() {
         stress_factor().times(|| {
             let (port, chan) = Chan::<int>::new();
-            do spawn {
+            spawn(proc() {
                 let port = port;
-                let res = do task::try {
+                let res = task::try(proc() {
                     port.recv();
-                };
+                });
                 assert!(res.is_err());
-            };
-            do spawn {
+            });
+            spawn(proc() {
                 let chan = chan;
-                do spawn {
+                spawn(proc() {
                     let _chan = chan;
-                }
-            };
+                });
+            });
         })
     })
 
     test!(fn oneshot_multi_thread_send_recv_stress() {
         stress_factor().times(|| {
             let (port, chan) = Chan::<~int>::new();
-            do spawn {
+            spawn(proc() {
                 chan.send(~10);
-            }
-            do spawn {
+            });
+            spawn(proc() {
                 assert!(port.recv() == ~10);
-            }
+            });
         })
     })
 
@@ -1289,19 +1289,19 @@ mod test {
             fn send(chan: Chan<~int>, i: int) {
                 if i == 10 { return }
 
-                do spawn {
+                spawn(proc() {
                     chan.send(~i);
                     send(chan, i + 1);
-                }
+                });
             }
 
             fn recv(port: Port<~int>, i: int) {
                 if i == 10 { return }
 
-                do spawn {
+                spawn(proc() {
                     assert!(port.recv() == ~i);
                     recv(port, i + 1);
-                };
+                });
             }
         })
     })
@@ -1318,9 +1318,9 @@ mod test {
         let total = stress_factor() + 100;
         total.times(|| {
             let chan_clone = chan.clone();
-            do spawn {
+            spawn(proc() {
                 chan_clone.send(());
-            }
+            });
         });
 
         total.times(|| {
@@ -1332,13 +1332,13 @@ mod test {
         let (port, chan) = Chan::<int>::new();
         let (total_port, total_chan) = Chan::<int>::new();
 
-        do spawn {
+        spawn(proc() {
             let mut acc = 0;
             for x in port.iter() {
                 acc += x;
             }
             total_chan.send(acc);
-        }
+        });
 
         chan.send(3);
         chan.send(1);
@@ -1351,7 +1351,7 @@ mod test {
         let (port, chan) = Chan::<int>::new();
         let (count_port, count_chan) = Chan::<int>::new();
 
-        do spawn {
+        spawn(proc() {
             let mut count = 0;
             for x in port.iter() {
                 if count >= 3 {
@@ -1361,7 +1361,7 @@ mod test {
                 }
             }
             count_chan.send(count);
-        }
+        });
 
         chan.send(2);
         chan.send(2);
@@ -1375,14 +1375,14 @@ mod test {
         let (p, c) = Chan::<int>::new();
         let (p1, c1) = Chan::<()>::new();
         let (p2, c2) = Chan::<()>::new();
-        do spawn {
+        spawn(proc() {
             p1.recv();
             c.send(1);
             c2.send(());
             p1.recv();
             drop(c);
             c2.send(());
-        }
+        });
 
         assert_eq!(p.try_recv(), Empty);
         c1.send(());

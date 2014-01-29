@@ -1088,10 +1088,6 @@ pub fn print_call_pre(s: &mut State,
                       base_args: &mut ~[@ast::Expr])
                    -> Option<@ast::Expr> {
     match sugar {
-        ast::DoSugar => {
-            head(s, "do");
-            Some(base_args.pop().unwrap())
-        }
         ast::ForSugar => {
             head(s, "for");
             Some(base_args.pop().unwrap())
@@ -1111,19 +1107,8 @@ pub fn print_call_post(s: &mut State,
     }
     if sugar != ast::NoSugar {
         nbsp(s);
-        match blk.unwrap().node {
-          // need to handle closures specifically
-          ast::ExprDoBody(e) => {
-            end(s); // we close our head box; closure
-                    // will create it's own.
-            print_expr(s, e);
-            end(s); // close outer box, as closures don't
-          }
-          _ => {
-            // not sure if this can happen.
-            print_expr(s, blk.unwrap());
-          }
-        }
+        // not sure if this can happen
+        print_expr(s, blk.unwrap());
     }
 }
 
@@ -1404,9 +1389,6 @@ pub fn print_expr(s: &mut State, expr: &ast::Expr) {
         // wrapper so we closed the corresponding opening. so create an
         // empty box to satisfy the close.
         ibox(s, 0);
-      }
-      ast::ExprDoBody(body) => {
-        print_expr(s, body);
       }
       ast::ExprBlock(blk) => {
         // containing cbox, will be closed by print-block at }

@@ -26,12 +26,12 @@ impl fmt::Default for Foo {
 
 pub fn main() {
     let (p,c) = Chan::new();
-    do spawn {
+    spawn(proc() {
         let mut f = Foo(Cell::new(0));
         debug!("{}", f);
         let Foo(ref mut f) = f;
         assert!(f.get() == 1);
         c.send(());
-    }
+    });
     p.recv();
 }

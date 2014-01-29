@@ -867,9 +867,6 @@ fn trans_rvalue_dps_unadjusted<'a>(bcx: &'a Block<'a>,
             closure::trans_expr_fn(bcx, sigil, decl, body,
                                    expr.id, expr.id, dest)
         }
-        ast::ExprDoBody(blk) => {
-            trans_into(bcx, blk, dest)
-        }
         ast::ExprCall(f, ref args, _) => {
             callee::trans_call(bcx, expr, f,
                                callee::ArgExprs(*args), expr.id, dest)

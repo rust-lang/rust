@@ -607,13 +607,13 @@ fn test_install_invalid() {
     let ctxt = fake_ctxt(sysroot, &temp_workspace);
 
     // Uses task::try because of #9001
-    let result = do task::try {
+    let result = task::try(proc() {
         let pkg_src = PkgSrc::new(temp_workspace.clone(),
                                   temp_workspace.clone(),
                                   false,
                                   crateid.clone());
         ctxt.install(pkg_src, &WhatToBuild::new(MaybeCustom, Everything));
-    };
+    });
     assert!(result.unwrap_err()
             .to_str().contains("supplied path for package dir does not exist"));
 }

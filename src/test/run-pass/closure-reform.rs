@@ -38,11 +38,6 @@ fn call_bare_again(f: extern "Rust" fn(&str)) {
 pub fn main() {
     // Procs
 
-    let greeting = ~"Hi ";
-    do call_it |s| {
-        greeting + s
-    }
-
     let greeting = ~"Hello ";
     call_it(proc(s) {
         greeting + s

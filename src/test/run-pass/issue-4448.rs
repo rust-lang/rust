@@ -13,9 +13,9 @@ use std::task;
 pub fn main() {
     let (port, chan) = Chan::<&'static str>::new();
 
-    do task::spawn {
+    task::spawn(proc() {
         assert_eq!(port.recv(), "hello, world");
-    }
+    });
 
     chan.send("hello, world");
 }

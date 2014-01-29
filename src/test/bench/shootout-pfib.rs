@@ -79,9 +79,9 @@ fn stress(num_tasks: int) {
     for i in range(0, num_tasks) {
         let mut builder = task::task();
         results.push(builder.future_result());
-        do builder.spawn {
+        builder.spawn(proc() {
             stress_task(i);
-        }
+        });
     }
     for r in results.iter() {
         r.recv();

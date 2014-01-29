@@ -378,12 +378,12 @@ mod test {
         let (mut p2, _c2) = Chan::<int>::new();
         let (p3, c3) = Chan::<int>::new();
 
-        do spawn {
+        spawn(proc() {
             20.times(task::deschedule);
             c1.send(1);
             p3.recv();
             20.times(task::deschedule);
-        }
+        });
 
         select! (
             a = p1.recv() => { assert_eq!(a, 1); },
@@ -401,12 +401,12 @@ mod test {
         let (mut p2, c2) = Chan::<int>::new();
         let (p3, c3) = Chan::<()>::new();
 
-        do spawn {
+        spawn(proc() {
             20.times(task::deschedule);
             c1.send(1);
             c2.send(2);
             p3.recv();
-        }
+        });
 
         select! (
             a = p1.recv() => { assert_eq!(a, 1); },
@@ -427,7 +427,7 @@ mod test {
         let (mut p2, c2) = Chan::<int>::new();
         let (p3, c3) = Chan::<()>::new();
 
-        do spawn {
+        spawn(proc() {
             for i in range(0, AMT) {
                 if i % 2 == 0 {
                     c1.send(i);
@@ -436,7 +436,7 @@ mod test {
                 }
                 p3.recv();
             }
-        }
+        });
 
         for i in range(0, AMT) {
             select! (

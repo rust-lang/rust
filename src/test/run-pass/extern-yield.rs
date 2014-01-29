@@ -39,10 +39,10 @@ fn count(n: uint) -> uint {
 
 pub fn main() {
     10u.times(|| {
-        do task::spawn {
+        task::spawn(proc() {
             let result = count(5u);
             info!("result = {}", result);
             assert_eq!(result, 16u);
-        };
+        });
     })
 }
