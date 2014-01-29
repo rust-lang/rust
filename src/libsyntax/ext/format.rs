@@ -704,22 +704,22 @@ impl<'a> Context<'a> {
 
         let fmt_trait = match *ty {
             Known(ref tyname) => {
-                match (*tyname).as_slice() {
-                    ""  => "Default",
-                    "?" => "Poly",
-                    "b" => "Bool",
-                    "c" => "Char",
-                    "d" | "i" => "Signed",
-                    "e" => "LowerExp",
-                    "E" => "UpperExp",
-                    "f" => "Float",
-                    "o" => "Octal",
-                    "p" => "Pointer",
-                    "s" => "String",
-                    "t" => "Binary",
-                    "u" => "Unsigned",
-                    "x" => "LowerHex",
-                    "X" => "UpperHex",
+                match tyname.as_slice() {
+                    ""  => "secret_show",
+                    "?" => "secret_poly",
+                    "b" => "secret_bool",
+                    "c" => "secret_char",
+                    "d" | "i" => "secret_signed",
+                    "e" => "secret_lower_exp",
+                    "E" => "secret_upper_exp",
+                    "f" => "secret_float",
+                    "o" => "secret_octal",
+                    "p" => "secret_pointer",
+                    "s" => "secret_string",
+                    "t" => "secret_binary",
+                    "u" => "secret_unsigned",
+                    "x" => "secret_lower_hex",
+                    "X" => "secret_upper_hex",
                     _ => {
                         self.ecx.span_err(sp,
                                           format!("unknown format trait `{}`",
