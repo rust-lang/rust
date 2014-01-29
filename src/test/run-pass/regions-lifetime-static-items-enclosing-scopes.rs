@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// This test verifies that temporary lifetime is correctly computed
+// for static objects in enclosing scopes.
+
 extern mod extra;
 use std::cmp::Eq;
 
@@ -15,7 +18,11 @@ fn f<T:Eq>(o: &mut Option<T>) {
     assert!(*o == None);
 }
 
-fn main() {
+pub fn main() {
+    mod t {
+        enum E {V=1, A=0}
+        static C: E = V;
+    }
+
     f::<int>(&mut None);
-    //~^ ERROR cannot borrow
 }
