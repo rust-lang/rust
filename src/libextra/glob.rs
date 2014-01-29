@@ -537,6 +537,10 @@ impl MatchOptions {
 #[cfg(test)]
 mod test {
     use std::os;
+    use std::io::fs;
+    use std::libc::S_IRWXU;
+
+    use tempfile;
     use super::*;
 
     #[test]
@@ -570,6 +574,17 @@ mod test {
     fn test_lots_of_files() {
         // this is a good test because it touches lots of differently named files
         glob("/*/*/*/*").skip(10000).next();
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn test_non_utf8_glob() {
+        let dir = tempfile::TempDir::new("").unwrap();
+        let p = dir.path().join(&[0xFFu8]);
+        fs::mkdir(&p, S_IRWXU as u32);
+
+        let pat = p.with_filename("*");
+        assert_eq!(glob(pat.as_str().expect("tmpdir is not utf-8")).collect::<~[Path]>(), ~[p])
     }
 
     #[test]

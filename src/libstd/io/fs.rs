@@ -1252,4 +1252,14 @@ mod test {
             Err(..) => {}
         }
     }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn test_non_utf8_path_exists() {
+        let p = tmpdir();
+        // We don't care if it exists or not
+        // lets just make sure it doesn't break
+        // with non-UTF-8 paths.
+        &p.path().join(&[0xFFu8]).exists();
+    }
 }
