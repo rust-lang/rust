@@ -123,7 +123,7 @@ pub mod send_str;
 pub mod ptr;
 pub mod owned;
 pub mod managed;
-pub mod reference;
+mod reference;
 pub mod rc;
 pub mod gc;
 

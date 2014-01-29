@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::reference;
-
 pub fn main() {
     let x = 3;
-    info!("&x={:x}", reference::to_uint(&x));
+    info!("&x={:x}", (&x as *int as uint));
 }
