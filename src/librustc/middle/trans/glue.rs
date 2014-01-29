@@ -131,7 +131,7 @@ fn simplified_glue_type(tcx: ty::ctxt, field: uint, t: ty::t) -> ty::t {
     t
 }
 
-fn lazily_emit_tydesc_glue(ccx: @CrateContext, field: uint, ti: @tydesc_info) {
+pub fn lazily_emit_tydesc_glue(ccx: @CrateContext, field: uint, ti: @tydesc_info) {
     let _icx = push_ctxt("lazily_emit_tydesc_glue");
 
     let simpl = simplified_glue_type(ccx.tcx, field, ti.ty);
