@@ -13,8 +13,8 @@
 fn main() {
     let mut t = ::std::task::task();
     t.name("send name".to_send_str());
-    do t.try {
+    t.try(proc() {
         fail!("test");
         3
-    }.unwrap()
+    }).unwrap()
 }

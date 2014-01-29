@@ -11,6 +11,6 @@
 // Useful smoketest for scheduler performance.
 fn main() {
     for _ in range(1, 100_000) {
-        do spawn { }
+        spawn(proc() {})
     }
 }

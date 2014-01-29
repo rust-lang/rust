@@ -665,8 +665,7 @@ pub fn walk_expr<E: Clone, V: Visitor<E>>(visitor: &mut V, expression: &Expr, en
             visitor.visit_expr(right_expression, env.clone())
         }
         ExprAddrOf(_, subexpression) |
-        ExprUnary(_, _, subexpression) |
-        ExprDoBody(subexpression) => {
+        ExprUnary(_, _, subexpression) => {
             visitor.visit_expr(subexpression, env.clone())
         }
         ExprLit(_) => {}

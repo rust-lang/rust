@@ -998,10 +998,10 @@ mod test {
     fn trivial_run_in_newsched_task_test() {
         let mut task_ran = false;
         let task_ran_ptr: *mut bool = &mut task_ran;
-        do run {
+        run(proc() {
             unsafe { *task_ran_ptr = true };
             rtdebug!("executed from the new scheduler")
-        }
+        });
         assert!(task_ran);
     }
 
@@ -1012,13 +1012,13 @@ mod test {
         let task_run_count_ptr: *mut uint = &mut task_run_count;
         // with only one thread this is safe to run in without worries of
         // contention.
-        do run {
+        run(proc() {
             for _ in range(0u, total) {
-                do spawn || {
+                spawn(proc() {
                     unsafe { *task_run_count_ptr = *task_run_count_ptr + 1};
-                }
+                });
             }
-        }
+        });
         assert!(task_run_count == total);
     }
 
@@ -1026,17 +1026,17 @@ mod test {
     fn multiple_task_nested_test() {
         let mut task_run_count = 0;
         let task_run_count_ptr: *mut uint = &mut task_run_count;
-        do run {
-            do spawn {
+        run(proc() {
+            spawn(proc() {
                 unsafe { *task_run_count_ptr = *task_run_count_ptr + 1 };
-                do spawn {
+                spawn(proc() {
                     unsafe { *task_run_count_ptr = *task_run_count_ptr + 1 };
-                    do spawn {
+                    spawn(proc() {
                         unsafe { *task_run_count_ptr = *task_run_count_ptr + 1 };
-                    }
-                }
-            }
-        }
+                    })
+                })
+            })
+        });
         assert!(task_run_count == 3);
     }
 
@@ -1052,15 +1052,15 @@ mod test {
             let mut handle1 = pool.spawn_sched();
             let mut handle2 = pool.spawn_sched();
 
-            handle1.send(TaskFromFriend(do pool.task(TaskOpts::new()) {
+            handle1.send(TaskFromFriend(pool.task(TaskOpts::new(), proc() {
                 chan.send(sched_id());
-            }));
+            })));
             let sched1_id = port.recv();
 
-            let mut task = do pool.task(TaskOpts::new()) {
+            let mut task = pool.task(TaskOpts::new(), proc() {
                 assert_eq!(sched_id(), sched1_id);
                 dchan.send(());
-            };
+            });
             task.give_home(HomeSched(handle1));
             handle2.send(TaskFromFriend(task));
         }
@@ -1080,7 +1080,7 @@ mod test {
         use std::rt::thread::Thread;
         use std::sync::deque::BufferPool;
 
-        do run_in_bare_thread {
+        run_in_bare_thread(proc() {
             let sleepers = SleeperList::new();
             let mut pool = BufferPool::new();
             let (normal_worker, normal_stealer) = pool.deque();
@@ -1146,23 +1146,23 @@ mod test {
                 ret
             }
 
-            let task1 = do GreenTask::new_homed(&mut special_sched.stack_pool,
-                                                None, HomeSched(t1_handle)) {
+            let task1 = GreenTask::new_homed(&mut special_sched.stack_pool,
+                                             None, HomeSched(t1_handle), proc() {
                 rtassert!(on_appropriate_sched());
-            };
+            });
 
-            let task2 = do GreenTask::new(&mut normal_sched.stack_pool, None) {
+            let task2 = GreenTask::new(&mut normal_sched.stack_pool, None, proc() {
                 rtassert!(on_appropriate_sched());
-            };
+            });
 
-            let task3 = do GreenTask::new(&mut normal_sched.stack_pool, None) {
+            let task3 = GreenTask::new(&mut normal_sched.stack_pool, None, proc() {
                 rtassert!(on_appropriate_sched());
-            };
+            });
 
-            let task4 = do GreenTask::new_homed(&mut special_sched.stack_pool,
-                                                None, HomeSched(t4_handle)) {
+            let task4 = GreenTask::new_homed(&mut special_sched.stack_pool,
+                                             None, HomeSched(t4_handle), proc() {
                 rtassert!(on_appropriate_sched());
-            };
+            });
 
             // Signal from the special task that we are done.
             let (port, chan) = Chan::<()>::new();
@@ -1173,8 +1173,7 @@ mod test {
                 sched.run_task(task, next)
             }
 
-            let normal_task = do GreenTask::new(&mut normal_sched.stack_pool,
-                                                None) {
+            let normal_task = GreenTask::new(&mut normal_sched.stack_pool, None, proc() {
                 run(task2);
                 run(task4);
                 port.recv();
@@ -1182,26 +1181,25 @@ mod test {
                 nh.send(Shutdown);
                 let mut sh = special_handle;
                 sh.send(Shutdown);
-            };
+            });
             normal_sched.enqueue_task(normal_task);
 
-            let special_task = do GreenTask::new(&mut special_sched.stack_pool,
-                                                 None) {
+            let special_task = GreenTask::new(&mut special_sched.stack_pool, None, proc() {
                 run(task1);
                 run(task3);
                 chan.send(());
-            };
+            });
             special_sched.enqueue_task(special_task);
 
             let normal_sched = normal_sched;
-            let normal_thread = do Thread::start { normal_sched.bootstrap() };
+            let normal_thread = Thread::start(proc() { normal_sched.bootstrap() });
 
             let special_sched = special_sched;
-            let special_thread = do Thread::start { special_sched.bootstrap() };
+            let special_thread = Thread::start(proc() { special_sched.bootstrap() });
 
             normal_thread.join();
             special_thread.join();
-        }
+        });
     }
 
     //#[test]
@@ -1226,11 +1224,11 @@ mod test {
         // the work queue, but we are performing I/O, that once we do put
         // something in the work queue again the scheduler picks it up and
         // doesn't exit before emptying the work queue
-        do pool.spawn(TaskOpts::new()) {
-            do spawn {
+        pool.spawn(TaskOpts::new(), proc() {
+            spawn(proc() {
                 timer::sleep(10);
-            }
-        }
+            });
+        });
 
         pool.shutdown();
     }
@@ -1243,19 +1241,19 @@ mod test {
         let mut pool1 = pool();
         let mut pool2 = pool();
 
-        do pool1.spawn(TaskOpts::new()) {
+        pool1.spawn(TaskOpts::new(), proc() {
             let id = sched_id();
             chan1.send(());
             port2.recv();
             assert_eq!(id, sched_id());
-        }
+        });
 
-        do pool2.spawn(TaskOpts::new()) {
+        pool2.spawn(TaskOpts::new(), proc() {
             let id = sched_id();
             port1.recv();
             assert_eq!(id, sched_id());
             chan2.send(());
-        }
+        });
 
         pool1.shutdown();
         pool2.shutdown();
@@ -1275,13 +1273,13 @@ mod test {
 
     #[test]
     fn multithreading() {
-        do run {
+        run(proc() {
             let mut ports = ~[];
             10.times(|| {
                 let (port, chan) = Chan::new();
-                do spawn {
+                spawn(proc() {
                     chan.send(());
-                }
+                });
                 ports.push(port);
             });
 
@@ -1291,12 +1289,12 @@ mod test {
                     None => break,
                 }
             }
-        }
+        });
     }
 
      #[test]
     fn thread_ring() {
-        do run {
+        run(proc() {
             let (end_port, end_chan) = Chan::new();
 
             let n_tasks = 10;
@@ -1309,19 +1307,19 @@ mod test {
                 let (next_p, ch) = Chan::new();
                 let imm_i = i;
                 let imm_p = p;
-                do spawn {
+                spawn(proc() {
                     roundtrip(imm_i, n_tasks, &imm_p, &ch);
-                };
+                });
                 p = next_p;
                 i += 1;
             }
             let p = p;
-            do spawn {
+            spawn(proc() {
                 roundtrip(1, n_tasks, &p, &ch1);
-            }
+            });
 
             end_port.recv();
-        }
+        });
 
         fn roundtrip(id: int, n_tasks: int,
                      p: &Port<(int, Chan<()>)>,
@@ -1349,7 +1347,7 @@ mod test {
     fn start_closure_dtor() {
         // Regression test that the `start` task entrypoint can
         // contain dtors that use task resources
-        do run {
+        run(proc() {
             struct S { field: () }
 
             impl Drop for S {
@@ -1360,10 +1358,10 @@ mod test {
 
             let s = S { field: () };
 
-            do spawn {
+            spawn(proc() {
                 let _ss = &s;
-            }
-        }
+            });
+        });
     }
 
     // FIXME: #9407: xfail-test
@@ -1374,36 +1372,36 @@ mod test {
             threads: 2, // this must be > 1
             event_loop_factory: Some(basic::event_loop),
         });
-        do pool.spawn(TaskOpts::new()) {
+        pool.spawn(TaskOpts::new(), proc() {
             let (port, chan) = Chan::new();
 
             // This task should not be able to starve the sender;
             // The sender should get stolen to another thread.
-            do spawn {
+            spawn(proc() {
                 while port.try_recv() != comm::Data(()) { }
-            }
+            });
 
             chan.send(());
-        }
+        });
         pool.shutdown();
     }
 
     #[test]
     fn dont_starve_2() {
-        do run {
+        run(proc() {
             let (port, chan) = Chan::new();
             let (_port2, chan2) = Chan::new();
 
             // This task should not be able to starve the other task.
             // The sends should eventually yield.
-            do spawn {
+            spawn(proc() {
                 while port.try_recv() != comm::Data(()) {
                     chan2.send(());
                 }
-            }
+            });
 
             chan.send(());
-        }
+        });
     }
 
     // Regression test for a logic bug that would cause single-threaded
@@ -1411,9 +1409,9 @@ mod test {
     #[test]
     fn single_threaded_yield() {
         use std::task::deschedule;
-        do run {
+        run(proc() {
             5.times(deschedule);
-        }
+        });
     }
 
     #[test]
@@ -1461,11 +1459,11 @@ mod test {
 
                 let (setup_po, setup_ch) = Chan::new();
                 let (parent_po, parent_ch) = Chan::new();
-                do spawn {
+                spawn(proc() {
                     let (child_po, child_ch) = Chan::new();
                     setup_ch.send(child_ch);
                     pingpong(&child_po, &parent_ch);
-                };
+                });
 
                 let child_ch = setup_po.recv();
                 child_ch.send(20);

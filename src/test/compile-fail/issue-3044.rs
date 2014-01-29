@@ -10,9 +10,9 @@
 
 fn main() {
     let needlesArr: ~[char] = ~['a', 'f'];
-    do needlesArr.iter().fold() |x, y| {
-    }
-    //~^^ ERROR 1 parameter was supplied (including the closure passed by the `do` keyword)
+    needlesArr.iter().fold(|x, y| {
+    });
+    //~^^ ERROR this function takes 2 parameters but 1 parameter was supplied
     //
     // the first error is, um, non-ideal.
 }

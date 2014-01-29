@@ -3166,7 +3166,6 @@ pub fn expr_kind(tcx: ctxt,
         ast::ExprMatch(..) |
         ast::ExprFnBlock(..) |
         ast::ExprProc(..) |
-        ast::ExprDoBody(..) |
         ast::ExprBlock(..) |
         ast::ExprRepeat(..) |
         ast::ExprVstore(_, ast::ExprVstoreSlice) |

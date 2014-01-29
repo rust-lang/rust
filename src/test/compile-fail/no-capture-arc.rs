@@ -19,10 +19,10 @@ fn main() {
     let v = ~[1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     let arc_v = arc::Arc::new(v);
 
-    do task::spawn() {
+    task::spawn(proc() {
         let v = arc_v.get();
         assert_eq!(v[3], 4);
-    };
+    });
 
     assert_eq!((arc_v.get())[2], 3);
 

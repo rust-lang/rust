@@ -45,7 +45,7 @@ macro_rules! iotest (
             $($a)* #[test] fn native() {
                 use native;
                 let (p, c) = Chan::new();
-                do native::task::spawn { c.send(f()) }
+                native::task::spawn(proc() { c.send(f()) });
                 p.recv();
             }
         }

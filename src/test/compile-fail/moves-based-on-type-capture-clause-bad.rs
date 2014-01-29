@@ -2,8 +2,8 @@ use std::task;
 
 fn main() {
     let x = ~"Hello world!";
-    do task::spawn {
+    task::spawn(proc() {
         println!("{}", x);
-    }
+    });
     println!("{}", x); //~ ERROR use of moved value
 }

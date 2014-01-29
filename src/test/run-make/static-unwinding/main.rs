@@ -12,11 +12,11 @@ impl Drop for A {
 }
 
 fn main() {
-    do task::try {
+    task::try(proc() {
         let _a = A;
         lib::callback(|| fail!());
         1
-    };
+    });
 
     unsafe {
         assert!(lib::statik == 1);

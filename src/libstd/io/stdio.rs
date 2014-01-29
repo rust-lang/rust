@@ -372,10 +372,10 @@ mod tests {
 
         let (p, c) = Chan::new();
         let (mut r, w) = (PortReader::new(p), ChanWriter::new(c));
-        do spawn {
+        spawn(proc() {
             set_stdout(~w as ~Writer);
             println!("hello!");
-        }
+        });
         assert_eq!(r.read_to_str(), ~"hello!\n");
     })
 
@@ -384,10 +384,10 @@ mod tests {
 
         let (p, c) = Chan::new();
         let (mut r, w) = (PortReader::new(p), ChanWriter::new(c));
-        do spawn {
+        spawn(proc() {
             set_stderr(~w as ~Writer);
             fail!("my special message");
-        }
+        });
         let s = r.read_to_str();
         assert!(s.contains("my special message"));
     })

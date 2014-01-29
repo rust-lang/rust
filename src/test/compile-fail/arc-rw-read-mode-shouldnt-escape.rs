@@ -19,5 +19,5 @@ fn main() {
     });
     y.unwrap();
     // Adding this line causes a method unification failure instead
-    // do (&option::unwrap(y)).read |state| { assert!(*state == 1); }
+    // (&option::unwrap(y)).read(|state| { assert!(*state == 1); })
 }

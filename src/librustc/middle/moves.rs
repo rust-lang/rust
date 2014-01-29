@@ -570,10 +570,6 @@ impl VisitContext {
                 self.consume_expr(count);
             }
 
-            ExprDoBody(base) => {
-                self.use_expr(base, comp_mode);
-            }
-
             ExprFnBlock(ref decl, body) |
             ExprProc(ref decl, body) => {
                 for a in decl.inputs.iter() {

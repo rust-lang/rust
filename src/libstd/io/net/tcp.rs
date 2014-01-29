@@ -167,11 +167,11 @@ mod test {
         let addr = next_test_ip4();
         let (port, chan) = Chan::new();
 
-        do spawn {
+        spawn(proc() {
             port.recv();
             let mut stream = TcpStream::connect(addr);
             stream.write([99]);
-        }
+        });
 
         let mut acceptor = TcpListener::bind(addr).listen();
         chan.send(());
@@ -185,11 +185,11 @@ mod test {
         let addr = next_test_ip6();
         let (port, chan) = Chan::new();
 
-        do spawn {
+        spawn(proc() {
             port.recv();
             let mut stream = TcpStream::connect(addr);
             stream.write([99]);
-        }
+        });
 
         let mut acceptor = TcpListener::bind(addr).listen();
         chan.send(());
@@ -203,11 +203,11 @@ mod test {
         let addr = next_test_ip4();
         let (port, chan) = Chan::new();
 
-        do spawn {
+        spawn(proc() {
             port.recv();
             let _stream = TcpStream::connect(addr);
             // Close
-        }
+        });
 
         let mut acceptor = TcpListener::bind(addr).listen();
         chan.send(());
@@ -221,11 +221,11 @@ mod test {
         let addr = next_test_ip6();
         let (port, chan) = Chan::new();
 
-        do spawn {
+        spawn(proc() {
             port.recv();
             let _stream = TcpStream::connect(addr);
             // Close
-        }
+        });
 
         let mut acceptor = TcpListener::bind(addr).listen();
         chan.send(());
@@ -239,11 +239,11 @@ mod test {
         let addr = next_test_ip4();
         let (port, chan) = Chan::new();
 
-        do spawn {
+        spawn(proc() {
             port.recv();
             let _stream = TcpStream::connect(addr);
             // Close
-        }
+        });
 
         let mut acceptor = TcpListener::bind(addr).listen();
         chan.send(());
@@ -267,11 +267,11 @@ mod test {
         let addr = next_test_ip6();
         let (port, chan) = Chan::new();
 
-        do spawn {
+        spawn(proc() {
             port.recv();
             let _stream = TcpStream::connect(addr);
             // Close
-        }
+        });
 
         let mut acceptor = TcpListener::bind(addr).listen();
         chan.send(());
@@ -295,11 +295,11 @@ mod test {
         let addr = next_test_ip4();
         let (port, chan) = Chan::new();
 
-        do spawn {
+        spawn(proc() {
             port.recv();
             let _stream = TcpStream::connect(addr);
             // Close
-        }
+        });
 
         let mut acceptor = TcpListener::bind(addr).listen();
         chan.send(());
@@ -326,11 +326,11 @@ mod test {
         let addr = next_test_ip6();
         let (port, chan) = Chan::new();
 
-        do spawn {
+        spawn(proc() {
             port.recv();
             let _stream = TcpStream::connect(addr);
             // Close
-        }
+        });
 
         let mut acceptor = TcpListener::bind(addr).listen();
         chan.send(());
@@ -358,13 +358,13 @@ mod test {
         let max = 10;
         let (port, chan) = Chan::new();
 
-        do spawn {
+        spawn(proc() {
             port.recv();
             max.times(|| {
                 let mut stream = TcpStream::connect(addr);
                 stream.write([99]);
             });
-        }
+        });
 
         let mut acceptor = TcpListener::bind(addr).listen();
         chan.send(());
@@ -380,13 +380,13 @@ mod test {
         let max = 10;
         let (port, chan) = Chan::new();
 
-        do spawn {
+        spawn(proc() {
             port.recv();
             max.times(|| {
                 let mut stream = TcpStream::connect(addr);
                 stream.write([99]);
             });
-        }
+        });
 
         let mut acceptor = TcpListener::bind(addr).listen();
         chan.send(());
@@ -402,20 +402,20 @@ mod test {
         static MAX: int = 10;
         let (port, chan) = Chan::new();
 
-        do spawn {
+        spawn(proc() {
             let mut acceptor = TcpListener::bind(addr).listen();
             chan.send(());
             for (i, stream) in acceptor.incoming().enumerate().take(MAX as uint) {
                 // Start another task to handle the connection
-                do spawn {
+                spawn(proc() {
                     let mut stream = stream;
                     let mut buf = [0];
                     stream.read(buf);
                     assert!(buf[0] == i as u8);
                     debug!("read");
-                }
+                });
             }
-        }
+        });
 
         port.recv();
         connect(0, addr);
@@ -423,14 +423,14 @@ mod test {
         fn connect(i: int, addr: SocketAddr) {
             if i == MAX { return }
 
-            do spawn {
+            spawn(proc() {
                 debug!("connecting");
                 let mut stream = TcpStream::connect(addr);
                 // Connect again before writing
                 connect(i + 1, addr);
                 debug!("writing");
                 stream.write([i as u8]);
-            }
+            });
         }
     })
 
@@ -439,20 +439,20 @@ mod test {
         static MAX: int = 10;
         let (port, chan) = Chan::<()>::new();
 
-        do spawn {
+        spawn(proc() {
             let mut acceptor = TcpListener::bind(addr).listen();
             chan.send(());
             for (i, stream) in acceptor.incoming().enumerate().take(MAX as uint) {
                 // Start another task to handle the connection
-                do spawn {
+                spawn(proc() {
                     let mut stream = stream;
                     let mut buf = [0];
                     stream.read(buf);
                     assert!(buf[0] == i as u8);
                     debug!("read");
-                }
+                });
             }
-        }
+        });
 
         port.recv();
         connect(0, addr);
@@ -460,14 +460,14 @@ mod test {
         fn connect(i: int, addr: SocketAddr) {
             if i == MAX { return }
 
-            do spawn {
+            spawn(proc() {
                 debug!("connecting");
                 let mut stream = TcpStream::connect(addr);
                 // Connect again before writing
                 connect(i + 1, addr);
                 debug!("writing");
                 stream.write([i as u8]);
-            }
+            });
         }
     })
 
@@ -476,20 +476,20 @@ mod test {
         static MAX: int = 10;
         let (port, chan) = Chan::new();
 
-        do spawn {
+        spawn(proc() {
             let mut acceptor = TcpListener::bind(addr).listen();
             chan.send(());
             for stream in acceptor.incoming().take(MAX as uint) {
                 // Start another task to handle the connection
-                do spawn {
+                spawn(proc() {
                     let mut stream = stream;
                     let mut buf = [0];
                     stream.read(buf);
                     assert!(buf[0] == 99);
                     debug!("read");
-                }
+                });
             }
-        }
+        });
 
         port.recv();
         connect(0, addr);
@@ -497,14 +497,14 @@ mod test {
         fn connect(i: int, addr: SocketAddr) {
             if i == MAX { return }
 
-            do spawn {
+            spawn(proc() {
                 debug!("connecting");
                 let mut stream = TcpStream::connect(addr);
                 // Connect again before writing
                 connect(i + 1, addr);
                 debug!("writing");
                 stream.write([99]);
-            }
+            });
         }
     })
 
@@ -513,20 +513,20 @@ mod test {
         static MAX: int = 10;
         let (port, chan) = Chan::new();
 
-        do spawn {
+        spawn(proc() {
             let mut acceptor = TcpListener::bind(addr).listen();
             chan.send(());
             for stream in acceptor.incoming().take(MAX as uint) {
                 // Start another task to handle the connection
-                do spawn {
+                spawn(proc() {
                     let mut stream = stream;
                     let mut buf = [0];
                     stream.read(buf);
                     assert!(buf[0] == 99);
                     debug!("read");
-                }
+                });
             }
-        }
+        });
 
         port.recv();
         connect(0, addr);
@@ -534,14 +534,14 @@ mod test {
         fn connect(i: int, addr: SocketAddr) {
             if i == MAX { return }
 
-            do spawn {
+            spawn(proc() {
                 debug!("connecting");
                 let mut stream = TcpStream::connect(addr);
                 // Connect again before writing
                 connect(i + 1, addr);
                 debug!("writing");
                 stream.write([99]);
-            }
+            });
         }
     })
 
@@ -558,11 +558,11 @@ mod test {
     pub fn peer_name(addr: SocketAddr) {
         let (port, chan) = Chan::new();
 
-        do spawn {
+        spawn(proc() {
             let mut acceptor = TcpListener::bind(addr).listen();
             chan.send(());
             acceptor.accept();
-        }
+        });
 
         port.recv();
         let stream = TcpStream::connect(addr);
@@ -592,7 +592,7 @@ mod test {
     iotest!(fn partial_read() {
         let addr = next_test_ip4();
         let (p, c) = Chan::new();
-        do spawn {
+        spawn(proc() {
             let mut srv = TcpListener::bind(addr).listen();
             c.send(());
             let mut cl = srv.accept().unwrap();
@@ -600,7 +600,7 @@ mod test {
             let mut b = [0];
             cl.read(b);
             c.send(());
-        }
+        });
 
         p.recv();
         let mut c = TcpStream::connect(addr).unwrap();
@@ -630,12 +630,12 @@ mod test {
         let addr = next_test_ip4();
         let (port, chan) = Chan::new();
 
-        do spawn {
+        spawn(proc() {
             port.recv();
             let stream = TcpStream::connect(addr);
             // Close
             port.recv();
-        }
+        });
 
         {
             let mut acceptor = TcpListener::bind(addr).listen();

@@ -539,7 +539,6 @@ impl Expr {
 #[deriving(Clone, Eq, Encodable, Decodable, IterBytes)]
 pub enum CallSugar {
     NoSugar,
-    DoSugar,
     ForSugar
 }
 
@@ -566,7 +565,6 @@ pub enum Expr_ {
     ExprMatch(@Expr, ~[Arm]),
     ExprFnBlock(P<FnDecl>, P<Block>),
     ExprProc(P<FnDecl>, P<Block>),
-    ExprDoBody(@Expr),
     ExprBlock(P<Block>),
 
     ExprAssign(@Expr, @Expr),

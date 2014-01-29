@@ -36,11 +36,11 @@ fn grandchild_group(num_tasks: uint) {
     for _ in range(0, num_tasks) {
         let ch = ch.clone();
         let mut t = task::task();
-        do t.spawn { // linked
+        t.spawn(proc() { // linked
             ch.send(());
             let (p, _c) = stream::<()>();
             p.recv(); // block forever
-        }
+        });
     }
     error!("Grandchild group getting started");
     for _ in range(0, num_tasks) {
@@ -77,17 +77,17 @@ fn main() {
     // Main group #0 waits for unsupervised group #1.
     // Grandparent group #1 waits for middle group #2, then fails, killing #3.
     // Middle group #2 creates grandchild_group #3, waits for it to be ready, exits.
-    let x: result::Result<(), ~Any> = do task::try { // unlinked
-        do spawn_supervised_blocking("grandparent") {
-            do spawn_supervised_blocking("middle") {
+    let x: result::Result<(), ~Any> = task::try(proc() { // unlinked
+        spawn_supervised_blocking("grandparent", proc() {
+            spawn_supervised_blocking("middle", proc() {
                 grandchild_group(num_tasks);
-            }
+            });
             // When grandchild group is ready to go, make the middle group exit.
             error!("Middle group wakes up and exits");
-        }
+        });
         // Grandparent group waits for middle group to be gone, then fails
         error!("Grandparent group wakes up and fails");
         fail!();
-    };
+    });
     assert!(x.is_err());
 }

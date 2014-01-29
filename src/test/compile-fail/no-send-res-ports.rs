@@ -32,8 +32,8 @@ fn main() {
 
     let x = foo(Port(@()));
 
-    do task::spawn {
+    task::spawn(proc() {
         let y = x;   //~ ERROR does not fulfill `Send`
         error!("{:?}", y);
-    }
+    });
 }

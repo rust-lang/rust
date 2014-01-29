@@ -227,13 +227,13 @@ mod tests {
         for _ in range(0, nthreads) {
             let q = p.clone();
             let chan = chan.clone();
-            do native::task::spawn {
+            native::task::spawn(proc() {
                 let mut q = q;
                 for i in range(0, nmsgs) {
                     q.push(i);
                 }
                 chan.send(());
-            }
+            });
         }
 
         let mut i = 0u;
