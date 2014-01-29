@@ -433,10 +433,10 @@ mod test {
 
     #[test]
     fn loop_smoke_test() {
-        do run_in_bare_thread {
+        run_in_bare_thread(proc() {
             let mut loop_ = Loop::new();
             loop_.run();
             loop_.close();
-        }
+        });
     }
 }

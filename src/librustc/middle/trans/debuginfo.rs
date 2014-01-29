@@ -2655,20 +2655,6 @@ fn populate_scope_map(cx: &CrateContext,
                 })
             }
 
-            ast::ExprDoBody(inner_exp) => {
-                let inner_expr_is_expr_fn_block = match *inner_exp {
-                    ast::Expr { node: ast::ExprFnBlock(..), .. } => true,
-                    _ => false
-                };
-
-                if !inner_expr_is_expr_fn_block {
-                    cx.sess.span_bug(inner_exp.span, "debuginfo: Inner expression was expected \
-                                                      to be an ast::expr_fn_block.");
-                }
-
-                walk_expr(cx, inner_exp, scope_stack, scope_map);
-            }
-
             ast::ExprCall(fn_exp, ref args, _) => {
                 walk_expr(cx, fn_exp, scope_stack, scope_map);
 

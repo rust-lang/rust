@@ -170,14 +170,14 @@ mod test {
             event_loop_factory: None,
         });
 
-        do pool.spawn(TaskOpts::new()) {
+        pool.spawn(TaskOpts::new(), proc() {
             let listener = UdpWatcher::bind(local_loop(), next_test_ip4());
             chan.send(listener.unwrap());
-        }
+        });
 
-        let task = do pool.task(TaskOpts::new()) {
+        let task = pool.task(TaskOpts::new(), proc() {
             port.recv();
-        };
+        });
         pool.spawn_sched().send(sched::TaskFromFriend(task));
 
         pool.shutdown();
@@ -191,20 +191,20 @@ mod test {
             event_loop_factory: None,
         });
 
-        do pool.spawn(TaskOpts::new()) {
+        pool.spawn(TaskOpts::new(), proc() {
             let addr1 = next_test_ip4();
             let addr2 = next_test_ip4();
             let listener = UdpWatcher::bind(local_loop(), addr2);
             chan.send((listener.unwrap(), addr1));
             let mut listener = UdpWatcher::bind(local_loop(), addr1).unwrap();
             listener.sendto([1, 2, 3, 4], addr2);
-        }
+        });
 
-        let task = do pool.task(TaskOpts::new()) {
+        let task = pool.task(TaskOpts::new(), proc() {
             let (mut watcher, addr) = port.recv();
             let mut buf = [0, ..10];
             assert_eq!(watcher.recvfrom(buf).unwrap(), (4, addr));
-        };
+        });
         pool.spawn_sched().send(sched::TaskFromFriend(task));
 
         pool.shutdown();

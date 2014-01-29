@@ -2201,7 +2201,7 @@ mod tests {
     }
     fn check_err<T: Decodable<Decoder>>(to_parse: &'static str, expected_error: &str) {
         use std::task;
-        let res = do task::try {
+        let res = task::try(proc() {
             // either fails in `decode` (which is what we want), or
             // returns Some(error_message)/None if the string was
             // invalid or valid JSON.
@@ -2212,7 +2212,7 @@ mod tests {
                     None
                 }
             }
-        };
+        });
         match res {
             Ok(Some(parse_error)) => fail!("`{}` is not valid json: {}",
                                            to_parse, parse_error),

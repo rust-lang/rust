@@ -13,7 +13,7 @@
 use abi;
 use abi::AbiSet;
 use ast::{Sigil, BorrowedSigil, ManagedSigil, OwnedSigil};
-use ast::{CallSugar, NoSugar, DoSugar};
+use ast::{CallSugar, NoSugar};
 use ast::{BareFnTy, ClosureTy};
 use ast::{RegionTyParamBound, TraitTyParamBound};
 use ast::{Provided, Public, Purity};
@@ -24,7 +24,7 @@ use ast::{Crate, CrateConfig, Decl, DeclItem};
 use ast::{DeclLocal, DefaultBlock, UnDeref, BiDiv, EMPTY_CTXT, EnumDef, ExplicitSelf};
 use ast::{Expr, Expr_, ExprAddrOf, ExprMatch, ExprAgain};
 use ast::{ExprAssign, ExprAssignOp, ExprBinary, ExprBlock, ExprBox};
-use ast::{ExprBreak, ExprCall, ExprCast, ExprDoBody};
+use ast::{ExprBreak, ExprCall, ExprCast};
 use ast::{ExprField, ExprFnBlock, ExprIf, ExprIndex};
 use ast::{ExprLit, ExprLogLevel, ExprLoop, ExprMac};
 use ast::{ExprMethodCall, ExprParen, ExprPath, ExprProc};
@@ -1796,9 +1796,6 @@ impl Parser {
             return self.parse_if_expr();
         } else if self.eat_keyword(keywords::For) {
             return self.parse_for_expr(None);
-        } else if self.eat_keyword(keywords::Do) {
-            return self.parse_sugary_call_expr(lo, ~"do", DoSugar,
-                                               ExprDoBody);
         } else if self.eat_keyword(keywords::While) {
             return self.parse_while_expr();
         } else if Parser::token_is_lifetime(&self.token) {
@@ -2539,75 +2536,6 @@ impl Parser {
         let hi = self.span.hi;
 
         self.mk_expr(lo, hi, ExprForLoop(pat, expr, loop_block, opt_ident))
-    }
-
-
-    // parse a 'do'.
-    // the 'do' expression parses as a call, but looks like
-    // a function call followed by a closure expression.
-    pub fn parse_sugary_call_expr(&mut self,
-                                  lo: BytePos,
-                                  keyword: ~str,
-                                  sugar: CallSugar,
-                                  ctor: |v: @Expr| -> Expr_)
-                                  -> @Expr {
-        // Parse the callee `foo` in
-        //    do foo || {
-        //    do foo.bar || {
-        // etc, or the portion of the call expression before the lambda in
-        //    do foo() || {
-        // or
-        //    do foo.bar(a) || {
-        // Turn on the restriction to stop at | or || so we can parse
-        // them as the lambda arguments
-        let e = self.parse_expr_res(RESTRICT_NO_BAR_OR_DOUBLEBAR_OP);
-        match e.node {
-            ExprCall(f, ref args, NoSugar) => {
-                let block = self.parse_lambda_block_expr();
-                let last_arg = self.mk_expr(block.span.lo, block.span.hi,
-                                            ctor(block));
-                let args = vec::append_one((*args).clone(), last_arg);
-                self.mk_expr(lo, block.span.hi, ExprCall(f, args, sugar))
-            }
-            ExprMethodCall(_, i, ref tps, ref args, NoSugar) => {
-                let block = self.parse_lambda_block_expr();
-                let last_arg = self.mk_expr(block.span.lo, block.span.hi,
-                                            ctor(block));
-                let args = vec::append_one((*args).clone(), last_arg);
-                let method_call = self.mk_method_call(i,
-                                                      (*tps).clone(),
-                                                      args,
-                                                      sugar);
-                self.mk_expr(lo, block.span.hi, method_call)
-            }
-            ExprField(f, i, ref tps) => {
-                let block = self.parse_lambda_block_expr();
-                let last_arg = self.mk_expr(block.span.lo, block.span.hi,
-                                            ctor(block));
-                let method_call = self.mk_method_call(i,
-                                                      (*tps).clone(),
-                                                      ~[f, last_arg],
-                                                      sugar);
-                self.mk_expr(lo, block.span.hi, method_call)
-            }
-            ExprPath(..) | ExprCall(..) | ExprMethodCall(..) |
-                ExprParen(..) => {
-                let block = self.parse_lambda_block_expr();
-                let last_arg = self.mk_expr(block.span.lo, block.span.hi,
-                                            ctor(block));
-                let call = self.mk_call(e, ~[last_arg], sugar);
-                self.mk_expr(lo, last_arg.span.hi, call)
-            }
-            _ => {
-                // There may be other types of expressions that can
-                // represent the callee in `do` expressions
-                // but they aren't represented by tests
-                debug!("sugary call on {:?}", e.node);
-                self.span_fatal(
-                    e.span,
-                    format!("`{}` must be followed by a block call", keyword));
-            }
-        }
     }
 
     pub fn parse_while_expr(&mut self) -> @Expr {

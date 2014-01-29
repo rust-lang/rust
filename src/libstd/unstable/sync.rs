@@ -179,12 +179,12 @@ mod tests {
                 let (port, chan) = Chan::new();
                 futures.push(port);
 
-                do task::spawn {
+                task::spawn(proc() {
                     for _ in range(0u, count) {
                         total.with(|count| **count += 1);
                     }
                     chan.send(());
-                }
+                });
             };
 
             for f in futures.mut_iter() { f.recv() }
@@ -200,9 +200,9 @@ mod tests {
             // accesses will also fail.
             let x = Exclusive::new(1);
             let x2 = x.clone();
-            do task::try || {
+            task::try(proc() {
                 x2.with(|one| assert_eq!(*one, 2))
-            };
+            });
             x.with(|one| assert_eq!(*one, 1));
         }
     }

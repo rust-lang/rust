@@ -177,13 +177,13 @@ mod tests {
         for _ in range(0, nthreads) {
             let q = q.clone();
             let chan = chan.clone();
-            do native::task::spawn {
+            native::task::spawn(proc() {
                 let mut q = q;
                 for i in range(0, nmsgs) {
                     assert!(q.push(i));
                 }
                 chan.send(());
-            }
+            });
         }
 
         let mut completion_ports = ~[];
@@ -191,7 +191,7 @@ mod tests {
             let (completion_port, completion_chan) = Chan::new();
             completion_ports.push(completion_port);
             let q = q.clone();
-            do native::task::spawn {
+            native::task::spawn(proc() {
                 let mut q = q;
                 let mut i = 0u;
                 loop {
@@ -204,7 +204,7 @@ mod tests {
                     }
                 }
                 completion_chan.send(i);
-            }
+            });
         }
 
         for completion_port in completion_ports.mut_iter() {

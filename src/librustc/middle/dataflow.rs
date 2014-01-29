@@ -706,7 +706,6 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
             ast::ExprPath(..) => {}
 
             ast::ExprAddrOf(_, e) |
-            ast::ExprDoBody(e) |
             ast::ExprCast(e, _) |
             ast::ExprUnary(_, _, e) |
             ast::ExprParen(e) |

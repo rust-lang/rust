@@ -33,9 +33,9 @@ impl Drop for B {
 }
 
 pub fn main() {
-    let ret = do task::try {
+    let ret = task::try(proc() {
         let _a = A { b: B { foo: 3 } };
-    };
+    });
     assert!(ret.is_err());
     unsafe { assert!(dropped); }
 }

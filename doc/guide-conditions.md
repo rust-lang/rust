@@ -261,7 +261,7 @@ use std::task;
 fn main() {
 
     // Isolate failure within a subtask.
-    let result = do task::try {
+    let result = task::try(proc() {
 
         // The protected logic.
         let pairs = read_int_pairs();
@@ -269,7 +269,7 @@ fn main() {
             println!("{:4.4d}, {:4.4d}", a, b);
         }
 
-    };
+    });
     if result.is_err() {
             println!("parsing failed");
     }

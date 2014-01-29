@@ -120,13 +120,13 @@ mod test {
     #[test]
     fn test_port_reader() {
         let (port, chan) = Chan::new();
-        do task::spawn {
+        task::spawn(proc() {
           chan.send(~[1u8, 2u8]);
           chan.send(~[]);
           chan.send(~[3u8, 4u8]);
           chan.send(~[5u8, 6u8]);
           chan.send(~[7u8, 8u8]);
-        }
+        });
 
         let mut reader = PortReader::new(port);
         let mut buf = ~[0u8, ..3];
@@ -172,7 +172,7 @@ mod test {
         writer.write_be_u32(42);
 
         let wanted = ~[0u8, 0u8, 0u8, 42u8];
-        let got = do task::try { port.recv() }.unwrap();
+        let got = task::try(proc() { port.recv() }).unwrap();
         assert_eq!(wanted, got);
 
         let mut err = None;

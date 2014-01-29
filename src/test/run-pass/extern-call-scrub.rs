@@ -44,9 +44,9 @@ fn count(n: uint) -> uint {
 pub fn main() {
     // Make sure we're on a task with small Rust stacks (main currently
     // has a large stack)
-    do task::spawn {
+    task::spawn(proc() {
         let result = count(12u);
         info!("result = {}", result);
         assert_eq!(result, 2048u);
-    };
+    });
 }

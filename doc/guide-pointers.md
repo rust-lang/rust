@@ -221,9 +221,9 @@ struct Point {
 
 fn main() {
     let a = Point { x: 10, y: 20 };
-    do spawn {
+    spawn(proc() {
         println!("{}", a.x);
-    }
+    });
 }
 ~~~
 
@@ -238,9 +238,9 @@ struct Point {
 
 fn main() {
     let a = ~Point { x: 10, y: 20 };
-    do spawn {
+    spawn(proc() {
         println!("{}", a.x);
-    }
+    });
 }
 ~~~
 

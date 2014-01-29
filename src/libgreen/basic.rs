@@ -247,18 +247,18 @@ mod test {
 
     #[test]
     fn smoke() {
-        do run {}
+        run(proc() {});
     }
 
     #[test]
     fn some_channels() {
-        do run {
+        run(proc() {
             let (p, c) = Chan::new();
-            do spawn {
+            spawn(proc() {
                 c.send(());
-            }
+            });
             p.recv();
-        }
+        });
     }
 
     #[test]
@@ -269,13 +269,13 @@ mod test {
         });
 
         for _ in range(0, 20) {
-            do pool.spawn(TaskOpts::new()) {
+            pool.spawn(TaskOpts::new(), proc() {
                 let (p, c) = Chan::new();
-                do spawn {
+                spawn(proc() {
                     c.send(());
-                }
+                });
                 p.recv();
-            }
+            });
         }
 
         pool.shutdown();

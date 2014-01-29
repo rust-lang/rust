@@ -46,10 +46,10 @@ pub fn boot(helper: fn(imp::signal, Port<Req>)) {
             let (receive, send) = imp::new();
             HELPER_SIGNAL = send;
 
-            do task::spawn {
+            task::spawn(proc() {
                 bookkeeping::decrement();
                 helper(receive, msgp);
-            }
+            });
 
             rt::at_exit(proc() { shutdown() });
         })

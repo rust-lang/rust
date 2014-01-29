@@ -236,9 +236,9 @@ extern mod green;
 
 #[start]
 fn start(argc: int, argv: **u8) -> int {
-    do green::start(argc, argv) {
+    green::start(argc, argv, proc() {
         main();
-    }
+    })
 }
 
 fn main() {}

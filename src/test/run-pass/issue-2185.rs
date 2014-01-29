@@ -51,16 +51,16 @@ impl iterable<uint> for 'static ||uint|| {
 }
 
 fn filter<A,IA:iterable<A>>(self: IA, prd: 'static |A| -> bool, blk: |A|) {
-    do self.iter |a| {
+    self.iter(|a| {
         if prd(a) { blk(a) }
-    }
+    });
 }
 
 fn foldl<A,B,IA:iterable<A>>(self: IA, b0: B, blk: |B, A| -> B) -> B {
     let mut b = b0;
-    do self.iter |a| {
+    self.iter(|a| {
         b = blk(b, a);
-    }
+    });
     b
 }
 

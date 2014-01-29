@@ -439,7 +439,7 @@ mod test {
         let (p, c) = SharedChan::new();
         for _ in range(0, 10) {
             let c = c.clone();
-            do spawn {
+            spawn(proc() {
                 for _ in range(0, 4) { task::deschedule() }
                 unsafe {
                     o.doit(|| {
@@ -449,7 +449,7 @@ mod test {
                     assert!(run);
                 }
                 c.send(());
-            }
+            });
         }
 
         unsafe {
@@ -479,11 +479,11 @@ mod test {
         static mut lock: Mutex = MUTEX_INIT;
         unsafe {
             lock.lock();
-            let t = do Thread::start {
+            let t = Thread::start(proc() {
                 lock.lock();
                 lock.signal();
                 lock.unlock();
-            };
+            });
             lock.wait();
             lock.unlock();
             t.join();
