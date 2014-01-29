@@ -232,20 +232,17 @@ endif
 
 define INSTALL_RUNTIME_TARGET_N
 install-runtime-target-$(1)-host-$(2): $$(TSREQ$$(ISTAGE)_T_$(1)_H_$(2)) $$(SREQ$$(ISTAGE)_T_$(1)_H_$(2))
-	$(Q)$(call ADB_SHELL,mkdir,$(CFG_RUNTIME_PUSH_DIR))
-	$(Q)$(call ADB_PUSH,$$(TL$(1)$(2))/$$(STDLIB_GLOB_$(1)),$(CFG_RUNTIME_PUSH_DIR))
-	$(Q)$(call ADB_PUSH,$$(TL$(1)$(2))/$$(EXTRALIB_GLOB_$(1)),$(CFG_RUNTIME_PUSH_DIR))
-	$(Q)$(call ADB_PUSH,$$(TL$(1)$(2))/$$(LIBRUSTUV_GLOB_$(1)),$(CFG_RUNTIME_PUSH_DIR))
-	$(Q)$(call ADB_PUSH,$$(TL$(1)$(2))/$$(LIBGREEN_GLOB_$(1)),$(CFG_RUNTIME_PUSH_DIR))
+	$$(Q)$$(call ADB_SHELL,mkdir,$(CFG_RUNTIME_PUSH_DIR))
+	$$(Q)$$(foreach crate,$$(TARGET_CRATES),\
+	    $$(call ADB_PUSH,$$(TL$(1)$(2))/$$(call CFG_LIB_GLOB_$(1),$$(crate)),\
+			$$(CFG_RUNTIME_PUSH_DIR));)
 endef
 
 define INSTALL_RUNTIME_TARGET_CLEANUP_N
 install-runtime-target-$(1)-cleanup:
-	$(Q)$(call ADB,remount)
-	$(Q)$(call ADB_SHELL,rm,$(CFG_RUNTIME_PUSH_DIR)/$(STDLIB_GLOB_$(1)))
-	$(Q)$(call ADB_SHELL,rm,$(CFG_RUNTIME_PUSH_DIR)/$(EXTRALIB_GLOB_$(1)))
-	$(Q)$(call ADB_SHELL,rm,$(CFG_RUNTIME_PUSH_DIR)/$(LIBRUSTUV_GLOB_$(1)))
-	$(Q)$(call ADB_SHELL,rm,$(CFG_RUNTIME_PUSH_DIR)/$(LIBGREEN_GLOB_$(1)))
+	$$(Q)$$(call ADB,remount)
+	$$(Q)$$(foreach crate,$$(TARGET_CRATES),\
+	    $$(call ADB_SHELL,rm,$$(CFG_RUNTIME_PUSH_DIR)/$$(call CFG_LIB_GLOB_$(1),$$(crate)));)
 endef
 
 $(eval $(call INSTALL_RUNTIME_TARGET_N,arm-linux-androideabi,$(CFG_BUILD)))
