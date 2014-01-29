@@ -11,15 +11,15 @@
 // This test creates a bunch of tasks that simultaneously send to each
 // other in a ring. The messages should all be basically
 // independent.
-// This is like msgsend-ring-pipes but adapted to use concurrency::arcs.
+// This is like msgsend-ring-pipes but adapted to use Arcs.
 
-// This also serves as a pipes test, because concurrency::arcs are implemented with pipes.
+// This also serves as a pipes test, because Arcs are implemented with pipes.
 
 extern mod extra;
-extern mod concurrency;
+extern mod sync;
 
-use concurrency::arc;
-use concurrency::future::Future;
+use sync::arc;
+use sync::future::Future;
 use extra::time;
 use std::os;
 use std::uint;

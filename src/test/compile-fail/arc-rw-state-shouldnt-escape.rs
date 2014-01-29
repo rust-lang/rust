@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod concurrency;
-use concurrency::arc;
+extern mod sync;
+use sync::arc;
 fn main() {
     let x = ~arc::RWArc::new(1);
     let mut y = None; //~ ERROR lifetime of variable does not enclose its declaration

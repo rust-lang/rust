@@ -9,8 +9,8 @@
 // except according to those terms.
 
 // xfail-fast
-extern mod concurrency;
-use concurrency::arc;
+extern mod sync;
+use sync::arc;
 fn dispose(_x: arc::Arc<bool>) { }
 
 pub fn main() {

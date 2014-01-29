@@ -40,7 +40,7 @@ li {list-style-type: none; }
 * [The `arena` allocation library](arena/index.html)
 * [The `flate` compression library](flate/index.html)
 * [The `glob` file path matching library](glob/index.html)
-* [The `concurrency` mechanisms and primitives library](concurrency/index.html)
+* [The `sync` mechanisms and primitives library](concurrency/index.html)
 
 # Tooling
 

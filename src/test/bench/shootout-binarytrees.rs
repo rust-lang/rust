@@ -10,10 +10,10 @@
 
 extern mod extra;
 extern mod arena;
-extern mod concurrency;
+extern mod sync;
 
 use std::iter::range_step;
-use concurrency::future::Future;
+use sync::future::Future;
 use arena::TypedArena;
 
 enum Tree<'a> {

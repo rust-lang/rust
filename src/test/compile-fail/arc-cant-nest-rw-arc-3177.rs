@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod concurrency;
-use concurrency::arc::RWArc;
+extern mod sync;
+use sync::arc::RWArc;
 
 fn main() {
     let arc1  = RWArc::new(true);

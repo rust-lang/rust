@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod concurrency;
+extern mod sync;
 
-use concurrency::future::Future;
+use sync::future::Future;
 
 fn main() {
     let f = Future::from_value(());

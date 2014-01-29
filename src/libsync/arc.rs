@@ -18,9 +18,6 @@
  * With simple pipes, without Arc, a copy would have to be made for each task.
  *
  * ```rust
- * extern mod concurrency;
- *
- * use concurrency::arc::Arc;
  * use std::{rand, vec};
  *
  * let numbers = vec::from_fn(100, |i| (i as f32) * rand::random());
@@ -418,10 +415,6 @@ impl<T:Freeze + Send> RWArc<T> {
      * # Example
      *
      * ```rust
-     * extern mod concurrency;
-     *
-     * use concurrency::arc::RWArc;
-     *
      * let arc = RWArc::new(1);
      * arc.write_downgrade(|mut write_token| {
      *     write_token.write_cond(|state, condvar| {

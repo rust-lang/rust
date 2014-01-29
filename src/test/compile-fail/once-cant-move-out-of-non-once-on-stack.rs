@@ -11,8 +11,8 @@
 // Testing guarantees provided by once functions.
 // This program would segfault if it were legal.
 
-extern mod concurrency;
-use concurrency::arc;
+extern mod sync;
+use sync::arc;
 
 fn foo(blk: ||) {
     blk();
