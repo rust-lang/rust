@@ -11,7 +11,9 @@
 
 use metadata::csearch;
 use middle::astencode;
+
 use middle::ty;
+use middle::typeck::astconv;
 use middle;
 
 use syntax::{ast, ast_map, ast_util};
@@ -445,8 +447,17 @@ pub fn eval_const_expr_partial<T: ty::ExprTyProvider>(tcx: &T, e: &Expr)
           _ => Err(~"Bad operands for binary")
         }
       }
-      ExprCast(base, _) => {
-        let ety = tcx.expr_ty(e);
+      ExprCast(base, target_ty) => {
+        // This tends to get called w/o the type actually having been
+        // populated in the ctxt, which was causing things to blow up
+        // (#5900). Fall back to doing a limited lookup to get past it.
+        let ety = ty::expr_ty_opt(tcx.ty_ctxt(), e)
+                .or_else(|| astconv::ast_ty_to_prim_ty(tcx.ty_ctxt(), target_ty))
+                .unwrap_or_else(|| tcx.ty_ctxt().sess.span_fatal(
+                    target_ty.span,
+                    format!("Target type not found for const cast")
+                ));
+
         let base = eval_const_expr_partial(tcx, base);
         match base {
             Err(_) => base,

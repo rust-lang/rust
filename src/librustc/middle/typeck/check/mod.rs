@@ -4285,4 +4285,3 @@ pub fn check_intrinsic_type(ccx: @CrateCtxt, it: &ast::ForeignItem) {
                      ppaux::ty_to_str(ccx.tcx, fty)));
     }
 }
-
