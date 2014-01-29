@@ -70,7 +70,6 @@ pub mod tempfile;
 pub mod glob;
 pub mod term;
 pub mod time;
-pub mod arena;
 pub mod base64;
 pub mod workcache;
 pub mod enum_set;

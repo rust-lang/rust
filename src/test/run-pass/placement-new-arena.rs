@@ -10,8 +10,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern mod extra;
-use extra::arena::Arena;
+extern mod arena;
+use arena::Arena;
 
 pub fn main() {
     let mut arena = Arena::new();

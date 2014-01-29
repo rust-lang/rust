@@ -37,6 +37,7 @@ li {list-style-type: none; }
 * [The Rust parser, `libsyntax`](syntax/index.html)
 * [The Rust compiler, `librustc`](rustc/index.html)
 
+* [The `arena` allocation library](arena/index.html)
 * [The `flate` compression library](flate/index.html)
 
 # Tooling
