@@ -139,7 +139,6 @@ pub fn u64_from_be_bytes(data: &[u8],
 
 #[cfg(test)]
 mod test {
-    use unstable::finally::Finally;
     use prelude::*;
     use io::{MemReader, MemWriter};
     use io::{io_error, placeholder_error};
@@ -371,13 +370,13 @@ mod test {
         };
         // FIXME (#7049): Figure out some other way to do this.
         //let buf = RefCell::new(~[8, 9]);
-        (|| {
-            //reader.push_bytes(buf.borrow_mut().get(), 4);
-        }).finally(|| {
+        finally!(
             // NB: Using rtassert here to trigger abort on failure since this is a should_fail test
             // FIXME: #7049 This fails because buf is still borrowed
             //rtassert!(buf.borrow().get() == ~[8, 9, 10]);
-        })
+            );
+
+        //reader.push_bytes(buf.borrow_mut().get(), 4);
     }
 
     #[test]

@@ -112,6 +112,8 @@ pub mod bool;
 pub mod char;
 pub mod tuple;
 
+pub mod scope;
+
 pub mod vec;
 pub mod vec_ng;
 pub mod at_vec;
@@ -226,6 +228,7 @@ mod std {
     pub use option;
     pub use os;
     pub use rt;
+    pub use scope;
     pub use str;
     pub use to_bytes;
     pub use to_str;

@@ -34,7 +34,6 @@ use send_str::SendStr;
 use sync::arc::UnsafeArc;
 use sync::atomics::{AtomicUint, SeqCst};
 use task::{TaskResult, TaskOpts};
-use unstable::finally::Finally;
 
 /// The Task struct represents all state associated with a rust
 /// task. There are at this point two primary "subtypes" of task,
@@ -117,8 +116,9 @@ impl Task {
         // client-specified code and catch any failures.
         let try_block = || {
 
-            // Run the task main function, then do some cleanup.
-            f.finally(|| {
+            // Register the clean up to run after we run the main task
+            // function.
+            finally!({
                 fn close_outputs() {
                     let mut task = Local::borrow(None::<Task>);
                     let logger = task.get().logger.take();
@@ -171,7 +171,9 @@ impl Task {
                 // runtime-provided type which we have control over what the
                 // destructor does.
                 close_outputs();
-            })
+            });
+
+            f()
         };
 
         unsafe { (*handle).unwinder.try(try_block); }

@@ -301,7 +301,6 @@ use str;
 use str::{StrSlice, OwnedStr};
 use to_str::ToStr;
 use uint;
-use unstable::finally::Finally;
 use vec::{OwnedVector, MutableVector, ImmutableVector, OwnedCloneableVector};
 use vec;
 
@@ -544,22 +543,21 @@ pub trait Reader {
 
             buf.reserve_additional(len);
             buf.set_len(start_len + len);
+            finally!(buf.set_len(start_len + total_read));
 
-            (|| {
-                while total_read < len {
-                    let len = buf.len();
-                    let slice = buf.mut_slice(start_len + total_read, len);
-                    match self.read(slice) {
-                        Some(nread) => {
-                            total_read += nread;
-                        }
-                        None => {
-                            io_error::cond.raise(standard_error(EndOfFile));
-                            break;
-                        }
+            while total_read < len {
+                let len = buf.len();
+                let slice = buf.mut_slice(start_len + total_read, len);
+                match self.read(slice) {
+                    Some(nread) => {
+                        total_read += nread;
+                    }
+                    None => {
+                        io_error::cond.raise(standard_error(EndOfFile));
+                        break;
                     }
                 }
-            }).finally(|| buf.set_len(start_len + total_read))
+            }
         }
     }
 

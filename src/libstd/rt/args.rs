@@ -70,7 +70,6 @@ mod imp {
     use ptr::RawPtr;
     use iter::Iterator;
     #[cfg(not(test))] use str;
-    use unstable::finally::Finally;
     use unstable::mutex::{Mutex, MUTEX_INIT};
     use util;
     #[cfg(not(test))] use vec;
@@ -114,16 +113,11 @@ mod imp {
     }
 
     fn with_lock<T>(f: || -> T) -> T {
-        (|| {
-            unsafe {
-                lock.lock();
-                f()
-            }
-        }).finally(|| {
-            unsafe {
-                lock.unlock();
-            }
-        })
+        unsafe {
+            lock.lock();
+            finally!(lock.unlock());
+            f()
+        }
     }
 
     fn get_global_ptr() -> *mut Option<~~[~str]> {
@@ -142,7 +136,6 @@ mod imp {
     mod tests {
         use prelude::*;
         use super::*;
-        use unstable::finally::Finally;
 
         #[test]
         fn smoke_test() {
@@ -156,14 +149,11 @@ mod imp {
             assert!(take() == Some(expected.clone()));
             assert!(take() == None);
 
-            (|| {
-            }).finally(|| {
-                // Restore the actual global state.
-                match saved_value {
+            // Restore the actual global state.
+            finally!(match saved_value {
                     Some(ref args) => put(args.clone()),
                     None => ()
-                }
-            })
+                })
         }
     }
 }
