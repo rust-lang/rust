@@ -315,7 +315,6 @@ mod tests {
     use num;
     use num::CheckedDiv;
     use num::Bitwise;
-    use mem;
     use u16;
 
     #[test]
