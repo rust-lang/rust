@@ -118,7 +118,10 @@ impl io::Reader for FileDesc {
 
 impl io::Writer for FileDesc {
     fn write(&mut self, buf: &[u8]) {
-        self.inner_write(buf);
+        match self.inner_write(buf) {
+            Ok(()) => {}
+            Err(e) => { io::io_error::cond.raise(e); }
+        }
     }
 }
 
@@ -276,7 +279,7 @@ impl rtio::RtioFileStream for FileDesc {
                 _ => Ok(())
             }
         };
-        self.seek(orig_pos as i64, io::SeekSet);
+        let _ = self.seek(orig_pos as i64, io::SeekSet);
         return ret;
     }
     #[cfg(unix)]
@@ -383,12 +386,10 @@ impl rtio::RtioFileStream for CFile {
     }
 
     fn pread(&mut self, buf: &mut [u8], offset: u64) -> Result<int, IoError> {
-        self.flush();
-        self.fd.pread(buf, offset)
+        self.flush().and_then(|()| self.fd.pread(buf, offset))
     }
     fn pwrite(&mut self, buf: &[u8], offset: u64) -> Result<(), IoError> {
-        self.flush();
-        self.fd.pwrite(buf, offset)
+        self.flush().and_then(|()| self.fd.pwrite(buf, offset))
     }
     fn seek(&mut self, pos: i64, style: io::SeekStyle) -> Result<u64, IoError> {
         let whence = match style {
@@ -412,16 +413,13 @@ impl rtio::RtioFileStream for CFile {
         }
     }
     fn fsync(&mut self) -> Result<(), IoError> {
-        self.flush();
-        self.fd.fsync()
+        self.flush().and_then(|()| self.fd.fsync())
     }
     fn datasync(&mut self) -> Result<(), IoError> {
-        self.flush();
-        self.fd.fsync()
+        self.flush().and_then(|()| self.fd.fsync())
     }
     fn truncate(&mut self, offset: i64) -> Result<(), IoError> {
-        self.flush();
-        self.fd.truncate(offset)
+        self.flush().and_then(|()| self.fd.truncate(offset))
     }
 }
 

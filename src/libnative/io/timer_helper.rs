@@ -101,7 +101,7 @@ mod imp {
     }
 
     pub fn signal(fd: libc::c_int) {
-        FileDesc::new(fd, false).inner_write([0]);
+        FileDesc::new(fd, false).inner_write([0]).unwrap();
     }
 
     pub fn close(fd: libc::c_int) {

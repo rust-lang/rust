@@ -105,6 +105,9 @@ pub enum Lint {
     Experimental,
     Unstable,
 
+    UnusedMustUse,
+    UnusedResult,
+
     Warnings,
 }
 
@@ -356,12 +359,26 @@ static lint_table: &'static [(&'static str, LintSpec)] = &[
         desc: "unknown features found in crate-level #[feature] directives",
         default: deny,
     }),
-     ("unknown_crate_type",
-     LintSpec {
-         lint: UnknownCrateType,
-         desc: "unknown crate type found in #[crate_type] directive",
-         default: deny,
-     }),
+    ("unknown_crate_type",
+    LintSpec {
+        lint: UnknownCrateType,
+        desc: "unknown crate type found in #[crate_type] directive",
+        default: deny,
+    }),
+
+    ("unused_must_use",
+    LintSpec {
+        lint: UnusedMustUse,
+        desc: "unused result of an type flagged as #[must_use]",
+        default: warn,
+    }),
+
+    ("unused_result",
+    LintSpec {
+        lint: UnusedResult,
+        desc: "unused result of an expression in a statement",
+        default: allow,
+    }),
 ];
 
 /*
@@ -934,7 +951,7 @@ static other_attrs: &'static [&'static str] = &[
     "crate_map", "cfg", "doc", "export_name", "link_section", "no_freeze",
     "no_mangle", "no_send", "static_assert", "unsafe_no_drop_flag", "packed",
     "simd", "repr", "deriving", "unsafe_destructor", "link", "phase",
-    "macro_export",
+    "macro_export", "must_use",
 
     //mod-level
     "path", "link_name", "link_args", "nolink", "macro_escape", "no_implicit_prelude",
@@ -1013,6 +1030,54 @@ fn check_path_statement(cx: &Context, s: &ast::Stmt) {
             }
         }
         _ => ()
+    }
+}
+
+fn check_unused_result(cx: &Context, s: &ast::Stmt) {
+    let expr = match s.node {
+        ast::StmtSemi(expr, _) => expr,
+        _ => return
+    };
+    let t = ty::expr_ty(cx.tcx, expr);
+    match ty::get(t).sty {
+        ty::ty_nil | ty::ty_bot | ty::ty_bool => return,
+        _ => {}
+    }
+    match expr.node {
+        ast::ExprRet(..) => return,
+        _ => {}
+    }
+
+    let t = ty::expr_ty(cx.tcx, expr);
+    let mut warned = false;
+    match ty::get(t).sty {
+        ty::ty_struct(did, _) |
+        ty::ty_enum(did, _) => {
+            if ast_util::is_local(did) {
+                match cx.tcx.items.get(did.node) {
+                    ast_map::NodeItem(it, _) => {
+                        if attr::contains_name(it.attrs, "must_use") {
+                            cx.span_lint(UnusedMustUse, s.span,
+                                         "unused result which must be used");
+                            warned = true;
+                        }
+                    }
+                    _ => {}
+                }
+            } else {
+                csearch::get_item_attrs(cx.tcx.sess.cstore, did, |attrs| {
+                    if attr::contains_name(attrs, "must_use") {
+                        cx.span_lint(UnusedMustUse, s.span,
+                                     "unused result which must be used");
+                        warned = true;
+                    }
+                });
+            }
+        }
+        _ => {}
+    }
+    if !warned {
+        cx.span_lint(UnusedResult, s.span, "unused result");
     }
 }
 
@@ -1478,6 +1543,7 @@ impl<'a> Visitor<()> for Context<'a> {
 
     fn visit_stmt(&mut self, s: &ast::Stmt, _: ()) {
         check_path_statement(self, s);
+        check_unused_result(self, s);
 
         visit::walk_stmt(self, s, ());
     }
