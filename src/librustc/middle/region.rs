@@ -172,7 +172,14 @@ impl RegionMaps {
         }
 
         // else, locate the innermost terminating scope
-        let mut id = self.encl_scope(expr_id);
+        // if there's one. Static items, for instance, won't
+        // have an enclusing scope, hence no scope will be
+        // returned.
+        let mut id = match self.opt_encl_scope(expr_id) {
+            Some(i) => i,
+            None => { return None; }
+        };
+
         let terminating_scopes = self.terminating_scopes.borrow();
         while !terminating_scopes.get().contains(&id) {
             match self.opt_encl_scope(id) {

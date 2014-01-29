@@ -356,7 +356,7 @@ impl mem_categorization_ctxt {
                         // Convert a bare fn to a closure by adding NULL env.
                         // Result is an rvalue.
                         let expr_ty = ty::expr_ty_adjusted(self.tcx, expr);
-                        self.cat_rvalue_node(expr, expr_ty)
+                        self.cat_rvalue_node(expr.id(), expr.span(), expr_ty)
                     }
 
                     ty::AutoDerefRef(ty::AutoDerefRef {
@@ -365,7 +365,7 @@ impl mem_categorization_ctxt {
                         // Equivalent to &*expr or something similar.
                         // Result is an rvalue.
                         let expr_ty = ty::expr_ty_adjusted(self.tcx, expr);
-                        self.cat_rvalue_node(expr, expr_ty)
+                        self.cat_rvalue_node(expr.id(), expr.span(), expr_ty)
                     }
 
                     ty::AutoDerefRef(ty::AutoDerefRef {
@@ -398,7 +398,7 @@ impl mem_categorization_ctxt {
           ast::ExprUnary(_, ast::UnDeref, e_base) => {
             let method_map = self.method_map.borrow();
             if method_map.get().contains_key(&expr.id) {
-                return self.cat_rvalue_node(expr, expr_ty);
+                return self.cat_rvalue_node(expr.id(), expr.span(), expr_ty);
             }
 
             let base_cmt = self.cat_expr(e_base);
@@ -418,7 +418,7 @@ impl mem_categorization_ctxt {
           ast::ExprIndex(_, base, _) => {
             let method_map = self.method_map.borrow();
             if method_map.get().contains_key(&expr.id) {
-                return self.cat_rvalue_node(expr, expr_ty);
+                return self.cat_rvalue_node(expr.id(), expr.span(), expr_ty);
             }
 
             let base_cmt = self.cat_expr(base);
@@ -444,7 +444,7 @@ impl mem_categorization_ctxt {
           ast::ExprLit(..) | ast::ExprBreak(..) | ast::ExprMac(..) |
           ast::ExprAgain(..) | ast::ExprStruct(..) | ast::ExprRepeat(..) |
           ast::ExprInlineAsm(..) | ast::ExprBox(..) => {
-            return self.cat_rvalue_node(expr, expr_ty);
+            return self.cat_rvalue_node(expr.id(), expr.span(), expr_ty);
           }
 
           ast::ExprForLoop(..) => fail!("non-desugared expr_for_loop")
@@ -457,13 +457,18 @@ impl mem_categorization_ctxt {
                    expr_ty: ty::t,
                    def: ast::Def)
                    -> cmt {
+        debug!("cat_def: id={} expr={}",
+               id, ty_to_str(self.tcx, expr_ty));
+
+
         match def {
+          ast::DefStruct(..) | ast::DefVariant(..) => {
+                self.cat_rvalue_node(id, span, expr_ty)
+          }
           ast::DefFn(..) | ast::DefStaticMethod(..) | ast::DefMod(_) |
           ast::DefForeignMod(_) | ast::DefStatic(_, false) |
-          ast::DefUse(_) | ast::DefVariant(..) |
-          ast::DefTrait(_) | ast::DefTy(_) | ast::DefPrimTy(_) |
-          ast::DefTyParam(..) | ast::DefStruct(..) |
-          ast::DefTyParamBinder(..) | ast::DefRegion(_) |
+          ast::DefUse(_) | ast::DefTrait(_) | ast::DefTy(_) | ast::DefPrimTy(_) |
+          ast::DefTyParam(..) | ast::DefTyParamBinder(..) | ast::DefRegion(_) |
           ast::DefLabel(_) | ast::DefSelfTy(..) | ast::DefMethod(..) => {
               @cmt_ {
                   id:id,
@@ -571,16 +576,13 @@ impl mem_categorization_ctxt {
         }
     }
 
-    pub fn cat_rvalue_node<N:ast_node>(&self,
-                                       node: &N,
-                                       expr_ty: ty::t) -> cmt {
-        match self.tcx.region_maps.temporary_scope(node.id()) {
+    pub fn cat_rvalue_node(&self, id: ast::NodeId, span: Span, expr_ty: ty::t) -> cmt {
+        match self.tcx.region_maps.temporary_scope(id) {
             Some(scope) => {
-                self.cat_rvalue(node.id(), node.span(),
-                                ty::ReScope(scope), expr_ty)
+                self.cat_rvalue(id, span, ty::ReScope(scope), expr_ty)
             }
             None => {
-                self.cat_rvalue(node.id(), node.span(), ty::ReStatic, expr_ty)
+                self.cat_rvalue(id, span, ty::ReStatic, expr_ty)
             }
         }
     }
@@ -986,7 +988,7 @@ impl mem_categorization_ctxt {
               }
               for &slice_pat in slice.iter() {
                   let slice_ty = self.pat_ty(slice_pat);
-                  let slice_cmt = self.cat_rvalue_node(pat, slice_ty);
+                  let slice_cmt = self.cat_rvalue_node(pat.id(), pat.span(), slice_ty);
                   self.cat_pattern(slice_cmt, slice_pat, |x,y| op(x,y));
               }
               for &after_pat in after.iter() {
