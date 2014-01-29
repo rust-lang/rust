@@ -26,11 +26,6 @@ endef
 $(foreach t,$(CFG_TARGET),$(eval $(call DEF_OSTYPE_VAR,$(t))))
 $(foreach t,$(CFG_TARGET),$(info cfg: os for $(t) is $(OSTYPE_$(t))))
 
-# FIXME: no-omit-frame-pointer is just so that task_start_wrapper
-# has a frame pointer and the stack walker can understand it. Turning off
-# frame pointers everywhere is overkill
-CFG_GCCISH_CFLAGS += -fno-omit-frame-pointer
-
 # On Darwin, we need to run dsymutil so the debugging information ends
 # up in the right place.  On other platforms, it automatically gets
 # embedded into the executable, so use a no-op command.
@@ -160,7 +155,6 @@ CFG_DEF_SUFFIX_x86_64-unknown-linux-gnu := .linux.def
 CFG_LLC_FLAGS_x86_64-unknown-linux-gnu :=
 CFG_INSTALL_NAME_x86_64-unknown-linux-gnu =
 CFG_LIBUV_LINK_FLAGS_x86_64-unknown-linux-gnu =
-CFG_LLVM_BUILD_ENV_x86_64-unknown-linux-gnu="CXXFLAGS=-fno-omit-frame-pointer"
 CFG_EXE_SUFFIX_x86_64-unknown-linux-gnu =
 CFG_WINDOWSY_x86_64-unknown-linux-gnu :=
 CFG_UNIXY_x86_64-unknown-linux-gnu := 1
@@ -188,7 +182,6 @@ CFG_DEF_SUFFIX_i686-unknown-linux-gnu := .linux.def
 CFG_LLC_FLAGS_i686-unknown-linux-gnu :=
 CFG_INSTALL_NAME_i686-unknown-linux-gnu =
 CFG_LIBUV_LINK_FLAGS_i686-unknown-linux-gnu =
-CFG_LLVM_BUILD_ENV_i686-unknown-linux-gnu="CXXFLAGS=-fno-omit-frame-pointer"
 CFG_EXE_SUFFIX_i686-unknown-linux-gnu =
 CFG_WINDOWSY_i686-unknown-linux-gnu :=
 CFG_UNIXY_i686-unknown-linux-gnu := 1
