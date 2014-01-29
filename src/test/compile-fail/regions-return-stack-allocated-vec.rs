@@ -8,14 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// xfail-test
-fn function() -> &mut [int] {
-    let mut x: &'static mut [int] = &[1,2,3];
-    x[0] = 12345;
-    x //~ ERROR bad
+// Test that we cannot return a stack allocated slice
+
+fn function(x: int) -> &'static [int] {
+    &[x] //~ ERROR mismatched types
 }
 
 fn main() {
-    let x = function();
-    error!("%?", x);
+    let x = function(1);
+    let y = x[0];
 }
