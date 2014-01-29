@@ -180,7 +180,7 @@ impl Type {
     }
 
     pub fn vtable() -> Type {
-        Type::array(&Type::i8().ptr_to(), 1)
+        Type::array(&Type::i8p().ptr_to(), 1)
     }
 
     pub fn generic_glue_fn(cx: &CrateContext) -> Type {
@@ -246,13 +246,13 @@ impl Type {
     }
 
     pub fn opaque_trait(ctx: &CrateContext, store: ty::TraitStore) -> Type {
-        let tydesc_ptr = ctx.tydesc_type.ptr_to();
+        let vtable = Type::glue_fn(Type::i8p()).ptr_to().ptr_to();
         let box_ty = match store {
             ty::BoxTraitStore => Type::at_box(ctx, Type::i8()),
             ty::UniqTraitStore => Type::i8(),
             ty::RegionTraitStore(..) => Type::i8()
         };
-        Type::struct_([tydesc_ptr, box_ty.ptr_to()], false)
+        Type::struct_([vtable, box_ty.ptr_to()], false)
     }
 
     pub fn kind(&self) -> TypeKind {
