@@ -1087,7 +1087,6 @@ pub fn test_num<T:Num + NumCast>(ten: T, two: T) {
 mod tests {
     use prelude::*;
     use super::*;
-    use num;
     use i8;
     use i16;
     use i32;

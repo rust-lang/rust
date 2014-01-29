@@ -909,7 +909,6 @@ mod tests {
 
     use num::*;
     use num;
-    use mem;
 
     #[test]
     fn test_num() {
