@@ -2818,14 +2818,15 @@ match_pat : pat [ ".." pat ] ? [ "if" expr ] ;
 
 A `match` expression branches on a *pattern*. The exact form of matching that
 occurs depends on the pattern. Patterns consist of some combination of
-literals, destructured enum constructors, structures, records and tuples, variable binding
-specifications, wildcards (`..`), and placeholders (`_`). A `match` expression has a *head
-expression*, which is the value to compare to the patterns. The type of the
-patterns must equal the type of the head expression.
+literals, destructured vectors or enum constructors, structures, records and
+tuples, variable binding specifications, wildcards (`..`), and placeholders
+(`_`). A `match` expression has a *head expression*, which is the value to
+compare to the patterns. The type of the patterns must equal the type of the
+head expression.
 
-In a pattern whose head expression has an `enum` type, a placeholder (`_`) stands for a
-*single* data field, whereas a wildcard `..` stands for *all* the fields of a particular
-variant. For example:
+In a pattern whose head expression has an `enum` type, a placeholder (`_`)
+stands for a *single* data field, whereas a wildcard `..` stands for *all* the
+fields of a particular variant. For example:
 
 ~~~~
 enum List<X> { Nil, Cons(X, ~List<X>) }
@@ -2839,11 +2840,35 @@ match x {
 }
 ~~~~
 
-The first pattern matches lists constructed by applying `Cons` to any head value, and a
-tail value of `~Nil`. The second pattern matches _any_ list constructed with `Cons`,
-ignoring the values of its arguments. The difference between `_` and `..` is that the pattern
-`C(_)` is only type-correct if `C` has exactly one argument, while the pattern `C(..)` is
-type-correct for any enum variant `C`, regardless of how many arguments `C` has.
+The first pattern matches lists constructed by applying `Cons` to any head
+value, and a tail value of `~Nil`. The second pattern matches _any_ list
+constructed with `Cons`, ignoring the values of its arguments. The difference
+between `_` and `..` is that the pattern `C(_)` is only type-correct if `C` has
+exactly one argument, while the pattern `C(..)` is type-correct for any enum
+variant `C`, regardless of how many arguments `C` has.
+
+Used inside a vector pattern, `..` stands for any number of elements. This
+wildcard can be used at most once for a given vector, which implies that it
+cannot be used to specifically match elements that are at an unknown distance
+from both ends of a vector, like `[.., 42, ..]`. If followed by a variable name,
+it will bind the corresponding slice to the variable. Example:
+
+~~~~
+fn is_symmetric(list: &[uint]) -> bool {
+    match list {
+        [] | [_]                   => true,
+        [x, ..inside, y] if x == y => is_symmetric(inside),
+        _                          => false
+    }
+}
+
+fn main() {
+    let sym     = &[0, 1, 4, 2, 4, 1, 0];
+    let not_sym = &[0, 1, 7, 2, 4, 1, 0];
+    assert!(is_symmetric(sym));
+    assert!(!is_symmetric(not_sym));
+}
+~~~~
 
 A `match` behaves differently depending on whether or not the head expression
 is an [lvalue or an rvalue](#lvalues-rvalues-and-temporaries).
@@ -2926,7 +2951,7 @@ let z = match x { &0 => "zero", _ => "some" };
 assert_eq!(y, z);
 ~~~~
 
-A pattern that's just an identifier, like `Nil` in the previous answer,
+A pattern that's just an identifier, like `Nil` in the previous example,
 could either refer to an enum variant that's in scope, or bind a new variable.
 The compiler resolves this ambiguity by forbidding variable bindings that occur
 in `match` patterns from shadowing names of variants that are in scope.
