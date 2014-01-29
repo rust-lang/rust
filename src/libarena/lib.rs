@@ -15,10 +15,17 @@
 //! of individual objects while the arena itself is still alive. The benefit
 //! of an arena is very fast allocation; just a pointer bump.
 
+#[crate_id = "arena#0.10-pre"];
+#[crate_type = "rlib"];
+#[crate_type = "dylib"];
+#[license = "MIT/ASL2"];
 #[allow(missing_doc)];
+#[feature(managed_boxes)];
 
-use list::{List, Cons, Nil};
-use list;
+extern mod extra;
+
+use extra::list::{List, Cons, Nil};
+use extra::list;
 
 use std::at_vec;
 use std::cast::{transmute, transmute_mut, transmute_mut_region};
@@ -493,7 +500,7 @@ impl<T> Drop for TypedArena<T> {
 #[cfg(test)]
 mod test {
     use super::{Arena, TypedArena};
-    use test::BenchHarness;
+    use extra::test::BenchHarness;
 
     struct Point {
         x: int,

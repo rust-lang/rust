@@ -12,8 +12,9 @@
 // xfail-win32 TempDir may cause IoError on windows: #10462
 
 extern mod extra;
+extern mod glob;
 
-use extra::glob::glob;
+use glob::glob;
 use extra::tempfile::TempDir;
 use std::unstable::finally::Finally;
 use std::{os, unstable};

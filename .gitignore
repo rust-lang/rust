@@ -74,8 +74,10 @@ src/.DS_Store
 /doc/html
 /doc/latex
 /doc/std
+/doc/arena
 /doc/extra
 /doc/flate
+/doc/glob
 /doc/green
 /doc/native
 /doc/rustc

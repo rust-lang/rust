@@ -23,6 +23,11 @@
  * `glob`/`fnmatch` functions.
  */
 
+#[crate_id = "glob#0.10-pre"];
+#[crate_type = "rlib"];
+#[crate_type = "dylib"];
+#[license = "MIT/ASL2"];
+
 use std::{os, path};
 use std::io;
 use std::io::fs;
@@ -53,7 +58,7 @@ pub struct Paths {
 /// `puppies.jpg` and `hamsters.gif`:
 ///
 /// ```rust
-/// use extra::glob::glob;
+/// use glob::glob;
 ///
 /// for path in glob("/media/pictures/*.jpg") {
 ///     println!("{}", path.display());
@@ -297,7 +302,7 @@ impl Pattern {
      * # Example
      *
      * ```rust
-     * use extra::glob::Pattern;
+     * use glob::Pattern;
      *
      * assert!(Pattern::new("c?t").matches("cat"));
      * assert!(Pattern::new("k[!e]tteh").matches("kitteh"));
@@ -537,7 +542,7 @@ impl MatchOptions {
 #[cfg(test)]
 mod test {
     use std::os;
-    use super::*;
+    use super::{glob, Pattern, MatchOptions};
 
     #[test]
     fn test_absolute_pattern() {

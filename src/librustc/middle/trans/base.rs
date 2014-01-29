@@ -68,7 +68,7 @@ use util::common::indenter;
 use util::ppaux::{Repr, ty_to_str};
 use util::sha2::Sha256;
 
-use extra::arena::TypedArena;
+use arena::TypedArena;
 use extra::time;
 use std::c_str::ToCStr;
 use std::cell::{Cell, RefCell};

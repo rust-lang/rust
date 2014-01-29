@@ -9,10 +9,11 @@
 // except according to those terms.
 
 extern mod extra;
+extern mod arena;
 
 use std::iter::range_step;
 use extra::future::Future;
-use extra::arena::TypedArena;
+use arena::TypedArena;
 
 enum Tree<'a> {
     Nil,

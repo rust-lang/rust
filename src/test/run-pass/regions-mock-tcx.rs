@@ -16,10 +16,9 @@
 // - Multiple lifetime parameters
 // - Arenas
 
-extern mod extra;
+extern mod arena;
 
-use extra::arena;
-use extra::arena::Arena;
+use arena::Arena;
 use std::hashmap::HashMap;
 use std::cast;
 use std::libc;
