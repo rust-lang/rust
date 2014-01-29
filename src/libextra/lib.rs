@@ -67,7 +67,6 @@ pub mod ebml;
 pub mod getopts;
 pub mod json;
 pub mod tempfile;
-pub mod glob;
 pub mod term;
 pub mod time;
 pub mod base64;

@@ -39,6 +39,7 @@ li {list-style-type: none; }
 
 * [The `arena` allocation library](arena/index.html)
 * [The `flate` compression library](flate/index.html)
+* [The `glob` file path matching library](glob/index.html)
 
 # Tooling
 
