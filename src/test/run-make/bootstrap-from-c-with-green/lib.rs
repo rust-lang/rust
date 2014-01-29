@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #[crate_id="boot#0.1"];
-#[crate_type="lib"];
+#[crate_type="dylib"];
 #[no_uv];
 
 extern mod rustuv;
