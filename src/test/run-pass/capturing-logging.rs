@@ -30,18 +30,18 @@ impl Logger for MyWriter {
 
 #[start]
 fn start(argc: int, argv: **u8) -> int {
-    do native::start(argc, argv) {
+    native::start(argc, argv, proc() {
         main();
-    }
+    })
 }
 
 fn main() {
     let (p, c) = Chan::new();
     let (mut r, w) = (PortReader::new(p), ChanWriter::new(c));
-    do spawn {
+    spawn(proc() {
         set_logger(~MyWriter(w) as ~Logger);
         debug!("debug");
         info!("info");
-    }
+    });
     assert_eq!(r.read_to_str(), ~"info\n");
 }

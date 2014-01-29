@@ -10,10 +10,10 @@ extern {
 
 pub fn main() {
     unsafe {
-        do run_in_bare_thread() {
+        run_in_bare_thread(proc() {
             let i = &100;
             rust_dbg_call(callback, cast::transmute(i));
-        }
+        });
     }
 }
 

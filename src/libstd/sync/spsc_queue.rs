@@ -315,7 +315,7 @@ mod test {
         fn stress_bound(bound: uint) {
             let (c, mut p) = queue(bound, ());
             let (port, chan) = Chan::new();
-            do native::task::spawn {
+            native::task::spawn(proc() {
                 let mut c = c;
                 for _ in range(0, 100000) {
                     loop {
@@ -327,7 +327,7 @@ mod test {
                     }
                 }
                 chan.send(());
-            }
+            });
             for _ in range(0, 100000) {
                 p.push(1);
             }

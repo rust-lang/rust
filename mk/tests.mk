@@ -156,16 +156,9 @@ $(info check: android device test dir $(CFG_ADB_TEST_DIR) ready \
  $(shell $(CFG_ADB) shell mkdir $(CFG_ADB_TEST_DIR)) \
  $(shell $(CFG_ADB) shell mkdir $(CFG_ADB_TEST_DIR)/tmp) \
  $(shell $(CFG_ADB) push $(S)src/etc/adb_run_wrapper.sh $(CFG_ADB_TEST_DIR) 1>/dev/null) \
- $(shell $(CFG_ADB) push $(TLIB2_T_arm-linux-androideabi_H_$(CFG_BUILD))/$(CFG_RUNTIME_arm-linux-androideabi) \
-                    $(CFG_ADB_TEST_DIR)) \
- $(shell $(CFG_ADB) push $(TLIB2_T_arm-linux-androideabi_H_$(CFG_BUILD))/$(STDLIB_GLOB_arm-linux-androideabi) \
-                    $(CFG_ADB_TEST_DIR)) \
- $(shell $(CFG_ADB) push $(TLIB2_T_arm-linux-androideabi_H_$(CFG_BUILD))/$(EXTRALIB_GLOB_arm-linux-androideabi) \
-                    $(CFG_ADB_TEST_DIR)) \
- $(shell $(CFG_ADB) push $(TLIB2_T_arm-linux-androideabi_H_$(CFG_BUILD))/$(LIBRUSTUV_GLOB_arm-linux-androideabi) \
-                    $(CFG_ADB_TEST_DIR)) \
- $(shell $(CFG_ADB) push $(TLIB2_T_arm-linux-androideabi_H_$(CFG_BUILD))/$(LIBGREEN_GLOB_arm-linux-androideabi) \
-                    $(CFG_ADB_TEST_DIR)) \
+ $(foreach crate,$(TARGET_CRATES),\
+    $(shell $(CFG_ADB) push $(TLIB2_T_arm-linux-androideabi_H_$(CFG_BUILD))/$(call CFG_LIB_GLOB_arm-linux-androideabi,$(crate)) \
+                    $(CFG_ADB_TEST_DIR)))\
  )
 else
 CFG_ADB_TEST_DIR=
@@ -342,10 +335,8 @@ define TEST_RUNNER
 # test crates without rebuilding std and extra first
 ifeq ($(NO_REBUILD),)
 STDTESTDEP_$(1)_$(2)_$(3)_$(4) = $$(SREQ$(1)_T_$(2)_H_$(3)) \
-                            $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.extra \
-                            $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.rustuv \
-                            $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.green \
-                            $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.native
+			    $$(foreach crate,$$(TARGET_CRATES),\
+				$$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$$(crate))
 else
 STDTESTDEP_$(1)_$(2)_$(3)_$(4) =
 endif

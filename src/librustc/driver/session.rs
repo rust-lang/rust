@@ -422,6 +422,10 @@ pub fn building_library(options: &Options, crate: &ast::Crate) -> bool {
     }
 }
 
+pub fn default_lib_output() -> OutputStyle {
+    OutputRlib
+}
+
 pub fn collect_outputs(session: &Session,
                        attrs: &[ast::Attribute]) -> ~[OutputStyle] {
     // If we're generating a test executable, then ignore all other output
@@ -435,7 +439,7 @@ pub fn collect_outputs(session: &Session,
             match a.value_str() {
                 Some(n) if "rlib" == n => Some(OutputRlib),
                 Some(n) if "dylib" == n => Some(OutputDylib),
-                Some(n) if "lib" == n => Some(OutputDylib),
+                Some(n) if "lib" == n => Some(default_lib_output()),
                 Some(n) if "staticlib" == n => Some(OutputStaticlib),
                 Some(n) if "bin" == n => Some(OutputExecutable),
                 Some(_) => {

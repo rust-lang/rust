@@ -25,49 +25,4 @@ pub fn main() {
         info!("{:?}", *i);
     }
 
-    // Usable at all:
-    do inty |x| { x };
-
-    // Higher precedence than assignments:
-    let result = do inty |e| { e };
-    assert_eq!(result, 100);
-
-    // Higher precedence than unary operations:
-    let stringy = do inty |e| { e }.to_str();
-    assert!(do booly |_| { true });
-    assert!(!do booly |_| { false });
-
-    // Usable in funny statement-like forms:
-    if !do booly |_| { true } {
-        assert!(false);
-    }
-    match do booly |_| { false } {
-        true => { fail!("incorrect answer."); }
-        false => { }
-    }
-    match 3 {
-      _ if do booly |_| { true } => {
-      }
-      _ => {
-        fail!("wrong answer.");
-      }
-    }
-
-
-    // Lower precedence than binary operations:
-    let w = do inty |_| { 10 } + 10;
-    let y = do inty |_| { 10 } + 10;
-    let z = 10 + do inty |_| { 10 };
-    assert_eq!(w, y);
-    assert_eq!(y, z);
-
-    // In the tail of a block
-    let w = if true {
-        do booly |_| {
-            true
-        }
-    } else {
-        false
-    };
-    assert!(w);
 }

@@ -18,11 +18,11 @@ static mut set: bool = false;
 #[start]
 fn start(argc: int, argv: **u8) -> int {
     // make sure that native::start always waits for all children to finish
-    do native::start(argc, argv) {
-        do spawn {
+    native::start(argc, argv, proc() {
+        spawn(proc() {
             unsafe { set = true; }
-        }
-    };
+        });
+    });
 
     // if we didn't set the global, then return a nonzero code
     if unsafe {set} {0} else {1}

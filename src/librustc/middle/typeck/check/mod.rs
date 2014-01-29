@@ -146,7 +146,7 @@ pub mod method;
 /// closures defined within the function.  For example:
 ///
 ///     fn foo() {
-///         do bar() { ... }
+///         bar(proc() { ... })
 ///     }
 ///
 /// Here, the function `foo()` and the closure passed to
@@ -1640,8 +1640,6 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
         } else {
             let suffix = match sugar {
                 ast::NoSugar => "",
-                ast::DoSugar => " (including the closure passed by \
-                                 the `do` keyword)",
                 ast::ForSugar => " (including the closure passed by \
                                   the `for` keyword)"
             };
@@ -1690,8 +1688,7 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
             for (i, arg) in args.iter().take(t).enumerate() {
                 let is_block = match arg.node {
                     ast::ExprFnBlock(..) |
-                    ast::ExprProc(..) |
-                    ast::ExprDoBody(..) => true,
+                    ast::ExprProc(..) => true,
                     _ => false
                 };
 
@@ -2927,44 +2924,6 @@ pub fn check_expr_with_unifier(fcx: @FnCtxt,
                       body,
                       Vanilla,
                       expected);
-      }
-      ast::ExprDoBody(b) => {
-        let expected_sty = unpack_expected(fcx,
-                                           expected,
-                                           |x| Some((*x).clone()));
-        let inner_ty = match expected_sty {
-            Some(ty::ty_closure(ref closure_ty))
-                    if closure_ty.sigil == ast::OwnedSigil => {
-                expected.unwrap()
-            }
-            _ => match expected {
-                Some(expected_t) => {
-                    fcx.type_error_message(expr.span, |actual| {
-                        format!("last argument in `do` call \
-                              has non-procedure type: {}",
-                             actual)
-                    }, expected_t, None);
-                    let err_ty = ty::mk_err();
-                    fcx.write_ty(id, err_ty);
-                    err_ty
-                }
-                None => {
-                    fcx.tcx().sess.impossible_case(
-                        expr.span,
-                        "do body must have expected type")
-                }
-            }
-        };
-        match b.node {
-          ast::ExprFnBlock(decl, body) => {
-            check_expr_fn(fcx, b, None,
-                          decl, body, DoBlock, Some(inner_ty));
-            demand::suptype(fcx, b.span, inner_ty, fcx.expr_ty(b));
-          }
-          // argh
-          _ => fail!("expected fn ty")
-        }
-        fcx.write_ty(expr.id, fcx.node_ty(b.id));
       }
       ast::ExprBlock(b) => {
         check_block_with_expected(fcx, b, expected);

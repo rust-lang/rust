@@ -538,7 +538,7 @@ fn visit_expr(v: &mut LivenessVisitor, expr: &Expr, this: @IrMaps) {
       ExprIndex(..) | ExprField(..) | ExprVstore(..) | ExprVec(..) |
       ExprCall(..) | ExprMethodCall(..) | ExprTup(..) | ExprLogLevel |
       ExprBinary(..) | ExprAddrOf(..) |
-      ExprDoBody(..) | ExprCast(..) | ExprUnary(..) | ExprBreak(_) |
+      ExprCast(..) | ExprUnary(..) | ExprBreak(_) |
       ExprAgain(_) | ExprLit(_) | ExprRet(..) | ExprBlock(..) |
       ExprAssign(..) | ExprAssignOp(..) | ExprMac(..) |
       ExprStruct(..) | ExprRepeat(..) | ExprParen(..) |
@@ -1245,7 +1245,6 @@ impl Liveness {
           }
 
           ExprAddrOf(_, e) |
-          ExprDoBody(e) |
           ExprCast(e, _) |
           ExprUnary(_, _, e) |
           ExprParen(e) => {
@@ -1529,7 +1528,7 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
       ExprCall(..) | ExprMethodCall(..) | ExprIf(..) | ExprMatch(..) |
       ExprWhile(..) | ExprLoop(..) | ExprIndex(..) | ExprField(..) |
       ExprVstore(..) | ExprVec(..) | ExprTup(..) | ExprLogLevel |
-      ExprBinary(..) | ExprDoBody(..) |
+      ExprBinary(..) |
       ExprCast(..) | ExprUnary(..) | ExprRet(..) | ExprBreak(..) |
       ExprAgain(..) | ExprLit(_) | ExprBlock(..) |
       ExprMac(..) | ExprAddrOf(..) | ExprStruct(..) | ExprRepeat(..) |

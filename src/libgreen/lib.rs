@@ -60,10 +60,10 @@ pub mod task;
 #[cfg(not(test))]
 pub fn lang_start(main: *u8, argc: int, argv: **u8) -> int {
     use std::cast;
-    do start(argc, argv) {
+    start(argc, argv, proc() {
         let main: extern "Rust" fn() = unsafe { cast::transmute(main) };
         main();
-    }
+    })
 }
 
 /// Set up a default runtime configuration, given compiler-supplied arguments.
@@ -222,7 +222,7 @@ impl SchedPool {
                                             pool.task_state.clone());
             pool.handles.push(sched.make_handle());
             let sched = sched;
-            pool.threads.push(do Thread::start { sched.bootstrap(); });
+            pool.threads.push(Thread::start(proc() { sched.bootstrap(); }));
         }
 
         return pool;
@@ -284,7 +284,7 @@ impl SchedPool {
         let ret = sched.make_handle();
         self.handles.push(sched.make_handle());
         let sched = sched;
-        self.threads.push(do Thread::start { sched.bootstrap() });
+        self.threads.push(Thread::start(proc() { sched.bootstrap() }));
 
         return ret;
     }

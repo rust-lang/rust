@@ -23,17 +23,17 @@ fn start(n_tasks: int, token: int) {
         let (next_p, ch) = Chan::new();
         let imm_i = i;
         let imm_p = p;
-        do spawn {
+        spawn(proc() {
             roundtrip(imm_i, n_tasks, &imm_p, &ch);
-        };
+        });
         p = next_p;
         i += 1;
     }
     let imm_p = p;
     let imm_ch = ch1;
-    do spawn {
+    spawn(proc() {
         roundtrip(1, n_tasks, &imm_p, &imm_ch);
-    }
+    });
 }
 
 fn roundtrip(id: int, n_tasks: int, p: &Port<int>, ch: &Chan<int>) {

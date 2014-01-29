@@ -255,11 +255,11 @@ mod tests {
     use super::Thread;
 
     #[test]
-    fn smoke() { do Thread::start {}.join(); }
+    fn smoke() { Thread::start(proc (){}).join(); }
 
     #[test]
-    fn data() { assert_eq!(do Thread::start { 1 }.join(), 1); }
+    fn data() { assert_eq!(Thread::start(proc () { 1 }).join(), 1); }
 
     #[test]
-    fn detached() { do Thread::spawn {} }
+    fn detached() { Thread::spawn(proc () {}) }
 }

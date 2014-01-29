@@ -22,8 +22,8 @@ fn foo(blk: proc()) {
 
 pub fn main() {
     let x = arc::Arc::new(true);
-    do foo {
+    foo(proc() {
         assert!(*x.get());
         drop(x);
-    }
+    });
 }

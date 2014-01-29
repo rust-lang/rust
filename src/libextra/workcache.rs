@@ -414,14 +414,14 @@ impl<'a> Prep<'a> {
                 let blk = bo.take_unwrap();
 
                 // FIXME: What happens if the task fails?
-                do spawn {
+                spawn(proc() {
                     let mut exe = Exec {
                         discovered_inputs: WorkMap::new(),
                         discovered_outputs: WorkMap::new(),
                     };
                     let v = blk(&mut exe);
                     chan.send((exe, v));
-                }
+                });
                 Work::from_task(self, port)
             }
         }
@@ -495,7 +495,7 @@ fn test() {
 
         // FIXME (#9639): This needs to handle non-utf8 paths
         prep.declare_input("file", pth.as_str().unwrap(), file_content);
-        do prep.exec |_exe| {
+        prep.exec(proc(_exe) {
             let out = make_path(~"foo.o");
             // FIXME (#9639): This needs to handle non-utf8 paths
             run::process_status("gcc", [pth.as_str().unwrap().to_owned(),
@@ -507,7 +507,7 @@ fn test() {
 
             // FIXME (#9639): This needs to handle non-utf8 paths
             out.as_str().unwrap().to_owned()
-        }
+        })
     });
 
     println!("{}", s);

@@ -8,31 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn f(_: proc(int, int) -> int) -> int {
-    10
+// Test that we cannot return a stack allocated slice
+
+fn function(x: int) -> &'static [int] {
+    &[x] //~ ERROR mismatched types
 }
 
-fn w_semi() {
-    // the semicolon causes compiler not to
-    // complain about the ignored return value:
-    do f |x, y| { x+y };
-}
-
-fn w_paren1() -> int {
-    (do f |x, y| { x+y }) - 10
-}
-
-fn w_paren2() -> int {
-    (do f |x, y| { x+y } - 10)
-}
-
-fn w_ret() -> int {
-    return do f |x, y| { x+y } - 10;
-}
-
-pub fn main() {
-    w_semi();
-    w_paren1();
-    w_paren2();
-    w_ret();
+fn main() {
+    let x = function(1);
+    let y = x[0];
 }

@@ -17,10 +17,10 @@ fn test_mutex_arc_nested() {
     let arc = ~MutexArc::new(1);
     let arc2 = ~MutexArc::new(*arc);
 
-    do task::spawn || {
+    task::spawn(proc() {
         (*arc2).access(|mutex| { //~ ERROR instantiating a type parameter with an incompatible type
         })
-    };
+    });
 }
 
 fn main() {}

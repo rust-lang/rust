@@ -115,9 +115,9 @@ mod test {
     pub fn basic_rendezvous_test() {
         let (port, chan) = rendezvous();
 
-        do spawn {
+        spawn(proc() {
             chan.send("abc");
-        }
+        });
 
         assert!(port.recv() == "abc");
     }
@@ -126,29 +126,29 @@ mod test {
     fn recv_a_lot() {
         // Rendezvous streams should be able to handle any number of messages being sent
         let (port, chan) = rendezvous();
-        do spawn {
+        spawn(proc() {
             10000.times(|| { chan.send(()) })
-        }
+        });
         10000.times(|| { port.recv() })
     }
 
     #[test]
     fn send_and_fail_and_try_recv() {
         let (port, chan) = rendezvous();
-        do spawn {
+        spawn(proc() {
             chan.duplex_stream.send(()); // Can't access this field outside this module
             fail!()
-        }
+        });
         port.recv()
     }
 
     #[test]
     fn try_send_and_recv_then_fail_before_ack() {
         let (port, chan) = rendezvous();
-        do spawn {
+        spawn(proc() {
             port.duplex_stream.recv();
             fail!()
-        }
+        });
         chan.try_send(());
     }
 
@@ -156,10 +156,10 @@ mod test {
     #[should_fail]
     fn send_and_recv_then_fail_before_ack() {
         let (port, chan) = rendezvous();
-        do spawn {
+        spawn(proc() {
             port.duplex_stream.recv();
             fail!()
-        }
+        });
         chan.send(());
     }
 }

@@ -119,7 +119,7 @@ mod test {
         let (port, chan) = Chan::new();
         let (port2, chan2) = Chan::new();
 
-        do spawn {
+        spawn(proc() {
             match UdpSocket::bind(client_ip) {
                 Some(ref mut client) => {
                     port.recv();
@@ -128,7 +128,7 @@ mod test {
                 None => fail!()
             }
             chan2.send(());
-        }
+        });
 
         match UdpSocket::bind(server_ip) {
             Some(ref mut server) => {
@@ -153,7 +153,7 @@ mod test {
         let client_ip = next_test_ip6();
         let (port, chan) = Chan::<()>::new();
 
-        do spawn {
+        spawn(proc() {
             match UdpSocket::bind(client_ip) {
                 Some(ref mut client) => {
                     port.recv();
@@ -161,7 +161,7 @@ mod test {
                 }
                 None => fail!()
             }
-        }
+        });
 
         match UdpSocket::bind(server_ip) {
             Some(ref mut server) => {
@@ -186,7 +186,7 @@ mod test {
         let (port, chan) = Chan::new();
         let (port2, chan2) = Chan::new();
 
-        do spawn {
+        spawn(proc() {
             match UdpSocket::bind(client_ip) {
                 Some(client) => {
                     let client = ~client;
@@ -197,7 +197,7 @@ mod test {
                 None => fail!()
             }
             chan2.send(());
-        }
+        });
 
         match UdpSocket::bind(server_ip) {
             Some(server) => {
@@ -224,7 +224,7 @@ mod test {
         let (port, chan) = Chan::new();
         let (port2, chan2) = Chan::new();
 
-        do spawn {
+        spawn(proc() {
             match UdpSocket::bind(client_ip) {
                 Some(client) => {
                     let client = ~client;
@@ -235,7 +235,7 @@ mod test {
                 None => fail!()
             }
             chan2.send(());
-        }
+        });
 
         match UdpSocket::bind(server_ip) {
             Some(server) => {

@@ -29,9 +29,9 @@ pub fn main() {
     let (port, chan) = stream();
 
     info!("main started");
-    do spawn {
+    spawn(proc() {
         starve_main(port);
-    };
+    });
     let mut i: int = 0;
     info!("main waiting for alive signal");
     chan.send(i);

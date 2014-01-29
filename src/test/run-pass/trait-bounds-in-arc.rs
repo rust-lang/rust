@@ -71,13 +71,13 @@ pub fn main() {
                          ~dogge2 as ~Pet:Freeze+Send]);
     let (p1,c1) = Chan::new();
     let arc1 = arc.clone();
-    do task::spawn { check_legs(arc1); c1.send(()); }
+    task::spawn(proc() { check_legs(arc1); c1.send(()); });
     let (p2,c2) = Chan::new();
     let arc2 = arc.clone();
-    do task::spawn { check_names(arc2); c2.send(()); }
+    task::spawn(proc() { check_names(arc2); c2.send(()); });
     let (p3,c3) = Chan::new();
     let arc3 = arc.clone();
-    do task::spawn { check_pedigree(arc3); c3.send(()); }
+    task::spawn(proc() { check_pedigree(arc3); c3.send(()); });
     p1.recv();
     p2.recv();
     p3.recv();
