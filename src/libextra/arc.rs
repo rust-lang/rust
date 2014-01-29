@@ -47,7 +47,7 @@ use sync::{Mutex, RWLock};
 use std::cast;
 use std::sync::arc::UnsafeArc;
 use std::task;
-use std::borrow;
+use std::reference;
 
 /// As sync::condvar, a mechanism for unlock-and-descheduling and signaling.
 pub struct Condvar<'a> {
@@ -465,7 +465,7 @@ impl<T:Freeze + Send> RWArc<T> {
             // of this cast is removing the mutability.)
             let new_data = data;
             // Downgrade ensured the token belonged to us. Just a sanity check.
-            assert!(borrow::ref_eq(&(*state).data, new_data));
+            assert!(reference::ref_eq(&(*state).data, new_data));
             // Produce new token
             RWReadMode {
                 data: new_data,

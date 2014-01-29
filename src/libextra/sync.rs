@@ -18,7 +18,7 @@
  */
 
 
-use std::borrow;
+use std::reference;
 use std::comm;
 use std::unstable::sync::Exclusive;
 use std::sync::arc::UnsafeArc;
@@ -634,7 +634,7 @@ impl RWLock {
     /// To be called inside of the write_downgrade block.
     pub fn downgrade<'a>(&self, token: RWLockWriteMode<'a>)
                          -> RWLockReadMode<'a> {
-        if !borrow::ref_eq(self, token.lock) {
+        if !reference::ref_eq(self, token.lock) {
             fail!("Can't downgrade() with a different rwlock's write_mode!");
         }
         unsafe {
