@@ -632,7 +632,7 @@ mod test {
 
         spawn(proc() {
             port.recv();
-            let stream = TcpStream::connect(addr);
+            let _stream = TcpStream::connect(addr);
             // Close
             port.recv();
         });
@@ -641,12 +641,12 @@ mod test {
             let mut acceptor = TcpListener::bind(addr).listen();
             chan.send(());
             {
-                let stream = acceptor.accept();
+                let _stream = acceptor.accept();
                 // Close client
                 chan.send(());
             }
             // Close listener
         }
-        let listener = TcpListener::bind(addr);
+        let _listener = TcpListener::bind(addr);
     })
 }
