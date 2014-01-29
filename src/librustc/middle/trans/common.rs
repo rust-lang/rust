@@ -31,7 +31,7 @@ use middle::typeck;
 use util::ppaux::Repr;
 
 
-use extra::arena::TypedArena;
+use arena::TypedArena;
 use std::c_str::ToCStr;
 use std::cast::transmute;
 use std::cast;
