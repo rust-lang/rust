@@ -389,7 +389,7 @@ impl Drop for FileWatcher {
                 }
             }
             rtio::CloseSynchronously => {
-                execute_nop(|req, cb| unsafe {
+                let _ = execute_nop(|req, cb| unsafe {
                     uvll::uv_fs_close(self.loop_.handle, req, self.fd, cb)
                 });
             }
