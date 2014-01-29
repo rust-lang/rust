@@ -486,7 +486,7 @@ fn spawn_process_os(prog: &str, args: &[~str],
                 (errno <<  8) as u8,
                 (errno <<  0) as u8,
             ];
-            output.inner_write(bytes);
+            assert!(output.inner_write(bytes).is_ok());
             intrinsics::abort();
         })
     }
