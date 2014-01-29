@@ -498,7 +498,7 @@ pub fn make_vtable(ccx: &CrateContext,
     unsafe {
         let _icx = push_ctxt("meth::make_vtable");
 
-        let mut components = ~[ tydesc.tydesc ];
+        let mut components = ~[tydesc.drop_glue.get().unwrap()];
         for &ptr in ptrs.iter() {
             components.push(ptr)
         }
