@@ -77,8 +77,8 @@ pub fn open(term: &str) -> Result<File, ~str> {
     match get_dbpath_for_term(term) {
         Some(x) => {
             match File::open(x) {
-                Some(file) => Ok(file),
-                None => Err(~"error opening file"),
+                Ok(file) => Ok(file),
+                Err(e) => Err(format!("error opening file: {}", e)),
             }
         }
         None => Err(format!("could not find terminfo entry for {}", term))

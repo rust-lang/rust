@@ -172,20 +172,19 @@ impl Database {
     }
 
     // FIXME #4330: This should have &mut self and should set self.db_dirty to false.
-    fn save(&self) {
+    fn save(&self) -> io::IoResult<()> {
         let mut f = File::create(&self.db_filename);
-        self.db_cache.to_json().to_pretty_writer(&mut f);
+        self.db_cache.to_json().to_pretty_writer(&mut f)
     }
 
     fn load(&mut self) {
         assert!(!self.db_dirty);
         assert!(self.db_filename.exists());
-        match io::result(|| File::open(&self.db_filename)) {
+        match File::open(&self.db_filename) {
             Err(e) => fail!("Couldn't load workcache database {}: {}",
                             self.db_filename.display(),
-                            e.desc),
-            Ok(r) => {
-                let mut stream = r.unwrap();
+                            e),
+            Ok(mut stream) => {
                 match json::from_reader(&mut stream) {
                     Err(e) => fail!("Couldn't parse workcache database (from file {}): {}",
                                     self.db_filename.display(), e.to_str()),
@@ -203,7 +202,8 @@ impl Database {
 impl Drop for Database {
     fn drop(&mut self) {
         if self.db_dirty {
-            self.save();
+            // FIXME: is failing the right thing to do here
+            self.save().unwrap();
         }
     }
 }
