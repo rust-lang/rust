@@ -1036,11 +1036,11 @@ mod tests {
 
     #[test]
     fn test_fuzz() {
-        25.times(|| {
+        for _ in range(0, 25) {
             fuzz_test(3);
             fuzz_test(16);
             fuzz_test(189);
-        })
+        }
     }
 
     #[cfg(test)]

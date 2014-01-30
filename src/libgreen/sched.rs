@@ -1275,13 +1275,13 @@ mod test {
     fn multithreading() {
         run(proc() {
             let mut ports = ~[];
-            10.times(|| {
+            for _ in range(0, 10) {
                 let (port, chan) = Chan::new();
                 spawn(proc() {
                     chan.send(());
                 });
                 ports.push(port);
-            });
+            }
 
             loop {
                 match ports.pop() {
@@ -1410,7 +1410,7 @@ mod test {
     fn single_threaded_yield() {
         use std::task::deschedule;
         run(proc() {
-            5.times(deschedule);
+            for _ in range(0, 5) { deschedule(); }
         });
     }
 

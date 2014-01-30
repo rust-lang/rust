@@ -31,9 +31,6 @@ pub fn main() {
     assert_eq!(15u32.add(&6u32), 21u32);
     assert_eq!(15u64.add(&6u64), 21u64);
 
-    // times
-     15u.times(|| {});
-
 // floats
     // num
     assert_eq!(10f32.to_int().unwrap(), 10);

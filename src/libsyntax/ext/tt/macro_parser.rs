@@ -396,9 +396,9 @@ pub fn parse(sess: @ParseSess,
                 }
                 cur_eis.push(ei);
 
-                rust_parser.tokens_consumed.times(|| {
+                for _ in range(0, rust_parser.tokens_consumed) {
                     let _ = rdr.next_token();
-                });
+                }
             }
         }
 

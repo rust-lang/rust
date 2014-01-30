@@ -1227,17 +1227,17 @@ mod test {
     })
 
     test!(fn oneshot_multi_thread_close_stress() {
-        stress_factor().times(|| {
+        for _ in range(0, stress_factor()) {
             let (port, chan) = Chan::<int>::new();
             spawn(proc() {
                 let _p = port;
             });
             let _chan = chan;
-        })
+        }
     })
 
     test!(fn oneshot_multi_thread_send_close_stress() {
-        stress_factor().times(|| {
+        for _ in range(0, stress_factor()) {
             let (port, chan) = Chan::<int>::new();
             spawn(proc() {
                 let _p = port;
@@ -1245,11 +1245,11 @@ mod test {
             task::try(proc() {
                 chan.send(1);
             });
-        })
+        }
     })
 
     test!(fn oneshot_multi_thread_recv_close_stress() {
-        stress_factor().times(|| {
+        for _ in range(0, stress_factor()) {
             let (port, chan) = Chan::<int>::new();
             spawn(proc() {
                 let port = port;
@@ -1264,11 +1264,11 @@ mod test {
                     let _chan = chan;
                 });
             });
-        })
+        }
     })
 
     test!(fn oneshot_multi_thread_send_recv_stress() {
-        stress_factor().times(|| {
+        for _ in range(0, stress_factor()) {
             let (port, chan) = Chan::<~int>::new();
             spawn(proc() {
                 chan.send(~10);
@@ -1276,11 +1276,11 @@ mod test {
             spawn(proc() {
                 assert!(port.recv() == ~10);
             });
-        })
+        }
     })
 
     test!(fn stream_send_recv_stress() {
-        stress_factor().times(|| {
+        for _ in range(0, stress_factor()) {
             let (port, chan) = Chan::<~int>::new();
 
             send(chan, 0);
@@ -1303,29 +1303,29 @@ mod test {
                     recv(port, i + 1);
                 });
             }
-        })
+        }
     })
 
     test!(fn recv_a_lot() {
         // Regression test that we don't run out of stack in scheduler context
         let (port, chan) = Chan::new();
-        10000.times(|| { chan.send(()) });
-        10000.times(|| { port.recv() });
+        for _ in range(0, 10000) { chan.send(()); }
+        for _ in range(0, 10000) { port.recv(); }
     })
 
     test!(fn shared_chan_stress() {
         let (port, chan) = SharedChan::new();
         let total = stress_factor() + 100;
-        total.times(|| {
+        for _ in range(0, total) {
             let chan_clone = chan.clone();
             spawn(proc() {
                 chan_clone.send(());
             });
-        });
+        }
 
-        total.times(|| {
+        for _ in range(0, total) {
             port.recv();
-        });
+        }
     })
 
     test!(fn test_nested_recv_iter() {

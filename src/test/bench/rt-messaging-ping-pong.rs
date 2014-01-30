@@ -29,25 +29,25 @@ fn ping_pong_bench(n: uint, m: uint) {
         spawn(proc() {
             let chan = ca;
             let port = pb;
-            n.times(|| {
+            for _ in range(0, n) {
                 chan.send(());
                 port.recv();
-            })
+            }
         });
 
         spawn(proc() {
             let chan = cb;
             let port = pa;
-            n.times(|| {
+            for _ in range(0, n) {
                 port.recv();
                 chan.send(());
-            })
+            }
         });
     }
 
-    m.times(|| {
+    for _ in range(0, m) {
         run_pair(n)
-    })
+    }
 }
 
 
