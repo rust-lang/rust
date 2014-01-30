@@ -29,7 +29,6 @@
 #[license = "MIT/ASL2"];
 
 use std::{os, path};
-use std::io;
 use std::io::fs;
 use std::path::is_sep;
 
@@ -153,7 +152,7 @@ impl Iterator<Path> for Paths {
 }
 
 fn list_dir_sorted(path: &Path) -> ~[Path] {
-    match io::result(|| fs::readdir(path)) {
+    match fs::readdir(path) {
         Ok(mut children) => {
             children.sort_by(|p1, p2| p2.filename().cmp(&p1.filename()));
             children
