@@ -90,11 +90,3 @@ impl CheckedMul for uint {
         }
     }
 }
-
-#[test]
-fn test_overflows() {
-    use uint;
-    assert!((uint::MAX > 0u));
-    assert!((uint::MIN <= 0u));
-    assert!((uint::MIN + uint::MAX + 1u == 0u));
-}
