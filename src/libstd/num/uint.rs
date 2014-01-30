@@ -25,59 +25,6 @@ use unstable::intrinsics;
 
 uint_module!(uint, int, ::int::BITS)
 
-///
-/// Divide two numbers, return the result, rounded up.
-///
-/// # Arguments
-///
-/// * x - an integer
-/// * y - an integer distinct from 0u
-///
-/// # Return value
-///
-/// The smallest integer `q` such that `x/y <= q`.
-///
-pub fn div_ceil(x: uint, y: uint) -> uint {
-    let div = x / y;
-    if x % y == 0u { div }
-    else { div + 1u }
-}
-
-///
-/// Divide two numbers, return the result, rounded to the closest integer.
-///
-/// # Arguments
-///
-/// * x - an integer
-/// * y - an integer distinct from 0u
-///
-/// # Return value
-///
-/// The integer `q` closest to `x/y`.
-///
-pub fn div_round(x: uint, y: uint) -> uint {
-    let div = x / y;
-    if x % y * 2u  < y { div }
-    else { div + 1u }
-}
-
-///
-/// Divide two numbers, return the result, rounded down.
-///
-/// Note: This is the same function as `div`.
-///
-/// # Arguments
-///
-/// * x - an integer
-/// * y - an integer distinct from 0u
-///
-/// # Return value
-///
-/// The smallest integer `q` such that `x/y <= q`. This
-/// is either `x/y` or `x/y + 1`.
-///
-pub fn div_floor(x: uint, y: uint) -> uint { return x / y; }
-
 #[cfg(target_word_size = "32")]
 impl CheckedAdd for uint {
     #[inline]
@@ -150,11 +97,4 @@ fn test_overflows() {
     assert!((uint::MAX > 0u));
     assert!((uint::MIN <= 0u));
     assert!((uint::MIN + uint::MAX + 1u == 0u));
-}
-
-#[test]
-fn test_div() {
-    assert!((div_floor(3u, 4u) == 0u));
-    assert!((div_ceil(3u, 4u)  == 1u));
-    assert!((div_round(3u, 4u) == 1u));
 }
