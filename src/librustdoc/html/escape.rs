@@ -20,7 +20,7 @@ use std::fmt;
 pub struct Escape<'a>(&'a str);
 
 impl<'a> fmt::Show for Escape<'a> {
-    fn fmt(s: &Escape<'a>, fmt: &mut fmt::Formatter) {
+    fn fmt(s: &Escape<'a>, fmt: &mut fmt::Formatter) -> fmt::Result {
         // Because the internet is always right, turns out there's not that many
         // characters to escape: http://stackoverflow.com/questions/7381974
         let Escape(s) = *s;
@@ -29,7 +29,7 @@ impl<'a> fmt::Show for Escape<'a> {
         for (i, ch) in s.bytes().enumerate() {
             match ch as char {
                 '<' | '>' | '&' | '\'' | '"' => {
-                    fmt.buf.write(pile_o_bits.slice(last, i).as_bytes());
+                    if_ok!(fmt.buf.write(pile_o_bits.slice(last, i).as_bytes()));
                     let s = match ch as char {
                         '>' => "&gt;",
                         '<' => "&lt;",
@@ -38,7 +38,7 @@ impl<'a> fmt::Show for Escape<'a> {
                         '"' => "&quot;",
                         _ => unreachable!()
                     };
-                    fmt.buf.write(s.as_bytes());
+                    if_ok!(fmt.buf.write(s.as_bytes()));
                     last = i + 1;
                 }
                 _ => {}
@@ -46,7 +46,8 @@ impl<'a> fmt::Show for Escape<'a> {
         }
 
         if last < s.len() {
-            fmt.buf.write(pile_o_bits.slice_from(last).as_bytes());
+            if_ok!(fmt.buf.write(pile_o_bits.slice_from(last).as_bytes()));
         }
+        Ok(())
     }
 }
