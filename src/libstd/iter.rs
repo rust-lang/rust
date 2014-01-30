@@ -213,7 +213,7 @@ pub trait Iterator<A> {
 
 
     /// Creates an iterator that has a `.peek()` method
-    /// that returns a optional reference to the next element.
+    /// that returns an optional reference to the next element.
     ///
     /// # Example
     ///

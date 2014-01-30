@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -101,7 +101,7 @@ pub enum ExternalLocation {
 enum Implementor {
     /// Paths are displayed specially by omitting the `impl XX for` cruft
     PathType(clean::Type),
-    /// This is the generic representation of an trait implementor, used for
+    /// This is the generic representation of a trait implementor, used for
     /// primitive types and otherwise non-path types.
     OtherType(clean::Generics, /* trait */ clean::Type, /* for */ clean::Type),
 }
