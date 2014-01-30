@@ -1150,8 +1150,8 @@ mod test_treemap {
 
         let mut rng: rand::IsaacRng = rand::SeedableRng::from_seed(&[42]);
 
-        3.times(|| {
-            90.times(|| {
+        for _ in range(0, 3) {
+            for _ in range(0, 90) {
                 let k = rng.gen();
                 let v = rng.gen();
                 if !ctrl.iter().any(|x| x == &(k, v)) {
@@ -1160,16 +1160,16 @@ mod test_treemap {
                     check_structure(&map);
                     check_equal(ctrl, &map);
                 }
-            });
+            }
 
-            30.times(|| {
+            for _ in range(0, 30) {
                 let r = rng.gen_range(0, ctrl.len());
                 let (key, _) = ctrl.remove(r).unwrap();
                 assert!(map.remove(&key));
                 check_structure(&map);
                 check_equal(ctrl, &map);
-            });
-        })
+            }
+        }
     }
 
     #[test]

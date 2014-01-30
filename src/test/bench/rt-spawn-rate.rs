@@ -26,8 +26,8 @@ fn main() {
         100000
     };
 
-    n.times(|| {
+    for _ in range(0, n) {
         spawn(proc() {});
-    })
+    }
 
 }

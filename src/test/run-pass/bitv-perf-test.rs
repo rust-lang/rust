@@ -20,5 +20,5 @@ fn bitv_test() {
 }
 
 pub fn main() {
-    10000.times(|| bitv_test());
+    for _ in range(0, 10000) { bitv_test(); }
 }

@@ -571,9 +571,9 @@ mod tests {
     fn bench_grow(b: &mut test::BenchHarness) {
         let mut deq = RingBuf::new();
         b.iter(|| {
-            65.times(|| {
+            for _ in range(0, 65) {
                 deq.push_front(1);
-            })
+            }
         })
     }
 

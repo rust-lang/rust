@@ -379,10 +379,10 @@ mod test {
         let (p3, c3) = Chan::<int>::new();
 
         spawn(proc() {
-            20.times(task::deschedule);
+            for _ in range(0, 20) { task::deschedule(); }
             c1.send(1);
             p3.recv();
-            20.times(task::deschedule);
+            for _ in range(0, 20) { task::deschedule(); }
         });
 
         select! (
@@ -402,7 +402,7 @@ mod test {
         let (p3, c3) = Chan::<()>::new();
 
         spawn(proc() {
-            20.times(task::deschedule);
+            for _ in range(0, 20) { task::deschedule(); }
             c1.send(1);
             c2.send(2);
             p3.recv();

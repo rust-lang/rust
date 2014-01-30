@@ -139,18 +139,6 @@ pub trait Signed: Num
 
 pub trait Unsigned: Num {}
 
-/// Times trait
-///
-/// ```rust
-/// let ten = 10u;
-/// let mut accum = 0;
-/// ten.times(|| { accum += 1; })
-/// ```
-///
-pub trait Times {
-    fn times(&self, it: ||);
-}
-
 pub trait Integer: Num
                  + Orderable
                  + Div<Self,Self>

@@ -120,7 +120,7 @@ impl<Q:Send> Sem<Q> {
                 }
             });
             // Uncomment if you wish to test for sem races. Not valgrind-friendly.
-            /* 1000.times(|| task::deschedule()); */
+            /* for _ in range(0, 1000) { task::deschedule(); } */
             // Need to wait outside the exclusive.
             if waiter_nobe.is_some() {
                 let _ = waiter_nobe.unwrap().recv();
@@ -155,7 +155,7 @@ impl Sem<~[WaitQueue]> {
     fn new_and_signal(count: int, num_condvars: uint)
         -> Sem<~[WaitQueue]> {
         let mut queues = ~[];
-        num_condvars.times(|| queues.push(WaitQueue::new()));
+        for _ in range(0, num_condvars) { queues.push(WaitQueue::new()); }
         Sem::new(count, queues)
     }
 }
@@ -691,7 +691,7 @@ impl<'a> RWLockReadMode<'a> {
 /// use extra::sync::Barrier;
 ///
 /// let barrier = Barrier::new(10);
-/// 10.times(|| {
+/// for _ in range(0, 10) {
 ///     let c = barrier.clone();
 ///     // The same messages will be printed together.
 ///     // You will NOT see any interleaving.
@@ -700,7 +700,7 @@ impl<'a> RWLockReadMode<'a> {
 ///         c.wait();
 ///         println!("after wait");
 ///     });
-/// });
+/// }
 /// ```
 #[deriving(Clone)]
 pub struct Barrier {
@@ -780,11 +780,11 @@ mod tests {
         let s2 = s.clone();
         task::spawn(proc() {
             s2.access(|| {
-                5.times(|| { task::deschedule(); })
+                for _ in range(0, 5) { task::deschedule(); }
             })
         });
         s.access(|| {
-            5.times(|| { task::deschedule(); })
+            for _ in range(0, 5) { task::deschedule(); }
         })
     }
     #[test]
@@ -797,7 +797,7 @@ mod tests {
             s2.acquire();
             c.send(());
         });
-        5.times(|| { task::deschedule(); });
+        for _ in range(0, 5) { task::deschedule(); }
         s.release();
         let _ = p.recv();
 
@@ -806,7 +806,7 @@ mod tests {
         let s = Semaphore::new(0);
         let s2 = s.clone();
         task::spawn(proc() {
-            5.times(|| { task::deschedule(); });
+            for _ in range(0, 5) { task::deschedule(); }
             s2.release();
             let _ = p.recv();
         });
@@ -848,7 +848,7 @@ mod tests {
                 c.send(());
             });
             let _ = p.recv(); // wait for child to come alive
-            5.times(|| { task::deschedule(); }); // let the child contend
+            for _ in range(0, 5) { task::deschedule(); } // let the child contend
         });
         let _ = p.recv(); // wait for child to be done
     }
@@ -880,13 +880,13 @@ mod tests {
         }
 
         fn access_shared(sharedstate: &mut int, m: &Mutex, n: uint) {
-            n.times(|| {
+            for _ in range(0, n) {
                 m.lock(|| {
                     let oldval = *sharedstate;
                     task::deschedule();
                     *sharedstate = oldval + 1;
                 })
-            })
+            }
         }
     }
     #[test]
@@ -926,7 +926,7 @@ mod tests {
         let m = Mutex::new();
         let mut ports = ~[];
 
-        num_waiters.times(|| {
+        for _ in range(0, num_waiters) {
             let mi = m.clone();
             let (port, chan) = Chan::new();
             ports.push(port);
@@ -937,7 +937,7 @@ mod tests {
                     chan.send(());
                 })
             });
-        });
+        }
 
         // wait until all children get in the mutex
         for port in ports.mut_iter() { let _ = port.recv(); }
@@ -1020,7 +1020,7 @@ mod tests {
 
         let result: result::Result<(), ~Any> = task::try(proc() {
             let mut sibling_convos = ~[];
-            2.times(|| {
+            for _ in range(0, 2) {
                 let (p, c) = Chan::new();
                 sibling_convos.push(p);
                 let mi = m2.clone();
@@ -1037,7 +1037,7 @@ mod tests {
                         })
                     })
                 });
-            });
+            }
             for p in sibling_convos.mut_iter() {
                 let _ = p.recv(); // wait for sibling to get in the mutex
             }
@@ -1156,13 +1156,13 @@ mod tests {
 
         fn access_shared(sharedstate: &mut int, x: &RWLock, mode: RWLockMode,
                          n: uint) {
-            n.times(|| {
+            for _ in range(0, n) {
                 lock_rwlock_in_mode(x, mode, || {
                     let oldval = *sharedstate;
                     task::deschedule();
                     *sharedstate = oldval + 1;
                 })
-            })
+            }
         }
     }
     #[test]
@@ -1287,7 +1287,7 @@ mod tests {
         let x = RWLock::new();
         let mut ports = ~[];
 
-        num_waiters.times(|| {
+        for _ in range(0, num_waiters) {
             let xi = x.clone();
             let (port, chan) = Chan::new();
             ports.push(port);
@@ -1298,7 +1298,7 @@ mod tests {
                     chan.send(());
                 })
             });
-        });
+        }
 
         // wait until all children get in the mutex
         for port in ports.mut_iter() { let _ = port.recv(); }
@@ -1388,14 +1388,14 @@ mod tests {
         let barrier = Barrier::new(10);
         let (port, chan) = SharedChan::new();
 
-        9.times(|| {
+        for _ in range(0, 9) {
             let c = barrier.clone();
             let chan = chan.clone();
             spawn(proc() {
                 c.wait();
                 chan.send(true);
             });
-        });
+        }
 
         // At this point, all spawned tasks should be blocked,
         // so we shouldn't get anything from the port
@@ -1406,8 +1406,8 @@ mod tests {
 
         barrier.wait();
         // Now, the barrier is cleared and we should get data.
-        9.times(|| {
+        for _ in range(0, 9) {
             port.recv();
-        });
+        }
     }
 }
