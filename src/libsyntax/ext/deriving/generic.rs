@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -42,7 +42,7 @@ arguments:
   the same variant (e.g. `None`, `Some(1)` and `None`). If
   `const_nonmatching` is true, this will contain an empty list.
 - `StaticEnum` and `StaticStruct` for static methods, where the type
-  being derived upon is either a enum or struct respectively. (Any
+  being derived upon is either an enum or struct respectively. (Any
   argument with type Self is just grouped among the non-self
   arguments.)
 

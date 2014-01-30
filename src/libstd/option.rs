@@ -121,7 +121,7 @@ impl<T> Option<T> {
     // Getting to contained values
     /////////////////////////////////////////////////////////////////////////
 
-    /// Unwraps a option, yielding the content of a `Some`
+    /// Unwraps an option, yielding the content of a `Some`
     /// Fails if the value is a `None` with a custom failure message provided by `msg`.
     #[inline]
     pub fn expect<M: Any + Send>(self, msg: M) -> T {

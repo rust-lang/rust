@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -517,7 +517,7 @@ static DIGIT_E_RADIX: uint = ('e' as uint) - ('a' as uint) + 11u;
  *     - `ExpBin`:  Accepts numbers with a binary exponent like `42P-8` or
  *                  `FFp128`. The exponent string itself is always base 10.
  *                  Can conflict with `radix`, see Failure.
- * - `empty_zero` - Whether to accept a empty `buf` as a 0 or not.
+ * - `empty_zero` - Whether to accept an empty `buf` as a 0 or not.
  * - `ignore_underscores` - Whether all underscores within the string should
  *                          be ignored.
  *
