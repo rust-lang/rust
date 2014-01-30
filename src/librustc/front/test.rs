@@ -171,7 +171,7 @@ fn generate_test_harness(sess: session::Session, crate: ast::Crate)
     cx.ext_cx.bt_push(ExpnInfo {
         call_site: DUMMY_SP,
         callee: NameAndSpan {
-            name: @"test",
+            name: ~"test",
             format: MacroAttribute,
             span: None
         }
