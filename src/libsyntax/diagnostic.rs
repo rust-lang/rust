@@ -14,6 +14,7 @@ use codemap;
 use std::cell::Cell;
 use std::io;
 use std::io::stdio::StdWriter;
+use std::iter::range;
 use std::local_data;
 use extra::term;
 
@@ -320,7 +321,7 @@ fn highlight_lines(cm: &codemap::CodeMap,
         // Skip is the number of characters we need to skip because they are
         // part of the 'filename:line ' part of the previous line.
         let skip = fm.name.len() + digits + 3u;
-        skip.times(|| s.push_char(' '));
+        for _ in range(0, skip) { s.push_char(' '); }
         let orig = fm.get_line(lines.lines[0] as int);
         for pos in range(0u, left-skip) {
             let curChar = (orig[pos] as char);
@@ -339,7 +340,7 @@ fn highlight_lines(cm: &codemap::CodeMap,
         if hi.col != lo.col {
             // the ^ already takes up one space
             let num_squigglies = hi.col.to_uint()-lo.col.to_uint()-1u;
-            num_squigglies.times(|| s.push_char('~'));
+            for _ in range(0, num_squigglies) { s.push_char('~'); }
         }
         print_maybe_styled(s + "\n", term::attr::ForegroundColor(lvl.color()));
     }
@@ -378,7 +379,7 @@ fn custom_highlight_lines(cm: &codemap::CodeMap,
     // Span seems to use half-opened interval, so subtract 1
     let skip = last_line_start.len() + hi.col.to_uint() - 1;
     let mut s = ~"";
-    skip.times(|| s.push_char(' '));
+    for _ in range(0, skip) { s.push_char(' '); }
     s.push_char('^');
     print_maybe_styled(s + "\n", term::attr::ForegroundColor(lvl.color()));
 }

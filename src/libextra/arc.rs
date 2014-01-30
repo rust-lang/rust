@@ -770,19 +770,19 @@ mod tests {
 
         task::spawn(proc() {
             arc2.write(|num| {
-                10.times(|| {
+                for _ in range(0, 10) {
                     let tmp = *num;
                     *num = -1;
                     task::deschedule();
                     *num = tmp + 1;
-                });
+                }
                 c.send(());
             })
         });
 
         // Readers try to catch the writer in the act
         let mut children = ~[];
-        5.times(|| {
+        for _ in range(0, 5) {
             let arc3 = arc.clone();
             let mut builder = task::task();
             children.push(builder.future_result());
@@ -791,7 +791,7 @@ mod tests {
                     assert!(*num >= 0);
                 })
             });
-        });
+        }
 
         // Wait for children to pass their asserts
         for r in children.mut_iter() {
@@ -836,7 +836,7 @@ mod tests {
 
         // Reader tasks
         let mut reader_convos = ~[];
-        10.times(|| {
+        for _ in range(0, 10) {
             let ((rp1, rc1), (rp2, rc2)) = (Chan::new(), Chan::new());
             reader_convos.push((rc1, rp2));
             let arcn = arc.clone();
@@ -847,7 +847,7 @@ mod tests {
                     rc2.send(());
                 })
             });
-        });
+        }
 
         // Writer task
         let arc2 = arc.clone();
@@ -944,7 +944,7 @@ mod tests {
             read_mode.read(|state| {
                 // if writer mistakenly got in, make sure it mutates state
                 // before we assert on it
-                5.times(|| task::deschedule());
+                for _ in range(0, 5) { task::deschedule(); }
                 // make sure writer didn't get in.
                 assert!(*state);
             })
@@ -956,6 +956,6 @@ mod tests {
         // helped to expose the race nearly 100% of the time... but adding
         // deschedules in the intuitively-right locations made it even less likely,
         // and I wasn't sure why :( . This is a mediocre "next best" option.
-        8.times(|| test_rw_write_cond_downgrade_read_race_helper());
+        for _ in range(0, 8) { test_rw_write_cond_downgrade_read_race_helper(); }
     }
 }

@@ -12,7 +12,6 @@
 
 use rand::{Rng, SeedableRng, OSRng};
 use iter::{Iterator, range, range_step, Repeat};
-use num::Times;
 use option::{None, Some};
 use vec::{raw, MutableVector, ImmutableVector};
 use mem;
@@ -95,7 +94,7 @@ impl IsaacRng {
             }}
         );
 
-        4.times(|| mix!());
+        for _ in range(0, 4) { mix!(); }
 
         if use_rsl {
             macro_rules! memloop (

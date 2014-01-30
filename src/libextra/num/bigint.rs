@@ -2052,22 +2052,22 @@ mod biguint_tests {
     fn test_rand_range() {
         let mut rng = task_rng();
 
-        10.times(|| {
+        for _ in range(0, 10) {
             assert_eq!(rng.gen_bigint_range(&FromPrimitive::from_uint(236).unwrap(),
                                             &FromPrimitive::from_uint(237).unwrap()),
                        FromPrimitive::from_uint(236).unwrap());
-        });
+        }
 
         let l = FromPrimitive::from_uint(403469000 + 2352).unwrap();
         let u = FromPrimitive::from_uint(403469000 + 3513).unwrap();
-        1000.times(|| {
+        for _ in range(0, 1000) {
             let n: BigUint = rng.gen_biguint_below(&u);
             assert!(n < u);
 
             let n: BigUint = rng.gen_biguint_range(&l, &u);
             assert!(n >= l);
             assert!(n < u);
-        })
+        }
     }
 
     #[test]
@@ -2550,19 +2550,19 @@ mod bigint_tests {
     fn test_rand_range() {
         let mut rng = task_rng();
 
-        10.times(|| {
+        for _ in range(0, 10) {
             assert_eq!(rng.gen_bigint_range(&FromPrimitive::from_uint(236).unwrap(),
                                             &FromPrimitive::from_uint(237).unwrap()),
                        FromPrimitive::from_uint(236).unwrap());
-        });
+        }
 
         fn check(l: BigInt, u: BigInt) {
             let mut rng = task_rng();
-            1000.times(|| {
+            for _ in range(0, 1000) {
                 let n: BigInt = rng.gen_bigint_range(&l, &u);
                 assert!(n >= l);
                 assert!(n < u);
-            });
+            }
         }
         let l: BigInt = FromPrimitive::from_uint(403469000 + 2352).unwrap();
         let u: BigInt = FromPrimitive::from_uint(403469000 + 3513).unwrap();

@@ -234,20 +234,20 @@ mod tests {
 
         spawn(proc() {
             port.recv();
-            times.times(|| {
+            for _ in range(0, times) {
                 let mut stream = UnixStream::connect(&path2);
                 stream.write([100]);
-            })
+            }
         });
 
         let mut acceptor = UnixListener::bind(&path1).listen();
         chan.send(());
-        times.times(|| {
+        for _ in range(0, times) {
             let mut client = acceptor.accept();
             let mut buf = [0];
             client.read(buf);
             assert_eq!(buf[0], 100);
-        })
+        }
     }
 
     #[test]

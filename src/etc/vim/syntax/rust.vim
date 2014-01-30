@@ -78,7 +78,6 @@ syn keyword rustTrait FromStr
 syn keyword rustTrait FromIterator Extendable
 syn keyword rustTrait Iterator DoubleEndedIterator RandomAccessIterator CloneableIterator
 syn keyword rustTrait OrdIterator MutableDoubleEndedIterator ExactSize
-syn keyword rustTrait Times
 
 syn keyword rustTrait Algebraic Trigonometric Exponential Hyperbolic
 syn keyword rustTrait Bitwise Bounded Integer Fractional Real RealExt

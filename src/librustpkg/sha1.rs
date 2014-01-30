@@ -51,11 +51,11 @@ fn read_u32v_be(dst: &mut[u32], input: &[u8]) {
     unsafe {
         let mut x: *mut i32 = transmute(dst.unsafe_mut_ref(0));
         let mut y: *i32 = transmute(input.unsafe_ref(0));
-        dst.len().times(|| {
+        for _ in range(0, dst.len()) {
             *x = to_be32(*y);
             x = x.offset(1);
             y = y.offset(1);
-        })
+        }
     }
 }
 

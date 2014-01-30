@@ -355,15 +355,15 @@ mod test {
 
     iotest!(fn multiple_connect_serial_ip4() {
         let addr = next_test_ip4();
-        let max = 10;
+        let max = 10u;
         let (port, chan) = Chan::new();
 
         spawn(proc() {
             port.recv();
-            max.times(|| {
+            for _ in range(0, max) {
                 let mut stream = TcpStream::connect(addr);
                 stream.write([99]);
-            });
+            }
         });
 
         let mut acceptor = TcpListener::bind(addr).listen();
@@ -377,15 +377,15 @@ mod test {
 
     iotest!(fn multiple_connect_serial_ip6() {
         let addr = next_test_ip6();
-        let max = 10;
+        let max = 10u;
         let (port, chan) = Chan::new();
 
         spawn(proc() {
             port.recv();
-            max.times(|| {
+            for _ in range(0, max) {
                 let mut stream = TcpStream::connect(addr);
                 stream.write([99]);
-            });
+            }
         });
 
         let mut acceptor = TcpListener::bind(addr).listen();
