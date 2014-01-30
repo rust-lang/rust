@@ -34,11 +34,11 @@ pub fn dumb_println(args: &fmt::Arguments) {
     struct Stderr;
     impl io::Writer for Stderr {
         fn write(&mut self, data: &[u8]) -> io::IoResult<()> {
-            unsafe {
+            let _ = unsafe {
                 libc::write(libc::STDERR_FILENO,
                             data.as_ptr() as *libc::c_void,
-                            data.len() as libc::size_t);
-            }
+                            data.len() as libc::size_t)
+            };
             Ok(()) // just ignore the errors
         }
     }
