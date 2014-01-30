@@ -159,3 +159,17 @@ pub enum Enum {
     #[locked]
     LockedVariant,
 }
+
+#[deprecated]
+pub struct DeprecatedTupleStruct(int);
+#[experimental]
+pub struct ExperimentalTupleStruct(int);
+#[unstable]
+pub struct UnstableTupleStruct(int);
+pub struct UnmarkedTupleStruct(int);
+#[stable]
+pub struct StableTupleStruct(int);
+#[frozen]
+pub struct FrozenTupleStruct(int);
+#[locked]
+pub struct LockedTupleStruct(int);

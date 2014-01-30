@@ -101,6 +101,14 @@ mod cross_crate {
         let _ = StableVariant;
         let _ = FrozenVariant;
         let _ = LockedVariant;
+
+        let _ = DeprecatedTupleStruct (1); //~ ERROR use of deprecated item
+        let _ = ExperimentalTupleStruct (1); //~ ERROR use of experimental item
+        let _ = UnstableTupleStruct (1); //~ ERROR use of unstable item
+        let _ = UnmarkedTupleStruct (1); //~ ERROR use of unmarked item
+        let _ = StableTupleStruct (1);
+        let _ = FrozenTupleStruct (1);
+        let _ = LockedTupleStruct (1);
     }
 
     fn test_method_param<F: Trait>(foo: F) {
@@ -277,6 +285,20 @@ mod this_crate {
         LockedVariant,
     }
 
+    #[deprecated]
+    pub struct DeprecatedTupleStruct(int);
+    #[experimental]
+    pub struct ExperimentalTupleStruct(int);
+    #[unstable]
+    pub struct UnstableTupleStruct(int);
+    pub struct UnmarkedTupleStruct(int);
+    #[stable]
+    pub struct StableTupleStruct(int);
+    #[frozen]
+    pub struct FrozenTupleStruct(int);
+    #[locked]
+    pub struct LockedTupleStruct(int);
+
     fn test() {
         let foo = MethodTester;
 
@@ -356,6 +378,14 @@ mod this_crate {
         let _ = StableVariant;
         let _ = FrozenVariant;
         let _ = LockedVariant;
+
+        let _ = DeprecatedTupleStruct (1); //~ ERROR use of deprecated item
+        let _ = ExperimentalTupleStruct (1); //~ ERROR use of experimental item
+        let _ = UnstableTupleStruct (1); //~ ERROR use of unstable item
+        let _ = UnmarkedTupleStruct (1); //~ ERROR use of unmarked item
+        let _ = StableTupleStruct (1);
+        let _ = FrozenTupleStruct (1);
+        let _ = LockedTupleStruct (1);
     }
 
     fn test_method_param<F: Trait>(foo: F) {

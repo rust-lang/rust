@@ -980,9 +980,26 @@ pub fn get_static_methods_if_impl(intr: @IdentInterner,
     return Some(static_impl_methods);
 }
 
+/// If node_id is the constructor of a tuple struct, retrieve the NodeId of
+/// the actual type definition, otherwise, return None
+pub fn get_tuple_struct_definition_if_ctor(cdata: Cmd,
+                                           node_id: ast::NodeId) -> Option<ast::NodeId> {
+    let item = lookup_item(node_id, cdata.data());
+    let mut ret = None;
+    reader::tagged_docs(item, tag_items_data_item_is_tuple_struct_ctor, |_| {
+        ret = Some(item_reqd_and_translated_parent_item(cdata.cnum, item));
+        false
+    });
+    ret.map(|x| x.node)
+}
+
 pub fn get_item_attrs(cdata: Cmd,
                       node_id: ast::NodeId,
                       f: |~[@ast::MetaItem]|) {
+    // The attributes for a tuple struct are attached to the definition, not the ctor;
+    // we assume that someone passing in a tuple struct ctor is actually wanting to
+    // look at the definition
+    let node_id = get_tuple_struct_definition_if_ctor(cdata, node_id).unwrap_or(node_id);
     let item = lookup_item(node_id, cdata.data());
     reader::tagged_docs(item, tag_attributes, |attributes| {
         reader::tagged_docs(attributes, tag_attribute, |attribute| {
