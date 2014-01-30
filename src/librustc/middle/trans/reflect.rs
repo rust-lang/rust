@@ -73,8 +73,8 @@ impl<'a> Reflector<'a> {
         let tr = type_of(self.bcx.ccx(), t);
         let s = machine::llsize_of_real(self.bcx.ccx(), tr);
         let a = machine::llalign_of_min(self.bcx.ccx(), tr);
-        return ~[self.c_uint(s),
-             self.c_uint(a)];
+        return ~[self.c_uint(s as uint),
+             self.c_uint(a as uint)];
     }
 
     pub fn c_tydesc(&mut self, t: ty::t) -> ValueRef {
