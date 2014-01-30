@@ -345,7 +345,8 @@ pub fn ensure_trait_methods(ccx: &CrateCtxt, trait_id: ast::NodeId) {
             bounds: @ty::ParamBounds {
                 builtin_bounds: ty::EmptyBuiltinBounds(),
                 trait_bounds: ~[self_trait_ref]
-            }
+            },
+            default: None
         });
 
         // add in the type parameters from the method
@@ -952,10 +953,12 @@ pub fn ty_generics(ccx: &CrateCtxt,
                     let param_ty = ty::param_ty {idx: base_index + offset,
                                                  def_id: local_def(param.id)};
                     let bounds = @compute_bounds(ccx, param_ty, &param.bounds);
+                    let default = param.default.map(|x| ast_ty_to_ty(ccx, &ExplicitRscope, x));
                     let def = ty::TypeParameterDef {
                         ident: param.ident,
                         def_id: local_def(param.id),
-                        bounds: bounds
+                        bounds: bounds,
+                        default: default
                     };
                     debug!("def for param: {}", def.repr(ccx.tcx));
 

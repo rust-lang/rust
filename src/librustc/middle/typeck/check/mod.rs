@@ -81,6 +81,7 @@ use middle::const_eval;
 use middle::lang_items::{ExchangeHeapLangItem, GcLangItem};
 use middle::lang_items::{ManagedHeapLangItem};
 use middle::lint::UnreachableCode;
+use middle::lint;
 use middle::pat_util::pat_id_map;
 use middle::pat_util;
 use middle::subst::Subst;
@@ -1500,32 +1501,55 @@ fn check_type_parameter_positions_in_path(function_context: @FnCtxt,
             // Make sure the number of type parameters supplied on the trait
             // or implementation segment equals the number of type parameters
             // on the trait or implementation definition.
-            let trait_type_parameter_count = generics.type_param_defs.len();
-            let supplied_type_parameter_count = trait_segment.types.len();
-            if trait_type_parameter_count != supplied_type_parameter_count {
-                let trait_count_suffix = if trait_type_parameter_count == 1 {
+            let formal_ty_param_count = generics.type_param_defs.len();
+            let required_ty_param_count = generics.type_param_defs.iter()
+                                                  .take_while(|x| x.default.is_none())
+                                                  .len();
+            let supplied_ty_param_count = trait_segment.types.len();
+            if supplied_ty_param_count < required_ty_param_count {
+                let trait_count_suffix = if required_ty_param_count == 1 {
                     ""
                 } else {
                     "s"
                 };
-                let supplied_count_suffix =
-                    if supplied_type_parameter_count == 1 {
-                        ""
-                    } else {
-                        "s"
-                    };
-                function_context.tcx()
-                                .sess
-                                .span_err(path.span,
-                                          format!("the {} referenced by this \
-                                                path has {} type \
-                                                parameter{}, but {} type \
-                                                parameter{} were supplied",
-                                               name,
-                                               trait_type_parameter_count,
-                                               trait_count_suffix,
-                                               supplied_type_parameter_count,
-                                               supplied_count_suffix))
+                let supplied_count_suffix = if supplied_ty_param_count == 1 {
+                    ""
+                } else {
+                    "s"
+                };
+                let needs = if required_ty_param_count < generics.type_param_defs.len() {
+                    "needs at least"
+                } else {
+                    "needs"
+                };
+                function_context.tcx().sess.span_err(path.span,
+                    format!("the {} referenced by this path {} {} type \
+                            parameter{}, but {} type parameter{} were supplied",
+                            name, needs,
+                            required_ty_param_count, trait_count_suffix,
+                            supplied_ty_param_count, supplied_count_suffix))
+            } else if supplied_ty_param_count > formal_ty_param_count {
+                let trait_count_suffix = if formal_ty_param_count == 1 {
+                    ""
+                } else {
+                    "s"
+                };
+                let supplied_count_suffix = if supplied_ty_param_count == 1 {
+                    ""
+                } else {
+                    "s"
+                };
+                let needs = if required_ty_param_count < generics.type_param_defs.len() {
+                    "needs at most"
+                } else {
+                    "needs"
+                };
+                function_context.tcx().sess.span_err(path.span,
+                    format!("the {} referenced by this path {} {} type \
+                            parameter{}, but {} type parameter{} were supplied",
+                            name, needs,
+                            formal_ty_param_count, trait_count_suffix,
+                            supplied_ty_param_count, supplied_count_suffix))
             }
         }
         _ => {
@@ -3683,6 +3707,9 @@ pub fn instantiate_path(fcx: @FnCtxt,
     debug!(">>> instantiate_path");
 
     let ty_param_count = tpt.generics.type_param_defs.len();
+    let ty_param_req = tpt.generics.type_param_defs.iter()
+                                                   .take_while(|x| x.default.is_none())
+                                                   .len();
     let mut ty_substs_len = 0;
     for segment in pth.segments.iter() {
         ty_substs_len += segment.types.len()
@@ -3720,13 +3747,13 @@ pub fn instantiate_path(fcx: @FnCtxt,
     // Here we calculate the "user type parameter count", which is the number
     // of type parameters actually manifest in the AST. This will differ from
     // the internal type parameter count when there are self types involved.
-    let (user_type_parameter_count, self_parameter_index) = match def {
+    let (user_ty_param_count, user_ty_param_req, self_parameter_index) = match def {
         ast::DefStaticMethod(_, provenance @ ast::FromTrait(_), _) => {
             let generics = generics_of_static_method_container(fcx.ccx.tcx,
                                                                provenance);
-            (ty_param_count - 1, Some(generics.type_param_defs.len()))
+            (ty_param_count - 1, ty_param_req - 1, Some(generics.type_param_defs.len()))
         }
-        _ => (ty_param_count, None),
+        _ => (ty_param_count, ty_param_req, None),
     };
 
     // determine values for type parameters, using the values given by
@@ -3737,27 +3764,55 @@ pub fn instantiate_path(fcx: @FnCtxt,
         fcx.ccx.tcx.sess.span_err
             (span, "this item does not take type parameters");
         fcx.infcx().next_ty_vars(ty_param_count)
-    } else if ty_substs_len > user_type_parameter_count {
+    } else if ty_substs_len > user_ty_param_count {
+        let expected = if user_ty_param_req < user_ty_param_count {
+            "expected at most"
+        } else {
+            "expected"
+        };
         fcx.ccx.tcx.sess.span_err
             (span,
-             format!("too many type parameters provided: expected {}, found {}",
-                  user_type_parameter_count, ty_substs_len));
+             format!("too many type parameters provided: {} {}, found {}",
+                  expected, user_ty_param_count, ty_substs_len));
         fcx.infcx().next_ty_vars(ty_param_count)
-    } else if ty_substs_len < user_type_parameter_count {
+    } else if ty_substs_len < user_ty_param_req {
+        let expected = if user_ty_param_req < user_ty_param_count {
+            "expected at least"
+        } else {
+            "expected"
+        };
         fcx.ccx.tcx.sess.span_err
             (span,
-             format!("not enough type parameters provided: expected {}, found {}",
-                  user_type_parameter_count, ty_substs_len));
+             format!("not enough type parameters provided: {} {}, found {}",
+                  expected, user_ty_param_req, ty_substs_len));
         fcx.infcx().next_ty_vars(ty_param_count)
     } else {
+        if ty_substs_len > user_ty_param_req {
+            fcx.tcx().sess.add_lint(lint::DefaultTypeParamUsage, node_id, pth.span,
+                                    ~"provided type arguments with defaults");
+        }
+
         // Build up the list of type parameters, inserting the self parameter
         // at the appropriate position.
         let mut result = ~[];
         let mut pushed = false;
-        for (i, &ast_type) in pth.segments
-                                .iter()
-                                .flat_map(|segment| segment.types.iter())
-                                .enumerate() {
+        let defaults = tpt.generics.type_param_defs.iter()
+                          .enumerate().filter_map(|(i, x)| {
+            match self_parameter_index {
+                Some(index) if index == i => None,
+                _ => Some(x.default)
+            }
+        }).skip(ty_substs_len).map(|x| match x {
+            Some(default) => default,
+            None => {
+                fcx.tcx().sess.span_bug(span,
+                    "missing default for a not explicitely provided type param")
+            }
+        });
+        for (i, ty) in pth.segments.iter()
+                                   .flat_map(|segment| segment.types.iter())
+                                   .map(|&ast_type| fcx.to_ty(ast_type))
+                                   .chain(defaults).enumerate() {
             match self_parameter_index {
                 Some(index) if index == i => {
                     result.push(fcx.infcx().next_ty_vars(1)[0]);
@@ -3765,7 +3820,7 @@ pub fn instantiate_path(fcx: @FnCtxt,
                 }
                 _ => {}
             }
-            result.push(fcx.to_ty(ast_type))
+            result.push(ty)
         }
 
         // If the self parameter goes at the end, insert it there.

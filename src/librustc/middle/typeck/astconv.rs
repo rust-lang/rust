@@ -51,6 +51,7 @@
 
 
 use middle::const_eval;
+use middle::lint;
 use middle::ty::{substs};
 use middle::ty::{ty_param_substs_and_ty};
 use middle::ty;
@@ -195,21 +196,43 @@ fn ast_path_substs<AC:AstConv,RS:RegionScope>(
     };
 
     // Convert the type parameters supplied by the user.
-    let supplied_type_parameter_count =
-        path.segments.iter().flat_map(|s| s.types.iter()).len();
-    if decl_generics.type_param_defs.len() != supplied_type_parameter_count {
-        this.tcx().sess.span_fatal(
-            path.span,
-            format!("wrong number of type arguments: expected {} but found {}",
-                 decl_generics.type_param_defs.len(),
-                 supplied_type_parameter_count));
+    let supplied_ty_param_count = path.segments.iter().flat_map(|s| s.types.iter()).len();
+    let formal_ty_param_count = decl_generics.type_param_defs.len();
+    let required_ty_param_count = decl_generics.type_param_defs.iter()
+                                               .take_while(|x| x.default.is_none())
+                                               .len();
+    if supplied_ty_param_count < required_ty_param_count {
+        let expected = if required_ty_param_count < formal_ty_param_count {
+            "expected at least"
+        } else {
+            "expected"
+        };
+        this.tcx().sess.span_fatal(path.span,
+            format!("wrong number of type arguments: {} {} but found {}",
+                expected, required_ty_param_count, supplied_ty_param_count));
+    } else if supplied_ty_param_count > formal_ty_param_count {
+        let expected = if required_ty_param_count < formal_ty_param_count {
+            "expected at most"
+        } else {
+            "expected"
+        };
+        this.tcx().sess.span_fatal(path.span,
+            format!("wrong number of type arguments: {} {} but found {}",
+                expected, formal_ty_param_count, supplied_ty_param_count));
     }
-    let tps = path.segments
-                  .iter()
-                  .flat_map(|s| s.types.iter())
-                  .map(|&a_t| ast_ty_to_ty(this, rscope, a_t))
-                  .collect();
 
+    if supplied_ty_param_count > required_ty_param_count {
+        let id = path.segments.iter().flat_map(|s| s.types.iter())
+                              .nth(required_ty_param_count).unwrap().id;
+        this.tcx().sess.add_lint(lint::DefaultTypeParamUsage, id, path.span,
+                                 ~"provided type arguments with defaults");
+    }
+
+    let defaults = decl_generics.type_param_defs.slice_from(supplied_ty_param_count)
+                                .iter().map(|&x| x.default.unwrap());
+    let tps = path.segments.iter().flat_map(|s| s.types.iter())
+                            .map(|&a_t| ast_ty_to_ty(this, rscope, a_t))
+                            .chain(defaults).collect();
     substs {
         regions: ty::NonerasedRegions(regions),
         self_ty: self_ty,

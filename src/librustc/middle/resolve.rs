@@ -3931,6 +3931,10 @@ impl Resolver {
             for bound in type_parameter.bounds.iter() {
                 self.resolve_type_parameter_bound(type_parameter.id, bound);
             }
+            match type_parameter.default {
+                Some(ty) => self.resolve_type(ty),
+                None => {}
+            }
         }
     }
 

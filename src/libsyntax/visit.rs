@@ -470,7 +470,11 @@ pub fn walk_generics<E: Clone, V: Visitor<E>>(visitor: &mut V,
                                               generics: &Generics,
                                               env: E) {
     for type_parameter in generics.ty_params.iter() {
-        walk_ty_param_bounds(visitor, &type_parameter.bounds, env.clone())
+        walk_ty_param_bounds(visitor, &type_parameter.bounds, env.clone());
+        match type_parameter.default {
+            Some(ty) => visitor.visit_ty(ty, env.clone()),
+            None => {}
+        }
     }
     walk_lifetime_decls(visitor, &generics.lifetimes, env);
 }

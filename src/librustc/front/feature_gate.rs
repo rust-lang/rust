@@ -48,6 +48,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("log_syntax", Active),
     ("trace_macros", Active),
     ("simd", Active),
+    ("default_type_params", Active),
 
     // These are used to test this portion of the compiler, they don't actually
     // mean anything
@@ -233,6 +234,20 @@ impl Visitor<()> for Context {
             _ => {}
         }
         visit::walk_expr(self, e, ());
+    }
+
+    fn visit_generics(&mut self, generics: &ast::Generics, _: ()) {
+        for type_parameter in generics.ty_params.iter() {
+            match type_parameter.default {
+                Some(ty) => {
+                    self.gate_feature("default_type_params", ty.span,
+                                      "default type parameters are \
+                                       experimental and possibly buggy");
+                }
+                None => {}
+            }
+        }
+        visit::walk_generics(self, generics, ());
     }
 }
 
