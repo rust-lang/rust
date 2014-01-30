@@ -16,15 +16,17 @@
 // This also serves as a pipes test, because Arcs are implemented with pipes.
 
 extern mod extra;
+extern mod sync;
 
-use extra::arc;
-use extra::future::Future;
+use sync::Arc;
+use sync::MutexArc;
+use sync::Future;
 use extra::time;
 use std::os;
 use std::uint;
 
 // A poor man's pipe.
-type pipe = arc::MutexArc<~[uint]>;
+type pipe = MutexArc<~[uint]>;
 
 fn send(p: &pipe, msg: uint) {
     unsafe {
@@ -46,7 +48,7 @@ fn recv(p: &pipe) -> uint {
 }
 
 fn init() -> (pipe,pipe) {
-    let m = arc::MutexArc::new(~[]);
+    let m = MutexArc::new(~[]);
     ((&m).clone(), m)
 }
 

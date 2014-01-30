@@ -43,6 +43,7 @@ li {list-style-type: none; }
 * [The `semver` version collation library](semver/index.html)
 * [The `term` terminal-handling library](term/index.html)
 * [The UUID library](uuid/index.html)
+* [The `sync` library for concurrency-enabled mechanisms and primitives](sync/index.html)
 
 # Tooling
 

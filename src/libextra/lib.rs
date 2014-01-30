@@ -34,17 +34,16 @@ Rust extras are part of the standard Rust distribution.
 #[deny(non_camel_case_types)];
 #[deny(missing_doc)];
 
+extern mod sync;
+
+#[cfg(stage0)]
+macro_rules! if_ok (
+    ($e:expr) => (match $e { Ok(e) => e, Err(e) => return Err(e) })
+)
+
 // Utility modules
 
 pub mod c_vec;
-
-// Concurrency
-
-pub mod sync;
-pub mod arc;
-pub mod comm;
-pub mod future;
-pub mod task_pool;
 
 // Collections
 
