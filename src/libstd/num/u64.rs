@@ -15,7 +15,7 @@
 use prelude::*;
 
 use default::Default;
-use num::BitCount;
+use num::{Bitwise, Bounded};
 #[cfg(target_word_size = "64")]
 use num::CheckedMul;
 use num::{CheckedAdd, CheckedSub};

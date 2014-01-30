@@ -11,12 +11,11 @@
 // rustpkg utilities having to do with workspaces
 
 use std::os;
-use std::path::Path;
 use context::Context;
 use path_util::{workspace_contains_crate_id, find_dir_using_rust_path_hack, default_workspace};
 use path_util::rust_path;
 use util::option_to_vec;
-use crate_id::CrateId;
+use syntax::crateid::CrateId;
 
 pub fn each_pkg_parent_workspace(cx: &Context,
                                  crateid: &CrateId,
@@ -29,7 +28,7 @@ pub fn each_pkg_parent_workspace(cx: &Context,
         // tjc: make this a condition
         fail!("Package {} not found in any of \
                     the following workspaces: {}",
-                   crateid.path.display(),
+                   crateid.path,
                    rust_path().map(|p| p.display().to_str()).to_str());
     }
     for ws in workspaces.iter() {
@@ -64,7 +63,8 @@ pub fn cwd_to_workspace() -> Option<(Path, CrateId)> {
             let rel = cwd.path_relative_from(&srcpath);
             let rel_s = rel.as_ref().and_then(|p|p.as_str());
             if rel_s.is_some() {
-                return Some((path, CrateId::new(rel_s.unwrap())));
+                let crate_id = from_str(rel_s.unwrap()).expect("valid crate id");
+                return Some((path, crate_id));
             }
         }
     }

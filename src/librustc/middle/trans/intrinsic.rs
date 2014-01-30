@@ -31,14 +31,14 @@ use middle::trans::type_::Type;
 
 pub fn trans_intrinsic(ccx: @CrateContext,
                        decl: ValueRef,
-                       item: &ast::foreign_item,
-                       path: ast_map::path,
+                       item: &ast::ForeignItem,
+                       path: ast_map::Path,
                        substs: @param_substs,
                        _attributes: &[ast::Attribute],
                        ref_id: Option<ast::NodeId>) {
     debug!("trans_intrinsic(item.ident={})", ccx.sess.str_of(item.ident));
 
-    fn simple_llvm_intrinsic(bcx: @Block, name: &'static str, num_args: uint) {
+    fn simple_llvm_intrinsic(bcx: &Block, name: &'static str, num_args: uint) {
         assert!(num_args <= 4);
         let mut args = [0 as ValueRef, ..4];
         let first_real_arg = bcx.fcx.arg_pos(0u);
@@ -50,7 +50,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
         Ret(bcx, llcall);
     }
 
-    fn with_overflow_instrinsic(bcx: @Block, name: &'static str, t: ty::t) {
+    fn with_overflow_instrinsic(bcx: &Block, name: &'static str, t: ty::t) {
         let first_real_arg = bcx.fcx.arg_pos(0u);
         let a = get_param(bcx.fcx.llfn, first_real_arg);
         let b = get_param(bcx.fcx.llfn, first_real_arg + 1);
@@ -73,7 +73,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
         }
     }
 
-    fn volatile_load_intrinsic(bcx: @Block) {
+    fn volatile_load_intrinsic(bcx: &Block) {
         let first_real_arg = bcx.fcx.arg_pos(0u);
         let src = get_param(bcx.fcx.llfn, first_real_arg);
 
@@ -81,7 +81,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
         Ret(bcx, val);
     }
 
-    fn volatile_store_intrinsic(bcx: @Block) {
+    fn volatile_store_intrinsic(bcx: &Block) {
         let first_real_arg = bcx.fcx.arg_pos(0u);
         let dst = get_param(bcx.fcx.llfn, first_real_arg);
         let val = get_param(bcx.fcx.llfn, first_real_arg + 1);
@@ -90,7 +90,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
         RetVoid(bcx);
     }
 
-    fn copy_intrinsic(bcx: @Block, allow_overlap: bool, tp_ty: ty::t) {
+    fn copy_intrinsic(bcx: &Block, allow_overlap: bool, tp_ty: ty::t) {
         let ccx = bcx.ccx();
         let lltp_ty = type_of::type_of(ccx, tp_ty);
         let align = C_i32(machine::llalign_of_min(ccx, lltp_ty) as i32);
@@ -121,7 +121,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
         RetVoid(bcx);
     }
 
-    fn memset_intrinsic(bcx: @Block, tp_ty: ty::t) {
+    fn memset_intrinsic(bcx: &Block, tp_ty: ty::t) {
         let ccx = bcx.ccx();
         let lltp_ty = type_of::type_of(ccx, tp_ty);
         let align = C_i32(machine::llalign_of_min(ccx, lltp_ty) as i32);
@@ -143,7 +143,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
         RetVoid(bcx);
     }
 
-    fn count_zeros_intrinsic(bcx: @Block, name: &'static str) {
+    fn count_zeros_intrinsic(bcx: &Block, name: &'static str) {
         let x = get_param(bcx.fcx.llfn, bcx.fcx.arg_pos(0u));
         let y = C_i1(false);
         let llfn = bcx.ccx().intrinsics.get_copy(&name);
@@ -153,15 +153,9 @@ pub fn trans_intrinsic(ccx: @CrateContext,
 
     let output_type = ty::ty_fn_ret(ty::node_id_to_type(ccx.tcx, item.id));
 
-    let fcx = new_fn_ctxt_w_id(ccx,
-                               path,
-                               decl,
-                               item.id,
-                               output_type,
-                               true,
-                               Some(substs),
-                               None,
-                               Some(item.span));
+    let fcx = new_fn_ctxt_detailed(ccx, path, decl, item.id, false, output_type,
+                                   Some(substs), Some(item.span));
+    init_function(&fcx, true, output_type, Some(substs));
 
     set_always_inline(fcx.llfn);
 
@@ -255,27 +249,18 @@ pub fn trans_intrinsic(ccx: @CrateContext,
             let lltp_ty = type_of::type_of(ccx, tp_ty);
             Ret(bcx, C_uint(ccx, machine::llsize_of_real(ccx, lltp_ty)));
         }
-        "move_val" => {
+        "move_val_init" => {
             // Create a datum reflecting the value being moved.
             // Use `appropriate_mode` so that the datum is by ref
             // if the value is non-immediate. Note that, with
             // intrinsics, there are no argument cleanups to
-            // concern ourselves with.
+            // concern ourselves with, so we can use an rvalue datum.
             let tp_ty = substs.tys[0];
-            let mode = appropriate_mode(ccx, tp_ty);
+            let mode = appropriate_rvalue_mode(ccx, tp_ty);
             let src = Datum {val: get_param(decl, first_real_arg + 1u),
-                             ty: tp_ty, mode: mode};
-            bcx = src.move_to(bcx, DROP_EXISTING,
-                              get_param(decl, first_real_arg));
-            RetVoid(bcx);
-        }
-        "move_val_init" => {
-            // See comments for `"move_val"`.
-            let tp_ty = substs.tys[0];
-            let mode = appropriate_mode(ccx, tp_ty);
-            let src = Datum {val: get_param(decl, first_real_arg + 1u),
-                             ty: tp_ty, mode: mode};
-            bcx = src.move_to(bcx, INIT, get_param(decl, first_real_arg));
+                             ty: tp_ty,
+                             kind: Rvalue(mode)};
+            bcx = src.store_to(bcx, get_param(decl, first_real_arg));
             RetVoid(bcx);
         }
         "min_align_of" => {
@@ -327,7 +312,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
         "uninit" => {
             // Do nothing, this is effectively a no-op
             let retty = substs.tys[0];
-            if type_is_immediate(ccx, retty) && !ty::type_is_nil(retty) {
+            if type_is_immediate(ccx, retty) && !return_type_is_void(ccx, retty) {
                 unsafe {
                     Ret(bcx, lib::llvm::llvm::LLVMGetUndef(type_of(ccx, retty).to_ref()));
                 }
@@ -347,9 +332,8 @@ pub fn trans_intrinsic(ccx: @CrateContext,
             let out_type_size = machine::llbitsize_of_real(ccx, llouttype);
             if in_type_size != out_type_size {
                 let sp = {
-                    let items = ccx.tcx.items.borrow();
-                    match items.get().get_copy(&ref_id.unwrap()) {
-                        ast_map::node_expr(e) => e.span,
+                    match ccx.tcx.items.get(ref_id.unwrap()) {
+                        ast_map::NodeExpr(e) => e.span,
                         _ => fail!("transmute has non-expr arg"),
                     }
                 };
@@ -366,7 +350,7 @@ pub fn trans_intrinsic(ccx: @CrateContext,
                                          pluralize(out_type_size)));
             }
 
-            if !ty::type_is_voidish(ccx.tcx, out_type) {
+            if !return_type_is_void(ccx, out_type) {
                 let llsrcval = get_param(decl, first_real_arg);
                 if type_is_immediate(ccx, in_type) {
                     match fcx.llretptr.get() {
@@ -428,13 +412,14 @@ pub fn trans_intrinsic(ccx: @CrateContext,
             RetVoid(bcx);
         }
         "morestack_addr" => {
-            // XXX This is a hack to grab the address of this particular
+            // FIXME This is a hack to grab the address of this particular
             // native function. There should be a general in-language
             // way to do this
-            let llfty = type_of_rust_fn(bcx.ccx(), [], ty::mk_nil());
-            let morestack_addr = decl_cdecl_fn(
-                bcx.ccx().llmod, "__morestack", llfty);
-            let morestack_addr = PointerCast(bcx, morestack_addr, Type::nil().ptr_to());
+            let llfty = type_of_rust_fn(bcx.ccx(), false, [], ty::mk_nil());
+            let morestack_addr = decl_cdecl_fn(bcx.ccx().llmod, "__morestack",
+                                               llfty, ty::mk_nil());
+            let morestack_addr = PointerCast(bcx, morestack_addr,
+                                             Type::nil().ptr_to());
             Ret(bcx, morestack_addr);
         }
         "offset" => {

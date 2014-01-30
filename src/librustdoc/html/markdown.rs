@@ -16,7 +16,9 @@
 //! functionality through a unit-struct, `Markdown`, which has an implementation
 //! of `fmt::Default`. Example usage:
 //!
-//! ```rust
+//! ```rust,ignore
+//! use rustdoc::html::markdown::Markdown;
+//!
 //! let s = "My *markdown* _text_";
 //! let html = format!("{}", Markdown(s));
 //! // ... something using html
@@ -112,7 +114,7 @@ pub fn render(w: &mut io::Writer, s: &str) {
         unsafe {
             let my_opaque: &my_opaque = cast::transmute(opaque);
             vec::raw::buf_as_slice((*text).data, (*text).size as uint, |text| {
-                let text = str::from_utf8(text);
+                let text = str::from_utf8(text).unwrap();
                 let mut lines = text.lines().filter(|l| stripped_filtered_line(*l).is_none());
                 let text = lines.to_owned_vec().connect("\n");
 
@@ -172,14 +174,14 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
             let (test, shouldfail, ignore) =
                 vec::raw::buf_as_slice((*lang).data,
                                        (*lang).size as uint, |lang| {
-                    let s = str::from_utf8(lang);
+                    let s = str::from_utf8(lang).unwrap();
                     (s.contains("rust"), s.contains("should_fail"),
                      s.contains("ignore"))
                 });
             if !test { return }
             vec::raw::buf_as_slice((*text).data, (*text).size as uint, |text| {
                 let tests: &mut ::test::Collector = intrinsics::transmute(opaque);
-                let text = str::from_utf8(text);
+                let text = str::from_utf8(text).unwrap();
                 let mut lines = text.lines().map(|l| stripped_filtered_line(l).unwrap_or(l));
                 let text = lines.to_owned_vec().connect("\n");
                 tests.add_test(text, ignore, shouldfail);

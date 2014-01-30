@@ -67,13 +67,15 @@ impl<'a> GuaranteeLifetimeContext<'a> {
 
     fn check(&self, cmt: mc::cmt, discr_scope: Option<ast::NodeId>) -> R {
         //! Main routine. Walks down `cmt` until we find the "guarantor".
+        debug!("guarantee_lifetime.check(cmt={}, loan_region={})",
+               cmt.repr(self.bccx.tcx),
+               self.loan_region.repr(self.bccx.tcx));
 
         match cmt.cat {
             mc::cat_rvalue(..) |
             mc::cat_copied_upvar(..) |                  // L-Local
             mc::cat_local(..) |                         // L-Local
             mc::cat_arg(..) |                           // L-Local
-            mc::cat_self(..) |                          // L-Local
             mc::cat_deref(_, _, mc::region_ptr(..)) |   // L-Deref-Borrowed
             mc::cat_deref(_, _, mc::unsafe_ptr(..)) => {
                 let scope = self.scope(cmt);
@@ -137,7 +139,7 @@ impl<'a> GuaranteeLifetimeContext<'a> {
                 //
                 // As a second example, consider *this* scenario:
                 //
-                //    let x = @mut @Some(3);
+                //    let x = @@Some(3);
                 //    match x { @@Some(y) {...} @@None {...} }
                 //
                 // Here again, `x` need only be rooted in the `some` arm.
@@ -156,7 +158,7 @@ impl<'a> GuaranteeLifetimeContext<'a> {
                 // with a second basic block.  However, the naive approach
                 // also yielded suboptimal results for patterns like:
                 //
-                //    let x = @mut @...;
+                //    let x = @@...;
                 //    match x { @@some_variant(y) | @@some_other_variant(y) =>
                 //
                 // The reason is that we would root the value once for
@@ -220,7 +222,7 @@ impl<'a> GuaranteeLifetimeContext<'a> {
 
         // If inside of a match arm, expand the rooting to the entire
         // match. See the detailed discussion in `check()` above.
-        let mut root_scope = match discr_scope {
+        let root_scope = match discr_scope {
             None => root_scope,
             Some(id) => {
                 if self.bccx.is_subscope_of(root_scope, id) {
@@ -230,17 +232,6 @@ impl<'a> GuaranteeLifetimeContext<'a> {
                 }
             }
         };
-
-        // FIXME(#3511) grow to the nearest cleanup scope---this can
-        // cause observable errors if freezing!
-        if !self.bccx.tcx.region_maps.is_cleanup_scope(root_scope) {
-            debug!("{:?} is not a cleanup scope, adjusting", root_scope);
-
-            let cleanup_scope =
-                self.bccx.tcx.region_maps.cleanup_scope(root_scope);
-
-            root_scope = cleanup_scope;
-        }
 
         // Add a record of what is required
         let rm_key = root_map_key {id: cmt_deref.id, derefs: derefs};
@@ -269,7 +260,6 @@ impl<'a> GuaranteeLifetimeContext<'a> {
 
         match cmt.guarantor().cat {
             mc::cat_local(id) |
-            mc::cat_self(id) |
             mc::cat_arg(id) => {
                 let moved_variables_set = self.bccx
                                               .moved_variables_set
@@ -301,8 +291,8 @@ impl<'a> GuaranteeLifetimeContext<'a> {
         // See the SCOPE(LV) function in doc.rs
 
         match cmt.cat {
-            mc::cat_rvalue(cleanup_scope_id) => {
-                ty::ReScope(cleanup_scope_id)
+            mc::cat_rvalue(temp_scope) => {
+                temp_scope
             }
             mc::cat_copied_upvar(_) => {
                 ty::ReScope(self.item_scope_id)
@@ -311,9 +301,8 @@ impl<'a> GuaranteeLifetimeContext<'a> {
                 ty::ReStatic
             }
             mc::cat_local(local_id) |
-            mc::cat_arg(local_id) |
-            mc::cat_self(local_id) => {
-                self.bccx.tcx.region_maps.encl_region(local_id)
+            mc::cat_arg(local_id) => {
+                ty::ReScope(self.bccx.tcx.region_maps.var_scope(local_id))
             }
             mc::cat_deref(_, _, mc::unsafe_ptr(..)) => {
                 ty::ReStatic

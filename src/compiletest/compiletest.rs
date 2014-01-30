@@ -73,6 +73,7 @@ pub fn parse_config(args: ~[~str]) -> config {
                  "percent change in metrics to consider noise", "N"),
           optflag("", "jit", "run tests under the JIT"),
           optopt("", "target", "the target to build for", "TARGET"),
+          optopt("", "host", "the host to build for", "HOST"),
           optopt("", "adb-path", "path to the android debugger", "PATH"),
           optopt("", "adb-test-dir", "path to tests for the android debugger", "PATH"),
           optopt("", "test-shard", "run shard A, of B shards, worth of the testsuite", "A.B"),
@@ -84,8 +85,8 @@ pub fn parse_config(args: ~[~str]) -> config {
     let args_ = args.tail();
     if args[1] == ~"-h" || args[1] == ~"--help" {
         let message = format!("Usage: {} [OPTIONS] [TESTNAME...]", argv0);
-        println(getopts::groups::usage(message, groups));
-        println("");
+        println!("{}", getopts::groups::usage(message, groups));
+        println!("");
         fail!()
     }
 
@@ -97,8 +98,8 @@ pub fn parse_config(args: ~[~str]) -> config {
 
     if matches.opt_present("h") || matches.opt_present("help") {
         let message = format!("Usage: {} [OPTIONS]  [TESTNAME...]", argv0);
-        println(getopts::groups::usage(message, groups));
-        println("");
+        println!("{}", getopts::groups::usage(message, groups));
+        println!("");
         fail!()
     }
 
@@ -134,18 +135,14 @@ pub fn parse_config(args: ~[~str]) -> config {
         rustcflags: matches.opt_str("rustcflags"),
         jit: matches.opt_present("jit"),
         target: opt_str2(matches.opt_str("target")).to_str(),
+        host: opt_str2(matches.opt_str("host")).to_str(),
         adb_path: opt_str2(matches.opt_str("adb-path")).to_str(),
         adb_test_dir:
             opt_str2(matches.opt_str("adb-test-dir")).to_str(),
         adb_device_status:
-            if (opt_str2(matches.opt_str("target")) ==
-                ~"arm-linux-androideabi") {
-                if (opt_str2(matches.opt_str("adb-test-dir")) !=
-                    ~"(none)" &&
-                    opt_str2(matches.opt_str("adb-test-dir")) !=
-                    ~"") { true }
-                else { false }
-            } else { false },
+            "arm-linux-androideabi" == opt_str2(matches.opt_str("target")) &&
+            "(none)" != opt_str2(matches.opt_str("adb-test-dir")) &&
+            !opt_str2(matches.opt_str("adb-test-dir")).is_empty(),
         test_shard: test::opt_shard(matches.opt_str("test-shard")),
         verbose: matches.opt_present("verbose")
     }
@@ -167,6 +164,7 @@ pub fn log_config(config: &config) {
     logv(c, format!("rustcflags: {}", opt_str(&config.rustcflags)));
     logv(c, format!("jit: {}", config.jit));
     logv(c, format!("target: {}", config.target));
+    logv(c, format!("host: {}", config.host));
     logv(c, format!("adb_path: {}", config.adb_path));
     logv(c, format!("adb_test_dir: {}", config.adb_test_dir));
     logv(c, format!("adb_device_status: {}", config.adb_device_status));
@@ -219,8 +217,8 @@ pub fn run_tests(config: &config) {
     if config.target == ~"arm-linux-androideabi" {
         match config.mode{
             mode_debug_info => {
-                println("arm-linux-androideabi debug-info \
-                        test uses tcp 5039 port. please reserve it");
+                println!("arm-linux-androideabi debug-info \
+                         test uses tcp 5039 port. please reserve it");
                 //arm-linux-androideabi debug-info test uses remote debugger
                 //so, we test 1 task at once
                 os::setenv("RUST_TEST_TASKS","1");

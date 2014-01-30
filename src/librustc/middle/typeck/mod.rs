@@ -144,16 +144,6 @@ pub struct method_object {
 
 #[deriving(Clone)]
 pub struct method_map_entry {
-    // the type of the self parameter, which is not reflected in the fn type
-    // (FIXME #3446)
-    self_ty: ty::t,
-
-    // the mode of `self`
-    self_mode: ty::SelfMode,
-
-    // the type of explicit self on the method
-    explicit_self: ast::explicit_self_,
-
     // method details being invoked
     origin: method_origin,
 }
@@ -267,10 +257,10 @@ pub fn write_tpt_to_tcx(tcx: ty::ctxt,
 pub fn lookup_def_tcx(tcx: ty::ctxt, sp: Span, id: ast::NodeId) -> ast::Def {
     let def_map = tcx.def_map.borrow();
     match def_map.get().find(&id) {
-      Some(&x) => x,
-      _ => {
-        tcx.sess.span_fatal(sp, "internal error looking up a definition")
-      }
+        Some(&x) => x,
+        _ => {
+            tcx.sess.span_fatal(sp, "internal error looking up a definition")
+        }
     }
 }
 
@@ -350,11 +340,10 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
     let main_t = ty::node_id_to_type(tcx, main_id);
     match ty::get(main_t).sty {
         ty::ty_bare_fn(..) => {
-            let items = tcx.items.borrow();
-            match items.get().find(&main_id) {
-                Some(&ast_map::node_item(it,_)) => {
+            match tcx.items.find(main_id) {
+                Some(ast_map::NodeItem(it,_)) => {
                     match it.node {
-                        ast::item_fn(_, _, _, ref ps, _)
+                        ast::ItemFn(_, _, _, ref ps, _)
                         if ps.is_parameterized() => {
                             tcx.sess.span_err(
                                 main_span,
@@ -367,7 +356,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                 _ => ()
             }
             let se_ty = ty::mk_bare_fn(tcx, ty::BareFnTy {
-                purity: ast::impure_fn,
+                purity: ast::ImpureFn,
                 abis: abi::AbiSet::Rust(),
                 sig: ty::FnSig {
                     binder_id: main_id,
@@ -396,11 +385,10 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
     let start_t = ty::node_id_to_type(tcx, start_id);
     match ty::get(start_t).sty {
         ty::ty_bare_fn(_) => {
-            let items = tcx.items.borrow();
-            match items.get().find(&start_id) {
-                Some(&ast_map::node_item(it,_)) => {
+            match tcx.items.find(start_id) {
+                Some(ast_map::NodeItem(it,_)) => {
                     match it.node {
-                        ast::item_fn(_,_,_,ref ps,_)
+                        ast::ItemFn(_,_,_,ref ps,_)
                         if ps.is_parameterized() => {
                             tcx.sess.span_err(
                                 start_span,
@@ -414,7 +402,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
             }
 
             let se_ty = ty::mk_bare_fn(tcx, ty::BareFnTy {
-                purity: ast::impure_fn,
+                purity: ast::ImpureFn,
                 abis: abi::AbiSet::Rust(),
                 sig: ty::FnSig {
                     binder_id: start_id,

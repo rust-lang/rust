@@ -10,7 +10,7 @@
 
 //! The Gamma and derived distributions.
 
-use num::Algebraic;
+use num::Real;
 use num;
 use rand::{Rng, Open01};
 use super::normal::StandardNormal;
@@ -144,7 +144,7 @@ impl IndependentSample<f64> for GammaSmallShape {
     fn ind_sample<R: Rng>(&self, rng: &mut R) -> f64 {
         let Open01(u) = rng.gen::<Open01<f64>>();
 
-        self.large_shape.ind_sample(rng) * num::pow(u, self.inv_shape)
+        self.large_shape.ind_sample(rng) * num::powf(u, self.inv_shape)
     }
 }
 impl IndependentSample<f64> for GammaLargeShape {

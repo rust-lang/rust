@@ -20,12 +20,11 @@ use metadata::csearch;
 use middle::ty::get;
 use middle::ty::{ImplContainer, lookup_item_type, subst};
 use middle::ty::{substs, t, ty_bool, ty_char, ty_bot, ty_box, ty_enum, ty_err};
-use middle::ty::{ty_estr, ty_evec, ty_float, ty_infer, ty_int, ty_nil};
-use middle::ty::{ty_opaque_box, ty_param, ty_param_bounds_and_ty, ty_ptr};
+use middle::ty::{ty_str, ty_vec, ty_float, ty_infer, ty_int, ty_nil};
+use middle::ty::{ty_param, ty_param_bounds_and_ty, ty_ptr};
 use middle::ty::{ty_rptr, ty_self, ty_struct, ty_trait, ty_tup};
 use middle::ty::{ty_type, ty_uint, ty_uniq, ty_bare_fn, ty_closure};
-use middle::ty::{ty_opaque_closure_ptr, ty_unboxed_vec};
-use middle::ty::{type_is_ty_var};
+use middle::ty::{ty_unboxed_vec, type_is_ty_var};
 use middle::subst::Subst;
 use middle::ty;
 use middle::ty::{Impl, Method};
@@ -36,10 +35,10 @@ use middle::typeck::infer::{new_infer_ctxt, resolve_ivar, resolve_type};
 use middle::typeck::infer;
 use util::ppaux::Repr;
 use syntax::ast::{Crate, DefId, DefStruct, DefTy};
-use syntax::ast::{item, item_enum, item_impl, item_mod, item_struct};
-use syntax::ast::{LOCAL_CRATE, trait_ref, ty_path};
+use syntax::ast::{Item, ItemEnum, ItemImpl, ItemMod, ItemStruct};
+use syntax::ast::{LOCAL_CRATE, TraitRef, TyPath};
 use syntax::ast;
-use syntax::ast_map::node_item;
+use syntax::ast_map::NodeItem;
 use syntax::ast_map;
 use syntax::ast_util::{def_id_of_def, local_def};
 use syntax::codemap::Span;
@@ -82,9 +81,9 @@ pub fn get_base_type(inference_context: @InferCtxt,
         }
 
         ty_nil | ty_bot | ty_bool | ty_char | ty_int(..) | ty_uint(..) | ty_float(..) |
-        ty_estr(..) | ty_evec(..) | ty_bare_fn(..) | ty_closure(..) | ty_tup(..) |
-        ty_infer(..) | ty_param(..) | ty_self(..) | ty_type | ty_opaque_box |
-        ty_opaque_closure_ptr(..) | ty_unboxed_vec(..) | ty_err | ty_box(_) |
+        ty_str(..) | ty_vec(..) | ty_bare_fn(..) | ty_closure(..) | ty_tup(..) |
+        ty_infer(..) | ty_param(..) | ty_self(..) | ty_type |
+        ty_unboxed_vec(..) | ty_err | ty_box(_) |
         ty_uniq(_) | ty_ptr(_) | ty_rptr(_, _) => {
             debug!("(getting base type) no base type; found {:?}",
                    get(original_type).sty);
@@ -159,13 +158,13 @@ pub struct CoherenceChecker {
 struct CoherenceCheckVisitor { cc: CoherenceChecker }
 
 impl visit::Visitor<()> for CoherenceCheckVisitor {
-    fn visit_item(&mut self, item: &item, _: ()) {
+    fn visit_item(&mut self, item: &Item, _: ()) {
 
 //      debug!("(checking coherence) item '{}'",
 //             self.cc.crate_context.tcx.sess.str_of(item.ident));
 
         match item.node {
-            item_impl(_, ref opt_trait, _, _) => {
+            ItemImpl(_, ref opt_trait, _, _) => {
                 match opt_trait.clone() {
                     Some(opt_trait) => {
                         self.cc.check_implementation(item, [opt_trait]);
@@ -185,14 +184,14 @@ impl visit::Visitor<()> for CoherenceCheckVisitor {
 struct PrivilegedScopeVisitor { cc: CoherenceChecker }
 
 impl visit::Visitor<()> for PrivilegedScopeVisitor {
-    fn visit_item(&mut self, item: &item, _: ()) {
+    fn visit_item(&mut self, item: &Item, _: ()) {
 
         match item.node {
-            item_mod(ref module_) => {
+            ItemMod(ref module_) => {
                 // Then visit the module items.
                 visit::walk_mod(self, module_, ());
             }
-            item_impl(_, None, ast_ty, _) => {
+            ItemImpl(_, None, ast_ty, _) => {
                 if !self.cc.ast_type_is_defined_in_local_crate(ast_ty) {
                     // This is an error.
                     let session = self.cc.crate_context.tcx.sess;
@@ -202,7 +201,7 @@ impl visit::Visitor<()> for PrivilegedScopeVisitor {
                                      a trait or new type instead");
                 }
             }
-            item_impl(_, Some(ref trait_ref), _, _) => {
+            ItemImpl(_, Some(ref trait_ref), _, _) => {
                 // `for_ty` is `Type` in `impl Trait for Type`
                 let for_ty =
                     ty::node_id_to_type(self.cc.crate_context.tcx,
@@ -259,8 +258,8 @@ impl CoherenceChecker {
     }
 
     pub fn check_implementation(&self,
-                                item: &item,
-                                associated_traits: &[trait_ref]) {
+                                item: &Item,
+                                associated_traits: &[TraitRef]) {
         let tcx = self.crate_context.tcx;
         let self_type = ty::lookup_item_type(tcx, local_def(item.id));
 
@@ -309,7 +308,7 @@ impl CoherenceChecker {
                 // Nothing to do.
             }
             Some(base_type_def_id) => {
-                // XXX: Gather up default methods?
+                // FIXME: Gather up default methods?
                 if associated_traits.len() == 0 {
                     self.add_inherent_impl(base_type_def_id, implementation);
                 }
@@ -546,7 +545,7 @@ impl CoherenceChecker {
         visit::walk_crate(&mut visitor, crate, ());
     }
 
-    pub fn trait_ref_to_trait_def_id(&self, trait_ref: &trait_ref) -> DefId {
+    pub fn trait_ref_to_trait_def_id(&self, trait_ref: &TraitRef) -> DefId {
         let def_map = self.crate_context.tcx.def_map;
         let def_map = def_map.borrow();
         let trait_def = def_map.get().get_copy(&trait_ref.ref_id);
@@ -560,7 +559,7 @@ impl CoherenceChecker {
     pub fn ast_type_is_defined_in_local_crate(&self, original_type: &ast::Ty)
                                               -> bool {
         match original_type.node {
-            ty_path(_, _, path_id) => {
+            TyPath(_, _, path_id) => {
                 let def_map = self.crate_context.tcx.def_map.borrow();
                 match def_map.get().get_copy(&path_id) {
                     DefTy(def_id) | DefStruct(def_id) => {
@@ -570,16 +569,15 @@ impl CoherenceChecker {
 
                         // Make sure that this type precisely names a nominal
                         // type.
-                        let items = self.crate_context.tcx.items.borrow();
-                        match items.get().find(&def_id.node) {
+                        match self.crate_context.tcx.items.find(def_id.node) {
                             None => {
                                 self.crate_context.tcx.sess.span_bug(
                                     original_type.span,
                                     "resolve didn't resolve this type?!");
                             }
-                            Some(&node_item(item, _)) => {
+                            Some(NodeItem(item, _)) => {
                                 match item.node {
-                                    item_struct(..) | item_enum(..) => true,
+                                    ItemStruct(..) | ItemEnum(..) => true,
                                     _ => false,
                                 }
                             }
@@ -594,10 +592,10 @@ impl CoherenceChecker {
     }
 
     // Converts an implementation in the AST to an Impl structure.
-    pub fn create_impl_from_item(&self, item: &item) -> @Impl {
+    pub fn create_impl_from_item(&self, item: &Item) -> @Impl {
         let tcx = self.crate_context.tcx;
         match item.node {
-            item_impl(_, ref trait_refs, _, ref ast_methods) => {
+            ItemImpl(_, ref trait_refs, _, ref ast_methods) => {
                 let mut methods = ~[];
                 for ast_method in ast_methods.iter() {
                     methods.push(ty::method(tcx, local_def(ast_method.id)));
@@ -628,9 +626,8 @@ impl CoherenceChecker {
 
     pub fn span_of_impl(&self, implementation: @Impl) -> Span {
         assert_eq!(implementation.did.crate, LOCAL_CRATE);
-        let items = self.crate_context.tcx.items.borrow();
-        match items.get().find(&implementation.did.node) {
-            Some(&node_item(item, _)) => {
+        match self.crate_context.tcx.items.find(implementation.did.node) {
+            Some(NodeItem(item, _)) => {
                 return item.span;
             }
             _ => {
@@ -734,9 +731,8 @@ impl CoherenceChecker {
                     // Destructors only work on nominal types.
                     if impl_info.did.crate == ast::LOCAL_CRATE {
                         {
-                            let items = tcx.items.borrow();
-                            match items.get().find(&impl_info.did.node) {
-                                Some(&ast_map::node_item(@ref item, _)) => {
+                            match tcx.items.find(impl_info.did.node) {
+                                Some(ast_map::NodeItem(item, _)) => {
                                     tcx.sess.span_err((*item).span,
                                                       "the Drop trait may \
                                                        only be implemented \
@@ -822,9 +818,6 @@ fn subst_receiver_types_in_method_ty(tcx: ty::ctxt,
 
         // method types *can* appear in the generic bounds
         method.generics.subst(tcx, &combined_substs),
-
-        // method tps cannot appear in the self_ty, so use `substs` from trait ref
-        method.transformed_self_ty.subst(tcx, &trait_ref.substs),
 
         // method types *can* appear in the fty
         method.fty.subst(tcx, &combined_substs),

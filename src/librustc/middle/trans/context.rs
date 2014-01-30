@@ -62,7 +62,7 @@ pub struct CrateContext {
      // came from)
      external_srcs: RefCell<HashMap<ast::NodeId, ast::DefId>>,
      // A set of static items which cannot be inlined into other crates. This
-     // will pevent in ii_item() structures from being encoded into the metadata
+     // will pevent in IIItem() structures from being encoded into the metadata
      // that is generated
      non_inlineable_statics: RefCell<HashSet<ast::NodeId>>,
      // Cache instances of monomorphized functions
@@ -90,6 +90,9 @@ pub struct CrateContext {
      extern_const_values: RefCell<HashMap<ast::DefId, ValueRef>>,
 
      impl_method_cache: RefCell<HashMap<(ast::DefId, ast::Name), ast::DefId>>,
+
+     // Cache of closure wrappers for bare fn's.
+     closure_bare_wrapper_cache: RefCell<HashMap<ValueRef, ValueRef>>,
 
      module_data: RefCell<HashMap<~str, ValueRef>>,
      lltypes: RefCell<HashMap<ty::t, Type>>,
@@ -165,7 +168,7 @@ impl CrateContext {
 
             let (crate_map_name, crate_map) = decl_crate_map(sess, link_meta.clone(), llmod);
             let dbg_cx = if sess.opts.debuginfo {
-                Some(debuginfo::CrateDebugContext::new(llmod, name.to_owned()))
+                Some(debuginfo::CrateDebugContext::new(llmod))
             } else {
                 None
             };
@@ -201,6 +204,7 @@ impl CrateContext {
                   const_values: RefCell::new(HashMap::new()),
                   extern_const_values: RefCell::new(HashMap::new()),
                   impl_method_cache: RefCell::new(HashMap::new()),
+                  closure_bare_wrapper_cache: RefCell::new(HashMap::new()),
                   module_data: RefCell::new(HashMap::new()),
                   lltypes: RefCell::new(HashMap::new()),
                   llsizingtypes: RefCell::new(HashMap::new()),

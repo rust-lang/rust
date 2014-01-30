@@ -20,7 +20,7 @@ use unstable::running_on_valgrind;
 use vec::ImmutableVector;
 
 // Indicates whether we should perform expensive sanity checks, including rtassert!
-// XXX: Once the runtime matures remove the `true` below to turn off rtassert, etc.
+// FIXME: Once the runtime matures remove the `true` below to turn off rtassert, etc.
 pub static ENFORCE_SANITY: bool = true || !cfg!(rtopt) || cfg!(rtdebug) || cfg!(rtassert);
 
 /// Get the number of cores available
@@ -70,7 +70,6 @@ pub fn default_sched_threads() -> uint {
 
 pub fn dumb_println(args: &fmt::Arguments) {
     use io;
-    use libc;
 
     struct Stderr;
     impl io::Writer for Stderr {
@@ -141,6 +140,7 @@ memory and partly incapable of presentation to others.",
     abort();
 
     fn abort() -> ! {
-        unsafe { libc::abort() }
+        use std::unstable::intrinsics;
+        unsafe { intrinsics::abort() }
     }
 }

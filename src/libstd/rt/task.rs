@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -27,8 +27,6 @@ use option::{Option, Some, None};
 use prelude::drop;
 use result::{Result, Ok, Err};
 use rt::Runtime;
-use rt::borrowck::BorrowRecord;
-use rt::borrowck;
 use rt::local::Local;
 use rt::local_heap::LocalHeap;
 use rt::rtio::LocalIo;
@@ -39,12 +37,11 @@ use sync::atomics::{AtomicUint, SeqCst};
 use task::{TaskResult, TaskOpts};
 use unstable::finally::Finally;
 
-// The Task struct represents all state associated with a rust
-// task. There are at this point two primary "subtypes" of task,
-// however instead of using a subtype we just have a "task_type" field
-// in the struct. This contains a pointer to another struct that holds
-// the type-specific state.
-
+/// The Task struct represents all state associated with a rust
+/// task. There are at this point two primary "subtypes" of task,
+/// however instead of using a subtype we just have a "task_type" field
+/// in the struct. This contains a pointer to another struct that holds
+/// the type-specific state.
 pub struct Task {
     heap: LocalHeap,
     gc: GarbageCollector,
@@ -53,8 +50,6 @@ pub struct Task {
     death: Death,
     destroyed: bool,
     name: Option<SendStr>,
-    // Dynamic borrowck debugging info
-    borrow_list: Option<~[BorrowRecord]>,
 
     logger: Option<~Logger>,
     stdout: Option<~Writer>,
@@ -80,7 +75,7 @@ pub struct Death {
     on_exit: Option<proc(TaskResult)>,
 }
 
-pub struct BlockedTaskIterator {
+pub struct BlockedTasks {
     priv inner: UnsafeArc<AtomicUint>,
 }
 
@@ -94,7 +89,6 @@ impl Task {
             death: Death::new(),
             destroyed: false,
             name: None,
-            borrow_list: None,
             logger: None,
             stdout: None,
             stderr: None,
@@ -183,9 +177,6 @@ impl Task {
 
         unsafe { (*handle).unwinder.try(try_block); }
 
-        // Cleanup the dynamic borrowck debugging info
-        borrowck::clear_task_borrow_list();
-
         // Here we must unsafely borrow the task in order to not remove it from
         // TLS. When collecting failure, we may attempt to send on a channel (or
         // just run aribitrary code), so we must be sure to still have a local
@@ -221,7 +212,7 @@ impl Task {
         // pretty sketchy and involves shuffling vtables of trait objects
         // around, but it gets the job done.
         //
-        // XXX: This function is a serious code smell and should be avoided at
+        // FIXME: This function is a serious code smell and should be avoided at
         //      all costs. I have yet to think of a method to avoid this
         //      function, and I would be saddened if more usage of the function
         //      crops up.
@@ -289,7 +280,7 @@ impl Task {
     /// Returns the stack bounds for this task in (lo, hi) format. The stack
     /// bounds may not be known for all tasks, so the return value may be
     /// `None`.
-    pub fn stack_bounds(&self) -> Option<(uint, uint)> {
+    pub fn stack_bounds(&self) -> (uint, uint) {
         self.imp.get_ref().stack_bounds()
     }
 }
@@ -301,7 +292,7 @@ impl Drop for Task {
     }
 }
 
-impl Iterator<BlockedTask> for BlockedTaskIterator {
+impl Iterator<BlockedTask> for BlockedTasks {
     fn next(&mut self) -> Option<BlockedTask> {
         Some(Shared(self.inner.clone()))
     }
@@ -332,7 +323,7 @@ impl BlockedTask {
     }
 
     /// Converts one blocked task handle to a list of many handles to the same.
-    pub fn make_selectable(self, num_handles: uint) -> Take<BlockedTaskIterator>
+    pub fn make_selectable(self, num_handles: uint) -> Take<BlockedTasks>
     {
         let arc = match self {
             Owned(task) => {
@@ -341,7 +332,7 @@ impl BlockedTask {
             }
             Shared(arc) => arc.clone(),
         };
-        BlockedTaskIterator{ inner: arc }.take(num_handles)
+        BlockedTasks{ inner: arc }.take(num_handles)
     }
 
     /// Convert to an unsafe uint value. Useful for storing in a pipe's state

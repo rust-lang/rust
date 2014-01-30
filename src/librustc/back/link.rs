@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -38,19 +38,20 @@ use extra::hex::ToHex;
 use extra::tempfile::TempDir;
 use syntax::abi;
 use syntax::ast;
-use syntax::ast_map::{path, path_mod, path_name, path_pretty_name};
+use syntax::ast_map::{PathMod, PathName, PathPrettyName};
+use syntax::ast_map;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::crateid::CrateId;
 
 #[deriving(Clone, Eq)]
-pub enum output_type {
-    output_type_none,
-    output_type_bitcode,
-    output_type_assembly,
-    output_type_llvm_assembly,
-    output_type_object,
-    output_type_exe,
+pub enum OutputType {
+    OutputTypeNone,
+    OutputTypeBitcode,
+    OutputTypeAssembly,
+    OutputTypeLlvmAssembly,
+    OutputTypeObject,
+    OutputTypeExe,
 }
 
 pub fn llvm_err(sess: Session, msg: ~str) -> ! {
@@ -85,10 +86,10 @@ pub fn WriteOutputFile(
 pub mod write {
 
     use back::lto;
-    use back::link::{WriteOutputFile, output_type};
-    use back::link::{output_type_assembly, output_type_bitcode};
-    use back::link::{output_type_exe, output_type_llvm_assembly};
-    use back::link::{output_type_object};
+    use back::link::{WriteOutputFile, OutputType};
+    use back::link::{OutputTypeAssembly, OutputTypeBitcode};
+    use back::link::{OutputTypeExe, OutputTypeLlvmAssembly};
+    use back::link::{OutputTypeObject};
     use driver::driver::CrateTranslation;
     use driver::session::Session;
     use driver::session;
@@ -106,7 +107,7 @@ pub mod write {
 
     pub fn run_passes(sess: Session,
                       trans: &CrateTranslation,
-                      output_type: output_type,
+                      output_type: OutputType,
                       output: &Path) {
         let llmod = trans.module;
         let llcx = trans.context;
@@ -125,7 +126,10 @@ pub mod write {
               session::Default => lib::llvm::CodeGenLevelDefault,
               session::Aggressive => lib::llvm::CodeGenLevelAggressive,
             };
-            let use_softfp = sess.opts.debugging_opts & session::use_softfp != 0;
+            let use_softfp = sess.opts.debugging_opts & session::USE_SOFTFP != 0;
+
+            // FIXME: #11906: Omitting frame pointers breaks retrieving the value of a parameter.
+            let no_fp_elim = sess.opts.debuginfo;
 
             let tm = sess.targ_cfg.target_strs.target_triple.with_c_str(|T| {
                 sess.opts.target_cpu.with_c_str(|CPU| {
@@ -136,7 +140,8 @@ pub mod write {
                             lib::llvm::RelocPIC,
                             OptLevel,
                             true,
-                            use_softfp
+                            use_softfp,
+                            no_fp_elim
                         )
                     })
                 })
@@ -155,7 +160,6 @@ pub mod write {
                 pass.with_c_str(|s| llvm::LLVMRustAddPass(fpm, s))
             };
             if !sess.no_verify() { assert!(addpass("verify")); }
-            if sess.lint_llvm()  { assert!(addpass("lint"));   }
 
             if !sess.no_prepopulate_passes() {
                 llvm::LLVMRustAddAnalysisPasses(tm, fpm, llmod);
@@ -182,7 +186,7 @@ pub mod write {
             llvm::LLVMDisposePassManager(mpm);
 
             // Emit the bytecode if we're either saving our temporaries or
-            // emitting an rlib. Whenever an rlib is create, the bytecode is
+            // emitting an rlib. Whenever an rlib is created, the bytecode is
             // inserted into the archive in order to allow LTO against it.
             let outputs = sess.outputs.borrow();
             if sess.opts.save_temps ||
@@ -224,20 +228,20 @@ pub mod write {
 
             time(sess.time_passes(), "codegen passes", (), |()| {
                 match output_type {
-                    output_type_none => {}
-                    output_type_bitcode => {
+                    OutputTypeNone => {}
+                    OutputTypeBitcode => {
                         output.with_c_str(|buf| {
                             llvm::LLVMWriteBitcodeToFile(llmod, buf);
                         })
                     }
-                    output_type_llvm_assembly => {
+                    OutputTypeLlvmAssembly => {
                         output.with_c_str(|output| {
                             with_codegen(tm, llmod, |cpm| {
                                 llvm::LLVMRustPrintModule(cpm, llmod, output);
                             })
                         })
                     }
-                    output_type_assembly => {
+                    OutputTypeAssembly => {
                         with_codegen(tm, llmod, |cpm| {
                             WriteOutputFile(sess, tm, cpm, llmod, output,
                                             lib::llvm::AssemblyFile);
@@ -247,7 +251,7 @@ pub mod write {
                         // could be invoked specially with output_type_assembly,
                         // so in this case we still want the metadata object
                         // file.
-                        if sess.opts.output_type != output_type_assembly {
+                        if sess.opts.output_type != OutputTypeAssembly {
                             with_codegen(tm, trans.metadata_module, |cpm| {
                                 let out = output.with_extension("metadata.o");
                                 WriteOutputFile(sess, tm, cpm,
@@ -256,7 +260,7 @@ pub mod write {
                             })
                         }
                     }
-                    output_type_exe | output_type_object => {
+                    OutputTypeExe | OutputTypeObject => {
                         with_codegen(tm, llmod, |cpm| {
                             WriteOutputFile(sess, tm, cpm, llmod, output,
                                             lib::llvm::ObjectFile);
@@ -298,7 +302,7 @@ pub mod write {
                 if !prog.status.success() {
                     sess.err(format!("linking with `{}` failed: {}", cc, prog.status));
                     sess.note(format!("{} arguments: '{}'", cc, args.connect("' '")));
-                    sess.note(str::from_utf8_owned(prog.error + prog.output));
+                    sess.note(str::from_utf8_owned(prog.error + prog.output).unwrap());
                     sess.abort_if_errors();
                 }
             },
@@ -313,7 +317,7 @@ pub mod write {
         use std::unstable::mutex::{Once, ONCE_INIT};
         static mut INIT: Once = ONCE_INIT;
 
-        // Copy what clan does by turning on loop vectorization at O2 and
+        // Copy what clang does by turning on loop vectorization at O2 and
         // slp vectorization at O3
         let vectorize_loop = !sess.no_vectorize_loops() &&
                              (sess.opts.optimize == session::Default ||
@@ -346,7 +350,7 @@ pub mod write {
             // Only initialize the platforms supported by Rust here, because
             // using --llvm-root will have multiple platforms that rustllvm
             // doesn't actually link to and it's pointless to put target info
-            // into the registry that Rust can not generate machine code for.
+            // into the registry that Rust cannot generate machine code for.
             llvm::LLVMInitializeX86TargetInfo();
             llvm::LLVMInitializeX86Target();
             llvm::LLVMInitializeX86TargetMC();
@@ -380,7 +384,7 @@ pub mod write {
         let builder = llvm::LLVMPassManagerBuilderCreate();
         match opt {
             lib::llvm::CodeGenLevelNone => {
-                // Don't add lifetime intrinsics add O0
+                // Don't add lifetime intrinsics at O0
                 llvm::LLVMRustAddAlwaysInlinePass(builder, false);
             }
             lib::llvm::CodeGenLevelLess => {
@@ -583,14 +587,14 @@ pub fn sanitize(s: &str) -> ~str {
     return result;
 }
 
-pub fn mangle(sess: Session, ss: path,
+pub fn mangle(sess: Session, ss: ast_map::Path,
               hash: Option<&str>, vers: Option<&str>) -> ~str {
     // Follow C++ namespace-mangling style, see
     // http://en.wikipedia.org/wiki/Name_mangling for more info.
     //
     // It turns out that on OSX you can actually have arbitrary symbols in
     // function names (at least when given to LLVM), but this is not possible
-    // when using unix's linker. Perhaps one day when we just a linker from LLVM
+    // when using unix's linker. Perhaps one day when we just use a linker from LLVM
     // we won't need to do this name mangling. The problem with name mangling is
     // that it seriously limits the available characters. For example we can't
     // have things like @T or ~[T] in symbol names when one would theoretically
@@ -609,7 +613,7 @@ pub fn mangle(sess: Session, ss: path,
     // First, connect each component with <len, name> pairs.
     for s in ss.iter() {
         match *s {
-            path_name(s) | path_mod(s) | path_pretty_name(s, _) => {
+            PathName(s) | PathMod(s) | PathPrettyName(s, _) => {
                 push(sess.str_of(s))
             }
         }
@@ -625,7 +629,7 @@ pub fn mangle(sess: Session, ss: path,
     let mut hash = match hash { Some(s) => s.to_owned(), None => ~"" };
     for s in ss.iter() {
         match *s {
-            path_pretty_name(_, extra) => {
+            PathPrettyName(_, extra) => {
                 let hi = (extra >> 32) as u32 as uint;
                 let lo = extra as u32 as uint;
                 hash.push_char(EXTRA_CHARS[hi % EXTRA_CHARS.len()] as char);
@@ -647,7 +651,7 @@ pub fn mangle(sess: Session, ss: path,
 }
 
 pub fn exported_name(sess: Session,
-                     path: path,
+                     path: ast_map::Path,
                      hash: &str,
                      vers: &str) -> ~str {
     // The version will get mangled to have a leading '_', but it makes more
@@ -662,7 +666,7 @@ pub fn exported_name(sess: Session,
 }
 
 pub fn mangle_exported_name(ccx: &CrateContext,
-                            path: path,
+                            path: ast_map::Path,
                             t: ty::t) -> ~str {
     let hash = get_symbol_hash(ccx, t);
     return exported_name(ccx.sess, path,
@@ -676,8 +680,8 @@ pub fn mangle_internal_name_by_type_only(ccx: &CrateContext,
     let s = ppaux::ty_to_short_str(ccx.tcx, t);
     let hash = get_symbol_hash(ccx, t);
     return mangle(ccx.sess,
-                  ~[path_name(ccx.sess.ident_of(name)),
-                    path_name(ccx.sess.ident_of(s))],
+                  ~[PathName(ccx.sess.ident_of(name)),
+                    PathName(ccx.sess.ident_of(s))],
                   Some(hash.as_slice()),
                   None);
 }
@@ -689,20 +693,21 @@ pub fn mangle_internal_name_by_type_and_seq(ccx: &CrateContext,
     let hash = get_symbol_hash(ccx, t);
     let (_, name) = gensym_name(name);
     return mangle(ccx.sess,
-                  ~[path_name(ccx.sess.ident_of(s)), name],
+                  ~[PathName(ccx.sess.ident_of(s)), name],
                   Some(hash.as_slice()),
                   None);
 }
 
 pub fn mangle_internal_name_by_path_and_seq(ccx: &CrateContext,
-                                            mut path: path,
+                                            mut path: ast_map::Path,
                                             flav: &str) -> ~str {
     let (_, name) = gensym_name(flav);
     path.push(name);
     mangle(ccx.sess, path, None, None)
 }
 
-pub fn mangle_internal_name_by_path(ccx: &CrateContext, path: path) -> ~str {
+pub fn mangle_internal_name_by_path(ccx: &CrateContext,
+                                    path: ast_map::Path) -> ~str {
     mangle(ccx.sess, path, None, None)
 }
 
@@ -892,7 +897,7 @@ fn link_rlib(sess: Session,
     //   determine the architecture of the archive in order to see whether its
     //   linkable.
     //
-    //   The algorithm for this detections is: iterate over the files in the
+    //   The algorithm for this detection is: iterate over the files in the
     //   archive. Skip magical SYMDEF names. Interpret the first file as an
     //   object file. Read architecture from the object file.
     //
@@ -922,10 +927,13 @@ fn link_rlib(sess: Session,
                 fs::unlink(&bc);
             }
 
-            // Now that we've added files, some platforms need us to now update
-            // the symbol table in the archive (because some platforms die when
-            // adding files to the archive without symbols).
-            a.update_symbols();
+            // After adding all files to the archive, we need to update the
+            // symbol table of the archive. This currently dies on OSX (see
+            // #11162), and isn't necessary there anyway
+            match sess.targ_cfg.os {
+                abi::OsMacos => {}
+                _ => { a.update_symbols(); }
+            }
         }
 
         None => {}
@@ -936,7 +944,7 @@ fn link_rlib(sess: Session,
 // Create a static archive
 //
 // This is essentially the same thing as an rlib, but it also involves adding
-// all of the upstream crates' objects into the the archive. This will slurp in
+// all of the upstream crates' objects into the archive. This will slurp in
 // all of the native libraries of upstream dependencies as well.
 //
 // Additionally, there's no way for us to link dynamic libraries, so we warn
@@ -983,7 +991,7 @@ fn link_natively(sess: Session, dylib: bool, obj_filename: &Path,
     let mut cc_args = sess.targ_cfg.target_strs.cc_args.clone();
     cc_args.push_all_move(link_args(sess, dylib, tmpdir.path(),
                                     obj_filename, out_filename));
-    if (sess.opts.debugging_opts & session::print_link_args) != 0 {
+    if (sess.opts.debugging_opts & session::PRINT_LINK_ARGS) != 0 {
         println!("{} link args: '{}'", cc_prog, cc_args.connect("' '"));
     }
 
@@ -1003,7 +1011,7 @@ fn link_natively(sess: Session, dylib: bool, obj_filename: &Path,
             if !prog.status.success() {
                 sess.err(format!("linking with `{}` failed: {}", cc_prog, prog.status));
                 sess.note(format!("{} arguments: '{}'", cc_prog, cc_args.connect("' '")));
-                sess.note(str::from_utf8_owned(prog.error + prog.output));
+                sess.note(str::from_utf8_owned(prog.error + prog.output).unwrap());
                 sess.abort_if_errors();
             }
         },
@@ -1053,7 +1061,7 @@ fn link_args(sess: Session,
     if sess.targ_cfg.os == abi::OsLinux {
         // GNU-style linkers will use this to omit linking to libraries which
         // don't actually fulfill any relocations, but only for libraries which
-        // follow this flag. Thus, use it before specifing libraries to link to.
+        // follow this flag. Thus, use it before specifying libraries to link to.
         args.push(~"-Wl,--as-needed");
 
         // GNU-style linkers support optimization with -O. --gc-sections
@@ -1069,7 +1077,7 @@ fn link_args(sess: Session,
     if sess.targ_cfg.os == abi::OsWin32 {
         // Make sure that we link to the dynamic libgcc, otherwise cross-module
         // DWARF stack unwinding will not work.
-        // This behavior may be overriden by --link-args "-static-libgcc"
+        // This behavior may be overridden by --link-args "-static-libgcc"
         args.push(~"-shared-libgcc");
     }
 
@@ -1085,8 +1093,10 @@ fn link_args(sess: Session,
             args.push(~"-dynamiclib");
             args.push(~"-Wl,-dylib");
             // FIXME (#9639): This needs to handle non-utf8 paths
-            args.push(~"-Wl,-install_name,@rpath/" +
-                      out_filename.filename_str().unwrap());
+            if !sess.opts.no_rpath {
+                args.push(~"-Wl,-install_name,@rpath/" +
+                          out_filename.filename_str().unwrap());
+            }
         } else {
             args.push(~"-shared")
         }
@@ -1104,7 +1114,9 @@ fn link_args(sess: Session,
     // FIXME (#2397): At some point we want to rpath our guesses as to
     // where extern libraries might live, based on the
     // addl_lib_search_paths
-    args.push_all(rpath::get_rpath_flags(sess, out_filename));
+    if !sess.opts.no_rpath {
+        args.push_all(rpath::get_rpath_flags(sess, out_filename));
+    }
 
     // Finally add all the linker arguments provided on the command line along
     // with any #[link_args] attributes found inside the crate
@@ -1119,7 +1131,7 @@ fn link_args(sess: Session,
 
 // # Native library linking
 //
-// User-supplied library search paths (-L on the cammand line) These are
+// User-supplied library search paths (-L on the command line). These are
 // the same paths used to find Rust crates, so some of them may have been
 // added already by the previous crate linking code. This only allows them
 // to be found at compile time so it is still entirely up to outside
@@ -1164,7 +1176,7 @@ fn add_local_native_libraries(args: &mut ~[~str], sess: Session) {
 fn add_upstream_rust_crates(args: &mut ~[~str], sess: Session,
                             dylib: bool, tmpdir: &Path) {
     // Converts a library file-stem into a cc -l argument
-    fn unlib(config: @session::config, stem: &str) -> ~str {
+    fn unlib(config: @session::Config, stem: &str) -> ~str {
         if stem.starts_with("lib") &&
             config.os != abi::OsWin32 {
             stem.slice(3, stem.len()).to_owned()
@@ -1177,12 +1189,12 @@ fn add_upstream_rust_crates(args: &mut ~[~str], sess: Session,
     if !dylib && !sess.prefer_dynamic() {
         // With an executable, things get a little interesting. As a limitation
         // of the current implementation, we require that everything must be
-        // static, or everything must be dynamic. The reasons for this are a
+        // static or everything must be dynamic. The reasons for this are a
         // little subtle, but as with the above two cases, the goal is to
         // prevent duplicate copies of the same library showing up. For example,
         // a static immediate dependency might show up as an upstream dynamic
         // dependency and we currently have no way of knowing that. We know that
-        // all dynamic libaries require dynamic dependencies (see above), so
+        // all dynamic libraries require dynamic dependencies (see above), so
         // it's satisfactory to include either all static libraries or all
         // dynamic libraries.
         let crates = cstore.get_used_crates(cstore::RequireStatic);
@@ -1227,7 +1239,7 @@ fn add_upstream_rust_crates(args: &mut ~[~str], sess: Session,
     }
 
     // If we're performing LTO, then it should have been previously required
-    // that all upstream rust depenencies were available in an rlib format.
+    // that all upstream rust dependencies were available in an rlib format.
     assert!(!sess.lto());
 
     // This is a fallback of three different  cases of linking:

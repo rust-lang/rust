@@ -9,10 +9,11 @@
 // except according to those terms.
 
 extern mod extra;
+extern mod arena;
 
 use std::iter::range_step;
 use extra::future::Future;
-use extra::arena::TypedArena;
+use arena::TypedArena;
 
 enum Tree<'a> {
     Nil,
@@ -62,9 +63,9 @@ fn main() {
     let long_lived_tree = bottom_up_tree(&long_lived_arena, 0, max_depth);
 
     let mut messages = range_step(min_depth, max_depth + 1, 2).map(|depth| {
-            use std::int::pow;
+            use std::num::pow;
             let iterations = pow(2, (max_depth - depth + min_depth) as uint);
-            do Future::spawn {
+            Future::spawn(proc() {
                 let mut chk = 0;
                 for i in range(1, iterations + 1) {
                     let arena = TypedArena::new();
@@ -74,11 +75,11 @@ fn main() {
                 }
                 format!("{}\t trees of depth {}\t check: {}",
                         iterations * 2, depth, chk)
-            }
+            })
         }).to_owned_vec();
 
     for message in messages.mut_iter() {
-        println(*message.get_ref());
+        println!("{}", *message.get_ref());
     }
 
     println!("long lived tree of depth {}\t check: {}",

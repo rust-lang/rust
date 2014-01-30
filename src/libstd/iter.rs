@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -402,7 +402,7 @@ pub trait Iterator<A> {
     ///             .filter(|&x| x % 2 == 0)
     ///             .inspect(|&x| debug!("{} made it through", x))
     ///             .sum();
-    /// println(sum.to_str());
+    /// println!("{}", sum);
     /// ```
     #[inline]
     fn inspect<'r>(self, f: 'r |&A|) -> Inspect<'r, A, Self> {
@@ -670,21 +670,21 @@ pub trait DoubleEndedIterator<A>: Iterator<A> {
     /// Yield an element from the end of the range, returning `None` if the range is empty.
     fn next_back(&mut self) -> Option<A>;
 
-    /// Flip the direction of the iterator
+    /// Change the direction of the iterator
     ///
-    /// The inverted iterator flips the ends on an iterator that can already
+    /// The flipped iterator swaps the ends on an iterator that can already
     /// be iterated from the front and from the back.
     ///
     ///
-    /// If the iterator also implements RandomAccessIterator, the inverted
+    /// If the iterator also implements RandomAccessIterator, the flipped
     /// iterator is also random access, with the indices starting at the back
     /// of the original iterator.
     ///
-    /// Note: Random access with inverted indices still only applies to the first
-    /// `uint::max_value` elements of the original iterator.
+    /// Note: Random access with flipped indices still only applies to the first
+    /// `uint::MAX` elements of the original iterator.
     #[inline]
-    fn invert(self) -> Invert<Self> {
-        Invert{iter: self}
+    fn rev(self) -> Rev<Self> {
+        Rev{iter: self}
     }
 }
 
@@ -713,7 +713,7 @@ impl<'a, A, T: DoubleEndedIterator<&'a mut A>> MutableDoubleEndedIterator for T 
 ///
 /// A `RandomAccessIterator` should be either infinite or a `DoubleEndedIterator`.
 pub trait RandomAccessIterator<A>: Iterator<A> {
-    /// Return the number of indexable elements. At most `std::uint::max_value`
+    /// Return the number of indexable elements. At most `std::uint::MAX`
     /// elements are indexable, even if the iterator represents a longer range.
     fn indexable(&self) -> uint;
 
@@ -759,30 +759,30 @@ pub trait ExactSize<A> : DoubleEndedIterator<A> {
 // Adaptors that may overflow in `size_hint` are not, i.e. `Chain`.
 impl<A, T: ExactSize<A>> ExactSize<(uint, A)> for Enumerate<T> {}
 impl<'a, A, T: ExactSize<A>> ExactSize<A> for Inspect<'a, A, T> {}
-impl<A, T: ExactSize<A>> ExactSize<A> for Invert<T> {}
+impl<A, T: ExactSize<A>> ExactSize<A> for Rev<T> {}
 impl<'a, A, B, T: ExactSize<A>> ExactSize<B> for Map<'a, A, B, T> {}
 impl<A, B, T: ExactSize<A>, U: ExactSize<B>> ExactSize<(A, B)> for Zip<T, U> {}
 
 /// An double-ended iterator with the direction inverted
 #[deriving(Clone)]
-pub struct Invert<T> {
+pub struct Rev<T> {
     priv iter: T
 }
 
-impl<A, T: DoubleEndedIterator<A>> Iterator<A> for Invert<T> {
+impl<A, T: DoubleEndedIterator<A>> Iterator<A> for Rev<T> {
     #[inline]
     fn next(&mut self) -> Option<A> { self.iter.next_back() }
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 
-impl<A, T: DoubleEndedIterator<A>> DoubleEndedIterator<A> for Invert<T> {
+impl<A, T: DoubleEndedIterator<A>> DoubleEndedIterator<A> for Rev<T> {
     #[inline]
     fn next_back(&mut self) -> Option<A> { self.iter.next() }
 }
 
 impl<A, T: DoubleEndedIterator<A> + RandomAccessIterator<A>> RandomAccessIterator<A>
-    for Invert<T> {
+    for Rev<T> {
     #[inline]
     fn indexable(&self) -> uint { self.iter.indexable() }
     #[inline]
@@ -952,7 +952,7 @@ impl<A, T: Clone + Iterator<A>> Iterator<A> for Cycle<T> {
         match self.orig.size_hint() {
             sz @ (0, Some(0)) => sz,
             (0, _) => (0, None),
-            _ => (uint::max_value, None)
+            _ => (uint::MAX, None)
         }
     }
 }
@@ -961,7 +961,7 @@ impl<A, T: Clone + RandomAccessIterator<A>> RandomAccessIterator<A> for Cycle<T>
     #[inline]
     fn indexable(&self) -> uint {
         if self.orig.indexable() > 0 {
-            uint::max_value
+            uint::MAX
         } else {
             0
         }
@@ -1361,6 +1361,12 @@ impl<'a, A, T: Iterator<A>> Peekable<A, T> {
             Some(ref value) => Some(value),
             None => None,
         }
+    }
+
+    /// Check whether peekable iterator is empty or not.
+    #[inline]
+    pub fn is_empty(&mut self) -> bool {
+        self.peek().is_none()
     }
 }
 
@@ -1817,7 +1823,7 @@ impl<A: Add<A, A> + Clone> Iterator<A> for Counter<A> {
 
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) {
-        (uint::max_value, None) // Too bad we can't specify an infinite lower bound
+        (uint::MAX, None) // Too bad we can't specify an infinite lower bound
     }
 }
 
@@ -2043,7 +2049,7 @@ impl<A: Clone> Iterator<A> for Repeat<A> {
     #[inline]
     fn next(&mut self) -> Option<A> { self.idx(0) }
     #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) { (uint::max_value, None) }
+    fn size_hint(&self) -> (uint, Option<uint>) { (uint::MAX, None) }
 }
 
 impl<A: Clone> DoubleEndedIterator<A> for Repeat<A> {
@@ -2053,7 +2059,7 @@ impl<A: Clone> DoubleEndedIterator<A> for Repeat<A> {
 
 impl<A: Clone> RandomAccessIterator<A> for Repeat<A> {
     #[inline]
-    fn indexable(&self) -> uint { uint::max_value }
+    fn indexable(&self) -> uint { uint::MAX }
     #[inline]
     fn idx(&self, _: uint) -> Option<A> { Some(self.element.clone()) }
 }
@@ -2411,7 +2417,7 @@ mod tests {
     fn test_cycle() {
         let cycle_len = 3;
         let it = count(0u, 1).take(cycle_len).cycle();
-        assert_eq!(it.size_hint(), (uint::max_value, None));
+        assert_eq!(it.size_hint(), (uint::MAX, None));
         for (i, x) in it.take(100).enumerate() {
             assert_eq!(i % cycle_len, x);
         }
@@ -2483,19 +2489,19 @@ mod tests {
         let v2 = &[10, 11, 12];
         let vi = v.iter();
 
-        assert_eq!(c.size_hint(), (uint::max_value, None));
+        assert_eq!(c.size_hint(), (uint::MAX, None));
         assert_eq!(vi.size_hint(), (10, Some(10)));
 
         assert_eq!(c.take(5).size_hint(), (5, Some(5)));
         assert_eq!(c.skip(5).size_hint().second(), None);
         assert_eq!(c.take_while(|_| false).size_hint(), (0, None));
         assert_eq!(c.skip_while(|_| false).size_hint(), (0, None));
-        assert_eq!(c.enumerate().size_hint(), (uint::max_value, None));
-        assert_eq!(c.chain(vi.map(|&i| i)).size_hint(), (uint::max_value, None));
+        assert_eq!(c.enumerate().size_hint(), (uint::MAX, None));
+        assert_eq!(c.chain(vi.map(|&i| i)).size_hint(), (uint::MAX, None));
         assert_eq!(c.zip(vi).size_hint(), (10, Some(10)));
         assert_eq!(c.scan(0, |_,_| Some(0)).size_hint(), (0, None));
         assert_eq!(c.filter(|_| false).size_hint(), (0, None));
-        assert_eq!(c.map(|_| 0).size_hint(), (uint::max_value, None));
+        assert_eq!(c.map(|_| 0).size_hint(), (uint::MAX, None));
         assert_eq!(c.filter_map(|_| Some(0)).size_hint(), (0, None));
 
         assert_eq!(vi.take(5).size_hint(), (5, Some(5)));
@@ -2584,12 +2590,12 @@ mod tests {
     }
 
     #[test]
-    fn test_invert() {
+    fn test_rev() {
         let xs = [2, 4, 6, 8, 10, 12, 14, 16];
         let mut it = xs.iter();
         it.next();
         it.next();
-        assert_eq!(it.invert().map(|&x| x).collect::<~[int]>(), ~[16, 14, 12, 10, 8, 6]);
+        assert_eq!(it.rev().map(|&x| x).collect::<~[int]>(), ~[16, 14, 12, 10, 8, 6]);
     }
 
     #[test]
@@ -2656,7 +2662,7 @@ mod tests {
     fn test_double_ended_chain() {
         let xs = [1, 2, 3, 4, 5];
         let ys = ~[7, 9, 11];
-        let mut it = xs.iter().chain(ys.iter()).invert();
+        let mut it = xs.iter().chain(ys.iter()).rev();
         assert_eq!(it.next().unwrap(), &11)
         assert_eq!(it.next().unwrap(), &9)
         assert_eq!(it.next_back().unwrap(), &1)
@@ -2758,10 +2764,10 @@ mod tests {
     }
 
     #[test]
-    fn test_random_access_invert() {
+    fn test_random_access_rev() {
         let xs = [1, 2, 3, 4, 5];
-        check_randacc_iter(xs.iter().invert(), xs.len());
-        let mut it = xs.iter().invert();
+        check_randacc_iter(xs.iter().rev(), xs.len());
+        let mut it = xs.iter().rev();
         it.next();
         it.next_back();
         it.next();
@@ -2827,13 +2833,13 @@ mod tests {
 
     #[test]
     fn test_double_ended_range() {
-        assert_eq!(range(11i, 14).invert().collect::<~[int]>(), ~[13i, 12, 11]);
-        for _ in range(10i, 0).invert() {
+        assert_eq!(range(11i, 14).rev().collect::<~[int]>(), ~[13i, 12, 11]);
+        for _ in range(10i, 0).rev() {
             fail!("unreachable");
         }
 
-        assert_eq!(range(11u, 14).invert().collect::<~[uint]>(), ~[13u, 12, 11]);
-        for _ in range(10u, 0).invert() {
+        assert_eq!(range(11u, 14).rev().collect::<~[uint]>(), ~[13u, 12, 11]);
+        for _ in range(10u, 0).rev() {
             fail!("unreachable");
         }
     }
@@ -2866,6 +2872,12 @@ mod tests {
             }
         }
 
+        impl Mul<Foo, Foo> for Foo {
+            fn mul(&self, _: &Foo) -> Foo {
+                Foo
+            }
+        }
+
         impl num::One for Foo {
             fn one() -> Foo {
                 Foo
@@ -2874,15 +2886,15 @@ mod tests {
 
         assert_eq!(range(0i, 5).collect::<~[int]>(), ~[0i, 1, 2, 3, 4]);
         assert_eq!(range(-10i, -1).collect::<~[int]>(), ~[-10, -9, -8, -7, -6, -5, -4, -3, -2]);
-        assert_eq!(range(0i, 5).invert().collect::<~[int]>(), ~[4, 3, 2, 1, 0]);
+        assert_eq!(range(0i, 5).rev().collect::<~[int]>(), ~[4, 3, 2, 1, 0]);
         assert_eq!(range(200, -5).collect::<~[int]>(), ~[]);
-        assert_eq!(range(200, -5).invert().collect::<~[int]>(), ~[]);
+        assert_eq!(range(200, -5).rev().collect::<~[int]>(), ~[]);
         assert_eq!(range(200, 200).collect::<~[int]>(), ~[]);
-        assert_eq!(range(200, 200).invert().collect::<~[int]>(), ~[]);
+        assert_eq!(range(200, 200).rev().collect::<~[int]>(), ~[]);
 
         assert_eq!(range(0i, 100).size_hint(), (100, Some(100)));
         // this test is only meaningful when sizeof uint < sizeof u64
-        assert_eq!(range(uint::max_value - 1, uint::max_value).size_hint(), (1, Some(1)));
+        assert_eq!(range(uint::MAX - 1, uint::MAX).size_hint(), (1, Some(1)));
         assert_eq!(range(-10i, -1).size_hint(), (9, Some(9)));
         assert_eq!(range(Foo, Foo).size_hint(), (0, None));
     }
@@ -2890,11 +2902,11 @@ mod tests {
     #[test]
     fn test_range_inclusive() {
         assert_eq!(range_inclusive(0i, 5).collect::<~[int]>(), ~[0i, 1, 2, 3, 4, 5]);
-        assert_eq!(range_inclusive(0i, 5).invert().collect::<~[int]>(), ~[5i, 4, 3, 2, 1, 0]);
+        assert_eq!(range_inclusive(0i, 5).rev().collect::<~[int]>(), ~[5i, 4, 3, 2, 1, 0]);
         assert_eq!(range_inclusive(200, -5).collect::<~[int]>(), ~[]);
-        assert_eq!(range_inclusive(200, -5).invert().collect::<~[int]>(), ~[]);
+        assert_eq!(range_inclusive(200, -5).rev().collect::<~[int]>(), ~[]);
         assert_eq!(range_inclusive(200, 200).collect::<~[int]>(), ~[200]);
-        assert_eq!(range_inclusive(200, 200).invert().collect::<~[int]>(), ~[200]);
+        assert_eq!(range_inclusive(200, 200).rev().collect::<~[int]>(), ~[200]);
     }
 
     #[test]
@@ -2922,5 +2934,14 @@ mod tests {
         let mut ys = [1, 2, 3, 4, 5];
         ys.mut_iter().reverse_();
         assert_eq!(ys, [5, 4, 3, 2, 1]);
+    }
+
+    #[test]
+    fn test_peekable_is_empty() {
+        let a = [1];
+        let mut it = a.iter().peekable();
+        assert!( !it.is_empty() );
+        it.next();
+        assert!( it.is_empty() );
     }
 }

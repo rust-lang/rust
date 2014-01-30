@@ -24,8 +24,7 @@ use middle;
 use std::cast;
 use std::cell::{Cell, RefCell};
 use std::hashmap::{HashMap, HashSet};
-use std::io::mem::MemWriter;
-use std::io::{Writer, Seek, Decorator};
+use std::io::MemWriter;
 use std::str;
 use std::vec;
 
@@ -38,6 +37,7 @@ use syntax::ast_map;
 use syntax::ast_util::*;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
+use syntax::codemap;
 use syntax::diagnostic::SpanHandler;
 use syntax::parse::token::special_idents;
 use syntax::ast_util;
@@ -50,16 +50,16 @@ use writer = extra::ebml::writer;
 // used by astencode:
 type abbrev_map = @RefCell<HashMap<ty::t, tyencode::ty_abbrev>>;
 
-/// A borrowed version of ast::inlined_item.
+/// A borrowed version of ast::InlinedItem.
 pub enum InlinedItemRef<'a> {
-    ii_item_ref(&'a ast::item),
-    ii_method_ref(ast::DefId, bool, &'a ast::method),
-    ii_foreign_ref(&'a ast::foreign_item)
+    IIItemRef(&'a ast::Item),
+    IIMethodRef(ast::DefId, bool, &'a ast::Method),
+    IIForeignRef(&'a ast::ForeignItem)
 }
 
 pub type encode_inlined_item<'a> = 'a |ecx: &EncodeContext,
                                        ebml_w: &mut writer::Encoder,
-                                       path: &[ast_map::path_elt],
+                                       path: &[ast_map::PathElem],
                                        ii: InlinedItemRef|;
 
 pub struct EncodeParams<'a> {
@@ -72,6 +72,7 @@ pub struct EncodeParams<'a> {
     cstore: @cstore::CStore,
     encode_inlined_item: encode_inlined_item<'a>,
     reachable: @RefCell<HashSet<ast::NodeId>>,
+    codemap: @codemap::CodeMap,
 }
 
 struct Stats {
@@ -80,6 +81,8 @@ struct Stats {
     dep_bytes: Cell<u64>,
     lang_item_bytes: Cell<u64>,
     native_lib_bytes: Cell<u64>,
+    macro_registrar_fn_bytes: Cell<u64>,
+    macro_defs_bytes: Cell<u64>,
     impl_bytes: Cell<u64>,
     misc_bytes: Cell<u64>,
     item_bytes: Cell<u64>,
@@ -100,6 +103,7 @@ pub struct EncodeContext<'a> {
     encode_inlined_item: encode_inlined_item<'a>,
     type_abbrevs: abbrev_map,
     reachable: @RefCell<HashSet<ast::NodeId>>,
+    codemap: @codemap::CodeMap,
 }
 
 pub fn reachable(ecx: &EncodeContext, id: NodeId) -> bool {
@@ -257,16 +261,6 @@ fn encode_type(ecx: &EncodeContext,
     ebml_w.end_tag();
 }
 
-fn encode_transformed_self_ty(ecx: &EncodeContext,
-                              ebml_w: &mut writer::Encoder,
-                              opt_typ: Option<ty::t>) {
-    for &typ in opt_typ.iter() {
-        ebml_w.start_tag(tag_item_method_transformed_self_ty);
-        write_type(ecx, ebml_w, typ);
-        ebml_w.end_tag();
-    }
-}
-
 fn encode_method_fty(ecx: &EncodeContext,
                      ebml_w: &mut writer::Encoder,
                      typ: &ty::BareFnTy) {
@@ -319,17 +313,17 @@ fn encode_parent_item(ebml_w: &mut writer::Encoder, id: DefId) {
 
 fn encode_struct_fields(ecx: &EncodeContext,
                              ebml_w: &mut writer::Encoder,
-                             def: @struct_def) {
+                             def: @StructDef) {
     for f in def.fields.iter() {
         match f.node.kind {
-            named_field(ident, vis) => {
+            NamedField(ident, vis) => {
                ebml_w.start_tag(tag_item_field);
                encode_struct_field_family(ebml_w, vis);
                encode_name(ecx, ebml_w, ident);
                encode_def_id(ebml_w, local_def(f.node.id));
                ebml_w.end_tag();
             }
-            unnamed_field => {
+            UnnamedField => {
                 ebml_w.start_tag(tag_item_unnamed_field);
                 encode_def_id(ebml_w, local_def(f.node.id));
                 ebml_w.end_tag();
@@ -341,8 +335,8 @@ fn encode_struct_fields(ecx: &EncodeContext,
 fn encode_enum_variant_info(ecx: &EncodeContext,
                             ebml_w: &mut writer::Encoder,
                             id: NodeId,
-                            variants: &[P<variant>],
-                            path: &[ast_map::path_elt],
+                            variants: &[P<Variant>],
+                            path: &[ast_map::PathElem],
                             index: @RefCell<~[entry<i64>]>,
                             generics: &ast::Generics) {
     debug!("encode_enum_variant_info(id={:?})", id);
@@ -363,20 +357,20 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, def_id);
         match variant.node.kind {
-            ast::tuple_variant_kind(_) => encode_family(ebml_w, 'v'),
-            ast::struct_variant_kind(_) => encode_family(ebml_w, 'V')
+            ast::TupleVariantKind(_) => encode_family(ebml_w, 'v'),
+            ast::StructVariantKind(_) => encode_family(ebml_w, 'V')
         }
         encode_name(ecx, ebml_w, variant.node.name);
         encode_parent_item(ebml_w, local_def(id));
         encode_visibility(ebml_w, variant.node.vis);
         encode_attributes(ebml_w, variant.node.attrs);
         match variant.node.kind {
-            ast::tuple_variant_kind(ref args)
+            ast::TupleVariantKind(ref args)
                     if args.len() > 0 && generics.ty_params.len() == 0 => {
                 encode_symbol(ecx, ebml_w, variant.node.id);
             }
-            ast::tuple_variant_kind(_) => {},
-            ast::struct_variant_kind(def) => {
+            ast::TupleVariantKind(_) => {},
+            ast::StructVariantKind(def) => {
                 let idx = encode_info_for_struct(ecx, ebml_w, path,
                                          def.fields, index);
                 encode_struct_fields(ecx, ebml_w, def);
@@ -391,7 +385,7 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
         encode_bounds_and_type(ebml_w, ecx,
                                &lookup_item_type(ecx.tcx, def_id));
         encode_path(ecx, ebml_w, path,
-                    ast_map::path_name(variant.node.name));
+                    ast_map::PathName(variant.node.name));
         ebml_w.end_tag();
         disr_val += 1;
         i += 1;
@@ -400,23 +394,23 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
 
 fn encode_path(ecx: &EncodeContext,
                ebml_w: &mut writer::Encoder,
-               path: &[ast_map::path_elt],
-               name: ast_map::path_elt) {
-    fn encode_path_elt(ecx: &EncodeContext,
+               path: &[ast_map::PathElem],
+               name: ast_map::PathElem) {
+    fn encode_path_elem(ecx: &EncodeContext,
                        ebml_w: &mut writer::Encoder,
-                       elt: ast_map::path_elt) {
+                       elt: ast_map::PathElem) {
         match elt {
-            ast_map::path_mod(n) => {
-                ebml_w.wr_tagged_str(tag_path_elt_mod, ecx.tcx.sess.str_of(n));
+            ast_map::PathMod(n) => {
+                ebml_w.wr_tagged_str(tag_path_elem_mod, ecx.tcx.sess.str_of(n));
             }
-            ast_map::path_name(n) => {
-                ebml_w.wr_tagged_str(tag_path_elt_name, ecx.tcx.sess.str_of(n));
+            ast_map::PathName(n) => {
+                ebml_w.wr_tagged_str(tag_path_elem_name, ecx.tcx.sess.str_of(n));
             }
-            ast_map::path_pretty_name(n, extra) => {
-                ebml_w.start_tag(tag_path_elt_pretty_name);
-                ebml_w.wr_tagged_str(tag_path_elt_pretty_name_ident,
+            ast_map::PathPrettyName(n, extra) => {
+                ebml_w.start_tag(tag_path_elem_pretty_name);
+                ebml_w.wr_tagged_str(tag_path_elem_pretty_name_ident,
                                      ecx.tcx.sess.str_of(n));
-                ebml_w.wr_tagged_u64(tag_path_elt_pretty_name_extra, extra);
+                ebml_w.wr_tagged_u64(tag_path_elem_pretty_name_extra, extra);
                 ebml_w.end_tag();
             }
         }
@@ -425,9 +419,9 @@ fn encode_path(ecx: &EncodeContext,
     ebml_w.start_tag(tag_path);
     ebml_w.wr_tagged_u32(tag_path_len, (path.len() + 1) as u32);
     for pe in path.iter() {
-        encode_path_elt(ecx, ebml_w, *pe);
+        encode_path_elem(ecx, ebml_w, *pe);
     }
-    encode_path_elt(ecx, ebml_w, name);
+    encode_path_elem(ecx, ebml_w, name);
     ebml_w.end_tag();
 }
 
@@ -458,7 +452,7 @@ fn encode_reexported_static_base_methods(ecx: &EncodeContext,
             let implementations = implementations.borrow();
             for &base_impl in implementations.get().iter() {
                 for &m in base_impl.methods.iter() {
-                    if m.explicit_self == ast::sty_static {
+                    if m.explicit_self == ast::SelfStatic {
                         encode_reexported_static_method(ecx, ebml_w, exp,
                                                         m.def_id, m.ident);
                     }
@@ -479,7 +473,7 @@ fn encode_reexported_static_trait_methods(ecx: &EncodeContext,
     match trait_methods_cache.get().find(&exp.def_id) {
         Some(methods) => {
             for &m in methods.iter() {
-                if m.explicit_self == ast::sty_static {
+                if m.explicit_self == ast::SelfStatic {
                     encode_reexported_static_method(ecx, ebml_w, exp,
                                                     m.def_id, m.ident);
                 }
@@ -493,11 +487,10 @@ fn encode_reexported_static_trait_methods(ecx: &EncodeContext,
 
 fn encode_reexported_static_methods(ecx: &EncodeContext,
                                     ebml_w: &mut writer::Encoder,
-                                    mod_path: &[ast_map::path_elt],
+                                    mod_path: &[ast_map::PathElem],
                                     exp: &middle::resolve::Export2) {
-    let items = ecx.tcx.items.borrow();
-    match items.get().find(&exp.def_id.node) {
-        Some(&ast_map::node_item(item, path)) => {
+    match ecx.tcx.items.find(exp.def_id.node) {
+        Some(ast_map::NodeItem(item, path)) => {
             let original_name = ecx.tcx.sess.str_of(item.ident);
 
             //
@@ -534,10 +527,10 @@ fn encode_reexported_static_methods(ecx: &EncodeContext,
 /// * For enums, iterates through the node IDs of the variants.
 ///
 /// * For newtype structs, iterates through the node ID of the constructor.
-fn each_auxiliary_node_id(item: @item, callback: |NodeId| -> bool) -> bool {
+fn each_auxiliary_node_id(item: @Item, callback: |NodeId| -> bool) -> bool {
     let mut continue_ = true;
     match item.node {
-        item_enum(ref enum_def, _) => {
+        ItemEnum(ref enum_def, _) => {
             for variant in enum_def.variants.iter() {
                 continue_ = callback(variant.node.id);
                 if !continue_ {
@@ -545,12 +538,12 @@ fn each_auxiliary_node_id(item: @item, callback: |NodeId| -> bool) -> bool {
                 }
             }
         }
-        item_struct(struct_def, _) => {
+        ItemStruct(struct_def, _) => {
             // If this is a newtype struct, return the constructor.
             match struct_def.ctor_id {
                 Some(ctor_id) if struct_def.fields.len() > 0 &&
                         struct_def.fields[0].node.kind ==
-                        ast::unnamed_field => {
+                        ast::UnnamedField => {
                     continue_ = callback(ctor_id);
                 }
                 _ => {}
@@ -565,7 +558,7 @@ fn each_auxiliary_node_id(item: @item, callback: |NodeId| -> bool) -> bool {
 fn encode_reexports(ecx: &EncodeContext,
                     ebml_w: &mut writer::Encoder,
                     id: NodeId,
-                    path: &[ast_map::path_elt]) {
+                    path: &[ast_map::PathElem]) {
     debug!("(encoding info for module) encoding reexports for {}", id);
     let reexports2 = ecx.reexports2.borrow();
     match reexports2.get().find(&id) {
@@ -598,11 +591,11 @@ fn encode_reexports(ecx: &EncodeContext,
 
 fn encode_info_for_mod(ecx: &EncodeContext,
                        ebml_w: &mut writer::Encoder,
-                       md: &_mod,
+                       md: &Mod,
                        id: NodeId,
-                       path: &[ast_map::path_elt],
+                       path: &[ast_map::PathElem],
                        name: Ident,
-                       vis: visibility) {
+                       vis: Visibility) {
     ebml_w.start_tag(tag_items_data_item);
     encode_def_id(ebml_w, local_def(id));
     encode_family(ebml_w, 'm');
@@ -623,7 +616,7 @@ fn encode_info_for_mod(ecx: &EncodeContext,
         });
 
         match item.node {
-            item_impl(..) => {
+            ItemImpl(..) => {
                 let (ident, did) = (item.ident, item.id);
                 debug!("(encoding info for module) ... encoding impl {} \
                         ({:?}/{:?})",
@@ -639,11 +632,11 @@ fn encode_info_for_mod(ecx: &EncodeContext,
         }
     }
 
-    encode_path(ecx, ebml_w, path, ast_map::path_mod(name));
+    encode_path(ecx, ebml_w, path, ast_map::PathMod(name));
     encode_visibility(ebml_w, vis);
 
     // Encode the reexports of this module, if this module is public.
-    if vis == public {
+    if vis == Public {
         debug!("(encoding info for module) encoding reexports for {}", id);
         encode_reexports(ecx, ebml_w, id, path);
     }
@@ -652,48 +645,37 @@ fn encode_info_for_mod(ecx: &EncodeContext,
 }
 
 fn encode_struct_field_family(ebml_w: &mut writer::Encoder,
-                              visibility: visibility) {
+                              visibility: Visibility) {
     encode_family(ebml_w, match visibility {
-        public => 'g',
-        private => 'j',
-        inherited => 'N'
+        Public => 'g',
+        Private => 'j',
+        Inherited => 'N'
     });
 }
 
-fn encode_visibility(ebml_w: &mut writer::Encoder, visibility: visibility) {
+fn encode_visibility(ebml_w: &mut writer::Encoder, visibility: Visibility) {
     ebml_w.start_tag(tag_items_data_item_visibility);
     let ch = match visibility {
-        public => 'y',
-        private => 'n',
-        inherited => 'i',
+        Public => 'y',
+        Private => 'n',
+        Inherited => 'i',
     };
     ebml_w.wr_str(str::from_char(ch));
     ebml_w.end_tag();
 }
 
-fn encode_explicit_self(ebml_w: &mut writer::Encoder, explicit_self: ast::explicit_self_) {
+fn encode_explicit_self(ebml_w: &mut writer::Encoder, explicit_self: ast::ExplicitSelf_) {
     ebml_w.start_tag(tag_item_trait_method_explicit_self);
 
     // Encode the base self type.
     match explicit_self {
-        sty_static => {
-            ebml_w.writer.write(&[ 's' as u8 ]);
-        }
-        sty_value(m) => {
-            ebml_w.writer.write(&[ 'v' as u8 ]);
-            encode_mutability(ebml_w, m);
-        }
-        sty_region(_, m) => {
+        SelfStatic => ebml_w.writer.write(&[ 's' as u8 ]),
+        SelfValue  => ebml_w.writer.write(&[ 'v' as u8 ]),
+        SelfBox    => ebml_w.writer.write(&[ '@' as u8 ]),
+        SelfUniq   => ebml_w.writer.write(&[ '~' as u8 ]),
+        SelfRegion(_, m) => {
             // FIXME(#4846) encode custom lifetime
-            ebml_w.writer.write(&[ '&' as u8 ]);
-            encode_mutability(ebml_w, m);
-        }
-        sty_box(m) => {
-            ebml_w.writer.write(&[ '@' as u8 ]);
-            encode_mutability(ebml_w, m);
-        }
-        sty_uniq(m) => {
-            ebml_w.writer.write(&[ '~' as u8 ]);
+            ebml_w.writer.write(&['&' as u8]);
             encode_mutability(ebml_w, m);
         }
     }
@@ -728,8 +710,8 @@ fn encode_provided_source(ebml_w: &mut writer::Encoder,
 /* Returns an index of items in this class */
 fn encode_info_for_struct(ecx: &EncodeContext,
                           ebml_w: &mut writer::Encoder,
-                          path: &[ast_map::path_elt],
-                          fields: &[struct_field],
+                          path: &[ast_map::PathElem],
+                          fields: &[StructField],
                           global_index: @RefCell<~[entry<i64>]>)
                           -> ~[entry<i64>] {
     /* Each class has its own index, since different classes
@@ -740,8 +722,8 @@ fn encode_info_for_struct(ecx: &EncodeContext,
         private fields to get the offsets right */
     for field in fields.iter() {
         let (nm, vis) = match field.node.kind {
-            named_field(nm, vis) => (nm, vis),
-            unnamed_field => (special_idents::unnamed_field, inherited)
+            NamedField(nm, vis) => (nm, vis),
+            UnnamedField => (special_idents::unnamed_field, Inherited)
         };
 
         let id = field.node.id;
@@ -758,7 +740,7 @@ fn encode_info_for_struct(ecx: &EncodeContext,
                tcx.sess.str_of(nm), id);
         encode_struct_field_family(ebml_w, vis);
         encode_name(ecx, ebml_w, nm);
-        encode_path(ecx, ebml_w, path, ast_map::path_name(nm));
+        encode_path(ecx, ebml_w, path, ast_map::PathName(nm));
         encode_type(ecx, ebml_w, node_id_to_type(tcx, id));
         encode_def_id(ebml_w, local_def(id));
         ebml_w.end_tag();
@@ -768,7 +750,7 @@ fn encode_info_for_struct(ecx: &EncodeContext,
 
 fn encode_info_for_struct_ctor(ecx: &EncodeContext,
                                ebml_w: &mut writer::Encoder,
-                               path: &[ast_map::path_elt],
+                               path: &[ast_map::PathElem],
                                name: ast::Ident,
                                ctor_id: NodeId,
                                index: @RefCell<~[entry<i64>]>,
@@ -784,9 +766,11 @@ fn encode_info_for_struct_ctor(ecx: &EncodeContext,
     ebml_w.start_tag(tag_items_data_item);
     encode_def_id(ebml_w, local_def(ctor_id));
     encode_family(ebml_w, 'f');
+    encode_bounds_and_type(ebml_w, ecx,
+                           &lookup_item_type(ecx.tcx, local_def(ctor_id)));
     encode_name(ecx, ebml_w, name);
     encode_type(ecx, ebml_w, node_id_to_type(ecx.tcx, ctor_id));
-    encode_path(ecx, ebml_w, path, ast_map::path_name(name));
+    encode_path(ecx, ebml_w, path, ast_map::PathName(name));
     encode_parent_item(ebml_w, local_def(struct_id));
 
     let item_symbols = ecx.item_symbols.borrow();
@@ -805,13 +789,12 @@ fn encode_method_ty_fields(ecx: &EncodeContext,
     encode_ty_type_param_defs(ebml_w, ecx,
                               method_ty.generics.type_param_defs,
                               tag_item_method_tps);
-    encode_transformed_self_ty(ecx, ebml_w, method_ty.transformed_self_ty);
     encode_method_fty(ecx, ebml_w, &method_ty.fty);
     encode_visibility(ebml_w, method_ty.vis);
     encode_explicit_self(ebml_w, method_ty.explicit_self);
     let purity = method_ty.fty.purity;
     match method_ty.explicit_self {
-        ast::sty_static => {
+        ast::SelfStatic => {
             encode_family(ebml_w, purity_static_method_family(purity));
         }
         _ => encode_family(ebml_w, purity_fn_family(purity))
@@ -822,10 +805,10 @@ fn encode_method_ty_fields(ecx: &EncodeContext,
 fn encode_info_for_method(ecx: &EncodeContext,
                           ebml_w: &mut writer::Encoder,
                           m: &ty::Method,
-                          impl_path: &[ast_map::path_elt],
+                          impl_path: &[ast_map::PathElem],
                           is_default_impl: bool,
                           parent_id: NodeId,
-                          ast_method_opt: Option<@method>) {
+                          ast_method_opt: Option<@Method>) {
 
     debug!("encode_info_for_method: {:?} {}", m.def_id,
            ecx.tcx.sess.str_of(m.ident));
@@ -838,7 +821,7 @@ fn encode_info_for_method(ecx: &EncodeContext,
     let tpt = lookup_item_type(ecx.tcx, m.def_id);
     encode_bounds_and_type(ebml_w, ecx, &tpt);
 
-    encode_path(ecx, ebml_w, impl_path, ast_map::path_name(m.ident));
+    encode_path(ecx, ebml_w, impl_path, ast_map::PathName(m.ident));
     match ast_method_opt {
         Some(ast_method) => encode_attributes(ebml_w, ast_method.attrs),
         None => ()
@@ -850,7 +833,7 @@ fn encode_info_for_method(ecx: &EncodeContext,
             || should_inline(ast_method.attrs) {
             (ecx.encode_inlined_item)(
                 ecx, ebml_w, impl_path,
-                ii_method_ref(local_def(parent_id), false, ast_method));
+                IIMethodRef(local_def(parent_id), false, ast_method));
         } else {
             encode_symbol(ecx, ebml_w, m.def_id.node);
         }
@@ -859,19 +842,19 @@ fn encode_info_for_method(ecx: &EncodeContext,
     ebml_w.end_tag();
 }
 
-fn purity_fn_family(p: purity) -> char {
+fn purity_fn_family(p: Purity) -> char {
     match p {
-      unsafe_fn => 'u',
-      impure_fn => 'f',
-      extern_fn => 'e'
+        UnsafeFn => 'u',
+        ImpureFn => 'f',
+        ExternFn => 'e'
     }
 }
 
-fn purity_static_method_family(p: purity) -> char {
+fn purity_static_method_family(p: Purity) -> char {
     match p {
-      unsafe_fn => 'U',
-      impure_fn => 'F',
-      _ => fail!("extern fn can't be static")
+        UnsafeFn => 'U',
+        ImpureFn => 'F',
+        _ => fail!("extern fn can't be static")
     }
 }
 
@@ -922,13 +905,13 @@ fn encode_extension_implementations(ecx: &EncodeContext,
 
 fn encode_info_for_item(ecx: &EncodeContext,
                         ebml_w: &mut writer::Encoder,
-                        item: &item,
+                        item: &Item,
                         index: @RefCell<~[entry<i64>]>,
-                        path: &[ast_map::path_elt],
-                        vis: ast::visibility) {
+                        path: &[ast_map::PathElem],
+                        vis: ast::Visibility) {
     let tcx = ecx.tcx;
 
-    fn add_to_index(item: &item, ebml_w: &writer::Encoder,
+    fn add_to_index(item: &Item, ebml_w: &writer::Encoder,
                      index: @RefCell<~[entry<i64>]>) {
         let mut index = index.borrow_mut();
         index.get().push(entry {
@@ -943,7 +926,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
 
     let def_id = local_def(item.id);
     match item.node {
-      item_static(_, m, _) => {
+      ItemStatic(_, m, _) => {
         add_to_index();
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, def_id);
@@ -955,7 +938,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_type(ecx, ebml_w, node_id_to_type(tcx, item.id));
         encode_symbol(ecx, ebml_w, item.id);
         encode_name(ecx, ebml_w, item.ident);
-        let elt = ast_map::path_pretty_name(item.ident, item.id as u64);
+        let elt = ast_map::PathPrettyName(item.ident, item.id as u64);
         encode_path(ecx, ebml_w, path, elt);
 
         let non_inlineable;
@@ -965,12 +948,12 @@ fn encode_info_for_item(ecx: &EncodeContext,
         }
 
         if !non_inlineable {
-            (ecx.encode_inlined_item)(ecx, ebml_w, path, ii_item_ref(item));
+            (ecx.encode_inlined_item)(ecx, ebml_w, path, IIItemRef(item));
         }
         encode_visibility(ebml_w, vis);
         ebml_w.end_tag();
       }
-      item_fn(_, purity, _, ref generics, _) => {
+      ItemFn(_, purity, _, ref generics, _) => {
         add_to_index();
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, def_id);
@@ -978,17 +961,17 @@ fn encode_info_for_item(ecx: &EncodeContext,
         let tps_len = generics.ty_params.len();
         encode_bounds_and_type(ebml_w, ecx, &lookup_item_type(tcx, def_id));
         encode_name(ecx, ebml_w, item.ident);
-        encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
+        encode_path(ecx, ebml_w, path, ast_map::PathName(item.ident));
         encode_attributes(ebml_w, item.attrs);
         if tps_len > 0u || should_inline(item.attrs) {
-            (ecx.encode_inlined_item)(ecx, ebml_w, path, ii_item_ref(item));
+            (ecx.encode_inlined_item)(ecx, ebml_w, path, IIItemRef(item));
         } else {
             encode_symbol(ecx, ebml_w, item.id);
         }
         encode_visibility(ebml_w, vis);
         ebml_w.end_tag();
       }
-      item_mod(ref m) => {
+      ItemMod(ref m) => {
         add_to_index();
         encode_info_for_mod(ecx,
                             ebml_w,
@@ -998,13 +981,13 @@ fn encode_info_for_item(ecx: &EncodeContext,
                             item.ident,
                             item.vis);
       }
-      item_foreign_mod(ref fm) => {
+      ItemForeignMod(ref fm) => {
         add_to_index();
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, def_id);
         encode_family(ebml_w, 'n');
         encode_name(ecx, ebml_w, item.ident);
-        encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
+        encode_path(ecx, ebml_w, path, ast_map::PathName(item.ident));
 
         // Encode all the items in this module.
         for foreign_item in fm.items.iter() {
@@ -1015,18 +998,18 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_visibility(ebml_w, vis);
         ebml_w.end_tag();
       }
-      item_ty(..) => {
+      ItemTy(..) => {
         add_to_index();
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, def_id);
         encode_family(ebml_w, 'y');
         encode_bounds_and_type(ebml_w, ecx, &lookup_item_type(tcx, def_id));
         encode_name(ecx, ebml_w, item.ident);
-        encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
+        encode_path(ecx, ebml_w, path, ast_map::PathName(item.ident));
         encode_visibility(ebml_w, vis);
         ebml_w.end_tag();
       }
-      item_enum(ref enum_definition, ref generics) => {
+      ItemEnum(ref enum_definition, ref generics) => {
         add_to_index();
 
         ebml_w.start_tag(tag_items_data_item);
@@ -1039,8 +1022,8 @@ fn encode_info_for_item(ecx: &EncodeContext,
         for v in (*enum_definition).variants.iter() {
             encode_variant_id(ebml_w, local_def(v.node.id));
         }
-        (ecx.encode_inlined_item)(ecx, ebml_w, path, ii_item_ref(item));
-        encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
+        (ecx.encode_inlined_item)(ecx, ebml_w, path, IIItemRef(item));
+        encode_path(ecx, ebml_w, path, ast_map::PathName(item.ident));
 
         // Encode inherent implementations for this enumeration.
         encode_inherent_implementations(ecx, ebml_w, def_id);
@@ -1056,7 +1039,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
                                  index,
                                  generics);
       }
-      item_struct(struct_def, _) => {
+      ItemStruct(struct_def, _) => {
         /* First, encode the fields
            These come first because we need to write them to make
            the index, and the index needs to be in the item for the
@@ -1076,7 +1059,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_item_variances(ebml_w, ecx, item.id);
         encode_name(ecx, ebml_w, item.ident);
         encode_attributes(ebml_w, item.attrs);
-        encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
+        encode_path(ecx, ebml_w, path, ast_map::PathName(item.ident));
         encode_visibility(ebml_w, vis);
 
         /* Encode def_ids for each field and method
@@ -1084,7 +1067,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         needs to know*/
         encode_struct_fields(ecx, ebml_w, struct_def);
 
-        (ecx.encode_inlined_item)(ecx, ebml_w, path, ii_item_ref(item));
+        (ecx.encode_inlined_item)(ecx, ebml_w, path, IIItemRef(item));
 
         // Encode inherent implementations for this structure.
         encode_inherent_implementations(ecx, ebml_w, def_id);
@@ -1097,7 +1080,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         // If this is a tuple- or enum-like struct, encode the type of the
         // constructor.
         if struct_def.fields.len() > 0 &&
-                struct_def.fields[0].node.kind == ast::unnamed_field {
+                struct_def.fields[0].node.kind == ast::UnnamedField {
             let ctor_id = match struct_def.ctor_id {
                 Some(ctor_id) => ctor_id,
                 None => ecx.tcx.sess.bug("struct def didn't have ctor id"),
@@ -1112,7 +1095,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
                                         def_id.node);
         }
       }
-      item_impl(_, ref opt_trait, ty, ref ast_methods) => {
+      ItemImpl(_, ref opt_trait, ty, ref ast_methods) => {
         // We need to encode information about the default methods we
         // have inherited, so we drive this based on the impl structure.
         let impls = tcx.impls.borrow();
@@ -1126,8 +1109,8 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_name(ecx, ebml_w, item.ident);
         encode_attributes(ebml_w, item.attrs);
         match ty.node {
-            ast::ty_path(ref path, ref bounds, _) if path.segments
-                                                         .len() == 1 => {
+            ast::TyPath(ref path, ref bounds, _) if path.segments
+                                                        .len() == 1 => {
                 assert!(bounds.is_none());
                 encode_impl_type_basename(ecx, ebml_w,
                                           ast_util::path_to_ident(path));
@@ -1181,7 +1164,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
                                    ast_method)
         }
       }
-      item_trait(_, ref super_traits, ref ms) => {
+      ItemTrait(_, ref super_traits, ref ms) => {
         add_to_index();
         ebml_w.start_tag(tag_items_data_item);
         encode_def_id(ebml_w, def_id);
@@ -1196,6 +1179,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_trait_ref(ebml_w, ecx, trait_def.trait_ref, tag_item_trait_ref);
         encode_name(ecx, ebml_w, item.ident);
         encode_attributes(ebml_w, item.attrs);
+        encode_visibility(ebml_w, vis);
         for &method_def_id in ty::trait_method_def_ids(tcx, def_id).iter() {
             ebml_w.start_tag(tag_item_trait_method);
             encode_def_id(ebml_w, method_def_id);
@@ -1205,7 +1189,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
             ebml_w.wr_str(def_to_str(method_def_id));
             ebml_w.end_tag();
         }
-        encode_path(ecx, ebml_w, path, ast_map::path_name(item.ident));
+        encode_path(ecx, ebml_w, path, ast_map::PathName(item.ident));
         // FIXME(#8559): This should use the tcx's supertrait cache instead of
         // reading the AST's list, because the former has already filtered out
         // the builtin-kinds-as-supertraits. See corresponding fixme in decoder.
@@ -1241,11 +1225,11 @@ fn encode_info_for_item(ecx: &EncodeContext,
             encode_parent_item(ebml_w, def_id);
 
             let mut trait_path = vec::append(~[], path);
-            trait_path.push(ast_map::path_name(item.ident));
-            encode_path(ecx, ebml_w, trait_path, ast_map::path_name(method_ty.ident));
+            trait_path.push(ast_map::PathName(item.ident));
+            encode_path(ecx, ebml_w, trait_path, ast_map::PathName(method_ty.ident));
 
             match method_ty.explicit_self {
-                sty_static => {
+                SelfStatic => {
                     encode_family(ebml_w,
                                   purity_static_method_family(
                                       method_ty.fty.purity));
@@ -1262,24 +1246,24 @@ fn encode_info_for_item(ecx: &EncodeContext,
             }
 
             match ms[i] {
-                required(ref tm) => {
+                Required(ref tm) => {
                     encode_attributes(ebml_w, tm.attrs);
                     encode_method_sort(ebml_w, 'r');
                 }
 
-                provided(m) => {
+                Provided(m) => {
                     encode_attributes(ebml_w, m.attrs);
                     // If this is a static method, we've already encoded
                     // this.
-                    if method_ty.explicit_self != sty_static {
-                        // XXX: I feel like there is something funny going on.
+                    if method_ty.explicit_self != SelfStatic {
+                        // FIXME: I feel like there is something funny going on.
                         let tpt = ty::lookup_item_type(tcx, method_def_id);
                         encode_bounds_and_type(ebml_w, ecx, &tpt);
                     }
                     encode_method_sort(ebml_w, 'p');
                     (ecx.encode_inlined_item)(
                         ecx, ebml_w, path,
-                        ii_method_ref(def_id, true, m));
+                        IIMethodRef(def_id, true, m));
                 }
             }
 
@@ -1289,15 +1273,17 @@ fn encode_info_for_item(ecx: &EncodeContext,
         // Encode inherent implementations for this trait.
         encode_inherent_implementations(ecx, ebml_w, def_id);
       }
-      item_mac(..) => fail!("item macros unimplemented")
+      ItemMac(..) => {
+        // macros are encoded separately
+      }
     }
 }
 
 fn encode_info_for_foreign_item(ecx: &EncodeContext,
                                 ebml_w: &mut writer::Encoder,
-                                nitem: &foreign_item,
+                                nitem: &ForeignItem,
                                 index: @RefCell<~[entry<i64>]>,
-                                path: &ast_map::path,
+                                path: &ast_map::Path,
                                 abi: AbiSet) {
     {
         let mut index = index.borrow_mut();
@@ -1309,20 +1295,20 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
 
     ebml_w.start_tag(tag_items_data_item);
     match nitem.node {
-      foreign_item_fn(..) => {
+      ForeignItemFn(..) => {
         encode_def_id(ebml_w, local_def(nitem.id));
-        encode_family(ebml_w, purity_fn_family(impure_fn));
+        encode_family(ebml_w, purity_fn_family(ImpureFn));
         encode_bounds_and_type(ebml_w, ecx,
                                &lookup_item_type(ecx.tcx,local_def(nitem.id)));
         encode_name(ecx, ebml_w, nitem.ident);
         if abi.is_intrinsic() {
-            (ecx.encode_inlined_item)(ecx, ebml_w, *path, ii_foreign_ref(nitem));
+            (ecx.encode_inlined_item)(ecx, ebml_w, *path, IIForeignRef(nitem));
         } else {
             encode_symbol(ecx, ebml_w, nitem.id);
         }
-        encode_path(ecx, ebml_w, *path, ast_map::path_name(nitem.ident));
+        encode_path(ecx, ebml_w, *path, ast_map::PathName(nitem.ident));
       }
-      foreign_item_static(_, mutbl) => {
+      ForeignItemStatic(_, mutbl) => {
         encode_def_id(ebml_w, local_def(nitem.id));
         if mutbl {
             encode_family(ebml_w, 'b');
@@ -1332,7 +1318,7 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
         encode_type(ecx, ebml_w, node_id_to_type(ecx.tcx, nitem.id));
         encode_symbol(ecx, ebml_w, nitem.id);
         encode_name(ecx, ebml_w, nitem.ident);
-        encode_path(ecx, ebml_w, *path, ast_map::path_name(nitem.ident));
+        encode_path(ecx, ebml_w, *path, ast_map::PathName(nitem.ident));
       }
     }
     ebml_w.end_tag();
@@ -1340,14 +1326,13 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
 
 fn my_visit_expr(_e: &Expr) { }
 
-fn my_visit_item(i: &item,
-                 items: ast_map::map,
+fn my_visit_item(i: &Item,
+                 items: ast_map::Map,
                  ebml_w: &mut writer::Encoder,
                  ecx_ptr: *int,
                  index: @RefCell<~[entry<i64>]>) {
-    let items = items.borrow();
-    match items.get().get_copy(&i.id) {
-        ast_map::node_item(_, pt) => {
+    match items.get(i.id) {
+        ast_map::NodeItem(_, pt) => {
             let mut ebml_w = unsafe {
                 ebml_w.unsafe_clone()
             };
@@ -1359,14 +1344,13 @@ fn my_visit_item(i: &item,
     }
 }
 
-fn my_visit_foreign_item(ni: &foreign_item,
-                         items: ast_map::map,
+fn my_visit_foreign_item(ni: &ForeignItem,
+                         items: ast_map::Map,
                          ebml_w: &mut writer::Encoder,
                          ecx_ptr:*int,
                          index: @RefCell<~[entry<i64>]>) {
-    let items = items.borrow();
-    match items.get().get_copy(&ni.id) {
-        ast_map::node_foreign_item(_, abi, _, pt) => {
+    match items.get(ni.id) {
+        ast_map::NodeForeignItem(_, abi, _, pt) => {
             debug!("writing foreign item {}::{}",
                    ast_map::path_to_str(
                        *pt,
@@ -1393,7 +1377,7 @@ fn my_visit_foreign_item(ni: &foreign_item,
 struct EncodeVisitor<'a,'b> {
     ebml_w_for_visit_item: &'a mut writer::Encoder<'b>,
     ecx_ptr:*int,
-    items: ast_map::map,
+    items: ast_map::Map,
     index: @RefCell<~[entry<i64>]>,
 }
 
@@ -1402,7 +1386,7 @@ impl<'a,'b> visit::Visitor<()> for EncodeVisitor<'a,'b> {
         visit::walk_expr(self, ex, ());
         my_visit_expr(ex);
     }
-    fn visit_item(&mut self, i: &item, _: ()) {
+    fn visit_item(&mut self, i: &Item, _: ()) {
         visit::walk_item(self, i, ());
         my_visit_item(i,
                       self.items,
@@ -1410,7 +1394,7 @@ impl<'a,'b> visit::Visitor<()> for EncodeVisitor<'a,'b> {
                       self.ecx_ptr,
                       self.index);
     }
-    fn visit_foreign_item(&mut self, ni: &foreign_item, _: ()) {
+    fn visit_foreign_item(&mut self, ni: &ForeignItem, _: ()) {
         visit::walk_foreign_item(self, ni, ());
         my_visit_foreign_item(ni,
                               self.items,
@@ -1439,7 +1423,7 @@ fn encode_info_for_items(ecx: &EncodeContext,
                         CRATE_NODE_ID,
                         [],
                         syntax::parse::token::special_idents::invalid,
-                        public);
+                        Public);
     let items = ecx.tcx.items;
 
     // See comment in `encode_side_tables_for_ii` in astencode
@@ -1532,7 +1516,7 @@ fn encode_meta_item(ebml_w: &mut writer::Encoder, mi: @MetaItem) {
       }
       MetaNameValue(name, value) => {
         match value.node {
-          lit_str(value, _) => {
+          LitStr(value, _) => {
             ebml_w.start_tag(tag_meta_item_name_value);
             ebml_w.start_tag(tag_meta_item_name);
             ebml_w.writer.write(name.as_bytes());
@@ -1693,15 +1677,62 @@ fn encode_native_libraries(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
     ebml_w.end_tag();
 }
 
+fn encode_macro_registrar_fn(ecx: &EncodeContext, ebml_w: &mut writer::Encoder) {
+    let ptr = ecx.tcx.sess.macro_registrar_fn.borrow();
+    match *ptr.get() {
+        Some(did) => {
+            ebml_w.start_tag(tag_macro_registrar_fn);
+            encode_def_id(ebml_w, did);
+            ebml_w.end_tag();
+        }
+        None => {}
+    }
+}
+
+struct MacroDefVisitor<'a, 'b> {
+    ecx: &'a EncodeContext<'a>,
+    ebml_w: &'a mut writer::Encoder<'b>
+}
+
+impl<'a, 'b> Visitor<()> for MacroDefVisitor<'a, 'b> {
+    fn visit_item(&mut self, item: &Item, _: ()) {
+        match item.node {
+            ItemMac(..) => {
+                let def = self.ecx.codemap.span_to_snippet(item.span)
+                    .expect("Unable to find source for macro");
+                self.ebml_w.start_tag(tag_macro_def);
+                self.ebml_w.wr_str(def);
+                self.ebml_w.end_tag();
+            }
+            _ => {}
+        }
+        visit::walk_item(self, item, ());
+    }
+}
+
+fn encode_macro_defs(ecx: &EncodeContext,
+                     crate: &Crate,
+                     ebml_w: &mut writer::Encoder) {
+    ebml_w.start_tag(tag_exported_macros);
+    {
+        let mut visitor = MacroDefVisitor {
+            ecx: ecx,
+            ebml_w: ebml_w,
+        };
+        visit::walk_crate(&mut visitor, crate, ());
+    }
+    ebml_w.end_tag();
+}
+
 struct ImplVisitor<'a,'b> {
     ecx: &'a EncodeContext<'a>,
     ebml_w: &'a mut writer::Encoder<'b>,
 }
 
 impl<'a,'b> Visitor<()> for ImplVisitor<'a,'b> {
-    fn visit_item(&mut self, item: &item, _: ()) {
+    fn visit_item(&mut self, item: &Item, _: ()) {
         match item.node {
-            item_impl(_, Some(ref trait_ref), _, _) => {
+            ItemImpl(_, Some(ref trait_ref), _, _) => {
                 let def_map = self.ecx.tcx.def_map;
                 let def_map = def_map.borrow();
                 let trait_def = def_map.get().get_copy(&trait_ref.ref_id);
@@ -1807,7 +1838,7 @@ pub static metadata_encoding_version : &'static [u8] =
 pub fn encode_metadata(parms: EncodeParams, crate: &Crate) -> ~[u8] {
     let mut wr = MemWriter::new();
     encode_metadata_inner(&mut wr, parms, crate);
-    wr.inner()
+    wr.unwrap()
 }
 
 fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, crate: &Crate) {
@@ -1817,6 +1848,8 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, crate: &Crate)
         dep_bytes: Cell::new(0),
         lang_item_bytes: Cell::new(0),
         native_lib_bytes: Cell::new(0),
+        macro_registrar_fn_bytes: Cell::new(0),
+        macro_defs_bytes: Cell::new(0),
         impl_bytes: Cell::new(0),
         misc_bytes: Cell::new(0),
         item_bytes: Cell::new(0),
@@ -1834,6 +1867,7 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, crate: &Crate)
         link_meta,
         reachable,
         non_inlineable_statics,
+        codemap,
         ..
     } = parms;
     let type_abbrevs = @RefCell::new(HashMap::new());
@@ -1850,6 +1884,7 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, crate: &Crate)
         encode_inlined_item: encode_inlined_item,
         type_abbrevs: type_abbrevs,
         reachable: reachable,
+        codemap: codemap,
      };
 
     let mut ebml_w = writer::Encoder(wr);
@@ -1875,6 +1910,16 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, crate: &Crate)
     encode_native_libraries(&ecx, &mut ebml_w);
     ecx.stats.native_lib_bytes.set(ebml_w.writer.tell() - i);
 
+    // Encode the macro registrar function
+    i = ebml_w.writer.tell();
+    encode_macro_registrar_fn(&ecx, &mut ebml_w);
+    ecx.stats.macro_registrar_fn_bytes.set(ebml_w.writer.tell() - i);
+
+    // Encode macro definitions
+    i = ebml_w.writer.tell();
+    encode_macro_defs(&ecx, crate, &mut ebml_w);
+    ecx.stats.macro_defs_bytes.set(ebml_w.writer.tell() - i);
+
     // Encode the def IDs of impls, for coherence checking.
     i = ebml_w.writer.tell();
     encode_impls(&ecx, crate, &mut ebml_w);
@@ -1899,25 +1944,27 @@ fn encode_metadata_inner(wr: &mut MemWriter, parms: EncodeParams, crate: &Crate)
 
     ecx.stats.total_bytes.set(ebml_w.writer.tell());
 
-    if (tcx.sess.meta_stats()) {
-        for e in ebml_w.writer.inner_ref().iter() {
+    if tcx.sess.meta_stats() {
+        for e in ebml_w.writer.get_ref().iter() {
             if *e == 0 {
                 ecx.stats.zero_bytes.set(ecx.stats.zero_bytes.get() + 1);
             }
         }
 
-        println("metadata stats:");
-        println!("    inline bytes: {}", ecx.stats.inline_bytes.get());
-        println!(" attribute bytes: {}", ecx.stats.attr_bytes.get());
-        println!("       dep bytes: {}", ecx.stats.dep_bytes.get());
-        println!(" lang item bytes: {}", ecx.stats.lang_item_bytes.get());
-        println!("    native bytes: {}", ecx.stats.native_lib_bytes.get());
-        println!("      impl bytes: {}", ecx.stats.impl_bytes.get());
-        println!("      misc bytes: {}", ecx.stats.misc_bytes.get());
-        println!("      item bytes: {}", ecx.stats.item_bytes.get());
-        println!("     index bytes: {}", ecx.stats.index_bytes.get());
-        println!("      zero bytes: {}", ecx.stats.zero_bytes.get());
-        println!("     total bytes: {}", ecx.stats.total_bytes.get());
+        println!("metadata stats:");
+        println!("         inline bytes: {}", ecx.stats.inline_bytes.get());
+        println!("      attribute bytes: {}", ecx.stats.attr_bytes.get());
+        println!("            dep bytes: {}", ecx.stats.dep_bytes.get());
+        println!("      lang item bytes: {}", ecx.stats.lang_item_bytes.get());
+        println!("         native bytes: {}", ecx.stats.native_lib_bytes.get());
+        println!("macro registrar bytes: {}", ecx.stats.macro_registrar_fn_bytes.get());
+        println!("      macro def bytes: {}", ecx.stats.macro_defs_bytes.get());
+        println!("           impl bytes: {}", ecx.stats.impl_bytes.get());
+        println!("           misc bytes: {}", ecx.stats.misc_bytes.get());
+        println!("           item bytes: {}", ecx.stats.item_bytes.get());
+        println!("          index bytes: {}", ecx.stats.index_bytes.get());
+        println!("           zero bytes: {}", ecx.stats.zero_bytes.get());
+        println!("          total bytes: {}", ecx.stats.total_bytes.get());
     }
 }
 
@@ -1930,5 +1977,5 @@ pub fn encoded_ty(tcx: ty::ctxt, t: ty::t) -> ~str {
         abbrevs: tyencode::ac_no_abbrevs};
     let mut wr = MemWriter::new();
     tyencode::enc_ty(&mut wr, cx, t);
-    str::from_utf8_owned(wr.inner_ref().to_owned())
+    str::from_utf8_owned(wr.get_ref().to_owned()).unwrap()
 }

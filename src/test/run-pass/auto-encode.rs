@@ -20,7 +20,6 @@ extern mod extra;
 // the common code.
 
 use std::hashmap::{HashMap, HashSet};
-use std::io::Decorator;
 
 use EBReader = extra::ebml::reader;
 use EBWriter = extra::ebml::writer;
@@ -35,10 +34,10 @@ fn test_ebml<'a, A:
     Encodable<EBWriter::Encoder> +
     Decodable<EBReader::Decoder<'a>>
 >(a1: &A) {
-    let mut wr = std::io::mem::MemWriter::new();
+    let mut wr = std::io::MemWriter::new();
     let mut ebml_w = EBWriter::Encoder(&mut wr);
     a1.encode(&mut ebml_w);
-    let bytes = wr.inner_ref().as_slice();
+    let bytes = wr.get_ref();
 
     let d: extra::ebml::Doc<'a> = EBReader::Doc(bytes);
     let mut decoder: EBReader::Decoder<'a> = EBReader::Decoder(d);

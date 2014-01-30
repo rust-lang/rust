@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// xfail-android (FIXME #11419)
 // error-pattern:explicit failure
 
 #[no_uv];
@@ -16,7 +17,7 @@ extern mod native;
 
 #[start]
 fn start(argc: int, argv: **u8) -> int {
-    do native::start(argc, argv) {
+    native::start(argc, argv, proc() {
         fail!();
-    }
+    })
 }

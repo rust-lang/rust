@@ -175,7 +175,7 @@ impl File {
     ///
     /// This function will raise on the `io_error` condition on failure.
     pub fn fsync(&mut self) {
-        self.fd.fsync().map_err(|e| io_error::cond.raise(e));
+        let _ = self.fd.fsync().map_err(|e| io_error::cond.raise(e));
     }
 
     /// This function is similar to `fsync`, except that it may not synchronize
@@ -187,7 +187,7 @@ impl File {
     ///
     /// This function will raise on the `io_error` condition on failure.
     pub fn datasync(&mut self) {
-        self.fd.datasync().map_err(|e| io_error::cond.raise(e));
+        let _ = self.fd.datasync().map_err(|e| io_error::cond.raise(e));
     }
 
     /// Either truncates or extends the underlying file, updating the size of
@@ -203,7 +203,15 @@ impl File {
     ///
     /// On error, this function will raise on the `io_error` condition.
     pub fn truncate(&mut self, size: i64) {
-        self.fd.truncate(size).map_err(|e| io_error::cond.raise(e));
+        let _ = self.fd.truncate(size).map_err(|e| io_error::cond.raise(e));
+    }
+
+    /// Tests whether this stream has reached EOF.
+    ///
+    /// If true, then this file will no longer continue to return data via
+    /// `read`.
+    pub fn eof(&self) -> bool {
+        self.last_nread == 0
     }
 }
 
@@ -500,18 +508,18 @@ pub fn readdir(path: &Path) -> ~[Path] {
 /// Returns an iterator which will recursively walk the directory structure
 /// rooted at `path`. The path given will not be iterated over, and this will
 /// perform iteration in a top-down order.
-pub fn walk_dir(path: &Path) -> WalkIterator {
-    WalkIterator { stack: readdir(path) }
+pub fn walk_dir(path: &Path) -> Directories {
+    Directories { stack: readdir(path) }
 }
 
 /// An iterator which walks over a directory
-pub struct WalkIterator {
+pub struct Directories {
     priv stack: ~[Path],
 }
 
-impl Iterator<Path> for WalkIterator {
+impl Iterator<Path> for Directories {
     fn next(&mut self) -> Option<Path> {
-        match self.stack.shift_opt() {
+        match self.stack.shift() {
             Some(path) => {
                 if path.is_dir() {
                     self.stack.push_all_move(readdir(&path));
@@ -597,8 +605,6 @@ impl Reader for File {
             }
         }
     }
-
-    fn eof(&mut self) -> bool { self.last_nread == 0 }
 }
 
 impl Writer for File {
@@ -748,7 +754,7 @@ mod test {
             let mut read_buf = [0, .. 1028];
             let read_str = match read_stream.read(read_buf).unwrap() {
                 -1|0 => fail!("shouldn't happen"),
-                n => str::from_utf8_owned(read_buf.slice_to(n).to_owned())
+                n => str::from_utf8_owned(read_buf.slice_to(n).to_owned()).unwrap()
             };
             assert_eq!(read_str, message.to_owned());
         }
@@ -799,7 +805,7 @@ mod test {
             }
         }
         unlink(filename);
-        let read_str = str::from_utf8(read_mem);
+        let read_str = str::from_utf8(read_mem).unwrap();
         assert_eq!(read_str, message);
     })
 
@@ -823,7 +829,7 @@ mod test {
             tell_pos_post_read = read_stream.tell();
         }
         unlink(filename);
-        let read_str = str::from_utf8(read_mem);
+        let read_str = str::from_utf8(read_mem).unwrap();
         assert_eq!(read_str, message.slice(4, 8));
         assert_eq!(tell_pos_pre_read, set_cursor);
         assert_eq!(tell_pos_post_read, message.len() as u64);
@@ -848,7 +854,7 @@ mod test {
             read_stream.read(read_mem);
         }
         unlink(filename);
-        let read_str = str::from_utf8(read_mem);
+        let read_str = str::from_utf8(read_mem).unwrap();
         assert!(read_str == final_msg.to_owned());
     })
 
@@ -870,15 +876,15 @@ mod test {
 
             read_stream.seek(-4, SeekEnd);
             read_stream.read(read_mem);
-            assert_eq!(str::from_utf8(read_mem), chunk_three);
+            assert_eq!(str::from_utf8(read_mem).unwrap(), chunk_three);
 
             read_stream.seek(-9, SeekCur);
             read_stream.read(read_mem);
-            assert_eq!(str::from_utf8(read_mem), chunk_two);
+            assert_eq!(str::from_utf8(read_mem).unwrap(), chunk_two);
 
             read_stream.seek(0, SeekSet);
             read_stream.read(read_mem);
-            assert_eq!(str::from_utf8(read_mem), chunk_one);
+            assert_eq!(str::from_utf8(read_mem).unwrap(), chunk_one);
         }
         unlink(filename);
     })
@@ -952,7 +958,7 @@ mod test {
             {
                 let n = f.filestem_str();
                 File::open(f).read(mem);
-                let read_str = str::from_utf8(mem);
+                let read_str = str::from_utf8(mem).unwrap();
                 let expected = match n {
                     None|Some("") => fail!("really shouldn't happen.."),
                     Some(n) => prefix+n

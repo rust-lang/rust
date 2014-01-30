@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -150,7 +150,7 @@ impl RegionVarBindings {
         debug!("RegionVarBindings: commit()");
         let mut undo_log = self.undo_log.borrow_mut();
         while undo_log.get().len() > 0 {
-            undo_log.get().pop();
+            undo_log.get().pop().unwrap();
         }
     }
 
@@ -158,14 +158,14 @@ impl RegionVarBindings {
         debug!("RegionVarBindings: rollback_to({})", snapshot);
         let mut undo_log = self.undo_log.borrow_mut();
         while undo_log.get().len() > snapshot {
-            let undo_item = undo_log.get().pop();
+            let undo_item = undo_log.get().pop().unwrap();
             debug!("undo_item={:?}", undo_item);
             match undo_item {
               Snapshot => {}
               AddVar(vid) => {
                 let mut var_origins = self.var_origins.borrow_mut();
                 assert_eq!(var_origins.get().len(), vid.to_uint() + 1);
-                var_origins.get().pop();
+                var_origins.get().pop().unwrap();
               }
               AddConstraint(ref constraint) => {
                 let mut constraints = self.constraints.borrow_mut();
@@ -1010,7 +1010,7 @@ impl RegionVarBindings {
         // idea is to report errors that derive from independent
         // regions of the graph, but not those that derive from
         // overlapping locations.
-        let mut dup_vec = vec::from_elem(self.num_vars(), uint::max_value);
+        let mut dup_vec = vec::from_elem(self.num_vars(), uint::MAX);
 
         let mut opt_graph = None;
 
@@ -1234,11 +1234,11 @@ impl RegionVarBindings {
         process_edges(self, &mut state, graph, orig_node_idx, dir);
 
         while !state.stack.is_empty() {
-            let node_idx = state.stack.pop();
+            let node_idx = state.stack.pop().unwrap();
             let classification = var_data[node_idx.to_uint()].classification;
 
             // check whether we've visited this node on some previous walk
-            if dup_vec[node_idx.to_uint()] == uint::max_value {
+            if dup_vec[node_idx.to_uint()] == uint::MAX {
                 dup_vec[node_idx.to_uint()] = orig_node_idx.to_uint();
             } else if dup_vec[node_idx.to_uint()] != orig_node_idx.to_uint() {
                 state.dup_found = true;

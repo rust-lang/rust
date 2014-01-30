@@ -1,0 +1,52 @@
+# Japanese translations for Rust package
+# Copyright (C) 2014 The Rust Project Developers
+# This file is distributed under the same license as the Rust package.
+# Automatically generated, 2014.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Rust 0.10-pre\n"
+"POT-Creation-Date: 2014-01-13 12:01+0900\n"
+"PO-Revision-Date: 2014-01-13 12:01+0900\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: ja\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#. type: Plain text
+#: doc/rustdoc.md:2
+#, fuzzy
+#| msgid "## Using the rust tool"
+msgid "% Rust Documentation"
+msgstr "## `rust` コマンドを利用する"
+
+#. type: Plain text
+#: doc/rustdoc.md:9
+#, fuzzy
+#| msgid "## Using the rust tool"
+msgid "# Creating Documentation"
+msgstr "## `rust` コマンドを利用する"
+
+#. type: Plain text
+#: doc/rustdoc.md:79
+#, fuzzy
+#| msgid "## Using the rust tool"
+msgid "# Using the Documentation"
+msgstr "## `rust` コマンドを利用する"
+
+#. type: Plain text
+#: doc/rustdoc.md:90
+#, fuzzy
+#| msgid "## Using the rust tool"
+msgid "# Testing the Documentation"
+msgstr "## `rust` コマンドを利用する"
+
+#. type: Plain text
+#: doc/rustdoc.md:102
+#, fuzzy
+#| msgid "# Dereferencing pointers"
+msgid "## Defining tests"
+msgstr "# ポインタのデリファレンス"

@@ -12,8 +12,7 @@
 
 #[allow(missing_doc)];
 
-use std::io::{Reader, Seek};
-use std::io::mem::BufReader;
+use std::io::BufReader;
 use std::cmp::Eq;
 use std::hashmap::HashMap;
 use std::to_bytes;
@@ -175,7 +174,7 @@ fn decode_inner(s: &str, full_url: bool) -> ~str {
             let mut bytes = [0, 0];
             match rdr.read(bytes) {
                 Some(2) => {}
-                _ => fail!() // XXX: malformed url?
+                _ => fail!() // FIXME: malformed url?
             }
             let ch = uint::parse_bytes(bytes, 16u).unwrap() as u8 as char;
 
@@ -309,7 +308,7 @@ pub fn decode_form_urlencoded(s: &[u8]) -> HashMap<~str, ~[~str]> {
                         let mut bytes = [0, 0];
                         match rdr.read(bytes) {
                             Some(2) => {}
-                            _ => fail!() // XXX: malformed?
+                            _ => fail!() // FIXME: malformed?
                         }
                         uint::parse_bytes(bytes, 16u).unwrap() as u8 as char
                     }
@@ -393,7 +392,7 @@ fn query_from_str(rawquery: &str) -> Query {
  * use extra::url;
  *
  * let query = ~[(~"title", ~"The Village"), (~"north", ~"52.91"), (~"west", ~"4.10")];
- * println(url::query_to_str(&query));  // title=The%20Village&north=52.91&west=4.10
+ * println!("{}", url::query_to_str(&query));  // title=The%20Village&north=52.91&west=4.10
  * ```
  */
 pub fn query_to_str(query: &Query) -> ~str {

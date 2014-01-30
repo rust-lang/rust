@@ -12,11 +12,10 @@
 
 
 use ast;
-use codemap::{Span, CodeMap, FileMap, FileSubstr};
+use codemap::{Span, CodeMap, FileMap};
 use codemap;
 use diagnostic::{SpanHandler, mk_span_handler, mk_handler, Emitter};
-use parse::attr::parser_attr;
-use parse::lexer::reader;
+use parse::attr::ParserAttr;
 use parse::parser::Parser;
 
 use std::cell::RefCell;
@@ -131,10 +130,10 @@ pub fn parse_item_from_source_str(
     name: @str,
     source: @str,
     cfg: ast::CrateConfig,
-    attrs: ~[ast::Attribute],
     sess: @ParseSess
-) -> Option<@ast::item> {
+) -> Option<@ast::Item> {
     let mut p = new_parser_from_source_str(sess, cfg, name, source);
+    let attrs = p.parse_outer_attributes();
     maybe_aborted(p.parse_item(attrs),p)
 }
 
@@ -169,7 +168,7 @@ pub fn parse_tts_from_source_str(
     source: @str,
     cfg: ast::CrateConfig,
     sess: @ParseSess
-) -> ~[ast::token_tree] {
+) -> ~[ast::TokenTree] {
     let mut p = new_parser_from_source_str(
         sess,
         cfg,
@@ -181,27 +180,6 @@ pub fn parse_tts_from_source_str(
     maybe_aborted(p.parse_all_token_trees(),p)
 }
 
-// given a function and parsing information (source str,
-// filename, crate cfg, and sess), create a parser,
-// apply the function, and check that the parser
-// consumed all of the input before returning the function's
-// result.
-pub fn parse_from_source_str<T>(
-                             f: |&mut Parser| -> T,
-                             name: @str,
-                             ss: codemap::FileSubstr,
-                             source: @str,
-                             cfg: ast::CrateConfig,
-                             sess: @ParseSess)
-                             -> T {
-    let mut p = new_parser_from_source_substr(sess, cfg, name, ss, source);
-    let r = f(&mut p);
-    if !p.reader.is_eof() {
-        p.reader.fatal(~"expected end-of-string");
-    }
-    maybe_aborted(r,p)
-}
-
 // Create a new parser from a source string
 pub fn new_parser_from_source_str(sess: @ParseSess,
                                   cfg: ast::CrateConfig,
@@ -209,17 +187,6 @@ pub fn new_parser_from_source_str(sess: @ParseSess,
                                   source: @str)
                                -> Parser {
     filemap_to_parser(sess,string_to_filemap(sess,source,name),cfg)
-}
-
-// Create a new parser from a source string where the origin
-// is specified as a substring of another file.
-pub fn new_parser_from_source_substr(sess: @ParseSess,
-                                  cfg: ast::CrateConfig,
-                                  name: @str,
-                                  ss: codemap::FileSubstr,
-                                  source: @str)
-                               -> Parser {
-    filemap_to_parser(sess,substring_to_filemap(sess,source,name,ss),cfg)
 }
 
 /// Create a new parser, handling errors as appropriate
@@ -255,7 +222,7 @@ pub fn filemap_to_parser(sess: @ParseSess,
 // compiler expands into it
 pub fn new_parser_from_tts(sess: @ParseSess,
                      cfg: ast::CrateConfig,
-                     tts: ~[ast::token_tree]) -> Parser {
+                     tts: ~[ast::TokenTree]) -> Parser {
     tts_to_parser(sess,tts,cfg)
 }
 
@@ -279,7 +246,7 @@ pub fn file_to_filemap(sess: @ParseSess, path: &Path, spanopt: Option<Span>)
             unreachable!()
         }
     };
-    match str::from_utf8_owned_opt(bytes) {
+    match str::from_utf8_owned(bytes) {
         Some(s) => {
             return string_to_filemap(sess, s.to_managed(),
                                      path.as_str().unwrap().to_managed());
@@ -298,30 +265,23 @@ pub fn string_to_filemap(sess: @ParseSess, source: @str, path: @str)
     sess.cm.new_filemap(path, source)
 }
 
-// given a session and a string and a path and a FileSubStr, add
-// the string to the CodeMap and return the new FileMap
-pub fn substring_to_filemap(sess: @ParseSess, source: @str, path: @str,
-                           filesubstr: FileSubstr) -> @FileMap {
-    sess.cm.new_filemap_w_substr(path,filesubstr,source)
-}
-
 // given a filemap, produce a sequence of token-trees
 pub fn filemap_to_tts(sess: @ParseSess, filemap: @FileMap)
-    -> ~[ast::token_tree] {
+    -> ~[ast::TokenTree] {
     // it appears to me that the cfg doesn't matter here... indeed,
     // parsing tt's probably shouldn't require a parser at all.
     let cfg = ~[];
     let srdr = lexer::new_string_reader(sess.span_diagnostic, filemap);
-    let mut p1 = Parser(sess, cfg, srdr as @reader);
+    let mut p1 = Parser(sess, cfg, srdr as @lexer::Reader);
     p1.parse_all_token_trees()
 }
 
 // given tts and cfg, produce a parser
 pub fn tts_to_parser(sess: @ParseSess,
-                     tts: ~[ast::token_tree],
+                     tts: ~[ast::TokenTree],
                      cfg: ast::CrateConfig) -> Parser {
     let trdr = lexer::new_tt_reader(sess.span_diagnostic, None, tts);
-    Parser(sess, cfg, trdr as @reader)
+    Parser(sess, cfg, trdr as @lexer::Reader)
 }
 
 // abort if necessary
@@ -338,8 +298,7 @@ mod test {
     use extra::serialize::Encodable;
     use extra;
     use std::io;
-    use std::io::Decorator;
-    use std::io::mem::MemWriter;
+    use std::io::MemWriter;
     use std::str;
     use codemap::{Span, BytePos, Spanned};
     use opt_vec;
@@ -356,7 +315,7 @@ mod test {
         let mut writer = MemWriter::new();
         let mut encoder = extra::json::Encoder::new(&mut writer as &mut io::Writer);
         val.encode(&mut encoder);
-        str::from_utf8_owned(writer.inner())
+        str::from_utf8_owned(writer.unwrap()).unwrap()
     }
 
     // produce a codemap::span
@@ -416,26 +375,26 @@ mod test {
     #[test] fn string_to_tts_macro () {
         let tts = string_to_tts(@"macro_rules! zip (($a)=>($a))");
         match tts {
-            [ast::tt_tok(_,_),
-             ast::tt_tok(_,token::NOT),
-             ast::tt_tok(_,_),
-             ast::tt_delim(delim_elts)] =>
+            [ast::TTTok(_,_),
+             ast::TTTok(_,token::NOT),
+             ast::TTTok(_,_),
+             ast::TTDelim(delim_elts)] =>
                 match *delim_elts {
-                [ast::tt_tok(_,token::LPAREN),
-                 ast::tt_delim(first_set),
-                 ast::tt_tok(_,token::FAT_ARROW),
-                 ast::tt_delim(second_set),
-                 ast::tt_tok(_,token::RPAREN)] =>
+                [ast::TTTok(_,token::LPAREN),
+                 ast::TTDelim(first_set),
+                 ast::TTTok(_,token::FAT_ARROW),
+                 ast::TTDelim(second_set),
+                 ast::TTTok(_,token::RPAREN)] =>
                     match *first_set {
-                    [ast::tt_tok(_,token::LPAREN),
-                     ast::tt_tok(_,token::DOLLAR),
-                     ast::tt_tok(_,_),
-                     ast::tt_tok(_,token::RPAREN)] =>
+                    [ast::TTTok(_,token::LPAREN),
+                     ast::TTTok(_,token::DOLLAR),
+                     ast::TTTok(_,_),
+                     ast::TTTok(_,token::RPAREN)] =>
                         match *second_set {
-                        [ast::tt_tok(_,token::LPAREN),
-                         ast::tt_tok(_,token::DOLLAR),
-                         ast::tt_tok(_,_),
-                         ast::tt_tok(_,token::RPAREN)] =>
+                        [ast::TTTok(_,token::LPAREN),
+                         ast::TTTok(_,token::DOLLAR),
+                         ast::TTTok(_,_),
+                         ast::TTTok(_,token::RPAREN)] =>
                             assert_eq!("correct","correct"),
                         _ => assert_eq!("wrong 4","correct")
                     },
@@ -459,10 +418,10 @@ mod test {
 
     #[test] fn string_to_tts_1 () {
         let tts = string_to_tts(@"fn a (b : int) { b; }");
-        assert_eq!(to_json_str(@tts),
+        assert_eq!(to_json_str(&tts),
         ~"[\
     {\
-        \"variant\":\"tt_tok\",\
+        \"variant\":\"TTTok\",\
         \"fields\":[\
             null,\
             {\
@@ -475,7 +434,7 @@ mod test {
         ]\
     },\
     {\
-        \"variant\":\"tt_tok\",\
+        \"variant\":\"TTTok\",\
         \"fields\":[\
             null,\
             {\
@@ -488,18 +447,18 @@ mod test {
         ]\
     },\
     {\
-        \"variant\":\"tt_delim\",\
+        \"variant\":\"TTDelim\",\
         \"fields\":[\
             [\
                 {\
-                    \"variant\":\"tt_tok\",\
+                    \"variant\":\"TTTok\",\
                     \"fields\":[\
                         null,\
                         \"LPAREN\"\
                     ]\
                 },\
                 {\
-                    \"variant\":\"tt_tok\",\
+                    \"variant\":\"TTTok\",\
                     \"fields\":[\
                         null,\
                         {\
@@ -512,14 +471,14 @@ mod test {
                     ]\
                 },\
                 {\
-                    \"variant\":\"tt_tok\",\
+                    \"variant\":\"TTTok\",\
                     \"fields\":[\
                         null,\
                         \"COLON\"\
                     ]\
                 },\
                 {\
-                    \"variant\":\"tt_tok\",\
+                    \"variant\":\"TTTok\",\
                     \"fields\":[\
                         null,\
                         {\
@@ -532,7 +491,7 @@ mod test {
                     ]\
                 },\
                 {\
-                    \"variant\":\"tt_tok\",\
+                    \"variant\":\"TTTok\",\
                     \"fields\":[\
                         null,\
                         \"RPAREN\"\
@@ -542,18 +501,18 @@ mod test {
         ]\
     },\
     {\
-        \"variant\":\"tt_delim\",\
+        \"variant\":\"TTDelim\",\
         \"fields\":[\
             [\
                 {\
-                    \"variant\":\"tt_tok\",\
+                    \"variant\":\"TTTok\",\
                     \"fields\":[\
                         null,\
                         \"LBRACE\"\
                     ]\
                 },\
                 {\
-                    \"variant\":\"tt_tok\",\
+                    \"variant\":\"TTTok\",\
                     \"fields\":[\
                         null,\
                         {\
@@ -566,14 +525,14 @@ mod test {
                     ]\
                 },\
                 {\
-                    \"variant\":\"tt_tok\",\
+                    \"variant\":\"TTTok\",\
                     \"fields\":[\
                         null,\
                         \"SEMI\"\
                     ]\
                 },\
                 {\
-                    \"variant\":\"tt_tok\",\
+                    \"variant\":\"TTTok\",\
                     \"fields\":[\
                         null,\
                         \"RBRACE\"\
@@ -662,13 +621,13 @@ mod test {
         // this test depends on the intern order of "fn" and "int"
         assert_eq!(string_to_item(@"fn a (b : int) { b; }"),
                   Some(
-                      @ast::item{ident:str_to_ident("a"),
+                      @ast::Item{ident:str_to_ident("a"),
                             attrs:~[],
                             id: ast::DUMMY_NODE_ID,
-                            node: ast::item_fn(ast::P(ast::fn_decl{
-                                inputs: ~[ast::arg{
+                            node: ast::ItemFn(ast::P(ast::FnDecl {
+                                inputs: ~[ast::Arg{
                                     ty: ast::P(ast::Ty{id: ast::DUMMY_NODE_ID,
-                                                       node: ast::ty_path(ast::Path{
+                                                       node: ast::TyPath(ast::Path{
                                         span:sp(10,13),
                                         global:false,
                                         segments: ~[
@@ -705,12 +664,12 @@ mod test {
                                     id: ast::DUMMY_NODE_ID
                                 }],
                                 output: ast::P(ast::Ty{id: ast::DUMMY_NODE_ID,
-                                                       node: ast::ty_nil,
+                                                       node: ast::TyNil,
                                                        span:sp(15,15)}), // not sure
-                                cf: ast::return_val,
+                                cf: ast::Return,
                                 variadic: false
                             }),
-                                    ast::impure_fn,
+                                    ast::ImpureFn,
                                     abi::AbiSet::Rust(),
                                     ast::Generics{ // no idea on either of these:
                                         lifetimes: opt_vec::Empty,
@@ -745,7 +704,7 @@ mod test {
                                         rules: ast::DefaultBlock, // no idea
                                         span: sp(15,21),
                                     })),
-                            vis: ast::inherited,
+                            vis: ast::Inherited,
                             span: sp(0,21)}));
     }
 

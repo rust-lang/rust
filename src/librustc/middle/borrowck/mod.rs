@@ -25,11 +25,12 @@ use std::ops::{BitOr, BitAnd};
 use std::result::{Result};
 use syntax::ast;
 use syntax::ast_map;
+use syntax::ast_util;
 use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::visit;
-use syntax::visit::{Visitor,fn_kind};
-use syntax::ast::{fn_decl,Block,NodeId};
+use syntax::visit::{Visitor, FnKind};
+use syntax::ast::{FnDecl, Block, NodeId};
 
 macro_rules! if_ok(
     ($inp: expr) => (
@@ -50,7 +51,7 @@ pub mod move_data;
 
 pub struct LoanDataFlowOperator;
 
-/// XXX(pcwalton): Should just be #[deriving(Clone)], but that doesn't work
+/// FIXME(pcwalton): Should just be #[deriving(Clone)], but that doesn't work
 /// yet on unit structs.
 impl Clone for LoanDataFlowOperator {
     fn clone(&self) -> LoanDataFlowOperator {
@@ -61,7 +62,7 @@ impl Clone for LoanDataFlowOperator {
 pub type LoanDataFlow = DataFlowContext<LoanDataFlowOperator>;
 
 impl Visitor<()> for BorrowckCtxt {
-    fn visit_fn(&mut self, fk: &fn_kind, fd: &fn_decl,
+    fn visit_fn(&mut self, fk: &FnKind, fd: &FnDecl,
                 b: &Block, s: Span, n: NodeId, _: ()) {
         borrowck_fn(self, fk, fd, b, s, n);
     }
@@ -93,7 +94,7 @@ pub fn check_crate(tcx: ty::ctxt,
     visit::walk_crate(bccx, crate, ());
 
     if tcx.sess.borrowck_stats() {
-        println("--- borrowck stats ---");
+        println!("--- borrowck stats ---");
         println!("paths requiring guarantees: {}",
                  bccx.stats.guaranteed_paths.get());
         println!("paths requiring loans     : {}",
@@ -114,18 +115,17 @@ pub fn check_crate(tcx: ty::ctxt,
 }
 
 fn borrowck_fn(this: &mut BorrowckCtxt,
-               fk: &visit::fn_kind,
-               decl: &ast::fn_decl,
+               fk: &FnKind,
+               decl: &ast::FnDecl,
                body: &ast::Block,
                sp: Span,
                id: ast::NodeId) {
     match fk {
-        &visit::fk_fn_block(..) => {
+        &visit::FkFnBlock(..) => {
             // Closures are checked as part of their containing fn item.
         }
 
-        &visit::fk_item_fn(..) |
-        &visit::fk_method(..) => {
+        &visit::FkItemFn(..) | &visit::FkMethod(..) => {
             debug!("borrowck_fn(id={:?})", id);
 
             // Check the body of fn items.
@@ -295,9 +295,7 @@ pub fn opt_loan_path(cmt: mc::cmt) -> Option<@LoanPath> {
             None
         }
 
-        mc::cat_local(id) |
-        mc::cat_arg(id) |
-        mc::cat_self(id) => {
+        mc::cat_local(id) | mc::cat_arg(id) => {
             Some(@LpVar(id))
         }
 
@@ -551,9 +549,8 @@ impl BorrowckCtxt {
             move_data::Declared => {}
 
             move_data::MoveExpr => {
-                let items = self.tcx.items.borrow();
-                let (expr_ty, expr_span) = match items.get().find(&move.id) {
-                    Some(&ast_map::node_expr(expr)) => {
+                let (expr_ty, expr_span) = match self.tcx.items.find(move.id) {
+                    Some(ast_map::NodeExpr(expr)) => {
                         (ty::expr_ty_adjusted(self.tcx, expr), expr.span)
                     }
                     r => self.tcx.sess.bug(format!("MoveExpr({:?}) maps to {:?}, not Expr",
@@ -579,9 +576,8 @@ impl BorrowckCtxt {
             }
 
             move_data::Captured => {
-                let items = self.tcx.items.borrow();
-                let (expr_ty, expr_span) = match items.get().find(&move.id) {
-                    Some(&ast_map::node_expr(expr)) => {
+                let (expr_ty, expr_span) = match self.tcx.items.find(move.id) {
+                    Some(ast_map::NodeExpr(expr)) => {
                         (ty::expr_ty_adjusted(self.tcx, expr), expr.span)
                     }
                     r => self.tcx.sess.bug(format!("Captured({:?}) maps to {:?}, not Expr",
@@ -632,6 +628,10 @@ impl BorrowckCtxt {
 
     pub fn span_note(&self, s: Span, m: &str) {
         self.tcx.sess.span_note(s, m);
+    }
+
+    pub fn span_end_note(&self, s: Span, m: &str) {
+        self.tcx.sess.span_end_note(s, m);
     }
 
     pub fn bckerr_to_str(&self, err: BckError) -> ~str {
@@ -769,10 +769,19 @@ impl BorrowckCtxt {
                                    out: &mut ~str) {
         match *loan_path {
             LpVar(id) => {
-                let items = self.tcx.items.borrow();
-                match items.get().find(&id) {
-                    Some(&ast_map::node_local(ref ident, _)) => {
-                        out.push_str(token::ident_to_str(ident));
+                match self.tcx.items.find(id) {
+                    Some(ast_map::NodeLocal(pat)) => {
+                        match pat.node {
+                            ast::PatIdent(_, ref path, _) => {
+                                let ident = ast_util::path_to_ident(path);
+                                out.push_str(token::ident_to_str(&ident));
+                            }
+                            _ => {
+                                self.tcx.sess.bug(
+                                    format!("Loan path LpVar({:?}) maps to {:?}, not local",
+                                        id, pat));
+                            }
+                        }
                     }
                     r => {
                         self.tcx.sess.bug(
@@ -873,7 +882,10 @@ impl Repr for LoanPath {
     fn repr(&self, tcx: ty::ctxt) -> ~str {
         match self {
             &LpVar(id) => {
-                format!("$({:?})", id)
+                format!("$({})",
+                        ast_map::node_id_to_str(tcx.items,
+                                                id,
+                                                token::get_ident_interner()))
             }
 
             &LpExtend(lp, _, LpDeref(_)) => {

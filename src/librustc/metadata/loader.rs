@@ -17,10 +17,9 @@ use metadata::cstore::{MetadataBlob, MetadataVec, MetadataArchive};
 use metadata::decoder;
 use metadata::encoder;
 use metadata::filesearch::{FileMatches, FileDoesntMatch};
-use metadata::filesearch;
 use syntax::codemap::Span;
 use syntax::diagnostic::SpanHandler;
-use syntax::parse::token::ident_interner;
+use syntax::parse::token::IdentInterner;
 use syntax::crateid::CrateId;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
@@ -34,7 +33,7 @@ use std::os::consts::{macos, freebsd, linux, android, win32};
 use std::ptr;
 use std::str;
 use std::vec;
-use extra::flate;
+use flate;
 
 pub enum Os {
     OsMacos,
@@ -52,7 +51,7 @@ pub struct Context {
     version: @str,
     hash: @str,
     os: Os,
-    intr: @ident_interner
+    intr: @IdentInterner
 }
 
 pub struct Library {
@@ -89,7 +88,7 @@ impl Context {
         let rlib_prefix = format!("lib{}-", crate_name);
 
         let mut matches = ~[];
-        filesearch::search(filesearch, |path| {
+        filesearch.search(|path| {
             match path.filename_str() {
                 None => FileDoesntMatch,
                 Some(file) => {
@@ -188,7 +187,7 @@ impl Context {
         for lib in libs.mut_iter() {
             match lib.dylib {
                 Some(ref p) if p.filename_str() == Some(file.as_slice()) => {
-                    assert!(lib.rlib.is_none()); // XXX: legit compiler error
+                    assert!(lib.rlib.is_none()); // FIXME: legit compiler error
                     lib.rlib = Some(path.clone());
                     return true;
                 }
@@ -208,7 +207,7 @@ impl Context {
         for lib in libs.mut_iter() {
             match lib.rlib {
                 Some(ref p) if p.filename_str() == Some(file.as_slice()) => {
-                    assert!(lib.dylib.is_none()); // XXX: legit compiler error
+                    assert!(lib.dylib.is_none()); // FIXME: legit compiler error
                     lib.dylib = Some(path.clone());
                     return true;
                 }
@@ -376,7 +375,7 @@ pub fn read_meta_section_name(os: Os) -> &'static str {
 }
 
 // A diagnostic function for dumping crate metadata to an output stream
-pub fn list_file_metadata(intr: @ident_interner,
+pub fn list_file_metadata(intr: @IdentInterner,
                           os: Os,
                           path: &Path,
                           out: &mut io::Writer) {

@@ -381,6 +381,8 @@ opt clang 0 "prefer clang to gcc for building the runtime"
 opt ccache 0 "invoke gcc/clang via ccache to reuse object files between builds"
 opt local-rust 0 "use an installed rustc rather than downloading a snapshot"
 opt pax-flags 0 "apply PaX flags to rustc binaries (required for GRSecurity/PaX-patched kernels)"
+opt inject-std-version 1 "inject the current compiler version of libstd into programs"
+opt rpath 1 "build rpaths into rustc itself"
 valopt prefix "/usr/local" "set installation prefix"
 valopt local-rust-root "/usr/local" "set prefix for local rust binary"
 valopt llvm-root "" "set LLVM root"
@@ -401,13 +403,13 @@ valopt mandir "${CFG_PREFIX}/share/man" "install man pages in PATH"
 # On windows we just store the libraries in the bin directory because
 # there's no rpath
 # FIXME: Thise needs to parameterized over target triples. Do it in platform.mk
-LIBDIR_RELATIVE=lib
+CFG_LIBDIR_RELATIVE=lib
 if [ "$CFG_OSTYPE" = "pc-mingw32" ]
 then
-    LIBDIR_RELATIVE=bin
+    CFG_LIBDIR_RELATIVE=bin
 fi
 
-valopt libdir "${CFG_PREFIX}/${LIBDIR_RELATIVE}" "install libraries"
+valopt libdir "${CFG_PREFIX}/${CFG_LIBDIR_RELATIVE}" "install libraries"
 valopt rustlibdir "rustlib" "subdirectory name for rustc's libraries"
 
 # Validate Options
@@ -771,22 +773,17 @@ do
             make_dir $h/stage$i/bin
 
             # host lib dir
-            make_dir $h/stage$i/$LIBDIR_RELATIVE
+            make_dir $h/stage$i/$CFG_LIBDIR_RELATIVE
 
             # host test dir
             make_dir $h/stage$i/test
 
             # target bin dir
-            make_dir $h/stage$i/$LIBDIR_RELATIVE/$CFG_RUSTLIBDIR/$t/bin
+            make_dir $h/stage$i/$CFG_LIBDIR_RELATIVE/$CFG_RUSTLIBDIR/$t/bin
 
             # target lib dir
-            make_dir $h/stage$i/$LIBDIR_RELATIVE/$CFG_RUSTLIBDIR/$t/lib
+            make_dir $h/stage$i/$CFG_LIBDIR_RELATIVE/$CFG_RUSTLIBDIR/$t/lib
         done
-
-        # Fix stage0:
-        make_dir $h/stage0/$LIBDIR_RELATIVE/rustc/$t/bin
-        make_dir $h/stage0/$LIBDIR_RELATIVE/rustc/$t/$LIBDIR_RELATIVE
-
     done
 
     make_dir $h/test/run-pass
@@ -800,6 +797,7 @@ do
     make_dir $h/test/codegen
     make_dir $h/test/doc-tutorial
     make_dir $h/test/doc-guide-ffi
+    make_dir $h/test/doc-guide-runtime
     make_dir $h/test/doc-guide-macros
     make_dir $h/test/doc-guide-lifetimes
     make_dir $h/test/doc-guide-pointers
@@ -918,6 +916,10 @@ do
         LLVM_OPTS="$LLVM_OPTS --disable-terminfo"
         # Try to have LLVM pull in as few dependencies as possible (#9397)
         LLVM_OPTS="$LLVM_OPTS --disable-zlib --disable-libffi"
+        # LLVM says it needs a "new" clang/gcc, but we seem to get by ok with
+        # older versions on the bots. Get by for a little longer by asking it to
+        # not do version detection
+        LLVM_OPTS="$LLVM_OPTS --disable-compiler-version-checks"
 
         # Use win32 native thread/lock apis instead of pthread wrapper.
         # (llvm's configure tries to find pthread first, so we have to disable it explicitly.)
@@ -1041,11 +1043,12 @@ putvar CFG_TARGET
 putvar CFG_C_COMPILER
 putvar CFG_LIBDIR
 putvar CFG_RUSTLIBDIR
-putvar LIBDIR_RELATIVE
+putvar CFG_LIBDIR_RELATIVE
 putvar CFG_DISABLE_MANAGE_SUBMODULES
 putvar CFG_ANDROID_CROSS_PATH
 putvar CFG_MINGW32_CROSS_PATH
 putvar CFG_MANDIR
+putvar CFG_DISABLE_INJECT_STD_VERSION
 
 # Avoid spurious warnings from clang by feeding it original source on
 # ccache-miss rather than preprocessed input.

@@ -20,7 +20,7 @@ Rust extras are part of the standard Rust distribution.
 
 */
 
-#[crate_id = "extra#0.9"];
+#[crate_id = "extra#0.10-pre"];
 #[comment = "Rust extras"];
 #[license = "MIT/ASL2"];
 #[crate_type = "rlib"];
@@ -67,10 +67,8 @@ pub mod ebml;
 pub mod getopts;
 pub mod json;
 pub mod tempfile;
-pub mod glob;
 pub mod term;
 pub mod time;
-pub mod arena;
 pub mod base64;
 pub mod workcache;
 pub mod enum_set;
@@ -82,7 +80,6 @@ pub mod rational;
 pub mod complex;
 pub mod stats;
 pub mod semver;
-pub mod flate;
 pub mod hex;
 pub mod uuid;
 

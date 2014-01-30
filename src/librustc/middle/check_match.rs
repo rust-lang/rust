@@ -23,9 +23,9 @@ use std::num;
 use std::vec;
 use syntax::ast::*;
 use syntax::ast_util::{unguarded_pat, walk_pat};
-use syntax::codemap::{Span, DUMMY_SP, Spanned};
+use syntax::codemap::{DUMMY_SP, Span};
 use syntax::visit;
-use syntax::visit::{Visitor,fn_kind};
+use syntax::visit::{Visitor, FnKind};
 
 struct MatchCheckCtxt {
     tcx: ty::ctxt,
@@ -44,7 +44,7 @@ impl Visitor<()> for CheckMatchVisitor {
     fn visit_local(&mut self, l: &Local, _: ()) {
         check_local(self, self.cx, l, ());
     }
-    fn visit_fn(&mut self, fk: &fn_kind, fd: &fn_decl, b: &Block, s: Span, n: NodeId, _: ()) {
+    fn visit_fn(&mut self, fk: &FnKind, fd: &FnDecl, b: &Block, s: Span, n: NodeId, _: ()) {
         check_fn(self, self.cx, fk, fd, b, s, n, ());
     }
 }
@@ -175,7 +175,7 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, pats: ~[@Pat]) {
         useful(ty, ref ctor) => {
             match ty::get(ty).sty {
                 ty::ty_bool => {
-                    match (*ctor) {
+                    match *ctor {
                         val(const_bool(true)) => Some(@"true"),
                         val(const_bool(false)) => Some(@"false"),
                         _ => None
@@ -195,7 +195,7 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, pats: ~[@Pat]) {
                         }
                     }
                 }
-                ty::ty_unboxed_vec(..) | ty::ty_evec(..) => {
+                ty::ty_unboxed_vec(..) | ty::ty_vec(..) => {
                     match *ctor {
                         vec(n) => Some(format!("vectors of length {}", n).to_managed()),
                         _ => None
@@ -274,10 +274,10 @@ fn is_useful(cx: &MatchCheckCtxt, m: &matrix, v: &[@Pat]) -> useful {
                 }
                 not_useful
               }
-              ty::ty_evec(_, ty::vstore_fixed(n)) => {
+              ty::ty_vec(_, ty::vstore_fixed(n)) => {
                 is_useful_specialized(cx, m, v, vec(n), n, left_ty)
               }
-              ty::ty_unboxed_vec(..) | ty::ty_evec(..) => {
+              ty::ty_unboxed_vec(..) | ty::ty_vec(..) => {
                 let max_len = m.rev_iter().fold(0, |max_len, r| {
                   match r[0].node {
                     PatVec(ref before, _, ref after) => {
@@ -362,7 +362,7 @@ fn pat_ctor_id(cx: &MatchCheckCtxt, p: @Pat) -> Option<ctor> {
           _ => Some(single)
         }
       }
-      PatBox(_) | PatUniq(_) | PatTup(_) | PatRegion(..) => {
+      PatUniq(_) | PatTup(_) | PatRegion(..) => {
         Some(single)
       }
       PatVec(ref before, slice, ref after) => {
@@ -437,7 +437,7 @@ fn missing_ctor(cx: &MatchCheckCtxt,
         else if true_found { Some(val(const_bool(false))) }
         else { Some(val(const_bool(true))) }
       }
-      ty::ty_evec(_, ty::vstore_fixed(n)) => {
+      ty::ty_vec(_, ty::vstore_fixed(n)) => {
         let mut missing = true;
         let mut wrong = false;
         for r in m.iter() {
@@ -460,7 +460,7 @@ fn missing_ctor(cx: &MatchCheckCtxt,
           _         => None
         }
       }
-      ty::ty_unboxed_vec(..) | ty::ty_evec(..) => {
+      ty::ty_unboxed_vec(..) | ty::ty_vec(..) => {
 
         // Find the lengths and slices of all vector patterns.
         let mut vec_pat_lens = m.iter().filter_map(|r| {
@@ -525,7 +525,7 @@ fn ctor_arity(cx: &MatchCheckCtxt, ctor: &ctor, ty: ty::t) -> uint {
         }
       }
       ty::ty_struct(cid, _) => ty::lookup_struct_fields(cx.tcx, cid).len(),
-      ty::ty_unboxed_vec(..) | ty::ty_evec(..) => {
+      ty::ty_unboxed_vec(..) | ty::ty_vec(..) => {
         match *ctor {
           vec(n) => n,
           _ => 0u
@@ -735,7 +735,7 @@ fn specialize(cx: &MatchCheckCtxt,
                 }
             }
             PatTup(args) => Some(vec::append(args, r.tail())),
-            PatBox(a) | PatUniq(a) | PatRegion(a) => {
+            PatUniq(a) | PatRegion(a) => {
                 Some(vec::append(~[a], r.tail()))
             }
             PatLit(expr) => {
@@ -843,8 +843,8 @@ fn check_local(v: &mut CheckMatchVisitor,
 
 fn check_fn(v: &mut CheckMatchVisitor,
                 cx: &MatchCheckCtxt,
-                kind: &visit::fn_kind,
-                decl: &fn_decl,
+                kind: &FnKind,
+                decl: &FnDecl,
                 body: &Block,
                 sp: Span,
                 id: NodeId,
@@ -874,16 +874,22 @@ fn is_refutable(cx: &MatchCheckCtxt, pat: &Pat) -> bool {
     }
 
     match pat.node {
-      PatBox(sub) | PatUniq(sub) | PatRegion(sub) |
-      PatIdent(_, _, Some(sub)) => {
+      PatUniq(sub) | PatRegion(sub) | PatIdent(_, _, Some(sub)) => {
         is_refutable(cx, sub)
       }
       PatWild | PatWildMulti | PatIdent(_, _, None) => { false }
-      PatLit(@Expr {node: ExprLit(@Spanned { node: lit_nil, ..}), ..}) => {
-        // "()"
-        false
+      PatLit(lit) => {
+          match lit.node {
+            ExprLit(lit) => {
+                match lit.node {
+                    LitNil => false,    // `()`
+                    _ => true,
+                }
+            }
+            _ => true,
+          }
       }
-      PatLit(_) | PatRange(_, _) => { true }
+      PatRange(_, _) => { true }
       PatStruct(_, ref fields, _) => {
         fields.iter().any(|f| is_refutable(cx, f.pat))
       }

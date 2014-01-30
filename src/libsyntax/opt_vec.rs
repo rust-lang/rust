@@ -15,7 +15,7 @@
  * other useful things like `push()` and `len()`.
  */
 
-use std::vec::{VecIterator};
+use std::vec;
 
 #[deriving(Clone, Encodable, Decodable, IterBytes)]
 pub enum OptVec<T> {
@@ -42,12 +42,31 @@ impl<T> OptVec<T> {
                 v.push(t);
                 return;
             }
-            Empty => {}
+            Empty => {
+                *self = Vec(~[t]);
+            }
         }
+    }
 
-        // FIXME(#5074): flow insensitive means we can't move
-        // assignment inside `match`
-        *self = Vec(~[t]);
+    pub fn pop(&mut self) -> Option<T> {
+        match *self {
+            Vec(ref mut v) => v.pop(),
+            Empty => None
+        }
+    }
+
+    pub fn last<'a>(&'a self) -> Option<&'a T> {
+        match *self {
+            Vec(ref v) => v.last(),
+            Empty => None
+        }
+    }
+
+    pub fn mut_last<'a>(&'a mut self) -> &'a mut T {
+        match *self {
+            Vec(ref mut v) => v.mut_last(),
+            Empty => fail!("mut_last on empty opt_vec")
+        }
     }
 
     pub fn map<U>(&self, op: |&T| -> U) -> OptVec<U> {
@@ -82,11 +101,21 @@ impl<T> OptVec<T> {
         }
     }
 
-    #[inline]
-    pub fn iter<'r>(&'r self) -> OptVecIterator<'r, T> {
+    pub fn swap_remove(&mut self, index: uint) {
         match *self {
-            Empty => OptVecIterator{iter: None},
-            Vec(ref v) => OptVecIterator{iter: Some(v.iter())}
+            Empty => { fail!("Index out of bounds"); }
+            Vec(ref mut v) => {
+                assert!(index < v.len());
+                v.swap_remove(index);
+            }
+        }
+    }
+
+    #[inline]
+    pub fn iter<'r>(&'r self) -> Items<'r, T> {
+        match *self {
+            Empty => Items{iter: None},
+            Vec(ref v) => Items{iter: Some(v.iter())}
         }
     }
 
@@ -144,11 +173,11 @@ impl<T> Default for OptVec<T> {
     fn default() -> OptVec<T> { Empty }
 }
 
-pub struct OptVecIterator<'a, T> {
-    priv iter: Option<VecIterator<'a, T>>
+pub struct Items<'a, T> {
+    priv iter: Option<vec::Items<'a, T>>
 }
 
-impl<'a, T> Iterator<&'a T> for OptVecIterator<'a, T> {
+impl<'a, T> Iterator<&'a T> for Items<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<&'a T> {
         match self.iter {
@@ -162,6 +191,16 @@ impl<'a, T> Iterator<&'a T> for OptVecIterator<'a, T> {
         match self.iter {
             Some(ref x) => x.size_hint(),
             None => (0, Some(0))
+        }
+    }
+}
+
+impl<'a, T> DoubleEndedIterator<&'a T> for Items<'a, T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<&'a T> {
+        match self.iter {
+            Some(ref mut x) => x.next_back(),
+            None => None
         }
     }
 }

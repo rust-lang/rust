@@ -1493,6 +1493,11 @@ pub mod llvm {
                              Dialect: c_uint)
                              -> ValueRef;
 
+        pub static LLVMRustDebugMetadataVersion: u32;
+
+        pub fn LLVMRustAddModuleFlag(M: ModuleRef,
+                                     name: *c_char,
+                                     value: u32);
 
         pub fn LLVMDIBuilderCreate(M: ModuleRef) -> DIBuilderRef;
 
@@ -1698,6 +1703,7 @@ pub mod llvm {
 
         pub fn LLVMDICompositeTypeSetTypeArray(CompositeType: ValueRef, TypeArray: ValueRef);
         pub fn LLVMTypeToString(Type: TypeRef) -> *c_char;
+        pub fn LLVMValueToString(value_ref: ValueRef) -> *c_char;
 
         pub fn LLVMIsAArgument(value_ref: ValueRef) -> ValueRef;
 
@@ -1727,7 +1733,8 @@ pub mod llvm {
                                            Reloc: RelocMode,
                                            Level: CodeGenOptLevel,
                                            EnableSegstk: bool,
-                                           UseSoftFP: bool) -> TargetMachineRef;
+                                           UseSoftFP: bool,
+                                           NoFramePointerElim: bool) -> TargetMachineRef;
         pub fn LLVMRustDisposeTargetMachine(T: TargetMachineRef);
         pub fn LLVMRustAddAnalysisPasses(T: TargetMachineRef,
                                          PM: PassManagerRef,
@@ -1761,6 +1768,8 @@ pub mod llvm {
         pub fn LLVMRustArchiveReadSection(AR: ArchiveRef, name: *c_char,
                                           out_len: *mut size_t) -> *c_char;
         pub fn LLVMRustDestroyArchive(AR: ArchiveRef);
+
+        pub fn LLVMRustSetDLLExportStorageClass(V: ValueRef);
     }
 }
 
@@ -1835,7 +1844,7 @@ impl TypeNames {
         unsafe {
             let s = llvm::LLVMTypeToString(ty.to_ref());
             let ret = from_c_str(s);
-            free(s as *c_void);
+            free(s as *mut c_void);
             ret
         }
     }
@@ -1847,8 +1856,10 @@ impl TypeNames {
 
     pub fn val_to_str(&self, val: ValueRef) -> ~str {
         unsafe {
-            let ty = Type::from_ref(llvm::LLVMTypeOf(val));
-            self.type_to_str(ty)
+            let s = llvm::LLVMValueToString(val);
+            let ret = from_c_str(s);
+            free(s as *mut c_void);
+            ret
         }
     }
 }

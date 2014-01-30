@@ -3,7 +3,7 @@
 " Maintainer:   Patrick Walton <pcwalton@mozilla.com>
 " Maintainer:   Ben Blum <bblum@cs.cmu.edu>
 " Maintainer:   Chris Morgan <me@chrismorgan.info>
-" Last Change:  2013 Dec 10
+" Last Change:  2014 Jan 4
 
 if version < 600
   syntax clear
@@ -46,8 +46,6 @@ syn keyword   rustType        f64 i8 i16 i32 i64 str Self
 " to make it easy to update.
 
 " Core operators {{{3
-syn keyword   rustEnum        Either
-syn keyword   rustEnumVariant Left Right
 syn keyword   rustTrait       Sized
 syn keyword   rustTrait       Freeze Send
 syn keyword   rustTrait       Add Sub Mul Div Rem Neg Not
@@ -71,7 +69,7 @@ syn keyword rustTrait Bool
 syn keyword rustTrait ToCStr
 syn keyword rustTrait Char
 syn keyword rustTrait Clone DeepClone
-syn keyword rustTrait Eq ApproxEq Ord TotalEq TotalOrd Ordering Equiv
+syn keyword rustTrait Eq Ord TotalEq TotalOrd Ordering Equiv
 syn keyword rustEnumVariant Less Equal Greater
 syn keyword rustTrait Container Mutable Map MutableMap Set MutableSet
 syn keyword rustTrait Default
@@ -80,11 +78,9 @@ syn keyword rustTrait FromStr
 syn keyword rustTrait FromIterator Extendable
 syn keyword rustTrait Iterator DoubleEndedIterator RandomAccessIterator CloneableIterator
 syn keyword rustTrait OrdIterator MutableDoubleEndedIterator ExactSize
-syn keyword rustTrait Times
 
 syn keyword rustTrait Algebraic Trigonometric Exponential Hyperbolic
-syn keyword rustTrait Bitwise BitCount Bounded
-syn keyword rustTrait Integer Fractional Real RealExt
+syn keyword rustTrait Bitwise Bounded Integer Fractional Real RealExt
 syn keyword rustTrait Num NumCast CheckedAdd CheckedSub CheckedMul
 syn keyword rustTrait Orderable Signed Unsigned Round
 syn keyword rustTrait Primitive Int Float ToStrRadix ToPrimitive FromPrimitive
@@ -95,16 +91,16 @@ syn keyword rustTrait SendStr SendStrOwned SendStrStatic IntoSendStr
 syn keyword rustTrait Str StrVector StrSlice OwnedStr
 syn keyword rustTrait IterBytes
 syn keyword rustTrait ToStr IntoStr
-syn keyword rustTrait CopyableTuple ImmutableTuple
+syn keyword rustTrait CloneableTuple ImmutableTuple
 syn keyword rustTrait Tuple1 Tuple2 Tuple3 Tuple4
 syn keyword rustTrait Tuple5 Tuple6 Tuple7 Tuple8
 syn keyword rustTrait Tuple9 Tuple10 Tuple11 Tuple12
 syn keyword rustTrait ImmutableTuple1 ImmutableTuple2 ImmutableTuple3 ImmutableTuple4
 syn keyword rustTrait ImmutableTuple5 ImmutableTuple6 ImmutableTuple7 ImmutableTuple8
 syn keyword rustTrait ImmutableTuple9 ImmutableTuple10 ImmutableTuple11 ImmutableTuple12
-syn keyword rustTrait ImmutableEqVector ImmutableTotalOrdVector ImmutableCopyableVector
-syn keyword rustTrait OwnedVector OwnedCopyableVector OwnedEqVector MutableVector
-syn keyword rustTrait Vector VectorVector CopyableVector ImmutableVector
+syn keyword rustTrait ImmutableEqVector ImmutableTotalOrdVector ImmutableCloneableVector
+syn keyword rustTrait OwnedVector OwnedCloneableVector OwnedEqVector MutableVector
+syn keyword rustTrait Vector VectorVector CloneableVector ImmutableVector
 
 "syn keyword rustFunction stream
 syn keyword rustTrait Port Chan GenericChan GenericSmartChan GenericPort Peekable
@@ -114,7 +110,6 @@ syn keyword   rustSelf        self
 syn keyword   rustBoolean     true false
 
 syn keyword   rustConstant    Some None       " option
-syn keyword   rustConstant    Left Right      " either
 syn keyword   rustConstant    Ok Err          " result
 syn keyword   rustConstant    Less Equal Greater " Ordering
 
@@ -148,8 +143,8 @@ syn match     rustMacro       '#\w\(\w\)*' contains=rustAssert,rustFail
 syn match     rustSpecialError display contained /\\./
 syn match     rustSpecial     display contained /\\\([nrt0\\'"]\|x\x\{2}\|u\x\{4}\|U\x\{8}\)/
 syn match     rustStringContinuation display contained /\\\n\s*/
-syn region    rustString      start=+"+ skip=+\\\\\|\\"+ end=+"+ contains=rustSpecial,rustSpecialError,rustStringContinuation
-syn region    rustString      start='r\z(#*\)"' end='"\z1'
+syn region    rustString      start=+"+ skip=+\\\\\|\\"+ end=+"+ contains=rustSpecial,rustSpecialError,rustStringContinuation,@Spell
+syn region    rustString      start='r\z(#*\)"' end='"\z1' contains=@Spell
 
 syn region    rustAttribute   start="#\[" end="\]" contains=rustString,rustDeriving
 syn region    rustDeriving    start="deriving(" end=")" contained contains=rustTrait
@@ -180,10 +175,10 @@ syn match     rustLifetime    display "\'\%([^[:cntrl:][:space:][:punct:][:digit
 syn match   rustCharacter   /'\([^'\\]\|\\\(.\|x\x\{2}\|u\x\{4}\|U\x\{8}\)\)'/ contains=rustSpecial,rustSpecialError
 
 syn cluster rustComment contains=rustCommentLine,rustCommentLineDoc,rustCommentBlock,rustCommentBlockDoc
-syn region rustCommentLine                                    start="//"                      end="$"   contains=rustTodo
-syn region rustCommentLineDoc                                 start="//\%(//\@!\|!\)"         end="$"   contains=rustTodo
-syn region rustCommentBlock    matchgroup=rustCommentBlock    start="/\*\%(!\|\*[*/]\@!\)\@!" end="\*/" contains=rustTodo,@rustComment keepend extend
-syn region rustCommentBlockDoc matchgroup=rustCommentBlockDoc start="/\*\%(!\|\*[*/]\@!\)"    end="\*/" contains=rustTodo,@rustComment keepend extend
+syn region rustCommentLine                                    start="//"                      end="$"   contains=rustTodo,@Spell
+syn region rustCommentLineDoc                                 start="//\%(//\@!\|!\)"         end="$"   contains=rustTodo,@Spell
+syn region rustCommentBlock    matchgroup=rustCommentBlock    start="/\*\%(!\|\*[*/]\@!\)\@!" end="\*/" contains=rustTodo,@rustComment,@Spell keepend extend
+syn region rustCommentBlockDoc matchgroup=rustCommentBlockDoc start="/\*\%(!\|\*[*/]\@!\)"    end="\*/" contains=rustTodo,@rustComment,@Spell keepend extend
 " FIXME: this is a really ugly and not fully correct implementation. Most
 " importantly, a case like ``/* */*`` should have the final ``*`` not being in
 " a comment, but in practice at present it leaves comments open two levels

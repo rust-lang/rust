@@ -244,7 +244,7 @@ pub trait Rng {
     /// ```rust
     /// use std::rand::{task_rng, Rng};
     ///
-    /// println(task_rng().gen_ascii_str(10));
+    /// println!("{}", task_rng().gen_ascii_str(10));
     /// ```
     fn gen_ascii_str(&mut self, len: uint) -> ~str {
         static GEN_ASCII_STR_CHARSET: &'static [u8] = bytes!("ABCDEFGHIJKLMNOPQRSTUVWXYZ\

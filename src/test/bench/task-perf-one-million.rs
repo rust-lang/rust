@@ -21,9 +21,9 @@ fn calc(children: uint, parent_wait_chan: &Chan<Chan<Chan<int>>>) {
 
     let wait_ports: ~[Port<Chan<Chan<int>>>] = vec::from_fn(children, |_| {
         let (wait_port, wait_chan) = stream::<Chan<Chan<int>>>();
-        do task::spawn {
+        task::spawn(proc() {
             calc(children / 2, &wait_chan);
-        }
+        });
         wait_port
     });
 
@@ -56,15 +56,15 @@ fn main() {
         args
     };
 
-    let children = from_str::<uint>(args[1]).get();
+    let children = from_str::<uint>(args[1]).unwrap();
     let (wait_port, wait_chan) = stream();
-    do task::spawn {
+    task::spawn(proc() {
         calc(children, &wait_chan);
-    };
+    });
 
     let start_chan = wait_port.recv();
     let (sum_port, sum_chan) = stream::<int>();
     start_chan.send(sum_chan);
     let sum = sum_port.recv();
-    error!("How many tasks? %d tasks.", sum);
+    error!("How many tasks? {} tasks.", sum);
 }

@@ -13,8 +13,7 @@
 use std::cell::RefCell;
 use std::hashmap::HashMap;
 use std::io;
-use std::io::{Decorator, Writer, Seek};
-use std::io::mem::MemWriter;
+use std::io::MemWriter;
 use std::str;
 use std::fmt;
 
@@ -73,7 +72,7 @@ pub fn enc_ty(w: &mut MemWriter, cx: @ctxt, t: ty::t) {
             None => {
                 let wr = &mut MemWriter::new();
                 enc_sty(wr, cx, &ty::get(t).sty);
-                let s = str::from_utf8(*wr.inner_ref()).to_managed();
+                let s = str::from_utf8(wr.get_ref()).unwrap().to_managed();
                 let mut short_names_cache = cx.tcx
                                               .short_names_cache
                                               .borrow_mut();
@@ -250,26 +249,26 @@ fn enc_sty(w: &mut MemWriter, cx: @ctxt, st: &ty::sty) {
         ty::ty_char => mywrite!(w, "c"),
         ty::ty_int(t) => {
             match t {
-                ty_i => mywrite!(w, "i"),
-                ty_i8 => mywrite!(w, "MB"),
-                ty_i16 => mywrite!(w, "MW"),
-                ty_i32 => mywrite!(w, "ML"),
-                ty_i64 => mywrite!(w, "MD")
+                TyI => mywrite!(w, "i"),
+                TyI8 => mywrite!(w, "MB"),
+                TyI16 => mywrite!(w, "MW"),
+                TyI32 => mywrite!(w, "ML"),
+                TyI64 => mywrite!(w, "MD")
             }
         }
         ty::ty_uint(t) => {
             match t {
-                ty_u => mywrite!(w, "u"),
-                ty_u8 => mywrite!(w, "Mb"),
-                ty_u16 => mywrite!(w, "Mw"),
-                ty_u32 => mywrite!(w, "Ml"),
-                ty_u64 => mywrite!(w, "Md")
+                TyU => mywrite!(w, "u"),
+                TyU8 => mywrite!(w, "Mb"),
+                TyU16 => mywrite!(w, "Mw"),
+                TyU32 => mywrite!(w, "Ml"),
+                TyU64 => mywrite!(w, "Md")
             }
         }
         ty::ty_float(t) => {
             match t {
-                ty_f32 => mywrite!(w, "Mf"),
-                ty_f64 => mywrite!(w, "MF"),
+                TyF32 => mywrite!(w, "Mf"),
+                TyF64 => mywrite!(w, "MF"),
             }
         }
         ty::ty_enum(def, ref substs) => {
@@ -293,19 +292,19 @@ fn enc_sty(w: &mut MemWriter, cx: @ctxt, st: &ty::sty) {
             mywrite!(w, "]");
         }
         ty::ty_box(typ) => { mywrite!(w, "@"); enc_ty(w, cx, typ); }
-        ty::ty_uniq(mt) => { mywrite!(w, "~"); enc_mt(w, cx, mt); }
+        ty::ty_uniq(typ) => { mywrite!(w, "~"); enc_ty(w, cx, typ); }
         ty::ty_ptr(mt) => { mywrite!(w, "*"); enc_mt(w, cx, mt); }
         ty::ty_rptr(r, mt) => {
             mywrite!(w, "&");
             enc_region(w, cx, r);
             enc_mt(w, cx, mt);
         }
-        ty::ty_evec(mt, v) => {
+        ty::ty_vec(mt, v) => {
             mywrite!(w, "V");
             enc_mt(w, cx, mt);
             enc_vstore(w, cx, v);
         }
-        ty::ty_estr(v) => {
+        ty::ty_str(v) => {
             mywrite!(w, "v");
             enc_vstore(w, cx, v);
         }
@@ -328,11 +327,6 @@ fn enc_sty(w: &mut MemWriter, cx: @ctxt, st: &ty::sty) {
             mywrite!(w, "s{}|", (cx.ds)(did));
         }
         ty::ty_type => mywrite!(w, "Y"),
-        ty::ty_opaque_closure_ptr(p) => {
-            mywrite!(w, "C&");
-            enc_sigil(w, p);
-        }
-        ty::ty_opaque_box => mywrite!(w, "B"),
         ty::ty_struct(def, ref substs) => {
             mywrite!(w, "a[{}|", (cx.ds)(def));
             enc_substs(w, cx, substs);
@@ -350,11 +344,11 @@ fn enc_sigil(w: &mut MemWriter, sigil: Sigil) {
     }
 }
 
-fn enc_purity(w: &mut MemWriter, p: purity) {
+fn enc_purity(w: &mut MemWriter, p: Purity) {
     match p {
-        impure_fn => mywrite!(w, "i"),
-        unsafe_fn => mywrite!(w, "u"),
-        extern_fn => mywrite!(w, "c")
+        ImpureFn => mywrite!(w, "i"),
+        UnsafeFn => mywrite!(w, "u"),
+        ExternFn => mywrite!(w, "c")
     }
 }
 
@@ -427,4 +421,5 @@ fn enc_bounds(w: &mut MemWriter, cx: @ctxt, bs: &ty::ParamBounds) {
 pub fn enc_type_param_def(w: &mut MemWriter, cx: @ctxt, v: &ty::TypeParameterDef) {
     mywrite!(w, "{}:{}|", cx.tcx.sess.str_of(v.ident), (cx.ds)(v.def_id));
     enc_bounds(w, cx, v.bounds);
+    enc_opt(w, v.default, |w, t| enc_ty(w, cx, t));
 }

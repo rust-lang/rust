@@ -1,4 +1,3 @@
-#define CFG_VERSION GetEnv("CFG_VERSION")
 #define CFG_VERSION_WIN GetEnv("CFG_VERSION_WIN")
 #define CFG_RELEASE GetEnv("CFG_RELEASE")
 
@@ -6,7 +5,7 @@
 
 SetupIconFile=rust-logo.ico
 AppName=Rust
-AppVersion={#CFG_VERSION}
+AppVersion={#CFG_RELEASE}
 AppCopyright=Copyright (C) 2006-2013 Mozilla Foundation, MIT license
 AppPublisher=Mozilla Foundation
 AppPublisherURL=http://www.rust-lang.org

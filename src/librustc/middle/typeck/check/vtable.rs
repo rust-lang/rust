@@ -330,7 +330,7 @@ fn search_for_vtable(vcx: &VtableContext,
     ty::populate_implementations_for_trait_if_necessary(tcx,
                                                         trait_ref.def_id);
 
-    // XXX: this is a bad way to do this, since we do
+    // FIXME: this is a bad way to do this, since we do
     // pointless allocations.
     let impls = {
         let trait_impls = tcx.trait_impls.borrow();
@@ -371,7 +371,7 @@ fn search_for_vtable(vcx: &VtableContext,
         // we're trying to cast to some_trait.  If not, then we try
         // the next impl.
         //
-        // XXX: document a bit more what this means
+        // FIXME: document a bit more what this means
         //
         // FIXME(#5781) this should be mk_eqty not mk_subty
         let ty::ty_param_substs_and_ty {
@@ -552,7 +552,7 @@ pub fn location_info_for_expr(expr: &ast::Expr) -> LocationInfo {
         id: expr.id
     }
 }
-pub fn location_info_for_item(item: &ast::item) -> LocationInfo {
+pub fn location_info_for_item(item: &ast::Item) -> LocationInfo {
     LocationInfo {
         span: item.span,
         id: item.id
@@ -582,14 +582,14 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: @FnCtxt, is_early: bool) {
               let ty = structurally_resolved_type(fcx, ex.span,
                                                   fcx.expr_ty(src));
               match (&ty::get(ty).sty, store) {
-                  (&ty::ty_box(..), ty::BoxTraitStore)
+                  (&ty::ty_box(..), ty::BoxTraitStore) |
+                  (&ty::ty_uniq(..), ty::UniqTraitStore)
                     if !mutability_allowed(ast::MutImmutable,
                                            target_mutbl) => {
                       fcx.tcx().sess.span_err(ex.span,
                                               format!("types differ in mutability"));
                   }
 
-                  (&ty::ty_uniq(mt), ty::UniqTraitStore) |
                   (&ty::ty_rptr(_, mt), ty::RegionTraitStore(..))
                     if !mutability_allowed(mt.mutbl, target_mutbl) => {
                       fcx.tcx().sess.span_err(ex.span,
@@ -599,9 +599,9 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: @FnCtxt, is_early: bool) {
                   (&ty::ty_box(..), ty::BoxTraitStore) |
                   (&ty::ty_uniq(..), ty::UniqTraitStore) |
                   (&ty::ty_rptr(..), ty::RegionTraitStore(..)) => {
-                    let typ = match (&ty::get(ty).sty) {
-                        &ty::ty_box(typ) => typ,
-                        &ty::ty_uniq(mt) | &ty::ty_rptr(_, mt) => mt.ty,
+                    let typ = match &ty::get(ty).sty {
+                        &ty::ty_box(typ) | &ty::ty_uniq(typ) => typ,
+                        &ty::ty_rptr(_, mt) => mt.ty,
                         _ => fail!("shouldn't get here"),
                     };
 
@@ -712,7 +712,7 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: @FnCtxt, is_early: bool) {
       ast::ExprUnary(callee_id, _, _) |
       ast::ExprAssignOp(callee_id, _, _, _) |
       ast::ExprIndex(callee_id, _, _) |
-      ast::ExprMethodCall(callee_id, _, _, _, _, _) => {
+      ast::ExprMethodCall(callee_id, _, _, _, _) => {
         match ty::method_call_type_param_defs(cx.tcx, fcx.inh.method_map, ex.id) {
           Some(type_param_defs) => {
             debug!("vtable resolution on parameter bounds for method call {}",
@@ -741,15 +741,33 @@ pub fn early_resolve_expr(ex: &ast::Expr, fcx: @FnCtxt, is_early: bool) {
     // Search for auto-adjustments to find trait coercions
     let adjustments = fcx.inh.adjustments.borrow();
     match adjustments.get().find(&ex.id) {
-        Some(&@AutoObject(ref sigil, ref region, m, b, def_id, ref substs)) => {
-            debug!("doing trait adjustment for expr {} {} (early? {})",
-                   ex.id, ex.repr(fcx.tcx()), is_early);
+        Some(adjustment) => {
+            match **adjustment {
+                AutoObject(ref sigil,
+                           ref region,
+                           m,
+                           b,
+                           def_id,
+                           ref substs) => {
+                    debug!("doing trait adjustment for expr {} {} \
+                            (early? {})",
+                           ex.id,
+                           ex.repr(fcx.tcx()),
+                           is_early);
 
-            let object_ty = ty::trait_adjustment_to_ty(cx.tcx, sigil, region,
-                                                       def_id, substs, m, b);
-            resolve_object_cast(ex, object_ty);
+                    let object_ty = ty::trait_adjustment_to_ty(cx.tcx,
+                                                               sigil,
+                                                               region,
+                                                               def_id,
+                                                               substs,
+                                                               m,
+                                                               b);
+                    resolve_object_cast(ex, object_ty);
+                }
+                AutoAddEnv(..) | AutoDerefRef(..) => {}
+            }
         }
-        Some(&@AutoAddEnv(..)) | Some(&@AutoDerefRef(..)) | None => {}
+        None => {}
     }
 }
 
@@ -760,7 +778,7 @@ fn resolve_expr(fcx: @FnCtxt, ex: &ast::Expr) {
 }
 
 pub fn resolve_impl(ccx: @CrateCtxt,
-                    impl_item: &ast::item,
+                    impl_item: &ast::Item,
                     impl_generics: &ty::Generics,
                     impl_trait_ref: &ty::TraitRef) {
     let param_env = ty::construct_parameter_environment(
@@ -819,7 +837,7 @@ impl visit::Visitor<()> for @FnCtxt {
     fn visit_expr(&mut self, ex: &ast::Expr, _: ()) {
         resolve_expr(*self, ex);
     }
-    fn visit_item(&mut self, _: &ast::item, _: ()) {
+    fn visit_item(&mut self, _: &ast::Item, _: ()) {
         // no-op
     }
 }

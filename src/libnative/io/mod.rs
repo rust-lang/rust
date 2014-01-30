@@ -23,6 +23,11 @@
 
 use std::c_str::CString;
 use std::comm::SharedChan;
+use std::io;
+use std::io::IoError;
+use std::io::net::ip::SocketAddr;
+use std::io::process::ProcessConfig;
+use std::io::signal::Signum;
 use std::libc::c_int;
 use std::libc;
 use std::os;
@@ -31,11 +36,6 @@ use std::rt::rtio::{RtioTcpStream, RtioTcpListener, RtioUdpSocket,
                     RtioUnixListener, RtioPipe, RtioFileStream, RtioProcess,
                     RtioSignal, RtioTTY, CloseBehavior, RtioTimer,
                     RtioRawSocket};
-use std::io;
-use std::io::IoError;
-use std::io::net::ip::SocketAddr;
-use std::io::process::ProcessConfig;
-use std::io::signal::Signum;
 use ai = std::io::net::addrinfo;
 
 // Local re-exports
@@ -43,11 +43,28 @@ pub use self::file::FileDesc;
 pub use self::process::Process;
 
 // Native I/O implementations
+pub mod addrinfo;
 pub mod file;
-pub mod process;
 pub mod net;
+pub mod process;
 
-type IoResult<T> = Result<T, IoError>;
+#[cfg(target_os = "macos")]
+#[cfg(target_os = "freebsd")]
+#[cfg(target_os = "android")]
+#[path = "timer_other.rs"]
+pub mod timer;
+
+#[cfg(target_os = "linux")]
+#[path = "timer_timerfd.rs"]
+pub mod timer;
+
+#[cfg(target_os = "win32")]
+#[path = "timer_win32.rs"]
+pub mod timer;
+
+mod timer_helper;
+
+pub type IoResult<T> = Result<T, IoError>;
 
 fn unimpl() -> IoError {
     IoError {
@@ -81,7 +98,7 @@ fn translate_error(errno: i32, detail: bool) -> IoError {
 
     #[cfg(not(windows))]
     fn get_err(errno: i32) -> (io::IoErrorKind, &'static str) {
-        // XXX: this should probably be a bit more descriptive...
+        // FIXME: this should probably be a bit more descriptive...
         match errno {
             libc::EOF => (io::EndOfFile, "end of file"),
             libc::ECONNREFUSED => (io::ConnectionRefused, "connection refused"),
@@ -187,9 +204,9 @@ impl rtio::IoFactory for IoFactory {
     fn unix_connect(&mut self, _path: &CString) -> IoResult<~RtioPipe> {
         Err(unimpl())
     }
-    fn get_host_addresses(&mut self, _host: Option<&str>, _servname: Option<&str>,
-                          _hint: Option<ai::Hint>) -> IoResult<~[ai::Info]> {
-        Err(unimpl())
+    fn get_host_addresses(&mut self, host: Option<&str>, servname: Option<&str>,
+                          hint: Option<ai::Hint>) -> IoResult<~[ai::Info]> {
+        addrinfo::GetAddrInfoRequest::run(host, servname, hint)
     }
     fn raw_socket_new(&mut self, domain: rtio::CommDomain, protocol: rtio::Protocol,
                       includeIpHeader: bool) -> IoResult<~rtio::RtioRawSocket> {
@@ -254,7 +271,7 @@ impl rtio::IoFactory for IoFactory {
 
     // misc
     fn timer_init(&mut self) -> IoResult<~RtioTimer> {
-        Err(unimpl())
+        timer::Timer::new().map(|t| ~t as ~RtioTimer)
     }
     fn spawn(&mut self, config: ProcessConfig)
             -> IoResult<(~RtioProcess, ~[Option<~RtioPipe>])> {

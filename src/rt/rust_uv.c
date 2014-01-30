@@ -25,7 +25,7 @@
 
 void*
 rust_uv_loop_new() {
-// XXX libuv doesn't always ignore SIGPIPE even though we don't need it.
+// FIXME libuv doesn't always ignore SIGPIPE even though we don't need it.
 #ifndef __WIN32__
     signal(SIGPIPE, SIG_IGN);
 #endif
@@ -85,50 +85,6 @@ rust_uv_get_data_for_req(uv_req_t* req) {
 void
 rust_uv_set_data_for_req(uv_req_t* req, void* data) {
     req->data = data;
-}
-
-int
-rust_sockaddr_size() {
-    return sizeof(struct sockaddr_storage);
-}
-
-struct sockaddr*
-rust_malloc_ip4_addr(char *name, int port) {
-    struct sockaddr_in *addr = (struct sockaddr_in*) calloc(1, rust_sockaddr_size());
-    assert(addr != NULL);
-    addr->sin_port = htons(port);
-    assert(uv_inet_pton(AF_INET, name, &addr->sin_addr) == 0);
-    addr->sin_family = AF_INET;
-    return (struct sockaddr*) addr;
-}
-
-struct sockaddr*
-rust_malloc_ip6_addr(char *name, int port) {
-    struct sockaddr_in6 *addr = (struct sockaddr_in6*) calloc(1, rust_sockaddr_size());
-    assert(addr != NULL);
-    addr->sin6_port = htons(port);
-    assert(uv_inet_pton(AF_INET6, name, &addr->sin6_addr) == 0);
-    addr->sin6_family = AF_INET6;
-    return (struct sockaddr*) addr;
-}
-
-unsigned int
-rust_ip4_port(struct sockaddr_in* src) {
-    return ntohs(src->sin_port);
-}
-unsigned int
-rust_ip6_port(struct sockaddr_in6* src) {
-    return ntohs(src->sin6_port);
-}
-
-int
-rust_is_ipv4_sockaddr(struct sockaddr* addr) {
-    return addr->sa_family == AF_INET;
-}
-
-int
-rust_is_ipv6_sockaddr(struct sockaddr* addr) {
-    return addr->sa_family == AF_INET6;
 }
 
 uintptr_t

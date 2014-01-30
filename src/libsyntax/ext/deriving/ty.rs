@@ -153,9 +153,9 @@ impl<'a> Ty<'a> {
             }
             Tuple(ref fields) => {
                 let ty = if fields.is_empty() {
-                    ast::ty_nil
+                    ast::TyNil
                 } else {
-                    ast::ty_tup(fields.map(|f| f.to_ty(cx, span, self_ty, self_generics)))
+                    ast::TyTup(fields.map(|f| f.to_ty(cx, span, self_ty, self_generics)))
                 };
 
                 cx.ty(span, ty)
@@ -196,7 +196,7 @@ fn mk_ty_param(cx: &ExtCtxt, span: Span, name: &str, bounds: &[Path],
             let path = b.to_path(cx, span, self_ident, self_generics);
             cx.typarambound(path)
         }));
-    cx.typaram(cx.ident_of(name), bounds)
+    cx.typaram(cx.ident_of(name), bounds, None)
 }
 
 fn mk_generics(lifetimes: ~[ast::Lifetime],  ty_params: ~[ast::TyParam]) -> Generics {
@@ -240,21 +240,21 @@ impl<'a> LifetimeBounds<'a> {
 
 
 pub fn get_explicit_self(cx: &ExtCtxt, span: Span, self_ptr: &Option<PtrTy>)
-    -> (@Expr, ast::explicit_self) {
+    -> (@Expr, ast::ExplicitSelf) {
     let self_path = cx.expr_self(span);
     match *self_ptr {
         None => {
-            (self_path, respan(span, ast::sty_value(ast::MutImmutable)))
+            (self_path, respan(span, ast::SelfValue))
         }
         Some(ref ptr) => {
             let self_ty = respan(
                 span,
                 match *ptr {
-                    Send => ast::sty_uniq(ast::MutImmutable),
-                    Managed => ast::sty_box(ast::MutImmutable),
+                    Send => ast::SelfUniq,
+                    Managed => ast::SelfBox,
                     Borrowed(ref lt, mutbl) => {
                         let lt = lt.map(|s| cx.lifetime(span, cx.ident_of(s)));
-                        ast::sty_region(lt, mutbl)
+                        ast::SelfRegion(lt, mutbl)
                     }
                 });
             let self_expr = cx.expr_deref(span, self_path);

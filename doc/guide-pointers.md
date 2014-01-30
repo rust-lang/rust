@@ -21,7 +21,7 @@ fn succ(x: &int) -> int { *x + 1 }
 
 So I wrote this code to try it out:
 
-~~~rust{.xfail-test}
+~~~rust{.ignore}
 fn main() {
     let number = 5;
     let succ_number = succ(number);
@@ -221,9 +221,9 @@ struct Point {
 
 fn main() {
     let a = Point { x: 10, y: 20 };
-    do spawn {
-        println(a.x.to_str());
-    }
+    spawn(proc() {
+        println!("{}", a.x);
+    });
 }
 ~~~
 
@@ -238,9 +238,9 @@ struct Point {
 
 fn main() {
     let a = ~Point { x: 10, y: 20 };
-    do spawn {
-        println(a.x.to_str());
-    }
+    spawn(proc() {
+        println!("{}", a.x);
+    });
 }
 ~~~
 
@@ -261,7 +261,7 @@ program is very large and complicated.
 
 For example, let's say you're using an owned pointer, and you want to do this:
 
-~~~rust{.xfail-test}
+~~~rust{.ignore}
 struct Point {
     x: int,
     y: int,
@@ -270,18 +270,22 @@ struct Point {
 fn main() {
     let a = ~Point { x: 10, y: 20 };
     let b = a;
-    println(b.x.to_str());
-    println(a.x.to_str());
+    println!("{}", b.x);
+    println!("{}", a.x);
 }
 ~~~
 
 You'll get this error:
 
 ~~~ {.notrust}
-test.rs:10:12: 10:13 error: use of moved value: `a`
-test.rs:10     println(a.x.to_str());
-                       ^
-test.rs:8:8: 8:9 note: `a` moved here because it has type `~Point`, which is moved by default (use `ref` to override)
+test.rs:10:20: 10:21 error: use of moved value: `a`
+test.rs:10     println!("{}", a.x);
+                              ^
+note: in expansion of format_args!
+<std-macros>:158:27: 158:81 note: expansion site
+<std-macros>:157:5: 159:6 note: in expansion of println!
+test.rs:10:5: 10:25 note: expansion site
+test.rs:8:9: 8:10 note: `a` moved here because it has type `~Point`, which is moved by default (use `ref` to override)
 test.rs:8     let b = a;
                   ^
 ~~~
@@ -297,8 +301,8 @@ struct Point {
 fn main() {
     let a = @Point { x: 10, y: 20 };
     let b = a;
-    println(b.x.to_str());
-    println(a.x.to_str());
+    println!("{}", b.x);
+    println!("{}", a.x);
 }
 ~~~
 
@@ -365,9 +369,9 @@ This theory is called 'region pointers,' and involve a concept called
 'lifetimes'. Here's the simple explanation: would you expect this code to
 compile?
 
-~~~rust{.xfail-test}
+~~~rust{.ignore}
 fn main() {
-    println(x.to_str());
+    println!("{}", x);
     let x = 5;
 }
 ~~~
@@ -394,7 +398,7 @@ Here, we're borrowing a pointer to `x` inside of the `if`. The compiler, however
 is able to determine that that pointer will go out of scope without `x` being
 mutated, and therefore, lets us pass. This wouldn't work:
 
-~~~rust{.xfail-test}
+~~~rust{.ignore}
 fn main() {
     let mut x = ~5;
     if *x < 10 {

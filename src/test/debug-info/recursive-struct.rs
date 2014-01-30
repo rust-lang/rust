@@ -49,9 +49,9 @@
 // debugger:print stack_managed.next.val->val.value
 // check:$12 = 11
 
-// debugger:print unique_managed->val.value
+// debugger:print unique_managed->value
 // check:$13 = 12
-// debugger:print unique_managed->val.next.val->val.value
+// debugger:print unique_managed->next.val->val.value
 // check:$14 = 13
 
 // debugger:print box_managed->val.value

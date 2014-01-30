@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -26,13 +26,13 @@ Some examples of obvious things you might want to do
 * Read lines from stdin
 
     ```rust
-    use std::io::buffered::BufferedReader;
+    use std::io::BufferedReader;
     use std::io::stdin;
 
     # let _g = ::std::io::ignore_io_error();
     let mut stdin = BufferedReader::new(stdin());
     for line in stdin.lines() {
-        print(line);
+        print!("{}", line);
     }
     ```
 
@@ -60,21 +60,21 @@ Some examples of obvious things you might want to do
 * Iterate over the lines of a file
 
     ```rust
-    use std::io::buffered::BufferedReader;
+    use std::io::BufferedReader;
     use std::io::File;
 
     # let _g = ::std::io::ignore_io_error();
     let path = Path::new("message.txt");
     let mut file = BufferedReader::new(File::open(&path));
     for line in file.lines() {
-        print(line);
+        print!("{}", line);
     }
     ```
 
 * Pull the lines of a file into a vector of strings
 
     ```rust
-    use std::io::buffered::BufferedReader;
+    use std::io::BufferedReader;
     use std::io::File;
 
     # let _g = ::std::io::ignore_io_error();
@@ -84,7 +84,7 @@ Some examples of obvious things you might want to do
     ```
 
 * Make an simple HTTP request
-  XXX This needs more improvement: TcpStream constructor taking &str,
+  FIXME This needs more improvement: TcpStream constructor taking &str,
   `write_str` and `write_line` methods.
 
     ```rust,should_fail
@@ -101,7 +101,7 @@ Some examples of obvious things you might want to do
 * Connect based on URL? Requires thinking about where the URL type lives
   and how to make protocol handlers extensible, e.g. the "tcp" protocol
   yields a `TcpStream`.
-  XXX this is not implemented now.
+  FIXME this is not implemented now.
 
     ```rust
     // connect("tcp://localhost:8080");
@@ -113,7 +113,6 @@ Some examples of obvious things you might want to do
 * Writer - An I/O sink, writes bytes from a buffer
 * Stream - Typical I/O sources like files and sockets are both Readers and Writers,
   and are collectively referred to a `streams`.
-* Decorator - A Reader or Writer that composes with others to add additional capabilities
   such as encoding or decoding
 
 # Blocking and synchrony
@@ -205,12 +204,12 @@ io_error::cond.trap(|e: IoError| {
 });
 
 if error.is_some() {
-    println("failed to write my diary");
+    println!("failed to write my diary");
 }
 # ::std::io::fs::unlink(&Path::new("diary.txt"));
 ```
 
-XXX: Need better condition handling syntax
+FIXME: Need better condition handling syntax
 
 In this case the condition handler will have the opportunity to
 inspect the IoError raised by either the call to `new` or the call to
@@ -233,8 +232,8 @@ to errors similar to null pointer dereferences.
 In particular code written to ignore errors and expect conditions to be unhandled
 will start passing around null or zero objects when wrapped in a condition handler.
 
-* XXX: How should we use condition handlers that return values?
-* XXX: Should EOF raise default conditions when EOF is not an error?
+* FIXME: How should we use condition handlers that return values?
+* FIXME: Should EOF raise default conditions when EOF is not an error?
 
 # Issues with i/o scheduler affinity, work stealing, task pinning
 
@@ -264,7 +263,7 @@ Out of scope
 * Async I/O. We'll probably want it eventually
 
 
-# XXX Questions and issues
+# FIXME Questions and issues
 
 * Should default constructors take `Path` or `&str`? `Path` makes simple cases verbose.
   Overloading would be nice.
@@ -303,7 +302,7 @@ use str::{StrSlice, OwnedStr};
 use to_str::ToStr;
 use uint;
 use unstable::finally::Finally;
-use vec::{OwnedVector, MutableVector, ImmutableVector, OwnedCopyableVector};
+use vec::{OwnedVector, MutableVector, ImmutableVector, OwnedCloneableVector};
 use vec;
 
 // Reexports
@@ -322,6 +321,11 @@ pub use self::net::udp::UdpStream;
 pub use self::pipe::PipeStream;
 pub use self::process::Process;
 
+pub use self::mem::{MemReader, BufReader, MemWriter, BufWriter};
+pub use self::buffered::{BufferedReader, BufferedWriter, BufferedStream,
+                         LineBufferedWriter};
+pub use self::comm_adapters::{PortReader, ChanWriter};
+
 /// Various utility functions useful for writing I/O tests
 pub mod test;
 
@@ -338,16 +342,13 @@ pub mod process;
 pub mod net;
 
 /// Readers and Writers for memory buffers and strings.
-pub mod mem;
+mod mem;
 
 /// Non-blocking access to stdin, stdout, stderr
 pub mod stdio;
 
 /// Implementations for Option
 mod option;
-
-/// Basic stream compression. XXX: Belongs with other flate code
-pub mod flate;
 
 /// Extension traits
 pub mod extensions;
@@ -356,7 +357,7 @@ pub mod extensions;
 pub mod timer;
 
 /// Buffered I/O wrappers
-pub mod buffered;
+mod buffered;
 
 /// Signal handling
 pub mod signal;
@@ -365,14 +366,16 @@ pub mod signal;
 pub mod util;
 
 /// Adapatation of Chan/Port types to a Writer/Reader type.
-pub mod comm_adapters;
+mod comm_adapters;
 
 /// The default buffer size for various I/O operations
+// libuv recommends 64k buffers to maximize throughput
+// https://groups.google.com/forum/#!topic/libuv/oQO1HJAIDdA
 static DEFAULT_BUF_SIZE: uint = 1024 * 64;
 
 /// The type passed to I/O condition handlers to indicate error
 ///
-/// # XXX
+/// # FIXME
 ///
 /// Is something like this sufficient? It's kind of archaic
 pub struct IoError {
@@ -443,7 +446,7 @@ impl ToStr for IoErrorKind {
     }
 }
 
-// XXX: Can't put doc comments on macros
+// FIXME: Can't put doc comments on macros
 // Raised by `I/O` operations on error.
 condition! {
     pub io_error: IoError -> ();
@@ -488,9 +491,9 @@ pub trait Reader {
     /// Raises the `io_error` condition on error. If the condition
     /// is handled then no guarantee is made about the number of bytes
     /// read and the contents of `buf`. If the condition is handled
-    /// returns `None` (XXX see below).
+    /// returns `None` (FIXME see below).
     ///
-    /// # XXX
+    /// # FIXME
     ///
     /// * Should raise_default error on eof?
     /// * If the condition is handled it should still return the bytes read,
@@ -502,26 +505,6 @@ pub trait Reader {
     /// and will that be annoying?
     /// Is it actually possible for 0 bytes to be read successfully?
     fn read(&mut self, buf: &mut [u8]) -> Option<uint>;
-
-    /// Return whether the Reader has reached the end of the stream.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use std::io;
-    /// # let _g = ::std::io::ignore_io_error();
-    /// let mut reader = io::stdin();
-    ///
-    /// let mut bytes = [0, .. 10];
-    /// reader.read(bytes);
-    ///
-    /// if reader.eof() { println("stdin() had at most 10 bytes of data."); }
-    /// ```
-    ///
-    /// # Failure
-    ///
-    /// Returns `true` on failure.
-    fn eof(&mut self) -> bool;
 
     // Convenient helper methods based on the above methods
 
@@ -624,7 +607,7 @@ pub trait Reader {
     /// This function will raise all the same conditions as the `read` method,
     /// along with raising a condition if the input is not valid UTF-8.
     fn read_to_str(&mut self) -> ~str {
-        match str::from_utf8_owned_opt(self.read_to_end()) {
+        match str::from_utf8_owned(self.read_to_end()) {
             Some(s) => s,
             None => {
                 io_error::cond.raise(standard_error(InvalidInput));
@@ -641,8 +624,8 @@ pub trait Reader {
     /// Raises the same conditions as the `read` method, for
     /// each call to its `.next()` method.
     /// Ends the iteration if the condition is handled.
-    fn bytes<'r>(&'r mut self) -> extensions::ByteIterator<'r, Self> {
-        extensions::ByteIterator::new(self)
+    fn bytes<'r>(&'r mut self) -> extensions::Bytes<'r, Self> {
+        extensions::Bytes::new(self)
     }
 
     // Byte conversion helpers
@@ -697,28 +680,28 @@ pub trait Reader {
     ///
     /// The number of bytes returned is system-dependant.
     fn read_le_uint(&mut self) -> uint {
-        self.read_le_uint_n(uint::bytes) as uint
+        self.read_le_uint_n(uint::BYTES) as uint
     }
 
     /// Reads a little-endian integer.
     ///
     /// The number of bytes returned is system-dependant.
     fn read_le_int(&mut self) -> int {
-        self.read_le_int_n(int::bytes) as int
+        self.read_le_int_n(int::BYTES) as int
     }
 
     /// Reads a big-endian unsigned integer.
     ///
     /// The number of bytes returned is system-dependant.
     fn read_be_uint(&mut self) -> uint {
-        self.read_be_uint_n(uint::bytes) as uint
+        self.read_be_uint_n(uint::BYTES) as uint
     }
 
     /// Reads a big-endian integer.
     ///
     /// The number of bytes returned is system-dependant.
     fn read_be_int(&mut self) -> int {
-        self.read_be_int_n(int::bytes) as int
+        self.read_be_int_n(int::BYTES) as int
     }
 
     /// Reads a big-endian `u64`.
@@ -865,12 +848,10 @@ pub trait Reader {
 
 impl Reader for ~Reader {
     fn read(&mut self, buf: &mut [u8]) -> Option<uint> { self.read(buf) }
-    fn eof(&mut self) -> bool { self.eof() }
 }
 
 impl<'a> Reader for &'a mut Reader {
     fn read(&mut self, buf: &mut [u8]) -> Option<uint> { self.read(buf) }
-    fn eof(&mut self) -> bool { self.eof() }
 }
 
 fn extend_sign(val: u64, nbytes: uint) -> i64 {
@@ -934,22 +915,22 @@ pub trait Writer {
 
     /// Write a little-endian uint (number of bytes depends on system).
     fn write_le_uint(&mut self, n: uint) {
-        extensions::u64_to_le_bytes(n as u64, uint::bytes, |v| self.write(v))
+        extensions::u64_to_le_bytes(n as u64, uint::BYTES, |v| self.write(v))
     }
 
     /// Write a little-endian int (number of bytes depends on system).
     fn write_le_int(&mut self, n: int) {
-        extensions::u64_to_le_bytes(n as u64, int::bytes, |v| self.write(v))
+        extensions::u64_to_le_bytes(n as u64, int::BYTES, |v| self.write(v))
     }
 
     /// Write a big-endian uint (number of bytes depends on system).
     fn write_be_uint(&mut self, n: uint) {
-        extensions::u64_to_be_bytes(n as u64, uint::bytes, |v| self.write(v))
+        extensions::u64_to_be_bytes(n as u64, uint::BYTES, |v| self.write(v))
     }
 
     /// Write a big-endian int (number of bytes depends on system).
     fn write_be_int(&mut self, n: int) {
-        extensions::u64_to_be_bytes(n as u64, int::bytes, |v| self.write(v))
+        extensions::u64_to_be_bytes(n as u64, int::BYTES, |v| self.write(v))
     }
 
     /// Write a big-endian u64 (8 bytes).
@@ -1072,7 +1053,7 @@ impl<T: Reader + Writer> Stream for T {}
 ///
 /// # Notes about the Iteration Protocol
 ///
-/// The `LineIterator` may yield `None` and thus terminate
+/// The `Lines` may yield `None` and thus terminate
 /// an iteration, but continue to yield elements if iteration
 /// is attempted again.
 ///
@@ -1081,11 +1062,11 @@ impl<T: Reader + Writer> Stream for T {}
 /// Raises the same conditions as the `read` method except for `EndOfFile`
 /// which is swallowed.
 /// Iteration yields `None` if the condition is handled.
-struct LineIterator<'r, T> {
+pub struct Lines<'r, T> {
     priv buffer: &'r mut T,
 }
 
-impl<'r, T: Buffer> Iterator<~str> for LineIterator<'r, T> {
+impl<'r, T: Buffer> Iterator<~str> for Lines<'r, T> {
     fn next(&mut self) -> Option<~str> {
         self.buffer.read_line()
     }
@@ -1121,11 +1102,10 @@ pub trait Buffer: Reader {
     /// # Example
     ///
     /// ```rust
-    /// use std::io::buffered::BufferedReader;
-    /// use std::io;
+    /// use std::io::{BufferedReader, stdin};
     /// # let _g = ::std::io::ignore_io_error();
     ///
-    /// let mut reader = BufferedReader::new(io::stdin());
+    /// let mut reader = BufferedReader::new(stdin());
     ///
     /// let input = reader.read_line().unwrap_or(~"nothing");
     /// ```
@@ -1137,7 +1117,7 @@ pub trait Buffer: Reader {
     /// The task will also fail if sequence of bytes leading up to
     /// the newline character are not valid UTF-8.
     fn read_line(&mut self) -> Option<~str> {
-        self.read_until('\n' as u8).map(str::from_utf8_owned)
+        self.read_until('\n' as u8).map(|line| str::from_utf8_owned(line).unwrap())
     }
 
     /// Create an iterator that reads a line on each iteration until EOF.
@@ -1146,8 +1126,8 @@ pub trait Buffer: Reader {
     ///
     /// Iterator raises the same conditions as the `read` method
     /// except for `EndOfFile`.
-    fn lines<'r>(&'r mut self) -> LineIterator<'r, Self> {
-        LineIterator {
+    fn lines<'r>(&'r mut self) -> Lines<'r, Self> {
+        Lines {
             buffer: self,
         }
     }
@@ -1212,11 +1192,17 @@ pub trait Buffer: Reader {
         };
         if width == 0 { return None } // not uf8
         let mut buf = [0, ..4];
-        match self.read(buf.mut_slice_to(width)) {
-            Some(n) if n == width => {}
-            Some(..) | None => return None // read error
+        {
+            let mut start = 0;
+            loop {
+                match self.read(buf.mut_slice(start, width)) {
+                    Some(n) if n == width - start => break,
+                    Some(n) if n < width - start => { start += n; }
+                    Some(..) | None => return None // read error
+                }
+            }
         }
-        match str::from_utf8_opt(buf.slice_to(width)) {
+        match str::from_utf8(buf.slice_to(width)) {
             Some(s) => Some(s.char_at(0)),
             None => None
         }
@@ -1232,7 +1218,7 @@ pub enum SeekStyle {
     SeekCur,
 }
 
-/// # XXX
+/// # FIXME
 /// * Are `u64` and `i64` the right choices?
 pub trait Seek {
     /// Return position of file cursor in the stream
@@ -1242,7 +1228,7 @@ pub trait Seek {
     ///
     /// A successful seek clears the EOF indicator.
     ///
-    /// # XXX
+    /// # FIXME
     ///
     /// * What is the behavior when seeking past the end of a stream?
     fn seek(&mut self, pos: i64, style: SeekStyle);
@@ -1270,8 +1256,8 @@ pub trait Acceptor<T> {
     fn accept(&mut self) -> Option<T>;
 
     /// Create an iterator over incoming connection attempts
-    fn incoming<'r>(&'r mut self) -> IncomingIterator<'r, Self> {
-        IncomingIterator { inc: self }
+    fn incoming<'r>(&'r mut self) -> IncomingConnections<'r, Self> {
+        IncomingConnections { inc: self }
     }
 }
 
@@ -1282,40 +1268,14 @@ pub trait Acceptor<T> {
 /// The Some contains another Option representing whether the connection attempt was succesful.
 /// A successful connection will be wrapped in Some.
 /// A failed connection is represented as a None and raises a condition.
-struct IncomingIterator<'a, A> {
+pub struct IncomingConnections<'a, A> {
     priv inc: &'a mut A,
 }
 
-impl<'a, T, A: Acceptor<T>> Iterator<Option<T>> for IncomingIterator<'a, A> {
+impl<'a, T, A: Acceptor<T>> Iterator<Option<T>> for IncomingConnections<'a, A> {
     fn next(&mut self) -> Option<Option<T>> {
         Some(self.inc.accept())
     }
-}
-
-/// Common trait for decorator types.
-///
-/// Provides accessors to get the inner, 'decorated' values. The I/O library
-/// uses decorators to add functionality like compression and encryption to I/O
-/// streams.
-///
-/// # XXX
-///
-/// Is this worth having a trait for? May be overkill
-pub trait Decorator<T> {
-    /// Destroy the decorator and extract the decorated value
-    ///
-    /// # XXX
-    ///
-    /// Because this takes `self' one could never 'undecorate' a Reader/Writer
-    /// that has been boxed. Is that ok? This feature is mostly useful for
-    /// extracting the buffer from MemWriter
-    fn inner(self) -> T;
-
-    /// Take an immutable reference to the decorated value
-    fn inner_ref<'a>(&'a self) -> &'a T;
-
-    /// Take a mutable reference to the decorated value
-    fn inner_mut_ref<'a>(&'a mut self) -> &'a mut T;
 }
 
 pub fn standard_error(kind: IoErrorKind) -> IoError {

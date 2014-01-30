@@ -10,8 +10,7 @@
 
 #[allow(missing_doc)];
 
-use std::io::Reader;
-use std::io::mem::BufReader;
+use std::io::BufReader;
 use std::libc;
 use std::num;
 use std::str;
@@ -788,7 +787,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
         }
     }
 
-    if pos == len && rdr.eof() {
+    if pos == len && rdr.tell() as uint == format.len() {
         Ok(Tm {
             tm_sec: tm.tm_sec,
             tm_min: tm.tm_min,
@@ -809,7 +808,7 @@ pub fn strptime(s: &str, format: &str) -> Result<Tm, ~str> {
 /// Formats the time according to the format string.
 pub fn strftime(format: &str, tm: &Tm) -> ~str {
     fn days_in_year(year: int) -> i32 {
-        if ((year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0))) {
+        if (year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0)) {
             366    /* Days in a leap year */
         } else {
             365    /* Days in a non-leap year */
@@ -839,14 +838,14 @@ pub fn strftime(format: &str, tm: &Tm) -> ~str {
         let mut year: int = tm.tm_year as int + 1900;
         let mut days: int = iso_week_days (tm.tm_yday, tm.tm_wday);
 
-        if (days < 0) {
+        if days < 0 {
             /* This ISO week belongs to the previous year. */
             year -= 1;
             days = iso_week_days (tm.tm_yday + (days_in_year(year)), tm.tm_wday);
         } else {
             let d: int = iso_week_days (tm.tm_yday - (days_in_year(year)),
                                         tm.tm_wday);
-            if (0 <= d) {
+            if 0 <= d {
                 /* This ISO week belongs to the next year. */
                 year += 1;
                 days = d;
@@ -1031,7 +1030,7 @@ pub fn strftime(format: &str, tm: &Tm) -> ~str {
         }
     }
 
-    str::from_utf8_owned(buf)
+    str::from_utf8_owned(buf).unwrap()
 }
 
 #[cfg(test)]
@@ -1459,7 +1458,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore(cfg(android))] // FIXME #10958
+    #[ignore(cfg(target_os = "android"))] // FIXME #10958
     fn run_tests() {
         // The tests race on tzset. So instead of having many independent
         // tests, we will just call the functions now.

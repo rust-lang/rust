@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -60,18 +60,18 @@
 //! ```rust,should_fail
 //! // Create a simple streaming channel
 //! let (port, chan) = Chan::new();
-//! do spawn {
+//! spawn(proc() {
 //!     chan.send(10);
-//! }
+//! })
 //! assert_eq!(port.recv(), 10);
 //!
 //! // Create a shared channel which can be sent along from many tasks
 //! let (port, chan) = SharedChan::new();
 //! for i in range(0, 10) {
 //!     let chan = chan.clone();
-//!     do spawn {
+//!     spawn(proc() {
 //!         chan.send(i);
-//!     }
+//!     })
 //! }
 //!
 //! for _ in range(0, 10) {
@@ -243,7 +243,7 @@ use vec::OwnedVector;
 use spsc = sync::spsc_queue;
 use mpsc = sync::mpsc_queue;
 
-pub use self::select::Select;
+pub use self::select::{Select, Handle};
 
 macro_rules! test (
     { fn $name:ident() $b:block $($a:attr)*} => (
@@ -251,6 +251,7 @@ macro_rules! test (
             #[allow(unused_imports)];
 
             use native;
+            use comm::*;
             use prelude::*;
             use super::*;
             use super::super::*;
@@ -263,7 +264,7 @@ macro_rules! test (
             $($a)* #[test] fn native() {
                 use native;
                 let (p, c) = Chan::new();
-                do native::task::spawn { c.send(f()) }
+                native::task::spawn(proc() { c.send(f()) });
                 p.recv();
             }
         }
@@ -304,7 +305,7 @@ pub struct Port<T> {
 /// An iterator over messages received on a port, this iterator will block
 /// whenever `next` is called, waiting for a new message, and `None` will be
 /// returned when the corresponding channel has hung up.
-pub struct PortIterator<'a, T> {
+pub struct Messages<'a, T> {
     priv port: &'a Port<T>
 }
 
@@ -321,6 +322,20 @@ pub struct Chan<T> {
              // be required to be shareable in an arc
 pub struct SharedChan<T> {
     priv queue: mpsc::Producer<T, Packet>,
+}
+
+/// This enumeration is the list of the possible reasons that try_recv could not
+/// return data when called.
+#[deriving(Eq, Clone)]
+pub enum TryRecvResult<T> {
+    /// This channel is currently empty, but the sender(s) have not yet
+    /// disconnected, so data may yet become available.
+    Empty,
+    /// This channel's sending half has become disconnected, and there will
+    /// never be any more data received on this channel
+    Disconnected,
+    /// The channel had some data and we successfully popped it
+    Data(T),
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -352,7 +367,7 @@ struct Packet {
 // All implementations -- the fun part
 ///////////////////////////////////////////////////////////////////////////////
 
-static DISCONNECTED: int = int::min_value;
+static DISCONNECTED: int = int::MIN;
 static RESCHED_FREQ: int = 200;
 
 impl Packet {
@@ -739,11 +754,11 @@ impl<T: Send> Port<T> {
     /// block on a port.
     ///
     /// This function cannot fail.
-    pub fn try_recv(&self) -> Option<T> {
+    pub fn try_recv(&self) -> TryRecvResult<T> {
         self.try_recv_inc(true)
     }
 
-    fn try_recv_inc(&self, increment: bool) -> Option<T> {
+    fn try_recv_inc(&self, increment: bool) -> TryRecvResult<T> {
         // This is a "best effort" situation, so if a queue is inconsistent just
         // don't worry about it.
         let this = unsafe { cast::transmute_mut(self) };
@@ -807,7 +822,35 @@ impl<T: Send> Port<T> {
         if increment && ret.is_some() {
             unsafe { (*this.queue.packet()).steals += 1; }
         }
-        return ret;
+        match ret {
+            Some(t) => Data(t),
+            None => {
+                // It's possible that between the time that we saw the queue was
+                // empty and here the other side disconnected. It's also
+                // possible for us to see the disconnection here while there is
+                // data in the queue. It's pretty backwards-thinking to return
+                // Disconnected when there's actually data on the queue, so if
+                // we see a disconnected state be sure to check again to be 100%
+                // sure that there's no data in the queue.
+                let cnt = unsafe { (*this.queue.packet()).cnt.load(Relaxed) };
+                if cnt != DISCONNECTED { return Empty }
+
+                let ret = match this.queue {
+                    SPSC(ref mut queue) => queue.pop(),
+                    MPSC(ref mut queue) => match queue.pop() {
+                        mpsc::Data(t) => Some(t),
+                        mpsc::Empty => None,
+                        mpsc::Inconsistent => {
+                            fail!("inconsistent with no senders?!");
+                        }
+                    }
+                };
+                match ret {
+                    Some(data) => Data(data),
+                    None => Disconnected,
+                }
+            }
+        }
     }
 
     /// Attempt to wait for a value on this port, but does not fail if the
@@ -824,7 +867,11 @@ impl<T: Send> Port<T> {
     /// the value found on the port is returned.
     pub fn recv_opt(&self) -> Option<T> {
         // optimistic preflight check (scheduling is expensive)
-        match self.try_recv() { None => {}, data => return data }
+        match self.try_recv() {
+            Empty => {},
+            Disconnected => return None,
+            Data(t) => return Some(t),
+        }
 
         let packet;
         let this;
@@ -843,22 +890,21 @@ impl<T: Send> Port<T> {
             });
         }
 
-        let data = self.try_recv_inc(false);
-        if data.is_none() &&
-           unsafe { (*packet).cnt.load(SeqCst) } != DISCONNECTED {
-            fail!("bug: woke up too soon {}", unsafe { (*packet).cnt.load(SeqCst) });
+        match self.try_recv_inc(false) {
+            Data(t) => Some(t),
+            Empty => fail!("bug: woke up too soon"),
+            Disconnected => None,
         }
-        return data;
     }
 
     /// Returns an iterator which will block waiting for messages, but never
     /// `fail!`. It will return `None` when the channel has hung up.
-    pub fn iter<'a>(&'a self) -> PortIterator<'a, T> {
-        PortIterator { port: self }
+    pub fn iter<'a>(&'a self) -> Messages<'a, T> {
+        Messages { port: self }
     }
 }
 
-impl<'a, T: Send> Iterator<T> for PortIterator<'a, T> {
+impl<'a, T: Send> Iterator<T> for Messages<'a, T> {
     fn next(&mut self) -> Option<T> { self.port.recv_opt() }
 }
 
@@ -916,9 +962,9 @@ mod test {
 
     test!(fn smoke_threads() {
         let (p, c) = Chan::new();
-        do spawn {
+        spawn(proc() {
             c.send(1);
-        }
+        });
         assert_eq!(p.recv(), 1);
     })
 
@@ -944,18 +990,18 @@ mod test {
 
     test!(fn port_gone_concurrent() {
         let (p, c) = Chan::new();
-        do spawn {
+        spawn(proc() {
             p.recv();
-        }
+        });
         loop { c.send(1) }
     } #[should_fail])
 
     test!(fn port_gone_concurrent_shared() {
         let (p, c) = SharedChan::new();
         let c1 = c.clone();
-        do spawn {
+        spawn(proc() {
             p.recv();
-        }
+        });
         loop {
             c.send(1);
             c1.send(1);
@@ -978,18 +1024,18 @@ mod test {
 
     test!(fn chan_gone_concurrent() {
         let (p, c) = Chan::new();
-        do spawn {
+        spawn(proc() {
             c.send(1);
             c.send(1);
-        }
+        });
         loop { p.recv(); }
     } #[should_fail])
 
     test!(fn stress() {
         let (p, c) = Chan::new();
-        do spawn {
+        spawn(proc() {
             for _ in range(0, 10000) { c.send(1); }
-        }
+        });
         for _ in range(0, 10000) {
             assert_eq!(p.recv(), 1);
         }
@@ -1001,19 +1047,22 @@ mod test {
         let (p, c) = SharedChan::<int>::new();
         let (p1, c1) = Chan::new();
 
-        do spawn {
+        spawn(proc() {
             for _ in range(0, AMT * NTHREADS) {
                 assert_eq!(p.recv(), 1);
             }
-            assert_eq!(p.try_recv(), None);
+            match p.try_recv() {
+                Data(..) => fail!(),
+                _ => {}
+            }
             c1.send(());
-        }
+        });
 
         for _ in range(0, NTHREADS) {
             let c = c.clone();
-            do spawn {
+            spawn(proc() {
                 for _ in range(0, AMT) { c.send(1); }
-            }
+            });
         }
         p1.recv();
     })
@@ -1024,20 +1073,20 @@ mod test {
         let (p1, c1) = Chan::new();
         let (port, chan) = SharedChan::new();
         let chan2 = chan.clone();
-        do spawn {
+        spawn(proc() {
             c1.send(());
             for _ in range(0, 40) {
                 assert_eq!(p.recv(), 1);
             }
             chan2.send(());
-        }
+        });
         p1.recv();
-        do native::task::spawn {
+        native::task::spawn(proc() {
             for _ in range(0, 40) {
                 c.send(1);
             }
             chan.send(());
-        }
+        });
         port.recv();
         port.recv();
     }
@@ -1046,12 +1095,12 @@ mod test {
     fn recv_from_outside_runtime() {
         let (p, c) = Chan::<int>::new();
         let (dp, dc) = Chan::new();
-        do native::task::spawn {
+        native::task::spawn(proc() {
             for _ in range(0, 40) {
                 assert_eq!(p.recv(), 1);
             }
             dc.send(());
-        };
+        });
         for _ in range(0, 40) {
             c.send(1);
         }
@@ -1064,16 +1113,16 @@ mod test {
         let (p2, c2) = Chan::<int>::new();
         let (port, chan) = SharedChan::new();
         let chan2 = chan.clone();
-        do native::task::spawn {
+        native::task::spawn(proc() {
             assert_eq!(p1.recv(), 1);
             c2.send(2);
             chan2.send(());
-        }
-        do native::task::spawn {
+        });
+        native::task::spawn(proc() {
             c1.send(1);
             assert_eq!(p2.recv(), 2);
             chan.send(());
-        }
+        });
         port.recv();
         port.recv();
     }
@@ -1099,11 +1148,11 @@ mod test {
 
     test!(fn oneshot_single_thread_recv_chan_close() {
         // Receiving on a closed chan will fail
-        let res = do task::try {
+        let res = task::try(proc() {
             let (port, chan) = Chan::<~int>::new();
             { let _c = chan; }
             port.recv();
-        };
+        });
         // What is our res?
         assert!(res.is_err());
     })
@@ -1129,7 +1178,7 @@ mod test {
     test!(fn oneshot_single_thread_try_recv_open() {
         let (port, chan) = Chan::<int>::new();
         chan.send(10);
-        assert!(port.try_recv() == Some(10));
+        assert!(port.recv_opt() == Some(10));
     })
 
     test!(fn oneshot_single_thread_try_recv_closed() {
@@ -1140,98 +1189,98 @@ mod test {
 
     test!(fn oneshot_single_thread_peek_data() {
         let (port, chan) = Chan::<int>::new();
-        assert!(port.try_recv().is_none());
+        assert_eq!(port.try_recv(), Empty)
         chan.send(10);
-        assert!(port.try_recv().is_some());
+        assert_eq!(port.try_recv(), Data(10));
     })
 
     test!(fn oneshot_single_thread_peek_close() {
         let (port, chan) = Chan::<int>::new();
         { let _c = chan; }
-        assert!(port.try_recv().is_none());
-        assert!(port.try_recv().is_none());
+        assert_eq!(port.try_recv(), Disconnected);
+        assert_eq!(port.try_recv(), Disconnected);
     })
 
     test!(fn oneshot_single_thread_peek_open() {
-        let (port, _) = Chan::<int>::new();
-        assert!(port.try_recv().is_none());
+        let (port, _chan) = Chan::<int>::new();
+        assert_eq!(port.try_recv(), Empty);
     })
 
     test!(fn oneshot_multi_task_recv_then_send() {
         let (port, chan) = Chan::<~int>::new();
-        do spawn {
+        spawn(proc() {
             assert!(port.recv() == ~10);
-        }
+        });
 
         chan.send(~10);
     })
 
     test!(fn oneshot_multi_task_recv_then_close() {
         let (port, chan) = Chan::<~int>::new();
-        do spawn {
+        spawn(proc() {
             let _chan = chan;
-        }
-        let res = do task::try {
+        });
+        let res = task::try(proc() {
             assert!(port.recv() == ~10);
-        };
+        });
         assert!(res.is_err());
     })
 
     test!(fn oneshot_multi_thread_close_stress() {
-        stress_factor().times(|| {
+        for _ in range(0, stress_factor()) {
             let (port, chan) = Chan::<int>::new();
-            do spawn {
+            spawn(proc() {
                 let _p = port;
-            }
+            });
             let _chan = chan;
-        })
+        }
     })
 
     test!(fn oneshot_multi_thread_send_close_stress() {
-        stress_factor().times(|| {
+        for _ in range(0, stress_factor()) {
             let (port, chan) = Chan::<int>::new();
-            do spawn {
+            spawn(proc() {
                 let _p = port;
-            }
-            do task::try {
+            });
+            task::try(proc() {
                 chan.send(1);
-            };
-        })
+            });
+        }
     })
 
     test!(fn oneshot_multi_thread_recv_close_stress() {
-        stress_factor().times(|| {
+        for _ in range(0, stress_factor()) {
             let (port, chan) = Chan::<int>::new();
-            do spawn {
+            spawn(proc() {
                 let port = port;
-                let res = do task::try {
+                let res = task::try(proc() {
                     port.recv();
-                };
+                });
                 assert!(res.is_err());
-            };
-            do spawn {
+            });
+            spawn(proc() {
                 let chan = chan;
-                do spawn {
+                spawn(proc() {
                     let _chan = chan;
-                }
-            };
-        })
+                });
+            });
+        }
     })
 
     test!(fn oneshot_multi_thread_send_recv_stress() {
-        stress_factor().times(|| {
+        for _ in range(0, stress_factor()) {
             let (port, chan) = Chan::<~int>::new();
-            do spawn {
+            spawn(proc() {
                 chan.send(~10);
-            }
-            do spawn {
+            });
+            spawn(proc() {
                 assert!(port.recv() == ~10);
-            }
-        })
+            });
+        }
     })
 
     test!(fn stream_send_recv_stress() {
-        stress_factor().times(|| {
+        for _ in range(0, stress_factor()) {
             let (port, chan) = Chan::<~int>::new();
 
             send(chan, 0);
@@ -1240,56 +1289,56 @@ mod test {
             fn send(chan: Chan<~int>, i: int) {
                 if i == 10 { return }
 
-                do spawn {
+                spawn(proc() {
                     chan.send(~i);
                     send(chan, i + 1);
-                }
+                });
             }
 
             fn recv(port: Port<~int>, i: int) {
                 if i == 10 { return }
 
-                do spawn {
+                spawn(proc() {
                     assert!(port.recv() == ~i);
                     recv(port, i + 1);
-                };
+                });
             }
-        })
+        }
     })
 
     test!(fn recv_a_lot() {
         // Regression test that we don't run out of stack in scheduler context
         let (port, chan) = Chan::new();
-        10000.times(|| { chan.send(()) });
-        10000.times(|| { port.recv() });
+        for _ in range(0, 10000) { chan.send(()); }
+        for _ in range(0, 10000) { port.recv(); }
     })
 
     test!(fn shared_chan_stress() {
         let (port, chan) = SharedChan::new();
         let total = stress_factor() + 100;
-        total.times(|| {
+        for _ in range(0, total) {
             let chan_clone = chan.clone();
-            do spawn {
+            spawn(proc() {
                 chan_clone.send(());
-            }
-        });
+            });
+        }
 
-        total.times(|| {
+        for _ in range(0, total) {
             port.recv();
-        });
+        }
     })
 
     test!(fn test_nested_recv_iter() {
         let (port, chan) = Chan::<int>::new();
         let (total_port, total_chan) = Chan::<int>::new();
 
-        do spawn {
+        spawn(proc() {
             let mut acc = 0;
             for x in port.iter() {
                 acc += x;
             }
             total_chan.send(acc);
-        }
+        });
 
         chan.send(3);
         chan.send(1);
@@ -1302,7 +1351,7 @@ mod test {
         let (port, chan) = Chan::<int>::new();
         let (count_port, count_chan) = Chan::<int>::new();
 
-        do spawn {
+        spawn(proc() {
             let mut count = 0;
             for x in port.iter() {
                 if count >= 3 {
@@ -1312,7 +1361,7 @@ mod test {
                 }
             }
             count_chan.send(count);
-        }
+        });
 
         chan.send(2);
         chan.send(2);
@@ -1320,5 +1369,28 @@ mod test {
         chan.try_send(2);
         drop(chan);
         assert_eq!(count_port.recv(), 4);
+    })
+
+    test!(fn try_recv_states() {
+        let (p, c) = Chan::<int>::new();
+        let (p1, c1) = Chan::<()>::new();
+        let (p2, c2) = Chan::<()>::new();
+        spawn(proc() {
+            p1.recv();
+            c.send(1);
+            c2.send(());
+            p1.recv();
+            drop(c);
+            c2.send(());
+        });
+
+        assert_eq!(p.try_recv(), Empty);
+        c1.send(());
+        p2.recv();
+        assert_eq!(p.try_recv(), Data(1));
+        assert_eq!(p.try_recv(), Empty);
+        c1.send(());
+        p2.recv();
+        assert_eq!(p.try_recv(), Disconnected);
     })
 }

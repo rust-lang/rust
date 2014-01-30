@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -26,8 +26,8 @@ use syntax::diagnostic::expect;
 pub struct StaticMethodInfo {
     ident: ast::Ident,
     def_id: ast::DefId,
-    purity: ast::purity,
-    vis: ast::visibility,
+    purity: ast::Purity,
+    vis: ast::Visibility,
 }
 
 pub fn get_symbol(cstore: @cstore::CStore, def: ast::DefId) -> ~str {
@@ -55,7 +55,7 @@ pub fn each_child_of_item(cstore: @cstore::CStore,
                           def_id: ast::DefId,
                           callback: |decoder::DefLike,
                                      ast::Ident,
-                                     ast::visibility|) {
+                                     ast::Visibility|) {
     let crate_data = cstore.get_crate_data(def_id.crate);
     let get_crate_data: decoder::GetCrateDataCb = |cnum| {
         cstore.get_crate_data(cnum)
@@ -72,7 +72,7 @@ pub fn each_top_level_item_of_crate(cstore: @cstore::CStore,
                                     cnum: ast::CrateNum,
                                     callback: |decoder::DefLike,
                                                ast::Ident,
-                                               ast::visibility|) {
+                                               ast::Visibility|) {
     let crate_data = cstore.get_crate_data(cnum);
     let get_crate_data: decoder::GetCrateDataCb = |cnum| {
         cstore.get_crate_data(cnum)
@@ -83,20 +83,20 @@ pub fn each_top_level_item_of_crate(cstore: @cstore::CStore,
                                           callback)
 }
 
-pub fn get_item_path(tcx: ty::ctxt, def: ast::DefId) -> ast_map::path {
+pub fn get_item_path(tcx: ty::ctxt, def: ast::DefId) -> ast_map::Path {
     let cstore = tcx.cstore;
     let cdata = cstore.get_crate_data(def.crate);
     let path = decoder::get_item_path(cdata, def.node);
 
     // FIXME #1920: This path is not always correct if the crate is not linked
     // into the root namespace.
-    vec::append(~[ast_map::path_mod(tcx.sess.ident_of(
+    vec::append(~[ast_map::PathMod(tcx.sess.ident_of(
         cdata.name))], path)
 }
 
 pub enum found_ast {
-    found(ast::inlined_item),
-    found_parent(ast::DefId, ast::inlined_item),
+    found(ast::InlinedItem),
+    found_parent(ast::DefId, ast::InlinedItem),
     not_found,
 }
 
@@ -133,7 +133,7 @@ pub fn get_method(tcx: ty::ctxt, def: ast::DefId) -> ty::Method {
 
 pub fn get_method_name_and_explicit_self(cstore: @cstore::CStore,
                                          def: ast::DefId)
-                                     -> (ast::Ident, ast::explicit_self_)
+                                     -> (ast::Ident, ast::ExplicitSelf_)
 {
     let cdata = cstore.get_crate_data(def.crate);
     decoder::get_method_name_and_explicit_self(cstore.intr, cdata, def.node)
@@ -211,17 +211,14 @@ pub fn get_field_type(tcx: ty::ctxt, class_id: ast::DefId,
     let cstore = tcx.cstore;
     let cdata = cstore.get_crate_data(class_id.crate);
     let all_items = reader::get_doc(reader::Doc(cdata.data()), tag_items);
-    debug!("Looking up {:?}", class_id);
     let class_doc = expect(tcx.diag,
                            decoder::maybe_find_item(class_id.node, all_items),
                            || format!("get_field_type: class ID {:?} not found",
                                    class_id) );
-    debug!("looking up {:?} : {:?}", def, class_doc);
     let the_field = expect(tcx.diag,
         decoder::maybe_find_item(def.node, class_doc),
         || format!("get_field_type: in class {:?}, field ID {:?} not found",
                  class_id, def) );
-    debug!("got field data {:?}", the_field);
     let ty = decoder::item_type(def, the_field, tcx, cdata);
     ty::ty_param_bounds_and_ty {
         generics: ty::Generics {type_param_defs: @~[],
@@ -257,7 +254,7 @@ pub fn get_impl_method(cstore: @cstore::CStore,
 
 pub fn get_item_visibility(cstore: @cstore::CStore,
                            def_id: ast::DefId)
-                        -> ast::visibility {
+                        -> ast::Visibility {
     let cdata = cstore.get_crate_data(def_id.crate);
     decoder::get_item_visibility(cdata, def_id.node)
 }
@@ -301,3 +298,16 @@ pub fn get_trait_of_method(cstore: @cstore::CStore,
     decoder::get_trait_of_method(cdata, def_id.node, tcx)
 }
 
+pub fn get_macro_registrar_fn(cstore: @cstore::CStore,
+                              crate_num: ast::CrateNum)
+                              -> Option<ast::DefId> {
+    let cdata = cstore.get_crate_data(crate_num);
+    decoder::get_macro_registrar_fn(cdata)
+}
+
+pub fn get_exported_macros(cstore: @cstore::CStore,
+                           crate_num: ast::CrateNum)
+                           -> ~[~str] {
+    let cdata = cstore.get_crate_data(crate_num);
+    decoder::get_exported_macros(cdata)
+}

@@ -18,7 +18,7 @@ This API is completely unstable and subject to change.
 
 */
 
-#[crate_id = "syntax#0.9"];
+#[crate_id = "syntax#0.10-pre"];
 #[license = "MIT/ASL2"];
 #[crate_type = "dylib"];
 #[crate_type = "rlib"];
@@ -27,6 +27,8 @@ This API is completely unstable and subject to change.
       html_root_url = "http://static.rust-lang.org/doc/master")];
 
 #[feature(macro_rules, globs, managed_boxes)];
+
+#[deny(non_camel_case_types)];
 
 extern mod extra;
 
@@ -66,6 +68,7 @@ pub mod ext {
     pub mod asm;
     pub mod base;
     pub mod expand;
+    pub mod registrar;
 
     pub mod quote;
 

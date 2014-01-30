@@ -223,13 +223,6 @@ impl<V:TyVisitor + movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
         true
     }
 
-    fn visit_uniq_managed(&mut self, mtbl: uint, inner: *TyDesc) -> bool {
-        self.align_to::<~u8>();
-        if ! self.inner().visit_uniq_managed(mtbl, inner) { return false; }
-        self.bump_past::<~u8>();
-        true
-    }
-
     fn visit_ptr(&mut self, mtbl: uint, inner: *TyDesc) -> bool {
         self.align_to::<*u8>();
         if ! self.inner().visit_ptr(mtbl, inner) { return false; }
@@ -272,13 +265,6 @@ impl<V:TyVisitor + movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
         self.align_to::<~[u8]>();
         if ! self.inner().visit_evec_uniq(mtbl, inner) { return false; }
         self.bump_past::<~[u8]>();
-        true
-    }
-
-    fn visit_evec_uniq_managed(&mut self, mtbl: uint, inner: *TyDesc) -> bool {
-        self.align_to::<~[@u8]>();
-        if ! self.inner().visit_evec_uniq_managed(mtbl, inner) { return false; }
-        self.bump_past::<~[@u8]>();
         true
     }
 
@@ -450,20 +436,6 @@ impl<V:TyVisitor + movable_ptr> TyVisitor for ptr_visit_adaptor<V> {
         if ! self.inner().visit_type() { return false; }
         true
     }
-
-    fn visit_opaque_box(&mut self) -> bool {
-        self.align_to::<@u8>();
-        if ! self.inner().visit_opaque_box() { return false; }
-        self.bump_past::<@u8>();
-        true
-    }
-
-    fn visit_closure_ptr(&mut self, ck: uint) -> bool {
-        self.align_to::<(uint,uint)>();
-        if ! self.inner().visit_closure_ptr(ck) { return false; }
-        self.bump_past::<(uint,uint)>();
-        true
-    }
 }
 
 struct my_visitor(@RefCell<Stuff>);
@@ -549,7 +521,6 @@ impl TyVisitor for my_visitor {
 
     fn visit_box(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
     fn visit_uniq(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
-    fn visit_uniq_managed(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
     fn visit_ptr(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
     fn visit_rptr(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
 
@@ -557,7 +528,6 @@ impl TyVisitor for my_visitor {
     fn visit_unboxed_vec(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
     fn visit_evec_box(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
     fn visit_evec_uniq(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
-    fn visit_evec_uniq_managed(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
     fn visit_evec_slice(&mut self, _mtbl: uint, _inner: *TyDesc) -> bool { true }
     fn visit_evec_fixed(&mut self, _n: uint, _sz: uint, _align: uint,
                         _mtbl: uint, _inner: *TyDesc) -> bool { true }
@@ -627,8 +597,6 @@ impl TyVisitor for my_visitor {
     fn visit_param(&mut self, _i: uint) -> bool { true }
     fn visit_self(&mut self) -> bool { true }
     fn visit_type(&mut self) -> bool { true }
-    fn visit_opaque_box(&mut self) -> bool { true }
-    fn visit_closure_ptr(&mut self, _ck: uint) -> bool { true }
 }
 
 fn get_tydesc_for<T>(_t: T) -> *TyDesc {

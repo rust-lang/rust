@@ -36,10 +36,8 @@
 use std::fmt;
 use std::hashmap::{HashMap, HashSet};
 use std::local_data;
-use std::io::buffered::BufferedWriter;
 use std::io;
-use std::io::fs;
-use std::io::File;
+use std::io::{fs, File, BufferedWriter};
 use std::str;
 use std::vec;
 
@@ -157,6 +155,7 @@ pub struct Cache {
     priv stack: ~[~str],
     priv parent_stack: ~[ast::NodeId],
     priv search_index: ~[IndexItem],
+    priv privmod: bool,
 }
 
 /// Helper struct to render all source code to HTML pages
@@ -241,6 +240,7 @@ pub fn run(mut crate: clean::Crate, dst: Path) {
         parent_stack: ~[],
         search_index: ~[],
         extern_locations: HashMap::new(),
+        privmod: false,
     };
     cache.stack.push(crate.name.clone());
     crate = cache.fold_crate(crate);
@@ -274,7 +274,8 @@ pub fn run(mut crate: clean::Crate, dst: Path) {
         write!(w, "var allPaths = \\{");
         for (i, (&id, &(ref fqp, short))) in cache.paths.iter().enumerate() {
             if i > 0 { write!(w, ","); }
-            write!(w, "'{}':\\{type:'{}',name:'{}'\\}", id, short, *fqp.last());
+            write!(w, "'{}':\\{type:'{}',name:'{}'\\}",
+                   id, short, *fqp.last().unwrap());
         }
         write!(w, "\\};");
         w.flush();
@@ -426,7 +427,7 @@ impl<'a> SourceCollector<'a> {
                 }
             }
         }
-        let contents = str::from_utf8_owned(contents);
+        let contents = str::from_utf8_owned(contents).unwrap();
 
         // Create the intermediate directories
         let mut cur = self.dst.clone();
@@ -455,6 +456,16 @@ impl<'a> SourceCollector<'a> {
 
 impl DocFolder for Cache {
     fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
+        // If this is a private module, we don't want it in the search index.
+        let orig_privmod = match item.inner {
+            clean::ModuleItem(..) => {
+                let prev = self.privmod;
+                self.privmod = prev || item.visibility != Some(ast::Public);
+                prev
+            }
+            _ => self.privmod,
+        };
+
         // Register any generics to their corresponding string. This is used
         // when pretty-printing types
         match item.inner {
@@ -511,7 +522,7 @@ impl DocFolder for Cache {
                     clean::TyMethodItem(..) |
                     clean::StructFieldItem(..) |
                     clean::VariantItem(..) => {
-                        Some((Some(*self.parent_stack.last()),
+                        Some((Some(*self.parent_stack.last().unwrap()),
                               self.stack.slice_to(self.stack.len() - 1)))
 
                     }
@@ -519,7 +530,7 @@ impl DocFolder for Cache {
                         if self.parent_stack.len() == 0 {
                             None
                         } else {
-                            let last = self.parent_stack.last();
+                            let last = self.parent_stack.last().unwrap();
                             let amt = match self.paths.find(last) {
                                 Some(&(_, "trait")) => self.stack.len() - 1,
                                 Some(..) | None => self.stack.len(),
@@ -530,7 +541,7 @@ impl DocFolder for Cache {
                     _ => Some((None, self.stack.as_slice()))
                 };
                 match parent {
-                    Some((parent, path)) => {
+                    Some((parent, path)) if !self.privmod => {
                         self.search_index.push(IndexItem {
                             ty: shortty(&item),
                             name: s.to_owned(),
@@ -539,7 +550,7 @@ impl DocFolder for Cache {
                             parent: parent,
                         });
                     }
-                    None => {}
+                    Some(..) | None => {}
                 }
             }
             None => {}
@@ -612,16 +623,21 @@ impl DocFolder for Cache {
                     // Private modules may survive the strip-private pass if
                     // they contain impls for public types, but those will get
                     // stripped here
-                    clean::Item { inner: clean::ModuleItem(ref m), .. }
-                            if m.items.len() == 0 => None,
+                    clean::Item { inner: clean::ModuleItem(ref m),
+                                  visibility, .. }
+                            if (m.items.len() == 0 &&
+                                item.doc_value().is_none()) ||
+                               visibility != Some(ast::Public) => None,
+
                     i => Some(i),
                 }
             }
             i => i,
         };
 
-        if pushed { self.stack.pop(); }
-        if parent_pushed { self.parent_stack.pop(); }
+        if pushed { self.stack.pop().unwrap(); }
+        if parent_pushed { self.parent_stack.pop().unwrap(); }
+        self.privmod = orig_privmod;
         return ret;
     }
 }
@@ -657,7 +673,7 @@ impl Context {
         self.dst = prev;
         let len = self.root_path.len();
         self.root_path.truncate(len - 3);
-        self.current.pop();
+        self.current.pop().unwrap();
 
         return ret;
     }
@@ -666,7 +682,7 @@ impl Context {
     ///
     /// This currently isn't parallelized, but it'd be pretty easy to add
     /// parallelization to this function.
-    fn crate(mut self, mut crate: clean::Crate, cache: Cache) {
+    fn crate(self, mut crate: clean::Crate, cache: Cache) {
         let mut item = match crate.module.take() {
             Some(i) => i,
             None => return
@@ -677,11 +693,13 @@ impl Context {
         local_data::set(cache_key, Arc::new(cache));
 
         let mut work = ~[(self, item)];
-        while work.len() > 0 {
-            let (mut cx, item) = work.pop();
-            cx.item(item, |cx, item| {
-                work.push((cx.clone(), item));
-            })
+        loop {
+            match work.pop() {
+                Some((mut cx, item)) => cx.item(item, |cx, item| {
+                    work.push((cx.clone(), item));
+                }),
+                None => break,
+            }
         }
     }
 
@@ -1149,7 +1167,7 @@ fn item_trait(w: &mut Writer, it: &clean::Item, t: &clean::Trait) {
 }
 
 fn render_method(w: &mut Writer, meth: &clean::Item, withlink: bool) {
-    fn fun(w: &mut Writer, it: &clean::Item, purity: ast::purity,
+    fn fun(w: &mut Writer, it: &clean::Item, purity: ast::Purity,
            g: &clean::Generics, selfty: &clean::SelfTy, d: &clean::FnDecl,
            withlink: bool) {
         write!(w, "{}fn {withlink, select,
@@ -1158,7 +1176,7 @@ fn render_method(w: &mut Writer, meth: &clean::Item, withlink: bool) {
                             other{<span class='fnname'>{name}</span>}
                         }{generics}{decl}",
                match purity {
-                   ast::unsafe_fn => "unsafe ",
+                   ast::UnsafeFn => "unsafe ",
                    _ => "",
                },
                ty = shortty(it),
@@ -1186,7 +1204,7 @@ fn item_struct(w: &mut Writer, it: &clean::Item, s: &clean::Struct) {
 
     document(w, it);
     match s.struct_type {
-        doctree::Plain => {
+        doctree::Plain if s.fields.len() > 0 => {
             write!(w, "<h2 class='fields'>Fields</h2>\n<table>");
             for field in s.fields.iter() {
                 write!(w, "<tr><td id='structfield.{name}'>\

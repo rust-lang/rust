@@ -460,7 +460,7 @@ fn spawn_process_os(prog: &str, args: &[~str],
             fail!("failure in dup3(err_fd, 2): {}", os::last_os_error());
         }
         // close all other fds
-        for fd in range(3, getdtablesize()).invert() {
+        for fd in range(3, getdtablesize()).rev() {
             if fd != output.fd() {
                 close(fd as c_int);
             }
@@ -486,7 +486,7 @@ fn spawn_process_os(prog: &str, args: &[~str],
                 (errno <<  8) as u8,
                 (errno <<  0) as u8,
             ];
-            output.inner_write(bytes);
+            assert!(output.inner_write(bytes).is_ok());
             intrinsics::abort();
         })
     }

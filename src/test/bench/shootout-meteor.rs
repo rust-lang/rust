@@ -18,8 +18,8 @@ fn iterate<'a, T>(x: T, f: 'a |&T| -> T) -> Iterate<'a, T> {
     Iterate {f: f, next: x}
 }
 struct Iterate<'a, T> {
-    priv f: 'a |&T| -> T,
-    priv next: T
+    f: 'a |&T| -> T,
+    next: T
 }
 impl<'a, T> Iterator<T> for Iterate<'a, T> {
     fn next(&mut self) -> Option<T> {
@@ -35,7 +35,7 @@ enum List<'a, T> {
     Cons(T, &'a List<'a, T>)
 }
 struct ListIterator<'a, T> {
-    priv cur: &'a List<'a, T>
+    cur: &'a List<'a, T>
 }
 impl<'a, T> List<'a, T> {
     fn iter(&'a self) -> ListIterator<'a, T> {
@@ -187,17 +187,17 @@ fn to_utf8(raw_sol: &List<u64>) -> ~str {
             if m & 1 << i != 0 {sol[i] = '0' as u8 + id;}
         }
     }
-    std::str::from_utf8_owned(sol)
+    std::str::from_utf8_owned(sol).unwrap()
 }
 
 // Prints a solution in ~str form.
 fn print_sol(sol: &str) {
     for (i, c) in sol.chars().enumerate() {
-        if (i) % 5 == 0 {println("");}
-        if (i + 5) % 10 == 0 {print(" ");}
+        if (i) % 5 == 0 { println!(""); }
+        if (i + 5) % 10 == 0 { print!(" "); }
         print!("{} ", c);
     }
-    println("");
+    println!("");
 }
 
 // The data managed during the search
@@ -220,7 +220,7 @@ fn handle_sol(raw_sol: &List<u64>, data: &mut Data) -> bool {
     // reverse order, i.e. the board rotated by half a turn.
     data.nb += 2;
     let sol1 = to_utf8(raw_sol);
-    let sol2: ~str = sol1.chars().invert().collect();
+    let sol2: ~str = sol1.chars().rev().collect();
 
     if data.nb == 2 {
         data.min = sol1.clone();
@@ -277,5 +277,5 @@ fn main () {
     println!("{} solutions found", data.nb);
     print_sol(data.min);
     print_sol(data.max);
-    println("");
+    println!("");
 }

@@ -86,8 +86,6 @@ impl Reader for UdpStream {
             }
         })
     }
-
-    fn eof(&mut self) -> bool { fail!() }
 }
 
 impl Writer for UdpStream {
@@ -101,6 +99,7 @@ mod test {
     use super::*;
     use io::net::ip::{SocketAddr};
 
+    // FIXME #11530 this fails on android because tests are run as root
     iotest!(fn bind_error() {
         let mut called = false;
         io_error::cond.trap(|e| {
@@ -112,7 +111,7 @@ mod test {
             assert!(socket.is_none());
         });
         assert!(called);
-    } #[ignore(cfg(windows))])
+    } #[ignore(cfg(windows))] #[ignore(cfg(target_os = "android"))])
 
     iotest!(fn socket_smoke_test_ip4() {
         let server_ip = next_test_ip4();
@@ -120,7 +119,7 @@ mod test {
         let (port, chan) = Chan::new();
         let (port2, chan2) = Chan::new();
 
-        do spawn {
+        spawn(proc() {
             match UdpSocket::bind(client_ip) {
                 Some(ref mut client) => {
                     port.recv();
@@ -129,7 +128,7 @@ mod test {
                 None => fail!()
             }
             chan2.send(());
-        }
+        });
 
         match UdpSocket::bind(server_ip) {
             Some(ref mut server) => {
@@ -154,7 +153,7 @@ mod test {
         let client_ip = next_test_ip6();
         let (port, chan) = Chan::<()>::new();
 
-        do spawn {
+        spawn(proc() {
             match UdpSocket::bind(client_ip) {
                 Some(ref mut client) => {
                     port.recv();
@@ -162,7 +161,7 @@ mod test {
                 }
                 None => fail!()
             }
-        }
+        });
 
         match UdpSocket::bind(server_ip) {
             Some(ref mut server) => {
@@ -187,7 +186,7 @@ mod test {
         let (port, chan) = Chan::new();
         let (port2, chan2) = Chan::new();
 
-        do spawn {
+        spawn(proc() {
             match UdpSocket::bind(client_ip) {
                 Some(client) => {
                     let client = ~client;
@@ -198,7 +197,7 @@ mod test {
                 None => fail!()
             }
             chan2.send(());
-        }
+        });
 
         match UdpSocket::bind(server_ip) {
             Some(server) => {
@@ -225,7 +224,7 @@ mod test {
         let (port, chan) = Chan::new();
         let (port2, chan2) = Chan::new();
 
-        do spawn {
+        spawn(proc() {
             match UdpSocket::bind(client_ip) {
                 Some(client) => {
                     let client = ~client;
@@ -236,7 +235,7 @@ mod test {
                 None => fail!()
             }
             chan2.send(());
-        }
+        });
 
         match UdpSocket::bind(server_ip) {
             Some(server) => {

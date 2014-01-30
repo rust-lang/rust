@@ -18,9 +18,10 @@ use option::{None, Option, Some};
 use char;
 use str::{StrSlice};
 use str;
-use vec::{CopyableVector, ImmutableVector, MutableVector};
+use vec::{CloneableVector, ImmutableVector, MutableVector};
 use vec::OwnedVector;
-use num::{NumCast, Zero, One, cast, pow_with_uint, Integer};
+use num;
+use num::{NumCast, Zero, One, cast, Integer};
 use num::{Round, Float, FPNaN, FPInfinite, ToPrimitive};
 
 pub enum ExponentFormat {
@@ -206,11 +207,13 @@ pub fn int_to_str_bytes_common<T:NumCast
  * # Arguments
  * - `num`           - The number to convert. Accepts any number that
  *                     implements the numeric traits.
- * - `radix`         - Base to use. Accepts only the values 2-36.
+ * - `radix`         - Base to use. Accepts only the values 2-36. If the exponential notation
+ *                     is used, then this base is only used for the significand. The exponent
+ *                     itself always printed using a base of 10.
  * - `negative_zero` - Whether to treat the special value `-0` as
  *                     `-0` or as `+0`.
  * - `sign`          - How to emit the sign. Options are:
- *     - `SignNone`: No sign at all. Basically emits `abs(num)`.
+ *     - `SignNone`: No sign at all. The exponent sign is also omitted.
  *     - `SignNeg`:  Only `-` on negative values.
  *     - `SignAll`:  Both `+` on positive, and `-` on negative numbers.
  * - `digits`        - The amount of digits to use for emitting the
@@ -219,6 +222,17 @@ pub fn int_to_str_bytes_common<T:NumCast
  *                         fractions!
  *     - `DigMax(uint)`:   Maximum N digits, truncating any trailing zeros.
  *     - `DigExact(uint)`: Exactly N digits.
+ * - `exp_format`   - Whether or not to use the exponential (scientific) notation.
+ *                    Options are:
+ *     - `ExpNone`: Do not use the exponential notation.
+ *     - `ExpDec`:  Use the exponential notation with the exponent having a base of 10,
+ *                  and exponent sign being `'e'` or `'E'` depending on the value of
+ *                  the `exp_upper` argument. E.g. the number 1000 would be printed as 1e3.
+ *     - `ExpBin`:  Use the exponential notation with the exponent having a base of 2,
+ *                  and exponent sign being `'p'` or `'P'` depending on the value of
+ *                  the `exp_upper` argument. E.g. the number 8 would be printed as 1p3.
+ * - `exp_capital`   - Whether or not to use a capital letter for the exponent sign, if
+ *                     exponential notation is desired.
  *
  * # Return value
  * A tuple containing the byte vector, and a boolean flag indicating
@@ -228,12 +242,26 @@ pub fn int_to_str_bytes_common<T:NumCast
  *
  * # Failure
  * - Fails if `radix` < 2 or `radix` > 36.
+ * - Fails if `radix` > 14 and `exp_format` is `ExpDec` due to conflict
+ *   between digit and exponent sign `'e'`.
+ * - Fails if `radix` > 25 and `exp_format` is `ExpBin` due to conflict
+ *   between digit and exponent sign `'p'`.
  */
 pub fn float_to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Float+Round+
                                   Div<T,T>+Neg<T>+Rem<T,T>+Mul<T,T>>(
         num: T, radix: uint, negative_zero: bool,
-        sign: SignFormat, digits: SignificantDigits) -> (~[u8], bool) {
+        sign: SignFormat, digits: SignificantDigits, exp_format: ExponentFormat, exp_upper: bool
+        ) -> (~[u8], bool) {
     assert!(2 <= radix && radix <= 36);
+    match exp_format {
+        ExpDec if radix >= DIGIT_E_RADIX       // decimal exponent 'e'
+          => fail!("float_to_str_bytes_common: radix {} incompatible with \
+                    use of 'e' as decimal exponent", radix),
+        ExpBin if radix >= DIGIT_P_RADIX       // binary exponent 'p'
+          => fail!("float_to_str_bytes_common: radix {} incompatible with \
+                    use of 'p' as binary exponent", radix),
+        _ => ()
+    }
 
     let _0: T = Zero::zero();
     let _1: T = One::one();
@@ -258,6 +286,23 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Float+Round+
     let neg = num < _0 || (negative_zero && _1 / num == Float::neg_infinity());
     let mut buf: ~[u8] = ~[];
     let radix_gen: T   = cast(radix as int).unwrap();
+
+    let (num, exp) = match exp_format {
+        ExpNone => (num, 0i32),
+        ExpDec | ExpBin => {
+            if num == _0 {
+                (num, 0i32)
+            } else {
+                let (exp, exp_base) = match exp_format {
+                    ExpDec => (num.abs().log10().floor(), cast::<f64, T>(10.0f64).unwrap()),
+                    ExpBin => (num.abs().log2().floor(), cast::<f64, T>(2.0f64).unwrap()),
+                    ExpNone => unreachable!()
+                };
+
+                (num / exp_base.powf(&exp), cast::<T, i32>(exp).unwrap())
+            }
+        }
+    };
 
     // First emit the non-fractional part, looping at least once to make
     // sure at least a `0` gets emitted.
@@ -350,7 +395,7 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Float+Round+
                 char::from_digit(val, radix).unwrap() as u8
             };
 
-            let extra_digit = ascii2value(buf.pop());
+            let extra_digit = ascii2value(buf.pop().unwrap());
             if extra_digit >= radix / 2 { // -> need to round
                 let mut i: int = buf.len() as int - 1;
                 loop {
@@ -412,6 +457,21 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Float+Round+
         }
     }
 
+    match exp_format {
+        ExpNone => (),
+        _ => {
+            buf.push(match exp_format {
+                ExpDec if exp_upper => 'E',
+                ExpDec if !exp_upper => 'e',
+                ExpBin if exp_upper => 'P',
+                ExpBin if !exp_upper => 'p',
+                _ => unreachable!()
+            } as u8);
+
+            int_to_str_bytes_common(exp, 10, sign, |c| buf.push(c));
+        }
+    }
+
     (buf, false)
 }
 
@@ -423,10 +483,11 @@ pub fn float_to_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Float+Round+
 pub fn float_to_str_common<T:NumCast+Zero+One+Eq+Ord+NumStrConv+Float+Round+
                              Div<T,T>+Neg<T>+Rem<T,T>+Mul<T,T>>(
         num: T, radix: uint, negative_zero: bool,
-        sign: SignFormat, digits: SignificantDigits) -> (~str, bool) {
+        sign: SignFormat, digits: SignificantDigits, exp_format: ExponentFormat, exp_capital: bool
+        ) -> (~str, bool) {
     let (bytes, special) = float_to_str_bytes_common(num, radix,
-                               negative_zero, sign, digits);
-    (str::from_utf8_owned(bytes), special)
+                               negative_zero, sign, digits, exp_format, exp_capital);
+    (str::from_utf8_owned(bytes).unwrap(), special)
 }
 
 // Some constants for from_str_bytes_common's input validation,
@@ -648,10 +709,10 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Div<T,T>+
 
     if exp_found {
         let c = buf[i] as char;
-        let base = match (c, exponent) {
+        let base: T = match (c, exponent) {
             // c is never _ so don't need to handle specially
-            ('e', ExpDec) | ('E', ExpDec) => 10u,
-            ('p', ExpBin) | ('P', ExpBin) => 2u,
+            ('e', ExpDec) | ('E', ExpDec) => cast(10u).unwrap(),
+            ('p', ExpBin) | ('P', ExpBin) => cast(2u).unwrap(),
             _ => return None // char doesn't fit given exponent format
         };
 
@@ -664,9 +725,9 @@ pub fn from_str_bytes_common<T:NumCast+Zero+One+Eq+Ord+Div<T,T>+
         match exp {
             Some(exp_pow) => {
                 multiplier = if exp_pow < 0 {
-                    _1 / pow_with_uint::<T>(base, (-exp_pow.to_int().unwrap()) as uint)
+                    _1 / num::pow(base, (-exp_pow.to_int().unwrap()) as uint)
                 } else {
-                    pow_with_uint::<T>(base, exp_pow.to_int().unwrap() as uint)
+                    num::pow(base, exp_pow.to_int().unwrap() as uint)
                 }
             }
             None => return None // invalid exponent -> invalid number

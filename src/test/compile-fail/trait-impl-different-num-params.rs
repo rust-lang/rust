@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -13,7 +13,7 @@ trait foo {
 }
 impl foo for int {
     fn bar(&self) -> int {
-        //~^ ERROR method `bar` has 0 parameters but the declaration in trait `foo::bar` has 1
+        //~^ ERROR method `bar` has 1 parameter but the declaration in trait `foo::bar` has 2
         *self
     }
 }

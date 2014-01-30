@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -16,16 +16,15 @@ use prelude::*;
 
 use default::Default;
 use mem;
-use num::BitCount;
+use num::{Bitwise, Bounded};
 use num::{CheckedAdd, CheckedSub, CheckedMul};
 use num::{CheckedDiv, Zero, One, strconv};
 use num::{ToStrRadix, FromStrRadix};
-use num;
 use option::{Option, Some, None};
 use str;
 use unstable::intrinsics;
 
-uint_module!(uint, int, ::int::bits)
+uint_module!(uint, int, ::int::BITS)
 
 ///
 /// Divide two numbers, return the result, rounded up.
@@ -79,27 +78,6 @@ pub fn div_round(x: uint, y: uint) -> uint {
 /// is either `x/y` or `x/y + 1`.
 ///
 pub fn div_floor(x: uint, y: uint) -> uint { return x / y; }
-
-impl num::Times for uint {
-    #[inline]
-    ///
-    /// A convenience form for basic repetition. Given a uint `x`,
-    /// `x.times(|| { ... })` executes the given block x times.
-    ///
-    /// Equivalent to `for uint::range(0, x) |_| { ... }`.
-    ///
-    /// Not defined on all integer types to permit unambiguous
-    /// use with integer literals of inferred integer-type as
-    /// the self-value (eg. `100.times(|| { ... })`).
-    ///
-    fn times(&self, it: ||) {
-        let mut i = *self;
-        while i > 0 {
-            it();
-            i -= 1;
-        }
-    }
-}
 
 /// Returns the smallest power of 2 greater than or equal to `n`
 #[inline]
@@ -234,9 +212,9 @@ fn test_next_power_of_two() {
 #[test]
 fn test_overflows() {
     use uint;
-    assert!((uint::max_value > 0u));
-    assert!((uint::min_value <= 0u));
-    assert!((uint::min_value + uint::max_value + 1u == 0u));
+    assert!((uint::MAX > 0u));
+    assert!((uint::MIN <= 0u));
+    assert!((uint::MIN + uint::MAX + 1u == 0u));
 }
 
 #[test]
@@ -244,13 +222,4 @@ fn test_div() {
     assert!((div_floor(3u, 4u) == 0u));
     assert!((div_ceil(3u, 4u)  == 1u));
     assert!((div_round(3u, 4u) == 1u));
-}
-
-#[test]
-pub fn test_times() {
-    use num::Times;
-    let ten = 10 as uint;
-    let mut accum = 0;
-    ten.times(|| { accum += 1; });
-    assert!((accum == 10));
 }

@@ -16,7 +16,7 @@ extern mod extra;
 
 use std::io;
 use std::io::stdio::StdReader;
-use std::io::buffered::BufferedReader;
+use std::io::BufferedReader;
 use std::os;
 use std::unstable::intrinsics::cttz16;
 use std::vec;
@@ -110,7 +110,7 @@ impl Sudoku {
 
         let mut ptr = 0u;
         let end = work.len();
-        while (ptr < end) {
+        while ptr < end {
             let (row, col) = work[ptr];
             // is there another color to try?
             if self.next_color(row, col, self.grid[row][col] + (1 as u8)) {

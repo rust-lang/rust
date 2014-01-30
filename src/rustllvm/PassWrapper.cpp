@@ -68,7 +68,8 @@ LLVMRustCreateTargetMachine(const char *triple,
                             Reloc::Model RM,
                             CodeGenOpt::Level OptLevel,
                             bool EnableSegmentedStacks,
-                            bool UseSoftFloat) {
+                            bool UseSoftFloat,
+                            bool NoFramePointerElim) {
     std::string Error;
     Triple Trip(Triple::normalize(triple));
     const llvm::Target *TheTarget = TargetRegistry::lookupTarget(Trip.getTriple(),
@@ -79,7 +80,7 @@ LLVMRustCreateTargetMachine(const char *triple,
     }
 
     TargetOptions Options;
-    Options.NoFramePointerElim = true;
+    Options.NoFramePointerElim = NoFramePointerElim;
     Options.EnableSegmentedStacks = EnableSegmentedStacks;
     Options.FloatABIType = FloatABI::Default;
     Options.UseSoftFloat = UseSoftFloat;
@@ -185,7 +186,7 @@ LLVMRustPrintModule(LLVMPassManagerRef PMR,
   std::string ErrorInfo;
   raw_fd_ostream OS(path, ErrorInfo, sys::fs::F_Binary);
   formatted_raw_ostream FOS(OS);
-  PM->add(createPrintModulePass(&FOS));
+  PM->add(createPrintModulePass(FOS));
   PM->run(*unwrap(M));
 }
 

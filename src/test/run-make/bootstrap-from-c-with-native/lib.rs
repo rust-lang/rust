@@ -9,16 +9,16 @@
 // except according to those terms.
 
 #[crate_id="boot#0.1"];
-#[crate_type="lib"];
+#[crate_type="dylib"];
 #[no_uv];
 
 extern mod native;
 
 #[no_mangle] // this needs to get called from C
 pub extern "C" fn foo(argc: int, argv: **u8) -> int {
-    do native::start(argc, argv) {
-        do spawn {
+    native::start(argc, argv, proc() {
+        spawn(proc() {
             println!("hello");
-        }
-    }
+        });
+    })
 }

@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -26,7 +26,7 @@
 //!
 //! // Take a reference to the contained string
 //! match msg {
-//!     Some(ref m) => io::println(*m),
+//!     Some(ref m) => println!("{}", *m),
 //!     None => ()
 //! }
 //!
@@ -48,6 +48,7 @@ use kinds::Send;
 use str::OwnedStr;
 use to_str::ToStr;
 use util;
+use vec;
 
 /// The option type
 #[deriving(Clone, DeepClone, Eq, Ord, TotalEq, TotalOrd, ToStr)]
@@ -96,6 +97,24 @@ impl<T> Option<T> {
     #[inline]
     pub fn as_mut<'r>(&'r mut self) -> Option<&'r mut T> {
         match *self { Some(ref mut x) => Some(x), None => None }
+    }
+
+    /// Convert from `Option<T>` to `&[T]` (without copying)
+    #[inline]
+    pub fn as_slice<'r>(&'r self) -> &'r [T] {
+        match *self {
+            Some(ref x) => vec::ref_slice(x),
+            None => &[]
+        }
+    }
+
+    /// Convert from `Option<T>` to `&[T]` (without copying)
+    #[inline]
+    pub fn as_mut_slice<'r>(&'r mut self) -> &'r mut [T] {
+        match *self {
+            Some(ref mut x) => vec::mut_ref_slice(x),
+            None => &mut []
+        }
     }
 
     /////////////////////////////////////////////////////////////////////////
@@ -195,26 +214,26 @@ impl<T> Option<T> {
 
     /// Return an iterator over the possibly contained value
     #[inline]
-    pub fn iter<'r>(&'r self) -> OptionIterator<&'r T> {
+    pub fn iter<'r>(&'r self) -> Item<&'r T> {
         match *self {
-            Some(ref x) => OptionIterator{opt: Some(x)},
-            None => OptionIterator{opt: None}
+            Some(ref x) => Item{opt: Some(x)},
+            None => Item{opt: None}
         }
     }
 
     /// Return a mutable iterator over the possibly contained value
     #[inline]
-    pub fn mut_iter<'r>(&'r mut self) -> OptionIterator<&'r mut T> {
+    pub fn mut_iter<'r>(&'r mut self) -> Item<&'r mut T> {
         match *self {
-            Some(ref mut x) => OptionIterator{opt: Some(x)},
-            None => OptionIterator{opt: None}
+            Some(ref mut x) => Item{opt: Some(x)},
+            None => Item{opt: None}
         }
     }
 
     /// Return a consuming iterator over the possibly contained value
     #[inline]
-    pub fn move_iter(self) -> OptionIterator<T> {
-        OptionIterator{opt: self}
+    pub fn move_iter(self) -> Item<T> {
+        Item{opt: self}
     }
 
     /////////////////////////////////////////////////////////////////////////
@@ -273,7 +292,7 @@ impl<T> Option<T> {
     #[inline(always)]
     pub fn filtered(self, f: |t: &T| -> bool) -> Option<T> {
         match self {
-            Some(x) => if(f(&x)) {Some(x)} else {None},
+            Some(x) => if f(&x) {Some(x)} else {None},
             None => None
         }
     }
@@ -382,11 +401,11 @@ impl<T> Default for Option<T> {
 
 /// An iterator that yields either one or zero elements
 #[deriving(Clone, DeepClone)]
-pub struct OptionIterator<A> {
+pub struct Item<A> {
     priv opt: Option<A>
 }
 
-impl<A> Iterator<A> for OptionIterator<A> {
+impl<A> Iterator<A> for Item<A> {
     #[inline]
     fn next(&mut self) -> Option<A> {
         self.opt.take()
@@ -401,14 +420,14 @@ impl<A> Iterator<A> for OptionIterator<A> {
     }
 }
 
-impl<A> DoubleEndedIterator<A> for OptionIterator<A> {
+impl<A> DoubleEndedIterator<A> for Item<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
         self.opt.take()
     }
 }
 
-impl<A> ExactSize<A> for OptionIterator<A> {}
+impl<A> ExactSize<A> for Item<A> {}
 
 /////////////////////////////////////////////////////////////////////////////
 // Free functions
@@ -422,7 +441,7 @@ impl<A> ExactSize<A> for OptionIterator<A> {}
 /// checking for overflow:
 ///
 ///     fn inc_conditionally(x: uint) -> Option<uint> {
-///         if x == uint::max_value { return None; }
+///         if x == uint::MAX { return None; }
 ///         else { return Some(x+1u); }
 ///     }
 ///     let v = [1u, 2, 3];
@@ -509,7 +528,7 @@ mod tests {
             }
         }
 
-        let i = Rc::from_send(RefCell::new(0));
+        let i = Rc::new(RefCell::new(0));
         {
             let x = R(i.clone());
             let opt = Some(x);
@@ -586,7 +605,7 @@ mod tests {
         let mut i = 0;
         Some(10).while_some(|j| {
             i += 1;
-            if (j > 0) {
+            if j > 0 {
                 Some(j-1)
             } else {
                 None

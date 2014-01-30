@@ -18,7 +18,7 @@ use metadata::loader;
 use std::cell::RefCell;
 use std::hashmap::HashMap;
 use syntax::ast;
-use syntax::parse::token::ident_interner;
+use syntax::parse::token::IdentInterner;
 
 // A map from external crate numbers (as decoded from some crate file) to
 // local crate numbers (as generated during this session). Each external
@@ -53,7 +53,7 @@ pub enum NativeLibaryKind {
 
 // Where a crate came from on the local filesystem. One of these two options
 // must be non-None.
-#[deriving(Eq)]
+#[deriving(Eq, Clone)]
 pub struct CrateSource {
     dylib: Option<Path>,
     rlib: Option<Path>,
@@ -66,14 +66,14 @@ pub struct CStore {
     priv used_crate_sources: RefCell<~[CrateSource]>,
     priv used_libraries: RefCell<~[(~str, NativeLibaryKind)]>,
     priv used_link_args: RefCell<~[~str]>,
-    intr: @ident_interner
+    intr: @IdentInterner
 }
 
 // Map from NodeId's of local extern mod statements to crate numbers
 type extern_mod_crate_map = HashMap<ast::NodeId, ast::CrateNum>;
 
 impl CStore {
-    pub fn new(intr: @ident_interner) -> CStore {
+    pub fn new(intr: @IdentInterner) -> CStore {
         CStore {
             metas: RefCell::new(HashMap::new()),
             extern_mod_crate_map: RefCell::new(HashMap::new()),
@@ -121,6 +121,21 @@ impl CStore {
         if !used_crate_sources.get().contains(&src) {
             used_crate_sources.get().push(src);
         }
+    }
+
+    pub fn get_used_crate_source(&self, cnum: ast::CrateNum)
+                                     -> Option<CrateSource> {
+        let mut used_crate_sources = self.used_crate_sources.borrow_mut();
+        used_crate_sources.get().iter().find(|source| source.cnum == cnum)
+            .map(|source| source.clone())
+    }
+
+    pub fn reset(&self) {
+        self.metas.with_mut(|s| s.clear());
+        self.extern_mod_crate_map.with_mut(|s| s.clear());
+        self.used_crate_sources.with_mut(|s| s.clear());
+        self.used_libraries.with_mut(|s| s.clear());
+        self.used_link_args.with_mut(|s| s.clear());
     }
 
     pub fn get_used_crates(&self, prefer: LinkagePreference)

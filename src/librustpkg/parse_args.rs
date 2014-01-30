@@ -36,7 +36,8 @@ pub struct ParseResult {
 /// Parses command line arguments of rustpkg.
 /// Returns a triplet (command, remaining_args, context)
 pub fn parse_args(args: &[~str]) -> Result<ParseResult, int> {
-    let opts = ~[ getopts::optflag("no-link"),
+    let opts = ~[ getopts::optflag("h"), getopts::optflag("help"),
+                                        getopts::optflag("no-link"),
                                         getopts::optflag("no-trans"),
                  // n.b. Ignores different --pretty options for now
                                         getopts::optflag("pretty"),
@@ -70,6 +71,12 @@ pub fn parse_args(args: &[~str]) -> Result<ParseResult, int> {
     let parse_only = matches.opt_present("parse-only");
     let pretty = matches.opt_present("pretty");
     let emit_llvm = matches.opt_present("emit-llvm");
+
+    if matches.opt_present("h") ||
+       matches.opt_present("help") {
+         usage::general();
+         return Err(0);
+    }
 
     if matches.opt_present("v") ||
        matches.opt_present("version") {
@@ -112,7 +119,7 @@ pub fn parse_args(args: &[~str]) -> Result<ParseResult, int> {
     let mut args = matches.free.clone();
     args.shift();
 
-    if (args.len() < 1) {
+    if args.len() < 1 {
         usage::general();
         return Err(1);
     }
@@ -147,7 +154,7 @@ pub fn parse_args(args: &[~str]) -> Result<ParseResult, int> {
     };
 
     let cmd_opt = args.iter().filter_map( |s| from_str(s.clone())).next();
-    let command = match(cmd_opt){
+    let command = match cmd_opt {
         None => {
             debug!("No legal command. Returning 0");
             usage::general();
@@ -187,4 +194,3 @@ pub fn parse_args(args: &[~str]) -> Result<ParseResult, int> {
         sysroot: supplied_sysroot
     })
 }
-

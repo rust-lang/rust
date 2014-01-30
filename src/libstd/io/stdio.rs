@@ -28,9 +28,8 @@ out.write(bytes!("Hello, world!"));
 
 use container::Container;
 use fmt;
-use io::buffered::LineBufferedWriter;
 use io::{Reader, Writer, io_error, IoError, OtherIoError,
-         standard_error, EndOfFile};
+         standard_error, EndOfFile, LineBufferedWriter};
 use libc;
 use option::{Option, Some, None};
 use prelude::drop;
@@ -272,8 +271,6 @@ impl Reader for StdReader {
             }
         }
     }
-
-    fn eof(&mut self) -> bool { false }
 }
 
 /// Representation of a writer to a standard output stream
@@ -375,10 +372,10 @@ mod tests {
 
         let (p, c) = Chan::new();
         let (mut r, w) = (PortReader::new(p), ChanWriter::new(c));
-        do spawn {
+        spawn(proc() {
             set_stdout(~w as ~Writer);
             println!("hello!");
-        }
+        });
         assert_eq!(r.read_to_str(), ~"hello!\n");
     })
 
@@ -387,10 +384,10 @@ mod tests {
 
         let (p, c) = Chan::new();
         let (mut r, w) = (PortReader::new(p), ChanWriter::new(c));
-        do spawn {
+        spawn(proc() {
             set_stderr(~w as ~Writer);
             fail!("my special message");
-        }
+        });
         let s = r.read_to_str();
         assert!(s.contains("my special message"));
     })

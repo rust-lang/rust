@@ -15,7 +15,7 @@
 
 use std::num;
 use std::vec;
-use std::iter::{Invert, RandomAccessIterator};
+use std::iter::{Rev, RandomAccessIterator};
 
 use container::Deque;
 
@@ -187,17 +187,17 @@ impl<T> RingBuf<T> {
     }
 
     /// Front-to-back iterator.
-    pub fn iter<'a>(&'a self) -> RingBufIterator<'a, T> {
-        RingBufIterator{index: 0, rindex: self.nelts, lo: self.lo, elts: self.elts}
+    pub fn iter<'a>(&'a self) -> Items<'a, T> {
+        Items{index: 0, rindex: self.nelts, lo: self.lo, elts: self.elts}
     }
 
     /// Back-to-front iterator.
-    pub fn rev_iter<'a>(&'a self) -> Invert<RingBufIterator<'a, T>> {
-        self.iter().invert()
+    pub fn rev_iter<'a>(&'a self) -> Rev<Items<'a, T>> {
+        self.iter().rev()
     }
 
     /// Front-to-back iterator which returns mutable values.
-    pub fn mut_iter<'a>(&'a mut self) -> RingBufMutIterator<'a, T> {
+    pub fn mut_iter<'a>(&'a mut self) -> MutItems<'a, T> {
         let start_index = raw_index(self.lo, self.elts.len(), 0);
         let end_index = raw_index(self.lo, self.elts.len(), self.nelts);
 
@@ -209,34 +209,34 @@ impl<T> RingBuf<T> {
             //    0 to end_index
             let (temp, remaining1) = self.elts.mut_split_at(start_index);
             let (remaining2, _) = temp.mut_split_at(end_index);
-            RingBufMutIterator { remaining1: remaining1,
+            MutItems { remaining1: remaining1,
                                  remaining2: remaining2,
                                  nelts: self.nelts }
         } else {
             // Items to iterate goes from start_index to end_index:
             let (empty, elts) = self.elts.mut_split_at(0);
             let remaining1 = elts.mut_slice(start_index, end_index);
-            RingBufMutIterator { remaining1: remaining1,
+            MutItems { remaining1: remaining1,
                                  remaining2: empty,
                                  nelts: self.nelts }
         }
     }
 
     /// Back-to-front iterator which returns mutable values.
-    pub fn mut_rev_iter<'a>(&'a mut self) -> Invert<RingBufMutIterator<'a, T>> {
-        self.mut_iter().invert()
+    pub fn mut_rev_iter<'a>(&'a mut self) -> Rev<MutItems<'a, T>> {
+        self.mut_iter().rev()
     }
 }
 
 /// RingBuf iterator
-pub struct RingBufIterator<'a, T> {
+pub struct Items<'a, T> {
     priv lo: uint,
     priv index: uint,
     priv rindex: uint,
     priv elts: &'a [Option<T>],
 }
 
-impl<'a, T> Iterator<&'a T> for RingBufIterator<'a, T> {
+impl<'a, T> Iterator<&'a T> for Items<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<&'a T> {
         if self.index == self.rindex {
@@ -254,7 +254,7 @@ impl<'a, T> Iterator<&'a T> for RingBufIterator<'a, T> {
     }
 }
 
-impl<'a, T> DoubleEndedIterator<&'a T> for RingBufIterator<'a, T> {
+impl<'a, T> DoubleEndedIterator<&'a T> for Items<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a T> {
         if self.index == self.rindex {
@@ -266,9 +266,9 @@ impl<'a, T> DoubleEndedIterator<&'a T> for RingBufIterator<'a, T> {
     }
 }
 
-impl<'a, T> ExactSize<&'a T> for RingBufIterator<'a, T> {}
+impl<'a, T> ExactSize<&'a T> for Items<'a, T> {}
 
-impl<'a, T> RandomAccessIterator<&'a T> for RingBufIterator<'a, T> {
+impl<'a, T> RandomAccessIterator<&'a T> for Items<'a, T> {
     #[inline]
     fn indexable(&self) -> uint { self.rindex - self.index }
 
@@ -284,13 +284,13 @@ impl<'a, T> RandomAccessIterator<&'a T> for RingBufIterator<'a, T> {
 }
 
 /// RingBuf mutable iterator
-pub struct RingBufMutIterator<'a, T> {
+pub struct MutItems<'a, T> {
     priv remaining1: &'a mut [Option<T>],
     priv remaining2: &'a mut [Option<T>],
     priv nelts: uint,
 }
 
-impl<'a, T> Iterator<&'a mut T> for RingBufMutIterator<'a, T> {
+impl<'a, T> Iterator<&'a mut T> for MutItems<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<&'a mut T> {
         if self.nelts == 0 {
@@ -312,7 +312,7 @@ impl<'a, T> Iterator<&'a mut T> for RingBufMutIterator<'a, T> {
     }
 }
 
-impl<'a, T> DoubleEndedIterator<&'a mut T> for RingBufMutIterator<'a, T> {
+impl<'a, T> DoubleEndedIterator<&'a mut T> for MutItems<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a mut T> {
         if self.nelts == 0 {
@@ -329,7 +329,7 @@ impl<'a, T> DoubleEndedIterator<&'a mut T> for RingBufMutIterator<'a, T> {
     }
 }
 
-impl<'a, T> ExactSize<&'a mut T> for RingBufMutIterator<'a, T> {}
+impl<'a, T> ExactSize<&'a mut T> for MutItems<'a, T> {}
 
 /// Grow is only called on full elts, so nelts is also len(elts), unlike
 /// elsewhere.
@@ -571,9 +571,9 @@ mod tests {
     fn bench_grow(b: &mut test::BenchHarness) {
         let mut deq = RingBuf::new();
         b.iter(|| {
-            65.times(|| {
+            for _ in range(0, 65) {
                 deq.push_front(1);
-            })
+            }
         })
     }
 

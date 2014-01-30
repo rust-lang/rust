@@ -33,20 +33,20 @@ use container::Container;
 #[cfg(target_os = "macos")]
 use iter::range;
 use libc;
-use libc::{c_char, c_void, c_int, size_t};
+use libc::{c_char, c_void, c_int};
 use option::{Some, None};
 use os;
 use prelude::*;
 use ptr;
 use str;
-use to_str;
+use fmt;
 use unstable::finally::Finally;
 use sync::atomics::{AtomicInt, INIT_ATOMIC_INT, SeqCst};
 
 /// Delegates to the libc close() function, returning the same return value.
-pub fn close(fd: c_int) -> c_int {
+pub fn close(fd: int) -> int {
     unsafe {
-        libc::close(fd)
+        libc::close(fd as c_int) as int
     }
 }
 
@@ -57,9 +57,9 @@ static BUF_BYTES : uint = 2048u;
 pub fn getcwd() -> Path {
     use c_str::CString;
 
-    let mut buf = [0 as libc::c_char, ..BUF_BYTES];
+    let mut buf = [0 as c_char, ..BUF_BYTES];
     unsafe {
-        if libc::getcwd(buf.as_mut_ptr(), buf.len() as size_t).is_null() {
+        if libc::getcwd(buf.as_mut_ptr(), buf.len() as libc::size_t).is_null() {
             fail!()
         }
         Path::new(CString::new(buf.as_ptr(), false))
@@ -103,9 +103,9 @@ pub mod win32 {
                 let k = f(buf.as_mut_ptr(), TMPBUF_SZ as DWORD);
                 if k == (0 as DWORD) {
                     done = true;
-                } else if (k == n &&
-                           libc::GetLastError() ==
-                           libc::ERROR_INSUFFICIENT_BUFFER as DWORD) {
+                } else if k == n &&
+                          libc::GetLastError() ==
+                          libc::ERROR_INSUFFICIENT_BUFFER as DWORD {
                     n *= (2 as DWORD);
                 } else {
                     done = true;
@@ -159,12 +159,12 @@ pub fn env() -> ~[(~str,~str)] {
                 FreeEnvironmentStringsA
             };
             let ch = GetEnvironmentStringsA();
-            if (ch as uint == 0) {
+            if ch as uint == 0 {
                 fail!("os::env() failure getting env string from OS: {}",
                        os::last_os_error());
             }
             let mut result = ~[];
-            c_str::from_c_multistring(ch as *libc::c_char, None, |cstr| {
+            c_str::from_c_multistring(ch as *c_char, None, |cstr| {
                 result.push(cstr.as_str().unwrap().to_owned());
             });
             FreeEnvironmentStringsA(ch);
@@ -173,10 +173,10 @@ pub fn env() -> ~[(~str,~str)] {
         #[cfg(unix)]
         unsafe fn get_env_pairs() -> ~[~str] {
             extern {
-                fn rust_env_pairs() -> **libc::c_char;
+                fn rust_env_pairs() -> **c_char;
             }
             let environ = rust_env_pairs();
-            if (environ as uint == 0) {
+            if environ as uint == 0 {
                 fail!("os::env() failure getting env string from OS: {}",
                        os::last_os_error());
             }
@@ -306,9 +306,9 @@ pub struct Pipe {
 #[cfg(unix)]
 pub fn pipe() -> Pipe {
     unsafe {
-        let mut fds = Pipe {input: 0 as c_int,
-                            out: 0 as c_int };
-        assert_eq!(libc::pipe(&mut fds.input), (0 as c_int));
+        let mut fds = Pipe {input: 0,
+                            out: 0};
+        assert_eq!(libc::pipe(&mut fds.input), 0);
         return Pipe {input: fds.input, out: fds.out};
     }
 }
@@ -321,13 +321,13 @@ pub fn pipe() -> Pipe {
         // fully understand. Here we explicitly make the pipe non-inheritable,
         // which means to pass it to a subprocess they need to be duplicated
         // first, as in std::run.
-        let mut fds = Pipe {input: 0 as c_int,
-                    out: 0 as c_int };
+        let mut fds = Pipe {input: 0,
+                    out: 0};
         let res = libc::pipe(&mut fds.input, 1024 as ::libc::c_uint,
                              (libc::O_BINARY | libc::O_NOINHERIT) as c_int);
-        assert_eq!(res, 0 as c_int);
-        assert!((fds.input != -1 as c_int && fds.input != 0 as c_int));
-        assert!((fds.out != -1 as c_int && fds.input != 0 as c_int));
+        assert_eq!(res, 0);
+        assert!((fds.input != -1 && fds.input != 0 ));
+        assert!((fds.out != -1 && fds.input != 0));
         return Pipe {input: fds.input, out: fds.out};
     }
 }
@@ -337,9 +337,9 @@ pub fn dll_filename(base: &str) -> ~str {
     format!("{}{}{}", consts::DLL_PREFIX, base, consts::DLL_SUFFIX)
 }
 
-/// Optionally returns the filesystem path to the current executable which is
+/// Optionally returns the filesystem path of the current executable which is
 /// running. If any failure occurs, None is returned.
-pub fn self_exe_path() -> Option<Path> {
+pub fn self_exe_name() -> Option<Path> {
 
     #[cfg(target_os = "freebsd")]
     fn load_self() -> Option<~[u8]> {
@@ -350,14 +350,16 @@ pub fn self_exe_path() -> Option<Path> {
             let mib = ~[CTL_KERN as c_int,
                         KERN_PROC as c_int,
                         KERN_PROC_PATHNAME as c_int, -1 as c_int];
-            let mut sz: size_t = 0;
+            let mut sz: libc::size_t = 0;
             let err = sysctl(mib.as_ptr(), mib.len() as ::libc::c_uint,
-                             ptr::mut_null(), &mut sz, ptr::null(), 0u as size_t);
+                             ptr::mut_null(), &mut sz, ptr::null(),
+                             0u as libc::size_t);
             if err != 0 { return None; }
             if sz == 0 { return None; }
             let mut v: ~[u8] = vec::with_capacity(sz as uint);
             let err = sysctl(mib.as_ptr(), mib.len() as ::libc::c_uint,
-                             v.as_mut_ptr() as *mut c_void, &mut sz, ptr::null(), 0u as size_t);
+                             v.as_mut_ptr() as *mut c_void, &mut sz, ptr::null(),
+                             0u as libc::size_t);
             if err != 0 { return None; }
             if sz == 0 { return None; }
             v.set_len(sz as uint - 1); // chop off trailing NUL
@@ -402,7 +404,14 @@ pub fn self_exe_path() -> Option<Path> {
         }
     }
 
-    load_self().and_then(|path| Path::new_opt(path).map(|mut p| { p.pop(); p }))
+    load_self().and_then(Path::new_opt)
+}
+
+/// Optionally returns the filesystem path to the current executable which is
+/// running. Like self_exe_name() but without the binary's name.
+/// If any failure occurs, None is returned.
+pub fn self_exe_path() -> Option<Path> {
+    self_exe_name().map(|mut p| { p.pop(); p })
 }
 
 /**
@@ -586,12 +595,12 @@ pub fn last_os_error() -> ~str {
         #[cfg(target_os = "macos")]
         #[cfg(target_os = "android")]
         #[cfg(target_os = "freebsd")]
-        fn strerror_r(errnum: c_int, buf: *mut c_char, buflen: size_t)
+        fn strerror_r(errnum: c_int, buf: *mut c_char, buflen: libc::size_t)
                       -> c_int {
             #[nolink]
             extern {
-                fn strerror_r(errnum: c_int, buf: *mut c_char, buflen: size_t)
-                              -> c_int;
+                fn strerror_r(errnum: c_int, buf: *mut c_char,
+                              buflen: libc::size_t) -> c_int;
             }
             unsafe {
                 strerror_r(errnum, buf, buflen)
@@ -602,12 +611,13 @@ pub fn last_os_error() -> ~str {
         // and requires macros to instead use the POSIX compliant variant.
         // So we just use __xpg_strerror_r which is always POSIX compliant
         #[cfg(target_os = "linux")]
-        fn strerror_r(errnum: c_int, buf: *mut c_char, buflen: size_t) -> c_int {
+        fn strerror_r(errnum: c_int, buf: *mut c_char,
+                      buflen: libc::size_t) -> c_int {
             #[nolink]
             extern {
                 fn __xpg_strerror_r(errnum: c_int,
                                     buf: *mut c_char,
-                                    buflen: size_t)
+                                    buflen: libc::size_t)
                                     -> c_int;
             }
             unsafe {
@@ -619,7 +629,7 @@ pub fn last_os_error() -> ~str {
 
         let p = buf.as_mut_ptr();
         unsafe {
-            if strerror_r(errno() as c_int, p, buf.len() as size_t) < 0 {
+            if strerror_r(errno() as c_int, p, buf.len() as libc::size_t) < 0 {
                 fail!("strerror_r failure");
             }
 
@@ -699,7 +709,7 @@ pub fn get_exit_status() -> int {
 }
 
 #[cfg(target_os = "macos")]
-unsafe fn load_argc_and_argv(argc: c_int, argv: **c_char) -> ~[~str] {
+unsafe fn load_argc_and_argv(argc: int, argv: **c_char) -> ~[~str] {
     let mut args = ~[];
     for i in range(0u, argc as uint) {
         args.push(str::raw::from_c_str(*argv.offset(i as int)));
@@ -715,7 +725,7 @@ unsafe fn load_argc_and_argv(argc: c_int, argv: **c_char) -> ~[~str] {
 #[cfg(target_os = "macos")]
 fn real_args() -> ~[~str] {
     unsafe {
-        let (argc, argv) = (*_NSGetArgc() as c_int,
+        let (argc, argv) = (*_NSGetArgc() as int,
                             *_NSGetArgv() as **c_char);
         load_argc_and_argv(argc, argv)
     }
@@ -822,29 +832,31 @@ pub fn page_size() -> uint {
     }
 }
 
-/// A memory mapped file or chunk of memory. This is a very system-specific interface to the OS's
-/// memory mapping facilities (`mmap` on POSIX, `VirtualAlloc`/`CreateFileMapping` on win32). It
-/// makes no attempt at abstracting platform differences, besides in error values returned. Consider
+/// A memory mapped file or chunk of memory. This is a very system-specific
+/// interface to the OS's memory mapping facilities (`mmap` on POSIX,
+/// `VirtualAlloc`/`CreateFileMapping` on win32). It makes no attempt at
+/// abstracting platform differences, besides in error values returned. Consider
 /// yourself warned.
 ///
-/// The memory map is released (unmapped) when the destructor is run, so don't let it leave scope by
-/// accident if you want it to stick around.
+/// The memory map is released (unmapped) when the destructor is run, so don't
+/// let it leave scope by accident if you want it to stick around.
 pub struct MemoryMap {
     /// Pointer to the memory created or modified by this map.
     data: *mut u8,
     /// Number of bytes this map applies to
-    len: size_t,
+    len: uint,
     /// Type of mapping
     kind: MemoryMapKind
 }
 
 /// Type of memory map
 pub enum MemoryMapKind {
-    /// Memory-mapped file. On Windows, the inner pointer is a handle to the mapping, and
-    /// corresponds to `CreateFileMapping`. Elsewhere, it is null.
-    MapFile(*c_void),
-    /// Virtual memory map. Usually used to change the permissions of a given chunk of memory.
-    /// Corresponds to `VirtualAlloc` on Windows.
+    /// Virtual memory map. Usually used to change the permissions of a given
+    /// chunk of memory.  Corresponds to `VirtualAlloc` on Windows.
+    MapFile(*u8),
+    /// Virtual memory map. Usually used to change the permissions of a given
+    /// chunk of memory, or for allocation. Corresponds to `VirtualAlloc` on
+    /// Windows.
     MapVirtual
 }
 
@@ -856,82 +868,120 @@ pub enum MapOption {
     MapWritable,
     /// The memory should be executable
     MapExecutable,
-    /// Create a map for a specific address range. Corresponds to `MAP_FIXED` on POSIX.
-    MapAddr(*c_void),
+    /// Create a map for a specific address range. Corresponds to `MAP_FIXED` on
+    /// POSIX.
+    MapAddr(*u8),
     /// Create a memory mapping for a file with a given fd.
     MapFd(c_int),
-    /// When using `MapFd`, the start of the map is `uint` bytes from the start of the file.
-    MapOffset(uint)
+    /// When using `MapFd`, the start of the map is `uint` bytes from the start
+    /// of the file.
+    MapOffset(uint),
+    /// On POSIX, this can be used to specify the default flags passed to
+    /// `mmap`. By default it uses `MAP_PRIVATE` and, if not using `MapFd`,
+    /// `MAP_ANON`. This will override both of those. This is platform-specific
+    /// (the exact values used) and ignored on Windows.
+    MapNonStandardFlags(c_int),
 }
 
 /// Possible errors when creating a map.
 pub enum MapError {
     /// ## The following are POSIX-specific
     ///
-    /// fd was not open for reading or, if using `MapWritable`, was not open for writing.
+    /// fd was not open for reading or, if using `MapWritable`, was not open for
+    /// writing.
     ErrFdNotAvail,
     /// fd was not valid
     ErrInvalidFd,
-    /// Either the address given by `MapAddr` or offset given by `MapOffset` was not a multiple of
-    /// `MemoryMap::granularity` (unaligned to page size).
+    /// Either the address given by `MapAddr` or offset given by `MapOffset` was
+    /// not a multiple of `MemoryMap::granularity` (unaligned to page size).
     ErrUnaligned,
     /// With `MapFd`, the fd does not support mapping.
     ErrNoMapSupport,
-    /// If using `MapAddr`, the address + `min_len` was outside of the process's address space. If
-    /// using `MapFd`, the target of the fd didn't have enough resources to fulfill the request.
+    /// If using `MapAddr`, the address + `min_len` was outside of the process's
+    /// address space. If using `MapFd`, the target of the fd didn't have enough
+    /// resources to fulfill the request.
     ErrNoMem,
+    /// A zero-length map was requested. This is invalid according to
+    /// [POSIX](http://pubs.opengroup.org/onlinepubs/9699919799/functions/mmap.html).
+    /// Not all platforms obey this, but this wrapper does.
+    ErrZeroLength,
     /// Unrecognized error. The inner value is the unrecognized errno.
-    ErrUnknown(libc::c_int),
+    ErrUnknown(int),
     /// ## The following are win32-specific
     ///
-    /// Unsupported combination of protection flags (`MapReadable`/`MapWritable`/`MapExecutable`).
+    /// Unsupported combination of protection flags
+    /// (`MapReadable`/`MapWritable`/`MapExecutable`).
     ErrUnsupProt,
-    /// When using `MapFd`, `MapOffset` was given (Windows does not support this at all)
+    /// When using `MapFd`, `MapOffset` was given (Windows does not support this
+    /// at all)
     ErrUnsupOffset,
     /// When using `MapFd`, there was already a mapping to the file.
     ErrAlreadyExists,
-    /// Unrecognized error from `VirtualAlloc`. The inner value is the return value of GetLastError.
+    /// Unrecognized error from `VirtualAlloc`. The inner value is the return
+    /// value of GetLastError.
     ErrVirtualAlloc(uint),
-    /// Unrecognized error from `CreateFileMapping`. The inner value is the return value of
-    /// `GetLastError`.
+    /// Unrecognized error from `CreateFileMapping`. The inner value is the
+    /// return value of `GetLastError`.
     ErrCreateFileMappingW(uint),
-    /// Unrecognized error from `MapViewOfFile`. The inner value is the return value of
-    /// `GetLastError`.
+    /// Unrecognized error from `MapViewOfFile`. The inner value is the return
+    /// value of `GetLastError`.
     ErrMapViewOfFile(uint)
 }
 
-impl to_str::ToStr for MapError {
-    fn to_str(&self) -> ~str {
-        match *self {
-            ErrFdNotAvail => ~"fd not available for reading or writing",
-            ErrInvalidFd => ~"Invalid fd",
-            ErrUnaligned => ~"Unaligned address, invalid flags, \
-                              negative length or unaligned offset",
-            ErrNoMapSupport=> ~"File doesn't support mapping",
-            ErrNoMem => ~"Invalid address, or not enough available memory",
-            ErrUnknown(code) => format!("Unknown error={}", code),
-            ErrUnsupProt => ~"Protection mode unsupported",
-            ErrUnsupOffset => ~"Offset in virtual memory mode is unsupported",
-            ErrAlreadyExists => ~"File mapping for specified file already exists",
-            ErrVirtualAlloc(code) => format!("VirtualAlloc failure={}", code),
-            ErrCreateFileMappingW(code) => format!("CreateFileMappingW failure={}", code),
-            ErrMapViewOfFile(code) => format!("MapViewOfFile failure={}", code)
-        }
+impl fmt::Default for MapError {
+    fn fmt(val: &MapError, out: &mut fmt::Formatter) {
+        let str = match *val {
+            ErrFdNotAvail => "fd not available for reading or writing",
+            ErrInvalidFd => "Invalid fd",
+            ErrUnaligned => {
+                "Unaligned address, invalid flags, negative length or \
+                 unaligned offset"
+            }
+            ErrNoMapSupport=> "File doesn't support mapping",
+            ErrNoMem => "Invalid address, or not enough available memory",
+            ErrUnsupProt => "Protection mode unsupported",
+            ErrUnsupOffset => "Offset in virtual memory mode is unsupported",
+            ErrAlreadyExists => "File mapping for specified file already exists",
+            ErrZeroLength => "Zero-length mapping not allowed",
+            ErrUnknown(code) => {
+                write!(out.buf, "Unknown error = {}", code);
+                return
+            },
+            ErrVirtualAlloc(code) => {
+                write!(out.buf, "VirtualAlloc failure = {}", code);
+                return
+            },
+            ErrCreateFileMappingW(code) => {
+                format!("CreateFileMappingW failure = {}", code);
+                return
+            },
+            ErrMapViewOfFile(code) => {
+                write!(out.buf, "MapViewOfFile failure = {}", code);
+                return
+            }
+        };
+        write!(out.buf, "{}", str);
     }
 }
 
 #[cfg(unix)]
 impl MemoryMap {
-    /// Create a new mapping with the given `options`, at least `min_len` bytes long.
+    /// Create a new mapping with the given `options`, at least `min_len` bytes
+    /// long. `min_len` must be greater than zero; see the note on
+    /// `ErrZeroLength`.
     pub fn new(min_len: uint, options: &[MapOption]) -> Result<MemoryMap, MapError> {
         use libc::off_t;
 
-        let mut addr: *c_void = ptr::null();
-        let mut prot: c_int = 0;
-        let mut flags: c_int = libc::MAP_PRIVATE;
-        let mut fd: c_int = -1;
-        let mut offset: off_t = 0;
-        let len = round_up(min_len, page_size()) as size_t;
+        if min_len == 0 {
+            return Err(ErrZeroLength)
+        }
+        let mut addr: *u8 = ptr::null();
+        let mut prot = 0;
+        let mut flags = libc::MAP_PRIVATE;
+        let mut fd = -1;
+        let mut offset = 0;
+        let mut custom_flags = false;
+        let len = round_up(min_len, page_size());
 
         for &o in options.iter() {
             match o {
@@ -946,13 +996,15 @@ impl MemoryMap {
                     flags |= libc::MAP_FILE;
                     fd = fd_;
                 },
-                MapOffset(offset_) => { offset = offset_ as off_t; }
+                MapOffset(offset_) => { offset = offset_ as off_t; },
+                MapNonStandardFlags(f) => { custom_flags = true; flags = f },
             }
         }
-        if fd == -1 { flags |= libc::MAP_ANON; }
+        if fd == -1 && !custom_flags { flags |= libc::MAP_ANON; }
 
         let r = unsafe {
-            libc::mmap(addr, len, prot, flags, fd, offset)
+            libc::mmap(addr as *c_void, len as libc::size_t, prot, flags, fd,
+                       offset)
         };
         if r.equiv(&libc::MAP_FAILED) {
             Err(match errno() as c_int {
@@ -961,7 +1013,7 @@ impl MemoryMap {
                 libc::EINVAL => ErrUnaligned,
                 libc::ENODEV => ErrNoMapSupport,
                 libc::ENOMEM => ErrNoMem,
-                code => ErrUnknown(code)
+                code => ErrUnknown(code as int)
             })
         } else {
             Ok(MemoryMap {
@@ -976,7 +1028,8 @@ impl MemoryMap {
         }
     }
 
-    /// Granularity that the offset or address must be for `MapOffset` and `MapAddr` respectively.
+    /// Granularity that the offset or address must be for `MapOffset` and
+    /// `MapAddr` respectively.
     pub fn granularity() -> uint {
         page_size()
     }
@@ -986,8 +1039,10 @@ impl MemoryMap {
 impl Drop for MemoryMap {
     /// Unmap the mapping. Fails the task if `munmap` fails.
     fn drop(&mut self) {
+        if self.len == 0 { /* workaround for dummy_stack */ return; }
+
         unsafe {
-            match libc::munmap(self.data as *c_void, self.len) {
+            match libc::munmap(self.data as *c_void, self.len as libc::size_t) {
                 0 => (),
                 -1 => match errno() as c_int {
                     libc::EINVAL => error!("invalid addr or len"),
@@ -1011,7 +1066,7 @@ impl MemoryMap {
         let mut executable = false;
         let mut fd: c_int = -1;
         let mut offset: uint = 0;
-        let len = round_up(min_len, page_size()) as SIZE_T;
+        let len = round_up(min_len, page_size());
 
         for &o in options.iter() {
             match o {
@@ -1020,7 +1075,11 @@ impl MemoryMap {
                 MapExecutable => { executable = true; }
                 MapAddr(addr_) => { lpAddress = addr_ as LPVOID; },
                 MapFd(fd_) => { fd = fd_; },
-                MapOffset(offset_) => { offset = offset_; }
+                MapOffset(offset_) => { offset = offset_; },
+                MapNonStandardFlags(f) => {
+                    info!("MemoryMap::new: MapNonStandardFlags used on \
+                           Windows: {}", f)
+                }
             }
         }
 
@@ -1040,7 +1099,7 @@ impl MemoryMap {
             }
             let r = unsafe {
                 libc::VirtualAlloc(lpAddress,
-                                   len,
+                                   len as SIZE_T,
                                    libc::MEM_COMMIT | libc::MEM_RESERVE,
                                    flProtect)
             };
@@ -1085,7 +1144,7 @@ impl MemoryMap {
                     _ => Ok(MemoryMap {
                        data: r as *mut u8,
                        len: len,
-                       kind: MapFile(mapping as *c_void)
+                       kind: MapFile(mapping as *u8)
                     })
                 }
             }
@@ -1106,18 +1165,18 @@ impl MemoryMap {
 
 #[cfg(windows)]
 impl Drop for MemoryMap {
-    /// Unmap the mapping. Fails the task if any of `VirtualFree`, `UnmapViewOfFile`, or
-    /// `CloseHandle` fail.
+    /// Unmap the mapping. Fails the task if any of `VirtualFree`,
+    /// `UnmapViewOfFile`, or `CloseHandle` fail.
     fn drop(&mut self) {
         use libc::types::os::arch::extra::{LPCVOID, HANDLE};
         use libc::consts::os::extra::FALSE;
+        if self.len == 0 { return }
 
         unsafe {
             match self.kind {
                 MapVirtual => {
-                    if libc::VirtualFree(self.data as *mut c_void,
-                                         self.len,
-                                         libc::MEM_RELEASE) == FALSE {
+                    if libc::VirtualFree(self.data as *mut c_void, 0,
+                                         libc::MEM_RELEASE) == 0 {
                         error!("VirtualFree failed: {}", errno());
                     }
                 },
@@ -1311,6 +1370,17 @@ mod tests {
     }
 
     #[test]
+    fn test_self_exe_name() {
+        let path = os::self_exe_name();
+        assert!(path.is_some());
+        let path = path.unwrap();
+        debug!("{:?}", path.clone());
+
+        // Hard to test this function
+        assert!(path.is_absolute());
+    }
+
+    #[test]
     fn test_self_exe_path() {
         let path = os::self_exe_path();
         assert!(path.is_some());
@@ -1411,7 +1481,7 @@ mod tests {
             os::MapWritable
         ]) {
             Ok(chunk) => chunk,
-            Err(msg) => fail!(msg.to_str())
+            Err(msg) => fail!("{}", msg)
         };
         assert!(chunk.len >= 16);
 
@@ -1461,7 +1531,7 @@ mod tests {
             MapOffset(size / 2)
         ]) {
             Ok(chunk) => chunk,
-            Err(msg) => fail!(msg.to_str())
+            Err(msg) => fail!("{}", msg)
         };
         assert!(chunk.len > 0);
 

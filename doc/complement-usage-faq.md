@@ -20,15 +20,11 @@ If you aren't sure which paths you need, try setting RUST_LOG to `::help` and ru
 
 This is much like the answer for `log` statements, except that you also need to compile your program in debug mode (that is, pass `--cfg debug` to `rustc`).  Note that if you want to see the instrumentation of the `debug!` statements within `rustc` itself, you need a debug version of `rustc`; you can get one by invoking `configure` with the `--enable-debug` option.
 
-# What does it mean when a program exits with `leaked memory in rust main loop (2 objects)' failed, rt/memory_region.cpp:99 2 objects`?
+# What does it mean when a program exits with `leaked memory`?
+
+The error looks like this: `leaked memory in rust main loop (2 objects)' failed, rt/memory_region.cpp:99 2 objects`.
 
 This message indicates a memory leak, and is mostly likely to happen on rarely exercised failure paths. Note that failure unwinding is not yet implemented on windows so this is expected. If you see this on Linux or Mac it's a compiler bug; please report it.
-
-# Why do gdb backtraces end with the error 'previous frame inner to this frame (corrupt stack?)'?
-
-**Short answer** your gdb is too old to understand our hip new stacks. Upgrade to a newer version (7.3.1 is known to work).
-
-**Long answer** Rust uses 'spaghetti stacks' (a linked list of stacks) to allow tasks to start very small but recurse arbitrarily deep when necessary. As a result, new frames don't always decrease the stack pointer like gdb expects but instead may jump around the heap to different stack segments. Newer versions of gdb recognize that the special function called __morestack may change the stack pointer to a different stack.
 
 # Why did my build create a bunch of zero-length files in my lib directory?
 

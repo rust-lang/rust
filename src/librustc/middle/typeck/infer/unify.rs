@@ -296,16 +296,15 @@ impl SimplyUnifiable for IntVarValue {
     }
 }
 
-impl UnifyVid<Option<ast::float_ty>> for ty::FloatVid {
+impl UnifyVid<Option<ast::FloatTy>> for ty::FloatVid {
     fn appropriate_vals_and_bindings<'v>(infcx: &'v InferCtxt)
-        -> &'v RefCell<ValsAndBindings<ty::FloatVid,
-                                           Option<ast::float_ty>>> {
+        -> &'v RefCell<ValsAndBindings<ty::FloatVid, Option<ast::FloatTy>>> {
         return &infcx.float_var_bindings;
     }
 }
 
-impl SimplyUnifiable for ast::float_ty {
-    fn to_type_err(err: expected_found<ast::float_ty>) -> ty::type_err {
+impl SimplyUnifiable for ast::FloatTy {
+    fn to_type_err(err: expected_found<ast::FloatTy>) -> ty::type_err {
         return ty::terr_float_mismatch(err);
     }
 }

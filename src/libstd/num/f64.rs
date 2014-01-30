@@ -14,16 +14,15 @@
 
 use prelude::*;
 
-use cmath::c_double_utils;
+use cmath;
 use default::Default;
 use libc::{c_double, c_int};
 use num::{FPCategory, FPNaN, FPInfinite , FPZero, FPSubnormal, FPNormal};
-use num::{Zero, One, strconv};
+use num::{Zero, One, Bounded, strconv};
 use num;
 use to_str;
 use unstable::intrinsics;
 
-pub use cmath::c_double_targ_consts::*;
 pub use cmp::{min, max};
 
 macro_rules! delegate(
@@ -64,8 +63,8 @@ delegate!(
     fn sqrt(n: f64) -> f64 = intrinsics::sqrtf64,
 
     // LLVM 3.3 required to use intrinsics for these four
-    fn ceil(n: c_double) -> c_double = c_double_utils::ceil,
-    fn trunc(n: c_double) -> c_double = c_double_utils::trunc,
+    fn ceil(n: c_double) -> c_double = cmath::c_double::ceil,
+    fn trunc(n: c_double) -> c_double = cmath::c_double::trunc,
     /*
     fn ceil(n: f64) -> f64 = intrinsics::ceilf64,
     fn trunc(n: f64) -> f64 = intrinsics::truncf64,
@@ -74,44 +73,36 @@ delegate!(
     */
 
     // cmath
-    fn acos(n: c_double) -> c_double = c_double_utils::acos,
-    fn asin(n: c_double) -> c_double = c_double_utils::asin,
-    fn atan(n: c_double) -> c_double = c_double_utils::atan,
-    fn atan2(a: c_double, b: c_double) -> c_double = c_double_utils::atan2,
-    fn cbrt(n: c_double) -> c_double = c_double_utils::cbrt,
-    fn copysign(x: c_double, y: c_double) -> c_double = c_double_utils::copysign,
-    fn cosh(n: c_double) -> c_double = c_double_utils::cosh,
-    // fn erf(n: c_double) -> c_double = c_double_utils::erf,
-    // fn erfc(n: c_double) -> c_double = c_double_utils::erfc,
-    fn exp_m1(n: c_double) -> c_double = c_double_utils::exp_m1,
-    fn abs_sub(a: c_double, b: c_double) -> c_double = c_double_utils::abs_sub,
-    fn next_after(x: c_double, y: c_double) -> c_double = c_double_utils::next_after,
-    fn frexp(n: c_double, value: &mut c_int) -> c_double = c_double_utils::frexp,
-    fn hypot(x: c_double, y: c_double) -> c_double = c_double_utils::hypot,
-    fn ldexp(x: c_double, n: c_int) -> c_double = c_double_utils::ldexp,
-    fn lgamma(n: c_double, sign: &mut c_int) -> c_double = c_double_utils::lgamma,
-    // fn log_radix(n: c_double) -> c_double = c_double_utils::log_radix,
-    fn ln_1p(n: c_double) -> c_double = c_double_utils::ln_1p,
-    // fn ilog_radix(n: c_double) -> c_int = c_double_utils::ilog_radix,
-    // fn modf(n: c_double, iptr: &mut c_double) -> c_double = c_double_utils::modf,
-    fn round(n: c_double) -> c_double = c_double_utils::round,
-    // fn ldexp_radix(n: c_double, i: c_int) -> c_double = c_double_utils::ldexp_radix,
-    fn sinh(n: c_double) -> c_double = c_double_utils::sinh,
-    fn tan(n: c_double) -> c_double = c_double_utils::tan,
-    fn tanh(n: c_double) -> c_double = c_double_utils::tanh,
-    fn tgamma(n: c_double) -> c_double = c_double_utils::tgamma,
-    fn j0(n: c_double) -> c_double = c_double_utils::j0,
-    fn j1(n: c_double) -> c_double = c_double_utils::j1,
-    fn jn(i: c_int, n: c_double) -> c_double = c_double_utils::jn,
-    fn y0(n: c_double) -> c_double = c_double_utils::y0,
-    fn y1(n: c_double) -> c_double = c_double_utils::y1,
-    fn yn(i: c_int, n: c_double) -> c_double = c_double_utils::yn
+    fn acos(n: c_double) -> c_double = cmath::c_double::acos,
+    fn asin(n: c_double) -> c_double = cmath::c_double::asin,
+    fn atan(n: c_double) -> c_double = cmath::c_double::atan,
+    fn atan2(a: c_double, b: c_double) -> c_double = cmath::c_double::atan2,
+    fn cbrt(n: c_double) -> c_double = cmath::c_double::cbrt,
+    fn copysign(x: c_double, y: c_double) -> c_double = cmath::c_double::copysign,
+    fn cosh(n: c_double) -> c_double = cmath::c_double::cosh,
+    // fn erf(n: c_double) -> c_double = cmath::c_double::erf,
+    // fn erfc(n: c_double) -> c_double = cmath::c_double::erfc,
+    fn exp_m1(n: c_double) -> c_double = cmath::c_double::exp_m1,
+    fn abs_sub(a: c_double, b: c_double) -> c_double = cmath::c_double::abs_sub,
+    fn next_after(x: c_double, y: c_double) -> c_double = cmath::c_double::next_after,
+    fn frexp(n: c_double, value: &mut c_int) -> c_double = cmath::c_double::frexp,
+    fn hypot(x: c_double, y: c_double) -> c_double = cmath::c_double::hypot,
+    fn ldexp(x: c_double, n: c_int) -> c_double = cmath::c_double::ldexp,
+    // fn log_radix(n: c_double) -> c_double = cmath::c_double::log_radix,
+    fn ln_1p(n: c_double) -> c_double = cmath::c_double::ln_1p,
+    // fn ilog_radix(n: c_double) -> c_int = cmath::c_double::ilog_radix,
+    // fn modf(n: c_double, iptr: &mut c_double) -> c_double = cmath::c_double::modf,
+    fn round(n: c_double) -> c_double = cmath::c_double::round,
+    // fn ldexp_radix(n: c_double, i: c_int) -> c_double = cmath::c_double::ldexp_radix,
+    fn sinh(n: c_double) -> c_double = cmath::c_double::sinh,
+    fn tan(n: c_double) -> c_double = cmath::c_double::tan,
+    fn tanh(n: c_double) -> c_double = cmath::c_double::tanh
 )
 
 // FIXME (#1433): obtain these in a different way
 
-// These are not defined inside consts:: for consistency with
-// the integer types
+// FIXME(#11621): These constants should be deprecated once CTFE is implemented
+// in favour of calling their respective functions in `Bounded` and `Float`.
 
 pub static RADIX: uint = 2u;
 
@@ -141,6 +132,10 @@ pub static NEG_INFINITY: f64 = -1.0_f64/0.0_f64;
 pub mod consts {
     // FIXME (requires Issue #1433 to fix): replace with mathematical
     // constants from cmath.
+
+    // FIXME(#11621): These constants should be deprecated once CTFE is
+    // implemented in favour of calling their respective functions in `Real`.
+
     /// Archimedes' constant
     pub static PI: f64 = 3.14159265358979323846264338327950288_f64;
 
@@ -187,22 +182,6 @@ impl Num for f64 {}
 impl Eq for f64 {
     #[inline]
     fn eq(&self, other: &f64) -> bool { (*self) == (*other) }
-}
-
-#[cfg(not(test))]
-impl ApproxEq<f64> for f64 {
-    #[inline]
-    fn approx_epsilon() -> f64 { 1.0e-6 }
-
-    #[inline]
-    fn approx_eq(&self, other: &f64) -> bool {
-        self.approx_eq_eps(other, &1.0e-6)
-    }
-
-    #[inline]
-    fn approx_eq_eps(&self, other: &f64, approx_epsilon: &f64) -> bool {
-        (*self - *other).abs() < *approx_epsilon
-    }
 }
 
 #[cfg(not(test))]
@@ -308,20 +287,16 @@ impl Signed for f64 {
     #[inline]
     fn abs(&self) -> f64 { abs(*self) }
 
-    ///
     /// The positive difference of two numbers. Returns `0.0` if the number is less than or
     /// equal to `other`, otherwise the difference between`self` and `other` is returned.
-    ///
     #[inline]
     fn abs_sub(&self, other: &f64) -> f64 { abs_sub(*self, *other) }
 
-    ///
     /// # Returns
     ///
     /// - `1.0` if the number is positive, `+0.0` or `INFINITY`
     /// - `-1.0` if the number is negative, `-0.0` or `NEG_INFINITY`
     /// - `NAN` if the number is NaN
-    ///
     #[inline]
     fn signum(&self) -> f64 {
         if self.is_nan() { NAN } else { copysign(1.0, *self) }
@@ -353,156 +328,14 @@ impl Round for f64 {
     #[inline]
     fn trunc(&self) -> f64 { trunc(*self) }
 
-    ///
     /// The fractional part of the number, satisfying:
     ///
     /// ```rust
     /// let x = 1.65f64;
     /// assert!(x == x.trunc() + x.fract())
     /// ```
-    ///
     #[inline]
     fn fract(&self) -> f64 { *self - self.trunc() }
-}
-
-impl Fractional for f64 {
-    /// The reciprocal (multiplicative inverse) of the number
-    #[inline]
-    fn recip(&self) -> f64 { 1.0 / *self }
-}
-
-impl Algebraic for f64 {
-    #[inline]
-    fn pow(&self, n: &f64) -> f64 { pow(*self, *n) }
-
-    #[inline]
-    fn sqrt(&self) -> f64 { sqrt(*self) }
-
-    #[inline]
-    fn rsqrt(&self) -> f64 { self.sqrt().recip() }
-
-    #[inline]
-    fn cbrt(&self) -> f64 { cbrt(*self) }
-
-    #[inline]
-    fn hypot(&self, other: &f64) -> f64 { hypot(*self, *other) }
-}
-
-impl Trigonometric for f64 {
-    #[inline]
-    fn sin(&self) -> f64 { sin(*self) }
-
-    #[inline]
-    fn cos(&self) -> f64 { cos(*self) }
-
-    #[inline]
-    fn tan(&self) -> f64 { tan(*self) }
-
-    #[inline]
-    fn asin(&self) -> f64 { asin(*self) }
-
-    #[inline]
-    fn acos(&self) -> f64 { acos(*self) }
-
-    #[inline]
-    fn atan(&self) -> f64 { atan(*self) }
-
-    #[inline]
-    fn atan2(&self, other: &f64) -> f64 { atan2(*self, *other) }
-
-    /// Simultaneously computes the sine and cosine of the number
-    #[inline]
-    fn sin_cos(&self) -> (f64, f64) {
-        (self.sin(), self.cos())
-    }
-}
-
-impl Exponential for f64 {
-    /// Returns the exponential of the number
-    #[inline]
-    fn exp(&self) -> f64 { exp(*self) }
-
-    /// Returns 2 raised to the power of the number
-    #[inline]
-    fn exp2(&self) -> f64 { exp2(*self) }
-
-    /// Returns the natural logarithm of the number
-    #[inline]
-    fn ln(&self) -> f64 { ln(*self) }
-
-    /// Returns the logarithm of the number with respect to an arbitrary base
-    #[inline]
-    fn log(&self, base: &f64) -> f64 { self.ln() / base.ln() }
-
-    /// Returns the base 2 logarithm of the number
-    #[inline]
-    fn log2(&self) -> f64 { log2(*self) }
-
-    /// Returns the base 10 logarithm of the number
-    #[inline]
-    fn log10(&self) -> f64 { log10(*self) }
-}
-
-impl Hyperbolic for f64 {
-    #[inline]
-    fn sinh(&self) -> f64 { sinh(*self) }
-
-    #[inline]
-    fn cosh(&self) -> f64 { cosh(*self) }
-
-    #[inline]
-    fn tanh(&self) -> f64 { tanh(*self) }
-
-    ///
-    /// Inverse hyperbolic sine
-    ///
-    /// # Returns
-    ///
-    /// - on success, the inverse hyperbolic sine of `self` will be returned
-    /// - `self` if `self` is `0.0`, `-0.0`, `INFINITY`, or `NEG_INFINITY`
-    /// - `NAN` if `self` is `NAN`
-    ///
-    #[inline]
-    fn asinh(&self) -> f64 {
-        match *self {
-            NEG_INFINITY => NEG_INFINITY,
-            x => (x + ((x * x) + 1.0).sqrt()).ln(),
-        }
-    }
-
-    ///
-    /// Inverse hyperbolic cosine
-    ///
-    /// # Returns
-    ///
-    /// - on success, the inverse hyperbolic cosine of `self` will be returned
-    /// - `INFINITY` if `self` is `INFINITY`
-    /// - `NAN` if `self` is `NAN` or `self < 1.0` (including `NEG_INFINITY`)
-    ///
-    #[inline]
-    fn acosh(&self) -> f64 {
-        match *self {
-            x if x < 1.0 => Float::nan(),
-            x => (x + ((x * x) - 1.0).sqrt()).ln(),
-        }
-    }
-
-    ///
-    /// Inverse hyperbolic tangent
-    ///
-    /// # Returns
-    ///
-    /// - on success, the inverse hyperbolic tangent of `self` will be returned
-    /// - `self` if `self` is `0.0` or `-0.0`
-    /// - `INFINITY` if `self` is `1.0`
-    /// - `NEG_INFINITY` if `self` is `-1.0`
-    /// - `NAN` if the `self` is `NAN` or outside the domain of `-1.0 <= self <= 1.0`
-    ///   (including `INFINITY` and `NEG_INFINITY`)
-    ///
-    #[inline]
-    fn atanh(&self) -> f64 {
-        0.5 * ((2.0 * *self) / (1.0 - *self)).ln_1p()
-    }
 }
 
 impl Real for f64 {
@@ -574,6 +407,130 @@ impl Real for f64 {
     #[inline]
     fn ln_10() -> f64 { 2.30258509299404568401799145468436421 }
 
+    /// The reciprocal (multiplicative inverse) of the number
+    #[inline]
+    fn recip(&self) -> f64 { 1.0 / *self }
+
+    #[inline]
+    fn powf(&self, n: &f64) -> f64 { pow(*self, *n) }
+
+    #[inline]
+    fn sqrt(&self) -> f64 { sqrt(*self) }
+
+    #[inline]
+    fn rsqrt(&self) -> f64 { self.sqrt().recip() }
+
+    #[inline]
+    fn cbrt(&self) -> f64 { cbrt(*self) }
+
+    #[inline]
+    fn hypot(&self, other: &f64) -> f64 { hypot(*self, *other) }
+
+    #[inline]
+    fn sin(&self) -> f64 { sin(*self) }
+
+    #[inline]
+    fn cos(&self) -> f64 { cos(*self) }
+
+    #[inline]
+    fn tan(&self) -> f64 { tan(*self) }
+
+    #[inline]
+    fn asin(&self) -> f64 { asin(*self) }
+
+    #[inline]
+    fn acos(&self) -> f64 { acos(*self) }
+
+    #[inline]
+    fn atan(&self) -> f64 { atan(*self) }
+
+    #[inline]
+    fn atan2(&self, other: &f64) -> f64 { atan2(*self, *other) }
+
+    /// Simultaneously computes the sine and cosine of the number
+    #[inline]
+    fn sin_cos(&self) -> (f64, f64) {
+        (self.sin(), self.cos())
+    }
+
+    /// Returns the exponential of the number
+    #[inline]
+    fn exp(&self) -> f64 { exp(*self) }
+
+    /// Returns 2 raised to the power of the number
+    #[inline]
+    fn exp2(&self) -> f64 { exp2(*self) }
+
+    /// Returns the natural logarithm of the number
+    #[inline]
+    fn ln(&self) -> f64 { ln(*self) }
+
+    /// Returns the logarithm of the number with respect to an arbitrary base
+    #[inline]
+    fn log(&self, base: &f64) -> f64 { self.ln() / base.ln() }
+
+    /// Returns the base 2 logarithm of the number
+    #[inline]
+    fn log2(&self) -> f64 { log2(*self) }
+
+    /// Returns the base 10 logarithm of the number
+    #[inline]
+    fn log10(&self) -> f64 { log10(*self) }
+
+    #[inline]
+    fn sinh(&self) -> f64 { sinh(*self) }
+
+    #[inline]
+    fn cosh(&self) -> f64 { cosh(*self) }
+
+    #[inline]
+    fn tanh(&self) -> f64 { tanh(*self) }
+
+    /// Inverse hyperbolic sine
+    ///
+    /// # Returns
+    ///
+    /// - on success, the inverse hyperbolic sine of `self` will be returned
+    /// - `self` if `self` is `0.0`, `-0.0`, `INFINITY`, or `NEG_INFINITY`
+    /// - `NAN` if `self` is `NAN`
+    #[inline]
+    fn asinh(&self) -> f64 {
+        match *self {
+            NEG_INFINITY => NEG_INFINITY,
+            x => (x + ((x * x) + 1.0).sqrt()).ln(),
+        }
+    }
+
+    /// Inverse hyperbolic cosine
+    ///
+    /// # Returns
+    ///
+    /// - on success, the inverse hyperbolic cosine of `self` will be returned
+    /// - `INFINITY` if `self` is `INFINITY`
+    /// - `NAN` if `self` is `NAN` or `self < 1.0` (including `NEG_INFINITY`)
+    #[inline]
+    fn acosh(&self) -> f64 {
+        match *self {
+            x if x < 1.0 => Float::nan(),
+            x => (x + ((x * x) - 1.0).sqrt()).ln(),
+        }
+    }
+
+    /// Inverse hyperbolic tangent
+    ///
+    /// # Returns
+    ///
+    /// - on success, the inverse hyperbolic tangent of `self` will be returned
+    /// - `self` if `self` is `0.0` or `-0.0`
+    /// - `INFINITY` if `self` is `1.0`
+    /// - `NEG_INFINITY` if `self` is `-1.0`
+    /// - `NAN` if the `self` is `NAN` or outside the domain of `-1.0 <= self <= 1.0`
+    ///   (including `INFINITY` and `NEG_INFINITY`)
+    #[inline]
+    fn atanh(&self) -> f64 {
+        0.5 * ((2.0 * *self) / (1.0 - *self)).ln_1p()
+    }
+
     /// Converts to degrees, assuming the number is in radians
     #[inline]
     fn to_degrees(&self) -> f64 { *self * (180.0f64 / Real::pi()) }
@@ -586,36 +543,6 @@ impl Real for f64 {
     }
 }
 
-impl RealExt for f64 {
-    #[inline]
-    fn lgamma(&self) -> (int, f64) {
-        let mut sign = 0;
-        let result = lgamma(*self, &mut sign);
-        (sign as int, result)
-    }
-
-    #[inline]
-    fn tgamma(&self) -> f64 { tgamma(*self) }
-
-    #[inline]
-    fn j0(&self) -> f64 { j0(*self) }
-
-    #[inline]
-    fn j1(&self) -> f64 { j1(*self) }
-
-    #[inline]
-    fn jn(&self, n: int) -> f64 { jn(n as c_int, *self) }
-
-    #[inline]
-    fn y0(&self) -> f64 { y0(*self) }
-
-    #[inline]
-    fn y1(&self) -> f64 { y1(*self) }
-
-    #[inline]
-    fn yn(&self, n: int) -> f64 { yn(n as c_int, *self) }
-}
-
 impl Bounded for f64 {
     #[inline]
     fn min_value() -> f64 { 2.2250738585072014e-308 }
@@ -624,16 +551,7 @@ impl Bounded for f64 {
     fn max_value() -> f64 { 1.7976931348623157e+308 }
 }
 
-impl Primitive for f64 {
-    #[inline]
-    fn bits(_: Option<f64>) -> uint { 64 }
-
-    #[inline]
-    fn bytes(_: Option<f64>) -> uint { Primitive::bits(Some(0f64)) / 8 }
-
-    #[inline]
-    fn is_signed(_: Option<f64>) -> bool { true }
-}
+impl Primitive for f64 {}
 
 impl Float for f64 {
     #[inline]
@@ -715,12 +633,10 @@ impl Float for f64 {
         ldexp(x, exp as c_int)
     }
 
-    ///
     /// Breaks the number into a normalized fraction and a base-2 exponent, satisfying:
     ///
     /// - `self = x * pow(2, exp)`
     /// - `0.5 <= abs(x) < 1.0`
-    ///
     #[inline]
     fn frexp(&self) -> (f64, int) {
         let mut exp = 0;
@@ -728,25 +644,19 @@ impl Float for f64 {
         (x, exp as int)
     }
 
-    ///
     /// Returns the exponential of the number, minus `1`, in a way that is accurate
     /// even if the number is close to zero
-    ///
     #[inline]
     fn exp_m1(&self) -> f64 { exp_m1(*self) }
 
-    ///
     /// Returns the natural logarithm of the number plus `1` (`ln(1+n)`) more accurately
     /// than if the operations were performed separately
-    ///
     #[inline]
     fn ln_1p(&self) -> f64 { ln_1p(*self) }
 
-    ///
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding error. This
     /// produces a more accurate result with better performance than a separate multiplication
     /// operation followed by an add.
-    ///
     #[inline]
     fn mul_add(&self, a: f64, b: f64) -> f64 {
         mul_add(*self, a, b)
@@ -780,35 +690,30 @@ impl Float for f64 {
 // Section: String Conversions
 //
 
-///
 /// Converts a float to a string
 ///
 /// # Arguments
 ///
 /// * num - The float value
-///
 #[inline]
 pub fn to_str(num: f64) -> ~str {
     let (r, _) = strconv::float_to_str_common(
-        num, 10u, true, strconv::SignNeg, strconv::DigAll);
+        num, 10u, true, strconv::SignNeg, strconv::DigAll, strconv::ExpNone, false);
     r
 }
 
-///
 /// Converts a float to a string in hexadecimal format
 ///
 /// # Arguments
 ///
 /// * num - The float value
-///
 #[inline]
 pub fn to_str_hex(num: f64) -> ~str {
     let (r, _) = strconv::float_to_str_common(
-        num, 16u, true, strconv::SignNeg, strconv::DigAll);
+        num, 16u, true, strconv::SignNeg, strconv::DigAll, strconv::ExpNone, false);
     r
 }
 
-///
 /// Converts a float to a string in a given radix, and a flag indicating
 /// whether it's a special value
 ///
@@ -816,14 +721,12 @@ pub fn to_str_hex(num: f64) -> ~str {
 ///
 /// * num - The float value
 /// * radix - The base to use
-///
 #[inline]
 pub fn to_str_radix_special(num: f64, rdx: uint) -> (~str, bool) {
     strconv::float_to_str_common(num, rdx, true,
-                           strconv::SignNeg, strconv::DigAll)
+                           strconv::SignNeg, strconv::DigAll, strconv::ExpNone, false)
 }
 
-///
 /// Converts a float to a string with exactly the number of
 /// provided significant digits
 ///
@@ -831,15 +734,13 @@ pub fn to_str_radix_special(num: f64, rdx: uint) -> (~str, bool) {
 ///
 /// * num - The float value
 /// * digits - The number of significant digits
-///
 #[inline]
 pub fn to_str_exact(num: f64, dig: uint) -> ~str {
     let (r, _) = strconv::float_to_str_common(
-        num, 10u, true, strconv::SignNeg, strconv::DigExact(dig));
+        num, 10u, true, strconv::SignNeg, strconv::DigExact(dig), strconv::ExpNone, false);
     r
 }
 
-///
 /// Converts a float to a string with a maximum number of
 /// significant digits
 ///
@@ -847,11 +748,40 @@ pub fn to_str_exact(num: f64, dig: uint) -> ~str {
 ///
 /// * num - The float value
 /// * digits - The number of significant digits
-///
 #[inline]
 pub fn to_str_digits(num: f64, dig: uint) -> ~str {
     let (r, _) = strconv::float_to_str_common(
-        num, 10u, true, strconv::SignNeg, strconv::DigMax(dig));
+        num, 10u, true, strconv::SignNeg, strconv::DigMax(dig), strconv::ExpNone, false);
+    r
+}
+
+/// Converts a float to a string using the exponential notation with exactly the number of
+/// provided digits after the decimal point in the significand
+///
+/// # Arguments
+///
+/// * num - The float value
+/// * digits - The number of digits after the decimal point
+/// * upper - Use `E` instead of `e` for the exponent sign
+#[inline]
+pub fn to_str_exp_exact(num: f64, dig: uint, upper: bool) -> ~str {
+    let (r, _) = strconv::float_to_str_common(
+        num, 10u, true, strconv::SignNeg, strconv::DigExact(dig), strconv::ExpDec, upper);
+    r
+}
+
+/// Converts a float to a string using the exponential notation with the maximum number of
+/// digits after the decimal point in the significand
+///
+/// # Arguments
+///
+/// * num - The float value
+/// * digits - The number of digits after the decimal point
+/// * upper - Use `E` instead of `e` for the exponent sign
+#[inline]
+pub fn to_str_exp_digits(num: f64, dig: uint, upper: bool) -> ~str {
+    let (r, _) = strconv::float_to_str_common(
+        num, 10u, true, strconv::SignNeg, strconv::DigMax(dig), strconv::ExpDec, upper);
     r
 }
 
@@ -876,14 +806,13 @@ impl num::ToStrRadix for f64 {
     #[inline]
     fn to_str_radix(&self, rdx: uint) -> ~str {
         let (r, special) = strconv::float_to_str_common(
-            *self, rdx, true, strconv::SignNeg, strconv::DigAll);
+            *self, rdx, true, strconv::SignNeg, strconv::DigAll, strconv::ExpNone, false);
         if special { fail!("number has a special value, \
                              try to_str_radix_special() if those are expected") }
         r
     }
 }
 
-///
 /// Convert a string in base 16 to a float.
 /// Accepts a optional binary exponent.
 ///
@@ -909,7 +838,6 @@ impl num::ToStrRadix for f64 {
 ///
 /// `None` if the string did not represent a valid number.  Otherwise,
 /// `Some(n)` where `n` is the floating-point number represented by `[num]`.
-///
 #[inline]
 pub fn from_str_hex(num: &str) -> Option<f64> {
     strconv::from_str_common(num, 16u, true, true, true,
@@ -917,7 +845,6 @@ pub fn from_str_hex(num: &str) -> Option<f64> {
 }
 
 impl FromStr for f64 {
-    ///
     /// Convert a string in base 10 to a float.
     /// Accepts a optional decimal exponent.
     ///
@@ -943,7 +870,6 @@ impl FromStr for f64 {
     ///
     /// `none` if the string did not represent a valid number.  Otherwise,
     /// `Some(n)` where `n` is the floating-point number represented by `num`.
-    ///
     #[inline]
     fn from_str(val: &str) -> Option<f64> {
         strconv::from_str_common(val, 10u, true, true, true,
@@ -952,7 +878,6 @@ impl FromStr for f64 {
 }
 
 impl num::FromStrRadix for f64 {
-    ///
     /// Convert a string in an given base to a float.
     ///
     /// Due to possible conflicts, this function does **not** accept
@@ -970,7 +895,6 @@ impl num::FromStrRadix for f64 {
     ///
     /// `None` if the string did not represent a valid number. Otherwise,
     /// `Some(n)` where `n` is the floating-point number represented by `num`.
-    ///
     #[inline]
     fn from_str_radix(val: &str, rdx: uint) -> Option<f64> {
         strconv::from_str_common(val, rdx, true, true, false,
@@ -1247,22 +1171,6 @@ mod tests {
     }
 
     #[test]
-    fn test_approx_eq() {
-        assert!(1.0f64.approx_eq(&1f64));
-        assert!(0.9999999f64.approx_eq(&1f64));
-        assert!(1.000001f64.approx_eq_eps(&1f64, &1.0e-5));
-        assert!(1.0000001f64.approx_eq_eps(&1f64, &1.0e-6));
-        assert!(!1.0000001f64.approx_eq_eps(&1f64, &1.0e-7));
-    }
-
-    #[test]
-    fn test_primitive() {
-        let none: Option<f64> = None;
-        assert_eq!(Primitive::bits(none), mem::size_of::<f64>() * 8);
-        assert_eq!(Primitive::bytes(none), mem::size_of::<f64>());
-    }
-
-    #[test]
     fn test_is_normal() {
         let nan: f64 = Float::nan();
         let inf: f64 = Float::infinity();
@@ -1346,7 +1254,7 @@ mod tests {
     fn test_integer_decode() {
         assert_eq!(3.14159265359f64.integer_decode(), (7074237752028906u64, -51i16, 1i8));
         assert_eq!((-8573.5918555f64).integer_decode(), (4713381968463931u64, -39i16, -1i8));
-        assert_eq!(2f64.pow(&100.0).integer_decode(), (4503599627370496u64, 48i16, 1i8));
+        assert_eq!(2f64.powf(&100.0).integer_decode(), (4503599627370496u64, 48i16, 1i8));
         assert_eq!(0f64.integer_decode(), (0u64, -1075i16, 1i8));
         assert_eq!((-0f64).integer_decode(), (0u64, -1075i16, -1i8));
         assert_eq!(INFINITY.integer_decode(), (4503599627370496u64, 972i16, 1i8));

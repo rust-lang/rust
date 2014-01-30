@@ -9,6 +9,8 @@
 // except according to those terms.
 
 use ai = std::io::net::addrinfo;
+use std::cast;
+use std::libc;
 use std::libc::c_int;
 use std::ptr::null;
 use std::rt::task::BlockedTask;
@@ -18,7 +20,7 @@ use super::{Loop, UvError, Request, wait_until_woken_after, wakeup};
 use uvll;
 
 struct Addrinfo {
-    handle: *uvll::addrinfo,
+    handle: *libc::addrinfo,
 }
 
 struct Ctx {
@@ -61,7 +63,7 @@ impl GetAddrInfoRequest {
             let socktype = 0;
             let protocol = 0;
 
-            uvll::addrinfo {
+            libc::addrinfo {
                 ai_flags: flags,
                 ai_family: hint.family as c_int,
                 ai_socktype: socktype,
@@ -72,7 +74,7 @@ impl GetAddrInfoRequest {
                 ai_next: null(),
             }
         });
-        let hint_ptr = hint.as_ref().map_or(null(), |x| x as *uvll::addrinfo);
+        let hint_ptr = hint.as_ref().map_or(null(), |x| x as *libc::addrinfo);
         let mut req = Request::new(uvll::UV_GETADDRINFO);
 
         return match unsafe {
@@ -99,7 +101,7 @@ impl GetAddrInfoRequest {
 
         extern fn getaddrinfo_cb(req: *uvll::uv_getaddrinfo_t,
                                  status: c_int,
-                                 res: *uvll::addrinfo) {
+                                 res: *libc::addrinfo) {
             let req = Request::wrap(req);
             assert!(status != uvll::ECANCELED);
             let cx: &mut Ctx = unsafe { req.get_data() };
@@ -138,7 +140,8 @@ pub fn accum_addrinfo(addr: &Addrinfo) -> ~[ai::Info] {
 
         let mut addrs = ~[];
         loop {
-            let rustaddr = net::sockaddr_to_socket_addr((*addr).ai_addr);
+            let rustaddr = net::sockaddr_to_addr(cast::transmute((*addr).ai_addr),
+                                                 (*addr).ai_addrlen as uint);
 
             let mut flags = 0;
             each_ai_flag(|cval, aival| {
@@ -178,41 +181,5 @@ pub fn accum_addrinfo(addr: &Addrinfo) -> ~[ai::Info] {
         }
 
         return addrs;
-    }
-}
-
-// cannot give tcp/ip permission without help of apk
-#[cfg(test, not(target_os="android"))]
-mod test {
-    use std::io::net::ip::{SocketAddr, Ipv4Addr};
-    use super::super::local_loop;
-    use super::GetAddrInfoRequest;
-
-    #[test]
-    fn getaddrinfo_test() {
-        let loop_ = &mut local_loop().loop_;
-        match GetAddrInfoRequest::run(loop_, Some("localhost"), None, None) {
-            Ok(infos) => {
-                let mut found_local = false;
-                let local_addr = &SocketAddr {
-                    ip: Ipv4Addr(127, 0, 0, 1),
-                    port: 0
-                };
-                for addr in infos.iter() {
-                    found_local = found_local || addr.address == *local_addr;
-                }
-                assert!(found_local);
-            }
-            Err(e) => fail!("{:?}", e),
-        }
-    }
-
-    #[test]
-    fn issue_10663() {
-        let loop_ = &mut local_loop().loop_;
-        // Something should happen here, but this certainly shouldn't cause
-        // everything to die. The actual outcome we don't care too much about.
-        GetAddrInfoRequest::run(loop_, Some("irc.n0v4.com"), None,
-                                None);
     }
 }

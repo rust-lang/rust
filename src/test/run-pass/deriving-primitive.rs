@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -13,14 +13,14 @@ use std::int;
 
 #[deriving(Eq, FromPrimitive)]
 enum A {
-    Foo = int::max_value,
+    Foo = int::MAX,
     Bar = 1,
     Baz = 3,
     Qux,
 }
 
 pub fn main() {
-    let x: Option<A> = FromPrimitive::from_int(int::max_value);
+    let x: Option<A> = FromPrimitive::from_int(int::MAX);
     assert_eq!(x, Some(Foo));
 
     let x: Option<A> = FromPrimitive::from_int(1);

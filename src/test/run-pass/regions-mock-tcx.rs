@@ -16,10 +16,9 @@
 // - Multiple lifetime parameters
 // - Arenas
 
-extern mod extra;
+extern mod arena;
 
-use extra::arena;
-use extra::arena::Arena;
+use arena::Arena;
 use std::hashmap::HashMap;
 use std::cast;
 use std::libc;
@@ -27,10 +26,18 @@ use std::mem;
 
 type Type<'tcx> = &'tcx TypeStructure<'tcx>;
 
-#[deriving(Eq)]
 enum TypeStructure<'tcx> {
     TypeInt,
     TypeFunction(Type<'tcx>, Type<'tcx>),
+}
+impl<'tcx> Eq for TypeStructure<'tcx> {
+    fn eq(&self, other: &TypeStructure<'tcx>) -> bool {
+        match (*self, *other) {
+            (TypeInt, TypeInt) => true,
+            (TypeFunction(s_a, s_b), TypeFunction(o_a, o_b)) => *s_a == *o_a && *s_b == *o_b,
+            _ => false
+        }
+    }
 }
 
 struct TypeContext<'tcx, 'ast> {

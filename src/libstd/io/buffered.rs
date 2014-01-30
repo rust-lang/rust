@@ -9,64 +9,43 @@
 // except according to those terms.
 
 //! Buffering wrappers for I/O traits
-//!
-//! It can be excessively inefficient to work directly with a `Reader` or
-//! `Writer`. Every call to `read` or `write` on `TcpStream` results in a
-//! system call, for example. This module provides structures that wrap
-//! `Readers`, `Writers`, and `Streams` and buffer input and output to them.
-//!
-//! # Examples
-//!
-//! ```
-//! let tcp_stream = TcpStream::connect(addr);
-//! let reader = BufferedReader::new(tcp_stream);
-//!
-//! let mut buf: ~[u8] = vec::from_elem(100, 0u8);
-//! match reader.read(buf.as_slice()) {
-//!     Some(nread) => println!("Read {} bytes", nread),
-//!     None => println!("At the end of the stream!")
-//! }
-//! ```
-//!
-//! ```
-//! let tcp_stream = TcpStream::connect(addr);
-//! let writer = BufferedWriter::new(tcp_stream);
-//!
-//! writer.write("hello, world".as_bytes());
-//! writer.flush();
-//! ```
-//!
-//! ```
-//! let tcp_stream = TcpStream::connect(addr);
-//! let stream = BufferedStream::new(tcp_stream);
-//!
-//! stream.write("hello, world".as_bytes());
-//! stream.flush();
-//!
-//! let mut buf = vec::from_elem(100, 0u8);
-//! match stream.read(buf.as_slice()) {
-//!     Some(nread) => println!("Read {} bytes", nread),
-//!     None => println!("At the end of the stream!")
-//! }
-//! ```
-//!
 
-use prelude::*;
-
+use container::Container;
+use io::{Reader, Writer, Stream, Buffer, DEFAULT_BUF_SIZE};
+use iter::ExactSize;
 use num;
+use option::{Option, Some, None};
+use vec::{OwnedVector, ImmutableVector, MutableVector};
 use vec;
-use super::{Stream, Decorator};
-
-// libuv recommends 64k buffers to maximize throughput
-// https://groups.google.com/forum/#!topic/libuv/oQO1HJAIDdA
-static DEFAULT_CAPACITY: uint = 64 * 1024;
 
 /// Wraps a Reader and buffers input from it
+///
+/// It can be excessively inefficient to work directly with a `Reader` or
+/// `Writer`. Every call to `read` or `write` on `TcpStream` results in a
+/// system call, for example. This module provides structures that wrap
+/// `Readers`, `Writers`, and `Streams` and buffer input and output to them.
+///
+/// # Example
+///
+/// ```rust
+/// use std::io::{BufferedReader, File};
+///
+/// # let _g = ::std::io::ignore_io_error();
+/// let file = File::open(&Path::new("message.txt"));
+/// let mut reader = BufferedReader::new(file);
+///
+/// let mut buf = [0, ..100];
+/// match reader.read(buf) {
+///     Some(nread) => println!("Read {} bytes", nread),
+///     None => println!("At the end of the file!")
+/// }
+/// ```
 pub struct BufferedReader<R> {
     priv inner: R,
     priv buf: ~[u8],
     priv pos: uint,
-    priv cap: uint
+    priv cap: uint,
+    priv eof: bool,
 }
 
 impl<R: Reader> BufferedReader<R> {
@@ -84,14 +63,26 @@ impl<R: Reader> BufferedReader<R> {
             inner: inner,
             buf: buf,
             pos: 0,
-            cap: 0
+            cap: 0,
+            eof: false,
         }
     }
 
     /// Creates a new `BufferedReader` with a default buffer capacity
     pub fn new(inner: R) -> BufferedReader<R> {
-        BufferedReader::with_capacity(DEFAULT_CAPACITY, inner)
+        BufferedReader::with_capacity(DEFAULT_BUF_SIZE, inner)
     }
+
+    /// Gets a reference to the underlying reader.
+    ///
+    /// This type does not expose the ability to get a mutable reference to the
+    /// underlying reader because that could possibly corrupt the buffer.
+    pub fn get_ref<'a>(&'a self) -> &'a R { &self.inner }
+
+    /// Unwraps this buffer, returning the underlying reader.
+    ///
+    /// Note that any leftover data in the internal buffer is lost.
+    pub fn unwrap(self) -> R { self.inner }
 }
 
 impl<R: Reader> Buffer for BufferedReader<R> {
@@ -102,7 +93,7 @@ impl<R: Reader> Buffer for BufferedReader<R> {
                     self.pos = 0;
                     self.cap = cap;
                 }
-                None => {}
+                None => { self.eof = true; }
             }
         }
         return self.buf.slice(self.pos, self.cap);
@@ -123,26 +114,29 @@ impl<R: Reader> Reader for BufferedReader<R> {
             nread
         };
         self.pos += nread;
-        if nread == 0 && self.inner.eof() && buf.len() != 0 {
-                return None;
+        if nread == 0 && buf.len() != 0 && self.eof {
+            return None;
         }
         Some(nread)
     }
-
-    fn eof(&mut self) -> bool {
-        self.pos == self.cap && self.inner.eof()
-    }
-}
-
-impl<R: Reader> Decorator<R> for BufferedReader<R> {
-    fn inner(self) -> R { self.inner }
-    fn inner_ref<'a>(&'a self) -> &'a R { &self.inner }
-    fn inner_mut_ref<'a>(&'a mut self) -> &'a mut R { &mut self.inner }
 }
 
 /// Wraps a Writer and buffers output to it
 ///
 /// Note that `BufferedWriter` will NOT flush its buffer when dropped.
+///
+/// # Example
+///
+/// ```rust
+/// use std::io::{BufferedWriter, File};
+///
+/// # let _g = ::std::io::ignore_io_error();
+/// let file = File::open(&Path::new("message.txt"));
+/// let mut writer = BufferedWriter::new(file);
+///
+/// writer.write_str("hello, world");
+/// writer.flush();
+/// ```
 pub struct BufferedWriter<W> {
     priv inner: W,
     priv buf: ~[u8],
@@ -164,7 +158,7 @@ impl<W: Writer> BufferedWriter<W> {
 
     /// Creates a new `BufferedWriter` with a default buffer capacity
     pub fn new(inner: W) -> BufferedWriter<W> {
-        BufferedWriter::with_capacity(DEFAULT_CAPACITY, inner)
+        BufferedWriter::with_capacity(DEFAULT_BUF_SIZE, inner)
     }
 
     fn flush_buf(&mut self) {
@@ -172,6 +166,20 @@ impl<W: Writer> BufferedWriter<W> {
             self.inner.write(self.buf.slice_to(self.pos));
             self.pos = 0;
         }
+    }
+
+    /// Gets a reference to the underlying writer.
+    ///
+    /// This type does not expose the ability to get a mutable reference to the
+    /// underlying reader because that could possibly corrupt the buffer.
+    pub fn get_ref<'a>(&'a self) -> &'a W { &self.inner }
+
+    /// Unwraps this buffer, returning the underlying writer.
+    ///
+    /// The buffer is flushed before returning the writer.
+    pub fn unwrap(mut self) -> W {
+        self.flush_buf();
+        self.inner
     }
 }
 
@@ -196,12 +204,6 @@ impl<W: Writer> Writer for BufferedWriter<W> {
     }
 }
 
-impl<W: Writer> Decorator<W> for BufferedWriter<W> {
-    fn inner(mut self) -> W { self.flush_buf(); self.inner }
-    fn inner_ref<'a>(&'a self) -> &'a W { &self.inner }
-    fn inner_mut_ref<'a>(&'a mut self) -> &'a mut W { &mut self.inner }
-}
-
 /// Wraps a Writer and buffers output to it, flushing whenever a newline (`0x0a`,
 /// `'\n'`) is detected.
 ///
@@ -218,6 +220,17 @@ impl<W: Writer> LineBufferedWriter<W> {
             inner: BufferedWriter::with_capacity(1024, inner)
         }
     }
+
+    /// Gets a reference to the underlying writer.
+    ///
+    /// This type does not expose the ability to get a mutable reference to the
+    /// underlying reader because that could possibly corrupt the buffer.
+    pub fn get_ref<'a>(&'a self) -> &'a W { self.inner.get_ref() }
+
+    /// Unwraps this buffer, returning the underlying writer.
+    ///
+    /// The internal buffer is flushed before returning the writer.
+    pub fn unwrap(self) -> W { self.inner.unwrap() }
 }
 
 impl<W: Writer> Writer for LineBufferedWriter<W> {
@@ -235,12 +248,6 @@ impl<W: Writer> Writer for LineBufferedWriter<W> {
     fn flush(&mut self) { self.inner.flush() }
 }
 
-impl<W: Writer> Decorator<W> for LineBufferedWriter<W> {
-    fn inner(self) -> W { self.inner.inner() }
-    fn inner_ref<'a>(&'a self) -> &'a W { self.inner.inner_ref() }
-    fn inner_mut_ref<'a>(&'a mut self) -> &'a mut W { self.inner.inner_mut_ref() }
-}
-
 struct InternalBufferedWriter<W>(BufferedWriter<W>);
 
 impl<W> InternalBufferedWriter<W> {
@@ -250,34 +257,39 @@ impl<W> InternalBufferedWriter<W> {
     }
 }
 
-impl<W: Writer> Decorator<W> for InternalBufferedWriter<W> {
-    fn inner(self) -> W {
-        let InternalBufferedWriter(s) = self;
-        s.inner()
-    }
-    fn inner_ref<'a>(&'a self) -> &'a W {
-        let InternalBufferedWriter(ref s) = *self;
-        s.inner_ref()
-    }
-    fn inner_mut_ref<'a>(&'a mut self) -> &'a mut W {
-        let InternalBufferedWriter(ref mut s) = *self;
-        s.inner_mut_ref()
-    }
-}
-
 impl<W: Reader> Reader for InternalBufferedWriter<W> {
     fn read(&mut self, buf: &mut [u8]) -> Option<uint> { self.get_mut_ref().inner.read(buf) }
-    fn eof(&mut self) -> bool { self.get_mut_ref().inner.eof() }
 }
 
 /// Wraps a Stream and buffers input and output to and from it
 ///
 /// Note that `BufferedStream` will NOT flush its output buffer when dropped.
+///
+/// # Example
+///
+/// ```rust
+/// use std::io::{BufferedStream, File};
+///
+/// # let _g = ::std::io::ignore_io_error();
+/// let file = File::open(&Path::new("message.txt"));
+/// let mut stream = BufferedStream::new(file);
+///
+/// stream.write("hello, world".as_bytes());
+/// stream.flush();
+///
+/// let mut buf = [0, ..100];
+/// match stream.read(buf) {
+///     Some(nread) => println!("Read {} bytes", nread),
+///     None => println!("At the end of the stream!")
+/// }
+/// ```
 pub struct BufferedStream<S> {
     priv inner: BufferedReader<InternalBufferedWriter<S>>
 }
 
 impl<S: Stream> BufferedStream<S> {
+    /// Creates a new buffered stream with explicitly listed capacities for the
+    /// reader/writer buffer.
     pub fn with_capacities(reader_cap: uint, writer_cap: uint, inner: S)
                            -> BufferedStream<S> {
         let writer = BufferedWriter::with_capacity(writer_cap, inner);
@@ -287,9 +299,29 @@ impl<S: Stream> BufferedStream<S> {
         BufferedStream { inner: reader }
     }
 
+    /// Creates a new buffered stream with the default reader/writer buffer
+    /// capacities.
     pub fn new(inner: S) -> BufferedStream<S> {
-        BufferedStream::with_capacities(DEFAULT_CAPACITY, DEFAULT_CAPACITY,
+        BufferedStream::with_capacities(DEFAULT_BUF_SIZE, DEFAULT_BUF_SIZE,
                                         inner)
+    }
+
+    /// Gets a reference to the underlying stream.
+    ///
+    /// This type does not expose the ability to get a mutable reference to the
+    /// underlying reader because that could possibly corrupt the buffer.
+    pub fn get_ref<'a>(&'a self) -> &'a S {
+        let InternalBufferedWriter(ref w) = self.inner.inner;
+        w.get_ref()
+    }
+
+    /// Unwraps this buffer, returning the underlying stream.
+    ///
+    /// The internal buffer is flushed before returning the stream. Any leftover
+    /// data in the read buffer is lost.
+    pub fn unwrap(self) -> S {
+        let InternalBufferedWriter(w) = self.inner.inner;
+        w.unwrap()
     }
 }
 
@@ -300,7 +332,6 @@ impl<S: Stream> Buffer for BufferedStream<S> {
 
 impl<S: Stream> Reader for BufferedStream<S> {
     fn read(&mut self, buf: &mut [u8]) -> Option<uint> { self.inner.read(buf) }
-    fn eof(&mut self) -> bool { self.inner.eof() }
 }
 
 impl<S: Stream> Writer for BufferedStream<S> {
@@ -308,36 +339,23 @@ impl<S: Stream> Writer for BufferedStream<S> {
     fn flush(&mut self) { self.inner.inner.get_mut_ref().flush() }
 }
 
-impl<S: Stream> Decorator<S> for BufferedStream<S> {
-    fn inner(self) -> S { self.inner.inner.inner() }
-    fn inner_ref<'a>(&'a self) -> &'a S { self.inner.inner.inner_ref() }
-    fn inner_mut_ref<'a>(&'a mut self) -> &'a mut S {
-        self.inner.inner.get_mut_ref().inner_mut_ref()
-    }
-}
-
 #[cfg(test)]
 mod test {
-    use io::Decorator;
     use io;
     use prelude::*;
     use super::*;
-    use super::super::mem::{MemReader, MemWriter};
+    use super::super::mem::{MemReader, MemWriter, BufReader};
     use Harness = extra::test::BenchHarness;
 
-    /// A type, free to create, primarily intended for benchmarking creation of wrappers that, just
-    /// for construction, don't need a Reader/Writer that does anything useful. Is equivalent to
-    /// `/dev/null` in semantics.
+    /// A type, free to create, primarily intended for benchmarking creation of
+    /// wrappers that, just for construction, don't need a Reader/Writer that
+    /// does anything useful. Is equivalent to `/dev/null` in semantics.
     #[deriving(Clone,Eq,Ord)]
     pub struct NullStream;
 
     impl Reader for NullStream {
         fn read(&mut self, _: &mut [u8]) -> Option<uint> {
             None
-        }
-
-        fn eof(&mut self) -> bool {
-            true
         }
     }
 
@@ -352,11 +370,7 @@ mod test {
 
     impl Reader for ShortReader {
         fn read(&mut self, _: &mut [u8]) -> Option<uint> {
-            self.lengths.shift_opt()
-        }
-
-        fn eof(&mut self) -> bool {
-            self.lengths.len() == 0
+            self.lengths.shift()
         }
     }
 
@@ -369,24 +383,20 @@ mod test {
         let nread = reader.read(buf);
         assert_eq!(Some(2), nread);
         assert_eq!([0, 1, 0], buf);
-        assert!(!reader.eof());
 
         let mut buf = [0];
         let nread = reader.read(buf);
         assert_eq!(Some(1), nread);
         assert_eq!([2], buf);
-        assert!(!reader.eof());
 
         let mut buf = [0, 0, 0];
         let nread = reader.read(buf);
         assert_eq!(Some(1), nread);
         assert_eq!([3, 0, 0], buf);
-        assert!(!reader.eof());
 
         let nread = reader.read(buf);
         assert_eq!(Some(1), nread);
         assert_eq!([4, 0, 0], buf);
-        assert!(reader.eof());
 
         assert_eq!(None, reader.read(buf));
     }
@@ -397,45 +407,45 @@ mod test {
         let mut writer = BufferedWriter::with_capacity(2, inner);
 
         writer.write([0, 1]);
-        assert_eq!([], writer.inner_ref().inner_ref().as_slice());
+        assert_eq!([], writer.get_ref().get_ref());
 
         writer.write([2]);
-        assert_eq!([0, 1], writer.inner_ref().inner_ref().as_slice());
+        assert_eq!([0, 1], writer.get_ref().get_ref());
 
         writer.write([3]);
-        assert_eq!([0, 1], writer.inner_ref().inner_ref().as_slice());
+        assert_eq!([0, 1], writer.get_ref().get_ref());
 
         writer.flush();
-        assert_eq!([0, 1, 2, 3], writer.inner_ref().inner_ref().as_slice());
+        assert_eq!([0, 1, 2, 3], writer.get_ref().get_ref());
 
         writer.write([4]);
         writer.write([5]);
-        assert_eq!([0, 1, 2, 3], writer.inner_ref().inner_ref().as_slice());
+        assert_eq!([0, 1, 2, 3], writer.get_ref().get_ref());
 
         writer.write([6]);
         assert_eq!([0, 1, 2, 3, 4, 5],
-                   writer.inner_ref().inner_ref().as_slice());
+                   writer.get_ref().get_ref());
 
         writer.write([7, 8]);
         assert_eq!([0, 1, 2, 3, 4, 5, 6],
-                   writer.inner_ref().inner_ref().as_slice());
+                   writer.get_ref().get_ref());
 
         writer.write([9, 10, 11]);
         assert_eq!([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
-                   writer.inner_ref().inner_ref().as_slice());
+                   writer.get_ref().get_ref());
 
         writer.flush();
         assert_eq!([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
-                   writer.inner_ref().inner_ref().as_slice());
+                   writer.get_ref().get_ref());
     }
 
     #[test]
     fn test_buffered_writer_inner_flushes() {
         let mut w = BufferedWriter::with_capacity(3, MemWriter::new());
         w.write([0, 1]);
-        assert_eq!([], w.inner_ref().inner_ref().as_slice());
-        let w = w.inner();
-        assert_eq!([0, 1], w.inner_ref().as_slice());
+        assert_eq!([], w.get_ref().get_ref());
+        let w = w.unwrap();
+        assert_eq!([0, 1], w.get_ref());
     }
 
     // This is just here to make sure that we don't infinite loop in the
@@ -450,13 +460,11 @@ mod test {
 
         impl io::Reader for S {
             fn read(&mut self, _: &mut [u8]) -> Option<uint> { None }
-            fn eof(&mut self) -> bool { true }
         }
 
         let mut stream = BufferedStream::new(S);
         let mut buf = [];
         stream.read(buf);
-        stream.eof();
         stream.write(buf);
         stream.flush();
     }
@@ -476,20 +484,20 @@ mod test {
     fn test_line_buffer() {
         let mut writer = LineBufferedWriter::new(MemWriter::new());
         writer.write([0]);
-        assert_eq!(*writer.inner_ref().inner_ref(), ~[]);
+        assert_eq!(writer.get_ref().get_ref(), []);
         writer.write([1]);
-        assert_eq!(*writer.inner_ref().inner_ref(), ~[]);
+        assert_eq!(writer.get_ref().get_ref(), []);
         writer.flush();
-        assert_eq!(*writer.inner_ref().inner_ref(), ~[0, 1]);
+        assert_eq!(writer.get_ref().get_ref(), [0, 1]);
         writer.write([0, '\n' as u8, 1, '\n' as u8, 2]);
-        assert_eq!(*writer.inner_ref().inner_ref(),
-            ~[0, 1, 0, '\n' as u8, 1, '\n' as u8]);
+        assert_eq!(writer.get_ref().get_ref(),
+            [0, 1, 0, '\n' as u8, 1, '\n' as u8]);
         writer.flush();
-        assert_eq!(*writer.inner_ref().inner_ref(),
-            ~[0, 1, 0, '\n' as u8, 1, '\n' as u8, 2]);
+        assert_eq!(writer.get_ref().get_ref(),
+            [0, 1, 0, '\n' as u8, 1, '\n' as u8, 2]);
         writer.write([3, '\n' as u8]);
-        assert_eq!(*writer.inner_ref().inner_ref(),
-            ~[0, 1, 0, '\n' as u8, 1, '\n' as u8, 2, 3, '\n' as u8]);
+        assert_eq!(writer.get_ref().get_ref(),
+            [0, 1, 0, '\n' as u8, 1, '\n' as u8, 2, 3, '\n' as u8]);
     }
 
     #[test]
@@ -523,9 +531,16 @@ mod test {
         assert_eq!(reader.read(buf), Some(2));
         assert_eq!(reader.read(buf), Some(0));
         assert_eq!(reader.read(buf), Some(1));
+        assert_eq!(reader.read(buf), Some(0));
         assert_eq!(reader.read(buf), None);
     }
 
+    #[test]
+    fn read_char_buffered() {
+        let buf = [195u8, 159u8];
+        let mut reader = BufferedReader::with_capacity(1, BufReader::new(buf));
+        assert_eq!(reader.read_char(), Some('ß'));
+    }
 
     #[bench]
     fn bench_buffered_reader(bh: &mut Harness) {

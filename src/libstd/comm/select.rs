@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -45,6 +45,7 @@
 #[allow(dead_code)];
 
 use cast;
+use comm;
 use iter::Iterator;
 use kinds::Send;
 use ops::Drop;
@@ -88,12 +89,13 @@ pub struct Select {
 /// This handle is used to keep the port in the set as well as interact with the
 /// underlying port.
 pub struct Handle<'port, T> {
+    /// A unique ID for this Handle.
     id: uint,
     priv selector: &'port Select,
     priv port: &'port mut Port<T>,
 }
 
-struct PacketIterator { priv cur: *mut Packet }
+struct Packets { cur: *mut Packet }
 
 impl Select {
     /// Creates a new selection structure. This set is initially empty and
@@ -181,7 +183,7 @@ impl Select {
             assert!(amt > 0);
 
             let mut ready_index = amt;
-            let mut ready_id = uint::max_value;
+            let mut ready_id = uint::MAX;
             let mut iter = self.iter().enumerate();
 
             // Acquire a number of blocking contexts, and block on each one
@@ -198,11 +200,14 @@ impl Select {
                 if (*packet).decrement() {
                     Ok(())
                 } else {
+                    // Empty to_wake first to avoid tripping an assertion in
+                    // abort_selection in the disconnected case.
+                    let task = (*packet).to_wake.take_unwrap();
                     (*packet).abort_selection(false);
                     (*packet).selecting.store(false, SeqCst);
                     ready_index = i;
                     ready_id = (*packet).selection_id;
-                    Err((*packet).to_wake.take_unwrap())
+                    Err(task)
                 }
             });
 
@@ -241,7 +246,7 @@ impl Select {
                 assert!(!(*packet).selecting.load(Relaxed));
             }
 
-            assert!(ready_id != uint::max_value);
+            assert!(ready_id != uint::MAX);
             return ready_id;
         }
     }
@@ -266,7 +271,7 @@ impl Select {
         (*packet).selection_id = 0;
     }
 
-    fn iter(&self) -> PacketIterator { PacketIterator { cur: self.head } }
+    fn iter(&self) -> Packets { Packets { cur: self.head } }
 }
 
 impl<'port, T: Send> Handle<'port, T> {
@@ -279,7 +284,9 @@ impl<'port, T: Send> Handle<'port, T> {
     pub fn recv_opt(&mut self) -> Option<T> { self.port.recv_opt() }
     /// Immediately attempt to receive a value on a port, this function will
     /// never block. Has the same semantics as `Port.try_recv`.
-    pub fn try_recv(&mut self) -> Option<T> { self.port.try_recv() }
+    pub fn try_recv(&mut self) -> comm::TryRecvResult<T> {
+        self.port.try_recv()
+    }
 }
 
 #[unsafe_destructor]
@@ -297,7 +304,7 @@ impl<'port, T: Send> Drop for Handle<'port, T> {
     }
 }
 
-impl Iterator<*mut Packet> for PacketIterator {
+impl Iterator<*mut Packet> for Packets {
     fn next(&mut self) -> Option<*mut Packet> {
         if self.cur.is_null() {
             None
@@ -371,12 +378,12 @@ mod test {
         let (mut p2, _c2) = Chan::<int>::new();
         let (p3, c3) = Chan::<int>::new();
 
-        do spawn {
-            20.times(task::deschedule);
+        spawn(proc() {
+            for _ in range(0, 20) { task::deschedule(); }
             c1.send(1);
             p3.recv();
-            20.times(task::deschedule);
-        }
+            for _ in range(0, 20) { task::deschedule(); }
+        });
 
         select! (
             a = p1.recv() => { assert_eq!(a, 1); },
@@ -394,12 +401,12 @@ mod test {
         let (mut p2, c2) = Chan::<int>::new();
         let (p3, c3) = Chan::<()>::new();
 
-        do spawn {
-            20.times(task::deschedule);
+        spawn(proc() {
+            for _ in range(0, 20) { task::deschedule(); }
             c1.send(1);
             c2.send(2);
             p3.recv();
-        }
+        });
 
         select! (
             a = p1.recv() => { assert_eq!(a, 1); },
@@ -409,8 +416,8 @@ mod test {
             a = p1.recv() => { assert_eq!(a, 1); },
             a = p2.recv() => { assert_eq!(a, 2); }
         )
-        assert_eq!(p1.try_recv(), None);
-        assert_eq!(p2.try_recv(), None);
+        assert_eq!(p1.try_recv(), Empty);
+        assert_eq!(p2.try_recv(), Empty);
         c3.send(());
     })
 
@@ -420,7 +427,7 @@ mod test {
         let (mut p2, c2) = Chan::<int>::new();
         let (p3, c3) = Chan::<()>::new();
 
-        do spawn {
+        spawn(proc() {
             for i in range(0, AMT) {
                 if i % 2 == 0 {
                     c1.send(i);
@@ -429,7 +436,7 @@ mod test {
                 }
                 p3.recv();
             }
-        }
+        });
 
         for i in range(0, AMT) {
             select! (

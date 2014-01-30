@@ -41,7 +41,7 @@ use middle::pat_util;
 use util::ppaux::{ty_to_str, region_to_str, Repr};
 
 use syntax::ast::{ManagedSigil, OwnedSigil, BorrowedSigil};
-use syntax::ast::{DefArg, DefBinding, DefLocal, DefSelf, DefUpvar};
+use syntax::ast::{DefArg, DefBinding, DefLocal, DefUpvar};
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::visit;
@@ -55,21 +55,26 @@ pub struct Rcx {
     repeating_scope: ast::NodeId,
 }
 
-fn encl_region_of_def(fcx: @FnCtxt, def: ast::Def) -> ty::Region {
+fn region_of_def(fcx: @FnCtxt, def: ast::Def) -> ty::Region {
+    /*!
+     * Returns the validity region of `def` -- that is, how long
+     * is `def` valid?
+     */
+
     let tcx = fcx.tcx();
     match def {
         DefLocal(node_id, _) | DefArg(node_id, _) |
-        DefSelf(node_id, _) | DefBinding(node_id, _) => {
-            tcx.region_maps.encl_region(node_id)
+        DefBinding(node_id, _) => {
+            tcx.region_maps.var_region(node_id)
         }
         DefUpvar(_, subdef, closure_id, body_id) => {
             match ty::ty_closure_sigil(fcx.node_ty(closure_id)) {
-                BorrowedSigil => encl_region_of_def(fcx, *subdef),
+                BorrowedSigil => region_of_def(fcx, *subdef),
                 ManagedSigil | OwnedSigil => ReScope(body_id)
             }
         }
         _ => {
-            tcx.sess.bug(format!("unexpected def in encl_region_of_def: {:?}",
+            tcx.sess.bug(format!("unexpected def in region_of_def: {:?}",
                               def))
         }
     }
@@ -175,7 +180,7 @@ impl Visitor<()> for Rcx {
     // hierarchy, and in particular the relationships between free
     // regions, until regionck, as described in #3238.
 
-    fn visit_item(&mut self, i: &ast::item, _: ()) { visit_item(self, i); }
+    fn visit_item(&mut self, i: &ast::Item, _: ()) { visit_item(self, i); }
 
     fn visit_expr(&mut self, ex: &ast::Expr, _: ()) { visit_expr(self, ex); }
 
@@ -188,12 +193,11 @@ impl Visitor<()> for Rcx {
     fn visit_block(&mut self, b: &ast::Block, _: ()) { visit_block(self, b); }
 }
 
-fn visit_item(_rcx: &mut Rcx, _item: &ast::item) {
+fn visit_item(_rcx: &mut Rcx, _item: &ast::Item) {
     // Ignore items
 }
 
 fn visit_block(rcx: &mut Rcx, b: &ast::Block) {
-    rcx.fcx.tcx().region_maps.record_cleanup_scope(b.id);
     visit::walk_block(rcx, b, ());
 }
 
@@ -209,6 +213,7 @@ fn visit_arm(rcx: &mut Rcx, arm: &ast::Arm) {
 fn visit_local(rcx: &mut Rcx, l: &ast::Local) {
     // see above
     constrain_bindings_in_pat(l.pat, rcx);
+    guarantor::for_local(rcx, l);
     visit::walk_local(rcx, l, ());
 }
 
@@ -239,9 +244,9 @@ fn constrain_bindings_in_pat(pat: &ast::Pat, rcx: &mut Rcx) {
         // that the lifetime of any regions that appear in a
         // variable's type enclose at least the variable's scope.
 
-        let encl_region = tcx.region_maps.encl_region(id);
+        let var_region = tcx.region_maps.var_region(id);
         constrain_regions_in_type_of_node(
-            rcx, id, encl_region,
+            rcx, id, var_region,
             infer::BindingTypeIsNotValidAtDecl(span));
     })
 }
@@ -255,63 +260,14 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
         method_map.get().contains_key(&expr.id)
     };
 
-    // Record cleanup scopes, which are used by borrowck to decide the
-    // maximum lifetime of a temporary rvalue.  These were derived by
-    // examining where trans creates block scopes, not because this
-    // reflects some principled decision around temporary lifetimes.
-    // Ordinarily this would seem like something that should be setup
-    // in region, but we need to know which uses of operators are
-    // overloaded.  See #3511.
-    let tcx = rcx.fcx.tcx();
-    match expr.node {
-        // You'd think that x += y where `+=` is overloaded would be a
-        // cleanup scope. You'd be... kind of right. In fact the
-        // handling of `+=` and friends in trans for overloaded
-        // operators is a hopeless mess and I can't figure out how to
-        // represent it. - ndm
-        //
-        // ast::expr_assign_op(..) |
-
-        ast::ExprIndex(..) |
-        ast::ExprBinary(..) |
-        ast::ExprUnary(..) if has_method_map => {
-            tcx.region_maps.record_cleanup_scope(expr.id);
-        }
-        ast::ExprBinary(_, ast::BiAnd, lhs, rhs) |
-        ast::ExprBinary(_, ast::BiOr, lhs, rhs) => {
-            tcx.region_maps.record_cleanup_scope(lhs.id);
-            tcx.region_maps.record_cleanup_scope(rhs.id);
-        }
-        ast::ExprCall(..) |
-        ast::ExprMethodCall(..) => {
-            tcx.region_maps.record_cleanup_scope(expr.id);
-        }
-        ast::ExprMatch(_, ref arms) => {
-            tcx.region_maps.record_cleanup_scope(expr.id);
-            for arm in arms.iter() {
-                for guard in arm.guard.iter() {
-                    tcx.region_maps.record_cleanup_scope(guard.id);
-                }
-            }
-        }
-        ast::ExprLoop(ref body, _) => {
-            tcx.region_maps.record_cleanup_scope(body.id);
-        }
-        ast::ExprWhile(cond, ref body) => {
-            tcx.region_maps.record_cleanup_scope(cond.id);
-            tcx.region_maps.record_cleanup_scope(body.id);
-        }
-        _ => {}
-    }
-
     // Check any autoderefs or autorefs that appear.
     {
         let adjustments = rcx.fcx.inh.adjustments.borrow();
         let r = adjustments.get().find(&expr.id);
         for &adjustment in r.iter() {
             debug!("adjustment={:?}", adjustment);
-            match *adjustment {
-                @ty::AutoDerefRef(
+            match **adjustment {
+                ty::AutoDerefRef(
                     ty::AutoDerefRef {autoderefs: autoderefs, autoref: opt_autoref}) =>
                 {
                     let expr_ty = rcx.resolve_node_type(expr.id);
@@ -328,7 +284,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
                             infer::AutoBorrow(expr.span));
                     }
                 }
-                @ty::AutoObject(ast::BorrowedSigil, Some(trait_region), _, _, _, _) => {
+                ty::AutoObject(ast::BorrowedSigil, Some(trait_region), _, _, _, _) => {
                     // Determine if we are casting `expr` to an trait
                     // instance.  If so, we have to be sure that the type of
                     // the source obeys the trait's region bound.
@@ -360,8 +316,9 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             visit::walk_expr(rcx, expr, ());
         }
 
-        ast::ExprMethodCall(callee_id, arg0, _, _, ref args, _) => {
-            constrain_call(rcx, callee_id, expr, Some(arg0), *args, false);
+        ast::ExprMethodCall(callee_id, _, _, ref args, _) => {
+            constrain_call(rcx, callee_id, expr, Some(args[0]),
+                           args.slice_from(1), false);
 
             visit::walk_expr(rcx, expr, ());
         }
@@ -677,8 +634,8 @@ fn constrain_index(rcx: &mut Rcx,
 
     let r_index_expr = ty::ReScope(index_expr.id);
     match ty::get(indexed_ty).sty {
-        ty::ty_estr(ty::vstore_slice(r_ptr)) |
-        ty::ty_evec(_, ty::vstore_slice(r_ptr)) => {
+        ty::ty_str(ty::vstore_slice(r_ptr)) |
+        ty::ty_vec(_, ty::vstore_slice(r_ptr)) => {
             rcx.fcx.mk_subr(true, infer::IndexSlice(index_expr.span),
                             r_index_expr, r_ptr);
         }
@@ -701,10 +658,10 @@ fn constrain_free_variables(rcx: &mut Rcx,
     for freevar in get_freevars(tcx, expr.id).iter() {
         debug!("freevar def is {:?}", freevar.def);
         let def = freevar.def;
-        let en_region = encl_region_of_def(rcx.fcx, def);
-        debug!("en_region = {}", en_region.repr(tcx));
+        let def_region = region_of_def(rcx.fcx, def);
+        debug!("def_region = {}", def_region.repr(tcx));
         rcx.fcx.mk_subr(true, infer::FreeVariable(freevar.span),
-                        region, en_region);
+                        region, def_region);
     }
 }
 
@@ -784,7 +741,7 @@ fn constrain_regions_in_type(
         }
     });
 
-    return (e == rcx.errors_reported);
+    return e == rcx.errors_reported;
 }
 
 pub mod guarantor {
@@ -871,6 +828,30 @@ pub mod guarantor {
                 link_ref_bindings_in_pat(rcx, *pat, discr_guarantor);
             }
         }
+    }
+
+    pub fn for_local(rcx: &mut Rcx, local: &ast::Local) {
+        /*!
+         * Link the lifetimes of any ref bindings in a let
+         * pattern to the lifetimes in the initializer.
+         *
+         * For example, given something like this:
+         *
+         *    let &Foo(ref x) = ...;
+         *
+         * this would ensure that the lifetime 'a of the
+         * region pointer being matched must be >= the lifetime
+         * of the ref binding.
+         */
+
+        debug!("regionck::for_match()");
+        let init_expr = match local.init {
+            None => { return; }
+            Some(e) => e
+        };
+        let init_guarantor = guarantor(rcx, init_expr);
+        debug!("init_guarantor={}", init_guarantor.repr(rcx.tcx()));
+        link_ref_bindings_in_pat(rcx, local.pat, init_guarantor);
     }
 
     pub fn for_autoref(rcx: &mut Rcx,
@@ -1032,12 +1013,10 @@ pub mod guarantor {
                 guarantor(rcx, e)
             }
 
-            ast::ExprPath(..) | ast::ExprSelf => {
-                // Either a variable or constant and hence resides
-                // in constant memory or on the stack frame.  Either way,
-                // not guaranteed by a region pointer.
-                None
-            }
+            // Either a variable or constant and hence resides
+            // in constant memory or on the stack frame.  Either way,
+            // not guaranteed by a region pointer.
+            ast::ExprPath(..) => None,
 
             // All of these expressions are rvalues and hence their
             // value is not guaranteed by a region pointer.
@@ -1048,6 +1027,7 @@ pub mod guarantor {
             ast::ExprAddrOf(..) |
             ast::ExprBinary(..) |
             ast::ExprVstore(..) |
+            ast::ExprBox(..) |
             ast::ExprBreak(..) |
             ast::ExprAgain(..) |
             ast::ExprRet(..) |
@@ -1065,7 +1045,6 @@ pub mod guarantor {
             ast::ExprMatch(..) |
             ast::ExprFnBlock(..) |
             ast::ExprProc(..) |
-            ast::ExprDoBody(..) |
             ast::ExprBlock(..) |
             ast::ExprRepeat(..) |
             ast::ExprVec(..) => {
@@ -1085,65 +1064,74 @@ pub mod guarantor {
 
         let adjustments = rcx.fcx.inh.adjustments.borrow();
         match adjustments.get().find(&expr.id) {
-            Some(&@ty::AutoAddEnv(..)) => {
-                // This is basically an rvalue, not a pointer, no regions
-                // involved.
-                expr_ct.cat = ExprCategorization {
-                    guarantor: None,
-                    pointer: NotPointer
-                };
-            }
-
-            Some(&@ty::AutoObject(ast::BorrowedSigil, Some(region), _, _, _, _)) => {
-                expr_ct.cat = ExprCategorization {
-                    guarantor: None,
-                    pointer: BorrowedPointer(region)
-                };
-            }
-
-            Some(&@ty::AutoObject(ast::OwnedSigil, _, _, _, _, _)) => {
-                expr_ct.cat = ExprCategorization {
-                    guarantor: None,
-                    pointer: OwnedPointer
-                };
-            }
-
-            Some(&@ty::AutoObject(ast::ManagedSigil, _, _, _, _, _)) => {
-                expr_ct.cat = ExprCategorization {
-                    guarantor: None,
-                    pointer: OtherPointer
-                };
-            }
-
-            Some(&@ty::AutoDerefRef(ref adjustment)) => {
-                debug!("adjustment={:?}", adjustment);
-
-                expr_ct = apply_autoderefs(
-                    rcx, expr, adjustment.autoderefs, expr_ct);
-
-                match adjustment.autoref {
-                    None => {
+            Some(adjustment) => {
+                match **adjustment {
+                    ty::AutoAddEnv(..) => {
+                        // This is basically an rvalue, not a pointer, no regions
+                        // involved.
+                        expr_ct.cat = ExprCategorization {
+                            guarantor: None,
+                            pointer: NotPointer
+                        };
                     }
-                    Some(ty::AutoUnsafe(_)) => {
-                        expr_ct.cat.guarantor = None;
-                        expr_ct.cat.pointer = OtherPointer;
-                        debug!("autoref, cat={:?}", expr_ct.cat);
+
+                    ty::AutoObject(ast::BorrowedSigil,
+                                   Some(region),
+                                   _,
+                                   _,
+                                   _,
+                                   _) => {
+                        expr_ct.cat = ExprCategorization {
+                            guarantor: None,
+                            pointer: BorrowedPointer(region)
+                        };
                     }
-                    Some(ty::AutoPtr(r, _)) |
-                    Some(ty::AutoBorrowVec(r, _)) |
-                    Some(ty::AutoBorrowVecRef(r, _)) |
-                    Some(ty::AutoBorrowFn(r)) |
-                    Some(ty::AutoBorrowObj(r, _)) => {
-                        // If there is an autoref, then the result of this
-                        // expression will be some sort of reference.
-                        expr_ct.cat.guarantor = None;
-                        expr_ct.cat.pointer = BorrowedPointer(r);
-                        debug!("autoref, cat={:?}", expr_ct.cat);
+
+                    ty::AutoObject(ast::OwnedSigil, _, _, _, _, _) => {
+                        expr_ct.cat = ExprCategorization {
+                            guarantor: None,
+                            pointer: OwnedPointer
+                        };
                     }
+
+                    ty::AutoObject(ast::ManagedSigil, _, _, _, _, _) => {
+                        expr_ct.cat = ExprCategorization {
+                            guarantor: None,
+                            pointer: OtherPointer
+                        };
+                    }
+                    ty::AutoDerefRef(ref adjustment) => {
+                        debug!("adjustment={:?}", adjustment);
+
+                        expr_ct = apply_autoderefs(
+                            rcx, expr, adjustment.autoderefs, expr_ct);
+
+                        match adjustment.autoref {
+                            None => {
+                            }
+                            Some(ty::AutoUnsafe(_)) => {
+                                expr_ct.cat.guarantor = None;
+                                expr_ct.cat.pointer = OtherPointer;
+                                debug!("autoref, cat={:?}", expr_ct.cat);
+                            }
+                            Some(ty::AutoPtr(r, _)) |
+                            Some(ty::AutoBorrowVec(r, _)) |
+                            Some(ty::AutoBorrowVecRef(r, _)) |
+                            Some(ty::AutoBorrowFn(r)) |
+                            Some(ty::AutoBorrowObj(r, _)) => {
+                                // If there is an autoref, then the result of
+                                // this expression will be some sort of
+                                // reference.
+                                expr_ct.cat.guarantor = None;
+                                expr_ct.cat.pointer = BorrowedPointer(r);
+                                debug!("autoref, cat={:?}", expr_ct.cat);
+                            }
+                        }
+                    }
+
+                    _ => fail!("invalid or unhandled adjustment"),
                 }
             }
-
-            Some(..) => fail!("invalid or unhandled adjustment"),
 
             None => {}
         }
@@ -1185,7 +1173,7 @@ pub mod guarantor {
         let mut ct = ct;
         let tcx = rcx.fcx.ccx.tcx;
 
-        if (ty::type_is_error(ct.ty)) {
+        if ty::type_is_error(ct.ty) {
             ct.cat.pointer = NotPointer;
             return ct;
         }
@@ -1214,22 +1202,22 @@ pub mod guarantor {
     fn pointer_categorize(ty: ty::t) -> PointerCategorization {
         match ty::get(ty).sty {
             ty::ty_rptr(r, _) |
-            ty::ty_evec(_, ty::vstore_slice(r)) |
+            ty::ty_vec(_, ty::vstore_slice(r)) |
             ty::ty_trait(_, _, ty::RegionTraitStore(r), _, _) |
-            ty::ty_estr(ty::vstore_slice(r)) => {
+            ty::ty_str(ty::vstore_slice(r)) => {
                 BorrowedPointer(r)
             }
             ty::ty_uniq(..) |
-            ty::ty_estr(ty::vstore_uniq) |
+            ty::ty_str(ty::vstore_uniq) |
             ty::ty_trait(_, _, ty::UniqTraitStore, _, _) |
-            ty::ty_evec(_, ty::vstore_uniq) => {
+            ty::ty_vec(_, ty::vstore_uniq) => {
                 OwnedPointer
             }
             ty::ty_box(..) |
             ty::ty_ptr(..) |
-            ty::ty_evec(_, ty::vstore_box) |
+            ty::ty_vec(_, ty::vstore_box) |
             ty::ty_trait(_, _, ty::BoxTraitStore, _, _) |
-            ty::ty_estr(ty::vstore_box) => {
+            ty::ty_str(ty::vstore_box) => {
                 OtherPointer
             }
             ty::ty_closure(ref closure_ty) => {
@@ -1296,9 +1284,6 @@ pub mod guarantor {
             }
             ast::PatTup(ref ps) => {
                 link_ref_bindings_in_pats(rcx, ps, guarantor)
-            }
-            ast::PatBox(p) => {
-                link_ref_bindings_in_pat(rcx, p, None)
             }
             ast::PatUniq(p) => {
                 link_ref_bindings_in_pat(rcx, p, guarantor)

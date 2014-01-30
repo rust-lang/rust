@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -14,10 +14,8 @@
 #[deny(warnings)];
 
 use std::fmt;
-use std::io::Decorator;
-use std::io::mem::MemWriter;
+use std::io::MemWriter;
 use std::io;
-use std::io::Writer;
 use std::str;
 
 struct A;
@@ -221,6 +219,14 @@ pub fn main() {
     t!(format!("{:+10.3f}", 1.0f64),  "    +1.000");
     t!(format!("{:+10.3f}", -1.0f64), "    -1.000");
 
+    t!(format!("{:e}", 1.2345e6f32), "1.2345e6");
+    t!(format!("{:e}", 1.2345e6f64), "1.2345e6");
+    t!(format!("{:E}", 1.2345e6f64), "1.2345E6");
+    t!(format!("{:.3e}", 1.2345e6f64), "1.234e6");
+    t!(format!("{:10.3e}", 1.2345e6f64),   "   1.234e6");
+    t!(format!("{:+10.3e}", 1.2345e6f64),  "  +1.234e6");
+    t!(format!("{:+10.3e}", -1.2345e6f64), "  -1.234e6");
+
     // Escaping
     t!(format!("\\{"), "{");
     t!(format!("\\}"), "}");
@@ -262,7 +268,7 @@ fn test_write() {
         writeln!(w, "{foo}", foo="bar");
     }
 
-    let s = str::from_utf8_owned(buf.inner());
+    let s = str::from_utf8_owned(buf.unwrap()).unwrap();
     t!(s, "34helloline\nbar\n");
 }
 
@@ -286,7 +292,7 @@ fn test_format_args() {
         format_args!(|args| { fmt::write(w, args) }, "test");
         format_args!(|args| { fmt::write(w, args) }, "{test}", test=3);
     }
-    let s = str::from_utf8_owned(buf.inner());
+    let s = str::from_utf8_owned(buf.unwrap()).unwrap();
     t!(s, "1test3");
 
     let s = format_args!(fmt::format, "hello {}", "world");

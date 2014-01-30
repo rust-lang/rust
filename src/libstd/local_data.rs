@@ -41,10 +41,9 @@ local_data::get(key_vector, |opt| assert_eq!(*opt.unwrap(), ~[4]));
 // magic.
 
 use cast;
-use libc;
 use prelude::*;
 use rt::task::{Task, LocalStorage};
-use util;
+use util::replace;
 
 /**
  * Indexes a task-local data slot. This pointer is used for comparison to
@@ -87,7 +86,7 @@ impl<T: 'static> LocalData for T {}
 // n.b. If TLS is used heavily in future, this could be made more efficient with
 //      a proper map.
 #[doc(hidden)]
-pub type Map = ~[Option<(*libc::c_void, TLSValue, LoanState)>];
+pub type Map = ~[Option<(*u8, TLSValue, LoanState)>];
 type TLSValue = ~LocalData;
 
 // Gets the map from the runtime. Lazily initialises if not done so already.
@@ -128,7 +127,7 @@ impl LoanState {
     }
 }
 
-fn key_to_key_value<T: 'static>(key: Key<T>) -> *libc::c_void {
+fn key_to_key_value<T: 'static>(key: Key<T>) -> *u8 {
     unsafe { cast::transmute(key) }
 }
 
@@ -151,7 +150,7 @@ pub fn pop<T: 'static>(key: Key<T>) -> Option<T> {
                 // Move the data out of the `entry` slot via util::replace.
                 // This is guaranteed to succeed because we already matched
                 // on `Some` above.
-                let data = match util::replace(entry, None) {
+                let data = match replace(entry, None) {
                     Some((_, data, _)) => data,
                     None => abort()
                 };
@@ -187,8 +186,7 @@ pub fn get<T: 'static, U>(key: Key<T>, f: |Option<&T>| -> U) -> U {
 /// if the key provided is not present in TLS currently.
 ///
 /// It is considered a runtime error to attempt to get a value which is already
-/// on loan via this or the `get` methods. This is similar to how it's a runtime
-/// error to take two mutable loans on an `@mut` box.
+/// on loan via this or the `get` methods.
 pub fn get_mut<T: 'static, U>(key: Key<T>, f: |Option<&mut T>| -> U) -> U {
     get_with(key, MutLoan, |x| {
         match x {
@@ -281,7 +279,8 @@ fn get_with<T:'static,
 }
 
 fn abort() -> ! {
-    unsafe { libc::abort() }
+    use std::unstable::intrinsics;
+    unsafe { intrinsics::abort() }
 }
 
 /// Inserts a value into task local storage. If the key is already present in
@@ -302,7 +301,7 @@ pub fn set<T: 'static>(key: Key<T>, data: T) {
     let data = ~data as ~LocalData:;
 
     fn insertion_position(map: &mut Map,
-                          key: *libc::c_void) -> Option<uint> {
+                          key: *u8) -> Option<uint> {
         // First see if the map contains this key already
         let curspot = map.iter().position(|entry| {
             match *entry {
@@ -356,14 +355,14 @@ mod tests {
     fn test_tls_multitask() {
         static my_key: Key<~str> = &Key;
         set(my_key, ~"parent data");
-        do task::spawn {
+        task::spawn(proc() {
             // TLS shouldn't carry over.
             assert!(get(my_key, |k| k.map(|k| (*k).clone())).is_none());
             set(my_key, ~"child data");
             assert!(get(my_key, |k| k.map(|k| (*k).clone())).unwrap() ==
                     ~"child data");
             // should be cleaned up for us
-        }
+        });
         // Must work multiple times
         assert!(get(my_key, |k| k.map(|k| (*k).clone())).unwrap() == ~"parent data");
         assert!(get(my_key, |k| k.map(|k| (*k).clone())).unwrap() == ~"parent data");
@@ -415,9 +414,9 @@ mod tests {
         // subsequent upcall (esp. for logging, think vsnprintf) would run on
         // a stack smaller than 1 MB.
         static my_key: Key<~str> = &Key;
-        do task::spawn {
+        task::spawn(proc() {
             set(my_key, ~"hax");
-        }
+        });
     }
 
     #[test]
@@ -425,11 +424,11 @@ mod tests {
         static str_key: Key<~str> = &Key;
         static box_key: Key<@()> = &Key;
         static int_key: Key<int> = &Key;
-        do task::spawn {
+        task::spawn(proc() {
             set(str_key, ~"string data");
             set(box_key, @());
             set(int_key, 42);
-        }
+        });
     }
 
     #[test]
@@ -438,7 +437,7 @@ mod tests {
         static str_key: Key<~str> = &Key;
         static box_key: Key<@()> = &Key;
         static int_key: Key<int> = &Key;
-        do task::spawn {
+        task::spawn(proc() {
             set(str_key, ~"string data");
             set(str_key, ~"string data 2");
             set(box_key, @());
@@ -448,7 +447,7 @@ mod tests {
             // with the crazy polymorphic transmute rather than the provided
             // finaliser.
             set(int_key, 31337);
-        }
+        });
     }
 
     #[test]
@@ -459,13 +458,13 @@ mod tests {
         static int_key: Key<int> = &Key;
         set(str_key, ~"parent data");
         set(box_key, @());
-        do task::spawn {
+        task::spawn(proc() {
             // spawn_linked
             set(str_key, ~"string data");
             set(box_key, @());
             set(int_key, 42);
             fail!();
-        }
+        });
         // Not quite nondeterministic.
         set(int_key, 31337);
         fail!();

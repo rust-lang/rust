@@ -25,7 +25,7 @@ use middle::typeck::infer::{TypeTrace, Subtype};
 use util::common::{indenter};
 use util::ppaux::bound_region_to_str;
 
-use syntax::ast::{Onceness, purity};
+use syntax::ast::{Onceness, Purity};
 
 pub struct Sub(CombineFields);  // "subtype", "subregion" etc
 
@@ -87,7 +87,7 @@ impl Combine for Sub {
         }
     }
 
-    fn purities(&self, a: purity, b: purity) -> cres<purity> {
+    fn purities(&self, a: Purity, b: Purity) -> cres<Purity> {
         self.lub().purities(a, b).compare(b, || {
             ty::terr_purity_mismatch(expected_found(self, a, b))
         })
@@ -171,8 +171,8 @@ impl Combine for Sub {
 
         // Second, we instantiate each bound region in the supertype with a
         // fresh concrete region.
-        let (skol_map, _, b_sig) = {
-            replace_bound_regions_in_fn_sig(self.get_ref().infcx.tcx, None, b, |br| {
+        let (skol_map, b_sig) = {
+            replace_bound_regions_in_fn_sig(self.get_ref().infcx.tcx, b, |br| {
                 let skol = self.get_ref().infcx.region_vars.new_skolemized(br);
                 debug!("Bound region {} skolemized to {:?}",
                        bound_region_to_str(self.get_ref().infcx.tcx, "", false, br),

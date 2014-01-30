@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -11,11 +11,10 @@
 struct A;
 impl A {
     fn m(&self) {
-          fn x() {
-              self.m()
-              //~^ ERROR can't capture dynamic environment in a fn item
-              //~^^ ERROR `self` is not allowed in this context
-          }
+        fn x() {
+            self.m() //~ ERROR can't capture dynamic environment in a fn item
+            //~^ ERROR unresolved name `self`
+        }
     }
 }
 fn main() {}

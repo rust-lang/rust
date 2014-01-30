@@ -11,9 +11,7 @@
 // error-pattern:mismatched types: expected `char` but found
 // Issue #876
 
-#[no_std];
-
-extern mod std;
+#[no_implicit_prelude];
 
 fn last<T>(v: ~[&T]) -> std::option::Option<T> {
     fail!();

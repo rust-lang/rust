@@ -16,19 +16,25 @@ use opt_vec;
 use parse::token;
 use parse::token::{str_to_ident};
 
-pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::token_tree])
+pub fn expand_syntax_ext(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     -> base::MacResult {
     let mut res_str = ~"";
     for (i, e) in tts.iter().enumerate() {
         if i & 1 == 1 {
             match *e {
-                ast::tt_tok(_, token::COMMA) => (),
-                _ => cx.span_fatal(sp, "concat_idents! expecting comma.")
+                ast::TTTok(_, token::COMMA) => (),
+                _ => {
+                    cx.span_err(sp, "concat_idents! expecting comma.");
+                    return MacResult::dummy_expr();
+                }
             }
         } else {
             match *e {
-                ast::tt_tok(_, token::IDENT(ident,_)) => res_str.push_str(cx.str_of(ident)),
-                _ => cx.span_fatal(sp, "concat_idents! requires ident args.")
+                ast::TTTok(_, token::IDENT(ident,_)) => res_str.push_str(cx.str_of(ident)),
+                _ => {
+                    cx.span_err(sp, "concat_idents! requires ident args.");
+                    return MacResult::dummy_expr();
+                }
             }
         }
     }

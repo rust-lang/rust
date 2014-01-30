@@ -11,7 +11,7 @@ snappy includes a C interface (documented in
 The following is a minimal example of calling a foreign function which will
 compile if snappy is installed:
 
-~~~~ {.xfail-test}
+~~~~ {.ignore}
 use std::libc::size_t;
 
 #[link(name = "snappy")]
@@ -43,7 +43,7 @@ keeping the binding correct at runtime.
 
 The `extern` block can be extended to cover the entire snappy API:
 
-~~~~ {.xfail-test}
+~~~~ {.ignore}
 use std::libc::{c_int, size_t};
 
 #[link(name = "snappy")]
@@ -76,7 +76,7 @@ vectors as pointers to memory. Rust's vectors are guaranteed to be a contiguous 
 length is number of elements currently contained, and the capacity is the total size in elements of
 the allocated memory. The length is less than or equal to the capacity.
 
-~~~~ {.xfail-test}
+~~~~ {.ignore}
 pub fn validate_compressed_buffer(src: &[u8]) -> bool {
     unsafe {
         snappy_validate_compressed_buffer(src.as_ptr(), src.len() as size_t) == 0
@@ -96,7 +96,7 @@ required capacity to hold the compressed output. The vector can then be passed t
 `snappy_compress` function as an output parameter. An output parameter is also passed to retrieve
 the true length after compression for setting the length.
 
-~~~~ {.xfail-test}
+~~~~ {.ignore}
 pub fn compress(src: &[u8]) -> ~[u8] {
     unsafe {
         let srclen = src.len() as size_t;
@@ -116,7 +116,7 @@ pub fn compress(src: &[u8]) -> ~[u8] {
 Decompression is similar, because snappy stores the uncompressed size as part of the compression
 format and `snappy_uncompressed_length` will retrieve the exact buffer size required.
 
-~~~~ {.xfail-test}
+~~~~ {.ignore}
 pub fn uncompress(src: &[u8]) -> Option<~[u8]> {
     unsafe {
         let srclen = src.len() as size_t;
@@ -230,7 +230,7 @@ impl<T: Send> Drop for Unique<T> {
             // We need to move the object out of the box, so that
             // the destructor is called (at the end of this scope.)
             ptr::replace_ptr(self.ptr, x);
-            free(self.ptr as *c_void)
+            free(self.ptr as *mut c_void)
         }
     }
 }
@@ -248,6 +248,143 @@ fn main() {
     } // `y` is freed here
 }
 ~~~~
+
+# Callbacks from C code to Rust functions
+
+Some external libraries require the usage of callbacks to report back their
+current state or intermediate data to the caller.
+It is possible to pass functions defined in Rust to an external library.
+The requirement for this is that the callback function is marked as `extern`
+with the correct calling convention to make it callable from C code.
+
+The callback function that can then be sent to through a registration call
+to the C library and afterwards be invoked from there.
+
+A basic example is:
+
+Rust code:
+~~~~ {.ignore}
+extern fn callback(a:i32) {
+    println!("I'm called from C with value {0}", a);
+}
+
+#[link(name = "extlib")]
+extern {
+   fn register_callback(cb: extern "C" fn(i32)) -> i32;
+   fn trigger_callback();
+}
+
+fn main() {
+    unsafe {
+        register_callback(callback);
+        trigger_callback(); // Triggers the callback
+    }
+}
+~~~~
+
+C code:
+~~~~ {.ignore}
+typedef void (*rust_callback)(int32_t);
+rust_callback cb;
+
+int32_t register_callback(rust_callback callback) {
+    cb = callback;
+    return 1;
+}
+
+void trigger_callback() {
+  cb(7); // Will call callback(7) in Rust
+}
+~~~~
+
+In this example will Rust's `main()` will call `do_callback()` in C,
+which would call back to `callback()` in Rust.
+
+
+## Targetting callbacks to Rust objects
+
+The former example showed how a global function can be called from C code.
+However it is often desired that the callback is targetted to a special
+Rust object. This could be the object that represents the wrapper for the
+respective C object. 
+
+This can be achieved by passing an unsafe pointer to the object down to the
+C library. The C library can then include the pointer to the Rust object in
+the notification. This will allow the callback to unsafely access the
+referenced Rust object.
+
+Rust code:
+~~~~ {.ignore}
+
+struct RustObject {
+    a: i32,
+    // other members
+}
+
+extern fn callback(target: *RustObject, a:i32) {
+    println!("I'm called from C with value {0}", a);
+    (*target).a = a; // Update the value in RustObject with the value received from the callback
+}
+
+#[link(name = "extlib")]
+extern {
+   fn register_callback(target: *RustObject, cb: extern "C" fn(*RustObject, i32)) -> i32;
+   fn trigger_callback();
+}
+
+fn main() {
+    // Create the object that will be referenced in the callback
+    let rust_object = ~RustObject{a: 5, ...};
+     
+    unsafe {
+        // Gets a raw pointer to the object
+        let target_addr:*RustObject = ptr::to_unsafe_ptr(rust_object);
+        register_callback(target_addr, callback);
+        trigger_callback(); // Triggers the callback
+    }
+}
+~~~~
+
+C code:
+~~~~ {.ignore}
+typedef void (*rust_callback)(int32_t);
+void* cb_target;
+rust_callback cb;
+
+int32_t register_callback(void* callback_target, rust_callback callback) {
+    cb_target = callback_target;
+    cb = callback;
+    return 1;
+}
+
+void trigger_callback() {
+  cb(cb_target, 7); // Will call callback(&rustObject, 7) in Rust
+}
+~~~~
+
+## Asynchronous callbacks
+
+In the previously given examples the callbacks are invoked as a direct reaction
+to a function call to the external C library.
+The control over the current thread is switched from Rust to C to Rust for the
+execution of the callback, but in the end the callback is executed on the
+same thread (and Rust task) that lead called the function which triggered
+the callback.
+
+Things get more complicated when the external library spawns its own threads
+and invokes callbacks from there.
+In these cases access to Rust data structures inside the callbacks is
+especially unsafe and proper synchronization mechanisms must be used.
+Besides classical synchronization mechanisms like mutexes, one possibility in
+Rust is to use channels (in `std::comm`) to forward data from the C thread
+that invoked the callback into a Rust task.
+
+If an asychronous callback targets a special object in the Rust address space
+it is also absolutely necessary that no more callbacks are performed by the 
+C library after the respective Rust object gets destroyed. 
+This can be achieved by unregistering the callback in the object's
+destructor and designing the library in a way that guarantees that no
+callback will be performed after unregistration.
 
 # Linking
 
@@ -303,7 +440,7 @@ the `link_args` attribute. This attribute is applied to `extern` blocks and
 specifies raw flags which need to get passed to the linker when producing an
 artifact. An example usage would be:
 
-~~~ {.xfail-test}
+~~~ {.ignore}
 #[link_args = "-foo -bar -baz"]
 extern {}
 ~~~
@@ -339,7 +476,7 @@ Foreign APIs often export a global variable which could do something like track
 global state. In order to access these variables, you declare them in `extern`
 blocks with the `static` keyword:
 
-~~~{.xfail-test}
+~~~{.ignore}
 use std::libc;
 
 #[link(name = "readline")]
@@ -357,7 +494,7 @@ Alternatively, you may need to alter global state provided by a foreign
 interface. To do this, statics can be declared with `mut` so rust can mutate
 them.
 
-~~~{.xfail-test}
+~~~{.ignore}
 use std::libc;
 use std::ptr;
 

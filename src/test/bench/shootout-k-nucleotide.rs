@@ -49,7 +49,7 @@ impl Code {
         code
     }
 
-    // XXX: Inefficient.
+    // FIXME: Inefficient.
     fn unpack(&self, frame: i32) -> ~str {
         let mut key = **self;
         let mut result = ~[];
@@ -59,7 +59,7 @@ impl Code {
         }
 
         reverse(result);
-        str::from_utf8_owned(result)
+        str::from_utf8_owned(result).unwrap()
     }
 }
 

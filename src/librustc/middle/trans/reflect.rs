@@ -13,7 +13,7 @@ use lib::llvm::{ValueRef, llvm};
 use middle::trans::adt;
 use middle::trans::base::*;
 use middle::trans::build::*;
-use middle::trans::callee::{ArgVals, DontAutorefArg};
+use middle::trans::callee::ArgVals;
 use middle::trans::callee;
 use middle::trans::common::*;
 use middle::trans::datum::*;
@@ -29,20 +29,20 @@ use std::option::{Some,None};
 use std::vec;
 use syntax::ast::DefId;
 use syntax::ast;
-use syntax::ast_map::path_name;
+use syntax::ast_map::PathName;
 use syntax::parse::token::special_idents;
 
 use middle::trans::type_::Type;
 
-pub struct Reflector {
+pub struct Reflector<'a> {
     visitor_val: ValueRef,
     visitor_methods: @~[@ty::Method],
-    final_bcx: @Block,
+    final_bcx: &'a Block<'a>,
     tydesc_ty: Type,
-    bcx: @Block
+    bcx: &'a Block<'a>
 }
 
-impl Reflector {
+impl<'a> Reflector<'a> {
     pub fn c_uint(&mut self, u: uint) -> ValueRef {
         C_uint(self.bcx.ccx(), u)
     }
@@ -60,8 +60,8 @@ impl Reflector {
         // will kick us off fast isel. (Issue #4352.)
         let bcx = self.bcx;
         let str_vstore = ty::vstore_slice(ty::ReStatic);
-        let str_ty = ty::mk_estr(bcx.tcx(), str_vstore);
-        let scratch = scratch_datum(bcx, str_ty, "", false);
+        let str_ty = ty::mk_str(bcx.tcx(), str_vstore);
+        let scratch = rvalue_scratch_datum(bcx, str_ty, "");
         let len = C_uint(bcx.ccx(), s.len());
         let c_str = PointerCast(bcx, C_cstr(bcx.ccx(), s), Type::i8p());
         Store(bcx, c_str, GEPi(bcx, scratch.val, [ 0, 0 ]));
@@ -90,6 +90,7 @@ impl Reflector {
     }
 
     pub fn visit(&mut self, ty_name: &str, args: &[ValueRef]) {
+        let fcx = self.bcx.fcx;
         let tcx = self.bcx.tcx();
         let mth_idx = ty::method_idx(
             tcx.sess.ident_of(~"visit_" + ty_name),
@@ -106,14 +107,13 @@ impl Reflector {
         let bool_ty = ty::mk_bool();
         let result = unpack_result!(bcx, callee::trans_call_inner(
             self.bcx, None, mth_ty, bool_ty,
-            |bcx| meth::trans_trait_callee_from_llval(bcx,
-                                                      mth_ty,
-                                                      mth_idx,
-                                                      v,
-                                                      None),
-            ArgVals(args), None, DontAutorefArg));
+            |bcx, _| meth::trans_trait_callee_from_llval(bcx,
+                                                         mth_ty,
+                                                         mth_idx,
+                                                         v),
+            ArgVals(args), None));
         let result = bool_to_i1(bcx, result);
-        let next_bcx = sub_block(bcx, "next");
+        let next_bcx = fcx.new_temp_block("next");
         CondBr(bcx, result, next_bcx.llbb, self.final_bcx.llbb);
         self.bcx = next_bcx
     }
@@ -158,37 +158,35 @@ impl Reflector {
           ty::ty_nil => self.leaf("nil"),
           ty::ty_bool => self.leaf("bool"),
           ty::ty_char => self.leaf("char"),
-          ty::ty_int(ast::ty_i) => self.leaf("int"),
-          ty::ty_int(ast::ty_i8) => self.leaf("i8"),
-          ty::ty_int(ast::ty_i16) => self.leaf("i16"),
-          ty::ty_int(ast::ty_i32) => self.leaf("i32"),
-          ty::ty_int(ast::ty_i64) => self.leaf("i64"),
-          ty::ty_uint(ast::ty_u) => self.leaf("uint"),
-          ty::ty_uint(ast::ty_u8) => self.leaf("u8"),
-          ty::ty_uint(ast::ty_u16) => self.leaf("u16"),
-          ty::ty_uint(ast::ty_u32) => self.leaf("u32"),
-          ty::ty_uint(ast::ty_u64) => self.leaf("u64"),
-          ty::ty_float(ast::ty_f32) => self.leaf("f32"),
-          ty::ty_float(ast::ty_f64) => self.leaf("f64"),
+          ty::ty_int(ast::TyI) => self.leaf("int"),
+          ty::ty_int(ast::TyI8) => self.leaf("i8"),
+          ty::ty_int(ast::TyI16) => self.leaf("i16"),
+          ty::ty_int(ast::TyI32) => self.leaf("i32"),
+          ty::ty_int(ast::TyI64) => self.leaf("i64"),
+          ty::ty_uint(ast::TyU) => self.leaf("uint"),
+          ty::ty_uint(ast::TyU8) => self.leaf("u8"),
+          ty::ty_uint(ast::TyU16) => self.leaf("u16"),
+          ty::ty_uint(ast::TyU32) => self.leaf("u32"),
+          ty::ty_uint(ast::TyU64) => self.leaf("u64"),
+          ty::ty_float(ast::TyF32) => self.leaf("f32"),
+          ty::ty_float(ast::TyF64) => self.leaf("f64"),
 
           ty::ty_unboxed_vec(ref mt) => {
               let values = self.c_mt(mt);
               self.visit("vec", values)
           }
 
-          ty::ty_estr(vst) => {
+          // Should rename to str_*/vec_*.
+          ty::ty_str(vst) => {
               let (name, extra) = self.vstore_name_and_extra(t, vst);
               self.visit(~"estr_" + name, extra)
           }
-          ty::ty_evec(ref mt, vst) => {
+          ty::ty_vec(ref mt, vst) => {
               let (name, extra) = self.vstore_name_and_extra(t, vst);
               let extra = extra + self.c_mt(mt);
-              if "uniq" == name && ty::type_contents(bcx.tcx(), t).owns_managed() {
-                  self.visit("evec_uniq_managed", extra)
-              } else {
-                  self.visit(~"evec_" + name, extra)
-              }
+              self.visit(~"evec_" + name, extra)
           }
+          // Should remove mt from box and uniq.
           ty::ty_box(typ) => {
               let extra = self.c_mt(&ty::mt {
                   ty: typ,
@@ -196,13 +194,12 @@ impl Reflector {
               });
               self.visit("box", extra)
           }
-          ty::ty_uniq(ref mt) => {
-              let extra = self.c_mt(mt);
-              if ty::type_contents(bcx.tcx(), t).owns_managed() {
-                  self.visit("uniq_managed", extra)
-              } else {
-                  self.visit("uniq", extra)
-              }
+          ty::ty_uniq(typ) => {
+              let extra = self.c_mt(&ty::mt {
+                  ty: typ,
+                  mutbl: ast::MutImmutable,
+              });
+              self.visit("uniq", extra)
           }
           ty::ty_ptr(ref mt) => {
               let extra = self.c_mt(mt);
@@ -290,17 +287,17 @@ impl Reflector {
                                                            mutbl: ast::MutImmutable });
 
             let make_get_disr = || {
-                let sub_path = bcx.fcx.path + &[path_name(special_idents::anon)];
+                let sub_path = bcx.fcx.path + &[PathName(special_idents::anon)];
                 let sym = mangle_internal_name_by_path_and_seq(ccx,
                                                                sub_path,
                                                                "get_disr");
 
-                let llfdecl = decl_internal_rust_fn(ccx, [opaqueptrty], ty::mk_u64(), sym);
-                let fcx = new_fn_ctxt(ccx,
-                                      ~[],
-                                      llfdecl,
-                                      ty::mk_u64(),
-                                      None);
+                let llfdecl = decl_internal_rust_fn(ccx, false,
+                                                    [opaqueptrty],
+                                                    ty::mk_u64(), sym);
+                let fcx = new_fn_ctxt(ccx, ~[], llfdecl, false, ty::mk_u64(), None);
+                init_function(&fcx, false, ty::mk_u64(), None);
+
                 let arg = unsafe {
                     //
                     // we know the return type of llfdecl is an int here, so
@@ -309,15 +306,15 @@ impl Reflector {
                     //
                     llvm::LLVMGetParam(llfdecl, fcx.arg_pos(0u) as c_uint)
                 };
-                let mut bcx = fcx.entry_bcx.get().unwrap();
+                let bcx = fcx.entry_bcx.get().unwrap();
                 let arg = BitCast(bcx, arg, llptrty);
                 let ret = adt::trans_get_discr(bcx, repr, arg, Some(Type::i64()));
                 Store(bcx, ret, fcx.llretptr.get().unwrap());
                 match fcx.llreturn.get() {
-                    Some(llreturn) => cleanup_and_Br(bcx, bcx, llreturn),
-                    None => bcx = cleanup_block(bcx, Some(bcx.llbb))
+                    Some(llreturn) => Br(bcx, llreturn),
+                    None => {}
                 };
-                finish_fn(fcx, bcx);
+                finish_fn(&fcx, bcx);
                 llfdecl
             };
 
@@ -359,13 +356,7 @@ impl Reflector {
               self.visit("param", extra)
           }
           ty::ty_self(..) => self.leaf("self"),
-          ty::ty_type => self.leaf("type"),
-          ty::ty_opaque_box => self.leaf("opaque_box"),
-          ty::ty_opaque_closure_ptr(ck) => {
-              let ckval = ast_sigil_constant(ck);
-              let extra = ~[self.c_uint(ckval)];
-              self.visit("closure_ptr", extra)
-          }
+          ty::ty_type => self.leaf("type")
         }
     }
 
@@ -385,12 +376,14 @@ impl Reflector {
 }
 
 // Emit a sequence of calls to visit_ty::visit_foo
-pub fn emit_calls_to_trait_visit_ty(bcx: @Block,
+pub fn emit_calls_to_trait_visit_ty<'a>(
+                                    bcx: &'a Block<'a>,
                                     t: ty::t,
                                     visitor_val: ValueRef,
                                     visitor_trait_id: DefId)
-                                 -> @Block {
-    let final = sub_block(bcx, "final");
+                                    -> &'a Block<'a> {
+    let fcx = bcx.fcx;
+    let final = fcx.new_temp_block("final");
     let tydesc_ty = ty::get_tydesc_ty(bcx.ccx().tcx).unwrap();
     let tydesc_ty = type_of(bcx.ccx(), tydesc_ty);
     let mut r = Reflector {
@@ -413,10 +406,10 @@ pub fn ast_sigil_constant(sigil: ast::Sigil) -> uint {
     }
 }
 
-pub fn ast_purity_constant(purity: ast::purity) -> uint {
+pub fn ast_purity_constant(purity: ast::Purity) -> uint {
     match purity {
-        ast::unsafe_fn => 1u,
-        ast::impure_fn => 2u,
-        ast::extern_fn => 3u
+        ast::UnsafeFn => 1u,
+        ast::ImpureFn => 2u,
+        ast::ExternFn => 3u
     }
 }

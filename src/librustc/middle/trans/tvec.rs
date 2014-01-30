@@ -13,26 +13,24 @@ use back::abi;
 use lib;
 use lib::llvm::{llvm, ValueRef};
 use middle::lang_items::StrDupUniqFnLangItem;
-use middle::trans::base;
 use middle::trans::base::*;
+use middle::trans::base;
 use middle::trans::build::*;
 use middle::trans::callee;
+use middle::trans::cleanup;
+use middle::trans::cleanup::CleanupMethods;
 use middle::trans::common::*;
 use middle::trans::datum::*;
 use middle::trans::expr::{Dest, Ignore, SaveIn};
 use middle::trans::expr;
 use middle::trans::glue;
 use middle::trans::machine::{llsize_of, nonzero_llsize_of, llsize_of_alloc};
+use middle::trans::type_::Type;
 use middle::trans::type_of;
 use middle::ty;
-use util::common::indenter;
 use util::ppaux::ty_to_str;
 
-use middle::trans::type_::Type;
-
-use std::option::None;
 use syntax::ast;
-use syntax::codemap;
 
 // Boxed vector types are in some sense currently a "shorthand" for a box
 // containing an unboxed vector. This expands a boxed vector type into such an
@@ -42,50 +40,64 @@ pub fn expand_boxed_vec_ty(tcx: ty::ctxt, t: ty::t) -> ty::t {
     let unit_ty = ty::sequence_element_type(tcx, t);
     let unboxed_vec_ty = ty::mk_mut_unboxed_vec(tcx, unit_ty);
     match ty::get(t).sty {
-      ty::ty_estr(ty::vstore_uniq) | ty::ty_evec(_, ty::vstore_uniq) => {
-        ty::mk_imm_uniq(tcx, unboxed_vec_ty)
-      }
-      ty::ty_estr(ty::vstore_box) | ty::ty_evec(_, ty::vstore_box) => {
-        ty::mk_imm_box(tcx, unboxed_vec_ty)
-      }
-      _ => tcx.sess.bug("non boxed-vec type \
-                         in tvec::expand_boxed_vec_ty")
+        ty::ty_str(ty::vstore_uniq) | ty::ty_vec(_, ty::vstore_uniq) => {
+            ty::mk_uniq(tcx, unboxed_vec_ty)
+        }
+        ty::ty_str(ty::vstore_box) | ty::ty_vec(_, ty::vstore_box) => {
+            ty::mk_box(tcx, unboxed_vec_ty)
+        }
+        _ => tcx.sess.bug("non boxed-vec type \
+                           in tvec::expand_boxed_vec_ty")
     }
 }
 
-pub fn get_fill(bcx: @Block, vptr: ValueRef) -> ValueRef {
+pub fn get_fill(bcx: &Block, vptr: ValueRef) -> ValueRef {
     let _icx = push_ctxt("tvec::get_fill");
     Load(bcx, GEPi(bcx, vptr, [0u, abi::vec_elt_fill]))
 }
-pub fn set_fill(bcx: @Block, vptr: ValueRef, fill: ValueRef) {
+
+pub fn set_fill(bcx: &Block, vptr: ValueRef, fill: ValueRef) {
     Store(bcx, fill, GEPi(bcx, vptr, [0u, abi::vec_elt_fill]));
 }
-pub fn get_alloc(bcx: @Block, vptr: ValueRef) -> ValueRef {
+
+pub fn get_alloc(bcx: &Block, vptr: ValueRef) -> ValueRef {
     Load(bcx, GEPi(bcx, vptr, [0u, abi::vec_elt_alloc]))
 }
 
-pub fn get_bodyptr(bcx: @Block, vptr: ValueRef, t: ty::t) -> ValueRef {
-    if ty::type_contents(bcx.tcx(), t).owns_managed() {
+pub fn get_bodyptr(bcx: &Block, vptr: ValueRef, t: ty::t) -> ValueRef {
+    let vt = vec_types(bcx, t);
+
+    let managed = match ty::get(vt.vec_ty).sty {
+      ty::ty_str(ty::vstore_box) | ty::ty_vec(_, ty::vstore_box) => true,
+      _ => false
+    };
+
+    if managed {
         GEPi(bcx, vptr, [0u, abi::box_field_body])
     } else {
         vptr
     }
 }
 
-pub fn get_dataptr(bcx: @Block, vptr: ValueRef) -> ValueRef {
+pub fn get_dataptr(bcx: &Block, vptr: ValueRef) -> ValueRef {
     let _icx = push_ctxt("tvec::get_dataptr");
     GEPi(bcx, vptr, [0u, abi::vec_elt_elems, 0u])
 }
 
-pub fn pointer_add_byte(bcx: @Block, ptr: ValueRef, bytes: ValueRef) -> ValueRef {
+pub fn pointer_add_byte(bcx: &Block, ptr: ValueRef, bytes: ValueRef) -> ValueRef {
     let _icx = push_ctxt("tvec::pointer_add_byte");
     let old_ty = val_ty(ptr);
     let bptr = PointerCast(bcx, ptr, Type::i8p());
     return PointerCast(bcx, InBoundsGEP(bcx, bptr, [bytes]), old_ty);
 }
 
-pub fn alloc_raw(bcx: @Block, unit_ty: ty::t,
-                 fill: ValueRef, alloc: ValueRef, heap: heap) -> Result {
+pub fn alloc_raw<'a>(
+                 bcx: &'a Block<'a>,
+                 unit_ty: ty::t,
+                 fill: ValueRef,
+                 alloc: ValueRef,
+                 heap: heap)
+                 -> Result<'a> {
     let _icx = push_ctxt("tvec::alloc_uniq");
     let ccx = bcx.ccx();
 
@@ -102,21 +114,25 @@ pub fn alloc_raw(bcx: @Block, unit_ty: ty::t,
             base::malloc_general_dyn(bcx, vecbodyty, heap, vecsize);
         Store(bcx, fill, GEPi(bcx, body, [0u, abi::vec_elt_fill]));
         Store(bcx, alloc, GEPi(bcx, body, [0u, abi::vec_elt_alloc]));
-        base::maybe_set_managed_unique_rc(bcx, bx, heap);
         return rslt(bcx, bx);
     }
 }
 
-pub fn alloc_uniq_raw(bcx: @Block, unit_ty: ty::t,
-                      fill: ValueRef, alloc: ValueRef) -> Result {
-    alloc_raw(bcx, unit_ty, fill, alloc, base::heap_for_unique(bcx, unit_ty))
+pub fn alloc_uniq_raw<'a>(
+                      bcx: &'a Block<'a>,
+                      unit_ty: ty::t,
+                      fill: ValueRef,
+                      alloc: ValueRef)
+                      -> Result<'a> {
+    alloc_raw(bcx, unit_ty, fill, alloc, heap_exchange)
 }
 
-pub fn alloc_vec(bcx: @Block,
+pub fn alloc_vec<'a>(
+                 bcx: &'a Block<'a>,
                  unit_ty: ty::t,
                  elts: uint,
                  heap: heap)
-              -> Result {
+                 -> Result<'a> {
     let _icx = push_ctxt("tvec::alloc_uniq");
     let ccx = bcx.ccx();
     let llunitty = type_of::type_of(ccx, unit_ty);
@@ -130,8 +146,11 @@ pub fn alloc_vec(bcx: @Block,
     return rslt(bcx, vptr);
 }
 
-pub fn make_drop_glue_unboxed(bcx: @Block, vptr: ValueRef, vec_ty: ty::t) ->
-   @Block {
+pub fn make_drop_glue_unboxed<'a>(
+                              bcx: &'a Block<'a>,
+                              vptr: ValueRef,
+                              vec_ty: ty::t)
+                              -> &'a Block<'a> {
     let _icx = push_ctxt("tvec::make_drop_glue_unboxed");
     let tcx = bcx.tcx();
     let unit_ty = ty::sequence_element_type(tcx, vec_ty);
@@ -160,11 +179,12 @@ impl VecTypes {
     }
 }
 
-pub fn trans_fixed_vstore(bcx: @Block,
+pub fn trans_fixed_vstore<'a>(
+                          bcx: &'a Block<'a>,
                           vstore_expr: &ast::Expr,
                           content_expr: &ast::Expr,
                           dest: expr::Dest)
-                       -> @Block {
+                          -> &'a Block<'a> {
     //!
     //
     // [...] allocates a fixed-size array and moves it around "by value".
@@ -174,7 +194,6 @@ pub fn trans_fixed_vstore(bcx: @Block,
 
     debug!("trans_fixed_vstore(vstore_expr={}, dest={:?})",
            bcx.expr_to_str(vstore_expr), dest.to_str(bcx.ccx()));
-    let _indenter = indenter();
 
     let vt = vec_types_from_expr(bcx, vstore_expr);
 
@@ -189,27 +208,34 @@ pub fn trans_fixed_vstore(bcx: @Block,
     };
 }
 
-pub fn trans_slice_vstore(bcx: @Block,
+pub fn trans_slice_vstore<'a>(
+                          bcx: &'a Block<'a>,
                           vstore_expr: &ast::Expr,
                           content_expr: &ast::Expr,
                           dest: expr::Dest)
-                       -> @Block {
-    //!
-    //
-    // &[...] allocates memory on the stack and writes the values into it,
-    // returning a slice (pair of ptr, len).  &"..." is similar except that
-    // the memory can be statically allocated.
+                          -> &'a Block<'a> {
+    /*!
+     * &[...] allocates memory on the stack and writes the values into it,
+     * returning a slice (pair of ptr, len).  &"..." is similar except that
+     * the memory can be statically allocated.
+     */
 
-    let ccx = bcx.ccx();
+    let fcx = bcx.fcx;
+    let ccx = fcx.ccx;
+    let mut bcx = bcx;
 
     debug!("trans_slice_vstore(vstore_expr={}, dest={})",
            bcx.expr_to_str(vstore_expr), dest.to_str(ccx));
-    let _indenter = indenter();
 
     // Handle the &"..." case:
     match content_expr.node {
-        ast::ExprLit(@codemap::Spanned {node: ast::lit_str(s, _), span: _}) => {
-            return trans_lit_str(bcx, content_expr, s, dest);
+        ast::ExprLit(lit) => {
+            match lit.node {
+                ast::LitStr(s, _) => {
+                    return trans_lit_str(bcx, content_expr, s, dest);
+                }
+                _ => {}
+            }
         }
         _ => {}
     }
@@ -219,21 +245,29 @@ pub fn trans_slice_vstore(bcx: @Block,
     let count = elements_required(bcx, content_expr);
     debug!("vt={}, count={:?}", vt.to_str(ccx), count);
 
-    // Make a fixed-length backing array and allocate it on the stack.
     let llcount = C_uint(ccx, count);
-    let llfixed = base::arrayalloca(bcx, vt.llunit_ty, llcount);
+    let llfixed;
+    if count == 0 {
+        // Zero-length array: just use NULL as the data pointer
+        llfixed = C_null(vt.llunit_ty.ptr_to());
+    } else {
+        // Make a fixed-length backing array and allocate it on the stack.
+        llfixed = base::arrayalloca(bcx, vt.llunit_ty, llcount);
 
-    // Arrange for the backing array to be cleaned up.
-    let fixed_ty = ty::mk_evec(bcx.tcx(),
-                               ty::mt {ty: vt.unit_ty, mutbl: ast::MutMutable},
-                               ty::vstore_fixed(count));
-    let llfixed_ty = type_of::type_of(bcx.ccx(), fixed_ty).ptr_to();
-    let llfixed_casted = BitCast(bcx, llfixed, llfixed_ty);
-    add_clean(bcx, llfixed_casted, fixed_ty);
+        // Arrange for the backing array to be cleaned up.
+        let fixed_ty = ty::mk_vec(bcx.tcx(),
+                                  ty::mt {ty: vt.unit_ty,
+                                          mutbl: ast::MutMutable},
+                                  ty::vstore_fixed(count));
+        let llfixed_ty = type_of::type_of(bcx.ccx(), fixed_ty).ptr_to();
+        let llfixed_casted = BitCast(bcx, llfixed, llfixed_ty);
+        let cleanup_scope = cleanup::temporary_scope(bcx.tcx(), content_expr.id);
+        fcx.schedule_drop_mem(cleanup_scope, llfixed_casted, fixed_ty);
 
-    // Generate the content into the backing array.
-    let bcx = write_content(bcx, &vt, vstore_expr,
+        // Generate the content into the backing array.
+        bcx = write_content(bcx, &vt, vstore_expr,
                             content_expr, SaveIn(llfixed));
+    }
 
     // Finally, create the slice pair itself.
     match dest {
@@ -247,21 +281,21 @@ pub fn trans_slice_vstore(bcx: @Block,
     return bcx;
 }
 
-pub fn trans_lit_str(bcx: @Block,
+pub fn trans_lit_str<'a>(
+                     bcx: &'a Block<'a>,
                      lit_expr: &ast::Expr,
                      str_lit: @str,
                      dest: Dest)
-                  -> @Block {
-    //!
-    //
-    // Literal strings translate to slices into static memory.  This is
-    // different from trans_slice_vstore() above because it does need to copy
-    // the content anywhere.
+                     -> &'a Block<'a> {
+    /*!
+     * Literal strings translate to slices into static memory.  This is
+     * different from trans_slice_vstore() above because it does need to copy
+     * the content anywhere.
+     */
 
     debug!("trans_lit_str(lit_expr={}, dest={})",
            bcx.expr_to_str(lit_expr),
            dest.to_str(bcx.ccx()));
-    let _indenter = indenter();
 
     match dest {
         Ignore => bcx,
@@ -282,46 +316,51 @@ pub fn trans_lit_str(bcx: @Block,
 }
 
 
-pub fn trans_uniq_or_managed_vstore(bcx: @Block, heap: heap, vstore_expr: &ast::Expr,
-                                    content_expr: &ast::Expr) -> DatumBlock {
-    //!
-    //
-    // @[...] or ~[...] (also @"..." or ~"...") allocate boxes in the
-    // appropriate heap and write the array elements into them.
+pub fn trans_uniq_or_managed_vstore<'a>(bcx: &'a Block<'a>,
+                                        heap: heap,
+                                        vstore_expr: &ast::Expr,
+                                        content_expr: &ast::Expr)
+                                        -> DatumBlock<'a, Expr> {
+    /*!
+     * @[...] or ~[...] (also @"..." or ~"...") allocate boxes in the
+     * appropriate heap and write the array elements into them.
+     */
 
     debug!("trans_uniq_or_managed_vstore(vstore_expr={}, heap={:?})",
            bcx.expr_to_str(vstore_expr), heap);
-    let _indenter = indenter();
+    let fcx = bcx.fcx;
 
     // Handle ~"".
     match heap {
         heap_exchange => {
             match content_expr.node {
-                ast::ExprLit(@codemap::Spanned {
-                    node: ast::lit_str(s, _), span
-                }) => {
-                    let llptrval = C_cstr(bcx.ccx(), s);
-                    let llptrval = PointerCast(bcx, llptrval, Type::i8p());
-                    let llsizeval = C_uint(bcx.ccx(), s.len());
-                    let typ = ty::mk_estr(bcx.tcx(), ty::vstore_uniq);
-                    let lldestval = scratch_datum(bcx, typ, "", false);
-                    let alloc_fn = langcall(bcx, Some(span), "",
-                                            StrDupUniqFnLangItem);
-                    let bcx = callee::trans_lang_call(
-                        bcx,
-                        alloc_fn,
-                        [ llptrval, llsizeval ],
-                        Some(expr::SaveIn(lldestval.to_ref_llval(bcx)))).bcx;
-                    return DatumBlock {
-                        bcx: bcx,
-                        datum: lldestval
-                    };
+                ast::ExprLit(lit) => {
+                    match lit.node {
+                        ast::LitStr(s, _) => {
+                            let llptrval = C_cstr(bcx.ccx(), s);
+                            let llptrval = PointerCast(bcx, llptrval, Type::i8p());
+                            let llsizeval = C_uint(bcx.ccx(), s.len());
+                            let typ = ty::mk_str(bcx.tcx(), ty::vstore_uniq);
+                            let lldestval = rvalue_scratch_datum(bcx, typ, "");
+                            let alloc_fn = langcall(bcx,
+                                                    Some(lit.span),
+                                                    "",
+                                                    StrDupUniqFnLangItem);
+                            let bcx = callee::trans_lang_call(
+                                bcx,
+                                alloc_fn,
+                                [ llptrval, llsizeval ],
+                                Some(expr::SaveIn(lldestval.val))).bcx;
+                            return DatumBlock(bcx, lldestval).to_expr_datumblock();
+                        }
+                        _ => {}
+                    }
                 }
                 _ => {}
             }
         }
         heap_exchange_closure => fail!("vectors use exchange_alloc"),
-        heap_managed | heap_managed_unique => {}
+        heap_managed => {}
     }
 
     let vt = vec_types_from_expr(bcx, vstore_expr);
@@ -329,7 +368,11 @@ pub fn trans_uniq_or_managed_vstore(bcx: @Block, heap: heap, vstore_expr: &ast::
 
     let Result {bcx, val} = alloc_vec(bcx, vt.unit_ty, count, heap);
 
-    add_clean_free(bcx, val, heap);
+    // Create a temporary scope lest execution should fail while
+    // constructing the vector.
+    let temp_scope = fcx.push_custom_cleanup_scope();
+    fcx.schedule_free_value(cleanup::CustomScope(temp_scope), val, heap);
+
     let dataptr = get_dataptr(bcx, get_bodyptr(bcx, val, vt.vec_ty));
 
     debug!("alloc_vec() returned val={}, dataptr={}",
@@ -338,38 +381,51 @@ pub fn trans_uniq_or_managed_vstore(bcx: @Block, heap: heap, vstore_expr: &ast::
     let bcx = write_content(bcx, &vt, vstore_expr,
                             content_expr, SaveIn(dataptr));
 
-    revoke_clean(bcx, val);
+    fcx.pop_custom_cleanup_scope(temp_scope);
 
-    return immediate_rvalue_bcx(bcx, val, vt.vec_ty);
+    return immediate_rvalue_bcx(bcx, val, vt.vec_ty).to_expr_datumblock();
 }
 
-pub fn write_content(bcx: @Block,
+pub fn write_content<'a>(
+                     bcx: &'a Block<'a>,
                      vt: &VecTypes,
                      vstore_expr: &ast::Expr,
                      content_expr: &ast::Expr,
                      dest: Dest)
-                  -> @Block {
+                     -> &'a Block<'a> {
     let _icx = push_ctxt("tvec::write_content");
+    let fcx = bcx.fcx;
     let mut bcx = bcx;
 
     debug!("write_content(vt={}, dest={}, vstore_expr={:?})",
            vt.to_str(bcx.ccx()),
            dest.to_str(bcx.ccx()),
            bcx.expr_to_str(vstore_expr));
-    let _indenter = indenter();
 
     match content_expr.node {
-        ast::ExprLit(@codemap::Spanned { node: ast::lit_str(s, _), .. }) => {
-            match dest {
-                Ignore => {
-                    return bcx;
+        ast::ExprLit(lit) => {
+            match lit.node {
+                ast::LitStr(s, _) => {
+                    match dest {
+                        Ignore => {
+                            return bcx;
+                        }
+                        SaveIn(lldest) => {
+                            let bytes = s.len();
+                            let llbytes = C_uint(bcx.ccx(), bytes);
+                            let llcstr = C_cstr(bcx.ccx(), s);
+                            base::call_memcpy(bcx,
+                                              lldest,
+                                              llcstr,
+                                              llbytes,
+                                              1);
+                            return bcx;
+                        }
+                    }
                 }
-                SaveIn(lldest) => {
-                    let bytes = s.len();
-                    let llbytes = C_uint(bcx.ccx(), bytes);
-                    let llcstr = C_cstr(bcx.ccx(), s);
-                    base::call_memcpy(bcx, lldest, llcstr, llbytes, 1);
-                    return bcx;
+                _ => {
+                    bcx.tcx().sess.span_bug(content_expr.span,
+                                            "Unexpected evec content");
                 }
             }
         }
@@ -382,19 +438,19 @@ pub fn write_content(bcx: @Block,
                 }
 
                 SaveIn(lldest) => {
-                    let mut temp_cleanups = ~[];
+                    let temp_scope = fcx.push_custom_cleanup_scope();
                     for (i, element) in elements.iter().enumerate() {
                         let lleltptr = GEPi(bcx, lldest, [i]);
                         debug!("writing index {:?} with lleltptr={:?}",
                                i, bcx.val_to_str(lleltptr));
                         bcx = expr::trans_into(bcx, *element,
                                                SaveIn(lleltptr));
-                        add_clean_temp_mem(bcx, lleltptr, vt.unit_ty);
-                        temp_cleanups.push(lleltptr);
+                        fcx.schedule_drop_mem(
+                            cleanup::CustomScope(temp_scope),
+                            lleltptr,
+                            vt.unit_ty);
                     }
-                    for cleanup in temp_cleanups.iter() {
-                        revoke_clean(bcx, *cleanup);
-                    }
+                    fcx.pop_custom_cleanup_scope(temp_scope);
                 }
             }
             return bcx;
@@ -415,30 +471,32 @@ pub fn write_content(bcx: @Block,
                     // this can only happen as a result of OOM. So we just skip out on the
                     // cleanup since things would *probably* be broken at that point anyways.
 
-                    let elem = unpack_datum!(bcx, {
-                        expr::trans_to_datum(bcx, element)
+                    let elem = unpack_datum!(bcx, expr::trans(bcx, element));
+                    assert!(!ty::type_moves_by_default(bcx.tcx(), elem.ty));
+
+                    let bcx = iter_vec_loop(bcx, lldest, vt,
+                                  C_uint(bcx.ccx(), count), |set_bcx, lleltptr, _| {
+                        elem.shallow_copy_and_take(set_bcx, lleltptr)
                     });
 
-                    iter_vec_loop(bcx, lldest, vt,
-                                  C_uint(bcx.ccx(), count), |set_bcx, lleltptr, _| {
-                        elem.copy_to(set_bcx, INIT, lleltptr)
-                    })
+                    elem.add_clean_if_rvalue(bcx, element.id);
+                    bcx
                 }
             }
         }
         _ => {
             bcx.tcx().sess.span_bug(content_expr.span,
-                                    "Unexpected evec content");
+                                    "Unexpected vec content");
         }
     }
 }
 
-pub fn vec_types_from_expr(bcx: @Block, vec_expr: &ast::Expr) -> VecTypes {
+pub fn vec_types_from_expr(bcx: &Block, vec_expr: &ast::Expr) -> VecTypes {
     let vec_ty = node_id_type(bcx, vec_expr.id);
     vec_types(bcx, vec_ty)
 }
 
-pub fn vec_types(bcx: @Block, vec_ty: ty::t) -> VecTypes {
+pub fn vec_types(bcx: &Block, vec_ty: ty::t) -> VecTypes {
     let ccx = bcx.ccx();
     let unit_ty = ty::sequence_element_type(bcx.tcx(), vec_ty);
     let llunit_ty = type_of::type_of(ccx, unit_ty);
@@ -452,37 +510,44 @@ pub fn vec_types(bcx: @Block, vec_ty: ty::t) -> VecTypes {
               llunit_alloc_size: llunit_alloc_size}
 }
 
-pub fn elements_required(bcx: @Block, content_expr: &ast::Expr) -> uint {
+pub fn elements_required(bcx: &Block, content_expr: &ast::Expr) -> uint {
     //! Figure out the number of elements we need to store this content
 
     match content_expr.node {
-        ast::ExprLit(@codemap::Spanned { node: ast::lit_str(s, _), .. }) => {
-            s.len()
+        ast::ExprLit(lit) => {
+            match lit.node {
+                ast::LitStr(s, _) => s.len(),
+                _ => {
+                    bcx.tcx().sess.span_bug(content_expr.span,
+                                            "Unexpected evec content")
+                }
+            }
         },
         ast::ExprVec(ref es, _) => es.len(),
         ast::ExprRepeat(_, count_expr, _) => {
             ty::eval_repeat_count(&bcx.tcx(), count_expr)
         }
         _ => bcx.tcx().sess.span_bug(content_expr.span,
-                                     "Unexpected evec content")
+                                     "Unexpected vec content")
     }
 }
 
-pub fn get_base_and_byte_len(bcx: @Block, llval: ValueRef,
-                        vec_ty: ty::t) -> (ValueRef, ValueRef) {
-    //!
-    //
-    // Converts a vector into the slice pair.  The vector should be stored in
-    // `llval` which should be either immediate or by-ref as appropriate for
-    // the vector type.  If you have a datum, you would probably prefer to
-    // call `Datum::get_base_and_byte_len()` which will handle any conversions for
-    // you.
+pub fn get_base_and_byte_len(bcx: &Block,
+                             llval: ValueRef,
+                             vec_ty: ty::t)
+                             -> (ValueRef, ValueRef) {
+    /*!
+     * Converts a vector into the slice pair.  The vector should be
+     * stored in `llval` which should be by ref. If you have a datum,
+     * you would probably prefer to call
+     * `Datum::get_base_and_byte_len()`.
+     */
 
     let ccx = bcx.ccx();
     let vt = vec_types(bcx, vec_ty);
 
     let vstore = match ty::get(vt.vec_ty).sty {
-      ty::ty_estr(vst) | ty::ty_evec(_, vst) => vst,
+      ty::ty_str(vst) | ty::ty_vec(_, vst) => vst,
       _ => ty::vstore_uniq
     };
 
@@ -493,32 +558,38 @@ pub fn get_base_and_byte_len(bcx: @Block, llval: ValueRef,
             (base, len)
         }
         ty::vstore_slice(_) => {
+            assert!(!type_is_immediate(bcx.ccx(), vt.vec_ty));
             let base = Load(bcx, GEPi(bcx, llval, [0u, abi::slice_elt_base]));
             let count = Load(bcx, GEPi(bcx, llval, [0u, abi::slice_elt_len]));
             let len = Mul(bcx, count, vt.llunit_size);
             (base, len)
         }
         ty::vstore_uniq | ty::vstore_box => {
+            assert!(type_is_immediate(bcx.ccx(), vt.vec_ty));
+            let llval = Load(bcx, llval);
             let body = get_bodyptr(bcx, llval, vec_ty);
             (get_dataptr(bcx, body), get_fill(bcx, body))
         }
     }
 }
 
-pub fn get_base_and_len(bcx: @Block, llval: ValueRef, vec_ty: ty::t) -> (ValueRef, ValueRef) {
-    //!
-    //
-    // Converts a vector into the slice pair.  The vector should be stored in
-    // `llval` which should be either immediate or by-ref as appropriate for
-    // the vector type.  If you have a datum, you would probably prefer to
-    // call `Datum::get_base_and_len()` which will handle any conversions for
-    // you.
+pub fn get_base_and_len(bcx: &Block,
+                        llval: ValueRef,
+                        vec_ty: ty::t)
+                        -> (ValueRef, ValueRef) {
+    /*!
+     * Converts a vector into the slice pair.  The vector should be
+     * stored in `llval` which should be by-reference.  If you have a
+     * datum, you would probably prefer to call
+     * `Datum::get_base_and_len()` which will handle any conversions
+     * for you.
+     */
 
     let ccx = bcx.ccx();
     let vt = vec_types(bcx, vec_ty);
 
     let vstore = match ty::get(vt.vec_ty).sty {
-      ty::ty_estr(vst) | ty::ty_evec(_, vst) => vst,
+      ty::ty_str(vst) | ty::ty_vec(_, vst) => vst,
       _ => ty::vstore_uniq
     };
 
@@ -528,33 +599,39 @@ pub fn get_base_and_len(bcx: @Block, llval: ValueRef, vec_ty: ty::t) -> (ValueRe
             (base, C_uint(ccx, n))
         }
         ty::vstore_slice(_) => {
+            assert!(!type_is_immediate(bcx.ccx(), vt.vec_ty));
             let base = Load(bcx, GEPi(bcx, llval, [0u, abi::slice_elt_base]));
             let count = Load(bcx, GEPi(bcx, llval, [0u, abi::slice_elt_len]));
             (base, count)
         }
         ty::vstore_uniq | ty::vstore_box => {
+            assert!(type_is_immediate(bcx.ccx(), vt.vec_ty));
+            let llval = Load(bcx, llval);
             let body = get_bodyptr(bcx, llval, vec_ty);
             (get_dataptr(bcx, body), UDiv(bcx, get_fill(bcx, body), vt.llunit_size))
         }
     }
 }
 
-pub type iter_vec_block<'a> = 'a |@Block, ValueRef, ty::t|
-                                        -> @Block;
+pub type iter_vec_block<'r,'b> =
+    'r |&'b Block<'b>, ValueRef, ty::t| -> &'b Block<'b>;
 
-pub fn iter_vec_loop(bcx: @Block,
+pub fn iter_vec_loop<'r,
+                     'b>(
+                     bcx: &'b Block<'b>,
                      data_ptr: ValueRef,
                      vt: &VecTypes,
                      count: ValueRef,
-                     f: iter_vec_block
-                     ) -> @Block {
+                     f: iter_vec_block<'r,'b>)
+                     -> &'b Block<'b> {
     let _icx = push_ctxt("tvec::iter_vec_loop");
+    let fcx = bcx.fcx;
 
-    let next_bcx = sub_block(bcx, "iter_vec_loop: while next");
-    let loop_bcx = loop_scope_block(bcx, next_bcx, None, "iter_vec_loop", None);
-    let cond_bcx = scope_block(loop_bcx, None, "iter_vec_loop: loop cond");
-    let body_bcx = scope_block(loop_bcx, None, "iter_vec_loop: body: main");
-    let inc_bcx = scope_block(loop_bcx, None, "iter_vec_loop: loop inc");
+    let next_bcx = fcx.new_temp_block("expr_repeat: while next");
+    let loop_bcx = fcx.new_temp_block("expr_repeat");
+    let cond_bcx = fcx.new_temp_block("expr_repeat: loop cond");
+    let body_bcx = fcx.new_temp_block("expr_repeat: body: set");
+    let inc_bcx = fcx.new_temp_block("expr_repeat: body: inc");
     Br(bcx, loop_bcx.llbb);
 
     let loop_counter = {
@@ -597,12 +674,19 @@ pub fn iter_vec_loop(bcx: @Block,
     next_bcx
 }
 
-pub fn iter_vec_raw(bcx: @Block, data_ptr: ValueRef, vec_ty: ty::t,
-                    fill: ValueRef, f: iter_vec_block) -> @Block {
+pub fn iter_vec_raw<'r,
+                    'b>(
+                    bcx: &'b Block<'b>,
+                    data_ptr: ValueRef,
+                    vec_ty: ty::t,
+                    fill: ValueRef,
+                    f: iter_vec_block<'r,'b>)
+                    -> &'b Block<'b> {
     let _icx = push_ctxt("tvec::iter_vec_raw");
+    let fcx = bcx.fcx;
 
     let vt = vec_types(bcx, vec_ty);
-    if (vt.llunit_alloc_size == 0) {
+    if vt.llunit_alloc_size == 0 {
         // Special-case vectors with elements of size 0  so they don't go out of bounds (#9890)
         iter_vec_loop(bcx, data_ptr, &vt, fill, f)
     } else {
@@ -613,14 +697,14 @@ pub fn iter_vec_raw(bcx: @Block, data_ptr: ValueRef, vec_ty: ty::t,
         let data_end_ptr = pointer_add_byte(bcx, data_ptr, fill);
 
         // Now perform the iteration.
-        let header_bcx = base::sub_block(bcx, "iter_vec_loop_header");
+        let header_bcx = fcx.new_temp_block("iter_vec_loop_header");
         Br(bcx, header_bcx.llbb);
         let data_ptr =
             Phi(header_bcx, val_ty(data_ptr), [data_ptr], [bcx.llbb]);
         let not_yet_at_end =
             ICmp(header_bcx, lib::llvm::IntULT, data_ptr, data_end_ptr);
-        let body_bcx = base::sub_block(header_bcx, "iter_vec_loop_body");
-        let next_bcx = base::sub_block(header_bcx, "iter_vec_next");
+        let body_bcx = fcx.new_temp_block("iter_vec_loop_body");
+        let next_bcx = fcx.new_temp_block("iter_vec_next");
         CondBr(header_bcx, not_yet_at_end, body_bcx.llbb, next_bcx.llbb);
         let body_bcx = f(body_bcx, data_ptr, vt.unit_ty);
         AddIncomingToPhi(data_ptr, InBoundsGEP(body_bcx, data_ptr,
@@ -628,19 +712,29 @@ pub fn iter_vec_raw(bcx: @Block, data_ptr: ValueRef, vec_ty: ty::t,
                          body_bcx.llbb);
         Br(body_bcx, header_bcx.llbb);
         next_bcx
-
     }
 }
 
-pub fn iter_vec_uniq(bcx: @Block, vptr: ValueRef, vec_ty: ty::t,
-                     fill: ValueRef, f: iter_vec_block) -> @Block {
+pub fn iter_vec_uniq<'r,
+                     'b>(
+                     bcx: &'b Block<'b>,
+                     vptr: ValueRef,
+                     vec_ty: ty::t,
+                     fill: ValueRef,
+                     f: iter_vec_block<'r,'b>)
+                     -> &'b Block<'b> {
     let _icx = push_ctxt("tvec::iter_vec_uniq");
     let data_ptr = get_dataptr(bcx, get_bodyptr(bcx, vptr, vec_ty));
     iter_vec_raw(bcx, data_ptr, vec_ty, fill, f)
 }
 
-pub fn iter_vec_unboxed(bcx: @Block, body_ptr: ValueRef, vec_ty: ty::t,
-                        f: iter_vec_block) -> @Block {
+pub fn iter_vec_unboxed<'r,
+                        'b>(
+                        bcx: &'b Block<'b>,
+                        body_ptr: ValueRef,
+                        vec_ty: ty::t,
+                        f: iter_vec_block<'r,'b>)
+                        -> &'b Block<'b> {
     let _icx = push_ctxt("tvec::iter_vec_unboxed");
     let fill = get_fill(bcx, body_ptr);
     let dataptr = get_dataptr(bcx, body_ptr);

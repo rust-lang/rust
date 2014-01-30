@@ -174,12 +174,12 @@ impl PipeListener {
 }
 
 impl RtioUnixListener for PipeListener {
-    fn listen(mut ~self) -> Result<~RtioUnixAcceptor, IoError> {
+    fn listen(~self) -> Result<~RtioUnixAcceptor, IoError> {
         // create the acceptor object from ourselves
         let mut acceptor = ~PipeAcceptor { listener: self };
 
         let _m = acceptor.fire_homing_missile();
-        // XXX: the 128 backlog should be configurable
+        // FIXME: the 128 backlog should be configurable
         match unsafe { uvll::uv_listen(acceptor.listener.pipe, 128, listen_cb) } {
             0 => Ok(acceptor as ~RtioUnixAcceptor),
             n => Err(uv_error_to_io_error(UvError(n))),
@@ -278,7 +278,7 @@ mod tests {
         let path2 = path.clone();
         let (port, chan) = Chan::new();
 
-        do spawn {
+        spawn(proc() {
             let p = PipeListener::bind(local_loop(), &path2.to_c_str()).unwrap();
             let mut p = p.listen().unwrap();
             chan.send(());
@@ -287,7 +287,7 @@ mod tests {
             assert!(client.read(buf).unwrap() == 1);
             assert_eq!(buf[0], 1);
             assert!(client.write([2]).is_ok());
-        }
+        });
         port.recv();
         let mut c = PipeWatcher::connect(local_loop(), &path.to_c_str()).unwrap();
         assert!(c.write([1]).is_ok());
@@ -302,12 +302,12 @@ mod tests {
         let path2 = path.clone();
         let (port, chan) = Chan::new();
 
-        do spawn {
+        spawn(proc() {
             let p = PipeListener::bind(local_loop(), &path2.to_c_str()).unwrap();
             let mut p = p.listen().unwrap();
             chan.send(());
             p.accept();
-        }
+        });
         port.recv();
         let _c = PipeWatcher::connect(local_loop(), &path.to_c_str()).unwrap();
         fail!()

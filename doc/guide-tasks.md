@@ -72,16 +72,11 @@ closure in the new task.
 # use std::task::spawn;
 
 // Print something profound in a different task using a named function
-fn print_message() { println("I am running in a different task!"); }
+fn print_message() { println!("I am running in a different task!"); }
 spawn(print_message);
 
 // Print something more profound in a different task using a lambda expression
-spawn(proc() println("I am also running in a different task!") );
-
-// The canonical way to spawn is using `do` notation
-do spawn {
-    println("I too am running in a different task!");
-}
+spawn(proc() println!("I am also running in a different task!") );
 ~~~~
 
 In Rust, there is nothing special about creating tasks: a task is not a
@@ -103,10 +98,10 @@ an environment that it carries across tasks.
 // Generate some state locally
 let child_task_number = generate_task_number();
 
-do spawn {
+spawn(proc() {
     // Capture it in the remote task
     println!("I am child number {}", child_task_number);
-}
+});
 ~~~
 
 ## Communication
@@ -132,10 +127,10 @@ concurrently:
 
 let (port, chan): (Port<int>, Chan<int>) = Chan::new();
 
-do spawn || {
+spawn(proc() {
     let result = some_expensive_computation();
     chan.send(result);
-}
+});
 
 some_other_expensive_computation();
 let result = port.recv();
@@ -160,10 +155,10 @@ spawns the child task.
 # use std::task::spawn;
 # fn some_expensive_computation() -> int { 42 }
 # let (port, chan) = Chan::new();
-do spawn || {
+spawn(proc() {
     let result = some_expensive_computation();
     chan.send(result);
-}
+});
 ~~~~
 
 Notice that the creation of the task closure transfers `chan` to the child
@@ -190,20 +185,20 @@ senders cannot use a single `Chan`, and multiple receivers cannot use a single
 `Port`.  What if our example needed to compute multiple results across a number
 of tasks? The following program is ill-typed:
 
-~~~ {.xfail-test}
+~~~ {.ignore}
 # use std::task::{spawn};
 # fn some_expensive_computation() -> int { 42 }
 let (port, chan) = Chan::new();
 
-do spawn {
+spawn(proc() {
     chan.send(some_expensive_computation());
-}
+});
 
 // ERROR! The previous spawn statement already owns the channel,
 // so the compiler will not allow it to be captured again
-do spawn {
+spawn(proc() {
     chan.send(some_expensive_computation());
-}
+});
 ~~~
 
 Instead we can use a `SharedChan`, a type that allows a single
@@ -217,9 +212,9 @@ let (port, chan) = SharedChan::new();
 for init_val in range(0u, 3) {
     // Create a new channel handle to distribute to the child task
     let child_chan = chan.clone();
-    do spawn {
+    spawn(proc() {
         child_chan.send(some_expensive_computation(init_val));
-    }
+    });
 }
 
 let result = port.recv() + port.recv() + port.recv();
@@ -247,9 +242,9 @@ might look like the example below.
 // Create a vector of ports, one for each child task
 let ports = vec::from_fn(3, |init_val| {
     let (port, chan) = Chan::new();
-    do spawn {
+    spawn(proc() {
         chan.send(some_expensive_computation(init_val));
-    }
+    });
     port
 });
 
@@ -290,13 +285,13 @@ be distributed on the available cores.
 fn partial_sum(start: uint) -> f64 {
     let mut local_sum = 0f64;
     for num in range(start*100000, (start+1)*100000) {
-        local_sum += (num as f64 + 1.0).pow(&-2.0);
+        local_sum += (num as f64 + 1.0).powf(&-2.0);
     }
     local_sum
 }
 
 fn main() {
-    let mut futures = vec::from_fn(1000, |ind| do extra::future::Future::spawn { partial_sum(ind) });
+    let mut futures = vec::from_fn(1000, |ind| extra::future::Future::spawn( proc() { partial_sum(ind) }));
 
     let mut final_res = 0f64;
     for ft in futures.mut_iter()  {
@@ -326,7 +321,7 @@ a single large vector of floats. Each task needs the full vector to perform its 
 use extra::arc::Arc;
 
 fn pnorm(nums: &~[f64], p: uint) -> f64 {
-    nums.iter().fold(0.0, |a,b| a+(*b).pow(&(p as f64)) ).pow(&(1.0 / (p as f64)))
+    nums.iter().fold(0.0, |a,b| a+(*b).powf(&(p as f64)) ).powf(&(1.0 / (p as f64)))
 }
 
 fn main() {
@@ -339,11 +334,11 @@ fn main() {
         let (port, chan)  = Chan::new();
         chan.send(numbers_arc.clone());
 
-        do spawn {
+        spawn(proc() {
             let local_arc : Arc<~[f64]> = port.recv();
             let task_numbers = local_arc.get();
             println!("{}-norm = {}", num, pnorm(task_numbers, num));
-        }
+        });
     }
 }
 ~~~
@@ -413,17 +408,17 @@ pattern-match on a result to check whether it's an `Ok` result with an `int`
 field (representing a successful result) or an `Err` result (representing
 termination with an error).
 
-~~~{.xfail-test .linked-failure}
+~~~{.ignore .linked-failure}
 # use std::task;
 # fn some_condition() -> bool { false }
 # fn calculate_result() -> int { 0 }
-let result: Result<int, ()> = do task::try {
+let result: Result<int, ()> = task::try(proc() {
     if some_condition() {
         calculate_result()
     } else {
         fail!("oops!");
     }
-};
+});
 assert!(result.is_err());
 ~~~
 
@@ -463,7 +458,7 @@ that repeatedly receives a `uint` message, converts it to a string, and sends
 the string in response.  The child terminates when it receives `0`.
 Here is the function that implements the child task:
 
-~~~{.xfail-test .linked-failure}
+~~~{.ignore .linked-failure}
 # use extra::comm::DuplexStream;
 # use std::uint;
 fn stringifier(channel: &DuplexStream<~str, uint>) {
@@ -486,7 +481,7 @@ response itself is simply the stringified version of the received value,
 
 Here is the code for the parent task:
 
-~~~{.xfail-test .linked-failure}
+~~~{.ignore .linked-failure}
 # use std::task::spawn;
 # use std::uint;
 # use extra::comm::DuplexStream;
@@ -502,9 +497,9 @@ Here is the code for the parent task:
 
 let (from_child, to_child) = DuplexStream::new();
 
-do spawn {
+spawn(proc() {
     stringifier(&to_child);
-};
+});
 
 from_child.send(22);
 assert!(from_child.recv() == ~"22");

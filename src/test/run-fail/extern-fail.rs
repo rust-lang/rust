@@ -41,11 +41,11 @@ fn count(n: uint) -> uint {
 }
 
 fn main() {
-    do 10u.times {
-        do task::spawn {
+    for _ in range(0, 10u) {
+        task::spawn(proc() {
             let result = count(5u);
             info!("result = %?", result);
             fail!();
-        };
+        });
     }
 }

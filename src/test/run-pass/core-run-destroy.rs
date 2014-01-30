@@ -62,14 +62,14 @@ fn test_destroy_actually_kills(force: bool) {
     fn process_exists(pid: libc::pid_t) -> bool {
         let run::ProcessOutput {output, ..} = run::process_output("ps", [~"-p", pid.to_str()])
             .expect("failed to exec `ps`");
-        str::from_utf8_owned(output).contains(pid.to_str())
+        str::from_utf8_owned(output).unwrap().contains(pid.to_str())
     }
 
     #[cfg(unix,target_os="android")]
     fn process_exists(pid: libc::pid_t) -> bool {
         let run::ProcessOutput {output, ..} = run::process_output("/system/bin/ps", [pid.to_str()])
             .expect("failed to exec `/system/bin/ps`");
-        str::from_utf8_owned(output).contains(~"root")
+        str::from_utf8_owned(output).unwrap().contains(~"root")
     }
 
     #[cfg(windows)]

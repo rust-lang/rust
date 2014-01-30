@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -48,7 +48,6 @@
 #[allow(non_camel_case_types)];
 
 use int;
-use libc::c_void;
 use sync::atomics;
 
 pub struct Mutex {
@@ -133,41 +132,40 @@ impl Mutex {
         if cond != 0 { imp::free_cond(cond) }
     }
 
-    unsafe fn getlock(&mut self) -> *c_void {
+    unsafe fn getlock(&mut self) -> uint{
         match self.lock.load(atomics::Relaxed) {
             0 => {}
-            n => return n as *c_void
+            n => return n
         }
         let lock = imp::init_lock();
         match self.lock.compare_and_swap(0, lock, atomics::SeqCst) {
-            0 => return lock as *c_void,
+            0 => return lock,
             _ => {}
         }
         imp::free_lock(lock);
-        return self.lock.load(atomics::Relaxed) as *c_void;
+        self.lock.load(atomics::Relaxed)
     }
 
-    unsafe fn getcond(&mut self) -> *c_void {
+    unsafe fn getcond(&mut self) -> uint {
         match self.cond.load(atomics::Relaxed) {
             0 => {}
-            n => return n as *c_void
+            n => return n
         }
         let cond = imp::init_cond();
         match self.cond.compare_and_swap(0, cond, atomics::SeqCst) {
-            0 => return cond as *c_void,
+            0 => return cond,
             _ => {}
         }
         imp::free_cond(cond);
-        return self.cond.load(atomics::Relaxed) as *c_void;
+        self.cond.load(atomics::Relaxed)
     }
 }
 
 #[cfg(unix)]
 mod imp {
-    use libc::c_void;
     use libc;
     use ptr;
-    use ptr::RawPtr;
+    use rt::global_heap::malloc_raw;
 
     type pthread_mutex_t = libc::c_void;
     type pthread_mutexattr_t = libc::c_void;
@@ -175,51 +173,49 @@ mod imp {
     type pthread_condattr_t = libc::c_void;
 
     pub unsafe fn init_lock() -> uint {
-        let block = libc::malloc(rust_pthread_mutex_t_size() as libc::size_t);
-        assert!(!block.is_null());
+        let block = malloc_raw(rust_pthread_mutex_t_size() as uint) as *mut pthread_mutex_t;
         let n = pthread_mutex_init(block, ptr::null());
         assert_eq!(n, 0);
         return block as uint;
     }
 
     pub unsafe fn init_cond() -> uint {
-        let block = libc::malloc(rust_pthread_cond_t_size() as libc::size_t);
-        assert!(!block.is_null());
+        let block = malloc_raw(rust_pthread_cond_t_size() as uint) as *mut pthread_cond_t;
         let n = pthread_cond_init(block, ptr::null());
         assert_eq!(n, 0);
         return block as uint;
     }
 
     pub unsafe fn free_lock(h: uint) {
-        let block = h as *c_void;
+        let block = h as *mut libc::c_void;
         assert_eq!(pthread_mutex_destroy(block), 0);
         libc::free(block);
     }
 
     pub unsafe fn free_cond(h: uint) {
-        let block = h as *c_void;
+        let block = h as *mut pthread_cond_t;
         assert_eq!(pthread_cond_destroy(block), 0);
         libc::free(block);
     }
 
-    pub unsafe fn lock(l: *pthread_mutex_t) {
-        assert_eq!(pthread_mutex_lock(l), 0);
+    pub unsafe fn lock(l: uint) {
+        assert_eq!(pthread_mutex_lock(l as *mut pthread_mutex_t), 0);
     }
 
-    pub unsafe fn trylock(l: *c_void) -> bool {
-        pthread_mutex_trylock(l) == 0
+    pub unsafe fn trylock(l: uint) -> bool {
+        pthread_mutex_trylock(l as *mut pthread_mutex_t) == 0
     }
 
-    pub unsafe fn unlock(l: *pthread_mutex_t) {
-        assert_eq!(pthread_mutex_unlock(l), 0);
+    pub unsafe fn unlock(l: uint) {
+        assert_eq!(pthread_mutex_unlock(l as *mut pthread_mutex_t), 0);
     }
 
-    pub unsafe fn wait(cond: *pthread_cond_t, m: *pthread_mutex_t) {
-        assert_eq!(pthread_cond_wait(cond, m), 0);
+    pub unsafe fn wait(cond: uint, m: uint) {
+        assert_eq!(pthread_cond_wait(cond as *mut pthread_cond_t, m as *mut pthread_mutex_t), 0);
     }
 
-    pub unsafe fn signal(cond: *pthread_cond_t) {
-        assert_eq!(pthread_cond_signal(cond), 0);
+    pub unsafe fn signal(cond: uint) {
+        assert_eq!(pthread_cond_signal(cond as *mut pthread_cond_t), 0);
     }
 
     extern {
@@ -228,19 +224,19 @@ mod imp {
     }
 
     extern {
-        fn pthread_mutex_init(lock: *pthread_mutex_t,
+        fn pthread_mutex_init(lock: *mut pthread_mutex_t,
                               attr: *pthread_mutexattr_t) -> libc::c_int;
-        fn pthread_mutex_destroy(lock: *pthread_mutex_t) -> libc::c_int;
-        fn pthread_cond_init(cond: *pthread_cond_t,
+        fn pthread_mutex_destroy(lock: *mut pthread_mutex_t) -> libc::c_int;
+        fn pthread_cond_init(cond: *mut pthread_cond_t,
                               attr: *pthread_condattr_t) -> libc::c_int;
-        fn pthread_cond_destroy(cond: *pthread_cond_t) -> libc::c_int;
-        fn pthread_mutex_lock(lock: *pthread_mutex_t) -> libc::c_int;
-        fn pthread_mutex_trylock(lock: *pthread_mutex_t) -> libc::c_int;
-        fn pthread_mutex_unlock(lock: *pthread_mutex_t) -> libc::c_int;
+        fn pthread_cond_destroy(cond: *mut pthread_cond_t) -> libc::c_int;
+        fn pthread_mutex_lock(lock: *mut pthread_mutex_t) -> libc::c_int;
+        fn pthread_mutex_trylock(lock: *mut pthread_mutex_t) -> libc::c_int;
+        fn pthread_mutex_unlock(lock: *mut pthread_mutex_t) -> libc::c_int;
 
-        fn pthread_cond_wait(cond: *pthread_cond_t,
-                             lock: *pthread_mutex_t) -> libc::c_int;
-        fn pthread_cond_signal(cond: *pthread_cond_t) -> libc::c_int;
+        fn pthread_cond_wait(cond: *mut pthread_cond_t,
+                             lock: *mut pthread_mutex_t) -> libc::c_int;
+        fn pthread_cond_signal(cond: *mut pthread_cond_t) -> libc::c_int;
     }
 }
 
@@ -249,14 +245,13 @@ mod imp {
     use libc;
     use libc::{HANDLE, BOOL, LPSECURITY_ATTRIBUTES, c_void, DWORD, LPCSTR};
     use ptr;
-    use ptr::RawPtr;
+    use rt::global_heap::malloc_raw;
 
     type LPCRITICAL_SECTION = *c_void;
     static SPIN_COUNT: DWORD = 4000;
 
     pub unsafe fn init_lock() -> uint {
-        let block = libc::malloc(rust_crit_section_size() as libc::size_t);
-        assert!(!block.is_null());
+        let block = malloc_raw(rust_crit_section_size() as uint) as *c_void;
         InitializeCriticalSectionAndSpinCount(block, SPIN_COUNT);
         return block as uint;
     }
@@ -268,7 +263,7 @@ mod imp {
 
     pub unsafe fn free_lock(h: uint) {
         DeleteCriticalSection(h as LPCRITICAL_SECTION);
-        libc::free(h as *c_void);
+        libc::free(h as *mut c_void);
     }
 
     pub unsafe fn free_cond(h: uint) {
@@ -276,25 +271,25 @@ mod imp {
         libc::CloseHandle(block);
     }
 
-    pub unsafe fn lock(l: *c_void) {
+    pub unsafe fn lock(l: uint) {
         EnterCriticalSection(l as LPCRITICAL_SECTION)
     }
 
-    pub unsafe fn trylock(l: *c_void) -> bool {
+    pub unsafe fn trylock(l: uint) -> bool {
         TryEnterCriticalSection(l as LPCRITICAL_SECTION) != 0
     }
 
-    pub unsafe fn unlock(l: *c_void) {
+    pub unsafe fn unlock(l: uint) {
         LeaveCriticalSection(l as LPCRITICAL_SECTION)
     }
 
-    pub unsafe fn wait(cond: *c_void, m: *c_void) {
+    pub unsafe fn wait(cond: uint, m: uint) {
         unlock(m);
         WaitForSingleObject(cond as HANDLE, libc::INFINITE);
         lock(m);
     }
 
-    pub unsafe fn signal(cond: *c_void) {
+    pub unsafe fn signal(cond: uint) {
         assert!(SetEvent(cond as HANDLE) != 0);
     }
 
@@ -394,9 +389,9 @@ impl Once {
 
         let prev = self.cnt.fetch_add(1, atomics::SeqCst);
         if prev < 0 {
-            // Make sure we never overflow, we'll never have int::min_value
+            // Make sure we never overflow, we'll never have int::MIN
             // simultaneous calls to `doit` to make this value go back to 0
-            self.cnt.store(int::min_value, atomics::SeqCst);
+            self.cnt.store(int::MIN, atomics::SeqCst);
             return
         }
 
@@ -406,7 +401,7 @@ impl Once {
         unsafe { self.mutex.lock() }
         if self.cnt.load(atomics::SeqCst) > 0 {
             f();
-            let prev = self.cnt.swap(int::min_value, atomics::SeqCst);
+            let prev = self.cnt.swap(int::MIN, atomics::SeqCst);
             self.lock_cnt.store(prev, atomics::SeqCst);
         }
         unsafe { self.mutex.unlock() }
@@ -444,7 +439,7 @@ mod test {
         let (p, c) = SharedChan::new();
         for _ in range(0, 10) {
             let c = c.clone();
-            do spawn {
+            spawn(proc() {
                 for _ in range(0, 4) { task::deschedule() }
                 unsafe {
                     o.doit(|| {
@@ -454,7 +449,7 @@ mod test {
                     assert!(run);
                 }
                 c.send(());
-            }
+            });
         }
 
         unsafe {
@@ -484,11 +479,11 @@ mod test {
         static mut lock: Mutex = MUTEX_INIT;
         unsafe {
             lock.lock();
-            let t = do Thread::start {
+            let t = Thread::start(proc() {
                 lock.lock();
                 lock.signal();
                 lock.unlock();
-            };
+            });
             lock.wait();
             lock.unlock();
             t.join();

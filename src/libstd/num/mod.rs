@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -16,7 +16,8 @@
 #[allow(missing_doc)];
 
 use clone::{Clone, DeepClone};
-use cmp::{Eq, ApproxEq, Ord};
+use cmp::{Eq, Ord};
+use mem::size_of;
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use ops::{Not, BitAnd, BitOr, BitXor, Shl, Shr};
 use option::{Option, Some, None};
@@ -49,19 +50,59 @@ pub trait Orderable: Ord {
 /// Returns the number constrained within the range `mn <= self <= mx`.
 #[inline(always)] pub fn clamp<T: Orderable>(value: T, mn: T, mx: T) -> T { value.clamp(&mn, &mx) }
 
-pub trait Zero {
-    fn zero() -> Self;      // FIXME (#5527): This should be an associated constant
+/// Defines an additive identity element for `Self`.
+///
+/// # Deriving
+///
+/// This trait can be automatically be derived using `#[deriving(Zero)]`
+/// attribute. If you choose to use this, make sure that the laws outlined in
+/// the documentation for `Zero::zero` still hold.
+pub trait Zero: Add<Self, Self> {
+    /// Returns the additive identity element of `Self`, `0`.
+    ///
+    /// # Laws
+    ///
+    /// ~~~
+    /// a + 0 = a       ∀ a ∈ Self
+    /// 0 + a = a       ∀ a ∈ Self
+    /// ~~~
+    ///
+    /// # Purity
+    ///
+    /// This function should return the same result at all times regardless of
+    /// external mutable state, for example values stored in TLS or in
+    /// `static mut`s.
+    // FIXME (#5527): This should be an associated constant
+    fn zero() -> Self;
+
+    /// Returns `true` if `self` is equal to the additive identity.
     fn is_zero(&self) -> bool;
 }
 
-/// Returns `0` of appropriate type.
+/// Returns the additive identity, `0`.
 #[inline(always)] pub fn zero<T: Zero>() -> T { Zero::zero() }
 
-pub trait One {
-    fn one() -> Self;       // FIXME (#5527): This should be an associated constant
+/// Defines a multiplicative identity element for `Self`.
+pub trait One: Mul<Self, Self> {
+    /// Returns the multiplicative identity element of `Self`, `1`.
+    ///
+    /// # Laws
+    ///
+    /// ~~~
+    /// a * 1 = a       ∀ a ∈ Self
+    /// 1 * a = a       ∀ a ∈ Self
+    /// ~~~
+    ///
+    /// # Purity
+    ///
+    /// This function should return the same result at all times regardless of
+    /// external mutable state, for example values stored in TLS or in
+    /// `static mut`s.
+    // FIXME (#5527): This should be an associated constant
+    fn one() -> Self;
 }
 
-/// Returns `1` of appropriate type.
+/// Returns the multiplicative identity, `1`.
 #[inline(always)] pub fn one<T: One>() -> T { One::one() }
 
 pub trait Signed: Num
@@ -98,18 +139,6 @@ pub trait Signed: Num
 
 pub trait Unsigned: Num {}
 
-/// Times trait
-///
-/// ```rust
-/// let ten = 10u;
-/// let mut accum = 0;
-/// ten.times(|| { accum += 1; })
-/// ```
-///
-pub trait Times {
-    fn times(&self, it: ||);
-}
-
 pub trait Integer: Num
                  + Orderable
                  + Div<Self,Self>
@@ -138,236 +167,27 @@ pub trait Integer: Num
 /// A collection of rounding operations.
 pub trait Round {
     /// Return the largest integer less than or equal to a number.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// assert_approx_eq!(1.3f32.floor(), 1.0);
-    /// assert_approx_eq!((-1.3f32).floor(), -2.0);
-    /// ```
     fn floor(&self) -> Self;
 
     /// Return the smallest integer greater than or equal to a number.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// assert_approx_eq!(1.3f32.ceil(), 2.0);
-    /// assert_approx_eq!((-1.3f32).ceil(), -1.0);
-    /// ```
     fn ceil(&self) -> Self;
 
     /// Return the nearest integer to a number. Round half-way cases away from
     /// `0.0`.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// assert_approx_eq!(1.3f32.round(), 1.0);
-    /// assert_approx_eq!((-1.3f32).round(), -1.0);
-    /// assert_approx_eq!(1.5f32.round(), 2.0);
-    /// assert_approx_eq!((-1.5f32).round(), -2.0);
-    /// ```
     fn round(&self) -> Self;
 
     /// Return the integer part of a number.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// assert_approx_eq!(1.3f32.trunc(), 1.0);
-    /// assert_approx_eq!((-1.3f32).trunc(), -1.0);
-    /// assert_approx_eq!(1.5f32.trunc(), 1.0);
-    /// assert_approx_eq!((-1.5f32).trunc(), -1.0);
-    /// ```
     fn trunc(&self) -> Self;
 
     /// Return the fractional part of a number.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// assert_approx_eq!(1.3f32.fract(), 0.3);
-    /// assert_approx_eq!((-1.3f32).fract(), -0.3);
-    /// assert_approx_eq!(1.5f32.fract(), 0.5);
-    /// assert_approx_eq!((-1.5f32).fract(), -0.5);
-    /// ```
     fn fract(&self) -> Self;
 }
 
-/// Trait for common fractional operations.
-pub trait Fractional: Num
-                    + Orderable
-                    + Round
-                    + Div<Self,Self> {
-    /// Take the reciprocal (inverse) of a number, `1/x`.
-    fn recip(&self) -> Self;
-}
-
-/// A collection of algebraic operations.
-pub trait Algebraic {
-    /// Raise a number to a power.
-    fn pow(&self, n: &Self) -> Self;
-    /// Take the square root of a number.
-    fn sqrt(&self) -> Self;
-    /// Take the reciprocal (inverse) square root of a number, `1/sqrt(x)`.
-    fn rsqrt(&self) -> Self;
-    /// Take the cubic root of a number.
-    fn cbrt(&self) -> Self;
-    /// Calculate the length of the hypotenuse of a right-angle triangle given
-    /// legs of length `x` and `y`.
-    fn hypot(&self, other: &Self) -> Self;
-}
-
-/// Raise a number to a power.
-///
-/// # Example
-///
-/// ```rust
-/// use std::num;
-///
-/// let sixteen: f64 = num::pow(2.0, 4.0);
-/// assert_eq!(sixteen, 16.0);
-/// ```
-#[inline(always)] pub fn pow<T: Algebraic>(value: T, n: T) -> T { value.pow(&n) }
-/// Take the square root of a number.
-#[inline(always)] pub fn sqrt<T: Algebraic>(value: T) -> T { value.sqrt() }
-/// Take the reciprocal (inverse) square root of a number, `1/sqrt(x)`.
-#[inline(always)] pub fn rsqrt<T: Algebraic>(value: T) -> T { value.rsqrt() }
-/// Take the cubic root of a number.
-#[inline(always)] pub fn cbrt<T: Algebraic>(value: T) -> T { value.cbrt() }
-/// Calculate the length of the hypotenuse of a right-angle triangle given legs of length `x` and
-/// `y`.
-#[inline(always)] pub fn hypot<T: Algebraic>(x: T, y: T) -> T { x.hypot(&y) }
-
-/// A trait for trigonometric functions.
-pub trait Trigonometric {
-    /// Computes the sine of a number (in radians).
-    fn sin(&self) -> Self;
-    /// Computes the cosine of a number (in radians).
-    fn cos(&self) -> Self;
-    /// Computes the tangent of a number (in radians).
-    fn tan(&self) -> Self;
-
-    /// Computes the arcsine of a number. Return value is in radians in
-    /// the range [-pi/2, pi/2] or NaN if the number is outside the range
-    /// [-1, 1].
-    fn asin(&self) -> Self;
-    /// Computes the arccosine of a number. Return value is in radians in
-    /// the range [0, pi] or NaN if the number is outside the range
-    /// [-1, 1].
-    fn acos(&self) -> Self;
-    /// Computes the arctangent of a number. Return value is in radians in the
-    /// range [-pi/2, pi/2];
-    fn atan(&self) -> Self;
-
-    /// Computes the four quadrant arctangent of a number, `y`, and another
-    /// number `x`. Return value is in radians in the range [-pi, pi];
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use std::f32;
-    ///
-    /// let y = 3f32.sqrt();
-    /// let x = 1f32;
-    /// assert_approx_eq!(y.atan2(&x), f32::consts::PI / 3f32);
-    /// assert_approx_eq!((-y).atan2(&(-x)), - 2f32 * f32::consts::PI / 3f32);
-    /// ```
-    fn atan2(&self, other: &Self) -> Self;
-
-    /// Simultaneously computes the sine and cosine of the number, `x`. Returns
-    /// `(sin(x), cos(x))`.
-    fn sin_cos(&self) -> (Self, Self);
-}
-
-/// Sine function.
-#[inline(always)] pub fn sin<T: Trigonometric>(value: T) -> T { value.sin() }
-/// Cosine function.
-#[inline(always)] pub fn cos<T: Trigonometric>(value: T) -> T { value.cos() }
-/// Tangent function.
-#[inline(always)] pub fn tan<T: Trigonometric>(value: T) -> T { value.tan() }
-
-/// Compute the arcsine of the number.
-#[inline(always)] pub fn asin<T: Trigonometric>(value: T) -> T { value.asin() }
-/// Compute the arccosine of the number.
-#[inline(always)] pub fn acos<T: Trigonometric>(value: T) -> T { value.acos() }
-/// Compute the arctangent of the number.
-#[inline(always)] pub fn atan<T: Trigonometric>(value: T) -> T { value.atan() }
-
-/// Compute the arctangent with 2 arguments.
-#[inline(always)] pub fn atan2<T: Trigonometric>(x: T, y: T) -> T { x.atan2(&y) }
-/// Simultaneously computes the sine and cosine of the number.
-#[inline(always)] pub fn sin_cos<T: Trigonometric>(value: T) -> (T, T) { value.sin_cos() }
-
-/// A trait exponential functions.
-pub trait Exponential {
-    /// Returns `e^(self)`, (the exponential function).
-    fn exp(&self) -> Self;
-    /// Returns 2 raised to the power of the number, `2^(self)`.
-    fn exp2(&self) -> Self;
-
-    /// Returns the natural logarithm of the number.
-    fn ln(&self) -> Self;
-    /// Returns the logarithm of the number with respect to an arbitrary base.
-    fn log(&self, base: &Self) -> Self;
-    /// Returns the base 2 logarithm of the number.
-    fn log2(&self) -> Self;
-    /// Returns the base 10 logarithm of the number.
-    fn log10(&self) -> Self;
-}
-
-/// Returns `e^(value)`, (the exponential function).
-#[inline(always)] pub fn exp<T: Exponential>(value: T) -> T { value.exp() }
-/// Returns 2 raised to the power of the number, `2^(value)`.
-#[inline(always)] pub fn exp2<T: Exponential>(value: T) -> T { value.exp2() }
-
-/// Returns the natural logarithm of the number.
-#[inline(always)] pub fn ln<T: Exponential>(value: T) -> T { value.ln() }
-/// Returns the logarithm of the number with respect to an arbitrary base.
-#[inline(always)] pub fn log<T: Exponential>(value: T, base: T) -> T { value.log(&base) }
-/// Returns the base 2 logarithm of the number.
-#[inline(always)] pub fn log2<T: Exponential>(value: T) -> T { value.log2() }
-/// Returns the base 10 logarithm of the number.
-#[inline(always)] pub fn log10<T: Exponential>(value: T) -> T { value.log10() }
-
-/// A trait hyperbolic functions.
-pub trait Hyperbolic: Exponential {
-    /// Hyperbolic sine function.
-    fn sinh(&self) -> Self;
-    /// Hyperbolic cosine function.
-    fn cosh(&self) -> Self;
-    /// Hyperbolic tangent function.
-    fn tanh(&self) -> Self;
-
-    /// Inverse hyperbolic sine function.
-    fn asinh(&self) -> Self;
-    /// Inverse hyperbolic cosine function.
-    fn acosh(&self) -> Self;
-    /// Inverse hyperbolic tangent function.
-    fn atanh(&self) -> Self;
-}
-
-/// Hyperbolic sine function.
-#[inline(always)] pub fn sinh<T: Hyperbolic>(value: T) -> T { value.sinh() }
-/// Hyperbolic cosine function.
-#[inline(always)] pub fn cosh<T: Hyperbolic>(value: T) -> T { value.cosh() }
-/// Hyperbolic tangent function.
-#[inline(always)] pub fn tanh<T: Hyperbolic>(value: T) -> T { value.tanh() }
-
-/// Inverse hyperbolic sine function.
-#[inline(always)] pub fn asinh<T: Hyperbolic>(value: T) -> T { value.asinh() }
-/// Inverse hyperbolic cosine function.
-#[inline(always)] pub fn acosh<T: Hyperbolic>(value: T) -> T { value.acosh() }
-/// Inverse hyperbolic tangent function.
-#[inline(always)] pub fn atanh<T: Hyperbolic>(value: T) -> T { value.atanh() }
-
 /// Defines constants and methods common to real numbers
 pub trait Real: Signed
-              + Fractional
-              + Algebraic
-              + Trigonometric
-              + Hyperbolic {
+              + Orderable
+              + Round
+              + Div<Self,Self> {
     // Common Constants
     // FIXME (#5527): These should be associated constants
     fn pi() -> Self;
@@ -388,6 +208,82 @@ pub trait Real: Signed
     fn ln_2() -> Self;
     fn ln_10() -> Self;
 
+    // Fractional functions
+
+    /// Take the reciprocal (inverse) of a number, `1/x`.
+    fn recip(&self) -> Self;
+
+    // Algebraic functions
+    /// Raise a number to a power.
+    fn powf(&self, n: &Self) -> Self;
+
+    /// Take the square root of a number.
+    fn sqrt(&self) -> Self;
+    /// Take the reciprocal (inverse) square root of a number, `1/sqrt(x)`.
+    fn rsqrt(&self) -> Self;
+    /// Take the cubic root of a number.
+    fn cbrt(&self) -> Self;
+    /// Calculate the length of the hypotenuse of a right-angle triangle given
+    /// legs of length `x` and `y`.
+    fn hypot(&self, other: &Self) -> Self;
+
+    // Trigonometric functions
+
+    /// Computes the sine of a number (in radians).
+    fn sin(&self) -> Self;
+    /// Computes the cosine of a number (in radians).
+    fn cos(&self) -> Self;
+    /// Computes the tangent of a number (in radians).
+    fn tan(&self) -> Self;
+
+    /// Computes the arcsine of a number. Return value is in radians in
+    /// the range [-pi/2, pi/2] or NaN if the number is outside the range
+    /// [-1, 1].
+    fn asin(&self) -> Self;
+    /// Computes the arccosine of a number. Return value is in radians in
+    /// the range [0, pi] or NaN if the number is outside the range
+    /// [-1, 1].
+    fn acos(&self) -> Self;
+    /// Computes the arctangent of a number. Return value is in radians in the
+    /// range [-pi/2, pi/2];
+    fn atan(&self) -> Self;
+    /// Computes the four quadrant arctangent of a number, `y`, and another
+    /// number `x`. Return value is in radians in the range [-pi, pi].
+    fn atan2(&self, other: &Self) -> Self;
+    /// Simultaneously computes the sine and cosine of the number, `x`. Returns
+    /// `(sin(x), cos(x))`.
+    fn sin_cos(&self) -> (Self, Self);
+
+    // Exponential functions
+
+    /// Returns `e^(self)`, (the exponential function).
+    fn exp(&self) -> Self;
+    /// Returns 2 raised to the power of the number, `2^(self)`.
+    fn exp2(&self) -> Self;
+    /// Returns the natural logarithm of the number.
+    fn ln(&self) -> Self;
+    /// Returns the logarithm of the number with respect to an arbitrary base.
+    fn log(&self, base: &Self) -> Self;
+    /// Returns the base 2 logarithm of the number.
+    fn log2(&self) -> Self;
+    /// Returns the base 10 logarithm of the number.
+    fn log10(&self) -> Self;
+
+    // Hyperbolic functions
+
+    /// Hyperbolic sine function.
+    fn sinh(&self) -> Self;
+    /// Hyperbolic cosine function.
+    fn cosh(&self) -> Self;
+    /// Hyperbolic tangent function.
+    fn tanh(&self) -> Self;
+    /// Inverse hyperbolic sine function.
+    fn asinh(&self) -> Self;
+    /// Inverse hyperbolic cosine function.
+    fn acosh(&self) -> Self;
+    /// Inverse hyperbolic tangent function.
+    fn atanh(&self) -> Self;
+
     // Angular conversions
 
     /// Convert radians to degrees.
@@ -396,39 +292,113 @@ pub trait Real: Signed
     fn to_radians(&self) -> Self;
 }
 
-/// Methods that are harder to implement and not commonly used.
-pub trait RealExt: Real {
-    // FIXME (#5527): usages of `int` should be replaced with an associated
-    // integer type once these are implemented
-
-    // Gamma functions
-    fn lgamma(&self) -> (int, Self);
-    fn tgamma(&self) -> Self;
-
-    // Bessel functions
-    fn j0(&self) -> Self;
-    fn j1(&self) -> Self;
-    fn jn(&self, n: int) -> Self;
-    fn y0(&self) -> Self;
-    fn y1(&self) -> Self;
-    fn yn(&self, n: int) -> Self;
+/// Raises a value to the power of exp, using exponentiation by squaring.
+///
+/// # Example
+///
+/// ```rust
+/// use std::num;
+///
+/// assert_eq!(num::pow(2, 4), 16);
+/// ```
+#[inline]
+pub fn pow<T: One + Mul<T, T>>(mut base: T, mut exp: uint) -> T {
+    if exp == 1 { base }
+    else {
+        let mut acc = one::<T>();
+        while exp > 0 {
+            if (exp & 1) == 1 {
+                acc = acc * base;
+            }
+            base = base * base;
+            exp = exp >> 1;
+        }
+        acc
+    }
 }
 
-/// Collects the bitwise operators under one trait.
-pub trait Bitwise: Not<Self>
+/// Raise a number to a power.
+///
+/// # Example
+///
+/// ```rust
+/// use std::num;
+///
+/// let sixteen: f64 = num::powf(2.0, 4.0);
+/// assert_eq!(sixteen, 16.0);
+/// ```
+#[inline(always)] pub fn powf<T: Real>(value: T, n: T) -> T { value.powf(&n) }
+/// Take the square root of a number.
+#[inline(always)] pub fn sqrt<T: Real>(value: T) -> T { value.sqrt() }
+/// Take the reciprocal (inverse) square root of a number, `1/sqrt(x)`.
+#[inline(always)] pub fn rsqrt<T: Real>(value: T) -> T { value.rsqrt() }
+/// Take the cubic root of a number.
+#[inline(always)] pub fn cbrt<T: Real>(value: T) -> T { value.cbrt() }
+/// Calculate the length of the hypotenuse of a right-angle triangle given legs of length `x` and
+/// `y`.
+#[inline(always)] pub fn hypot<T: Real>(x: T, y: T) -> T { x.hypot(&y) }
+/// Sine function.
+#[inline(always)] pub fn sin<T: Real>(value: T) -> T { value.sin() }
+/// Cosine function.
+#[inline(always)] pub fn cos<T: Real>(value: T) -> T { value.cos() }
+/// Tangent function.
+#[inline(always)] pub fn tan<T: Real>(value: T) -> T { value.tan() }
+/// Compute the arcsine of the number.
+#[inline(always)] pub fn asin<T: Real>(value: T) -> T { value.asin() }
+/// Compute the arccosine of the number.
+#[inline(always)] pub fn acos<T: Real>(value: T) -> T { value.acos() }
+/// Compute the arctangent of the number.
+#[inline(always)] pub fn atan<T: Real>(value: T) -> T { value.atan() }
+/// Compute the arctangent with 2 arguments.
+#[inline(always)] pub fn atan2<T: Real>(x: T, y: T) -> T { x.atan2(&y) }
+/// Simultaneously computes the sine and cosine of the number.
+#[inline(always)] pub fn sin_cos<T: Real>(value: T) -> (T, T) { value.sin_cos() }
+/// Returns `e^(value)`, (the exponential function).
+#[inline(always)] pub fn exp<T: Real>(value: T) -> T { value.exp() }
+/// Returns 2 raised to the power of the number, `2^(value)`.
+#[inline(always)] pub fn exp2<T: Real>(value: T) -> T { value.exp2() }
+/// Returns the natural logarithm of the number.
+#[inline(always)] pub fn ln<T: Real>(value: T) -> T { value.ln() }
+/// Returns the logarithm of the number with respect to an arbitrary base.
+#[inline(always)] pub fn log<T: Real>(value: T, base: T) -> T { value.log(&base) }
+/// Returns the base 2 logarithm of the number.
+#[inline(always)] pub fn log2<T: Real>(value: T) -> T { value.log2() }
+/// Returns the base 10 logarithm of the number.
+#[inline(always)] pub fn log10<T: Real>(value: T) -> T { value.log10() }
+/// Hyperbolic sine function.
+#[inline(always)] pub fn sinh<T: Real>(value: T) -> T { value.sinh() }
+/// Hyperbolic cosine function.
+#[inline(always)] pub fn cosh<T: Real>(value: T) -> T { value.cosh() }
+/// Hyperbolic tangent function.
+#[inline(always)] pub fn tanh<T: Real>(value: T) -> T { value.tanh() }
+/// Inverse hyperbolic sine function.
+#[inline(always)] pub fn asinh<T: Real>(value: T) -> T { value.asinh() }
+/// Inverse hyperbolic cosine function.
+#[inline(always)] pub fn acosh<T: Real>(value: T) -> T { value.acosh() }
+/// Inverse hyperbolic tangent function.
+#[inline(always)] pub fn atanh<T: Real>(value: T) -> T { value.atanh() }
+
+pub trait Bounded {
+    // FIXME (#5527): These should be associated constants
+    fn min_value() -> Self;
+    fn max_value() -> Self;
+}
+
+/// Numbers with a fixed binary representation.
+pub trait Bitwise: Bounded
+                 + Not<Self>
                  + BitAnd<Self,Self>
                  + BitOr<Self,Self>
                  + BitXor<Self,Self>
                  + Shl<Self,Self>
-                 + Shr<Self,Self> {}
-
-/// A trait for common counting operations on bits.
-pub trait BitCount {
+                 + Shr<Self,Self> {
     /// Returns the number of bits set in the number.
     ///
     /// # Example
     ///
     /// ```rust
+    /// use std::num::Bitwise;
+    ///
     /// let n = 0b0101000u16;
     /// assert_eq!(n.population_count(), 2);
     /// ```
@@ -438,6 +408,8 @@ pub trait BitCount {
     /// # Example
     ///
     /// ```rust
+    /// use std::num::Bitwise;
+    ///
     /// let n = 0b0101000u16;
     /// assert_eq!(n.leading_zeros(), 10);
     /// ```
@@ -447,16 +419,12 @@ pub trait BitCount {
     /// # Example
     ///
     /// ```rust
+    /// use std::num::Bitwise;
+    ///
     /// let n = 0b0101000u16;
     /// assert_eq!(n.trailing_zeros(), 3);
     /// ```
     fn trailing_zeros(&self) -> Self;
-}
-
-pub trait Bounded {
-    // FIXME (#5527): These should be associated constants
-    fn min_value() -> Self;
-    fn max_value() -> Self;
 }
 
 /// Specifies the available operations common to all of Rust's core numeric primitives.
@@ -467,25 +435,12 @@ pub trait Primitive: Clone
                    + Num
                    + NumCast
                    + Orderable
-                   + Bounded
-                   + Neg<Self>
-                   + Add<Self,Self>
-                   + Sub<Self,Self>
-                   + Mul<Self,Self>
-                   + Div<Self,Self>
-                   + Rem<Self,Self> {
-    // FIXME (#5527): These should be associated constants
-    // FIXME (#8888): Removing `unused_self` requires #8888 to be fixed.
-    fn bits(unused_self: Option<Self>) -> uint;
-    fn bytes(unused_self: Option<Self>) -> uint;
-    fn is_signed(unused_self: Option<Self>) -> bool;
-}
+                   + Bounded {}
 
 /// A collection of traits relevant to primitive signed and unsigned integers
 pub trait Int: Integer
              + Primitive
-             + Bitwise
-             + BitCount {}
+             + Bitwise {}
 
 /// Used for representing the classification of floating point numbers
 #[deriving(Eq)]
@@ -505,8 +460,7 @@ pub enum FPCategory {
 /// Primitive floating point numbers
 pub trait Float: Real
                + Signed
-               + Primitive
-               + ApproxEq<Self> {
+               + Primitive {
     // FIXME (#5527): These should be associated constants
     fn nan() -> Self;
     fn infinity() -> Self;
@@ -624,7 +578,7 @@ pub trait ToPrimitive {
 macro_rules! impl_to_primitive_int_to_int(
     ($SrcT:ty, $DstT:ty) => (
         {
-            if Primitive::bits(None::<$SrcT>) <= Primitive::bits(None::<$DstT>) {
+            if size_of::<$SrcT>() <= size_of::<$DstT>() {
                 Some(*self as $DstT)
             } else {
                 let n = *self as i64;
@@ -709,7 +663,7 @@ macro_rules! impl_to_primitive_uint_to_int(
 macro_rules! impl_to_primitive_uint_to_uint(
     ($SrcT:ty, $DstT:ty) => (
         {
-            if Primitive::bits(None::<$SrcT>) <= Primitive::bits(None::<$DstT>) {
+            if size_of::<$SrcT>() <= size_of::<$DstT>() {
                 Some(*self as $DstT)
             } else {
                 let zero: $SrcT = Zero::zero();
@@ -765,7 +719,7 @@ impl_to_primitive_uint!(u64)
 
 macro_rules! impl_to_primitive_float_to_float(
     ($SrcT:ty, $DstT:ty) => (
-        if Primitive::bits(None::<$SrcT>) <= Primitive::bits(None::<$DstT>) {
+        if size_of::<$SrcT>() <= size_of::<$DstT>() {
             Some(*self as $DstT)
         } else {
             let n = *self as f64;
@@ -1048,47 +1002,6 @@ pub fn from_str_radix<T: FromStrRadix>(str: &str, radix: uint) -> Option<T> {
     FromStrRadix::from_str_radix(str, radix)
 }
 
-/// Calculates a power to a given radix, optimized for uint `pow` and `radix`.
-///
-/// Returns `radix^pow` as `T`.
-///
-/// Note:
-/// Also returns `1` for `0^0`, despite that technically being an
-/// undefined number. The reason for this is twofold:
-/// - If code written to use this function cares about that special case, it's
-///   probably going to catch it before making the call.
-/// - If code written to use this function doesn't care about it, it's
-///   probably assuming that `x^0` always equals `1`.
-///
-pub fn pow_with_uint<T:NumCast+One+Zero+Div<T,T>+Mul<T,T>>(radix: uint, pow: uint) -> T {
-    let _0: T = Zero::zero();
-    let _1: T = One::one();
-
-    if pow   == 0u { return _1; }
-    if radix == 0u { return _0; }
-    let mut my_pow     = pow;
-    let mut total      = _1;
-    let mut multiplier = cast(radix).unwrap();
-    while (my_pow > 0u) {
-        if my_pow % 2u == 1u {
-            total = total * multiplier;
-        }
-        my_pow = my_pow / 2u;
-        multiplier = multiplier * multiplier;
-    }
-    total
-}
-
-impl<T: Zero + 'static> Zero for @T {
-    fn zero() -> @T { @Zero::zero() }
-    fn is_zero(&self) -> bool { (**self).is_zero() }
-}
-
-impl<T: Zero> Zero for ~T {
-    fn zero() -> ~T { ~Zero::zero() }
-    fn is_zero(&self) -> bool { (**self).is_zero() }
-}
-
 /// Saturating math operations
 pub trait Saturating {
     /// Saturating addition operator.
@@ -1162,6 +1075,7 @@ pub fn test_num<T:Num + NumCast>(ten: T, two: T) {
 mod tests {
     use prelude::*;
     use super::*;
+    use num;
     use i8;
     use i16;
     use i32;
@@ -1233,25 +1147,25 @@ mod tests {
 
     #[test]
     fn test_cast_range_int_min() {
-        assert_eq!(int::min_value.to_int(),  Some(int::min_value as int));
-        assert_eq!(int::min_value.to_i8(),   None);
-        assert_eq!(int::min_value.to_i16(),  None);
-        // int::min_value.to_i32() is word-size specific
-        assert_eq!(int::min_value.to_i64(),  Some(int::min_value as i64));
-        assert_eq!(int::min_value.to_uint(), None);
-        assert_eq!(int::min_value.to_u8(),   None);
-        assert_eq!(int::min_value.to_u16(),  None);
-        assert_eq!(int::min_value.to_u32(),  None);
-        assert_eq!(int::min_value.to_u64(),  None);
+        assert_eq!(int::MIN.to_int(),  Some(int::MIN as int));
+        assert_eq!(int::MIN.to_i8(),   None);
+        assert_eq!(int::MIN.to_i16(),  None);
+        // int::MIN.to_i32() is word-size specific
+        assert_eq!(int::MIN.to_i64(),  Some(int::MIN as i64));
+        assert_eq!(int::MIN.to_uint(), None);
+        assert_eq!(int::MIN.to_u8(),   None);
+        assert_eq!(int::MIN.to_u16(),  None);
+        assert_eq!(int::MIN.to_u32(),  None);
+        assert_eq!(int::MIN.to_u64(),  None);
 
         #[cfg(target_word_size = "32")]
         fn check_word_size() {
-            assert_eq!(int::min_value.to_i32(), Some(int::min_value as i32));
+            assert_eq!(int::MIN.to_i32(), Some(int::MIN as i32));
         }
 
         #[cfg(target_word_size = "64")]
         fn check_word_size() {
-            assert_eq!(int::min_value.to_i32(), None);
+            assert_eq!(int::MIN.to_i32(), None);
         }
 
         check_word_size();
@@ -1259,67 +1173,67 @@ mod tests {
 
     #[test]
     fn test_cast_range_i8_min() {
-        assert_eq!(i8::min_value.to_int(),  Some(i8::min_value as int));
-        assert_eq!(i8::min_value.to_i8(),   Some(i8::min_value as i8));
-        assert_eq!(i8::min_value.to_i16(),  Some(i8::min_value as i16));
-        assert_eq!(i8::min_value.to_i32(),  Some(i8::min_value as i32));
-        assert_eq!(i8::min_value.to_i64(),  Some(i8::min_value as i64));
-        assert_eq!(i8::min_value.to_uint(), None);
-        assert_eq!(i8::min_value.to_u8(),   None);
-        assert_eq!(i8::min_value.to_u16(),  None);
-        assert_eq!(i8::min_value.to_u32(),  None);
-        assert_eq!(i8::min_value.to_u64(),  None);
+        assert_eq!(i8::MIN.to_int(),  Some(i8::MIN as int));
+        assert_eq!(i8::MIN.to_i8(),   Some(i8::MIN as i8));
+        assert_eq!(i8::MIN.to_i16(),  Some(i8::MIN as i16));
+        assert_eq!(i8::MIN.to_i32(),  Some(i8::MIN as i32));
+        assert_eq!(i8::MIN.to_i64(),  Some(i8::MIN as i64));
+        assert_eq!(i8::MIN.to_uint(), None);
+        assert_eq!(i8::MIN.to_u8(),   None);
+        assert_eq!(i8::MIN.to_u16(),  None);
+        assert_eq!(i8::MIN.to_u32(),  None);
+        assert_eq!(i8::MIN.to_u64(),  None);
     }
 
     #[test]
     fn test_cast_range_i16_min() {
-        assert_eq!(i16::min_value.to_int(),  Some(i16::min_value as int));
-        assert_eq!(i16::min_value.to_i8(),   None);
-        assert_eq!(i16::min_value.to_i16(),  Some(i16::min_value as i16));
-        assert_eq!(i16::min_value.to_i32(),  Some(i16::min_value as i32));
-        assert_eq!(i16::min_value.to_i64(),  Some(i16::min_value as i64));
-        assert_eq!(i16::min_value.to_uint(), None);
-        assert_eq!(i16::min_value.to_u8(),   None);
-        assert_eq!(i16::min_value.to_u16(),  None);
-        assert_eq!(i16::min_value.to_u32(),  None);
-        assert_eq!(i16::min_value.to_u64(),  None);
+        assert_eq!(i16::MIN.to_int(),  Some(i16::MIN as int));
+        assert_eq!(i16::MIN.to_i8(),   None);
+        assert_eq!(i16::MIN.to_i16(),  Some(i16::MIN as i16));
+        assert_eq!(i16::MIN.to_i32(),  Some(i16::MIN as i32));
+        assert_eq!(i16::MIN.to_i64(),  Some(i16::MIN as i64));
+        assert_eq!(i16::MIN.to_uint(), None);
+        assert_eq!(i16::MIN.to_u8(),   None);
+        assert_eq!(i16::MIN.to_u16(),  None);
+        assert_eq!(i16::MIN.to_u32(),  None);
+        assert_eq!(i16::MIN.to_u64(),  None);
     }
 
     #[test]
     fn test_cast_range_i32_min() {
-        assert_eq!(i32::min_value.to_int(),  Some(i32::min_value as int));
-        assert_eq!(i32::min_value.to_i8(),   None);
-        assert_eq!(i32::min_value.to_i16(),  None);
-        assert_eq!(i32::min_value.to_i32(),  Some(i32::min_value as i32));
-        assert_eq!(i32::min_value.to_i64(),  Some(i32::min_value as i64));
-        assert_eq!(i32::min_value.to_uint(), None);
-        assert_eq!(i32::min_value.to_u8(),   None);
-        assert_eq!(i32::min_value.to_u16(),  None);
-        assert_eq!(i32::min_value.to_u32(),  None);
-        assert_eq!(i32::min_value.to_u64(),  None);
+        assert_eq!(i32::MIN.to_int(),  Some(i32::MIN as int));
+        assert_eq!(i32::MIN.to_i8(),   None);
+        assert_eq!(i32::MIN.to_i16(),  None);
+        assert_eq!(i32::MIN.to_i32(),  Some(i32::MIN as i32));
+        assert_eq!(i32::MIN.to_i64(),  Some(i32::MIN as i64));
+        assert_eq!(i32::MIN.to_uint(), None);
+        assert_eq!(i32::MIN.to_u8(),   None);
+        assert_eq!(i32::MIN.to_u16(),  None);
+        assert_eq!(i32::MIN.to_u32(),  None);
+        assert_eq!(i32::MIN.to_u64(),  None);
     }
 
     #[test]
     fn test_cast_range_i64_min() {
-        // i64::min_value.to_int() is word-size specific
-        assert_eq!(i64::min_value.to_i8(),   None);
-        assert_eq!(i64::min_value.to_i16(),  None);
-        assert_eq!(i64::min_value.to_i32(),  None);
-        assert_eq!(i64::min_value.to_i64(),  Some(i64::min_value as i64));
-        assert_eq!(i64::min_value.to_uint(), None);
-        assert_eq!(i64::min_value.to_u8(),   None);
-        assert_eq!(i64::min_value.to_u16(),  None);
-        assert_eq!(i64::min_value.to_u32(),  None);
-        assert_eq!(i64::min_value.to_u64(),  None);
+        // i64::MIN.to_int() is word-size specific
+        assert_eq!(i64::MIN.to_i8(),   None);
+        assert_eq!(i64::MIN.to_i16(),  None);
+        assert_eq!(i64::MIN.to_i32(),  None);
+        assert_eq!(i64::MIN.to_i64(),  Some(i64::MIN as i64));
+        assert_eq!(i64::MIN.to_uint(), None);
+        assert_eq!(i64::MIN.to_u8(),   None);
+        assert_eq!(i64::MIN.to_u16(),  None);
+        assert_eq!(i64::MIN.to_u32(),  None);
+        assert_eq!(i64::MIN.to_u64(),  None);
 
         #[cfg(target_word_size = "32")]
         fn check_word_size() {
-            assert_eq!(i64::min_value.to_int(), None);
+            assert_eq!(i64::MIN.to_int(), None);
         }
 
         #[cfg(target_word_size = "64")]
         fn check_word_size() {
-            assert_eq!(i64::min_value.to_int(), Some(i64::min_value as int));
+            assert_eq!(i64::MIN.to_int(), Some(i64::MIN as int));
         }
 
         check_word_size();
@@ -1327,26 +1241,26 @@ mod tests {
 
     #[test]
     fn test_cast_range_int_max() {
-        assert_eq!(int::max_value.to_int(),  Some(int::max_value as int));
-        assert_eq!(int::max_value.to_i8(),   None);
-        assert_eq!(int::max_value.to_i16(),  None);
-        // int::max_value.to_i32() is word-size specific
-        assert_eq!(int::max_value.to_i64(),  Some(int::max_value as i64));
-        assert_eq!(int::max_value.to_u8(),   None);
-        assert_eq!(int::max_value.to_u16(),  None);
-        // int::max_value.to_u32() is word-size specific
-        assert_eq!(int::max_value.to_u64(),  Some(int::max_value as u64));
+        assert_eq!(int::MAX.to_int(),  Some(int::MAX as int));
+        assert_eq!(int::MAX.to_i8(),   None);
+        assert_eq!(int::MAX.to_i16(),  None);
+        // int::MAX.to_i32() is word-size specific
+        assert_eq!(int::MAX.to_i64(),  Some(int::MAX as i64));
+        assert_eq!(int::MAX.to_u8(),   None);
+        assert_eq!(int::MAX.to_u16(),  None);
+        // int::MAX.to_u32() is word-size specific
+        assert_eq!(int::MAX.to_u64(),  Some(int::MAX as u64));
 
         #[cfg(target_word_size = "32")]
         fn check_word_size() {
-            assert_eq!(int::max_value.to_i32(), Some(int::max_value as i32));
-            assert_eq!(int::max_value.to_u32(), Some(int::max_value as u32));
+            assert_eq!(int::MAX.to_i32(), Some(int::MAX as i32));
+            assert_eq!(int::MAX.to_u32(), Some(int::MAX as u32));
         }
 
         #[cfg(target_word_size = "64")]
         fn check_word_size() {
-            assert_eq!(int::max_value.to_i32(), None);
-            assert_eq!(int::max_value.to_u32(), None);
+            assert_eq!(int::MAX.to_i32(), None);
+            assert_eq!(int::MAX.to_u32(), None);
         }
 
         check_word_size();
@@ -1354,69 +1268,69 @@ mod tests {
 
     #[test]
     fn test_cast_range_i8_max() {
-        assert_eq!(i8::max_value.to_int(),  Some(i8::max_value as int));
-        assert_eq!(i8::max_value.to_i8(),   Some(i8::max_value as i8));
-        assert_eq!(i8::max_value.to_i16(),  Some(i8::max_value as i16));
-        assert_eq!(i8::max_value.to_i32(),  Some(i8::max_value as i32));
-        assert_eq!(i8::max_value.to_i64(),  Some(i8::max_value as i64));
-        assert_eq!(i8::max_value.to_uint(), Some(i8::max_value as uint));
-        assert_eq!(i8::max_value.to_u8(),   Some(i8::max_value as u8));
-        assert_eq!(i8::max_value.to_u16(),  Some(i8::max_value as u16));
-        assert_eq!(i8::max_value.to_u32(),  Some(i8::max_value as u32));
-        assert_eq!(i8::max_value.to_u64(),  Some(i8::max_value as u64));
+        assert_eq!(i8::MAX.to_int(),  Some(i8::MAX as int));
+        assert_eq!(i8::MAX.to_i8(),   Some(i8::MAX as i8));
+        assert_eq!(i8::MAX.to_i16(),  Some(i8::MAX as i16));
+        assert_eq!(i8::MAX.to_i32(),  Some(i8::MAX as i32));
+        assert_eq!(i8::MAX.to_i64(),  Some(i8::MAX as i64));
+        assert_eq!(i8::MAX.to_uint(), Some(i8::MAX as uint));
+        assert_eq!(i8::MAX.to_u8(),   Some(i8::MAX as u8));
+        assert_eq!(i8::MAX.to_u16(),  Some(i8::MAX as u16));
+        assert_eq!(i8::MAX.to_u32(),  Some(i8::MAX as u32));
+        assert_eq!(i8::MAX.to_u64(),  Some(i8::MAX as u64));
     }
 
     #[test]
     fn test_cast_range_i16_max() {
-        assert_eq!(i16::max_value.to_int(),  Some(i16::max_value as int));
-        assert_eq!(i16::max_value.to_i8(),   None);
-        assert_eq!(i16::max_value.to_i16(),  Some(i16::max_value as i16));
-        assert_eq!(i16::max_value.to_i32(),  Some(i16::max_value as i32));
-        assert_eq!(i16::max_value.to_i64(),  Some(i16::max_value as i64));
-        assert_eq!(i16::max_value.to_uint(), Some(i16::max_value as uint));
-        assert_eq!(i16::max_value.to_u8(),   None);
-        assert_eq!(i16::max_value.to_u16(),  Some(i16::max_value as u16));
-        assert_eq!(i16::max_value.to_u32(),  Some(i16::max_value as u32));
-        assert_eq!(i16::max_value.to_u64(),  Some(i16::max_value as u64));
+        assert_eq!(i16::MAX.to_int(),  Some(i16::MAX as int));
+        assert_eq!(i16::MAX.to_i8(),   None);
+        assert_eq!(i16::MAX.to_i16(),  Some(i16::MAX as i16));
+        assert_eq!(i16::MAX.to_i32(),  Some(i16::MAX as i32));
+        assert_eq!(i16::MAX.to_i64(),  Some(i16::MAX as i64));
+        assert_eq!(i16::MAX.to_uint(), Some(i16::MAX as uint));
+        assert_eq!(i16::MAX.to_u8(),   None);
+        assert_eq!(i16::MAX.to_u16(),  Some(i16::MAX as u16));
+        assert_eq!(i16::MAX.to_u32(),  Some(i16::MAX as u32));
+        assert_eq!(i16::MAX.to_u64(),  Some(i16::MAX as u64));
     }
 
     #[test]
     fn test_cast_range_i32_max() {
-        assert_eq!(i32::max_value.to_int(),  Some(i32::max_value as int));
-        assert_eq!(i32::max_value.to_i8(),   None);
-        assert_eq!(i32::max_value.to_i16(),  None);
-        assert_eq!(i32::max_value.to_i32(),  Some(i32::max_value as i32));
-        assert_eq!(i32::max_value.to_i64(),  Some(i32::max_value as i64));
-        assert_eq!(i32::max_value.to_uint(), Some(i32::max_value as uint));
-        assert_eq!(i32::max_value.to_u8(),   None);
-        assert_eq!(i32::max_value.to_u16(),  None);
-        assert_eq!(i32::max_value.to_u32(),  Some(i32::max_value as u32));
-        assert_eq!(i32::max_value.to_u64(),  Some(i32::max_value as u64));
+        assert_eq!(i32::MAX.to_int(),  Some(i32::MAX as int));
+        assert_eq!(i32::MAX.to_i8(),   None);
+        assert_eq!(i32::MAX.to_i16(),  None);
+        assert_eq!(i32::MAX.to_i32(),  Some(i32::MAX as i32));
+        assert_eq!(i32::MAX.to_i64(),  Some(i32::MAX as i64));
+        assert_eq!(i32::MAX.to_uint(), Some(i32::MAX as uint));
+        assert_eq!(i32::MAX.to_u8(),   None);
+        assert_eq!(i32::MAX.to_u16(),  None);
+        assert_eq!(i32::MAX.to_u32(),  Some(i32::MAX as u32));
+        assert_eq!(i32::MAX.to_u64(),  Some(i32::MAX as u64));
     }
 
     #[test]
     fn test_cast_range_i64_max() {
-        // i64::max_value.to_int() is word-size specific
-        assert_eq!(i64::max_value.to_i8(),   None);
-        assert_eq!(i64::max_value.to_i16(),  None);
-        assert_eq!(i64::max_value.to_i32(),  None);
-        assert_eq!(i64::max_value.to_i64(),  Some(i64::max_value as i64));
-        // i64::max_value.to_uint() is word-size specific
-        assert_eq!(i64::max_value.to_u8(),   None);
-        assert_eq!(i64::max_value.to_u16(),  None);
-        assert_eq!(i64::max_value.to_u32(),  None);
-        assert_eq!(i64::max_value.to_u64(),  Some(i64::max_value as u64));
+        // i64::MAX.to_int() is word-size specific
+        assert_eq!(i64::MAX.to_i8(),   None);
+        assert_eq!(i64::MAX.to_i16(),  None);
+        assert_eq!(i64::MAX.to_i32(),  None);
+        assert_eq!(i64::MAX.to_i64(),  Some(i64::MAX as i64));
+        // i64::MAX.to_uint() is word-size specific
+        assert_eq!(i64::MAX.to_u8(),   None);
+        assert_eq!(i64::MAX.to_u16(),  None);
+        assert_eq!(i64::MAX.to_u32(),  None);
+        assert_eq!(i64::MAX.to_u64(),  Some(i64::MAX as u64));
 
         #[cfg(target_word_size = "32")]
         fn check_word_size() {
-            assert_eq!(i64::max_value.to_int(),  None);
-            assert_eq!(i64::max_value.to_uint(), None);
+            assert_eq!(i64::MAX.to_int(),  None);
+            assert_eq!(i64::MAX.to_uint(), None);
         }
 
         #[cfg(target_word_size = "64")]
         fn check_word_size() {
-            assert_eq!(i64::max_value.to_int(),  Some(i64::max_value as int));
-            assert_eq!(i64::max_value.to_uint(), Some(i64::max_value as uint));
+            assert_eq!(i64::MAX.to_int(),  Some(i64::MAX as int));
+            assert_eq!(i64::MAX.to_uint(), Some(i64::MAX as uint));
         }
 
         check_word_size();
@@ -1424,96 +1338,96 @@ mod tests {
 
     #[test]
     fn test_cast_range_uint_min() {
-        assert_eq!(uint::min_value.to_int(),  Some(uint::min_value as int));
-        assert_eq!(uint::min_value.to_i8(),   Some(uint::min_value as i8));
-        assert_eq!(uint::min_value.to_i16(),  Some(uint::min_value as i16));
-        assert_eq!(uint::min_value.to_i32(),  Some(uint::min_value as i32));
-        assert_eq!(uint::min_value.to_i64(),  Some(uint::min_value as i64));
-        assert_eq!(uint::min_value.to_uint(), Some(uint::min_value as uint));
-        assert_eq!(uint::min_value.to_u8(),   Some(uint::min_value as u8));
-        assert_eq!(uint::min_value.to_u16(),  Some(uint::min_value as u16));
-        assert_eq!(uint::min_value.to_u32(),  Some(uint::min_value as u32));
-        assert_eq!(uint::min_value.to_u64(),  Some(uint::min_value as u64));
+        assert_eq!(uint::MIN.to_int(),  Some(uint::MIN as int));
+        assert_eq!(uint::MIN.to_i8(),   Some(uint::MIN as i8));
+        assert_eq!(uint::MIN.to_i16(),  Some(uint::MIN as i16));
+        assert_eq!(uint::MIN.to_i32(),  Some(uint::MIN as i32));
+        assert_eq!(uint::MIN.to_i64(),  Some(uint::MIN as i64));
+        assert_eq!(uint::MIN.to_uint(), Some(uint::MIN as uint));
+        assert_eq!(uint::MIN.to_u8(),   Some(uint::MIN as u8));
+        assert_eq!(uint::MIN.to_u16(),  Some(uint::MIN as u16));
+        assert_eq!(uint::MIN.to_u32(),  Some(uint::MIN as u32));
+        assert_eq!(uint::MIN.to_u64(),  Some(uint::MIN as u64));
     }
 
     #[test]
     fn test_cast_range_u8_min() {
-        assert_eq!(u8::min_value.to_int(),  Some(u8::min_value as int));
-        assert_eq!(u8::min_value.to_i8(),   Some(u8::min_value as i8));
-        assert_eq!(u8::min_value.to_i16(),  Some(u8::min_value as i16));
-        assert_eq!(u8::min_value.to_i32(),  Some(u8::min_value as i32));
-        assert_eq!(u8::min_value.to_i64(),  Some(u8::min_value as i64));
-        assert_eq!(u8::min_value.to_uint(), Some(u8::min_value as uint));
-        assert_eq!(u8::min_value.to_u8(),   Some(u8::min_value as u8));
-        assert_eq!(u8::min_value.to_u16(),  Some(u8::min_value as u16));
-        assert_eq!(u8::min_value.to_u32(),  Some(u8::min_value as u32));
-        assert_eq!(u8::min_value.to_u64(),  Some(u8::min_value as u64));
+        assert_eq!(u8::MIN.to_int(),  Some(u8::MIN as int));
+        assert_eq!(u8::MIN.to_i8(),   Some(u8::MIN as i8));
+        assert_eq!(u8::MIN.to_i16(),  Some(u8::MIN as i16));
+        assert_eq!(u8::MIN.to_i32(),  Some(u8::MIN as i32));
+        assert_eq!(u8::MIN.to_i64(),  Some(u8::MIN as i64));
+        assert_eq!(u8::MIN.to_uint(), Some(u8::MIN as uint));
+        assert_eq!(u8::MIN.to_u8(),   Some(u8::MIN as u8));
+        assert_eq!(u8::MIN.to_u16(),  Some(u8::MIN as u16));
+        assert_eq!(u8::MIN.to_u32(),  Some(u8::MIN as u32));
+        assert_eq!(u8::MIN.to_u64(),  Some(u8::MIN as u64));
     }
 
     #[test]
     fn test_cast_range_u16_min() {
-        assert_eq!(u16::min_value.to_int(),  Some(u16::min_value as int));
-        assert_eq!(u16::min_value.to_i8(),   Some(u16::min_value as i8));
-        assert_eq!(u16::min_value.to_i16(),  Some(u16::min_value as i16));
-        assert_eq!(u16::min_value.to_i32(),  Some(u16::min_value as i32));
-        assert_eq!(u16::min_value.to_i64(),  Some(u16::min_value as i64));
-        assert_eq!(u16::min_value.to_uint(), Some(u16::min_value as uint));
-        assert_eq!(u16::min_value.to_u8(),   Some(u16::min_value as u8));
-        assert_eq!(u16::min_value.to_u16(),  Some(u16::min_value as u16));
-        assert_eq!(u16::min_value.to_u32(),  Some(u16::min_value as u32));
-        assert_eq!(u16::min_value.to_u64(),  Some(u16::min_value as u64));
+        assert_eq!(u16::MIN.to_int(),  Some(u16::MIN as int));
+        assert_eq!(u16::MIN.to_i8(),   Some(u16::MIN as i8));
+        assert_eq!(u16::MIN.to_i16(),  Some(u16::MIN as i16));
+        assert_eq!(u16::MIN.to_i32(),  Some(u16::MIN as i32));
+        assert_eq!(u16::MIN.to_i64(),  Some(u16::MIN as i64));
+        assert_eq!(u16::MIN.to_uint(), Some(u16::MIN as uint));
+        assert_eq!(u16::MIN.to_u8(),   Some(u16::MIN as u8));
+        assert_eq!(u16::MIN.to_u16(),  Some(u16::MIN as u16));
+        assert_eq!(u16::MIN.to_u32(),  Some(u16::MIN as u32));
+        assert_eq!(u16::MIN.to_u64(),  Some(u16::MIN as u64));
     }
 
     #[test]
     fn test_cast_range_u32_min() {
-        assert_eq!(u32::min_value.to_int(),  Some(u32::min_value as int));
-        assert_eq!(u32::min_value.to_i8(),   Some(u32::min_value as i8));
-        assert_eq!(u32::min_value.to_i16(),  Some(u32::min_value as i16));
-        assert_eq!(u32::min_value.to_i32(),  Some(u32::min_value as i32));
-        assert_eq!(u32::min_value.to_i64(),  Some(u32::min_value as i64));
-        assert_eq!(u32::min_value.to_uint(), Some(u32::min_value as uint));
-        assert_eq!(u32::min_value.to_u8(),   Some(u32::min_value as u8));
-        assert_eq!(u32::min_value.to_u16(),  Some(u32::min_value as u16));
-        assert_eq!(u32::min_value.to_u32(),  Some(u32::min_value as u32));
-        assert_eq!(u32::min_value.to_u64(),  Some(u32::min_value as u64));
+        assert_eq!(u32::MIN.to_int(),  Some(u32::MIN as int));
+        assert_eq!(u32::MIN.to_i8(),   Some(u32::MIN as i8));
+        assert_eq!(u32::MIN.to_i16(),  Some(u32::MIN as i16));
+        assert_eq!(u32::MIN.to_i32(),  Some(u32::MIN as i32));
+        assert_eq!(u32::MIN.to_i64(),  Some(u32::MIN as i64));
+        assert_eq!(u32::MIN.to_uint(), Some(u32::MIN as uint));
+        assert_eq!(u32::MIN.to_u8(),   Some(u32::MIN as u8));
+        assert_eq!(u32::MIN.to_u16(),  Some(u32::MIN as u16));
+        assert_eq!(u32::MIN.to_u32(),  Some(u32::MIN as u32));
+        assert_eq!(u32::MIN.to_u64(),  Some(u32::MIN as u64));
     }
 
     #[test]
     fn test_cast_range_u64_min() {
-        assert_eq!(u64::min_value.to_int(),  Some(u64::min_value as int));
-        assert_eq!(u64::min_value.to_i8(),   Some(u64::min_value as i8));
-        assert_eq!(u64::min_value.to_i16(),  Some(u64::min_value as i16));
-        assert_eq!(u64::min_value.to_i32(),  Some(u64::min_value as i32));
-        assert_eq!(u64::min_value.to_i64(),  Some(u64::min_value as i64));
-        assert_eq!(u64::min_value.to_uint(), Some(u64::min_value as uint));
-        assert_eq!(u64::min_value.to_u8(),   Some(u64::min_value as u8));
-        assert_eq!(u64::min_value.to_u16(),  Some(u64::min_value as u16));
-        assert_eq!(u64::min_value.to_u32(),  Some(u64::min_value as u32));
-        assert_eq!(u64::min_value.to_u64(),  Some(u64::min_value as u64));
+        assert_eq!(u64::MIN.to_int(),  Some(u64::MIN as int));
+        assert_eq!(u64::MIN.to_i8(),   Some(u64::MIN as i8));
+        assert_eq!(u64::MIN.to_i16(),  Some(u64::MIN as i16));
+        assert_eq!(u64::MIN.to_i32(),  Some(u64::MIN as i32));
+        assert_eq!(u64::MIN.to_i64(),  Some(u64::MIN as i64));
+        assert_eq!(u64::MIN.to_uint(), Some(u64::MIN as uint));
+        assert_eq!(u64::MIN.to_u8(),   Some(u64::MIN as u8));
+        assert_eq!(u64::MIN.to_u16(),  Some(u64::MIN as u16));
+        assert_eq!(u64::MIN.to_u32(),  Some(u64::MIN as u32));
+        assert_eq!(u64::MIN.to_u64(),  Some(u64::MIN as u64));
     }
 
     #[test]
     fn test_cast_range_uint_max() {
-        assert_eq!(uint::max_value.to_int(),  None);
-        assert_eq!(uint::max_value.to_i8(),   None);
-        assert_eq!(uint::max_value.to_i16(),  None);
-        assert_eq!(uint::max_value.to_i32(),  None);
-        // uint::max_value.to_i64() is word-size specific
-        assert_eq!(uint::max_value.to_u8(),   None);
-        assert_eq!(uint::max_value.to_u16(),  None);
-        // uint::max_value.to_u32() is word-size specific
-        assert_eq!(uint::max_value.to_u64(),  Some(uint::max_value as u64));
+        assert_eq!(uint::MAX.to_int(),  None);
+        assert_eq!(uint::MAX.to_i8(),   None);
+        assert_eq!(uint::MAX.to_i16(),  None);
+        assert_eq!(uint::MAX.to_i32(),  None);
+        // uint::MAX.to_i64() is word-size specific
+        assert_eq!(uint::MAX.to_u8(),   None);
+        assert_eq!(uint::MAX.to_u16(),  None);
+        // uint::MAX.to_u32() is word-size specific
+        assert_eq!(uint::MAX.to_u64(),  Some(uint::MAX as u64));
 
         #[cfg(target_word_size = "32")]
         fn check_word_size() {
-            assert_eq!(uint::max_value.to_u32(), Some(uint::max_value as u32));
-            assert_eq!(uint::max_value.to_i64(), Some(uint::max_value as i64));
+            assert_eq!(uint::MAX.to_u32(), Some(uint::MAX as u32));
+            assert_eq!(uint::MAX.to_i64(), Some(uint::MAX as i64));
         }
 
         #[cfg(target_word_size = "64")]
         fn check_word_size() {
-            assert_eq!(uint::max_value.to_u32(), None);
-            assert_eq!(uint::max_value.to_i64(), None);
+            assert_eq!(uint::MAX.to_u32(), None);
+            assert_eq!(uint::MAX.to_i64(), None);
         }
 
         check_word_size();
@@ -1521,53 +1435,53 @@ mod tests {
 
     #[test]
     fn test_cast_range_u8_max() {
-        assert_eq!(u8::max_value.to_int(),  Some(u8::max_value as int));
-        assert_eq!(u8::max_value.to_i8(),   None);
-        assert_eq!(u8::max_value.to_i16(),  Some(u8::max_value as i16));
-        assert_eq!(u8::max_value.to_i32(),  Some(u8::max_value as i32));
-        assert_eq!(u8::max_value.to_i64(),  Some(u8::max_value as i64));
-        assert_eq!(u8::max_value.to_uint(), Some(u8::max_value as uint));
-        assert_eq!(u8::max_value.to_u8(),   Some(u8::max_value as u8));
-        assert_eq!(u8::max_value.to_u16(),  Some(u8::max_value as u16));
-        assert_eq!(u8::max_value.to_u32(),  Some(u8::max_value as u32));
-        assert_eq!(u8::max_value.to_u64(),  Some(u8::max_value as u64));
+        assert_eq!(u8::MAX.to_int(),  Some(u8::MAX as int));
+        assert_eq!(u8::MAX.to_i8(),   None);
+        assert_eq!(u8::MAX.to_i16(),  Some(u8::MAX as i16));
+        assert_eq!(u8::MAX.to_i32(),  Some(u8::MAX as i32));
+        assert_eq!(u8::MAX.to_i64(),  Some(u8::MAX as i64));
+        assert_eq!(u8::MAX.to_uint(), Some(u8::MAX as uint));
+        assert_eq!(u8::MAX.to_u8(),   Some(u8::MAX as u8));
+        assert_eq!(u8::MAX.to_u16(),  Some(u8::MAX as u16));
+        assert_eq!(u8::MAX.to_u32(),  Some(u8::MAX as u32));
+        assert_eq!(u8::MAX.to_u64(),  Some(u8::MAX as u64));
     }
 
     #[test]
     fn test_cast_range_u16_max() {
-        assert_eq!(u16::max_value.to_int(),  Some(u16::max_value as int));
-        assert_eq!(u16::max_value.to_i8(),   None);
-        assert_eq!(u16::max_value.to_i16(),  None);
-        assert_eq!(u16::max_value.to_i32(),  Some(u16::max_value as i32));
-        assert_eq!(u16::max_value.to_i64(),  Some(u16::max_value as i64));
-        assert_eq!(u16::max_value.to_uint(), Some(u16::max_value as uint));
-        assert_eq!(u16::max_value.to_u8(),   None);
-        assert_eq!(u16::max_value.to_u16(),  Some(u16::max_value as u16));
-        assert_eq!(u16::max_value.to_u32(),  Some(u16::max_value as u32));
-        assert_eq!(u16::max_value.to_u64(),  Some(u16::max_value as u64));
+        assert_eq!(u16::MAX.to_int(),  Some(u16::MAX as int));
+        assert_eq!(u16::MAX.to_i8(),   None);
+        assert_eq!(u16::MAX.to_i16(),  None);
+        assert_eq!(u16::MAX.to_i32(),  Some(u16::MAX as i32));
+        assert_eq!(u16::MAX.to_i64(),  Some(u16::MAX as i64));
+        assert_eq!(u16::MAX.to_uint(), Some(u16::MAX as uint));
+        assert_eq!(u16::MAX.to_u8(),   None);
+        assert_eq!(u16::MAX.to_u16(),  Some(u16::MAX as u16));
+        assert_eq!(u16::MAX.to_u32(),  Some(u16::MAX as u32));
+        assert_eq!(u16::MAX.to_u64(),  Some(u16::MAX as u64));
     }
 
     #[test]
     fn test_cast_range_u32_max() {
-        // u32::max_value.to_int() is word-size specific
-        assert_eq!(u32::max_value.to_i8(),   None);
-        assert_eq!(u32::max_value.to_i16(),  None);
-        assert_eq!(u32::max_value.to_i32(),  None);
-        assert_eq!(u32::max_value.to_i64(),  Some(u32::max_value as i64));
-        assert_eq!(u32::max_value.to_uint(), Some(u32::max_value as uint));
-        assert_eq!(u32::max_value.to_u8(),   None);
-        assert_eq!(u32::max_value.to_u16(),  None);
-        assert_eq!(u32::max_value.to_u32(),  Some(u32::max_value as u32));
-        assert_eq!(u32::max_value.to_u64(),  Some(u32::max_value as u64));
+        // u32::MAX.to_int() is word-size specific
+        assert_eq!(u32::MAX.to_i8(),   None);
+        assert_eq!(u32::MAX.to_i16(),  None);
+        assert_eq!(u32::MAX.to_i32(),  None);
+        assert_eq!(u32::MAX.to_i64(),  Some(u32::MAX as i64));
+        assert_eq!(u32::MAX.to_uint(), Some(u32::MAX as uint));
+        assert_eq!(u32::MAX.to_u8(),   None);
+        assert_eq!(u32::MAX.to_u16(),  None);
+        assert_eq!(u32::MAX.to_u32(),  Some(u32::MAX as u32));
+        assert_eq!(u32::MAX.to_u64(),  Some(u32::MAX as u64));
 
         #[cfg(target_word_size = "32")]
         fn check_word_size() {
-            assert_eq!(u32::max_value.to_int(),  None);
+            assert_eq!(u32::MAX.to_int(),  None);
         }
 
         #[cfg(target_word_size = "64")]
         fn check_word_size() {
-            assert_eq!(u32::max_value.to_int(),  Some(u32::max_value as int));
+            assert_eq!(u32::MAX.to_int(),  Some(u32::MAX as int));
         }
 
         check_word_size();
@@ -1575,25 +1489,25 @@ mod tests {
 
     #[test]
     fn test_cast_range_u64_max() {
-        assert_eq!(u64::max_value.to_int(),  None);
-        assert_eq!(u64::max_value.to_i8(),   None);
-        assert_eq!(u64::max_value.to_i16(),  None);
-        assert_eq!(u64::max_value.to_i32(),  None);
-        assert_eq!(u64::max_value.to_i64(),  None);
-        // u64::max_value.to_uint() is word-size specific
-        assert_eq!(u64::max_value.to_u8(),   None);
-        assert_eq!(u64::max_value.to_u16(),  None);
-        assert_eq!(u64::max_value.to_u32(),  None);
-        assert_eq!(u64::max_value.to_u64(),  Some(u64::max_value as u64));
+        assert_eq!(u64::MAX.to_int(),  None);
+        assert_eq!(u64::MAX.to_i8(),   None);
+        assert_eq!(u64::MAX.to_i16(),  None);
+        assert_eq!(u64::MAX.to_i32(),  None);
+        assert_eq!(u64::MAX.to_i64(),  None);
+        // u64::MAX.to_uint() is word-size specific
+        assert_eq!(u64::MAX.to_u8(),   None);
+        assert_eq!(u64::MAX.to_u16(),  None);
+        assert_eq!(u64::MAX.to_u32(),  None);
+        assert_eq!(u64::MAX.to_u64(),  Some(u64::MAX as u64));
 
         #[cfg(target_word_size = "32")]
         fn check_word_size() {
-            assert_eq!(u64::max_value.to_uint(), None);
+            assert_eq!(u64::MAX.to_uint(), None);
         }
 
         #[cfg(target_word_size = "64")]
         fn check_word_size() {
-            assert_eq!(u64::max_value.to_uint(), Some(u64::max_value as uint));
+            assert_eq!(u64::MAX.to_uint(), Some(u64::MAX as uint));
         }
 
         check_word_size();
@@ -1601,55 +1515,55 @@ mod tests {
 
     #[test]
     fn test_saturating_add_uint() {
-        use uint::max_value;
+        use uint::MAX;
         assert_eq!(3u.saturating_add(5u), 8u);
-        assert_eq!(3u.saturating_add(max_value-1), max_value);
-        assert_eq!(max_value.saturating_add(max_value), max_value);
-        assert_eq!((max_value-2).saturating_add(1), max_value-1);
+        assert_eq!(3u.saturating_add(MAX-1), MAX);
+        assert_eq!(MAX.saturating_add(MAX), MAX);
+        assert_eq!((MAX-2).saturating_add(1), MAX-1);
     }
 
     #[test]
     fn test_saturating_sub_uint() {
-        use uint::max_value;
+        use uint::MAX;
         assert_eq!(5u.saturating_sub(3u), 2u);
         assert_eq!(3u.saturating_sub(5u), 0u);
         assert_eq!(0u.saturating_sub(1u), 0u);
-        assert_eq!((max_value-1).saturating_sub(max_value), 0);
+        assert_eq!((MAX-1).saturating_sub(MAX), 0);
     }
 
     #[test]
     fn test_saturating_add_int() {
-        use int::{min_value,max_value};
+        use int::{MIN,MAX};
         assert_eq!(3i.saturating_add(5i), 8i);
-        assert_eq!(3i.saturating_add(max_value-1), max_value);
-        assert_eq!(max_value.saturating_add(max_value), max_value);
-        assert_eq!((max_value-2).saturating_add(1), max_value-1);
+        assert_eq!(3i.saturating_add(MAX-1), MAX);
+        assert_eq!(MAX.saturating_add(MAX), MAX);
+        assert_eq!((MAX-2).saturating_add(1), MAX-1);
         assert_eq!(3i.saturating_add(-5i), -2i);
-        assert_eq!(min_value.saturating_add(-1i), min_value);
-        assert_eq!((-2i).saturating_add(-max_value), min_value);
+        assert_eq!(MIN.saturating_add(-1i), MIN);
+        assert_eq!((-2i).saturating_add(-MAX), MIN);
     }
 
     #[test]
     fn test_saturating_sub_int() {
-        use int::{min_value,max_value};
+        use int::{MIN,MAX};
         assert_eq!(3i.saturating_sub(5i), -2i);
-        assert_eq!(min_value.saturating_sub(1i), min_value);
-        assert_eq!((-2i).saturating_sub(max_value), min_value);
+        assert_eq!(MIN.saturating_sub(1i), MIN);
+        assert_eq!((-2i).saturating_sub(MAX), MIN);
         assert_eq!(3i.saturating_sub(-5i), 8i);
-        assert_eq!(3i.saturating_sub(-(max_value-1)), max_value);
-        assert_eq!(max_value.saturating_sub(-max_value), max_value);
-        assert_eq!((max_value-2).saturating_sub(-1), max_value-1);
+        assert_eq!(3i.saturating_sub(-(MAX-1)), MAX);
+        assert_eq!(MAX.saturating_sub(-MAX), MAX);
+        assert_eq!((MAX-2).saturating_sub(-1), MAX-1);
     }
 
     #[test]
     fn test_checked_add() {
-        let five_less = uint::max_value - 5;
-        assert_eq!(five_less.checked_add(&0), Some(uint::max_value - 5));
-        assert_eq!(five_less.checked_add(&1), Some(uint::max_value - 4));
-        assert_eq!(five_less.checked_add(&2), Some(uint::max_value - 3));
-        assert_eq!(five_less.checked_add(&3), Some(uint::max_value - 2));
-        assert_eq!(five_less.checked_add(&4), Some(uint::max_value - 1));
-        assert_eq!(five_less.checked_add(&5), Some(uint::max_value));
+        let five_less = uint::MAX - 5;
+        assert_eq!(five_less.checked_add(&0), Some(uint::MAX - 5));
+        assert_eq!(five_less.checked_add(&1), Some(uint::MAX - 4));
+        assert_eq!(five_less.checked_add(&2), Some(uint::MAX - 3));
+        assert_eq!(five_less.checked_add(&3), Some(uint::MAX - 2));
+        assert_eq!(five_less.checked_add(&4), Some(uint::MAX - 1));
+        assert_eq!(five_less.checked_add(&5), Some(uint::MAX));
         assert_eq!(five_less.checked_add(&6), None);
         assert_eq!(five_less.checked_add(&7), None);
     }
@@ -1668,7 +1582,7 @@ mod tests {
 
     #[test]
     fn test_checked_mul() {
-        let third = uint::max_value / 3;
+        let third = uint::MAX / 3;
         assert_eq!(third.checked_mul(&0), Some(0));
         assert_eq!(third.checked_mul(&1), Some(third));
         assert_eq!(third.checked_mul(&2), Some(third * 2));
@@ -1721,5 +1635,42 @@ mod tests {
         assert_eq!(from_u64(5),    Some(Value { x: 5 }));
         assert_eq!(from_f32(5f32), Some(Value { x: 5 }));
         assert_eq!(from_f64(5f64), Some(Value { x: 5 }));
+    }
+
+    #[test]
+    fn test_pow() {
+        fn naive_pow<T: One + Mul<T, T>>(base: T, exp: uint) -> T {
+            range(0, exp).fold(one::<T>(), |acc, _| acc * base)
+        }
+        macro_rules! assert_pow(
+            (($num:expr, $exp:expr) => $expected:expr) => {{
+                let result = pow($num, $exp);
+                assert_eq!(result, $expected);
+                assert_eq!(result, naive_pow($num, $exp));
+            }}
+        )
+        assert_pow!((3,    0 ) => 1);
+        assert_pow!((5,    1 ) => 5);
+        assert_pow!((-4,   2 ) => 16);
+        assert_pow!((0.5,  5 ) => 0.03125);
+        assert_pow!((8,    3 ) => 512);
+        assert_pow!((8.0,  5 ) => 32768.0);
+        assert_pow!((8.5,  5 ) => 44370.53125);
+        assert_pow!((2u64, 50) => 1125899906842624);
+    }
+}
+
+
+#[cfg(test)]
+mod bench {
+    use num;
+    use vec;
+    use prelude::*;
+    use extra::test::BenchHarness;
+
+    #[bench]
+    fn bench_pow_function(b: &mut BenchHarness) {
+        let v = vec::from_fn(1024, |n| n);
+        b.iter(|| {v.iter().fold(0, |old, new| num::pow(old, *new));});
     }
 }

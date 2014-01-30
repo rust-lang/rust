@@ -16,5 +16,5 @@ extern mod extra;
 use extra::json::Object;
 
 pub fn main() {
-    println("Hello world!");
+    println!("Hello world!");
 }

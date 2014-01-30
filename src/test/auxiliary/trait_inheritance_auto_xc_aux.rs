@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Foo { fn f(&self) -> int; }
-trait Bar { fn g(&self) -> int; }
-trait Baz { fn h(&self) -> int; }
+pub trait Foo { fn f(&self) -> int; }
+pub trait Bar { fn g(&self) -> int; }
+pub trait Baz { fn h(&self) -> int; }
 
-trait Quux: Foo + Bar + Baz { }
+pub trait Quux: Foo + Bar + Baz { }
 
 impl<T:Foo + Bar + Baz> Quux for T { }

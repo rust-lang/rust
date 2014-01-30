@@ -13,6 +13,8 @@
 //! This module defines a container which uses an efficient bit mask
 //! representation to hold C-like enum variants.
 
+use std::num::Bitwise;
+
 #[deriving(Clone, Eq, IterBytes, ToStr, Encodable, Decodable)]
 /// A specialized Set implementation to use enum types.
 pub struct EnumSet<E> {
@@ -75,8 +77,8 @@ impl<E:CLike> EnumSet<E> {
     }
 
     /// Returns an iterator over an EnumSet
-    pub fn iter(&self) -> EnumSetIterator<E> {
-        EnumSetIterator::new(self.bits)
+    pub fn iter(&self) -> Items<E> {
+        Items::new(self.bits)
     }
 }
 
@@ -99,20 +101,20 @@ impl<E:CLike> BitAnd<EnumSet<E>, EnumSet<E>> for EnumSet<E> {
 }
 
 /// An iterator over an EnumSet
-pub struct EnumSetIterator<E> {
+pub struct Items<E> {
     priv index: uint,
     priv bits: uint,
 }
 
-impl<E:CLike> EnumSetIterator<E> {
-    fn new(bits: uint) -> EnumSetIterator<E> {
-        EnumSetIterator { index: 0, bits: bits }
+impl<E:CLike> Items<E> {
+    fn new(bits: uint) -> Items<E> {
+        Items { index: 0, bits: bits }
     }
 }
 
-impl<E:CLike> Iterator<E> for EnumSetIterator<E> {
+impl<E:CLike> Iterator<E> for Items<E> {
     fn next(&mut self) -> Option<E> {
-        if (self.bits == 0) {
+        if self.bits == 0 {
             return None;
         }
 

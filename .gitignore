@@ -74,11 +74,17 @@ src/.DS_Store
 /doc/html
 /doc/latex
 /doc/std
+/doc/arena
 /doc/extra
+/doc/flate
+/doc/glob
 /doc/green
 /doc/native
 /doc/rustc
 /doc/syntax
+/doc/rustdoc
+/doc/rustuv
+/doc/rustpkg
 /nd/
 /llvm/
 version.md
@@ -95,3 +101,4 @@ src/etc/dl
 build/
 i686-pc-mingw32/
 src/librustc/lib/llvmdeps.rs
+*.pot

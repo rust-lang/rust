@@ -18,7 +18,7 @@ This API is completely unstable and subject to change.
 
 */
 
-#[crate_id = "rustc#0.9"];
+#[crate_id = "rustc#0.10-pre"];
 #[comment = "The Rust compiler"];
 #[license = "MIT/ASL2"];
 #[crate_type = "dylib"];
@@ -30,6 +30,8 @@ This API is completely unstable and subject to change.
 #[feature(macro_rules, globs, struct_variant, managed_boxes)];
 
 extern mod extra;
+extern mod flate;
+extern mod arena;
 extern mod syntax;
 
 use back::link;
@@ -38,13 +40,9 @@ use middle::lint;
 
 use d = driver::driver;
 
-use std::cast;
-use std::comm;
 use std::io;
-use std::io::Reader;
 use std::num;
 use std::os;
-use std::result;
 use std::str;
 use std::task;
 use std::vec;
@@ -52,7 +50,6 @@ use extra::getopts::groups;
 use extra::getopts;
 use syntax::ast;
 use syntax::attr;
-use syntax::codemap;
 use syntax::diagnostic::Emitter;
 use syntax::diagnostic;
 use syntax::parse;
@@ -126,21 +123,6 @@ pub mod lib {
     pub mod llvmdeps;
 }
 
-// A curious inner module that allows ::std::foo to be available in here for
-// macros.
-/*
-mod std {
-    pub use std::clone;
-    pub use std::cmp;
-    pub use std::os;
-    pub use std::str;
-    pub use std::sys;
-    pub use std::to_bytes;
-    pub use std::unstable;
-    pub use extra::serialize;
-}
-*/
-
 pub fn version(argv0: &str) {
     let vers = match option_env!("CFG_VERSION") {
         Some(vers) => vers,
@@ -160,7 +142,7 @@ Additional help:
 }
 
 pub fn describe_warnings() {
-    println("
+    println!("
 Available lint options:
     -W <foo>           Warn about <foo>
     -A <foo>           Allow <foo>
@@ -181,7 +163,7 @@ Available lint options:
     fn padded(max: uint, s: &str) -> ~str {
         " ".repeat(max - s.len()) + s
     }
-    println("\nAvailable lint checks:\n");
+    println!("{}", "\nAvailable lint checks:\n"); // FIXME: #9970
     println!("    {}  {:7.7s}  {}",
              padded(max_key, "name"), "default", "meaning");
     println!("    {}  {:7.7s}  {}\n",
@@ -193,11 +175,11 @@ Available lint options:
                  lint::level_to_str(spec.default),
                  spec.desc);
     }
-    println("");
+    println!("");
 }
 
 pub fn describe_debug_flags() {
-    println("\nAvailable debug options:\n");
+    println!("{}", "\nAvailable debug options:\n"); // FIXME: #9970
     let r = session::debugging_opts_map();
     for tuple in r.iter() {
         match *tuple {
@@ -210,7 +192,7 @@ pub fn describe_debug_flags() {
 
 pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
     let mut args = args.to_owned();
-    let binary = args.shift();
+    let binary = args.shift().unwrap();
 
     if args.is_empty() { usage(binary); return; }
 
@@ -227,14 +209,9 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
         return;
     }
 
-    // Display the available lint options if "-W help" or only "-W" is given.
     let lint_flags = vec::append(matches.opt_strs("W"),
                                  matches.opt_strs("warn"));
-
-    let show_lint_options = lint_flags.iter().any(|x| x == &~"help") ||
-        (matches.opt_present("W") && lint_flags.is_empty());
-
-    if show_lint_options {
+    if lint_flags.iter().any(|x| x == &~"help") {
         describe_warnings();
         return;
     }
@@ -254,22 +231,22 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
         version(binary);
         return;
     }
-    let input = match matches.free.len() {
+    let (input, input_file_path) = match matches.free.len() {
       0u => d::early_error(demitter, "no input filename given"),
       1u => {
         let ifile = matches.free[0].as_slice();
         if "-" == ifile {
-            let src = str::from_utf8_owned(io::stdin().read_to_end());
-            d::str_input(src.to_managed())
+            let src = str::from_utf8_owned(io::stdin().read_to_end()).unwrap();
+            (d::StrInput(src.to_managed()), None)
         } else {
-            d::file_input(Path::new(ifile))
+            (d::FileInput(Path::new(ifile)), Some(Path::new(ifile)))
         }
       }
       _ => d::early_error(demitter, "multiple input filenames provided")
     };
 
     let sopts = d::build_session_options(binary, matches, demitter);
-    let sess = d::build_session(sopts, demitter);
+    let sess = d::build_session(sopts, input_file_path, demitter);
     let odir = matches.opt_str("out-dir").map(|o| Path::new(o));
     let ofile = matches.opt_str("o").map(|o| Path::new(o));
     let cfg = d::build_configuration(sess);
@@ -286,12 +263,12 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
     let ls = matches.opt_present("ls");
     if ls {
         match input {
-          d::file_input(ref ifile) => {
+          d::FileInput(ref ifile) => {
             let mut stdout = io::stdout();
             d::list_metadata(sess, &(*ifile),
                                   &mut stdout as &mut io::Writer);
           }
-          d::str_input(_) => {
+          d::StrInput(_) => {
             d::early_error(demitter, "can not list metadata for stdin");
           }
         }
@@ -312,10 +289,10 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
                 }
             };
             if crate_id {
-                println(crateid.to_str());
+                println!("{}", crateid.to_str());
             }
             if crate_name {
-                println(crateid.name);
+                println!("{}", crateid.name);
             }
         }
 
@@ -337,58 +314,25 @@ pub fn run_compiler(args: &[~str], demitter: @diagnostic::Emitter) {
 }
 
 fn parse_crate_attrs(sess: session::Session,
-                     input: &d::input) -> ~[ast::Attribute] {
+                     input: &d::Input) -> ~[ast::Attribute] {
     match *input {
-        d::file_input(ref ifile) => {
+        d::FileInput(ref ifile) => {
             parse::parse_crate_attrs_from_file(ifile, ~[], sess.parse_sess)
         }
-        d::str_input(src) => {
+        d::StrInput(src) => {
             parse::parse_crate_attrs_from_source_str(
                 d::anon_src(), src, ~[], sess.parse_sess)
         }
     }
 }
 
-#[deriving(Eq)]
-pub enum monitor_msg {
-    fatal,
-    done,
-}
-
-struct RustcEmitter {
-    ch_capture: comm::SharedChan<monitor_msg>
-}
-
-impl diagnostic::Emitter for RustcEmitter {
-    fn emit(&self,
-            cmsp: Option<(&codemap::CodeMap, codemap::Span)>,
-            msg: &str,
-            lvl: diagnostic::level) {
-        if lvl == diagnostic::fatal {
-            let this = unsafe { cast::transmute_mut(self) };
-            this.ch_capture.send(fatal)
-        }
-
-        diagnostic::DefaultEmitter.emit(cmsp, msg, lvl)
-    }
-}
-
-/*
-This is a sanity check that any failure of the compiler is performed
-through the diagnostic module and reported properly - we shouldn't be calling
-plain-old-fail on any execution path that might be taken. Since we have
-console logging off by default, hitting a plain fail statement would make the
-compiler silently exit, which would be terrible.
-
-This method wraps the compiler in a subtask and injects a function into the
-diagnostic emitter which records when we hit a fatal error. If the task
-fails without recording a fatal error then we've encountered a compiler
-bug and need to present an error.
-*/
+/// Run a procedure which will detect failures in the compiler and print nicer
+/// error messages rather than just failing the test.
+///
+/// The diagnostic emitter yielded to the procedure should be used for reporting
+/// errors of the compiler.
 pub fn monitor(f: proc(@diagnostic::Emitter)) {
-    use std::comm::*;
-
-    // XXX: This is a hack for newsched since it doesn't support split stacks.
+    // FIXME: This is a hack for newsched since it doesn't support split stacks.
     // rustc needs a lot of stack! When optimizations are disabled, it needs
     // even *more* stack than usual as well.
     #[cfg(rtopt)]
@@ -396,60 +340,49 @@ pub fn monitor(f: proc(@diagnostic::Emitter)) {
     #[cfg(not(rtopt))]
     static STACK_SIZE: uint = 20000000; // 20MB
 
-    let (p, ch) = SharedChan::new();
-    let ch_capture = ch.clone();
     let mut task_builder = task::task();
     task_builder.name("rustc");
 
-    // XXX: Hacks on hacks. If the env is trying to override the stack size
+    // FIXME: Hacks on hacks. If the env is trying to override the stack size
     // then *don't* set it explicitly.
     if os::getenv("RUST_MIN_STACK").is_none() {
         task_builder.opts.stack_size = Some(STACK_SIZE);
     }
 
+    let (p, c) = Chan::new();
+    let w = io::ChanWriter::new(c);
+    let mut r = io::PortReader::new(p);
+
     match task_builder.try(proc() {
-        let ch = ch_capture.clone();
-        // The 'diagnostics emitter'. Every error, warning, etc. should
-        // go through this function.
-        let demitter = @RustcEmitter {
-            ch_capture: ch.clone(),
-        } as @diagnostic::Emitter;
-
-        struct finally {
-            ch: SharedChan<monitor_msg>,
-        }
-
-        impl Drop for finally {
-            fn drop(&mut self) { self.ch.send(done); }
-        }
-
-        let _finally = finally { ch: ch };
-
-        f(demitter);
+        io::stdio::set_stderr(~w as ~io::Writer);
+        f(@diagnostic::DefaultEmitter)
     }) {
-        result::Ok(_) => { /* fallthrough */ }
-        result::Err(_) => {
+        Ok(()) => { /* fallthrough */ }
+        Err(value) => {
             // Task failed without emitting a fatal diagnostic
-            if p.recv() == done {
+            if !value.is::<diagnostic::FatalError>() {
                 diagnostic::DefaultEmitter.emit(
                     None,
                     diagnostic::ice_msg("unexpected failure"),
-                    diagnostic::error);
+                    diagnostic::Error);
 
                 let xs = [
                     ~"the compiler hit an unexpected failure path. \
                      this is a bug",
-                    ~"try running with RUST_LOG=rustc=1 \
-                     to get further details and report the results \
-                     to github.com/mozilla/rust/issues"
                 ];
                 for note in xs.iter() {
                     diagnostic::DefaultEmitter.emit(None,
                                                     *note,
-                                                    diagnostic::note)
+                                                    diagnostic::Note)
                 }
+
+                println!("{}", r.read_to_str());
             }
-            // Fail so the process returns a failure code
+
+            // Fail so the process returns a failure code, but don't pollute the
+            // output with some unnecessary failure messages, we've already
+            // printed everything that we needed to.
+            io::stdio::set_stderr(~io::util::NullWriter as ~io::Writer);
             fail!();
         }
     }

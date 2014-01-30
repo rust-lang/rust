@@ -147,6 +147,8 @@ The current mapping of types to traits is:
 * `p` ⇒ `Pointer`
 * `t` ⇒ `Binary`
 * `f` ⇒ `Float`
+* `e` ⇒ `LowerExp`
+* `E` ⇒ `UpperExp`
 * *nothing* ⇒ `Default`
 
 What this means is that any type of argument which implements the
@@ -242,7 +244,7 @@ actually invoking the `write` function defined in this module. Example usage is:
 ```rust
 use std::io;
 
-let mut w = io::mem::MemWriter::new();
+let mut w = io::MemWriter::new();
 write!(&mut w as &mut io::Writer, "Hello {}!", "world");
 ```
 
@@ -470,8 +472,7 @@ use prelude::*;
 
 use cast;
 use char::Char;
-use io::Decorator;
-use io::mem::MemWriter;
+use io::MemWriter;
 use io;
 use str;
 use repr;
@@ -498,7 +499,7 @@ pub struct Formatter<'a> {
 
     /// Output buffer.
     buf: &'a mut io::Writer,
-    priv curarg: vec::VecIterator<'a, Argument<'a>>,
+    priv curarg: vec::Items<'a, Argument<'a>>,
     priv args: &'a [Argument<'a>],
 }
 
@@ -579,6 +580,12 @@ pub trait Pointer { fn fmt(&Self, &mut Formatter); }
 /// Format trait for the `f` character
 #[allow(missing_doc)]
 pub trait Float { fn fmt(&Self, &mut Formatter); }
+/// Format trait for the `e` character
+#[allow(missing_doc)]
+pub trait LowerExp { fn fmt(&Self, &mut Formatter); }
+/// Format trait for the `E` character
+#[allow(missing_doc)]
+pub trait UpperExp { fn fmt(&Self, &mut Formatter); }
 
 /// The `write` function takes an output stream, a precompiled format string,
 /// and a list of arguments. The arguments will be formatted according to the
@@ -692,7 +699,7 @@ pub fn format(args: &Arguments) -> ~str {
 pub unsafe fn format_unsafe(fmt: &[rt::Piece], args: &[Argument]) -> ~str {
     let mut output = MemWriter::new();
     write_unsafe(&mut output as &mut io::Writer, fmt, args);
-    return str::from_utf8_owned(output.inner());
+    return str::from_utf8_owned(output.unwrap()).unwrap();
 }
 
 impl<'a> Formatter<'a> {
@@ -773,7 +780,7 @@ impl<'a> Formatter<'a> {
                         rt::Keyword(parse::One) => value == 1,
                         rt::Keyword(parse::Two) => value == 2,
 
-                        // XXX: Few/Many should have a user-specified boundary
+                        // FIXME: Few/Many should have a user-specified boundary
                         //      One possible option would be in the function
                         //      pointer of the 'arg: Argument' struct.
                         rt::Keyword(parse::Few) => value < 8,
@@ -813,7 +820,7 @@ impl<'a> Formatter<'a> {
 
     fn runplural(&mut self, value: uint, pieces: &[rt::Piece]) {
         ::uint::to_str_bytes(value, 10, |buf| {
-            let valuestr = str::from_utf8(buf);
+            let valuestr = str::from_utf8(buf).unwrap();
             for piece in pieces.iter() {
                 self.run(piece, Some(valuestr));
             }
@@ -1078,10 +1085,32 @@ integer!(i64, u64)
 macro_rules! floating(($ty:ident) => {
     impl Float for $ty {
         fn fmt(f: &$ty, fmt: &mut Formatter) {
-            // XXX: this shouldn't perform an allocation
+            // FIXME: this shouldn't perform an allocation
             let s = match fmt.precision {
                 Some(i) => ::$ty::to_str_exact(f.abs(), i),
                 None => ::$ty::to_str_digits(f.abs(), 6)
+            };
+            fmt.pad_integral(s.as_bytes(), "", *f >= 0.0);
+        }
+    }
+
+    impl LowerExp for $ty {
+        fn fmt(f: &$ty, fmt: &mut Formatter) {
+            // FIXME: this shouldn't perform an allocation
+            let s = match fmt.precision {
+                Some(i) => ::$ty::to_str_exp_exact(f.abs(), i, false),
+                None => ::$ty::to_str_exp_digits(f.abs(), 6, false)
+            };
+            fmt.pad_integral(s.as_bytes(), "", *f >= 0.0);
+        }
+    }
+
+    impl UpperExp for $ty {
+        fn fmt(f: &$ty, fmt: &mut Formatter) {
+            // FIXME: this shouldn't perform an allocation
+            let s = match fmt.precision {
+                Some(i) => ::$ty::to_str_exp_exact(f.abs(), i, true),
+                None => ::$ty::to_str_exp_digits(f.abs(), 6, true)
             };
             fmt.pad_integral(s.as_bytes(), "", *f >= 0.0);
         }

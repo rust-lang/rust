@@ -10,35 +10,38 @@
 
 #[allow(dead_code)];
 
+pub use target::{OutputType, Main, Lib, Bench, Test, JustOne, lib_name_of, lib_crate_filename};
+pub use target::{Target, Build, Install};
+pub use target::{lib_name_of, lib_crate_filename, WhatToBuild, MaybeCustom, Inferred};
+
 use std::cell::RefCell;
 use std::libc;
 use std::os;
 use std::io;
 use std::io::fs;
 use extra::workcache;
-use rustc::driver::{driver, session};
+use rustc::metadata::creader::Loader;
+use extra::treemap::TreeMap;
 use extra::getopts::groups::getopts;
 use syntax;
 use syntax::codemap::{DUMMY_SP, Spanned};
-use syntax::ext::base::ExtCtxt;
+use syntax::ext::base;
+use syntax::ext::base::{ExtCtxt, MacroCrate};
 use syntax::{ast, attr, codemap, diagnostic, fold, visit};
 use syntax::attr::AttrMetaMethods;
-use syntax::fold::ast_fold;
+use syntax::fold::Folder;
 use syntax::visit::Visitor;
 use syntax::util::small_vector::SmallVector;
-use rustc::back::link::output_type_exe;
+use syntax::crateid::CrateId;
+use rustc::back::link::OutputTypeExe;
 use rustc::back::link;
+use rustc::driver::{driver, session};
 use CtxMethods;
 use context::{in_target, StopBefore, Link, Assemble, BuildContext};
-use crate_id::CrateId;
 use package_source::PkgSrc;
 use workspace::pkg_parent_workspaces;
 use path_util::{system_library, target_build_dir};
 use path_util::{default_workspace, built_library_in_workspace};
-pub use target::{OutputType, Main, Lib, Bench, Test, JustOne, lib_name_of, lib_crate_filename};
-pub use target::{Target, Build, Install};
-use extra::treemap::TreeMap;
-pub use target::{lib_name_of, lib_crate_filename, WhatToBuild, MaybeCustom, Inferred};
 use workcache_support::{digest_file_with_date, digest_only_date};
 use messages::error;
 
@@ -63,16 +66,16 @@ struct ListenerFn {
     path: ~[ast::Ident]
 }
 
-struct ReadyCtx {
+struct ReadyCtx<'a> {
     sess: session::Session,
-    ext_cx: ExtCtxt,
+    ext_cx: ExtCtxt<'a>,
     path: ~[ast::Ident],
     fns: ~[ListenerFn]
 }
 
-fn fold_mod(m: &ast::_mod, fold: &mut CrateSetup) -> ast::_mod {
-    fn strip_main(item: @ast::item) -> @ast::item {
-        @ast::item {
+fn fold_mod(m: &ast::Mod, fold: &mut CrateSetup) -> ast::Mod {
+    fn strip_main(item: @ast::Item) -> @ast::Item {
+        @ast::Item {
             attrs: item.attrs.iter().filter_map(|attr| {
                 if "main" != attr.name() {
                     Some(*attr)
@@ -84,14 +87,14 @@ fn fold_mod(m: &ast::_mod, fold: &mut CrateSetup) -> ast::_mod {
         }
     }
 
-    fold::noop_fold_mod(&ast::_mod {
+    fold::noop_fold_mod(&ast::Mod {
         items: m.items.map(|item| strip_main(*item)),
         .. (*m).clone()
     }, fold)
 }
 
-fn fold_item(item: @ast::item, fold: &mut CrateSetup)
-             -> SmallVector<@ast::item> {
+fn fold_item(item: @ast::Item, fold: &mut CrateSetup)
+             -> SmallVector<@ast::Item> {
     fold.ctx.path.push(item.ident);
 
     let mut cmds = ~[];
@@ -130,14 +133,14 @@ fn fold_item(item: @ast::item, fold: &mut CrateSetup)
 }
 
 struct CrateSetup<'a> {
-    ctx: &'a mut ReadyCtx,
+    ctx: &'a mut ReadyCtx<'a>,
 }
 
-impl<'a> fold::ast_fold for CrateSetup<'a> {
-    fn fold_item(&mut self, item: @ast::item) -> SmallVector<@ast::item> {
+impl<'a> Folder for CrateSetup<'a> {
+    fn fold_item(&mut self, item: @ast::Item) -> SmallVector<@ast::Item> {
         fold_item(item, self)
     }
-    fn fold_mod(&mut self, module: &ast::_mod) -> ast::_mod {
+    fn fold_mod(&mut self, module: &ast::Mod) -> ast::Mod {
         fold_mod(module, self)
     }
 }
@@ -145,9 +148,10 @@ impl<'a> fold::ast_fold for CrateSetup<'a> {
 /// Generate/filter main function, add the list of commands, etc.
 pub fn ready_crate(sess: session::Session,
                    crate: ast::Crate) -> ast::Crate {
+    let loader = &mut Loader::new(sess);
     let mut ctx = ReadyCtx {
         sess: sess,
-        ext_cx: ExtCtxt::new(sess.parse_sess, sess.opts.cfg.clone()),
+        ext_cx: ExtCtxt::new(sess.parse_sess, sess.opts.cfg.clone(), loader),
         path: ~[],
         fns: ~[]
     };
@@ -159,7 +163,7 @@ pub fn ready_crate(sess: session::Session,
 
 pub fn compile_input(context: &BuildContext,
                      exec: &mut workcache::Exec,
-                     pkg_id: &CrateId,
+                     crate_id: &CrateId,
                      in_file: &Path,
                      workspace: &Path,
                      deps: &mut DepMap,
@@ -168,27 +172,23 @@ pub fn compile_input(context: &BuildContext,
                      opt: session::OptLevel,
                      what: OutputType) -> Option<Path> {
     assert!(in_file.components().nth(1).is_some());
-    let input = driver::file_input(in_file.clone());
+    let input = driver::FileInput(in_file.clone());
     debug!("compile_input: {} / {:?}", in_file.display(), what);
     // tjc: by default, use the package ID name as the link name
     // not sure if we should support anything else
 
     let mut out_dir = target_build_dir(workspace);
-    out_dir.push(&pkg_id.path);
+    out_dir.push(crate_id.path.as_slice());
     // Make the output directory if it doesn't exist already
     fs::mkdir_recursive(&out_dir, io::UserRWX);
 
-    let binary = os::args()[0].to_owned();
+    let binary = os::args()[0];
 
     debug!("flags: {}", flags.connect(" "));
     debug!("cfgs: {}", cfgs.connect(" "));
     let csysroot = context.sysroot();
     debug!("compile_input's sysroot = {}", csysroot.display());
 
-    let crate_type = match what {
-        Lib => session::OutputDylib,
-        Test | Bench | Main => session::OutputExecutable,
-    };
     let matches = getopts(debug_flags()
                           + match what {
                               Lib => ~[~"--lib"],
@@ -219,18 +219,17 @@ pub fn compile_input(context: &BuildContext,
     debug!("sysroot_to_use = {}", sysroot_to_use.display());
 
     let output_type = match context.compile_upto() {
-        Assemble => link::output_type_assembly,
-        Link     => link::output_type_object,
-        Pretty | Trans | Analysis => link::output_type_none,
-        LLVMAssemble => link::output_type_llvm_assembly,
-        LLVMCompileBitcode => link::output_type_bitcode,
-        Nothing => link::output_type_exe
+        Assemble => link::OutputTypeAssembly,
+        Link     => link::OutputTypeObject,
+        Pretty | Trans | Analysis => link::OutputTypeNone,
+        LLVMAssemble => link::OutputTypeLlvmAssembly,
+        LLVMCompileBitcode => link::OutputTypeBitcode,
+        Nothing => link::OutputTypeExe
     };
 
     debug!("Output type = {:?}", output_type);
 
-    let options = @session::options {
-        outputs: ~[crate_type],
+    let options = @session::Options {
         optimize: opt,
         test: what == Test || what == Bench,
         maybe_sysroot: Some(sysroot_to_use),
@@ -265,6 +264,7 @@ pub fn compile_input(context: &BuildContext,
     debug!("About to build session...");
 
     let sess = driver::build_session(options,
+                                     Some(in_file.clone()),
                                      @diagnostic::DefaultEmitter as
                                         @diagnostic::Emitter);
 
@@ -274,32 +274,47 @@ pub fn compile_input(context: &BuildContext,
     // `extern mod` directives.
     let cfg = driver::build_configuration(sess);
     let crate = driver::phase_1_parse_input(sess, cfg.clone(), &input);
-    let (mut crate, ast_map) = driver::phase_2_configure_and_expand(sess, cfg.clone(), crate);
 
-    debug!("About to call find_and_install_dependencies...");
-
-    find_and_install_dependencies(context, pkg_id, in_file, sess, exec, &crate, deps,
-                                  |p| {
-                                      debug!("a dependency: {}", p.display());
-                                      let mut addl_lib_search_paths =
-                                        addl_lib_search_paths.borrow_mut();
-                                      let addl_lib_search_paths =
-                                        addl_lib_search_paths.get();
-                                      let mut addl_lib_search_paths =
-                                        addl_lib_search_paths.borrow_mut();
-                                      // Pass the directory containing a dependency
-                                      // as an additional lib search path
-                                      addl_lib_search_paths.get().insert(p);
-                                  });
+    let (mut crate, ast_map) = {
+        let installer = CrateInstaller {
+            context: context,
+            parent: crate_id,
+            parent_crate: in_file,
+            sess: sess,
+            exec: exec,
+            deps: deps,
+            save: |p| {
+                debug!("a dependency: {}", p.display());
+                let mut addl_lib_search_paths =
+                    addl_lib_search_paths.borrow_mut();
+                let addl_lib_search_paths =
+                    addl_lib_search_paths.get();
+                let mut addl_lib_search_paths =
+                    addl_lib_search_paths.borrow_mut();
+                // Pass the directory containing a dependency
+                // as an additional lib search path
+                addl_lib_search_paths.get().insert(p);
+            },
+        };
+        let mut loader = CrateLoader {
+            installer: installer,
+            loader: Loader::new(sess),
+        };
+        let (crate, ast_map) = driver::phase_2_configure_and_expand(sess,
+                                                     cfg.clone(),
+                                                     &mut loader,
+                                                     crate);
+        let CrateLoader { mut installer, .. } = loader;
+        debug!("About to call find_and_install_dependencies...");
+        find_and_install_dependencies(&mut installer, &crate);
+        (crate, ast_map)
+    };
 
     // Inject the crate_id attribute so we get the right package name and version
     if !attr::contains_name(crate.attrs, "crate_id") {
         // FIXME (#9639): This needs to handle non-utf8 paths
         let crateid_attr =
-            attr::mk_name_value_item_str(@"crate_id",
-                                         format!("{}\\#{}",
-                                                 pkg_id.path.as_str().unwrap(),
-                                                 pkg_id.version.to_str()).to_managed());
+            attr::mk_name_value_item_str(@"crate_id", crate_id.to_str().to_managed());
 
         debug!("crateid attr: {:?}", crateid_attr);
         crate.attrs.push(attr::mk_attr(crateid_attr));
@@ -317,7 +332,7 @@ pub fn compile_input(context: &BuildContext,
                                           what);
     // Discover the output
     let discovered_output = if what == Lib  {
-        built_library_in_workspace(pkg_id, workspace) // Huh???
+        built_library_in_workspace(crate_id, workspace) // Huh???
     }
     else {
         result
@@ -350,14 +365,14 @@ pub fn compile_crate_from_input(input: &Path,
 // Returns None if one of the flags that suppresses compilation output was
 // given
                                 crate: ast::Crate,
-                                ast_map: syntax::ast_map::map,
+                                ast_map: syntax::ast_map::Map,
                                 what: OutputType) -> Option<Path> {
     debug!("Calling build_output_filenames with {}, building library? {:?}",
            out_dir.display(), sess.building_library);
 
     // bad copy
     debug!("out_dir = {}", out_dir.display());
-    let file_input = driver::file_input(input.clone());
+    let file_input = driver::FileInput(input.clone());
     let mut outputs = driver::build_output_filenames(&file_input,
                                                      &Some(out_dir.clone()), &None,
                                                      crate.attrs, sess);
@@ -419,7 +434,7 @@ pub fn exe_suffix() -> ~str { ~"" }
 // Called by build_crates
 pub fn compile_crate(ctxt: &BuildContext,
                      exec: &mut workcache::Exec,
-                     pkg_id: &CrateId,
+                     crate_id: &CrateId,
                      crate: &Path,
                      workspace: &Path,
                      deps: &mut DepMap,
@@ -428,38 +443,38 @@ pub fn compile_crate(ctxt: &BuildContext,
                      opt: session::OptLevel,
                      what: OutputType) -> Option<Path> {
     debug!("compile_crate: crate={}, workspace={}", crate.display(), workspace.display());
-    debug!("compile_crate: short_name = {}, flags =...", pkg_id.to_str());
+    debug!("compile_crate: name = {}, flags =...", crate_id.to_str());
     for fl in flags.iter() {
         debug!("+++ {}", *fl);
     }
-    compile_input(ctxt, exec, pkg_id, crate, workspace, deps, flags, cfgs, opt, what)
+    compile_input(ctxt, exec, crate_id, crate, workspace, deps, flags, cfgs, opt, what)
 }
 
-struct ViewItemVisitor<'a> {
+struct CrateInstaller<'a> {
     context: &'a BuildContext,
     parent: &'a CrateId,
     parent_crate: &'a Path,
     sess: session::Session,
     exec: &'a mut workcache::Exec,
-    c: &'a ast::Crate,
     save: 'a |Path|,
     deps: &'a mut DepMap
 }
 
-impl<'a> Visitor<()> for ViewItemVisitor<'a> {
-    fn visit_view_item(&mut self, vi: &ast::view_item, env: ()) {
+impl<'a> CrateInstaller<'a> {
+    fn install_crate(&mut self, vi: &ast::ViewItem) {
         use conditions::nonexistent_package::cond;
 
         match vi.node {
             // ignore metadata, I guess
-            ast::view_item_extern_mod(lib_ident, path_opt, _) => {
+            ast::ViewItemExternMod(lib_ident, path_opt, _) => {
                 let lib_name = match path_opt {
                     Some((p, _)) => p,
                     None => self.sess.str_of(lib_ident)
                 };
                 debug!("Finding and installing... {}", lib_name);
+                let crate_id: CrateId = from_str(lib_name).expect("valid crate id");
                 // Check standard Rust library path first
-                let whatever = system_library(&self.context.sysroot(), lib_name);
+                let whatever = system_library(&self.context.sysroot_to_use(), &crate_id);
                 debug!("system library returned {:?}", whatever);
                 match whatever {
                     Some(ref installed_path) => {
@@ -479,13 +494,11 @@ impl<'a> Visitor<()> for ViewItemVisitor<'a> {
                     }
                     None => {
                         // FIXME #8711: need to parse version out of path_opt
-                        debug!("Trying to install library {}, rebuilding it",
-                               lib_name.to_str());
+                        debug!("Trying to install library {}, rebuilding it", crate_id.to_str());
                         // Try to install it
-                        let pkg_id = CrateId::new(lib_name);
                         // Find all the workspaces in the RUST_PATH that contain this package.
                         let workspaces = pkg_parent_workspaces(&self.context.context,
-                                                               &pkg_id);
+                                                               &crate_id);
                         // Three cases:
                         // (a) `workspaces` is empty. That means there's no local source
                         // for this package. In that case, we pass the default workspace
@@ -514,8 +527,8 @@ impl<'a> Visitor<()> for ViewItemVisitor<'a> {
                                  // Nonexistent package? Then print a better error
                                  error(format!("Package {} depends on {}, but I don't know \
                                                how to find it",
-                                               self.parent.path.display(),
-                                               pkg_id.path.display()));
+                                               self.parent.path,
+                                               crate_id.path));
                                  fail!()
                         }).inside(|| {
                             PkgSrc::new(source_workspace.clone(),
@@ -523,7 +536,7 @@ impl<'a> Visitor<()> for ViewItemVisitor<'a> {
                                         // Use the rust_path_hack to search for dependencies iff
                                         // we were already using it
                                         self.context.context.use_rust_path_hack,
-                                        pkg_id.clone())
+                                        crate_id.clone())
                         });
                         let (outputs_disc, inputs_disc) =
                             self.context.install(
@@ -590,38 +603,48 @@ impl<'a> Visitor<()> for ViewItemVisitor<'a> {
             // Ignore `use`s
             _ => ()
         }
+    }
+}
+
+impl<'a> Visitor<()> for CrateInstaller<'a> {
+    fn visit_view_item(&mut self, vi: &ast::ViewItem, env: ()) {
+        self.install_crate(vi);
         visit::walk_view_item(self, vi, env)
+    }
+}
+
+struct CrateLoader<'a> {
+    installer: CrateInstaller<'a>,
+    loader: Loader,
+}
+
+impl<'a> base::CrateLoader for CrateLoader<'a> {
+    fn load_crate(&mut self, crate: &ast::ViewItem) -> MacroCrate {
+        self.installer.install_crate(crate);
+        self.loader.load_crate(crate)
+    }
+
+    fn get_exported_macros(&mut self, cnum: ast::CrateNum) -> ~[~str] {
+        self.loader.get_exported_macros(cnum)
+    }
+
+    fn get_registrar_symbol(&mut self, cnum: ast::CrateNum) -> Option<~str> {
+        self.loader.get_registrar_symbol(cnum)
     }
 }
 
 /// Collect all `extern mod` directives in `c`, then
 /// try to install their targets, failing if any target
 /// can't be found.
-pub fn find_and_install_dependencies(context: &BuildContext,
-                                     parent: &CrateId,
-                                     parent_crate: &Path,
-                                     sess: session::Session,
-                                     exec: &mut workcache::Exec,
-                                     c: &ast::Crate,
-                                     deps: &mut DepMap,
-                                     save: |Path|) {
+pub fn find_and_install_dependencies(installer: &mut CrateInstaller,
+                                     c: &ast::Crate) {
     debug!("In find_and_install_dependencies...");
-    let mut visitor = ViewItemVisitor {
-        context: context,
-        parent: parent,
-        parent_crate: parent_crate,
-        sess: sess,
-        exec: exec,
-        c: c,
-        save: save,
-        deps: deps
-    };
-    visit::walk_crate(&mut visitor, c, ())
+    visit::walk_crate(installer, c, ())
 }
 
-pub fn mk_string_lit(s: @str) -> ast::lit {
+pub fn mk_string_lit(s: @str) -> ast::Lit {
     Spanned {
-        node: ast::lit_str(s, ast::CookedStr),
+        node: ast::LitStr(s, ast::CookedStr),
         span: DUMMY_SP
     }
 }

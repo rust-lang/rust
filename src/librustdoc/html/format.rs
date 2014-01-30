@@ -28,21 +28,21 @@ use html::render::{cache_key, current_location_key};
 
 /// Helper to render an optional visibility with a space after it (if the
 /// visibility is preset)
-pub struct VisSpace(Option<ast::visibility>);
+pub struct VisSpace(Option<ast::Visibility>);
 /// Similarly to VisSpace, this structure is used to render a purity with a
 /// space after it.
-pub struct PuritySpace(ast::purity);
+pub struct PuritySpace(ast::Purity);
 /// Wrapper struct for properly emitting a method declaration.
 pub struct Method<'a>(&'a clean::SelfTy, &'a clean::FnDecl);
 
 impl VisSpace {
-    pub fn get(&self) -> Option<ast::visibility> {
+    pub fn get(&self) -> Option<ast::Visibility> {
         let VisSpace(v) = *self; v
     }
 }
 
 impl PuritySpace {
-    pub fn get(&self) -> ast::purity {
+    pub fn get(&self) -> ast::Purity {
         let PuritySpace(v) = *self; v
     }
 }
@@ -164,7 +164,7 @@ fn path(w: &mut io::Writer, path: &clean::Path, print_all: bool,
         info: |&render::Cache| -> Option<(~[~str], &'static str)>) {
     // The generics will get written to both the title and link
     let mut generics = ~"";
-    let last = path.segments.last();
+    let last = path.segments.last().unwrap();
     if last.lifetimes.len() > 0 || last.types.len() > 0 {
         let mut counter = 0;
         generics.push_str("&lt;");
@@ -230,13 +230,13 @@ fn path(w: &mut io::Writer, path: &clean::Path, print_all: bool,
                     }
                     match shortty {
                         "mod" => {
-                            url.push_str(*fqp.last());
+                            url.push_str(*fqp.last().unwrap());
                             url.push_str("/index.html");
                         }
                         _ => {
                             url.push_str(shortty);
                             url.push_str(".");
-                            url.push_str(*fqp.last());
+                            url.push_str(*fqp.last().unwrap());
                             url.push_str(".html");
                         }
                     }
@@ -290,21 +290,21 @@ impl fmt::Default for clean::Type {
             clean::Self(..) => f.buf.write("Self".as_bytes()),
             clean::Primitive(prim) => {
                 let s = match prim {
-                    ast::ty_int(ast::ty_i) => "int",
-                    ast::ty_int(ast::ty_i8) => "i8",
-                    ast::ty_int(ast::ty_i16) => "i16",
-                    ast::ty_int(ast::ty_i32) => "i32",
-                    ast::ty_int(ast::ty_i64) => "i64",
-                    ast::ty_uint(ast::ty_u) => "uint",
-                    ast::ty_uint(ast::ty_u8) => "u8",
-                    ast::ty_uint(ast::ty_u16) => "u16",
-                    ast::ty_uint(ast::ty_u32) => "u32",
-                    ast::ty_uint(ast::ty_u64) => "u64",
-                    ast::ty_float(ast::ty_f32) => "f32",
-                    ast::ty_float(ast::ty_f64) => "f64",
-                    ast::ty_str => "str",
-                    ast::ty_bool => "bool",
-                    ast::ty_char => "char",
+                    ast::TyInt(ast::TyI) => "int",
+                    ast::TyInt(ast::TyI8) => "i8",
+                    ast::TyInt(ast::TyI16) => "i16",
+                    ast::TyInt(ast::TyI32) => "i32",
+                    ast::TyInt(ast::TyI64) => "i64",
+                    ast::TyUint(ast::TyU) => "uint",
+                    ast::TyUint(ast::TyU8) => "u8",
+                    ast::TyUint(ast::TyU16) => "u16",
+                    ast::TyUint(ast::TyU32) => "u32",
+                    ast::TyUint(ast::TyU64) => "u64",
+                    ast::TyFloat(ast::TyF32) => "f32",
+                    ast::TyFloat(ast::TyF64) => "f64",
+                    ast::TyStr => "str",
+                    ast::TyBool => "bool",
+                    ast::TyChar => "char",
                 };
                 f.buf.write(s.as_bytes());
             }
@@ -323,7 +323,7 @@ impl fmt::Default for clean::Type {
                        },
                        arrow = match decl.decl.output { clean::Unit => "no", _ => "yes" },
                        ret = decl.decl.output);
-                // XXX: where are bounds and lifetimes printed?!
+                // FIXME: where are bounds and lifetimes printed?!
             }
             clean::BareFunction(ref decl) => {
                 write!(f.buf, "{}{}fn{}{}",
@@ -405,8 +405,7 @@ impl<'a> fmt::Default for Method<'a> {
             clean::SelfStatic => {},
             clean::SelfValue => args.push_str("self"),
             clean::SelfOwned => args.push_str("~self"),
-            clean::SelfManaged(clean::Mutable) => args.push_str("@mut self"),
-            clean::SelfManaged(clean::Immutable) => args.push_str("@self"),
+            clean::SelfManaged => args.push_str("@self"),
             clean::SelfBorrowed(Some(ref lt), clean::Immutable) => {
                 args.push_str(format!("&amp;{} self", *lt));
             }
@@ -437,9 +436,9 @@ impl<'a> fmt::Default for Method<'a> {
 impl fmt::Default for VisSpace {
     fn fmt(v: &VisSpace, f: &mut fmt::Formatter) {
         match v.get() {
-            Some(ast::public) => { write!(f.buf, "pub "); }
-            Some(ast::private) => { write!(f.buf, "priv "); }
-            Some(ast::inherited) | None => {}
+            Some(ast::Public) => { write!(f.buf, "pub "); }
+            Some(ast::Private) => { write!(f.buf, "priv "); }
+            Some(ast::Inherited) | None => {}
         }
     }
 }
@@ -447,9 +446,9 @@ impl fmt::Default for VisSpace {
 impl fmt::Default for PuritySpace {
     fn fmt(p: &PuritySpace, f: &mut fmt::Formatter) {
         match p.get() {
-            ast::unsafe_fn => write!(f.buf, "unsafe "),
-            ast::extern_fn => write!(f.buf, "extern "),
-            ast::impure_fn => {}
+            ast::UnsafeFn => write!(f.buf, "unsafe "),
+            ast::ExternFn => write!(f.buf, "extern "),
+            ast::ImpureFn => {}
         }
     }
 }
@@ -458,7 +457,7 @@ impl fmt::Default for clean::ViewPath {
     fn fmt(v: &clean::ViewPath, f: &mut fmt::Formatter) {
         match *v {
             clean::SimpleImport(ref name, ref src) => {
-                if *name == src.path.segments.last().name {
+                if *name == src.path.segments.last().unwrap().name {
                     write!(f.buf, "use {};", *src);
                 } else {
                     write!(f.buf, "use {} = {};", *name, *src);
@@ -482,7 +481,7 @@ impl fmt::Default for clean::ViewPath {
 impl fmt::Default for clean::ImportSource {
     fn fmt(v: &clean::ImportSource, f: &mut fmt::Formatter) {
         match v.did {
-            // XXX: shouldn't be restricted to just local imports
+            // FIXME: shouldn't be restricted to just local imports
             Some(did) if ast_util::is_local(did) => {
                 resolved_path(f.buf, did.node, &v.path, true);
             }
@@ -499,7 +498,7 @@ impl fmt::Default for clean::ImportSource {
 impl fmt::Default for clean::ViewListIdent {
     fn fmt(v: &clean::ViewListIdent, f: &mut fmt::Formatter) {
         match v.source {
-            // XXX: shouldn't be limited to just local imports
+            // FIXME: shouldn't be limited to just local imports
             Some(did) if ast_util::is_local(did) => {
                 let path = clean::Path {
                     global: false,

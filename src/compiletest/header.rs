@@ -28,6 +28,8 @@ pub struct TestProps {
     debugger_cmds: ~[~str],
     // Lines to check if they appear in the expected debugger output
     check_lines: ~[~str],
+    // Flag to force a crate to be built with the host architecture
+    force_host: bool,
 }
 
 // Load any test directives embedded in the file
@@ -39,6 +41,7 @@ pub fn load_props(testfile: &Path) -> TestProps {
     let mut pp_exact = None;
     let mut debugger_cmds = ~[];
     let mut check_lines = ~[];
+    let mut force_host = false;
     iter_header(testfile, |ln| {
         match parse_error_pattern(ln) {
           Some(ep) => error_patterns.push(ep),
@@ -51,6 +54,10 @@ pub fn load_props(testfile: &Path) -> TestProps {
 
         if pp_exact.is_none() {
             pp_exact = parse_pp_exact(ln, testfile);
+        }
+
+        if !force_host {
+            force_host = parse_force_host(ln);
         }
 
         match parse_aux_build(ln) {
@@ -82,7 +89,8 @@ pub fn load_props(testfile: &Path) -> TestProps {
         aux_builds: aux_builds,
         exec_env: exec_env,
         debugger_cmds: debugger_cmds,
-        check_lines: check_lines
+        check_lines: check_lines,
+        force_host: force_host,
     };
 }
 
@@ -90,10 +98,14 @@ pub fn is_test_ignored(config: &config, testfile: &Path) -> bool {
     fn xfail_target(config: &config) -> ~str {
         ~"xfail-" + util::get_os(config.target)
     }
+    fn xfail_stage(config: &config) -> ~str {
+        ~"xfail-" + config.stage_id.split('-').next().unwrap()
+    }
 
     let val = iter_header(testfile, |ln| {
         if parse_name_directive(ln, "xfail-test") { false }
         else if parse_name_directive(ln, xfail_target(config)) { false }
+        else if parse_name_directive(ln, xfail_stage(config)) { false }
         else if config.mode == common::mode_pretty &&
             parse_name_directive(ln, "xfail-pretty") { false }
         else { true }
@@ -103,8 +115,7 @@ pub fn is_test_ignored(config: &config, testfile: &Path) -> bool {
 }
 
 fn iter_header(testfile: &Path, it: |&str| -> bool) -> bool {
-    use std::io::buffered::BufferedReader;
-    use std::io::File;
+    use std::io::{BufferedReader, File};
 
     let mut rdr = BufferedReader::new(File::open(testfile).unwrap());
     for ln in rdr.lines() {
@@ -138,16 +149,20 @@ fn parse_check_line(line: &str) -> Option<~str> {
     parse_name_value_directive(line, ~"check")
 }
 
+fn parse_force_host(line: &str) -> bool {
+    parse_name_directive(line, "force-host")
+}
+
 fn parse_exec_env(line: &str) -> Option<(~str, ~str)> {
     parse_name_value_directive(line, ~"exec-env").map(|nv| {
         // nv is either FOO or FOO=BAR
         let mut strs: ~[~str] = nv.splitn('=', 1).map(|s| s.to_owned()).collect();
 
         match strs.len() {
-          1u => (strs.pop(), ~""),
+          1u => (strs.pop().unwrap(), ~""),
           2u => {
-              let end = strs.pop();
-              (strs.pop(), end)
+              let end = strs.pop().unwrap();
+              (strs.pop().unwrap(), end)
           }
           n => fail!("Expected 1 or 2 strings, not {}", n)
         }

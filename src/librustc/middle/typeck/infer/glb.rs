@@ -21,9 +21,9 @@ use middle::typeck::infer::to_str::InferStr;
 use middle::typeck::infer::{cres, InferCtxt};
 use middle::typeck::infer::{TypeTrace, Subtype};
 use middle::typeck::infer::fold_regions_in_sig;
-use syntax::ast::{Many, Once, extern_fn, impure_fn, MutImmutable, MutMutable};
-use syntax::ast::{unsafe_fn, NodeId};
-use syntax::ast::{Onceness, purity};
+use syntax::ast::{Many, Once, MutImmutable, MutMutable};
+use syntax::ast::{ExternFn, ImpureFn, UnsafeFn, NodeId};
+use syntax::ast::{Onceness, Purity};
 use std::hashmap::HashMap;
 use util::common::{indenter};
 use util::ppaux::mt_to_str;
@@ -81,11 +81,11 @@ impl Combine for Glb {
         Lub(*self.get_ref()).tys(a, b)
     }
 
-    fn purities(&self, a: purity, b: purity) -> cres<purity> {
+    fn purities(&self, a: Purity, b: Purity) -> cres<Purity> {
         match (a, b) {
-          (extern_fn, _) | (_, extern_fn) => Ok(extern_fn),
-          (impure_fn, _) | (_, impure_fn) => Ok(impure_fn),
-          (unsafe_fn, unsafe_fn) => Ok(unsafe_fn)
+          (ExternFn, _) | (_, ExternFn) => Ok(ExternFn),
+          (ImpureFn, _) | (_, ImpureFn) => Ok(ImpureFn),
+          (UnsafeFn, UnsafeFn) => Ok(UnsafeFn)
         }
     }
 

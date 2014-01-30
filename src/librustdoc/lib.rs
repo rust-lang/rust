@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[crate_id = "rustdoc#0.9"];
+#[crate_id = "rustdoc#0.10-pre"];
 #[desc = "rustdoc, the Rust documentation extractor"];
 #[license = "MIT/ASL2"];
 #[crate_type = "dylib"];
@@ -21,9 +21,7 @@ extern mod extra;
 
 use std::local_data;
 use std::io;
-use std::io::File;
-use std::io::mem::MemWriter;
-use std::io::Decorator;
+use std::io::{File, MemWriter};
 use std::str;
 use extra::getopts;
 use extra::getopts::groups;
@@ -84,6 +82,7 @@ pub fn opts() -> ~[groups::OptGroup] {
     use extra::getopts::groups::*;
     ~[
         optflag("h", "help", "show this help message"),
+        optflag("", "version", "print rustdoc's version"),
         optopt("r", "input-format", "the input type of the specified file",
                "[rust|json]"),
         optopt("w", "output-format", "the output type to write",
@@ -106,21 +105,30 @@ pub fn opts() -> ~[groups::OptGroup] {
 }
 
 pub fn usage(argv0: &str) {
-    println(groups::usage(format!("{} [options] <input>", argv0), opts()));
+    println!("{}", groups::usage(format!("{} [options] <input>", argv0), opts()));
 }
 
 pub fn main_args(args: &[~str]) -> int {
-    let matches = groups::getopts(args.tail(), opts()).unwrap();
+    let matches = match groups::getopts(args.tail(), opts()) {
+        Ok(m) => m,
+        Err(err) => {
+            println!("{}", err.to_err_msg());
+            return 1;
+        }
+    };
     if matches.opt_present("h") || matches.opt_present("help") {
         usage(args[0]);
+        return 0;
+    } else if matches.opt_present("version") {
+        rustc::version(args[0]);
         return 0;
     }
 
     if matches.free.len() == 0 {
-        println("expected an input file to act on");
+        println!("expected an input file to act on");
         return 1;
     } if matches.free.len() > 1 {
-        println("only one input file may be specified");
+        println!("only one input file may be specified");
         return 1;
     }
     let input = matches.free[0].as_slice();
@@ -130,11 +138,11 @@ pub fn main_args(args: &[~str]) -> int {
     }
 
     if matches.opt_strs("passes") == ~[~"list"] {
-        println("Available passes for running rustdoc:");
+        println!("Available passes for running rustdoc:");
         for &(name, _, description) in PASSES.iter() {
             println!("{:>20s} - {}", name, description);
         }
-        println("\nDefault passes for rustdoc:");
+        println!("{}", "\nDefault passes for rustdoc:"); // FIXME: #9970
         for &name in DEFAULT_PASSES.iter() {
             println!("{:>20s}", name);
         }
@@ -203,10 +211,10 @@ fn rust_input(cratefile: &str, matches: &getopts::Matches) -> Output {
     let cfgs = matches.opt_strs("cfg");
     let cr = Path::new(cratefile);
     info!("starting to run rustc");
-    let (crate, analysis) = do std::task::try {
+    let (crate, analysis) = std::task::try(proc() {
         let cr = cr;
         core::run_core(libs.move_iter().collect(), cfgs, &cr)
-    }.unwrap();
+    }).unwrap();
     info!("finished with rustc");
     local_data::set(analysiskey, analysis);
 
@@ -293,7 +301,7 @@ fn json_input(input: &str) -> Result<Output, ~str> {
                 }
                 None => return Err(~"malformed json"),
             };
-            // XXX: this should read from the "plugins" field, but currently
+            // FIXME: this should read from the "plugins" field, but currently
             //      Json doesn't implement decodable...
             let plugin_output = ~[];
             Ok((crate, plugin_output))
@@ -322,7 +330,7 @@ fn json_output(crate: clean::Crate, res: ~[plugins::PluginJson], dst: Path) {
             let mut encoder = json::Encoder::new(&mut w as &mut io::Writer);
             crate.encode(&mut encoder);
         }
-        str::from_utf8_owned(w.inner())
+        str::from_utf8_owned(w.unwrap()).unwrap()
     };
     let crate_json = match json::from_str(crate_json_str) {
         Ok(j) => j,

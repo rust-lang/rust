@@ -82,7 +82,7 @@ impl InferStr for IntVarValue {
     }
 }
 
-impl InferStr for ast::float_ty {
+impl InferStr for ast::FloatTy {
     fn inf_str(&self, _cx: &InferCtxt) -> ~str {
         self.to_str()
     }

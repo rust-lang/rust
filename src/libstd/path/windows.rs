@@ -17,10 +17,10 @@ use clone::Clone;
 use container::Container;
 use cmp::Eq;
 use from_str::FromStr;
-use iter::{AdditiveIterator, DoubleEndedIterator, Extendable, Invert, Iterator, Map};
+use iter::{AdditiveIterator, DoubleEndedIterator, Extendable, Rev, Iterator, Map};
 use option::{Option, Some, None};
 use str;
-use str::{CharSplitIterator, OwnedStr, Str, StrVector, StrSlice};
+use str::{CharSplits, OwnedStr, Str, StrVector, StrSlice};
 use to_bytes::IterBytes;
 use vec::{Vector, OwnedVector, ImmutableVector};
 use super::{contains_nul, BytesContainer, GenericPath, GenericPathUnsafe};
@@ -29,21 +29,21 @@ use super::{contains_nul, BytesContainer, GenericPath, GenericPathUnsafe};
 ///
 /// Each component is yielded as Option<&str> for compatibility with PosixPath, but
 /// every component in WindowsPath is guaranteed to be Some.
-pub type StrComponentIter<'a> = Map<'a, &'a str, Option<&'a str>,
-                                       CharSplitIterator<'a, char>>;
+pub type StrComponents<'a> = Map<'a, &'a str, Option<&'a str>,
+                                       CharSplits<'a, char>>;
 /// Iterator that yields components of a Path in reverse as &str
 ///
 /// Each component is yielded as Option<&str> for compatibility with PosixPath, but
 /// every component in WindowsPath is guaranteed to be Some.
-pub type RevStrComponentIter<'a> = Invert<Map<'a, &'a str, Option<&'a str>,
-                                                 CharSplitIterator<'a, char>>>;
+pub type RevStrComponents<'a> = Rev<Map<'a, &'a str, Option<&'a str>,
+                                                 CharSplits<'a, char>>>;
 
 /// Iterator that yields successive components of a Path as &[u8]
-pub type ComponentIter<'a> = Map<'a, Option<&'a str>, &'a [u8],
-                                    StrComponentIter<'a>>;
+pub type Components<'a> = Map<'a, Option<&'a str>, &'a [u8],
+                                    StrComponents<'a>>;
 /// Iterator that yields components of a Path in reverse as &[u8]
-pub type RevComponentIter<'a> = Map<'a, Option<&'a str>, &'a [u8],
-                                       RevStrComponentIter<'a>>;
+pub type RevComponents<'a> = Map<'a, Option<&'a str>, &'a [u8],
+                                       RevStrComponents<'a>>;
 
 /// Represents a Windows path
 // Notes for Windows path impl:
@@ -129,11 +129,7 @@ impl BytesContainer for Path {
         self.into_vec()
     }
     #[inline]
-    fn container_as_str<'a>(&'a self) -> &'a str {
-        self.as_str().unwrap()
-    }
-    #[inline]
-    fn container_as_str_opt<'a>(&'a self) -> Option<&'a str> {
+    fn container_as_str<'a>(&'a self) -> Option<&'a str> {
         self.as_str()
     }
     #[inline]
@@ -146,11 +142,7 @@ impl<'a> BytesContainer for &'a Path {
         self.as_vec()
     }
     #[inline]
-    fn container_as_str<'a>(&'a self) -> &'a str {
-        self.as_str().unwrap()
-    }
-    #[inline]
-    fn container_as_str_opt<'a>(&'a self) -> Option<&'a str> {
+    fn container_as_str<'a>(&'a self) -> Option<&'a str> {
         self.as_str()
     }
     #[inline]
@@ -162,10 +154,10 @@ impl GenericPathUnsafe for Path {
     ///
     /// # Failure
     ///
-    /// Raises the `str::not_utf8` condition if not valid UTF-8.
+    /// Fails if not valid UTF-8.
     #[inline]
     unsafe fn new_unchecked<T: BytesContainer>(path: T) -> Path {
-        let (prefix, path) = Path::normalize_(path.container_as_str());
+        let (prefix, path) = Path::normalize_(path.container_as_str().unwrap());
         assert!(!path.is_empty());
         let mut ret = Path{ repr: path, prefix: prefix, sepidx: None };
         ret.update_sepidx();
@@ -176,14 +168,14 @@ impl GenericPathUnsafe for Path {
     ///
     /// # Failure
     ///
-    /// Raises the `str::not_utf8` condition if not valid UTF-8.
+    /// Fails if not valid UTF-8.
     unsafe fn set_filename_unchecked<T: BytesContainer>(&mut self, filename: T) {
-        let filename = filename.container_as_str();
+        let filename = filename.container_as_str().unwrap();
         match self.sepidx_or_prefix_len() {
             None if ".." == self.repr => {
                 let mut s = str::with_capacity(3 + filename.len());
                 s.push_str("..");
-                s.push_char(sep);
+                s.push_char(SEP);
                 s.push_str(filename);
                 self.update_normalized(s);
             }
@@ -193,7 +185,7 @@ impl GenericPathUnsafe for Path {
             Some((_,idxa,end)) if self.repr.slice(idxa,end) == ".." => {
                 let mut s = str::with_capacity(end + 1 + filename.len());
                 s.push_str(self.repr.slice_to(end));
-                s.push_char(sep);
+                s.push_char(SEP);
                 s.push_str(filename);
                 self.update_normalized(s);
             }
@@ -206,7 +198,7 @@ impl GenericPathUnsafe for Path {
             Some((idxb,_,_)) => {
                 let mut s = str::with_capacity(idxb + 1 + filename.len());
                 s.push_str(self.repr.slice_to(idxb));
-                s.push_char(sep);
+                s.push_char(SEP);
                 s.push_str(filename);
                 self.update_normalized(s);
             }
@@ -224,7 +216,7 @@ impl GenericPathUnsafe for Path {
     /// the new path is relative to. Otherwise, the new path will be treated
     /// as if it were absolute and will replace the receiver outright.
     unsafe fn push_unchecked<T: BytesContainer>(&mut self, path: T) {
-        let path = path.container_as_str();
+        let path = path.container_as_str().unwrap();
         fn is_vol_abs(path: &str, prefix: Option<PathPrefix>) -> bool {
             // assume prefix is Some(DiskPrefix)
             let rest = path.slice_from(prefix_len(prefix));
@@ -261,8 +253,13 @@ impl GenericPathUnsafe for Path {
             let mut s = str::with_capacity(me.repr.len() + 1 + pathlen);
             s.push_str(me.repr);
             let plen = me.prefix_len();
-            if !(me.repr.len() > plen && me.repr[me.repr.len()-1] == sep as u8) {
-                s.push_char(sep);
+            // if me is "C:" we don't want to add a path separator
+            match me.prefix {
+                Some(DiskPrefix) if me.repr.len() == plen => (),
+                _ if !(me.repr.len() > plen && me.repr[me.repr.len()-1] == SEP_BYTE) => {
+                    s.push_char(SEP);
+                }
+                _ => ()
             }
             match path_ {
                 None => s.push_str(path),
@@ -306,7 +303,7 @@ impl GenericPathUnsafe for Path {
 impl GenericPath for Path {
     #[inline]
     fn new_opt<T: BytesContainer>(path: T) -> Option<Path> {
-        let s = path.container_as_str_opt();
+        let s = path.container_as_str();
         match s {
             None => None,
             Some(s) => {
@@ -387,13 +384,13 @@ impl GenericPath for Path {
     #[inline]
     fn filestem_str<'a>(&'a self) -> Option<&'a str> {
         // filestem() returns a byte vector that's guaranteed valid UTF-8
-        self.filestem().map(cast::transmute)
+        self.filestem().map(|t| unsafe { cast::transmute(t) })
     }
 
     #[inline]
     fn extension_str<'a>(&'a self) -> Option<&'a str> {
         // extension() returns a byte vector that's guaranteed valid UTF-8
-        self.extension().map(cast::transmute)
+        self.extension().map(|t| unsafe { cast::transmute(t) })
     }
 
     fn dir_path(&self) -> Path {
@@ -427,9 +424,12 @@ impl GenericPath for Path {
     }
 
     fn root_path(&self) -> Option<Path> {
-        if self.is_absolute() {
+        if self.prefix.is_some() {
             Some(Path::new(match self.prefix {
-                Some(VerbatimDiskPrefix)|Some(DiskPrefix) => {
+                Some(DiskPrefix) if self.is_absolute() => {
+                    self.repr.slice_to(self.prefix_len()+1)
+                }
+                Some(VerbatimDiskPrefix) => {
                     self.repr.slice_to(self.prefix_len()+1)
                 }
                 _ => self.repr.slice_to(self.prefix_len())
@@ -455,7 +455,7 @@ impl GenericPath for Path {
         match self.prefix {
             Some(DiskPrefix) => {
                 let rest = self.repr.slice_from(self.prefix_len());
-                rest.len() > 0 && rest[0] == sep as u8
+                rest.len() > 0 && rest[0] == SEP_BYTE
             }
             Some(_) => true,
             None => false
@@ -496,7 +496,7 @@ impl GenericPath for Path {
 
     fn path_relative_from(&self, base: &Path) -> Option<Path> {
         fn comp_requires_verbatim(s: &str) -> bool {
-            s == "." || s == ".." || s.contains_char(sep2)
+            s == "." || s == ".." || s.contains_char(SEP2)
         }
 
         if !self.equiv_prefix(base) {
@@ -571,8 +571,8 @@ impl GenericPath for Path {
 
     fn ends_with_path(&self, child: &Path) -> bool {
         if !child.is_relative() { return false; }
-        let mut selfit = self.str_components().invert();
-        let mut childit = child.str_components().invert();
+        let mut selfit = self.str_components().rev();
+        let mut childit = child.str_components().rev();
         loop {
             match (selfit.next(), childit.next()) {
                 (Some(a), Some(b)) => if a != b { return false; },
@@ -591,7 +591,7 @@ impl Path {
     /// # Failure
     ///
     /// Raises the `null_byte` condition if the vector contains a NUL.
-    /// Raises the `str::not_utf8` condition if invalid UTF-8.
+    /// Fails if invalid UTF-8.
     #[inline]
     pub fn new<T: BytesContainer>(path: T) -> Path {
         GenericPath::new(path)
@@ -610,30 +610,30 @@ impl Path {
     /// \a\b\c and a\b\c.
     /// Does not distinguish between absolute and cwd-relative paths, e.g.
     /// C:\foo and C:foo.
-    pub fn str_components<'a>(&'a self) -> StrComponentIter<'a> {
+    pub fn str_components<'a>(&'a self) -> StrComponents<'a> {
         let s = match self.prefix {
             Some(_) => {
                 let plen = self.prefix_len();
-                if self.repr.len() > plen && self.repr[plen] == sep as u8 {
+                if self.repr.len() > plen && self.repr[plen] == SEP_BYTE {
                     self.repr.slice_from(plen+1)
                 } else { self.repr.slice_from(plen) }
             }
-            None if self.repr[0] == sep as u8 => self.repr.slice_from(1),
+            None if self.repr[0] == SEP_BYTE => self.repr.slice_from(1),
             None => self.repr.as_slice()
         };
-        let ret = s.split_terminator(sep).map(Some);
+        let ret = s.split_terminator(SEP).map(Some);
         ret
     }
 
     /// Returns an iterator that yields each component of the path in reverse as an Option<&str>
     /// See str_components() for details.
-    pub fn rev_str_components<'a>(&'a self) -> RevStrComponentIter<'a> {
-        self.str_components().invert()
+    pub fn rev_str_components<'a>(&'a self) -> RevStrComponents<'a> {
+        self.str_components().rev()
     }
 
     /// Returns an iterator that yields each component of the path in turn as a &[u8].
     /// See str_components() for details.
-    pub fn components<'a>(&'a self) -> ComponentIter<'a> {
+    pub fn components<'a>(&'a self) -> Components<'a> {
         fn convert<'a>(x: Option<&'a str>) -> &'a [u8] {
             #[inline];
             x.unwrap().as_bytes()
@@ -643,7 +643,7 @@ impl Path {
 
     /// Returns an iterator that yields each component of the path in reverse as a &[u8].
     /// See str_components() for details.
-    pub fn rev_components<'a>(&'a self) -> RevComponentIter<'a> {
+    pub fn rev_components<'a>(&'a self) -> RevComponents<'a> {
         fn convert<'a>(x: Option<&'a str>) -> &'a [u8] {
             #[inline];
             x.unwrap().as_bytes()
@@ -698,7 +698,7 @@ impl Path {
                 Some(VerbatimUNCPrefix(x, 0)) if s.len() == 8 + x => {
                     // the server component has no trailing '\'
                     let mut s = s.into_owned();
-                    s.push_char(sep);
+                    s.push_char(SEP);
                     Some(s)
                 }
                 _ => None
@@ -734,7 +734,7 @@ impl Path {
                                 if is_abs {
                                     // normalize C:/ to C:\
                                     unsafe {
-                                        str::raw::as_owned_vec(&mut s)[2] = sep as u8;
+                                        str::raw::as_owned_vec(&mut s)[2] = SEP_BYTE;
                                     }
                                 }
                                 Some(s)
@@ -756,7 +756,7 @@ impl Path {
                             }
                         }
                     } else if is_abs && comps.is_empty() {
-                        Some(str::from_char(sep))
+                        Some(str::from_char(SEP))
                     } else {
                         let prefix_ = s.slice_to(prefix_len(prefix));
                         let n = prefix_.len() +
@@ -776,7 +776,7 @@ impl Path {
                             Some(UNCPrefix(a,b)) => {
                                 s.push_str("\\\\");
                                 s.push_str(prefix_.slice(2, a+2));
-                                s.push_char(sep);
+                                s.push_char(SEP);
                                 s.push_str(prefix_.slice(3+a, 3+a+b));
                             }
                             Some(_) => s.push_str(prefix_),
@@ -790,7 +790,7 @@ impl Path {
                             }
                         }
                         for comp in it {
-                            s.push_char(sep);
+                            s.push_char(SEP);
                             s.push_str(comp);
                         }
                         Some(s)
@@ -832,7 +832,7 @@ impl Path {
 
     fn has_nonsemantic_trailing_slash(&self) -> bool {
         is_verbatim(self) && self.repr.len() > self.prefix_len()+1 &&
-            self.repr[self.repr.len()-1] == sep as u8
+            self.repr[self.repr.len()-1] == SEP_BYTE
     }
 
     fn update_normalized<S: Str>(&mut self, s: S) {
@@ -872,36 +872,41 @@ pub fn is_verbatim(path: &Path) -> bool {
 }
 
 /// The standard path separator character
-pub static sep: char = '\\';
+pub static SEP: char = '\\';
+/// The standard path separator byte
+pub static SEP_BYTE: u8 = SEP as u8;
+
 /// The alternative path separator character
-pub static sep2: char = '/';
+pub static SEP2: char = '/';
+/// The alternative path separator character
+pub static SEP2_BYTE: u8 = SEP2 as u8;
 
 /// Returns whether the given char is a path separator.
 /// Allows both the primary separator '\' and the alternative separator '/'.
 #[inline]
 pub fn is_sep(c: char) -> bool {
-    c == sep || c == sep2
+    c == SEP || c == SEP2
 }
 
 /// Returns whether the given char is a path separator.
 /// Only allows the primary separator '\'; use is_sep to allow '/'.
 #[inline]
 pub fn is_sep_verbatim(c: char) -> bool {
-    c == sep
+    c == SEP
 }
 
 /// Returns whether the given byte is a path separator.
 /// Allows both the primary separator '\' and the alternative separator '/'.
 #[inline]
 pub fn is_sep_byte(u: &u8) -> bool {
-    *u as char == sep || *u as char == sep2
+    *u == SEP_BYTE || *u == SEP2_BYTE
 }
 
 /// Returns whether the given byte is a path separator.
 /// Only allows the primary separator '\'; use is_sep_byte to allow '/'.
 #[inline]
 pub fn is_sep_byte_verbatim(u: &u8) -> bool {
-    *u as char == sep
+    *u == SEP_BYTE
 }
 
 /// Prefix types for Path
@@ -1012,7 +1017,7 @@ fn normalize_helper<'a>(s: &'a str, prefix: Option<PathPrefix>) -> (bool,Option<
             };
             if (is_abs || has_abs_prefix) && comps.is_empty() { changed = true }
             else if comps.len() == n_up { comps.push(".."); n_up += 1 }
-            else { comps.pop(); changed = true }
+            else { comps.pop().unwrap(); changed = true }
         } else { comps.push(comp) }
     }
     if !changed && !prefix_is_verbatim(prefix) {
@@ -1074,7 +1079,10 @@ mod tests {
 
     macro_rules! b(
         ($($arg:expr),+) => (
-            bytes!($($arg),+)
+            {
+                static the_bytes: &'static [u8] = bytes!($($arg),+);
+                the_bytes
+            }
         )
     )
 
@@ -1282,11 +1290,11 @@ mod tests {
         use task;
 
         macro_rules! t(
-            ($name:expr => $code:block) => (
+            ($name:expr => $code:expr) => (
                 {
                     let mut t = task::task();
                     t.name($name);
-                    let res = do t.try $code;
+                    let res = t.try(proc() $code);
                     assert!(res.is_err());
                 }
             )
@@ -1372,20 +1380,23 @@ mod tests {
         macro_rules! t(
             (s: $path:expr, $op:ident, $exp:expr) => (
                 {
-                    let path = Path::new($path);
+                    let path = $path;
+                    let path = Path::new(path);
                     assert_eq!(path.$op(), Some($exp));
                 }
             );
             (s: $path:expr, $op:ident, $exp:expr, opt) => (
                 {
-                    let path = Path::new($path);
+                    let path = $path;
+                    let path = Path::new(path);
                     let left = path.$op();
                     assert_eq!(left, $exp);
                 }
             );
             (v: $path:expr, $op:ident, $exp:expr) => (
                 {
-                    let path = Path::new($path);
+                    let path = $path;
+                    let path = Path::new(path);
                     assert_eq!(path.$op(), $exp);
                 }
             )
@@ -1549,6 +1560,8 @@ mod tests {
         t!(s: "C:a\\b\\c", "C:d", "C:a\\b\\c\\d");
         t!(s: "C:a\\b", "..\\..\\..\\c", "C:..\\c");
         t!(s: "C:\\a\\b", "..\\..\\..\\c", "C:\\c");
+        t!(s: "C:", r"a\b\c", r"C:a\b\c");
+        t!(s: "C:", r"..\a", r"C:..\a");
         t!(s: "\\\\server\\share\\foo", "bar", "\\\\server\\share\\foo\\bar");
         t!(s: "\\\\server\\share\\foo", "..\\..\\bar", "\\\\server\\share\\bar");
         t!(s: "\\\\server\\share\\foo", "C:baz", "C:baz");
@@ -1670,7 +1683,7 @@ mod tests {
     fn test_root_path() {
         assert_eq!(Path::new("a\\b\\c").root_path(), None);
         assert_eq!(Path::new("\\a\\b\\c").root_path(), Some(Path::new("\\")));
-        assert_eq!(Path::new("C:a").root_path(), None);
+        assert_eq!(Path::new("C:a").root_path(), Some(Path::new("C:")));
         assert_eq!(Path::new("C:\\a").root_path(), Some(Path::new("C:\\")));
         assert_eq!(Path::new("\\\\a\\b\\c").root_path(), Some(Path::new("\\\\a\\b")));
         assert_eq!(Path::new("\\\\?\\a\\b").root_path(), Some(Path::new("\\\\?\\a")));

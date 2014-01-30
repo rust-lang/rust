@@ -28,5 +28,5 @@ impl ToStr for Point { //~ ERROR implements a method not defined in the trait
 
 fn main() {
     let p = Point::new(0.0f, 0.0f);
-    io::println(p.to_str());
+    println!("{}", p.to_str());
 }

@@ -83,11 +83,11 @@ pub static tag_item_super_trait_ref: uint = 0x33u;
 // discriminator value for variants
 pub static tag_disr_val: uint = 0x34u;
 
-// used to encode ast_map::path and ast_map::path_elt
+// used to encode ast_map::Path and ast_map::PathElem
 pub static tag_path: uint = 0x40u;
 pub static tag_path_len: uint = 0x41u;
-pub static tag_path_elt_mod: uint = 0x42u;
-pub static tag_path_elt_name: uint = 0x43u;
+pub static tag_path_elem_mod: uint = 0x42u;
+pub static tag_path_elem_name: uint = 0x43u;
 pub static tag_item_field: uint = 0x44u;
 pub static tag_struct_mut: uint = 0x45u;
 
@@ -176,24 +176,23 @@ pub static tag_link_args_arg: uint = 0x7a;
 
 pub static tag_item_method_tps: uint = 0x7b;
 pub static tag_item_method_fty: uint = 0x7c;
-pub static tag_item_method_transformed_self_ty: uint = 0x7d;
 
-pub static tag_mod_child: uint = 0x7e;
-pub static tag_misc_info: uint = 0x7f;
-pub static tag_misc_info_crate_items: uint = 0x80;
+pub static tag_mod_child: uint = 0x7d;
+pub static tag_misc_info: uint = 0x7e;
+pub static tag_misc_info_crate_items: uint = 0x7f;
 
-pub static tag_item_method_provided_source: uint = 0x81;
-pub static tag_item_impl_vtables: uint = 0x82;
+pub static tag_item_method_provided_source: uint = 0x80;
+pub static tag_item_impl_vtables: uint = 0x81;
 
-pub static tag_impls: uint = 0x83;
-pub static tag_impls_impl: uint = 0x84;
+pub static tag_impls: uint = 0x82;
+pub static tag_impls_impl: uint = 0x83;
 
-pub static tag_items_data_item_inherent_impl: uint = 0x85;
-pub static tag_items_data_item_extension_impl: uint = 0x86;
+pub static tag_items_data_item_inherent_impl: uint = 0x84;
+pub static tag_items_data_item_extension_impl: uint = 0x85;
 
-pub static tag_path_elt_pretty_name: uint = 0x87;
-pub static tag_path_elt_pretty_name_ident: uint = 0x88;
-pub static tag_path_elt_pretty_name_extra: uint = 0x89;
+pub static tag_path_elem_pretty_name: uint = 0x86;
+pub static tag_path_elem_pretty_name_ident: uint = 0x87;
+pub static tag_path_elem_pretty_name_extra: uint = 0x88;
 
 pub static tag_region_param_def: uint = 0x100;
 pub static tag_region_param_def_ident: uint = 0x101;
@@ -203,6 +202,10 @@ pub static tag_native_libraries: uint = 0x103;
 pub static tag_native_libraries_lib: uint = 0x104;
 pub static tag_native_libraries_name: uint = 0x105;
 pub static tag_native_libraries_kind: uint = 0x106;
+
+pub static tag_macro_registrar_fn: uint = 0x110;
+pub static tag_exported_macros: uint = 0x111;
+pub static tag_macro_def: uint = 0x112;
 
 #[deriving(Clone)]
 pub struct LinkMeta {

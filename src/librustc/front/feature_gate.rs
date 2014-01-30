@@ -43,6 +43,12 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("non_ascii_idents", Active),
     ("thread_local", Active),
     ("link_args", Active),
+    ("phase", Active),
+    ("macro_registrar", Active),
+    ("log_syntax", Active),
+    ("trace_macros", Active),
+    ("simd", Active),
+    ("default_type_params", Active),
 
     // These are used to test this portion of the compiler, they don't actually
     // mean anything
@@ -100,12 +106,12 @@ impl Visitor<()> for Context {
         }
     }
 
-    fn visit_view_item(&mut self, i: &ast::view_item, _: ()) {
+    fn visit_view_item(&mut self, i: &ast::ViewItem, _: ()) {
         match i.node {
-            ast::view_item_use(ref paths) => {
+            ast::ViewItemUse(ref paths) => {
                 for path in paths.iter() {
                     match path.node {
-                        ast::view_path_glob(..) => {
+                        ast::ViewPathGlob(..) => {
                             self.gate_feature("globs", path.span,
                                               "glob import statements are \
                                                experimental and possibly buggy");
@@ -114,12 +120,20 @@ impl Visitor<()> for Context {
                     }
                 }
             }
-            _ => {}
+            ast::ViewItemExternMod(..) => {
+                for attr in i.attrs.iter() {
+                    if "phase" == attr.name() {
+                        self.gate_feature("phase", attr.span,
+                                          "compile time crate loading is \
+                                           experimental and possibly buggy");
+                    }
+                }
+            }
         }
         visit::walk_view_item(self, i, ())
     }
 
-    fn visit_item(&mut self, i: &ast::item, _:()) {
+    fn visit_item(&mut self, i: &ast::Item, _:()) {
         for attr in i.attrs.iter() {
             if "thread_local" == attr.name() {
                 self.gate_feature("thread_local", i.span,
@@ -129,10 +143,10 @@ impl Visitor<()> for Context {
             }
         }
         match i.node {
-            ast::item_enum(ref def, _) => {
+            ast::ItemEnum(ref def, _) => {
                 for variant in def.variants.iter() {
                     match variant.node.kind {
-                        ast::struct_variant_kind(..) => {
+                        ast::StructVariantKind(..) => {
                             self.gate_feature("struct_variant", variant.span,
                                               "enum struct variants are \
                                                experimental and possibly buggy");
@@ -142,12 +156,27 @@ impl Visitor<()> for Context {
                 }
             }
 
-            ast::item_foreign_mod(..) => {
+            ast::ItemForeignMod(..) => {
                 if attr::contains_name(i.attrs, "link_args") {
                     self.gate_feature("link_args", i.span,
                                       "the `link_args` attribute is not portable \
                                        across platforms, it is recommended to \
                                        use `#[link(name = \"foo\")]` instead")
+                }
+            }
+
+            ast::ItemFn(..) => {
+                if attr::contains_name(i.attrs, "macro_registrar") {
+                    self.gate_feature("macro_registrar", i.span,
+                                      "cross-crate macro exports are \
+                                       experimental and possibly buggy");
+                }
+            }
+
+            ast::ItemStruct(..) => {
+                if attr::contains_name(i.attrs, "simd") {
+                    self.gate_feature("simd", i.span,
+                                      "SIMD types are experimental and possibly buggy");
                 }
             }
 
@@ -157,30 +186,39 @@ impl Visitor<()> for Context {
         visit::walk_item(self, i, ());
     }
 
-    fn visit_mac(&mut self, macro: &ast::mac, _: ()) {
-        let ast::mac_invoc_tt(ref path, _, _) = macro.node;
+    fn visit_mac(&mut self, macro: &ast::Mac, _: ()) {
+        let ast::MacInvocTT(ref path, _, _) = macro.node;
 
-        if path.segments.last().identifier == self.sess.ident_of("macro_rules") {
+        if path.segments.last().unwrap().identifier == self.sess.ident_of("macro_rules") {
             self.gate_feature("macro_rules", path.span, "macro definitions are \
                 not stable enough for use and are subject to change");
         }
 
-        else if path.segments.last().identifier == self.sess.ident_of("asm") {
+        else if path.segments.last().unwrap().identifier == self.sess.ident_of("asm") {
             self.gate_feature("asm", path.span, "inline assembly is not \
+                stable enough for use and is subject to change");
+        }
+
+        else if path.segments.last().unwrap().identifier == self.sess.ident_of("log_syntax") {
+            self.gate_feature("log_syntax", path.span, "`log_syntax!` is not \
+                stable enough for use and is subject to change");
+        }
+        else if path.segments.last().unwrap().identifier == self.sess.ident_of("trace_macros") {
+            self.gate_feature("trace_macros", path.span, "`trace_macros` is not \
                 stable enough for use and is subject to change");
         }
     }
 
     fn visit_ty(&mut self, t: &ast::Ty, _: ()) {
         match t.node {
-            ast::ty_closure(closure) if closure.onceness == ast::Once &&
+            ast::TyClosure(closure) if closure.onceness == ast::Once &&
                     closure.sigil != ast::OwnedSigil => {
                 self.gate_feature("once_fns", t.span,
                                   "once functions are \
                                    experimental and likely to be removed");
 
             },
-            ast::ty_box(_) => { self.gate_box(t.span); }
+            ast::TyBox(_) => { self.gate_box(t.span); }
             _ => {}
         }
 
@@ -196,6 +234,20 @@ impl Visitor<()> for Context {
             _ => {}
         }
         visit::walk_expr(self, e, ());
+    }
+
+    fn visit_generics(&mut self, generics: &ast::Generics, _: ()) {
+        for type_parameter in generics.ty_params.iter() {
+            match type_parameter.default {
+                Some(ty) => {
+                    self.gate_feature("default_type_params", ty.span,
+                                      "default type parameters are \
+                                       experimental and possibly buggy");
+                }
+                None => {}
+            }
+        }
+        visit::walk_generics(self, generics, ());
     }
 }
 
@@ -233,7 +285,7 @@ pub fn check_crate(sess: Session, crate: &ast::Crate) {
                                                      directive not necessary");
                         }
                         None => {
-                            sess.add_lint(lint::unknown_features,
+                            sess.add_lint(lint::UnknownFeatures,
                                           ast::CRATE_NODE_ID,
                                           mi.span,
                                           ~"unknown feature");

@@ -67,7 +67,6 @@ impl UnixStream {
 
 impl Reader for UnixStream {
     fn read(&mut self, buf: &mut [u8]) -> Option<uint> { self.obj.read(buf) }
-    fn eof(&mut self) -> bool { self.obj.eof() }
 }
 
 impl Writer for UnixStream {
@@ -148,10 +147,10 @@ mod tests {
         let path2 = path1.clone();
         let (port, chan) = Chan::new();
 
-        do spawn {
+        spawn(proc() {
             port.recv();
             client(UnixStream::connect(&path2).unwrap());
-        }
+        });
 
         let mut acceptor = UnixListener::bind(&path1).listen();
         chan.send(());
@@ -233,22 +232,22 @@ mod tests {
         let path2 = path1.clone();
         let (port, chan) = Chan::new();
 
-        do spawn {
+        spawn(proc() {
             port.recv();
-            times.times(|| {
+            for _ in range(0, times) {
                 let mut stream = UnixStream::connect(&path2);
                 stream.write([100]);
-            })
-        }
+            }
+        });
 
         let mut acceptor = UnixListener::bind(&path1).listen();
         chan.send(());
-        times.times(|| {
+        for _ in range(0, times) {
             let mut client = acceptor.accept();
             let mut buf = [0];
             client.read(buf);
             assert_eq!(buf[0], 100);
-        })
+        }
     }
 
     #[test]

@@ -44,17 +44,16 @@ priv fn parse_data(len: uint, io: @io::Reader) -> Result {
 }
 
 priv fn parse_list(len: uint, io: @io::Reader) -> Result {
-  let mut list: ~[Result] = ~[];
-    do len.times {
-    let v =
-        match io.read_char() {
-        '$' => parse_bulk(io),
-        ':' => parse_int(io),
-         _ => fail!()
-    };
-    list.push(v);
+    let mut list: ~[Result] = ~[];
+    for _ in range(0, len) {
+        let v = match io.read_char() {
+            '$' => parse_bulk(io),
+            ':' => parse_int(io),
+             _ => fail!()
+        };
+        list.push(v);
     }
-  return List(list);
+    return List(list);
 }
 
 priv fn chop(s: ~str) -> ~str {
@@ -111,7 +110,7 @@ priv fn cmd_to_str(cmd: ~[~str]) -> ~str {
 
 fn query(cmd: ~[~str], sb: TcpSocketBuf) -> Result {
   let cmd = cmd_to_str(cmd);
-  //io::println(cmd);
+  //println!("{}", cmd);
   sb.write_str(cmd);
   let res = parse_response(@sb as @io::Reader);
   res
@@ -119,11 +118,11 @@ fn query(cmd: ~[~str], sb: TcpSocketBuf) -> Result {
 
 fn query2(cmd: ~[~str]) -> Result {
   let _cmd = cmd_to_str(cmd);
-    do io::with_str_reader(~"$3\r\nXXX\r\n") |sb| {
+    io::with_str_reader(~"$3\r\nXXX\r\n")(|sb| {
     let res = parse_response(@sb as @io::Reader);
     println!("{:?}", res);
     res
-    }
+    });
 }
 
 

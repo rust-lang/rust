@@ -13,7 +13,7 @@
 use std::c_str::CString;
 use std::io::IoError;
 use std::io;
-use std::libc::c_int;
+use std::libc::{c_int, c_void};
 use std::libc;
 use std::os;
 use std::rt::rtio;
@@ -114,12 +114,14 @@ impl io::Reader for FileDesc {
     fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
         match self.inner_read(buf) { Ok(n) => Some(n), Err(..) => None }
     }
-    fn eof(&mut self) -> bool { false }
 }
 
 impl io::Writer for FileDesc {
     fn write(&mut self, buf: &[u8]) {
-        self.inner_write(buf);
+        match self.inner_write(buf) {
+            Ok(()) => {}
+            Err(e) => { io::io_error::cond.raise(e); }
+        }
     }
 }
 
@@ -277,7 +279,7 @@ impl rtio::RtioFileStream for FileDesc {
                 _ => Ok(())
             }
         };
-        self.seek(orig_pos as i64, io::SeekSet);
+        let _ = self.seek(orig_pos as i64, io::SeekSet);
         return ret;
     }
     #[cfg(unix)]
@@ -384,12 +386,10 @@ impl rtio::RtioFileStream for CFile {
     }
 
     fn pread(&mut self, buf: &mut [u8], offset: u64) -> Result<int, IoError> {
-        self.flush();
-        self.fd.pread(buf, offset)
+        self.flush().and_then(|()| self.fd.pread(buf, offset))
     }
     fn pwrite(&mut self, buf: &[u8], offset: u64) -> Result<(), IoError> {
-        self.flush();
-        self.fd.pwrite(buf, offset)
+        self.flush().and_then(|()| self.fd.pwrite(buf, offset))
     }
     fn seek(&mut self, pos: i64, style: io::SeekStyle) -> Result<u64, IoError> {
         let whence = match style {
@@ -413,16 +413,13 @@ impl rtio::RtioFileStream for CFile {
         }
     }
     fn fsync(&mut self) -> Result<(), IoError> {
-        self.flush();
-        self.fd.fsync()
+        self.flush().and_then(|()| self.fd.fsync())
     }
     fn datasync(&mut self) -> Result<(), IoError> {
-        self.flush();
-        self.fd.fsync()
+        self.flush().and_then(|()| self.fd.fsync())
     }
     fn truncate(&mut self, offset: i64) -> Result<(), IoError> {
-        self.flush();
-        self.fd.truncate(offset)
+        self.flush().and_then(|()| self.fd.truncate(offset))
     }
 }
 
@@ -509,11 +506,11 @@ pub fn readdir(p: &CString) -> IoResult<~[Path]> {
 
             let dir_ptr = p.with_ref(|buf| opendir(buf));
 
-            if (dir_ptr as uint != 0) {
+            if dir_ptr as uint != 0 {
                 let mut paths = ~[];
                 debug!("os::list_dir -- opendir() SUCCESS");
                 let mut entry_ptr = readdir(dir_ptr);
-                while (entry_ptr as uint != 0) {
+                while entry_ptr as uint != 0 {
                     let cstr = CString::new(rust_list_dir_val(entry_ptr), false);
                     paths.push(Path::new(cstr));
                     entry_ptr = readdir(dir_ptr);
@@ -555,7 +552,7 @@ pub fn readdir(p: &CString) -> IoResult<~[Path]> {
                     let mut paths = ~[];
                     let mut more_files = 1 as libc::c_int;
                     while more_files != 0 {
-                        let fp_buf = rust_list_dir_wfd_fp_buf(wfd_ptr);
+                        let fp_buf = rust_list_dir_wfd_fp_buf(wfd_ptr as *c_void);
                         if fp_buf as uint == 0 {
                             fail!("os::list_dir() failure: got null ptr from wfd");
                         }
@@ -568,7 +565,7 @@ pub fn readdir(p: &CString) -> IoResult<~[Path]> {
                         more_files = FindNextFileW(find_handle, wfd_ptr as HANDLE);
                     }
                     FindClose(find_handle);
-                    free(wfd_ptr);
+                    free(wfd_ptr as *mut c_void);
                     Ok(paths)
                 } else {
                     Err(super::last_error())
@@ -675,7 +672,7 @@ pub fn chown(p: &CString, uid: int, gid: int) -> IoResult<()> {
 pub fn readlink(p: &CString) -> IoResult<Path> {
     return os_readlink(p);
 
-    // XXX: I have a feeling that this reads intermediate symlinks as well.
+    // FIXME: I have a feeling that this reads intermediate symlinks as well.
     #[cfg(windows)]
     fn os_readlink(p: &CString) -> IoResult<Path> {
         let handle = unsafe {
@@ -710,7 +707,7 @@ pub fn readlink(p: &CString) -> IoResult<Path> {
         let p = p.with_ref(|p| p);
         let mut len = unsafe { libc::pathconf(p, libc::_PC_NAME_MAX) };
         if len == -1 {
-            len = 1024; // XXX: read PATH_MAX from C ffi?
+            len = 1024; // FIXME: read PATH_MAX from C ffi?
         }
         let mut buf = vec::with_capacity::<u8>(len as uint);
         match retry(|| unsafe {
@@ -878,7 +875,7 @@ pub fn stat(p: &CString) -> IoResult<io::FileStat> {
 pub fn lstat(p: &CString) -> IoResult<io::FileStat> {
     return os_lstat(p);
 
-    // XXX: windows implementation is missing
+    // FIXME: windows implementation is missing
     #[cfg(windows)]
     fn os_lstat(_p: &CString) -> IoResult<io::FileStat> {
         Err(super::unimpl())

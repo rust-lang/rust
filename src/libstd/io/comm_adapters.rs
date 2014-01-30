@@ -15,7 +15,7 @@ use cmp;
 use io;
 use option::{None, Option, Some};
 use super::{Reader, Writer};
-use vec::{bytes, CopyableVector, MutableVector, ImmutableVector};
+use vec::{bytes, CloneableVector, MutableVector, ImmutableVector};
 
 /// Allows reading from a port.
 ///
@@ -77,8 +77,6 @@ impl Reader for PortReader {
             Some(num_read)
         }
     }
-
-    fn eof(&mut self) -> bool { self.closed }
 }
 
 /// Allows writing to a chan.
@@ -122,33 +120,28 @@ mod test {
     #[test]
     fn test_port_reader() {
         let (port, chan) = Chan::new();
-        do task::spawn {
+        task::spawn(proc() {
           chan.send(~[1u8, 2u8]);
           chan.send(~[]);
           chan.send(~[3u8, 4u8]);
           chan.send(~[5u8, 6u8]);
           chan.send(~[7u8, 8u8]);
-        }
+        });
 
         let mut reader = PortReader::new(port);
         let mut buf = ~[0u8, ..3];
 
-        assert_eq!(false, reader.eof());
 
         assert_eq!(Some(0), reader.read([]));
-        assert_eq!(false, reader.eof());
 
         assert_eq!(Some(3), reader.read(buf));
-        assert_eq!(false, reader.eof());
         assert_eq!(~[1,2,3], buf);
 
         assert_eq!(Some(3), reader.read(buf));
-        assert_eq!(false, reader.eof());
         assert_eq!(~[4,5,6], buf);
 
         assert_eq!(Some(2), reader.read(buf));
         assert_eq!(~[7,8,6], buf);
-        assert_eq!(true, reader.eof());
 
         let mut err = None;
         let result = io::io_error::cond.trap(|io::standard_error(k, _, _)| {
@@ -158,7 +151,6 @@ mod test {
         });
         assert_eq!(Some(io::EndOfFile), err);
         assert_eq!(None, result);
-        assert_eq!(true, reader.eof());
         assert_eq!(~[7,8,6], buf);
 
         // Ensure it continues to fail in the same way.
@@ -170,7 +162,6 @@ mod test {
         });
         assert_eq!(Some(io::EndOfFile), err);
         assert_eq!(None, result);
-        assert_eq!(true, reader.eof());
         assert_eq!(~[7,8,6], buf);
     }
 
@@ -181,7 +172,7 @@ mod test {
         writer.write_be_u32(42);
 
         let wanted = ~[0u8, 0u8, 0u8, 42u8];
-        let got = do task::try { port.recv() }.unwrap();
+        let got = task::try(proc() { port.recv() }).unwrap();
         assert_eq!(wanted, got);
 
         let mut err = None;

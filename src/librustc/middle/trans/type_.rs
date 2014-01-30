@@ -117,30 +117,30 @@ impl Type {
         Type::f64()
     }
 
-    pub fn int_from_ty(ctx: &CrateContext, t: ast::int_ty) -> Type {
+    pub fn int_from_ty(ctx: &CrateContext, t: ast::IntTy) -> Type {
         match t {
-            ast::ty_i => ctx.int_type,
-            ast::ty_i8 => Type::i8(),
-            ast::ty_i16 => Type::i16(),
-            ast::ty_i32 => Type::i32(),
-            ast::ty_i64 => Type::i64()
+            ast::TyI => ctx.int_type,
+            ast::TyI8 => Type::i8(),
+            ast::TyI16 => Type::i16(),
+            ast::TyI32 => Type::i32(),
+            ast::TyI64 => Type::i64()
         }
     }
 
-    pub fn uint_from_ty(ctx: &CrateContext, t: ast::uint_ty) -> Type {
+    pub fn uint_from_ty(ctx: &CrateContext, t: ast::UintTy) -> Type {
         match t {
-            ast::ty_u => ctx.int_type,
-            ast::ty_u8 => Type::i8(),
-            ast::ty_u16 => Type::i16(),
-            ast::ty_u32 => Type::i32(),
-            ast::ty_u64 => Type::i64()
+            ast::TyU => ctx.int_type,
+            ast::TyU8 => Type::i8(),
+            ast::TyU16 => Type::i16(),
+            ast::TyU32 => Type::i32(),
+            ast::TyU64 => Type::i64()
         }
     }
 
-    pub fn float_from_ty(t: ast::float_ty) -> Type {
+    pub fn float_from_ty(t: ast::FloatTy) -> Type {
         match t {
-            ast::ty_f32 => Type::f32(),
-            ast::ty_f64 => Type::f64()
+            ast::TyF32 => Type::f32(),
+            ast::TyF64 => Type::f64()
         }
     }
 
@@ -158,10 +158,6 @@ impl Type {
         let vec : &[TypeRef] = unsafe { cast::transmute(args) };
         ty!(llvm::LLVMFunctionType(ret.to_ref(), vec.as_ptr(),
                                    args.len() as c_uint, True))
-    }
-
-    pub fn func_pair(cx: &CrateContext, fn_ty: &Type) -> Type {
-        Type::struct_([fn_ty.ptr_to(), Type::opaque_cbox_ptr(cx)], false)
     }
 
     pub fn ptr(ty: Type) -> Type {
@@ -184,7 +180,7 @@ impl Type {
     }
 
     pub fn vtable() -> Type {
-        Type::array(&Type::i8().ptr_to(), 1)
+        Type::array(&Type::i8p().ptr_to(), 1)
     }
 
     pub fn generic_glue_fn(cx: &CrateContext) -> Type {
@@ -200,8 +196,7 @@ impl Type {
     }
 
     pub fn glue_fn(t: Type) -> Type {
-        Type::func([ Type::nil().ptr_to(), t ],
-            &Type::void())
+        Type::func([t], &Type::void())
     }
 
     pub fn tydesc(arch: Architecture) -> Type {
@@ -213,15 +208,11 @@ impl Type {
         // Must mirror:
         //
         // std::unstable::intrinsics::TyDesc
-        // type_desc in rt
 
         let elems = [int_ty,     // size
                      int_ty,     // align
-                     glue_fn_ty, // take
                      glue_fn_ty, // drop
-                     glue_fn_ty, // free
                      glue_fn_ty, // visit
-                     int_ty, // borrow_offset
                      Type::struct_([Type::i8p(), Type::int(arch)], false)]; // name
         tydesc.set_struct_body(elems, false);
 
@@ -246,46 +237,22 @@ impl Type {
         Type::vec(arch, &Type::i8())
     }
 
-    #[inline]
-    pub fn box_header_fields(ctx: &CrateContext) -> ~[Type] {
-        ~[
+    // The box pointed to by @T.
+    pub fn at_box(ctx: &CrateContext, ty: Type) -> Type {
+        Type::struct_([
             ctx.int_type, ctx.tydesc_type.ptr_to(),
-            Type::i8().ptr_to(), Type::i8().ptr_to()
-        ]
-    }
-
-    pub fn box_header(ctx: &CrateContext) -> Type {
-        Type::struct_(Type::box_header_fields(ctx), false)
-    }
-
-    pub fn smart_ptr(ctx: &CrateContext, ty: &Type) -> Type {
-        Type::struct_(Type::box_header_fields(ctx) + &[*ty], false)
-    }
-
-    pub fn opaque() -> Type {
-        Type::i8()
-    }
-
-    pub fn opaque_box(ctx: &CrateContext) -> Type {
-        Type::smart_ptr(ctx, &Type::opaque())
-    }
-
-    pub fn unique(ctx: &CrateContext, ty: &Type) -> Type {
-        Type::smart_ptr(ctx, ty)
-    }
-
-    pub fn opaque_cbox_ptr(cx: &CrateContext) -> Type {
-        Type::opaque_box(cx).ptr_to()
+            Type::i8p(), Type::i8p(), ty
+        ], false)
     }
 
     pub fn opaque_trait(ctx: &CrateContext, store: ty::TraitStore) -> Type {
-        let tydesc_ptr = ctx.tydesc_type.ptr_to();
+        let vtable = Type::glue_fn(Type::i8p()).ptr_to().ptr_to();
         let box_ty = match store {
-            ty::BoxTraitStore => Type::opaque_box(ctx),
-            ty::UniqTraitStore => Type::unique(ctx, &Type::i8()),
+            ty::BoxTraitStore => Type::at_box(ctx, Type::i8()),
+            ty::UniqTraitStore => Type::i8(),
             ty::RegionTraitStore(..) => Type::i8()
         };
-        Type::struct_([tydesc_ptr, box_ty.ptr_to()], false)
+        Type::struct_([vtable, box_ty.ptr_to()], false)
     }
 
     pub fn kind(&self) -> TypeKind {

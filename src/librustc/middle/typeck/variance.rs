@@ -193,8 +193,8 @@ represents the "variance transform" as defined in the paper:
 */
 
 use std::hashmap::HashMap;
-use extra::arena;
-use extra::arena::Arena;
+use arena;
+use arena::Arena;
 use middle::ty;
 use std::vec;
 use syntax::ast;
@@ -328,7 +328,7 @@ impl<'a> TermsContext<'a> {
 }
 
 impl<'a> Visitor<()> for TermsContext<'a> {
-    fn visit_item(&mut self, item: &ast::item, _: ()) {
+    fn visit_item(&mut self, item: &ast::Item, _: ()) {
         debug!("add_inferreds for item {}", item.repr(self.tcx));
 
         let inferreds_on_entry = self.num_inferred();
@@ -337,16 +337,16 @@ impl<'a> Visitor<()> for TermsContext<'a> {
         // tcx, we rely on the fact that all inferreds for a particular
         // item are assigned continuous indices.
         match item.node {
-            ast::item_trait(..) => {
+            ast::ItemTrait(..) => {
                 self.add_inferred(item.id, SelfParam, 0, item.id);
             }
             _ => { }
         }
 
         match item.node {
-            ast::item_enum(_, ref generics) |
-            ast::item_struct(_, ref generics) |
-            ast::item_trait(ref generics, _, _) => {
+            ast::ItemEnum(_, ref generics) |
+            ast::ItemStruct(_, ref generics) |
+            ast::ItemTrait(ref generics, _, _) => {
                 for (i, p) in generics.lifetimes.iter().enumerate() {
                     self.add_inferred(item.id, RegionParam, i, p.id);
                 }
@@ -374,13 +374,13 @@ impl<'a> Visitor<()> for TermsContext<'a> {
                 visit::walk_item(self, item, ());
             }
 
-            ast::item_impl(..) |
-            ast::item_static(..) |
-            ast::item_fn(..) |
-            ast::item_mod(..) |
-            ast::item_foreign_mod(..) |
-            ast::item_ty(..) |
-            ast::item_mac(..) => {
+            ast::ItemImpl(..) |
+            ast::ItemStatic(..) |
+            ast::ItemFn(..) |
+            ast::ItemMod(..) |
+            ast::ItemForeignMod(..) |
+            ast::ItemTy(..) |
+            ast::ItemMac(..) => {
                 visit::walk_item(self, item, ());
             }
         }
@@ -433,12 +433,12 @@ fn add_constraints_from_crate<'a>(terms_cx: TermsContext<'a>,
 }
 
 impl<'a> Visitor<()> for ConstraintContext<'a> {
-    fn visit_item(&mut self, item: &ast::item, _: ()) {
+    fn visit_item(&mut self, item: &ast::Item, _: ()) {
         let did = ast_util::local_def(item.id);
         let tcx = self.terms_cx.tcx;
 
         match item.node {
-            ast::item_enum(ref enum_definition, _) => {
+            ast::ItemEnum(ref enum_definition, _) => {
                 // Hack: If we directly call `ty::enum_variants`, it
                 // annoyingly takes it upon itself to run off and
                 // evaluate the discriminants eagerly (*grumpy* that's
@@ -460,7 +460,7 @@ impl<'a> Visitor<()> for ConstraintContext<'a> {
                 }
             }
 
-            ast::item_struct(..) => {
+            ast::ItemStruct(..) => {
                 let struct_fields = ty::lookup_struct_fields(tcx, did);
                 for field_info in struct_fields.iter() {
                     assert_eq!(field_info.id.crate, ast::LOCAL_CRATE);
@@ -469,37 +469,21 @@ impl<'a> Visitor<()> for ConstraintContext<'a> {
                 }
             }
 
-            ast::item_trait(..) => {
+            ast::ItemTrait(..) => {
                 let methods = ty::trait_methods(tcx, did);
                 for method in methods.iter() {
-                    match method.transformed_self_ty {
-                        Some(self_ty) => {
-                            // The implicit self parameter is basically
-                            // equivalent to a normal parameter declared
-                            // like:
-                            //
-                            //     self : self_ty
-                            //
-                            // where self_ty is `&Self` or `&mut Self`
-                            // or whatever.
-                            self.add_constraints_from_ty(
-                                self_ty, self.contravariant);
-                        }
-                        None => {}
-                    }
-
                     self.add_constraints_from_sig(
                         &method.fty.sig, self.covariant);
                 }
             }
 
-            ast::item_static(..) |
-            ast::item_fn(..) |
-            ast::item_mod(..) |
-            ast::item_foreign_mod(..) |
-            ast::item_ty(..) |
-            ast::item_impl(..) |
-            ast::item_mac(..) => {
+            ast::ItemStatic(..) |
+            ast::ItemFn(..) |
+            ast::ItemMod(..) |
+            ast::ItemForeignMod(..) |
+            ast::ItemTy(..) |
+            ast::ItemImpl(..) |
+            ast::ItemMac(..) => {
                 visit::walk_item(self, item, ());
             }
         }
@@ -625,20 +609,19 @@ impl<'a> ConstraintContext<'a> {
                 self.add_constraints_from_mt(mt, variance);
             }
 
-            ty::ty_estr(vstore) => {
+            ty::ty_str(vstore) => {
                 self.add_constraints_from_vstore(vstore, variance);
             }
 
-            ty::ty_evec(ref mt, vstore) => {
+            ty::ty_vec(ref mt, vstore) => {
                 self.add_constraints_from_vstore(vstore, variance);
                 self.add_constraints_from_mt(mt, variance);
             }
 
-            ty::ty_box(typ) => {
+            ty::ty_uniq(typ) | ty::ty_box(typ) => {
                 self.add_constraints_from_ty(typ, variance);
             }
 
-            ty::ty_uniq(ref mt) |
             ty::ty_ptr(ref mt) => {
                 self.add_constraints_from_mt(mt, variance);
             }
@@ -692,9 +675,8 @@ impl<'a> ConstraintContext<'a> {
                 self.add_constraints_from_sig(sig, variance);
             }
 
-            ty::ty_infer(..) | ty::ty_err | ty::ty_type |
-            ty::ty_opaque_box | ty::ty_opaque_closure_ptr(..) |
-            ty::ty_unboxed_vec(..) => {
+            ty::ty_infer(..) | ty::ty_err |
+            ty::ty_type | ty::ty_unboxed_vec(..) => {
                 self.tcx().sess.bug(
                     format!("Unexpected type encountered in \
                             variance inference: {}",
@@ -891,8 +873,8 @@ impl<'a> SolveContext<'a> {
                 type_params: opt_vec::Empty,
                 region_params: opt_vec::Empty
             };
-            while (index < num_inferred &&
-                   inferred_infos[index].item_id == item_id) {
+            while index < num_inferred &&
+                  inferred_infos[index].item_id == item_id {
                 let info = &inferred_infos[index];
                 match info.kind {
                     SelfParam => {
@@ -1001,4 +983,3 @@ fn glb(v1: ty::Variance, v2: ty::Variance) -> ty::Variance {
         (x, ty::Bivariant) | (ty::Bivariant, x) => x,
     }
 }
-

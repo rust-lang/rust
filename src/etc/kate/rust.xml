@@ -7,7 +7,7 @@
 	<!ENTITY rustIdent "[a-zA-Z_][a-zA-Z_0-9]*">
 	<!ENTITY rustIntSuf "([iu](8|16|32|64)?)?">
 ]>
-<language name="Rust" version="0.9" kateversion="2.4" section="Sources" extensions="*.rs;*.rc" mimetype="text/x-rust" priority="15">
+<language name="Rust" version="0.10-pre" kateversion="2.4" section="Sources" extensions="*.rs" mimetype="text/x-rust" priority="15">
 <highlighting>
 	<list name="fn">
 		<item> fn </item>
@@ -86,7 +86,6 @@
 		<item> float </item>
 		<item> char </item>
 		<item> str </item>
-		<item> Either </item>
 		<item> Option </item>
 		<item> Result </item>
 		<item> Self </item>
@@ -131,8 +130,6 @@
 		<item> false </item>
 		<item> Some </item>
 		<item> None </item>
-		<item> Left </item>
-		<item> Right </item>
 		<item> Ok </item>
 		<item> Err </item>
 		<item> Success </item>

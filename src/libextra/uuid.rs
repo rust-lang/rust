@@ -34,7 +34,7 @@ use extra::uuid::Uuid;
 
 fn main() {
     let uuid1 = Uuid::new_v4();
-    println(uuid1.to_str());
+    println!("{}", uuid1.to_str());
 }
  ```
 
@@ -57,7 +57,7 @@ Examples of string representations:
 
 use std::str;
 use std::vec;
-use std::num::{FromStrRadix, Zero};
+use std::num::FromStrRadix;
 use std::char::Char;
 use std::container::Container;
 use std::to_str::ToStr;
@@ -158,9 +158,8 @@ static UuidGroupLens: [uint, ..5] = [8u, 4u, 4u, 4u, 12u];
 
 /// UUID support
 impl Uuid {
-
     /// Returns a nil or empty UUID (containing all zeroes)
-    pub fn new_nil() -> Uuid {
+    pub fn nil() -> Uuid {
         let uuid = Uuid{ bytes: [0, .. 16] };
         uuid
     }
@@ -314,7 +313,7 @@ impl Uuid {
             s[i*2+0] = digit[0];
             s[i*2+1] = digit[1];
         }
-        str::from_utf8_owned(s)
+        str::from_utf8_owned(s).unwrap()
     }
 
     /// Returns a string of hexadecimal digits, separated into groups with a hyphen.
@@ -423,24 +422,17 @@ impl Uuid {
 
         Ok(Uuid::from_bytes(ub).unwrap())
     }
+
+    /// Tests if the UUID is nil
+    pub fn is_nil(&self) -> bool {
+        return self.bytes.iter().all(|&b| b == 0);
+    }
 }
 
 impl Default for Uuid {
     /// Returns the nil UUID, which is all zeroes
     fn default() -> Uuid {
-        Uuid::new_nil()
-    }
-}
-
-impl Zero for Uuid {
-    /// Returns the nil UUID, which is all zeroes
-    fn zero() -> Uuid {
-        Uuid::new_nil()
-    }
-
-    /// Tests if the UUID is nil or all zeroes
-    fn is_zero(&self) -> bool {
-        return self.bytes.iter().all(|&b| b == 0);
+        Uuid::nil()
     }
 }
 
@@ -521,25 +513,15 @@ mod test {
     use super::*;
     use std::str;
     use std::rand;
-    use std::num::Zero;
-    use std::io::Decorator;
-    use std::io::mem::MemWriter;
+    use std::io::MemWriter;
 
     #[test]
-    fn test_new_nil() {
-        let nil = Uuid::new_nil();
-        let nb = nil.to_bytes();
+    fn test_nil() {
+        let nil = Uuid::nil();
+        let not_nil = Uuid::new_v4();
 
-        assert!(nb.iter().all(|&b| b == 0));
-    }
-
-    #[test]
-    fn test_zero() {
-        let uz: Uuid = Zero::zero();
-        let nz = Uuid::new_v4();
-
-        assert!(uz.is_zero());
-        assert!(! nz.is_zero());
+        assert!(nil.is_nil());
+        assert!(!not_nil.is_nil());
     }
 
     #[test]
@@ -620,7 +602,7 @@ mod test {
         assert!(Uuid::parse_string("urn:uuid:67e55044-10b1-426f-9247-bb680e5fe0c8").is_ok());
 
         // Nil
-        let nil = Uuid::new_nil();
+        let nil = Uuid::nil();
         assert!(Uuid::parse_string("00000000000000000000000000000000").unwrap()  == nil);
         assert!(Uuid::parse_string("00000000-0000-0000-0000-000000000000").unwrap() == nil);
 
@@ -632,16 +614,16 @@ mod test {
 
         // Test error reporting
         let e = Uuid::parse_string("67e5504410b1426f9247bb680e5fe0c").unwrap_err();
-        assert!(match(e){ ErrorInvalidLength(n) => n==31, _ => false });
+        assert!(match e { ErrorInvalidLength(n) => n==31, _ => false });
 
         let e = Uuid::parse_string("67e550X410b1426f9247bb680e5fe0cd").unwrap_err();
-        assert!(match(e){ ErrorInvalidCharacter(c, n) => c=='X' && n==6, _ => false });
+        assert!(match e { ErrorInvalidCharacter(c, n) => c=='X' && n==6, _ => false });
 
         let e = Uuid::parse_string("67e550-4105b1426f9247bb680e5fe0c").unwrap_err();
-        assert!(match(e){ ErrorInvalidGroups(n) => n==2, _ => false });
+        assert!(match e { ErrorInvalidGroups(n) => n==2, _ => false });
 
         let e = Uuid::parse_string("F9168C5E-CEB2-4faa-B6BF1-02BF39FA1E4").unwrap_err();
-        assert!(match(e){ ErrorInvalidGroupLength(g, n, e) => g==3 && n==5 && e==4, _ => false });
+        assert!(match e { ErrorInvalidGroupLength(g, n, e) => g==3 && n==5 && e==4, _ => false });
     }
 
     #[test]
@@ -798,7 +780,7 @@ mod test {
         let u = Uuid::new_v4();
         let mut wr = MemWriter::new();
         u.encode(&mut ebml::writer::Encoder(&mut wr));
-        let doc = ebml::reader::Doc(wr.inner_ref().as_slice());
+        let doc = ebml::reader::Doc(wr.get_ref());
         let u2 = Decodable::decode(&mut ebml::reader::Decoder(doc));
         assert_eq!(u, u2);
     }

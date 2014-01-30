@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -13,11 +13,11 @@
 
 macro_rules! uint_module (($T:ty, $T_SIGNED:ty, $bits:expr) => (
 
-pub static bits : uint = $bits;
-pub static bytes : uint = ($bits / 8);
+pub static BITS : uint = $bits;
+pub static BYTES : uint = ($bits / 8);
 
-pub static min_value: $T = 0 as $T;
-pub static max_value: $T = 0 as $T - 1 as $T;
+pub static MIN: $T = 0 as $T;
+pub static MAX: $T = 0 as $T - 1 as $T;
 
 impl CheckedDiv for $T {
     #[inline]
@@ -169,14 +169,12 @@ impl Integer for $T {
 
     /// Returns `true` if the number is divisible by `2`
     #[inline]
-    fn is_even(&self) -> bool { self.is_multiple_of(&2) }
+    fn is_even(&self) -> bool { self & 1 == 0 }
 
     /// Returns `true` if the number is not divisible by `2`
     #[inline]
     fn is_odd(&self) -> bool { !self.is_even() }
 }
-
-impl Bitwise for $T {}
 
 #[cfg(not(test))]
 impl BitOr<$T,$T> for $T {
@@ -216,10 +214,10 @@ impl Not<$T> for $T {
 
 impl Bounded for $T {
     #[inline]
-    fn min_value() -> $T { min_value }
+    fn min_value() -> $T { MIN }
 
     #[inline]
-    fn max_value() -> $T { max_value }
+    fn max_value() -> $T { MAX }
 }
 
 impl Int for $T {}
@@ -287,18 +285,9 @@ impl ToStrRadix for $T {
     }
 }
 
-impl Primitive for $T {
-    #[inline]
-    fn bits(_: Option<$T>) -> uint { bits }
+impl Primitive for $T {}
 
-    #[inline]
-    fn bytes(_: Option<$T>) -> uint { bits / 8 }
-
-    #[inline]
-    fn is_signed(_: Option<$T>) -> bool { false }
-}
-
-impl BitCount for $T {
+impl Bitwise for $T {
     /// Counts the number of bits set. Wraps LLVM's `ctpop` intrinsic.
     #[inline]
     fn population_count(&self) -> $T {
@@ -325,6 +314,7 @@ mod tests {
 
     use num;
     use num::CheckedDiv;
+    use num::Bitwise;
     use mem;
     use u16;
 
@@ -408,19 +398,12 @@ mod tests {
         assert_eq!(0b0110 as $T, (0b1100 as $T).bitxor(&(0b1010 as $T)));
         assert_eq!(0b1110 as $T, (0b0111 as $T).shl(&(1 as $T)));
         assert_eq!(0b0111 as $T, (0b1110 as $T).shr(&(1 as $T)));
-        assert_eq!(max_value - (0b1011 as $T), (0b1011 as $T).not());
+        assert_eq!(MAX - (0b1011 as $T), (0b1011 as $T).not());
     }
 
     #[test]
     fn test_bitcount() {
         assert_eq!((0b010101 as $T).population_count(), 3);
-    }
-
-    #[test]
-    fn test_primitive() {
-        let none: Option<$T> = None;
-        assert_eq!(Primitive::bits(none), mem::size_of::<$T>() * 8);
-        assert_eq!(Primitive::bytes(none), mem::size_of::<$T>());
     }
 
     #[test]

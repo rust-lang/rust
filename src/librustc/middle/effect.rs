@@ -29,8 +29,8 @@ enum UnsafeContext {
 
 fn type_is_unsafe_function(ty: ty::t) -> bool {
     match ty::get(ty).sty {
-        ty::ty_bare_fn(ref f) => f.purity == ast::unsafe_fn,
-        ty::ty_closure(ref f) => f.purity == ast::unsafe_fn,
+        ty::ty_bare_fn(ref f) => f.purity == ast::UnsafeFn,
+        ty::ty_closure(ref f) => f.purity == ast::UnsafeFn,
         _ => false,
     }
 }
@@ -71,7 +71,7 @@ impl EffectCheckVisitor {
         debug!("effect: checking index with base type {}",
                 ppaux::ty_to_str(self.tcx, base_type));
         match ty::get(base_type).sty {
-            ty::ty_estr(..) => {
+            ty::ty_str(..) => {
                 self.tcx.sess.span_err(e.span,
                     "modification of string types is not allowed");
             }
@@ -81,14 +81,14 @@ impl EffectCheckVisitor {
 }
 
 impl Visitor<()> for EffectCheckVisitor {
-    fn visit_fn(&mut self, fn_kind: &visit::fn_kind, fn_decl: &ast::fn_decl,
+    fn visit_fn(&mut self, fn_kind: &visit::FnKind, fn_decl: &ast::FnDecl,
                 block: &ast::Block, span: Span, node_id: ast::NodeId, _:()) {
 
         let (is_item_fn, is_unsafe_fn) = match *fn_kind {
-            visit::fk_item_fn(_, _, purity, _) =>
-                (true, purity == ast::unsafe_fn),
-            visit::fk_method(_, _, method) =>
-                (true, method.purity == ast::unsafe_fn),
+            visit::FkItemFn(_, _, purity, _) =>
+                (true, purity == ast::UnsafeFn),
+            visit::FkMethod(_, _, method) =>
+                (true, method.purity == ast::UnsafeFn),
             _ => (false, false),
         };
 
@@ -120,7 +120,7 @@ impl Visitor<()> for EffectCheckVisitor {
 
     fn visit_expr(&mut self, expr: &ast::Expr, _:()) {
         match expr.node {
-            ast::ExprMethodCall(callee_id, _, _, _, _, _) => {
+            ast::ExprMethodCall(callee_id, _, _, _, _) => {
                 let base_type = ty::node_id_to_type(self.tcx, callee_id);
                 debug!("effect: method call case, base type is {}",
                        ppaux::ty_to_str(self.tcx, base_type));

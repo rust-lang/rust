@@ -10,8 +10,6 @@
 
 // xfail-android: FIXME(#10381)
 
-#[feature(managed_boxes)];
-
 // compile-flags:-Z extra-debug-info
 // debugger:rbreak zzz
 // debugger:run
@@ -238,7 +236,7 @@ fn complex_nesting(((u,   v  ), ((w,   (x,   Struct { a: y, b: z})), Struct { a:
     zzz();
 }
 
-fn managed_box(@aa: @(int, int)) {
+fn managed_box(&aa: &(int, int)) {
     zzz();
 }
 
@@ -297,7 +295,7 @@ fn main() {
     one_struct_destructured_one_not((Struct { a: 19, b: 20 }, Struct { a: 21, b: 22 }));
     different_order_of_struct_fields(Struct { a: 23, b: 24 });
     complex_nesting(((25, 26), ((27, (28, Struct { a: 29, b: 30})), Struct { a: 31, b: 32 }), 33));
-    managed_box(@(34, 35));
+    managed_box(&(34, 35));
     borrowed_pointer(&(36, 37));
     contained_borrowed_pointer((&38, 39));
     unique_pointer(~(40, 41, 42));

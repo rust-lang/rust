@@ -108,7 +108,7 @@ fn do_iter_crate_map<'a>(
 
 /// Iterates recursively over `crate_map` and all child crate maps
 pub fn iter_crate_map<'a>(crate_map: &'a CrateMap<'a>, f: |&ModEntry|) {
-    // XXX: use random numbers as keys from the OS-level RNG when there is a nice
+    // FIXME: use random numbers as keys from the OS-level RNG when there is a nice
     //        way to do this
     let mut v: HashSet<*CrateMap<'a>> = HashSet::with_capacity_and_keys(0, 0, 32);
     do_iter_crate_map(crate_map, f, &mut v);
@@ -130,14 +130,14 @@ mod tests {
         let child_crate = CrateMap {
             version: 2,
             entries: entries,
-            children: [],
+            children: &[],
             event_loop_factory: None,
         };
 
         let root_crate = CrateMap {
             version: 2,
-            entries: [],
-            children: [&child_crate, &child_crate],
+            entries: &[],
+            children: &[&child_crate, &child_crate],
             event_loop_factory: None,
         };
 
@@ -157,29 +157,29 @@ mod tests {
         let mut level3: u32 = 3;
         let child_crate2 = CrateMap {
             version: 2,
-            entries: [
+            entries: &[
                 ModEntry { name: "c::m1", log_level: &mut level2},
                 ModEntry { name: "c::m2", log_level: &mut level3},
             ],
-            children: [],
+            children: &[],
             event_loop_factory: None,
         };
 
         let child_crate1 = CrateMap {
             version: 2,
-            entries: [
+            entries: &[
                 ModEntry { name: "t::f1", log_level: &mut 1},
             ],
-            children: [&child_crate2],
+            children: &[&child_crate2],
             event_loop_factory: None,
         };
 
         let root_crate = CrateMap {
             version: 2,
-            entries: [
+            entries: &[
                 ModEntry { name: "t::f2", log_level: &mut 0},
             ],
-            children: [&child_crate1],
+            children: &[&child_crate1],
             event_loop_factory: None,
         };
 

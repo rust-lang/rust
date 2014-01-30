@@ -73,7 +73,7 @@ use str;
 use str::{OwnedStr, Str, StrSlice};
 use to_str::ToStr;
 use vec;
-use vec::{CopyableVector, OwnedCopyableVector, OwnedVector, Vector};
+use vec::{CloneableVector, OwnedCloneableVector, OwnedVector, Vector};
 use vec::{ImmutableEqVector, ImmutableVector};
 
 /// Typedef for POSIX file paths.
@@ -93,29 +93,43 @@ pub use Path = self::windows::Path;
 
 /// Typedef for the platform-native component iterator
 #[cfg(unix)]
-pub use ComponentIter = self::posix::ComponentIter;
+pub use Components = self::posix::Components;
 /// Typedef for the platform-native reverse component iterator
 #[cfg(unix)]
-pub use RevComponentIter = self::posix::RevComponentIter;
+pub use RevComponents = self::posix::RevComponents;
 /// Typedef for the platform-native component iterator
 #[cfg(windows)]
-pub use ComponentIter = self::windows::ComponentIter;
+pub use Components = self::windows::Components;
 /// Typedef for the platform-native reverse component iterator
 #[cfg(windows)]
-pub use RevComponentIter = self::windows::RevComponentIter;
+pub use RevComponents = self::windows::RevComponents;
 
 /// Typedef for the platform-native str component iterator
 #[cfg(unix)]
-pub use StrComponentIter = self::posix::StrComponentIter;
+pub use StrComponents = self::posix::StrComponents;
 /// Typedef for the platform-native reverse str component iterator
 #[cfg(unix)]
-pub use RevStrComponentIter = self::posix::RevStrComponentIter;
+pub use RevStrComponents = self::posix::RevStrComponents;
 /// Typedef for the platform-native str component iterator
 #[cfg(windows)]
-pub use StrComponentIter = self::windows::StrComponentIter;
+pub use StrComponents = self::windows::StrComponents;
 /// Typedef for the platform-native reverse str component iterator
 #[cfg(windows)]
-pub use RevStrComponentIter = self::windows::RevStrComponentIter;
+pub use RevStrComponents = self::windows::RevStrComponents;
+
+/// Alias for the platform-native separator character.
+#[cfg(unix)]
+pub use SEP = self::posix::SEP;
+/// Alias for the platform-native separator character.
+#[cfg(windows)]
+pub use SEP = self::windows::SEP;
+
+/// Alias for the platform-native separator byte.
+#[cfg(unix)]
+pub use SEP_BYTE = self::posix::SEP_BYTE;
+/// Alias for the platform-native separator byte.
+#[cfg(windows)]
+pub use SEP_BYTE = self::windows::SEP_BYTE;
 
 /// Typedef for the platform-native separator char func
 #[cfg(unix)]
@@ -175,7 +189,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// If the path is not representable in utf-8, this returns None.
     #[inline]
     fn as_str<'a>(&'a self) -> Option<&'a str> {
-        str::from_utf8_opt(self.as_vec())
+        str::from_utf8(self.as_vec())
     }
 
     /// Returns the path as a byte vector
@@ -206,7 +220,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// See `dirname` for details.
     #[inline]
     fn dirname_str<'a>(&'a self) -> Option<&'a str> {
-        str::from_utf8_opt(self.dirname())
+        str::from_utf8(self.dirname())
     }
     /// Returns the file component of `self`, as a byte vector.
     /// If `self` represents the root of the file hierarchy, returns None.
@@ -216,7 +230,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// See `filename` for details.
     #[inline]
     fn filename_str<'a>(&'a self) -> Option<&'a str> {
-        self.filename().and_then(str::from_utf8_opt)
+        self.filename().and_then(str::from_utf8)
     }
     /// Returns the stem of the filename of `self`, as a byte vector.
     /// The stem is the portion of the filename just before the last '.'.
@@ -238,7 +252,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// See `filestem` for details.
     #[inline]
     fn filestem_str<'a>(&'a self) -> Option<&'a str> {
-        self.filestem().and_then(str::from_utf8_opt)
+        self.filestem().and_then(str::from_utf8)
     }
     /// Returns the extension of the filename of `self`, as an optional byte vector.
     /// The extension is the portion of the filename just after the last '.'.
@@ -261,7 +275,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// See `extension` for details.
     #[inline]
     fn extension_str<'a>(&'a self) -> Option<&'a str> {
-        self.extension().and_then(str::from_utf8_opt)
+        self.extension().and_then(str::from_utf8)
     }
 
     /// Replaces the filename portion of the path with the given byte vector or string.
@@ -386,7 +400,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
 
     /// Returns a Path that represents the filesystem root that `self` is rooted in.
     ///
-    /// If `self` is not absolute, or vol-relative in the case of Windows, this returns None.
+    /// If `self` is not absolute, or vol/cwd-relative in the case of Windows, this returns None.
     fn root_path(&self) -> Option<Self>;
 
     /// Pushes a path (as a byte vector or string) onto `self`.
@@ -412,7 +426,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
         let t: Option<T> = None;
         if BytesContainer::is_str(t) {
             for p in paths.iter() {
-                self.push(p.container_as_str())
+                self.push(p.container_as_str().unwrap())
             }
         } else {
             for p in paths.iter() {
@@ -485,19 +499,10 @@ pub trait BytesContainer {
     fn container_into_owned_bytes(self) -> ~[u8] {
         self.container_as_bytes().to_owned()
     }
-    /// Returns the receiver interpreted as a utf-8 string
-    ///
-    /// # Failure
-    ///
-    /// Raises `str::null_byte` if not utf-8
-    #[inline]
-    fn container_as_str<'a>(&'a self) -> &'a str {
-        str::from_utf8(self.container_as_bytes())
-    }
     /// Returns the receiver interpreted as a utf-8 string, if possible
     #[inline]
-    fn container_as_str_opt<'a>(&'a self) -> Option<&'a str> {
-        str::from_utf8_opt(self.container_as_bytes())
+    fn container_as_str<'a>(&'a self) -> Option<&'a str> {
+        str::from_utf8(self.container_as_bytes())
     }
     /// Returns whether .container_as_str() is guaranteed to not fail
     // FIXME (#8888): Remove unused arg once ::<for T> works
@@ -575,11 +580,7 @@ impl<'a> BytesContainer for &'a str {
         self.as_bytes()
     }
     #[inline]
-    fn container_as_str<'a>(&'a self) -> &'a str {
-        *self
-    }
-    #[inline]
-    fn container_as_str_opt<'a>(&'a self) -> Option<&'a str> {
+    fn container_as_str<'a>(&'a self) -> Option<&'a str> {
         Some(*self)
     }
     #[inline]
@@ -596,11 +597,7 @@ impl BytesContainer for ~str {
         self.into_bytes()
     }
     #[inline]
-    fn container_as_str<'a>(&'a self) -> &'a str {
-        self.as_slice()
-    }
-    #[inline]
-    fn container_as_str_opt<'a>(&'a self) -> Option<&'a str> {
+    fn container_as_str<'a>(&'a self) -> Option<&'a str> {
         Some(self.as_slice())
     }
     #[inline]
@@ -613,11 +610,7 @@ impl BytesContainer for @str {
         self.as_bytes()
     }
     #[inline]
-    fn container_as_str<'a>(&'a self) -> &'a str {
-        self.as_slice()
-    }
-    #[inline]
-    fn container_as_str_opt<'a>(&'a self) -> Option<&'a str> {
+    fn container_as_str<'a>(&'a self) -> Option<&'a str> {
         Some(self.as_slice())
     }
     #[inline]

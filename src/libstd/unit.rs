@@ -12,8 +12,6 @@
 
 #[cfg(not(test))]
 use prelude::*;
-#[cfg(not(test))]
-use num::Zero;
 
 #[cfg(not(test))]
 impl Eq for () {
@@ -45,12 +43,4 @@ impl TotalEq for () {
 impl Default for () {
     #[inline]
     fn default() -> () { () }
-}
-
-#[cfg(not(test))]
-impl Zero for () {
-    #[inline]
-    fn zero() -> () { () }
-    #[inline]
-    fn is_zero(&self) -> bool { true }
 }

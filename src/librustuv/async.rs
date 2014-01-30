@@ -152,10 +152,10 @@ mod test_remote {
         let watcher = AsyncWatcher::new(&mut local_loop().loop_,
                                         cb as ~Callback);
 
-        let thread = do Thread::start {
+        let thread = Thread::start(proc() {
             let mut watcher = watcher;
             watcher.fire();
-        };
+        });
 
         assert_eq!(port.recv(), 1);
         thread.join();

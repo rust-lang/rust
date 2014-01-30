@@ -10,6 +10,7 @@
 
 use rustc;
 use rustc::{driver, middle};
+use rustc::metadata::creader::Loader;
 use rustc::middle::privacy;
 
 use syntax::ast;
@@ -41,15 +42,15 @@ pub struct CrateAnalysis {
 fn get_ast_and_resolve(cpath: &Path,
                        libs: HashSet<Path>, cfgs: ~[~str]) -> (DocContext, CrateAnalysis) {
     use syntax::codemap::dummy_spanned;
-    use rustc::driver::driver::{file_input, build_configuration,
+    use rustc::driver::driver::{FileInput, build_configuration,
                                 phase_1_parse_input,
                                 phase_2_configure_and_expand,
                                 phase_3_run_analysis_passes};
 
     let parsesess = parse::new_parse_sess(None);
-    let input = file_input(cpath.clone());
+    let input = FileInput(cpath.clone());
 
-    let sessopts = @driver::session::options {
+    let sessopts = @driver::session::Options {
         binary: ~"rustdoc",
         maybe_sysroot: Some(@os::self_exe_path().unwrap().dir_path()),
         addl_lib_search_paths: @RefCell::new(libs),
@@ -63,9 +64,9 @@ fn get_ast_and_resolve(cpath: &Path,
         syntax::diagnostic::mk_span_handler(diagnostic_handler, parsesess.cm);
 
     let sess = driver::driver::build_session_(sessopts,
+                                              Some(cpath.clone()),
                                               parsesess.cm,
-                                              @diagnostic::DefaultEmitter as
-                                                @diagnostic::Emitter,
+                                              @diagnostic::DefaultEmitter,
                                               span_diagnostic_handler);
 
     let mut cfg = build_configuration(sess);
@@ -74,7 +75,8 @@ fn get_ast_and_resolve(cpath: &Path,
     }
 
     let crate = phase_1_parse_input(sess, cfg.clone(), &input);
-    let (crate, ast_map) = phase_2_configure_and_expand(sess, cfg, crate);
+    let loader = &mut Loader::new(sess);
+    let (crate, ast_map) = phase_2_configure_and_expand(sess, cfg, loader, crate);
     let driver::driver::CrateAnalysis {
         exported_items, public_items, ty_cx, ..
     } = phase_3_run_analysis_passes(sess, &crate, ast_map);

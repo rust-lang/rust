@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -24,7 +24,7 @@ use std::vec;
 use std::hashmap::HashMap;
 use syntax::ast;
 use syntax::ast_util;
-use syntax::ast_util::id_range;
+use syntax::ast_util::IdRange;
 use syntax::print::{pp, pprust};
 use middle::ty;
 use middle::typeck;
@@ -42,7 +42,7 @@ pub struct DataFlowContext<O> {
     priv bits_per_id: uint,
 
     /// number of words we will use to store bits_per_id.
-    /// equal to bits_per_id/uint::bits rounded up.
+    /// equal to bits_per_id/uint::BITS rounded up.
     priv words_per_id: uint,
 
     // mapping from node to bitset index.
@@ -87,13 +87,13 @@ struct LoopScope<'a> {
     break_bits: ~[uint]
 }
 
-impl<O:DataFlowOperator> pprust::pp_ann for DataFlowContext<O> {
-    fn pre(&self, node: pprust::ann_node) {
+impl<O:DataFlowOperator> pprust::PpAnn for DataFlowContext<O> {
+    fn pre(&self, node: pprust::AnnNode) {
         let (ps, id) = match node {
-            pprust::node_expr(ps, expr) => (ps, expr.id),
-            pprust::node_block(ps, blk) => (ps, blk.id),
-            pprust::node_item(ps, _) => (ps, 0),
-            pprust::node_pat(ps, pat) => (ps, pat.id)
+            pprust::NodeExpr(ps, expr) => (ps, expr.id),
+            pprust::NodeBlock(ps, blk) => (ps, blk.id),
+            pprust::NodeItem(ps, _) => (ps, 0),
+            pprust::NodePat(ps, pat) => (ps, pat.id)
         };
 
         if self.nodeid_to_bitset.contains_key(&id) {
@@ -127,9 +127,9 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
     pub fn new(tcx: ty::ctxt,
                method_map: typeck::method_map,
                oper: O,
-               id_range: id_range,
+               id_range: IdRange,
                bits_per_id: uint) -> DataFlowContext<O> {
-        let words_per_id = (bits_per_id + uint::bits - 1) / uint::bits;
+        let words_per_id = (bits_per_id + uint::BITS - 1) / uint::BITS;
 
         debug!("DataFlowContext::new(id_range={:?}, bits_per_id={:?}, words_per_id={:?})",
                id_range, bits_per_id, words_per_id);
@@ -213,12 +213,12 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
             len
         });
         if expanded {
-            let entry = if self.oper.initial_value() { uint::max_value } else {0};
-            self.words_per_id.times(|| {
+            let entry = if self.oper.initial_value() { uint::MAX } else {0};
+            for _ in range(0, self.words_per_id) {
                 self.gens.push(0);
                 self.kills.push(0);
                 self.on_entry.push(entry);
-            })
+            }
         }
         let start = *n * self.words_per_id;
         let end = start + self.words_per_id;
@@ -291,13 +291,13 @@ impl<O:DataFlowOperator> DataFlowContext<O> {
 
         for (word_index, &word) in words.iter().enumerate() {
             if word != 0 {
-                let base_index = word_index * uint::bits;
-                for offset in range(0u, uint::bits) {
+                let base_index = word_index * uint::BITS;
+                for offset in range(0u, uint::BITS) {
                     let bit = 1 << offset;
                     if (word & bit) != 0 {
                         // NB: we round up the total number of bits
                         // that we store in any given bit set so that
-                        // it is an even multiple of uint::bits.  This
+                        // it is an even multiple of uint::BITS.  This
                         // means that there may be some stray bits at
                         // the end that do not correspond to any
                         // actual value.  So before we callback, check
@@ -353,9 +353,8 @@ impl<O:DataFlowOperator+Clone+'static> DataFlowContext<O> {
     }
 
     fn pretty_print_to(@self, wr: ~io::Writer, blk: &ast::Block) {
-        let mut ps = pprust::rust_printer_annotated(wr,
-                                                    self.tcx.sess.intr(),
-                                                    self as @pprust::pp_ann);
+        let mut ps = pprust::rust_printer_annotated(wr, self.tcx.sess.intr(),
+                                                    self as @pprust::PpAnn);
         pprust::cbox(&mut ps, pprust::indent_unit);
         pprust::ibox(&mut ps, 0u);
         pprust::print_block(&mut ps, blk);
@@ -505,7 +504,7 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
 
                     // add the bits from any early return via `break`,
                     // `continue`, or `return` into `func_bits`
-                    let loop_scope = loop_scopes.pop();
+                    let loop_scope = loop_scopes.pop().unwrap();
                     join_bits(&self.dfcx.oper, loop_scope.break_bits, func_bits);
 
                     // add `func_bits` to the entry bits for `expr`,
@@ -564,7 +563,7 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
                 });
                 self.walk_block(blk, body_bits, loop_scopes);
                 self.add_to_entry_set(expr.id, body_bits);
-                let new_loop_scope = loop_scopes.pop();
+                let new_loop_scope = loop_scopes.pop().unwrap();
                 copy_bits(new_loop_scope.break_bits, in_out);
             }
 
@@ -589,7 +588,7 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
                 self.walk_block(blk, body_bits, loop_scopes);
                 self.add_to_entry_set(expr.id, body_bits);
 
-                let new_loop_scope = loop_scopes.pop();
+                let new_loop_scope = loop_scopes.pop().unwrap();
                 assert_eq!(new_loop_scope.loop_id, expr.id);
                 copy_bits(new_loop_scope.break_bits, in_out);
             }
@@ -669,24 +668,21 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
             }
 
             ast::ExprCall(f, ref args, _) => {
-                self.walk_call(f.id, expr.id,
-                               f, *args, in_out, loop_scopes);
+                self.walk_expr(f, in_out, loop_scopes);
+                self.walk_call(f.id, expr.id, *args, in_out, loop_scopes);
             }
 
-            ast::ExprMethodCall(callee_id, rcvr, _, _, ref args, _) => {
-                self.walk_call(callee_id, expr.id,
-                               rcvr, *args, in_out, loop_scopes);
+            ast::ExprMethodCall(callee_id, _, _, ref args, _) => {
+                self.walk_call(callee_id, expr.id, *args, in_out, loop_scopes);
             }
 
             ast::ExprIndex(callee_id, l, r) |
             ast::ExprBinary(callee_id, _, l, r) if self.is_method_call(expr) => {
-                self.walk_call(callee_id, expr.id,
-                               l, [r], in_out, loop_scopes);
+                self.walk_call(callee_id, expr.id, [l, r], in_out, loop_scopes);
             }
 
             ast::ExprUnary(callee_id, _, e) if self.is_method_call(expr) => {
-                self.walk_call(callee_id, expr.id,
-                               e, [], in_out, loop_scopes);
+                self.walk_call(callee_id, expr.id, [e], in_out, loop_scopes);
             }
 
             ast::ExprTup(ref exprs) => {
@@ -707,17 +703,19 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
 
             ast::ExprLogLevel |
             ast::ExprLit(..) |
-            ast::ExprPath(..) |
-            ast::ExprSelf => {
-            }
+            ast::ExprPath(..) => {}
 
             ast::ExprAddrOf(_, e) |
-            ast::ExprDoBody(e) |
             ast::ExprCast(e, _) |
             ast::ExprUnary(_, _, e) |
             ast::ExprParen(e) |
             ast::ExprVstore(e, _) |
             ast::ExprField(e, _, _) => {
+                self.walk_expr(e, in_out, loop_scopes);
+            }
+
+            ast::ExprBox(s, e) => {
+                self.walk_expr(s, in_out, loop_scopes);
                 self.walk_expr(e, in_out, loop_scopes);
             }
 
@@ -809,11 +807,9 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
     fn walk_call(&mut self,
                  _callee_id: ast::NodeId,
                  call_id: ast::NodeId,
-                 arg0: &ast::Expr,
                  args: &[@ast::Expr],
                  in_out: &mut [uint],
                  loop_scopes: &mut ~[LoopScope]) {
-        self.walk_expr(arg0, in_out, loop_scopes);
         self.walk_exprs(args, in_out, loop_scopes);
 
         // FIXME(#6268) nested method calls
@@ -904,7 +900,7 @@ impl<'a, O:DataFlowOperator> PropagationContext<'a, O> {
     }
 
     fn reset(&mut self, bits: &mut [uint]) {
-        let e = if self.dfcx.oper.initial_value() {uint::max_value} else {0};
+        let e = if self.dfcx.oper.initial_value() {uint::MAX} else {0};
         for b in bits.mut_iter() { *b = e; }
     }
 
@@ -955,7 +951,7 @@ fn bits_to_str(words: &[uint]) -> ~str {
 
     for &word in words.iter() {
         let mut v = word;
-        for _ in range(0u, uint::bytes) {
+        for _ in range(0u, uint::BYTES) {
             result.push_char(sep);
             result.push_str(format!("{:02x}", v & 0xFF));
             v >>= 8;
@@ -993,8 +989,8 @@ fn bitwise(out_vec: &mut [uint], in_vec: &[uint], op: |uint, uint| -> uint)
 fn set_bit(words: &mut [uint], bit: uint) -> bool {
     debug!("set_bit: words={} bit={}",
            mut_bits_to_str(words), bit_str(bit));
-    let word = bit / uint::bits;
-    let bit_in_word = bit % uint::bits;
+    let word = bit / uint::BITS;
+    let bit_in_word = bit % uint::BITS;
     let bit_mask = 1 << bit_in_word;
     debug!("word={} bit_in_word={} bit_mask={}", word, bit_in_word, word);
     let oldv = words[word];

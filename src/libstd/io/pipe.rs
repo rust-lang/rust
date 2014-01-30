@@ -66,8 +66,6 @@ impl Reader for PipeStream {
             }
         }
     }
-
-    fn eof(&mut self) -> bool { false }
 }
 
 impl Writer for PipeStream {
@@ -91,11 +89,11 @@ mod test {
         let out = PipeStream::open(out);
         let mut input = PipeStream::open(input);
         let (p, c) = Chan::new();
-        do spawn {
+        spawn(proc() {
             let mut out = out;
             out.write([10]);
             p.recv(); // don't close the pipe until the other read has finished
-        }
+        });
 
         let mut buf = [0, ..10];
         input.read(buf);

@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -80,7 +80,7 @@ impl Clone for MovePathIndex {
 }
 
 static InvalidMovePathIndex: MovePathIndex =
-    MovePathIndex(uint::max_value);
+    MovePathIndex(uint::MAX);
 
 /// Index into `MoveData.moves`, used like a pointer
 #[deriving(Eq)]
@@ -93,7 +93,7 @@ impl MoveIndex {
 }
 
 static InvalidMoveIndex: MoveIndex =
-    MoveIndex(uint::max_value);
+    MoveIndex(uint::MAX);
 
 pub struct MovePath {
     /// Loan path corresponding to this move path
@@ -148,7 +148,7 @@ pub struct Assignment {
 
 pub struct MoveDataFlowOperator;
 
-/// XXX(pcwalton): Should just be #[deriving(Clone)], but that doesn't work
+/// FIXME(pcwalton): Should just be #[deriving(Clone)], but that doesn't work
 /// yet on unit structs.
 impl Clone for MoveDataFlowOperator {
     fn clone(&self) -> MoveDataFlowOperator {
@@ -160,7 +160,7 @@ pub type MoveDataFlow = DataFlowContext<MoveDataFlowOperator>;
 
 pub struct AssignDataFlowOperator;
 
-/// XXX(pcwalton): Should just be #[deriving(Clone)], but that doesn't work
+/// FIXME(pcwalton): Should just be #[deriving(Clone)], but that doesn't work
 /// yet on unit structs.
 impl Clone for AssignDataFlowOperator {
     fn clone(&self) -> AssignDataFlowOperator {
@@ -471,7 +471,7 @@ impl MoveData {
             for path in paths.get().iter() {
                 match *path.loan_path {
                     LpVar(id) => {
-                        let kill_id = tcx.region_maps.encl_scope(id);
+                        let kill_id = tcx.region_maps.var_scope(id);
                         let path = {
                             let path_map = self.path_map.borrow();
                             *path_map.get().get(&path.loan_path)
@@ -490,7 +490,7 @@ impl MoveData {
                     var_assignments.get().iter().enumerate() {
                 match *self.path_loan_path(assignment.path) {
                     LpVar(id) => {
-                        let kill_id = tcx.region_maps.encl_scope(id);
+                        let kill_id = tcx.region_maps.var_scope(id);
                         dfcx_assign.add_kill(kill_id, assignment_index);
                     }
                     LpExtend(..) => {
@@ -566,7 +566,7 @@ impl FlowedMoveData {
     pub fn new(move_data: MoveData,
                tcx: ty::ctxt,
                method_map: typeck::method_map,
-               id_range: ast_util::id_range,
+               id_range: ast_util::IdRange,
                body: &ast::Block)
                -> FlowedMoveData {
         let mut dfcx_moves = {

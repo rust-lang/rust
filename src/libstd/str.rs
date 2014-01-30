@@ -102,7 +102,7 @@ use clone::{Clone, DeepClone};
 use container::{Container, Mutable};
 use iter::{Iterator, FromIterator, Extendable, range};
 use iter::{Filter, AdditiveIterator, Map};
-use iter::{Invert, DoubleEndedIterator, ExactSize};
+use iter::{Rev, DoubleEndedIterator, ExactSize};
 use libc;
 use num::{Saturating};
 use option::{None, Option, Some};
@@ -112,43 +112,18 @@ use to_str::ToStr;
 use from_str::FromStr;
 use uint;
 use vec;
-use vec::{OwnedVector, OwnedCopyableVector, ImmutableVector, MutableVector};
+use vec::{OwnedVector, OwnedCloneableVector, ImmutableVector, MutableVector};
 use default::Default;
 use send_str::{SendStr, SendStrOwned};
 use unstable::raw::Repr;
 
 /*
-Section: Conditions
-*/
-
-condition! {
-    pub not_utf8: (~str) -> ~str;
-}
-
-/*
 Section: Creating a string
 */
 
-/// Consumes a vector of bytes to create a new utf-8 string
-///
-/// # Failure
-///
-/// Raises the `not_utf8` condition if invalid UTF-8
-pub fn from_utf8_owned(vv: ~[u8]) -> ~str {
-    use str::not_utf8::cond;
-
-    if !is_utf8(vv) {
-        let first_bad_byte = *vv.iter().find(|&b| !is_utf8([*b])).unwrap();
-        cond.raise(format!("from_utf8: input is not UTF-8; first bad byte is {}",
-                           first_bad_byte))
-    } else {
-        unsafe { raw::from_utf8_owned(vv) }
-    }
-}
-
 /// Consumes a vector of bytes to create a new utf-8 string.
 /// Returns None if the vector contains invalid UTF-8.
-pub fn from_utf8_owned_opt(vv: ~[u8]) -> Option<~str> {
+pub fn from_utf8_owned(vv: ~[u8]) -> Option<~str> {
     if is_utf8(vv) {
         Some(unsafe { raw::from_utf8_owned(vv) })
     } else {
@@ -161,17 +136,8 @@ pub fn from_utf8_owned_opt(vv: ~[u8]) -> Option<~str> {
 /// Once the slice has been validated as utf-8, it is transmuted in-place and
 /// returned as a '&str' instead of a '&[u8]'
 ///
-/// # Failure
-///
-/// Fails if invalid UTF-8
-pub fn from_utf8<'a>(v: &'a [u8]) -> &'a str {
-    from_utf8_opt(v).expect("from_utf8: not utf-8")
-}
-
-/// Converts a vector to a string slice without performing any allocations.
-///
 /// Returns None if the slice is not utf-8.
-pub fn from_utf8_opt<'a>(v: &'a [u8]) -> Option<&'a str> {
+pub fn from_utf8<'a>(v: &'a [u8]) -> Option<&'a str> {
     if is_utf8(v) {
         Some(unsafe { raw::from_utf8(v) })
     } else { None }
@@ -331,12 +297,12 @@ Section: Iterators
 /// External iterator for a string's characters.
 /// Use with the `std::iter` module.
 #[deriving(Clone)]
-pub struct CharIterator<'a> {
+pub struct Chars<'a> {
     /// The slice remaining to be iterated
     priv string: &'a str,
 }
 
-impl<'a> Iterator<char> for CharIterator<'a> {
+impl<'a> Iterator<char> for Chars<'a> {
     #[inline]
     fn next(&mut self) -> Option<char> {
         // Decode the next codepoint, then update
@@ -358,7 +324,7 @@ impl<'a> Iterator<char> for CharIterator<'a> {
     }
 }
 
-impl<'a> DoubleEndedIterator<char> for CharIterator<'a> {
+impl<'a> DoubleEndedIterator<char> for Chars<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<char> {
         if self.string.len() != 0 {
@@ -376,13 +342,13 @@ impl<'a> DoubleEndedIterator<char> for CharIterator<'a> {
 /// External iterator for a string's characters and their byte offsets.
 /// Use with the `std::iter` module.
 #[deriving(Clone)]
-pub struct CharOffsetIterator<'a> {
+pub struct CharOffsets<'a> {
     /// The original string to be iterated
     priv string: &'a str,
-    priv iter: CharIterator<'a>,
+    priv iter: Chars<'a>,
 }
 
-impl<'a> Iterator<(uint, char)> for CharOffsetIterator<'a> {
+impl<'a> Iterator<(uint, char)> for CharOffsets<'a> {
     #[inline]
     fn next(&mut self) -> Option<(uint, char)> {
         // Compute the byte offset by using the pointer offset between
@@ -397,7 +363,7 @@ impl<'a> Iterator<(uint, char)> for CharOffsetIterator<'a> {
     }
 }
 
-impl<'a> DoubleEndedIterator<(uint, char)> for CharOffsetIterator<'a> {
+impl<'a> DoubleEndedIterator<(uint, char)> for CharOffsets<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<(uint, char)> {
         self.iter.next_back().map(|ch| {
@@ -410,24 +376,24 @@ impl<'a> DoubleEndedIterator<(uint, char)> for CharOffsetIterator<'a> {
 
 /// External iterator for a string's characters in reverse order.
 /// Use with the `std::iter` module.
-pub type CharRevIterator<'a> = Invert<CharIterator<'a>>;
+pub type RevChars<'a> = Rev<Chars<'a>>;
 
 /// External iterator for a string's characters and their byte offsets in reverse order.
 /// Use with the `std::iter` module.
-pub type CharOffsetRevIterator<'a> = Invert<CharOffsetIterator<'a>>;
+pub type RevCharOffsets<'a> = Rev<CharOffsets<'a>>;
 
 /// External iterator for a string's bytes.
 /// Use with the `std::iter` module.
-pub type ByteIterator<'a> =
-    Map<'a, &'a u8, u8, vec::VecIterator<'a, u8>>;
+pub type Bytes<'a> =
+    Map<'a, &'a u8, u8, vec::Items<'a, u8>>;
 
 /// External iterator for a string's bytes in reverse order.
 /// Use with the `std::iter` module.
-pub type ByteRevIterator<'a> = Invert<ByteIterator<'a>>;
+pub type RevBytes<'a> = Rev<Bytes<'a>>;
 
 /// An iterator over the substrings of a string, separated by `sep`.
 #[deriving(Clone)]
-pub struct CharSplitIterator<'a, Sep> {
+pub struct CharSplits<'a, Sep> {
     /// The slice remaining to be iterated
     priv string: &'a str,
     priv sep: Sep,
@@ -439,27 +405,27 @@ pub struct CharSplitIterator<'a, Sep> {
 
 /// An iterator over the substrings of a string, separated by `sep`,
 /// starting from the back of the string.
-pub type CharRSplitIterator<'a, Sep> = Invert<CharSplitIterator<'a, Sep>>;
+pub type RevCharSplits<'a, Sep> = Rev<CharSplits<'a, Sep>>;
 
 /// An iterator over the substrings of a string, separated by `sep`,
 /// splitting at most `count` times.
 #[deriving(Clone)]
-pub struct CharSplitNIterator<'a, Sep> {
-    priv iter: CharSplitIterator<'a, Sep>,
+pub struct CharSplitsN<'a, Sep> {
+    priv iter: CharSplits<'a, Sep>,
     /// The number of splits remaining
     priv count: uint,
     priv invert: bool,
 }
 
 /// An iterator over the words of a string, separated by an sequence of whitespace
-pub type WordIterator<'a> =
-    Filter<'a, &'a str, CharSplitIterator<'a, extern "Rust" fn(char) -> bool>>;
+pub type Words<'a> =
+    Filter<'a, &'a str, CharSplits<'a, extern "Rust" fn(char) -> bool>>;
 
 /// An iterator over the lines of a string, separated by either `\n` or (`\r\n`).
-pub type AnyLineIterator<'a> =
-    Map<'a, &'a str, &'a str, CharSplitIterator<'a, char>>;
+pub type AnyLines<'a> =
+    Map<'a, &'a str, &'a str, CharSplits<'a, char>>;
 
-impl<'a, Sep> CharSplitIterator<'a, Sep> {
+impl<'a, Sep> CharSplits<'a, Sep> {
     #[inline]
     fn get_end(&mut self) -> Option<&'a str> {
         if !self.finished && (self.allow_trailing_empty || self.string.len() > 0) {
@@ -471,7 +437,7 @@ impl<'a, Sep> CharSplitIterator<'a, Sep> {
     }
 }
 
-impl<'a, Sep: CharEq> Iterator<&'a str> for CharSplitIterator<'a, Sep> {
+impl<'a, Sep: CharEq> Iterator<&'a str> for CharSplits<'a, Sep> {
     #[inline]
     fn next(&mut self) -> Option<&'a str> {
         if self.finished { return None }
@@ -504,7 +470,7 @@ impl<'a, Sep: CharEq> Iterator<&'a str> for CharSplitIterator<'a, Sep> {
 }
 
 impl<'a, Sep: CharEq> DoubleEndedIterator<&'a str>
-for CharSplitIterator<'a, Sep> {
+for CharSplits<'a, Sep> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a str> {
         if self.finished { return None }
@@ -520,7 +486,7 @@ for CharSplitIterator<'a, Sep> {
         let mut next_split = None;
 
         if self.only_ascii {
-            for (idx, byte) in self.string.bytes().enumerate().invert() {
+            for (idx, byte) in self.string.bytes().enumerate().rev() {
                 if self.sep.matches(byte as char) && byte < 128u8 {
                     next_split = Some((idx, idx + 1));
                     break;
@@ -545,7 +511,7 @@ for CharSplitIterator<'a, Sep> {
     }
 }
 
-impl<'a, Sep: CharEq> Iterator<&'a str> for CharSplitNIterator<'a, Sep> {
+impl<'a, Sep: CharEq> Iterator<&'a str> for CharSplitsN<'a, Sep> {
     #[inline]
     fn next(&mut self) -> Option<&'a str> {
         if self.count != 0 {
@@ -560,7 +526,7 @@ impl<'a, Sep: CharEq> Iterator<&'a str> for CharSplitNIterator<'a, Sep> {
 /// An iterator over the start and end indices of the matches of a
 /// substring within a larger string
 #[deriving(Clone)]
-pub struct MatchesIndexIterator<'a> {
+pub struct MatchIndices<'a> {
     priv haystack: &'a str,
     priv needle: &'a str,
     priv position: uint,
@@ -569,13 +535,13 @@ pub struct MatchesIndexIterator<'a> {
 /// An iterator over the substrings of a string separated by a given
 /// search string
 #[deriving(Clone)]
-pub struct StrSplitIterator<'a> {
-    priv it: MatchesIndexIterator<'a>,
+pub struct StrSplits<'a> {
+    priv it: MatchIndices<'a>,
     priv last_end: uint,
     priv finished: bool
 }
 
-impl<'a> Iterator<(uint, uint)> for MatchesIndexIterator<'a> {
+impl<'a> Iterator<(uint, uint)> for MatchIndices<'a> {
     #[inline]
     fn next(&mut self) -> Option<(uint, uint)> {
         // See Issue #1932 for why this is a naive search
@@ -606,7 +572,7 @@ impl<'a> Iterator<(uint, uint)> for MatchesIndexIterator<'a> {
     }
 }
 
-impl<'a> Iterator<&'a str> for StrSplitIterator<'a> {
+impl<'a> Iterator<&'a str> for StrSplits<'a> {
     #[inline]
     fn next(&mut self) -> Option<&'a str> {
         if self.finished { return None; }
@@ -628,7 +594,7 @@ impl<'a> Iterator<&'a str> for StrSplitIterator<'a> {
 // Helper functions used for Unicode normalization
 fn canonical_sort(comb: &mut [(char, u8)]) {
     use iter::range;
-    use tuple::CopyableTuple;
+    use tuple::CloneableTuple;
 
     let len = comb.len();
     for i in range(0, len) {
@@ -654,19 +620,19 @@ enum NormalizationForm {
 /// External iterator for a string's normalization's characters.
 /// Use with the `std::iter` module.
 #[deriving(Clone)]
-struct NormalizationIterator<'a> {
+pub struct Normalizations<'a> {
     priv kind: NormalizationForm,
-    priv iter: CharIterator<'a>,
+    priv iter: Chars<'a>,
     priv buffer: ~[(char, u8)],
     priv sorted: bool
 }
 
-impl<'a> Iterator<char> for NormalizationIterator<'a> {
+impl<'a> Iterator<char> for Normalizations<'a> {
     #[inline]
     fn next(&mut self) -> Option<char> {
         use unicode::decompose::canonical_combining_class;
 
-        match self.buffer.head_opt() {
+        match self.buffer.head() {
             Some(&(c, 0)) => {
                 self.sorted = false;
                 self.buffer.shift();
@@ -703,7 +669,7 @@ impl<'a> Iterator<char> for NormalizationIterator<'a> {
             self.sorted = true;
         }
 
-        match self.buffer.shift_opt() {
+        match self.buffer.shift() {
             Some((c, 0)) => {
                 self.sorted = false;
                 Some(c)
@@ -861,7 +827,7 @@ pub fn is_utf8(v: &[u8]) -> bool {
 pub fn is_utf16(v: &[u16]) -> bool {
     let len = v.len();
     let mut i = 0u;
-    while (i < len) {
+    while i < len {
         let u = v[i];
 
         if  u <= 0xD7FF_u16 || u >= 0xE000_u16 {
@@ -887,7 +853,7 @@ pub fn is_utf16(v: &[u16]) -> bool {
 pub fn utf16_chars(v: &[u16], f: |char|) {
     let len = v.len();
     let mut i = 0u;
-    while (i < len && v[i] != 0u16) {
+    while i < len && v[i] != 0u16 {
         let u = v[i];
 
         if  u <= 0xD7FF_u16 || u >= 0xE000_u16 {
@@ -1347,23 +1313,23 @@ pub trait StrSlice<'a> {
     /// let v: ~[char] = "abc åäö".chars().collect();
     /// assert_eq!(v, ~['a', 'b', 'c', ' ', 'å', 'ä', 'ö']);
     /// ```
-    fn chars(&self) -> CharIterator<'a>;
+    fn chars(&self) -> Chars<'a>;
 
     /// An iterator over the characters of `self`, in reverse order.
-    fn chars_rev(&self) -> CharRevIterator<'a>;
+    fn chars_rev(&self) -> RevChars<'a>;
 
     /// An iterator over the bytes of `self`
-    fn bytes(&self) -> ByteIterator<'a>;
+    fn bytes(&self) -> Bytes<'a>;
 
     /// An iterator over the bytes of `self`, in reverse order
-    fn bytes_rev(&self) -> ByteRevIterator<'a>;
+    fn bytes_rev(&self) -> RevBytes<'a>;
 
     /// An iterator over the characters of `self` and their byte offsets.
-    fn char_indices(&self) -> CharOffsetIterator<'a>;
+    fn char_indices(&self) -> CharOffsets<'a>;
 
     /// An iterator over the characters of `self` and their byte offsets,
     /// in reverse order.
-    fn char_indices_rev(&self) -> CharOffsetRevIterator<'a>;
+    fn char_indices_rev(&self) -> RevCharOffsets<'a>;
 
     /// An iterator over substrings of `self`, separated by characters
     /// matched by `sep`.
@@ -1380,7 +1346,7 @@ pub trait StrSlice<'a> {
     /// let v: ~[&str] = "lionXXtigerXleopard".split('X').collect();
     /// assert_eq!(v, ~["lion", "", "tiger", "leopard"]);
     /// ```
-    fn split<Sep: CharEq>(&self, sep: Sep) -> CharSplitIterator<'a, Sep>;
+    fn split<Sep: CharEq>(&self, sep: Sep) -> CharSplits<'a, Sep>;
 
     /// An iterator over substrings of `self`, separated by characters
     /// matched by `sep`, restricted to splitting at most `count`
@@ -1398,7 +1364,7 @@ pub trait StrSlice<'a> {
     /// let v: ~[&str] = "lionXXtigerXleopard".splitn('X', 2).collect();
     /// assert_eq!(v, ~["lion", "", "tigerXleopard"]);
     /// ```
-    fn splitn<Sep: CharEq>(&self, sep: Sep, count: uint) -> CharSplitNIterator<'a, Sep>;
+    fn splitn<Sep: CharEq>(&self, sep: Sep, count: uint) -> CharSplitsN<'a, Sep>;
 
     /// An iterator over substrings of `self`, separated by characters
     /// matched by `sep`.
@@ -1415,7 +1381,7 @@ pub trait StrSlice<'a> {
     /// let v: ~[&str] = "A..B..".split_terminator('.').collect();
     /// assert_eq!(v, ~["A", "", "B", ""]);
     /// ```
-    fn split_terminator<Sep: CharEq>(&self, sep: Sep) -> CharSplitIterator<'a, Sep>;
+    fn split_terminator<Sep: CharEq>(&self, sep: Sep) -> CharSplits<'a, Sep>;
 
     /// An iterator over substrings of `self`, separated by characters
     /// matched by `sep`, in reverse order.
@@ -1432,7 +1398,7 @@ pub trait StrSlice<'a> {
     /// let v: ~[&str] = "lionXXtigerXleopard".rsplit('X').collect();
     /// assert_eq!(v, ~["leopard", "tiger", "", "lion"]);
     /// ```
-    fn rsplit<Sep: CharEq>(&self, sep: Sep) -> CharRSplitIterator<'a, Sep>;
+    fn rsplit<Sep: CharEq>(&self, sep: Sep) -> RevCharSplits<'a, Sep>;
 
     /// An iterator over substrings of `self`, separated by characters
     /// matched by `sep`, starting from the end of the string.
@@ -1450,7 +1416,7 @@ pub trait StrSlice<'a> {
     /// let v: ~[&str] = "lionXXtigerXleopard".rsplitn('X', 2).collect();
     /// assert_eq!(v, ~["leopard", "tiger", "lionX"]);
     /// ```
-    fn rsplitn<Sep: CharEq>(&self, sep: Sep, count: uint) -> CharSplitNIterator<'a, Sep>;
+    fn rsplitn<Sep: CharEq>(&self, sep: Sep, count: uint) -> CharSplitsN<'a, Sep>;
 
     /// An iterator over the start and end indices of the disjoint
     /// matches of `sep` within `self`.
@@ -1472,7 +1438,7 @@ pub trait StrSlice<'a> {
     /// let v: ~[(uint, uint)] = "ababa".match_indices("aba").collect();
     /// assert_eq!(v, ~[(0, 3)]); // only the first `aba`
     /// ```
-    fn match_indices(&self, sep: &'a str) -> MatchesIndexIterator<'a>;
+    fn match_indices(&self, sep: &'a str) -> MatchIndices<'a>;
 
     /// An iterator over the substrings of `self` separated by `sep`.
     ///
@@ -1485,7 +1451,7 @@ pub trait StrSlice<'a> {
     /// let v: ~[&str] = "1abcabc2".split_str("abc").collect();
     /// assert_eq!(v, ~["1", "", "2"]);
     /// ```
-    fn split_str(&self, &'a str) -> StrSplitIterator<'a>;
+    fn split_str(&self, &'a str) -> StrSplits<'a>;
 
     /// An iterator over the lines of a string (subsequences separated
     /// by `\n`). This does not include the empty string after a
@@ -1498,7 +1464,7 @@ pub trait StrSlice<'a> {
     /// let v: ~[&str] = four_lines.lines().collect();
     /// assert_eq!(v, ~["foo", "bar", "", "baz"]);
     /// ```
-    fn lines(&self) -> CharSplitIterator<'a, char>;
+    fn lines(&self) -> CharSplits<'a, char>;
 
     /// An iterator over the lines of a string, separated by either
     /// `\n` or `\r\n`. As with `.lines()`, this does not include an
@@ -1511,7 +1477,7 @@ pub trait StrSlice<'a> {
     /// let v: ~[&str] = four_lines.lines_any().collect();
     /// assert_eq!(v, ~["foo", "bar", "", "baz"]);
     /// ```
-    fn lines_any(&self) -> AnyLineIterator<'a>;
+    fn lines_any(&self) -> AnyLines<'a>;
 
     /// An iterator over the words of a string (subsequences separated
     /// by any sequence of whitespace). Sequences of whitespace are
@@ -1524,15 +1490,15 @@ pub trait StrSlice<'a> {
     /// let v: ~[&str] = some_words.words().collect();
     /// assert_eq!(v, ~["Mary", "had", "a", "little", "lamb"]);
     /// ```
-    fn words(&self) -> WordIterator<'a>;
+    fn words(&self) -> Words<'a>;
 
     /// An Iterator over the string in Unicode Normalization Form D
     /// (canonical decomposition).
-    fn nfd_chars(&self) -> NormalizationIterator<'a>;
+    fn nfd_chars(&self) -> Normalizations<'a>;
 
     /// An Iterator over the string in Unicode Normalization Form KD
     /// (compatibility decomposition).
-    fn nfkd_chars(&self) -> NormalizationIterator<'a>;
+    fn nfkd_chars(&self) -> Normalizations<'a>;
 
     /// Returns true if the string contains only whitespace.
     ///
@@ -1591,8 +1557,8 @@ pub trait StrSlice<'a> {
     /// assert_eq!(d.len(), 23);
     ///
     /// // the two strings *look* the same
-    /// println(c);
-    /// println(d);
+    /// println!("{}", c);
+    /// println!("{}", d);
     /// ```
     fn char_len(&self) -> uint;
 
@@ -2008,38 +1974,38 @@ impl<'a> StrSlice<'a> for &'a str {
     }
 
     #[inline]
-    fn chars(&self) -> CharIterator<'a> {
-        CharIterator{string: *self}
+    fn chars(&self) -> Chars<'a> {
+        Chars{string: *self}
     }
 
     #[inline]
-    fn chars_rev(&self) -> CharRevIterator<'a> {
-        self.chars().invert()
+    fn chars_rev(&self) -> RevChars<'a> {
+        self.chars().rev()
     }
 
     #[inline]
-    fn bytes(&self) -> ByteIterator<'a> {
+    fn bytes(&self) -> Bytes<'a> {
         self.as_bytes().iter().map(|&b| b)
     }
 
     #[inline]
-    fn bytes_rev(&self) -> ByteRevIterator<'a> {
-        self.bytes().invert()
+    fn bytes_rev(&self) -> RevBytes<'a> {
+        self.bytes().rev()
     }
 
     #[inline]
-    fn char_indices(&self) -> CharOffsetIterator<'a> {
-        CharOffsetIterator{string: *self, iter: self.chars()}
+    fn char_indices(&self) -> CharOffsets<'a> {
+        CharOffsets{string: *self, iter: self.chars()}
     }
 
     #[inline]
-    fn char_indices_rev(&self) -> CharOffsetRevIterator<'a> {
-        self.char_indices().invert()
+    fn char_indices_rev(&self) -> RevCharOffsets<'a> {
+        self.char_indices().rev()
     }
 
     #[inline]
-    fn split<Sep: CharEq>(&self, sep: Sep) -> CharSplitIterator<'a, Sep> {
-        CharSplitIterator {
+    fn split<Sep: CharEq>(&self, sep: Sep) -> CharSplits<'a, Sep> {
+        CharSplits {
             string: *self,
             only_ascii: sep.only_ascii(),
             sep: sep,
@@ -2050,8 +2016,8 @@ impl<'a> StrSlice<'a> for &'a str {
 
     #[inline]
     fn splitn<Sep: CharEq>(&self, sep: Sep, count: uint)
-        -> CharSplitNIterator<'a, Sep> {
-        CharSplitNIterator {
+        -> CharSplitsN<'a, Sep> {
+        CharSplitsN {
             iter: self.split(sep),
             count: count,
             invert: false,
@@ -2060,22 +2026,22 @@ impl<'a> StrSlice<'a> for &'a str {
 
     #[inline]
     fn split_terminator<Sep: CharEq>(&self, sep: Sep)
-        -> CharSplitIterator<'a, Sep> {
-        CharSplitIterator {
+        -> CharSplits<'a, Sep> {
+        CharSplits {
             allow_trailing_empty: false,
             ..self.split(sep)
         }
     }
 
     #[inline]
-    fn rsplit<Sep: CharEq>(&self, sep: Sep) -> CharRSplitIterator<'a, Sep> {
-        self.split(sep).invert()
+    fn rsplit<Sep: CharEq>(&self, sep: Sep) -> RevCharSplits<'a, Sep> {
+        self.split(sep).rev()
     }
 
     #[inline]
     fn rsplitn<Sep: CharEq>(&self, sep: Sep, count: uint)
-        -> CharSplitNIterator<'a, Sep> {
-        CharSplitNIterator {
+        -> CharSplitsN<'a, Sep> {
+        CharSplitsN {
             iter: self.split(sep),
             count: count,
             invert: true,
@@ -2083,9 +2049,9 @@ impl<'a> StrSlice<'a> for &'a str {
     }
 
     #[inline]
-    fn match_indices(&self, sep: &'a str) -> MatchesIndexIterator<'a> {
+    fn match_indices(&self, sep: &'a str) -> MatchIndices<'a> {
         assert!(!sep.is_empty())
-        MatchesIndexIterator {
+        MatchIndices {
             haystack: *self,
             needle: sep,
             position: 0
@@ -2093,8 +2059,8 @@ impl<'a> StrSlice<'a> for &'a str {
     }
 
     #[inline]
-    fn split_str(&self, sep: &'a str) -> StrSplitIterator<'a> {
-        StrSplitIterator {
+    fn split_str(&self, sep: &'a str) -> StrSplits<'a> {
+        StrSplits {
             it: self.match_indices(sep),
             last_end: 0,
             finished: false
@@ -2102,11 +2068,11 @@ impl<'a> StrSlice<'a> for &'a str {
     }
 
     #[inline]
-    fn lines(&self) -> CharSplitIterator<'a, char> {
+    fn lines(&self) -> CharSplits<'a, char> {
         self.split_terminator('\n')
     }
 
-    fn lines_any(&self) -> AnyLineIterator<'a> {
+    fn lines_any(&self) -> AnyLines<'a> {
         self.lines().map(|line| {
             let l = line.len();
             if l > 0 && line[l - 1] == '\r' as u8 { line.slice(0, l - 1) }
@@ -2115,13 +2081,13 @@ impl<'a> StrSlice<'a> for &'a str {
     }
 
     #[inline]
-    fn words(&self) -> WordIterator<'a> {
+    fn words(&self) -> Words<'a> {
         self.split(char::is_whitespace).filter(|s| !s.is_empty())
     }
 
     #[inline]
-    fn nfd_chars(&self) -> NormalizationIterator<'a> {
-        NormalizationIterator {
+    fn nfd_chars(&self) -> Normalizations<'a> {
+        Normalizations {
             iter: self.chars(),
             buffer: ~[],
             sorted: false,
@@ -2130,8 +2096,8 @@ impl<'a> StrSlice<'a> for &'a str {
     }
 
     #[inline]
-    fn nfkd_chars(&self) -> NormalizationIterator<'a> {
-        NormalizationIterator {
+    fn nfkd_chars(&self) -> Normalizations<'a> {
+        Normalizations {
             iter: self.chars(),
             buffer: ~[],
             sorted: false,
@@ -2326,7 +2292,7 @@ impl<'a> StrSlice<'a> for &'a str {
 
     #[inline]
     fn char_range_at(&self, i: uint) -> CharRange {
-        if (self[i] < 128u8) {
+        if self[i] < 128u8 {
             return CharRange {ch: self[i] as char, next: i + 1 };
         }
 
@@ -3436,7 +3402,7 @@ mod tests {
         let s1: ~str = ~"All mimsy were the borogoves";
 
         let v: ~[u8] = s1.as_bytes().to_owned();
-        let s2: ~str = from_utf8(v).to_owned();
+        let s2: ~str = from_utf8(v).unwrap().to_owned();
         let mut i: uint = 0u;
         let n1: uint = s1.len();
         let n2: uint = v.len();
@@ -3823,11 +3789,11 @@ mod tests {
     fn test_rev_split_char_iterator_no_trailing() {
         let data = "\nMäry häd ä little lämb\nLittle lämb\n";
 
-        let mut split: ~[&str] = data.split('\n').invert().collect();
+        let mut split: ~[&str] = data.split('\n').rev().collect();
         split.reverse();
         assert_eq!(split, ~["", "Märy häd ä little lämb", "Little lämb", ""]);
 
-        let mut split: ~[&str] = data.split_terminator('\n').invert().collect();
+        let mut split: ~[&str] = data.split_terminator('\n').rev().collect();
         split.reverse();
         assert_eq!(split, ~["", "Märy häd ä little lämb", "Little lämb"]);
     }
@@ -3961,50 +3927,25 @@ mod tests {
     #[test]
     fn test_str_from_utf8() {
         let xs = bytes!("hello");
-        assert_eq!(from_utf8(xs), "hello");
+        assert_eq!(from_utf8(xs), Some("hello"));
 
         let xs = bytes!("ศไทย中华Việt Nam");
-        assert_eq!(from_utf8(xs), "ศไทย中华Việt Nam");
-    }
-
-    #[test]
-    #[should_fail]
-    fn test_str_from_utf8_invalid() {
-        let xs = bytes!("hello", 0xff);
-        let _ = from_utf8(xs);
-    }
-
-    #[test]
-    fn test_str_from_utf8_opt() {
-        let xs = bytes!("hello");
-        assert_eq!(from_utf8_opt(xs), Some("hello"));
-
-        let xs = bytes!("ศไทย中华Việt Nam");
-        assert_eq!(from_utf8_opt(xs), Some("ศไทย中华Việt Nam"));
+        assert_eq!(from_utf8(xs), Some("ศไทย中华Việt Nam"));
 
         let xs = bytes!("hello", 0xff);
-        assert_eq!(from_utf8_opt(xs), None);
+        assert_eq!(from_utf8(xs), None);
     }
 
     #[test]
     fn test_str_from_utf8_owned() {
         let xs = bytes!("hello").to_owned();
-        assert_eq!(from_utf8_owned(xs), ~"hello");
+        assert_eq!(from_utf8_owned(xs), Some(~"hello"));
 
         let xs = bytes!("ศไทย中华Việt Nam").to_owned();
-        assert_eq!(from_utf8_owned(xs), ~"ศไทย中华Việt Nam");
-    }
-
-    #[test]
-    fn test_str_from_utf8_owned_opt() {
-        let xs = bytes!("hello").to_owned();
-        assert_eq!(from_utf8_owned_opt(xs), Some(~"hello"));
-
-        let xs = bytes!("ศไทย中华Việt Nam").to_owned();
-        assert_eq!(from_utf8_owned_opt(xs), Some(~"ศไทย中华Việt Nam"));
+        assert_eq!(from_utf8_owned(xs), Some(~"ศไทย中华Việt Nam"));
 
         let xs = bytes!("hello", 0xff).to_owned();
-        assert_eq!(from_utf8_owned_opt(xs), None);
+        assert_eq!(from_utf8_owned(xs), None);
     }
 
     #[test]

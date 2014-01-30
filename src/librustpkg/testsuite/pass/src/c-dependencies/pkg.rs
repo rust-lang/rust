@@ -13,7 +13,7 @@ extern mod rustc;
 
 use std::{os, task};
 use rustpkg::api;
-use rustpkg::version::NoVersion;
+use rustpkg::version::None;
 use rustpkg::workcache_support::digest_file_with_date;
 use rustpkg::exit_codes::COPY_FAILED_CODE;
 
@@ -36,7 +36,7 @@ pub fn main() {
     }
 
     if args[2] != ~"install" {
-        println(format!("Warning: I don't know how to {}", args[2]));
+        println!("Warning: I don't know how to {}", args[2]);
         return;
     }
 
@@ -50,7 +50,7 @@ pub fn main() {
         prep.declare_input("file",
                            foo_c_name.as_str().unwrap().to_owned(),
                            digest_file_with_date(&foo_c_name));
-        let out_path = do prep.exec |exec| {
+        let out_path = prep.exec(|exec| {
             let out_path = api::build_library_in_workspace(exec,
                                                            &mut sub_cx.clone(),
                                                            "cdep",
@@ -60,7 +60,7 @@ pub fn main() {
                                                            "foo");
             let out_p = Path::new(out_path.unwrap());
             out_p.as_str().unwrap().to_owned()
-        };
+        });
         out_path
     });
     let out_lib_path = Path::new(out_lib_path);
@@ -68,14 +68,14 @@ pub fn main() {
     context.add_library_path(out_lib_path.dir_path());
 
     let context_clone = context.clone();
-    let task_res = do task::try {
+    let task_res = task::try(proc() {
         let mut cc = context_clone.clone();
         api::install_pkg(&mut cc,
                          os::getcwd(),
                          ~"cdep",
-                         NoVersion,
+                         None,
                          ~[(~"binary", out_lib_path.clone()), (~"file", foo_c_name.clone())]);
-    };
+    });
 
     if task_res.is_err() {
         os::set_exit_status(COPY_FAILED_CODE);

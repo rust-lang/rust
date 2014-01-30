@@ -154,7 +154,25 @@ impl<'a> ToBase64 for &'a [u8] {
 pub trait FromBase64 {
     /// Converts the value of `self`, interpreted as base64 encoded data, into
     /// an owned vector of bytes, returning the vector.
-    fn from_base64(&self) -> Result<~[u8], ~str>;
+    fn from_base64(&self) -> Result<~[u8], FromBase64Error>;
+}
+
+/// Errors that can occur when decoding a base64 encoded string
+pub enum FromBase64Error {
+    /// The input contained a character not part of the base64 format
+    InvalidBase64Character(char, uint),
+    /// The input had an invalid length
+    InvalidBase64Length,
+}
+
+impl ToStr for FromBase64Error {
+    fn to_str(&self) -> ~str {
+        match *self {
+            InvalidBase64Character(ch, idx) =>
+                format!("Invalid character '{}' at position {}", ch, idx),
+            InvalidBase64Length => ~"Invalid length",
+        }
+    }
 }
 
 impl<'a> FromBase64 for &'a str {
@@ -180,7 +198,7 @@ impl<'a> FromBase64 for &'a str {
      *     println!("base64 output: {}", hello_str);
      *     let res = hello_str.from_base64();
      *     if res.is_ok() {
-     *       let optBytes = str::from_utf8_owned_opt(res.unwrap());
+     *       let optBytes = str::from_utf8_owned(res.unwrap());
      *       if optBytes.is_some() {
      *         println!("decoded from base64: {}", optBytes.unwrap());
      *       }
@@ -188,7 +206,7 @@ impl<'a> FromBase64 for &'a str {
      * }
      * ```
      */
-    fn from_base64(&self) -> Result<~[u8], ~str> {
+    fn from_base64(&self) -> Result<~[u8], FromBase64Error> {
         let mut r = ~[];
         let mut buf: u32 = 0;
         let mut modulus = 0;
@@ -205,8 +223,7 @@ impl<'a> FromBase64 for &'a str {
                 '/'|'_' => buf |= 0x3F,
                 '\r'|'\n' => continue,
                 '=' => break,
-                _ => return Err(format!("Invalid character '{}' at position {}",
-                                     self.char_at(idx), idx))
+                _ => return Err(InvalidBase64Character(self.char_at(idx), idx)),
             }
 
             buf <<= 6;
@@ -220,9 +237,9 @@ impl<'a> FromBase64 for &'a str {
         }
 
         for (idx, byte) in it {
-            if (byte as char) != '=' {
-                return Err(format!("Invalid character '{}' at position {}",
-                                self.char_at(idx), idx));
+            match byte as char {
+                '='|'\r'|'\n' => continue,
+                _ => return Err(InvalidBase64Character(self.char_at(idx), idx)),
             }
         }
 
@@ -235,7 +252,7 @@ impl<'a> FromBase64 for &'a str {
                 r.push((buf >> 8 ) as u8);
             }
             0 => (),
-            _ => return Err(~"Invalid Base64 length")
+            _ => return Err(InvalidBase64Length),
         }
 
         Ok(r)
@@ -294,6 +311,8 @@ mod test {
     fn test_from_base64_newlines() {
         assert_eq!("Zm9v\r\nYmFy".from_base64().unwrap(),
                    "foobar".as_bytes().to_owned());
+        assert_eq!("Zm9vYg==\r\n".from_base64().unwrap(),
+                   "foob".as_bytes().to_owned());
     }
 
     #[test]
@@ -317,11 +336,11 @@ mod test {
         use std::rand::{task_rng, random, Rng};
         use std::vec;
 
-        1000.times(|| {
+        for _ in range(0, 1000) {
             let times = task_rng().gen_range(1u, 100);
             let v = vec::from_fn(times, |_| random::<u8>());
             assert_eq!(v.to_base64(STANDARD).from_base64().unwrap(), v);
-        })
+        }
     }
 
     #[bench]

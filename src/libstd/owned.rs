@@ -12,6 +12,20 @@
 
 #[cfg(not(test))] use cmp::*;
 
+/// A value that represents the global exchange heap. This is the default
+/// place that the `box` keyword allocates into when no place is supplied.
+///
+/// The following two examples are equivalent:
+///
+///     let foo = box(HEAP) Bar::new(...);
+///     let foo = box Bar::new(...);
+#[lang="exchange_heap"]
+#[cfg(not(test))]
+pub static HEAP: () = ();
+
+#[cfg(test)]
+pub static HEAP: () = ();
+
 #[cfg(not(test))]
 impl<T:Eq> Eq for ~T {
     #[inline]

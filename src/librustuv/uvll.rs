@@ -30,9 +30,9 @@
 #[allow(non_camel_case_types)]; // C types
 
 use std::libc::{size_t, c_int, c_uint, c_void, c_char, c_double};
-use std::libc::ssize_t;
-use std::libc::{malloc, free};
+use std::libc::{ssize_t, sockaddr, free, addrinfo};
 use std::libc;
+use std::rt::global_heap::malloc_raw;
 
 #[cfg(test)]
 use std::libc::uintptr_t;
@@ -265,50 +265,6 @@ pub type uv_signal_cb = extern "C" fn(handle: *uv_signal_t,
                                       signum: c_int);
 pub type uv_fs_cb = extern "C" fn(req: *uv_fs_t);
 
-pub type sockaddr = c_void;
-
-#[cfg(unix)]
-pub type socklen_t = c_int;
-
-// XXX: This is a standard C type. Could probably be defined in libc
-#[cfg(target_os = "android")]
-#[cfg(target_os = "linux")]
-pub struct addrinfo {
-    ai_flags: c_int,
-    ai_family: c_int,
-    ai_socktype: c_int,
-    ai_protocol: c_int,
-    ai_addrlen: socklen_t,
-    ai_addr: *sockaddr,
-    ai_canonname: *char,
-    ai_next: *addrinfo
-}
-
-#[cfg(target_os = "macos")]
-#[cfg(target_os = "freebsd")]
-pub struct addrinfo {
-    ai_flags: c_int,
-    ai_family: c_int,
-    ai_socktype: c_int,
-    ai_protocol: c_int,
-    ai_addrlen: socklen_t,
-    ai_canonname: *char,
-    ai_addr: *sockaddr,
-    ai_next: *addrinfo
-}
-
-#[cfg(windows)]
-pub struct addrinfo {
-    ai_flags: c_int,
-    ai_family: c_int,
-    ai_socktype: c_int,
-    ai_protocol: c_int,
-    ai_addrlen: size_t,
-    ai_canonname: *char,
-    ai_addr: *sockaddr,
-    ai_next: *addrinfo
-}
-
 #[cfg(unix)] pub type uv_uid_t = libc::types::os::arch::posix88::uid_t;
 #[cfg(unix)] pub type uv_gid_t = libc::types::os::arch::posix88::gid_t;
 #[cfg(windows)] pub type uv_uid_t = libc::c_uchar;
@@ -390,25 +346,21 @@ pub enum uv_membership {
 pub unsafe fn malloc_handle(handle: uv_handle_type) -> *c_void {
     assert!(handle != UV_UNKNOWN_HANDLE && handle != UV_HANDLE_TYPE_MAX);
     let size = uv_handle_size(handle);
-    let p = malloc(size);
-    assert!(p.is_not_null());
-    return p;
+    malloc_raw(size as uint) as *c_void
 }
 
 pub unsafe fn free_handle(v: *c_void) {
-    free(v)
+    free(v as *mut c_void)
 }
 
 pub unsafe fn malloc_req(req: uv_req_type) -> *c_void {
     assert!(req != UV_UNKNOWN_REQ && req != UV_REQ_TYPE_MAX);
     let size = uv_req_size(req);
-    let p = malloc(size);
-    assert!(p.is_not_null());
-    return p;
+    malloc_raw(size as uint) as *c_void
 }
 
 pub unsafe fn free_req(v: *c_void) {
-    free(v)
+    free(v as *mut c_void)
 }
 
 #[test]
@@ -425,7 +377,7 @@ fn request_sanity_check() {
     }
 }
 
-// XXX Event loops ignore SIGPIPE by default.
+// FIXME Event loops ignore SIGPIPE by default.
 pub unsafe fn loop_new() -> *c_void {
     return rust_uv_loop_new();
 }
@@ -556,15 +508,6 @@ extern {}
 extern {
     fn rust_uv_loop_new() -> *c_void;
 
-    // dealing with sockaddr things
-    pub fn rust_sockaddr_size() -> c_int;
-    pub fn rust_malloc_ip4_addr(s: *c_char, port: c_int) -> *sockaddr;
-    pub fn rust_malloc_ip6_addr(s: *c_char, port: c_int) -> *sockaddr;
-    pub fn rust_ip4_port(src: *sockaddr) -> c_uint;
-    pub fn rust_ip6_port(src: *sockaddr) -> c_uint;
-    pub fn rust_is_ipv4_sockaddr(addr: *sockaddr) -> c_int;
-    pub fn rust_is_ipv6_sockaddr(addr: *sockaddr) -> c_int;
-
     #[cfg(test)]
     fn rust_uv_handle_type_max() -> uintptr_t;
     #[cfg(test)]
@@ -628,20 +571,14 @@ extern {
     pub fn uv_tcp_connect(c: *uv_connect_t, h: *uv_tcp_t,
                           addr: *sockaddr, cb: uv_connect_cb) -> c_int;
     pub fn uv_tcp_bind(t: *uv_tcp_t, addr: *sockaddr) -> c_int;
-    pub fn uv_ip4_name(src: *sockaddr, dst: *c_char,
-                       size: size_t) -> c_int;
-    pub fn uv_ip6_name(src: *sockaddr, dst: *c_char,
-                       size: size_t) -> c_int;
     pub fn uv_tcp_nodelay(h: *uv_tcp_t, enable: c_int) -> c_int;
     pub fn uv_tcp_keepalive(h: *uv_tcp_t, enable: c_int,
                             delay: c_uint) -> c_int;
     pub fn uv_tcp_simultaneous_accepts(h: *uv_tcp_t, enable: c_int) -> c_int;
-    pub fn uv_tcp_getsockname(h: *uv_tcp_t, name: *sockaddr,
+    pub fn uv_tcp_getsockname(h: *uv_tcp_t, name: *mut sockaddr,
                               len: *mut c_int) -> c_int;
-    pub fn uv_tcp_getpeername(h: *uv_tcp_t, name: *sockaddr,
+    pub fn uv_tcp_getpeername(h: *uv_tcp_t, name: *mut sockaddr,
                               len: *mut c_int) -> c_int;
-    pub fn uv_ip4_addr(ip: *c_char, port: c_int, addr: *sockaddr) -> c_int;
-    pub fn uv_ip6_addr(ip: *c_char, port: c_int, addr: *sockaddr) -> c_int;
 
     // udp bindings
     pub fn uv_udp_init(l: *uv_loop_t, h: *uv_udp_t) -> c_int;
@@ -657,7 +594,7 @@ extern {
     pub fn uv_udp_set_multicast_ttl(handle: *uv_udp_t, ttl: c_int) -> c_int;
     pub fn uv_udp_set_ttl(handle: *uv_udp_t, ttl: c_int) -> c_int;
     pub fn uv_udp_set_broadcast(handle: *uv_udp_t, on: c_int) -> c_int;
-    pub fn uv_udp_getsockname(h: *uv_udp_t, name: *sockaddr,
+    pub fn uv_udp_getsockname(h: *uv_udp_t, name: *mut sockaddr,
                               len: *mut c_int) -> c_int;
 
     // timer bindings

@@ -154,7 +154,7 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
         match props.pp_exact { Some(_) => 1, None => 2 };
 
     let src = File::open(testfile).read_to_end();
-    let src = str::from_utf8_owned(src);
+    let src = str::from_utf8_owned(src).unwrap();
     let mut srcs = ~[src];
 
     let mut round = 0;
@@ -176,7 +176,7 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
         Some(ref file) => {
             let filepath = testfile.dir_path().join(file);
             let s = File::open(&filepath).read_to_end();
-            str::from_utf8_owned(s)
+            str::from_utf8_owned(s).unwrap()
           }
           None => { srcs[srcs.len() - 2u].clone() }
         };
@@ -206,7 +206,8 @@ fn run_pretty_test(config: &config, props: &TestProps, testfile: &Path) {
     }
 
     fn make_pp_args(config: &config, _testfile: &Path) -> ProcArgs {
-        let args = ~[~"-", ~"--pretty", ~"normal"];
+        let args = ~[~"-", ~"--pretty", ~"normal",
+                     ~"--target=" + config.target];
         // FIXME (#9639): This needs to handle non-utf8 paths
         return ProcArgs {prog: config.rustc_path.as_str().unwrap().to_owned(), args: args};
     }
@@ -237,9 +238,15 @@ actual:\n\
 
     fn make_typecheck_args(config: &config, props: &TestProps, testfile: &Path) -> ProcArgs {
         let aux_dir = aux_output_dir_name(config, testfile);
+        let target = if props.force_host {
+            config.host.as_slice()
+        } else {
+            config.target.as_slice()
+        };
         // FIXME (#9639): This needs to handle non-utf8 paths
         let mut args = ~[~"-",
                          ~"--no-trans", ~"--lib",
+                         ~"--target=" + target,
                          ~"-L", config.build_base.as_str().unwrap().to_owned(),
                          ~"-L",
                          aux_dir.as_str().unwrap().to_owned()];
@@ -301,7 +308,7 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
 
             let adb_arg = format!("export LD_LIBRARY_PATH={}; gdbserver :5039 {}/{}",
                                   config.adb_test_dir.clone(), config.adb_test_dir.clone(),
-                                  str::from_utf8(exe_file.filename().unwrap()));
+                                  str::from_utf8(exe_file.filename().unwrap()).unwrap());
 
             let mut process = procsrv::run_background("", config.adb_path,
                                                       [~"shell",adb_arg.clone()],
@@ -310,10 +317,10 @@ fn run_debuginfo_test(config: &config, props: &TestProps, testfile: &Path) {
             loop {
                 //waiting 1 second for gdbserver start
                 timer::sleep(1000);
-                let result = do task::try {
+                let result = task::try(proc() {
                     tcp::TcpStream::connect(
                         SocketAddr { ip: Ipv4Addr(127, 0, 0, 1), port: 5039 });
-                };
+                });
                 if result.is_err() {
                     continue;
                 }
@@ -525,9 +532,9 @@ fn check_expected_errors(expected_errors: ~[errors::ExpectedError],
             if !found_flags[i] {
                 debug!("prefix={} ee.kind={} ee.msg={} line={}",
                        prefixes[i], ee.kind, ee.msg, line);
-                if (prefix_matches(line, prefixes[i]) &&
+                if prefix_matches(line, prefixes[i]) &&
                     line.contains(ee.kind) &&
-                    line.contains(ee.msg)) {
+                    line.contains(ee.msg) {
                     found_flags[i] = true;
                     was_expected = true;
                     break;
@@ -691,8 +698,9 @@ fn compose_and_run_compiler(
 
     for rel_ab in props.aux_builds.iter() {
         let abs_ab = config.aux_base.join(rel_ab.as_slice());
+        let aux_props = load_props(&abs_ab);
         let aux_args =
-            make_compile_args(config, props, ~[~"--lib"] + extra_link_args,
+            make_compile_args(config, &aux_props, ~[~"--dylib"] + extra_link_args,
                               |a,b| make_lib_name(a, b, testfile), &abs_ab);
         let auxres = compose_and_run(config, &abs_ab, aux_args, ~[],
                                      config.compile_lib_path, None);
@@ -738,10 +746,16 @@ fn make_compile_args(config: &config,
                      testfile: &Path)
                      -> ProcArgs {
     let xform_file = xform(config, testfile);
+    let target = if props.force_host {
+        config.host.as_slice()
+    } else {
+        config.target.as_slice()
+    };
     // FIXME (#9639): This needs to handle non-utf8 paths
     let mut args = ~[testfile.as_str().unwrap().to_owned(),
                      ~"-o", xform_file.as_str().unwrap().to_owned(),
-                     ~"-L", config.build_base.as_str().unwrap().to_owned()]
+                     ~"-L", config.build_base.as_str().unwrap().to_owned(),
+                     ~"--target=" + target]
         + extras;
     args.push_all_move(split_maybe_args(&config.rustcflags));
     args.push_all_move(split_maybe_args(&props.compile_flags));
@@ -774,7 +788,7 @@ fn make_run_args(config: &config, _props: &TestProps, testfile: &Path) ->
     let exe_file = make_exe_name(config, testfile);
     // FIXME (#9639): This needs to handle non-utf8 paths
     args.push(exe_file.as_str().unwrap().to_owned());
-    let prog = args.shift();
+    let prog = args.shift().unwrap();
     return ProcArgs {prog: prog, args: args};
 }
 
@@ -903,7 +917,7 @@ fn _arm_exec_compiled_test(config: &config, props: &TestProps,
 
     // get bare program string
     let mut tvec: ~[~str] = args.prog.split('/').map(|ts| ts.to_owned()).collect();
-    let prog_short = tvec.pop();
+    let prog_short = tvec.pop().unwrap();
 
     // copy to target
     let copy_result = procsrv::run("", config.adb_path,
@@ -1086,7 +1100,7 @@ fn disassemble_extract(config: &config, _props: &TestProps,
 
 fn count_extracted_lines(p: &Path) -> uint {
     let x = File::open(&p.with_extension("ll")).read_to_end();
-    let x = str::from_utf8_owned(x);
+    let x = str::from_utf8_owned(x).unwrap();
     x.lines().len()
 }
 

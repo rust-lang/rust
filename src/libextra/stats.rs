@@ -349,8 +349,8 @@ pub fn write_boxplot(w: &mut io::Writer, s: &Summary, width_hint: uint) {
     let (q1,q2,q3) = s.quartiles;
 
     // the .abs() handles the case where numbers are negative
-    let lomag = (10.0_f64).pow(&(s.min.abs().log10().floor()));
-    let himag = (10.0_f64).pow(&(s.max.abs().log10().floor()));
+    let lomag = (10.0_f64).powf(&(s.min.abs().log10().floor()));
+    let himag = (10.0_f64).powf(&(s.max.abs().log10().floor()));
 
     // need to consider when the limit is zero
     let lo = if lomag == 0.0 {
@@ -438,6 +438,14 @@ mod tests {
     use stats::write_boxplot;
     use std::io;
     use std::str;
+
+    macro_rules! assert_approx_eq(
+        ($a:expr, $b:expr) => ({
+            let (a, b) = (&$a, &$b);
+            assert!((*a - *b).abs() < 1.0e-6,
+                    "{} is not approximately equal to {}", *a, *b);
+        })
+    )
 
     fn check(samples: &[f64], summ: &Summary) {
 
@@ -990,11 +998,10 @@ mod tests {
     #[test]
     fn test_boxplot_nonpositive() {
         fn t(s: &Summary, expected: ~str) {
-            use std::io::mem::MemWriter;
-            use std::io::Decorator;
+            use std::io::MemWriter;
             let mut m = MemWriter::new();
             write_boxplot(&mut m as &mut io::Writer, s, 30);
-            let out = str::from_utf8_owned(m.inner());
+            let out = str::from_utf8_owned(m.unwrap()).unwrap();
             assert_eq!(out, expected);
         }
 

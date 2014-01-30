@@ -108,3 +108,14 @@ pub fn pat_contains_bindings(dm: resolve::DefMap, pat: &Pat) -> bool {
     });
     contains_bindings
 }
+
+pub fn simple_identifier<'a>(pat: &'a Pat) -> Option<&'a Path> {
+    match pat.node {
+        PatIdent(BindByValue(_), ref path, None) => {
+            Some(path)
+        }
+        _ => {
+            None
+        }
+    }
+}

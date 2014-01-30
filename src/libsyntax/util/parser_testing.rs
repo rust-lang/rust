@@ -15,15 +15,15 @@ use parse::{new_parser_from_source_str};
 use parse::parser::Parser;
 use parse::token;
 
-// map a string to tts, using a made-up filename: return both the token_trees
+// map a string to tts, using a made-up filename: return both the TokenTree's
 // and the ParseSess
-pub fn string_to_tts_and_sess (source_str : @str) -> (~[ast::token_tree],@ParseSess) {
+pub fn string_to_tts_and_sess (source_str : @str) -> (~[ast::TokenTree], @ParseSess) {
     let ps = new_parse_sess(None);
     (filemap_to_tts(ps,string_to_filemap(ps,source_str,@"bogofile")),ps)
 }
 
 // map a string to tts, using a made-up filename:
-pub fn string_to_tts(source_str : @str) -> ~[ast::token_tree] {
+pub fn string_to_tts(source_str : @str) -> ~[ast::TokenTree] {
     let (tts,_) = string_to_tts_and_sess(source_str);
     tts
 }
@@ -67,7 +67,7 @@ pub fn string_to_expr (source_str : @str) -> @ast::Expr {
 }
 
 // parse a string, return an item
-pub fn string_to_item (source_str : @str) -> Option<@ast::item> {
+pub fn string_to_item (source_str : @str) -> Option<@ast::Item> {
     with_error_checking_parse(source_str, |p| {
         p.parse_item(~[])
     })
@@ -86,7 +86,7 @@ pub fn string_to_pat(source_str : @str) -> @ast::Pat {
     string_to_parser(source_str).parse_pat()
 }
 
-// convert a vector of strings to a vector of ast::idents
+// convert a vector of strings to a vector of ast::Ident's
 pub fn strs_to_idents(ids: ~[&str]) -> ~[ast::Ident] {
     ids.map(|u| token::str_to_ident(*u))
 }
@@ -140,7 +140,7 @@ pub fn matches_codepattern(a : &str, b : &str) -> bool {
 fn scan_for_non_ws_or_end(a : &str, idx: uint) -> uint {
     let mut i = idx;
     let len = a.len();
-    while ((i < len) && (is_whitespace(a.char_at(i)))) {
+    while (i < len) && (is_whitespace(a.char_at(i))) {
         i += 1;
     }
     i

@@ -47,7 +47,6 @@ pub use realstd::unstable::intrinsics::{TyDesc, Opaque, TyVisitor, TypeId};
 
 pub type GlueFn = extern "Rust" fn(*i8);
 
-// NB: this has to be kept in sync with `type_desc` in `rt`
 #[lang="ty_desc"]
 #[cfg(not(test))]
 pub struct TyDesc {
@@ -58,23 +57,15 @@ pub struct TyDesc {
     align: uint,
 
     // Called on a copy of a value of type `T` *after* memcpy
+    // NOTE remove after next snapshot
+    #[cfg(stage0)]
     take_glue: GlueFn,
 
     // Called when a value of type `T` is no longer needed
     drop_glue: GlueFn,
 
-    // Called by drop glue when a value of type `T` can be freed
-    free_glue: GlueFn,
-
     // Called by reflection visitor to visit a value of type `T`
     visit_glue: GlueFn,
-
-    // If T represents a box pointer (`@U` or `~U`), then
-    // `borrow_offset` is the amount that the pointer must be adjusted
-    // to find the payload.  This is always derivable from the type
-    // `U`, but in the case of `@Trait` or `~Trait` objects, the type
-    // `U` is unknown.
-    borrow_offset: uint,
 
     // Name corresponding to the type
     name: &'static str
@@ -117,7 +108,6 @@ pub trait TyVisitor {
 
     fn visit_box(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
     fn visit_uniq(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
-    fn visit_uniq_managed(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
     fn visit_ptr(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
     fn visit_rptr(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
 
@@ -125,7 +115,6 @@ pub trait TyVisitor {
     fn visit_unboxed_vec(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
     fn visit_evec_box(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
     fn visit_evec_uniq(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
-    fn visit_evec_uniq_managed(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
     fn visit_evec_slice(&mut self, mtbl: uint, inner: *TyDesc) -> bool;
     fn visit_evec_fixed(&mut self, n: uint, sz: uint, align: uint,
                         mtbl: uint, inner: *TyDesc) -> bool;
@@ -177,7 +166,9 @@ pub trait TyVisitor {
     fn visit_param(&mut self, i: uint) -> bool;
     fn visit_self(&mut self) -> bool;
     fn visit_type(&mut self) -> bool;
-    fn visit_opaque_box(&mut self) -> bool;
+
+    // NOTE remove after next snapshot
+    #[cfg(stage0)]
     fn visit_closure_ptr(&mut self, ck: uint) -> bool;
 }
 
@@ -304,12 +295,6 @@ extern "rust-intrinsic" {
     /// and structures there may be additional padding between
     /// elements.
     pub fn size_of<T>() -> uint;
-
-    /// Move a value to a memory location containing a value.
-    ///
-    /// Drop glue is run on the destination, which must contain a
-    /// valid Rust value.
-    pub fn move_val<T>(dst: &mut T, src: T);
 
     /// Move a value to an uninitialized memory location.
     ///

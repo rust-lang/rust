@@ -24,6 +24,7 @@ use std::cast;
 use std::libc::{c_uint, c_ulonglong, c_char};
 
 pub fn terminate(cx: &Block, _: &str) {
+    debug!("terminate({})", cx.to_str());
     cx.terminated.set(true);
 }
 
@@ -54,28 +55,30 @@ pub fn RetVoid(cx: &Block) {
     B(cx).ret_void();
 }
 
-pub fn Ret(cx: @Block, V: ValueRef) {
+pub fn Ret(cx: &Block, V: ValueRef) {
     if cx.unreachable.get() { return; }
     check_not_terminated(cx);
     terminate(cx, "Ret");
     B(cx).ret(V);
 }
 
-pub fn AggregateRet(cx: @Block, RetVals: &[ValueRef]) {
+pub fn AggregateRet(cx: &Block, RetVals: &[ValueRef]) {
     if cx.unreachable.get() { return; }
     check_not_terminated(cx);
     terminate(cx, "AggregateRet");
     B(cx).aggregate_ret(RetVals);
 }
 
-pub fn Br(cx: @Block, Dest: BasicBlockRef) {
+pub fn Br(cx: &Block, Dest: BasicBlockRef) {
     if cx.unreachable.get() { return; }
     check_not_terminated(cx);
     terminate(cx, "Br");
     B(cx).br(Dest);
 }
 
-pub fn CondBr(cx: @Block, If: ValueRef, Then: BasicBlockRef,
+pub fn CondBr(cx: &Block,
+              If: ValueRef,
+              Then: BasicBlockRef,
               Else: BasicBlockRef) {
     if cx.unreachable.get() { return; }
     check_not_terminated(cx);
@@ -105,13 +108,13 @@ pub fn IndirectBr(cx: &Block, Addr: ValueRef, NumDests: uint) {
     B(cx).indirect_br(Addr, NumDests);
 }
 
-pub fn Invoke(cx: @Block,
+pub fn Invoke(cx: &Block,
               Fn: ValueRef,
               Args: &[ValueRef],
               Then: BasicBlockRef,
               Catch: BasicBlockRef,
               attributes: &[(uint, lib::llvm::Attribute)])
-           -> ValueRef {
+              -> ValueRef {
     if cx.unreachable.get() {
         return C_null(Type::i8());
     }
@@ -313,10 +316,14 @@ pub fn ArrayMalloc(cx: &Block, Ty: Type, Val: ValueRef) -> ValueRef {
 pub fn Alloca(cx: &Block, Ty: Type, name: &str) -> ValueRef {
     unsafe {
         if cx.unreachable.get() { return llvm::LLVMGetUndef(Ty.ptr_to().to_ref()); }
-        let b = cx.fcx.ccx.builder();
-        b.position_before(cx.fcx.alloca_insert_pt.get().unwrap());
-        b.alloca(Ty, name)
+        AllocaFcx(cx.fcx, Ty, name)
     }
+}
+
+pub fn AllocaFcx(fcx: &FunctionContext, Ty: Type, name: &str) -> ValueRef {
+    let b = fcx.ccx.builder();
+    b.position_before(fcx.alloca_insert_pt.get().unwrap());
+    b.alloca(Ty, name)
 }
 
 pub fn ArrayAlloca(cx: &Block, Ty: Type, Val: ValueRef) -> ValueRef {
@@ -762,7 +769,7 @@ pub fn SetCleanup(cx: &Block, LandingPad: ValueRef) {
     B(cx).set_cleanup(LandingPad)
 }
 
-pub fn Resume(cx: @Block, Exn: ValueRef) -> ValueRef {
+pub fn Resume(cx: &Block, Exn: ValueRef) -> ValueRef {
     check_not_terminated(cx);
     terminate(cx, "Resume");
     B(cx).resume(Exn)

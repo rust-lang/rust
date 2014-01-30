@@ -31,8 +31,8 @@ impl Eq for Lol {
 
 fn main() {
     if Lol(2) == Lol(4) {
-        println("2 == 4");
+        println!("2 == 4");
     } else {
-        println("2 != 4");
+        println!("2 != 4");
     }
 }

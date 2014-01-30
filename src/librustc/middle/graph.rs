@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -56,11 +56,11 @@ pub struct Edge<E> {
 
 #[deriving(Eq)]
 pub struct NodeIndex(uint);
-pub static InvalidNodeIndex: NodeIndex = NodeIndex(uint::max_value);
+pub static InvalidNodeIndex: NodeIndex = NodeIndex(uint::MAX);
 
 #[deriving(Eq)]
 pub struct EdgeIndex(uint);
-pub static InvalidEdgeIndex: EdgeIndex = EdgeIndex(uint::max_value);
+pub static InvalidEdgeIndex: EdgeIndex = EdgeIndex(uint::MAX);
 
 // Use a private field here to guarantee no more instances are created:
 pub struct Direction { priv repr: uint }

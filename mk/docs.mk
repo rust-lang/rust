@@ -17,16 +17,16 @@ CDOCS :=
 DOCS_L10N :=
 HTML_DEPS :=
 
-BASE_DOC_OPTS := --from=markdown --standalone --toc --number-sections
-HTML_OPTS = $(BASE_DOC_OPTS) 	--to=html5  --section-divs --css=rust.css  \
-								--include-before-body=doc/version_info.html \
-								--include-in-header=doc/favicon.inc
-TEX_OPTS = $(BASE_DOC_OPTS) --to=latex
+BASE_DOC_OPTS := --standalone --toc --number-sections
+HTML_OPTS = $(BASE_DOC_OPTS) --to=html5 --section-divs --css=rust.css \
+    --include-before-body=doc/version_info.html --include-in-header=doc/favicon.inc
+TEX_OPTS = $(BASE_DOC_OPTS) --include-before-body=doc/version.md --to=latex
 EPUB_OPTS = $(BASE_DOC_OPTS) --to=epub
 
 ######################################################################
 # Rust version
 ######################################################################
+
 doc/version.md: $(MKFILE_DEPS) $(wildcard $(S)doc/*.*)
 	@$(call E, version-stamp: $@)
 	$(Q)echo "$(CFG_VERSION)" >$@
@@ -72,7 +72,7 @@ endif
 ifneq ($(NO_DOCS),1)
 
 DOCS += doc/rust.html
-doc/rust.html: rust.md doc/full-toc.inc $(HTML_DEPS) 
+doc/rust.html: rust.md doc/full-toc.inc $(HTML_DEPS)
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --include-in-header=doc/full-toc.inc --output=$@
@@ -84,7 +84,7 @@ doc/rust.tex: rust.md doc/version.md
 	$(CFG_PANDOC) $(TEX_OPTS) --output=$@
 
 DOCS += doc/rust.epub
-doc/rust.epub: rust.md doc/version_info.html doc/rust.css
+doc/rust.epub: rust.md
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(EPUB_OPTS) --output=$@
@@ -114,7 +114,7 @@ doc/tutorial.tex: tutorial.md doc/version.md
 	$(CFG_PANDOC) $(TEX_OPTS) --output=$@
 
 DOCS += doc/tutorial.epub
-doc/tutorial.epub: tutorial.md doc/version_info.html doc/rust.css
+doc/tutorial.epub: tutorial.md
 	@$(call E, pandoc: $@)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(EPUB_OPTS) --output=$@
@@ -224,6 +224,12 @@ doc/guide-pointers.html: $(S)doc/guide-pointers.md $(HTML_DEPS)
 	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
 	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
 
+DOCS += doc/guide-runtime.html
+doc/guide-runtime.html: $(S)doc/guide-runtime.md $(HTML_DEPS)
+	@$(call E, pandoc: $@)
+	$(Q)$(CFG_NODE) $(S)doc/prep.js --highlight $< | \
+	$(CFG_PANDOC) $(HTML_OPTS) --output=$@
+
   ifeq ($(CFG_PDFLATEX),)
     $(info cfg: no pdflatex found, omitting doc/rust.pdf)
   else
@@ -259,6 +265,7 @@ endif # No pandoc / node
 ######################################################################
 # LLnextgen (grammar analysis from refman)
 ######################################################################
+
 ifeq ($(CFG_LLNEXTGEN),)
   $(info cfg: no llnextgen found, omitting grammar-verification)
 else
@@ -283,35 +290,27 @@ endif
 RUSTDOC = $(HBIN2_H_$(CFG_BUILD))/rustdoc$(X_$(CFG_BUILD))
 
 # The library documenting macro
+#
 # $(1) - The crate name (std/extra)
-# $(2) - The crate file
-# $(3) - The relevant host build triple (to depend on libstd)
 #
 # Passes --cfg stage2 to rustdoc because it uses the stage2 librustc.
 define libdoc
-doc/$(1)/index.html: $$(RUSTDOC) $$(TLIB2_T_$(3)_H_$(3))/$(CFG_STDLIB_$(3))
+doc/$(1)/index.html:							    \
+	    $$(CRATEFILE_$(1))						    \
+	    $$(RSINPUTS_$(1))						    \
+	    $$(RUSTDOC)							    \
+	    $$(foreach dep,$$(RUST_DEPS_$(1)),				    \
+		$$(TLIB2_T_$(CFG_BUILD)_H_$(CFG_BUILD))/stamp.$$(dep))
 	@$$(call E, rustdoc: $$@)
-	$(Q)$(RUSTDOC) --cfg stage2 $(2)
-
-DOCS += doc/$(1)/index.html
+	$$(Q)$$(RUSTDOC) --cfg stage2 $$<
 endef
 
-define compiledoc
-doc/$(1)/index.html: $$(RUSTDOC) $$(TLIB2_T_$(3)_H_$(3))/$(CFG_STDLIB_$(3))
-	@$$(call E, rustdoc: $$@)
-	$(Q)$(RUSTDOC) --cfg stage2 $(2)
+$(foreach crate,$(CRATES),$(eval $(call libdoc,$(crate))))
 
-CDOCS += doc/$(1)/index.html
-endef
+DOCS += $(DOC_CRATES:%=doc/%/index.html)
 
-$(eval $(call libdoc,std,$(STDLIB_CRATE),$(CFG_BUILD)))
-$(eval $(call libdoc,extra,$(EXTRALIB_CRATE),$(CFG_BUILD)))
-$(eval $(call libdoc,native,$(LIBNATIVE_CRATE),$(CFG_BUILD)))
-$(eval $(call libdoc,green,$(LIBGREEN_CRATE),$(CFG_BUILD)))
-
-$(eval $(call compiledoc,rustc,$(COMPILER_CRATE),$(CFG_BUILD)))
-$(eval $(call compiledoc,syntax,$(LIBSYNTAX_CRATE),$(CFG_BUILD)))
-
+CDOCS += doc/rustc/index.html
+CDOCS += doc/syntax/index.html
 
 ifdef CFG_DISABLE_DOCS
   $(info cfg: disabling doc build (CFG_DISABLE_DOCS))

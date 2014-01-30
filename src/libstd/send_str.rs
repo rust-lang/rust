@@ -119,7 +119,7 @@ impl Str for SendStr {
     fn as_slice<'r>(&'r self) -> &'r str {
         match *self {
             SendStrOwned(ref s) => s.as_slice(),
-            // XXX: Borrowchecker doesn't recognize lifetime as static unless prompted
+            // FIXME: Borrowchecker doesn't recognize lifetime as static unless prompted
             // SendStrStatic(s) => s.as_slice()
             SendStrStatic(s)    => {let tmp: &'static str = s; tmp}
         }

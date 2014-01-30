@@ -38,7 +38,7 @@ case, the value is read, and the container (`x`) is also read.
 In the second case, `y`, `x.b` is being assigned which has type
 `~int`.  Because this type moves by default, that will be a move
 reference.  Whenever we move from a compound expression like `x.b` (or
-`x[b]` or `*x` or `{x)[b].c`, etc), this invalidates all containing
+`x[b]` or `*x` or `{x}[b].c`, etc), this invalidates all containing
 expressions since we do not currently permit "incomplete" variables
 where part of them has been moved and part has not.  In this case,
 this means that the reference to `x` is also a move.  We'll see later,
@@ -56,7 +56,7 @@ For each binding in a match or let pattern, we also compute a read
 or move designation.  A move binding means that the value will be
 moved from the value being matched.  As a result, the expression
 being matched (aka, the 'discriminant') is either moved or read
-depending on whethe the bindings move the value they bind to out of
+depending on whether the bindings move the value they bind to out of
 the discriminant.
 
 For examples, consider this match expression:
@@ -193,7 +193,7 @@ enum UseMode {
 }
 
 impl visit::Visitor<()> for VisitContext {
-    fn visit_fn(&mut self, fk: &visit::fn_kind, fd: &fn_decl,
+    fn visit_fn(&mut self, fk: &visit::FnKind, fd: &FnDecl,
                 b: &Block, s: Span, n: NodeId, _: ()) {
         compute_modes_for_fn(self, fk, fd, b, s, n);
     }
@@ -227,10 +227,9 @@ pub fn compute_moves(tcx: ty::ctxt,
 
 pub fn moved_variable_node_id_from_def(def: Def) -> Option<NodeId> {
     match def {
-      DefBinding(nid, _) |
-      DefArg(nid, _) |
-      DefLocal(nid, _) |
-      DefSelf(nid, _) => Some(nid),
+        DefBinding(nid, _) |
+        DefArg(nid, _) |
+        DefLocal(nid, _) => Some(nid),
 
       _ => None
     }
@@ -248,8 +247,8 @@ fn compute_modes_for_local<'a>(cx: &mut VisitContext,
 }
 
 fn compute_modes_for_fn(cx: &mut VisitContext,
-                        fk: &visit::fn_kind,
-                        decl: &fn_decl,
+                        fk: &visit::FnKind,
+                        decl: &FnDecl,
                         body: &Block,
                         span: Span,
                         id: NodeId) {
@@ -328,17 +327,23 @@ impl VisitContext {
         let comp_mode = {
             let adjustments = self.tcx.adjustments.borrow();
             match adjustments.get().find(&expr.id) {
-                Some(&@ty::AutoDerefRef(
-                    ty::AutoDerefRef {
-                        autoref: Some(_), ..})) => Read,
-                _ => expr_mode
+                Some(adjustment) => {
+                    match **adjustment {
+                        ty::AutoDerefRef(ty::AutoDerefRef {
+                            autoref: Some(_),
+                            ..
+                        }) => Read,
+                        _ => expr_mode,
+                    }
+                }
+                _ => expr_mode,
             }
         };
 
         debug!("comp_mode = {:?}", comp_mode);
 
         match expr.node {
-            ExprPath(..) | ExprSelf => {
+            ExprPath(..) => {
                 match comp_mode {
                     Move => {
                         let def_map = self.tcx.def_map.borrow();
@@ -407,10 +412,7 @@ impl VisitContext {
                 self.use_fn_args(callee.id, *args);
             }
 
-            ExprMethodCall(callee_id, rcvr, _, _, ref args, _) => { // callee.m(args)
-                // Implicit self is equivalent to & mode, but every
-                // other kind should be + mode.
-                self.use_receiver(rcvr);
+            ExprMethodCall(callee_id, _, _, ref args, _) => { // callee.m(args)
                 self.use_fn_args(callee_id, *args);
             }
 
@@ -568,10 +570,6 @@ impl VisitContext {
                 self.consume_expr(count);
             }
 
-            ExprDoBody(base) => {
-                self.use_expr(base, comp_mode);
-            }
-
             ExprFnBlock(ref decl, body) |
             ExprProc(ref decl, body) => {
                 for a in decl.inputs.iter() {
@@ -588,6 +586,11 @@ impl VisitContext {
             }
 
             ExprVstore(base, _) => {
+                self.use_expr(base, comp_mode);
+            }
+
+            ExprBox(place, base) => {
+                self.use_expr(place, comp_mode);
                 self.use_expr(base, comp_mode);
             }
 
@@ -609,7 +612,7 @@ impl VisitContext {
             return false;
         }
 
-        self.use_receiver(receiver_expr);
+        self.use_fn_arg(receiver_expr);
 
         // for overloaded operatrs, we are always passing in a
         // reference, so it's always read mode:
@@ -662,11 +665,6 @@ impl VisitContext {
                 }
             }
         })
-    }
-
-    pub fn use_receiver(&mut self,
-                        receiver_expr: @Expr) {
-        self.use_fn_arg(receiver_expr);
     }
 
     pub fn use_fn_args(&mut self,

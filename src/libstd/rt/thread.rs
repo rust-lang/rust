@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -43,7 +43,7 @@ static DEFAULT_STACK_SIZE: uint = 1024 * 1024;
 extern fn thread_start(main: *libc::c_void) -> imp::rust_thread_return {
     use unstable::stack;
     unsafe {
-        stack::record_stack_bounds(0, uint::max_value);
+        stack::record_stack_bounds(0, uint::MAX);
         let f: ~proc() = cast::transmute(main);
         (*f)();
         cast::transmute(0 as imp::rust_thread_return)
@@ -196,7 +196,7 @@ mod imp {
     use unstable::intrinsics;
 
     pub type rust_thread = libc::pthread_t;
-    pub type rust_thread_return = *libc::c_void;
+    pub type rust_thread_return = *u8;
 
     pub unsafe fn create(stack: uint, p: ~proc()) -> rust_thread {
         let mut native: libc::pthread_t = intrinsics::uninit();
@@ -255,11 +255,11 @@ mod tests {
     use super::Thread;
 
     #[test]
-    fn smoke() { do Thread::start {}.join(); }
+    fn smoke() { Thread::start(proc (){}).join(); }
 
     #[test]
-    fn data() { assert_eq!(do Thread::start { 1 }.join(), 1); }
+    fn data() { assert_eq!(Thread::start(proc () { 1 }).join(), 1); }
 
     #[test]
-    fn detached() { do Thread::spawn {} }
+    fn detached() { Thread::spawn(proc () {}) }
 }

@@ -17,8 +17,7 @@ use arc::{Arc,RWArc};
 use treemap::TreeMap;
 use std::str;
 use std::io;
-use std::io::{File, Decorator};
-use std::io::mem::MemWriter;
+use std::io::{File, MemWriter};
 
 /**
 *
@@ -209,28 +208,11 @@ impl Drop for Database {
     }
 }
 
-pub struct Logger {
-    // FIXME #4432: Fill in
-    priv a: ()
-}
-
-impl Logger {
-
-    pub fn new() -> Logger {
-        Logger { a: () }
-    }
-
-    pub fn info(&self, i: &str) {
-        info!("workcache: {}", i);
-    }
-}
-
 pub type FreshnessMap = TreeMap<~str,extern fn(&str,&str)->bool>;
 
 #[deriving(Clone)]
 pub struct Context {
     db: RWArc<Database>,
-    priv logger: RWArc<Logger>,
     priv cfg: Arc<json::Object>,
     /// Map from kinds (source, exe, url, etc.) to a freshness function.
     /// The freshness function takes a name (e.g. file path) and value
@@ -261,7 +243,7 @@ fn json_encode<'a, T:Encodable<json::Encoder<'a>>>(t: &T) -> ~str {
     let mut writer = MemWriter::new();
     let mut encoder = json::Encoder::new(&mut writer as &mut io::Writer);
     t.encode(&mut encoder);
-    str::from_utf8_owned(writer.inner())
+    str::from_utf8_owned(writer.unwrap()).unwrap()
 }
 
 // FIXME(#5121)
@@ -275,18 +257,15 @@ fn json_decode<T:Decodable<json::Decoder>>(s: &str) -> T {
 impl Context {
 
     pub fn new(db: RWArc<Database>,
-               lg: RWArc<Logger>,
                cfg: Arc<json::Object>) -> Context {
-        Context::new_with_freshness(db, lg, cfg, Arc::new(TreeMap::new()))
+        Context::new_with_freshness(db, cfg, Arc::new(TreeMap::new()))
     }
 
     pub fn new_with_freshness(db: RWArc<Database>,
-                              lg: RWArc<Logger>,
                               cfg: Arc<json::Object>,
                               freshness: Arc<FreshnessMap>) -> Context {
         Context {
             db: db,
-            logger: lg,
             cfg: cfg,
             freshness: freshness
         }
@@ -378,15 +357,11 @@ impl<'a> Prep<'a> {
             None => fail!("missing freshness-function for '{}'", kind),
             Some(f) => (*f)(name, val)
         };
-        self.ctxt.logger.write(|lg| {
-            if fresh {
-                lg.info(format!("{} {}:{} is fresh",
-                             cat, kind, name));
-            } else {
-                lg.info(format!("{} {}:{} is not fresh",
-                             cat, kind, name))
-            }
-        });
+        if fresh {
+            info!("{} {}:{} is fresh", cat, kind, name);
+        } else {
+            info!("{} {}:{} is not fresh", cat, kind, name);
+        }
         fresh
     }
 
@@ -438,15 +413,15 @@ impl<'a> Prep<'a> {
                 let (port, chan) = Chan::new();
                 let blk = bo.take_unwrap();
 
-                // XXX: What happens if the task fails?
-                do spawn {
+                // FIXME: What happens if the task fails?
+                spawn(proc() {
                     let mut exe = Exec {
                         discovered_inputs: WorkMap::new(),
                         discovered_outputs: WorkMap::new(),
                     };
                     let v = blk(&mut exe);
                     chan.send((exe, v));
-                }
+                });
                 Work::from_task(self, port)
             }
         }
@@ -509,7 +484,6 @@ fn test() {
     let db_path = make_path(~"db.json");
 
     let cx = Context::new(RWArc::new(Database::new(db_path)),
-                          RWArc::new(Logger::new()),
                           Arc::new(TreeMap::new()));
 
     let s = cx.with_prep("test1", |prep| {
@@ -517,11 +491,11 @@ fn test() {
         let subcx = cx.clone();
         let pth = pth.clone();
 
-        let file_content = from_utf8_owned(File::open(&pth).read_to_end());
+        let file_content = from_utf8_owned(File::open(&pth).read_to_end()).unwrap();
 
         // FIXME (#9639): This needs to handle non-utf8 paths
         prep.declare_input("file", pth.as_str().unwrap(), file_content);
-        do prep.exec |_exe| {
+        prep.exec(proc(_exe) {
             let out = make_path(~"foo.o");
             // FIXME (#9639): This needs to handle non-utf8 paths
             run::process_status("gcc", [pth.as_str().unwrap().to_owned(),
@@ -533,8 +507,8 @@ fn test() {
 
             // FIXME (#9639): This needs to handle non-utf8 paths
             out.as_str().unwrap().to_owned()
-        }
+        })
     });
 
-    println(s);
+    println!("{}", s);
 }

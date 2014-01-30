@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -43,7 +43,7 @@
 //!
 //!     use std::prelude::*;
 
-#[crate_id = "std#0.9"];
+#[crate_id = "std#0.10-pre"];
 #[comment = "The Rust standard library"];
 #[license = "MIT/ASL2"];
 #[crate_type = "rlib"];
@@ -52,13 +52,14 @@
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://static.rust-lang.org/doc/master")];
 
-#[feature(macro_rules, globs, asm, managed_boxes, thread_local, link_args)];
+#[feature(macro_rules, globs, asm, managed_boxes, thread_local, link_args, simd)];
 
 // Don't link to std. We are std.
 #[no_std];
 
 #[deny(non_camel_case_types)];
 #[deny(missing_doc)];
+#[allow(unknown_features)];
 
 // When testing libstd, bring in libuv as the I/O backend so tests can print
 // things and all of the std::io tests have an I/O interface to run on top
@@ -76,6 +77,8 @@
 #[cfg(test)] pub use ops = realstd::ops;
 #[cfg(test)] pub use cmp = realstd::cmp;
 
+mod macros;
+
 mod rtdeps;
 
 /* The Prelude. */
@@ -85,6 +88,7 @@ pub mod prelude;
 
 /* Primitive types */
 
+#[path = "num/float_macros.rs"] mod float_macros;
 #[path = "num/int_macros.rs"]   mod int_macros;
 #[path = "num/uint_macros.rs"]  mod uint_macros;
 
@@ -109,6 +113,7 @@ pub mod char;
 pub mod tuple;
 
 pub mod vec;
+pub mod vec_ng;
 pub mod at_vec;
 pub mod str;
 

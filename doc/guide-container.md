@@ -90,7 +90,7 @@ Reaching the end of the iterator is signalled by returning `None` instead of
 # fn main() {}
 /// A stream of N zeroes
 struct ZeroStream {
-    priv remaining: uint
+    remaining: uint
 }
 
 impl ZeroStream {
@@ -130,7 +130,7 @@ A typical mutable container will implement at least `iter()`, `mut_iter()` and
 ### Freezing
 
 Unlike most other languages with external iterators, Rust has no *iterator
-invalidation*. As long an iterator is still in scope, the compiler will prevent
+invalidation*. As long as an iterator is still in scope, the compiler will prevent
 modification of the container through another handle.
 
 ~~~
@@ -218,12 +218,12 @@ let xs = [2u, 3, 5, 7, 11, 13, 17];
 
 // print out all the elements in the vector
 for x in xs.iter() {
-    println(x.to_str())
+    println!("{}", *x)
 }
 
 // print out all but the first 3 elements in the vector
 for x in xs.iter().skip(3) {
-    println(x.to_str())
+    println!("{}", *x)
 }
 ~~~
 
@@ -270,7 +270,7 @@ Containers can provide conversion from iterators through `collect` by
 implementing the `FromIterator` trait. For example, the implementation for
 vectors is as follows:
 
-~~~ {.xfail-test}
+~~~ {.ignore}
 impl<A> FromIterator<A> for ~[A] {
     pub fn from_iterator<T: Iterator<A>>(iterator: &mut T) -> ~[A] {
         let (lower, _) = iterator.size_hint();
@@ -288,7 +288,7 @@ impl<A> FromIterator<A> for ~[A] {
 The `Iterator` trait provides a `size_hint` default method, returning a lower
 bound and optionally on upper bound on the length of the iterator:
 
-~~~ {.xfail-test}
+~~~ {.ignore}
 fn size_hint(&self) -> (uint, Option<uint>) { (0, None) }
 ~~~
 
@@ -305,7 +305,7 @@ The `ZeroStream` from earlier can provide an exact lower and upper bound:
 # fn main() {}
 /// A stream of N zeroes
 struct ZeroStream {
-    priv remaining: uint
+    remaining: uint
 }
 
 impl ZeroStream {
@@ -336,8 +336,8 @@ The `DoubleEndedIterator` trait represents an iterator able to yield elements
 from either end of a range. It inherits from the `Iterator` trait and extends
 it with the `next_back` function.
 
-A `DoubleEndedIterator` can be flipped with the `invert` adaptor, returning
-another `DoubleEndedIterator` with `next` and `next_back` exchanged.
+A `DoubleEndedIterator` can have its direction changed with the `rev` adaptor,
+returning another `DoubleEndedIterator` with `next` and `next_back` exchanged.
 
 ~~~
 let xs = [1, 2, 3, 4, 5, 6];
@@ -347,7 +347,7 @@ println!("{:?}", it.next()); // prints `Some(&2)`
 println!("{:?}", it.next_back()); // prints `Some(&6)`
 
 // prints `5`, `4` and `3`
-for &x in it.invert() {
+for &x in it.rev() {
     println!("{}", x)
 }
 ~~~
@@ -366,7 +366,7 @@ let mut it = xs.iter().chain(ys.iter()).map(|&x| x * 2);
 println!("{:?}", it.next()); // prints `Some(2)`
 
 // prints `16`, `14`, `12`, `10`, `8`, `6`, `4`
-for x in it.invert() {
+for x in it.rev() {
     println!("{}", x);
 }
 ~~~

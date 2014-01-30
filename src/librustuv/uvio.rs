@@ -111,16 +111,16 @@ pub fn new_loop() -> ~rtio::EventLoop {
 #[test]
 fn test_callback_run_once() {
     use std::rt::rtio::EventLoop;
-    do run_in_bare_thread {
+    run_in_bare_thread(proc() {
         let mut event_loop = UvEventLoop::new();
         let mut count = 0;
         let count_ptr: *mut int = &mut count;
-        do event_loop.callback {
+        event_loop.callback(proc() {
             unsafe { *count_ptr += 1 }
-        }
+        });
         event_loop.run();
         assert_eq!(count, 1);
-    }
+    });
 }
 
 pub struct UvIoFactory {

@@ -202,7 +202,8 @@ pub struct TestOpts {
     logfile: Option<Path>
 }
 
-type OptRes = Result<TestOpts, ~str>;
+/// Result of parsing the options.
+pub type OptRes = Result<TestOpts, ~str>;
 
 fn optgroups() -> ~[getopts::groups::OptGroup] {
     ~[groups::optflag("", "ignored", "Run ignored tests"),
@@ -226,10 +227,10 @@ fn optgroups() -> ~[getopts::groups::OptGroup] {
 
 fn usage(binary: &str, helpstr: &str) {
     let message = format!("Usage: {} [OPTIONS] [FILTER]", binary);
-    println(groups::usage(message, optgroups()));
-    println("");
+    println!("{}", groups::usage(message, optgroups()));
+    println!("");
     if helpstr == "help" {
-        println("\
+        println!("{}", "\
 The FILTER is matched against the name of all tests to run, and if any tests
 have a substring match, only those tests are run.
 
@@ -474,7 +475,7 @@ impl<T: Writer> ConsoleTestState<T> {
         match self.log_out {
             None => (),
             Some(ref mut o) => {
-                let s = format!("{} {}", match *result {
+                let s = format!("{} {}\n", match *result {
                         TrOk => ~"ok",
                         TrFailed => ~"failed",
                         TrIgnored => ~"ignored",
@@ -673,8 +674,7 @@ pub fn run_tests_console(opts: &TestOpts,
 
 #[test]
 fn should_sort_failures_before_printing_them() {
-    use std::io::Decorator;
-    use std::io::mem::MemWriter;
+    use std::io::MemWriter;
     use std::str;
 
     let test_a = TestDesc {
@@ -705,7 +705,7 @@ fn should_sort_failures_before_printing_them() {
 
     st.write_failures();
     let s = match st.out {
-        Raw(ref m) => str::from_utf8(*m.inner_ref()),
+        Raw(ref m) => str::from_utf8(m.get_ref()).unwrap(),
         Pretty(_) => unreachable!()
     };
 
@@ -723,7 +723,8 @@ enum TestEvent {
     TeResult(TestDesc, TestResult),
 }
 
-type MonitorMsg = (TestDesc, TestResult);
+/// The message sent to the test monitor from the individual runners.
+pub type MonitorMsg = (TestDesc, TestResult);
 
 fn run_tests(opts: &TestOpts,
              tests: ~[TestDescAndFn],
@@ -754,7 +755,7 @@ fn run_tests(opts: &TestOpts,
 
     while pending > 0 || !remaining.is_empty() {
         while pending < concurrency && !remaining.is_empty() {
-            let test = remaining.pop();
+            let test = remaining.pop().unwrap();
             if concurrency == 1 {
                 // We are doing one test at a time so we can print the name
                 // of the test before we run it. Useful for debugging tests
@@ -872,7 +873,7 @@ pub fn run_test(force_ignore: bool,
     fn run_test_inner(desc: TestDesc,
                       monitor_ch: SharedChan<MonitorMsg>,
                       testfn: proc()) {
-        do spawn {
+        spawn(proc() {
             let mut task = task::task();
             task.name(match desc.name {
                 DynTestName(ref name) => SendStrOwned(name.clone()),
@@ -884,7 +885,7 @@ pub fn run_test(force_ignore: bool,
             let task_result = result_future.recv();
             let test_result = calc_result(&desc, task_result.is_ok());
             monitor_ch.send((desc.clone(), test_result));
-        }
+        });
     }
 
     match testfn {
@@ -894,7 +895,7 @@ pub fn run_test(force_ignore: bool,
             return;
         }
         StaticBenchFn(benchfn) => {
-            let bs = ::test::bench::benchmark(benchfn);
+            let bs = ::test::bench::benchmark(|harness| benchfn(harness));
             monitor_ch.send((desc, TrBench(bs)));
             return;
         }
@@ -980,7 +981,7 @@ impl MetricMap {
                     if delta.abs() <= noise {
                         LikelyNoise
                     } else {
-                        let pct = delta.abs() / (vold.value).max(&f64::epsilon) * 100.0;
+                        let pct = delta.abs() / (vold.value).max(&f64::EPSILON) * 100.0;
                         if vold.noise < 0.0 {
                             // When 'noise' is negative, it means we want
                             // to see deltas that go up over time, and can

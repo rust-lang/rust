@@ -18,8 +18,7 @@
 
 extern mod extra;
 
-use std::io::mem::MemWriter;
-use std::io::Decorator;
+use std::io::MemWriter;
 use std::rand::{random, Rand};
 use extra::serialize::{Encodable, Decodable};
 use extra::ebml;
@@ -61,7 +60,7 @@ fn roundtrip<'a, T: Rand + Eq + Encodable<Encoder> +
     let mut w = MemWriter::new();
     let mut e = Encoder(&mut w);
     obj.encode(&mut e);
-    let doc = ebml::reader::Doc(@w.inner_ref().to_owned());
+    let doc = ebml::reader::Doc(@w.get_ref());
     let mut dec = Decoder(doc);
     let obj2 = Decodable::decode(&mut dec);
     assert!(obj == obj2);
@@ -73,9 +72,9 @@ pub fn main() {
     roundtrip::<C>();
     roundtrip::<D>();
 
-    20.times(|| {
+    for _ in range(0, 20) {
         roundtrip::<E>();
         roundtrip::<F>();
         roundtrip::<G<int>>();
-    })
+    }
 }

@@ -36,8 +36,8 @@ impl<T:Ord> Mutable for PriorityQueue<T> {
 impl<T:Ord> PriorityQueue<T> {
     /// An iterator visiting all values in underlying vector, in
     /// arbitrary order.
-    pub fn iter<'a>(&'a self) -> PriorityQueueIterator<'a, T> {
-        PriorityQueueIterator { iter: self.data.iter() }
+    pub fn iter<'a>(&'a self) -> Items<'a, T> {
+        Items { iter: self.data.iter() }
     }
 
     /// Returns the greatest item in the queue - fails if empty
@@ -59,7 +59,7 @@ impl<T:Ord> PriorityQueue<T> {
 
     /// Pop the greatest item from the queue - fails if empty
     pub fn pop(&mut self) -> T {
-        let mut item = self.data.pop();
+        let mut item = self.data.pop().unwrap();
         if !self.is_empty() {
             swap(&mut item, &mut self.data[0]);
             self.siftdown(0);
@@ -177,11 +177,11 @@ impl<T:Ord> PriorityQueue<T> {
 }
 
 /// PriorityQueue iterator
-pub struct PriorityQueueIterator <'a, T> {
-    priv iter: vec::VecIterator<'a, T>,
+pub struct Items <'a, T> {
+    priv iter: vec::Items<'a, T>,
 }
 
-impl<'a, T> Iterator<&'a T> for PriorityQueueIterator<'a, T> {
+impl<'a, T> Iterator<&'a T> for Items<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<(&'a T)> { self.iter.next() }
 
@@ -234,8 +234,8 @@ mod tests {
         sorted.sort();
         let mut heap = PriorityQueue::from_vec(data);
         while !heap.is_empty() {
-            assert_eq!(heap.top(), sorted.last());
-            assert_eq!(heap.pop(), sorted.pop());
+            assert_eq!(heap.top(), sorted.last().unwrap());
+            assert_eq!(heap.pop(), sorted.pop().unwrap());
         }
     }
 

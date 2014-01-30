@@ -10,23 +10,24 @@
 
 
 use back::abi;
-use back::link::{mangle_internal_name_by_path_and_seq};
+use back::link::mangle_internal_name_by_path_and_seq;
 use lib::llvm::ValueRef;
 use middle::moves;
 use middle::trans::base::*;
 use middle::trans::build::*;
 use middle::trans::common::*;
-use middle::trans::datum::{Datum, INIT};
+use middle::trans::datum::{Datum, DatumBlock, Expr, Lvalue, rvalue_scratch_datum};
 use middle::trans::debuginfo;
 use middle::trans::expr;
-use middle::trans::glue;
 use middle::trans::type_of::*;
+use middle::trans::type_::Type;
 use middle::ty;
+use util::ppaux::Repr;
 use util::ppaux::ty_to_str;
 
 use std::vec;
 use syntax::ast;
-use syntax::ast_map::path_name;
+use syntax::ast_map::PathName;
 use syntax::ast_util;
 use syntax::parse::token::special_idents;
 
@@ -69,9 +70,9 @@ use syntax::parse::token::special_idents;
 // closure".
 //
 // Typically an opaque closure suffices because we only manipulate it
-// by ptr.  The routine Type::opaque_box().ptr_to() returns an
-// appropriate type for such an opaque closure; it allows access to
-// the box fields, but not the closure_data itself.
+// by ptr.  The routine Type::at_box().ptr_to() returns an appropriate
+// type for such an opaque closure; it allows access to the box fields,
+// but not the closure_data itself.
 //
 // But sometimes, such as when cloning or freeing a closure, we need
 // to know the full information.  That is where the type descriptor
@@ -112,7 +113,7 @@ pub enum EnvAction {
 
 pub struct EnvValue {
     action: EnvAction,
-    datum: Datum
+    datum: Datum<Lvalue>
 }
 
 impl EnvAction {
@@ -129,11 +130,6 @@ impl EnvValue {
     pub fn to_str(&self, ccx: &CrateContext) -> ~str {
         format!("{}({})", self.action.to_str(), self.datum.to_str(ccx))
     }
-}
-
-pub fn mk_tuplified_uniq_cbox_ty(tcx: ty::ctxt, cdata_ty: ty::t) -> ty::t {
-    let cbox_ty = tuplify_box_ty(tcx, cdata_ty);
-    return ty::mk_imm_uniq(tcx, cbox_ty);
 }
 
 // Given a closure ty, emits a corresponding tuple ty
@@ -155,16 +151,11 @@ pub fn mk_closure_tys(tcx: ty::ctxt,
     return cdata_ty;
 }
 
-fn heap_for_unique_closure(bcx: @Block, t: ty::t) -> heap {
-    if ty::type_contents(bcx.tcx(), t).owns_managed() {
-        heap_managed_unique
-    } else {
-        heap_exchange_closure
-    }
-}
-
-pub fn allocate_cbox(bcx: @Block, sigil: ast::Sigil, cdata_ty: ty::t)
-                  -> Result {
+pub fn allocate_cbox<'a>(
+                     bcx: &'a Block<'a>,
+                     sigil: ast::Sigil,
+                     cdata_ty: ty::t)
+                     -> Result<'a> {
     let _icx = push_ctxt("closure::allocate_cbox");
     let ccx = bcx.ccx();
     let tcx = ccx.tcx;
@@ -175,7 +166,7 @@ pub fn allocate_cbox(bcx: @Block, sigil: ast::Sigil, cdata_ty: ty::t)
             tcx.sess.bug("trying to trans allocation of @fn")
         }
         ast::OwnedSigil => {
-            malloc_raw(bcx, cdata_ty, heap_for_unique_closure(bcx, cdata_ty))
+            malloc_raw(bcx, cdata_ty, heap_exchange_closure)
         }
         ast::BorrowedSigil => {
             let cbox_ty = tuplify_box_ty(tcx, cdata_ty);
@@ -185,20 +176,21 @@ pub fn allocate_cbox(bcx: @Block, sigil: ast::Sigil, cdata_ty: ty::t)
     }
 }
 
-pub struct ClosureResult {
-    llbox: ValueRef, // llvalue of ptr to closure
-    cdata_ty: ty::t, // type of the closure data
-    bcx: @Block       // final bcx
+pub struct ClosureResult<'a> {
+    llbox: ValueRef,    // llvalue of ptr to closure
+    cdata_ty: ty::t,    // type of the closure data
+    bcx: &'a Block<'a>  // final bcx
 }
 
 // Given a block context and a list of tydescs and values to bind
 // construct a closure out of them. If copying is true, it is a
 // heap allocated closure that copies the upvars into environment.
 // Otherwise, it is stack allocated and copies pointers to the upvars.
-pub fn store_environment(bcx: @Block,
+pub fn store_environment<'a>(
+                         bcx: &'a Block<'a>,
                          bound_values: ~[EnvValue],
                          sigil: ast::Sigil)
-                         -> ClosureResult {
+                         -> ClosureResult<'a> {
     let _icx = push_ctxt("closure::store_environment");
     let ccx = bcx.ccx();
     let tcx = ccx.tcx;
@@ -228,7 +220,7 @@ pub fn store_environment(bcx: @Block,
 
     // Copy expr values into boxed bindings.
     let mut bcx = bcx;
-    for (i, bv) in bound_values.iter().enumerate() {
+    for (i, bv) in bound_values.move_iter().enumerate() {
         debug!("Copy {} into closure", bv.to_str(ccx));
 
         if ccx.sess.asm_comments() {
@@ -239,17 +231,13 @@ pub fn store_environment(bcx: @Block,
         let bound_data = GEPi(bcx, llbox, [0u, abi::box_field_body, i]);
 
         match bv.action {
-            EnvCopy => {
-                bcx = bv.datum.copy_to(bcx, INIT, bound_data);
-            }
-            EnvMove => {
-                bcx = bv.datum.move_to(bcx, INIT, bound_data);
+            EnvCopy | EnvMove => {
+                bcx = bv.datum.store_to(bcx, bound_data);
             }
             EnvRef => {
-                Store(bcx, bv.datum.to_ref_llval(bcx), bound_data);
+                Store(bcx, bv.datum.to_llref(), bound_data);
             }
         }
-
     }
 
     ClosureResult { llbox: llbox, cdata_ty: cdata_ty, bcx: bcx }
@@ -257,9 +245,10 @@ pub fn store_environment(bcx: @Block,
 
 // Given a context and a list of upvars, build a closure. This just
 // collects the upvars and packages them up for store_environment.
-pub fn build_closure(bcx0: @Block,
+fn build_closure<'a>(bcx0: &'a Block<'a>,
                      cap_vars: &[moves::CaptureVar],
-                     sigil: ast::Sigil) -> ClosureResult {
+                     sigil: ast::Sigil)
+                     -> ClosureResult<'a> {
     let _icx = push_ctxt("closure::build_closure");
 
     // If we need to, package up the iterator body to call
@@ -293,25 +282,22 @@ pub fn build_closure(bcx0: @Block,
 // Given an enclosing block context, a new function context, a closure type,
 // and a list of upvars, generate code to load and populate the environment
 // with the upvars and type descriptors.
-pub fn load_environment(fcx: @FunctionContext,
-                        cdata_ty: ty::t,
+fn load_environment<'a>(bcx: &'a Block<'a>, cdata_ty: ty::t,
                         cap_vars: &[moves::CaptureVar],
-                        sigil: ast::Sigil) {
+                        sigil: ast::Sigil) -> &'a Block<'a> {
     let _icx = push_ctxt("closure::load_environment");
 
     // Don't bother to create the block if there's nothing to load
     if cap_vars.len() == 0 {
-        return;
+        return bcx;
     }
 
-    let bcx = fcx.entry_bcx.get().unwrap();
-
     // Load a pointer to the closure data, skipping over the box header:
-    let llcdata = opaque_box_body(bcx, cdata_ty, fcx.llenv.get());
+    let llcdata = at_box_body(bcx, cdata_ty, bcx.fcx.llenv.unwrap());
 
     // Store the pointer to closure data in an alloca for debug info because that's what the
     // llvm.dbg.declare intrinsic expects
-    let env_pointer_alloca = if fcx.ccx.sess.opts.extra_debuginfo {
+    let env_pointer_alloca = if bcx.ccx().sess.opts.extra_debuginfo {
         let alloc = alloc_ty(bcx, ty::mk_mut_ptr(bcx.tcx(), cdata_ty), "__debuginfo_env_ptr");
         Store(bcx, llcdata, alloc);
         Some(alloc)
@@ -330,7 +316,7 @@ pub fn load_environment(fcx: @FunctionContext,
         let def_id = ast_util::def_id_of_def(cap_var.def);
 
         {
-            let mut llupvars = fcx.llupvars.borrow_mut();
+            let mut llupvars = bcx.fcx.llupvars.borrow_mut();
             llupvars.get().insert(def_id.node, upvarptr);
         }
 
@@ -347,15 +333,25 @@ pub fn load_environment(fcx: @FunctionContext,
 
         i += 1u;
     }
+
+    bcx
 }
 
-pub fn trans_expr_fn(bcx: @Block,
+fn fill_fn_pair(bcx: &Block, pair: ValueRef, llfn: ValueRef, llenvptr: ValueRef) {
+    Store(bcx, llfn, GEPi(bcx, pair, [0u, abi::fn_field_code]));
+    let llenvptr = PointerCast(bcx, llenvptr, Type::i8p());
+    Store(bcx, llenvptr, GEPi(bcx, pair, [0u, abi::fn_field_box]));
+}
+
+pub fn trans_expr_fn<'a>(
+                     bcx: &'a Block<'a>,
                      sigil: ast::Sigil,
-                     decl: &ast::fn_decl,
+                     decl: &ast::FnDecl,
                      body: &ast::Block,
                      outer_id: ast::NodeId,
                      user_id: ast::NodeId,
-                     dest: expr::Dest) -> @Block {
+                     dest: expr::Dest)
+                     -> &'a Block<'a> {
     /*!
      *
      * Translates the body of a closure expression.
@@ -392,118 +388,124 @@ pub fn trans_expr_fn(bcx: @Block,
     };
 
     let sub_path = vec::append_one(bcx.fcx.path.clone(),
-                                   path_name(special_idents::anon));
-    // XXX: Bad copy.
+                                   PathName(special_idents::anon));
+    // FIXME: Bad copy.
     let s = mangle_internal_name_by_path_and_seq(ccx,
                                                  sub_path.clone(),
                                                  "expr_fn");
-    let llfn = decl_internal_rust_fn(ccx, f.sig.inputs, f.sig.output, s);
+    let llfn = decl_internal_rust_fn(ccx, true, f.sig.inputs, f.sig.output, s);
 
     // set an inline hint for all closures
     set_inline_hint(llfn);
 
-    let Result {bcx: bcx, val: closure} = match sigil {
-        ast::BorrowedSigil | ast::ManagedSigil | ast::OwnedSigil => {
-            let cap_vars = {
-                let capture_map = ccx.maps.capture_map.borrow();
-                capture_map.get().get_copy(&user_id)
-            };
-            let ClosureResult {llbox, cdata_ty, bcx}
-                = build_closure(bcx, cap_vars, sigil);
-            trans_closure(ccx,
-                          sub_path,
-                          decl,
-                          body,
-                          llfn,
-                          no_self,
-                          bcx.fcx.param_substs,
-                          user_id,
-                          [],
-                          ty::ty_fn_ret(fty),
-                          |fcx| load_environment(fcx, cdata_ty, cap_vars, sigil));
-            rslt(bcx, llbox)
+    let cap_vars = {
+        let capture_map = ccx.maps.capture_map.borrow();
+        capture_map.get().get_copy(&user_id)
+    };
+    let ClosureResult {llbox, cdata_ty, bcx} = build_closure(bcx, cap_vars, sigil);
+    trans_closure(ccx, sub_path, decl, body, llfn,
+                    bcx.fcx.param_substs, user_id,
+                    [], ty::ty_fn_ret(fty),
+                    |bcx| load_environment(bcx, cdata_ty, cap_vars, sigil));
+    fill_fn_pair(bcx, dest_addr, llfn, llbox);
+
+    bcx
+}
+
+pub fn get_wrapper_for_bare_fn(ccx: @CrateContext,
+                               closure_ty: ty::t,
+                               def: ast::Def,
+                               fn_ptr: ValueRef,
+                               is_local: bool) -> ValueRef {
+
+    let def_id = match def {
+        ast::DefFn(did, _) | ast::DefStaticMethod(did, _, _) |
+        ast::DefVariant(_, did, _) | ast::DefStruct(did) => did,
+        _ => {
+            ccx.sess.bug(format!("get_wrapper_for_bare_fn: \
+                                  expected a statically resolved fn, got {:?}",
+                                  def));
         }
     };
-    fill_fn_pair(bcx, dest_addr, llfn, closure);
 
-    return bcx;
-}
-
-pub fn make_closure_glue(cx: @Block,
-                         v: ValueRef,
-                         t: ty::t,
-                         glue_fn: |@Block, v: ValueRef, t: ty::t|
-                                   -> @Block)
-                         -> @Block {
-    let _icx = push_ctxt("closure::make_closure_glue");
-    let bcx = cx;
-    let tcx = cx.tcx();
-
-    let sigil = ty::ty_closure_sigil(t);
-    match sigil {
-        ast::BorrowedSigil => bcx,
-        ast::OwnedSigil | ast::ManagedSigil => {
-            let box_cell_v = GEPi(cx, v, [0u, abi::fn_field_box]);
-            let box_ptr_v = Load(cx, box_cell_v);
-            with_cond(cx, IsNotNull(cx, box_ptr_v), |bcx| {
-                let closure_ty = ty::mk_opaque_closure_ptr(tcx, sigil);
-                glue_fn(bcx, box_cell_v, closure_ty)
-            })
-        }
-    }
-}
-
-pub fn make_opaque_cbox_drop_glue(
-    bcx: @Block,
-    sigil: ast::Sigil,
-    cboxptr: ValueRef)     // ptr to the opaque closure
-    -> @Block {
-    let _icx = push_ctxt("closure::make_opaque_cbox_drop_glue");
-    match sigil {
-        ast::BorrowedSigil => bcx,
-        ast::ManagedSigil => {
-            bcx.tcx().sess.bug("trying to trans drop glue of @fn")
-        }
-        ast::OwnedSigil => {
-            glue::free_ty(
-                bcx, cboxptr,
-                ty::mk_opaque_closure_ptr(bcx.tcx(), sigil))
-        }
-    }
-}
-
-/// `cbox` is a pointer to a pointer to an opaque closure.
-pub fn make_opaque_cbox_free_glue(bcx: @Block,
-                                  sigil: ast::Sigil,
-                                  cbox: ValueRef)
-                                  -> @Block {
-    let _icx = push_ctxt("closure::make_opaque_cbox_free_glue");
-    match sigil {
-        ast::BorrowedSigil => {
-            return bcx;
-        }
-        ast::ManagedSigil | ast::OwnedSigil => {
-            /* hard cases: fallthrough to code below */
+    {
+        let cache = ccx.closure_bare_wrapper_cache.borrow();
+        match cache.get().find(&fn_ptr) {
+            Some(&llval) => return llval,
+            None => {}
         }
     }
 
-    let ccx = bcx.ccx();
-    with_cond(bcx, IsNotNull(bcx, cbox), |bcx| {
-        // Load the type descr found in the cbox
-        let lltydescty = ccx.tydesc_type.ptr_to();
-        let cbox = Load(bcx, cbox);
-        let tydescptr = GEPi(bcx, cbox, [0u, abi::box_field_tydesc]);
-        let tydesc = Load(bcx, tydescptr);
-        let tydesc = PointerCast(bcx, tydesc, lltydescty);
+    let tcx = ccx.tcx;
 
-        // Drop the tuple data then free the descriptor
-        let cdata = GEPi(bcx, cbox, [0u, abi::box_field_body]);
-        glue::call_tydesc_glue_full(bcx, cdata, tydesc,
-                                    abi::tydesc_field_drop_glue, None);
+    debug!("get_wrapper_for_bare_fn(closure_ty={})", closure_ty.repr(tcx));
 
-        // Free the ty descr (if necc) and the box itself
-        glue::trans_exchange_free(bcx, cbox);
+    let f = match ty::get(closure_ty).sty {
+        ty::ty_closure(ref f) => f,
+        _ => {
+            ccx.sess.bug(format!("get_wrapper_for_bare_fn: \
+                                  expected a closure ty, got {}",
+                                  closure_ty.repr(tcx)));
+        }
+    };
 
-        bcx
-    })
+    let path = ty::item_path(tcx, def_id);
+    let name = mangle_internal_name_by_path_and_seq(ccx, path, "as_closure");
+    let llfn = if is_local {
+        decl_internal_rust_fn(ccx, true, f.sig.inputs, f.sig.output, name)
+    } else {
+        decl_rust_fn(ccx, true, f.sig.inputs, f.sig.output, name)
+    };
+
+    {
+        let mut cache = ccx.closure_bare_wrapper_cache.borrow_mut();
+        cache.get().insert(fn_ptr, llfn);
+    }
+
+    // This is only used by statics inlined from a different crate.
+    if !is_local {
+        // Don't regenerate the wrapper, just reuse the original one.
+        return llfn;
+    }
+
+    let _icx = push_ctxt("closure::get_wrapper_for_bare_fn");
+
+    let fcx = new_fn_ctxt(ccx, ~[], llfn, true, f.sig.output, None);
+    init_function(&fcx, true, f.sig.output, None);
+    let bcx = fcx.entry_bcx.get().unwrap();
+
+    let args = create_datums_for_fn_args(&fcx, ty::ty_fn_args(closure_ty));
+    let mut llargs = ~[];
+    match fcx.llretptr.get() {
+        Some(llretptr) => {
+            llargs.push(llretptr);
+        }
+        None => {}
+    }
+    llargs.extend(&mut args.iter().map(|arg| arg.val));
+
+    let retval = Call(bcx, fn_ptr, llargs, []);
+    if type_is_zero_size(ccx, f.sig.output) || fcx.llretptr.get().is_some() {
+        RetVoid(bcx);
+    } else {
+        Ret(bcx, retval);
+    }
+
+    // HACK(eddyb) finish_fn cannot be used here, we returned directly.
+    debuginfo::clear_source_location(&fcx);
+    fcx.cleanup();
+
+    llfn
+}
+
+pub fn make_closure_from_bare_fn<'a>(bcx: &'a Block<'a>,
+                                     closure_ty: ty::t,
+                                     def: ast::Def,
+                                     fn_ptr: ValueRef)
+                                     -> DatumBlock<'a, Expr>  {
+    let scratch = rvalue_scratch_datum(bcx, closure_ty, "__adjust");
+    let wrapper = get_wrapper_for_bare_fn(bcx.ccx(), closure_ty, def, fn_ptr, true);
+    fill_fn_pair(bcx, scratch.val, wrapper, C_null(Type::i8p()));
+
+    DatumBlock(bcx, scratch.to_expr_datum())
 }

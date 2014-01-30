@@ -8,15 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// XXX: this file probably shouldn't exist
+// FIXME: this file probably shouldn't exist
 
 #[macro_escape];
 
 use std::fmt;
-use std::libc;
 
 // Indicates whether we should perform expensive sanity checks, including rtassert!
-// XXX: Once the runtime matures remove the `true` below to turn off rtassert, etc.
+// FIXME: Once the runtime matures remove the `true` below to turn off rtassert, etc.
 pub static ENFORCE_SANITY: bool = true || !cfg!(rtopt) || cfg!(rtdebug) || cfg!(rtassert);
 
 macro_rules! rterrln (
@@ -124,6 +123,7 @@ memory and partly incapable of presentation to others.",
     abort();
 
     fn abort() -> ! {
-        unsafe { libc::abort() }
+        use std::unstable::intrinsics;
+        unsafe { intrinsics::abort() }
     }
 }

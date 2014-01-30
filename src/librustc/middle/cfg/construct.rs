@@ -101,7 +101,6 @@ impl CFGBuilder {
                 self.add_node(pat.id, [pred])
             }
 
-            ast::PatBox(subpat) |
             ast::PatUniq(subpat) |
             ast::PatRegion(subpat) |
             ast::PatIdent(_, _, Some(subpat)) => {
@@ -356,8 +355,8 @@ impl CFGBuilder {
                 self.call(expr, pred, func, *args)
             }
 
-            ast::ExprMethodCall(_, rcvr, _, _, ref args, _) => {
-                self.call(expr, pred, rcvr, *args)
+            ast::ExprMethodCall(_, _, _, ref args, _) => {
+                self.call(expr, pred, args[0], args.slice_from(1))
             }
 
             ast::ExprIndex(_, l, r) |
@@ -394,8 +393,11 @@ impl CFGBuilder {
                 self.straightline(expr, pred, [l, r])
             }
 
+            ast::ExprBox(p, e) => {
+                self.straightline(expr, pred, [p, e])
+            }
+
             ast::ExprAddrOf(_, e) |
-            ast::ExprDoBody(e) |
             ast::ExprCast(e, _) |
             ast::ExprUnary(_, _, e) |
             ast::ExprParen(e) |
@@ -407,7 +409,6 @@ impl CFGBuilder {
             ast::ExprLogLevel |
             ast::ExprMac(..) |
             ast::ExprInlineAsm(..) |
-            ast::ExprSelf |
             ast::ExprFnBlock(..) |
             ast::ExprProc(..) |
             ast::ExprLit(..) |
@@ -492,7 +493,7 @@ impl CFGBuilder {
                   label: Option<ast::Name>) -> LoopScope {
         match label {
             None => {
-                return *self.loop_scopes.last();
+                return *self.loop_scopes.last().unwrap();
             }
 
             Some(_) => {

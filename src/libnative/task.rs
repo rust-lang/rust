@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -27,12 +27,14 @@ use std::unstable::stack;
 
 use io;
 use task;
-use bookeeping;
+use bookkeeping;
 
 /// Creates a new Task which is ready to execute as a 1:1 task.
-pub fn new() -> ~Task {
+pub fn new(stack_bounds: (uint, uint)) -> ~Task {
     let mut task = ~Task::new();
-    task.put_runtime(ops() as ~rt::Runtime);
+    let mut ops = ops();
+    ops.stack_bounds = stack_bounds;
+    task.put_runtime(ops as ~rt::Runtime);
     return task;
 }
 
@@ -41,7 +43,8 @@ fn ops() -> ~Ops {
         lock: unsafe { Mutex::new() },
         awoken: false,
         io: io::IoFactory::new(),
-        stack_bounds: None,
+        // these *should* get overwritten
+        stack_bounds: (0, 0),
     }
 }
 
@@ -79,7 +82,7 @@ pub fn spawn_opts(opts: TaskOpts, f: proc()) {
     // Note that this increment must happen *before* the spawn in order to
     // guarantee that if this task exits it will always end up waiting for the
     // spawned task to exit.
-    bookeeping::increment();
+    bookkeeping::increment();
 
     // Spawning a new OS thread guarantees that __morestack will never get
     // triggered, but we must manually set up the actual stack bounds once this
@@ -95,13 +98,13 @@ pub fn spawn_opts(opts: TaskOpts, f: proc()) {
             stack::record_stack_bounds(my_stack - stack + 1024, my_stack);
         }
         let mut ops = ops;
-        ops.stack_bounds = Some((my_stack - stack + 1024, my_stack));
+        ops.stack_bounds = (my_stack - stack + 1024, my_stack);
 
         let mut f = Some(f);
         let mut task = task;
         task.put_runtime(ops as ~rt::Runtime);
         task.run(|| { f.take_unwrap()() });
-        bookeeping::decrement();
+        bookkeeping::decrement();
     })
 }
 
@@ -115,7 +118,7 @@ struct Ops {
     // This field holds the known bounds of the stack in (lo, hi) form. Not all
     // native tasks necessarily know their precise bounds, hence this is
     // optional.
-    stack_bounds: Option<(uint, uint)>,
+    stack_bounds: (uint, uint),
 }
 
 impl rt::Runtime for Ops {
@@ -137,7 +140,7 @@ impl rt::Runtime for Ops {
         self as ~Any
     }
 
-    fn stack_bounds(&self) -> Option<(uint, uint)> { self.stack_bounds }
+    fn stack_bounds(&self) -> (uint, uint) { self.stack_bounds }
 
     // This function gets a little interesting. There are a few safety and
     // ownership violations going on here, but this is all done in the name of
@@ -269,19 +272,19 @@ mod tests {
     #[test]
     fn smoke() {
         let (p, c) = Chan::new();
-        do spawn {
+        spawn(proc() {
             c.send(());
-        }
+        });
         p.recv();
     }
 
     #[test]
     fn smoke_fail() {
         let (p, c) = Chan::<()>::new();
-        do spawn {
+        spawn(proc() {
             let _c = c;
             fail!()
-        }
+        });
         assert_eq!(p.recv_opt(), None);
     }
 
@@ -308,38 +311,38 @@ mod tests {
     #[test]
     fn yield_test() {
         let (p, c) = Chan::new();
-        do spawn {
-            10.times(task::deschedule);
+        spawn(proc() {
+            for _ in range(0, 10) { task::deschedule(); }
             c.send(());
-        }
+        });
         p.recv();
     }
 
     #[test]
     fn spawn_children() {
         let (p, c) = Chan::new();
-        do spawn {
+        spawn(proc() {
             let (p, c2) = Chan::new();
-            do spawn {
+            spawn(proc() {
                 let (p, c3) = Chan::new();
-                do spawn {
+                spawn(proc() {
                     c3.send(());
-                }
+                });
                 p.recv();
                 c2.send(());
-            }
+            });
             p.recv();
             c.send(());
-        }
+        });
         p.recv();
     }
 
     #[test]
     fn spawn_inherits() {
         let (p, c) = Chan::new();
-        do spawn {
+        spawn(proc() {
             let c = c;
-            do spawn {
+            spawn(proc() {
                 let mut task: ~Task = Local::take();
                 match task.maybe_take_runtime::<Ops>() {
                     Some(ops) => {
@@ -349,8 +352,8 @@ mod tests {
                 }
                 Local::put(task);
                 c.send(());
-            }
-        }
+            });
+        });
         p.recv();
     }
 }

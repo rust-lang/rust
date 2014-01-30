@@ -72,7 +72,7 @@ use ptr::RawPtr;
 use ptr;
 use str::StrSlice;
 use str;
-use vec::{CopyableVector, ImmutableVector, MutableVector};
+use vec::{CloneableVector, ImmutableVector, MutableVector};
 use vec;
 use unstable::intrinsics;
 
@@ -167,12 +167,12 @@ impl CString {
         if self.buf.is_null() { return None; }
         let buf = self.as_bytes();
         let buf = buf.slice_to(buf.len()-1); // chop off the trailing NUL
-        str::from_utf8_opt(buf)
+        str::from_utf8(buf)
     }
 
     /// Return a CString iterator.
-    pub fn iter<'a>(&'a self) -> CStringIterator<'a> {
-        CStringIterator {
+    pub fn iter<'a>(&'a self) -> CChars<'a> {
+        CChars {
             ptr: self.buf,
             lifetime: unsafe { cast::transmute(self.buf) },
         }
@@ -183,7 +183,7 @@ impl Drop for CString {
     fn drop(&mut self) {
         if self.owns_buffer_ {
             unsafe {
-                libc::free(self.buf as *libc::c_void)
+                libc::free(self.buf as *mut libc::c_void)
             }
         }
     }
@@ -330,12 +330,12 @@ fn check_for_null(v: &[u8], buf: *mut libc::c_char) {
 /// External iterator for a CString's bytes.
 ///
 /// Use with the `std::iter` module.
-pub struct CStringIterator<'a> {
+pub struct CChars<'a> {
     priv ptr: *libc::c_char,
     priv lifetime: &'a libc::c_char, // FIXME: #5922
 }
 
-impl<'a> Iterator<libc::c_char> for CStringIterator<'a> {
+impl<'a> Iterator<libc::c_char> for CChars<'a> {
     fn next(&mut self) -> Option<libc::c_char> {
         let ch = unsafe { *self.ptr };
         if ch == 0 {
@@ -459,7 +459,7 @@ mod tests {
     #[test]
     fn test_unwrap() {
         let c_str = "hello".to_c_str();
-        unsafe { libc::free(c_str.unwrap() as *libc::c_void) }
+        unsafe { libc::free(c_str.unwrap() as *mut libc::c_void) }
     }
 
     #[test]

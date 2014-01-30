@@ -16,6 +16,8 @@ Higher level communication abstractions.
 
 #[allow(missing_doc)];
 
+use std::comm;
+
 /// An extension of `pipes::stream` that allows both sending and receiving.
 pub struct DuplexStream<T, U> {
     priv chan: Chan<T>,
@@ -40,7 +42,7 @@ impl<T:Send,U:Send> DuplexStream<T, U> {
     pub fn recv(&self) -> U {
         self.port.recv()
     }
-    pub fn try_recv(&self) -> Option<U> {
+    pub fn try_recv(&self) -> comm::TryRecvResult<U> {
         self.port.try_recv()
     }
     pub fn recv_opt(&self) -> Option<U> {
@@ -77,11 +79,11 @@ impl<T: Send> SyncPort<T> {
         })
     }
 
-    pub fn try_recv(&self) -> Option<T> {
-        self.duplex_stream.try_recv().map(|val| {
-            self.duplex_stream.try_send(());
-            val
-        })
+    pub fn try_recv(&self) -> comm::TryRecvResult<T> {
+        match self.duplex_stream.try_recv() {
+            comm::Data(t) => { self.duplex_stream.try_send(()); comm::Data(t) }
+            state => state,
+        }
     }
 }
 
@@ -113,9 +115,9 @@ mod test {
     pub fn basic_rendezvous_test() {
         let (port, chan) = rendezvous();
 
-        do spawn {
+        spawn(proc() {
             chan.send("abc");
-        }
+        });
 
         assert!(port.recv() == "abc");
     }
@@ -124,29 +126,29 @@ mod test {
     fn recv_a_lot() {
         // Rendezvous streams should be able to handle any number of messages being sent
         let (port, chan) = rendezvous();
-        do spawn {
-            1000000.times(|| { chan.send(()) })
-        }
-        1000000.times(|| { port.recv() })
+        spawn(proc() {
+            for _ in range(0, 10000) { chan.send(()); }
+        });
+        for _ in range(0, 10000) { port.recv(); }
     }
 
     #[test]
     fn send_and_fail_and_try_recv() {
         let (port, chan) = rendezvous();
-        do spawn {
+        spawn(proc() {
             chan.duplex_stream.send(()); // Can't access this field outside this module
             fail!()
-        }
+        });
         port.recv()
     }
 
     #[test]
     fn try_send_and_recv_then_fail_before_ack() {
         let (port, chan) = rendezvous();
-        do spawn {
+        spawn(proc() {
             port.duplex_stream.recv();
             fail!()
-        }
+        });
         chan.try_send(());
     }
 
@@ -154,10 +156,10 @@ mod test {
     #[should_fail]
     fn send_and_recv_then_fail_before_ack() {
         let (port, chan) = rendezvous();
-        do spawn {
+        spawn(proc() {
             port.duplex_stream.recv();
             fail!()
-        }
+        });
         chan.send(());
     }
 }

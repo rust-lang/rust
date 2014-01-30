@@ -12,8 +12,6 @@
 
 use cast;
 use iter::Iterator;
-use libc::{c_void, uintptr_t};
-use libc;
 use mem;
 use ops::Drop;
 use option::{Option, None, Some};
@@ -48,6 +46,7 @@ pub struct LocalHeap {
 }
 
 impl LocalHeap {
+    #[inline]
     pub fn new() -> LocalHeap {
         let region = MemoryRegion {
             allocations: ~[],
@@ -60,6 +59,7 @@ impl LocalHeap {
         }
     }
 
+    #[inline]
     pub fn alloc(&mut self, td: *TyDesc, size: uint) -> *mut Box {
         let total_size = global_heap::get_box_size(size, unsafe { (*td).align });
         let alloc = self.memory_region.malloc(total_size);
@@ -80,6 +80,7 @@ impl LocalHeap {
         return alloc;
     }
 
+    #[inline]
     pub fn realloc(&mut self, ptr: *mut Box, size: uint) -> *mut Box {
         // Make sure that we can't use `mybox` outside of this scope
         let total_size = size + mem::size_of::<Box>();
@@ -100,6 +101,7 @@ impl LocalHeap {
         return new_box;
     }
 
+    #[inline]
     pub fn free(&mut self, alloc: *mut Box) {
         {
             // Make sure that we can't use `mybox` outside of this scope
@@ -196,6 +198,7 @@ impl AllocHeader {
 }
 
 impl MemoryRegion {
+    #[inline]
     fn malloc(&mut self, size: uint) -> *mut Box {
         let total_size = size + AllocHeader::size();
         let alloc: *AllocHeader = unsafe {
@@ -210,6 +213,7 @@ impl MemoryRegion {
         return alloc.as_box();
     }
 
+    #[inline]
     fn realloc(&mut self, alloc: *mut Box, size: uint) -> *mut Box {
         rtassert!(!alloc.is_null());
         let orig_alloc = AllocHeader::from(alloc);
@@ -217,7 +221,7 @@ impl MemoryRegion {
 
         let total_size = size + AllocHeader::size();
         let alloc: *AllocHeader = unsafe {
-            global_heap::realloc_raw(orig_alloc as *mut libc::c_void,
+            global_heap::realloc_raw(orig_alloc as *mut u8,
                                      total_size) as *AllocHeader
         };
 
@@ -228,6 +232,7 @@ impl MemoryRegion {
         return alloc.as_box();
     }
 
+    #[inline]
     fn free(&mut self, alloc: *mut Box) {
         rtassert!(!alloc.is_null());
         let alloc = AllocHeader::from(alloc);
@@ -236,7 +241,7 @@ impl MemoryRegion {
             self.release(cast::transmute(alloc));
             rtassert!(self.live_allocations > 0);
             self.live_allocations -= 1;
-            global_heap::exchange_free(alloc as *libc::c_char)
+            global_heap::exchange_free(alloc as *u8)
         }
     }
 
@@ -249,6 +254,7 @@ impl MemoryRegion {
         }
     }
     #[cfg(not(rtdebug))]
+    #[inline]
     fn claim(&mut self, _alloc: &mut AllocHeader) {}
 
     #[cfg(rtdebug)]
@@ -260,6 +266,7 @@ impl MemoryRegion {
         }
     }
     #[cfg(not(rtdebug))]
+    #[inline]
     fn release(&mut self, _alloc: &AllocHeader) {}
 
     #[cfg(rtdebug)]
@@ -271,6 +278,7 @@ impl MemoryRegion {
         }
     }
     #[cfg(not(rtdebug))]
+    #[inline]
     fn update(&mut self, _alloc: &mut AllocHeader, _orig: *AllocHeader) {}
 }
 
@@ -283,20 +291,22 @@ impl Drop for MemoryRegion {
     }
 }
 
-pub unsafe fn local_malloc(td: *libc::c_char, size: libc::uintptr_t) -> *libc::c_char {
-    // XXX: Unsafe borrow for speed. Lame.
+#[inline]
+pub unsafe fn local_malloc(td: *u8, size: uint) -> *u8 {
+    // FIXME: Unsafe borrow for speed. Lame.
     let task: Option<*mut Task> = Local::try_unsafe_borrow();
     match task {
         Some(task) => {
-            (*task).heap.alloc(td as *TyDesc, size as uint) as *libc::c_char
+            (*task).heap.alloc(td as *TyDesc, size) as *u8
         }
         None => rtabort!("local malloc outside of task")
     }
 }
 
 // A little compatibility function
-pub unsafe fn local_free(ptr: *libc::c_char) {
-    // XXX: Unsafe borrow for speed. Lame.
+#[inline]
+pub unsafe fn local_free(ptr: *u8) {
+    // FIXME: Unsafe borrow for speed. Lame.
     let task_ptr: Option<*mut Task> = Local::try_unsafe_borrow();
     match task_ptr {
         Some(task) => {

@@ -16,7 +16,7 @@ trait Foo {
 
 impl Foo for int {
     fn foo(@self) {
-        println("Hello world!");
+        println!("Hello world!");
     }
 }
 

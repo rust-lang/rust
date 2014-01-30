@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use ast;
-use ast::{MetaItem, item, Expr};
+use ast::{MetaItem, Item, Expr};
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
@@ -18,7 +18,7 @@ use ext::deriving::generic::*;
 pub fn expand_deriving_ord(cx: &ExtCtxt,
                            span: Span,
                            mitem: @MetaItem,
-                           in_items: ~[@item]) -> ~[@item] {
+                           in_items: ~[@Item]) -> ~[@Item] {
     macro_rules! md (
         ($name:expr, $op:expr, $equal:expr) => {
             MethodDef {
@@ -78,14 +78,10 @@ fn cs_op(less: bool, equal: bool, cx: &ExtCtxt, span: Span, substr: &Substructur
                 _ => cx.span_bug(span, "Not exactly 2 arguments in `deriving(Ord)`")
             };
 
-            let cmp = cx.expr_binary(span, op,
-                                     cx.expr_deref(span, self_f),
-                                     cx.expr_deref(span, other_f));
+            let cmp = cx.expr_binary(span, op, self_f, other_f);
 
             let not_cmp = cx.expr_unary(span, ast::UnNot,
-                                        cx.expr_binary(span, op,
-                                                       cx.expr_deref(span, other_f),
-                                                       cx.expr_deref(span, self_f)));
+                                        cx.expr_binary(span, op, other_f, self_f));
 
             let and = cx.expr_binary(span, ast::BiAnd, not_cmp, subexpr);
             cx.expr_binary(span, ast::BiOr, cmp, and)

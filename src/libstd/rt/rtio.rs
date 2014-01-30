@@ -86,7 +86,7 @@ pub struct LocalIo<'a> {
 #[unsafe_destructor]
 impl<'a> Drop for LocalIo<'a> {
     fn drop(&mut self) {
-        // XXX(pcwalton): Do nothing here for now, but eventually we may want
+        // FIXME(pcwalton): Do nothing here for now, but eventually we may want
         // something. For now this serves to make `LocalIo` noncopyable.
     }
 }
@@ -143,7 +143,7 @@ impl<'a> LocalIo<'a> {
     /// Returns the underlying I/O factory as a trait reference.
     #[inline]
     pub fn get<'a>(&'a mut self) -> &'a mut IoFactory {
-        // XXX(pcwalton): I think this is actually sound? Could borrow check
+        // FIXME(pcwalton): I think this is actually sound? Could borrow check
         // allow this safely?
         unsafe {
             cast::transmute_copy(&self.factory)

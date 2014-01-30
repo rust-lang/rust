@@ -30,35 +30,36 @@ use driver::session;
 use driver::session::Session;
 use driver::driver::{CrateAnalysis, CrateTranslation};
 use lib::llvm::{ModuleRef, ValueRef, BasicBlockRef};
-use lib::llvm::{llvm, True};
+use lib::llvm::{llvm, True, Vector};
 use lib;
 use metadata::common::LinkMeta;
 use metadata::{csearch, encoder};
 use middle::astencode;
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
 use middle::lang_items::{MallocFnLangItem, ClosureExchangeMallocFnLangItem};
-use middle::lang_items::{EhPersonalityLangItem};
 use middle::trans::_match;
 use middle::trans::adt;
-use middle::trans::base;
 use middle::trans::build::*;
 use middle::trans::builder::{Builder, noname};
 use middle::trans::callee;
+use middle::trans::cleanup;
+use middle::trans::cleanup::CleanupMethods;
 use middle::trans::common::*;
 use middle::trans::consts;
 use middle::trans::controlflow;
 use middle::trans::datum;
+// use middle::trans::datum::{Datum, Lvalue, Rvalue, ByRef, ByValue};
 use middle::trans::debuginfo;
 use middle::trans::expr;
 use middle::trans::foreign;
 use middle::trans::glue;
 use middle::trans::inline;
-use middle::trans::llrepr::LlvmRepr;
 use middle::trans::machine;
 use middle::trans::machine::{llalign_of_min, llsize_of};
 use middle::trans::meth;
 use middle::trans::monomorphize;
 use middle::trans::tvec;
+use middle::trans::type_::Type;
 use middle::trans::type_of;
 use middle::trans::type_of::*;
 use middle::trans::value::Value;
@@ -66,24 +67,21 @@ use middle::ty;
 use util::common::indenter;
 use util::ppaux::{Repr, ty_to_str};
 use util::sha2::Sha256;
-use middle::trans::type_::Type;
 
+use arena::TypedArena;
+use extra::time;
 use std::c_str::ToCStr;
 use std::cell::{Cell, RefCell};
 use std::hashmap::HashMap;
 use std::libc::c_uint;
 use std::vec;
 use std::local_data;
-use extra::time;
-use syntax::ast::Name;
-use syntax::ast_map::{path, path_elt_to_str, path_name, path_pretty_name};
+use syntax::ast_map::{PathName, PathPrettyName, path_elem_to_str};
 use syntax::ast_util::{local_def, is_local};
 use syntax::attr;
 use syntax::codemap::Span;
 use syntax::parse::token;
-use syntax::parse::token::{special_idents};
-use syntax::print::pprust::stmt_to_str;
-use syntax::{ast, ast_util, codemap, ast_map};
+use syntax::{ast, ast_util, ast_map};
 use syntax::attr::AttrMetaMethods;
 use syntax::abi::{X86, X86_64, Arm, Mips, Rust, RustIntrinsic, OsWin32};
 use syntax::visit;
@@ -177,32 +175,57 @@ impl<'a> Drop for StatRecorder<'a> {
 }
 
 // only use this for foreign function ABIs and glue, use `decl_rust_fn` for Rust functions
-pub fn decl_fn(llmod: ModuleRef, name: &str, cc: lib::llvm::CallConv, ty: Type) -> ValueRef {
+fn decl_fn(llmod: ModuleRef, name: &str, cc: lib::llvm::CallConv,
+           ty: Type, output: ty::t) -> ValueRef {
     let llfn: ValueRef = name.with_c_str(|buf| {
         unsafe {
             llvm::LLVMGetOrInsertFunction(llmod, buf, ty.to_ref())
         }
     });
 
+    match ty::get(output).sty {
+        // functions returning bottom may unwind, but can never return normally
+        ty::ty_bot => {
+            unsafe {
+                llvm::LLVMAddFunctionAttr(llfn, lib::llvm::NoReturnAttribute as c_uint)
+            }
+        }
+        // `~` pointer return values never alias because ownership is transferred
+        // FIXME #6750 ~Trait cannot be directly marked as
+        // noalias because the actual object pointer is nested.
+        ty::ty_uniq(..) | // ty::ty_trait(_, _, ty::UniqTraitStore, _, _) |
+        ty::ty_vec(_, ty::vstore_uniq) | ty::ty_str(ty::vstore_uniq) => {
+            unsafe {
+                llvm::LLVMAddReturnAttribute(llfn, lib::llvm::NoAliasAttribute as c_uint);
+            }
+        }
+        _ => {}
+    }
+
     lib::llvm::SetFunctionCallConv(llfn, cc);
     // Function addresses in Rust are never significant, allowing functions to be merged.
     lib::llvm::SetUnnamedAddr(llfn, true);
-    return llfn;
+
+    llfn
 }
 
 // only use this for foreign function ABIs and glue, use `decl_rust_fn` for Rust functions
-pub fn decl_cdecl_fn(llmod: ModuleRef, name: &str, ty: Type) -> ValueRef {
-    return decl_fn(llmod, name, lib::llvm::CCallConv, ty);
+pub fn decl_cdecl_fn(llmod: ModuleRef,
+                     name: &str,
+                     ty: Type,
+                     output: ty::t) -> ValueRef {
+    decl_fn(llmod, name, lib::llvm::CCallConv, ty, output)
 }
 
 // only use this for foreign function ABIs and glue, use `get_extern_rust_fn` for Rust functions
-pub fn get_extern_fn(externs: &mut ExternMap, llmod: ModuleRef, name: &str,
-                     cc: lib::llvm::CallConv, ty: Type) -> ValueRef {
+pub fn get_extern_fn(externs: &mut ExternMap, llmod: ModuleRef,
+                     name: &str, cc: lib::llvm::CallConv,
+                     ty: Type, output: ty::t) -> ValueRef {
     match externs.find_equiv(&name) {
         Some(n) => return *n,
-        None => ()
+        None => {}
     }
-    let f = decl_fn(llmod, name, cc, ty);
+    let f = decl_fn(llmod, name, cc, ty, output);
     externs.insert(name.to_owned(), f);
     f
 }
@@ -217,7 +240,7 @@ fn get_extern_rust_fn(ccx: &CrateContext, inputs: &[ty::t], output: ty::t,
         }
     }
 
-    let f = decl_rust_fn(ccx, inputs, output, name);
+    let f = decl_rust_fn(ccx, false, inputs, output, name);
     csearch::get_item_attrs(ccx.tcx.cstore, did, |meta_items| {
         set_llvm_fn_attrs(meta_items.iter().map(|&x| attr::mk_attr(x)).to_owned_vec(), f)
     });
@@ -227,42 +250,30 @@ fn get_extern_rust_fn(ccx: &CrateContext, inputs: &[ty::t], output: ty::t,
     f
 }
 
-fn decl_rust_fn(ccx: &CrateContext, inputs: &[ty::t], output: ty::t, name: &str) -> ValueRef {
-    let llfty = type_of_rust_fn(ccx, inputs, output);
-    let llfn = decl_cdecl_fn(ccx.llmod, name, llfty);
-
-    match ty::get(output).sty {
-        // functions returning bottom may unwind, but can never return normally
-        ty::ty_bot => {
-            unsafe {
-                llvm::LLVMAddFunctionAttr(llfn, lib::llvm::NoReturnAttribute as c_uint)
-            }
-        }
-        // `~` pointer return values never alias because ownership is transferred
-        ty::ty_uniq(..) |
-        ty::ty_evec(_, ty::vstore_uniq) => {
-            unsafe {
-                llvm::LLVMAddReturnAttribute(llfn, lib::llvm::NoAliasAttribute as c_uint);
-            }
-        }
-        _ => ()
-    }
+pub fn decl_rust_fn(ccx: &CrateContext, has_env: bool,
+                    inputs: &[ty::t], output: ty::t,
+                    name: &str) -> ValueRef {
+    let llfty = type_of_rust_fn(ccx, has_env, inputs, output);
+    let llfn = decl_cdecl_fn(ccx.llmod, name, llfty, output);
 
     let uses_outptr = type_of::return_uses_outptr(ccx, output);
-    let offset = if uses_outptr { 2 } else { 1 };
+    let offset = if uses_outptr { 1 } else { 0 };
+    let offset = if has_env { offset + 1 } else { offset };
 
     for (i, &arg_ty) in inputs.iter().enumerate() {
         let llarg = unsafe { llvm::LLVMGetParam(llfn, (offset + i) as c_uint) };
         match ty::get(arg_ty).sty {
             // `~` pointer parameters never alias because ownership is transferred
-            ty::ty_uniq(..) |
-            ty::ty_evec(_, ty::vstore_uniq) |
+            // FIXME #6750 ~Trait cannot be directly marked as
+            // noalias because the actual object pointer is nested.
+            ty::ty_uniq(..) | // ty::ty_trait(_, _, ty::UniqTraitStore, _, _) |
+            ty::ty_vec(_, ty::vstore_uniq) | ty::ty_str(ty::vstore_uniq) |
             ty::ty_closure(ty::ClosureTy {sigil: ast::OwnedSigil, ..}) => {
                 unsafe {
                     llvm::LLVMAddAttribute(llarg, lib::llvm::NoAliasAttribute as c_uint);
                 }
             }
-            _ => ()
+            _ => {}
         }
     }
 
@@ -280,9 +291,10 @@ fn decl_rust_fn(ccx: &CrateContext, inputs: &[ty::t], output: ty::t, name: &str)
     llfn
 }
 
-pub fn decl_internal_rust_fn(ccx: &CrateContext, inputs: &[ty::t], output: ty::t,
+pub fn decl_internal_rust_fn(ccx: &CrateContext, has_env: bool,
+                             inputs: &[ty::t], output: ty::t,
                              name: &str) -> ValueRef {
-    let llfn = decl_rust_fn(ccx, inputs, output, name);
+    let llfn = decl_rust_fn(ccx, has_env, inputs, output, name);
     lib::llvm::SetLinkage(llfn, lib::llvm::InternalLinkage);
     llfn
 }
@@ -305,29 +317,26 @@ pub fn get_extern_const(externs: &mut ExternMap, llmod: ModuleRef,
 // Returns a pointer to the body for the box. The box may be an opaque
 // box. The result will be casted to the type of body_t, if it is statically
 // known.
-//
-// The runtime equivalent is box_body() in "rust_internal.h".
-pub fn opaque_box_body(bcx: @Block,
-                       body_t: ty::t,
-                       boxptr: ValueRef) -> ValueRef {
-    let _icx = push_ctxt("opaque_box_body");
+pub fn at_box_body(bcx: &Block, body_t: ty::t, boxptr: ValueRef) -> ValueRef {
+    let _icx = push_ctxt("at_box_body");
     let ccx = bcx.ccx();
-    let ty = type_of(ccx, body_t);
-    let ty = Type::smart_ptr(ccx, &ty);
+    let ty = Type::at_box(ccx, type_of(ccx, body_t));
     let boxptr = PointerCast(bcx, boxptr, ty.ptr_to());
     GEPi(bcx, boxptr, [0u, abi::box_field_body])
 }
 
 // malloc_raw_dyn: allocates a box to contain a given type, but with a
 // potentially dynamic size.
-pub fn malloc_raw_dyn(bcx: @Block,
+pub fn malloc_raw_dyn<'a>(
+                      bcx: &'a Block,
                       t: ty::t,
                       heap: heap,
-                      size: ValueRef) -> Result {
+                      size: ValueRef)
+                      -> Result<'a> {
     let _icx = push_ctxt("malloc_raw");
     let ccx = bcx.ccx();
 
-    fn require_alloc_fn(bcx: @Block, t: ty::t, it: LangItem) -> ast::DefId {
+    fn require_alloc_fn(bcx: &Block, t: ty::t, it: LangItem) -> ast::DefId {
         let li = &bcx.tcx().lang_items;
         match li.require(it) {
             Ok(id) => id,
@@ -351,25 +360,23 @@ pub fn malloc_raw_dyn(bcx: @Block,
         rslt(r.bcx, PointerCast(r.bcx, r.val, llty_value.ptr_to()))
     } else {
         // we treat ~fn, @fn and @[] as @ here, which isn't ideal
-        let (mk_fn, langcall) = match heap {
-            heap_managed | heap_managed_unique => {
-                (ty::mk_imm_box,
-                 require_alloc_fn(bcx, t, MallocFnLangItem))
+        let langcall = match heap {
+            heap_managed => {
+                require_alloc_fn(bcx, t, MallocFnLangItem)
             }
             heap_exchange_closure => {
-                (ty::mk_imm_box,
-                 require_alloc_fn(bcx, t, ClosureExchangeMallocFnLangItem))
+                require_alloc_fn(bcx, t, ClosureExchangeMallocFnLangItem)
             }
             _ => fail!("heap_exchange already handled")
         };
 
         // Grab the TypeRef type of box_ptr_ty.
-        let box_ptr_ty = mk_fn(bcx.tcx(), t);
+        let box_ptr_ty = ty::mk_box(bcx.tcx(), t);
         let llty = type_of(ccx, box_ptr_ty);
 
         // Get the tydesc for the body:
         let static_ti = get_tydesc(ccx, t);
-        glue::lazily_emit_all_tydesc_glue(ccx, static_ti);
+        glue::lazily_emit_tydesc_glue(ccx, abi::tydesc_field_drop_glue, static_ti);
 
         // Allocate space:
         let tydesc = PointerCast(bcx, static_ti.tydesc, Type::i8p());
@@ -378,31 +385,34 @@ pub fn malloc_raw_dyn(bcx: @Block,
             langcall,
             [tydesc, size],
             None);
-        let r = rslt(r.bcx, PointerCast(r.bcx, r.val, llty));
-        maybe_set_managed_unique_rc(r.bcx, r.val, heap);
-        r
+        rslt(r.bcx, PointerCast(r.bcx, r.val, llty))
     }
 }
 
 // malloc_raw: expects an unboxed type and returns a pointer to
 // enough space for a box of that type.  This includes a rust_opaque_box
 // header.
-pub fn malloc_raw(bcx: @Block, t: ty::t, heap: heap) -> Result {
+pub fn malloc_raw<'a>(bcx: &'a Block<'a>, t: ty::t, heap: heap)
+                  -> Result<'a> {
     let ty = type_of(bcx.ccx(), t);
     let size = llsize_of(bcx.ccx(), ty);
     malloc_raw_dyn(bcx, t, heap, size)
 }
 
-pub struct MallocResult {
-    bcx: @Block,
+pub struct MallocResult<'a> {
+    bcx: &'a Block<'a>,
     smart_ptr: ValueRef,
     body: ValueRef
 }
 
 // malloc_general_dyn: usefully wraps malloc_raw_dyn; allocates a smart
 // pointer, and pulls out the body
-pub fn malloc_general_dyn(bcx: @Block, t: ty::t, heap: heap, size: ValueRef)
-    -> MallocResult {
+pub fn malloc_general_dyn<'a>(
+                          bcx: &'a Block<'a>,
+                          t: ty::t,
+                          heap: heap,
+                          size: ValueRef)
+                          -> MallocResult<'a> {
     assert!(heap != heap_exchange);
     let _icx = push_ctxt("malloc_general");
     let Result {bcx: bcx, val: llbox} = malloc_raw_dyn(bcx, t, heap, size);
@@ -415,31 +425,11 @@ pub fn malloc_general_dyn(bcx: @Block, t: ty::t, heap: heap, size: ValueRef)
     }
 }
 
-pub fn malloc_general(bcx: @Block, t: ty::t, heap: heap) -> MallocResult {
+pub fn malloc_general<'a>(bcx: &'a Block, t: ty::t, heap: heap)
+                      -> MallocResult<'a> {
     let ty = type_of(bcx.ccx(), t);
     assert!(heap != heap_exchange);
     malloc_general_dyn(bcx, t, heap, llsize_of(bcx.ccx(), ty))
-}
-
-pub fn heap_for_unique(bcx: @Block, t: ty::t) -> heap {
-    if ty::type_contents(bcx.tcx(), t).owns_managed() {
-        heap_managed_unique
-    } else {
-        heap_exchange
-    }
-}
-
-pub fn maybe_set_managed_unique_rc(bcx: @Block, bx: ValueRef, heap: heap) {
-    assert!(heap != heap_exchange);
-    if heap == heap_managed_unique {
-        // In cases where we are looking at a unique-typed allocation in the
-        // managed heap (thus have refcount 1 from the managed allocator),
-        // such as a ~(@foo) or such. These need to have their refcount forced
-        // to -2 so the annihilator ignores them.
-        let rc = GEPi(bcx, bx, [0u, abi::box_field_refcnt]);
-        let rc_val = C_int(bcx.ccx(), -2);
-        Store(bcx, rc_val, rc);
-    }
 }
 
 // Type descriptor and type glue stuff
@@ -572,11 +562,8 @@ pub fn get_res_dtor(ccx: @CrateContext,
 
         {
             let mut externs = ccx.externs.borrow_mut();
-            get_extern_fn(externs.get(),
-                          ccx.llmod,
-                          name,
-                          lib::llvm::CCallConv,
-                          llty)
+            get_extern_fn(externs.get(), ccx.llmod, name,
+                          lib::llvm::CCallConv, llty, ty::mk_nil())
         }
     }
 }
@@ -597,12 +584,13 @@ pub fn maybe_name_value(cx: &CrateContext, v: ValueRef, s: &str) {
 pub enum scalar_type { nil_type, signed_int, unsigned_int, floating_point, }
 
 // NB: This produces an i1, not a Rust bool (i8).
-pub fn compare_scalar_types(cx: @Block,
+pub fn compare_scalar_types<'a>(
+                            cx: &'a Block<'a>,
                             lhs: ValueRef,
                             rhs: ValueRef,
                             t: ty::t,
                             op: ast::BinOp)
-                         -> Result {
+                            -> Result<'a> {
     let f = |a| compare_scalar_values(cx, lhs, rhs, a, op);
 
     match ty::get(t).sty {
@@ -629,14 +617,15 @@ pub fn compare_scalar_types(cx: @Block,
 
 
 // A helper function to do the actual comparison of scalar values.
-pub fn compare_scalar_values(cx: @Block,
+pub fn compare_scalar_values<'a>(
+                             cx: &'a Block<'a>,
                              lhs: ValueRef,
                              rhs: ValueRef,
                              nt: scalar_type,
                              op: ast::BinOp)
-                          -> ValueRef {
+                             -> ValueRef {
     let _icx = push_ctxt("compare_scalar_values");
-    fn die(cx: @Block) -> ! {
+    fn die(cx: &Block) -> ! {
         cx.tcx().sess.bug("compare_scalar_values: must be a\
                            comparison operator");
     }
@@ -690,25 +679,41 @@ pub fn compare_scalar_values(cx: @Block,
     }
 }
 
-pub type val_and_ty_fn<'a> = 'a |@Block, ValueRef, ty::t|
-                                       -> @Block;
+pub type val_and_ty_fn<'r,'b> =
+    'r |&'b Block<'b>, ValueRef, ty::t| -> &'b Block<'b>;
 
-pub fn load_inbounds(cx: @Block, p: ValueRef, idxs: &[uint]) -> ValueRef {
+pub fn load_inbounds<'a>(cx: &'a Block<'a>, p: ValueRef, idxs: &[uint])
+                     -> ValueRef {
     return Load(cx, GEPi(cx, p, idxs));
 }
 
-pub fn store_inbounds(cx: @Block, v: ValueRef, p: ValueRef, idxs: &[uint]) {
+pub fn store_inbounds<'a>(
+                      cx: &'a Block<'a>,
+                      v: ValueRef,
+                      p: ValueRef,
+                      idxs: &[uint]) {
     Store(cx, v, GEPi(cx, p, idxs));
 }
 
 // Iterates through the elements of a structural type.
-pub fn iter_structural_ty(cx: @Block, av: ValueRef, t: ty::t,
-                          f: val_and_ty_fn) -> @Block {
+pub fn iter_structural_ty<'r,
+                          'b>(
+                          cx: &'b Block<'b>,
+                          av: ValueRef,
+                          t: ty::t,
+                          f: val_and_ty_fn<'r,'b>)
+                          -> &'b Block<'b> {
     let _icx = push_ctxt("iter_structural_ty");
 
-    fn iter_variant(cx: @Block, repr: &adt::Repr, av: ValueRef,
+    fn iter_variant<'r,
+                    'b>(
+                    cx: &'b Block<'b>,
+                    repr: &adt::Repr,
+                    av: ValueRef,
                     variant: @ty::VariantInfo,
-                    tps: &[ty::t], f: val_and_ty_fn) -> @Block {
+                    tps: &[ty::t],
+                    f: val_and_ty_fn<'r,'b>)
+                    -> &'b Block<'b> {
         let _icx = push_ctxt("iter_variant");
         let tcx = cx.tcx();
         let mut cx = cx;
@@ -732,8 +737,8 @@ pub fn iter_structural_ty(cx: @Block, av: ValueRef, t: ty::t,
               }
           })
       }
-      ty::ty_estr(ty::vstore_fixed(_)) |
-      ty::ty_evec(_, ty::vstore_fixed(_)) => {
+      ty::ty_str(ty::vstore_fixed(_)) |
+      ty::ty_vec(_, ty::vstore_fixed(_)) => {
         let (base, len) = tvec::get_base_and_byte_len(cx, av, t);
         cx = tvec::iter_vec_raw(cx, base, t, len, f);
       }
@@ -745,7 +750,8 @@ pub fn iter_structural_ty(cx: @Block, av: ValueRef, t: ty::t,
           }
       }
       ty::ty_enum(tid, ref substs) => {
-          let ccx = cx.ccx();
+          let fcx = cx.fcx;
+          let ccx = fcx.ccx;
 
           let repr = adt::represent_type(ccx, t);
           let variants = ty::enum_variants(ccx.tcx, tid);
@@ -761,19 +767,16 @@ pub fn iter_structural_ty(cx: @Block, av: ValueRef, t: ty::t,
               }
               (_match::switch, Some(lldiscrim_a)) => {
                   cx = f(cx, lldiscrim_a, ty::mk_int());
-                  let unr_cx = sub_block(cx, "enum-iter-unr");
+                  let unr_cx = fcx.new_temp_block("enum-iter-unr");
                   Unreachable(unr_cx);
                   let llswitch = Switch(cx, lldiscrim_a, unr_cx.llbb,
                                         n_variants);
-                  let next_cx = sub_block(cx, "enum-iter-next");
+                  let next_cx = fcx.new_temp_block("enum-iter-next");
 
                   for variant in (*variants).iter() {
                       let variant_cx =
-                          sub_block(cx, ~"enum-iter-variant-" +
-                                    variant.disr_val.to_str());
-                      let variant_cx =
-                          iter_variant(variant_cx, repr, av, *variant,
-                                       substs.tps, |x,y,z| f(x,y,z));
+                          fcx.new_temp_block(~"enum-iter-variant-" +
+                                             variant.disr_val.to_str());
                       match adt::trans_case(cx, repr, variant.disr_val) {
                           _match::single_result(r) => {
                               AddCase(llswitch, r.val, variant_cx.llbb)
@@ -781,6 +784,9 @@ pub fn iter_structural_ty(cx: @Block, av: ValueRef, t: ty::t,
                           _ => ccx.sess.unimpl("value from adt::trans_case \
                                                 in iter_structural_ty")
                       }
+                      let variant_cx =
+                          iter_variant(variant_cx, repr, av, *variant,
+                                       substs.tps, |x,y,z| f(x,y,z));
                       Br(variant_cx, next_cx.llbb);
                   }
                   cx = next_cx;
@@ -794,8 +800,12 @@ pub fn iter_structural_ty(cx: @Block, av: ValueRef, t: ty::t,
     return cx;
 }
 
-pub fn cast_shift_expr_rhs(cx: @Block, op: ast::BinOp,
-                           lhs: ValueRef, rhs: ValueRef) -> ValueRef {
+pub fn cast_shift_expr_rhs<'a>(
+                           cx: &'a Block<'a>,
+                           op: ast::BinOp,
+                           lhs: ValueRef,
+                           rhs: ValueRef)
+                           -> ValueRef {
     cast_shift_rhs(op, lhs, rhs,
                    |a,b| Trunc(cx, a, b),
                    |a,b| ZExt(cx, a, b))
@@ -817,8 +827,10 @@ pub fn cast_shift_rhs(op: ast::BinOp,
     // Shifts may have any size int on the rhs
     unsafe {
         if ast_util::is_shift_binop(op) {
-            let rhs_llty = val_ty(rhs);
-            let lhs_llty = val_ty(lhs);
+            let mut rhs_llty = val_ty(rhs);
+            let mut lhs_llty = val_ty(lhs);
+            if rhs_llty.kind() == Vector { rhs_llty = rhs_llty.element_type() }
+            if lhs_llty.kind() == Vector { lhs_llty = lhs_llty.element_type() }
             let rhs_sz = llvm::LLVMGetIntTypeWidth(rhs_llty.to_ref());
             let lhs_sz = llvm::LLVMGetIntTypeWidth(lhs_llty.to_ref());
             if lhs_sz < rhs_sz {
@@ -836,8 +848,13 @@ pub fn cast_shift_rhs(op: ast::BinOp,
     }
 }
 
-pub fn fail_if_zero(cx: @Block, span: Span, divrem: ast::BinOp,
-                    rhs: ValueRef, rhs_t: ty::t) -> @Block {
+pub fn fail_if_zero<'a>(
+                    cx: &'a Block<'a>,
+                    span: Span,
+                    divrem: ast::BinOp,
+                    rhs: ValueRef,
+                    rhs_t: ty::t)
+                    -> &'a Block<'a> {
     let text = if divrem == ast::BiDiv {
         @"attempted to divide by zero"
     } else {
@@ -862,10 +879,6 @@ pub fn fail_if_zero(cx: @Block, span: Span, divrem: ast::BinOp,
     })
 }
 
-pub fn null_env_ptr(ccx: &CrateContext) -> ValueRef {
-    C_null(Type::opaque_box(ccx).ptr_to())
-}
-
 pub fn trans_external_path(ccx: &CrateContext, did: ast::DefId, t: ty::t) -> ValueRef {
     let name = csearch::get_symbol(ccx.sess.cstore, did);
     match ty::get(t).sty {
@@ -880,7 +893,8 @@ pub fn trans_external_path(ccx: &CrateContext, did: ast::DefId, t: ty::t) -> Val
                     let cconv = c.unwrap_or(lib::llvm::CCallConv);
                     let llty = type_of_fn_from_ty(ccx, t);
                     let mut externs = ccx.externs.borrow_mut();
-                    get_extern_fn(externs.get(), ccx.llmod, name, cconv, llty)
+                    get_extern_fn(externs.get(), ccx.llmod, name,
+                                  cconv, llty, fn_ty.sig.output)
                 }
             }
         }
@@ -895,22 +909,27 @@ pub fn trans_external_path(ccx: &CrateContext, did: ast::DefId, t: ty::t) -> Val
     }
 }
 
-pub fn invoke(bcx: @Block,
+pub fn invoke<'a>(
+              bcx: &'a Block<'a>,
               llfn: ValueRef,
               llargs: ~[ValueRef],
               attributes: &[(uint, lib::llvm::Attribute)],
               call_info: Option<NodeInfo>)
-           -> (ValueRef, @Block) {
+              -> (ValueRef, &'a Block<'a>) {
     let _icx = push_ctxt("invoke_");
     if bcx.unreachable.get() {
         return (C_null(Type::i8()), bcx);
     }
 
-    match bcx.node_info {
-        None => debug!("invoke at ???"),
-        Some(node_info) => {
+    match bcx.opt_node_id {
+        None => {
+            debug!("invoke at ???");
+        }
+        Some(id) => {
             debug!("invoke at {}",
-                   bcx.sess().codemap.span_to_str(node_info.span));
+                   ast_map::node_id_to_str(bcx.tcx().items,
+                                           id,
+                                           token::get_ident_interner()));
         }
     }
 
@@ -921,8 +940,8 @@ pub fn invoke(bcx: @Block,
                 debug!("arg: {}", llarg);
             }
         }
-        let normal_bcx = sub_block(bcx, "normal return");
-        let landing_pad = get_landing_pad(bcx);
+        let normal_bcx = bcx.fcx.new_temp_block("normal-return");
+        let landing_pad = bcx.fcx.get_landing_pad();
 
         match call_info {
             Some(info) => debuginfo::set_source_location(bcx.fcx, info.id, info.span),
@@ -954,7 +973,7 @@ pub fn invoke(bcx: @Block,
     }
 }
 
-pub fn need_invoke(bcx: @Block) -> bool {
+pub fn need_invoke(bcx: &Block) -> bool {
     if bcx.ccx().sess.no_landing_pads() {
         return false;
     }
@@ -964,146 +983,10 @@ pub fn need_invoke(bcx: @Block) -> bool {
         return false;
     }
 
-    if have_cached_lpad(bcx) {
-        return true;
-    }
-
-    // Walk the scopes to look for cleanups
-    let mut cur = bcx;
-    let mut cur_scope = cur.scope.get();
-    loop {
-        cur_scope = match cur_scope {
-            Some(inf) => {
-                let cleanups = inf.cleanups.borrow();
-                for cleanup in cleanups.get().iter() {
-                    match *cleanup {
-                        clean(_, cleanup_type) | clean_temp(_, _, cleanup_type) => {
-                            if cleanup_type == normal_exit_and_unwind {
-                                return true;
-                            }
-                        }
-                    }
-                }
-                inf.parent
-            }
-            None => {
-                cur = match cur.parent {
-                    Some(next) => next,
-                    None => return false
-                };
-                cur.scope.get()
-            }
-        }
-    }
+    bcx.fcx.needs_invoke()
 }
 
-pub fn have_cached_lpad(bcx: @Block) -> bool {
-    let mut res = false;
-    in_lpad_scope_cx(bcx, |inf| {
-        match inf.landing_pad.get() {
-          Some(_) => res = true,
-          None => res = false
-        }
-    });
-    return res;
-}
-
-pub fn in_lpad_scope_cx(bcx: @Block, f: |si: &ScopeInfo|) {
-    let mut bcx = bcx;
-    let mut cur_scope = bcx.scope.get();
-    loop {
-        cur_scope = match cur_scope {
-            Some(inf) => {
-                if !inf.empty_cleanups() || (inf.parent.is_none() && bcx.parent.is_none()) {
-                    f(inf);
-                    return;
-                }
-                inf.parent
-            }
-            None => {
-                bcx = block_parent(bcx);
-                bcx.scope.get()
-            }
-        }
-    }
-}
-
-pub fn get_landing_pad(bcx: @Block) -> BasicBlockRef {
-    let _icx = push_ctxt("get_landing_pad");
-
-    let mut cached = None;
-    let mut pad_bcx = bcx; // Guaranteed to be set below
-    in_lpad_scope_cx(bcx, |inf| {
-        // If there is a valid landing pad still around, use it
-        match inf.landing_pad.get() {
-          Some(target) => cached = Some(target),
-          None => {
-            pad_bcx = lpad_block(bcx, "unwind");
-            inf.landing_pad.set(Some(pad_bcx.llbb));
-          }
-        }
-    });
-    // Can't return from block above
-    match cached { Some(b) => return b, None => () }
-    // The landing pad return type (the type being propagated). Not sure what
-    // this represents but it's determined by the personality function and
-    // this is what the EH proposal example uses.
-    let llretty = Type::struct_([Type::i8p(), Type::i32()], false);
-    // The exception handling personality function.
-    let personality = callee::trans_fn_ref(bcx,
-                                           langcall(bcx, None, "", EhPersonalityLangItem),
-                                           0).llfn;
-    // The only landing pad clause will be 'cleanup'
-    let llretval = LandingPad(pad_bcx, llretty, personality, 1u);
-    // The landing pad block is a cleanup
-    SetCleanup(pad_bcx, llretval);
-
-    // We store the retval in a function-central alloca, so that calls to
-    // Resume can find it.
-    match bcx.fcx.personality.get() {
-      Some(addr) => Store(pad_bcx, llretval, addr),
-      None => {
-        let addr = alloca(pad_bcx, val_ty(llretval), "");
-        bcx.fcx.personality.set(Some(addr));
-        Store(pad_bcx, llretval, addr);
-      }
-    }
-
-    // Unwind all parent scopes, and finish with a Resume instr
-    cleanup_and_leave(pad_bcx, None, None);
-    return pad_bcx.llbb;
-}
-
-pub fn find_bcx_for_scope(bcx: @Block, scope_id: ast::NodeId) -> @Block {
-    let mut bcx_sid = bcx;
-    let mut cur_scope = bcx_sid.scope.get();
-    loop {
-        cur_scope = match cur_scope {
-            Some(inf) => {
-                match inf.node_info {
-                    Some(NodeInfo { id, .. }) if id == scope_id => {
-                        return bcx_sid
-                    }
-                    // FIXME(#6268, #6248) hacky cleanup for nested method calls
-                    Some(NodeInfo { callee_id: Some(id), .. }) if id == scope_id => {
-                        return bcx_sid
-                    }
-                    _ => inf.parent
-                }
-            }
-            None => {
-                bcx_sid = match bcx_sid.parent {
-                    None => bcx.tcx().sess.bug(format!("no enclosing scope with id {}", scope_id)),
-                    Some(bcx_par) => bcx_par
-                };
-                bcx_sid.scope.get()
-            }
-        }
-    }
-}
-
-
-pub fn do_spill(bcx: @Block, v: ValueRef, t: ty::t) -> ValueRef {
+pub fn do_spill(bcx: &Block, v: ValueRef, t: ty::t) -> ValueRef {
     if ty::type_is_bot(t) {
         return C_null(Type::i8p());
     }
@@ -1114,31 +997,32 @@ pub fn do_spill(bcx: @Block, v: ValueRef, t: ty::t) -> ValueRef {
 
 // Since this function does *not* root, it is the caller's responsibility to
 // ensure that the referent is pointed to by a root.
-pub fn do_spill_noroot(cx: @Block, v: ValueRef) -> ValueRef {
+pub fn do_spill_noroot(cx: &Block, v: ValueRef) -> ValueRef {
     let llptr = alloca(cx, val_ty(v), "");
     Store(cx, v, llptr);
     return llptr;
 }
 
-pub fn spill_if_immediate(cx: @Block, v: ValueRef, t: ty::t) -> ValueRef {
+pub fn spill_if_immediate(cx: &Block, v: ValueRef, t: ty::t) -> ValueRef {
     let _icx = push_ctxt("spill_if_immediate");
     if type_is_immediate(cx.ccx(), t) { return do_spill(cx, v, t); }
     return v;
 }
 
-pub fn load_if_immediate(cx: @Block, v: ValueRef, t: ty::t) -> ValueRef {
+pub fn load_if_immediate(cx: &Block, v: ValueRef, t: ty::t) -> ValueRef {
     let _icx = push_ctxt("load_if_immediate");
     if type_is_immediate(cx.ccx(), t) { return Load(cx, v); }
     return v;
 }
 
-pub fn ignore_lhs(_bcx: @Block, local: &ast::Local) -> bool {
+pub fn ignore_lhs(_bcx: &Block, local: &ast::Local) -> bool {
     match local.pat.node {
         ast::PatWild => true, _ => false
     }
 }
 
-pub fn init_local(bcx: @Block, local: &ast::Local) -> @Block {
+pub fn init_local<'a>(bcx: &'a Block<'a>, local: &ast::Local)
+                  -> &'a Block<'a> {
 
     debug!("init_local(bcx={}, local.id={:?})",
            bcx.to_str(), local.id);
@@ -1156,343 +1040,15 @@ pub fn init_local(bcx: @Block, local: &ast::Local) -> @Block {
         }
     }
 
-    _match::store_local(bcx, local.pat, local.init)
+    _match::store_local(bcx, local)
 }
 
-pub fn trans_stmt(cx: @Block, s: &ast::Stmt) -> @Block {
-    let _icx = push_ctxt("trans_stmt");
-    debug!("trans_stmt({})", stmt_to_str(s, cx.tcx().sess.intr()));
-
-    if cx.sess().asm_comments() {
-        add_span_comment(cx, s.span, stmt_to_str(s, cx.ccx().sess.intr()));
-    }
-
-    let mut bcx = cx;
-
-    match s.node {
-        ast::StmtExpr(e, _) | ast::StmtSemi(e, _) => {
-            bcx = expr::trans_into(cx, e, expr::Ignore);
-        }
-        ast::StmtDecl(d, _) => {
-            match d.node {
-                ast::DeclLocal(ref local) => {
-                    bcx = init_local(bcx, *local);
-                    if cx.sess().opts.extra_debuginfo {
-                        debuginfo::create_local_var_metadata(bcx, *local);
-                    }
-                }
-                ast::DeclItem(i) => trans_item(cx.fcx.ccx, i)
-            }
-        }
-        ast::StmtMac(..) => cx.tcx().sess.bug("unexpanded macro")
-    }
-
-    return bcx;
-}
-
-// You probably don't want to use this one. See the
-// next three functions instead.
-pub fn new_block(cx: @FunctionContext,
-                 parent: Option<@Block>,
-                 scope: Option<@ScopeInfo>,
+pub fn raw_block<'a>(
+                 fcx: &'a FunctionContext<'a>,
                  is_lpad: bool,
-                 name: &str,
-                 opt_node_info: Option<NodeInfo>)
-              -> @Block {
-    unsafe {
-        let llbb = name.with_c_str(|buf| {
-            llvm::LLVMAppendBasicBlockInContext(cx.ccx.llcx, cx.llfn, buf)
-        });
-        let bcx = @Block::new(llbb,
-                                  parent,
-                                  is_lpad,
-                                  opt_node_info,
-                                  cx);
-        bcx.scope.set(scope);
-        for cx in parent.iter() {
-            if cx.unreachable.get() {
-                Unreachable(bcx);
-                break;
-            }
-        }
-        bcx
-    }
-}
-
-pub fn simple_block_scope(parent: Option<@ScopeInfo>,
-                          node_info: Option<NodeInfo>)
-                          -> @ScopeInfo {
-    @ScopeInfo {
-        parent: parent,
-        loop_break: None,
-        loop_label: None,
-        cleanups: RefCell::new(~[]),
-        cleanup_paths: RefCell::new(~[]),
-        landing_pad: Cell::new(None),
-        node_info: node_info,
-    }
-}
-
-// Use this when you're at the top block of a function or the like.
-pub fn top_scope_block(fcx: @FunctionContext, opt_node_info: Option<NodeInfo>)
-                    -> @Block {
-    return new_block(fcx, None, Some(simple_block_scope(None, opt_node_info)), false,
-                  "function top level", opt_node_info);
-}
-
-pub fn scope_block(bcx: @Block,
-                   opt_node_info: Option<NodeInfo>,
-                   n: &str) -> @Block {
-    return new_block(bcx.fcx, Some(bcx), Some(simple_block_scope(None, opt_node_info)), bcx.is_lpad,
-                  n, opt_node_info);
-}
-
-pub fn loop_scope_block(bcx: @Block,
-                        loop_break: @Block,
-                        loop_label: Option<Name>,
-                        n: &str,
-                        opt_node_info: Option<NodeInfo>) -> @Block {
-    return new_block(bcx.fcx, Some(bcx), Some(@ScopeInfo {
-        parent: None,
-        loop_break: Some(loop_break),
-        loop_label: loop_label,
-        cleanups: RefCell::new(~[]),
-        cleanup_paths: RefCell::new(~[]),
-        landing_pad: Cell::new(None),
-        node_info: opt_node_info,
-    }), bcx.is_lpad, n, opt_node_info);
-}
-
-// Use this when creating a block for the inside of a landing pad.
-pub fn lpad_block(bcx: @Block, n: &str) -> @Block {
-    new_block(bcx.fcx, Some(bcx), None, true, n, None)
-}
-
-// Use this when you're making a general CFG BB within a scope.
-pub fn sub_block(bcx: @Block, n: &str) -> @Block {
-    new_block(bcx.fcx, Some(bcx), None, bcx.is_lpad, n, None)
-}
-
-pub fn raw_block(fcx: @FunctionContext, is_lpad: bool, llbb: BasicBlockRef) -> @Block {
-    @Block::new(llbb, None, is_lpad, None, fcx)
-}
-
-
-// trans_block_cleanups: Go through all the cleanups attached to this
-// block and execute them.
-//
-// When translating a block that introduces new variables during its scope, we
-// need to make sure those variables go out of scope when the block ends.  We
-// do that by running a 'cleanup' function for each variable.
-// trans_block_cleanups runs all the cleanup functions for the block.
-pub fn trans_block_cleanups(bcx: @Block, cleanups: ~[cleanup]) -> @Block {
-    trans_block_cleanups_(bcx, cleanups, false)
-}
-
-pub fn trans_block_cleanups_(bcx: @Block,
-                             cleanups: &[cleanup],
-                             /* cleanup_cx: block, */
-                             is_lpad: bool) -> @Block {
-    let _icx = push_ctxt("trans_block_cleanups");
-    // NB: Don't short-circuit even if this block is unreachable because
-    // GC-based cleanup needs to the see that the roots are live.
-    let no_lpads = bcx.ccx().sess.no_landing_pads();
-    if bcx.unreachable.get() && !no_lpads {
-        return bcx
-    }
-    let mut bcx = bcx;
-    for cu in cleanups.rev_iter() {
-        match *cu {
-            clean(cfn, cleanup_type) | clean_temp(_, cfn, cleanup_type) => {
-                // Some types don't need to be cleaned up during
-                // landing pads because they can be freed en mass later
-                if cleanup_type == normal_exit_and_unwind || !is_lpad {
-                    bcx = cfn.clean(bcx);
-                }
-            }
-        }
-    }
-    return bcx;
-}
-
-// In the last argument, Some(block) mean jump to this block, and none means
-// this is a landing pad and leaving should be accomplished with a resume
-// instruction.
-pub fn cleanup_and_leave(bcx: @Block,
-                         upto: Option<BasicBlockRef>,
-                         leave: Option<BasicBlockRef>) {
-    let _icx = push_ctxt("cleanup_and_leave");
-    let mut cur = bcx;
-    let mut bcx = bcx;
-    let is_lpad = leave == None;
-    loop {
-        debug!("cleanup_and_leave: leaving {}", cur.to_str());
-
-        let mut cur_scope = cur.scope.get();
-        loop {
-            cur_scope = match cur_scope {
-                Some (inf) if !inf.empty_cleanups() => {
-                    let (sub_cx, dest, inf_cleanups) = {
-                        let inf = &*inf;
-                        let mut skip = 0;
-                        let mut dest = None;
-                        {
-                            let cleanup_paths = inf.cleanup_paths.borrow();
-                            let r = cleanup_paths.get()
-                                                 .rev_iter()
-                                                 .find(|cp| {
-                                cp.target == leave
-                            });
-                            for cp in r.iter() {
-                                let cleanups = inf.cleanups.borrow();
-                                if cp.size == cleanups.get().len() {
-                                    Br(bcx, cp.dest);
-                                    return;
-                                }
-
-                                skip = cp.size;
-                                dest = Some(cp.dest);
-                            }
-                        }
-                        let sub_cx = sub_block(bcx, "cleanup");
-                        Br(bcx, sub_cx.llbb);
-                        let cleanups = inf.cleanups.borrow();
-                        let mut cleanup_paths = inf.cleanup_paths
-                                                   .borrow_mut();
-                        cleanup_paths.get().push(cleanup_path {
-                            target: leave,
-                            size: cleanups.get().len(),
-                            dest: sub_cx.llbb
-                        });
-                        (sub_cx, dest, cleanups.get().tailn(skip).to_owned())
-                    };
-                    bcx = trans_block_cleanups_(sub_cx,
-                                                inf_cleanups,
-                                                is_lpad);
-                    for &dest in dest.iter() {
-                        Br(bcx, dest);
-                        return;
-                    }
-                    inf.parent
-                }
-                Some(inf) => inf.parent,
-                None => break
-            }
-        }
-
-        match upto {
-          Some(bb) => { if cur.llbb == bb { break; } }
-          _ => ()
-        }
-        cur = match cur.parent {
-          Some(next) => next,
-          None => { assert!(upto.is_none()); break; }
-        };
-    }
-    match leave {
-      Some(target) => Br(bcx, target),
-      None => {
-          let ll_load = Load(bcx, bcx.fcx.personality.get().unwrap());
-          Resume(bcx, ll_load);
-      }
-    }
-}
-
-pub fn cleanup_block(bcx: @Block, upto: Option<BasicBlockRef>) -> @Block{
-    let _icx = push_ctxt("cleanup_block");
-    let mut cur = bcx;
-    let mut bcx = bcx;
-    loop {
-        debug!("cleanup_block: {}", cur.to_str());
-
-        let mut cur_scope = cur.scope.get();
-        loop {
-            cur_scope = match cur_scope {
-                Some(inf) => {
-                    let cleanups = inf.cleanups.borrow();
-                    bcx = trans_block_cleanups_(bcx,
-                                                cleanups.get().to_owned(),
-                                                false);
-                    inf.parent
-                }
-                None => break
-            }
-        }
-
-        match upto {
-          Some(bb) => { if cur.llbb == bb { break; } }
-          _ => ()
-        }
-        cur = match cur.parent {
-          Some(next) => next,
-          None => { assert!(upto.is_none()); break; }
-        };
-    }
-    bcx
-}
-
-pub fn cleanup_and_Br(bcx: @Block, upto: @Block, target: BasicBlockRef) {
-    let _icx = push_ctxt("cleanup_and_Br");
-    cleanup_and_leave(bcx, Some(upto.llbb), Some(target));
-}
-
-pub fn leave_block(bcx: @Block, out_of: @Block) -> @Block {
-    let _icx = push_ctxt("leave_block");
-    let next_cx = sub_block(block_parent(out_of), "next");
-    if bcx.unreachable.get() {
-        Unreachable(next_cx);
-    }
-    cleanup_and_Br(bcx, out_of, next_cx.llbb);
-    next_cx
-}
-
-pub fn with_scope(bcx: @Block,
-                  opt_node_info: Option<NodeInfo>,
-                  name: &str,
-                  f: |@Block| -> @Block)
-                  -> @Block {
-    let _icx = push_ctxt("with_scope");
-
-    debug!("with_scope(bcx={}, opt_node_info={:?}, name={})",
-           bcx.to_str(), opt_node_info, name);
-    let _indenter = indenter();
-
-    let scope = simple_block_scope(bcx.scope.get(), opt_node_info);
-    bcx.scope.set(Some(scope));
-    let ret = f(bcx);
-    let ret = trans_block_cleanups_(ret, scope.cleanups.get(), false);
-    bcx.scope.set(scope.parent);
-    ret
-}
-
-pub fn with_scope_result(bcx: @Block,
-                         opt_node_info: Option<NodeInfo>,
-                         _name: &str,
-                         f: |@Block| -> Result)
-                         -> Result {
-    let _icx = push_ctxt("with_scope_result");
-
-    let scope = simple_block_scope(bcx.scope.get(), opt_node_info);
-    bcx.scope.set(Some(scope));
-    let Result { bcx: out_bcx, val } = f(bcx);
-    let out_bcx = trans_block_cleanups_(out_bcx, scope.cleanups.get(), false);
-    bcx.scope.set(scope.parent);
-
-    rslt(out_bcx, val)
-}
-
-pub fn with_scope_datumblock(bcx: @Block,
-                             opt_node_info: Option<NodeInfo>,
-                             name: &str,
-                             f: |@Block| -> datum::DatumBlock)
-                             -> datum::DatumBlock {
-    use middle::trans::datum::DatumBlock;
-
-    let _icx = push_ctxt("with_scope_result");
-    let scope_cx = scope_block(bcx, opt_node_info, name);
-    Br(bcx, scope_cx.llbb);
-    let DatumBlock {bcx, datum} = f(scope_cx);
-    DatumBlock {bcx: leave_block(bcx, scope_cx), datum: datum}
+                 llbb: BasicBlockRef)
+                 -> &'a Block<'a> {
+    Block::new(llbb, is_lpad, None, fcx)
 }
 
 pub fn block_locals(b: &ast::Block, it: |@ast::Local|) {
@@ -1509,13 +1065,15 @@ pub fn block_locals(b: &ast::Block, it: |@ast::Local|) {
     }
 }
 
-pub fn with_cond(bcx: @Block,
+pub fn with_cond<'a>(
+                 bcx: &'a Block<'a>,
                  val: ValueRef,
-                 f: |@Block| -> @Block)
-                 -> @Block {
+                 f: |&'a Block<'a>| -> &'a Block<'a>)
+                 -> &'a Block<'a> {
     let _icx = push_ctxt("with_cond");
-    let next_cx = base::sub_block(bcx, "next");
-    let cond_cx = base::sub_block(bcx, "cond");
+    let fcx = bcx.fcx;
+    let next_cx = fcx.new_temp_block("next");
+    let cond_cx = fcx.new_temp_block("cond");
     CondBr(bcx, val, cond_cx.llbb, next_cx.llbb);
     let after_cx = f(cond_cx);
     if !after_cx.terminated.get() {
@@ -1524,7 +1082,7 @@ pub fn with_cond(bcx: @Block,
     next_cx
 }
 
-pub fn call_memcpy(cx: @Block, dst: ValueRef, src: ValueRef, n_bytes: ValueRef, align: u32) {
+pub fn call_memcpy(cx: &Block, dst: ValueRef, src: ValueRef, n_bytes: ValueRef, align: u32) {
     let _icx = push_ctxt("call_memcpy");
     let ccx = cx.ccx();
     let key = match ccx.sess.targ_cfg.arch {
@@ -1540,7 +1098,7 @@ pub fn call_memcpy(cx: @Block, dst: ValueRef, src: ValueRef, n_bytes: ValueRef, 
     Call(cx, memcpy, [dst_ptr, src_ptr, size, align, volatile], []);
 }
 
-pub fn memcpy_ty(bcx: @Block, dst: ValueRef, src: ValueRef, t: ty::t) {
+pub fn memcpy_ty(bcx: &Block, dst: ValueRef, src: ValueRef, t: ty::t) {
     let _icx = push_ctxt("memcpy_ty");
     let ccx = bcx.ccx();
     if ty::type_is_structural(t) {
@@ -1553,7 +1111,7 @@ pub fn memcpy_ty(bcx: @Block, dst: ValueRef, src: ValueRef, t: ty::t) {
     }
 }
 
-pub fn zero_mem(cx: @Block, llptr: ValueRef, t: ty::t) {
+pub fn zero_mem(cx: &Block, llptr: ValueRef, t: ty::t) {
     if cx.unreachable.get() { return; }
     let _icx = push_ctxt("zero_mem");
     let bcx = cx;
@@ -1567,7 +1125,7 @@ pub fn zero_mem(cx: @Block, llptr: ValueRef, t: ty::t) {
 // allocation for large data structures, and the generated code will be
 // awful. (A telltale sign of this is large quantities of
 // `mov [byte ptr foo],0` in the generated code.)
-pub fn memzero(b: &Builder, llptr: ValueRef, ty: Type) {
+fn memzero(b: &Builder, llptr: ValueRef, ty: Type) {
     let _icx = push_ctxt("memzero");
     let ccx = b.ccx;
 
@@ -1585,7 +1143,7 @@ pub fn memzero(b: &Builder, llptr: ValueRef, ty: Type) {
     b.call(llintrinsicfn, [llptr, llzeroval, size, align, volatile], []);
 }
 
-pub fn alloc_ty(bcx: @Block, t: ty::t, name: &str) -> ValueRef {
+pub fn alloc_ty(bcx: &Block, t: ty::t, name: &str) -> ValueRef {
     let _icx = push_ctxt("alloc_ty");
     let ccx = bcx.ccx();
     let ty = type_of::type_of(ccx, t);
@@ -1594,11 +1152,11 @@ pub fn alloc_ty(bcx: @Block, t: ty::t, name: &str) -> ValueRef {
     return val;
 }
 
-pub fn alloca(cx: @Block, ty: Type, name: &str) -> ValueRef {
+pub fn alloca(cx: &Block, ty: Type, name: &str) -> ValueRef {
     alloca_maybe_zeroed(cx, ty, name, false)
 }
 
-pub fn alloca_maybe_zeroed(cx: @Block, ty: Type, name: &str, zero: bool) -> ValueRef {
+pub fn alloca_maybe_zeroed(cx: &Block, ty: Type, name: &str, zero: bool) -> ValueRef {
     let _icx = push_ctxt("alloca");
     if cx.unreachable.get() {
         unsafe {
@@ -1615,7 +1173,7 @@ pub fn alloca_maybe_zeroed(cx: @Block, ty: Type, name: &str, zero: bool) -> Valu
     p
 }
 
-pub fn arrayalloca(cx: @Block, ty: Type, v: ValueRef) -> ValueRef {
+pub fn arrayalloca(cx: &Block, ty: Type, v: ValueRef) -> ValueRef {
     let _icx = push_ctxt("arrayalloca");
     if cx.unreachable.get() {
         unsafe {
@@ -1650,7 +1208,8 @@ pub fn mk_return_basic_block(llfn: ValueRef) -> BasicBlockRef {
 
 // Creates and returns space for, or returns the argument representing, the
 // slot where the return value of the function must go.
-pub fn make_return_pointer(fcx: @FunctionContext, output_type: ty::t) -> ValueRef {
+pub fn make_return_pointer(fcx: &FunctionContext, output_type: ty::t)
+                           -> ValueRef {
     unsafe {
         if type_of::return_uses_outptr(fcx.ccx, output_type) {
             llvm::LLVMGetParam(fcx.llfn, 0)
@@ -1665,23 +1224,26 @@ pub fn make_return_pointer(fcx: @FunctionContext, output_type: ty::t) -> ValueRe
 // NB: must keep 4 fns in sync:
 //
 //  - type_of_fn
-//  - create_llargs_for_fn_args.
+//  - create_datums_for_fn_args.
 //  - new_fn_ctxt
 //  - trans_args
-pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
-                        path: path,
-                        llfndecl: ValueRef,
-                        id: ast::NodeId,
-                        output_type: ty::t,
-                        skip_retptr: bool,
-                        param_substs: Option<@param_substs>,
-                        opt_node_info: Option<NodeInfo>,
-                        sp: Option<Span>)
-                     -> @FunctionContext {
+//
+// Be warned! You must call `init_function` before doing anything with the
+// returned function context.
+pub fn new_fn_ctxt_detailed(ccx: @CrateContext,
+                            path: ast_map::Path,
+                            llfndecl: ValueRef,
+                            id: ast::NodeId,
+                            has_env: bool,
+                            output_type: ty::t,
+                            param_substs: Option<@param_substs>,
+                            sp: Option<Span>)
+                            -> FunctionContext {
     for p in param_substs.iter() { p.validate(); }
 
-    debug!("new_fn_ctxt_w_id(path={}, id={:?}, \
-            param_substs={})",
+    debug!("new_fn_ctxt_detailed(path={},
+           id={:?}, \
+           param_substs={})",
            path_str(ccx.sess, path),
            id,
            param_substs.repr(ccx.tcx));
@@ -1695,139 +1257,140 @@ pub fn new_fn_ctxt_w_id(ccx: @CrateContext,
     let uses_outptr = type_of::return_uses_outptr(ccx, substd_output_type);
     let debug_context = debuginfo::create_function_debug_context(ccx, id, param_substs, llfndecl);
 
-    let fcx = @FunctionContext {
-          llfn: llfndecl,
-          llenv: unsafe {
-              Cell::new(llvm::LLVMGetUndef(Type::i8p().to_ref()))
-          },
-          llretptr: Cell::new(None),
-          entry_bcx: RefCell::new(None),
-          alloca_insert_pt: Cell::new(None),
-          llreturn: Cell::new(None),
-          llself: Cell::new(None),
-          personality: Cell::new(None),
-          caller_expects_out_pointer: uses_outptr,
-          llargs: RefCell::new(HashMap::new()),
-          lllocals: RefCell::new(HashMap::new()),
-          llupvars: RefCell::new(HashMap::new()),
-          id: id,
-          param_substs: param_substs,
-          span: sp,
-          path: path,
-          ccx: ccx,
-          debug_context: debug_context,
+    let mut fcx = FunctionContext {
+        llfn: llfndecl,
+        llenv: None,
+        llretptr: Cell::new(None),
+        entry_bcx: RefCell::new(None),
+        alloca_insert_pt: Cell::new(None),
+        llreturn: Cell::new(None),
+        personality: Cell::new(None),
+        caller_expects_out_pointer: uses_outptr,
+        llargs: RefCell::new(HashMap::new()),
+        lllocals: RefCell::new(HashMap::new()),
+        llupvars: RefCell::new(HashMap::new()),
+        id: id,
+        param_substs: param_substs,
+        span: sp,
+        path: path,
+        block_arena: TypedArena::new(),
+        ccx: ccx,
+        debug_context: debug_context,
+        scopes: RefCell::new(~[])
     };
-    fcx.llenv.set(unsafe {
-          llvm::LLVMGetParam(llfndecl, fcx.env_arg_pos() as c_uint)
-    });
 
-    unsafe {
-        let entry_bcx = top_scope_block(fcx, opt_node_info);
-        Load(entry_bcx, C_null(Type::i8p()));
-
-        fcx.entry_bcx.set(Some(entry_bcx));
-        fcx.alloca_insert_pt.set(Some(
-                llvm::LLVMGetFirstInstruction(entry_bcx.llbb)));
+    if has_env {
+        fcx.llenv = Some(unsafe {
+            llvm::LLVMGetParam(fcx.llfn, fcx.env_arg_pos() as c_uint)
+        });
     }
 
-    if !ty::type_is_voidish(ccx.tcx, substd_output_type) {
-        // If the function returns nil/bot, there is no real return
-        // value, so do not set `llretptr`.
-        if !skip_retptr || uses_outptr {
-            // Otherwise, we normally allocate the llretptr, unless we
-            // have been instructed to skip it for immediate return
-            // values.
-            fcx.llretptr.set(Some(make_return_pointer(fcx,
-                                                      substd_output_type)));
-        }
-    }
     fcx
 }
 
+/// Performs setup on a newly created function, creating the entry scope block
+/// and allocating space for the return pointer.
+pub fn init_function<'a>(
+                     fcx: &'a FunctionContext<'a>,
+                     skip_retptr: bool,
+                     output_type: ty::t,
+                     param_substs: Option<@param_substs>) {
+    let entry_bcx = fcx.new_temp_block("entry-block");
+
+    fcx.entry_bcx.set(Some(entry_bcx));
+
+    // Use a dummy instruction as the insertion point for all allocas.
+    // This is later removed in FunctionContext::cleanup.
+    fcx.alloca_insert_pt.set(Some(unsafe {
+        Load(entry_bcx, C_null(Type::i8p()));
+        llvm::LLVMGetFirstInstruction(entry_bcx.llbb)
+    }));
+
+    let substd_output_type = match param_substs {
+        None => output_type,
+        Some(substs) => {
+            ty::subst_tps(fcx.ccx.tcx,
+                          substs.tys,
+                          substs.self_ty,
+                          output_type)
+        }
+    };
+
+    if !return_type_is_void(fcx.ccx, substd_output_type) {
+        // If the function returns nil/bot, there is no real return
+        // value, so do not set `llretptr`.
+        if !skip_retptr || fcx.caller_expects_out_pointer {
+            // Otherwise, we normally allocate the llretptr, unless we
+            // have been instructed to skip it for immediate return
+            // values.
+            fcx.llretptr.set(Some(make_return_pointer(fcx, substd_output_type)));
+        }
+    }
+}
+
 pub fn new_fn_ctxt(ccx: @CrateContext,
-                   path: path,
+                   path: ast_map::Path,
                    llfndecl: ValueRef,
+                   has_env: bool,
                    output_type: ty::t,
                    sp: Option<Span>)
-                -> @FunctionContext {
-    new_fn_ctxt_w_id(ccx, path, llfndecl, -1, output_type, false, None, None, sp)
+                   -> FunctionContext {
+    // FIXME(#11385): Do not call `init_function` here; it will typecheck
+    // but segfault.
+    new_fn_ctxt_detailed(ccx, path, llfndecl, -1, has_env, output_type, None, sp)
 }
 
 // NB: must keep 4 fns in sync:
 //
 //  - type_of_fn
-//  - create_llargs_for_fn_args.
+//  - create_datums_for_fn_args.
 //  - new_fn_ctxt
 //  - trans_args
 
-// create_llargs_for_fn_args: Creates a mapping from incoming arguments to
-// allocas created for them.
-//
-// When we translate a function, we need to map its incoming arguments to the
-// spaces that have been created for them (by code in the llallocas field of
-// the function's fn_ctxt).  create_llargs_for_fn_args populates the llargs
-// field of the fn_ctxt with
-pub fn create_llargs_for_fn_args(cx: @FunctionContext,
-                                 self_arg: self_arg,
-                                 args: &[ast::arg])
-                              -> ~[ValueRef] {
-    let _icx = push_ctxt("create_llargs_for_fn_args");
+fn arg_kind(cx: &FunctionContext, t: ty::t) -> datum::Rvalue {
+    use middle::trans::datum::{ByRef, ByValue};
 
-    match self_arg {
-      impl_self(tt, self_mode) => {
-        cx.llself.set(Some(ValSelfData {
-            v: cx.llenv.get(),
-            t: tt,
-            is_copy: self_mode == ty::ByCopy
-        }));
-      }
-      no_self => ()
+    datum::Rvalue {
+        mode: if arg_is_indirect(cx.ccx, t) { ByRef } else { ByValue }
     }
-
-    // Return an array containing the ValueRefs that we get from
-    // llvm::LLVMGetParam for each argument.
-    vec::from_fn(args.len(), |i| {
-        unsafe { llvm::LLVMGetParam(cx.llfn, cx.arg_pos(i) as c_uint) }
-    })
 }
 
-pub fn copy_args_to_allocas(fcx: @FunctionContext,
-                            bcx: @Block,
-                            args: &[ast::arg],
-                            raw_llargs: &[ValueRef],
-                            arg_tys: &[ty::t]) -> @Block {
-    debug!("copy_args_to_allocas: raw_llargs={} arg_tys={}",
-           raw_llargs.llrepr(fcx.ccx),
-           arg_tys.repr(fcx.ccx.tcx));
+// work around bizarre resolve errors
+type RvalueDatum = datum::Datum<datum::Rvalue>;
+type LvalueDatum = datum::Datum<datum::Lvalue>;
+
+// create_datums_for_fn_args: creates rvalue datums for each of the
+// incoming function arguments. These will later be stored into
+// appropriate lvalue datums.
+pub fn create_datums_for_fn_args(fcx: &FunctionContext,
+                                 arg_tys: &[ty::t])
+                                 -> ~[RvalueDatum] {
+    let _icx = push_ctxt("create_datums_for_fn_args");
+
+    // Return an array wrapping the ValueRefs that we get from
+    // llvm::LLVMGetParam for each argument into datums.
+    arg_tys.iter().enumerate().map(|(i, &arg_ty)| {
+        let llarg = unsafe {
+            llvm::LLVMGetParam(fcx.llfn, fcx.arg_pos(i) as c_uint)
+        };
+        datum::Datum(llarg, arg_ty, arg_kind(fcx, arg_ty))
+    }).collect()
+}
+
+fn copy_args_to_allocas<'a>(fcx: &FunctionContext<'a>,
+                            arg_scope: cleanup::CustomScopeIndex,
+                            bcx: &'a Block<'a>,
+                            args: &[ast::Arg],
+                            arg_datums: ~[RvalueDatum])
+                            -> &'a Block<'a> {
+    debug!("copy_args_to_allocas");
 
     let _icx = push_ctxt("copy_args_to_allocas");
     let mut bcx = bcx;
 
-    match fcx.llself.get() {
-        Some(slf) => {
-            let self_val = if slf.is_copy
-                    && datum::appropriate_mode(bcx.ccx(), slf.t).is_by_value() {
-                let tmp = BitCast(bcx, slf.v, type_of(bcx.ccx(), slf.t));
-                let alloc = alloc_ty(bcx, slf.t, "__self");
-                Store(bcx, tmp, alloc);
-                alloc
-            } else {
-                PointerCast(bcx, slf.v, type_of(bcx.ccx(), slf.t).ptr_to())
-            };
+    let arg_scope_id = cleanup::CustomScope(arg_scope);
 
-            fcx.llself.set(Some(ValSelfData {v: self_val, ..slf}));
-            add_clean(bcx, self_val, slf.t);
-
-            if fcx.ccx.sess.opts.extra_debuginfo {
-                debuginfo::create_self_argument_metadata(bcx, slf.t, self_val);
-            }
-        }
-        _ => {}
-    }
-
-    for (arg_n, &arg_ty) in arg_tys.iter().enumerate() {
-        let raw_llarg = raw_llargs[arg_n];
-
+    for (i, arg_datum) in arg_datums.move_iter().enumerate() {
         // For certain mode/type combinations, the raw llarg values are passed
         // by value.  However, within the fn body itself, we want to always
         // have all locals and arguments be by-ref so that we can cancel the
@@ -1835,27 +1398,20 @@ pub fn copy_args_to_allocas(fcx: @FunctionContext,
         // the argument would be passed by value, we store it into an alloca.
         // This alloca should be optimized away by LLVM's mem-to-reg pass in
         // the event it's not truly needed.
-        // only by value if immediate:
-        let llarg = if datum::appropriate_mode(bcx.ccx(), arg_ty).is_by_value() {
-            let alloc = alloc_ty(bcx, arg_ty, "__arg");
-            Store(bcx, raw_llarg, alloc);
-            alloc
-        } else {
-            raw_llarg
-        };
-        bcx = _match::store_arg(bcx, args[arg_n].pat, llarg);
+
+        bcx = _match::store_arg(bcx, args[i].pat, arg_datum, arg_scope_id);
 
         if fcx.ccx.sess.opts.extra_debuginfo {
-            debuginfo::create_argument_metadata(bcx, &args[arg_n]);
+            debuginfo::create_argument_metadata(bcx, &args[i]);
         }
     }
 
-    return bcx;
+    bcx
 }
 
 // Ties up the llstaticallocas -> llloadenv -> lltop edges,
 // and builds the return block.
-pub fn finish_fn(fcx: @FunctionContext, last_bcx: @Block) {
+pub fn finish_fn(fcx: &FunctionContext, last_bcx: &Block) {
     let _icx = push_ctxt("finish_fn");
 
     let ret_cx = match fcx.llreturn.get() {
@@ -1873,7 +1429,7 @@ pub fn finish_fn(fcx: @FunctionContext, last_bcx: @Block) {
 }
 
 // Builds the return block for a function.
-pub fn build_return_block(fcx: &FunctionContext, ret_cx: @Block) {
+pub fn build_return_block(fcx: &FunctionContext, ret_cx: &Block) {
     // Return the value if this function immediate; otherwise, return void.
     if fcx.llretptr.get().is_none() || fcx.caller_expects_out_pointer {
         return RetVoid(ret_cx);
@@ -1901,22 +1457,19 @@ pub fn build_return_block(fcx: &FunctionContext, ret_cx: @Block) {
     Ret(ret_cx, retval);
 }
 
-pub enum self_arg { impl_self(ty::t, ty::SelfMode), no_self, }
-
 // trans_closure: Builds an LLVM function out of a source function.
 // If the function closes over its environment a closure will be
 // returned.
-pub fn trans_closure(ccx: @CrateContext,
-                     path: path,
-                     decl: &ast::fn_decl,
-                     body: &ast::Block,
-                     llfndecl: ValueRef,
-                     self_arg: self_arg,
-                     param_substs: Option<@param_substs>,
-                     id: ast::NodeId,
-                     _attributes: &[ast::Attribute],
-                     output_type: ty::t,
-                     maybe_load_env: |@FunctionContext|) {
+pub fn trans_closure<'a>(ccx: @CrateContext,
+                         path: ast_map::Path,
+                         decl: &ast::FnDecl,
+                         body: &ast::Block,
+                         llfndecl: ValueRef,
+                         param_substs: Option<@param_substs>,
+                         id: ast::NodeId,
+                         _attributes: &[ast::Attribute],
+                         output_type: ty::t,
+                         maybe_load_env: |&'a Block<'a>| -> &'a Block<'a>) {
     ccx.stats.n_closures.set(ccx.stats.n_closures.get() + 1);
 
     let _icx = push_ctxt("trans_closure");
@@ -1925,15 +1478,17 @@ pub fn trans_closure(ccx: @CrateContext,
     debug!("trans_closure(..., param_substs={})",
            param_substs.repr(ccx.tcx));
 
-    let fcx = new_fn_ctxt_w_id(ccx,
-                               path,
-                               llfndecl,
-                               id,
-                               output_type,
-                               false,
-                               param_substs,
-                               body.info(),
-                               Some(body.span));
+    let has_env = match ty::get(ty::node_id_to_type(ccx.tcx, id)).sty {
+        ty::ty_closure(_) => true,
+        _ => false
+    };
+
+    let fcx = new_fn_ctxt_detailed(ccx, path, llfndecl, id, has_env, output_type,
+                                   param_substs, Some(body.span));
+    init_function(&fcx, false, output_type, param_substs);
+
+    // cleanup scope for the incoming arguments
+    let arg_scope = fcx.push_custom_cleanup_scope();
 
     // Create the first basic block in the function and keep a handle on it to
     //  pass to finish_fn later.
@@ -1943,22 +1498,22 @@ pub fn trans_closure(ccx: @CrateContext,
 
     // Set up arguments to the function.
     let arg_tys = ty::ty_fn_args(node_id_type(bcx, id));
-    let raw_llargs = create_llargs_for_fn_args(fcx, self_arg, decl.inputs);
+    let arg_datums = create_datums_for_fn_args(&fcx, arg_tys);
 
-    bcx = copy_args_to_allocas(fcx, bcx, decl.inputs, raw_llargs, arg_tys);
+    bcx = copy_args_to_allocas(&fcx, arg_scope, bcx, decl.inputs, arg_datums);
 
-    maybe_load_env(fcx);
+    bcx = maybe_load_env(bcx);
 
     // Up until here, IR instructions for this function have explicitly not been annotated with
     // source code location, so we don't step into call setup code. From here on, source location
     // emitting should be enabled.
-    debuginfo::start_emitting_source_locations(fcx);
+    debuginfo::start_emitting_source_locations(&fcx);
 
     // This call to trans_block is the place where we bridge between
     // translation calls that don't have a return value (trans_crate,
     // trans_mod, trans_item, et cetera) and those that do
     // (trans_block, trans_expr, et cetera).
-    if body.expr.is_none() || ty::type_is_voidish(bcx.tcx(), block_ty) {
+    if body.expr.is_none() || type_is_zero_size(bcx.ccx(), block_ty) {
         bcx = controlflow::trans_block(bcx, body, expr::Ignore);
     } else {
         let dest = expr::SaveIn(fcx.llretptr.get().unwrap());
@@ -1966,8 +1521,15 @@ pub fn trans_closure(ccx: @CrateContext,
     }
 
     match fcx.llreturn.get() {
-        Some(llreturn) => cleanup_and_Br(bcx, bcx_top, llreturn),
-        None => bcx = cleanup_block(bcx, Some(bcx_top.llbb))
+        Some(_) => {
+            Br(bcx, fcx.return_exit_block());
+            fcx.pop_custom_cleanup_scope(arg_scope);
+        }
+        None => {
+            // Microoptimization writ large: avoid creating a separate
+            // llreturn basic block
+            bcx = fcx.pop_and_trans_custom_cleanup_scope(bcx, arg_scope);
+        }
     };
 
     // Put return block after all other blocks.
@@ -1980,74 +1542,32 @@ pub fn trans_closure(ccx: @CrateContext,
     }
 
     // Insert the mandatory first few basic blocks before lltop.
-    finish_fn(fcx, bcx);
+    finish_fn(&fcx, bcx);
 }
 
 // trans_fn: creates an LLVM function corresponding to a source language
 // function.
 pub fn trans_fn(ccx: @CrateContext,
-                path: path,
-                decl: &ast::fn_decl,
+                path: ast_map::Path,
+                decl: &ast::FnDecl,
                 body: &ast::Block,
                 llfndecl: ValueRef,
-                self_arg: self_arg,
                 param_substs: Option<@param_substs>,
                 id: ast::NodeId,
                 attrs: &[ast::Attribute]) {
-
     let the_path_str = path_str(ccx.sess, path);
     let _s = StatRecorder::new(ccx, the_path_str);
-    debug!("trans_fn(self_arg={:?}, param_substs={})",
-           self_arg,
-           param_substs.repr(ccx.tcx));
+    debug!("trans_fn(param_substs={})", param_substs.repr(ccx.tcx));
     let _icx = push_ctxt("trans_fn");
     let output_type = ty::ty_fn_ret(ty::node_id_to_type(ccx.tcx, id));
-    trans_closure(ccx,
-                  path.clone(),
-                  decl,
-                  body,
-                  llfndecl,
-                  self_arg,
-                  param_substs,
-                  id,
-                  attrs,
-                  output_type,
-                  |_fcx| { });
-}
-
-fn insert_synthetic_type_entries(bcx: @Block,
-                                 fn_args: &[ast::arg],
-                                 arg_tys: &[ty::t])
-{
-    /*!
-     * For tuple-like structs and enum-variants, we generate
-     * synthetic AST nodes for the arguments.  These have no types
-     * in the type table and no entries in the moves table,
-     * so the code in `copy_args_to_allocas` and `bind_irrefutable_pat`
-     * gets upset. This hack of a function bridges the gap by inserting types.
-     *
-     * This feels horrible. I think we should just have a special path
-     * for these functions and not try to use the generic code, but
-     * that's not the problem I'm trying to solve right now. - nmatsakis
-     */
-
-    let tcx = bcx.tcx();
-    for i in range(0u, fn_args.len()) {
-        debug!("setting type of argument {} (pat node {}) to {}",
-               i, fn_args[i].pat.id, bcx.ty_to_str(arg_tys[i]));
-
-        let pat_id = fn_args[i].pat.id;
-        let arg_ty = arg_tys[i];
-
-        let mut node_types = tcx.node_types.borrow_mut();
-        node_types.get().insert(pat_id as uint, arg_ty);
-    }
+    trans_closure(ccx, path.clone(), decl, body, llfndecl,
+                  param_substs, id, attrs, output_type, |bcx| bcx);
 }
 
 pub fn trans_enum_variant(ccx: @CrateContext,
                           _enum_id: ast::NodeId,
-                          variant: &ast::variant,
-                          args: &[ast::variant_arg],
+                          variant: &ast::Variant,
+                          _args: &[ast::VariantArg],
                           disr: ty::Disr,
                           param_substs: Option<@param_substs>,
                           llfndecl: ValueRef) {
@@ -2056,14 +1576,13 @@ pub fn trans_enum_variant(ccx: @CrateContext,
     trans_enum_variant_or_tuple_like_struct(
         ccx,
         variant.node.id,
-        args,
         disr,
         param_substs,
         llfndecl);
 }
 
 pub fn trans_tuple_struct(ccx: @CrateContext,
-                          fields: &[ast::struct_field],
+                          _fields: &[ast::StructField],
                           ctor_id: ast::NodeId,
                           param_substs: Option<@param_substs>,
                           llfndecl: ValueRef) {
@@ -2072,47 +1591,16 @@ pub fn trans_tuple_struct(ccx: @CrateContext,
     trans_enum_variant_or_tuple_like_struct(
         ccx,
         ctor_id,
-        fields,
         0,
         param_substs,
         llfndecl);
 }
 
-trait IdAndTy {
-    fn id(&self) -> ast::NodeId;
-    fn ty(&self) -> ast::P<ast::Ty>;
-}
-
-impl IdAndTy for ast::variant_arg {
-    fn id(&self) -> ast::NodeId { self.id }
-    fn ty(&self) -> ast::P<ast::Ty> { self.ty }
-}
-
-impl IdAndTy for ast::struct_field {
-    fn id(&self) -> ast::NodeId { self.node.id }
-    fn ty(&self) -> ast::P<ast::Ty> { self.node.ty }
-}
-
-pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
-    ccx: @CrateContext,
-    ctor_id: ast::NodeId,
-    args: &[A],
-    disr: ty::Disr,
-    param_substs: Option<@param_substs>,
-    llfndecl: ValueRef)
-{
-    // Translate variant arguments to function arguments.
-    let fn_args = args.map(|varg| {
-        ast::arg {
-            ty: varg.ty(),
-            pat: ast_util::ident_to_pat(
-                ccx.tcx.sess.next_node_id(),
-                codemap::DUMMY_SP,
-                special_idents::arg),
-            id: varg.id(),
-        }
-    });
-
+fn trans_enum_variant_or_tuple_like_struct(ccx: @CrateContext,
+                                           ctor_id: ast::NodeId,
+                                           disr: ty::Disr,
+                                           param_substs: Option<@param_substs>,
+                                           llfndecl: ValueRef) {
     let no_substs: &[ty::t] = [];
     let ty_param_substs = match param_substs {
         Some(ref substs) => {
@@ -2138,44 +1626,33 @@ pub fn trans_enum_variant_or_tuple_like_struct<A:IdAndTy>(
                  ty_to_str(ccx.tcx, ctor_ty)))
     };
 
-    let fcx = new_fn_ctxt_w_id(ccx,
-                               ~[],
-                               llfndecl,
-                               ctor_id,
-                               result_ty,
-                               false,
-                               param_substs,
-                               None,
-                               None);
+    let fcx = new_fn_ctxt_detailed(ccx, ~[], llfndecl, ctor_id, false,
+                                   result_ty, param_substs, None);
+    init_function(&fcx, false, result_ty, param_substs);
 
     let arg_tys = ty::ty_fn_args(ctor_ty);
 
-    let raw_llargs = create_llargs_for_fn_args(fcx, no_self, fn_args);
+    let arg_datums = create_datums_for_fn_args(&fcx, arg_tys);
 
     let bcx = fcx.entry_bcx.get().unwrap();
 
-    insert_synthetic_type_entries(bcx, fn_args, arg_tys);
-    let bcx = copy_args_to_allocas(fcx, bcx, fn_args, raw_llargs, arg_tys);
-
-    let repr = adt::represent_type(ccx, result_ty);
-    adt::trans_start_init(bcx, repr, fcx.llretptr.get().unwrap(), disr);
-    for (i, fn_arg) in fn_args.iter().enumerate() {
-        let lldestptr = adt::trans_field_ptr(bcx,
-                                             repr,
-                                             fcx.llretptr.get().unwrap(),
-                                             disr,
-                                             i);
-        let llarg = {
-            let llargs = fcx.llargs.borrow();
-            llargs.get().get_copy(&fn_arg.pat.id)
-        };
-        let arg_ty = arg_tys[i];
-        memcpy_ty(bcx, lldestptr, llarg, arg_ty);
+    if !type_is_zero_size(fcx.ccx, result_ty) {
+        let repr = adt::represent_type(ccx, result_ty);
+        adt::trans_start_init(bcx, repr, fcx.llretptr.get().unwrap(), disr);
+        for (i, arg_datum) in arg_datums.move_iter().enumerate() {
+            let lldestptr = adt::trans_field_ptr(bcx,
+                                                 repr,
+                                                 fcx.llretptr.get().unwrap(),
+                                                 disr,
+                                                 i);
+            arg_datum.store_to(bcx, lldestptr);
+        }
     }
-    finish_fn(fcx, bcx);
+
+    finish_fn(&fcx, bcx);
 }
 
-pub fn trans_enum_def(ccx: @CrateContext, enum_definition: &ast::enum_def,
+pub fn trans_enum_def(ccx: @CrateContext, enum_definition: &ast::EnumDef,
                       id: ast::NodeId, vi: @~[@ty::VariantInfo],
                       i: &mut uint) {
     for &variant in enum_definition.variants.iter() {
@@ -2183,15 +1660,15 @@ pub fn trans_enum_def(ccx: @CrateContext, enum_definition: &ast::enum_def,
         *i += 1;
 
         match variant.node.kind {
-            ast::tuple_variant_kind(ref args) if args.len() > 0 => {
+            ast::TupleVariantKind(ref args) if args.len() > 0 => {
                 let llfn = get_item_val(ccx, variant.node.id);
                 trans_enum_variant(ccx, id, variant, *args,
                                    disr_val, None, llfn);
             }
-            ast::tuple_variant_kind(_) => {
+            ast::TupleVariantKind(_) => {
                 // Nothing to do.
             }
-            ast::struct_variant_kind(struct_def) => {
+            ast::StructVariantKind(struct_def) => {
                 trans_struct_def(ccx, struct_def);
             }
         }
@@ -2203,45 +1680,36 @@ pub struct TransItemVisitor {
 }
 
 impl Visitor<()> for TransItemVisitor {
-    fn visit_item(&mut self, i: &ast::item, _:()) {
+    fn visit_item(&mut self, i: &ast::Item, _:()) {
         trans_item(self.ccx, i);
     }
 }
 
-pub fn trans_item(ccx: @CrateContext, item: &ast::item) {
+pub fn trans_item(ccx: @CrateContext, item: &ast::Item) {
     let _icx = push_ctxt("trans_item");
     let path = {
-        let items = ccx.tcx.items.borrow();
-        match items.get().get_copy(&item.id) {
-            ast_map::node_item(_, p) => p,
+        match ccx.tcx.items.get(item.id) {
+            ast_map::NodeItem(_, p) => p,
             // tjc: ?
             _ => fail!("trans_item"),
         }
     };
     match item.node {
-      ast::item_fn(decl, purity, _abis, ref generics, body) => {
-        if purity == ast::extern_fn  {
+      ast::ItemFn(decl, purity, _abis, ref generics, body) => {
+        if purity == ast::ExternFn  {
             let llfndecl = get_item_val(ccx, item.id);
             foreign::trans_rust_fn_with_foreign_abi(
                 ccx,
-                &vec::append((*path).clone(),
-                             [path_name(item.ident)]),
+                &vec::append_one((*path).clone(), PathName(item.ident)),
                 decl,
                 body,
                 item.attrs,
                 llfndecl,
                 item.id);
         } else if !generics.is_type_parameterized() {
-            let llfndecl = get_item_val(ccx, item.id);
-            trans_fn(ccx,
-                     vec::append((*path).clone(), [path_name(item.ident)]),
-                     decl,
-                     body,
-                     llfndecl,
-                     no_self,
-                     None,
-                     item.id,
-                     item.attrs);
+            let path = vec::append_one((*path).clone(), PathName(item.ident));
+            let llfn = get_item_val(ccx, item.id);
+            trans_fn(ccx, path, decl, body, llfn, None, item.id, item.attrs);
         } else {
             // Be sure to travel more than just one layer deep to catch nested
             // items in blocks and such.
@@ -2249,7 +1717,7 @@ pub fn trans_item(ccx: @CrateContext, item: &ast::item) {
             v.visit_block(body, ());
         }
       }
-      ast::item_impl(ref generics, _, _, ref ms) => {
+      ast::ItemImpl(ref generics, _, _, ref ms) => {
         meth::trans_impl(ccx,
                          (*path).clone(),
                          item.ident,
@@ -2257,17 +1725,17 @@ pub fn trans_item(ccx: @CrateContext, item: &ast::item) {
                          generics,
                          item.id);
       }
-      ast::item_mod(ref m) => {
+      ast::ItemMod(ref m) => {
         trans_mod(ccx, m);
       }
-      ast::item_enum(ref enum_definition, ref generics) => {
+      ast::ItemEnum(ref enum_definition, ref generics) => {
         if !generics.is_type_parameterized() {
             let vi = ty::enum_variants(ccx.tcx, local_def(item.id));
             let mut i = 0;
             trans_enum_def(ccx, enum_definition, item.id, vi, &mut i);
         }
       }
-      ast::item_static(_, m, expr) => {
+      ast::ItemStatic(_, m, expr) => {
           consts::trans_const(ccx, m, item.id);
           // Do static_assert checking. It can't really be done much earlier
           // because we need to get the value of the bool out of LLVM
@@ -2287,15 +1755,15 @@ pub fn trans_item(ccx: @CrateContext, item: &ast::item) {
               }
           }
       },
-      ast::item_foreign_mod(ref foreign_mod) => {
+      ast::ItemForeignMod(ref foreign_mod) => {
         foreign::trans_foreign_mod(ccx, foreign_mod);
       }
-      ast::item_struct(struct_def, ref generics) => {
+      ast::ItemStruct(struct_def, ref generics) => {
         if !generics.is_type_parameterized() {
             trans_struct_def(ccx, struct_def);
         }
       }
-      ast::item_trait(..) => {
+      ast::ItemTrait(..) => {
         // Inside of this trait definition, we won't be actually translating any
         // functions, but the trait still needs to be walked. Otherwise default
         // methods with items will not get translated and will cause ICE's when
@@ -2307,7 +1775,7 @@ pub fn trans_item(ccx: @CrateContext, item: &ast::item) {
     }
 }
 
-pub fn trans_struct_def(ccx: @CrateContext, struct_def: @ast::struct_def) {
+pub fn trans_struct_def(ccx: @CrateContext, struct_def: @ast::StructDef) {
     // If this is a tuple-like struct, translate the constructor.
     match struct_def.ctor_id {
         // We only need to translate a constructor if there are fields;
@@ -2326,7 +1794,7 @@ pub fn trans_struct_def(ccx: @CrateContext, struct_def: @ast::struct_def) {
 // separate modules in the compiled program.  That's because modules exist
 // only as a convenience for humans working with the code, to organize names
 // and control visibility.
-pub fn trans_mod(ccx: @CrateContext, m: &ast::_mod) {
+pub fn trans_mod(ccx: @CrateContext, m: &ast::Mod) {
     let _icx = push_ctxt("trans_mod");
     for item in m.items.iter() {
         trans_item(ccx, *item);
@@ -2352,12 +1820,12 @@ fn finish_register_fn(ccx: @CrateContext, sp: Span, sym: ~str, node_id: ast::Nod
     }
 }
 
-pub fn register_fn(ccx: @CrateContext,
-                   sp: Span,
-                   sym: ~str,
-                   node_id: ast::NodeId,
-                   node_type: ty::t)
-                   -> ValueRef {
+fn register_fn(ccx: @CrateContext,
+               sp: Span,
+               sym: ~str,
+               node_id: ast::NodeId,
+               node_type: ty::t)
+               -> ValueRef {
     let f = match ty::get(node_type).sty {
         ty::ty_bare_fn(ref f) => {
             assert!(f.abis.is_rust() || f.abis.is_intrinsic());
@@ -2366,7 +1834,7 @@ pub fn register_fn(ccx: @CrateContext,
         _ => fail!("expected bare rust fn or an intrinsic")
     };
 
-    let llfn = decl_rust_fn(ccx, f.sig.inputs, f.sig.output, sym);
+    let llfn = decl_rust_fn(ccx, false, f.sig.inputs, f.sig.output, sym);
     finish_register_fn(ccx, sp, sym, node_id, llfn);
     llfn
 }
@@ -2377,13 +1845,13 @@ pub fn register_fn_llvmty(ccx: @CrateContext,
                           sym: ~str,
                           node_id: ast::NodeId,
                           cc: lib::llvm::CallConv,
-                          fn_ty: Type)
-                          -> ValueRef {
+                          fn_ty: Type,
+                          output: ty::t) -> ValueRef {
     debug!("register_fn_fuller creating fn for item {} with path {}",
            node_id,
            ast_map::path_to_str(item_path(ccx, &node_id), token::get_ident_interner()));
 
-    let llfn = decl_fn(ccx.llmod, sym, cc, fn_ty);
+    let llfn = decl_fn(ccx.llmod, sym, cc, fn_ty, output);
     finish_register_fn(ccx, sp, sym, node_id, llfn);
     llfn
 }
@@ -2415,7 +1883,7 @@ pub fn create_entry_wrapper(ccx: @CrateContext,
         let llfty = Type::func([ccx.int_type, Type::i8().ptr_to().ptr_to()],
                                &ccx.int_type);
 
-        let llfn = decl_cdecl_fn(ccx.llmod, "main", llfty);
+        let llfn = decl_cdecl_fn(ccx.llmod, "main", llfty, ty::mk_nil());
         let llbb = "top".with_c_str(|buf| {
             unsafe {
                 llvm::LLVMAppendBasicBlockInContext(ccx.llcx, llfn, buf)
@@ -2444,7 +1912,6 @@ pub fn create_entry_wrapper(ccx: @CrateContext,
                     });
 
                     ~[
-                        C_null(Type::opaque_box(ccx).ptr_to()),
                         opaque_rust_main,
                         llvm::LLVMGetParam(llfn, 0),
                         llvm::LLVMGetParam(llfn, 1)
@@ -2454,7 +1921,6 @@ pub fn create_entry_wrapper(ccx: @CrateContext,
             } else {
                 debug!("using user-defined start fn");
                 let args = ~[
-                    C_null(Type::opaque_box(ccx).ptr_to()),
                     llvm::LLVMGetParam(llfn, 0 as c_uint),
                     llvm::LLVMGetParam(llfn, 1 as c_uint)
                 ];
@@ -2471,28 +1937,19 @@ pub fn create_entry_wrapper(ccx: @CrateContext,
     }
 }
 
-pub fn fill_fn_pair(bcx: @Block, pair: ValueRef, llfn: ValueRef,
-                    llenvptr: ValueRef) {
-    let ccx = bcx.ccx();
-    let code_cell = GEPi(bcx, pair, [0u, abi::fn_field_code]);
-    Store(bcx, llfn, code_cell);
-    let env_cell = GEPi(bcx, pair, [0u, abi::fn_field_box]);
-    let llenvblobptr = PointerCast(bcx, llenvptr, Type::opaque_box(ccx).ptr_to());
-    Store(bcx, llenvblobptr, env_cell);
-}
-
-pub fn item_path(ccx: &CrateContext, id: &ast::NodeId) -> path {
+pub fn item_path(ccx: &CrateContext, id: &ast::NodeId) -> ast_map::Path {
     ty::item_path(ccx.tcx, ast_util::local_def(*id))
 }
 
-fn exported_name(ccx: &CrateContext, path: path, ty: ty::t, attrs: &[ast::Attribute]) -> ~str {
+fn exported_name(ccx: &CrateContext, path: ast_map::Path,
+                 ty: ty::t, attrs: &[ast::Attribute]) -> ~str {
     match attr::first_attr_value_str_by_name(attrs, "export_name") {
         // Use provided name
         Some(name) => name.to_owned(),
 
         // Don't mangle
         _ if attr::contains_name(attrs, "no_mangle")
-            => path_elt_to_str(*path.last(), token::get_ident_interner()),
+            => path_elem_to_str(*path.last().unwrap(), token::get_ident_interner()),
 
         // Usual name mangling
         _ => mangle_exported_name(ccx, path, ty)
@@ -2511,41 +1968,38 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
         Some(v) => v,
         None => {
             let mut foreign = false;
-            let item = {
-                let items = ccx.tcx.items.borrow();
-                items.get().get_copy(&id)
-            };
+            let item = ccx.tcx.items.get(id);
             let val = match item {
-                ast_map::node_item(i, pth) => {
+                ast_map::NodeItem(i, pth) => {
 
-                    let elt = path_pretty_name(i.ident, id as u64);
+                    let elt = PathPrettyName(i.ident, id as u64);
                     let my_path = vec::append_one((*pth).clone(), elt);
                     let ty = ty::node_id_to_type(ccx.tcx, i.id);
                     let sym = exported_name(ccx, my_path, ty, i.attrs);
 
                     let v = match i.node {
-                        ast::item_static(_, _, expr) => {
+                        ast::ItemStatic(_, _, expr) => {
                             // If this static came from an external crate, then
                             // we need to get the symbol from csearch instead of
                             // using the current crate's name/version
                             // information in the hash of the symbol
                             debug!("making {}", sym);
-                            let sym = {
+                            let (sym, is_local) = {
                                 let external_srcs = ccx.external_srcs
                                                        .borrow();
                                 match external_srcs.get().find(&i.id) {
                                     Some(&did) => {
                                         debug!("but found in other crate...");
-                                        csearch::get_symbol(ccx.sess.cstore,
-                                                            did)
+                                        (csearch::get_symbol(ccx.sess.cstore,
+                                                             did), false)
                                     }
-                                    None => sym
+                                    None => (sym, true)
                                 }
                             };
 
                             // We need the translated value here, because for enums the
                             // LLVM type is not fully determined by the Rust type.
-                            let (v, inlineable) = consts::const_expr(ccx, expr);
+                            let (v, inlineable) = consts::const_expr(ccx, expr, is_local);
                             {
                                 let mut const_values = ccx.const_values
                                                           .borrow_mut();
@@ -2621,8 +2075,8 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
                             }
                         }
 
-                        ast::item_fn(_, purity, _, _, _) => {
-                            let llfn = if purity != ast::extern_fn {
+                        ast::ItemFn(_, purity, _, _, _) => {
+                            let llfn = if purity != ast::ExternFn {
                                 register_fn(ccx, i.span, sym, i.id, ty)
                             } else {
                                 foreign::register_rust_fn_with_foreign_abi(ccx,
@@ -2637,7 +2091,7 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
                         _ => fail!("get_item_val: weird result in table")
                     };
 
-                    match (attr::first_attr_value_str_by_name(i.attrs, "link_section")) {
+                    match attr::first_attr_value_str_by_name(i.attrs, "link_section") {
                         Some(sect) => unsafe {
                             sect.with_c_str(|buf| {
                                 llvm::LLVMSetSection(v, buf);
@@ -2649,33 +2103,33 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
                     v
                 }
 
-                ast_map::node_trait_method(trait_method, _, pth) => {
-                    debug!("get_item_val(): processing a node_trait_method");
+                ast_map::NodeTraitMethod(trait_method, _, pth) => {
+                    debug!("get_item_val(): processing a NodeTraitMethod");
                     match *trait_method {
-                        ast::required(_) => {
+                        ast::Required(_) => {
                             ccx.sess.bug("unexpected variant: required trait method in \
                                          get_item_val()");
                         }
-                        ast::provided(m) => {
+                        ast::Provided(m) => {
                             register_method(ccx, id, pth, m)
                         }
                     }
                 }
 
-                ast_map::node_method(m, _, pth) => {
+                ast_map::NodeMethod(m, _, pth) => {
                     register_method(ccx, id, pth, m)
                 }
 
-                ast_map::node_foreign_item(ni, abis, _, pth) => {
+                ast_map::NodeForeignItem(ni, abis, _, pth) => {
                     let ty = ty::node_id_to_type(ccx.tcx, ni.id);
                     foreign = true;
 
                     match ni.node {
-                        ast::foreign_item_fn(..) => {
-                            let path = vec::append((*pth).clone(), [path_name(ni.ident)]);
+                        ast::ForeignItemFn(..) => {
+                            let path = vec::append_one((*pth).clone(), PathName(ni.ident));
                             foreign::register_foreign_item_fn(ccx, abis, &path, ni)
                         }
-                        ast::foreign_item_static(..) => {
+                        ast::ForeignItemStatic(..) => {
                             // Treat the crate map static specially in order to
                             // a weak-linkage-like functionality where it's
                             // dynamically resolved at runtime. If we're
@@ -2714,25 +2168,25 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
                     }
                 }
 
-                ast_map::node_variant(ref v, enm, pth) => {
+                ast_map::NodeVariant(ref v, enm, pth) => {
                     let llfn;
                     match v.node.kind {
-                        ast::tuple_variant_kind(ref args) => {
+                        ast::TupleVariantKind(ref args) => {
                             assert!(args.len() != 0u);
                             let pth = vec::append((*pth).clone(),
-                                                  [path_name(enm.ident),
-                                                   path_name((*v).node.name)]);
+                                                  [PathName(enm.ident),
+                                                   PathName((*v).node.name)]);
                             let ty = ty::node_id_to_type(ccx.tcx, id);
                             let sym = exported_name(ccx, pth, ty, enm.attrs);
 
                             llfn = match enm.node {
-                                ast::item_enum(_, _) => {
+                                ast::ItemEnum(_, _) => {
                                     register_fn(ccx, (*v).span, sym, id, ty)
                                 }
-                                _ => fail!("node_variant, shouldn't happen")
+                                _ => fail!("NodeVariant, shouldn't happen")
                             };
                         }
-                        ast::struct_variant_kind(_) => {
+                        ast::StructVariantKind(_) => {
                             fail!("struct variant kind unexpected in get_item_val")
                         }
                     }
@@ -2740,7 +2194,7 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
                     llfn
                 }
 
-                ast_map::node_struct_ctor(struct_def, struct_item, struct_path) => {
+                ast_map::NodeStructCtor(struct_def, struct_item, struct_path) => {
                     // Only register the constructor if this is a tuple-like struct.
                     match struct_def.ctor_id {
                         None => {
@@ -2782,14 +2236,14 @@ pub fn get_item_val(ccx: @CrateContext, id: ast::NodeId) -> ValueRef {
     }
 }
 
-pub fn register_method(ccx: @CrateContext,
-                       id: ast::NodeId,
-                       path: @ast_map::path,
-                       m: @ast::method) -> ValueRef {
+fn register_method(ccx: @CrateContext,
+                   id: ast::NodeId,
+                   path: @ast_map::Path,
+                   m: &ast::Method) -> ValueRef {
     let mty = ty::node_id_to_type(ccx.tcx, id);
 
     let mut path = (*path).clone();
-    path.push(path_pretty_name(m.ident, token::gensym("meth") as u64));
+    path.push(PathPrettyName(m.ident, token::gensym("meth") as u64));
 
     let sym = exported_name(ccx, path, mty, m.attrs);
 
@@ -2798,7 +2252,7 @@ pub fn register_method(ccx: @CrateContext,
     llfn
 }
 
-pub fn vp2i(cx: @Block, v: ValueRef) -> ValueRef {
+pub fn vp2i(cx: &Block, v: ValueRef) -> ValueRef {
     let ccx = cx.ccx();
     return PtrToInt(cx, v, ccx.int_type);
 }
@@ -2812,7 +2266,8 @@ pub fn p2i(ccx: &CrateContext, v: ValueRef) -> ValueRef {
 macro_rules! ifn (
     ($intrinsics:ident, $name:expr, $args:expr, $ret:expr) => ({
         let name = $name;
-        let f = decl_cdecl_fn(llmod, name, Type::func($args, &$ret));
+        // HACK(eddyb) dummy output type, shouln't affect anything.
+        let f = decl_cdecl_fn(llmod, name, Type::func($args, &$ret), ty::mk_nil());
         $intrinsics.insert(name, f);
     })
 )
@@ -2966,7 +2421,7 @@ pub fn declare_dbg_intrinsics(llmod: ModuleRef, intrinsics: &mut HashMap<&'stati
          "llvm.dbg.value",   [Type::metadata(), Type::i64(), Type::metadata()], Type::void());
 }
 
-pub fn trap(bcx: @Block) {
+pub fn trap(bcx: &Block) {
     match bcx.ccx().intrinsics.find_equiv(& &"llvm.trap") {
       Some(&x) => { Call(bcx, x, [], []); },
       _ => bcx.sess().bug("unbound llvm.trap in trap")
@@ -3021,12 +2476,12 @@ pub fn create_module_map(ccx: &CrateContext) -> (ValueRef, uint) {
     };
 
     for key in keys.iter() {
-            let llestrval = C_estr_slice(ccx, *key);
+            let llstrval = C_str_slice(ccx, *key);
             let module_data = ccx.module_data.borrow();
             let val = *module_data.get().find_equiv(key).unwrap();
             let v_ptr = p2i(ccx, val);
             let elt = C_struct([
-                llestrval,
+                llstrval,
                 v_ptr
             ], false);
             elts.push(elt);
@@ -3039,7 +2494,7 @@ pub fn create_module_map(ccx: &CrateContext) -> (ValueRef, uint) {
 
 pub fn symname(sess: session::Session, name: &str,
                hash: &str, vers: &str) -> ~str {
-    let elt = path_name(sess.ident_of(name));
+    let elt = PathName(sess.ident_of(name));
     link::exported_name(sess, ~[elt], hash, vers)
 }
 
@@ -3070,12 +2525,12 @@ pub fn decl_crate_map(sess: session::Session, mapmeta: LinkMeta,
             llvm::LLVMAddGlobal(llmod, maptype.to_ref(), buf)
         }
     });
+    lib::llvm::SetLinkage(map, lib::llvm::ExternalLinkage);
+
     // On windows we'd like to export the toplevel cratemap
     // such that we can find it from libstd.
     if targ_cfg.os == OsWin32 && is_top {
-        lib::llvm::SetLinkage(map, lib::llvm::DLLExportLinkage);
-    } else {
-        lib::llvm::SetLinkage(map, lib::llvm::ExternalLinkage);
+        unsafe { llvm::LLVMRustSetDLLExportStorageClass(map) }
     }
 
     return (sym_name, map);
@@ -3154,11 +2609,12 @@ pub fn crate_ctxt_to_encode_parms<'r>(cx: &'r CrateContext, ie: encoder::encode_
             cstore: cx.sess.cstore,
             encode_inlined_item: ie,
             reachable: cx.reachable,
+            codemap: cx.sess.codemap,
         }
 }
 
 pub fn write_metadata(cx: &CrateContext, crate: &ast::Crate) -> ~[u8] {
-    use extra::flate;
+    use flate;
 
     if !cx.sess.building_library.get() {
         return ~[]
@@ -3216,7 +2672,7 @@ pub fn trans_crate(sess: session::Session,
     let link_meta = link::build_link_meta(sess, crate.attrs, output,
                                           &mut symbol_hasher);
 
-    // Append ".rc" to crate name as LLVM module identifier.
+    // Append ".rs" to crate name as LLVM module identifier.
     //
     // LLVM code generator emits a ".file filename" directive
     // for ELF backends. Value of the "filename" is set as the
@@ -3224,7 +2680,7 @@ pub fn trans_crate(sess: session::Session,
     // crashes if the module identifer is same as other symbols
     // such as a function name in the module.
     // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
-    let llmod_id = link_meta.crateid.name.clone() + ".rc";
+    let llmod_id = link_meta.crateid.name.clone() + ".rs";
 
     let ccx = @CrateContext::new(sess,
                                      llmod_id,
@@ -3268,7 +2724,7 @@ pub fn trans_crate(sess: session::Session,
     // Translate the metadata.
     let metadata = write_metadata(ccx, &crate);
     if ccx.sess.trans_stats() {
-        println("--- trans stats ---");
+        println!("--- trans stats ---");
         println!("n_static_tydescs: {}", ccx.stats.n_static_tydescs.get());
         println!("n_glues_created: {}", ccx.stats.n_glues_created.get());
         println!("n_null_glues: {}", ccx.stats.n_null_glues.get());
@@ -3278,7 +2734,7 @@ pub fn trans_crate(sess: session::Session,
         println!("n_monos: {}", ccx.stats.n_monos.get());
         println!("n_inlines: {}", ccx.stats.n_inlines.get());
         println!("n_closures: {}", ccx.stats.n_closures.get());
-        println("fn stats:");
+        println!("fn stats:");
         {
             let mut fn_stats = ccx.stats.fn_stats.borrow_mut();
             fn_stats.get().sort_by(|&(_, _, insns_a), &(_, _, insns_b)| {

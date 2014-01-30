@@ -31,10 +31,10 @@
 
 use clone::Clone;
 use kinds::Send;
-use num::{Exponential,Algebraic,Round};
 use option::{Option, Some, None};
 use sync::arc::UnsafeArc;
 use sync::atomics::{AtomicUint,Relaxed,Release,Acquire};
+use uint;
 use vec;
 
 struct Node<T> {
@@ -64,7 +64,7 @@ impl<T: Send> State<T> {
                 2u
             } else {
                 // use next power of 2 as capacity
-                2f64.pow(&((capacity as f64).log2().ceil())) as uint
+                uint::next_power_of_two(capacity)
             }
         } else {
             capacity
@@ -101,7 +101,7 @@ impl<T: Send> State<T> {
                 } else {
                     pos = enqueue_pos;
                 }
-            } else if (diff < 0) {
+            } else if diff < 0 {
                 return false
             } else {
                 pos = self.enqueue_pos.load(Relaxed);
@@ -177,13 +177,13 @@ mod tests {
         for _ in range(0, nthreads) {
             let q = q.clone();
             let chan = chan.clone();
-            do native::task::spawn {
+            native::task::spawn(proc() {
                 let mut q = q;
                 for i in range(0, nmsgs) {
                     assert!(q.push(i));
                 }
                 chan.send(());
-            }
+            });
         }
 
         let mut completion_ports = ~[];
@@ -191,7 +191,7 @@ mod tests {
             let (completion_port, completion_chan) = Chan::new();
             completion_ports.push(completion_port);
             let q = q.clone();
-            do native::task::spawn {
+            native::task::spawn(proc() {
                 let mut q = q;
                 let mut i = 0u;
                 loop {
@@ -204,7 +204,7 @@ mod tests {
                     }
                 }
                 completion_chan.send(i);
-            }
+            });
         }
 
         for completion_port in completion_ports.mut_iter() {

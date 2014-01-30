@@ -84,7 +84,7 @@ impl BasicLoop {
             }
             RemoveRemote(i) => {
                 match self.remotes.iter().position(|&(id, _)| id == i) {
-                    Some(i) => { self.remotes.remove(i); }
+                    Some(i) => { self.remotes.remove(i).unwrap(); }
                     None => unreachable!()
                 }
             }
@@ -139,7 +139,7 @@ impl EventLoop for BasicLoop {
         self.work.push(f);
     }
 
-    // XXX: Seems like a really weird requirement to have an event loop provide.
+    // FIXME: Seems like a really weird requirement to have an event loop provide.
     fn pausable_idle_callback(&mut self, cb: ~Callback) -> ~PausableIdleCallback {
         let callback = ~BasicPausable::new(self, cb);
         rtassert!(self.idle.is_none());
@@ -247,18 +247,18 @@ mod test {
 
     #[test]
     fn smoke() {
-        do run {}
+        run(proc() {});
     }
 
     #[test]
     fn some_channels() {
-        do run {
+        run(proc() {
             let (p, c) = Chan::new();
-            do spawn {
+            spawn(proc() {
                 c.send(());
-            }
+            });
             p.recv();
-        }
+        });
     }
 
     #[test]
@@ -269,13 +269,13 @@ mod test {
         });
 
         for _ in range(0, 20) {
-            do pool.spawn(TaskOpts::new()) {
+            pool.spawn(TaskOpts::new(), proc() {
                 let (p, c) = Chan::new();
-                do spawn {
+                spawn(proc() {
                     c.send(());
-                }
+                });
                 p.recv();
-            }
+            });
         }
 
         pool.shutdown();

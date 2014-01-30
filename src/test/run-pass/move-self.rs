@@ -8,7 +8,7 @@ impl S {
     }
 
     pub fn bar(self) {
-        println(self.x);
+        println!("{}", self.x);
     }
 }
 

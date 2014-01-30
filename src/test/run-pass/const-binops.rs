@@ -1,116 +1,136 @@
-static a: int = -4 + 3;
-static a2: uint = 3 + 3;
-static b: f64 = 3.0 + 2.7;
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
 
-static c: int = 3 - 4;
-static d: uint = 3 - 3;
-static e: f64 = 3.0 - 2.7;
+#[feature(macro_rules)];
 
-static e2: int = -3 * 3;
-static f: uint = 3 * 3;
-static g: f64 = 3.3 * 3.3;
+macro_rules! assert_approx_eq(
+    ($a:expr, $b:expr) => ({
+        let (a, b) = (&$a, &$b);
+        assert!((*a - *b).abs() < 1.0e-6,
+                "{} is not approximately equal to {}", *a, *b);
+    })
+)
 
-static h: int = 3 / -1;
-static i: uint = 3 / 3;
-static j: f64 = 3.3 / 3.3;
+static A: int = -4 + 3;
+static A2: uint = 3 + 3;
+static B: f64 = 3.0 + 2.7;
 
-static n: bool = true && false;
+static C: int = 3 - 4;
+static D: uint = 3 - 3;
+static E: f64 = 3.0 - 2.7;
 
-static o: bool = true || false;
+static E2: int = -3 * 3;
+static F: uint = 3 * 3;
+static G: f64 = 3.3 * 3.3;
 
-static p: int = 3 & 1;
-static q: uint = 1 & 3;
+static H: int = 3 / -1;
+static I: uint = 3 / 3;
+static J: f64 = 3.3 / 3.3;
 
-static r: int = 3 | 1;
-static s: uint = 1 | 3;
+static N: bool = true && false;
 
-static t: int = 3 ^ 1;
-static u: uint = 1 ^ 3;
+static O: bool = true || false;
 
-static v: int = 1 << 3;
+static P: int = 3 & 1;
+static Q: uint = 1 & 3;
+
+static R: int = 3 | 1;
+static S: uint = 1 | 3;
+
+static T: int = 3 ^ 1;
+static U: uint = 1 ^ 3;
+
+static V: int = 1 << 3;
 
 // NOTE: better shr coverage
-static w: int = 1024 >> 4;
-static x: uint = 1024 >> 4;
+static W: int = 1024 >> 4;
+static X: uint = 1024 >> 4;
 
-static y: bool = 1 == 1;
-static z: bool = 1.0 == 1.0;
+static Y: bool = 1 == 1;
+static Z: bool = 1.0 == 1.0;
 
-static aa: bool = 1 <= 2;
-static ab: bool = -1 <= 2;
-static ac: bool = 1.0 <= 2.0;
+static AA: bool = 1 <= 2;
+static AB: bool = -1 <= 2;
+static AC: bool = 1.0 <= 2.0;
 
-static ad: bool = 1 < 2;
-static ae: bool = -1 < 2;
-static af: bool = 1.0 < 2.0;
+static AD: bool = 1 < 2;
+static AE: bool = -1 < 2;
+static AF: bool = 1.0 < 2.0;
 
-static ag: bool = 1 != 2;
-static ah: bool = -1 != 2;
-static ai: bool = 1.0 != 2.0;
+static AG: bool = 1 != 2;
+static AH: bool = -1 != 2;
+static AI: bool = 1.0 != 2.0;
 
-static aj: bool = 2 >= 1;
-static ak: bool = 2 >= -2;
-static al: bool = 1.0 >= -2.0;
+static AJ: bool = 2 >= 1;
+static AK: bool = 2 >= -2;
+static AL: bool = 1.0 >= -2.0;
 
-static am: bool = 2 > 1;
-static an: bool = 2 > -2;
-static ao: bool = 1.0 > -2.0;
+static AM: bool = 2 > 1;
+static AN: bool = 2 > -2;
+static AO: bool = 1.0 > -2.0;
 
 pub fn main() {
-    assert_eq!(a, -1);
-    assert_eq!(a2, 6);
-    assert_approx_eq!(b, 5.7);
+    assert_eq!(A, -1);
+    assert_eq!(A2, 6);
+    assert_approx_eq!(B, 5.7);
 
-    assert_eq!(c, -1);
-    assert_eq!(d, 0);
-    assert_approx_eq!(e, 0.3);
+    assert_eq!(C, -1);
+    assert_eq!(D, 0);
+    assert_approx_eq!(E, 0.3);
 
-    assert_eq!(e2, -9);
-    assert_eq!(f, 9);
-    assert_approx_eq!(g, 10.89);
+    assert_eq!(E2, -9);
+    assert_eq!(F, 9);
+    assert_approx_eq!(G, 10.89);
 
-    assert_eq!(h, -3);
-    assert_eq!(i, 1);
-    assert_approx_eq!(j, 1.0);
+    assert_eq!(H, -3);
+    assert_eq!(I, 1);
+    assert_approx_eq!(J, 1.0);
 
-    assert_eq!(n, false);
+    assert_eq!(N, false);
 
-    assert_eq!(o, true);
+    assert_eq!(O, true);
 
-    assert_eq!(p, 1);
-    assert_eq!(q, 1);
+    assert_eq!(P, 1);
+    assert_eq!(Q, 1);
 
-    assert_eq!(r, 3);
-    assert_eq!(s, 3);
+    assert_eq!(R, 3);
+    assert_eq!(S, 3);
 
-    assert_eq!(t, 2);
-    assert_eq!(u, 2);
+    assert_eq!(T, 2);
+    assert_eq!(U, 2);
 
-    assert_eq!(v, 8);
+    assert_eq!(V, 8);
 
-    assert_eq!(w, 64);
-    assert_eq!(x, 64);
+    assert_eq!(W, 64);
+    assert_eq!(X, 64);
 
-    assert_eq!(y, true);
-    assert_eq!(z, true);
+    assert_eq!(Y, true);
+    assert_eq!(Z, true);
 
-    assert_eq!(aa, true);
-    assert_eq!(ab, true);
-    assert_eq!(ac, true);
+    assert_eq!(AA, true);
+    assert_eq!(AB, true);
+    assert_eq!(AC, true);
 
-    assert_eq!(ad, true);
-    assert_eq!(ae, true);
-    assert_eq!(af, true);
+    assert_eq!(AD, true);
+    assert_eq!(AE, true);
+    assert_eq!(AF, true);
 
-    assert_eq!(ag, true);
-    assert_eq!(ah, true);
-    assert_eq!(ai, true);
+    assert_eq!(AG, true);
+    assert_eq!(AH, true);
+    assert_eq!(AI, true);
 
-    assert_eq!(aj, true);
-    assert_eq!(ak, true);
-    assert_eq!(al, true);
+    assert_eq!(AJ, true);
+    assert_eq!(AK, true);
+    assert_eq!(AL, true);
 
-    assert_eq!(am, true);
-    assert_eq!(an, true);
-    assert_eq!(ao, true);
+    assert_eq!(AM, true);
+    assert_eq!(AN, true);
+    assert_eq!(AO, true);
 }

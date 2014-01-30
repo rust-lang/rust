@@ -47,8 +47,8 @@ struct Rect {
 struct AsciiArt {
     width: uint,
     height: uint,
-    priv fill: char,
-    priv lines: ~[~[char]],
+    fill: char,
+    lines: ~[~[char]],
 
     // This struct can be quite large so we'll disable copying: developers need
     // to either pass these structs around via references or move them.
@@ -65,7 +65,7 @@ fn AsciiArt(width: uint, height: uint, fill: char) -> AsciiArt {
     // Use an anonymous function to build a vector of vectors containing
     // blank characters for each position in our canvas.
     let lines = vec::build(Some(height), |push| {
-        height.times(|| push(vec::from_elem(width, '.')))
+        for _ in range(0, height) { push(vec::from_elem(width, '.')); }
     });
 
     // Rust code often returns values by omitting the trailing semi-colon
