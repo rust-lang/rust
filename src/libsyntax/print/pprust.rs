@@ -1905,6 +1905,14 @@ pub fn print_generics(s: &mut State, generics: &ast::Generics) {
                 let param = generics.ty_params.get(idx);
                 print_ident(s, param.ident);
                 print_bounds(s, &param.bounds, false);
+                match param.default {
+                    Some(default) => {
+                        space(&mut s.s);
+                        word_space(s, "=");
+                        print_type(s, default);
+                    }
+                    _ => {}
+                }
             }
         }
 

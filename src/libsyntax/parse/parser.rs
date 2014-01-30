@@ -3452,13 +3452,25 @@ impl Parser {
         return Some(result);
     }
 
-    // matches typaram = IDENT optbounds
+    // matches typaram = IDENT optbounds ( EQ ty )?
     fn parse_ty_param(&mut self) -> TyParam {
         let ident = self.parse_ident();
         let opt_bounds = self.parse_optional_ty_param_bounds();
         // For typarams we don't care about the difference b/w "<T>" and "<T:>".
         let bounds = opt_bounds.unwrap_or_default();
-        ast::TyParam { ident: ident, id: ast::DUMMY_NODE_ID, bounds: bounds }
+
+        let default = if self.token == token::EQ {
+            self.bump();
+            Some(self.parse_ty(false))
+        }
+        else { None };
+
+        TyParam {
+            ident: ident,
+            id: ast::DUMMY_NODE_ID,
+            bounds: bounds,
+            default: default
+        }
     }
 
     // parse a set of optional generic type parameter declarations
@@ -3468,9 +3480,17 @@ impl Parser {
     pub fn parse_generics(&mut self) -> ast::Generics {
         if self.eat(&token::LT) {
             let lifetimes = self.parse_lifetimes();
-            let ty_params = self.parse_seq_to_gt(
-                Some(token::COMMA),
-                |p| p.parse_ty_param());
+            let mut seen_default = false;
+            let ty_params = self.parse_seq_to_gt(Some(token::COMMA), |p| {
+                let ty_param = p.parse_ty_param();
+                if ty_param.default.is_some() {
+                    seen_default = true;
+                } else if seen_default {
+                    p.span_err(p.last_span,
+                               "type parameters with a default must be trailing");
+                }
+                ty_param
+            });
             ast::Generics { lifetimes: lifetimes, ty_params: ty_params }
         } else {
             ast_util::empty_generics()
