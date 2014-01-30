@@ -110,7 +110,6 @@ use ptr;
 use ptr::RawPtr;
 use to_str::ToStr;
 use from_str::FromStr;
-use uint;
 use vec;
 use vec::{OwnedVector, OwnedCloneableVector, ImmutableVector, MutableVector};
 use default::Default;

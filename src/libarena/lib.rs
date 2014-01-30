@@ -35,7 +35,6 @@ use std::num;
 use std::ptr;
 use std::mem;
 use std::rt::global_heap;
-use std::uint;
 use std::unstable::intrinsics::{TyDesc, get_tydesc};
 use std::unstable::intrinsics;
 use std::util;
