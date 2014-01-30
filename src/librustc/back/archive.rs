@@ -17,6 +17,7 @@ use lib::llvm::{ArchiveRef, llvm};
 
 use std::cast;
 use std::io::fs;
+use std::io;
 use std::libc;
 use std::os;
 use std::run::{ProcessOptions, Process, ProcessOutput};
@@ -50,9 +51,8 @@ fn run_ar(sess: Session, args: &str, cwd: Option<&Path>,
         Some(p) => { debug!("inside {}", p.display()); }
         None => {}
     }
-    let mut opt_prog = Process::new(ar, args.as_slice(), opts);
-    match opt_prog {
-        Some(ref mut prog) => {
+    match Process::new(ar, args.as_slice(), opts) {
+        Ok(mut prog) => {
             let o = prog.finish_with_output();
             if !o.status.success() {
                 sess.err(format!("{} {} failed with: {}", ar, args.connect(" "),
@@ -63,8 +63,8 @@ fn run_ar(sess: Session, args: &str, cwd: Option<&Path>,
             }
             o
         },
-        None => {
-            sess.err(format!("could not exec `{}`", ar));
+        Err(e) => {
+            sess.err(format!("could not exec `{}`: {}", ar, e));
             sess.abort_if_errors();
             fail!("rustc::back::archive::run_ar() should not reach this point");
         }
@@ -94,7 +94,7 @@ impl Archive {
             let archive = os::make_absolute(&self.dst);
             run_ar(self.sess, "x", Some(loc.path()), [&archive,
                                                       &Path::new(file)]);
-            fs::File::open(&loc.path().join(file)).read_to_end()
+            fs::File::open(&loc.path().join(file)).read_to_end().unwrap()
         } else {
             run_ar(self.sess, "p", None, [&self.dst, &Path::new(file)]).output
         }
@@ -102,9 +102,9 @@ impl Archive {
 
     /// Adds all of the contents of a native library to this archive. This will
     /// search in the relevant locations for a library named `name`.
-    pub fn add_native_library(&mut self, name: &str) {
+    pub fn add_native_library(&mut self, name: &str) -> io::IoResult<()> {
         let location = self.find_library(name);
-        self.add_archive(&location, name, []);
+        self.add_archive(&location, name, [])
     }
 
     /// Adds all of the contents of the rlib at the specified path to this
@@ -112,14 +112,15 @@ impl Archive {
     ///
     /// This ignores adding the bytecode from the rlib, and if LTO is enabled
     /// then the object file also isn't added.
-    pub fn add_rlib(&mut self, rlib: &Path, name: &str, lto: bool) {
+    pub fn add_rlib(&mut self, rlib: &Path, name: &str,
+                    lto: bool) -> io::IoResult<()> {
         let object = format!("{}.o", name);
         let bytecode = format!("{}.bc", name);
         let mut ignore = ~[METADATA_FILENAME, bytecode.as_slice()];
         if lto {
             ignore.push(object.as_slice());
         }
-        self.add_archive(rlib, name, ignore);
+        self.add_archive(rlib, name, ignore)
     }
 
     /// Adds an arbitrary file to this archive
@@ -144,7 +145,8 @@ impl Archive {
         str::from_utf8(output.output).unwrap().lines().map(|s| s.to_owned()).collect()
     }
 
-    fn add_archive(&mut self, archive: &Path, name: &str, skip: &[&str]) {
+    fn add_archive(&mut self, archive: &Path, name: &str,
+                   skip: &[&str]) -> io::IoResult<()> {
         let loc = TempDir::new("rsar").unwrap();
 
         // First, extract the contents of the archive to a temporary directory
@@ -159,7 +161,7 @@ impl Archive {
         // We skip any files explicitly desired for skipping, and we also skip
         // all SYMDEF files as these are just magical placeholders which get
         // re-created when we make a new archive anyway.
-        let files = fs::readdir(loc.path());
+        let files = if_ok!(fs::readdir(loc.path()));
         let mut inputs = ~[];
         for file in files.iter() {
             let filename = file.filename_str().unwrap();
@@ -168,7 +170,7 @@ impl Archive {
 
             let filename = format!("r-{}-{}", name, filename);
             let new_filename = file.with_filename(filename);
-            fs::rename(file, &new_filename);
+            if_ok!(fs::rename(file, &new_filename));
             inputs.push(new_filename);
         }
 
@@ -176,6 +178,7 @@ impl Archive {
         let mut args = ~[&self.dst];
         args.extend(&mut inputs.iter());
         run_ar(self.sess, "r", None, args.as_slice());
+        Ok(())
     }
 
     fn find_library(&self, name: &str) -> Path {
