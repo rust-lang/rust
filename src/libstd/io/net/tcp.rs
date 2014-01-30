@@ -8,11 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use option::{Option, Some, None};
-use result::{Ok, Err};
 use io::net::ip::SocketAddr;
-use io::{Reader, Writer, Listener, Acceptor};
-use io::{io_error, EndOfFile};
+use io::{Reader, Writer, Listener, Acceptor, IoResult};
 use rt::rtio::{IoFactory, LocalIo, RtioSocket, RtioTcpListener};
 use rt::rtio::{RtioTcpAcceptor, RtioTcpStream};
 
@@ -25,57 +22,27 @@ impl TcpStream {
         TcpStream { obj: s }
     }
 
-    pub fn connect(addr: SocketAddr) -> Option<TcpStream> {
+    pub fn connect(addr: SocketAddr) -> IoResult<TcpStream> {
         LocalIo::maybe_raise(|io| {
             io.tcp_connect(addr).map(TcpStream::new)
         })
     }
 
-    pub fn peer_name(&mut self) -> Option<SocketAddr> {
-        match self.obj.peer_name() {
-            Ok(pn) => Some(pn),
-            Err(ioerr) => {
-                debug!("failed to get peer name: {:?}", ioerr);
-                io_error::cond.raise(ioerr);
-                None
-            }
-        }
+    pub fn peer_name(&mut self) -> IoResult<SocketAddr> {
+        self.obj.peer_name()
     }
 
-    pub fn socket_name(&mut self) -> Option<SocketAddr> {
-        match self.obj.socket_name() {
-            Ok(sn) => Some(sn),
-            Err(ioerr) => {
-                debug!("failed to get socket name: {:?}", ioerr);
-                io_error::cond.raise(ioerr);
-                None
-            }
-        }
+    pub fn socket_name(&mut self) -> IoResult<SocketAddr> {
+        self.obj.socket_name()
     }
 }
 
 impl Reader for TcpStream {
-    fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
-        match self.obj.read(buf) {
-            Ok(read) => Some(read),
-            Err(ioerr) => {
-                // EOF is indicated by returning None
-                if ioerr.kind != EndOfFile {
-                    io_error::cond.raise(ioerr);
-                }
-                return None;
-            }
-        }
-    }
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> { self.obj.read(buf) }
 }
 
 impl Writer for TcpStream {
-    fn write(&mut self, buf: &[u8]) {
-        match self.obj.write(buf) {
-            Ok(_) => (),
-            Err(ioerr) => io_error::cond.raise(ioerr),
-        }
-    }
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> { self.obj.write(buf) }
 }
 
 pub struct TcpListener {
@@ -83,33 +50,20 @@ pub struct TcpListener {
 }
 
 impl TcpListener {
-    pub fn bind(addr: SocketAddr) -> Option<TcpListener> {
+    pub fn bind(addr: SocketAddr) -> IoResult<TcpListener> {
         LocalIo::maybe_raise(|io| {
             io.tcp_bind(addr).map(|l| TcpListener { obj: l })
         })
     }
 
-    pub fn socket_name(&mut self) -> Option<SocketAddr> {
-        match self.obj.socket_name() {
-            Ok(sn) => Some(sn),
-            Err(ioerr) => {
-                debug!("failed to get socket name: {:?}", ioerr);
-                io_error::cond.raise(ioerr);
-                None
-            }
-        }
+    pub fn socket_name(&mut self) -> IoResult<SocketAddr> {
+        self.obj.socket_name()
     }
 }
 
 impl Listener<TcpStream, TcpAcceptor> for TcpListener {
-    fn listen(self) -> Option<TcpAcceptor> {
-        match self.obj.listen() {
-            Ok(acceptor) => Some(TcpAcceptor { obj: acceptor }),
-            Err(ioerr) => {
-                io_error::cond.raise(ioerr);
-                None
-            }
-        }
+    fn listen(self) -> IoResult<TcpAcceptor> {
+        self.obj.listen().map(|acceptor| TcpAcceptor { obj: acceptor })
     }
 }
 
@@ -118,14 +72,8 @@ pub struct TcpAcceptor {
 }
 
 impl Acceptor<TcpStream> for TcpAcceptor {
-    fn accept(&mut self) -> Option<TcpStream> {
-        match self.obj.accept() {
-            Ok(s) => Some(TcpStream::new(s)),
-            Err(ioerr) => {
-                io_error::cond.raise(ioerr);
-                None
-            }
-        }
+    fn accept(&mut self) -> IoResult<TcpStream> {
+        self.obj.accept().map(TcpStream::new)
     }
 }
 

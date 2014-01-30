@@ -46,7 +46,7 @@ impl<'r, R: Reader> Bytes<'r, R> {
 impl<'r, R: Reader> Iterator<u8> for Bytes<'r, R> {
     #[inline]
     fn next(&mut self) -> Option<u8> {
-        self.reader.read_byte()
+        self.reader.read_byte().ok()
     }
 }
 

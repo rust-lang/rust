@@ -20,10 +20,11 @@ definitions for a number of signals.
 */
 
 use clone::Clone;
+use result::{Ok, Err};
 use comm::{Port, SharedChan};
 use container::{Map, MutableMap};
 use hashmap;
-use option::{Some, None};
+use io;
 use rt::rtio::{IoFactory, LocalIo, RtioSignal};
 
 #[repr(int)]
@@ -117,18 +118,18 @@ impl Listener {
     /// If this function fails to register a signal handler, then an error will
     /// be raised on the `io_error` condition and the function will return
     /// false.
-    pub fn register(&mut self, signum: Signum) -> bool {
+    pub fn register(&mut self, signum: Signum) -> io::IoResult<()> {
         if self.handles.contains_key(&signum) {
-            return true; // self is already listening to signum, so succeed
+            return Ok(()); // self is already listening to signum, so succeed
         }
         match LocalIo::maybe_raise(|io| {
             io.signal(signum, self.chan.clone())
         }) {
-            Some(handle) => {
+            Ok(handle) => {
                 self.handles.insert(signum, handle);
-                true
+                Ok(())
             }
-            None => false
+            Err(e) => Err(e)
         }
     }
 

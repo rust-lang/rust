@@ -13,9 +13,10 @@
 use cmp::max;
 use cmp::min;
 use container::Container;
-use option::{Option, Some, None};
-use super::{Reader, Writer, Seek, Buffer, IoError, SeekStyle, io_error,
-            OtherIoError};
+use option::None;
+use result::{Err, Ok};
+use io;
+use io::{Reader, Writer, Seek, Buffer, IoError, SeekStyle, IoResult};
 use vec;
 use vec::{Vector, ImmutableVector, MutableVector, OwnedCloneableVector};
 
@@ -59,7 +60,7 @@ impl MemWriter {
 }
 
 impl Writer for MemWriter {
-    fn write(&mut self, buf: &[u8]) {
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         // Make sure the internal buffer is as least as big as where we
         // currently are
         let difference = self.pos as i64 - self.buf.len() as i64;
@@ -86,14 +87,15 @@ impl Writer for MemWriter {
 
         // Bump us forward
         self.pos += buf.len();
+        Ok(())
     }
 }
 
 // FIXME(#10432)
 impl Seek for MemWriter {
-    fn tell(&self) -> u64 { self.pos as u64 }
+    fn tell(&self) -> IoResult<u64> { Ok(self.pos as u64) }
 
-    fn seek(&mut self, pos: i64, style: SeekStyle) {
+    fn seek(&mut self, pos: i64, style: SeekStyle) -> IoResult<()> {
         // compute offset as signed and clamp to prevent overflow
         let offset = match style {
             SeekSet => { 0 }
@@ -102,6 +104,7 @@ impl Seek for MemWriter {
         } as i64;
 
         self.pos = max(0, offset+pos) as uint;
+        Ok(())
     }
 }
 
@@ -148,8 +151,8 @@ impl MemReader {
 }
 
 impl Reader for MemReader {
-    fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
-        if self.eof() { return None }
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
+        if self.eof() { return Err(io::standard_error(io::EndOfFile)) }
 
         let write_len = min(buf.len(), self.buf.len() - self.pos);
         {
@@ -161,17 +164,19 @@ impl Reader for MemReader {
         self.pos += write_len;
         assert!(self.pos <= self.buf.len());
 
-        return Some(write_len);
+        return Ok(write_len);
     }
 }
 
 impl Seek for MemReader {
-    fn tell(&self) -> u64 { self.pos as u64 }
-    fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail!() }
+    fn tell(&self) -> IoResult<u64> { Ok(self.pos as u64) }
+    fn seek(&mut self, _pos: i64, _style: SeekStyle) -> IoResult<()> { fail!() }
 }
 
 impl Buffer for MemReader {
-    fn fill<'a>(&'a mut self) -> &'a [u8] { self.buf.slice_from(self.pos) }
+    fn fill<'a>(&'a mut self) -> IoResult<&'a [u8]> {
+        Ok(self.buf.slice_from(self.pos))
+    }
     fn consume(&mut self, amt: uint) { self.pos += amt; }
 }
 
@@ -207,28 +212,28 @@ impl<'a> BufWriter<'a> {
 }
 
 impl<'a> Writer for BufWriter<'a> {
-    fn write(&mut self, buf: &[u8]) {
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         // raises a condition if the entire write does not fit in the buffer
         let max_size = self.buf.len();
         if self.pos >= max_size || (self.pos + buf.len()) > max_size {
-            io_error::cond.raise(IoError {
-                kind: OtherIoError,
+            return Err(IoError {
+                kind: io::OtherIoError,
                 desc: "Trying to write past end of buffer",
                 detail: None
-            });
-            return;
+            })
         }
 
         vec::bytes::copy_memory(self.buf.mut_slice_from(self.pos), buf);
         self.pos += buf.len();
+        Ok(())
     }
 }
 
 // FIXME(#10432)
 impl<'a> Seek for BufWriter<'a> {
-    fn tell(&self) -> u64 { self.pos as u64 }
+    fn tell(&self) -> IoResult<u64> { Ok(self.pos as u64) }
 
-    fn seek(&mut self, pos: i64, style: SeekStyle) {
+    fn seek(&mut self, pos: i64, style: SeekStyle) -> IoResult<()> {
         // compute offset as signed and clamp to prevent overflow
         let offset = match style {
             SeekSet => { 0 }
@@ -237,6 +242,7 @@ impl<'a> Seek for BufWriter<'a> {
         } as i64;
 
         self.pos = max(0, offset+pos) as uint;
+        Ok(())
     }
 }
 
@@ -274,8 +280,8 @@ impl<'a> BufReader<'a> {
 }
 
 impl<'a> Reader for BufReader<'a> {
-    fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
-        if self.eof() { return None }
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
+        if self.eof() { return Err(io::standard_error(io::EndOfFile)) }
 
         let write_len = min(buf.len(), self.buf.len() - self.pos);
         {
@@ -287,18 +293,19 @@ impl<'a> Reader for BufReader<'a> {
         self.pos += write_len;
         assert!(self.pos <= self.buf.len());
 
-        return Some(write_len);
+        return Ok(write_len);
      }
 }
 
 impl<'a> Seek for BufReader<'a> {
-    fn tell(&self) -> u64 { self.pos as u64 }
-
-    fn seek(&mut self, _pos: i64, _style: SeekStyle) { fail!() }
+    fn tell(&self) -> IoResult<u64> { Ok(self.pos as u64) }
+    fn seek(&mut self, _pos: i64, _style: SeekStyle) -> IoResult<()> { fail!() }
 }
 
 impl<'a> Buffer for BufReader<'a> {
-    fn fill<'a>(&'a mut self) -> &'a [u8] { self.buf.slice_from(self.pos) }
+    fn fill<'a>(&'a mut self) -> IoResult<&'a [u8]> {
+        Ok(self.buf.slice_from(self.pos))
+    }
     fn consume(&mut self, amt: uint) { self.pos += amt; }
 }
 
@@ -388,7 +395,7 @@ mod test {
 
         let mut called = false;
         io_error::cond.trap(|err| {
-            assert_eq!(err.kind, OtherIoError);
+            assert_eq!(err.kind, io::OtherIoError);
             called = true;
         }).inside(|| {
             writer.write([0, 0]);

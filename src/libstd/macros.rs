@@ -197,3 +197,8 @@ macro_rules! local_data_key (
         pub static $name: ::std::local_data::Key<$ty> = &::std::local_data::Key;
     )
 )
+
+#[macro_export]
+macro_rules! if_ok (
+    ($e:expr) => (match $e { Ok(e) => e, Err(e) => return Err(e) })
+)

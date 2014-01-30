@@ -119,6 +119,7 @@ impl Task {
 
             // Run the task main function, then do some cleanup.
             f.finally(|| {
+                #[allow(unused_must_use)]
                 fn close_outputs() {
                     let mut task = Local::borrow(None::<Task>);
                     let logger = task.get().logger.take();
@@ -126,8 +127,8 @@ impl Task {
                     let stdout = task.get().stdout.take();
                     drop(task);
                     drop(logger); // loggers are responsible for flushing
-                    match stdout { Some(mut w) => w.flush(), None => {} }
-                    match stderr { Some(mut w) => w.flush(), None => {} }
+                    match stdout { Some(mut w) => { w.flush(); }, None => {} }
+                    match stderr { Some(mut w) => { w.flush(); }, None => {} }
                 }
 
                 // First, flush/destroy the user stdout/logger because these

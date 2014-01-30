@@ -14,80 +14,64 @@
 //! These implementations allow e.g. `Option<File>` to be used
 //! as a `Reader` without unwrapping the option first.
 
-use option::*;
-use super::{Reader, Writer, Listener, Acceptor, Seek, SeekStyle};
-use super::{standard_error, PreviousIoError, io_error, IoError};
+use clone::Clone;
+use result::{Ok, Err};
+use super::{Reader, Writer, Listener, Acceptor, Seek, SeekStyle, IoResult};
 
-fn prev_io_error() -> IoError {
-    standard_error(PreviousIoError)
-}
-
-impl<W: Writer> Writer for Option<W> {
-    fn write(&mut self, buf: &[u8]) {
+impl<W: Writer> Writer for IoResult<W> {
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         match *self {
-            Some(ref mut writer) => writer.write(buf),
-            None => io_error::cond.raise(prev_io_error())
+            Ok(ref mut writer) => writer.write(buf),
+            Err(ref e) => Err((*e).clone())
         }
     }
 
-    fn flush(&mut self) {
+    fn flush(&mut self) -> IoResult<()> {
         match *self {
-            Some(ref mut writer) => writer.flush(),
-            None => io_error::cond.raise(prev_io_error())
+            Ok(ref mut writer) => writer.flush(),
+            Err(ref e) => Err(e.clone()),
         }
     }
 }
 
-impl<R: Reader> Reader for Option<R> {
-    fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
+impl<R: Reader> Reader for IoResult<R> {
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
         match *self {
-            Some(ref mut reader) => reader.read(buf),
-            None => {
-                io_error::cond.raise(prev_io_error());
-                None
-            }
+            Ok(ref mut reader) => reader.read(buf),
+            Err(ref e) => Err(e.clone()),
         }
     }
 }
 
-impl<S: Seek> Seek for Option<S> {
-    fn tell(&self) -> u64 {
+impl<S: Seek> Seek for IoResult<S> {
+    fn tell(&self) -> IoResult<u64> {
         match *self {
-            Some(ref seeker) => seeker.tell(),
-            None => {
-                io_error::cond.raise(prev_io_error());
-                0
-            }
+            Ok(ref seeker) => seeker.tell(),
+            Err(ref e) => Err(e.clone()),
         }
     }
-    fn seek(&mut self, pos: i64, style: SeekStyle) {
+    fn seek(&mut self, pos: i64, style: SeekStyle) -> IoResult<()> {
         match *self {
-            Some(ref mut seeker) => seeker.seek(pos, style),
-            None => io_error::cond.raise(prev_io_error())
+            Ok(ref mut seeker) => seeker.seek(pos, style),
+            Err(ref e) => Err(e.clone())
         }
     }
 }
 
-impl<T, A: Acceptor<T>, L: Listener<T, A>> Listener<T, A> for Option<L> {
-    fn listen(self) -> Option<A> {
+impl<T, A: Acceptor<T>, L: Listener<T, A>> Listener<T, A> for IoResult<L> {
+    fn listen(self) -> IoResult<A> {
         match self {
-            Some(listener) => listener.listen(),
-            None => {
-                io_error::cond.raise(prev_io_error());
-                None
-            }
+            Ok(listener) => listener.listen(),
+            Err(e) => Err(e),
         }
     }
 }
 
-impl<T, A: Acceptor<T>> Acceptor<T> for Option<A> {
-    fn accept(&mut self) -> Option<T> {
+impl<T, A: Acceptor<T>> Acceptor<T> for IoResult<A> {
+    fn accept(&mut self) -> IoResult<T> {
         match *self {
-            Some(ref mut acceptor) => acceptor.accept(),
-            None => {
-                io_error::cond.raise(prev_io_error());
-                None
-            }
+            Ok(ref mut acceptor) => acceptor.accept(),
+            Err(ref e) => Err(e.clone()),
         }
     }
 }

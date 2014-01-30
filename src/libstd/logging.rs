@@ -102,6 +102,7 @@ use io::Writer;
 use ops::Drop;
 use option::{Some, None, Option};
 use prelude::drop;
+use result::{Ok, Err};
 use rt::local::Local;
 use rt::task::Task;
 use util;
@@ -131,13 +132,19 @@ struct DefaultLogger {
 impl Logger for DefaultLogger {
     // by default, just ignore the level
     fn log(&mut self, _level: u32, args: &fmt::Arguments) {
-        fmt::writeln(&mut self.handle, args);
+        match fmt::writeln(&mut self.handle, args) {
+            Err(e) => fail!("failed to log: {}", e),
+            Ok(()) => {}
+        }
     }
 }
 
 impl Drop for DefaultLogger {
     fn drop(&mut self) {
-        self.handle.flush();
+        match self.handle.flush() {
+            Err(e) => fail!("failed to flush a logger: {}", e),
+            Ok(()) => {}
+        }
     }
 }
 

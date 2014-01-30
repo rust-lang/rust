@@ -14,7 +14,7 @@ use comm::{Port, Chan};
 use cmp;
 use io;
 use option::{None, Option, Some};
-use super::{Reader, Writer};
+use super::{Reader, Writer, IoResult};
 use vec::{bytes, CloneableVector, MutableVector, ImmutableVector};
 
 /// Allows reading from a port.
@@ -49,7 +49,7 @@ impl PortReader {
 }
 
 impl Reader for PortReader {
-    fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
         let mut num_read = 0;
         loop {
             match self.buf {
@@ -71,10 +71,9 @@ impl Reader for PortReader {
             self.closed = self.buf.is_none();
         }
         if self.closed && num_read == 0 {
-            io::io_error::cond.raise(io::standard_error(io::EndOfFile));
-            None
+            Err(io::standard_error(io::EndOfFile))
         } else {
-            Some(num_read)
+            Ok(num_read)
         }
     }
 }
@@ -98,13 +97,15 @@ impl ChanWriter {
 }
 
 impl Writer for ChanWriter {
-    fn write(&mut self, buf: &[u8]) {
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         if !self.chan.try_send(buf.to_owned()) {
-            io::io_error::cond.raise(io::IoError {
+            Err(io::IoError {
                 kind: io::BrokenPipe,
                 desc: "Pipe closed",
                 detail: None
-            });
+            })
+        } else {
+            Ok(())
         }
     }
 }

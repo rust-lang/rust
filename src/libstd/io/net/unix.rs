@@ -28,7 +28,7 @@ use c_str::ToCStr;
 use rt::rtio::{IoFactory, LocalIo, RtioUnixListener};
 use rt::rtio::{RtioUnixAcceptor, RtioPipe};
 use io::pipe::PipeStream;
-use io::{io_error, Listener, Acceptor, Reader, Writer};
+use io::{Listener, Acceptor, Reader, Writer, IoResult};
 
 /// A stream which communicates over a named pipe.
 pub struct UnixStream {
@@ -52,13 +52,15 @@ impl UnixStream {
     ///
     /// # Example
     ///
-    ///     use std::io::net::unix::UnixStream;
+    /// ```rust
+    /// # #[allow(unused_must_use)];
+    /// use std::io::net::unix::UnixStream;
     ///
-    ///     let server = Path("path/to/my/socket");
-    ///     let mut stream = UnixStream::connect(&server);
-    ///     stream.write([1, 2, 3]);
-    ///
-    pub fn connect<P: ToCStr>(path: &P) -> Option<UnixStream> {
+    /// let server = Path::new("path/to/my/socket");
+    /// let mut stream = UnixStream::connect(&server);
+    /// stream.write([1, 2, 3]);
+    /// ```
+    pub fn connect<P: ToCStr>(path: &P) -> IoResult<UnixStream> {
         LocalIo::maybe_raise(|io| {
             io.unix_connect(&path.to_c_str()).map(UnixStream::new)
         })
@@ -66,11 +68,11 @@ impl UnixStream {
 }
 
 impl Reader for UnixStream {
-    fn read(&mut self, buf: &mut [u8]) -> Option<uint> { self.obj.read(buf) }
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> { self.obj.read(buf) }
 }
 
 impl Writer for UnixStream {
-    fn write(&mut self, buf: &[u8]) { self.obj.write(buf) }
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> { self.obj.write(buf) }
 }
 
 pub struct UnixListener {
@@ -91,16 +93,18 @@ impl UnixListener {
     ///
     /// # Example
     ///
-    ///     use std::io::net::unix::UnixListener;
+    /// ```
+    /// use std::io::net::unix::UnixListener;
+    /// use std::io::Listener;
     ///
-    ///     let server = Path("path/to/my/socket");
-    ///     let mut stream = UnixListener::bind(&server);
-    ///     for client in stream.incoming() {
-    ///         let mut client = client;
-    ///         client.write([1, 2, 3, 4]);
-    ///     }
-    ///
-    pub fn bind<P: ToCStr>(path: &P) -> Option<UnixListener> {
+    /// let server = Path::new("path/to/my/socket");
+    /// let mut stream = UnixListener::bind(&server);
+    /// for client in stream.incoming() {
+    ///     let mut client = client;
+    ///     client.write([1, 2, 3, 4]);
+    /// }
+    /// ```
+    pub fn bind<P: ToCStr>(path: &P) -> IoResult<UnixListener> {
         LocalIo::maybe_raise(|io| {
             io.unix_bind(&path.to_c_str()).map(|s| UnixListener { obj: s })
         })
@@ -108,14 +112,8 @@ impl UnixListener {
 }
 
 impl Listener<UnixStream, UnixAcceptor> for UnixListener {
-    fn listen(self) -> Option<UnixAcceptor> {
-        match self.obj.listen() {
-            Ok(acceptor) => Some(UnixAcceptor { obj: acceptor }),
-            Err(ioerr) => {
-                io_error::cond.raise(ioerr);
-                None
-            }
-        }
+    fn listen(self) -> IoResult<UnixAcceptor> {
+        self.obj.listen().map(|obj| UnixAcceptor { obj: obj })
     }
 }
 
@@ -124,14 +122,8 @@ pub struct UnixAcceptor {
 }
 
 impl Acceptor<UnixStream> for UnixAcceptor {
-    fn accept(&mut self) -> Option<UnixStream> {
-        match self.obj.accept() {
-            Ok(s) => Some(UnixStream::new(s)),
-            Err(ioerr) => {
-                io_error::cond.raise(ioerr);
-                None
-            }
-        }
+    fn accept(&mut self) -> IoResult<UnixStream> {
+        self.obj.accept().map(UnixStream::new)
     }
 }
 

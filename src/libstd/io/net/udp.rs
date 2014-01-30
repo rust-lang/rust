@@ -8,11 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use option::{Option, Some, None};
 use result::{Ok, Err};
 use io::net::ip::SocketAddr;
-use io::{Reader, Writer};
-use io::{io_error, EndOfFile};
+use io::{Reader, Writer, IoResult};
 use rt::rtio::{RtioSocket, RtioUdpSocket, IoFactory, LocalIo};
 
 pub struct UdpSocket {
@@ -20,45 +18,26 @@ pub struct UdpSocket {
 }
 
 impl UdpSocket {
-    pub fn bind(addr: SocketAddr) -> Option<UdpSocket> {
+    pub fn bind(addr: SocketAddr) -> IoResult<UdpSocket> {
         LocalIo::maybe_raise(|io| {
             io.udp_bind(addr).map(|s| UdpSocket { obj: s })
         })
     }
 
-    pub fn recvfrom(&mut self, buf: &mut [u8]) -> Option<(uint, SocketAddr)> {
-        match self.obj.recvfrom(buf) {
-            Ok((nread, src)) => Some((nread, src)),
-            Err(ioerr) => {
-                // EOF is indicated by returning None
-                if ioerr.kind != EndOfFile {
-                    io_error::cond.raise(ioerr);
-                }
-                None
-            }
-        }
+    pub fn recvfrom(&mut self, buf: &mut [u8]) -> IoResult<(uint, SocketAddr)> {
+        self.obj.recvfrom(buf)
     }
 
-    pub fn sendto(&mut self, buf: &[u8], dst: SocketAddr) {
-        match self.obj.sendto(buf, dst) {
-            Ok(_) => (),
-            Err(ioerr) => io_error::cond.raise(ioerr),
-        }
+    pub fn sendto(&mut self, buf: &[u8], dst: SocketAddr) -> IoResult<()> {
+        self.obj.sendto(buf, dst)
     }
 
     pub fn connect(self, other: SocketAddr) -> UdpStream {
         UdpStream { socket: self, connectedTo: other }
     }
 
-    pub fn socket_name(&mut self) -> Option<SocketAddr> {
-        match self.obj.socket_name() {
-            Ok(sn) => Some(sn),
-            Err(ioerr) => {
-                debug!("failed to get socket name: {:?}", ioerr);
-                io_error::cond.raise(ioerr);
-                None
-            }
-        }
+    pub fn socket_name(&mut self) -> IoResult<SocketAddr> {
+        self.obj.socket_name()
     }
 }
 
@@ -76,21 +55,21 @@ impl UdpStream {
 }
 
 impl Reader for UdpStream {
-    fn read(&mut self, buf: &mut [u8]) -> Option<uint> {
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
         let peer = self.connectedTo;
         self.as_socket(|sock| {
             match sock.recvfrom(buf) {
-                Some((_nread, src)) if src != peer => Some(0),
-                Some((nread, _src)) => Some(nread),
-                None => None,
+                Ok((_nread, src)) if src != peer => Ok(0),
+                Ok((nread, _src)) => Ok(nread),
+                Err(e) => Err(e),
             }
         })
     }
 }
 
 impl Writer for UdpStream {
-    fn write(&mut self, buf: &[u8]) {
-        self.as_socket(|sock| sock.sendto(buf, self.connectedTo));
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
+        self.as_socket(|sock| sock.sendto(buf, self.connectedTo))
     }
 }
 

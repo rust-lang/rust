@@ -929,7 +929,7 @@ pub enum MapError {
 }
 
 impl fmt::Show for MapError {
-    fn fmt(val: &MapError, out: &mut fmt::Formatter) {
+    fn fmt(val: &MapError, out: &mut fmt::Formatter) -> fmt::Result {
         let str = match *val {
             ErrFdNotAvail => "fd not available for reading or writing",
             ErrInvalidFd => "Invalid fd",
@@ -944,23 +944,19 @@ impl fmt::Show for MapError {
             ErrAlreadyExists => "File mapping for specified file already exists",
             ErrZeroLength => "Zero-length mapping not allowed",
             ErrUnknown(code) => {
-                write!(out.buf, "Unknown error = {}", code);
-                return
+                return write!(out.buf, "Unknown error = {}", code)
             },
             ErrVirtualAlloc(code) => {
-                write!(out.buf, "VirtualAlloc failure = {}", code);
-                return
+                return write!(out.buf, "VirtualAlloc failure = {}", code)
             },
             ErrCreateFileMappingW(code) => {
-                format!("CreateFileMappingW failure = {}", code);
-                return
+                return write!(out.buf, "CreateFileMappingW failure = {}", code)
             },
             ErrMapViewOfFile(code) => {
-                write!(out.buf, "MapViewOfFile failure = {}", code);
-                return
+                return write!(out.buf, "MapViewOfFile failure = {}", code)
             }
         };
-        write!(out.buf, "{}", str);
+        write!(out.buf, "{}", str)
     }
 }
 

@@ -119,7 +119,8 @@ impl Process {
      * * options - Options to configure the environment of the process,
      *             the working directory and the standard IO streams.
      */
-    pub fn new(prog: &str, args: &[~str], options: ProcessOptions) -> Option<Process> {
+    pub fn new(prog: &str, args: &[~str],
+               options: ProcessOptions) -> io::IoResult<Process> {
         let ProcessOptions { env, dir, in_fd, out_fd, err_fd } = options;
         let env = env.as_ref().map(|a| a.as_slice());
         let cwd = dir.as_ref().map(|a| a.as_str().unwrap());
@@ -138,10 +139,7 @@ impl Process {
             cwd: cwd,
             io: rtio,
         };
-        match process::Process::new(rtconfig) {
-            Some(inner) => Some(Process { inner: inner }),
-            None => None
-        }
+        process::Process::new(rtconfig).map(|p| Process { inner: p })
     }
 
     /// Returns the unique id of the process
@@ -224,19 +222,17 @@ impl Process {
         let ch_clone = ch.clone();
 
         spawn(proc() {
-            let _guard = io::ignore_io_error();
             let mut error = error;
             match error {
                 Some(ref mut e) => ch.send((2, e.read_to_end())),
-                None => ch.send((2, ~[]))
+                None => ch.send((2, Ok(~[])))
             }
         });
         spawn(proc() {
-            let _guard = io::ignore_io_error();
             let mut output = output;
             match output {
                 Some(ref mut e) => ch_clone.send((1, e.read_to_end())),
-                None => ch_clone.send((1, ~[]))
+                None => ch_clone.send((1, Ok(~[])))
             }
         });
 
@@ -251,8 +247,8 @@ impl Process {
         };
 
         return ProcessOutput {status: status,
-                              output: outs,
-                              error: errs};
+                              output: outs.ok().unwrap_or(~[]),
+                              error: errs.ok().unwrap_or(~[]) };
     }
 
     /**
@@ -263,7 +259,8 @@ impl Process {
      * TerminateProcess(..) will be called.
      */
     pub fn destroy(&mut self) {
-        self.inner.signal(io::process::PleaseExitSignal);
+        // This should never fail because we own the process
+        self.inner.signal(io::process::PleaseExitSignal).unwrap();
         self.finish();
     }
 
@@ -275,8 +272,10 @@ impl Process {
      * TerminateProcess(..) will be called.
      */
     pub fn force_destroy(&mut self) {
-        self.inner.signal(io::process::MustDieSignal);
+        // This should never fail because we own the process
+        self.inner.signal(io::process::MustDieSignal).unwrap();
         self.finish();
+
     }
 }
 
@@ -293,18 +292,14 @@ impl Process {
  *
  * The process's exit code, or None if the child process could not be started
  */
-pub fn process_status(prog: &str, args: &[~str]) -> Option<ProcessExit> {
-    let mut opt_prog = Process::new(prog, args, ProcessOptions {
+pub fn process_status(prog: &str, args: &[~str]) -> io::IoResult<ProcessExit> {
+    Process::new(prog, args, ProcessOptions {
         env: None,
         dir: None,
         in_fd: Some(unsafe { libc::dup(libc::STDIN_FILENO) }),
         out_fd: Some(unsafe { libc::dup(libc::STDOUT_FILENO) }),
         err_fd: Some(unsafe { libc::dup(libc::STDERR_FILENO) })
-    });
-    match opt_prog {
-        Some(ref mut prog) => Some(prog.finish()),
-        None => None
-    }
+    }).map(|mut p| p.finish())
 }
 
 /**
@@ -320,12 +315,10 @@ pub fn process_status(prog: &str, args: &[~str]) -> Option<ProcessExit> {
  * The process's stdout/stderr output and exit code, or None if the child process could not be
  * started.
  */
-pub fn process_output(prog: &str, args: &[~str]) -> Option<ProcessOutput> {
-    let mut opt_prog = Process::new(prog, args, ProcessOptions::new());
-    match opt_prog {
-        Some(ref mut prog) => Some(prog.finish_with_output()),
-        None => None
-    }
+pub fn process_output(prog: &str, args: &[~str]) -> io::IoResult<ProcessOutput> {
+    Process::new(prog, args, ProcessOptions::new()).map(|mut p| {
+        p.finish_with_output()
+    })
 }
 
 #[cfg(test)]

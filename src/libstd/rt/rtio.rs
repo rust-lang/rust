@@ -16,13 +16,13 @@ use libc;
 use ops::Drop;
 use option::{Option, Some, None};
 use path::Path;
-use result::{Result, Ok, Err};
+use result::{Result, Err};
 use rt::task::Task;
 use rt::local::Local;
 
 use ai = io::net::addrinfo;
 use io;
-use io::IoError;
+use io::{IoError, IoResult};
 use io::net::ip::{IpAddr, SocketAddr};
 use io::process::{ProcessConfig, ProcessExit};
 use io::signal::Signum;
@@ -116,23 +116,12 @@ impl<'a> LocalIo<'a> {
         return ret;
     }
 
-    pub fn maybe_raise<T>(f: |io: &mut IoFactory| -> Result<T, IoError>)
-        -> Option<T>
+    pub fn maybe_raise<T>(f: |io: &mut IoFactory| -> IoResult<T>)
+        -> IoResult<T>
     {
         match LocalIo::borrow() {
-            None => {
-                io::io_error::cond.raise(io::standard_error(io::IoUnavailable));
-                None
-            }
-            Some(mut io) => {
-                match f(io.get()) {
-                    Ok(t) => Some(t),
-                    Err(ioerr) => {
-                        io::io_error::cond.raise(ioerr);
-                        None
-                    }
-                }
-            }
+            None => Err(io::standard_error(io::IoUnavailable)),
+            Some(mut io) => f(io.get()),
         }
     }
 
